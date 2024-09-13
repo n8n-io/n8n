@@ -1,19 +1,19 @@
-import Container, { Service } from 'typedi';
+import { GlobalConfig } from '@n8n/config';
 import { caching } from 'cache-manager';
 import { ApplicationError, jsonStringify } from 'n8n-workflow';
+import Container, { Service } from 'typedi';
 
 import config from '@/config';
-import { UncacheableValueError } from '@/errors/cache-errors/uncacheable-value.error';
+import { TIME } from '@/constants';
 import { MalformedRefreshValueError } from '@/errors/cache-errors/malformed-refresh-value.error';
+import { UncacheableValueError } from '@/errors/cache-errors/uncacheable-value.error';
 import type {
 	TaggedRedisCache,
 	TaggedMemoryCache,
 	MaybeHash,
 	Hash,
 } from '@/services/cache/cache.types';
-import { TIME } from '@/constants';
 import { TypedEmitter } from '@/typed-emitter';
-import { GlobalConfig } from '@n8n/config';
 
 type CacheEvents = {
 	'metrics.cache.hit': never;

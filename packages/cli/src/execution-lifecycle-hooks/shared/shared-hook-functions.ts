@@ -1,11 +1,12 @@
-import { Container } from 'typedi';
-import type { ExecutionStatus, IRun, IWorkflowBase } from 'n8n-workflow';
-import type { ExecutionPayload, IExecutionDb } from '@/interfaces';
 import pick from 'lodash/pick';
-import { isWorkflowIdValid } from '@/utils';
+import type { ExecutionStatus, IRun, IWorkflowBase } from 'n8n-workflow';
+import { Container } from 'typedi';
+
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { ExecutionMetadataService } from '@/services/execution-metadata.service';
+import type { ExecutionPayload, IExecutionDb } from '@/interfaces';
 import { Logger } from '@/logger';
+import { ExecutionMetadataService } from '@/services/execution-metadata.service';
+import { isWorkflowIdValid } from '@/utils';
 
 export function determineFinalExecutionStatus(runData: IRun): ExecutionStatus {
 	const workflowHasCrashed = runData.status === 'crashed';

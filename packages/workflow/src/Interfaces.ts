@@ -898,7 +898,7 @@ type BaseExecutionFunctions = FunctionsBaseWithRequiredKeys<'getMode'> & {
 	getInputSourceData(inputIndex?: number, inputName?: string): ISourceData;
 	getExecutionCancelSignal(): AbortSignal | undefined;
 	onExecutionCancellation(handler: () => unknown): void;
-	logAiEvent(eventName: EventNamesAiNodesType, msg?: string | undefined): Promise<void>;
+	logAiEvent(eventName: AiEvent, msg?: string | undefined): Promise<void>;
 };
 
 // TODO: Create later own type only for Config-Nodes
@@ -2147,26 +2147,6 @@ export interface IWorkflowExecuteHooks {
 	sendResponse?: Array<(response: IExecuteResponsePromiseData) => Promise<void>>;
 }
 
-export const eventNamesAiNodes = [
-	'n8n.ai.memory.get.messages',
-	'n8n.ai.memory.added.message',
-	'n8n.ai.output.parser.get.instructions',
-	'n8n.ai.output.parser.parsed',
-	'n8n.ai.retriever.get.relevant.documents',
-	'n8n.ai.embeddings.embedded.document',
-	'n8n.ai.embeddings.embedded.query',
-	'n8n.ai.document.processed',
-	'n8n.ai.text.splitter.split',
-	'n8n.ai.tool.called',
-	'n8n.ai.vector.store.searched',
-	'n8n.ai.llm.generated',
-	'n8n.ai.llm.error',
-	'n8n.ai.vector.store.populated',
-	'n8n.ai.vector.store.updated',
-] as const;
-
-export type EventNamesAiNodesType = (typeof eventNamesAiNodes)[number];
-
 export interface IWorkflowExecutionDataProcess {
 	destinationNode?: string;
 	restartExecutionId?: string;
@@ -2191,6 +2171,31 @@ export interface ExecuteWorkflowOptions {
 	parentWorkflowSettings?: IWorkflowSettings;
 	parentCallbackManager?: CallbackManager;
 }
+
+export type AiEvent =
+	| 'ai-messages-retrieved-from-memory'
+	| 'ai-message-added-to-memory'
+	| 'ai-output-parsed'
+	| 'ai-documents-retrieved'
+	| 'ai-document-embedded'
+	| 'ai-query-embedded'
+	| 'ai-document-processed'
+	| 'ai-text-split'
+	| 'ai-tool-called'
+	| 'ai-vector-store-searched'
+	| 'ai-llm-generated-output'
+	| 'ai-llm-errored'
+	| 'ai-vector-store-populated'
+	| 'ai-vector-store-updated';
+
+type AiEventPayload = {
+	msg: string;
+	workflowName: string;
+	executionId: string;
+	nodeName: string;
+	workflowId?: string;
+	nodeType?: string;
+};
 
 export interface IWorkflowExecuteAdditionalData {
 	credentialsHelper: ICredentialsHelper;
@@ -2217,17 +2222,7 @@ export interface IWorkflowExecuteAdditionalData {
 	userId?: string;
 	variables: IDataObject;
 	secretsHelpers: SecretsHelpersBase;
-	logAiEvent: (
-		eventName: EventNamesAiNodesType,
-		payload: {
-			msg?: string;
-			executionId: string;
-			nodeName: string;
-			workflowId?: string;
-			workflowName: string;
-			nodeType?: string;
-		},
-	) => Promise<void>;
+	logAiEvent: (eventName: AiEvent, payload: AiEventPayload) => void;
 	parentCallbackManager?: CallbackManager;
 }
 

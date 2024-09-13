@@ -1,13 +1,14 @@
 import { Container } from 'typedi';
+
 import type { User } from '@/databases/entities/user';
 import { TagRepository } from '@/databases/repositories/tag.repository';
 
-import { randomApiKey } from '../shared/random';
-import * as utils from '../shared/utils/';
-import * as testDb from '../shared/test-db';
-import { createUser } from '../shared/db/users';
 import { createTag } from '../shared/db/tags';
+import { createUser } from '../shared/db/users';
+import { randomApiKey } from '../shared/random';
+import * as testDb from '../shared/test-db';
 import type { SuperAgentTest } from '../shared/types';
+import * as utils from '../shared/utils/';
 
 let owner: User;
 let member: User;

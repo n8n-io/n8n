@@ -1,4 +1,6 @@
+import type { Scope } from '@n8n/permissions';
 import type { Application } from 'express';
+import type { WorkflowExecute } from 'n8n-core';
 import type {
 	ExecutionError,
 	ICredentialDataDecryptedObject,
@@ -21,13 +23,9 @@ import type {
 	IUserSettings,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
-
-import type { ActiveWorkflowManager } from '@/active-workflow-manager';
-
-import type { WorkflowExecute } from 'n8n-core';
-
 import type PCancelable from 'p-cancelable';
 
+import type { ActiveWorkflowManager } from '@/active-workflow-manager';
 import type { AnnotationTagEntity } from '@/databases/entities/annotation-tag-entity';
 import type { AuthProviderType } from '@/databases/entities/auth-identity';
 import type { SharedCredentials } from '@/databases/entities/shared-credentials';
@@ -37,10 +35,10 @@ import type { CredentialsRepository } from '@/databases/repositories/credentials
 import type { SettingsRepository } from '@/databases/repositories/settings.repository';
 import type { UserRepository } from '@/databases/repositories/user.repository';
 import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import type { ExternalHooks } from './external-hooks';
+
 import type { LICENSE_FEATURES, LICENSE_QUOTAS } from './constants';
+import type { ExternalHooks } from './external-hooks';
 import type { WorkflowWithSharingsAndCredentials } from './workflows/workflows.types';
-import type { Scope } from '@n8n/permissions';
 
 export interface ICredentialsTypeData {
 	[key: string]: CredentialLoadingDetails;

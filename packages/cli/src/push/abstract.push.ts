@@ -1,10 +1,10 @@
-import { assert, jsonStringify } from 'n8n-workflow';
 import type { PushPayload, PushType } from '@n8n/api-types';
+import { assert, jsonStringify } from 'n8n-workflow';
 
-import type { Logger } from '@/logger';
 import type { User } from '@/databases/entities/user';
-import { TypedEmitter } from '@/typed-emitter';
+import type { Logger } from '@/logger';
 import type { OnPushMessage } from '@/push/types';
+import { TypedEmitter } from '@/typed-emitter';
 
 export interface AbstractPushEvents {
 	message: OnPushMessage;

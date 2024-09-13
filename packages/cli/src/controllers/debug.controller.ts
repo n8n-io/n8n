@@ -1,7 +1,7 @@
-import { Get, RestController } from '@/decorators';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { OrchestrationService } from '@/services/orchestration.service';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { Get, RestController } from '@/decorators';
+import { OrchestrationService } from '@/services/orchestration.service';
 
 @RestController('/debug')
 export class DebugController {

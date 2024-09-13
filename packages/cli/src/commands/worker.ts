@@ -1,26 +1,27 @@
-import { Container } from 'typedi';
 import { Flags, type Config } from '@oclif/core';
 import express from 'express';
 import http from 'http';
 import { ApplicationError } from 'n8n-workflow';
+import { Container } from 'typedi';
 
-import * as Db from '@/db';
-import * as ResponseHelper from '@/response-helper';
 import config from '@/config';
-import type { ScalingService } from '@/scaling/scaling.service';
 import { N8N_VERSION, inTest } from '@/constants';
-import type { ICredentialsOverwrite } from '@/interfaces';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
-import { rawBodyReader, bodyParser } from '@/middlewares';
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import type { RedisServicePubSubSubscriber } from '@/services/redis/redis-service-pub-sub-subscriber';
+import * as Db from '@/db';
+import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { LogStreamingEventRelay } from '@/events/log-streaming-event-relay';
+import type { ICredentialsOverwrite } from '@/interfaces';
+import { rawBodyReader, bodyParser } from '@/middlewares';
+import * as ResponseHelper from '@/response-helper';
+import { JobProcessor } from '@/scaling/job-processor';
+import type { ScalingService } from '@/scaling/scaling.service';
 import { OrchestrationHandlerWorkerService } from '@/services/orchestration/worker/orchestration.handler.worker.service';
 import { OrchestrationWorkerService } from '@/services/orchestration/worker/orchestration.worker.service';
-import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
+import type { RedisServicePubSubSubscriber } from '@/services/redis/redis-service-pub-sub-subscriber';
+
 import { BaseCommand } from './base-command';
-import { JobProcessor } from '@/scaling/job-processor';
-import { LogStreamingEventRelay } from '@/events/log-streaming-event-relay';
 
 export class Worker extends BaseCommand {
 	static description = '\nStarts a n8n worker';

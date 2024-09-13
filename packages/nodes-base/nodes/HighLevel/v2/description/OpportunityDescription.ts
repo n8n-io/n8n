@@ -106,7 +106,7 @@ const pipelineId: INodeProperties = {
 		},
 	},
 	description:
-		'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 	typeOptions: {
 		loadOptionsMethod: 'getPipelines',
 	},
@@ -127,7 +127,7 @@ const createProperties: INodeProperties[] = [
 		required: true,
 		type: 'options',
 		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 		hint: 'There can only be one opportunity for each contact',
 		displayOptions: {
 			show: {
@@ -222,7 +222,7 @@ const createProperties: INodeProperties[] = [
 				type: 'options',
 				default: '',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
@@ -276,7 +276,7 @@ const createProperties: INodeProperties[] = [
 				name: 'stageId',
 				type: 'options',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 
 				default: '',
 				typeOptions: {
@@ -384,7 +384,7 @@ const getAllProperties: INodeProperties[] = [
 				type: 'options',
 				default: '',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
@@ -425,7 +425,7 @@ const getAllProperties: INodeProperties[] = [
 				name: 'pipelineId',
 				type: 'options',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getPipelines',
 				},
@@ -443,7 +443,7 @@ const getAllProperties: INodeProperties[] = [
 				type: 'options',
 				default: '',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				hint: "Select 'Pipeline Name or ID' first to see stages",
 				typeOptions: {
 					loadOptionsDependsOn: ['pipelineId'],
@@ -552,7 +552,7 @@ const updateProperties: INodeProperties[] = [
 				type: 'options',
 				default: '',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
@@ -594,7 +594,7 @@ const updateProperties: INodeProperties[] = [
 				name: 'pipelineId',
 				type: 'options',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getPipelines',
 				},
@@ -612,7 +612,7 @@ const updateProperties: INodeProperties[] = [
 				type: 'options',
 				default: '',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				hint: "Select 'Pipeline Name or ID' first to see stages",
 				typeOptions: {
 					loadOptionsDependsOn: ['pipelineId'],

@@ -1,16 +1,16 @@
-import Container from 'typedi';
 import { WorkflowHooks, type ExecutionError, type IWorkflowExecuteHooks } from 'n8n-workflow';
-import type { User } from '@/databases/entities/user';
-import { WorkflowRunner } from '@/workflow-runner';
-import config from '@/config';
+import Container from 'typedi';
 
-import * as testDb from '@test-integration/test-db';
-import { setupTestServer } from '@test-integration/utils';
+import config from '@/config';
+import type { User } from '@/databases/entities/user';
+import { Telemetry } from '@/telemetry';
+import { WorkflowRunner } from '@/workflow-runner';
+import { mockInstance } from '@test/mocking';
+import { createExecution } from '@test-integration/db/executions';
 import { createUser } from '@test-integration/db/users';
 import { createWorkflow } from '@test-integration/db/workflows';
-import { createExecution } from '@test-integration/db/executions';
-import { mockInstance } from '@test/mocking';
-import { Telemetry } from '@/telemetry';
+import * as testDb from '@test-integration/test-db';
+import { setupTestServer } from '@test-integration/utils';
 
 let owner: User;
 let runner: WorkflowRunner;

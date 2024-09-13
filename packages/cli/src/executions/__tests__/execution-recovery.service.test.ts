@@ -1,25 +1,24 @@
-import Container from 'typedi';
 import { stringify } from 'flatted';
-import { randomInt } from 'n8n-workflow';
-import { InstanceSettings } from 'n8n-core';
-
-import { mockInstance } from '@test/mocking';
-import { createWorkflow } from '@test-integration/db/workflows';
-import { createExecution } from '@test-integration/db/executions';
-import * as testDb from '@test-integration/test-db';
-
 import { mock } from 'jest-mock-extended';
-import { ExecutionRecoveryService } from '@/executions/execution-recovery.service';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { Push } from '@/push';
+import { InstanceSettings } from 'n8n-core';
+import { randomInt } from 'n8n-workflow';
+import Container from 'typedi';
+
 import { ARTIFICIAL_TASK_DATA } from '@/constants';
+import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { NodeCrashedError } from '@/errors/node-crashed.error';
 import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
+import type { EventMessageTypes as EventMessage } from '@/eventbus/event-message-classes';
 import { EventMessageNode } from '@/eventbus/event-message-classes/event-message-node';
+import { ExecutionRecoveryService } from '@/executions/execution-recovery.service';
+import { Push } from '@/push';
+import { mockInstance } from '@test/mocking';
+import { createExecution } from '@test-integration/db/executions';
+import { createWorkflow } from '@test-integration/db/workflows';
+import * as testDb from '@test-integration/test-db';
+
 import { IN_PROGRESS_EXECUTION_DATA, OOM_WORKFLOW } from './constants';
 import { setupMessages } from './utils';
-
-import type { EventMessageTypes as EventMessage } from '@/eventbus/event-message-classes';
 
 describe('ExecutionRecoveryService', () => {
 	const push = mockInstance(Push);

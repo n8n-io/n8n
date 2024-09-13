@@ -1,26 +1,27 @@
-import { v4 as uuid } from 'uuid';
-import { Container } from 'typedi';
 import type { INode, INodeTypeData } from 'n8n-workflow';
 import { randomInt } from 'n8n-workflow';
+import { Container } from 'typedi';
+import { v4 as uuid } from 'uuid';
+
+import type { Project } from '@/databases/entities/project';
 import type { User } from '@/databases/entities/user';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
+import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';
 import { OwnershipService } from '@/services/ownership.service';
 import { PermissionChecker } from '@/user-management/permission-checker';
 
-import { mockInstance } from '../shared/mocking';
+import { affixRoleToSaveCredential } from './shared/db/credentials';
+import { getPersonalProject } from './shared/db/projects';
+import { createOwner, createUser } from './shared/db/users';
 import { randomCredentialPayload as randomCred } from './shared/random';
 import * as testDb from './shared/test-db';
 import type { SaveCredentialFunction } from './shared/types';
-import { affixRoleToSaveCredential } from './shared/db/credentials';
-import { createOwner, createUser } from './shared/db/users';
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import { getPersonalProject } from './shared/db/projects';
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
-import type { Project } from '@/databases/entities/project';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
+import { mockInstance } from '../shared/mocking';
 
 const ownershipService = mockInstance(OwnershipService);
 
@@ -265,7 +266,7 @@ describe('check()', () => {
 
 		const workflowEntity = await createWorkflow(nodes, owner);
 		ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(ownerPersonalProject);
-		ownershipService.getProjectOwnerCached.mockResolvedValueOnce(owner);
+		ownershipService.getPersonalProjectOwnerCached.mockResolvedValueOnce(owner);
 
 		await expect(
 			permissionChecker.check(workflowEntity.id, workflowEntity.nodes),

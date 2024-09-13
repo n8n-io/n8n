@@ -1,16 +1,17 @@
-import { Service } from 'typedi';
-import type PCancelable from 'p-cancelable';
-import type { ExecutionStatus, IExecuteResponsePromiseData, IRun } from 'n8n-workflow';
-import { BINARY_ENCODING, ApplicationError, Workflow } from 'n8n-workflow';
 import type { RunningJobSummary } from '@n8n/api-types';
-
 import { WorkflowExecute } from 'n8n-core';
-import { Logger } from '@/logger';
+import { BINARY_ENCODING, ApplicationError, Workflow } from 'n8n-workflow';
+import type { ExecutionStatus, IExecuteResponsePromiseData, IRun } from 'n8n-workflow';
+import type PCancelable from 'p-cancelable';
+import { Service } from 'typedi';
+
 import config from '@/config';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import { Logger } from '@/logger';
 import { NodeTypes } from '@/node-types';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+
 import type { Job, JobId, JobResult, RunningJob } from './scaling.types';
 
 /**
@@ -130,7 +131,7 @@ export class JobProcessor {
 			workflowRun = workflowExecute.run(workflow);
 		}
 
-		this.runningJobs[job.id] = {
+		const runningJob: RunningJob = {
 			run: workflowRun,
 			executionId,
 			workflowId: execution.workflowId,
@@ -140,6 +141,8 @@ export class JobProcessor {
 			retryOf: execution.retryOf ?? '',
 			status: execution.status,
 		};
+
+		this.runningJobs[job.id] = runningJob;
 
 		await workflowRun;
 

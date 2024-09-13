@@ -1,9 +1,9 @@
-import { Service } from 'typedi';
 import type { INode } from 'n8n-workflow';
 import { CredentialAccessError, NodeOperationError } from 'n8n-workflow';
+import { Service } from 'typedi';
 
-import { OwnershipService } from '@/services/ownership.service';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
+import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service';
 
 @Service()
@@ -19,7 +19,9 @@ export class PermissionChecker {
 	 */
 	async check(workflowId: string, nodes: INode[]) {
 		const homeProject = await this.ownershipService.getWorkflowProjectCached(workflowId);
-		const homeProjectOwner = await this.ownershipService.getProjectOwnerCached(homeProject.id);
+		const homeProjectOwner = await this.ownershipService.getPersonalProjectOwnerCached(
+			homeProject.id,
+		);
 		if (homeProject.type === 'personal' && homeProjectOwner?.hasGlobalScope('credential:list')) {
 			// Workflow belongs to a project by a user with privileges
 			// so all credentials are usable. Skip credential checks.

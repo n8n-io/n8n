@@ -1,8 +1,8 @@
 import type { Response } from 'express';
 import type { WebSocket } from 'ws';
 
-import type { AuthenticatedRequest } from '@/requests';
 import type { User } from '@/databases/entities/user';
+import type { AuthenticatedRequest } from '@/requests';
 
 // TODO: move all push related types here
 

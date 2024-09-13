@@ -2,18 +2,18 @@ import { BinaryDataService } from 'n8n-core';
 
 import { Worker } from '@/commands/worker';
 import config from '@/config';
-import { ExternalSecretsManager } from '@/external-secrets/external-secrets-manager.ee';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { LogStreamingEventRelay } from '@/events/log-streaming-event-relay';
+import { ExternalHooks } from '@/external-hooks';
+import { ExternalSecretsManager } from '@/external-secrets/external-secrets-manager.ee';
+import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { ScalingService } from '@/scaling/scaling.service';
 import { OrchestrationHandlerWorkerService } from '@/services/orchestration/worker/orchestration.handler.worker.service';
 import { OrchestrationWorkerService } from '@/services/orchestration/worker/orchestration.worker.service';
-import { License } from '@/license';
-import { ExternalHooks } from '@/external-hooks';
-import { ScalingService } from '@/scaling/scaling.service';
-
 import { setupTestCommand } from '@test-integration/utils/test-command';
+
 import { mockInstance } from '../../shared/mocking';
-import { LogStreamingEventRelay } from '@/events/log-streaming-event-relay';
 
 config.set('executions.mode', 'queue');
 config.set('binaryDataManager.availableModes', 'filesystem');

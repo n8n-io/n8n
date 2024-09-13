@@ -1,6 +1,7 @@
 import type { RequestHandler } from 'express';
-import type { Controller, Method, RateLimit } from './types';
+
 import { getRouteMetadata } from './controller.registry';
+import type { Controller, Method, RateLimit } from './types';
 
 interface RouteOptions {
 	middlewares?: RequestHandler[];

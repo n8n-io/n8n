@@ -1,7 +1,7 @@
-import type { ExecutionError, IExecuteResponsePromiseData, IRun } from 'n8n-workflow';
-import type Bull from 'bull';
-import type PCancelable from 'p-cancelable';
 import type { RunningJobSummary } from '@n8n/api-types';
+import type Bull from 'bull';
+import type { ExecutionError, IExecuteResponsePromiseData, IRun } from 'n8n-workflow';
+import type PCancelable from 'p-cancelable';
 
 export type JobQueue = Bull.Queue<JobData>;
 

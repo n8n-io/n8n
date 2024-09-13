@@ -13,8 +13,8 @@
     "benchmark": "zx scripts/run.mjs",
     "benchmark-in-cloud": "pnpm benchmark --env cloud",
     "benchmark-locally": "pnpm benchmark --env local",
-    "provision-cloud-env": "zx scripts/provisionCloudEnv.mjs",
-    "destroy-cloud-env": "zx scripts/destroyCloudEnv.mjs",
+    "provision-cloud-env": "zx scripts/provision-cloud-env.mjs",
+    "destroy-cloud-env": "zx scripts/destroy-cloud-env.mjs",
     "watch": "concurrently \"tsc -w -p tsconfig.build.json\" \"tsc-alias -w -p tsconfig.build.json\""
   },
   "engines": {

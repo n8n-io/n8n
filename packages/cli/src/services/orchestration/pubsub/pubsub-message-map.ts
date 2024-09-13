@@ -1,4 +1,5 @@
 import type { PushType, WorkerStatus } from '@n8n/api-types';
+
 import type { IWorkflowDb } from '@/interfaces';
 
 export type PubSubMessageMap = {

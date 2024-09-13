@@ -1,13 +1,12 @@
-import { Container } from 'typedi';
-import { EventEmitter } from 'events';
-import type WebSocket from 'ws';
 import type { PushMessage } from '@n8n/api-types';
+import { EventEmitter } from 'events';
+import { Container } from 'typedi';
+import type WebSocket from 'ws';
 
-import { WebSocketPush } from '@/push/websocket.push';
-import { Logger } from '@/logger';
-
-import { mockInstance } from '@test/mocking';
 import type { User } from '@/databases/entities/user';
+import { Logger } from '@/logger';
+import { WebSocketPush } from '@/push/websocket.push';
+import { mockInstance } from '@test/mocking';
 
 jest.useFakeTimers();
 
@@ -74,7 +73,6 @@ describe('WebSocketPush', () => {
 	it('sends data to one connection', () => {
 		webSocketPush.add(pushRef1, userId, mockWebSocket1);
 		webSocketPush.add(pushRef2, userId, mockWebSocket2);
-
 		webSocketPush.sendToOne(pushMessage.type, pushMessage.data, pushRef1);
 
 		expect(mockWebSocket1.send).toHaveBeenCalledWith(expectedMsg);
@@ -84,7 +82,6 @@ describe('WebSocketPush', () => {
 	it('sends data to all connections', () => {
 		webSocketPush.add(pushRef1, userId, mockWebSocket1);
 		webSocketPush.add(pushRef2, userId, mockWebSocket2);
-
 		webSocketPush.sendToAll(pushMessage.type, pushMessage.data);
 
 		expect(mockWebSocket1.send).toHaveBeenCalledWith(expectedMsg);
@@ -104,7 +101,6 @@ describe('WebSocketPush', () => {
 	it('sends data to all users connections', () => {
 		webSocketPush.add(pushRef1, userId, mockWebSocket1);
 		webSocketPush.add(pushRef2, userId, mockWebSocket2);
-
 		webSocketPush.sendToUsers(pushMessage.type, pushMessage.data, [userId]);
 
 		expect(mockWebSocket1.send).toHaveBeenCalledWith(expectedMsg);

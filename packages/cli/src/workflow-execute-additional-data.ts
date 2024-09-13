@@ -4,8 +4,8 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import type { PushType } from '@n8n/api-types';
+import { GlobalConfig } from '@n8n/config';
 import { WorkflowExecute } from 'n8n-core';
-
 import type {
 	IDataObject,
 	IExecuteData,
@@ -24,7 +24,6 @@ import type {
 	WorkflowExecuteMode,
 	ExecutionStatus,
 	ExecutionError,
-	EventNamesAiNodesType,
 	ExecuteWorkflowOptions,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
@@ -35,39 +34,39 @@ import {
 	Workflow,
 	WorkflowHooks,
 } from 'n8n-workflow';
-
 import { Container } from 'typedi';
-import config from '@/config';
+
 import { ActiveExecutions } from '@/active-executions';
+import config from '@/config';
 import { CredentialsHelper } from '@/credentials-helper';
+import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { ExternalHooks } from '@/external-hooks';
 import type { IWorkflowExecuteProcess, IWorkflowErrorData, ExecutionPayload } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
-import * as WorkflowHelpers from '@/workflow-helpers';
-import { findSubworkflowStart, isWorkflowIdValid } from '@/utils';
-import { PermissionChecker } from './user-management/permission-checker';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
-import { SecretsHelper } from './secrets-helpers';
-import { OwnershipService } from './services/ownership.service';
+import { findSubworkflowStart, isWorkflowIdValid } from '@/utils';
+import * as WorkflowHelpers from '@/workflow-helpers';
+
+import { WorkflowRepository } from './databases/repositories/workflow.repository';
+import type { AiEventMap, AiEventPayload } from './events/ai-event-map';
+import { EventService } from './events/event.service';
+import { restoreBinaryDataId } from './execution-lifecycle-hooks/restore-binary-data-id';
+import { saveExecutionProgress } from './execution-lifecycle-hooks/save-execution-progress';
 import {
 	determineFinalExecutionStatus,
 	prepareExecutionDataForDbUpdate,
 	updateExistingExecution,
 } from './execution-lifecycle-hooks/shared/shared-hook-functions';
-import { restoreBinaryDataId } from './execution-lifecycle-hooks/restore-binary-data-id';
 import { toSaveSettings } from './execution-lifecycle-hooks/to-save-settings';
 import { Logger } from './logger';
-import { saveExecutionProgress } from './execution-lifecycle-hooks/save-execution-progress';
-import { WorkflowStaticDataService } from './workflows/workflow-static-data.service';
-import { WorkflowRepository } from './databases/repositories/workflow.repository';
+import { SecretsHelper } from './secrets-helpers';
+import { OwnershipService } from './services/ownership.service';
 import { UrlService } from './services/url.service';
-import { WorkflowExecutionService } from './workflows/workflow-execution.service';
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import { EventService } from './events/event.service';
-import { GlobalConfig } from '@n8n/config';
 import { SubworkflowPolicyChecker } from './subworkflows/subworkflow-policy-checker.service';
+import { PermissionChecker } from './user-management/permission-checker';
+import { WorkflowExecutionService } from './workflows/workflow-execution.service';
+import { WorkflowStaticDataService } from './workflows/workflow-static-data.service';
 
 export function objectToError(errorObject: unknown, workflow: Workflow): Error {
 	// TODO: Expand with other error types
@@ -803,6 +802,7 @@ async function executeWorkflow(
 			workflow,
 			options.parentWorkflowId,
 			options.node,
+			additionalData.userId,
 		);
 
 		// Create new additionalData to have different workflow loaded and to call
@@ -964,6 +964,8 @@ export async function getBase(
 
 	const variables = await WorkflowHelpers.getVariables();
 
+	const eventService = Container.get(EventService);
+
 	return {
 		credentialsHelper: Container.get(CredentialsHelper),
 		executeWorkflow,
@@ -979,22 +981,8 @@ export async function getBase(
 		setExecutionStatus,
 		variables,
 		secretsHelpers: Container.get(SecretsHelper),
-		logAiEvent: async (
-			eventName: EventNamesAiNodesType,
-			payload: {
-				msg?: string | undefined;
-				executionId: string;
-				nodeName: string;
-				workflowId?: string | undefined;
-				workflowName: string;
-				nodeType?: string | undefined;
-			},
-		) => {
-			return await Container.get(MessageEventBus).sendAiNodeEvent({
-				eventName,
-				payload,
-			});
-		},
+		logAiEvent: (eventName: keyof AiEventMap, payload: AiEventPayload) =>
+			eventService.emit(eventName, payload),
 	};
 }
 

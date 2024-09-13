@@ -76,10 +76,10 @@ export async function modelSearch(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
-	return await getModelSearch((model) => model.id.startsWith('gpt-') || model.id.startsWith('ft:'))(
-		this,
-		filter,
-	);
+	return await getModelSearch(
+		(model) =>
+			model.id.startsWith('gpt-') || model.id.startsWith('ft:') || model.id.startsWith('o1'),
+	)(this, filter);
 }
 
 export async function imageModelSearch(

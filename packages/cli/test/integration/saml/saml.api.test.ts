@@ -2,11 +2,11 @@ import type { User } from '@/databases/entities/user';
 import { setSamlLoginEnabled } from '@/sso/saml/saml-helpers';
 import { getCurrentAuthenticationMethod, setCurrentAuthenticationMethod } from '@/sso/sso-helpers';
 
-import { randomEmail, randomName, randomValidPassword } from '../shared/random';
-import * as utils from '../shared/utils/';
 import { sampleConfig } from './sample-metadata';
 import { createOwner, createUser } from '../shared/db/users';
+import { randomEmail, randomName, randomValidPassword } from '../shared/random';
 import type { SuperAgentTest } from '../shared/types';
+import * as utils from '../shared/utils/';
 
 let someUser: User;
 let owner: User;
