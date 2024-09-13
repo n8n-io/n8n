@@ -1,5 +1,9 @@
 import '@testing-library/jest-dom';
 import { configure } from '@testing-library/vue';
+import { config } from '@vue/test-utils';
+import { N8nPlugin } from 'n8n-design-system';
+
+config.global.plugins = [N8nPlugin];
 
 configure({ testIdAttribute: 'data-test-id' });
 
