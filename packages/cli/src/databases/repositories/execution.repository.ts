@@ -347,11 +347,16 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	}
 
 	async updateExistingExecution(executionId: string, execution: Partial<IExecutionResponse>) {
-		// Se isolate startedAt because it must be set when the execution starts and should never change.
-		// So we prevent updating it, if it's sent (it usually is and causes problems to executions that
-		// are resumed after waiting for some time, as a new startedAt is set)
-		const { id, data, workflowId, workflowData, startedAt, customData, ...executionInformation } =
-			execution;
+		const {
+			id,
+			data,
+			workflowId,
+			workflowData,
+			createdAt, // must never change
+			startedAt, // must never change
+			customData,
+			...executionInformation
+		} = execution;
 		if (Object.keys(executionInformation).length > 0) {
 			await this.update({ id: executionId }, executionInformation);
 		}
