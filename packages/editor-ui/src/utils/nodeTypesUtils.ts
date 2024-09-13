@@ -544,7 +544,6 @@ export function getReferencedNodes(node: INode): string[] {
 			});
 		}
 	}
-	console.log(referencedNodes);
 	return referencedNodes.size ? Array.from(referencedNodes) : [];
 }
 
