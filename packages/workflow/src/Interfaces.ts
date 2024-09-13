@@ -728,7 +728,7 @@ export interface ICredentialTestFunctions {
 }
 
 interface BaseHelperFunctions {
-	createDeferredPromise: <T = void>() => Promise<IDeferredPromise<T>>;
+	createDeferredPromise: <T = void>() => IDeferredPromise<T>;
 }
 
 interface JsonHelperFunctions {
