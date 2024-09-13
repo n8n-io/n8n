@@ -230,46 +230,6 @@ export class ChainRetrievalQa implements INodeType {
 
 		const items = this.getInputData();
 
-		const customQAPrompt = this.getNodeParameter('customQAPrompt', 0, false) as boolean;
-
-		const chainParameters = {} as {
-			prompt?: PromptTemplate | ChatPromptTemplate;
-		};
-
-		if (customQAPrompt) {
-			const qAPromptType = this.getNodeParameter('qAPromptType', 0) as string;
-
-			if (qAPromptType == 'standardPrompt') {
-				const standardPromptTemplateParameter = this.getNodeParameter(
-					'standardPromptTemplate',
-					0,
-				) as string;
-
-				const standardPromptTemplate = new PromptTemplate({
-					template: standardPromptTemplateParameter,
-					inputVariables: ['context', 'question'],
-				});
-
-				chainParameters.prompt = standardPromptTemplate;
-			} else if (qAPromptType == 'chatPrompt') {
-				const chatPromptTemplateParameter = this.getNodeParameter(
-					'chatPromptTemplate',
-					0,
-				) as string;
-
-				const messages = [
-					SystemMessagePromptTemplate.fromTemplate(chatPromptTemplateParameter),
-					HumanMessagePromptTemplate.fromTemplate('{question}'),
-				];
-
-				const chatPromptTemplate = ChatPromptTemplate.fromMessages(messages);
-
-				chainParameters.prompt = chatPromptTemplate;
-			}
-		}
-
-		const chain = RetrievalQAChain.fromLLM(model, retriever, chainParameters);
-
 		const returnData: INodeExecutionData[] = [];
 
 		// Run for each item
@@ -291,6 +251,46 @@ export class ChainRetrievalQa implements INodeType {
 				if (query === undefined) {
 					throw new NodeOperationError(this.getNode(), 'The ‘query‘ parameter is empty.');
 				}
+
+				const customQAPrompt = this.getNodeParameter('customQAPrompt', itemIndex, false) as boolean;
+
+				const chainParameters = {} as {
+					prompt?: PromptTemplate | ChatPromptTemplate;
+				};
+
+				if (customQAPrompt) {
+					const qAPromptType = this.getNodeParameter('qAPromptType', itemIndex) as string;
+
+					if (qAPromptType === 'standardPrompt') {
+						const standardPromptTemplateParameter = this.getNodeParameter(
+							'standardPromptTemplate',
+							itemIndex,
+						) as string;
+
+						const standardPromptTemplate = new PromptTemplate({
+							template: standardPromptTemplateParameter,
+							inputVariables: ['context', 'question'],
+						});
+
+						chainParameters.prompt = standardPromptTemplate;
+					} else if (qAPromptType === 'chatPrompt') {
+						const chatPromptTemplateParameter = this.getNodeParameter(
+							'chatPromptTemplate',
+							itemIndex,
+						) as string;
+
+						const messages = [
+							SystemMessagePromptTemplate.fromTemplate(chatPromptTemplateParameter),
+							HumanMessagePromptTemplate.fromTemplate('{question}'),
+						];
+
+						const chatPromptTemplate = ChatPromptTemplate.fromMessages(messages);
+
+						chainParameters.prompt = chatPromptTemplate;
+					}
+				}
+
+				const chain = RetrievalQAChain.fromLLM(model, retriever, chainParameters);
 
 				const response = await chain.withConfig(getTracingConfig(this)).invoke({ query });
 				returnData.push({ json: { response } });
