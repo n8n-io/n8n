@@ -283,10 +283,9 @@ export class RabbitMQTrigger implements INodeType {
 					let responsePromiseHook: IDeferredPromise<IExecuteResponsePromiseData> | undefined =
 						undefined;
 					if (acknowledgeMode !== 'immediately' && acknowledgeMode !== 'laterMessageNode') {
-						responsePromise = await this.helpers.createDeferredPromise();
+						responsePromise = this.helpers.createDeferredPromise();
 					} else if (acknowledgeMode === 'laterMessageNode') {
-						responsePromiseHook =
-							await this.helpers.createDeferredPromise<IExecuteResponsePromiseData>();
+						responsePromiseHook = this.helpers.createDeferredPromise<IExecuteResponsePromiseData>();
 					}
 					if (responsePromiseHook) {
 						this.emit([[item]], responsePromiseHook, undefined);
@@ -295,7 +294,7 @@ export class RabbitMQTrigger implements INodeType {
 					}
 					if (responsePromise && acknowledgeMode !== 'laterMessageNode') {
 						// Acknowledge message after the execution finished
-						await responsePromise.promise().then(async (data: IRun) => {
+						await responsePromise.promise.then(async (data: IRun) => {
 							if (data.data.resultData.error) {
 								// The execution did fail
 								if (acknowledgeMode === 'executionFinishesSuccessfully') {
@@ -308,7 +307,7 @@ export class RabbitMQTrigger implements INodeType {
 							messageTracker.answered(message);
 						});
 					} else if (responsePromiseHook && acknowledgeMode === 'laterMessageNode') {
-						await responsePromiseHook.promise().then(() => {
+						await responsePromiseHook.promise.then(() => {
 							channel.ack(message);
 							messageTracker.answered(message);
 						});

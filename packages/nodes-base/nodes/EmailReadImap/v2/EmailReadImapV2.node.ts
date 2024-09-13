@@ -535,7 +535,7 @@ export class EmailReadImapV2 implements INodeType {
 			return newEmails;
 		};
 
-		const returnedPromise = await this.helpers.createDeferredPromise();
+		const returnedPromise = this.helpers.createDeferredPromise();
 
 		const establishConnection = async (): Promise<ImapSimple> => {
 			let searchCriteria = ['UNSEEN'] as Array<string | string[]>;
@@ -590,7 +590,7 @@ export class EmailReadImapV2 implements INodeType {
 							});
 							// Wait with resolving till the returnedPromise got resolved, else n8n will be unhappy
 							// if it receives an error before the workflow got activated
-							await returnedPromise.promise().then(() => {
+							await returnedPromise.promise.then(() => {
 								this.emitError(error as Error);
 							});
 						}
