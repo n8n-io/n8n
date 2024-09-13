@@ -1,8 +1,8 @@
-import { describe, it, expect, suite } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { getReferencedNodes } from '../nodeTypesUtils';
 import type { INode } from 'n8n-workflow';
 
-const testCases: Array<{ caseName: string; node: INode; expected: string[] }> = [
+const referencedNodesTestCases: Array<{ caseName: string; node: INode; expected: string[] }> = [
 	{
 		caseName: 'Should return an empty array if no referenced nodes',
 		node: {
@@ -160,7 +160,7 @@ const testCases: Array<{ caseName: string; node: INode; expected: string[] }> = 
 	},
 ];
 
-describe.each(testCases)('getReferencedNodes', (testCase) => {
+describe.each(referencedNodesTestCases)('getReferencedNodes', (testCase) => {
 	const caseName = testCase.caseName;
 	it(`${caseName}`, () => {
 		expect(getReferencedNodes(testCase.node)).toEqual(testCase.expected);
