@@ -46,7 +46,20 @@ export class ExecutionEntity {
 	@Column('varchar')
 	status: ExecutionStatus;
 
-	@Column(datetimeColumnType)
+	/**
+	 * Time when the execution was created. This column is nullable to represent
+	 * missing data for executions created before this column was added.
+	 */
+	@Column({ type: datetimeColumnType, nullable: true })
+	createdAt: Date;
+
+	/**
+	 * Time when the processing of the execution actually started. This column
+	 * is nullable to represent unavailable data until an execution has started.
+	 * `createdAt` and `startedAt` may differ significantly on scaling mode and
+	 * on regular mode with concurrency control enabled.
+	 */
+	@Column({ type: datetimeColumnType, nullable: true })
 	startedAt: Date;
 
 	@Index()

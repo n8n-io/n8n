@@ -45,7 +45,7 @@ import type {
 	IWorkflowExecuteProcess,
 	IWorkflowErrorData,
 	IPushDataType,
-	ExecutionPayload,
+	UpdateExecutionPayload,
 } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
@@ -869,7 +869,7 @@ async function executeWorkflow(
 		// Therefore, database might not contain finished errors.
 		// Force an update to db as there should be no harm doing this
 
-		const fullExecutionData: ExecutionPayload = {
+		const fullExecutionData: UpdateExecutionPayload = {
 			data: fullRunData.data,
 			mode: fullRunData.mode,
 			finished: fullRunData.finished ? fullRunData.finished : false,

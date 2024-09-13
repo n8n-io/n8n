@@ -42,7 +42,7 @@ import { ExecutionAnnotation } from '@/databases/entities/execution-annotation';
 import { PostgresLiveRowsRetrievalError } from '@/errors/postgres-live-rows-retrieval.error';
 import type { ExecutionSummaries } from '@/executions/execution.types';
 import type {
-	ExecutionPayload,
+	CreateExecutionPayload,
 	IExecutionBase,
 	IExecutionFlattedDb,
 	IExecutionResponse,
@@ -301,7 +301,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	/**
 	 * Insert a new execution and its execution data using a transaction.
 	 */
-	async createNewExecution(execution: ExecutionPayload): Promise<string> {
+	async createNewExecution(execution: CreateExecutionPayload): Promise<string> {
 		const { data, workflowData, ...rest } = execution;
 		const { identifiers: inserted } = await this.insert(rest);
 		const { id: executionId } = inserted[0] as { id: string };
@@ -342,8 +342,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		await this.update({ id: executionId }, { status });
 	}
 
-	async resetStartedAt(executionId: string) {
-		await this.update({ id: executionId }, { startedAt: new Date() });
+	async setRunning(executionId: string) {
+		await this.update({ id: executionId }, { status: 'running', startedAt: new Date() });
 	}
 
 	async updateExistingExecution(executionId: string, execution: Partial<IExecutionResponse>) {

@@ -32,7 +32,7 @@ import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type {
-	ExecutionPayload,
+	CreateExecutionPayload,
 	IExecutionFlattedResponse,
 	IExecutionResponse,
 	IWorkflowDb,
@@ -321,11 +321,10 @@ export class ExecutionService {
 			},
 		};
 
-		const fullExecutionData: ExecutionPayload = {
+		const fullExecutionData: CreateExecutionPayload = {
 			data: executionData,
 			mode,
 			finished: false,
-			startedAt: new Date(),
 			workflowData,
 			workflowId: workflow.id,
 			stoppedAt: new Date(),

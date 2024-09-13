@@ -60,6 +60,7 @@ import { AddConstraintToExecutionMetadata1720101653148 } from '../common/1720101
 import { CreateInvalidAuthTokenTable1723627610222 } from '../common/1723627610222-CreateInvalidAuthTokenTable';
 import { RefactorExecutionIndices1723796243146 } from '../common/1723796243146-RefactorExecutionIndices';
 import { CreateAnnotationTables1724753530828 } from '../common/1724753530828-CreateExecutionAnnotationTables';
+import { SeparateExecutionCreationFromStart1726218295879 } from '../common/1726218295879-SeparateExecutionCreationFromStart';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -122,6 +123,7 @@ const sqliteMigrations: Migration[] = [
 	CreateInvalidAuthTokenTable1723627610222,
 	RefactorExecutionIndices1723796243146,
 	CreateAnnotationTables1724753530828,
+	SeparateExecutionCreationFromStart1726218295879,
 ];
 
 export { sqliteMigrations };

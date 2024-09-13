@@ -17,7 +17,7 @@ import { Service } from 'typedi';
 
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import type {
-	ExecutionPayload,
+	CreateExecutionPayload,
 	IExecutingWorkflowData,
 	IExecutionDb,
 	IExecutionsCurrentSummary,
@@ -56,11 +56,10 @@ export class ActiveExecutions {
 		if (executionId === undefined) {
 			// Is a new execution so save in DB
 
-			const fullExecutionData: ExecutionPayload = {
+			const fullExecutionData: CreateExecutionPayload = {
 				data: executionData.executionData!,
 				mode,
 				finished: false,
-				startedAt: new Date(),
 				workflowData: executionData.workflowData,
 				status: executionStatus,
 				workflowId: executionData.workflowData.id,

@@ -46,7 +46,7 @@ export class JobProcessor {
 
 		this.logger.info(`[JobProcessor] Starting job ${job.id} (execution ${executionId})`);
 
-		await this.executionRepository.updateStatus(executionId, 'running');
+		await this.executionRepository.setRunning(executionId);
 
 		let { staticData } = execution.workflowData;
 
@@ -136,7 +136,7 @@ export class JobProcessor {
 			workflowId: execution.workflowId,
 			workflowName: execution.workflowData.name,
 			mode: execution.mode,
-			startedAt: execution.startedAt,
+			startedAt: new Date(),
 			retryOf: execution.retryOf ?? '',
 			status: execution.status,
 		};
