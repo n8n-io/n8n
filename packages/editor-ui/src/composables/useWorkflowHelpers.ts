@@ -693,7 +693,14 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		return NodeHelpers.getNodeWebhookUrl(baseUrl, workflowId, node, path, isFullPath);
 	}
 
-	function resolveNodeExpressions(nodeParameters: INodeParameters): INodeParameters {
+	/**
+	 * Returns a copy of provided node parameters with added resolvedExpressionValue
+	 * @param nodeParameters
+	 * @returns
+	 */
+	function getNodeParametersWithResolvedExpressions(
+		nodeParameters: INodeParameters,
+	): INodeParameters {
 		function recurse(currentObj: INodeParameters, currentPath: string): INodeParameters {
 			const newObj: INodeParameters = {};
 			for (const key in currentObj) {
@@ -1188,6 +1195,6 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		getWorkflowProjectRole,
 		promptSaveUnsavedWorkflowChanges,
 		initState,
-		resolveNodeExpressions,
+		getNodeParametersWithResolvedExpressions,
 	};
 }

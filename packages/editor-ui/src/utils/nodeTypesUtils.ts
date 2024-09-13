@@ -505,9 +505,10 @@ export const getNodeIconColor = (
 
 /**
 	Regular expression to extract the node names from the expressions in the template.
-	Example: $(expression) => expression
+	Example: $('expression') => expression
+	Or: $("expression") => expression
 */
-const entityRegex = /\$\((['"])(.*?)\1\)/g;
+const entityRegex = /\$\((\\?['"])(.*?)\1\)/g;
 
 /**
  * Extract the node names from the expressions in the template.
@@ -547,8 +548,8 @@ export function getReferencedNodes(node: INode): string[] {
  * Processes node object before sending it to AI assistant
  * - Removes unnecessary properties
  * - Extracts expressions from the parameters and resolves them
- * @param node
- * @param propsToRemove
+ * @param node original node object
+ * @param propsToRemove properties to remove from the node object
  * @returns processed node
  */
 export function processNodeForAssistant(node: INode, propsToRemove: string[]): INode {
@@ -558,7 +559,9 @@ export function processNodeForAssistant(node: INode, propsToRemove: string[]): I
 		delete nodeForLLM[key as keyof INode];
 	});
 	const workflowHelpers = useWorkflowHelpers({ router: useRouter() });
-	const resolvedParameters = workflowHelpers.resolveNodeExpressions(nodeForLLM.parameters);
+	const resolvedParameters = workflowHelpers.getNodeParametersWithResolvedExpressions(
+		nodeForLLM.parameters,
+	);
 	nodeForLLM.parameters = resolvedParameters;
 	return nodeForLLM;
 }
@@ -572,14 +575,14 @@ export function isNodeReferencingInputData(node: INode): boolean {
 /**
  * Get the schema for the referenced nodes as expected by the AI assistant
  * @param nodeNames The names of the nodes to get the schema for
- * @returns An array of objects containing the node name and the schema
+ * @returns An array of NodeExecutionSchema objects
  */
 export function getNodesSchemas(nodeNames: string[]) {
 	const schemas: ChatRequest.NodeExecutionSchema[] = [];
-	nodeNames.forEach((name) => {
+	for (const name of nodeNames) {
 		const node = useWorkflowsStore().getNodeByName(name);
 		if (!node) {
-			return;
+			continue;
 		}
 		const { getSchemaForExecutionData, getInputDataWithPinned } = useDataSchema();
 		const schema = getSchemaForExecutionData(executionDataToJson(getInputDataWithPinned(node)));
@@ -587,6 +590,6 @@ export function getNodesSchemas(nodeNames: string[]) {
 			nodeName: node.name,
 			schema,
 		});
-	});
+	}
 	return schemas;
 }

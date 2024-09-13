@@ -71,7 +71,7 @@ describe('useWorkflowHelpers', () => {
 		vi.clearAllMocks();
 	});
 
-	describe('resolveNodeExpressions', () => {
+	describe('getNodeParametersWithResolvedExpressions', () => {
 		it('should correctly detect and resolve expressions in a regular node ', () => {
 			const nodeParameters = {
 				curlImport: '',
@@ -86,7 +86,7 @@ describe('useWorkflowHelpers', () => {
 				infoMessage: '',
 			};
 			const workflowHelpers = useWorkflowHelpers({ router });
-			const resolvedParameters = workflowHelpers.resolveNodeExpressions(nodeParameters);
+			const resolvedParameters = workflowHelpers.getNodeParametersWithResolvedExpressions(nodeParameters);
 			expect(resolvedParameters.url).toHaveProperty('resolvedExpressionValue');
 		});
 
@@ -109,7 +109,7 @@ describe('useWorkflowHelpers', () => {
 				options: {},
 			};
 			const workflowHelpers = useWorkflowHelpers({ router });
-			const resolvedParameters = workflowHelpers.resolveNodeExpressions(nodeParameters);
+			const resolvedParameters = workflowHelpers.getNodeParametersWithResolvedExpressions(nodeParameters);
 			expect(resolvedParameters).toHaveProperty('assignments');
 			const assignments = resolvedParameters.assignments as AssignmentCollectionValue;
 			expect(assignments).toHaveProperty('assignments');
@@ -149,7 +149,7 @@ describe('useWorkflowHelpers', () => {
 				options: {},
 			};
 			const workflowHelpers = useWorkflowHelpers({ router });
-			const resolvedParameters = workflowHelpers.resolveNodeExpressions(
+			const resolvedParameters = workflowHelpers.getNodeParametersWithResolvedExpressions(
 				nodeParameters,
 			) as typeof nodeParameters;
 			expect(resolvedParameters).toHaveProperty('rules');
@@ -178,7 +178,7 @@ describe('useWorkflowHelpers', () => {
 				options: {},
 			};
 			const workflowHelpers = useWorkflowHelpers({ router });
-			const resolvedParameters = workflowHelpers.resolveNodeExpressions(
+			const resolvedParameters = workflowHelpers.getNodeParametersWithResolvedExpressions(
 				nodeParameters,
 			) as typeof nodeParameters;
 			expect(resolvedParameters.documentId.value).toHaveProperty('resolvedExpressionValue');
@@ -217,7 +217,7 @@ describe('useWorkflowHelpers', () => {
 				options: {},
 			};
 			const workflowHelpers = useWorkflowHelpers({ router });
-			const resolvedParameters = workflowHelpers.resolveNodeExpressions(
+			const resolvedParameters = workflowHelpers.getNodeParametersWithResolvedExpressions(
 				nodeParameters,
 			) as typeof nodeParameters;
 			expect(resolvedParameters.filtersUI.values[0].lookupValue).toHaveProperty(
