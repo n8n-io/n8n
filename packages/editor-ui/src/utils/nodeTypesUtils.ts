@@ -532,15 +532,19 @@ export function getReferencedNodes(node: INode): string[] {
 	}
 	// Go through all parameters and check if they contain expressions on any level
 	for (const key in node.parameters) {
+		let names: string[] = [];
 		if (node.parameters[key] && typeof node.parameters[key] === 'object') {
-			const names = extractNodeNames(JSON.stringify(node.parameters[key]));
-			if (names.length) {
-				names.forEach((name) => {
-					referencedNodes.add(name);
-				});
-			}
+			names = extractNodeNames(JSON.stringify(node.parameters[key]));
+		} else if (typeof node.parameters[key] === 'string') {
+			names = extractNodeNames(node.parameters[key]);
+		}
+		if (names.length) {
+			names.forEach((name) => {
+				referencedNodes.add(name.trim());
+			});
 		}
 	}
+	console.log(referencedNodes);
 	return referencedNodes.size ? Array.from(referencedNodes) : [];
 }
 
