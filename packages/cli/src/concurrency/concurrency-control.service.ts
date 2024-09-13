@@ -70,7 +70,7 @@ export class ConcurrencyControlService {
 
 		this.productionQueue.on('execution-released', async (executionId) => {
 			this.log('Execution released', { executionId });
-			await this.executionRepository.setRunning(executionId);
+			await this.executionRepository.setRunning(executionId); // @TODO: No longer needed?
 		});
 	}
 
