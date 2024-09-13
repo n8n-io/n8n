@@ -151,9 +151,9 @@ async function onDrop(expression: string, event: MouseEvent) {
 					:class="$style.schema"
 					:search="appliedSearch"
 					:nodes="parentNodes"
-					mapping-enabled
-					pane-type="input"
+					:mapping-enabled="!isReadOnly"
 					:connection-type="NodeConnectionType.Main"
+					pane-type="input"
 				/>
 			</div>
 
