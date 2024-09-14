@@ -5,7 +5,7 @@ import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
 export interface WorkerCommandReceivedHandlerOptions {
 	queueModeId: string;
-	redisPublisher: Publisher;
+	publisher: Publisher;
 	getRunningJobIds: () => Array<string | number>;
 	getRunningJobsSummary: () => RunningJobSummary[];
 }

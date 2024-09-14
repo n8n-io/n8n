@@ -159,7 +159,7 @@ export class License {
 
 		if (config.getEnv('executions.mode') === 'queue') {
 			const { Publisher } = await import('@/scaling/pubsub/publisher.service');
-			await Container.get(Publisher).publishCommand({ command: 'reloadLicense' });
+			await Container.get(Publisher).sendCommand({ command: 'reloadLicense' });
 		}
 
 		const isS3Selected = config.getEnv('binaryDataManager.mode') === 's3';

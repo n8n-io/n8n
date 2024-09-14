@@ -103,7 +103,7 @@ export class OrchestrationService {
 
 		this.logger.debug(`[Instance ID ${this.instanceId}] Publishing command "${command}"`, payload);
 
-		await this.publisher.publishCommand({ command, payload });
+		await this.publisher.sendCommand({ command, payload });
 	}
 
 	// ----------------------------------
@@ -117,7 +117,7 @@ export class OrchestrationService {
 
 		this.logger.debug(`Sending "${command}" to command channel`);
 
-		await this.publisher.publishCommand({
+		await this.publisher.sendCommand({
 			command,
 			targets: id ? [id] : undefined,
 		});
@@ -130,7 +130,7 @@ export class OrchestrationService {
 
 		this.logger.debug(`Sending "${command}" to command channel`);
 
-		await this.publisher.publishCommand({ command });
+		await this.publisher.sendCommand({ command });
 	}
 
 	// ----------------------------------

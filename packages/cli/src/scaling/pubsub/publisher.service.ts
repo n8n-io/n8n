@@ -1,8 +1,9 @@
-import { Service } from 'typedi';
-import { RedisClientService } from '@/services/redis/redis-client.service';
-import { Logger } from '@/logger';
-import config from '@/config';
 import type { Redis as SingleNodeClient, Cluster as MultiNodeClient } from 'ioredis';
+import { Service } from 'typedi';
+
+import config from '@/config';
+import { Logger } from '@/logger';
+import { RedisClientService } from '@/services/redis/redis-client.service';
 import type {
 	RedisServiceCommandObject,
 	RedisServiceWorkerResponseObject,
@@ -21,6 +22,7 @@ export class Publisher {
 		private readonly logger: Logger,
 		private readonly redisClientService: RedisClientService,
 	) {
+		// @TODO: Once this class is only ever initialized in scaling mode, throw in the next line instead.
 		if (config.getEnv('executions.mode') !== 'queue') return;
 
 		this.client = this.redisClientService.createClient({ type: 'publisher(n8n)' });
@@ -36,8 +38,8 @@ export class Publisher {
 
 	// #region Publishing
 
-	/** Publish a command into the `n8n.commands` channel. */
-	async publishCommand(msg: Omit<RedisServiceCommandObject, 'senderId'>) {
+	/** Send a command into the `n8n.commands` channel. */
+	async sendCommand(msg: Omit<RedisServiceCommandObject, 'senderId'>) {
 		await this.client.publish(
 			'n8n.commands',
 			JSON.stringify({ ...msg, senderId: config.getEnv('redis.queueModeId') }),
@@ -46,8 +48,8 @@ export class Publisher {
 		this.logger.debug(`Published ${msg.command} to command channel`);
 	}
 
-	/** Publish a response for a command into the `n8n.worker-response` channel. */
-	async publishResponse(msg: RedisServiceWorkerResponseObject) {
+	/** Send a response for a command into the `n8n.worker-response` channel. */
+	async sendResponse(msg: RedisServiceWorkerResponseObject) {
 		await this.client.publish('n8n.worker-response', JSON.stringify(msg));
 
 		this.logger.debug(`Published response for ${msg.command} to worker response channel`);
@@ -56,6 +58,8 @@ export class Publisher {
 	// #endregion
 
 	// #region Utils for multi-main setup
+
+	// @TODO: The following methods are not pub/sub-specific. Consider a dedicated client for multi-main setup.
 
 	async setIfNotExists(key: string, value: string) {
 		const success = await this.client.setnx(key, value);

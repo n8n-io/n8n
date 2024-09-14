@@ -20,17 +20,13 @@ import { mockInstance } from '@test/mocking';
 
 import type { MainResponseReceivedHandlerOptions } from '../orchestration/main/types';
 
-function setDefaultConfig() {
-	config.set('executions.mode', 'queue');
-	config.set('generic.instanceType', 'main');
-}
+config.set('executions.mode', 'queue');
+config.set('generic.instanceType', 'main');
 
 const instanceSettings = Container.get(InstanceSettings);
 const redisClientService = mockInstance(RedisClientService);
 const mockRedisClient = mock<Redis>();
 redisClientService.createClient.mockReturnValue(mockRedisClient);
-
-setDefaultConfig();
 
 const os = Container.get(OrchestrationService);
 const handler = Container.get(OrchestrationHandlerMainService);
@@ -53,7 +49,6 @@ describe('Orchestration Service', () => {
 	const eventBus = mockInstance(MessageEventBus);
 
 	beforeAll(async () => {
-		setDefaultConfig();
 		queueModeId = config.get('redis.queueModeId');
 	});
 
@@ -105,18 +100,16 @@ describe('Orchestration Service', () => {
 	});
 
 	test('should send command messages', async () => {
-		setDefaultConfig();
 		// @ts-expect-error Private field
-		jest.spyOn(os.publisher, 'publishCommand').mockImplementation(async () => {});
+		jest.spyOn(os.publisher, 'sendCommand').mockImplementation(async () => {});
 		await os.getWorkerIds();
 		// @ts-expect-error Private field
-		expect(os.publisher.publishCommand).toHaveBeenCalled();
+		expect(os.publisher.sendCommand).toHaveBeenCalled();
 		// @ts-expect-error Private field
-		jest.spyOn(os.publisher, 'publishCommand').mockRestore();
+		jest.spyOn(os.publisher, 'sendCommand').mockRestore();
 	});
 
 	test('should prevent receiving commands too often', async () => {
-		setDefaultConfig();
 		jest.spyOn(helpers, 'debounceMessageReceiver');
 		const res1 = await handleCommandMessageMain(
 			JSON.stringify({

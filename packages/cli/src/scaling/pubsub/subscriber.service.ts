@@ -1,9 +1,11 @@
-import { Service } from 'typedi';
-import { RedisClientService } from '@/services/redis/redis-client.service';
-import { Logger } from '@/logger';
-import config from '@/config';
-import type { PubSubChannel } from './pubsub.types';
 import type { Redis as SingleNodeClient, Cluster as MultiNodeClient } from 'ioredis';
+import { Service } from 'typedi';
+
+import config from '@/config';
+import { Logger } from '@/logger';
+import { RedisClientService } from '@/services/redis/redis-client.service';
+
+import type { PubSubChannel } from './pubsub.types';
 
 /**
  * Responsible for subscribing to the pub/sub channels used by scaling mode.

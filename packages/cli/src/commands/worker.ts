@@ -138,7 +138,7 @@ export class Worker extends BaseCommand {
 		await Container.get(OrchestrationWorkerService).init();
 		await Container.get(OrchestrationHandlerWorkerService).initWithOptions({
 			queueModeId: this.queueModeId,
-			redisPublisher: Container.get(Publisher),
+			publisher: Container.get(Publisher),
 			getRunningJobIds: () => this.jobProcessor.getRunningJobIds(),
 			getRunningJobsSummary: () => this.jobProcessor.getRunningJobsSummary(),
 		});
