@@ -10,6 +10,7 @@ import { NodeConnectionType } from 'n8n-workflow';
 import { contactFields, contactNotes, contactOperations } from './description/ContactDescription';
 import { opportunityFields, opportunityOperations } from './description/OpportunityDescription';
 import { taskFields, taskOperations } from './description/TaskDescription';
+import { calendarFields, calendarOperations } from './description/CalendarDescription';
 import {
 	getContacts,
 	getPipelines,
@@ -37,6 +38,10 @@ const resources: INodeProperties[] = [
 			{
 				name: 'Task',
 				value: 'task',
+			},
+			{
+				name: 'Calendar',
+				value: 'calendar',
 			},
 		],
 		default: 'contact',
@@ -83,6 +88,8 @@ const versionDescription: INodeTypeDescription = {
 		...opportunityFields,
 		...taskOperations,
 		...taskFields,
+		...calendarOperations,
+		...calendarFields,
 	],
 };
 
