@@ -14,7 +14,7 @@ import type {
 	IPollFunctions,
 	IWebhookFunctions,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { ApplicationError, NodeApiError } from 'n8n-workflow';
 
 import type { ToISOTimeOptions } from 'luxon';
 import { DateTime } from 'luxon';
@@ -64,7 +64,7 @@ export async function dueDatePreSendAction(
 		);
 	}
 	const dueDate = dateToIsoSupressMillis(dueDateParam);
-	requestOptions.body = (requestOptions.body || {}) as object;
+	requestOptions.body = (requestOptions.body ?? {}) as object;
 	Object.assign(requestOptions.body, { dueDate });
 	return requestOptions;
 }
@@ -73,7 +73,7 @@ export async function contactIdentifierPreSendAction(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
-	requestOptions.body = (requestOptions.body || {}) as object;
+	requestOptions.body = (requestOptions.body ?? {}) as object;
 	let identifier = this.getNodeParameter('contactIdentifier', null) as string;
 	if (!identifier) {
 		const fields = this.getNodeParameter('updateFields') as { contactIdentifier: string };
@@ -93,7 +93,7 @@ export async function validEmailAndPhonePreSendAction(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
-	const body = (requestOptions.body || {}) as { email?: string; phone?: string };
+	const body = (requestOptions.body ?? {}) as { email?: string; phone?: string };
 
 	if (body.email && !isEmailValid(body.email)) {
 		const message = `email "${body.email}" has invalid format`;
@@ -112,7 +112,7 @@ export async function dateTimeToEpochPreSendAction(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
-	const qs = (requestOptions.qs || {}) as {
+	const qs = (requestOptions.qs ?? {}) as {
 		startDate?: string | number;
 		endDate?: string | number;
 	};
@@ -134,22 +134,22 @@ export async function addLocationIdPreSendAction(
 
 	if (resource === 'contact') {
 		if (operation === 'getAll') {
-			requestOptions.qs = requestOptions.qs || {};
+			requestOptions.qs = requestOptions.qs ?? {};
 			Object.assign(requestOptions.qs, { locationId });
 		}
 		if (operation === 'create') {
-			requestOptions.body = requestOptions.body || {};
+			requestOptions.body = requestOptions.body ?? {};
 			Object.assign(requestOptions.body, { locationId });
 		}
 	}
 
 	if (resource === 'opportunity') {
 		if (operation === 'create') {
-			requestOptions.body = requestOptions.body || {};
+			requestOptions.body = requestOptions.body ?? {};
 			Object.assign(requestOptions.body, { locationId });
 		}
 		if (operation === 'getAll') {
-			requestOptions.qs = requestOptions.qs || {};
+			requestOptions.qs = requestOptions.qs ?? {};
 			Object.assign(requestOptions.qs, { location_id: locationId });
 		}
 	}
@@ -180,7 +180,7 @@ export async function highLevelApiRequest(
 		method,
 		body,
 		qs,
-		url: url || `https://services.leadconnectorhq.com${resource}`,
+		url: url ?? `https://services.leadconnectorhq.com${resource}`,
 		json: true,
 	};
 	if (!Object.keys(body).length) {
@@ -197,7 +197,7 @@ export async function taskUpdatePreSendAction(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
-	const body = (requestOptions.body || {}) as { title?: string; dueDate?: string };
+	const body = (requestOptions.body ?? {}) as { title?: string; dueDate?: string };
 	if (!body.title || !body.dueDate) {
 		const contactId = this.getNodeParameter('contactId');
 		const taskId = this.getNodeParameter('taskId');
@@ -215,7 +215,7 @@ export async function splitTagsPreSendAction(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
-	const body = (requestOptions.body || {}) as IDataObject;
+	const body = (requestOptions.body ?? {}) as IDataObject;
 	if (body.tags) {
 		if (Array.isArray(body.tags)) return requestOptions;
 		body.tags = (body.tags as string).split(',').map((tag) => tag.trim());
@@ -346,10 +346,26 @@ export async function getUsers(this: ILoadOptionsFunctions): Promise<INodeProper
 }
 
 export async function getTimezones(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-	const responseData = await highLevelApiRequest.call(this, 'GET', '/timezones');
-	const timezones = responseData.timezones as string[];
-	return timezones.map((zone) => ({
-		name: zone,
-		value: zone,
-	})) as INodePropertyOptions[];
+	try {
+		const locationId = this.getCurrentNodeParameter('locationId') as string;
+		if (!locationId) {
+			throw new ApplicationError('Location ID is not available.');
+		}
+		const responseData = await highLevelApiRequest.call(
+			this,
+			'GET',
+			`/locations/${locationId}/timezones`,
+			undefined,
+		);
+		const timezones = responseData?.timeZones ?? [];
+		if (timezones.length === 0) {
+			throw new ApplicationError('No timezones available.');
+		}
+		return timezones.map((zone: string) => ({
+			name: zone.trim(),
+			value: zone.trim(),
+		})) as INodePropertyOptions[];
+	} catch (error) {
+		throw new ApplicationError('Error fetching timezones from HighLevel API.');
+	}
 }
