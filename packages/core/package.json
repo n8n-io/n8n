@@ -1,6 +1,6 @@
 {
   "name": "n8n-core",
-  "version": "1.57.0",
+  "version": "1.59.0",
   "description": "Core functionality of n8n",
   "main": "dist/index",
   "types": "dist/index.d.ts",
@@ -44,6 +44,7 @@
     "file-type": "16.5.4",
     "form-data": "catalog:",
     "lodash": "catalog:",
+    "@langchain/core": "catalog:",
     "luxon": "catalog:",
     "mime-types": "2.1.35",
     "n8n-workflow": "workspace:*",
@@ -54,6 +55,7 @@
     "ssh2": "1.15.0",
     "typedi": "catalog:",
     "uuid": "catalog:",
-    "xml2js": "catalog:"
+    "xml2js": "catalog:",
+    "zod": "catalog:"
   }
 }

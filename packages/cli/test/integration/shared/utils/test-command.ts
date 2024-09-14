@@ -1,12 +1,13 @@
 import type { Config } from '@oclif/core';
-import type { Class } from 'n8n-core';
 import { mock } from 'jest-mock-extended';
+import type { Class } from 'n8n-core';
 
 import type { BaseCommand } from '@/commands/base-command';
-import * as testDb from '../test-db';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { TelemetryEventRelay } from '@/events/telemetry-event-relay';
 import { mockInstance } from '@test/mocking';
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+
+import * as testDb from '../test-db';
 
 mockInstance(MessageEventBus);
 

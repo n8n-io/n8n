@@ -1,11 +1,11 @@
+import { BinaryDataService, FileNotFoundError } from 'n8n-core';
 import fsp from 'node:fs/promises';
 import { Readable } from 'node:stream';
-import { BinaryDataService, FileNotFoundError } from 'n8n-core';
 
-import { mockInstance } from '../shared/mocking';
-import { setupTestServer } from './shared/utils';
 import { createOwner } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
+import { setupTestServer } from './shared/utils';
+import { mockInstance } from '../shared/mocking';
 
 jest.mock('fs/promises');
 

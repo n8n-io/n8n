@@ -1,10 +1,12 @@
 import { mock } from 'jest-mock-extended';
-import { UsersController } from '../users.controller';
-import type { UserRequest } from '@/requests';
-import type { EventService } from '@/events/event.service';
+
 import type { User } from '@/databases/entities/user';
 import type { UserRepository } from '@/databases/repositories/user.repository';
+import type { EventService } from '@/events/event.service';
+import type { UserRequest } from '@/requests';
 import type { ProjectService } from '@/services/project.service';
+
+import { UsersController } from '../users.controller';
 
 describe('UsersController', () => {
 	const eventService = mock<EventService>();

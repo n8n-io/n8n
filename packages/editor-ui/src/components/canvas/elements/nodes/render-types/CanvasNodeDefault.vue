@@ -30,7 +30,7 @@ const {
 	hasIssues,
 	render,
 } = useCanvasNode();
-const { mainOutputs, nonMainInputs, requiredNonMainInputs } = useNodeConnections({
+const { mainOutputs, mainInputs, nonMainInputs, requiredNonMainInputs } = useNodeConnections({
 	inputs,
 	outputs,
 	connections,
@@ -56,9 +56,9 @@ const classes = computed(() => {
 const styles = computed(() => {
 	const stylesObject: Record<string, string | number> = {};
 
-	if (renderOptions.value.configurable && requiredNonMainInputs.value.length > 0) {
+	if (renderOptions.value.configurable) {
 		let spacerCount = 0;
-		if (NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS) {
+		if (NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS && requiredNonMainInputs.value.length > 0) {
 			const requiredNonMainInputsCount = requiredNonMainInputs.value.length;
 			const optionalNonMainInputsCount = nonMainInputs.value.length - requiredNonMainInputsCount;
 			spacerCount = requiredNonMainInputsCount > 0 && optionalNonMainInputsCount > 0 ? 1 : 0;
@@ -67,6 +67,7 @@ const styles = computed(() => {
 		stylesObject['--configurable-node--input-count'] = nonMainInputs.value.length + spacerCount;
 	}
 
+	stylesObject['--canvas-node--main-input-count'] = mainInputs.value.length;
 	stylesObject['--canvas-node--main-output-count'] = mainOutputs.value.length;
 
 	return stylesObject;
@@ -115,7 +116,12 @@ function openContextMenu(event: MouseEvent) {
 
 <style lang="scss" module>
 .node {
-	--canvas-node--height: calc(100px + max(0, var(--canvas-node--main-output-count, 1) - 4) * 48px);
+	--canvas-node--max-vertical-handles: max(
+		var(--canvas-node--main-input-count),
+		var(--canvas-node--main-output-count),
+		1
+	);
+	--canvas-node--height: calc(100px + max(0, var(--canvas-node--max-vertical-handles) - 3) * 42px);
 	--canvas-node--width: 100px;
 	--canvas-node-border-width: 2px;
 	--configurable-node--min-input-count: 4;
@@ -145,8 +151,8 @@ function openContextMenu(event: MouseEvent) {
 	 */
 
 	&.configuration {
-		--canvas-node--width: 76px;
-		--canvas-node--height: 76px;
+		--canvas-node--width: 80px;
+		--canvas-node--height: 80px;
 
 		background: var(--canvas-node--background, var(--node-type-supplemental-background));
 		border: var(--canvas-node-border-width) solid
@@ -161,7 +167,7 @@ function openContextMenu(event: MouseEvent) {
 	&.configurable {
 		--canvas-node--height: 100px;
 		--canvas-node--width: calc(
-			max(var(--configurable-node--input-count, 5), var(--configurable-node--min-input-count)) *
+			max(var(--configurable-node--input-count, 4), var(--configurable-node--min-input-count)) *
 				var(--configurable-node--input-width)
 		);
 

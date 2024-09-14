@@ -1,23 +1,23 @@
-import Container from 'typedi';
 import type Redis from 'ioredis';
 import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
 import type { WorkflowActivateMode } from 'n8n-workflow';
+import Container from 'typedi';
 
-import config from '@/config';
-import { OrchestrationService } from '@/services/orchestration.service';
-import type { RedisServiceWorkerResponseObject } from '@/services/redis/redis-service-commands';
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import { handleWorkerResponseMessageMain } from '@/services/orchestration/main/handle-worker-response-message-main';
-import { handleCommandMessageMain } from '@/services/orchestration/main/handle-command-message-main';
-import { OrchestrationHandlerMainService } from '@/services/orchestration/main/orchestration.handler.main.service';
-import * as helpers from '@/services/orchestration/helpers';
-import { ExternalSecretsManager } from '@/external-secrets/external-secrets-manager.ee';
-import { Logger } from '@/logger';
-import { Push } from '@/push';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { mockInstance } from '@test/mocking';
+import config from '@/config';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { ExternalSecretsManager } from '@/external-secrets/external-secrets-manager.ee';
+import { Push } from '@/push';
+import * as helpers from '@/services/orchestration/helpers';
+import { handleCommandMessageMain } from '@/services/orchestration/main/handle-command-message-main';
+import { handleWorkerResponseMessageMain } from '@/services/orchestration/main/handle-worker-response-message-main';
+import { OrchestrationHandlerMainService } from '@/services/orchestration/main/orchestration.handler.main.service';
+import { OrchestrationService } from '@/services/orchestration.service';
 import { RedisClientService } from '@/services/redis/redis-client.service';
+import type { RedisServiceWorkerResponseObject } from '@/services/redis/redis-service-commands';
+import { mockInstance } from '@test/mocking';
+
 import type { MainResponseReceivedHandlerOptions } from '../orchestration/main/types';
 
 function setDefaultConfig() {
@@ -48,7 +48,6 @@ const workerRestartEventBusResponse: RedisServiceWorkerResponseObject = {
 };
 
 describe('Orchestration Service', () => {
-	const logger = mockInstance(Logger);
 	mockInstance(Push);
 	mockInstance(ExternalSecretsManager);
 	const eventBus = mockInstance(MessageEventBus);
@@ -93,7 +92,6 @@ describe('Orchestration Service', () => {
 		expect(responseFalseId).toBeDefined();
 		expect(responseFalseId!.command).toEqual('reloadLicense');
 		expect(responseFalseId!.senderId).toEqual('test');
-		expect(logger.error).toHaveBeenCalled();
 	});
 
 	test('should reject command messages from itself', async () => {

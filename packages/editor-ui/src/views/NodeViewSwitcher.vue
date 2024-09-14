@@ -8,7 +8,6 @@ import { getNodeViewTab } from '@/utils/canvasUtils';
 import { MAIN_HEADER_TABS, PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS } from '@/constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useSettingsStore } from '@/stores/settings.store';
 
@@ -19,8 +18,6 @@ const settingsStore = useSettingsStore();
 const router = useRouter();
 const route = useRoute();
 const workflowHelpers = useWorkflowHelpers({ router });
-
-const { resetWorkspace } = useCanvasOperations({ router });
 
 const nodeViewVersion = useLocalStorage(
 	'NodeView.version',
@@ -56,9 +53,6 @@ onBeforeRouteLeave(async (to, from, next) => {
 
 	await workflowHelpers.promptSaveUnsavedWorkflowChanges(next, {
 		async confirm() {
-			// Make sure workflow id is empty when leaving the editor
-			workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
-
 			if (from.name === VIEWS.NEW_WORKFLOW) {
 				// Replace the current route with the new workflow route
 				// before navigating to the new route when saving new workflow.
@@ -72,11 +66,10 @@ onBeforeRouteLeave(async (to, from, next) => {
 				return false;
 			}
 
-			return true;
-		},
-		async cancel() {
+			// Make sure workflow id is empty when leaving the editor
 			workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
-			resetWorkspace();
+
+			return true;
 		},
 	});
 });

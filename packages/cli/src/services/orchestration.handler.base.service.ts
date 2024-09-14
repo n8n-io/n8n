@@ -1,5 +1,5 @@
-import type { WorkerCommandReceivedHandlerOptions } from './orchestration/worker/types';
 import type { MainResponseReceivedHandlerOptions } from './orchestration/main/types';
+import type { WorkerCommandReceivedHandlerOptions } from './orchestration/worker/types';
 
 export abstract class OrchestrationHandlerService {
 	protected initialized = false;

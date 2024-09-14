@@ -1,8 +1,9 @@
-import config from '@/config';
-import { Service } from 'typedi';
-import { TIME } from '@/constants';
 import { InstanceSettings } from 'n8n-core';
 import { ErrorReporterProxy as EventReporter } from 'n8n-workflow';
+import { Service } from 'typedi';
+
+import config from '@/config';
+import { TIME } from '@/constants';
 import { Logger } from '@/logger';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { RedisClientService } from '@/services/redis/redis-client.service';

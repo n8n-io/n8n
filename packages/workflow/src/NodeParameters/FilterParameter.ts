@@ -32,12 +32,18 @@ function parseSingleFilterValue(
 	value: unknown,
 	type: FilterOperatorType,
 	strict = false,
+	version: FilterOptionsValue['version'] = 1,
 ): ValidationResult {
 	if (type === 'any' || value === null || value === undefined) {
 		return { valid: true, newValue: value } as ValidationResult;
 	}
 
 	if (type === 'boolean' && !strict) {
+		if (version >= 2) {
+			const result = validateFieldType('filter', value, type);
+			if (result.valid) return result;
+		}
+
 		return { valid: true, newValue: Boolean(value) };
 	}
 
@@ -53,6 +59,7 @@ const withIndefiniteArticle = (noun: string): string => {
 	return `${article} ${noun}`;
 };
 
+// eslint-disable-next-line complexity
 function parseFilterConditionValues(
 	condition: FilterConditionValue,
 	options: FilterOptionsValue,
@@ -62,10 +69,16 @@ function parseFilterConditionValues(
 	const itemIndex = metadata.itemIndex ?? 0;
 	const errorFormat = metadata.errorFormat ?? 'full';
 	const strict = options.typeValidation === 'strict';
+	const version = options.version ?? 1;
 	const { operator } = condition;
 	const rightType = operator.rightType ?? operator.type;
-	const parsedLeftValue = parseSingleFilterValue(condition.leftValue, operator.type, strict);
-	const parsedRightValue = parseSingleFilterValue(condition.rightValue, rightType, strict);
+	const parsedLeftValue = parseSingleFilterValue(
+		condition.leftValue,
+		operator.type,
+		strict,
+		version,
+	);
+	const parsedRightValue = parseSingleFilterValue(condition.rightValue, rightType, strict, version);
 	const leftValid =
 		parsedLeftValue.valid ||
 		(metadata.unresolvedExpressions &&
@@ -96,7 +109,7 @@ function parseFilterConditionValues(
 
 	const getTypeDescription = (isStrict: boolean) => {
 		if (isStrict)
-			return 'Try changing the type of the comparison, or enabling less strict type validation.';
+			return "Try changing the type of comparison. Alternatively you can enable 'Convert types where required'.";
 		return 'Try changing the type of the comparison.';
 	};
 
@@ -122,7 +135,7 @@ function parseFilterConditionValues(
 			return `
 <p>Try either:</p>
 <ol>
-  <li>Enabling less strict type validation</li>
+  <li>Enabling 'Convert types where required'</li>
   <li>Converting the ${valuePosition} field to ${expectedType}${suggestFunction}</li>
 </ol>
 			`;

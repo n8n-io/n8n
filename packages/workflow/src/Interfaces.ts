@@ -728,7 +728,7 @@ export interface ICredentialTestFunctions {
 }
 
 interface BaseHelperFunctions {
-	createDeferredPromise: <T = void>() => Promise<IDeferredPromise<T>>;
+	createDeferredPromise: <T = void>() => IDeferredPromise<T>;
 }
 
 interface JsonHelperFunctions {
@@ -890,7 +890,7 @@ type FunctionsBaseWithRequiredKeys<Keys extends keyof FunctionsBase> = Functions
 export type ContextType = 'flow' | 'node';
 
 type BaseExecutionFunctions = FunctionsBaseWithRequiredKeys<'getMode'> & {
-	continueOnFail(error?: Error): boolean;
+	continueOnFail(): boolean;
 	evaluateExpression(expression: string, itemIndex: number): NodeParameterValueType;
 	getContext(type: ContextType): IContextObject;
 	getExecuteData(): IExecuteData;
@@ -898,7 +898,7 @@ type BaseExecutionFunctions = FunctionsBaseWithRequiredKeys<'getMode'> & {
 	getInputSourceData(inputIndex?: number, inputName?: string): ISourceData;
 	getExecutionCancelSignal(): AbortSignal | undefined;
 	onExecutionCancellation(handler: () => unknown): void;
-	logAiEvent(eventName: EventNamesAiNodesType, msg?: string | undefined): Promise<void>;
+	logAiEvent(eventName: AiEvent, msg?: string | undefined): Promise<void>;
 };
 
 // TODO: Create later own type only for Config-Nodes
@@ -1292,13 +1292,14 @@ type NonEmptyArray<T> = [T, ...T[]];
 
 export type FilterTypeCombinator = 'and' | 'or';
 
-export type FilterTypeOptions = Partial<{
-	caseSensitive: boolean | string; // default = true
-	leftValue: string; // when set, user can't edit left side of condition
-	allowedCombinators: NonEmptyArray<FilterTypeCombinator>; // default = ['and', 'or']
-	maxConditions: number; // default = 10
-	typeValidation: 'strict' | 'loose' | {}; // default = strict, `| {}` is a TypeScript trick to allow custom strings, but still give autocomplete
-}>;
+export type FilterTypeOptions = {
+	version: 1 | 2 | {}; // required so nodes are pinned on a version
+	caseSensitive?: boolean | string; // default = true
+	leftValue?: string; // when set, user can't edit left side of condition
+	allowedCombinators?: NonEmptyArray<FilterTypeCombinator>; // default = ['and', 'or']
+	maxConditions?: number; // default = 10
+	typeValidation?: 'strict' | 'loose' | {}; // default = strict, `| {}` is a TypeScript trick to allow custom strings (expressions), but still give autocomplete
+};
 
 export type AssignmentTypeOptions = Partial<{
 	hideType?: boolean; // visible by default
@@ -1658,6 +1659,11 @@ export interface INodeTypeBaseDescription {
 	 * due to deprecation or as a special case (e.g. Start node)
 	 */
 	hidden?: true;
+
+	/**
+	 * Whether the node will be wrapped for tool-use by AI Agents
+	 */
+	usableAsTool?: true;
 }
 
 export interface INodePropertyRouting {
@@ -2141,36 +2147,55 @@ export interface IWorkflowExecuteHooks {
 	sendResponse?: Array<(response: IExecuteResponsePromiseData) => Promise<void>>;
 }
 
-export const eventNamesAiNodes = [
-	'n8n.ai.memory.get.messages',
-	'n8n.ai.memory.added.message',
-	'n8n.ai.output.parser.get.instructions',
-	'n8n.ai.output.parser.parsed',
-	'n8n.ai.retriever.get.relevant.documents',
-	'n8n.ai.embeddings.embedded.document',
-	'n8n.ai.embeddings.embedded.query',
-	'n8n.ai.document.processed',
-	'n8n.ai.text.splitter.split',
-	'n8n.ai.tool.called',
-	'n8n.ai.vector.store.searched',
-	'n8n.ai.llm.generated',
-	'n8n.ai.llm.error',
-	'n8n.ai.vector.store.populated',
-	'n8n.ai.vector.store.updated',
-] as const;
-
-export type EventNamesAiNodesType = (typeof eventNamesAiNodes)[number];
+export interface IWorkflowExecutionDataProcess {
+	destinationNode?: string;
+	restartExecutionId?: string;
+	executionMode: WorkflowExecuteMode;
+	executionData?: IRunExecutionData;
+	runData?: IRunData;
+	pinData?: IPinData;
+	retryOf?: string;
+	pushRef?: string;
+	startNodes?: StartNodeData[];
+	workflowData: IWorkflowBase;
+	userId?: string;
+	projectId?: string;
+}
 
 export interface ExecuteWorkflowOptions {
 	node?: INode;
 	parentWorkflowId: string;
 	inputData?: INodeExecutionData[];
-	parentExecutionId?: string;
 	loadedWorkflowData?: IWorkflowBase;
-	loadedRunData?: any;
+	loadedRunData?: IWorkflowExecutionDataProcess;
 	parentWorkflowSettings?: IWorkflowSettings;
 	parentCallbackManager?: CallbackManager;
 }
+
+export type AiEvent =
+	| 'ai-messages-retrieved-from-memory'
+	| 'ai-message-added-to-memory'
+	| 'ai-output-parsed'
+	| 'ai-documents-retrieved'
+	| 'ai-document-embedded'
+	| 'ai-query-embedded'
+	| 'ai-document-processed'
+	| 'ai-text-split'
+	| 'ai-tool-called'
+	| 'ai-vector-store-searched'
+	| 'ai-llm-generated-output'
+	| 'ai-llm-errored'
+	| 'ai-vector-store-populated'
+	| 'ai-vector-store-updated';
+
+type AiEventPayload = {
+	msg: string;
+	workflowName: string;
+	executionId: string;
+	nodeName: string;
+	workflowId?: string;
+	nodeType?: string;
+};
 
 export interface IWorkflowExecuteAdditionalData {
 	credentialsHelper: ICredentialsHelper;
@@ -2197,17 +2222,7 @@ export interface IWorkflowExecuteAdditionalData {
 	userId?: string;
 	variables: IDataObject;
 	secretsHelpers: SecretsHelpersBase;
-	logAiEvent: (
-		eventName: EventNamesAiNodesType,
-		payload: {
-			msg?: string;
-			executionId: string;
-			nodeName: string;
-			workflowId?: string;
-			workflowName: string;
-			nodeType?: string;
-		},
-	) => Promise<void>;
+	logAiEvent: (eventName: AiEvent, payload: AiEventPayload) => void;
 	parentCallbackManager?: CallbackManager;
 }
 
@@ -2427,13 +2442,15 @@ export type PublicInstalledPackage = {
 export type PublicInstalledNode = {
 	name: string;
 	type: string;
-	latestVersion: string;
+	latestVersion: number;
 	package: PublicInstalledPackage;
 };
 
 export interface NodeExecutionWithMetadata extends INodeExecutionData {
 	pairedItem: IPairedItemData | IPairedItemData[];
 }
+
+export type AnnotationVote = 'up' | 'down';
 
 export interface ExecutionSummary {
 	id: string;
@@ -2451,6 +2468,13 @@ export interface ExecutionSummary {
 	executionError?: ExecutionError;
 	nodeExecutionStatus?: {
 		[key: string]: IExecutionSummaryNodeExecutionResult;
+	};
+	annotation?: {
+		vote: AnnotationVote;
+		tags: Array<{
+			id: string;
+			name: string;
+		}>;
 	};
 }
 
@@ -2540,6 +2564,7 @@ export type FilterOptionsValue = {
 	caseSensitive: boolean;
 	leftValue: string;
 	typeValidation: 'strict' | 'loose';
+	version: 1 | 2;
 };
 
 export type FilterValue = {

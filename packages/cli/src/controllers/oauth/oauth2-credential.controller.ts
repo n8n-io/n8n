@@ -1,14 +1,16 @@
 import type { ClientOAuth2Options, OAuth2CredentialData } from '@n8n/client-oauth2';
 import { ClientOAuth2 } from '@n8n/client-oauth2';
 import { Response } from 'express';
-import pkceChallenge from 'pkce-challenge';
-import * as qs from 'querystring';
 import omit from 'lodash/omit';
 import set from 'lodash/set';
 import split from 'lodash/split';
-import { Get, RestController } from '@/decorators';
 import { jsonStringify } from 'n8n-workflow';
+import pkceChallenge from 'pkce-challenge';
+import * as qs from 'querystring';
+
+import { Get, RestController } from '@/decorators';
 import { OAuthRequest } from '@/requests';
+
 import { AbstractOAuthController, type CsrfStateParam } from './abstract-oauth.controller';
 import { GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE as GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE } from '../../constants';
 

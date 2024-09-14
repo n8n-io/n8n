@@ -1,13 +1,14 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 import type express from 'express';
+import { Container } from 'typedi';
+import { z } from 'zod';
 
-import { CredentialsHelper } from '@/credentials-helper';
 import { CredentialTypes } from '@/credential-types';
+import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
+import { CredentialsHelper } from '@/credentials-helper';
 import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
-import type { CredentialTypeRequest, CredentialRequest } from '../../../types';
-import { projectScope } from '../../shared/middlewares/global.middleware';
-import { validCredentialsProperties, validCredentialType } from './credentials.middleware';
 
+import { validCredentialsProperties, validCredentialType } from './credentials.middleware';
 import {
 	createCredential,
 	encryptCredential,
@@ -18,9 +19,8 @@ import {
 	saveCredential,
 	toJsonSchema,
 } from './credentials.service';
-import { Container } from 'typedi';
-import { z } from 'zod';
-import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
+import type { CredentialTypeRequest, CredentialRequest } from '../../../types';
+import { projectScope } from '../../shared/middlewares/global.middleware';
 
 export = {
 	createCredential: [

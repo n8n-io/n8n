@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "1.57.0",
+  "version": "1.59.0",
   "private": true,
   "engines": {
     "node": ">=20.15",
@@ -17,6 +17,7 @@
     "dev": "turbo run dev --parallel --env-mode=loose --filter=!n8n-design-system --filter=!@n8n/chat",
     "dev:ai": "turbo run dev --parallel --env-mode=loose --filter=@n8n/nodes-langchain --filter=n8n --filter=n8n-core",
     "clean": "turbo run clean --parallel",
+    "reset": "node scripts/ensure-zx.mjs && zx scripts/reset.mjs",
     "format": "turbo run format && node scripts/format.mjs",
     "lint": "turbo run lint",
     "lintfix": "turbo run lintfix",
@@ -55,7 +56,8 @@
     "tsc-alias": "^1.8.7",
     "tsc-watch": "^6.0.4",
     "turbo": "2.0.6",
-    "typescript": "*"
+    "typescript": "*",
+    "zx": "^8.1.4"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

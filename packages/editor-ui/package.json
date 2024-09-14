@@ -1,6 +1,6 @@
 {
   "name": "n8n-editor-ui",
-  "version": "1.57.0",
+  "version": "1.59.0",
   "description": "Workflow Editor UI for n8n",
   "main": "index.js",
   "scripts": {
@@ -32,6 +32,7 @@
     "@jsplumb/core": "^5.13.2",
     "@jsplumb/util": "^5.13.2",
     "@lezer/common": "^1.0.4",
+    "@n8n/api-types": "workspace:*",
     "@n8n/chat": "workspace:*",
     "@n8n/codemirror-lang": "workspace:*",
     "@n8n/codemirror-lang-sql": "^1.0.2",
@@ -53,6 +54,7 @@
     "fast-json-stable-stringify": "^2.1.0",
     "file-saver": "^2.0.2",
     "flatted": "^3.2.4",
+    "highlight.js": "catalog:frontend",
     "humanize-duration": "^3.27.2",
     "jsonpath": "^1.1.1",
     "lodash-es": "^4.17.21",

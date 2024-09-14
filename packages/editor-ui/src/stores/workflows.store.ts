@@ -18,9 +18,6 @@ import type {
 	INodeMetadata,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
-	IPushDataExecutionFinished,
-	IPushDataNodeExecuteAfter,
-	IPushDataUnsavedExecutionFinished,
 	IStartRunData,
 	IUpdateInformation,
 	IUsedCredential,
@@ -74,6 +71,7 @@ import { i18n } from '@/plugins/i18n';
 import { computed, ref } from 'vue';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { ProjectSharingData } from '@/types/projects.types';
+import type { PushPayload } from '@n8n/api-types';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -428,9 +426,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	async function fetchWorkflow(id: string): Promise<IWorkflowDb> {
 		const rootStore = useRootStore();
-		const workflow = await workflowsApi.getWorkflow(rootStore.restApiContext, id);
-		addWorkflow(workflow);
-		return workflow;
+		const workflowData = await workflowsApi.getWorkflow(rootStore.restApiContext, id);
+		addWorkflow(workflowData);
+		return workflowData;
 	}
 
 	async function getNewWorkflowData(name?: string, projectId?: string): Promise<INewWorkflowData> {
@@ -500,8 +498,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		executingNode.value = executingNode.value.filter((name) => name !== nodeName);
 	}
 
-	function setWorkflowId(id: string) {
-		workflow.value.id = id === 'new' ? PLACEHOLDER_EMPTY_WORKFLOW_ID : id;
+	function setWorkflowId(id?: string) {
+		workflow.value.id = !id || id === 'new' ? PLACEHOLDER_EMPTY_WORKFLOW_ID : id;
 	}
 
 	function setUsedCredentials(data: IUsedCredential[]) {
@@ -1185,7 +1183,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 	}
 
-	function addNodeExecutionData(pushData: IPushDataNodeExecuteAfter): void {
+	function addNodeExecutionData(pushData: PushPayload<'nodeExecuteAfter'>): void {
 		if (!workflowExecutionData.value?.data) {
 			throw new Error('The "workflowExecutionData" is not initialized!');
 		}
@@ -1257,9 +1255,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		activeExecutionId.value = newActiveExecution.id;
 	}
 
-	function finishActiveExecution(
-		finishedActiveExecution: IPushDataExecutionFinished | IPushDataUnsavedExecutionFinished,
-	): void {
+	function finishActiveExecution(finishedActiveExecution: PushPayload<'executionFinished'>): void {
 		// Find the execution to set to finished
 		const activeExecutionIndex = activeExecutions.value.findIndex((execution) => {
 			return execution.id === finishedActiveExecution.executionId;

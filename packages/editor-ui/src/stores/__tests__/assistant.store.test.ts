@@ -271,8 +271,9 @@ describe('AI Assistant store', () => {
 
 		mockPostHogVariant('control');
 		setAssistantEnabled(true);
+		expect(assistantStore.isAssistantEnabled).toBe(false);
 		expect(assistantStore.canShowAssistant).toBe(false);
-		expect(assistantStore.canShowAssistantButtons).toBe(false);
+		expect(assistantStore.canShowAssistantButtonsOnCanvas).toBe(false);
 	});
 
 	it('should not show assistant if disabled in settings', () => {
@@ -280,8 +281,9 @@ describe('AI Assistant store', () => {
 
 		mockPostHogVariant('variant');
 		setAssistantEnabled(false);
+		expect(assistantStore.isAssistantEnabled).toBe(false);
 		expect(assistantStore.canShowAssistant).toBe(false);
-		expect(assistantStore.canShowAssistantButtons).toBe(false);
+		expect(assistantStore.canShowAssistantButtonsOnCanvas).toBe(false);
 	});
 
 	it('should show assistant if all conditions are met', () => {
@@ -289,8 +291,9 @@ describe('AI Assistant store', () => {
 
 		setAssistantEnabled(true);
 		mockPostHogVariant('variant');
+		expect(assistantStore.isAssistantEnabled).toBe(true);
 		expect(assistantStore.canShowAssistant).toBe(true);
-		expect(assistantStore.canShowAssistantButtons).toBe(true);
+		expect(assistantStore.canShowAssistantButtonsOnCanvas).toBe(true);
 	});
 
 	it('should initialize assistant chat session on node error', async () => {
@@ -311,7 +314,6 @@ describe('AI Assistant store', () => {
 		};
 		const assistantStore = useAssistantStore();
 		await assistantStore.initErrorHelper(context);
-		expect(assistantStore.chatMessages.length).toBe(2);
 		expect(apiSpy).toHaveBeenCalled();
 	});
 });

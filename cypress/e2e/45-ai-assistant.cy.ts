@@ -1,9 +1,13 @@
-import { NDV, WorkflowPage } from '../pages';
+import { clickCreateNewCredential, openCredentialSelect } from '../composables/ndv';
+import { GMAIL_NODE_NAME, SCHEDULE_TRIGGER_NODE_NAME } from '../constants';
+import { CredentialsModal, CredentialsPage, NDV, WorkflowPage } from '../pages';
 import { AIAssistant } from '../pages/features/ai-assistant';
 
 const wf = new WorkflowPage();
 const ndv = new NDV();
 const aiAssistant = new AIAssistant();
+const credentialsPage = new CredentialsPage();
+const credentialsModal = new CredentialsModal();
 
 describe('AI Assistant::disabled', () => {
 	beforeEach(() => {
@@ -31,7 +35,8 @@ describe('AI Assistant::enabled', () => {
 		aiAssistant.getters.askAssistantFloatingButton().click();
 		aiAssistant.getters.askAssistantChat().should('be.visible');
 		aiAssistant.getters.placeholderMessage().should('be.visible');
-		aiAssistant.getters.chatInputWrapper().should('not.exist');
+		aiAssistant.getters.chatInput().should('be.visible');
+		aiAssistant.getters.sendMessageButton().should('be.disabled');
 		aiAssistant.getters.closeChatButton().should('be.visible');
 		aiAssistant.getters.closeChatButton().click();
 		aiAssistant.getters.askAssistantChat().should('not.be.visible');
@@ -130,17 +135,24 @@ describe('AI Assistant::enabled', () => {
 		ndv.getters.nodeExecuteButton().click();
 		aiAssistant.getters.nodeErrorViewAssistantButton().click();
 		cy.wait('@chatRequest');
-		aiAssistant.getters.quickReplies().should('have.length', 2);
-		aiAssistant.getters.quickReplies().eq(0).click();
+		aiAssistant.getters.quickReplyButtons().should('have.length', 2);
+		aiAssistant.getters.quickReplyButtons().eq(0).click();
 		cy.wait('@chatRequest');
 		aiAssistant.getters.chatMessagesUser().should('have.length', 1);
 		aiAssistant.getters.chatMessagesUser().eq(0).should('contain.text', "Sure, let's do it");
 	});
 
-	it('should send message to assistant when node is executed', () => {
-		cy.intercept('POST', '/rest/ai-assistant/chat', {
-			statusCode: 200,
-			fixture: 'aiAssistant/simple_message_response.json',
+	it('should show quick replies when node is executed after new suggestion', () => {
+		cy.intercept('POST', '/rest/ai-assistant/chat', (req) => {
+			req.reply((res) => {
+				if (['init-error-helper', 'message'].includes(req.body.payload.type)) {
+					res.send({ statusCode: 200, fixture: 'aiAssistant/simple_message_response.json' });
+				} else if (req.body.payload.type === 'event') {
+					res.send({ statusCode: 200, fixture: 'aiAssistant/node_execution_error_response.json' });
+				} else {
+					res.send({ statusCode: 500 });
+				}
+			});
 		}).as('chatRequest');
 		cy.createFixtureWorkflow('aiAssistant/test_workflow.json');
 		wf.actions.openNode('Edit Fields');
@@ -148,10 +160,17 @@ describe('AI Assistant::enabled', () => {
 		aiAssistant.getters.nodeErrorViewAssistantButton().click();
 		cy.wait('@chatRequest');
 		aiAssistant.getters.chatMessagesAssistant().should('have.length', 1);
-		// Executing the same node should sende a new message to the assistant automatically
 		ndv.getters.nodeExecuteButton().click();
 		cy.wait('@chatRequest');
-		aiAssistant.getters.chatMessagesAssistant().should('have.length', 2);
+		// Respond 'Yes' to the quick reply (request new suggestion)
+		aiAssistant.getters.quickReplies().contains('Yes').click();
+		cy.wait('@chatRequest');
+		// No quick replies at this point
+		aiAssistant.getters.quickReplies().should('not.exist');
+		ndv.getters.nodeExecuteButton().click();
+		// But after executing the node again, quick replies should be shown
+		aiAssistant.getters.chatMessagesAssistant().should('have.length', 4);
+		aiAssistant.getters.quickReplies().should('have.length', 2);
 	});
 
 	it('should warn before starting a new session', () => {
@@ -243,5 +262,115 @@ describe('AI Assistant::enabled', () => {
 		cy.wait('@chatRequest');
 		aiAssistant.getters.chatMessagesSystem().should('have.length', 1);
 		aiAssistant.getters.chatMessagesSystem().first().should('contain.text', 'session has ended');
+	});
+
+	it('should reset session after it ended and sidebar is closed', () => {
+		cy.intercept('POST', '/rest/ai-assistant/chat', (req) => {
+			req.reply((res) => {
+				if (['init-support-chat'].includes(req.body.payload.type)) {
+					res.send({ statusCode: 200, fixture: 'aiAssistant/simple_message_response.json' });
+				} else {
+					res.send({ statusCode: 200, fixture: 'aiAssistant/end_session_response.json' });
+				}
+			});
+		}).as('chatRequest');
+		aiAssistant.actions.openChat();
+		aiAssistant.actions.sendMessage('Hello');
+		cy.wait('@chatRequest');
+		aiAssistant.actions.closeChat();
+		aiAssistant.actions.openChat();
+		// After closing and reopening the chat, all messages should be still there
+		aiAssistant.getters.chatMessagesAll().should('have.length', 2);
+		// End the session
+		aiAssistant.actions.sendMessage('Thanks, bye');
+		cy.wait('@chatRequest');
+		aiAssistant.getters.chatMessagesSystem().should('have.length', 1);
+		aiAssistant.getters.chatMessagesSystem().first().should('contain.text', 'session has ended');
+		aiAssistant.actions.closeChat();
+		aiAssistant.actions.openChat();
+		// Now, session should be reset
+		aiAssistant.getters.placeholderMessage().should('be.visible');
+	});
+
+	it('Should not reset assistant session when workflow is saved', () => {
+		cy.intercept('POST', '/rest/ai-assistant/chat', {
+			statusCode: 200,
+			fixture: 'aiAssistant/simple_message_response.json',
+		}).as('chatRequest');
+		wf.actions.addInitialNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
+		aiAssistant.actions.openChat();
+		aiAssistant.actions.sendMessage('Hello');
+		wf.actions.openNode(SCHEDULE_TRIGGER_NODE_NAME);
+		ndv.getters.nodeExecuteButton().click();
+		wf.getters.isWorkflowSaved();
+		aiAssistant.getters.placeholderMessage().should('not.exist');
+	});
+});
+
+describe('AI Assistant Credential Help', () => {
+	beforeEach(() => {
+		aiAssistant.actions.enableAssistant();
+		wf.actions.visit();
+	});
+
+	after(() => {
+		aiAssistant.actions.disableAssistant();
+	});
+
+	it('should start credential help from node credential', () => {
+		cy.intercept('POST', '/rest/ai-assistant/chat', {
+			statusCode: 200,
+			fixture: 'aiAssistant/simple_message_response.json',
+		}).as('chatRequest');
+		wf.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
+		wf.actions.addNodeToCanvas(GMAIL_NODE_NAME);
+		wf.actions.openNode('Gmail');
+		openCredentialSelect();
+		clickCreateNewCredential();
+		aiAssistant.getters.credentialEditAssistantButton().should('be.visible');
+		aiAssistant.getters.credentialEditAssistantButton().click();
+		cy.wait('@chatRequest');
+		aiAssistant.getters.chatMessagesUser().should('have.length', 1);
+		aiAssistant.getters
+			.chatMessagesUser()
+			.eq(0)
+			.should('contain.text', 'How do I set up the credentials for Gmail OAuth2 API?');
+
+		aiAssistant.getters
+			.chatMessagesAssistant()
+			.eq(0)
+			.should('contain.text', 'Hey, this is an assistant message');
+		aiAssistant.getters.credentialEditAssistantButton().should('be.disabled');
+	});
+
+	it('should start credential help from credential list', () => {
+		cy.intercept('POST', '/rest/ai-assistant/chat', {
+			statusCode: 200,
+			fixture: 'aiAssistant/simple_message_response.json',
+		}).as('chatRequest');
+
+		cy.visit(credentialsPage.url);
+		credentialsPage.getters.emptyListCreateCredentialButton().click();
+
+		credentialsModal.getters.newCredentialModal().should('be.visible');
+		credentialsModal.getters.newCredentialTypeSelect().should('be.visible');
+		credentialsModal.getters.newCredentialTypeOption('Notion API').click();
+
+		credentialsModal.getters.newCredentialTypeButton().click();
+
+		aiAssistant.getters.credentialEditAssistantButton().should('be.visible');
+		aiAssistant.getters.credentialEditAssistantButton().click();
+		cy.wait('@chatRequest');
+		aiAssistant.getters.chatMessagesUser().should('have.length', 1);
+		aiAssistant.getters
+			.chatMessagesUser()
+			.eq(0)
+			.should('contain.text', 'How do I set up the credentials for Notion API?');
+
+		aiAssistant.getters
+			.chatMessagesAssistant()
+			.eq(0)
+			.should('contain.text', 'Hey, this is an assistant message');
+		aiAssistant.getters.credentialEditAssistantButton().should('be.disabled');
 	});
 });

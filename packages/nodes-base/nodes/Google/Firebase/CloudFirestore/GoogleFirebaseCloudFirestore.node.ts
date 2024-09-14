@@ -269,7 +269,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 
 						returnData.push(...executionData);
 					} catch (error) {
-						if (this.continueOnFail(error)) {
+						if (this.continueOnFail()) {
 							returnData.push({
 								json: { error: error.message },
 								pairedItem: fallbackPairedItems ?? [{ item: i }],
@@ -433,7 +433,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 
 						returnData.push(...executionData);
 					} catch (error) {
-						if (this.continueOnFail(error)) {
+						if (this.continueOnFail()) {
 							returnData.push({
 								json: { error: error.message },
 								pairedItem: fallbackPairedItems ?? [{ item: i }],

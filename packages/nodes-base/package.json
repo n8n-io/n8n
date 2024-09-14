@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "1.57.0",
+  "version": "1.59.0",
   "description": "Base nodes of n8n",
   "main": "index.js",
   "scripts": {
@@ -831,7 +831,7 @@
     "@types/ssh2-sftp-client": "^5.1.0",
     "@types/uuid": "catalog:",
     "@types/xml2js": "catalog:",
-    "eslint-plugin-n8n-nodes-base": "^1.16.0",
+    "eslint-plugin-n8n-nodes-base": "^1.16.2",
     "n8n-core": "workspace:*"
   },
   "dependencies": {

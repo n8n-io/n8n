@@ -1,5 +1,6 @@
 import { IsBoolean, IsObject, IsOptional, IsString } from 'class-validator';
 import { SignatureConfig } from 'samlify/types/src/types';
+
 import { SamlLoginBinding } from '.';
 import { SamlAttributeMapping } from './saml-attribute-mapping';
 

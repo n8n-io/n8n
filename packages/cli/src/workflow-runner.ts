@@ -2,9 +2,8 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import { Container, Service } from 'typedi';
+import { GlobalConfig } from '@n8n/config';
 import { WorkflowExecute } from 'n8n-core';
-
 import type {
 	ExecutionError,
 	IDeferredPromise,
@@ -13,31 +12,32 @@ import type {
 	IRun,
 	WorkflowExecuteMode,
 	WorkflowHooks,
+	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
 import {
 	ErrorReporterProxy as ErrorReporter,
 	ExecutionCancelledError,
 	Workflow,
 } from 'n8n-workflow';
-
 import PCancelable from 'p-cancelable';
+import { Container, Service } from 'typedi';
 
 import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { ExternalHooks } from '@/external-hooks';
-import type { IExecutionResponse, IWorkflowExecutionDataProcess } from '@/interfaces';
-import { NodeTypes } from '@/node-types';
-import type { Job, JobData, JobResult } from '@/scaling/scaling.types';
-import type { ScalingService } from '@/scaling/scaling.service';
-import * as WorkflowHelpers from '@/workflow-helpers';
-import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import { generateFailedExecutionFromError } from '@/workflow-helpers';
-import { PermissionChecker } from '@/user-management/permission-checker';
+import type { IExecutionResponse } from '@/interfaces';
 import { Logger } from '@/logger';
+import { NodeTypes } from '@/node-types';
+import type { ScalingService } from '@/scaling/scaling.service';
+import type { Job, JobData, JobResult } from '@/scaling/scaling.types';
+import { PermissionChecker } from '@/user-management/permission-checker';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import * as WorkflowHelpers from '@/workflow-helpers';
+import { generateFailedExecutionFromError } from '@/workflow-helpers';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
+
 import { EventService } from './events/event.service';
-import { GlobalConfig } from '@n8n/config';
 
 @Service()
 export class WorkflowRunner {

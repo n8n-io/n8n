@@ -1,13 +1,13 @@
-import { Container, Service } from 'typedi';
 import { GlobalConfig } from '@n8n/config';
 import { validate as jsonSchemaValidate } from 'jsonschema';
 import type {
-	IWorkflowBase,
 	ExecutionError,
+	ExecutionStatus,
 	INode,
 	IRunExecutionData,
+	IWorkflowBase,
 	WorkflowExecuteMode,
-	ExecutionStatus,
+	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
 import {
 	ApplicationError,
@@ -15,32 +15,36 @@ import {
 	Workflow,
 	WorkflowOperationError,
 } from 'n8n-workflow';
+import { Container, Service } from 'typedi';
+
 import { ActiveExecutions } from '@/active-executions';
+import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
+import config from '@/config';
+import type { User } from '@/databases/entities/user';
+import { AnnotationTagMappingRepository } from '@/databases/repositories/annotation-tag-mapping.repository';
+import { ExecutionAnnotationRepository } from '@/databases/repositories/execution-annotation.repository';
+import { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import type { IGetExecutionsQueryFilter } from '@/databases/repositories/execution.repository';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
+import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
+import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type {
 	ExecutionPayload,
 	IExecutionFlattedResponse,
 	IExecutionResponse,
 	IWorkflowDb,
-	IWorkflowExecutionDataProcess,
 } from '@/interfaces';
-import { NodeTypes } from '@/node-types';
-import type { ExecutionRequest, ExecutionSummaries, StopResult } from './execution.types';
-import { WorkflowRunner } from '@/workflow-runner';
-import type { IGetExecutionsQueryFilter } from '@/databases/repositories/execution.repository';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import { Logger } from '@/logger';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import config from '@/config';
-import { WaitTracker } from '@/wait-tracker';
-import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
-import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
-import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
-import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 import { License } from '@/license';
-import type { User } from '@/databases/entities/user';
+import { Logger } from '@/logger';
+import { NodeTypes } from '@/node-types';
+import { WaitTracker } from '@/wait-tracker';
+import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
+
+import type { ExecutionRequest, ExecutionSummaries, StopResult } from './execution.types';
 
 export const schemaGetExecutionsQueryFilter = {
 	$id: '/IGetExecutionsQueryFilter',
@@ -60,6 +64,8 @@ export const schemaGetExecutionsQueryFilter = {
 		metadata: { type: 'array', items: { $ref: '#/$defs/metadata' } },
 		startedAfter: { type: 'date-time' },
 		startedBefore: { type: 'date-time' },
+		annotationTags: { type: 'array', items: { type: 'string' } },
+		vote: { type: 'string' },
 	},
 	$defs: {
 		metadata: {
@@ -85,6 +91,8 @@ export class ExecutionService {
 		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
 		private readonly activeExecutions: ActiveExecutions,
+		private readonly executionAnnotationRepository: ExecutionAnnotationRepository,
+		private readonly annotationTagMappingRepository: AnnotationTagMappingRepository,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly nodeTypes: NodeTypes,
@@ -96,7 +104,7 @@ export class ExecutionService {
 	) {}
 
 	async findOne(
-		req: ExecutionRequest.GetOne,
+		req: ExecutionRequest.GetOne | ExecutionRequest.Update,
 		sharedWorkflowIds: string[],
 	): Promise<IExecutionResponse | IExecutionFlattedResponse | undefined> {
 		if (!sharedWorkflowIds.length) return undefined;
@@ -493,6 +501,44 @@ export class ExecutionService {
 
 		for (const s of summaries) {
 			s.scopes = scopes[s.workflowId] ?? [];
+		}
+	}
+
+	public async annotate(
+		executionId: string,
+		updateData: ExecutionRequest.ExecutionUpdatePayload,
+		sharedWorkflowIds: string[],
+	) {
+		// Check if user can access the execution
+		const execution = await this.executionRepository.findIfAccessible(
+			executionId,
+			sharedWorkflowIds,
+		);
+
+		if (!execution) {
+			this.logger.info('Attempt to read execution was blocked due to insufficient permissions', {
+				executionId,
+			});
+
+			throw new NotFoundError('Execution not found');
+		}
+
+		// Create or update execution annotation
+		await this.executionAnnotationRepository.upsert(
+			{ execution: { id: executionId }, vote: updateData.vote },
+			['execution'],
+		);
+
+		// Upsert behavior differs for Postgres, MySQL and sqlite,
+		// so we need to fetch the annotation to get the ID
+		const annotation = await this.executionAnnotationRepository.findOneOrFail({
+			where: {
+				execution: { id: executionId },
+			},
+		});
+
+		if (updateData.tags) {
+			await this.annotationTagMappingRepository.overwriteTags(annotation.id, updateData.tags);
 		}
 	}
 }

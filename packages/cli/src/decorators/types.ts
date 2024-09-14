@@ -1,7 +1,8 @@
+import type { Scope } from '@n8n/permissions';
 import type { RequestHandler } from 'express';
 import type { Class } from 'n8n-core';
+
 import type { BooleanLicenseFeature } from '@/interfaces';
-import type { Scope } from '@n8n/permissions';
 
 export type Method = 'get' | 'post' | 'put' | 'patch' | 'delete';
 

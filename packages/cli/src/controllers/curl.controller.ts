@@ -1,4 +1,5 @@
 import { Request } from 'express';
+
 import { Post, RestController } from '@/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { CurlService, flattenObject } from '@/services/curl.service';

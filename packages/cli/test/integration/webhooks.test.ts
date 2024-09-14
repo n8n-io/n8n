@@ -1,18 +1,17 @@
-import type SuperAgentTest from 'supertest/lib/agent';
-import { agent as testAgent } from 'supertest';
+import { GlobalConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
+import { agent as testAgent } from 'supertest';
+import type SuperAgentTest from 'supertest/lib/agent';
+import Container from 'typedi';
 
 import { AbstractServer } from '@/abstract-server';
-import { LiveWebhooks } from '@/webhooks/live-webhooks';
 import { ExternalHooks } from '@/external-hooks';
+import { WaitingForms } from '@/waiting-forms';
+import { LiveWebhooks } from '@/webhooks/live-webhooks';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
 import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
-import { WaitingForms } from '@/waiting-forms';
 import type { IWebhookResponseCallbackData } from '@/webhooks/webhook.types';
-
 import { mockInstance } from '@test/mocking';
-import { GlobalConfig } from '@n8n/config';
-import Container from 'typedi';
 
 let agent: SuperAgentTest;
 

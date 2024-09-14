@@ -1,4 +1,5 @@
 import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from '@n8n/typeorm';
+
 import { ExecutionEntity } from './execution-entity';
 
 @Entity()

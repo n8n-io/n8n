@@ -1,5 +1,6 @@
-import config from '@/config';
 import type { IWorkflowSettings } from 'n8n-workflow';
+
+import config from '@/config';
 
 /**
  * Return whether a workflow execution is configured to be saved or not:

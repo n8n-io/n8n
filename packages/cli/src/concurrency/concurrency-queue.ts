@@ -1,4 +1,5 @@
 import { Service } from 'typedi';
+
 import { TypedEmitter } from '@/typed-emitter';
 
 type ConcurrencyEvents = {

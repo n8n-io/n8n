@@ -1,11 +1,15 @@
-import { ApplicationError, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
+import {
+	ApplicationError,
+	ErrorReporterProxy as ErrorReporter,
+	type IWorkflowExecutionDataProcess,
+} from 'n8n-workflow';
 import { Service } from 'typedi';
-import type { IWorkflowExecutionDataProcess } from '@/interfaces';
-import { WorkflowRunner } from '@/workflow-runner';
+
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { OwnershipService } from '@/services/ownership.service';
 import { Logger } from '@/logger';
 import { OrchestrationService } from '@/services/orchestration.service';
+import { OwnershipService } from '@/services/ownership.service';
+import { WorkflowRunner } from '@/workflow-runner';
 
 @Service()
 export class WaitTracker {

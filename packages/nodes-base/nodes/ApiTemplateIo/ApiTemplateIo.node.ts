@@ -125,7 +125,7 @@ export class ApiTemplateIo implements INodeType {
 				required: true,
 				default: '',
 				description:
-					'ID of the image template to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'ID of the image template to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getImageTemplates',
 				},
@@ -143,7 +143,7 @@ export class ApiTemplateIo implements INodeType {
 				required: true,
 				default: '',
 				description:
-					'ID of the PDF template to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'ID of the PDF template to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getPdfTemplates',
 				},
@@ -385,7 +385,7 @@ export class ApiTemplateIo implements INodeType {
 
 						returnData.push(responseData as IDataObject);
 					} catch (error) {
-						if (this.continueOnFail(error)) {
+						if (this.continueOnFail()) {
 							returnData.push({ json: { error: error.message } });
 							continue;
 						}
@@ -471,7 +471,7 @@ export class ApiTemplateIo implements INodeType {
 						}
 						returnData.push(responseData as IDataObject);
 					} catch (error) {
-						if (this.continueOnFail(error)) {
+						if (this.continueOnFail()) {
 							returnData.push({ json: { error: error.message } });
 							continue;
 						}
@@ -561,7 +561,7 @@ export class ApiTemplateIo implements INodeType {
 						}
 						returnData.push(responseData as IDataObject);
 					} catch (error) {
-						if (this.continueOnFail(error)) {
+						if (this.continueOnFail()) {
 							returnData.push({ json: { error: error.message } });
 							continue;
 						}

@@ -1,22 +1,21 @@
-import { v4 as uuid } from 'uuid';
 import { compare } from 'bcryptjs';
-import { Container } from 'typedi';
 import { mock } from 'jest-mock-extended';
 import { randomString } from 'n8n-workflow';
+import { Container } from 'typedi';
+import { v4 as uuid } from 'uuid';
 
 import { AuthService } from '@/auth/auth.service';
-import { License } from '@/license';
 import config from '@/config';
 import type { User } from '@/databases/entities/user';
-import { setCurrentAuthenticationMethod } from '@/sso/sso-helpers';
-import { ExternalHooks } from '@/external-hooks';
-import { JwtService } from '@/services/jwt.service';
-import { UserManagementMailer } from '@/user-management/email';
 import { UserRepository } from '@/databases/repositories/user.repository';
+import { ExternalHooks } from '@/external-hooks';
+import { License } from '@/license';
+import { JwtService } from '@/services/jwt.service';
 import { PasswordUtility } from '@/services/password.utility';
+import { setCurrentAuthenticationMethod } from '@/sso/sso-helpers';
+import { UserManagementMailer } from '@/user-management/email';
 
-import { mockInstance } from '../shared/mocking';
-import { getAuthToken, setupTestServer } from './shared/utils';
+import { createUser } from './shared/db/users';
 import {
 	randomEmail,
 	randomInvalidPassword,
@@ -24,7 +23,8 @@ import {
 	randomValidPassword,
 } from './shared/random';
 import * as testDb from './shared/test-db';
-import { createUser } from './shared/db/users';
+import { getAuthToken, setupTestServer } from './shared/utils';
+import { mockInstance } from '../shared/mocking';
 
 config.set('userManagement.jwtSecret', randomString(5, 10));
 

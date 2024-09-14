@@ -132,7 +132,7 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
             <!-- eslint-disable-next-line vue/no-v-html -->
             
             <!-- eslint-disable-next-line vue/no-v-html -->
-            <span
+            <div
               class="assistantText"
             >
               <p>
@@ -144,8 +144,9 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
               </p>
               
 
-            </span>
+            </div>
             
+            <!--v-if-->
             <!--v-if-->
           </div>
           <!--v-if-->
@@ -449,6 +450,7 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
 
             </span>
             <!--v-if-->
+            <!--v-if-->
           </div>
           <!--v-if-->
         </div>
@@ -730,6 +732,7 @@ Testing more code
         </div>
         
       </div>
+      <!--v-if-->
     </div>
     <div
       class="inputWrapper"
@@ -827,6 +830,7 @@ exports[`AskAssistantChat > renders default placeholder chat correctly 1`] = `
     <div
       class="body"
     >
+      <!--v-if-->
       <div
         class="placeholder"
         data-test-id="placeholder-message"
@@ -840,10 +844,10 @@ exports[`AskAssistantChat > renders default placeholder chat correctly 1`] = `
           class="info"
         >
           <p>
-            Hi Kobi, I'm Assistant and I'm here to assist you with building workflows.
+            I can answer most questions about building workflows in n8n.
           </p>
           <p>
-            Whenever you encounter a task that I can help with, you'll see the 
+            For specific tasks, you’ll see the 
             <button
               class="button"
               style="height: 18px;"
@@ -896,15 +900,33 @@ exports[`AskAssistantChat > renders default placeholder chat correctly 1`] = `
                 </div>
               </div>
             </button>
-             button.
+             button in the UI.
           </p>
           <p>
-            Clicking it starts a chat session with me.
+            How can I help?
           </p>
         </div>
       </div>
     </div>
-    <!--v-if-->
+    <div
+      class="inputWrapper"
+      data-test-id="chat-input-wrapper"
+    >
+      <textarea
+        data-test-id="chat-input"
+        placeholder="Enter your response..."
+        rows="1"
+        wrap="hard"
+      />
+      <n8n-icon-button
+        class="sendButton"
+        data-test-id="send-message-button"
+        disabled="true"
+        icon="paper-plane"
+        size="large"
+        type="text"
+      />
+    </div>
   </div>
 </div>
 `;
@@ -1041,7 +1063,7 @@ exports[`AskAssistantChat > renders end of session chat correctly 1`] = `
             <!-- eslint-disable-next-line vue/no-v-html -->
             
             <!-- eslint-disable-next-line vue/no-v-html -->
-            <span
+            <div
               class="assistantText"
             >
               <p>
@@ -1053,8 +1075,9 @@ exports[`AskAssistantChat > renders end of session chat correctly 1`] = `
               </p>
               
 
-            </span>
+            </div>
             
+            <!--v-if-->
             <!--v-if-->
           </div>
           <!--v-if-->
@@ -1131,6 +1154,7 @@ exports[`AskAssistantChat > renders end of session chat correctly 1`] = `
         </div>
         
       </div>
+      <!--v-if-->
     </div>
     <div
       class="inputWrapper disabledInput"
@@ -1289,7 +1313,7 @@ exports[`AskAssistantChat > renders streaming chat correctly 1`] = `
             <!-- eslint-disable-next-line vue/no-v-html -->
             
             <!-- eslint-disable-next-line vue/no-v-html -->
-            <span
+            <div
               class="assistantText"
             >
               <p>
@@ -1301,14 +1325,16 @@ exports[`AskAssistantChat > renders streaming chat correctly 1`] = `
               </p>
               
 
-            </span>
+            </div>
             
+            <!--v-if-->
             <!--v-if-->
           </div>
           <!--v-if-->
         </div>
         
       </div>
+      <!--v-if-->
     </div>
     <div
       class="inputWrapper"

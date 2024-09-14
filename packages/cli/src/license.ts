@@ -2,8 +2,14 @@ import type { TEntitlement, TFeatures, TLicenseBlock } from '@n8n_io/license-sdk
 import { LicenseManager } from '@n8n_io/license-sdk';
 import { InstanceSettings, ObjectStoreService } from 'n8n-core';
 import Container, { Service } from 'typedi';
-import { Logger } from '@/logger';
+
 import config from '@/config';
+import { SettingsRepository } from '@/databases/repositories/settings.repository';
+import { OnShutdown } from '@/decorators/on-shutdown';
+import { Logger } from '@/logger';
+import { LicenseMetricsService } from '@/metrics/license-metrics.service';
+import { OrchestrationService } from '@/services/orchestration.service';
+
 import {
 	LICENSE_FEATURES,
 	LICENSE_QUOTAS,
@@ -11,11 +17,7 @@ import {
 	SETTINGS_LICENSE_CERT_KEY,
 	UNLIMITED_LICENSE_QUOTA,
 } from './constants';
-import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import type { BooleanLicenseFeature, N8nInstanceType, NumericLicenseFeature } from './interfaces';
-import { OrchestrationService } from '@/services/orchestration.service';
-import { OnShutdown } from '@/decorators/on-shutdown';
-import { LicenseMetricsService } from '@/metrics/license-metrics.service';
 
 type FeatureReturnType = Partial<
 	{
@@ -105,6 +107,7 @@ export class License {
 			});
 
 			await this.manager.initialize();
+			this.logger.debug('License initialized');
 		} catch (e: unknown) {
 			if (e instanceof Error) {
 				this.logger.error('Could not initialize license manager sdk', e);
@@ -128,6 +131,8 @@ export class License {
 	}
 
 	async onFeatureChange(_features: TFeatures): Promise<void> {
+		this.logger.debug('License feature change detected', _features);
+
 		if (config.getEnv('executions.mode') === 'queue' && config.getEnv('multiMainSetup.enabled')) {
 			const isMultiMainLicensed = _features[LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES] as
 				| boolean
@@ -189,14 +194,15 @@ export class License {
 		}
 
 		await this.manager.activate(activationKey);
+		this.logger.debug('License activated');
 	}
 
 	async reload(): Promise<void> {
 		if (!this.manager) {
 			return;
 		}
-		this.logger.debug('Reloading license');
 		await this.manager.reload();
+		this.logger.debug('License reloaded');
 	}
 
 	async renew() {
@@ -205,6 +211,7 @@ export class License {
 		}
 
 		await this.manager.renew();
+		this.logger.debug('License renewed');
 	}
 
 	@OnShutdown()
@@ -218,6 +225,7 @@ export class License {
 		}
 
 		await this.manager.shutdown();
+		this.logger.debug('License shut down');
 	}
 
 	isFeatureEnabled(feature: BooleanLicenseFeature) {
@@ -383,5 +391,6 @@ export class License {
 	async reinit() {
 		this.manager?.reset();
 		await this.init('main', true);
+		this.logger.debug('License reinitialized');
 	}
 }

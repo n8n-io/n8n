@@ -1,16 +1,18 @@
 import { Container } from 'typedi';
-import { debounceMessageReceiver, messageToRedisServiceCommandObject } from '../helpers';
+
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import config from '@/config';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { ExternalSecretsManager } from '@/external-secrets/external-secrets-manager.ee';
 import { License } from '@/license';
 import { Logger } from '@/logger';
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { Push } from '@/push';
-import { TestWebhooks } from '@/webhooks/test-webhooks';
-import { OrchestrationService } from '@/services/orchestration.service';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { CommunityPackagesService } from '@/services/community-packages.service';
+import { OrchestrationService } from '@/services/orchestration.service';
+import { TestWebhooks } from '@/webhooks/test-webhooks';
+
+import { debounceMessageReceiver, messageToRedisServiceCommandObject } from '../helpers';
 
 // eslint-disable-next-line complexity
 export async function handleCommandMessageMain(messageString: string) {
@@ -53,11 +55,7 @@ export async function handleCommandMessageMain(messageString: string) {
 				}
 
 				if (isMainInstance && !config.getEnv('multiMainSetup.enabled')) {
-					// at this point in time, only a single main instance is supported, thus this command _should_ never be caught currently
-					logger.error(
-						'Received command to reload license via Redis, but this should not have happened and is not supported on the main instance yet.',
-					);
-					return message;
+					return message; // this main is the sender, so disregard
 				}
 				await Container.get(License).reload();
 				break;

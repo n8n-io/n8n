@@ -16,6 +16,8 @@ const user = computed(() => ({
 	lastName: usersStore.currentUser?.lastName ?? '',
 }));
 
+const loadingMessage = computed(() => assistantStore.assistantThinkingMessage);
+
 function onResize(data: { direction: string; x: number; width: number }) {
 	assistantStore.updateWindowWidth(data.width);
 }
@@ -24,18 +26,21 @@ function onResizeDebounced(data: { direction: string; x: number; width: number }
 	void useDebounce().callDebounced(onResize, { debounceTime: 10, trailing: true }, data);
 }
 
-async function onUserMessage(content: string, quickReplyType?: string) {
-	await assistantStore.sendMessage({ text: content, quickReplyType });
-	const task = 'error';
-	const solutionCount =
-		task === 'error'
-			? assistantStore.chatMessages.filter(
-					(msg) => msg.role === 'assistant' && !['text', 'event'].includes(msg.type),
-				).length
-			: null;
-	if (quickReplyType === 'all-good' || quickReplyType === 'still-stuck') {
+async function onUserMessage(content: string, quickReplyType?: string, isFeedback = false) {
+	// If there is no current session running, initialize the support chat session
+	if (!assistantStore.currentSessionId) {
+		await assistantStore.initSupportChat(content);
+	} else {
+		await assistantStore.sendMessage({ text: content, quickReplyType });
+	}
+	const task = assistantStore.chatSessionTask;
+	const solutionCount = assistantStore.chatMessages.filter(
+		(msg) => msg.role === 'assistant' && !['text', 'event'].includes(msg.type),
+	).length;
+	if (isFeedback) {
 		telemetry.track('User gave feedback', {
 			task,
+			chat_session_id: assistantStore.currentSessionId,
 			is_quick_reply: !!quickReplyType,
 			is_positive: quickReplyType === 'all-good',
 			solution_count: solutionCount,
@@ -83,6 +88,8 @@ function onClose() {
 					:user="user"
 					:messages="assistantStore.chatMessages"
 					:streaming="assistantStore.streaming"
+					:loading-message="loadingMessage"
+					:session-id="assistantStore.currentSessionId"
 					@close="onClose"
 					@message="onUserMessage"
 					@code-replace="onCodeReplace"

@@ -1,3 +1,7 @@
+import type { Scope } from '@n8n/permissions';
+import type { AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
+import { Expose } from 'class-transformer';
+import { IsBoolean, IsEmail, IsIn, IsOptional, IsString, Length } from 'class-validator';
 import type express from 'express';
 import type {
 	BannerName,
@@ -12,22 +16,19 @@ import type {
 	IUser,
 } from 'n8n-workflow';
 
-import { Expose } from 'class-transformer';
-import { IsBoolean, IsEmail, IsIn, IsOptional, IsString, Length } from 'class-validator';
-import { NoXss } from '@/validators/no-xss.validator';
-import type { PublicUser, SecretsProvider, SecretsProviderState } from '@/interfaces';
+import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
+import type { Project, ProjectType } from '@/databases/entities/project';
 import { AssignableRole } from '@/databases/entities/user';
 import type { GlobalRole, User } from '@/databases/entities/user';
 import type { Variables } from '@/databases/entities/variables';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
-import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
 import type { WorkflowHistory } from '@/databases/entities/workflow-history';
-import type { Project, ProjectType } from '@/databases/entities/project';
-import type { ProjectRole } from './databases/entities/project-relation';
-import type { Scope } from '@n8n/permissions';
-import type { ScopesField } from './services/role.service';
-import type { AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
+import type { PublicUser, SecretsProvider, SecretsProviderState } from '@/interfaces';
 import { NoUrl } from '@/validators/no-url.validator';
+import { NoXss } from '@/validators/no-xss.validator';
+
+import type { ProjectRole } from './databases/entities/project-relation';
+import type { ScopesField } from './services/role.service';
 
 export class UserUpdatePayload implements Pick<User, 'email' | 'firstName' | 'lastName'> {
 	@Expose()
@@ -442,6 +443,17 @@ export declare namespace DynamicNodeParametersRequest {
 // ----------------------------------
 
 export declare namespace TagsRequest {
+	type GetAll = AuthenticatedRequest<{}, {}, {}, { withUsageCount: string }>;
+	type Create = AuthenticatedRequest<{}, {}, { name: string }>;
+	type Update = AuthenticatedRequest<{ id: string }, {}, { name: string }>;
+	type Delete = AuthenticatedRequest<{ id: string }>;
+}
+
+// ----------------------------------
+//             /annotation-tags
+// ----------------------------------
+
+export declare namespace AnnotationTagsRequest {
 	type GetAll = AuthenticatedRequest<{}, {}, {}, { withUsageCount: string }>;
 	type Create = AuthenticatedRequest<{}, {}, { name: string }>;
 	type Update = AuthenticatedRequest<{ id: string }, {}, { name: string }>;
