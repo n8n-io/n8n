@@ -472,6 +472,7 @@ function getParameterValue<T extends NodeParameterValueType = NodeParameterValue
 				:node="node"
 				:path="getPath(parameter.name)"
 				:dependent-parameters-values="getDependentParametersValues(parameter)"
+				:is-read-only="isReadOnly"
 				input-size="small"
 				label-size="small"
 				@value-changed="valueChanged"

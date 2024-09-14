@@ -1,4 +1,5 @@
 import { Column, Entity } from '@n8n/typeorm';
+
 import { User } from './user';
 
 @Entity({ name: 'user' })

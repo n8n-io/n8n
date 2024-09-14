@@ -1,11 +1,11 @@
 import { Command, Flags } from '@oclif/core';
-import { ScenarioLoader } from '@/scenario/scenarioLoader';
-import { ScenarioRunner } from '@/testExecution/scenarioRunner';
-import { N8nApiClient } from '@/n8nApiClient/n8nApiClient';
-import { ScenarioDataFileLoader } from '@/scenario/scenarioDataLoader';
-import type { K6Tag } from '@/testExecution/k6Executor';
-import { K6Executor } from '@/testExecution/k6Executor';
-import { testScenariosPath } from '@/config/commonFlags';
+import { ScenarioLoader } from '@/scenario/scenario-loader';
+import { ScenarioRunner } from '@/test-execution/scenario-runner';
+import { N8nApiClient } from '@/n8n-api-client/n8n-api-client';
+import { ScenarioDataFileLoader } from '@/scenario/scenario-data-loader';
+import type { K6Tag } from '@/test-execution/k6-executor';
+import { K6Executor } from '@/test-execution/k6-executor';
+import { testScenariosPath } from '@/config/common-flags';
 
 export default class RunCommand extends Command {
 	static description = 'Run all (default) or specified test scenarios';
@@ -80,10 +80,12 @@ export default class RunCommand extends Command {
 				k6ApiToken: flags.k6ApiToken,
 				n8nApiBaseUrl: flags.n8nBaseUrl,
 				tags,
-				resultsWebhook: {
-					url: flags.resultWebhookUrl,
-					authHeader: flags.resultWebhookAuthHeader,
-				},
+				resultsWebhook: flags.resultWebhookUrl
+					? {
+							url: flags.resultWebhookUrl,
+							authHeader: flags.resultWebhookAuthHeader,
+						}
+					: undefined,
 			}),
 			{
 				email: flags.n8nUserEmail,

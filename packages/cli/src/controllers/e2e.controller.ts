@@ -1,22 +1,24 @@
+import type { PushPayload, PushType } from '@n8n/api-types';
 import { Request } from 'express';
+import Container from 'typedi';
 import { v4 as uuid } from 'uuid';
+
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import config from '@/config';
+import { LICENSE_FEATURES, LICENSE_QUOTAS, UNLIMITED_LICENSE_QUOTA, inE2ETests } from '@/constants';
+import { AuthUserRepository } from '@/databases/repositories/auth-user.repository';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import { UserRepository } from '@/databases/repositories/user.repository';
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import { License } from '@/license';
-import { LICENSE_FEATURES, LICENSE_QUOTAS, UNLIMITED_LICENSE_QUOTA, inE2ETests } from '@/constants';
 import { Patch, Post, RestController } from '@/decorators';
-import type { UserSetupPayload } from '@/requests';
-import type { BooleanLicenseFeature, IPushDataType, NumericLicenseFeature } from '@/interfaces';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import type { BooleanLicenseFeature, NumericLicenseFeature } from '@/interfaces';
+import { License } from '@/license';
+import { Logger } from '@/logger';
 import { MfaService } from '@/mfa/mfa.service';
 import { Push } from '@/push';
+import type { UserSetupPayload } from '@/requests';
 import { CacheService } from '@/services/cache/cache.service';
 import { PasswordUtility } from '@/services/password.utility';
-import Container from 'typedi';
-import { Logger } from '@/logger';
-import { AuthUserRepository } from '@/databases/repositories/auth-user.repository';
 
 if (!inE2ETests) {
 	Container.get(Logger).error('E2E endpoints only allowed during E2E tests');
@@ -55,13 +57,13 @@ type ResetRequest = Request<
 	}
 >;
 
-type PushRequest = Request<
+type PushRequest<T extends PushType> = Request<
 	{},
 	{},
 	{
-		type: IPushDataType;
+		type: T;
 		pushRef: string;
-		data: object;
+		data: PushPayload<T>;
 	}
 >;
 
@@ -131,7 +133,7 @@ export class E2EController {
 	}
 
 	@Post('/push', { skipAuth: true })
-	async pushSend(req: PushRequest) {
+	async pushSend(req: PushRequest<any>) {
 		this.push.broadcast(req.body.type, req.body.data);
 	}
 

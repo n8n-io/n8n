@@ -1,23 +1,23 @@
 import { Container } from 'typedi';
 
 import { Reset } from '@/commands/user-management/reset';
+import { CredentialsEntity } from '@/databases/entities/credentials-entity';
+import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
+import { SettingsRepository } from '@/databases/repositories/settings.repository';
+import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
+import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
+import { UserRepository } from '@/databases/repositories/user.repository';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
-import { CredentialsEntity } from '@/databases/entities/credentials-entity';
-import { SettingsRepository } from '@/databases/repositories/settings.repository';
-import { UserRepository } from '@/databases/repositories/user.repository';
-
 import { setupTestCommand } from '@test-integration/utils/test-command';
+
 import { mockInstance } from '../../shared/mocking';
-import * as testDb from '../shared/test-db';
+import { encryptCredentialData, saveCredential } from '../shared/db/credentials';
+import { getPersonalProject } from '../shared/db/projects';
 import { createMember, createUser } from '../shared/db/users';
 import { createWorkflow } from '../shared/db/workflows';
-import { getPersonalProject } from '../shared/db/projects';
-import { encryptCredentialData, saveCredential } from '../shared/db/credentials';
 import { randomCredentialPayload } from '../shared/random';
+import * as testDb from '../shared/test-db';
 
 mockInstance(LoadNodesAndCredentials);
 mockInstance(NodeTypes);

@@ -1,4 +1,5 @@
 import { IsBoolean, IsHexColor, IsOptional, IsString } from 'class-validator';
+
 import { KeyPairType } from './key-pair-type';
 
 export class SourceControlPreferences {

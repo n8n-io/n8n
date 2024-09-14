@@ -1,14 +1,15 @@
 import mock from 'jest-mock-extended/lib/Mock';
-import { SourceControlExportService } from '../source-control-export.service.ee';
-import type { SourceControlledFile } from '../types/source-controlled-file';
 import { Cipher, type InstanceSettings } from 'n8n-core';
+import { ApplicationError, deepCopy } from 'n8n-workflow';
+import Container from 'typedi';
+
+import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
+import type { SharedCredentials } from '@/databases/entities/shared-credentials';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { mockInstance } from '@test/mocking';
 
-import type { SharedCredentials } from '@/databases/entities/shared-credentials';
-import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
-import Container from 'typedi';
-import { ApplicationError, deepCopy } from 'n8n-workflow';
+import { SourceControlExportService } from '../source-control-export.service.ee';
+import type { SourceControlledFile } from '../types/source-controlled-file';
 
 // https://github.com/jestjs/jest/issues/4715
 function deepSpyOn<O extends object, M extends keyof O>(object: O, methodName: M) {

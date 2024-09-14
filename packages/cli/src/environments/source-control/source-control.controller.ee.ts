@@ -1,21 +1,23 @@
-import type { PullResult } from 'simple-git';
 import express from 'express';
+import type { PullResult } from 'simple-git';
+
 import { Get, Post, Patch, RestController, GlobalScope } from '@/decorators';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { EventService } from '@/events/event.service';
+
+import { SOURCE_CONTROL_DEFAULT_BRANCH } from './constants';
 import {
 	sourceControlLicensedMiddleware,
 	sourceControlLicensedAndEnabledMiddleware,
 } from './middleware/source-control-enabled-middleware.ee';
-import { SourceControlService } from './source-control.service.ee';
-import { SourceControlRequest } from './types/requests';
+import { getRepoType } from './source-control-helper.ee';
 import { SourceControlPreferencesService } from './source-control-preferences.service.ee';
+import { SourceControlService } from './source-control.service.ee';
+import type { ImportResult } from './types/import-result';
+import { SourceControlRequest } from './types/requests';
+import { SourceControlGetStatus } from './types/source-control-get-status';
 import type { SourceControlPreferences } from './types/source-control-preferences';
 import type { SourceControlledFile } from './types/source-controlled-file';
-import { SOURCE_CONTROL_DEFAULT_BRANCH } from './constants';
-import type { ImportResult } from './types/import-result';
-import { EventService } from '@/events/event.service';
-import { getRepoType } from './source-control-helper.ee';
-import { SourceControlGetStatus } from './types/source-control-get-status';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 @RestController('/source-control')
 export class SourceControlController {

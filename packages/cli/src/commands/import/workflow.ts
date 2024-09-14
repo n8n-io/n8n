@@ -1,19 +1,20 @@
-import { Container } from 'typedi';
 import { Flags } from '@oclif/core';
-import { ApplicationError, jsonParse } from 'n8n-workflow';
-import fs from 'fs';
 import glob from 'fast-glob';
+import fs from 'fs';
+import { ApplicationError, jsonParse } from 'n8n-workflow';
+import { Container } from 'typedi';
 
 import { UM_FIX_INSTRUCTION } from '@/constants';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
-import { generateNanoId } from '@/databases/utils/generators';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
+import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { generateNanoId } from '@/databases/utils/generators';
 import type { IWorkflowToImport } from '@/interfaces';
 import { ImportService } from '@/services/import.service';
+
 import { BaseCommand } from '../base-command';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
 
 function assertHasWorkflowsToImport(workflows: unknown): asserts workflows is IWorkflowToImport[] {
 	if (!Array.isArray(workflows)) {

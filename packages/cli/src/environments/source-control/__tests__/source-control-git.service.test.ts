@@ -1,8 +1,10 @@
 import { mock } from 'jest-mock-extended';
-import { SourceControlGitService } from '../source-control-git.service.ee';
 import { simpleGit } from 'simple-git';
 import type { SimpleGit } from 'simple-git';
+
 import type { User } from '@/databases/entities/user';
+
+import { SourceControlGitService } from '../source-control-git.service.ee';
 import type { SourceControlPreferences } from '../types/source-control-preferences';
 
 const MOCK_BRANCHES = {

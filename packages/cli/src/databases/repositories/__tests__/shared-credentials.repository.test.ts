@@ -1,11 +1,11 @@
-import { Container } from 'typedi';
+import { hasScope } from '@n8n/permissions';
 import { In } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
-import { hasScope } from '@n8n/permissions';
+import { Container } from 'typedi';
 
-import type { User } from '@/databases/entities/user';
 import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
 import { SharedCredentials } from '@/databases/entities/shared-credentials';
+import type { User } from '@/databases/entities/user';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { GLOBAL_MEMBER_SCOPES, GLOBAL_OWNER_SCOPES } from '@/permissions/global-roles';
 import { mockEntityManager } from '@test/mocking';

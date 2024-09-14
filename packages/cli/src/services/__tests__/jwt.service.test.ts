@@ -1,6 +1,7 @@
+import { mock } from 'jest-mock-extended';
 import jwt from 'jsonwebtoken';
 import type { InstanceSettings } from 'n8n-core';
-import { mock } from 'jest-mock-extended';
+
 import config from '@/config';
 import { JwtService } from '@/services/jwt.service';
 

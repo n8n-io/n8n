@@ -1,5 +1,5 @@
-import { Service } from 'typedi';
 import { execSync } from 'child_process';
+import { ApplicationError } from 'n8n-workflow';
 import path from 'path';
 import type {
 	CommitResult,
@@ -11,7 +11,12 @@ import type {
 	SimpleGitOptions,
 	StatusResult,
 } from 'simple-git';
-import type { SourceControlPreferences } from './types/source-control-preferences';
+import { Service } from 'typedi';
+
+import type { User } from '@/databases/entities/user';
+import { Logger } from '@/logger';
+import { OwnershipService } from '@/services/ownership.service';
+
 import {
 	SOURCE_CONTROL_DEFAULT_BRANCH,
 	SOURCE_CONTROL_DEFAULT_EMAIL,
@@ -19,11 +24,8 @@ import {
 	SOURCE_CONTROL_ORIGIN,
 } from './constants';
 import { sourceControlFoldersExistCheck } from './source-control-helper.ee';
-import type { User } from '@/databases/entities/user';
-import { Logger } from '@/logger';
-import { ApplicationError } from 'n8n-workflow';
-import { OwnershipService } from '@/services/ownership.service';
 import { SourceControlPreferencesService } from './source-control-preferences.service.ee';
+import type { SourceControlPreferences } from './types/source-control-preferences';
 
 @Service()
 export class SourceControlGitService {

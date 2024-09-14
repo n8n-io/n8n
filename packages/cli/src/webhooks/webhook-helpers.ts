@@ -7,13 +7,9 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 import type express from 'express';
-import { Container } from 'typedi';
-import get from 'lodash/get';
-import { finished } from 'stream/promises';
 import formidable from 'formidable';
-
+import get from 'lodash/get';
 import { BinaryDataService, NodeExecuteFunctions } from 'n8n-core';
-
 import type {
 	IBinaryData,
 	IBinaryKeyData,
@@ -40,21 +36,24 @@ import {
 	ErrorReporterProxy as ErrorReporter,
 	NodeHelpers,
 } from 'n8n-workflow';
+import { finished } from 'stream/promises';
+import { Container } from 'typedi';
 
-import type { IWebhookResponseCallbackData, WebhookRequest } from './webhook.types';
+import { ActiveExecutions } from '@/active-executions';
+import type { Project } from '@/databases/entities/project';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
+import type { IExecutionDb, IWorkflowDb } from '@/interfaces';
+import { Logger } from '@/logger';
+import { parseBody } from '@/middlewares';
+import { OwnershipService } from '@/services/ownership.service';
+import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowRunner } from '@/workflow-runner';
-import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import { ActiveExecutions } from '@/active-executions';
-import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
-import { OwnershipService } from '@/services/ownership.service';
-import { parseBody } from '@/middlewares';
-import { Logger } from '@/logger';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
-import type { Project } from '@/databases/entities/project';
-import type { IExecutionDb, IWorkflowDb } from '@/interfaces';
+
+import type { IWebhookResponseCallbackData, WebhookRequest } from './webhook.types';
 
 /**
  * Returns all the webhooks which should be created for the given workflow
@@ -438,9 +437,8 @@ export async function executeWebhook(
 
 		let responsePromise: IDeferredPromise<IN8nHttpFullResponse> | undefined;
 		if (responseMode === 'responseNode') {
-			responsePromise = await createDeferredPromise<IN8nHttpFullResponse>();
-			responsePromise
-				.promise()
+			responsePromise = createDeferredPromise<IN8nHttpFullResponse>();
+			responsePromise.promise
 				.then(async (response: IN8nHttpFullResponse) => {
 					if (didSendResponse) {
 						return;
@@ -551,7 +549,7 @@ export async function executeWebhook(
 
 					// in `responseNode` mode `responseCallback` is called by `responsePromise`
 					if (responseMode === 'responseNode' && responsePromise) {
-						await Promise.allSettled([responsePromise.promise()]);
+						await Promise.allSettled([responsePromise.promise]);
 						return undefined;
 					}
 

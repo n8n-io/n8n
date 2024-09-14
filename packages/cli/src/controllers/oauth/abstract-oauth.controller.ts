@@ -1,24 +1,24 @@
-import { Service } from 'typedi';
+import { GlobalConfig } from '@n8n/config';
 import Csrf from 'csrf';
 import type { Response } from 'express';
 import { Credentials } from 'n8n-core';
 import type { ICredentialDataDecryptedObject, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { jsonParse, ApplicationError } from 'n8n-workflow';
+import { Service } from 'typedi';
 
+import { RESPONSE_ERROR_MESSAGES } from '@/constants';
+import { CredentialsHelper } from '@/credentials-helper';
 import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import type { ICredentialsDb } from '@/interfaces';
-import type { OAuthRequest } from '@/requests';
-import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { CredentialsHelper } from '@/credentials-helper';
-import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import { Logger } from '@/logger';
-import { ExternalHooks } from '@/external-hooks';
-import { UrlService } from '@/services/url.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { GlobalConfig } from '@n8n/config';
+import { ExternalHooks } from '@/external-hooks';
+import type { ICredentialsDb } from '@/interfaces';
+import { Logger } from '@/logger';
+import type { OAuthRequest } from '@/requests';
+import { UrlService } from '@/services/url.service';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
 export interface CsrfStateParam {
 	cid: string;

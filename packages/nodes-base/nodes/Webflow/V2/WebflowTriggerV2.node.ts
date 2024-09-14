@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import type {
 	IHookFunctions,
 	IDataObject,
@@ -55,7 +54,7 @@ export class WebflowTriggerV2 implements INodeType {
 						loadOptionsMethod: 'getSites',
 					},
 					description:
-						'Site that will trigger the events. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						'Site that will trigger the events. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				},
 				{
 					displayName: 'Event',

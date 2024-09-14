@@ -1,18 +1,18 @@
-import { VariablesService } from '@/environments/variables/variables.service.ee';
-import { mockInstance } from '@test/mocking';
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import { getBase } from '@/workflow-execute-additional-data';
 import Container from 'typedi';
+
 import { CredentialsHelper } from '@/credentials-helper';
+import { VariablesService } from '@/environments/variables/variables.service.ee';
+import { EventService } from '@/events/event.service';
 import { SecretsHelper } from '@/secrets-helpers';
+import { getBase } from '@/workflow-execute-additional-data';
+import { mockInstance } from '@test/mocking';
 
 describe('WorkflowExecuteAdditionalData', () => {
-	const messageEventBus = mockInstance(MessageEventBus);
 	const variablesService = mockInstance(VariablesService);
 	variablesService.getAllCached.mockResolvedValue([]);
 	const credentialsHelper = mockInstance(CredentialsHelper);
 	const secretsHelper = mockInstance(SecretsHelper);
-	Container.set(MessageEventBus, messageEventBus);
+	const eventService = mockInstance(EventService);
 	Container.set(VariablesService, variablesService);
 	Container.set(CredentialsHelper, credentialsHelper);
 	Container.set(SecretsHelper, secretsHelper);
@@ -20,7 +20,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 	test('logAiEvent should call MessageEventBus', async () => {
 		const additionalData = await getBase('user-id');
 
-		const eventName = 'n8n.ai.memory.get.messages';
+		const eventName = 'ai-messages-retrieved-from-memory';
 		const payload = {
 			msg: 'test message',
 			executionId: '123',
@@ -30,12 +30,9 @@ describe('WorkflowExecuteAdditionalData', () => {
 			nodeType: 'n8n-memory',
 		};
 
-		await additionalData.logAiEvent(eventName, payload);
+		additionalData.logAiEvent(eventName, payload);
 
-		expect(messageEventBus.sendAiNodeEvent).toHaveBeenCalledTimes(1);
-		expect(messageEventBus.sendAiNodeEvent).toHaveBeenCalledWith({
-			eventName,
-			payload,
-		});
+		expect(eventService.emit).toHaveBeenCalledTimes(1);
+		expect(eventService.emit).toHaveBeenCalledWith(eventName, payload);
 	});
 });

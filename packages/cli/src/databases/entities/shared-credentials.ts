@@ -1,6 +1,7 @@
 import { Column, Entity, ManyToOne, PrimaryColumn } from '@n8n/typeorm';
-import { CredentialsEntity } from './credentials-entity';
+
 import { WithTimestamps } from './abstract-entity';
+import { CredentialsEntity } from './credentials-entity';
 import { Project } from './project';
 
 export type CredentialSharingRole = 'credential:owner' | 'credential:user';

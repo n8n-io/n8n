@@ -1,48 +1,49 @@
-import express from 'express';
-import { v4 as uuid } from 'uuid';
+import { GlobalConfig } from '@n8n/config';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
+import { In, type FindOptionsRelations } from '@n8n/typeorm';
 import axios from 'axios';
+import express from 'express';
+import { ApplicationError } from 'n8n-workflow';
+import { v4 as uuid } from 'uuid';
+import { z } from 'zod';
 
-import * as Db from '@/db';
-import * as ResponseHelper from '@/response-helper';
-import * as WorkflowHelpers from '@/workflow-helpers';
-import type { IWorkflowResponse } from '@/interfaces';
 import config from '@/config';
-import { Delete, Get, Patch, Post, ProjectScope, Put, RestController } from '@/decorators';
+import type { Project } from '@/databases/entities/project';
 import { SharedWorkflow } from '@/databases/entities/shared-workflow';
 import { WorkflowEntity } from '@/databases/entities/workflow-entity';
+import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { TagRepository } from '@/databases/repositories/tag.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import { validateEntity } from '@/generic-helpers';
-import { ExternalHooks } from '@/external-hooks';
-import { WorkflowService } from './workflow.service';
-import { License } from '@/license';
-import * as utils from '@/utils';
-import { listQueryMiddleware } from '@/middlewares';
-import { TagService } from '@/services/tag.service';
-import { WorkflowHistoryService } from './workflow-history/workflow-history.service.ee';
-import { Logger } from '@/logger';
+import * as Db from '@/db';
+import { Delete, Get, Patch, Post, ProjectScope, Put, RestController } from '@/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NamingService } from '@/services/naming.service';
-import { UserOnboardingService } from '@/services/user-onboarding.service';
-import { CredentialsService } from '../credentials/credentials.service';
-import { WorkflowRequest } from './workflow.request';
-import { EnterpriseWorkflowService } from './workflow.service.ee';
-import { WorkflowExecutionService } from './workflow-execution.service';
-import { UserManagementMailer } from '@/user-management/email';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { ProjectService } from '@/services/project.service';
-import { ApplicationError } from 'n8n-workflow';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { In, type FindOptionsRelations } from '@n8n/typeorm';
-import type { Project } from '@/databases/entities/project';
-import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
-import { z } from 'zod';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
-import { GlobalConfig } from '@n8n/config';
+import { ExternalHooks } from '@/external-hooks';
+import { validateEntity } from '@/generic-helpers';
+import type { IWorkflowResponse } from '@/interfaces';
+import { License } from '@/license';
+import { Logger } from '@/logger';
+import { listQueryMiddleware } from '@/middlewares';
+import * as ResponseHelper from '@/response-helper';
+import { NamingService } from '@/services/naming.service';
+import { ProjectService } from '@/services/project.service';
+import { TagService } from '@/services/tag.service';
+import { UserOnboardingService } from '@/services/user-onboarding.service';
+import { UserManagementMailer } from '@/user-management/email';
+import * as utils from '@/utils';
+import * as WorkflowHelpers from '@/workflow-helpers';
+
+import { WorkflowExecutionService } from './workflow-execution.service';
+import { WorkflowHistoryService } from './workflow-history/workflow-history.service.ee';
+import { WorkflowRequest } from './workflow.request';
+import { WorkflowService } from './workflow.service';
+import { EnterpriseWorkflowService } from './workflow.service.ee';
+import { CredentialsService } from '../credentials/credentials.service';
 
 @RestController('/workflows')
 export class WorkflowsController {

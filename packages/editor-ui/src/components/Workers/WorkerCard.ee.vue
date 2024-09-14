@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { useOrchestrationStore } from '@/stores/orchestration.store';
-import type { IPushDataWorkerStatusPayload } from '@/Interface';
 import { computed, onMounted, onBeforeUnmount, ref } from 'vue';
+import type { WorkerStatus } from '@n8n/api-types';
+
+import { useOrchestrationStore } from '@/stores/orchestration.store';
 import { averageWorkerLoadFromLoadsAsString, memAsGb } from '../../utils/workerUtils';
 import WorkerJobAccordion from './WorkerJobAccordion.ee.vue';
 import WorkerNetAccordion from './WorkerNetAccordion.ee.vue';
@@ -18,7 +19,7 @@ const props = defineProps<{
 const secondsSinceLastUpdateString = ref<string>('0');
 const stale = ref<boolean>(false);
 
-const worker = computed((): IPushDataWorkerStatusPayload | undefined => {
+const worker = computed((): WorkerStatus | undefined => {
 	return orchestrationStore.getWorkerStatus(props.workerId);
 });
 

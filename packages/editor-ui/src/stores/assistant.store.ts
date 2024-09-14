@@ -9,6 +9,7 @@ import {
 import type { ChatRequest } from '@/types/assistant.types';
 import type { ChatUI } from 'n8n-design-system/types/assistant';
 import { defineStore } from 'pinia';
+import type { PushPayload } from '@n8n/api-types';
 import { computed, h, ref, watch } from 'vue';
 import { useRootStore } from './root.store';
 import { useUsersStore } from './users.store';
@@ -20,7 +21,7 @@ import type { ICredentialType, INodeParameters } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 import { ndvEventBus, codeNodeEditorEventBus } from '@/event-bus';
 import { useNDVStore } from './ndv.store';
-import type { IPushDataNodeExecuteAfter, IUpdateInformation } from '@/Interface';
+import type { IUpdateInformation } from '@/Interface';
 import {
 	getMainAuthField,
 	getNodeAuthOptions,
@@ -473,7 +474,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			(e) => handleServiceError(e, id),
 		);
 	}
-	async function onNodeExecution(pushEvent: IPushDataNodeExecuteAfter) {
+	async function onNodeExecution(pushEvent: PushPayload<'nodeExecuteAfter'>) {
 		if (!chatSessionError.value || pushEvent.nodeName !== chatSessionError.value.node.name) {
 			return;
 		}
