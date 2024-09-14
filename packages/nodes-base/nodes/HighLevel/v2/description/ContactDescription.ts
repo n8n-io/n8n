@@ -168,12 +168,12 @@ const customFields: INodeProperties = {
 					required: true,
 					default: '',
 					description:
-						'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+						'To load the options location should be set.Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 					typeOptions: {
 						loadOptions: {
 							routing: {
 								request: {
-									url: '/custom-fields',
+									url: '=/locations/{{$parameter.locationId}}/customFields?model=contact',
 									method: 'GET',
 								},
 								output: {
@@ -201,6 +201,7 @@ const customFields: INodeProperties = {
 								},
 							},
 						},
+						loadOptionsDependsOn: ['locationId'],
 					},
 				},
 				{
@@ -222,6 +223,25 @@ const customFields: INodeProperties = {
 };
 
 const createProperties: INodeProperties[] = [
+	{
+		displayName: 'Location ID',
+		name: 'locationId',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['contact'],
+				operation: ['create'],
+			},
+		},
+		default: '',
+		routing: {
+			send: {
+				type: 'body',
+				property: 'locationId',
+			},
+		},
+	},
 	{
 		displayName: 'Email',
 		name: 'email',
@@ -390,6 +410,19 @@ const createProperties: INodeProperties[] = [
 					},
 				},
 			},
+			//TODO not supported
+			// {
+			// 	displayName: 'Note',
+			// 	name: 'notes',
+			// 	type: 'string',
+			// 	default: '',
+			// 	routing: {
+			// 		send: {
+			// 			type: 'body',
+			// 			property: 'notes',
+			// 		},
+			// 	},
+			// },
 			{
 				displayName: 'Tags',
 				name: 'tags',
@@ -443,6 +476,18 @@ const updateProperties: INodeProperties[] = [
 		name: 'contactId',
 		type: 'string',
 		required: true,
+		displayOptions: {
+			show: {
+				resource: ['contact'],
+				operation: ['update'],
+			},
+		},
+		default: '',
+	},
+	{
+		displayName: 'Location ID',
+		name: 'locationId',
+		type: 'string',
 		displayOptions: {
 			show: {
 				resource: ['contact'],
@@ -613,7 +658,7 @@ const updateProperties: INodeProperties[] = [
 				type: 'options',
 				default: '',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'To load the options location should be set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getTimezones',
 				},
