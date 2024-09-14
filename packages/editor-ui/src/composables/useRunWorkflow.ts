@@ -15,7 +15,7 @@ import type {
 	IRun,
 	INode,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionType, sleep } from 'n8n-workflow';
 
 import { useToast } from '@/composables/useToast';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
@@ -294,6 +294,40 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				getTestUrl,
 				shouldShowForm,
 			});
+
+			while (true) {
+				if (runWorkflowApiResponse.executionId) {
+					const execution = await workflowsStore.getExecution(runWorkflowApiResponse.executionId);
+					if (!execution) break;
+					console.log(execution.startedAt, execution.stoppedAt);
+
+					if (execution.finished) {
+						workflowsStore.setWorkflowExecutionData(execution);
+						nodeHelpers.updateNodesExecutionIssues();
+
+						return runWorkflowApiResponse;
+					} else {
+						await sleep(2000);
+
+						if (execution.data) {
+							workflowsStore.setWorkflowExecutionRunData(execution.data);
+						}
+
+						displayForm({
+							nodes: workflowData.nodes,
+							runData: workflowsStore.getWorkflowExecution?.data?.resultData?.runData,
+							destinationNode: options.destinationNode,
+							pinData,
+							directParentNodes,
+							formWaitingUrl: rootStore.formWaitingUrl,
+							executionId: runWorkflowApiResponse.executionId,
+							source: options.source,
+							getTestUrl,
+							shouldShowForm,
+						});
+					}
+				} else break;
+			}
 
 			await useExternalHooks().run('workflowRun.runWorkflow', {
 				nodeName: options.destinationNode,
