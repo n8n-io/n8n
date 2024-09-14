@@ -10,7 +10,7 @@ import type {
 } from '@/services/redis/redis-service-commands';
 
 /**
- * Responsible for publishing messages into the pub/sub channels used by scaling mode.
+ * Responsible for publishing messages into the pubsub channels used by scaling mode.
  */
 @Service()
 export class Publisher {
@@ -28,6 +28,10 @@ export class Publisher {
 		this.client = this.redisClientService.createClient({ type: 'publisher(n8n)' });
 
 		this.client.on('error', (error) => this.logger.error(error.message));
+	}
+
+	getClient() {
+		return this.client;
 	}
 
 	shutdown() {
@@ -59,7 +63,7 @@ export class Publisher {
 
 	// #region Utils for multi-main setup
 
-	// @TODO: The following methods are not pub/sub-specific. Consider a dedicated client for multi-main setup.
+	// @TODO: The following methods are not pubsub-specific. Consider a dedicated client for multi-main setup.
 
 	async setIfNotExists(key: string, value: string) {
 		const success = await this.client.setnx(key, value);
