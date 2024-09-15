@@ -1,5 +1,6 @@
-import DemoComponent from './DemoComponent.vue';
 import type { StoryFn } from '@storybook/vue3';
+
+import DemoComponent from './DemoComponent.vue';
 
 export default {
 	title: 'Assistant/AskAssistantLoadingMessageTransitions',

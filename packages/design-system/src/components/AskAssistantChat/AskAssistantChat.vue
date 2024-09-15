@@ -1,18 +1,18 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
-import AssistantIcon from '../AskAssistantIcon/AssistantIcon.vue';
-import AssistantText from '../AskAssistantText/AssistantText.vue';
-import AssistantAvatar from '../AskAssistantAvatar/AssistantAvatar.vue';
-import AssistantLoadingMessage from '../AskAssistantLoadingMessage/AssistantLoadingMessage.vue';
-import CodeDiff from '../CodeDiff/CodeDiff.vue';
-import type { ChatUI } from '../../types/assistant';
-import BlinkingCursor from '../BlinkingCursor/BlinkingCursor.vue';
-
 import Markdown from 'markdown-it';
-import InlineAskAssistantButton from '../InlineAskAssistantButton/InlineAskAssistantButton.vue';
-import BetaTag from '../BetaTag/BetaTag.vue';
-import { useI18n } from '../../composables/useI18n';
 import markdownLink from 'markdown-it-link-attributes';
+import { computed, ref } from 'vue';
+
+import { useI18n } from '../../composables/useI18n';
+import type { ChatUI } from '../../types/assistant';
+import AssistantAvatar from '../AskAssistantAvatar/AssistantAvatar.vue';
+import AssistantIcon from '../AskAssistantIcon/AssistantIcon.vue';
+import AssistantLoadingMessage from '../AskAssistantLoadingMessage/AssistantLoadingMessage.vue';
+import AssistantText from '../AskAssistantText/AssistantText.vue';
+import BetaTag from '../BetaTag/BetaTag.vue';
+import BlinkingCursor from '../BlinkingCursor/BlinkingCursor.vue';
+import CodeDiff from '../CodeDiff/CodeDiff.vue';
+import InlineAskAssistantButton from '../InlineAskAssistantButton/InlineAskAssistantButton.vue';
 
 const { t } = useI18n();
 

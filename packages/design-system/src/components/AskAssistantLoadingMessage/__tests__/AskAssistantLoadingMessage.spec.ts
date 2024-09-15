@@ -1,4 +1,5 @@
 import { render } from '@testing-library/vue';
+
 import AssistantLoadingMessage from '../AssistantLoadingMessage.vue';
 
 describe('AssistantLoadingMessage', () => {

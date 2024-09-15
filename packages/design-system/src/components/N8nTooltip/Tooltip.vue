@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import type { PropType } from 'vue';
 import { ElTooltip } from 'element-plus';
+import type { PropType } from 'vue';
+
 import type { IN8nButton } from 'n8n-design-system/types';
+
 import N8nButton from '../N8nButton';
 
 export type Justify =

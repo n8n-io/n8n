@@ -1,11 +1,12 @@
 <script lang="ts" setup>
 import { computed, ref, watch } from 'vue';
+
+import { defaultStickyProps } from './constants';
+import type { StickyProps } from './types';
+import { useI18n } from '../../composables/useI18n';
 import N8nInput from '../N8nInput';
 import N8nMarkdown from '../N8nMarkdown';
 import N8nText from '../N8nText';
-import { useI18n } from '../../composables/useI18n';
-import { defaultStickyProps } from './constants';
-import type { StickyProps } from './types';
 
 const props = withDefaults(defineProps<StickyProps>(), defaultStickyProps);
 

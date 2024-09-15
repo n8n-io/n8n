@@ -1,4 +1,5 @@
 import { render, fireEvent } from '@testing-library/vue';
+
 import N8nMarkdown from '../Markdown.vue';
 
 describe('components', () => {
