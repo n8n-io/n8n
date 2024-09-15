@@ -14,7 +14,7 @@ import { Container } from 'typedi';
 import { ProcessedDataRepository } from '@/databases/repositories/processed-data.repository';
 import type { IProcessedDataEntries, IProcessedDataLatest } from '@/interfaces';
 
-export class ProcessedDataManagerNativeDatabase implements IProcessedDataManager {
+export class ProcessedDataHelper implements IProcessedDataManager {
 	private static sortEntries(items: ProcessedDataItemTypes[]) {
 		return [...items].sort();
 	}
@@ -88,7 +88,7 @@ export class ProcessedDataManagerNativeDatabase implements IProcessedDataManager
 		const processedData = await Container.get(ProcessedDataRepository).findOne({
 			where: {
 				workflowId: contextData.workflow.id as string,
-				context: ProcessedDataManagerNativeDatabase.createContext(context, contextData),
+				context: ProcessedDataHelper.createContext(context, contextData),
 			},
 		});
 
@@ -104,18 +104,12 @@ export class ProcessedDataManagerNativeDatabase implements IProcessedDataManager
 			return returnData;
 		}
 
-		if (options.mode === 'latestIncrementalKey' || options.mode === 'latestDate') {
+		if (['latestIncrementalKey', 'latestDate'].includes(options.mode)) {
 			const processedDataValue = processedData.value as IProcessedDataLatest;
 
-			const incomingItems = ProcessedDataManagerNativeDatabase.sortEntries(items);
+			const incomingItems = ProcessedDataHelper.sortEntries(items);
 			incomingItems.forEach((item) => {
-				if (
-					ProcessedDataManagerNativeDatabase.compareValues(
-						options.mode,
-						item,
-						processedDataValue.data,
-					)
-				) {
+				if (ProcessedDataHelper.compareValues(options.mode, item, processedDataValue.data)) {
 					returnData.new.push(item);
 				} else {
 					returnData.processed.push(item);
@@ -124,9 +118,7 @@ export class ProcessedDataManagerNativeDatabase implements IProcessedDataManager
 			return returnData;
 		}
 
-		const hashedItems = items.map((item) =>
-			ProcessedDataManagerNativeDatabase.createValueHash(item),
-		);
+		const hashedItems = items.map((item) => ProcessedDataHelper.createValueHash(item));
 
 		hashedItems.forEach((item, index) => {
 			if ((processedData.value.data as string[]).find((entry) => entry === item)) {
@@ -145,7 +137,7 @@ export class ProcessedDataManagerNativeDatabase implements IProcessedDataManager
 		contextData: ICheckProcessedContextData,
 		options: ICheckProcessedOptions,
 	): Promise<ICheckProcessedOutput> {
-		const dbContext = ProcessedDataManagerNativeDatabase.createContext(context, contextData);
+		const dbContext = ProcessedDataHelper.createContext(context, contextData);
 
 		if (contextData.workflow.id === undefined) {
 			throw new ApplicationError('Workflow has to have an ID set!');
@@ -154,7 +146,7 @@ export class ProcessedDataManagerNativeDatabase implements IProcessedDataManager
 		const processedData = await Container.get(ProcessedDataRepository).findOne({
 			where: {
 				workflowId: contextData.workflow.id as string,
-				context: ProcessedDataManagerNativeDatabase.createContext(context, contextData),
+				context: ProcessedDataHelper.createContext(context, contextData),
 			},
 		});
 
@@ -164,8 +156,8 @@ export class ProcessedDataManagerNativeDatabase implements IProcessedDataManager
 			);
 		}
 
-		if (options.mode === 'latestIncrementalKey' || options.mode === 'latestDate') {
-			const incomingItems = ProcessedDataManagerNativeDatabase.sortEntries(items);
+		if (['latestIncrementalKey', 'latestDate'].includes(options.mode)) {
+			const incomingItems = ProcessedDataHelper.sortEntries(items);
 
 			if (!processedData) {
 				// All items are new so add new entries
@@ -193,15 +185,9 @@ export class ProcessedDataManagerNativeDatabase implements IProcessedDataManager
 			const processedDataValue = processedData.value as IProcessedDataLatest;
 
 			incomingItems.forEach((item) => {
-				if (
-					ProcessedDataManagerNativeDatabase.compareValues(
-						options.mode,
-						item,
-						processedDataValue.data,
-					)
-				) {
+				if (ProcessedDataHelper.compareValues(options.mode, item, processedDataValue.data)) {
 					returnData.new.push(item);
-					if (ProcessedDataManagerNativeDatabase.compareValues(options.mode, item, largestValue)) {
+					if (ProcessedDataHelper.compareValues(options.mode, item, largestValue)) {
 						largestValue = item;
 					}
 				} else {
@@ -216,9 +202,7 @@ export class ProcessedDataManagerNativeDatabase implements IProcessedDataManager
 			return returnData;
 		}
 
-		const hashedItems = items.map((item) =>
-			ProcessedDataManagerNativeDatabase.createValueHash(item),
-		);
+		const hashedItems = items.map((item) => ProcessedDataHelper.createValueHash(item));
 
 		if (!processedData) {
 			// All items are new so add new entries
@@ -271,14 +255,14 @@ export class ProcessedDataManagerNativeDatabase implements IProcessedDataManager
 		contextData: ICheckProcessedContextData,
 		options: ICheckProcessedOptions,
 	): Promise<void> {
-		if (options.mode === 'latestIncrementalKey' || options.mode === 'latestDate') {
+		if (['latestIncrementalKey', 'latestDate'].includes(options.mode)) {
 			throw new ApplicationError('Removing processed data is not possible in mode "latest"');
 		}
 
 		const processedData = await Container.get(ProcessedDataRepository).findOne({
 			where: {
 				workflowId: contextData.workflow.id as string,
-				context: ProcessedDataManagerNativeDatabase.createContext(context, contextData),
+				context: ProcessedDataHelper.createContext(context, contextData),
 			},
 		});
 
@@ -286,15 +270,12 @@ export class ProcessedDataManagerNativeDatabase implements IProcessedDataManager
 			return;
 		}
 
-		const hashedItems = items.map((item) =>
-			ProcessedDataManagerNativeDatabase.createValueHash(item),
-		);
+		const hashedItems = items.map((item) => ProcessedDataHelper.createValueHash(item));
 
 		const processedDataValue = processedData.value as IProcessedDataEntries;
 
-		let index;
 		hashedItems.forEach((item) => {
-			index = processedDataValue.data.findIndex((value) => value === item);
+			const index = processedDataValue.data.findIndex((value) => value === item);
 			if (index !== -1) {
 				processedDataValue.data.splice(index, 1);
 			}
@@ -311,7 +292,7 @@ export class ProcessedDataManagerNativeDatabase implements IProcessedDataManager
 		console.log(options);
 		await Container.get(ProcessedDataRepository).delete({
 			workflowId: contextData.workflow.id as string,
-			context: ProcessedDataManagerNativeDatabase.createContext(context, contextData),
+			context: ProcessedDataHelper.createContext(context, contextData),
 		});
 	}
 }

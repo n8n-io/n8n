@@ -1,8 +1,4 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import get from 'lodash/get';
-import isEqual from 'lodash/isEqual';
-import lt from 'lodash/lt';
-import pick from 'lodash/pick';
+import { get, isEqual, lt, pick } from 'lodash';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type {
 	INodeTypeBaseDescription,
@@ -347,6 +343,7 @@ export class RemoveDuplicatesV2 implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const operation = this.getNodeParameter('operation', 0);
+		const returnData: INodeExecutionData[] = [];
 		if (operation === 'removeDuplicateInputItems') {
 			const compare = this.getNodeParameter('compare', 0) as string;
 			const disableDotNotation = this.getNodeParameter(
@@ -454,14 +451,17 @@ export class RemoveDuplicatesV2 implements INodeType {
 					temp = newItems[index];
 				}
 			}
-			let returnData = items.filter((_, index) => !removedIndexes.includes(index));
+			let updatedItems: INodeExecutionData[] = items.filter(
+				(_, index) => !removedIndexes.includes(index),
+			);
 
 			if (removeOtherFields) {
-				returnData = returnData.map((item, index) => ({
+				updatedItems = updatedItems.map((item, index) => ({
 					json: pick(item.json, ...keys),
 					pairedItem: { item: index },
 				}));
 			}
+			returnData.push(...updatedItems);
 
 			return [returnData];
 		} else if (operation === 'removeItemsSeenInPreviousExecutions') {
@@ -524,11 +524,13 @@ export class RemoveDuplicatesV2 implements INodeType {
 					);
 				}
 
-				const returnData: INodeExecutionData[] = itemsProcessed.new
-					.map((key) => {
-						return itemMapping[key];
-					})
-					.flat();
+				returnData.push(
+					...itemsProcessed.new
+						.map((key) => {
+							return itemMapping[key];
+						})
+						.flat(),
+				);
 
 				return [returnData];
 			} else if (logic === 'removeItemsUpToStoredIncrementalKey') {
@@ -596,11 +598,13 @@ export class RemoveDuplicatesV2 implements INodeType {
 					);
 				}
 
-				const returnData: INodeExecutionData[] = itemsProcessed.new
-					.map((key) => {
-						return itemMapping[key];
-					})
-					.flat();
+				returnData.push(
+					...itemsProcessed.new
+						.map((key) => {
+							return itemMapping[key];
+						})
+						.flat(),
+				);
 
 				return [returnData];
 			} else if (logic === 'RemoveItemsUpToStoredDate') {
@@ -628,6 +632,13 @@ export class RemoveDuplicatesV2 implements INodeType {
 
 				for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 					checkValue = this.getNodeParameter('dateKeyField', itemIndex, '')?.toString() || '';
+					const date = new Date(checkValue);
+					if (isNaN(date.getTime())) {
+						throw new NodeOperationError(
+							this.getNode(),
+							`The value '${checkValue}' is not a valid date. Please provide a valid date.`,
+						);
+					}
 					if (
 						itemMapping[checkValue] &&
 						(allowDuplicateItemsInTheSameExecution ?? !uniqueItems.includes(checkValue))
@@ -660,11 +671,13 @@ export class RemoveDuplicatesV2 implements INodeType {
 					);
 				}
 
-				const returnData: INodeExecutionData[] = itemsProcessed.new
-					.map((key) => {
-						return itemMapping[key];
-					})
-					.flat();
+				returnData.push(
+					...itemsProcessed.new
+						.map((key) => {
+							return itemMapping[key];
+						})
+						.flat(),
+				);
 
 				return [returnData];
 			} else {
