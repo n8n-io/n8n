@@ -4,12 +4,12 @@ import { agent as testAgent } from 'supertest';
 import type SuperAgentTest from 'supertest/lib/agent';
 import Container from 'typedi';
 
-import { AbstractServer } from '@/abstract-server';
 import { ExternalHooks } from '@/external-hooks';
 import { WaitingForms } from '@/waiting-forms';
 import { LiveWebhooks } from '@/webhooks/live-webhooks';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
 import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
+import { WebhookServer } from '@/webhooks/webhook-server';
 import type { IWebhookResponseCallbackData } from '@/webhooks/webhook.types';
 import { mockInstance } from '@test/mocking';
 
@@ -26,9 +26,9 @@ describe('WebhookServer', () => {
 		mockInstance(WaitingForms);
 
 		beforeAll(async () => {
-			const server = new (class extends AbstractServer {
-				testWebhooksEnabled = true;
-			})();
+			const server = new WebhookServer();
+			// @ts-expect-error: testWebhooksEnabled is private
+			server.testWebhooksEnabled = true;
 			await server.start();
 			agent = testAgent(server.app);
 		});

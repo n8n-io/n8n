@@ -1,13 +1,11 @@
 import { LicenseManager } from '@n8n_io/license-sdk';
 import { mock } from 'jest-mock-extended';
-import { InstanceSettings } from 'n8n-core';
+import type { InstanceSettings } from 'n8n-core';
 
 import config from '@/config';
 import { N8N_VERSION } from '@/constants';
 import { License } from '@/license';
-import { Logger } from '@/logger';
-import { OrchestrationService } from '@/services/orchestration.service';
-import { mockInstance } from '@test/mocking';
+import type { Logger } from '@/logger';
 
 jest.mock('@n8n_io/license-sdk');
 
@@ -27,9 +25,11 @@ describe('License', () => {
 	});
 
 	let license: License;
-	const logger = mockInstance(Logger);
-	const instanceSettings = mockInstance(InstanceSettings, { instanceId: MOCK_INSTANCE_ID });
-	mockInstance(OrchestrationService);
+	const logger = mock<Logger>();
+	const instanceSettings = mock<InstanceSettings>({
+		instanceId: MOCK_INSTANCE_ID,
+		instanceType: 'main',
+	});
 
 	beforeEach(async () => {
 		license = new License(logger, instanceSettings, mock(), mock(), mock());
@@ -56,8 +56,14 @@ describe('License', () => {
 	});
 
 	test('initializes license manager for worker', async () => {
-		license = new License(logger, instanceSettings, mock(), mock(), mock());
-		await license.init('worker');
+		license = new License(
+			logger,
+			mock<InstanceSettings>({ instanceType: 'worker' }),
+			mock(),
+			mock(),
+			mock(),
+		);
+		await license.init();
 		expect(LicenseManager).toHaveBeenCalledWith({
 			autoRenewEnabled: false,
 			autoRenewOffset: MOCK_RENEW_OFFSET,
@@ -265,7 +271,7 @@ describe('License', () => {
 
 			await license.reinit();
 
-			expect(initSpy).toHaveBeenCalledWith('main', true);
+			expect(initSpy).toHaveBeenCalledWith(true);
 
 			expect(LicenseManager.prototype.reset).toHaveBeenCalled();
 			expect(LicenseManager.prototype.initialize).toHaveBeenCalled();
