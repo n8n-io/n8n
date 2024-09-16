@@ -1,6 +1,7 @@
 import { GlobalConfig } from '@n8n/config';
 import express from 'express';
 import { ensureError } from 'n8n-workflow';
+import { strict as assert } from 'node:assert';
 import http from 'node:http';
 import type { Server } from 'node:http';
 import { Service } from 'typedi';
@@ -10,7 +11,6 @@ import { CredentialsOverwrites } from '@/credentials-overwrites';
 import * as Db from '@/db';
 import { CredentialsOverwritesAlreadySetError } from '@/errors/credentials-overwrites-already-set.error';
 import { NonJsonBodyError } from '@/errors/non-json-body.error';
-import { NonWorkerInstanceTypeError } from '@/errors/non-worker-instance-type.error';
 import { PortTakenError } from '@/errors/port-taken.error';
 import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 import { ExternalHooks } from '@/external-hooks';
@@ -41,7 +41,7 @@ export class WorkerServer {
 		private readonly credentialsOverwrites: CredentialsOverwrites,
 		private readonly externalHooks: ExternalHooks,
 	) {
-		this.assertWorker();
+		assert(config.getEnv('generic.instanceType') === 'worker');
 
 		const app = express();
 
@@ -125,13 +125,5 @@ export class WorkerServer {
 		this.overwritesLoaded = true;
 
 		ResponseHelper.sendSuccessResponse(res, { success: true }, true, 200);
-	}
-
-	private assertWorker() {
-		const instanceType = config.getEnv('generic.instanceType');
-
-		if (instanceType === 'worker') return;
-
-		throw new NonWorkerInstanceTypeError(instanceType);
 	}
 }

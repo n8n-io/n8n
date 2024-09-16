@@ -1,10 +1,10 @@
 import type { GlobalConfig } from '@n8n/config';
 import type express from 'express';
 import { mock } from 'jest-mock-extended';
+import { AssertionError } from 'node:assert';
 import * as http from 'node:http';
 
 import config from '@/config';
-import { NonWorkerInstanceTypeError } from '@/errors/non-worker-instance-type.error';
 import { PortTakenError } from '@/errors/port-taken.error';
 import type { ExternalHooks } from '@/external-hooks';
 import { bodyParser, rawBodyReader } from '@/middlewares';
@@ -47,7 +47,7 @@ describe('WorkerServer', () => {
 
 			expect(
 				() => new WorkerServer(globalConfig, mock(), mock(), mock(), externalHooks),
-			).toThrowError(NonWorkerInstanceTypeError);
+			).toThrowError(AssertionError);
 		});
 
 		it('should throw if port taken', async () => {
