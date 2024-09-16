@@ -17,7 +17,7 @@ import { AI_ASSISTANT_EXPERIMENT } from '@/constants';
 import { reactive } from 'vue';
 import * as chatAPI from '@/api/assistant';
 import * as telemetryModule from '@/composables/useTelemetry';
-import { Telemetry } from '@/plugins/telemetry';
+import type { Telemetry } from '@/plugins/telemetry';
 
 let settingsStore: ReturnType<typeof useSettingsStore>;
 let posthogStore: ReturnType<typeof usePostHog>;
