@@ -29,6 +29,7 @@ import {
 } from '@/utils/nodeTypesUtils';
 import { get, set } from 'lodash-es';
 import { useRouter } from 'vue-router';
+import { Button } from '../../../design-system/src/components/AskAssistantButton/AskAssistantButton.stories';
 
 const LazyFixedCollectionParameter = defineAsyncComponent(
 	async () => await import('./FixedCollectionParameter.vue'),
@@ -416,16 +417,6 @@ function getParameterValue<T extends NodeParameterValueType = NodeParameterValue
 				v-else-if="['collection', 'fixedCollection'].includes(parameter.type)"
 				class="multi-parameter"
 			>
-				<n8n-icon-button
-					v-if="hideDelete !== true && !isReadOnly && !parameter.isNodeSetting"
-					type="tertiary"
-					text
-					size="mini"
-					icon="trash"
-					class="delete-option"
-					:title="$locale.baseText('parameterInputList.delete')"
-					@click="deleteOption(parameter.name)"
-				></n8n-icon-button>
 				<n8n-input-label
 					:label="$locale.nodeText().inputLabelDisplayName(parameter, path)"
 					:tooltip-text="$locale.nodeText().inputLabelDescription(parameter, path)"
@@ -465,6 +456,16 @@ function getParameterValue<T extends NodeParameterValueType = NodeParameterValue
 					<n8n-icon icon="exclamation-triangle" size="xsmall" />
 					{{ $locale.baseText('parameterInputList.loadingError') }}
 				</n8n-text>
+				<n8n-icon-button
+					v-if="hideDelete !== true && !isReadOnly && !parameter.isNodeSetting"
+					type="tertiary"
+					text
+					size="mini"
+					icon="trash"
+					class="delete-option"
+					:title="$locale.baseText('parameterInputList.delete')"
+					@click="deleteOption(parameter.name)"
+				></n8n-icon-button>
 			</div>
 			<ResourceMapper
 				v-else-if="parameter.type === 'resourceMapper'"
@@ -532,12 +533,25 @@ function getParameterValue<T extends NodeParameterValueType = NodeParameterValue
 
 <style lang="scss">
 .parameter-input-list-wrapper {
+	.drag-option {
+		position: absolute;
+		opacity: 0;
+		top: 28px;
+		left: calc(-1 * var(--spacing-2xs));
+		transition: opacity 100ms ease-in;
+		color: var(--color-icon-base);
+	}
 	.delete-option {
 		position: absolute;
 		opacity: 0;
-		top: 0;
-		left: calc(-1 * var(--spacing-2xs));
+		top: 28px;
+		right: calc(-1 * var(--spacing-2xs));
 		transition: opacity 100ms ease-in;
+		color: var(--color-icon-base);
+	}
+	.drag-option > Button:hover,
+	.delete-option > Button:hover {
+		color: var(--color-primary);
 	}
 
 	.indent > div {
@@ -556,7 +570,10 @@ function getParameterValue<T extends NodeParameterValueType = NodeParameterValue
 	.parameter-item {
 		position: relative;
 		margin: var(--spacing-xs) 0;
+		width: calc(100% - 28px);
 	}
+	.parameter-item:hover > .drag-option,
+	.multi-parameter:hover > .drag-option,
 	.parameter-item:hover > .delete-option,
 	.multi-parameter:hover > .delete-option {
 		opacity: 1;

@@ -244,15 +244,7 @@ export default defineComponent({
 					<div
 						:class="index ? 'border-top-dashed parameter-item-wrapper ' : 'parameter-item-wrapper'"
 					>
-						<div v-if="!isReadOnly" class="delete-option">
-							<n8n-icon-button
-								type="tertiary"
-								text
-								size="mini"
-								icon="trash"
-								:title="$locale.baseText('fixedCollectionParameter.deleteItem')"
-								@click="deleteOption(property.name, index)"
-							></n8n-icon-button>
+						<div v-if="!isReadOnly" class="drag-option">
 							<n8n-icon-button
 								v-if="sortable && index !== 0"
 								type="tertiary"
@@ -270,6 +262,16 @@ export default defineComponent({
 								icon="angle-down"
 								:title="$locale.baseText('fixedCollectionParameter.moveDown')"
 								@click="moveOptionDown(property.name, index)"
+							></n8n-icon-button>
+						</div>
+						<div v-if="!isReadOnly" class="delete-option">
+							<n8n-icon-button
+								type="tertiary"
+								text
+								size="mini"
+								icon="trash"
+								:title="$locale.baseText('fixedCollectionParameter.deleteItem')"
+								@click="deleteOption(property.name, index)"
 							></n8n-icon-button>
 						</div>
 						<Suspense>
@@ -343,7 +345,8 @@ export default defineComponent({
 .fixed-collection-parameter {
 	padding-left: var(--spacing-s);
 
-	.delete-option {
+	.delete-option,
+	.drag-option {
 		display: flex;
 		flex-direction: column;
 	}
@@ -379,7 +382,7 @@ export default defineComponent({
 .fixed-collection-parameter-property {
 	margin: var(--spacing-xs) 0;
 }
-
+.parameter-item:hover > .parameter-item-wrapper > .drag-option,
 .parameter-item:hover > .parameter-item-wrapper > .delete-option {
 	opacity: 1;
 }

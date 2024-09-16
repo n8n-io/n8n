@@ -115,7 +115,6 @@ export class E2EController {
 	) {
 		license.isFeatureEnabled = (feature: BooleanLicenseFeature) =>
 			this.enabledFeatures[feature] ?? false;
-		// @ts-expect-error Overriding method
 		// eslint-disable-next-line @typescript-eslint/unbound-method
 		license.getFeatureValue<NumericLicenseFeature> = (feature: NumericLicenseFeature) =>
 			this.numericFeatures[feature] ?? UNLIMITED_LICENSE_QUOTA;
