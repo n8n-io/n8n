@@ -329,7 +329,7 @@ describe('AI Assistant store', () => {
 		expect(apiSpy).toHaveBeenCalled();
 	});
 
-	it.only('should call telemetry for opening assistant with error', async () => {
+	it('should call telemetry for opening assistant with error', async () => {
 		const context: ChatRequest.ErrorContext = {
 			error: {
 				description: '',
