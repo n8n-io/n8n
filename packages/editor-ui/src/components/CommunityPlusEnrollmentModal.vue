@@ -2,9 +2,10 @@
 import { ref } from 'vue';
 import { createEventBus } from 'n8n-design-system/utils';
 import type { Validatable, IValidator } from 'n8n-design-system';
-import Modal from '@/components/Modal.vue';
 import { N8nFormInput } from 'n8n-design-system';
 import { VALID_EMAIL_REGEX } from '@/constants';
+import Modal from '@/components/Modal.vue';
+import { useI18n } from '@/composables/useI18n';
 
 const props = defineProps<{
 	modalName: string;
@@ -12,6 +13,8 @@ const props = defineProps<{
 		closeCallback: () => void;
 	};
 }>();
+
+const i18n = useI18n();
 
 const valid = ref(false);
 const email = ref('');
@@ -59,33 +62,32 @@ const confirm = () => {
 		<template #content>
 			<div>
 				<p :class="$style.top">
-					<N8nBadge>Time limited offer</N8nBadge>
+					<N8nBadge>{{ i18n.baseText('communityPlusModal.badge') }}</N8nBadge>
 				</p>
-				<N8nText tag="h1" align="center" size="xlarge">Unlock selected Pro features</N8nText>
-				<N8nText tag="p"
-					>Receive a free activation key to access a limited set of pro features on your n8n
-					installation.</N8nText
-				>
+				<N8nText tag="h1" align="center" size="xlarge">{{
+					i18n.baseText('communityPlusModal.title')
+				}}</N8nText>
+				<N8nText tag="p">{{ i18n.baseText('communityPlusModal.description') }}</N8nText>
 				<ul :class="$style.features">
 					<li>
 						<N8nIcon icon="check" class="mr-xs" />
 						<N8nText>
-							<strong>Workflow history</strong>
-							Review and restore a previous version of your work within the last 24 hours
+							<strong>{{ i18n.baseText('communityPlusModal.features.first.title') }}</strong>
+							{{ i18n.baseText('communityPlusModal.features.first.description') }}
 						</N8nText>
 					</li>
 					<li>
 						<N8nIcon icon="check" class="mr-xs" />
 						<N8nText>
-							<strong>Advanced debugging</strong>
-							Easily debug your workflows using data from failed executions
+							<strong>{{ i18n.baseText('communityPlusModal.features.second.title') }}</strong>
+							{{ i18n.baseText('communityPlusModal.features.second.description') }}
 						</N8nText>
 					</li>
 					<li>
 						<N8nIcon icon="check" class="mr-xs" />
 						<N8nText>
-							<strong>Custom execution search</strong>
-							Easily debug your workflows using data from failed executions
+							<strong>{{ i18n.baseText('communityPlusModal.features.third.title') }}</strong>
+							{{ i18n.baseText('communityPlusModal.features.third.description') }}
 						</N8nText>
 					</li>
 				</ul>
@@ -102,16 +104,18 @@ const confirm = () => {
 					:validate-on-blur="false"
 					:validation-rules="validationRules"
 					:validators="validators"
-					info-text="We'll only store this email to register your license and send your key"
+					:info-text="i18n.baseText('communityPlusModal.input.info')"
 					@validate="valid = $event"
 				/>
 			</div>
 		</template>
 		<template #footer>
 			<div :class="$style.buttons">
-				<N8nButton :class="$style.skip" type="secondary" text @click="closeModal"> Skip </N8nButton>
+				<N8nButton :class="$style.skip" type="secondary" text @click="closeModal">{{
+					i18n.baseText('communityPlusModal.button.skip')
+				}}</N8nButton>
 				<N8nButton :disabled="!valid" type="primary" @click="confirm">
-					Send me a free license key
+					{{ i18n.baseText('communityPlusModal.button.confirm') }}
 				</N8nButton>
 			</div>
 		</template>
