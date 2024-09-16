@@ -21,7 +21,7 @@ import type { BooleanLicenseFeature, N8nInstanceType, NumericLicenseFeature } fr
 import type { RedisServicePubSubPublisher } from './services/redis/redis-service-pub-sub-publisher';
 import { RedisService } from './services/redis.service';
 
-type FeatureReturnType = Partial<
+export type FeatureReturnType = Partial<
 	{
 		planName: string;
 	} & { [K in NumericLicenseFeature]: number } & { [K in BooleanLicenseFeature]: boolean }

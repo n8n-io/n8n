@@ -7,9 +7,15 @@
 	"[typescript]": {
 		"editor.defaultFormatter": "biomejs.biome"
 	},
+	"[json]": {
+		"editor.defaultFormatter": "biomejs.biome"
+	},
+	"[jsonc]": {
+		"editor.defaultFormatter": "biomejs.biome"
+	},
 	"editor.codeActionsOnSave": {
-		"quickfix.biome": true,
-		"source.organizeImports.biome": true
+		"quickfix.biome": "explicit",
+		"source.organizeImports.biome": "never"
 	},
 	"search.exclude": {
 		"node_modules": true,

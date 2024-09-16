@@ -8,6 +8,7 @@
     "test:e2e:dev": "scripts/run-e2e.js dev",
     "test:e2e:all": "scripts/run-e2e.js all",
     "format": "biome format --write .",
+    "format:check": "biome ci .",
     "lint": "eslint . --quiet",
     "lintfix": "eslint . --fix",
     "develop": "cd ..; pnpm dev",

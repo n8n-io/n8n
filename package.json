@@ -20,7 +20,7 @@
     "clean": "turbo run clean --parallel",
     "reset": "node scripts/ensure-zx.mjs && zx scripts/reset.mjs",
     "format": "turbo run format && node scripts/format.mjs",
-    "format:biome": "pnpm --filter=!@n8n/chat --filter=!n8n-design-system --filter=!n8n-editor-ui format",
+    "format:check": "turbo run format:check",
     "lint": "turbo run lint",
     "lintfix": "turbo run lintfix",
     "lint:backend": "turbo run lint:backend",
