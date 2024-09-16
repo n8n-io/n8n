@@ -348,7 +348,7 @@ describe('AI Assistant store', () => {
 		const mockSessionId = 'test';
 
 		const assistantStore = useAssistantStore();
-		apiSpy.mockImplementation((ctx, payload, onMessage) => {
+		apiSpy.mockImplementation((_ctx, _payload, onMessage) => {
 			onMessage({
 				messages: [],
 				sessionId: mockSessionId,
