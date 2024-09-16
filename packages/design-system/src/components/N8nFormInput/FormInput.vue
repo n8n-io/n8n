@@ -195,6 +195,7 @@ defineExpose({ inputRef });
 		:label="label"
 		:tooltip-text="tooltipText"
 		:required="required && showRequiredAsterisk"
+		:size="labelSize"
 	>
 		<template #content>
 			{{ tooltipText }}
