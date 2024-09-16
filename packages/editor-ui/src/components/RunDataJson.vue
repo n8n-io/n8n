@@ -72,13 +72,19 @@ export default defineComponent({
 		const selectedJsonPath = ref(nonExistingJsonPath);
 		const draggingPath = ref<null | string>(null);
 		const displayMode = ref('json');
+		const jsonDataContainerHeight = ref<number>();
 
 		return {
 			externalHooks,
 			selectedJsonPath,
 			draggingPath,
 			displayMode,
+			jsonDataContainerHeight,
 		};
+	},
+	mounted() {
+		const jsonDataContainer = this.$refs.jsonDataContainer as HTMLDivElement;
+		this.jsonDataContainerHeight = jsonDataContainer.offsetHeight;
 	},
 	computed: {
 		...mapStores(useNDVStore, useWorkflowsStore),
@@ -147,7 +153,7 @@ export default defineComponent({
 </script>
 
 <template>
-	<div :class="[$style.jsonDisplay, { [$style.highlight]: highlight }]">
+	<div ref="jsonDataContainer" :class="[$style.jsonDisplay, { [$style.highlight]: highlight }]">
 		<Suspense>
 			<LazyRunDataJsonActions
 				v-if="!editMode.enabled"
@@ -178,6 +184,8 @@ export default defineComponent({
 				root-path=""
 				selectable-type="single"
 				class="json-data"
+				:virtual="true"
+				:height="jsonDataContainerHeight"
 				@update:selected-value="selectedJsonPath = $event"
 			>
 				<template #renderNodeKey="{ node }">
@@ -229,11 +237,10 @@ export default defineComponent({
 	left: 0;
 	padding-left: var(--spacing-s);
 	right: 0;
-	overflow-y: auto;
+	overflow-y: hidden;
 	line-height: 1.5;
 	word-break: normal;
 	height: 100%;
-	padding-bottom: var(--spacing-3xl);
 
 	&:hover {
 		/* Shows .actionsGroup element from <run-data-json-actions /> child component */
