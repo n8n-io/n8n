@@ -1,3 +1,13 @@
+## [1.59.1](https://github.com/n8n-io/n8n/compare/n8n@1.59.0...n8n@1.59.1) (2024-09-16)
+
+
+### Bug Fixes
+
+* Fix telemetry causing console error ([#10828](https://github.com/n8n-io/n8n/issues/10828)) ([7a778c6](https://github.com/n8n-io/n8n/commit/7a778c6ebb463dda2bac30e2b39a6d3fa32bb09e))
+* Prevent copying workflow when copying outside of canvas ([#10813](https://github.com/n8n-io/n8n/issues/10813)) ([35fa3a5](https://github.com/n8n-io/n8n/commit/35fa3a5a6e13d645dd3e06fa4acf5c3fbf17fa7e))
+
+
+
 # [1.59.0](https://github.com/n8n-io/n8n/compare/n8n@1.58.0...n8n@1.59.0) (2024-09-11)
 
 
