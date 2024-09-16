@@ -1,8 +1,10 @@
-import { Get, Post, RestController, GlobalScope } from '@/decorators';
-import { AuthenticatedRequest, LicenseRequest } from '@/requests';
-import { LicenseService } from './license.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type { AxiosError } from 'axios';
+
+import { Get, Post, RestController, GlobalScope } from '@/decorators';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { AuthenticatedRequest, LicenseRequest } from '@/requests';
+
+import { LicenseService } from './license.service';
 
 @RestController('/license')
 export class LicenseController {

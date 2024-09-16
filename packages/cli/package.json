@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "1.55.0",
+  "version": "1.59.0",
   "description": "n8n Workflow Automation Tool",
   "main": "dist/index",
   "types": "dist/index.d.ts",
@@ -78,12 +78,14 @@
     "chokidar": "^3.5.2",
     "concurrently": "^8.2.0",
     "ioredis-mock": "^8.8.1",
+    "mjml": "^4.15.3",
     "ts-essentials": "^7.0.3"
   },
   "dependencies": {
     "@azure/identity": "^4.3.0",
     "@azure/keyvault-secrets": "^4.8.0",
     "@google-cloud/secret-manager": "^5.6.0",
+    "@n8n/api-types": "workspace:*",
     "@n8n/client-oauth2": "workspace:*",
     "@n8n/config": "workspace:*",
     "@n8n/localtunnel": "3.0.0",
@@ -111,10 +113,10 @@
     "csrf": "3.1.0",
     "curlconverter": "3.21.0",
     "dotenv": "8.6.0",
-    "express": "4.19.2",
+    "express": "4.21.0",
     "express-async-errors": "3.1.1",
     "express-handlebars": "7.1.2",
-    "express-openapi-validator": "5.3.1",
+    "express-openapi-validator": "5.3.3",
     "express-prom-bundle": "6.6.0",
     "express-rate-limit": "7.2.0",
     "fast-glob": "catalog:",
@@ -173,6 +175,6 @@
     "xmllint-wasm": "3.0.1",
     "xss": "^1.0.14",
     "yamljs": "0.3.0",
-    "zod": "3.22.4"
+    "zod": "catalog:"
   }
 }

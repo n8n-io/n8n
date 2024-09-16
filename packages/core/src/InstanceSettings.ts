@@ -40,8 +40,15 @@ export class InstanceSettings {
 
 	readonly instanceId = this.generateInstanceId();
 
-	/** Always `leader` in single-main setup. `leader` or `follower` in multi-main setup. */
-	private instanceRole: InstanceRole = 'unset';
+	/**
+	 * A main is:
+	 * - `unset` during bootup,
+	 * - `leader` after bootup in single-main setup,
+	 * - `leader` or `follower` after bootup in multi-main setup.
+	 *
+	 * A non-main instance type (e.g. `worker`) is always `unset`.
+	 */
+	instanceRole: InstanceRole = 'unset';
 
 	get isLeader() {
 		return this.instanceRole === 'leader';

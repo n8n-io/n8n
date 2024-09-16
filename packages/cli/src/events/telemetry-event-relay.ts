@@ -1,23 +1,25 @@
+import { GlobalConfig } from '@n8n/config';
+import { snakeCase } from 'change-case';
+import type { ExecutionStatus, INodesGraphResult, ITelemetryTrackProperties } from 'n8n-workflow';
+import { TelemetryHelpers } from 'n8n-workflow';
+import os from 'node:os';
+import { get as pslGet } from 'psl';
 import { Service } from 'typedi';
+
+import config from '@/config';
+import { N8N_VERSION } from '@/constants';
+import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
+import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/relay-event-map';
-import { Telemetry } from '../telemetry';
-import config from '@/config';
-import os from 'node:os';
-import { License } from '@/License';
-import { GlobalConfig } from '@n8n/config';
-import { N8N_VERSION } from '@/constants';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import type { ExecutionStatus, INodesGraphResult, ITelemetryTrackProperties } from 'n8n-workflow';
-import { get as pslGet } from 'psl';
-import { TelemetryHelpers } from 'n8n-workflow';
-import { NodeTypes } from '@/NodeTypes';
-import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
-import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
-import type { IExecutionTrackProperties } from '@/Interfaces';
-import { determineFinalExecutionStatus } from '@/executionLifecycleHooks/shared/sharedHookFunctions';
+import { determineFinalExecutionStatus } from '@/execution-lifecycle-hooks/shared/shared-hook-functions';
+import type { IExecutionTrackProperties } from '@/interfaces';
+import { License } from '@/license';
+import { NodeTypes } from '@/node-types';
+
 import { EventRelay } from './event-relay';
-import { snakeCase } from 'change-case';
+import { Telemetry } from '../telemetry';
 
 @Service()
 export class TelemetryEventRelay extends EventRelay {
@@ -768,6 +770,7 @@ export class TelemetryEventRelay extends EventRelay {
 				metrics_category_routes: this.globalConfig.endpoints.metrics.includeApiEndpoints,
 				metrics_category_cache: this.globalConfig.endpoints.metrics.includeCacheMetrics,
 				metrics_category_logs: this.globalConfig.endpoints.metrics.includeMessageEventBusMetrics,
+				metrics_category_queue: this.globalConfig.endpoints.metrics.includeQueueMetrics,
 			},
 		};
 
@@ -945,11 +948,15 @@ export class TelemetryEventRelay extends EventRelay {
 		userId,
 		answers,
 	}: RelayEventMap['user-submitted-personalization-survey']) {
-		const camelCaseKeys = Object.keys(answers);
 		const personalizationSurveyData = { user_id: userId } as Record<string, string | string[]>;
-		camelCaseKeys.forEach((camelCaseKey) => {
-			personalizationSurveyData[snakeCase(camelCaseKey)] = answers[camelCaseKey];
-		});
+
+		// ESlint is wrong here
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+		for (const [camelCaseKey, value] of Object.entries(answers)) {
+			if (value) {
+				personalizationSurveyData[snakeCase(camelCaseKey)] = value;
+			}
+		}
 
 		this.telemetry.track('User responded to personalization questions', personalizationSurveyData);
 	}

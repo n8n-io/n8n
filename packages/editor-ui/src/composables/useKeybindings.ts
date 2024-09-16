@@ -1,12 +1,20 @@
 import { useActiveElement, useEventListener } from '@vueuse/core';
 import { useDeviceSupport } from 'n8n-design-system';
-import { computed, toValue, type MaybeRefOrGetter } from 'vue';
+import type { MaybeRef } from 'vue';
+import { computed, toValue, type MaybeRefOrGetter, unref } from 'vue';
 
 type KeyMap = Record<string, (event: KeyboardEvent) => void>;
 
-export const useKeybindings = (keymap: MaybeRefOrGetter<KeyMap>) => {
+export const useKeybindings = (
+	keymap: MaybeRefOrGetter<KeyMap>,
+	options?: {
+		disabled: MaybeRef<boolean>;
+	},
+) => {
 	const activeElement = useActiveElement();
 	const { isCtrlKeyPressed } = useDeviceSupport();
+
+	const isDisabled = computed(() => unref(options?.disabled));
 
 	const ignoreKeyPresses = computed(() => {
 		if (!activeElement.value) return false;
@@ -60,7 +68,7 @@ export const useKeybindings = (keymap: MaybeRefOrGetter<KeyMap>) => {
 	}
 
 	function onKeyDown(event: KeyboardEvent) {
-		if (ignoreKeyPresses.value) return;
+		if (ignoreKeyPresses.value || isDisabled.value) return;
 
 		const shortcutString = toShortcutString(event);
 

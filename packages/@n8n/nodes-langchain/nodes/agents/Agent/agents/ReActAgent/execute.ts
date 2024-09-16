@@ -24,7 +24,7 @@ export async function reActAgentAgentExecute(
 	this: IExecuteFunctions,
 	nodeVersion: number,
 ): Promise<INodeExecutionData[][]> {
-	this.logger.verbose('Executing ReAct Agent');
+	this.logger.debug('Executing ReAct Agent');
 
 	const model = (await this.getInputConnectionData(NodeConnectionType.AiLanguageModel, 0)) as
 		| BaseLanguageModel
@@ -114,7 +114,7 @@ export async function reActAgentAgentExecute(
 			returnData.push({ json: response });
 		} catch (error) {
 			throwIfToolSchema(this, error);
-			if (this.continueOnFail(error)) {
+			if (this.continueOnFail()) {
 				returnData.push({ json: { error: error.message }, pairedItem: { item: itemIndex } });
 				continue;
 			}

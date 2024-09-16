@@ -3,10 +3,12 @@ import { useToast } from '@/composables/useToast';
 import { useWorkflowActivate } from '@/composables/useWorkflowActivate';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { getActivatableTriggerNodes } from '@/utils/nodeTypesUtils';
-import { computed } from 'vue';
+import type { VNode } from 'vue';
+import { computed, h } from 'vue';
 import { useI18n } from '@/composables/useI18n';
 import type { PermissionsRecord } from '@/permissions';
 import { PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
+import WorkflowActivationErrorMessage from './WorkflowActivationErrorMessage.vue';
 
 const props = defineProps<{
 	workflowActive: boolean;
@@ -61,7 +63,7 @@ async function activeChanged(newActiveState: boolean) {
 }
 
 async function displayActivationError() {
-	let errorMessage: string;
+	let errorMessage: string | VNode;
 	try {
 		const errorData = await workflowsStore.getActivationError(props.workflowId);
 
@@ -70,10 +72,9 @@ async function displayActivationError() {
 				'workflowActivator.showMessage.displayActivationError.message.errorDataUndefined',
 			);
 		} else {
-			errorMessage = i18n.baseText(
-				'workflowActivator.showMessage.displayActivationError.message.errorDataNotUndefined',
-				{ interpolate: { message: errorData } },
-			);
+			errorMessage = h(WorkflowActivationErrorMessage, {
+				message: errorData,
+			});
 		}
 	} catch (error) {
 		errorMessage = i18n.baseText(
@@ -86,7 +87,6 @@ async function displayActivationError() {
 		message: errorMessage,
 		type: 'warning',
 		duration: 0,
-		dangerouslyUseHTMLString: true,
 	});
 }
 </script>

@@ -1,38 +1,39 @@
-import fs from 'node:fs';
-import { Container, Service } from 'typedi';
-import uniq from 'lodash/uniq';
+import { GlobalConfig } from '@n8n/config';
 import { createWriteStream } from 'fs';
 import { mkdir } from 'fs/promises';
-import path from 'path';
-import { GlobalConfig } from '@n8n/config';
+import uniq from 'lodash/uniq';
+import { InstanceSettings } from 'n8n-core';
 import type {
 	ICredentialType,
 	IN8nUISettings,
 	INodeTypeBaseDescription,
 	ITelemetrySettings,
 } from 'n8n-workflow';
-import { InstanceSettings } from 'n8n-core';
+import fs from 'node:fs';
+import path from 'path';
+import { Container, Service } from 'typedi';
 
 import config from '@/config';
 import { LICENSE_FEATURES } from '@/constants';
-import { CredentialsOverwrites } from '@/CredentialsOverwrites';
-import { CredentialTypes } from '@/CredentialTypes';
-import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
-import { License } from '@/License';
-import { getCurrentAuthenticationMethod } from '@/sso/ssoHelpers';
-import { getLdapLoginLabel } from '@/Ldap/helpers.ee';
-import { getSamlLoginLabel } from '@/sso/saml/samlHelpers';
-import { getVariablesLimit } from '@/environments/variables/environmentHelpers';
+import { CredentialTypes } from '@/credential-types';
+import { CredentialsOverwrites } from '@/credentials-overwrites';
+import { getVariablesLimit } from '@/environments/variables/environment-helpers';
+import { EventService } from '@/events/event.service';
+import { getLdapLoginLabel } from '@/ldap/helpers.ee';
+import { License } from '@/license';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { Logger } from '@/logger';
+import { isApiEnabled } from '@/public-api';
+import type { CommunityPackagesService } from '@/services/community-packages.service';
+import { getSamlLoginLabel } from '@/sso/saml/saml-helpers';
+import { getCurrentAuthenticationMethod } from '@/sso/sso-helpers';
+import { UserManagementMailer } from '@/user-management/email';
 import {
 	getWorkflowHistoryLicensePruneTime,
 	getWorkflowHistoryPruneTime,
-} from '@/workflows/workflowHistory/workflowHistoryHelper.ee';
-import { UserManagementMailer } from '@/UserManagement/email';
-import type { CommunityPackagesService } from '@/services/communityPackages.service';
-import { Logger } from '@/Logger';
+} from '@/workflows/workflow-history/workflow-history-helper.ee';
+
 import { UrlService } from './url.service';
-import { EventService } from '@/events/event.service';
-import { isApiEnabled } from '@/PublicApi';
 
 @Service()
 export class FrontendService {
@@ -58,7 +59,7 @@ export class FrontendService {
 		this.initSettings();
 
 		if (this.globalConfig.nodes.communityPackages.enabled) {
-			void import('@/services/communityPackages.service').then(({ CommunityPackagesService }) => {
+			void import('@/services/community-packages.service').then(({ CommunityPackagesService }) => {
 				this.communityPackagesService = Container.get(CommunityPackagesService);
 			});
 		}

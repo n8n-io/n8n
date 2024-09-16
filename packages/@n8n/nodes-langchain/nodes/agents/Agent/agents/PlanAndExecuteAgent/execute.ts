@@ -22,7 +22,7 @@ export async function planAndExecuteAgentExecute(
 	this: IExecuteFunctions,
 	nodeVersion: number,
 ): Promise<INodeExecutionData[][]> {
-	this.logger.verbose('Executing PlanAndExecute Agent');
+	this.logger.debug('Executing PlanAndExecute Agent');
 	const model = (await this.getInputConnectionData(
 		NodeConnectionType.AiLanguageModel,
 		0,
@@ -93,7 +93,7 @@ export async function planAndExecuteAgentExecute(
 			returnData.push({ json: response });
 		} catch (error) {
 			throwIfToolSchema(this, error);
-			if (this.continueOnFail(error)) {
+			if (this.continueOnFail()) {
 				returnData.push({ json: { error: error.message }, pairedItem: { item: itemIndex } });
 				continue;
 			}

@@ -1,10 +1,10 @@
-import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { UpdateWorkflowCommand } from '@/commands/update/workflow';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { setupTestCommand } from '@test-integration/utils/test-command';
 
-import { setupTestCommand } from '@test-integration/utils/testCommand';
-import * as testDb from '../../shared/testDb';
-import { createWorkflowWithTrigger, getAllWorkflows } from '../../shared/db/workflows';
 import { mockInstance } from '../../../shared/mocking';
+import { createWorkflowWithTrigger, getAllWorkflows } from '../../shared/db/workflows';
+import * as testDb from '../../shared/test-db';
 
 mockInstance(LoadNodesAndCredentials);
 const command = setupTestCommand(UpdateWorkflowCommand);

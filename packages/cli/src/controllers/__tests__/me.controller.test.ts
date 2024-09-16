@@ -1,23 +1,25 @@
 import type { Response } from 'express';
-import { Container } from 'typedi';
-import jwt from 'jsonwebtoken';
 import { mock, anyObject } from 'jest-mock-extended';
-import type { PublicUser } from '@/Interfaces';
-import type { User } from '@db/entities/User';
-import { API_KEY_PREFIX, MeController } from '@/controllers/me.controller';
+import jwt from 'jsonwebtoken';
+import { Container } from 'typedi';
+
 import { AUTH_COOKIE_NAME } from '@/constants';
+import { API_KEY_PREFIX, MeController } from '@/controllers/me.controller';
+import type { User } from '@/databases/entities/user';
+import { AuthUserRepository } from '@/databases/repositories/auth-user.repository';
+import { InvalidAuthTokenRepository } from '@/databases/repositories/invalid-auth-token.repository';
+import { UserRepository } from '@/databases/repositories/user.repository';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
+import { EventService } from '@/events/event.service';
+import { ExternalHooks } from '@/external-hooks';
+import type { PublicUser } from '@/interfaces';
+import { License } from '@/license';
+import { MfaService } from '@/mfa/mfa.service';
 import type { AuthenticatedRequest, MeRequest } from '@/requests';
 import { UserService } from '@/services/user.service';
-import { ExternalHooks } from '@/ExternalHooks';
-import { License } from '@/License';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { UserRepository } from '@/databases/repositories/user.repository';
-import { EventService } from '@/events/event.service';
-import { badPasswords } from '@test/testData';
 import { mockInstance } from '@test/mocking';
-import { AuthUserRepository } from '@/databases/repositories/authUser.repository';
-import { MfaService } from '@/Mfa/mfa.service';
-import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
+import { badPasswords } from '@test/test-data';
 
 const browserId = 'test-browser-id';
 
@@ -28,6 +30,7 @@ describe('MeController', () => {
 	const userRepository = mockInstance(UserRepository);
 	const mockMfaService = mockInstance(MfaService);
 	mockInstance(AuthUserRepository);
+	mockInstance(InvalidAuthTokenRepository);
 	mockInstance(License).isWithinUsersLimit.mockReturnValue(true);
 	const controller = Container.get(MeController);
 
@@ -349,10 +352,60 @@ describe('MeController', () => {
 			);
 		});
 
-		it('should throw BadRequestError on XSS attempt', async () => {
-			const req = mock<MeRequest.SurveyAnswers>({
-				body: { 'test-answer': '<script>alert("XSS")</script>' },
-			});
+		it('should not flag XSS attempt for `<` sign in company size', async () => {
+			const req = mock<MeRequest.SurveyAnswers>();
+			req.body = {
+				version: 'v4',
+				personalization_survey_submitted_at: '2024-08-06T12:19:51.268Z',
+				personalization_survey_n8n_version: '1.0.0',
+				companySize: '<20',
+				otherCompanyIndustryExtended: ['test'],
+				automationGoalSm: ['test'],
+				usageModes: ['test'],
+				email: 'test@email.com',
+				role: 'test',
+				roleOther: 'test',
+				reportedSource: 'test',
+				reportedSourceOther: 'test',
+			};
+
+			await expect(controller.storeSurveyAnswers(req)).resolves.toEqual({ success: true });
+		});
+
+		test.each([
+			'automationGoalDevops',
+			'companyIndustryExtended',
+			'otherCompanyIndustryExtended',
+			'automationGoalSm',
+			'usageModes',
+		])('should throw BadRequestError on XSS attempt for an array field %s', async (fieldName) => {
+			const req = mock<MeRequest.SurveyAnswers>();
+			req.body = {
+				version: 'v4',
+				personalization_survey_n8n_version: '1.0.0',
+				personalization_survey_submitted_at: new Date().toISOString(),
+				[fieldName]: ['<script>alert("XSS")</script>'],
+			};
+
+			await expect(controller.storeSurveyAnswers(req)).rejects.toThrowError(BadRequestError);
+		});
+
+		test.each([
+			'automationGoalDevopsOther',
+			'companySize',
+			'companyType',
+			'automationGoalSmOther',
+			'roleOther',
+			'reportedSource',
+			'reportedSourceOther',
+		])('should throw BadRequestError on XSS attempt for a string field %s', async (fieldName) => {
+			const req = mock<MeRequest.SurveyAnswers>();
+			req.body = {
+				version: 'v4',
+				personalization_survey_n8n_version: '1.0.0',
+				personalization_survey_submitted_at: new Date().toISOString(),
+				[fieldName]: '<script>alert("XSS")</script>',
+			};
 
 			await expect(controller.storeSurveyAnswers(req)).rejects.toThrowError(BadRequestError);
 		});

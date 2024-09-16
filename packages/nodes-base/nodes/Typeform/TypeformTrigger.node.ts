@@ -10,7 +10,7 @@ import type {
 	IWebhookResponseData,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, randomString } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionType, randomString } from 'n8n-workflow';
 
 import type {
 	ITypeformAnswer,
@@ -32,7 +32,7 @@ export class TypeformTrigger implements INodeType {
 			name: 'Typeform Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'typeformApi',
@@ -90,7 +90,7 @@ export class TypeformTrigger implements INodeType {
 				default: '',
 				required: true,
 				description:
-					'Form which should trigger workflow on submission. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'Form which should trigger workflow on submission. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Simplify Answers',

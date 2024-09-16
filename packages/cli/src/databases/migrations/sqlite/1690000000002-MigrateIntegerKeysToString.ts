@@ -1,9 +1,10 @@
+import { GlobalConfig } from '@n8n/config';
 import { statSync } from 'fs';
+import { InstanceSettings } from 'n8n-core';
 import path from 'path';
 import { Container } from 'typedi';
-import { InstanceSettings } from 'n8n-core';
-import { GlobalConfig } from '@n8n/config';
-import type { MigrationContext, IrreversibleMigration } from '@db/types';
+
+import type { MigrationContext, IrreversibleMigration } from '@/databases/types';
 
 export class MigrateIntegerKeysToString1690000000002 implements IrreversibleMigration {
 	transaction = false as const;

@@ -69,7 +69,7 @@ export const versionDescription: INodeTypeDescription = {
 	name: 'openAi',
 	icon: { light: 'file:openAi.svg', dark: 'file:openAi.dark.svg' },
 	group: ['transform'],
-	version: [1, 1.1, 1.2, 1.3, 1.4],
+	version: [1, 1.1, 1.2, 1.3, 1.4, 1.5],
 	subtitle: `={{(${prettifyOperation})($parameter.resource, $parameter.operation)}}`,
 	description: 'Message an assistant or GPT, analyze images, generate audio, etc.',
 	defaults: {
@@ -90,7 +90,7 @@ export const versionDescription: INodeTypeDescription = {
 		},
 	},
 	inputs: `={{(${configureNodeInputs})($parameter.resource, $parameter.operation, $parameter.hideTools)}}`,
-	outputs: ['main'],
+	outputs: [NodeConnectionType.Main],
 	credentials: [
 		{
 			name: 'openAiApi',

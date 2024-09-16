@@ -1,5 +1,6 @@
-import { PasswordUtility } from '@/services/password.utility';
 import Container from 'typedi';
+
+import { PasswordUtility } from '@/services/password.utility';
 
 function toComponents(hash: string) {
 	const BCRYPT_HASH_REGEX =

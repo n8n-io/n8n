@@ -1,6 +1,6 @@
+import { mkdirSync, mkdtempSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { mkdirSync, mkdtempSync, writeFileSync } from 'fs';
 
 process.env.N8N_ENCRYPTION_KEY = 'test_key';
 

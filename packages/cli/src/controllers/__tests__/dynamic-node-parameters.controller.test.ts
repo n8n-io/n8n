@@ -1,9 +1,10 @@
-import { DynamicNodeParametersController } from '@/controllers/dynamicNodeParameters.controller';
-import type { DynamicNodeParametersRequest } from '@/requests';
-import type { DynamicNodeParametersService } from '@/services/dynamicNodeParameters.service';
 import { mock } from 'jest-mock-extended';
-import * as AdditionalData from '@/WorkflowExecuteAdditionalData';
 import type { ILoadOptions, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
+
+import { DynamicNodeParametersController } from '@/controllers/dynamic-node-parameters.controller';
+import type { DynamicNodeParametersRequest } from '@/requests';
+import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
+import * as AdditionalData from '@/workflow-execute-additional-data';
 
 describe('DynamicNodeParametersController', () => {
 	const service = mock<DynamicNodeParametersService>();

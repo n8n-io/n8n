@@ -1,3 +1,7 @@
+import type { Scope } from '@n8n/permissions';
+import type { AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
+import { Expose } from 'class-transformer';
+import { IsBoolean, IsEmail, IsIn, IsOptional, IsString, Length } from 'class-validator';
 import type express from 'express';
 import type {
 	BannerName,
@@ -8,25 +12,23 @@ import type {
 	INodeCredentials,
 	INodeParameters,
 	INodeTypeNameVersion,
+	IPersonalizationSurveyAnswersV4,
 	IUser,
 } from 'n8n-workflow';
 
-import { Expose } from 'class-transformer';
-import { IsBoolean, IsEmail, IsIn, IsOptional, IsString, Length } from 'class-validator';
-import { NoXss } from '@/validators/no-xss.validator';
-import type { PublicUser, SecretsProvider, SecretsProviderState } from '@/Interfaces';
-import { AssignableRole } from '@db/entities/User';
-import type { GlobalRole, User } from '@db/entities/User';
-import type { Variables } from '@db/entities/Variables';
-import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
-import type { WorkflowHistory } from '@db/entities/WorkflowHistory';
-import type { Project, ProjectType } from '@db/entities/Project';
-import type { ProjectRole } from './databases/entities/ProjectRelation';
-import type { Scope } from '@n8n/permissions';
-import type { ScopesField } from './services/role.service';
-import type { AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
+import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
+import type { Project, ProjectType } from '@/databases/entities/project';
+import { AssignableRole } from '@/databases/entities/user';
+import type { GlobalRole, User } from '@/databases/entities/user';
+import type { Variables } from '@/databases/entities/variables';
+import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
+import type { WorkflowHistory } from '@/databases/entities/workflow-history';
+import type { PublicUser, SecretsProvider, SecretsProviderState } from '@/interfaces';
 import { NoUrl } from '@/validators/no-url.validator';
+import { NoXss } from '@/validators/no-xss.validator';
+
+import type { ProjectRole } from './databases/entities/project-relation';
+import type { ScopesField } from './services/role.service';
 
 export class UserUpdatePayload implements Pick<User, 'email' | 'firstName' | 'lastName'> {
 	@Expose()
@@ -235,7 +237,7 @@ export declare namespace MeRequest {
 		{},
 		{ currentPassword: string; newPassword: string; mfaCode?: string }
 	>;
-	export type SurveyAnswers = AuthenticatedRequest<{}, {}, Record<string, string> | {}>;
+	export type SurveyAnswers = AuthenticatedRequest<{}, {}, IPersonalizationSurveyAnswersV4>;
 }
 
 export interface UserSetupPayload {
@@ -441,6 +443,17 @@ export declare namespace DynamicNodeParametersRequest {
 // ----------------------------------
 
 export declare namespace TagsRequest {
+	type GetAll = AuthenticatedRequest<{}, {}, {}, { withUsageCount: string }>;
+	type Create = AuthenticatedRequest<{}, {}, { name: string }>;
+	type Update = AuthenticatedRequest<{ id: string }, {}, { name: string }>;
+	type Delete = AuthenticatedRequest<{ id: string }>;
+}
+
+// ----------------------------------
+//             /annotation-tags
+// ----------------------------------
+
+export declare namespace AnnotationTagsRequest {
 	type GetAll = AuthenticatedRequest<{}, {}, {}, { withUsageCount: string }>;
 	type Create = AuthenticatedRequest<{}, {}, { name: string }>;
 	type Update = AuthenticatedRequest<{ id: string }, {}, { name: string }>;

@@ -38,9 +38,7 @@ import { extension, lookup } from 'mime-types';
 import type {
 	BinaryHelperFunctions,
 	CloseFunction,
-	ConnectionTypes,
 	ContextType,
-	EventNamesAiNodesType,
 	FieldType,
 	FileSystemHelperFunctions,
 	FunctionsBase,
@@ -103,8 +101,10 @@ import type {
 	EnsureTypeOptions,
 	SSHTunnelFunctions,
 	SchedulingFunctions,
+	AiEvent,
 } from 'n8n-workflow';
 import {
+	NodeConnectionType,
 	ExpressionError,
 	LoggerProxy as Logger,
 	NodeApiError,
@@ -122,7 +122,6 @@ import {
 	jsonParse,
 	ApplicationError,
 	sleep,
-	OBFUSCATED_ERROR_MESSAGE,
 } from 'n8n-workflow';
 import type { Token } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
@@ -160,6 +159,7 @@ import { InstanceSettings } from './InstanceSettings';
 import { ScheduledTaskManager } from './ScheduledTaskManager';
 import { SSHClientsManager } from './SSHClientsManager';
 import { binaryToBuffer } from './BinaryData/utils';
+import { getNodeAsTool } from './CreateNodeAsTool';
 
 axios.defaults.timeout = 300000;
 // Prevent axios from adding x-form-www-urlencoded headers by default
@@ -1656,7 +1656,8 @@ export async function httpRequestWithAuthentication(
 		if (additionalCredentialOptions?.credentialsDecrypted) {
 			credentialsDecrypted = additionalCredentialOptions.credentialsDecrypted.data;
 		} else {
-			credentialsDecrypted = await this.getCredentials(credentialsType);
+			credentialsDecrypted =
+				await this.getCredentials<ICredentialDataDecryptedObject>(credentialsType);
 		}
 
 		if (credentialsDecrypted === undefined) {
@@ -1853,7 +1854,10 @@ export async function requestWithAuthentication(
 		if (additionalCredentialOptions?.credentialsDecrypted) {
 			credentialsDecrypted = additionalCredentialOptions.credentialsDecrypted.data;
 		} else {
-			credentialsDecrypted = await this.getCredentials(credentialsType, itemIndex);
+			credentialsDecrypted = await this.getCredentials<ICredentialDataDecryptedObject>(
+				credentialsType,
+				itemIndex,
+			);
 		}
 
 		if (credentialsDecrypted === undefined) {
@@ -1950,7 +1954,7 @@ export function getAdditionalKeys(
 								if (mode === 'manual') {
 									throw e;
 								}
-								Logger.verbose(e.message);
+								Logger.debug(e.message);
 							}
 						},
 						setAll(obj: Record<string, string>): void {
@@ -1960,7 +1964,7 @@ export function getAdditionalKeys(
 								if (mode === 'manual') {
 									throw e;
 								}
-								Logger.verbose(e.message);
+								Logger.debug(e.message);
 							}
 						},
 						get(key: string): string {
@@ -1988,7 +1992,7 @@ export function getAdditionalKeys(
  * @param {INode} node Node which request the data
  * @param {string} type The credential type to return
  */
-export async function getCredentials(
+export async function getCredentials<T extends object = ICredentialDataDecryptedObject>(
 	workflow: Workflow,
 	node: INode,
 	type: string,
@@ -1999,7 +2003,7 @@ export async function getCredentials(
 	runIndex?: number,
 	connectionInputData?: INodeExecutionData[],
 	itemIndex?: number,
-): Promise<ICredentialDataDecryptedObject> {
+): Promise<T> {
 	// Get the NodeType as it has the information if the credentials are required
 	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 	if (nodeType === undefined) {
@@ -2117,7 +2121,7 @@ export async function getCredentials(
 		expressionResolveValues,
 	);
 
-	return decryptedDataObject;
+	return decryptedDataObject as T;
 }
 
 /**
@@ -2619,13 +2623,13 @@ const addExecutionDataFunctions = async (
 	nodeName: string,
 	data: INodeExecutionData[][] | ExecutionBaseError,
 	runExecutionData: IRunExecutionData,
-	connectionType: ConnectionTypes,
+	connectionType: NodeConnectionType,
 	additionalData: IWorkflowExecuteAdditionalData,
 	sourceNodeName: string,
 	sourceNodeRunIndex: number,
 	currentNodeRunIndex: number,
 ): Promise<void> => {
-	if (connectionType === 'main') {
+	if (connectionType === NodeConnectionType.Main) {
 		throw new ApplicationError('Setting type is not supported for main connection', {
 			extra: { type },
 		});
@@ -2728,7 +2732,7 @@ async function getInputConnectionData(
 	executeData: IExecuteData | undefined,
 	mode: WorkflowExecuteMode,
 	closeFunctions: CloseFunction[],
-	inputName: ConnectionTypes,
+	inputName: NodeConnectionType,
 	itemIndex: number,
 ): Promise<unknown> {
 	const node = this.getNode();
@@ -2776,12 +2780,6 @@ async function getInputConnectionData(
 				connectedNode.type,
 				connectedNode.typeVersion,
 			);
-
-			if (!nodeType.supplyData) {
-				throw new ApplicationError('Node does not have a `supplyData` method defined', {
-					extra: { nodeName: connectedNode.name },
-				});
-			}
 
 			const context = Object.assign({}, this);
 
@@ -2849,6 +2847,18 @@ async function getInputConnectionData(
 					throw error;
 				}
 			};
+
+			if (!nodeType.supplyData) {
+				if (nodeType.description.outputs.includes(NodeConnectionType.AiTool)) {
+					nodeType.supplyData = async function (this: IExecuteFunctions) {
+						return getNodeAsTool(this, nodeType, this.getNode().parameters);
+					};
+				} else {
+					throw new ApplicationError('Node does not have a `supplyData` method defined', {
+						extra: { nodeName: connectedNode.name },
+					});
+				}
+			}
 
 			try {
 				const response = await nodeType.supplyData.call(context, itemIndex);
@@ -3624,12 +3634,8 @@ export function getExecuteFunctions(
 					itemIndex,
 				),
 			getExecuteData: () => executeData,
-			continueOnFail: (error?: Error) => {
-				const shouldContinue = continueOnFail(node);
-				if (error && shouldContinue && !(error instanceof ApplicationError)) {
-					error.message = OBFUSCATED_ERROR_MESSAGE;
-				}
-				return shouldContinue;
+			continueOnFail: () => {
+				return continueOnFail(node);
 			},
 			evaluateExpression: (expression: string, itemIndex: number) => {
 				return workflow.expression.resolveSimpleParameterValue(
@@ -3672,7 +3678,7 @@ export function getExecuteFunctions(
 			},
 
 			async getInputConnectionData(
-				inputName: ConnectionTypes,
+				inputName: NodeConnectionType,
 				itemIndex: number,
 			): Promise<unknown> {
 				return await getInputConnectionData.call(
@@ -3813,7 +3819,7 @@ export function getExecuteFunctions(
 			},
 
 			addInputData(
-				connectionType: ConnectionTypes,
+				connectionType: NodeConnectionType,
 				data: INodeExecutionData[][] | ExecutionBaseError,
 			): { index: number } {
 				const nodeName = this.getNode().name;
@@ -3843,7 +3849,7 @@ export function getExecuteFunctions(
 				return { index: currentNodeRunIndex };
 			},
 			addOutputData(
-				connectionType: ConnectionTypes,
+				connectionType: NodeConnectionType,
 				currentNodeRunIndex: number,
 				data: INodeExecutionData[][] | ExecutionBaseError,
 			): void {
@@ -3882,8 +3888,8 @@ export function getExecuteFunctions(
 				constructExecutionMetaData,
 			},
 			nodeHelpers: getNodeHelperFunctions(additionalData, workflow.id),
-			logAiEvent: async (eventName: EventNamesAiNodesType, msg: string) => {
-				return await additionalData.logAiEvent(eventName, {
+			logAiEvent: async (eventName: AiEvent, msg: string) => {
+				return additionalData.logAiEvent(eventName, {
 					executionId: additionalData.executionId ?? 'unsaved-execution',
 					nodeName: node.name,
 					workflowName: workflow.name ?? 'Unnamed workflow',
@@ -4033,8 +4039,8 @@ export function getExecuteSingleFunctions(
 				getBinaryDataBuffer: async (propertyName, inputIndex = 0) =>
 					await getBinaryDataBuffer(inputData, itemIndex, propertyName, inputIndex),
 			},
-			logAiEvent: async (eventName: EventNamesAiNodesType, msg: string) => {
-				return await additionalData.logAiEvent(eventName, {
+			logAiEvent: async (eventName: AiEvent, msg: string) => {
+				return additionalData.logAiEvent(eventName, {
 					executionId: additionalData.executionId ?? 'unsaved-execution',
 					nodeName: node.name,
 					workflowName: workflow.name ?? 'Unnamed workflow',
@@ -4234,7 +4240,7 @@ export function getExecuteWebhookFunctions(
 				return additionalData.httpRequest.headers;
 			},
 			async getInputConnectionData(
-				inputName: ConnectionTypes,
+				inputName: NodeConnectionType,
 				itemIndex: number,
 			): Promise<unknown> {
 				// To be able to use expressions like "$json.sessionId" set the

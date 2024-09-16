@@ -1,3 +1,21 @@
+<script setup lang="ts">
+import type { RunningJobSummary } from '@n8n/api-types';
+import WorkerAccordion from './WorkerAccordion.ee.vue';
+
+const props = defineProps<{
+	items: RunningJobSummary[];
+}>();
+
+function runningSince(started: Date): string {
+	let seconds = Math.floor((new Date().getTime() - started.getTime()) / 1000);
+	const hrs = Math.floor(seconds / 3600);
+	seconds -= hrs * 3600;
+	const mnts = Math.floor(seconds / 60);
+	seconds -= mnts * 60;
+	return `${hrs}h ${mnts}m ${Math.floor(seconds)}s`;
+}
+</script>
+
 <template>
 	<WorkerAccordion icon="tasks" icon-color="black" :initial-expanded="true">
 		<template #title>
@@ -26,24 +44,6 @@
 		</template>
 	</WorkerAccordion>
 </template>
-
-<script setup lang="ts">
-import type { WorkerJobStatusSummary } from '@/Interface';
-import WorkerAccordion from './WorkerAccordion.ee.vue';
-
-const props = defineProps<{
-	items: WorkerJobStatusSummary[];
-}>();
-
-function runningSince(started: Date): string {
-	let seconds = Math.floor((new Date().getTime() - started.getTime()) / 1000);
-	const hrs = Math.floor(seconds / 3600);
-	seconds -= hrs * 3600;
-	const mnts = Math.floor(seconds / 60);
-	seconds -= mnts * 60;
-	return `${hrs}h ${mnts}m ${Math.floor(seconds)}s`;
-}
-</script>
 
 <style lang="scss" module>
 .accordionItems {

@@ -1,15 +1,15 @@
-import { Container } from 'typedi';
 import type { Scope } from '@n8n/permissions';
+import { Container } from 'typedi';
 
-import type { GlobalRole } from '@db/entities/User';
-import type { ProjectRole } from '@db/entities/ProjectRelation';
-import type { CredentialSharingRole } from '@db/entities/SharedCredentials';
-import type { WorkflowSharingRole } from '@db/entities/SharedWorkflow';
+import type { ProjectRole } from '@/databases/entities/project-relation';
+import type { CredentialSharingRole } from '@/databases/entities/shared-credentials';
+import type { WorkflowSharingRole } from '@/databases/entities/shared-workflow';
+import type { GlobalRole } from '@/databases/entities/user';
 import { RoleService } from '@/services/role.service';
 
-import * as utils from './shared/utils/';
 import { createMember } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
+import * as utils from './shared/utils/';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['role'],

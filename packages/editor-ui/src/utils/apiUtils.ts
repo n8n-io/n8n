@@ -1,16 +1,20 @@
 import type { AxiosRequestConfig, Method, RawAxiosRequestHeaders } from 'axios';
 import axios from 'axios';
 import { ApplicationError, jsonParse, type GenericValue, type IDataObject } from 'n8n-workflow';
-import type { IExecutionFlattedResponse, IExecutionResponse, IRestApiContext } from '@/Interface';
 import { parse } from 'flatted';
 import { assert } from '@/utils/assert';
 
-const BROWSER_ID_STORAGE_KEY = 'n8n-browserId';
-let browserId = localStorage.getItem(BROWSER_ID_STORAGE_KEY);
-if (!browserId && 'randomUUID' in crypto) {
-	browserId = crypto.randomUUID();
-	localStorage.setItem(BROWSER_ID_STORAGE_KEY, browserId);
-}
+import { BROWSER_ID_STORAGE_KEY } from '@/constants';
+import type { IExecutionFlattedResponse, IExecutionResponse, IRestApiContext } from '@/Interface';
+
+const getBrowserId = () => {
+	let browserId = localStorage.getItem(BROWSER_ID_STORAGE_KEY);
+	if (!browserId && 'randomUUID' in crypto) {
+		browserId = crypto.randomUUID();
+		localStorage.setItem(BROWSER_ID_STORAGE_KEY, browserId);
+	}
+	return browserId!;
+};
 
 export const NO_NETWORK_ERROR_CODE = 999;
 export const STREAM_SEPERATOR = '⧉⇋⇋➽⌑⧉§§\n';
@@ -82,8 +86,8 @@ export async function request(config: {
 		baseURL,
 		headers: headers ?? {},
 	};
-	if (baseURL.startsWith('/') && browserId) {
-		options.headers!['browser-id'] = browserId;
+	if (baseURL.startsWith('/')) {
+		options.headers!['browser-id'] = getBrowserId();
 	}
 	if (
 		import.meta.env.NODE_ENV !== 'production' &&
@@ -204,11 +208,9 @@ export async function streamRequest<T>(
 	separator = STREAM_SEPERATOR,
 ): Promise<void> {
 	const headers: Record<string, string> = {
+		'browser-id': getBrowserId(),
 		'Content-Type': 'application/json',
 	};
-	if (browserId) {
-		headers['browser-id'] = browserId;
-	}
 	const assistantRequest: RequestInit = {
 		headers,
 		method: 'POST',

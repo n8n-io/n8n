@@ -1,19 +1,20 @@
-import { mock } from 'jest-mock-extended';
-import { TelemetryEventRelay } from '@/events/telemetry-event-relay';
-import { EventService } from '@/events/event.service';
-import config from '@/config';
-import type { IWorkflowBase } from 'n8n-workflow';
-import type { IWorkflowDb } from '@/Interfaces';
-import type { Telemetry } from '@/telemetry';
-import type { License } from '@/License';
 import type { GlobalConfig } from '@n8n/config';
-import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import type { NodeTypes } from '@/NodeTypes';
-import type { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
-import type { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
-import type { RelayEventMap } from '@/events/relay-event-map';
-import type { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
+import { mock } from 'jest-mock-extended';
+import type { IWorkflowBase } from 'n8n-workflow';
+
+import config from '@/config';
 import { N8N_VERSION } from '@/constants';
+import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
+import type { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
+import type { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
+import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { EventService } from '@/events/event.service';
+import type { RelayEventMap } from '@/events/relay-event-map';
+import { TelemetryEventRelay } from '@/events/telemetry-event-relay';
+import type { IWorkflowDb } from '@/interfaces';
+import type { License } from '@/license';
+import type { NodeTypes } from '@/node-types';
+import type { Telemetry } from '@/telemetry';
 
 const flushPromises = async () => await new Promise((resolve) => setImmediate(resolve));
 
@@ -33,6 +34,7 @@ describe('TelemetryEventRelay', () => {
 				includeApiEndpoints: false,
 				includeCacheMetrics: false,
 				includeMessageEventBusMetrics: false,
+				includeQueueMetrics: false,
 			},
 		},
 	});
@@ -863,10 +865,10 @@ describe('TelemetryEventRelay', () => {
 			const event: RelayEventMap['user-submitted-personalization-survey'] = {
 				userId: 'user123',
 				answers: {
+					version: 'v4',
+					personalization_survey_n8n_version: '1.0.0',
+					personalization_survey_submitted_at: '2021-10-01T00:00:00.000Z',
 					companySize: '1-10',
-					workArea: 'IT',
-					automationGoal: 'Improve efficiency',
-					valueExpectation: 'Time savings',
 				},
 			};
 
@@ -874,10 +876,10 @@ describe('TelemetryEventRelay', () => {
 
 			expect(telemetry.track).toHaveBeenCalledWith('User responded to personalization questions', {
 				user_id: 'user123',
+				version: 'v4',
+				personalization_survey_n8n_version: '1.0.0',
+				personalization_survey_submitted_at: '2021-10-01T00:00:00.000Z',
 				company_size: '1-10',
-				work_area: 'IT',
-				automation_goal: 'Improve efficiency',
-				value_expectation: 'Time savings',
 			});
 		});
 
@@ -948,6 +950,7 @@ describe('TelemetryEventRelay', () => {
 						metrics_category_routes: false,
 						metrics_category_cache: false,
 						metrics_category_logs: false,
+						metrics_category_queue: false,
 					},
 				}),
 			);

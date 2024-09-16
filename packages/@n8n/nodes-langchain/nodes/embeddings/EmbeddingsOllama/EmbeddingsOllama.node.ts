@@ -6,7 +6,7 @@ import {
 	type INodeTypeDescription,
 	type SupplyData,
 } from 'n8n-workflow';
-import { OllamaEmbeddings } from '@langchain/community/embeddings/ollama';
+import { OllamaEmbeddings } from '@langchain/ollama';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 import { ollamaDescription, ollamaModel } from '../../llms/LMOllama/description';
@@ -45,7 +45,7 @@ export class EmbeddingsOllama implements INodeType {
 	};
 
 	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
-		this.logger.verbose('Supply data for embeddings Ollama');
+		this.logger.debug('Supply data for embeddings Ollama');
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 		const credentials = await this.getCredentials('ollamaApi');
 

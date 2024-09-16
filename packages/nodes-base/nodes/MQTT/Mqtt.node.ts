@@ -1,12 +1,13 @@
 import type { IClientPublishOptions } from 'mqtt';
-import type {
-	IExecuteFunctions,
-	ICredentialsDecrypted,
-	ICredentialTestFunctions,
-	INodeCredentialTestResult,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
+import {
+	type IExecuteFunctions,
+	type ICredentialsDecrypted,
+	type ICredentialTestFunctions,
+	type INodeCredentialTestResult,
+	type INodeExecutionData,
+	type INodeType,
+	type INodeTypeDescription,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
 import { createClient, type MqttCredential } from './GenericFunctions';
@@ -24,8 +25,8 @@ export class Mqtt implements INodeType {
 		defaults: {
 			name: 'MQTT',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'mqtt',
@@ -130,7 +131,7 @@ export class Mqtt implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const credentials = (await this.getCredentials('mqtt')) as unknown as MqttCredential;
+		const credentials = await this.getCredentials<MqttCredential>('mqtt');
 		const client = await createClient(credentials);
 
 		const publishPromises = [];

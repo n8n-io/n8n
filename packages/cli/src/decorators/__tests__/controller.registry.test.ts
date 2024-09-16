@@ -2,15 +2,15 @@ jest.mock('@/constants', () => ({
 	inProduction: true,
 }));
 
-import express from 'express';
-import { agent as testAgent } from 'supertest';
-import { mock } from 'jest-mock-extended';
-
-import { ControllerRegistry, Get, Licensed, RestController } from '@/decorators';
-import type { AuthService } from '@/auth/auth.service';
-import type { License } from '@/License';
-import type { SuperAgentTest } from '@test-integration/types';
 import type { GlobalConfig } from '@n8n/config';
+import express from 'express';
+import { mock } from 'jest-mock-extended';
+import { agent as testAgent } from 'supertest';
+
+import type { AuthService } from '@/auth/auth.service';
+import { ControllerRegistry, Get, Licensed, RestController } from '@/decorators';
+import type { License } from '@/license';
+import type { SuperAgentTest } from '@test-integration/types';
 
 describe('ControllerRegistry', () => {
 	const license = mock<License>();

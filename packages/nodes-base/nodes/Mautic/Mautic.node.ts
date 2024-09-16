@@ -8,7 +8,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { snakeCase } from 'change-case';
 import { mauticApiRequest, mauticApiRequestAllItems, validateJSON } from './GenericFunctions';
@@ -37,8 +37,8 @@ export class Mautic implements INodeType {
 		defaults: {
 			name: 'Mautic',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'mauticApi',
@@ -1020,7 +1020,7 @@ export class Mautic implements INodeType {
 				);
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					returnData.push({ json: { error: (error as JsonObject).message } });
 					continue;
 				}

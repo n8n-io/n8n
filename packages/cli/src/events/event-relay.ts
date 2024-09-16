@@ -1,6 +1,8 @@
-import { EventService } from './event.service';
 import { Service } from 'typedi';
+
 import type { RelayEventMap } from '@/events/relay-event-map';
+
+import { EventService } from './event.service';
 
 @Service()
 export class EventRelay {

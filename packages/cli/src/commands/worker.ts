@@ -1,26 +1,27 @@
-import { Container } from 'typedi';
 import { Flags, type Config } from '@oclif/core';
 import express from 'express';
 import http from 'http';
 import { ApplicationError } from 'n8n-workflow';
+import { Container } from 'typedi';
 
-import * as Db from '@/Db';
-import * as ResponseHelper from '@/ResponseHelper';
 import config from '@/config';
-import type { ScalingService } from '@/scaling/scaling.service';
 import { N8N_VERSION, inTest } from '@/constants';
-import type { ICredentialsOverwrite } from '@/Interfaces';
-import { CredentialsOverwrites } from '@/CredentialsOverwrites';
+import { CredentialsOverwrites } from '@/credentials-overwrites';
+import * as Db from '@/db';
+import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
+import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { LogStreamingEventRelay } from '@/events/log-streaming-event-relay';
+import type { ICredentialsOverwrite } from '@/interfaces';
 import { rawBodyReader, bodyParser } from '@/middlewares';
-import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
-import type { RedisServicePubSubSubscriber } from '@/services/redis/RedisServicePubSubSubscriber';
-import { EventMessageGeneric } from '@/eventbus/EventMessageClasses/EventMessageGeneric';
+import * as ResponseHelper from '@/response-helper';
+import { JobProcessor } from '@/scaling/job-processor';
+import type { ScalingService } from '@/scaling/scaling.service';
 import { OrchestrationHandlerWorkerService } from '@/services/orchestration/worker/orchestration.handler.worker.service';
 import { OrchestrationWorkerService } from '@/services/orchestration/worker/orchestration.worker.service';
-import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
-import { BaseCommand } from './BaseCommand';
-import { JobProcessor } from '@/scaling/job-processor';
-import { LogStreamingEventRelay } from '@/events/log-streaming-event-relay';
+import type { RedisServicePubSubSubscriber } from '@/services/redis/redis-service-pub-sub-subscriber';
+
+import { BaseCommand } from './base-command';
 
 export class Worker extends BaseCommand {
 	static description = '\nStarts a n8n worker';
@@ -171,6 +172,12 @@ export class Worker extends BaseCommand {
 		app.disable('x-powered-by');
 
 		const server = http.createServer(app);
+
+		app.get('/healthz/readiness', async (_req, res) => {
+			return Db.connectionState.connected && Db.connectionState.migrated
+				? res.status(200).send({ status: 'ok' })
+				: res.status(503).send({ status: 'error' });
+		});
 
 		app.get(
 			'/healthz',

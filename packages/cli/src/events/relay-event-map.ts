@@ -1,8 +1,17 @@
-import type { AuthenticationMethod, IRun, IWorkflowBase } from 'n8n-workflow';
-import type { IWorkflowDb, IWorkflowExecutionDataProcess } from '@/Interfaces';
-import type { ProjectRole } from '@/databases/entities/ProjectRelation';
-import type { GlobalRole } from '@/databases/entities/User';
-import type { AuthProviderType } from '@/databases/entities/AuthIdentity';
+import type {
+	AuthenticationMethod,
+	IPersonalizationSurveyAnswersV4,
+	IRun,
+	IWorkflowBase,
+	IWorkflowExecutionDataProcess,
+} from 'n8n-workflow';
+
+import type { AuthProviderType } from '@/databases/entities/auth-identity';
+import type { ProjectRole } from '@/databases/entities/project-relation';
+import type { GlobalRole } from '@/databases/entities/user';
+import type { IWorkflowDb } from '@/interfaces';
+
+import type { AiEventMap } from './ai-event-map';
 
 export type UserLike = {
 	id: string;
@@ -106,7 +115,7 @@ export type RelayEventMap = {
 
 	'user-submitted-personalization-survey': {
 		userId: string;
-		answers: Record<string, string>;
+		answers: IPersonalizationSurveyAnswersV4;
 	};
 
 	'user-deleted': {
@@ -464,4 +473,4 @@ export type RelayEventMap = {
 	};
 
 	// #endregion
-};
+} & AiEventMap;

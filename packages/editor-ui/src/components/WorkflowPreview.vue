@@ -1,27 +1,3 @@
-<template>
-	<div :class="$style.container">
-		<div v-if="loaderType === 'image' && !showPreview" :class="$style.imageLoader">
-			<n8n-loading :loading="!showPreview" :rows="1" variant="image" />
-		</div>
-		<div v-else-if="loaderType === 'spinner' && !showPreview" :class="$style.spinner">
-			<n8n-spinner type="dots" />
-		</div>
-		<iframe
-			ref="iframeRef"
-			:class="{
-				[$style.workflow]: !nodeViewDetailsOpened,
-				[$style.executionPreview]: mode === 'execution',
-				[$style.openNDV]: nodeViewDetailsOpened,
-				[$style.show]: showPreview,
-			}"
-			:src="iframeSrc"
-			data-test-id="workflow-preview-iframe"
-			@mouseenter="onMouseEnter"
-			@mouseleave="onMouseLeave"
-		/>
-	</div>
-</template>
-
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, ref, computed, watch } from 'vue';
 import { useI18n } from '@/composables/useI18n';
@@ -214,6 +190,30 @@ watch(
 	},
 );
 </script>
+
+<template>
+	<div :class="$style.container">
+		<div v-if="loaderType === 'image' && !showPreview" :class="$style.imageLoader">
+			<n8n-loading :loading="!showPreview" :rows="1" variant="image" />
+		</div>
+		<div v-else-if="loaderType === 'spinner' && !showPreview" :class="$style.spinner">
+			<n8n-spinner type="dots" />
+		</div>
+		<iframe
+			ref="iframeRef"
+			:class="{
+				[$style.workflow]: !nodeViewDetailsOpened,
+				[$style.executionPreview]: mode === 'execution',
+				[$style.openNDV]: nodeViewDetailsOpened,
+				[$style.show]: showPreview,
+			}"
+			:src="iframeSrc"
+			data-test-id="workflow-preview-iframe"
+			@mouseenter="onMouseEnter"
+			@mouseleave="onMouseLeave"
+		/>
+	</div>
+</template>
 
 <style lang="scss" module>
 .container {

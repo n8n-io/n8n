@@ -67,7 +67,7 @@ const properties: INodeProperties[] = [
 				},
 				default: '',
 				description:
-					'If not set, all table names in the query string must be qualified in the format \'datasetId.tableId\'. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'If not set, all table names in the query string must be qualified in the format \'datasetId.tableId\'. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Dry Run',
@@ -268,7 +268,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				jobs.push({ jobId, projectId, i, raw, includeSchema, location });
 			}
 		} catch (error) {
-			if (this.continueOnFail(error)) {
+			if (this.continueOnFail()) {
 				const executionErrorData = this.helpers.constructExecutionMetaData(
 					this.helpers.returnJsonArray({ error: error.message }),
 					{ itemData: { item: i } },
@@ -328,7 +328,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 					);
 				}
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: job.i } },

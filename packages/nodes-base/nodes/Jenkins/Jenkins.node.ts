@@ -11,7 +11,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionType } from 'n8n-workflow';
 
 import { jenkinsApiRequest, tolerateTrailingSlash } from './GenericFunctions';
 
@@ -33,8 +33,8 @@ export class Jenkins implements INodeType {
 		defaults: {
 			name: 'Jenkins',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'jenkinsApi',
@@ -136,7 +136,7 @@ export class Jenkins implements INodeType {
 				required: true,
 				default: '',
 				description:
-					'Name of the job. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'Name of the job. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 
 			// --------------------------------------------------------------------------------------------------------
@@ -168,7 +168,7 @@ export class Jenkins implements INodeType {
 								name: 'name',
 								type: 'options',
 								description:
-									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 								typeOptions: {
 									loadOptionsMethod: 'getJobParameters',
 									loadOptionsDependsOn: ['job'],
@@ -353,7 +353,7 @@ export class Jenkins implements INodeType {
 				required: true,
 				default: '',
 				description:
-					'Name of the job. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'Name of the job. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Return All',
@@ -640,7 +640,7 @@ export class Jenkins implements INodeType {
 					returnData.push(responseData as IDataObject);
 				}
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					returnData.push({ error: error.message });
 					continue;
 				}

@@ -38,12 +38,11 @@ export default {
 	'assistantChat.sessionEndMessage.2': 'button in n8n',
 	'assistantChat.you': 'You',
 	'assistantChat.quickRepliesTitle': 'Quick reply 👇',
-	'assistantChat.placeholder.1': (options: string[]) =>
-		`Hi ${options[0][0] || 'there'}, I'm ${options[0][1]} and I'm here to assist you with building workflows.`,
-	'assistantChat.placeholder.2':
-		"Whenever you encounter a task that I can help with, you'll see the",
-	'assistantChat.placeholder.3': 'button.',
-	'assistantChat.placeholder.4': 'Clicking it starts a chat session with me.',
+	'assistantChat.placeholder.1': () =>
+		'I can answer most questions about building workflows in n8n.',
+	'assistantChat.placeholder.2': 'For specific tasks, you’ll see the',
+	'assistantChat.placeholder.3': 'button in the UI.',
+	'assistantChat.placeholder.4': 'How can I help?',
 	'assistantChat.inputPlaceholder': 'Enter your response...',
 	'inlineAskAssistantButton.asked': 'Asked',
 } as N8nLocale;

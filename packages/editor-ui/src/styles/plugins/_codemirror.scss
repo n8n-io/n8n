@@ -102,6 +102,11 @@
 		padding: var(--spacing-xs);
 	}
 
+	&:has(.cm-tooltip-lint) {
+		padding: 0;
+		overflow: hidden;
+	}
+
 	.autocomplete-info-container {
 		display: flex;
 		flex-direction: column;

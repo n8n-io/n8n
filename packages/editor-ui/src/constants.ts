@@ -4,7 +4,11 @@ import type {
 	NodeCreatorOpenSource,
 } from './Interface';
 import { NodeConnectionType } from 'n8n-workflow';
-import type { CanvasNodeHandleInjectionData, CanvasNodeInjectionData } from '@/types';
+import type {
+	CanvasInjectionData,
+	CanvasNodeHandleInjectionData,
+	CanvasNodeInjectionData,
+} from '@/types';
 import type { InjectionKey } from 'vue';
 
 export const MAX_WORKFLOW_SIZE = 1024 * 1024 * 16; // Workflow size limit in bytes
@@ -44,6 +48,7 @@ export const DELETE_USER_MODAL_KEY = 'deleteUser';
 export const INVITE_USER_MODAL_KEY = 'inviteUser';
 export const DUPLICATE_MODAL_KEY = 'duplicate';
 export const TAGS_MANAGER_MODAL_KEY = 'tagsManager';
+export const ANNOTATION_TAGS_MANAGER_MODAL_KEY = 'annotationTagsManager';
 export const VERSIONS_MODAL_KEY = 'versions';
 export const WORKFLOW_SETTINGS_MODAL_KEY = 'settings';
 export const WORKFLOW_LM_CHAT_MODAL_KEY = 'lmChat';
@@ -224,6 +229,8 @@ export const OPEN_URL_PANEL_TRIGGER_NODE_TYPES = [
 	FORM_TRIGGER_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
 ];
+
+export const LIST_LIKE_NODE_OPERATIONS = ['getAll', 'getMany', 'read', 'search'];
 
 export const PRODUCTION_ONLY_TRIGGER_NODE_TYPES = [CHAT_TRIGGER_NODE_TYPE];
 
@@ -571,7 +578,7 @@ export const EnterpriseEditionFeature: Record<
 	AdvancedPermissions: 'advancedPermissions',
 };
 
-export const MAIN_NODE_PANEL_WIDTH = 360;
+export const MAIN_NODE_PANEL_WIDTH = 390;
 
 export const enum MAIN_HEADER_TABS {
 	WORKFLOW = 'workflow',
@@ -626,6 +633,7 @@ export const enum STORES {
 	NODE_TYPES = 'nodeTypes',
 	CREDENTIALS = 'credentials',
 	TAGS = 'tags',
+	ANNOTATION_TAGS = 'annotationTags',
 	VERSIONS = 'versions',
 	NODE_CREATOR = 'nodeCreator',
 	WEBHOOKS = 'webhooks',
@@ -633,8 +641,10 @@ export const enum STORES {
 	CLOUD_PLAN = 'cloudPlan',
 	RBAC = 'rbac',
 	PUSH = 'push',
+	COLLABORATION = 'collaboration',
 	ASSISTANT = 'assistant',
 	BECOME_TEMPLATE_CREATOR = 'becomeTemplateCreator',
+	PROJECTS = 'projects',
 }
 
 export const enum SignInType {
@@ -686,12 +696,19 @@ export const MORE_ONBOARDING_OPTIONS_EXPERIMENT = {
 	variant: 'variant',
 };
 
+export const EXECUTION_ANNOTATION_EXPERIMENT = '023_execution_annotation';
+export const CREDENTIAL_DOCS_EXPERIMENT = {
+	name: '024_credential_docs',
+	control: 'control',
+	variant: 'variant',
+};
 export const EXPERIMENTS_TO_TRACK = [
 	ASK_AI_EXPERIMENT.name,
 	TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT,
 	CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT.name,
 	AI_ASSISTANT_EXPERIMENT.name,
 	MORE_ONBOARDING_OPTIONS_EXPERIMENT.name,
+	CREDENTIAL_DOCS_EXPERIMENT.name,
 ];
 
 export const MFA_FORM = {
@@ -839,14 +856,14 @@ export const ROLE = {
 export const INSECURE_CONNECTION_WARNING = `
 <body style="margin-top: 20px; font-family: 'Open Sans', sans-serif; text-align: center;">
 <h1 style="font-size: 40px">&#x1F6AB;</h1>
-<h2>Your n8n server is configured to use a secure cookie, <br/>however you are visiting this via an insecure URL
+<h2>Your n8n server is configured to use a secure cookie, <br/>however you are either visiting this via an insecure URL, or using Safari.
 </h2>
 <br/>
 <div style="font-size: 18px; max-width: 640px; text-align: left; margin: 10px auto">
 	To fix this, please consider the following options:
 	<ul>
 		<li>Setup TLS/HTTPS (<strong>recommended</strong>), or</li>
-		<li>If you are running this locally, try using <a href="http://localhost:5678">localhost</a> instead</li>
+		<li>If you are running this locally, and not using Safari, try using <a href="http://localhost:5678">localhost</a> instead</li>
 		<li>If you prefer to disable this security feature (<strong>not recommended</strong>), set the environment variable <code>N8N_SECURE_COOKIE</code> to <code>false</code></li>
 	</ul>
 </div>
@@ -856,6 +873,12 @@ export const INSECURE_CONNECTION_WARNING = `
  * Injection Keys
  */
 
+export const CanvasKey = 'canvas' as unknown as InjectionKey<CanvasInjectionData>;
 export const CanvasNodeKey = 'canvasNode' as unknown as InjectionKey<CanvasNodeInjectionData>;
 export const CanvasNodeHandleKey =
 	'canvasNodeHandle' as unknown as InjectionKey<CanvasNodeHandleInjectionData>;
+
+/** Auth */
+export const BROWSER_ID_STORAGE_KEY = 'n8n-browserId';
+
+export const APP_MODALS_ELEMENT_ID = 'app-modals';

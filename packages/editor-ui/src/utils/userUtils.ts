@@ -65,11 +65,11 @@ import type {
 	IPersonalizationSurveyAnswersV1,
 	IPersonalizationSurveyAnswersV2,
 	IPersonalizationSurveyAnswersV3,
-	IPersonalizationSurveyAnswersV4,
 	IPersonalizationSurveyVersions,
 	IUser,
 	ILogInStatus,
 } from '@/Interface';
+import type { IPersonalizationSurveyAnswersV4 } from 'n8n-workflow';
 
 /*
 	Utility functions used to handle users in n8n

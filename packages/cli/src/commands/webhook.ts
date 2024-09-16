@@ -1,14 +1,14 @@
-import { Container } from 'typedi';
 import { Flags, type Config } from '@oclif/core';
 import { ApplicationError } from 'n8n-workflow';
+import { Container } from 'typedi';
 
+import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
-import { ActiveExecutions } from '@/ActiveExecutions';
-import { WebhookServer } from '@/webhooks/WebhookServer';
-import { BaseCommand } from './BaseCommand';
-
-import { OrchestrationWebhookService } from '@/services/orchestration/webhook/orchestration.webhook.service';
 import { OrchestrationHandlerWebhookService } from '@/services/orchestration/webhook/orchestration.handler.webhook.service';
+import { OrchestrationWebhookService } from '@/services/orchestration/webhook/orchestration.webhook.service';
+import { WebhookServer } from '@/webhooks/webhook-server';
+
+import { BaseCommand } from './base-command';
 
 export class Webhook extends BaseCommand {
 	static description = 'Starts n8n webhook process. Intercepts only production URLs.';

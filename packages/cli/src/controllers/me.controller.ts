@@ -1,30 +1,32 @@
-import validator from 'validator';
 import { plainToInstance } from 'class-transformer';
-import { type RequestHandler, Response } from 'express';
 import { randomBytes } from 'crypto';
+import { type RequestHandler, Response } from 'express';
+import validator from 'validator';
 
 import { AuthService } from '@/auth/auth.service';
+import type { User } from '@/databases/entities/user';
+import { UserRepository } from '@/databases/repositories/user.repository';
 import { Delete, Get, Patch, Post, RestController } from '@/decorators';
-import { PasswordUtility } from '@/services/password.utility';
-import { validateEntity, validateRecordNoXss } from '@/GenericHelpers';
-import type { User } from '@db/entities/User';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
+import { EventService } from '@/events/event.service';
+import { ExternalHooks } from '@/external-hooks';
+import { validateEntity } from '@/generic-helpers';
+import type { PublicUser } from '@/interfaces';
+import { Logger } from '@/logger';
+import { MfaService } from '@/mfa/mfa.service';
+import { isApiEnabled } from '@/public-api';
 import {
 	AuthenticatedRequest,
 	MeRequest,
 	UserSettingsUpdatePayload,
 	UserUpdatePayload,
 } from '@/requests';
-import type { PublicUser } from '@/Interfaces';
-import { isSamlLicensedAndEnabled } from '@/sso/saml/samlHelpers';
+import { PasswordUtility } from '@/services/password.utility';
 import { UserService } from '@/services/user.service';
-import { Logger } from '@/Logger';
-import { ExternalHooks } from '@/ExternalHooks';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { UserRepository } from '@/databases/repositories/user.repository';
-import { isApiEnabled } from '@/PublicApi';
-import { EventService } from '@/events/event.service';
-import { MfaService } from '@/Mfa/mfa.service';
-import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
+import { isSamlLicensedAndEnabled } from '@/sso/saml/saml-helpers';
+
+import { PersonalizationSurveyAnswersV4 } from './survey-answers.dto';
 
 export const API_KEY_PREFIX = 'n8n_api_';
 
@@ -195,7 +197,7 @@ export class MeController {
 
 		if (!personalizationAnswers) {
 			this.logger.debug(
-				'Request to store user personalization survey failed because of empty payload',
+				'Request to store user personalization survey failed because of undefined payload',
 				{
 					userId: req.user.id,
 				},
@@ -203,12 +205,18 @@ export class MeController {
 			throw new BadRequestError('Personalization answers are mandatory');
 		}
 
-		await validateRecordNoXss(personalizationAnswers);
+		const validatedAnswers = plainToInstance(
+			PersonalizationSurveyAnswersV4,
+			personalizationAnswers,
+			{ excludeExtraneousValues: true },
+		);
+
+		await validateEntity(validatedAnswers);
 
 		await this.userRepository.save(
 			{
 				id: req.user.id,
-				personalizationAnswers,
+				personalizationAnswers: validatedAnswers,
 			},
 			{ transaction: false },
 		);
@@ -217,7 +225,7 @@ export class MeController {
 
 		this.eventService.emit('user-submitted-personalization-survey', {
 			userId: req.user.id,
-			answers: personalizationAnswers,
+			answers: validatedAnswers,
 		});
 
 		return { success: true };

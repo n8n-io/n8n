@@ -1,3 +1,6 @@
+import { computed, ref } from 'vue';
+import Bowser from 'bowser';
+
 import * as publicApiApi from '@/api/api-keys';
 import * as ldapApi from '@/api/ldap';
 import * as settingsApi from '@/api/settings';
@@ -21,7 +24,6 @@ import { makeRestApiRequest } from '@/utils/apiUtils';
 import { useTitleChange } from '@/composables/useTitleChange';
 import { useToast } from '@/composables/useToast';
 import { i18n } from '@/plugins/i18n';
-import { computed, ref } from 'vue';
 
 export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	const initialized = ref(false);
@@ -189,13 +191,15 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 			useRootStore().setVersionCli(settings.value.versionCli);
 		}
 
-		if (
-			settings.value.authCookie.secure &&
-			location.protocol === 'http:' &&
-			!['localhost', '127.0.0.1'].includes(location.hostname)
-		) {
-			document.write(INSECURE_CONNECTION_WARNING);
-			return;
+		if (settings.value.authCookie.secure) {
+			const { browser } = Bowser.parse(navigator.userAgent);
+			if (
+				location.protocol === 'http:' &&
+				(!['localhost', '127.0.0.1'].includes(location.hostname) || browser.name === 'Safari')
+			) {
+				document.write(INSECURE_CONNECTION_WARNING);
+				return;
+			}
 		}
 
 		const isV1BannerDismissedPermanently = (settings.value.banners?.dismissed || []).includes('V1');

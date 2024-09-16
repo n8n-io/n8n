@@ -116,7 +116,9 @@ export class RoutingNode {
 			credentials = credentialsDecrypted.data;
 		} else if (credentialType) {
 			try {
-				credentials = (await executeFunctions.getCredentials(credentialType)) || {};
+				credentials =
+					(await executeFunctions.getCredentials<ICredentialDataDecryptedObject>(credentialType)) ||
+					{};
 			} catch (error) {
 				if (
 					nodeType.description.credentials?.length &&
