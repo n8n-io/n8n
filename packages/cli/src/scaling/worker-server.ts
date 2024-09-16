@@ -69,7 +69,7 @@ export class WorkerServer {
 	}
 
 	async init() {
-		await new Promise<void>((resolve) => this.server.listen(this.port, () => resolve()));
+		await new Promise<void>((resolve) => this.server.listen(this.port, resolve));
 
 		await this.externalHooks.run('worker.ready');
 
