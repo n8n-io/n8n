@@ -34,7 +34,7 @@ import {
 } from '@/plugins/codemirror/keymap';
 import { n8nAutocompletion } from '@/plugins/codemirror/n8nLang';
 import { autoCloseTags, htmlLanguage } from 'codemirror-lang-html-n8n';
-import { codeNodeEditorTheme } from '../CodeNodeEditor/theme';
+import { htmlEditorHighlighting, codeEditorTheme } from '../CodeNodeEditor/theme';
 import type { Range, Section } from './types';
 import { nonTakenRanges } from './utils';
 
@@ -70,13 +70,13 @@ const extensions = computed(() => [
 		keymap.of([...tabKeyMap(), ...enterKeyMap, ...historyKeyMap, ...autocompleteKeyMap]),
 	),
 	indentOnInput(),
-	codeNodeEditorTheme({
+	codeEditorTheme({
 		isReadOnly: props.isReadOnly,
 		maxHeight: props.fullscreen ? '100%' : '40vh',
 		minHeight: '20vh',
 		rows: props.rows,
-		highlightColors: 'html',
 	}),
+	htmlEditorHighlighting,
 	lineNumbers(),
 	highlightActiveLineGutter(),
 	history(),

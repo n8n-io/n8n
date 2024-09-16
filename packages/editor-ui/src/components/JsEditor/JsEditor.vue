@@ -23,7 +23,7 @@ import {
 	tabKeyMap,
 } from '@/plugins/codemirror/keymap';
 import { n8nAutocompletion } from '@/plugins/codemirror/n8nLang';
-import { codeNodeEditorTheme } from '../CodeNodeEditor/theme';
+import { codeEditorSyntaxHighlighting, codeEditorTheme } from '../CodeNodeEditor/theme';
 
 type Props = {
 	modelValue: string;
@@ -80,12 +80,13 @@ const extensions = computed(() => {
 		lineNumbers(),
 		EditorView.lineWrapping,
 		EditorState.readOnly.of(props.isReadOnly),
-		codeNodeEditorTheme({
+		codeEditorTheme({
 			isReadOnly: props.isReadOnly,
 			maxHeight: props.fillParent ? '100%' : '40vh',
 			minHeight: '20vh',
 			rows: props.rows,
 		}),
+		codeEditorSyntaxHighlighting,
 	];
 
 	if (!props.isReadOnly) {

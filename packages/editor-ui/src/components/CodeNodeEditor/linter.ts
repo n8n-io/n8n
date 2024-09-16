@@ -18,7 +18,6 @@ import { walk } from './utils';
 export const useLinter = (
 	mode: MaybeRefOrGetter<CodeExecutionMode>,
 	language: MaybeRefOrGetter<CodeNodeEditorLanguage>,
-	editor: MaybeRefOrGetter<EditorView | null>,
 ) => {
 	const i18n = useI18n();
 	const linter = computed(() => {
@@ -119,7 +118,7 @@ export const useLinter = (
 			walk(ast, isUnavailableVarInAllItems).forEach((node) => {
 				const [start, end] = getRange(node);
 
-				const varName = getText(node);
+				const varName = getText(editorView, node);
 
 				if (!varName) return;
 
@@ -251,7 +250,7 @@ export const useLinter = (
 			walk<TargetNode>(ast, isUnavailableMethodinEachItem).forEach((node) => {
 				const [start, end] = getRange(node.property);
 
-				const method = getText(node.property);
+				const method = getText(editorView, node.property);
 
 				if (!method) return;
 
@@ -445,7 +444,7 @@ export const useLinter = (
 
 					if (shadowStart && start > shadowStart) return; // skip shadow item
 
-					const varName = getText(node);
+					const varName = getText(editorView, node);
 
 					if (!varName) return;
 
@@ -490,7 +489,7 @@ export const useLinter = (
 				!['json', 'binary'].includes(node.property.name);
 
 			walk<TargetNode>(ast, isDirectAccessToItemSubproperty).forEach((node) => {
-				const varName = getText(node);
+				const varName = getText(editorView, node);
 
 				if (!varName) return;
 
@@ -567,14 +566,10 @@ export const useLinter = (
 	//            helpers
 	// ----------------------------------
 
-	function getText(node: RangeNode) {
-		const editorValue = toValue(editor);
-
-		if (!editorValue) return null;
-
+	function getText(editorView: EditorView, node: RangeNode) {
 		const [start, end] = getRange(node);
 
-		return editorValue.state.doc.toString().slice(start, end);
+		return editorView.state.doc.toString().slice(start, end);
 	}
 
 	function getRange(node: RangeNode) {

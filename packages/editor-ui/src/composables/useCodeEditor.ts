@@ -54,19 +54,26 @@ export const useCodeEditor = ({
 	editorRef,
 	editorValue,
 	language,
+	placeholder,
 	extensions = [],
 	isReadOnly = false,
 	theme = {},
+	onChange = () => {},
+	onViewUpdate = () => {},
 }: {
 	editorRef: MaybeRefOrGetter<HTMLElement | undefined>;
 	language: MaybeRefOrGetter<CodeEditorLanguage>;
 	editorValue?: MaybeRefOrGetter<string>;
+	placeholder?: MaybeRefOrGetter<string>;
 	extensions?: MaybeRefOrGetter<Extension[]>;
 	isReadOnly?: MaybeRefOrGetter<boolean>;
 	theme?: MaybeRefOrGetter<{ maxHeight?: string; minHeight?: string; rows?: number }>;
+	onChange?: (viewUpdate: ViewUpdate) => void;
+	onViewUpdate?: (viewUpdate: ViewUpdate) => void;
 }) => {
 	const editor = ref<EditorView>();
 	const hasFocus = ref(false);
+	const hasChanges = ref(false);
 	const selection = ref<SelectionRange>(EditorSelection.cursor(0)) as Ref<SelectionRange>;
 	const customExtensions = ref<Compartment>(new Compartment());
 	const readOnlyExtensions = ref<Compartment>(new Compartment());
@@ -87,18 +94,24 @@ export const useCodeEditor = ({
 		return editor.value?.state.doc.toString() ?? '';
 	}
 
-	function updateSelection(viewUpdate: ViewUpdate) {
+	function updateSelection(update: ViewUpdate) {
 		const currentSelection = selection.value;
-		const newSelection = viewUpdate.state.selection.ranges[0];
+		const newSelection = update.state.selection.ranges[0];
 
 		if (!currentSelection?.eq(newSelection)) {
 			selection.value = newSelection;
 		}
 	}
 
-	function onEditorUpdate(viewUpdate: ViewUpdate) {
-		autocompleteStatus.value = completionStatus(viewUpdate.view.state);
-		updateSelection(viewUpdate);
+	function onEditorUpdate(update: ViewUpdate) {
+		autocompleteStatus.value = completionStatus(update.view.state);
+		updateSelection(update);
+		onViewUpdate(update);
+
+		if (update.docChanged) {
+			hasChanges.value = true;
+			onChange(update);
+		}
 	}
 
 	function blur() {
@@ -121,11 +134,12 @@ export const useCodeEditor = ({
 
 		if (!parent) return;
 
+		const initialValue = toValue(editorValue) ? toValue(editorValue) : toValue(placeholder);
 		const state = EditorState.create({
-			doc: toValue(editorValue),
+			doc: initialValue,
 			extensions: [
 				customExtensions.value.of(toValue(extensions)),
-				readOnlyExtensions.value.of([EditorState.readOnly.of(toValue(isReadOnly))]),
+				readOnlyExtensions.value.of([]),
 				telemetryExtensions.value.of([]),
 				languageExtensions.value.of([]),
 				themeExtensions.value.of([]),
@@ -194,7 +208,7 @@ export const useCodeEditor = ({
 			editor.value.dispatch({
 				effects: readOnlyExtensions.value.reconfigure([
 					EditorState.readOnly.of(toValue(isReadOnly)),
-					EditorView.editable.of(!isReadOnly),
+					EditorView.editable.of(!toValue(isReadOnly)),
 					lineNumbers(),
 					EditorView.lineWrapping,
 					highlightSpecialChars(),
@@ -211,7 +225,7 @@ export const useCodeEditor = ({
 		}
 	});
 
-	watchEffect(() => {
+	watch(toRef(editorValue), () => {
 		if (!editor.value) return;
 
 		const newValue = toValue(editorValue);
@@ -245,6 +259,40 @@ export const useCodeEditor = ({
 		});
 	}
 
+	function getLine(lineNumber: number | 'last' | 'first') {
+		if (!editor.value) return;
+
+		const { doc } = editor.value.state;
+		switch (lineNumber) {
+			case 'first':
+				return doc.lineAt(0);
+			case 'last':
+				return doc.lineAt(doc.length - 1);
+			default:
+				return doc.line(lineNumber);
+		}
+	}
+
+	function selectLine(lineNumber: number | 'last' | 'first'): void {
+		if (!editor.value) return;
+
+		const line = getLine(lineNumber);
+
+		if (!line) return;
+
+		editor.value.dispatch({ selection: EditorSelection.range(line.from, line.to) });
+	}
+
+	function highlightLine(lineNumber: number | 'last' | 'first'): void {
+		if (!editor.value) return;
+
+		const line = getLine(lineNumber);
+
+		if (!line) return;
+
+		editor.value.dispatch({ selection: EditorSelection.cursor(line.from) });
+	}
+
 	const selectAll = () => select(0, 'end');
 
 	function focus(): void {
@@ -255,11 +303,14 @@ export const useCodeEditor = ({
 	return {
 		editor,
 		hasFocus,
+		hasChanges,
 		selection,
 		readEditorValue,
 		setCursorPosition,
 		select,
+		selectLine,
 		selectAll,
+		highlightLine,
 		focus,
 		blur,
 	};

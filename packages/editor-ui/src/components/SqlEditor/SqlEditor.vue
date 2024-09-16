@@ -35,7 +35,7 @@ import {
 	keywordCompletionSource,
 } from '@n8n/codemirror-lang-sql';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { codeNodeEditorTheme } from '../CodeNodeEditor/theme';
+import { codeEditorTheme } from '../CodeNodeEditor/theme';
 
 const SQL_DIALECTS = {
 	StandardSQL,
@@ -82,7 +82,7 @@ const extensions = computed(() => {
 	const baseExtensions = [
 		sqlWithN8nLanguageSupport(),
 		expressionInputHandler(),
-		codeNodeEditorTheme({
+		codeEditorTheme({
 			isReadOnly: props.isReadOnly,
 			maxHeight: props.fullscreen ? '100%' : '40vh',
 			minHeight: '10vh',
@@ -160,10 +160,10 @@ function line(lineNumber: number): Line | null {
 	}
 }
 
-function highlightLine(lineNumber: number | 'final') {
+function highlightLine(lineNumber: number | 'last') {
 	if (!editor.value) return;
 
-	if (lineNumber === 'final') {
+	if (lineNumber === 'last') {
 		editor.value.dispatch({
 			selection: { anchor: editor.value.state.doc.length },
 		});

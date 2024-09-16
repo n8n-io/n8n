@@ -4,20 +4,20 @@ import type { CodeExecutionMode, CodeNodeEditorLanguage } from 'n8n-workflow';
 import { format } from 'prettier';
 import jsParser from 'prettier/plugins/babel';
 import * as estree from 'prettier/plugins/estree';
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import { CODE_NODE_TYPE } from '@/constants';
 import { codeNodeEditorEventBus } from '@/event-bus';
-import { useRootStore } from '@/stores/root.store';
 import { usePostHog } from '@/stores/posthog.store';
+import { useRootStore } from '@/stores/root.store';
 
+import { useCodeEditor } from '@/composables/useCodeEditor';
+import { useI18n } from '@/composables/useI18n';
 import { useMessage } from '@/composables/useMessage';
+import { useTelemetry } from '@/composables/useTelemetry';
 import AskAI from './AskAI/AskAI.vue';
 import { CODE_PLACEHOLDERS } from './constants';
 import { useLinter } from './linter';
-import { useI18n } from '@/composables/useI18n';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { useCodeEditor } from '@/composables/useCodeEditor';
 
 type Props = {
 	mode: CodeExecutionMode;
@@ -46,22 +46,22 @@ const activeTab = ref('code');
 const isLoadingAIResponse = ref(false);
 const codeNodeEditorRef = ref<HTMLDivElement>();
 const codeNodeEditorContainerRef = ref<HTMLDivElement>();
-
-const linter = useLinter(
-	() => props.mode,
-	() => props.language,
-	editor,
-);
+const hasManualChanges = ref(false);
 
 const rootStore = useRootStore();
 const posthog = usePostHog();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 
+const linter = useLinter(
+	() => props.mode,
+	() => props.language,
+);
 const extensions = computed(() => [linter.value]);
+const placeholder = computed(() => CODE_PLACEHOLDERS[props.language]?.[props.mode] ?? '');
 
-const {} = useCodeEditor({
-	editorRef: codeNodeEditorRef.value,
+const { highlightLine, readEditorValue } = useCodeEditor({
+	editorRef: codeNodeEditorRef,
 	language: () => props.language,
 	editorValue: () => props.modelValue,
 	placeholder,
@@ -76,7 +76,7 @@ const {} = useCodeEditor({
 });
 
 onMounted(() => {
-	if (!props.isReadOnly) codeNodeEditorEventBus.on('error-line-number', highlightLine);
+	if (!props.isReadOnly) codeNodeEditorEventBus.on('highlightLine', highlightLine);
 	codeNodeEditorEventBus.on('codeDiffApplied', diffApplied);
 });
 
@@ -89,46 +89,11 @@ const aiEnabled = computed(() => {
 	return posthog.isAiEnabled() && props.language === 'javaScript';
 });
 
-const placeholder = computed(() => CODE_PLACEHOLDERS[props.language]?.[props.mode] ?? '');
-
-watch(
-	() => props.modelValue,
-	(newValue) => {
-		if (!editor.value) {
-			return;
-		}
-		const current = editor.value.state.doc.toString();
-		if (current === newValue) {
-			return;
-		}
-		editor.value.dispatch({
-			changes: { from: 0, to: getCurrentEditorContent().length, insert: newValue },
-		});
-	},
-);
-
-watch(
-	() => props.mode,
-	(_newMode, previousMode: CodeExecutionMode) => {
-		reloadLinter();
-
-		if (getCurrentEditorContent().trim() === CODE_PLACEHOLDERS[props.language]?.[previousMode]) {
-			refreshPlaceholder();
-		}
-	},
-);
-
-watch(
-	aiEnabled,
-	async (isEnabled) => {
-		if (isEnabled && !props.modelValue) {
-			emit('update:modelValue', placeholder.value);
-		}
-		await nextTick();
-		hasChanges.value = props.modelValue !== placeholder.value;
-	},
-	{ immediate: true },
-);
+watch([() => props.language, () => props.mode], (_, [prevLanguage, prevMode]) => {
+	if (readEditorValue().trim() === CODE_PLACEHOLDERS[prevLanguage]?.[prevMode]) {
+		emit('update:modelValue', placeholder.value);
+	}
+});
 
 async function onBeforeTabLeave(_activeName: string, oldActiveName: string) {
 	// Confirm dialog if leaving ask-ai tab during loading
@@ -146,35 +111,22 @@ async function onBeforeTabLeave(_activeName: string, oldActiveName: string) {
 	return true;
 }
 
-async function onReplaceCode(code: string) {
+async function onAiReplaceCode(code: string) {
 	const formattedCode = await format(code, {
 		parser: 'babel',
 		plugins: [jsParser, estree],
 	});
 
-	editor.value?.dispatch({
-		changes: { from: 0, to: getCurrentEditorContent().length, insert: formattedCode },
-	});
+	emit('update:modelValue', formattedCode);
 
 	activeTab.value = 'code';
-	hasChanges.value = false;
+	hasManualChanges.value = false;
 }
 
 function onEditorUpdate(viewUpdate: ViewUpdate) {
 	trackCompletion(viewUpdate);
-
-	const value = readEditorValue();
-	if (value) {
-		emit('update:modelValue', value);
-	}
-}
-
-function refreshPlaceholder() {
-	if (!editor.value) return;
-
-	editor.value.dispatch({
-		changes: { from: 0, to: getCurrentEditorContent().length, insert: placeholder.value },
-	});
+	hasManualChanges.value = true;
+	emit('update:modelValue', readEditorValue());
 }
 
 function diffApplied() {
@@ -192,7 +144,7 @@ function trackCompletion(viewUpdate: ViewUpdate) {
 	try {
 		// @ts-expect-error - undocumented fields
 		const { fromA, toB } = viewUpdate?.changedRanges[0];
-		const full = getCurrentEditorContent().slice(fromA, toB);
+		const full = viewUpdate.state.doc.slice(fromA, toB).toString();
 		const lastDotIndex = full.lastIndexOf('.');
 
 		let context = null;
@@ -230,9 +182,7 @@ function onAiLoadEnd() {
 <template>
 	<div
 		ref="codeNodeEditorContainerRef"
-		:class="['code-node-editor', $style['code-node-editor-container'], language]"
-		@mouseover="onMouseOver"
-		@mouseout="onMouseOut"
+		:class="['code-node-editor', $style['code-node-editor-container']]"
 	>
 		<el-tabs
 			v-if="aiEnabled"
@@ -260,8 +210,8 @@ function onAiLoadEnd() {
 				<!-- Key the AskAI tab to make sure it re-mounts when changing tabs -->
 				<AskAI
 					:key="activeTab"
-					:has-changes="hasChanges"
-					@replace-code="onReplaceCode"
+					:has-changes="hasManualChanges"
+					@replace-code="onAiReplaceCode"
 					@started-loading="onAiLoadStart"
 					@finished-loading="onAiLoadEnd"
 				/>

@@ -15,7 +15,7 @@ import {
 	lineNumbers,
 } from '@codemirror/view';
 
-import { codeNodeEditorTheme } from '../CodeNodeEditor/theme';
+import { codeEditorSyntaxHighlighting, codeEditorTheme } from '../CodeNodeEditor/theme';
 import {
 	autocompleteKeyMap,
 	enterKeyMap,
@@ -47,12 +47,13 @@ const extensions = computed(() => {
 		lineNumbers(),
 		EditorView.lineWrapping,
 		EditorState.readOnly.of(props.isReadOnly),
-		codeNodeEditorTheme({
+		codeEditorTheme({
 			isReadOnly: props.isReadOnly,
 			maxHeight: props.fillParent ? '100%' : '40vh',
 			minHeight: '20vh',
 			rows: props.rows,
 		}),
+		codeEditorSyntaxHighlighting,
 	];
 	if (!props.isReadOnly) {
 		extensionsToApply.push(
