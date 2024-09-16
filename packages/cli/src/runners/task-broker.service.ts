@@ -502,4 +502,45 @@ export class TaskBroker {
 		this.pendingTaskOffers.push(offer);
 		this.settleTasks();
 	}
+
+	/**
+	 * For testing only
+	 */
+
+	getPendingTaskOffers() {
+		return this.pendingTaskOffers;
+	}
+
+	getPendingTaskRequests() {
+		return this.pendingTaskRequests;
+	}
+
+	getKnownRunners() {
+		return this.knownRunners;
+	}
+
+	getKnownRequesters() {
+		return this.requesters;
+	}
+
+	getRunnerAcceptRejects() {
+		return this.runnerAcceptRejects;
+	}
+
+	setPendingTaskOffers(pendingTaskOffers: TaskOffer[]) {
+		this.pendingTaskOffers = pendingTaskOffers;
+	}
+
+	setPendingTaskRequests(pendingTaskRequests: TaskRequest[]) {
+		this.pendingTaskRequests = pendingTaskRequests;
+	}
+
+	setRunnerAcceptRejects(
+		runnerAcceptRejects: Record<
+			string,
+			{ accept: RunnerAcceptCallback; reject: TaskRejectCallback }
+		>,
+	) {
+		this.runnerAcceptRejects = runnerAcceptRejects;
+	}
 }
