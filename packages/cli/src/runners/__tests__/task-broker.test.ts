@@ -117,6 +117,63 @@ describe('TaskBroker', () => {
 		});
 	});
 
+	describe('taskRequested', () => {
+		it('should match a pending offer to an incoming request', async () => {
+			const now = process.hrtime.bigint();
+
+			const offer: TaskOffer = {
+				offerId: 'offer1',
+				runnerId: 'runner1',
+				taskType: 'taskType1',
+				validFor: 1000,
+				validUntil: now + BigInt(1000 * 1_000_000),
+			};
+
+			taskBroker.setPendingTaskOffers([offer]);
+
+			const request: TaskRequest = {
+				requestId: 'request1',
+				requesterId: 'requester1',
+				taskType: 'taskType1',
+			};
+
+			jest.spyOn(taskBroker, 'acceptOffer').mockResolvedValue(); // allow Jest to exit cleanly
+
+			taskBroker.taskRequested(request);
+
+			expect(taskBroker.getPendingTaskOffers()).toHaveLength(0);
+		});
+	});
+
+	describe('taskOffered', () => {
+		it('should match a pending request to an incoming offer', () => {
+			const now = process.hrtime.bigint();
+
+			const request: TaskRequest = {
+				requestId: 'request1',
+				requesterId: 'requester1',
+				taskType: 'taskType1',
+				acceptInProgress: false,
+			};
+
+			taskBroker.setPendingTaskRequests([request]);
+
+			const offer: TaskOffer = {
+				offerId: 'offer1',
+				runnerId: 'runner1',
+				taskType: 'taskType1',
+				validFor: 1000,
+				validUntil: now + BigInt(1000 * 1_000_000),
+			};
+
+			jest.spyOn(taskBroker, 'acceptOffer').mockResolvedValue(); // allow Jest to exit cleanly
+
+			taskBroker.taskOffered(offer);
+
+			expect(taskBroker.getPendingTaskOffers()).toHaveLength(0);
+		});
+	});
+
 	describe('settleTasks', () => {
 		it('should match task offers with task requests by task type', () => {
 			const now = process.hrtime.bigint();
