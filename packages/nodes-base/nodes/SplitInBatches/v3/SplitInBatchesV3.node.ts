@@ -21,7 +21,7 @@ export class SplitInBatchesV3 implements INodeType {
 			color: '#007755',
 		},
 		inputs: [NodeConnectionType.Main],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
+
 		outputs: [NodeConnectionType.Main, NodeConnectionType.Main],
 		outputNames: ['done', 'loop'],
 		properties: [

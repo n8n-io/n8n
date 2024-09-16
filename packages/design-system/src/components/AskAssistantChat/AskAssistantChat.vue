@@ -170,8 +170,9 @@ function growInput() {
 						></div>
 						<div
 							v-if="message?.codeSnippet"
-							v-n8n-html="renderMarkdown(message.codeSnippet).trim()"
 							:class="$style['code-snippet']"
+							data-test-id="assistant-code-snippet"
+							v-n8n-html="renderMarkdown(message.codeSnippet).trim()"
 						></div>
 						<BlinkingCursor
 							v-if="streaming && i === messages?.length - 1 && message.role === 'assistant'"

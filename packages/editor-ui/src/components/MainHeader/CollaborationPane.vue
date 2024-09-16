@@ -4,7 +4,6 @@ import { useDocumentVisibility } from '@vueuse/core';
 
 import { useUsersStore } from '@/stores/users.store';
 import { useCollaborationStore } from '@/stores/collaboration.store';
-import { isUserGlobalOwner } from '@/utils/userUtils';
 
 const collaborationStore = useCollaborationStore();
 const usersStore = useUsersStore();
@@ -21,13 +20,12 @@ watch(visibility, (visibilityState) => {
 const showUserStack = computed(() => collaborationStore.collaborators.length > 1);
 
 const collaboratorsSorted = computed(() => {
-	const currentWorkflowUsers = collaborationStore.collaborators.map(({ user }) => user);
-	const owner = currentWorkflowUsers.find(isUserGlobalOwner);
-	return {
-		defaultGroup: owner
-			? [owner, ...currentWorkflowUsers.filter((user) => user.id !== owner.id)]
-			: currentWorkflowUsers,
-	};
+	const users = collaborationStore.collaborators.map(({ user }) => user);
+	// Move the current user to the first position, if not already there.
+	const index = users.findIndex((user) => user.id === usersStore.currentUser?.id);
+	if (index < 1) return { defaultGroup: users };
+	const [currentUser] = users.splice(index, 1);
+	return { defaultGroup: [currentUser, ...users] };
 });
 
 const currentUserEmail = computed(() => usersStore.currentUser?.email);
