@@ -27,7 +27,7 @@ const descriptionV1: INodeTypeDescription = {
 	defaults: {
 		name: 'n8n Form Trigger',
 	},
-	// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 	inputs: [],
 	outputs: [NodeConnectionType.Main],
 	webhooks: [
