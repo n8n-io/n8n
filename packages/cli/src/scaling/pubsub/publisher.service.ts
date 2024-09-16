@@ -34,6 +34,7 @@ export class Publisher {
 		return this.client;
 	}
 
+	// @TODO: Use `@OnShutdown()` decorator
 	shutdown() {
 		this.client.disconnect();
 	}

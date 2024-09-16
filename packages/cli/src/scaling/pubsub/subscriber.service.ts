@@ -32,6 +32,7 @@ export class Subscriber {
 		return this.client;
 	}
 
+	// @TODO: Use `@OnShutdown()` decorator
 	shutdown() {
 		this.client.disconnect();
 	}

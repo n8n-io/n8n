@@ -81,6 +81,7 @@ export class OrchestrationService {
 		this.isInitialized = true;
 	}
 
+	// @TODO: Use `@OnShutdown()` decorator
 	async shutdown() {
 		if (!this.isInitialized) return;
 
