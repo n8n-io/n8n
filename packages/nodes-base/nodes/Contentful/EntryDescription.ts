@@ -177,6 +177,19 @@ export const fields: INodeProperties[] = [
 		],
 	},
 	{
+		displayName: 'Entry ID',
+		name: 'entryId',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [resource.value],
+				operation: ['get'],
+			},
+		},
+	},
+	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
@@ -197,18 +210,5 @@ export const fields: INodeProperties[] = [
 				description: 'Whether the data should be returned RAW instead of parsed',
 			},
 		],
-	},
-	{
-		displayName: 'Entry ID',
-		name: 'entryId',
-		type: 'string',
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				resource: [resource.value],
-				operation: ['get'],
-			},
-		},
 	},
 ];
