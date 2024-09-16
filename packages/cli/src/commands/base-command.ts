@@ -17,7 +17,6 @@ import { TelemetryEventRelay } from '@/events/telemetry-event-relay';
 import { initExpressionEvaluator } from '@/expression-evaluator';
 import { ExternalHooks } from '@/external-hooks';
 import { ExternalSecretsManager } from '@/external-secrets/external-secrets-manager.ee';
-import type { N8nInstanceType } from '@/interfaces';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Logger } from '@/logger';
@@ -33,9 +32,7 @@ export abstract class BaseCommand extends Command {
 
 	protected nodeTypes: NodeTypes;
 
-	protected instanceSettings: InstanceSettings;
-
-	private instanceType: N8nInstanceType = 'main';
+	protected instanceSettings: InstanceSettings = Container.get(InstanceSettings);
 
 	queueModeId: string;
 
@@ -61,9 +58,6 @@ export abstract class BaseCommand extends Command {
 
 		process.once('SIGTERM', this.onTerminationSignal('SIGTERM'));
 		process.once('SIGINT', this.onTerminationSignal('SIGINT'));
-
-		// Make sure the settings exist
-		this.instanceSettings = Container.get(InstanceSettings);
 
 		this.nodeTypes = Container.get(NodeTypes);
 		await Container.get(LoadNodesAndCredentials).init();
@@ -128,17 +122,13 @@ export abstract class BaseCommand extends Command {
 		await Container.get(TelemetryEventRelay).init();
 	}
 
-	protected setInstanceType(instanceType: N8nInstanceType) {
-		this.instanceType = instanceType;
-		config.set('generic.instanceType', instanceType);
-	}
-
 	protected setInstanceQueueModeId() {
 		if (config.get('redis.queueModeId')) {
 			this.queueModeId = config.get('redis.queueModeId');
 			return;
 		}
-		this.queueModeId = generateHostInstanceId(this.instanceType);
+		// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+		this.queueModeId = generateHostInstanceId(this.instanceSettings.instanceType!);
 		config.set('redis.queueModeId', this.queueModeId);
 	}
 
@@ -278,7 +268,7 @@ export abstract class BaseCommand extends Command {
 
 	async initLicense(): Promise<void> {
 		this.license = Container.get(License);
-		await this.license.init(this.instanceType ?? 'main');
+		await this.license.init();
 
 		const activationKey = config.getEnv('license.activationKey');
 

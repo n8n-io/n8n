@@ -69,7 +69,6 @@ export class Start extends BaseCommand {
 
 	constructor(argv: string[], cmdConfig: Config) {
 		super(argv, cmdConfig);
-		this.setInstanceType('main');
 		this.setInstanceQueueModeId();
 	}
 
