@@ -77,17 +77,16 @@ onMounted(async () => {
 </template>
 
 <style lang="scss">
-img {
-	max-height: calc(100% - 1em);
-	max-width: calc(100% - 1em);
+img,
+video {
+	max-height: 100%;
+	max-width: 100%;
 }
 .binary-data {
-	background-color: var(--color-foreground-xlight);
-
 	&.other,
 	&.pdf {
-		height: calc(100% - 1em);
-		width: calc(100% - 1em);
+		height: 100%;
+		width: 100%;
 	}
 }
 </style>
