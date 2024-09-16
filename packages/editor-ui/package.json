@@ -32,6 +32,7 @@
     "@jsplumb/core": "^5.13.2",
     "@jsplumb/util": "^5.13.2",
     "@lezer/common": "^1.0.4",
+    "@n8n/api-types": "workspace:*",
     "@n8n/chat": "workspace:*",
     "@n8n/codemirror-lang": "workspace:*",
     "@n8n/codemirror-lang-sql": "^1.0.2",
