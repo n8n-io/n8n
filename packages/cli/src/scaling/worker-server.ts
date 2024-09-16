@@ -8,7 +8,7 @@ import { Service } from 'typedi';
 import config from '@/config';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import * as Db from '@/db';
-import { CredentialsOverwritesSetError } from '@/errors/credentials-overwrites-set.error';
+import { CredentialsOverwritesAlreadySetError } from '@/errors/credentials-overwrites-already-set.error';
 import { NonJsonBodyError } from '@/errors/non-json-body.error';
 import { NonWorkerInstanceTypeError } from '@/errors/non-worker-instance-type.error';
 import { PortTakenError } from '@/errors/port-taken.error';
@@ -111,7 +111,7 @@ export class WorkerServer {
 		res: express.Response,
 	) {
 		if (this.overwritesLoaded) {
-			ResponseHelper.sendErrorResponse(res, new CredentialsOverwritesSetError());
+			ResponseHelper.sendErrorResponse(res, new CredentialsOverwritesAlreadySetError());
 			return;
 		}
 
