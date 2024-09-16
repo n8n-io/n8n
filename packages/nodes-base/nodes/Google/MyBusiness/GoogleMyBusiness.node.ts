@@ -65,6 +65,8 @@ export class GoogleMyBusiness implements INodeType {
 
 	methods = {
 		listSearch: {
+			// Docs can be found here:
+			// https://developers.google.com/my-business/reference/accountmanagement/rest/v1/accounts/list
 			async searchAccounts(
 				this: ILoadOptionsFunctions,
 				filter?: string,
@@ -80,7 +82,10 @@ export class GoogleMyBusiness implements INodeType {
 					'GET',
 					'',
 					{},
-					query,
+					{
+						pageSize: 20,
+						...query,
+					},
 					'https://mybusinessaccountmanagement.googleapis.com/v1/accounts',
 				);
 
@@ -100,6 +105,8 @@ export class GoogleMyBusiness implements INodeType {
 
 				return { results, paginationToken: responseData.nextPageToken };
 			},
+			// Docs can be found here:
+			// https://developers.google.com/my-business/reference/businessinformation/rest/v1/accounts.locations/list
 			async searchLocations(
 				this: ILoadOptionsFunctions,
 				filter?: string,
@@ -119,9 +126,10 @@ export class GoogleMyBusiness implements INodeType {
 					{},
 					{
 						readMask: 'name',
+						pageSize: 100,
 						...query,
 					},
-					`https://mybusinessaccountmanagement.googleapis.com/v1/${account}/locations`,
+					`https://mybusinessbusinessinformation.googleapis.com/v1/${account}/locations`,
 				);
 
 				const locations = responseData.locations as Array<{ name: string }>;
@@ -158,7 +166,10 @@ export class GoogleMyBusiness implements INodeType {
 					'GET',
 					`/${account}/${location}/reviews`,
 					{},
-					query,
+					{
+						pageSize: 50,
+						...query,
+					},
 				);
 
 				const reviews = responseData.reviews as Array<{ name: string }>;
@@ -195,7 +206,10 @@ export class GoogleMyBusiness implements INodeType {
 					'GET',
 					`/${account}/${location}/localPosts`,
 					{},
-					query,
+					{
+						pageSize: 100,
+						...query,
+					},
 				);
 
 				const localPosts = responseData.localPosts as Array<{ name: string }>;
