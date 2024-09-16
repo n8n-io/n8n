@@ -298,7 +298,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				'Assistant session started',
 				{
 					chat_session_id: currentSessionId.value,
-					task: chatSessionTask.value,
+					task: chatSessionTask,
 					node_type: chatSessionError.value?.node.type,
 					credential_type: chatSessionCredType.value?.name,
 				},
@@ -494,7 +494,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			nodeExecutionStatus.value = 'success';
 			telemetry.track('User executed node after assistant suggestion', {
 				task: chatSessionTask.value,
-				chat_session_id: currentSessionId.value,
+				chat_session_id: currentSessionId,
 				success: true,
 			});
 		}
@@ -580,7 +580,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			workflow_id: workflowsStore.workflowId,
 			node_type: chatSessionError.value?.node?.type,
 			error: chatSessionError.value?.error,
-			chat_session_id: currentSessionId.value,
+			chat_session_id: currentSessionId,
 		});
 	}
 

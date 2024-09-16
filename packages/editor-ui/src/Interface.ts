@@ -1,4 +1,4 @@
-import type { Component } from 'vue';
+import type { Component, Ref } from 'vue';
 import type { NotificationOptions as ElementNotificationOptions } from 'element-plus';
 import type { Connection } from '@jsplumb/core';
 import type { Iso8601DateTimeString } from '@n8n/api-types';
@@ -30,7 +30,6 @@ import type {
 	ExecutionSummary,
 	FeatureFlags,
 	ExecutionStatus,
-	ITelemetryTrackProperties,
 	IUserManagementSettings,
 	WorkflowSettings,
 	IUserSettings,
@@ -62,6 +61,27 @@ import type { ProjectSharingData } from '@/types/projects.types';
 import type { BaseTextKey } from './plugins/i18n';
 
 export * from 'n8n-design-system/types';
+
+type IsNotReactive<T> = T extends Ref<infer U> ? U : T;
+
+// @ts-expect-error must be circular to fit any object
+type NonReactiveGenericValue =
+	| string
+	| number
+	| boolean
+	| undefined
+	| null
+	| NonReactiveObject[]
+	| IsNotReactive<NonReactiveObject>;
+
+type NonReactiveObject = {
+	[key: string]: NonReactiveGenericValue;
+};
+
+export interface NonReactiveTelemetryProperties {
+	user_id?: string;
+	[key: string]: NonReactiveGenericValue;
+}
 
 declare global {
 	interface Window {
@@ -103,8 +123,8 @@ declare global {
 		};
 		analytics?: {
 			identify(userId: string): void;
-			track(event: string, properties?: ITelemetryTrackProperties): void;
-			page(category: string, name: string, properties?: ITelemetryTrackProperties): void;
+			track(event: string, properties?: NonReactiveTelemetryProperties): void;
+			page(category: string, name: string, properties?: NonReactiveTelemetryProperties): void;
 		};
 		featureFlags?: {
 			getAll: () => FeatureFlags;

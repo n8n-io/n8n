@@ -1,8 +1,12 @@
 import type { Plugin } from 'vue';
-import type { ITelemetrySettings, ITelemetryTrackProperties, IDataObject } from 'n8n-workflow';
+import type { ITelemetrySettings, IDataObject } from 'n8n-workflow';
 import type { RouteLocation } from 'vue-router';
 
-import type { INodeCreateElement, IUpdateInformation } from '@/Interface';
+import type {
+	INodeCreateElement,
+	NonReactiveTelemetryProperties,
+	IUpdateInformation,
+} from '@/Interface';
 import type { IUserNodesPanelSession, RudderStack } from './telemetry.types';
 import {
 	APPEND_ATTRIBUTION_DEFAULT_PATH,
@@ -103,7 +107,7 @@ export class Telemetry {
 
 	track(
 		event: string,
-		properties?: ITelemetryTrackProperties,
+		properties?: NonReactiveTelemetryProperties,
 		options: { withPostHog?: boolean } = {},
 	) {
 		if (!this.rudderStack) return;
