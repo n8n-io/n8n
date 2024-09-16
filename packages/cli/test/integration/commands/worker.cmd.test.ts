@@ -1,3 +1,5 @@
+process.argv[2] = 'worker';
+
 import { BinaryDataService } from 'n8n-core';
 
 import { Worker } from '@/commands/worker';
@@ -27,6 +29,7 @@ const logStreamingEventRelay = mockInstance(LogStreamingEventRelay);
 const orchestrationHandlerWorkerService = mockInstance(OrchestrationHandlerWorkerService);
 const scalingService = mockInstance(ScalingService);
 const orchestrationWorkerService = mockInstance(OrchestrationWorkerService);
+
 const command = setupTestCommand(Worker);
 
 test('worker initializes all its components', async () => {
