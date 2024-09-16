@@ -4,7 +4,7 @@ import N8nIcon from '../N8nIcon';
 import N8nTooltip from '../N8nTooltip';
 import type { TextColor } from 'n8n-design-system/types/text';
 
-const SIZE = ['small', 'medium'] as const;
+const SIZE = ['small', 'medium', 'large'] as const;
 
 interface InputLabelProps {
 	compact?: boolean;
