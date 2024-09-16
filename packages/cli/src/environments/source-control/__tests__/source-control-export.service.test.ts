@@ -14,7 +14,7 @@ import type { SourceControlledFile } from '../types/source-controlled-file';
 // https://github.com/jestjs/jest/issues/4715
 function deepSpyOn<O extends object, M extends keyof O>(object: O, methodName: M) {
 	const spy = jest.fn();
-	// eslint-disable-next-line @typescript-eslint/ban-types
+
 	const originalMethod = object[methodName];
 
 	if (typeof originalMethod !== 'function') {
