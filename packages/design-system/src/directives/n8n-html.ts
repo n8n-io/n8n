@@ -3,7 +3,11 @@ import type { DirectiveBinding, ObjectDirective } from 'vue';
 
 const configuredSanitize = (html: string) =>
 	sanitize(html, {
-		allowedTags: sanitize.defaults.allowedTags.concat(['img']),
+		allowedTags: sanitize.defaults.allowedTags.concat(['img', 'input']),
+		allowedAttributes: {
+			...sanitize.defaults.allowedAttributes,
+			input: ['type', 'id', 'checked'],
+		}
 	});
 
 export const n8nHtml: ObjectDirective = {
