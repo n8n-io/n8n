@@ -34,7 +34,7 @@ export const reviewOperations: INodeProperties[] = [
 						method: 'GET',
 						url: '=/{{$parameter["account"]}}/{{$parameter["location"]}}/reviews',
 						qs: {
-							pageSize: '={{$parameter["limit"]<50 ? $parameter["limit"] : 50}}',
+							pageSize: '={{$parameter["limit"]<50 ? $parameter["limit"] : 50}}', // Google allows maximum 50 results per page
 						},
 					},
 				},
@@ -60,80 +60,188 @@ export const reviewFields: INodeProperties[] = [
 	/*                                 review:get                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Account',
 		name: 'account',
 		required: true,
-		type: 'options',
+		type: 'resourceLocator',
 		default: '',
-		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description: 'The Google My Business account name',
-		placeholder: 'accounts/012345678901234567890',
 		displayOptions: { show: { resource: ['review'], operation: ['get'] } },
-		typeOptions: { loadOptionsMethod: 'getAccounts' },
+		modes: [
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				hint: 'Enter the account name',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: 'accounts/[0-9]+',
+							errorMessage: 'The name must start with "accounts/"',
+						},
+					},
+				],
+				placeholder: 'accounts/012345678901234567890',
+			},
+			{
+				displayName: 'List',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchAccounts',
+					searchable: true,
+				},
+			},
+		],
 	},
 	{
-		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Location',
 		name: 'location',
 		required: true,
-		type: 'options',
+		type: 'resourceLocator',
 		default: '',
-		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description: 'The specific location or business associated with the account',
-		placeholder: 'locations/012345678901234567',
 		displayOptions: { show: { resource: ['review'], operation: ['get'] } },
-		typeOptions: {
-			loadOptionsMethod: 'getLocations',
-			loadOptionsDependsOn: ['account'],
-		},
+		modes: [
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				hint: 'Enter the location name',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: 'locations/[0-9]+',
+							errorMessage: 'The name must start with "locations/"',
+						},
+					},
+				],
+				placeholder: 'locations/012345678901234567',
+			},
+			{
+				displayName: 'List',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchLocations',
+					searchable: true,
+				},
+			},
+		],
 	},
 	{
-		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-		displayName: 'Review',
-		name: 'review',
-		type: 'options',
+		displayName: 'Review Name',
+		name: 'reviewName',
+		required: true,
+		type: 'resourceLocator',
 		default: '',
-		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
-		description: 'Select the post by name or URL to retrieve its details',
+		description: 'Select the review by name or URL to retrieve its details',
 		displayOptions: { show: { resource: ['review'], operation: ['get'] } },
-		typeOptions: {
-			loadOptionsMethod: 'getReviews',
-			loadOptionsDependsOn: ['account', 'location'],
-		},
+		modes: [
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				hint: 'Enter the location name',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: 'reviews/[0-9]+',
+							errorMessage: 'The name must start with "reviews/"',
+						},
+					},
+				],
+				placeholder: 'reviews/012345678901234567',
+			},
+			{
+				displayName: 'List',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchReviews',
+					searchable: true,
+				},
+			},
+		],
 	},
 
 	/* -------------------------------------------------------------------------- */
 	/*                                 review:getAll                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Account',
 		name: 'account',
 		required: true,
-		type: 'options',
+		type: 'resourceLocator',
 		default: '',
-		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description: 'The Google My Business account name',
-		placeholder: 'accounts/012345678901234567890',
 		displayOptions: { show: { resource: ['review'], operation: ['getAll'] } },
-		typeOptions: { loadOptionsMethod: 'getAccounts' },
+		modes: [
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				hint: 'Enter the account name',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: 'accounts/[0-9]+',
+							errorMessage: 'The name must start with "accounts/"',
+						},
+					},
+				],
+				placeholder: 'accounts/012345678901234567890',
+			},
+			{
+				displayName: 'List',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchAccounts',
+					searchable: true,
+				},
+			},
+		],
 	},
 	{
-		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Location',
 		name: 'location',
 		required: true,
-		type: 'options',
+		type: 'resourceLocator',
 		default: '',
-		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description: 'The specific location or business associated with the account',
-		placeholder: 'locations/012345678901234567',
 		displayOptions: { show: { resource: ['review'], operation: ['getAll'] } },
-		typeOptions: {
-			loadOptionsMethod: 'getLocations',
-			loadOptionsDependsOn: ['account'],
-		},
+		modes: [
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				hint: 'Enter the location name',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: 'locations/[0-9]+',
+							errorMessage: 'The name must start with "locations/"',
+						},
+					},
+				],
+				placeholder: 'locations/012345678901234567',
+			},
+			{
+				displayName: 'List',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchLocations',
+					searchable: true,
+				},
+			},
+		],
 	},
 	{
 		displayName: 'Limit',
@@ -152,47 +260,112 @@ export const reviewFields: INodeProperties[] = [
 	/*                                 review:reply                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Account',
 		name: 'account',
 		required: true,
-		type: 'options',
+		type: 'resourceLocator',
 		default: '',
-		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description: 'The Google My Business account name',
-		placeholder: 'accounts/012345678901234567890',
 		displayOptions: { show: { resource: ['review'], operation: ['reply'] } },
-		typeOptions: { loadOptionsMethod: 'getAccounts' },
+		modes: [
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				hint: 'Enter the account name',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: 'accounts/[0-9]+',
+							errorMessage: 'The name must start with "accounts/"',
+						},
+					},
+				],
+				placeholder: 'accounts/012345678901234567890',
+			},
+			{
+				displayName: 'List',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchAccounts',
+					searchable: true,
+				},
+			},
+		],
 	},
 	{
-		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Location',
 		name: 'location',
 		required: true,
-		type: 'options',
+		type: 'resourceLocator',
 		default: '',
-		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description: 'The specific location or business associated with the account',
-		placeholder: 'locations/012345678901234567',
 		displayOptions: { show: { resource: ['review'], operation: ['reply'] } },
-		typeOptions: {
-			loadOptionsMethod: 'getLocations',
-			loadOptionsDependsOn: ['account'],
-		},
+		modes: [
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				hint: 'Enter the location name',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: 'locations/[0-9]+',
+							errorMessage: 'The name must start with "locations/"',
+						},
+					},
+				],
+				placeholder: 'locations/012345678901234567',
+			},
+			{
+				displayName: 'List',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchLocations',
+					searchable: true,
+				},
+			},
+		],
 	},
 	{
-		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Review Name',
 		name: 'reviewName',
-		type: 'options',
+		required: true,
+		type: 'resourceLocator',
 		default: '',
-		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
-		description: 'Select the post by name or URL to retrieve its details',
+		description: 'Select the review by name or URL to retrieve its details',
 		displayOptions: { show: { resource: ['review'], operation: ['reply'] } },
-		typeOptions: {
-			loadOptionsMethod: 'getReviews',
-			loadOptionsDependsOn: ['account', 'location'],
-		},
+		modes: [
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				hint: 'Enter the location name',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: 'reviews/[0-9]+',
+							errorMessage: 'The name must start with "reviews/"',
+						},
+					},
+				],
+				placeholder: 'reviews/012345678901234567',
+			},
+			{
+				displayName: 'List',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchReviews',
+					searchable: true,
+				},
+			},
+		],
 	},
 	{
 		displayName: 'Reply',

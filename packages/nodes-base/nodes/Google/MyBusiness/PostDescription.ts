@@ -59,7 +59,7 @@ export const postOperations: INodeProperties[] = [
 						method: 'GET',
 						url: '=/{{$parameter["account"]}}/{{$parameter["location"]}}/localPosts',
 						qs: {
-							pageSize: '={{$parameter["limit"]<100 ? $parameter["limit"] : 100}}',
+							pageSize: '={{$parameter["limit"]<100 ? $parameter["limit"] : 100}}', // Google allows maximum 100 results per page
 						},
 					},
 				},
@@ -86,33 +86,76 @@ export const postFields: INodeProperties[] = [
 	/*                                 post:create                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Account',
 		name: 'account',
 		required: true,
-		type: 'options',
+		type: 'resourceLocator',
 		default: '',
-		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description: 'The Google My Business account name',
-		placeholder: 'accounts/012345678901234567890',
 		displayOptions: { show: { resource: ['post'], operation: ['create'] } },
-		typeOptions: { loadOptionsMethod: 'getAccounts' },
+		modes: [
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				hint: 'Enter the account name',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: 'accounts/[0-9]+',
+							errorMessage: 'The name must start with "accounts/"',
+						},
+					},
+				],
+				placeholder: 'accounts/012345678901234567890',
+			},
+			{
+				displayName: 'List',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchAccounts',
+					searchable: true,
+				},
+			},
+		],
 	},
 	{
-		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Location',
 		name: 'location',
 		required: true,
-		type: 'options',
+		type: 'resourceLocator',
 		default: '',
-		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description: 'The specific location or business associated with the account',
-		placeholder: 'locations/012345678901234567',
 		displayOptions: { show: { resource: ['post'], operation: ['create'] } },
-		typeOptions: {
-			loadOptionsMethod: 'getLocations',
-			loadOptionsDependsOn: ['account'],
-		},
+		modes: [
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				hint: 'Enter the location name',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: 'locations/[0-9]+',
+							errorMessage: 'The name must start with "locations/"',
+						},
+					},
+				],
+				placeholder: 'locations/012345678901234567',
+			},
+			{
+				displayName: 'List',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchLocations',
+					searchable: true,
+				},
+			},
+		],
 	},
 	{
 		displayName: 'Post Type',
@@ -175,7 +218,9 @@ export const postFields: INodeProperties[] = [
 				default: 'ACTION_TYPE_UNSPECIFIED',
 				description: 'The type of call to action',
 				displayOptions: { show: { '/postType': ['STANDARD', 'EVENT', 'ALERT'] } },
-				routing: { send: { type: 'body', property: 'callToAction.actionType' } },
+				routing: {
+					send: { type: 'body', propertyInDotNotation: true, property: 'callToAction.actionType' },
+				},
 				options: [
 					{
 						name: 'Action Type Unspecified',
@@ -221,7 +266,9 @@ export const postFields: INodeProperties[] = [
 				default: '',
 				description: 'The URL that users are sent to when clicking through the promotion',
 				displayOptions: { show: { '/postType': ['STANDARD', 'EVENT', 'ALERT'] } },
-				routing: { send: { type: 'body', property: 'callToAction.url' } },
+				routing: {
+					send: { type: 'body', propertyInDotNotation: true, property: 'callToAction.url' },
+				},
 			},
 			{
 				displayName: 'Title',
@@ -230,7 +277,7 @@ export const postFields: INodeProperties[] = [
 				default: '',
 				description: 'E.g. Sales this week.',
 				displayOptions: { show: { '/postType': ['EVENT'] } },
-				routing: { send: { type: 'body', property: 'event.title' } },
+				routing: { send: { type: 'body', propertyInDotNotation: true, property: 'event.title' } },
 			},
 			{
 				displayName: 'Start Date and Time',
@@ -255,7 +302,7 @@ export const postFields: INodeProperties[] = [
 				default: '',
 				description: 'E.g. 20% off in store or online.',
 				displayOptions: { show: { '/postType': ['OFFER'] } },
-				routing: { send: { type: 'body', property: 'event.title' } },
+				routing: { send: { type: 'body', propertyInDotNotation: true, property: 'event.title' } },
 			},
 			{
 				displayName: 'Start Date',
@@ -283,7 +330,9 @@ export const postFields: INodeProperties[] = [
 				default: '',
 				description: 'The coupon code for the offer',
 				displayOptions: { show: { '/postType': ['OFFER'] } },
-				routing: { send: { type: 'body', property: 'offer.couponCode' } },
+				routing: {
+					send: { type: 'body', propertyInDotNotation: true, property: 'offer.couponCode' },
+				},
 			},
 			{
 				displayName: 'Redeem Online Url',
@@ -292,7 +341,9 @@ export const postFields: INodeProperties[] = [
 				default: '',
 				description: 'Link to redeem the offer',
 				displayOptions: { show: { '/postType': ['OFFER'] } },
-				routing: { send: { type: 'body', property: 'offer.redeemOnlineUrl' } },
+				routing: {
+					send: { type: 'body', propertyInDotNotation: true, property: 'offer.redeemOnlineUrl' },
+				},
 			},
 			{
 				displayName: 'Terms and Conditions',
@@ -301,7 +352,9 @@ export const postFields: INodeProperties[] = [
 				default: '',
 				description: 'The terms and conditions of the offer',
 				displayOptions: { show: { '/postType': ['OFFER'] } },
-				routing: { send: { type: 'body', property: 'offer.termsAndConditions' } },
+				routing: {
+					send: { type: 'body', propertyInDotNotation: true, property: 'offer.termsAndConditions' },
+				},
 			},
 		],
 	},
@@ -310,127 +363,298 @@ export const postFields: INodeProperties[] = [
 	/*                                 post:delete                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Account',
 		name: 'account',
 		required: true,
-		type: 'options',
+		type: 'resourceLocator',
 		default: '',
-		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description: 'The Google My Business account name',
-		placeholder: 'accounts/012345678901234567890',
 		displayOptions: { show: { resource: ['post'], operation: ['delete'] } },
-		typeOptions: { loadOptionsMethod: 'getAccounts' },
+		modes: [
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				hint: 'Enter the account name',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: 'accounts/[0-9]+',
+							errorMessage: 'The name must start with "accounts/"',
+						},
+					},
+				],
+				placeholder: 'accounts/012345678901234567890',
+			},
+			{
+				displayName: 'List',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchAccounts',
+					searchable: true,
+				},
+			},
+		],
 	},
 	{
-		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Location',
 		name: 'location',
 		required: true,
-		type: 'options',
+		type: 'resourceLocator',
 		default: '',
-		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description: 'The specific location or business associated with the account',
-		placeholder: 'locations/012345678901234567',
 		displayOptions: { show: { resource: ['post'], operation: ['delete'] } },
-		typeOptions: {
-			loadOptionsMethod: 'getLocations',
-			loadOptionsDependsOn: ['account'],
-		},
+		modes: [
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				hint: 'Enter the location name',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: 'locations/[0-9]+',
+							errorMessage: 'The name must start with "locations/"',
+						},
+					},
+				],
+				placeholder: 'locations/012345678901234567',
+			},
+			{
+				displayName: 'List',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchLocations',
+					searchable: true,
+				},
+			},
+		],
 	},
 	{
-		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Post',
 		name: 'post',
-		type: 'options',
+		type: 'resourceLocator',
 		default: '',
-		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description: 'Select the post by name or URL to retrieve its details',
 		displayOptions: { show: { resource: ['post'], operation: ['delete'] } },
-		typeOptions: {
-			loadOptionsMethod: 'getPosts',
-			loadOptionsDependsOn: ['account', 'location'],
-		},
+		modes: [
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				hint: 'Enter the post name',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: 'localPosts/[0-9]+',
+							errorMessage: 'The name must start with "localPosts/"',
+						},
+					},
+				],
+				placeholder: 'localPosts/012345678901234567',
+			},
+			{
+				displayName: 'List',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchPosts',
+					searchable: true,
+				},
+			},
+		],
 	},
 
 	/* -------------------------------------------------------------------------- */
 	/*                                 post:get                                   */
 	/* -------------------------------------------------------------------------- */
 	{
-		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Account',
 		name: 'account',
 		required: true,
-		type: 'options',
+		type: 'resourceLocator',
 		default: '',
-		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description: 'The Google My Business account name',
-		placeholder: 'accounts/012345678901234567890',
 		displayOptions: { show: { resource: ['post'], operation: ['get'] } },
-		typeOptions: { loadOptionsMethod: 'getAccounts' },
+		modes: [
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				hint: 'Enter the account name',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: 'accounts/[0-9]+',
+							errorMessage: 'The name must start with "accounts/"',
+						},
+					},
+				],
+				placeholder: 'accounts/012345678901234567890',
+			},
+			{
+				displayName: 'List',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchAccounts',
+					searchable: true,
+				},
+			},
+		],
 	},
 	{
-		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Location',
 		name: 'location',
 		required: true,
-		type: 'options',
+		type: 'resourceLocator',
 		default: '',
-		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description: 'The specific location or business associated with the account',
-		placeholder: 'locations/012345678901234567',
 		displayOptions: { show: { resource: ['post'], operation: ['get'] } },
-		typeOptions: {
-			loadOptionsMethod: 'getLocations',
-			loadOptionsDependsOn: ['account'],
-		},
+		modes: [
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				hint: 'Enter the location name',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: 'locations/[0-9]+',
+							errorMessage: 'The name must start with "locations/"',
+						},
+					},
+				],
+				placeholder: 'locations/012345678901234567',
+			},
+			{
+				displayName: 'List',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchLocations',
+					searchable: true,
+				},
+			},
+		],
 	},
 	{
-		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Post',
 		name: 'post',
-		type: 'options',
+		type: 'resourceLocator',
 		default: '',
-		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description: 'Select the post by name or URL to retrieve its details',
 		displayOptions: { show: { resource: ['post'], operation: ['get'] } },
-		typeOptions: {
-			loadOptionsMethod: 'getPosts',
-			loadOptionsDependsOn: ['account', 'location'],
-		},
+		modes: [
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				hint: 'Enter the post name',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: 'localPosts/[0-9]+',
+							errorMessage: 'The name must start with "localPosts/"',
+						},
+					},
+				],
+				placeholder: 'localPosts/012345678901234567',
+			},
+			{
+				displayName: 'List',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchPosts',
+					searchable: true,
+				},
+			},
+		],
 	},
 
 	/* -------------------------------------------------------------------------- */
 	/*                                 post:getAll                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Account',
 		name: 'account',
 		required: true,
-		type: 'options',
+		type: 'resourceLocator',
 		default: '',
-		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description: 'The Google My Business account name',
-		placeholder: 'accounts/012345678901234567890',
 		displayOptions: { show: { resource: ['post'], operation: ['getAll'] } },
-		typeOptions: { loadOptionsMethod: 'getAccounts' },
+		modes: [
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				hint: 'Enter the account name',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: 'accounts/[0-9]+',
+							errorMessage: 'The name must start with "accounts/"',
+						},
+					},
+				],
+				placeholder: 'accounts/012345678901234567890',
+			},
+			{
+				displayName: 'List',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchAccounts',
+					searchable: true,
+				},
+			},
+		],
 	},
 	{
-		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Location',
 		name: 'location',
 		required: true,
-		type: 'options',
+		type: 'resourceLocator',
 		default: '',
-		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description: 'The specific location or business associated with the account',
-		placeholder: 'locations/012345678901234567',
 		displayOptions: { show: { resource: ['post'], operation: ['getAll'] } },
-		typeOptions: {
-			loadOptionsMethod: 'getLocations',
-			loadOptionsDependsOn: ['account'],
-		},
+		modes: [
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				hint: 'Enter the location name',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: 'locations/[0-9]+',
+							errorMessage: 'The name must start with "locations/"',
+						},
+					},
+				],
+				placeholder: 'locations/012345678901234567',
+			},
+			{
+				displayName: 'List',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchLocations',
+					searchable: true,
+				},
+			},
+		],
 	},
 	{
 		displayName: 'Limit',
@@ -448,47 +672,111 @@ export const postFields: INodeProperties[] = [
 	/*                                 post:update                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Account',
 		name: 'account',
 		required: true,
-		type: 'options',
+		type: 'resourceLocator',
 		default: '',
-		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description: 'The Google My Business account name',
-		placeholder: 'accounts/012345678901234567890',
 		displayOptions: { show: { resource: ['post'], operation: ['update'] } },
-		typeOptions: { loadOptionsMethod: 'getAccounts' },
+		modes: [
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				hint: 'Enter the account name',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: 'accounts/[0-9]+',
+							errorMessage: 'The name must start with "accounts/"',
+						},
+					},
+				],
+				placeholder: 'accounts/012345678901234567890',
+			},
+			{
+				displayName: 'List',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchAccounts',
+					searchable: true,
+				},
+			},
+		],
 	},
 	{
-		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Location',
 		name: 'location',
 		required: true,
-		type: 'options',
+		type: 'resourceLocator',
 		default: '',
-		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description: 'The specific location or business associated with the account',
-		placeholder: 'locations/012345678901234567',
 		displayOptions: { show: { resource: ['post'], operation: ['update'] } },
-		typeOptions: {
-			loadOptionsMethod: 'getLocations',
-			loadOptionsDependsOn: ['account'],
-		},
+		modes: [
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				hint: 'Enter the location name',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: 'locations/[0-9]+',
+							errorMessage: 'The name must start with "locations/"',
+						},
+					},
+				],
+				placeholder: 'locations/012345678901234567',
+			},
+			{
+				displayName: 'List',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchLocations',
+					searchable: true,
+				},
+			},
+		],
 	},
 	{
-		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Post',
 		name: 'post',
-		type: 'options',
+		type: 'resourceLocator',
 		default: '',
-		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description: 'Select the post by name or URL to retrieve its details',
 		displayOptions: { show: { resource: ['post'], operation: ['update'] } },
-		typeOptions: {
-			loadOptionsMethod: 'getPosts',
-			loadOptionsDependsOn: ['account', 'location'],
-		},
+		modes: [
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				hint: 'Enter the post name',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: 'localPosts/[0-9]+',
+							errorMessage: 'The name must start with "localPosts/"',
+						},
+					},
+				],
+				placeholder: 'localPosts/012345678901234567',
+			},
+			{
+				displayName: 'List',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchPosts',
+					searchable: true,
+				},
+			},
+		],
 	},
 	{
 		displayName: 'Post Type',
@@ -551,7 +839,9 @@ export const postFields: INodeProperties[] = [
 				default: 'ACTION_TYPE_UNSPECIFIED',
 				description: 'The type of call to action',
 				displayOptions: { show: { '/postType': ['STANDARD', 'EVENT', 'ALERT'] } },
-				routing: { send: { type: 'body', property: 'callToAction.actionType' } },
+				routing: {
+					send: { type: 'body', propertyInDotNotation: true, property: 'callToAction.actionType' },
+				},
 				options: [
 					{
 						name: 'Action Type Unspecified',
@@ -598,7 +888,9 @@ export const postFields: INodeProperties[] = [
 				default: '',
 				description: 'The URL that users are sent to when clicking through the promotion',
 				displayOptions: { show: { '/postType': ['STANDARD', 'EVENT', 'ALERT'] } },
-				routing: { send: { type: 'body', property: 'callToAction.url' } },
+				routing: {
+					send: { type: 'body', propertyInDotNotation: true, property: 'callToAction.url' },
+				},
 			},
 			{
 				displayName: 'Title',
@@ -607,7 +899,7 @@ export const postFields: INodeProperties[] = [
 				default: '',
 				description: 'E.g. Sales this week.',
 				displayOptions: { show: { '/postType': ['EVENT'] } },
-				routing: { send: { type: 'body', property: 'event.title' } },
+				routing: { send: { type: 'body', propertyInDotNotation: true, property: 'event.title' } },
 			},
 			{
 				displayName: 'Start Date and Time',
@@ -632,7 +924,7 @@ export const postFields: INodeProperties[] = [
 				default: '',
 				description: 'E.g. 20% off in store or online.',
 				displayOptions: { show: { '/postType': ['OFFER'] } },
-				routing: { send: { type: 'body', property: 'event.title' } },
+				routing: { send: { type: 'body', propertyInDotNotation: true, property: 'event.title' } },
 			},
 			{
 				displayName: 'Start Date',
@@ -660,7 +952,9 @@ export const postFields: INodeProperties[] = [
 				default: '',
 				description: 'The coupon code for the offer',
 				displayOptions: { show: { '/postType': ['OFFER'] } },
-				routing: { send: { type: 'body', property: 'offer.couponCode' } },
+				routing: {
+					send: { type: 'body', propertyInDotNotation: true, property: 'offer.couponCode' },
+				},
 			},
 			{
 				displayName: 'Redeem Online Url',
@@ -669,7 +963,9 @@ export const postFields: INodeProperties[] = [
 				default: '',
 				description: 'Link to redeem the offer',
 				displayOptions: { show: { '/postType': ['OFFER'] } },
-				routing: { send: { type: 'body', property: 'offer.redeemOnlineUrl' } },
+				routing: {
+					send: { type: 'body', propertyInDotNotation: true, property: 'offer.redeemOnlineUrl' },
+				},
 			},
 			{
 				displayName: 'Terms and Conditions',
@@ -678,7 +974,9 @@ export const postFields: INodeProperties[] = [
 				default: '',
 				description: 'The terms and conditions of the offer',
 				displayOptions: { show: { '/postType': ['OFFER'] } },
-				routing: { send: { type: 'body', property: 'offer.termsAndConditions' } },
+				routing: {
+					send: { type: 'body', propertyInDotNotation: true, property: 'offer.termsAndConditions' },
+				},
 			},
 		],
 	},

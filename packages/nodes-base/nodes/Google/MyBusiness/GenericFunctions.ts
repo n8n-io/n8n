@@ -102,7 +102,6 @@ export async function handlePagination(
 				}
 			}
 
-			// Merge other properties excluding pagination tokens and dynamic properties
 			for (const key of Object.keys(page.json)) {
 				if (key !== 'nextPageToken' && !possibleRootProperties.includes(key)) {
 					aggregatedResult[key] = page.json[key];
@@ -116,7 +115,6 @@ export async function handlePagination(
 		if (totalFetched >= limit) break;
 	} while (nextPageToken);
 
-	// Return aggregated results limiting the items
 	const dataKey = possibleRootProperties.find((key) => aggregatedResult[key]);
 	if (dataKey && aggregatedResult[dataKey]) {
 		aggregatedResult[dataKey] = (aggregatedResult[dataKey] as IDataObject[]).slice(0, limit);
@@ -125,7 +123,7 @@ export async function handlePagination(
 	return [{ json: aggregatedResult }];
 }
 
-/* The following functions are used for the loadOptions as for them there is no support for declarative style pagination */
+/* Function used for listSearch */
 export async function googleApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
@@ -141,7 +139,7 @@ export async function googleApiRequest(
 		method,
 		body,
 		qs,
-		url: url || `https://mybusiness.googleapis.com/v4${resource}`,
+		url: url ?? `https://mybusiness.googleapis.com/v4${resource}`,
 		json: true,
 	};
 	try {
@@ -157,27 +155,4 @@ export async function googleApiRequest(
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
-}
-
-export async function googleApiRequestAllItems(
-	this: IExecuteFunctions | ILoadOptionsFunctions,
-	propertyName: string,
-	method: IHttpRequestMethods,
-	endpoint: string,
-	body: IDataObject = {},
-	query: IDataObject = {},
-	pageSize: number = 100,
-	url?: string,
-): Promise<IDataObject[]> {
-	const returnData: IDataObject[] = [];
-	let responseData;
-	query.pageSize = pageSize;
-
-	do {
-		responseData = await googleApiRequest.call(this, method, endpoint, body, query, url);
-		query.pageToken = responseData.nextPageToken;
-		returnData.push(...(responseData[propertyName] as IDataObject[]));
-	} while (responseData.nextPageToken !== undefined && responseData.nextPageToken !== '');
-
-	return returnData;
 }
