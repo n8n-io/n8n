@@ -11,6 +11,18 @@ export const reviewOperations: INodeProperties[] = [
 		displayOptions: { show: { resource: ['review'] } },
 		options: [
 			{
+				name: 'Delete Reply',
+				value: 'delete',
+				action: 'Delete a reply to a review',
+				description: 'Delete a reply to a review',
+				routing: {
+					request: {
+						method: 'DELETE',
+						url: '=/{{$parameter["account"]}}/{{$parameter["location"]}}/{{$parameter["reviewName"]/reply}}',
+					},
+				},
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				action: 'Get review',
@@ -139,6 +151,118 @@ export const reviewFields: INodeProperties[] = [
 		default: '',
 		description: 'Select the review by name or URL to retrieve its details',
 		displayOptions: { show: { resource: ['review'], operation: ['get'] } },
+		modes: [
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				hint: 'Enter the location name',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: 'reviews/[0-9]+',
+							errorMessage: 'The name must start with "reviews/"',
+						},
+					},
+				],
+				placeholder: 'reviews/012345678901234567',
+			},
+			{
+				displayName: 'List',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchReviews',
+					searchable: true,
+				},
+			},
+		],
+	},
+
+	/* -------------------------------------------------------------------------- */
+	/*                              review:delete                                 */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Account',
+		name: 'account',
+		required: true,
+		type: 'resourceLocator',
+		default: '',
+		description: 'The Google My Business account name',
+		displayOptions: { show: { resource: ['review'], operation: ['delete'] } },
+		modes: [
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				hint: 'Enter the account name',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: 'accounts/[0-9]+',
+							errorMessage: 'The name must start with "accounts/"',
+						},
+					},
+				],
+				placeholder: 'accounts/012345678901234567890',
+			},
+			{
+				displayName: 'List',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchAccounts',
+					searchable: true,
+				},
+			},
+		],
+	},
+	{
+		displayName: 'Location',
+		name: 'location',
+		required: true,
+		type: 'resourceLocator',
+		default: '',
+		description: 'The specific location or business associated with the account',
+		displayOptions: { show: { resource: ['review'], operation: ['delete'] } },
+		modes: [
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				hint: 'Enter the location name',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: 'locations/[0-9]+',
+							errorMessage: 'The name must start with "locations/"',
+						},
+					},
+				],
+				placeholder: 'locations/012345678901234567',
+			},
+			{
+				displayName: 'List',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchLocations',
+					searchable: true,
+				},
+			},
+		],
+	},
+	{
+		displayName: 'Review Name',
+		name: 'reviewName',
+		required: true,
+		type: 'resourceLocator',
+		default: '',
+		description: 'Select the review by name or URL to retrieve its details',
+		displayOptions: { show: { resource: ['review'], operation: ['delete'] } },
 		modes: [
 			{
 				displayName: 'Name',
