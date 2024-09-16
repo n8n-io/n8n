@@ -15,7 +15,7 @@ import type {
 	INode,
 	IDataObject,
 } from 'n8n-workflow';
-import { NodeConnectionType, sleep } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import { useToast } from '@/composables/useToast';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
@@ -325,53 +325,69 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 		let runWorkflowApiResponse = await runWorkflow(options);
 		let { executionId } = runWorkflowApiResponse || {};
 
-		// execution waiting for webhook
-		while (!executionId) {
-			await useExternalHooks().run('workflowRun.runWorkflow', {
-				nodeName: options.destinationNode,
-				source: options.source,
+		const waitForWebhook = async (): Promise<string> => {
+			return await new Promise<string>((resolve) => {
+				const interval = setInterval(async () => {
+					await useExternalHooks().run('workflowRun.runWorkflow', {
+						nodeName: options.destinationNode,
+						source: options.source,
+					});
+
+					if (workflowsStore.activeExecutionId) {
+						executionId = workflowsStore.activeExecutionId;
+						runWorkflowApiResponse = { executionId };
+						clearInterval(interval);
+						resolve(executionId);
+					}
+				}, 2000);
 			});
+		};
 
-			await sleep(2000);
-
-			if (workflowsStore.activeExecutionId) {
-				executionId = workflowsStore.activeExecutionId;
-				runWorkflowApiResponse = { executionId };
-			}
-		}
+		if (!executionId) executionId = await waitForWebhook();
 
 		const shownForms: string[] = [];
-		while (true) {
-			const execution = await workflowsStore.getExecution(executionId);
 
-			if (!execution || workflowsStore.workflowExecutionData === null) break;
+		const resolveWaitingNodesData = async (): Promise<void> => {
+			return await new Promise<void>((resolve) => {
+				const interval = setInterval(async () => {
+					const execution = await workflowsStore.getExecution(executionId as string);
 
-			if (execution.finished) {
-				workflowsStore.setWorkflowExecutionData(execution);
-				nodeHelpers.updateNodesExecutionIssues();
-				break;
-			}
+					if (!execution || workflowsStore.workflowExecutionData === null) {
+						clearInterval(interval);
+						resolve();
+						return;
+					}
 
-			if (execution.data) {
-				workflowsStore.setWorkflowExecutionRunData(execution.data);
-			}
+					if (execution.finished) {
+						workflowsStore.setWorkflowExecutionData(execution);
+						nodeHelpers.updateNodesExecutionIssues();
+						clearInterval(interval);
+						resolve();
+						return;
+					}
 
-			if (execution.status === 'waiting') {
-				const { lastNodeExecuted } = execution.data?.resultData || {};
-				const waitingNode = workflowsStore.getNodeByName(lastNodeExecuted || '');
-				if (
-					waitingNode &&
-					waitingNode.type === WAIT_NODE_TYPE &&
-					waitingNode.parameters.resume === 'form' &&
-					!shownForms.includes(waitingNode.name)
-				) {
-					openWaitNodeFormResumeUrl(waitingNode, executionId);
-					shownForms.push(waitingNode.name);
-				}
-			}
+					if (execution.data) {
+						workflowsStore.setWorkflowExecutionRunData(execution.data);
+					}
 
-			await sleep(2000);
-		}
+					if (execution.status === 'waiting') {
+						const { lastNodeExecuted } = execution.data?.resultData || {};
+						const waitingNode = workflowsStore.getNodeByName(lastNodeExecuted || '');
+						if (
+							waitingNode &&
+							waitingNode.type === WAIT_NODE_TYPE &&
+							waitingNode.parameters.resume === 'form' &&
+							!shownForms.includes(waitingNode.name)
+						) {
+							openWaitNodeFormResumeUrl(waitingNode, executionId as string);
+							shownForms.push(waitingNode.name);
+						}
+					}
+				}, 2000);
+			});
+		};
+
+		await resolveWaitingNodesData();
 
 		await useExternalHooks().run('workflowRun.runWorkflow', {
 			nodeName: options.destinationNode,
