@@ -84,6 +84,7 @@ jobs:
 
         # We need to login again because the access token expires
       - name: Azure login
+        if: always()
         uses: azure/login@v2.1.1
         with:
           client-id: ${{ env.ARM_CLIENT_ID }}
