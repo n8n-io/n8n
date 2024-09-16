@@ -25,9 +25,9 @@ import { ScalingService } from '@/scaling/scaling.service';
  */
 @Service()
 export class WorkerServer {
-	private port: number;
+	private readonly port: number;
 
-	private server: Server;
+	private readonly server: Server;
 
 	/**
 	 * @doc https://docs.n8n.io/embed/configuration/#credential-overwrites
