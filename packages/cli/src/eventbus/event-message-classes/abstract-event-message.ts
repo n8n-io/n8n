@@ -21,12 +21,10 @@ function modifyUnderscoredKeys(
 					result[key] = modifier(input[key]);
 				}
 			} else {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				result[key] = input[key];
 			}
 		} else if (typeof input[key] === 'object') {
 			if (Array.isArray(input[key])) {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
 				result[key] = input[key].map((item: any) => {
 					if (typeof item === 'object' && !Array.isArray(item)) {
 						return modifyUnderscoredKeys(item, modifier);
