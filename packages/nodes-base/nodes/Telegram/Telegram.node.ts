@@ -1495,6 +1495,7 @@ export class Telegram implements INodeType {
 							'editMessageText',
 							'sendAnimation',
 							'sendAudio',
+							'sendChatAction',
 							'sendDocument',
 							'sendLocation',
 							'sendMessage',
@@ -1543,7 +1544,7 @@ export class Telegram implements INodeType {
 						default: false,
 						displayOptions: {
 							hide: {
-								'/operation': ['editMessageText'],
+								'/operation': ['editMessageText', 'sendChatAction'],
 							},
 						},
 						description:
@@ -1664,7 +1665,7 @@ export class Telegram implements INodeType {
 						type: 'number',
 						displayOptions: {
 							hide: {
-								'/operation': ['editMessageText'],
+								'/operation': ['editMessageText', 'sendChatAction'],
 							},
 						},
 						default: 0,
@@ -1945,6 +1946,9 @@ export class Telegram implements INodeType {
 
 						body.chat_id = this.getNodeParameter('chatId', i) as string;
 						body.action = this.getNodeParameter('action', i) as string;
+
+						// Add additional fields
+						addAdditionalFields.call(this, body, i);
 					} else if (operation === 'sendDocument') {
 						// ----------------------------------
 						//         message:sendDocument

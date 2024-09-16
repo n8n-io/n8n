@@ -118,68 +118,68 @@ export function addAdditionalFields(
 
 	Object.assign(body, additionalFields);
 
-	// Add the reply markup
-	let replyMarkupOption = '';
-	if (operation !== 'sendMediaGroup') {
+	if (operation !== 'sendMediaGroup' && operation !== 'sendChatAction') {
+		// Add the reply markup
+		let replyMarkupOption = '';
 		replyMarkupOption = this.getNodeParameter('replyMarkup', index) as string;
 		if (replyMarkupOption === 'none') {
 			return;
 		}
-	}
 
-	body.reply_markup = {} as
-		| IMarkupForceReply
-		| IMarkupReplyKeyboardRemove
-		| ITelegramInlineReply
-		| ITelegramReplyKeyboard;
-	if (['inlineKeyboard', 'replyKeyboard'].includes(replyMarkupOption)) {
-		let setParameterName = 'inline_keyboard';
-		if (replyMarkupOption === 'replyKeyboard') {
-			setParameterName = 'keyboard';
-		}
-
-		const keyboardData = this.getNodeParameter(replyMarkupOption, index) as IMarkupKeyboard;
-
-		// @ts-ignore
-		(body.reply_markup as ITelegramInlineReply | ITelegramReplyKeyboard)[setParameterName] =
-			[] as ITelegramKeyboardButton[][];
-		let sendButtonData: ITelegramKeyboardButton;
-		if (keyboardData.rows !== undefined) {
-			for (const row of keyboardData.rows) {
-				const sendRows: ITelegramKeyboardButton[] = [];
-				if (row.row?.buttons === undefined) {
-					continue;
-				}
-				for (const button of row.row.buttons) {
-					sendButtonData = {};
-					sendButtonData.text = button.text;
-					if (button.additionalFields) {
-						Object.assign(sendButtonData, button.additionalFields);
-					}
-					sendRows.push(sendButtonData);
-				}
-				// @ts-ignore
-				// prettier-ignore
-				((body.reply_markup as ITelegramInlineReply | ITelegramReplyKeyboard)[setParameterName] as ITelegramKeyboardButton[][]).push(sendRows);
+		body.reply_markup = {} as
+			| IMarkupForceReply
+			| IMarkupReplyKeyboardRemove
+			| ITelegramInlineReply
+			| ITelegramReplyKeyboard;
+		if (['inlineKeyboard', 'replyKeyboard'].includes(replyMarkupOption)) {
+			let setParameterName = 'inline_keyboard';
+			if (replyMarkupOption === 'replyKeyboard') {
+				setParameterName = 'keyboard';
 			}
-		}
-	} else if (replyMarkupOption === 'forceReply') {
-		const forceReply = this.getNodeParameter('forceReply', index) as IMarkupForceReply;
-		body.reply_markup = forceReply;
-	} else if (replyMarkupOption === 'replyKeyboardRemove') {
-		const forceReply = this.getNodeParameter(
-			'replyKeyboardRemove',
-			index,
-		) as IMarkupReplyKeyboardRemove;
-		body.reply_markup = forceReply;
-	}
 
-	if (replyMarkupOption === 'replyKeyboard') {
-		const replyKeyboardOptions = this.getNodeParameter(
-			'replyKeyboardOptions',
-			index,
-		) as IMarkupReplyKeyboardOptions;
-		Object.assign(body.reply_markup, replyKeyboardOptions);
+			const keyboardData = this.getNodeParameter(replyMarkupOption, index) as IMarkupKeyboard;
+
+			// @ts-ignore
+			(body.reply_markup as ITelegramInlineReply | ITelegramReplyKeyboard)[setParameterName] =
+				[] as ITelegramKeyboardButton[][];
+			let sendButtonData: ITelegramKeyboardButton;
+			if (keyboardData.rows !== undefined) {
+				for (const row of keyboardData.rows) {
+					const sendRows: ITelegramKeyboardButton[] = [];
+					if (row.row?.buttons === undefined) {
+						continue;
+					}
+					for (const button of row.row.buttons) {
+						sendButtonData = {};
+						sendButtonData.text = button.text;
+						if (button.additionalFields) {
+							Object.assign(sendButtonData, button.additionalFields);
+						}
+						sendRows.push(sendButtonData);
+					}
+					// @ts-ignore
+					// prettier-ignore
+					((body.reply_markup as ITelegramInlineReply | ITelegramReplyKeyboard)[setParameterName] as ITelegramKeyboardButton[][]).push(sendRows);
+				}
+			}
+		} else if (replyMarkupOption === 'forceReply') {
+			const forceReply = this.getNodeParameter('forceReply', index) as IMarkupForceReply;
+			body.reply_markup = forceReply;
+		} else if (replyMarkupOption === 'replyKeyboardRemove') {
+			const forceReply = this.getNodeParameter(
+				'replyKeyboardRemove',
+				index,
+			) as IMarkupReplyKeyboardRemove;
+			body.reply_markup = forceReply;
+		}
+
+		if (replyMarkupOption === 'replyKeyboard') {
+			const replyKeyboardOptions = this.getNodeParameter(
+				'replyKeyboardOptions',
+				index,
+			) as IMarkupReplyKeyboardOptions;
+			Object.assign(body.reply_markup, replyKeyboardOptions);
+		}
 	}
 }
 
