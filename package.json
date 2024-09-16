@@ -73,7 +73,7 @@
       "semver": "^7.5.4",
       "tslib": "^2.6.2",
       "tsconfig-paths": "^4.2.0",
-      "typescript": "^5.5.2",
+      "typescript": "^5.6.2",
       "ws": ">=8.17.1"
     },
     "patchedDependencies": {
