@@ -34,7 +34,6 @@ let queueModeId: string;
 
 function setDefaultConfig() {
 	config.set('executions.mode', 'queue');
-	config.set('generic.instanceType', 'main');
 }
 
 const workerRestartEventBusResponse: RedisServiceWorkerResponseObject = {
@@ -73,6 +72,9 @@ describe('Orchestration Service', () => {
 		});
 		setDefaultConfig();
 		queueModeId = config.get('redis.queueModeId');
+
+		// @ts-expect-error readonly property
+		instanceSettings.instanceType = 'main';
 	});
 
 	beforeEach(() => {

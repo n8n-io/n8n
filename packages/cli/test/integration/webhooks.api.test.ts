@@ -7,12 +7,12 @@ import {
 } from 'n8n-workflow';
 import { agent as testAgent } from 'supertest';
 
-import { AbstractServer } from '@/abstract-server';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { ExternalHooks } from '@/external-hooks';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
 import { Telemetry } from '@/telemetry';
+import { WebhookServer } from '@/webhooks/webhook-server';
 
 import { createUser } from './shared/db/users';
 import { createWorkflow } from './shared/db/workflows';
@@ -49,7 +49,7 @@ describe('Webhook API', () => {
 
 			await initActiveWorkflowManager();
 
-			const server = new (class extends AbstractServer {})();
+			const server = new WebhookServer();
 			await server.start();
 			agent = testAgent(server.app);
 		});
@@ -152,7 +152,7 @@ describe('Webhook API', () => {
 
 			await initActiveWorkflowManager();
 
-			const server = new (class extends AbstractServer {})();
+			const server = new WebhookServer();
 			await server.start();
 			agent = testAgent(server.app);
 		});

@@ -175,12 +175,6 @@ export const schema = {
 			env: 'GENERIC_TIMEZONE',
 		},
 
-		instanceType: {
-			doc: 'Type of n8n instance',
-			format: ['main', 'webhook', 'worker'] as const,
-			default: 'main',
-		},
-
 		releaseChannel: {
 			doc: 'N8N release channel',
 			format: ['stable', 'beta', 'nightly', 'dev'] as const,

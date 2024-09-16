@@ -78,7 +78,6 @@ export class Worker extends BaseCommand {
 			);
 		}
 
-		this.setInstanceType('worker');
 		this.setInstanceQueueModeId();
 	}
 
