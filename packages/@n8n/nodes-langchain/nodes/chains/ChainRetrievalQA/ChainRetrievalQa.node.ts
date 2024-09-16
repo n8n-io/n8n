@@ -17,12 +17,10 @@ import {
 	PromptTemplate,
 } from '@langchain/core/prompts';
 import { getTemplateNoticeField } from '../../../utils/sharedFields';
-import { getPromptInputByType } from '../../../utils/helpers';
+import { getPromptInputByType, isChatInstance } from '../../../utils/helpers';
 import { getTracingConfig } from '../../../utils/tracing';
 
-const QA_PROMPT_TEMPLATE =
-	"Use the following pieces of context to answer the question at the end. If you don't know the answer, just say that you don't know, don't try to make up an answer.\n\n{context}\n\nQuestion: {question}\nHelpful Answer:";
-const CHAT_PROMPT_TEMPLATE = `Use the following pieces of context to answer the users question. 
+const SYSTEM_PROMPT_TEMPLATE = `Use the following pieces of context to answer the users question. 
 If you don't know the answer, just say that you don't know, don't try to make up an answer.
 ----------------
 {context}`;
@@ -151,67 +149,24 @@ export class ChainRetrievalQa implements INodeType {
 				},
 			},
 			{
-				displayName: 'Custom Question and Answer Prompt',
-				name: 'customQAPrompt',
-				type: 'boolean',
-				default: false,
-				description: 'Whether to enable customization of the Question and Answer prompt',
-			},
-			{
-				displayName: 'Question and Answer Prompt Type',
-				name: 'qAPromptType',
-				type: 'options',
-				default: 'standardPrompt',
-				description: 'Select the type of prompt for customization',
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				default: {},
+				placeholder: 'Add Option',
 				options: [
 					{
-						name: 'Standard Prompt',
-						value: 'standardPrompt',
-						description: 'Uses a standard prompt template (for non-Chat Models)',
-					},
-					{
-						name: 'Chat Prompt',
-						value: 'chatPrompt',
-						description: 'Uses a system message template (for Chat Models)',
+						displayName: 'System Prompt Template',
+						name: 'systemPromptTemplate',
+						type: 'string',
+						default: SYSTEM_PROMPT_TEMPLATE,
+						description:
+							'Template string used for the system prompt. This should include the variable `{context}` for the provided context. For text completion models, you should also include the variable `{question}` for the user’s query.',
+						typeOptions: {
+							rows: 6,
+						},
 					},
 				],
-				displayOptions: {
-					show: {
-						customQAPrompt: [true],
-					},
-				},
-			},
-			{
-				displayName: 'Standard Prompt Template',
-				name: 'standardPromptTemplate',
-				type: 'string',
-				default: QA_PROMPT_TEMPLATE,
-				description:
-					"Template string for the Question and Answer prompt (for non-Chat Models). This prompt expects the variables `{context}` (for the provided context) and `{question}` (for the user's question).",
-				typeOptions: {
-					rows: 8,
-				},
-				displayOptions: {
-					show: {
-						qAPromptType: ['standardPrompt'],
-					},
-				},
-			},
-			{
-				displayName: 'Chat Prompt Template',
-				name: 'chatPromptTemplate',
-				type: 'string',
-				default: CHAT_PROMPT_TEMPLATE,
-				description:
-					'Template string for the Question and Answer prompt as a system message (for Chat Models). This prompt expects the variable `{context}` (for the provided context).',
-				typeOptions: {
-					rows: 8,
-				},
-				displayOptions: {
-					show: {
-						qAPromptType: ['chatPrompt'],
-					},
-				},
 			},
 		],
 	};
@@ -253,41 +208,30 @@ export class ChainRetrievalQa implements INodeType {
 					throw new NodeOperationError(this.getNode(), 'The ‘query‘ parameter is empty.');
 				}
 
-				const customQAPrompt = this.getNodeParameter('customQAPrompt', itemIndex, false) as boolean;
+				const options = this.getNodeParameter('options', itemIndex, {}) as {
+					systemPromptTemplate?: string;
+				};
 
 				const chainParameters = {} as {
 					prompt?: PromptTemplate | ChatPromptTemplate;
 				};
 
-				if (customQAPrompt) {
-					const qAPromptType = this.getNodeParameter('qAPromptType', itemIndex) as string;
-
-					if (qAPromptType === 'standardPrompt') {
-						const standardPromptTemplateParameter = this.getNodeParameter(
-							'standardPromptTemplate',
-							itemIndex,
-						) as string;
-
-						const standardPromptTemplate = new PromptTemplate({
-							template: standardPromptTemplateParameter,
-							inputVariables: ['context', 'question'],
-						});
-
-						chainParameters.prompt = standardPromptTemplate;
-					} else if (qAPromptType === 'chatPrompt') {
-						const chatPromptTemplateParameter = this.getNodeParameter(
-							'chatPromptTemplate',
-							itemIndex,
-						) as string;
-
+				if (options.systemPromptTemplate !== undefined) {
+					if (isChatInstance(model)) {
 						const messages = [
-							SystemMessagePromptTemplate.fromTemplate(chatPromptTemplateParameter),
+							SystemMessagePromptTemplate.fromTemplate(options.systemPromptTemplate),
 							HumanMessagePromptTemplate.fromTemplate('{question}'),
 						];
-
 						const chatPromptTemplate = ChatPromptTemplate.fromMessages(messages);
 
 						chainParameters.prompt = chatPromptTemplate;
+					} else {
+						const completionPromptTemplate = new PromptTemplate({
+							template: options.systemPromptTemplate,
+							inputVariables: ['context', 'question'],
+						});
+
+						chainParameters.prompt = completionPromptTemplate;
 					}
 				}
 
