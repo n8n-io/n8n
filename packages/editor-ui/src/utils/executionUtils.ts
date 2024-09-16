@@ -76,15 +76,15 @@ export const openPopUpWindow = (
 	const windowWidth = window.innerWidth;
 	const smallScreen = windowWidth <= 800;
 	if (options?.alwaysInNewTab || smallScreen) {
-		window.open(url, '_blank');
+		return window.open(url, '_blank');
 	} else {
 		const height = options?.width || 700;
 		const width = options?.height || window.innerHeight - 50;
 		const left = (window.innerWidth - height) / 2;
 		const top = 50;
 		const features = `width=${height},height=${width},left=${left},top=${top},resizable=yes,scrollbars=yes`;
-
-		window.open(url, '_blank', features);
+		const windowName = `form-waiting-since-${Date.now()}`;
+		return window.open(url, windowName, features);
 	}
 };
 
@@ -141,7 +141,7 @@ export function displayForm({
 				const { webhookSuffix } = (node.parameters.options ?? {}) as IDataObject;
 				const suffix =
 					webhookSuffix && typeof webhookSuffix !== 'object' ? `/${webhookSuffix}` : '';
-				testUrl = `${formWaitingUrl}/${executionId}${suffix}`;
+				console.log(`${formWaitingUrl}/${executionId}${suffix}`);
 			}
 
 			if (testUrl && source !== 'RunData.ManualChatMessage') openPopUpWindow(testUrl);

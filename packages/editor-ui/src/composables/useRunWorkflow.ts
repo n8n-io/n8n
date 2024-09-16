@@ -313,7 +313,6 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 		const { webhookSuffix } = (node.parameters.options ?? {}) as IDataObject;
 		const suffix = webhookSuffix && typeof webhookSuffix !== 'object' ? `/${webhookSuffix}` : '';
 		const testUrl = `${rootStore.formWaitingUrl}/${executionId}${suffix}`;
-		console.log(testUrl);
 		openPopUpWindow(testUrl);
 	}
 
@@ -323,40 +322,55 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 		nodeData?: ITaskData;
 		source?: string;
 	}): Promise<IExecutionPushResponse | undefined> {
-		const runWorkflowApiResponse = await runWorkflow(options);
+		let runWorkflowApiResponse = await runWorkflow(options);
+		let { executionId } = runWorkflowApiResponse || {};
 
-		if (runWorkflowApiResponse && runWorkflowApiResponse.executionId) {
-			const shownForms: string[] = [];
-			while (true) {
-				const execution = await workflowsStore.getExecution(runWorkflowApiResponse.executionId);
-				if (!execution || workflowsStore.workflowExecutionData === null) break;
+		// execution waiting for webhook
+		while (!executionId) {
+			await useExternalHooks().run('workflowRun.runWorkflow', {
+				nodeName: options.destinationNode,
+				source: options.source,
+			});
 
-				if (execution.finished) {
-					workflowsStore.setWorkflowExecutionData(execution);
-					nodeHelpers.updateNodesExecutionIssues();
-					break;
-				}
+			await sleep(2000);
 
-				if (execution.data) {
-					workflowsStore.setWorkflowExecutionRunData(execution.data);
-				}
-
-				if (execution.status === 'waiting') {
-					const { lastNodeExecuted } = execution.data?.resultData || {};
-					const waitingNode = workflowsStore.getNodeByName(lastNodeExecuted || '');
-					if (
-						waitingNode &&
-						waitingNode.type === WAIT_NODE_TYPE &&
-						waitingNode.parameters.resume === 'form' &&
-						!shownForms.includes(waitingNode.name)
-					) {
-						openWaitNodeFormResumeUrl(waitingNode, runWorkflowApiResponse.executionId);
-						shownForms.push(waitingNode.name);
-					}
-				}
-
-				await sleep(2000);
+			if (workflowsStore.activeExecutionId) {
+				executionId = workflowsStore.activeExecutionId;
+				runWorkflowApiResponse = { executionId };
 			}
+		}
+
+		const shownForms: string[] = [];
+		while (true) {
+			const execution = await workflowsStore.getExecution(executionId);
+
+			if (!execution || workflowsStore.workflowExecutionData === null) break;
+
+			if (execution.finished) {
+				workflowsStore.setWorkflowExecutionData(execution);
+				nodeHelpers.updateNodesExecutionIssues();
+				break;
+			}
+
+			if (execution.data) {
+				workflowsStore.setWorkflowExecutionRunData(execution.data);
+			}
+
+			if (execution.status === 'waiting') {
+				const { lastNodeExecuted } = execution.data?.resultData || {};
+				const waitingNode = workflowsStore.getNodeByName(lastNodeExecuted || '');
+				if (
+					waitingNode &&
+					waitingNode.type === WAIT_NODE_TYPE &&
+					waitingNode.parameters.resume === 'form' &&
+					!shownForms.includes(waitingNode.name)
+				) {
+					openWaitNodeFormResumeUrl(waitingNode, executionId);
+					shownForms.push(waitingNode.name);
+				}
+			}
+
+			await sleep(2000);
 		}
 
 		await useExternalHooks().run('workflowRun.runWorkflow', {
