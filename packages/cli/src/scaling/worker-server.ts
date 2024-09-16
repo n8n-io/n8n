@@ -1,14 +1,17 @@
 import { GlobalConfig } from '@n8n/config';
 import express from 'express';
-import { ApplicationError } from 'n8n-workflow';
+import { ensureError } from 'n8n-workflow';
 import http from 'node:http';
 import type { Server } from 'node:http';
 import { Service } from 'typedi';
 
+import config from '@/config';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import * as Db from '@/db';
-import { CredentialsOverwritesAlreadySetError } from '@/errors/credentials-overwrites-already-set.error';
+import { CredentialsOverwritesSetError } from '@/errors/credentials-overwrites-set.error';
 import { NonJsonBodyError } from '@/errors/non-json-body.error';
+import { NonWorkerInstanceTypeError } from '@/errors/non-worker-instance-type.error';
+import { PortTakenError } from '@/errors/port-taken.error';
 import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 import { ExternalHooks } from '@/external-hooks';
 import type { ICredentialsOverwrite } from '@/interfaces';
@@ -17,13 +20,19 @@ import { rawBodyReader, bodyParser } from '@/middlewares';
 import * as ResponseHelper from '@/response-helper';
 import { ScalingService } from '@/scaling/scaling.service';
 
+/**
+ * Responsible for handling HTTP requests sent to a worker.
+ */
 @Service()
 export class WorkerServer {
 	private port: number;
 
-	private app: express.Application;
-
 	private server: Server;
+
+	/**
+	 * @doc https://docs.n8n.io/embed/configuration/#credential-overwrites
+	 */
+	private overwritesLoaded = false;
 
 	constructor(
 		private readonly globalConfig: GlobalConfig,
@@ -32,99 +41,97 @@ export class WorkerServer {
 		private readonly credentialsOverwrites: CredentialsOverwrites,
 		private readonly externalHooks: ExternalHooks,
 	) {
-		this.app = express();
-		this.app.disable('x-powered-by');
-		this.server = http.createServer(this.app);
+		this.assertWorker();
 
-		this.setupListeners();
+		const app = express();
+
+		app.disable('x-powered-by');
+
+		this.server = http.createServer(app);
 
 		this.port = this.globalConfig.queue.health.port;
 
-		this.setupHealthEndpoints();
-		this.setupCredentialsOverwritesEndpoint();
+		const overwritesEndpoint = this.globalConfig.credentials.overwrite.endpoint;
+
+		this.server.on('error', (error: NodeJS.ErrnoException) => {
+			if (error.code === 'EADDRINUSE') throw new PortTakenError(this.port);
+		});
+
+		if (this.globalConfig.queue.health.active) {
+			app.get('/healthz', async (req, res) => await this.healthcheck(req, res));
+		}
+
+		if (overwritesEndpoint !== '') {
+			app.post(`/${overwritesEndpoint}`, rawBodyReader, bodyParser, (req, res) =>
+				this.handleOverwrites(req, res),
+			);
+		}
 	}
 
 	async init() {
 		await new Promise<void>((resolve) => this.server.listen(this.port, () => resolve()));
-		await this.externalHooks?.run('worker.ready');
 
-		this.logger.info(`\nn8n worker health check via port ${this.port}`);
+		await this.externalHooks.run('worker.ready');
+
+		this.logger.info(`\nn8n worker server listening on port ${this.port}`);
 	}
 
-	private setupListeners() {
-		this.server.on('error', (error: Error & { code: string }) => {
-			if (error.code === 'EADDRINUSE') {
-				this.logger.error(
-					`n8n's port ${this.port} is already in use. Do you have the n8n main process running on that port?`,
-				);
-				process.exit(1);
-			}
-		});
+	private async healthcheck(_req: express.Request, res: express.Response) {
+		this.logger.debug('[WorkerServer] Health check started');
+
+		try {
+			await Db.getConnection().query('SELECT 1');
+		} catch (value) {
+			this.logger.error('[WorkerServer] No database connection', ensureError(value));
+
+			return ResponseHelper.sendErrorResponse(
+				res,
+				new ServiceUnavailableError('No database connection'),
+			);
+		}
+
+		try {
+			await this.scalingService.pingQueue();
+		} catch (value) {
+			this.logger.error('[WorkerServer] No Redis connection', ensureError(value));
+
+			return ResponseHelper.sendErrorResponse(
+				res,
+				new ServiceUnavailableError('No Redis connection'),
+			);
+		}
+
+		this.logger.debug('[WorkerServer] Health check succeeded');
+
+		ResponseHelper.sendSuccessResponse(res, { status: 'ok' }, true, 200);
 	}
 
-	private setupHealthEndpoints() {
-		this.app.get('/healthz/readiness', async (_req, res) => {
-			return Db.connectionState.connected && Db.connectionState.migrated
-				? res.status(200).send({ status: 'ok' })
-				: res.status(503).send({ status: 'error' });
-		});
+	private handleOverwrites(
+		req: express.Request<{}, {}, ICredentialsOverwrite>,
+		res: express.Response,
+	) {
+		if (this.overwritesLoaded) {
+			ResponseHelper.sendErrorResponse(res, new CredentialsOverwritesSetError());
+			return;
+		}
 
-		this.app.get('/healthz', async (_req: express.Request, res: express.Response) => {
-			this.logger.debug('Health check started!');
+		if (req.contentType !== 'application/json') {
+			ResponseHelper.sendErrorResponse(res, new NonJsonBodyError());
+			return;
+		}
 
-			const connection = Db.getConnection();
+		this.credentialsOverwrites.setData(req.body);
 
-			try {
-				if (!connection.isInitialized) throw new ApplicationError('No active database connection');
-				await connection.query('SELECT 1');
-			} catch (rawError) {
-				this.logger.error('No Database connection!', rawError as Error);
-				const error = new ServiceUnavailableError('No database connection');
-				return ResponseHelper.sendErrorResponse(res, error);
-			}
+		this.overwritesLoaded = true;
 
-			try {
-				await this.scalingService.pingQueue();
-			} catch (rawError) {
-				this.logger.error('No Redis connection!', rawError as Error);
-				const error = new ServiceUnavailableError('No Redis connection');
-				return ResponseHelper.sendErrorResponse(res, error);
-			}
-
-			this.logger.debug('[WorkerServer] Health check completed successfully');
-
-			ResponseHelper.sendSuccessResponse(res, { status: 'ok' }, true, 200);
-		});
+		ResponseHelper.sendSuccessResponse(res, { success: true }, true, 200);
 	}
 
-	private setupCredentialsOverwritesEndpoint() {
-		let credentialsOverwritesLoaded = false;
+	private assertWorker() {
+		const instanceType = config.getEnv('generic.instanceType');
 
-		const { endpoint } = this.globalConfig.credentials.overwrite;
+		if (instanceType === 'worker') return;
 
-		if (endpoint === '') return;
-
-		this.app.post(
-			`/${endpoint}`,
-			rawBodyReader,
-			bodyParser,
-			async (req: express.Request<{}, {}, ICredentialsOverwrite>, res: express.Response) => {
-				if (credentialsOverwritesLoaded) {
-					ResponseHelper.sendErrorResponse(res, new CredentialsOverwritesAlreadySetError());
-					return;
-				}
-
-				if (req.contentType !== 'application/json') {
-					ResponseHelper.sendErrorResponse(res, new NonJsonBodyError());
-					return;
-				}
-
-				this.credentialsOverwrites.setData(req.body);
-
-				credentialsOverwritesLoaded = true;
-
-				ResponseHelper.sendSuccessResponse(res, { success: true }, true, 200);
-			},
-		);
+		throw new NonWorkerInstanceTypeError(instanceType);
 	}
 }

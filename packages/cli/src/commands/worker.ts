@@ -164,7 +164,12 @@ export class Worker extends BaseCommand {
 		this.logger.info(` * Concurrency: ${this.concurrency}`);
 		this.logger.info('');
 
-		if (this.globalConfig.queue.health.active) await Container.get(WorkerServer).init();
+		if (
+			this.globalConfig.queue.health.active ||
+			this.globalConfig.credentials.overwrite.endpoint !== ''
+		) {
+			await Container.get(WorkerServer).init();
+		}
 
 		if (!inTest && process.stdout.isTTY) {
 			process.stdin.setRawMode(true);
