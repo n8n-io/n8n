@@ -20,7 +20,12 @@ import { NodeConnectionType } from 'n8n-workflow';
 import { useToast } from '@/composables/useToast';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 
-import { CHAT_TRIGGER_NODE_TYPE, WAIT_NODE_TYPE, WORKFLOW_LM_CHAT_MODAL_KEY } from '@/constants';
+import {
+	CHAT_TRIGGER_NODE_TYPE,
+	FORM_TRIGGER_NODE_TYPE,
+	WAIT_NODE_TYPE,
+	WORKFLOW_LM_CHAT_MODAL_KEY,
+} from '@/constants';
 import { useTitleChange } from '@/composables/useTitleChange';
 import { useRootStore } from '@/stores/root.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -296,10 +301,10 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				shouldShowForm,
 			});
 
-			// await useExternalHooks().run('workflowRun.runWorkflow', {
-			// 	nodeName: options.destinationNode,
-			// 	source: options.source,
-			// });
+			await useExternalHooks().run('workflowRun.runWorkflow', {
+				nodeName: options.destinationNode,
+				source: options.source,
+			});
 
 			return runWorkflowApiResponse;
 		} catch (error) {
@@ -309,11 +314,11 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 		}
 	}
 
-	function openWaitNodeFormResumeUrl(node: INode, executionId: string) {
+	function gerWaitNodeFormResumeUrl(node: INode, executionId: string) {
 		const { webhookSuffix } = (node.parameters.options ?? {}) as IDataObject;
 		const suffix = webhookSuffix && typeof webhookSuffix !== 'object' ? `/${webhookSuffix}` : '';
 		const testUrl = `${rootStore.formWaitingUrl}/${executionId}${suffix}`;
-		openPopUpWindow(testUrl);
+		return testUrl;
 	}
 
 	async function runWorkflowAndResolveWaitingNodesData(options: {
@@ -346,6 +351,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 		if (!executionId) executionId = await waitForWebhook();
 
 		const shownForms: string[] = [];
+		let isFormShown = workflowsStore.allNodes.some((node) => node.type === FORM_TRIGGER_NODE_TYPE);
 
 		const resolveWaitingNodesData = async (): Promise<void> => {
 			return await new Promise<void>((resolve) => {
@@ -358,7 +364,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 						return;
 					}
 
-					if (execution.finished) {
+					if (execution.finished || ['error', 'canceled', 'crashed'].includes(execution.status)) {
 						workflowsStore.setWorkflowExecutionData(execution);
 						nodeHelpers.updateNodesExecutionIssues();
 						clearInterval(interval);
@@ -379,7 +385,14 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 							waitingNode.parameters.resume === 'form' &&
 							!shownForms.includes(waitingNode.name)
 						) {
-							openWaitNodeFormResumeUrl(waitingNode, executionId as string);
+							const testUrl = gerWaitNodeFormResumeUrl(waitingNode, executionId as string);
+							if (isFormShown) {
+								localStorage.setItem('n8n_redirect_to_next_form_test_page', testUrl);
+							} else {
+								isFormShown = true;
+								openPopUpWindow(testUrl);
+							}
+
 							shownForms.push(waitingNode.name);
 						}
 					}
