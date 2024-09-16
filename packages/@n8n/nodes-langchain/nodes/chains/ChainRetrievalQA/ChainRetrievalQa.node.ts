@@ -186,7 +186,8 @@ export class ChainRetrievalQa implements INodeType {
 				name: 'standardPromptTemplate',
 				type: 'string',
 				default: QA_PROMPT_TEMPLATE,
-				description: 'Template string for the Question and Answer prompt (for non-Chat Models)',
+				description:
+					"Template string for the Question and Answer prompt (for non-Chat Models). This prompt expects the variables `{context}` (for the provided context) and `{question}` (for the user's question).",
 				typeOptions: {
 					rows: 8,
 				},
@@ -202,7 +203,7 @@ export class ChainRetrievalQa implements INodeType {
 				type: 'string',
 				default: CHAT_PROMPT_TEMPLATE,
 				description:
-					'Template string for the Question and Answer prompt as a system message (for Chat Models)',
+					'Template string for the Question and Answer prompt as a system message (for Chat Models). This prompt expects the variable `{context}` (for the provided context).',
 				typeOptions: {
 					rows: 8,
 				},
