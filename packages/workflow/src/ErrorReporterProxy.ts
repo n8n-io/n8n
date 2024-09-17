@@ -1,5 +1,5 @@
-import * as Logger from './LoggerProxy';
 import { ApplicationError, type ReportingOptions } from './errors/application.error';
+import * as Logger from './LoggerProxy';
 
 interface ErrorReporter {
 	report: (error: Error | string, options?: ReportingOptions) => void;

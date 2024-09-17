@@ -2,9 +2,14 @@
 /* eslint-disable @typescript-eslint/no-this-alias */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 
-import { DateTime, Duration, Interval, Settings } from 'luxon';
 import * as jmespath from 'jmespath';
+import { DateTime, Duration, Interval, Settings } from 'luxon';
 
+import { augmentArray, augmentObject } from './AugmentObject';
+import { SCRIPTING_NODE_TYPES } from './Constants';
+import { ApplicationError } from './errors/application.error';
+import { ExpressionError, type ExpressionErrorOptions } from './errors/expression.error';
+import { getGlobalState } from './GlobalState';
 import {
 	type IDataObject,
 	type IExecuteData,
@@ -23,13 +28,8 @@ import {
 	NodeConnectionType,
 } from './Interfaces';
 import * as NodeHelpers from './NodeHelpers';
-import { ExpressionError, type ExpressionErrorOptions } from './errors/expression.error';
-import type { Workflow } from './Workflow';
-import { augmentArray, augmentObject } from './AugmentObject';
 import { deepCopy } from './utils';
-import { getGlobalState } from './GlobalState';
-import { ApplicationError } from './errors/application.error';
-import { SCRIPTING_NODE_TYPES } from './Constants';
+import type { Workflow } from './Workflow';
 import { getPinDataIfManualExecution } from './WorkflowDataProxyHelpers';
 
 export function isResourceLocatorValue(value: unknown): value is INodeParameterResourceLocator {
