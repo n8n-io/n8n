@@ -227,7 +227,7 @@ describe('NDV', () => {
 
 		workflowPage.actions.zoomToFit();
 
-		/* prettier-ignore */
+		// biome-ignore format:
 		const PINNED_DATA = [
 			{
 				"id": "abc",
@@ -263,7 +263,6 @@ describe('NDV', () => {
 				]
 			}
 		];
-		/* prettier-ignore */
 		workflowPage.actions.openNode('Get thread details1');
 		ndv.actions.pastePinnedData(PINNED_DATA);
 		ndv.actions.close();

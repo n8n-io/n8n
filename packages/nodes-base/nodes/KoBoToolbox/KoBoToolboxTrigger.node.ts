@@ -144,9 +144,12 @@ export class KoBoToolboxTrigger implements INodeType {
 		const req = this.getRequestObject();
 		const formatOptions = this.getNodeParameter('formatOptions') as IDataObject;
 
-		// prettier-ignore
 		const responseData = formatOptions.reformat
-			? formatSubmission(req.body as IDataObject, parseStringList(formatOptions.selectMask as string), parseStringList(formatOptions.numberMask as string))
+			? formatSubmission(
+					req.body as IDataObject,
+					parseStringList(formatOptions.selectMask as string),
+					parseStringList(formatOptions.numberMask as string),
+				)
 			: req.body;
 
 		if (formatOptions.download) {
