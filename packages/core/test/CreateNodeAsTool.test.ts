@@ -106,8 +106,6 @@ describe('createNodeAsTool', () => {
 		);
 	});
 
-	// New tests
-
 	it('should handle different data types correctly', () => {
 		mockNodeParameters = {
 			stringParam: "={{ $fromAI('stringParam', 'A string parameter', 'string') }}",

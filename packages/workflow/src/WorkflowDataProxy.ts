@@ -1305,14 +1305,12 @@ export class WorkflowDataProxy {
 			},
 			$fromAI: (
 				name: string,
-				description?: string,
-				type: string = 'string',
+				_description?: string,
+				_type: string = 'string',
 				defaultValue?: unknown,
 			) => {
-				const stringifiedName = name.toString();
-
 				const nameValidationRegex = /^[a-zA-Z0-9_-]{1,64}$/;
-				if (!nameValidationRegex.test(stringifiedName)) {
+				if (!nameValidationRegex.test(name)) {
 					throw new ExpressionError(
 						'Invalid parameter name, must be between 1 and 64 characters long and only contain lowercase letters, uppercase letters, numbers, underscores, and hyphens',
 						{
@@ -1333,7 +1331,7 @@ export class WorkflowDataProxy {
 						type: 'no_execution_data',
 					});
 				}
-				return placeholdersDataInputData?.[stringifiedName] ?? defaultValue;
+				return placeholdersDataInputData?.[name] ?? defaultValue;
 			},
 			$items: (nodeName?: string, outputIndex?: number, runIndex?: number) => {
 				if (nodeName === undefined) {
