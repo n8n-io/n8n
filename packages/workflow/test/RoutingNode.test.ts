@@ -1959,7 +1959,7 @@ describe('RoutingNode', () => {
 				executeSingleFunctions.getNodeParameter = (parameterName: string) =>
 					parameterName in testData.input.node.parameters
 						? testData.input.node.parameters[parameterName]
-						: getNodeParameter(parameterName) ?? {};
+						: (getNodeParameter(parameterName) ?? {});
 
 				const result = await routingNode.runNode(
 					inputData,

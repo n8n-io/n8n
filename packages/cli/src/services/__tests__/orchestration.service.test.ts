@@ -16,10 +16,12 @@ import { OrchestrationHandlerMainService } from '@/services/orchestration/main/o
 import { OrchestrationService } from '@/services/orchestration.service';
 import { RedisClientService } from '@/services/redis/redis-client.service';
 import type { RedisServiceWorkerResponseObject } from '@/services/redis/redis-service-commands';
-import { RedisService } from '@/services/redis.service';
 import { mockInstance } from '@test/mocking';
 
 import type { MainResponseReceivedHandlerOptions } from '../orchestration/main/types';
+
+config.set('executions.mode', 'queue');
+config.set('generic.instanceType', 'main');
 
 const instanceSettings = Container.get(InstanceSettings);
 const redisClientService = mockInstance(RedisClientService);
@@ -32,10 +34,6 @@ mockInstance(ActiveWorkflowManager);
 
 let queueModeId: string;
 
-function setDefaultConfig() {
-	config.set('executions.mode', 'queue');
-}
-
 const workerRestartEventBusResponse: RedisServiceWorkerResponseObject = {
 	senderId: 'test',
 	workerId: 'test',
@@ -47,30 +45,10 @@ const workerRestartEventBusResponse: RedisServiceWorkerResponseObject = {
 
 describe('Orchestration Service', () => {
 	mockInstance(Push);
-	mockInstance(RedisService);
 	mockInstance(ExternalSecretsManager);
 	const eventBus = mockInstance(MessageEventBus);
 
 	beforeAll(async () => {
-		jest.mock('@/services/redis/redis-service-pub-sub-publisher', () => {
-			return jest.fn().mockImplementation(() => {
-				return {
-					init: jest.fn(),
-					publishToEventLog: jest.fn(),
-					publishToWorkerChannel: jest.fn(),
-					destroy: jest.fn(),
-				};
-			});
-		});
-		jest.mock('@/services/redis/redis-service-pub-sub-subscriber', () => {
-			return jest.fn().mockImplementation(() => {
-				return {
-					subscribeToCommandChannel: jest.fn(),
-					destroy: jest.fn(),
-				};
-			});
-		});
-		setDefaultConfig();
 		queueModeId = config.get('redis.queueModeId');
 
 		// @ts-expect-error readonly property
@@ -82,16 +60,16 @@ describe('Orchestration Service', () => {
 	});
 
 	afterAll(async () => {
-		jest.mock('@/services/redis/redis-service-pub-sub-publisher').restoreAllMocks();
-		jest.mock('@/services/redis/redis-service-pub-sub-subscriber').restoreAllMocks();
 		await os.shutdown();
 	});
 
 	test('should initialize', async () => {
 		await os.init();
 		await handler.init();
-		expect(os.redisPublisher).toBeDefined();
-		expect(handler.redisSubscriber).toBeDefined();
+		// @ts-expect-error Private field
+		expect(os.publisher).toBeDefined();
+		// @ts-expect-error Private field
+		expect(handler.subscriber).toBeDefined();
 		expect(queueModeId).toBeDefined();
 	});
 
@@ -126,15 +104,16 @@ describe('Orchestration Service', () => {
 	});
 
 	test('should send command messages', async () => {
-		setDefaultConfig();
-		jest.spyOn(os.redisPublisher, 'publishToCommandChannel').mockImplementation(async () => {});
+		// @ts-expect-error Private field
+		jest.spyOn(os.publisher, 'publishCommand').mockImplementation(async () => {});
 		await os.getWorkerIds();
-		expect(os.redisPublisher.publishToCommandChannel).toHaveBeenCalled();
-		jest.spyOn(os.redisPublisher, 'publishToCommandChannel').mockRestore();
+		// @ts-expect-error Private field
+		expect(os.publisher.publishCommand).toHaveBeenCalled();
+		// @ts-expect-error Private field
+		jest.spyOn(os.publisher, 'publishCommand').mockRestore();
 	});
 
 	test('should prevent receiving commands too often', async () => {
-		setDefaultConfig();
 		jest.spyOn(helpers, 'debounceMessageReceiver');
 		const res1 = await handleCommandMessageMain(
 			JSON.stringify({
