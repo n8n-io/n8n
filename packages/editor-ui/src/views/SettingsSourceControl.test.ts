@@ -182,8 +182,7 @@ describe('SettingsSourceControl', () => {
 
 			await waitFor(() => expect(sourceControlStore.preferences.publicKey).not.toEqual(''));
 
-			const repoUrlInput = container.querySelector('input[name="repoUrl"]');
-			expect(repoUrlInput).toBeInTheDocument();
+			const repoUrlInput = container.querySelector('input[name="repoUrl"]')!;
 
 			await userEvent.click(repoUrlInput);
 			await userEvent.type(repoUrlInput, url);
