@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
+import { truncate } from 'n8n-design-system';
 import type { ICredentialsResponse, IWorkflowDb } from '@/Interface';
 import { ResourceType, splitName } from '@/utils/projects.utils';
 import type { ProjectListItem } from '@/types/projects.types';
@@ -17,7 +18,7 @@ const isWorkflow = computed(() => props.resourceType === ResourceType.Workflow);
 const isTargetProjectTeam = computed(() => props.targetProject.type === ProjectTypes.Team);
 const projectName = computed(() => {
 	const { name, email } = splitName(props.targetProject?.name ?? '');
-	return name ?? email ?? '';
+	return truncate(name ?? email ?? '', 25);
 });
 </script>
 <template>
