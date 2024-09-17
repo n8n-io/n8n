@@ -7,7 +7,9 @@ import type { RedisClientService } from '@/services/redis/redis-client.service';
 import { Subscriber } from '../pubsub/subscriber.service';
 
 describe('Subscriber', () => {
-	config.set('executions.mode', 'queue');
+	beforeEach(() => {
+		config.set('executions.mode', 'queue');
+	});
 
 	const client = mock<SingleNodeClient>();
 	const redisClientService = mock<RedisClientService>({ createClient: () => client });
@@ -24,8 +26,6 @@ describe('Subscriber', () => {
 			const subscriber = new Subscriber(mock(), redisClientService);
 
 			expect(subscriber.getClient()).toBeUndefined();
-
-			config.set('executions.mode', 'queue');
 		});
 	});
 
