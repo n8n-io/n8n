@@ -27,6 +27,7 @@ import { isWorkflowIdValid } from '@/utils';
 
 import { ConcurrencyControlService } from './concurrency/concurrency-control.service';
 import config from './config';
+import { inProduction } from './constants';
 
 @Service()
 export class ActiveExecutions {
@@ -217,7 +218,7 @@ export class ActiveExecutions {
 
 	private getExecution(executionId: string): IExecutingWorkflowData {
 		const execution = this.activeExecutions[executionId];
-		if (!execution) {
+		if (!execution && !inProduction) {
 			throw new ApplicationError('No active execution found', { extra: { executionId } });
 		}
 		return execution;
