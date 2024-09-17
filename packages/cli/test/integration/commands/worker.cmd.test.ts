@@ -23,7 +23,7 @@ mockInstance(LoadNodesAndCredentials);
 const binaryDataService = mockInstance(BinaryDataService);
 const externalHooks = mockInstance(ExternalHooks);
 const externalSecretsManager = mockInstance(ExternalSecretsManager);
-const license = mockInstance(License);
+const license = mockInstance(License, { loadCertStr: async () => '' });
 const messageEventBus = mockInstance(MessageEventBus);
 const logStreamingEventRelay = mockInstance(LogStreamingEventRelay);
 const orchestrationHandlerWorkerService = mockInstance(OrchestrationHandlerWorkerService);
