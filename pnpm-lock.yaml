@@ -19,8 +19,8 @@ catalogs:
       specifier: ^4.14.195
       version: 4.14.195
     '@types/uuid':
-      specifier: ^8.3.2
-      version: 8.3.4
+      specifier: ^10.0.0
+      version: 10.0.0
     '@types/xml2js':
       specifier: ^0.4.14
       version: 0.4.14
@@ -49,8 +49,8 @@ catalogs:
       specifier: 0.10.0
       version: 0.10.0
     uuid:
-      specifier: 8.3.2
-      version: 8.3.2
+      specifier: 10.0.0
+      version: 10.0.0
     xml2js:
       specifier: 0.6.2
       version: 0.6.2
@@ -283,7 +283,7 @@ importers:
         version: 4.0.1
       uuid:
         specifier: 'catalog:'
-        version: 8.3.2
+        version: 10.0.0
       vue:
         specifier: catalog:frontend
         version: 3.4.21(typescript@5.6.2)
@@ -922,7 +922,7 @@ importers:
         version: 0.10.0(patch_hash=sk6omkefrosihg7lmqbzh7vfxe)
       uuid:
         specifier: 'catalog:'
-        version: 8.3.2
+        version: 10.0.0
       validator:
         specifier: 13.7.0
         version: 13.7.0
@@ -1007,7 +1007,7 @@ importers:
         version: 1.1.2
       '@types/uuid':
         specifier: 'catalog:'
-        version: 8.3.4
+        version: 10.0.0
       '@types/validator':
         specifier: ^13.7.0
         version: 13.7.7
@@ -1100,7 +1100,7 @@ importers:
         version: 0.10.0(patch_hash=sk6omkefrosihg7lmqbzh7vfxe)
       uuid:
         specifier: 'catalog:'
-        version: 8.3.2
+        version: 10.0.0
       xml2js:
         specifier: 'catalog:'
         version: 0.6.2
@@ -1125,7 +1125,7 @@ importers:
         version: 2.1.1
       '@types/uuid':
         specifier: 'catalog:'
-        version: 8.3.4
+        version: 10.0.0
       '@types/xml2js':
         specifier: 'catalog:'
         version: 0.4.14
@@ -1405,7 +1405,7 @@ importers:
         version: 4.0.2
       uuid:
         specifier: 'catalog:'
-        version: 8.3.2
+        version: 10.0.0
       v3-infinite-loading:
         specifier: ^1.2.2
         version: 1.2.2
@@ -1469,7 +1469,7 @@ importers:
         version: 3.2.0
       '@types/uuid':
         specifier: 'catalog:'
-        version: 8.3.4
+        version: 10.0.0
       '@vitest/coverage-v8':
         specifier: catalog:frontend
         version: 1.6.0(vitest@1.6.0(@types/node@18.16.16)(jsdom@23.0.1)(sass@1.64.1)(terser@5.16.1))
@@ -1716,7 +1716,7 @@ importers:
         version: 0.10.0(patch_hash=sk6omkefrosihg7lmqbzh7vfxe)
       uuid:
         specifier: 'catalog:'
-        version: 8.3.2
+        version: 10.0.0
       xlsx:
         specifier: https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz
         version: https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz
@@ -1789,7 +1789,7 @@ importers:
         version: 5.3.2
       '@types/uuid':
         specifier: 'catalog:'
-        version: 8.3.4
+        version: 10.0.0
       '@types/xml2js':
         specifier: 'catalog:'
         version: 0.4.14
@@ -6071,8 +6071,8 @@ packages:
   '@types/uuid@8.3.4':
     resolution: {integrity: sha512-c/I8ZRb51j+pYGAu5CrFMRxqZ2ke4y2grEBO5AUjgSkSk+qT2Ea+OdWElz/OiMf5MNpn2b17kuVBwZLQJXzihw==}
 
-  '@types/uuid@9.0.7':
-    resolution: {integrity: sha512-WUtIVRUZ9i5dYXefDEAI7sh9/O7jGvHg7Df/5O/gtH3Yabe5odI3UWopVR1qbPXQtvOxWu3mM4XxlYeZtMWF4g==}
+  '@types/uuid@9.0.8':
+    resolution: {integrity: sha512-jg+97EGIcY9AGHJJRaaPVgetKDsrTgbRjQ5Msgjh/DQKEFl0DtyRr/VCOyD1T2R1MNeWPK/u7JoGhlDZnKBAfA==}
 
   '@types/validator@13.7.10':
     resolution: {integrity: sha512-t1yxFAR2n0+VO6hd/FJ9F2uezAZVWHLmpmlJzm1eX03+H7+HsuTAp7L8QJs+2pQCfWkP1+EXsGK9Z9v7o/qPVQ==}
@@ -18917,7 +18917,7 @@ snapshots:
     dependencies:
       '@storybook/core-events': 8.1.4
       '@storybook/global': 5.0.0
-      '@types/uuid': 9.0.7
+      '@types/uuid': 9.0.8
       dequal: 2.0.3
       polished: 4.2.2
       uuid: 9.0.1
@@ -20125,7 +20125,7 @@ snapshots:
 
   '@types/uuid@8.3.4': {}
 
-  '@types/uuid@9.0.7': {}
+  '@types/uuid@9.0.8': {}
 
   '@types/validator@13.7.10': {}
 
@@ -24930,7 +24930,7 @@ snapshots:
 
   langsmith@0.1.39(@langchain/core@0.2.31(langchain@0.2.18(7abrqxy75ksyaxunbmagq3jube))(openai@4.58.0(encoding@0.1.13)(zod@3.23.8)))(langchain@0.2.18(7abrqxy75ksyaxunbmagq3jube))(openai@4.58.0(encoding@0.1.13)(zod@3.23.8)):
     dependencies:
-      '@types/uuid': 9.0.7
+      '@types/uuid': 9.0.8
       commander: 10.0.1
       p-queue: 6.6.2
       p-retry: 4.6.2
