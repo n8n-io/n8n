@@ -94,10 +94,19 @@ describe('ActiveExecutions', () => {
 	});
 
 	test('Should remove an existing execution', async () => {
+		// ARRANGE
 		const newExecution = mockExecutionData();
 		const executionId = await activeExecutions.add(newExecution);
+
+		// ACT
 		activeExecutions.finishExecution(executionId);
 
+		// TODO: Wait 2 ticks. This will be unnecessary once the `setImmediate` in
+		// `active-executions` is removed.
+		await new Promise((resolve) => setImmediate(resolve));
+		await new Promise((resolve) => setImmediate(resolve));
+
+		// ASSERT
 		expect(activeExecutions.getActiveExecutions().length).toBe(0);
 	});
 
