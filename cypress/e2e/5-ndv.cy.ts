@@ -1,8 +1,8 @@
+import { setCredentialValues } from '../composables/modals/credential-modal';
+import { clickCreateNewCredential } from '../composables/ndv';
 import { MANUAL_TRIGGER_NODE_DISPLAY_NAME, NOTION_NODE_NAME } from '../constants';
 import { NDV, WorkflowPage } from '../pages';
 import { NodeCreator } from '../pages/features/node-creator';
-import { clickCreateNewCredential } from '../composables/ndv';
-import { setCredentialValues } from '../composables/modals/credential-modal';
 
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();

@@ -1,5 +1,5 @@
-import { NDV, WorkflowExecutionsTab, WorkflowPage as WorkflowPageClass } from '../pages';
 import { SCHEDULE_TRIGGER_NODE_NAME, EDIT_FIELDS_SET_NODE_NAME } from '../constants';
+import { NDV, WorkflowExecutionsTab, WorkflowPage as WorkflowPageClass } from '../pages';
 import { clearNotifications, errorToast, successToast } from '../pages/notifications';
 
 const workflowPage = new WorkflowPageClass();
