@@ -1,3 +1,4 @@
+import { InstanceSettings } from 'n8n-core';
 import { Container } from 'typedi';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -17,7 +18,7 @@ import { debounceMessageReceiver, messageToRedisServiceCommandObject } from '../
 // eslint-disable-next-line complexity
 export async function handleCommandMessageMain(messageString: string) {
 	const queueModeId = config.getEnv('redis.queueModeId');
-	const isMainInstance = config.getEnv('generic.instanceType') === 'main';
+	const isMainInstance = Container.get(InstanceSettings).instanceType === 'main';
 	const message = messageToRedisServiceCommandObject(messageString);
 	const logger = Container.get(Logger);
 
