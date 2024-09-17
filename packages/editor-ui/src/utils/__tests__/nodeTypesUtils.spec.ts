@@ -308,8 +308,7 @@ const referencedNodesTestCases: Array<{ caseName: string; node: INode; expected:
 			parameters: {
 				curlImport: '',
 				method: 'GET',
-				// eslint-disable-next-line prettier/prettier
-				url: "={{ $(`Edit \\`Fields\\` 2`).item.json.name }}",
+				url: '={{ $(`Edit \\`Fields\\` 2`).item.json.name }}',
 				authentication: 'none',
 				provideSslCertificates: false,
 				sendQuery: false,
