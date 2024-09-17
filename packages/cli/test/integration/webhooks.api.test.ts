@@ -21,6 +21,8 @@ import type { SuperAgentTest } from './shared/types';
 import { initActiveWorkflowManager } from './shared/utils';
 import { mockInstance } from '../shared/mocking';
 
+jest.unmock('node:fs');
+
 mockInstance(Telemetry);
 
 describe('Webhook API', () => {
