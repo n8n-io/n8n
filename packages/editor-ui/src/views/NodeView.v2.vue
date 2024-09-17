@@ -153,7 +153,8 @@ const { addBeforeUnloadEventBindings, removeBeforeUnloadEventBindings } = useBef
 	route,
 });
 const { registerCustomAction, unregisterCustomAction } = useGlobalLinkActions();
-const { runWorkflow, stopCurrentExecution, stopWaitingForWebhook } = useRunWorkflow({ router });
+const { runWorkflow, runWorkflowResolvePending, stopCurrentExecution, stopWaitingForWebhook } =
+	useRunWorkflow({ router });
 const {
 	updateNodePosition,
 	updateNodesPosition,
@@ -980,7 +981,11 @@ const workflowExecutionData = computed(() => workflowsStore.workflowExecutionDat
 async function onRunWorkflow() {
 	trackRunWorkflow();
 
-	await runWorkflow({});
+	if (isExecutionPreview.value) {
+		await runWorkflow({});
+	} else {
+		await runWorkflowResolvePending({});
+	}
 }
 
 function trackRunWorkflow() {
