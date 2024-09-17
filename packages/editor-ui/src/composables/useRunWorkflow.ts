@@ -315,6 +315,9 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 		let runWorkflowApiResponse = await runWorkflow(options);
 		let { executionId } = runWorkflowApiResponse || {};
 
+		const MAX_DELAY = 3000;
+		let delay = 300;
+
 		const waitForWebhook = async (): Promise<string> => {
 			return await new Promise<string>((resolve) => {
 				const interval = setInterval(async () => {
@@ -329,7 +332,8 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 						clearInterval(interval);
 						resolve(executionId);
 					}
-				}, 2000);
+					delay = Math.min(delay * 1.1, MAX_DELAY);
+				}, delay);
 			});
 		};
 
@@ -383,7 +387,8 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 							}
 						}
 					}
-				}, 2000);
+					delay = Math.min(delay * 1.1, MAX_DELAY);
+				}, delay);
 			});
 		};
 

@@ -7,6 +7,7 @@ import {
 	NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS,
 	SIMULATE_NODE_TYPE,
 	SIMULATE_TRIGGER_NODE_TYPE,
+	WAIT_NODE_TYPE,
 	WAIT_TIME_UNLIMITED,
 } from '@/constants';
 import type {
@@ -323,6 +324,20 @@ const waiting = computed(() => {
 	if (workflowExecution?.waitTill && !workflowExecution?.finished) {
 		const lastNodeExecuted = get(workflowExecution, 'data.resultData.lastNodeExecuted');
 		if (props.name === lastNodeExecuted) {
+			const node = props.workflow.getNode(lastNodeExecuted);
+			if (
+				node &&
+				node.type === WAIT_NODE_TYPE &&
+				['webhook', 'form'].includes(node.parameters.resume as string)
+			) {
+				const eventType =
+					node.parameters.resume === 'webhook' ? 'incoming webhook call' : 'form submission';
+				return i18n.baseText('node.theNodeIsWaitingForCall', {
+					interpolate: {
+						eventType,
+					},
+				});
+			}
 			const waitDate = new Date(workflowExecution.waitTill);
 			if (waitDate.toISOString() === WAIT_TIME_UNLIMITED) {
 				return i18n.baseText('node.theNodeIsWaitingIndefinitelyForAnIncomingWebhookCall');
