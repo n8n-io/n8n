@@ -5,7 +5,7 @@ import config from '@/config';
 import { Logger } from '@/logger';
 import { RedisClientService } from '@/services/redis/redis-client.service';
 
-import type { PubSubChannel } from './pubsub.types';
+import type { ScalingPubSubChannel } from './pubsub.types';
 
 /**
  * Responsible for subscribing to the pubsub channels used by scaling mode.
@@ -41,7 +41,7 @@ export class Subscriber {
 
 	// #region Subscribing
 
-	async subscribe(channel: PubSubChannel) {
+	async subscribe(channel: ScalingPubSubChannel) {
 		await this.client.subscribe(channel, (error) => {
 			if (error) {
 				this.logger.error('Failed to subscribe to channel', { channel, cause: error });
