@@ -1,6 +1,21 @@
 import sanitize from 'sanitize-html';
 import type { DirectiveBinding, ObjectDirective } from 'vue';
 
+/**
+ * Custom directive `n8nHtml` to replace v-html from Vue to sanitize content.
+ *
+ * Usage:
+ * In your Vue template, use the directive `v-n8n-html` passing the unsafe HTML.
+ *
+ * Example:
+ * <p v-n8n-html="'<a href="https://site.com" onclick="alert(1)">link</a>'">
+ *
+ * Compiles to: <p><a href="https://site.com">link</a></p>
+ *
+ * Hint: Do not use it on components
+ * https://vuejs.org/guide/reusability/custom-directives#usage-on-components
+ */
+
 const configuredSanitize = (html: string) =>
 	sanitize(html, {
 		allowedTags: sanitize.defaults.allowedTags.concat(['img', 'input']),
