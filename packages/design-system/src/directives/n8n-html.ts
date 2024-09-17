@@ -7,7 +7,7 @@ const configuredSanitize = (html: string) =>
 		allowedAttributes: {
 			...sanitize.defaults.allowedAttributes,
 			input: ['type', 'id', 'checked'],
-		}
+		},
 	});
 
 export const n8nHtml: ObjectDirective = {
