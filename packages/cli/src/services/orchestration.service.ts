@@ -1,23 +1,26 @@
 import { InstanceSettings } from 'n8n-core';
 import type { WorkflowActivateMode } from 'n8n-workflow';
-import { Service } from 'typedi';
+import Container, { Service } from 'typedi';
 
 import config from '@/config';
 import { Logger } from '@/logger';
+import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { Subscriber } from '@/scaling/pubsub/subscriber.service';
 
 import { MultiMainSetup } from './orchestration/main/multi-main-setup.ee';
 import type { RedisServiceBaseCommand, RedisServiceCommand } from './redis/redis-service-commands';
-import type { RedisServicePubSubPublisher } from './redis/redis-service-pub-sub-publisher';
-import { RedisService } from './redis.service';
 
 @Service()
 export class OrchestrationService {
 	constructor(
 		private readonly logger: Logger,
-		protected readonly instanceSettings: InstanceSettings,
-		private readonly redisService: RedisService,
+		readonly instanceSettings: InstanceSettings,
 		readonly multiMainSetup: MultiMainSetup,
 	) {}
+
+	private publisher: Publisher;
+
+	private subscriber: Subscriber;
 
 	protected isInitialized = false;
 
@@ -40,8 +43,6 @@ export class OrchestrationService {
 		return !this.isMultiMainSetupEnabled;
 	}
 
-	redisPublisher: RedisServicePubSubPublisher;
-
 	get instanceId() {
 		return config.getEnv('redis.queueModeId');
 	}
@@ -63,7 +64,13 @@ export class OrchestrationService {
 	async init() {
 		if (this.isInitialized) return;
 
-		if (config.get('executions.mode') === 'queue') await this.initPublisher();
+		if (config.get('executions.mode') === 'queue') {
+			const { Publisher } = await import('@/scaling/pubsub/publisher.service');
+			this.publisher = Container.get(Publisher);
+
+			const { Subscriber } = await import('@/scaling/pubsub/subscriber.service');
+			this.subscriber = Container.get(Subscriber);
+		}
 
 		if (this.isMultiMainSetupEnabled) {
 			await this.multiMainSetup.init();
@@ -74,12 +81,14 @@ export class OrchestrationService {
 		this.isInitialized = true;
 	}
 
+	// @TODO: Use `@OnShutdown()` decorator
 	async shutdown() {
 		if (!this.isInitialized) return;
 
 		if (this.isMultiMainSetupEnabled) await this.multiMainSetup.shutdown();
 
-		await this.redisPublisher.destroy();
+		this.publisher.shutdown();
+		this.subscriber.shutdown();
 
 		this.isInitialized = false;
 	}
@@ -88,10 +97,6 @@ export class OrchestrationService {
 	//            pubsub
 	// ----------------------------------
 
-	protected async initPublisher() {
-		this.redisPublisher = await this.redisService.getPubSubPublisher();
-	}
-
 	async publish(command: RedisServiceCommand, data?: unknown) {
 		if (!this.sanityCheck()) return;
 
@@ -99,7 +104,7 @@ export class OrchestrationService {
 
 		this.logger.debug(`[Instance ID ${this.instanceId}] Publishing command "${command}"`, payload);
 
-		await this.redisPublisher.publishToCommandChannel({ command, payload });
+		await this.publisher.publishCommand({ command, payload });
 	}
 
 	// ----------------------------------
@@ -113,7 +118,7 @@ export class OrchestrationService {
 
 		this.logger.debug(`Sending "${command}" to command channel`);
 
-		await this.redisPublisher.publishToCommandChannel({
+		await this.publisher.publishCommand({
 			command,
 			targets: id ? [id] : undefined,
 		});
@@ -126,7 +131,7 @@ export class OrchestrationService {
 
 		this.logger.debug(`Sending "${command}" to command channel`);
 
-		await this.redisPublisher.publishToCommandChannel({ command });
+		await this.publisher.publishCommand({ command });
 	}
 
 	// ----------------------------------
