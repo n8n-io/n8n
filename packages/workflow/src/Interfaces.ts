@@ -10,7 +10,6 @@ import type { URLSearchParams } from 'url';
 import type { RequestBodyMatcher } from 'nock';
 import type { Client as SSHClient } from 'ssh2';
 
-import type { AuthenticationMethod } from './Authentication';
 import type { CODE_EXECUTION_MODES, CODE_LANGUAGES, LOG_LEVELS } from './Constants';
 import type { IDeferredPromise } from './DeferredPromise';
 import type { ExecutionStatus } from './ExecutionStatus';
@@ -2407,16 +2406,6 @@ export interface INodesGraphResult {
 	webhookNodeNames: string[];
 }
 
-export interface ITelemetryClientConfig {
-	url: string;
-	key: string;
-}
-
-export interface ITelemetrySettings {
-	enabled: boolean;
-	config?: ITelemetryClientConfig;
-}
-
 export interface FeatureFlags {
 	[featureFlag: string]: string | boolean | undefined;
 }
@@ -2598,19 +2587,6 @@ export interface ExecutionFilters {
 	workflowId?: number | string;
 }
 
-export interface IVersionNotificationSettings {
-	enabled: boolean;
-	endpoint: string;
-	infoUrl: string;
-}
-
-export interface IUserManagementSettings {
-	quota: number;
-	showSetupOnFirstLoad?: boolean;
-	smtpSetup: boolean;
-	authenticationMethod: AuthenticationMethod;
-}
-
 export type NpsSurveyRespondedState = { lastShownAt: number; responded: true };
 export type NpsSurveyWaitingState = {
 	lastShownAt: number;
@@ -2628,157 +2604,9 @@ export interface IUserSettings {
 	npsSurvey?: NpsSurveyState;
 }
 
-export interface IPublicApiSettings {
-	enabled: boolean;
-	latestVersion: number;
-	path: string;
-	swaggerUi: {
-		enabled: boolean;
-	};
-}
-
 export type ExpressionEvaluatorType = 'tmpl' | 'tournament';
 
 export type N8nAIProviderType = 'openai' | 'unknown';
-
-export interface IN8nUISettings {
-	isDocker?: boolean;
-	databaseType: 'sqlite' | 'mariadb' | 'mysqldb' | 'postgresdb';
-	endpointForm: string;
-	endpointFormTest: string;
-	endpointFormWaiting: string;
-	endpointWebhook: string;
-	endpointWebhookTest: string;
-	saveDataErrorExecution: WorkflowSettings.SaveDataExecution;
-	saveDataSuccessExecution: WorkflowSettings.SaveDataExecution;
-	saveManualExecutions: boolean;
-	saveExecutionProgress: boolean;
-	executionTimeout: number;
-	maxExecutionTimeout: number;
-	workflowCallerPolicyDefaultOption: WorkflowSettings.CallerPolicy;
-	oauthCallbackUrls: {
-		oauth1: string;
-		oauth2: string;
-	};
-	timezone: string;
-	urlBaseWebhook: string;
-	urlBaseEditor: string;
-	versionCli: string;
-	nodeJsVersion: string;
-	concurrency: number;
-	authCookie: {
-		secure: boolean;
-	};
-	binaryDataMode: 'default' | 'filesystem' | 's3';
-	releaseChannel: 'stable' | 'beta' | 'nightly' | 'dev';
-	n8nMetadata?: {
-		userId?: string;
-		[key: string]: string | number | undefined;
-	};
-	versionNotifications: IVersionNotificationSettings;
-	instanceId: string;
-	telemetry: ITelemetrySettings;
-	posthog: {
-		enabled: boolean;
-		apiHost: string;
-		apiKey: string;
-		autocapture: boolean;
-		disableSessionRecording: boolean;
-		debug: boolean;
-	};
-	personalizationSurveyEnabled: boolean;
-	defaultLocale: string;
-	userManagement: IUserManagementSettings;
-	sso: {
-		saml: {
-			loginLabel: string;
-			loginEnabled: boolean;
-		};
-		ldap: {
-			loginLabel: string;
-			loginEnabled: boolean;
-		};
-	};
-	publicApi: IPublicApiSettings;
-	workflowTagsDisabled: boolean;
-	logLevel: LogLevel;
-	hiringBannerEnabled: boolean;
-	previewMode: boolean;
-	templates: {
-		enabled: boolean;
-		host: string;
-	};
-	missingPackages?: boolean;
-	executionMode: 'regular' | 'queue';
-	pushBackend: 'sse' | 'websocket';
-	communityNodesEnabled: boolean;
-	aiAssistant: {
-		enabled: boolean;
-	};
-	deployment: {
-		type: string | 'default' | 'n8n-internal' | 'cloud' | 'desktop_mac' | 'desktop_win';
-	};
-	isNpmAvailable: boolean;
-	allowedModules: {
-		builtIn?: string[];
-		external?: string[];
-	};
-	enterprise: {
-		sharing: boolean;
-		ldap: boolean;
-		saml: boolean;
-		logStreaming: boolean;
-		advancedExecutionFilters: boolean;
-		variables: boolean;
-		sourceControl: boolean;
-		auditLogs: boolean;
-		externalSecrets: boolean;
-		showNonProdBanner: boolean;
-		debugInEditor: boolean;
-		binaryDataS3: boolean;
-		workflowHistory: boolean;
-		workerView: boolean;
-		advancedPermissions: boolean;
-		projects: {
-			team: {
-				limit: number;
-			};
-		};
-	};
-	hideUsagePage: boolean;
-	license: {
-		planName?: string;
-		consumerId: string;
-		environment: 'development' | 'production' | 'staging';
-	};
-	variables: {
-		limit: number;
-	};
-	expressions: {
-		evaluator: ExpressionEvaluatorType;
-	};
-	mfa: {
-		enabled: boolean;
-	};
-	banners: {
-		dismissed: string[];
-	};
-	ai: {
-		enabled: boolean;
-	};
-	workflowHistory: {
-		pruneTime: number;
-		licensePruneTime: number;
-	};
-	pruning: {
-		isEnabled: boolean;
-		maxAge: number;
-		maxCount: number;
-	};
-	security: {
-		blockFileAccessToN8nFiles: boolean;
-	};
-}
 
 export interface SecretsHelpersBase {
 	update(): Promise<void>;
