@@ -11,7 +11,10 @@ export class AuthIdentity extends WithTimestamps {
 	@Column()
 	userId: string;
 
-	@ManyToOne(() => User, (user) => user.authIdentities)
+	@ManyToOne(
+		() => User,
+		(user) => user.authIdentities,
+	)
 	user: User;
 
 	@PrimaryColumn()
