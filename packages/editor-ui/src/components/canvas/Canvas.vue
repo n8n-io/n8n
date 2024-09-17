@@ -122,7 +122,7 @@ const classes = computed(() => ({
 
 const disableKeyBindings = computed(() => !props.keyBindings);
 
-const panningKeyCode = 'Shift';
+const panningKeyCode = ' ';
 const isPanningEnabled = ref(false);
 
 onKeyDown(panningKeyCode, () => {
