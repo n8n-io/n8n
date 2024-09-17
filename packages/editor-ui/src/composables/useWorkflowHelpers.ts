@@ -712,7 +712,20 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 					// Resolve the expression if it is one
 					let resolved;
 					try {
-						resolved = resolveExpression(value, nodeParameters);
+						let opts: Parameters<typeof resolveExpression>[2] = {
+							isForCredential: false,
+						};
+						const ndvStore = useNDVStore();
+						if (ndvStore.isInputParentOfActiveNode) {
+							opts = {
+								...opts,
+								targetItem: ndvStore.expressionTargetItem ?? undefined,
+								inputNodeName: ndvStore.ndvInputNodeName,
+								inputRunIndex: ndvStore.ndvInputRunIndex,
+								inputBranchIndex: ndvStore.ndvInputBranchIndex,
+							};
+						}
+						resolved = resolveExpression(value, undefined, opts);
 					} catch (error) {
 						resolved = `Error in expression: "${error.message}"`;
 					}
