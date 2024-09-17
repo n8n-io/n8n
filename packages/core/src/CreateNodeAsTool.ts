@@ -1,23 +1,22 @@
-/* eslint-disable @typescript-eslint/no-use-before-define */
 /**
  * @module NodeAsTool
  * @description This module converts n8n nodes into LangChain tools by analyzing node parameters,
- * identifying placeholders, and generating a Zod schema. It then creates a DynamicStructuredTool
- * that can be used in LangChain workflows.
+ * identifying placeholders using the $fromAI function, and generating a Zod schema. It then creates
+ * a DynamicStructuredTool that can be used in LangChain workflows.
  *
  * General approach:
- * 1. Recursively traverse node parameters to find placeholders, including in nested structures
- * 2. Generate a Zod schema based on these placeholders, preserving the nested structure
+ * 1. Parse node parameters to find $fromAI function calls and extract ment information
+ * 2. Generate a Zod schema based on these arguments, preserving types and descriptions
  * 3. Create a DynamicStructuredTool with the schema and a function that executes the n8n node
  *
  * Example:
  * - Node parameters:
  *   {
- *     "inputText": "{{ '__PLACEHOLDER: Enter main text to process' }}",
+ *     "inputText": "={{ $fromAI("inputText", "Enter main text to process", "string") }}",
  *     "options": {
- *       "language": "{{ '__PLACEHOLDER: Specify language' }}",
+ *       "language": "={{ $fromAI("language", "Specify language", "string") }}",
  *       "advanced": {
- *         "maxLength": "{{ '__PLACEHOLDER: Enter maximum length' }}"
+ *         "maxLength": "={{ $fromAI("maxLength", "Enter maximum length", "number") }}",
  *       }
  *     }
  *   }
@@ -25,19 +24,17 @@
  * - Generated Zod schema:
  *   z.object({
  *     "inputText": z.string().describe("Enter main text to process"),
- *     "options__language": z.string().describe("Specify language"),
- *     "options__advanced__maxLength": z.string().describe("Enter maximum length")
+ *     "language": z.string().describe("Specify language"),
+ *     "maxLength": z.number().describe("Enter maximum length")
  *   }).required()
  *
- * - Resulting tool can be called with:
+ * - Resulting will be called with:
  *   {
  *     "inputText": "Hello, world!",
- *     "options__language": "en",
- *     "options__advanced__maxLength": "100"
+ *     "language": "en",
+ *     "maxLength": 100
  *   }
  *
- * Note: Nested properties are flattened with double underscores in the schema,
- * but the tool reconstructs the original nested structure when executing the node.
  */
 
 import { DynamicStructuredTool } from '@langchain/core/tools';
@@ -45,13 +42,7 @@ import type { IExecuteFunctions, INodeParameters, INodeType } from 'n8n-workflow
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import { z } from 'zod';
 
-type PlaceholderDefinition = {
-	name: string;
-	type?: string;
-	description: string;
-};
-
-interface fromAIArgument {
+interface FromAIArgument {
 	/** The key or name of the argument */
 	key: string;
 	/** Optional description of the argument */
@@ -62,7 +53,18 @@ interface fromAIArgument {
 	defaultValue?: string | number | boolean;
 }
 
-function makeParameterZodSchema(placeholder: fromAIArgument) {
+/**
+ * Generates a Zod schema based on the provided FromAIArgument placeholder.
+ *
+ * @param placeholder - An object containing information about the argument.
+ * @returns A Zod schema corresponding to the argument type and description.
+ *
+ * This function creates a Zod schema based on the type specified in the placeholder.
+ * It supports 'string', 'number', 'boolean', 'json', and 'date' types.
+ * If no type is specified or an unsupported type is provided, it defaults to a string schema.
+ * If a description is provided in the placeholder, it is added to the schema.
+ */
+function generateZodSchema(placeholder: FromAIArgument) {
 	let schema: z.ZodTypeAny;
 
 	if (placeholder.type === 'string') {
@@ -86,6 +88,18 @@ function makeParameterZodSchema(placeholder: fromAIArgument) {
 	return schema;
 }
 
+/**
+ * Generates a description for a node based on the provided parameters.
+ *
+ * @param node - The node type containing basic description information.
+ * @param nodeParameters - Parameters specifying how to generate the description.
+ * @returns A string containing the generated description.
+ *
+ * This function handles three cases:
+ * 1. 'auto': Combines the node's description with resource and operation info.
+ * 2. 'manual': Uses a manually provided description or falls back to the node's description.
+ * 3. default: Returns the node's original description.
+ */
 function getDescription(node: INodeType, nodeParameters: INodeParameters) {
 	const manualDescription = nodeParameters.toolDescription as string;
 
@@ -109,12 +123,100 @@ function getDescription(node: INodeType, nodeParameters: INodeParameters) {
 }
 
 /**
+ * Parses the default value, preserving its original type.
+ *
+ * @param value - The string representation of the default value
+ * @returns The parsed default value as string, number, boolean, or undefined
+ */
+function parseDefaultValue(value: string | undefined): string | number | boolean | undefined {
+	if (value === undefined) return undefined;
+	if (value === 'true') return true;
+	if (value === 'false') return false;
+	if (!isNaN(Number(value))) return Number(value);
+	return value;
+}
+
+/**
+ * Parses the arguments of a single fromAI function call.
+ *
+ * This function takes a string representation of function arguments and parses them into
+ * a structured format. It handles complex nested structures, respecting quotes and parentheses.
+ * The function is designed to work with arguments that may contain nested objects, arrays,
+ * or quoted strings, ensuring that these are correctly parsed as single entities.
+ *
+ * @param argsString - The string containing the function arguments, potentially including
+ *                     nested structures and quoted strings
+ * @returns A FromAIArgument object with parsed values, maintaining the structure and types
+ *          of the original arguments
+ */
+function parseArguments(argsString: string): FromAIArgument {
+	const args: string[] = [];
+	let currentArg = '';
+	let inQuotes = false;
+	let quoteChar = '';
+	let depth = 0;
+
+	// This loop iterates through each character in the argsString
+	for (let i = 0; i < argsString.length; i++) {
+		const char = argsString[i];
+
+		// Handle quotes (single or double)
+		if (char === "'" || char === '"') {
+			if (!inQuotes) {
+				// Start of a quoted section
+				inQuotes = true;
+				quoteChar = char;
+			} else if (char === quoteChar) {
+				// End of a quoted section
+				inQuotes = false;
+				quoteChar = '';
+			}
+			currentArg += char;
+		} else if (char === '(' && !inQuotes) {
+			// Handle opening parenthesis (increase depth)
+			depth++;
+			currentArg += char;
+		} else if (char === ')' && !inQuotes) {
+			// Handle closing parenthesis (decrease depth)
+			depth--;
+			currentArg += char;
+		} else if (char === ',' && !inQuotes && depth === 0) {
+			// Handle comma separator (only if not in quotes and at top level)
+			args.push(currentArg.trim());
+			currentArg = '';
+		} else {
+			// Add any other character to the current argument
+			currentArg += char;
+		}
+	}
+
+	// Add the last argument if there's any remaining
+	if (currentArg) {
+		args.push(currentArg.trim());
+	}
+
+	// Clean up the arguments by removing leading and trailing quotes
+	// This is done using a regular expression:
+	// ^['"]  - Matches a single or double quote at the start of the string
+	// ['"]$  - Matches a single or double quote at the end of the string
+	// The 'g' flag ensures all matches are replaced
+	const cleanArgs = args.map((arg) => arg.replace(/^['"]|['"]$/g, ''));
+
+	return {
+		key: cleanArgs[0] || '',
+		description: cleanArgs[1],
+		type: cleanArgs[2],
+		defaultValue: parseDefaultValue(cleanArgs[3]),
+	};
+}
+
+/**
  * Parses a string containing JSON and extracts all fromAI function arguments.
  *
  * @param jsonString - A string containing JSON with fromAI function calls
  * @returns An array of fromAIArgument objects
  */
-function parseFromAIArguments(jsonString: string): fromAIArgument[] {
+function parseFromAIArguments(jsonString: string): FromAIArgument[] {
 	/**
 	 * Regular expression to match fromAI function calls, including nested parentheses.
 	 * Explanation:
@@ -140,73 +242,6 @@ function parseFromAIArguments(jsonString: string): fromAIArgument[] {
 }
 
 /**
- * Parses the arguments of a single fromAI function call.
- *
- * @param argsString - The string containing the function arguments
- * @returns A fromAIArgument object with parsed values
- */
-function parseArguments(argsString: string): fromAIArgument {
-	const args: string[] = [];
-	let currentArg = '';
-	let inQuotes = false;
-	let quoteChar = '';
-	let depth = 0;
-
-	for (let i = 0; i < argsString.length; i++) {
-		const char = argsString[i];
-
-		if (char === "'" || char === '"') {
-			if (!inQuotes) {
-				inQuotes = true;
-				quoteChar = char;
-			} else if (char === quoteChar) {
-				inQuotes = false;
-				quoteChar = '';
-			}
-			currentArg += char;
-		} else if (char === '(' && !inQuotes) {
-			depth++;
-			currentArg += char;
-		} else if (char === ')' && !inQuotes) {
-			depth--;
-			currentArg += char;
-		} else if (char === ',' && !inQuotes && depth === 0) {
-			args.push(currentArg.trim());
-			currentArg = '';
-		} else {
-			currentArg += char;
-		}
-	}
-
-	if (currentArg) {
-		args.push(currentArg.trim());
-	}
-
-	const cleanArgs = args.map((arg) => arg.replace(/^['"]|['"]$/g, ''));
-
-	return {
-		key: cleanArgs[0] || '',
-		description: cleanArgs[1] || undefined,
-		type: cleanArgs[2] || undefined,
-		defaultValue: parseDefaultValue(cleanArgs[3]),
-	};
-}
-
-/**
- * Parses the default value, preserving its original type.
- *
- * @param value - The string representation of the default value
- * @returns The parsed default value as string, number, boolean, or undefined
- */
-function parseDefaultValue(value: string | undefined): string | number | boolean | undefined {
-	if (value === undefined) return undefined;
-	if (value === 'true') return true;
-	if (value === 'false') return false;
-	if (!isNaN(Number(value))) return Number(value);
-	return value;
-}
-
-/**
  * Creates a DynamicStructuredTool from an n8n node.
  * @param {INodeType} node - The n8n node to convert.
  * @param {IExecuteFunctions} ctx - The execution context.
@@ -219,9 +254,7 @@ export function createNodeAsTool(
 	nodeParameters: INodeParameters,
 ): DynamicStructuredTool {
 	const stringifiedParameters = JSON.stringify(nodeParameters, null, 2);
-	console.log('Stringified parameters:', stringifiedParameters);
 	const parsedArguments = parseFromAIArguments(stringifiedParameters);
-	console.log('parseFromAIArguments output:', parsedArguments);
 
 	for (const argument of parsedArguments) {
 		const nameValidationRegex = /^[a-zA-Z0-9_-]{1,64}$/;
@@ -235,7 +268,7 @@ export function createNodeAsTool(
 	}
 	// Generate Zod schema from placeholder values
 	const schemaObj = parsedArguments.reduce((acc: Record<string, z.ZodTypeAny>, placeholder) => {
-		acc[placeholder.key] = makeParameterZodSchema(placeholder);
+		acc[placeholder.key] = generateZodSchema(placeholder);
 		return acc;
 	}, {});
 
@@ -265,7 +298,6 @@ export function createNodeAsTool(
 				// Return the stringified results
 				return JSON.stringify(mappedResults);
 			} catch (error) {
-				console.log('🚀 ~ error:', error);
 				const nodeErrror = new NodeOperationError(ctx.getNode(), error as Error);
 				ctx.addOutputData(NodeConnectionType.AiTool, index, nodeErrror);
 				return 'Error during node execution: ' + nodeErrror.description;

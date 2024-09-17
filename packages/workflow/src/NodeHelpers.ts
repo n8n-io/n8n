@@ -360,7 +360,7 @@ const declarativeNodeOptionParameters: INodeProperties = {
 export function convertNodeToAiTool<
 	T extends object & { description: INodeTypeDescription | INodeTypeBaseDescription },
 >(item: T): T {
-	// quick helper function for typeguard down below
+	// quick helper function for type-guard down below
 	function isFullDescription(obj: unknown): obj is INodeTypeDescription {
 		return typeof obj === 'object' && obj !== null && 'properties' in obj;
 	}
