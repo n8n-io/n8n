@@ -50,6 +50,9 @@ describe('Orchestration Service', () => {
 
 	beforeAll(async () => {
 		queueModeId = config.get('redis.queueModeId');
+
+		// @ts-expect-error readonly property
+		instanceSettings.instanceType = 'main';
 	});
 
 	beforeEach(() => {

@@ -580,7 +580,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			workflow_id: workflowsStore.workflowId,
 			node_type: chatSessionError.value?.node?.type,
 			error: chatSessionError.value?.error,
-			chat_session_id: currentSessionId,
+			chat_session_id: currentSessionId.value,
 		});
 	}
 

@@ -5,7 +5,6 @@ import { InstanceSettings } from 'n8n-core';
 import { ApplicationError } from 'n8n-workflow';
 import Container from 'typedi';
 
-import config from '@/config';
 import type { OrchestrationService } from '@/services/orchestration.service';
 import { mockInstance } from '@test/mocking';
 
@@ -70,7 +69,8 @@ describe('ScalingService', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
-		config.set('generic.instanceType', 'main');
+		// @ts-expect-error readonly property
+		instanceSettings.instanceType = 'main';
 		instanceSettings.markAsLeader();
 
 		scalingService = new ScalingService(
@@ -128,8 +128,8 @@ describe('ScalingService', () => {
 
 		describe('if worker', () => {
 			it('should set up queue + listeners', async () => {
-				// @ts-expect-error Private field
-				scalingService.instanceType = 'worker';
+				// @ts-expect-error readonly property
+				instanceSettings.instanceType = 'worker';
 
 				await scalingService.setupQueue();
 
@@ -141,8 +141,8 @@ describe('ScalingService', () => {
 
 		describe('webhook', () => {
 			it('should set up a queue + listeners', async () => {
-				// @ts-expect-error Private field
-				scalingService.instanceType = 'webhook';
+				// @ts-expect-error readonly property
+				instanceSettings.instanceType = 'webhook';
 
 				await scalingService.setupQueue();
 
@@ -155,8 +155,8 @@ describe('ScalingService', () => {
 
 	describe('setupWorker', () => {
 		it('should set up a worker with concurrency', async () => {
-			// @ts-expect-error Private field
-			scalingService.instanceType = 'worker';
+			// @ts-expect-error readonly property
+			instanceSettings.instanceType = 'worker';
 			await scalingService.setupQueue();
 			const concurrency = 5;
 
@@ -172,8 +172,8 @@ describe('ScalingService', () => {
 		});
 
 		it('should throw if called before queue is ready', async () => {
-			// @ts-expect-error Private field
-			scalingService.instanceType = 'worker';
+			// @ts-expect-error readonly property
+			instanceSettings.instanceType = 'worker';
 
 			expect(() => scalingService.setupWorker(5)).toThrow();
 		});

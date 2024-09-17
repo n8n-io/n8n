@@ -128,4 +128,24 @@ describe('AskAssistantChat', () => {
 		});
 		expect(container).toMatchSnapshot();
 	});
+	it('renders message with code snippet', () => {
+		const { container } = render(AskAssistantChat, {
+			props: {
+				user: { firstName: 'Kobi', lastName: 'Dog' },
+				messages: [
+					{
+						id: '1',
+						type: 'text',
+						role: 'assistant',
+						content:
+							'Hi Max! Here is my top solution to fix the error in your **Transform data** node👇',
+						codeSnippet:
+							"node.on('input', function(msg) {\n  if (msg.seed) { dummyjson.seed = msg.seed; }\n  try {\n      var value = dummyjson.parse(node.template, {mockdata: msg});\n      if (node.syntax === 'json') {\n          try { value = JSON.parse(value); }\n          catch(e) { node.error(RED._('datagen.errors.json-error')); }\n      }\n      if (node.fieldType === 'msg') {\n          RED.util.setMessageProperty(msg,node.field,value);\n      }\n      else if (node.fieldType === 'flow') {\n          node.context().flow.set(node.field,value);\n      }\n      else if (node.fieldType === 'global') {\n          node.context().global.set(node.field,value);\n      }\n      node.send(msg);\n  }\n  catch(e) {",
+						read: false,
+					},
+				],
+			},
+		});
+		expect(container).toMatchSnapshot();
+	});
 });

@@ -83,6 +83,8 @@ function onClose() {
 				:style="{ width: `${assistantStore.chatWidth}px` }"
 				:class="$style.wrapper"
 				data-test-id="ask-assistant-chat"
+				tabindex="0"
+				@keydown.stop
 			>
 				<AskAssistantChat
 					:user="user"

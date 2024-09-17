@@ -34,7 +34,7 @@ export class OrchestrationService {
 		return (
 			config.getEnv('executions.mode') === 'queue' &&
 			config.getEnv('multiMainSetup.enabled') &&
-			config.getEnv('generic.instanceType') === 'main' &&
+			this.instanceSettings.instanceType === 'main' &&
 			this.isMultiMainSetupLicensed
 		);
 	}
