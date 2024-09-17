@@ -22,14 +22,14 @@ import { rawBodyReader, bodyParser } from '@/middlewares';
 import * as ResponseHelper from '@/response-helper';
 import { ScalingService } from '@/scaling/scaling.service';
 
-type EndpointsConfig = {
-	/** Whether the `/healthz` endpoint is enabled on the worker server. */
+export type WorkerServerEndpointsConfig = {
+	/** Whether the `/healthz` endpoint is enabled. */
 	health: boolean;
 
-	/** Whether the [credentials overwrites](https://docs.n8n.io/embed/configuration/#credential-overwrites) endpoint is enabled on the worker server. */
+	/** Whether the [credentials overwrites endpoint](https://docs.n8n.io/embed/configuration/#credential-overwrites) is enabled. */
 	overwrites: boolean;
 
-	/** Whether the `/metrics` endpoint is enabled on the worker server. */
+	/** Whether the `/metrics` endpoint is enabled. */
 	metrics: boolean;
 };
 
@@ -44,7 +44,7 @@ export class WorkerServer {
 
 	private readonly app: Application;
 
-	private endpointsConfig: EndpointsConfig;
+	private endpointsConfig: WorkerServerEndpointsConfig;
 
 	private overwritesLoaded = false;
 
@@ -72,8 +72,8 @@ export class WorkerServer {
 		});
 	}
 
-	async init(endpointsConfig: EndpointsConfig) {
-		assert(endpointsConfig.health || endpointsConfig.overwrites || endpointsConfig.metrics);
+	async init(endpointsConfig: WorkerServerEndpointsConfig) {
+		assert(Object.values(endpointsConfig).some((e) => e));
 
 		this.endpointsConfig = endpointsConfig;
 

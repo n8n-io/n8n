@@ -9,6 +9,7 @@ import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus'
 import { LogStreamingEventRelay } from '@/events/log-streaming-event-relay';
 import { JobProcessor } from '@/scaling/job-processor';
 import type { ScalingService } from '@/scaling/scaling.service';
+import type { WorkerServerEndpointsConfig } from '@/scaling/worker-server';
 import { OrchestrationHandlerWorkerService } from '@/services/orchestration/worker/orchestration.handler.worker.service';
 import { OrchestrationWorkerService } from '@/services/orchestration/worker/orchestration.worker.service';
 import type { RedisServicePubSubSubscriber } from '@/services/redis/redis-service-pub-sub-subscriber';
@@ -162,15 +163,15 @@ export class Worker extends BaseCommand {
 		this.logger.info(` * Concurrency: ${this.concurrency}`);
 		this.logger.info('');
 
-		const enabledEndpoints = {
+		const endpointsConfig: WorkerServerEndpointsConfig = {
 			health: this.globalConfig.queue.health.active,
 			overwrites: this.globalConfig.credentials.overwrite.endpoint !== '',
 			metrics: this.globalConfig.endpoints.metrics.enable,
 		};
 
-		if (Object.values(enabledEndpoints).some((e) => e)) {
+		if (Object.values(endpointsConfig).some((e) => e)) {
 			const { WorkerServer } = await import('@/scaling/worker-server');
-			await Container.get(WorkerServer).init(enabledEndpoints);
+			await Container.get(WorkerServer).init(endpointsConfig);
 		}
 
 		if (!inTest && process.stdout.isTTY) {
