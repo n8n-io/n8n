@@ -146,6 +146,11 @@ describe('AskAssistantChat', () => {
 	});
 	it('renders message with code snippet', () => {
 		const { container } = render(AskAssistantChat, {
+			global: {
+				directives: {
+					n8nHtml,
+				},
+			},
 			props: {
 				user: { firstName: 'Kobi', lastName: 'Dog' },
 				messages: [

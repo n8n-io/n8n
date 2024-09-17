@@ -1299,9 +1299,6 @@ exports[`AskAssistantChat > renders message with code snippet 1`] = `
           <div
             class="textMessage"
           >
-            <!-- eslint-disable-next-line vue/no-v-html -->
-            
-            <!-- eslint-disable-next-line vue/no-v-html -->
             <div
               class="assistantText"
             >
@@ -1315,7 +1312,6 @@ exports[`AskAssistantChat > renders message with code snippet 1`] = `
               
 
             </div>
-            
             <div
               class="code-snippet"
               data-test-id="assistant-code-snippet"
