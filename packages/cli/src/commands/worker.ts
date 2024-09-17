@@ -162,12 +162,15 @@ export class Worker extends BaseCommand {
 		this.logger.info(` * Concurrency: ${this.concurrency}`);
 		this.logger.info('');
 
-		if (
-			this.globalConfig.queue.health.active ||
-			this.globalConfig.credentials.overwrite.endpoint !== ''
-		) {
+		const enabledEndpoints = {
+			health: this.globalConfig.queue.health.active,
+			overwrites: this.globalConfig.credentials.overwrite.endpoint !== '',
+			metrics: this.globalConfig.endpoints.metrics.enable,
+		};
+
+		if (Object.values(enabledEndpoints).some((e) => e)) {
 			const { WorkerServer } = await import('@/scaling/worker-server');
-			await Container.get(WorkerServer).init();
+			await Container.get(WorkerServer).init(enabledEndpoints);
 		}
 
 		if (!inTest && process.stdout.isTTY) {

@@ -1,6 +1,7 @@
 import { GlobalConfig } from '@n8n/config';
 import type express from 'express';
 import promBundle from 'express-prom-bundle';
+import { InstanceSettings } from 'n8n-core';
 import { EventMessageTypeNames } from 'n8n-workflow';
 import promClient, { type Counter, type Gauge } from 'prom-client';
 import semverParse from 'semver/functions/parse';
@@ -22,6 +23,7 @@ export class PrometheusMetricsService {
 		private readonly eventBus: MessageEventBus,
 		private readonly globalConfig: GlobalConfig,
 		private readonly eventService: EventService,
+		private readonly instanceSettings: InstanceSettings,
 	) {}
 
 	private readonly counters: { [key: string]: Counter<string> | null } = {};
@@ -227,7 +229,13 @@ export class PrometheusMetricsService {
 	}
 
 	private initQueueMetrics() {
-		if (!this.includes.metrics.queue || config.getEnv('executions.mode') !== 'queue') return;
+		if (
+			!this.includes.metrics.queue ||
+			config.getEnv('executions.mode') !== 'queue' ||
+			this.instanceSettings.instanceType !== 'main'
+		) {
+			return;
+		}
 
 		this.gauges.waiting = new promClient.Gauge({
 			name: this.prefix + 'scaling_mode_queue_jobs_waiting',
