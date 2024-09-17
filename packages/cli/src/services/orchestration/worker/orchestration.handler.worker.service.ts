@@ -1,4 +1,4 @@
-import Container, { Service } from 'typedi';
+import { Service } from 'typedi';
 
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 
@@ -8,11 +8,11 @@ import { OrchestrationHandlerService } from '../../orchestration.handler.base.se
 
 @Service()
 export class OrchestrationHandlerWorkerService extends OrchestrationHandlerService {
-	subscriber: Subscriber;
+	constructor(private readonly subscriber: Subscriber) {
+		super();
+	}
 
 	async initSubscriber(options: WorkerCommandReceivedHandlerOptions) {
-		this.subscriber = Container.get(Subscriber);
-
 		await this.subscriber.subscribe('n8n.commands');
 		this.subscriber.setHandler(getWorkerCommandReceivedHandler(options));
 	}

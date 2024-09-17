@@ -1,4 +1,4 @@
-import Container, { Service } from 'typedi';
+import { Service } from 'typedi';
 
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 
@@ -10,11 +10,11 @@ import { COMMAND_REDIS_CHANNEL, WORKER_RESPONSE_REDIS_CHANNEL } from '../../redi
 
 @Service()
 export class OrchestrationHandlerMainService extends OrchestrationHandlerService {
-	subscriber: Subscriber;
+	constructor(private readonly subscriber: Subscriber) {
+		super();
+	}
 
 	async initSubscriber(options: MainResponseReceivedHandlerOptions) {
-		this.subscriber = Container.get(Subscriber);
-
 		await this.subscriber.subscribe('n8n.commands');
 		await this.subscriber.subscribe('n8n.worker-response');
 
