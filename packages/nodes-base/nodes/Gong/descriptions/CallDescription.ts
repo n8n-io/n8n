@@ -881,7 +881,9 @@ const getFields: INodeProperties[] = [
 										item.index ?? 0,
 										'callTranscripts',
 									);
-									item.json.transcript = callTranscripts[0].transcript;
+									item.json.transcript = callTranscripts?.length
+										? callTranscripts[0].transcript
+										: [];
 								}
 								return items;
 							},

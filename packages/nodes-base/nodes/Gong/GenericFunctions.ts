@@ -17,9 +17,15 @@ export async function gongApiRequest(
 	body: IDataObject = {},
 	query: IDataObject = {},
 ) {
+	const authentication = this.getNodeParameter('authentication', 0) as 'accessToken' | 'oAuth2';
+	const credentialsType = authentication === 'oAuth2' ? 'gongOAuth2Api' : 'gongApi';
+	const { baseUrl } = await this.getCredentials<{
+		baseUrl: string;
+	}>(credentialsType);
+
 	const options: IHttpRequestOptions = {
 		method,
-		url: `https://api.gong.io${endpoint}`,
+		url: baseUrl.replace(new RegExp('/$'), '') + endpoint,
 		json: true,
 		headers: {
 			'Content-Type': 'application/json',
@@ -32,7 +38,7 @@ export async function gongApiRequest(
 		delete options.body;
 	}
 
-	return await this.helpers.requestWithAuthentication.call(this, 'gongApi', options);
+	return await this.helpers.requestWithAuthentication.call(this, credentialsType, options);
 }
 
 export async function gongApiPaginateRequest(
@@ -44,9 +50,15 @@ export async function gongApiPaginateRequest(
 	itemIndex: number = 0,
 	rootProperty: string | undefined = undefined,
 ): Promise<any> {
+	const authentication = this.getNodeParameter('authentication', 0) as 'accessToken' | 'oAuth2';
+	const credentialsType = authentication === 'oAuth2' ? 'gongOAuth2Api' : 'gongApi';
+	const { baseUrl } = await this.getCredentials<{
+		baseUrl: string;
+	}>(credentialsType);
+
 	const options: IHttpRequestOptions = {
 		method,
-		url: `https://api.gong.io${endpoint}`,
+		url: baseUrl.replace(new RegExp('/$'), '') + endpoint,
 		json: true,
 		headers: {
 			'Content-Type': 'application/json',
@@ -67,13 +79,12 @@ export async function gongApiPaginateRequest(
 			requestInterval: 340, // Rate limit 3 calls per second
 			continue: '={{ $response.body.records.cursor }}',
 			request: {
-				[method === 'POST' ? 'body' : 'qs']: {
-					cursor: '={{ $response.body?.records.cursor ?? "" }}',
-				},
+				[method === 'POST' ? 'body' : 'qs']:
+					'={{ $if($response.body?.records.cursor, { cursor: $response.body.records.cursor }, {}) }}',
 				url: options.url,
 			},
 		},
-		'gongApi',
+		credentialsType,
 	);
 
 	if (rootProperty) {
