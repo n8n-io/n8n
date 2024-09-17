@@ -1,10 +1,10 @@
-import { fireEvent } from '@testing-library/vue';
 import CanvasEdge, { type CanvasEdgeProps } from './CanvasEdge.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { Position } from '@vue-flow/core';
 import { NodeConnectionType } from 'n8n-workflow';
+import userEvent from '@testing-library/user-event';
 
 const DEFAULT_PROPS = {
 	sourceX: 0,
@@ -31,18 +31,21 @@ beforeEach(() => {
 describe('CanvasEdge', () => {
 	it('should emit delete event when toolbar delete is clicked', async () => {
 		const { emitted, getByTestId } = renderComponent();
+		await userEvent.hover(getByTestId('edge-label-wrapper'));
 		const deleteButton = getByTestId('delete-connection-button');
 
-		await fireEvent.click(deleteButton);
+		await userEvent.click(deleteButton);
 
 		expect(emitted()).toHaveProperty('delete');
 	});
 
 	it('should emit add event when toolbar add is clicked', async () => {
 		const { emitted, getByTestId } = renderComponent();
+		await userEvent.hover(getByTestId('edge-label-wrapper'));
+
 		const addButton = getByTestId('add-connection-button');
 
-		await fireEvent.click(addButton);
+		await userEvent.click(addButton);
 
 		expect(emitted()).toHaveProperty('add');
 	});
@@ -53,6 +56,8 @@ describe('CanvasEdge', () => {
 				readOnly: true,
 			},
 		});
+
+		await userEvent.hover(getByTestId('edge-label-wrapper'));
 
 		expect(() => getByTestId('add-connection-button')).toThrow();
 		expect(() => getByTestId('delete-connection-button')).toThrow();
