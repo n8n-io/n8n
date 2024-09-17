@@ -1,9 +1,9 @@
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 import glob from 'fast-glob';
-import { readFile as fsReadFile } from 'fs/promises';
 import { Credentials, InstanceSettings } from 'n8n-core';
 import { ApplicationError, jsonParse, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
+import { readFile as fsReadFile } from 'node:fs/promises';
 import path from 'path';
 import { Container, Service } from 'typedi';
 
