@@ -129,22 +129,18 @@ onMounted(() => {
 						><strong>{{ props.data.resource.name }}</strong></template
 					>
 					<template v-if="isResourceInTeamProject" #inTeamProject>
-						{{
-							i18n.baseText('projects.move.resource.modal.message.team', {
-								interpolate: {
-									resourceHomeProjectName: processedName,
-								},
-							})
-						}}
+						<i18n-t keypath="projects.move.resource.modal.message.team">
+							<template #resourceHomeProjectName
+								><strong>{{ processedName }}</strong></template
+							>
+						</i18n-t>
 					</template>
 					<template v-else #inPersonalProject>
-						{{
-							i18n.baseText('projects.move.resource.modal.message.personal', {
-								interpolate: {
-									resourceHomeProjectName: processedName,
-								},
-							})
-						}}
+						<i18n-t keypath="projects.move.resource.modal.message.personal">
+							<template #resourceHomeProjectName
+								><strong>{{ processedName }}</strong></template
+							>
+						</i18n-t>
 					</template>
 				</i18n-t>
 			</N8nText>

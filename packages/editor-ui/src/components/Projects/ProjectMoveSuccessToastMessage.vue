@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
 import type { ICredentialsResponse, IWorkflowDb } from '@/Interface';
-import { ResourceType } from '@/utils/projects.utils';
+import { ResourceType, splitName } from '@/utils/projects.utils';
 import type { ProjectListItem } from '@/types/projects.types';
 import { ProjectTypes } from '@/types/projects.types';
 
@@ -15,33 +15,42 @@ const props = defineProps<{
 
 const isWorkflow = computed(() => props.resourceType === ResourceType.Workflow);
 const isTargetProjectTeam = computed(() => props.targetProject.type === ProjectTypes.Team);
+const projectName = computed(() => {
+	const { name, email } = splitName(props.targetProject?.name ?? '');
+	return name ?? email ?? '';
+});
 </script>
 <template>
 	<i18n-t keypath="projects.move.resource.success.message">
 		<template #resourceTypeLabel>{{ props.resourceTypeLabel }}</template>
-		<template #resourceName>{{ props.resource.name }}</template>
-		<template #targetProjectName>{{ props.targetProject.name }}</template>
+		<template #resourceName
+			><strong>{{ props.resource.name }}</strong></template
+		>
+		<template #targetProjectName
+			><strong>{{ projectName }}</strong></template
+		>
 		<template v-if="isWorkflow" #workflow>
-			<N8nText>
-				<br />
+			<N8nText tag="p" class="pt-xs">
 				<i18n-t keypath="projects.move.resource.success.message.workflow">
-					<template #targetProjectName>{{ props.targetProject.name }}</template>
+					<template #targetProjectName
+						><strong>{{ projectName }}</strong></template
+					>
 				</i18n-t>
 			</N8nText>
 		</template>
 		<template v-if="isTargetProjectTeam" #link>
-			<router-link
-				:to="{
-					name: props.routeName,
-					params: { projectId: props.targetProject.id },
-				}"
-			>
-				<p class="pt-s">
+			<p class="pt-s">
+				<router-link
+					:to="{
+						name: props.routeName,
+						params: { projectId: props.targetProject.id },
+					}"
+				>
 					<i18n-t keypath="projects.move.resource.success.link">
-						<template #targetProjectName>{{ props.targetProject.name }}</template>
+						<template #targetProjectName>{{ projectName }}</template>
 					</i18n-t>
-				</p>
-			</router-link>
+				</router-link>
+			</p>
 		</template>
 	</i18n-t>
 </template>
