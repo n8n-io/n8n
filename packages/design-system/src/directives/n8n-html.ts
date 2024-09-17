@@ -23,6 +23,7 @@ const configuredSanitize = (html: string) =>
 			...sanitize.defaults.allowedAttributes,
 			img: ['src', 'srcset', 'alt', 'title', 'width', 'height', 'loading'],
 			input: ['type', 'id', 'checked'],
+			code: ['class'],
 		},
 	});
 
