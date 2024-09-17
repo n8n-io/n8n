@@ -58,14 +58,14 @@ describe('Publisher', () => {
 		});
 	});
 
-	describe('publishResponse', () => {
-		it('should publish response into `n8n.worker-response` pubsub channel', async () => {
+	describe('publishWorkerResponse', () => {
+		it('should publish worker response into `n8n.worker-response` pubsub channel', async () => {
 			const publisher = new Publisher(mock(), redisClientService);
 			const msg = mock<RedisServiceWorkerResponseObject>({
 				command: 'reloadExternalSecretsProviders',
 			});
 
-			await publisher.publishResponse(msg);
+			await publisher.publishWorkerResponse(msg);
 
 			expect(client.publish).toHaveBeenCalledWith('n8n.worker-response', JSON.stringify(msg));
 		});

@@ -54,7 +54,7 @@ export class Publisher {
 	}
 
 	/** Publish a response for a command into the `n8n.worker-response` channel. */
-	async publishResponse(msg: RedisServiceWorkerResponseObject) {
+	async publishWorkerResponse(msg: RedisServiceWorkerResponseObject) {
 		await this.client.publish('n8n.worker-response', JSON.stringify(msg));
 
 		this.logger.debug(`Published response for ${msg.command} to worker response channel`);
