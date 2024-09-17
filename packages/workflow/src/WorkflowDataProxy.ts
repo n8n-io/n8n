@@ -1322,7 +1322,7 @@ export class WorkflowDataProxy {
 					);
 				}
 				const placeholdersDataInputData =
-					that.runExecutionData?.resultData.runData[that.contextNodeName]?.[0].inputOverride?.[
+					that.runExecutionData?.resultData.runData[that.activeNodeName]?.[0].inputOverride?.[
 						NodeConnectionType.AiTool
 					]?.[0]?.[0].json;
 
