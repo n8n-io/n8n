@@ -1,14 +1,15 @@
-import Container from 'typedi';
 import { hash } from 'bcryptjs';
-import { AuthIdentity } from '@db/entities/AuthIdentity';
-import { type GlobalRole, type User } from '@db/entities/User';
-import { AuthIdentityRepository } from '@db/repositories/authIdentity.repository';
-import { UserRepository } from '@db/repositories/user.repository';
-import { TOTPService } from '@/Mfa/totp.service';
-import { MfaService } from '@/Mfa/mfa.service';
+import Container from 'typedi';
+
+import { AuthIdentity } from '@/databases/entities/auth-identity';
+import { type GlobalRole, type User } from '@/databases/entities/user';
+import { AuthIdentityRepository } from '@/databases/repositories/auth-identity.repository';
+import { AuthUserRepository } from '@/databases/repositories/auth-user.repository';
+import { UserRepository } from '@/databases/repositories/user.repository';
+import { MfaService } from '@/mfa/mfa.service';
+import { TOTPService } from '@/mfa/totp.service';
 
 import { randomApiKey, randomEmail, randomName, randomValidPassword } from '../random';
-import { AuthUserRepository } from '@/databases/repositories/authUser.repository';
 
 // pre-computed bcrypt hash for the string 'password', using `await hash('password', 10)`
 const passwordHash = '$2a$10$njedH7S6V5898mj6p0Jr..IGY9Ms.qNwR7RbSzzX9yubJocKfvGGK';
@@ -78,11 +79,19 @@ export async function createUserWithMfaEnabled(
 	};
 }
 
-export async function createOwner() {
+export async function createOwner({ withApiKey } = { withApiKey: false }) {
+	if (withApiKey) {
+		return await addApiKey(await createUser({ role: 'global:owner' }));
+	}
+
 	return await createUser({ role: 'global:owner' });
 }
 
-export async function createMember() {
+export async function createMember({ withApiKey } = { withApiKey: false }) {
+	if (withApiKey) {
+		return await addApiKey(await createUser({ role: 'global:member' }));
+	}
+
 	return await createUser({ role: 'global:member' });
 }
 

@@ -82,7 +82,7 @@ export class VectorStoreSupabaseLoad implements INodeType {
 	methods = { listSearch: { supabaseTableNameSearch } };
 
 	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
-		this.logger.verbose('Supply Supabase Load Vector Store');
+		this.logger.debug('Supply Supabase Load Vector Store');
 
 		const tableName = this.getNodeParameter('tableName', itemIndex, '', {
 			extractValue: true,

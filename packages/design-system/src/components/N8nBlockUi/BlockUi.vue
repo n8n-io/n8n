@@ -1,3 +1,13 @@
+<script lang="ts" setup>
+type BlockUiProps = {
+	show: boolean;
+};
+
+withDefaults(defineProps<BlockUiProps>(), {
+	show: false,
+});
+</script>
+
 <template>
 	<transition name="fade" mode="out-in">
 		<div
@@ -8,16 +18,6 @@
 		/>
 	</transition>
 </template>
-
-<script lang="ts" setup>
-type BlockUiProps = {
-	show: boolean;
-};
-
-withDefaults(defineProps<BlockUiProps>(), {
-	show: false,
-});
-</script>
 
 <style lang="scss" module>
 .uiBlocker {

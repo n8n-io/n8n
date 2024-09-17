@@ -26,6 +26,7 @@ import { extendSyntax } from './Extensions/ExpressionExtension';
 import { evaluateExpression, setErrorHandler } from './ExpressionEvaluatorProxy';
 import { getGlobalState } from './GlobalState';
 import { ApplicationError } from './errors/application.error';
+import { sanitizer, sanitizerName } from './ExpressionSandboxing';
 
 const IS_FRONTEND_IN_DEV_MODE =
 	typeof process === 'object' &&
@@ -305,6 +306,8 @@ export class Expression {
 		// expression extensions
 		data.extend = extend;
 		data.extendOptional = extendOptional;
+
+		data[sanitizerName] = sanitizer;
 
 		Object.assign(data, extendedFunctions);
 

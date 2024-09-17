@@ -1,9 +1,10 @@
 import Container from 'typedi';
 
-import * as testDb from './shared/testDb';
-import { WorkflowTagMappingRepository } from '@/databases/repositories/workflowTagMapping.repository';
-import { createWorkflow } from './shared/db/workflows';
 import { TagRepository } from '@/databases/repositories/tag.repository';
+import { WorkflowTagMappingRepository } from '@/databases/repositories/workflow-tag-mapping.repository';
+
+import { createWorkflow } from './shared/db/workflows';
+import * as testDb from './shared/test-db';
 
 describe('WorkflowTagMappingRepository', () => {
 	let taggingRepository: WorkflowTagMappingRepository;

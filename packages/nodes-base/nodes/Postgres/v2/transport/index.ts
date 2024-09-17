@@ -7,13 +7,13 @@ import type {
 	ITriggerFunctions,
 } from 'n8n-workflow';
 
-import { formatPrivateKey } from '@utils/utilities';
 import type {
 	ConnectionsData,
 	PgpConnectionParameters,
 	PostgresNodeCredentials,
 	PostgresNodeOptions,
 } from '../helpers/interfaces';
+import { formatPrivateKey } from '@utils/utilities';
 import { LOCALHOST } from '@utils/constants';
 
 const getPostgresConfig = (

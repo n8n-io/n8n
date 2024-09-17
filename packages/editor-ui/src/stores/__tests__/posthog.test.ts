@@ -9,7 +9,7 @@ import { LOCAL_STORAGE_EXPERIMENT_OVERRIDES } from '@/constants';
 import { nextTick } from 'vue';
 import { defaultSettings } from '../../__tests__/defaults';
 
-const DEFAULT_POSTHOG_SETTINGS: IN8nUISettings['posthog'] = {
+export const DEFAULT_POSTHOG_SETTINGS: IN8nUISettings['posthog'] = {
 	enabled: true,
 	apiHost: 'host',
 	apiKey: 'key',

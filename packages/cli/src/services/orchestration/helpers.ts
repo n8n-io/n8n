@@ -1,9 +1,11 @@
-import { Container } from 'typedi';
 import { jsonParse } from 'n8n-workflow';
-import { Logger } from '@/Logger';
-import type { RedisServiceCommandObject } from '../redis/RedisServiceCommands';
-import { COMMAND_REDIS_CHANNEL } from '../redis/RedisConstants';
-import * as os from 'os';
+import os from 'node:os';
+import { Container } from 'typedi';
+
+import { Logger } from '@/logger';
+
+import { COMMAND_REDIS_CHANNEL } from '../redis/redis-constants';
+import type { RedisServiceCommandObject } from '../redis/redis-service-commands';
 
 export interface RedisServiceCommandLastReceived {
 	[date: string]: Date;

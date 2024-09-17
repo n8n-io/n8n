@@ -1,31 +1,31 @@
+import type { Scope } from '@n8n/permissions';
+import type { INode, IPinData } from 'n8n-workflow';
 import Container from 'typedi';
 import { v4 as uuid } from 'uuid';
-import type { INode, IPinData } from 'n8n-workflow';
-import type { Scope } from '@n8n/permissions';
 
-import type { User } from '@db/entities/User';
-import { WorkflowRepository } from '@db/repositories/workflow.repository';
-import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import type { User } from '@/databases/entities/user';
+import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
+import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
+import { WorkflowHistoryRepository } from '@/databases/repositories/workflow-history.repository';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { License } from '@/license';
 import type { ListQuery } from '@/requests';
-import { WorkflowHistoryRepository } from '@db/repositories/workflowHistory.repository';
-import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
-import { ProjectRepository } from '@db/repositories/project.repository';
 import { ProjectService } from '@/services/project.service';
-import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
-import { License } from '@/License';
 
 import { mockInstance } from '../../shared/mocking';
-import * as utils from '../shared/utils/';
-import * as testDb from '../shared/testDb';
-import { makeWorkflow, MOCK_PINDATA } from '../shared/utils/';
-import { randomCredentialPayload } from '../shared/random';
 import { saveCredential } from '../shared/db/credentials';
+import { createTeamProject, linkUserToProject } from '../shared/db/projects';
+import { createTag } from '../shared/db/tags';
 import { createManyUsers, createMember, createOwner } from '../shared/db/users';
 import { createWorkflow, shareWorkflowWithProjects } from '../shared/db/workflows';
-import { createTag } from '../shared/db/tags';
-import { createTeamProject, linkUserToProject } from '../shared/db/projects';
+import { randomCredentialPayload } from '../shared/random';
+import * as testDb from '../shared/test-db';
 import type { SuperAgentTest } from '../shared/types';
+import * as utils from '../shared/utils/';
+import { makeWorkflow, MOCK_PINDATA } from '../shared/utils/';
 
 let owner: User;
 let member: User;

@@ -18,6 +18,10 @@ export function sanitizeHtml(dirtyHtml: string) {
 			}
 
 			if (ALLOWED_HTML_ATTRIBUTES.includes(name) || name.startsWith('data-')) {
+				// href is allowed but we need to sanitize certain protocols
+				if (name === 'href' && !value.match(/^https?:\/\//gm)) {
+					return '';
+				}
 				return `${name}="${friendlyAttrValue(value)}"`;
 			}
 
@@ -32,6 +36,17 @@ export function sanitizeHtml(dirtyHtml: string) {
 
 	return sanitizedHtml;
 }
+
+/**
+ * Checks if the input is a string and sanitizes it by removing or escaping harmful characters,
+ * returning the original input if it's not a string.
+ */
+export const sanitizeIfString = <T>(message: T): string | T => {
+	if (typeof message === 'string') {
+		return sanitizeHtml(message);
+	}
+	return message;
+};
 
 export function setPageTitle(title: string) {
 	window.document.title = title;

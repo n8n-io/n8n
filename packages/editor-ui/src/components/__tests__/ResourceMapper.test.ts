@@ -4,7 +4,7 @@ import {
 	UPDATED_SCHEMA,
 } from './utils/ResourceMapper.utils';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { waitAllPromises } from '@/__tests__/utils';
+import { cleanupAppModals, createAppModals, waitAllPromises } from '@/__tests__/utils';
 import ResourceMapper from '@/components/ResourceMapper/ResourceMapper.vue';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -23,8 +23,13 @@ describe('ResourceMapper.vue', () => {
 			.mockResolvedValue(MAPPING_COLUMNS_RESPONSE);
 	});
 
+	beforeEach(() => {
+		createAppModals();
+	});
+
 	afterEach(() => {
 		vi.clearAllMocks();
+		cleanupAppModals();
 	});
 
 	it('renders default configuration properly', async () => {
@@ -38,6 +43,14 @@ describe('ResourceMapper.vue', () => {
 		expect(
 			getByTestId('mapping-fields-container').querySelectorAll('.parameter-input').length,
 		).toBe(MAPPING_COLUMNS_RESPONSE.fields.length);
+	});
+
+	it('renders correctly in read only mode', async () => {
+		const { getByTestId } = renderComponent({ props: { isReadOnly: true } });
+		await waitAllPromises();
+		expect(getByTestId('mapping-mode-select').querySelector('input')).toBeDisabled();
+		expect(getByTestId('matching-column-select').querySelector('input')).toBeDisabled();
+		expect(getByTestId('mapping-fields-container').querySelector('input')).toBeDisabled();
 	});
 
 	it('renders add mode properly', async () => {
@@ -182,13 +195,18 @@ describe('ResourceMapper.vue', () => {
 			},
 			{ merge: true },
 		);
+
 		await waitAllPromises();
 		expect(getByText('Set the value for each foo')).toBeInTheDocument();
 		expect(
 			getByText('Look for incoming data that matches the foos in the service'),
 		).toBeInTheDocument();
 		expect(getByText('Foos to Match On')).toBeInTheDocument();
-		expect(getByText('The foos that identify the row(s) to modify')).toBeInTheDocument();
+		expect(
+			getByText(
+				'The foos to use when matching rows in the service to the input items of this node. Usually an ID.',
+			),
+		).toBeInTheDocument();
 	});
 
 	it('should render correct fields based on saved schema', async () => {

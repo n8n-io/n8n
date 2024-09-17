@@ -27,7 +27,7 @@ export class LmChatAzureOpenAi implements INodeType {
 		codex: {
 			categories: ['AI'],
 			subcategories: {
-				AI: ['Language Models'],
+				AI: ['Language Models', 'Root Nodes'],
 				'Language Models': ['Chat Models (Recommended)'],
 			},
 			resources: {
@@ -133,11 +133,11 @@ export class LmChatAzureOpenAi implements INodeType {
 	};
 
 	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
-		const credentials = (await this.getCredentials('azureOpenAiApi')) as {
+		const credentials = await this.getCredentials<{
 			apiKey: string;
 			resourceName: string;
 			apiVersion: string;
-		};
+		}>('azureOpenAiApi');
 
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 		const options = this.getNodeParameter('options', itemIndex, {}) as {

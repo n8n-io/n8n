@@ -44,7 +44,7 @@ import {
 	ApplicationError,
 	NodeExecutionOutput,
 	sleep,
-	OBFUSCATED_ERROR_MESSAGE,
+	ErrorReporterProxy,
 } from 'n8n-workflow';
 import get from 'lodash/get';
 import * as NodeExecuteFunctions from './NodeExecuteFunctions';
@@ -623,7 +623,11 @@ export class WorkflowExecute {
 
 						// Check if any of the parent nodes does not have any inputs. That
 						// would mean that it has to get added to the list of nodes to process.
-						const parentNodes = workflow.getParentNodes(inputData.node, 'main', -1);
+						const parentNodes = workflow.getParentNodes(
+							inputData.node,
+							NodeConnectionType.Main,
+							-1,
+						);
 						let nodeToAdd: string | undefined = inputData.node;
 						parentNodes.push(inputData.node);
 						parentNodes.reverse();
@@ -794,7 +798,7 @@ export class WorkflowExecute {
 	//            active executions anymore
 	// eslint-disable-next-line @typescript-eslint/promise-function-async
 	processRunExecutionData(workflow: Workflow): PCancelable<IRun> {
-		Logger.verbose('Workflow execution started', { workflowId: workflow.id });
+		Logger.debug('Workflow execution started', { workflowId: workflow.id });
 
 		const startedAt = new Date();
 		const forceInputNodeExecution = this.forceInputNodeExecution(workflow);
@@ -988,7 +992,11 @@ export class WorkflowExecute {
 								connectionIndex++
 							) {
 								if (
-									workflow.getHighestNode(executionNode.name, 'main', connectionIndex).length === 0
+									workflow.getHighestNode(
+										executionNode.name,
+										NodeConnectionType.Main,
+										connectionIndex,
+									).length === 0
 								) {
 									// If there is no valid incoming node (if all are disabled)
 									// then ignore that it has inputs and simply execute it as it is without
@@ -1318,12 +1326,28 @@ export class WorkflowExecute {
 						} catch (error) {
 							this.runExecutionData.resultData.lastNodeExecuted = executionData.node.name;
 
-							const message =
-								error instanceof ApplicationError ? error.message : OBFUSCATED_ERROR_MESSAGE;
+							let toReport: Error | undefined;
+							if (error instanceof ApplicationError) {
+								// Report any unhandled errors that were wrapped in by one of our error classes
+								if (error.cause instanceof Error) toReport = error.cause;
+							} else {
+								// Report any unhandled and non-wrapped errors to Sentry
+								toReport = error;
+							}
+							if (toReport) {
+								ErrorReporterProxy.error(toReport, {
+									extra: {
+										nodeName: executionNode.name,
+										nodeType: executionNode.type,
+										nodeVersion: executionNode.typeVersion,
+										workflowId: workflow.id,
+									},
+								});
+							}
 
 							const e = error as unknown as ExecutionBaseError;
 
-							executionError = { ...e, message, stack: e.stack };
+							executionError = { ...e, message: e.message, stack: e.stack };
 
 							Logger.debug(`Running node "${executionNode.name}" finished with error`, {
 								node: executionNode.name,
@@ -1786,7 +1810,7 @@ export class WorkflowExecute {
 		const fullRunData = this.getFullRunData(startedAt);
 
 		if (executionError !== undefined) {
-			Logger.verbose('Workflow execution finished with error', {
+			Logger.debug('Workflow execution finished with error', {
 				error: executionError,
 				workflowId: workflow.id,
 			});
@@ -1800,13 +1824,13 @@ export class WorkflowExecute {
 			}
 		} else if (this.runExecutionData.waitTill!) {
 			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-			Logger.verbose(`Workflow execution will wait until ${this.runExecutionData.waitTill}`, {
+			Logger.debug(`Workflow execution will wait until ${this.runExecutionData.waitTill}`, {
 				workflowId: workflow.id,
 			});
 			fullRunData.waitTill = this.runExecutionData.waitTill;
 			fullRunData.status = 'waiting';
 		} else {
-			Logger.verbose('Workflow execution finished successfully', { workflowId: workflow.id });
+			Logger.debug('Workflow execution finished successfully', { workflowId: workflow.id });
 			fullRunData.finished = true;
 			fullRunData.status = 'success';
 		}

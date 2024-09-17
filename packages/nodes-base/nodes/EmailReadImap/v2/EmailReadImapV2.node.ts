@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import type {
 	ITriggerFunctions,
 	IBinaryData,
@@ -14,7 +13,7 @@ import type {
 	ITriggerResponse,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError, TriggerCloseError } from 'n8n-workflow';
 
 import type { ImapSimple, ImapSimpleOptions, Message, MessagePart } from '@n8n/imap';
 import { connect as imapConnect, getParts } from '@n8n/imap';
@@ -87,9 +86,9 @@ const versionDescription: INodeTypeDescription = {
 		activationHint:
 			"Once you’ve finished building your workflow, <a data-key='activate'>activate</a> it to have it also listen continuously (you just won’t see those executions here).",
 	},
-	// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 	inputs: [],
-	outputs: ['main'],
+	outputs: [NodeConnectionType.Main],
 	credentials: [
 		{
 			name: 'imap',
@@ -536,7 +535,7 @@ export class EmailReadImapV2 implements INodeType {
 			return newEmails;
 		};
 
-		const returnedPromise = await this.helpers.createDeferredPromise();
+		const returnedPromise = this.helpers.createDeferredPromise();
 
 		const establishConnection = async (): Promise<ImapSimple> => {
 			let searchCriteria = ['UNSEEN'] as Array<string | string[]>;
@@ -591,14 +590,14 @@ export class EmailReadImapV2 implements INodeType {
 							});
 							// Wait with resolving till the returnedPromise got resolved, else n8n will be unhappy
 							// if it receives an error before the workflow got activated
-							await returnedPromise.promise().then(() => {
+							await returnedPromise.promise.then(() => {
 								this.emitError(error as Error);
 							});
 						}
 					}
 				},
 				onUpdate: async (seqNo: number, info) => {
-					this.logger.verbose(`Email Read Imap:update ${seqNo}`, info);
+					this.logger.debug(`Email Read Imap:update ${seqNo}`, info);
 				},
 			};
 
@@ -631,7 +630,7 @@ export class EmailReadImapV2 implements INodeType {
 				});
 				conn.on('error', async (error) => {
 					const errorCode = ((error as JsonObject).code as string).toUpperCase();
-					this.logger.verbose(`IMAP connection experienced an error: (${errorCode})`, {
+					this.logger.debug(`IMAP connection experienced an error: (${errorCode})`, {
 						error: error as Error,
 					});
 					this.emitError(error as Error);
@@ -647,7 +646,7 @@ export class EmailReadImapV2 implements INodeType {
 		let reconnectionInterval: NodeJS.Timeout | undefined;
 
 		const handleReconnect = async () => {
-			this.logger.verbose('Forcing reconnect to IMAP server');
+			this.logger.debug('Forcing reconnect to IMAP server');
 			try {
 				isCurrentlyReconnecting = true;
 				if (connection.closeBox) await connection.closeBox(false);
@@ -669,14 +668,19 @@ export class EmailReadImapV2 implements INodeType {
 		}
 
 		// When workflow and so node gets set to inactive close the connection
-		async function closeFunction() {
+		const closeFunction = async () => {
 			closeFunctionWasCalled = true;
 			if (reconnectionInterval) {
 				clearInterval(reconnectionInterval);
 			}
-			if (connection.closeBox) await connection.closeBox(false);
-			connection.end();
-		}
+			try {
+				if (connection.closeBox) await connection.closeBox(false);
+				connection.end();
+			} catch (error) {
+				// eslint-disable-next-line n8n-nodes-base/node-execute-block-wrong-error-thrown
+				throw new TriggerCloseError(this.getNode(), { cause: error as Error, level: 'warning' });
+			}
+		};
 
 		// Resolve returned-promise so that waiting errors can be emitted
 		returnedPromise.resolve();

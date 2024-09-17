@@ -1,17 +1,17 @@
-import { Container, Service } from 'typedi';
+import { GlobalConfig } from '@n8n/config';
 import { Router } from 'express';
 import type { Application, Request, Response, RequestHandler } from 'express';
 import { rateLimit as expressRateLimit } from 'express-rate-limit';
+import { Container, Service } from 'typedi';
 
 import { AuthService } from '@/auth/auth.service';
-import config from '@/config';
-import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
 import { inProduction, RESPONSE_ERROR_MESSAGES } from '@/constants';
-import type { BooleanLicenseFeature } from '@/Interfaces';
-import { License } from '@/License';
+import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
+import type { BooleanLicenseFeature } from '@/interfaces';
+import { License } from '@/license';
+import { userHasScope } from '@/permissions/check-access';
 import type { AuthenticatedRequest } from '@/requests';
-import { send } from '@/ResponseHelper'; // TODO: move `ResponseHelper.send` to this file
-import { userHasScope } from '@/permissions/checkAccess';
+import { send } from '@/response-helper'; // TODO: move `ResponseHelper.send` to this file
 
 import type {
 	AccessScope,
@@ -52,6 +52,7 @@ export class ControllerRegistry {
 	constructor(
 		private readonly license: License,
 		private readonly authService: AuthService,
+		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	activate(app: Application) {
@@ -64,7 +65,7 @@ export class ControllerRegistry {
 		const metadata = registry.get(controllerClass)!;
 
 		const router = Router({ mergeParams: true });
-		const prefix = `/${config.getEnv('endpoints.rest')}/${metadata.basePath}`
+		const prefix = `/${this.globalConfig.endpoints.rest}/${metadata.basePath}`
 			.replace(/\/+/g, '/')
 			.replace(/\/$/, '');
 		app.use(prefix, router);

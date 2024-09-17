@@ -1,127 +1,56 @@
-import Container from 'typedi';
 import { stringify } from 'flatted';
-import { randomInt } from 'n8n-workflow';
-
-import { mockInstance } from '@test/mocking';
-import { createWorkflow } from '@test-integration/db/workflows';
-import { createExecution } from '@test-integration/db/executions';
-import * as testDb from '@test-integration/testDb';
-
 import { mock } from 'jest-mock-extended';
-import { OrchestrationService } from '@/services/orchestration.service';
-import config from '@/config';
-import { ExecutionRecoveryService } from '@/executions/execution-recovery.service';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { InternalHooks } from '@/InternalHooks';
-import { Push } from '@/push';
+import { InstanceSettings } from 'n8n-core';
+import { randomInt } from 'n8n-workflow';
+import Container from 'typedi';
+
 import { ARTIFICIAL_TASK_DATA } from '@/constants';
+import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { NodeCrashedError } from '@/errors/node-crashed.error';
 import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
-import { EventMessageNode } from '@/eventbus/EventMessageClasses/EventMessageNode';
+import type { EventMessageTypes as EventMessage } from '@/eventbus/event-message-classes';
+import { EventMessageNode } from '@/eventbus/event-message-classes/event-message-node';
+import { ExecutionRecoveryService } from '@/executions/execution-recovery.service';
+import { Push } from '@/push';
+import { mockInstance } from '@test/mocking';
+import { createExecution } from '@test-integration/db/executions';
+import { createWorkflow } from '@test-integration/db/workflows';
+import * as testDb from '@test-integration/test-db';
+
 import { IN_PROGRESS_EXECUTION_DATA, OOM_WORKFLOW } from './constants';
 import { setupMessages } from './utils';
 
-import type { EventService } from '@/eventbus/event.service';
-import type { EventMessageTypes as EventMessage } from '@/eventbus/EventMessageClasses';
-import type { Logger } from '@/Logger';
-
 describe('ExecutionRecoveryService', () => {
-	let push: Push;
+	const push = mockInstance(Push);
+	const instanceSettings = new InstanceSettings();
+
 	let executionRecoveryService: ExecutionRecoveryService;
-	let orchestrationService: OrchestrationService;
 	let executionRepository: ExecutionRepository;
 
 	beforeAll(async () => {
 		await testDb.init();
-		push = mockInstance(Push);
 		executionRepository = Container.get(ExecutionRepository);
-		orchestrationService = Container.get(OrchestrationService);
 
-		mockInstance(InternalHooks);
 		executionRecoveryService = new ExecutionRecoveryService(
-			mock<Logger>(),
+			mock(),
+			instanceSettings,
 			push,
 			executionRepository,
-			orchestrationService,
-			mock<EventService>(),
+			mock(),
 		);
 	});
 
 	beforeEach(() => {
-		config.set('multiMainSetup.instanceType', 'leader');
+		instanceSettings.markAsLeader();
 	});
 
 	afterEach(async () => {
-		config.load(config.default);
 		jest.restoreAllMocks();
 		await testDb.truncate(['Execution', 'ExecutionData', 'Workflow']);
-		executionRecoveryService.shutdown();
 	});
 
 	afterAll(async () => {
 		await testDb.terminate();
-	});
-
-	describe('scheduleQueueRecovery', () => {
-		describe('queue mode', () => {
-			it('if leader, should schedule queue recovery', () => {
-				/**
-				 * Arrange
-				 */
-				config.set('executions.mode', 'queue');
-				jest.spyOn(orchestrationService, 'isLeader', 'get').mockReturnValue(true);
-				const scheduleSpy = jest.spyOn(executionRecoveryService, 'scheduleQueueRecovery');
-
-				/**
-				 * Act
-				 */
-				executionRecoveryService.init();
-
-				/**
-				 * Assert
-				 */
-				expect(scheduleSpy).toHaveBeenCalled();
-			});
-
-			it('if follower, should do nothing', () => {
-				/**
-				 * Arrange
-				 */
-				config.set('executions.mode', 'queue');
-				jest.spyOn(orchestrationService, 'isLeader', 'get').mockReturnValue(false);
-				const scheduleSpy = jest.spyOn(executionRecoveryService, 'scheduleQueueRecovery');
-
-				/**
-				 * Act
-				 */
-				executionRecoveryService.init();
-
-				/**
-				 * Assert
-				 */
-				expect(scheduleSpy).not.toHaveBeenCalled();
-			});
-		});
-
-		describe('regular mode', () => {
-			it('should do nothing', () => {
-				/**
-				 * Arrange
-				 */
-				config.set('executions.mode', 'regular');
-				const scheduleSpy = jest.spyOn(executionRecoveryService, 'scheduleQueueRecovery');
-
-				/**
-				 * Act
-				 */
-				executionRecoveryService.init();
-
-				/**
-				 * Assert
-				 */
-				expect(scheduleSpy).not.toHaveBeenCalled();
-			});
-		});
 	});
 
 	describe('recoverFromLogs', () => {
@@ -130,7 +59,7 @@ describe('ExecutionRecoveryService', () => {
 				/**
 				 * Arrange
 				 */
-				config.set('multiMainSetup.instanceType', 'follower');
+				instanceSettings.markAsFollower();
 				// @ts-expect-error Private method
 				const amendSpy = jest.spyOn(executionRecoveryService, 'amend');
 				const messages = setupMessages('123', 'Some workflow');

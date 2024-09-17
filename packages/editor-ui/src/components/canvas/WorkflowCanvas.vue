@@ -6,6 +6,8 @@ import type { IWorkflowDb } from '@/Interface';
 import { useCanvasMapping } from '@/composables/useCanvasMapping';
 import type { EventBus } from 'n8n-design-system';
 import { createEventBus } from 'n8n-design-system';
+import type { CanvasEventBusEvents } from '@/types';
+import { STICKY_NODE_TYPE } from '@/constants';
 
 defineOptions({
 	inheritAttrs: false,
@@ -17,12 +19,12 @@ const props = withDefaults(
 		workflow: IWorkflowDb;
 		workflowObject: Workflow;
 		fallbackNodes?: IWorkflowDb['nodes'];
-		eventBus?: EventBus;
+		eventBus?: EventBus<CanvasEventBusEvents>;
 		readOnly?: boolean;
 	}>(),
 	{
 		id: 'canvas',
-		eventBus: () => createEventBus(),
+		eventBus: () => createEventBus<CanvasEventBusEvents>(),
 		fallbackNodes: () => [],
 	},
 );
@@ -32,9 +34,13 @@ const $style = useCssModule();
 const workflow = toRef(props, 'workflow');
 const workflowObject = toRef(props, 'workflowObject');
 
-const nodes = computed(() =>
-	props.workflow.nodes.length > 0 ? props.workflow.nodes : props.fallbackNodes,
-);
+const nodes = computed(() => {
+	const stickyNoteNodes = props.workflow.nodes.filter((node) => node.type === STICKY_NODE_TYPE);
+
+	return props.workflow.nodes.length > stickyNoteNodes.length
+		? props.workflow.nodes
+		: [...props.fallbackNodes, ...stickyNoteNodes];
+});
 const connections = computed(() => props.workflow.connections);
 
 const { nodes: mappedNodes, connections: mappedConnections } = useCanvasMapping({

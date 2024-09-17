@@ -19,6 +19,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { telemetry } from '@/plugins/telemetry';
 import { useRootStore } from '@/stores/root.store';
+import { getResourcePermissions } from '@/permissions';
 
 type WorkflowHistoryActionRecord = {
 	[K in Uppercase<WorkflowHistoryActionTypes[number]>]: Lowercase<K>;
@@ -65,10 +66,15 @@ const editorRoute = computed(() => ({
 		name: workflowId.value,
 	},
 }));
+const workflowPermissions = computed(
+	() => getResourcePermissions(workflowsStore.getWorkflowById(workflowId.value)?.scopes).workflow,
+);
 const actions = computed<UserAction[]>(() =>
 	workflowHistoryActionTypes.map((value) => ({
 		label: i18n.baseText(`workflowHistory.item.actions.${value}`),
-		disabled: false,
+		disabled:
+			(value === 'clone' && !workflowPermissions.value.create) ||
+			(value === 'restore' && !workflowPermissions.value.update),
 		value,
 	})),
 );

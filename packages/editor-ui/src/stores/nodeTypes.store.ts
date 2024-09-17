@@ -4,7 +4,6 @@ import type { DynamicNodeParameters, NodeTypesByTypeNameAndVersion } from '@/Int
 import { addHeaders, addNodeTranslation } from '@/plugins/i18n';
 import { omit } from '@/utils/typesUtils';
 import type {
-	ConnectionTypes,
 	INode,
 	INodeInputConfiguration,
 	INodeOutputConfiguration,
@@ -138,7 +137,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 			(acc, node) => {
 				const outputTypes = node.outputs;
 				if (Array.isArray(outputTypes)) {
-					outputTypes.forEach((value: ConnectionTypes | INodeOutputConfiguration) => {
+					outputTypes.forEach((value: NodeConnectionType | INodeOutputConfiguration) => {
 						const outputType = typeof value === 'string' ? value : value.type;
 						if (!acc[outputType]) {
 							acc[outputType] = [];
@@ -148,7 +147,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 				} else {
 					// If outputs is not an array, it must be a string expression
 					// in which case we'll try to match all possible non-main output types that are supported
-					const connectorTypes: ConnectionTypes[] = [
+					const connectorTypes: NodeConnectionType[] = [
 						NodeConnectionType.AiVectorStore,
 						NodeConnectionType.AiChain,
 						NodeConnectionType.AiDocument,
@@ -159,7 +158,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 						NodeConnectionType.AiTextSplitter,
 						NodeConnectionType.AiTool,
 					];
-					connectorTypes.forEach((outputType: ConnectionTypes) => {
+					connectorTypes.forEach((outputType: NodeConnectionType) => {
 						if (outputTypes.includes(outputType)) {
 							acc[outputType] = acc[outputType] || [];
 							acc[outputType].push(node.name);
@@ -181,7 +180,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 				const inputTypes = node.inputs;
 				if (Array.isArray(inputTypes)) {
 					inputTypes.forEach(
-						(value: ConnectionTypes | INodeOutputConfiguration | INodeInputConfiguration) => {
+						(value: NodeConnectionType | INodeOutputConfiguration | INodeInputConfiguration) => {
 							const outputType = typeof value === 'string' ? value : value.type;
 							if (!acc[outputType]) {
 								acc[outputType] = [];
@@ -303,6 +302,12 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		}
 	};
 
+	const getNodeParameterActionResult = async (
+		sendData: DynamicNodeParameters.ActionResultRequest,
+	) => {
+		return await nodeTypesApi.getNodeParameterActionResult(rootStore.restApiContext, sendData);
+	};
+
 	// #endregion
 
 	return {
@@ -321,6 +326,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		visibleNodeTypesByInputConnectionTypeNames,
 		isConfigurableNode,
 		getResourceMapperFields,
+		getNodeParameterActionResult,
 		getResourceLocatorResults,
 		getNodeParameterOptions,
 		getNodesInformation,

@@ -119,7 +119,7 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 
 			returnData = [newItem];
 		} catch (error) {
-			if (this.continueOnFail(error)) {
+			if (this.continueOnFail()) {
 				returnData.push({
 					json: {
 						error: error.message,
@@ -154,7 +154,7 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 
 				returnData.push(newItem);
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					returnData.push({
 						json: {
 							error: error.message,

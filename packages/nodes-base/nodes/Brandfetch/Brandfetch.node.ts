@@ -5,6 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import { brandfetchApiRequest } from './GenericFunctions';
 
@@ -22,8 +23,8 @@ export class Brandfetch implements INodeType {
 		defaults: {
 			name: 'Brandfetch',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'brandfetchApi',
@@ -275,7 +276,7 @@ export class Brandfetch implements INodeType {
 					responseData.push(...executionData);
 				}
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					responseData.push({ error: error.message, json: {}, itemIndex: i });
 					continue;
 				}

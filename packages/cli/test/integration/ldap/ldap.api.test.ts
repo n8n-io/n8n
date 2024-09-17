@@ -1,24 +1,24 @@
-import { Container } from 'typedi';
-import type { Entry as LdapUser } from 'ldapts';
 import { Not } from '@n8n/typeorm';
+import type { Entry as LdapUser } from 'ldapts';
 import { Cipher } from 'n8n-core';
+import { Container } from 'typedi';
 
 import config from '@/config';
-import type { User } from '@db/entities/User';
-import { UserRepository } from '@db/repositories/user.repository';
-import { AuthProviderSyncHistoryRepository } from '@db/repositories/authProviderSyncHistory.repository';
-import { LDAP_DEFAULT_CONFIGURATION } from '@/Ldap/constants';
-import { LdapService } from '@/Ldap/ldap.service.ee';
-import { saveLdapSynchronization } from '@/Ldap/helpers.ee';
-import { getCurrentAuthenticationMethod, setCurrentAuthenticationMethod } from '@/sso/ssoHelpers';
+import type { User } from '@/databases/entities/user';
+import { AuthProviderSyncHistoryRepository } from '@/databases/repositories/auth-provider-sync-history.repository';
+import { UserRepository } from '@/databases/repositories/user.repository';
+import { LDAP_DEFAULT_CONFIGURATION } from '@/ldap/constants';
+import { saveLdapSynchronization } from '@/ldap/helpers.ee';
+import { LdapService } from '@/ldap/ldap.service.ee';
+import { getCurrentAuthenticationMethod, setCurrentAuthenticationMethod } from '@/sso/sso-helpers';
 
 import { randomEmail, randomName, uniqueId } from './../shared/random';
-import * as testDb from './../shared/testDb';
-import * as utils from '../shared/utils/';
-import { createLdapUser, createUser, getAllUsers, getLdapIdentities } from '../shared/db/users';
 import { getPersonalProject } from '../shared/db/projects';
+import { createLdapUser, createUser, getAllUsers, getLdapIdentities } from '../shared/db/users';
 import { createLdapConfig, defaultLdapConfig } from '../shared/ldap';
+import * as testDb from '../shared/test-db';
 import type { SuperAgentTest } from '../shared/types';
+import * as utils from '../shared/utils/';
 
 jest.mock('@/telemetry');
 

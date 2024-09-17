@@ -7,6 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import { v4 as uuid } from 'uuid';
 import moment from 'moment-timezone';
@@ -35,8 +36,8 @@ export class Twist implements INodeType {
 		defaults: {
 			name: 'Twist',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'twistOAuth2Api',
@@ -746,7 +747,7 @@ export class Twist implements INodeType {
 					returnData.push(responseData as IDataObject);
 				}
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					returnData.push({ error: error.message });
 					continue;
 				}

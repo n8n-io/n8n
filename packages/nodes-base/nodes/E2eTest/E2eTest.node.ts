@@ -1,12 +1,13 @@
-import type {
-	IExecuteFunctions,
-	ILoadOptionsFunctions,
-	INodeExecutionData,
-	INodeListSearchResult,
-	INodePropertyOptions,
-	INodeType,
-	INodeTypeDescription,
-	ResourceMapperFields,
+import {
+	NodeConnectionType,
+	type IExecuteFunctions,
+	type ILoadOptionsFunctions,
+	type INodeExecutionData,
+	type INodeListSearchResult,
+	type INodePropertyOptions,
+	type INodeType,
+	type INodeTypeDescription,
+	type ResourceMapperFields,
 } from 'n8n-workflow';
 import { remoteOptions, resourceMapperFields, returnData, searchOptions } from './mock';
 
@@ -22,8 +23,8 @@ export class E2eTest implements INodeType {
 		defaults: {
 			name: 'E2E Test',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		properties: [
 			{
 				displayName: 'Operation',
@@ -56,7 +57,7 @@ export class E2eTest implements INodeType {
 				displayName: 'Remote Options Name or ID',
 				name: 'remoteOptions',
 				description:
-					'Remote options to load. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'Remote options to load. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				type: 'options',
 				typeOptions: {
 					loadOptionsDependsOn: ['fieldId'],

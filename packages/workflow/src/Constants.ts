@@ -8,7 +8,7 @@ export const ALPHABET = [DIGITS, UPPERCASE_LETTERS, LOWERCASE_LETTERS].join('');
 export const BINARY_ENCODING = 'base64';
 export const WAIT_TIME_UNLIMITED = '3000-01-01T00:00:00.000Z';
 
-export const LOG_LEVELS = ['silent', 'error', 'warn', 'info', 'debug', 'verbose'] as const;
+export const LOG_LEVELS = ['silent', 'error', 'warn', 'info', 'debug'] as const;
 
 export const CODE_LANGUAGES = ['javaScript', 'python'] as const;
 export const CODE_EXECUTION_MODES = ['runOnceForAllItems', 'runOnceForEachItem'] as const;
@@ -37,6 +37,7 @@ export const CODE_NODE_TYPE = 'n8n-nodes-base.code';
 export const FUNCTION_NODE_TYPE = 'n8n-nodes-base.function';
 export const FUNCTION_ITEM_NODE_TYPE = 'n8n-nodes-base.functionItem';
 export const MERGE_NODE_TYPE = 'n8n-nodes-base.merge';
+export const AI_TRANSFORM_NODE_TYPE = 'n8n-nodes-base.aiTransform';
 
 export const STARTING_NODE_TYPES = [
 	MANUAL_TRIGGER_NODE_TYPE,
@@ -45,7 +46,12 @@ export const STARTING_NODE_TYPES = [
 	START_NODE_TYPE,
 ];
 
-export const SCRIPTING_NODE_TYPES = [FUNCTION_NODE_TYPE, FUNCTION_ITEM_NODE_TYPE, CODE_NODE_TYPE];
+export const SCRIPTING_NODE_TYPES = [
+	FUNCTION_NODE_TYPE,
+	FUNCTION_ITEM_NODE_TYPE,
+	CODE_NODE_TYPE,
+	AI_TRANSFORM_NODE_TYPE,
+];
 
 /**
  * Nodes whose parameter values may refer to other nodes without expressions.
@@ -55,6 +61,7 @@ export const NODES_WITH_RENAMABLE_CONTENT = new Set([
 	CODE_NODE_TYPE,
 	FUNCTION_NODE_TYPE,
 	FUNCTION_ITEM_NODE_TYPE,
+	AI_TRANSFORM_NODE_TYPE,
 ]);
 
 //@n8n/n8n-nodes-langchain
@@ -102,5 +109,3 @@ export const SINGLE_EXECUTION_NODES: { [key: string]: { [key: string]: NodeParam
 		operation: [undefined], // default info
 	},
 };
-
-export const OBFUSCATED_ERROR_MESSAGE = 'Internal error';

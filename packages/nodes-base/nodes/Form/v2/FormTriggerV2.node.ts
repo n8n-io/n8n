@@ -1,14 +1,15 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import type {
-	INodeProperties,
-	INodeType,
-	INodeTypeBaseDescription,
-	INodeTypeDescription,
-	IWebhookFunctions,
+import {
+	NodeConnectionType,
+	type INodeProperties,
+	type INodeType,
+	type INodeTypeBaseDescription,
+	type INodeTypeDescription,
+	type IWebhookFunctions,
 } from 'n8n-workflow';
 
 import { formWebhook } from '../utils';
 import {
+	appendAttributionToForm,
 	formDescription,
 	formFields,
 	formRespondMode,
@@ -37,9 +38,9 @@ const descriptionV2: INodeTypeDescription = {
 	defaults: {
 		name: 'n8n Form Trigger',
 	},
-	// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 	inputs: [],
-	outputs: ['main'],
+	outputs: [NodeConnectionType.Main],
 	webhooks: [
 		{
 			name: 'setup',
@@ -115,15 +116,7 @@ const descriptionV2: INodeTypeDescription = {
 			placeholder: 'Add option',
 			default: {},
 			options: [
-				{
-					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-					displayName: 'Append n8n Attribution',
-					name: 'appendAttribution',
-					type: 'boolean',
-					default: true,
-					description:
-						'Whether to include the link “Form automated with n8n” at the bottom of the form',
-				},
+				appendAttributionToForm,
 				{
 					...respondWithOptions,
 					displayOptions: {

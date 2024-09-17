@@ -3,6 +3,7 @@ import type {
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeProperties,
+	NodeParameterValueType,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
@@ -78,22 +79,45 @@ export async function execute(
 
 			const rawReplacements = (node.parameters.options as IDataObject)?.queryReplacement as string;
 
-			if (rawReplacements) {
-				const rawValues = rawReplacements
-					.replace(/^=+/, '')
+			const stringToArray = (str: NodeParameterValueType | undefined) => {
+				if (!str) return [];
+				return String(str)
 					.split(',')
 					.filter((entry) => entry)
 					.map((entry) => entry.trim());
+			};
 
-				for (const rawValue of rawValues) {
-					const resolvables = getResolvables(rawValue);
+			if (rawReplacements) {
+				const nodeVersion = nodeOptions.nodeVersion as number;
 
+				if (nodeVersion >= 2.5) {
+					const rawValues = rawReplacements.replace(/^=+/, '');
+					const resolvables = getResolvables(rawValues);
 					if (resolvables.length) {
 						for (const resolvable of resolvables) {
-							values.push(this.evaluateExpression(`${resolvable}`, i) as IDataObject);
+							const evaluatedValues = stringToArray(this.evaluateExpression(`${resolvable}`, i));
+							if (evaluatedValues.length) values.push(...evaluatedValues);
 						}
 					} else {
-						values.push(rawValue);
+						values.push(...stringToArray(rawValues));
+					}
+				} else {
+					const rawValues = rawReplacements
+						.replace(/^=+/, '')
+						.split(',')
+						.filter((entry) => entry)
+						.map((entry) => entry.trim());
+
+					for (const rawValue of rawValues) {
+						const resolvables = getResolvables(rawValue);
+
+						if (resolvables.length) {
+							for (const resolvable of resolvables) {
+								values.push(this.evaluateExpression(`${resolvable}`, i) as IDataObject);
+							}
+						} else {
+							values.push(rawValue);
+						}
 					}
 				}
 			}

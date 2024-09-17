@@ -1,31 +1,31 @@
-import { Container } from 'typedi';
-import type { Scope } from '@sentry/node';
 import { GlobalConfig } from '@n8n/config';
+import type { Scope } from '@sentry/node';
 import { Credentials } from 'n8n-core';
 import { randomString } from 'n8n-workflow';
+import { Container } from 'typedi';
 
+import type { Project } from '@/databases/entities/project';
+import type { User } from '@/databases/entities/user';
+import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
+import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import type { ListQuery } from '@/requests';
-import type { User } from '@db/entities/User';
-import { ProjectRepository } from '@db/repositories/project.repository';
-import type { Project } from '@db/entities/Project';
-import { CredentialsRepository } from '@db/repositories/credentials.repository';
-import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 
-import * as testDb from '../shared/testDb';
-import { setupTestServer } from '../shared/utils';
-import {
-	randomCredentialPayload as payload,
-	randomCredentialPayload,
-	randomName,
-} from '../shared/random';
 import {
 	saveCredential,
 	shareCredentialWithProjects,
 	shareCredentialWithUsers,
 } from '../shared/db/credentials';
-import { createManyUsers, createMember, createOwner } from '../shared/db/users';
 import { createTeamProject, linkUserToProject } from '../shared/db/projects';
+import { createManyUsers, createMember, createOwner } from '../shared/db/users';
+import {
+	randomCredentialPayload as payload,
+	randomCredentialPayload,
+	randomName,
+} from '../shared/random';
+import * as testDb from '../shared/test-db';
 import type { SuperAgentTest } from '../shared/types';
+import { setupTestServer } from '../shared/utils';
 
 const { any } = expect;
 
@@ -142,7 +142,13 @@ describe('GET /credentials', () => {
 			// Team cred
 			expect(cred1.id).toBe(savedCredential1.id);
 			expect(cred1.scopes).toEqual(
-				['credential:move', 'credential:read', 'credential:update', 'credential:delete'].sort(),
+				[
+					'credential:move',
+					'credential:read',
+					'credential:update',
+					'credential:share',
+					'credential:delete',
+				].sort(),
 			);
 
 			// Shared cred
@@ -387,6 +393,21 @@ describe('GET /credentials', () => {
 				.expect(200);
 
 			expect(response2.body.data).toHaveLength(0);
+		});
+
+		test('should return homeProject when filtering credentials by projectId', async () => {
+			const project = await createTeamProject(undefined, member);
+			const credential = await saveCredential(payload(), { user: owner, role: 'credential:owner' });
+			await shareCredentialWithProjects(credential, [project]);
+
+			const response: GetAllResponse = await testServer
+				.authAgentFor(member)
+				.get('/credentials')
+				.query(`filter={ "projectId": "${project.id}" }`)
+				.expect(200);
+
+			expect(response.body.data).toHaveLength(1);
+			expect(response.body.data[0].homeProject).not.toBeNull();
 		});
 
 		test('should return all credentials in a team project that member is part of', async () => {

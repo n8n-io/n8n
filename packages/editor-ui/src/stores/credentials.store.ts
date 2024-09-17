@@ -183,11 +183,13 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 
 	const getCredentialOwnerName = computed(() => {
 		return (credential: ICredentialsResponse | IUsedCredential | undefined): string => {
-			const { firstName, lastName, email } = splitName(credential?.homeProject?.name ?? '');
+			const { name, email } = splitName(credential?.homeProject?.name ?? '');
 
-			return credential?.homeProject?.name
-				? `${firstName} ${lastName} (${email})`
-				: i18n.baseText('credentialEdit.credentialSharing.info.sharee.fallback');
+			return name
+				? email
+					? `${name} (${email})`
+					: name
+				: email ?? i18n.baseText('credentialEdit.credentialSharing.info.sharee.fallback');
 		};
 	});
 
@@ -200,7 +202,9 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	});
 
 	const httpOnlyCredentialTypes = computed(() => {
-		return allCredentialTypes.value.filter((credentialType) => credentialType.httpRequestNode);
+		return allCredentialTypes.value.filter(
+			(credentialType) => credentialType.httpRequestNode && !credentialType.httpRequestNode.hidden,
+		);
 	});
 
 	// #endregion
@@ -314,6 +318,10 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 			projectId,
 		);
 
+		if (data?.homeProject && !credential.homeProject) {
+			credential.homeProject = data.homeProject as ProjectSharingData;
+		}
+
 		if (settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing]) {
 			upsertCredential(credential);
 			if (data.sharedWithProjects) {
@@ -416,6 +424,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	// #endregion
 
 	return {
+		state,
 		getCredentialOwnerName,
 		getCredentialsByType,
 		getCredentialById,

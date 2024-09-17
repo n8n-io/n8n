@@ -1,3 +1,59 @@
+<script setup lang="ts">
+import { computed, onMounted, onBeforeUnmount, ref } from 'vue';
+import type { WorkerStatus } from '@n8n/api-types';
+
+import { useOrchestrationStore } from '@/stores/orchestration.store';
+import { averageWorkerLoadFromLoadsAsString, memAsGb } from '../../utils/workerUtils';
+import WorkerJobAccordion from './WorkerJobAccordion.ee.vue';
+import WorkerNetAccordion from './WorkerNetAccordion.ee.vue';
+import WorkerChartsAccordion from './WorkerChartsAccordion.ee.vue';
+
+let interval: NodeJS.Timer;
+
+const orchestrationStore = useOrchestrationStore();
+
+const props = defineProps<{
+	workerId: string;
+}>();
+
+const secondsSinceLastUpdateString = ref<string>('0');
+const stale = ref<boolean>(false);
+
+const worker = computed((): WorkerStatus | undefined => {
+	return orchestrationStore.getWorkerStatus(props.workerId);
+});
+
+const sortedWorkerInterfaces = computed(
+	() => worker.value?.interfaces.toSorted((a, b) => a.family.localeCompare(b.family)) ?? [],
+);
+
+function upTime(seconds: number): string {
+	const days = Math.floor(seconds / (3600 * 24));
+	seconds -= days * 3600 * 24;
+	const hrs = Math.floor(seconds / 3600);
+	seconds -= hrs * 3600;
+	const mnts = Math.floor(seconds / 60);
+	seconds -= mnts * 60;
+	return `${days}d ${hrs}h ${mnts}m ${Math.floor(seconds)}s`;
+}
+
+onMounted(() => {
+	interval = setInterval(() => {
+		const lastUpdated = orchestrationStore.getWorkerLastUpdated(props.workerId);
+		if (!lastUpdated) {
+			return;
+		}
+		const secondsSinceLastUpdate = Math.ceil((Date.now() - lastUpdated) / 1000);
+		stale.value = secondsSinceLastUpdate > 10;
+		secondsSinceLastUpdateString.value = secondsSinceLastUpdate.toFixed(0);
+	}, 500);
+});
+
+onBeforeUnmount(() => {
+	clearInterval(interval);
+});
+</script>
+
 <template>
 	<n8n-card v-if="worker" :class="$style.cardLink">
 		<template #header>
@@ -32,61 +88,6 @@
 		</template>
 	</n8n-card>
 </template>
-
-<script setup lang="ts">
-import { useOrchestrationStore } from '@/stores/orchestration.store';
-import type { IPushDataWorkerStatusPayload } from '@/Interface';
-import { computed, onMounted, onBeforeUnmount, ref } from 'vue';
-import { averageWorkerLoadFromLoadsAsString, memAsGb } from '../../utils/workerUtils';
-import WorkerJobAccordion from './WorkerJobAccordion.ee.vue';
-import WorkerNetAccordion from './WorkerNetAccordion.ee.vue';
-import WorkerChartsAccordion from './WorkerChartsAccordion.ee.vue';
-
-let interval: NodeJS.Timer;
-
-const orchestrationStore = useOrchestrationStore();
-
-const props = defineProps<{
-	workerId: string;
-}>();
-
-const secondsSinceLastUpdateString = ref<string>('0');
-const stale = ref<boolean>(false);
-
-const worker = computed((): IPushDataWorkerStatusPayload | undefined => {
-	return orchestrationStore.getWorkerStatus(props.workerId);
-});
-
-const sortedWorkerInterfaces = computed(
-	() => worker.value?.interfaces.toSorted((a, b) => a.family.localeCompare(b.family)) ?? [],
-);
-
-function upTime(seconds: number): string {
-	const days = Math.floor(seconds / (3600 * 24));
-	seconds -= days * 3600 * 24;
-	const hrs = Math.floor(seconds / 3600);
-	seconds -= hrs * 3600;
-	const mnts = Math.floor(seconds / 60);
-	seconds -= mnts * 60;
-	return `${days}d ${hrs}h ${mnts}m ${Math.floor(seconds)}s`;
-}
-
-onMounted(() => {
-	interval = setInterval(() => {
-		const lastUpdated = orchestrationStore.getWorkerLastUpdated(props.workerId);
-		if (!lastUpdated) {
-			return;
-		}
-		const secondsSinceLastUpdate = Math.ceil((Date.now() - lastUpdated) / 1000);
-		stale.value = secondsSinceLastUpdate > 10;
-		secondsSinceLastUpdateString.value = secondsSinceLastUpdate.toFixed(0);
-	}, 500);
-});
-
-onBeforeUnmount(() => {
-	clearInterval(interval);
-});
-</script>
 
 <style lang="scss" module>
 .container {

@@ -1,38 +1,39 @@
-import fs from 'node:fs';
-import { Container, Service } from 'typedi';
-import uniq from 'lodash/uniq';
+import { GlobalConfig } from '@n8n/config';
 import { createWriteStream } from 'fs';
 import { mkdir } from 'fs/promises';
-import path from 'path';
-import { GlobalConfig } from '@n8n/config';
+import uniq from 'lodash/uniq';
+import { InstanceSettings } from 'n8n-core';
 import type {
 	ICredentialType,
 	IN8nUISettings,
 	INodeTypeBaseDescription,
 	ITelemetrySettings,
 } from 'n8n-workflow';
-import { InstanceSettings } from 'n8n-core';
+import fs from 'node:fs';
+import path from 'path';
+import { Container, Service } from 'typedi';
 
 import config from '@/config';
 import { LICENSE_FEATURES } from '@/constants';
-import { CredentialsOverwrites } from '@/CredentialsOverwrites';
-import { CredentialTypes } from '@/CredentialTypes';
-import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
-import { License } from '@/License';
-import { getCurrentAuthenticationMethod } from '@/sso/ssoHelpers';
-import { getLdapLoginLabel } from '@/Ldap/helpers.ee';
-import { getSamlLoginLabel } from '@/sso/saml/samlHelpers';
-import { getVariablesLimit } from '@/environments/variables/environmentHelpers';
+import { CredentialTypes } from '@/credential-types';
+import { CredentialsOverwrites } from '@/credentials-overwrites';
+import { getVariablesLimit } from '@/environments/variables/environment-helpers';
+import { EventService } from '@/events/event.service';
+import { getLdapLoginLabel } from '@/ldap/helpers.ee';
+import { License } from '@/license';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { Logger } from '@/logger';
+import { isApiEnabled } from '@/public-api';
+import type { CommunityPackagesService } from '@/services/community-packages.service';
+import { getSamlLoginLabel } from '@/sso/saml/saml-helpers';
+import { getCurrentAuthenticationMethod } from '@/sso/sso-helpers';
+import { UserManagementMailer } from '@/user-management/email';
 import {
 	getWorkflowHistoryLicensePruneTime,
 	getWorkflowHistoryPruneTime,
-} from '@/workflows/workflowHistory/workflowHistoryHelper.ee';
-import { UserManagementMailer } from '@/UserManagement/email';
-import type { CommunityPackagesService } from '@/services/communityPackages.service';
-import { Logger } from '@/Logger';
+} from '@/workflows/workflow-history/workflow-history-helper.ee';
+
 import { UrlService } from './url.service';
-import { InternalHooks } from '@/InternalHooks';
-import { isApiEnabled } from '@/PublicApi';
 
 @Service()
 export class FrontendService {
@@ -50,7 +51,7 @@ export class FrontendService {
 		private readonly mailer: UserManagementMailer,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly urlService: UrlService,
-		private readonly internalHooks: InternalHooks,
+		private readonly eventService: EventService,
 	) {
 		loadNodesAndCredentials.addPostProcessor(async () => await this.generateTypes());
 		void this.generateTypes();
@@ -58,7 +59,7 @@ export class FrontendService {
 		this.initSettings();
 
 		if (this.globalConfig.nodes.communityPackages.enabled) {
-			void import('@/services/communityPackages.service').then(({ CommunityPackagesService }) => {
+			void import('@/services/community-packages.service').then(({ CommunityPackagesService }) => {
 				this.communityPackagesService = Container.get(CommunityPackagesService);
 			});
 		}
@@ -66,7 +67,7 @@ export class FrontendService {
 
 	private initSettings() {
 		const instanceBaseUrl = this.urlService.getInstanceBaseUrl();
-		const restEndpoint = config.getEnv('endpoints.rest');
+		const restEndpoint = this.globalConfig.endpoints.rest;
 
 		const telemetrySettings: ITelemetrySettings = {
 			enabled: config.getEnv('diagnostics.enabled'),
@@ -88,11 +89,11 @@ export class FrontendService {
 			isDocker: this.isDocker(),
 			databaseType: this.globalConfig.database.type,
 			previewMode: process.env.N8N_PREVIEW_MODE === 'true',
-			endpointForm: config.getEnv('endpoints.form'),
-			endpointFormTest: config.getEnv('endpoints.formTest'),
-			endpointFormWaiting: config.getEnv('endpoints.formWaiting'),
-			endpointWebhook: config.getEnv('endpoints.webhook'),
-			endpointWebhookTest: config.getEnv('endpoints.webhookTest'),
+			endpointForm: this.globalConfig.endpoints.form,
+			endpointFormTest: this.globalConfig.endpoints.formTest,
+			endpointFormWaiting: this.globalConfig.endpoints.formWaiting,
+			endpointWebhook: this.globalConfig.endpoints.webhook,
+			endpointWebhookTest: this.globalConfig.endpoints.webhookTest,
 			saveDataErrorExecution: config.getEnv('executions.saveDataOnError'),
 			saveDataSuccessExecution: config.getEnv('executions.saveDataOnSuccess'),
 			saveManualExecutions: config.getEnv('executions.saveDataManualExecutions'),
@@ -160,6 +161,9 @@ export class FrontendService {
 			workflowTagsDisabled: config.getEnv('workflowTagsDisabled'),
 			logLevel: config.getEnv('logs.level'),
 			hiringBannerEnabled: config.getEnv('hiringBanner.enabled'),
+			aiAssistant: {
+				enabled: false,
+			},
 			templates: {
 				enabled: this.globalConfig.templates.enabled,
 				host: this.globalConfig.templates.host,
@@ -244,9 +248,9 @@ export class FrontendService {
 	}
 
 	getSettings(pushRef?: string): IN8nUISettings {
-		void this.internalHooks.onFrontendSettingsAPI(pushRef);
+		this.eventService.emit('session-started', { pushRef });
 
-		const restEndpoint = config.getEnv('endpoints.rest');
+		const restEndpoint = this.globalConfig.endpoints.rest;
 
 		// Update all urls, in case `WEBHOOK_URL` was updated by `--tunnel`
 		const instanceBaseUrl = this.urlService.getInstanceBaseUrl();
@@ -279,6 +283,7 @@ export class FrontendService {
 		const isS3Selected = config.getEnv('binaryDataManager.mode') === 's3';
 		const isS3Available = config.getEnv('binaryDataManager.availableModes').includes('s3');
 		const isS3Licensed = this.license.isBinaryDataS3Licensed();
+		const isAiAssistantEnabled = this.license.isAiAssistantEnabled();
 
 		this.settings.license.planName = this.license.getPlanName();
 		this.settings.license.consumerId = this.license.getConsumerId();
@@ -329,6 +334,10 @@ export class FrontendService {
 
 		if (this.communityPackagesService) {
 			this.settings.missingPackages = this.communityPackagesService.hasMissingPackages;
+		}
+
+		if (isAiAssistantEnabled) {
+			this.settings.aiAssistant.enabled = isAiAssistantEnabled;
 		}
 
 		this.settings.mfa.enabled = config.get('mfa.enabled');

@@ -1,4 +1,10 @@
-import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeProperties,
+	JsonObject,
+} from 'n8n-workflow';
 
 import glob from 'fast-glob';
 import { errorMapper } from '../helpers/utils';
@@ -124,14 +130,13 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 					},
 				});
 			}
-
 			returnData.push(...newItems);
 		} catch (error) {
 			const nodeOperatioinError = errorMapper.call(this, error, itemIndex, {
 				filePath: fileSelector,
 				operation: 'read',
 			});
-			if (this.continueOnFail(error)) {
+			if (this.continueOnFail()) {
 				returnData.push({
 					json: {
 						error: nodeOperatioinError.message,
@@ -142,7 +147,7 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 				});
 				continue;
 			}
-			throw nodeOperatioinError;
+			throw new NodeApiError(this.getNode(), error as JsonObject, { itemIndex });
 		}
 	}
 

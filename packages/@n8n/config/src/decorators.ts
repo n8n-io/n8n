@@ -6,12 +6,23 @@ import { Container, Service } from 'typedi';
 type Class = Function;
 type Constructable<T = unknown> = new (rawValue: string) => T;
 type PropertyKey = string | symbol;
+type PropertyType = number | boolean | string | Class;
 interface PropertyMetadata {
-	type: unknown;
+	type: PropertyType;
 	envName?: string;
 }
 
 const globalMetadata = new Map<Class, Map<PropertyKey, PropertyMetadata>>();
+
+const readEnv = (envName: string) => {
+	if (envName in process.env) return process.env[envName];
+
+	// Read the value from a file, if "_FILE" environment variable is defined
+	const filePath = process.env[`${envName}_FILE`];
+	if (filePath) return readFileSync(filePath, 'utf8');
+
+	return undefined;
+};
 
 export const Config: ClassDecorator = (ConfigClass: Class) => {
 	const factory = function () {
@@ -26,33 +37,28 @@ export const Config: ClassDecorator = (ConfigClass: Class) => {
 			if (typeof type === 'function' && globalMetadata.has(type)) {
 				config[key] = Container.get(type);
 			} else if (envName) {
-				let value: unknown = process.env[envName];
-
-				// Read the value from a file, if "_FILE" environment variable is defined
-				const filePath = process.env[`${envName}_FILE`];
-				if (filePath) {
-					value = readFileSync(filePath, 'utf8');
-				}
+				const value = readEnv(envName);
+				if (value === undefined) continue;
 
 				if (type === Number) {
-					value = Number(value);
-					if (isNaN(value as number)) {
-						// TODO: add a warning
-						value = undefined;
+					const parsed = Number(value);
+					if (isNaN(parsed)) {
+						console.warn(`Invalid number value for ${envName}: ${value}`);
+					} else {
+						config[key] = parsed;
 					}
 				} else if (type === Boolean) {
-					if (value !== 'true' && value !== 'false') {
-						// TODO: add a warning
-						value = undefined;
+					if (['true', '1'].includes(value.toLowerCase())) {
+						config[key] = true;
+					} else if (['false', '0'].includes(value.toLowerCase())) {
+						config[key] = false;
 					} else {
-						value = value === 'true';
+						console.warn(`Invalid boolean value for ${envName}: ${value}`);
 					}
-				} else if (type !== String && type !== Object) {
-					value = new (type as Constructable)(value as string);
-				}
-
-				if (value !== undefined) {
+				} else if (type === String) {
 					config[key] = value;
+				} else {
+					config[key] = new (type as Constructable)(value);
 				}
 			}
 		}
@@ -65,7 +71,7 @@ export const Config: ClassDecorator = (ConfigClass: Class) => {
 export const Nested: PropertyDecorator = (target: object, key: PropertyKey) => {
 	const ConfigClass = target.constructor;
 	const classMetadata = globalMetadata.get(ConfigClass) ?? new Map<PropertyKey, PropertyMetadata>();
-	const type = Reflect.getMetadata('design:type', target, key) as unknown;
+	const type = Reflect.getMetadata('design:type', target, key) as PropertyType;
 	classMetadata.set(key, { type });
 	globalMetadata.set(ConfigClass, classMetadata);
 };
@@ -76,7 +82,13 @@ export const Env =
 		const ConfigClass = target.constructor;
 		const classMetadata =
 			globalMetadata.get(ConfigClass) ?? new Map<PropertyKey, PropertyMetadata>();
-		const type = Reflect.getMetadata('design:type', target, key) as unknown;
+		const type = Reflect.getMetadata('design:type', target, key) as PropertyType;
+		if (type === Object) {
+			// eslint-disable-next-line n8n-local-rules/no-plain-errors
+			throw new Error(
+				`Invalid decorator metadata on key "${key as string}" on ${ConfigClass.name}\n Please use explicit typing on all config fields`,
+			);
+		}
 		classMetadata.set(key, { type, envName });
 		globalMetadata.set(ConfigClass, classMetadata);
 	};

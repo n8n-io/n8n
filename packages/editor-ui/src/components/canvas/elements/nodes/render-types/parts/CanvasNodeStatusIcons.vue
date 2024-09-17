@@ -7,7 +7,6 @@ import { useCanvasNode } from '@/composables/useCanvasNode';
 const nodeHelpers = useNodeHelpers();
 
 const {
-	pinnedDataCount,
 	hasPinnedData,
 	issues,
 	hasIssues,
@@ -15,7 +14,8 @@ const {
 	executionWaiting,
 	executionRunning,
 	hasRunData,
-	runDataCount,
+	runDataIterations,
+	isDisabled,
 } = useCanvasNode();
 
 const hideNodeIssues = computed(() => false); // @TODO Implement this
@@ -46,12 +46,11 @@ const hideNodeIssues = computed(() => false); // @TODO Implement this
 		</N8nTooltip>
 	</div>
 	<div
-		v-else-if="hasPinnedData && !nodeHelpers.isProductionExecutionPreview.value"
+		v-else-if="hasPinnedData && !nodeHelpers.isProductionExecutionPreview.value && !isDisabled"
 		data-test-id="canvas-node-status-pinned"
 		:class="[$style.status, $style.pinnedData]"
 	>
 		<FontAwesomeIcon icon="thumbtack" />
-		<span v-if="pinnedDataCount > 1" :class="$style.count"> {{ pinnedDataCount }}</span>
 	</div>
 	<div v-else-if="executionStatus === 'unknown'">
 		<!-- Do nothing, unknown means the node never executed -->
@@ -69,7 +68,7 @@ const hideNodeIssues = computed(() => false); // @TODO Implement this
 		:class="[$style.status, $style.runData]"
 	>
 		<FontAwesomeIcon icon="check" />
-		<span v-if="runDataCount > 1" :class="$style.count"> {{ runDataCount }}</span>
+		<span v-if="runDataIterations > 1" :class="$style.count"> {{ runDataIterations }}</span>
 	</div>
 </template>
 
@@ -90,7 +89,13 @@ const hideNodeIssues = computed(() => false); // @TODO Implement this
 }
 
 .running {
-	color: var(--color-primary);
+	width: calc(100% - 2 * var(--canvas-node--status-icons-offset));
+	height: calc(100% - 2 * var(--canvas-node--status-icons-offset));
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 3.75em;
+	color: hsla(var(--color-primary-h), var(--color-primary-s), var(--color-primary-l), 0.7);
 }
 
 .issues {

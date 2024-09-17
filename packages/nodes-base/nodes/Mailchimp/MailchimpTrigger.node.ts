@@ -9,7 +9,7 @@ import type {
 	IWebhookResponseData,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionType } from 'n8n-workflow';
 import { mailchimpApiRequest } from './GenericFunctions';
 
 export class MailchimpTrigger implements INodeType {
@@ -24,7 +24,7 @@ export class MailchimpTrigger implements INodeType {
 			name: 'Mailchimp Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'mailchimpApi',
@@ -83,7 +83,7 @@ export class MailchimpTrigger implements INodeType {
 				required: true,
 				default: '',
 				description:
-					'The list that is gonna fire the event. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'The list that is gonna fire the event. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getLists',
 				},

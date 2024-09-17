@@ -1,64 +1,55 @@
-import type { IDataObject, IExecuteFunctions, ITriggerFunctions } from 'n8n-workflow';
-import { sleep } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	INodeExecutionData,
+	ITriggerFunctions,
+} from 'n8n-workflow';
+import { jsonParse, sleep } from 'n8n-workflow';
 import * as amqplib from 'amqplib';
 import { formatPrivateKey } from '@utils/utilities';
+import type { ExchangeType, Options, RabbitMQCredentials, TriggerOptions } from './types';
+
+const credentialKeys = ['hostname', 'port', 'username', 'password', 'vhost'] as const;
 
 export async function rabbitmqConnect(
-	this: IExecuteFunctions | ITriggerFunctions,
-	options: IDataObject,
-): Promise<amqplib.Channel> {
-	const credentials = await this.getCredentials('rabbitmq');
-
-	const credentialKeys = ['hostname', 'port', 'username', 'password', 'vhost'];
-
-	const credentialData: IDataObject = {};
-	credentialKeys.forEach((key) => {
-		credentialData[key] = credentials[key] === '' ? undefined : credentials[key];
-	});
+	credentials: RabbitMQCredentials,
+): Promise<amqplib.Connection> {
+	const credentialData = credentialKeys.reduce((acc, key) => {
+		acc[key] = credentials[key] === '' ? undefined : credentials[key];
+		return acc;
+	}, {} as IDataObject) as amqplib.Options.Connect;
 
 	const optsData: IDataObject = {};
-	if (credentials.ssl === true) {
+	if (credentials.ssl) {
 		credentialData.protocol = 'amqps';
 
 		optsData.ca =
-			credentials.ca === '' ? undefined : [Buffer.from(formatPrivateKey(credentials.ca as string))];
-		if (credentials.passwordless === true) {
+			credentials.ca === '' ? undefined : [Buffer.from(formatPrivateKey(credentials.ca))];
+		if (credentials.passwordless) {
 			optsData.cert =
-				credentials.cert === ''
-					? undefined
-					: Buffer.from(formatPrivateKey(credentials.cert as string));
+				credentials.cert === '' ? undefined : Buffer.from(formatPrivateKey(credentials.cert));
 			optsData.key =
-				credentials.key === ''
-					? undefined
-					: Buffer.from(formatPrivateKey(credentials.key as string));
+				credentials.key === '' ? undefined : Buffer.from(formatPrivateKey(credentials.key));
 			optsData.passphrase = credentials.passphrase === '' ? undefined : credentials.passphrase;
 			optsData.credentials = amqplib.credentials.external();
 		}
 	}
 
+	return await amqplib.connect(credentialData, optsData);
+}
+
+export async function rabbitmqCreateChannel(
+	this: IExecuteFunctions | ITriggerFunctions,
+): Promise<amqplib.Channel> {
+	const credentials = await this.getCredentials<RabbitMQCredentials>('rabbitmq');
+
 	return await new Promise(async (resolve, reject) => {
 		try {
-			const connection = await amqplib.connect(credentialData, optsData);
+			const connection = await rabbitmqConnect(credentials);
+			// TODO: why is this error handler being added here?
+			connection.on('error', reject);
 
-			connection.on('error', (error: Error) => {
-				reject(error);
-			});
-
-			const channel = (await connection.createChannel().catch(console.warn)) as amqplib.Channel;
-
-			if (
-				options.arguments &&
-				((options.arguments as IDataObject).argument! as IDataObject[]).length
-			) {
-				const additionalArguments: IDataObject = {};
-				((options.arguments as IDataObject).argument as IDataObject[]).forEach(
-					(argument: IDataObject) => {
-						additionalArguments[argument.key as string] = argument.value;
-					},
-				);
-				options.arguments = additionalArguments;
-			}
-
+			const channel = await connection.createChannel();
 			resolve(channel);
 		} catch (error) {
 			reject(error);
@@ -69,9 +60,9 @@ export async function rabbitmqConnect(
 export async function rabbitmqConnectQueue(
 	this: IExecuteFunctions | ITriggerFunctions,
 	queue: string,
-	options: IDataObject,
+	options: Options | TriggerOptions,
 ): Promise<amqplib.Channel> {
-	const channel = await rabbitmqConnect.call(this, options);
+	const channel = await rabbitmqCreateChannel.call(this);
 
 	return await new Promise(async (resolve, reject) => {
 		try {
@@ -81,16 +72,10 @@ export async function rabbitmqConnectQueue(
 				await channel.checkQueue(queue);
 			}
 
-			if (options.binding && ((options.binding as IDataObject).bindings! as IDataObject[]).length) {
-				((options.binding as IDataObject).bindings as IDataObject[]).forEach(
-					async (binding: IDataObject) => {
-						await channel.bindQueue(
-							queue,
-							binding.exchange as string,
-							binding.routingKey as string,
-						);
-					},
-				);
+			if ('binding' in options && options.binding?.bindings.length) {
+				options.binding.bindings.forEach(async (binding) => {
+					await channel.bindQueue(queue, binding.exchange, binding.routingKey);
+				});
 			}
 
 			resolve(channel);
@@ -103,15 +88,15 @@ export async function rabbitmqConnectQueue(
 export async function rabbitmqConnectExchange(
 	this: IExecuteFunctions | ITriggerFunctions,
 	exchange: string,
-	type: string,
-	options: IDataObject,
+	options: Options | TriggerOptions,
 ): Promise<amqplib.Channel> {
-	const channel = await rabbitmqConnect.call(this, options);
+	const exchangeType = this.getNodeParameter('exchangeType', 0) as ExchangeType;
+	const channel = await rabbitmqCreateChannel.call(this);
 
 	return await new Promise(async (resolve, reject) => {
 		try {
 			if (options.assertExchange) {
-				await channel.assertExchange(exchange, type, options);
+				await channel.assertExchange(exchange, exchangeType, options);
 			} else {
 				await channel.checkExchange(exchange);
 			}
@@ -170,3 +155,41 @@ export class MessageTracker {
 		await channel.connection.close();
 	}
 }
+
+export const parsePublishArguments = (options: Options) => {
+	const additionalArguments: IDataObject = {};
+	if (options.arguments?.argument.length) {
+		options.arguments.argument.forEach((argument) => {
+			additionalArguments[argument.key] = argument.value;
+		});
+	}
+	return additionalArguments as amqplib.Options.Publish;
+};
+
+export const parseMessage = async (
+	message: amqplib.Message,
+	options: TriggerOptions,
+	helpers: ITriggerFunctions['helpers'],
+): Promise<INodeExecutionData> => {
+	if (options.contentIsBinary) {
+		const { content } = message;
+		message.content = undefined as unknown as Buffer;
+		return {
+			binary: {
+				data: await helpers.prepareBinaryData(content),
+			},
+			json: message as unknown as IDataObject,
+		};
+	} else {
+		let content: IDataObject | string = message.content.toString();
+		if (options.jsonParseBody) {
+			content = jsonParse(content);
+		}
+		if (options.onlyContent) {
+			return { json: content as IDataObject };
+		} else {
+			message.content = content as unknown as Buffer;
+			return { json: message as unknown as IDataObject };
+		}
+	}
+};
