@@ -29,7 +29,6 @@ import {
 	lineNumbers,
 	type ViewUpdate,
 } from '@codemirror/view';
-import { javascript } from '@codemirror/lang-javascript';
 import { python } from '@codemirror/lang-python';
 import { json } from '@codemirror/lang-json';
 import { html } from 'codemirror-lang-html-n8n';
@@ -47,6 +46,8 @@ import {
 	codeEditorTheme,
 	htmlEditorHighlighting,
 } from '../components/CodeNodeEditor/theme';
+import { typescript } from '@/plugins/codemirror/lsp/typescript';
+import { debounce } from 'lodash-es';
 
 export type CodeEditorLanguage = 'json' | 'html' | 'javaScript' | 'python';
 
@@ -59,7 +60,6 @@ export const useCodeEditor = ({
 	isReadOnly = false,
 	theme = {},
 	onChange = () => {},
-	onViewUpdate = () => {},
 }: {
 	editorRef: MaybeRefOrGetter<HTMLElement | undefined>;
 	language: MaybeRefOrGetter<CodeEditorLanguage>;
@@ -69,7 +69,6 @@ export const useCodeEditor = ({
 	isReadOnly?: MaybeRefOrGetter<boolean>;
 	theme?: MaybeRefOrGetter<{ maxHeight?: string; minHeight?: string; rows?: number }>;
 	onChange?: (viewUpdate: ViewUpdate) => void;
-	onViewUpdate?: (viewUpdate: ViewUpdate) => void;
 }) => {
 	const editor = ref<EditorView>();
 	const hasFocus = ref(false);
@@ -83,12 +82,18 @@ export const useCodeEditor = ({
 	const autocompleteStatus = ref<'pending' | 'active' | null>(null);
 	const dragging = ref(false);
 
-	const EXTENSIONS_BY_LANGUAGE: Record<CodeEditorLanguage, Extension[]> = {
-		javaScript: [javascript(), codeEditorSyntaxHighlighting],
-		python: [python(), codeEditorSyntaxHighlighting],
-		json: [json(), codeEditorSyntaxHighlighting],
-		html: [html(), htmlEditorHighlighting],
-	};
+	async function getExtensionsByLanguage(lang: CodeEditorLanguage): Promise<Extension> {
+		switch (lang) {
+			case 'javaScript':
+				return [await typescript(readEditorValue()), codeEditorSyntaxHighlighting];
+			case 'python':
+				return [python(), codeEditorSyntaxHighlighting];
+			case 'json':
+				return [json(), codeEditorSyntaxHighlighting];
+			case 'html':
+				return [html(), htmlEditorHighlighting];
+		}
+	}
 
 	function readEditorValue(): string {
 		return editor.value?.state.doc.toString() ?? '';
@@ -103,14 +108,17 @@ export const useCodeEditor = ({
 		}
 	}
 
+	const emitChanges = debounce((update: ViewUpdate) => {
+		onChange(update);
+	}, 300);
+
 	function onEditorUpdate(update: ViewUpdate) {
 		autocompleteStatus.value = completionStatus(update.view.state);
 		updateSelection(update);
-		onViewUpdate(update);
 
 		if (update.docChanged) {
 			hasChanges.value = true;
-			onChange(update);
+			emitChanges(update);
 		}
 	}
 
@@ -193,11 +201,11 @@ export const useCodeEditor = ({
 		}
 	});
 
-	watchEffect(() => {
+	watchEffect(async () => {
 		if (editor.value) {
 			editor.value.dispatch({
 				effects: languageExtensions.value.reconfigure(
-					toValue(EXTENSIONS_BY_LANGUAGE[toValue(language)]),
+					await getExtensionsByLanguage(toValue(language)),
 				),
 			});
 		}
