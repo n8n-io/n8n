@@ -530,6 +530,7 @@
       "dist/nodes/Google/Gmail/GmailTrigger.node.js",
       "dist/nodes/Google/GSuiteAdmin/GSuiteAdmin.node.js",
       "dist/nodes/Google/MyBusiness/GoogleMyBusiness.node.js",
+      "dist/nodes/Google/MyBusiness/GoogleMyBusinessTrigger.node.js",
       "dist/nodes/Google/Perspective/GooglePerspective.node.js",
       "dist/nodes/Google/Sheet/GoogleSheets.node.js",
       "dist/nodes/Google/Sheet/GoogleSheetsTrigger.node.js",
