@@ -1,10 +1,10 @@
+import type { FrontendSettings } from '@n8n/api-types';
 import { exec as callbackExec } from 'child_process';
 import cookieParser from 'cookie-parser';
 import express from 'express';
 import { access as fsAccess } from 'fs/promises';
 import helmet from 'helmet';
 import { InstanceSettings } from 'n8n-core';
-import type { IN8nUISettings } from 'n8n-workflow';
 import { resolve } from 'path';
 import { Container, Service } from 'typedi';
 import { promisify } from 'util';
@@ -252,7 +252,7 @@ export class Server extends AbstractServer {
 			this.app.get(
 				`/${this.restEndpoint}/settings`,
 				ResponseHelper.send(
-					async (req: express.Request): Promise<IN8nUISettings> =>
+					async (req: express.Request): Promise<FrontendSettings> =>
 						frontendService.getSettings(req.headers['push-ref'] as string),
 				),
 			);
