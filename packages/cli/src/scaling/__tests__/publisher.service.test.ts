@@ -44,12 +44,12 @@ describe('Publisher', () => {
 		});
 	});
 
-	describe('sendCommand', () => {
-		it('should send command to `n8n.commands` pubsub channel', async () => {
+	describe('publishCommand', () => {
+		it('should publish command into `n8n.commands` pubsub channel', async () => {
 			const publisher = new Publisher(mock(), redisClientService);
 			const msg = mock<RedisServiceCommandObject>({ command: 'reloadLicense' });
 
-			await publisher.sendCommand(msg);
+			await publisher.publishCommand(msg);
 
 			expect(client.publish).toHaveBeenCalledWith(
 				'n8n.commands',
@@ -58,14 +58,14 @@ describe('Publisher', () => {
 		});
 	});
 
-	describe('sendResponse', () => {
-		it('should send response to `n8n.worker-response` pubsub channel', async () => {
+	describe('publishResponse', () => {
+		it('should publish response into `n8n.worker-response` pubsub channel', async () => {
 			const publisher = new Publisher(mock(), redisClientService);
 			const msg = mock<RedisServiceWorkerResponseObject>({
 				command: 'reloadExternalSecretsProviders',
 			});
 
-			await publisher.sendResponse(msg);
+			await publisher.publishResponse(msg);
 
 			expect(client.publish).toHaveBeenCalledWith('n8n.worker-response', JSON.stringify(msg));
 		});

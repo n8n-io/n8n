@@ -105,12 +105,12 @@ describe('Orchestration Service', () => {
 
 	test('should send command messages', async () => {
 		// @ts-expect-error Private field
-		jest.spyOn(os.publisher, 'sendCommand').mockImplementation(async () => {});
+		jest.spyOn(os.publisher, 'publishCommand').mockImplementation(async () => {});
 		await os.getWorkerIds();
 		// @ts-expect-error Private field
-		expect(os.publisher.sendCommand).toHaveBeenCalled();
+		expect(os.publisher.publishCommand).toHaveBeenCalled();
 		// @ts-expect-error Private field
-		jest.spyOn(os.publisher, 'sendCommand').mockRestore();
+		jest.spyOn(os.publisher, 'publishCommand').mockRestore();
 	});
 
 	test('should prevent receiving commands too often', async () => {

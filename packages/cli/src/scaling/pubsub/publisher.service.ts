@@ -43,8 +43,8 @@ export class Publisher {
 
 	// #region Publishing
 
-	/** Send a command into the `n8n.commands` channel. */
-	async sendCommand(msg: Omit<RedisServiceCommandObject, 'senderId'>) {
+	/** Publish a command into the `n8n.commands` channel. */
+	async publishCommand(msg: Omit<RedisServiceCommandObject, 'senderId'>) {
 		await this.client.publish(
 			'n8n.commands',
 			JSON.stringify({ ...msg, senderId: config.getEnv('redis.queueModeId') }),
@@ -53,8 +53,8 @@ export class Publisher {
 		this.logger.debug(`Published ${msg.command} to command channel`);
 	}
 
-	/** Send a response for a command into the `n8n.worker-response` channel. */
-	async sendResponse(msg: RedisServiceWorkerResponseObject) {
+	/** Publish a response for a command into the `n8n.worker-response` channel. */
+	async publishResponse(msg: RedisServiceWorkerResponseObject) {
 		await this.client.publish('n8n.worker-response', JSON.stringify(msg));
 
 		this.logger.debug(`Published response for ${msg.command} to worker response channel`);
