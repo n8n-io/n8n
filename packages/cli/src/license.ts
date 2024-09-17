@@ -19,7 +19,7 @@ import {
 } from './constants';
 import type { BooleanLicenseFeature, NumericLicenseFeature } from './interfaces';
 
-type FeatureReturnType = Partial<
+export type FeatureReturnType = Partial<
 	{
 		planName: string;
 	} & { [K in NumericLicenseFeature]: number } & { [K in BooleanLicenseFeature]: boolean }

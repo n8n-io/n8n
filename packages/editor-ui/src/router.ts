@@ -739,7 +739,7 @@ function withCanvasReadOnlyMeta(route: RouteRecordRaw) {
 }
 
 const router = createRouter({
-	history: createWebHistory(import.meta.env.DEV ? '/' : window.BASE_PATH ?? '/'),
+	history: createWebHistory(import.meta.env.DEV ? '/' : (window.BASE_PATH ?? '/')),
 	scrollBehavior(to: RouteLocationNormalized, _, savedPosition) {
 		// saved position == null means the page is NOT visited from history (back button)
 		if (savedPosition === null && to.name === VIEWS.TEMPLATES && to.meta?.setScrollPosition) {

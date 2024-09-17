@@ -23,6 +23,7 @@
 			"dependsOn": ["^typecheck"]
 		},
 		"format": {},
+		"format:check": {},
 		"lint:backend": {
 			"dependsOn": [
 				"@n8n/api-types#lint",

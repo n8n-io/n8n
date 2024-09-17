@@ -42,12 +42,9 @@ export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 
 		await this.tryBecomeLeader(); // prevent initial wait
 
-		this.leaderCheckInterval = setInterval(
-			async () => {
-				await this.checkLeader();
-			},
-			config.getEnv('multiMainSetup.interval') * TIME.SECOND,
-		);
+		this.leaderCheckInterval = setInterval(async () => {
+			await this.checkLeader();
+		}, config.getEnv('multiMainSetup.interval') * TIME.SECOND);
 	}
 
 	async shutdown() {
