@@ -27,7 +27,6 @@ import { filters } from './descriptions/Filters';
 function uuidValidateWithoutDashes(this: IExecuteFunctions, value: string) {
 	if (uuidValidate(value)) return true;
 	if (value.length == 32) {
-		//prettier-ignore
 		const strWithDashes = `${value.slice(0, 8)}-${value.slice(8, 12)}-${value.slice(12, 16)}-${value.slice(16, 20)}-${value.slice(20)}`;
 		if (uuidValidate(strWithDashes)) return true;
 	}
@@ -309,7 +308,6 @@ export function formatBlocks(blocks: IDataObject[]) {
 			[block.type as string]: {
 				...(block.type === 'to_do' ? { checked: block.checked } : {}),
 				...(block.type === 'image' ? { type: 'external', external: { url: block.url } } : {}),
-				// prettier-ignore,
 				...(!['image'].includes(block.type as string) ? getTextBlocks(block) : {}),
 			},
 		});
@@ -867,9 +865,12 @@ export type FileRecord = {
 			  };
 	};
 };
-// prettier-ignore
-export async function downloadFiles(this: IExecuteFunctions | IPollFunctions, records: FileRecord[], pairedItem?: IPairedItemData[]): Promise<INodeExecutionData[]> {
 
+export async function downloadFiles(
+	this: IExecuteFunctions | IPollFunctions,
+	records: FileRecord[],
+	pairedItem?: IPairedItemData[],
+): Promise<INodeExecutionData[]> {
 	const elements: INodeExecutionData[] = [];
 	for (const record of records) {
 		const element: INodeExecutionData = { json: {}, binary: {} };
@@ -887,10 +888,12 @@ export async function downloadFiles(this: IExecuteFunctions | IPollFunctions, re
 							'',
 							{},
 							{},
-							file?.file?.url as string || file?.external?.url as string,
+							(file?.file?.url as string) || (file?.external?.url as string),
 							{ json: false, encoding: null },
 						);
-						element.binary![`${key}_${index}`] = await this.helpers.prepareBinaryData(data as Buffer);
+						element.binary![`${key}_${index}`] = await this.helpers.prepareBinaryData(
+							data as Buffer,
+						);
 					}
 				}
 			}

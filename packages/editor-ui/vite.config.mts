@@ -6,7 +6,7 @@ import { sentryVitePlugin } from '@sentry/vite-plugin';
 import packageJSON from './package.json';
 import { vitestConfig } from '../design-system/vite.config.mts';
 import icons from 'unplugin-icons/vite';
-import iconsResolver from 'unplugin-icons/resolver'
+import iconsResolver from 'unplugin-icons/resolver';
 import components from 'unplugin-vue-components/vite';
 
 const vendorChunks = ['vue', 'vue-router'];
@@ -80,9 +80,9 @@ const plugins = [
 		dts: './src/components.d.ts',
 		resolvers: [
 			iconsResolver({
-				prefix: 'icon'
-			})
-		]
+				prefix: 'icon',
+			}),
+		],
 	}),
 	vue(),
 ];
