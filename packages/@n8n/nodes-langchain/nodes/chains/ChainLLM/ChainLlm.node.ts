@@ -35,7 +35,10 @@ import {
 	isChatInstance,
 } from '../../../utils/helpers';
 import { getTracingConfig } from '../../../utils/tracing';
-import { getCustomErrorMessage } from '../../vendors/OpenAi/helpers/error-handling';
+import {
+	getCustomErrorMessage as getCustomOpenAiErrorMessage,
+	isOpenAiError,
+} from '../../vendors/OpenAi/helpers/error-handling';
 
 interface MessagesTemplate {
 	type: string;
@@ -586,12 +589,12 @@ export class ChainLlm implements INodeType {
 					});
 				});
 			} catch (error) {
-				if (error instanceof NodeApiError) {
-					// If the error is an OpenAI's rate limit error, we want to handle it differently
-					// because OpenAI has multiple different rate limit errors
+				// If the error is an OpenAI's rate limit error, we want to handle it differently
+				// because OpenAI has multiple different rate limit errors
+				if (error instanceof NodeApiError && isOpenAiError(error.cause)) {
 					const openAiErrorCode: string | undefined = (error.cause as any).error?.code;
 					if (openAiErrorCode) {
-						const customMessage = getCustomErrorMessage(openAiErrorCode);
+						const customMessage = getCustomOpenAiErrorMessage(openAiErrorCode);
 						if (customMessage) {
 							error.message = customMessage;
 						}
