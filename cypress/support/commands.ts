@@ -1,7 +1,7 @@
 import 'cypress-real-events';
 import FakeTimers from '@sinonjs/fake-timers';
 import type { IN8nUISettings } from 'n8n-workflow';
-import { WorkflowPage } from '../pages';
+
 import {
 	BACKEND_BASE_URL,
 	INSTANCE_ADMIN,
@@ -9,6 +9,7 @@ import {
 	INSTANCE_OWNER,
 	N8N_AUTH_COOKIE,
 } from '../constants';
+import { WorkflowPage } from '../pages';
 import { getUniqueWorkflowName } from '../utils/workflowUtils';
 
 Cypress.Commands.add('setAppDate', (targetDate: number | Date) => {

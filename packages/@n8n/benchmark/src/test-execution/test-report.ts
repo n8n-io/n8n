@@ -1,4 +1,5 @@
 import { nanoid } from 'nanoid';
+
 import type { Scenario } from '@/types/scenario';
 
 export type K6Tag = {

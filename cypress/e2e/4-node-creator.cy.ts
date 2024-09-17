@@ -1,8 +1,8 @@
-import { NodeCreator } from '../pages/features/node-creator';
-import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
-import { NDV } from '../pages/ndv';
-import { getVisibleSelect } from '../utils';
 import { IF_NODE_NAME } from '../constants';
+import { NodeCreator } from '../pages/features/node-creator';
+import { NDV } from '../pages/ndv';
+import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
+import { getVisibleSelect } from '../utils';
 
 const nodeCreatorFeature = new NodeCreator();
 const WorkflowPage = new WorkflowPageClass();

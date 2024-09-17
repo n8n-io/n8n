@@ -1,7 +1,8 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import type { Scenario } from '@/types/scenario';
+
 import type { Workflow } from '@/n8n-api-client/n8n-api-client.types';
+import type { Scenario } from '@/types/scenario';
 
 /**
  * Loads scenario data files from FS
