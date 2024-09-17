@@ -6,6 +6,7 @@ const configuredSanitize = (html: string) =>
 		allowedTags: sanitize.defaults.allowedTags.concat(['img', 'input']),
 		allowedAttributes: {
 			...sanitize.defaults.allowedAttributes,
+			img: ['src', 'srcset', 'alt', 'title', 'width', 'height', 'loading'],
 			input: ['type', 'id', 'checked'],
 		},
 	});
