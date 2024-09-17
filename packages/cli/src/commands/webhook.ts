@@ -25,7 +25,6 @@ export class Webhook extends BaseCommand {
 
 	constructor(argv: string[], cmdConfig: Config) {
 		super(argv, cmdConfig);
-		this.setInstanceType('webhook');
 		if (this.queueModeId) {
 			this.logger.debug(`Webhook Instance queue mode id: ${this.queueModeId}`);
 		}
