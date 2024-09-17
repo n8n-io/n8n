@@ -171,6 +171,7 @@ function growInput() {
 						<div
 							v-if="message?.codeSnippet"
 							:class="$style['code-snippet']"
+							data-test-id="assistant-code-snippet"
 							v-html="renderMarkdown(message.codeSnippet).trim()"
 						></div>
 						<BlinkingCursor

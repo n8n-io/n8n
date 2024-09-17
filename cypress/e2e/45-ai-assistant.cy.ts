@@ -374,3 +374,58 @@ describe('AI Assistant Credential Help', () => {
 		aiAssistant.getters.credentialEditAssistantButton().should('be.disabled');
 	});
 });
+
+describe('General help', () => {
+	beforeEach(() => {
+		aiAssistant.actions.enableAssistant();
+		wf.actions.visit();
+	});
+
+	it('assistant returns code snippet', () => {
+		cy.intercept('POST', '/rest/ai-assistant/chat', {
+			statusCode: 200,
+			fixture: 'aiAssistant/code_snippet_response.json',
+		}).as('chatRequest');
+
+		aiAssistant.getters.askAssistantFloatingButton().should('be.visible');
+		aiAssistant.getters.askAssistantFloatingButton().click();
+		aiAssistant.getters.askAssistantChat().should('be.visible');
+		aiAssistant.getters.placeholderMessage().should('be.visible');
+		aiAssistant.getters.chatInput().should('be.visible');
+
+		aiAssistant.getters.chatInput().type('Show me an expression');
+		aiAssistant.getters.sendMessageButton().click();
+
+		aiAssistant.getters.chatMessagesAll().should('have.length', 3);
+		aiAssistant.getters.chatMessagesUser().eq(0).should('contain.text', 'Show me an expression');
+
+		aiAssistant.getters
+			.chatMessagesAssistant()
+			.eq(0)
+			.should('contain.text', 'To use expressions in n8n, follow these steps:');
+
+		aiAssistant.getters
+			.chatMessagesAssistant()
+			.eq(0)
+			.should(
+				'include.html',
+				`<pre><code class="language-json">[
+  {
+    "headers": {
+      "host": "n8n.instance.address",
+      ...
+    },
+    "params": {},
+    "query": {},
+    "body": {
+      "name": "Jim",
+      "age": 30,
+      "city": "New York"
+    }
+  }
+]
+</code></pre>`,
+			);
+		aiAssistant.getters.codeSnippet().should('have.text', '{{$json.body.city}}');
+	});
+});

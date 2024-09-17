@@ -45,6 +45,14 @@ describe('ResourceMapper.vue', () => {
 		).toBe(MAPPING_COLUMNS_RESPONSE.fields.length);
 	});
 
+	it('renders correctly in read only mode', async () => {
+		const { getByTestId } = renderComponent({ props: { isReadOnly: true } });
+		await waitAllPromises();
+		expect(getByTestId('mapping-mode-select').querySelector('input')).toBeDisabled();
+		expect(getByTestId('matching-column-select').querySelector('input')).toBeDisabled();
+		expect(getByTestId('mapping-fields-container').querySelector('input')).toBeDisabled();
+	});
+
 	it('renders add mode properly', async () => {
 		const { getByTestId, queryByTestId } = renderComponent(
 			{

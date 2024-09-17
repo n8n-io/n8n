@@ -10,7 +10,7 @@ export class OrchestrationWorkerService extends OrchestrationService {
 		return (
 			this.isInitialized &&
 			config.get('executions.mode') === 'queue' &&
-			config.get('generic.instanceType') === 'worker'
+			this.instanceSettings.instanceType === 'worker'
 		);
 	}
 }
