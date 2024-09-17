@@ -239,12 +239,6 @@ export interface IExternalHooksFunctions {
 	};
 }
 
-export interface IVersionNotificationSettings {
-	enabled: boolean;
-	endpoint: string;
-	infoUrl: string;
-}
-
 export interface IPersonalizationSurveyAnswers {
 	email: string | null;
 	codingSkill: string | null;
@@ -422,5 +416,3 @@ export abstract class SecretsProvider {
 	abstract hasSecret(name: string): boolean;
 	abstract getSecretNames(): string[];
 }
-
-export type N8nInstanceType = 'main' | 'webhook' | 'worker';

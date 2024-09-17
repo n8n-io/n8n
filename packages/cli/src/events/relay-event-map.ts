@@ -1,5 +1,5 @@
+import type { AuthenticationMethod } from '@n8n/api-types';
 import type {
-	AuthenticationMethod,
 	IPersonalizationSurveyAnswersV4,
 	IRun,
 	IWorkflowBase,

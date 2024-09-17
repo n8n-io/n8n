@@ -21,7 +21,7 @@ export type RedisServiceCommand =
 	| 'clear-test-webhooks'; // multi-main only
 
 /**
- * An object to be sent via Redis pub/sub from the main process to the workers.
+ * An object to be sent via Redis pubsub from the main process to the workers.
  * @field command: The command to be executed.
  * @field targets: The targets to execute the command on. Leave empty to execute on all workers or specify worker ids.
  * @field payload: Optional arguments to be sent with the command.

@@ -1,3 +1,5 @@
+process.argv[2] = 'worker';
+
 import { BinaryDataService } from 'n8n-core';
 
 import { Worker } from '@/commands/worker';
@@ -21,12 +23,13 @@ mockInstance(LoadNodesAndCredentials);
 const binaryDataService = mockInstance(BinaryDataService);
 const externalHooks = mockInstance(ExternalHooks);
 const externalSecretsManager = mockInstance(ExternalSecretsManager);
-const license = mockInstance(License);
+const license = mockInstance(License, { loadCertStr: async () => '' });
 const messageEventBus = mockInstance(MessageEventBus);
 const logStreamingEventRelay = mockInstance(LogStreamingEventRelay);
 const orchestrationHandlerWorkerService = mockInstance(OrchestrationHandlerWorkerService);
 const scalingService = mockInstance(ScalingService);
 const orchestrationWorkerService = mockInstance(OrchestrationWorkerService);
+
 const command = setupTestCommand(Worker);
 
 test('worker initializes all its components', async () => {

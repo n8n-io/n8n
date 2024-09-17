@@ -10,7 +10,7 @@ export class OrchestrationWebhookService extends OrchestrationService {
 		return (
 			this.isInitialized &&
 			config.get('executions.mode') === 'queue' &&
-			config.get('generic.instanceType') === 'webhook'
+			this.instanceSettings.instanceType === 'webhook'
 		);
 	}
 }
