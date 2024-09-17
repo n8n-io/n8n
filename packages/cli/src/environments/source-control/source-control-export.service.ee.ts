@@ -1,7 +1,7 @@
 import { rmSync } from 'fs';
-import { writeFile as fsWriteFile, rm as fsRm } from 'fs/promises';
 import { Credentials, InstanceSettings } from 'n8n-core';
 import { ApplicationError, type ICredentialDataDecryptedObject } from 'n8n-workflow';
+import { writeFile as fsWriteFile, rm as fsRm } from 'node:fs/promises';
 import path from 'path';
 import Container, { Service } from 'typedi';
 
