@@ -1,4 +1,4 @@
-import { vi } from 'vitest';
+import {expect, vi} from 'vitest';
 import { screen, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createPinia, setActivePinia } from 'pinia';
@@ -170,6 +170,8 @@ describe('SettingsSourceControl', () => {
 			['git@192.168.1.101:2222:user/repo', true],
 			['git@ssh.dev.azure.com:v3/User/repo/directory', true],
 			['ssh://git@mydomain.example:2224/gitolite-admin', true],
+			['gituser@192.168.1.1:ABC/Repo4.git', true],
+			['root@192.168.1.1/repo.git', true],
 			['http://github.com/user/repository', false],
 			['https://github.com/user/repository', false],
 		])('%s', async (url: string, isValid: boolean) => {
@@ -180,7 +182,8 @@ describe('SettingsSourceControl', () => {
 
 			await waitFor(() => expect(sourceControlStore.preferences.publicKey).not.toEqual(''));
 
-			const repoUrlInput = container.querySelector('input[name="repoUrl"]')!;
+			const repoUrlInput = container.querySelector('input[name="repoUrl"]');
+			expect(repoUrlInput).toBeInTheDocument();
 
 			await userEvent.click(repoUrlInput);
 			await userEvent.type(repoUrlInput, url);
