@@ -9,7 +9,6 @@ import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus'
 import { LogStreamingEventRelay } from '@/events/log-streaming-event-relay';
 import { JobProcessor } from '@/scaling/job-processor';
 import type { ScalingService } from '@/scaling/scaling.service';
-import { WorkerServer } from '@/scaling/worker-server';
 import { OrchestrationHandlerWorkerService } from '@/services/orchestration/worker/orchestration.handler.worker.service';
 import { OrchestrationWorkerService } from '@/services/orchestration/worker/orchestration.worker.service';
 import type { RedisServicePubSubSubscriber } from '@/services/redis/redis-service-pub-sub-subscriber';
@@ -167,6 +166,7 @@ export class Worker extends BaseCommand {
 			this.globalConfig.queue.health.active ||
 			this.globalConfig.credentials.overwrite.endpoint !== ''
 		) {
+			const { WorkerServer } = await import('@/scaling/worker-server');
 			await Container.get(WorkerServer).init();
 		}
 
