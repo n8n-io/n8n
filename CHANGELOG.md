@@ -1,3 +1,12 @@
+## [1.59.2](https://github.com/n8n-io/n8n/compare/n8n@1.59.1...n8n@1.59.2) (2024-09-17)
+
+
+### Bug Fixes
+
+* **core:** Restore queue listeners for `webhook` process ([#10781](https://github.com/n8n-io/n8n/issues/10781)) ([9831dbc](https://github.com/n8n-io/n8n/commit/9831dbcf86f2bd09b5dfb7e4a0cc4e9791ca567b))
+
+
+
 ## [1.59.1](https://github.com/n8n-io/n8n/compare/n8n@1.59.0...n8n@1.59.1) (2024-09-16)
 
 
