@@ -13,7 +13,8 @@ import { Publisher } from '../pubsub/publisher.service';
 
 describe('Publisher', () => {
 	let queueModeId: string;
-	beforeAll(() => {
+
+	beforeEach(() => {
 		config.set('executions.mode', 'queue');
 		queueModeId = generateNanoId();
 		config.set('redis.queueModeId', queueModeId);
@@ -34,8 +35,6 @@ describe('Publisher', () => {
 			const publisher = new Publisher(mock(), redisClientService);
 
 			expect(publisher.getClient()).toBeUndefined();
-
-			config.set('executions.mode', 'queue');
 		});
 	});
 
