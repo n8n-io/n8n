@@ -19,8 +19,8 @@ catalogs:
       specifier: ^4.14.195
       version: 4.14.195
     '@types/uuid':
-      specifier: ^8.3.2
-      version: 8.3.4
+      specifier: ^10.0.0
+      version: 10.0.0
     '@types/xml2js':
       specifier: ^0.4.14
       version: 0.4.14
@@ -49,8 +49,8 @@ catalogs:
       specifier: 0.10.0
       version: 0.10.0
     uuid:
-      specifier: 8.3.2
-      version: 8.3.2
+      specifier: 10.0.0
+      version: 10.0.0
     xml2js:
       specifier: 0.6.2
       version: 0.6.2
@@ -268,7 +268,7 @@ importers:
         version: 4.0.1
       uuid:
         specifier: 'catalog:'
-        version: 8.3.2
+        version: 10.0.0
       vue:
         specifier: catalog:frontend
         version: 3.4.21(typescript@5.5.2)
@@ -907,7 +907,7 @@ importers:
         version: 0.10.0(patch_hash=sk6omkefrosihg7lmqbzh7vfxe)
       uuid:
         specifier: 'catalog:'
-        version: 8.3.2
+        version: 10.0.0
       validator:
         specifier: 13.7.0
         version: 13.7.0
@@ -992,7 +992,7 @@ importers:
         version: 1.1.2
       '@types/uuid':
         specifier: 'catalog:'
-        version: 8.3.4
+        version: 10.0.0
       '@types/validator':
         specifier: ^13.7.0
         version: 13.7.7
@@ -1085,7 +1085,7 @@ importers:
         version: 0.10.0(patch_hash=sk6omkefrosihg7lmqbzh7vfxe)
       uuid:
         specifier: 'catalog:'
-        version: 8.3.2
+        version: 10.0.0
       xml2js:
         specifier: 'catalog:'
         version: 0.6.2
@@ -1110,7 +1110,7 @@ importers:
         version: 2.1.1
       '@types/uuid':
         specifier: 'catalog:'
-        version: 8.3.4
+        version: 10.0.0
       '@types/xml2js':
         specifier: 'catalog:'
         version: 0.4.14
@@ -1387,7 +1387,7 @@ importers:
         version: 4.0.2
       uuid:
         specifier: 'catalog:'
-        version: 8.3.2
+        version: 10.0.0
       v3-infinite-loading:
         specifier: ^1.2.2
         version: 1.2.2
@@ -1451,7 +1451,7 @@ importers:
         version: 3.2.0
       '@types/uuid':
         specifier: 'catalog:'
-        version: 8.3.4
+        version: 10.0.0
       '@vitest/coverage-v8':
         specifier: catalog:frontend
         version: 1.6.0(vitest@1.6.0(@types/node@18.16.16)(jsdom@23.0.1)(sass@1.64.1)(terser@5.16.1))
@@ -1698,7 +1698,7 @@ importers:
         version: 0.10.0(patch_hash=sk6omkefrosihg7lmqbzh7vfxe)
       uuid:
         specifier: 'catalog:'
-        version: 8.3.2
+        version: 10.0.0
       xlsx:
         specifier: https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz
         version: https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz
@@ -1771,7 +1771,7 @@ importers:
         version: 5.3.2
       '@types/uuid':
         specifier: 'catalog:'
-        version: 8.3.4
+        version: 10.0.0
       '@types/xml2js':
         specifier: 'catalog:'
         version: 0.4.14
@@ -24852,7 +24852,7 @@ snapshots:
     dependencies:
       '@types/asn1': 0.2.0
       '@types/node': 18.16.16
-      '@types/uuid': 9.0.7
+      '@types/uuid': 10.0.0
       asn1: 0.2.6
       debug: 4.3.4(supports-color@8.1.1)
       strict-event-emitter-types: 2.0.0
