@@ -20,7 +20,7 @@ function isDockerBuildkit() {
 		const cgroupContent = fs.readFileSync(cgroupPath, 'utf8');
 		return cgroupContent.includes('docker') || cgroupContent.includes('0::/');
 	} catch {
-		return;
+		return false;
 	}
 }
 
