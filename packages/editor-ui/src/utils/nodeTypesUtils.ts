@@ -5,10 +5,10 @@ import type {
 	ITemplatesNode,
 	IVersionNode,
 	NodeAuthenticationOption,
-	Schema,
 	SimplifiedNodeType,
 } from '@/Interface';
 import { useDataSchema } from '@/composables/useDataSchema';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import {
 	CORE_NODES_CATEGORY,
 	MAIN_AUTH_FIELD_NAME,
@@ -20,20 +20,22 @@ import { i18n as locale } from '@/plugins/i18n';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import type { ChatRequest } from '@/types/assistant.types';
 import { isResourceLocatorValue } from '@/utils/typeGuards';
 import { isJsonKeyObject } from '@/utils/typesUtils';
-import type {
-	AssignmentCollectionValue,
-	IDataObject,
-	INode,
-	INodeCredentialDescription,
-	INodeExecutionData,
-	INodeProperties,
-	INodeTypeDescription,
-	NodeParameterValueType,
-	ResourceMapperField,
-	Themed,
+import {
+	deepCopy,
+	type IDataObject,
+	type INode,
+	type INodeCredentialDescription,
+	type INodeExecutionData,
+	type INodeProperties,
+	type INodeTypeDescription,
+	type NodeParameterValueType,
+	type ResourceMapperField,
+	type Themed,
 } from 'n8n-workflow';
+import { useRouter } from 'vue-router';
 
 /*
 	Constants and utility functions mainly used to get information about
@@ -503,9 +505,9 @@ export const getNodeIconColor = (
 
 /**
 	Regular expression to extract the node names from the expressions in the template.
-	Example: $(expression) => expression
+	Supports single quotes, double quotes, and backticks.
 */
-const entityRegex = /\$\((['"])(.*?)\1\)/g;
+const entityRegex = /\$\(\s*(\\?["'`])((?:\\.|(?!\1)[^\\])*)\1\s*\)/g;
 
 /**
  * Extract the node names from the expressions in the template.
@@ -520,81 +522,89 @@ function extractNodeNames(template: string): string[] {
 }
 
 /**
- * Extract the node names from the expressions in the node parameters.
+ * Unescape quotes in the string. Supports single quotes, double quotes, and backticks.
  */
-export function getReferencedNodes(node: INode): string[] {
-	const referencedNodes: string[] = [];
-	if (!node) {
-		return referencedNodes;
-	}
-	// Special case for code node
-	if (node.type === 'n8n-nodes-base.set' && node.parameters.assignments) {
-		const assignments = node.parameters.assignments as AssignmentCollectionValue;
-		if (assignments.assignments?.length) {
-			assignments.assignments.forEach((assignment) => {
-				if (assignment.name && assignment.value && String(assignment.value).startsWith('=')) {
-					const nodeNames = extractNodeNames(String(assignment.value));
-					if (nodeNames.length) {
-						referencedNodes.push(...nodeNames);
-					}
-				}
-			});
-		}
-	} else {
-		Object.values(node.parameters).forEach((value) => {
-			if (!value) {
-				return;
-			}
-			let strValue = String(value);
-			// Handle resource locator
-			if (typeof value === 'object' && 'value' in value) {
-				strValue = String(value.value);
-			}
-			if (strValue.startsWith('=')) {
-				const nodeNames = extractNodeNames(strValue);
-				if (nodeNames.length) {
-					referencedNodes.push(...nodeNames);
-				}
-			}
-		});
-	}
-	return referencedNodes;
+export function unescapeQuotes(str: string): string {
+	return str.replace(/\\(['"`])/g, '$1');
 }
 
 /**
- * Remove properties from a node based on the provided list of property names.
- * Reruns a new node object with the properties removed.
+ * Extract the node names from the expressions in the node parameters.
  */
-export function pruneNodeProperties(node: INode, propsToRemove: string[]): INode {
-	const prunedNode = { ...node };
+export function getReferencedNodes(node: INode): string[] {
+	const referencedNodes: Set<string> = new Set();
+	if (!node) {
+		return [];
+	}
+	// Go through all parameters and check if they contain expressions on any level
+	for (const key in node.parameters) {
+		let names: string[] = [];
+		if (
+			node.parameters[key] &&
+			typeof node.parameters[key] === 'object' &&
+			Object.keys(node.parameters[key]).length
+		) {
+			names = extractNodeNames(JSON.stringify(node.parameters[key]));
+		} else if (typeof node.parameters[key] === 'string' && node.parameters[key]) {
+			names = extractNodeNames(node.parameters[key]);
+		}
+		if (names.length) {
+			names
+				.map((name) => unescapeQuotes(name))
+				.forEach((name) => {
+					referencedNodes.add(name);
+				});
+		}
+	}
+	return referencedNodes.size ? Array.from(referencedNodes) : [];
+}
+
+/**
+ * Processes node object before sending it to AI assistant
+ * - Removes unnecessary properties
+ * - Extracts expressions from the parameters and resolves them
+ * @param node original node object
+ * @param propsToRemove properties to remove from the node object
+ * @returns processed node
+ */
+export function processNodeForAssistant(node: INode, propsToRemove: string[]): INode {
+	// Make a copy of the node object so we don't modify the original
+	const nodeForLLM = deepCopy(node);
 	propsToRemove.forEach((key) => {
-		delete prunedNode[key as keyof INode];
+		delete nodeForLLM[key as keyof INode];
 	});
-	return prunedNode;
+	const workflowHelpers = useWorkflowHelpers({ router: useRouter() });
+	const resolvedParameters = workflowHelpers.getNodeParametersWithResolvedExpressions(
+		nodeForLLM.parameters,
+	);
+	nodeForLLM.parameters = resolvedParameters;
+	return nodeForLLM;
+}
+
+export function isNodeReferencingInputData(node: INode): boolean {
+	const parametersString = JSON.stringify(node.parameters);
+	const references = ['$json', '$input', '$binary'];
+	return references.some((ref) => parametersString.includes(ref));
 }
 
 /**
  * Get the schema for the referenced nodes as expected by the AI assistant
  * @param nodeNames The names of the nodes to get the schema for
- * @returns An array of objects containing the node name and the schema
+ * @returns An array of NodeExecutionSchema objects
  */
 export function getNodesSchemas(nodeNames: string[]) {
-	return nodeNames.map((name) => {
+	const schemas: ChatRequest.NodeExecutionSchema[] = [];
+	for (const name of nodeNames) {
 		const node = useWorkflowsStore().getNodeByName(name);
 		if (!node) {
-			return {
-				nodeName: name,
-				schema: {} as Schema,
-			};
+			continue;
 		}
 		const { getSchemaForExecutionData, getInputDataWithPinned } = useDataSchema();
-		const schema = getSchemaForExecutionData(
-			executionDataToJson(getInputDataWithPinned(node)),
-			true,
-		);
-		return {
+		const schema = getSchemaForExecutionData(executionDataToJson(getInputDataWithPinned(node)));
+		schemas.push({
 			nodeName: node.name,
 			schema,
-		};
-	});
+		});
+	}
+	return schemas;
 }
