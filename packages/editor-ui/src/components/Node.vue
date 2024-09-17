@@ -321,7 +321,7 @@ const nodeTitle = computed(() => {
 const waiting = computed(() => {
 	const workflowExecution = workflowsStore.getWorkflowExecution as ExecutionSummary;
 
-	if (workflowExecution?.waitTill && !workflowExecution?.finished) {
+	if (workflowExecution?.waitTill) {
 		const lastNodeExecuted = get(workflowExecution, 'data.resultData.lastNodeExecuted');
 		if (props.name === lastNodeExecuted) {
 			const node = props.workflow.getNode(lastNodeExecuted);
@@ -330,13 +330,11 @@ const waiting = computed(() => {
 				node.type === WAIT_NODE_TYPE &&
 				['webhook', 'form'].includes(node.parameters.resume as string)
 			) {
-				const eventType =
-					node.parameters.resume === 'webhook' ? 'incoming webhook call' : 'form submission';
-				return i18n.baseText('node.theNodeIsWaitingForCall', {
-					interpolate: {
-						eventType,
-					},
-				});
+				const event =
+					node.parameters.resume === 'webhook'
+						? i18n.baseText('node.theNodeIsWaitingWebhookCall')
+						: i18n.baseText('node.theNodeIsWaitingFormCall');
+				return event;
 			}
 			const waitDate = new Date(workflowExecution.waitTill);
 			if (waitDate.toISOString() === WAIT_TIME_UNLIMITED) {
