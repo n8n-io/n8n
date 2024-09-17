@@ -536,8 +536,10 @@ export async function pgUpdate(
 	} else {
 		const where =
 			' WHERE ' +
-			// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
-			updateKeys.map((entry) => pgp.as.name(entry.name) + ' = ${' + entry.prop + '}').join(' AND ');
+			updateKeys
+				// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
+				.map((entry) => pgp.as.name(entry.name) + ' = ${' + entry.prop + '}')
+				.join(' AND ');
 		if (mode === 'transaction') {
 			return await db.tx(async (t) => {
 				const result: IDataObject[] = [];
@@ -664,8 +666,10 @@ export async function pgUpdateV2(
 	} else {
 		const where =
 			' WHERE ' +
-			// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
-			updateKeys.map((entry) => pgp.as.name(entry.name) + ' = ${' + entry.prop + '}').join(' AND ');
+			updateKeys
+				// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
+				.map((entry) => pgp.as.name(entry.name) + ' = ${' + entry.prop + '}')
+				.join(' AND ');
 		if (mode === 'transaction') {
 			return await db.tx(async (t) => {
 				const result: IDataObject[] = [];

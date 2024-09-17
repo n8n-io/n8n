@@ -28,10 +28,10 @@ export function toSaveSettings(workflowSettings: IWorkflowSettings = {}) {
 		manual:
 			workflowSettings === undefined || workflowSettings.saveManualExecutions === 'DEFAULT'
 				? DEFAULTS.MANUAL
-				: workflowSettings.saveManualExecutions ?? DEFAULTS.MANUAL,
+				: (workflowSettings.saveManualExecutions ?? DEFAULTS.MANUAL),
 		progress:
 			workflowSettings === undefined || workflowSettings.saveExecutionProgress === 'DEFAULT'
 				? DEFAULTS.PROGRESS
-				: workflowSettings.saveExecutionProgress ?? DEFAULTS.PROGRESS,
+				: (workflowSettings.saveExecutionProgress ?? DEFAULTS.PROGRESS),
 	};
 }
