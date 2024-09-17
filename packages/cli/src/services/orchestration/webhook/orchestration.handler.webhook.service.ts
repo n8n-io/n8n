@@ -1,23 +1,24 @@
 import { Service } from 'typedi';
 
+import { Subscriber } from '@/scaling/pubsub/subscriber.service';
+
 import { handleCommandMessageWebhook } from './handle-command-message-webhook';
 import { OrchestrationHandlerService } from '../../orchestration.handler.base.service';
 import { COMMAND_REDIS_CHANNEL } from '../../redis/redis-constants';
 
 @Service()
 export class OrchestrationHandlerWebhookService extends OrchestrationHandlerService {
+	constructor(private readonly subscriber: Subscriber) {
+		super();
+	}
+
 	async initSubscriber() {
-		this.redisSubscriber = await this.redisService.getPubSubSubscriber();
+		await this.subscriber.subscribe('n8n.commands');
 
-		await this.redisSubscriber.subscribeToCommandChannel();
-
-		this.redisSubscriber.addMessageHandler(
-			'OrchestrationMessageReceiver',
-			async (channel: string, messageString: string) => {
-				if (channel === COMMAND_REDIS_CHANNEL) {
-					await handleCommandMessageWebhook(messageString);
-				}
-			},
-		);
+		this.subscriber.addMessageHandler(async (channel: string, messageString: string) => {
+			if (channel === COMMAND_REDIS_CHANNEL) {
+				await handleCommandMessageWebhook(messageString);
+			}
+		});
 	}
 }
