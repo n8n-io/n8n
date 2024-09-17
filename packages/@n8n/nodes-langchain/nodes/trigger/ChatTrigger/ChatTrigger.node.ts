@@ -460,20 +460,19 @@ export class ChatTrigger extends Node {
 		const mode = ctx.getMode() === 'manual' ? 'test' : 'production';
 		const bodyData = ctx.getBodyData() ?? {};
 
-		if (nodeMode === 'hostedChat') {
-			try {
-				await validateAuth(ctx);
-			} catch (error) {
-				if (error) {
-					res.writeHead((error as IDataObject).responseCode as number, {
-						'www-authenticate': 'Basic realm="Webhook"',
-					});
-					res.end((error as IDataObject).message as string);
-					return { noWebhookResponse: true };
-				}
-				throw error;
+		try {
+			await validateAuth(ctx);
+		} catch (error) {
+			if (error) {
+				res.writeHead((error as IDataObject).responseCode as number, {
+					'www-authenticate': 'Basic realm="Webhook"',
+				});
+				res.end((error as IDataObject).message as string);
+				return { noWebhookResponse: true };
 			}
-
+			throw error;
+		}
+		if (nodeMode === 'hostedChat') {
 			// Show the chat on GET request
 			if (webhookName === 'setup') {
 				const webhookUrlRaw = ctx.getNodeWebhookUrl('default') as string;

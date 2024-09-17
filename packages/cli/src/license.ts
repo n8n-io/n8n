@@ -2,8 +2,14 @@ import type { TEntitlement, TFeatures, TLicenseBlock } from '@n8n_io/license-sdk
 import { LicenseManager } from '@n8n_io/license-sdk';
 import { InstanceSettings, ObjectStoreService } from 'n8n-core';
 import Container, { Service } from 'typedi';
-import { Logger } from '@/logger';
+
 import config from '@/config';
+import { SettingsRepository } from '@/databases/repositories/settings.repository';
+import { OnShutdown } from '@/decorators/on-shutdown';
+import { Logger } from '@/logger';
+import { LicenseMetricsService } from '@/metrics/license-metrics.service';
+import { OrchestrationService } from '@/services/orchestration.service';
+
 import {
 	LICENSE_FEATURES,
 	LICENSE_QUOTAS,
@@ -11,15 +17,11 @@ import {
 	SETTINGS_LICENSE_CERT_KEY,
 	UNLIMITED_LICENSE_QUOTA,
 } from './constants';
-import { SettingsRepository } from '@/databases/repositories/settings.repository';
-import type { BooleanLicenseFeature, N8nInstanceType, NumericLicenseFeature } from './interfaces';
+import type { BooleanLicenseFeature, NumericLicenseFeature } from './interfaces';
 import type { RedisServicePubSubPublisher } from './services/redis/redis-service-pub-sub-publisher';
 import { RedisService } from './services/redis.service';
-import { OrchestrationService } from '@/services/orchestration.service';
-import { OnShutdown } from '@/decorators/on-shutdown';
-import { LicenseMetricsService } from '@/metrics/license-metrics.service';
 
-type FeatureReturnType = Partial<
+export type FeatureReturnType = Partial<
 	{
 		planName: string;
 	} & { [K in NumericLicenseFeature]: number } & { [K in BooleanLicenseFeature]: boolean }
@@ -44,8 +46,8 @@ export class License {
 	/**
 	 * Whether this instance should renew the license - on init and periodically.
 	 */
-	private renewalEnabled(instanceType: N8nInstanceType) {
-		if (instanceType !== 'main') return false;
+	private renewalEnabled() {
+		if (this.instanceSettings.instanceType !== 'main') return false;
 
 		const autoRenewEnabled = config.getEnv('license.autoRenewEnabled');
 
@@ -61,7 +63,7 @@ export class License {
 		return autoRenewEnabled;
 	}
 
-	async init(instanceType: N8nInstanceType = 'main', forceRecreate = false) {
+	async init(forceRecreate = false) {
 		if (this.manager && !forceRecreate) {
 			this.logger.warn('License manager already initialized or shutting down');
 			return;
@@ -71,6 +73,7 @@ export class License {
 			return;
 		}
 
+		const { instanceType } = this.instanceSettings;
 		const isMainInstance = instanceType === 'main';
 		const server = config.getEnv('license.serverUrl');
 		const offlineMode = !isMainInstance;
@@ -88,7 +91,7 @@ export class License {
 			? async () => await this.licenseMetricsService.collectPassthroughData()
 			: async () => ({});
 
-		const renewalEnabled = this.renewalEnabled(instanceType);
+		const renewalEnabled = this.renewalEnabled();
 
 		try {
 			this.manager = new LicenseManager({
@@ -397,7 +400,7 @@ export class License {
 
 	async reinit() {
 		this.manager?.reset();
-		await this.init('main', true);
+		await this.init(true);
 		this.logger.debug('License reinitialized');
 	}
 }

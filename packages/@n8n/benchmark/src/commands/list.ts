@@ -1,15 +1,19 @@
 import { Command } from '@oclif/core';
-import { ScenarioLoader } from '@/scenario/scenarioLoader';
-import { loadConfig } from '@/config/config';
+import { ScenarioLoader } from '@/scenario/scenario-loader';
+import { testScenariosPath } from '@/config/common-flags';
 
 export default class ListCommand extends Command {
 	static description = 'List all available scenarios';
 
+	static flags = {
+		testScenariosPath,
+	};
+
 	async run() {
-		const config = loadConfig();
+		const { flags } = await this.parse(ListCommand);
 		const scenarioLoader = new ScenarioLoader();
 
-		const allScenarios = scenarioLoader.loadAll(config.get('testScenariosPath'));
+		const allScenarios = scenarioLoader.loadAll(flags.testScenariosPath);
 
 		console.log('Available test scenarios:');
 		console.log('');

@@ -1,16 +1,15 @@
-import { Container } from 'typedi';
 import { Flags } from '@oclif/core';
-import type { IWorkflowBase } from 'n8n-workflow';
+import type { IWorkflowBase, IWorkflowExecutionDataProcess } from 'n8n-workflow';
 import { ApplicationError, ExecutionBaseError } from 'n8n-workflow';
+import { Container } from 'typedi';
 
 import { ActiveExecutions } from '@/active-executions';
-import { WorkflowRunner } from '@/workflow-runner';
-import type { IWorkflowExecutionDataProcess } from '@/interfaces';
-import { findCliWorkflowStart, isWorkflowIdValid } from '@/utils';
-import { BaseCommand } from './base-command';
-
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { OwnershipService } from '@/services/ownership.service';
+import { findCliWorkflowStart, isWorkflowIdValid } from '@/utils';
+import { WorkflowRunner } from '@/workflow-runner';
+
+import { BaseCommand } from './base-command';
 
 export class Execute extends BaseCommand {
 	static description = '\nExecutes a given workflow';

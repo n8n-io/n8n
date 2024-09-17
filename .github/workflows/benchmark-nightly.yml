@@ -3,7 +3,7 @@ run-name: Benchmark ${{ inputs.n8n_tag || 'nightly' }}
 
 on:
   schedule:
-    - cron: '0 2 * * *'
+    - cron: '30 1,2,3 * * *'
   workflow_dispatch:
     inputs:
       debug:
@@ -23,7 +23,6 @@ env:
   ARM_CLIENT_ID: ${{ secrets.BENCHMARK_ARM_CLIENT_ID }}
   ARM_SUBSCRIPTION_ID: ${{ secrets.BENCHMARK_ARM_SUBSCRIPTION_ID }}
   ARM_TENANT_ID: ${{ secrets.BENCHMARK_ARM_TENANT_ID }}
-  K6_API_TOKEN: ${{ secrets.K6_API_TOKEN }}
   N8N_TAG: ${{ inputs.n8n_tag || 'nightly' }}
   N8N_BENCHMARK_TAG: ${{ inputs.benchmark_tag || 'latest' }}
   DEBUG: ${{ inputs.debug == 'true' && '--debug' || '' }}
@@ -70,11 +69,22 @@ jobs:
         working-directory: packages/@n8n/benchmark
 
       - name: Run the benchmark
-        run: pnpm benchmark-in-cloud --n8nTag ${{ env.N8N_TAG }} --benchmarkTag ${{ env.N8N_BENCHMARK_TAG }} ${{ env.DEBUG }}
+        env:
+          BENCHMARK_RESULT_WEBHOOK_URL: ${{ secrets.BENCHMARK_RESULT_WEBHOOK_URL }}
+          BENCHMARK_RESULT_WEBHOOK_AUTH_HEADER: ${{ secrets.BENCHMARK_RESULT_WEBHOOK_AUTH_HEADER }}
+          N8N_LICENSE_CERT: ${{ secrets.N8N_BENCHMARK_LICENSE_CERT }}
+        run: |
+          pnpm benchmark-in-cloud \
+            --vus 5 \
+            --duration 1m \
+            --n8nTag ${{ env.N8N_TAG }} \
+            --benchmarkTag ${{ env.N8N_BENCHMARK_TAG }} \
+            ${{ env.DEBUG }}
         working-directory: packages/@n8n/benchmark
 
         # We need to login again because the access token expires
       - name: Azure login
+        if: always()
         uses: azure/login@v2.1.1
         with:
           client-id: ${{ env.ARM_CLIENT_ID }}

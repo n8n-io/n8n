@@ -56,6 +56,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import { useNodeType } from '@/composables/useNodeType';
 import { useToast } from '@/composables/useToast';
 import { isEqual, isObject } from 'lodash-es';
 import { useExternalHooks } from '@/composables/useExternalHooks';
@@ -171,12 +172,16 @@ export default defineComponent({
 			runIndex: props.runIndex,
 			displayMode: ndvStore.getPanelDisplayMode(props.paneType),
 		});
+		const { isSubNodeType } = useNodeType({
+			node,
+		});
 
 		return {
 			...useToast(),
 			externalHooks,
 			nodeHelpers,
 			pinnedData,
+			isSubNodeType,
 		};
 	},
 	data() {
@@ -307,6 +312,12 @@ export default defineComponent({
 		workflowRunErrorAsNodeError(): NodeError | null {
 			if (!this.node) {
 				return null;
+			}
+
+			// If the node is a sub-node, we need to get the parent node error to check for input errors
+			if (this.isSubNodeType && this.paneType === 'input') {
+				const parentNode = this.workflow.getChildNodes(this.node?.name ?? '', 'ALL_NON_MAIN')[0];
+				return this.workflowRunData?.[parentNode]?.[this.runIndex]?.error as NodeError;
 			}
 			return this.workflowRunData?.[this.node?.name]?.[this.runIndex]?.error as NodeError;
 		},
@@ -645,37 +656,44 @@ export default defineComponent({
 			return true;
 		},
 		getNodeHints(): NodeHint[] {
-			if (this.node && this.nodeType) {
-				const workflowNode = this.workflow.getNode(this.node.name);
+			try {
+				if (this.node && this.nodeType) {
+					const workflowNode = this.workflow.getNode(this.node.name);
 
-				if (workflowNode) {
-					const executionHints = this.executionHints;
+					if (workflowNode) {
+						const executionHints = this.executionHints;
 
-					const nodeHints = NodeHelpers.getNodeHints(this.workflow, workflowNode, this.nodeType, {
-						runExecutionData: this.workflowExecution?.data ?? null,
-						runIndex: this.runIndex,
-						connectionInputData: this.parentNodeOutputData,
-					});
+						const nodeHints = NodeHelpers.getNodeHints(this.workflow, workflowNode, this.nodeType, {
+							runExecutionData: this.workflowExecution?.data ?? null,
+							runIndex: this.runIndex,
+							connectionInputData: this.parentNodeOutputData,
+						});
 
-					const hasMultipleInputItems =
-						this.parentNodeOutputData.length > 1 || this.parentNodePinnedData.length > 1;
+						const hasMultipleInputItems =
+							this.parentNodeOutputData.length > 1 || this.parentNodePinnedData.length > 1;
 
-					const nodeOutputData =
-						this.workflowRunData?.[this.node.name]?.[this.runIndex]?.data?.main[0] || [];
+						const nodeOutputData =
+							this.workflowRunData?.[this.node.name]?.[this.runIndex]?.data?.main?.[0] || [];
 
-					const genericHints = getGenericHints({
-						workflowNode,
-						node: this.node,
-						nodeType: this.nodeType,
-						nodeOutputData,
-						workflow: this.workflow,
-						hasNodeRun: this.hasNodeRun,
-						hasMultipleInputItems,
-					});
+						const genericHints = getGenericHints({
+							workflowNode,
+							node: this.node,
+							nodeType: this.nodeType,
+							nodeOutputData,
+							workflow: this.workflow,
+							hasNodeRun: this.hasNodeRun,
+							hasMultipleInputItems,
+						});
 
-					return executionHints.concat(nodeHints, genericHints).filter(this.shouldHintBeDisplayed);
+						return executionHints
+							.concat(nodeHints, genericHints)
+							.filter(this.shouldHintBeDisplayed);
+					}
 				}
+			} catch (error) {
+				console.error('Error while getting node hints', error);
 			}
+
 			return [];
 		},
 		onItemHover(itemIndex: number | null) {

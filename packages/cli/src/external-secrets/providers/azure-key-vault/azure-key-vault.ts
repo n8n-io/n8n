@@ -1,9 +1,11 @@
 import { ClientSecretCredential } from '@azure/identity';
 import { SecretClient } from '@azure/keyvault-secrets';
-import type { SecretsProvider, SecretsProviderState } from '@/interfaces';
 import type { INodeProperties } from 'n8n-workflow';
-import type { AzureKeyVaultContext } from './types';
+
 import { DOCS_HELP_NOTICE, EXTERNAL_SECRETS_NAME_REGEX } from '@/external-secrets/constants';
+import type { SecretsProvider, SecretsProviderState } from '@/interfaces';
+
+import type { AzureKeyVaultContext } from './types';
 
 export class AzureKeyVault implements SecretsProvider {
 	name = 'azureKeyVault';

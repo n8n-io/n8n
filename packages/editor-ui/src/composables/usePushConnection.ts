@@ -1,14 +1,6 @@
-import type {
-	IExecutionResponse,
-	IExecutionsCurrentSummaryExtended,
-	IPushData,
-	IPushDataExecutionFinished,
-} from '@/Interface';
-
-import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import { useTitleChange } from '@/composables/useTitleChange';
-import { useToast } from '@/composables/useToast';
-
+import { parse } from 'flatted';
+import { h, ref } from 'vue';
+import type { useRouter } from 'vue-router';
 import type {
 	ExpressionError,
 	IDataObject,
@@ -22,7 +14,12 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { TelemetryHelpers } from 'n8n-workflow';
+import type { PushMessage, PushPayload } from '@n8n/api-types';
 
+import type { IExecutionResponse, IExecutionsCurrentSummaryExtended } from '@/Interface';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import { useTitleChange } from '@/composables/useTitleChange';
+import { useToast } from '@/composables/useToast';
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
 import { getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
 import { codeNodeEditorEventBus, globalLinkActionsEventBus } from '@/event-bus';
@@ -31,17 +28,17 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { parse } from 'flatted';
-import { ref } from 'vue';
 import { useOrchestrationStore } from '@/stores/orchestration.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
-import type { useRouter } from 'vue-router';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import type { PushMessageQueueItem } from '@/types';
 import { useAssistantStore } from '@/stores/assistant.store';
+import NodeExecutionErrorMessage from '@/components/NodeExecutionErrorMessage.vue';
+
+type IPushDataExecutionFinishedPayload = PushPayload<'executionFinished'>;
 
 export function usePushConnection({ router }: { router: ReturnType<typeof useRouter> }) {
 	const workflowHelpers = useWorkflowHelpers({ router });
@@ -82,7 +79,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 	 * is currently active. So internally resend the message
 	 * a few more times
 	 */
-	function queuePushMessage(event: IPushData, retryAttempts: number) {
+	function queuePushMessage(event: PushMessage, retryAttempts: number) {
 		pushMessageQueue.value.push({ message: event, retriesLeft: retryAttempts });
 
 		if (retryTimeout.value === null) {
@@ -124,7 +121,10 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 	/**
 	 * Process a newly received message
 	 */
-	async function pushMessageReceived(receivedData: IPushData, isRetry?: boolean): Promise<boolean> {
+	async function pushMessageReceived(
+		receivedData: PushMessage,
+		isRetry?: boolean,
+	): Promise<boolean> {
 		const retryAttempts = 5;
 
 		if (receivedData.type === 'sendWorkerStatusMessage') {
@@ -160,7 +160,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 				// The data is not for the currently active execution or
 				// we do not have the execution id yet.
 				if (isRetry !== true) {
-					queuePushMessage(event as unknown as IPushData, retryAttempts);
+					queuePushMessage(event as unknown as PushMessage, retryAttempts);
 				}
 				return false;
 			}
@@ -168,7 +168,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 
 		// recovered execution data is handled like executionFinished data, however for security reasons
 		// we need to fetch the data from the server again rather than push it to all clients
-		let recoveredPushData: IPushDataExecutionFinished | undefined = undefined;
+		let recoveredPushData: IPushDataExecutionFinishedPayload | undefined = undefined;
 		if (receivedData.type === 'executionRecovered') {
 			const recoveredExecutionId = receivedData.data?.executionId;
 			const isWorkflowRunning = uiStore.isActionActive['workflowRunning'];
@@ -241,11 +241,11 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 
 		if (receivedData.type === 'executionFinished' || receivedData.type === 'executionRecovered') {
 			// The workflow finished executing
-			let pushData: IPushDataExecutionFinished;
+			let pushData: IPushDataExecutionFinishedPayload;
 			if (receivedData.type === 'executionRecovered' && recoveredPushData !== undefined) {
 				pushData = recoveredPushData;
 			} else {
-				pushData = receivedData.data as IPushDataExecutionFinished;
+				pushData = receivedData.data as IPushDataExecutionFinishedPayload;
 			}
 
 			const { activeExecutionId } = workflowsStore;
@@ -273,7 +273,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 				// The workflow which did finish execution did either not get started
 				// by this session or we do not have the execution id yet.
 				if (isRetry !== true) {
-					queuePushMessage(event as unknown as IPushData, retryAttempts);
+					queuePushMessage(event as unknown as PushMessage, retryAttempts);
 				}
 				return false;
 			}
@@ -407,16 +407,12 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 
 					toast.showMessage({
 						title,
-						message:
-							(nodeError?.description ?? runDataExecutedErrorMessage) +
-							i18n.baseText('pushConnection.executionError.openNode', {
-								interpolate: {
-									node: nodeError.node.name,
-								},
-							}),
+						message: h(NodeExecutionErrorMessage, {
+							errorMessage: nodeError?.description ?? runDataExecutedErrorMessage,
+							nodeName: nodeError.node.name,
+						}),
 						type: 'error',
 						duration: 0,
-						dangerouslyUseHTMLString: true,
 					});
 				} else {
 					let title: string;

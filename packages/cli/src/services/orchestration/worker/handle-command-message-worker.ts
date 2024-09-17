@@ -1,16 +1,18 @@
 import { jsonParse } from 'n8n-workflow';
+import os from 'node:os';
 import Container from 'typedi';
-import type { RedisServiceCommandObject } from '@/services/redis/redis-service-commands';
-import { COMMAND_REDIS_CHANNEL } from '@/services/redis/redis-constants';
-import * as os from 'os';
-import { License } from '@/license';
+
+import { N8N_VERSION } from '@/constants';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { ExternalSecretsManager } from '@/external-secrets/external-secrets-manager.ee';
-import { debounceMessageReceiver, getOsCpuString } from '../helpers';
-import type { WorkerCommandReceivedHandlerOptions } from './types';
+import { License } from '@/license';
 import { Logger } from '@/logger';
-import { N8N_VERSION } from '@/constants';
 import { CommunityPackagesService } from '@/services/community-packages.service';
+import { COMMAND_REDIS_CHANNEL } from '@/services/redis/redis-constants';
+import type { RedisServiceCommandObject } from '@/services/redis/redis-service-commands';
+
+import type { WorkerCommandReceivedHandlerOptions } from './types';
+import { debounceMessageReceiver, getOsCpuString } from '../helpers';
 
 export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHandlerOptions) {
 	// eslint-disable-next-line complexity

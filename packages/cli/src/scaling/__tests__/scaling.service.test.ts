@@ -1,16 +1,17 @@
-import { mock } from 'jest-mock-extended';
-import { ScalingService } from '../scaling.service';
-import { JOB_TYPE_NAME, QUEUE_NAME } from '../constants';
-import config from '@/config';
-import * as BullModule from 'bull';
-import type { Job, JobData, JobOptions, JobQueue } from '../scaling.types';
-import { ApplicationError } from 'n8n-workflow';
-import { mockInstance } from '@test/mocking';
 import { GlobalConfig } from '@n8n/config';
+import * as BullModule from 'bull';
+import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
-import type { OrchestrationService } from '@/services/orchestration.service';
+import { ApplicationError } from 'n8n-workflow';
 import Container from 'typedi';
+
+import type { OrchestrationService } from '@/services/orchestration.service';
+import { mockInstance } from '@test/mocking';
+
+import { JOB_TYPE_NAME, QUEUE_NAME } from '../constants';
 import type { JobProcessor } from '../job-processor';
+import { ScalingService } from '../scaling.service';
+import type { Job, JobData, JobOptions, JobQueue } from '../scaling.types';
 
 const queue = mock<JobQueue>({
 	client: { ping: jest.fn() },
@@ -51,7 +52,7 @@ describe('ScalingService', () => {
 
 	let scalingService: ScalingService;
 
-	let registerMainListenersSpy: jest.SpyInstance;
+	let registerMainOrWebhookListenersSpy: jest.SpyInstance;
 	let registerWorkerListenersSpy: jest.SpyInstance;
 	let scheduleQueueRecoverySpy: jest.SpyInstance;
 	let stopQueueRecoverySpy: jest.SpyInstance;
@@ -68,7 +69,8 @@ describe('ScalingService', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
-		config.set('generic.instanceType', 'main');
+		// @ts-expect-error readonly property
+		instanceSettings.instanceType = 'main';
 		instanceSettings.markAsLeader();
 
 		scalingService = new ScalingService(
@@ -86,8 +88,11 @@ describe('ScalingService', () => {
 
 		// @ts-expect-error Private method
 		ScalingService.prototype.scheduleQueueRecovery = jest.fn();
-		// @ts-expect-error Private method
-		registerMainListenersSpy = jest.spyOn(scalingService, 'registerMainListeners');
+		registerMainOrWebhookListenersSpy = jest.spyOn(
+			scalingService,
+			// @ts-expect-error Private method
+			'registerMainOrWebhookListeners',
+		);
 		// @ts-expect-error Private method
 		registerWorkerListenersSpy = jest.spyOn(scalingService, 'registerWorkerListeners');
 		// @ts-expect-error Private method
@@ -102,7 +107,7 @@ describe('ScalingService', () => {
 				await scalingService.setupQueue();
 
 				expect(Bull).toHaveBeenCalledWith(...bullConstructorArgs);
-				expect(registerMainListenersSpy).toHaveBeenCalled();
+				expect(registerMainOrWebhookListenersSpy).toHaveBeenCalled();
 				expect(registerWorkerListenersSpy).not.toHaveBeenCalled();
 				expect(scheduleQueueRecoverySpy).toHaveBeenCalled();
 			});
@@ -115,7 +120,7 @@ describe('ScalingService', () => {
 				await scalingService.setupQueue();
 
 				expect(Bull).toHaveBeenCalledWith(...bullConstructorArgs);
-				expect(registerMainListenersSpy).toHaveBeenCalled();
+				expect(registerMainOrWebhookListenersSpy).toHaveBeenCalled();
 				expect(registerWorkerListenersSpy).not.toHaveBeenCalled();
 				expect(scheduleQueueRecoverySpy).not.toHaveBeenCalled();
 			});
@@ -123,22 +128,35 @@ describe('ScalingService', () => {
 
 		describe('if worker', () => {
 			it('should set up queue + listeners', async () => {
-				// @ts-expect-error Private field
-				scalingService.instanceType = 'worker';
+				// @ts-expect-error readonly property
+				instanceSettings.instanceType = 'worker';
 
 				await scalingService.setupQueue();
 
 				expect(Bull).toHaveBeenCalledWith(...bullConstructorArgs);
 				expect(registerWorkerListenersSpy).toHaveBeenCalled();
-				expect(registerMainListenersSpy).not.toHaveBeenCalled();
+				expect(registerMainOrWebhookListenersSpy).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('webhook', () => {
+			it('should set up a queue + listeners', async () => {
+				// @ts-expect-error readonly property
+				instanceSettings.instanceType = 'webhook';
+
+				await scalingService.setupQueue();
+
+				expect(Bull).toHaveBeenCalledWith(...bullConstructorArgs);
+				expect(registerWorkerListenersSpy).not.toHaveBeenCalled();
+				expect(registerMainOrWebhookListenersSpy).toHaveBeenCalled();
 			});
 		});
 	});
 
 	describe('setupWorker', () => {
 		it('should set up a worker with concurrency', async () => {
-			// @ts-expect-error Private field
-			scalingService.instanceType = 'worker';
+			// @ts-expect-error readonly property
+			instanceSettings.instanceType = 'worker';
 			await scalingService.setupQueue();
 			const concurrency = 5;
 
@@ -154,8 +172,8 @@ describe('ScalingService', () => {
 		});
 
 		it('should throw if called before queue is ready', async () => {
-			// @ts-expect-error Private field
-			scalingService.instanceType = 'worker';
+			// @ts-expect-error readonly property
+			instanceSettings.instanceType = 'worker';
 
 			expect(() => scalingService.setupWorker(5)).toThrow();
 		});

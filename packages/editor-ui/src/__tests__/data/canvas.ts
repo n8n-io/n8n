@@ -6,6 +6,7 @@ import type {
 	CanvasNodeEventBusEvents,
 	CanvasNodeHandleInjectionData,
 	CanvasNodeInjectionData,
+	ExecutionOutputMapData,
 } from '@/types';
 import { CanvasConnectionMode, CanvasNodeRenderType } from '@/types';
 import { NodeConnectionType } from 'n8n-workflow';
@@ -25,7 +26,7 @@ export function createCanvasNodeData({
 	execution = { running: false },
 	issues = { items: [], visible: false },
 	pinnedData = { count: 0, visible: false },
-	runData = { count: 0, visible: false },
+	runData = { outputMap: {}, iterations: 0, visible: false },
 	render = {
 		type: CanvasNodeRenderType.Default,
 		options: { configurable: false, configuration: false, trigger: false },
@@ -119,22 +120,31 @@ export function createCanvasHandleProvide({
 	label = 'Handle',
 	mode = CanvasConnectionMode.Input,
 	type = NodeConnectionType.Main,
+	index = 0,
+	runData,
 	isConnected = false,
 	isConnecting = false,
+	isReadOnly = false,
 }: {
 	label?: string;
 	mode?: CanvasConnectionMode;
 	type?: NodeConnectionType;
+	index?: number;
+	runData?: ExecutionOutputMapData;
 	isConnected?: boolean;
 	isConnecting?: boolean;
+	isReadOnly?: boolean;
 } = {}) {
 	return {
 		[`${CanvasNodeHandleKey}`]: {
 			label: ref(label),
 			mode: ref(mode),
 			type: ref(type),
+			index: ref(index),
 			isConnected: ref(isConnected),
 			isConnecting: ref(isConnecting),
+			runData: ref(runData),
+			isReadOnly: ref(isReadOnly),
 		} satisfies CanvasNodeHandleInjectionData,
 	};
 }

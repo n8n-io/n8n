@@ -405,7 +405,8 @@ export const useExpressionEditor = ({
 		if (pos === 'lastExpression') {
 			const END_OF_EXPRESSION = ' }}';
 			const endOfLastExpression = readEditorValue().lastIndexOf(END_OF_EXPRESSION);
-			pos = endOfLastExpression !== -1 ? endOfLastExpression : editor.value?.state.doc.length ?? 0;
+			pos =
+				endOfLastExpression !== -1 ? endOfLastExpression : (editor.value?.state.doc.length ?? 0);
 		} else if (pos === 'end') {
 			pos = editor.value?.state.doc.length ?? 0;
 		}
@@ -414,7 +415,7 @@ export const useExpressionEditor = ({
 
 	function select(anchor: number, head: number | 'end' = 'end'): void {
 		editor.value?.dispatch({
-			selection: { anchor, head: head === 'end' ? editor.value?.state.doc.length ?? 0 : head },
+			selection: { anchor, head: head === 'end' ? (editor.value?.state.doc.length ?? 0) : head },
 		});
 	}
 

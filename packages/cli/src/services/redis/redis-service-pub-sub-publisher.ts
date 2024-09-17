@@ -1,10 +1,11 @@
 import { Service } from 'typedi';
+
 import { COMMAND_REDIS_CHANNEL, WORKER_RESPONSE_REDIS_CHANNEL } from './redis-constants';
+import { RedisServiceBaseSender } from './redis-service-base-classes';
 import type {
 	RedisServiceCommandObject,
 	RedisServiceWorkerResponseObject,
 } from './redis-service-commands';
-import { RedisServiceBaseSender } from './redis-service-base-classes';
 
 @Service()
 export class RedisServicePubSubPublisher extends RedisServiceBaseSender {

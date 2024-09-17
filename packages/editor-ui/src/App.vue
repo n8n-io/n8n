@@ -30,7 +30,7 @@ useHistoryHelper(route);
 const loading = ref(true);
 const defaultLocale = computed(() => rootStore.defaultLocale);
 const isDemoMode = computed(() => route.name === VIEWS.DEMO);
-const showAssistantButton = computed(() => assistantStore.canShowAssistantButtons);
+const showAssistantButton = computed(() => assistantStore.canShowAssistantButtonsOnCanvas);
 
 const appGrid = ref<Element | null>(null);
 

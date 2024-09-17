@@ -236,16 +236,19 @@ function moveResource() {
 		<template #header>
 			<n8n-heading tag="h2" bold :class="$style.cardHeading" data-test-id="workflow-card-name">
 				{{ data.name }}
+				<N8nBadge v-if="!workflowPermissions.update" class="ml-3xs" theme="tertiary" bold>
+					{{ locale.baseText('workflows.item.readonly') }}
+				</N8nBadge>
 			</n8n-heading>
 		</template>
 		<div :class="$style.cardDescription">
 			<n8n-text color="text-light" size="small">
 				<span v-show="data"
-					>{{ $locale.baseText('workflows.item.updated') }}
+					>{{ locale.baseText('workflows.item.updated') }}
 					<TimeAgo :date="String(data.updatedAt)" /> |
 				</span>
 				<span v-show="data" class="mr-2xs"
-					>{{ $locale.baseText('workflows.item.created') }} {{ formattedCreatedAtDate }}
+					>{{ locale.baseText('workflows.item.created') }} {{ formattedCreatedAtDate }}
 				</span>
 				<span
 					v-if="settingsStore.areTagsEnabled && data.tags && data.tags.length > 0"

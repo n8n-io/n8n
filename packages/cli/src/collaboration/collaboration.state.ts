@@ -1,12 +1,16 @@
-import type { ActiveWorkflowUser } from '@/collaboration/collaboration.types';
-import { Time } from '@/constants';
-import type { Iso8601DateTimeString } from '@/interfaces';
-import { CacheService } from '@/services/cache/cache.service';
-import type { User } from '@/databases/entities/user';
-import { type Workflow } from 'n8n-workflow';
+import type { Iso8601DateTimeString } from '@n8n/api-types';
+import type { Workflow } from 'n8n-workflow';
 import { Service } from 'typedi';
 
+import { Time } from '@/constants';
+import type { User } from '@/databases/entities/user';
+import { CacheService } from '@/services/cache/cache.service';
+
 type WorkflowCacheHash = Record<User['id'], Iso8601DateTimeString>;
+interface CacheEntry {
+	userId: string;
+	lastSeen: string;
+}
 
 /**
  * State management for the collaboration service. Workflow active
@@ -30,7 +34,7 @@ export class CollaborationState {
 	/**
 	 * Mark user active for given workflow
 	 */
-	async addActiveWorkflowUser(workflowId: Workflow['id'], userId: User['id']) {
+	async addCollaborator(workflowId: Workflow['id'], userId: User['id']) {
 		const cacheKey = this.formWorkflowCacheKey(workflowId);
 		const cacheEntry: WorkflowCacheHash = {
 			[userId]: new Date().toISOString(),
@@ -42,13 +46,13 @@ export class CollaborationState {
 	/**
 	 * Remove user from workflow's active users
 	 */
-	async removeActiveWorkflowUser(workflowId: Workflow['id'], userId: User['id']) {
+	async removeCollaborator(workflowId: Workflow['id'], userId: User['id']) {
 		const cacheKey = this.formWorkflowCacheKey(workflowId);
 
 		await this.cache.deleteFromHash(cacheKey, userId);
 	}
 
-	async getActiveWorkflowUsers(workflowId: Workflow['id']): Promise<ActiveWorkflowUser[]> {
+	async getCollaborators(workflowId: Workflow['id']): Promise<CacheEntry[]> {
 		const cacheKey = this.formWorkflowCacheKey(workflowId);
 
 		const cacheValue = await this.cache.getHash<Iso8601DateTimeString>(cacheKey);
@@ -56,11 +60,11 @@ export class CollaborationState {
 			return [];
 		}
 
-		const workflowActiveUsers = this.cacheHashToWorkflowActiveUsers(cacheValue);
-		const [expired, stillActive] = this.splitToExpiredAndStillActive(workflowActiveUsers);
+		const activeCollaborators = this.cacheHashToCollaborators(cacheValue);
+		const [expired, stillActive] = this.splitToExpiredAndStillActive(activeCollaborators);
 
 		if (expired.length > 0) {
-			void this.removeExpiredUsersForWorkflow(workflowId, expired);
+			void this.removeExpiredCollaborators(workflowId, expired);
 		}
 
 		return stillActive;
@@ -70,39 +74,36 @@ export class CollaborationState {
 		return `collaboration:${workflowId}`;
 	}
 
-	private splitToExpiredAndStillActive(workflowUsers: ActiveWorkflowUser[]) {
-		const expired: ActiveWorkflowUser[] = [];
-		const stillActive: ActiveWorkflowUser[] = [];
+	private splitToExpiredAndStillActive(collaborators: CacheEntry[]) {
+		const expired: CacheEntry[] = [];
+		const stillActive: CacheEntry[] = [];
 
-		for (const user of workflowUsers) {
-			if (this.hasUserExpired(user.lastSeen)) {
-				expired.push(user);
+		for (const collaborator of collaborators) {
+			if (this.hasSessionExpired(collaborator.lastSeen)) {
+				expired.push(collaborator);
 			} else {
-				stillActive.push(user);
+				stillActive.push(collaborator);
 			}
 		}
 
 		return [expired, stillActive];
 	}
 
-	private async removeExpiredUsersForWorkflow(
-		workflowId: Workflow['id'],
-		expiredUsers: ActiveWorkflowUser[],
-	) {
+	private async removeExpiredCollaborators(workflowId: Workflow['id'], expiredUsers: CacheEntry[]) {
 		const cacheKey = this.formWorkflowCacheKey(workflowId);
 		await Promise.all(
 			expiredUsers.map(async (user) => await this.cache.deleteFromHash(cacheKey, user.userId)),
 		);
 	}
 
-	private cacheHashToWorkflowActiveUsers(workflowCacheEntry: WorkflowCacheHash) {
+	private cacheHashToCollaborators(workflowCacheEntry: WorkflowCacheHash): CacheEntry[] {
 		return Object.entries(workflowCacheEntry).map(([userId, lastSeen]) => ({
 			userId,
 			lastSeen,
 		}));
 	}
 
-	private hasUserExpired(lastSeenString: Iso8601DateTimeString) {
+	private hasSessionExpired(lastSeenString: Iso8601DateTimeString) {
 		const expiryTime = new Date(lastSeenString).getTime() + this.inactivityCleanUpTime;
 
 		return Date.now() > expiryTime;

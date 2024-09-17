@@ -1,19 +1,19 @@
-import { CollaborationService } from '@/collaboration/collaboration.service';
-import { Push } from '@/push';
-import { CacheService } from '@/services/cache/cache.service';
 import { mock } from 'jest-mock-extended';
-import * as testDb from '../shared/test-db';
 import Container from 'typedi';
-import type { User } from '@/databases/entities/user';
-import { createMember, createOwner } from '@test-integration/db/users';
+
 import type {
 	WorkflowClosedMessage,
 	WorkflowOpenedMessage,
 } from '@/collaboration/collaboration.message';
-import { createWorkflow, shareWorkflowWithUsers } from '@test-integration/db/workflows';
+import { CollaborationService } from '@/collaboration/collaboration.service';
+import type { User } from '@/databases/entities/user';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
+import { Push } from '@/push';
+import { CacheService } from '@/services/cache/cache.service';
 import { mockInstance } from '@test/mocking';
-import { UserService } from '@/services/user.service';
+import { createMember, createOwner } from '@test-integration/db/users';
+import { createWorkflow, shareWorkflowWithUsers } from '@test-integration/db/workflows';
+import * as testDb from '@test-integration/test-db';
 
 describe('CollaborationService', () => {
 	mockInstance(Push, new Push(mock()));
@@ -23,7 +23,6 @@ describe('CollaborationService', () => {
 	let memberWithoutAccess: User;
 	let memberWithAccess: User;
 	let workflow: WorkflowEntity;
-	let userService: UserService;
 	let cacheService: CacheService;
 
 	beforeAll(async () => {
@@ -31,7 +30,6 @@ describe('CollaborationService', () => {
 
 		pushService = Container.get(Push);
 		collaborationService = Container.get(CollaborationService);
-		userService = Container.get(UserService);
 		cacheService = Container.get(CacheService);
 
 		await cacheService.init();
@@ -69,7 +67,7 @@ describe('CollaborationService', () => {
 	};
 
 	describe('workflow opened message', () => {
-		it('should emit activeWorkflowUsersChanged after workflowOpened', async () => {
+		it('should emit collaboratorsChanged after workflowOpened', async () => {
 			// Arrange
 			const sendToUsersSpy = jest.spyOn(pushService, 'sendToUsers');
 
@@ -80,15 +78,12 @@ describe('CollaborationService', () => {
 			// Assert
 			expect(sendToUsersSpy).toHaveBeenNthCalledWith(
 				1,
-				'activeWorkflowUsersChanged',
+				'collaboratorsChanged',
 				{
-					activeUsers: [
+					collaborators: [
 						{
 							lastSeen: expect.any(String),
-							user: {
-								...(await userService.toPublic(owner)),
-								isPending: false,
-							},
+							user: owner.toIUser(),
 						},
 					],
 					workflowId: workflow.id,
@@ -97,9 +92,9 @@ describe('CollaborationService', () => {
 			);
 			expect(sendToUsersSpy).toHaveBeenNthCalledWith(
 				2,
-				'activeWorkflowUsersChanged',
+				'collaboratorsChanged',
 				{
-					activeUsers: expect.arrayContaining([
+					collaborators: expect.arrayContaining([
 						expect.objectContaining({
 							lastSeen: expect.any(String),
 							user: expect.objectContaining({
@@ -119,7 +114,7 @@ describe('CollaborationService', () => {
 			);
 		});
 
-		it("should not emit activeWorkflowUsersChanged if user don't have access to the workflow", async () => {
+		it("should not emit collaboratorsChanged if user don't have access to the workflow", async () => {
 			const sendToUsersSpy = jest.spyOn(pushService, 'sendToUsers');
 
 			// Act
@@ -131,7 +126,7 @@ describe('CollaborationService', () => {
 	});
 
 	describe('workflow closed message', () => {
-		it('should not emit activeWorkflowUsersChanged after workflowClosed when there are no active users', async () => {
+		it('should not emit collaboratorsChanged after workflowClosed when there are no active users', async () => {
 			// Arrange
 			const sendToUsersSpy = jest.spyOn(pushService, 'sendToUsers');
 			await sendWorkflowOpenedMessage(workflow.id, owner.id);
@@ -144,7 +139,7 @@ describe('CollaborationService', () => {
 			expect(sendToUsersSpy).not.toHaveBeenCalled();
 		});
 
-		it('should emit activeWorkflowUsersChanged after workflowClosed when there are active users', async () => {
+		it('should emit collaboratorsChanged after workflowClosed when there are active users', async () => {
 			// Arrange
 			const sendToUsersSpy = jest.spyOn(pushService, 'sendToUsers');
 			await sendWorkflowOpenedMessage(workflow.id, owner.id);
@@ -156,9 +151,9 @@ describe('CollaborationService', () => {
 
 			// Assert
 			expect(sendToUsersSpy).toHaveBeenCalledWith(
-				'activeWorkflowUsersChanged',
+				'collaboratorsChanged',
 				{
-					activeUsers: expect.arrayContaining([
+					collaborators: expect.arrayContaining([
 						expect.objectContaining({
 							lastSeen: expect.any(String),
 							user: expect.objectContaining({
@@ -172,7 +167,7 @@ describe('CollaborationService', () => {
 			);
 		});
 
-		it("should not emit activeWorkflowUsersChanged if user don't have access to the workflow", async () => {
+		it("should not emit collaboratorsChanged if user don't have access to the workflow", async () => {
 			// Arrange
 			const sendToUsersSpy = jest.spyOn(pushService, 'sendToUsers');
 			await sendWorkflowOpenedMessage(workflow.id, owner.id);
