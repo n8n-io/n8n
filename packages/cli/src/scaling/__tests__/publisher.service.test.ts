@@ -1,8 +1,8 @@
 import type { Redis as SingleNodeClient } from 'ioredis';
 import { mock } from 'jest-mock-extended';
-import { v4 as generateNanoId } from 'uuid';
 
 import config from '@/config';
+import { generateNanoId } from '@/databases/utils/generators';
 import type { RedisClientService } from '@/services/redis/redis-client.service';
 import type {
 	RedisServiceCommandObject,
