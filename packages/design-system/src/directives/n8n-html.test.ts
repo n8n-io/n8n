@@ -39,7 +39,7 @@ describe('Directive n8n-html', () => {
 			},
 		});
 		expect(html()).toBe(
-			'<div><span>text</span><a href="https://malicious.com">malicious</a><img alt="Ok" src="./images/logo.svg"></div>',
+			'<div><span>text</span><a href="https://safe.com">safe</a><img alt="Ok" src="./images/logo.svg" /></div>',
 		);
 	});
 });
