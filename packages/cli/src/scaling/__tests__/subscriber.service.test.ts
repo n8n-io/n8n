@@ -52,7 +52,7 @@ describe('Subscriber', () => {
 			const subscriber = new Subscriber(mock(), redisClientService);
 			const handlerFn = jest.fn();
 
-			subscriber.setHandler(handlerFn);
+			subscriber.addMessageHandler(handlerFn);
 
 			expect(client.on).toHaveBeenCalledWith('message', handlerFn);
 		});

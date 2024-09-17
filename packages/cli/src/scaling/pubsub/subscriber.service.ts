@@ -52,7 +52,7 @@ export class Subscriber {
 		});
 	}
 
-	setHandler(handlerFn: (channel: string, msg: string) => void) {
+	addMessageHandler(handlerFn: (channel: string, msg: string) => void) {
 		this.client.on('message', handlerFn);
 	}
 

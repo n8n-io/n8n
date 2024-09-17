@@ -18,7 +18,7 @@ export class OrchestrationHandlerMainService extends OrchestrationHandlerService
 		await this.subscriber.subscribe('n8n.commands');
 		await this.subscriber.subscribe('n8n.worker-response');
 
-		this.subscriber.setHandler(async (channel: string, messageString: string) => {
+		this.subscriber.addMessageHandler(async (channel: string, messageString: string) => {
 			if (channel === WORKER_RESPONSE_REDIS_CHANNEL) {
 				await handleWorkerResponseMessageMain(messageString, options);
 			} else if (channel === COMMAND_REDIS_CHANNEL) {

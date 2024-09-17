@@ -15,7 +15,7 @@ export class OrchestrationHandlerWebhookService extends OrchestrationHandlerServ
 	async initSubscriber() {
 		await this.subscriber.subscribe('n8n.commands');
 
-		this.subscriber.setHandler(async (channel: string, messageString: string) => {
+		this.subscriber.addMessageHandler(async (channel: string, messageString: string) => {
 			if (channel === COMMAND_REDIS_CHANNEL) {
 				await handleCommandMessageWebhook(messageString);
 			}
