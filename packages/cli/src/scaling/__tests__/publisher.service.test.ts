@@ -1,6 +1,6 @@
 import type { Redis as SingleNodeClient } from 'ioredis';
 import { mock } from 'jest-mock-extended';
-import { v4 as uuid } from 'uuid';
+import { v4 as generateNanoId } from 'uuid';
 
 import config from '@/config';
 import type { RedisClientService } from '@/services/redis/redis-client.service';
@@ -13,7 +13,7 @@ import { Publisher } from '../pubsub/publisher.service';
 
 describe('Publisher', () => {
 	config.set('executions.mode', 'queue');
-	const queueModeId = uuid();
+	const queueModeId = generateNanoId();
 	config.set('redis.queueModeId', queueModeId);
 
 	const client = mock<SingleNodeClient>();
