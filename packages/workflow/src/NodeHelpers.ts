@@ -369,9 +369,33 @@ export function convertNodeToAiTool<
 		item.description.name += 'Tool';
 		item.description.inputs = [];
 		item.description.outputs = [NodeConnectionType.AiTool];
-		item.description.displayName += ' Tool (wrapped)';
+		item.description.displayName += ' Tool';
 		delete item.description.usableAsTool;
+
+		const hasResource = item.description.properties.some((prop) => prop.name === 'resource');
+		const hasOperation = item.description.properties.some((prop) => prop.name === 'operation');
+
 		if (!item.description.properties.map((prop) => prop.name).includes('toolDescription')) {
+			const descriptionType: INodeProperties = {
+				displayName: 'Description Type',
+				name: 'descriptionType',
+				type: 'options',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'Set Automatically',
+						value: 'auto',
+						description: 'Automatically set based on resource and operation',
+					},
+					{
+						name: 'Set Manually',
+						value: 'manual',
+						description: 'Manually set the description',
+					},
+				],
+				default: 'auto',
+			};
+
 			const descProp: INodeProperties = {
 				displayName: 'Description',
 				name: 'toolDescription',
@@ -383,7 +407,20 @@ export function convertNodeToAiTool<
 					'Explain to the LLM what this tool does, a good, specific description would allow LLMs to produce expected results much more often',
 				placeholder: `e.g. ${item.description.description}`,
 			};
-			item.description.properties.unshift(descProp);
+
+			item.description.properties.unshift(...[descProp]);
+
+			// If node has resource or operation we can determine pre-populate tool description based on it
+			// so we add the descriptionType property as the first property
+			if (hasResource || hasOperation) {
+				item.description.properties.unshift(descriptionType);
+
+				descProp.displayOptions = {
+					show: {
+						descriptionType: ['manual'],
+					},
+				};
+			}
 		}
 	}
 

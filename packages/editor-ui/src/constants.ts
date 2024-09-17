@@ -527,6 +527,7 @@ export const MAPPING_PARAMS = [
 	'$input',
 	'$item',
 	'$jmespath',
+	'$fromAI',
 	'$json',
 	'$node',
 	'$now',

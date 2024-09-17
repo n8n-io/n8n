@@ -277,6 +277,57 @@ export const ROOT_DOLLAR_COMPLETIONS: Completion[] = [
 		),
 	},
 	{
+		label: '$fromAI()',
+		section: METHODS_SECTION,
+		info: createInfoBoxRenderer(
+			{
+				name: '$fromAI',
+				returnType: 'any',
+				description: 'Populate this with the parameter passed from the large language model',
+				args: [
+					{
+						name: 'key',
+						description: 'The key or name of the argument, has to be lowercase and without spaces',
+						type: 'string',
+					},
+					{
+						name: 'description',
+						description: 'Description of the argument',
+						type: 'string',
+						optional: true,
+					},
+					{
+						name: 'type',
+						description: 'Type of the argument',
+						type: 'string | number | boolean | json | date',
+						optional: true,
+					},
+					{
+						name: 'defaultValue',
+						description: 'Default value for the argument',
+						type: 'any',
+						optional: true,
+					},
+				],
+				examples: [
+					{
+						example: '$fromAI("name")',
+						description: 'Get the name of the person',
+					},
+					{
+						example: '$fromAI("age", "The age of the person", "number", 18)',
+						description: 'Get the age of the person as number with default value 18',
+					},
+					{
+						example: '$fromAI("isStudent", "Is the person a student", "boolean", false)',
+						description: 'Get the student status of the person as boolean with default value false',
+					},
+				],
+			},
+			true,
+		),
+	},
+	{
 		label: '$max()',
 		section: METHODS_SECTION,
 		info: createInfoBoxRenderer(

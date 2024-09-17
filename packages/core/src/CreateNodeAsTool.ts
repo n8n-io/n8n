@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-use-before-define */
 /**
  * @module NodeAsTool
  * @description This module converts n8n nodes into LangChain tools by analyzing node parameters,
@@ -40,143 +41,169 @@
  */
 
 import { DynamicStructuredTool } from '@langchain/core/tools';
-import {
-	NodeConnectionType,
-	type IExecuteFunctions,
-	type INodeParameters,
-	type INodeType,
-} from 'n8n-workflow';
+import type { IExecuteFunctions, INodeParameters, INodeType } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import { z } from 'zod';
 
-/** Represents a nested object structure */
-type NestedObject = { [key: string]: unknown };
+type PlaceholderDefinition = {
+	name: string;
+	type?: string;
+	description: string;
+};
 
-/**
- * Encodes a dot-notated key to a format safe for use as an object key.
- * @param {string} key - The dot-notated key to encode.
- * @returns {string} The encoded key.
- */
-function encodeDotNotation(key: string): string {
-	// Replace dots with double underscores, then handle special case for '__value' for complicated params
-	return key.replace(/\./g, '__').replace('__value', '');
+interface fromAIArgument {
+	/** The key or name of the argument */
+	key: string;
+	/** Optional description of the argument */
+	description?: string;
+	/** Optional type of the argument */
+	type?: string;
+	/** Optional default value for the argument */
+	defaultValue?: string | number | boolean;
+}
+
+function makeParameterZodSchema(placeholder: fromAIArgument) {
+	let schema: z.ZodTypeAny;
+
+	if (placeholder.type === 'string') {
+		schema = z.string();
+	} else if (placeholder.type === 'number') {
+		schema = z.number();
+	} else if (placeholder.type === 'boolean') {
+		schema = z.boolean();
+	} else if (placeholder.type === 'json') {
+		schema = z.record(z.any());
+	} else if (placeholder.type === 'date') {
+		schema = z.date();
+	} else {
+		schema = z.string();
+	}
+
+	if (placeholder.description) {
+		schema = schema.describe(placeholder.description);
+	}
+
+	return schema;
+}
+
+function getDescription(node: INodeType, nodeParameters: INodeParameters) {
+	const manualDescription = nodeParameters.toolDescription as string;
+
+	if (nodeParameters.descriptionType === 'auto') {
+		const resource = nodeParameters.resource as string;
+		const operation = nodeParameters.operation as string;
+		let description = node.description.description;
+		if (resource) {
+			description += `\n Resource: ${resource}`;
+		}
+		if (operation) {
+			description += `\n Operation: ${operation}`;
+		}
+		return description.trim();
+	}
+	if (nodeParameters.descriptionType === 'manual') {
+		return manualDescription ?? node.description.description;
+	}
+
+	return node.description.description;
 }
 
 /**
- * Decodes an encoded key back to its original dot-notated form.
- * @param {string} key - The encoded key to decode.
- * @returns {string} The decoded, dot-notated key.
+ * Parses a string containing JSON and extracts all fromAI function arguments.
+ *
+ * @param jsonString - A string containing JSON with fromAI function calls
+ * @returns An array of fromAIArgument objects
  */
-function decodeDotNotation(key: string): string {
-	// Simply replace double underscores with dots
-	return key.replace(/__/g, '.');
+function parseFromAIArguments(jsonString: string): fromAIArgument[] {
+	/**
+	 * Regular expression to match fromAI function calls, including nested parentheses.
+	 * Explanation:
+	 * $fromAI\(     - Matches the literal string "$fromAI("
+	 * (             - Start of capturing group
+	 *   (?:         - Start of non-capturing group
+	 *     [^()]     - Any character that is not a parenthesis
+	 *     |         - OR
+	 *     \(        - A literal opening parenthesis
+	 *       (?:     - Start of nested non-capturing group
+	 *         [^()] - Any character that is not a parenthesis
+	 *         |     - OR
+	 *         \([^()]*\) - A pair of parentheses with any non-parenthesis characters inside
+	 *       )*      - End of nested group, repeated zero or more times
+	 *     \)        - A literal closing parenthesis
+	 *   )*          - End of non-capturing group, repeated zero or more times
+	 * )             - End of capturing group
+	 * \)            - Matches the closing parenthesis of the function call
+	 */
+	const fromAIRegex = /\$fromAI\(((?:[^()]|\((?:[^()]|\([^()]*\))*\))*)\)/g;
+	const matches = jsonString.matchAll(fromAIRegex);
+	return Array.from(matches).map((match) => parseArguments(match[1]));
 }
 
 /**
- * Recursively traverses an object to find placeholder values.
- * @param {NestedObject} obj - The object to traverse.
- * @param {string[]} path - The current path in the object.
- * @param {Map<string, string>} results - Map to store found placeholders.
- * @returns {Map<string, string>} Updated map of placeholders.
+ * Parses the arguments of a single fromAI function call.
+ *
+ * @param argsString - The string containing the function arguments
+ * @returns A fromAIArgument object with parsed values
  */
-function traverseObject(
-	obj: NestedObject,
-	path: string[] = [],
-	results: Map<string, string> = new Map(),
-): Map<string, string> {
-	for (const [key, value] of Object.entries(obj)) {
-		const currentPath = [...path, key];
-		const fullPath = currentPath.join('.');
+function parseArguments(argsString: string): fromAIArgument {
+	const args: string[] = [];
+	let currentArg = '';
+	let inQuotes = false;
+	let quoteChar = '';
+	let depth = 0;
 
-		if (typeof value === 'string' && value.startsWith("{{ '__PLACEHOLDER")) {
-			// Store placeholder values with their full path
-			results.set(encodeDotNotation(fullPath), value);
-		} else if (Array.isArray(value)) {
-			// Recursively traverse arrays
-			// eslint-disable-next-line @typescript-eslint/no-use-before-define
-			traverseArray(value, currentPath, results);
-		} else if (typeof value === 'object' && value !== null) {
-			// Recursively traverse nested objects, but only if they're not empty
-			if (Object.keys(value).length > 0) {
-				traverseObject(value as NestedObject, currentPath, results);
+	for (let i = 0; i < argsString.length; i++) {
+		const char = argsString[i];
+
+		if (char === "'" || char === '"') {
+			if (!inQuotes) {
+				inQuotes = true;
+				quoteChar = char;
+			} else if (char === quoteChar) {
+				inQuotes = false;
+				quoteChar = '';
 			}
+			currentArg += char;
+		} else if (char === '(' && !inQuotes) {
+			depth++;
+			currentArg += char;
+		} else if (char === ')' && !inQuotes) {
+			depth--;
+			currentArg += char;
+		} else if (char === ',' && !inQuotes && depth === 0) {
+			args.push(currentArg.trim());
+			currentArg = '';
+		} else {
+			currentArg += char;
 		}
 	}
 
-	return results;
-}
-
-/**
- * Recursively traverses an array to find placeholder values.
- * @param {unknown[]} arr - The array to traverse.
- * @param {string[]} path - The current path in the array.
- * @param {Map<string, string>} results - Map to store found placeholders.
- */
-function traverseArray(arr: unknown[], path: string[], results: Map<string, string>): void {
-	arr.forEach((item, index) => {
-		const currentPath = [...path, index.toString()];
-		const fullPath = currentPath.join('.');
-
-		if (typeof item === 'string' && item.startsWith("{{ '__PLACEHOLDER")) {
-			// Store placeholder values with their full path
-			results.set(encodeDotNotation(fullPath), item);
-		} else if (Array.isArray(item)) {
-			// Recursively traverse nested arrays
-			traverseArray(item, currentPath, results);
-		} else if (typeof item === 'object' && item !== null) {
-			// Recursively traverse nested objects
-			traverseObject(item as NestedObject, currentPath, results);
-		}
-	});
-}
-
-/**
- * Builds a nested object structure from matching keys and their values.
- * @param {string} baseKey - The base key to start building from.
- * @param {string[]} matchingKeys - Array of matching keys.
- * @param {Record<string, string>} values - Object containing values for the keys.
- * @returns {Record<string, unknown>} The built nested object structure.
- */
-function buildStructureFromMatches(
-	baseKey: string,
-	matchingKeys: string[],
-	values: Record<string, string>,
-): Record<string, unknown> {
-	const result = {};
-
-	for (const matchingKey of matchingKeys) {
-		const decodedKey = decodeDotNotation(matchingKey);
-		// Extract the part of the key after the base key
-		const remainingPath = decodedKey
-			.slice(baseKey.length)
-			.split('.')
-			.filter((k) => k !== '');
-		let current: Record<string, unknown> = result;
-
-		// Build the nested structure
-		for (let i = 0; i < remainingPath.length - 1; i++) {
-			if (!(remainingPath[i] in current)) {
-				current[remainingPath[i]] = {};
-			}
-			current = current[remainingPath[i]] as Record<string, unknown>;
-		}
-
-		// Set the value at the deepest level
-		const lastKey = remainingPath[remainingPath.length - 1];
-		current[lastKey ?? matchingKey] = values[matchingKey];
+	if (currentArg) {
+		args.push(currentArg.trim());
 	}
 
-	// If no nested structure was created, return the direct value
-	return Object.keys(result).length === 0 ? values[encodeDotNotation(baseKey)] : result;
+	const cleanArgs = args.map((arg) => arg.replace(/^['"]|['"]$/g, ''));
+
+	return {
+		key: cleanArgs[0] || '',
+		description: cleanArgs[1] || undefined,
+		type: cleanArgs[2] || undefined,
+		defaultValue: parseDefaultValue(cleanArgs[3]),
+	};
 }
 
 /**
- * Extracts the description from a placeholder string.
- * @param {string} value - The placeholder string.
- * @returns {string} The extracted description or a default message.
+ * Parses the default value, preserving its original type.
+ *
+ * @param value - The string representation of the default value
+ * @returns The parsed default value as string, number, boolean, or undefined
  */
-function extractPlaceholderDescription(value: string): string {
-	const match = value.match(/{{ '__PLACEHOLDER:\s*(.+?)\s*' }}/);
-	return match ? match[1] : 'No description provided';
+function parseDefaultValue(value: string | undefined): string | number | boolean | undefined {
+	if (value === undefined) return undefined;
+	if (value === 'true') return true;
+	if (value === 'false') return false;
+	if (!isNaN(Number(value))) return Number(value);
+	return value;
 }
 
 /**
@@ -191,87 +218,58 @@ export function createNodeAsTool(
 	ctx: IExecuteFunctions,
 	nodeParameters: INodeParameters,
 ): DynamicStructuredTool {
-	// Find all placeholder values in the node parameters
-	const placeholderValues = traverseObject(nodeParameters);
+	const stringifiedParameters = JSON.stringify(nodeParameters, null, 2);
+	console.log('Stringified parameters:', stringifiedParameters);
+	const parsedArguments = parseFromAIArguments(stringifiedParameters);
+	console.log('parseFromAIArguments output:', parsedArguments);
 
-	// Generate Zod schema from placeholder values
-	const schemaObj: { [key: string]: z.ZodString } = {};
-	for (const [key, value] of placeholderValues.entries()) {
-		const description = extractPlaceholderDescription(value);
-		schemaObj[key] = z.string().describe(description);
+	for (const argument of parsedArguments) {
+		const nameValidationRegex = /^[a-zA-Z0-9_-]{1,64}$/;
+		if (!nameValidationRegex.test(argument.key)) {
+			const error = new Error(`Parameter name \`${argument.key}\` is invalid.`);
+			throw new NodeOperationError(ctx.getNode(), error, {
+				description:
+					'Invalid parameter name, must be between 1 and 64 characters long and only contain lowercase letters, uppercase letters, numbers, underscores, and hyphens',
+			});
+		}
 	}
-	const schema = z.object(schemaObj).required();
+	// Generate Zod schema from placeholder values
+	const schemaObj = parsedArguments.reduce((acc: Record<string, z.ZodTypeAny>, placeholder) => {
+		acc[placeholder.key] = makeParameterZodSchema(placeholder);
+		return acc;
+	}, {});
 
-	// Get the tool description from node parameters or use the default
-	const toolDescription = ctx.getNodeParameter(
-		'toolDescription',
-		0,
-		node.description.description,
-	) as string;
-	type GetNodeParameterMethod = IExecuteFunctions['getNodeParameter'];
+	const schema = z.object(schemaObj).required();
+	const description = getDescription(node, nodeParameters);
+	const name = ctx.getNode().name.replace(/ /g, '_') ?? node.description.name;
 
 	const tool = new DynamicStructuredTool({
-		name: node.description.name,
-		description: toolDescription ? toolDescription : node.description.description,
+		name,
+		description,
 		schema,
 		func: async (functionArgs: z.infer<typeof schema>) => {
-			// Create a proxy for ctx to soft-override parameters with values from the LLM
-			const ctxProxy = new Proxy(ctx, {
-				get(target: IExecuteFunctions, prop: string | symbol, receiver: unknown) {
-					if (prop === 'getNodeParameter') {
-						// Override getNodeParameter method
-						// eslint-disable-next-line @typescript-eslint/unbound-method
-						return new Proxy(target.getNodeParameter, {
-							apply(
-								targetMethod: GetNodeParameterMethod,
-								thisArg: unknown,
-								argumentsList: Parameters<GetNodeParameterMethod>,
-							): ReturnType<GetNodeParameterMethod> {
-								const [key] = argumentsList;
-								if (typeof key !== 'string') {
-									// If key is not a string, use the original method
-									return Reflect.apply(targetMethod, thisArg, argumentsList);
-								}
+			const { index } = ctx.addInputData(NodeConnectionType.AiTool, [[{ json: functionArgs }]]);
 
-								const encodedKey = encodeDotNotation(key);
-								// Check if the full key or any more specific key is a placeholder
-								const matchingKeys = Array.from(placeholderValues.keys()).filter((k) =>
-									k.startsWith(encodedKey),
-								);
+			try {
+				// Execute the node with the proxied context
+				const result = await node.execute?.bind(ctx)();
 
-								if (matchingKeys.length > 0) {
-									// If there are matching keys, build the structure using args
-									const res = buildStructureFromMatches(encodedKey, matchingKeys, functionArgs);
-									// Return either the specific value or the entire built structure
-									return res?.[decodeDotNotation(key)] ?? res;
-								}
+				// Process and map the results
+				const mappedResults = result?.[0]?.flatMap((item) => item.json);
 
-								// If no placeholder is found, use the original function
-								return Reflect.apply(targetMethod, thisArg, argumentsList);
-							},
-						});
-					}
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-					return Reflect.get(target, prop, receiver);
-				},
-			});
+				// Add output data to the context
+				ctx.addOutputData(NodeConnectionType.AiTool, index, [
+					[{ json: { response: mappedResults } }],
+				]);
 
-			// Add input data to the context
-			ctxProxy.addInputData(NodeConnectionType.AiTool, [[{ json: functionArgs }]]);
-
-			// Execute the node with the proxied context
-			const result = await node.execute?.bind(ctxProxy)();
-
-			// Process and map the results
-			const mappedResults = result?.[0]?.flatMap((item) => item.json);
-
-			// Add output data to the context
-			ctxProxy.addOutputData(NodeConnectionType.AiTool, 0, [
-				[{ json: { response: mappedResults } }],
-			]);
-
-			// Return the stringified results
-			return JSON.stringify(mappedResults);
+				// Return the stringified results
+				return JSON.stringify(mappedResults);
+			} catch (error) {
+				console.log('🚀 ~ error:', error);
+				const nodeErrror = new NodeOperationError(ctx.getNode(), error as Error);
+				ctx.addOutputData(NodeConnectionType.AiTool, index, nodeErrror);
+				return 'Error during node execution: ' + nodeErrror.description;
+			}
 		},
 	});
 

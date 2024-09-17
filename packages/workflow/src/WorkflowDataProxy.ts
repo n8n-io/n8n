@@ -5,22 +5,22 @@
 import { DateTime, Duration, Interval, Settings } from 'luxon';
 import * as jmespath from 'jmespath';
 
-import {
-	type IDataObject,
-	type IExecuteData,
-	type INodeExecutionData,
-	type INodeParameters,
-	type IPairedItemData,
-	type IRunExecutionData,
-	type ISourceData,
-	type ITaskData,
-	type IWorkflowDataProxyAdditionalKeys,
-	type IWorkflowDataProxyData,
-	type INodeParameterResourceLocator,
-	type NodeParameterValueType,
-	type WorkflowExecuteMode,
-	type ProxyInput,
-	NodeConnectionType,
+import { NodeConnectionType } from './Interfaces';
+import type {
+	IDataObject,
+	IExecuteData,
+	INodeExecutionData,
+	INodeParameters,
+	IPairedItemData,
+	IRunExecutionData,
+	ISourceData,
+	ITaskData,
+	IWorkflowDataProxyAdditionalKeys,
+	IWorkflowDataProxyData,
+	INodeParameterResourceLocator,
+	NodeParameterValueType,
+	WorkflowExecuteMode,
+	ProxyInput,
 } from './Interfaces';
 import * as NodeHelpers from './NodeHelpers';
 import { ExpressionError, type ExpressionErrorOptions } from './errors/expression.error';
@@ -1302,6 +1302,38 @@ export class WorkflowDataProxy {
 					that.contextNodeName,
 				);
 				return dataProxy.getDataProxy();
+			},
+			$fromAI: (
+				name: string,
+				description?: string,
+				type: string = 'string',
+				defaultValue?: unknown,
+			) => {
+				const stringifiedName = name.toString();
+
+				const nameValidationRegex = /^[a-zA-Z0-9_-]{1,64}$/;
+				if (!nameValidationRegex.test(stringifiedName)) {
+					throw new ExpressionError(
+						'Invalid parameter name, must be between 1 and 64 characters long and only contain lowercase letters, uppercase letters, numbers, underscores, and hyphens',
+						{
+							runIndex: that.runIndex,
+							itemIndex: that.itemIndex,
+						},
+					);
+				}
+				const placeholdersDataInputData =
+					that.runExecutionData?.resultData.runData[that.contextNodeName]?.[0].inputOverride?.[
+						NodeConnectionType.AiTool
+					]?.[0]?.[0].json;
+
+				if (Boolean(!placeholdersDataInputData)) {
+					throw new ExpressionError('No execution data available', {
+						runIndex: that.runIndex,
+						itemIndex: that.itemIndex,
+						type: 'no_execution_data',
+					});
+				}
+				return placeholdersDataInputData?.[stringifiedName] ?? defaultValue;
 			},
 			$items: (nodeName?: string, outputIndex?: number, runIndex?: number) => {
 				if (nodeName === undefined) {
