@@ -4,6 +4,7 @@ import type {
 	IStartRunData,
 	IWorkflowDb,
 } from '@/Interface';
+
 import type {
 	IRunData,
 	IRunExecutionData,
@@ -15,6 +16,7 @@ import type {
 	INode,
 	IDataObject,
 } from 'n8n-workflow';
+
 import { NodeConnectionType } from 'n8n-workflow';
 
 import { useToast } from '@/composables/useToast';
@@ -40,6 +42,8 @@ import { useI18n } from '@/composables/useI18n';
 import { get } from 'lodash-es';
 import { useExecutionsStore } from '@/stores/executions.store';
 import type { PushPayload } from '@n8n/api-types';
+
+const FORM_RELOAD = 'n8n_redirect_to_next_form_test_page';
 
 export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof useRouter> }) {
 	const nodeHelpers = useNodeHelpers();
@@ -272,33 +276,14 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				};
 			})();
 
-			const shouldShowForm = (() => {
-				return (node: INode) => {
-					const workflowTriggerNodes = workflow
-						.getTriggerNodes()
-						.map((triggerNode) => triggerNode.name);
-
-					const showForm =
-						options.destinationNode === node.name ||
-						directParentNodes.includes(node.name) ||
-						workflowTriggerNodes.some((triggerNode) =>
-							workflowsStore.isNodeInOutgoingNodeConnections(triggerNode, node.name),
-						);
-					return showForm;
-				};
-			})();
-
 			displayForm({
 				nodes: workflowData.nodes,
 				runData: workflowsStore.getWorkflowExecution?.data?.resultData?.runData,
 				destinationNode: options.destinationNode,
 				pinData,
 				directParentNodes,
-				formWaitingUrl: rootStore.formWaitingUrl,
-				executionId: runWorkflowApiResponse.executionId,
 				source: options.source,
 				getTestUrl,
-				shouldShowForm,
 			});
 
 			await useExternalHooks().run('workflowRun.runWorkflow', {
@@ -314,14 +299,14 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 		}
 	}
 
-	function gerWaitNodeFormResumeUrl(node: INode, executionId: string) {
+	function getFormResumeUrl(node: INode, executionId: string) {
 		const { webhookSuffix } = (node.parameters.options ?? {}) as IDataObject;
 		const suffix = webhookSuffix && typeof webhookSuffix !== 'object' ? `/${webhookSuffix}` : '';
 		const testUrl = `${rootStore.formWaitingUrl}/${executionId}${suffix}`;
 		return testUrl;
 	}
 
-	async function runWorkflowAndResolveWaitingNodesData(options: {
+	async function runWorkflowResolvePending(options: {
 		destinationNode?: string;
 		triggerNode?: string;
 		nodeData?: ITaskData;
@@ -382,18 +367,20 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 						if (
 							waitingNode &&
 							waitingNode.type === WAIT_NODE_TYPE &&
-							waitingNode.parameters.resume === 'form' &&
-							!shownForms.includes(waitingNode.name)
+							waitingNode.parameters.resume === 'form'
 						) {
-							const testUrl = gerWaitNodeFormResumeUrl(waitingNode, executionId as string);
-							if (isFormShown) {
-								localStorage.setItem('n8n_redirect_to_next_form_test_page', testUrl);
-							} else {
-								isFormShown = true;
-								openPopUpWindow(testUrl);
-							}
+							localStorage.removeItem(FORM_RELOAD);
+							const testUrl = getFormResumeUrl(waitingNode, executionId as string);
 
-							shownForms.push(waitingNode.name);
+							if (isFormShown) {
+								localStorage.setItem(FORM_RELOAD, testUrl);
+							} else {
+								if (!shownForms.includes(waitingNode.name)) {
+									isFormShown = true;
+									openPopUpWindow(testUrl);
+									shownForms.push(waitingNode.name);
+								}
+							}
 						}
 					}
 				}, 2000);
@@ -530,7 +517,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 	return {
 		consolidateRunDataAndStartNodes,
 		runWorkflow,
-		runWorkflowAndResolveWaitingNodesData,
+		runWorkflowResolvePending,
 		runWorkflowApi,
 		stopCurrentExecution,
 		stopWaitingForWebhook,
