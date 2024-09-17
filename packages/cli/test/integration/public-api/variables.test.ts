@@ -1,8 +1,9 @@
-import { setupTestServer } from '@test-integration/utils';
+import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { createOwnerWithApiKey } from '@test-integration/db/users';
 import { createVariable, getVariableOrFail } from '@test-integration/db/variables';
+import { setupTestServer } from '@test-integration/utils';
+
 import * as testDb from '../shared/test-db';
-import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 
 describe('Variables in Public API', () => {
 	const testServer = setupTestServer({ endpointGroups: ['publicApi'] });
@@ -21,7 +22,6 @@ describe('Variables in Public API', () => {
 			 * Arrange
 			 */
 			testServer.license.enable('feat:variables');
-			const { apiKey } = await createOwnerWithApiKey();
 			const variables = await Promise.all([createVariable(), createVariable(), createVariable()]);
 
 			/**
@@ -47,7 +47,6 @@ describe('Variables in Public API', () => {
 			/**
 			 * Arrange
 			 */
-			const { apiKey } = await createOwnerWithApiKey();
 
 			/**
 			 * Act
@@ -71,7 +70,6 @@ describe('Variables in Public API', () => {
 			 * Arrange
 			 */
 			testServer.license.enable('feat:variables');
-			const { apiKey } = await createOwnerWithApiKey();
 			const variablePayload = { key: 'key', value: 'value' };
 
 			/**

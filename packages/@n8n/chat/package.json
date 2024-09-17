@@ -1,6 +1,6 @@
 {
   "name": "@n8n/chat",
-  "version": "0.24.0",
+  "version": "0.25.0",
   "scripts": {
     "dev": "pnpm run storybook",
     "build": "pnpm build:vite && pnpm build:bundle",
@@ -12,7 +12,8 @@
     "typecheck": "vue-tsc --noEmit",
     "lint": "eslint . --ext .js,.ts,.vue --quiet",
     "lintfix": "eslint . --ext .js,.ts,.vue --fix",
-    "format": "prettier --write src/",
+    "format": "biome format --write src .storybook && prettier --write src/ --ignore-path ../../.prettierignore",
+    "format:check": "biome ci src .storybook && prettier --check src/ --ignore-path ../../.prettierignore",
     "storybook": "storybook dev -p 6006 --no-open",
     "build:storybook": "storybook build"
   },
@@ -36,7 +37,7 @@
   },
   "dependencies": {
     "@vueuse/core": "^10.11.0",
-    "highlight.js": "^11.8.0",
+    "highlight.js": "catalog:frontend",
     "markdown-it-link-attributes": "^4.0.1",
     "uuid": "catalog:",
     "vue": "catalog:frontend",

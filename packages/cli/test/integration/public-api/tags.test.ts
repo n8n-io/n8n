@@ -1,11 +1,12 @@
 import { Container } from 'typedi';
+
 import { TagRepository } from '@/databases/repositories/tag.repository';
 
-import * as utils from '../shared/utils/';
-import * as testDb from '../shared/test-db';
-import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
 import { createTag } from '../shared/db/tags';
+import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
+import * as testDb from '../shared/test-db';
 import type { SuperAgentTest } from '../shared/types';
+import * as utils from '../shared/utils/';
 
 let ownerApiKey: string;
 let memberApiKey: string;

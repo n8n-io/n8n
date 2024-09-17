@@ -115,7 +115,7 @@ export class GmailTrigger implements INodeType {
 						},
 						default: [],
 						description:
-							'Only return messages with labels that match all of the specified label IDs. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							'Only return messages with labels that match all of the specified label IDs. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Search',
@@ -361,7 +361,7 @@ export class GmailTrigger implements INodeType {
 		const nextPollPossibleDuplicates = (responseData as IDataObject[]).reduce(
 			(duplicates, { json }) => {
 				const emailDate = getEmailDateAsSeconds(json as IDataObject);
-				return emailDate === lastEmailDate
+				return emailDate <= lastEmailDate
 					? duplicates.concat((json as IDataObject).id as string)
 					: duplicates;
 			},

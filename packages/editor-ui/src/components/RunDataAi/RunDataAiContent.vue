@@ -2,7 +2,12 @@
 import type { IAiData, IAiDataContent } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import type { INodeExecutionData, INodeTypeDescription, NodeConnectionType } from 'n8n-workflow';
+import type {
+	INodeExecutionData,
+	INodeTypeDescription,
+	NodeConnectionType,
+	NodeError,
+} from 'n8n-workflow';
 import { computed } from 'vue';
 import NodeIcon from '@/components/NodeIcon.vue';
 import AiRunContentBlock from './AiRunContentBlock.vue';
@@ -85,6 +90,16 @@ const runMeta = computed(() => {
 	}
 	return extractRunMeta(outputRun.value);
 });
+
+const executionRunData = computed(() => {
+	return workflowsStore.getWorkflowExecution?.data?.resultData?.runData;
+});
+
+const outputError = computed(() => {
+	return executionRunData.value?.[props.inputData.node]?.[props.inputData.runIndex]?.error as
+		| NodeError
+		| undefined;
+});
 </script>
 
 <template>
@@ -155,7 +170,10 @@ const runMeta = computed(() => {
 		</header>
 
 		<main v-for="(run, index) in props.inputData.data" :key="index" :class="$style.content">
-			<AiRunContentBlock :run-data="run" />
+			<AiRunContentBlock
+				:run-data="run"
+				:error="run.inOut === 'output' ? outputError : undefined"
+			/>
 		</main>
 	</div>
 </template>

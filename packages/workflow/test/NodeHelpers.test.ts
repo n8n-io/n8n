@@ -13,6 +13,7 @@ import {
 	isSingleExecution,
 	isSubNodeType,
 	applyDeclarativeNodeOptionParameters,
+	convertNodeToAiTool,
 } from '@/NodeHelpers';
 
 describe('NodeHelpers', () => {
@@ -3634,6 +3635,91 @@ describe('NodeHelpers', () => {
 			const nodeType = nodeTypeName as unknown as INodeType;
 			applyDeclarativeNodeOptionParameters(nodeType);
 			expect(nodeType.description.properties).toEqual([]);
+		});
+	});
+
+	describe('convertNodeToAiTool', () => {
+		let fullNodeWrapper: { description: INodeTypeDescription };
+
+		beforeEach(() => {
+			fullNodeWrapper = {
+				description: {
+					displayName: 'Test Node',
+					name: 'testNode',
+					group: ['test'],
+					description: 'A test node',
+					version: 1,
+					defaults: {},
+					inputs: [NodeConnectionType.Main],
+					outputs: [NodeConnectionType.Main],
+					properties: [],
+				},
+			};
+		});
+
+		it('should modify the name and displayName correctly', () => {
+			const result = convertNodeToAiTool(fullNodeWrapper);
+			expect(result.description.name).toBe('testNodeTool');
+			expect(result.description.displayName).toBe('Test Node Tool (wrapped)');
+		});
+
+		it('should update inputs and outputs', () => {
+			const result = convertNodeToAiTool(fullNodeWrapper);
+			expect(result.description.inputs).toEqual([]);
+			expect(result.description.outputs).toEqual([NodeConnectionType.AiTool]);
+		});
+
+		it('should remove the usableAsTool property', () => {
+			fullNodeWrapper.description.usableAsTool = true;
+			const result = convertNodeToAiTool(fullNodeWrapper);
+			expect(result.description.usableAsTool).toBeUndefined();
+		});
+
+		it("should add toolDescription property if it doesn't exist", () => {
+			const result = convertNodeToAiTool(fullNodeWrapper);
+			const toolDescriptionProp = result.description.properties.find(
+				(prop) => prop.name === 'toolDescription',
+			);
+			expect(toolDescriptionProp).toBeDefined();
+			expect(toolDescriptionProp?.type).toBe('string');
+			expect(toolDescriptionProp?.default).toBe(fullNodeWrapper.description.description);
+		});
+
+		it('should not add toolDescription property if it already exists', () => {
+			const toolDescriptionProp: INodeProperties = {
+				displayName: 'Tool Description',
+				name: 'toolDescription',
+				type: 'string',
+				default: 'Existing description',
+			};
+			fullNodeWrapper.description.properties = [toolDescriptionProp];
+			const result = convertNodeToAiTool(fullNodeWrapper);
+			expect(result.description.properties).toHaveLength(1);
+			expect(result.description.properties[0]).toEqual(toolDescriptionProp);
+		});
+
+		it('should set codex categories correctly', () => {
+			const result = convertNodeToAiTool(fullNodeWrapper);
+			expect(result.description.codex).toEqual({
+				categories: ['AI'],
+				subcategories: {
+					AI: ['Tools'],
+					Tools: ['Other Tools'],
+				},
+			});
+		});
+
+		it('should preserve existing properties', () => {
+			const existingProp: INodeProperties = {
+				displayName: 'Existing Prop',
+				name: 'existingProp',
+				type: 'string',
+				default: 'test',
+			};
+			fullNodeWrapper.description.properties = [existingProp];
+			const result = convertNodeToAiTool(fullNodeWrapper);
+			expect(result.description.properties).toHaveLength(2); // Existing prop + toolDescription
+			expect(result.description.properties).toContainEqual(existingProp);
 		});
 	});
 });

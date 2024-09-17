@@ -47,6 +47,7 @@ describe('GlobalConfig', () => {
 				poolSize: 2,
 				port: 5432,
 				schema: 'public',
+				connectionTimeoutMs: 20_000,
 				ssl: {
 					ca: '',
 					cert: '',
@@ -175,6 +176,7 @@ describe('GlobalConfig', () => {
 			formTest: 'form-test',
 			formWaiting: 'form-waiting',
 			payloadSizeMax: 16,
+			formDataFileSizeMax: 200,
 			rest: 'rest',
 			webhook: 'webhook',
 			webhookTest: 'webhook-test',

@@ -1,12 +1,16 @@
-import { ActiveExecutions } from '@/active-executions';
+import { mock } from 'jest-mock-extended';
+import type {
+	IExecuteResponsePromiseData,
+	IRun,
+	IWorkflowExecutionDataProcess,
+} from 'n8n-workflow';
+import { createDeferredPromise } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
 import { v4 as uuid } from 'uuid';
-import type { IExecuteResponsePromiseData, IRun } from 'n8n-workflow';
-import { createDeferredPromise } from 'n8n-workflow';
-import type { IWorkflowExecutionDataProcess } from '@/interfaces';
-import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { mock } from 'jest-mock-extended';
+
+import { ActiveExecutions } from '@/active-executions';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
+import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { mockInstance } from '@test/mocking';
 
 const FAKE_EXECUTION_ID = '15';
@@ -81,12 +85,12 @@ describe('ActiveExecutions', () => {
 	test('Should attach and resolve response promise to existing execution', async () => {
 		const newExecution = mockExecutionData();
 		await activeExecutions.add(newExecution, FAKE_EXECUTION_ID);
-		const deferredPromise = await mockDeferredPromise();
+		const deferredPromise = mockDeferredPromise();
 		activeExecutions.attachResponsePromise(FAKE_EXECUTION_ID, deferredPromise);
 		const fakeResponse = { data: { resultData: { runData: {} } } };
 		activeExecutions.resolveResponsePromise(FAKE_EXECUTION_ID, fakeResponse);
 
-		await expect(deferredPromise.promise()).resolves.toEqual(fakeResponse);
+		await expect(deferredPromise.promise).resolves.toEqual(fakeResponse);
 	});
 
 	test('Should remove an existing execution', async () => {
@@ -159,5 +163,5 @@ function mockFullRunData(): IRun {
 
 // eslint-disable-next-line @typescript-eslint/promise-function-async
 const mockCancelablePromise = () => new PCancelable<IRun>((resolve) => resolve());
-// eslint-disable-next-line @typescript-eslint/promise-function-async
+
 const mockDeferredPromise = () => createDeferredPromise<IExecuteResponsePromiseData>();

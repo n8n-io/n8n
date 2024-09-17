@@ -90,7 +90,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 
 		setTimeout(() => {
 			if (creatorView) {
-				openNodeCreator({
+				setNodeCreatorState({
 					createNodeActive: true,
 					nodeCreatorView: creatorView,
 				});
@@ -110,7 +110,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		});
 	}
 
-	function openNodeCreator({
+	function setNodeCreatorState({
 		source,
 		createNodeActive,
 		nodeCreatorView,
@@ -200,7 +200,6 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		uiStore.lastSelectedNode = sourceNode.name;
 		uiStore.lastSelectedNodeEndpointUuid = connection.sourceHandle ?? null;
 		uiStore.lastSelectedNodeOutputIndex = index;
-		// canvasStore.newNodeInsertPosition = null;
 
 		if (isVueFlowConnection(connection)) {
 			uiStore.lastInteractedWithNodeConnection = connection;
@@ -208,7 +207,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		uiStore.lastInteractedWithNodeHandle = connection.sourceHandle ?? null;
 		uiStore.lastInteractedWithNodeId = sourceNode.id;
 
-		openNodeCreator({
+		setNodeCreatorState({
 			source: eventSource,
 			createNodeActive: true,
 			nodeCreatorView,
@@ -231,7 +230,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		ndvStore.activeNodeName = null;
 		setSelectedView(TRIGGER_NODE_CREATOR_VIEW);
 		setShowScrim(true);
-		openNodeCreator({
+		setNodeCreatorState({
 			source,
 			createNodeActive: true,
 			nodeCreatorView: TRIGGER_NODE_CREATOR_VIEW,
@@ -276,7 +275,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		setOpenSource,
 		setActions,
 		setMergeNodes,
-		openNodeCreator,
+		setNodeCreatorState,
 		openSelectiveNodeCreator,
 		openNodeCreatorForConnectingNode,
 		openNodeCreatorForTriggerNodes,

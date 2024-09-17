@@ -1,7 +1,7 @@
 import { Get, Post, RestController } from '@/decorators';
-import { AuthenticatedRequest, MFA } from '@/requests';
-import { MfaService } from '@/mfa/mfa.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { MfaService } from '@/mfa/mfa.service';
+import { AuthenticatedRequest, MFA } from '@/requests';
 
 @RestController('/mfa')
 export class MFAController {

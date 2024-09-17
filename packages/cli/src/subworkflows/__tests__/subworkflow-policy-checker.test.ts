@@ -1,29 +1,40 @@
-import { v4 as uuid } from 'uuid';
-import type { Workflow } from 'n8n-workflow';
-import { SubworkflowOperationError } from 'n8n-workflow';
-import { Project } from '@/databases/entities/project';
-import { OwnershipService } from '@/services/ownership.service';
-import { mockInstance } from '@test/mocking';
-import config from '@/config';
+import type { GlobalConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
+import type { INode, Workflow } from 'n8n-workflow';
+import { v4 as uuid } from 'uuid';
+
+import type { Project } from '@/databases/entities/project';
+import type { User } from '@/databases/entities/user';
+import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
+import {
+	SUBWORKFLOW_DENIAL_BASE_DESCRIPTION,
+	SubworkflowPolicyDenialError,
+} from '@/errors/subworkflow-policy-denial.error';
+import type { License } from '@/license';
+import type { AccessService } from '@/services/access.service';
+import { OwnershipService } from '@/services/ownership.service';
+import type { UrlService } from '@/services/url.service';
+import { mockInstance } from '@test/mocking';
+
 import { SubworkflowPolicyChecker } from '../subworkflow-policy-checker.service';
 
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
-import type { License } from '@/license';
-import type { GlobalConfig } from '@n8n/config';
-
-const toTargetCallErrorMsg = (subworkflowId: string) =>
-	`Target workflow ID ${subworkflowId} may not be called`;
-
-const ownershipService = mockInstance(OwnershipService);
-const memberPersonalProject = mock<Project>();
-
 describe('SubworkflowPolicyChecker', () => {
+	const ownershipService = mockInstance(OwnershipService);
 	const license = mock<License>();
 	const globalConfig = mock<GlobalConfig>({
 		workflows: { callerPolicyDefaultOption: 'workflowsFromSameOwner' },
 	});
-	const checker = new SubworkflowPolicyChecker(mock(), license, ownershipService, globalConfig);
+	const accessService = mock<AccessService>();
+	const urlService = mock<UrlService>();
+
+	const checker = new SubworkflowPolicyChecker(
+		mock(),
+		license,
+		ownershipService,
+		globalConfig,
+		accessService,
+		urlService,
+	);
 
 	beforeEach(() => {
 		license.isSharingEnabled.mockReturnValue(true);
@@ -34,59 +45,28 @@ describe('SubworkflowPolicyChecker', () => {
 	});
 
 	describe('no caller policy', () => {
-		test('should fall back to N8N_WORKFLOW_CALLER_POLICY_DEFAULT_OPTION', async () => {
-			const checker = new SubworkflowPolicyChecker(
-				mock(),
-				license,
-				ownershipService,
-				mock<GlobalConfig>({ workflows: { callerPolicyDefaultOption: 'none' } }),
-			);
+		it('should fall back to `N8N_WORKFLOW_CALLER_POLICY_DEFAULT_OPTION`', async () => {
+			globalConfig.workflows.callerPolicyDefaultOption = 'none';
 
 			const parentWorkflow = mock<WorkflowEntity>();
-			const subworkflow = mock<Workflow>(); // no caller policy
+			const subworkflowId = 'subworkflow-id';
+			const subworkflow = mock<Workflow>({ id: subworkflowId }); // no caller policy
 
-			ownershipService.getWorkflowProjectCached.mockResolvedValue(memberPersonalProject);
+			const parentWorkflowProject = mock<Project>();
+			const subworkflowProject = mock<Project>({ type: 'team' });
+			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(parentWorkflowProject);
+			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(subworkflowProject);
 
 			const check = checker.check(subworkflow, parentWorkflow.id);
 
-			await expect(check).rejects.toThrow(toTargetCallErrorMsg(subworkflow.id));
+			await expect(check).rejects.toThrowError(SubworkflowPolicyDenialError);
 
-			config.load(config.default);
+			globalConfig.workflows.callerPolicyDefaultOption = 'workflowsFromSameOwner';
 		});
 	});
 
-	describe('overridden caller policy', () => {
-		test('if no sharing, should override policy to workflows-from-same-owner', async () => {
-			license.isSharingEnabled.mockReturnValue(false);
-
-			const parentWorkflow = mock<WorkflowEntity>();
-			const subworkflow = mock<Workflow>({ settings: { callerPolicy: 'any' } }); // should be overridden
-
-			const firstProject = mock<Project>({ id: uuid() });
-			const secondProject = mock<Project>({ id: uuid() });
-
-			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(firstProject); // parent workflow
-			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(secondProject); // subworkflow
-
-			const check = checker.check(subworkflow, parentWorkflow.id);
-
-			await expect(check).rejects.toThrow(toTargetCallErrorMsg(subworkflow.id));
-
-			try {
-				await checker.check(subworkflow, uuid());
-			} catch (error) {
-				if (error instanceof SubworkflowOperationError) {
-					expect(error.description).toBe(
-						`An admin for the ${firstProject.name} project can make this change. You may need to tell them the ID of the sub-workflow, which is ${subworkflow.id}`,
-					);
-				}
-			}
-		});
-	});
-
-	describe('workflows-from-list caller policy', () => {
-		// xyz
-		test('should allow if caller list contains parent workflow ID', async () => {
+	describe('`workflows-from-list` caller policy', () => {
+		it('should allow if caller list contains parent workflow ID', async () => {
 			const parentWorkflow = mock<WorkflowEntity>({ id: uuid() });
 
 			const subworkflow = mock<Workflow>({
@@ -97,39 +77,62 @@ describe('SubworkflowPolicyChecker', () => {
 			});
 
 			const parentWorkflowProject = mock<Project>({ id: uuid() });
-			const subworkflowOwner = mock<Project>({ id: uuid() });
-			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(parentWorkflowProject); // parent workflow
-			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(subworkflowOwner); // subworkflow
+			const subworkflowProject = mock<Project>({ id: uuid() });
+			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(parentWorkflowProject);
+			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(subworkflowProject);
 
 			const check = checker.check(subworkflow, parentWorkflow.id);
 
 			await expect(check).resolves.not.toThrow();
 		});
 
-		test('should deny if caller list does not contain parent workflow ID', async () => {
-			const parentWorkflow = mock<WorkflowEntity>();
+		it('should deny if caller list does not contain parent workflow ID', async () => {
+			const parentWorkflow = mock<WorkflowEntity>({ id: 'parent-workflow-id' });
 
+			const parentWorkflowProject = mock<Project>({ id: uuid() });
+			const subworkflowProject = mock<Project>({ id: uuid(), type: 'team' });
+			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(parentWorkflowProject);
+			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(subworkflowProject);
+
+			const subworkflowId = 'subworkflow-id';
 			const subworkflow = mock<Workflow>({
+				id: subworkflowId,
 				settings: { callerPolicy: 'workflowsFromAList', callerIds: 'xyz' },
 			});
 
 			const check = checker.check(subworkflow, parentWorkflow.id);
 
-			await expect(check).rejects.toThrow();
+			await expect(check).rejects.toThrowError(SubworkflowPolicyDenialError);
 		});
 	});
 
-	describe('any caller policy', () => {
-		test('should not throw', async () => {
+	describe('`any` caller policy', () => {
+		it('if no sharing, should be overriden to `workflows-from-same-owner`', async () => {
+			license.isSharingEnabled.mockReturnValueOnce(false);
+
+			const parentWorkflow = mock<WorkflowEntity>();
+			const subworkflowId = 'subworkflow-id';
+			const subworkflow = mock<Workflow>({ id: subworkflowId, settings: { callerPolicy: 'any' } }); // should be overridden
+
+			const parentWorkflowProject = mock<Project>({ id: uuid() });
+			const subworkflowProject = mock<Project>({ id: uuid(), type: 'team' });
+
+			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(parentWorkflowProject);
+			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(subworkflowProject);
+
+			const check = checker.check(subworkflow, parentWorkflow.id);
+
+			await expect(check).rejects.toThrowError(SubworkflowPolicyDenialError);
+		});
+
+		it('should not throw on a regular subworkflow call', async () => {
 			const parentWorkflow = mock<WorkflowEntity>({ id: uuid() });
 			const subworkflow = mock<Workflow>({ settings: { callerPolicy: 'any' } });
 
 			const parentWorkflowProject = mock<Project>({ id: uuid() });
-			const subworkflowOwner = mock<Project>({ id: uuid() });
-			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(parentWorkflowProject); // parent workflow
-			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(subworkflowOwner); // subworkflow
-
-			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(new Project());
+			const subworkflowProject = mock<Project>({ id: uuid() });
+			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(parentWorkflowProject);
+			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(subworkflowProject);
 
 			const check = checker.check(subworkflow, parentWorkflow.id);
 
@@ -137,34 +140,151 @@ describe('SubworkflowPolicyChecker', () => {
 		});
 	});
 
-	describe('workflows-from-same-owner caller policy', () => {
-		test('should deny if the two workflows are owned by different users', async () => {
+	describe('`workflows-from-same-owner` caller policy', () => {
+		it('should deny if the two workflows are owned by different projects', async () => {
 			const parentWorkflowProject = mock<Project>({ id: uuid() });
-			const subworkflowOwner = mock<Project>({ id: uuid() });
+			const subworkflowProject = mock<Project>({ id: uuid(), type: 'team' });
 
-			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(parentWorkflowProject); // parent workflow
-			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(subworkflowOwner); // subworkflow
+			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(parentWorkflowProject);
+			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(subworkflowProject);
 
-			const subworkflow = mock<Workflow>({ settings: { callerPolicy: 'workflowsFromSameOwner' } });
+			const subworkflowId = 'subworkflow-id';
+			const subworkflow = mock<Workflow>({
+				id: subworkflowId,
+				settings: { callerPolicy: 'workflowsFromSameOwner' },
+			});
 
 			const check = checker.check(subworkflow, uuid());
 
-			await expect(check).rejects.toThrow(toTargetCallErrorMsg(subworkflow.id));
+			await expect(check).rejects.toThrowError(SubworkflowPolicyDenialError);
 		});
 
-		test('should allow if both workflows are owned by the same user', async () => {
+		it('should allow if both workflows are owned by the same project', async () => {
 			const parentWorkflow = mock<WorkflowEntity>();
 
 			const bothWorkflowsProject = mock<Project>({ id: uuid() });
 
-			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(bothWorkflowsProject); // parent workflow
-			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(bothWorkflowsProject); // subworkflow
+			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(bothWorkflowsProject); // parent workflow project
+			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(bothWorkflowsProject); // subworkflow project
 
 			const subworkflow = mock<Workflow>({ settings: { callerPolicy: 'workflowsFromSameOwner' } });
 
 			const check = checker.check(subworkflow, parentWorkflow.id);
 
 			await expect(check).resolves.not.toThrow();
+		});
+	});
+
+	describe('error details', () => {
+		it('should contain description for accessible case', async () => {
+			const parentWorkflow = mock<WorkflowEntity>({ id: uuid() });
+			const subworkflowId = 'subworkflow-id';
+			const subworkflow = mock<Workflow>({ id: subworkflowId, settings: { callerPolicy: 'none' } });
+
+			const parentWorkflowProject = mock<Project>({ id: uuid() });
+			const subworkflowProject = mock<Project>({ id: uuid() });
+			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(parentWorkflowProject);
+			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(subworkflowProject);
+
+			const subworkflowProjectOwner = mock<User>({ id: uuid() });
+			ownershipService.getPersonalProjectOwnerCached.mockResolvedValueOnce(subworkflowProjectOwner);
+			accessService.hasReadAccess.mockResolvedValueOnce(true);
+
+			const instanceUrl = 'https://n8n.test.com';
+			urlService.getInstanceBaseUrl.mockReturnValueOnce(instanceUrl);
+
+			const check = checker.check(
+				subworkflow,
+				parentWorkflow.id,
+				mock<INode>(),
+				subworkflowProjectOwner.id,
+			);
+
+			await expect(check).rejects.toMatchObject({
+				message: `The sub-workflow (${subworkflowId}) cannot be called by this workflow`,
+				description: `${SUBWORKFLOW_DENIAL_BASE_DESCRIPTION} <a href=\"${instanceUrl}/workflow/subworkflow-id\" target=\"_blank\">Update sub-workflow settings</a> to allow other workflows to call it.`,
+			});
+		});
+
+		it('should contain description for inaccessible personal project case', async () => {
+			const parentWorkflow = mock<WorkflowEntity>({ id: uuid() });
+			const subworkflowId = 'subworkflow-id';
+			const subworkflow = mock<Workflow>({ id: subworkflowId, settings: { callerPolicy: 'none' } });
+
+			const parentWorkflowProject = mock<Project>({ id: uuid() });
+			const subworkflowProject = mock<Project>({ id: uuid(), type: 'personal' });
+			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(parentWorkflowProject);
+			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(subworkflowProject);
+
+			const subworkflowProjectOwner = mock<User>({
+				id: uuid(),
+				firstName: 'John',
+				lastName: 'Doe',
+			});
+			ownershipService.getPersonalProjectOwnerCached.mockResolvedValueOnce(subworkflowProjectOwner);
+			accessService.hasReadAccess.mockResolvedValueOnce(false);
+
+			const node = mock<INode>();
+
+			const check = checker.check(subworkflow, parentWorkflow.id, node, subworkflowProjectOwner.id);
+
+			await expect(check).rejects.toMatchObject({
+				message: `The sub-workflow (${subworkflowId}) cannot be called by this workflow`,
+				description: `${SUBWORKFLOW_DENIAL_BASE_DESCRIPTION} You will need John Doe to update the sub-workflow (${subworkflowId}) settings to allow this workflow to call it.`,
+			});
+		});
+
+		it('should contain description for inaccessible team project case', async () => {
+			const parentWorkflow = mock<WorkflowEntity>({ id: uuid() });
+			const subworkflowId = 'subworkflow-id';
+			const subworkflow = mock<Workflow>({ id: subworkflowId, settings: { callerPolicy: 'none' } });
+
+			const parentWorkflowProject = mock<Project>({ id: uuid() });
+			const subworkflowProject = mock<Project>({ id: uuid(), type: 'team' });
+			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(parentWorkflowProject);
+			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(subworkflowProject);
+
+			const subworkflowProjectOwner = mock<User>({
+				id: uuid(),
+				firstName: 'John',
+				lastName: 'Doe',
+			});
+			ownershipService.getPersonalProjectOwnerCached.mockResolvedValueOnce(subworkflowProjectOwner);
+			accessService.hasReadAccess.mockResolvedValueOnce(false);
+
+			const check = checker.check(
+				subworkflow,
+				parentWorkflow.id,
+				mock<INode>(),
+				subworkflowProjectOwner.id,
+			);
+
+			await expect(check).rejects.toMatchObject({
+				message: `The sub-workflow (${subworkflowId}) cannot be called by this workflow`,
+				description: `${SUBWORKFLOW_DENIAL_BASE_DESCRIPTION} You will need an admin from the ${subworkflowProject.name} project to update the sub-workflow (${subworkflowId}) settings to allow this workflow to call it.`,
+			});
+		});
+
+		it('should contain description for default (e.g. error workflow) case', async () => {
+			const parentWorkflow = mock<WorkflowEntity>({ id: uuid() });
+			const subworkflowId = 'subworkflow-id';
+			const subworkflow = mock<Workflow>({ id: subworkflowId, settings: { callerPolicy: 'none' } });
+
+			const parentWorkflowProject = mock<Project>({ id: uuid() });
+			const subworkflowProject = mock<Project>({ id: uuid() });
+			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(parentWorkflowProject);
+			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(subworkflowProject);
+
+			const subworkflowProjectOwner = mock<User>({ id: uuid() });
+			ownershipService.getPersonalProjectOwnerCached.mockResolvedValueOnce(subworkflowProjectOwner);
+			accessService.hasReadAccess.mockResolvedValueOnce(true);
+
+			const check = checker.check(subworkflow, parentWorkflow.id, mock<INode>());
+
+			await expect(check).rejects.toMatchObject({
+				message: `The sub-workflow (${subworkflowId}) cannot be called by this workflow`,
+				description: SUBWORKFLOW_DENIAL_BASE_DESCRIPTION,
+			});
 		});
 	});
 });

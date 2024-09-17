@@ -1,6 +1,7 @@
-import Container from 'typedi';
-import { StatisticsNames, type WorkflowStatistics } from '@/databases/entities/workflow-statistics';
 import type { Workflow } from 'n8n-workflow';
+import Container from 'typedi';
+
+import { StatisticsNames, type WorkflowStatistics } from '@/databases/entities/workflow-statistics';
 import { WorkflowStatisticsRepository } from '@/databases/repositories/workflow-statistics.repository';
 
 export async function createWorkflowStatisticsItem(

@@ -13,6 +13,7 @@ import {
 	INVITE_USER_MODAL_KEY,
 	PERSONALIZATION_MODAL_KEY,
 	TAGS_MANAGER_MODAL_KEY,
+	ANNOTATION_TAGS_MANAGER_MODAL_KEY,
 	NPS_SURVEY_MODAL_KEY,
 	NEW_ASSISTANT_SESSION_MODAL,
 	VERSIONS_MODAL_KEY,
@@ -46,7 +47,8 @@ import CredentialsSelectModal from '@/components/CredentialsSelectModal.vue';
 import DuplicateWorkflowDialog from '@/components/DuplicateWorkflowDialog.vue';
 import ModalRoot from '@/components/ModalRoot.vue';
 import PersonalizationModal from '@/components/PersonalizationModal.vue';
-import TagsManager from '@/components/TagsManager/TagsManager.vue';
+import WorkflowTagsManager from '@/components/TagsManager/WorkflowTagsManager.vue';
+import AnnotationTagsManager from '@/components/TagsManager/AnnotationTagsManager.vue';
 import UpdatesPanel from '@/components/UpdatesPanel.vue';
 import NpsSurvey from '@/components/NpsSurvey.vue';
 import WorkflowLMChat from '@/components/WorkflowLMChat/WorkflowLMChat.vue';
@@ -105,7 +107,11 @@ import PromptMfaCodeModal from './PromptMfaCodeModal/PromptMfaCodeModal.vue';
 		</ModalRoot>
 
 		<ModalRoot :name="TAGS_MANAGER_MODAL_KEY">
-			<TagsManager />
+			<WorkflowTagsManager />
+		</ModalRoot>
+
+		<ModalRoot :name="ANNOTATION_TAGS_MANAGER_MODAL_KEY">
+			<AnnotationTagsManager />
 		</ModalRoot>
 
 		<ModalRoot :name="VERSIONS_MODAL_KEY" :keep-alive="true">

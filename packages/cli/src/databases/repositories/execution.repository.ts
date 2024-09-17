@@ -1,4 +1,11 @@
-import { Service } from 'typedi';
+import { GlobalConfig } from '@n8n/config';
+import type {
+	FindManyOptions,
+	FindOneOptions,
+	FindOperator,
+	FindOptionsWhere,
+	SelectQueryBuilder,
+} from '@n8n/typeorm';
 import {
 	Brackets,
 	DataSource,
@@ -12,40 +19,41 @@ import {
 	Repository,
 } from '@n8n/typeorm';
 import { DateUtils } from '@n8n/typeorm/util/DateUtils';
-import type {
-	FindManyOptions,
-	FindOneOptions,
-	FindOperator,
-	FindOptionsWhere,
-	SelectQueryBuilder,
-} from '@n8n/typeorm';
 import { parse, stringify } from 'flatted';
-import { GlobalConfig } from '@n8n/config';
-import {
-	ApplicationError,
-	type ExecutionStatus,
-	type ExecutionSummary,
-	type IRunExecutionData,
-} from 'n8n-workflow';
+import pick from 'lodash/pick';
 import { BinaryDataService } from 'n8n-core';
-import { ExecutionCancelledError, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
+import {
+	ExecutionCancelledError,
+	ErrorReporterProxy as ErrorReporter,
+	ApplicationError,
+} from 'n8n-workflow';
+import type {
+	AnnotationVote,
+	ExecutionStatus,
+	ExecutionSummary,
+	IRunExecutionData,
+} from 'n8n-workflow';
+import { Service } from 'typedi';
 
+import config from '@/config';
+import { AnnotationTagEntity } from '@/databases/entities/annotation-tag-entity';
+import { AnnotationTagMapping } from '@/databases/entities/annotation-tag-mapping';
+import { ExecutionAnnotation } from '@/databases/entities/execution-annotation';
+import { PostgresLiveRowsRetrievalError } from '@/errors/postgres-live-rows-retrieval.error';
+import type { ExecutionSummaries } from '@/executions/execution.types';
 import type {
 	ExecutionPayload,
 	IExecutionBase,
 	IExecutionFlattedDb,
 	IExecutionResponse,
 } from '@/interfaces';
+import { Logger } from '@/logger';
+import { separate } from '@/utils';
 
-import config from '@/config';
+import { ExecutionDataRepository } from './execution-data.repository';
 import type { ExecutionData } from '../entities/execution-data';
 import { ExecutionEntity } from '../entities/execution-entity';
 import { ExecutionMetadata } from '../entities/execution-metadata';
-import { ExecutionDataRepository } from './execution-data.repository';
-import { Logger } from '@/logger';
-import type { ExecutionSummaries } from '@/executions/execution.types';
-import { PostgresLiveRowsRetrievalError } from '@/errors/postgres-live-rows-retrieval.error';
-import { separate } from '@/utils';
 
 export interface IGetExecutionsQueryFilter {
 	id?: FindOperator<string> | string;
@@ -201,10 +209,22 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		);
 	}
 
+	private serializeAnnotation(annotation: ExecutionEntity['annotation']) {
+		if (!annotation) return null;
+
+		const { id, vote, tags } = annotation;
+		return {
+			id,
+			vote,
+			tags: tags?.map((tag) => pick(tag, ['id', 'name'])) ?? [],
+		};
+	}
+
 	async findSingleExecution(
 		id: string,
 		options?: {
 			includeData: true;
+			includeAnnotation?: boolean;
 			unflattenData: true;
 			where?: FindOptionsWhere<ExecutionEntity>;
 		},
@@ -213,6 +233,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		id: string,
 		options?: {
 			includeData: true;
+			includeAnnotation?: boolean;
 			unflattenData?: false | undefined;
 			where?: FindOptionsWhere<ExecutionEntity>;
 		},
@@ -221,6 +242,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		id: string,
 		options?: {
 			includeData?: boolean;
+			includeAnnotation?: boolean;
 			unflattenData?: boolean;
 			where?: FindOptionsWhere<ExecutionEntity>;
 		},
@@ -229,6 +251,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		id: string,
 		options?: {
 			includeData?: boolean;
+			includeAnnotation?: boolean;
 			unflattenData?: boolean;
 			where?: FindOptionsWhere<ExecutionEntity>;
 		},
@@ -240,7 +263,16 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			},
 		};
 		if (options?.includeData) {
-			findOptions.relations = ['executionData', 'metadata'];
+			findOptions.relations = { executionData: true, metadata: true };
+		}
+
+		if (options?.includeAnnotation) {
+			findOptions.relations = {
+				...findOptions.relations,
+				annotation: {
+					tags: true,
+				},
+			};
 		}
 
 		const execution = await this.findOne(findOptions);
@@ -249,25 +281,21 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			return undefined;
 		}
 
-		const { executionData, metadata, ...rest } = execution;
+		const { executionData, metadata, annotation, ...rest } = execution;
+		const serializedAnnotation = this.serializeAnnotation(annotation);
 
-		if (options?.includeData && options?.unflattenData) {
-			return {
-				...rest,
-				data: parse(execution.executionData.data) as IRunExecutionData,
-				workflowData: execution.executionData.workflowData,
+		return {
+			...rest,
+			...(options?.includeData && {
+				data: options?.unflattenData
+					? (parse(executionData.data) as IRunExecutionData)
+					: executionData.data,
+				workflowData: executionData?.workflowData,
 				customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
-			} as IExecutionResponse;
-		} else if (options?.includeData) {
-			return {
-				...rest,
-				data: execution.executionData.data,
-				workflowData: execution.executionData.workflowData,
-				customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
-			} as IExecutionFlattedDb;
-		}
-
-		return rest;
+			}),
+			...(options?.includeAnnotation &&
+				serializedAnnotation && { annotation: serializedAnnotation }),
+		};
 	}
 
 	/**
@@ -410,6 +438,13 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		const maxAge = config.getEnv('executions.pruneDataMaxAge'); // in h
 		const maxCount = config.getEnv('executions.pruneDataMaxCount');
 
+		// Sub-query to exclude executions having annotations
+		const annotatedExecutionsSubQuery = this.manager
+			.createQueryBuilder()
+			.subQuery()
+			.select('annotation.executionId')
+			.from(ExecutionAnnotation, 'annotation');
+
 		// Find ids of all executions that were stopped longer that pruneDataMaxAge ago
 		const date = new Date();
 		date.setHours(date.getHours() - maxAge);
@@ -420,12 +455,13 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		];
 
 		if (maxCount > 0) {
-			const executions = await this.find({
-				select: ['id'],
-				skip: maxCount,
-				take: 1,
-				order: { id: 'DESC' },
-			});
+			const executions = await this.createQueryBuilder('execution')
+				.select('execution.id')
+				.where('execution.id NOT IN ' + annotatedExecutionsSubQuery.getQuery())
+				.skip(maxCount)
+				.take(1)
+				.orderBy('execution.id', 'DESC')
+				.getMany();
 
 			if (executions[0]) {
 				toPrune.push({ id: LessThanOrEqual(executions[0].id) });
@@ -442,6 +478,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				// Only mark executions as deleted if they are in an end state
 				status: Not(In(['new', 'running', 'waiting'])),
 			})
+			// Only mark executions as deleted if they are not annotated
+			.andWhere('id NOT IN ' + annotatedExecutionsSubQuery.getQuery())
 			.andWhere(
 				new Brackets((qb) =>
 					countBasedWhere
@@ -612,6 +650,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			},
 			includeData: true,
 			unflattenData: true,
+			includeAnnotation: true,
 		});
 	}
 
@@ -622,6 +661,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			},
 			includeData: true,
 			unflattenData: false,
+			includeAnnotation: true,
 		});
 	}
 
@@ -683,12 +723,80 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		stoppedAt: true,
 	};
 
+	private annotationFields = {
+		id: true,
+		vote: true,
+	};
+
+	/**
+	 * This function reduces duplicate rows in the raw result set of the query builder from *toQueryBuilderWithAnnotations*
+	 * by merging the tags of the same execution annotation.
+	 */
+	private reduceExecutionsWithAnnotations(
+		rawExecutionsWithTags: Array<
+			ExecutionSummary & {
+				annotation_id: number;
+				annotation_vote: AnnotationVote;
+				annotation_tags_id: string;
+				annotation_tags_name: string;
+			}
+		>,
+	) {
+		return rawExecutionsWithTags.reduce(
+			(
+				acc,
+				{
+					annotation_id: _,
+					annotation_vote: vote,
+					annotation_tags_id: tagId,
+					annotation_tags_name: tagName,
+					...row
+				},
+			) => {
+				const existingExecution = acc.find((e) => e.id === row.id);
+
+				if (existingExecution) {
+					if (tagId) {
+						existingExecution.annotation = existingExecution.annotation ?? {
+							vote,
+							tags: [] as Array<{ id: string; name: string }>,
+						};
+						existingExecution.annotation.tags.push({ id: tagId, name: tagName });
+					}
+				} else {
+					acc.push({
+						...row,
+						annotation: {
+							vote,
+							tags: tagId ? [{ id: tagId, name: tagName }] : [],
+						},
+					});
+				}
+				return acc;
+			},
+			[] as ExecutionSummary[],
+		);
+	}
+
 	async findManyByRangeQuery(query: ExecutionSummaries.RangeQuery): Promise<ExecutionSummary[]> {
 		if (query?.accessibleWorkflowIds?.length === 0) {
 			throw new ApplicationError('Expected accessible workflow IDs');
 		}
 
-		const executions: ExecutionSummary[] = await this.toQueryBuilder(query).getRawMany();
+		// Due to performance reasons, we use custom query builder with raw SQL.
+		// IMPORTANT: it produces duplicate rows for executions with multiple tags, which we need to reduce manually
+		const qb = this.toQueryBuilderWithAnnotations(query);
+
+		const rawExecutionsWithTags: Array<
+			ExecutionSummary & {
+				annotation_id: number;
+				annotation_vote: AnnotationVote;
+				annotation_tags_id: string;
+				annotation_tags_name: string;
+			}
+		> = await qb.getRawMany();
+
+		const executions = this.reduceExecutionsWithAnnotations(rawExecutionsWithTags);
 
 		return executions.map((execution) => this.toSummary(execution));
 	}
@@ -764,6 +872,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			startedBefore,
 			startedAfter,
 			metadata,
+			annotationTags,
+			vote,
 		} = query;
 
 		const fields = Object.keys(this.summaryFields)
@@ -812,7 +922,60 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			qb.setParameter('value', value);
 		}
 
+		if (annotationTags?.length || vote) {
+			// If there is a filter by one or multiple tags or by vote - we need to join the annotations table
+			qb.innerJoin('execution.annotation', 'annotation');
+
+			// Add an inner join for each tag
+			if (annotationTags?.length) {
+				for (let index = 0; index < annotationTags.length; index++) {
+					qb.innerJoin(
+						AnnotationTagMapping,
+						`atm_${index}`,
+						`atm_${index}.annotationId = annotation.id AND atm_${index}.tagId = :tagId_${index}`,
+					);
+
+					qb.setParameter(`tagId_${index}`, annotationTags[index]);
+				}
+			}
+
+			// Add filter by vote
+			if (vote) {
+				qb.andWhere('annotation.vote = :vote', { vote });
+			}
+		}
+
 		return qb;
+	}
+
+	/**
+	 * This method is used to add the annotation fields to the executions query
+	 * It uses original query builder as a subquery and adds the annotation fields to it
+	 * IMPORTANT: Query made with this query builder fetches duplicate execution rows for each tag,
+	 *  this is intended, as we are working with raw query.
+	 *  The duplicates are reduced in the *reduceExecutionsWithAnnotations* method.
+	 */
+	private toQueryBuilderWithAnnotations(query: ExecutionSummaries.Query) {
+		const annotationFields = Object.keys(this.annotationFields).map(
+			(key) => `annotation.${key} AS "annotation_${key}"`,
+		);
+
+		const subQuery = this.toQueryBuilder(query).addSelect(annotationFields);
+
+		// Ensure the join with annotations is made only once
+		// It might be already present as an inner join if the query includes filter by annotation tags
+		// If not, it must be added as a left join
+		if (!subQuery.expressionMap.joinAttributes.some((join) => join.alias.name === 'annotation')) {
+			subQuery.leftJoin('execution.annotation', 'annotation');
+		}
+
+		return this.manager
+			.createQueryBuilder()
+			.select(['e.*', 'ate.id AS "annotation_tags_id"', 'ate.name AS "annotation_tags_name"'])
+			.from(`(${subQuery.getQuery()})`, 'e')
+			.setParameters(subQuery.getParameters())
+			.leftJoin(AnnotationTagMapping, 'atm', 'atm.annotationId = e.annotation_id')
+			.leftJoin(AnnotationTagEntity, 'ate', 'ate.id = atm.tagId');
 	}
 
 	async getAllIds() {

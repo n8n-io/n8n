@@ -13,7 +13,7 @@ A PR title consists of these elements:
   │       │
   │       └─⫸ Scope: API | benchmark | core | editor | * Node
   │
-  └─⫸ Type: build | ci | docs | feat | fix | perf | refactor | test
+  └─⫸ Type: build | ci | chore | docs | feat | fix | perf | refactor | test
 ```
 
 - PR title
@@ -41,6 +41,7 @@ Must be one of the following:
 | `refactor` | A behavior-neutral code change that neither fixes a bug nor adds a feature | ❌ |
 | `build` | Changes that affect the build system or external dependencies (TypeScript, Jest, pnpm, etc.) | ❌ |
 | `ci` | Changes to CI configuration files and scripts (e.g. Github actions) | ❌ |
+| `chore` | Routine tasks, maintenance, and minor updates not covered by other types | ❌ |
 
 > BREAKING CHANGES (see Footer section below), will **always** appear in the changelog unless suffixed with `no-changelog`.
 

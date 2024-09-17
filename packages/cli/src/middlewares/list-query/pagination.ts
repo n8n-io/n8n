@@ -1,9 +1,11 @@
-import { toError } from '@/utils';
-import * as ResponseHelper from '@/response-helper';
-import { Pagination } from './dtos/pagination.dto';
-import type { ListQuery } from '@/requests';
 import type { RequestHandler } from 'express';
 import { ApplicationError } from 'n8n-workflow';
+
+import type { ListQuery } from '@/requests';
+import * as ResponseHelper from '@/response-helper';
+import { toError } from '@/utils';
+
+import { Pagination } from './dtos/pagination.dto';
 
 export const paginationListQueryMiddleware: RequestHandler = (
 	req: ListQuery.Request,

@@ -3,8 +3,9 @@
 
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+import type { PushType } from '@n8n/api-types';
+import { GlobalConfig } from '@n8n/config';
 import { WorkflowExecute } from 'n8n-core';
-
 import type {
 	IDataObject,
 	IExecuteData,
@@ -23,8 +24,8 @@ import type {
 	WorkflowExecuteMode,
 	ExecutionStatus,
 	ExecutionError,
-	EventNamesAiNodesType,
-	CallbackManager,
+	ExecuteWorkflowOptions,
+	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
 import {
 	ApplicationError,
@@ -33,46 +34,39 @@ import {
 	Workflow,
 	WorkflowHooks,
 } from 'n8n-workflow';
-
 import { Container } from 'typedi';
-import config from '@/config';
+
 import { ActiveExecutions } from '@/active-executions';
+import config from '@/config';
 import { CredentialsHelper } from '@/credentials-helper';
+import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { ExternalHooks } from '@/external-hooks';
-import type {
-	IPushDataExecutionFinished,
-	IWorkflowExecuteProcess,
-	IWorkflowExecutionDataProcess,
-	IWorkflowErrorData,
-	IPushDataType,
-	ExecutionPayload,
-} from '@/interfaces';
+import type { IWorkflowExecuteProcess, IWorkflowErrorData, ExecutionPayload } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
-import * as WorkflowHelpers from '@/workflow-helpers';
-import { findSubworkflowStart, isWorkflowIdValid } from '@/utils';
-import { PermissionChecker } from './user-management/permission-checker';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
-import { SecretsHelper } from './secrets-helpers';
-import { OwnershipService } from './services/ownership.service';
+import { findSubworkflowStart, isWorkflowIdValid } from '@/utils';
+import * as WorkflowHelpers from '@/workflow-helpers';
+
+import { WorkflowRepository } from './databases/repositories/workflow.repository';
+import type { AiEventMap, AiEventPayload } from './events/ai-event-map';
+import { EventService } from './events/event.service';
+import { restoreBinaryDataId } from './execution-lifecycle-hooks/restore-binary-data-id';
+import { saveExecutionProgress } from './execution-lifecycle-hooks/save-execution-progress';
 import {
 	determineFinalExecutionStatus,
 	prepareExecutionDataForDbUpdate,
 	updateExistingExecution,
 } from './execution-lifecycle-hooks/shared/shared-hook-functions';
-import { restoreBinaryDataId } from './execution-lifecycle-hooks/restore-binary-data-id';
 import { toSaveSettings } from './execution-lifecycle-hooks/to-save-settings';
 import { Logger } from './logger';
-import { saveExecutionProgress } from './execution-lifecycle-hooks/save-execution-progress';
-import { WorkflowStaticDataService } from './workflows/workflow-static-data.service';
-import { WorkflowRepository } from './databases/repositories/workflow.repository';
+import { SecretsHelper } from './secrets-helpers';
+import { OwnershipService } from './services/ownership.service';
 import { UrlService } from './services/url.service';
-import { WorkflowExecutionService } from './workflows/workflow-execution.service';
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import { EventService } from './events/event.service';
-import { GlobalConfig } from '@n8n/config';
 import { SubworkflowPolicyChecker } from './subworkflows/subworkflow-policy-checker.service';
+import { PermissionChecker } from './user-management/permission-checker';
+import { WorkflowExecutionService } from './workflows/workflow-execution.service';
+import { WorkflowStaticDataService } from './workflows/workflow-static-data.service';
 
 export function objectToError(errorObject: unknown, workflow: Workflow): Error {
 	// TODO: Expand with other error types
@@ -300,7 +294,6 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 						startedAt: new Date(),
 						retryOf: this.retryOf,
 						workflowId,
-						pushRef,
 						workflowName,
 					},
 					pushRef,
@@ -347,13 +340,15 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 					workflowId,
 				});
 				// TODO: Look at this again
-				const sendData: IPushDataExecutionFinished = {
-					executionId,
-					data: pushRunData,
-					retryOf,
-				};
-
-				pushInstance.send('executionFinished', sendData, pushRef);
+				pushInstance.send(
+					'executionFinished',
+					{
+						executionId,
+						data: pushRunData,
+						retryOf,
+					},
+					pushRef,
+				);
 			},
 		],
 	};
@@ -714,13 +709,11 @@ export async function getRunData(
 		},
 	};
 
-	const runData: IWorkflowExecutionDataProcess = {
+	return {
 		executionMode: mode,
 		executionData: runExecutionData,
 		workflowData,
 	};
-
-	return runData;
 }
 
 export async function getWorkflowData(
@@ -769,16 +762,7 @@ export async function getWorkflowData(
 async function executeWorkflow(
 	workflowInfo: IExecuteWorkflowInfo,
 	additionalData: IWorkflowExecuteAdditionalData,
-	options: {
-		node?: INode;
-		parentWorkflowId: string;
-		inputData?: INodeExecutionData[];
-		parentExecutionId?: string;
-		loadedWorkflowData?: IWorkflowBase;
-		loadedRunData?: IWorkflowExecutionDataProcess;
-		parentWorkflowSettings?: IWorkflowSettings;
-		parentCallbackManager?: CallbackManager;
-	},
+	options: ExecuteWorkflowOptions,
 ): Promise<Array<INodeExecutionData[] | null> | IWorkflowExecuteProcess> {
 	const externalHooks = Container.get(ExternalHooks);
 	await externalHooks.init();
@@ -786,6 +770,7 @@ async function executeWorkflow(
 	const nodeTypes = Container.get(NodeTypes);
 	const activeExecutions = Container.get(ActiveExecutions);
 	const eventService = Container.get(EventService);
+	const executionRepository = Container.get(ExecutionRepository);
 
 	const workflowData =
 		options.loadedWorkflowData ??
@@ -805,13 +790,8 @@ async function executeWorkflow(
 
 	const runData = options.loadedRunData ?? (await getRunData(workflowData, options.inputData));
 
-	let executionId;
-
-	if (options.parentExecutionId !== undefined) {
-		executionId = options.parentExecutionId;
-	} else {
-		executionId = options.parentExecutionId ?? (await activeExecutions.add(runData));
-	}
+	const executionId = await activeExecutions.add(runData);
+	await executionRepository.updateStatus(executionId, 'running');
 
 	Container.get(EventService).emit('workflow-pre-execute', { executionId, data: runData });
 
@@ -822,6 +802,7 @@ async function executeWorkflow(
 			workflow,
 			options.parentWorkflowId,
 			options.node,
+			additionalData.userId,
 		);
 
 		// Create new additionalData to have different workflow loaded and to call
@@ -862,14 +843,6 @@ async function executeWorkflow(
 			runData.executionMode,
 			runExecutionData,
 		);
-		if (options.parentExecutionId !== undefined) {
-			// Must be changed to become typed
-			return {
-				startedAt: new Date(),
-				workflow,
-				workflowExecute,
-			};
-		}
 		const execution = workflowExecute.processRunExecutionData(workflow);
 		activeExecutions.attachWorkflowExecution(executionId, execution);
 		data = await execution;
@@ -909,10 +882,7 @@ async function executeWorkflow(
 		// remove execution from active executions
 		activeExecutions.remove(executionId, fullRunData);
 
-		await Container.get(ExecutionRepository).updateExistingExecution(
-			executionId,
-			fullExecutionData,
-		);
+		await executionRepository.updateExistingExecution(executionId, fullExecutionData);
 		throw objectToError(
 			{
 				...executionError,
@@ -964,7 +934,7 @@ export function setExecutionStatus(status: ExecutionStatus) {
 	Container.get(ActiveExecutions).setStatus(this.executionId, status);
 }
 
-export function sendDataToUI(type: string, data: IDataObject | IDataObject[]) {
+export function sendDataToUI(type: PushType, data: IDataObject | IDataObject[]) {
 	const { pushRef } = this;
 	if (pushRef === undefined) {
 		return;
@@ -973,7 +943,7 @@ export function sendDataToUI(type: string, data: IDataObject | IDataObject[]) {
 	// Push data to session which started workflow
 	try {
 		const pushInstance = Container.get(Push);
-		pushInstance.send(type as IPushDataType, data, pushRef);
+		pushInstance.send(type, data, pushRef);
 	} catch (error) {
 		const logger = Container.get(Logger);
 		logger.warn(`There was a problem sending message to UI: ${error.message}`);
@@ -994,6 +964,8 @@ export async function getBase(
 
 	const variables = await WorkflowHelpers.getVariables();
 
+	const eventService = Container.get(EventService);
+
 	return {
 		credentialsHelper: Container.get(CredentialsHelper),
 		executeWorkflow,
@@ -1009,22 +981,8 @@ export async function getBase(
 		setExecutionStatus,
 		variables,
 		secretsHelpers: Container.get(SecretsHelper),
-		logAiEvent: async (
-			eventName: EventNamesAiNodesType,
-			payload: {
-				msg?: string | undefined;
-				executionId: string;
-				nodeName: string;
-				workflowId?: string | undefined;
-				workflowName: string;
-				nodeType?: string | undefined;
-			},
-		) => {
-			return await Container.get(MessageEventBus).sendAiNodeEvent({
-				eventName,
-				payload,
-			});
-		},
+		logAiEvent: (eventName: keyof AiEventMap, payload: AiEventPayload) =>
+			eventService.emit(eventName, payload),
 	};
 }
 

@@ -1,7 +1,7 @@
 import * as helpers from '@/sso/saml/saml-helpers';
 import type { SamlUserAttributes } from '@/sso/saml/types/saml-user-attributes';
-import { getPersonalProject } from '../shared/db/projects';
 
+import { getPersonalProject } from '../shared/db/projects';
 import * as testDb from '../shared/test-db';
 
 beforeAll(async () => {

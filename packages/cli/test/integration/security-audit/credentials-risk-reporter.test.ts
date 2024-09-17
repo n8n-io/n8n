@@ -1,15 +1,17 @@
+import Container from 'typedi';
 import { v4 as uuid } from 'uuid';
+
 import config from '@/config';
-import { SecurityAuditService } from '@/security-audit/security-audit.service';
+import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
+import { ExecutionDataRepository } from '@/databases/repositories/execution-data.repository';
+import { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { generateNanoId } from '@/databases/utils/generators';
 import { CREDENTIALS_REPORT } from '@/security-audit/constants';
+import { SecurityAuditService } from '@/security-audit/security-audit.service';
+
 import { getRiskSection } from './utils';
 import * as testDb from '../shared/test-db';
-import { generateNanoId } from '@/databases/utils/generators';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import Container from 'typedi';
-import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { ExecutionDataRepository } from '@/databases/repositories/execution-data.repository';
 
 let securityAuditService: SecurityAuditService;
 

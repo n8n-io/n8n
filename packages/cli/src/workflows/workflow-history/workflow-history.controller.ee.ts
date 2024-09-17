@@ -1,13 +1,14 @@
-import { RestController, Get, Middleware } from '@/decorators';
-import { WorkflowHistoryRequest } from '@/requests';
-import { WorkflowHistoryService } from './workflow-history.service.ee';
 import { Request, Response, NextFunction } from 'express';
-import { isWorkflowHistoryEnabled, isWorkflowHistoryLicensed } from './workflow-history-helper.ee';
 
-import { paginationListQueryMiddleware } from '@/middlewares/list-query/pagination';
+import { RestController, Get, Middleware } from '@/decorators';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
+import { paginationListQueryMiddleware } from '@/middlewares/list-query/pagination';
+import { WorkflowHistoryRequest } from '@/requests';
+
+import { isWorkflowHistoryEnabled, isWorkflowHistoryLicensed } from './workflow-history-helper.ee';
+import { WorkflowHistoryService } from './workflow-history.service.ee';
 
 const DEFAULT_TAKE = 20;
 

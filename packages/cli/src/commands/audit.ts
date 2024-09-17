@@ -1,11 +1,12 @@
-import { Container } from 'typedi';
 import { Flags } from '@oclif/core';
 import { ApplicationError } from 'n8n-workflow';
+import { Container } from 'typedi';
 
-import { SecurityAuditService } from '@/security-audit/security-audit.service';
-import { RISK_CATEGORIES } from '@/security-audit/constants';
 import config from '@/config';
+import { RISK_CATEGORIES } from '@/security-audit/constants';
+import { SecurityAuditService } from '@/security-audit/security-audit.service';
 import type { Risk } from '@/security-audit/types';
+
 import { BaseCommand } from './base-command';
 
 export class SecurityAudit extends BaseCommand {
