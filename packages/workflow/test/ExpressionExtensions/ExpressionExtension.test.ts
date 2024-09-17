@@ -157,13 +157,11 @@ describe('tmpl Expression Parser', () => {
 		});
 
 		test('Multiple optional chains in an expression', () => {
-			expect(extendTransform('$json.test?.test2($json.test?.test2)')?.code)
-				.toBe(`window.chainCancelToken2 = ((window.chainValue2 = $json.test) ?? undefined) === undefined, window.chainCancelToken2 === true ? undefined : window.chainValue2.test2(
+			expect(extendTransform('$json.test?.test2($json.test?.test2)')?.code).toBe(`window.chainCancelToken2 = ((window.chainValue2 = $json.test) ?? undefined) === undefined, window.chainCancelToken2 === true ? undefined : window.chainValue2.test2(
   (window.chainCancelToken1 = ((window.chainValue1 = $json.test) ?? undefined) === undefined, window.chainCancelToken1 === true ? undefined : window.chainValue1.test2)
 );`);
 
-			expect(extendTransform('$json.test?.test2($json.test.sum?.())')?.code)
-				.toBe(`window.chainCancelToken2 = ((window.chainValue2 = $json.test) ?? undefined) === undefined, window.chainCancelToken2 === true ? undefined : window.chainValue2.test2(
+			expect(extendTransform('$json.test?.test2($json.test.sum?.())')?.code).toBe(`window.chainCancelToken2 = ((window.chainValue2 = $json.test) ?? undefined) === undefined, window.chainCancelToken2 === true ? undefined : window.chainValue2.test2(
   (window.chainCancelToken1 = ((window.chainValue1 = extendOptional($json.test, "sum")) ?? undefined) === undefined, window.chainCancelToken1 === true ? undefined : window.chainValue1())
 );`);
 		});

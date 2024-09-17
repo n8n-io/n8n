@@ -292,7 +292,7 @@ export class ExternalSecretsManager {
 		}
 		settings[provider] = {
 			connected,
-			connectedAt: connected ? new Date() : settings[provider]?.connectedAt ?? null,
+			connectedAt: connected ? new Date() : (settings[provider]?.connectedAt ?? null),
 			settings: settings[provider]?.settings ?? {},
 		};
 
