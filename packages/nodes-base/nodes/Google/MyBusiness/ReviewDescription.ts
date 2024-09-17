@@ -18,7 +18,7 @@ export const reviewOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'DELETE',
-						url: '=/{{$parameter["account"]}}/{{$parameter["location"]}}/{{$parameter["reviewName"]/reply}}',
+						url: '=/{{$parameter["reviewName"]/reply}}',
 					},
 				},
 			},
@@ -30,7 +30,7 @@ export const reviewOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/{{$parameter["account"]}}/{{$parameter["location"]}}/{{$parameter["reviewName"]}}',
+						url: '=/{{$parameter["reviewName"]}}',
 					},
 				},
 			},
@@ -59,7 +59,7 @@ export const reviewOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'PUT',
-						url: '=/{{$parameter["account"]}}/{{$parameter["location"]}}/{{$parameter["reviewName"]}}/reply',
+						url: '=/{{$parameter["reviewName"]}}/reply',
 					},
 				},
 			},
@@ -161,8 +161,9 @@ export const reviewFields: INodeProperties[] = [
 					{
 						type: 'regex',
 						properties: {
-							regex: 'reviews/[0-9]+',
-							errorMessage: 'The name must start with "reviews/"',
+							regex: 'accounts/[0-9]+/locations/[0-9]+/reviews/.*$',
+							errorMessage:
+								'The name must start with "localPosts/123/locations/123/reviews/review-id"',
 						},
 					},
 				],
@@ -273,8 +274,9 @@ export const reviewFields: INodeProperties[] = [
 					{
 						type: 'regex',
 						properties: {
-							regex: 'reviews/[0-9]+',
-							errorMessage: 'The name must start with "reviews/"',
+							regex: 'accounts/[0-9]+/locations/[0-9]+/reviews/.*$',
+							errorMessage:
+								'The name must start with "localPosts/123/locations/123/reviews/review-id"',
 						},
 					},
 				],
@@ -473,8 +475,9 @@ export const reviewFields: INodeProperties[] = [
 					{
 						type: 'regex',
 						properties: {
-							regex: 'reviews/[0-9]+',
-							errorMessage: 'The name must start with "reviews/"',
+							regex: 'accounts/[0-9]+/locations/[0-9]+/reviews/.*$',
+							errorMessage:
+								'The name must start with "localPosts/123/locations/123/reviews/review-id"',
 						},
 					},
 				],

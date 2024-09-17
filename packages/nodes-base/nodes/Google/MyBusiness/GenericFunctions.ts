@@ -1,15 +1,16 @@
 import {
+	NodeApiError,
+	type DeclarativeRestApiSettings,
 	type IDataObject,
 	type IExecuteFunctions,
-	type IHttpRequestOptions,
-	type IHttpRequestMethods,
-	type ILoadOptionsFunctions,
-	type JsonObject,
-	type IExecuteSingleFunctions,
-	type INodeExecutionData,
 	type IExecutePaginationFunctions,
-	type DeclarativeRestApiSettings,
-	NodeApiError,
+	type IExecuteSingleFunctions,
+	type IHttpRequestMethods,
+	type IHttpRequestOptions,
+	type ILoadOptionsFunctions,
+	type INodeExecutionData,
+	type IPollFunctions,
+	type JsonObject,
 } from 'n8n-workflow';
 
 import type { ITimeInterval } from './Interfaces';
@@ -31,7 +32,12 @@ export async function handleDatesPresend(
 	opts: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
 	const params = getAllParams(this);
-	const body = Object.assign({}, opts.body);
+	const body = Object.assign({}, opts.body) as IDataObject;
+	const event = (body.event as IDataObject) ?? ({} as IDataObject);
+
+	if (!params.startDateTime && !params.startDate && !params.endDateTime && !params.endDate) {
+		return opts;
+	}
 
 	const createDateTimeObject = (dateString: string) => {
 		const date = new Date(dateString);
@@ -69,8 +75,38 @@ export async function handleDatesPresend(
 		endTime: endDateTime?.time,
 	};
 
-	Object.assign(body, { schedule });
+	event.schedule = schedule;
+	Object.assign(body, { event });
 	opts.body = body;
+	return opts;
+}
+
+/* Helper function adding update mask to the request */
+export async function addUpdateMask(
+	this: IExecuteSingleFunctions,
+	opts: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	const additionalOptions = this.getNodeParameter('additionalOptions') as IDataObject;
+	const propertyMapping: { [key: string]: string } = {
+		postType: 'topicType',
+		actionType: 'callToAction.actionType',
+		url: 'callToAction.url',
+		startDateTime: 'event.schedule.startDate,event.schedule.startTime',
+		endDateTime: 'event.schedule.endDate,event.schedule.endTime',
+		title: 'event.title',
+		startDate: 'event.schedule.startDate',
+		endDate: 'event.schedule.endDate',
+		couponCode: 'offer.couponCode',
+		redeemOnlineUrl: 'offer.redeemOnlineUrl',
+		termsAndConditions: 'offer.termsAndConditions',
+	};
+	const updateMask = Object.keys(additionalOptions)
+		.map((key) => propertyMapping[key] || key)
+		.join(',');
+	opts.qs = {
+		...opts.qs,
+		updateMask,
+	};
 	return opts;
 }
 
@@ -125,7 +161,7 @@ export async function handlePagination(
 
 /* Function used for listSearch */
 export async function googleApiRequest(
-	this: IExecuteFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: IHttpRequestMethods,
 	resource: string,
 	body: IDataObject = {},

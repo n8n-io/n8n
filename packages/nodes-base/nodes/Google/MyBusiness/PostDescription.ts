@@ -1,5 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
-import { handleDatesPresend, handlePagination } from './GenericFunctions';
+import { addUpdateMask, handleDatesPresend, handlePagination } from './GenericFunctions';
 
 export const postOperations: INodeProperties[] = [
 	{
@@ -31,7 +31,7 @@ export const postOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'DELETE',
-						url: '=/{{$parameter["account"]}}/{{$parameter["location"]}}/{{$parameter["post"]}}',
+						url: '=//{{$parameter["post"]}}',
 					},
 				},
 			},
@@ -43,7 +43,7 @@ export const postOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/{{$parameter["account"]}}/{{$parameter["location"]}}/{{$parameter["post"]}}',
+						url: '=/{{$parameter["post"]}}',
 					},
 				},
 			},
@@ -70,10 +70,10 @@ export const postOperations: INodeProperties[] = [
 				action: 'Update a post',
 				description: 'Update an existing post',
 				routing: {
-					send: { preSend: [handleDatesPresend] },
+					send: { preSend: [handleDatesPresend, addUpdateMask] },
 					request: {
 						method: 'PATCH',
-						url: '=/{{$parameter["account"]}}/{{$parameter["location"]}}/{{$parameter["post"]}}',
+						url: '=/{{$parameter["post"]}}',
 					},
 				},
 			},
@@ -219,7 +219,7 @@ export const postFields: INodeProperties[] = [
 				description: 'The type of call to action',
 				displayOptions: { show: { '/postType': ['STANDARD', 'EVENT', 'ALERT'] } },
 				routing: {
-					send: { type: 'body', propertyInDotNotation: true, property: 'callToAction.actionType' },
+					send: { type: 'body', property: 'callToAction.actionType' },
 				},
 				options: [
 					{
@@ -267,7 +267,7 @@ export const postFields: INodeProperties[] = [
 				description: 'The URL that users are sent to when clicking through the promotion',
 				displayOptions: { show: { '/postType': ['STANDARD', 'EVENT', 'ALERT'] } },
 				routing: {
-					send: { type: 'body', propertyInDotNotation: true, property: 'callToAction.url' },
+					send: { type: 'body', property: 'callToAction.url' },
 				},
 			},
 			{
@@ -277,7 +277,7 @@ export const postFields: INodeProperties[] = [
 				default: '',
 				description: 'E.g. Sales this week.',
 				displayOptions: { show: { '/postType': ['EVENT'] } },
-				routing: { send: { type: 'body', propertyInDotNotation: true, property: 'event.title' } },
+				routing: { send: { type: 'body', property: 'event.title' } },
 			},
 			{
 				displayName: 'Start Date and Time',
@@ -302,7 +302,7 @@ export const postFields: INodeProperties[] = [
 				default: '',
 				description: 'E.g. 20% off in store or online.',
 				displayOptions: { show: { '/postType': ['OFFER'] } },
-				routing: { send: { type: 'body', propertyInDotNotation: true, property: 'event.title' } },
+				routing: { send: { type: 'body', property: 'event.title' } },
 			},
 			{
 				displayName: 'Start Date',
@@ -331,7 +331,7 @@ export const postFields: INodeProperties[] = [
 				description: 'The coupon code for the offer',
 				displayOptions: { show: { '/postType': ['OFFER'] } },
 				routing: {
-					send: { type: 'body', propertyInDotNotation: true, property: 'offer.couponCode' },
+					send: { type: 'body', property: 'offer.couponCode' },
 				},
 			},
 			{
@@ -342,7 +342,7 @@ export const postFields: INodeProperties[] = [
 				description: 'Link to redeem the offer',
 				displayOptions: { show: { '/postType': ['OFFER'] } },
 				routing: {
-					send: { type: 'body', propertyInDotNotation: true, property: 'offer.redeemOnlineUrl' },
+					send: { type: 'body', property: 'offer.redeemOnlineUrl' },
 				},
 			},
 			{
@@ -353,7 +353,7 @@ export const postFields: INodeProperties[] = [
 				description: 'The terms and conditions of the offer',
 				displayOptions: { show: { '/postType': ['OFFER'] } },
 				routing: {
-					send: { type: 'body', propertyInDotNotation: true, property: 'offer.termsAndConditions' },
+					send: { type: 'body', property: 'offer.termsAndConditions' },
 				},
 			},
 		],
@@ -451,8 +451,9 @@ export const postFields: INodeProperties[] = [
 					{
 						type: 'regex',
 						properties: {
-							regex: 'localPosts/[0-9]+',
-							errorMessage: 'The name must start with "localPosts/"',
+							regex: 'accounts/[0-9]+/locations/[0-9]+/localPosts/[0-9]+',
+							errorMessage:
+								'The name must be in the format "localPosts/123/locations/123/localPosts/123"',
 						},
 					},
 				],
@@ -562,8 +563,9 @@ export const postFields: INodeProperties[] = [
 					{
 						type: 'regex',
 						properties: {
-							regex: 'localPosts/[0-9]+',
-							errorMessage: 'The name must start with "localPosts/"',
+							regex: 'accounts/[0-9]+/locations/[0-9]+/localPosts/[0-9]+',
+							errorMessage:
+								'The name must be in the format "localPosts/123/locations/123/localPosts/123"',
 						},
 					},
 				],
@@ -760,8 +762,9 @@ export const postFields: INodeProperties[] = [
 					{
 						type: 'regex',
 						properties: {
-							regex: 'localPosts/[0-9]+',
-							errorMessage: 'The name must start with "localPosts/"',
+							regex: 'accounts/[0-9]+/locations/[0-9]+/localPosts/[0-9]+',
+							errorMessage:
+								'The name must be in the format "localPosts/123/locations/123/localPosts/123"',
 						},
 					},
 				],
@@ -779,44 +782,6 @@ export const postFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Post Type',
-		name: 'postType',
-		required: true,
-		type: 'options',
-		default: 'STANDARD',
-		description: 'The type of post to create (standard, event, offer, or alert)',
-		displayOptions: { show: { resource: ['post'], operation: ['update'] } },
-		routing: { send: { type: 'body', property: 'topicType' } },
-		options: [
-			{
-				name: 'Standard',
-				value: 'STANDARD',
-			},
-			{
-				name: 'Event',
-				value: 'EVENT',
-			},
-			{
-				name: 'Offer',
-				value: 'OFFER',
-			},
-			{
-				name: 'Alert',
-				value: 'ALERT',
-			},
-		],
-	},
-	{
-		displayName: 'Summary',
-		name: 'summary',
-		required: true,
-		type: 'string',
-		default: '',
-		description: 'The main text of the post',
-		displayOptions: { show: { resource: ['post'], operation: ['update'] } },
-		routing: { send: { type: 'body', property: 'summary' } },
-	},
-	{
 		displayName: 'Options',
 		name: 'additionalOptions',
 		type: 'collection',
@@ -824,6 +789,40 @@ export const postFields: INodeProperties[] = [
 		placeholder: 'Add Option',
 		displayOptions: { show: { resource: ['post'], operation: ['update'] } },
 		options: [
+			{
+				displayName: 'Post Type',
+				name: 'postType',
+				type: 'options',
+				default: 'STANDARD',
+				description: 'The type of post to create (standard, event, offer, or alert)',
+				routing: { send: { type: 'body', property: 'topicType' } },
+				options: [
+					{
+						name: 'Standard',
+						value: 'STANDARD',
+					},
+					{
+						name: 'Event',
+						value: 'EVENT',
+					},
+					{
+						name: 'Offer',
+						value: 'OFFER',
+					},
+					{
+						name: 'Alert',
+						value: 'ALERT',
+					},
+				],
+			},
+			{
+				displayName: 'Summary',
+				name: 'summary',
+				type: 'string',
+				default: '',
+				description: 'The main text of the post',
+				routing: { send: { type: 'body', property: 'summary' } },
+			},
 			{
 				displayName: 'Language',
 				name: 'languageCode',
@@ -838,9 +837,9 @@ export const postFields: INodeProperties[] = [
 				type: 'options',
 				default: 'ACTION_TYPE_UNSPECIFIED',
 				description: 'The type of call to action',
-				displayOptions: { show: { '/postType': ['STANDARD', 'EVENT', 'ALERT'] } },
+				displayOptions: { show: { postType: ['STANDARD', 'EVENT', 'ALERT'] } }, // ToDo: issue with displayOptions + routing. Tried also './postType'
 				routing: {
-					send: { type: 'body', propertyInDotNotation: true, property: 'callToAction.actionType' },
+					send: { type: 'body', property: 'callToAction.actionType' },
 				},
 				options: [
 					{
@@ -887,9 +886,9 @@ export const postFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'The URL that users are sent to when clicking through the promotion',
-				displayOptions: { show: { '/postType': ['STANDARD', 'EVENT', 'ALERT'] } },
+				displayOptions: { show: { postType: ['STANDARD', 'EVENT', 'ALERT'] } }, // ToDo: issue with displayOptions + routing. Tried also './postType'
 				routing: {
-					send: { type: 'body', propertyInDotNotation: true, property: 'callToAction.url' },
+					send: { type: 'body', property: 'callToAction.url' },
 				},
 			},
 			{
@@ -898,8 +897,8 @@ export const postFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'E.g. Sales this week.',
-				displayOptions: { show: { '/postType': ['EVENT'] } },
-				routing: { send: { type: 'body', propertyInDotNotation: true, property: 'event.title' } },
+				displayOptions: { show: { postType: ['EVENT'] } }, // ToDo: issue with displayOptions + routing. Tried also './postType'
+				routing: { send: { type: 'body', property: 'event.title' } },
 			},
 			{
 				displayName: 'Start Date and Time',
@@ -907,7 +906,7 @@ export const postFields: INodeProperties[] = [
 				type: 'dateTime',
 				default: '',
 				description: 'The start date and time of the event',
-				displayOptions: { show: { '/postType': ['EVENT'] } },
+				displayOptions: { show: { postType: ['EVENT'] } }, // ToDo: issue with displayOptions + routing. Tried also './postType'
 			},
 			{
 				displayName: 'End Date and Time',
@@ -915,7 +914,7 @@ export const postFields: INodeProperties[] = [
 				type: 'dateTime',
 				default: '',
 				description: 'The end date and time of the event',
-				displayOptions: { show: { '/postType': ['EVENT'] } },
+				displayOptions: { show: { postType: ['EVENT'] } }, // ToDo: issue with displayOptions + routing. Tried also './postType'
 			},
 			{
 				displayName: 'Title',
@@ -923,27 +922,26 @@ export const postFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'E.g. 20% off in store or online.',
-				displayOptions: { show: { '/postType': ['OFFER'] } },
-				routing: { send: { type: 'body', propertyInDotNotation: true, property: 'event.title' } },
+				displayOptions: { show: { postType: ['OFFER'] } }, // ToDo: issue with displayOptions + routing. Tried also './postType'
+				routing: { send: { type: 'body', property: 'event.title' } },
 			},
 			{
 				displayName: 'Start Date',
 				name: 'startDate',
-				type: 'string', // ToDo: Can dateTime be used?
+				type: 'string', // ToDo: Use dateTime?
 				default: '',
 				placeholder: 'YYYY-MM-DD',
 				description: 'The start date of the offer',
-				displayOptions: { show: { '/postType': ['OFFER'] } },
+				displayOptions: { show: { postType: ['OFFER'] } }, // ToDo: issue with displayOptions + routing. Tried also './postType'
 			},
 			{
 				displayName: 'End Date',
 				name: 'endDate',
-				type: 'string', // ToDo: Can dateTime be used?
+				type: 'string', // ToDo: Use dateTime?
 				default: '',
 				placeholder: 'YYYY-MM-DD',
 				description: 'The end date of the offer',
-				displayOptions: { show: { '/postType': ['OFFER'] } },
-				typeOptions: { useDateAndTime: false },
+				displayOptions: { show: { postType: ['OFFER'] } }, // ToDo: issue with displayOptions + routing. Tried also './postType'
 			},
 			{
 				displayName: 'Coupon Code',
@@ -951,9 +949,9 @@ export const postFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'The coupon code for the offer',
-				displayOptions: { show: { '/postType': ['OFFER'] } },
+				displayOptions: { show: { postType: ['OFFER'] } }, // ToDo: issue with displayOptions + routing. Tried also './postType'
 				routing: {
-					send: { type: 'body', propertyInDotNotation: true, property: 'offer.couponCode' },
+					send: { type: 'body', property: 'offer.couponCode' },
 				},
 			},
 			{
@@ -962,9 +960,9 @@ export const postFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'Link to redeem the offer',
-				displayOptions: { show: { '/postType': ['OFFER'] } },
+				displayOptions: { show: { postType: ['OFFER'] } }, // ToDo: issue with displayOptions + routing. Tried also './postType'
 				routing: {
-					send: { type: 'body', propertyInDotNotation: true, property: 'offer.redeemOnlineUrl' },
+					send: { type: 'body', property: 'offer.redeemOnlineUrl' },
 				},
 			},
 			{
@@ -973,9 +971,9 @@ export const postFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'The terms and conditions of the offer',
-				displayOptions: { show: { '/postType': ['OFFER'] } },
+				displayOptions: { show: { postType: ['OFFER'] } }, // ToDo: issue with displayOptions + routing. Tried also './postType'
 				routing: {
-					send: { type: 'body', propertyInDotNotation: true, property: 'offer.termsAndConditions' },
+					send: { type: 'body', property: 'offer.termsAndConditions' },
 				},
 			},
 		],
