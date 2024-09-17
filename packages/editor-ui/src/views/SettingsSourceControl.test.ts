@@ -1,4 +1,4 @@
-import {expect, vi} from 'vitest';
+import { vi } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createPinia, setActivePinia } from 'pinia';
