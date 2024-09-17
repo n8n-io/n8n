@@ -27,7 +27,7 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Logger } from '@/logger';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
-import { getProcessedDataManagers } from '@/processed-data-managers';
+import { getProcessedDataManager } from '@/processed-data-managers';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { WorkflowHistoryManager } from '@/workflows/workflow-history/workflow-history-manager.ee';
 
@@ -268,12 +268,8 @@ export abstract class BaseCommand extends Command {
 	}
 
 	protected async initProcessedDataManager() {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-		const processedDataConfig = config.getEnv('processedDataManager');
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
-		const processedDataManagers = await getProcessedDataManagers(processedDataConfig);
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-		await ProcessedDataManager.init(processedDataConfig, processedDataManagers);
+		const processedDataManager = await getProcessedDataManager();
+		await ProcessedDataManager.init(processedDataManager);
 	}
 
 	async initExternalHooks() {

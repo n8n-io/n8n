@@ -1,37 +1,33 @@
-import {
-	type ICheckProcessedOptions,
-	type ICheckProcessedOutput,
-	type ICheckProcessedOutputItems,
-	type IDataObject,
-	type ProcessedDataContext,
-	type ProcessedDataItemTypes,
-	type ICheckProcessedContextData,
-	type IProcessedDataConfig,
-	type IProcessedDataManagers,
-	ApplicationError,
+import { ApplicationError } from 'n8n-workflow';
+import type {
+	IProcessedDataManager,
+	ICheckProcessedOptions,
+	ICheckProcessedOutput,
+	ICheckProcessedOutputItems,
+	IDataObject,
+	ProcessedDataContext,
+	ProcessedDataItemTypes,
+	ICheckProcessedContextData,
 } from 'n8n-workflow';
 import get from 'lodash/get';
 
 export class ProcessedDataManager {
 	private static instance: ProcessedDataManager;
 
-	private managers: IProcessedDataManagers;
+	private manager: IProcessedDataManager;
 
-	private mode: string;
-
-	constructor(config: IProcessedDataConfig) {
-		this.mode = config.mode;
-		this.managers = {};
+	constructor(manager: IProcessedDataManager) {
+		this.manager = manager;
 	}
 
-	static async init(config: IProcessedDataConfig, managers: IProcessedDataManagers): Promise<void> {
+	static async init(manager: IProcessedDataManager): Promise<void> {
 		if (ProcessedDataManager.instance) {
 			throw new ApplicationError('Processed Data Manager is already initialized');
 		}
 
-		ProcessedDataManager.instance = new ProcessedDataManager(config);
+		ProcessedDataManager.instance = new ProcessedDataManager(manager);
 
-		ProcessedDataManager.instance.managers = managers;
+		ProcessedDataManager.instance.manager = manager;
 	}
 
 	static getInstance(): ProcessedDataManager {
@@ -41,8 +37,8 @@ export class ProcessedDataManager {
 		return ProcessedDataManager.instance;
 	}
 
-	static getManagers(): string[] {
-		return Object.keys(ProcessedDataManager.instance.managers);
+	static getManager(): string[] {
+		return Object.keys(ProcessedDataManager.instance.manager);
 	}
 
 	async checkProcessed(
@@ -51,11 +47,10 @@ export class ProcessedDataManager {
 		contextData: ICheckProcessedContextData,
 		options: ICheckProcessedOptions,
 	): Promise<ICheckProcessedOutput> {
-		if (this.managers[this.mode]) {
-			return await this.managers[this.mode].checkProcessed(items, context, contextData, options);
+		if (this.manager) {
+			return await this.manager.checkProcessed(items, context, contextData, options);
 		}
-
-		throw new ApplicationError(`There is no manager for the defined mode "${this.mode}"`);
+		throw new ApplicationError('There is no manager');
 	}
 
 	async checkProcessedItemsAndRecord(
@@ -65,8 +60,8 @@ export class ProcessedDataManager {
 		contextData: ICheckProcessedContextData,
 		options: ICheckProcessedOptions,
 	): Promise<ICheckProcessedOutputItems> {
-		if (!this.managers[this.mode]) {
-			throw new ApplicationError(`There is no manager for the defined mode "${this.mode}"`);
+		if (!this.manager) {
+			throw new ApplicationError('There is no manager');
 		}
 
 		let value;
@@ -76,7 +71,7 @@ export class ProcessedDataManager {
 			return acc;
 		}, {});
 
-		const checkedItems = await this.managers[this.mode].checkProcessedAndRecord(
+		const checkedItems = await this.manager.checkProcessedAndRecord(
 			Object.keys(itemLookup),
 			context,
 			contextData,
@@ -95,16 +90,11 @@ export class ProcessedDataManager {
 		contextData: ICheckProcessedContextData,
 		options: ICheckProcessedOptions,
 	): Promise<ICheckProcessedOutput> {
-		if (this.managers[this.mode]) {
-			return await this.managers[this.mode].checkProcessedAndRecord(
-				items,
-				context,
-				contextData,
-				options,
-			);
+		if (this.manager) {
+			return await this.manager.checkProcessedAndRecord(items, context, contextData, options);
 		}
 
-		throw new ApplicationError(`There is no manager for the defined mode "${this.mode}"`);
+		throw new ApplicationError('There is no manager');
 	}
 
 	async removeProcessed(
@@ -113,11 +103,11 @@ export class ProcessedDataManager {
 		contextData: ICheckProcessedContextData,
 		options: ICheckProcessedOptions,
 	): Promise<void> {
-		if (this.managers[this.mode]) {
-			return await this.managers[this.mode].removeProcessed(items, context, contextData, options);
+		if (this.manager) {
+			return await this.manager.removeProcessed(items, context, contextData, options);
 		}
 
-		throw new ApplicationError(`There is no manager for the defined mode "${this.mode}"`);
+		throw new ApplicationError('There is no manager ');
 	}
 
 	async clearAllProcessedItems(
@@ -125,10 +115,10 @@ export class ProcessedDataManager {
 		contextData: ICheckProcessedContextData,
 		options: ICheckProcessedOptions,
 	): Promise<void> {
-		if (this.managers[this.mode]) {
-			return await this.managers[this.mode].clearAllProcessedItems(context, contextData, options);
+		if (this.manager) {
+			return await this.manager.clearAllProcessedItems(context, contextData, options);
 		}
 
-		throw new ApplicationError(`There is no manager for the defined mode "${this.mode}"`);
+		throw new ApplicationError('There is no manager');
 	}
 }

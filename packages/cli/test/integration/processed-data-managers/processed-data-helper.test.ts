@@ -8,7 +8,7 @@ import { NodeTypes } from '@/node-types';
 import { mockInstance } from '@test/mocking';
 import { createWorkflow } from '@test-integration/db/workflows';
 
-import { getProcessedDataManagers } from '../../../src/processed-data-managers';
+import { getProcessedDataManager } from '../../../src/processed-data-managers';
 import * as testDb from '../shared/test-db';
 
 let workflow: Workflow;
@@ -87,8 +87,8 @@ beforeAll(async () => {
 		availableModes: 'nativeDatabase',
 		mode: 'nativeDatabase',
 	};
-	const processedDataManagers = await getProcessedDataManagers(processedDataConfig);
-	await ProcessedDataManager.init(processedDataConfig, processedDataManagers);
+	const processedDataManager = await getProcessedDataManager();
+	await ProcessedDataManager.init(processedDataManager);
 });
 
 beforeEach(async () => {
