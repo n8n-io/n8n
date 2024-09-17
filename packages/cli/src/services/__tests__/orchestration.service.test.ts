@@ -68,6 +68,7 @@ describe('Orchestration Service', () => {
 		await handler.init();
 		// @ts-expect-error Private field
 		expect(os.publisher).toBeDefined();
+		// @ts-expect-error Private field
 		expect(handler.subscriber).toBeDefined();
 		expect(queueModeId).toBeDefined();
 	});
