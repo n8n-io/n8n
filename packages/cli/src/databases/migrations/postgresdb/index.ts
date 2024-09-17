@@ -42,7 +42,6 @@ import { SeparateExecutionData1690000000020 } from './1690000000020-SeparateExec
 import { AddMissingPrimaryKeyOnExecutionData1690787606731 } from './1690787606731-AddMissingPrimaryKeyOnExecutionData';
 import { MigrateToTimestampTz1694091729095 } from './1694091729095-MigrateToTimestampTz';
 import { AddActivatedAtUserSetting1717498465931 } from './1717498465931-AddActivatedAtUserSetting';
-import { CreateProcessedDataTable1721319360300 } from './1721319360300-CreateProcessedDataTable';
 import { FixExecutionMetadataSequence1721377157740 } from './1721377157740-FixExecutionMetadataSequence';
 import { CreateLdapEntities1674509946020 } from '../common/1674509946020-CreateLdapEntities';
 import { PurgeInvalidWorkflowConnections1675940580449 } from '../common/1675940580449-PurgeInvalidWorkflowConnections';
@@ -66,6 +65,8 @@ import { RefactorExecutionIndices1723796243146 } from '../common/1723796243146-R
 import { CreateAnnotationTables1724753530828 } from '../common/1724753530828-CreateExecutionAnnotationTables';
 import { AddApiKeysTable1724951148974 } from '../common/1724951148974-AddApiKeysTable';
 import { SeparateExecutionCreationFromStart1727427440136 } from '../common/1727427440136-SeparateExecutionCreationFromStart';
+import { CreateProcessedDataTable1726606152711 } from '../common/1726606152711-CreateProcessedDataTable';
+
 
 export const postgresMigrations: Migration[] = [
 	InitialMigration1587669153312,
@@ -108,7 +109,6 @@ export const postgresMigrations: Migration[] = [
 	MigrateIntegerKeysToString1690000000000,
 	SeparateExecutionData1690000000020,
 	RemoveSkipOwnerSetup1681134145997,
-	CreateProcessedDataTable1721319360300,
 	RemoveResetPasswordColumns1690000000030,
 	AddMissingPrimaryKeyOnExecutionData1690787606731,
 	CreateWorkflowNameIndex1691088862123,
@@ -134,4 +134,5 @@ export const postgresMigrations: Migration[] = [
 	CreateAnnotationTables1724753530828,
 	AddApiKeysTable1724951148974,
 	SeparateExecutionCreationFromStart1727427440136,
+	CreateProcessedDataTable1726606152711,
 ];
