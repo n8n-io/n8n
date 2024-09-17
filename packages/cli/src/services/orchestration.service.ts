@@ -14,7 +14,7 @@ import type { RedisServiceBaseCommand, RedisServiceCommand } from './redis/redis
 export class OrchestrationService {
 	constructor(
 		private readonly logger: Logger,
-		private readonly instanceSettings: InstanceSettings,
+		readonly instanceSettings: InstanceSettings,
 		readonly multiMainSetup: MultiMainSetup,
 	) {}
 
