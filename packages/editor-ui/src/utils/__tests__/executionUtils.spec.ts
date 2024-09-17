@@ -15,7 +15,6 @@ vi.mock('../executionUtils', async () => {
 
 describe('displayForm', () => {
 	const getTestUrlMock = vi.fn();
-	const shouldShowFormMock = vi.fn();
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -50,11 +49,8 @@ describe('displayForm', () => {
 			pinData,
 			destinationNode: undefined,
 			directParentNodes: [],
-			formWaitingUrl: 'http://example.com',
-			executionId: undefined,
 			source: undefined,
 			getTestUrl: getTestUrlMock,
-			shouldShowForm: shouldShowFormMock,
 		});
 
 		expect(openPopUpWindow).not.toHaveBeenCalled();
@@ -86,11 +82,8 @@ describe('displayForm', () => {
 			pinData: {},
 			destinationNode: 'Node3',
 			directParentNodes: ['Node4'],
-			formWaitingUrl: 'http://example.com',
-			executionId: '12345',
 			source: undefined,
 			getTestUrl: getTestUrlMock,
-			shouldShowForm: shouldShowFormMock,
 		});
 
 		expect(openPopUpWindow).not.toHaveBeenCalled();
@@ -116,11 +109,8 @@ describe('displayForm', () => {
 			pinData: {},
 			destinationNode: undefined,
 			directParentNodes: [],
-			formWaitingUrl: 'http://example.com',
-			executionId: undefined,
 			source: 'RunData.ManualChatMessage',
 			getTestUrl: getTestUrlMock,
-			shouldShowForm: shouldShowFormMock,
 		});
 
 		expect(openPopUpWindow).not.toHaveBeenCalled();
