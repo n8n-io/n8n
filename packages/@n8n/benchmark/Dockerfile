@@ -33,7 +33,7 @@ COPY --chown=node:node ./packages/@n8n/benchmark/package.json /app/packages/@n8n
 COPY --chown=node:node ./patches /app/patches
 COPY --chown=node:node ./scripts /app/scripts
 
-RUN CI=1 pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile
 
 # TS config files
 COPY --chown=node:node ./tsconfig.json /app/tsconfig.json
