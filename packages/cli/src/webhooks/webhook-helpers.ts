@@ -6,6 +6,7 @@
 /* eslint-disable prefer-spread */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
+import { GlobalConfig } from '@n8n/config';
 import type express from 'express';
 import formidable from 'formidable';
 import get from 'lodash/get';
@@ -214,9 +215,11 @@ export async function executeWebhook(
 		if (!binaryData) {
 			const { contentType, encoding } = req;
 			if (contentType === 'multipart/form-data') {
+				const { formDataFileSizeMax } = Container.get(GlobalConfig).endpoints;
 				const form = formidable({
 					multiples: true,
 					encoding: encoding as formidable.BufferEncoding,
+					maxFileSize: formDataFileSizeMax,
 					// TODO: pass a custom `fileWriteStreamHandler` to create binary data files directly
 				});
 				req.body = await new Promise((resolve) => {
