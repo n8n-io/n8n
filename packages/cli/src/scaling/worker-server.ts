@@ -1,12 +1,12 @@
 import { GlobalConfig } from '@n8n/config';
 import express from 'express';
+import { InstanceSettings } from 'n8n-core';
 import { ensureError } from 'n8n-workflow';
 import { strict as assert } from 'node:assert';
 import http from 'node:http';
 import type { Server } from 'node:http';
 import { Service } from 'typedi';
 
-import config from '@/config';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import * as Db from '@/db';
 import { CredentialsOverwritesAlreadySetError } from '@/errors/credentials-overwrites-already-set.error';
@@ -40,8 +40,9 @@ export class WorkerServer {
 		private readonly scalingService: ScalingService,
 		private readonly credentialsOverwrites: CredentialsOverwrites,
 		private readonly externalHooks: ExternalHooks,
+		private readonly instanceSettings: InstanceSettings,
 	) {
-		assert(config.getEnv('generic.instanceType') === 'worker');
+		assert(this.instanceSettings.instanceType === 'worker');
 
 		const app = express();
 

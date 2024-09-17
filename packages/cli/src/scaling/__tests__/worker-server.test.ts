@@ -1,10 +1,10 @@
 import type { GlobalConfig } from '@n8n/config';
 import type express from 'express';
 import { mock } from 'jest-mock-extended';
+import type { InstanceSettings } from 'n8n-core';
 import { AssertionError } from 'node:assert';
 import * as http from 'node:http';
 
-import config from '@/config';
 import { PortTakenError } from '@/errors/port-taken.error';
 import type { ExternalHooks } from '@/external-hooks';
 import { bodyParser, rawBodyReader } from '@/middlewares';
@@ -27,9 +27,9 @@ describe('WorkerServer', () => {
 	let globalConfig: GlobalConfig;
 
 	const externalHooks = mock<ExternalHooks>();
+	const instanceSettings = mock<InstanceSettings>({ instanceType: 'worker' });
 
 	beforeEach(() => {
-		config.set('generic.instanceType', 'worker');
 		globalConfig = mock<GlobalConfig>({
 			queue: {
 				health: { active: true, port: 5678 },
@@ -43,10 +43,16 @@ describe('WorkerServer', () => {
 
 	describe('constructor', () => {
 		it('should throw if non-worker instance type', () => {
-			config.set('generic.instanceType', 'webhook');
-
 			expect(
-				() => new WorkerServer(globalConfig, mock(), mock(), mock(), externalHooks),
+				() =>
+					new WorkerServer(
+						globalConfig,
+						mock(),
+						mock(),
+						mock(),
+						externalHooks,
+						mock<InstanceSettings>({ instanceType: 'webhook' }),
+					),
 			).toThrowError(AssertionError);
 		});
 
@@ -61,14 +67,15 @@ describe('WorkerServer', () => {
 			});
 
 			expect(
-				() => new WorkerServer(globalConfig, mock(), mock(), mock(), externalHooks),
+				() =>
+					new WorkerServer(globalConfig, mock(), mock(), mock(), externalHooks, instanceSettings),
 			).toThrowError(PortTakenError);
 		});
 
 		it('should set up `/healthz` if health check is enabled', async () => {
 			jest.spyOn(http, 'createServer').mockReturnValue(mock<http.Server>());
 
-			new WorkerServer(globalConfig, mock(), mock(), mock(), externalHooks);
+			new WorkerServer(globalConfig, mock(), mock(), mock(), externalHooks, instanceSettings);
 
 			expect(app.get).toHaveBeenCalledWith('/healthz', expect.any(Function));
 		});
@@ -78,7 +85,7 @@ describe('WorkerServer', () => {
 
 			jest.spyOn(http, 'createServer').mockReturnValue(mock<http.Server>());
 
-			new WorkerServer(globalConfig, mock(), mock(), mock(), externalHooks);
+			new WorkerServer(globalConfig, mock(), mock(), mock(), externalHooks, instanceSettings);
 
 			expect(app.get).not.toHaveBeenCalled();
 		});
@@ -89,7 +96,7 @@ describe('WorkerServer', () => {
 			const CREDENTIALS_OVERWRITE_ENDPOINT = 'credentials/overwrites';
 			globalConfig.credentials.overwrite.endpoint = CREDENTIALS_OVERWRITE_ENDPOINT;
 
-			new WorkerServer(globalConfig, mock(), mock(), mock(), externalHooks);
+			new WorkerServer(globalConfig, mock(), mock(), mock(), externalHooks, instanceSettings);
 
 			expect(app.post).toHaveBeenCalledWith(
 				`/${CREDENTIALS_OVERWRITE_ENDPOINT}`,
@@ -102,7 +109,7 @@ describe('WorkerServer', () => {
 		it('should not set up `/:endpoint` if overwrites endpoint is not set', async () => {
 			jest.spyOn(http, 'createServer').mockReturnValue(mock<http.Server>());
 
-			new WorkerServer(globalConfig, mock(), mock(), mock(), externalHooks);
+			new WorkerServer(globalConfig, mock(), mock(), mock(), externalHooks, instanceSettings);
 
 			expect(app.post).not.toHaveBeenCalled();
 		});
@@ -118,7 +125,14 @@ describe('WorkerServer', () => {
 				return server;
 			});
 
-			const workerServer = new WorkerServer(globalConfig, mock(), mock(), mock(), externalHooks);
+			const workerServer = new WorkerServer(
+				globalConfig,
+				mock(),
+				mock(),
+				mock(),
+				externalHooks,
+				instanceSettings,
+			);
 			await workerServer.init();
 
 			expect(externalHooks.run).toHaveBeenCalledWith('worker.ready');
