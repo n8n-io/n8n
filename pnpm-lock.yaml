@@ -217,6 +217,9 @@ importers:
         specifier: ^2.0.5
         version: 2.0.5
     devDependencies:
+      '@n8n/api-types':
+        specifier: workspace:*
+        version: link:../packages/@n8n/api-types
       '@types/lodash':
         specifier: 'catalog:'
         version: 4.14.195

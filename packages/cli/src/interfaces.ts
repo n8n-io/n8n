@@ -239,12 +239,6 @@ export interface IExternalHooksFunctions {
 	};
 }
 
-export interface IVersionNotificationSettings {
-	enabled: boolean;
-	endpoint: string;
-	infoUrl: string;
-}
-
 export interface IPersonalizationSurveyAnswers {
 	email: string | null;
 	codingSkill: string | null;
