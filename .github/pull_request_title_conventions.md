@@ -31,17 +31,17 @@ The structure looks like this:
 
 Must be one of the following:
 
-| type       | description                                                                                  | appears in changelog |
-| ---------- | -------------------------------------------------------------------------------------------- | -------------------- |
-| `feat`     | A new feature                                                                                | ✅                   |
-| `fix`      | A bug fix                                                                                    | ✅                   |
-| `perf`     | A code change that improves performance                                                      | ✅                   |
-| `test`     | Adding missing tests or correcting existing tests                                            | ❌                   |
-| `docs`     | Documentation only changes                                                                   | ❌                   |
-| `refactor` | A behavior-neutral code change that neither fixes a bug nor adds a feature                   | ❌                   |
-| `build`    | Changes that affect the build system or external dependencies (TypeScript, Jest, pnpm, etc.) | ❌                   |
-| `ci`       | Changes to CI configuration files and scripts (e.g. Github actions)                          | ❌                   |
-| `chore`    | Routine tasks, maintenance, and minor updates not covered by other types                     | ❌                   |
+| type | description | appears in changelog |
+| --- | --- | --- |
+| `feat` | A new feature | ✅ |
+| `fix` | A bug fix | ✅ |
+| `perf` | A code change that improves performance | ✅ |
+| `test` | Adding missing tests or correcting existing tests | ❌ |
+| `docs` | Documentation only changes | ❌ |
+| `refactor` | A behavior-neutral code change that neither fixes a bug nor adds a feature | ❌ |
+| `build` | Changes that affect the build system or external dependencies (TypeScript, Jest, pnpm, etc.) | ❌ |
+| `ci` | Changes to CI configuration files and scripts (e.g. Github actions) | ❌ |
+| `chore` | Routine tasks, maintenance, and minor updates not covered by other types | ❌ |
 
 > BREAKING CHANGES (see Footer section below), will **always** appear in the changelog unless suffixed with `no-changelog`.
 

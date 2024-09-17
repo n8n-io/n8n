@@ -20,7 +20,7 @@ const biomeConfig = path.resolve('biome.jsonc');
 const ignore = path.resolve('.prettierignore');
 
 const ROOT_DIRS_TO_SKIP = ['.git', 'node_modules', 'packages', '.turbo', 'cypress'];
-const EXTENSIONS_TO_FORMAT_WITH_PRETTIER = ['.md', '.yml'];
+const EXTENSIONS_TO_FORMAT_WITH_PRETTIER = ['.yml'];
 const EXTENSIONS_TO_FORMAT_WITH_BIOME = ['.js', '.json', '.ts'];
 
 const isDir = (path) => fs.lstatSync(path).isDirectory();
