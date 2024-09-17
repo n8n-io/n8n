@@ -505,10 +505,9 @@ export const getNodeIconColor = (
 
 /**
 	Regular expression to extract the node names from the expressions in the template.
-	Example: $('expression') => expression
-	Or: $("expression") => expression
+	Supports single quotes, double quotes, and backticks.
 */
-const entityRegex = /\$\((\\?['"])(.*?)\1\)/g;
+const entityRegex = /\$\(\s*(\\?["'`])((?:\\.|(?!\1)[^\\])*)\1\s*\)/g;
 
 /**
  * Extract the node names from the expressions in the template.
@@ -523,6 +522,13 @@ function extractNodeNames(template: string): string[] {
 }
 
 /**
+ * Unescape quotes in the string. Supports single quotes, double quotes, and backticks.
+ */
+export function unescapeQuotes(str: string): string {
+	return str.replace(/\\(['"`])/g, '$1');
+}
+
+/**
  * Extract the node names from the expressions in the node parameters.
  */
 export function getReferencedNodes(node: INode): string[] {
@@ -533,15 +539,21 @@ export function getReferencedNodes(node: INode): string[] {
 	// Go through all parameters and check if they contain expressions on any level
 	for (const key in node.parameters) {
 		let names: string[] = [];
-		if (node.parameters[key] && typeof node.parameters[key] === 'object') {
+		if (
+			node.parameters[key] &&
+			typeof node.parameters[key] === 'object' &&
+			Object.keys(node.parameters[key]).length
+		) {
 			names = extractNodeNames(JSON.stringify(node.parameters[key]));
-		} else if (typeof node.parameters[key] === 'string') {
+		} else if (typeof node.parameters[key] === 'string' && node.parameters[key]) {
 			names = extractNodeNames(node.parameters[key]);
 		}
 		if (names.length) {
-			names.forEach((name) => {
-				referencedNodes.add(name.trim());
-			});
+			names
+				.map((name) => unescapeQuotes(name))
+				.forEach((name) => {
+					referencedNodes.add(name);
+				});
 		}
 	}
 	return referencedNodes.size ? Array.from(referencedNodes) : [];

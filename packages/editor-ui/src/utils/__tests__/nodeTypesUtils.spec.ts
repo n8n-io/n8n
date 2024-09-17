@@ -89,7 +89,7 @@ const referencedNodesTestCases: Array<{ caseName: string; node: INode; expected:
 		expected: ['Edit Fields 2'],
 	},
 	{
-		caseName: 'Should handle expressions with single and double quotes',
+		caseName: 'Should handle expressions with single quotes, double quotes and backticks',
 		node: {
 			parameters: {
 				authentication: 'oAuth2',
@@ -103,6 +103,11 @@ const referencedNodesTestCases: Array<{ caseName: string; node: INode; expected:
 				sheetName: {
 					__rl: true,
 					value: '={{ $("Edit Fields 2").item.json.sheet }}',
+					mode: 'id',
+				},
+				rowName: {
+					__rl: true,
+					value: '={{ $(`Edit Fields 3`).item.json.row }}',
 					mode: 'id',
 				},
 				filtersUI: {},
@@ -121,7 +126,7 @@ const referencedNodesTestCases: Array<{ caseName: string; node: INode; expected:
 				},
 			},
 		},
-		expected: ['Edit Fields', 'Edit Fields 2'],
+		expected: ['Edit Fields', 'Edit Fields 2', 'Edit Fields 3'],
 	},
 	{
 		caseName: 'Should only add one reference for each referenced node',
@@ -182,7 +187,7 @@ const referencedNodesTestCases: Array<{ caseName: string; node: INode; expected:
 		expected: ['Edit Fields', 'Edit Fields 2'],
 	},
 	{
-		caseName: 'Should ignore spaces around node references',
+		caseName: 'Should respect whitespace around node references',
 		node: {
 			parameters: {
 				curlImport: '',
@@ -202,15 +207,15 @@ const referencedNodesTestCases: Array<{ caseName: string; node: INode; expected:
 			id: 'edc36001-aee7-4052-b66e-cf127f4b6ea5',
 			name: 'HTTP Request',
 		},
-		expected: ['Edit Fields'],
+		expected: ['   Edit Fields     '],
 	},
 	{
-		caseName: 'Should ignore non-existing nodes',
+		caseName: 'Should ignore whitespace inside expressions',
 		node: {
 			parameters: {
 				curlImport: '',
 				method: 'GET',
-				url: "={{ $('   Edit Fields     ').item.json.one }}",
+				url: "={{ $(    'Edit Fields'     ).item.json.one }}",
 				authentication: 'none',
 				provideSslCertificates: false,
 				sendQuery: false,
@@ -251,12 +256,13 @@ const referencedNodesTestCases: Array<{ caseName: string; node: INode; expected:
 		expected: [],
 	},
 	{
-		caseName: 'Should handle node names with quotes',
+		caseName: 'Should correctly detect node names that contain single quotes',
 		node: {
 			parameters: {
 				curlImport: '',
 				method: 'GET',
-				url: "={{ $('Edit 'Fields' 2').item.json.name }}",
+				// In order to carry over backslashes to test function, the string needs to be double escaped
+				url: "={{ $('Edit \\'Fields\\' 2').item.json.name }}",
 				authentication: 'none',
 				provideSslCertificates: false,
 				sendQuery: false,
@@ -272,6 +278,101 @@ const referencedNodesTestCases: Array<{ caseName: string; node: INode; expected:
 			name: 'HTTP Request',
 		},
 		expected: ["Edit 'Fields' 2"],
+	},
+	{
+		caseName: 'Should correctly detect node names with inner backticks',
+		node: {
+			parameters: {
+				curlImport: '',
+				method: 'GET',
+				url: "={{ $('Edit `Fields` 2').item.json.name }}",
+				authentication: 'none',
+				provideSslCertificates: false,
+				sendQuery: false,
+				sendHeaders: false,
+				sendBody: false,
+				options: {},
+				infoMessage: '',
+			},
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 4.2,
+			position: [220, 220],
+			id: 'edc36001-aee7-4052-b66e-cf127f4b6ea5',
+			name: 'HTTP Request',
+		},
+		expected: ['Edit `Fields` 2'],
+	},
+	{
+		caseName: 'Should correctly detect node names with inner escaped backticks',
+		node: {
+			parameters: {
+				curlImport: '',
+				method: 'GET',
+				// eslint-disable-next-line prettier/prettier
+				url: "={{ $(`Edit \\`Fields\\` 2`).item.json.name }}",
+				authentication: 'none',
+				provideSslCertificates: false,
+				sendQuery: false,
+				sendHeaders: false,
+				sendBody: false,
+				options: {},
+				infoMessage: '',
+			},
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 4.2,
+			position: [220, 220],
+			id: 'edc36001-aee7-4052-b66e-cf127f4b6ea5',
+			name: 'HTTP Request',
+		},
+		expected: ['Edit `Fields` 2'],
+	},
+	{
+		caseName: 'Should correctly detect node names with inner escaped double quotes',
+		node: {
+			parameters: {
+				curlImport: '',
+				method: 'GET',
+				// In order to carry over backslashes to test function, the string needs to be double escaped
+				url: '={{ $("Edit \\"Fields\\" 2").item.json.name }}',
+				authentication: 'none',
+				provideSslCertificates: false,
+				sendQuery: false,
+				sendHeaders: false,
+				sendBody: false,
+				options: {},
+				infoMessage: '',
+			},
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 4.2,
+			position: [220, 220],
+			id: 'edc36001-aee7-4052-b66e-cf127f4b6ea5',
+			name: 'HTTP Request',
+		},
+		expected: ['Edit "Fields" 2'],
+	},
+	{
+		caseName: 'Should not detect invalid expressions',
+		node: {
+			parameters: {
+				curlImport: '',
+				method: 'GET',
+				// String not closed properly
+				url: "={{ $('Edit ' fields').item.json.document }",
+				// Mixed quotes
+				url2: '{{ $("Edit \'Fields" 2").item.json.name }}',
+				url3: '{{ $("Edit `Fields" 2").item.json.name }}',
+				// Quotes not escaped
+				url4: '{{ $("Edit "Fields" 2").item.json.name }}',
+				url5: "{{ $('Edit 'Fields' 2').item.json.name }}",
+				url6: '{{ $(`Edit `Fields` 2`).item.json.name }}',
+			},
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 4.2,
+			position: [220, 220],
+			id: 'edc36001-aee7-4052-b66e-cf127f4b6ea5',
+			name: 'HTTP Request',
+		},
+		expected: [],
 	},
 ];
 
