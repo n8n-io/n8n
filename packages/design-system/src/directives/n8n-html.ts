@@ -11,10 +11,10 @@ const configuredSanitize = (html: string) =>
 	});
 
 export const n8nHtml: ObjectDirective = {
-	beforeMount(el: HTMLElement, binding: DirectiveBinding) {
+	beforeMount(el: HTMLElement, binding: DirectiveBinding<string>) {
 		el.innerHTML = configuredSanitize(binding.value);
 	},
-	beforeUpdate(el: HTMLElement, binding: DirectiveBinding) {
+	beforeUpdate(el: HTMLElement, binding: DirectiveBinding<string>) {
 		el.innerHTML = configuredSanitize(binding.value);
 	},
 };
