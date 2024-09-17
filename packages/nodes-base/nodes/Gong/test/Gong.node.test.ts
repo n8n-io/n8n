@@ -305,19 +305,21 @@ describe('Gong Node', () => {
 										mode: 'id',
 									},
 									options: {
-										pointsOfInterest: true,
-										media: true,
-										brief: true,
-										publicComments: true,
-										highlights: true,
-										keyPoints: true,
-										outline: true,
-										callOutcome: true,
-										parties: true,
-										structure: true,
-										Trackers: true,
-										transcript: true,
-										topics: true,
+										properties: [
+											'pointsOfInterest',
+											'transcript',
+											'media',
+											'brief',
+											'publicComments',
+											'highlights',
+											'trackers',
+											'topics',
+											'structure',
+											'parties',
+											'callOutcome',
+											'outline',
+											'keyPoints',
+										],
 									},
 									requestOptions: {},
 								},
@@ -426,11 +428,28 @@ describe('Gong Node', () => {
 										fromDateTime: '2024-01-01T00:00:00Z',
 										toDateTime: '2024-12-31T00:00:00Z',
 										workspaceId: '3662366901393371750',
-										callIds: '3662366901393371750,3662366901393371751',
-										primaryUserIds: '234599484848423',
+										callIds: [
+											{
+												__rl: true,
+												value: '3662366901393371750',
+												mode: 'id',
+											},
+											{
+												__rl: true,
+												value: '3662366901393371751',
+												mode: 'id',
+											},
+										],
+										primaryUserIds: [
+											{
+												__rl: true,
+												value: '234599484848423',
+												mode: 'id',
+											},
+										],
 									},
 									options: {
-										parties: true,
+										properties: ['parties', 'topics'],
 									},
 									requestOptions: {},
 								},
@@ -486,6 +505,9 @@ describe('Gong Node', () => {
 								contentSelector: {
 									exposedFields: {
 										parties: true,
+										content: {
+											topics: true,
+										},
 									},
 								},
 								cursor: undefined,
@@ -517,6 +539,9 @@ describe('Gong Node', () => {
 								contentSelector: {
 									exposedFields: {
 										parties: true,
+										content: {
+											topics: true,
+										},
 									},
 								},
 								cursor:
@@ -539,7 +564,7 @@ describe('Gong Node', () => {
 				},
 			},
 			{
-				description: 'should create call',
+				description: 'should get all calls with multiple id filters',
 				input: {
 					workflowData: {
 						nodes: [
@@ -553,35 +578,32 @@ describe('Gong Node', () => {
 							},
 							{
 								parameters: {
-									operation: 'create',
-									actualStart: '={{ "2018-02-17T02:30:00-08:00" }}',
-									clientUniqueId: '123abc',
-									parties: {
-										partyFields: [
+									filters: {
+										callIds: [
 											{
-												phoneNumber: '+1 123-567-8989',
-												emailAddress: 'test@test.com',
-												name: 'Test User',
-												partyId: '1',
-												userId: '234599484848423',
+												__rl: true,
+												value: '=3662366901393371750',
+												mode: 'id',
+											},
+											{
+												__rl: true,
+												value: "={{ '3662366901393371751' }}",
+												mode: 'id',
+											},
+											{
+												__rl: true,
+												value: "={{ ['3662366901393371752','3662366901393731753'] }}",
+												mode: 'id',
+											},
+											{
+												__rl: true,
+												value: '3662366901393731754',
+												mode: 'list',
+												cachedResultName: 'Call name',
 											},
 										],
 									},
-									primaryUser: '234599484848423',
-									additionalFields: {
-										callProviderCode: 'clearslide',
-										customData: 'Optional data',
-										disposition: 'No Answer',
-										downloadMediaUrl: 'https://upload-server.com/sample-call.mp3',
-										duration: 125.8,
-										languageCode: 'string',
-										meetingUrl: 'https://www.conference.com/john.smith',
-										purpose: 'Demo Call',
-										scheduledEnd: '={{ "2018-02-19T02:30:00-08:00" }}',
-										scheduledStart: '={{ "2018-02-17T02:30:00-08:00" }}',
-										title: 'Example call',
-										workspaceId: '623457276584334',
-									},
+									options: {},
 									requestOptions: {},
 								},
 								id: 'c87d72ec-0683-4e32-9829-5e6ea1d1ee7d',
@@ -615,7 +637,7 @@ describe('Gong Node', () => {
 				output: {
 					nodeExecutionOrder: ['Start'],
 					nodeData: {
-						Gong: [gongNodeResponse.createCall],
+						Gong: [[{ json: undefined }]],
 					},
 				},
 				nock: {
@@ -623,137 +645,21 @@ describe('Gong Node', () => {
 					mocks: [
 						{
 							method: 'post',
-							path: '/v2/calls',
+							path: '/v2/calls/extensive',
 							statusCode: 200,
 							requestBody: {
-								actualStart: '2018-02-17T10:30:00.000Z',
-								callProviderCode: 'clearslide',
-								clientUniqueId: '123abc',
-								customData: 'Optional data',
-								direction: 'Inbound',
-								disposition: 'No Answer',
-								downloadMediaUrl: 'https://upload-server.com/sample-call.mp3',
-								duration: 125.8,
-								languageCode: 'string',
-								meetingUrl: 'https://www.conference.com/john.smith',
-								parties: [
-									{
-										emailAddress: 'test@test.com',
-										mediaChannelId: 0,
-										name: 'Test User',
-										partyId: '1',
-										phoneNumber: '+1 123-567-8989',
-										userId: '234599484848423',
-									},
-								],
-								primaryUser: '234599484848423',
-								purpose: 'Demo Call',
-								scheduledEnd: '2018-02-19T10:30:00.000Z',
-								scheduledStart: '2018-02-17T10:30:00.000Z',
-								title: 'Example call',
-								workspaceId: '623457276584334',
-							},
-							responseBody: gongApiResponse.postCalls,
-						},
-					],
-				},
-			},
-			{
-				description: 'should create call media',
-				input: {
-					workflowData: {
-						nodes: [
-							{
-								parameters: {},
-								id: '416e4fc1-5055-4e61-854e-a6265256ac26',
-								name: "When clicking 'Test workflow'",
-								type: 'n8n-nodes-base.manualTrigger',
-								position: [820, 380],
-								typeVersion: 1,
-							},
-							{
-								parameters: {
-									operation: 'createMedia',
-									call: {
-										__rl: true,
-										value: '7782342274025937895',
-										mode: 'id',
-									},
-									binaryPropertyName: 'data',
-									requestOptions: {},
-								},
-								id: 'c87d72ec-0683-4e32-9829-5e6ea1d1ee7d',
-								name: 'Gong',
-								type: 'n8n-nodes-base.gong',
-								typeVersion: 1,
-								position: [1220, 380],
-								credentials: {
-									gongApi: {
-										id: 'fH4Sg82VCJi3JaWm',
-										name: 'Gong account',
-									},
-								},
-							},
-							{
-								parameters: {
-									mode: 'runOnceForEachItem',
-									jsCode:
-										"const myBuffer = Buffer.from('dummy-image', 'base64');\n\n$input.item.binary = {\n  data: await this.helpers.prepareBinaryData(myBuffer, 'image.png')\n};\n\nreturn $input.item;",
-								},
-								id: 'c5b2967d-8f11-46f6-b516-e3ac051f542e',
-								name: 'File',
-								type: 'n8n-nodes-base.code',
-								typeVersion: 2,
-								position: [1020, 380],
-							},
-						],
-						connections: {
-							"When clicking 'Test workflow'": {
-								main: [
-									[
-										{
-											node: 'File',
-											type: NodeConnectionType.Main,
-											index: 0,
-										},
+								filter: {
+									callIds: [
+										'3662366901393371750',
+										'3662366901393371751',
+										'3662366901393371752',
+										'3662366901393731753',
+										'3662366901393731754',
 									],
-								],
+								},
+								cursor: undefined,
 							},
-							File: {
-								main: [
-									[
-										{
-											node: 'Gong',
-											type: NodeConnectionType.Main,
-											index: 0,
-										},
-									],
-								],
-							},
-						},
-					},
-				},
-				output: {
-					nodeExecutionOrder: ['Start'],
-					nodeData: {
-						Gong: [gongNodeResponse.createCallMedia],
-					},
-				},
-				nock: {
-					baseUrl,
-					mocks: [
-						{
-							method: 'put',
-							path: '/v2/calls/7782342274025937895/media',
-							statusCode: 200,
-							requestBody: (body) => {
-								const buffer = Buffer.from(body as string, 'hex');
-								const decodedString = buffer.toString('utf-8');
-								const regex =
-									/Content-Disposition:\s*form-data;\s*name="mediaFile";\s*filename="([^"]+)"/;
-								return !!regex.exec(decodedString);
-							},
-							responseBody: gongApiResponse.postCallsMedia,
+							responseBody: {},
 						},
 					],
 				},
@@ -868,7 +774,18 @@ describe('Gong Node', () => {
 									filter: {
 										createdFromDateTime: '2024-01-01T00:00:00Z',
 										createdToDateTime: '2024-12-31T00:00:00Z',
-										userIds: '234599484848423,234599484848424',
+										userIds: [
+											{
+												__rl: true,
+												value: '234599484848423',
+												mode: 'id',
+											},
+											{
+												__rl: true,
+												value: '234599484848424',
+												mode: 'id',
+											},
+										],
 									},
 									requestOptions: {},
 								},

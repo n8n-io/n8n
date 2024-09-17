@@ -17,7 +17,7 @@ export const userOperations: INodeProperties[] = [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Retrieve a specific user',
+				description: 'Retrieve data for a specific user',
 				action: 'Get user',
 				routing: {
 					request: {
@@ -29,7 +29,7 @@ export const userOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'List multiple users',
+				description: 'Retrieve a list of users',
 				action: 'Get many users',
 				routing: {
 					request: {
@@ -51,7 +51,7 @@ const getOperation: INodeProperties[] = [
 		displayName: 'User to Get',
 		name: 'user',
 		default: {
-			mode: 'id',
+			mode: 'list',
 			value: '',
 		},
 		displayOptions: {
@@ -74,6 +74,7 @@ const getOperation: INodeProperties[] = [
 			{
 				displayName: 'By ID',
 				name: 'id',
+				placeholder: 'e.g. 7782342274025937895',
 				type: 'string',
 				validation: [
 					{
@@ -177,11 +178,12 @@ const getAllOperation: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Created From',
+				displayName: 'Created After',
 				name: 'createdFromDateTime',
 				default: '',
 				description:
-					"An optional user creation time lower limit, if supplied the API will return only the users created at or after this time. The filed is in the ISO-8601 format (e.g., '2018-02-18T02:30:00-07:00' or '2018-02-18T08:00:00Z', where Z stands for UTC).",
+					'An optional user creation time lower limit, if supplied the API will return only the users created at or after this time',
+				placeholder: 'e.g. 2018-02-18T02:30:00-07:00 or 2018-02-18T08:00:00Z',
 				routing: {
 					send: {
 						type: 'body',
@@ -193,11 +195,12 @@ const getAllOperation: INodeProperties[] = [
 				type: 'dateTime',
 			},
 			{
-				displayName: 'Created To',
+				displayName: 'Created Before',
 				name: 'createdToDateTime',
 				default: '',
 				description:
-					"An optional user creation time upper limit, if supplied the API will return only the users created before this time. The filed is in the ISO-8601 format (e.g., '2018-02-18T02:30:00-07:00' or '2018-02-18T08:00:00Z', where Z stands for UTC).",
+					'An optional user creation time upper limit, if supplied the API will return only the users created before this time',
+				placeholder: 'e.g. 2018-02-18T02:30:00-07:00 or 2018-02-18T08:00:00Z',
 				routing: {
 					send: {
 						type: 'body',
@@ -211,19 +214,50 @@ const getAllOperation: INodeProperties[] = [
 			{
 				displayName: 'User IDs',
 				name: 'userIds',
-				default: '',
+				default: {
+					mode: 'list',
+					value: '',
+				},
 				description: "Set of Gong's unique numeric identifiers for the users (up to 20 digits)",
-				hint: 'Comma separated list of IDs, array of strings can be set in expression',
+				modes: [
+					{
+						displayName: 'From List',
+						name: 'list',
+						type: 'list',
+						typeOptions: {
+							searchListMethod: 'getUsers',
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'By ID',
+						name: 'id',
+						placeholder: 'e.g. 7782342274025937895',
+						type: 'string',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '[0-9]{1,20}',
+									errorMessage: 'Not a valid Gong User ID',
+								},
+							},
+						],
+					},
+				],
+				required: true,
 				routing: {
 					send: {
 						type: 'body',
 						property: 'filter.userIds',
 						propertyInDotNotation: true,
-						value:
-							'={{ Array.isArray($value) ? $value.map(x => x.toString()) : $value.split(",").map(x => x.trim()) }}',
+						value: '={{ $value.flatMap(x => x.value) }}',
 					},
 				},
-				type: 'string',
+				type: 'resourceLocator',
+				typeOptions: {
+					multipleValues: true,
+				},
 			},
 		],
 		placeholder: 'Add Filter',
