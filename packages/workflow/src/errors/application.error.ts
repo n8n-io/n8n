@@ -1,5 +1,5 @@
-import callsites from 'callsites';
 import type { Event } from '@sentry/node';
+import callsites from 'callsites';
 
 export type Level = 'warning' | 'error' | 'fatal' | 'info';
 
