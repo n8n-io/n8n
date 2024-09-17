@@ -555,7 +555,6 @@ provide(CanvasKey, {
 				pannable
 				zoomable
 				:node-class-name="minimapNodeClassnameFn"
-				mask-color="var(--color-background-base)"
 				:node-border-radius="16"
 				@mouseenter="onMinimapMouseEnter"
 				@mouseleave="onMinimapMouseLeave"
