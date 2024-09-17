@@ -12,9 +12,12 @@ import type {
 import { Publisher } from '../pubsub/publisher.service';
 
 describe('Publisher', () => {
-	config.set('executions.mode', 'queue');
-	const queueModeId = generateNanoId();
-	config.set('redis.queueModeId', queueModeId);
+	let queueModeId: string;
+	beforeAll(() => {
+		config.set('executions.mode', 'queue');
+		queueModeId = generateNanoId();
+		config.set('redis.queueModeId', queueModeId);
+	});
 
 	const client = mock<SingleNodeClient>();
 	const redisClientService = mock<RedisClientService>({ createClient: () => client });
