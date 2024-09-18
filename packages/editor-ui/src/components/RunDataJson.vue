@@ -46,13 +46,9 @@ const selectedJsonPath = ref(nonExistingJsonPath);
 const draggingPath = ref<null | string>(null);
 const displayMode = ref('json');
 
-const jsonData = computed(() => {
-	return executionDataToJson(props.inputData);
-});
+const jsonData = computed(() => executionDataToJson(props.inputData));
 
-const highlight = computed(() => {
-	return ndvStore.highlightDraggables;
-});
+const highlight = computed(() => ndvStore.highlightDraggables);
 
 const getShortKey = (el: HTMLElement) => {
 	if (!el) {
