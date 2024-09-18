@@ -113,9 +113,10 @@ export class ActiveExecutions {
 					delete this.activeExecutions[executionId];
 				});
 			})
-			// Attach a no-op handler to prevent an unhandled rejection, because
-			// finally will not handle it, but rather rethrow it.
-			.catch(() => {});
+			// Do not throw ExecutionCancelledError
+			.catch((error) => {
+				if (!(error instanceof ExecutionCancelledError)) throw error;
+			});
 
 		return executionId;
 	}
