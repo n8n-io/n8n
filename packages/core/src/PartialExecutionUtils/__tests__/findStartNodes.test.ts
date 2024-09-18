@@ -274,16 +274,12 @@ describe('findStartNodes', () => {
 		expect(startNodes[0]).toEqual(node);
 	});
 
-	// TODO: This is not working yet as expected.
-	// It should only have `node` once as a start node.
-	// The spec needs to be updated before this is fixed.
 	//                     ►►
 	//  ┌───────┐         ┌────┐
 	//  │       │1  ┌────►│    │
 	//  │trigger├───┤     │node│
 	//  │       │   └────►│    │
 	//  └───────┘         └────┘
-	// eslint-disable-next-line n8n-local-rules/no-skipped-tests
 	test('multiple connections with both having data', () => {
 		// ARRANGE
 		const trigger = createNodeData({ name: 'trigger' });
