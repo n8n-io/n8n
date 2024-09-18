@@ -15,7 +15,7 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
       >
         <div
           class="vjs-tree-list"
-          style="height: 400px;"
+          style="height: 500px;"
         >
           <div
             class="vjs-tree-list-holder"
