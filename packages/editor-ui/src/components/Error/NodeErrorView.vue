@@ -445,7 +445,7 @@ async function onAskAssistantClick() {
 				v-if="error.description || error.context?.descriptionKey"
 				data-test-id="node-error-description"
 				class="node-error-view__header-description"
-				v-html="getErrorDescription()"
+				v-n8n-html="getErrorDescription()"
 			></div>
 			<div
 				v-if="isAskAssistantAvailable"

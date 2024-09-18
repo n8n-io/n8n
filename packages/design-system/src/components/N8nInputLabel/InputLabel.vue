@@ -58,7 +58,7 @@ const addTargetBlank = (html: string) =>
 				<N8nTooltip placement="top" :popper-class="$style.tooltipPopper" :show-after="300">
 					<N8nIcon icon="question-circle" size="small" />
 					<template #content>
-						<div v-html="addTargetBlank(tooltipText)" />
+						<div v-n8n-html="addTargetBlank(tooltipText)" />
 					</template>
 				</N8nTooltip>
 			</span>
