@@ -41,6 +41,7 @@ import { useI18n } from '@/composables/useI18n';
 import { get } from 'lodash-es';
 import { useExecutionsStore } from '@/stores/executions.store';
 import type { PushPayload } from '@n8n/api-types';
+import { useLocalStorage } from '@vueuse/core';
 
 const FORM_RELOAD = 'n8n_redirect_to_next_form_test_page';
 
@@ -221,9 +222,15 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				};
 			});
 
+			// -1 means the backend chooses the default
+			// 0 is the old flow
+			// 1 is the new flow
+			const partialExecutionVersion = useLocalStorage('PartialExecution.version', -1);
 			const startRunData: IStartRunData = {
 				workflowData,
-				runData: newRunData,
+				// With the new partial execution version the backend decides what run
+				// data to use and what to ignore.
+				runData: partialExecutionVersion.value === 1 ? (runData ?? undefined) : newRunData,
 				startNodes,
 			};
 			if ('destinationNode' in options) {
