@@ -304,4 +304,8 @@ const getListItemName = (path: string) => {
 .vjs-tree .vjs-tree__content.has-line {
 	border-left: 1px dotted var(--color-json-line);
 }
+
+.vjs-tree .vjs-tree-list-holder-inner {
+	padding-bottom: var(--spacing-3xl);
+}
 </style>
