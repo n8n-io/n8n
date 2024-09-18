@@ -209,8 +209,8 @@ describe('PrometheusMetricsService', () => {
 			expect(eventService.on).not.toHaveBeenCalled();
 		});
 
-		it('should not set up queue metrics if enabled but instance is not main', async () => {
-			config.set('executions.mode', 'regular');
+		it('should not set up queue metrics if enabled and on scaling mode but instance is not main', async () => {
+			config.set('executions.mode', 'queue');
 			prometheusMetricsService.enableMetric('queue');
 			// @ts-expect-error private field
 			instanceSettings.instanceType = 'worker';
