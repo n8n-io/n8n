@@ -53,8 +53,6 @@ export class DirectedGraph {
 		}
 
 		return filteredCopy;
-
-		//return new Map(this.connections.entries());
 	}
 
 	addNode(node: INode) {
