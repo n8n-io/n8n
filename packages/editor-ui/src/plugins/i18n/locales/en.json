@@ -2525,6 +2525,7 @@
 	"projects.move.resource.modal.message.sharingInfo": "(Currently shared with {numberOfProjects} project) | (Currently shared with {numberOfProjects} projects)",
 	"projects.move.resource.modal.message.noProjects": "Currently there are not any projects or users available for you to move this {resourceTypeLabel} to.",
 	"projects.move.resource.modal.button": "Move {resourceTypeLabel}",
+	"projects.move.resource.modal.selectPlaceholder": "Select project or user...",
 	"projects.move.resource.error.title": "Error moving {resourceName} {resourceTypeLabel}",
 	"projects.move.resource.success.title": "Successfully moved {resourceTypeLabel}",
 	"projects.move.resource.success.message": "{resourceName} {resourceTypeLabel} was moved to {targetProjectName}. {workflow} {link}",

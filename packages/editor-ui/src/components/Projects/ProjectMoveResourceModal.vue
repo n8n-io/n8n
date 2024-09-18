@@ -28,6 +28,7 @@ const toast = useToast();
 const projectsStore = useProjectsStore();
 const telemetry = useTelemetry();
 
+const filter = ref('');
 const projectId = ref<string | null>(null);
 const processedName = computed(
 	() => processProjectName(props.data.resource.homeProject?.name ?? '') ?? '',
@@ -36,6 +37,7 @@ const availableProjects = computed(() =>
 	projectsStore.availableProjects
 		.filter(
 			(p) =>
+				p.name?.toLowerCase().includes(filter.value.toLowerCase()) &&
 				p.id !== props.data.resource.homeProject?.id &&
 				(!p.scopes || getResourcePermissions(p.scopes)[props.data.resourceType].create),
 		)
@@ -60,6 +62,10 @@ const updateProject = (value: string) => {
 
 const closeModal = () => {
 	uiStore.closeModal(props.modalName);
+};
+
+const setFilter = (query: string) => {
+	filter.value = query;
 };
 
 const moveResource = async () => {
@@ -92,6 +98,7 @@ const moveResource = async () => {
 				targetProject: selectedProject.value,
 			}),
 			type: 'success',
+			duration: 5000,
 		});
 	} catch (error) {
 		toast.showError(
@@ -150,10 +157,15 @@ onMounted(() => {
 				<N8nSelect
 					class="mr-2xs mb-xs"
 					:model-value="projectId"
-					size="small"
+					:filterable="true"
+					:filter-method="setFilter"
+					:placeholder="i18n.baseText('projects.move.resource.modal.selectPlaceholder')"
 					data-test-id="project-move-resource-modal-select"
 					@update:model-value="updateProject"
 				>
+					<template #prefix>
+						<N8nIcon icon="search" />
+					</template>
 					<N8nOption
 						v-for="p in availableProjects"
 						:key="p.id"
