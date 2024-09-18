@@ -9,7 +9,6 @@
 // XX denotes that the node is disabled
 // PD denotes that the node has pinned data
 
-import { NodeConnectionType } from 'n8n-workflow';
 import { DirectedGraph } from '../DirectedGraph';
 import { createNodeData, defaultWorkflowParameter } from './helpers';
 
