@@ -58,7 +58,7 @@ const confirm = async () => {
 			type: 'success',
 		});
 	} catch (error) {
-		toast.showError(error);
+		toast.showError(error, i18n.baseText('communityPlusModal.error.title'));
 	}
 };
 </script>
