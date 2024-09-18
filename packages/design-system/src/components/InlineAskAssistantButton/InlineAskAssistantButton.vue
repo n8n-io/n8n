@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+
+import { useI18n } from '../../composables/useI18n';
 import AssistantIcon from '../AskAssistantIcon/AssistantIcon.vue';
 import AssistantText from '../AskAssistantText/AssistantText.vue';
-import { useI18n } from '../../composables/useI18n';
 
 const { t } = useI18n();
 

@@ -1,4 +1,5 @@
 import { render } from '@testing-library/vue';
+
 import BlinkingCursor from '../BlinkingCursor.vue';
 
 describe('BlinkingCursor', () => {

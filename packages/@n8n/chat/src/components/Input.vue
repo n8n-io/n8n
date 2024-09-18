@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import IconSend from 'virtual:icons/mdi/send';
-import IconFilePlus from 'virtual:icons/mdi/filePlus';
-import { computed, onMounted, onUnmounted, ref, unref } from 'vue';
 import { useFileDialog } from '@vueuse/core';
-import ChatFile from './ChatFile.vue';
+import IconFilePlus from 'virtual:icons/mdi/filePlus';
+import IconSend from 'virtual:icons/mdi/send';
+import { computed, onMounted, onUnmounted, ref, unref } from 'vue';
+
 import { useI18n, useChat, useOptions } from '@n8n/chat/composables';
 import { chatEventBus } from '@n8n/chat/event-buses';
+
+import ChatFile from './ChatFile.vue';
 
 export interface ArrowKeyDownPayload {
 	key: 'ArrowUp' | 'ArrowDown';

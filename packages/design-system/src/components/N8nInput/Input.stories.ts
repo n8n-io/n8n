@@ -1,7 +1,8 @@
-import N8nInput from './Input.vue';
-import N8nIcon from '../N8nIcon';
 import { action } from '@storybook/addon-actions';
 import type { StoryFn } from '@storybook/vue3';
+
+import N8nInput from './Input.vue';
+import N8nIcon from '../N8nIcon';
 
 export default {
 	title: 'Atoms/Input',
