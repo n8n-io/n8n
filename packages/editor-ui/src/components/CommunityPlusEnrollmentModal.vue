@@ -6,6 +6,7 @@ import { N8nFormInput } from 'n8n-design-system';
 import { VALID_EMAIL_REGEX } from '@/constants';
 import Modal from '@/components/Modal.vue';
 import { useI18n } from '@/composables/useI18n';
+import { useToast } from '@/composables/useToast';
 
 const props = defineProps<{
 	modalName: string;
@@ -15,6 +16,7 @@ const props = defineProps<{
 }>();
 
 const i18n = useI18n();
+const toast = useToast();
 
 const valid = ref(false);
 const email = ref('');
@@ -45,8 +47,19 @@ const closeModal = () => {
 	props.data.closeCallback();
 };
 
-const confirm = () => {
-	closeModal();
+const confirm = async () => {
+	try {
+		closeModal();
+		toast.showMessage({
+			title: i18n.baseText('communityPlusModal.success.title'),
+			message: i18n.baseText('communityPlusModal.success.message', {
+				interpolate: { email: email.value },
+			}),
+			type: 'success',
+		});
+	} catch (error) {
+		toast.showError(error);
+	}
 };
 </script>
 
