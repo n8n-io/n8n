@@ -509,6 +509,10 @@ export class TaskBroker {
 	 * For testing only
 	 */
 
+	getTasks() {
+		return this.tasks;
+	}
+
 	getPendingTaskOffers() {
 		return this.pendingTaskOffers;
 	}
@@ -527,6 +531,10 @@ export class TaskBroker {
 
 	getRunnerAcceptRejects() {
 		return this.runnerAcceptRejects;
+	}
+
+	setTasks(tasks: Record<string, Task>) {
+		this.tasks = tasks;
 	}
 
 	setPendingTaskOffers(pendingTaskOffers: TaskOffer[]) {
