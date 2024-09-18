@@ -1,4 +1,5 @@
 import { type ASTAfterHook, astBuilders as b, astVisit } from '@n8n/tournament';
+
 import { ExpressionError } from './errors';
 
 const forbiddenMembers = ['__proto__', 'prototype', 'constructor', 'getPrototypeOf'];

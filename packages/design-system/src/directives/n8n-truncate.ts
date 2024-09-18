@@ -1,4 +1,5 @@
 import type { DirectiveBinding, ObjectDirective } from 'vue';
+
 import { truncate } from '../utils/string';
 
 /**

@@ -1,4 +1,5 @@
 import { render } from '@testing-library/vue';
+
 import { n8nTruncate } from './n8n-truncate';
 
 describe('Directive n8n-truncate', () => {
