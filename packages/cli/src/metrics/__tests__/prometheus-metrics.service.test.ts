@@ -2,6 +2,7 @@ import { GlobalConfig } from '@n8n/config';
 import type express from 'express';
 import promBundle from 'express-prom-bundle';
 import { mock } from 'jest-mock-extended';
+import type { InstanceSettings } from 'n8n-core';
 import promClient from 'prom-client';
 
 import config from '@/config';
@@ -43,11 +44,13 @@ describe('PrometheusMetricsService', () => {
 	const app = mock<express.Application>();
 	const eventBus = mock<MessageEventBus>();
 	const eventService = mock<EventService>();
+	const instanceSettings = mock<InstanceSettings>({ instanceType: 'main' });
 	const prometheusMetricsService = new PrometheusMetricsService(
 		mock(),
 		eventBus,
 		globalConfig,
 		eventService,
+		instanceSettings,
 	);
 
 	afterEach(() => {
@@ -64,6 +67,7 @@ describe('PrometheusMetricsService', () => {
 				mock(),
 				customGlobalConfig,
 				mock(),
+				instanceSettings,
 			);
 
 			await customPrometheusMetricsService.init(app);
@@ -197,6 +201,19 @@ describe('PrometheusMetricsService', () => {
 		it('should not set up queue metrics if enabled but not on scaling mode', async () => {
 			config.set('executions.mode', 'regular');
 			prometheusMetricsService.enableMetric('queue');
+
+			await prometheusMetricsService.init(app);
+
+			expect(promClient.Gauge).toHaveBeenCalledTimes(1); // version metric
+			expect(promClient.Counter).toHaveBeenCalledTimes(0); // cache metrics
+			expect(eventService.on).not.toHaveBeenCalled();
+		});
+
+		it('should not set up queue metrics if enabled and on scaling mode but instance is not main', async () => {
+			config.set('executions.mode', 'queue');
+			prometheusMetricsService.enableMetric('queue');
+			// @ts-expect-error private field
+			instanceSettings.instanceType = 'worker';
 
 			await prometheusMetricsService.init(app);
 
