@@ -43,7 +43,6 @@ sudo systemctl disable getty@tty1.service
 sudo systemctl disable serial-getty@ttyS0.service
 # Snap
 sudo systemctl disable snapd.service
-sudo apt remove snapd
 # Unattended upgrades
 sudo systemctl disable unattended-upgrades.service
 # Cron
