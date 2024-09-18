@@ -339,13 +339,13 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 
 		if (!executionId) executionId = await waitForWebhook();
 
-		const shownForms: string[] = [];
 		let isFormShown = workflowsStore.allNodes.some((node) => node.type === FORM_TRIGGER_NODE_TYPE);
 
 		const resolveWaitingNodesData = async (): Promise<void> => {
 			return await new Promise<void>((resolve) => {
 				const interval = setInterval(async () => {
 					const execution = await workflowsStore.getExecution((executionId as string) || '');
+
 					localStorage.removeItem(FORM_RELOAD);
 
 					if (!execution || workflowsStore.workflowExecutionData === null) {
@@ -356,21 +356,23 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 					if (execution.finished || ['error', 'canceled', 'crashed'].includes(execution.status)) {
 						workflowsStore.setWorkflowExecutionData(execution);
 						nodeHelpers.updateNodesExecutionIssues();
+
 						uiStore.removeActiveAction('workflowRunning');
+
 						clearInterval(interval);
 						resolve();
 						return;
 					}
 
-					if (execution.data?.waitTill) {
+					if (execution.status === 'waiting' && execution.data?.waitTill) {
 						workflowsStore.setWorkflowExecutionRunData(execution.data);
-					} else {
-						console.log(execution);
-					}
 
-					if (execution.status === 'waiting') {
 						const { lastNodeExecuted } = execution.data?.resultData || {};
-						const waitingNode = workflowsStore.getNodeByName(lastNodeExecuted || '');
+
+						const waitingNode = execution.workflowData.nodes.find((node) => {
+							return node.name === lastNodeExecuted;
+						});
+
 						if (
 							waitingNode &&
 							waitingNode.type === WAIT_NODE_TYPE &&
@@ -381,11 +383,8 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 							if (isFormShown) {
 								localStorage.setItem(FORM_RELOAD, testUrl);
 							} else {
-								if (!shownForms.includes(waitingNode.name)) {
-									isFormShown = true;
-									openPopUpWindow(testUrl);
-									shownForms.push(waitingNode.name);
-								}
+								isFormShown = true;
+								openPopUpWindow(testUrl);
 							}
 						}
 					}
