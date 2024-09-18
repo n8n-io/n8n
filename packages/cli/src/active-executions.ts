@@ -5,17 +5,13 @@ import type {
 	ExecutionStatus,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
-import {
-	ApplicationError,
-	createDeferredPromise,
-	ExecutionCancelledError,
-	sleep,
-} from 'n8n-workflow';
+import { createDeferredPromise, ExecutionCancelledError, sleep } from 'n8n-workflow';
 import { strict as assert } from 'node:assert';
 import type PCancelable from 'p-cancelable';
 import { Service } from 'typedi';
 
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import type {
 	ExecutionPayload,
 	IExecutingWorkflowData,
@@ -107,13 +103,15 @@ export class ActiveExecutions {
 		// Automatically remove execution once the postExecutePromise settles
 		void postExecutePromise.promise
 			.catch((error) => {
-				// rethrow the error unless it's ExecutionCancelledError
-				if (!(error instanceof ExecutionCancelledError)) throw error;
+				if (error instanceof ExecutionCancelledError) return;
+				throw error;
 			})
 			.finally(() => {
 				this.concurrencyControl.release({ mode: executionData.executionMode });
 				delete this.activeExecutions[executionId];
 			});
+
+		this.logger.debug('Execution added', { executionId });
 
 		return executionId;
 	}
@@ -138,17 +136,19 @@ export class ActiveExecutions {
 		execution?.responsePromise?.resolve(response);
 	}
 
-	/** Forces an execution to stop */
+	/** Cancel the execution promise and reject its post-execution promise. */
 	stopExecution(executionId: string): void {
 		const execution = this.getExecution(executionId);
 		execution.workflowExecution?.cancel();
 		execution.postExecutePromise.reject(new ExecutionCancelledError(executionId));
+		this.logger.debug('Execution cancelled', { executionId });
 	}
 
-	/** Mark an execution as completed */
-	finishExecution(executionId: string, fullRunData?: IRun) {
+	/** Resolve the post-execution promise in an execution. */
+	finalizeExecution(executionId: string, fullRunData?: IRun) {
 		const execution = this.getExecution(executionId);
 		execution.postExecutePromise.resolve(fullRunData);
+		this.logger.debug('Execution finalized', { executionId });
 	}
 
 	/**
@@ -221,7 +221,7 @@ export class ActiveExecutions {
 	private getExecution(executionId: string): IExecutingWorkflowData {
 		const execution = this.activeExecutions[executionId];
 		if (!execution) {
-			throw new ApplicationError('No active execution found', { extra: { executionId } });
+			throw new ExecutionNotFoundError(executionId);
 		}
 		return execution;
 	}

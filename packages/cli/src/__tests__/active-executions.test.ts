@@ -99,7 +99,7 @@ describe('ActiveExecutions', () => {
 		const executionId = await activeExecutions.add(newExecution);
 
 		// ACT
-		activeExecutions.finishExecution(executionId);
+		activeExecutions.finalizeExecution(executionId);
 
 		// Wait until the next tick to ensure that the post-execution promise has settled
 		await new Promise(setImmediate);
@@ -117,7 +117,7 @@ describe('ActiveExecutions', () => {
 			setTimeout(res, 100);
 		});
 		const fakeOutput = mockFullRunData();
-		activeExecutions.finishExecution(executionId, fakeOutput);
+		activeExecutions.finalizeExecution(executionId, fakeOutput);
 
 		await expect(postExecutePromise).resolves.toEqual(fakeOutput);
 	});

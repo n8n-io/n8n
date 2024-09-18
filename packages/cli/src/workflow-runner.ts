@@ -101,7 +101,7 @@ export class WorkflowRunner {
 
 		// Remove from active execution with empty data. That will
 		// set the execution to failed.
-		this.activeExecutions.finishExecution(executionId, fullRunData);
+		this.activeExecutions.finalizeExecution(executionId, fullRunData);
 
 		if (hooks) {
 			await hooks.executeHookFunctions('workflowExecuteAfter', [fullRunData]);
@@ -131,7 +131,7 @@ export class WorkflowRunner {
 			await workflowHooks.executeHookFunctions('workflowExecuteBefore', []);
 			await workflowHooks.executeHookFunctions('workflowExecuteAfter', [runData]);
 			responsePromise?.reject(error);
-			this.activeExecutions.finishExecution(executionId);
+			this.activeExecutions.finalizeExecution(executionId);
 			return executionId;
 		}
 
@@ -335,7 +335,7 @@ export class WorkflowRunner {
 						fullRunData.finished = false;
 					}
 					fullRunData.status = this.activeExecutions.getStatus(executionId);
-					this.activeExecutions.finishExecution(executionId, fullRunData);
+					this.activeExecutions.finalizeExecution(executionId, fullRunData);
 				})
 				.catch(
 					async (error) =>
@@ -521,10 +521,7 @@ export class WorkflowRunner {
 					data: fullExecutionData.data,
 				};
 
-				// NOTE: due to the optimization of not loading the execution data from the db when no post execution promises are present,
-				// the execution data in runData.data MAY not be available here.
-				// This means that any function expecting with runData has to check if the runData.data defined from this point
-				this.activeExecutions.finishExecution(executionId, runData);
+				this.activeExecutions.finalizeExecution(executionId, runData);
 
 				// Normally also static data should be supplied here but as it only used for sending
 				// data to editor-UI is not needed.

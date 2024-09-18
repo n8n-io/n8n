@@ -193,6 +193,7 @@ export interface IExecutionsCurrentSummary {
 export interface IExecutingWorkflowData {
 	executionData: IWorkflowExecutionDataProcess;
 	startedAt: Date;
+	/** This promise rejects when the execution is stopped. When the execution finishes (successfully or not), the promise resolves. */
 	postExecutePromise: IDeferredPromise<IRun | undefined>;
 	responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>;
 	workflowExecution?: PCancelable<IRun>;
