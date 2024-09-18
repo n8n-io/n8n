@@ -49,6 +49,7 @@ vi.mock('vue-router', () => ({
 			name: ENABLED_VIEWS[0],
 		}),
 	),
+	useRouter: vi.fn(),
 	RouterLink: vi.fn(),
 }));
 
