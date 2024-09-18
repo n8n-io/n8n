@@ -1,3 +1,12 @@
+## [1.59.3](https://github.com/n8n-io/n8n/compare/n8n@1.59.2...n8n@1.59.3) (2024-09-18)
+
+
+### Bug Fixes
+
+* **core:** Upgrade `uuid` ([#10860](https://github.com/n8n-io/n8n/issues/10860)) ([5657b6a](https://github.com/n8n-io/n8n/commit/5657b6a5b7f22250dacf180c97fa70f21d6aa585))
+
+
+
 ## [1.59.2](https://github.com/n8n-io/n8n/compare/n8n@1.59.1...n8n@1.59.2) (2024-09-17)
 
 
