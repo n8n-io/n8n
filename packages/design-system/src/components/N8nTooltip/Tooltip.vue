@@ -42,7 +42,7 @@ defineOptions({
 		<slot />
 		<template #content>
 			<slot name="content">
-				<div v-html="props.content"></div>
+				<div v-n8n-html="props.content"></div>
 			</slot>
 			<div
 				v-if="props.buttons.length"
