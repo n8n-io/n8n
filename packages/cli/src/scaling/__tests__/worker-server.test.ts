@@ -7,6 +7,7 @@ import * as http from 'node:http';
 
 import { PortTakenError } from '@/errors/port-taken.error';
 import type { ExternalHooks } from '@/external-hooks';
+import type { PrometheusMetricsService } from '@/metrics/prometheus-metrics.service';
 import { bodyParser, rawBodyReader } from '@/middlewares';
 
 import { WorkerServer } from '../worker-server';
@@ -28,6 +29,7 @@ describe('WorkerServer', () => {
 
 	const externalHooks = mock<ExternalHooks>();
 	const instanceSettings = mock<InstanceSettings>({ instanceType: 'worker' });
+	const prometheusMetricsService = mock<PrometheusMetricsService>();
 
 	beforeEach(() => {
 		globalConfig = mock<GlobalConfig>({
@@ -52,6 +54,7 @@ describe('WorkerServer', () => {
 						mock(),
 						externalHooks,
 						mock<InstanceSettings>({ instanceType: 'webhook' }),
+						prometheusMetricsService,
 					),
 			).toThrowError(AssertionError);
 		});
@@ -68,55 +71,21 @@ describe('WorkerServer', () => {
 
 			expect(
 				() =>
-					new WorkerServer(globalConfig, mock(), mock(), mock(), externalHooks, instanceSettings),
+					new WorkerServer(
+						globalConfig,
+						mock(),
+						mock(),
+						mock(),
+						externalHooks,
+						instanceSettings,
+						prometheusMetricsService,
+					),
 			).toThrowError(PortTakenError);
-		});
-
-		it('should set up `/healthz` if health check is enabled', async () => {
-			jest.spyOn(http, 'createServer').mockReturnValue(mock<http.Server>());
-
-			new WorkerServer(globalConfig, mock(), mock(), mock(), externalHooks, instanceSettings);
-
-			expect(app.get).toHaveBeenCalledWith('/healthz', expect.any(Function));
-		});
-
-		it('should not set up `/healthz` if health check is disabled', async () => {
-			globalConfig.queue.health.active = false;
-
-			jest.spyOn(http, 'createServer').mockReturnValue(mock<http.Server>());
-
-			new WorkerServer(globalConfig, mock(), mock(), mock(), externalHooks, instanceSettings);
-
-			expect(app.get).not.toHaveBeenCalled();
-		});
-
-		it('should set up `/:endpoint` if overwrites endpoint is set', async () => {
-			jest.spyOn(http, 'createServer').mockReturnValue(mock<http.Server>());
-
-			const CREDENTIALS_OVERWRITE_ENDPOINT = 'credentials/overwrites';
-			globalConfig.credentials.overwrite.endpoint = CREDENTIALS_OVERWRITE_ENDPOINT;
-
-			new WorkerServer(globalConfig, mock(), mock(), mock(), externalHooks, instanceSettings);
-
-			expect(app.post).toHaveBeenCalledWith(
-				`/${CREDENTIALS_OVERWRITE_ENDPOINT}`,
-				rawBodyReader,
-				bodyParser,
-				expect.any(Function),
-			);
-		});
-
-		it('should not set up `/:endpoint` if overwrites endpoint is not set', async () => {
-			jest.spyOn(http, 'createServer').mockReturnValue(mock<http.Server>());
-
-			new WorkerServer(globalConfig, mock(), mock(), mock(), externalHooks, instanceSettings);
-
-			expect(app.post).not.toHaveBeenCalled();
 		});
 	});
 
 	describe('init', () => {
-		it('should call `worker.ready` external hook', async () => {
+		it('should mount all endpoints when all are enabled', async () => {
 			const server = mock<http.Server>();
 			jest.spyOn(http, 'createServer').mockReturnValue(server);
 
@@ -132,8 +101,88 @@ describe('WorkerServer', () => {
 				mock(),
 				externalHooks,
 				instanceSettings,
+				prometheusMetricsService,
 			);
-			await workerServer.init();
+
+			const CREDENTIALS_OVERWRITE_ENDPOINT = 'credentials/overwrites';
+			globalConfig.credentials.overwrite.endpoint = CREDENTIALS_OVERWRITE_ENDPOINT;
+
+			await workerServer.init({ health: true, overwrites: true, metrics: true });
+
+			expect(app.get).toHaveBeenCalledWith('/healthz', expect.any(Function));
+			expect(app.post).toHaveBeenCalledWith(
+				`/${CREDENTIALS_OVERWRITE_ENDPOINT}`,
+				rawBodyReader,
+				bodyParser,
+				expect.any(Function),
+			);
+			expect(prometheusMetricsService.init).toHaveBeenCalledWith(app);
+		});
+
+		it('should mount only health and overwrites endpoints if only those are enabled', async () => {
+			const server = mock<http.Server>();
+			jest.spyOn(http, 'createServer').mockReturnValue(server);
+
+			server.listen.mockImplementation((_port, callback: () => void) => {
+				callback();
+				return server;
+			});
+
+			const workerServer = new WorkerServer(
+				globalConfig,
+				mock(),
+				mock(),
+				mock(),
+				externalHooks,
+				instanceSettings,
+				prometheusMetricsService,
+			);
+
+			await workerServer.init({ health: true, overwrites: false, metrics: true });
+
+			expect(app.get).toHaveBeenCalledWith('/healthz', expect.any(Function));
+			expect(app.post).not.toHaveBeenCalled();
+			expect(prometheusMetricsService.init).toHaveBeenCalledWith(app);
+		});
+
+		it('should throw if no endpoints are enabled', async () => {
+			const server = mock<http.Server>();
+			jest.spyOn(http, 'createServer').mockReturnValue(server);
+
+			const workerServer = new WorkerServer(
+				globalConfig,
+				mock(),
+				mock(),
+				mock(),
+				externalHooks,
+				instanceSettings,
+				prometheusMetricsService,
+			);
+			await expect(
+				workerServer.init({ health: false, overwrites: false, metrics: false }),
+			).rejects.toThrowError(AssertionError);
+		});
+
+		it('should call `worker.ready` external hook', async () => {
+			const server = mock<http.Server>();
+			jest.spyOn(http, 'createServer').mockReturnValue(server);
+
+			const workerServer = new WorkerServer(
+				globalConfig,
+				mock(),
+				mock(),
+				mock(),
+				externalHooks,
+				instanceSettings,
+				prometheusMetricsService,
+			);
+
+			server.listen.mockImplementation((_port, callback: () => void) => {
+				callback();
+				return server;
+			});
+
+			await workerServer.init({ health: true, overwrites: true, metrics: true });
 
 			expect(externalHooks.run).toHaveBeenCalledWith('worker.ready');
 		});
