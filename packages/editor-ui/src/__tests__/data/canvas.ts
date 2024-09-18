@@ -125,6 +125,7 @@ export function createCanvasHandleProvide({
 	isConnected = false,
 	isConnecting = false,
 	isReadOnly = false,
+	handleString = 'handleString',
 }: {
 	label?: string;
 	mode?: CanvasConnectionMode;
@@ -134,6 +135,7 @@ export function createCanvasHandleProvide({
 	isConnected?: boolean;
 	isConnecting?: boolean;
 	isReadOnly?: boolean;
+	handleString? : string
 } = {}) {
 	return {
 		[`${CanvasNodeHandleKey}`]: {
@@ -145,6 +147,7 @@ export function createCanvasHandleProvide({
 			isConnecting: ref(isConnecting),
 			runData: ref(runData),
 			isReadOnly: ref(isReadOnly),
+			handleString: ref(handleString),
 		} satisfies CanvasNodeHandleInjectionData,
 	};
 }
