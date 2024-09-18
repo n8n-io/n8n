@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { defineProps, withDefaults } from 'vue';
+
 import AssistantAvatar from '../AskAssistantAvatar/AssistantAvatar.vue';
 
 withDefaults(

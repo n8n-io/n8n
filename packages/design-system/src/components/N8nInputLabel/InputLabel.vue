@@ -1,8 +1,9 @@
 <script lang="ts" setup>
-import N8nText from '../N8nText';
-import N8nIcon from '../N8nIcon';
-import N8nTooltip from '../N8nTooltip';
 import type { TextColor } from 'n8n-design-system/types/text';
+
+import N8nIcon from '../N8nIcon';
+import N8nText from '../N8nText';
+import N8nTooltip from '../N8nTooltip';
 
 const SIZE = ['small', 'medium'] as const;
 

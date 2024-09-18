@@ -1,5 +1,5 @@
-import { getVisiblePopper, getVisibleSelect } from '../utils';
 import { BasePage } from './base';
+import { getVisiblePopper, getVisibleSelect } from '../utils';
 
 export class NDV extends BasePage {
 	getters = {
