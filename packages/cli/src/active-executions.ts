@@ -107,13 +107,13 @@ export class ActiveExecutions {
 
 		// Automatically remove execution once the postExecutePromise settles
 		void postExecutePromise.promise
+			.catch((error) => {
+				// rethrow the error unless it's ExecutionCancelledError
+				if (!(error instanceof ExecutionCancelledError)) throw error;
+			})
 			.finally(() => {
 				this.concurrencyControl.release({ mode: executionData.executionMode });
 				delete this.activeExecutions[executionId];
-			})
-			// Do not throw ExecutionCancelledError
-			.catch((error) => {
-				if (!(error instanceof ExecutionCancelledError)) throw error;
 			});
 
 		return executionId;
