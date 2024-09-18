@@ -49,6 +49,7 @@ import {
 import get from 'lodash/get';
 import * as NodeExecuteFunctions from './NodeExecuteFunctions';
 
+import * as assert from 'assert/strict';
 import { recreateNodeExecutionStack } from './PartialExecutionUtils/recreateNodeExecutionStack';
 import {
 	DirectedGraph,
@@ -324,16 +325,18 @@ export class WorkflowExecute {
 		destinationNodeName?: string,
 		pinData?: IPinData,
 	): PCancelable<IRun> {
-		if (destinationNodeName === undefined) {
-			throw new ApplicationError('destinationNodeName is undefined');
-		}
+		// TODO: Refactor the call-site to make `destinationNodeName` a required
+		// after removing the old partial execution flow.
+		assert.ok(
+			destinationNodeName,
+			'a destinationNodeName is required for the new partial execution flow',
+		);
 
 		const destinationNode = workflow.getNode(destinationNodeName);
-		if (destinationNode === null) {
-			throw new ApplicationError(
-				`Could not find a node with the name ${destinationNodeName} in the workflow.`,
-			);
-		}
+		assert.ok(
+			destinationNode,
+			`Could not find a node with the name ${destinationNodeName} in the workflow.`,
+		);
 
 		// 1. Find the Trigger
 		const trigger = findTriggerForPartialExecution(workflow, destinationNodeName);
