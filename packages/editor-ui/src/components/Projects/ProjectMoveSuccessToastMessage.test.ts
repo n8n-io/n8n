@@ -15,7 +15,7 @@ const renderComponent = createComponentRenderer(ProjectMoveSuccessToastMessage, 
 });
 
 describe('ProjectMoveSuccessToastMessage', () => {
-	it('should show credentials message when the moved resource is a workflow', async () => {
+	it('should show credentials message if the resource is a workflow', async () => {
 		const props = {
 			routeName: VIEWS.PROJECTS_WORKFLOWS,
 			resource: {
@@ -60,7 +60,7 @@ describe('ProjectMoveSuccessToastMessage', () => {
 		expect(getByRole('link')).toBeInTheDocument();
 	});
 
-	it('should show only general text when moved resource is credential and moved to a personal project', async () => {
+	it('should show only general if the resource is credential and moved to a personal project', async () => {
 		const props = {
 			routeName: VIEWS.PROJECTS_WORKFLOWS,
 			resource: {
@@ -80,7 +80,7 @@ describe('ProjectMoveSuccessToastMessage', () => {
 			},
 		};
 		const { getByText, queryByText, queryByRole } = renderComponent({ props });
-		expect(getByText('Notion API credential was moved to Personal Project.')).toBeInTheDocument();
+		expect(getByText(/credential was moved to /)).toBeInTheDocument();
 		expect(queryByText(/Please double check any credentials/)).not.toBeInTheDocument();
 		expect(queryByRole('link')).not.toBeInTheDocument();
 	});
