@@ -1,4 +1,5 @@
 import { render } from '@testing-library/vue';
+
 import AssistantAvatar from '../AssistantAvatar.vue';
 
 describe('AskAssistantAvatar', () => {

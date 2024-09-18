@@ -3,7 +3,7 @@
 /* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { GlobalConfig } from '@n8n/config';
-import { WorkflowExecute } from 'n8n-core';
+import { InstanceSettings, WorkflowExecute } from 'n8n-core';
 import type {
 	ExecutionError,
 	IDeferredPromise,
@@ -53,6 +53,7 @@ export class WorkflowRunner {
 		private readonly nodeTypes: NodeTypes,
 		private readonly permissionChecker: PermissionChecker,
 		private readonly eventService: EventService,
+		private readonly instanceSettings: InstanceSettings,
 	) {}
 
 	/** The process did error */
@@ -149,7 +150,7 @@ export class WorkflowRunner {
 		// since these calls are now done by the worker directly
 		if (
 			this.executionsMode !== 'queue' ||
-			config.getEnv('generic.instanceType') === 'worker' ||
+			this.instanceSettings.instanceType === 'worker' ||
 			data.executionMode === 'manual'
 		) {
 			const postExecutePromise = this.activeExecutions.getPostExecutePromise(executionId);
