@@ -64,27 +64,27 @@ const confirm = () => {
 				<p :class="$style.top">
 					<N8nBadge>{{ i18n.baseText('communityPlusModal.badge') }}</N8nBadge>
 				</p>
-				<N8nText tag="h1" align="center" size="xlarge">{{
+				<N8nText tag="h1" align="center" size="xlarge" class="mb-m">{{
 					i18n.baseText('communityPlusModal.title')
 				}}</N8nText>
 				<N8nText tag="p">{{ i18n.baseText('communityPlusModal.description') }}</N8nText>
 				<ul :class="$style.features">
 					<li>
-						<N8nIcon icon="check" class="mr-xs" />
+						<i>🕰️</i>
 						<N8nText>
 							<strong>{{ i18n.baseText('communityPlusModal.features.first.title') }}</strong>
 							{{ i18n.baseText('communityPlusModal.features.first.description') }}
 						</N8nText>
 					</li>
 					<li>
-						<N8nIcon icon="check" class="mr-xs" />
+						<i>🐞</i>
 						<N8nText>
 							<strong>{{ i18n.baseText('communityPlusModal.features.second.title') }}</strong>
 							{{ i18n.baseText('communityPlusModal.features.second.description') }}
 						</N8nText>
 					</li>
 					<li>
-						<N8nIcon icon="check" class="mr-xs" />
+						<i>🔎</i>
 						<N8nText>
 							<strong>{{ i18n.baseText('communityPlusModal.features.third.title') }}</strong>
 							{{ i18n.baseText('communityPlusModal.features.third.description') }}
@@ -126,15 +126,23 @@ const confirm = () => {
 .top {
 	display: flex;
 	justify-content: center;
+	margin: 0 0 var(--spacing-s);
 }
 
 .features {
-	padding: var(--spacing-s);
+	padding: var(--spacing-s) var(--spacing-l) 0;
 	list-style: none;
 
 	li {
 		display: flex;
-		padding: 0 var(--spacing-s) var(--spacing-s) 0;
+		padding: 0 var(--spacing-s) var(--spacing-m) 0;
+
+		i {
+			display: inline-block;
+			margin: var(--spacing-5xs) var(--spacing-xs) 0 0;
+			font-style: normal;
+			font-size: var(--font-size-s);
+		}
 
 		strong {
 			display: block;
