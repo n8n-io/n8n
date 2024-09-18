@@ -21,7 +21,7 @@ type DirectedGraphKey = `${string}-${NodeConnectionType}-${number}-${number}-${s
  * The reason why this exists next to the Workflow class is that the workflow
  * class stored the graph in a deeply nested, normalized format. This format
  * does not lend itself to editing the graph or build graphs incrementally.
- * This class is closes this gap by having import and export functions:
+ * This closes this gap by having import and export functions:
  * `fromWorkflow`, `toWorkflow`.
  *
  * Thus it allows to do something like this:
