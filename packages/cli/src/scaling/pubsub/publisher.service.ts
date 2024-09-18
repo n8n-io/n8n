@@ -3,11 +3,11 @@ import { Service } from 'typedi';
 
 import config from '@/config';
 import { Logger } from '@/logger';
-import { RedisClientService } from '@/services/redis/redis-client.service';
+import { RedisClientService } from '@/scaling/redis/redis-client.service';
 import type {
 	RedisServiceCommandObject,
 	RedisServiceWorkerResponseObject,
-} from '@/services/redis/redis-service-commands';
+} from '@/scaling/redis/redis-service-commands';
 
 /**
  * Responsible for publishing messages into the pubsub channels used by scaling mode.
