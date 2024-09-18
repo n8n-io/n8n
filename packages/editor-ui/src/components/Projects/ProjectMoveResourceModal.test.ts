@@ -29,7 +29,7 @@ describe('ProjectMoveResourceModal', () => {
 		const telemetryTrackSpy = vi.spyOn(telemetry, 'track');
 
 		const projectsStore = mockedStore(useProjectsStore);
-		projectsStore.projects = [
+		projectsStore.availableProjects = [
 			{
 				id: '1',
 				name: 'My Project',
@@ -59,5 +59,29 @@ describe('ProjectMoveResourceModal', () => {
 			'User clicked to move a workflow',
 			expect.objectContaining({ workflow_id: '1' }),
 		);
+	});
+
+	it('should show no available projects message', async () => {
+		const pinia = createTestingPinia();
+
+		const projectsStore = mockedStore(useProjectsStore);
+		projectsStore.availableProjects = [];
+
+		const props = {
+			modalName: PROJECT_MOVE_RESOURCE_MODAL,
+			data: {
+				resourceType: 'workflow',
+				resourceTypeLabel: 'Workflow',
+				resource: {
+					id: '1',
+					homeProject: {
+						id: '2',
+						name: 'My Project',
+					},
+				},
+			},
+		};
+		const { getByText } = renderComponent({ props, pinia });
+		expect(getByText(/Currently there are not any projects or users available/)).toBeVisible();
 	});
 });

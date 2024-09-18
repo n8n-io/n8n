@@ -146,7 +146,7 @@ onMounted(() => {
 			</N8nText>
 		</template>
 		<template #content>
-			<div>
+			<div v-if="availableProjects.length">
 				<N8nSelect
 					class="mr-2xs mb-xs"
 					:model-value="projectId"
@@ -183,6 +183,11 @@ onMounted(() => {
 					>
 				</N8nText>
 			</div>
+			<N8nText v-else>{{
+				i18n.baseText('projects.move.resource.modal.message.noProjects', {
+					interpolate: { resourceTypeLabel: props.data.resourceTypeLabel },
+				})
+			}}</N8nText>
 		</template>
 		<template #footer>
 			<div :class="$style.buttons">
