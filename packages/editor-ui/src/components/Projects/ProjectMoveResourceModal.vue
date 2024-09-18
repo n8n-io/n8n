@@ -98,7 +98,7 @@ const moveResource = async () => {
 				targetProject: selectedProject.value,
 			}),
 			type: 'success',
-			duration: 5000,
+			duration: 8000,
 		});
 	} catch (error) {
 		toast.showError(
