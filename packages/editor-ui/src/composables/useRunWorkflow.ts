@@ -353,9 +353,8 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 						resolve();
 						return;
 					}
-					if (execution.finished || ['error', 'canceled', 'crashed'].includes(execution.status)) {
-						workflowsStore.setWorkflowExecutionData(execution);
 
+					if (execution.finished || ['error', 'canceled', 'crashed'].includes(execution.status)) {
 						clearInterval(interval);
 						resolve();
 						return;
@@ -391,6 +390,12 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 		};
 
 		await resolveWaitingNodesData();
+
+		const execution = await workflowsStore.getExecution((executionId as string) || '');
+
+		if (execution) {
+			workflowsStore.setWorkflowExecutionData(execution);
+		}
 
 		await useExternalHooks().run('workflowRun.runWorkflow', {
 			nodeName: options.destinationNode,

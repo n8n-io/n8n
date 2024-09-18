@@ -231,7 +231,8 @@ export function useCanvasMapping({
 	const nodeExecutionStatusById = computed(() =>
 		nodes.value.reduce<Record<string, ExecutionStatus>>((acc, node) => {
 			acc[node.id] =
-				workflowsStore.getWorkflowRunData?.[node.name]?.filter(Boolean)[0].executionStatus ?? 'new';
+				workflowsStore.getWorkflowRunData?.[node.name]?.filter(Boolean)[0]?.executionStatus ??
+				'new';
 			return acc;
 		}, {}),
 	);
