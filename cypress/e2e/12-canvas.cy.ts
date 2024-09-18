@@ -1,5 +1,3 @@
-import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
-import { NDV, WorkflowExecutionsTab } from '../pages';
 import {
 	MANUAL_TRIGGER_NODE_NAME,
 	MANUAL_TRIGGER_NODE_DISPLAY_NAME,
@@ -9,6 +7,8 @@ import {
 	SWITCH_NODE_NAME,
 	MERGE_NODE_NAME,
 } from './../constants';
+import { NDV, WorkflowExecutionsTab } from '../pages';
+import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 
 const WorkflowPage = new WorkflowPageClass();
 const ExecutionsTab = new WorkflowExecutionsTab();

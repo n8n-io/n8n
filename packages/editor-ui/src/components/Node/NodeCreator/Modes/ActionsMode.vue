@@ -258,7 +258,7 @@ onMounted(() => {
 							data-test-id="actions-panel-no-triggers-callout"
 						>
 							<span
-								v-html="
+								v-n8n-html="
 									i18n.baseText('nodeCreator.actionsCallout.noTriggerItems', {
 										interpolate: { nodeName: subcategory ?? '' },
 									})
@@ -271,7 +271,7 @@ onMounted(() => {
 						<p
 							:class="$style.resetSearch"
 							@click="resetSearch"
-							v-html="i18n.baseText('nodeCreator.actionsCategory.noMatchingTriggers')"
+							v-n8n-html="i18n.baseText('nodeCreator.actionsCategory.noMatchingTriggers')"
 						/>
 					</template>
 				</CategorizedItemsRenderer>
@@ -293,13 +293,13 @@ onMounted(() => {
 						slim
 						data-test-id="actions-panel-activation-callout"
 					>
-						<span v-html="i18n.baseText('nodeCreator.actionsCallout.triggersStartWorkflow')" />
+						<span v-n8n-html="i18n.baseText('nodeCreator.actionsCallout.triggersStartWorkflow')" />
 					</n8n-callout>
 					<!-- Empty state -->
 					<template #empty>
 						<n8n-info-tip v-if="!search" theme="info" type="note" :class="$style.actionsEmpty">
 							<span
-								v-html="
+								v-n8n-html="
 									i18n.baseText('nodeCreator.actionsCallout.noActionItems', {
 										interpolate: { nodeName: subcategory ?? '' },
 									})
@@ -311,7 +311,7 @@ onMounted(() => {
 							:class="$style.resetSearch"
 							data-test-id="actions-panel-no-matching-actions"
 							@click="resetSearch"
-							v-html="i18n.baseText('nodeCreator.actionsCategory.noMatchingActions')"
+							v-n8n-html="i18n.baseText('nodeCreator.actionsCategory.noMatchingActions')"
 						/>
 					</template>
 				</CategorizedItemsRenderer>
@@ -320,7 +320,7 @@ onMounted(() => {
 		<div v-if="containsAPIAction" :class="$style.apiHint">
 			<span
 				@click.prevent="addHttpNode"
-				v-html="
+				v-n8n-html="
 					i18n.baseText('nodeCreator.actionsList.apiCall', {
 						interpolate: { node: subcategory ?? '' },
 					})
