@@ -1,5 +1,7 @@
 <script lang="ts" setup>
-withDefaults(
+import { computed, useCssModule } from 'vue';
+
+const props = withDefaults(
 	defineProps<{
 		handleClasses?: string;
 		sourceEdgeHovered: boolean;
@@ -8,16 +10,18 @@ withDefaults(
 		handleClasses: undefined,
 	},
 );
+
+const $style = useCssModule();
+
+const classes = computed(() => [
+	$style.rectangle,
+	props.handleClasses,
+	...(props.sourceEdgeHovered ? [$style['rectangle--hovered']] : []),
+]);
 </script>
 
 <template>
-	<div
-		:class="{
-			[$style.rectangle]: true,
-			handleClasses,
-			[$style['rectangle--hovered']]: sourceEdgeHovered,
-		}"
-	/>
+	<div :class="classes" />
 </template>
 
 <style lang="scss" module>

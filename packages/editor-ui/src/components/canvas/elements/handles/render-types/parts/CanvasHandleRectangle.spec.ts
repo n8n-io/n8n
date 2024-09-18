@@ -18,4 +18,12 @@ describe('CanvasHandleRectangle', () => {
 
 		expect(wrapper.container.querySelector(`.${customClass}`)).toBeTruthy();
 	});
+
+	it('should apply sourceEdgeHovered prop correctly', () => {
+		const wrapper = renderComponent({
+			props: { sourceEdgeHovered: true },
+		});
+
+		expect(wrapper.container.querySelector('.rectangle--hovered')).toBeTruthy();
+	});
 });
