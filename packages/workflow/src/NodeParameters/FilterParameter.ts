@@ -1,4 +1,6 @@
 import type { DateTime } from 'luxon';
+
+import { ApplicationError } from '../errors/application.error';
 import type {
 	FilterConditionValue,
 	FilterOperatorType,
@@ -8,9 +10,8 @@ import type {
 	Result,
 	ValidationResult,
 } from '../Interfaces';
-import { validateFieldType } from '../TypeValidation';
 import * as LoggerProxy from '../LoggerProxy';
-import { ApplicationError } from '../errors/application.error';
+import { validateFieldType } from '../TypeValidation';
 
 type FilterConditionMetadata = {
 	index: number;
@@ -109,7 +110,7 @@ function parseFilterConditionValues(
 
 	const getTypeDescription = (isStrict: boolean) => {
 		if (isStrict)
-			return "Try changing the type of comparison. Alternatively you can enable 'Convert Value Types'.";
+			return "Try changing the type of comparison. Alternatively you can enable 'Convert types where required'.";
 		return 'Try changing the type of the comparison.';
 	};
 
@@ -135,7 +136,7 @@ function parseFilterConditionValues(
 			return `
 <p>Try either:</p>
 <ol>
-  <li>Enabling 'Convert Value Types'</li>
+  <li>Enabling 'Convert types where required'</li>
   <li>Converting the ${valuePosition} field to ${expectedType}${suggestFunction}</li>
 </ol>
 			`;

@@ -1,12 +1,14 @@
-import { Service } from 'typedi';
 import type { INode, IRun, IWorkflowBase } from 'n8n-workflow';
+import { Service } from 'typedi';
+
 import { StatisticsNames } from '@/databases/entities/workflow-statistics';
 import { WorkflowStatisticsRepository } from '@/databases/repositories/workflow-statistics.repository';
-import { UserService } from '@/services/user.service';
-import { Logger } from '@/logger';
-import { OwnershipService } from './ownership.service';
-import { TypedEmitter } from '@/typed-emitter';
 import { EventService } from '@/events/event.service';
+import { Logger } from '@/logger';
+import { UserService } from '@/services/user.service';
+import { TypedEmitter } from '@/typed-emitter';
+
+import { OwnershipService } from './ownership.service';
 
 type WorkflowStatisticsEvents = {
 	nodeFetchedData: { workflowId: string; node: INode };
@@ -72,7 +74,7 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 			if (name === StatisticsNames.productionSuccess && upsertResult === 'insert') {
 				const project = await this.ownershipService.getWorkflowProjectCached(workflowId);
 				if (project.type === 'personal') {
-					const owner = await this.ownershipService.getProjectOwnerCached(project.id);
+					const owner = await this.ownershipService.getPersonalProjectOwnerCached(project.id);
 
 					if (owner && !owner.settings?.userActivated) {
 						await this.userService.updateSettings(owner.id, {
@@ -105,7 +107,7 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 
 		// Compile the metrics since this was a new data loaded event
 		const project = await this.ownershipService.getWorkflowProjectCached(workflowId);
-		const owner = await this.ownershipService.getProjectOwnerCached(project.id);
+		const owner = await this.ownershipService.getPersonalProjectOwnerCached(project.id);
 
 		let metrics = {
 			userId: owner!.id,

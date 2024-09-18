@@ -1,184 +1,131 @@
-<script lang="ts">
+<script setup lang="ts">
 import { ElDialog } from 'element-plus';
-import { defineComponent } from 'vue';
-import type { PropType } from 'vue';
-import { mapStores } from 'pinia';
+import { computed, onMounted, onBeforeUnmount } from 'vue';
 import type { EventBus } from 'n8n-design-system';
 import { useUIStore } from '@/stores/ui.store';
 import type { ModalKey } from '@/Interface';
 import { APP_MODALS_ELEMENT_ID } from '@/constants';
 
-export default defineComponent({
-	name: 'Modal',
-	props: {
-		...ElDialog.props,
-		name: {
-			type: String as PropType<ModalKey>,
-			required: true,
-		},
-		title: {
-			type: String,
-			default: '',
-		},
-		subtitle: {
-			type: String,
-			default: '',
-		},
-		eventBus: {
-			type: Object as PropType<EventBus>,
-			default: null,
-		},
-		showClose: {
-			type: Boolean,
-			default: true,
-		},
-		loading: {
-			type: Boolean,
-		},
-		classic: {
-			type: Boolean,
-		},
-		beforeClose: {
-			type: Function,
-			default: null,
-		},
-		customClass: {
-			type: String,
-			default: '',
-		},
-		center: {
-			type: Boolean,
-			default: true,
-		},
-		width: {
-			type: String,
-			default: '50%',
-		},
-		minWidth: {
-			type: [String, null] as PropType<string | null>,
-			default: null,
-		},
-		maxWidth: {
-			type: [String, null] as PropType<string | null>,
-			default: null,
-		},
-		height: {
-			type: [String, null] as PropType<string | null>,
-			default: null,
-		},
-		minHeight: {
-			type: [String, null] as PropType<string | null>,
-			default: null,
-		},
-		maxHeight: {
-			type: [String, null] as PropType<string | null>,
-			default: null,
-		},
-		scrollable: {
-			type: Boolean,
-			default: false,
-		},
-		centerTitle: {
-			type: Boolean,
-			default: false,
-		},
-		closeOnClickModal: {
-			type: Boolean,
-			default: true,
-		},
-		closeOnPressEscape: {
-			type: Boolean,
-			default: true,
-		},
-		appendToBody: {
-			type: Boolean,
-			default: false,
-		},
+const props = withDefaults(
+	defineProps<{
+		name: ModalKey;
+		title?: string;
+		subtitle?: string;
+		eventBus?: EventBus;
+		showClose?: boolean;
+		loading?: boolean;
+		classic?: boolean;
+		// eslint-disable-next-line @typescript-eslint/no-invalid-void-type
+		beforeClose?: () => boolean | Promise<boolean | void> | void;
+		customClass?: string;
+		center?: boolean;
+		width?: string;
+		minWidth?: string;
+		maxWidth?: string;
+		height?: string;
+		minHeight?: string;
+		maxHeight?: string;
+		scrollable?: boolean;
+		centerTitle?: boolean;
+		closeOnClickModal?: boolean;
+		closeOnPressEscape?: boolean;
+		appendToBody?: boolean;
+	}>(),
+	{
+		title: '',
+		subtitle: '',
+		showClose: true,
+		loading: false,
+		classic: false,
+		customClass: '',
+		center: true,
+		width: '50%',
+		scrollable: false,
+		centerTitle: false,
+		closeOnClickModal: true,
+		closeOnPressEscape: true,
+		appendToBody: false,
 	},
-	emits: { enter: null },
-	computed: {
-		...mapStores(useUIStore),
-		styles() {
-			const styles: { [prop: string]: string } = {};
-			if (this.height) {
-				styles['--dialog-height'] = this.height;
-			}
-			if (this.minHeight) {
-				styles['--dialog-min-height'] = this.minHeight;
-			}
-			if (this.maxHeight) {
-				styles['--dialog-max-height'] = this.maxHeight;
-			}
-			if (this.maxWidth) {
-				styles['--dialog-max-width'] = this.maxWidth;
-			}
-			if (this.minWidth) {
-				styles['--dialog-min-width'] = this.minWidth;
-			}
-			return styles;
-		},
-		appModalsId() {
-			return `#${APP_MODALS_ELEMENT_ID}`;
-		},
-	},
-	mounted() {
-		window.addEventListener('keydown', this.onWindowKeydown);
+);
 
-		this.eventBus?.on('close', this.closeDialog);
+const emit = defineEmits<{ enter: [] }>();
 
-		const activeElement = document.activeElement as HTMLElement;
-		if (activeElement) {
-			activeElement.blur();
-		}
-	},
-	beforeUnmount() {
-		this.eventBus?.off('close', this.closeDialog);
-		window.removeEventListener('keydown', this.onWindowKeydown);
-	},
-	methods: {
-		onWindowKeydown(event: KeyboardEvent) {
-			if (!this.uiStore.isModalActiveById[this.name]) {
-				return;
-			}
-
-			if (event && event.keyCode === 13) {
-				this.handleEnter();
-			}
-		},
-		handleEnter() {
-			if (this.uiStore.isModalActiveById[this.name]) {
-				this.$emit('enter');
-			}
-		},
-		async onCloseDialog() {
-			await this.closeDialog();
-		},
-		async closeDialog(returnData?: unknown) {
-			if (this.beforeClose) {
-				const shouldClose = await this.beforeClose();
-				if (shouldClose === false) {
-					// must be strictly false to stop modal from closing
-					return;
-				}
-			}
-			this.uiStore.closeModal(this.name);
-			this.eventBus?.emit('closed', returnData);
-		},
-		getCustomClass() {
-			let classes = this.customClass || '';
-
-			if (this.classic) {
-				classes = `${classes} classic`;
-			}
-
-			return classes;
-		},
-	},
+const styles = computed(() => {
+	const styles: { [prop: string]: string } = {};
+	if (props.height) {
+		styles['--dialog-height'] = props.height;
+	}
+	if (props.minHeight) {
+		styles['--dialog-min-height'] = props.minHeight;
+	}
+	if (props.maxHeight) {
+		styles['--dialog-max-height'] = props.maxHeight;
+	}
+	if (props.maxWidth) {
+		styles['--dialog-max-width'] = props.maxWidth;
+	}
+	if (props.minWidth) {
+		styles['--dialog-min-width'] = props.minWidth;
+	}
+	return styles;
 });
+
+const appModalsId = `#${APP_MODALS_ELEMENT_ID}`;
+
+onMounted(() => {
+	window.addEventListener('keydown', onWindowKeydown);
+	props.eventBus?.on('close', closeDialog);
+	const activeElement = document.activeElement as HTMLElement;
+	if (activeElement) {
+		activeElement.blur();
+	}
+});
+
+onBeforeUnmount(() => {
+	props.eventBus?.off('close', closeDialog);
+	window.removeEventListener('keydown', onWindowKeydown);
+});
+
+const uiStore = useUIStore();
+
+function handleEnter() {
+	if (!uiStore.isModalActiveById[props.name]) return;
+	emit('enter');
+}
+
+function onWindowKeydown(event: KeyboardEvent) {
+	if (event?.keyCode === 13) handleEnter();
+}
+
+async function closeDialog(returnData?: unknown) {
+	if (props.beforeClose) {
+		const shouldClose = await props.beforeClose();
+		if (shouldClose === false) {
+			// must be strictly false to stop modal from closing
+			return;
+		}
+	}
+	uiStore.closeModal(props.name);
+	props.eventBus?.emit('closed', returnData);
+}
+
+async function onCloseDialog() {
+	await closeDialog();
+}
+
+function getCustomClass() {
+	let classes = props.customClass || '';
+
+	if (props.classic) {
+		classes = `${classes} classic`;
+	}
+
+	return classes;
+}
 </script>
 
 <template>
-	<el-dialog
+	<ElDialog
 		:model-value="uiStore.modalsById[name].open"
 		:before-close="onCloseDialog"
 		:class="{
@@ -196,7 +143,7 @@ export default defineComponent({
 		:append-to-body="appendToBody"
 		:data-test-id="`${name}-modal`"
 		:modal-class="center ? $style.center : ''"
-		z-index="2000"
+		:z-index="2000"
 	>
 		<template v-if="$slots.header" #header>
 			<slot v-if="!loading" name="header" />
@@ -225,7 +172,7 @@ export default defineComponent({
 		<div v-if="!loading && $slots.footer" :class="$style.footer">
 			<slot name="footer" :close="closeDialog" />
 		</div>
-	</el-dialog>
+	</ElDialog>
 </template>
 
 <style lang="scss">

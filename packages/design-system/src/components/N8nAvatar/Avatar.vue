@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
 import Avatar from 'vue-boring-avatars';
+
 import { getInitials } from '../../utils/labelUtil';
 
 interface AvatarProps {

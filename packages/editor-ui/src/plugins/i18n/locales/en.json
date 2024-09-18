@@ -2043,7 +2043,7 @@
 	"ndv.trigger.webhookBasedNode.action": "Pull in events from {name}",
 	"ndv.search.placeholder.output": "Search output",
 	"ndv.search.placeholder.input": "Search selected node",
-	"ndv.search.placeholder.input.schema": "Search previous nodes",
+	"ndv.search.placeholder.input.schema": "Search previous nodes' fields",
 	"ndv.search.noMatch.title": "No matching items",
 	"ndv.search.noNodeMatch.title": "No matching nodes",
 	"ndv.search.noMatch.description": "Try changing or {link} the filter to see more",

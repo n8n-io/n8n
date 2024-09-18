@@ -169,7 +169,7 @@ export class TableFieldMapper {
 	}
 
 	setField(field: string) {
-		return this.mapIds ? field : this.nameToIdMapping[field] ?? field;
+		return this.mapIds ? field : (this.nameToIdMapping[field] ?? field);
 	}
 
 	idsToNames(obj: Record<string, unknown>) {

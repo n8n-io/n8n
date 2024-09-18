@@ -1,8 +1,8 @@
 import type { Schema } from '@/Interface';
-import type { INode, INodeParameters } from 'n8n-workflow';
+import type { IDataObject, INode, INodeParameters } from 'n8n-workflow';
 
 export namespace ChatRequest {
-	interface NodeExecutionSchema {
+	export interface NodeExecutionSchema {
 		nodeName: string;
 		schema: Schema;
 	}
@@ -21,6 +21,7 @@ export namespace ChatRequest {
 			stack?: string;
 		};
 		node: INode;
+		nodeInputData?: IDataObject;
 	}
 
 	export interface InitErrorHelper extends ErrorContext, WorkflowContext {
@@ -41,6 +42,19 @@ export namespace ChatRequest {
 		question: string;
 	}
 
+	export interface InitCredHelp {
+		role: 'user';
+		type: 'init-cred-help';
+		user: {
+			firstName: string;
+		};
+		question: string;
+		credentialType: {
+			name: string;
+			displayName: string;
+		};
+	}
+
 	export type InteractionEventName = 'node-execution-succeeded' | 'node-execution-errored';
 
 	interface EventRequestPayload {
@@ -59,7 +73,7 @@ export namespace ChatRequest {
 
 	export type RequestPayload =
 		| {
-				payload: InitErrorHelper | InitSupportChat;
+				payload: InitErrorHelper | InitSupportChat | InitCredHelp;
 		  }
 		| {
 				payload: EventRequestPayload | UserChatMessage;

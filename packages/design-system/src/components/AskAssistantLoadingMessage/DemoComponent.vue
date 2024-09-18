@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
+
 import AssistantLoadingMessage from './AssistantLoadingMessage.vue';
 import Notice from '../N8nNotice/Notice.vue';
 

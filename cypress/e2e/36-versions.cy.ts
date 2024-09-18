@@ -1,10 +1,10 @@
-import { WorkflowsPage } from '../pages/workflows';
 import {
 	closeVersionUpdatesPanel,
 	getVersionCard,
 	getVersionUpdatesPanelOpenButton,
 	openVersionUpdatesPanel,
 } from '../composables/versions';
+import { WorkflowsPage } from '../pages/workflows';
 
 const workflowsPage = new WorkflowsPage();
 

@@ -1,4 +1,5 @@
 import type { RequestHandler } from 'express';
+
 import { isSamlLicensed, isSamlLicensedAndEnabled } from '../saml-helpers';
 
 export const samlLicensedAndEnabledMiddleware: RequestHandler = (_, res, next) => {

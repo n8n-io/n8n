@@ -1,15 +1,15 @@
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { generateNanoId } from '@/databases/utils/generators';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
-import { OrchestrationService } from '@/services/orchestration.service';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { generateNanoId } from '@/databases/utils/generators';
 import { MultiMainSetup } from '@/services/orchestration/main/multi-main-setup.ee';
+import { OrchestrationService } from '@/services/orchestration.service';
 
-import { mockInstance } from '../shared/mocking';
-import { randomName } from './shared/random';
-import { setupTestServer } from './shared/utils';
 import { createOwner } from './shared/db/users';
+import { randomName } from './shared/random';
 import type { SuperAgentTest } from './shared/types';
+import { setupTestServer } from './shared/utils';
+import { mockInstance } from '../shared/mocking';
 
 describe('DebugController', () => {
 	const workflowRepository = mockInstance(WorkflowRepository);

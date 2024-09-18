@@ -1,14 +1,9 @@
 <script lang="ts" setup>
+import { ElSwitch } from 'element-plus';
 import { computed, reactive, onMounted, ref, watch, useSlots } from 'vue';
 
-import N8nInput from '../N8nInput';
-import N8nSelect from '../N8nSelect';
-import N8nOption from '../N8nOption';
-import N8nInputLabel from '../N8nInputLabel';
-import N8nCheckbox from '../N8nCheckbox';
-import { ElSwitch } from 'element-plus';
-
 import { getValidationError, VALIDATORS } from './validators';
+import { t } from '../../locale';
 import type {
 	Rule,
 	RuleGroup,
@@ -21,8 +16,11 @@ import type {
 	CheckboxLabelSizePropType,
 	InputAutocompletePropType,
 } from '../../types';
-
-import { t } from '../../locale';
+import N8nCheckbox from '../N8nCheckbox';
+import N8nInput from '../N8nInput';
+import N8nInputLabel from '../N8nInputLabel';
+import N8nOption from '../N8nOption';
+import N8nSelect from '../N8nSelect';
 
 export interface Props {
 	modelValue: Validatable;

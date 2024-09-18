@@ -1,5 +1,6 @@
-import type { IPushDataType, IWorkflowDb } from '@/interfaces';
-import type { RunningJobSummary } from '@/scaling/scaling.types';
+import type { PushType, WorkerStatus } from '@n8n/api-types';
+
+import type { IWorkflowDb } from '@/interfaces';
 
 export type PubSubMessageMap = {
 	// #region Lifecycle
@@ -43,24 +44,7 @@ export type PubSubMessageMap = {
 
 	'get-worker-id': never;
 
-	'get-worker-status': {
-		workerId: string;
-		runningJobsSummary: RunningJobSummary[];
-		freeMem: number;
-		totalMem: number;
-		uptime: number;
-		loadAvg: number[];
-		cpus: string;
-		arch: string;
-		platform: NodeJS.Platform;
-		hostname: string;
-		interfaces: Array<{
-			family: 'IPv4' | 'IPv6';
-			address: string;
-			internal: boolean;
-		}>;
-		version: string;
-	};
+	'get-worker-status': WorkerStatus;
 
 	// #endregion
 
@@ -89,7 +73,7 @@ export type PubSubMessageMap = {
 	};
 
 	'relay-execution-lifecycle-event': {
-		type: IPushDataType;
+		type: PushType;
 		args: Record<string, unknown>;
 		pushRef: string;
 	};

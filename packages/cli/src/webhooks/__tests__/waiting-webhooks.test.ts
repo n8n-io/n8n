@@ -1,10 +1,11 @@
+import type express from 'express';
 import { mock } from 'jest-mock-extended';
-import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
+
+import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { IExecutionResponse } from '@/interfaces';
-import type express from 'express';
-import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
 import type { WaitingWebhookRequest } from '@/webhooks/webhook.types';
 
 describe('WaitingWebhooks', () => {

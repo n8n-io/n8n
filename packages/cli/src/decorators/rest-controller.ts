@@ -1,4 +1,5 @@
 import { Service } from 'typedi';
+
 import { getControllerMetadata } from './controller.registry';
 import type { Controller } from './types';
 

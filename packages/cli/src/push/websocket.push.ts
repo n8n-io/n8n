@@ -1,9 +1,11 @@
-import type WebSocket from 'ws';
-import { Service } from 'typedi';
-import { Logger } from '@/logger';
-import { AbstractPush } from './abstract.push';
-import type { User } from '@/databases/entities/user';
 import { ApplicationError, ErrorReporterProxy } from 'n8n-workflow';
+import { Service } from 'typedi';
+import type WebSocket from 'ws';
+
+import type { User } from '@/databases/entities/user';
+import { Logger } from '@/logger';
+
+import { AbstractPush } from './abstract.push';
 
 function heartbeat(this: WebSocket) {
 	this.isAlive = true;

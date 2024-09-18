@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import type { IPushDataWorkerStatusPayload } from '@/Interface';
+import type { WorkerStatus } from '@n8n/api-types';
 import WorkerAccordion from './WorkerAccordion.ee.vue';
 import { useClipboard } from '@/composables/useClipboard';
 import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
 
 const props = defineProps<{
-	items: IPushDataWorkerStatusPayload['interfaces'];
+	items: WorkerStatus['interfaces'];
 }>();
 
 const i18n = useI18n();

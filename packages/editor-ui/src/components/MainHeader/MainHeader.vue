@@ -164,7 +164,16 @@ async function navigateToExecutionsView(openInNewTab: boolean) {
 	<div>
 		<div :class="{ 'main-header': true, expanded: !uiStore.sidebarMenuCollapsed }">
 			<div v-show="!hideMenuBar" class="top-menu">
-				<WorkflowDetails v-if="workflow?.name" :workflow="workflow" :read-only="readOnly" />
+				<WorkflowDetails
+					v-if="workflow?.name"
+					:id="workflow.id"
+					:tags="workflow.tags"
+					:name="workflow.name"
+					:meta="workflow.meta"
+					:scopes="workflow.scopes"
+					:active="workflow.active"
+					:read-only="readOnly"
+				/>
 				<TabBar
 					v-if="onWorkflowPage"
 					:items="tabBarItems"

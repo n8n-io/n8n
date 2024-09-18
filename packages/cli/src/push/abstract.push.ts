@@ -1,9 +1,10 @@
+import type { PushPayload, PushType } from '@n8n/api-types';
 import { assert, jsonStringify } from 'n8n-workflow';
-import type { IPushDataType } from '@/interfaces';
-import type { Logger } from '@/logger';
+
 import type { User } from '@/databases/entities/user';
-import { TypedEmitter } from '@/typed-emitter';
+import type { Logger } from '@/logger';
 import type { OnPushMessage } from '@/push/types';
+import { TypedEmitter } from '@/typed-emitter';
 
 export interface AbstractPushEvents {
 	message: OnPushMessage;
@@ -15,19 +16,19 @@ export interface AbstractPushEvents {
  *
  * @emits message when a message is received from a client
  */
-export abstract class AbstractPush<T> extends TypedEmitter<AbstractPushEvents> {
-	protected connections: Record<string, T> = {};
+export abstract class AbstractPush<Connection> extends TypedEmitter<AbstractPushEvents> {
+	protected connections: Record<string, Connection> = {};
 
 	protected userIdByPushRef: Record<string, string> = {};
 
-	protected abstract close(connection: T): void;
-	protected abstract sendToOneConnection(connection: T, data: string): void;
+	protected abstract close(connection: Connection): void;
+	protected abstract sendToOneConnection(connection: Connection, data: string): void;
 
 	constructor(protected readonly logger: Logger) {
 		super();
 	}
 
-	protected add(pushRef: string, userId: User['id'], connection: T) {
+	protected add(pushRef: string, userId: User['id'], connection: Connection) {
 		const { connections, userIdByPushRef } = this;
 		this.logger.debug('Add editor-UI session', { pushRef });
 
@@ -59,7 +60,7 @@ export abstract class AbstractPush<T> extends TypedEmitter<AbstractPushEvents> {
 		delete this.userIdByPushRef[pushRef];
 	}
 
-	private sendTo(type: IPushDataType, data: unknown, pushRefs: string[]) {
+	private sendTo<Type extends PushType>(type: Type, data: PushPayload<Type>, pushRefs: string[]) {
 		this.logger.debug(`Send data of type "${type}" to editor-UI`, {
 			dataType: type,
 			pushRefs: pushRefs.join(', '),
@@ -74,11 +75,11 @@ export abstract class AbstractPush<T> extends TypedEmitter<AbstractPushEvents> {
 		}
 	}
 
-	sendToAll(type: IPushDataType, data?: unknown) {
+	sendToAll<Type extends PushType>(type: Type, data: PushPayload<Type>) {
 		this.sendTo(type, data, Object.keys(this.connections));
 	}
 
-	sendToOne(type: IPushDataType, data: unknown, pushRef: string) {
+	sendToOne<Type extends PushType>(type: Type, data: PushPayload<Type>, pushRef: string) {
 		if (this.connections[pushRef] === undefined) {
 			this.logger.error(`The session "${pushRef}" is not registered.`, { pushRef });
 			return;
@@ -87,7 +88,11 @@ export abstract class AbstractPush<T> extends TypedEmitter<AbstractPushEvents> {
 		this.sendTo(type, data, [pushRef]);
 	}
 
-	sendToUsers(type: IPushDataType, data: unknown, userIds: Array<User['id']>) {
+	sendToUsers<Type extends PushType>(
+		type: Type,
+		data: PushPayload<Type>,
+		userIds: Array<User['id']>,
+	) {
 		const { connections } = this;
 		const userPushRefs = Object.keys(connections).filter((pushRef) =>
 			userIds.includes(this.userIdByPushRef[pushRef]),

@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import type { WorkerJobStatusSummary } from '@/Interface';
+import type { RunningJobSummary } from '@n8n/api-types';
 import WorkerAccordion from './WorkerAccordion.ee.vue';
 
 const props = defineProps<{
-	items: WorkerJobStatusSummary[];
+	items: RunningJobSummary[];
 }>();
 
 function runningSince(started: Date): string {

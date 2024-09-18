@@ -16,6 +16,8 @@ type Settings = ReadOnlySettings & WritableSettings;
 
 type InstanceRole = 'unset' | 'leader' | 'follower';
 
+export type InstanceType = 'main' | 'webhook' | 'worker';
+
 const inTest = process.env.NODE_ENV === 'test';
 
 @Service()
@@ -39,6 +41,15 @@ export class InstanceSettings {
 	private settings = this.loadOrCreate();
 
 	readonly instanceId = this.generateInstanceId();
+
+	readonly instanceType: InstanceType;
+
+	constructor() {
+		const command = process.argv[2];
+		this.instanceType = ['webhook', 'worker'].includes(command)
+			? (command as InstanceType)
+			: 'main';
+	}
 
 	/**
 	 * A main is:

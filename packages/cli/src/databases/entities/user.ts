@@ -1,3 +1,4 @@
+import { hasScope, type ScopeOptions, type Scope } from '@n8n/permissions';
 import {
 	AfterLoad,
 	AfterUpdate,
@@ -11,21 +12,22 @@ import {
 } from '@n8n/typeorm';
 import { IsEmail, IsString, Length } from 'class-validator';
 import type { IUser, IUserSettings } from 'n8n-workflow';
-import type { SharedWorkflow } from './shared-workflow';
-import type { SharedCredentials } from './shared-credentials';
-import { NoXss } from '@/validators/no-xss.validator';
-import { objectRetriever, lowerCaser } from '../utils/transformers';
-import { WithTimestamps, jsonColumnType } from './abstract-entity';
+
 import type { IPersonalizationSurveyAnswers } from '@/interfaces';
-import type { AuthIdentity } from './auth-identity';
 import {
 	GLOBAL_OWNER_SCOPES,
 	GLOBAL_MEMBER_SCOPES,
 	GLOBAL_ADMIN_SCOPES,
 } from '@/permissions/global-roles';
-import { hasScope, type ScopeOptions, type Scope } from '@n8n/permissions';
-import type { ProjectRelation } from './project-relation';
 import { NoUrl } from '@/validators/no-url.validator';
+import { NoXss } from '@/validators/no-xss.validator';
+
+import { WithTimestamps, jsonColumnType } from './abstract-entity';
+import type { AuthIdentity } from './auth-identity';
+import type { ProjectRelation } from './project-relation';
+import type { SharedCredentials } from './shared-credentials';
+import type { SharedWorkflow } from './shared-workflow';
+import { objectRetriever, lowerCaser } from '../utils/transformers';
 
 export type GlobalRole = 'global:owner' | 'global:admin' | 'global:member';
 export type AssignableRole = Exclude<GlobalRole, 'global:owner'>;
@@ -161,5 +163,10 @@ export class User extends WithTimestamps implements IUser {
 		} else {
 			return 'Unnamed Project';
 		}
+	}
+
+	toIUser(): IUser {
+		const { id, email, firstName, lastName } = this;
+		return { id, email, firstName, lastName };
 	}
 }
