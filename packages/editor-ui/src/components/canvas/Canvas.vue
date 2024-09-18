@@ -122,7 +122,10 @@ const classes = computed(() => ({
 
 const disableKeyBindings = computed(() => !props.keyBindings);
 
-const panningKeyCode = 'Shift';
+/**
+ * @see https://developer.mozilla.org/en-US/docs/Web/API/UI_Events/Keyboard_event_key_values#whitespace_keys
+ */
+const panningKeyCode = ' ';
 const isPanningEnabled = ref(false);
 
 onKeyDown(panningKeyCode, () => {

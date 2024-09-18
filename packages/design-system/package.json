@@ -1,6 +1,6 @@
 {
   "name": "n8n-design-system",
-  "version": "1.49.0",
+  "version": "1.50.0",
   "main": "src/main.ts",
   "import": "src/main.ts",
   "scripts": {
@@ -29,7 +29,6 @@
     "@types/sanitize-html": "^2.11.0",
     "@vitejs/plugin-vue": "^5.0.4",
     "@vitest/coverage-v8": "catalog:frontend",
-    "@vue/test-utils": "^2.4.3",
     "autoprefixer": "^10.4.19",
     "postcss": "^8.4.38",
     "sass": "^1.64.1",

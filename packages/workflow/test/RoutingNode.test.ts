@@ -1,3 +1,5 @@
+import { mock } from 'jest-mock-extended';
+
 import type {
 	INode,
 	INodeExecutionData,
@@ -16,14 +18,12 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	IExecuteFunctions,
 } from '@/Interfaces';
+import { applyDeclarativeNodeOptionParameters } from '@/NodeHelpers';
 import { RoutingNode } from '@/RoutingNode';
+import * as utilsModule from '@/utils';
 import { Workflow } from '@/Workflow';
 
-import * as utilsModule from '@/utils';
-
 import * as Helpers from './Helpers';
-import { applyDeclarativeNodeOptionParameters } from '@/NodeHelpers';
-import { mock } from 'jest-mock-extended';
 
 const postReceiveFunction1 = async function (
 	this: IExecuteSingleFunctions,

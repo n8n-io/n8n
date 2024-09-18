@@ -441,7 +441,7 @@ export default defineComponent({
 				</div>
 
 				<n8n-text v-if="activationHint" size="small" @click="onLinkClick">
-					<span v-html="activationHint"></span>&nbsp;
+					<span v-n8n-html="activationHint"></span>&nbsp;
 				</n8n-text>
 				<n8n-link
 					v-if="activationHint && executionsHelp"

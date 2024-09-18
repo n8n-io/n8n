@@ -31,7 +31,7 @@ const nodeName = (node: IVersionNode): string => {
 					{{ `${$locale.baseText('versionCard.version')} ${version.name}` }}
 				</div>
 				<WarningTooltip v-if="version.hasSecurityIssue">
-					<span v-html="$locale.baseText('versionCard.thisVersionHasASecurityIssue')"></span>
+					<span v-n8n-html="$locale.baseText('versionCard.thisVersionHasASecurityIssue')"></span>
 				</WarningTooltip>
 				<Badge
 					v-if="version.hasSecurityFix"
@@ -56,7 +56,7 @@ const nodeName = (node: IVersionNode): string => {
 			<div
 				v-if="version.description"
 				:class="$style.description"
-				v-html="version.description"
+				v-n8n-html="version.description"
 			></div>
 			<div v-if="version.nodes && version.nodes.length > 0" :class="$style.nodes">
 				<NodeIcon
