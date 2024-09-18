@@ -321,7 +321,7 @@ const nodeTitle = computed(() => {
 const waiting = computed(() => {
 	const workflowExecution = workflowsStore.getWorkflowExecution as ExecutionSummary;
 
-	if (workflowExecution?.waitTill) {
+	if (workflowExecution?.waitTill && !workflowExecution?.finished) {
 		const lastNodeExecuted = get(workflowExecution, 'data.resultData.lastNodeExecuted');
 		if (props.name === lastNodeExecuted) {
 			const node = props.workflow.getNode(lastNodeExecuted);

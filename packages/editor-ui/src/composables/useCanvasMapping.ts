@@ -325,7 +325,8 @@ export function useCanvasMapping({
 			if (workflowExecution && lastNodeExecuted && isExecutionSummary(workflowExecution)) {
 				if (
 					node.name === workflowExecution.data?.resultData?.lastNodeExecuted &&
-					workflowExecution.waitTill
+					workflowExecution?.waitTill &&
+					!workflowExecution?.finished
 				) {
 					const waitDate = new Date(workflowExecution.waitTill);
 

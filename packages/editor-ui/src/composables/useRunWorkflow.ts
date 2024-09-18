@@ -345,24 +345,27 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 		const resolveWaitingNodesData = async (): Promise<void> => {
 			return await new Promise<void>((resolve) => {
 				const interval = setInterval(async () => {
-					const execution = await workflowsStore.getExecution(executionId as string);
+					const execution = await workflowsStore.getExecution((executionId as string) || '');
+					localStorage.removeItem(FORM_RELOAD);
 
 					if (!execution || workflowsStore.workflowExecutionData === null) {
 						clearInterval(interval);
 						resolve();
 						return;
 					}
-
 					if (execution.finished || ['error', 'canceled', 'crashed'].includes(execution.status)) {
 						workflowsStore.setWorkflowExecutionData(execution);
 						nodeHelpers.updateNodesExecutionIssues();
+						uiStore.removeActiveAction('workflowRunning');
 						clearInterval(interval);
 						resolve();
 						return;
 					}
 
-					if (execution.data) {
+					if (execution.data?.waitTill) {
 						workflowsStore.setWorkflowExecutionRunData(execution.data);
+					} else {
+						console.log(execution);
 					}
 
 					if (execution.status === 'waiting') {
@@ -373,7 +376,6 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 							waitingNode.type === WAIT_NODE_TYPE &&
 							waitingNode.parameters.resume === 'form'
 						) {
-							localStorage.removeItem(FORM_RELOAD);
 							const testUrl = getFormResumeUrl(waitingNode, executionId as string);
 
 							if (isFormShown) {
