@@ -1,10 +1,11 @@
 <script lang="ts" setup>
+import N8nTooltip from 'n8n-design-system/components/N8nTooltip/Tooltip.vue';
+import type { ButtonType } from 'n8n-design-system/types/button';
+
 import N8nButton from '../N8nButton';
+import N8nCallout, { type CalloutTheme } from '../N8nCallout';
 import N8nHeading from '../N8nHeading';
 import N8nText from '../N8nText';
-import N8nCallout, { type CalloutTheme } from '../N8nCallout';
-import type { ButtonType } from 'n8n-design-system/types/button';
-import N8nTooltip from 'n8n-design-system/components/N8nTooltip/Tooltip.vue';
 
 interface ActionBoxProps {
 	emoji: string;

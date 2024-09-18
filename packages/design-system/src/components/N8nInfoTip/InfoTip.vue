@@ -1,6 +1,7 @@
 <script lang="ts" setup>
-import { computed } from 'vue';
 import type { Placement } from 'element-plus';
+import { computed } from 'vue';
+
 import N8nIcon from '../N8nIcon';
 import N8nTooltip from '../N8nTooltip';
 
