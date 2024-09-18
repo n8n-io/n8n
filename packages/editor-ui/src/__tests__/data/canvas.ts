@@ -135,7 +135,7 @@ export function createCanvasHandleProvide({
 	isConnected?: boolean;
 	isConnecting?: boolean;
 	isReadOnly?: boolean;
-	handleString? : string
+	handleString? : string;
 } = {}) {
 	return {
 		[`${CanvasNodeHandleKey}`]: {
