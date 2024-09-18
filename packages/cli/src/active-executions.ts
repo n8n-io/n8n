@@ -109,6 +109,7 @@ export class ActiveExecutions {
 			.finally(() => {
 				this.concurrencyControl.release({ mode: executionData.executionMode });
 				delete this.activeExecutions[executionId];
+				this.logger.debug('Execution removed', { executionId });
 			});
 
 		this.logger.debug('Execution added', { executionId });
