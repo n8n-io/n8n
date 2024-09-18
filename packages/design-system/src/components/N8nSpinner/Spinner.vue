@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import type { TextSize } from 'n8n-design-system/types/text';
+
 import N8nIcon from '../N8nIcon';
 
 const TYPE = ['dots', 'ring'] as const;

@@ -633,7 +633,7 @@ export default defineComponent({
 			</div>
 			<div :class="$style.docsInfoTip">
 				<n8n-info-tip theme="info" type="note">
-					<span v-html="$locale.baseText('settings.ldap.infoTip')"></span>
+					<span v-n8n-html="$locale.baseText('settings.ldap.infoTip')"></span>
 				</n8n-info-tip>
 			</div>
 			<div :class="$style.settingsForm">

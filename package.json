@@ -8,7 +8,7 @@
   },
   "packageManager": "pnpm@9.6.0",
   "scripts": {
-    "prepare": "lefthook install",
+    "prepare": "node scripts/prepare.mjs",
     "preinstall": "node scripts/block-npm-install.js",
     "build": "turbo run build",
     "build:backend": "turbo run build:backend",

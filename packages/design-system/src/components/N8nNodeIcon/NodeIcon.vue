@@ -1,7 +1,8 @@
 <script lang="ts" setup>
-import { computed } from 'vue';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import type { Placement } from 'element-plus';
+import { computed } from 'vue';
+
 import N8nTooltip from '../N8nTooltip';
 
 interface NodeIconProps {

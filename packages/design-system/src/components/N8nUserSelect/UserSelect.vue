@@ -1,10 +1,11 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
-import N8nUserInfo from '../N8nUserInfo';
-import N8nSelect from '../N8nSelect';
-import N8nOption from '../N8nOption';
+
 import { useI18n } from '../../composables/useI18n';
 import type { IUser, SelectSize } from '../../types';
+import N8nOption from '../N8nOption';
+import N8nSelect from '../N8nSelect';
+import N8nUserInfo from '../N8nUserInfo';
 
 interface UserSelectProps {
 	users?: IUser[];

@@ -1,3 +1,4 @@
+import * as projects from '../composables/projects';
 import {
 	INSTANCE_ADMIN,
 	INSTANCE_MEMBERS,
@@ -14,7 +15,6 @@ import {
 	NDV,
 	MainSidebar,
 } from '../pages';
-import * as projects from '../composables/projects';
 import { getVisibleDropdown, getVisibleModalOverlay, getVisibleSelect } from '../utils';
 
 const workflowsPage = new WorkflowsPage();
