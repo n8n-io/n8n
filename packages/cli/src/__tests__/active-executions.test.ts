@@ -101,10 +101,8 @@ describe('ActiveExecutions', () => {
 		// ACT
 		activeExecutions.finishExecution(executionId);
 
-		// TODO: Wait 2 ticks. This will be unnecessary once the `setImmediate` in
-		// `active-executions` is removed.
-		await new Promise((resolve) => setImmediate(resolve));
-		await new Promise((resolve) => setImmediate(resolve));
+		// Wait until the next tick to ensure that the post-execution promise has settled
+		await new Promise(setImmediate);
 
 		// ASSERT
 		expect(activeExecutions.getActiveExecutions().length).toBe(0);
