@@ -62,11 +62,11 @@ import {
 } from './execution-lifecycle-hooks/shared/shared-hook-functions';
 import { toSaveSettings } from './execution-lifecycle-hooks/to-save-settings';
 import { Logger } from './logger';
+import { TaskManager } from './runners/task-managers/task-manager';
 import { SecretsHelper } from './secrets-helpers';
 import { OwnershipService } from './services/ownership.service';
 import { UrlService } from './services/url.service';
 import { SubworkflowPolicyChecker } from './subworkflows/subworkflow-policy-checker.service';
-import { TaskManager } from './runners/task-managers/task-manager';
 import { PermissionChecker } from './user-management/permission-checker';
 import { WorkflowExecutionService } from './workflows/workflow-execution.service';
 import { WorkflowStaticDataService } from './workflows/workflow-static-data.service';

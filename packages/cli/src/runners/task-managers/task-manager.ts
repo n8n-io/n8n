@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */ // @TODO: Remove later
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */ // @TODO: Remove later
 import {
 	type IExecuteFunctions,
 	type Workflow,
@@ -14,14 +12,19 @@ import {
 	type IExecuteData,
 	type IDataObject,
 } from 'n8n-workflow';
-
-import { RPC_ALLOW_LIST, type N8nMessage, type RequesterMessage } from '../runner-types';
 import { nanoid } from 'nanoid';
+
+import {
+	RPC_ALLOW_LIST,
+	type TaskResultData,
+	type N8nMessage,
+	type RequesterMessage,
+} from '../runner-types';
 
 export type RequestAccept = (jobId: string) => void;
 export type RequestReject = (reason: string) => void;
 
-export type TaskAccept = (data: unknown) => void;
+export type TaskAccept = (data: TaskResultData) => void;
 export type TaskReject = (error: unknown) => void;
 
 export interface TaskData {
@@ -75,6 +78,10 @@ export interface Task {
 }
 
 export class JobError extends ApplicationError {}
+
+interface ExecuteFunctionObject {
+	[name: string]: ((...args: unknown[]) => unknown) | ExecuteFunctionObject;
+}
 
 const workflowToParameters = (workflow: Workflow): Omit<WorkflowParameters, 'nodeTypes'> => {
 	return {
@@ -167,7 +174,7 @@ export class TaskManager {
 		this.tasks[task.taskId] = task;
 
 		try {
-			const dataPromise = new Promise<unknown>((resolve, reject) => {
+			const dataPromise = new Promise<TaskResultData>((resolve, reject) => {
 				this.taskAcceptRejects[task.taskId] = {
 					accept: resolve,
 					reject,
@@ -180,7 +187,16 @@ export class TaskManager {
 				settings,
 			});
 
-			return (await dataPromise) as T;
+			const resultData = await dataPromise;
+			if (resultData.customData) {
+				Object.entries(resultData.customData).forEach(([k, v]) => {
+					if (!runExecutionData.resultData.metadata) {
+						runExecutionData.resultData.metadata = {};
+					}
+					runExecutionData.resultData.metadata[k] = v;
+				});
+			}
+			return resultData.result as T;
 		} catch (e) {
 			if (typeof e === 'string') {
 				throw new JobError(e, {
@@ -237,7 +253,7 @@ export class TaskManager {
 		});
 	}
 
-	jobDone(jobId: string, data: unknown) {
+	jobDone(jobId: string, data: TaskResultData) {
 		if (jobId in this.taskAcceptRejects) {
 			this.taskAcceptRejects[jobId].accept(data);
 			delete this.taskAcceptRejects[jobId];
@@ -279,9 +295,6 @@ export class TaskManager {
 				siblingParameters: jd.siblingParameters,
 				executeData: jd.executeData,
 			};
-			// TODO remove
-			// eslint-disable-next-line
-			delete (data as any)['executeFunctions'];
 			this.sendMessage({
 				type: 'requester:taskdataresponse',
 				taskId: jobId,
@@ -319,14 +332,15 @@ export class TaskManager {
 			const funcs = job.data.executeFunctions;
 
 			let func: ((...args: unknown[]) => Promise<unknown>) | undefined = undefined;
-			let funcObj: any = funcs;
+			let funcObj: ExecuteFunctionObject[string] | undefined =
+				funcs as unknown as ExecuteFunctionObject;
 			for (const part of splitPath) {
-				funcObj = funcObj[part] ?? undefined;
+				funcObj = (funcObj as ExecuteFunctionObject)[part] ?? undefined;
 				if (!funcObj) {
 					break;
 				}
 			}
-			func = funcObj;
+			func = funcObj as unknown as (...args: unknown[]) => Promise<unknown>;
 			if (!func) {
 				this.sendMessage({
 					type: 'requester:rpcresponse',
@@ -337,7 +351,7 @@ export class TaskManager {
 				});
 				return;
 			}
-			const data = await func.call(funcs, ...params);
+			const data = (await func.call(funcs, ...params)) as unknown;
 
 			this.sendMessage({
 				type: 'requester:rpcresponse',

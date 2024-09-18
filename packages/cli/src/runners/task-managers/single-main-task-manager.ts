@@ -1,8 +1,8 @@
 import Container from 'typedi';
 
-import type { RequesterMessageCallback } from '../task-broker.service';
-import type { RequesterMessage } from '../runner-types';
 import { TaskManager } from './task-manager';
+import type { RequesterMessage } from '../runner-types';
+import type { RequesterMessageCallback } from '../task-broker.service';
 import { TaskBroker } from '../task-broker.service';
 
 export class SingleMainTaskManager extends TaskManager {

@@ -5,7 +5,8 @@
   "description": "",
   "main": "dist/index.js",
   "scripts": {
-    "start": "ts-node src/start.ts",
+    "start": "node dist/start.js",
+    "dev": "pnpm build && pnpm start",
     "build": "tsc -p ./tsconfig.build.json",
     "test": "jest",
     "lint": "eslint .",
@@ -22,6 +23,9 @@
     "package.json",
     "tsconfig.json"
   ],
+  "main": "dist/index.js",
+  "module": "src/index.ts",
+  "types": "dist/index.d.ts",
   "packageManager": "pnpm@9.6.0",
   "keywords": [],
   "author": "",

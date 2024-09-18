@@ -16,6 +16,7 @@ module.exports = {
 
 	rules: {
 		'unicorn/filename-case': ['error', { case: 'kebabCase' }],
+		'@typescript-eslint/no-duplicate-imports': 'off',
 
 		complexity: 'error',
 	},

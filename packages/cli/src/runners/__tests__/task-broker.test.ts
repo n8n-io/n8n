@@ -1,7 +1,8 @@
 import { mock } from 'jest-mock-extended';
+
+import type { RunnerMessage } from '../runner-types';
 import { TaskBroker } from '../task-broker.service';
 import type { TaskOffer, TaskRequest, TaskRunner } from '../task-broker.service';
-import type { RunnerMessage } from '../runner-types';
 
 describe('TaskBroker', () => {
 	let taskBroker: TaskBroker;

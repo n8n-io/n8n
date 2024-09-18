@@ -1,6 +1,11 @@
 import { type MessageEvent, WebSocket } from 'ws';
 import { nanoid } from 'nanoid';
-import { RPC_ALLOW_LIST, type RunnerMessage, type BrokerMessage } from './runner-types';
+import {
+	RPC_ALLOW_LIST,
+	type RunnerMessage,
+	type N8nMessage,
+	type TaskResultData,
+} from './runner-types';
 
 export interface Task<T = unknown> {
 	taskId: string;
@@ -24,6 +29,10 @@ interface RPCCall {
 	callId: string;
 	resolve: (data: unknown) => void;
 	reject: (error: unknown) => void;
+}
+
+export interface RPCCallObject {
+	[name: string]: ((...args: unknown[]) => Promise<unknown>) | RPCCallObject;
 }
 
 const VALID_TIME_MS = 1000;
@@ -59,7 +68,8 @@ export class TaskRunner {
 	}
 
 	private _wsMessage = (message: MessageEvent) => {
-		const data = JSON.parse(message.data as string) as BrokerMessage.ToRunner.All;
+		// eslint-disable-next-line n8n-local-rules/no-uncaught-json-parse
+		const data = JSON.parse(message.data as string) as N8nMessage.ToRunner.All;
 		void this.onMessage(data);
 	};
 
@@ -76,7 +86,7 @@ export class TaskRunner {
 		if (this.offerInterval) {
 			clearInterval(this.offerInterval);
 		}
-		this.offerInterval = setInterval(this.sendOffers.bind(this), 250);
+		this.offerInterval = setInterval(() => this.sendOffers(), 250);
 	}
 
 	deleteStaleOffers() {
@@ -112,11 +122,11 @@ export class TaskRunner {
 		}
 	}
 
-	send(message: RunnerMessage.ToBroker.All) {
+	send(message: RunnerMessage.ToN8n.All) {
 		this.ws.send(JSON.stringify(message));
 	}
 
-	onMessage(message: BrokerMessage.ToRunner.All) {
+	onMessage(message: N8nMessage.ToRunner.All) {
 		console.log({ message });
 		switch (message.type) {
 			case 'broker:inforequest':
@@ -217,7 +227,7 @@ export class TaskRunner {
 		delete this.runningTasks[taskId];
 	}
 
-	taskDone(taskId: string, data: RunnerMessage.ToBroker.TaskDone['data']) {
+	taskDone(taskId: string, data: RunnerMessage.ToN8n.TaskDone['data']) {
 		this.send({
 			type: 'runner:taskdone',
 			taskId,
@@ -249,13 +259,14 @@ export class TaskRunner {
 		}
 	}
 
-	async executeTask(_task: Task): Promise<RunnerMessage.ToBroker.TaskDone['data']> {
+	// eslint-disable-next-line @typescript-eslint/naming-convention
+	async executeTask(_task: Task): Promise<TaskResultData> {
 		throw new Error('Unimplemented');
 	}
 
 	async requestData<T = unknown>(
 		taskId: Task['taskId'],
-		type: RunnerMessage.ToBroker.TaskDataRequest['requestType'],
+		type: RunnerMessage.ToN8n.TaskDataRequest['requestType'],
 		param?: string,
 	): Promise<T> {
 		const requestId = nanoid();
@@ -279,7 +290,7 @@ export class TaskRunner {
 		return p as T;
 	}
 
-	async makeRpcCall(taskId: string, name: RunnerMessage.ToBroker.RPC['name'], params: unknown[]) {
+	async makeRpcCall(taskId: string, name: RunnerMessage.ToN8n.RPC['name'], params: unknown[]) {
 		const callId = nanoid();
 
 		const dataPromise = new Promise((resolve, reject) => {
@@ -307,7 +318,7 @@ export class TaskRunner {
 
 	handleRpcResponse(
 		callId: string,
-		status: BrokerMessage.ToRunner.RPCResponse['status'],
+		status: N8nMessage.ToRunner.RPCResponse['status'],
 		data: unknown,
 	) {
 		const call = this.rpcCalls[callId];
@@ -322,9 +333,10 @@ export class TaskRunner {
 	}
 
 	buildRpcCallObject(taskId: string) {
-		const rpcObject: any = {};
+		const rpcObject: RPCCallObject = {};
 		for (const r of RPC_ALLOW_LIST) {
 			const splitPath = r.split('.');
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			let obj = rpcObject;
 
 			splitPath.forEach((s, index) => {
@@ -333,8 +345,7 @@ export class TaskRunner {
 					obj = obj[s];
 					return;
 				}
-				// eslint-disable-next-line
-				obj[s] = (...args: unknown[]) => this.makeRpcCall(taskId, r, args);
+				obj[s] = async (...args: unknown[]) => this.makeRpcCall(taskId, r, args);
 			});
 		}
 		return rpcObject;

@@ -6,13 +6,12 @@
 		"experimentalDecorators": true,
 		"baseUrl": "src",
 		"paths": {
-			"@/*": ["./*"],
-			"@test/*": ["../test/shared/*"],
+			"@/*": ["./*"]
 		},
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
 		// TODO: remove all options below this line
 		"strict": false,
 		"useUnknownInCatchVariables": false
 	},
-	"include": ["src/**/*.ts", "test/**/*.ts"],
+	"include": ["src/**/*.ts", "test/**/*.ts"]
 }

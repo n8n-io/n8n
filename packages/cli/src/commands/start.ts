@@ -21,6 +21,8 @@ import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus'
 import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { License } from '@/license';
+import { SingleMainTaskManager } from '@/runners/task-managers/single-main-task-manager';
+import { TaskManager } from '@/runners/task-managers/task-manager';
 import { Server } from '@/server';
 import { OrchestrationHandlerMainService } from '@/services/orchestration/main/orchestration.handler.main.service';
 import { OrchestrationService } from '@/services/orchestration.service';
@@ -29,8 +31,6 @@ import { PruningService } from '@/services/pruning.service';
 import { UrlService } from '@/services/url.service';
 import { WaitTracker } from '@/wait-tracker';
 import { WorkflowRunner } from '@/workflow-runner';
-import { SingleMainTaskManager } from '@/runners/task-managers/single-main-task-manager';
-import { TaskManager } from '@/runners/task-managers/task-manager';
 
 import { BaseCommand } from './base-command';
 
