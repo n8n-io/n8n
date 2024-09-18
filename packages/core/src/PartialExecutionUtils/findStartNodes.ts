@@ -112,6 +112,24 @@ function findStartNodesRecursive(
 	return startNodes;
 }
 
+/**
+ * The start node is the node from which a partial execution starts. The start
+ * node will be executed or re-executed.
+ * The nodes are found by traversing the graph from the trigger to the
+ * destination and finding the earliest dirty nodes on every branch.
+ *
+ * The algorithm is:
+ *  Starting from the trigger node.
+ *
+ * 	1. if the current node is not a trigger and has no input data (on all
+ * 	   connections) (not implemented yet, possibly not necessary)
+ * 	  - stop following this branch, there is no start node on this branch
+ * 	2. If the current node is dirty, or is the destination node
+ * 	  - stop following this branch, we found a start node
+ * 	3. If we detect a cycle
+ * 	  - stop following the branch, there is no start node on this branch
+ * 	4. Recurse with every direct child that is part of the sub graph
+ */
 export function findStartNodes(
 	graph: DirectedGraph,
 	trigger: INode,
