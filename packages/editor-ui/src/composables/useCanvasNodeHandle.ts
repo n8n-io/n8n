@@ -19,6 +19,7 @@ export function useCanvasNodeHandle() {
 	const mode = computed(() => handle?.mode.value ?? CanvasConnectionMode.Input);
 	const index = computed(() => handle?.index.value ?? 0);
 	const runData = computed(() => handle?.runData.value);
+	const handleString = computed(() => handle?.handleString.value ?? '');
 
 	return {
 		label,
@@ -29,5 +30,6 @@ export function useCanvasNodeHandle() {
 		mode,
 		index,
 		runData,
+		handleString,
 	};
 }

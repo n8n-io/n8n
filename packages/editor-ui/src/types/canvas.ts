@@ -169,6 +169,7 @@ export interface CanvasNodeHandleInjectionData {
 	isConnecting: Ref<boolean | undefined>;
 	isReadOnly: Ref<boolean | undefined>;
 	runData: Ref<ExecutionOutputMapData | undefined>;
+	handleString: Ref<string>;
 }
 
 export type ConnectStartEvent = { handleId: string; handleType: string; nodeId: string };
