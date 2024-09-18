@@ -16,7 +16,7 @@ export class ProcessedDataManager {
 
 	private manager: IProcessedDataManager;
 
-	constructor(manager: IProcessedDataManager) {
+	private constructor(manager: IProcessedDataManager) {
 		this.manager = manager;
 	}
 
@@ -26,8 +26,6 @@ export class ProcessedDataManager {
 		}
 
 		ProcessedDataManager.instance = new ProcessedDataManager(manager);
-
-		ProcessedDataManager.instance.manager = manager;
 	}
 
 	static getInstance(): ProcessedDataManager {

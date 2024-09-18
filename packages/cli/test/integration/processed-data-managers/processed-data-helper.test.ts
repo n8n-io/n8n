@@ -83,10 +83,6 @@ beforeAll(async () => {
 		nodeTypes,
 	});
 
-	const processedDataConfig = {
-		availableModes: 'nativeDatabase',
-		mode: 'nativeDatabase',
-	};
 	const processedDataManager = await getProcessedDataManager();
 	await ProcessedDataManager.init(processedDataManager);
 });
