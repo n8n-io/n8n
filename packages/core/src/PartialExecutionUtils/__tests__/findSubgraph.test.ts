@@ -108,9 +108,7 @@ describe('findSubgraph2', () => {
 	//              │             │
 	//              └─────────────┘
 	test('terminates when called with graph that contains cycles', () => {
-		//
 		// ARRANGE
-		//
 		const trigger = createNodeData({ name: 'trigger' });
 		const node1 = createNodeData({ name: 'node1' });
 		const node2 = createNodeData({ name: 'node2' });
@@ -122,14 +120,10 @@ describe('findSubgraph2', () => {
 				{ from: node1, to: node2 },
 			);
 
-		//
 		// ACT
-		//
 		const subgraph = findSubgraph(graph, node2, trigger);
 
-		//
 		// ASSERT
-		//
 		expect(subgraph).toEqual(graph);
 	});
 
@@ -142,9 +136,7 @@ describe('findSubgraph2', () => {
 	//  │Node2├────┘
 	//  └─────┘
 	test('terminates when called with graph that contains cycles', () => {
-		//
 		// ARRANGE
-		//
 		const trigger = createNodeData({ name: 'trigger' });
 		const node1 = createNodeData({ name: 'node1' });
 		const node2 = createNodeData({ name: 'node2' });
@@ -152,14 +144,10 @@ describe('findSubgraph2', () => {
 			.addNodes(trigger, node1, node2)
 			.addConnections({ from: trigger, to: node1 }, { from: node2, to: node1 });
 
-		//
 		// ACT
-		//
 		const subgraph = findSubgraph(graph, node1, trigger);
 
-		//
 		// ASSERT
-		//
 		expect(subgraph).toEqual(
 			new DirectedGraph().addNodes(trigger, node1).addConnections({ from: trigger, to: node1 }),
 		);
@@ -172,9 +160,7 @@ describe('findSubgraph2', () => {
 	//            │                                  │
 	//            └──────────────────────────────────┘
 	test('terminates if the destination node is part of a cycle', () => {
-		//
 		// ARRANGE
-		//
 		const trigger = createNodeData({ name: 'trigger' });
 		const destination = createNodeData({ name: 'destination' });
 		const anotherNode = createNodeData({ name: 'anotherNode' });
@@ -186,14 +172,10 @@ describe('findSubgraph2', () => {
 				{ from: anotherNode, to: destination },
 			);
 
-		//
 		// ACT
-		//
 		const subgraph = findSubgraph(graph, destination, trigger);
 
-		//
 		// ASSERT
-		//
 		expect(subgraph).toEqual(
 			new DirectedGraph()
 				.addNodes(trigger, destination)

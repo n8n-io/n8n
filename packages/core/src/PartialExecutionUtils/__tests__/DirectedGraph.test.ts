@@ -20,10 +20,12 @@ describe('DirectedGraph', () => {
 	//  │                               │
 	//  └───────────────────────────────┘
 	test('roundtrip', () => {
+		// ARRANGE
 		const node1 = createNodeData({ name: 'Node1' });
 		const node2 = createNodeData({ name: 'Node2' });
 		const node3 = createNodeData({ name: 'Node3' });
 
+		// ACT
 		const graph = new DirectedGraph()
 			.addNodes(node1, node2, node3)
 			.addConnections(
@@ -32,6 +34,7 @@ describe('DirectedGraph', () => {
 				{ from: node3, to: node1 },
 			);
 
+		// ASSERT
 		expect(DirectedGraph.fromWorkflow(graph.toWorkflow({ ...defaultWorkflowParameter }))).toEqual(
 			graph,
 		);
