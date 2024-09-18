@@ -1,3 +1,4 @@
+import type { PushPayload, PushType } from '@n8n/api-types';
 import { Request } from 'express';
 import Container from 'typedi';
 import { v4 as uuid } from 'uuid';
@@ -10,7 +11,8 @@ import { SettingsRepository } from '@/databases/repositories/settings.repository
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { Patch, Post, RestController } from '@/decorators';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import type { BooleanLicenseFeature, IPushDataType, NumericLicenseFeature } from '@/interfaces';
+import type { BooleanLicenseFeature, NumericLicenseFeature } from '@/interfaces';
+import type { FeatureReturnType } from '@/license';
 import { License } from '@/license';
 import { Logger } from '@/logger';
 import { MfaService } from '@/mfa/mfa.service';
@@ -56,13 +58,13 @@ type ResetRequest = Request<
 	}
 >;
 
-type PushRequest = Request<
+type PushRequest<T extends PushType> = Request<
 	{},
 	{},
 	{
-		type: IPushDataType;
+		type: T;
 		pushRef: string;
-		data: object;
+		data: PushPayload<T>;
 	}
 >;
 
@@ -114,9 +116,18 @@ export class E2EController {
 	) {
 		license.isFeatureEnabled = (feature: BooleanLicenseFeature) =>
 			this.enabledFeatures[feature] ?? false;
-		// eslint-disable-next-line @typescript-eslint/unbound-method
-		license.getFeatureValue<NumericLicenseFeature> = (feature: NumericLicenseFeature) =>
-			this.numericFeatures[feature] ?? UNLIMITED_LICENSE_QUOTA;
+
+		// Ugly hack to satisfy biome parser
+		const getFeatureValue = <T extends keyof FeatureReturnType>(
+			feature: T,
+		): FeatureReturnType[T] => {
+			if (feature in this.numericFeatures) {
+				return this.numericFeatures[feature as NumericLicenseFeature] as FeatureReturnType[T];
+			} else {
+				return UNLIMITED_LICENSE_QUOTA as FeatureReturnType[T];
+			}
+		};
+		license.getFeatureValue = getFeatureValue;
 
 		license.getPlanName = () => 'Enterprise';
 	}
@@ -132,7 +143,7 @@ export class E2EController {
 	}
 
 	@Post('/push', { skipAuth: true })
-	async pushSend(req: PushRequest) {
+	async pushSend(req: PushRequest<any>) {
 		this.push.broadcast(req.body.type, req.body.data);
 	}
 

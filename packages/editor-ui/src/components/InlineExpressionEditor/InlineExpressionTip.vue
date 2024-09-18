@@ -115,15 +115,15 @@ watchDebounced(
 		</div>
 
 		<div v-else-if="tip === 'dotPrimitive'" :class="$style.content">
-			<span v-html="i18n.baseText('expressionTip.typeDotPrimitive')" />
+			<span v-n8n-html="i18n.baseText('expressionTip.typeDotPrimitive')" />
 		</div>
 
 		<div v-else-if="tip === 'dotObject'" :class="$style.content">
-			<span v-html="i18n.baseText('expressionTip.typeDotObject')" />
+			<span v-n8n-html="i18n.baseText('expressionTip.typeDotObject')" />
 		</div>
 
 		<div v-else :class="$style.content">
-			<span v-html="i18n.baseText('expressionTip.javascript')" />
+			<span v-n8n-html="i18n.baseText('expressionTip.javascript')" />
 		</div>
 	</div>
 </template>

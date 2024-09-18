@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue';
-import N8nFormInput from '../N8nFormInput';
+
 import type { IFormInput } from '../../types';
-import ResizeObserver from '../ResizeObserver';
 import type { FormEventBus } from '../../utils';
 import { createFormEventBus } from '../../utils';
+import N8nFormInput from '../N8nFormInput';
+import ResizeObserver from '../ResizeObserver';
 
 export type FormInputsProps = {
 	inputs?: IFormInput[];

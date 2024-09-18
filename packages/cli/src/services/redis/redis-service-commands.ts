@@ -1,4 +1,6 @@
-import type { IPushDataType, IPushDataWorkerStatusPayload, IWorkflowDb } from '@/interfaces';
+import type { PushType, WorkerStatus } from '@n8n/api-types';
+
+import type { IWorkflowDb } from '@/interfaces';
 
 export type RedisServiceCommand =
 	| 'getStatus'
@@ -19,7 +21,7 @@ export type RedisServiceCommand =
 	| 'clear-test-webhooks'; // multi-main only
 
 /**
- * An object to be sent via Redis pub/sub from the main process to the workers.
+ * An object to be sent via Redis pubsub from the main process to the workers.
  * @field command: The command to be executed.
  * @field targets: The targets to execute the command on. Leave empty to execute on all workers or specify worker ids.
  * @field payload: Optional arguments to be sent with the command.
@@ -42,7 +44,7 @@ export type RedisServiceBaseCommand =
 	| {
 			senderId: string;
 			command: 'relay-execution-lifecycle-event';
-			payload: { type: IPushDataType; args: Record<string, unknown>; pushRef: string };
+			payload: { type: PushType; args: Record<string, unknown>; pushRef: string };
 	  }
 	| {
 			senderId: string;
@@ -64,7 +66,7 @@ export type RedisServiceWorkerResponseObject = {
 	| RedisServiceBaseCommand
 	| {
 			command: 'getStatus';
-			payload: IPushDataWorkerStatusPayload;
+			payload: WorkerStatus;
 	  }
 	| {
 			command: 'getId';

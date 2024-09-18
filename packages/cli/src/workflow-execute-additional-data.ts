@@ -3,6 +3,7 @@
 
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+import type { PushType } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import { WorkflowExecute } from 'n8n-core';
 import type {
@@ -40,13 +41,7 @@ import config from '@/config';
 import { CredentialsHelper } from '@/credentials-helper';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { ExternalHooks } from '@/external-hooks';
-import type {
-	IPushDataExecutionFinished,
-	IWorkflowExecuteProcess,
-	IWorkflowErrorData,
-	IPushDataType,
-	ExecutionPayload,
-} from '@/interfaces';
+import type { IWorkflowExecuteProcess, IWorkflowErrorData, ExecutionPayload } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
@@ -299,7 +294,6 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 						startedAt: new Date(),
 						retryOf: this.retryOf,
 						workflowId,
-						pushRef,
 						workflowName,
 					},
 					pushRef,
@@ -346,13 +340,15 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 					workflowId,
 				});
 				// TODO: Look at this again
-				const sendData: IPushDataExecutionFinished = {
-					executionId,
-					data: pushRunData,
-					retryOf,
-				};
-
-				pushInstance.send('executionFinished', sendData, pushRef);
+				pushInstance.send(
+					'executionFinished',
+					{
+						executionId,
+						data: pushRunData,
+						retryOf,
+					},
+					pushRef,
+				);
 			},
 		],
 	};
@@ -938,7 +934,7 @@ export function setExecutionStatus(status: ExecutionStatus) {
 	Container.get(ActiveExecutions).setStatus(this.executionId, status);
 }
 
-export function sendDataToUI(type: string, data: IDataObject | IDataObject[]) {
+export function sendDataToUI(type: PushType, data: IDataObject | IDataObject[]) {
 	const { pushRef } = this;
 	if (pushRef === undefined) {
 		return;
@@ -947,7 +943,7 @@ export function sendDataToUI(type: string, data: IDataObject | IDataObject[]) {
 	// Push data to session which started workflow
 	try {
 		const pushInstance = Container.get(Push);
-		pushInstance.send(type as IPushDataType, data, pushRef);
+		pushInstance.send(type, data, pushRef);
 	} catch (error) {
 		const logger = Container.get(Logger);
 		logger.warn(`There was a problem sending message to UI: ${error.message}`);

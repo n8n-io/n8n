@@ -1,5 +1,5 @@
-import { objectExtensions } from '../../src/Extensions/ObjectExtensions';
 import { evaluate } from './Helpers';
+import { objectExtensions } from '../../src/Extensions/ObjectExtensions';
 
 describe('Data Transformation Functions', () => {
 	describe('Object Data Transformation Functions', () => {

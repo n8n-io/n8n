@@ -26,7 +26,7 @@ export class WebflowTriggerV2 implements INodeType {
 			defaults: {
 				name: 'Webflow Trigger',
 			},
-			// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 			inputs: [],
 			outputs: [NodeConnectionType.Main],
 			credentials: [

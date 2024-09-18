@@ -1,5 +1,6 @@
-import { nanoid } from 'nanoid';
 import type { IDataObject, IPinData, ITaskData, ITaskDataConnections } from 'n8n-workflow';
+import { nanoid } from 'nanoid';
+
 import { clickExecuteWorkflowButton } from '../composables/workflow';
 
 export function createMockNodeExecutionData(

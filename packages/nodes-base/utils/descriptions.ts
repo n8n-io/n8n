@@ -43,7 +43,6 @@ export const looseTypeValidationProperty: INodeProperties = {
 };
 
 export const appendAttributionOption: INodeProperties = {
-	// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 	displayName: 'Append n8n Attribution',
 	name: 'appendAttribution',
 	type: 'boolean',
