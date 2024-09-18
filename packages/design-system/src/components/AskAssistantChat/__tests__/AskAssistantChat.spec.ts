@@ -1,5 +1,6 @@
 import { render } from '@testing-library/vue';
 import AskAssistantChat from '../AskAssistantChat.vue';
+import { n8nHtml } from 'n8n-design-system/directives';
 
 describe('AskAssistantChat', () => {
 	it('renders default placeholder chat correctly', () => {
@@ -12,6 +13,11 @@ describe('AskAssistantChat', () => {
 	});
 	it('renders chat with messages correctly', () => {
 		const { container } = render(AskAssistantChat, {
+			global: {
+				directives: {
+					n8nHtml,
+				},
+			},
 			props: {
 				user: { firstName: 'Kobi', lastName: 'Dog' },
 				messages: [
@@ -86,6 +92,11 @@ describe('AskAssistantChat', () => {
 	});
 	it('renders streaming chat correctly', () => {
 		const { container } = render(AskAssistantChat, {
+			global: {
+				directives: {
+					n8nHtml,
+				},
+			},
 			props: {
 				user: { firstName: 'Kobi', lastName: 'Dog' },
 				messages: [
@@ -105,6 +116,11 @@ describe('AskAssistantChat', () => {
 	});
 	it('renders end of session chat correctly', () => {
 		const { container } = render(AskAssistantChat, {
+			global: {
+				directives: {
+					n8nHtml,
+				},
+			},
 			props: {
 				user: { firstName: 'Kobi', lastName: 'Dog' },
 				messages: [
@@ -130,6 +146,11 @@ describe('AskAssistantChat', () => {
 	});
 	it('renders message with code snippet', () => {
 		const { container } = render(AskAssistantChat, {
+			global: {
+				directives: {
+					n8nHtml,
+				},
+			},
 			props: {
 				user: { firstName: 'Kobi', lastName: 'Dog' },
 				messages: [

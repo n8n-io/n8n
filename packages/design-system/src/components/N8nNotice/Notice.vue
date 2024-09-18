@@ -73,7 +73,7 @@ const onClick = (event: MouseEvent) => {
 						:id="`${id}-content`"
 						:class="showFullContent ? $style['expanded'] : $style['truncated']"
 						role="region"
-						v-html="displayContent"
+						v-n8n-html="displayContent"
 					/>
 				</slot>
 			</N8nText>

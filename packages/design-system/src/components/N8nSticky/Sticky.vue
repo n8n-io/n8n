@@ -116,7 +116,7 @@ const onInputScroll = (event: WheelEvent) => {
 		</div>
 		<div v-if="editMode && shouldShowFooter" :class="$style.footer">
 			<N8nText size="xsmall" align="right">
-				<span v-html="t('sticky.markdownHint')"></span>
+				<span v-n8n-html="t('sticky.markdownHint')"></span>
 			</N8nText>
 		</div>
 	</div>

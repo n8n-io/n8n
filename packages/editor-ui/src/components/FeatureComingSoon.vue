@@ -56,7 +56,7 @@ export default defineComponent({
 		</div>
 		<div v-if="featureInfo.infoText" class="mb-l">
 			<n8n-info-tip theme="info" type="note">
-				<span v-html="$locale.baseText(featureInfo.infoText)"></span>
+				<span v-n8n-html="$locale.baseText(featureInfo.infoText)"></span>
 			</n8n-info-tip>
 		</div>
 		<div :class="$style.actionBoxContainer">
@@ -68,7 +68,7 @@ export default defineComponent({
 				@click:button="openLinkPage"
 			>
 				<template #heading>
-					<span v-html="$locale.baseText(featureInfo.actionBoxTitle)" />
+					<span v-n8n-html="$locale.baseText(featureInfo.actionBoxTitle)" />
 				</template>
 			</n8n-action-box>
 		</div>

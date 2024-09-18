@@ -202,7 +202,7 @@ const onCheckboxChange = (index: number) => {
 			@click="onClick"
 			@mousedown="onMouseDown"
 			@change="onChange"
-			v-html="htmlContent"
+			v-n8n-html="htmlContent"
 		/>
 		<div v-else :class="$style.markdown">
 			<div v-for="(_, index) in loadingBlocks" :key="index">
