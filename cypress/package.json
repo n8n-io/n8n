@@ -7,13 +7,15 @@
     "test:e2e:ui": "scripts/run-e2e.js ui",
     "test:e2e:dev": "scripts/run-e2e.js dev",
     "test:e2e:all": "scripts/run-e2e.js all",
-    "format": "prettier --write . --ignore-path ../.prettierignore",
+    "format": "biome format --write .",
+    "format:check": "biome ci .",
     "lint": "eslint . --quiet",
     "lintfix": "eslint . --fix",
     "develop": "cd ..; pnpm dev",
     "start": "cd ..; pnpm start"
   },
   "devDependencies": {
+    "@n8n/api-types": "workspace:*",
     "@types/lodash": "catalog:",
     "eslint-plugin-cypress": "^3.3.0",
     "n8n-workflow": "workspace:*"

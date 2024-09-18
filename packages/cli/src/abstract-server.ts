@@ -5,6 +5,7 @@ import { engine as expressHandlebars } from 'express-handlebars';
 import { readFile } from 'fs/promises';
 import type { Server } from 'http';
 import isbot from 'isbot';
+import type { InstanceType } from 'n8n-core';
 import { Container, Service } from 'typedi';
 
 import config from '@/config';
@@ -12,7 +13,6 @@ import { N8N_VERSION, TEMPLATES_DIR, inDevelopment, inTest } from '@/constants';
 import * as Db from '@/db';
 import { OnShutdown } from '@/decorators/on-shutdown';
 import { ExternalHooks } from '@/external-hooks';
-import { N8nInstanceType } from '@/interfaces';
 import { Logger } from '@/logger';
 import { rawBodyReader, bodyParser, corsMiddleware } from '@/middlewares';
 import { send, sendErrorResponse } from '@/response-helper';
@@ -61,7 +61,7 @@ export abstract class AbstractServer {
 
 	readonly uniqueInstanceId: string;
 
-	constructor(instanceType: N8nInstanceType = 'main') {
+	constructor(instanceType: Exclude<InstanceType, 'worker'>) {
 		this.app = express();
 		this.app.disable('x-powered-by');
 

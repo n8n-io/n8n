@@ -693,6 +693,42 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		return NodeHelpers.getNodeWebhookUrl(baseUrl, workflowId, node, path, isFullPath);
 	}
 
+	/**
+	 * Returns a copy of provided node parameters with added resolvedExpressionValue
+	 * @param nodeParameters
+	 * @returns
+	 */
+	function getNodeParametersWithResolvedExpressions(
+		nodeParameters: INodeParameters,
+	): INodeParameters {
+		function recurse(currentObj: INodeParameters, currentPath: string): INodeParameters {
+			const newObj: INodeParameters = {};
+			for (const key in currentObj) {
+				const value = currentObj[key as keyof typeof currentObj];
+				const path = currentPath ? `${currentPath}.${key}` : key;
+				if (typeof value === 'object' && value !== null) {
+					newObj[key] = recurse(value as INodeParameters, path);
+				} else if (typeof value === 'string' && String(value).startsWith('=')) {
+					// Resolve the expression if it is one
+					let resolved;
+					try {
+						resolved = resolveExpression(value, undefined, { isForCredential: false });
+					} catch (error) {
+						resolved = `Error in expression: "${error.message}"`;
+					}
+					newObj[key] = {
+						value,
+						resolvedExpressionValue: String(resolved),
+					};
+				} else {
+					newObj[key] = value;
+				}
+			}
+			return newObj;
+		}
+		return recurse(nodeParameters, '');
+	}
+
 	function resolveExpression(
 		expression: string,
 		siblingParameters: INodeParameters = {},
@@ -1159,5 +1195,6 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		getWorkflowProjectRole,
 		promptSaveUnsavedWorkflowChanges,
 		initState,
+		getNodeParametersWithResolvedExpressions,
 	};
 }
