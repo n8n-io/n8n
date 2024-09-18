@@ -164,7 +164,7 @@ describe('Canvas', () => {
 			const pane = canvas.querySelector('.vue-flow__pane');
 			if (!pane) throw new Error('VueFlow pane not found');
 
-			await fireEvent.keyDown(pane, { view: window, key: 'Shift' });
+			await fireEvent.keyDown(pane, { view: window, key: ' ' });
 			await fireEvent.mouseDown(pane, { view: window });
 			await fireEvent.mouseMove(pane, {
 				view: window,
@@ -172,7 +172,7 @@ describe('Canvas', () => {
 				clientY: 100,
 			});
 			await fireEvent.mouseUp(pane, { view: window });
-			await fireEvent.keyUp(pane, { view: window, key: 'Shift' });
+			await fireEvent.keyUp(pane, { view: window, key: ' ' });
 
 			vi.advanceTimersByTime(minimapTransitionDuration);
 			await waitFor(() => expect(getByTestId('canvas-minimap')).toBeVisible());
@@ -196,7 +196,7 @@ describe('Canvas', () => {
 			const pane = canvas.querySelector('.vue-flow__pane');
 			if (!pane) throw new Error('VueFlow pane not found');
 
-			await fireEvent.keyDown(pane, { view: window, key: 'Shift' });
+			await fireEvent.keyDown(pane, { view: window, key: ' ' });
 			await fireEvent.mouseDown(pane, { view: window });
 			await fireEvent.mouseMove(pane, {
 				view: window,
@@ -204,7 +204,7 @@ describe('Canvas', () => {
 				clientY: 100,
 			});
 			await fireEvent.mouseUp(pane, { view: window });
-			await fireEvent.keyUp(pane, { view: window, key: 'Shift' });
+			await fireEvent.keyUp(pane, { view: window, key: ' ' });
 
 			vi.advanceTimersByTime(minimapTransitionDuration);
 			await waitFor(() => expect(getByTestId('canvas-minimap')).toBeVisible());

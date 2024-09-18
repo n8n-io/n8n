@@ -129,9 +129,6 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
           <div
             class="textMessage"
           >
-            <!-- eslint-disable-next-line vue/no-v-html -->
-            
-            <!-- eslint-disable-next-line vue/no-v-html -->
             <div
               class="assistantText"
             >
@@ -145,7 +142,6 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
               
 
             </div>
-            
             <!--v-if-->
             <!--v-if-->
           </div>
@@ -438,7 +434,6 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
           <div
             class="textMessage"
           >
-            <!-- eslint-disable-next-line vue/no-v-html -->
             <span>
               <p>
                 Give it to me 
@@ -516,7 +511,6 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
               <div
                 class="blockBody"
               >
-                <!-- eslint-disable-next-line vue/no-v-html -->
                 <span>
                   <p>
                     Solution steps:
@@ -1060,9 +1054,6 @@ exports[`AskAssistantChat > renders end of session chat correctly 1`] = `
           <div
             class="textMessage"
           >
-            <!-- eslint-disable-next-line vue/no-v-html -->
-            
-            <!-- eslint-disable-next-line vue/no-v-html -->
             <div
               class="assistantText"
             >
@@ -1076,7 +1067,6 @@ exports[`AskAssistantChat > renders end of session chat correctly 1`] = `
               
 
             </div>
-            
             <!--v-if-->
             <!--v-if-->
           </div>
@@ -1309,9 +1299,6 @@ exports[`AskAssistantChat > renders message with code snippet 1`] = `
           <div
             class="textMessage"
           >
-            <!-- eslint-disable-next-line vue/no-v-html -->
-            
-            <!-- eslint-disable-next-line vue/no-v-html -->
             <div
               class="assistantText"
             >
@@ -1325,7 +1312,6 @@ exports[`AskAssistantChat > renders message with code snippet 1`] = `
               
 
             </div>
-            
             <div
               class="code-snippet"
               data-test-id="assistant-code-snippet"
@@ -1552,9 +1538,6 @@ exports[`AskAssistantChat > renders streaming chat correctly 1`] = `
           <div
             class="textMessage"
           >
-            <!-- eslint-disable-next-line vue/no-v-html -->
-            
-            <!-- eslint-disable-next-line vue/no-v-html -->
             <div
               class="assistantText"
             >
@@ -1568,7 +1551,6 @@ exports[`AskAssistantChat > renders streaming chat correctly 1`] = `
               
 
             </div>
-            
             <!--v-if-->
             <!--v-if-->
           </div>

@@ -8,11 +8,11 @@ import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-mess
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { LogStreamingEventRelay } from '@/events/log-streaming-event-relay';
 import { JobProcessor } from '@/scaling/job-processor';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { ScalingService } from '@/scaling/scaling.service';
 import type { WorkerServerEndpointsConfig } from '@/scaling/worker-server';
 import { OrchestrationHandlerWorkerService } from '@/services/orchestration/worker/orchestration.handler.worker.service';
 import { OrchestrationWorkerService } from '@/services/orchestration/worker/orchestration.worker.service';
-import type { RedisServicePubSubSubscriber } from '@/services/redis/redis-service-pub-sub-subscriber';
 
 import { BaseCommand } from './base-command';
 
@@ -40,8 +40,6 @@ export class Worker extends BaseCommand {
 	scalingService: ScalingService;
 
 	jobProcessor: JobProcessor;
-
-	redisSubscriber: RedisServicePubSubSubscriber;
 
 	override needsCommunityPackages = true;
 
@@ -132,7 +130,7 @@ export class Worker extends BaseCommand {
 		await Container.get(OrchestrationWorkerService).init();
 		await Container.get(OrchestrationHandlerWorkerService).initWithOptions({
 			queueModeId: this.queueModeId,
-			redisPublisher: Container.get(OrchestrationWorkerService).redisPublisher,
+			publisher: Container.get(Publisher),
 			getRunningJobIds: () => this.jobProcessor.getRunningJobIds(),
 			getRunningJobsSummary: () => this.jobProcessor.getRunningJobsSummary(),
 		});

@@ -2,6 +2,7 @@
 import IconChat from 'virtual:icons/mdi/chat';
 import IconChevronDown from 'virtual:icons/mdi/chevron-down';
 import { nextTick, ref } from 'vue';
+
 import Chat from '@n8n/chat/components/Chat.vue';
 import { chatEventBus } from '@n8n/chat/event-buses';
 

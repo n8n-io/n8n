@@ -4,12 +4,12 @@ import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/root.store';
 import { useTelemetryStore } from '@/stores/telemetry.store';
-import type { IN8nUISettings } from 'n8n-workflow';
+import type { FrontendSettings } from '@n8n/api-types';
 import { LOCAL_STORAGE_EXPERIMENT_OVERRIDES } from '@/constants';
 import { nextTick } from 'vue';
 import { defaultSettings } from '../../__tests__/defaults';
 
-export const DEFAULT_POSTHOG_SETTINGS: IN8nUISettings['posthog'] = {
+export const DEFAULT_POSTHOG_SETTINGS: FrontendSettings['posthog'] = {
 	enabled: true,
 	apiHost: 'host',
 	apiKey: 'key',
@@ -20,13 +20,13 @@ export const DEFAULT_POSTHOG_SETTINGS: IN8nUISettings['posthog'] = {
 const CURRENT_USER_ID = '1';
 const CURRENT_INSTANCE_ID = '456';
 
-function setSettings(overrides?: Partial<IN8nUISettings>) {
+function setSettings(overrides?: Partial<FrontendSettings>) {
 	useSettingsStore().setSettings({
 		...defaultSettings,
 		posthog: DEFAULT_POSTHOG_SETTINGS,
 		instanceId: CURRENT_INSTANCE_ID,
 		...overrides,
-	} as IN8nUISettings);
+	} as FrontendSettings);
 
 	useRootStore().setInstanceId(CURRENT_INSTANCE_ID);
 }

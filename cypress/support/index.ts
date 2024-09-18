@@ -1,7 +1,7 @@
 // Load type definitions that come with Cypress module
 /// <reference types="cypress" />
 
-import type { IN8nUISettings } from 'n8n-workflow';
+import type { FrontendSettings } from '@n8n/api-types';
 
 Cypress.Keyboard.defaults({
 	keystrokeDelay: 0,
@@ -45,7 +45,7 @@ declare global {
 			 */
 			signinAsMember(index?: number): void;
 			signout(): void;
-			overrideSettings(value: Partial<IN8nUISettings>): void;
+			overrideSettings(value: Partial<FrontendSettings>): void;
 			enableFeature(feature: string): void;
 			disableFeature(feature: string): void;
 			enableQueueMode(): void;
