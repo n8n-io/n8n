@@ -1,149 +1,112 @@
-<script lang="ts">
-import { defineAsyncComponent, defineComponent, ref } from 'vue';
-import type { PropType } from 'vue';
+<script setup lang="ts">
+import { computed, defineAsyncComponent, ref } from 'vue';
 import VueJsonPretty from 'vue-json-pretty';
-import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type { INodeExecutionData } from 'n8n-workflow';
 import Draggable from '@/components/Draggable.vue';
 import { executionDataToJson } from '@/utils/nodeTypesUtils';
 import { isString } from '@/utils/typeGuards';
 import { shorten } from '@/utils/typesUtils';
 import type { INodeUi } from '@/Interface';
-import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv.store';
 import MappingPill from './MappingPill.vue';
 import { getMappedExpression } from '@/utils/mappingUtils';
-import { useWorkflowsStore } from '@/stores/workflows.store';
 import { nonExistingJsonPath } from '@/constants';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import TextWithHighlights from './TextWithHighlights.vue';
+import { useTelemetry } from '@/composables/useTelemetry';
 
 const LazyRunDataJsonActions = defineAsyncComponent(
 	async () => await import('@/components/RunDataJsonActions.vue'),
 );
 
-export default defineComponent({
-	name: 'RunDataJson',
-	components: {
-		VueJsonPretty,
-		Draggable,
-		LazyRunDataJsonActions,
-		MappingPill,
-		TextWithHighlights,
+const props = withDefaults(
+	defineProps<{
+		editMode: { enabled?: boolean; value?: string };
+		pushRef?: string;
+		paneType?: string;
+		node: INodeUi;
+		inputData: INodeExecutionData[];
+		mappingEnabled?: boolean;
+		distanceFromActive: number;
+		runIndex?: number;
+		totalRuns?: number;
+		search?: string;
+	}>(),
+	{
+		editMode: () => ({}),
 	},
-	props: {
-		editMode: {
-			type: Object as PropType<{ enabled?: boolean; value?: string }>,
-			default: () => ({}),
-		},
-		pushRef: {
-			type: String,
-		},
-		paneType: {
-			type: String,
-		},
-		node: {
-			type: Object as PropType<INodeUi>,
-			required: true,
-		},
-		inputData: {
-			type: Array as PropType<INodeExecutionData[]>,
-			required: true,
-		},
-		mappingEnabled: {
-			type: Boolean,
-		},
-		distanceFromActive: {
-			type: Number,
-			required: true,
-		},
-		runIndex: {
-			type: Number,
-		},
-		totalRuns: {
-			type: Number,
-		},
-		search: {
-			type: String,
-		},
-	},
-	setup() {
-		const externalHooks = useExternalHooks();
+);
 
-		const selectedJsonPath = ref(nonExistingJsonPath);
-		const draggingPath = ref<null | string>(null);
-		const displayMode = ref('json');
+const ndvStore = useNDVStore();
 
-		return {
-			externalHooks,
-			selectedJsonPath,
-			draggingPath,
-			displayMode,
-		};
-	},
-	computed: {
-		...mapStores(useNDVStore, useWorkflowsStore),
-		jsonData(): IDataObject[] {
-			return executionDataToJson(this.inputData);
-		},
-		highlight(): boolean {
-			return this.ndvStore.highlightDraggables;
-		},
-	},
-	methods: {
-		getShortKey(el: HTMLElement): string {
-			if (!el) {
-				return '';
-			}
+const externalHooks = useExternalHooks();
+const telemetry = useTelemetry();
 
-			return shorten(el.dataset.name || '', 16, 2);
-		},
-		getJsonParameterPath(path: string): string {
-			const subPath = path.replace(/^(\["?\d"?])/, ''); // remove item position
+const selectedJsonPath = ref(nonExistingJsonPath);
+const draggingPath = ref<null | string>(null);
+const displayMode = ref('json');
 
-			return getMappedExpression({
-				nodeName: this.node.name,
-				distanceFromActive: this.distanceFromActive,
-				path: subPath,
-			});
-		},
-		onDragStart(el: HTMLElement) {
-			if (el?.dataset.path) {
-				this.draggingPath = el.dataset.path;
-			}
+const jsonData = computed(() => executionDataToJson(props.inputData));
 
-			this.ndvStore.resetMappingTelemetry();
-		},
-		onDragEnd(el: HTMLElement) {
-			this.draggingPath = null;
-			const mappingTelemetry = this.ndvStore.mappingTelemetry;
-			const telemetryPayload = {
-				src_node_type: this.node.type,
-				src_field_name: el.dataset.name || '',
-				src_nodes_back: this.distanceFromActive,
-				src_run_index: this.runIndex,
-				src_runs_total: this.totalRuns,
-				src_field_nest_level: el.dataset.depth || 0,
-				src_view: 'json',
-				src_element: el,
-				success: false,
-				...mappingTelemetry,
-			};
+const highlight = computed(() => ndvStore.highlightDraggables);
 
-			setTimeout(() => {
-				void this.externalHooks.run('runDataJson.onDragEnd', telemetryPayload);
-				this.$telemetry.track('User dragged data for mapping', telemetryPayload, {
-					withPostHog: true,
-				});
-			}, 1000); // ensure dest data gets set if drop
-		},
-		getContent(value: unknown): string {
-			return isString(value) ? `"${value}"` : JSON.stringify(value);
-		},
-		getListItemName(path: string): string {
-			return path.replace(/^(\["?\d"?]\.?)/g, '');
-		},
-	},
-});
+const getShortKey = (el: HTMLElement) => {
+	if (!el) {
+		return '';
+	}
+
+	return shorten(el.dataset.name ?? '', 16, 2);
+};
+
+const getJsonParameterPath = (path: string) => {
+	const subPath = path.replace(/^(\["?\d"?])/, ''); // remove item position
+
+	return getMappedExpression({
+		nodeName: props.node.name,
+		distanceFromActive: props.distanceFromActive,
+		path: subPath,
+	});
+};
+
+const onDragStart = (el: HTMLElement) => {
+	if (el?.dataset.path) {
+		draggingPath.value = el.dataset.path;
+	}
+
+	ndvStore.resetMappingTelemetry();
+};
+
+const onDragEnd = (el: HTMLElement) => {
+	draggingPath.value = null;
+	const mappingTelemetry = ndvStore.mappingTelemetry;
+	const telemetryPayload = {
+		src_node_type: props.node.type,
+		src_field_name: el.dataset.name ?? '',
+		src_nodes_back: props.distanceFromActive,
+		src_run_index: props.runIndex,
+		src_runs_total: props.totalRuns,
+		src_field_nest_level: el.dataset.depth ?? 0,
+		src_view: 'json',
+		src_element: el,
+		success: false,
+		...mappingTelemetry,
+	};
+
+	setTimeout(() => {
+		void externalHooks.run('runDataJson.onDragEnd', telemetryPayload);
+		telemetry.track('User dragged data for mapping', telemetryPayload, {
+			withPostHog: true,
+		});
+	}, 1000); // ensure dest data gets set if drop
+};
+
+const getContent = (value: unknown) => {
+	return isString(value) ? `"${value}"` : JSON.stringify(value);
+};
+
+const getListItemName = (path: string) => {
+	return path.replace(/^(\["?\d"?]\.?)/g, '');
+};
 </script>
 
 <template>
