@@ -12,6 +12,26 @@ export type GraphConnection = {
 // fromName-outputType-outputIndex-inputIndex-toName
 type DirectedGraphKey = `${string}-${NodeConnectionType}-${number}-${number}-${string}`;
 
+/**
+ * Represents a directed graph as an adjacency list, e.g. one list for the
+ * vertices and one list for the edges.
+ * To integrate easier with the n8n codebase vertices are called nodes and
+ * edges are called connections.
+ *
+ * The reason why this exists next to the Workflow class is that the workflow
+ * class stored the graph in a deeply nested, normalized format. This format
+ * does not lend itself to editing the graph or build graphs incrementally.
+ * This class is closes this gap by having import and export functions:
+ * `fromWorkflow`, `toWorkflow`.
+ *
+ * Thus it allows to do something like this:
+ * ```ts
+ * const newWorkflow = DirectedGraph.fromWorkflow(workflow)
+ * 	.addNodes(node1, node2)
+ * 	.addConnection({ from: node1, to: node2 })
+ * 	.toWorkflow(...workflow);
+ * ```
+ */
 export class DirectedGraph {
 	private nodes: Map<string, INode> = new Map();
 
