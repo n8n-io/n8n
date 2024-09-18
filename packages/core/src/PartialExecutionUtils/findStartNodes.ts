@@ -2,32 +2,34 @@ import type { INode, IPinData, IRunData } from 'n8n-workflow';
 import type { DirectedGraph } from './DirectedGraph';
 import { getIncomingData } from './getIncomingData';
 
-// TODO: implement dirty checking for options and properties and parent nodes
-// being disabled
+/**
+ * A node is dirty if either of the following is true:
+ *   - it's properties or options changed since last execution (not implemented yet)
+ *   - one of it's parents is disabled
+ *   - it has an error (not implemented yet)
+ *   - it neither has run data nor pinned data
+ */
 export function isDirty(node: INode, runData: IRunData = {}, pinData: IPinData = {}): boolean {
-	//- it’s properties or options changed since last execution, or
-
+	// TODO: implement
 	const propertiesOrOptionsChanged = false;
 
 	if (propertiesOrOptionsChanged) {
 		return true;
 	}
 
+	// TODO: implement
 	const parentNodeGotDisabled = false;
 
 	if (parentNodeGotDisabled) {
 		return true;
 	}
 
-	//- it has an error, or
-
+	// TODO: implement
 	const hasAnError = false;
 
 	if (hasAnError) {
 		return true;
 	}
-
-	//- it does neither have run data nor pinned data
 
 	const hasPinnedData = pinData[node.name] !== undefined;
 
