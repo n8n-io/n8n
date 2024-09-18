@@ -109,9 +109,7 @@ export class ActiveExecutions {
 		void postExecutePromise.promise
 			.finally(() => {
 				this.concurrencyControl.release({ mode: executionData.executionMode });
-				setImmediate(() => {
-					delete this.activeExecutions[executionId];
-				});
+				delete this.activeExecutions[executionId];
 			})
 			// Do not throw ExecutionCancelledError
 			.catch((error) => {
