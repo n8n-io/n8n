@@ -153,7 +153,11 @@ const hasNodeRun = computed(() => {
 });
 
 const runTaskData = computed(() => {
-	if (!node.value || workflowExecution.value === null) {
+	if (
+		!node.value ||
+		workflowExecution.value === null ||
+		workflowExecution.value.status === 'waiting'
+	) {
 		return null;
 	}
 

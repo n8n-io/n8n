@@ -31,7 +31,6 @@ import {
 import { useTitleChange } from '@/composables/useTitleChange';
 import { useRootStore } from '@/stores/root.store';
 import { useUIStore } from '@/stores/ui.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { displayForm, openPopUpWindow } from '@/utils/executionUtils';
 import { useExternalHooks } from '@/composables/useExternalHooks';
@@ -54,7 +53,6 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 
 	const rootStore = useRootStore();
 	const uiStore = useUIStore();
-	const nodeTypesStore = useNodeTypesStore();
 	const workflowsStore = useWorkflowsStore();
 	const executionsStore = useExecutionsStore();
 
@@ -268,23 +266,23 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 
 			const getTestUrl = (() => {
 				return (node: INode) => {
-					const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
-					if (nodeType?.webhooks?.length) {
-						return workflowHelpers.getWebhookUrl(nodeType.webhooks[0], node, 'test');
-					}
-					return '';
+					return `${rootStore.formTestUrl}/${node.parameters.path}`;
 				};
 			})();
 
-			displayForm({
-				nodes: workflowData.nodes,
-				runData: workflowsStore.getWorkflowExecution?.data?.resultData?.runData,
-				destinationNode: options.destinationNode,
-				pinData,
-				directParentNodes,
-				source: options.source,
-				getTestUrl,
-			});
+			try {
+				displayForm({
+					nodes: workflowData.nodes,
+					runData: workflowsStore.getWorkflowExecution?.data?.resultData?.runData,
+					destinationNode: options.destinationNode,
+					pinData,
+					directParentNodes,
+					source: options.source,
+					getTestUrl,
+				});
+			} catch (error) {
+				console.log(error);
+			}
 
 			await useExternalHooks().run('workflowRun.runWorkflow', {
 				nodeName: options.destinationNode,
@@ -339,7 +337,9 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 
 		if (!executionId) executionId = await waitForWebhook();
 
-		let isFormShown = workflowsStore.allNodes.some((node) => node.type === FORM_TRIGGER_NODE_TYPE);
+		let isFormShown =
+			!options.destinationNode &&
+			workflowsStore.allNodes.some((node) => node.type === FORM_TRIGGER_NODE_TYPE);
 
 		const resolveWaitingNodesData = async (): Promise<void> => {
 			return await new Promise<void>((resolve) => {
@@ -355,9 +355,6 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 					}
 					if (execution.finished || ['error', 'canceled', 'crashed'].includes(execution.status)) {
 						workflowsStore.setWorkflowExecutionData(execution);
-						nodeHelpers.updateNodesExecutionIssues();
-
-						uiStore.removeActiveAction('workflowRunning');
 
 						clearInterval(interval);
 						resolve();
