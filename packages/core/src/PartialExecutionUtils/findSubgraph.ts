@@ -82,6 +82,24 @@ function findSubgraphRecursive(
 	}
 }
 
+/**
+ * Find all nodes that can lead from the trigger to the destination node,
+ * ignoring disabled nodes.
+ *
+ * The algorithm is:
+ *   Start with Destination Node
+ *
+ *   1. if the current node is the chosen trigger keep this branch
+ *   2. if the current node has no parents, don’t keep this branch
+ *   3. if the current node is the destination node again, don’t keep this
+ *      branch
+ *   4. if the current node was already visited, keep this branch
+ *   5. if the current node is disabled, don’t keep this node, but keep the
+ *      branch
+ *     - take every incoming connection and connect it to every node that is
+ *       connected to the current node’s first output
+ *   6. Recurse on each parent
+ */
 export function findSubgraph(
 	graph: DirectedGraph,
 	destinationNode: INode,
