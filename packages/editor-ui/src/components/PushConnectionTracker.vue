@@ -16,7 +16,7 @@ export default defineComponent({
 		<div v-if="!rootStore.pushConnectionActive" class="push-connection-lost primary-color">
 			<n8n-tooltip placement="bottom-end">
 				<template #content>
-					<div v-html="$locale.baseText('pushConnectionTracker.cannotConnectToServer')"></div>
+					<div v-n8n-html="$locale.baseText('pushConnectionTracker.cannotConnectToServer')"></div>
 				</template>
 				<span>
 					<font-awesome-icon icon="exclamation-triangle" />&nbsp;

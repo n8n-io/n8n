@@ -1,4 +1,5 @@
 import { mock } from 'jest-mock-extended';
+
 import { NodeConnectionType } from '@/Interfaces';
 import type {
 	IBinaryKeyData,
@@ -18,8 +19,8 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	NodeParameterValueType,
 } from '@/Interfaces';
-import { Workflow, type WorkflowParameters } from '@/Workflow';
 import * as NodeHelpers from '@/NodeHelpers';
+import { Workflow, type WorkflowParameters } from '@/Workflow';
 
 process.env.TEST_VARIABLE_1 = 'valueEnvVariable1';
 

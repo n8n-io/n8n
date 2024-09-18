@@ -1,18 +1,18 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
-import AssistantIcon from '../AskAssistantIcon/AssistantIcon.vue';
-import AssistantText from '../AskAssistantText/AssistantText.vue';
-import AssistantAvatar from '../AskAssistantAvatar/AssistantAvatar.vue';
-import AssistantLoadingMessage from '../AskAssistantLoadingMessage/AssistantLoadingMessage.vue';
-import CodeDiff from '../CodeDiff/CodeDiff.vue';
-import type { ChatUI } from '../../types/assistant';
-import BlinkingCursor from '../BlinkingCursor/BlinkingCursor.vue';
-
 import Markdown from 'markdown-it';
-import InlineAskAssistantButton from '../InlineAskAssistantButton/InlineAskAssistantButton.vue';
-import BetaTag from '../BetaTag/BetaTag.vue';
-import { useI18n } from '../../composables/useI18n';
 import markdownLink from 'markdown-it-link-attributes';
+import { computed, ref } from 'vue';
+
+import { useI18n } from '../../composables/useI18n';
+import type { ChatUI } from '../../types/assistant';
+import AssistantAvatar from '../AskAssistantAvatar/AssistantAvatar.vue';
+import AssistantIcon from '../AskAssistantIcon/AssistantIcon.vue';
+import AssistantLoadingMessage from '../AskAssistantLoadingMessage/AssistantLoadingMessage.vue';
+import AssistantText from '../AskAssistantText/AssistantText.vue';
+import BetaTag from '../BetaTag/BetaTag.vue';
+import BlinkingCursor from '../BlinkingCursor/BlinkingCursor.vue';
+import CodeDiff from '../CodeDiff/CodeDiff.vue';
+import InlineAskAssistantButton from '../InlineAskAssistantButton/InlineAskAssistantButton.vue';
 
 const { t } = useI18n();
 
@@ -151,8 +151,7 @@ function growInput() {
 								/>
 							</div>
 							<div :class="$style.blockBody">
-								<!-- eslint-disable-next-line vue/no-v-html -->
-								<span v-html="renderMarkdown(message.content)"></span>
+								<span v-n8n-html="renderMarkdown(message.content)"></span>
 								<BlinkingCursor
 									v-if="streaming && i === messages?.length - 1 && message.title && message.content"
 								/>
@@ -160,19 +159,20 @@ function growInput() {
 						</div>
 					</div>
 					<div v-else-if="message.type === 'text'" :class="$style.textMessage">
-						<!-- eslint-disable-next-line vue/no-v-html -->
-						<span v-if="message.role === 'user'" v-html="renderMarkdown(message.content)"></span>
-						<!-- eslint-disable-next-line vue/no-v-html -->
+						<span
+							v-if="message.role === 'user'"
+							v-n8n-html="renderMarkdown(message.content)"
+						></span>
 						<div
 							v-else
+							v-n8n-html="renderMarkdown(message.content)"
 							:class="$style.assistantText"
-							v-html="renderMarkdown(message.content)"
 						></div>
 						<div
 							v-if="message?.codeSnippet"
 							:class="$style['code-snippet']"
 							data-test-id="assistant-code-snippet"
-							v-html="renderMarkdown(message.codeSnippet).trim()"
+							v-n8n-html="renderMarkdown(message.codeSnippet).trim()"
 						></div>
 						<BlinkingCursor
 							v-if="streaming && i === messages?.length - 1 && message.role === 'assistant'"

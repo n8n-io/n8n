@@ -96,7 +96,7 @@ function openContextMenu(event: MouseEvent) {
 		<slot />
 		<N8nTooltip v-if="renderOptions.trigger" placement="bottom">
 			<template #content>
-				<span v-html="$locale.baseText('node.thisIsATriggerNode')" />
+				<span v-n8n-html="$locale.baseText('node.thisIsATriggerNode')" />
 			</template>
 			<div :class="$style.triggerIcon">
 				<FontAwesomeIcon icon="bolt" size="lg" />
