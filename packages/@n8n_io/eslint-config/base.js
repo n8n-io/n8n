@@ -338,7 +338,17 @@ const config = (module.exports = {
 		/**
 		 * https://github.com/import-js/eslint-plugin-import/blob/master/docs/rules/order.md
 		 */
-		'import/order': 'error',
+		'import/order': [
+			'error',
+			{
+				alphabetize: {
+					order: 'asc',
+					caseInsensitive: true,
+				},
+				groups: [['builtin', 'external'], 'internal', ['parent', 'index', 'sibling'], 'object'],
+				'newlines-between': 'always',
+			},
+		],
 
 		// ----------------------------------
 		//   eslint-plugin-n8n-local-rules

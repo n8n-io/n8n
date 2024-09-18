@@ -1,5 +1,6 @@
-import AssistantIcon from './AssistantIcon.vue';
 import type { StoryFn } from '@storybook/vue3';
+
+import AssistantIcon from './AssistantIcon.vue';
 
 export default {
 	title: 'Assistant/AssistantIcon',
