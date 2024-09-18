@@ -124,7 +124,7 @@ export class Github implements INodeType {
 					{
 						name: 'Create Repository',
 						value: 'createRepository',
-						description: 'Create a repository of an organization',
+						description: 'Create a repository for an organization',
 						action: 'Create a repository for an organization',
 					},
 					{
