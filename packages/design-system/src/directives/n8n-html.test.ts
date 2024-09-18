@@ -1,4 +1,5 @@
 import { render } from '@testing-library/vue';
+
 import { n8nHtml } from './n8n-html';
 
 const TestComponent = {

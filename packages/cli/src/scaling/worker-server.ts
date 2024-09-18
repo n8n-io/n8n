@@ -1,4 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
+import type { Application } from 'express';
 import express from 'express';
 import { InstanceSettings } from 'n8n-core';
 import { ensureError } from 'n8n-workflow';
@@ -16,9 +17,21 @@ import { ServiceUnavailableError } from '@/errors/response-errors/service-unavai
 import { ExternalHooks } from '@/external-hooks';
 import type { ICredentialsOverwrite } from '@/interfaces';
 import { Logger } from '@/logger';
+import { PrometheusMetricsService } from '@/metrics/prometheus-metrics.service';
 import { rawBodyReader, bodyParser } from '@/middlewares';
 import * as ResponseHelper from '@/response-helper';
 import { ScalingService } from '@/scaling/scaling.service';
+
+export type WorkerServerEndpointsConfig = {
+	/** Whether the `/healthz` endpoint is enabled. */
+	health: boolean;
+
+	/** Whether the [credentials overwrites endpoint](https://docs.n8n.io/embed/configuration/#credential-overwrites) is enabled. */
+	overwrites: boolean;
+
+	/** Whether the `/metrics` endpoint is enabled. */
+	metrics: boolean;
+};
 
 /**
  * Responsible for handling HTTP requests sent to a worker.
@@ -29,9 +42,10 @@ export class WorkerServer {
 
 	private readonly server: Server;
 
-	/**
-	 * @doc https://docs.n8n.io/embed/configuration/#credential-overwrites
-	 */
+	private readonly app: Application;
+
+	private endpointsConfig: WorkerServerEndpointsConfig;
+
 	private overwritesLoaded = false;
 
 	constructor(
@@ -41,40 +55,53 @@ export class WorkerServer {
 		private readonly credentialsOverwrites: CredentialsOverwrites,
 		private readonly externalHooks: ExternalHooks,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly prometheusMetricsService: PrometheusMetricsService,
 	) {
 		assert(this.instanceSettings.instanceType === 'worker');
 
-		const app = express();
+		this.app = express();
 
-		app.disable('x-powered-by');
+		this.app.disable('x-powered-by');
 
-		this.server = http.createServer(app);
+		this.server = http.createServer(this.app);
 
 		this.port = this.globalConfig.queue.health.port;
-
-		const overwritesEndpoint = this.globalConfig.credentials.overwrite.endpoint;
 
 		this.server.on('error', (error: NodeJS.ErrnoException) => {
 			if (error.code === 'EADDRINUSE') throw new PortTakenError(this.port);
 		});
-
-		if (this.globalConfig.queue.health.active) {
-			app.get('/healthz', async (req, res) => await this.healthcheck(req, res));
-		}
-
-		if (overwritesEndpoint !== '') {
-			app.post(`/${overwritesEndpoint}`, rawBodyReader, bodyParser, (req, res) =>
-				this.handleOverwrites(req, res),
-			);
-		}
 	}
 
-	async init() {
+	async init(endpointsConfig: WorkerServerEndpointsConfig) {
+		assert(Object.values(endpointsConfig).some((e) => e));
+
+		this.endpointsConfig = endpointsConfig;
+
+		await this.mountEndpoints();
+
 		await new Promise<void>((resolve) => this.server.listen(this.port, resolve));
 
 		await this.externalHooks.run('worker.ready');
 
 		this.logger.info(`\nn8n worker server listening on port ${this.port}`);
+	}
+
+	private async mountEndpoints() {
+		if (this.endpointsConfig.health) {
+			this.app.get('/healthz', async (req, res) => await this.healthcheck(req, res));
+		}
+
+		if (this.endpointsConfig.overwrites) {
+			const { endpoint } = this.globalConfig.credentials.overwrite;
+
+			this.app.post(`/${endpoint}`, rawBodyReader, bodyParser, (req, res) =>
+				this.handleOverwrites(req, res),
+			);
+		}
+
+		if (this.endpointsConfig.metrics) {
+			await this.prometheusMetricsService.init(this.app);
+		}
 	}
 
 	private async healthcheck(_req: express.Request, res: express.Response) {

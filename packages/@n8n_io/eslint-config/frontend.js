@@ -72,6 +72,7 @@ module.exports = {
 				order: ['script', 'template', 'style'],
 			},
 		],
+		'vue/no-v-html': 'error',
 
 		// TODO: fix these
 		'@typescript-eslint/no-unsafe-call': 'off',
