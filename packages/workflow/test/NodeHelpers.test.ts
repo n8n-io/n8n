@@ -6,7 +6,6 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 } from '@/Interfaces';
-import type { Workflow } from '@/Workflow';
 import {
 	getNodeParameters,
 	getNodeHints,
@@ -15,6 +14,7 @@ import {
 	applyDeclarativeNodeOptionParameters,
 	convertNodeToAiTool,
 } from '@/NodeHelpers';
+import type { Workflow } from '@/Workflow';
 
 describe('NodeHelpers', () => {
 	describe('getNodeParameters', () => {

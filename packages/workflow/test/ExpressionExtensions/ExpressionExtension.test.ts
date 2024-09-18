@@ -6,6 +6,7 @@
 
 import { extendTransform, extend } from '@/Extensions';
 import { joinExpression, splitExpression } from '@/Extensions/ExpressionParser';
+
 import { evaluate } from './Helpers';
 import { ExpressionExtensionError } from '../../src/errors/expression-extension.error';
 

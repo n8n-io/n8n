@@ -1,10 +1,10 @@
-import { WorkflowPage, NDV } from '../pages';
-import { getVisibleSelect } from '../utils';
 import {
 	MANUAL_TRIGGER_NODE_NAME,
 	MANUAL_TRIGGER_NODE_DISPLAY_NAME,
 	SCHEDULE_TRIGGER_NODE_NAME,
 } from './../constants';
+import { WorkflowPage, NDV } from '../pages';
+import { getVisibleSelect } from '../utils';
 
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();

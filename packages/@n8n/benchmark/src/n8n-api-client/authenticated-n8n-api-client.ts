@@ -1,4 +1,5 @@
 import type { AxiosRequestConfig } from 'axios';
+
 import { N8nApiClient } from './n8n-api-client';
 
 export class AuthenticatedN8nApiClient extends N8nApiClient {

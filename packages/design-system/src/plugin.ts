@@ -1,4 +1,5 @@
 import type { Component, Plugin } from 'vue';
+
 import * as components from './components';
 import * as directives from './directives';
 

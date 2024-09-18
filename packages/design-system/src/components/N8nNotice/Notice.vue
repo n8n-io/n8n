@@ -1,6 +1,7 @@
 <script lang="ts" setup>
-import { computed, ref, useCssModule } from 'vue';
 import sanitize from 'sanitize-html';
+import { computed, ref, useCssModule } from 'vue';
+
 import N8nText from '../../components/N8nText';
 import { uid } from '../../utils';
 
@@ -73,7 +74,7 @@ const onClick = (event: MouseEvent) => {
 						:id="`${id}-content`"
 						:class="showFullContent ? $style['expanded'] : $style['truncated']"
 						role="region"
-						v-html="displayContent"
+						v-n8n-html="displayContent"
 					/>
 				</slot>
 			</N8nText>

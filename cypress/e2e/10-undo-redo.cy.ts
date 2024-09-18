@@ -4,9 +4,9 @@ import {
 	SET_NODE_NAME,
 	EDIT_FIELDS_SET_NODE_NAME,
 } from '../constants';
-import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 import { MessageBox as MessageBoxClass } from '../pages/modals/message-box';
 import { NDV } from '../pages/ndv';
+import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 
 // Suite-specific constants
 const CODE_NODE_NEW_NAME = 'Something else';

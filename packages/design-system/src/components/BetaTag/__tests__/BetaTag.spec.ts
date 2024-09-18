@@ -1,4 +1,5 @@
 import { render } from '@testing-library/vue';
+
 import BetaTag from '../BetaTag.vue';
 
 describe('BetaTag', () => {

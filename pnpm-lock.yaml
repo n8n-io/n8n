@@ -1205,9 +1205,6 @@ importers:
       '@vitest/coverage-v8':
         specifier: catalog:frontend
         version: 1.6.0(vitest@1.6.0(@types/node@18.16.16)(jsdom@23.0.1)(sass@1.64.1)(terser@5.16.1))
-      '@vue/test-utils':
-        specifier: ^2.4.3
-        version: 2.4.3(@vue/server-renderer@3.4.21(vue@3.4.21(typescript@5.6.2)))(vue@3.4.21(typescript@5.6.2))
       autoprefixer:
         specifier: ^10.4.19
         version: 10.4.19(postcss@8.4.38)

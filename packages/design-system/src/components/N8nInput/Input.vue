@@ -1,9 +1,11 @@
 <script lang="ts" setup>
-import { computed, ref } from 'vue';
 import { ElInput } from 'element-plus';
-import { uid } from '../../utils';
-import type { InputSize, InputType } from 'n8n-design-system/types/input';
+import { computed, ref } from 'vue';
+
 import type { ElementPlusSizePropType, InputAutocompletePropType } from 'n8n-design-system/types';
+import type { InputSize, InputType } from 'n8n-design-system/types/input';
+
+import { uid } from '../../utils';
 
 interface InputProps {
 	modelValue?: string | number;

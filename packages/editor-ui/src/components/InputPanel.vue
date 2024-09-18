@@ -406,7 +406,7 @@ export default defineComponent({
 				<n8n-tooltip v-if="!readOnly" :visible="showDraggableHint && showDraggableHintWithDelay">
 					<template #content>
 						<div
-							v-html="
+							v-n8n-html="
 								$locale.baseText('dataMapping.dragFromPreviousHint', {
 									interpolate: { name: focusedMappableInput },
 								})
