@@ -1,6 +1,6 @@
 import 'cypress-real-events';
 import FakeTimers from '@sinonjs/fake-timers';
-import type { IN8nUISettings } from 'n8n-workflow';
+import type { FrontendSettings } from '@n8n/api-types';
 import { WorkflowPage } from '../pages';
 import {
 	BACKEND_BASE_URL,
@@ -86,8 +86,8 @@ Cypress.Commands.add('signout', () => {
 	cy.getCookie(N8N_AUTH_COOKIE).should('not.exist');
 });
 
-export let settings: Partial<IN8nUISettings>;
-Cypress.Commands.add('overrideSettings', (value: Partial<IN8nUISettings>) => {
+export let settings: Partial<FrontendSettings>;
+Cypress.Commands.add('overrideSettings', (value: Partial<FrontendSettings>) => {
 	settings = value;
 });
 
