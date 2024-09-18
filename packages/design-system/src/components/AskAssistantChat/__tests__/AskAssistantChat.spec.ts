@@ -1,7 +1,8 @@
 import { render } from '@testing-library/vue';
 
-import AskAssistantChat from '../AskAssistantChat.vue';
 import { n8nHtml } from 'n8n-design-system/directives';
+
+import AskAssistantChat from '../AskAssistantChat.vue';
 
 describe('AskAssistantChat', () => {
 	it('renders default placeholder chat correctly', () => {
