@@ -16,6 +16,20 @@ import type { DirectedGraph } from './DirectedGraph';
 import { getIncomingData } from './getIncomingData';
 import { getSourceDataGroups } from './getSourceDataGroups';
 
+/**
+ * Recreates the node execution stack, waiting executions and waiting
+ * execution sources from a directed graph, start nodes, the destination node,
+ * run and pinned data.
+ *
+ * This function aims to be able to recreate the internal state of the
+ * WorkflowExecute class at any point of time during an execution based on the
+ * data that is already available. Specifically it will recreate the
+ * `WorkflowExecute.runExecutionData.executionData` properties.
+ *
+ * This allows "restarting" an execution and having it only execute what's
+ * necessary to be able to execute the destination node accurately, e.g. as
+ * close as possible to what would happen in a production execution.
+ */
 export function recreateNodeExecutionStack(
 	graph: DirectedGraph,
 	startNodes: INode[],
