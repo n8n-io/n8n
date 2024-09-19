@@ -573,7 +573,7 @@ code[class^='language-'] {
 	}
 
 	table {
-		margin: var(--spacing-4xs);
+		margin: var(--spacing-4xs) 0;
 
 		th,
 		td {
