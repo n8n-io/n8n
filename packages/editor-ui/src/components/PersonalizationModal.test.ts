@@ -1,14 +1,10 @@
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
-import { getDropdownItems, mockedStore } from '@/__tests__/utils';
-import { createUser } from '@/__tests__/data/users';
-import { useSettingsStore } from '@/stores/settings.store';
+import { getDropdownItems } from '@/__tests__/utils';
 import PersonalizationModal from '@/components/PersonalizationModal.vue';
-import { useUsersStore } from '@/stores/users.store';
 import { createTestingPinia } from '@pinia/testing';
 import {
 	COMPANY_TYPE_KEY,
-	EMAIL_KEY,
 	COMPANY_INDUSTRY_EXTENDED_KEY,
 	OTHER_COMPANY_INDUSTRY_EXTENDED_KEY,
 	MARKETING_AUTOMATION_GOAL_KEY,
