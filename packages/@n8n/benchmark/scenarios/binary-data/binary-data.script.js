@@ -3,8 +3,9 @@ import { check } from 'k6';
 
 const apiBaseUrl = __ENV.API_BASE_URL;
 
-const file = open(__ENV.SCRIPT_FILE_PATH, 'b');
-const filename = String(__ENV.SCRIPT_FILE_PATH).split('/').pop();
+// This creates a ~2MB JSON file
+const file = JSON.stringify(Array.from({ length: 100 * 1024 }, () => Math.random()));
+const filename = 'test.json';
 
 export default function () {
 	const data = {
