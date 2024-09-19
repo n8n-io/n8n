@@ -1,12 +1,12 @@
 import { Service } from 'typedi';
 
+import { COMMAND_PUBSUB_CHANNEL, WORKER_RESPONSE_PUBSUB_CHANNEL } from '@/scaling/constants';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 
 import { handleCommandMessageMain } from './handle-command-message-main';
 import { handleWorkerResponseMessageMain } from './handle-worker-response-message-main';
 import type { MainResponseReceivedHandlerOptions } from './types';
 import { OrchestrationHandlerService } from '../../orchestration.handler.base.service';
-import { COMMAND_REDIS_CHANNEL, WORKER_RESPONSE_REDIS_CHANNEL } from '../../redis/redis-constants';
 
 @Service()
 export class OrchestrationHandlerMainService extends OrchestrationHandlerService {
@@ -19,9 +19,9 @@ export class OrchestrationHandlerMainService extends OrchestrationHandlerService
 		await this.subscriber.subscribe('n8n.worker-response');
 
 		this.subscriber.addMessageHandler(async (channel: string, messageString: string) => {
-			if (channel === WORKER_RESPONSE_REDIS_CHANNEL) {
+			if (channel === WORKER_RESPONSE_PUBSUB_CHANNEL) {
 				await handleWorkerResponseMessageMain(messageString, options);
-			} else if (channel === COMMAND_REDIS_CHANNEL) {
+			} else if (channel === COMMAND_PUBSUB_CHANNEL) {
 				await handleCommandMessageMain(messageString);
 			}
 		});
