@@ -10,7 +10,7 @@ type SendAndWaitConfig = {
 	options: Array<{ label: string; value: string; style: string }>;
 };
 
-export const MESSAGE_PREFIX = 'n8n ACTION REQUIRED: ';
+export const MESSAGE_PREFIX = 'ACTION REQUIRED: ';
 
 const BUTTON_STYLE_SECONDARY =
 	'display:inline-block; text-decoration:none; background-color:#fff; color:#4a4a4a; padding:12px 24px; font-family: Arial,sans-serif; font-size:14px;font-weight:600; border:1px solid #d1d1d1; border-radius:6px; min-width:120px; margin: 12px 6px 0 6px;';
@@ -48,8 +48,8 @@ const ACTION_RECORDED_PAGE = `
 			<section>
 				<div class='card'>
 					<div class='header'>
-						<h1>Your action was recorded</h1>
-						<p>This page could be closed now</p>
+						<h1>Got it, thanks</h1>
+						<p>This page can be closed now</p>
 					</div>
 				</div>
 				<div class='n8n-link'>
@@ -136,66 +136,79 @@ export function getSendAndWaitProperties(
 			},
 		},
 		{
-			displayName: 'Type of Approval',
-			name: 'approvalType',
-			type: 'options',
+			displayName: 'Approval Options',
+			name: 'approvalOptions',
+			type: 'fixedCollection',
 			placeholder: 'Add option',
-			default: 'single',
+			default: {},
 			options: [
 				{
-					name: 'Approve Only',
-					value: 'single',
-				},
-				{
-					name: 'Approve and Disapprove',
-					value: 'double',
+					displayName: 'Values',
+					name: 'values',
+					values: [
+						{
+							displayName: 'Type of Approval',
+							name: 'approvalType',
+							type: 'options',
+							placeholder: 'Add option',
+							default: 'single',
+							options: [
+								{
+									name: 'Approve Only',
+									value: 'single',
+								},
+								{
+									name: 'Approve and Disapprove',
+									value: 'double',
+								},
+							],
+						},
+						{
+							displayName: 'Approve Button Label',
+							name: 'approveLabel',
+							type: 'string',
+							default: 'Approve',
+							displayOptions: {
+								show: {
+									approvalType: ['single', 'double'],
+								},
+							},
+						},
+						{
+							...buttonStyle,
+							displayName: 'Approve Button Style',
+							name: 'buttonApprovalStyle',
+							displayOptions: {
+								show: {
+									approvalType: ['single', 'double'],
+								},
+							},
+						},
+						{
+							displayName: 'Disapprove Button Label',
+							name: 'disapproveLabel',
+							type: 'string',
+							default: 'Disapprove',
+							displayOptions: {
+								show: {
+									approvalType: ['double'],
+								},
+							},
+						},
+						{
+							...buttonStyle,
+							displayName: 'Disapprove Button Style',
+							name: 'buttonDisapprovalStyle',
+							default: 'secondary',
+							displayOptions: {
+								show: {
+									approvalType: ['double'],
+								},
+							},
+						},
+					],
 				},
 			],
-		},
-		{
-			displayName: 'Approve Button Label',
-			name: 'approveLabel',
-			type: 'string',
-			default: '',
-			required: true,
-			displayOptions: {
-				show: {
-					approvalType: ['single', 'double'],
-				},
-			},
-		},
-		{
-			...buttonStyle,
-			displayName: 'Approve Button Style',
-			name: 'buttonApprovalStyle',
-			displayOptions: {
-				show: {
-					approvalType: ['single', 'double'],
-				},
-			},
-		},
-		{
-			displayName: 'Disapprove Button Label',
-			name: 'disapproveLabel',
-			type: 'string',
-			default: '',
-			required: true,
-			displayOptions: {
-				show: {
-					approvalType: ['double'],
-				},
-			},
-		},
-		{
-			...buttonStyle,
-			displayName: 'Disapprove Button Style',
-			name: 'buttonDisapprovalStyle',
-			default: 'secondary',
-			displayOptions: {
-				show: {
-					approvalType: ['double'],
-				},
-			},
 		},
 		...additionalProperties,
 		{
@@ -220,21 +233,27 @@ export function getSendAndWaitProperties(
 
 // Webhook Function --------------------------------------------------------------
 export async function sendAndWaitWebhook(this: IWebhookFunctions) {
-	const query = this.getRequestObject().query as { result: 'false' | 'true' };
-	const result = query.result === 'true';
+	const query = this.getRequestObject().query as { approved: 'false' | 'true' };
+	const approved = query.approved === 'true';
 	return {
 		webhookResponse: ACTION_RECORDED_PAGE,
-		workflowData: [[{ json: { data: { result } } }]],
+		workflowData: [[{ json: { data: { approved } } }]],
 	};
 }
 
 // Send and Wait Config -----------------------------------------------------------
 export function getSendAndWaitConfig(context: IExecuteFunctions): SendAndWaitConfig {
 	const message = escapeHtml((context.getNodeParameter('message', 0, '') as string).trim());
-	const subject = escapeHtml(context.getNodeParameter('subject', 0) as string);
+	const subject = escapeHtml(context.getNodeParameter('subject', 0, '') as string);
 	const resumeUrl = context.evaluateExpression('{{ $execution?.resumeUrl }}', 0) as string;
 	const nodeId = context.evaluateExpression('{{ $nodeId }}', 0) as string;
-	const approvalType = context.getNodeParameter('approvalType', 0) as string;
+	const approvalOptions = context.getNodeParameter('approvalOptions.values', 0, {}) as {
+		approvalType?: 'single' | 'double';
+		approveLabel?: string;
+		buttonApprovalStyle?: string;
+		disapproveLabel?: string;
+		buttonDisapprovalStyle?: string;
+	};
 
 	const config: SendAndWaitConfig = {
 		title: subject,
@@ -243,21 +262,11 @@ export function getSendAndWaitConfig(context: IExecuteFunctions): SendAndWaitCon
 		options: [],
 	};
 
-	if (approvalType === 'single') {
-		const label = escapeHtml(context.getNodeParameter('approveLabel', 0) as string);
-		const style = context.getNodeParameter('buttonApprovalStyle', 0) as string;
-		config.options.push({
-			label,
-			value: 'true',
-			style,
-		});
-	}
-
-	if (approvalType === 'double') {
-		const approveLabel = escapeHtml(context.getNodeParameter('approveLabel', 0) as string);
-		const buttonApprovalStyle = context.getNodeParameter('buttonApprovalStyle', 0) as string;
-		const disapproveLabel = escapeHtml(context.getNodeParameter('disapproveLabel', 0) as string);
-		const buttonDisapprovalStyle = context.getNodeParameter('buttonDisapprovalStyle', 0) as string;
+	if (approvalOptions.approvalType === 'double') {
+		const approveLabel = escapeHtml(approvalOptions.approveLabel || 'Approve');
+		const buttonApprovalStyle = approvalOptions.buttonApprovalStyle || 'primary';
+		const disapproveLabel = escapeHtml(approvalOptions.disapproveLabel || 'Disapprove');
+		const buttonDisapprovalStyle = approvalOptions.buttonDisapprovalStyle || 'secondary';
 
 		config.options.push({
 			label: disapproveLabel,
@@ -269,6 +278,14 @@ export function getSendAndWaitConfig(context: IExecuteFunctions): SendAndWaitCon
 			value: 'true',
 			style: buttonApprovalStyle,
 		});
+	} else {
+		const label = escapeHtml(approvalOptions.approveLabel || 'Approve');
+		const style = approvalOptions.buttonApprovalStyle || 'primary';
+		config.options.push({
+			label,
+			value: 'true',
+			style,
+		});
 	}
 
 	return config;
@@ -276,7 +293,7 @@ export function getSendAndWaitConfig(context: IExecuteFunctions): SendAndWaitCon
 
 // Create Email Helpers ----------------------------------------------------------------------------------
 
-function createEmailBody(title: string, message: string, buttons: string, instanceId?: string) {
+function createEmailBody(message: string, buttons: string, instanceId?: string) {
 	const utm_campaign = instanceId ? `&utm_campaign=${instanceId}` : '';
 	const n8nWebsiteLink = `https://n8n.io/?utm_source=n8n-internal&utm_medium=send-and-wait${utm_campaign}`;
 	return `
@@ -297,12 +314,6 @@ function createEmailBody(title: string, message: string, buttons: string, instan
 			<td align="center" style="padding: 24px 0;">
 				<table width="448" cellpadding="0" cellspacing="0" border="0"
 					style="width: 100%; max-width: 448px; background-color: #ffffff; border: 1px solid #dbdfe7; border-radius: 8px; padding: 24px; box-shadow: 0px 4px 16px rgba(99, 77, 255, 0.06);">
-					<tr>
-						<td
-							style="text-align: center; font-family: Arial, sans-serif; font-size: 20px; color: #525356; font-weight: 400;">
-							<h1 style="margin: 0; padding: 0; color: #525356;font-size: 20px; font-weight: 400;">${title}</h1>
-						</td>
-					</tr>
 					<tr>
 						<td
 							style="text-align: center; padding-top: 8px; font-family: Arial, sans-serif; font-size: 14px; color: #7e8186;">
@@ -329,7 +340,7 @@ function createEmailBody(title: string, message: string, buttons: string, instan
 					<tr>
 						<td>
 							<a href=${n8nWebsiteLink}
-								target="_blank" style="color: #7e8186; text-decoration: none; font-weight: 600;">Automated with
+								target="_blank" style="color: #7e8186; text-decoration: none;">Automated with
 								n8n</a>
 						</td>
 					</tr>
@@ -343,12 +354,12 @@ function createEmailBody(title: string, message: string, buttons: string, instan
 	`;
 }
 
-function createButton(url: string, label: string, result: string, style: string) {
+function createButton(url: string, label: string, approved: string, style: string) {
 	let buttonStyle = BUTTON_STYLE_PRIMARY;
 	if (style === 'secondary') {
 		buttonStyle = BUTTON_STYLE_SECONDARY;
 	}
-	return `<a href="${url}?result=${result}" target="_blank" style="${buttonStyle}">${label}</a>`;
+	return `<a href="${url}?approved=${approved}" target="_blank" style="${buttonStyle}">${label}</a>`;
 }
 
 export function createEmail(context: IExecuteFunctions) {
@@ -374,7 +385,7 @@ export function createEmail(context: IExecuteFunctions) {
 		to,
 		subject: `${MESSAGE_PREFIX}${config.title}`,
 		body: '',
-		htmlBody: createEmailBody(config.title, config.message, buttons.join('\n'), instanceId),
+		htmlBody: createEmailBody(config.message, buttons.join('\n'), instanceId),
 	};
 
 	return email;

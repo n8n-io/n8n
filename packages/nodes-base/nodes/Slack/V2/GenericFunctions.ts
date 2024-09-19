@@ -11,7 +11,7 @@ import type {
 import { NodeOperationError } from 'n8n-workflow';
 
 import get from 'lodash/get';
-import { getSendAndWaitConfig, MESSAGE_PREFIX } from '../../../utils/sendAndWait.utils';
+import { getSendAndWaitConfig } from '../../../utils/sendAndWait.utils';
 
 export async function slackApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
@@ -261,37 +261,6 @@ export function createSendAndWaitMessageBody(context: IExecuteFunctions) {
 				type: 'divider',
 			},
 			{
-				type: 'rich_text',
-				elements: [
-					{
-						type: 'rich_text_section',
-						elements: [
-							{
-								type: 'text',
-								text: MESSAGE_PREFIX,
-								style: {
-									bold: true,
-								},
-							},
-							{
-								type: 'text',
-								text: config.title,
-								style: {
-									bold: true,
-								},
-							},
-						],
-					},
-				],
-			},
-			{
-				type: 'section',
-				text: {
-					type: 'plain_text',
-					text: ' ',
-				},
-			},
-			{
 				type: 'section',
 				text: {
 					type: 'plain_text',
@@ -320,7 +289,7 @@ export function createSendAndWaitMessageBody(context: IExecuteFunctions) {
 							text: option.label,
 							emoji: true,
 						},
-						url: config.url,
+						url: `${config.url}?approved=${option.value}`,
 					};
 				}),
 			},

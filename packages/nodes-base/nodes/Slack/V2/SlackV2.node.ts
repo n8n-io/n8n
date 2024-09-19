@@ -165,7 +165,7 @@ export class SlackV2 implements INodeType {
 							},
 						},
 					},
-				]),
+				]).filter((p) => p.name !== 'subject'),
 				...starOperations,
 				...starFields,
 				...fileOperations,
