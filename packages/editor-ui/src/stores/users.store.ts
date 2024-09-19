@@ -23,6 +23,7 @@ import type { Scope } from '@n8n/permissions';
 import * as invitationsApi from '@/api/invitation';
 import { useNpsSurveyStore } from './npsSurvey.store';
 import { computed, ref } from 'vue';
+import { useTelemetry } from '@/composables/useTelemetry';
 
 const _isPendingUser = (user: IUserResponse | null) => !!user?.isPending;
 const _isInstanceOwner = (user: IUserResponse | null) => user?.role === ROLE.Owner;
@@ -43,6 +44,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
 	const cloudPlanStore = useCloudPlanStore();
+	const telemetry = useTelemetry();
 
 	// Composables
 
@@ -110,6 +112,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 
 		const defaultScopes: Scope[] = [];
 		RBACStore.setGlobalScopes(user.globalScopes || defaultScopes);
+		telemetry.identify(rootStore.instanceId, user.id);
 		postHogStore.init(user.featureFlags);
 		npsSurveyStore.setupNpsSurveyOnLogin(user.id, user.settings);
 	};
