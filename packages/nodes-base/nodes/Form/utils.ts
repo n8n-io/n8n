@@ -394,7 +394,7 @@ export async function formWebhook(
 			appendAttribution = false;
 		}
 
-		let buttonLabel = 'Submit form';
+		let buttonLabel = 'Submit';
 
 		if (options.buttonLabel) {
 			buttonLabel = options.buttonLabel;

@@ -10,7 +10,7 @@ export class FormTrigger extends VersionedNodeType {
 			name: 'formTrigger',
 			icon: 'file:form.svg',
 			group: ['trigger'],
-			description: 'Runs the flow when an n8n generated webform is submitted',
+			description: 'Generate webforms in n8n and pass their responses to the workflow',
 			defaultVersion: 2.1,
 		};
 

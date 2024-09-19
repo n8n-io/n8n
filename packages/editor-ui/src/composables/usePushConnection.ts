@@ -37,6 +37,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import type { PushMessageQueueItem } from '@/types';
 import { useAssistantStore } from '@/stores/assistant.store';
 import NodeExecutionErrorMessage from '@/components/NodeExecutionErrorMessage.vue';
+import { useRootStore } from '@/stores/root.store';
 
 type IPushDataExecutionFinishedPayload = PushPayload<'executionFinished'>;
 
@@ -320,7 +321,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 					action =
 						'<a data-action="open-settings">Turn on saving manual executions</a> and run again to see what happened after this node.';
 				} else {
-					action = `<a href="/workflow/${workflow.id}/executions/${activeExecutionId}">View the execution</a> to see what happened after this node.`;
+					action = `<a href="${useRootStore().urlBaseEditor}workflow/${workflow.id}/executions/${activeExecutionId}">View the execution</a> to see what happened after this node.`;
 				}
 
 				// Workflow did start but had been put to wait

@@ -44,7 +44,9 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 
 	const formTestUrl = computed(() => `${state.value.urlBaseEditor}${state.value.endpointFormTest}`);
 
-	const formWaitingUrl = computed(() => `${state.value.baseUrl}${state.value.endpointFormWaiting}`);
+	const formWaitingUrl = computed(
+		() => `${state.value.urlBaseEditor}${state.value.endpointFormWaiting}`,
+	);
 
 	const webhookUrl = computed(() => `${state.value.urlBaseWebhook}${state.value.endpointWebhook}`);
 

@@ -175,8 +175,7 @@ function updateFormTriggerParameters(parameters: INodeProperties[], triggerName:
 		for (const parameter of parameters) {
 			if (parameter.name === 'responseMode') {
 				triggerParameters.push({
-					displayName:
-						"This node is automatically set to use the wired n8n Form node. It's not possible to select other 'Respond When' options.",
+					displayName: 'On submission, the user will be taken to the next form node',
 					name: 'formResponseModeNotice',
 					type: 'notice',
 					default: '',

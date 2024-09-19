@@ -1089,7 +1089,7 @@
 	"nodeCreator.triggerHelperPanel.webhookTriggerDisplayName": "On webhook call",
 	"nodeCreator.triggerHelperPanel.webhookTriggerDescription": "Runs the flow on receiving an HTTP request",
 	"nodeCreator.triggerHelperPanel.formTriggerDisplayName": "On form submission",
-	"nodeCreator.triggerHelperPanel.formTriggerDescription": "Runs the flow when an n8n generated webform is submitted",
+	"nodeCreator.triggerHelperPanel.formTriggerDescription": "Generate webforms in n8n and pass their responses to the workflow",
 	"nodeCreator.triggerHelperPanel.formDisplayName": "Form",
 	"nodeCreator.triggerHelperPanel.formDescription": "Add next form page",
 	"nodeCreator.triggerHelperPanel.manualTriggerDisplayName": "Trigger manually",

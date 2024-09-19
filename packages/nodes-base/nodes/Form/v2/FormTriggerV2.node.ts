@@ -35,9 +35,9 @@ const descriptionV2: INodeTypeDescription = {
 	icon: 'file:form.svg',
 	group: ['trigger'],
 	version: [2, 2.1],
-	description: 'Runs the flow when an n8n generated webform is submitted',
+	description: 'Generate webforms in n8n and pass their responses to the workflow',
 	defaults: {
-		name: 'n8n Form Trigger',
+		name: 'On form submission',
 	},
 
 	inputs: [],
@@ -130,7 +130,7 @@ const descriptionV2: INodeTypeDescription = {
 					description: 'The label of the submit button in the form',
 					name: 'buttonLabel',
 					type: 'string',
-					default: 'Submit form',
+					default: 'Submit',
 				},
 				{
 					...respondWithOptions,

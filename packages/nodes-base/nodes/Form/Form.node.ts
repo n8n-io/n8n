@@ -28,11 +28,21 @@ const pageProperties = updateDisplayOptions(
 	},
 	[
 		{
-			displayName: 'Use JSON',
-			name: 'useJson',
-			type: 'boolean',
-			default: false,
-			description: 'Whether to use JSON as input to specify the form fields',
+			displayName: 'Define Form',
+			name: 'defineForm',
+			type: 'options',
+			noDataExpression: true,
+			options: [
+				{
+					name: 'Using Fields Below',
+					value: 'fields',
+				},
+				{
+					name: 'Using JSON',
+					value: 'json',
+				},
+			],
+			default: 'fields',
 		},
 		{
 			displayName: 'Form Fields',
@@ -45,15 +55,14 @@ const pageProperties = updateDisplayOptions(
 				'[\n   {\n      "fieldLabel":"Name",\n      "placeholder":"enter you name",\n      "requiredField":true\n   },\n   {\n      "fieldLabel":"Age",\n      "fieldType":"number",\n      "placeholder":"enter your age"\n   },\n   {\n      "fieldLabel":"Email",\n      "fieldType":"email",\n      "requiredField":true\n   }\n]',
 			validateType: 'form-fields',
 			ignoreValidationDuringExecution: true,
-			//TODO: replace with link https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.form/
-			hint: 'Syntax for fields described in the <a href="https://linear.app/n8n/issue/NODE-1472/add-form-node-p0#comment-23d1bd2d" target="_blank">docs</a>(hint: define fields in fixed mode to saw validation errors)',
+			hint: '<a href="hhttps://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.form/" target="_blank">See docs</a> for field syntax',
 			displayOptions: {
 				show: {
-					useJson: [true],
+					defineForm: ['json'],
 				},
 			},
 		},
-		{ ...formFields, displayOptions: { show: { useJson: [false] } } },
+		{ ...formFields, displayOptions: { show: { defineForm: ['fields'] } } },
 		{
 			displayName: 'Options',
 			name: 'options',
@@ -67,7 +76,7 @@ const pageProperties = updateDisplayOptions(
 					displayName: 'Button Label',
 					name: 'buttonLabel',
 					type: 'string',
-					default: 'Submit form',
+					default: 'Submit',
 				},
 			],
 		},
@@ -82,7 +91,7 @@ const completionProperties = updateDisplayOptions(
 	},
 	[
 		{
-			displayName: 'Respond With',
+			displayName: 'On N8n Form Submission',
 			name: 'respondWith',
 			type: 'options',
 			default: 'text',
@@ -163,7 +172,7 @@ export class Form extends Node {
 		icon: 'file:form.svg',
 		group: ['input'],
 		version: 1,
-		description: 'Create a multi-step webform by adding pages to a n8n form',
+		description: 'Generate webforms in n8n and pass their responses to the workflow',
 		defaults: {
 			name: 'Form',
 		},
@@ -213,11 +222,11 @@ export class Form extends Node {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Form Page',
+						name: 'Next Form Page',
 						value: 'page',
 					},
 					{
-						name: 'Form Completion',
+						name: 'Form Ending',
 						value: 'completion',
 					},
 				],
@@ -241,10 +250,10 @@ export class Form extends Node {
 			| 'test'
 			| 'production';
 
-		const useJson = context.getNodeParameter('useJson', false) as boolean;
+		const defineForm = context.getNodeParameter('defineForm', false) as string;
 
 		let fields: FormFieldsParameter = [];
-		if (useJson) {
+		if (defineForm === 'json') {
 			try {
 				const jsonOutput = context.getNodeParameter('jsonOutput', '', {
 					rawExpressions: true,
@@ -327,7 +336,7 @@ export class Form extends Node {
 				buttonLabel =
 					(context.evaluateExpression(
 						`{{ $('${trigger?.name}').params.options?.buttonLabel }}`,
-					) as string) || 'Submit form';
+					) as string) || 'Submit';
 			}
 
 			const responseMode = 'onReceived';
