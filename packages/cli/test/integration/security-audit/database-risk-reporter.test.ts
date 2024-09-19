@@ -1,15 +1,17 @@
+import Container from 'typedi';
 import { v4 as uuid } from 'uuid';
-import { SecurityAuditService } from '@/security-audit/security-audit.service';
+
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { generateNanoId } from '@/databases/utils/generators';
 import {
 	DATABASE_REPORT,
 	SQL_NODE_TYPES,
 	SQL_NODE_TYPES_WITH_QUERY_PARAMS,
 } from '@/security-audit/constants';
+import { SecurityAuditService } from '@/security-audit/security-audit.service';
+
 import { getRiskSection, saveManualTriggerWorkflow } from './utils';
 import * as testDb from '../shared/test-db';
-import { generateNanoId } from '@/databases/utils/generators';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import Container from 'typedi';
 
 let securityAuditService: SecurityAuditService;
 

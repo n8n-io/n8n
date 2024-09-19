@@ -7,7 +7,6 @@ import type {
 	ConnectStartEvent,
 } from '@/types';
 import type {
-	EdgeMouseEvent,
 	Connection,
 	XYPosition,
 	ViewportTransform,
@@ -31,6 +30,7 @@ import { isPresent } from '@/utils/typesUtils';
 import { GRID_SIZE } from '@/utils/nodeViewUtils';
 import { CanvasKey } from '@/constants';
 import { onKeyDown, onKeyUp } from '@vueuse/core';
+import CanvasArrowHeadMarker from './elements/edges/CanvasArrowHeadMarker.vue';
 
 const $style = useCssModule();
 
@@ -122,7 +122,10 @@ const classes = computed(() => ({
 
 const disableKeyBindings = computed(() => !props.keyBindings);
 
-const panningKeyCode = 'Shift';
+/**
+ * @see https://developer.mozilla.org/en-US/docs/Web/API/UI_Events/Keyboard_event_key_values#whitespace_keys
+ */
+const panningKeyCode = ' ';
 const isPanningEnabled = ref(false);
 
 onKeyDown(panningKeyCode, () => {
@@ -261,19 +264,7 @@ function onClickConnectionAdd(connection: Connection) {
 	emit('click:connection:add', connection);
 }
 
-/**
- * Connection hover
- */
-
-const hoveredEdges = ref<Record<string, boolean>>({});
-
-function onMouseEnterEdge(event: EdgeMouseEvent) {
-	hoveredEdges.value[event.edge.id] = true;
-}
-
-function onMouseLeaveEdge(event: EdgeMouseEvent) {
-	hoveredEdges.value[event.edge.id] = false;
-}
+const arrowHeadMarkerId = ref('custom-arrow-head');
 
 /**
  * Executions
@@ -501,6 +492,7 @@ provide(CanvasKey, {
 		:edges="connections"
 		:apply-changes="false"
 		:connection-line-options="{ markerEnd: MarkerType.ArrowClosed }"
+		:connection-radius="60"
 		pan-on-scroll
 		snap-to-grid
 		:snap-grid="[GRID_SIZE, GRID_SIZE]"
@@ -510,8 +502,6 @@ provide(CanvasKey, {
 		:selection-key-code="selectionKeyCode"
 		:pan-activation-key-code="panningKeyCode"
 		data-test-id="canvas"
-		@edge-mouse-enter="onMouseEnterEdge"
-		@edge-mouse-leave="onMouseLeaveEdge"
 		@connect-start="onConnectStart"
 		@connect="onConnect"
 		@connect-end="onConnectEnd"
@@ -542,8 +532,8 @@ provide(CanvasKey, {
 		<template #edge-canvas-edge="canvasEdgeProps">
 			<Edge
 				v-bind="canvasEdgeProps"
+				:marker-end="`url(#${arrowHeadMarkerId})`"
 				:read-only="readOnly"
-				:hovered="hoveredEdges[canvasEdgeProps.id]"
 				@add="onClickConnectionAdd"
 				@delete="onDeleteConnection"
 			/>
@@ -552,6 +542,8 @@ provide(CanvasKey, {
 		<template #connection-line="connectionLineProps">
 			<CanvasConnectionLine v-bind="connectionLineProps" />
 		</template>
+
+		<CanvasArrowHeadMarker :id="arrowHeadMarkerId" />
 
 		<Background data-test-id="canvas-background" pattern-color="#aaa" :gap="GRID_SIZE" />
 
@@ -566,7 +558,6 @@ provide(CanvasKey, {
 				pannable
 				zoomable
 				:node-class-name="minimapNodeClassnameFn"
-				mask-color="var(--color-background-base)"
 				:node-border-radius="16"
 				@mouseenter="onMinimapMouseEnter"
 				@mouseleave="onMinimapMouseLeave"

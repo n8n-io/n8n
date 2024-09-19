@@ -1,10 +1,12 @@
 {
   "name": "@n8n/n8n-benchmark",
-  "version": "1.2.0",
+  "version": "1.4.0",
   "description": "Cli for running benchmark tests for n8n",
   "main": "dist/index",
   "scripts": {
     "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
+    "format": "biome format --write .",
+    "format:check": "biome ci .",
     "lint": "eslint .",
     "lintfix": "eslint . --fix",
     "start": "./bin/n8n-benchmark",
@@ -13,8 +15,8 @@
     "benchmark": "zx scripts/run.mjs",
     "benchmark-in-cloud": "pnpm benchmark --env cloud",
     "benchmark-locally": "pnpm benchmark --env local",
-    "provision-cloud-env": "zx scripts/provisionCloudEnv.mjs",
-    "destroy-cloud-env": "zx scripts/destroyCloudEnv.mjs",
+    "provision-cloud-env": "zx scripts/provision-cloud-env.mjs",
+    "destroy-cloud-env": "zx scripts/destroy-cloud-env.mjs",
     "watch": "concurrently \"tsc -w -p tsconfig.build.json\" \"tsc-alias -w -p tsconfig.build.json\""
   },
   "engines": {
@@ -33,8 +35,8 @@
   "dependencies": {
     "@oclif/core": "4.0.7",
     "axios": "catalog:",
-    "convict": "6.2.4",
     "dotenv": "8.6.0",
+    "nanoid": "catalog:",
     "zx": "^8.1.4"
   },
   "devDependencies": {

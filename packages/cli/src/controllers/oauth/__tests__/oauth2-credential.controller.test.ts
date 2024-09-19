@@ -1,24 +1,23 @@
-import nock from 'nock';
-import Container from 'typedi';
 import Csrf from 'csrf';
 import { type Response } from 'express';
-import { Cipher } from 'n8n-core';
 import { mock } from 'jest-mock-extended';
+import { Cipher } from 'n8n-core';
+import nock from 'nock';
+import Container from 'typedi';
 
 import { OAuth2CredentialController } from '@/controllers/oauth/oauth2-credential.controller';
+import { CredentialsHelper } from '@/credentials-helper';
 import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
 import type { User } from '@/databases/entities/user';
-import type { OAuthRequest } from '@/requests';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import { ExternalHooks } from '@/external-hooks';
-import { Logger } from '@/logger';
 import { VariablesService } from '@/environments/variables/variables.service.ee';
-import { SecretsHelper } from '@/secrets-helpers';
-import { CredentialsHelper } from '@/credentials-helper';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-
+import { ExternalHooks } from '@/external-hooks';
+import { Logger } from '@/logger';
+import type { OAuthRequest } from '@/requests';
+import { SecretsHelper } from '@/secrets-helpers';
 import { mockInstance } from '@test/mocking';
 
 describe('OAuth2CredentialController', () => {

@@ -573,7 +573,7 @@ export default defineComponent({
 						{{ $locale.baseText('workflowSettings.errorWorkflow') + ':' }}
 						<n8n-tooltip placement="top">
 							<template #content>
-								<div v-html="helpTexts.errorWorkflow"></div>
+								<div v-n8n-html="helpTexts.errorWorkflow"></div>
 							</template>
 							<font-awesome-icon icon="question-circle" />
 						</n8n-tooltip>

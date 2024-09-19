@@ -1,5 +1,3 @@
-import { Container } from 'typedi';
-import { v4 as uuid } from 'uuid';
 import type {
 	IDataObject,
 	INode,
@@ -11,9 +9,11 @@ import type {
 	WorkflowOperationError,
 	Workflow,
 	NodeOperationError,
+	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
+import { Container } from 'typedi';
+import { v4 as uuid } from 'uuid';
 
-import type { IWorkflowExecutionDataProcess } from '@/interfaces';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { VariablesService } from '@/environments/variables/variables.service.ee';

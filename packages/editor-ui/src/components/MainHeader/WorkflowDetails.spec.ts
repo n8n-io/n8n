@@ -59,7 +59,7 @@ describe('WorkflowDetails', () => {
 	it('renders workflow name and tags', async () => {
 		const { getByTestId, getByText } = renderComponent({
 			props: {
-				workflow,
+				...workflow,
 				readOnly: false,
 			},
 		});
@@ -76,7 +76,7 @@ describe('WorkflowDetails', () => {
 		const onSaveButtonClick = vi.fn();
 		const { getByTestId } = renderComponent({
 			props: {
-				workflow,
+				...workflow,
 				readOnly: false,
 			},
 			global: {
@@ -95,7 +95,7 @@ describe('WorkflowDetails', () => {
 
 		const { getByTestId } = renderComponent({
 			props: {
-				workflow,
+				...workflow,
 				readOnly: false,
 			},
 		});

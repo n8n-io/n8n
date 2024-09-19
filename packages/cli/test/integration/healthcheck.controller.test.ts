@@ -1,5 +1,6 @@
-import * as testDb from './shared/test-db';
 import { setupTestServer } from '@test-integration/utils';
+
+import * as testDb from './shared/test-db';
 
 const testServer = setupTestServer({ endpointGroups: ['health'] });
 

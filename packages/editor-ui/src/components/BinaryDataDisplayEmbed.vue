@@ -63,6 +63,7 @@ onMounted(async () => {
 				<source :src="embedSource" :type="binaryData.mimeType" />
 				{{ $locale.baseText('binaryDataDisplay.yourBrowserDoesNotSupport') }}
 			</audio>
+			<img v-else-if="binaryData.fileType === 'image'" :src="embedSource" />
 			<VueJsonPretty
 				v-else-if="binaryData.fileType === 'json'"
 				:data="data"
@@ -76,18 +77,16 @@ onMounted(async () => {
 </template>
 
 <style lang="scss">
+img,
+video {
+	max-height: 100%;
+	max-width: 100%;
+}
 .binary-data {
-	background-color: var(--color-foreground-xlight);
-
-	&.image {
-		max-height: calc(100% - 1em);
-		max-width: calc(100% - 1em);
-	}
-
 	&.other,
 	&.pdf {
-		height: calc(100% - 1em);
-		width: calc(100% - 1em);
+		height: 100%;
+		width: 100%;
 	}
 }
 </style>

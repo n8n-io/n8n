@@ -1,4 +1,5 @@
 import { render } from '@testing-library/vue';
+
 import AssistantIcon from '../AssistantIcon.vue';
 
 describe('AssistantIcon', () => {

@@ -3,21 +3,21 @@ import validator from 'validator';
 
 import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
-import { Post, GlobalScope, RestController } from '@/decorators';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { UserRequest } from '@/requests';
-import { License } from '@/license';
-import { UserService } from '@/services/user.service';
-import { Logger } from '@/logger';
-import { isSamlLicensedAndEnabled } from '@/sso/saml/saml-helpers';
-import { PasswordUtility } from '@/services/password.utility';
-import { PostHogClient } from '@/posthog';
 import type { User } from '@/databases/entities/user';
 import { UserRepository } from '@/databases/repositories/user.repository';
+import { Post, GlobalScope, RestController } from '@/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { ExternalHooks } from '@/external-hooks';
 import { EventService } from '@/events/event.service';
+import { ExternalHooks } from '@/external-hooks';
+import { License } from '@/license';
+import { Logger } from '@/logger';
+import { PostHogClient } from '@/posthog';
+import { UserRequest } from '@/requests';
+import { PasswordUtility } from '@/services/password.utility';
+import { UserService } from '@/services/user.service';
+import { isSamlLicensedAndEnabled } from '@/sso/saml/saml-helpers';
 
 @RestController('/invitations')
 export class InvitationController {

@@ -1,10 +1,11 @@
-import path from 'path';
+import { GlobalConfig } from '@n8n/config';
 import convict from 'convict';
-import { Container } from 'typedi';
 import { InstanceSettings } from 'n8n-core';
 import { LOG_LEVELS } from 'n8n-workflow';
+import path from 'path';
+import { Container } from 'typedi';
+
 import { ensureStringArray } from './utils';
-import { GlobalConfig } from '@n8n/config';
 
 convict.addFormat({
 	name: 'comma-separated-list',
@@ -172,12 +173,6 @@ export const schema = {
 			format: '*',
 			default: 'America/New_York',
 			env: 'GENERIC_TIMEZONE',
-		},
-
-		instanceType: {
-			doc: 'Type of n8n instance',
-			format: ['main', 'webhook', 'worker'] as const,
-			default: 'main',
 		},
 
 		releaseChannel: {
@@ -644,5 +639,14 @@ export const schema = {
 		default: 0,
 		env: 'N8N_PROXY_HOPS',
 		doc: 'Number of reverse-proxies n8n is running behind',
+	},
+
+	featureFlags: {
+		partialExecutionVersionDefault: {
+			format: String,
+			default: '0',
+			env: 'PARTIAL_EXECUTION_VERSION_DEFAULT',
+			doc: 'Set this to 1 to enable the new partial execution logic by default.',
+		},
 	},
 };

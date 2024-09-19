@@ -1,9 +1,10 @@
-import { AbstractEventMessage, isEventMessageOptionsWithType } from './abstract-event-message';
 import { EventMessageTypeNames } from 'n8n-workflow';
 import type { JsonObject, JsonValue } from 'n8n-workflow';
-import type { AbstractEventPayload } from './abstract-event-payload';
-import type { AbstractEventMessageOptions } from './abstract-event-message-options';
+
 import type { EventNamesAuditType } from '.';
+import { AbstractEventMessage, isEventMessageOptionsWithType } from './abstract-event-message';
+import type { AbstractEventMessageOptions } from './abstract-event-message-options';
+import type { AbstractEventPayload } from './abstract-event-payload';
 
 // --------------------------------------
 // EventMessage class for Audit events

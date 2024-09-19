@@ -1,8 +1,10 @@
-import { AwsSecretsClient } from './aws-secrets-client';
+import type { INodeProperties } from 'n8n-workflow';
+
 import { UnknownAuthTypeError } from '@/errors/unknown-auth-type.error';
 import { DOCS_HELP_NOTICE, EXTERNAL_SECRETS_NAME_REGEX } from '@/external-secrets/constants';
 import type { SecretsProvider, SecretsProviderState } from '@/interfaces';
-import type { INodeProperties } from 'n8n-workflow';
+
+import { AwsSecretsClient } from './aws-secrets-client';
 import type { AwsSecretsManagerContext } from './types';
 
 export class AwsSecretsManager implements SecretsProvider {

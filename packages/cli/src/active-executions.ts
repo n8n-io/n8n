@@ -1,10 +1,9 @@
-import { Service } from 'typedi';
-import type PCancelable from 'p-cancelable';
 import type {
 	IDeferredPromise,
 	IExecuteResponsePromiseData,
 	IRun,
 	ExecutionStatus,
+	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
 import {
 	ApplicationError,
@@ -13,17 +12,19 @@ import {
 	sleep,
 } from 'n8n-workflow';
 import { strict as assert } from 'node:assert';
+import type PCancelable from 'p-cancelable';
+import { Service } from 'typedi';
 
+import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import type {
 	ExecutionPayload,
 	IExecutingWorkflowData,
 	IExecutionDb,
 	IExecutionsCurrentSummary,
-	IWorkflowExecutionDataProcess,
 } from '@/interfaces';
-import { isWorkflowIdValid } from '@/utils';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { Logger } from '@/logger';
+import { isWorkflowIdValid } from '@/utils';
+
 import { ConcurrencyControlService } from './concurrency/concurrency-control.service';
 import config from './config';
 
@@ -183,9 +184,9 @@ export class ActiveExecutions {
 	 */
 	async getPostExecutePromise(executionId: string): Promise<IRun | undefined> {
 		// Create the promise which will be resolved when the execution finished
-		const waitPromise = await createDeferredPromise<IRun | undefined>();
+		const waitPromise = createDeferredPromise<IRun | undefined>();
 		this.getExecution(executionId).postExecutePromises.push(waitPromise);
-		return await waitPromise.promise();
+		return await waitPromise.promise;
 	}
 
 	/**

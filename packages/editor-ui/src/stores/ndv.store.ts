@@ -91,7 +91,7 @@ export const useNDVStore = defineStore(STORES.NDV, {
 		ndvInputDataWithPinnedData(): INodeExecutionData[] {
 			const data = this.ndvInputData;
 			return this.ndvInputNodeName
-				? useWorkflowsStore().pinDataByNodeName(this.ndvInputNodeName) ?? data
+				? (useWorkflowsStore().pinDataByNodeName(this.ndvInputNodeName) ?? data)
 				: data;
 		},
 		hasInputData(): boolean {

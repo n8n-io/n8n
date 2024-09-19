@@ -1,10 +1,11 @@
-import { LicenseErrors, LicenseService } from '@/license/license.service';
-import type { License } from '@/license';
-import type { EventService } from '@/events/event.service';
-import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import type { TEntitlement } from '@n8n_io/license-sdk';
 import { mock } from 'jest-mock-extended';
+
+import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import type { EventService } from '@/events/event.service';
+import type { License } from '@/license';
+import { LicenseErrors, LicenseService } from '@/license/license.service';
 
 describe('LicenseService', () => {
 	const license = mock<License>();

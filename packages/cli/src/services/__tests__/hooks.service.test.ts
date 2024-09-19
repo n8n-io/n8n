@@ -1,18 +1,18 @@
+import RudderStack from '@rudderstack/rudder-sdk-node';
 import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
 
+import type { AuthService } from '@/auth/auth.service';
 import type { AuthUser } from '@/databases/entities/auth-user';
+import type { AuthUserRepository } from '@/databases/repositories/auth-user.repository';
 import type { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import type { SettingsRepository } from '@/databases/repositories/settings.repository';
 import type { UserRepository } from '@/databases/repositories/user.repository';
 import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import type { AuthService } from '@/auth/auth.service';
-import type { UserService } from '@/services/user.service';
-import { HooksService } from '@/services/hooks.service';
 import type { Invitation } from '@/interfaces';
 import type { AuthenticatedRequest } from '@/requests';
-import type { AuthUserRepository } from '@/databases/repositories/auth-user.repository';
-import RudderStack from '@rudderstack/rudder-sdk-node';
+import { HooksService } from '@/services/hooks.service';
+import type { UserService } from '@/services/user.service';
 
 jest.mock('@rudderstack/rudder-sdk-node');
 

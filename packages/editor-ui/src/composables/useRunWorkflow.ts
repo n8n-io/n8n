@@ -1,7 +1,6 @@
 import type {
 	IExecutionPushResponse,
 	IExecutionResponse,
-	IPushDataExecutionFinished,
 	IStartRunData,
 	IWorkflowDb,
 } from '@/Interface';
@@ -34,6 +33,8 @@ import { isEmpty } from '@/utils/typesUtils';
 import { useI18n } from '@/composables/useI18n';
 import { get } from 'lodash-es';
 import { useExecutionsStore } from '@/stores/executions.store';
+import type { PushPayload } from '@n8n/api-types';
+import { useLocalStorage } from '@vueuse/core';
 
 export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof useRouter> }) {
 	const nodeHelpers = useNodeHelpers();
@@ -213,9 +214,15 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				};
 			});
 
+			// -1 means the backend chooses the default
+			// 0 is the old flow
+			// 1 is the new flow
+			const partialExecutionVersion = useLocalStorage('PartialExecution.version', -1);
 			const startRunData: IStartRunData = {
 				workflowData,
-				runData: newRunData,
+				// With the new partial execution version the backend decides what run
+				// data to use and what to ignore.
+				runData: partialExecutionVersion.value === 1 ? (runData ?? undefined) : newRunData,
 				startNodes,
 			};
 			if ('destinationNode' in options) {
@@ -377,7 +384,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				// execution finished but was not saved (e.g. due to low connectivity)
 				workflowsStore.finishActiveExecution({
 					executionId,
-					data: { finished: true, stoppedAt: new Date() },
+					data: { finished: true, stoppedAt: new Date() } as IRun,
 				});
 				workflowsStore.executingNode.length = 0;
 				uiStore.removeActiveAction('workflowRunning');
@@ -397,11 +404,11 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 					startedAt: execution.startedAt,
 					stoppedAt: execution.stoppedAt,
 				} as IRun;
-				const pushData = {
+				const pushData: PushPayload<'executionFinished'> = {
 					data: executedData,
 					executionId,
 					retryOf: execution.retryOf,
-				} as IPushDataExecutionFinished;
+				};
 				workflowsStore.finishActiveExecution(pushData);
 				titleSet(execution.workflowData.name, 'IDLE');
 				workflowsStore.executingNode.length = 0;

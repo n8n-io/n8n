@@ -12,6 +12,7 @@ import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 // here only to track where what dependency is used
 import '@aws-sdk/credential-provider-node';
 import '@aws-sdk/client-bedrock-runtime';
+import '@aws-sdk/client-sso-oidc';
 import { N8nLlmTracing } from '../N8nLlmTracing';
 
 export class LmChatAwsBedrock implements INodeType {

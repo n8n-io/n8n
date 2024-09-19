@@ -1,16 +1,17 @@
-import { WaitTracker } from '@/wait-tracker';
 import { mock } from 'jest-mock-extended';
+
 import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import type { IExecutionResponse } from '@/interfaces';
-import { OrchestrationService } from '@/services/orchestration.service';
 import type { MultiMainSetup } from '@/services/orchestration/main/multi-main-setup.ee';
+import { OrchestrationService } from '@/services/orchestration.service';
+import { WaitTracker } from '@/wait-tracker';
 
 jest.useFakeTimers();
 
 describe('WaitTracker', () => {
 	const executionRepository = mock<ExecutionRepository>();
 	const multiMainSetup = mock<MultiMainSetup>();
-	const orchestrationService = new OrchestrationService(mock(), mock(), mock(), multiMainSetup);
+	const orchestrationService = new OrchestrationService(mock(), mock(), multiMainSetup);
 
 	const execution = mock<IExecutionResponse>({
 		id: '123',

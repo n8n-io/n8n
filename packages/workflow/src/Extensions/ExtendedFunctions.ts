@@ -1,6 +1,6 @@
-import { ExpressionError } from '../errors/expression.error';
-import { ExpressionExtensionError } from '../errors/expression-extension.error';
 import { average as aAverage } from './ArrayExtensions';
+import { ExpressionExtensionError } from '../errors/expression-extension.error';
+import { ExpressionError } from '../errors/expression.error';
 
 const min = Math.min;
 const max = Math.max;
