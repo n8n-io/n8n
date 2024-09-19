@@ -3,9 +3,9 @@ import os from 'node:os';
 import { Container } from 'typedi';
 
 import { Logger } from '@/logger';
+import { COMMAND_PUBSUB_CHANNEL } from '@/scaling/constants';
 
-import { COMMAND_REDIS_CHANNEL } from '../redis/redis-constants';
-import type { RedisServiceCommandObject } from '../redis/redis-service-commands';
+import type { RedisServiceCommandObject } from '../../scaling/redis/redis-service-commands';
 
 export interface RedisServiceCommandLastReceived {
 	[date: string]: Date;
@@ -18,7 +18,7 @@ export function messageToRedisServiceCommandObject(messageString: string) {
 		message = jsonParse<RedisServiceCommandObject>(messageString);
 	} catch {
 		Container.get(Logger).debug(
-			`Received invalid message via channel ${COMMAND_REDIS_CHANNEL}: "${messageString}"`,
+			`Received invalid message via channel ${COMMAND_PUBSUB_CHANNEL}: "${messageString}"`,
 		);
 		return;
 	}
