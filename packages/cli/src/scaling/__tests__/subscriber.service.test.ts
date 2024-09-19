@@ -2,7 +2,7 @@ import type { Redis as SingleNodeClient } from 'ioredis';
 import { mock } from 'jest-mock-extended';
 
 import config from '@/config';
-import type { RedisClientService } from '@/services/redis/redis-client.service';
+import type { RedisClientService } from '@/services/redis-client.service';
 
 import { Subscriber } from '../pubsub/subscriber.service';
 
