@@ -576,7 +576,7 @@ export const routes: RouteRecordRaw[] = [
 					settingsView: SettingsSso,
 				},
 				meta: {
-					middleware: ['authenticated', 'rbac', 'custom'],
+					middleware: ['authenticated', 'rbac'],
 					middlewareOptions: {
 						rbac: {
 							scope: 'saml:manage',
