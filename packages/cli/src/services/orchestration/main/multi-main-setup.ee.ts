@@ -6,7 +6,7 @@ import config from '@/config';
 import { TIME } from '@/constants';
 import { Logger } from '@/logger';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
-import { RedisClientService } from '@/services/redis/redis-client.service';
+import { RedisClientService } from '@/services/redis-client.service';
 import { TypedEmitter } from '@/typed-emitter';
 
 type MultiMainEvents = {

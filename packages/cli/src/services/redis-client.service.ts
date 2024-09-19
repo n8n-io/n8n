@@ -5,7 +5,7 @@ import { Service } from 'typedi';
 
 import { Logger } from '@/logger';
 
-import type { RedisClientType } from './redis.types';
+import type { RedisClientType } from '../scaling/redis/redis.types';
 
 @Service()
 export class RedisClientService {
