@@ -50,7 +50,7 @@ export class MailerLiteTrigger implements INodeType {
 						description: 'Fired when campaign is sent',
 					},
 					{
-						name: 'Subscriber Added Throught Webform',
+						name: 'Subscriber Added Through Webform',
 						value: 'subscriber.added_through_webform',
 						description: 'Fired when a subscriber is added though a form',
 					},
@@ -60,12 +60,12 @@ export class MailerLiteTrigger implements INodeType {
 						description: 'Fired when a subscriber is added to a group',
 					},
 					{
-						name: 'Subscriber Autonomation Completed',
+						name: 'Subscriber Automation Completed',
 						value: 'subscriber.automation_complete',
 						description: 'Fired when subscriber finishes automation',
 					},
 					{
-						name: 'Subscriber Autonomation Triggered',
+						name: 'Subscriber Automation Triggered',
 						value: 'subscriber.automation_triggered',
 						description: 'Fired when subscriber starts automation',
 					},
