@@ -107,24 +107,6 @@ describe('SubworkflowPolicyChecker', () => {
 	});
 
 	describe('`any` caller policy', () => {
-		it('if no sharing, should be overriden to `workflows-from-same-owner`', async () => {
-			license.isSharingEnabled.mockReturnValueOnce(false);
-
-			const parentWorkflow = mock<WorkflowEntity>();
-			const subworkflowId = 'subworkflow-id';
-			const subworkflow = mock<Workflow>({ id: subworkflowId, settings: { callerPolicy: 'any' } }); // should be overridden
-
-			const parentWorkflowProject = mock<Project>({ id: uuid() });
-			const subworkflowProject = mock<Project>({ id: uuid(), type: 'team' });
-
-			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(parentWorkflowProject);
-			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(subworkflowProject);
-
-			const check = checker.check(subworkflow, parentWorkflow.id);
-
-			await expect(check).rejects.toThrowError(SubworkflowPolicyDenialError);
-		});
-
 		it('should not throw on a regular subworkflow call', async () => {
 			const parentWorkflow = mock<WorkflowEntity>({ id: uuid() });
 			const subworkflow = mock<Workflow>({ settings: { callerPolicy: 'any' } });

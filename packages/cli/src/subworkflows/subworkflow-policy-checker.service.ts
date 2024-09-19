@@ -82,10 +82,8 @@ export class SubworkflowPolicyChecker {
 	 * Find the subworkflow's caller policy.
 	 */
 	private findPolicy(subworkflow: Workflow): WorkflowSettings.CallerPolicy {
-		if (!this.license.isSharingEnabled()) return 'workflowsFromSameOwner';
-
 		return (
-			subworkflow.settings?.callerPolicy ?? this.globalConfig.workflows.callerPolicyDefaultOption
+			subworkflow.settings.callerPolicy ?? this.globalConfig.workflows.callerPolicyDefaultOption
 		);
 	}
 
