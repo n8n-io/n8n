@@ -25,7 +25,7 @@ const i18n = useI18n();
 
 const saveButtonLabel = computed(() => {
 	return props.isSaving
-		? props.savingLabel ?? i18n.baseText('saveButton.saving')
+		? (props.savingLabel ?? i18n.baseText('saveButton.saving'))
 		: i18n.baseText('saveButton.save');
 });
 
