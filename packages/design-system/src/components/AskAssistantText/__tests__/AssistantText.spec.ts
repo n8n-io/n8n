@@ -1,4 +1,5 @@
 import { render } from '@testing-library/vue';
+
 import AssistantText from '../AssistantText.vue';
 
 describe('AssistantText', () => {

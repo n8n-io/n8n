@@ -1,4 +1,3 @@
-import Container from 'typedi';
 import type {
 	IAuthenticateGeneric,
 	ICredentialDataDecryptedObject,
@@ -9,11 +8,13 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType, deepCopy } from 'n8n-workflow';
 import { Workflow } from 'n8n-workflow';
+import Container from 'typedi';
+
 import { CredentialsHelper } from '@/credentials-helper';
-import { NodeTypes } from '@/node-types';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { NodeTypes } from '@/node-types';
 import { mockInstance } from '@test/mocking';
 
 describe('CredentialsHelper', () => {

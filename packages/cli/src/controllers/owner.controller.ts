@@ -1,19 +1,19 @@
-import validator from 'validator';
 import { Response } from 'express';
+import validator from 'validator';
 
 import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
-import { validateEntity } from '@/generic-helpers';
-import { GlobalScope, Post, RestController } from '@/decorators';
-import { PasswordUtility } from '@/services/password.utility';
-import { OwnerRequest } from '@/requests';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import { UserRepository } from '@/databases/repositories/user.repository';
-import { PostHogClient } from '@/posthog';
-import { UserService } from '@/services/user.service';
-import { Logger } from '@/logger';
+import { GlobalScope, Post, RestController } from '@/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
+import { validateEntity } from '@/generic-helpers';
+import { Logger } from '@/logger';
+import { PostHogClient } from '@/posthog';
+import { OwnerRequest } from '@/requests';
+import { PasswordUtility } from '@/services/password.utility';
+import { UserService } from '@/services/user.service';
 
 @RestController('/owner')
 export class OwnerController {

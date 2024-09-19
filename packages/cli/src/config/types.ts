@@ -1,6 +1,7 @@
-import type { BinaryData } from 'n8n-core';
-import type { schema } from './schema';
 import type { RedisOptions } from 'ioredis';
+import type { BinaryData } from 'n8n-core';
+
+import type { schema } from './schema';
 
 // -----------------------------------
 //          transformers
@@ -83,12 +84,11 @@ type ExceptionPaths = {
 //        string literals map
 // -----------------------------------
 
-type GetPathSegmentsWithUnions<T> =
-	T extends ReadonlyArray<infer C>
-		? [C]
-		: {
-				[K in ValidKeys<T>]: [K, ...GetPathSegmentsWithUnions<T[K]>];
-			}[ValidKeys<T>];
+type GetPathSegmentsWithUnions<T> = T extends ReadonlyArray<infer C>
+	? [C]
+	: {
+			[K in ValidKeys<T>]: [K, ...GetPathSegmentsWithUnions<T[K]>];
+		}[ValidKeys<T>];
 
 type ToPathUnionPair<T extends string[]> = T extends [...infer Path, infer Union]
 	? Path extends string[]

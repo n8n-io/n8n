@@ -1350,7 +1350,7 @@ export default defineComponent({
 			:class="$style.hintCallout"
 			:theme="hint.type || 'info'"
 		>
-			<n8n-text size="small" v-html="hint.message"></n8n-text>
+			<n8n-text size="small" v-n8n-html="hint.message"></n8n-text>
 		</n8n-callout>
 
 		<div
@@ -1509,7 +1509,7 @@ export default defineComponent({
 				<n8n-text :bold="true" color="text-dark" size="large">{{ tooMuchDataTitle }}</n8n-text>
 				<n8n-text align="center" tag="div"
 					><span
-						v-html="
+						v-n8n-html="
 							$locale.baseText('ndv.output.tooMuchData.message', {
 								interpolate: { size: dataSizeInMB },
 							})

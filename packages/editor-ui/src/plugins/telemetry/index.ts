@@ -1,5 +1,6 @@
 import type { Plugin } from 'vue';
-import type { ITelemetrySettings, ITelemetryTrackProperties, IDataObject } from 'n8n-workflow';
+import type { ITelemetrySettings } from '@n8n/api-types';
+import type { ITelemetryTrackProperties, IDataObject } from 'n8n-workflow';
 import type { RouteLocation } from 'vue-router';
 
 import type { INodeCreateElement, IUpdateInformation } from '@/Interface';

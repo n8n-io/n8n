@@ -633,7 +633,7 @@ function openContextMenu(event: MouseEvent, source: 'node-button' | 'node-right-
 				<i v-if="isTriggerNode" class="trigger-icon">
 					<n8n-tooltip placement="bottom">
 						<template #content>
-							<span v-html="i18n.baseText('node.thisIsATriggerNode')" />
+							<span v-n8n-html="i18n.baseText('node.thisIsATriggerNode')" />
 						</template>
 						<FontAwesomeIcon icon="bolt" size="lg" />
 					</n8n-tooltip>

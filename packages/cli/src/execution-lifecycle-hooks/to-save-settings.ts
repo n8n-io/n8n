@@ -1,5 +1,6 @@
-import config from '@/config';
 import type { IWorkflowSettings } from 'n8n-workflow';
+
+import config from '@/config';
 
 /**
  * Return whether a workflow execution is configured to be saved or not:
@@ -27,10 +28,10 @@ export function toSaveSettings(workflowSettings: IWorkflowSettings = {}) {
 		manual:
 			workflowSettings === undefined || workflowSettings.saveManualExecutions === 'DEFAULT'
 				? DEFAULTS.MANUAL
-				: workflowSettings.saveManualExecutions ?? DEFAULTS.MANUAL,
+				: (workflowSettings.saveManualExecutions ?? DEFAULTS.MANUAL),
 		progress:
 			workflowSettings === undefined || workflowSettings.saveExecutionProgress === 'DEFAULT'
 				? DEFAULTS.PROGRESS
-				: workflowSettings.saveExecutionProgress ?? DEFAULTS.PROGRESS,
+				: (workflowSettings.saveExecutionProgress ?? DEFAULTS.PROGRESS),
 	};
 }

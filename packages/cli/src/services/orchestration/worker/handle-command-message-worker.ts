@@ -1,16 +1,18 @@
 import { jsonParse } from 'n8n-workflow';
+import os from 'node:os';
 import Container from 'typedi';
-import type { RedisServiceCommandObject } from '@/services/redis/redis-service-commands';
-import { COMMAND_REDIS_CHANNEL } from '@/services/redis/redis-constants';
-import * as os from 'os';
-import { License } from '@/license';
+
+import { N8N_VERSION } from '@/constants';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { ExternalSecretsManager } from '@/external-secrets/external-secrets-manager.ee';
-import { debounceMessageReceiver, getOsCpuString } from '../helpers';
-import type { WorkerCommandReceivedHandlerOptions } from './types';
+import { License } from '@/license';
 import { Logger } from '@/logger';
-import { N8N_VERSION } from '@/constants';
 import { CommunityPackagesService } from '@/services/community-packages.service';
+import { COMMAND_REDIS_CHANNEL } from '@/services/redis/redis-constants';
+import type { RedisServiceCommandObject } from '@/services/redis/redis-service-commands';
+
+import type { WorkerCommandReceivedHandlerOptions } from './types';
+import { debounceMessageReceiver, getOsCpuString } from '../helpers';
 
 export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHandlerOptions) {
 	// eslint-disable-next-line complexity
@@ -37,7 +39,7 @@ export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHa
 				switch (message.command) {
 					case 'getStatus':
 						if (!debounceMessageReceiver(message, 500)) return;
-						await options.redisPublisher.publishToWorkerChannel({
+						await options.publisher.publishWorkerResponse({
 							workerId: options.queueModeId,
 							command: 'getStatus',
 							payload: {
@@ -64,7 +66,7 @@ export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHa
 						break;
 					case 'getId':
 						if (!debounceMessageReceiver(message, 500)) return;
-						await options.redisPublisher.publishToWorkerChannel({
+						await options.publisher.publishWorkerResponse({
 							workerId: options.queueModeId,
 							command: 'getId',
 						});
@@ -73,7 +75,7 @@ export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHa
 						if (!debounceMessageReceiver(message, 500)) return;
 						try {
 							await Container.get(MessageEventBus).restart();
-							await options.redisPublisher.publishToWorkerChannel({
+							await options.publisher.publishWorkerResponse({
 								workerId: options.queueModeId,
 								command: 'restartEventBus',
 								payload: {
@@ -81,7 +83,7 @@ export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHa
 								},
 							});
 						} catch (error) {
-							await options.redisPublisher.publishToWorkerChannel({
+							await options.publisher.publishWorkerResponse({
 								workerId: options.queueModeId,
 								command: 'restartEventBus',
 								payload: {
@@ -95,7 +97,7 @@ export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHa
 						if (!debounceMessageReceiver(message, 500)) return;
 						try {
 							await Container.get(ExternalSecretsManager).reloadAllProviders();
-							await options.redisPublisher.publishToWorkerChannel({
+							await options.publisher.publishWorkerResponse({
 								workerId: options.queueModeId,
 								command: 'reloadExternalSecretsProviders',
 								payload: {
@@ -103,7 +105,7 @@ export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHa
 								},
 							});
 						} catch (error) {
-							await options.redisPublisher.publishToWorkerChannel({
+							await options.publisher.publishWorkerResponse({
 								workerId: options.queueModeId,
 								command: 'reloadExternalSecretsProviders',
 								payload: {

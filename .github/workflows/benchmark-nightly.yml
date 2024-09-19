@@ -3,7 +3,7 @@ run-name: Benchmark ${{ inputs.n8n_tag || 'nightly' }}
 
 on:
   schedule:
-    - cron: '0 2 * * *'
+    - cron: '30 1,2,3 * * *'
   workflow_dispatch:
     inputs:
       debug:
@@ -84,6 +84,7 @@ jobs:
 
         # We need to login again because the access token expires
       - name: Azure login
+        if: always()
         uses: azure/login@v2.1.1
         with:
           client-id: ${{ env.ARM_CLIENT_ID }}

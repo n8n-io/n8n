@@ -1,7 +1,8 @@
 import 'tsconfig-paths/register';
-import { Container } from 'typedi';
 import { GlobalConfig } from '@n8n/config';
 import { DataSource as Connection } from '@n8n/typeorm';
+import { Container } from 'typedi';
+
 import { getBootstrapDBOptions, testDbPrefix } from './integration/shared/test-db';
 
 export default async () => {

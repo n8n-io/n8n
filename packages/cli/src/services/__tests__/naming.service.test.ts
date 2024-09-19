@@ -1,9 +1,9 @@
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
-import { mockInstance } from '@test/mocking';
-import { NamingService } from '@/services/naming.service';
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
+import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
+import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { NamingService } from '@/services/naming.service';
+import { mockInstance } from '@test/mocking';
 
 describe('NamingService', () => {
 	const workflowRepository = mockInstance(WorkflowRepository);
