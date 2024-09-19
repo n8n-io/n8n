@@ -3,7 +3,7 @@ import { validate } from 'class-validator';
 import { rm as fsRm } from 'fs/promises';
 import { Cipher, InstanceSettings } from 'n8n-core';
 import { ApplicationError, jsonParse } from 'n8n-workflow';
-import { writeFile, chmod, readFile } from 'node:fs/promises';
+import { writeFile, readFile } from 'node:fs/promises';
 import path from 'path';
 import Container, { Service } from 'typedi';
 
@@ -97,9 +97,10 @@ export class SourceControlPreferencesService {
 
 		const tempFilePath = path.join(this.instanceSettings.n8nFolder, 'ssh_private_key_temp');
 
-		await writeFile(tempFilePath, dbPrivateKey);
-
-		await chmod(tempFilePath, 0o600);
+		await writeFile(tempFilePath, dbPrivateKey, {
+			mode: 0o600, // required by OpenSSH login client
+			encoding: 'utf8',
+		});
 
 		return tempFilePath;
 	}
