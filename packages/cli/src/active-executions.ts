@@ -5,12 +5,7 @@ import type {
 	ExecutionStatus,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
-import {
-	createDeferredPromise,
-	ErrorReporterProxy,
-	ExecutionCancelledError,
-	sleep,
-} from 'n8n-workflow';
+import { createDeferredPromise, ExecutionCancelledError, sleep } from 'n8n-workflow';
 import { strict as assert } from 'node:assert';
 import type PCancelable from 'p-cancelable';
 import { Service } from 'typedi';
@@ -227,7 +222,7 @@ export class ActiveExecutions {
 	private getExecution(executionId: string): IExecutingWorkflowData {
 		const execution = this.activeExecutions[executionId];
 		if (!execution) {
-			ErrorReporterProxy.error(new ExecutionNotFoundError(executionId));
+			throw new ExecutionNotFoundError(executionId);
 		}
 		return execution;
 	}
