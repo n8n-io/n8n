@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { defineProps } from 'vue';
 import type { AnnotationVote } from 'n8n-workflow';
 
 defineProps<{
