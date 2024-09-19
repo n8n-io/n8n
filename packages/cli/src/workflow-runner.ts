@@ -334,10 +334,7 @@ export class WorkflowRunner {
 					if (workflowExecution.isCanceled) {
 						fullRunData.finished = false;
 					}
-					const status = this.activeExecutions.getStatus(executionId);
-					if (status) {
-						fullRunData.status = status;
-					}
+					fullRunData.status = this.activeExecutions.getStatus(executionId);
 					this.activeExecutions.finalizeExecution(executionId, fullRunData);
 				})
 				.catch(
