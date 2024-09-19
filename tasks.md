@@ -29,4 +29,10 @@
 
 * include only columns (and all of them) when serializing
 	* ignoring virtual properties and including ignored things like passwords
+* make sure sequence counters are updated
+
+# Questions
+
+* what if one record fails?
+	* skip, abort?
 

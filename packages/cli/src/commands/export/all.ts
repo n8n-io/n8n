@@ -5,6 +5,7 @@ import { join } from 'path';
 import Container from 'typedi';
 
 import { BaseCommand } from '../base-command';
+import { jsonColumnType } from '@/databases/entities/abstract-entity';
 
 export class ExportAllCommand extends BaseCommand {
 	static description = 'Export Everything';
@@ -14,7 +15,6 @@ export class ExportAllCommand extends BaseCommand {
 	// TODO: add `exportPath` flag
 	static flags = {};
 
-	// eslint-disable-next-line complexity
 	async run() {
 		const connection = Container.get(DataSource);
 		const excludeList = [
@@ -26,22 +26,38 @@ export class ExportAllCommand extends BaseCommand {
 			'annotation_tag_entity',
 		];
 		const tables = connection.entityMetadatas
-			.map((v) => v.tableName)
-			.filter((name) => !excludeList.includes(name));
+			.filter((v) => !excludeList.includes(v.name))
+			.map((v) => ({
+				name: v.tableName,
+				columns: v.columns,
+			}));
 
 		const backupPath = '/tmp/backup';
 		await fs.promises.mkdir(backupPath, { recursive: true });
 
-		for (const tableName of tables) {
+		for (const { name, columns } of tables) {
 			// TODO: implement batching
 			//const rows = await repo.find({ relations: [] });
 
-			const rows = await connection.query(`SELECT * from ${tableName}`);
+			const rows = await connection.query(`SELECT * from ${name}`);
 
-			const stream = fs.createWriteStream(join(backupPath, `${tableName}.jsonl`));
+			const stream = fs.createWriteStream(join(backupPath, `${name}.jsonl`));
 
 			for (const row of rows) {
-				stream.write(JSON.stringify(row));
+				const data = JSON.stringify(row);
+
+				// TODO: fix the types
+				for (const column of columns) {
+					// TODO: only do this for sqlite
+					//
+					//
+					//TODO: STOPPED HERE
+					if (column.type === jsonColumnType) {
+						console.log(column.type);
+					}
+				}
+
+				stream.write(data);
 				stream.write('\n');
 			}
 
