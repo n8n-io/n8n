@@ -8,7 +8,7 @@ export class MailerLite extends VersionedNodeType {
 		const baseDescription: INodeTypeBaseDescription = {
 			displayName: 'MailerLite',
 			name: 'mailerLite',
-			icon: 'file:mailerLite.svg',
+			icon: 'file:MailerLite.svg',
 			group: ['input'],
 			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 			description: 'Consume Mailer Lite API',

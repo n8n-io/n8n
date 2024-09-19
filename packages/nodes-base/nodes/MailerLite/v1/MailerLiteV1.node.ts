@@ -22,7 +22,7 @@ export class MailerLiteV1 implements INodeType {
 			displayName: 'MailerLite',
 			name: 'mailerLite',
 			// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
-			icon: 'file:mailerLite.png',
+			icon: 'file:MailerLite.svg',
 			group: ['input'],
 			version: 1,
 			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
