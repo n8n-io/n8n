@@ -88,7 +88,7 @@ export class WaitingWebhooks implements IWebhookManager {
 			throw new ConflictError(`The execution "${executionId} is running already.`);
 		}
 
-		if (execution.data.resultData.error) {
+		if (execution.data?.resultData?.error) {
 			throw new ConflictError(`The execution "${executionId} has finished already.`);
 		}
 
