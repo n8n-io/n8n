@@ -174,7 +174,7 @@
     "ws": "8.17.1",
     "xml2js": "catalog:",
     "xmllint-wasm": "3.0.1",
-    "xss": "^1.0.14",
+    "xss": "catalog:",
     "yamljs": "0.3.0",
     "zod": "catalog:"
   }

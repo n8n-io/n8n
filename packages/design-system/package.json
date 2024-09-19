@@ -54,6 +54,6 @@
     "vue": "catalog:frontend",
     "vue-boring-avatars": "^1.3.0",
     "vue-router": "^4.2.2",
-    "xss": "^1.0.14"
+    "xss": "catalog:"
   }
 }

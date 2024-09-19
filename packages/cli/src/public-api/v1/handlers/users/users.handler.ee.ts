@@ -1,3 +1,4 @@
+import type { RoleChangeRequestDTO } from '@n8n/api-types';
 import type express from 'express';
 import type { Response } from 'express';
 import { Container } from 'typedi';
@@ -6,7 +7,7 @@ import { InvitationController } from '@/controllers/invitation.controller';
 import { UsersController } from '@/controllers/users.controller';
 import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
 import { EventService } from '@/events/event.service';
-import type { UserRequest } from '@/requests';
+import type { AuthenticatedRequest, UserRequest } from '@/requests';
 
 import { clean, getAllUsersAndCount, getUser } from './users.service.ee';
 import {
@@ -19,7 +20,7 @@ import { encodeNextCursor } from '../../shared/services/pagination.service';
 
 type Create = UserRequest.Invite;
 type Delete = UserRequest.Delete;
-type ChangeRole = UserRequest.ChangeRole;
+type ChangeRole = AuthenticatedRequest<{ id: string }, {}, RoleChangeRequestDTO, {}>;
 
 export = {
 	getUser: [
@@ -98,7 +99,8 @@ export = {
 		isLicensed('feat:advancedPermissions'),
 		globalScope('user:changeRole'),
 		async (req: ChangeRole, res: Response) => {
-			await Container.get(UsersController).changeGlobalRole(req);
+			// TODO: validate req.body
+			await Container.get(UsersController).changeGlobalRole(req, res, req.body, req.params.id);
 
 			return res.status(204).send();
 		},

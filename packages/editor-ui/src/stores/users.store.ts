@@ -1,4 +1,9 @@
-import type { IUpdateUserSettingsReqPayload, UpdateGlobalRolePayload } from '@/api/users';
+import type {
+	PasswordUpdateRequestDTO,
+	SettingsUpdateRequestDTO,
+	UserUpdateRequestDTO,
+} from '@n8n/api-types';
+import type { UpdateGlobalRolePayload } from '@/api/users';
 import * as usersApi from '@/api/users';
 import { BROWSER_ID_STORAGE_KEY, PERSONALIZATION_MODAL_KEY, STORES, ROLE } from '@/constants';
 import type {
@@ -226,12 +231,12 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		await usersApi.changePassword(rootStore.restApiContext, params);
 	};
 
-	const updateUser = async (params: usersApi.UpdateCurrentUserParams) => {
+	const updateUser = async (params: UserUpdateRequestDTO) => {
 		const user = await usersApi.updateCurrentUser(rootStore.restApiContext, params);
 		addUsers([user]);
 	};
 
-	const updateUserSettings = async (settings: IUpdateUserSettingsReqPayload) => {
+	const updateUserSettings = async (settings: SettingsUpdateRequestDTO) => {
 		const updatedSettings = await usersApi.updateCurrentUserSettings(
 			rootStore.restApiContext,
 			settings,
@@ -242,10 +247,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		}
 	};
 
-	const updateOtherUserSettings = async (
-		userId: string,
-		settings: IUpdateUserSettingsReqPayload,
-	) => {
+	const updateOtherUserSettings = async (userId: string, settings: SettingsUpdateRequestDTO) => {
 		const updatedSettings = await usersApi.updateOtherUserSettings(
 			rootStore.restApiContext,
 			userId,
@@ -255,7 +257,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		addUsers([usersById.value[userId]]);
 	};
 
-	const updateCurrentUserPassword = async (params: usersApi.UpdateUserPasswordParams) => {
+	const updateCurrentUserPassword = async (params: PasswordUpdateRequestDTO) => {
 		await usersApi.updateCurrentUserPassword(rootStore.restApiContext, params);
 	};
 
