@@ -43,13 +43,13 @@ const logicOptions = [
 		name: 'Remove Items Up to Stored Incremental Key',
 		value: 'removeItemsUpToStoredIncrementalKey',
 		description:
-			'Works with incremental key values, removes all input items with key values up to the stored value. Stores only the highest key value.',
+			'Works with incremental key values, removes all input items with key values up to the stored value',
 	},
 	{
 		name: 'Remove Items Up to Stored Date',
 		value: 'RemoveItemsUpToStoredDate',
 		description:
-			'Works with date key values, removes all input items with key values up to the stored value. Stores only the latest key value.',
+			'Works with date key values, removes all input items with key values up to the stored date',
 	},
 ];
 const manageDatabaseModeOptions = [
@@ -131,7 +131,8 @@ export const removeDuplicatesNodeFields: INodeProperties[] = [
 		noDataExpression: true,
 		options: logicOptions,
 		default: 'removeItemsWithAlreadySeenKeyValues',
-		description: 'How to select input items to remove based on key values previously processed',
+		description:
+			'How to select input items to remove by comparing them with key values previously processed',
 		displayOptions: {
 			show: {
 				operation: ['removeItemsSeenInPreviousExecutions'],
