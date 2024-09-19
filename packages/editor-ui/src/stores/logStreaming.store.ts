@@ -87,7 +87,7 @@ export const useLogStreamingStore = defineStore('logStreaming', () => {
 	};
 
 	const clearDestinations = () => {
-		Object.keys(items).forEach((key) => delete items[key]);
+		Object.assign(items, {});
 	};
 
 	const addEventName = (name: string) => {
@@ -148,10 +148,6 @@ export const useLogStreamingStore = defineStore('logStreaming', () => {
 
 	const removeDestinationItemTree = (id: string) => {
 		delete items[id];
-	};
-
-	const clearDestinationItemTrees = () => {
-		Object.keys(items).forEach((key) => delete items[key]);
 	};
 
 	const updateDestination = (destination: MessageEventBusDestinationOptions) => {
@@ -237,7 +233,6 @@ export const useLogStreamingStore = defineStore('logStreaming', () => {
 		removeSelectedEvent,
 		setSelectedInGroup,
 		removeDestinationItemTree,
-		clearDestinationItemTrees,
 		updateDestination,
 		removeDestination,
 		getSelectedEvents,
