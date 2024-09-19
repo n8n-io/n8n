@@ -144,6 +144,10 @@ export class Telemetry {
 		}
 	}
 
+	reset() {
+		this.rudderStack?.reset();
+	}
+
 	flushPageEvents() {
 		const queue = this.pageEventQueue;
 		this.pageEventQueue = [];

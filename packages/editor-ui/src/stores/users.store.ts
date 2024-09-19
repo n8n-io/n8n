@@ -140,6 +140,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 	const unsetCurrentUser = () => {
 		currentUserId.value = null;
 		currentUserCloudInfo.value = null;
+		telemetry.reset();
 		RBACStore.setGlobalScopes([]);
 	};
 
@@ -374,11 +375,8 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		globalRoleName,
 		personalizedNodeTypes,
 		addUsers,
-		setCurrentUser,
 		loginWithCookie,
 		initialize,
-		unsetCurrentUser,
-		deleteUserById,
 		setPersonalizationAnswers,
 		loginWithCreds,
 		logout,
