@@ -112,14 +112,6 @@ const isSaving = ref(false);
 
 const survey = computed<IFormInputs>(() => [
 	{
-		name: EMAIL_KEY,
-		properties: {
-			label: i18n.baseText('personalizationModal.yourEmailAddress'),
-			type: 'text',
-			placeholder: i18n.baseText('personalizationModal.email'),
-		},
-	},
-	{
 		name: COMPANY_TYPE_KEY,
 		properties: {
 			label: i18n.baseText('personalizationModal.whatBestDescribesYourCompany'),
