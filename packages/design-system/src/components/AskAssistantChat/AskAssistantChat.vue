@@ -97,6 +97,15 @@ function growInput() {
 	const scrollHeight = chatInput.value.scrollHeight;
 	chatInput.value.style.height = `${Math.min(scrollHeight, MAX_CHAT_INPUT_HEIGHT)}px`;
 }
+
+async function onCopyButtonClick(content: string, e: MouseEvent) {
+	const button = e.target as HTMLButtonElement;
+	await navigator.clipboard.writeText(content);
+	button.innerText = t('assistantChat.copied');
+	setTimeout(() => {
+		button.innerText = t('assistantChat.copy');
+	}, 2000);
+}
 </script>
 
 <template>
@@ -172,8 +181,22 @@ function growInput() {
 							v-if="message?.codeSnippet"
 							:class="$style['code-snippet']"
 							data-test-id="assistant-code-snippet"
-							v-n8n-html="renderMarkdown(message.codeSnippet).trim()"
-						></div>
+						>
+							<header>
+								<n8n-button
+									type="tertiary"
+									text="true"
+									size="mini"
+									@click="onCopyButtonClick(message.codeSnippet, $event)"
+								>
+									{{ t('assistantChat.copy') }}
+								</n8n-button>
+							</header>
+							<div
+								v-n8n-html="renderMarkdown(message.codeSnippet).trim()"
+								:class="$style['snippet-content']"
+							></div>
+						</div>
 						<BlinkingCursor
 							v-if="streaming && i === messages?.length - 1 && message.role === 'assistant'"
 						/>
@@ -415,14 +438,37 @@ p {
 	word-break: break-word;
 }
 
+code[class^='language-'] {
+	display: block;
+	padding: var(--spacing-4xs);
+}
+
 .code-snippet {
+	position: relative;
 	border: var(--border-base);
 	background-color: var(--color-foreground-xlight);
 	border-radius: var(--border-radius-base);
-	padding: var(--spacing-2xs);
 	font-family: var(--font-family-monospace);
+	font-size: var(--font-size-3xs);
 	max-height: 218px; // 12 lines
 	overflow: auto;
+	margin: var(--spacing-4s) 0;
+
+	header {
+		display: flex;
+		justify-content: flex-end;
+		padding: var(--spacing-4xs);
+		border-bottom: var(--border-base);
+
+		button:active,
+		button:focus {
+			outline: none !important;
+		}
+	}
+
+	.snippet-content {
+		padding: var(--spacing-2xs);
+	}
 
 	pre {
 		white-space-collapse: collapse;
@@ -491,17 +537,49 @@ p {
 }
 
 .assistantText {
-	display: inline;
+	display: inline-flex;
+	flex-direction: column;
 
+	// TODO: These should be shared for all components that use markdown
 	p {
-		display: inline;
-		line-height: 1.7;
+		margin: 0;
+		margin: var(--spacing-4xs) 0;
+	}
+
+	h1,
+	h2,
+	h3 {
+		font-weight: var(--font-weight-bold);
+		font-size: var(--font-size-xs);
+		margin: var(--spacing-xs) 0 var(--spacing-4xs);
+	}
+
+	h4,
+	h5,
+	h6 {
+		font-weight: var(--font-weight-bold);
+		font-size: var(--font-size-2xs);
 	}
 
 	ul,
 	ol {
-		list-style-position: inside;
-		margin: var(--spacing-xs) 0 var(--spacing-xs) var(--spacing-xs);
+		margin: var(--spacing-4xs) 0 var(--spacing-4xs) var(--spacing-l);
+
+		ul,
+		ol {
+			margin-left: var(--spacing-xs);
+			margin-top: var(--spacing-4xs);
+		}
+	}
+
+	table {
+		margin: var(--spacing-4xs);
+
+		th,
+		td {
+			border: var(--border-base);
+			padding: var(--spacing-4xs);
+		}
 	}
 }
 
