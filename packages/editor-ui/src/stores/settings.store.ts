@@ -92,10 +92,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const deploymentType = computed(() => settings.value.deployment?.type || 'default');
 
-	const isDesktopDeployment = computed(() =>
-		settings.value.deployment?.type.startsWith('desktop_'),
-	);
-
 	const isCloudDeployment = computed(() => settings.value.deployment?.type === 'cloud');
 
 	const isSmtpSetup = computed(() => userManagement.value.smtpSetup);
@@ -395,7 +391,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isSamlLoginEnabled,
 		showSetupPage,
 		deploymentType,
-		isDesktopDeployment,
 		isCloudDeployment,
 		isSmtpSetup,
 		isPersonalizationSurveyEnabled,

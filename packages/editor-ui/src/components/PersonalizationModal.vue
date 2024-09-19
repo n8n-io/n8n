@@ -102,7 +102,6 @@ const formBus = createFormEventBus();
 const { showError } = useToast();
 const i18n = useI18n();
 const rootStore = useRootStore();
-const settingsStore = useSettingsStore();
 const usersStore = useUsersStore();
 const posthogStore = usePostHog();
 const route = useRoute();
@@ -119,7 +118,6 @@ const survey = computed<IFormInputs>(() => [
 			type: 'text',
 			placeholder: i18n.baseText('personalizationModal.email'),
 		},
-		shouldDisplay: () => settingsStore.isDesktopDeployment && !usersStore.currentUser?.firstName,
 	},
 	{
 		name: COMPANY_TYPE_KEY,

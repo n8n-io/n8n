@@ -42,18 +42,6 @@ describe('PersonalizationModal', () => {
 		expect(getByTitle('Customize n8n to you')).toBeInTheDocument();
 	});
 
-	it('shows user input when needed for desktop deployment', () => {
-		const pinia = createTestingPinia();
-		const usersStore = mockedStore(useUsersStore);
-		usersStore.currentUser = createUser({ firstName: undefined });
-
-		const settingsStore = mockedStore(useSettingsStore);
-		settingsStore.isDesktopDeployment = true;
-
-		const { getByTestId } = renderModal({ pinia });
-		expect(getByTestId(EMAIL_KEY)).toBeInTheDocument();
-	});
-
 	describe('Company field', () => {
 		it('allows completion of company related fields', async () => {
 			const { getByTestId } = renderModal({ pinia: createTestingPinia() });
