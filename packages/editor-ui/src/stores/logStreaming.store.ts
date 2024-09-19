@@ -9,7 +9,7 @@ import {
 	sendTestMessageToDestination,
 } from '@/api/eventbus.ee';
 import { useRootStore } from './root.store';
-import { reactive, ref } from 'vue';
+import { ref } from 'vue';
 
 export interface EventSelectionItem {
 	selected: boolean;
@@ -34,14 +34,14 @@ export interface DestinationSettingsStore {
 }
 
 export const useLogStreamingStore = defineStore('logStreaming', () => {
-	const items = reactive<DestinationSettingsStore>({});
+	const items = ref<DestinationSettingsStore>({});
 	const eventNames = ref(new Set<string>());
 
 	const rootStore = useRootStore();
 
 	const addDestination = (destination: MessageEventBusDestinationOptions) => {
-		if (destination.id && items[destination.id]) {
-			items[destination.id].destination = destination;
+		if (destination.id && items.value[destination.id]) {
+			items.value[destination.id].destination = destination;
 		} else {
 			setSelectionAndBuildItems(destination);
 		}
@@ -49,30 +49,30 @@ export const useLogStreamingStore = defineStore('logStreaming', () => {
 
 	const setSelectionAndBuildItems = (destination: MessageEventBusDestinationOptions) => {
 		if (destination.id) {
-			if (!items[destination.id]) {
-				items[destination.id] = {
+			if (!items.value[destination.id]) {
+				items.value[destination.id] = {
 					destination,
 					selectedEvents: new Set<string>(),
 					eventGroups: [],
 					isNew: false,
 				} as DestinationStoreItem;
 			}
-			items[destination.id]?.selectedEvents?.clear();
+			items.value[destination.id]?.selectedEvents?.clear();
 			if (destination.subscribedEvents) {
 				for (const eventName of destination.subscribedEvents) {
-					items[destination.id]?.selectedEvents?.add(eventName);
+					items.value[destination.id]?.selectedEvents?.add(eventName);
 				}
 			}
-			items[destination.id].eventGroups = eventGroupsFromStringList(
+			items.value[destination.id].eventGroups = eventGroupsFromStringList(
 				eventNames.value,
-				items[destination.id]?.selectedEvents,
+				items.value[destination.id]?.selectedEvents,
 			);
 		}
 	};
 
 	const getDestination = (destinationId: string) => {
-		if (items[destinationId]) {
-			return items[destinationId].destination;
+		if (items.value[destinationId]) {
+			return items.value[destinationId].destination;
 		} else {
 			return;
 		}
@@ -81,13 +81,13 @@ export const useLogStreamingStore = defineStore('logStreaming', () => {
 	const getAllDestinations = () => {
 		const destinations: MessageEventBusDestinationOptions[] = [];
 		for (const key of Object.keys(items)) {
-			destinations.push(items[key].destination);
+			destinations.push(items.value[key].destination);
 		}
 		return destinations;
 	};
 
 	const clearDestinations = () => {
-		Object.assign(items, {});
+		items.value = {};
 	};
 
 	const addEventName = (name: string) => {
@@ -103,42 +103,46 @@ export const useLogStreamingStore = defineStore('logStreaming', () => {
 	};
 
 	const addSelectedEvent = (id: string, name: string) => {
-		items[id]?.selectedEvents?.add(name);
+		items.value[id]?.selectedEvents?.add(name);
 		setSelectedInGroup(id, name, true);
 	};
 
 	const removeSelectedEvent = (id: string, name: string) => {
-		items[id]?.selectedEvents?.delete(name);
+		items.value[id]?.selectedEvents?.delete(name);
 		setSelectedInGroup(id, name, false);
 	};
 
 	const setSelectedInGroup = (destinationId: string, name: string, isSelected: boolean) => {
-		if (items[destinationId]) {
+		if (items.value[destinationId]) {
 			const groupName = eventGroupFromEventName(name);
-			const groupIndex = items[destinationId].eventGroups.findIndex((e) => e.name === groupName);
+			const groupIndex = items.value[destinationId].eventGroups.findIndex(
+				(e) => e.name === groupName,
+			);
 
 			if (groupIndex > -1) {
 				if (groupName === name) {
-					items[destinationId].eventGroups[groupIndex].selected = isSelected;
+					items.value[destinationId].eventGroups[groupIndex].selected = isSelected;
 				} else {
-					const eventIndex = items[destinationId].eventGroups[groupIndex].children.findIndex(
+					const eventIndex = items.value[destinationId].eventGroups[groupIndex].children.findIndex(
 						(e) => e.name === name,
 					);
 					if (eventIndex > -1) {
-						items[destinationId].eventGroups[groupIndex].children[eventIndex].selected = isSelected;
+						items.value[destinationId].eventGroups[groupIndex].children[eventIndex].selected =
+							isSelected;
 						if (isSelected) {
-							items[destinationId].eventGroups[groupIndex].indeterminate = isSelected;
+							items.value[destinationId].eventGroups[groupIndex].indeterminate = isSelected;
 						} else {
 							let anySelected = false;
 							for (
 								let i = 0;
-								i < items[destinationId].eventGroups[groupIndex].children.length;
+								i < items.value[destinationId].eventGroups[groupIndex].children.length;
 								i++
 							) {
 								anySelected =
-									anySelected || items[destinationId].eventGroups[groupIndex].children[i].selected;
+									anySelected ||
+									items.value[destinationId].eventGroups[groupIndex].children[i].selected;
 							}
-							items[destinationId].eventGroups[groupIndex].indeterminate = anySelected;
+							items.value[destinationId].eventGroups[groupIndex].indeterminate = anySelected;
 						}
 					}
 				}
@@ -147,24 +151,24 @@ export const useLogStreamingStore = defineStore('logStreaming', () => {
 	};
 
 	const removeDestinationItemTree = (id: string) => {
-		delete items[id];
+		delete items.value[id];
 	};
 
 	const updateDestination = (destination: MessageEventBusDestinationOptions) => {
-		if (destination.id && items[destination.id]) {
-			items[destination.id].destination = destination;
+		if (destination.id && items.value[destination.id]) {
+			items.value[destination.id].destination = destination;
 		}
 	};
 
 	const removeDestination = (destinationId: string) => {
 		if (!destinationId) return;
-		delete items[destinationId];
+		delete items.value[destinationId];
 	};
 
 	const getSelectedEvents = (destinationId: string): string[] => {
 		const selectedEvents: string[] = [];
-		if (items[destinationId]) {
-			for (const group of items[destinationId].eventGroups) {
+		if (items.value[destinationId]) {
+			for (const group of items.value[destinationId].eventGroups) {
 				if (group.selected) {
 					selectedEvents.push(group.name);
 				}
