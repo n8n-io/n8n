@@ -60,6 +60,13 @@ const config = (module.exports = {
 		 * https://github.com/airbnb/javascript/tree/master/packages/eslint-config-airbnb-base/rules
 		 */
 		'eslint-config-airbnb-typescript/base',
+
+		/**
+		 * Config to disable ESLint rules covered by Prettier
+		 *
+		 * https://github.com/prettier/eslint-config-prettier
+		 */
+		'eslint-config-prettier',
 	],
 
 	rules: {
@@ -98,7 +105,7 @@ const config = (module.exports = {
 		/**
 		 * https://eslint.org/docs/latest/rules/indent
 		 *
-		 * Delegated to Biome.
+		 * Delegated to Prettier.
 		 */
 		indent: 'off',
 
