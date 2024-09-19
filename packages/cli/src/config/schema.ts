@@ -175,12 +175,6 @@ export const schema = {
 			env: 'GENERIC_TIMEZONE',
 		},
 
-		instanceType: {
-			doc: 'Type of n8n instance',
-			format: ['main', 'webhook', 'worker'] as const,
-			default: 'main',
-		},
-
 		releaseChannel: {
 			doc: 'N8N release channel',
 			format: ['stable', 'beta', 'nightly', 'dev'] as const,
@@ -645,5 +639,14 @@ export const schema = {
 		default: 0,
 		env: 'N8N_PROXY_HOPS',
 		doc: 'Number of reverse-proxies n8n is running behind',
+	},
+
+	featureFlags: {
+		partialExecutionVersionDefault: {
+			format: String,
+			default: '0',
+			env: 'PARTIAL_EXECUTION_VERSION_DEFAULT',
+			doc: 'Set this to 1 to enable the new partial execution logic by default.',
+		},
 	},
 };

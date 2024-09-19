@@ -175,7 +175,7 @@ export default defineComponent({
 		<template v-if="isLicensed">
 			<div class="mb-l">
 				<n8n-info-tip theme="info" type="note">
-					<span v-html="$locale.baseText('settings.log-streaming.infoText')"></span>
+					<span v-n8n-html="$locale.baseText('settings.log-streaming.infoText')"></span>
 				</n8n-info-tip>
 			</div>
 			<template v-if="storeHasItems()">
@@ -207,7 +207,7 @@ export default defineComponent({
 					@click:button="addDestination"
 				>
 					<template #heading>
-						<span v-html="$locale.baseText(`settings.log-streaming.addFirstTitle`)" />
+						<span v-n8n-html="$locale.baseText(`settings.log-streaming.addFirstTitle`)" />
 					</template>
 				</n8n-action-box>
 			</div>
@@ -215,7 +215,7 @@ export default defineComponent({
 		<template v-else>
 			<div v-if="$locale.baseText('settings.log-streaming.infoText')" class="mb-l">
 				<n8n-info-tip theme="info" type="note">
-					<span v-html="$locale.baseText('settings.log-streaming.infoText')"></span>
+					<span v-n8n-html="$locale.baseText('settings.log-streaming.infoText')"></span>
 				</n8n-info-tip>
 			</div>
 			<div data-test-id="action-box-unlicensed">
@@ -225,7 +225,7 @@ export default defineComponent({
 					@click:button="goToUpgrade"
 				>
 					<template #heading>
-						<span v-html="$locale.baseText('settings.log-streaming.actionBox.title')" />
+						<span v-n8n-html="$locale.baseText('settings.log-streaming.actionBox.title')" />
 					</template>
 				</n8n-action-box>
 			</div>

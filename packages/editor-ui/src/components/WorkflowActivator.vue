@@ -138,7 +138,7 @@ async function displayActivationError() {
 				<template #content>
 					<div
 						@click="displayActivationError"
-						v-html="i18n.baseText('workflowActivator.theWorkflowIsSetToBeActiveBut')"
+						v-n8n-html="i18n.baseText('workflowActivator.theWorkflowIsSetToBeActiveBut')"
 					></div>
 				</template>
 				<font-awesome-icon icon="exclamation-triangle" @click="displayActivationError" />

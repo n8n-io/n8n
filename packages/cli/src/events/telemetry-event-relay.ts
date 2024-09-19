@@ -950,8 +950,6 @@ export class TelemetryEventRelay extends EventRelay {
 	}: RelayEventMap['user-submitted-personalization-survey']) {
 		const personalizationSurveyData = { user_id: userId } as Record<string, string | string[]>;
 
-		// ESlint is wrong here
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 		for (const [camelCaseKey, value] of Object.entries(answers)) {
 			if (value) {
 				personalizationSurveyData[snakeCase(camelCaseKey)] = value;

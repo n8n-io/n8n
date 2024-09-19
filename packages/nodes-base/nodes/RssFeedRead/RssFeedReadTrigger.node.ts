@@ -9,6 +9,11 @@ import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import Parser from 'rss-parser';
 import moment from 'moment-timezone';
 
+interface PollData {
+	lastItemDate?: string;
+	lastTimeChecked?: string;
+}
+
 export class RssFeedReadTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'RSS Feed Trigger',
@@ -39,12 +44,12 @@ export class RssFeedReadTrigger implements INodeType {
 	};
 
 	async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
-		const pollData = this.getWorkflowStaticData('node');
+		const pollData = this.getWorkflowStaticData('node') as PollData;
 		const feedUrl = this.getNodeParameter('feedUrl') as string;
 
-		const now = moment().utc().format();
-		const dateToCheck =
-			(pollData.lastItemDate as string) || (pollData.lastTimeChecked as string) || now;
+		const dateToCheck = Date.parse(
+			pollData.lastItemDate ?? pollData.lastTimeChecked ?? moment().utc().format(),
+		);
 
 		if (!feedUrl) {
 			throw new NodeOperationError(this.getNode(), 'The parameter "URL" has to be set!');
@@ -73,14 +78,15 @@ export class RssFeedReadTrigger implements INodeType {
 				return [this.helpers.returnJsonArray(feed.items[0])];
 			}
 			feed.items.forEach((item) => {
-				if (Date.parse(item.isoDate as string) > Date.parse(dateToCheck)) {
+				if (Date.parse(item.isoDate as string) > dateToCheck) {
 					returnData.push(item);
 				}
 			});
-			const maxIsoDate = feed.items.reduce((a, b) =>
-				new Date(a.isoDate as string) > new Date(b.isoDate as string) ? a : b,
-			).isoDate;
-			pollData.lastItemDate = maxIsoDate;
+
+			if (feed.items.length) {
+				const maxIsoDate = Math.max(...feed.items.map(({ isoDate }) => Date.parse(isoDate!)));
+				pollData.lastItemDate = new Date(maxIsoDate).toISOString();
+			}
 		}
 
 		if (Array.isArray(returnData) && returnData.length !== 0) {

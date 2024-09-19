@@ -189,7 +189,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 				? email
 					? `${name} (${email})`
 					: name
-				: email ?? i18n.baseText('credentialEdit.credentialSharing.info.sharee.fallback');
+				: (email ?? i18n.baseText('credentialEdit.credentialSharing.info.sharee.fallback'));
 		};
 	});
 

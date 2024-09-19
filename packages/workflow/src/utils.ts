@@ -1,16 +1,15 @@
-import FormData from 'form-data';
-import { merge } from 'lodash';
-
-import { ALPHABET } from './Constants';
-import type { BinaryFileType, IDisplayOptions, INodeProperties, JsonObject } from './Interfaces';
-import { ApplicationError } from './errors/application.error';
-
 import {
 	parse as esprimaParse,
 	Syntax,
 	type Node as SyntaxNode,
 	type ExpressionStatement,
 } from 'esprima-next';
+import FormData from 'form-data';
+import { merge } from 'lodash';
+
+import { ALPHABET } from './Constants';
+import { ApplicationError } from './errors/application.error';
+import type { BinaryFileType, IDisplayOptions, INodeProperties, JsonObject } from './Interfaces';
 
 const readStreamClasses = new Set(['ReadStream', 'Readable', 'ReadableStream']);
 

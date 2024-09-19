@@ -410,7 +410,7 @@ export default defineComponent({
 					/>
 					<div v-if="endOfSearchMessage" :class="$style.endText">
 						<n8n-text size="medium" color="text-base">
-							<span v-html="endOfSearchMessage" />
+							<span v-n8n-html="endOfSearchMessage" />
 						</n8n-text>
 					</div>
 				</div>

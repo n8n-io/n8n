@@ -1,7 +1,8 @@
-import { DateTime } from 'luxon';
-import type { FieldType, INodePropertyOptions, ValidationResult } from './Interfaces';
 import isObject from 'lodash/isObject';
+import { DateTime } from 'luxon';
+
 import { ApplicationError } from './errors';
+import type { FieldType, INodePropertyOptions, ValidationResult } from './Interfaces';
 import { jsonParse } from './utils';
 
 export const tryToParseNumber = (value: unknown): number => {
