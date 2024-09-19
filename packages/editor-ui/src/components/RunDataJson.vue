@@ -14,6 +14,7 @@ import { nonExistingJsonPath } from '@/constants';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import TextWithHighlights from './TextWithHighlights.vue';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { useElementSize } from '@vueuse/core';
 
 const LazyRunDataJsonActions = defineAsyncComponent(
 	async () => await import('@/components/RunDataJsonActions.vue'),
@@ -45,6 +46,9 @@ const telemetry = useTelemetry();
 const selectedJsonPath = ref(nonExistingJsonPath);
 const draggingPath = ref<null | string>(null);
 const displayMode = ref('json');
+const jsonDataContainer = ref(null);
+
+const { height } = useElementSize(jsonDataContainer);
 
 const jsonData = computed(() => executionDataToJson(props.inputData));
 
@@ -110,7 +114,7 @@ const getListItemName = (path: string) => {
 </script>
 
 <template>
-	<div :class="[$style.jsonDisplay, { [$style.highlight]: highlight }]">
+	<div ref="jsonDataContainer" :class="[$style.jsonDisplay, { [$style.highlight]: highlight }]">
 		<Suspense>
 			<LazyRunDataJsonActions
 				v-if="!editMode.enabled"
@@ -141,6 +145,8 @@ const getListItemName = (path: string) => {
 				root-path=""
 				selectable-type="single"
 				class="json-data"
+				:virtual="true"
+				:height="height"
 				@update:selected-value="selectedJsonPath = $event"
 			>
 				<template #renderNodeKey="{ node }">
@@ -192,11 +198,10 @@ const getListItemName = (path: string) => {
 	left: 0;
 	padding-left: var(--spacing-s);
 	right: 0;
-	overflow-y: auto;
+	overflow-y: hidden;
 	line-height: 1.5;
 	word-break: normal;
 	height: 100%;
-	padding-bottom: var(--spacing-3xl);
 
 	&:hover {
 		/* Shows .actionsGroup element from <run-data-json-actions /> child component */
@@ -298,5 +303,9 @@ const getListItemName = (path: string) => {
 
 .vjs-tree .vjs-tree__content.has-line {
 	border-left: 1px dotted var(--color-json-line);
+}
+
+.vjs-tree .vjs-tree-list-holder-inner {
+	padding-bottom: var(--spacing-3xl);
 }
 </style>
