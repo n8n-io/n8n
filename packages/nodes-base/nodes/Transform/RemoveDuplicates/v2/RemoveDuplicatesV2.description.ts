@@ -4,19 +4,19 @@ const operationOptions = [
 		name: 'Remove Duplicate Input Items',
 		value: 'removeDuplicateInputItems',
 		description: 'Remove duplicates from incoming items',
-		action: 'Remove Duplicate Input Items',
+		action: 'Remove duplicate input items',
 	},
 	{
-		name: 'Remove Items Seen in Previous Executions',
+		name: 'Remove Items Processed in Previous Executions',
 		value: 'removeItemsSeenInPreviousExecutions',
-		description: 'Remove items already processed in previous executions (using the database)',
-		action: 'Remove Items Seen in Previous Executions',
+		description: 'Deduplicate items already seen in previous executions',
+		action: 'Remove items processed in previous executions',
 	},
 	{
-		name: 'Manage Key Values in Database (No Removal)',
+		name: 'Manage Stored Key Values (No Removal)',
 		value: 'manageKeyValuesInDatabase',
-		description: 'Store or delete key values in the database without removing items',
-		action: 'Manage Key Values in Database (No Removal)',
+		description: 'Manage stored key values without removing items',
+		action: 'Manage stored key values (No Removal)',
 	},
 ];
 const compareOptions = [
@@ -37,8 +37,7 @@ const logicOptions = [
 	{
 		name: 'Remove Items With Already Seen Key Values',
 		value: 'removeItemsWithAlreadySeenKeyValues',
-		description:
-			'Remove all input items with key values matching those stored in the dedupe database',
+		description: 'Remove all input items with key values matching those already processed',
 	},
 	{
 		name: 'Remove Items Up to Stored Incremental Key',
@@ -115,7 +114,7 @@ export const removeDuplicatesNodeFields: INodeProperties[] = [
 	// ----------------------------------
 	{
 		displayName:
-			'This operation removes input items already processed in previous executions by matching the key field values stored in the database',
+			'This operation removes input items already processed in previous executions by matching the key field values',
 		name: 'notice_tip',
 		type: 'notice',
 		default: '',
@@ -132,8 +131,7 @@ export const removeDuplicatesNodeFields: INodeProperties[] = [
 		noDataExpression: true,
 		options: logicOptions,
 		default: 'removeItemsWithAlreadySeenKeyValues',
-		description:
-			'How to select input items for removal based on key values stored in the dedupe database',
+		description: 'How to select input items to remove based on key values previously processed',
 		displayOptions: {
 			show: {
 				operation: ['removeItemsSeenInPreviousExecutions'],
@@ -141,11 +139,11 @@ export const removeDuplicatesNodeFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Key Field',
+		displayName: 'Key Field Value',
 		name: 'keyField',
 		type: 'string',
 		default: '',
-		hint: 'The input field used as a key for deduplication. Type or drag the field name from the input panel.',
+		hint: 'The input field value used as a key for deduplication',
 		placeholder: 'e.g. ID',
 		displayOptions: {
 			show: {
@@ -154,11 +152,11 @@ export const removeDuplicatesNodeFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Key Field',
+		displayName: 'Key Field Value',
 		name: 'incrementalKeyField',
 		type: 'number',
 		default: '',
-		hint: 'The input field used as a key for deduplication. Type or drag the field name from the input panel.',
+		hint: 'The input field value used as a key for deduplication, an incremental value is expected',
 		placeholder: 'e.g. ID',
 		displayOptions: {
 			show: {
@@ -167,11 +165,11 @@ export const removeDuplicatesNodeFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Key Field',
+		displayName: 'Key Field Value',
 		name: 'dateKeyField',
 		type: 'dateTime',
 		default: '',
-		hint: 'The input field used as a key for deduplication. Type or drag the field name from the input panel.',
+		hint: 'The input field value used as a key for deduplication, a date is expected',
 		placeholder: ' e.g. 2024-08-09T13:44:16Z',
 		displayOptions: {
 			show: {
