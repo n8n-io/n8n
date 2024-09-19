@@ -112,7 +112,7 @@ const descriptionV2: INodeTypeDescription = {
 		},
 		// notice would be shown if no Form node was connected to trigger
 		{
-			displayName: 'Add an n8n Form Page to the workflow to build a multi-step form',
+			displayName: 'Build multi-step forms by adding a form page later in your workflow',
 			name: ADD_FORM_NOTICE,
 			type: 'notice',
 			default: '',
