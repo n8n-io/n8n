@@ -325,13 +325,6 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 
 				// Workflow did start but had been put to wait
 				titleChange.titleSet(workflow.name as string, 'IDLE');
-				toast.showToast({
-					title: 'Workflow started waiting',
-					message: `${action} <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/" target="_blank">More info</a>`,
-					type: 'success',
-					duration: 0,
-					dangerouslyUseHTMLString: true,
-				});
 			} else if (runDataExecuted.finished !== true) {
 				titleChange.titleSet(workflow.name as string, 'ERROR');
 

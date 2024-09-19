@@ -40,6 +40,7 @@ import {
 	MAX_DISPLAY_ITEMS_AUTO_ALL,
 	TEST_PIN_DATA,
 	HTML_NODE_TYPE,
+	WAIT_NODE_TYPE,
 } from '@/constants';
 
 import BinaryDataDisplay from '@/components/BinaryDataDisplay.vue';
@@ -217,6 +218,14 @@ export default defineComponent({
 		),
 		isReadOnlyRoute() {
 			return this.$route?.meta?.readOnlyCanvas === true;
+		},
+		isWaitNodeWaiting() {
+			return (
+				this.hasNodeRun &&
+				this.workflowExecution?.status === 'waiting' &&
+				this.node?.type === WAIT_NODE_TYPE &&
+				this.workflowExecution?.data?.resultData?.lastNodeExecuted === this.node?.name
+			);
 		},
 		activeNode(): INodeUi | null {
 			return this.ndvStore.activeNode;
@@ -1499,6 +1508,10 @@ export default defineComponent({
 				<n8n-text v-else>
 					{{ noDataInBranchMessage }}
 				</n8n-text>
+			</div>
+
+			<div v-else-if="isWaitNodeWaiting" :class="$style.center">
+				<slot name="node-waiting">xxx</slot>
 			</div>
 
 			<div v-else-if="hasNodeRun && !inputData.length && !search" :class="$style.center">
