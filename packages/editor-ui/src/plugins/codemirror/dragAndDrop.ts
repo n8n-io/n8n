@@ -117,7 +117,7 @@ const drawDropCursor = ViewPlugin.fromClass(
 	},
 );
 
-function eventToCoord(event: MouseEvent): { x: number; y: number } {
+export function eventToCoord(event: MouseEvent): { x: number; y: number } {
 	return { x: event.clientX, y: event.clientY };
 }
 
