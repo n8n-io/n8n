@@ -935,7 +935,7 @@ const workflowPermissions = computed(() => {
 const projectPermissions = computed(() => {
 	const project = route.query?.projectId
 		? projectsStore.myProjects.find((p) => p.id === route.query.projectId)
-		: projectsStore.currentProject ?? projectsStore.personalProject;
+		: (projectsStore.currentProject ?? projectsStore.personalProject);
 	return getResourcePermissions(project?.scopes);
 });
 
