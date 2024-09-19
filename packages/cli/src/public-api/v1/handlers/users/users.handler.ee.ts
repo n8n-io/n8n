@@ -1,4 +1,4 @@
-import type { RoleChangeRequestDTO } from '@n8n/api-types';
+import { RoleChangeRequestDTO } from '@n8n/api-types';
 import type express from 'express';
 import type { Response } from 'express';
 import { Container } from 'typedi';
@@ -99,8 +99,19 @@ export = {
 		isLicensed('feat:advancedPermissions'),
 		globalScope('user:changeRole'),
 		async (req: ChangeRole, res: Response) => {
-			// TODO: validate req.body
-			await Container.get(UsersController).changeGlobalRole(req, res, req.body, req.params.id);
+			const validation = RoleChangeRequestDTO.safeParse(req.body);
+			if (validation.error) {
+				return res.status(400).json({
+					message: validation.error.errors[0],
+				});
+			}
+
+			await Container.get(UsersController).changeGlobalRole(
+				req,
+				res,
+				validation.data,
+				req.params.id,
+			);
 
 			return res.status(204).send();
 		},
