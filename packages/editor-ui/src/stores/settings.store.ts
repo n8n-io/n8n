@@ -128,8 +128,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isCommunityNodesFeatureEnabled = computed(() => settings.value.communityNodesEnabled);
 
-	const isNpmAvailable = computed(() => settings.value.isNpmAvailable);
-
 	const allowedModules = computed(() => settings.value.allowedModules);
 
 	const isQueueModeEnabled = computed(() => settings.value.executionMode === 'queue');
@@ -245,7 +243,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		rootStore.setOauthCallbackUrls(fetchedSettings.oauthCallbackUrls);
 		rootStore.setN8nMetadata(fetchedSettings.n8nMetadata || {});
 		rootStore.setDefaultLocale(fetchedSettings.defaultLocale);
-		rootStore.setIsNpmAvailable(fetchedSettings.isNpmAvailable);
 		rootStore.setBinaryDataMode(fetchedSettings.binaryDataMode);
 		useVersionsStore().setVersionNotificationSettings(fetchedSettings.versionNotifications);
 	};
@@ -406,7 +403,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		templatesHost,
 		pushBackend,
 		isCommunityNodesFeatureEnabled,
-		isNpmAvailable,
 		allowedModules,
 		isQueueModeEnabled,
 		isWorkerViewAvailable,
