@@ -8,7 +8,10 @@ import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { Subscriber } from '@/scaling/pubsub/subscriber.service';
 
 import { MultiMainSetup } from './orchestration/main/multi-main-setup.ee';
-import type { RedisServiceBaseCommand, RedisServiceCommand } from './redis/redis-service-commands';
+import type {
+	RedisServiceBaseCommand,
+	RedisServiceCommand,
+} from '../scaling/redis/redis-service-commands';
 
 @Service()
 export class OrchestrationService {

@@ -24,7 +24,7 @@ import type {
 	JobStatus,
 	JobId,
 	QueueRecoveryContext,
-	PubSubMessage,
+	JobReport,
 } from './scaling.types';
 
 @Service()
@@ -46,7 +46,7 @@ export class ScalingService {
 
 	async setupQueue() {
 		const { default: BullQueue } = await import('bull');
-		const { RedisClientService } = await import('@/services/redis/redis-client.service');
+		const { RedisClientService } = await import('@/services/redis-client.service');
 		const service = Container.get(RedisClientService);
 
 		const bullPrefix = this.globalConfig.queue.bull.prefix;
@@ -265,7 +265,7 @@ export class ScalingService {
 		}
 	}
 
-	private isPubSubMessage(candidate: unknown): candidate is PubSubMessage {
+	private isPubSubMessage(candidate: unknown): candidate is JobReport {
 		return typeof candidate === 'object' && candidate !== null && 'kind' in candidate;
 	}
 

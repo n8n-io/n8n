@@ -3,11 +3,11 @@ import { jsonParse } from 'n8n-workflow';
 import Container from 'typedi';
 
 import { Logger } from '@/logger';
-import { WORKER_RESPONSE_REDIS_CHANNEL } from '@/services/redis/redis-constants';
+import { WORKER_RESPONSE_PUBSUB_CHANNEL } from '@/scaling/constants';
 
 import type { MainResponseReceivedHandlerOptions } from './types';
 import { Push } from '../../../push';
-import type { RedisServiceWorkerResponseObject } from '../../redis/redis-service-commands';
+import type { RedisServiceWorkerResponseObject } from '../../../scaling/redis/redis-service-commands';
 
 export async function handleWorkerResponseMessageMain(
 	messageString: string,
@@ -19,7 +19,7 @@ export async function handleWorkerResponseMessageMain(
 
 	if (!workerResponse) {
 		Container.get(Logger).debug(
-			`Received invalid message via channel ${WORKER_RESPONSE_REDIS_CHANNEL}: "${messageString}"`,
+			`Received invalid message via channel ${WORKER_RESPONSE_PUBSUB_CHANNEL}: "${messageString}"`,
 		);
 		return;
 	}
