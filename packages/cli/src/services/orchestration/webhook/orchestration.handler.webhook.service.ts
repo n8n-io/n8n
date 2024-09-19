@@ -1,10 +1,10 @@
 import { Service } from 'typedi';
 
+import { COMMAND_PUBSUB_CHANNEL } from '@/scaling/constants';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 
 import { handleCommandMessageWebhook } from './handle-command-message-webhook';
 import { OrchestrationHandlerService } from '../../orchestration.handler.base.service';
-import { COMMAND_REDIS_CHANNEL } from '../../redis/redis-constants';
 
 @Service()
 export class OrchestrationHandlerWebhookService extends OrchestrationHandlerService {
@@ -16,7 +16,7 @@ export class OrchestrationHandlerWebhookService extends OrchestrationHandlerServ
 		await this.subscriber.subscribe('n8n.commands');
 
 		this.subscriber.addMessageHandler(async (channel: string, messageString: string) => {
-			if (channel === COMMAND_REDIS_CHANNEL) {
+			if (channel === COMMAND_PUBSUB_CHANNEL) {
 				await handleCommandMessageWebhook(messageString);
 			}
 		});
