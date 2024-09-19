@@ -153,7 +153,6 @@ export const useLogStreamingStore = defineStore('logStreaming', () => {
 	const updateDestination = (destination: MessageEventBusDestinationOptions) => {
 		if (destination.id && items[destination.id]) {
 			items[destination.id].destination = destination;
-			items[destination.id] = { ...items[destination.id] };
 		}
 	};
 
