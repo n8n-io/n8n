@@ -356,9 +356,9 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		resetAssistantChat();
 		chatSessionTask.value = credentialType ? 'credentials' : 'support';
 		chatSessionCredType.value = credentialType;
-		chatWindowOpen.value = true;
 		addUserMessage(userMessage, id);
 		addLoadingAssistantMessage(locale.baseText('aiAssistant.thinkingSteps.thinking'));
+		openChat();
 		streaming.value = true;
 
 		let payload: ChatRequest.InitSupportChat | ChatRequest.InitCredHelp = {
