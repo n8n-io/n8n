@@ -46,7 +46,7 @@ export class ScalingService {
 
 	async setupQueue() {
 		const { default: BullQueue } = await import('bull');
-		const { RedisClientService } = await import('@/scaling/redis/redis-client.service');
+		const { RedisClientService } = await import('@/services/redis-client.service');
 		const service = Container.get(RedisClientService);
 
 		const bullPrefix = this.globalConfig.queue.bull.prefix;
