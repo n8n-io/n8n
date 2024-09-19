@@ -39,6 +39,7 @@ export async function createExecution(
 	const execution = await Container.get(ExecutionRepository).save({
 		finished: finished ?? true,
 		mode: mode ?? 'manual',
+		createdAt: new Date(),
 		startedAt: startedAt ?? new Date(),
 		...(workflow !== undefined && { workflowId: workflow.id }),
 		stoppedAt: stoppedAt ?? new Date(),
