@@ -3,9 +3,9 @@ import { check } from 'k6';
 
 const apiBaseUrl = __ENV.API_BASE_URL;
 
-// This creates a ~2MB JSON file
-const file = JSON.stringify(Array.from({ length: 100 * 1024 }, () => Math.random()));
-const filename = 'test.json';
+// This creates a 2MB file (16 * 128 * 1024 = 2 * 1024 * 1024 = 2MB)
+const file = Array.from({ length: 128 * 1024 }, () => Math.random().toString().slice(2)).join('');
+const filename = 'test.bin';
 
 export default function () {
 	const data = {
