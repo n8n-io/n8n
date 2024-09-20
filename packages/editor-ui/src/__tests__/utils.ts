@@ -126,7 +126,7 @@ export const mockedStore = <TStoreDef extends () => unknown>(
 			Record<string, never>,
 			{
 				[K in keyof Actions]: Actions[K] extends (...args: infer Args) => infer ReturnT
-					? Mock<Args, ReturnT>
+					? Mock<(...args: Args) => ReturnT>
 					: Actions[K];
 			}
 		> & {
