@@ -43,9 +43,9 @@ export class MailerLiteTriggerV2 implements INodeType {
 			],
 			properties: [
 				{
-					displayName: 'Event',
-					name: 'event',
-					type: 'options',
+					displayName: 'Events',
+					name: 'events',
+					type: 'multiOptions',
 					options: [
 						{
 							name: 'Campaign Sent',
@@ -53,18 +53,13 @@ export class MailerLiteTriggerV2 implements INodeType {
 							description: 'Fired when campaign is sent',
 						},
 						{
-							name: 'Subscriber Added Through Webform',
-							value: 'subscriber.added_through_webform',
-							description: 'Fired when a subscriber is added though a form',
-						},
-						{
 							name: 'Subscriber Added to Group',
-							value: 'subscriber.add_to_group',
+							value: 'subscriber.added_to_group',
 							description: 'Fired when a subscriber is added to a group',
 						},
 						{
 							name: 'Subscriber Automation Completed',
-							value: 'subscriber.automation_complete',
+							value: 'subscriber.automation_completed',
 							description: 'Fired when subscriber finishes automation',
 						},
 						{
@@ -78,28 +73,28 @@ export class MailerLiteTriggerV2 implements INodeType {
 							description: 'Fired when an email address bounces',
 						},
 						{
-							name: 'Subscriber Complained',
-							value: 'subscriber.complaint',
-							description: 'Fired when subscriber marks a campaign as a spam',
-						},
-						{
 							name: 'Subscriber Created',
-							value: 'subscriber.create',
+							value: 'subscriber.created',
 							description: 'Fired when a new subscriber is added to an account',
 						},
 						{
 							name: 'Subscriber Removed From Group',
-							value: 'subscriber.remove_from_group',
+							value: 'subscriber.removed_from_group',
 							description: 'Fired when a subscriber is removed from a group',
 						},
 						{
+							name: 'Subscriber Spam Reported',
+							value: 'subscriber.spam_reported',
+							description: 'Fired when subscriber marks a campaign as a spam',
+						},
+						{
 							name: 'Subscriber Unsubscribe',
-							value: 'subscriber.unsubscribe',
+							value: 'subscriber.unsubscribed',
 							description: 'Fired when a subscriber becomes unsubscribed',
 						},
 						{
 							name: 'Subscriber Updated',
-							value: 'subscriber.update',
+							value: 'subscriber.updated',
 							description: "Fired when any of the subscriber's custom fields are updated",
 						},
 					],
@@ -116,13 +111,13 @@ export class MailerLiteTriggerV2 implements INodeType {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
-				const event = this.getNodeParameter('event') as string;
+				const events = this.getNodeParameter('events') as string[];
 				// Check all the webhooks which exist already if it is identical to the
 				// one that is supposed to get created.
 				const endpoint = '/webhooks';
-				const { webhooks } = await mailerliteApiRequest.call(this, 'GET', endpoint, {});
-				for (const webhook of webhooks) {
-					if (webhook.url === webhookUrl && webhook.event === event) {
+				const { data } = await mailerliteApiRequest.call(this, 'GET', endpoint, {});
+				for (const webhook of data) {
+					if (webhook.url === webhookUrl && webhook.events === events) {
 						// Set webhook-id to be sure that it can be deleted
 						webhookData.webhookId = webhook.id as string;
 						return true;
@@ -133,23 +128,23 @@ export class MailerLiteTriggerV2 implements INodeType {
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
 				const webhookUrl = this.getNodeWebhookUrl('default');
-				const event = this.getNodeParameter('event') as string;
+				const events = this.getNodeParameter('events') as string[];
 
 				const endpoint = '/webhooks';
 
 				const body = {
 					url: webhookUrl,
-					event,
+					events,
 				};
 
-				const responseData = await mailerliteApiRequest.call(this, 'POST', endpoint, body);
+				const { data } = await mailerliteApiRequest.call(this, 'POST', endpoint, body);
 
-				if (responseData.id === undefined) {
+				if (data.id === undefined) {
 					// Required data is missing so was not successful
 					return false;
 				}
 
-				webhookData.webhookId = responseData.id as string;
+				webhookData.webhookId = data.id as string;
 				return true;
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
@@ -175,10 +170,10 @@ export class MailerLiteTriggerV2 implements INodeType {
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const body = this.getBodyData();
 
-		const events = body.events as IDataObject[];
+		const data = body.fields as IDataObject[];
 
 		return {
-			workflowData: [this.helpers.returnJsonArray(events)],
+			workflowData: [this.helpers.returnJsonArray(data)],
 		};
 	}
 }
