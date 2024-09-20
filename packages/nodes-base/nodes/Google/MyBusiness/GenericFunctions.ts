@@ -2,13 +2,14 @@ import {
 	NodeApiError,
 	type DeclarativeRestApiSettings,
 	type IDataObject,
-	type IExecuteFunctions,
 	type IExecutePaginationFunctions,
 	type IExecuteSingleFunctions,
 	type IHttpRequestMethods,
 	type IHttpRequestOptions,
 	type ILoadOptionsFunctions,
 	type INodeExecutionData,
+	type INodeListSearchItems,
+	type INodeListSearchResult,
 	type IPollFunctions,
 	type JsonObject,
 } from 'n8n-workflow';
@@ -159,9 +160,9 @@ export async function handlePagination(
 	return [{ json: aggregatedResult }];
 }
 
-/* Function used for listSearch */
+/* Helper function used in listSearch methods */
 export async function googleApiRequest(
-	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
+	this: ILoadOptionsFunctions | IPollFunctions,
 	method: IHttpRequestMethods,
 	resource: string,
 	body: IDataObject = {},
@@ -183,7 +184,7 @@ export async function googleApiRequest(
 			delete options.body;
 		}
 
-		return (await this.helpers.requestOAuth2.call(
+		return (await this.helpers.httpRequestWithAuthentication.call(
 			this,
 			'googleMyBusinessOAuth2Api',
 			options,
@@ -191,4 +192,172 @@ export async function googleApiRequest(
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
+}
+
+/* listSearch methods */
+export async function searchAccounts(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	// Docs for this API call can be found here:
+	// https://developers.google.com/my-business/reference/accountmanagement/rest/v1/accounts/list
+	const query: IDataObject = {};
+	if (paginationToken) {
+		query.pageToken = paginationToken;
+	}
+
+	const responseData: IDataObject = await googleApiRequest.call(
+		this,
+		'GET',
+		'',
+		{},
+		{
+			pageSize: 20,
+			...query,
+		},
+		'https://mybusinessaccountmanagement.googleapis.com/v1/accounts',
+	);
+
+	const accounts = responseData.accounts as Array<{ name: string }>;
+
+	const results: INodeListSearchItems[] = accounts
+		.map((a) => ({
+			name: a.name,
+			value: a.name,
+		}))
+		.filter((a) => !filter || a.name.toLowerCase().includes(filter.toLowerCase()))
+		.sort((a, b) => {
+			if (a.name.toLowerCase() < b.name.toLowerCase()) return -1;
+			if (a.name.toLowerCase() > b.name.toLowerCase()) return 1;
+			return 0;
+		});
+
+	return { results, paginationToken: responseData.nextPageToken };
+}
+
+export async function searchLocations(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	// Docs for this API call can be found here:
+	// https://developers.google.com/my-business/reference/businessinformation/rest/v1/accounts.locations/list
+	const query: IDataObject = {};
+	if (paginationToken) {
+		query.pageToken = paginationToken;
+	}
+
+	const account = (this.getNodeParameter('account') as IDataObject).value as string;
+
+	const responseData: IDataObject = await googleApiRequest.call(
+		this,
+		'GET',
+		'',
+		{},
+		{
+			readMask: 'name',
+			pageSize: 100,
+			...query,
+		},
+		`https://mybusinessbusinessinformation.googleapis.com/v1/${account}/locations`,
+	);
+
+	const locations = responseData.locations as Array<{ name: string }>;
+
+	const results: INodeListSearchItems[] = locations
+		.map((a) => ({
+			name: a.name,
+			value: a.name,
+		}))
+		.filter((a) => !filter || a.name.toLowerCase().includes(filter.toLowerCase()))
+		.sort((a, b) => {
+			if (a.name.toLowerCase() < b.name.toLowerCase()) return -1;
+			if (a.name.toLowerCase() > b.name.toLowerCase()) return 1;
+			return 0;
+		});
+
+	return { results, paginationToken: responseData.nextPageToken };
+}
+
+export async function searchReviews(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	const query: IDataObject = {};
+	if (paginationToken) {
+		query.pageToken = paginationToken;
+	}
+
+	const account = (this.getNodeParameter('account') as IDataObject).value as string;
+	const location = (this.getNodeParameter('location') as IDataObject).value as string;
+
+	const responseData: IDataObject = await googleApiRequest.call(
+		this,
+		'GET',
+		`/${account}/${location}/reviews`,
+		{},
+		{
+			pageSize: 50,
+			...query,
+		},
+	);
+
+	const reviews = responseData.reviews as Array<{ name: string }>;
+
+	const results: INodeListSearchItems[] = reviews
+		.map((a) => ({
+			name: a.name,
+			value: a.name,
+		}))
+		.filter((a) => !filter || a.name.toLowerCase().includes(filter.toLowerCase()))
+		.sort((a, b) => {
+			if (a.name.toLowerCase() < b.name.toLowerCase()) return -1;
+			if (a.name.toLowerCase() > b.name.toLowerCase()) return 1;
+			return 0;
+		});
+
+	return { results, paginationToken: responseData.nextPageToken };
+}
+
+export async function searchPosts(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	const query: IDataObject = {};
+	if (paginationToken) {
+		query.pageToken = paginationToken;
+	}
+
+	const account = (this.getNodeParameter('account') as IDataObject).value as string;
+	const location = (this.getNodeParameter('location') as IDataObject).value as string;
+
+	const responseData: IDataObject = await googleApiRequest.call(
+		this,
+		'GET',
+		`/${account}/${location}/localPosts`,
+		{},
+		{
+			pageSize: 100,
+			...query,
+		},
+	);
+
+	const localPosts = responseData.localPosts as Array<{ name: string }>;
+
+	const results: INodeListSearchItems[] = localPosts
+		.map((a) => ({
+			name: a.name,
+			value: a.name,
+		}))
+		.filter((a) => !filter || a.name.toLowerCase().includes(filter.toLowerCase()))
+		.sort((a, b) => {
+			if (a.name.toLowerCase() < b.name.toLowerCase()) return -1;
+			if (a.name.toLowerCase() > b.name.toLowerCase()) return 1;
+			return 0;
+		});
+
+	return { results, paginationToken: responseData.nextPageToken };
 }
