@@ -262,8 +262,7 @@ export class FrontendService {
 			quota: this.license.getUsersLimit(),
 			authenticationMethod: getCurrentAuthenticationMethod(),
 			showSetupOnFirstLoad:
-				!config.getEnv('userManagement.isInstanceOwnerSetUp') &&
-				!config.getEnv('deployment.type').startsWith('desktop_'),
+				!config.getEnv('userManagement.isInstanceOwnerSetUp')
 		});
 
 		let dismissedBanners: string[] = [];
