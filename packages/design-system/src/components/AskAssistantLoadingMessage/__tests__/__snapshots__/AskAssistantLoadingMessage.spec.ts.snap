@@ -5,7 +5,6 @@ exports[`AssistantLoadingMessage > renders loading message correctly 1`] = `
   <div
     class="container"
     data-v-4e90e01e=""
-    loadingmessage="Thinking..."
   >
     <div
       class="avatar"
@@ -63,7 +62,12 @@ exports[`AssistantLoadingMessage > renders loading message correctly 1`] = `
         name="slide-vertical"
         persisted="false"
       >
-        <!--v-if-->
+        <span
+          class="message"
+          data-v-4e90e01e=""
+        >
+          Thinking...
+        </span>
       </transition-stub>
     </div>
   </div>
