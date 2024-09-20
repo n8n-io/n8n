@@ -91,20 +91,20 @@ export const postFields: INodeProperties[] = [
 		required: true,
 		type: 'resourceLocator',
 		default: '',
-		description: 'The Google My Business account name',
+		description: 'The Google My Business account',
 		displayOptions: { show: { resource: ['post'], operation: ['create'] } },
 		modes: [
 			{
-				displayName: 'Name',
-				name: 'name',
+				displayName: 'ID',
+				name: 'id',
 				type: 'string',
-				hint: 'Enter the account name',
+				hint: 'Enter the account ID',
 				validation: [
 					{
 						type: 'regex',
 						properties: {
 							regex: 'accounts/[0-9]+',
-							errorMessage: 'The name must start with "accounts/"',
+							errorMessage: 'The ID must start with "accounts/"',
 						},
 					},
 				],
@@ -131,16 +131,16 @@ export const postFields: INodeProperties[] = [
 		displayOptions: { show: { resource: ['post'], operation: ['create'] } },
 		modes: [
 			{
-				displayName: 'Name',
-				name: 'name',
+				displayName: 'ID',
+				name: 'id',
 				type: 'string',
-				hint: 'Enter the location name',
+				hint: 'Enter the location ID',
 				validation: [
 					{
 						type: 'regex',
 						properties: {
 							regex: 'locations/[0-9]+',
-							errorMessage: 'The name must start with "locations/"',
+							errorMessage: 'The ID must start with "locations/"',
 						},
 					},
 				],
@@ -307,7 +307,7 @@ export const postFields: INodeProperties[] = [
 			{
 				displayName: 'Start Date',
 				name: 'startDate',
-				type: 'string', // ToDo: Can dateTime be used?
+				type: 'string',
 				default: '',
 				placeholder: 'YYYY-MM-DD',
 				description: 'The start date of the offer',
@@ -316,7 +316,7 @@ export const postFields: INodeProperties[] = [
 			{
 				displayName: 'End Date',
 				name: 'endDate',
-				type: 'string', // ToDo: Can dateTime be used?
+				type: 'string',
 				default: '',
 				placeholder: 'YYYY-MM-DD',
 				description: 'The end date of the offer',
@@ -368,20 +368,20 @@ export const postFields: INodeProperties[] = [
 		required: true,
 		type: 'resourceLocator',
 		default: '',
-		description: 'The Google My Business account name',
+		description: 'The Google My Business account',
 		displayOptions: { show: { resource: ['post'], operation: ['delete'] } },
 		modes: [
 			{
-				displayName: 'Name',
-				name: 'name',
+				displayName: 'ID',
+				name: 'id',
 				type: 'string',
-				hint: 'Enter the account name',
+				hint: 'Enter the account ID',
 				validation: [
 					{
 						type: 'regex',
 						properties: {
 							regex: 'accounts/[0-9]+',
-							errorMessage: 'The name must start with "accounts/"',
+							errorMessage: 'The ID must start with "accounts/"',
 						},
 					},
 				],
@@ -408,16 +408,16 @@ export const postFields: INodeProperties[] = [
 		displayOptions: { show: { resource: ['post'], operation: ['delete'] } },
 		modes: [
 			{
-				displayName: 'Name',
-				name: 'name',
+				displayName: 'ID',
+				name: 'id',
 				type: 'string',
-				hint: 'Enter the location name',
+				hint: 'Enter the location ID',
 				validation: [
 					{
 						type: 'regex',
 						properties: {
 							regex: 'locations/[0-9]+',
-							errorMessage: 'The name must start with "locations/"',
+							errorMessage: 'The ID must start with "locations/"',
 						},
 					},
 				],
@@ -443,21 +443,21 @@ export const postFields: INodeProperties[] = [
 		displayOptions: { show: { resource: ['post'], operation: ['delete'] } },
 		modes: [
 			{
-				displayName: 'Name',
-				name: 'name',
+				displayName: 'ID',
+				name: 'id',
 				type: 'string',
-				hint: 'Enter the post name',
+				hint: 'Enter the post ID',
 				validation: [
 					{
 						type: 'regex',
 						properties: {
 							regex: 'accounts/[0-9]+/locations/[0-9]+/localPosts/[0-9]+',
 							errorMessage:
-								'The name must be in the format "localPosts/123/locations/123/localPosts/123"',
+								'The ID must be in the format "localPosts/123/locations/123/localPosts/123"',
 						},
 					},
 				],
-				placeholder: 'localPosts/012345678901234567',
+				placeholder: 'accounts/0123456789/locations/0123456789/localPosts/0123456789',
 			},
 			{
 				displayName: 'List',
@@ -480,20 +480,20 @@ export const postFields: INodeProperties[] = [
 		required: true,
 		type: 'resourceLocator',
 		default: '',
-		description: 'The Google My Business account name',
+		description: 'The Google My Business account',
 		displayOptions: { show: { resource: ['post'], operation: ['get'] } },
 		modes: [
 			{
-				displayName: 'Name',
-				name: 'name',
+				displayName: 'ID',
+				name: 'id',
 				type: 'string',
-				hint: 'Enter the account name',
+				hint: 'Enter the account ID',
 				validation: [
 					{
 						type: 'regex',
 						properties: {
 							regex: 'accounts/[0-9]+',
-							errorMessage: 'The name must start with "accounts/"',
+							errorMessage: 'The ID must start with "accounts/"',
 						},
 					},
 				],
@@ -520,16 +520,16 @@ export const postFields: INodeProperties[] = [
 		displayOptions: { show: { resource: ['post'], operation: ['get'] } },
 		modes: [
 			{
-				displayName: 'Name',
-				name: 'name',
+				displayName: 'ID',
+				name: 'id',
 				type: 'string',
-				hint: 'Enter the location name',
+				hint: 'Enter the location ID',
 				validation: [
 					{
 						type: 'regex',
 						properties: {
 							regex: 'locations/[0-9]+',
-							errorMessage: 'The name must start with "locations/"',
+							errorMessage: 'The ID must start with "locations/"',
 						},
 					},
 				],
@@ -555,21 +555,21 @@ export const postFields: INodeProperties[] = [
 		displayOptions: { show: { resource: ['post'], operation: ['get'] } },
 		modes: [
 			{
-				displayName: 'Name',
-				name: 'name',
+				displayName: 'ID',
+				name: 'id',
 				type: 'string',
-				hint: 'Enter the post name',
+				hint: 'Enter the post ID',
 				validation: [
 					{
 						type: 'regex',
 						properties: {
 							regex: 'accounts/[0-9]+/locations/[0-9]+/localPosts/[0-9]+',
 							errorMessage:
-								'The name must be in the format "localPosts/123/locations/123/localPosts/123"',
+								'The ID must be in the format "localPosts/123/locations/123/localPosts/123"',
 						},
 					},
 				],
-				placeholder: 'localPosts/012345678901234567',
+				placeholder: 'accounts/0123456789/locations/0123456789/localPosts/0123456789',
 			},
 			{
 				displayName: 'List',
@@ -592,20 +592,20 @@ export const postFields: INodeProperties[] = [
 		required: true,
 		type: 'resourceLocator',
 		default: '',
-		description: 'The Google My Business account name',
+		description: 'The Google My Business account',
 		displayOptions: { show: { resource: ['post'], operation: ['getAll'] } },
 		modes: [
 			{
-				displayName: 'Name',
-				name: 'name',
+				displayName: 'ID',
+				name: 'id',
 				type: 'string',
-				hint: 'Enter the account name',
+				hint: 'Enter the account ID',
 				validation: [
 					{
 						type: 'regex',
 						properties: {
 							regex: 'accounts/[0-9]+',
-							errorMessage: 'The name must start with "accounts/"',
+							errorMessage: 'The ID must start with "accounts/"',
 						},
 					},
 				],
@@ -632,16 +632,16 @@ export const postFields: INodeProperties[] = [
 		displayOptions: { show: { resource: ['post'], operation: ['getAll'] } },
 		modes: [
 			{
-				displayName: 'Name',
-				name: 'name',
+				displayName: 'ID',
+				name: 'id',
 				type: 'string',
-				hint: 'Enter the location name',
+				hint: 'Enter the location ID',
 				validation: [
 					{
 						type: 'regex',
 						properties: {
 							regex: 'locations/[0-9]+',
-							errorMessage: 'The name must start with "locations/"',
+							errorMessage: 'The ID must start with "locations/"',
 						},
 					},
 				],
@@ -679,20 +679,20 @@ export const postFields: INodeProperties[] = [
 		required: true,
 		type: 'resourceLocator',
 		default: '',
-		description: 'The Google My Business account name',
+		description: 'The Google My Business account',
 		displayOptions: { show: { resource: ['post'], operation: ['update'] } },
 		modes: [
 			{
-				displayName: 'Name',
-				name: 'name',
+				displayName: 'ID',
+				name: 'id',
 				type: 'string',
-				hint: 'Enter the account name',
+				hint: 'Enter the account ID',
 				validation: [
 					{
 						type: 'regex',
 						properties: {
 							regex: 'accounts/[0-9]+',
-							errorMessage: 'The name must start with "accounts/"',
+							errorMessage: 'The ID must start with "accounts/"',
 						},
 					},
 				],
@@ -719,16 +719,16 @@ export const postFields: INodeProperties[] = [
 		displayOptions: { show: { resource: ['post'], operation: ['update'] } },
 		modes: [
 			{
-				displayName: 'Name',
-				name: 'name',
+				displayName: 'ID',
+				name: 'id',
 				type: 'string',
-				hint: 'Enter the location name',
+				hint: 'Enter the location id',
 				validation: [
 					{
 						type: 'regex',
 						properties: {
 							regex: 'locations/[0-9]+',
-							errorMessage: 'The name must start with "locations/"',
+							errorMessage: 'The ID must start with "locations/"',
 						},
 					},
 				],
@@ -750,25 +750,25 @@ export const postFields: INodeProperties[] = [
 		name: 'post',
 		type: 'resourceLocator',
 		default: '',
-		description: 'Select the post by name or URL to retrieve its details',
+		description: 'Select the post by ID or URL to retrieve its details',
 		displayOptions: { show: { resource: ['post'], operation: ['update'] } },
 		modes: [
 			{
-				displayName: 'Name',
-				name: 'name',
+				displayName: 'ID',
+				name: 'id',
 				type: 'string',
-				hint: 'Enter the post name',
+				hint: 'Enter the post ID',
 				validation: [
 					{
 						type: 'regex',
 						properties: {
 							regex: 'accounts/[0-9]+/locations/[0-9]+/localPosts/[0-9]+',
 							errorMessage:
-								'The name must be in the format "localPosts/123/locations/123/localPosts/123"',
+								'The ID must be in the format "localPosts/123/locations/123/localPosts/123"',
 						},
 					},
 				],
-				placeholder: 'localPosts/012345678901234567',
+				placeholder: 'accounts/0123456789/locations/0123456789/localPosts/0123456789',
 			},
 			{
 				displayName: 'List',
@@ -928,7 +928,7 @@ export const postFields: INodeProperties[] = [
 			{
 				displayName: 'Start Date',
 				name: 'startDate',
-				type: 'string', // ToDo: Use dateTime?
+				type: 'string',
 				default: '',
 				placeholder: 'YYYY-MM-DD',
 				description: 'The start date of the offer',
@@ -937,7 +937,7 @@ export const postFields: INodeProperties[] = [
 			{
 				displayName: 'End Date',
 				name: 'endDate',
-				type: 'string', // ToDo: Use dateTime?
+				type: 'string',
 				default: '',
 				placeholder: 'YYYY-MM-DD',
 				description: 'The end date of the offer',

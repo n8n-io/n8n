@@ -53,20 +53,20 @@ export class GoogleMyBusinessTrigger implements INodeType {
 				required: true,
 				type: 'resourceLocator',
 				default: '',
-				description: 'The Google My Business account name',
+				description: 'The Google My Business account',
 				displayOptions: { show: { event: ['reviewAdded'] } },
 				modes: [
 					{
-						displayName: 'Name',
-						name: 'name',
+						displayName: 'ID',
+						name: 'id',
 						type: 'string',
-						hint: 'Enter the account name',
+						hint: 'Enter the account ID',
 						validation: [
 							{
 								type: 'regex',
 								properties: {
 									regex: 'accounts/[0-9]+',
-									errorMessage: 'The name must start with "accounts/"',
+									errorMessage: 'The ID must start with "accounts/"',
 								},
 							},
 						],
@@ -93,16 +93,16 @@ export class GoogleMyBusinessTrigger implements INodeType {
 				displayOptions: { show: { event: ['reviewAdded'] } },
 				modes: [
 					{
-						displayName: 'Name',
-						name: 'name',
+						displayName: 'ID',
+						name: 'is',
 						type: 'string',
-						hint: 'Enter the location name',
+						hint: 'Enter the location ID',
 						validation: [
 							{
 								type: 'regex',
 								properties: {
 									regex: 'locations/[0-9]+',
-									errorMessage: 'The name must start with "locations/"',
+									errorMessage: 'The ID must start with "locations/"',
 								},
 							},
 						],
