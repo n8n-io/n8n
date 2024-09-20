@@ -1,3 +1,13 @@
+## [1.59.4](https://github.com/n8n-io/n8n/compare/n8n@1.59.3...n8n@1.59.4) (2024-09-20)
+
+
+### Bug Fixes
+
+* **editor:** Prevent clipboard xss injection ([#10894](https://github.com/n8n-io/n8n/issues/10894)) ([20a99b9](https://github.com/n8n-io/n8n/commit/20a99b9d36b90dbfecea39f83d3f33125fae3ddc))
+* **editor:** Update gird size when opening credentials support chat ([#10882](https://github.com/n8n-io/n8n/issues/10882)) ([42bfac0](https://github.com/n8n-io/n8n/commit/42bfac0cfa98833351e2190d7964b044a8b45bcc))
+
+
+
 ## [1.59.3](https://github.com/n8n-io/n8n/compare/n8n@1.59.2...n8n@1.59.3) (2024-09-18)
 
 
