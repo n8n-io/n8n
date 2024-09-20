@@ -814,7 +814,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	// @tech_debt: These transformations should not be needed
 	private toSummary(execution: {
 		id: number | string;
-		createdAt: Date | string;
+		createdAt?: Date | string;
 		startedAt?: Date | string;
 		stoppedAt?: Date | string;
 		waitTill?: Date | string | null;
