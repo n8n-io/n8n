@@ -225,6 +225,29 @@ describe('Users in Public API', () => {
 			expect(response.body).toHaveProperty('message', 'Forbidden');
 		});
 
+		it('should return a 400 on invalid payload', async () => {
+			/**
+			 * Arrange
+			 */
+			testServer.license.enable('feat:advancedPermissions');
+			const owner = await createOwner({ withApiKey: true });
+			const member = await createMember();
+			const payload = { newRoleName: 'invalid' };
+
+			/**
+			 * Act
+			 */
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.patch(`/users/${member.id}/role`)
+				.send(payload);
+
+			/**
+			 * Assert
+			 */
+			expect(response.status).toBe(400);
+		});
+
 		it("should change a user's role", async () => {
 			/**
 			 * Arrange
