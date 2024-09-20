@@ -6,10 +6,10 @@ import { computed } from 'vue';
 const props = withDefaults(
 	defineProps<{
 		saved: boolean;
-		isSaving: boolean;
-		disabled: boolean;
-		type: string;
-		withShortcut: boolean;
+		isSaving?: boolean;
+		disabled?: boolean;
+		type?: string;
+		withShortcut?: boolean;
 		shortcutTooltip?: string;
 		savingLabel?: string;
 	}>(),
