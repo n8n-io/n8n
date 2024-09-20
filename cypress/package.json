@@ -17,17 +17,17 @@
   "devDependencies": {
     "@n8n/api-types": "workspace:*",
     "@types/lodash": "catalog:",
-    "eslint-plugin-cypress": "^3.3.0",
+    "eslint-plugin-cypress": "^3.5.0",
     "n8n-workflow": "workspace:*"
   },
   "dependencies": {
     "@ngneat/falso": "^7.2.0",
-    "@sinonjs/fake-timers": "^11.2.2",
-    "cypress": "^13.11.0",
+    "@sinonjs/fake-timers": "^13.0.2",
+    "cypress": "^13.14.2",
     "cypress-otp": "^1.0.3",
-    "cypress-real-events": "^1.12.0",
+    "cypress-real-events": "^1.13.0",
     "lodash": "catalog:",
     "nanoid": "catalog:",
-    "start-server-and-test": "^2.0.5"
+    "start-server-and-test": "^2.0.8"
   }
 }
