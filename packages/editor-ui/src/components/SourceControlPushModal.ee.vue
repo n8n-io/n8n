@@ -289,6 +289,7 @@ function getStatusText(file: SourceControlAggregatedFile): string {
 							:key="file.file"
 							:for="file.name"
 							:class="$style.listItem"
+							data-test-id="source-control-push-modal-file"
 						>
 							<n8n-checkbox
 								:id="file.name"
