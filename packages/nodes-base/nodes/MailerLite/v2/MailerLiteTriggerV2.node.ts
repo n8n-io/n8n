@@ -11,7 +11,7 @@ import {
 
 import { mailerliteApiRequest } from '../GenericFunctions';
 
-export class MailerLiteTriggerV1 implements INodeType {
+export class MailerLiteTriggerV2 implements INodeType {
 	description: INodeTypeDescription;
 
 	constructor(baseDescription: INodeTypeBaseDescription) {
@@ -20,7 +20,7 @@ export class MailerLiteTriggerV1 implements INodeType {
 			displayName: 'MailerLite Trigger',
 			name: 'mailerLiteTrigger',
 			group: ['trigger'],
-			version: 1,
+			version: [2],
 			description: 'Starts the workflow when MailerLite events occur',
 			defaults: {
 				name: 'MailerLite Trigger',

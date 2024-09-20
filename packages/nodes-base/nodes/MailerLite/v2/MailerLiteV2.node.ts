@@ -13,7 +13,7 @@ import { NodeConnectionType } from 'n8n-workflow';
 import { subscriberFields, subscriberOperations } from './SubscriberDescription';
 import { mailerliteApiRequest, mailerliteApiRequestAllItems } from '../GenericFunctions';
 
-export class MailerLiteV1 implements INodeType {
+export class MailerLiteV2 implements INodeType {
 	description: INodeTypeDescription;
 
 	constructor(baseDescription: INodeTypeBaseDescription) {
@@ -21,6 +21,8 @@ export class MailerLiteV1 implements INodeType {
 			...baseDescription,
 			displayName: 'MailerLite',
 			name: 'mailerLite',
+			// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
+			icon: 'file:MailerLite.svg',
 			group: ['input'],
 			version: 1,
 			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
