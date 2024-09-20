@@ -168,7 +168,10 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 								/>
 							</div>
 							<div :class="$style.blockBody">
-								<span v-n8n-html="renderMarkdown(message.content)"></span>
+								<span
+									v-n8n-html="renderMarkdown(message.content)"
+									:class="$style['rendered-content']"
+								></span>
 								<BlinkingCursor
 									v-if="streaming && i === messages?.length - 1 && message.title && message.content"
 								/>
@@ -179,11 +182,12 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 						<span
 							v-if="message.role === 'user'"
 							v-n8n-html="renderMarkdown(message.content)"
+							:class="$style['rendered-content']"
 						></span>
 						<div
 							v-else
 							v-n8n-html="renderMarkdown(message.content)"
-							:class="$style.assistantText"
+							:class="[$style.assistantText, $style['rendered-content']]"
 						></div>
 						<div
 							v-if="message?.codeSnippet"
@@ -202,7 +206,7 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 							</header>
 							<div
 								v-n8n-html="renderMarkdown(message.codeSnippet).trim()"
-								:class="$style['snippet-content']"
+								:class="[$style['snippet-content'], $style['rendered-content']]"
 							></div>
 						</div>
 						<BlinkingCursor
@@ -547,8 +551,9 @@ code[class^='language-'] {
 .assistantText {
 	display: inline-flex;
 	flex-direction: column;
+}
 
-	// TODO: These should be shared for all components that use markdown
+.rendered-content {
 	p {
 		margin: 0;
 		margin: var(--spacing-4xs) 0;
