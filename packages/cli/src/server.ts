@@ -1,5 +1,4 @@
 import type { FrontendSettings } from '@n8n/api-types';
-import { exec as callbackExec } from 'child_process';
 import cookieParser from 'cookie-parser';
 import express from 'express';
 import { access as fsAccess } from 'fs/promises';
@@ -7,7 +6,6 @@ import helmet from 'helmet';
 import { InstanceSettings } from 'n8n-core';
 import { resolve } from 'path';
 import { Container, Service } from 'typedi';
-import { promisify } from 'util';
 
 import { AbstractServer } from '@/abstract-server';
 import config from '@/config';
@@ -66,8 +64,6 @@ import '@/license/license.controller';
 import '@/workflows/workflow-history/workflow-history.controller.ee';
 import '@/workflows/workflows.controller';
 import { EventService } from './events/event.service';
-
-const exec = promisify(callbackExec);
 
 @Service()
 export class Server extends AbstractServer {
@@ -174,9 +170,6 @@ export class Server extends AbstractServer {
 		const { frontendService } = this;
 		if (frontendService) {
 			frontendService.addToSettings({
-				isNpmAvailable: await exec('npm --version')
-					.then(() => true)
-					.catch(() => false),
 				versionCli: N8N_VERSION,
 			});
 
