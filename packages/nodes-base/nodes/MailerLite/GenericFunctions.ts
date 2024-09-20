@@ -18,24 +18,21 @@ export async function mailerliteApiRequest(
 	qs: IDataObject = {},
 	_option = {},
 ): Promise<any> {
-	const credentials = await this.getCredentials('mailerLiteApi');
-
 	const options: IRequestOptions = {
-		headers: {
-			'X-MailerLite-ApiKey': credentials.apiKey,
-		},
 		method,
 		body,
 		qs,
-		uri: `https://api.mailerlite.com/api/v2${path}`,
+		uri:
+			this.getNode().typeVersion === 1
+				? `https://api.mailerlite.com/api/v2${path}`
+				: `https://connect.mailerlite.com/api${path}`,
 		json: true,
 	};
 	try {
 		if (Object.keys(body as IDataObject).length === 0) {
 			delete options.body;
 		}
-		//@ts-ignore
-		return await this.helpers.request.call(this, options);
+		return await this.helpers.requestWithAuthentication.call(this, 'mailerLiteApi', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}

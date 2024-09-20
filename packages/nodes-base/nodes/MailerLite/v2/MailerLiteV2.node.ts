@@ -21,10 +21,8 @@ export class MailerLiteV2 implements INodeType {
 			...baseDescription,
 			displayName: 'MailerLite',
 			name: 'mailerLite',
-			// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
-			icon: 'file:MailerLite.svg',
 			group: ['input'],
-			version: 1,
+			version: [2],
 			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 			description: 'Consume Mailer Lite API',
 			defaults: {
