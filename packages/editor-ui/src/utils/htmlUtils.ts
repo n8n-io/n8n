@@ -1,4 +1,4 @@
-import xss, { friendlyAttrValue } from 'xss';
+import xss, { escapeAttrValue } from 'xss';
 import { ALLOWED_HTML_ATTRIBUTES, ALLOWED_HTML_TAGS } from '@/constants';
 
 /*
@@ -22,7 +22,7 @@ export function sanitizeHtml(dirtyHtml: string) {
 				if (name === 'href' && !value.match(/^https?:\/\//gm)) {
 					return '';
 				}
-				return `${name}="${friendlyAttrValue(value)}"`;
+				return `${name}="${escapeAttrValue(value)}"`;
 			}
 
 			return;
