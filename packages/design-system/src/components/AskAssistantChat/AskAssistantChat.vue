@@ -25,6 +25,7 @@ md.use(markdownLink, {
 		rel: 'noopener',
 	},
 });
+// Wrap tables in div
 md.renderer.rules.table_open = function () {
 	return '<div class="table-wrapper"><table>';
 };
@@ -71,6 +72,10 @@ const sendDisabled = computed(() => {
 
 const showPlaceholder = computed(() => {
 	return !props.messages?.length && !props.loadingMessage && !props.sessionId;
+});
+
+const isClipboardSupported = computed(() => {
+	return navigator.clipboard?.writeText;
 });
 
 function isEndOfSessionEvent(event?: ChatUI.AssistantMessage) {
@@ -194,7 +199,7 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 							:class="$style['code-snippet']"
 							data-test-id="assistant-code-snippet"
 						>
-							<header>
+							<header v-if="isClipboardSupported">
 								<n8n-button
 									type="tertiary"
 									text="true"
