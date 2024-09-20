@@ -54,6 +54,9 @@ catalogs:
     xml2js:
       specifier: 0.6.2
       version: 0.6.2
+    xss:
+      specifier: 1.0.15
+      version: 1.0.15
     zod:
       specifier: 3.23.8
       version: 3.23.8
@@ -233,6 +236,16 @@ importers:
         version: link:../packages/workflow
 
   packages/@n8n/api-types:
+    dependencies:
+      xss:
+        specifier: 'catalog:'
+        version: 1.0.15
+      zod:
+        specifier: 'catalog:'
+        version: 3.23.8
+      zod-class:
+        specifier: 0.0.15
+        version: 0.0.15(zod@3.23.8)
     devDependencies:
       n8n-workflow:
         specifier: workspace:*
@@ -938,8 +951,8 @@ importers:
         specifier: 3.0.1
         version: 3.0.1
       xss:
-        specifier: ^1.0.14
-        version: 1.0.14
+        specifier: 'catalog:'
+        version: 1.0.15
       yamljs:
         specifier: 0.3.0
         version: 0.3.0
@@ -1171,8 +1184,8 @@ importers:
         specifier: catalog:frontend
         version: 4.4.2(vue@3.4.21(typescript@5.6.2))
       xss:
-        specifier: ^1.0.14
-        version: 1.0.14
+        specifier: 'catalog:'
+        version: 1.0.15
     devDependencies:
       '@n8n/storybook':
         specifier: workspace:*
@@ -1430,8 +1443,8 @@ importers:
         specifier: ^4.1.3
         version: 4.1.3
       xss:
-        specifier: ^1.0.14
-        version: 1.0.14
+        specifier: 'catalog:'
+        version: 1.0.15
     devDependencies:
       '@faker-js/faker':
         specifier: ^8.0.2
@@ -11844,6 +11857,10 @@ packages:
     resolution: {integrity: sha512-RAH822pAdBgcNMAfWnCBU3CFZcfZ/i1eZjwFU/dsLKumyuuP3niueg2UAukXYF0E2AAoc82ZSSf9J0WQBinzHA==}
     engines: {node: '>=12.20'}
 
+  type-fest@4.26.1:
+    resolution: {integrity: sha512-yOGpmOAL7CkKe/91I5O3gPICmJNLJ1G4zFYVAsRHg7M64biSnPtRj0WNQt++bRkjYOqjWXrhnUw1utzmVErAdg==}
+    engines: {node: '>=16'}
+
   type-is@1.6.18:
     resolution: {integrity: sha512-TkRKr9sUTxEH8MdfuCSP7VizJyzRNMjj2J2do2Jr3Kym598JVdEksuzPQCnlFPW4ky9Q+iA+ma9BGm06XQBy8g==}
     engines: {node: '>= 0.6'}
@@ -12528,8 +12545,8 @@ packages:
   xregexp@2.0.0:
     resolution: {integrity: sha512-xl/50/Cf32VsGq/1R8jJE5ajH1yMCQkpmoS10QbFZWl2Oor4H0Me64Pu2yxvsRWK3m6soJbmGfzSR7BYmDcWAA==}
 
-  xss@1.0.14:
-    resolution: {integrity: sha512-og7TEJhXvn1a7kzZGQ7ETjdQVS2UfZyTlsEdDOqvQF7GoxNfY+0YLCzBy1kPdsDDx4QuNAonQPddpsn6Xl/7sw==}
+  xss@1.0.15:
+    resolution: {integrity: sha512-FVdlVVC67WOIPvfOwhoMETV72f6GbW7aOabBC3WxN/oUdoEMDyLz4OgRv5/gck2ZeNqEQu+Tb0kloovXOfpYVg==}
     engines: {node: '>= 0.10.0'}
     hasBin: true
 
@@ -12608,6 +12625,11 @@ packages:
     resolution: {integrity: sha512-D7eujBWkLa3p2sIpJA0d1pr7es+a7m0vFAnZLlCEKq/Ij2k0MLi9Br2UPxoxdYystm5K1yeBGzub0FlYUEWj2Q==}
     engines: {node: '>=8.0.0'}
     hasBin: true
+
+  zod-class@0.0.15:
+    resolution: {integrity: sha512-CD5B4e9unKPj1hiy7JOSwRV01WqbEBkFOlhws0C9s9wB0FSpECOnlKXOAkjo9tKYX2enQsXWyyOIBNPPNUHWRA==}
+    peerDependencies:
+      zod: ^3
 
   zod-to-json-schema@3.23.2:
     resolution: {integrity: sha512-uSt90Gzc/tUfyNqxnjlfBs8W6WSGpNBv0rVsNxP/BVSMHMKGdthPYff4xtCHYloJGM0CFxFsb3NbC0eqPhfImw==}
@@ -25550,6 +25572,8 @@ snapshots:
 
   type-fest@2.19.0: {}
 
+  type-fest@4.26.1: {}
+
   type-is@1.6.18:
     dependencies:
       media-typer: 0.3.0
@@ -26278,7 +26302,7 @@ snapshots:
 
   xregexp@2.0.0: {}
 
-  xss@1.0.14:
+  xss@1.0.15:
     dependencies:
       commander: 2.20.3
       cssfilter: 0.0.10
@@ -26375,6 +26399,11 @@ snapshots:
       validator: 13.7.0
     optionalDependencies:
       commander: 9.4.1
+
+  zod-class@0.0.15(zod@3.23.8):
+    dependencies:
+      type-fest: 4.26.1
+      zod: 3.23.8
 
   zod-to-json-schema@3.23.2(zod@3.23.8):
     dependencies:
