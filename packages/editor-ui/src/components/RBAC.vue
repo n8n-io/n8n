@@ -41,7 +41,7 @@ export default defineComponent({
 			const projectId = props.projectId ?? inferProjectIdFromRoute(route);
 			const resourceType = props.resourceType ?? inferResourceTypeFromRoute(route);
 			const resourceId = resourceType
-				? props.resourceId ?? inferResourceIdFromRoute(route)
+				? (props.resourceId ?? inferResourceIdFromRoute(route))
 				: undefined;
 
 			return rbacStore.hasScope(

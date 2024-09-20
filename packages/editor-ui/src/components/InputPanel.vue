@@ -417,7 +417,7 @@ export default defineComponent({
 						type="secondary"
 						hide-icon
 						:transparent="true"
-						:node-name="isActiveNodeConfig ? rootNode : currentNodeName ?? ''"
+						:node-name="isActiveNodeConfig ? rootNode : (currentNodeName ?? '')"
 						:label="$locale.baseText('ndv.input.noOutputData.executePrevious')"
 						telemetry-source="inputs"
 						data-test-id="execute-previous-node"
