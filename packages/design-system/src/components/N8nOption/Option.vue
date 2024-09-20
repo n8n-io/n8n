@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { ElOption } from 'element-plus';
 
-defineProps({
-	...ElOption.props,
-	value: { type: [String, Number], required: true },
-});
+defineProps<{
+	value: string | number;
+	label?: string;
+	disabled?: boolean;
+}>();
 </script>
 
 <template>

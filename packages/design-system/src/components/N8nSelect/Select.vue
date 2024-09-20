@@ -1,6 +1,6 @@
+<!-- eslint-disable @typescript-eslint/no-explicit-any -->
 <script setup lang="ts">
 import { ElSelect } from 'element-plus';
-import type { PropType } from 'vue';
 import { computed, ref, useAttrs } from 'vue';
 
 import type { SelectSize } from 'n8n-design-system/types';
@@ -9,50 +9,30 @@ import { isEventBindingElementAttribute } from '../../utils';
 
 type InnerSelectRef = InstanceType<typeof ElSelect>;
 
-const props = defineProps({
-	...ElSelect.props,
-	modelValue: {},
-	size: {
-		type: String as PropType<SelectSize>,
-		default: 'large',
+const props = withDefaults(
+	defineProps<{
+		modelValue?: any;
+		size?: SelectSize;
+		placeholder?: string;
+		teleported?: boolean;
+		disabled?: boolean;
+		filterable?: boolean;
+		defaultFirstOption?: boolean;
+		multiple?: boolean;
+		filterMethod?: (value?: any) => void;
+		loading?: boolean;
+		loadingText?: string;
+		popperClass?: string;
+		popperAppendToBody?: boolean;
+		limitPopperWidth?: boolean;
+		noDataText?: string;
+		reserveKeyword?: boolean;
+	}>(),
+	{
+		size: 'large',
+		teleported: true,
 	},
-	placeholder: {
-		type: String,
-	},
-	disabled: {
-		type: Boolean,
-	},
-	filterable: {
-		type: Boolean,
-	},
-	defaultFirstOption: {
-		type: Boolean,
-	},
-	multiple: {
-		type: Boolean,
-	},
-	filterMethod: {
-		type: Function,
-	},
-	loading: {
-		type: Boolean,
-	},
-	loadingText: {
-		type: String,
-	},
-	popperClass: {
-		type: String,
-	},
-	popperAppendToBody: {
-		type: Boolean,
-	},
-	limitPopperWidth: {
-		type: Boolean,
-	},
-	noDataText: {
-		type: String,
-	},
-});
+);
 
 const attrs = useAttrs();
 const innerSelect = ref<InnerSelectRef | null>(null);
@@ -98,6 +78,12 @@ const focusOnInput = () => {
 	inputRef?.focus();
 };
 
+const emit = defineEmits<{
+	'update:modelValue': [value: any];
+}>();
+
+const onUpdateModelValue = (value: any) => emit('update:modelValue', value);
+
 defineExpose({
 	focus,
 	blur,
@@ -124,6 +110,7 @@ defineExpose({
 			:size="computedSize"
 			:popper-class="popperClass"
 			:class="$style[classes]"
+			@update:model-value="onUpdateModelValue"
 		>
 			<template v-if="$slots.prefix" #prefix>
 				<slot name="prefix" />

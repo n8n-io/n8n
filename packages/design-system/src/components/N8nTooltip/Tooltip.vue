@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ElTooltip } from 'element-plus';
-import type { PropType } from 'vue';
 
 import type { IN8nButton } from 'n8n-design-system/types';
 
@@ -18,21 +17,23 @@ export type Justify =
 	| 'space-around'
 	| 'space-evenly';
 
-const props = defineProps({
-	...ElTooltip.props,
-	content: {
-		type: String,
-		default: '',
+const props = withDefaults(
+	defineProps<{
+		content?: string;
+		justifyButtons?: Justify;
+		buttons?: IN8nButton[];
+		popperClass?: string;
+		disabled?: boolean;
+		teleported?: boolean;
+	}>(),
+	{
+		content: '',
+		justifyButtons: 'flex-end',
+		buttons: () => [],
+		teleported: true,
+		disabled: false,
 	},
-	justifyButtons: {
-		type: String as PropType<Justify>,
-		default: 'flex-end',
-	},
-	buttons: {
-		type: Array as PropType<IN8nButton[]>,
-		default: () => [],
-	},
-});
+);
 
 defineOptions({
 	inheritAttrs: false,
