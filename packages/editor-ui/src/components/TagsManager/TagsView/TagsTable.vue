@@ -1,135 +1,135 @@
-<script lang="ts">
-import type { ElTable } from 'element-plus';
+<script setup lang="ts">
+import { ElTable } from 'element-plus';
 import { MAX_TAG_NAME_LENGTH } from '@/constants';
 import type { ITagRow } from '@/Interface';
-import type { PropType } from 'vue';
-import { defineComponent } from 'vue';
-import type { N8nInput } from 'n8n-design-system';
+import { onMounted, ref, watch } from 'vue';
+import { N8nInput } from 'n8n-design-system';
 import type { BaseTextKey } from '@/plugins/i18n';
 
-type TableRef = InstanceType<typeof ElTable>;
-type N8nInputRef = InstanceType<typeof N8nInput>;
+// TODO Check order, convert css to module
 
 const INPUT_TRANSITION_TIMEOUT = 350;
 const DELETE_TRANSITION_TIMEOUT = 100;
 
-export default defineComponent({
-	name: 'TagsTable',
-	props: {
-		rows: {
-			type: Array as () => ITagRow[],
-			required: true,
-		},
-		isLoading: {
-			type: Boolean,
-			required: true,
-		},
-		newName: {
-			type: String,
-			required: true,
-		},
-		isSaving: {
-			type: Boolean,
-			required: true,
-		},
-		usageColumnTitleLocaleKey: {
-			type: String as PropType<BaseTextKey>,
-			default: 'tagsTable.usage',
-		},
-	},
-	data() {
-		return {
-			maxLength: MAX_TAG_NAME_LENGTH,
-		};
-	},
-	watch: {
-		rows(newValue: ITagRow[] | undefined) {
-			if (newValue?.[0] && newValue[0].create) {
-				this.focusOnCreate();
-			}
-		},
-	},
-	mounted() {
-		if (this.rows.length === 1 && this.rows[0].create) {
-			this.focusOnInput();
+const table = ref<InstanceType<typeof ElTable> | null>(null);
+const nameInput = ref<InstanceType<typeof N8nInput> | null>(null);
+
+const maxLength = ref(MAX_TAG_NAME_LENGTH);
+
+interface Props {
+	rows: ITagRow[];
+	isLoading: boolean;
+	newName: string;
+	isSaving: boolean;
+	usageColumnTitleLocaleKey: BaseTextKey;
+}
+
+const props = withDefaults(defineProps<Props>(), {
+	usageColumnTitleLocaleKey: 'tagsTable.usage',
+});
+
+const emit = defineEmits<{
+	updateEnable: [id: string];
+	newNameChange: [name: string];
+	deleteEnable: [id: string];
+	cancelOperation: [];
+	applyOperation: [];
+}>();
+
+watch(
+	() => props.rows,
+	(newValue: ITagRow[] | undefined) => {
+		if (newValue?.[0] && newValue[0].create) {
+			focusOnCreate();
 		}
 	},
-	methods: {
-		getRowClasses: ({ row }: { row: ITagRow }): string => {
-			return row.disable ? 'disabled' : '';
-		},
+);
 
-		getSpan({ row, columnIndex }: { row: ITagRow; columnIndex: number }): number | number[] {
-			// expand text column with delete message
-			if (columnIndex === 0 && row.tag && row.delete) {
-				return [1, 2];
-			}
-			// hide usage column on delete
-			if (columnIndex === 1 && row.tag && row.delete) {
-				return [0, 0];
-			}
-
-			return 1;
-		},
-
-		enableUpdate(row: ITagRow): void {
-			if (row.tag) {
-				this.$emit('updateEnable', row.tag.id);
-				this.$emit('newNameChange', row.tag.name);
-				this.focusOnInput();
-			}
-		},
-
-		enableDelete(row: ITagRow): void {
-			if (row.tag) {
-				this.$emit('deleteEnable', row.tag.id);
-				this.focusOnDelete();
-			}
-		},
-
-		cancel(): void {
-			this.$emit('cancelOperation');
-		},
-		apply(): void {
-			this.$emit('applyOperation');
-		},
-
-		onNewNameChange(name: string): void {
-			this.$emit('newNameChange', name);
-		},
-
-		focusOnInput(): void {
-			setTimeout(() => {
-				const inputRef = this.$refs.nameInput as N8nInputRef | undefined;
-				if (inputRef?.focus) {
-					inputRef.focus();
-				}
-			}, INPUT_TRANSITION_TIMEOUT);
-		},
-
-		focusOnDelete(): void {
-			setTimeout(() => {
-				const inputRef = this.$refs.deleteHiddenInput as N8nInputRef | undefined;
-				if (inputRef?.focus) {
-					inputRef.focus();
-				}
-			}, DELETE_TRANSITION_TIMEOUT);
-		},
-
-		focusOnCreate(): void {
-			const bodyWrapperRef = (this.$refs.table as TableRef).$refs.bodyWrapper as HTMLElement;
-			if (bodyWrapperRef) {
-				bodyWrapperRef.scrollTop = 0;
-			}
-
-			this.focusOnInput();
-		},
-	},
+onMounted(() => {
+	if (props.rows.length === 1 && props.rows[0].create) {
+		focusOnInput();
+	}
 });
+
+const getRowClasses = ({ row }: { row: ITagRow }): string => {
+	return row.disable ? 'disabled' : '';
+};
+
+const getSpan = ({
+	row,
+	columnIndex,
+}: {
+	row: ITagRow;
+	columnIndex: number;
+}): { rowspan: number; colspan: number } | undefined => {
+	// expand text column with delete message
+	if (columnIndex === 0 && row.tag && row.delete) {
+		return { rowspan: 1, colspan: 2 };
+	}
+	// hide usage column on delete
+	if (columnIndex === 1 && row.tag && row.delete) {
+		return { rowspan: 0, colspan: 0 };
+	}
+
+	return { rowspan: 1, colspan: 1 };
+};
+
+const enableUpdate = (row: ITagRow): void => {
+	if (row.tag) {
+		emit('updateEnable', row.tag.id);
+		emit('newNameChange', row.tag.name);
+		focusOnInput();
+	}
+};
+
+const enableDelete = (row: ITagRow): void => {
+	if (row.tag) {
+		emit('deleteEnable', row.tag.id);
+		focusOnDelete();
+	}
+};
+
+const cancel = (): void => {
+	emit('cancelOperation');
+};
+
+const apply = (): void => {
+	emit('applyOperation');
+};
+
+const onNewNameChange = (name: string): void => {
+	emit('newNameChange', name);
+};
+
+const focusOnInput = (): void => {
+	setTimeout(() => {
+		if (nameInput.value?.focus) {
+			nameInput.value.focus();
+		}
+	}, INPUT_TRANSITION_TIMEOUT);
+};
+
+const focusOnDelete = (): void => {
+	setTimeout(() => {
+		const inputRef = nameInput.value;
+		if (inputRef?.focus) {
+			inputRef.focus();
+		}
+	}, DELETE_TRANSITION_TIMEOUT);
+};
+
+const focusOnCreate = (): void => {
+	const bodyWrapperRef = table.value?.$refs.bodyWrapper as HTMLElement;
+	if (bodyWrapperRef) {
+		bodyWrapperRef.scrollTop = 0;
+	}
+
+	focusOnInput();
+};
 </script>
 
 <template>
-	<el-table
+	<ElTable
 		ref="table"
 		v-loading="isLoading"
 		class="tags-table"
@@ -144,13 +144,13 @@ export default defineComponent({
 			<template #default="scope">
 				<div :key="scope.row.id" class="name" @keydown.stop>
 					<transition name="fade" mode="out-in">
-						<n8n-input
+						<N8nInput
 							v-if="scope.row.create || scope.row.update"
 							ref="nameInput"
 							:model-value="newName"
 							:maxlength="maxLength"
 							@update:model-value="onNewNameChange"
-						></n8n-input>
+						></N8nInput>
 						<span v-else-if="scope.row.delete">
 							<span>{{ $locale.baseText('tagsTable.areYouSureYouWantToDeleteThisTag') }}</span>
 							<input ref="deleteHiddenInput" class="hidden" />
@@ -234,7 +234,7 @@ export default defineComponent({
 				</transition>
 			</template>
 		</el-table-column>
-	</el-table>
+	</ElTable>
 </template>
 
 <style lang="scss" scoped>
