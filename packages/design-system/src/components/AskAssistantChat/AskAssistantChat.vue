@@ -18,12 +18,20 @@ const { t } = useI18n();
 
 const md = new Markdown({
 	breaks: true,
-}).use(markdownLink, {
+});
+md.use(markdownLink, {
 	attrs: {
 		target: '_blank',
 		rel: 'noopener',
 	},
 });
+md.renderer.rules.table_open = function () {
+	return '<div class="table-wrapper"><table>';
+};
+
+md.renderer.rules.table_close = function () {
+	return '</table></div>';
+};
 
 const MAX_CHAT_INPUT_HEIGHT = 100;
 
@@ -572,8 +580,18 @@ code[class^='language-'] {
 		}
 	}
 
+	:global(.table-wrapper) {
+		overflow-x: auto;
+	}
+
 	table {
 		margin: var(--spacing-4xs) 0;
+
+		th {
+			white-space: nowrap;
+			min-width: 120px;
+			width: auto;
+		}
 
 		th,
 		td {

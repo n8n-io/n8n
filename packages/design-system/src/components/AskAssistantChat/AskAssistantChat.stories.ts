@@ -291,29 +291,10 @@ RichTextMessage.args = {
 			read: true,
 		},
 		{
-			id: '29083188',
-			type: 'text',
-			role: 'assistant',
-			content: 'Did this answer solve your question?',
-			quickReplies: [
-				{
-					text: 'Yes, thanks',
-					type: 'all-good',
-					isFeedback: true,
-				},
-				{
-					text: 'No, I am still stuck',
-					type: 'still-stuck',
-					isFeedback: true,
-				},
-			],
-			read: true,
-		},
-		{
 			id: '21514129',
 			role: 'user',
 			type: 'text',
-			content: 'How do I connect my Slack account?',
+			content: 'Can you show me a message example with paragraphs, lists and links?',
 			read: true,
 		},
 		{
@@ -321,34 +302,15 @@ RichTextMessage.args = {
 			type: 'text',
 			role: 'assistant',
 			content:
-				"To connect your Slack account to n8n, follow these steps:\n\n1. Open your [Slack API Apps](https://api.slack.com/apps) page.\n2. Select **Create New App > From scratch**.\n3. Enter an **App Name**.\n4. Select the **Workspace** where you'll be developing your app.\n5. Select **Create App**.\n6. In **Basic Information**, open the **App Credentials** section.\n7. Copy the **Client ID** and **Client Secret**. Paste these into the corresponding fields in n8n.\n8. In **Basic Information > Building Apps for Slack**, select **Add features and functionality**.\n9. Select **Permissions**.\n10. In the **Redirect URLs** section, select **Add New Redirect URL**.\n11. Copy the **OAuth Callback URL** from n8n and enter it as the new Redirect URL in Slack.\n12. Select **Add**.\n13. Select **Save URLs**.\n14. In the **Scopes** section, select appropriate scopes for your app. Refer to the [Scopes](https://docs.n8n.io/integrations/builtin/credentials/slack/#scopes) for a list of scopes.\n15. After you've added scopes, go up to the **OAuth Tokens for Your Workspace** section and select **Install to Workspace**. You must be a Slack workspace admin to complete this action.\n16. Select **Allow**.\n17. At this point, you should be able to select the OAuth button in your n8n credential to connect.\n\nFor more details, you can refer to the [Slack API Quickstart](https://api.slack.com/quickstart) and the [Installing with OAuth](https://api.slack.com/authentication/oauth-v2) documentation.",
+				"Sure: \n\nTo connect your Slack account to n8n, follow these steps:\n\n1. Open your [Slack API Apps](https://api.slack.com/apps) page.\n2. Select **Create New App > From scratch**.\n3. Enter an **App Name**.\n4. Select the **Workspace** where you'll be developing your app.\n5. Select **Create App**.\n6. In **Basic Information**, open the **App Credentials** section.\n7. Copy the **Client ID** and **Client Secret**. Paste these into the corresponding fields in n8n.\n8. In **Basic Information > Building Apps for Slack**, select **Add features and functionality**.\n9. Select **Permissions**.\n10. In the **Redirect URLs** section, select **Add New Redirect URL**.\n\nFor more details, you can refer to the [Slack API Quickstart](https://api.slack.com/quickstart) and the [Installing with OAuth](https://api.slack.com/authentication/oauth-v2) documentation.",
 			codeSnippet: '',
 			read: true,
 		},
 		{
-			id: '21514129',
-			type: 'text',
-			role: 'assistant',
-			content: 'Did this answer solve your question?',
-			quickReplies: [
-				{
-					text: 'Yes, thanks',
-					type: 'all-good',
-					isFeedback: true,
-				},
-				{
-					text: 'No, I am still stuck',
-					type: 'still-stuck',
-					isFeedback: true,
-				},
-			],
-			read: true,
-		},
-		{
 			id: '86572001',
 			role: 'user',
 			type: 'text',
-			content: 'How do scopes work there?',
+			content: 'Can you show me an example of a table?',
 			read: true,
 		},
 		{
@@ -356,26 +318,22 @@ RichTextMessage.args = {
 			type: 'text',
 			role: 'assistant',
 			content:
-				"Scopes in Slack determine what permissions your app has. When you create a Slack app for your Slack credentials in n8n, you need to add the appropriate scopes to your Slack app for it to work correctly.\n\nHere's how scopes work:\n\n1. **User Token Scopes**: These scopes allow your app to act on behalf of users who authorize the app.\n2. **Bot Token Scopes**: These scopes are for building a bot.\n\nHere are some common scopes you might need:\n\n| **Scope name** | **Notes** |\n| --- | --- |\n| `channels:read` | |\n| `channels:write` | Not available as a bot token scope |\n| `chat:write` | |\n| `files:read` | |\n| `files:write` | |\n| `groups:read` | |\n| `im:read` | |\n| `mpim:read` | |\n| `reactions:read` | |\n| `reactions:write` | |\n| `stars:read`| Not available as a bot token scope |\n| `stars:write` | Not available as a bot token scope |\n| `usergroups:read` | |\n| `usergroups:write` | | \n| `users.profile:read` | |\n| `users.profile:write` | Not available as a bot token scope |\n| `users:read` | |\n\nFor more details, you can refer to the [Slack API Scopes documentation](https://api.slack.com/scopes).",
+				'Sure, here it is:\n\n| **Scope name** | **Notes** |\n| --- | --- |\n| `channels:read` | |\n| `channels:write` | Not available as a bot token scope |\n| `stars:read`| Not available as a bot token scope |\n| `stars:write` | Not available as a bot token scope |\n| `users.profile:write` | Not available as a bot token scope |\n| `users:read` | |',
+			read: true,
+		},
+		{
+			id: '86572001',
+			role: 'user',
+			type: 'text',
+			content: 'Thanks, can you send me another one with more columns?',
 			read: true,
 		},
 		{
 			id: '86572001',
 			type: 'text',
 			role: 'assistant',
-			content: 'Did this answer solve your question?',
-			quickReplies: [
-				{
-					text: 'Yes, thanks',
-					type: 'all-good',
-					isFeedback: true,
-				},
-				{
-					text: 'No, I am still stuck',
-					type: 'still-stuck',
-					isFeedback: true,
-				},
-			],
+			content:
+				'Yup:\n\n| **Scope name** | **Notes** | **One More Column** |\n| --- | --- | --- |\n| `channels:read` | | Something else |\n| `channels:write` | Not available as a bot token scope | Something else |\n| `stars:read`| Not available as a bot token scope |\n| `stars:write` | Not available as a bot token scope |\n| `users.profile:write` | Not available as a bot token scope |\n| `users:read` | |',
 			read: true,
 		},
 		{
