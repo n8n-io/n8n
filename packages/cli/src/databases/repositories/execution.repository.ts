@@ -728,6 +728,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		mode: true,
 		retryOf: true,
 		status: true,
+		createdAt: true,
 		startedAt: true,
 		stoppedAt: true,
 	};
@@ -813,6 +814,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	// @tech_debt: These transformations should not be needed
 	private toSummary(execution: {
 		id: number | string;
+		createdAt: Date | string;
 		startedAt?: Date | string;
 		stoppedAt?: Date | string;
 		waitTill?: Date | string | null;
@@ -823,6 +825,13 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			if (date.includes(' ')) return date.replace(' ', 'T') + 'Z';
 			return date;
 		};
+
+		if (execution.createdAt) {
+			execution.createdAt =
+				execution.createdAt instanceof Date
+					? execution.createdAt.toISOString()
+					: normalizeDateString(execution.createdAt);
+		}
 
 		if (execution.startedAt) {
 			execution.startedAt =

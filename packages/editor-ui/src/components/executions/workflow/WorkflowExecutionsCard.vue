@@ -11,6 +11,7 @@ import { useI18n } from '@/composables/useI18n';
 import type { PermissionsRecord } from '@/permissions';
 import { usePostHog } from '@/stores/posthog.store';
 import { useSettingsStore } from '@/stores/settings.store';
+import { toDayMonth, toTime } from '@/utils/formatters/dateFormatter';
 
 const props = defineProps<{
 	execution: ExecutionSummary;
@@ -87,7 +88,17 @@ function onRetryMenuItemSelect(action: string): void {
 			:data-test-execution-status="executionUIDetails.name"
 		>
 			<div :class="$style.description">
-				<N8nText color="text-dark" :bold="true" size="medium" data-test-id="execution-time">
+				<N8nText
+					v-if="executionUIDetails.name === 'new'"
+					color="text-dark"
+					:bold="true"
+					size="medium"
+					data-test-id="execution-time"
+				>
+					{{ toDayMonth(executionUIDetails.createdAt) }} -
+					{{ locale.baseText('executionDetails.startingSoon') }}
+				</N8nText>
+				<N8nText v-else color="text-dark" :bold="true" size="medium" data-test-id="execution-time">
 					{{ executionUIDetails.startTime }}
 				</N8nText>
 				<div :class="$style.executionStatus">
@@ -105,6 +116,15 @@ function onRetryMenuItemSelect(action: string): void {
 					>
 						{{ locale.baseText('executionDetails.runningTimeRunning') }}
 						<ExecutionsTime :start-time="execution.startedAt" />
+					</N8nText>
+					<N8nText
+						v-if="executionUIDetails.name === 'new'"
+						:color="isActive ? 'text-dark' : 'text-base'"
+						size="small"
+					>
+						<span
+							>{{ locale.baseText('executionDetails.at') }} {{ toTime(execution.createdAt) }}</span
+						>
 					</N8nText>
 					<N8nText
 						v-else-if="executionUIDetails.runningTime !== ''"
@@ -219,7 +239,7 @@ function onRetryMenuItemSelect(action: string): void {
 			border-left: var(--spacing-4xs) var(--border-style-base) var(--execution-card-border-new);
 		}
 		.statusLabel {
-			color: var(--color-text-dark);
+			color: var(--color-secondary);
 		}
 	}
 
