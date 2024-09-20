@@ -1,6 +1,4 @@
-<script lang="ts">
-import { defineComponent } from 'vue';
-import { mapStores } from 'pinia';
+<script setup lang="ts">
 import { createEventBus } from 'n8n-design-system/utils';
 import Modal from '@/components/Modal.vue';
 import {
@@ -11,90 +9,80 @@ import {
 } from '@/constants';
 import { useToast } from '@/composables/useToast';
 import { useCommunityNodesStore } from '@/stores/communityNodes.store';
+import { ref } from 'vue';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { useI18n } from '@/composables/useI18n';
 
-export default defineComponent({
-	name: 'CommunityPackageInstallModal',
-	components: {
-		Modal,
-	},
-	setup() {
-		return {
-			...useToast(),
-		};
-	},
-	data() {
-		return {
-			loading: false,
-			packageName: '',
-			userAgreed: false,
-			modalBus: createEventBus(),
-			checkboxWarning: false,
-			infoTextErrorMessage: '',
-			COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
-			NPM_KEYWORD_SEARCH_URL,
-			COMMUNITY_NODES_INSTALLATION_DOCS_URL,
-			COMMUNITY_NODES_RISKS_DOCS_URL,
-		};
-	},
-	computed: {
-		...mapStores(useCommunityNodesStore),
-	},
-	methods: {
-		openNPMPage() {
-			this.$telemetry.track('user clicked cnr browse button', { source: 'cnr install modal' });
-			window.open(NPM_KEYWORD_SEARCH_URL, '_blank');
-		},
-		async onInstallClick() {
-			if (!this.userAgreed) {
-				this.checkboxWarning = true;
-			} else {
-				try {
-					this.$telemetry.track('user started cnr package install', {
-						input_string: this.packageName,
-						source: 'cnr settings page',
-					});
-					this.infoTextErrorMessage = '';
-					this.loading = true;
-					await this.communityNodesStore.installPackage(this.packageName);
-					this.loading = false;
-					this.modalBus.emit('close');
-					this.showMessage({
-						title: this.$locale.baseText('settings.communityNodes.messages.install.success'),
-						type: 'success',
-					});
-				} catch (error) {
-					if (error.httpStatusCode && error.httpStatusCode === 400) {
-						this.infoTextErrorMessage = error.message;
-					} else {
-						this.showError(
-							error,
-							this.$locale.baseText('settings.communityNodes.messages.install.error'),
-						);
-					}
-				} finally {
-					this.loading = false;
-				}
-			}
-		},
-		onCheckboxChecked() {
-			this.checkboxWarning = false;
-		},
-		onModalClose() {
-			return !this.loading;
-		},
-		onInputBlur() {
-			this.packageName = this.packageName.replaceAll('npm i ', '').replaceAll('npm install ', '');
-		},
-		onMoreInfoTopClick() {
-			this.$telemetry.track('user clicked cnr docs link', { source: 'install package modal top' });
-		},
-		onLearnMoreLinkClick() {
-			this.$telemetry.track('user clicked cnr docs link', {
-				source: 'install package modal bottom',
+const communityNodesStore = useCommunityNodesStore();
+
+const toast = useToast();
+const telemetry = useTelemetry();
+const locale = useI18n();
+
+const modalBus = createEventBus();
+
+const loading = ref(false);
+const packageName = ref('');
+const userAgreed = ref(false);
+const checkboxWarning = ref(false);
+const infoTextErrorMessage = ref('');
+
+const openNPMPage = () => {
+	telemetry.track('user clicked cnr browse button', { source: 'cnr install modal' });
+	window.open(NPM_KEYWORD_SEARCH_URL, '_blank');
+};
+
+const onInstallClick = async () => {
+	if (!userAgreed.value) {
+		checkboxWarning.value = true;
+	} else {
+		try {
+			telemetry.track('user started cnr package install', {
+				input_string: packageName.value,
+				source: 'cnr settings page',
 			});
-		},
-	},
-});
+			infoTextErrorMessage.value = '';
+			loading.value = true;
+			await communityNodesStore.installPackage(packageName.value);
+			loading.value = false;
+			modalBus.emit('close');
+			toast.showMessage({
+				title: locale.baseText('settings.communityNodes.messages.install.success'),
+				type: 'success',
+			});
+		} catch (error) {
+			if (error.httpStatusCode && error.httpStatusCode === 400) {
+				infoTextErrorMessage.value = error.message;
+			} else {
+				toast.showError(error, locale.baseText('settings.communityNodes.messages.install.error'));
+			}
+		} finally {
+			loading.value = false;
+		}
+	}
+};
+
+const onCheckboxChecked = () => {
+	checkboxWarning.value = false;
+};
+
+const onModalClose = () => {
+	return !loading.value;
+};
+
+const onInputBlur = () => {
+	packageName.value = packageName.value.replaceAll('npm i ', '').replaceAll('npm install ', '');
+};
+
+const onMoreInfoTopClick = () => {
+	telemetry.track('user clicked cnr docs link', { source: 'install package modal top' });
+};
+
+const onLearnMoreLinkClick = () => {
+	telemetry.track('user clicked cnr docs link', {
+		source: 'install package modal bottom',
+	});
+};
 </script>
 
 <template>
