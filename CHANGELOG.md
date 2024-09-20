@@ -1,3 +1,14 @@
+## [1.60.1](https://github.com/n8n-io/n8n/compare/n8n@1.60.0...n8n@1.60.1) (2024-09-20)
+
+
+### Bug Fixes
+
+* **core:** Fix webhook binary data max size configuration ([#10897](https://github.com/n8n-io/n8n/issues/10897)) ([2a482b8](https://github.com/n8n-io/n8n/commit/2a482b89a2297ac90b6c191c75b3158e464fadaf))
+* **editor:** Prevent clipboard xss injection ([#10894](https://github.com/n8n-io/n8n/issues/10894)) ([b1cff1f](https://github.com/n8n-io/n8n/commit/b1cff1f9b15eef3334062305ae98e76ad88581ac))
+* **editor:** Update gird size when opening credentials support chat ([#10882](https://github.com/n8n-io/n8n/issues/10882)) ([3c36bcb](https://github.com/n8n-io/n8n/commit/3c36bcbb2d637110fa7bfd718d97ceb2db18f1dd))
+
+
+
 # [1.60.0](https://github.com/n8n-io/n8n/compare/n8n@1.59.0...n8n@1.60.0) (2024-09-18)
 
 
