@@ -1,6 +1,6 @@
-import { UserUpdateRequestDTO } from '../user-update-request.dto';
+import { UserUpdateRequestDto } from '../user-update-request.dto';
 
-describe('UserUpdateRequestDTO', () => {
+describe('UserUpdateRequestDto', () => {
 	it('should fail validation for an invalid email', () => {
 		const invalidRequest = {
 			email: 'invalid-email',
@@ -9,7 +9,7 @@ describe('UserUpdateRequestDTO', () => {
 			mfaCode: '123456',
 		};
 
-		const result = UserUpdateRequestDTO.safeParse(invalidRequest);
+		const result = UserUpdateRequestDto.safeParse(invalidRequest);
 
 		expect(result.success).toBe(false);
 		expect(result.error?.issues[0].path).toEqual(['email']);
@@ -23,7 +23,7 @@ describe('UserUpdateRequestDTO', () => {
 			mfaCode: '123456',
 		};
 
-		const result = UserUpdateRequestDTO.safeParse(invalidRequest);
+		const result = UserUpdateRequestDto.safeParse(invalidRequest);
 
 		expect(result.success).toBe(false);
 		expect(result.error?.issues[0].path).toEqual(['firstName']);
@@ -37,7 +37,7 @@ describe('UserUpdateRequestDTO', () => {
 			mfaCode: '123456',
 		};
 
-		const result = UserUpdateRequestDTO.safeParse(invalidRequest);
+		const result = UserUpdateRequestDto.safeParse(invalidRequest);
 
 		expect(result.success).toBe(false);
 		expect(result.error?.issues[0].path).toEqual(['firstName']);
@@ -51,7 +51,7 @@ describe('UserUpdateRequestDTO', () => {
 			mfaCode: '123456',
 		};
 
-		const result = UserUpdateRequestDTO.safeParse(invalidRequest);
+		const result = UserUpdateRequestDto.safeParse(invalidRequest);
 
 		expect(result.success).toBe(false);
 		expect(result.error?.issues[0].path).toEqual(['lastName']);
@@ -65,7 +65,7 @@ describe('UserUpdateRequestDTO', () => {
 			mfaCode: '123456',
 		};
 
-		const result = UserUpdateRequestDTO.safeParse(invalidRequest);
+		const result = UserUpdateRequestDto.safeParse(invalidRequest);
 
 		expect(result.success).toBe(false);
 		expect(result.error?.issues[0].path).toEqual(['lastName']);
@@ -79,7 +79,7 @@ describe('UserUpdateRequestDTO', () => {
 			mfaCode: '123456',
 		};
 
-		const result = UserUpdateRequestDTO.safeParse(validRequest);
+		const result = UserUpdateRequestDto.safeParse(validRequest);
 
 		expect(result.success).toBe(true);
 	});

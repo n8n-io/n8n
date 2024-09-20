@@ -1,12 +1,12 @@
-import { SettingsUpdateRequestDTO } from '../settings-update-request.dto';
+import { SettingsUpdateRequestDto } from '../settings-update-request.dto';
 
-describe('SettingsUpdateRequestDTO', () => {
+describe('SettingsUpdateRequestDto', () => {
 	it('should pass validation with missing userActivated', () => {
 		const data = {
 			allowSSOManualLogin: false,
 		};
 
-		const result = SettingsUpdateRequestDTO.safeParse(data);
+		const result = SettingsUpdateRequestDto.safeParse(data);
 
 		expect(result.success).toBe(true);
 	});
@@ -16,7 +16,7 @@ describe('SettingsUpdateRequestDTO', () => {
 			userActivated: true,
 		};
 
-		const result = SettingsUpdateRequestDTO.safeParse(data);
+		const result = SettingsUpdateRequestDto.safeParse(data);
 
 		expect(result.success).toBe(true);
 	});
@@ -24,7 +24,7 @@ describe('SettingsUpdateRequestDTO', () => {
 	it('should pass validation with missing userActivated and allowSSOManualLogin', () => {
 		const data = {};
 
-		const result = SettingsUpdateRequestDTO.safeParse(data);
+		const result = SettingsUpdateRequestDto.safeParse(data);
 
 		expect(result.success).toBe(true);
 	});
@@ -35,7 +35,7 @@ describe('SettingsUpdateRequestDTO', () => {
 			allowSSOManualLogin: false,
 		};
 
-		const result = SettingsUpdateRequestDTO.safeParse(data);
+		const result = SettingsUpdateRequestDto.safeParse(data);
 
 		expect(result.success).toBe(false);
 		expect(result.error?.issues[0].path[0]).toBe('userActivated');
@@ -48,7 +48,7 @@ describe('SettingsUpdateRequestDTO', () => {
 			allowSSOManualLogin: 'invalid',
 		};
 
-		const result = SettingsUpdateRequestDTO.safeParse(data);
+		const result = SettingsUpdateRequestDto.safeParse(data);
 
 		expect(result.success).toBe(false);
 		expect(result.error?.issues[0].path[0]).toBe('allowSSOManualLogin');
@@ -61,7 +61,7 @@ describe('SettingsUpdateRequestDTO', () => {
 			allowSSOManualLogin: false,
 		};
 
-		const result = SettingsUpdateRequestDTO.safeParse(data);
+		const result = SettingsUpdateRequestDto.safeParse(data);
 
 		expect(result.success).toBe(true);
 	});

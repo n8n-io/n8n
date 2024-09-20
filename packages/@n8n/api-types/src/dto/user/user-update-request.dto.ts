@@ -23,7 +23,7 @@ const nameSchema = () =>
 			message: 'Potentially malicious string',
 		});
 
-export class UserUpdateRequestDTO extends Z.class({
+export class UserUpdateRequestDto extends Z.class({
 	email: z.string().email(),
 	firstName: nameSchema().optional(),
 	lastName: nameSchema().optional(),

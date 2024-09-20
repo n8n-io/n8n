@@ -1,4 +1,4 @@
-import { RoleChangeRequestDTO } from '@n8n/api-types';
+import { RoleChangeRequestDto } from '@n8n/api-types';
 import type express from 'express';
 import type { Response } from 'express';
 import { Container } from 'typedi';
@@ -20,7 +20,7 @@ import { encodeNextCursor } from '../../shared/services/pagination.service';
 
 type Create = UserRequest.Invite;
 type Delete = UserRequest.Delete;
-type ChangeRole = AuthenticatedRequest<{ id: string }, {}, RoleChangeRequestDTO, {}>;
+type ChangeRole = AuthenticatedRequest<{ id: string }, {}, RoleChangeRequestDto, {}>;
 
 export = {
 	getUser: [
@@ -99,7 +99,7 @@ export = {
 		isLicensed('feat:advancedPermissions'),
 		globalScope('user:changeRole'),
 		async (req: ChangeRole, res: Response) => {
-			const validation = RoleChangeRequestDTO.safeParse(req.body);
+			const validation = RoleChangeRequestDto.safeParse(req.body);
 			if (validation.error) {
 				return res.status(400).json({
 					message: validation.error.errors[0],

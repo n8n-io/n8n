@@ -1,7 +1,7 @@
 import type {
-	PasswordUpdateRequestDTO,
-	SettingsUpdateRequestDTO,
-	UserUpdateRequestDTO,
+	PasswordUpdateRequestDto,
+	SettingsUpdateRequestDto,
+	UserUpdateRequestDto,
 } from '@n8n/api-types';
 import type {
 	CurrentUserResponse,
@@ -91,14 +91,14 @@ export async function changePassword(
 
 export async function updateCurrentUser(
 	context: IRestApiContext,
-	params: UserUpdateRequestDTO,
+	params: UserUpdateRequestDto,
 ): Promise<IUserResponse> {
 	return await makeRestApiRequest(context, 'PATCH', '/me', params);
 }
 
 export async function updateCurrentUserSettings(
 	context: IRestApiContext,
-	settings: SettingsUpdateRequestDTO,
+	settings: SettingsUpdateRequestDto,
 ): Promise<IUserSettings> {
 	return await makeRestApiRequest(context, 'PATCH', '/me/settings', settings);
 }
@@ -106,14 +106,14 @@ export async function updateCurrentUserSettings(
 export async function updateOtherUserSettings(
 	context: IRestApiContext,
 	userId: string,
-	settings: SettingsUpdateRequestDTO,
+	settings: SettingsUpdateRequestDto,
 ): Promise<IUserSettings> {
 	return await makeRestApiRequest(context, 'PATCH', `/users/${userId}/settings`, settings);
 }
 
 export async function updateCurrentUserPassword(
 	context: IRestApiContext,
-	params: PasswordUpdateRequestDTO,
+	params: PasswordUpdateRequestDto,
 ): Promise<void> {
 	return await makeRestApiRequest(context, 'PATCH', '/me/password', params);
 }

@@ -1,10 +1,10 @@
-import { RoleChangeRequestDTO } from '../role-change-request.dto';
+import { RoleChangeRequestDto } from '../role-change-request.dto';
 
-describe('RoleChangeRequestDTO', () => {
+describe('RoleChangeRequestDto', () => {
 	it('should fail validation with missing newRoleName', () => {
 		const data = {};
 
-		const result = RoleChangeRequestDTO.safeParse(data);
+		const result = RoleChangeRequestDto.safeParse(data);
 
 		expect(result.success).toBe(false);
 		expect(result.error?.issues[0].path[0]).toBe('newRoleName');
@@ -16,7 +16,7 @@ describe('RoleChangeRequestDTO', () => {
 			newRoleName: 'invalidRole',
 		};
 
-		const result = RoleChangeRequestDTO.safeParse(data);
+		const result = RoleChangeRequestDto.safeParse(data);
 
 		expect(result.success).toBe(false);
 		expect(result.error?.issues[0].path[0]).toBe('newRoleName');
@@ -30,7 +30,7 @@ describe('RoleChangeRequestDTO', () => {
 			newRoleName: 'global:admin',
 		};
 
-		const result = RoleChangeRequestDTO.safeParse(data);
+		const result = RoleChangeRequestDto.safeParse(data);
 
 		expect(result.success).toBe(true);
 	});

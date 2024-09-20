@@ -1,4 +1,4 @@
-export { PasswordUpdateRequestDTO } from './user/password-update-request.dto';
-export { RoleChangeRequestDTO } from './user/role-change-request.dto';
-export { SettingsUpdateRequestDTO } from './user/settings-update-request.dto';
-export { UserUpdateRequestDTO } from './user/user-update-request.dto';
+export { PasswordUpdateRequestDto } from './user/password-update-request.dto';
+export { RoleChangeRequestDto } from './user/role-change-request.dto';
+export { SettingsUpdateRequestDto } from './user/settings-update-request.dto';
+export { UserUpdateRequestDto } from './user/user-update-request.dto';

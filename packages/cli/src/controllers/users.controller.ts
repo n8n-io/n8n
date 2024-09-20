@@ -1,4 +1,4 @@
-import { RoleChangeRequestDTO, SettingsUpdateRequestDTO } from '@n8n/api-types';
+import { RoleChangeRequestDto, SettingsUpdateRequestDto } from '@n8n/api-types';
 import { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
@@ -123,7 +123,7 @@ export class UsersController {
 	async updateUserSettings(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Body payload: SettingsUpdateRequestDTO,
+		@Body payload: SettingsUpdateRequestDto,
 		@Param('id') id: string,
 	) {
 		await this.userService.updateSettings(id, payload);
@@ -261,7 +261,7 @@ export class UsersController {
 	async changeGlobalRole(
 		req: AuthenticatedRequest,
 		_: Response,
-		@Body payload: RoleChangeRequestDTO,
+		@Body payload: RoleChangeRequestDto,
 		@Param('id') id: string,
 	) {
 		const { NO_ADMIN_ON_OWNER, NO_USER, NO_OWNER_ON_OWNER } =

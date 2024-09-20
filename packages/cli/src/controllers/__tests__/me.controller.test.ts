@@ -1,4 +1,4 @@
-import { UserUpdateRequestDTO } from '@n8n/api-types';
+import { UserUpdateRequestDto } from '@n8n/api-types';
 import type { Response } from 'express';
 import { mock, anyObject } from 'jest-mock-extended';
 import jwt from 'jsonwebtoken';
@@ -45,7 +45,7 @@ describe('MeController', () => {
 				role: 'global:owner',
 				mfaEnabled: false,
 			});
-			const payload = new UserUpdateRequestDTO({
+			const payload = new UserUpdateRequestDto({
 				email: 'valid@email.com',
 				firstName: 'John',
 				lastName: 'Potato',
@@ -128,7 +128,7 @@ describe('MeController', () => {
 					controller.updateCurrentUser(
 						req,
 						mock(),
-						new UserUpdateRequestDTO({
+						new UserUpdateRequestDto({
 							email: 'new@email.com',
 							firstName: 'John',
 							lastName: 'Potato',

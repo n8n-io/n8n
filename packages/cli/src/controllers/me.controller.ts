@@ -1,7 +1,7 @@
 import {
-	PasswordUpdateRequestDTO,
-	SettingsUpdateRequestDTO,
-	UserUpdateRequestDTO,
+	PasswordUpdateRequestDto,
+	SettingsUpdateRequestDto,
+	UserUpdateRequestDto,
 } from '@n8n/api-types';
 import { plainToInstance } from 'class-transformer';
 import { randomBytes } from 'crypto';
@@ -57,7 +57,7 @@ export class MeController {
 	async updateCurrentUser(
 		req: AuthenticatedRequest,
 		res: Response,
-		@Body payload: UserUpdateRequestDTO,
+		@Body payload: UserUpdateRequestDto,
 	): Promise<PublicUser> {
 		const { id: userId, email: currentEmail, mfaEnabled } = req.user;
 
@@ -120,7 +120,7 @@ export class MeController {
 	async updatePassword(
 		req: AuthenticatedRequest,
 		res: Response,
-		@Body payload: PasswordUpdateRequestDTO,
+		@Body payload: PasswordUpdateRequestDto,
 	) {
 		const { user } = req;
 		const { currentPassword, newPassword, mfaCode } = payload;
@@ -260,7 +260,7 @@ export class MeController {
 	async updateCurrentUserSettings(
 		req: AuthenticatedRequest,
 		_: Response,
-		@Body payload: SettingsUpdateRequestDTO,
+		@Body payload: SettingsUpdateRequestDto,
 	): Promise<User['settings']> {
 		const { id } = req.user;
 

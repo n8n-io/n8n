@@ -1,13 +1,13 @@
-import { PasswordUpdateRequestDTO } from '../password-update-request.dto';
+import { PasswordUpdateRequestDto } from '../password-update-request.dto';
 
-describe('PasswordUpdateRequestDTO', () => {
+describe('PasswordUpdateRequestDto', () => {
 	it('should fail validation with missing currentPassword', () => {
 		const data = {
 			newPassword: 'newPassword123',
 			mfaCode: '123456',
 		};
 
-		const result = PasswordUpdateRequestDTO.safeParse(data);
+		const result = PasswordUpdateRequestDto.safeParse(data);
 
 		expect(result.success).toBe(false);
 		expect(result.error?.issues[0].path[0]).toBe('currentPassword');
@@ -19,7 +19,7 @@ describe('PasswordUpdateRequestDTO', () => {
 			mfaCode: '123456',
 		};
 
-		const result = PasswordUpdateRequestDTO.safeParse(data);
+		const result = PasswordUpdateRequestDto.safeParse(data);
 
 		expect(result.success).toBe(false);
 		expect(result.error?.issues[0].path[0]).toBe('newPassword');
@@ -31,7 +31,7 @@ describe('PasswordUpdateRequestDTO', () => {
 			newPassword: 'newPassword123',
 		};
 
-		const result = PasswordUpdateRequestDTO.safeParse(data);
+		const result = PasswordUpdateRequestDto.safeParse(data);
 
 		expect(result.success).toBe(true);
 	});
@@ -43,7 +43,7 @@ describe('PasswordUpdateRequestDTO', () => {
 			mfaCode: '123456',
 		};
 
-		const result = PasswordUpdateRequestDTO.safeParse(data);
+		const result = PasswordUpdateRequestDto.safeParse(data);
 
 		expect(result.success).toBe(true);
 	});
