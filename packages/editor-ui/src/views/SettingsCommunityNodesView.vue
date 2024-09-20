@@ -2,7 +2,6 @@
 import {
 	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
 	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
-	COMMUNITY_NODES_NPM_INSTALLATION_URL,
 } from '@/constants';
 import CommunityPackageCard from '@/components/CommunityPackageCard.vue';
 import { useToast } from '@/composables/useToast';
@@ -10,7 +9,6 @@ import type { PublicInstalledPackage } from 'n8n-workflow';
 
 import { useCommunityNodesStore } from '@/stores/communityNodes.store';
 import { useUIStore } from '@/stores/ui.store';
-import { useSettingsStore } from '@/stores/settings.store';
 import { onBeforeUnmount, ref } from 'vue';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useRouter } from 'vue-router';
@@ -35,7 +33,6 @@ const telemetry = useTelemetry();
 const toast = useToast();
 
 const communityNodesStore = useCommunityNodesStore();
-const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 
 const getEmptyStateDescription = computed(() => {
@@ -55,27 +52,11 @@ const getEmptyStateDescription = computed(() => {
 			});
 });
 
-const shouldShowInstallButton = computed(() => {
-	return settingsStore.isNpmAvailable;
-});
-
-const getEmptyStateButtonText = computed(() => {
-	return shouldShowInstallButton.value
-		? i18n.baseText('settings.communityNodes.empty.installPackageLabel')
-		: '';
-});
+const getEmptyStateButtonText = computed(() =>
+	i18n.baseText('settings.communityNodes.empty.installPackageLabel'),
+);
 
 const actionBoxConfig = computed(() => {
-	if (!settingsStore.isNpmAvailable) {
-		return {
-			calloutText: i18n.baseText('settings.communityNodes.npmUnavailable.warning', {
-				interpolate: { npmUrl: COMMUNITY_NODES_NPM_INSTALLATION_URL },
-			}),
-			calloutTheme: 'warning',
-			hideButton: true,
-		};
-	}
-
 	return {
 		calloutText: '',
 		calloutTheme: '',
