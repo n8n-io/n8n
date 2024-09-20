@@ -6,16 +6,6 @@ import { onMounted, ref, watch } from 'vue';
 import { N8nInput } from 'n8n-design-system';
 import type { BaseTextKey } from '@/plugins/i18n';
 
-// TODO Check order
-
-const INPUT_TRANSITION_TIMEOUT = 350;
-const DELETE_TRANSITION_TIMEOUT = 100;
-
-const table = ref<InstanceType<typeof ElTable> | null>(null);
-const nameInput = ref<InstanceType<typeof N8nInput> | null>(null);
-
-const maxLength = ref(MAX_TAG_NAME_LENGTH);
-
 interface Props {
 	rows: ITagRow[];
 	isLoading: boolean;
@@ -36,20 +26,15 @@ const emit = defineEmits<{
 	applyOperation: [];
 }>();
 
-watch(
-	() => props.rows,
-	(newValue: ITagRow[] | undefined) => {
-		if (newValue?.[0] && newValue[0].create) {
-			focusOnCreate();
-		}
-	},
-);
+const INPUT_TRANSITION_TIMEOUT = 350;
+const DELETE_TRANSITION_TIMEOUT = 100;
 
-onMounted(() => {
-	if (props.rows.length === 1 && props.rows[0].create) {
-		focusOnInput();
-	}
-});
+const table = ref<InstanceType<typeof ElTable> | null>(null);
+// ESLint: false positive, this is not a redundant type
+// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
+const nameInput = ref<InstanceType<typeof N8nInput> | null>(null);
+
+const maxLength = ref(MAX_TAG_NAME_LENGTH);
 
 const getRowClasses = ({ row }: { row: ITagRow }): string => {
 	return row.disable ? 'disabled' : '';
@@ -126,6 +111,21 @@ const focusOnCreate = (): void => {
 
 	focusOnInput();
 };
+
+watch(
+	() => props.rows,
+	(newValue: ITagRow[] | undefined) => {
+		if (newValue?.[0] && newValue[0].create) {
+			focusOnCreate();
+		}
+	},
+);
+
+onMounted(() => {
+	if (props.rows.length === 1 && props.rows[0].create) {
+		focusOnInput();
+	}
+});
 </script>
 
 <template>
