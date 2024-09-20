@@ -688,6 +688,10 @@ function openContextMenu(event: MouseEvent, source: 'node-button' | 'node-right-
 					<FontAwesomeIcon icon="sync-alt" spin />
 				</div>
 
+				<div v-if="waiting" class="node-waiting-spinner" :title="waiting">
+					<FontAwesomeIcon icon="sync-alt" spin />
+				</div>
+
 				<div class="node-trigger-tooltip__wrapper">
 					<n8n-tooltip
 						placement="top"
@@ -924,6 +928,20 @@ function openContextMenu(event: MouseEvent, source: 'node-button' | 'node-right-
 			line-height: 1.65em;
 			text-align: center;
 			color: hsla(var(--color-primary-h), var(--color-primary-s), var(--color-primary-l), 0.7);
+		}
+
+		.node-waiting-spinner {
+			display: inline-block;
+			position: absolute;
+			left: 0px;
+			top: 0px;
+			z-index: 12;
+			width: 100%;
+			height: 100%;
+			font-size: 3.75em;
+			line-height: 1.65em;
+			text-align: center;
+			color: var(--color-secondary);
 		}
 
 		.node-icon {
