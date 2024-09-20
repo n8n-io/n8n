@@ -14,7 +14,7 @@ import type { PubSubHandlerFn, PubSubChannel } from './pubsub.types';
 export class Subscriber {
 	private readonly client: SingleNodeClient | MultiNodeClient;
 
-	private readonly handlerFns: Map<PubSubChannel, PubSubHandlerFn> = new Map();
+	private readonly handlers: Map<PubSubChannel, PubSubHandlerFn> = new Map();
 
 	// #region Lifecycle
 
@@ -30,7 +30,7 @@ export class Subscriber {
 		this.client.on('error', (error) => this.logger.error(error.message));
 
 		this.client.on('message', (channel: PubSubChannel, message) => {
-			this.handlerFns.get(channel)?.(message);
+			this.handlers.get(channel)?.(message);
 		});
 	}
 
@@ -60,7 +60,7 @@ export class Subscriber {
 
 	/** Set the message handler function for a channel. */
 	setMessageHandler(channel: PubSubChannel, handlerFn: PubSubHandlerFn) {
-		this.handlerFns.set(channel, handlerFn);
+		this.handlers.set(channel, handlerFn);
 	}
 
 	// #endregion

@@ -57,7 +57,7 @@ describe('Subscriber', () => {
 			subscriber.setMessageHandler(channel, handlerFn);
 
 			// @ts-expect-error Private field
-			expect(subscriber.handlerFns).toEqual(new Map([[channel, handlerFn]]));
+			expect(subscriber.handlers).toEqual(new Map([[channel, handlerFn]]));
 		});
 	});
 });
