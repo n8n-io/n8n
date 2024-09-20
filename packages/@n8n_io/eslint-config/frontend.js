@@ -25,7 +25,6 @@ module.exports = {
 		},
 		{
 			files: ['**/*.vue'],
-			plugins: isCI ? [] : ['eslint-plugin-prettier'],
 			rules: {
 				'vue/no-deprecated-slot-attribute': 'error',
 				'vue/no-deprecated-slot-scope-attribute': 'error',
@@ -67,14 +66,6 @@ module.exports = {
 					},
 				],
 				'vue/no-v-html': 'error',
-
-				...(isCI
-					? {}
-					: {
-							'prettier/prettier': ['error', { endOfLine: 'auto' }],
-							'arrow-body-style': 'off',
-							'prefer-arrow-callback': 'off',
-						}),
 
 				// TODO: remove these
 				'vue/no-mutating-props': 'warn',

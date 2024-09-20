@@ -87,7 +87,7 @@ const valueToDisplay = computed<NodeParameterValue>(() => {
 	}
 
 	if (isListMode.value) {
-		return props.modelValue ? props.modelValue.cachedResultName ?? props.modelValue.value : '';
+		return props.modelValue ? (props.modelValue.cachedResultName ?? props.modelValue.value) : '';
 	}
 
 	return props.modelValue ? props.modelValue.value : '';

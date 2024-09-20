@@ -95,7 +95,7 @@ export default defineComponent({
 		},
 		async getDestinationDataFromBackend(): Promise<void> {
 			this.logStreamingStore.clearEventNames();
-			this.logStreamingStore.clearDestinationItemTrees();
+			this.logStreamingStore.clearDestinations();
 			this.allDestinations = [];
 			const eventNamesData = await this.logStreamingStore.fetchEventNames();
 			if (eventNamesData) {

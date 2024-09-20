@@ -77,7 +77,7 @@ const onDrag = (event: MouseEvent) => {
 	if (!isDragging.value && draggingElement.value) {
 		isDragging.value = true;
 
-		const data = props.targetDataKey ? draggingElement.value.dataset.value : props.data ?? '';
+		const data = props.targetDataKey ? draggingElement.value.dataset.value : (props.data ?? '');
 
 		ndvStore.draggableStartDragging({
 			type: props.type,
