@@ -219,7 +219,7 @@ export async function executeWebhook(
 				const form = formidable({
 					multiples: true,
 					encoding: encoding as formidable.BufferEncoding,
-					maxFileSize: formDataFileSizeMax,
+					maxFileSize: formDataFileSizeMax * 1024 * 1024,
 					// TODO: pass a custom `fileWriteStreamHandler` to create binary data files directly
 				});
 				req.body = await new Promise((resolve) => {
