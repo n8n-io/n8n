@@ -1,7 +1,5 @@
 import formidable from 'formidable';
-import type { IncomingMessage } from 'node:http';
-
-type IncomingMessageWithEncoding = IncomingMessage & { encoding: string };
+import type { IncomingMessage } from 'http';
 
 const normalizeFormData = <T>(values: Record<string, T | T[]>) => {
 	for (const key in values) {
@@ -16,12 +14,10 @@ const normalizeFormData = <T>(values: Record<string, T | T[]>) => {
  * Creates a function that parses the multipart form data into the request's `body` property
  */
 export const createMultiFormDataParser = (maxFormDataSizeInMb: number) => {
-	const parseMultipartFormData = async (
-		req: IncomingMessageWithEncoding,
-	): Promise<{
+	return async function parseMultipartFormData(req: IncomingMessage): Promise<{
 		data: formidable.Fields;
 		files: formidable.Files;
-	}> => {
+	}> {
 		const { encoding } = req;
 
 		const form = formidable({
@@ -39,6 +35,4 @@ export const createMultiFormDataParser = (maxFormDataSizeInMb: number) => {
 			});
 		});
 	};
-
-	return parseMultipartFormData;
 };

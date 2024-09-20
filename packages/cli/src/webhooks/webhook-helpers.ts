@@ -92,6 +92,9 @@ export function getWorkflowWebhooks(
 	return returnData;
 }
 
+const { formDataFileSizeMax } = Container.get(GlobalConfig).endpoints;
+const parseFormData = createMultiFormDataParser(formDataFileSizeMax);
+
 /**
  * Executes a webhook
  */
@@ -206,9 +209,7 @@ export async function executeWebhook(
 		if (!binaryData) {
 			const { contentType } = req;
 			if (contentType === 'multipart/form-data') {
-				const { formDataFileSizeMax } = Container.get(GlobalConfig).endpoints;
-
-				req.body = await createMultiFormDataParser(formDataFileSizeMax)(req);
+				req.body = await parseFormData(req);
 			} else {
 				if (nodeVersion > 1) {
 					if (
