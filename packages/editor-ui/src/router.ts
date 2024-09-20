@@ -576,12 +576,8 @@ export const routes: RouteRecordRaw[] = [
 					settingsView: SettingsSso,
 				},
 				meta: {
-					middleware: ['authenticated', 'rbac', 'custom'],
+					middleware: ['authenticated', 'rbac'],
 					middlewareOptions: {
-						custom: () => {
-							const settingsStore = useSettingsStore();
-							return !settingsStore.isDesktopDeployment;
-						},
 						rbac: {
 							scope: 'saml:manage',
 						},
@@ -693,11 +689,7 @@ export const routes: RouteRecordRaw[] = [
 				custom: () => {
 					const settingsStore = useSettingsStore();
 					const ssoStore = useSSOStore();
-					return (
-						ssoStore.isEnterpriseSamlEnabled &&
-						!settingsStore.isCloudDeployment &&
-						!settingsStore.isDesktopDeployment
-					);
+					return ssoStore.isEnterpriseSamlEnabled && !settingsStore.isCloudDeployment;
 				},
 			},
 			telemetry: {

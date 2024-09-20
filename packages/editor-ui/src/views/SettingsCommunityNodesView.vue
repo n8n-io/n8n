@@ -41,10 +41,6 @@ const uiStore = useUIStore();
 const getEmptyStateDescription = computed(() => {
 	const packageCount = communityNodesStore.availablePackageCount;
 
-	if (settingsStore.isDesktopDeployment) {
-		return i18n.baseText('contextual.communityNodes.unavailable.description.desktop');
-	}
-
 	return packageCount < PACKAGE_COUNT_THRESHOLD
 		? i18n.baseText('settings.communityNodes.empty.description.no-packages', {
 				interpolate: {
@@ -60,14 +56,10 @@ const getEmptyStateDescription = computed(() => {
 });
 
 const shouldShowInstallButton = computed(() => {
-	return settingsStore.isDesktopDeployment || settingsStore.isNpmAvailable;
+	return settingsStore.isNpmAvailable;
 });
 
 const getEmptyStateButtonText = computed(() => {
-	if (settingsStore.isDesktopDeployment) {
-		return i18n.baseText('contextual.communityNodes.unavailable.button.desktop');
-	}
-
 	return shouldShowInstallButton.value
 		? i18n.baseText('settings.communityNodes.empty.installPackageLabel')
 		: '';
@@ -91,15 +83,7 @@ const actionBoxConfig = computed(() => {
 	};
 });
 
-const goToUpgrade = () => {
-	void uiStore.goToUpgrade('community-nodes', 'upgrade-community-nodes');
-};
-
 const onClickEmptyStateButton = () => {
-	if (settingsStore.isDesktopDeployment) {
-		return goToUpgrade();
-	}
-
 	openInstallModal();
 };
 
