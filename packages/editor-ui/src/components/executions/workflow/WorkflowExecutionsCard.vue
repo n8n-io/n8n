@@ -118,7 +118,7 @@ function onRetryMenuItemSelect(action: string): void {
 						<ExecutionsTime :start-time="execution.startedAt" />
 					</N8nText>
 					<N8nText
-						v-if="executionUIDetails.name === 'new'"
+						v-if="executionUIDetails.name === 'new' && execution.createdAt"
 						:color="isActive ? 'text-dark' : 'text-base'"
 						size="small"
 					>

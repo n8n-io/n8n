@@ -18,7 +18,7 @@ export function useExecutionHelpers() {
 	function getUIDetails(execution: ExecutionSummary): IExecutionUIData {
 		const status = {
 			name: 'unknown',
-			createdAt: execution.createdAt.toString(),
+			createdAt: execution.createdAt?.toString() ?? '',
 			startTime: formatDate(execution.startedAt),
 			label: 'Status unknown',
 			runningTime: '',
