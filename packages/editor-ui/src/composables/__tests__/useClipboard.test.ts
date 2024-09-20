@@ -81,4 +81,13 @@ describe('useClipboard()', () => {
 		await userEvent.paste(unsafeHtml);
 		expect(within(getByTestId('xss-attack')).queryByRole('img')).not.toBeInTheDocument();
 	});
+
+	it('sanitizes URL with HTML tags', async () => {
+		// eslint-disable-next-line n8n-local-rules/no-unneeded-backticks
+		const unsafeURL = `https://www.ex.com/sfefdfd<details title='"><details title=&#39;&quot;><img/src/onerror=alert(document.domain)>/&#39;>'>/c.json`;
+		const { getByTestId } = render(TestComponent);
+
+		await userEvent.paste(unsafeURL);
+		expect(getByTestId('xss-attack').innerHTML).toBe('https://www.ex.com/sfefdfd/c.json');
+	});
 });
