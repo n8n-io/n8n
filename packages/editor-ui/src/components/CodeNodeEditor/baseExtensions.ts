@@ -1,3 +1,7 @@
+import { history } from '@codemirror/commands';
+import { bracketMatching, foldGutter, indentOnInput } from '@codemirror/language';
+import { lintGutter } from '@codemirror/lint';
+import { type Extension, Prec } from '@codemirror/state';
 import {
 	dropCursor,
 	EditorView,
@@ -7,18 +11,9 @@ import {
 	keymap,
 	lineNumbers,
 } from '@codemirror/view';
-import { bracketMatching, foldGutter, indentOnInput } from '@codemirror/language';
-import { history, toggleComment, deleteCharBackward } from '@codemirror/commands';
-import { lintGutter } from '@codemirror/lint';
-import { type Extension, Prec } from '@codemirror/state';
 
 import { codeInputHandler } from '@/plugins/codemirror/inputHandlers/code.inputHandler';
-import {
-	autocompleteKeyMap,
-	enterKeyMap,
-	historyKeyMap,
-	tabKeyMap,
-} from '@/plugins/codemirror/keymap';
+import { editorKeymap } from '@/plugins/codemirror/keymap';
 
 export const readOnlyEditorExtensions: readonly Extension[] = [
 	lineNumbers(),
@@ -36,14 +31,6 @@ export const writableEditorExtensions: readonly Extension[] = [
 	bracketMatching(),
 	highlightActiveLine(),
 	highlightActiveLineGutter(),
-	Prec.highest(
-		keymap.of([
-			...tabKeyMap(),
-			...enterKeyMap,
-			...autocompleteKeyMap,
-			...historyKeyMap,
-			{ key: 'Mod-/', run: toggleComment },
-			{ key: 'Backspace', run: deleteCharBackward, shift: deleteCharBackward },
-		]),
+	Prec.highest(keymap.of(editorKeymap),
 	),
 ];

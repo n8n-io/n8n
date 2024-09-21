@@ -1,6 +1,21 @@
 import type { Diagnostic } from '@codemirror/lint';
 import ts from 'typescript';
 
+export const FILE_NAME = 'index.ts';
+const FN_PREFIX = '(function(){\n';
+
+export function wrapInFunction(script: string): string {
+	return `${FN_PREFIX}${script}\n})()`;
+}
+
+export function cmPosToTs(pos: number) {
+	return pos + FN_PREFIX.length;
+}
+
+export function tsPosToCm(pos: number) {
+	return pos - FN_PREFIX.length;
+}
+
 /**
  * TypeScript has a set of diagnostic categories,
  * which maps roughly onto CodeMirror's categories.
@@ -62,7 +77,7 @@ export function tsDiagnosticMessage(diagnostic: Pick<ts.Diagnostic, 'messageText
 export function convertTSDiagnosticToCM(d: ts.DiagnosticWithLocation): Diagnostic {
 	// We add some code at the end of the document, but we can't have a
 	// diagnostic in an invalid range
-	const start = d.start;
+	const start = tsPosToCm(d.start);
 	const message = tsDiagnosticMessage(d);
 
 	return {

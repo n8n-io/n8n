@@ -1,6 +1,5 @@
-import { type CompletionSource } from '@codemirror/autocomplete';
+import { autocompletion, completeFromList, type CompletionSource } from '@codemirror/autocomplete';
 import { javascriptLanguage } from '@codemirror/lang-javascript';
-import { LanguageSupport } from '@codemirror/language';
 import { linter, type LintSource } from '@codemirror/lint';
 import { combineConfig, Facet, type Extension } from '@codemirror/state';
 import { EditorView, hoverTooltip } from '@codemirror/view';
@@ -19,7 +18,12 @@ export const tsFacet = Facet.define<
 const tsCompletions: CompletionSource = async (context) => {
 	const { worker } = context.state.facet(tsFacet);
 	console.log('complete', context);
-	return await worker.getCompletionsAtPos(context.pos);
+
+	const result = await worker.getCompletionsAtPos(context.pos);
+
+	if (!result) return result;
+
+	return await completeFromList(result.options)(context);
 };
 
 const tsLint: LintSource = async (view) => {
@@ -62,13 +66,15 @@ export async function typescript(initialValue: string): Promise<Extension> {
 	const worker = Comlink.wrap<LanguageServiceWorker>(webWorker('./worker/typescript.worker.ts'));
 
 	await worker.init(initialValue);
-	console.log('post init');
 
 	return [
 		tsFacet.of({ worker }),
-		new LanguageSupport(javascriptLanguage, [
-			javascriptLanguage.data.of({ autocomplete: tsCompletions }),
-		]),
+		javascriptLanguage,
+		autocompletion({
+			icons: false,
+			defaultKeymap: false,
+			override: [tsCompletions],
+		}),
 		linter(tsLint),
 		hoverTooltip(tsHover),
 		EditorView.updateListener.of(async (update) => {

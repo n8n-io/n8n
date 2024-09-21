@@ -8,3 +8,6 @@ export const loadClassInIsolation = <T>(filePath: string, className: string) => 
 	const script = new Script(`new (require('${filePath}').${className})()`);
 	return script.runInContext(context) as T;
 };
+
+
+function x)_

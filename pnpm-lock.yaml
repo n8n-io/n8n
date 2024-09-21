@@ -1256,6 +1256,9 @@ importers:
       '@codemirror/lint':
         specifier: ^6.8.0
         version: 6.8.0
+      '@codemirror/search':
+        specifier: ^6.5.6
+        version: 6.5.6
       '@codemirror/state':
         specifier: ^6.4.1
         version: 6.4.1
@@ -1310,6 +1313,9 @@ importers:
       '@n8n/permissions':
         specifier: workspace:*
         version: link:../@n8n/permissions
+      '@replit/codemirror-indentation-markers':
+        specifier: ^6.5.3
+        version: 6.5.3(@codemirror/language@6.10.1)(@codemirror/state@6.4.1)(@codemirror/view@6.26.3)
       '@typescript/vfs':
         specifier: ^1.6.0
         version: 1.6.0(typescript@5.5.2)
@@ -1491,9 +1497,6 @@ importers:
       vite:
         specifier: catalog:frontend
         version: 5.2.12(@types/node@18.16.16)(sass@1.64.1)(terser@5.16.1)
-      vite-plugin-comlink:
-        specifier: ^5.0.1
-        version: 5.0.1(comlink@4.4.1)(vite@5.2.12(@types/node@18.16.16)(sass@1.64.1)(terser@5.16.1))
       vitest:
         specifier: catalog:frontend
         version: 1.6.0(@types/node@18.16.16)(jsdom@23.0.1)(sass@1.64.1)(terser@5.16.1)
@@ -3185,6 +3188,9 @@ packages:
   '@codemirror/lint@6.8.0':
     resolution: {integrity: sha512-lsFofvaw0lnPRJlQylNsC4IRt/1lI4OD/yYslrSGVndOJfStc58v+8p9dgGiD90ktOfL7OhBWns1ZETYgz0EJA==}
 
+  '@codemirror/search@6.5.6':
+    resolution: {integrity: sha512-rpMgcsh7o0GuCDUXKPvww+muLA1pDJaFrpq/CCHtpQJYz8xopu4D1hPcKRoDD0YlF8gZaqTNIRa4VRBWyhyy7Q==}
+
   '@codemirror/state@6.3.3':
     resolution: {integrity: sha512-0wufKcTw2dEwEaADajjHf6hBy1sh3M6V0e+q4JKIhLuiMSe5td5HOWpUdvKth1fT1M9VYOboajoBHpkCd7PG7A==}
 
@@ -4679,6 +4685,13 @@ packages:
   '@redocly/openapi-core@1.6.0':
     resolution: {integrity: sha512-oao6Aey4peLKfagzWGb6N7OBI6CoDWEP4ka/XjrUNZw+UoKVVg3hVBXW4Vr3CJ2O8j6wEa2i+Lbb92VQQsoxwg==}
     engines: {node: '>=14.19.0', npm: '>=7.0.0'}
+
+  '@replit/codemirror-indentation-markers@6.5.3':
+    resolution: {integrity: sha512-hL5Sfvw3C1vgg7GolLe/uxX5T3tmgOA3ZzqlMv47zjU1ON51pzNWiVbS22oh6crYhtVhv8b3gdXwoYp++2ilHw==}
+    peerDependencies:
+      '@codemirror/language': ^6.0.0
+      '@codemirror/state': ^6.0.0
+      '@codemirror/view': ^6.0.0
 
   '@rollup/pluginutils@5.1.0':
     resolution: {integrity: sha512-XTIWOPPcpvyKI6L1NHo0lFlCyznUEyPmPY1mc3KpPVDYulHSTvyeLNVW00QTLIAFNhR3kYnJTQHeGqU4M3n09g==}
@@ -12306,10 +12319,6 @@ packages:
     resolution: {integrity: sha512-UjgapumWlbMhkBgzT7Ykc5YXUT46F0iKu8SGXq0bcwP5dz/h0Plj6enJqjz1Zbq2l5WaqYnrVbwWOWMyF3F47g==}
     engines: {node: '>=0.10.0'}
 
-  source-map@0.7.4:
-    resolution: {integrity: sha512-l3BikUxvPOcn5E74dZiq5BGsTb5yEwhaTSzccU6t4sDOH8NWJCstKO5QT2CvtFoK6F0saL7p9xHAqHOlCPJygA==}
-    engines: {node: '>= 8'}
-
   space-separated-tokens@2.0.2:
     resolution: {integrity: sha512-PEGlAwrG8yXGXRjW32fGbg66JAlOAwbObuqVoJpv/mRgoWDQfgH1wDPvtzWyUSNAXBGSk8h755YDbbcEy3SH2Q==}
 
@@ -13307,12 +13316,6 @@ packages:
     resolution: {integrity: sha512-de6HJgzC+TFzOu0NTC4RAIsyf/DY/ibWDYQUcuEA84EMHhcefTUGkjFHKKEJhQN4A+6I0u++kr3l36ZF2d7XRw==}
     engines: {node: ^18.0.0 || >=20.0.0}
     hasBin: true
-
-  vite-plugin-comlink@5.0.1:
-    resolution: {integrity: sha512-4TGw5+bTg5ROd8N2m9O/y0CoS81g8nyce9EI/eV51i54EJ938lFadXEButhaptJs89l5NY9+TkdjI5jXX4cWOw==}
-    peerDependencies:
-      comlink: ^4.3.1
-      vite: '>=2.9.6'
 
   vite-plugin-dts@3.9.1:
     resolution: {integrity: sha512-rVp2KM9Ue22NGWB8dNtWEr+KekN3rIgz1tWD050QnRGlriUCmaDwa7qA5zDEjbXg5lAXhYMSBJtx3q3hQIJZSg==}
@@ -16264,6 +16267,12 @@ snapshots:
       '@codemirror/view': 6.26.3
       crelt: 1.0.5
 
+  '@codemirror/search@6.5.6':
+    dependencies:
+      '@codemirror/state': 6.4.1
+      '@codemirror/view': 6.26.3
+      crelt: 1.0.5
+
   '@codemirror/state@6.3.3': {}
 
   '@codemirror/state@6.4.1': {}
@@ -17834,6 +17843,12 @@ snapshots:
       yaml-ast-parser: 0.0.43
     transitivePeerDependencies:
       - encoding
+
+  '@replit/codemirror-indentation-markers@6.5.3(@codemirror/language@6.10.1)(@codemirror/state@6.4.1)(@codemirror/view@6.26.3)':
+    dependencies:
+      '@codemirror/language': 6.10.1
+      '@codemirror/state': 6.4.1
+      '@codemirror/view': 6.26.3
 
   '@rollup/pluginutils@5.1.0(rollup@4.18.0)':
     dependencies:
@@ -27622,8 +27637,6 @@ snapshots:
 
   source-map@0.6.1: {}
 
-  source-map@0.7.4: {}
-
   space-separated-tokens@2.0.2: {}
 
   sparse-bitfield@3.0.3:
@@ -28707,14 +28720,6 @@ snapshots:
       - sugarss
       - supports-color
       - terser
-
-  vite-plugin-comlink@5.0.1(comlink@4.4.1)(vite@5.2.12(@types/node@18.16.16)(sass@1.64.1)(terser@5.16.1)):
-    dependencies:
-      comlink: 4.4.1
-      json5: 2.2.3
-      magic-string: 0.30.10
-      source-map: 0.7.4
-      vite: 5.2.12(@types/node@18.16.16)(sass@1.64.1)(terser@5.16.1)
 
   vite-plugin-dts@3.9.1(@types/node@18.16.16)(rollup@4.18.0)(typescript@5.5.2)(vite@5.2.12(@types/node@18.16.16)(sass@1.64.1)(terser@5.16.1)):
     dependencies:

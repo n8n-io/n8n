@@ -1,18 +1,13 @@
 <script setup lang="ts">
 import InlineExpressionEditorOutput from '@/components/InlineExpressionEditor/InlineExpressionEditorOutput.vue';
-import { codeNodeEditorEventBus } from '@/event-bus';
 import { useExpressionEditor } from '@/composables/useExpressionEditor';
+import { codeNodeEditorEventBus } from '@/event-bus';
 import { n8nCompletionSources } from '@/plugins/codemirror/completions/addCompletions';
 import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expression.inputHandler';
-import {
-	autocompleteKeyMap,
-	enterKeyMap,
-	historyKeyMap,
-	tabKeyMap,
-} from '@/plugins/codemirror/keymap';
+import { editorKeymap } from '@/plugins/codemirror/keymap';
 import { n8nAutocompletion } from '@/plugins/codemirror/n8nLang';
 import { ifNotIn } from '@codemirror/autocomplete';
-import { history, toggleComment } from '@codemirror/commands';
+import { history } from '@codemirror/commands';
 import { LanguageSupport, bracketMatching, foldGutter, indentOnInput } from '@codemirror/language';
 import { Prec, type Line } from '@codemirror/state';
 import {
@@ -95,15 +90,7 @@ const extensions = computed(() => {
 	if (!props.isReadOnly) {
 		return baseExtensions.concat([
 			history(),
-			Prec.highest(
-				keymap.of([
-					...tabKeyMap(),
-					...enterKeyMap,
-					...historyKeyMap,
-					...autocompleteKeyMap,
-					{ key: 'Mod-/', run: toggleComment },
-				]),
-			),
+			Prec.highest(keymap.of(editorKeymap)),
 			n8nAutocompletion(),
 			indentOnInput(),
 			highlightActiveLine(),

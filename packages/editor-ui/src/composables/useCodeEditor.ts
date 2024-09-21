@@ -1,16 +1,24 @@
 import {
-	onBeforeUnmount,
-	onMounted,
-	ref,
-	toRef,
-	toValue,
-	watch,
-	watchEffect,
-	type MaybeRefOrGetter,
-	type Ref,
-} from 'vue';
-import { closeCursorInfoBox } from '@/plugins/codemirror/tooltips/InfoBoxTooltip';
-import { closeCompletion, completionStatus } from '@codemirror/autocomplete';
+	codeEditorTheme,
+} from "@/components/CodeNodeEditor/theme";
+import {
+	editorKeymap
+} from "@/plugins/codemirror/keymap";
+import { typescript } from "@/plugins/codemirror/lsp/typescript";
+import { closeCursorInfoBox } from "@/plugins/codemirror/tooltips/InfoBoxTooltip";
+import { closeCompletion, completionStatus } from "@codemirror/autocomplete";
+import {
+	history
+} from "@codemirror/commands";
+import { javascript } from "@codemirror/lang-javascript";
+import { json } from "@codemirror/lang-json";
+import { python } from "@codemirror/lang-python";
+import {
+	bracketMatching,
+	foldGutter,
+	indentOnInput,
+} from "@codemirror/language";
+import { highlightSelectionMatches } from '@codemirror/search';
 import {
 	Compartment,
 	EditorSelection,
@@ -18,38 +26,33 @@ import {
 	Prec,
 	type Extension,
 	type SelectionRange,
-} from '@codemirror/state';
+} from "@codemirror/state";
 import {
+	drawSelection,
 	dropCursor,
 	EditorView,
-	highlightActiveLine,
 	highlightActiveLineGutter,
 	highlightSpecialChars,
 	keymap,
 	lineNumbers,
-	type ViewUpdate,
-} from '@codemirror/view';
-import { python } from '@codemirror/lang-python';
-import { json } from '@codemirror/lang-json';
-import { html } from 'codemirror-lang-html-n8n';
-import { lintGutter } from '@codemirror/lint';
-import { bracketMatching, foldGutter, indentOnInput } from '@codemirror/language';
-import { history, toggleComment, deleteCharBackward } from '@codemirror/commands';
+	type ViewUpdate
+} from "@codemirror/view";
+import { indentationMarkers } from '@replit/codemirror-indentation-markers';
+import { html } from "codemirror-lang-html-n8n";
+import { debounce } from "lodash-es";
 import {
-	autocompleteKeyMap,
-	enterKeyMap,
-	historyKeyMap,
-	tabKeyMap,
-} from '../plugins/codemirror/keymap';
-import {
-	codeEditorSyntaxHighlighting,
-	codeEditorTheme,
-	htmlEditorHighlighting,
-} from '../components/CodeNodeEditor/theme';
-import { typescript } from '@/plugins/codemirror/lsp/typescript';
-import { debounce } from 'lodash-es';
+	onBeforeUnmount,
+	onMounted,
+	ref,
+	toRef,
+	toValue,
+	watch,
+	type MaybeRefOrGetter,
+	type Ref,
+} from "vue";
 
-export type CodeEditorLanguage = 'json' | 'html' | 'javaScript' | 'python';
+export type CodeEditorLanguage = "json" | "html" | "javaScript" | "python";
+
 
 export const useCodeEditor = ({
 	editorRef,
@@ -67,36 +70,55 @@ export const useCodeEditor = ({
 	placeholder?: MaybeRefOrGetter<string>;
 	extensions?: MaybeRefOrGetter<Extension[]>;
 	isReadOnly?: MaybeRefOrGetter<boolean>;
-	theme?: MaybeRefOrGetter<{ maxHeight?: string; minHeight?: string; rows?: number }>;
+	theme?: MaybeRefOrGetter<{
+		maxHeight?: string;
+		minHeight?: string;
+		rows?: number;
+	}>;
 	onChange?: (viewUpdate: ViewUpdate) => void;
 }) => {
 	const editor = ref<EditorView>();
 	const hasFocus = ref(false);
 	const hasChanges = ref(false);
-	const selection = ref<SelectionRange>(EditorSelection.cursor(0)) as Ref<SelectionRange>;
+	const selection = ref<SelectionRange>(
+		EditorSelection.cursor(0),
+	) as Ref<SelectionRange>;
 	const customExtensions = ref<Compartment>(new Compartment());
 	const readOnlyExtensions = ref<Compartment>(new Compartment());
 	const telemetryExtensions = ref<Compartment>(new Compartment());
 	const languageExtensions = ref<Compartment>(new Compartment());
 	const themeExtensions = ref<Compartment>(new Compartment());
-	const autocompleteStatus = ref<'pending' | 'active' | null>(null);
+	const autocompleteStatus = ref<"pending" | "active" | null>(null);
 	const dragging = ref(false);
 
-	async function getExtensionsByLanguage(lang: CodeEditorLanguage): Promise<Extension> {
+	function getInitialLanguageExtensions(lang: CodeEditorLanguage): Extension[] {
 		switch (lang) {
-			case 'javaScript':
-				return [await typescript(readEditorValue()), codeEditorSyntaxHighlighting];
-			case 'python':
-				return [python(), codeEditorSyntaxHighlighting];
-			case 'json':
-				return [json(), codeEditorSyntaxHighlighting];
-			case 'html':
-				return [html(), htmlEditorHighlighting];
+			case "javaScript":
+				return [javascript()];
+			default:
+				return [];
+		}
+	}
+
+	async function getFullLanguageExtensions(
+		lang: CodeEditorLanguage,
+	): Promise<Extension[]> {
+		switch (lang) {
+			case "javaScript":
+				return [
+					await typescript(readEditorValue()),
+				];
+			case "python":
+				return [python()];
+			case "json":
+				return [json()];
+			case "html":
+				return [html()];
 		}
 	}
 
 	function readEditorValue(): string {
-		return editor.value?.state.doc.toString() ?? '';
+		return editor.value?.state.doc.toString() ?? "";
 	}
 
 	function updateSelection(update: ViewUpdate) {
@@ -131,26 +153,65 @@ export const useCodeEditor = ({
 	}
 
 	function blurOnClickOutside(event: MouseEvent) {
-		if (event.target && !dragging.value && !editor.value?.dom.contains(event.target as Node)) {
+		if (
+			event.target &&
+			!dragging.value &&
+			!editor.value?.dom.contains(event.target as Node)
+		) {
 			blur();
 		}
 		dragging.value = false;
 	}
 
-	watch(toRef(editorRef), () => {
+	async function setLanguageExtensions() {
+		if (!editor.value) return;
+		const initialExtensions = getInitialLanguageExtensions(toValue(language));
+		if (initialExtensions.length > 0) {
+			editor.value.dispatch({
+				effects: languageExtensions.value.reconfigure(initialExtensions),
+			});
+		}
+
+		editor.value.dispatch({
+			effects: languageExtensions.value.reconfigure(
+				await getFullLanguageExtensions(toValue(language)),
+			),
+		});
+	}
+
+	function getReadOnlyExtensions() {
+		return [
+			EditorState.readOnly.of(toValue(isReadOnly)),
+			EditorView.editable.of(!toValue(isReadOnly)),
+			highlightSpecialChars(),
+		];
+	}
+
+	function setReadOnlyExtensions() {
+		if (!editor.value) return;
+		editor.value.dispatch({
+			effects: readOnlyExtensions.value.reconfigure([getReadOnlyExtensions()]),
+		});
+	}
+
+	watch(toRef(editorRef), async () => {
 		const parent = toValue(editorRef);
 
 		if (!parent) return;
 
-		const initialValue = toValue(editorValue) ? toValue(editorValue) : toValue(placeholder);
+		const initialValue = toValue(editorValue)
+			? toValue(editorValue)
+			: toValue(placeholder);
 		const state = EditorState.create({
 			doc: initialValue,
 			extensions: [
 				customExtensions.value.of(toValue(extensions)),
-				readOnlyExtensions.value.of([]),
+				readOnlyExtensions.value.of(getReadOnlyExtensions()),
 				telemetryExtensions.value.of([]),
-				languageExtensions.value.of([]),
-				themeExtensions.value.of([]),
+				languageExtensions.value.of(
+					getInitialLanguageExtensions(toValue(language)),
+				),
+				themeExtensions.value.of(codeEditorTheme(toValue(theme))),
 				EditorView.updateListener.of(onEditorUpdate),
 				EditorView.focusChangeEffect.of((_, newHasFocus) => {
 					hasFocus.value = newHasFocus;
@@ -160,29 +221,55 @@ export const useCodeEditor = ({
 					}
 					return null;
 				}),
-				EditorView.contentAttributes.of({ 'data-gramm': 'false' }), // disable grammarly
+				EditorState.allowMultipleSelections.of(true),
+				EditorView.contentAttributes.of({ "data-gramm": "false" }), // disable grammarly
 				EditorView.domEventHandlers({
 					mousedown: () => {
 						dragging.value = true;
 					},
 				}),
+				highlightSelectionMatches({highlightWordAroundCursor:true, minSelectionLength: 2 }),
+				lineNumbers(),
+				drawSelection(),
+				foldGutter({
+					markerDOM: (open) => {
+						const svgNS = "http://www.w3.org/2000/svg";
+						const wrapper = document.createElement("div");
+						wrapper.classList.add("cm-fold-marker");
+						const svgElement = document.createElementNS(svgNS, "svg");
+						svgElement.setAttribute("viewBox", "0 0 10 10");
+						svgElement.setAttribute("width", "10");
+						svgElement.setAttribute("height", "10");
+						const pathElement = document.createElementNS(svgNS, "path");
+						const d = open ? "M1 3 L5 7 L9 3" : "M3 1 L7 5 L3 9"; // Chevron paths
+						pathElement.setAttribute("d", d);
+						pathElement.setAttribute("fill", "none");
+						pathElement.setAttribute("stroke", "currentColor");
+						pathElement.setAttribute("stroke-width", "1.5");
+						pathElement.setAttribute("stroke-linecap", "round");
+						svgElement.appendChild(pathElement);
+						wrapper.appendChild(svgElement);
+						return wrapper;
+					},
+				}),
+				EditorView.lineWrapping,
 				history(),
-				lintGutter(),
-				foldGutter(),
 				dropCursor(),
 				indentOnInput(),
 				bracketMatching(),
-				highlightActiveLine(),
 				highlightActiveLineGutter(),
+				indentationMarkers({
+					highlightActiveBlock: true,
+					markerType: 'fullScope',
+					colors: {
+						activeDark: 'var(--color-code-indentation-marker-active)',
+						activeLight: 'var(--color-code-indentation-marker-active)',
+						dark: 'var(--color-code-indentation-marker)',
+						light: 'var(--color-code-indentation-marker)',
+					},
+				}),
 				Prec.highest(
-					keymap.of([
-						...tabKeyMap(),
-						...enterKeyMap,
-						...autocompleteKeyMap,
-						...historyKeyMap,
-						{ key: 'Mod-/', run: toggleComment },
-						{ key: 'Backspace', run: deleteCharBackward, shift: deleteCharBackward },
-					]),
+					keymap.of(editorKeymap),
 				),
 			],
 		});
@@ -190,10 +277,20 @@ export const useCodeEditor = ({
 		if (editor.value) {
 			editor.value.destroy();
 		}
-		editor.value = new EditorView({ parent, state, scrollTo: EditorView.scrollIntoView(0) });
+		editor.value = new EditorView({
+			parent,
+			state,
+			scrollTo: EditorView.scrollIntoView(0),
+		});
+
+		editor.value.dispatch({
+			effects: languageExtensions.value.reconfigure(
+				await getFullLanguageExtensions(toValue(language)),
+			),
+		});
 	});
 
-	watchEffect(() => {
+	watch(extensions, () => {
 		if (editor.value) {
 			editor.value.dispatch({
 				effects: customExtensions.value.reconfigure(toValue(extensions)),
@@ -201,34 +298,16 @@ export const useCodeEditor = ({
 		}
 	});
 
-	watchEffect(async () => {
+	watch(toRef(language), setLanguageExtensions);
+
+	watch(toRef(isReadOnly), setReadOnlyExtensions);
+
+	watch(toRef(theme), () => {
 		if (editor.value) {
 			editor.value.dispatch({
-				effects: languageExtensions.value.reconfigure(
-					await getExtensionsByLanguage(toValue(language)),
+				effects: themeExtensions.value.reconfigure(
+					codeEditorTheme(toValue(theme)),
 				),
-			});
-		}
-	});
-
-	watchEffect(() => {
-		if (editor.value) {
-			editor.value.dispatch({
-				effects: readOnlyExtensions.value.reconfigure([
-					EditorState.readOnly.of(toValue(isReadOnly)),
-					EditorView.editable.of(!toValue(isReadOnly)),
-					lineNumbers(),
-					EditorView.lineWrapping,
-					highlightSpecialChars(),
-				]),
-			});
-		}
-	});
-
-	watchEffect(() => {
-		if (editor.value) {
-			editor.value.dispatch({
-				effects: themeExtensions.value.reconfigure(codeEditorTheme(toValue(theme))),
 			});
 		}
 	});
@@ -246,52 +325,57 @@ export const useCodeEditor = ({
 	});
 
 	onMounted(() => {
-		document.addEventListener('click', blurOnClickOutside);
+		document.addEventListener("click", blurOnClickOutside);
 	});
 
 	onBeforeUnmount(() => {
-		document.removeEventListener('click', blurOnClickOutside);
+		document.removeEventListener("click", blurOnClickOutside);
 		editor.value?.destroy();
 	});
 
-	function setCursorPosition(pos: number | 'end'): void {
-		if (pos === 'end') {
-			pos = editor.value?.state.doc.length ?? 0;
-		}
-		editor.value?.dispatch({ selection: { head: pos, anchor: pos } });
+	function setCursorPosition(pos: number | "end"): void {
+		const finalPos =
+			pos === "end" ? (editor.value?.state.doc.length ?? 0) : pos;
+
+		editor.value?.dispatch({ selection: { head: finalPos, anchor: finalPos } });
 	}
 
-	function select(anchor: number, head: number | 'end' = 'end'): void {
+	function select(anchor: number, head: number | "end" = "end"): void {
 		editor.value?.dispatch({
-			selection: { anchor, head: head === 'end' ? editor.value?.state.doc.length ?? 0 : head },
+			selection: {
+				anchor,
+				head: head === "end" ? (editor.value?.state.doc.length ?? 0) : head,
+			},
 		});
 	}
 
-	function getLine(lineNumber: number | 'last' | 'first') {
+	function getLine(lineNumber: number | "last" | "first") {
 		if (!editor.value) return;
 
 		const { doc } = editor.value.state;
 		switch (lineNumber) {
-			case 'first':
+			case "first":
 				return doc.lineAt(0);
-			case 'last':
+			case "last":
 				return doc.lineAt(doc.length - 1);
 			default:
 				return doc.line(lineNumber);
 		}
 	}
 
-	function selectLine(lineNumber: number | 'last' | 'first'): void {
+	function selectLine(lineNumber: number | "last" | "first"): void {
 		if (!editor.value) return;
 
 		const line = getLine(lineNumber);
 
 		if (!line) return;
 
-		editor.value.dispatch({ selection: EditorSelection.range(line.from, line.to) });
+		editor.value.dispatch({
+			selection: EditorSelection.range(line.from, line.to),
+		});
 	}
 
-	function highlightLine(lineNumber: number | 'last' | 'first'): void {
+	function highlightLine(lineNumber: number | "last" | "first"): void {
 		if (!editor.value) return;
 
 		const line = getLine(lineNumber);
@@ -301,7 +385,7 @@ export const useCodeEditor = ({
 		editor.value.dispatch({ selection: EditorSelection.cursor(line.from) });
 	}
 
-	const selectAll = () => select(0, 'end');
+	const selectAll = () => select(0, "end");
 
 	function focus(): void {
 		if (hasFocus.value) return;

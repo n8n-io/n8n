@@ -15,15 +15,10 @@ import {
 	lineNumbers,
 } from '@codemirror/view';
 
-import { codeEditorSyntaxHighlighting, codeEditorTheme } from '../CodeNodeEditor/theme';
-import {
-	autocompleteKeyMap,
-	enterKeyMap,
-	historyKeyMap,
-	tabKeyMap,
-} from '@/plugins/codemirror/keymap';
+import { editorKeymap } from '@/plugins/codemirror/keymap';
 import { n8nAutocompletion } from '@/plugins/codemirror/n8nLang';
 import { computed, onMounted, ref, watch } from 'vue';
+import { codeEditorTheme } from '../CodeNodeEditor/theme';
 
 type Props = {
 	modelValue: string;
@@ -53,14 +48,11 @@ const extensions = computed(() => {
 			minHeight: '20vh',
 			rows: props.rows,
 		}),
-		codeEditorSyntaxHighlighting,
 	];
 	if (!props.isReadOnly) {
 		extensionsToApply.push(
 			history(),
-			Prec.highest(
-				keymap.of([...tabKeyMap(), ...enterKeyMap, ...historyKeyMap, ...autocompleteKeyMap]),
-			),
+			Prec.highest(keymap.of(editorKeymap)),
 			createLinter(jsonParseLinter()),
 			lintGutter(),
 			n8nAutocompletion(),

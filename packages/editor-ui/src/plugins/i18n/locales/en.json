@@ -198,7 +198,6 @@
 	"chatEmbed.packageInfo.link": "Read the full documentation",
 	"chatEmbed.chatTriggerNode": "You can use a Chat Trigger Node to embed the chat widget directly into n8n.",
 	"chatEmbed.url": "https://www.npmjs.com/package/{'@'}n8n/chat",
-	"codeEdit.edit": "Edit",
 	"codeNodeEditor.askAi": "✨ Ask AI",
 	"codeNodeEditor.completer.$()": "Output data of the {nodeName} node",
 	"codeNodeEditor.completer.$execution": "Retrieve or set metadata for the current execution",

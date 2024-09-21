@@ -11,16 +11,11 @@ import { completionStatus } from '@codemirror/autocomplete';
 import { inputTheme } from './theme';
 
 import { useExpressionEditor } from '@/composables/useExpressionEditor';
-import {
-	autocompleteKeyMap,
-	enterKeyMap,
-	historyKeyMap,
-	tabKeyMap,
-} from '@/plugins/codemirror/keymap';
 import { infoBoxTooltips } from '@/plugins/codemirror/tooltips/InfoBoxTooltip';
 import type { Segment } from '@/types/expressions';
 import { removeExpressionPrefix } from '@/utils/expressions';
 import { mappingDropCursor } from '@/plugins/codemirror/dragAndDrop';
+import { editorKeymap } from '@/plugins/codemirror/keymap';
 
 type Props = {
 	modelValue: string;
@@ -41,24 +36,7 @@ const emit = defineEmits<{
 const root = ref<HTMLElement>();
 const extensions = computed(() => [
 	inputTheme(props.isReadOnly),
-	Prec.highest(
-		keymap.of([
-			...tabKeyMap(),
-			...historyKeyMap,
-			...enterKeyMap,
-			...autocompleteKeyMap,
-			{
-				any: (view, event) => {
-					if (event.key === 'Escape' && completionStatus(view.state) === null) {
-						event.stopPropagation();
-						emit('close');
-					}
-
-					return false;
-				},
-			},
-		]),
-	),
+	Prec.highest(keymap.of(editorKeymap)),
 	n8nLang(),
 	n8nAutocompletion(),
 	mappingDropCursor(),

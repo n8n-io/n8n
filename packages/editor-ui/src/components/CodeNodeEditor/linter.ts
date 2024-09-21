@@ -38,34 +38,7 @@ export const useLinter = (
 		try {
 			ast = esprima.parseScript(script, { range: true });
 		} catch (syntaxError) {
-			let line;
-
-			try {
-				const lineAtError = editorView.state.doc.line(syntaxError.lineNumber - 1).text;
-
-				// optional chaining operators currently unsupported by esprima-next
-				if (['?.', ']?'].some((operator) => lineAtError.includes(operator))) return [];
-			} catch {
-				return [];
-			}
-
-			try {
-				line = editorView.state.doc.line(syntaxError.lineNumber);
-
-				return [
-					{
-						from: line.from,
-						to: line.to,
-						severity: DEFAULT_LINTER_SEVERITY,
-						message: i18n.baseText('codeNodeEditor.linter.bothModes.syntaxError'),
-					},
-				];
-			} catch {
-				/**
-				 * For invalid (e.g. half-written) n8n syntax, esprima errors with an off-by-one line number for the final line. In future, we should add full linting for n8n syntax before parsing JS.
-				 */
-				return [];
-			}
+			return [];
 		}
 
 		if (ast === null) return [];
