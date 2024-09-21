@@ -1,7 +1,12 @@
 import type { Component } from 'vue';
 import type { NotificationOptions as ElementNotificationOptions } from 'element-plus';
 import type { Connection } from '@jsplumb/core';
-import type { Iso8601DateTimeString } from '@n8n/api-types';
+import type {
+	FrontendSettings,
+	Iso8601DateTimeString,
+	IUserManagementSettings,
+	IVersionNotificationSettings,
+} from '@n8n/api-types';
 import type { Scope } from '@n8n/permissions';
 import type { IMenuItem, NodeCreatorTag } from 'n8n-design-system';
 import type {
@@ -31,10 +36,8 @@ import type {
 	FeatureFlags,
 	ExecutionStatus,
 	ITelemetryTrackProperties,
-	IUserManagementSettings,
 	WorkflowSettings,
 	IUserSettings,
-	IN8nUISettings,
 	BannerName,
 	INodeExecutionData,
 	INodeProperties,
@@ -496,12 +499,6 @@ export interface IUser extends IUserResponse {
 	mfaEnabled: boolean;
 }
 
-export interface IVersionNotificationSettings {
-	enabled: boolean;
-	endpoint: string;
-	infoUrl: string;
-}
-
 export interface IUserListAction {
 	label: string;
 	value: string;
@@ -890,7 +887,6 @@ export interface RootState {
 	urlBaseWebhook: string;
 	urlBaseEditor: string;
 	instanceId: string;
-	isNpmAvailable: boolean;
 	binaryDataMode: 'default' | 'filesystem' | 's3';
 }
 
@@ -938,7 +934,6 @@ export interface IRootState {
 	sidebarMenuItems: IMenuItem[];
 	instanceId: string;
 	nodeMetadata: NodeMetadataMap;
-	isNpmAvailable: boolean;
 	subworkflowExecutionError: Error | null;
 	binaryDataMode: string;
 }
@@ -1090,7 +1085,7 @@ export interface INodeCreatorState {
 
 export interface ISettingsState {
 	initialized: boolean;
-	settings: IN8nUISettings;
+	settings: FrontendSettings;
 	userManagement: IUserManagementSettings;
 	templatesEndpointHealthy: boolean;
 	api: {
@@ -1643,7 +1638,7 @@ export type EnterpriseEditionFeatureKey =
 	| 'WorkerView'
 	| 'AdvancedPermissions';
 
-export type EnterpriseEditionFeatureValue = keyof Omit<IN8nUISettings['enterprise'], 'projects'>;
+export type EnterpriseEditionFeatureValue = keyof Omit<FrontendSettings['enterprise'], 'projects'>;
 
 export interface IN8nPromptResponse {
 	updated: boolean;

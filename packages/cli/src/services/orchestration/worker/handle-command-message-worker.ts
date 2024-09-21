@@ -7,9 +7,9 @@ import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus'
 import { ExternalSecretsManager } from '@/external-secrets/external-secrets-manager.ee';
 import { License } from '@/license';
 import { Logger } from '@/logger';
+import { COMMAND_PUBSUB_CHANNEL } from '@/scaling/constants';
+import type { RedisServiceCommandObject } from '@/scaling/redis/redis-service-commands';
 import { CommunityPackagesService } from '@/services/community-packages.service';
-import { COMMAND_REDIS_CHANNEL } from '@/services/redis/redis-constants';
-import type { RedisServiceCommandObject } from '@/services/redis/redis-service-commands';
 
 import type { WorkerCommandReceivedHandlerOptions } from './types';
 import { debounceMessageReceiver, getOsCpuString } from '../helpers';
@@ -17,7 +17,7 @@ import { debounceMessageReceiver, getOsCpuString } from '../helpers';
 export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHandlerOptions) {
 	// eslint-disable-next-line complexity
 	return async (channel: string, messageString: string) => {
-		if (channel === COMMAND_REDIS_CHANNEL) {
+		if (channel === COMMAND_PUBSUB_CHANNEL) {
 			if (!messageString) return;
 			const logger = Container.get(Logger);
 			let message: RedisServiceCommandObject;
@@ -25,7 +25,7 @@ export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHa
 				message = jsonParse<RedisServiceCommandObject>(messageString);
 			} catch {
 				logger.debug(
-					`Received invalid message via channel ${COMMAND_REDIS_CHANNEL}: "${messageString}"`,
+					`Received invalid message via channel ${COMMAND_PUBSUB_CHANNEL}: "${messageString}"`,
 				);
 				return;
 			}
@@ -39,7 +39,7 @@ export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHa
 				switch (message.command) {
 					case 'getStatus':
 						if (!debounceMessageReceiver(message, 500)) return;
-						await options.redisPublisher.publishToWorkerChannel({
+						await options.publisher.publishWorkerResponse({
 							workerId: options.queueModeId,
 							command: 'getStatus',
 							payload: {
@@ -66,7 +66,7 @@ export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHa
 						break;
 					case 'getId':
 						if (!debounceMessageReceiver(message, 500)) return;
-						await options.redisPublisher.publishToWorkerChannel({
+						await options.publisher.publishWorkerResponse({
 							workerId: options.queueModeId,
 							command: 'getId',
 						});
@@ -75,7 +75,7 @@ export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHa
 						if (!debounceMessageReceiver(message, 500)) return;
 						try {
 							await Container.get(MessageEventBus).restart();
-							await options.redisPublisher.publishToWorkerChannel({
+							await options.publisher.publishWorkerResponse({
 								workerId: options.queueModeId,
 								command: 'restartEventBus',
 								payload: {
@@ -83,7 +83,7 @@ export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHa
 								},
 							});
 						} catch (error) {
-							await options.redisPublisher.publishToWorkerChannel({
+							await options.publisher.publishWorkerResponse({
 								workerId: options.queueModeId,
 								command: 'restartEventBus',
 								payload: {
@@ -97,7 +97,7 @@ export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHa
 						if (!debounceMessageReceiver(message, 500)) return;
 						try {
 							await Container.get(ExternalSecretsManager).reloadAllProviders();
-							await options.redisPublisher.publishToWorkerChannel({
+							await options.publisher.publishWorkerResponse({
 								workerId: options.queueModeId,
 								command: 'reloadExternalSecretsProviders',
 								payload: {
@@ -105,7 +105,7 @@ export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHa
 								},
 							});
 						} catch (error) {
-							await options.redisPublisher.publishToWorkerChannel({
+							await options.publisher.publishWorkerResponse({
 								workerId: options.queueModeId,
 								command: 'reloadExternalSecretsProviders',
 								payload: {
@@ -145,7 +145,7 @@ export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHa
 						}
 
 						logger.debug(
-							`Received unknown command via channel ${COMMAND_REDIS_CHANNEL}: "${message.command}"`,
+							`Received unknown command via channel ${COMMAND_PUBSUB_CHANNEL}: "${message.command}"`,
 						);
 						break;
 				}

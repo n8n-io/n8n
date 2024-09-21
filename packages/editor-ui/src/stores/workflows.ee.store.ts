@@ -21,7 +21,7 @@ export const useWorkflowsEEStore = defineStore(STORES.WORKFLOWS_EE, {
 				const workflow = useWorkflowsStore().getWorkflowById(workflowId);
 				const { name, email } = splitName(workflow?.homeProject?.name ?? '');
 
-				return name ? (email ? `${name} (${email})` : name) : email ?? fallback;
+				return name ? (email ? `${name} (${email})` : name) : (email ?? fallback);
 			};
 		},
 	},

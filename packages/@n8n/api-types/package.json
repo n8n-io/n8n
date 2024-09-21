@@ -1,16 +1,18 @@
 {
   "name": "@n8n/api-types",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
-    "format": "prettier --write . --ignore-path ../../../.prettierignore",
+    "format": "biome format --write .",
+    "format:check": "biome ci .",
     "lint": "eslint .",
     "lintfix": "eslint . --fix",
     "watch": "tsc -p tsconfig.build.json --watch",
-    "test": "echo \"No tests yet\" && exit 0"
+    "test": "jest",
+    "test:dev": "jest --watch"
   },
   "main": "dist/index.js",
   "module": "src/index.ts",
@@ -20,5 +22,10 @@
   ],
   "devDependencies": {
     "n8n-workflow": "workspace:*"
+  },
+  "dependencies": {
+    "xss": "catalog:",
+    "zod": "catalog:",
+    "zod-class": "0.0.15"
   }
 }

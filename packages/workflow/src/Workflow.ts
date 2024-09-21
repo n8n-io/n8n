@@ -7,6 +7,15 @@
 
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 
+import {
+	MANUAL_CHAT_TRIGGER_LANGCHAIN_NODE_TYPE,
+	NODES_WITH_RENAMABLE_CONTENT,
+	STARTING_NODE_TYPES,
+} from './Constants';
+import type { IDeferredPromise } from './DeferredPromise';
+import { ApplicationError } from './errors/application.error';
+import { Expression } from './Expression';
+import { getGlobalState } from './GlobalState';
 import type {
 	IConnections,
 	IExecuteResponsePromiseData,
@@ -45,19 +54,9 @@ import type {
 	INodeOutputConfiguration,
 } from './Interfaces';
 import { Node, NodeConnectionType } from './Interfaces';
-import type { IDeferredPromise } from './DeferredPromise';
-
 import * as NodeHelpers from './NodeHelpers';
 import * as ObservableObject from './ObservableObject';
 import { RoutingNode } from './RoutingNode';
-import { Expression } from './Expression';
-import {
-	MANUAL_CHAT_TRIGGER_LANGCHAIN_NODE_TYPE,
-	NODES_WITH_RENAMABLE_CONTENT,
-	STARTING_NODE_TYPES,
-} from './Constants';
-import { ApplicationError } from './errors/application.error';
-import { getGlobalState } from './GlobalState';
 
 function dedupe<T>(arr: T[]): T[] {
 	return [...new Set(arr)];

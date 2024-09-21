@@ -179,7 +179,7 @@ const onTagsEditEsc = () => {
 			</div>
 			<div v-else :class="$style.noResultsContainer" data-test-id="execution-annotation-data-empty">
 				<n8n-text color="text-base" size="small" align="center">
-					<span v-html="$locale.baseText('executionAnnotationView.data.notFound')" />
+					<span v-n8n-html="$locale.baseText('executionAnnotationView.data.notFound')" />
 				</n8n-text>
 			</div>
 		</div>

@@ -1,23 +1,13 @@
-import {
-	codeEditorTheme,
-} from "@/components/CodeNodeEditor/theme";
-import {
-	editorKeymap
-} from "@/plugins/codemirror/keymap";
-import { typescript } from "@/plugins/codemirror/lsp/typescript";
-import { closeCursorInfoBox } from "@/plugins/codemirror/tooltips/InfoBoxTooltip";
-import { closeCompletion, completionStatus } from "@codemirror/autocomplete";
-import {
-	history
-} from "@codemirror/commands";
-import { javascript } from "@codemirror/lang-javascript";
-import { json } from "@codemirror/lang-json";
-import { python } from "@codemirror/lang-python";
-import {
-	bracketMatching,
-	foldGutter,
-	indentOnInput,
-} from "@codemirror/language";
+import { codeEditorTheme } from '@/components/CodeNodeEditor/theme';
+import { editorKeymap } from '@/plugins/codemirror/keymap';
+import { typescript } from '@/plugins/codemirror/lsp/typescript';
+import { closeCursorInfoBox } from '@/plugins/codemirror/tooltips/InfoBoxTooltip';
+import { closeCompletion, completionStatus } from '@codemirror/autocomplete';
+import { history } from '@codemirror/commands';
+import { javascript } from '@codemirror/lang-javascript';
+import { json } from '@codemirror/lang-json';
+import { python } from '@codemirror/lang-python';
+import { bracketMatching, foldGutter, indentOnInput } from '@codemirror/language';
 import { highlightSelectionMatches } from '@codemirror/search';
 import {
 	Compartment,
@@ -26,7 +16,7 @@ import {
 	Prec,
 	type Extension,
 	type SelectionRange,
-} from "@codemirror/state";
+} from '@codemirror/state';
 import {
 	drawSelection,
 	dropCursor,
@@ -35,11 +25,11 @@ import {
 	highlightSpecialChars,
 	keymap,
 	lineNumbers,
-	type ViewUpdate
-} from "@codemirror/view";
+	type ViewUpdate,
+} from '@codemirror/view';
 import { indentationMarkers } from '@replit/codemirror-indentation-markers';
-import { html } from "codemirror-lang-html-n8n";
-import { debounce } from "lodash-es";
+import { html } from 'codemirror-lang-html-n8n';
+import { debounce } from 'lodash-es';
 import {
 	onBeforeUnmount,
 	onMounted,
@@ -49,10 +39,9 @@ import {
 	watch,
 	type MaybeRefOrGetter,
 	type Ref,
-} from "vue";
+} from 'vue';
 
-export type CodeEditorLanguage = "json" | "html" | "javaScript" | "python";
-
+export type CodeEditorLanguage = 'json' | 'html' | 'javaScript' | 'python';
 
 export const useCodeEditor = ({
 	editorRef,
@@ -80,45 +69,39 @@ export const useCodeEditor = ({
 	const editor = ref<EditorView>();
 	const hasFocus = ref(false);
 	const hasChanges = ref(false);
-	const selection = ref<SelectionRange>(
-		EditorSelection.cursor(0),
-	) as Ref<SelectionRange>;
+	const selection = ref<SelectionRange>(EditorSelection.cursor(0)) as Ref<SelectionRange>;
 	const customExtensions = ref<Compartment>(new Compartment());
 	const readOnlyExtensions = ref<Compartment>(new Compartment());
 	const telemetryExtensions = ref<Compartment>(new Compartment());
 	const languageExtensions = ref<Compartment>(new Compartment());
 	const themeExtensions = ref<Compartment>(new Compartment());
-	const autocompleteStatus = ref<"pending" | "active" | null>(null);
+	const autocompleteStatus = ref<'pending' | 'active' | null>(null);
 	const dragging = ref(false);
 
 	function getInitialLanguageExtensions(lang: CodeEditorLanguage): Extension[] {
 		switch (lang) {
-			case "javaScript":
+			case 'javaScript':
 				return [javascript()];
 			default:
 				return [];
 		}
 	}
 
-	async function getFullLanguageExtensions(
-		lang: CodeEditorLanguage,
-	): Promise<Extension[]> {
+	async function getFullLanguageExtensions(lang: CodeEditorLanguage): Promise<Extension[]> {
 		switch (lang) {
-			case "javaScript":
-				return [
-					await typescript(readEditorValue()),
-				];
-			case "python":
+			case 'javaScript':
+				return [await typescript(readEditorValue())];
+			case 'python':
 				return [python()];
-			case "json":
+			case 'json':
 				return [json()];
-			case "html":
+			case 'html':
 				return [html()];
 		}
 	}
 
 	function readEditorValue(): string {
-		return editor.value?.state.doc.toString() ?? "";
+		return editor.value?.state.doc.toString() ?? '';
 	}
 
 	function updateSelection(update: ViewUpdate) {
@@ -153,11 +136,7 @@ export const useCodeEditor = ({
 	}
 
 	function blurOnClickOutside(event: MouseEvent) {
-		if (
-			event.target &&
-			!dragging.value &&
-			!editor.value?.dom.contains(event.target as Node)
-		) {
+		if (event.target && !dragging.value && !editor.value?.dom.contains(event.target as Node)) {
 			blur();
 		}
 		dragging.value = false;
@@ -199,18 +178,14 @@ export const useCodeEditor = ({
 
 		if (!parent) return;
 
-		const initialValue = toValue(editorValue)
-			? toValue(editorValue)
-			: toValue(placeholder);
+		const initialValue = toValue(editorValue) ? toValue(editorValue) : toValue(placeholder);
 		const state = EditorState.create({
 			doc: initialValue,
 			extensions: [
 				customExtensions.value.of(toValue(extensions)),
 				readOnlyExtensions.value.of(getReadOnlyExtensions()),
 				telemetryExtensions.value.of([]),
-				languageExtensions.value.of(
-					getInitialLanguageExtensions(toValue(language)),
-				),
+				languageExtensions.value.of(getInitialLanguageExtensions(toValue(language))),
 				themeExtensions.value.of(codeEditorTheme(toValue(theme))),
 				EditorView.updateListener.of(onEditorUpdate),
 				EditorView.focusChangeEffect.of((_, newHasFocus) => {
@@ -222,31 +197,31 @@ export const useCodeEditor = ({
 					return null;
 				}),
 				EditorState.allowMultipleSelections.of(true),
-				EditorView.contentAttributes.of({ "data-gramm": "false" }), // disable grammarly
+				EditorView.contentAttributes.of({ 'data-gramm': 'false' }), // disable grammarly
 				EditorView.domEventHandlers({
 					mousedown: () => {
 						dragging.value = true;
 					},
 				}),
-				highlightSelectionMatches({highlightWordAroundCursor:true, minSelectionLength: 2 }),
+				highlightSelectionMatches({ highlightWordAroundCursor: true, minSelectionLength: 2 }),
 				lineNumbers(),
 				drawSelection(),
 				foldGutter({
 					markerDOM: (open) => {
-						const svgNS = "http://www.w3.org/2000/svg";
-						const wrapper = document.createElement("div");
-						wrapper.classList.add("cm-fold-marker");
-						const svgElement = document.createElementNS(svgNS, "svg");
-						svgElement.setAttribute("viewBox", "0 0 10 10");
-						svgElement.setAttribute("width", "10");
-						svgElement.setAttribute("height", "10");
-						const pathElement = document.createElementNS(svgNS, "path");
-						const d = open ? "M1 3 L5 7 L9 3" : "M3 1 L7 5 L3 9"; // Chevron paths
-						pathElement.setAttribute("d", d);
-						pathElement.setAttribute("fill", "none");
-						pathElement.setAttribute("stroke", "currentColor");
-						pathElement.setAttribute("stroke-width", "1.5");
-						pathElement.setAttribute("stroke-linecap", "round");
+						const svgNS = 'http://www.w3.org/2000/svg';
+						const wrapper = document.createElement('div');
+						wrapper.classList.add('cm-fold-marker');
+						const svgElement = document.createElementNS(svgNS, 'svg');
+						svgElement.setAttribute('viewBox', '0 0 10 10');
+						svgElement.setAttribute('width', '10');
+						svgElement.setAttribute('height', '10');
+						const pathElement = document.createElementNS(svgNS, 'path');
+						const d = open ? 'M1 3 L5 7 L9 3' : 'M3 1 L7 5 L3 9'; // Chevron paths
+						pathElement.setAttribute('d', d);
+						pathElement.setAttribute('fill', 'none');
+						pathElement.setAttribute('stroke', 'currentColor');
+						pathElement.setAttribute('stroke-width', '1.5');
+						pathElement.setAttribute('stroke-linecap', 'round');
 						svgElement.appendChild(pathElement);
 						wrapper.appendChild(svgElement);
 						return wrapper;
@@ -268,9 +243,7 @@ export const useCodeEditor = ({
 						light: 'var(--color-code-indentation-marker)',
 					},
 				}),
-				Prec.highest(
-					keymap.of(editorKeymap),
-				),
+				Prec.highest(keymap.of(editorKeymap)),
 			],
 		});
 
@@ -305,9 +278,7 @@ export const useCodeEditor = ({
 	watch(toRef(theme), () => {
 		if (editor.value) {
 			editor.value.dispatch({
-				effects: themeExtensions.value.reconfigure(
-					codeEditorTheme(toValue(theme)),
-				),
+				effects: themeExtensions.value.reconfigure(codeEditorTheme(toValue(theme))),
 			});
 		}
 	});
@@ -325,45 +296,44 @@ export const useCodeEditor = ({
 	});
 
 	onMounted(() => {
-		document.addEventListener("click", blurOnClickOutside);
+		document.addEventListener('click', blurOnClickOutside);
 	});
 
 	onBeforeUnmount(() => {
-		document.removeEventListener("click", blurOnClickOutside);
+		document.removeEventListener('click', blurOnClickOutside);
 		editor.value?.destroy();
 	});
 
-	function setCursorPosition(pos: number | "end"): void {
-		const finalPos =
-			pos === "end" ? (editor.value?.state.doc.length ?? 0) : pos;
+	function setCursorPosition(pos: number | 'end'): void {
+		const finalPos = pos === 'end' ? (editor.value?.state.doc.length ?? 0) : pos;
 
 		editor.value?.dispatch({ selection: { head: finalPos, anchor: finalPos } });
 	}
 
-	function select(anchor: number, head: number | "end" = "end"): void {
+	function select(anchor: number, head: number | 'end' = 'end'): void {
 		editor.value?.dispatch({
 			selection: {
 				anchor,
-				head: head === "end" ? (editor.value?.state.doc.length ?? 0) : head,
+				head: head === 'end' ? (editor.value?.state.doc.length ?? 0) : head,
 			},
 		});
 	}
 
-	function getLine(lineNumber: number | "last" | "first") {
+	function getLine(lineNumber: number | 'last' | 'first') {
 		if (!editor.value) return;
 
 		const { doc } = editor.value.state;
 		switch (lineNumber) {
-			case "first":
+			case 'first':
 				return doc.lineAt(0);
-			case "last":
+			case 'last':
 				return doc.lineAt(doc.length - 1);
 			default:
 				return doc.line(lineNumber);
 		}
 	}
 
-	function selectLine(lineNumber: number | "last" | "first"): void {
+	function selectLine(lineNumber: number | 'last' | 'first'): void {
 		if (!editor.value) return;
 
 		const line = getLine(lineNumber);
@@ -375,7 +345,7 @@ export const useCodeEditor = ({
 		});
 	}
 
-	function highlightLine(lineNumber: number | "last" | "first"): void {
+	function highlightLine(lineNumber: number | 'last' | 'first'): void {
 		if (!editor.value) return;
 
 		const line = getLine(lineNumber);
@@ -385,7 +355,7 @@ export const useCodeEditor = ({
 		editor.value.dispatch({ selection: EditorSelection.cursor(line.from) });
 	}
 
-	const selectAll = () => select(0, "end");
+	const selectAll = () => select(0, 'end');
 
 	function focus(): void {
 		if (hasFocus.value) return;

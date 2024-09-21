@@ -1,14 +1,10 @@
+import type { FrontendSettings, ITelemetrySettings } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import { createWriteStream } from 'fs';
 import { mkdir } from 'fs/promises';
 import uniq from 'lodash/uniq';
 import { InstanceSettings } from 'n8n-core';
-import type {
-	ICredentialType,
-	IN8nUISettings,
-	INodeTypeBaseDescription,
-	ITelemetrySettings,
-} from 'n8n-workflow';
+import type { ICredentialType, INodeTypeBaseDescription } from 'n8n-workflow';
 import fs from 'node:fs';
 import path from 'path';
 import { Container, Service } from 'typedi';
@@ -37,7 +33,7 @@ import { UrlService } from './url.service';
 
 @Service()
 export class FrontendService {
-	settings: IN8nUISettings;
+	settings: FrontendSettings;
 
 	private communityPackagesService?: CommunityPackagesService;
 
@@ -174,7 +170,6 @@ export class FrontendService {
 			deployment: {
 				type: config.getEnv('deployment.type'),
 			},
-			isNpmAvailable: false,
 			allowedModules: {
 				builtIn: process.env.NODE_FUNCTION_ALLOW_BUILTIN?.split(',') ?? undefined,
 				external: process.env.NODE_FUNCTION_ALLOW_EXTERNAL?.split(',') ?? undefined,
@@ -247,7 +242,7 @@ export class FrontendService {
 		this.writeStaticJSON('credentials', credentials);
 	}
 
-	getSettings(pushRef?: string): IN8nUISettings {
+	getSettings(pushRef?: string): FrontendSettings {
 		this.eventService.emit('session-started', { pushRef });
 
 		const restEndpoint = this.globalConfig.endpoints.rest;
@@ -265,9 +260,7 @@ export class FrontendService {
 		Object.assign(this.settings.userManagement, {
 			quota: this.license.getUsersLimit(),
 			authenticationMethod: getCurrentAuthenticationMethod(),
-			showSetupOnFirstLoad:
-				!config.getEnv('userManagement.isInstanceOwnerSetUp') &&
-				!config.getEnv('deployment.type').startsWith('desktop_'),
+			showSetupOnFirstLoad: !config.getEnv('userManagement.isInstanceOwnerSetUp'),
 		});
 
 		let dismissedBanners: string[] = [];

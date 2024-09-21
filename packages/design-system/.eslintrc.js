@@ -11,7 +11,6 @@ module.exports = {
 	rules: {
 		// TODO: Remove these
 		'import/no-default-export': 'warn',
-		'import/order': 'off',
 		'@typescript-eslint/no-unsafe-argument': 'warn',
 		'@typescript-eslint/no-unsafe-return': 'warn',
 		'@typescript-eslint/no-unsafe-member-access': 'warn',

@@ -142,7 +142,7 @@ export function groupItemsInSections(
 				title: section.title,
 				children: sortAlphabetically
 					? sortNodeCreateElements(children[section.key] ?? [])
-					: children[section.key] ?? [],
+					: (children[section.key] ?? []),
 			}),
 		);
 

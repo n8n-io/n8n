@@ -63,8 +63,16 @@ import {
 	lineComment,
 	lineUncomment,
 	toggleBlockComment,
-  } from '@codemirror/commands';
-import { closeSearchPanel, gotoLine, openSearchPanel, replaceAll, selectMatches, selectNextOccurrence, selectSelectionMatches } from '@codemirror/search';
+} from '@codemirror/commands';
+import {
+	closeSearchPanel,
+	gotoLine,
+	openSearchPanel,
+	replaceAll,
+	selectMatches,
+	selectNextOccurrence,
+	selectSelectionMatches,
+} from '@codemirror/search';
 import { addCursorAtEachSelectionLine, addCursorDown, addCursorUp } from './multiCursor';
 import { foldAll, foldCode, unfoldAll, unfoldCode } from '@codemirror/language';
 import { nextDiagnostic, previousDiagnostic, openLintPanel } from '@codemirror/lint';
@@ -86,13 +94,16 @@ const onAutocompleteNavigate = (dir: 'up' | 'down') => (view: EditorView) => {
 export const editorKeymap: KeyBinding[] = [
 	{ key: 'Ctrl-Space', run: startCompletion },
 	{ key: 'Escape', run: closeCompletion },
-	{ key: 'Escape', run: (view) => {
-		if (view.state.selection.ranges.length > 1) {
-			view.dispatch({selection: EditorSelection.single(view.state.selection.main.head) })
-			return true
-		}
-		return false
-	} },
+	{
+		key: 'Escape',
+		run: (view) => {
+			if (view.state.selection.ranges.length > 1) {
+				view.dispatch({ selection: EditorSelection.single(view.state.selection.main.head) });
+				return true;
+			}
+			return false;
+		},
+	},
 	{
 		key: 'ArrowDown',
 		run: onAutocompleteNavigate('down'),
@@ -115,52 +126,52 @@ export const editorKeymap: KeyBinding[] = [
 	{ key: 'Shift-Mod-l', run: selectSelectionMatches },
 	{ key: 'Enter', run: insertNewlineAndIndent, shift: insertNewlineAndIndent },
 	{
-	  key: 'ArrowLeft',
-	  run: cursorCharLeft,
-	  shift: selectCharLeft,
-	  preventDefault: true,
+		key: 'ArrowLeft',
+		run: cursorCharLeft,
+		shift: selectCharLeft,
+		preventDefault: true,
 	},
 	{
-	  key: 'Mod-ArrowLeft',
-	  mac: 'Alt-ArrowLeft',
-	  run: cursorGroupLeft,
-	  shift: selectGroupLeft,
+		key: 'Mod-ArrowLeft',
+		mac: 'Alt-ArrowLeft',
+		run: cursorGroupLeft,
+		shift: selectGroupLeft,
 	},
 	{
-	  key: 'ArrowRight',
-	  run: cursorCharRight,
-	  shift: selectCharRight,
-	  preventDefault: true,
+		key: 'ArrowRight',
+		run: cursorCharRight,
+		shift: selectCharRight,
+		preventDefault: true,
 	},
 	{
-	  key: 'Mod-ArrowRight',
-	  mac: 'Alt-ArrowRight',
-	  run: cursorGroupRight,
-	  shift: selectGroupRight,
-	},
-
-	{
-	  key: 'ArrowUp',
-	  run: cursorLineUp,
-	  shift: selectLineUp,
-	  preventDefault: true,
-	},
-	{
-	  key: 'ArrowDown',
-	  run: cursorLineDown,
-	  shift: selectLineDown,
-	  preventDefault: true,
+		key: 'Mod-ArrowRight',
+		mac: 'Alt-ArrowRight',
+		run: cursorGroupRight,
+		shift: selectGroupRight,
 	},
 
 	{
-	  key: 'Home',
-	  run: cursorLineBoundaryBackward,
-	  shift: selectLineBoundaryBackward,
+		key: 'ArrowUp',
+		run: cursorLineUp,
+		shift: selectLineUp,
+		preventDefault: true,
 	},
 	{
-	  mac: 'Cmd-ArrowLeft',
-	  run: cursorLineBoundaryBackward,
-	  shift: selectLineBoundaryBackward,
+		key: 'ArrowDown',
+		run: cursorLineDown,
+		shift: selectLineDown,
+		preventDefault: true,
+	},
+
+	{
+		key: 'Home',
+		run: cursorLineBoundaryBackward,
+		shift: selectLineBoundaryBackward,
+	},
+	{
+		mac: 'Cmd-ArrowLeft',
+		run: cursorLineBoundaryBackward,
+		shift: selectLineBoundaryBackward,
 	},
 	{ key: 'Mod-Home', run: cursorDocStart, shift: selectDocStart },
 	{ mac: 'Cmd-ArrowUp', run: cursorDocStart, shift: selectDocStart },
@@ -172,32 +183,32 @@ export const editorKeymap: KeyBinding[] = [
 	{ mac: 'Ctrl-ArrowDown', run: cursorPageDown, shift: selectPageDown },
 
 	{
-	  key: 'End',
-	  run: cursorLineBoundaryForward,
-	  shift: selectLineBoundaryForward,
+		key: 'End',
+		run: cursorLineBoundaryForward,
+		shift: selectLineBoundaryForward,
 	},
 	{
-	  mac: 'Cmd-ArrowRight',
-	  run: cursorLineBoundaryForward,
-	  shift: selectLineBoundaryForward,
-	},
-
-	{
-	  key: 'Mod-Alt-ArrowUp',
-	  linux: 'Shift-Alt-ArrowUp',
-	  run: addCursorUp,
-	  preventDefault: true,
-	},
-	{
-	  key: 'Mod-Alt-ArrowDown',
-	  linux: 'Shift-Alt-ArrowDown',
-	  run: addCursorDown,
-	  preventDefault: true,
+		mac: 'Cmd-ArrowRight',
+		run: cursorLineBoundaryForward,
+		shift: selectLineBoundaryForward,
 	},
 
 	{
-	  key: 'Shift-Alt-i',
-	  run: addCursorAtEachSelectionLine,
+		key: 'Mod-Alt-ArrowUp',
+		linux: 'Shift-Alt-ArrowUp',
+		run: addCursorUp,
+		preventDefault: true,
+	},
+	{
+		key: 'Mod-Alt-ArrowDown',
+		linux: 'Shift-Alt-ArrowDown',
+		run: addCursorDown,
+		preventDefault: true,
+	},
+
+	{
+		key: 'Shift-Alt-i',
+		run: addCursorAtEachSelectionLine,
 	},
 
 	{ key: 'Mod-End', run: cursorDocEnd, shift: selectDocEnd },
@@ -213,10 +224,10 @@ export const editorKeymap: KeyBinding[] = [
 	{ mac: 'Mod-Delete', run: deleteToLineEnd },
 
 	{
-	  mac: 'Ctrl-b',
-	  run: cursorCharLeft,
-	  shift: selectCharLeft,
-	  preventDefault: true,
+		mac: 'Ctrl-b',
+		run: cursorCharLeft,
+		shift: selectCharLeft,
+		preventDefault: true,
 	},
 	{ mac: 'Ctrl-f', run: cursorCharRight, shift: selectCharRight },
 
@@ -268,4 +279,4 @@ export const editorKeymap: KeyBinding[] = [
 	{ key: 'Mod-Shift-m', run: openLintPanel },
 	{ key: 'F8', run: nextDiagnostic },
 	{ key: 'Shift-F8', run: previousDiagnostic },
-  ];
+];

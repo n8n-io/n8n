@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { computed, useCssModule } from 'vue';
+
 import N8nIcon from '../N8nIcon';
 
 type AlertProps = {

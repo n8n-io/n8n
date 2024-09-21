@@ -41,7 +41,7 @@ const runMetadata = computed(() => {
 		data-test-id="node-run-info-stale"
 	>
 		<span
-			v-html="
+			v-n8n-html="
 				i18n.baseText(
 					hasPinData
 						? 'ndv.output.staleDataWarning.pinData'

@@ -1390,7 +1390,7 @@ onUpdated(async () => {
 						<div
 							v-if="option.description"
 							class="option-description"
-							v-html="getOptionsOptionDescription(option)"
+							v-n8n-html="getOptionsOptionDescription(option)"
 						></div>
 					</div>
 				</n8n-option>
@@ -1423,7 +1423,7 @@ onUpdated(async () => {
 						<div
 							v-if="option.description"
 							class="option-description"
-							v-html="getOptionsOptionDescription(option)"
+							v-n8n-html="getOptionsOptionDescription(option)"
 						></div>
 					</div>
 				</n8n-option>

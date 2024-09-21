@@ -31,6 +31,5 @@ export const writableEditorExtensions: readonly Extension[] = [
 	bracketMatching(),
 	highlightActiveLine(),
 	highlightActiveLineGutter(),
-	Prec.highest(keymap.of(editorKeymap),
-	),
+	Prec.highest(keymap.of(editorKeymap)),
 ];

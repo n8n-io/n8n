@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, defineProps, defineEmits } from 'vue';
+import { computed } from 'vue';
 import TagsContainer from './TagsContainer.vue';
 import { useAnnotationTagsStore } from '@/stores/tags.store';
 import type { ITag } from '@/Interface';

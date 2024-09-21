@@ -1,4 +1,5 @@
 import { type StoryFn } from '@storybook/vue3';
+
 import ColorCircles from './ColorCircles.vue';
 
 export default {
