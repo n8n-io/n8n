@@ -14,6 +14,7 @@ import { isFullTemplatesCollection } from '@/utils/templates/typeGuards';
 import { useRoute, useRouter } from 'vue-router';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { setPageTitle } from '@/utils/htmlUtils';
+import { useI18n } from '@/composables/useI18n';
 
 const externalHooks = useExternalHooks();
 const templatesStore = useTemplatesStore();
@@ -23,6 +24,7 @@ const nodeTypesStore = useNodeTypesStore();
 const route = useRoute();
 const router = useRouter();
 const telemetry = useTelemetry();
+const i18n = useI18n();
 
 const loading = ref(true);
 const notFoundError = ref(false);
@@ -120,15 +122,13 @@ onMounted(async () => {
 						{{ collection.name }}
 					</n8n-heading>
 					<n8n-text v-if="collection && collection.name" color="text-base" size="small">
-						{{ $locale.baseText('templates.collection') }}
+						{{ i18n.baseText('templates.collection') }}
 					</n8n-text>
 					<n8n-loading :loading="!collection || !collection.name" :rows="2" variant="h1" />
 				</div>
 			</div>
 			<div v-else :class="$style.notFound">
-				<n8n-text color="text-base">{{
-					$locale.baseText('templates.collectionsNotFound')
-				}}</n8n-text>
+				<n8n-text color="text-base">{{ i18n.baseText('templates.collectionsNotFound') }}</n8n-text>
 			</div>
 		</template>
 		<template v-if="!notFoundError" #content>
@@ -152,7 +152,7 @@ onMounted(async () => {
 				</div>
 				<div :class="$style.details">
 					<TemplateDetails
-						:block-title="$locale.baseText('template.details.appsInTheCollection')"
+						:block-title="i18n.baseText('template.details.appsInTheCollection')"
 						:loading="loading"
 						:template="collection"
 					/>
