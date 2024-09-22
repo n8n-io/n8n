@@ -594,20 +594,20 @@ onMounted(async () => {
 	<div v-if="!isLDAPFeatureEnabled">
 		<div :class="[$style.header, 'mb-2xl']">
 			<n8n-heading size="2xlarge">
-				{{ $locale.baseText('settings.ldap') }}
+				{{ i18n.baseText('settings.ldap') }}
 			</n8n-heading>
 		</div>
 
 		<n8n-info-tip type="note" theme="info" tooltip-placement="right" class="mb-l">
-			{{ $locale.baseText('settings.ldap.note') }}
+			{{ i18n.baseText('settings.ldap.note') }}
 		</n8n-info-tip>
 		<n8n-action-box
-			:description="$locale.baseText('settings.ldap.disabled.description')"
-			:button-text="$locale.baseText('settings.ldap.disabled.buttonText')"
+			:description="i18n.baseText('settings.ldap.disabled.description')"
+			:button-text="i18n.baseText('settings.ldap.disabled.buttonText')"
 			@click:button="goToUpgrade"
 		>
 			<template #heading>
-				<span>{{ $locale.baseText('settings.ldap.disabled.title') }}</span>
+				<span>{{ i18n.baseText('settings.ldap.disabled.title') }}</span>
 			</template>
 		</n8n-action-box>
 	</div>
@@ -615,12 +615,12 @@ onMounted(async () => {
 		<div :class="$style.container">
 			<div :class="$style.header">
 				<n8n-heading size="2xlarge">
-					{{ $locale.baseText('settings.ldap') }}
+					{{ i18n.baseText('settings.ldap') }}
 				</n8n-heading>
 			</div>
 			<div :class="$style.docsInfoTip">
 				<n8n-info-tip theme="info" type="note">
-					<span v-n8n-html="$locale.baseText('settings.ldap.infoTip')"></span>
+					<span v-n8n-html="i18n.baseText('settings.ldap.infoTip')"></span>
 				</n8n-info-tip>
 			</div>
 			<div :class="$style.settingsForm">
@@ -641,8 +641,8 @@ onMounted(async () => {
 					v-if="loginEnabled"
 					:label="
 						loadingTestConnection
-							? $locale.baseText('settings.ldap.testingConnection')
-							: $locale.baseText('settings.ldap.testConnection')
+							? i18n.baseText('settings.ldap.testingConnection')
+							: i18n.baseText('settings.ldap.testConnection')
 					"
 					size="large"
 					class="mr-s"
@@ -651,7 +651,7 @@ onMounted(async () => {
 					@click="onTestConnectionClick"
 				/>
 				<n8n-button
-					:label="$locale.baseText('settings.ldap.save')"
+					:label="i18n.baseText('settings.ldap.save')"
 					size="large"
 					:disabled="!hasAnyChanges || !readyToSubmit"
 					@click="onSaveClick"
@@ -660,7 +660,7 @@ onMounted(async () => {
 		</div>
 		<div v-if="loginEnabled">
 			<n8n-heading tag="h1" class="mb-xl mt-3xl" size="medium">{{
-				$locale.baseText('settings.ldap.section.synchronization.title')
+				i18n.baseText('settings.ldap.section.synchronization.title')
 			}}</n8n-heading>
 			<div :class="$style.syncTable">
 				<ElTable
@@ -675,26 +675,26 @@ onMounted(async () => {
 				>
 					<ElTableColumn
 						prop="status"
-						:label="$locale.baseText('settings.ldap.synchronizationTable.column.status')"
+						:label="i18n.baseText('settings.ldap.synchronizationTable.column.status')"
 					/>
 					<ElTableColumn
 						prop="endedAt"
-						:label="$locale.baseText('settings.ldap.synchronizationTable.column.endedAt')"
+						:label="i18n.baseText('settings.ldap.synchronizationTable.column.endedAt')"
 					/>
 					<ElTableColumn
 						prop="runMode"
-						:label="$locale.baseText('settings.ldap.synchronizationTable.column.runMode')"
+						:label="i18n.baseText('settings.ldap.synchronizationTable.column.runMode')"
 					/>
 					<ElTableColumn
 						prop="runTime"
-						:label="$locale.baseText('settings.ldap.synchronizationTable.column.runTime')"
+						:label="i18n.baseText('settings.ldap.synchronizationTable.column.runTime')"
 					/>
 					<ElTableColumn
 						prop="details"
-						:label="$locale.baseText('settings.ldap.synchronizationTable.column.details')"
+						:label="i18n.baseText('settings.ldap.synchronizationTable.column.details')"
 					/>
 					<template #empty>{{
-						$locale.baseText('settings.ldap.synchronizationTable.empty.message')
+						i18n.baseText('settings.ldap.synchronizationTable.empty.message')
 					}}</template>
 					<template #append>
 						<InfiniteLoading target=".el-table__body-wrapper" @infinite="getLdapSynchronizations">
@@ -704,7 +704,7 @@ onMounted(async () => {
 			</div>
 			<div class="pb-3xl">
 				<n8n-button
-					:label="$locale.baseText('settings.ldap.dryRun')"
+					:label="i18n.baseText('settings.ldap.dryRun')"
 					type="secondary"
 					size="large"
 					class="mr-s"
@@ -713,7 +713,7 @@ onMounted(async () => {
 					@click="onDryRunClick"
 				/>
 				<n8n-button
-					:label="$locale.baseText('settings.ldap.synchronizeNow')"
+					:label="i18n.baseText('settings.ldap.synchronizeNow')"
 					size="large"
 					:disabled="hasAnyChanges || !readyToSubmit"
 					:loading="loadingLiveRun"
