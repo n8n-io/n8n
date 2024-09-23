@@ -22,7 +22,7 @@ import { useWorkflowResourcesLocator } from './useWorkflowResourcesLocator';
 interface Props {
 	modelValue: INodeParameterResourceLocator;
 	eventBus?: EventBus;
-	inputSize: 'small' | 'mini' | 'medium' | 'large' | 'xlarge';
+	inputSize?: 'small' | 'mini' | 'medium' | 'large' | 'xlarge';
 	isValueExpression?: boolean;
 	isReadOnly?: boolean;
 	path: string;

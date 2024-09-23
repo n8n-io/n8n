@@ -3,8 +3,8 @@ import { computed } from 'vue';
 
 const props = withDefaults(
 	defineProps<{
-		size: 'mini' | 'small' | 'medium' | 'large';
-		theme: 'default' | 'blank' | 'disabled';
+		size?: 'mini' | 'small' | 'medium' | 'large';
+		theme?: 'default' | 'blank' | 'disabled';
 	}>(),
 	{
 		size: 'medium',

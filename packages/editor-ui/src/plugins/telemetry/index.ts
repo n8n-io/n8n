@@ -15,7 +15,6 @@ import { useRootStore } from '@/stores/root.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { usePostHog } from '@/stores/posthog.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useTelemetryStore } from '@/stores/telemetry.store';
 import { useUIStore } from '@/stores/ui.store';
 
 export class Telemetry {
@@ -74,7 +73,6 @@ export class Telemetry {
 			configUrl: 'https://api-rs.n8n.io',
 			...logging,
 		});
-		useTelemetryStore().init(this);
 
 		this.identify(instanceId, userId, versionCli, projectId);
 
@@ -144,6 +142,10 @@ export class Telemetry {
 				route,
 			});
 		}
+	}
+
+	reset() {
+		this.rudderStack?.reset();
 	}
 
 	flushPageEvents() {
