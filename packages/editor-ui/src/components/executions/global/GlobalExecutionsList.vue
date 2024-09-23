@@ -157,7 +157,7 @@ async function handleDeleteSelected() {
 					}),
 		});
 	} catch (error) {
-		toast.showError(error, i18n.baseText('executionsList.showError.delete.title'));
+		toast.showError(error, i18n.baseText('executionsList.showError.handleDeleteSelected.title'));
 		return;
 	}
 
@@ -283,6 +283,7 @@ async function deleteExecution(execution: ExecutionSummary) {
 	const hasAnnotation =
 		!!execution.annotation && (execution.annotation.vote || execution.annotation.tags.length > 0);
 
+	// Show a confirmation dialog if the execution has an annotation
 	if (hasAnnotation) {
 		const deleteConfirmed = await message.confirm(
 			i18n.baseText('executionsList.confirmMessage.annotatedExecutionMessage'),
