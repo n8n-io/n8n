@@ -1392,6 +1392,8 @@ describe('useCanvasOperations', () => {
 					{ node: node1.name, type: NodeConnectionType.Main, index: 0 },
 				],
 			});
+
+			expect(workflowsStore.workflow.connections[node1.name]).toBeUndefined();
 		});
 
 		it('should not delete connections if node ID does not exist', () => {
