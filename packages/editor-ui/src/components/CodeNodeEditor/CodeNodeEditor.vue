@@ -3,7 +3,7 @@ import { javascript } from '@codemirror/lang-javascript';
 import { python } from '@codemirror/lang-python';
 import type { LanguageSupport } from '@codemirror/language';
 import type { Extension, Line } from '@codemirror/state';
-import { Compartment, EditorSelection, EditorState } from '@codemirror/state';
+import { Compartment, EditorState } from '@codemirror/state';
 import type { ViewUpdate } from '@codemirror/view';
 import { EditorView } from '@codemirror/view';
 import type { CodeExecutionMode, CodeNodeEditorLanguage } from 'n8n-workflow';
@@ -26,8 +26,7 @@ import { useLinter } from './linter';
 import { codeNodeEditorTheme } from './theme';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { eventToCoord, mappingDropCursor } from '@/plugins/codemirror/dragAndDrop';
-import { unwrapExpression } from '@/utils/expressions';
+import { dropInCodeEditor, mappingDropCursor } from '@/plugins/codemirror/dragAndDrop';
 
 type Props = {
 	mode: CodeExecutionMode;
@@ -380,21 +379,7 @@ function onAiLoadEnd() {
 async function onDrop(value: string, event: MouseEvent) {
 	if (!editor.value) return;
 
-	const cmEditor = toRaw(editor.value);
-
-	const dropPos = cmEditor.posAtCoords(eventToCoord(event), false);
-	const valueToInsert = unwrapExpression(value);
-
-	const changes = cmEditor.state.changes({ from: dropPos, insert: valueToInsert });
-	const anchor = changes.mapPos(dropPos, -1);
-	const head = changes.mapPos(dropPos, 1);
-	const selection = EditorSelection.single(anchor, head);
-
-	cmEditor.dispatch({
-		changes,
-		selection,
-		userEvent: 'input.drop',
-	});
+	await dropInCodeEditor(toRaw(editor.value), event, value);
 }
 </script>
 
@@ -514,6 +499,7 @@ async function onDrop(value: string, event: MouseEvent) {
 .editorInput.activeDrop {
 	:global(.cm-editor) {
 		border-color: var(--color-success);
+		border-style: solid;
 		cursor: grabbing;
 		border-width: 1px;
 	}
