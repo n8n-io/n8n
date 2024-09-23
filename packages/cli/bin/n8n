@@ -60,7 +60,15 @@ if (!globalThis.crypto?.getRandomValues) {
 	globalThis.crypto = require('node:crypto').webcrypto;
 }
 
+// Loading dotenv early ensures that `process.env` is up-to-date everywhere in code
+require('dotenv').config();
+
 (async () => {
+	if ('SENTRY_DSN' in process.env) {
+		// await import('')
+		// TODO: load sentry.ts
+	}
+
 	const oclif = await import('@oclif/core');
 	await oclif.execute({ dir: __dirname });
 })();

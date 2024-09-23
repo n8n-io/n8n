@@ -1,75 +1,56 @@
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { QueryFailedError } from '@n8n/typeorm';
+import Sentry from '@sentry/node';
 import { createHash } from 'crypto';
 import { ErrorReporterProxy, ApplicationError } from 'n8n-workflow';
 
-import config from '@/config';
+// Collect longer stacktraces
+Error.stackTraceLimit = 50;
 
-let initialized = false;
+process.on('uncaughtException', (error) => {
+	ErrorReporterProxy.error(error);
+});
 
-export const initErrorHandling = async () => {
-	if (initialized) return;
+const {
+	SENTRY_DSN: dsn,
+	N8N_VERSION: release,
+	ENVIRONMENT: environment,
+	DEPLOYMENT_NAME: serverName,
+} = process.env;
 
-	process.on('uncaughtException', (error) => {
-		ErrorReporterProxy.error(error);
-	});
+const enabledIntegrations = [
+	'InboundFilters',
+	'FunctionToString',
+	'LinkedErrors',
+	'OnUnhandledRejection',
+	'ContextLines',
+];
 
-	const dsn = config.getEnv('diagnostics.config.sentry.dsn');
-	if (!dsn) {
-		initialized = true;
-		return;
-	}
-
-	// Collect longer stacktraces
-	Error.stackTraceLimit = 50;
-
-	const {
-		N8N_VERSION: release,
-		ENVIRONMENT: environment,
-		DEPLOYMENT_NAME: serverName,
-	} = process.env;
-
-	const { init, captureException, addEventProcessor } = await import('@sentry/node');
-
-	const { RewriteFrames } = await import('@sentry/integrations');
-	const { Integrations } = await import('@sentry/node');
-
-	const enabledIntegrations = [
-		'InboundFilters',
-		'FunctionToString',
-		'LinkedErrors',
-		'OnUnhandledRejection',
-		'ContextLines',
-	];
-	init({
-		dsn,
-		release,
-		environment,
-		enableTracing: false,
-		serverName,
-		beforeBreadcrumb: () => null,
-		integrations: (integrations) => [
-			...integrations.filter(({ name }) => enabledIntegrations.includes(name)),
-			new RewriteFrames({ root: process.cwd() }),
-			new Integrations.RequestData({
-				include: {
-					cookies: false,
-					data: false,
-					headers: false,
-					query_string: false,
-					url: true,
-					user: false,
-				},
-			}),
-		],
-	});
-
-	const seenErrors = new Set<string>();
-	addEventProcessor((event, { originalException }) => {
-		if (!originalException) return null;
+const seenErrors = new Set<string>();
+Sentry.init({
+	dsn,
+	release,
+	environment,
+	enableTracing: false,
+	serverName,
+	beforeBreadcrumb: () => null,
+	integrations: (integrations) => [
+		...integrations.filter(({ name }) => enabledIntegrations.includes(name)),
+		Sentry.rewriteFramesIntegration({ root: process.cwd() }),
+		Sentry.requestDataIntegration({
+			include: {
+				cookies: false,
+				data: false,
+				headers: false,
+				query_string: false,
+				url: true,
+				user: false,
+			},
+		}),
+	],
+	beforeSend(event, { originalException }) {
+		if (!(originalException instanceof Error)) return null;
 
 		if (
-			originalException instanceof QueryFailedError &&
+			originalException.name === 'QueryFailedError' &&
 			['SQLITE_FULL', 'SQLITE_IOERR'].some((errMsg) => originalException.message.includes(errMsg))
 		) {
 			return null;
@@ -90,11 +71,9 @@ export const initErrorHandling = async () => {
 		}
 
 		return event;
-	});
+	},
+});
 
-	ErrorReporterProxy.init({
-		report: (error, options) => captureException(error, options),
-	});
-
-	initialized = true;
-};
+ErrorReporterProxy.init({
+	report: (error, options) => Sentry.captureException(error, options),
+});

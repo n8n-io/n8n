@@ -11,7 +11,6 @@ import { LICENSE_FEATURES, inDevelopment, inTest } from '@/constants';
 import * as CrashJournal from '@/crash-journal';
 import { generateHostInstanceId } from '@/databases/utils/generators';
 import * as Db from '@/db';
-import { initErrorHandling } from '@/error-reporting';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { TelemetryEventRelay } from '@/events/telemetry-event-relay';
 import { initExpressionEvaluator } from '@/expression-evaluator';
@@ -53,7 +52,6 @@ export abstract class BaseCommand extends Command {
 	protected needsCommunityPackages = false;
 
 	async init(): Promise<void> {
-		await initErrorHandling();
 		initExpressionEvaluator();
 
 		process.once('SIGTERM', this.onTerminationSignal('SIGTERM'));
