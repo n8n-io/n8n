@@ -37,7 +37,7 @@ export class AIAssistant extends BasePage {
 			cy.getByTestId('node-error-view-ask-assistant-button').find('button').first(),
 		credentialEditAssistantButton: () =>
 			cy.getByTestId('credentail-edit-ask-assistant-button').find('button').first(),
-		codeSnippet: () => cy.getByTestId('assistant-code-snippet'),
+		codeSnippet: () => cy.getByTestId('assistant-code-snippet-content'),
 	};
 
 	actions = {

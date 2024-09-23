@@ -204,6 +204,7 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 									type="tertiary"
 									text="true"
 									size="mini"
+									data-test-id="assistant-copy-snippet-button"
 									@click="onCopyButtonClick(message.codeSnippet, $event)"
 								>
 									{{ t('assistantChat.copy') }}
@@ -211,6 +212,7 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 							</header>
 							<div
 								v-n8n-html="renderMarkdown(message.codeSnippet).trim()"
+								data-test-id="assistant-code-snippet-content"
 								:class="[$style['snippet-content'], $style['rendered-content']]"
 							></div>
 						</div>
