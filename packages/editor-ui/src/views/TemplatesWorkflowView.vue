@@ -70,12 +70,6 @@ watch(
 );
 
 onMounted(async () => {
-	if (template.value) {
-		setPageTitle(`n8n - Template template: ${template.value.name}`);
-	} else {
-		setPageTitle('n8n - Templates');
-	}
-
 	scrollToTop();
 
 	if (template.value?.full) {
