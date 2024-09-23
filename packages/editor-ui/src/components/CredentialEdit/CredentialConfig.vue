@@ -323,7 +323,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 				<div
 					v-if="isAskAssistantAvailable"
 					:class="$style.askAssistantButton"
-					data-test-id="credentail-edit-ask-assistant-button"
+					data-test-id="credential-edit-ask-assistant-button"
 				>
 					<InlineAskAssistantButton :asked="assistantAlreadyAsked" @click="onAskAssistantClick" />
 					<span>for setup instructions</span>
