@@ -89,6 +89,9 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 	//             storing
 	// ----------------------------------
 
+	/**
+	 * @param ttl Time to live in milliseconds
+	 */
 	async set(key: string, value: unknown, ttl?: number) {
 		if (!this.cache) await this.init();
 
