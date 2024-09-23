@@ -2,14 +2,14 @@ import type { Diagnostic } from '@codemirror/lint';
 import ts from 'typescript';
 
 export const FILE_NAME = 'index.ts';
-const FN_PREFIX = '(function(){\n';
+const FN_PREFIX = '(() => {\n';
 
 export function wrapInFunction(script: string): string {
 	return `${FN_PREFIX}${script}\n})()`;
 }
 
 export function cmPosToTs(pos: number) {
-	return pos + FN_PREFIX.length;
+	return pos + FN_PREFIX.length - 1;
 }
 
 export function tsPosToCm(pos: number) {

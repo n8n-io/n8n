@@ -20,7 +20,14 @@ const worker = (): LanguageServiceWorker => {
 			const compilerOptions: ts.CompilerOptions = {
 				allowJs: true,
 				checkJs: true,
-				noLib: true,
+				target: ts.ScriptTarget.ESNext,
+				lib: ['ESNext'],
+				module: ts.ModuleKind.ESNext,
+				strict: true,
+				typeRoots: [],
+				types: [],
+				importHelpers: false,
+				noEmit: true,
 			};
 
 			const fsMap = await tsvfs.createDefaultMapFromCDN(
@@ -52,7 +59,6 @@ declare global {
 			);
 		},
 		updateFile(content) {
-			console.log('update', content);
 			const exists = env.getSourceFile(FILE_NAME);
 			if (exists) {
 				env.updateFile(FILE_NAME, wrapInFunction(content));

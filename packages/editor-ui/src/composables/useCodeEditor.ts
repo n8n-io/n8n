@@ -203,7 +203,7 @@ export const useCodeEditor = ({
 						dragging.value = true;
 					},
 				}),
-				highlightSelectionMatches({ highlightWordAroundCursor: true, minSelectionLength: 2 }),
+				highlightSelectionMatches({ minSelectionLength: 2 }),
 				lineNumbers(),
 				drawSelection(),
 				foldGutter({
@@ -306,7 +306,6 @@ export const useCodeEditor = ({
 
 	function setCursorPosition(pos: number | 'end'): void {
 		const finalPos = pos === 'end' ? (editor.value?.state.doc.length ?? 0) : pos;
-
 		editor.value?.dispatch({ selection: { head: finalPos, anchor: finalPos } });
 	}
 
