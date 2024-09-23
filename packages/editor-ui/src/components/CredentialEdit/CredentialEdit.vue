@@ -279,9 +279,12 @@ const requiredPropertiesFilled = computed(() => {
 });
 
 const credentialPermissions = computed(() => {
+	/**
+	 * Credentials don't have permissions until the have been created on the BE
+	 * credential:update allows the users modify the form fields at least until the credential is saved
+	 */
 	return getResourcePermissions(
-		((credentialId.value ? currentCredential.value : credentialData.value) as ICredentialsResponse)
-			?.scopes,
+		(currentCredential.value as ICredentialsResponse)?.scopes ?? ['credential:update'],
 	).credential;
 });
 
@@ -341,11 +344,8 @@ onMounted(async () => {
 			credentialTypeName: defaultCredentialTypeName.value,
 		});
 
-		const scopes = homeProject.value?.scopes ?? [];
-
 		credentialData.value = {
 			...credentialData.value,
-			scopes,
 			...(homeProject.value ? { homeProject: homeProject.value } : {}),
 		};
 	} else {
