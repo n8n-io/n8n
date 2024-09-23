@@ -24,7 +24,7 @@ const props = withDefaults(
 );
 
 const emit = defineEmits<{
-	openCollection: [payload: { event: MouseEvent; id: number }];
+	openCollection: [payload: { event: MouseEvent; id: string }];
 }>();
 
 const carouselScrollPosition = ref(0);
@@ -45,7 +45,7 @@ const updateCarouselScroll = () => {
 };
 
 const onCardClick = (event: MouseEvent, id: number) => {
-	emit('openCollection', { event, id });
+	emit('openCollection', { event, id: id.toString() });
 };
 
 const scrollLeft = () => {
