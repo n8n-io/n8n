@@ -24,9 +24,9 @@ const loading = ref(true);
 const showPreview = ref(true);
 const notFoundError = ref(false);
 
-const templateId = computed(() => {
-	return Array.isArray(route.params.id) ? route.params.id[0] : route.params.id;
-});
+const templateId = computed(() =>
+	Array.isArray(route.params.id) ? route.params.id[0] : route.params.id,
+);
 
 const template = computed(() => templatesStore.getFullTemplateById(templateId.value));
 
