@@ -324,6 +324,8 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			}
 		}
 
+		console.log(workflowsStore.getCurrentWorkflow());
+
 		trackDeleteNode(id);
 	}
 
@@ -1215,6 +1217,8 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 				}
 			}
 		}
+
+		delete workflowsStore.workflow.connections[targetNode.name];
 
 		if (trackHistory && trackBulk) {
 			historyStore.stopRecordingUndo();
