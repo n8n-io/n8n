@@ -82,7 +82,7 @@ describe('SourceControlPushModal', () => {
 
 		vi.spyOn(route, 'fullPath', 'get').mockReturnValue('/home/workflows');
 
-		const { getAllByTestId } = renderModal({
+		const { getByTestId, getAllByTestId } = renderModal({
 			pinia: createTestingPinia(),
 			props: {
 				data: {
@@ -92,7 +92,7 @@ describe('SourceControlPushModal', () => {
 			},
 		});
 
-		const files = getAllByTestId('source-control-push-modal-file');
+		const files = getAllByTestId('source-control-push-modal-file-checkbox');
 		expect(files).toHaveLength(2);
 
 		await userEvent.click(files[0]);
@@ -101,11 +101,50 @@ describe('SourceControlPushModal', () => {
 
 		await userEvent.click(within(files[0]).getByRole('checkbox'));
 		expect(within(files[0]).getByRole('checkbox')).not.toBeChecked();
+		expect(within(files[1]).getByRole('checkbox')).not.toBeChecked();
 
 		await userEvent.click(within(files[1]).getByRole('checkbox'));
+		expect(within(files[0]).getByRole('checkbox')).not.toBeChecked();
 		expect(within(files[1]).getByRole('checkbox')).toBeChecked();
 
 		await userEvent.click(files[1]);
+		expect(within(files[0]).getByRole('checkbox')).not.toBeChecked();
+		expect(within(files[1]).getByRole('checkbox')).not.toBeChecked();
+
+		await userEvent.click(within(files[0]).getByText('My workflow 2'));
+		expect(within(files[0]).getByRole('checkbox')).toBeChecked();
+		expect(within(files[1]).getByRole('checkbox')).not.toBeChecked();
+
+		await userEvent.click(within(files[1]).getByText('My workflow 1'));
+		expect(within(files[0]).getByRole('checkbox')).toBeChecked();
+		expect(within(files[1]).getByRole('checkbox')).toBeChecked();
+
+		await userEvent.click(within(files[1]).getByText('My workflow 1'));
+		expect(within(files[0]).getByRole('checkbox')).toBeChecked();
+		expect(within(files[1]).getByRole('checkbox')).not.toBeChecked();
+
+		await userEvent.click(getByTestId('source-control-push-modal-toggle-all'));
+		expect(within(files[0]).getByRole('checkbox')).toBeChecked();
+		expect(within(files[1]).getByRole('checkbox')).toBeChecked();
+
+		await userEvent.click(within(files[0]).getByText('My workflow 2'));
+		await userEvent.click(within(files[1]).getByText('My workflow 1'));
+		expect(within(files[0]).getByRole('checkbox')).not.toBeChecked();
+		expect(within(files[1]).getByRole('checkbox')).not.toBeChecked();
+		expect(
+			within(getByTestId('source-control-push-modal-toggle-all')).getByRole('checkbox'),
+		).not.toBeChecked();
+
+		await userEvent.click(within(files[0]).getByText('My workflow 2'));
+		await userEvent.click(within(files[1]).getByText('My workflow 1'));
+		expect(within(files[0]).getByRole('checkbox')).toBeChecked();
+		expect(within(files[1]).getByRole('checkbox')).toBeChecked();
+		expect(
+			within(getByTestId('source-control-push-modal-toggle-all')).getByRole('checkbox'),
+		).toBeChecked();
+
+		await userEvent.click(getByTestId('source-control-push-modal-toggle-all'));
+		expect(within(files[0]).getByRole('checkbox')).not.toBeChecked();
 		expect(within(files[1]).getByRole('checkbox')).not.toBeChecked();
 	});
 });
