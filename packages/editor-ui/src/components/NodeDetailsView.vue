@@ -55,6 +55,7 @@ const props = withDefaults(
 	}>(),
 	{
 		isProductionExecutionPreview: false,
+		readOnly: false,
 	},
 );
 
