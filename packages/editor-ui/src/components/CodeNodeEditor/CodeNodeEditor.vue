@@ -376,15 +376,17 @@ function onAiLoadEnd() {
 			v-model="activeTab"
 			type="card"
 			:before-leave="onBeforeTabLeave"
+			:class="$style.tabs"
 		>
 			<el-tab-pane
 				:label="$locale.baseText('codeNodeEditor.tabs.code')"
 				name="code"
 				data-test-id="code-node-tab-code"
+				:class="$style.fillHeight"
 			>
 				<div
 					ref="codeNodeEditorRef"
-					:class="['ph-no-capture', 'code-editor-tabs', $style.editorInput]"
+					:class="['ph-no-capture', 'code-editor-tabs', $style.editorInput, $style.fillHeight]"
 				/>
 				<slot name="suffix" />
 			</el-tab-pane>
@@ -439,6 +441,12 @@ function onAiLoadEnd() {
 </style>
 
 <style lang="scss" module>
+.tabs {
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+}
+
 .code-node-editor-container {
 	position: relative;
 }
