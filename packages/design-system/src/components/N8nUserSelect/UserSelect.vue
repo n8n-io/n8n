@@ -70,7 +70,7 @@ const sortedUsers = computed(() =>
 	}),
 );
 
-const setFilter = (value: string) => {
+const setFilter = (value: string = '') => {
 	filter.value = value;
 };
 
