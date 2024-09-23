@@ -18,7 +18,7 @@ describe('Debug', () => {
 	it('should be able to debug executions', () => {
 		cy.intercept('GET', '/rest/executions?filter=*').as('getExecutions');
 		cy.intercept('GET', '/rest/executions/*').as('getExecution');
-		cy.intercept('POST', '/rest/workflows/**/run').as('postWorkflowRun');
+		cy.intercept('POST', '/rest/workflows/**/run?**').as('postWorkflowRun');
 
 		cy.signinAsOwner();
 

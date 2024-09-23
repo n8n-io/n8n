@@ -6,7 +6,7 @@ describe('AssistantLoadingMessage', () => {
 	it('renders loading message correctly', () => {
 		const { container } = render(AssistantLoadingMessage, {
 			props: {
-				loadingMessage: 'Thinking...',
+				message: 'Thinking...',
 			},
 		});
 		expect(container).toMatchSnapshot();
