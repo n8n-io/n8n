@@ -105,7 +105,7 @@ export function createCanvasNodeProvide({
 } = {}) {
 	const props = createCanvasNodeProps({ id, label, selected, readOnly, data });
 	return {
-		[`${CanvasNodeKey}`]: {
+		[String(CanvasNodeKey)]: {
 			id: ref(props.id),
 			label: ref(props.label),
 			selected: ref(props.selected),
@@ -136,7 +136,7 @@ export function createCanvasHandleProvide({
 	isReadOnly?: boolean;
 } = {}) {
 	return {
-		[`${CanvasNodeHandleKey}`]: {
+		[String(CanvasNodeHandleKey)]: {
 			label: ref(label),
 			mode: ref(mode),
 			type: ref(type),
