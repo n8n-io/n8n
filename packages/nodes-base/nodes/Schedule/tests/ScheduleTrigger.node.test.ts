@@ -71,6 +71,7 @@ describe('ScheduleTrigger', () => {
 				Timezone: 'Europe/Berlin (UTC+01:00)',
 				Year: '2023',
 				timestamp: '2023-12-28T15:30:30.000+01:00',
+				Rule: 'Rule 1',
 			});
 
 			jest.setSystemTime(new Date(firstTriggerData.json.timestamp as string));
