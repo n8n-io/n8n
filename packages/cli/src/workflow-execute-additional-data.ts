@@ -879,8 +879,7 @@ async function executeWorkflow(
 			fullExecutionData.workflowId = workflowData.id;
 		}
 
-		// remove execution from active executions
-		activeExecutions.remove(executionId, fullRunData);
+		activeExecutions.finalizeExecution(executionId, fullRunData);
 
 		await executionRepository.updateExistingExecution(executionId, fullExecutionData);
 		throw objectToError(
@@ -906,11 +905,11 @@ async function executeWorkflow(
 	if (data.finished === true || data.status === 'waiting') {
 		// Workflow did finish successfully
 
-		activeExecutions.remove(executionId, data);
+		activeExecutions.finalizeExecution(executionId, data);
 		const returnData = WorkflowHelpers.getDataLastExecutedNodeData(data);
 		return returnData!.data!.main;
 	}
-	activeExecutions.remove(executionId, data);
+	activeExecutions.finalizeExecution(executionId, data);
 
 	// Workflow did fail
 	const { error } = data.data.resultData;
