@@ -4,8 +4,18 @@ import fs from 'fs';
 import { join } from 'path';
 import Container from 'typedi';
 
-import { BaseCommand } from '../base-command';
 import { jsonColumnType } from '@/databases/entities/abstract-entity';
+import { BaseCommand } from '../base-command';
+
+/** These tables are not backed up to reduce the backup size */
+const excludeList = [
+	'execution_annotation_tags',
+	'execution_annotations',
+	'execution_data',
+	'execution_entity',
+	'execution_metadata',
+	'annotation_tag_entity',
+];
 
 export class ExportAllCommand extends BaseCommand {
 	static description = 'Export Everything';
@@ -17,16 +27,8 @@ export class ExportAllCommand extends BaseCommand {
 
 	async run() {
 		const connection = Container.get(DataSource);
-		const excludeList = [
-			'execution_annotation_tags',
-			'execution_annotations',
-			'execution_data',
-			'execution_entity',
-			'execution_metadata',
-			'annotation_tag_entity',
-		];
 		const tables = connection.entityMetadatas
-			.filter((v) => !excludeList.includes(v.name))
+			.filter((v) => !excludeList.includes(v.tableName))
 			.map((v) => ({
 				name: v.tableName,
 				columns: v.columns,
@@ -35,29 +37,32 @@ export class ExportAllCommand extends BaseCommand {
 		const backupPath = '/tmp/backup';
 		await fs.promises.mkdir(backupPath, { recursive: true });
 
-		for (const { name, columns } of tables) {
+		for (const { name: tableName, columns } of tables) {
 			// TODO: implement batching
-			//const rows = await repo.find({ relations: [] });
 
-			const rows = await connection.query(`SELECT * from ${name}`);
+			const rows = await connection.query(`SELECT * from ${tableName}`);
 
-			const stream = fs.createWriteStream(join(backupPath, `${name}.jsonl`));
+			const stream = fs.createWriteStream(join(backupPath, `${tableName}.jsonl`));
 
 			for (const row of rows) {
-				const data = JSON.stringify(row);
-
-				// TODO: fix the types
-				for (const column of columns) {
-					// TODO: only do this for sqlite
-					//
-					//
-					//TODO: STOPPED HERE
-					if (column.type === jsonColumnType) {
-						console.log(column.type);
+				// Our sqlite setup has some quirks. The following code normalizes the exported data so that it can be imported into a new postgres or sqlite database.
+				if (this.globalConfig.database.type === 'sqlite') {
+					for (const { type: columnType, propertyName } of columns) {
+						if (propertyName in row) {
+							// Our sqlite setup used `simple-json` for JSON columns, which is stored as strings.
+							// This is because when we wrote this code, sqlite did not support native JSON column types.
+							if (columnType === jsonColumnType) {
+								row[propertyName] = JSON.parse(row[propertyName]);
+							}
+							// Sqlite does not have a separate Boolean data type, and uses integers 0/1 to mark values as boolean
+							else if (columnType === Boolean) {
+								row[propertyName] = Boolean(row[propertyName]);
+							}
+						}
 					}
 				}
 
-				stream.write(data);
+				stream.write(JSON.stringify(row));
 				stream.write('\n');
 			}
 
