@@ -321,11 +321,12 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 		let { executionId } = runWorkflowApiResponse || {};
 
 		const MAX_DELAY = 3000;
-		let delay = 300;
 
 		const waitForWebhook = async (): Promise<string> => {
 			return await new Promise<string>((resolve) => {
-				const interval = setInterval(async () => {
+				let delay = 300;
+
+				const myFunction = async () => {
 					await useExternalHooks().run('workflowRun.runWorkflow', {
 						nodeName: options.destinationNode,
 						source: options.source,
@@ -334,11 +335,14 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 					if (workflowsStore.activeExecutionId) {
 						executionId = workflowsStore.activeExecutionId;
 						runWorkflowApiResponse = { executionId };
-						clearInterval(interval);
 						resolve(executionId);
 					}
+
 					delay = Math.min(delay * 1.1, MAX_DELAY);
-				}, delay);
+					setTimeout(myFunction, delay);
+				};
+
+				setTimeout(myFunction, delay);
 			});
 		};
 
@@ -350,19 +354,19 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 
 		const resolveWaitingNodesData = async (): Promise<void> => {
 			return await new Promise<void>((resolve) => {
-				const interval = setInterval(async () => {
+				let delay = 300;
+
+				const myFunction = async () => {
 					const execution = await workflowsStore.getExecution((executionId as string) || '');
 
 					localStorage.removeItem(FORM_RELOAD);
 
 					if (!execution || workflowsStore.workflowExecutionData === null) {
-						clearInterval(interval);
 						resolve();
 						return;
 					}
 
 					if (execution.finished || ['error', 'canceled', 'crashed'].includes(execution.status)) {
-						clearInterval(interval);
 						resolve();
 						return;
 					}
@@ -391,8 +395,12 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 							}
 						}
 					}
+
 					delay = Math.min(delay * 1.1, MAX_DELAY);
-				}, delay);
+					setTimeout(myFunction, delay);
+				};
+
+				setTimeout(myFunction, delay);
 			});
 		};
 
