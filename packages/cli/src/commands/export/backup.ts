@@ -22,10 +22,10 @@ const excludeList = [
 	'annotation_tag_entity',
 ];
 
-export class ExportAllCommand extends BaseCommand {
-	static description = 'Export Everything';
+export class ExportBackupCommand extends BaseCommand {
+	static description = 'Backup to a zip file';
 
-	static examples = ['$ n8n export:all', '$ n8n export:all --output=backup.zip'];
+	static examples = ['$ n8n export:backup', '$ n8n export:backup --output=backup.zip'];
 
 	static flags = {
 		output: Flags.string({
@@ -36,7 +36,7 @@ export class ExportAllCommand extends BaseCommand {
 	};
 
 	async run() {
-		const { flags } = await this.parse(ExportAllCommand);
+		const { flags } = await this.parse(ExportBackupCommand);
 		const connection = Container.get(DataSource);
 		const tables = connection.entityMetadatas
 			.filter((v) => !excludeList.includes(v.tableName))

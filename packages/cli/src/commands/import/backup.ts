@@ -21,10 +21,10 @@ const excludeList = [
 	'annotation_tag_entity',
 ];
 
-export class ImportAllCommand extends BaseCommand {
-	static description = 'Import Everything';
+export class ImportBackupCommand extends BaseCommand {
+	static description = 'Import from a backup zip file';
 
-	static examples = ['$ n8n import:all', '$ n8n import:all --input=backup.zip'];
+	static examples = ['$ n8n import:backup', '$ n8n import:backup --input=backup.zip'];
 
 	// TODO: add `clean` flag, or add a prompt to confirm DB truncation
 	static flags = {
@@ -37,7 +37,7 @@ export class ImportAllCommand extends BaseCommand {
 
 	// TODO: do batching
 	async run() {
-		const { flags } = await this.parse(ImportAllCommand);
+		const { flags } = await this.parse(ImportBackupCommand);
 		// TODO:
 		// 1. check last migrations
 		const connection = Container.get(DataSource);
