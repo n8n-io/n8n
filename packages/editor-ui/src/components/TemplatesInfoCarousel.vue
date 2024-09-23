@@ -3,7 +3,7 @@ import { nextTick, onBeforeMount, onMounted, ref, watch } from 'vue';
 import type { ITemplatesCollection } from '@/Interface';
 import Card from '@/components/CollectionWorkflowCard.vue';
 import TemplatesInfoCard from '@/components/TemplatesInfoCard.vue';
-import type { VueAgile } from 'vue-agile';
+import { VueAgile } from 'vue-agile';
 
 type SliderRef = InstanceType<typeof VueAgile>;
 
@@ -31,7 +31,7 @@ const carouselScrollPosition = ref(0);
 const cardWidth = ref(parseInt(props.cardsWidth, 10));
 const scrollEnd = ref(false);
 const listElement = ref<null | Element>(null);
-const sliderRef = ref<null | SliderRef>(null);
+const sliderRef = ref<SliderRef>(null);
 
 const updateCarouselScroll = () => {
 	if (listElement.value) {
@@ -80,9 +80,11 @@ watch(
 
 onMounted(async () => {
 	await nextTick();
+
 	if (!sliderRef.value) {
 		return;
 	}
+
 	listElement.value = sliderRef.value.$el.querySelector('.agile__list');
 	if (listElement.value) {
 		listElement.value.addEventListener('scroll', updateCarouselScroll);
@@ -99,7 +101,7 @@ onBeforeMount(() => {
 
 <template>
 	<div v-show="loading || collections.length" :class="$style.container">
-		<agile
+		<VueAgile
 			ref="sliderRef"
 			:dots="false"
 			:nav-buttons="false"
@@ -117,7 +119,7 @@ onBeforeMount(() => {
 				:width="cardsWidth"
 				@click="(e) => onCardClick(e, collection.id)"
 			/>
-		</agile>
+		</VueAgile>
 		<button
 			v-show="showNavigation && carouselScrollPosition > 0"
 			:class="{ [$style.leftButton]: true }"
