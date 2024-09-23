@@ -15,11 +15,12 @@ const { mainInputConnections, mainInputs, mainOutputConnections, mainOutputs } =
 );
 
 const isVisible = computed(() => {
-	const isSingleInputNode = mainInputs.value.length === 1 && mainInputConnections.value.length <= 1;
-	const isSingleOutputNode =
+	const isSingleMainInputNode =
+		mainInputs.value.length === 1 && mainInputConnections.value.length <= 1;
+	const isSingleMainOutputNode =
 		mainOutputs.value.length === 1 && mainOutputConnections.value.length <= 1;
 
-	return isSingleInputNode && isSingleOutputNode;
+	return isSingleMainInputNode && isSingleMainOutputNode;
 });
 
 const isSuccessStatus = computed(
