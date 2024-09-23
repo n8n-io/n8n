@@ -37,4 +37,18 @@ describe('sanitizeHtml', () => {
 		const result = sanitizeHtml(dirtyHtml);
 		expect(result).toBe('<a>Click me</a>');
 	});
+
+	test.each([
+		[
+			'https://www.ex.com/sfefdfd<img/src/onerror=alert(1)>fdf/xdfef.json',
+			'https://www.ex.com/sfefdfdfdf/xdfef.json',
+		],
+		[
+			// eslint-disable-next-line n8n-local-rules/no-unneeded-backticks
+			`https://www.ex.com/sfefdfd<details title='"><img/src/onerror=alert(document.domain)>/ '>/c.json`,
+			'https://www.ex.com/sfefdfd<details title="&quot;&gt;&lt;img/src/onerror=alert(document.domain)&gt;/">/c.json',
+		],
+	])('should escape js code %s to equal %s', (dirtyURL, expected) => {
+		expect(sanitizeHtml(dirtyURL)).toBe(expected);
+	});
 });

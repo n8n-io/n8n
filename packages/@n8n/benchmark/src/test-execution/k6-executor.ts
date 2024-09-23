@@ -77,7 +77,6 @@ export function handleSummary(data) {
 			env: {
 				API_BASE_URL: this.opts.n8nApiBaseUrl,
 				K6_CLOUD_TOKEN: this.opts.k6ApiToken,
-				SCRIPT_FILE_PATH: augmentedTestScriptPath,
 			},
 			stdio: 'inherit',
 		})`${k6ExecutablePath} run ${flattedFlags} ${augmentedTestScriptPath}`;

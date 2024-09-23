@@ -2150,6 +2150,10 @@ export interface IWorkflowExecutionDataProcess {
 	destinationNode?: string;
 	restartExecutionId?: string;
 	executionMode: WorkflowExecuteMode;
+	/**
+	 * The data that is sent in the body of the webhook that started this
+	 * execution.
+	 */
 	executionData?: IRunExecutionData;
 	runData?: IRunData;
 	pinData?: IPinData;
@@ -2159,6 +2163,15 @@ export interface IWorkflowExecutionDataProcess {
 	workflowData: IWorkflowBase;
 	userId?: string;
 	projectId?: string;
+	/**
+	 * Defines which version of the partial execution flow is used.
+	 * Possible values are:
+	 *  0 - use the old flow
+	 *  1 - use the new flow
+	 * -1 - the backend chooses which flow based on the environment variable
+	 *      PARTIAL_EXECUTION_VERSION_DEFAULT
+	 */
+	partialExecutionVersion?: string;
 }
 
 export interface ExecuteWorkflowOptions {

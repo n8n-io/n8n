@@ -507,7 +507,7 @@ export default defineComponent({
 		projectPermissions() {
 			const project = this.$route.query?.projectId
 				? this.projectsStore.myProjects.find((p) => p.id === this.$route.query.projectId)
-				: this.projectsStore.currentProject ?? this.projectsStore.personalProject;
+				: (this.projectsStore.currentProject ?? this.projectsStore.personalProject);
 			return getResourcePermissions(project?.scopes);
 		},
 	},
