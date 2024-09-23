@@ -1,8 +1,10 @@
+import { Flags } from '@oclif/core';
 import { DataSource, MigrationExecutor } from '@n8n/typeorm';
 import * as assert from 'assert/strict';
 import fs from 'fs';
 import { join } from 'path';
 import Container from 'typedi';
+import { tmpdir } from 'node:os';
 
 import { BaseCommand } from '../base-command';
 import { ApplicationError } from 'n8n-workflow';
@@ -26,11 +28,16 @@ import { ApplicationError } from 'n8n-workflow';
 export class ImportAllCommand extends BaseCommand {
 	static description = 'Import Everything';
 
-	static examples = ['$ n8n import:all'];
+	static examples = ['$ n8n import:all', '$ n8n import:all --input=backup.zip'];
 
-	// TODO: add `importPath` flag
-	// TODO: add `clean` flag
-	static flags = {};
+	// TODO: add `clean` flag, or add a prompt to confirm
+	static flags = {
+		input: Flags.string({
+			char: 'o',
+			description: 'Directory to load the archive file from',
+			default: tmpdir(),
+		}),
+	};
 
 	// TODO: do batching
 	async run() {

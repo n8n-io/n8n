@@ -52,6 +52,7 @@
   ],
   "devDependencies": {
     "@redocly/cli": "^1.6.0",
+    "@types/archiver": "^6.0.2",
     "@types/aws4": "^1.5.1",
     "@types/bcryptjs": "^2.4.2",
     "@types/compression": "1.0.1",
@@ -99,6 +100,7 @@
     "@rudderstack/rudder-sdk-node": "2.0.9",
     "@sentry/integrations": "7.87.0",
     "@sentry/node": "7.87.0",
+    "archiver": "7.0.1",
     "aws4": "1.11.0",
     "axios": "catalog:",
     "bcryptjs": "2.4.3",
@@ -167,7 +169,6 @@
     "sshpk": "1.17.0",
     "swagger-ui-express": "5.0.0",
     "syslog-client": "1.1.1",
-    "tmp-promise": "3.0.3",
     "typedi": "catalog:",
     "uuid": "catalog:",
     "validator": "13.7.0",

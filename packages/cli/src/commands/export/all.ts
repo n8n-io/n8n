@@ -1,11 +1,15 @@
 import { DataSource, MigrationExecutor } from '@n8n/typeorm';
+import { Flags } from '@oclif/core';
+import archiver from 'archiver';
 import * as assert from 'assert/strict';
 import fs from 'fs';
+import { tmpdir } from 'node:os';
+import { PassThrough } from 'node:stream';
 import { join } from 'path';
 import Container from 'typedi';
-import { dir as tmpDir } from 'tmp-promise';
 
 import { jsonColumnType } from '@/databases/entities/abstract-entity';
+
 import { BaseCommand } from '../base-command';
 
 /** These tables are not backed up to reduce the backup size */
@@ -21,12 +25,18 @@ const excludeList = [
 export class ExportAllCommand extends BaseCommand {
 	static description = 'Export Everything';
 
-	static examples = ['$ n8n export:all'];
+	static examples = ['$ n8n export:all', '$ n8n export:all --output=backup.zip'];
 
-	// TODO: add `exportPath` flag
-	static flags = {};
+	static flags = {
+		output: Flags.string({
+			char: 'o',
+			description: 'Directory to output the archive file in',
+			default: tmpdir(),
+		}),
+	};
 
 	async run() {
+		const { flags } = await this.parse(ExportAllCommand);
 		const connection = Container.get(DataSource);
 		const tables = connection.entityMetadatas
 			.filter((v) => !excludeList.includes(v.tableName))
@@ -35,8 +45,12 @@ export class ExportAllCommand extends BaseCommand {
 				columns: v.columns,
 			}));
 
-		const { path: tempBackupDir } = await tmpDir({});
-		await fs.promises.mkdir(tempBackupDir, { recursive: true });
+		await fs.promises.mkdir(flags.output, { recursive: true });
+
+		// TODO: bail if the file already exists, or prompt to overwrite
+		const zipPath = join(flags.output, 'n8n-backup.zip');
+		const archive = archiver('zip', { zlib: { level: 9 } });
+		archive.pipe(fs.createWriteStream(zipPath));
 
 		for (const { name: tableName, columns } of tables) {
 			const totalRowsCount = await connection
@@ -44,7 +58,9 @@ export class ExportAllCommand extends BaseCommand {
 				.then((rows: Array<{ count: number }>) => rows[0].count);
 			if (totalRowsCount === 0) continue;
 
-			const stream = fs.createWriteStream(join(tempBackupDir, `${tableName}.jsonl`));
+			const fileName = `${tableName}.jsonl`;
+			const stream = new PassThrough();
+			archive.append(stream, { name: fileName });
 
 			let cursor = 0;
 			const batchSize = 10;
@@ -87,13 +103,13 @@ export class ExportAllCommand extends BaseCommand {
 
 		assert.ok(lastExecutedMigration, 'should have been run by db.ts');
 
-		await fs.promises.writeFile(
-			join(tempBackupDir, 'lastMigration'),
-			lastExecutedMigration.name,
-			'utf8',
-		);
+		// Add this hidden file to store the last migration.
+		// This is used during import to ensure that the importing DB schema is up to date
+		archive.append(Buffer.from(lastExecutedMigration.name, 'utf8'), { name: '.lastMigration' });
 
-		console.log(`data exported to ${tempBackupDir}`);
+		await archive.finalize();
+
+		console.log(`data exported to ${zipPath}`);
 
 		// TODO: clean up temp dir
 	}
