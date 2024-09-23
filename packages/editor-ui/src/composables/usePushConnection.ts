@@ -307,7 +307,6 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 						? saveManualExecutions
 						: workflowSettings.saveManualExecutions;
 
-				let action;
 				if (!isSavingExecutions) {
 					globalLinkActionsEventBus.emit('registerGlobalLinkAction', {
 						key: 'open-settings',
@@ -316,11 +315,6 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 							uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
 						},
 					});
-
-					action =
-						'<a data-action="open-settings">Turn on saving manual executions</a> and run again to see what happened after this node.';
-				} else {
-					action = `<a href="/workflow/${workflow.id}/executions/${activeExecutionId}">View the execution</a> to see what happened after this node.`;
 				}
 
 				// Workflow did start but had been put to wait
