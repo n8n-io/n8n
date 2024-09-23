@@ -2,35 +2,31 @@ import { Flags } from '@oclif/core';
 import { DataSource, MigrationExecutor } from '@n8n/typeorm';
 import * as assert from 'assert/strict';
 import fs from 'fs';
+import readline from 'readline';
 import { join } from 'path';
 import Container from 'typedi';
 import { tmpdir } from 'node:os';
+import { pipeline } from 'node:stream/promises';
+import { Extract } from 'unzip-stream';
 
 import { BaseCommand } from '../base-command';
 import { ApplicationError } from 'n8n-workflow';
 
-// TODO: do this
-//const fs = require('fs');
-//const readline = require('readline');
-//
-//(async () => {
-//	const fileStream = fs.createReadStream(__dirname + '/test.jsonl');
-//	const lineStream = readline.createInterface({
-//		input: fileStream,
-//		crlfDelay: Infinity,
-//	});
-//
-//	for await (const line of lineStream) {
-//		console.log(JSON.parse(line));
-//	}
-//})();
+const excludeList = [
+	'execution_annotation_tags',
+	'execution_annotations',
+	'execution_data',
+	'execution_entity',
+	'execution_metadata',
+	'annotation_tag_entity',
+];
 
 export class ImportAllCommand extends BaseCommand {
 	static description = 'Import Everything';
 
 	static examples = ['$ n8n import:all', '$ n8n import:all --input=backup.zip'];
 
-	// TODO: add `clean` flag, or add a prompt to confirm
+	// TODO: add `clean` flag, or add a prompt to confirm DB truncation
 	static flags = {
 		input: Flags.string({
 			char: 'o',
@@ -41,6 +37,7 @@ export class ImportAllCommand extends BaseCommand {
 
 	// TODO: do batching
 	async run() {
+		const { flags } = await this.parse(ImportAllCommand);
 		// TODO:
 		// 1. check last migrations
 		const connection = Container.get(DataSource);
@@ -50,10 +47,17 @@ export class ImportAllCommand extends BaseCommand {
 
 		assert.ok(lastExecutedMigration, 'should have been run by db.ts');
 
+		const zipPath = join(flags.input, 'n8n-backup.zip');
+		if (!fs.existsSync(zipPath)) {
+			throw new ApplicationError('Backup zip file not count');
+		}
+
+		// TODO: instead of extracting to the filesystem, stream the files directly
 		const backupPath = '/tmp/backup';
+		await pipeline(fs.createReadStream(zipPath), Extract({ path: backupPath }));
 
 		const lastMigrationInBackup = (
-			await fs.promises.readFile(join(backupPath, 'lastMigration'), 'utf8')
+			await fs.promises.readFile(join(backupPath, '.lastMigration'), 'utf8')
 		).trim();
 
 		if (lastMigrationInBackup !== lastExecutedMigration.name) {
@@ -65,14 +69,6 @@ export class ImportAllCommand extends BaseCommand {
 		// 3. disable foreign keys
 
 		// 4. import each jsonl
-		const excludeList = [
-			'execution_annotation_tags',
-			'execution_annotations',
-			'execution_data',
-			'execution_entity',
-			'execution_metadata',
-			'annotation_tag_entity',
-		];
 		const tables = connection.entityMetadatas
 			.filter((v) => !excludeList.includes(v.tableName))
 			.map((v) => ({ name: v.tableName, target: v.target }));
@@ -81,13 +77,20 @@ export class ImportAllCommand extends BaseCommand {
 			const repo = connection.getRepository(target);
 			await repo.delete({});
 
-			const rows = (await fs.promises.readFile(`${join(backupPath, name)}.jsonl`, 'utf8'))
-				.split('\n')
-				.filter((row) => row !== '');
+			const filePath = join(backupPath, `${name}.jsonl`);
+			if (!fs.existsSync(filePath)) continue;
 
-			for (const row of rows) {
-				await repo.insert(JSON.parse(row));
+			const fileStream = fs.createReadStream(filePath);
+			const lineStream = readline.createInterface({
+				input: fileStream,
+			});
+
+			for await (const line of lineStream) {
+				// TODO: insert in batches to reduce DB load
+				await repo.insert(JSON.parse(line));
 			}
+
+			fileStream.close();
 		}
 
 		// 5. enable foreign keys
