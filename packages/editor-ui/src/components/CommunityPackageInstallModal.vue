@@ -127,6 +127,7 @@ const onLearnMoreLinkClick = () => {
 						v-model="packageName"
 						name="packageNameInput"
 						type="text"
+						data-test-id="package-name-input"
 						:maxlength="214"
 						:placeholder="
 							$locale.baseText('settings.communityNodes.installModal.packageName.placeholder')
