@@ -81,16 +81,16 @@ export const reviewFields: INodeProperties[] = [
 		displayOptions: { show: { resource: ['review'], operation: ['get'] } },
 		modes: [
 			{
-				displayName: 'ID',
-				name: 'id',
+				displayName: 'Name',
+				name: 'name',
 				type: 'string',
-				hint: 'Enter the account ID',
+				hint: 'Enter the account name',
 				validation: [
 					{
 						type: 'regex',
 						properties: {
 							regex: 'accounts/[0-9]+',
-							errorMessage: 'The ID must start with "accounts/"',
+							errorMessage: 'The name must start with "accounts/"',
 						},
 					},
 				],
@@ -117,16 +117,16 @@ export const reviewFields: INodeProperties[] = [
 		displayOptions: { show: { resource: ['review'], operation: ['get'] } },
 		modes: [
 			{
-				displayName: 'ID',
-				name: 'id',
+				displayName: 'Name',
+				name: 'name',
 				type: 'string',
-				hint: 'Enter the location ID',
+				hint: 'Enter the location name',
 				validation: [
 					{
 						type: 'regex',
 						properties: {
 							regex: 'locations/[0-9]+',
-							errorMessage: 'The ID must start with "locations/"',
+							errorMessage: 'The name must start with "locations/"',
 						},
 					},
 				],
@@ -153,16 +153,16 @@ export const reviewFields: INodeProperties[] = [
 		displayOptions: { show: { resource: ['review'], operation: ['get'] } },
 		modes: [
 			{
-				displayName: 'ID',
-				name: 'id',
+				displayName: 'Name',
+				name: 'name',
 				type: 'string',
-				hint: 'Enter the location ID',
+				hint: 'Enter the location name',
 				validation: [
 					{
 						type: 'regex',
 						properties: {
 							regex: 'accounts/[0-9]+/locations/[0-9]+/reviews/.*$',
-							errorMessage: 'The ID must start with "localPosts/123/locations/123/reviews/"',
+							errorMessage: 'The name must start with "localPosts/123/locations/123/reviews/"',
 						},
 					},
 				],
@@ -193,16 +193,16 @@ export const reviewFields: INodeProperties[] = [
 		displayOptions: { show: { resource: ['review'], operation: ['delete'] } },
 		modes: [
 			{
-				displayName: 'ID',
-				name: 'id',
+				displayName: 'Name',
+				name: 'name',
 				type: 'string',
-				hint: 'Enter the account ID',
+				hint: 'Enter the account name',
 				validation: [
 					{
 						type: 'regex',
 						properties: {
 							regex: 'accounts/[0-9]+',
-							errorMessage: 'The ID must start with "accounts/"',
+							errorMessage: 'The name must start with "accounts/"',
 						},
 					},
 				],
@@ -229,16 +229,16 @@ export const reviewFields: INodeProperties[] = [
 		displayOptions: { show: { resource: ['review'], operation: ['delete'] } },
 		modes: [
 			{
-				displayName: 'ID',
-				name: 'id',
+				displayName: 'Name',
+				name: 'name',
 				type: 'string',
-				hint: 'Enter the location ID',
+				hint: 'Enter the location name',
 				validation: [
 					{
 						type: 'regex',
 						properties: {
 							regex: 'locations/[0-9]+',
-							errorMessage: 'The ID must start with "locations/"',
+							errorMessage: 'The name must start with "locations/"',
 						},
 					},
 				],
@@ -265,16 +265,16 @@ export const reviewFields: INodeProperties[] = [
 		displayOptions: { show: { resource: ['review'], operation: ['delete'] } },
 		modes: [
 			{
-				displayName: 'ID',
-				name: 'id',
+				displayName: 'Name',
+				name: 'name',
 				type: 'string',
-				hint: 'Enter the location id',
+				hint: 'Enter the location name',
 				validation: [
 					{
 						type: 'regex',
 						properties: {
 							regex: 'accounts/[0-9]+/locations/[0-9]+/reviews/.*$',
-							errorMessage: 'The ID must start with "localPosts/123/locations/123/reviews/"',
+							errorMessage: 'The name must start with "localPosts/123/locations/123/reviews/"',
 						},
 					},
 				],
@@ -305,16 +305,16 @@ export const reviewFields: INodeProperties[] = [
 		displayOptions: { show: { resource: ['review'], operation: ['getAll'] } },
 		modes: [
 			{
-				displayName: 'ID',
-				name: 'id',
+				displayName: 'Name',
+				name: 'name',
 				type: 'string',
-				hint: 'Enter the account ID',
+				hint: 'Enter the account name',
 				validation: [
 					{
 						type: 'regex',
 						properties: {
 							regex: 'accounts/[0-9]+',
-							errorMessage: 'The ID must start with "accounts/"',
+							errorMessage: 'The name must start with "accounts/"',
 						},
 					},
 				],
@@ -341,16 +341,16 @@ export const reviewFields: INodeProperties[] = [
 		displayOptions: { show: { resource: ['review'], operation: ['getAll'] } },
 		modes: [
 			{
-				displayName: 'ID',
-				name: 'id',
+				displayName: 'Name',
+				name: 'name',
 				type: 'string',
-				hint: 'Enter the location ID',
+				hint: 'Enter the location name',
 				validation: [
 					{
 						type: 'regex',
 						properties: {
 							regex: 'locations/[0-9]+',
-							errorMessage: 'The ID must start with "locations/"',
+							errorMessage: 'The name must start with "locations/"',
 						},
 					},
 				],
@@ -393,16 +393,16 @@ export const reviewFields: INodeProperties[] = [
 		displayOptions: { show: { resource: ['review'], operation: ['reply'] } },
 		modes: [
 			{
-				displayName: 'ID',
-				name: 'id',
+				displayName: 'Name',
+				name: 'name',
 				type: 'string',
-				hint: 'Enter the account ID',
+				hint: 'Enter the account name',
 				validation: [
 					{
 						type: 'regex',
 						properties: {
 							regex: 'accounts/[0-9]+',
-							errorMessage: 'The ID must start with "accounts/"',
+							errorMessage: 'The name must start with "accounts/"',
 						},
 					},
 				],
@@ -429,16 +429,16 @@ export const reviewFields: INodeProperties[] = [
 		displayOptions: { show: { resource: ['review'], operation: ['reply'] } },
 		modes: [
 			{
-				displayName: 'ID',
-				name: 'is',
+				displayName: 'Name',
+				name: 'name',
 				type: 'string',
-				hint: 'Enter the location ID',
+				hint: 'Enter the location name',
 				validation: [
 					{
 						type: 'regex',
 						properties: {
 							regex: 'locations/[0-9]+',
-							errorMessage: 'The ID must start with "locations/"',
+							errorMessage: 'The name must start with "locations/"',
 						},
 					},
 				],
@@ -461,14 +461,14 @@ export const reviewFields: INodeProperties[] = [
 		required: true,
 		type: 'resourceLocator',
 		default: '',
-		description: 'Select the review by ID or URL to retrieve its details',
+		description: 'Select the review by name or URL to retrieve its details',
 		displayOptions: { show: { resource: ['review'], operation: ['reply'] } },
 		modes: [
 			{
-				displayName: 'ID',
-				name: 'id',
+				displayName: 'Name',
+				name: 'name',
 				type: 'string',
-				hint: 'Enter the location ID',
+				hint: 'Enter the location name',
 				validation: [
 					{
 						type: 'regex',

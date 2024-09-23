@@ -95,16 +95,16 @@ export const postFields: INodeProperties[] = [
 		displayOptions: { show: { resource: ['post'], operation: ['create'] } },
 		modes: [
 			{
-				displayName: 'ID',
-				name: 'id',
+				displayName: 'Name',
+				name: 'name',
 				type: 'string',
-				hint: 'Enter the account ID',
+				hint: 'Enter the account name',
 				validation: [
 					{
 						type: 'regex',
 						properties: {
 							regex: 'accounts/[0-9]+',
-							errorMessage: 'The ID must start with "accounts/"',
+							errorMessage: 'The name must start with "accounts/"',
 						},
 					},
 				],
@@ -131,16 +131,16 @@ export const postFields: INodeProperties[] = [
 		displayOptions: { show: { resource: ['post'], operation: ['create'] } },
 		modes: [
 			{
-				displayName: 'ID',
-				name: 'id',
+				displayName: 'Name',
+				name: 'name',
 				type: 'string',
-				hint: 'Enter the location ID',
+				hint: 'Enter the location name',
 				validation: [
 					{
 						type: 'regex',
 						properties: {
 							regex: 'locations/[0-9]+',
-							errorMessage: 'The ID must start with "locations/"',
+							errorMessage: 'The name must start with "locations/"',
 						},
 					},
 				],
@@ -372,16 +372,16 @@ export const postFields: INodeProperties[] = [
 		displayOptions: { show: { resource: ['post'], operation: ['delete'] } },
 		modes: [
 			{
-				displayName: 'ID',
-				name: 'id',
+				displayName: 'Name',
+				name: 'name',
 				type: 'string',
-				hint: 'Enter the account ID',
+				hint: 'Enter the account name',
 				validation: [
 					{
 						type: 'regex',
 						properties: {
 							regex: 'accounts/[0-9]+',
-							errorMessage: 'The ID must start with "accounts/"',
+							errorMessage: 'The name must start with "accounts/"',
 						},
 					},
 				],
@@ -408,16 +408,16 @@ export const postFields: INodeProperties[] = [
 		displayOptions: { show: { resource: ['post'], operation: ['delete'] } },
 		modes: [
 			{
-				displayName: 'ID',
-				name: 'id',
+				displayName: 'Name',
+				name: 'name',
 				type: 'string',
-				hint: 'Enter the location ID',
+				hint: 'Enter the location name',
 				validation: [
 					{
 						type: 'regex',
 						properties: {
 							regex: 'locations/[0-9]+',
-							errorMessage: 'The ID must start with "locations/"',
+							errorMessage: 'The name must start with "locations/"',
 						},
 					},
 				],
@@ -443,17 +443,17 @@ export const postFields: INodeProperties[] = [
 		displayOptions: { show: { resource: ['post'], operation: ['delete'] } },
 		modes: [
 			{
-				displayName: 'ID',
-				name: 'id',
+				displayName: 'Name',
+				name: 'name',
 				type: 'string',
-				hint: 'Enter the post ID',
+				hint: 'Enter the post name',
 				validation: [
 					{
 						type: 'regex',
 						properties: {
 							regex: 'accounts/[0-9]+/locations/[0-9]+/localPosts/[0-9]+',
 							errorMessage:
-								'The ID must be in the format "localPosts/123/locations/123/localPosts/123"',
+								'The name must be in the format "localPosts/123/locations/123/localPosts/123"',
 						},
 					},
 				],
@@ -484,16 +484,16 @@ export const postFields: INodeProperties[] = [
 		displayOptions: { show: { resource: ['post'], operation: ['get'] } },
 		modes: [
 			{
-				displayName: 'ID',
-				name: 'id',
+				displayName: 'Name',
+				name: 'name',
 				type: 'string',
-				hint: 'Enter the account ID',
+				hint: 'Enter the account name',
 				validation: [
 					{
 						type: 'regex',
 						properties: {
 							regex: 'accounts/[0-9]+',
-							errorMessage: 'The ID must start with "accounts/"',
+							errorMessage: 'The name must start with "accounts/"',
 						},
 					},
 				],
@@ -520,16 +520,16 @@ export const postFields: INodeProperties[] = [
 		displayOptions: { show: { resource: ['post'], operation: ['get'] } },
 		modes: [
 			{
-				displayName: 'ID',
-				name: 'id',
+				displayName: 'Name',
+				name: 'name',
 				type: 'string',
-				hint: 'Enter the location ID',
+				hint: 'Enter the location name',
 				validation: [
 					{
 						type: 'regex',
 						properties: {
 							regex: 'locations/[0-9]+',
-							errorMessage: 'The ID must start with "locations/"',
+							errorMessage: 'The name must start with "locations/"',
 						},
 					},
 				],
@@ -555,17 +555,17 @@ export const postFields: INodeProperties[] = [
 		displayOptions: { show: { resource: ['post'], operation: ['get'] } },
 		modes: [
 			{
-				displayName: 'ID',
-				name: 'id',
+				displayName: 'Name',
+				name: 'name',
 				type: 'string',
-				hint: 'Enter the post ID',
+				hint: 'Enter the post name',
 				validation: [
 					{
 						type: 'regex',
 						properties: {
 							regex: 'accounts/[0-9]+/locations/[0-9]+/localPosts/[0-9]+',
 							errorMessage:
-								'The ID must be in the format "localPosts/123/locations/123/localPosts/123"',
+								'The name must be in the format "localPosts/123/locations/123/localPosts/123"',
 						},
 					},
 				],
@@ -596,16 +596,16 @@ export const postFields: INodeProperties[] = [
 		displayOptions: { show: { resource: ['post'], operation: ['getAll'] } },
 		modes: [
 			{
-				displayName: 'ID',
-				name: 'id',
+				displayName: 'Name',
+				name: 'name',
 				type: 'string',
-				hint: 'Enter the account ID',
+				hint: 'Enter the account name',
 				validation: [
 					{
 						type: 'regex',
 						properties: {
 							regex: 'accounts/[0-9]+',
-							errorMessage: 'The ID must start with "accounts/"',
+							errorMessage: 'The name must start with "accounts/"',
 						},
 					},
 				],
@@ -632,16 +632,16 @@ export const postFields: INodeProperties[] = [
 		displayOptions: { show: { resource: ['post'], operation: ['getAll'] } },
 		modes: [
 			{
-				displayName: 'ID',
-				name: 'id',
+				displayName: 'Name',
+				name: 'name',
 				type: 'string',
-				hint: 'Enter the location ID',
+				hint: 'Enter the location name',
 				validation: [
 					{
 						type: 'regex',
 						properties: {
 							regex: 'locations/[0-9]+',
-							errorMessage: 'The ID must start with "locations/"',
+							errorMessage: 'The name must start with "locations/"',
 						},
 					},
 				],
@@ -683,16 +683,16 @@ export const postFields: INodeProperties[] = [
 		displayOptions: { show: { resource: ['post'], operation: ['update'] } },
 		modes: [
 			{
-				displayName: 'ID',
-				name: 'id',
+				displayName: 'Name',
+				name: 'name',
 				type: 'string',
-				hint: 'Enter the account ID',
+				hint: 'Enter the account name',
 				validation: [
 					{
 						type: 'regex',
 						properties: {
 							regex: 'accounts/[0-9]+',
-							errorMessage: 'The ID must start with "accounts/"',
+							errorMessage: 'The name must start with "accounts/"',
 						},
 					},
 				],
@@ -719,16 +719,16 @@ export const postFields: INodeProperties[] = [
 		displayOptions: { show: { resource: ['post'], operation: ['update'] } },
 		modes: [
 			{
-				displayName: 'ID',
-				name: 'id',
+				displayName: 'Name',
+				name: 'name',
 				type: 'string',
-				hint: 'Enter the location id',
+				hint: 'Enter the location name',
 				validation: [
 					{
 						type: 'regex',
 						properties: {
 							regex: 'locations/[0-9]+',
-							errorMessage: 'The ID must start with "locations/"',
+							errorMessage: 'The name must start with "locations/"',
 						},
 					},
 				],
@@ -750,21 +750,21 @@ export const postFields: INodeProperties[] = [
 		name: 'post',
 		type: 'resourceLocator',
 		default: '',
-		description: 'Select the post by ID or URL to retrieve its details',
+		description: 'Select the post by name or URL to retrieve its details',
 		displayOptions: { show: { resource: ['post'], operation: ['update'] } },
 		modes: [
 			{
-				displayName: 'ID',
-				name: 'id',
+				displayName: 'Name',
+				name: 'name',
 				type: 'string',
-				hint: 'Enter the post ID',
+				hint: 'Enter the post name',
 				validation: [
 					{
 						type: 'regex',
 						properties: {
 							regex: 'accounts/[0-9]+/locations/[0-9]+/localPosts/[0-9]+',
 							errorMessage:
-								'The ID must be in the format "localPosts/123/locations/123/localPosts/123"',
+								'The name must be in the format "localPosts/123/locations/123/localPosts/123"',
 						},
 					},
 				],
