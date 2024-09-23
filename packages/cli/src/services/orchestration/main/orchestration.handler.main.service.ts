@@ -1,6 +1,5 @@
 import { Service } from 'typedi';
 
-import { COMMAND_PUBSUB_CHANNEL, WORKER_RESPONSE_PUBSUB_CHANNEL } from '@/scaling/constants';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 
 import { handleCommandMessageMain } from './handle-command-message-main';
@@ -18,12 +17,10 @@ export class OrchestrationHandlerMainService extends OrchestrationHandlerService
 		await this.subscriber.subscribe('n8n.commands');
 		await this.subscriber.subscribe('n8n.worker-response');
 
-		this.subscriber.addMessageHandler(async (channel: string, messageString: string) => {
-			if (channel === WORKER_RESPONSE_PUBSUB_CHANNEL) {
-				await handleWorkerResponseMessageMain(messageString, options);
-			} else if (channel === COMMAND_PUBSUB_CHANNEL) {
-				await handleCommandMessageMain(messageString);
-			}
+		this.subscriber.setMessageHandler('n8n.worker-response', async (message: string) => {
+			await handleWorkerResponseMessageMain(message, options);
 		});
+
+		this.subscriber.setMessageHandler('n8n.commands', handleCommandMessageMain);
 	}
 }
