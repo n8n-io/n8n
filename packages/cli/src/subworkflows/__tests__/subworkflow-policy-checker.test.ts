@@ -10,7 +10,6 @@ import {
 	SUBWORKFLOW_DENIAL_BASE_DESCRIPTION,
 	SubworkflowPolicyDenialError,
 } from '@/errors/subworkflow-policy-denial.error';
-import type { License } from '@/license';
 import type { AccessService } from '@/services/access.service';
 import { OwnershipService } from '@/services/ownership.service';
 import type { UrlService } from '@/services/url.service';
@@ -20,7 +19,6 @@ import { SubworkflowPolicyChecker } from '../subworkflow-policy-checker.service'
 
 describe('SubworkflowPolicyChecker', () => {
 	const ownershipService = mockInstance(OwnershipService);
-	const license = mock<License>();
 	const globalConfig = mock<GlobalConfig>({
 		workflows: { callerPolicyDefaultOption: 'workflowsFromSameOwner' },
 	});
@@ -29,16 +27,11 @@ describe('SubworkflowPolicyChecker', () => {
 
 	const checker = new SubworkflowPolicyChecker(
 		mock(),
-		license,
 		ownershipService,
 		globalConfig,
 		accessService,
 		urlService,
 	);
-
-	beforeEach(() => {
-		license.isSharingEnabled.mockReturnValue(true);
-	});
 
 	afterEach(() => {
 		jest.restoreAllMocks();

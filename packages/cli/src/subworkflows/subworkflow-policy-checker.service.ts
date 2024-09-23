@@ -5,7 +5,6 @@ import { Service } from 'typedi';
 
 import type { Project } from '@/databases/entities/project';
 import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
-import { License } from '@/license';
 import { Logger } from '@/logger';
 import { AccessService } from '@/services/access.service';
 import { OwnershipService } from '@/services/ownership.service';
@@ -18,7 +17,6 @@ type DenialPolicy = Exclude<Policy, 'any'>;
 export class SubworkflowPolicyChecker {
 	constructor(
 		private readonly logger: Logger,
-		private readonly license: License,
 		private readonly ownershipService: OwnershipService,
 		private readonly globalConfig: GlobalConfig,
 		private readonly accessService: AccessService,
@@ -137,7 +135,6 @@ export class SubworkflowPolicyChecker {
 			reason: this.denialReasons[policy],
 			parentWorkflowId,
 			subworkflowId,
-			isSharingEnabled: this.license.isSharingEnabled(),
 		});
 	}
 }
