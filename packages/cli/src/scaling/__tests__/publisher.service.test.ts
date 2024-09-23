@@ -3,11 +3,11 @@ import { mock } from 'jest-mock-extended';
 
 import config from '@/config';
 import { generateNanoId } from '@/databases/utils/generators';
-import type { RedisClientService } from '@/services/redis/redis-client.service';
 import type {
 	RedisServiceCommandObject,
 	RedisServiceWorkerResponseObject,
-} from '@/services/redis/redis-service-commands';
+} from '@/scaling/redis/redis-service-commands';
+import type { RedisClientService } from '@/services/redis-client.service';
 
 import { Publisher } from '../pubsub/publisher.service';
 
