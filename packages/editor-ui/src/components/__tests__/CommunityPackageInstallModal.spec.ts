@@ -45,7 +45,10 @@ describe('CommunityPackageInstallModal', () => {
 
 		await retry(() => expect(getByTestId('communityPackageInstall-modal')).toBeInTheDocument());
 
+		const packageNameInput = getByTestId('package-name-input');
 		const installButton = getByTestId('install-community-package-button');
+
+		await userEvent.type(packageNameInput, 'n8n-nodes-test');
 
 		expect(installButton).toBeDisabled();
 
