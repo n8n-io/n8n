@@ -41,6 +41,7 @@ export class ExportAllCommand extends BaseCommand {
 			const totalRowsCount = await connection
 				.query(`SELECT COUNT(*) AS count FROM ${tableName}`)
 				.then((rows: Array<{ count: number }>) => rows[0].count);
+			if (totalRowsCount === 0) continue;
 
 			const stream = fs.createWriteStream(join(backupPath, `${tableName}.jsonl`));
 
