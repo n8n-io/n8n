@@ -18,12 +18,21 @@ const { t } = useI18n();
 
 const md = new Markdown({
 	breaks: true,
-}).use(markdownLink, {
+});
+md.use(markdownLink, {
 	attrs: {
 		target: '_blank',
 		rel: 'noopener',
 	},
 });
+// Wrap tables in div
+md.renderer.rules.table_open = function () {
+	return '<div class="table-wrapper"><table>';
+};
+
+md.renderer.rules.table_close = function () {
+	return '</table></div>';
+};
 
 const MAX_CHAT_INPUT_HEIGHT = 100;
 
@@ -65,6 +74,10 @@ const showPlaceholder = computed(() => {
 	return !props.messages?.length && !props.loadingMessage && !props.sessionId;
 });
 
+const isClipboardSupported = computed(() => {
+	return navigator.clipboard?.writeText;
+});
+
 function isEndOfSessionEvent(event?: ChatUI.AssistantMessage) {
 	return event?.type === 'event' && event?.eventName === 'end-session';
 }
@@ -96,6 +109,15 @@ function growInput() {
 	chatInput.value.style.height = 'auto';
 	const scrollHeight = chatInput.value.scrollHeight;
 	chatInput.value.style.height = `${Math.min(scrollHeight, MAX_CHAT_INPUT_HEIGHT)}px`;
+}
+
+async function onCopyButtonClick(content: string, e: MouseEvent) {
+	const button = e.target as HTMLButtonElement;
+	await navigator.clipboard.writeText(content);
+	button.innerText = t('assistantChat.copied');
+	setTimeout(() => {
+		button.innerText = t('assistantChat.copy');
+	}, 2000);
 }
 </script>
 
@@ -151,7 +173,10 @@ function growInput() {
 								/>
 							</div>
 							<div :class="$style.blockBody">
-								<span v-n8n-html="renderMarkdown(message.content)"></span>
+								<span
+									v-n8n-html="renderMarkdown(message.content)"
+									:class="$style['rendered-content']"
+								></span>
 								<BlinkingCursor
 									v-if="streaming && i === messages?.length - 1 && message.title && message.content"
 								/>
@@ -162,18 +187,35 @@ function growInput() {
 						<span
 							v-if="message.role === 'user'"
 							v-n8n-html="renderMarkdown(message.content)"
+							:class="$style['rendered-content']"
 						></span>
 						<div
 							v-else
 							v-n8n-html="renderMarkdown(message.content)"
-							:class="$style.assistantText"
+							:class="[$style.assistantText, $style['rendered-content']]"
 						></div>
 						<div
 							v-if="message?.codeSnippet"
 							:class="$style['code-snippet']"
 							data-test-id="assistant-code-snippet"
-							v-n8n-html="renderMarkdown(message.codeSnippet).trim()"
-						></div>
+						>
+							<header v-if="isClipboardSupported">
+								<n8n-button
+									type="tertiary"
+									text="true"
+									size="mini"
+									data-test-id="assistant-copy-snippet-button"
+									@click="onCopyButtonClick(message.codeSnippet, $event)"
+								>
+									{{ t('assistantChat.copy') }}
+								</n8n-button>
+							</header>
+							<div
+								v-n8n-html="renderMarkdown(message.codeSnippet).trim()"
+								data-test-id="assistant-code-snippet-content"
+								:class="[$style['snippet-content'], $style['rendered-content']]"
+							></div>
+						</div>
 						<BlinkingCursor
 							v-if="streaming && i === messages?.length - 1 && message.role === 'assistant'"
 						/>
@@ -415,14 +457,37 @@ p {
 	word-break: break-word;
 }
 
+code[class^='language-'] {
+	display: block;
+	padding: var(--spacing-4xs);
+}
+
 .code-snippet {
+	position: relative;
 	border: var(--border-base);
 	background-color: var(--color-foreground-xlight);
 	border-radius: var(--border-radius-base);
-	padding: var(--spacing-2xs);
 	font-family: var(--font-family-monospace);
+	font-size: var(--font-size-3xs);
 	max-height: 218px; // 12 lines
 	overflow: auto;
+	margin: var(--spacing-4s) 0;
+
+	header {
+		display: flex;
+		justify-content: flex-end;
+		padding: var(--spacing-4xs);
+		border-bottom: var(--border-base);
+
+		button:active,
+		button:focus {
+			outline: none !important;
+		}
+	}
+
+	.snippet-content {
+		padding: var(--spacing-2xs);
+	}
 
 	pre {
 		white-space-collapse: collapse;
@@ -491,17 +556,60 @@ p {
 }
 
 .assistantText {
-	display: inline;
+	display: inline-flex;
+	flex-direction: column;
+}
 
+.rendered-content {
 	p {
-		display: inline;
-		line-height: 1.7;
+		margin: 0;
+		margin: var(--spacing-4xs) 0;
+	}
+
+	h1,
+	h2,
+	h3 {
+		font-weight: var(--font-weight-bold);
+		font-size: var(--font-size-xs);
+		margin: var(--spacing-xs) 0 var(--spacing-4xs);
+	}
+
+	h4,
+	h5,
+	h6 {
+		font-weight: var(--font-weight-bold);
+		font-size: var(--font-size-2xs);
 	}
 
 	ul,
 	ol {
-		list-style-position: inside;
-		margin: var(--spacing-xs) 0 var(--spacing-xs) var(--spacing-xs);
+		margin: var(--spacing-4xs) 0 var(--spacing-4xs) var(--spacing-l);
+
+		ul,
+		ol {
+			margin-left: var(--spacing-xs);
+			margin-top: var(--spacing-4xs);
+		}
+	}
+
+	:global(.table-wrapper) {
+		overflow-x: auto;
+	}
+
+	table {
+		margin: var(--spacing-4xs) 0;
+
+		th {
+			white-space: nowrap;
+			min-width: 120px;
+			width: auto;
+		}
+
+		th,
+		td {
+			border: var(--border-base);
+			padding: var(--spacing-4xs);
+		}
 	}
 }
 
