@@ -18,8 +18,8 @@ const props = withDefaults(
 	defineProps<{
 		executions: ExecutionSummaryWithScopes[];
 		filters: ExecutionFilterType;
-		total: number;
-		estimated: boolean;
+		total?: number;
+		estimated?: boolean;
 	}>(),
 	{
 		total: 0,
