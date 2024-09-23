@@ -167,6 +167,7 @@
     "sshpk": "1.17.0",
     "swagger-ui-express": "5.0.0",
     "syslog-client": "1.1.1",
+    "tmp-promise": "3.0.3",
     "typedi": "catalog:",
     "uuid": "catalog:",
     "validator": "13.7.0",

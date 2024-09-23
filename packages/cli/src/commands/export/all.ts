@@ -3,6 +3,7 @@ import * as assert from 'assert/strict';
 import fs from 'fs';
 import { join } from 'path';
 import Container from 'typedi';
+import { dir as tmpDir } from 'tmp-promise';
 
 import { jsonColumnType } from '@/databases/entities/abstract-entity';
 import { BaseCommand } from '../base-command';
@@ -34,8 +35,8 @@ export class ExportAllCommand extends BaseCommand {
 				columns: v.columns,
 			}));
 
-		const backupPath = '/tmp/backup';
-		await fs.promises.mkdir(backupPath, { recursive: true });
+		const { path: tempBackupDir } = await tmpDir({});
+		await fs.promises.mkdir(tempBackupDir, { recursive: true });
 
 		for (const { name: tableName, columns } of tables) {
 			const totalRowsCount = await connection
@@ -43,7 +44,7 @@ export class ExportAllCommand extends BaseCommand {
 				.then((rows: Array<{ count: number }>) => rows[0].count);
 			if (totalRowsCount === 0) continue;
 
-			const stream = fs.createWriteStream(join(backupPath, `${tableName}.jsonl`));
+			const stream = fs.createWriteStream(join(tempBackupDir, `${tableName}.jsonl`));
 
 			let cursor = 0;
 			const batchSize = 10;
@@ -87,10 +88,14 @@ export class ExportAllCommand extends BaseCommand {
 		assert.ok(lastExecutedMigration, 'should have been run by db.ts');
 
 		await fs.promises.writeFile(
-			join(backupPath, 'lastMigration'),
+			join(tempBackupDir, 'lastMigration'),
 			lastExecutedMigration.name,
 			'utf8',
 		);
+
+		console.log(`data exported to ${tempBackupDir}`);
+
+		// TODO: clean up temp dir
 	}
 
 	async catch(error: Error) {
