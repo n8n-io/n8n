@@ -9,6 +9,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useRoute, useRouter } from 'vue-router';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@/composables/useI18n';
+import TemplatesView from './TemplatesView.vue';
 
 const externalHooks = useExternalHooks();
 const templatesStore = useTemplatesStore();
