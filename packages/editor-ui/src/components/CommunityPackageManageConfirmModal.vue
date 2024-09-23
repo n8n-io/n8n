@@ -23,7 +23,7 @@ const communityNodesStore = useCommunityNodesStore();
 const modalBus = createEventBus();
 
 const toast = useToast();
-const locale = useI18n();
+const i18n = useI18n();
 const telemetry = useTelemetry();
 
 const loading = ref(false);
@@ -35,33 +35,33 @@ const activePackage = computed(
 const getModalContent = computed(() => {
 	if (props.mode === COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL) {
 		return {
-			title: locale.baseText('settings.communityNodes.confirmModal.uninstall.title'),
-			message: locale.baseText('settings.communityNodes.confirmModal.uninstall.message', {
+			title: i18n.baseText('settings.communityNodes.confirmModal.uninstall.title'),
+			message: i18n.baseText('settings.communityNodes.confirmModal.uninstall.message', {
 				interpolate: {
 					packageName: props.activePackageName,
 				},
 			}),
-			buttonLabel: locale.baseText('settings.communityNodes.confirmModal.uninstall.buttonLabel'),
-			buttonLoadingLabel: locale.baseText(
+			buttonLabel: i18n.baseText('settings.communityNodes.confirmModal.uninstall.buttonLabel'),
+			buttonLoadingLabel: i18n.baseText(
 				'settings.communityNodes.confirmModal.uninstall.buttonLoadingLabel',
 			),
 		};
 	}
 	return {
-		title: locale.baseText('settings.communityNodes.confirmModal.update.title', {
+		title: i18n.baseText('settings.communityNodes.confirmModal.update.title', {
 			interpolate: {
 				packageName: props.activePackageName,
 			},
 		}),
-		description: locale.baseText('settings.communityNodes.confirmModal.update.description'),
-		message: locale.baseText('settings.communityNodes.confirmModal.update.message', {
+		description: i18n.baseText('settings.communityNodes.confirmModal.update.description'),
+		message: i18n.baseText('settings.communityNodes.confirmModal.update.message', {
 			interpolate: {
 				packageName: props.activePackageName,
 				version: activePackage.value.updateAvailable ?? '',
 			},
 		}),
-		buttonLabel: locale.baseText('settings.communityNodes.confirmModal.update.buttonLabel'),
-		buttonLoadingLabel: locale.baseText(
+		buttonLabel: i18n.baseText('settings.communityNodes.confirmModal.update.buttonLabel'),
+		buttonLoadingLabel: i18n.baseText(
 			'settings.communityNodes.confirmModal.update.buttonLoadingLabel',
 		),
 	};
@@ -91,11 +91,11 @@ const onUninstall = async () => {
 		loading.value = true;
 		await communityNodesStore.uninstallPackage(props.activePackageName);
 		toast.showMessage({
-			title: locale.baseText('settings.communityNodes.messages.uninstall.success.title'),
+			title: i18n.baseText('settings.communityNodes.messages.uninstall.success.title'),
 			type: 'success',
 		});
 	} catch (error) {
-		toast.showError(error, locale.baseText('settings.communityNodes.messages.uninstall.error'));
+		toast.showError(error, i18n.baseText('settings.communityNodes.messages.uninstall.error'));
 	} finally {
 		loading.value = false;
 		modalBus.emit('close');
@@ -116,8 +116,8 @@ const onUpdate = async () => {
 		const updatedVersion = activePackage.value.updateAvailable;
 		await communityNodesStore.updatePackage(props.activePackageName);
 		toast.showMessage({
-			title: locale.baseText('settings.communityNodes.messages.update.success.title'),
-			message: locale.baseText('settings.communityNodes.messages.update.success.message', {
+			title: i18n.baseText('settings.communityNodes.messages.update.success.title'),
+			message: i18n.baseText('settings.communityNodes.messages.update.success.message', {
 				interpolate: {
 					packageName: props.activePackageName,
 					version: updatedVersion ?? '',
@@ -126,7 +126,7 @@ const onUpdate = async () => {
 			type: 'success',
 		});
 	} catch (error) {
-		toast.showError(error, locale.baseText('settings.communityNodes.messages.update.error.title'));
+		toast.showError(error, i18n.baseText('settings.communityNodes.messages.update.error.title'));
 	} finally {
 		loading.value = false;
 		modalBus.emit('close');

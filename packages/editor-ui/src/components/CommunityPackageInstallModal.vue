@@ -17,7 +17,7 @@ const communityNodesStore = useCommunityNodesStore();
 
 const toast = useToast();
 const telemetry = useTelemetry();
-const locale = useI18n();
+const i18n = useI18n();
 
 const modalBus = createEventBus();
 
@@ -47,14 +47,14 @@ const onInstallClick = async () => {
 			loading.value = false;
 			modalBus.emit('close');
 			toast.showMessage({
-				title: locale.baseText('settings.communityNodes.messages.install.success'),
+				title: i18n.baseText('settings.communityNodes.messages.install.success'),
 				type: 'success',
 			});
 		} catch (error) {
 			if (error.httpStatusCode && error.httpStatusCode === 400) {
 				infoTextErrorMessage.value = error.message;
 			} else {
-				toast.showError(error, locale.baseText('settings.communityNodes.messages.install.error'));
+				toast.showError(error, i18n.baseText('settings.communityNodes.messages.install.error'));
 			}
 		} finally {
 			loading.value = false;
@@ -89,7 +89,7 @@ const onLearnMoreLinkClick = () => {
 	<Modal
 		width="540px"
 		:name="COMMUNITY_PACKAGE_INSTALL_MODAL_KEY"
-		:title="$locale.baseText('settings.communityNodes.installModal.title')"
+		:title="i18n.baseText('settings.communityNodes.installModal.title')"
 		:event-bus="modalBus"
 		:center="true"
 		:before-close="onModalClose"
@@ -99,15 +99,15 @@ const onLearnMoreLinkClick = () => {
 			<div :class="[$style.descriptionContainer, 'p-s']">
 				<div>
 					<n8n-text>
-						{{ $locale.baseText('settings.communityNodes.installModal.description') }}
+						{{ i18n.baseText('settings.communityNodes.installModal.description') }}
 					</n8n-text>
 					{{ ' ' }}
 					<n8n-link :to="COMMUNITY_NODES_INSTALLATION_DOCS_URL" @click="onMoreInfoTopClick">
-						{{ $locale.baseText('generic.moreInfo') }}
+						{{ i18n.baseText('generic.moreInfo') }}
 					</n8n-link>
 				</div>
 				<n8n-button
-					:label="$locale.baseText('settings.communityNodes.browseButton.label')"
+					:label="i18n.baseText('settings.communityNodes.browseButton.label')"
 					icon="external-link-alt"
 					:class="$style.browseButton"
 					@click="openNPMPage"
@@ -116,9 +116,9 @@ const onLearnMoreLinkClick = () => {
 			<div :class="[$style.formContainer, 'mt-m']">
 				<n8n-input-label
 					:class="$style.labelTooltip"
-					:label="$locale.baseText('settings.communityNodes.installModal.packageName.label')"
+					:label="i18n.baseText('settings.communityNodes.installModal.packageName.label')"
 					:tooltip-text="
-						$locale.baseText('settings.communityNodes.installModal.packageName.tooltip', {
+						i18n.baseText('settings.communityNodes.installModal.packageName.tooltip', {
 							interpolate: { npmURL: NPM_KEYWORD_SEARCH_URL },
 						})
 					"
@@ -130,7 +130,7 @@ const onLearnMoreLinkClick = () => {
 						data-test-id="package-name-input"
 						:maxlength="214"
 						:placeholder="
-							$locale.baseText('settings.communityNodes.installModal.packageName.placeholder')
+							i18n.baseText('settings.communityNodes.installModal.packageName.placeholder')
 						"
 						:required="true"
 						:disabled="loading"
@@ -152,10 +152,10 @@ const onLearnMoreLinkClick = () => {
 					@update:model-value="onCheckboxChecked"
 				>
 					<n8n-text>
-						{{ $locale.baseText('settings.communityNodes.installModal.checkbox.label') }} </n8n-text
+						{{ i18n.baseText('settings.communityNodes.installModal.checkbox.label') }} </n8n-text
 					><br />
 					<n8n-link :to="COMMUNITY_NODES_RISKS_DOCS_URL" @click="onLearnMoreLinkClick">{{
-						$locale.baseText('generic.moreInfo')
+						i18n.baseText('generic.moreInfo')
 					}}</n8n-link>
 				</el-checkbox>
 			</div>
@@ -166,8 +166,8 @@ const onLearnMoreLinkClick = () => {
 				:disabled="!userAgreed || packageName === '' || loading"
 				:label="
 					loading
-						? $locale.baseText('settings.communityNodes.installModal.installButton.label.loading')
-						: $locale.baseText('settings.communityNodes.installModal.installButton.label')
+						? i18n.baseText('settings.communityNodes.installModal.installButton.label.loading')
+						: i18n.baseText('settings.communityNodes.installModal.installButton.label')
 				"
 				size="large"
 				float="right"
