@@ -60,6 +60,13 @@ export class LicenseService {
 		});
 	}
 
+	async registerCommunity(email: string) {
+		await axios.post('https://enterprise.n8n.io/payday/community-registered', {
+			email,
+			instanceUrl: this.urlService.getWebhookBaseUrl(),
+		});
+	}
+
 	getManagementJwt(): string {
 		return this.license.getManagementJwt();
 	}

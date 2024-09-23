@@ -32,6 +32,22 @@ export class LicenseController {
 		}
 	}
 
+	@Post('/enterprise/community-register')
+	async registerCommunity(req: LicenseRequest.RegisterCommunity) {
+		try {
+			await this.licenseService.registerCommunity(req.body.email);
+		} catch (error: unknown) {
+			if (error instanceof Error) {
+				const errorMsg =
+					(error as AxiosError<{ message: string }>).response?.data?.message ?? error.message;
+
+				throw new BadRequestError(errorMsg);
+			} else {
+				throw new BadRequestError('Failed to register community');
+			}
+		}
+	}
+
 	@Post('/activate')
 	@GlobalScope('license:manage')
 	async activateLicense(req: LicenseRequest.Activate) {
