@@ -279,16 +279,8 @@ const requiredPropertiesFilled = computed(() => {
 });
 
 const credentialPermissions = computed(() => {
-	/**
-	 * Credentials don't have permissions until they have been created on the BE
-	 * credential:update allows the users modify the form fields at least until the credential is saved
-	 * credential:share allows the users to share not saved credentials
-	 */
 	return getResourcePermissions(
-		(currentCredential.value as ICredentialsResponse)?.scopes ?? [
-			'credential:update',
-			'credential:share',
-		],
+		(currentCredential.value as ICredentialsResponse)?.scopes ?? homeProject.value?.scopes,
 	).credential;
 });
 
