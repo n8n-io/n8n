@@ -600,7 +600,7 @@ export default defineComponent({
 
 			if (error && errorsToTrack.some((e) => error.message?.toLowerCase().includes(e))) {
 				this.$telemetry.track(
-					`User encountered an error: "${error.message}"`,
+					'User encountered an error',
 					{
 						node: this.node.type,
 						errorMessage: error.message,

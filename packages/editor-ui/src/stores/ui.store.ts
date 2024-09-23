@@ -224,11 +224,9 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const contextBasedTranslationKeys = computed(() => {
 		const deploymentType = settingsStore.deploymentType;
 
-		let contextKey: '' | '.cloud' | '.desktop' = '';
+		let contextKey: '' | '.cloud' = '';
 		if (deploymentType === 'cloud') {
 			contextKey = '.cloud';
-		} else if (deploymentType === 'desktop_mac' || deploymentType === 'desktop_win') {
-			contextKey = '.desktop';
 		}
 
 		return {

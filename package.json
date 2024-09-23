@@ -72,7 +72,6 @@
       "chokidar": "3.5.2",
       "esbuild": "^0.20.2",
       "formidable": "3.5.1",
-      "prettier": "^3.2.5",
       "pug": "^3.0.3",
       "semver": "^7.5.4",
       "tslib": "^2.6.2",
