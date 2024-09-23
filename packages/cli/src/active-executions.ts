@@ -139,7 +139,11 @@ export class ActiveExecutions {
 
 	/** Cancel the execution promise and reject its post-execution promise. */
 	stopExecution(executionId: string): void {
-		const execution = this.getExecution(executionId);
+		const execution = this.activeExecutions[executionId];
+		if (execution === undefined) {
+			// There is no execution running with that id
+			return;
+		}
 		execution.workflowExecution?.cancel();
 		execution.postExecutePromise.reject(new ExecutionCancelledError(executionId));
 		this.logger.debug('Execution cancelled', { executionId });
