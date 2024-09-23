@@ -172,7 +172,7 @@ const dateTimePickerOptions = ref({
 });
 const isFocused = ref(false);
 
-const displayValue = computed<string | number | boolean | null>(() => {
+const displayValue = computed(() => {
 	if (remoteParameterOptionsLoadingIssues.value) {
 		if (!nodeType.value || nodeType.value?.codex?.categories?.includes(CORE_NODES_CATEGORY)) {
 			return i18n.baseText('parameterInput.loadOptionsError');
