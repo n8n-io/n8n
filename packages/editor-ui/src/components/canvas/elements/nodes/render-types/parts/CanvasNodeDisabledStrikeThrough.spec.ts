@@ -13,6 +13,8 @@ describe('CanvasNodeDisabledStrikeThrough', () => {
 				provide: {
 					...createCanvasNodeProvide({
 						data: {
+							inputs: [{ type: NodeConnectionType.Main, index: 0 }],
+							outputs: [{ type: NodeConnectionType.Main, index: 0 }],
 							connections: {
 								[CanvasConnectionMode.Input]: {
 									[NodeConnectionType.Main]: [
