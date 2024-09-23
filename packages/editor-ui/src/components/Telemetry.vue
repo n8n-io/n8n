@@ -42,12 +42,6 @@ watch(telemetry, () => {
 	init();
 });
 
-watch(currentUserId, (userId) => {
-	if (isTelemetryEnabled.value) {
-		telemetryPlugin.identify(rootStore.instanceId, userId);
-	}
-});
-
 watch(isTelemetryEnabledOnRoute, (enabled) => {
 	if (enabled) {
 		init();
