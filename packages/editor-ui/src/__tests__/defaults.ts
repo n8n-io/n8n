@@ -46,7 +46,6 @@ export const defaultSettings: FrontendSettings = {
 	hideUsagePage: false,
 	hiringBannerEnabled: false,
 	instanceId: '',
-	isNpmAvailable: false,
 	license: { environment: 'development', consumerId: 'unknown' },
 	logLevel: 'info',
 	maxExecutionTimeout: 0,

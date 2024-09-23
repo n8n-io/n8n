@@ -8,9 +8,9 @@ import AssistantText from '../AskAssistantText/AssistantText.vue';
 const { t } = useI18n();
 
 interface Props {
-	size: 'small' | 'medium';
-	static: boolean;
-	asked: boolean;
+	size?: 'small' | 'medium';
+	static?: boolean;
+	asked?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
