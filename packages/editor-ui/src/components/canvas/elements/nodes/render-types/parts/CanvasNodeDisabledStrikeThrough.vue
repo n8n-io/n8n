@@ -6,15 +6,21 @@ import { useCanvasNode } from '@/composables/useCanvasNode';
 const $style = useCssModule();
 
 const { inputs, outputs, connections } = useCanvasNode();
-const { mainInputConnections, mainOutputConnections } = useNodeConnections({
-	inputs,
-	outputs,
-	connections,
-});
-
-const isVisible = computed(
-	() => mainInputConnections.value.length === 1 && mainOutputConnections.value.length === 1,
+const { mainInputConnections, mainInputs, mainOutputConnections, mainOutputs } = useNodeConnections(
+	{
+		inputs,
+		outputs,
+		connections,
+	},
 );
+
+const isVisible = computed(() => {
+	const isSingleInputNode = mainInputs.value.length === 1 && mainInputConnections.value.length <= 1;
+	const isSingleOutputNode =
+		mainOutputs.value.length === 1 && mainOutputConnections.value.length <= 1;
+
+	return isSingleInputNode && isSingleOutputNode;
+});
 
 const isSuccessStatus = computed(
 	() => false,
