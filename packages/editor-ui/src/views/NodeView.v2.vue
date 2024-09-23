@@ -981,10 +981,10 @@ const workflowExecutionData = computed(() => workflowsStore.workflowExecutionDat
 async function onRunWorkflow() {
 	trackRunWorkflow();
 
-	if (isExecutionPreview.value) {
-		await runWorkflow({});
+	if (!isExecutionPreview.value && workflowsStore.isWaitingExecution) {
+		void runWorkflowResolvePending({});
 	} else {
-		await runWorkflowResolvePending({});
+		void runWorkflow({});
 	}
 }
 
@@ -1011,10 +1011,10 @@ async function onRunWorkflowToNode(id: string) {
 
 	trackRunWorkflowToNode(node);
 
-	if (isExecutionPreview.value) {
-		await runWorkflow({ destinationNode: node.name, source: 'Node.executeNode' });
+	if (!isExecutionPreview.value && workflowsStore.isWaitingExecution) {
+		void runWorkflowResolvePending({ destinationNode: node.name, source: 'Node.executeNode' });
 	} else {
-		await runWorkflowResolvePending({ destinationNode: node.name, source: 'Node.executeNode' });
+		void runWorkflow({ destinationNode: node.name, source: 'Node.executeNode' });
 	}
 }
 

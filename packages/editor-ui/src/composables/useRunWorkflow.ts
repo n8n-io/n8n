@@ -326,7 +326,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			return await new Promise<string>((resolve) => {
 				let delay = 300;
 
-				const myFunction = async () => {
+				const checkWebhook = async () => {
 					await useExternalHooks().run('workflowRun.runWorkflow', {
 						nodeName: options.destinationNode,
 						source: options.source,
@@ -339,10 +339,10 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 					}
 
 					delay = Math.min(delay * 1.1, MAX_DELAY);
-					setTimeout(myFunction, delay);
+					setTimeout(checkWebhook, delay);
 				};
 
-				setTimeout(myFunction, delay);
+				setTimeout(checkWebhook, delay);
 			});
 		};
 
@@ -356,7 +356,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			return await new Promise<void>((resolve) => {
 				let delay = 300;
 
-				const myFunction = async () => {
+				const processExecution = async () => {
 					const execution = await workflowsStore.getExecution((executionId as string) || '');
 
 					localStorage.removeItem(FORM_RELOAD);
@@ -397,10 +397,10 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 					}
 
 					delay = Math.min(delay * 1.1, MAX_DELAY);
-					setTimeout(myFunction, delay);
+					setTimeout(processExecution, delay);
 				};
 
-				setTimeout(myFunction, delay);
+				setTimeout(processExecution, delay);
 			});
 		};
 

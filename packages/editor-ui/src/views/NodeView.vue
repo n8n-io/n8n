@@ -851,10 +851,10 @@ export default defineComponent({
 			this.$telemetry.track('User clicked execute node button', telemetryPayload);
 			void this.externalHooks.run('nodeView.onRunNode', telemetryPayload);
 
-			if (this.isExecutionPreview) {
-				void this.runWorkflow({ destinationNode: nodeName, source });
-			} else {
+			if (!this.isExecutionPreview && this.workflowsStore.isWaitingExecution) {
 				void this.runWorkflowResolvePending({ destinationNode: nodeName, source });
+			} else {
+				void this.runWorkflow({ destinationNode: nodeName, source });
 			}
 		},
 		async onOpenChat() {
@@ -882,10 +882,10 @@ export default defineComponent({
 				void this.externalHooks.run('nodeView.onRunWorkflow', telemetryPayload);
 			});
 
-			if (this.isExecutionPreview) {
-				await this.runWorkflow({});
+			if (!this.isExecutionPreview && this.workflowsStore.isWaitingExecution) {
+				void this.runWorkflowResolvePending({});
 			} else {
-				await this.runWorkflowResolvePending({});
+				void this.runWorkflow({});
 			}
 
 			this.refreshEndpointsErrorsState();

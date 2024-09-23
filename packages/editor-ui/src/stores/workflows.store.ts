@@ -7,6 +7,7 @@ import {
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	START_NODE_TYPE,
 	STORES,
+	WAIT_NODE_TYPE,
 } from '@/constants';
 import type {
 	ExecutionsQueryFilter,
@@ -165,6 +166,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const allConnections = computed(() => workflow.value.connections);
 
 	const allNodes = computed<INodeUi[]>(() => workflow.value.nodes);
+
+	const isWaitingExecution = computed(() => {
+		return allNodes.value.some((node) => node.type === WAIT_NODE_TYPE && node.disabled !== true);
+	});
 
 	// Names of all nodes currently on canvas.
 	const canvasNames = computed(() => new Set(allNodes.value.map((n) => n.name)));
@@ -1583,6 +1588,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		getWorkflowResultDataByNodeName,
 		allConnections,
 		allNodes,
+		isWaitingExecution,
 		canvasNames,
 		nodesByName,
 		nodesIssuesExist,
