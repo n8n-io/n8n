@@ -13,7 +13,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { defaultSettings } from '../../__tests__/defaults';
 import { merge } from 'lodash-es';
 import { DEFAULT_POSTHOG_SETTINGS } from './posthog.test';
-import { AI_ASSISTANT_EXPERIMENT } from '@/constants';
+import { AI_ASSISTANT_EXPERIMENT, VIEWS } from '@/constants';
 import { reactive } from 'vue';
 import * as chatAPI from '@/api/assistant';
 import * as telemetryModule from '@/composables/useTelemetry';
@@ -41,12 +41,13 @@ const setAssistantEnabled = (enabled: boolean) => {
 	);
 };
 
+let currentRouteName = ENABLED_VIEWS[0];
 vi.mock('vue-router', () => ({
 	useRoute: vi.fn(() =>
 		reactive({
 			path: '/',
 			params: {},
-			name: ENABLED_VIEWS[0],
+			name: currentRouteName,
 		}),
 	),
 	useRouter: vi.fn(),
@@ -307,6 +308,30 @@ describe('AI Assistant store', () => {
 		expect(assistantStore.isAssistantEnabled).toBe(true);
 		expect(assistantStore.canShowAssistant).toBe(true);
 		expect(assistantStore.canShowAssistantButtonsOnCanvas).toBe(true);
+	});
+
+	it('should not show assistant if on a settings page', () => {
+		currentRouteName = VIEWS.SSO_SETTINGS;
+		const assistantStore = useAssistantStore();
+
+		setAssistantEnabled(true);
+		mockPostHogVariant('variant');
+		expect(assistantStore.isAssistantEnabled).toBe(true);
+		expect(assistantStore.canShowAssistant).toBe(false);
+		expect(assistantStore.canShowAssistantButtonsOnCanvas).toBe(false);
+	});
+
+	[VIEWS.PROJECTS_CREDENTIALS, VIEWS.TEMPLATE_SETUP, VIEWS.CREDENTIALS].forEach((view) => {
+		it(`should show assistant if on ${view} page`, () => {
+			currentRouteName = VIEWS.PROJECTS_CREDENTIALS;
+			const assistantStore = useAssistantStore();
+
+			setAssistantEnabled(true);
+			mockPostHogVariant('variant');
+			expect(assistantStore.isAssistantEnabled).toBe(true);
+			expect(assistantStore.canShowAssistant).toBe(true);
+			expect(assistantStore.canShowAssistantButtonsOnCanvas).toBe(false);
+		});
 	});
 
 	it('should initialize assistant chat session on node error', async () => {
