@@ -1323,6 +1323,7 @@ exports[`AskAssistantChat > renders message with code snippet 1`] = `
               <!--v-if-->
               <div
                 class="snippet-content rendered-content"
+                data-test-id="assistant-code-snippet-content"
               >
                 <p>
                   node.on('input', function(msg) {
