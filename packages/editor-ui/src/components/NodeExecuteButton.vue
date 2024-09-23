@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { withDefaults, defineProps, defineEmits, ref, computed } from 'vue';
+import { ref, computed } from 'vue';
 import {
 	WEBHOOK_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,

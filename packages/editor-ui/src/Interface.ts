@@ -887,7 +887,6 @@ export interface RootState {
 	urlBaseWebhook: string;
 	urlBaseEditor: string;
 	instanceId: string;
-	isNpmAvailable: boolean;
 	binaryDataMode: 'default' | 'filesystem' | 's3';
 }
 
@@ -935,7 +934,6 @@ export interface IRootState {
 	sidebarMenuItems: IMenuItem[];
 	instanceId: string;
 	nodeMetadata: NodeMetadataMap;
-	isNpmAvailable: boolean;
 	subworkflowExecutionError: Error | null;
 	binaryDataMode: string;
 }
