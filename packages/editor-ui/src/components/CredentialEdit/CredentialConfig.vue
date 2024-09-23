@@ -177,6 +177,7 @@ const isAskAssistantAvailable = computed(
 		documentationUrl.value.includes(DOCS_DOMAIN) &&
 		props.credentialProperties.length &&
 		props.credentialPermissions.update &&
+		!(props.isOAuthType && props.requiredPropertiesFilled) &&
 		assistantStore.isAssistantEnabled,
 );
 
