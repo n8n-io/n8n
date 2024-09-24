@@ -44,5 +44,7 @@ export default {
 	'assistantChat.placeholder.3': 'button in the UI.',
 	'assistantChat.placeholder.4': 'How can I help?',
 	'assistantChat.inputPlaceholder': 'Enter your response...',
+	'assistantChat.copy': 'Copy',
+	'assistantChat.copied': 'Copied',
 	'inlineAskAssistantButton.asked': 'Asked',
 } as N8nLocale;
