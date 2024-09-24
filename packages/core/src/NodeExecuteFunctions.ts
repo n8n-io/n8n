@@ -3789,6 +3789,14 @@ export function getExecuteFunctions(
 					additionalData.setExecutionStatus('waiting');
 				}
 			},
+			logNodeOutput(...args: unknown[]): void {
+				// @ts-expect-error `args` is spreadable
+				if (mode === 'manual') this.sendMessageToUI(...args);
+
+				if (process.env.CODE_ENABLE_STDOUT === 'true') {
+					console.log(`[Workflow "${this.getWorkflow().id}"][Node "${node.name}"]`, ...args);
+				}
+			},
 			sendMessageToUI(...args: any[]): void {
 				if (mode !== 'manual') {
 					return;
