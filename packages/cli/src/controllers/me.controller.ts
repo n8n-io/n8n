@@ -5,6 +5,7 @@ import validator from 'validator';
 
 import { AuthService } from '@/auth/auth.service';
 import type { User } from '@/databases/entities/user';
+import { ApiKeysRepository } from '@/databases/repositories/api-keys.repository';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { Delete, Get, Patch, Post, RestController } from '@/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -27,7 +28,6 @@ import { UserService } from '@/services/user.service';
 import { isSamlLicensedAndEnabled } from '@/sso/saml/saml-helpers';
 
 import { PersonalizationSurveyAnswersV4 } from './survey-answers.dto';
-import { ApiKeysRepository } from '@/databases/repositories/api-keys.repository';
 
 export const API_KEY_PREFIX = 'n8n_api_';
 

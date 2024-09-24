@@ -46,16 +46,13 @@ describe('Users in Public API', () => {
 			 * Arrange
 			 */
 			testServer.license.enable('feat:advancedPermissions');
-			const { apiKey } = await createMemberWithApiKey();
+			const member = await createMemberWithApiKey();
 			const payload = [{ email: 'test@test.com', role: 'global:admin' }];
 
 			/**
 			 * Act
 			 */
-			const response = await testServer
-				.publicApiAgentWithApiKey(apiKey)
-				.post('/users')
-				.send(payload);
+			const response = await testServer.publicApiAgentFor(member).post('/users').send(payload);
 
 			/**
 			 * Assert
@@ -69,17 +66,14 @@ describe('Users in Public API', () => {
 			 * Arrange
 			 */
 			testServer.license.enable('feat:advancedPermissions');
-			const { apiKey } = await createOwnerWithApiKey();
+			const owner = await createOwnerWithApiKey();
 			await createOwnerWithApiKey();
 			const payload = [{ email: 'test@test.com', role: 'global:admin' }];
 
 			/**
 			 * Act
 			 */
-			const response = await testServer
-				.publicApiAgentWithApiKey(apiKey)
-				.post('/users')
-				.send(payload);
+			const response = await testServer.publicApiAgentFor(owner).post('/users').send(payload);
 
 			/**
 			 * Assert
@@ -128,14 +122,14 @@ describe('Users in Public API', () => {
 			 * Arrange
 			 */
 			testServer.license.enable('feat:advancedPermissions');
-			const { apiKey } = await createMemberWithApiKey();
+			const member = await createMemberWithApiKey();
 			const secondMember = await createMember();
 
 			/**
 			 * Act
 			 */
 			const response = await testServer
-				.publicApiAgentWithApiKey(apiKey)
+				.publicApiAgentFor(member)
 				.delete(`/users/${secondMember.id}`);
 
 			/**
@@ -150,15 +144,13 @@ describe('Users in Public API', () => {
 			 * Arrange
 			 */
 			testServer.license.enable('feat:advancedPermissions');
-			const { apiKey } = await createOwnerWithApiKey();
+			const owner = await createOwnerWithApiKey();
 			const member = await createMember();
 
 			/**
 			 * Act
 			 */
-			const response = await testServer
-				.publicApiAgentWithApiKey(apiKey)
-				.delete(`/users/${member.id}`);
+			const response = await testServer.publicApiAgentFor(owner).delete(`/users/${member.id}`);
 
 			/**
 			 * Assert
@@ -192,7 +184,7 @@ describe('Users in Public API', () => {
 			/**
 			 * Arrange
 			 */
-			const { apiKey } = await createOwnerWithApiKey();
+			const owner = await createOwnerWithApiKey();
 			const member = await createMember();
 			const payload = { newRoleName: 'global:admin' };
 
@@ -200,7 +192,7 @@ describe('Users in Public API', () => {
 			 * Act
 			 */
 			const response = await testServer
-				.publicApiAgentWithApiKey(apiKey)
+				.publicApiAgentFor(owner)
 				.patch(`/users/${member.id}/role`)
 				.send(payload);
 
@@ -219,7 +211,7 @@ describe('Users in Public API', () => {
 			 * Arrange
 			 */
 			testServer.license.enable('feat:advancedPermissions');
-			const { apiKey } = await createMemberWithApiKey();
+			const member = await createMemberWithApiKey();
 			const secondMember = await createMember();
 			const payload = { newRoleName: 'global:admin' };
 
@@ -227,7 +219,7 @@ describe('Users in Public API', () => {
 			 * Act
 			 */
 			const response = await testServer
-				.publicApiAgentWithApiKey(apiKey)
+				.publicApiAgentFor(member)
 				.patch(`/users/${secondMember.id}/role`)
 				.send(payload);
 
@@ -243,7 +235,7 @@ describe('Users in Public API', () => {
 			 * Arrange
 			 */
 			testServer.license.enable('feat:advancedPermissions');
-			const { apiKey } = await createOwnerWithApiKey();
+			const owner = await createOwnerWithApiKey();
 			const member = await createMember();
 			const payload = { newRoleName: 'global:admin' };
 
@@ -251,7 +243,7 @@ describe('Users in Public API', () => {
 			 * Act
 			 */
 			const response = await testServer
-				.publicApiAgentWithApiKey(apiKey)
+				.publicApiAgentFor(owner)
 				.patch(`/users/${member.id}/role`)
 				.send(payload);
 

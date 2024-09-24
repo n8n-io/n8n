@@ -26,10 +26,8 @@ import * as utils from '../shared/utils/';
 mockInstance(Telemetry);
 
 let owner: User;
-let ownerApiKey: string;
 let ownerPersonalProject: Project;
 let member: User;
-let memberApiKey: string;
 let memberPersonalProject: Project;
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
@@ -41,12 +39,12 @@ const license = testServer.license;
 mockInstance(ExecutionService);
 
 beforeAll(async () => {
-	({ apiKey: ownerApiKey, owner } = await createOwnerWithApiKey());
+	owner = await createOwnerWithApiKey();
 	ownerPersonalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
 		owner.id,
 	);
 
-	({ apiKey: memberApiKey, member } = await createMemberWithApiKey());
+	member = await createMemberWithApiKey();
 
 	memberPersonalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
 		member.id,
@@ -69,8 +67,8 @@ beforeEach(async () => {
 		'WorkflowHistory',
 	]);
 
-	authOwnerAgent = testServer.publicApiAgentWithApiKey(ownerApiKey);
-	authMemberAgent = testServer.publicApiAgentWithApiKey(memberApiKey);
+	authOwnerAgent = testServer.publicApiAgentFor(owner);
+	authMemberAgent = testServer.publicApiAgentFor(member);
 });
 
 afterEach(async () => {

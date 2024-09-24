@@ -22,12 +22,13 @@ describe('Variables in Public API', () => {
 			 * Arrange
 			 */
 			testServer.license.enable('feat:variables');
+			const owner = await createOwnerWithApiKey();
 			const variables = await Promise.all([createVariable(), createVariable(), createVariable()]);
 
 			/**
 			 * Act
 			 */
-			const response = await testServer.publicApiAgentWithApiKey(apiKey).get('/variables');
+			const response = await testServer.publicApiAgentFor(owner).get('/variables');
 
 			/**
 			 * Assert
@@ -48,10 +49,12 @@ describe('Variables in Public API', () => {
 			 * Arrange
 			 */
 
+			const owner = await createOwnerWithApiKey();
+
 			/**
 			 * Act
 			 */
-			const response = await testServer.publicApiAgentWithApiKey(apiKey).get('/variables');
+			const response = await testServer.publicApiAgentFor(owner).get('/variables');
 
 			/**
 			 * Assert
@@ -70,13 +73,14 @@ describe('Variables in Public API', () => {
 			 * Arrange
 			 */
 			testServer.license.enable('feat:variables');
+			const owner = await createOwnerWithApiKey();
 			const variablePayload = { key: 'key', value: 'value' };
 
 			/**
 			 * Act
 			 */
 			const response = await testServer
-				.publicApiAgentWithApiKey(apiKey)
+				.publicApiAgentFor(owner)
 				.post('/variables')
 				.send(variablePayload);
 
@@ -93,14 +97,14 @@ describe('Variables in Public API', () => {
 			/**
 			 * Arrange
 			 */
-			const { apiKey } = await createOwnerWithApiKey();
+			const owner = await createOwnerWithApiKey();
 			const variablePayload = { key: 'key', value: 'value' };
 
 			/**
 			 * Act
 			 */
 			const response = await testServer
-				.publicApiAgentWithApiKey(apiKey)
+				.publicApiAgentFor(owner)
 				.post('/variables')
 				.send(variablePayload);
 
@@ -121,14 +125,14 @@ describe('Variables in Public API', () => {
 			 * Arrange
 			 */
 			testServer.license.enable('feat:variables');
-			const { apiKey } = await createOwnerWithApiKey();
+			const owner = await createOwnerWithApiKey();
 			const variable = await createVariable();
 
 			/**
 			 * Act
 			 */
 			const response = await testServer
-				.publicApiAgentWithApiKey(apiKey)
+				.publicApiAgentFor(owner)
 				.delete(`/variables/${variable.id}`);
 
 			/**
@@ -142,14 +146,14 @@ describe('Variables in Public API', () => {
 			/**
 			 * Arrange
 			 */
-			const { apiKey } = await createOwnerWithApiKey();
+			const owner = await createOwnerWithApiKey();
 			const variable = await createVariable();
 
 			/**
 			 * Act
 			 */
 			const response = await testServer
-				.publicApiAgentWithApiKey(apiKey)
+				.publicApiAgentFor(owner)
 				.delete(`/variables/${variable.id}`);
 
 			/**

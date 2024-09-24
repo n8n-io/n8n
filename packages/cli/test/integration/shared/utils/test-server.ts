@@ -9,6 +9,7 @@ import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import type { User } from '@/databases/entities/user';
+import { ApiKeysRepository } from '@/databases/repositories/api-keys.repository';
 import { ControllerRegistry } from '@/decorators';
 import { License } from '@/license';
 import { Logger } from '@/logger';
@@ -62,15 +63,41 @@ function createAgent(
 	return agent;
 }
 
-function publicApiAgent(
+const userDoesNotHaveApiKey = (user: User) => {
+	return !user.apiKeys || !Array.from(user.apiKeys) || user.apiKeys.length === 0;
+};
+
+// const getApiKeyFromUser = async (user: User) => {
+// 	if (!userDoesNotHaveApiKey(user)) {
+// 		const apiKeys = await Container.get(ApiKeysRepository).find({ where: { userId: user.id } });
+// 		if (apiKeys?.length || apiKeys.length > 1) {
+// 			throw new Error('User has either no API key or more than one API key');
+// 		}
+// 		return apiKeys[0].apiKey;
+// 	}
+// 	return user.apiKeys[0].apiKey;
+// };
+
+const publicApiAgent = (
 	app: express.Application,
-	{ version = 1, apiKey }: { apiKey: string; version?: number },
-) {
+	{ user, apiKey, version = 1 }: { user?: User; apiKey?: string; version?: number },
+) => {
+	if (user && apiKey) {
+		throw new Error('Cannot provide both user and API key');
+	}
+
+	if (user && userDoesNotHaveApiKey(user)) {
+		throw new Error('User does not have an API key');
+	}
+
+	const agentApiKey = apiKey ?? user?.apiKeys[0].apiKey;
+
 	const agent = request.agent(app);
 	void agent.use(prefix(`${PUBLIC_API_REST_PATH_SEGMENT}/v${version}`));
-	void agent.set({ 'X-N8N-API-KEY': apiKey });
+	if (!user && !apiKey) return agent;
+	void agent.set({ 'X-N8N-API-KEY': agentApiKey });
 	return agent;
-}
+};
 
 export const setupTestServer = ({
 	endpointGroups,
@@ -97,7 +124,9 @@ export const setupTestServer = ({
 		authAgentFor: (user: User) => createAgent(app, { auth: true, user }),
 		authlessAgent: createAgent(app),
 		restlessAgent: createAgent(app, { auth: false, noRest: true }),
+		publicApiAgentFor: (user) => publicApiAgent(app, { user }),
 		publicApiAgentWithApiKey: (apiKey) => publicApiAgent(app, { apiKey }),
+		publicApiAgentWithoutApiKey: () => publicApiAgent(app, {}),
 		license: new LicenseMocker(),
 	};
 

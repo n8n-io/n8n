@@ -95,15 +95,17 @@ export const addApiKey = async (user: User) => {
 };
 
 export async function createOwnerWithApiKey() {
-	const owner = await createUser({ role: 'global:owner' });
-	const { apiKey } = await addApiKey(owner);
-	return { owner, apiKey };
+	const owner = await createOwner();
+	const apiKeys = await addApiKey(owner);
+	owner.apiKeys = [apiKeys];
+	return owner;
 }
 
 export async function createMemberWithApiKey() {
-	const member = await createUser({ role: 'global:member' });
-	const { apiKey } = await addApiKey(member);
-	return { member, apiKey };
+	const member = await createMember();
+	const apiKeys = await addApiKey(member);
+	member.apiKeys = [apiKeys];
+	return member;
 }
 
 export async function createOwner() {

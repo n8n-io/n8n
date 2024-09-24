@@ -10,7 +10,7 @@ import { UserRepository } from '@/databases/repositories/user.repository';
 import { mockInstance } from '@test/mocking';
 
 import { SUCCESS_RESPONSE_BODY } from './shared/constants';
-import { createOwnerWithApiKey, createUser, createUserShell } from './shared/db/users';
+import { createOwner, createOwnerWithApiKey, createUser, createUserShell } from './shared/db/users';
 import { randomEmail, randomName, randomValidPassword } from './shared/random';
 import * as testDb from './shared/test-db';
 import type { SuperAgentTest } from './shared/types';
@@ -28,7 +28,7 @@ describe('When public API is disabled', () => {
 	let authAgent: SuperAgentTest;
 
 	beforeEach(async () => {
-		({ owner } = await createOwnerWithApiKey());
+		owner = await createOwnerWithApiKey();
 
 		authAgent = testServer.authAgentFor(owner);
 		mockInstance(GlobalConfig, { publicApi: { disabled: true } });

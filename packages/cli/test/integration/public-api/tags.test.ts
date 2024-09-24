@@ -1,5 +1,6 @@
 import { Container } from 'typedi';
 
+import type { User } from '@/databases/entities/user';
 import { TagRepository } from '@/databases/repositories/tag.repository';
 
 import { createTag } from '../shared/db/tags';
@@ -8,23 +9,23 @@ import * as testDb from '../shared/test-db';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
-let ownerApiKey: string;
-let memberApiKey: string;
+let owner: User;
+let member: User;
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
 
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 
 beforeAll(async () => {
-	({ apiKey: ownerApiKey } = await createOwnerWithApiKey());
-	({ apiKey: memberApiKey } = await createMemberWithApiKey());
+	owner = await createOwnerWithApiKey();
+	member = await createMemberWithApiKey();
 });
 
 beforeEach(async () => {
 	await testDb.truncate(['Tag']);
 
-	authOwnerAgent = testServer.publicApiAgentWithApiKey(ownerApiKey);
-	authMemberAgent = testServer.publicApiAgentWithApiKey(memberApiKey);
+	authOwnerAgent = testServer.publicApiAgentFor(owner);
+	authMemberAgent = testServer.publicApiAgentFor(member);
 });
 
 const testWithAPIKey =

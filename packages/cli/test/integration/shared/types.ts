@@ -54,7 +54,9 @@ export interface TestServer {
 	app: Application;
 	httpServer: Server;
 	authAgentFor: (user: User) => TestAgent;
+	publicApiAgentFor: (user: User) => TestAgent;
 	publicApiAgentWithApiKey: (apiKey: string) => TestAgent;
+	publicApiAgentWithoutApiKey: () => TestAgent;
 	authlessAgent: TestAgent;
 	restlessAgent: TestAgent;
 	license: LicenseMocker;

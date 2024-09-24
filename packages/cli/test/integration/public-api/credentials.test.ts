@@ -15,9 +15,7 @@ import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
 let owner: User;
-let ownerApiKey: string;
 let member: User;
-let memberApiKey: string;
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
 
@@ -26,11 +24,11 @@ let saveCredential: SaveCredentialFunction;
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 
 beforeAll(async () => {
-	({ owner, apiKey: ownerApiKey } = await createOwnerWithApiKey());
-	({ member, apiKey: memberApiKey } = await createMemberWithApiKey());
+	owner = await createOwnerWithApiKey();
+	member = await createMemberWithApiKey();
 
-	authOwnerAgent = testServer.publicApiAgentWithApiKey(ownerApiKey);
-	authMemberAgent = testServer.publicApiAgentWithApiKey(memberApiKey);
+	authOwnerAgent = testServer.publicApiAgentFor(owner);
+	authMemberAgent = testServer.publicApiAgentFor(member);
 
 	saveCredential = affixRoleToSaveCredential('credential:owner');
 
@@ -158,7 +156,7 @@ describe('DELETE /credentials/:id', () => {
 	});
 
 	test('should delete owned cred for member but leave others untouched', async () => {
-		const { member: anotherMember } = await createMemberWithApiKey();
+		const anotherMember = await createMemberWithApiKey();
 
 		const savedCredential = await saveCredential(dbCredential(), { user: member });
 		const notToBeChangedCredential = await saveCredential(dbCredential(), { user: member });
