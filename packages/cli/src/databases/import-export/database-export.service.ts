@@ -15,6 +15,7 @@ import { FilesystemService } from '../../filesystem/filesystem.service';
 import { DatabaseSchemaService } from '../database-schema.service';
 
 // @TODO: Check minimum version for each DB type?
+// @TODO: Optional table exclude list
 
 @Service()
 export class DatabaseExportService {

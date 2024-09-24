@@ -22,6 +22,7 @@ import { DatabaseSchemaService } from '../database-schema.service';
 
 // @TODO: Check minimum version for Postgres?
 // @TODO: Make all info logs debug
+// @TODO: Oclif commands
 
 @Service()
 export class DatabaseImportService {
