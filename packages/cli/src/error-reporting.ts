@@ -1,9 +1,9 @@
+import { GlobalConfig } from '@n8n/config';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { QueryFailedError } from '@n8n/typeorm';
 import { createHash } from 'crypto';
 import { ErrorReporterProxy, ApplicationError } from 'n8n-workflow';
-
-import config from '@/config';
+import Container from 'typedi';
 
 let initialized = false;
 
@@ -14,7 +14,7 @@ export const initErrorHandling = async () => {
 		ErrorReporterProxy.error(error);
 	});
 
-	const dsn = config.getEnv('diagnostics.config.sentry.dsn');
+	const dsn = Container.get(GlobalConfig).sentry.backendDsn;
 	if (!dsn) {
 		initialized = true;
 		return;
