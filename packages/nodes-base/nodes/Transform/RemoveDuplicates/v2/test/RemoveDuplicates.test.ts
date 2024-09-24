@@ -89,7 +89,6 @@ describe('RemoveDuplicatesV2', () => {
 				if (paramName === 'dedupeField' && itemIndex === 1) return 2;
 				if (paramName === 'dedupeField' && itemIndex === 2) return 3;
 				if (paramName === 'options.scope') return 'node';
-				if (paramName === 'options.dontUpdateKeyValuesOnDatabase') return false;
 				if (paramName === 'options.historySize') return 10;
 			},
 		);

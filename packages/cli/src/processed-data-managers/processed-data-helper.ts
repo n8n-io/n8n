@@ -15,8 +15,11 @@ import { ProcessedDataRepository } from '@/databases/repositories/processed-data
 import type { IProcessedDataEntries, IProcessedDataLatest } from '@/interfaces';
 
 export class ProcessedDataHelper implements IProcessedDataManager {
-	private static sortEntries(items: ProcessedDataItemTypes[]) {
-		return [...items].sort();
+	private static sortEntries(
+		items: ProcessedDataItemTypes[],
+		mode: ProcessedDataMode,
+	): ProcessedDataItemTypes[] {
+		return [...items].sort((a, b) => (ProcessedDataHelper.compareValues(mode, a, b) ? 1 : -1));
 	}
 
 	private static compareValues(
@@ -107,7 +110,7 @@ export class ProcessedDataHelper implements IProcessedDataManager {
 		if (['latestIncrementalKey', 'latestDate'].includes(options.mode)) {
 			const processedDataValue = processedData.value as IProcessedDataLatest;
 
-			const incomingItems = ProcessedDataHelper.sortEntries(items);
+			const incomingItems = ProcessedDataHelper.sortEntries(items, options.mode);
 			incomingItems.forEach((item) => {
 				if (ProcessedDataHelper.compareValues(options.mode, item, processedDataValue.data)) {
 					returnData.new.push(item);
@@ -157,7 +160,7 @@ export class ProcessedDataHelper implements IProcessedDataManager {
 		}
 
 		if (['latestIncrementalKey', 'latestDate'].includes(options.mode)) {
-			const incomingItems = ProcessedDataHelper.sortEntries(items);
+			const incomingItems = ProcessedDataHelper.sortEntries(items, options.mode);
 
 			if (!processedData) {
 				// All items are new so add new entries

@@ -192,27 +192,15 @@ export class RemoveDuplicatesV2 implements INodeType {
 						}
 						// TODO: Add continueOnFail, where should it and up?
 					}
-					const addProcessedValue = !this.getNodeParameter(
-						'options.dontUpdateKeyValuesOnDatabase',
-						0,
-						false,
-					);
+
 					const maxEntries = this.getNodeParameter('options.historySize', 0, 1000);
 
 					let itemsProcessed: ICheckProcessedOutput;
-					if (addProcessedValue) {
-						itemsProcessed = await this.helpers.checkProcessedAndRecord(
-							Object.keys(itemMapping),
-							context as ProcessedDataContext,
-							{ mode: 'entries', maxEntries } as ICheckProcessedOptions,
-						);
-					} else {
-						itemsProcessed = await this.helpers.checkProcessed(
-							Object.keys(itemMapping),
-							context as ProcessedDataContext,
-							{ mode: 'entries' } as ICheckProcessedOptions,
-						);
-					}
+					itemsProcessed = await this.helpers.checkProcessedAndRecord(
+						Object.keys(itemMapping),
+						context as ProcessedDataContext,
+						{ mode: 'entries', maxEntries } as ICheckProcessedOptions,
+					);
 					returnData.push(
 						...itemsProcessed.new
 							.map((key) => {
@@ -253,27 +241,15 @@ export class RemoveDuplicatesV2 implements INodeType {
 						}
 						// TODO: Add continueOnFail, where should it and up?
 					}
-					const addProcessedValue = !this.getNodeParameter(
-						'options.dontUpdateKeyValuesOnDatabase',
-						0,
-						false,
-					);
+
 					const maxEntries = this.getNodeParameter('options.historySize', 0, 1000);
 
 					let itemsProcessed: ICheckProcessedOutput;
-					if (addProcessedValue) {
-						itemsProcessed = await this.helpers.checkProcessedAndRecord(
-							Object.keys(itemMapping),
-							context as ProcessedDataContext,
-							{ mode: 'latestIncrementalKey', maxEntries } as ICheckProcessedOptions,
-						);
-					} else {
-						itemsProcessed = await this.helpers.checkProcessed(
-							Object.keys(itemMapping),
-							context as ProcessedDataContext,
-							{ mode: 'latestIncrementalKey' } as ICheckProcessedOptions,
-						);
-					}
+					itemsProcessed = await this.helpers.checkProcessedAndRecord(
+						Object.keys(itemMapping),
+						context as ProcessedDataContext,
+						{ mode: 'latestIncrementalKey', maxEntries } as ICheckProcessedOptions,
+					);
 
 					returnData.push(
 						...itemsProcessed.new
@@ -298,7 +274,6 @@ export class RemoveDuplicatesV2 implements INodeType {
 					const itemMapping: {
 						[key: string]: INodeExecutionData[];
 					} = {};
-					const uniqueItems: any[] = [];
 
 					for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 						checkValue = this.getNodeParameter('dateDedupeField', itemIndex, '')?.toString() || '';
@@ -316,26 +291,13 @@ export class RemoveDuplicatesV2 implements INodeType {
 						}
 						// TODO: Add continueOnFail, where should it and up?
 					}
-					const addProcessedValue = !this.getNodeParameter(
-						'options.dontUpdateKeyValuesOnDatabase',
-						0,
-						false,
-					);
 					const maxEntries = this.getNodeParameter('options.historySize', 0, 1000);
 					let itemsProcessed: ICheckProcessedOutput;
-					if (addProcessedValue) {
-						itemsProcessed = await this.helpers.checkProcessedAndRecord(
-							Object.keys(itemMapping),
-							context as ProcessedDataContext,
-							{ mode: 'latestDate', maxEntries } as ICheckProcessedOptions,
-						);
-					} else {
-						itemsProcessed = await this.helpers.checkProcessed(
-							Object.keys(itemMapping),
-							context as ProcessedDataContext,
-							{ mode: 'latestDate' } as ICheckProcessedOptions,
-						);
-					}
+					itemsProcessed = await this.helpers.checkProcessedAndRecord(
+						Object.keys(itemMapping),
+						context as ProcessedDataContext,
+						{ mode: 'latestDate', maxEntries } as ICheckProcessedOptions,
+					);
 
 					returnData.push(
 						...itemsProcessed.new

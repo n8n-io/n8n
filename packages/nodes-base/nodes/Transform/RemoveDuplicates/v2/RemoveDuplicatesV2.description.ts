@@ -257,19 +257,6 @@ export const removeDuplicatesNodeFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Don’t Update Key Values on Database',
-				name: 'dontUpdateKeyValuesOnDatabase',
-				type: 'boolean',
-				default: false,
-				displayOptions: {
-					show: {
-						'/operation': ['removeItemsSeenInPreviousExecutions'],
-					},
-				},
-				description:
-					'Whether to just remove duplicates based on the stored key values without updating the database',
-			},
-			{
 				displayName: 'History Size',
 				name: 'historySize',
 				type: 'number',
