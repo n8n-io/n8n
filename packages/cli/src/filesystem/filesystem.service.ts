@@ -82,7 +82,7 @@ export class FilesystemService {
 	 * @returns Paths to the extracted files.
 	 */
 	async extractTarball(tarballPath: string, dstDir: string) {
-		await this.checkAccessible(tarballPath);
+		await this.checkAccessible(tarballPath); // @TODO: Clearer error if tarball missing
 
 		const extractedFilePaths: string[] = [];
 
