@@ -93,13 +93,13 @@ if (release && authToken) {
 		sentryVitePlugin({
 			org: 'n8nio',
 			project: 'instance-frontend',
-			// Specify the directory containing build artifacts
-			include: './dist',
 			// Auth tokens can be obtained from https://sentry.io/settings/account/api/auth-tokens/
 			// and needs the `project:releases` and `org:read` scopes
 			authToken,
 			telemetry: false,
-			release,
+			release: {
+				name: release,
+			},
 		}),
 	);
 }
