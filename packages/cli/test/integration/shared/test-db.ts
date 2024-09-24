@@ -80,7 +80,7 @@ const repositories = [
 	'WorkflowHistory',
 	'WorkflowStatistics',
 	'WorkflowTagMapping',
-	'ApiKeys',
+	'ApiKey',
 ] as const;
 
 /**

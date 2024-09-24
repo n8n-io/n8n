@@ -4,7 +4,7 @@ import Container from 'typedi';
 
 import { AuthIdentity } from '@/databases/entities/auth-identity';
 import { type GlobalRole, type User } from '@/databases/entities/user';
-import { ApiKeysRepository } from '@/databases/repositories/api-keys.repository';
+import { ApiKeyRepository } from '@/databases/repositories/api-key.repository';
 import { AuthIdentityRepository } from '@/databases/repositories/auth-identity.repository';
 import { AuthUserRepository } from '@/databases/repositories/auth-user.repository';
 import { UserRepository } from '@/databases/repositories/user.repository';
@@ -83,7 +83,7 @@ export async function createUserWithMfaEnabled(
 
 const createApiKeyEntity = (user: User) => {
 	const apiKey = randomApiKey();
-	return Container.get(ApiKeysRepository).create({
+	return Container.get(ApiKeyRepository).create({
 		userId: user.id,
 		label: randomString(10),
 		apiKey,
@@ -91,7 +91,7 @@ const createApiKeyEntity = (user: User) => {
 };
 
 export const addApiKey = async (user: User) => {
-	return await Container.get(ApiKeysRepository).save(createApiKeyEntity(user));
+	return await Container.get(ApiKeyRepository).save(createApiKeyEntity(user));
 };
 
 export async function createOwnerWithApiKey() {

@@ -4,7 +4,7 @@ import { Service } from 'typedi';
 import { ApiKey } from '../entities/api-keys';
 
 @Service()
-export class ApiKeysRepository extends Repository<ApiKey> {
+export class ApiKeyRepository extends Repository<ApiKey> {
 	constructor(dataSource: DataSource) {
 		super(ApiKey, dataSource.manager);
 	}

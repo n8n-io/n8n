@@ -16,7 +16,7 @@ describe('Projects in Public API', () => {
 	});
 
 	beforeEach(async () => {
-		await testDb.truncate(['ApiKeys', 'Project', 'User']);
+		await testDb.truncate(['ApiKey', 'Project', 'User']);
 	});
 
 	describe('GET /projects', () => {

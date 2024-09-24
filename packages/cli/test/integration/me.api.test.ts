@@ -5,7 +5,7 @@ import validator from 'validator';
 
 import type { ApiKey } from '@/databases/entities/api-keys';
 import type { User } from '@/databases/entities/user';
-import { ApiKeysRepository } from '@/databases/repositories/api-keys.repository';
+import { ApiKeyRepository } from '@/databases/repositories/api-key.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
@@ -26,7 +26,7 @@ beforeAll(() => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['ApiKeys', 'User']);
+	await testDb.truncate(['ApiKey', 'User']);
 	mockInstance(GlobalConfig, { publicApi: { disabled: false } });
 });
 
@@ -165,7 +165,7 @@ describe('Owner shell', () => {
 		expect(newApiKeyResponse.statusCode).toBe(200);
 		expect(newApiKey).toBeDefined();
 
-		const newStoredApiKey = await Container.get(ApiKeysRepository).findOneByOrFail({
+		const newStoredApiKey = await Container.get(ApiKeyRepository).findOneByOrFail({
 			userId: ownerShell.id,
 		});
 
@@ -326,7 +326,7 @@ describe('Member', () => {
 		expect(newApiKeyResponse.body.data.apiKey).toBeDefined();
 		expect(newApiKeyResponse.body.data.apiKey).not.toBeNull();
 
-		const newStoredApiKey = await Container.get(ApiKeysRepository).findOneByOrFail({
+		const newStoredApiKey = await Container.get(ApiKeyRepository).findOneByOrFail({
 			userId: member.id,
 		});
 

@@ -2,13 +2,13 @@ import { randomBytes } from 'crypto';
 import { Service } from 'typedi';
 
 import type { User } from '@/databases/entities/user';
-import { ApiKeysRepository } from '@/databases/repositories/api-keys.repository';
+import { ApiKeyRepository } from '@/databases/repositories/api-key.repository';
 
 export const API_KEY_PREFIX = 'n8n_api_';
 
 @Service()
 export class PublicApiKeyService {
-	constructor(private readonly apiKeysRepository: ApiKeysRepository) {}
+	constructor(private readonly apiKeysRepository: ApiKeyRepository) {}
 
 	/**
 	 * Creates a new public API key for the specified user.

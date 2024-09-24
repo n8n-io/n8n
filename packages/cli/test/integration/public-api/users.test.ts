@@ -20,7 +20,7 @@ describe('Users in Public API', () => {
 	});
 
 	beforeEach(async () => {
-		await testDb.truncate(['ApiKeys', 'User']);
+		await testDb.truncate(['ApiKey', 'User']);
 	});
 
 	describe('POST /users', () => {

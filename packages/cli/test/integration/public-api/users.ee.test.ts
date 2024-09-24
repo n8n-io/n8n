@@ -25,7 +25,7 @@ const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 
 beforeEach(async () => {
 	await testDb.truncate([
-		'ApiKeys',
+		'ApiKey',
 		'SharedCredentials',
 		'SharedWorkflow',
 		'Workflow',

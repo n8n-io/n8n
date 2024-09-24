@@ -8,7 +8,7 @@ import { AUTH_COOKIE_NAME } from '@/constants';
 import { MeController } from '@/controllers/me.controller';
 import type { ApiKey } from '@/databases/entities/api-keys';
 import type { User } from '@/databases/entities/user';
-import { ApiKeysRepository } from '@/databases/repositories/api-keys.repository';
+import { ApiKeyRepository } from '@/databases/repositories/api-key.repository';
 import { AuthUserRepository } from '@/databases/repositories/auth-user.repository';
 import { InvalidAuthTokenRepository } from '@/databases/repositories/invalid-auth-token.repository';
 import { UserRepository } from '@/databases/repositories/user.repository';
@@ -33,7 +33,7 @@ describe('MeController', () => {
 	const userService = mockInstance(UserService);
 	const userRepository = mockInstance(UserRepository);
 	const mockMfaService = mockInstance(MfaService);
-	const apiKeysRepository = mockInstance(ApiKeysRepository);
+	const apiKeysRepository = mockInstance(ApiKeyRepository);
 	mockInstance(AuthUserRepository);
 	mockInstance(InvalidAuthTokenRepository);
 	mockInstance(License).isWithinUsersLimit.mockReturnValue(true);
