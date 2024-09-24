@@ -1,4 +1,4 @@
-/** Ensures `error` is an `Error */
+/** Ensure `error` is an instance of `Error`. */
 export function ensureError(error: unknown): Error {
 	return error instanceof Error
 		? error

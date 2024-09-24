@@ -245,7 +245,7 @@ importers:
         version: 4.0.7
       axios:
         specifier: 'catalog:'
-        version: 1.7.4(debug@4.3.6)
+        version: 1.7.4
       dotenv:
         specifier: 8.6.0
         version: 8.6.0
@@ -322,7 +322,7 @@ importers:
     dependencies:
       axios:
         specifier: 'catalog:'
-        version: 1.7.4(debug@4.3.6)
+        version: 1.7.4
 
   packages/@n8n/codemirror-lang:
     dependencies:
@@ -717,7 +717,7 @@ importers:
         version: 1.11.0
       axios:
         specifier: 'catalog:'
-        version: 1.7.4(debug@4.3.6)
+        version: 1.7.4
       bcryptjs:
         specifier: 2.4.3
         version: 2.4.3
@@ -916,6 +916,9 @@ importers:
       syslog-client:
         specifier: 1.1.1
         version: 1.1.1
+      tar-stream:
+        specifier: ^3.1.7
+        version: 3.1.7
       typedi:
         specifier: 'catalog:'
         version: 0.10.0(patch_hash=sk6omkefrosihg7lmqbzh7vfxe)
@@ -1004,6 +1007,9 @@ importers:
       '@types/syslog-client':
         specifier: ^1.1.2
         version: 1.1.2
+      '@types/tar-stream':
+        specifier: ^3.1.3
+        version: 3.1.3
       '@types/uuid':
         specifier: 'catalog:'
         version: 10.0.0
@@ -1051,7 +1057,7 @@ importers:
         version: 1.11.0
       axios:
         specifier: 'catalog:'
-        version: 1.7.4(debug@4.3.6)
+        version: 1.7.4
       concat-stream:
         specifier: 2.0.0
         version: 2.0.0
@@ -1335,7 +1341,7 @@ importers:
         version: 10.11.0(vue@3.4.21(typescript@5.6.2))
       axios:
         specifier: 'catalog:'
-        version: 1.7.4(debug@4.3.6)
+        version: 1.7.4
       bowser:
         specifier: 2.11.0
         version: 2.11.0
@@ -1809,7 +1815,7 @@ importers:
         version: 0.15.2
       axios:
         specifier: 'catalog:'
-        version: 1.7.4(debug@4.3.6)
+        version: 1.7.4
       callsites:
         specifier: 3.1.0
         version: 3.1.0
@@ -5149,6 +5155,9 @@ packages:
   '@types/syslog-client@1.1.2':
     resolution: {integrity: sha512-X8MwGedXYNmYltPDaZQCM9X6cSdfFbJZWhrU81gWKsg+Q6mSgRWs/12Mq9nHaUV4wqMYDNrnytbwbMUiVnWegw==}
 
+  '@types/tar-stream@3.1.3':
+    resolution: {integrity: sha512-Zbnx4wpkWBMBSu5CytMbrT5ZpMiF55qgM+EpHzR4yIDu7mv52cej8hTkOc6K+LzpkOAbxwn/m7j3iO+/l42YkQ==}
+
   '@types/tedious@4.0.9':
     resolution: {integrity: sha512-ipwFvfy9b2m0gjHsIX0D6NAAwGCKokzf5zJqUZHUGt+7uWVlBIy6n2eyMgiKQ8ChLFVxic/zwQUhjLYNzbHDRA==}
 
@@ -5840,11 +5849,17 @@ packages:
   axios-retry@3.7.0:
     resolution: {integrity: sha512-ZTnCkJbRtfScvwiRnoVskFAfvU0UG3xNcsjwTR0mawSbIJoothxn67gKsMaNAFHRXJ1RmuLhmZBzvyXi3+9WyQ==}
 
+  axios@1.7.3:
+    resolution: {integrity: sha512-Ar7ND9pU99eJ9GpoGQKhKf58GpUOgnzuaB7ueNQ5BMi0p+LZ5oaEnfF999fAArcTIBwXTCHAmGcHOZJaWPq9Nw==}
+
   axios@1.7.4:
     resolution: {integrity: sha512-DukmaFRnY6AzAALSH4J2M3k6PkaC+MfaAGdEERRWcC9q3/TWQwLpHR8ZRLKTdQ3aBDL64EdluRDjJqKw+BPZEw==}
 
   axios@1.7.7:
     resolution: {integrity: sha512-S4kL7XrjgBmvdGut0sN3yJxqYzrDOnivkBiN0OFs6hLiUam3UPvswUo0kqGyhqUZGEOytHyumEdXsAkgCOUf3Q==}
+
+  b4a@1.6.6:
+    resolution: {integrity: sha512-5Tk1HLk6b6ctmjIkAcU/Ujv/1WqiDl0F0JdRCR80VsOcUlHcu7pWeWRlOqQLHfDEsVx9YH/aif5AG4ehoCtTmg==}
 
   babel-jest@29.6.2:
     resolution: {integrity: sha512-BYCzImLos6J3BH/+HvUCHG1dTf2MzmAB4jaVxHV+29RZLjR29XuYTmsf2sdDwkrb+FczkGo3kOhE7ga6sI0P4A==}
@@ -5877,6 +5892,9 @@ packages:
 
   balanced-match@1.0.2:
     resolution: {integrity: sha512-3oSeUO0TMV67hN1AmbXsK4yaqU7tjiHlbxRDZOpH0KW9+CeX4bRAaX0Anxt0tx2MrpRpWwQaPwIlISEJhYU5Pw==}
+
+  bare-events@2.4.2:
+    resolution: {integrity: sha512-qMKFd2qG/36aA4GwvKq8MxnPgCQAmBWmSyLWsJcbn8v03wvIPQ/hG1Ms8bPzndZxMDoHpxez5VOS+gC9Yi24/Q==}
 
   base-64@1.0.0:
     resolution: {integrity: sha512-kwDPIFCGx0NZHog36dj+tHiwP4QMzsZ3AgMViUBKI0+V5n4U0ufTCUMhnQ04diaRI8EX/QcPfql7zlhZ7j4zgg==}
@@ -7361,6 +7379,9 @@ packages:
 
   fast-deep-equal@3.1.3:
     resolution: {integrity: sha512-f3qQ9oQy9j2AhBe/H9VC91wLmKBCCU/gDOnKNAYG5hswO7BLKj09Hc5HYNz9cGI++xlpDCIgDaitVs03ATR84Q==}
+
+  fast-fifo@1.3.2:
+    resolution: {integrity: sha512-/d9sfos4yxzpwkDkuN7k2SqFKtYNmCTzgfEpz82x34IM9/zc8KGxQoXg1liNC/izpRM/MBdt44Nmx41ZWqk+FQ==}
 
   fast-glob@3.2.12:
     resolution: {integrity: sha512-DVj4CQIYYow0BlaelwK1pHl5n5cRSJfM60UA0zK891sVInoPri2Ekj7+e1CT3/3qxXenpI+nBBmQAcJPJgaj4w==}
@@ -9420,10 +9441,6 @@ packages:
     resolution: {integrity: sha512-3FnjYuehv9k6ovOEbyOswadCDPX1piCfhV8ncmYtHOjuPwylVWsghTLo7rabjC3Rx5xD4HDx8Wm1xnMF7S5qFQ==}
     engines: {node: '>=8'}
 
-  minipass@7.0.2:
-    resolution: {integrity: sha512-eL79dXrE1q9dBbDCLg7xfn/vl7MS4F1gvJAgjJrQli/jbQWdUttuVawphqpffoIYfRdq78LHx6GP4bU/EQ2ATA==}
-    engines: {node: '>=16 || 14 >=14.17'}
-
   minipass@7.1.2:
     resolution: {integrity: sha512-qOOzS1cBTWYF4BH8fVePDBOO9iptMnGUEZwNc/cMWnTV2nVLZ7VoNWEPHkYczZA0pdoA7dl6e7FL659nX9S2aw==}
     engines: {node: '>=16 || 14 >=14.17'}
@@ -10601,6 +10618,9 @@ packages:
   queue-microtask@1.2.3:
     resolution: {integrity: sha512-NuaNSa6flKT5JaSYQzJok04JzTL1CA6aGhv5rfLW3PgqA+M2ChpZQnAC8h8i4ZFkBS8X5RqkDBHA7r4hej3K9A==}
 
+  queue-tick@1.0.1:
+    resolution: {integrity: sha512-kJt5qhMxoszgU/62PLP1CJytzd2NKetjSRnyuj31fDd3Rlcz3fzlFdFLD1SItunPwyqEOkca6GbV612BWfaBag==}
+
   quoted-printable@1.0.1:
     resolution: {integrity: sha512-cihC68OcGiQOjGiXuo5Jk6XHANTHl1K4JLk/xlEJRTIXfy19Sg6XzB95XonYgr+1rB88bCpr7WZE7D7AlZow4g==}
     hasBin: true
@@ -11313,6 +11333,9 @@ packages:
     resolution: {integrity: sha512-Mcc5wHehp9aXz1ax6bZUyY5afg9u2rv5cqQI3mRrYkGC8rW2hM02jWuwjtL++LS5qinSyhj2QfLyNsuc+VsExg==}
     engines: {node: '>=10.0.0'}
 
+  streamx@2.20.1:
+    resolution: {integrity: sha512-uTa0mU6WUC65iUvzKH4X9hEdvSW7rbPxPtwfWiLMSj3qTdQbAiUboZTxauKfpFuGIGa1C2BYijZ7wgdUXICJhA==}
+
   strict-event-emitter-types@2.0.0:
     resolution: {integrity: sha512-Nk/brWYpD85WlOgzw5h173aci0Teyv8YdIAEtV+N88nDB0dLlazZyJMIsN6eo1/AR61l+p6CJTG1JIyFaoNEEA==}
 
@@ -11487,6 +11510,9 @@ packages:
     resolution: {integrity: sha512-ujeqbceABgwMZxEJnk2HDY2DlnUZ+9oEcb1KzTVfYHio0UE6dG71n60d8D2I4qNvleWrrXpmjpt7vZeF1LnMZQ==}
     engines: {node: '>=6'}
 
+  tar-stream@3.1.7:
+    resolution: {integrity: sha512-qJj60CXt7IU1Ffyc3NJMjh6EkuCFej46zUqJ4J7pqYlThyd9bO0XBTmcOIhSzZJVWfsLks0+nle/j538YAW9RQ==}
+
   tar@6.2.1:
     resolution: {integrity: sha512-DZ4yORTwrbTj/7MZYq2w+/ZFdI6OZ/f9SFHR+71gIVUZhOQPHzVCLpvRnPgyaMpfWxxk/4ONva3GQSyNIKRv6A==}
     engines: {node: '>=10'}
@@ -11525,6 +11551,9 @@ packages:
   test-exclude@7.0.1:
     resolution: {integrity: sha512-pFYqmTw68LXVjeWJMST4+borgQP2AyMNbg1BpZh9LbyhUeNkeaPF9gzfPGUAnSMV3qPYdWUwDIjjCLiSDOl7vg==}
     engines: {node: '>=18'}
+
+  text-decoder@1.2.0:
+    resolution: {integrity: sha512-n1yg1mOj9DNpk3NeZOx7T6jchTbyJS3i3cucbNN6FcdPriMZx7NsgrGpWWdWZZGxD7ES1XB+3uoqHMgOKaN+fg==}
 
   text-hex@1.0.0:
     resolution: {integrity: sha512-uuVGNWzgJ4yhRaNSiubPY7OjISw4sw4E5Uv0wbjp+OzcbmVU/rsT8ujgcXJhn9ypzsgr5vlzpPqP+MBBKcGvbg==}
@@ -15345,7 +15374,7 @@ snapshots:
 
   '@n8n/localtunnel@3.0.0':
     dependencies:
-      axios: 1.7.4(debug@4.3.6)
+      axios: 1.7.3(debug@4.3.6)
       debug: 4.3.6(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
@@ -15758,7 +15787,7 @@ snapshots:
 
   '@rudderstack/rudder-sdk-node@2.0.9(tslib@2.6.2)':
     dependencies:
-      axios: 1.7.4(debug@4.3.6)
+      axios: 1.7.4
       axios-retry: 3.7.0
       component-type: 1.2.1
       join-component: 1.1.0
@@ -17379,6 +17408,10 @@ snapshots:
     dependencies:
       '@types/node': 18.16.16
 
+  '@types/tar-stream@3.1.3':
+    dependencies:
+      '@types/node': 18.16.16
+
   '@types/tedious@4.0.9':
     dependencies:
       '@types/node': 18.16.16
@@ -18212,7 +18245,15 @@ snapshots:
       '@babel/runtime': 7.24.7
       is-retry-allowed: 2.2.0
 
-  axios@1.7.4(debug@4.3.6):
+  axios@1.7.3(debug@4.3.6):
+    dependencies:
+      follow-redirects: 1.15.6(debug@4.3.6)
+      form-data: 4.0.0
+      proxy-from-env: 1.1.0
+    transitivePeerDependencies:
+      - debug
+
+  axios@1.7.4:
     dependencies:
       follow-redirects: 1.15.6(debug@4.3.6)
       form-data: 4.0.0
@@ -18236,6 +18277,8 @@ snapshots:
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
       - debug
+
+  b4a@1.6.6: {}
 
   babel-jest@29.6.2(@babel/core@7.24.0):
     dependencies:
@@ -18294,6 +18337,9 @@ snapshots:
       '@babel/types': 7.24.6
 
   balanced-match@1.0.2: {}
+
+  bare-events@2.4.2:
+    optional: true
 
   base-64@1.0.0: {}
 
@@ -20147,6 +20193,8 @@ snapshots:
 
   fast-deep-equal@3.1.3: {}
 
+  fast-fifo@1.3.2: {}
+
   fast-glob@3.2.12:
     dependencies:
       '@nodelib/fs.stat': 2.0.5
@@ -20535,7 +20583,7 @@ snapshots:
       foreground-child: 3.1.1
       jackspeak: 2.3.6
       minimatch: 9.0.5
-      minipass: 7.0.2
+      minipass: 7.1.2
       path-scurry: 1.10.1
 
   glob@10.3.3:
@@ -20543,7 +20591,7 @@ snapshots:
       foreground-child: 3.1.1
       jackspeak: 2.3.6
       minimatch: 9.0.5
-      minipass: 7.0.2
+      minipass: 7.1.2
       path-scurry: 1.10.1
 
   glob@10.4.5:
@@ -20959,7 +21007,7 @@ snapshots:
 
   infisical-node@1.3.0:
     dependencies:
-      axios: 1.7.4(debug@4.3.6)
+      axios: 1.7.4
       dotenv: 16.3.1
       tweetnacl: 1.0.3
       tweetnacl-util: 0.15.1
@@ -21911,7 +21959,7 @@ snapshots:
       zod: 3.23.8
       zod-to-json-schema: 3.23.2(zod@3.23.8)
     optionalDependencies:
-      axios: 1.7.4(debug@4.3.6)
+      axios: 1.7.4
     transitivePeerDependencies:
       - encoding
       - openai
@@ -21935,7 +21983,7 @@ snapshots:
       zod: 3.23.8
       zod-to-json-schema: 3.23.2(zod@3.23.8)
     optionalDependencies:
-      axios: 1.7.4(debug@4.3.6)
+      axios: 1.7.4
     transitivePeerDependencies:
       - encoding
       - openai
@@ -22562,8 +22610,6 @@ snapshots:
   minipass@4.2.5: {}
 
   minipass@5.0.0: {}
-
-  minipass@7.0.2: {}
 
   minipass@7.1.2: {}
 
@@ -23555,7 +23601,7 @@ snapshots:
   path-scurry@1.10.1:
     dependencies:
       lru-cache: 10.2.2
-      minipass: 7.0.2
+      minipass: 7.1.2
 
   path-scurry@1.11.1:
     dependencies:
@@ -23780,7 +23826,7 @@ snapshots:
 
   posthog-node@3.2.1:
     dependencies:
-      axios: 1.7.4(debug@4.3.6)
+      axios: 1.7.4
       rusha: 0.8.14
     transitivePeerDependencies:
       - debug
@@ -24040,6 +24086,8 @@ snapshots:
   queue-lit@1.5.0: {}
 
   queue-microtask@1.2.3: {}
+
+  queue-tick@1.0.1: {}
 
   quoted-printable@1.0.1:
     dependencies:
@@ -24765,7 +24813,7 @@ snapshots:
       asn1.js: 5.4.1
       asn1.js-rfc2560: 5.0.1(asn1.js@5.4.1)
       asn1.js-rfc5280: 3.0.0
-      axios: 1.7.4(debug@4.3.6)
+      axios: 1.7.4
       big-integer: 1.6.51
       bignumber.js: 9.1.2
       binascii: 0.0.2
@@ -24975,6 +25023,14 @@ snapshots:
   stream-shift@1.0.3: {}
 
   streamsearch@1.1.0: {}
+
+  streamx@2.20.1:
+    dependencies:
+      fast-fifo: 1.3.2
+      queue-tick: 1.0.1
+      text-decoder: 1.2.0
+    optionalDependencies:
+      bare-events: 2.4.2
 
   strict-event-emitter-types@2.0.0: {}
 
@@ -25215,6 +25271,12 @@ snapshots:
       inherits: 2.0.4
       readable-stream: 3.6.0
 
+  tar-stream@3.1.7:
+    dependencies:
+      b4a: 1.6.6
+      fast-fifo: 1.3.2
+      streamx: 2.20.1
+
   tar@6.2.1:
     dependencies:
       chownr: 2.0.0
@@ -25285,6 +25347,10 @@ snapshots:
       '@istanbuljs/schema': 0.1.3
       glob: 10.4.5
       minimatch: 9.0.5
+
+  text-decoder@1.2.0:
+    dependencies:
+      b4a: 1.6.6
 
   text-hex@1.0.0: {}
 

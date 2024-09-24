@@ -12,7 +12,7 @@ import { UserRepository } from '@/databases/repositories/user.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { generateNanoId } from '@/databases/utils/generators';
 import type { IWorkflowToImport } from '@/interfaces';
-import { ImportService } from '@/services/import.service';
+import { WorkflowImportService } from '@/services/workflow-import.service';
 
 import { BaseCommand } from '../base-command';
 
@@ -97,7 +97,7 @@ export class ImportWorkflowsCommand extends BaseCommand {
 
 		this.logger.info(`Importing ${workflows.length} workflows...`);
 
-		await Container.get(ImportService).importWorkflows(workflows, project.id);
+		await Container.get(WorkflowImportService).importWorkflows(workflows, project.id);
 
 		this.reportSuccess(workflows.length);
 	}
