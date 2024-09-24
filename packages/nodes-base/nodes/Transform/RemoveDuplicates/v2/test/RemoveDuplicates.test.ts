@@ -85,9 +85,9 @@ describe('RemoveDuplicatesV2', () => {
 			(paramName: string, itemIndex: number) => {
 				if (paramName === 'operation') return 'removeItemsSeenInPreviousExecutions';
 				if (paramName === 'logic') return 'removeItemsWithAlreadySeenKeyValues';
-				if (paramName === 'keyField' && itemIndex === 0) return 1;
-				if (paramName === 'keyField' && itemIndex === 1) return 2;
-				if (paramName === 'keyField' && itemIndex === 2) return 3;
+				if (paramName === 'dedupeField' && itemIndex === 0) return 1;
+				if (paramName === 'dedupeField' && itemIndex === 1) return 2;
+				if (paramName === 'dedupeField' && itemIndex === 2) return 3;
 				if (paramName === 'options.context') return 'node';
 				if (paramName === 'options.dontUpdateKeyValuesOnDatabase') return false;
 				if (paramName === 'options.maxKeyValuesToStoreInDatabase') return 10;

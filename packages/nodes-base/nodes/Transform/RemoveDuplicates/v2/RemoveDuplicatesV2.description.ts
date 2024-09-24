@@ -128,11 +128,12 @@ export const removeDuplicatesNodeFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Key Field Value',
-		name: 'keyField',
+		displayName: 'Dedupe Field',
+		name: 'dedupeField',
 		type: 'string',
 		default: '',
-		hint: 'The input field value used as a key for deduplication',
+		description: 'Use an input field (or a combination of fields) that has a unique ID value',
+		hint: 'The input field value to compare between items',
 		placeholder: 'e.g. ID',
 		displayOptions: {
 			show: {
@@ -141,11 +142,12 @@ export const removeDuplicatesNodeFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Key Field Value',
-		name: 'incrementalKeyField',
+		displayName: 'Dedupe Field',
+		name: 'incrementalDedupeField',
 		type: 'number',
 		default: '',
-		hint: 'The input field value used as a key for deduplication, an incremental value is expected',
+		description: 'Use an input field (or a combination of fields) that has an incremental value',
+		hint: 'The input field value to compare between items, an incremental value is expected',
 		placeholder: 'e.g. ID',
 		displayOptions: {
 			show: {
@@ -154,11 +156,12 @@ export const removeDuplicatesNodeFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Key Field Value',
-		name: 'dateKeyField',
+		displayName: 'Dedupe Field',
+		name: 'dateDedupeField',
 		type: 'dateTime',
 		default: '',
-		hint: 'The input field value used as a key for deduplication, a date is expected',
+		description: 'Use an input field that has a date value in ISO format',
+		hint: 'The input field value to compare between items, a date is expected',
 		placeholder: ' e.g. 2024-08-09T13:44:16Z',
 		displayOptions: {
 			show: {

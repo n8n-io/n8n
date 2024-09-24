@@ -190,7 +190,7 @@ export class RemoveDuplicatesV2 implements INodeType {
 					} = {};
 					const uniqueItems: any[] = [];
 					for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-						checkValue = this.getNodeParameter('keyField', itemIndex, '')?.toString() || '';
+						checkValue = this.getNodeParameter('dedupeField', itemIndex, '')?.toString() || '';
 						if (
 							itemMapping[checkValue] &&
 							(allowDuplicateItemsInTheSameExecution ?? !uniqueItems.includes(checkValue))
@@ -257,7 +257,7 @@ export class RemoveDuplicatesV2 implements INodeType {
 					const uniqueItems: any[] = [];
 
 					for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-						const incrementalKey = this.getNodeParameter('incrementalKeyField', itemIndex, '');
+						const incrementalKey = this.getNodeParameter('incrementalDedupeField', itemIndex, '');
 						parsedIncrementalKey = Number(incrementalKey);
 						if (isNaN(parsedIncrementalKey)) {
 							throw new NodeOperationError(
@@ -332,7 +332,7 @@ export class RemoveDuplicatesV2 implements INodeType {
 					const uniqueItems: any[] = [];
 
 					for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-						checkValue = this.getNodeParameter('dateKeyField', itemIndex, '')?.toString() || '';
+						checkValue = this.getNodeParameter('dateDedupeField', itemIndex, '')?.toString() || '';
 						const date = new Date(checkValue);
 						if (isNaN(date.getTime())) {
 							throw new NodeOperationError(
