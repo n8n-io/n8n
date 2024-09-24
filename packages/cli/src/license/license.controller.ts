@@ -1,4 +1,5 @@
 import type { AxiosError } from 'axios';
+import { InstanceSettings } from 'n8n-core';
 
 import { Get, Post, RestController, GlobalScope } from '@/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -8,7 +9,10 @@ import { LicenseService } from './license.service';
 
 @RestController('/license')
 export class LicenseController {
-	constructor(private readonly licenseService: LicenseService) {}
+	constructor(
+		private readonly licenseService: LicenseService,
+		private readonly instanceSettings: InstanceSettings,
+	) {}
 
 	@Get('/')
 	async getLicenseData() {
@@ -35,7 +39,10 @@ export class LicenseController {
 	@Post('/enterprise/community-register')
 	async registerCommunity(req: LicenseRequest.RegisterCommunity) {
 		try {
-			await this.licenseService.registerCommunity(req.body.email);
+			await this.licenseService.registerCommunity({
+				email: req.body.email,
+				instanceId: this.instanceSettings.instanceId,
+			});
 		} catch (error: unknown) {
 			if (error instanceof Error) {
 				const errorMsg =
