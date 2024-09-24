@@ -221,6 +221,10 @@ describe('GlobalConfig', () => {
 				},
 			},
 		},
+		sentry: {
+			backend_dsn: '',
+			frontend_dsn: '',
+		},
 	};
 
 	it('should use all default values when no env variables are defined', () => {

@@ -452,20 +452,6 @@ export const schema = {
 					env: 'N8N_DIAGNOSTICS_POSTHOG_API_HOST',
 				},
 			},
-			sentry: {
-				dsn: {
-					doc: 'Data source name for error tracking on Sentry for the backend',
-					format: String,
-					default: '',
-					env: 'N8N_SENTRY_DSN',
-				},
-				dsn_frontend: {
-					doc: 'Data source name for error tracking on Sentry for the frontend',
-					format: String,
-					default: '',
-					env: 'N8N_FRONTEND_SENTRY_DSN',
-				},
-			},
 			frontend: {
 				doc: 'Diagnostics config for frontend.',
 				format: String,

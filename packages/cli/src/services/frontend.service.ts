@@ -126,7 +126,7 @@ export class FrontendService {
 				debug: config.getEnv('logs.level') === 'debug',
 			},
 			sentry: {
-				dsn: config.getEnv('diagnostics.config.sentry.dsn_frontend'),
+				dsn: this.globalConfig.sentry.frontend_dsn,
 			},
 			personalizationSurveyEnabled:
 				config.getEnv('personalization.enabled') && config.getEnv('diagnostics.enabled'),
