@@ -113,18 +113,6 @@ export const removeDuplicatesNodeFields: INodeProperties[] = [
 
 	// ----------------------------------
 	{
-		displayName:
-			'This operation removes input items already processed in previous executions by matching the key field values',
-		name: 'notice_tip',
-		type: 'notice',
-		default: '',
-		displayOptions: {
-			show: {
-				operation: ['removeItemsSeenInPreviousExecutions'],
-			},
-		},
-	},
-	{
 		displayName: 'Logic',
 		name: 'logic',
 		type: 'options',
