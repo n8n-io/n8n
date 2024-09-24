@@ -54,7 +54,7 @@ export class LicenseController {
 
 				throw new BadRequestError(errorMsg);
 			} else {
-				throw new BadRequestError('Failed to register community');
+				throw new BadRequestError('Failed to register community edition');
 			}
 		}
 	}
