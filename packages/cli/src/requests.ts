@@ -417,7 +417,7 @@ export declare namespace NodeRequest {
 
 export declare namespace LicenseRequest {
 	type Activate = AuthenticatedRequest<{}, {}, { activationKey: string }, {}>;
-	type RegisterCommunity = AuthlessRequest<{}, {}, { email: string }, {}>;
+	type RegisterCommunityEdition = AuthlessRequest<{}, {}, { email: string }, {}>;
 }
 
 export type BinaryDataRequest = AuthenticatedRequest<
