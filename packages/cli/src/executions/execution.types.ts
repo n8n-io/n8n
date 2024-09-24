@@ -1,5 +1,3 @@
-import type { ExecutionEntity } from '@/databases/entities/execution-entity';
-import type { AuthenticatedRequest } from '@/requests';
 import type { Scope } from '@n8n/permissions';
 import type {
 	AnnotationVote,
@@ -8,6 +6,9 @@ import type {
 	IDataObject,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
+
+import type { ExecutionEntity } from '@/databases/entities/execution-entity';
+import type { AuthenticatedRequest } from '@/requests';
 
 export declare namespace ExecutionRequest {
 	namespace QueryParams {

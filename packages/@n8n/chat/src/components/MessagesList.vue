@@ -1,9 +1,10 @@
 <script lang="ts" setup>
 import { ref, watch } from 'vue';
+
 import Message from '@n8n/chat/components/Message.vue';
-import type { ChatMessage } from '@n8n/chat/types';
 import MessageTyping from '@n8n/chat/components/MessageTyping.vue';
 import { useChat } from '@n8n/chat/composables';
+import type { ChatMessage } from '@n8n/chat/types';
 
 defineProps<{
 	messages: ChatMessage[];

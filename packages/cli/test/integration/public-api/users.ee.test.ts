@@ -1,16 +1,16 @@
-import validator from 'validator';
 import { v4 as uuid } from 'uuid';
+import validator from 'validator';
 
+import type { User } from '@/databases/entities/user';
 import { License } from '@/license';
+import { createTeamProject, linkUserToProject } from '@test-integration/db/projects';
 
 import { mockInstance } from '../../shared/mocking';
-import { randomApiKey } from '../shared/random';
-import * as utils from '../shared/utils/';
-import * as testDb from '../shared/test-db';
 import { createOwner, createUser, createUserShell } from '../shared/db/users';
+import { randomApiKey } from '../shared/random';
+import * as testDb from '../shared/test-db';
 import type { SuperAgentTest } from '../shared/types';
-import { createTeamProject, linkUserToProject } from '@test-integration/db/projects';
-import type { User } from '@/databases/entities/user';
+import * as utils from '../shared/utils/';
 
 mockInstance(License, {
 	getUsersLimit: jest.fn().mockReturnValue(-1),

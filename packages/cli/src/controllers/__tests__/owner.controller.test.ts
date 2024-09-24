@@ -1,7 +1,7 @@
-import Container from 'typedi';
 import type { Response } from 'express';
 import { anyObject, mock } from 'jest-mock-extended';
 import jwt from 'jsonwebtoken';
+import Container from 'typedi';
 
 import type { AuthService } from '@/auth/auth.service';
 import config from '@/config';
@@ -12,9 +12,8 @@ import type { UserRepository } from '@/databases/repositories/user.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { License } from '@/license';
 import type { OwnerRequest } from '@/requests';
-import type { UserService } from '@/services/user.service';
 import { PasswordUtility } from '@/services/password.utility';
-
+import type { UserService } from '@/services/user.service';
 import { mockInstance } from '@test/mocking';
 import { badPasswords } from '@test/test-data';
 

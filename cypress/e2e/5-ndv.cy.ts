@@ -1,8 +1,8 @@
+import { setCredentialValues } from '../composables/modals/credential-modal';
+import { clickCreateNewCredential } from '../composables/ndv';
 import { MANUAL_TRIGGER_NODE_DISPLAY_NAME, NOTION_NODE_NAME } from '../constants';
 import { NDV, WorkflowPage } from '../pages';
 import { NodeCreator } from '../pages/features/node-creator';
-import { clickCreateNewCredential } from '../composables/ndv';
-import { setCredentialValues } from '../composables/modals/credential-modal';
 
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
@@ -132,6 +132,10 @@ describe('NDV', () => {
 				'contains.text',
 				"An expression here won't work because it uses .item and n8n can't figure out the matching item.",
 			);
+		ndv.getters.nodeRunErrorIndicator().should('be.visible');
+		// The error details should be hidden behind a tooltip
+		ndv.getters.nodeRunErrorIndicator().should('not.contain', 'Start Time');
+		ndv.getters.nodeRunErrorIndicator().should('not.contain', 'Execution Time');
 	});
 
 	it('should save workflow using keyboard shortcut from NDV', () => {

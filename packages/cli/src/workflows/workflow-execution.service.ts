@@ -1,4 +1,4 @@
-import { Service } from 'typedi';
+import { GlobalConfig } from '@n8n/config';
 import type {
 	IDeferredPromise,
 	IExecuteData,
@@ -9,32 +9,28 @@ import type {
 	IRunExecutionData,
 	IWorkflowExecuteAdditionalData,
 	WorkflowExecuteMode,
+	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
 import {
 	SubworkflowOperationError,
 	Workflow,
 	ErrorReporterProxy as ErrorReporter,
 } from 'n8n-workflow';
+import { Service } from 'typedi';
 
+import type { Project } from '@/databases/entities/project';
 import type { User } from '@/databases/entities/user';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import * as WorkflowHelpers from '@/workflow-helpers';
-import type { WorkflowRequest } from '@/workflows/workflow.request';
-import type {
-	ExecutionPayload,
-	IWorkflowDb,
-	IWorkflowErrorData,
-	IWorkflowExecutionDataProcess,
-} from '@/interfaces';
-import { NodeTypes } from '@/node-types';
-import { WorkflowRunner } from '@/workflow-runner';
-import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import { TestWebhooks } from '@/webhooks/test-webhooks';
+import type { ExecutionPayload, IWorkflowDb, IWorkflowErrorData } from '@/interfaces';
 import { Logger } from '@/logger';
-import type { Project } from '@/databases/entities/project';
-import { GlobalConfig } from '@n8n/config';
+import { NodeTypes } from '@/node-types';
 import { SubworkflowPolicyChecker } from '@/subworkflows/subworkflow-policy-checker.service';
+import { TestWebhooks } from '@/webhooks/test-webhooks';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import * as WorkflowHelpers from '@/workflow-helpers';
+import { WorkflowRunner } from '@/workflow-runner';
+import type { WorkflowRequest } from '@/workflows/workflow.request';
 
 @Service()
 export class WorkflowExecutionService {
@@ -96,6 +92,7 @@ export class WorkflowExecutionService {
 		{ workflowData, runData, startNodes, destinationNode }: WorkflowRequest.ManualRunPayload,
 		user: User,
 		pushRef?: string,
+		partialExecutionVersion?: string,
 	) {
 		const pinData = workflowData.pinData;
 		const pinnedTrigger = this.selectPinnedActivatorStarter(
@@ -139,6 +136,7 @@ export class WorkflowExecutionService {
 			startNodes,
 			workflowData,
 			userId: user.id,
+			partialExecutionVersion: partialExecutionVersion ?? '0',
 		};
 
 		const hasRunData = (node: INode) => runData !== undefined && !!runData[node.name];

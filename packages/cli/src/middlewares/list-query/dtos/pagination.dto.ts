@@ -1,5 +1,6 @@
-import { isIntegerString } from '@/utils';
 import { ApplicationError } from 'n8n-workflow';
+
+import { isIntegerString } from '@/utils';
 
 export class Pagination {
 	static fromString(rawTake: string, rawSkip: string) {

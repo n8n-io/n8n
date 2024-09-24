@@ -1,7 +1,8 @@
 import { SecretClient } from '@azure/keyvault-secrets';
 import type { KeyVaultSecret } from '@azure/keyvault-secrets';
-import { AzureKeyVault } from '../azure-key-vault/azure-key-vault';
 import { mock } from 'jest-mock-extended';
+
+import { AzureKeyVault } from '../azure-key-vault/azure-key-vault';
 import type { AzureKeyVaultContext } from '../azure-key-vault/types';
 
 jest.mock('@azure/identity');

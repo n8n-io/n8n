@@ -56,6 +56,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import { useNodeType } from '@/composables/useNodeType';
 import { useToast } from '@/composables/useToast';
 import { isEqual, isObject } from 'lodash-es';
 import { useExternalHooks } from '@/composables/useExternalHooks';
@@ -171,12 +172,16 @@ export default defineComponent({
 			runIndex: props.runIndex,
 			displayMode: ndvStore.getPanelDisplayMode(props.paneType),
 		});
+		const { isSubNodeType } = useNodeType({
+			node,
+		});
 
 		return {
 			...useToast(),
 			externalHooks,
 			nodeHelpers,
 			pinnedData,
+			isSubNodeType,
 		};
 	},
 	data() {
@@ -307,6 +312,12 @@ export default defineComponent({
 		workflowRunErrorAsNodeError(): NodeError | null {
 			if (!this.node) {
 				return null;
+			}
+
+			// If the node is a sub-node, we need to get the parent node error to check for input errors
+			if (this.isSubNodeType && this.paneType === 'input') {
+				const parentNode = this.workflow.getChildNodes(this.node?.name ?? '', 'ALL_NON_MAIN')[0];
+				return this.workflowRunData?.[parentNode]?.[this.runIndex]?.error as NodeError;
 			}
 			return this.workflowRunData?.[this.node?.name]?.[this.runIndex]?.error as NodeError;
 		},
@@ -589,7 +600,7 @@ export default defineComponent({
 
 			if (error && errorsToTrack.some((e) => error.message?.toLowerCase().includes(e))) {
 				this.$telemetry.track(
-					`User encountered an error: "${error.message}"`,
+					'User encountered an error',
 					{
 						node: this.node.type,
 						errorMessage: error.message,
@@ -1339,7 +1350,7 @@ export default defineComponent({
 			:class="$style.hintCallout"
 			:theme="hint.type || 'info'"
 		>
-			<n8n-text size="small" v-html="hint.message"></n8n-text>
+			<n8n-text size="small" v-n8n-html="hint.message"></n8n-text>
 		</n8n-callout>
 
 		<div
@@ -1498,7 +1509,7 @@ export default defineComponent({
 				<n8n-text :bold="true" color="text-dark" size="large">{{ tooMuchDataTitle }}</n8n-text>
 				<n8n-text align="center" tag="div"
 					><span
-						v-html="
+						v-n8n-html="
 							$locale.baseText('ndv.output.tooMuchData.message', {
 								interpolate: { size: dataSizeInMB },
 							})

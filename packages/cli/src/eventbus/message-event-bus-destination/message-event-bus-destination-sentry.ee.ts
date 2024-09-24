@@ -1,14 +1,16 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 
-import { MessageEventBusDestination } from './message-event-bus-destination.ee';
 import * as Sentry from '@sentry/node';
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import type {
 	MessageEventBusDestinationOptions,
 	MessageEventBusDestinationSentryOptions,
 } from 'n8n-workflow';
-import { eventMessageGenericDestinationTestEvent } from '../event-message-classes/event-message-generic';
+
 import { N8N_VERSION } from '@/constants';
+
+import { MessageEventBusDestination } from './message-event-bus-destination.ee';
+import { eventMessageGenericDestinationTestEvent } from '../event-message-classes/event-message-generic';
 import type { MessageEventBus, MessageWithCallback } from '../message-event-bus/message-event-bus';
 
 export const isMessageEventBusDestinationSentryOptions = (

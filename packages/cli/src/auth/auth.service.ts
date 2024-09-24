@@ -1,7 +1,8 @@
-import Container, { Service } from 'typedi';
-import type { NextFunction, Response } from 'express';
+import { GlobalConfig } from '@n8n/config';
 import { createHash } from 'crypto';
+import type { NextFunction, Response } from 'express';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
+import Container, { Service } from 'typedi';
 
 import config from '@/config';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES, Time } from '@/constants';
@@ -15,7 +16,6 @@ import { Logger } from '@/logger';
 import type { AuthenticatedRequest } from '@/requests';
 import { JwtService } from '@/services/jwt.service';
 import { UrlService } from '@/services/url.service';
-import { GlobalConfig } from '@n8n/config';
 
 interface AuthJwtPayload {
 	/** User Id */

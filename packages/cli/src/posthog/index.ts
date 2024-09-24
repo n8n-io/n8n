@@ -1,7 +1,8 @@
-import { Service } from 'typedi';
-import type { PostHog } from 'posthog-node';
-import type { FeatureFlags, ITelemetryTrackProperties } from 'n8n-workflow';
 import { InstanceSettings } from 'n8n-core';
+import type { FeatureFlags, ITelemetryTrackProperties } from 'n8n-workflow';
+import type { PostHog } from 'posthog-node';
+import { Service } from 'typedi';
+
 import config from '@/config';
 import type { PublicUser } from '@/interfaces';
 

@@ -1,10 +1,16 @@
-import { SCHEDULE_TRIGGER_NODE_NAME } from '../constants';
-import { NDV, WorkflowPage } from '../pages';
+import { type ICredentialType } from 'n8n-workflow';
+
+import { clickCreateNewCredential, openCredentialSelect } from '../composables/ndv';
+import { GMAIL_NODE_NAME, SCHEDULE_TRIGGER_NODE_NAME } from '../constants';
+import { CredentialsModal, CredentialsPage, NDV, WorkflowPage } from '../pages';
 import { AIAssistant } from '../pages/features/ai-assistant';
+import { getVisibleSelect } from '../utils';
 
 const wf = new WorkflowPage();
 const ndv = new NDV();
 const aiAssistant = new AIAssistant();
+const credentialsPage = new CredentialsPage();
+const credentialsModal = new CredentialsModal();
 
 describe('AI Assistant::disabled', () => {
 	beforeEach(() => {
@@ -301,5 +307,189 @@ describe('AI Assistant::enabled', () => {
 		ndv.getters.nodeExecuteButton().click();
 		wf.getters.isWorkflowSaved();
 		aiAssistant.getters.placeholderMessage().should('not.exist');
+	});
+});
+
+describe('AI Assistant Credential Help', () => {
+	beforeEach(() => {
+		aiAssistant.actions.enableAssistant();
+		wf.actions.visit();
+	});
+
+	after(() => {
+		aiAssistant.actions.disableAssistant();
+	});
+
+	it('should start credential help from node credential', () => {
+		cy.intercept('POST', '/rest/ai-assistant/chat', {
+			statusCode: 200,
+			fixture: 'aiAssistant/simple_message_response.json',
+		}).as('chatRequest');
+		wf.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
+		wf.actions.addNodeToCanvas(GMAIL_NODE_NAME);
+		wf.actions.openNode('Gmail');
+		openCredentialSelect();
+		clickCreateNewCredential();
+		aiAssistant.getters.credentialEditAssistantButton().find('button').should('be.visible');
+		aiAssistant.getters.credentialEditAssistantButton().find('button').click();
+		cy.wait('@chatRequest');
+		aiAssistant.getters.chatMessagesUser().should('have.length', 1);
+		aiAssistant.getters
+			.chatMessagesUser()
+			.eq(0)
+			.should('contain.text', 'How do I set up the credentials for Gmail OAuth2 API?');
+
+		aiAssistant.getters
+			.chatMessagesAssistant()
+			.eq(0)
+			.should('contain.text', 'Hey, this is an assistant message');
+		aiAssistant.getters.credentialEditAssistantButton().find('button').should('be.disabled');
+	});
+
+	it('should start credential help from credential list', () => {
+		cy.intercept('POST', '/rest/ai-assistant/chat', {
+			statusCode: 200,
+			fixture: 'aiAssistant/simple_message_response.json',
+		}).as('chatRequest');
+
+		cy.visit(credentialsPage.url);
+		credentialsPage.getters.emptyListCreateCredentialButton().click();
+
+		credentialsModal.getters.newCredentialModal().should('be.visible');
+		credentialsModal.getters.newCredentialTypeSelect().should('be.visible');
+		credentialsModal.getters.newCredentialTypeOption('Notion API').click();
+
+		credentialsModal.getters.newCredentialTypeButton().click();
+
+		aiAssistant.getters.credentialEditAssistantButton().find('button').should('be.visible');
+		aiAssistant.getters.credentialEditAssistantButton().find('button').click();
+		cy.wait('@chatRequest');
+		aiAssistant.getters.chatMessagesUser().should('have.length', 1);
+		aiAssistant.getters
+			.chatMessagesUser()
+			.eq(0)
+			.should('contain.text', 'How do I set up the credentials for Notion API?');
+
+		aiAssistant.getters
+			.chatMessagesAssistant()
+			.eq(0)
+			.should('contain.text', 'Hey, this is an assistant message');
+		aiAssistant.getters.credentialEditAssistantButton().find('button').should('be.disabled');
+	});
+
+	it('should not show assistant button when click to connect', () => {
+		cy.intercept('/types/credentials.json', { middleware: true }, (req) => {
+			req.headers['cache-control'] = 'no-cache, no-store';
+
+			req.on('response', (res) => {
+				const credentials: ICredentialType[] = res.body || [];
+
+				const index = credentials.findIndex((c) => c.name === 'slackOAuth2Api');
+
+				credentials[index] = {
+					...credentials[index],
+					__overwrittenProperties: ['clientId', 'clientSecret'],
+				};
+			});
+		});
+
+		wf.actions.visit(true);
+		wf.actions.addNodeToCanvas('Manual');
+		wf.actions.addNodeToCanvas('Slack', true, true, 'Get a channel');
+		wf.getters.nodeCredentialsSelect().should('exist');
+		wf.getters.nodeCredentialsSelect().click();
+		getVisibleSelect().find('li').last().click();
+		credentialsModal.getters.credentialAuthTypeRadioButtons().first().click();
+		ndv.getters.copyInput().should('not.exist');
+		credentialsModal.getters.oauthConnectButton().should('have.length', 1);
+		credentialsModal.getters.credentialInputs().should('have.length', 0);
+		aiAssistant.getters.credentialEditAssistantButton().should('not.exist');
+
+		credentialsModal.getters.credentialAuthTypeRadioButtons().eq(1).click();
+		credentialsModal.getters.credentialInputs().should('have.length', 1);
+		aiAssistant.getters.credentialEditAssistantButton().should('exist');
+	});
+
+	it('should not show assistant button when click to connect with some fields', () => {
+		cy.intercept('/types/credentials.json', { middleware: true }, (req) => {
+			req.headers['cache-control'] = 'no-cache, no-store';
+
+			req.on('response', (res) => {
+				const credentials: ICredentialType[] = res.body || [];
+
+				const index = credentials.findIndex((c) => c.name === 'microsoftOutlookOAuth2Api');
+
+				credentials[index] = {
+					...credentials[index],
+					__overwrittenProperties: ['authUrl', 'accessTokenUrl', 'clientId', 'clientSecret'],
+				};
+			});
+		});
+
+		wf.actions.visit(true);
+		wf.actions.addNodeToCanvas('Manual');
+		wf.actions.addNodeToCanvas('Microsoft Outlook', true, true, 'Get a calendar');
+		wf.getters.nodeCredentialsSelect().should('exist');
+		wf.getters.nodeCredentialsSelect().click();
+		getVisibleSelect().find('li').last().click();
+		ndv.getters.copyInput().should('not.exist');
+		credentialsModal.getters.oauthConnectButton().should('have.length', 1);
+		credentialsModal.getters.credentialInputs().should('have.length', 1);
+		aiAssistant.getters.credentialEditAssistantButton().should('not.exist');
+	});
+});
+
+describe('General help', () => {
+	beforeEach(() => {
+		aiAssistant.actions.enableAssistant();
+		wf.actions.visit();
+	});
+
+	it('assistant returns code snippet', () => {
+		cy.intercept('POST', '/rest/ai-assistant/chat', {
+			statusCode: 200,
+			fixture: 'aiAssistant/code_snippet_response.json',
+		}).as('chatRequest');
+
+		aiAssistant.getters.askAssistantFloatingButton().should('be.visible');
+		aiAssistant.getters.askAssistantFloatingButton().click();
+		aiAssistant.getters.askAssistantChat().should('be.visible');
+		aiAssistant.getters.placeholderMessage().should('be.visible');
+		aiAssistant.getters.chatInput().should('be.visible');
+
+		aiAssistant.getters.chatInput().type('Show me an expression');
+		aiAssistant.getters.sendMessageButton().click();
+
+		aiAssistant.getters.chatMessagesAll().should('have.length', 3);
+		aiAssistant.getters.chatMessagesUser().eq(0).should('contain.text', 'Show me an expression');
+
+		aiAssistant.getters
+			.chatMessagesAssistant()
+			.eq(0)
+			.should('contain.text', 'To use expressions in n8n, follow these steps:');
+
+		aiAssistant.getters
+			.chatMessagesAssistant()
+			.eq(0)
+			.should(
+				'include.html',
+				`<pre><code class="language-json">[
+  {
+    "headers": {
+      "host": "n8n.instance.address",
+      ...
+    },
+    "params": {},
+    "query": {},
+    "body": {
+      "name": "Jim",
+      "age": 30,
+      "city": "New York"
+    }
+  }
+]
+</code></pre>`,
+			);
+		aiAssistant.getters.codeSnippet().should('have.text', '{{$json.body.city}}');
 	});
 });

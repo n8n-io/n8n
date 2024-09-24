@@ -208,7 +208,7 @@ export const threadFields: INodeProperties[] = [
 				},
 				default: [],
 				description:
-					'The users that are directly mentioned. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'The users that are directly mentioned. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Recipient Names or IDs',
@@ -220,7 +220,7 @@ export const threadFields: INodeProperties[] = [
 				},
 				default: [],
 				description:
-					'The users that will attached to the thread. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'The users that will attached to the thread. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Send as Integration',
@@ -501,7 +501,7 @@ export const threadFields: INodeProperties[] = [
 				},
 				default: [],
 				description:
-					'The users that are directly mentioned. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'The users that are directly mentioned. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Title',

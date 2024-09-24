@@ -1,6 +1,7 @@
+import type { IDataObject, INodeProperties } from 'n8n-workflow';
+
 import { SecretsProvider } from '@/interfaces';
 import type { SecretsProviderSettings, SecretsProviderState } from '@/interfaces';
-import type { IDataObject, INodeProperties } from 'n8n-workflow';
 
 export class MockProviders {
 	providers: Record<string, { new (): SecretsProvider }> = {

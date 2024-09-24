@@ -1,12 +1,13 @@
 import pick from 'lodash/pick';
+
 import { Get, Post, Put, RestController, GlobalScope } from '@/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { EventService } from '@/events/event.service';
 
 import { NON_SENSIBLE_LDAP_CONFIG_PROPERTIES } from './constants';
 import { getLdapSynchronizations } from './helpers.ee';
-import { LdapConfiguration } from './types';
 import { LdapService } from './ldap.service.ee';
-import { EventService } from '@/events/event.service';
+import { LdapConfiguration } from './types';
 
 @RestController('/ldap')
 export class LdapController {

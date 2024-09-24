@@ -66,7 +66,7 @@ export const description: SheetProperties = [
 		name: 'columnToMatchOn',
 		type: 'options',
 		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsDependsOn: ['sheetName.value'],
 			loadOptionsMethod: 'getSheetHeaderRowAndSkipEmpty',
@@ -132,7 +132,7 @@ export const description: SheetProperties = [
 						name: 'column',
 						type: 'options',
 						description:
-							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsDependsOn: ['sheetName.value', 'columnToMatchOn'],
 							loadOptionsMethod: 'getSheetHeaderRowAndAddColumn',
@@ -257,7 +257,7 @@ export async function execute(
 		}
 	}
 
-	const dataMode =
+	let dataMode =
 		nodeVersion < 4
 			? (this.getNodeParameter('dataMode', 0) as string)
 			: (this.getNodeParameter('columns.mappingMode', 0) as string);
@@ -267,10 +267,14 @@ export async function execute(
 	const sheetData = (await sheet.getData(sheetName, 'FORMATTED_VALUE')) ?? [];
 
 	if (!sheetData[keyRowIndex] && dataMode !== 'autoMapInputData') {
-		throw new NodeOperationError(
-			this.getNode(),
-			`Could not retrieve the column names from row ${keyRowIndex + 1}`,
-		);
+		if (!sheetData.length) {
+			dataMode = 'autoMapInputData';
+		} else {
+			throw new NodeOperationError(
+				this.getNode(),
+				`Could not retrieve the column names from row ${keyRowIndex + 1}`,
+			);
+		}
 	}
 
 	columnNames = sheetData[keyRowIndex] ?? [];

@@ -1,12 +1,13 @@
 {
   "name": "@n8n/config",
-  "version": "1.8.0",
+  "version": "1.10.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
-    "format": "prettier --write . --ignore-path ../../../.prettierignore",
+    "format": "biome format --write src test",
+    "format:check": "biome ci src test",
     "lint": "eslint .",
     "lintfix": "eslint . --fix",
     "watch": "tsc -p tsconfig.build.json --watch",

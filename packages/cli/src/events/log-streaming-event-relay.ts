@@ -1,9 +1,11 @@
+import type { IWorkflowBase } from 'n8n-workflow';
 import { Service } from 'typedi';
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+
 import { Redactable } from '@/decorators/redactable';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventRelay } from '@/events/event-relay';
 import type { RelayEventMap } from '@/events/relay-event-map';
-import type { IWorkflowBase } from 'n8n-workflow';
+
 import { EventService } from './event.service';
 
 @Service()
@@ -46,6 +48,20 @@ export class LogStreamingEventRelay extends EventRelay {
 			'community-package-deleted': (event) => this.communityPackageDeleted(event),
 			'execution-throttled': (event) => this.executionThrottled(event),
 			'execution-started-during-bootup': (event) => this.executionStartedDuringBootup(event),
+			'ai-messages-retrieved-from-memory': (event) => this.aiMessagesRetrievedFromMemory(event),
+			'ai-message-added-to-memory': (event) => this.aiMessageAddedToMemory(event),
+			'ai-output-parsed': (event) => this.aiOutputParsed(event),
+			'ai-documents-retrieved': (event) => this.aiDocumentsRetrieved(event),
+			'ai-document-embedded': (event) => this.aiDocumentEmbedded(event),
+			'ai-query-embedded': (event) => this.aiQueryEmbedded(event),
+			'ai-document-processed': (event) => this.aiDocumentProcessed(event),
+			'ai-text-split': (event) => this.aiTextSplitIntoChunks(event),
+			'ai-tool-called': (event) => this.aiToolCalled(event),
+			'ai-vector-store-searched': (event) => this.aiVectorStoreSearched(event),
+			'ai-llm-generated-output': (event) => this.aiLlmGeneratedOutput(event),
+			'ai-llm-errored': (event) => this.aiLlmErrored(event),
+			'ai-vector-store-populated': (event) => this.aiVectorStorePopulated(event),
+			'ai-vector-store-updated': (event) => this.aiVectorStoreUpdated(event),
 		});
 	}
 
@@ -383,6 +399,110 @@ export class LogStreamingEventRelay extends EventRelay {
 		void this.eventBus.sendExecutionEvent({
 			eventName: 'n8n.execution.started-during-bootup',
 			payload: { executionId },
+		});
+	}
+
+	// #endregion
+
+	// #region AI
+
+	private aiMessagesRetrievedFromMemory(
+		payload: RelayEventMap['ai-messages-retrieved-from-memory'],
+	) {
+		void this.eventBus.sendAiNodeEvent({
+			eventName: 'n8n.ai.memory.get.messages',
+			payload,
+		});
+	}
+
+	private aiMessageAddedToMemory(payload: RelayEventMap['ai-message-added-to-memory']) {
+		void this.eventBus.sendAiNodeEvent({
+			eventName: 'n8n.ai.memory.added.message',
+			payload,
+		});
+	}
+
+	private aiOutputParsed(payload: RelayEventMap['ai-output-parsed']) {
+		void this.eventBus.sendAiNodeEvent({
+			eventName: 'n8n.ai.output.parser.parsed',
+			payload,
+		});
+	}
+
+	private aiDocumentsRetrieved(payload: RelayEventMap['ai-documents-retrieved']) {
+		void this.eventBus.sendAiNodeEvent({
+			eventName: 'n8n.ai.retriever.get.relevant.documents',
+			payload,
+		});
+	}
+
+	private aiDocumentEmbedded(payload: RelayEventMap['ai-document-embedded']) {
+		void this.eventBus.sendAiNodeEvent({
+			eventName: 'n8n.ai.embeddings.embedded.document',
+			payload,
+		});
+	}
+
+	private aiQueryEmbedded(payload: RelayEventMap['ai-query-embedded']) {
+		void this.eventBus.sendAiNodeEvent({
+			eventName: 'n8n.ai.embeddings.embedded.query',
+			payload,
+		});
+	}
+
+	private aiDocumentProcessed(payload: RelayEventMap['ai-document-processed']) {
+		void this.eventBus.sendAiNodeEvent({
+			eventName: 'n8n.ai.document.processed',
+			payload,
+		});
+	}
+
+	private aiTextSplitIntoChunks(payload: RelayEventMap['ai-text-split']) {
+		void this.eventBus.sendAiNodeEvent({
+			eventName: 'n8n.ai.text.splitter.split',
+			payload,
+		});
+	}
+
+	private aiToolCalled(payload: RelayEventMap['ai-tool-called']) {
+		void this.eventBus.sendAiNodeEvent({
+			eventName: 'n8n.ai.tool.called',
+			payload,
+		});
+	}
+
+	private aiVectorStoreSearched(payload: RelayEventMap['ai-vector-store-searched']) {
+		void this.eventBus.sendAiNodeEvent({
+			eventName: 'n8n.ai.vector.store.searched',
+			payload,
+		});
+	}
+
+	private aiLlmGeneratedOutput(payload: RelayEventMap['ai-llm-generated-output']) {
+		void this.eventBus.sendAiNodeEvent({
+			eventName: 'n8n.ai.llm.generated',
+			payload,
+		});
+	}
+
+	private aiLlmErrored(payload: RelayEventMap['ai-llm-errored']) {
+		void this.eventBus.sendAiNodeEvent({
+			eventName: 'n8n.ai.llm.error',
+			payload,
+		});
+	}
+
+	private aiVectorStorePopulated(payload: RelayEventMap['ai-vector-store-populated']) {
+		void this.eventBus.sendAiNodeEvent({
+			eventName: 'n8n.ai.vector.store.populated',
+			payload,
+		});
+	}
+
+	private aiVectorStoreUpdated(payload: RelayEventMap['ai-vector-store-updated']) {
+		void this.eventBus.sendAiNodeEvent({
+			eventName: 'n8n.ai.vector.store.updated',
+			payload,
 		});
 	}
 

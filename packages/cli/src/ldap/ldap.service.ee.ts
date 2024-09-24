@@ -1,20 +1,20 @@
-import { Service } from 'typedi';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { QueryFailedError } from '@n8n/typeorm';
 import type { Entry as LdapUser, ClientOptions } from 'ldapts';
 import { Client } from 'ldapts';
-import type { ConnectionOptions } from 'tls';
-import { ApplicationError, jsonParse } from 'n8n-workflow';
 import { Cipher } from 'n8n-core';
+import { ApplicationError, jsonParse } from 'n8n-workflow';
+import type { ConnectionOptions } from 'tls';
+import { Service } from 'typedi';
 
 import config from '@/config';
-import type { User } from '@/databases/entities/user';
 import type { RunningMode, SyncStatus } from '@/databases/entities/auth-provider-sync-history';
+import type { User } from '@/databases/entities/user';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
-import { Logger } from '@/logger';
-
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { EventService } from '@/events/event.service';
+import { Logger } from '@/logger';
 import {
 	getCurrentAuthenticationMethod,
 	isEmailCurrentAuthenticationMethod,
@@ -22,7 +22,12 @@ import {
 	setCurrentAuthenticationMethod,
 } from '@/sso/sso-helpers';
 
-import type { LdapConfig } from './types';
+import {
+	BINARY_AD_ATTRIBUTES,
+	LDAP_FEATURE_NAME,
+	LDAP_LOGIN_ENABLED,
+	LDAP_LOGIN_LABEL,
+} from './constants';
 import {
 	createFilter,
 	deleteAllLdapIdentities,
@@ -38,13 +43,7 @@ import {
 	saveLdapSynchronization,
 	validateLdapConfigurationSchema,
 } from './helpers.ee';
-import {
-	BINARY_AD_ATTRIBUTES,
-	LDAP_FEATURE_NAME,
-	LDAP_LOGIN_ENABLED,
-	LDAP_LOGIN_LABEL,
-} from './constants';
-import { EventService } from '@/events/event.service';
+import type { LdapConfig } from './types';
 
 @Service()
 export class LdapService {

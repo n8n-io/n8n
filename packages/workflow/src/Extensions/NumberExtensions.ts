@@ -2,8 +2,9 @@
  * @jest-environment jsdom
  */
 import { DateTime } from 'luxon';
-import { ExpressionExtensionError } from '../errors/expression-extension.error';
+
 import type { ExtensionMap } from './Extensions';
+import { ExpressionExtensionError } from '../errors/expression-extension.error';
 
 function format(value: number, extraArgs: unknown[]): string {
 	const [locales = 'en-US', config = {}] = extraArgs as [

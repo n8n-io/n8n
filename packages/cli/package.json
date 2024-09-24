@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "1.58.0",
+  "version": "1.60.0",
   "description": "n8n Workflow Automation Tool",
   "main": "dist/index",
   "types": "dist/index.d.ts",
@@ -17,7 +17,8 @@
     "dev": "concurrently -k -n \"TypeScript,Node\" -c \"yellow.bold,cyan.bold\" \"npm run watch\" \"nodemon\"",
     "dev:worker": "concurrently -k -n \"TypeScript,Node\" -c \"yellow.bold,cyan.bold\" \"npm run watch\" \"nodemon worker\"",
     "dev:webhook": "concurrently -k -n \"TypeScript,Node\" -c \"yellow.bold,cyan.bold\" \"npm run watch\" \"nodemon webhook\"",
-    "format": "prettier --write . --ignore-path ../../.prettierignore",
+    "format": "biome format --write .",
+    "format:check": "biome ci .",
     "lint": "eslint . --quiet",
     "lintfix": "eslint . --fix",
     "start": "run-script-os",
@@ -85,6 +86,7 @@
     "@azure/identity": "^4.3.0",
     "@azure/keyvault-secrets": "^4.8.0",
     "@google-cloud/secret-manager": "^5.6.0",
+    "@n8n/api-types": "workspace:*",
     "@n8n/client-oauth2": "workspace:*",
     "@n8n/config": "workspace:*",
     "@n8n/localtunnel": "3.0.0",
@@ -112,7 +114,7 @@
     "csrf": "3.1.0",
     "curlconverter": "3.21.0",
     "dotenv": "8.6.0",
-    "express": "4.19.2",
+    "express": "4.21.0",
     "express-async-errors": "3.1.1",
     "express-handlebars": "7.1.2",
     "express-openapi-validator": "5.3.3",
@@ -172,7 +174,7 @@
     "ws": "8.17.1",
     "xml2js": "catalog:",
     "xmllint-wasm": "3.0.1",
-    "xss": "^1.0.14",
+    "xss": "catalog:",
     "yamljs": "0.3.0",
     "zod": "catalog:"
   }

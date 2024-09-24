@@ -1,4 +1,34 @@
-import { createMockNodeExecutionData, runMockWorkflowExecution } from '../utils';
+import {
+	AGENT_NODE_NAME,
+	MANUAL_CHAT_TRIGGER_NODE_NAME,
+	AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME,
+	MANUAL_TRIGGER_NODE_NAME,
+	AI_MEMORY_WINDOW_BUFFER_MEMORY_NODE_NAME,
+	AI_TOOL_CALCULATOR_NODE_NAME,
+	AI_OUTPUT_PARSER_AUTO_FIXING_NODE_NAME,
+	AI_TOOL_CODE_NODE_NAME,
+	AI_TOOL_WIKIPEDIA_NODE_NAME,
+	BASIC_LLM_CHAIN_NODE_NAME,
+	EDIT_FIELDS_SET_NODE_NAME,
+	CHAT_TRIGGER_NODE_DISPLAY_NAME,
+} from './../constants';
+import {
+	closeManualChatModal,
+	getManualChatDialog,
+	getManualChatMessages,
+	getManualChatModal,
+	getManualChatModalLogs,
+	getManualChatModalLogsEntries,
+	getManualChatModalLogsTree,
+	sendManualChatMessage,
+} from '../composables/modals/chat-modal';
+import { setCredentialValues } from '../composables/modals/credential-modal';
+import {
+	clickCreateNewCredential,
+	clickExecuteNode,
+	clickGetBackToCanvas,
+	toggleParameterCheckboxInputByName,
+} from '../composables/ndv';
 import {
 	addLanguageModelNodeToParent,
 	addMemoryNodeToParent,
@@ -14,37 +44,7 @@ import {
 	openNode,
 	getConnectionBySourceAndTarget,
 } from '../composables/workflow';
-import {
-	clickCreateNewCredential,
-	clickExecuteNode,
-	clickGetBackToCanvas,
-	toggleParameterCheckboxInputByName,
-} from '../composables/ndv';
-import { setCredentialValues } from '../composables/modals/credential-modal';
-import {
-	closeManualChatModal,
-	getManualChatDialog,
-	getManualChatMessages,
-	getManualChatModal,
-	getManualChatModalLogs,
-	getManualChatModalLogsEntries,
-	getManualChatModalLogsTree,
-	sendManualChatMessage,
-} from '../composables/modals/chat-modal';
-import {
-	AGENT_NODE_NAME,
-	MANUAL_CHAT_TRIGGER_NODE_NAME,
-	AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME,
-	MANUAL_TRIGGER_NODE_NAME,
-	AI_MEMORY_WINDOW_BUFFER_MEMORY_NODE_NAME,
-	AI_TOOL_CALCULATOR_NODE_NAME,
-	AI_OUTPUT_PARSER_AUTO_FIXING_NODE_NAME,
-	AI_TOOL_CODE_NODE_NAME,
-	AI_TOOL_WIKIPEDIA_NODE_NAME,
-	BASIC_LLM_CHAIN_NODE_NAME,
-	EDIT_FIELDS_SET_NODE_NAME,
-	CHAT_TRIGGER_NODE_DISPLAY_NAME,
-} from './../constants';
+import { createMockNodeExecutionData, runMockWorkflowExecution } from '../utils';
 
 describe('Langchain Integration', () => {
 	beforeEach(() => {

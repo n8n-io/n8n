@@ -1,8 +1,9 @@
-import { parseRangeQuery } from '@/executions/parse-range-query.middleware';
-import { mock } from 'jest-mock-extended';
 import type { NextFunction } from 'express';
 import type * as express from 'express';
+import { mock } from 'jest-mock-extended';
+
 import type { ExecutionRequest } from '@/executions/execution.types';
+import { parseRangeQuery } from '@/executions/parse-range-query.middleware';
 
 describe('`parseRangeQuery` middleware', () => {
 	const res = mock<express.Response>({

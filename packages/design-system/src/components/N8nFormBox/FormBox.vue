@@ -1,10 +1,11 @@
 <script lang="ts" setup>
+import type { IFormInput } from 'n8n-design-system/types';
+
+import { createFormEventBus } from '../../utils';
+import N8nButton from '../N8nButton';
 import N8nFormInputs from '../N8nFormInputs';
 import N8nHeading from '../N8nHeading';
 import N8nLink from '../N8nLink';
-import N8nButton from '../N8nButton';
-import type { IFormInput } from 'n8n-design-system/types';
-import { createFormEventBus } from '../../utils';
 
 interface FormBoxProps {
 	title?: string;
