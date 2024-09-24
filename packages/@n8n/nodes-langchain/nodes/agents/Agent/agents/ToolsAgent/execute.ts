@@ -1,27 +1,27 @@
-import { BINARY_ENCODING, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
-import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
-
-import type { AgentAction, AgentFinish } from 'langchain/agents';
-import { AgentExecutor, createToolCallingAgent } from 'langchain/agents';
 import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
+import { HumanMessage } from '@langchain/core/messages';
+import type { BaseOutputParser, StructuredOutputParser } from '@langchain/core/output_parsers';
 import type { BaseMessagePromptTemplateLike } from '@langchain/core/prompts';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
-import { omit } from 'lodash';
+import { RunnableSequence } from '@langchain/core/runnables';
 import type { Tool } from '@langchain/core/tools';
 import { DynamicStructuredTool } from '@langchain/core/tools';
+import type { AgentAction, AgentFinish } from 'langchain/agents';
+import { AgentExecutor, createToolCallingAgent } from 'langchain/agents';
+import { OutputFixingParser } from 'langchain/output_parsers';
+import { omit } from 'lodash';
+import { BINARY_ENCODING, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import type { ZodObject } from 'zod';
 import { z } from 'zod';
-import type { BaseOutputParser, StructuredOutputParser } from '@langchain/core/output_parsers';
-import { OutputFixingParser } from 'langchain/output_parsers';
-import { HumanMessage } from '@langchain/core/messages';
-import { RunnableSequence } from '@langchain/core/runnables';
+
+import { SYSTEM_MESSAGE } from './prompt';
 import {
 	isChatInstance,
 	getPromptInputByType,
 	getOptionalOutputParsers,
 	getConnectedTools,
 } from '../../../../../utils/helpers';
-import { SYSTEM_MESSAGE } from './prompt';
 
 function getOutputParserSchema(outputParser: BaseOutputParser): ZodObject<any, any, any, any> {
 	const parserType = outputParser.lc_namespace[outputParser.lc_namespace.length - 1];
@@ -156,11 +156,34 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 		// If the steps do not contain multiple outputs, return them as is
 		return agentFinishSteps;
 	}
+
+	function fixEmptyContentMessage(steps: AgentFinish | AgentAction[]) {
+		if (!Array.isArray(steps)) return steps;
+		steps.forEach((step) => {
+			if ('messageLog' in step && step.messageLog !== undefined) {
+				if (Array.isArray(step.messageLog)) {
+					step.messageLog.forEach((message) => {
+						console.log('🚀 ~ fixEmptyContentMessage ~ message:', JSON.stringify(message));
+						if ('content' in message && Array.isArray(message.content)) {
+							(message.content as Array<{ input?: string | object }>).forEach((content) => {
+								if (content.input === '') {
+									content.input = {};
+								}
+							});
+						}
+					});
+				}
+			}
+		});
+
+		return steps;
+	}
 	async function agentStepsParser(
 		steps: AgentFinish | AgentAction[],
 	): Promise<AgentFinish | AgentAction[]> {
-		if (Array.isArray(steps)) {
-			const responseParserTool = steps.find((step) => step.tool === 'format_final_response');
+		const fixedSteps = fixEmptyContentMessage(steps);
+		if (Array.isArray(fixedSteps)) {
+			const responseParserTool = fixedSteps.find((step) => step.tool === 'format_final_response');
 			if (responseParserTool) {
 				const toolInput = responseParserTool?.toolInput;
 				const returnValues = (await outputParser.parse(toolInput as unknown as string)) as Record<
@@ -175,8 +198,12 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 			}
 		}
 		// If the steps are an AgentFinish and the outputParser is defined it must mean that the LLM didn't use `format_final_response` tool so we will parse the output manually
-		if (outputParser && typeof steps === 'object' && (steps as AgentFinish).returnValues) {
-			const finalResponse = (steps as AgentFinish).returnValues;
+		if (
+			outputParser &&
+			typeof fixedSteps === 'object' &&
+			(fixedSteps as AgentFinish).returnValues
+		) {
+			const finalResponse = (fixedSteps as AgentFinish).returnValues;
 			const returnValues = (await outputParser.parse(finalResponse as unknown as string)) as Record<
 				string,
 				unknown
@@ -187,7 +214,7 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 				log: 'Final response formatted',
 			};
 		}
-		return handleAgentFinishOutput(steps);
+		return handleAgentFinishOutput(fixedSteps);
 	}
 
 	if (outputParser) {
