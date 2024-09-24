@@ -1,27 +1,7 @@
 <script setup lang="ts">
 import { computed, useCssModule } from 'vue';
-import { useNodeConnections } from '@/composables/useNodeConnections';
-import { useCanvasNode } from '@/composables/useCanvasNode';
 
 const $style = useCssModule();
-
-const { inputs, outputs, connections } = useCanvasNode();
-const { mainInputConnections, mainInputs, mainOutputConnections, mainOutputs } = useNodeConnections(
-	{
-		inputs,
-		outputs,
-		connections,
-	},
-);
-
-const isVisible = computed(() => {
-	const isSingleMainInputNode =
-		mainInputs.value.length === 1 && mainInputConnections.value.length <= 1;
-	const isSingleMainOutputNode =
-		mainOutputs.value.length === 1 && mainOutputConnections.value.length <= 1;
-
-	return isSingleMainInputNode && isSingleMainOutputNode;
-});
 
 const isSuccessStatus = computed(
 	() => false,
@@ -38,7 +18,7 @@ const classes = computed(() => {
 </script>
 
 <template>
-	<div v-if="isVisible" :class="classes"></div>
+	<div :class="classes"></div>
 </template>
 
 <style lang="scss" module>

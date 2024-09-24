@@ -30,7 +30,14 @@ const {
 	hasIssues,
 	render,
 } = useCanvasNode();
-const { mainOutputs, mainInputs, nonMainInputs, requiredNonMainInputs } = useNodeConnections({
+const {
+	mainOutputs,
+	mainOutputConnections,
+	mainInputs,
+	mainInputConnections,
+	nonMainInputs,
+	requiredNonMainInputs,
+} = useNodeConnections({
 	inputs,
 	outputs,
 	connections,
@@ -86,6 +93,15 @@ const dataTestId = computed(() => {
 	return `canvas-${type}-node`;
 });
 
+const isStrikethroughVisible = computed(() => {
+	const isSingleMainInputNode =
+		mainInputs.value.length === 1 && mainInputConnections.value.length <= 1;
+	const isSingleMainOutputNode =
+		mainOutputs.value.length === 1 && mainOutputConnections.value.length <= 1;
+
+	return isDisabled.value && isSingleMainInputNode && isSingleMainOutputNode;
+});
+
 function openContextMenu(event: MouseEvent) {
 	emit('open:contextmenu', event);
 }
@@ -103,7 +119,7 @@ function openContextMenu(event: MouseEvent) {
 			</div>
 		</N8nTooltip>
 		<CanvasNodeStatusIcons :class="$style.statusIcons" />
-		<CanvasNodeDisabledStrikeThrough v-if="isDisabled" />
+		<CanvasNodeDisabledStrikeThrough v-if="isStrikethroughVisible" />
 		<div :class="$style.description">
 			<div v-if="label" :class="$style.label">
 				{{ label }}
