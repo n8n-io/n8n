@@ -1,7 +1,9 @@
 import { mock } from 'jest-mock-extended';
-import { TaskBroker } from '../task-broker.service';
-import type { TaskOffer, TaskRequest, TaskRunner } from '../task-broker.service';
+import type { INodeExecutionData } from 'n8n-workflow';
+
 import type { RunnerMessage } from '../runner-types';
+import { TaskBroker, TaskRejectError } from '../task-broker.service';
+import type { TaskOffer, TaskRequest, TaskRunner } from '../task-broker.service';
 
 describe('TaskBroker', () => {
 	let taskBroker: TaskBroker;
@@ -335,7 +337,166 @@ describe('TaskBroker', () => {
 			const runnerAcceptRejects = taskBroker.getRunnerAcceptRejects();
 
 			expect(accept).toHaveBeenCalled();
+			expect(reject).not.toHaveBeenCalled();
 			expect(runnerAcceptRejects[taskId]).toBeUndefined();
+		});
+
+		it('should handle `runner:taskrejected` message', async () => {
+			const runnerId = 'runner1';
+			const taskId = 'task1';
+			const rejectionReason = 'Task execution failed';
+
+			const message: RunnerMessage.ToN8n.TaskRejected = {
+				type: 'runner:taskrejected',
+				taskId,
+				reason: rejectionReason,
+			};
+
+			const accept = jest.fn();
+			const reject = jest.fn();
+
+			taskBroker.setRunnerAcceptRejects({ [taskId]: { accept, reject } });
+			taskBroker.registerRunner(mock<TaskRunner>({ id: runnerId }), jest.fn());
+
+			await taskBroker.onRunnerMessage(runnerId, message);
+
+			const runnerAcceptRejects = taskBroker.getRunnerAcceptRejects();
+
+			expect(accept).not.toHaveBeenCalled();
+			expect(reject).toHaveBeenCalledWith(new TaskRejectError(rejectionReason));
+			expect(runnerAcceptRejects[taskId]).toBeUndefined();
+		});
+
+		it('should handle `runner:taskdone` message', async () => {
+			const runnerId = 'runner1';
+			const taskId = 'task1';
+			const requesterId = 'requester1';
+			const data = mock<INodeExecutionData[]>();
+
+			const message: RunnerMessage.ToN8n.TaskDone = {
+				type: 'runner:taskdone',
+				taskId,
+				data,
+			};
+
+			const requesterMessageCallback = jest.fn();
+
+			taskBroker.registerRunner(mock<TaskRunner>({ id: runnerId }), jest.fn());
+			taskBroker.setTasks({
+				[taskId]: { id: taskId, runnerId, requesterId, taskType: 'test' },
+			});
+			taskBroker.registerRequester(requesterId, requesterMessageCallback);
+
+			await taskBroker.onRunnerMessage(runnerId, message);
+
+			expect(requesterMessageCallback).toHaveBeenCalledWith({
+				type: 'broker:taskdone',
+				taskId,
+				data,
+			});
+
+			expect(taskBroker.getTasks()[taskId]).toBeUndefined();
+		});
+
+		it('should handle `runner:taskerror` message', async () => {
+			const runnerId = 'runner1';
+			const taskId = 'task1';
+			const requesterId = 'requester1';
+			const errorMessage = 'Task execution failed';
+
+			const message: RunnerMessage.ToN8n.TaskError = {
+				type: 'runner:taskerror',
+				taskId,
+				error: errorMessage,
+			};
+
+			const requesterMessageCallback = jest.fn();
+
+			taskBroker.registerRunner(mock<TaskRunner>({ id: runnerId }), jest.fn());
+			taskBroker.setTasks({
+				[taskId]: { id: taskId, runnerId, requesterId, taskType: 'test' },
+			});
+			taskBroker.registerRequester(requesterId, requesterMessageCallback);
+
+			await taskBroker.onRunnerMessage(runnerId, message);
+
+			expect(requesterMessageCallback).toHaveBeenCalledWith({
+				type: 'broker:taskerror',
+				taskId,
+				error: errorMessage,
+			});
+
+			expect(taskBroker.getTasks()[taskId]).toBeUndefined();
+		});
+
+		it('should handle `runner:taskdatarequest` message', async () => {
+			const runnerId = 'runner1';
+			const taskId = 'task1';
+			const requesterId = 'requester1';
+			const requestId = 'request1';
+			const requestType = 'input';
+			const param = 'test_param';
+
+			const message: RunnerMessage.ToN8n.TaskDataRequest = {
+				type: 'runner:taskdatarequest',
+				taskId,
+				requestId,
+				requestType,
+				param,
+			};
+
+			const requesterMessageCallback = jest.fn();
+
+			taskBroker.registerRunner(mock<TaskRunner>({ id: runnerId }), jest.fn());
+			taskBroker.setTasks({
+				[taskId]: { id: taskId, runnerId, requesterId, taskType: 'test' },
+			});
+			taskBroker.registerRequester(requesterId, requesterMessageCallback);
+
+			await taskBroker.onRunnerMessage(runnerId, message);
+
+			expect(requesterMessageCallback).toHaveBeenCalledWith({
+				type: 'broker:taskdatarequest',
+				taskId,
+				requestId,
+				requestType,
+				param,
+			});
+		});
+
+		it('should handle `runner:rpc` message', async () => {
+			const runnerId = 'runner1';
+			const taskId = 'task1';
+			const requesterId = 'requester1';
+			const callId = 'call1';
+			const rpcName = 'helpers.httpRequestWithAuthentication';
+			const rpcParams = ['param1', 'param2'];
+
+			const message: RunnerMessage.ToN8n.RPC = {
+				type: 'runner:rpc',
+				taskId,
+				callId,
+				name: rpcName,
+				params: rpcParams,
+			};
+
+			const requesterMessageCallback = jest.fn();
+
+			taskBroker.registerRunner(mock<TaskRunner>({ id: runnerId }), jest.fn());
+			taskBroker.setTasks({
+				[taskId]: { id: taskId, runnerId, requesterId, taskType: 'test' },
+			});
+			taskBroker.registerRequester(requesterId, requesterMessageCallback);
+
+			await taskBroker.onRunnerMessage(runnerId, message);
+
+			expect(requesterMessageCallback).toHaveBeenCalledWith({
+				type: 'broker:rpc',
+				taskId,
+				callId,
+				name: rpcName,
+				params: rpcParams,
+			});
 		});
 	});
 });

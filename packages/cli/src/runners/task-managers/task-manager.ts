@@ -14,9 +14,9 @@ import {
 	type IExecuteData,
 	type IDataObject,
 } from 'n8n-workflow';
+import { nanoid } from 'nanoid';
 
 import { RPC_ALLOW_LIST, type N8nMessage, type RequesterMessage } from '../runner-types';
-import { nanoid } from 'nanoid';
 
 export type RequestAccept = (jobId: string) => void;
 export type RequestReject = (reason: string) => void;
