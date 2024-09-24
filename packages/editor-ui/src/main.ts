@@ -35,9 +35,8 @@ const pinia = createPinia();
 
 const app = createApp(App);
 
-const { dsn } = window.sentry;
-if (dsn) {
-	const { release, environment } = window.sentry;
+if (window.sentry?.dsn) {
+	const { dsn, release, environment } = window.sentry;
 	Sentry.init({ app, dsn, release, environment });
 }
 
