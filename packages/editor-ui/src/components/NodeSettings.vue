@@ -51,6 +51,7 @@ import { useToast } from '@/composables/useToast';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { importCurlEventBus, ndvEventBus } from '@/event-bus';
+import PythonEditor from './PythonEditor/PythonEditor.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -1054,6 +1055,7 @@ onBeforeUnmount(() => {
 						{{ $locale.baseText('nodeSettings.thisNodeDoesNotHaveAnyParameters') }}
 					</n8n-text>
 				</div>
+				<PythonEditor :is-read-only="true" :model-value="`x = lambda a: a + 10\nprint(x(5))`" />
 
 				<div
 					v-if="nodeHelpers.isCustomApiCallSelected(nodeValues)"
