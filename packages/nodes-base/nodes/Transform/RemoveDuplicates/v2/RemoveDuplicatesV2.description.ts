@@ -35,18 +35,18 @@ const compareOptions = [
 ];
 const logicOptions = [
 	{
-		name: 'Remove Items With Already Seen Key Values',
+		name: 'Field Value Is New',
 		value: 'removeItemsWithAlreadySeenKeyValues',
 		description: 'Remove all input items with key values matching those already processed',
 	},
 	{
-		name: 'Remove Items Up to Stored Incremental Key',
+		name: 'Field Value Is Higher than Any Previous Value',
 		value: 'removeItemsUpToStoredIncrementalKey',
 		description:
 			'Works with incremental key values, removes all input items with key values up to the stored value',
 	},
 	{
-		name: 'Remove Items Up to Stored Date',
+		name: 'Field Value Is a Date Later than Any Previous Date',
 		value: 'RemoveItemsUpToStoredDate',
 		description:
 			'Works with date key values, removes all input items with key values up to the stored date',
@@ -113,7 +113,7 @@ export const removeDuplicatesNodeFields: INodeProperties[] = [
 
 	// ----------------------------------
 	{
-		displayName: 'Logic',
+		displayName: 'Keep items where',
 		name: 'logic',
 		type: 'options',
 		noDataExpression: true,
