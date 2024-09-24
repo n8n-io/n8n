@@ -12,7 +12,7 @@ import {
 } from '@n8n/typeorm';
 import { ExecutionStatus, WorkflowExecuteMode } from 'n8n-workflow';
 
-import type { ExecutionAnnotation } from '@/databases/entities/execution-annotation';
+import type { ExecutionAnnotation } from '@/databases/entities/execution-annotation.ee';
 
 import { datetimeColumnType } from './abstract-entity';
 import type { ExecutionData } from './execution-data';
