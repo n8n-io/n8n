@@ -37,7 +37,7 @@ const versionDescription: INodeTypeDescription = {
 	name: 'todoist',
 	icon: 'file:todoist.svg',
 	group: ['output'],
-	version: 2,
+	version: [2, 2.1],
 	subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 	description: 'Consume Todoist API',
 	defaults: {
@@ -234,6 +234,11 @@ const versionDescription: INodeTypeDescription = {
 					default: '',
 					description:
 						'The destination section. The task becomes the last root task of the section. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					displayOptions: {
+						show: {
+							'@version': [{ _cnd: { gte: 2.1 } }],
+						},
+					},
 				},
 				{
 					displayName: 'Parent Name or ID',
@@ -246,6 +251,11 @@ const versionDescription: INodeTypeDescription = {
 					default: '',
 					description:
 						'The destination parent task. The task becomes the last child task of the parent task. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					displayOptions: {
+						show: {
+							'@version': [{ _cnd: { gte: 2.1 } }],
+						},
+					},
 				},
 			],
 		},

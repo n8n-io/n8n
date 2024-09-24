@@ -11,7 +11,7 @@ export class Todoist extends VersionedNodeType {
 			name: 'todoist',
 			icon: 'file:todoist.svg',
 			group: ['output'],
-			defaultVersion: 2,
+			defaultVersion: 2.1,
 			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 			description: 'Consume Todoist API',
 		};
