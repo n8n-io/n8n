@@ -26,6 +26,13 @@ export const versionDescription: INodeTypeDescription = {
 			whenToDisplay: 'beforeExecution',
 			location: 'outputPane',
 		},
+		{
+			message: 'No columns found in Google Sheet. All rows will be appended',
+			displayCondition:
+				'={{ ["appendOrUpdate", "append"].includes($parameter["operation"]) && $parameter?.columns?.mappingMode === "defineBelow" && !$parameter?.columns?.schema?.length }}',
+			whenToDisplay: 'beforeExecution',
+			location: 'outputPane',
+		},
 	],
 	credentials: [
 		{
