@@ -232,8 +232,8 @@ export const removeDuplicatesNodeFields: INodeProperties[] = [
 					'Whether to remove any fields that are not being compared. If disabled, will keep the values from the first of the duplicates.',
 			},
 			{
-				displayName: 'Context',
-				name: 'context',
+				displayName: 'Scope',
+				name: 'scope',
 				type: 'options',
 				default: 'node',
 				displayOptions: {

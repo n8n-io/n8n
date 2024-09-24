@@ -170,7 +170,7 @@ export class RemoveDuplicatesV2 implements INodeType {
 			case 'removeItemsSeenInPreviousExecutions': {
 				const logic = this.getNodeParameter('logic', 0);
 				if (logic === 'removeItemsWithAlreadySeenKeyValues') {
-					const context = this.getNodeParameter('options.context', 0, 'node');
+					const context = this.getNodeParameter('options.scope', 0, 'node');
 
 					if (!['node', 'workflow'].includes(context as string)) {
 						throw new NodeOperationError(
@@ -227,7 +227,7 @@ export class RemoveDuplicatesV2 implements INodeType {
 
 					return [returnData];
 				} else if (logic === 'removeItemsUpToStoredIncrementalKey') {
-					const context = this.getNodeParameter('options.context', 0, 'node');
+					const context = this.getNodeParameter('options.scope', 0, 'node');
 
 					if (!['node', 'workflow'].includes(context as string)) {
 						throw new NodeOperationError(

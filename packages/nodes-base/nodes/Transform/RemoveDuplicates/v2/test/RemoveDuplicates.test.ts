@@ -88,7 +88,7 @@ describe('RemoveDuplicatesV2', () => {
 				if (paramName === 'dedupeField' && itemIndex === 0) return 1;
 				if (paramName === 'dedupeField' && itemIndex === 1) return 2;
 				if (paramName === 'dedupeField' && itemIndex === 2) return 3;
-				if (paramName === 'options.context') return 'node';
+				if (paramName === 'options.scope') return 'node';
 				if (paramName === 'options.dontUpdateKeyValuesOnDatabase') return false;
 				if (paramName === 'options.maxKeyValuesToStoreInDatabase') return 10;
 			},
@@ -117,7 +117,7 @@ describe('RemoveDuplicatesV2', () => {
 			(paramName: string) => {
 				if (paramName === 'operation') return 'clearDeduplicationHistory';
 				if (paramName === 'mode') return 'cleanDatabase';
-				if (paramName === 'options.context') return 'node';
+				if (paramName === 'options.scope') return 'node';
 				return undefined;
 			},
 		);
