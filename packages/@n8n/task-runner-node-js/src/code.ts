@@ -92,9 +92,20 @@ export class JsTaskRunner extends TaskRunner {
 			allData.contextNodeName,
 		);
 
+		const customConsole = {
+			log: (...args: unknown[]) => {
+				const logOutput = args
+					.map((arg) => (typeof arg === 'object' && arg !== null ? JSON.stringify(arg) : arg))
+					.join(' ');
+				console.log(logOutput);
+				void this.makeRpcCall(task.taskId, 'logNodeOutput', [logOutput]);
+			},
+		};
+
 		const context: Context = {
 			require,
 			module: {},
+			console: customConsole,
 
 			...dataProxy.getDataProxy(),
 			...this.buildRpcCallObject(task.taskId),

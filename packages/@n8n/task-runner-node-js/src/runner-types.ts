@@ -222,4 +222,5 @@ export const RPC_ALLOW_LIST = [
 	'helpers.getBinaryMetadata',
 	'helpers.createDeferredPromise',
 	'helpers.httpRequest',
+	'logNodeOutput',
 ] as const;
