@@ -219,14 +219,19 @@ export async function searchAccounts(
 		'https://mybusinessaccountmanagement.googleapis.com/v1/accounts',
 	);
 
-	const accounts = responseData.accounts as Array<{ name: string }>;
+	const accounts = responseData.accounts as Array<{ name: string; accountName: string }>;
 
 	const results: INodeListSearchItems[] = accounts
 		.map((a) => ({
-			name: a.name,
+			name: a.accountName,
 			value: a.name,
 		}))
-		.filter((a) => !filter || a.name.toLowerCase().includes(filter.toLowerCase()))
+		.filter(
+			(a) =>
+				!filter ||
+				a.name.toLowerCase().includes(filter.toLowerCase()) ||
+				a.value.toLowerCase().includes(filter.toLowerCase()),
+		)
 		.sort((a, b) => {
 			if (a.name.toLowerCase() < b.name.toLowerCase()) return -1;
 			if (a.name.toLowerCase() > b.name.toLowerCase()) return 1;
@@ -304,11 +309,11 @@ export async function searchReviews(
 		},
 	);
 
-	const reviews = responseData.reviews as Array<{ name: string }>;
+	const reviews = responseData.reviews as Array<{ name: string; comment: string }>;
 
 	const results: INodeListSearchItems[] = reviews
 		.map((a) => ({
-			name: a.name,
+			name: a.comment.slice(0, a.comment.length < 50 ? a.comment.length : 50),
 			value: a.name,
 		}))
 		.filter((a) => !filter || a.name.toLowerCase().includes(filter.toLowerCase()))
@@ -345,11 +350,11 @@ export async function searchPosts(
 		},
 	);
 
-	const localPosts = responseData.localPosts as Array<{ name: string }>;
+	const localPosts = responseData.localPosts as Array<{ name: string; summary: string }>;
 
 	const results: INodeListSearchItems[] = localPosts
 		.map((a) => ({
-			name: a.name,
+			name: a.summary.slice(0, a.summary.length < 50 ? a.summary.length : 50),
 			value: a.name,
 		}))
 		.filter((a) => !filter || a.name.toLowerCase().includes(filter.toLowerCase()))

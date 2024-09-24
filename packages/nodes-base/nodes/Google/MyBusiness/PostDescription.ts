@@ -90,12 +90,21 @@ export const postFields: INodeProperties[] = [
 		name: 'account',
 		required: true,
 		type: 'resourceLocator',
-		default: '',
+		default: { mode: 'list', value: '' },
 		description: 'The Google My Business account',
 		displayOptions: { show: { resource: ['post'], operation: ['create'] } },
 		modes: [
 			{
-				displayName: 'Name',
+				displayName: 'From list',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchAccounts',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'By name',
 				name: 'name',
 				type: 'string',
 				hint: 'Enter the account name',
@@ -108,16 +117,7 @@ export const postFields: INodeProperties[] = [
 						},
 					},
 				],
-				placeholder: 'accounts/012345678901234567890',
-			},
-			{
-				displayName: 'List',
-				name: 'list',
-				type: 'list',
-				typeOptions: {
-					searchListMethod: 'searchAccounts',
-					searchable: true,
-				},
+				placeholder: 'e.g. accounts/0123456789',
 			},
 		],
 	},
@@ -126,12 +126,21 @@ export const postFields: INodeProperties[] = [
 		name: 'location',
 		required: true,
 		type: 'resourceLocator',
-		default: '',
+		default: { mode: 'list', value: '' },
 		description: 'The specific location or business associated with the account',
 		displayOptions: { show: { resource: ['post'], operation: ['create'] } },
 		modes: [
 			{
-				displayName: 'Name',
+				displayName: 'From list',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchLocations',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'By name',
 				name: 'name',
 				type: 'string',
 				hint: 'Enter the location name',
@@ -144,16 +153,7 @@ export const postFields: INodeProperties[] = [
 						},
 					},
 				],
-				placeholder: 'locations/012345678901234567',
-			},
-			{
-				displayName: 'List',
-				name: 'list',
-				type: 'list',
-				typeOptions: {
-					searchListMethod: 'searchLocations',
-					searchable: true,
-				},
+				placeholder: 'e.g. locations/0123456789',
 			},
 		],
 	},
@@ -208,7 +208,9 @@ export const postFields: INodeProperties[] = [
 				name: 'languageCode',
 				type: 'string',
 				default: '',
-				description: 'The language of the post content',
+				placeholder: 'e.g. en',
+				description:
+					'The language code of the post content. <a href="https://cloud.google.com/translate/docs/languages" target="_blank">More info</a>.',
 				routing: { send: { type: 'body', property: 'languageCode' } },
 			},
 			{
@@ -367,12 +369,21 @@ export const postFields: INodeProperties[] = [
 		name: 'account',
 		required: true,
 		type: 'resourceLocator',
-		default: '',
+		default: { mode: 'list', value: '' },
 		description: 'The Google My Business account',
 		displayOptions: { show: { resource: ['post'], operation: ['delete'] } },
 		modes: [
 			{
-				displayName: 'Name',
+				displayName: 'From list',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchAccounts',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'By name',
 				name: 'name',
 				type: 'string',
 				hint: 'Enter the account name',
@@ -385,16 +396,7 @@ export const postFields: INodeProperties[] = [
 						},
 					},
 				],
-				placeholder: 'accounts/012345678901234567890',
-			},
-			{
-				displayName: 'List',
-				name: 'list',
-				type: 'list',
-				typeOptions: {
-					searchListMethod: 'searchAccounts',
-					searchable: true,
-				},
+				placeholder: 'e.g. accounts/0123456789',
 			},
 		],
 	},
@@ -403,12 +405,21 @@ export const postFields: INodeProperties[] = [
 		name: 'location',
 		required: true,
 		type: 'resourceLocator',
-		default: '',
+		default: { mode: 'list', value: '' },
 		description: 'The specific location or business associated with the account',
 		displayOptions: { show: { resource: ['post'], operation: ['delete'] } },
 		modes: [
 			{
-				displayName: 'Name',
+				displayName: 'From list',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchLocations',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'By name',
 				name: 'name',
 				type: 'string',
 				hint: 'Enter the location name',
@@ -421,16 +432,7 @@ export const postFields: INodeProperties[] = [
 						},
 					},
 				],
-				placeholder: 'locations/012345678901234567',
-			},
-			{
-				displayName: 'List',
-				name: 'list',
-				type: 'list',
-				typeOptions: {
-					searchListMethod: 'searchLocations',
-					searchable: true,
-				},
+				placeholder: 'e.g. locations/0123456789',
 			},
 		],
 	},
@@ -438,12 +440,21 @@ export const postFields: INodeProperties[] = [
 		displayName: 'Post',
 		name: 'post',
 		type: 'resourceLocator',
-		default: '',
+		default: { mode: 'list', value: '' },
 		description: 'Select the post by name or URL to retrieve its details',
 		displayOptions: { show: { resource: ['post'], operation: ['delete'] } },
 		modes: [
 			{
-				displayName: 'Name',
+				displayName: 'From list',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchPosts',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'By name',
 				name: 'name',
 				type: 'string',
 				hint: 'Enter the post name',
@@ -453,20 +464,11 @@ export const postFields: INodeProperties[] = [
 						properties: {
 							regex: 'accounts/[0-9]+/locations/[0-9]+/localPosts/[0-9]+',
 							errorMessage:
-								'The name must be in the format "localPosts/123/locations/123/localPosts/123"',
+								'The name must be in the format "accounts/123/locations/123/localPosts/123"',
 						},
 					},
 				],
-				placeholder: 'accounts/0123456789/locations/0123456789/localPosts/0123456789',
-			},
-			{
-				displayName: 'List',
-				name: 'list',
-				type: 'list',
-				typeOptions: {
-					searchListMethod: 'searchPosts',
-					searchable: true,
-				},
+				placeholder: 'e.g. accounts/123/locations/123/localPosts/123',
 			},
 		],
 	},
@@ -479,12 +481,21 @@ export const postFields: INodeProperties[] = [
 		name: 'account',
 		required: true,
 		type: 'resourceLocator',
-		default: '',
+		default: { mode: 'list', value: '' },
 		description: 'The Google My Business account',
 		displayOptions: { show: { resource: ['post'], operation: ['get'] } },
 		modes: [
 			{
-				displayName: 'Name',
+				displayName: 'From list',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchAccounts',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'By name',
 				name: 'name',
 				type: 'string',
 				hint: 'Enter the account name',
@@ -497,16 +508,7 @@ export const postFields: INodeProperties[] = [
 						},
 					},
 				],
-				placeholder: 'accounts/012345678901234567890',
-			},
-			{
-				displayName: 'List',
-				name: 'list',
-				type: 'list',
-				typeOptions: {
-					searchListMethod: 'searchAccounts',
-					searchable: true,
-				},
+				placeholder: 'e.g. accounts/0123456789',
 			},
 		],
 	},
@@ -515,12 +517,21 @@ export const postFields: INodeProperties[] = [
 		name: 'location',
 		required: true,
 		type: 'resourceLocator',
-		default: '',
+		default: { mode: 'list', value: '' },
 		description: 'The specific location or business associated with the account',
 		displayOptions: { show: { resource: ['post'], operation: ['get'] } },
 		modes: [
 			{
-				displayName: 'Name',
+				displayName: 'From list',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchLocations',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'By name',
 				name: 'name',
 				type: 'string',
 				hint: 'Enter the location name',
@@ -533,16 +544,7 @@ export const postFields: INodeProperties[] = [
 						},
 					},
 				],
-				placeholder: 'locations/012345678901234567',
-			},
-			{
-				displayName: 'List',
-				name: 'list',
-				type: 'list',
-				typeOptions: {
-					searchListMethod: 'searchLocations',
-					searchable: true,
-				},
+				placeholder: 'e.g. locations/0123456789',
 			},
 		],
 	},
@@ -550,12 +552,21 @@ export const postFields: INodeProperties[] = [
 		displayName: 'Post',
 		name: 'post',
 		type: 'resourceLocator',
-		default: '',
-		description: 'Select the post by name or URL to retrieve its details',
+		default: { mode: 'list', value: '' },
+		description: 'Select the post to retrieve its details',
 		displayOptions: { show: { resource: ['post'], operation: ['get'] } },
 		modes: [
 			{
-				displayName: 'Name',
+				displayName: 'From list',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchPosts',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'By name',
 				name: 'name',
 				type: 'string',
 				hint: 'Enter the post name',
@@ -565,20 +576,11 @@ export const postFields: INodeProperties[] = [
 						properties: {
 							regex: 'accounts/[0-9]+/locations/[0-9]+/localPosts/[0-9]+',
 							errorMessage:
-								'The name must be in the format "localPosts/123/locations/123/localPosts/123"',
+								'The name must be in the format "accounts/123/locations/123/localPosts/123"',
 						},
 					},
 				],
-				placeholder: 'accounts/0123456789/locations/0123456789/localPosts/0123456789',
-			},
-			{
-				displayName: 'List',
-				name: 'list',
-				type: 'list',
-				typeOptions: {
-					searchListMethod: 'searchPosts',
-					searchable: true,
-				},
+				placeholder: 'e.g. accounts/123/locations/123/localPosts/123',
 			},
 		],
 	},
@@ -591,12 +593,21 @@ export const postFields: INodeProperties[] = [
 		name: 'account',
 		required: true,
 		type: 'resourceLocator',
-		default: '',
+		default: { mode: 'list', value: '' },
 		description: 'The Google My Business account',
 		displayOptions: { show: { resource: ['post'], operation: ['getAll'] } },
 		modes: [
 			{
-				displayName: 'Name',
+				displayName: 'From list',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchAccounts',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'By name',
 				name: 'name',
 				type: 'string',
 				hint: 'Enter the account name',
@@ -609,16 +620,7 @@ export const postFields: INodeProperties[] = [
 						},
 					},
 				],
-				placeholder: 'accounts/012345678901234567890',
-			},
-			{
-				displayName: 'List',
-				name: 'list',
-				type: 'list',
-				typeOptions: {
-					searchListMethod: 'searchAccounts',
-					searchable: true,
-				},
+				placeholder: 'e.g. accounts/0123456789',
 			},
 		],
 	},
@@ -627,12 +629,21 @@ export const postFields: INodeProperties[] = [
 		name: 'location',
 		required: true,
 		type: 'resourceLocator',
-		default: '',
+		default: { mode: 'list', value: '' },
 		description: 'The specific location or business associated with the account',
 		displayOptions: { show: { resource: ['post'], operation: ['getAll'] } },
 		modes: [
 			{
-				displayName: 'Name',
+				displayName: 'From list',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchLocations',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'By name',
 				name: 'name',
 				type: 'string',
 				hint: 'Enter the location name',
@@ -645,16 +656,7 @@ export const postFields: INodeProperties[] = [
 						},
 					},
 				],
-				placeholder: 'locations/012345678901234567',
-			},
-			{
-				displayName: 'List',
-				name: 'list',
-				type: 'list',
-				typeOptions: {
-					searchListMethod: 'searchLocations',
-					searchable: true,
-				},
+				placeholder: 'e.g. locations/0123456789',
 			},
 		],
 	},
@@ -678,12 +680,21 @@ export const postFields: INodeProperties[] = [
 		name: 'account',
 		required: true,
 		type: 'resourceLocator',
-		default: '',
+		default: { mode: 'list', value: '' },
 		description: 'The Google My Business account',
 		displayOptions: { show: { resource: ['post'], operation: ['update'] } },
 		modes: [
 			{
-				displayName: 'Name',
+				displayName: 'From list',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchAccounts',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'By name',
 				name: 'name',
 				type: 'string',
 				hint: 'Enter the account name',
@@ -696,16 +707,7 @@ export const postFields: INodeProperties[] = [
 						},
 					},
 				],
-				placeholder: 'accounts/012345678901234567890',
-			},
-			{
-				displayName: 'List',
-				name: 'list',
-				type: 'list',
-				typeOptions: {
-					searchListMethod: 'searchAccounts',
-					searchable: true,
-				},
+				placeholder: 'e.g. accounts/0123456789',
 			},
 		],
 	},
@@ -714,12 +716,21 @@ export const postFields: INodeProperties[] = [
 		name: 'location',
 		required: true,
 		type: 'resourceLocator',
-		default: '',
+		default: { mode: 'list', value: '' },
 		description: 'The specific location or business associated with the account',
 		displayOptions: { show: { resource: ['post'], operation: ['update'] } },
 		modes: [
 			{
-				displayName: 'Name',
+				displayName: 'From list',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchLocations',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'By name',
 				name: 'name',
 				type: 'string',
 				hint: 'Enter the location name',
@@ -732,16 +743,7 @@ export const postFields: INodeProperties[] = [
 						},
 					},
 				],
-				placeholder: 'locations/012345678901234567',
-			},
-			{
-				displayName: 'List',
-				name: 'list',
-				type: 'list',
-				typeOptions: {
-					searchListMethod: 'searchLocations',
-					searchable: true,
-				},
+				placeholder: 'e.g. locations/0123456789',
 			},
 		],
 	},
@@ -749,12 +751,21 @@ export const postFields: INodeProperties[] = [
 		displayName: 'Post',
 		name: 'post',
 		type: 'resourceLocator',
-		default: '',
+		default: { mode: 'list', value: '' },
 		description: 'Select the post by name or URL to retrieve its details',
 		displayOptions: { show: { resource: ['post'], operation: ['update'] } },
 		modes: [
 			{
-				displayName: 'Name',
+				displayName: 'From list',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchPosts',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'By name',
 				name: 'name',
 				type: 'string',
 				hint: 'Enter the post name',
@@ -764,20 +775,11 @@ export const postFields: INodeProperties[] = [
 						properties: {
 							regex: 'accounts/[0-9]+/locations/[0-9]+/localPosts/[0-9]+',
 							errorMessage:
-								'The name must be in the format "localPosts/123/locations/123/localPosts/123"',
+								'The name must be in the format "accounts/123/locations/123/localPosts/123"',
 						},
 					},
 				],
-				placeholder: 'accounts/0123456789/locations/0123456789/localPosts/0123456789',
-			},
-			{
-				displayName: 'List',
-				name: 'list',
-				type: 'list',
-				typeOptions: {
-					searchListMethod: 'searchPosts',
-					searchable: true,
-				},
+				placeholder: 'e.g. accounts/123/locations/123/localPosts/123',
 			},
 		],
 	},
@@ -828,7 +830,9 @@ export const postFields: INodeProperties[] = [
 				name: 'languageCode',
 				type: 'string',
 				default: '',
-				description: 'The language of the post content',
+				placeholder: 'e.g. en',
+				description:
+					'The language code of the post content. <a href="https://cloud.google.com/translate/docs/languages" target="_blank">More info</a>.',
 				routing: { send: { type: 'body', property: 'languageCode' } },
 			},
 			{

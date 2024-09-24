@@ -52,12 +52,21 @@ export class GoogleMyBusinessTrigger implements INodeType {
 				name: 'account',
 				required: true,
 				type: 'resourceLocator',
-				default: '',
+				default: { mode: 'list', value: '' },
 				description: 'The Google My Business account',
 				displayOptions: { show: { event: ['reviewAdded'] } },
 				modes: [
 					{
-						displayName: 'Name',
+						displayName: 'From list',
+						name: 'list',
+						type: 'list',
+						typeOptions: {
+							searchListMethod: 'searchAccounts',
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'By name',
 						name: 'name',
 						type: 'string',
 						hint: 'Enter the account name',
@@ -70,16 +79,7 @@ export class GoogleMyBusinessTrigger implements INodeType {
 								},
 							},
 						],
-						placeholder: 'accounts/012345678901234567890',
-					},
-					{
-						displayName: 'List',
-						name: 'list',
-						type: 'list',
-						typeOptions: {
-							searchListMethod: 'searchAccounts',
-							searchable: true,
-						},
+						placeholder: 'e.g. accounts/0123456789',
 					},
 				],
 			},
@@ -88,12 +88,21 @@ export class GoogleMyBusinessTrigger implements INodeType {
 				name: 'location',
 				required: true,
 				type: 'resourceLocator',
-				default: '',
+				default: { mode: 'list', value: '' },
 				description: 'The specific location or business associated with the account',
 				displayOptions: { show: { event: ['reviewAdded'] } },
 				modes: [
 					{
-						displayName: 'Name',
+						displayName: 'From list',
+						name: 'list',
+						type: 'list',
+						typeOptions: {
+							searchListMethod: 'searchLocations',
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'By name',
 						name: 'name',
 						type: 'string',
 						hint: 'Enter the location name',
@@ -106,16 +115,7 @@ export class GoogleMyBusinessTrigger implements INodeType {
 								},
 							},
 						],
-						placeholder: 'locations/012345678901234567',
-					},
-					{
-						displayName: 'List',
-						name: 'list',
-						type: 'list',
-						typeOptions: {
-							searchListMethod: 'searchLocations',
-							searchable: true,
-						},
+						placeholder: 'e.g. locations/0123456789',
 					},
 				],
 			},
