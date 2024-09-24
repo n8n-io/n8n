@@ -270,16 +270,16 @@ export const removeDuplicatesNodeFields: INodeProperties[] = [
 					'Whether to just remove duplicates based on the stored key values without updating the database',
 			},
 			{
-				displayName: 'Max Key Values to Store in Database',
-				name: 'maxKeyValuesToStoreInDatabase',
+				displayName: 'History Size',
+				name: 'historySize',
 				type: 'number',
 				default: 1000,
+				hint: 'The max number of past items to store for deduplication',
 				displayOptions: {
 					show: {
 						'/operation': ['removeItemsSeenInPreviousExecutions'],
 					},
 				},
-				description: 'Maximum value for “Max Key Values to Store in Database',
 			},
 		],
 	},

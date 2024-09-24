@@ -197,11 +197,7 @@ export class RemoveDuplicatesV2 implements INodeType {
 						0,
 						false,
 					);
-					const maxEntries = this.getNodeParameter(
-						'options.maxKeyValuesToStoreInDatabase',
-						0,
-						1000,
-					);
+					const maxEntries = this.getNodeParameter('options.historySize', 0, 1000);
 
 					let itemsProcessed: ICheckProcessedOutput;
 					if (addProcessedValue) {
@@ -262,11 +258,7 @@ export class RemoveDuplicatesV2 implements INodeType {
 						0,
 						false,
 					);
-					const maxEntries = this.getNodeParameter(
-						'options.maxKeyValuesToStoreInDatabase',
-						0,
-						1000,
-					);
+					const maxEntries = this.getNodeParameter('options.historySize', 0, 1000);
 
 					let itemsProcessed: ICheckProcessedOutput;
 					if (addProcessedValue) {
@@ -293,7 +285,7 @@ export class RemoveDuplicatesV2 implements INodeType {
 
 					return [returnData];
 				} else if (logic === 'RemoveItemsUpToStoredDate') {
-					const context = this.getNodeParameter('options.context', 0, 'node');
+					const context = this.getNodeParameter('options.scope', 0, 'node');
 
 					if (!['node', 'workflow'].includes(context as string)) {
 						throw new NodeOperationError(
@@ -329,11 +321,7 @@ export class RemoveDuplicatesV2 implements INodeType {
 						0,
 						false,
 					);
-					const maxEntries = this.getNodeParameter(
-						'options.maxKeyValuesToStoreInDatabase',
-						0,
-						1000,
-					);
+					const maxEntries = this.getNodeParameter('options.historySize', 0, 1000);
 					let itemsProcessed: ICheckProcessedOutput;
 					if (addProcessedValue) {
 						itemsProcessed = await this.helpers.checkProcessedAndRecord(
@@ -367,7 +355,7 @@ export class RemoveDuplicatesV2 implements INodeType {
 				if (mode === 'updateKeyValuesInDatabase') {
 				} else if (mode === 'deleteKeyValuesFromDatabase') {
 				} else if (mode === 'cleanDatabase') {
-					const context = this.getNodeParameter('options.context', 0, 'node');
+					const context = this.getNodeParameter('options.scope', 0, 'node');
 					await this.helpers.clearAllProcessedItems(context as ProcessedDataContext, {
 						mode: 'entries',
 					});
