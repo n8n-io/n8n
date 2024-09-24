@@ -54,7 +54,6 @@ export interface FrontendSettings {
 		secure: boolean;
 	};
 	binaryDataMode: 'default' | 'filesystem' | 's3';
-	environment: string;
 	releaseChannel: 'stable' | 'beta' | 'nightly' | 'dev';
 	n8nMetadata?: {
 		userId?: string;
@@ -70,9 +69,6 @@ export interface FrontendSettings {
 		autocapture: boolean;
 		disableSessionRecording: boolean;
 		debug: boolean;
-	};
-	sentry: {
-		dsn: string;
 	};
 	personalizationSurveyEnabled: boolean;
 	defaultLocale: string;

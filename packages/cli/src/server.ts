@@ -14,6 +14,7 @@ import {
 	inDevelopment,
 	inE2ETests,
 	inProduction,
+	N8N_VERSION,
 	Time,
 } from '@/constants';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
@@ -237,10 +238,22 @@ export class Server extends AbstractServer {
 
 		if (frontendService) {
 			// Returns the current settings for the UI
-			this.app.get(`/${this.restEndpoint}/settings.js`, (_, res) => {
+			this.app.get(
+				`/${this.restEndpoint}/settings`,
+				ResponseHelper.send(async () => frontendService.getSettings()),
+			);
+
+			// Return Sentry config as a static file
+			this.app.get(`/${this.restEndpoint}/sentry.js`, (_, res) => {
 				res.type('js');
-				res.write('window.__n8n_settings=');
-				res.write(JSON.stringify(frontendService.getSettings()));
+				res.write('window.sentry=');
+				res.write(
+					JSON.stringify({
+						dsn: this.globalConfig.sentry.frontend_dsn,
+						environment: process.env.ENVIRONMENT || 'development',
+						release: N8N_VERSION,
+					}),
+				);
 				res.end();
 			});
 		}

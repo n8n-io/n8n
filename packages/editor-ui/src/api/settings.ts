@@ -1,6 +1,11 @@
-import type { IN8nPrompts, IN8nPromptResponse } from '../Interface';
-import { get, post } from '@/utils/apiUtils';
+import type { IRestApiContext, IN8nPrompts, IN8nPromptResponse } from '../Interface';
+import { makeRestApiRequest, get, post } from '@/utils/apiUtils';
 import { N8N_IO_BASE_URL, NPM_COMMUNITY_NODE_SEARCH_API_URL } from '@/constants';
+import type { FrontendSettings } from '@n8n/api-types';
+
+export async function getSettings(context: IRestApiContext): Promise<FrontendSettings> {
+	return await makeRestApiRequest(context, 'GET', '/settings');
+}
 
 export async function getPromptsData(instanceId: string, userId: string): Promise<IN8nPrompts> {
 	return await get(

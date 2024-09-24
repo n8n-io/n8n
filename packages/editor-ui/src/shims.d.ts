@@ -18,7 +18,7 @@ declare global {
 	interface Window {
 		BASE_PATH: string;
 		REST_ENDPOINT: string;
-		__n8n_settings: FrontendSettings;
+		sentry: { dsn?: string; environment: string; release: string };
 		n8nExternalHooks?: PartialDeep<ExternalHooks>;
 		preventNodeViewBeforeUnload?: boolean;
 		maxPinnedDataSize?: number;

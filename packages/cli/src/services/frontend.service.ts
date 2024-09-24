@@ -105,7 +105,6 @@ export class FrontendService {
 			authCookie: {
 				secure: config.getEnv('secure_cookie'),
 			},
-			environment: process.env.ENVIRONMENT ?? 'development',
 			releaseChannel: config.getEnv('generic.releaseChannel'),
 			oauthCallbackUrls: {
 				oauth1: `${instanceBaseUrl}/${restEndpoint}/oauth1-credential/callback`,
@@ -125,9 +124,6 @@ export class FrontendService {
 				autocapture: false,
 				disableSessionRecording: config.getEnv('deployment.type') !== 'cloud',
 				debug: config.getEnv('logs.level') === 'debug',
-			},
-			sentry: {
-				dsn: this.globalConfig.sentry.frontend_dsn,
 			},
 			personalizationSurveyEnabled:
 				config.getEnv('personalization.enabled') && config.getEnv('diagnostics.enabled'),

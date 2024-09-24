@@ -35,10 +35,9 @@ const pinia = createPinia();
 
 const app = createApp(App);
 
-const settings = window.__n8n_settings;
-const { dsn } = settings.sentry;
+const { dsn } = window.sentry;
 if (dsn) {
-	const { versionCli: release, environment } = settings;
+	const { release, environment } = window.sentry;
 	Sentry.init({ app, dsn, release, environment });
 }
 

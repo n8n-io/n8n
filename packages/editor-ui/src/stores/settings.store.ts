@@ -3,7 +3,6 @@ import Bowser from 'bowser';
 import type { IUserManagementSettings, FrontendSettings } from '@n8n/api-types';
 
 import * as publicApiApi from '@/api/api-keys';
-import * as eventsApi from '@/api/events';
 import * as ldapApi from '@/api/ldap';
 import * as settingsApi from '@/api/settings';
 import { testHealthEndpoint } from '@/api/templates';
@@ -221,7 +220,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const getSettings = async () => {
 		const rootStore = useRootStore();
-		const fetchedSettings = window.__n8n_settings;
+		const fetchedSettings = await settingsApi.getSettings(rootStore.restApiContext);
 		setSettings(fetchedSettings);
 		settings.value.communityNodesEnabled = fetchedSettings.communityNodesEnabled;
 		setAllowedModules(fetchedSettings.allowedModules);
@@ -246,10 +245,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		rootStore.setDefaultLocale(fetchedSettings.defaultLocale);
 		rootStore.setBinaryDataMode(fetchedSettings.binaryDataMode);
 		useVersionsStore().setVersionNotificationSettings(fetchedSettings.versionNotifications);
-
-		if (fetchedSettings.telemetry.enabled) {
-			void eventsApi.sessionStarted(rootStore.restApiContext);
-		}
 	};
 
 	const initialize = async () => {
