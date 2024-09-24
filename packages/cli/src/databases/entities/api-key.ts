@@ -1,10 +1,10 @@
-import { Column, Entity, Index, ManyToOne } from '@n8n/typeorm';
+import { Column, Entity, Index, ManyToOne, Unique } from '@n8n/typeorm';
 
 import { WithTimestampsAndStringId } from './abstract-entity';
 import { User } from './user';
 
 @Entity('user_api_keys')
-@Index(['userId', 'label'])
+@Unique(['userId', 'label'])
 export class ApiKey extends WithTimestampsAndStringId {
 	@ManyToOne(
 		() => User,
