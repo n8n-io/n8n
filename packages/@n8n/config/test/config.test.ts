@@ -222,8 +222,8 @@ describe('GlobalConfig', () => {
 			},
 		},
 		sentry: {
-			backend_dsn: '',
-			frontend_dsn: '',
+			backendDsn: '',
+			frontendDsn: '',
 		},
 	};
 

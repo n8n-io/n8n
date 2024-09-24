@@ -14,7 +14,7 @@ export const initErrorHandling = async () => {
 		ErrorReporterProxy.error(error);
 	});
 
-	const dsn = Container.get(GlobalConfig).sentry.backend_dsn;
+	const dsn = Container.get(GlobalConfig).sentry.backendDsn;
 	if (!dsn) {
 		initialized = true;
 		return;

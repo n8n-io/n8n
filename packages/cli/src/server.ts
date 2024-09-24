@@ -249,7 +249,7 @@ export class Server extends AbstractServer {
 				res.write('window.sentry=');
 				res.write(
 					JSON.stringify({
-						dsn: this.globalConfig.sentry.frontend_dsn,
+						dsn: this.globalConfig.sentry.frontendDsn,
 						environment: process.env.ENVIRONMENT || 'development',
 						release: N8N_VERSION,
 					}),
