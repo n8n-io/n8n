@@ -1,10 +1,10 @@
 import type { INodeProperties } from 'n8n-workflow';
 const operationOptions = [
 	{
-		name: 'Remove Duplicate Input Items',
+		name: 'Remove Items Repeated Within Current Input',
 		value: 'removeDuplicateInputItems',
 		description: 'Remove duplicates from incoming items',
-		action: 'Remove duplicate input items',
+		action: 'Remove items repeated within current input',
 	},
 	{
 		name: 'Remove Items Processed in Previous Executions',
@@ -13,10 +13,10 @@ const operationOptions = [
 		action: 'Remove items processed in previous executions',
 	},
 	{
-		name: 'Manage Stored Key Values (No Removal)',
-		value: 'manageKeyValuesInDatabase',
-		description: 'Manage stored key values without removing items',
-		action: 'Manage stored key values (No Removal)',
+		name: 'Clear Deduplication History',
+		value: 'clearDeduplicationHistory',
+		description: 'Wipe the store of previous items',
+		action: 'Clear deduplication history',
 	},
 ];
 const compareOptions = [
@@ -187,7 +187,7 @@ export const removeDuplicatesNodeFields: INodeProperties[] = [
 			'How you want to modify the key values stored on the database. None of these modes removes input items.',
 		displayOptions: {
 			show: {
-				operation: ['manageKeyValuesInDatabase'],
+				operation: ['clearDeduplicationHistory'],
 			},
 		},
 		options: manageDatabaseModeOptions,
@@ -203,7 +203,7 @@ export const removeDuplicatesNodeFields: INodeProperties[] = [
 				operation: [
 					'removeDuplicateInputItems',
 					'removeItemsSeenInPreviousExecutions',
-					'manageKeyValuesInDatabase',
+					'clearDeduplicationHistory',
 				],
 			},
 		},
@@ -260,7 +260,7 @@ export const removeDuplicatesNodeFields: INodeProperties[] = [
 				default: 'node',
 				displayOptions: {
 					show: {
-						'/operation': ['manageKeyValuesInDatabase', 'removeItemsSeenInPreviousExecutions'],
+						'/operation': ['clearDeduplicationHistory', 'removeItemsSeenInPreviousExecutions'],
 					},
 				},
 				description:

@@ -389,7 +389,7 @@ export class RemoveDuplicatesV2 implements INodeType {
 					return [items];
 				}
 			}
-			case 'manageKeyValuesInDatabase': {
+			case 'clearDeduplicationHistory': {
 				const mode = this.getNodeParameter('mode', 0) as string;
 				if (mode === 'updateKeyValuesInDatabase') {
 				} else if (mode === 'deleteKeyValuesFromDatabase') {

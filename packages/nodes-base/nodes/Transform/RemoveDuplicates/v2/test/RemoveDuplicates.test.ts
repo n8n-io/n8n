@@ -26,7 +26,7 @@ describe('RemoveDuplicatesV2', () => {
 		executeFunctions.getNodeParameter = jest.fn();
 	});
 
-	it('should remove duplicate input items based on all fields', async () => {
+	it('should Remove items repeated within current input based on all fields', async () => {
 		const items: INodeExecutionData[] = [
 			{ json: { id: 1, name: 'John' } },
 			{ json: { id: 2, name: 'Jane' } },
@@ -49,7 +49,7 @@ describe('RemoveDuplicatesV2', () => {
 		expect(result[0][1].json).toEqual({ id: 2, name: 'Jane' });
 	});
 
-	it('should remove duplicate input items based on selected fields', async () => {
+	it('should Remove items repeated within current input based on selected fields', async () => {
 		const items: INodeExecutionData[] = [
 			{ json: { id: 1, name: 'John' } },
 			{ json: { id: 2, name: 'Jane' } },
@@ -115,7 +115,7 @@ describe('RemoveDuplicatesV2', () => {
 		(executeFunctions.getInputData as jest.Mock<any, any>).mockReturnValue(items);
 		(executeFunctions.getNodeParameter as jest.Mock<any, any>).mockImplementation(
 			(paramName: string) => {
-				if (paramName === 'operation') return 'manageKeyValuesInDatabase';
+				if (paramName === 'operation') return 'clearDeduplicationHistory';
 				if (paramName === 'mode') return 'cleanDatabase';
 				if (paramName === 'options.context') return 'node';
 				return undefined;
