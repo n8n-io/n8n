@@ -58,6 +58,7 @@ import {
 	findSubgraph,
 	findTriggerForPartialExecution,
 } from './PartialExecutionUtils';
+import { inspect } from 'util';
 
 export class WorkflowExecute {
 	private status: ExecutionStatus = 'new';
@@ -345,13 +346,19 @@ export class WorkflowExecute {
 				'The destination node is not connected to any trigger. Partial executions need a trigger.',
 			);
 		}
+		console.log('trigger', trigger.name);
 
 		// 2. Find the Subgraph
 		const subgraph = findSubgraph(DirectedGraph.fromWorkflow(workflow), destinationNode, trigger);
 		const filteredNodes = subgraph.getNodes();
+		console.log('subgraph', [...subgraph.getNodes().keys()]);
 
 		// 3. Find the Start Nodes
 		const startNodes = findStartNodes(subgraph, trigger, destinationNode, runData);
+		console.log(
+			'startNodes',
+			startNodes.map((n) => n.name),
+		);
 
 		// 4. Detect Cycles
 		const cycles = findCycles(workflow);
@@ -366,7 +373,7 @@ export class WorkflowExecute {
 
 		// 7. Recreate Execution Stack
 		const { nodeExecutionStack, waitingExecution, waitingExecutionSource } =
-			recreateNodeExecutionStack(subgraph, startNodes, destinationNode, runData, pinData ?? {});
+			recreateNodeExecutionStack(subgraph, startNodes, runData, pinData ?? {});
 
 		// 8. Execute
 		this.status = 'running';
@@ -988,9 +995,38 @@ export class WorkflowExecute {
 					throw error;
 				}
 
+				console.log('-------------------START--------------------------------');
 				executionLoop: while (
 					this.runExecutionData.executionData!.nodeExecutionStack.length !== 0
 				) {
+					console.log('---------------------');
+					console.log(
+						'nodeExecutionStack',
+						inspect(
+							this.runExecutionData.executionData?.nodeExecutionStack.map((v) => ({
+								nodeName: v.node.name,
+								sourceName: v.source?.main.map((vv) => vv?.previousNode),
+							})),
+							{ depth: null, colors: true, compact: true },
+						),
+					);
+					console.log(
+						'waitingExecution',
+						inspect(this.runExecutionData.executionData?.waitingExecution, {
+							depth: null,
+							colors: true,
+							compact: true,
+						}),
+					);
+					console.log(
+						'waitingExecutionSource',
+						inspect(this.runExecutionData.executionData?.waitingExecutionSource, {
+							depth: null,
+							colors: true,
+							compact: true,
+						}),
+					);
+
 					if (
 						this.additionalData.executionTimeoutTimestamp !== undefined &&
 						Date.now() >= this.additionalData.executionTimeoutTimestamp
@@ -1822,6 +1858,17 @@ export class WorkflowExecute {
 						}
 					}
 				}
+
+				console.log('---------------------');
+				console.log(
+					'nodeExecutionStack',
+					this.runExecutionData.executionData?.nodeExecutionStack.map((v) => ({
+						nodeName: v.node.name,
+						sourceName: v.source?.main.map((v) => v?.previousNode),
+					})),
+				);
+				console.log('waitingExecution', this.runExecutionData.executionData?.waitingExecution);
+				console.log('-------------------END--------------------------------');
 
 				return;
 			})()
