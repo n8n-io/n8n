@@ -3,7 +3,7 @@ import type { IPersonalizationSurveyAnswersV4 } from 'n8n-workflow';
 import { Container } from 'typedi';
 import validator from 'validator';
 
-import type { ApiKey } from '@/databases/entities/api-keys';
+import type { ApiKey } from '@/databases/entities/api-key';
 import type { User } from '@/databases/entities/user';
 import { ApiKeyRepository } from '@/databases/repositories/api-key.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';

@@ -23,7 +23,7 @@ import { NoUrl } from '@/validators/no-url.validator';
 import { NoXss } from '@/validators/no-xss.validator';
 
 import { WithTimestamps, jsonColumnType } from './abstract-entity';
-import type { ApiKey } from './api-keys';
+import type { ApiKey } from './api-key';
 import type { AuthIdentity } from './auth-identity';
 import type { ProjectRelation } from './project-relation';
 import type { SharedCredentials } from './shared-credentials';
@@ -90,7 +90,7 @@ export class User extends WithTimestamps implements IUser {
 	@OneToMany('AuthIdentity', 'user')
 	authIdentities: AuthIdentity[];
 
-	@OneToMany('ApiKeys', 'user')
+	@OneToMany('ApiKey', 'user')
 	apiKeys: ApiKey[];
 
 	@OneToMany('SharedWorkflow', 'user')

@@ -1,6 +1,6 @@
 import { AnnotationTagEntity } from './annotation-tag-entity';
 import { AnnotationTagMapping } from './annotation-tag-mapping';
-import { ApiKey } from './api-keys';
+import { ApiKey } from './api-key';
 import { AuthIdentity } from './auth-identity';
 import { AuthProviderSyncHistory } from './auth-provider-sync-history';
 import { AuthUser } from './auth-user';

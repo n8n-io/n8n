@@ -6,7 +6,7 @@ import { Container } from 'typedi';
 
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { MeController } from '@/controllers/me.controller';
-import type { ApiKey } from '@/databases/entities/api-keys';
+import type { ApiKey } from '@/databases/entities/api-key';
 import type { User } from '@/databases/entities/user';
 import { ApiKeyRepository } from '@/databases/repositories/api-key.repository';
 import { AuthUserRepository } from '@/databases/repositories/auth-user.repository';
