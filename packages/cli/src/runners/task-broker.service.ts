@@ -1,10 +1,10 @@
-import { ApplicationError, type INodeExecutionData } from 'n8n-workflow';
+import { ApplicationError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { Service } from 'typedi';
 
 import { Logger } from '@/logger';
 
-import type { N8nMessage, RunnerMessage, RequesterMessage } from './runner-types';
+import type { N8nMessage, RunnerMessage, RequesterMessage, TaskResultData } from './runner-types';
 
 export class TaskRejectError {
 	constructor(public reason: string) {}
@@ -359,7 +359,7 @@ export class TaskBroker {
 		});
 	}
 
-	async taskDoneHandler(taskId: Task['id'], data: INodeExecutionData[]) {
+	async taskDoneHandler(taskId: Task['id'], data: TaskResultData) {
 		const task = this.tasks[taskId];
 		if (!task) {
 			return;

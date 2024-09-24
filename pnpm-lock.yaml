@@ -765,6 +765,9 @@ importers:
       '@n8n/permissions':
         specifier: workspace:*
         version: link:../@n8n/permissions
+      '@n8n/task-runner':
+        specifier: workspace:*
+        version: link:../@n8n/task-runner-node-js
       '@n8n/typeorm':
         specifier: 0.3.20-10
         version: 0.3.20-10(@sentry/node@7.87.0)(ioredis@5.3.2)(mssql@10.0.2)(mysql2@3.11.0)(pg@8.12.0)(redis@4.6.14)(sqlite3@5.1.7)(ts-node@10.9.2(typescript@5.6.2))

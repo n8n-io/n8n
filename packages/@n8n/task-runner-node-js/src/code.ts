@@ -18,7 +18,7 @@ import {
 	type WorkflowExecuteMode,
 } from 'n8n-workflow';
 
-import type { RunnerMessage } from './runner-types';
+import type { TaskResultData } from './runner-types';
 import { type Task, TaskRunner } from './task-runner';
 
 interface JSExecSettings {
@@ -55,7 +55,7 @@ export class JsTaskRunner extends TaskRunner {
 		super(taskType, wsUrl, maxConcurrency, name ?? 'Test Runner');
 	}
 
-	async executeTask(task: Task<JSExecSettings>): Promise<RunnerMessage.ToBroker.TaskDone['data']> {
+	async executeTask(task: Task<JSExecSettings>): Promise<TaskResultData> {
 		const allData = await this.requestData<AllData>(task.taskId, 'all');
 
 		const settings = task.settings!;
@@ -114,8 +114,11 @@ export class JsTaskRunner extends TaskRunner {
 		const result = (await runInNewContext(
 			`module.exports = async function() {${task.settings!.code}\n}()`,
 			context,
-		)) as RunnerMessage.ToBroker.TaskDone['data'];
+		)) as TaskResultData['result'];
 
-		return result;
+		return {
+			result,
+			customData: allData.runExecutionData.resultData.metadata,
+		};
 	}
 }

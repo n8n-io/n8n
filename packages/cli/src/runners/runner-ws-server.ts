@@ -1,14 +1,16 @@
+import { GlobalConfig } from '@n8n/config';
 import type { Application, Response } from 'express';
 import { ServerResponse, type Server } from 'http';
 import type { Socket } from 'net';
-import { parse as parseUrl } from 'url';
 import Container, { Service } from 'typedi';
+import { parse as parseUrl } from 'url';
 import { Server as WSServer } from 'ws';
 import type WebSocket from 'ws';
-import type { AuthlessRequest } from '@/requests';
+
 import { Logger } from '@/logger';
+import type { AuthlessRequest } from '@/requests';
+
 import type { RunnerMessage, N8nMessage } from './runner-types';
-import { GlobalConfig } from '@n8n/config';
 import { TaskBroker, type MessageCallback, type TaskRunner } from './task-broker.service';
 
 export type RunnerServerRequest = AuthlessRequest<{}, {}, {}, { id: TaskRunner['id'] }> & {

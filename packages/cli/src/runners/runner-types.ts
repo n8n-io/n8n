@@ -2,6 +2,11 @@ import type { INodeExecutionData } from 'n8n-workflow';
 
 export type DataRequestType = 'input' | 'node' | 'all';
 
+export interface TaskResultData {
+	result: INodeExecutionData[];
+	customData?: Record<string, string>;
+}
+
 export namespace N8nMessage {
 	export namespace ToRunner {
 		export interface InfoRequest {
@@ -65,7 +70,7 @@ export namespace N8nMessage {
 		export interface TaskDone {
 			type: 'broker:taskdone';
 			taskId: string;
-			data: INodeExecutionData[];
+			data: TaskResultData;
 		}
 
 		export interface TaskError {
@@ -155,7 +160,7 @@ export namespace RunnerMessage {
 		export interface TaskDone {
 			type: 'runner:taskdone';
 			taskId: string;
-			data: INodeExecutionData[];
+			data: TaskResultData;
 		}
 
 		export interface TaskError {
