@@ -5,7 +5,7 @@ import { User } from './user';
 
 @Entity('user_api_keys')
 @Index(['userId', 'label'])
-export class ApiKeys extends WithTimestampsAndStringId {
+export class ApiKey extends WithTimestampsAndStringId {
 	@ManyToOne(
 		() => User,
 		(user) => user.id,

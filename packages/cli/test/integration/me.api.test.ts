@@ -3,7 +3,7 @@ import type { IPersonalizationSurveyAnswersV4 } from 'n8n-workflow';
 import { Container } from 'typedi';
 import validator from 'validator';
 
-import type { ApiKeys } from '@/databases/entities/api-keys';
+import type { ApiKey } from '@/databases/entities/api-keys';
 import type { User } from '@/databases/entities/user';
 import { ApiKeysRepository } from '@/databases/repositories/api-keys.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
@@ -160,7 +160,7 @@ describe('Owner shell', () => {
 	test('POST /me/api-keys should create an api key', async () => {
 		const newApiKeyResponse = await authOwnerShellAgent.post('/me/api-keys');
 
-		const newApiKey = newApiKeyResponse.body.data as ApiKeys;
+		const newApiKey = newApiKeyResponse.body.data as ApiKey;
 
 		expect(newApiKeyResponse.statusCode).toBe(200);
 		expect(newApiKey).toBeDefined();

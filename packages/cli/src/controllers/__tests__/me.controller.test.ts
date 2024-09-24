@@ -6,7 +6,7 @@ import { Container } from 'typedi';
 
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { MeController } from '@/controllers/me.controller';
-import type { ApiKeys } from '@/databases/entities/api-keys';
+import type { ApiKey } from '@/databases/entities/api-keys';
 import type { User } from '@/databases/entities/user';
 import { ApiKeysRepository } from '@/databases/repositories/api-keys.repository';
 import { AuthUserRepository } from '@/databases/repositories/auth-user.repository';
@@ -442,7 +442,7 @@ describe('MeController', () => {
 					label: 'My API Key',
 					apiKey: `${API_KEY_PREFIX}${randomString(42)}`,
 					createdAt: new Date(),
-				} as ApiKeys;
+				} as ApiKey;
 
 				apiKeysRepository.save.mockResolvedValue(apiKeyData);
 
@@ -461,7 +461,7 @@ describe('MeController', () => {
 					label: 'My API Key',
 					apiKey: `${API_KEY_PREFIX}${randomString(42)}`,
 					createdAt: new Date(),
-				} as ApiKeys;
+				} as ApiKey;
 
 				apiKeysRepository.findBy.mockResolvedValue([apiKeyData]);
 
