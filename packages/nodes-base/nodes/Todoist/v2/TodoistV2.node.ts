@@ -228,7 +228,7 @@ const versionDescription: INodeTypeDescription = {
 			},
 			default: '',
 			description:
-        'Section to which you want move the task. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+				'Section to which you want move the task. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		},
 		{
 			displayName: 'Additional Fields',
