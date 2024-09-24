@@ -243,8 +243,9 @@ export class Server extends AbstractServer {
 		if (frontendService) {
 			// Returns the current settings for the UI
 			this.app.get(`/${this.restEndpoint}/settings.js`, (_, res) => {
-				const settings = frontendService.getSettings();
-				res.write(`window.__n8n_settings=${JSON.stringify(settings)}`);
+				res.type('js');
+				res.write('window.__n8n_settings=');
+				res.write(JSON.stringify(frontendService.getSettings()));
 				res.end();
 			});
 		}

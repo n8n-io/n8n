@@ -70,6 +70,9 @@ export interface FrontendSettings {
 		disableSessionRecording: boolean;
 		debug: boolean;
 	};
+	sentry: {
+		dsn: string;
+	};
 	personalizationSurveyEnabled: boolean;
 	defaultLocale: string;
 	userManagement: IUserManagementSettings;

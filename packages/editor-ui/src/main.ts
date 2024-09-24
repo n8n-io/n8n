@@ -1,4 +1,5 @@
 import { createApp } from 'vue';
+import * as Sentry from '@sentry/vue';
 
 import '@vue-flow/core/dist/style.css';
 import '@vue-flow/core/dist/theme-default.css';
@@ -33,6 +34,11 @@ import { ChartJSPlugin } from '@/plugins/chartjs';
 const pinia = createPinia();
 
 const app = createApp(App);
+
+const { dsn } = window.__n8n_settings.sentry;
+if (dsn) {
+	Sentry.init({ app, dsn });
+}
 
 app.use(TelemetryPlugin);
 app.use(PiniaVuePlugin);

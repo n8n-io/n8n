@@ -125,6 +125,9 @@ export class FrontendService {
 				disableSessionRecording: config.getEnv('deployment.type') !== 'cloud',
 				debug: config.getEnv('logs.level') === 'debug',
 			},
+			sentry: {
+				dsn: config.getEnv('diagnostics.config.sentry.dsn_frontend'),
+			},
 			personalizationSurveyEnabled:
 				config.getEnv('personalization.enabled') && config.getEnv('diagnostics.enabled'),
 			defaultLocale: config.getEnv('defaultLocale'),
