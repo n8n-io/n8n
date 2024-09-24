@@ -1,0 +1,125 @@
+<script setup lang="ts">
+import { history } from '@codemirror/commands';
+import { python } from '@codemirror/lang-python';
+import { bracketMatching, foldGutter, indentOnInput } from '@codemirror/language';
+import { lintGutter } from '@codemirror/lint';
+import type { Extension } from '@codemirror/state';
+import { EditorState, Prec } from '@codemirror/state';
+import type { ViewUpdate } from '@codemirror/view';
+import {
+	EditorView,
+	dropCursor,
+	highlightActiveLine,
+	highlightActiveLineGutter,
+	keymap,
+	lineNumbers,
+} from '@codemirror/view';
+
+import { codeNodeEditorTheme } from '../CodeNodeEditor/theme';
+import {
+	autocompleteKeyMap,
+	enterKeyMap,
+	historyKeyMap,
+	tabKeyMap,
+} from '@/plugins/codemirror/keymap';
+import { n8nAutocompletion } from '@/plugins/codemirror/n8nLang';
+import { computed, onMounted, ref, watch } from 'vue';
+
+type Props = {
+	modelValue: string;
+	isReadOnly?: boolean;
+	fillParent?: boolean;
+	rows?: number;
+};
+
+const props = withDefaults(defineProps<Props>(), { fillParent: false, isReadOnly: false, rows: 4 });
+const emit = defineEmits<{
+	'update:modelValue': [value: string];
+}>();
+
+const pythonEditorRef = ref<HTMLDivElement>();
+const editor = ref<EditorView | null>(null);
+const editorState = ref<EditorState | null>(null);
+
+const extensions = computed(() => {
+	const extensionsToApply: Extension[] = [
+		python(),
+		lineNumbers(),
+		EditorView.lineWrapping,
+		EditorState.readOnly.of(props.isReadOnly),
+		codeNodeEditorTheme({
+			isReadOnly: props.isReadOnly,
+			maxHeight: props.fillParent ? '100%' : '40vh',
+			minHeight: '20vh',
+			rows: props.rows,
+		}),
+	];
+	if (!props.isReadOnly) {
+		extensionsToApply.push(
+			history(),
+			Prec.highest(
+				keymap.of([...tabKeyMap(), ...enterKeyMap, ...historyKeyMap, ...autocompleteKeyMap]),
+			),
+			lintGutter(),
+			n8nAutocompletion(),
+			indentOnInput(),
+			highlightActiveLine(),
+			highlightActiveLineGutter(),
+			foldGutter(),
+			dropCursor(),
+			bracketMatching(),
+			EditorView.updateListener.of((viewUpdate: ViewUpdate) => {
+				if (!viewUpdate.docChanged || !editor.value) return;
+				emit('update:modelValue', editor.value?.state.doc.toString());
+			}),
+		);
+	}
+	return extensionsToApply;
+});
+
+onMounted(() => {
+	createEditor();
+});
+
+watch(
+	() => props.modelValue,
+	(newValue: string) => {
+		const editorValue = editor.value?.state?.doc.toString();
+
+		// If model value changes from outside the component
+		if (editorValue && editorValue.length !== newValue.length && editorValue !== newValue) {
+			destroyEditor();
+			createEditor();
+		}
+	},
+);
+
+function createEditor() {
+	const state = EditorState.create({ doc: props.modelValue, extensions: extensions.value });
+	const parent = pythonEditorRef.value;
+
+	editor.value = new EditorView({ parent, state });
+	editorState.value = editor.value.state;
+}
+
+function destroyEditor() {
+	editor.value?.destroy();
+}
+</script>
+
+<template>
+	<div :class="$style.editor">
+		<div ref="pythonEditorRef" class="ph-no-capture python-editor"></div>
+		<slot name="suffix" />
+	</div>
+</template>
+
+<style lang="scss" module>
+.editor {
+	height: 100%;
+
+	& > div {
+		height: 100%;
+	}
+}
+</style>
