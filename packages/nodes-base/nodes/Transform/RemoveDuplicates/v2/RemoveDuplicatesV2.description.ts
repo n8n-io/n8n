@@ -232,19 +232,6 @@ export const removeDuplicatesNodeFields: INodeProperties[] = [
 					'Whether to remove any fields that are not being compared. If disabled, will keep the values from the first of the duplicates.',
 			},
 			{
-				displayName: 'Allow Duplicate Items in the Same Execution',
-				name: 'allowDuplicateItemsInTheSameExecution',
-				type: 'boolean',
-				default: false,
-				displayOptions: {
-					show: {
-						'/operation': ['removeItemsSeenInPreviousExecutions'],
-					},
-				},
-				description:
-					'Whether input items with the same key field value should be allowed in the same execution',
-			},
-			{
 				displayName: 'Context',
 				name: 'context',
 				type: 'options',

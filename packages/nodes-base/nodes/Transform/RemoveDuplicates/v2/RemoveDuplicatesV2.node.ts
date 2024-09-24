@@ -171,11 +171,6 @@ export class RemoveDuplicatesV2 implements INodeType {
 				const logic = this.getNodeParameter('logic', 0);
 				if (logic === 'removeItemsWithAlreadySeenKeyValues') {
 					const context = this.getNodeParameter('options.context', 0, 'node');
-					const allowDuplicateItemsInTheSameExecution = this.getNodeParameter(
-						'options.allowDuplicateItemsInTheSameExecution',
-						0,
-						false,
-					);
 
 					if (!['node', 'workflow'].includes(context as string)) {
 						throw new NodeOperationError(
@@ -188,17 +183,12 @@ export class RemoveDuplicatesV2 implements INodeType {
 					const itemMapping: {
 						[key: string]: INodeExecutionData[];
 					} = {};
-					const uniqueItems: any[] = [];
 					for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 						checkValue = this.getNodeParameter('dedupeField', itemIndex, '')?.toString() || '';
-						if (
-							itemMapping[checkValue] &&
-							(allowDuplicateItemsInTheSameExecution ?? !uniqueItems.includes(checkValue))
-						) {
+						if (itemMapping[checkValue]) {
 							itemMapping[checkValue].push(items[itemIndex]);
 						} else {
 							itemMapping[checkValue] = [items[itemIndex]];
-							if (!allowDuplicateItemsInTheSameExecution) uniqueItems.push(checkValue);
 						}
 						// TODO: Add continueOnFail, where should it and up?
 					}
@@ -238,11 +228,7 @@ export class RemoveDuplicatesV2 implements INodeType {
 					return [returnData];
 				} else if (logic === 'removeItemsUpToStoredIncrementalKey') {
 					const context = this.getNodeParameter('options.context', 0, 'node');
-					const allowDuplicateItemsInTheSameExecution = this.getNodeParameter(
-						'options.allowDuplicateItemsInTheSameExecution',
-						0,
-						false,
-					);
+
 					if (!['node', 'workflow'].includes(context as string)) {
 						throw new NodeOperationError(
 							this.getNode(),
@@ -254,7 +240,6 @@ export class RemoveDuplicatesV2 implements INodeType {
 					const itemMapping: {
 						[key: string]: INodeExecutionData[];
 					} = {};
-					const uniqueItems: any[] = [];
 
 					for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 						const incrementalKey = this.getNodeParameter('incrementalDedupeField', itemIndex, '');
@@ -265,14 +250,10 @@ export class RemoveDuplicatesV2 implements INodeType {
 								`The value '${incrementalKey}' is not a number. Please provide a number.`,
 							);
 						}
-						if (
-							itemMapping[parsedIncrementalKey] &&
-							(allowDuplicateItemsInTheSameExecution ?? !uniqueItems.includes(parsedIncrementalKey))
-						) {
+						if (itemMapping[parsedIncrementalKey]) {
 							itemMapping[parsedIncrementalKey].push(items[itemIndex]);
 						} else {
 							itemMapping[parsedIncrementalKey] = [items[itemIndex]];
-							if (!allowDuplicateItemsInTheSameExecution) uniqueItems.push(parsedIncrementalKey);
 						}
 						// TODO: Add continueOnFail, where should it and up?
 					}
@@ -313,11 +294,7 @@ export class RemoveDuplicatesV2 implements INodeType {
 					return [returnData];
 				} else if (logic === 'RemoveItemsUpToStoredDate') {
 					const context = this.getNodeParameter('options.context', 0, 'node');
-					const allowDuplicateItemsInTheSameExecution = this.getNodeParameter(
-						'options.allowDuplicateItemsInTheSameExecution',
-						0,
-						false,
-					);
+
 					if (!['node', 'workflow'].includes(context as string)) {
 						throw new NodeOperationError(
 							this.getNode(),
@@ -340,14 +317,10 @@ export class RemoveDuplicatesV2 implements INodeType {
 								`The value '${checkValue}' is not a valid date. Please provide a valid date.`,
 							);
 						}
-						if (
-							itemMapping[checkValue] &&
-							(allowDuplicateItemsInTheSameExecution ?? !uniqueItems.includes(checkValue))
-						) {
+						if (itemMapping[checkValue]) {
 							itemMapping[checkValue].push(items[itemIndex]);
 						} else {
 							itemMapping[checkValue] = [items[itemIndex]];
-							if (!allowDuplicateItemsInTheSameExecution) uniqueItems.push(checkValue);
 						}
 						// TODO: Add continueOnFail, where should it and up?
 					}
