@@ -39,9 +39,9 @@ export class LicenseController {
 	}
 
 	@Post('/enterprise/community-register')
-	async registerCommunity(req: LicenseRequest.RegisterCommunity) {
+	async registerCommunityEdition(req: LicenseRequest.RegisterCommunity) {
 		try {
-			await this.licenseService.registerCommunity({
+			await this.licenseService.registerCommunityEdition({
 				email: req.body.email,
 				instanceId: this.instanceSettings.instanceId,
 				instanceUrl: this.urlService.getInstanceBaseUrl(),

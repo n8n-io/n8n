@@ -71,8 +71,6 @@ export class LicenseService {
 		instanceUrl: string;
 		licenseType: string;
 	}) {
-		console.log('Registering community edition');
-		console.log(email, instanceId, instanceUrl, licenseType);
 		await axios.post('https://enterprise.n8n.io/payday/community-registered', {
 			email,
 			instanceId,
