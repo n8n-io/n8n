@@ -4,6 +4,7 @@ import { InstanceSettings } from 'n8n-core';
 import { Get, Post, RestController, GlobalScope } from '@/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { AuthenticatedRequest, LicenseRequest } from '@/requests';
+import { UrlService } from '@/services/url.service';
 
 import { LicenseService } from './license.service';
 
@@ -12,6 +13,7 @@ export class LicenseController {
 	constructor(
 		private readonly licenseService: LicenseService,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly urlService: UrlService,
 	) {}
 
 	@Get('/')
@@ -42,6 +44,8 @@ export class LicenseController {
 			await this.licenseService.registerCommunity({
 				email: req.body.email,
 				instanceId: this.instanceSettings.instanceId,
+				instanceUrl: this.urlService.getInstanceBaseUrl(),
+				licenseType: 'community-registered',
 			});
 		} catch (error: unknown) {
 			if (error instanceof Error) {

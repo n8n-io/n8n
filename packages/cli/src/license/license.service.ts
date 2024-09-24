@@ -60,10 +60,22 @@ export class LicenseService {
 		});
 	}
 
-	async registerCommunity({ email, instanceId }: { email: string; instanceId: string }) {
+	async registerCommunity({
+		email,
+		instanceId,
+		instanceUrl,
+		licenseType,
+	}: {
+		email: string;
+		instanceId: string;
+		instanceUrl: string;
+		licenseType: string;
+	}) {
 		await axios.post('https://enterprise.n8n.io/payday/community-registered', {
 			email,
 			instanceId,
+			instanceUrl,
+			licenseType,
 		});
 	}
 
