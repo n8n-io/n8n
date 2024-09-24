@@ -1,4 +1,3 @@
-import type { FrontendSettings } from '@n8n/api-types';
 import cookieParser from 'cookie-parser';
 import express from 'express';
 import { access as fsAccess } from 'fs/promises';
@@ -21,6 +20,7 @@ import {
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { ControllerRegistry } from '@/decorators';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { EventService } from '@/events/event.service';
 import { LogStreamingEventRelay } from '@/events/log-streaming-event-relay';
 import type { ICredentialsOverwrite } from '@/interfaces';
 import { isLdapEnabled } from '@/ldap/helpers.ee';
@@ -58,12 +58,12 @@ import '@/controllers/user-settings.controller';
 import '@/controllers/workflow-statistics.controller';
 import '@/credentials/credentials.controller';
 import '@/eventbus/event-bus.controller';
+import '@/events/events.controller';
 import '@/executions/executions.controller';
 import '@/external-secrets/external-secrets.controller.ee';
 import '@/license/license.controller';
 import '@/workflows/workflow-history/workflow-history.controller.ee';
 import '@/workflows/workflows.controller';
-import { EventService } from './events/event.service';
 
 @Service()
 export class Server extends AbstractServer {
@@ -244,10 +244,7 @@ export class Server extends AbstractServer {
 			// Returns the current settings for the UI
 			this.app.get(
 				`/${this.restEndpoint}/settings`,
-				ResponseHelper.send(
-					async (req: express.Request): Promise<FrontendSettings> =>
-						frontendService.getSettings(req.headers['push-ref'] as string),
-				),
+				ResponseHelper.send(async () => frontendService.getSettings()),
 			);
 		}
 
