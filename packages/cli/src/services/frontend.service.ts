@@ -10,7 +10,7 @@ import path from 'path';
 import { Container, Service } from 'typedi';
 
 import config from '@/config';
-import { LICENSE_FEATURES } from '@/constants';
+import { LICENSE_FEATURES, N8N_VERSION } from '@/constants';
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { getVariablesLimit } from '@/environments/variables/environment-helpers';
@@ -100,11 +100,12 @@ export class FrontendService {
 			urlBaseEditor: instanceBaseUrl,
 			binaryDataMode: config.getEnv('binaryDataManager.mode'),
 			nodeJsVersion: process.version.replace(/^v/, ''),
-			versionCli: '',
+			versionCli: N8N_VERSION,
 			concurrency: config.getEnv('executions.concurrency.productionLimit'),
 			authCookie: {
 				secure: config.getEnv('secure_cookie'),
 			},
+			environment: process.env.ENVIRONMENT ?? 'development',
 			releaseChannel: config.getEnv('generic.releaseChannel'),
 			oauthCallbackUrls: {
 				oauth1: `${instanceBaseUrl}/${restEndpoint}/oauth1-credential/callback`,
@@ -341,10 +342,6 @@ export class FrontendService {
 		this.settings.enterprise.projects.team.limit = this.license.getTeamProjectLimit();
 
 		return this.settings;
-	}
-
-	addToSettings(newSettings: Record<string, unknown>) {
-		this.settings = { ...this.settings, ...newSettings };
 	}
 
 	private writeStaticJSON(name: string, data: INodeTypeBaseDescription[] | ICredentialType[]) {

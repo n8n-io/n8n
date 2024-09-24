@@ -35,9 +35,11 @@ const pinia = createPinia();
 
 const app = createApp(App);
 
-const { dsn } = window.__n8n_settings.sentry;
+const settings = window.__n8n_settings;
+const { dsn } = settings.sentry;
 if (dsn) {
-	Sentry.init({ app, dsn });
+	const { versionCli: release, environment } = settings;
+	Sentry.init({ app, dsn, release, environment });
 }
 
 app.use(TelemetryPlugin);

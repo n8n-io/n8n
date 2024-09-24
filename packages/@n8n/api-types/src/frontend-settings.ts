@@ -54,6 +54,7 @@ export interface FrontendSettings {
 		secure: boolean;
 	};
 	binaryDataMode: 'default' | 'filesystem' | 's3';
+	environment: string;
 	releaseChannel: 'stable' | 'beta' | 'nightly' | 'dev';
 	n8nMetadata?: {
 		userId?: string;

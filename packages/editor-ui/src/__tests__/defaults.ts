@@ -51,6 +51,7 @@ export const defaultSettings: FrontendSettings = {
 	maxExecutionTimeout: 0,
 	oauthCallbackUrls: { oauth1: '', oauth2: '' },
 	personalizationSurveyEnabled: false,
+	environment: 'development',
 	releaseChannel: 'stable',
 	posthog: {
 		apiHost: '',
@@ -59,6 +60,9 @@ export const defaultSettings: FrontendSettings = {
 		debug: false,
 		disableSessionRecording: false,
 		enabled: false,
+	},
+	sentry: {
+		dsn: '',
 	},
 	publicApi: { enabled: false, latestVersion: 0, path: '', swaggerUi: { enabled: false } },
 	pushBackend: 'websocket',

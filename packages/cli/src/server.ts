@@ -14,7 +14,6 @@ import {
 	inDevelopment,
 	inE2ETests,
 	inProduction,
-	N8N_VERSION,
 	Time,
 } from '@/constants';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
@@ -169,10 +168,6 @@ export class Server extends AbstractServer {
 
 		const { frontendService } = this;
 		if (frontendService) {
-			frontendService.addToSettings({
-				versionCli: N8N_VERSION,
-			});
-
 			await this.externalHooks.run('frontend.settings', [frontendService.getSettings()]);
 		}
 
