@@ -3729,10 +3729,6 @@ packages:
       node-notifier:
         optional: true
 
-  '@jest/schemas@29.6.0':
-    resolution: {integrity: sha512-rxLjXyJBTL4LQeJW3aKo0M/+GkCOXsO+8i9Iu7eDb6KwtP65ayoDsitrdPBtujxQ88k4wI2FNYfa6TOGwSn6cQ==}
-    engines: {node: ^14.15.0 || ^16.10.0 || >=18.0.0}
-
   '@jest/schemas@29.6.3':
     resolution: {integrity: sha512-mo5j5X+jIZmJQveBKeS/clAueipV7KgiX1vMgCxam1RNYiqE1w62n0/tJJnHtjW8ZHcQco5gY85jA3mi0L+nSA==}
     engines: {node: ^14.15.0 || ^16.10.0 || >=18.0.0}
@@ -15652,7 +15648,7 @@ snapshots:
   '@babel/plugin-syntax-typescript@7.23.3(@babel/core@7.24.6)':
     dependencies:
       '@babel/core': 7.24.6
-      '@babel/helper-plugin-utils': 7.24.0
+      '@babel/helper-plugin-utils': 7.24.6
 
   '@babel/plugin-syntax-unicode-sets-regex@7.18.6(@babel/core@7.24.6)':
     dependencies:
@@ -16817,10 +16813,6 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@jest/schemas@29.6.0':
-    dependencies:
-      '@sinclair/typebox': 0.27.8
-
   '@jest/schemas@29.6.3':
     dependencies:
       '@sinclair/typebox': 0.27.8
@@ -16867,7 +16859,7 @@ snapshots:
 
   '@jest/types@29.6.1':
     dependencies:
-      '@jest/schemas': 29.6.0
+      '@jest/schemas': 29.6.3
       '@types/istanbul-lib-coverage': 2.0.4
       '@types/istanbul-reports': 3.0.1
       '@types/node': 18.16.16
@@ -22720,7 +22712,7 @@ snapshots:
       ajv: 6.12.6
       chalk: 4.1.2
       cross-spawn: 7.0.3
-      debug: 4.3.6(supports-color@8.1.1)
+      debug: 4.3.4(supports-color@8.1.1)
       doctrine: 3.0.0
       escape-string-regexp: 4.0.0
       eslint-scope: 7.2.2
@@ -23871,7 +23863,7 @@ snapshots:
     dependencies:
       es-errors: 1.3.0
       hasown: 2.0.2
-      side-channel: 1.0.4
+      side-channel: 1.0.6
 
   interpret@1.4.0: {}
 
@@ -26234,7 +26226,7 @@ snapshots:
   object-is@1.1.5:
     dependencies:
       call-bind: 1.0.7
-      define-properties: 1.2.0
+      define-properties: 1.2.1
 
   object-keys@1.1.1: {}
 
@@ -27317,7 +27309,7 @@ snapshots:
   regexp.prototype.flags@1.5.0:
     dependencies:
       call-bind: 1.0.7
-      define-properties: 1.2.0
+      define-properties: 1.2.1
       functions-have-names: 1.2.3
 
   regexp.prototype.flags@1.5.2:
