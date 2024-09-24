@@ -178,10 +178,10 @@ const displayValue = computed(() => {
 			return i18n.baseText('parameterInput.loadOptionsError');
 		}
 
-		if (nodeType.value?.credentials?.length > 0) {
+		if (nodeType.value?.credentials && nodeType.value?.credentials?.length > 0) {
 			const credentialsType = nodeType.value?.credentials[0];
 
-			if (credentialsType.required && !node.value.credentials) {
+			if (credentialsType.required && !node.value?.credentials) {
 				return i18n.baseText('parameterInput.loadOptionsCredentialsRequired');
 			}
 		}
