@@ -221,7 +221,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const getSettings = async () => {
 		const rootStore = useRootStore();
-		const fetchedSettings = await settingsApi.getSettings(rootStore.restApiContext);
+		const fetchedSettings = window.__n8n_settings;
 		setSettings(fetchedSettings);
 		settings.value.communityNodesEnabled = fetchedSettings.communityNodesEnabled;
 		setAllowedModules(fetchedSettings.allowedModules);
