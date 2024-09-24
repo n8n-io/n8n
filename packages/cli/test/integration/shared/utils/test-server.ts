@@ -9,7 +9,6 @@ import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import type { User } from '@/databases/entities/user';
-import { ApiKeysRepository } from '@/databases/repositories/api-keys.repository';
 import { ControllerRegistry } from '@/decorators';
 import { License } from '@/license';
 import { Logger } from '@/logger';
@@ -66,17 +65,6 @@ function createAgent(
 const userDoesNotHaveApiKey = (user: User) => {
 	return !user.apiKeys || !Array.from(user.apiKeys) || user.apiKeys.length === 0;
 };
-
-// const getApiKeyFromUser = async (user: User) => {
-// 	if (!userDoesNotHaveApiKey(user)) {
-// 		const apiKeys = await Container.get(ApiKeysRepository).find({ where: { userId: user.id } });
-// 		if (apiKeys?.length || apiKeys.length > 1) {
-// 			throw new Error('User has either no API key or more than one API key');
-// 		}
-// 		return apiKeys[0].apiKey;
-// 	}
-// 	return user.apiKeys[0].apiKey;
-// };
 
 const publicApiAgent = (
 	app: express.Application,

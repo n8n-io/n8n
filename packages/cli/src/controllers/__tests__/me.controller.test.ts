@@ -5,7 +5,7 @@ import { randomString } from 'n8n-workflow';
 import { Container } from 'typedi';
 
 import { AUTH_COOKIE_NAME } from '@/constants';
-import { API_KEY_PREFIX, MeController } from '@/controllers/me.controller';
+import { MeController } from '@/controllers/me.controller';
 import type { ApiKeys } from '@/databases/entities/api-keys';
 import type { User } from '@/databases/entities/user';
 import { ApiKeysRepository } from '@/databases/repositories/api-keys.repository';
@@ -20,6 +20,7 @@ import type { PublicUser } from '@/interfaces';
 import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';
 import type { AuthenticatedRequest, MeRequest } from '@/requests';
+import { API_KEY_PREFIX } from '@/services/public-api-key.service';
 import { UserService } from '@/services/user.service';
 import { mockInstance } from '@test/mocking';
 import { badPasswords } from '@test/test-data';
@@ -464,7 +465,7 @@ describe('MeController', () => {
 
 				apiKeysRepository.findBy.mockResolvedValue([apiKeyData]);
 
-				const { apiKeys } = await controller.getAPIKeys(req);
+				const apiKeys = await controller.getAPIKeys(req);
 				expect(apiKeys[0].apiKey).not.toEqual(apiKeyData.apiKey);
 				expect(apiKeysRepository.findBy).toHaveBeenCalledWith({ userId: req.user.id });
 			});

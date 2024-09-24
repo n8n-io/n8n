@@ -1,11 +1,9 @@
 import { plainToInstance } from 'class-transformer';
-import { randomBytes } from 'crypto';
 import { type RequestHandler, Response } from 'express';
 import validator from 'validator';
 
 import { AuthService } from '@/auth/auth.service';
 import type { User } from '@/databases/entities/user';
-import { ApiKeysRepository } from '@/databases/repositories/api-keys.repository';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { Delete, Get, Patch, Post, RestController } from '@/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -24,12 +22,11 @@ import {
 	UserUpdatePayload,
 } from '@/requests';
 import { PasswordUtility } from '@/services/password.utility';
+import { PublicApiKeyService } from '@/services/public-api-key.service';
 import { UserService } from '@/services/user.service';
 import { isSamlLicensedAndEnabled } from '@/sso/saml/saml-helpers';
 
 import { PersonalizationSurveyAnswersV4 } from './survey-answers.dto';
-
-export const API_KEY_PREFIX = 'n8n_api_';
 
 export const isApiEnabledMiddleware: RequestHandler = (_, res, next) => {
 	if (isApiEnabled()) {
@@ -50,7 +47,7 @@ export class MeController {
 		private readonly userRepository: UserRepository,
 		private readonly eventService: EventService,
 		private readonly mfaService: MfaService,
-		private readonly apiKeysRepository: ApiKeysRepository,
+		private readonly publicApiKeyService: PublicApiKeyService,
 	) {}
 
 	/**
@@ -238,15 +235,7 @@ export class MeController {
 	 */
 	@Post('/api-keys', { middlewares: [isApiEnabledMiddleware] })
 	async createAPIKey(req: AuthenticatedRequest) {
-		const apiKey = `n8n_api_${randomBytes(40).toString('hex')}`;
-
-		const newApiKey = await this.apiKeysRepository.save(
-			this.apiKeysRepository.create({
-				userId: req.user.id,
-				apiKey,
-				label: 'My API Key',
-			}),
-		);
+		const newApiKey = await this.publicApiKeyService.createPublicApiKeyForUser(req.user);
 
 		this.eventService.emit('public-api-key-created', { user: req.user, publicApi: false });
 
@@ -258,12 +247,8 @@ export class MeController {
 	 */
 	@Get('/api-keys', { middlewares: [isApiEnabledMiddleware] })
 	async getAPIKeys(req: AuthenticatedRequest) {
-		const apiKeys = await this.apiKeysRepository.findBy({ userId: req.user.id });
-		return {
-			apiKeys: apiKeys.map((apiKey) => {
-				return { ...apiKey, apiKey: this.redactApiKey(apiKey.apiKey) };
-			}),
-		};
+		const apiKeys = await this.publicApiKeyService.getRedactedApiKeysForUser(req.user);
+		return apiKeys;
 	}
 
 	/**
@@ -271,7 +256,7 @@ export class MeController {
 	 */
 	@Delete('/api-keys/:id', { middlewares: [isApiEnabledMiddleware] })
 	async deleteAPIKey(req: MeRequest.DeleteAPIKey) {
-		await this.apiKeysRepository.delete({ userId: req.user.id, id: req.params.id });
+		await this.publicApiKeyService.deleteApiKeyForUser(req.user, req.params.id);
 
 		this.eventService.emit('public-api-key-deleted', { user: req.user, publicApi: false });
 
@@ -299,15 +284,5 @@ export class MeController {
 		});
 
 		return user.settings;
-	}
-
-	private redactApiKey(apiKey: string | null) {
-		if (!apiKey) return;
-		const keepLength = 5;
-		return (
-			API_KEY_PREFIX +
-			apiKey.slice(API_KEY_PREFIX.length, API_KEY_PREFIX.length + keepLength) +
-			'*'.repeat(apiKey.length - API_KEY_PREFIX.length - keepLength)
-		);
 	}
 }
