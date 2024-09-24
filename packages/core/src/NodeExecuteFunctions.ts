@@ -3790,8 +3790,11 @@ export function getExecuteFunctions(
 				}
 			},
 			logNodeOutput(...args: unknown[]): void {
-				// @ts-expect-error `args` is spreadable
-				if (mode === 'manual') this.sendMessageToUI(...args);
+				if (mode === 'manual') {
+					// @ts-expect-error `args` is spreadable
+					this.sendMessageToUI(...args);
+					return;
+				}
 
 				if (process.env.CODE_ENABLE_STDOUT === 'true') {
 					console.log(`[Workflow "${this.getWorkflow().id}"][Node "${node.name}"]`, ...args);
