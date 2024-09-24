@@ -17,8 +17,8 @@ describe('cleanRunData', () => {
 			.addConnections({ from: node1, to: node2 }, { from: node2, to: node3 });
 		const runData: IRunData = {
 			[node1.name]: [toITaskData([{ data: { value: 1 } }])],
-			[node2.name]: [toITaskData([{ data: { value: 1 } }])],
-			[node3.name]: [toITaskData([{ data: { value: 1 } }])],
+			[node2.name]: [toITaskData([{ data: { value: 2 } }])],
+			[node3.name]: [toITaskData([{ data: { value: 3 } }])],
 		};
 
 		// ACT
@@ -41,8 +41,8 @@ describe('cleanRunData', () => {
 			.addConnections({ from: node1, to: node2 }, { from: node2, to: node3 });
 		const runData: IRunData = {
 			[node1.name]: [toITaskData([{ data: { value: 1 } }])],
-			[node2.name]: [toITaskData([{ data: { value: 1 } }])],
-			[node3.name]: [toITaskData([{ data: { value: 1 } }])],
+			[node2.name]: [toITaskData([{ data: { value: 2 } }])],
+			[node3.name]: [toITaskData([{ data: { value: 3 } }])],
 		};
 
 		// ACT
@@ -72,8 +72,8 @@ describe('cleanRunData', () => {
 
 		const runData: IRunData = {
 			[node1.name]: [toITaskData([{ data: { value: 1 } }])],
-			[node2.name]: [toITaskData([{ data: { value: 1 } }])],
-			[node3.name]: [toITaskData([{ data: { value: 1 } }])],
+			[node2.name]: [toITaskData([{ data: { value: 2 } }])],
+			[node3.name]: [toITaskData([{ data: { value: 3 } }])],
 		};
 
 		// ACT
