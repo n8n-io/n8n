@@ -255,7 +255,7 @@ export class MoveHandler implements OperationHandler {
 		const projectId = ctx.getNodeParameter('project', itemIndex, undefined, {
 			extractValue: true,
 		}) as number;
-		const options = ctx.getNodeParameter('options', itemIndex) as IDataObject;
+		const nodeVersion = ctx.getNode().typeVersion;
 
 		const body: SyncRequest = {
 			commands: [
@@ -264,22 +264,28 @@ export class MoveHandler implements OperationHandler {
 					uuid: uuid(),
 					args: {
 						id: taskId,
+						// Set section_id only if node version is below 2.1
+						...(nodeVersion < 2.1
+							? { section_id: ctx.getNodeParameter('section', itemIndex) as number }
+							: {}),
 					},
 				},
 			],
 		};
 
-		// Only one of parent_id, section_id, or project_id must be set to move the task
-		if (options.parent) {
-			body.commands[0].args.parent_id = options.parent as string;
-		} else if (options.section) {
-			body.commands[0].args.section_id = options.section as number;
-		} else if (projectId) {
-			body.commands[0].args.project_id = projectId;
+		if (nodeVersion >= 2.1) {
+			const options = ctx.getNodeParameter('options', itemIndex, {}) as IDataObject;
+			// Only one of parent_id, section_id, or project_id must be set to move the task
+			if (options.parent) {
+				body.commands[0].args.parent_id = options.parent as string;
+			} else if (options.section) {
+				body.commands[0].args.section_id = options.section as number;
+			} else {
+				body.commands[0].args.project_id = projectId;
+			}
 		}
 
 		await todoistSyncRequest.call(ctx, body);
-
 		return { success: true };
 	}
 }

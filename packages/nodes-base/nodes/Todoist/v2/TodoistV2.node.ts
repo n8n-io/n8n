@@ -211,6 +211,27 @@ const versionDescription: INodeTypeDescription = {
 			description: 'The destination project. Choose from the list, or specify an ID.',
 		},
 		{
+			displayName: 'Section Name or ID',
+			name: 'section',
+			type: 'options',
+			typeOptions: {
+				loadOptionsMethod: 'getSections',
+				loadOptionsDependsOn: ['project.value'],
+			},
+			displayOptions: {
+				show: {
+					resource: ['task'],
+					operation: ['move'],
+				},
+				hide: {
+					'@version': [{ _cnd: { gte: 2.1 } }],
+				},
+			},
+			default: '',
+			description:
+				'Section to which you want move the task. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		},
+		{
 			displayName: 'Additional Fields',
 			name: 'options',
 			type: 'collection',
@@ -220,6 +241,7 @@ const versionDescription: INodeTypeDescription = {
 				show: {
 					resource: ['task'],
 					operation: ['move'],
+					'@version': [{ _cnd: { gte: 2.1 } }],
 				},
 			},
 			options: [
@@ -234,11 +256,6 @@ const versionDescription: INodeTypeDescription = {
 					default: '',
 					description:
 						'The destination section. The task becomes the last root task of the section. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-					displayOptions: {
-						show: {
-							'@version': [{ _cnd: { gte: 2.1 } }],
-						},
-					},
 				},
 				{
 					displayName: 'Parent Name or ID',
@@ -251,11 +268,6 @@ const versionDescription: INodeTypeDescription = {
 					default: '',
 					description:
 						'The destination parent task. The task becomes the last child task of the parent task. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-					displayOptions: {
-						show: {
-							'@version': [{ _cnd: { gte: 2.1 } }],
-						},
-					},
 				},
 			],
 		},

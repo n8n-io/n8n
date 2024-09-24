@@ -19,6 +19,7 @@ export class Todoist extends VersionedNodeType {
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
 			1: new TodoistV1(baseDescription),
 			2: new TodoistV2(baseDescription),
+			2.1: new TodoistV2(baseDescription),
 		};
 
 		super(nodeVersions, baseDescription);
