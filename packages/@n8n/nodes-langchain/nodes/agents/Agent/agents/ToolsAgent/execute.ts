@@ -10,7 +10,7 @@ import type { AgentAction, AgentFinish } from 'langchain/agents';
 import { AgentExecutor, createToolCallingAgent } from 'langchain/agents';
 import { OutputFixingParser } from 'langchain/output_parsers';
 import { omit } from 'lodash';
-import { BINARY_ENCODING, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { BINARY_ENCODING, jsonParse, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import type { ZodObject } from 'zod';
 import { z } from 'zod';
@@ -73,6 +73,40 @@ async function extractBinaryMessages(ctx: IExecuteFunctions) {
 	return new HumanMessage({
 		content: [...binaryMessages],
 	});
+}
+/**
+ * Fixes empty content messages in agent steps.
+ *
+ * This function is necessary when using RunnableSequence.from in LangChain.
+ * If a tool doesn't have any arguments, LangChain returns input: '' (empty string).
+ * This can throw an error for some providers (like Anthropic) which expect the input to always be an object.
+ * This function replaces empty string inputs with empty objects to prevent such errors.
+ *
+ * @param steps - The agent steps to fix
+ * @returns The fixed agent steps
+ */
+function fixEmptyContentMessage(steps: AgentFinish | AgentAction[]) {
+	if (!Array.isArray(steps)) return steps;
+
+	steps.forEach((step) => {
+		if ('messageLog' in step && step.messageLog !== undefined) {
+			if (Array.isArray(step.messageLog)) {
+				step.messageLog.forEach((message) => {
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+					if ('content' in message && Array.isArray(message.content)) {
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+						(message.content as Array<{ input?: string | object }>).forEach((content) => {
+							if (content.input === '') {
+								content.input = {};
+							}
+						});
+					}
+				});
+			}
+		}
+	});
+
+	return steps;
 }
 
 export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -157,33 +191,18 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 		return agentFinishSteps;
 	}
 
-	function fixEmptyContentMessage(steps: AgentFinish | AgentAction[]) {
-		if (!Array.isArray(steps)) return steps;
-		steps.forEach((step) => {
-			if ('messageLog' in step && step.messageLog !== undefined) {
-				if (Array.isArray(step.messageLog)) {
-					step.messageLog.forEach((message) => {
-						console.log('🚀 ~ fixEmptyContentMessage ~ message:', JSON.stringify(message));
-						if ('content' in message && Array.isArray(message.content)) {
-							(message.content as Array<{ input?: string | object }>).forEach((content) => {
-								if (content.input === '') {
-									content.input = {};
-								}
-							});
-						}
-					});
-				}
-			}
-		});
-
-		return steps;
+	// If memory is connected we need to stringify the returnValues so that it can be saved in the memory as a string
+	function handleParsedStepOutput(output: Record<string, unknown>) {
+		return {
+			returnValues: memory ? { output: JSON.stringify(output) } : output,
+			log: 'Final response formatted',
+		};
 	}
 	async function agentStepsParser(
 		steps: AgentFinish | AgentAction[],
 	): Promise<AgentFinish | AgentAction[]> {
-		const fixedSteps = fixEmptyContentMessage(steps);
-		if (Array.isArray(fixedSteps)) {
-			const responseParserTool = fixedSteps.find((step) => step.tool === 'format_final_response');
+		if (Array.isArray(steps)) {
+			const responseParserTool = steps.find((step) => step.tool === 'format_final_response');
 			if (responseParserTool) {
 				const toolInput = responseParserTool?.toolInput;
 				const returnValues = (await outputParser.parse(toolInput as unknown as string)) as Record<
@@ -191,30 +210,20 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 					unknown
 				>;
 
-				return {
-					returnValues,
-					log: 'Final response formatted',
-				};
+				return handleParsedStepOutput(returnValues);
 			}
 		}
-		// If the steps are an AgentFinish and the outputParser is defined it must mean that the LLM didn't use `format_final_response` tool so we will parse the output manually
-		if (
-			outputParser &&
-			typeof fixedSteps === 'object' &&
-			(fixedSteps as AgentFinish).returnValues
-		) {
-			const finalResponse = (fixedSteps as AgentFinish).returnValues;
+
+		// If the steps are an AgentFinish and the outputParser is defined it must mean that the LLM didn't use `format_final_response` tool so we will try to parse the output manually
+		if (outputParser && typeof steps === 'object' && (steps as AgentFinish).returnValues) {
+			const finalResponse = (steps as AgentFinish).returnValues;
 			const returnValues = (await outputParser.parse(finalResponse as unknown as string)) as Record<
 				string,
 				unknown
 			>;
-
-			return {
-				returnValues,
-				log: 'Final response formatted',
-			};
+			return handleParsedStepOutput(returnValues);
 		}
-		return handleAgentFinishOutput(fixedSteps);
+		return handleAgentFinishOutput(steps);
 	}
 
 	if (outputParser) {
@@ -260,7 +269,7 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 	});
 	agent.streamRunnable = false;
 
-	const runnableAgent = RunnableSequence.from([agent, agentStepsParser]);
+	const runnableAgent = RunnableSequence.from([agent, agentStepsParser, fixEmptyContentMessage]);
 
 	const executor = AgentExecutor.fromAgentAndTools({
 		agent: runnableAgent,
@@ -299,6 +308,13 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 				formatting_instructions:
 					'IMPORTANT: Always call `format_final_response` to format your final response!',
 			});
+
+			if (memory && outputParser) {
+				const parsedOutput = jsonParse<{ output: Record<string, unknown> }>(
+					response.output as string,
+				);
+				response.output = parsedOutput?.output ?? parsedOutput;
+			}
 
 			returnData.push({
 				json: omit(
