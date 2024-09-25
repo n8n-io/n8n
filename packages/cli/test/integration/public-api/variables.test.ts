@@ -13,7 +13,7 @@ describe('Variables in Public API', () => {
 	});
 
 	beforeEach(async () => {
-		await testDb.truncate(['ApiKey', 'Variables', 'User']);
+		await testDb.truncate(['Variables', 'User']);
 	});
 
 	describe('GET /variables', () => {

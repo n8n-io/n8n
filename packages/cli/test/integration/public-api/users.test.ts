@@ -20,7 +20,7 @@ describe('Users in Public API', () => {
 	});
 
 	beforeEach(async () => {
-		await testDb.truncate(['ApiKey', 'User']);
+		await testDb.truncate(['User']);
 	});
 
 	describe('POST /users', () => {
@@ -235,7 +235,7 @@ describe('Users in Public API', () => {
 			 * Arrange
 			 */
 			testServer.license.enable('feat:advancedPermissions');
-			const owner = await createOwner({ withApiKey: true });
+			const owner = await createOwnerWithApiKey();
 			const member = await createMember();
 			const payload = { newRoleName: 'invalid' };
 

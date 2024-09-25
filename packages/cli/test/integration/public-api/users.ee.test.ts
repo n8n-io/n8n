@@ -24,14 +24,7 @@ mockInstance(License, {
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 
 beforeEach(async () => {
-	await testDb.truncate([
-		'ApiKey',
-		'SharedCredentials',
-		'SharedWorkflow',
-		'Workflow',
-		'Credentials',
-		'User',
-	]);
+	await testDb.truncate(['SharedCredentials', 'SharedWorkflow', 'Workflow', 'Credentials', 'User']);
 });
 
 describe('With license unlimited quota:users', () => {

@@ -9,6 +9,7 @@ export class ApiKey extends WithTimestampsAndStringId {
 	@ManyToOne(
 		() => User,
 		(user) => user.id,
+		{ onDelete: 'CASCADE' },
 	)
 	user: User;
 
