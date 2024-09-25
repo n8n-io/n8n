@@ -38,4 +38,52 @@ describe('DirectedGraph', () => {
 			graph,
 		);
 	});
+
+	describe('getChildren', () => {
+		// ┌─────┐    ┌─────┐   ┌─────┐
+		// │node1├───►│node2├──►│node3│
+		// └─────┘    └─────┘   └─────┘
+		test('returns all children', () => {
+			// ARRANGE
+			const node1 = createNodeData({ name: 'Node1' });
+			const node2 = createNodeData({ name: 'Node2' });
+			const node3 = createNodeData({ name: 'Node3' });
+			const graph = new DirectedGraph()
+				.addNodes(node1, node2, node3)
+				.addConnections({ from: node1, to: node2 }, { from: node2, to: node3 });
+
+			// ACT
+			const children = graph.getChildren(node1);
+
+			// ASSERT
+			expect(children.size).toBe(2);
+			expect(children).toEqual(new Set([node2, node3]));
+		});
+
+		//     ┌─────┐    ┌─────┐   ┌─────┐
+		//  ┌─►│node1├───►│node2├──►│node3├─┐
+		//  │  └─────┘    └─────┘   └─────┘ │
+		//  │                               │
+		//  └───────────────────────────────┘
+		test('terminates when finding a cycle', () => {
+			// ARRANGE
+			const node1 = createNodeData({ name: 'Node1' });
+			const node2 = createNodeData({ name: 'Node2' });
+			const node3 = createNodeData({ name: 'Node3' });
+			const graph = new DirectedGraph()
+				.addNodes(node1, node2, node3)
+				.addConnections(
+					{ from: node1, to: node2 },
+					{ from: node2, to: node3 },
+					{ from: node3, to: node1 },
+				);
+
+			// ACT
+			const children = graph.getChildren(node1);
+
+			// ASSERT
+			expect(children.size).toBe(3);
+			expect(children).toEqual(new Set([node1, node2, node3]));
+		});
+	});
 });

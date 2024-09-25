@@ -193,6 +193,7 @@ defineExpose({ inputRef });
 		:label="label"
 		:tooltip-text="tooltipText"
 		:required="required && showRequiredAsterisk"
+		:size="labelSize"
 	>
 		<template #content>
 			{{ tooltipText }}
@@ -210,6 +211,7 @@ defineExpose({ inputRef });
 		:label="label"
 		:tooltip-text="tooltipText"
 		:required="required && showRequiredAsterisk"
+		:size="labelSize"
 	>
 		<div :class="showErrors ? $style.errorInput : ''" @keydown.stop @keydown.enter="onEnter">
 			<slot v-if="hasDefaultSlot" />
@@ -223,6 +225,7 @@ defineExpose({ inputRef });
 				:disabled="disabled"
 				:name="name"
 				:teleported="teleported"
+				:size="tagSize"
 				@update:model-value="onUpdateModelValue"
 				@focus="onFocus"
 				@blur="onBlur"
@@ -246,6 +249,7 @@ defineExpose({ inputRef });
 				:maxlength="maxlength"
 				:autocomplete="autocomplete"
 				:disabled="disabled"
+				:size="tagSize"
 				@update:model-value="onUpdateModelValue"
 				@blur="onBlur"
 				@focus="onFocus"

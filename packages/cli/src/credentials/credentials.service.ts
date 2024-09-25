@@ -34,7 +34,7 @@ import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
 import type { ICredentialsDb } from '@/interfaces';
 import { Logger } from '@/logger';
-import { userHasScope } from '@/permissions/check-access';
+import { userHasScopes } from '@/permissions/check-access';
 import type { CredentialRequest, ListQuery } from '@/requests';
 import { CredentialsTester } from '@/services/credentials-tester.service';
 import { OwnershipService } from '@/services/ownership.service';
@@ -598,7 +598,7 @@ export class CredentialsService {
 		// could actually be testing the credential before saving it, so this should cover
 		// the cases we need it for.
 		if (
-			!(await userHasScope(user, ['credential:update'], false, { credentialId: credential.id }))
+			!(await userHasScopes(user, ['credential:update'], false, { credentialId: credential.id }))
 		) {
 			mergedCredentials.data = decryptedData;
 		}

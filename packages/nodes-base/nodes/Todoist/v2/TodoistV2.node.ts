@@ -36,7 +36,7 @@ const versionDescription: INodeTypeDescription = {
 	name: 'todoist',
 	icon: 'file:todoist.svg',
 	group: ['output'],
-	version: 2,
+	version: [2, 2.1],
 	subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 	description: 'Consume Todoist API',
 	defaults: {
@@ -207,7 +207,7 @@ const versionDescription: INodeTypeDescription = {
 					operation: ['create', 'move', 'sync'],
 				},
 			},
-			description: 'The project you want to operate on. Choose from the list, or specify an ID.',
+			description: 'The destination project. Choose from the list, or specify an ID.',
 		},
 		{
 			displayName: 'Section Name or ID',
@@ -222,10 +222,53 @@ const versionDescription: INodeTypeDescription = {
 					resource: ['task'],
 					operation: ['move'],
 				},
+				hide: {
+					'@version': [{ _cnd: { gte: 2.1 } }],
+				},
 			},
 			default: '',
 			description:
 				'Section to which you want move the task. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+		},
+		{
+			displayName: 'Additional Fields',
+			name: 'options',
+			type: 'collection',
+			placeholder: 'Add option',
+			default: {},
+			displayOptions: {
+				show: {
+					resource: ['task'],
+					operation: ['move'],
+					'@version': [{ _cnd: { gte: 2.1 } }],
+				},
+			},
+			options: [
+				{
+					displayName: 'Section Name or ID',
+					name: 'section',
+					type: 'options',
+					typeOptions: {
+						loadOptionsMethod: 'getSections',
+						loadOptionsDependsOn: ['project', 'options.parent'],
+					},
+					default: '',
+					description:
+						'The destination section. The task becomes the last root task of the section. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+				},
+				{
+					displayName: 'Parent Name or ID',
+					name: 'parent',
+					type: 'options',
+					typeOptions: {
+						loadOptionsMethod: 'getItems',
+						loadOptionsDependsOn: ['project', 'options.section'],
+					},
+					default: '',
+					description:
+						'The destination parent task. The task becomes the last child task of the parent task. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+				},
+			],
 		},
 		{
 			displayName: 'Label Names or IDs',

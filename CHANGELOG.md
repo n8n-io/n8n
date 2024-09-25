@@ -1,3 +1,46 @@
+# [1.61.0](https://github.com/n8n-io/n8n/compare/n8n@1.60.0...n8n@1.61.0) (2024-09-25)
+
+
+### Bug Fixes
+
+* **core:** Add executionData to expressions in pagination code ([#10926](https://github.com/n8n-io/n8n/issues/10926)) ([eac103e](https://github.com/n8n-io/n8n/commit/eac103e367d59a532b9ba12db78a0dd10aee62fb))
+* **core:** Fix webhook binary data max size configuration ([#10897](https://github.com/n8n-io/n8n/issues/10897)) ([693fb7e](https://github.com/n8n-io/n8n/commit/693fb7e580b7e030c86977bff6d319bbee4fcd62))
+* **core:** Remove subworkflow license check ([#10893](https://github.com/n8n-io/n8n/issues/10893)) ([0290e38](https://github.com/n8n-io/n8n/commit/0290e38f990275074eb7e7ccd0b41f1ae0215dd2))
+* **editor:** Credentials scopes and n8n scopes mix up ([#10930](https://github.com/n8n-io/n8n/issues/10930)) ([e069608](https://github.com/n8n-io/n8n/commit/e0696080227aee7ccb50d51a82873e8a1ba4667d))
+* **editor:** Fix design system form component sizing ([#10961](https://github.com/n8n-io/n8n/issues/10961)) ([cf153ea](https://github.com/n8n-io/n8n/commit/cf153ea085165115ee523fbb1bd32080dde47eda))
+* **editor:** Fix modal overflow when AI is enabled in code node ([#10887](https://github.com/n8n-io/n8n/issues/10887)) ([f9f303f](https://github.com/n8n-io/n8n/commit/f9f303f562084db8c8956da267680b1f935aa2df))
+* **editor:** Fix source control push modal checkboxes ([#10910](https://github.com/n8n-io/n8n/issues/10910)) ([8db8817](https://github.com/n8n-io/n8n/commit/8db88178511749b19a5878816ef062092fd9f2be))
+* **editor:** Fix styling and typography in AI Assistant chat ([#10895](https://github.com/n8n-io/n8n/issues/10895)) ([57ff3cc](https://github.com/n8n-io/n8n/commit/57ff3cc27b9470bfbe2486c3c1831c57f5a4075f))
+* **editor:** Prevent clipboard xss injection ([#10894](https://github.com/n8n-io/n8n/issues/10894)) ([e20ab59](https://github.com/n8n-io/n8n/commit/e20ab59c1dcf9da19a30268ce19930bfa7e38992))
+* **editor:** Prevent node name input in NDV to expand unnecessarily ([#10922](https://github.com/n8n-io/n8n/issues/10922)) ([a2237d1](https://github.com/n8n-io/n8n/commit/a2237d128ff6a4d65cd30325b6b9d9b765ca7be6))
+* **editor:** Update gird size when opening credentials support chat ([#10882](https://github.com/n8n-io/n8n/issues/10882)) ([b86fd80](https://github.com/n8n-io/n8n/commit/b86fd80fc9fe06011367ca04a75e4b52533db1fe))
+* **editor:** Use `:focus-visible` instead for `:focus` for buttons ([#10921](https://github.com/n8n-io/n8n/issues/10921)) ([bf28d09](https://github.com/n8n-io/n8n/commit/bf28d0965c46620a106c87037bafd2cf936f1050))
+* **editor:** Use correct output for connected nodes in schema view ([#10928](https://github.com/n8n-io/n8n/issues/10928)) ([ad60d49](https://github.com/n8n-io/n8n/commit/ad60d49b4251138a7c69cb5e9f00c3ef875486e0))
+* Enable Assistant on other credential views ([#10931](https://github.com/n8n-io/n8n/issues/10931)) ([557db9c](https://github.com/n8n-io/n8n/commit/557db9c170a89447ec9cc14aa1af51e5fd11dd92))
+* Ensure user id for early track events ([#10885](https://github.com/n8n-io/n8n/issues/10885)) ([23c09ea](https://github.com/n8n-io/n8n/commit/23c09eae4223545c717270a5cd305d2e57e1ad5b))
+* **Google Sheets Node:** Insert data if sheet is empty instead of error ([#10942](https://github.com/n8n-io/n8n/issues/10942)) ([c75990e](https://github.com/n8n-io/n8n/commit/c75990e0632c581384542610a886ef89621a9403))
+* Hide assistant button when showing Click to connect ([#10932](https://github.com/n8n-io/n8n/issues/10932)) ([d74cff2](https://github.com/n8n-io/n8n/commit/d74cff20301f285588f93207f29660d25fdbc8da))
+* **HTTP Request Node:** Do not modify request object when sanitizing message for UI ([#10923](https://github.com/n8n-io/n8n/issues/10923)) ([8cc10cc](https://github.com/n8n-io/n8n/commit/8cc10cc2c1869b9abcafd157e41be65ce2b6f499))
+* **MQTT Node:** Close connection if connection attempt fails ([#10873](https://github.com/n8n-io/n8n/issues/10873)) ([ee7147c](https://github.com/n8n-io/n8n/commit/ee7147c6b3b053ac8fc317319ab257204e599f16))
+* **MySQL Node:** Fix "Maximum call stack size exceeded" error when handling a large number of rows ([#10965](https://github.com/n8n-io/n8n/issues/10965)) ([62159bd](https://github.com/n8n-io/n8n/commit/62159bd71c9a0303b597a68113e0ac50473ee8d4))
+* **Notion Node:** Allow UUID v8 in notion id checks ([#10938](https://github.com/n8n-io/n8n/issues/10938)) ([46beda0](https://github.com/n8n-io/n8n/commit/46beda05f6771c31bcf0b6a781976d8261079a66))
+
+
+### Features
+
+* **Brandfetch Node:** Update to use new API ([#10877](https://github.com/n8n-io/n8n/issues/10877)) ([08ba9a3](https://github.com/n8n-io/n8n/commit/08ba9a36a43b6c84f69bb04fa4d6419a7a4adddf))
+* **editor:** Setup Sentry integration ([#10945](https://github.com/n8n-io/n8n/issues/10945)) ([6de4dff](https://github.com/n8n-io/n8n/commit/6de4dfff87e4da888567081a9928d9682bdea11d))
+* **editor:** Show a notice before deleting annotated executions ([#10934](https://github.com/n8n-io/n8n/issues/10934)) ([dcc1c72](https://github.com/n8n-io/n8n/commit/dcc1c72fc4b56c3252183541b22da801804d4f79))
+* Page size 1 option ([#10957](https://github.com/n8n-io/n8n/issues/10957)) ([bdc0622](https://github.com/n8n-io/n8n/commit/bdc0622f59e98c9e6c542f5cb59a2dbd9008ba96))
+* **Slack Node:** Add option to hide workflow link on message update ([#10927](https://github.com/n8n-io/n8n/issues/10927)) ([422c946](https://github.com/n8n-io/n8n/commit/422c9463c8d931a728615a1fe5a10f05a96ecaa2))
+
+
+### Performance Improvements
+
+* **editor:** Use virtual scrolling in `RunDataJson.vue` ([#10838](https://github.com/n8n-io/n8n/issues/10838)) ([f5474ff](https://github.com/n8n-io/n8n/commit/f5474ff79198a2f5a145d0a9df1bb651ea677ec5))
+
+
+
 # [1.60.0](https://github.com/n8n-io/n8n/compare/n8n@1.59.0...n8n@1.60.0) (2024-09-18)
 
 

@@ -11,7 +11,7 @@ import { inProduction, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
 import type { BooleanLicenseFeature } from '@/interfaces';
 import { License } from '@/license';
-import { userHasScope } from '@/permissions/check-access';
+import { userHasScopes } from '@/permissions/check-access';
 import type { AuthenticatedRequest } from '@/requests';
 import { send } from '@/response-helper'; // TODO: move `ResponseHelper.send` to this file
 
@@ -151,7 +151,7 @@ export class ControllerRegistry {
 
 			const { scope, globalOnly } = accessScope;
 
-			if (!(await userHasScope(req.user, [scope], globalOnly, req.params))) {
+			if (!(await userHasScopes(req.user, [scope], globalOnly, req.params))) {
 				return res.status(403).json({
 					status: 'error',
 					message: RESPONSE_ERROR_MESSAGES.MISSING_SCOPE,
