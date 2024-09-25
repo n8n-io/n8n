@@ -28,7 +28,7 @@ void (async function start() {
 		n8nUri: config.n8nUri,
 	});
 
-	const wsUrl = `ws://${config.n8nUri}/rest/runners/_ws?token=${grantToken}`;
+	const wsUrl = `ws://${config.n8nUri}/rest/runners/_ws`;
 
-	_runner = new JsTaskRunner('javascript', wsUrl, 5);
+	_runner = new JsTaskRunner('javascript', wsUrl, grantToken, 5);
 })();

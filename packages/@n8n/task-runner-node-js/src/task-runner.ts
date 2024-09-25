@@ -60,6 +60,7 @@ export class TaskRunner {
 	constructor(
 		public taskType: string,
 		wsUrl: string,
+		grantToken: string,
 		private maxConcurrency: number,
 		public name?: string,
 	) {
@@ -67,7 +68,12 @@ export class TaskRunner {
 
 		const url = new URL(wsUrl);
 		url.searchParams.append('id', this.id);
-		this.ws = new WebSocket(url.toString());
+		this.ws = new WebSocket(url.toString(), {
+			headers: {
+				authorization: `Bearer ${grantToken}`,
+			},
+		});
+		console.log('1');
 		this.ws.addEventListener('message', this._wsMessage);
 		this.ws.addEventListener('close', this.stopTaskOffers);
 	}

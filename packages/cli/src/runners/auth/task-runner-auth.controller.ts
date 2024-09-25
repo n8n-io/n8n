@@ -44,12 +44,13 @@ export class TaskRunnerAuthController {
 	 * Middleware to authenticate task runner init requests
 	 */
 	async authMiddleware(req: TaskRunnerServerInitRequest, res: Response, next: NextFunction) {
-		const grantToken = req.query.token;
-		if (!grantToken) {
+		const authHeader = req.headers.authorization;
+		if (typeof authHeader !== 'string' || !authHeader.startsWith('Bearer ')) {
 			res.status(401).json({ code: 401, message: 'Unauthorized' });
 			return;
 		}
 
+		const grantToken = authHeader.slice('Bearer '.length);
 		const isConsumed = await this.taskRunnerAuthService.tryConsumeGrantToken(grantToken);
 		if (!isConsumed) {
 			res.status(403).json({ code: 403, message: 'Forbidden' });

@@ -72,7 +72,9 @@ describe('TaskRunnerAuthController', () => {
 
 		const createMockReqWithToken = (token?: string) =>
 			mock<TaskRunnerServerInitRequest>({
-				query: { token },
+				headers: {
+					authorization: `Bearer ${token}`,
+				},
 			});
 
 		beforeEach(() => {
@@ -80,7 +82,7 @@ describe('TaskRunnerAuthController', () => {
 		});
 
 		it('should respond with 401 when grant token is missing', async () => {
-			const req = createMockReqWithToken();
+			const req = mock<TaskRunnerServerInitRequest>({});
 
 			await authController.authMiddleware(req, res, next);
 

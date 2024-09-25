@@ -1,3 +1,5 @@
+import * as a from 'node:assert/strict';
+
 export type AuthOpts = {
 	n8nUri: string;
 	authToken: string;
@@ -24,7 +26,9 @@ export async function authenticate(opts: AuthOpts) {
 			throw new Error(`Invalid response status ${response.status}: ${await response.text()}`);
 		}
 
-		const { token: grantToken } = (await response.json()) as { token: string };
+		const { data } = (await response.json()) as { data: { token: string } };
+		const grantToken = data.token;
+		a.ok(grantToken);
 
 		return grantToken;
 	} catch (e) {
