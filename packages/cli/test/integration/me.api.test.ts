@@ -26,7 +26,7 @@ beforeAll(() => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['ApiKey', 'User']);
+	await testDb.truncate(['User']);
 	mockInstance(GlobalConfig, { publicApi: { disabled: false } });
 });
 
