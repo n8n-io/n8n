@@ -102,15 +102,6 @@ describe('useCanvasOperations', () => {
 			expect(result).toBe(expectedDescription);
 		});
 
-		it('should throw an error when node type does not exist', () => {
-			const type = 'nonexistentType';
-			const { requireNodeTypeDescription } = useCanvasOperations({ router });
-
-			expect(() => {
-				requireNodeTypeDescription(type);
-			}).toThrow();
-		});
-
 		it('should return node type description when only type is provided and it exists', () => {
 			const nodeTypesStore = useNodeTypesStore();
 			const type = 'testTypeWithoutVersion';
@@ -122,6 +113,25 @@ describe('useCanvasOperations', () => {
 			const result = requireNodeTypeDescription(type);
 
 			expect(result).toBe(expectedDescription);
+		});
+
+		it("should return placeholder node type description if node type doesn't exist", () => {
+			const type = 'nonexistentType';
+
+			const { requireNodeTypeDescription } = useCanvasOperations({ router });
+			const result = requireNodeTypeDescription(type);
+
+			expect(result).toEqual({
+				name: type,
+				displayName: type,
+				description: '',
+				defaults: {},
+				group: [],
+				inputs: [],
+				outputs: [],
+				properties: [],
+				version: 1,
+			});
 		});
 	});
 
