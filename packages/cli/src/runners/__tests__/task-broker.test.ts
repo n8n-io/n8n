@@ -1,7 +1,6 @@
 import { mock } from 'jest-mock-extended';
-import type { INodeExecutionData } from 'n8n-workflow';
 
-import type { RunnerMessage } from '../runner-types';
+import type { RunnerMessage, TaskResultData } from '../runner-types';
 import { TaskBroker, TaskRejectError } from '../task-broker.service';
 import type { TaskOffer, TaskRequest, TaskRunner } from '../task-broker.service';
 
@@ -371,7 +370,7 @@ describe('TaskBroker', () => {
 			const runnerId = 'runner1';
 			const taskId = 'task1';
 			const requesterId = 'requester1';
-			const data = mock<INodeExecutionData[]>();
+			const data = mock<TaskResultData>();
 
 			const message: RunnerMessage.ToN8n.TaskDone = {
 				type: 'runner:taskdone',

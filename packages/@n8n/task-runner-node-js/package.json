@@ -10,7 +10,8 @@
     "build": "tsc -p ./tsconfig.build.json",
     "test": "jest",
     "lint": "eslint .",
-    "lintfix": "eslint . --fix"
+    "lintfix": "eslint . --fix",
+    "watch": "tsc -w -p ./tsconfig.build.json"
   },
   "engines": {
     "node": ">=20.15",

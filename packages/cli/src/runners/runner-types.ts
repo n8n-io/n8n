@@ -205,6 +205,7 @@ export namespace RunnerMessage {
 }
 
 export const RPC_ALLOW_LIST = [
+	'logNodeOutput',
 	'helpers.httpRequestWithAuthentication',
 	'helpers.requestWithAuthenticationPaginated',
 	// "helpers.normalizeItems"
