@@ -51,10 +51,7 @@ export { ExpressionExtensions } from './Extensions';
 export * as ExpressionParser from './Extensions/ExpressionParser';
 export { NativeMethods } from './NativeMethods';
 export * from './NodeParameters/FilterParameter';
-export {
-	CredentialSchema,
-	InferCredentialSchema,
-} from './CredentialSchema/CredentialSchema';
+export * from './CredentialSchema/CredentialSchema';
 
 export type {
 	DocMetadata,

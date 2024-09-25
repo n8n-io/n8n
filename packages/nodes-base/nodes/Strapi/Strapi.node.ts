@@ -1,8 +1,8 @@
 import type {
-	IExecuteFunctions,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
+	IExecuteFunctions,
 	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
@@ -19,8 +19,9 @@ import {
 	validateJSON,
 } from './GenericFunctions';
 
+import { StrapiApi, type StrapiApiCredential } from '@credentials/StrapiApi.credentials';
+import { StrapiTokenApi } from '../../credentials/StrapiTokenApi.credentials';
 import { entryFields, entryOperations } from './EntryDescription';
-import type { StrapiApiCredential } from '@credentials/StrapiApi.credentials';
 
 export class Strapi implements INodeType {
 	description: INodeTypeDescription = {
@@ -148,10 +149,10 @@ export class Strapi implements INodeType {
 
 		if (authenticationMethod === 'password') {
 			const { jwt } = await getToken.call(this);
-			apiVersion = (await this.getCredentials('strapiApi')).apiVersion;
+			apiVersion = (await this.getCredentials(StrapiApi)).apiVersion;
 			headers.Authorization = `Bearer ${jwt}`;
 		} else {
-			apiVersion = (await this.getCredentials('strapiTokenApi')).apiVersion;
+			apiVersion = (await this.getCredentials(StrapiTokenApi)).apiVersion;
 		}
 
 		for (let i = 0; i < length; i++) {

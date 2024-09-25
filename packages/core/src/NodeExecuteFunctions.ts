@@ -102,6 +102,7 @@ import type {
 	SSHTunnelFunctions,
 	SchedulingFunctions,
 	AiEvent,
+	ICredentialType,
 } from 'n8n-workflow';
 import {
 	NodeConnectionType,
@@ -1995,7 +1996,7 @@ export function getAdditionalKeys(
 export async function getCredentials<T extends object = ICredentialDataDecryptedObject>(
 	workflow: Workflow,
 	node: INode,
-	type: string,
+	credType: string | (new () => ICredentialType),
 	additionalData: IWorkflowExecuteAdditionalData,
 	mode: WorkflowExecuteMode,
 	executeData?: IExecuteData,
@@ -2004,6 +2005,7 @@ export async function getCredentials<T extends object = ICredentialDataDecrypted
 	connectionInputData?: INodeExecutionData[],
 	itemIndex?: number,
 ): Promise<T> {
+	const type = typeof credType === 'string' ? credType : credType.name;
 	// Get the NodeType as it has the information if the credentials are required
 	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 	if (nodeType === undefined) {
@@ -3496,8 +3498,10 @@ export function getExecutePollFunctions(
 			},
 			getMode: () => mode,
 			getActivationMode: () => activation,
-			getCredentials: async (type) =>
-				await getCredentials(workflow, node, type, additionalData, mode),
+			getCredentials: async (type: string | (new () => ICredentialType)) => {
+				const typeString = typeof type === 'string' ? type : type.name;
+				return await getCredentials(workflow, node, typeString, additionalData, mode);
+			},
 			getNodeParameter: (
 				parameterName: string,
 				fallbackValue?: any,
@@ -3560,7 +3564,7 @@ export function getExecuteTriggerFunctions(
 			},
 			getMode: () => mode,
 			getActivationMode: () => activation,
-			getCredentials: async (type) =>
+			getCredentials: async (type: string | (new () => ICredentialType)) =>
 				await getCredentials(workflow, node, type, additionalData, mode),
 			getNodeParameter: (
 				parameterName: string,
@@ -3620,7 +3624,7 @@ export function getExecuteFunctions(
 			...getCommonWorkflowFunctions(workflow, node, additionalData),
 			...executionCancellationFunctions(abortSignal),
 			getMode: () => mode,
-			getCredentials: async (type, itemIndex) =>
+			getCredentials: async (type: string | (new () => ICredentialType), itemIndex: number) =>
 				await getCredentials(
 					workflow,
 					node,
@@ -3948,7 +3952,7 @@ export function getExecuteSingleFunctions(
 			getContext(type: ContextType): IContextObject {
 				return NodeHelpers.getContext(runExecutionData, type, node);
 			},
-			getCredentials: async (type) =>
+			getCredentials: async (type: string | (new () => ICredentialType)) =>
 				await getCredentials(
 					workflow,
 					node,
@@ -4088,7 +4092,7 @@ export function getLoadOptionsFunctions(
 	return ((workflow: Workflow, node: INode, path: string) => {
 		return {
 			...getCommonWorkflowFunctions(workflow, node, additionalData),
-			getCredentials: async (type) =>
+			getCredentials: async (type: string | (new () => ICredentialType)) =>
 				await getCredentials(workflow, node, type, additionalData, 'internal'),
 			getCurrentNodeParameter: (
 				parameterPath: string,
@@ -4169,7 +4173,7 @@ export function getExecuteHookFunctions(
 	return ((workflow: Workflow, node: INode) => {
 		return {
 			...getCommonWorkflowFunctions(workflow, node, additionalData),
-			getCredentials: async (type) =>
+			getCredentials: async (type: string | (new () => ICredentialType)) =>
 				await getCredentials(workflow, node, type, additionalData, mode),
 			getMode: () => mode,
 			getActivationMode: () => activation,
@@ -4243,7 +4247,7 @@ export function getExecuteWebhookFunctions(
 				}
 				return additionalData.httpRequest.body;
 			},
-			getCredentials: async (type) =>
+			getCredentials: async (type: string | (new () => ICredentialType)) =>
 				await getCredentials(workflow, node, type, additionalData, mode),
 			getHeaderData(): IncomingHttpHeaders {
 				if (additionalData.httpRequest === undefined) {

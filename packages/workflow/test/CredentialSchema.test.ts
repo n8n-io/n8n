@@ -1,4 +1,4 @@
-import { CredentialSchema } from '../CredentialSchema';
+import { CredentialSchema } from '../src/CredentialSchema/CredentialSchema';
 
 describe('CredentialSchema', () => {
 	test('should convert Strapi credential to node properties', () => {

@@ -1,8 +1,9 @@
-import z, { type ZodOptional, type ZodType } from "zod";
-import type { INodeProperties } from "@/Interfaces";
+import z, { type ZodOptional, type ZodType } from 'zod';
+
+import type { INodeProperties } from '@/Interfaces';
 
 function isObject(value: unknown): value is object {
-	return typeof value === "object" && value !== null && !Array.isArray(value);
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function removeUndefinedProperties<T extends object>(obj: T): T {
@@ -40,25 +41,19 @@ class CredentialSchemaRootObject<
 		);
 	}
 
-	getProperty<K extends keyof T>(key: K): T[K]["metadata"] {
+	getProperty<K extends keyof T>(key: K): T[K]['metadata'] {
 		return this.shape[key].metadata;
 	}
 
 	toNodeProperties() {
-		return Object.entries(this.shape).map(([key, schema]) =>
-			schema.toNodeProperties(key),
-		);
+		return Object.entries(this.shape).map(([key, schema]) => schema.toNodeProperties(key));
 	}
 }
 
 type ToZodSchemaReturnType<
 	M extends BaseMetadata = BaseMetadata,
 	S extends ZodType | null = ZodType,
-> = M["optional"] extends true
-	? S extends null
-		? null
-		: ZodOptional<NonNullable<S>>
-	: S;
+> = M['optional'] extends true ? (S extends null ? null : ZodOptional<NonNullable<S>>) : S;
 
 abstract class CredentialSchemaProperty<
 	M extends BaseMetadata = BaseMetadata,
@@ -82,8 +77,8 @@ abstract class CredentialSchemaProperty<
 			name,
 			displayName: this.metadata.label,
 			description: this.metadata.description,
-			default: "",
-			type: "string",
+			default: '',
+			type: 'string',
 		});
 	}
 }
@@ -102,7 +97,7 @@ class CredentialSchemaString<
 	toNodeProperties(name: string): INodeProperties {
 		return removeUndefinedProperties({
 			...super.toNodeProperties(name),
-			type: "string",
+			type: 'string',
 			placeholder: this.metadata.placeholder,
 			typeOptions: { password: this.metadata.password },
 		});
@@ -123,7 +118,7 @@ class CredentialSchemaNumber<
 	toNodeProperties(name: string): INodeProperties {
 		return removeUndefinedProperties({
 			...super.toNodeProperties(name),
-			type: "number",
+			type: 'number',
 			default: this.metadata.default,
 		});
 	}
@@ -145,22 +140,18 @@ class CredentialSchemaOptions<
 		const { options } = this.metadata;
 		return removeUndefinedProperties({
 			...super.toNodeProperties(name),
-			type: "options",
+			type: 'options',
 			options: options.map((option) => ({
 				name: option.label,
 				value: option.value,
 				description: option.description,
 			})),
-			default:
-				options.find((option) => option.default)?.value ?? options[0].value,
+			default: options.find((option) => option.default)?.value ?? options[0].value,
 		});
 	}
 }
 
-class CredentialSchemaNotice extends CredentialSchemaProperty<
-	BaseMetadata,
-	null
-> {
+class CredentialSchemaNotice extends CredentialSchemaProperty<BaseMetadata, null> {
 	constructor(public notice: string) {
 		super({ label: notice }, null);
 	}
@@ -168,7 +159,7 @@ class CredentialSchemaNotice extends CredentialSchemaProperty<
 	toNodeProperties(name: string): INodeProperties {
 		return {
 			...super.toNodeProperties(name),
-			type: "notice",
+			type: 'notice',
 		};
 	}
 }
@@ -208,18 +199,18 @@ type Zodify<
 	M extends BaseMetadata,
 	S extends ZodType | null,
 	T extends CredentialSchemaProperty<M, S>,
-> = ReturnType<T["toZodSchema"]> extends z.ZodType
-	? ReturnType<T["toZodSchema"]>
-	: never;
+> = ReturnType<T['toZodSchema']> extends z.ZodType ? ReturnType<T['toZodSchema']> : never;
 
 type ZodifyObject<
 	M extends BaseMetadata,
 	S extends ZodType | null,
 	T extends { [k: string]: CredentialSchemaProperty<M, S> },
 > = {
-	[K in keyof T as ReturnType<T[K]["toZodSchema"]> extends z.ZodType
-		? K
-		: never]: Zodify<M, S, T[K]>;
+	[K in keyof T as ReturnType<T[K]['toZodSchema']> extends z.ZodType ? K : never]: Zodify<
+		M,
+		S,
+		T[K]
+	>;
 };
 
 type Optional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
@@ -233,11 +224,11 @@ export const CredentialSchema = {
 		return new CredentialSchemaRootObject(shape);
 	},
 
-	password(options: Omit<Optional<StringMetadata, "label">, "password"> = {}) {
+	password(options: Omit<Optional<StringMetadata, 'label'>, 'password'> = {}) {
 		return new CredentialSchemaString(
 			{
 				password: true,
-				label: "Password",
+				label: 'Password',
 				...options,
 			},
 			z.string(),
@@ -251,24 +242,18 @@ export const CredentialSchema = {
 	number<M extends NumberMetadata>(options: M) {
 		return new CredentialSchemaNumber(options, z.number());
 	},
-	url(options: Optional<StringMetadata, "label"> = {}) {
-		return new CredentialSchemaString(
-			{ label: "URL", ...options },
-			z.string().url(),
-		);
+	url(options: Optional<StringMetadata, 'label'> = {}) {
+		return new CredentialSchemaString({ label: 'URL', ...options }, z.string().url());
 	},
-	email(options: Optional<StringMetadata, "label"> = {}) {
-		return new CredentialSchemaString(
-			{ label: "Email", ...options },
-			z.string().email(),
-		);
+	email(options: Optional<StringMetadata, 'label'> = {}) {
+		return new CredentialSchemaString({ label: 'Email', ...options }, z.string().email());
 	},
 	options<V extends string, M extends OptionsMetadata<V>>(options: M) {
 		return new CredentialSchemaOptions(
 			options,
 			z.enum(
 				options.options.map((option) => option.value) as NonEmptyArray<
-					M["options"][number]["value"]
+					M['options'][number]['value']
 				>,
 			),
 		);
@@ -278,11 +263,8 @@ export const CredentialSchema = {
 	},
 };
 
-export type TCredentialSchema = CredentialSchemaRootObject<
-	BaseMetadata,
-	ZodType | null
->;
+export type TCredentialSchema = CredentialSchemaRootObject<BaseMetadata, ZodType | null>;
 
 export type InferCredentialSchema<T extends TCredentialSchema> = z.infer<
-	ReturnType<T["toZodSchema"]>
+	ReturnType<T['toZodSchema']>
 >;

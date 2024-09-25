@@ -1,7 +1,11 @@
-import type { IAuthenticateGeneric, ICredentialTestRequest, ICredentialType } from 'n8n-workflow';
-import { CredentialSchema, type InferCredentialSchema } from '../utils/CredentialSchema';
+import {
+	CredentialSchema,
+	type ICredentialType,
+	type IAuthenticateGeneric,
+	type ICredentialTestRequest,
+} from 'n8n-workflow';
 
-export const strapiTokenApiCredential = CredentialSchema.create({
+const strapiTokenApiCredentialSchema = CredentialSchema.create({
 	apiToken: CredentialSchema.password({ label: 'API Token' }),
 	url: CredentialSchema.url({ placeholder: 'https://api.example.com' }),
 	apiVersion: CredentialSchema.options({
@@ -23,8 +27,6 @@ export const strapiTokenApiCredential = CredentialSchema.create({
 	}),
 });
 
-export type StrapiTokenApiCredential = InferCredentialSchema<typeof strapiTokenApiCredential>;
-
 export class StrapiTokenApi implements ICredentialType {
 	name = 'strapiTokenApi';
 
@@ -32,7 +34,9 @@ export class StrapiTokenApi implements ICredentialType {
 
 	documentationUrl = 'strapi';
 
-	properties = strapiTokenApiCredential.toNodeProperties();
+	properties = strapiTokenApiCredentialSchema.toNodeProperties();
+
+	schema = strapiTokenApiCredentialSchema;
 
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
