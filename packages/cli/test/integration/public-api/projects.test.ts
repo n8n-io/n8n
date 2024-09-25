@@ -151,7 +151,7 @@ describe('Projects in Public API', () => {
 			 * Act
 			 */
 			const response = await testServer
-				.publicApiAgentWithApiKey('')
+				.publicApiAgentWithoutApiKey()
 				.post('/projects')
 				.send(projectPayload);
 
@@ -244,7 +244,7 @@ describe('Projects in Public API', () => {
 			 * Act
 			 */
 			const response = await testServer
-				.publicApiAgentWithApiKey('')
+				.publicApiAgentWithoutApiKey()
 				.delete(`/projects/${project.id}`);
 
 			/**
@@ -333,7 +333,7 @@ describe('Projects in Public API', () => {
 			 * Act
 			 */
 			const response = await testServer
-				.publicApiAgentWithApiKey('')
+				.publicApiAgentWithoutApiKey()
 				.put(`/projects/${project.id}`)
 				.send({ name: 'new-name' });
 
