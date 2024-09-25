@@ -789,23 +789,17 @@ export class Clockify implements INodeType {
 						const options = this.getNodeParameter('options', i, {});
 
 						// Get current UTC time
-						let end = new Date().toISOString();
-
-						if (typeof options.end === 'string') {
-							if (!options.end.endsWith('Z')) {
-								options.end += 'Z';
-							}
-							end = options.end;
-						}
+						options.end = (options.end || new Date().toISOString()) as string;
 
 						if (typeof options.end === 'string' && !options.end.endsWith('Z')) {
 							options.end += 'Z';
 						}
+
 						responseData = await clockifyApiRequest.call(
 							this,
 							'PATCH',
 							`/workspaces/${workspaceId}/user/${userId}/time-entries`,
-							{ end },
+							options,
 							{},
 						);
 					}
