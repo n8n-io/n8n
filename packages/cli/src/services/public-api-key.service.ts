@@ -54,7 +54,7 @@ export class PublicApiKeyService {
 		return await Container.get(UserRepository)
 			.createQueryBuilder('user')
 			.innerJoin(ApiKey, 'apiKey', 'apiKey.userId = user.id')
-			.where('apiKey = :apiKey', { apiKey })
+			.where('apiKey.apiKey = :apiKey', { apiKey })
 			.select('user')
 			.getOne();
 	}
