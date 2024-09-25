@@ -1,8 +1,10 @@
 import { randomBytes } from 'crypto';
-import { Service } from 'typedi';
+import Container, { Service } from 'typedi';
 
 import type { User } from '@/databases/entities/user';
 import { ApiKeyRepository } from '@/databases/repositories/api-key.repository';
+import { UserRepository } from '@/databases/repositories/user.repository';
+import { ApiKey } from '@/databases/entities/api-key';
 
 export const API_KEY_PREFIX = 'n8n_api_';
 
@@ -30,6 +32,12 @@ export class PublicApiKeyService {
 		return await this.apiKeysRepository.findOneByOrFail({ apiKey });
 	}
 
+	/**
+	 * Retrieves and redacts API keys for a given user.
+	 *
+	 * @param {User} user - The user for whom to retrieve and redact API keys.
+	 * @returns {Promise<Array<{ apiKey: string }>>} A promise that resolves to an array of objects containing redacted API keys.
+	 */
 	async getRedactedApiKeysForUser(user: User) {
 		const apiKeys = await this.apiKeysRepository.findBy({ userId: user.id });
 		return apiKeys.map((apiKeyRecord) => ({
@@ -40,6 +48,15 @@ export class PublicApiKeyService {
 
 	async deleteApiKeyForUser(user: User, apiKeyId: string) {
 		await this.apiKeysRepository.delete({ userId: user.id, id: apiKeyId });
+	}
+
+	async getUserForApiKey(apiKey: string) {
+		return await Container.get(UserRepository)
+			.createQueryBuilder('user')
+			.innerJoin(ApiKey, 'apiKey', 'apiKey.userId = user.id')
+			.where('apiKey = :apiKey', { apiKey })
+			.select('user')
+			.getOne();
 	}
 
 	/**
