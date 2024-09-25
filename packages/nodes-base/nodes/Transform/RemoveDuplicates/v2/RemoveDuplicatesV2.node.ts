@@ -8,7 +8,6 @@ import type {
 	INodeTypeDescription,
 	ICheckProcessedOptions,
 	ProcessedDataContext,
-	ICheckProcessedOutput,
 } from 'n8n-workflow';
 
 import { compareItems, flattenKeys } from '@utils/utilities';
@@ -195,8 +194,7 @@ export class RemoveDuplicatesV2 implements INodeType {
 
 					const maxEntries = this.getNodeParameter('options.historySize', 0, 1000);
 
-					let itemsProcessed: ICheckProcessedOutput;
-					itemsProcessed = await this.helpers.checkProcessedAndRecord(
+					const itemsProcessed = await this.helpers.checkProcessedAndRecord(
 						Object.keys(itemMapping),
 						context as ProcessedDataContext,
 						{ mode: 'entries', maxEntries } as ICheckProcessedOptions,
@@ -244,8 +242,7 @@ export class RemoveDuplicatesV2 implements INodeType {
 
 					const maxEntries = this.getNodeParameter('options.historySize', 0, 1000);
 
-					let itemsProcessed: ICheckProcessedOutput;
-					itemsProcessed = await this.helpers.checkProcessedAndRecord(
+					const itemsProcessed = await this.helpers.checkProcessedAndRecord(
 						Object.keys(itemMapping),
 						context as ProcessedDataContext,
 						{ mode: 'latestIncrementalKey', maxEntries } as ICheckProcessedOptions,
@@ -292,8 +289,7 @@ export class RemoveDuplicatesV2 implements INodeType {
 						// TODO: Add continueOnFail, where should it and up?
 					}
 					const maxEntries = this.getNodeParameter('options.historySize', 0, 1000);
-					let itemsProcessed: ICheckProcessedOutput;
-					itemsProcessed = await this.helpers.checkProcessedAndRecord(
+					const itemsProcessed = await this.helpers.checkProcessedAndRecord(
 						Object.keys(itemMapping),
 						context as ProcessedDataContext,
 						{ mode: 'latestDate', maxEntries } as ICheckProcessedOptions,

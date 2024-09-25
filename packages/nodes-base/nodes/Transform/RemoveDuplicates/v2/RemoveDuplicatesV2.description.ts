@@ -113,7 +113,7 @@ export const removeDuplicatesNodeFields: INodeProperties[] = [
 
 	// ----------------------------------
 	{
-		displayName: 'Keep items where',
+		displayName: 'Keep Items Where',
 		name: 'logic',
 		type: 'options',
 		noDataExpression: true,
