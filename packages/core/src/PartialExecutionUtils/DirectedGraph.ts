@@ -125,6 +125,32 @@ export class DirectedGraph {
 		return directChildren;
 	}
 
+	private getChildrenRecursive(node: INode, children: Set<INode>) {
+		const directChildren = this.getDirectChildren(node);
+
+		for (const directChild of directChildren) {
+			// Break out if we found a cycle.
+			if (children.has(directChild.to)) {
+				continue;
+			}
+			children.add(directChild.to);
+			this.getChildrenRecursive(directChild.to, children);
+		}
+
+		return children;
+	}
+
+	/**
+	 * Returns all nodes that are children of the node that is passed as an
+	 * argument.
+	 *
+	 * If the node being passed in is a child of itself (e.g. is part of a
+	 * cylce), the return set will contain it as well.
+	 */
+	getChildren(node: INode) {
+		return this.getChildrenRecursive(node, new Set());
+	}
+
 	getDirectParents(node: INode) {
 		const nodeExists = this.nodes.get(node.name) === node;
 		a.ok(nodeExists);
