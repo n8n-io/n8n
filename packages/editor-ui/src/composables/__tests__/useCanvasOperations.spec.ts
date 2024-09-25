@@ -616,7 +616,6 @@ describe('useCanvasOperations', () => {
 			deleteNode(id, { trackHistory: true });
 
 			expect(workflowsStore.removeNodeById).toHaveBeenCalledWith(id);
-			expect(workflowsStore.removeNodeConnectionsById).toHaveBeenCalledWith(id);
 			expect(workflowsStore.removeNodeExecutionDataById).toHaveBeenCalledWith(id);
 			expect(historyStore.pushCommandToUndo).toHaveBeenCalledWith(new RemoveNodeCommand(node));
 		});
@@ -644,7 +643,6 @@ describe('useCanvasOperations', () => {
 			deleteNode(id, { trackHistory: false });
 
 			expect(workflowsStore.removeNodeById).toHaveBeenCalledWith(id);
-			expect(workflowsStore.removeNodeConnectionsById).toHaveBeenCalledWith(id);
 			expect(workflowsStore.removeNodeExecutionDataById).toHaveBeenCalledWith(id);
 			expect(historyStore.pushCommandToUndo).not.toHaveBeenCalled();
 		});
@@ -714,7 +712,6 @@ describe('useCanvasOperations', () => {
 			deleteNode(nodes[1].id);
 
 			expect(workflowsStore.removeNodeById).toHaveBeenCalledWith(nodes[1].id);
-			expect(workflowsStore.removeNodeConnectionsById).toHaveBeenCalledWith(nodes[1].id);
 			expect(workflowsStore.removeNodeExecutionDataById).toHaveBeenCalledWith(nodes[1].id);
 			expect(workflowsStore.removeNodeById).toHaveBeenCalledWith(nodes[1].id);
 		});
@@ -1353,6 +1350,62 @@ describe('useCanvasOperations', () => {
 			revertDeleteConnection(connection);
 
 			expect(workflowsStore.addConnection).toHaveBeenCalledWith({ connection });
+		});
+	});
+
+	describe('deleteConnectionsByNodeId', () => {
+		it('should delete all connections for a given node ID', () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const { deleteConnectionsByNodeId } = useCanvasOperations({ router });
+
+			const node1 = createTestNode({ id: 'node1', name: 'Node 1' });
+			const node2 = createTestNode({ id: 'node2', name: 'Node 1' });
+
+			workflowsStore.workflow.connections = {
+				[node1.name]: {
+					[NodeConnectionType.Main]: [
+						[{ node: node2.name, type: NodeConnectionType.Main, index: 0 }],
+					],
+				},
+				node2: {
+					[NodeConnectionType.Main]: [
+						[{ node: node1.name, type: NodeConnectionType.Main, index: 0 }],
+					],
+				},
+			};
+
+			workflowsStore.getNodeById.mockReturnValue(node1);
+			workflowsStore.getNodeByName.mockReturnValueOnce(node1).mockReturnValueOnce(node2);
+
+			deleteConnectionsByNodeId(node1.id);
+
+			expect(workflowsStore.removeConnection).toHaveBeenCalledWith({
+				connection: [
+					{ node: node1.name, type: NodeConnectionType.Main, index: 0 },
+					{ node: node2.name, type: NodeConnectionType.Main, index: 0 },
+				],
+			});
+
+			expect(workflowsStore.removeConnection).toHaveBeenCalledWith({
+				connection: [
+					{ node: node2.name, type: NodeConnectionType.Main, index: 0 },
+					{ node: node1.name, type: NodeConnectionType.Main, index: 0 },
+				],
+			});
+
+			expect(workflowsStore.workflow.connections[node1.name]).toBeUndefined();
+		});
+
+		it('should not delete connections if node ID does not exist', () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const { deleteConnectionsByNodeId } = useCanvasOperations({ router });
+
+			const nodeId = 'nonexistent';
+			workflowsStore.getNodeById.mockReturnValue(undefined);
+
+			deleteConnectionsByNodeId(nodeId);
+
+			expect(workflowsStore.removeConnection).not.toHaveBeenCalled();
 		});
 	});
 
