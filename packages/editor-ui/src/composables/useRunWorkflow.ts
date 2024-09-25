@@ -325,6 +325,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 		const waitForWebhook = async (): Promise<string> => {
 			return await new Promise<string>((resolve) => {
 				let delay = 300;
+				let timeoutId: NodeJS.Timeout | null = null;
 
 				const checkWebhook = async () => {
 					await useExternalHooks().run('workflowRun.runWorkflow', {
@@ -335,14 +336,16 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 					if (workflowsStore.activeExecutionId) {
 						executionId = workflowsStore.activeExecutionId;
 						runWorkflowApiResponse = { executionId };
+
+						if (timeoutId) clearTimeout(timeoutId);
+
 						resolve(executionId);
 					}
 
 					delay = Math.min(delay * 1.1, MAX_DELAY);
-					setTimeout(checkWebhook, delay);
+					timeoutId = setTimeout(checkWebhook, delay);
 				};
-
-				setTimeout(checkWebhook, delay);
+				timeoutId = setTimeout(checkWebhook, delay);
 			});
 		};
 
@@ -355,18 +358,27 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 		const resolveWaitingNodesData = async (): Promise<void> => {
 			return await new Promise<void>((resolve) => {
 				let delay = 300;
+				let timeoutId: NodeJS.Timeout | null = null;
 
 				const processExecution = async () => {
+					await useExternalHooks().run('workflowRun.runWorkflow', {
+						nodeName: options.destinationNode,
+						source: options.source,
+					});
 					const execution = await workflowsStore.getExecution((executionId as string) || '');
 
 					localStorage.removeItem(FORM_RELOAD);
 
 					if (!execution || workflowsStore.workflowExecutionData === null) {
+						uiStore.removeActiveAction('workflowRunning');
+						if (timeoutId) clearTimeout(timeoutId);
 						resolve();
 						return;
 					}
 
 					if (execution.finished || ['error', 'canceled', 'crashed'].includes(execution.status)) {
+						workflowsStore.setWorkflowExecutionData(execution);
+						if (timeoutId) clearTimeout(timeoutId);
 						resolve();
 						return;
 					}
@@ -397,25 +409,13 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 					}
 
 					delay = Math.min(delay * 1.1, MAX_DELAY);
-					setTimeout(processExecution, delay);
+					timeoutId = setTimeout(processExecution, delay);
 				};
-
-				setTimeout(processExecution, delay);
+				timeoutId = setTimeout(processExecution, delay);
 			});
 		};
 
 		await resolveWaitingNodesData();
-
-		const execution = await workflowsStore.getExecution((executionId as string) || '');
-
-		if (execution) {
-			workflowsStore.setWorkflowExecutionData(execution);
-		}
-
-		await useExternalHooks().run('workflowRun.runWorkflow', {
-			nodeName: options.destinationNode,
-			source: options.source,
-		});
 
 		return runWorkflowApiResponse;
 	}

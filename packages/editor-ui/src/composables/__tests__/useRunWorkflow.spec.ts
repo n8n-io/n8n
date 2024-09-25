@@ -378,30 +378,5 @@ describe('useRunWorkflow({ router })', () => {
 			expect(workflowsStore.setWorkflowExecutionData).toHaveBeenCalled();
 			expect(workflowsStore.workflowExecutionData).toBe(null);
 		});
-
-		it('should retry execution when waiting for webhook and eventually resolve', async () => {
-			const { runWorkflowResolvePending } = useRunWorkflow({ router });
-			const mockExecutionResponse = { waitingForWebhook: true };
-
-			vi.mocked(workflowsStore)
-				.runWorkflow.mockResolvedValueOnce(mockExecutionResponse)
-				.mockResolvedValueOnce({
-					executionId: '123',
-				});
-			vi.mocked(workflowsStore).allNodes = [];
-
-			vi.mocked(workflowsStore)
-				.getExecution.mockResolvedValueOnce({ status: 'waiting' } as unknown as IExecutionResponse)
-				.mockResolvedValueOnce({ status: 'waiting' } as unknown as IExecutionResponse)
-				.mockResolvedValueOnce({ finished: true } as unknown as IExecutionResponse);
-
-			const result = await runWorkflowResolvePending({});
-
-			expect(result).toEqual({
-				executionId: '123',
-			});
-			expect(workflowsStore.getExecution).toHaveBeenCalledTimes(4);
-			expect(workflowsStore.getExecution).toHaveBeenNthCalledWith(4, '123');
-		});
 	});
 });

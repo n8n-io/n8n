@@ -24,6 +24,7 @@ import InputNodeSelect from './InputNodeSelect.vue';
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import RunData from './RunData.vue';
 import WireMeUp from './WireMeUp.vue';
+import { useI18n } from '@/composables/useI18n';
 
 type MappingMode = 'debugging' | 'mapping';
 
@@ -328,6 +329,15 @@ export default defineComponent({
 		activatePane() {
 			this.$emit('activatePane');
 		},
+		waitingNodeMessage(resume: string) {
+			if (resume === 'form') {
+				return useI18n().baseText('ndv.output.waitNodeWaitingForFormSubmission');
+			}
+			if (resume === 'webhook') {
+				return useI18n().baseText('ndv.output.waitNodeWaitingForWebhook');
+			}
+			return useI18n().baseText('ndv.output.waitNodeWaiting');
+		},
 	},
 });
 </script>
@@ -446,6 +456,13 @@ export default defineComponent({
 					</a>
 				</n8n-text>
 			</div>
+		</template>
+
+		<template #node-waiting>
+			<n8n-text :bold="true" color="text-dark" size="large">Waiting for input</n8n-text>
+			<n8n-text>
+				{{ waitingNodeMessage(activeNode?.parameters?.resume as string) }}
+			</n8n-text>
 		</template>
 
 		<template #no-output-data>

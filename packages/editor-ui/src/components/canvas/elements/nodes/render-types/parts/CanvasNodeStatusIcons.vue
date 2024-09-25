@@ -36,14 +36,9 @@ const hideNodeIssues = computed(() => false); // @TODO Implement this
 	</div>
 	<div
 		v-else-if="executionWaiting || executionStatus === 'waiting'"
-		:class="[$style.status, $style.waiting]"
+		:class="[$style.status, $style['node-waiting-spinner']]"
 	>
-		<N8nTooltip placement="bottom">
-			<template #content>
-				<div v-text="executionWaiting"></div>
-			</template>
-			<FontAwesomeIcon icon="clock" />
-		</N8nTooltip>
+		<FontAwesomeIcon icon="sync-alt" spin />
 	</div>
 	<div
 		v-else-if="hasPinnedData && !nodeHelpers.isProductionExecutionPreview.value && !isDisabled"
@@ -96,6 +91,15 @@ const hideNodeIssues = computed(() => false); // @TODO Implement this
 	justify-content: center;
 	font-size: 3.75em;
 	color: hsla(var(--color-primary-h), var(--color-primary-s), var(--color-primary-l), 0.7);
+}
+.node-waiting-spinner {
+	width: calc(100% - 2 * var(--canvas-node--status-icons-offset));
+	height: calc(100% - 2 * var(--canvas-node--status-icons-offset));
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 3.75em;
+	color: var(--color-secondary);
 }
 
 .issues {
