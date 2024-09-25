@@ -1,18 +1,9 @@
-<script lang="ts">
-import { defineComponent } from 'vue';
-import { mapStores } from 'pinia';
-
+<script setup lang="ts">
+import { computed, onMounted, ref, watch } from 'vue';
 import TemplateDetails from '@/components/TemplateDetails.vue';
 import TemplateList from '@/components/TemplateList.vue';
 import TemplatesView from './TemplatesView.vue';
-
-import type {
-	ITemplatesCollection,
-	ITemplatesCollectionFull,
-	ITemplatesWorkflow,
-} from '@/Interface';
-
-import { setPageTitle } from '@/utils/htmlUtils';
+import type { ITemplatesWorkflow } from '@/Interface';
 import { VIEWS } from '@/constants';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { usePostHog } from '@/stores/posthog.store';
@@ -20,109 +11,105 @@ import { useTemplateWorkflow } from '@/utils/templates/templateActions';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { isFullTemplatesCollection } from '@/utils/templates/typeGuards';
+import { useRoute, useRouter } from 'vue-router';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { setPageTitle } from '@/utils/htmlUtils';
+import { useI18n } from '@/composables/useI18n';
 
-export default defineComponent({
-	name: 'TemplatesCollectionView',
-	components: {
-		TemplateDetails,
-		TemplateList,
-		TemplatesView,
-	},
-	setup() {
-		const externalHooks = useExternalHooks();
+const externalHooks = useExternalHooks();
+const templatesStore = useTemplatesStore();
+const posthogStore = usePostHog();
+const nodeTypesStore = useNodeTypesStore();
 
-		return {
-			externalHooks,
-		};
-	},
-	computed: {
-		...mapStores(useTemplatesStore, usePostHog),
-		collection(): ITemplatesCollectionFull | ITemplatesCollection | null {
-			return this.templatesStore.getCollectionById(this.collectionId);
-		},
-		collectionId(): string {
-			return Array.isArray(this.$route.params.id)
-				? this.$route.params.id[0]
-				: this.$route.params.id;
-		},
-		collectionWorkflows(): ITemplatesWorkflow[] {
-			if (!this.collection || this.loading) {
-				return [];
-			}
-			return this.collection.workflows
-				.map(({ id }) => this.templatesStore.getTemplateById(id.toString()))
-				.filter((workflow): workflow is ITemplatesWorkflow => !!workflow);
-		},
-	},
-	data() {
-		return {
-			loading: true,
-			notFoundError: false,
-		};
-	},
-	watch: {
-		collection(collection: ITemplatesCollection) {
-			if (collection) {
-				setPageTitle(`n8n - Template collection: ${collection.name}`);
-			} else {
-				setPageTitle('n8n - Templates');
-			}
-		},
-	},
-	async mounted() {
-		this.scrollToTop();
+const route = useRoute();
+const router = useRouter();
+const telemetry = useTelemetry();
+const i18n = useI18n();
 
-		if (this.collection && 'full' in this.collection && this.collection.full) {
-			this.loading = false;
-			return;
-		}
+const loading = ref(true);
+const notFoundError = ref(false);
 
-		try {
-			await this.templatesStore.fetchCollectionById(this.collectionId);
-		} catch (e) {
-			this.notFoundError = true;
-		}
-		this.loading = false;
-	},
-	methods: {
-		scrollToTop() {
-			setTimeout(() => {
-				const contentArea = document.getElementById('content');
-				if (contentArea) {
-					contentArea.scrollTo({
-						top: 0,
-						behavior: 'smooth',
-					});
-				}
-			}, 50);
-		},
-		onOpenTemplate({ event, id }: { event: MouseEvent; id: string }) {
-			this.navigateTo(event, VIEWS.TEMPLATE, id);
-		},
-		async onUseWorkflow({ event, id }: { event: MouseEvent; id: string }) {
-			await useTemplateWorkflow({
-				posthogStore: this.posthogStore,
-				router: this.$router,
-				templateId: id,
-				inNewBrowserTab: event.metaKey || event.ctrlKey,
-				templatesStore: useTemplatesStore(),
-				externalHooks: this.externalHooks,
-				nodeTypesStore: useNodeTypesStore(),
-				telemetry: this.$telemetry,
-				source: 'template_list',
+const collectionId = computed(() => {
+	const { id } = route.params;
+	return Array.isArray(id) ? id[0] : id;
+});
+
+const collection = computed(() => templatesStore.getCollectionById(collectionId.value));
+
+const collectionWorkflows = computed(() => {
+	if (!collection.value || loading.value) {
+		return [];
+	}
+	return collection.value.workflows
+		.map(({ id }) => templatesStore.getTemplateById(id.toString()))
+		.filter((workflow): workflow is ITemplatesWorkflow => !!workflow);
+});
+
+const scrollToTop = () => {
+	setTimeout(() => {
+		const contentArea = document.getElementById('content');
+		if (contentArea) {
+			contentArea.scrollTo({
+				top: 0,
+				behavior: 'smooth',
 			});
-		},
-		navigateTo(e: MouseEvent, page: string, id: string) {
-			if (e.metaKey || e.ctrlKey) {
-				const route = this.$router.resolve({ name: page, params: { id } });
-				window.open(route.href, '_blank');
-				return;
-			} else {
-				void this.$router.push({ name: page, params: { id } });
-			}
-		},
-		isFullTemplatesCollection,
+		}
+	}, 50);
+};
+
+const onOpenTemplate = ({ event, id }: { event: MouseEvent; id: string }) => {
+	navigateTo(event, VIEWS.TEMPLATE, id);
+};
+
+const onUseWorkflow = async ({ event, id }: { event: MouseEvent; id: string }) => {
+	await useTemplateWorkflow({
+		posthogStore,
+		router,
+		templateId: id,
+		inNewBrowserTab: event.metaKey || event.ctrlKey,
+		templatesStore,
+		externalHooks,
+		nodeTypesStore,
+		telemetry,
+		source: 'template_list',
+	});
+};
+
+const navigateTo = (e: MouseEvent, page: string, id: string) => {
+	if (e.metaKey || e.ctrlKey) {
+		const route = router.resolve({ name: page, params: { id } });
+		window.open(route.href, '_blank');
+		return;
+	} else {
+		void router.push({ name: page, params: { id } });
+	}
+};
+
+watch(
+	() => collection.value,
+	() => {
+		if (collection.value && 'full' in collection.value && collection.value.full) {
+			setPageTitle(`n8n - Template collection: ${collection.value.name}`);
+		} else {
+			setPageTitle('n8n - Templates');
+		}
 	},
+);
+
+onMounted(async () => {
+	scrollToTop();
+
+	if (collection.value && 'full' in collection.value && collection.value.full) {
+		loading.value = false;
+		return;
+	}
+
+	try {
+		await templatesStore.fetchCollectionById(collectionId.value);
+	} catch (e) {
+		notFoundError.value = true;
+	}
+	loading.value = false;
 });
 </script>
 
@@ -135,15 +122,13 @@ export default defineComponent({
 						{{ collection.name }}
 					</n8n-heading>
 					<n8n-text v-if="collection && collection.name" color="text-base" size="small">
-						{{ $locale.baseText('templates.collection') }}
+						{{ i18n.baseText('templates.collection') }}
 					</n8n-text>
 					<n8n-loading :loading="!collection || !collection.name" :rows="2" variant="h1" />
 				</div>
 			</div>
 			<div v-else :class="$style.notFound">
-				<n8n-text color="text-base">{{
-					$locale.baseText('templates.collectionsNotFound')
-				}}</n8n-text>
+				<n8n-text color="text-base">{{ i18n.baseText('templates.collectionsNotFound') }}</n8n-text>
 			</div>
 		</template>
 		<template v-if="!notFoundError" #content>
@@ -167,7 +152,7 @@ export default defineComponent({
 				</div>
 				<div :class="$style.details">
 					<TemplateDetails
-						:block-title="$locale.baseText('template.details.appsInTheCollection')"
+						:block-title="i18n.baseText('template.details.appsInTheCollection')"
 						:loading="loading"
 						:template="collection"
 					/>

@@ -6,7 +6,7 @@ import { Container } from 'typedi';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import type { BooleanLicenseFeature } from '@/interfaces';
 import { License } from '@/license';
-import { userHasScope } from '@/permissions/check-access';
+import { userHasScopes } from '@/permissions/check-access';
 import type { AuthenticatedRequest } from '@/requests';
 
 import type { PaginatedRequest } from '../../../types';
@@ -34,7 +34,7 @@ const buildScopeMiddleware = (
 				params.credentialId = req.params.id;
 			}
 		}
-		if (!(await userHasScope(req.user, scopes, globalOnly, params))) {
+		if (!(await userHasScopes(req.user, scopes, globalOnly, params))) {
 			return res.status(403).json({ message: 'Forbidden' });
 		}
 
