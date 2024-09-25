@@ -121,6 +121,8 @@ async function onDrop(value: string, event: MouseEvent) {
 
 	const droppedSelection = await dropInEditor(toRaw(editor), event, value);
 
+	if (!ndvStore.isMappingOnboarded) ndvStore.setMappingOnboarded();
+
 	if (!ndvStore.isAutocompleteOnboarded) {
 		setCursorPosition((droppedSelection.ranges.at(0)?.head ?? 3) - 3);
 		setTimeout(() => {
