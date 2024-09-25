@@ -445,16 +445,23 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		historyStore.stopRecordingUndo();
 	}
 
-	function requireNodeTypeDescription(type: INodeUi['type'], version?: INodeUi['typeVersion']) {
-		const nodeTypeDescription = nodeTypesStore.getNodeType(type, version);
-		if (!nodeTypeDescription) {
-			throw new Error(
-				i18n.baseText('nodeView.showMessage.addNodeButton.message', {
-					interpolate: { nodeTypeName: type },
-				}),
-			);
-		}
-		return nodeTypeDescription;
+	function requireNodeTypeDescription(
+		type: INodeUi['type'],
+		version?: INodeUi['typeVersion'],
+	): INodeTypeDescription {
+		return (
+			nodeTypesStore.getNodeType(type, version) ?? {
+				properties: [],
+				displayName: type,
+				name: type,
+				group: [],
+				description: '',
+				version: version ?? 1,
+				defaults: {},
+				inputs: [],
+				outputs: [],
+			}
+		);
 	}
 
 	async function addNodes(
