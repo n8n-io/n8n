@@ -1258,6 +1258,7 @@ onUpdated(async () => {
 					"
 					:title="displayTitle"
 					:placeholder="getPlaceholder()"
+					data-test-id="parameter-input-field"
 					@update:model-value="(valueChanged($event) as undefined) && onUpdateTextInput($event)"
 					@keydown.stop
 					@focus="setFocus"
