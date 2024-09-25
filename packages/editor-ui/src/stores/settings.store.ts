@@ -92,10 +92,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const deploymentType = computed(() => settings.value.deployment?.type || 'default');
 
-	const isDesktopDeployment = computed(() =>
-		settings.value.deployment?.type.startsWith('desktop_'),
-	);
-
 	const isCloudDeployment = computed(() => settings.value.deployment?.type === 'cloud');
 
 	const isSmtpSetup = computed(() => userManagement.value.smtpSetup);
@@ -131,8 +127,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	const pushBackend = computed(() => settings.value.pushBackend);
 
 	const isCommunityNodesFeatureEnabled = computed(() => settings.value.communityNodesEnabled);
-
-	const isNpmAvailable = computed(() => settings.value.isNpmAvailable);
 
 	const allowedModules = computed(() => settings.value.allowedModules);
 
@@ -249,7 +243,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		rootStore.setOauthCallbackUrls(fetchedSettings.oauthCallbackUrls);
 		rootStore.setN8nMetadata(fetchedSettings.n8nMetadata || {});
 		rootStore.setDefaultLocale(fetchedSettings.defaultLocale);
-		rootStore.setIsNpmAvailable(fetchedSettings.isNpmAvailable);
 		rootStore.setBinaryDataMode(fetchedSettings.binaryDataMode);
 		useVersionsStore().setVersionNotificationSettings(fetchedSettings.versionNotifications);
 	};
@@ -395,7 +388,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isSamlLoginEnabled,
 		showSetupPage,
 		deploymentType,
-		isDesktopDeployment,
 		isCloudDeployment,
 		isSmtpSetup,
 		isPersonalizationSurveyEnabled,
@@ -411,7 +403,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		templatesHost,
 		pushBackend,
 		isCommunityNodesFeatureEnabled,
-		isNpmAvailable,
 		allowedModules,
 		isQueueModeEnabled,
 		isWorkerViewAvailable,

@@ -22,9 +22,11 @@ const testServer = utils.setupTestServer({
 	enabledFeatures: ['feat:saml'],
 });
 
+const memberPassword = randomValidPassword();
+
 beforeAll(async () => {
 	owner = await createOwner();
-	someUser = await createUser();
+	someUser = await createUser({ password: memberPassword });
 	authOwnerAgent = testServer.authAgentFor(owner);
 	authMemberAgent = testServer.authAgentFor(someUser);
 });
@@ -60,10 +62,11 @@ describe('Instance owner', () => {
 	describe('PATCH /password', () => {
 		test('should throw BadRequestError if password is changed when SAML is enabled', async () => {
 			await enableSaml(true);
-			await authOwnerAgent
+			await authMemberAgent
 				.patch('/me/password')
 				.send({
-					password: randomValidPassword(),
+					currentPassword: memberPassword,
+					newPassword: randomValidPassword(),
 				})
 				.expect(400, {
 					code: 400,

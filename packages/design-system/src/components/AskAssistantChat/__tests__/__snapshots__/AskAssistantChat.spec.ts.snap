@@ -130,7 +130,7 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
             class="textMessage"
           >
             <div
-              class="assistantText"
+              class="assistantText rendered-content"
             >
               <p>
                 Hi Max! Here is my top solution to fix the error in your 
@@ -434,7 +434,9 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
           <div
             class="textMessage"
           >
-            <span>
+            <span
+              class="rendered-content"
+            >
               <p>
                 Give it to me 
                 <strong>
@@ -511,7 +513,9 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
               <div
                 class="blockBody"
               >
-                <span>
+                <span
+                  class="rendered-content"
+                >
                   <p>
                     Solution steps:
                   </p>
@@ -1055,7 +1059,7 @@ exports[`AskAssistantChat > renders end of session chat correctly 1`] = `
             class="textMessage"
           >
             <div
-              class="assistantText"
+              class="assistantText rendered-content"
             >
               <p>
                 Hi Max! Here is my top solution to fix the error in your 
@@ -1300,7 +1304,7 @@ exports[`AskAssistantChat > renders message with code snippet 1`] = `
             class="textMessage"
           >
             <div
-              class="assistantText"
+              class="assistantText rendered-content"
             >
               <p>
                 Hi Max! Here is my top solution to fix the error in your 
@@ -1316,66 +1320,72 @@ exports[`AskAssistantChat > renders message with code snippet 1`] = `
               class="code-snippet"
               data-test-id="assistant-code-snippet"
             >
-              <p>
-                node.on('input', function(msg) {
-                <br />
-                
+              <!--v-if-->
+              <div
+                class="snippet-content rendered-content"
+                data-test-id="assistant-code-snippet-content"
+              >
+                <p>
+                  node.on('input', function(msg) {
+                  <br />
+                  
 if (msg.seed) { dummyjson.seed = msg.seed; }
-                <br />
-                
+                  <br />
+                  
 try {
-                <br />
-                
+                  <br />
+                  
 var value = dummyjson.parse(node.template, {mockdata: msg});
-                <br />
-                
+                  <br />
+                  
 if (node.syntax === 'json') {
-                <br />
-                
+                  <br />
+                  
 try { value = JSON.parse(value); }
-                <br />
-                
+                  <br />
+                  
 catch(e) { node.error(RED._('datagen.errors.json-error')); }
-                <br />
-                
+                  <br />
+                  
 }
-                <br />
-                
+                  <br />
+                  
 if (node.fieldType === 'msg') {
-                <br />
-                
+                  <br />
+                  
 RED.util.setMessageProperty(msg,node.field,value);
-                <br />
-                
+                  <br />
+                  
 }
-                <br />
-                
+                  <br />
+                  
 else if (node.fieldType === 'flow') {
-                <br />
-                
+                  <br />
+                  
 node.context().flow.set(node.field,value);
-                <br />
-                
+                  <br />
+                  
 }
-                <br />
-                
+                  <br />
+                  
 else if (node.fieldType === 'global') {
-                <br />
-                
+                  <br />
+                  
 node.context().global.set(node.field,value);
-                <br />
-                
+                  <br />
+                  
 }
-                <br />
-                
+                  <br />
+                  
 node.send(msg);
-                <br />
-                
+                  <br />
+                  
 }
-                <br />
-                
+                  <br />
+                  
 catch(e) {
-              </p>
+                </p>
+              </div>
             </div>
             <!--v-if-->
           </div>
@@ -1412,7 +1422,6 @@ exports[`AskAssistantChat > renders streaming chat correctly 1`] = `
 <div>
   <div
     class="container"
-    isstreaming="true"
   >
     <div
       class="header"
@@ -1539,7 +1548,7 @@ exports[`AskAssistantChat > renders streaming chat correctly 1`] = `
             class="textMessage"
           >
             <div
-              class="assistantText"
+              class="assistantText rendered-content"
             >
               <p>
                 Hi Max! Here is my top solution to fix the error in your 
@@ -1552,7 +1561,9 @@ exports[`AskAssistantChat > renders streaming chat correctly 1`] = `
 
             </div>
             <!--v-if-->
-            <!--v-if-->
+            <span
+              class="blinking-cursor"
+            />
           </div>
           <!--v-if-->
         </div>

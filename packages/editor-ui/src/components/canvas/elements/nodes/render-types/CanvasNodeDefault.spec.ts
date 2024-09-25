@@ -4,7 +4,7 @@ import { NodeConnectionType } from 'n8n-workflow';
 import { createCanvasNodeProvide } from '@/__tests__/data';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-import { CanvasNodeRenderType } from '@/types';
+import { CanvasConnectionMode, CanvasNodeRenderType } from '@/types';
 
 const renderComponent = createComponentRenderer(CanvasNodeDefault);
 
@@ -157,6 +157,36 @@ describe('CanvasNodeDefault', () => {
 				},
 			});
 			expect(getByText('Test Node').closest('.node')).not.toHaveClass('disabled');
+		});
+
+		it('should render strike-through when node is disabled and has node input and output handles', () => {
+			const { container } = renderComponent({
+				global: {
+					provide: {
+						...createCanvasNodeProvide({
+							data: {
+								disabled: true,
+								inputs: [{ type: NodeConnectionType.Main, index: 0 }],
+								outputs: [{ type: NodeConnectionType.Main, index: 0 }],
+								connections: {
+									[CanvasConnectionMode.Input]: {
+										[NodeConnectionType.Main]: [
+											[{ node: 'node', type: NodeConnectionType.Main, index: 0 }],
+										],
+									},
+									[CanvasConnectionMode.Output]: {
+										[NodeConnectionType.Main]: [
+											[{ node: 'node', type: NodeConnectionType.Main, index: 0 }],
+										],
+									},
+								},
+							},
+						}),
+					},
+				},
+			});
+
+			expect(container.querySelector('.disabledStrikeThrough')).toBeVisible();
 		});
 	});
 

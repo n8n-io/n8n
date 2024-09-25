@@ -10,6 +10,7 @@ import { LogStreamingEventRelay } from '@/events/log-streaming-event-relay';
 import { JobProcessor } from '@/scaling/job-processor';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { ScalingService } from '@/scaling/scaling.service';
+import type { WorkerServerEndpointsConfig } from '@/scaling/worker-server';
 import { OrchestrationHandlerWorkerService } from '@/services/orchestration/worker/orchestration.handler.worker.service';
 import { OrchestrationWorkerService } from '@/services/orchestration/worker/orchestration.worker.service';
 
@@ -160,12 +161,15 @@ export class Worker extends BaseCommand {
 		this.logger.info(` * Concurrency: ${this.concurrency}`);
 		this.logger.info('');
 
-		if (
-			this.globalConfig.queue.health.active ||
-			this.globalConfig.credentials.overwrite.endpoint !== ''
-		) {
+		const endpointsConfig: WorkerServerEndpointsConfig = {
+			health: this.globalConfig.queue.health.active,
+			overwrites: this.globalConfig.credentials.overwrite.endpoint !== '',
+			metrics: this.globalConfig.endpoints.metrics.enable,
+		};
+
+		if (Object.values(endpointsConfig).some((e) => e)) {
 			const { WorkerServer } = await import('@/scaling/worker-server');
-			await Container.get(WorkerServer).init();
+			await Container.get(WorkerServer).init(endpointsConfig);
 		}
 
 		if (!inTest && process.stdout.isTTY) {

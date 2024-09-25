@@ -2995,6 +2995,8 @@ const getRequestHelperFunctions = (
 	workflow: Workflow,
 	node: INode,
 	additionalData: IWorkflowExecuteAdditionalData,
+	runExecutionData: IRunExecutionData | null = null,
+	connectionInputData: INodeExecutionData[] = [],
 ): RequestHelperFunctions => {
 	const getResolvedValue = (
 		parameterValue: NodeParameterValueType,
@@ -3004,8 +3006,6 @@ const getRequestHelperFunctions = (
 		additionalKeys?: IWorkflowDataProxyAdditionalKeys,
 		returnObjectAsString = false,
 	): NodeParameterValueType => {
-		const runExecutionData: IRunExecutionData | null = null;
-		const connectionInputData: INodeExecutionData[] = [];
 		const mode: WorkflowExecuteMode = 'internal';
 
 		if (
@@ -3874,7 +3874,13 @@ export function getExecuteFunctions(
 			helpers: {
 				createDeferredPromise,
 				copyInputItems,
-				...getRequestHelperFunctions(workflow, node, additionalData),
+				...getRequestHelperFunctions(
+					workflow,
+					node,
+					additionalData,
+					runExecutionData,
+					connectionInputData,
+				),
 				...getSSHTunnelFunctions(),
 				...getFileSystemHelperFunctions(node),
 				...getBinaryHelperFunctions(additionalData, workflow.id),
@@ -4031,7 +4037,13 @@ export function getExecuteSingleFunctions(
 			},
 			helpers: {
 				createDeferredPromise,
-				...getRequestHelperFunctions(workflow, node, additionalData),
+				...getRequestHelperFunctions(
+					workflow,
+					node,
+					additionalData,
+					runExecutionData,
+					connectionInputData,
+				),
 				...getBinaryHelperFunctions(additionalData, workflow.id),
 
 				assertBinaryData: (propertyName, inputIndex = 0) =>

@@ -1,3 +1,4 @@
+import { UserUpdateRequestDto } from '@n8n/api-types';
 import type { Response } from 'express';
 import { mock, anyObject } from 'jest-mock-extended';
 import jwt from 'jsonwebtoken';
@@ -35,20 +36,6 @@ describe('MeController', () => {
 	const controller = Container.get(MeController);
 
 	describe('updateCurrentUser', () => {
-		it('should throw BadRequestError if email is missing in the payload', async () => {
-			const req = mock<MeRequest.UserUpdate>({});
-			await expect(controller.updateCurrentUser(req, mock())).rejects.toThrowError(
-				new BadRequestError('Email is mandatory'),
-			);
-		});
-
-		it('should throw BadRequestError if email is invalid', async () => {
-			const req = mock<MeRequest.UserUpdate>({ body: { email: 'invalid-email' } });
-			await expect(controller.updateCurrentUser(req, mock())).rejects.toThrowError(
-				new BadRequestError('Invalid email address'),
-			);
-		});
-
 		it('should update the user in the DB, and issue a new cookie', async () => {
 			const user = mock<User>({
 				id: '123',
@@ -58,24 +45,24 @@ describe('MeController', () => {
 				role: 'global:owner',
 				mfaEnabled: false,
 			});
-			const req = mock<MeRequest.UserUpdate>({ user, browserId });
-			req.body = {
+			const payload = new UserUpdateRequestDto({
 				email: 'valid@email.com',
 				firstName: 'John',
 				lastName: 'Potato',
-			};
+			});
+			const req = mock<AuthenticatedRequest>({ user, browserId });
 			const res = mock<Response>();
 			userRepository.findOneByOrFail.mockResolvedValue(user);
 			userRepository.findOneOrFail.mockResolvedValue(user);
 			jest.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
 			userService.toPublic.mockResolvedValue({} as unknown as PublicUser);
 
-			await controller.updateCurrentUser(req, res);
+			await controller.updateCurrentUser(req, res, payload);
 
 			expect(externalHooks.run).toHaveBeenCalledWith('user.profile.beforeUpdate', [
 				user.id,
 				user.email,
-				req.body,
+				payload,
 			]);
 
 			expect(userService.update).toHaveBeenCalled();
@@ -100,35 +87,6 @@ describe('MeController', () => {
 			]);
 		});
 
-		it('should not allow updating any other fields on a user besides email and name', async () => {
-			const user = mock<User>({
-				id: '123',
-				password: 'password',
-				authIdentities: [],
-				role: 'global:member',
-				mfaEnabled: false,
-			});
-			const req = mock<MeRequest.UserUpdate>({ user, browserId });
-			req.body = { email: 'valid@email.com', firstName: 'John', lastName: 'Potato' };
-			const res = mock<Response>();
-			userRepository.findOneOrFail.mockResolvedValue(user);
-			jest.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
-
-			// Add invalid data to the request payload
-			Object.assign(req.body, { id: '0', role: 'global:owner' });
-
-			await controller.updateCurrentUser(req, res);
-
-			expect(userService.update).toHaveBeenCalled();
-
-			const updatePayload = userService.update.mock.calls[0][1];
-			expect(updatePayload.email).toBe(req.body.email);
-			expect(updatePayload.firstName).toBe(req.body.firstName);
-			expect(updatePayload.lastName).toBe(req.body.lastName);
-			expect(updatePayload.id).toBeUndefined();
-			expect(updatePayload.role).toBeUndefined();
-		});
-
 		it('should throw BadRequestError if beforeUpdate hook throws BadRequestError', async () => {
 			const user = mock<User>({
 				id: '123',
@@ -137,9 +95,7 @@ describe('MeController', () => {
 				role: 'global:owner',
 				mfaEnabled: false,
 			});
-			const reqBody = { email: 'valid@email.com', firstName: 'John', lastName: 'Potato' };
-			const req = mock<MeRequest.UserUpdate>({ user, body: reqBody });
-			req.body = reqBody; // We don't want the body to be a mock object
+			const req = mock<AuthenticatedRequest>({ user });
 
 			externalHooks.run.mockImplementationOnce(async (hookName) => {
 				if (hookName === 'user.profile.beforeUpdate') {
@@ -147,9 +103,13 @@ describe('MeController', () => {
 				}
 			});
 
-			await expect(controller.updateCurrentUser(req, mock())).rejects.toThrowError(
-				new BadRequestError('Invalid email address'),
-			);
+			await expect(
+				controller.updateCurrentUser(
+					req,
+					mock(),
+					mock({ email: 'valid@email.com', firstName: 'John', lastName: 'Potato' }),
+				),
+			).rejects.toThrowError(new BadRequestError('Invalid email address'));
 		});
 
 		describe('when mfa is enabled', () => {
@@ -162,12 +122,19 @@ describe('MeController', () => {
 					role: 'global:owner',
 					mfaEnabled: true,
 				});
-				const req = mock<MeRequest.UserUpdate>({ user, browserId });
-				req.body = { email: 'new@email.com', firstName: 'John', lastName: 'Potato' };
+				const req = mock<AuthenticatedRequest>({ user, browserId });
 
-				await expect(controller.updateCurrentUser(req, mock())).rejects.toThrowError(
-					new BadRequestError('Two-factor code is required to change email'),
-				);
+				await expect(
+					controller.updateCurrentUser(
+						req,
+						mock(),
+						new UserUpdateRequestDto({
+							email: 'new@email.com',
+							firstName: 'John',
+							lastName: 'Potato',
+						}),
+					),
+				).rejects.toThrowError(new BadRequestError('Two-factor code is required to change email'));
 			});
 
 			it('should throw InvalidMfaCodeError if mfa code is invalid', async () => {
@@ -179,18 +146,21 @@ describe('MeController', () => {
 					role: 'global:owner',
 					mfaEnabled: true,
 				});
-				const req = mock<MeRequest.UserUpdate>({ user, browserId });
-				req.body = {
-					email: 'new@email.com',
-					firstName: 'John',
-					lastName: 'Potato',
-					mfaCode: 'invalid',
-				};
+				const req = mock<AuthenticatedRequest>({ user, browserId });
 				mockMfaService.validateMfa.mockResolvedValue(false);
 
-				await expect(controller.updateCurrentUser(req, mock())).rejects.toThrow(
-					InvalidMfaCodeError,
-				);
+				await expect(
+					controller.updateCurrentUser(
+						req,
+						mock(),
+						mock({
+							email: 'new@email.com',
+							firstName: 'John',
+							lastName: 'Potato',
+							mfaCode: 'invalid',
+						}),
+					),
+				).rejects.toThrow(InvalidMfaCodeError);
 			});
 
 			it("should update the user's email if mfa code is valid", async () => {
@@ -202,13 +172,7 @@ describe('MeController', () => {
 					role: 'global:owner',
 					mfaEnabled: true,
 				});
-				const req = mock<MeRequest.UserUpdate>({ user, browserId });
-				req.body = {
-					email: 'new@email.com',
-					firstName: 'John',
-					lastName: 'Potato',
-					mfaCode: '123456',
-				};
+				const req = mock<AuthenticatedRequest>({ user, browserId });
 				const res = mock<Response>();
 				userRepository.findOneByOrFail.mockResolvedValue(user);
 				userRepository.findOneOrFail.mockResolvedValue(user);
@@ -216,7 +180,16 @@ describe('MeController', () => {
 				userService.toPublic.mockResolvedValue({} as unknown as PublicUser);
 				mockMfaService.validateMfa.mockResolvedValue(true);
 
-				const result = await controller.updateCurrentUser(req, res);
+				const result = await controller.updateCurrentUser(
+					req,
+					res,
+					mock({
+						email: 'new@email.com',
+						firstName: 'John',
+						lastName: 'Potato',
+						mfaCode: '123456',
+					}),
+				);
 
 				expect(result).toEqual({});
 			});
@@ -227,51 +200,59 @@ describe('MeController', () => {
 		const passwordHash = '$2a$10$ffitcKrHT.Ls.m9FfWrMrOod76aaI0ogKbc3S96Q320impWpCbgj6'; // Hashed 'old_password'
 
 		it('should throw if the user does not have a password set', async () => {
-			const req = mock<MeRequest.Password>({
+			const req = mock<AuthenticatedRequest>({
 				user: mock({ password: undefined }),
-				body: { currentPassword: '', newPassword: '' },
 			});
-			await expect(controller.updatePassword(req, mock())).rejects.toThrowError(
-				new BadRequestError('Requesting user not set up.'),
-			);
+			await expect(
+				controller.updatePassword(req, mock(), mock({ currentPassword: '', newPassword: '' })),
+			).rejects.toThrowError(new BadRequestError('Requesting user not set up.'));
 		});
 
 		it("should throw if currentPassword does not match the user's password", async () => {
-			const req = mock<MeRequest.Password>({
+			const req = mock<AuthenticatedRequest>({
 				user: mock({ password: passwordHash }),
-				body: { currentPassword: 'not_old_password', newPassword: '' },
 			});
-			await expect(controller.updatePassword(req, mock())).rejects.toThrowError(
-				new BadRequestError('Provided current password is incorrect.'),
-			);
+			await expect(
+				controller.updatePassword(
+					req,
+					mock(),
+					mock({ currentPassword: 'not_old_password', newPassword: '' }),
+				),
+			).rejects.toThrowError(new BadRequestError('Provided current password is incorrect.'));
 		});
 
 		describe('should throw if newPassword is not valid', () => {
 			Object.entries(badPasswords).forEach(([newPassword, errorMessage]) => {
 				it(newPassword, async () => {
-					const req = mock<MeRequest.Password>({
+					const req = mock<AuthenticatedRequest>({
 						user: mock({ password: passwordHash }),
-						body: { currentPassword: 'old_password', newPassword },
 						browserId,
 					});
-					await expect(controller.updatePassword(req, mock())).rejects.toThrowError(
-						new BadRequestError(errorMessage),
-					);
+					await expect(
+						controller.updatePassword(
+							req,
+							mock(),
+							mock({ currentPassword: 'old_password', newPassword }),
+						),
+					).rejects.toThrowError(new BadRequestError(errorMessage));
 				});
 			});
 		});
 
 		it('should update the password in the DB, and issue a new cookie', async () => {
-			const req = mock<MeRequest.Password>({
+			const req = mock<AuthenticatedRequest>({
 				user: mock({ password: passwordHash, mfaEnabled: false }),
-				body: { currentPassword: 'old_password', newPassword: 'NewPassword123' },
 				browserId,
 			});
 			const res = mock<Response>();
 			userRepository.save.calledWith(req.user).mockResolvedValue(req.user);
 			jest.spyOn(jwt, 'sign').mockImplementation(() => 'new-signed-token');
 
-			await controller.updatePassword(req, res);
+			await controller.updatePassword(
+				req,
+				res,
+				mock({ currentPassword: 'old_password', newPassword: 'NewPassword123' }),
+			);
 
 			expect(req.user.password).not.toBe(passwordHash);
 
@@ -299,34 +280,43 @@ describe('MeController', () => {
 
 		describe('mfa enabled', () => {
 			it('should throw BadRequestError if mfa code is missing', async () => {
-				const req = mock<MeRequest.Password>({
+				const req = mock<AuthenticatedRequest>({
 					user: mock({ password: passwordHash, mfaEnabled: true }),
-					body: { currentPassword: 'old_password', newPassword: 'NewPassword123' },
 				});
 
-				await expect(controller.updatePassword(req, mock())).rejects.toThrowError(
+				await expect(
+					controller.updatePassword(
+						req,
+						mock(),
+						mock({ currentPassword: 'old_password', newPassword: 'NewPassword123' }),
+					),
+				).rejects.toThrowError(
 					new BadRequestError('Two-factor code is required to change password.'),
 				);
 			});
 
 			it('should throw InvalidMfaCodeError if invalid mfa code is given', async () => {
-				const req = mock<MeRequest.Password>({
+				const req = mock<AuthenticatedRequest>({
 					user: mock({ password: passwordHash, mfaEnabled: true }),
-					body: { currentPassword: 'old_password', newPassword: 'NewPassword123', mfaCode: '123' },
 				});
 				mockMfaService.validateMfa.mockResolvedValue(false);
 
-				await expect(controller.updatePassword(req, mock())).rejects.toThrow(InvalidMfaCodeError);
+				await expect(
+					controller.updatePassword(
+						req,
+						mock(),
+						mock({
+							currentPassword: 'old_password',
+							newPassword: 'NewPassword123',
+							mfaCode: '123',
+						}),
+					),
+				).rejects.toThrow(InvalidMfaCodeError);
 			});
 
 			it('should succeed when mfa code is correct', async () => {
-				const req = mock<MeRequest.Password>({
+				const req = mock<AuthenticatedRequest>({
 					user: mock({ password: passwordHash, mfaEnabled: true }),
-					body: {
-						currentPassword: 'old_password',
-						newPassword: 'NewPassword123',
-						mfaCode: 'valid',
-					},
 					browserId,
 				});
 				const res = mock<Response>();
@@ -334,7 +324,15 @@ describe('MeController', () => {
 				jest.spyOn(jwt, 'sign').mockImplementation(() => 'new-signed-token');
 				mockMfaService.validateMfa.mockResolvedValue(true);
 
-				const result = await controller.updatePassword(req, res);
+				const result = await controller.updatePassword(
+					req,
+					res,
+					mock({
+						currentPassword: 'old_password',
+						newPassword: 'NewPassword123',
+						mfaCode: 'valid',
+					}),
+				);
 
 				expect(result).toEqual({ success: true });
 				expect(req.user.password).not.toBe(passwordHash);
@@ -408,18 +406,6 @@ describe('MeController', () => {
 			};
 
 			await expect(controller.storeSurveyAnswers(req)).rejects.toThrowError(BadRequestError);
-		});
-	});
-
-	describe('updateCurrentUserSettings', () => {
-		it('should throw BadRequestError on XSS attempt', async () => {
-			const req = mock<AuthenticatedRequest>({
-				body: {
-					userActivated: '<script>alert("XSS")</script>',
-				},
-			});
-
-			await expect(controller.updateCurrentUserSettings(req)).rejects.toThrowError(BadRequestError);
 		});
 	});
 
