@@ -10,7 +10,7 @@ import type { CodeExecutionMode, CodeNodeEditorLanguage } from 'n8n-workflow';
 import { format } from 'prettier';
 import jsParser from 'prettier/plugins/babel';
 import * as estree from 'prettier/plugins/estree';
-import { type Ref, computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { type Ref, computed, nextTick, onBeforeUnmount, onMounted, ref, toRaw, watch } from 'vue';
 
 import { CODE_NODE_TYPE } from '@/constants';
 import { codeNodeEditorEventBus } from '@/event-bus';
@@ -26,6 +26,7 @@ import { useLinter } from './linter';
 import { codeNodeEditorTheme } from './theme';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { dropInCodeEditor, mappingDropCursor } from '@/plugins/codemirror/dragAndDrop';
 
 type Props = {
 	mode: CodeExecutionMode;
@@ -51,6 +52,7 @@ const emit = defineEmits<{
 const message = useMessage();
 const editor = ref(null) as Ref<EditorView | null>;
 const languageCompartment = ref(new Compartment());
+const dragAndDropCompartment = ref(new Compartment());
 const linterCompartment = ref(new Compartment());
 const isEditorHovered = ref(false);
 const isEditorFocused = ref(false);
@@ -95,6 +97,7 @@ onMounted(() => {
 
 		extensions.push(
 			...writableEditorExtensions,
+			dragAndDropCompartment.value.of(dragAndDropExtension.value),
 			EditorView.domEventHandlers({
 				focus: () => {
 					isEditorFocused.value = true;
@@ -151,6 +154,12 @@ const placeholder = computed(() => {
 	return CODE_PLACEHOLDERS[props.language]?.[props.mode] ?? '';
 });
 
+const dragAndDropEnabled = computed(() => {
+	return !props.isReadOnly && props.mode === 'runOnceForEachItem';
+});
+
+const dragAndDropExtension = computed(() => (dragAndDropEnabled.value ? mappingDropCursor() : []));
+
 // eslint-disable-next-line vue/return-in-computed-property
 const languageExtensions = computed<[LanguageSupport, ...Extension[]]>(() => {
 	switch (props.language) {
@@ -188,6 +197,12 @@ watch(
 	},
 );
 
+watch(dragAndDropExtension, (extension) => {
+	editor.value?.dispatch({
+		effects: dragAndDropCompartment.value.reconfigure(extension),
+	});
+});
+
 watch(
 	() => props.language,
 	(_newLanguage, previousLanguage: CodeNodeEditorLanguage) => {
@@ -202,7 +217,6 @@ watch(
 		reloadLinter();
 	},
 );
-
 watch(
 	aiEnabled,
 	async (isEnabled) => {
@@ -361,6 +375,12 @@ function onAiLoadStart() {
 function onAiLoadEnd() {
 	isLoadingAIResponse.value = false;
 }
+
+async function onDrop(value: string, event: MouseEvent) {
+	if (!editor.value) return;
+
+	await dropInCodeEditor(toRaw(editor.value), event, value);
+}
 </script>
 
 <template>
@@ -384,10 +404,20 @@ function onAiLoadEnd() {
 				data-test-id="code-node-tab-code"
 				:class="$style.fillHeight"
 			>
-				<div
-					ref="codeNodeEditorRef"
-					:class="['ph-no-capture', 'code-editor-tabs', $style.editorInput, $style.fillHeight]"
-				/>
+				<DraggableTarget type="mapping" :disabled="!dragAndDropEnabled" @drop="onDrop">
+					<template #default="{ activeDrop, droppable }">
+						<div
+							ref="codeNodeEditorRef"
+							:class="[
+								'ph-no-capture',
+								'code-editor-tabs',
+								$style.editorInput,
+								$style.fillHeight,
+								{ [$style.activeDrop]: activeDrop, [$style.droppable]: droppable },
+							]"
+						/>
+					</template>
+				</DraggableTarget>
 				<slot name="suffix" />
 			</el-tab-pane>
 			<el-tab-pane
@@ -407,7 +437,19 @@ function onAiLoadEnd() {
 		</el-tabs>
 		<!-- If AskAi not enabled, there's no point in rendering tabs -->
 		<div v-else :class="$style.fillHeight">
-			<div ref="codeNodeEditorRef" :class="['ph-no-capture', $style.fillHeight]" />
+			<DraggableTarget type="mapping" :disabled="!dragAndDropEnabled" @drop="onDrop">
+				<template #default="{ activeDrop, droppable }">
+					<div
+						ref="codeNodeEditorRef"
+						:class="[
+							'ph-no-capture',
+							$style.fillHeight,
+							$style.editorInput,
+							{ [$style.activeDrop]: activeDrop, [$style.droppable]: droppable },
+						]"
+					/>
+				</template>
+			</DraggableTarget>
 			<slot name="suffix" />
 		</div>
 	</div>
@@ -415,7 +457,7 @@ function onAiLoadEnd() {
 
 <style scoped lang="scss">
 :deep(.el-tabs) {
-	.code-editor-tabs .cm-editor {
+	.cm-editor {
 		border: 0;
 	}
 }
@@ -453,5 +495,22 @@ function onAiLoadEnd() {
 
 .fillHeight {
 	height: 100%;
+}
+
+.editorInput.droppable {
+	:global(.cm-editor) {
+		border-color: var(--color-ndv-droppable-parameter);
+		border-style: dashed;
+		border-width: 1.5px;
+	}
+}
+
+.editorInput.activeDrop {
+	:global(.cm-editor) {
+		border-color: var(--color-success);
+		border-style: solid;
+		cursor: grabbing;
+		border-width: 1px;
+	}
 }
 </style>
