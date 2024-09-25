@@ -275,7 +275,10 @@ export class ToolHttpRequest implements INodeType {
 			method: this.getNodeParameter('method', itemIndex, 'GET') as IHttpRequestMethods,
 			url: this.getNodeParameter('url', itemIndex) as string,
 			qs: {},
-			headers: {},
+			headers: {
+				// FIXME: This is a workaround to prevent the node from sending a default User-Agent (`n8n`) when the header is not set
+				'User-Agent': undefined,
+			},
 			body: {},
 		};
 
