@@ -1,10 +1,10 @@
 import { randomBytes } from 'crypto';
 import Container, { Service } from 'typedi';
 
+import { ApiKey } from '@/databases/entities/api-key';
 import type { User } from '@/databases/entities/user';
 import { ApiKeyRepository } from '@/databases/repositories/api-key.repository';
 import { UserRepository } from '@/databases/repositories/user.repository';
-import { ApiKey } from '@/databases/entities/api-key';
 
 export const API_KEY_PREFIX = 'n8n_api_';
 
