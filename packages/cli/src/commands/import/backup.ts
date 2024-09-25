@@ -1,9 +1,6 @@
 import { Flags } from '@oclif/core';
 import { tmpdir } from 'node:os';
-import { join } from 'path';
 import Container from 'typedi';
-
-import { BackupService } from '@/services/backup.service';
 
 import { BaseCommand } from '../base-command';
 
@@ -22,11 +19,10 @@ export class ImportBackupCommand extends BaseCommand {
 	};
 
 	async run() {
-		const { flags } = await this.parse(ImportBackupCommand);
-		const zipPath = join(flags.input, 'n8n-backup.zip');
-		const backupService = Container.get(BackupService);
-		await backupService.importBackup(zipPath);
-		console.log(`data imported from ${zipPath}`);
+		const { DatabaseImportService } = await import(
+			'@/databases/import-export/database-import.service'
+		);
+		await Container.get(DatabaseImportService).import();
 	}
 
 	async catch(error: Error) {

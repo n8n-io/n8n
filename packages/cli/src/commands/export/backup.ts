@@ -1,9 +1,6 @@
 import { Flags } from '@oclif/core';
 import { tmpdir } from 'node:os';
-import { join } from 'path';
 import Container from 'typedi';
-
-import { BackupService } from '@/services/backup.service';
 
 import { BaseCommand } from '../base-command';
 
@@ -21,11 +18,11 @@ export class ExportBackupCommand extends BaseCommand {
 	};
 
 	async run() {
-		const { flags } = await this.parse(ExportBackupCommand);
-		const zipPath = join(flags.output, 'n8n-backup.zip');
-		const backupService = Container.get(BackupService);
-		await backupService.createBackup(zipPath);
-		console.log(`data exported to ${zipPath}`);
+		const { DatabaseExportService } = await import(
+			'@/databases/import-export/database-export.service'
+		);
+
+		await Container.get(DatabaseExportService).export();
 	}
 
 	async catch(error: Error) {

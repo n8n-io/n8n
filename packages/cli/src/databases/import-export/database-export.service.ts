@@ -1,9 +1,11 @@
 import { GlobalConfig } from '@n8n/config';
 import type { ColumnMetadata } from '@n8n/typeorm/metadata/ColumnMetadata';
+import archiver from 'archiver';
 import { jsonParse } from 'n8n-workflow';
 import { strict } from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
+import { PassThrough } from 'node:stream';
 import { Service } from 'typedi';
 
 import { Logger } from '@/logger';
@@ -13,6 +15,7 @@ import type { Manifest } from './manifest.schema';
 import type { DatabaseExportConfig, Row } from './types';
 import { FilesystemService } from '../../filesystem/filesystem.service';
 import { DatabaseSchemaService } from '../database-schema.service';
+import type { DatabaseType } from '../types';
 
 // @TODO: Check minimum version for each DB type?
 // @TODO: Optional table exclude list
@@ -31,12 +34,27 @@ export class DatabaseExportService {
 	/** Number of rows in tables being exported. */
 	private readonly rowCounts: { [tableName: string]: number } = {};
 
+	private readonly dbType: DatabaseType;
+
+	get tarballPath() {
+		const now = new Date();
+		const year = now.getFullYear();
+		const month = String(now.getMonth() + 1).padStart(2, '0');
+		const day = String(now.getDate()).padStart(2, '0');
+
+		const tarballFileName = `${this.config.tarballBaseFileName}-${year}-${month}-${day}.tar.gz`;
+
+		return path.join(this.config.storageDirPath, tarballFileName);
+	}
+
 	constructor(
 		private readonly globalConfig: GlobalConfig,
 		private readonly fsService: FilesystemService,
 		private readonly schemaService: DatabaseSchemaService,
 		private readonly logger: Logger,
-	) {}
+	) {
+		this.dbType = globalConfig.database.type;
+	}
 
 	setConfig(config: Partial<DatabaseExportConfig>) {
 		this.config = { ...this.config, ...config };
@@ -49,39 +67,35 @@ export class DatabaseExportService {
 		await this.fsService.ensureDir(this.config.storageDirPath);
 
 		this.logger.info('[ExportService] Starting export', {
-			dbType: this.globalConfig.database.type,
+			dbType: this.dbType,
 			storageDirPath: this.config.storageDirPath,
 		});
 
-		await this.writeJsonlFiles();
-
-		if (this.exportFilePaths.length === 0) {
-			this.logger.info('[ExportService] Found no tables to export, aborted export');
-			return;
-		}
-
-		this.logger.info('[ExportService] Exported tables', { exportedTables: this.exportFilePaths });
-
-		await this.writeManifest();
-
-		const tarballPath = path.join(this.config.storageDirPath, this.tarballFileName());
-
-		await this.fsService.createTarball(tarballPath, this.exportFilePaths);
+		await this.writeTarball();
 
 		await this.postExportCleanup();
 
-		this.logger.info('[ExportService] Completed export', { tarballPath });
+		this.logger.info('[ExportService] Completed export', { tarballPath: this.tarballPath });
 	}
 
 	// #endregion
 
 	// #region Export steps
 
-	private async writeJsonlFiles() {
+	private async writeTarball() {
+		const tarballPath = path.join(this.config.storageDirPath, this.tarballPath);
+
+		const archive = archiver('zip', { zlib: { level: 9 } });
+
+		archive.pipe(fs.createWriteStream(tarballPath));
+
+		const writeStream = new PassThrough();
+
 		for (const { tableName, columns } of this.schemaService.getTables()) {
+			archive.append(writeStream, { name: `${tableName}.jsonl` });
+
 			let offset = 0;
 			let totalRows = 0;
-			let writeStream: fs.WriteStream | undefined;
 
 			while (true) {
 				const rows = await this.schemaService
@@ -91,10 +105,6 @@ export class DatabaseExportService {
 					); // @TODO: Double-quotes for column in Postgres but not for other DB types?
 
 				if (rows.length === 0) break;
-
-				writeStream ??= fs.createWriteStream(
-					path.join(this.config.storageDirPath, tableName) + '.jsonl',
-				);
 
 				for (const row of rows) {
 					for (const column of columns) {
@@ -110,15 +120,26 @@ export class DatabaseExportService {
 				offset += this.config.batchSize;
 
 				this.logger.info(`[ExportService] Exported ${totalRows} rows from ${tableName}`);
+
+				writeStream.end();
 			}
 
-			if (writeStream) {
-				writeStream.end();
-				const jsonlFilePath = path.join(this.config.storageDirPath, tableName + '.jsonl');
-				this.exportFilePaths.push(jsonlFilePath);
-				this.rowCounts[tableName] = totalRows;
-			}
+			this.rowCounts[tableName] = totalRows;
 		}
+
+		const manifest: Manifest = {
+			lastExecutedMigration: await this.schemaService.getLastMigration(),
+			sourceDbType: this.dbType,
+			exportedAt: new Date().toISOString(),
+			rowCounts: this.rowCounts,
+			sequences: await this.schemaService.getSequences(),
+		};
+
+		const manifestBuffer = Buffer.from(JSON.stringify(manifest, null, 2), 'utf-8');
+
+		archive.append(manifestBuffer, { name: MANIFEST_FILENAME });
+
+		await archive.finalize();
 	}
 
 	/** Make values in SQLite and MySQL rows compatible with Postgres. */
@@ -126,11 +147,9 @@ export class DatabaseExportService {
 		row: Row,
 		{ column, tableName }: { column: ColumnMetadata; tableName: string },
 	) {
-		const dbType = this.globalConfig.database.type;
+		if (this.dbType === 'postgresdb') return;
 
-		if (dbType === 'postgresdb') return;
-
-		if (dbType === 'sqlite' && column.type === Boolean) {
+		if (this.dbType === 'sqlite' && column.type === Boolean) {
 			const value = row[column.propertyName];
 
 			strict(
@@ -141,7 +160,10 @@ export class DatabaseExportService {
 			row[column.propertyName] = value === 1;
 		}
 
-		if (dbType === 'sqlite' && (this.isJson(column) || this.isPossiblyJson(tableName, column))) {
+		if (
+			this.dbType === 'sqlite' &&
+			(this.isJson(column) || this.isPossiblyJson(tableName, column))
+		) {
 			const value = row[column.propertyName];
 
 			if (typeof value === 'string') {
@@ -150,25 +172,6 @@ export class DatabaseExportService {
 		}
 
 		// @TODO: MySQL and MariaDB normalizations
-	}
-
-	/** Write a manifest file describing the export. */
-	private async writeManifest() {
-		const manifestFilePath = path.join(this.config.storageDirPath, MANIFEST_FILENAME);
-
-		const manifest: Manifest = {
-			lastExecutedMigration: await this.schemaService.getLastMigration(),
-			sourceDbType: this.globalConfig.database.type,
-			exportedAt: new Date().toISOString(),
-			rowCounts: this.rowCounts,
-			sequences: await this.schemaService.getSequences(),
-		};
-
-		await fs.promises.writeFile(manifestFilePath, JSON.stringify(manifest, null, 2), 'utf8');
-
-		this.exportFilePaths.push(manifestFilePath);
-
-		this.logger.info('[ExportService] Wrote manifest', { metadata: manifest });
 	}
 
 	/** Clear all `.jsonl` and `.json` files from the storage dir. */
@@ -191,15 +194,6 @@ export class DatabaseExportService {
 	/** Check whether the column is not JSON-type but may contain JSON. */
 	private isPossiblyJson(tableName: string, column: ColumnMetadata) {
 		return tableName === 'settings' && column.propertyName === 'value';
-	}
-
-	private tarballFileName() {
-		const now = new Date();
-		const year = now.getFullYear();
-		const month = String(now.getMonth() + 1).padStart(2, '0');
-		const day = String(now.getDate()).padStart(2, '0');
-
-		return `${this.config.tarballBaseFileName}-${year}-${month}-${day}.tar.gz`;
 	}
 
 	// #endregion

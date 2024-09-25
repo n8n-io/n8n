@@ -3,7 +3,9 @@ import { ensureError, jsonParse } from 'n8n-workflow';
 import fs from 'node:fs';
 import path from 'node:path';
 import readline from 'node:readline';
+import { pipeline } from 'node:stream/promises';
 import { Service } from 'typedi';
+import { Extract } from 'unzip-stream';
 
 import { NotObjectLiteralError } from '@/errors/not-object-literal.error';
 import { RowCountMismatchError } from '@/errors/row-count-mismatch.error';
@@ -84,7 +86,12 @@ export class DatabaseImportService {
 
 		if (dbType !== 'postgresdb') throw new UnsupportedDestinationError(dbType);
 
-		await this.fsService.extractTarball(this.config.importFilePath, this.config.extractDirPath);
+		// @TODO: Stream instead of extracting to filesystem
+
+		await pipeline(
+			fs.createReadStream(this.config.importFilePath),
+			Extract({ path: this.config.extractDirPath }),
+		);
 
 		this.manifest = await this.getManifest();
 
@@ -138,6 +145,8 @@ export class DatabaseImportService {
 					input: fs.createReadStream(jsonlFilePath),
 					crlfDelay: Infinity, // treat CR and LF as single char
 				});
+
+				// @TODO: Insert in batches
 
 				const txRepository = tx.getRepository(entityTarget);
 
