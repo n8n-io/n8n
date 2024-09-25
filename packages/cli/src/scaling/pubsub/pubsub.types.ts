@@ -4,15 +4,11 @@ import type { IWorkflowDb } from '@/interfaces';
 
 import type { COMMAND_PUBSUB_CHANNEL, WORKER_RESPONSE_PUBSUB_CHANNEL } from '../constants';
 
-/**
- * Pubsub channel used by scaling mode:
- *
- * - `n8n.commands` for messages sent by a main process to command workers or other main processes
- * - `n8n.worker-response` for messages sent by workers in response to commands from main processes
- */
-export type ScalingPubSubChannel =
-	| typeof COMMAND_PUBSUB_CHANNEL
-	| typeof WORKER_RESPONSE_PUBSUB_CHANNEL;
+/** Pubsub channel used by scaling mode. */
+export type PubSubChannel = typeof COMMAND_PUBSUB_CHANNEL | typeof WORKER_RESPONSE_PUBSUB_CHANNEL;
+
+/** Handler function for every message received via a `PubSubChannel`. */
+export type PubSubHandlerFn = (msg: string) => void;
 
 export type PubSubMessageMap = {
 	// #region Lifecycle
