@@ -1,3 +1,4 @@
+import * as projects from '../composables/projects';
 import { INSTANCE_MEMBERS, MANUAL_TRIGGER_NODE_NAME, NOTION_NODE_NAME } from '../constants';
 import {
 	WorkflowsPage,
@@ -8,7 +9,6 @@ import {
 	NDV,
 	MainSidebar,
 } from '../pages';
-import * as projects from '../composables/projects';
 import { getVisibleDropdown, getVisibleModalOverlay, getVisibleSelect } from '../utils';
 
 const workflowsPage = new WorkflowsPage();

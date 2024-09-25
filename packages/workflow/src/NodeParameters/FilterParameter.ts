@@ -1,4 +1,6 @@
 import type { DateTime } from 'luxon';
+
+import { ApplicationError } from '../errors/application.error';
 import type {
 	FilterConditionValue,
 	FilterOperatorType,
@@ -8,9 +10,8 @@ import type {
 	Result,
 	ValidationResult,
 } from '../Interfaces';
-import { validateFieldType } from '../TypeValidation';
 import * as LoggerProxy from '../LoggerProxy';
-import { ApplicationError } from '../errors/application.error';
+import { validateFieldType } from '../TypeValidation';
 
 type FilterConditionMetadata = {
 	index: number;

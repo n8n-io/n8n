@@ -193,7 +193,8 @@ export interface IExecutionsCurrentSummary {
 export interface IExecutingWorkflowData {
 	executionData: IWorkflowExecutionDataProcess;
 	startedAt: Date;
-	postExecutePromises: Array<IDeferredPromise<IRun | undefined>>;
+	/** This promise rejects when the execution is stopped. When the execution finishes (successfully or not), the promise resolves. */
+	postExecutePromise: IDeferredPromise<IRun | undefined>;
 	responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>;
 	workflowExecution?: PCancelable<IRun>;
 	status: ExecutionStatus;
@@ -237,12 +238,6 @@ export interface IExternalHooksFunctions {
 		Credentials: CredentialsRepository;
 		Workflow: WorkflowRepository;
 	};
-}
-
-export interface IVersionNotificationSettings {
-	enabled: boolean;
-	endpoint: string;
-	infoUrl: string;
 }
 
 export interface IPersonalizationSurveyAnswers {

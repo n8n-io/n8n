@@ -1,7 +1,5 @@
 import type { Scope } from '@n8n/permissions';
 import type { AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
-import { Expose } from 'class-transformer';
-import { IsBoolean, IsEmail, IsIn, IsOptional, IsString, Length } from 'class-validator';
 import type express from 'express';
 import type {
 	BannerName,
@@ -18,60 +16,14 @@ import type {
 
 import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
 import type { Project, ProjectType } from '@/databases/entities/project';
-import { AssignableRole } from '@/databases/entities/user';
-import type { GlobalRole, User } from '@/databases/entities/user';
+import type { AssignableRole, GlobalRole, User } from '@/databases/entities/user';
 import type { Variables } from '@/databases/entities/variables';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import type { WorkflowHistory } from '@/databases/entities/workflow-history';
 import type { PublicUser, SecretsProvider, SecretsProviderState } from '@/interfaces';
-import { NoUrl } from '@/validators/no-url.validator';
-import { NoXss } from '@/validators/no-xss.validator';
 
 import type { ProjectRole } from './databases/entities/project-relation';
 import type { ScopesField } from './services/role.service';
-
-export class UserUpdatePayload implements Pick<User, 'email' | 'firstName' | 'lastName'> {
-	@Expose()
-	@IsEmail()
-	email: string;
-
-	@Expose()
-	@NoXss()
-	@NoUrl()
-	@IsString({ message: 'First name must be of type string.' })
-	@Length(1, 32, { message: 'First name must be $constraint1 to $constraint2 characters long.' })
-	firstName: string;
-
-	@Expose()
-	@NoXss()
-	@NoUrl()
-	@IsString({ message: 'Last name must be of type string.' })
-	@Length(1, 32, { message: 'Last name must be $constraint1 to $constraint2 characters long.' })
-	lastName: string;
-
-	@IsOptional()
-	@Expose()
-	@IsString({ message: 'Two factor code must be a string.' })
-	mfaCode?: string;
-}
-
-export class UserSettingsUpdatePayload {
-	@Expose()
-	@IsBoolean({ message: 'userActivated should be a boolean' })
-	@IsOptional()
-	userActivated?: boolean;
-
-	@Expose()
-	@IsBoolean({ message: 'allowSSOManualLogin should be a boolean' })
-	@IsOptional()
-	allowSSOManualLogin?: boolean;
-}
-
-export class UserRoleChangePayload {
-	@Expose()
-	@IsIn(['global:admin', 'global:member'])
-	newRoleName: AssignableRole;
-}
 
 export type APIRequest<
 	RouteParams = {},
@@ -97,6 +49,9 @@ export type AuthenticatedRequest<
 > = Omit<APIRequest<RouteParams, ResponseBody, RequestBody, RequestQuery>, 'user' | 'cookies'> & {
 	user: User;
 	cookies: Record<string, string | undefined>;
+	headers: express.Request['headers'] & {
+		'push-ref': string;
+	};
 };
 
 // ----------------------------------
@@ -230,13 +185,6 @@ export declare namespace CredentialRequest {
 // ----------------------------------
 
 export declare namespace MeRequest {
-	export type UserSettingsUpdate = AuthenticatedRequest<{}, {}, UserSettingsUpdatePayload>;
-	export type UserUpdate = AuthenticatedRequest<{}, {}, UserUpdatePayload>;
-	export type Password = AuthenticatedRequest<
-		{},
-		{},
-		{ currentPassword: string; newPassword: string; mfaCode?: string }
-	>;
 	export type SurveyAnswers = AuthenticatedRequest<{}, {}, IPersonalizationSurveyAnswersV4>;
 }
 
@@ -311,8 +259,6 @@ export declare namespace UserRequest {
 		{ transferId?: string; includeRole: boolean }
 	>;
 
-	export type ChangeRole = AuthenticatedRequest<{ id: string }, {}, UserRoleChangePayload, {}>;
-
 	export type Get = AuthenticatedRequest<
 		{ id: string; email: string; identifier: string },
 		{},
@@ -321,12 +267,6 @@ export declare namespace UserRequest {
 	>;
 
 	export type PasswordResetLink = AuthenticatedRequest<{ id: string }, {}, {}, {}>;
-
-	export type UserSettingsUpdate = AuthenticatedRequest<
-		{ id: string },
-		{},
-		UserSettingsUpdatePayload
-	>;
 
 	export type Reinvite = AuthenticatedRequest<{ id: string }>;
 

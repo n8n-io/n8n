@@ -1,7 +1,8 @@
 import { nanoid } from 'nanoid';
-import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
+
 import { NDV } from '../pages/ndv';
 import { successToast } from '../pages/notifications';
+import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 
 const WorkflowPage = new WorkflowPageClass();
 const ndv = new NDV();

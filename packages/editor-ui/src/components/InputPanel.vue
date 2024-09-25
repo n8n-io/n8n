@@ -406,7 +406,7 @@ export default defineComponent({
 				<n8n-tooltip v-if="!readOnly" :visible="showDraggableHint && showDraggableHintWithDelay">
 					<template #content>
 						<div
-							v-html="
+							v-n8n-html="
 								$locale.baseText('dataMapping.dragFromPreviousHint', {
 									interpolate: { name: focusedMappableInput },
 								})
@@ -417,7 +417,7 @@ export default defineComponent({
 						type="secondary"
 						hide-icon
 						:transparent="true"
-						:node-name="isActiveNodeConfig ? rootNode : currentNodeName ?? ''"
+						:node-name="isActiveNodeConfig ? rootNode : (currentNodeName ?? '')"
 						:label="$locale.baseText('ndv.input.noOutputData.executePrevious')"
 						telemetry-source="inputs"
 						data-test-id="execute-previous-node"

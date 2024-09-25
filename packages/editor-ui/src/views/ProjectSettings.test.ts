@@ -10,7 +10,7 @@ import { VIEWS } from '@/constants';
 import { useUsersStore } from '@/stores/users.store';
 import { createProjectListItem } from '@/__tests__/data/projects';
 import { useSettingsStore } from '@/stores/settings.store';
-import type { IN8nUISettings } from 'n8n-workflow';
+import type { FrontendSettings } from '@n8n/api-types';
 import { ProjectTypes } from '@/types/projects.types';
 
 vi.mock('vue-router', () => {
@@ -63,7 +63,7 @@ describe('ProjectSettings', () => {
 					},
 				},
 			},
-		} as IN8nUISettings);
+		} as FrontendSettings);
 		projectsStore.setCurrentProject({
 			id: '123',
 			type: 'team',

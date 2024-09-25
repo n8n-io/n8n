@@ -72,9 +72,23 @@ const isAnnotationEnabled = computed(
 		posthogStore.isFeatureEnabled(EXECUTION_ANNOTATION_EXPERIMENT),
 );
 
+const hasAnnotation = computed(
+	() =>
+		!!props.execution?.annotation &&
+		(props.execution?.annotation.vote || props.execution?.annotation.tags.length > 0),
+);
+
 async function onDeleteExecution(): Promise<void> {
-	const deleteConfirmed = await message.confirm(
+	// Prepend the message with a note about annotations if they exist
+	const confirmationText = [
+		hasAnnotation.value && locale.baseText('executionDetails.confirmMessage.annotationsNote'),
 		locale.baseText('executionDetails.confirmMessage.message'),
+	]
+		.filter(Boolean)
+		.join(' ');
+
+	const deleteConfirmed = await message.confirm(
+		confirmationText,
 		locale.baseText('executionDetails.confirmMessage.headline'),
 		{
 			type: 'warning',

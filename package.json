@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "1.59.0",
+  "version": "1.61.0",
   "private": true,
   "engines": {
     "node": ">=20.15",
@@ -8,7 +8,7 @@
   },
   "packageManager": "pnpm@9.6.0",
   "scripts": {
-    "prepare": "lefthook install",
+    "prepare": "node scripts/prepare.mjs",
     "preinstall": "node scripts/block-npm-install.js",
     "build": "turbo run build",
     "build:backend": "turbo run build:backend",
@@ -72,7 +72,6 @@
       "chokidar": "3.5.2",
       "esbuild": "^0.20.2",
       "formidable": "3.5.1",
-      "prettier": "^3.2.5",
       "pug": "^3.0.3",
       "semver": "^7.5.4",
       "tslib": "^2.6.2",
@@ -82,7 +81,7 @@
     },
     "patchedDependencies": {
       "typedi@0.10.0": "patches/typedi@0.10.0.patch",
-      "@sentry/cli@2.17.0": "patches/@sentry__cli@2.17.0.patch",
+      "@sentry/cli@2.36.2": "patches/@sentry__cli@2.36.2.patch",
       "pkce-challenge@3.0.0": "patches/pkce-challenge@3.0.0.patch",
       "pyodide@0.23.4": "patches/pyodide@0.23.4.patch",
       "@types/express-serve-static-core@4.17.43": "patches/@types__express-serve-static-core@4.17.43.patch",

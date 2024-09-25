@@ -60,7 +60,6 @@ import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { hasPermission } from '@/utils/rbac/permissions';
-import { useTelemetryStore } from '@/stores/telemetry.store';
 import { useUsersStore } from '@/stores/users.store';
 import { dismissBannerPermanently } from '@/api/ui';
 import type { BannerName } from 'n8n-workflow';
@@ -73,6 +72,7 @@ import {
 } from './ui.utils';
 import { computed, ref } from 'vue';
 import type { Connection } from '@vue-flow/core';
+import { useTelemetry } from '@/composables/useTelemetry';
 
 let savedTheme: ThemeOption = 'system';
 try {
@@ -205,7 +205,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const settingsStore = useSettingsStore();
 	const workflowsStore = useWorkflowsStore();
 	const rootStore = useRootStore();
-	const telemetryStore = useTelemetryStore();
+	const telemetry = useTelemetry();
 	const cloudPlanStore = useCloudPlanStore();
 	const userStore = useUsersStore();
 
@@ -224,11 +224,9 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const contextBasedTranslationKeys = computed(() => {
 		const deploymentType = settingsStore.deploymentType;
 
-		let contextKey: '' | '.cloud' | '.desktop' = '';
+		let contextKey: '' | '.cloud' = '';
 		if (deploymentType === 'cloud') {
 			contextKey = '.cloud';
-		} else if (deploymentType === 'desktop_mac' || deploymentType === 'desktop_win') {
-			contextKey = '.desktop';
 		}
 
 		return {
@@ -566,7 +564,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		const { executionsLeft, workflowsLeft } = usageLeft;
 		const deploymentType = settingsStore.deploymentType;
 
-		telemetryStore.track('User clicked upgrade CTA', {
+		telemetry.track('User clicked upgrade CTA', {
 			source,
 			isTrial: userIsTrialing,
 			deploymentType,

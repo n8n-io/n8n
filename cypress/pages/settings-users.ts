@@ -1,8 +1,8 @@
-import { SettingsSidebar } from './sidebar/settings-sidebar';
+import { BasePage } from './base';
 import { MainSidebar } from './sidebar/main-sidebar';
+import { SettingsSidebar } from './sidebar/settings-sidebar';
 import { WorkflowPage } from './workflow';
 import { WorkflowsPage } from './workflows';
-import { BasePage } from './base';
 
 const workflowPage = new WorkflowPage();
 const workflowsPage = new WorkflowsPage();

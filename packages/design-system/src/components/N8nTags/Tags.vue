@@ -1,8 +1,9 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
-import N8nTag from '../N8nTag';
-import N8nLink from '../N8nLink';
+
 import { useI18n } from '../../composables/useI18n';
+import N8nLink from '../N8nLink';
+import N8nTag from '../N8nTag';
 
 interface ITag {
 	id: string;

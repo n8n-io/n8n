@@ -1,8 +1,8 @@
 import { INSTANCE_MEMBERS, INSTANCE_OWNER, INSTANCE_ADMIN } from '../constants';
 import { MainSidebar, SettingsSidebar, SettingsUsersPage } from '../pages';
+import { errorToast, successToast } from '../pages/notifications';
 import { PersonalSettingsPage } from '../pages/settings-personal';
 import { getVisibleSelect } from '../utils';
-import { errorToast, successToast } from '../pages/notifications';
 
 /**
  * User A - Instance owner

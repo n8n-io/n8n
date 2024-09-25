@@ -37,6 +37,17 @@ else
 	sudo chown -R "$CURRENT_USER":"$CURRENT_USER" /n8n
 fi
 
+### Remove unneeded dependencies
+# TTY
+sudo systemctl disable getty@tty1.service
+sudo systemctl disable serial-getty@ttyS0.service
+# Snap
+sudo systemctl disable snapd.service
+# Unattended upgrades
+sudo systemctl disable unattended-upgrades.service
+# Cron
+sudo systemctl disable cron.service
+
 # Include nodejs v20 repository
 curl -fsSL https://deb.nodesource.com/setup_20.x -o nodesource_setup.sh
 sudo -E bash nodesource_setup.sh

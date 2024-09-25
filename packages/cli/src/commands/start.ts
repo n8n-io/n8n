@@ -23,6 +23,7 @@ import { ExecutionService } from '@/executions/execution.service';
 import { License } from '@/license';
 import { SingleMainTaskManager } from '@/runners/task-managers/single-main-task-manager';
 import { TaskManager } from '@/runners/task-managers/task-manager';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { Server } from '@/server';
 import { OrchestrationHandlerMainService } from '@/services/orchestration/main/orchestration.handler.main.service';
 import { OrchestrationService } from '@/services/orchestration.service';
@@ -246,7 +247,7 @@ export class Start extends BaseCommand {
 
 		await Container.get(OrchestrationHandlerMainService).initWithOptions({
 			queueModeId: this.queueModeId,
-			redisPublisher: Container.get(OrchestrationService).redisPublisher,
+			publisher: Container.get(Publisher),
 		});
 
 		if (!orchestrationService.isMultiMainSetupEnabled) return;

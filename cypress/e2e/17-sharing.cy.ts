@@ -1,3 +1,4 @@
+import * as projects from '../composables/projects';
 import { INSTANCE_MEMBERS, INSTANCE_OWNER, INSTANCE_ADMIN, NOTION_NODE_NAME } from '../constants';
 import {
 	CredentialsModal,
@@ -8,7 +9,6 @@ import {
 	WorkflowsPage,
 } from '../pages';
 import { getVisibleDropdown, getVisiblePopper, getVisibleSelect } from '../utils';
-import * as projects from '../composables/projects';
 
 /**
  * User U1 - Instance owner

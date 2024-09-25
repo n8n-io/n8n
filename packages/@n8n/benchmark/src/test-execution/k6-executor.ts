@@ -1,9 +1,10 @@
 import fs from 'fs';
-import path from 'path';
 import assert from 'node:assert/strict';
+import path from 'path';
 import { $, which, tmpfile } from 'zx';
-import type { Scenario } from '@/types/scenario';
+
 import { buildTestReport, type K6Tag } from '@/test-execution/test-report';
+import type { Scenario } from '@/types/scenario';
 export type { K6Tag };
 
 export type K6ExecutorOpts = {
@@ -76,7 +77,6 @@ export function handleSummary(data) {
 			env: {
 				API_BASE_URL: this.opts.n8nApiBaseUrl,
 				K6_CLOUD_TOKEN: this.opts.k6ApiToken,
-				SCRIPT_FILE_PATH: augmentedTestScriptPath,
 			},
 			stdio: 'inherit',
 		})`${k6ExecutablePath} run ${flattedFlags} ${augmentedTestScriptPath}`;

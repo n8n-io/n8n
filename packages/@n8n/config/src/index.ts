@@ -1,20 +1,21 @@
-import { Config, Env, Nested } from './decorators';
+import { CacheConfig } from './configs/cache.config';
 import { CredentialsConfig } from './configs/credentials.config';
 import { DatabaseConfig } from './configs/database.config';
-import { VersionNotificationsConfig } from './configs/version-notifications.config';
-import { PublicApiConfig } from './configs/public-api.config';
-import { ExternalSecretsConfig } from './configs/external-secrets.config';
-import { TemplatesConfig } from './configs/templates.config';
-import { EventBusConfig } from './configs/event-bus.config';
-import { NodesConfig } from './configs/nodes.config';
-import { ExternalStorageConfig } from './configs/external-storage.config';
-import { WorkflowsConfig } from './configs/workflows.config';
 import { EndpointsConfig } from './configs/endpoints.config';
-import { CacheConfig } from './configs/cache.config';
-import { ScalingModeConfig } from './configs/scaling-mode.config';
-import { UserManagementConfig } from './configs/user-management.config';
+import { EventBusConfig } from './configs/event-bus.config';
+import { ExternalSecretsConfig } from './configs/external-secrets.config';
+import { ExternalStorageConfig } from './configs/external-storage.config';
+import { NodesConfig } from './configs/nodes.config';
+import { PublicApiConfig } from './configs/public-api.config';
 import { TaskRunnersConfig } from './configs/runners.config';
 export { TaskRunnersConfig } from './configs/runners.config';
+import { ScalingModeConfig } from './configs/scaling-mode.config';
+import { SentryConfig } from './configs/sentry.config';
+import { TemplatesConfig } from './configs/templates.config';
+import { UserManagementConfig } from './configs/user-management.config';
+import { VersionNotificationsConfig } from './configs/version-notifications.config';
+import { WorkflowsConfig } from './configs/workflows.config';
+import { Config, Env, Nested } from './decorators';
 
 @Config
 export class GlobalConfig {
@@ -50,6 +51,9 @@ export class GlobalConfig {
 
 	@Nested
 	workflows: WorkflowsConfig;
+
+	@Nested
+	sentry: SentryConfig;
 
 	/** Path n8n is deployed to */
 	@Env('N8N_PATH')
