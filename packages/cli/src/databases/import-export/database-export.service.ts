@@ -2,7 +2,6 @@ import { GlobalConfig } from '@n8n/config';
 import type { ColumnMetadata } from '@n8n/typeorm/metadata/ColumnMetadata';
 import archiver from 'archiver';
 import { jsonParse } from 'n8n-workflow';
-import { strict } from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
 import { PassThrough } from 'node:stream';
