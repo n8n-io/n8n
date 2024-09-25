@@ -11,7 +11,8 @@
     "lint": "eslint .",
     "lintfix": "eslint . --fix",
     "watch": "tsc -p tsconfig.build.json --watch",
-    "test": "echo \"No tests yet\" && exit 0"
+    "test": "jest",
+    "test:dev": "jest --watch"
   },
   "main": "dist/index.js",
   "module": "src/index.ts",
@@ -21,5 +22,10 @@
   ],
   "devDependencies": {
     "n8n-workflow": "workspace:*"
+  },
+  "dependencies": {
+    "xss": "catalog:",
+    "zod": "catalog:",
+    "zod-class": "0.0.15"
   }
 }
