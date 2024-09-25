@@ -15,7 +15,6 @@ import { License } from '@/license';
 import type { AuthenticatedRequest } from '@/requests';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
 import { UrlService } from '@/services/url.service';
-import { ApiKeyRepository } from '@/databases/repositories/api-key.repository';
 
 async function createApiRouter(
 	version: string,
