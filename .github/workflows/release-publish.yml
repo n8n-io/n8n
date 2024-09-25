@@ -128,19 +128,19 @@ jobs:
       - name: Trigger a release note
         run: curl -u docsWorkflows:${{ secrets.N8N_WEBHOOK_DOCS_PASSWORD }} --request GET 'https://internal.users.n8n.cloud/webhook/trigger-release-note' --header 'Content-Type:application/json' --data '{"version":"${{ needs.publish-to-npm.outputs.release }}"}'
 
-  merge-back-into-master:
-    name: Merge back into master
-    needs: [publish-to-npm, create-github-release]
-    if: ${{ github.event.pull_request.merged == true && !contains(github.event.pull_request.labels.*.name, 'release:patch') }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4.1.1
-        with:
-          fetch-depth: 0
-      - run: |
-          git checkout --track origin/master
-          git config user.name "github-actions[bot]"
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git merge --ff n8n@${{ needs.publish-to-npm.outputs.release }}
-          git push origin master
-          git push origin :${{github.event.pull_request.base.ref}}
+  # merge-back-into-master:
+  #   name: Merge back into master
+  #   needs: [publish-to-npm, create-github-release]
+  #   if: ${{ github.event.pull_request.merged == true && !contains(github.event.pull_request.labels.*.name, 'release:patch') }}
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4.1.1
+  #       with:
+  #         fetch-depth: 0
+  #     - run: |
+  #         git checkout --track origin/master
+  #         git config user.name "github-actions[bot]"
+  #         git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+  #         git merge --ff n8n@${{ needs.publish-to-npm.outputs.release }}
+  #         git push origin master
+  #         git push origin :${{github.event.pull_request.base.ref}}
