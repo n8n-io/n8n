@@ -324,8 +324,6 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			}
 		}
 
-		console.log(workflowsStore.getCurrentWorkflow());
-
 		trackDeleteNode(id);
 	}
 
