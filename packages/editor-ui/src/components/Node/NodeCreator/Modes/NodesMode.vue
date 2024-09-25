@@ -226,7 +226,12 @@ registerKeyHook('MainViewArrowLeft', {
 <template>
 	<span>
 		<!-- Main Node Items -->
-		<ItemsRenderer :elements="activeViewStack.items" :class="$style.items" @selected="onSelected">
+		<ItemsRenderer
+			v-memo="[activeViewStack.search]"
+			:elements="activeViewStack.items"
+			:class="$style.items"
+			@selected="onSelected"
+		>
 			<template
 				v-if="(activeViewStack.items || []).length === 0 && globalSearchItemsDiff.length === 0"
 				#empty

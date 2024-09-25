@@ -1,13 +1,15 @@
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { ExecutionService } from '@/executions/execution.service';
 import { mock } from 'jest-mock-extended';
 import Container from 'typedi';
-import { createWorkflow } from './shared/db/workflows';
-import { createExecution } from './shared/db/executions';
-import * as testDb from './shared/test-db';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import type { ExecutionSummaries } from '@/executions/execution.types';
+
 import { ExecutionMetadataRepository } from '@/databases/repositories/execution-metadata.repository';
+import { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { ExecutionService } from '@/executions/execution.service';
+import type { ExecutionSummaries } from '@/executions/execution.types';
+
+import { annotateExecution, createAnnotationTags, createExecution } from './shared/db/executions';
+import { createWorkflow } from './shared/db/workflows';
+import * as testDb from './shared/test-db';
 
 describe('ExecutionService', () => {
 	let executionService: ExecutionService;
@@ -19,6 +21,8 @@ describe('ExecutionService', () => {
 		executionRepository = Container.get(ExecutionRepository);
 
 		executionService = new ExecutionService(
+			mock(),
+			mock(),
 			mock(),
 			mock(),
 			mock(),
@@ -70,6 +74,10 @@ describe('ExecutionService', () => {
 				waitTill: null,
 				retrySuccessId: null,
 				workflowName: expect.any(String),
+				annotation: {
+					tags: expect.arrayContaining([]),
+					vote: null,
+				},
 			};
 
 			expect(output.count).toBe(2);
@@ -460,6 +468,203 @@ describe('ExecutionService', () => {
 			expect(results).toHaveLength(2);
 			expect(results[0].status).toBe('running');
 			expect(results[1].status).toBe('running');
+		});
+	});
+
+	describe('annotation', () => {
+		const summaryShape = {
+			id: expect.any(String),
+			workflowId: expect.any(String),
+			mode: expect.any(String),
+			retryOf: null,
+			status: expect.any(String),
+			startedAt: expect.any(String),
+			stoppedAt: expect.any(String),
+			waitTill: null,
+			retrySuccessId: null,
+			workflowName: expect.any(String),
+		};
+
+		afterEach(async () => {
+			await testDb.truncate(['AnnotationTag', 'ExecutionAnnotation']);
+		});
+
+		test('should add and retrieve annotation', async () => {
+			const workflow = await createWorkflow();
+
+			const execution1 = await createExecution({ status: 'success' }, workflow);
+			const execution2 = await createExecution({ status: 'success' }, workflow);
+
+			const annotationTags = await createAnnotationTags(['tag1', 'tag2', 'tag3']);
+
+			await annotateExecution(
+				execution1.id,
+				{ vote: 'up', tags: [annotationTags[0].id, annotationTags[1].id] },
+				[workflow.id],
+			);
+			await annotateExecution(execution2.id, { vote: 'down', tags: [annotationTags[2].id] }, [
+				workflow.id,
+			]);
+
+			const query: ExecutionSummaries.RangeQuery = {
+				kind: 'range',
+				status: ['success'],
+				range: { limit: 20 },
+				accessibleWorkflowIds: [workflow.id],
+			};
+
+			const output = await executionService.findRangeWithCount(query);
+
+			expect(output.count).toBe(2);
+			expect(output.estimated).toBe(false);
+			expect(output.results).toEqual(
+				expect.arrayContaining([
+					{
+						...summaryShape,
+						annotation: {
+							tags: [expect.objectContaining({ name: 'tag3' })],
+							vote: 'down',
+						},
+					},
+					{
+						...summaryShape,
+						annotation: {
+							tags: [
+								expect.objectContaining({ name: 'tag1' }),
+								expect.objectContaining({ name: 'tag2' }),
+							],
+							vote: 'up',
+						},
+					},
+				]),
+			);
+		});
+
+		test('should update annotation', async () => {
+			const workflow = await createWorkflow();
+
+			const execution = await createExecution({ status: 'success' }, workflow);
+
+			const annotationTags = await createAnnotationTags(['tag1', 'tag2', 'tag3']);
+
+			await annotateExecution(execution.id, { vote: 'up', tags: [annotationTags[0].id] }, [
+				workflow.id,
+			]);
+
+			await annotateExecution(execution.id, { vote: 'down', tags: [annotationTags[1].id] }, [
+				workflow.id,
+			]);
+
+			const query: ExecutionSummaries.RangeQuery = {
+				kind: 'range',
+				status: ['success'],
+				range: { limit: 20 },
+				accessibleWorkflowIds: [workflow.id],
+			};
+
+			const output = await executionService.findRangeWithCount(query);
+
+			expect(output.count).toBe(1);
+			expect(output.estimated).toBe(false);
+			expect(output.results).toEqual([
+				{
+					...summaryShape,
+					annotation: {
+						tags: [expect.objectContaining({ name: 'tag2' })],
+						vote: 'down',
+					},
+				},
+			]);
+		});
+
+		test('should filter by annotation tags', async () => {
+			const workflow = await createWorkflow();
+
+			const executions = await Promise.all([
+				createExecution({ status: 'success' }, workflow),
+				createExecution({ status: 'success' }, workflow),
+			]);
+
+			const annotationTags = await createAnnotationTags(['tag1', 'tag2', 'tag3']);
+
+			await annotateExecution(
+				executions[0].id,
+				{ vote: 'up', tags: [annotationTags[0].id, annotationTags[1].id] },
+				[workflow.id],
+			);
+			await annotateExecution(executions[1].id, { vote: 'down', tags: [annotationTags[2].id] }, [
+				workflow.id,
+			]);
+
+			const query: ExecutionSummaries.RangeQuery = {
+				kind: 'range',
+				status: ['success'],
+				range: { limit: 20 },
+				accessibleWorkflowIds: [workflow.id],
+				annotationTags: [annotationTags[0].id],
+			};
+
+			const output = await executionService.findRangeWithCount(query);
+
+			expect(output.count).toBe(1);
+			expect(output.estimated).toBe(false);
+			expect(output.results).toEqual([
+				{
+					...summaryShape,
+					annotation: {
+						tags: [
+							expect.objectContaining({ name: 'tag1' }),
+							expect.objectContaining({ name: 'tag2' }),
+						],
+						vote: 'up',
+					},
+				},
+			]);
+		});
+
+		test('should filter by annotation vote', async () => {
+			const workflow = await createWorkflow();
+
+			const executions = await Promise.all([
+				createExecution({ status: 'success' }, workflow),
+				createExecution({ status: 'success' }, workflow),
+			]);
+
+			const annotationTags = await createAnnotationTags(['tag1', 'tag2', 'tag3']);
+
+			await annotateExecution(
+				executions[0].id,
+				{ vote: 'up', tags: [annotationTags[0].id, annotationTags[1].id] },
+				[workflow.id],
+			);
+			await annotateExecution(executions[1].id, { vote: 'down', tags: [annotationTags[2].id] }, [
+				workflow.id,
+			]);
+
+			const query: ExecutionSummaries.RangeQuery = {
+				kind: 'range',
+				status: ['success'],
+				range: { limit: 20 },
+				accessibleWorkflowIds: [workflow.id],
+				vote: 'up',
+			};
+
+			const output = await executionService.findRangeWithCount(query);
+
+			expect(output.count).toBe(1);
+			expect(output.estimated).toBe(false);
+			expect(output.results).toEqual([
+				{
+					...summaryShape,
+					annotation: {
+						tags: [
+							expect.objectContaining({ name: 'tag1' }),
+							expect.objectContaining({ name: 'tag2' }),
+						],
+						vote: 'up',
+					},
+				},
+			]);
 		});
 	});
 });

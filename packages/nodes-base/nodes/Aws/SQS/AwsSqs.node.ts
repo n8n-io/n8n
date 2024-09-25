@@ -67,7 +67,7 @@ export class AwsSqs implements INodeType {
 				default: '',
 				required: true,
 				description:
-					'Queue to send a message to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'Queue to send a message to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Queue Type',
@@ -378,7 +378,7 @@ export class AwsSqs implements INodeType {
 				const result = responseData.SendMessageResponse.SendMessageResult;
 				returnData.push(result as IDataObject);
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					returnData.push({ error: error.description });
 					continue;
 				}

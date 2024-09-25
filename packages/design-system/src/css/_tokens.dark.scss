@@ -37,7 +37,7 @@
 	--color-assistant-highlight-1: #8c90f2;
 	--color-assistant-highlight-2: #a977f0;
 	--color-assistant-highlight-3: #f0778b;
-	--color-askAssistant-button-background: #2E2E2E;
+	--color-askAssistant-button-background: #2e2e2e;
 	--color-askAssistant-button-background-hover: #383839;
 	--color-askAssistant-button-background-active: #414244;
 	--color-assistant-inner-highlight-hover: var(--color-askAssistant-button-background-hover);
@@ -72,6 +72,12 @@
 	--color-canvas-read-only-line: var(--prim-gray-800);
 	--color-canvas-selected: var(--prim-gray-0-alpha-025);
 	--color-canvas-selected-transparent: var(--color-canvas-selected);
+	--color-canvas-label-background: hsla(
+		var(--color-canvas-background-h),
+		var(--color-canvas-background-s),
+		var(--color-canvas-background-l),
+		0.85
+	);
 
 	// Nodes
 	--color-node-background: var(--prim-gray-740);

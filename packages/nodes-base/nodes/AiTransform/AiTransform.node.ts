@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import {
 	NodeOperationError,
 	NodeConnectionType,
@@ -133,7 +132,7 @@ export class AiTransform implements INodeType {
 		try {
 			items = (await sandbox.runCodeAllItems()) as INodeExecutionData[];
 		} catch (error) {
-			if (!this.continueOnFail(error)) {
+			if (!this.continueOnFail()) {
 				set(error, 'node', node);
 				throw error;
 			}

@@ -5,10 +5,16 @@ const props = withDefaults(
 	defineProps<{
 		position?: 'top' | 'right' | 'bottom' | 'left';
 		handleClasses?: string;
+		plusSize?: number;
+		lineSize?: number;
+		state?: 'success' | 'default';
 	}>(),
 	{
 		position: 'right',
 		handleClasses: undefined,
+		plusSize: 24,
+		lineSize: 46,
+		state: 'default',
 	},
 );
 
@@ -18,48 +24,55 @@ const emit = defineEmits<{
 
 const style = useCssModule();
 
-const classes = computed(() => [style.wrapper, style[props.position], props.handleClasses]);
-
-const plusSize = 24;
-const lineSize = 46;
+const classes = computed(() => [
+	style.wrapper,
+	style[props.position],
+	style[props.state],
+	props.handleClasses,
+]);
 
 const viewBox = computed(() => {
 	switch (props.position) {
 		case 'bottom':
 		case 'top':
 			return {
-				width: plusSize,
-				height: lineSize + plusSize,
+				width: props.plusSize,
+				height: props.lineSize + props.plusSize,
 			};
 		default:
 			return {
-				width: lineSize + plusSize,
-				height: plusSize,
+				width: props.lineSize + props.plusSize,
+				height: props.plusSize,
 			};
 	}
 });
+
+const styles = computed(() => ({
+	width: `${viewBox.value.width}px`,
+	height: `${viewBox.value.height}px`,
+}));
 
 const linePosition = computed(() => {
 	switch (props.position) {
 		case 'top':
 			return [
-				[viewBox.value.width / 2, viewBox.value.height - lineSize + 1],
+				[viewBox.value.width / 2, viewBox.value.height - props.lineSize + 1],
 				[viewBox.value.width / 2, viewBox.value.height],
 			];
 		case 'bottom':
 			return [
 				[viewBox.value.width / 2, 0],
-				[viewBox.value.width / 2, lineSize + 1],
+				[viewBox.value.width / 2, props.lineSize + 1],
 			];
 		case 'left':
 			return [
-				[viewBox.value.width - lineSize - 1, viewBox.value.height / 2],
+				[viewBox.value.width - props.lineSize - 1, viewBox.value.height / 2],
 				[viewBox.value.width, viewBox.value.height / 2],
 			];
 		default:
 			return [
 				[0, viewBox.value.height / 2],
-				[lineSize + 1, viewBox.value.height / 2],
+				[props.lineSize + 1, viewBox.value.height / 2],
 			];
 	}
 });
@@ -67,13 +80,13 @@ const linePosition = computed(() => {
 const plusPosition = computed(() => {
 	switch (props.position) {
 		case 'bottom':
-			return [0, viewBox.value.height - plusSize];
+			return [0, viewBox.value.height - props.plusSize];
 		case 'top':
 			return [0, 0];
 		case 'left':
 			return [0, 0];
 		default:
-			return [viewBox.value.width - plusSize, 0];
+			return [viewBox.value.width - props.plusSize, 0];
 	}
 });
 
@@ -83,9 +96,9 @@ function onClick(event: MouseEvent) {
 </script>
 
 <template>
-	<svg :class="classes" :viewBox="`0 0 ${viewBox.width} ${viewBox.height}`">
+	<svg :class="classes" :viewBox="`0 0 ${viewBox.width} ${viewBox.height}`" :style="styles">
 		<line
-			:class="handleClasses"
+			:class="[handleClasses, $style.line]"
 			:x1="linePosition[0][0]"
 			:y1="linePosition[0][1]"
 			:x2="linePosition[1][0]"
@@ -122,16 +135,8 @@ function onClick(event: MouseEvent) {
 .wrapper {
 	position: relative;
 
-	&.top,
-	&.bottom {
-		width: 24px;
-		height: 70px;
-	}
-
-	&.left,
-	&.right {
-		width: 70px;
-		height: 24px;
+	&.success .line {
+		stroke: var(--color-success);
 	}
 }
 

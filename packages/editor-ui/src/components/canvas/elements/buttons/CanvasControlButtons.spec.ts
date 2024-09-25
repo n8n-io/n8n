@@ -3,7 +3,7 @@ import CanvasControlButtons from './CanvasControlButtons.vue';
 
 const renderComponent = createComponentRenderer(CanvasControlButtons);
 
-describe('CanvasChatButton', () => {
+describe('CanvasControlButtons', () => {
 	it('should render correctly', () => {
 		const wrapper = renderComponent();
 

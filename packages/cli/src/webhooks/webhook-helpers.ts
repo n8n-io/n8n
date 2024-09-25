@@ -6,14 +6,10 @@
 /* eslint-disable prefer-spread */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
+import { GlobalConfig } from '@n8n/config';
 import type express from 'express';
-import { Container } from 'typedi';
 import get from 'lodash/get';
-import { finished } from 'stream/promises';
-import formidable from 'formidable';
-
 import { BinaryDataService, NodeExecuteFunctions } from 'n8n-core';
-
 import type {
 	IBinaryData,
 	IBinaryKeyData,
@@ -31,6 +27,7 @@ import type {
 	WebhookResponseMode,
 	Workflow,
 	WorkflowExecuteMode,
+	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
 import {
 	ApplicationError,
@@ -39,21 +36,25 @@ import {
 	ErrorReporterProxy as ErrorReporter,
 	NodeHelpers,
 } from 'n8n-workflow';
+import { finished } from 'stream/promises';
+import { Container } from 'typedi';
 
-import type { IWebhookResponseCallbackData, WebhookRequest } from './webhook.types';
+import { ActiveExecutions } from '@/active-executions';
+import type { Project } from '@/databases/entities/project';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
+import type { IExecutionDb, IWorkflowDb } from '@/interfaces';
+import { Logger } from '@/logger';
+import { parseBody } from '@/middlewares';
+import { OwnershipService } from '@/services/ownership.service';
+import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
+import { createMultiFormDataParser } from '@/webhooks/webhook-form-data';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowRunner } from '@/workflow-runner';
-import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import { ActiveExecutions } from '@/active-executions';
-import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
-import { OwnershipService } from '@/services/ownership.service';
-import { parseBody } from '@/middlewares';
-import { Logger } from '@/logger';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
-import type { Project } from '@/databases/entities/project';
-import type { IExecutionDb, IWorkflowDb, IWorkflowExecutionDataProcess } from '@/interfaces';
+
+import type { IWebhookResponseCallbackData, WebhookRequest } from './webhook.types';
 
 /**
  * Returns all the webhooks which should be created for the given workflow
@@ -91,14 +92,8 @@ export function getWorkflowWebhooks(
 	return returnData;
 }
 
-const normalizeFormData = <T>(values: Record<string, T | T[]>) => {
-	for (const key in values) {
-		const value = values[key];
-		if (Array.isArray(value) && value.length === 1) {
-			values[key] = value[0];
-		}
-	}
-};
+const { formDataFileSizeMax } = Container.get(GlobalConfig).endpoints;
+const parseFormData = createMultiFormDataParser(formDataFileSizeMax);
 
 /**
  * Executes a webhook
@@ -212,20 +207,9 @@ export async function executeWebhook(
 		// if `Webhook` or `Wait` node, and binaryData is enabled, skip pre-parse the request-body
 		// always falsy for versions higher than 1
 		if (!binaryData) {
-			const { contentType, encoding } = req;
+			const { contentType } = req;
 			if (contentType === 'multipart/form-data') {
-				const form = formidable({
-					multiples: true,
-					encoding: encoding as formidable.BufferEncoding,
-					// TODO: pass a custom `fileWriteStreamHandler` to create binary data files directly
-				});
-				req.body = await new Promise((resolve) => {
-					form.parse(req, async (_err, data, files) => {
-						normalizeFormData(data);
-						normalizeFormData(files);
-						resolve({ data, files });
-					});
-				});
+				req.body = await parseFormData(req);
 			} else {
 				if (nodeVersion > 1) {
 					if (
@@ -437,9 +421,8 @@ export async function executeWebhook(
 
 		let responsePromise: IDeferredPromise<IN8nHttpFullResponse> | undefined;
 		if (responseMode === 'responseNode') {
-			responsePromise = await createDeferredPromise<IN8nHttpFullResponse>();
-			responsePromise
-				.promise()
+			responsePromise = createDeferredPromise<IN8nHttpFullResponse>();
+			responsePromise.promise
 				.then(async (response: IN8nHttpFullResponse) => {
 					if (didSendResponse) {
 						return;
@@ -550,7 +533,7 @@ export async function executeWebhook(
 
 					// in `responseNode` mode `responseCallback` is called by `responsePromise`
 					if (responseMode === 'responseNode' && responsePromise) {
-						await Promise.allSettled([responsePromise.promise()]);
+						await Promise.allSettled([responsePromise.promise]);
 						return undefined;
 					}
 

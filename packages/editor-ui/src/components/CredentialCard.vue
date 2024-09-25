@@ -138,16 +138,19 @@ function moveResource() {
 		<template #header>
 			<n8n-heading tag="h2" bold :class="$style.cardHeading">
 				{{ data.name }}
+				<N8nBadge v-if="readOnly" class="ml-3xs" theme="tertiary" bold>
+					{{ locale.baseText('credentials.item.readonly') }}
+				</N8nBadge>
 			</n8n-heading>
 		</template>
 		<div :class="$style.cardDescription">
 			<n8n-text color="text-light" size="small">
 				<span v-if="credentialType">{{ credentialType.displayName }} | </span>
 				<span v-show="data"
-					>{{ $locale.baseText('credentials.item.updated') }} <TimeAgo :date="data.updatedAt" /> |
+					>{{ locale.baseText('credentials.item.updated') }} <TimeAgo :date="data.updatedAt" /> |
 				</span>
 				<span v-show="data"
-					>{{ $locale.baseText('credentials.item.created') }} {{ formattedCreatedAtDate }}
+					>{{ locale.baseText('credentials.item.created') }} {{ formattedCreatedAtDate }}
 				</span>
 			</n8n-text>
 		</div>

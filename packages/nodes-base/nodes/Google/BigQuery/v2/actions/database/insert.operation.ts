@@ -63,7 +63,7 @@ const properties: INodeProperties[] = [
 						name: 'fieldId',
 						type: 'options',
 						description:
-							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsDependsOn: ['projectId.value', 'datasetId.value', 'tableId.value'],
 							loadOptionsMethod: 'getSchema',
@@ -210,7 +210,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 			rows.push({ json: checkSchema.call(this, schema, record, i) });
 		} catch (error) {
-			if (this.continueOnFail(error)) {
+			if (this.continueOnFail()) {
 				const executionErrorData = this.helpers.constructExecutionMetaData(
 					this.helpers.returnJsonArray({ error: error.message }),
 					{ itemData: { item: i } },

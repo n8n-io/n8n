@@ -283,7 +283,7 @@ export class GoogleSlides implements INodeType {
 									loadOptionsDependsOn: ['presentationId'],
 								},
 								description:
-									'If non-empty, limits the matches to page elements only on the given pages. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+									'If non-empty, limits the matches to page elements only on the given pages. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Replace Text',
@@ -580,7 +580,7 @@ export class GoogleSlides implements INodeType {
 					}
 				}
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },

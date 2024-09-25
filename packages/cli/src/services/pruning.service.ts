@@ -1,11 +1,13 @@
-import { Service } from 'typedi';
 import { BinaryDataService, InstanceSettings } from 'n8n-core';
-import { inTest, TIME } from '@/constants';
-import config from '@/config';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { Logger } from '@/logger';
 import { jsonStringify } from 'n8n-workflow';
+import { Service } from 'typedi';
+
+import config from '@/config';
+import { inTest, TIME } from '@/constants';
+import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { OnShutdown } from '@/decorators/on-shutdown';
+import { Logger } from '@/logger';
+
 import { OrchestrationService } from './orchestration.service';
 
 @Service()
@@ -46,19 +48,12 @@ export class PruningService {
 	}
 
 	private isPruningEnabled() {
-		if (
-			!config.getEnv('executions.pruneData') ||
-			inTest ||
-			config.get('generic.instanceType') !== 'main'
-		) {
+		const { instanceType, isFollower } = this.instanceSettings;
+		if (!config.getEnv('executions.pruneData') || inTest || instanceType !== 'main') {
 			return false;
 		}
 
-		if (
-			config.getEnv('multiMainSetup.enabled') &&
-			config.getEnv('generic.instanceType') === 'main' &&
-			this.instanceSettings.isFollower
-		) {
+		if (config.getEnv('multiMainSetup.enabled') && instanceType === 'main' && isFollower) {
 			return false;
 		}
 

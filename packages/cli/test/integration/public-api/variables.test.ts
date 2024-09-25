@@ -1,8 +1,9 @@
-import { setupTestServer } from '@test-integration/utils';
+import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { createOwner } from '@test-integration/db/users';
 import { createVariable, getVariableOrFail } from '@test-integration/db/variables';
+import { setupTestServer } from '@test-integration/utils';
+
 import * as testDb from '../shared/test-db';
-import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 
 describe('Variables in Public API', () => {
 	const testServer = setupTestServer({ endpointGroups: ['publicApi'] });

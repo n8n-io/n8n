@@ -230,7 +230,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 				name: 'surveyIds',
 				type: 'multiOptions',
 				description:
-					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				displayOptions: {
 					show: {
 						objectType: ['survey'],
@@ -251,7 +251,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 				name: 'surveyId',
 				type: 'options',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				displayOptions: {
 					show: {
 						objectType: ['collector'],
@@ -268,7 +268,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 				name: 'collectorIds',
 				type: 'multiOptions',
 				description:
-					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				displayOptions: {
 					show: {
 						objectType: ['collector'],

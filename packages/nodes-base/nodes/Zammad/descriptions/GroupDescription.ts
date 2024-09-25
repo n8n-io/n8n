@@ -70,7 +70,7 @@ export const groupDescription: INodeProperties[] = [
 		name: 'id',
 		type: 'string',
 		description:
-			'Group to update. Specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'Group to update. Specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		default: '',
 		required: true,
 		displayOptions: {
@@ -85,7 +85,7 @@ export const groupDescription: INodeProperties[] = [
 		name: 'id',
 		type: 'string',
 		description:
-			'Group to delete. Specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'Group to delete. Specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		default: '',
 		required: true,
 		displayOptions: {
@@ -100,7 +100,7 @@ export const groupDescription: INodeProperties[] = [
 		name: 'id',
 		type: 'string',
 		description:
-			'Group to retrieve. Specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'Group to retrieve. Specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		default: '',
 		required: true,
 		displayOptions: {
@@ -153,7 +153,7 @@ export const groupDescription: INodeProperties[] = [
 								},
 								default: '',
 								description:
-									'Name of the custom field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+									'Name of the custom field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Field Value',
@@ -216,7 +216,7 @@ export const groupDescription: INodeProperties[] = [
 								},
 								default: '',
 								description:
-									'Name of the custom field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+									'Name of the custom field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Field Value',

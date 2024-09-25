@@ -1,10 +1,9 @@
-import { Service } from 'typedi';
-import winston from 'winston';
 import callsites from 'callsites';
-import { inspect } from 'util';
-import { basename } from 'path';
-
 import { LoggerProxy, type IDataObject, LOG_LEVELS } from 'n8n-workflow';
+import { basename } from 'path';
+import { Service } from 'typedi';
+import { inspect } from 'util';
+import winston from 'winston';
 
 import config from '@/config';
 

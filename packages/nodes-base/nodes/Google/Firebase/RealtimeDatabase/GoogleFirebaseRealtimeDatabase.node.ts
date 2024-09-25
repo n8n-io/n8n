@@ -42,7 +42,7 @@ export class GoogleFirebaseRealtimeDatabase implements INodeType {
 					loadOptionsMethod: 'getProjects',
 				},
 				description:
-					'As displayed in firebase console URL. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'As displayed in firebase console URL. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				required: true,
 			},
 			{
@@ -226,7 +226,7 @@ export class GoogleFirebaseRealtimeDatabase implements INodeType {
 					}
 				}
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },

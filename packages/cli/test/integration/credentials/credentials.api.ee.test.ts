@@ -1,25 +1,24 @@
-import { Container } from 'typedi';
 import { In } from '@n8n/typeorm';
+import { Container } from 'typedi';
 
 import config from '@/config';
-import type { ListQuery } from '@/requests';
-import type { User } from '@/databases/entities/user';
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
 import type { Project } from '@/databases/entities/project';
+import type { User } from '@/databases/entities/user';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
+import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
+import type { ListQuery } from '@/requests';
 import { ProjectService } from '@/services/project.service';
 import { UserManagementMailer } from '@/user-management/email';
+import { createWorkflow, shareWorkflowWithUsers } from '@test-integration/db/workflows';
 
-import { randomCredentialPayload } from '../shared/random';
-import * as testDb from '../shared/test-db';
-import type { SaveCredentialFunction } from '../shared/types';
-import * as utils from '../shared/utils';
+import { mockInstance } from '../../shared/mocking';
 import {
 	affixRoleToSaveCredential,
 	getCredentialSharings,
 	shareCredentialWithProjects,
 	shareCredentialWithUsers,
 } from '../shared/db/credentials';
+import { createTeamProject, linkUserToProject } from '../shared/db/projects';
 import {
 	createAdmin,
 	createManyUsers,
@@ -27,10 +26,11 @@ import {
 	createUser,
 	createUserShell,
 } from '../shared/db/users';
+import { randomCredentialPayload } from '../shared/random';
+import * as testDb from '../shared/test-db';
+import type { SaveCredentialFunction } from '../shared/types';
 import type { SuperAgentTest } from '../shared/types';
-import { mockInstance } from '../../shared/mocking';
-import { createTeamProject, linkUserToProject } from '../shared/db/projects';
-import { createWorkflow, shareWorkflowWithUsers } from '@test-integration/db/workflows';
+import * as utils from '../shared/utils';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['credentials'],
@@ -515,7 +515,6 @@ describe('GET /credentials/:id', () => {
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data).toMatchObject({
 			id: savedCredential.id,
-			shared: [{ projectId: teamProject.id, role: 'credential:owner' }],
 			homeProject: {
 				id: teamProject.id,
 			},

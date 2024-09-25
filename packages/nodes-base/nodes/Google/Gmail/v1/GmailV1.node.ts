@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import {
 	NodeConnectionType,
 	type IBinaryKeyData,
@@ -828,7 +827,7 @@ export class GmailV1 implements INodeType {
 
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					returnData.push({ json: { error: error.message } });
 					continue;
 				}

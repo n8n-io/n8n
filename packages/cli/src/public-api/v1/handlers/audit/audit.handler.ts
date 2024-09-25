@@ -1,7 +1,8 @@
-import { globalScope } from '@/public-api/v1/shared/middlewares/global.middleware';
 import type { Response } from 'express';
-import type { AuditRequest } from '@/public-api/types';
 import Container from 'typedi';
+
+import type { AuditRequest } from '@/public-api/types';
+import { globalScope } from '@/public-api/v1/shared/middlewares/global.middleware';
 
 export = {
 	generateAudit: [

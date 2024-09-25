@@ -421,7 +421,7 @@ export class UptimeRobot implements INodeType {
 					? returnData.push(...(responseData as IDataObject[]))
 					: returnData.push(responseData as IDataObject);
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					returnData.push({ error: error.message });
 					continue;
 				}

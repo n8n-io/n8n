@@ -1,4 +1,5 @@
 import { Service } from 'typedi';
+
 import { AbstractServer } from '@/abstract-server';
 
 @Service()

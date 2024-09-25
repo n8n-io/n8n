@@ -44,12 +44,20 @@ export const enum CanvasNodeRenderType {
 	AddNodes = 'n8n-nodes-internal.addNodes',
 }
 
+export type CanvasNodeDefaultRenderLabelSize = 'small' | 'medium' | 'large';
+
 export type CanvasNodeDefaultRender = {
 	type: CanvasNodeRenderType.Default;
 	options: Partial<{
 		configurable: boolean;
 		configuration: boolean;
 		trigger: boolean;
+		inputs: {
+			labelSize: CanvasNodeDefaultRenderLabelSize;
+		};
+		outputs: {
+			labelSize: CanvasNodeDefaultRenderLabelSize;
+		};
 	}>;
 };
 
@@ -95,7 +103,8 @@ export interface CanvasNodeData {
 		running: boolean;
 	};
 	runData: {
-		count: number;
+		outputMap: ExecutionOutputMap;
+		iterations: number;
 		visible: boolean;
 	};
 	render: CanvasNodeDefaultRender | CanvasNodeStickyNoteRender | CanvasNodeAddNodesRender;
@@ -147,6 +156,7 @@ export interface CanvasNodeInjectionData {
 	data: Ref<CanvasNodeData>;
 	label: Ref<NodeProps['label']>;
 	selected: Ref<NodeProps['selected']>;
+	readOnly: Ref<boolean>;
 	eventBus: Ref<EventBus<CanvasNodeEventBusEvents>>;
 }
 
@@ -154,10 +164,24 @@ export interface CanvasNodeHandleInjectionData {
 	label: Ref<string | undefined>;
 	mode: Ref<CanvasConnectionMode>;
 	type: Ref<NodeConnectionType>;
+	index: Ref<number>;
 	isConnected: Ref<boolean | undefined>;
 	isConnecting: Ref<boolean | undefined>;
+	isReadOnly: Ref<boolean | undefined>;
+	runData: Ref<ExecutionOutputMapData | undefined>;
 }
 
 export type ConnectStartEvent = { handleId: string; handleType: string; nodeId: string };
 
 export type CanvasNodeMoveEvent = { id: string; position: CanvasNode['position'] };
+
+export type ExecutionOutputMapData = {
+	total: number;
+	iterations: number;
+};
+
+export type ExecutionOutputMap = {
+	[connectionType: string]: {
+		[outputIndex: string]: ExecutionOutputMapData;
+	};
+};

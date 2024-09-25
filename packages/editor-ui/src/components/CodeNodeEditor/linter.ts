@@ -2,7 +2,7 @@ import type { Diagnostic } from '@codemirror/lint';
 import { linter } from '@codemirror/lint';
 import type { EditorView } from '@codemirror/view';
 import * as esprima from 'esprima-next';
-import type { Node } from 'estree';
+import type { Node, MemberExpression } from 'estree';
 import type { CodeExecutionMode, CodeNodeEditorLanguage } from 'n8n-workflow';
 import { toValue, type MaybeRefOrGetter } from 'vue';
 
@@ -153,13 +153,20 @@ export const useLinter = (
 		if (toValue(mode) === 'runOnceForAllItems') {
 			type TargetNode = RangeNode & { property: RangeNode };
 
+			const isInputIdentifier = (node: Node) =>
+				node.type === 'Identifier' && node.name === '$input';
+			const isPreviousNodeCall = (node: Node) =>
+				node.type === 'CallExpression' &&
+				node.callee.type === 'Identifier' &&
+				node.callee.name === '$';
+			const isDirectMemberExpression = (node: Node): node is MemberExpression =>
+				node.type === 'MemberExpression' && !node.computed;
+			const isItemIdentifier = (node: Node) => node.type === 'Identifier' && node.name === 'item';
+
 			const isUnavailableInputItemAccess = (node: Node) =>
-				node.type === 'MemberExpression' &&
-				!node.computed &&
-				node.object.type === 'Identifier' &&
-				node.object.name === '$input' &&
-				node.property.type === 'Identifier' &&
-				node.property.name === 'item';
+				isDirectMemberExpression(node) &&
+				(isInputIdentifier(node.object) || isPreviousNodeCall(node.object)) &&
+				isItemIdentifier(node.property);
 
 			walk<TargetNode>(ast, isUnavailableInputItemAccess).forEach((node) => {
 				const [start, end] = getRange(node.property);

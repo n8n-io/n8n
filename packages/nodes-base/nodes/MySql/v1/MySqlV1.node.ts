@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
@@ -335,7 +334,7 @@ export class MySqlV1 implements INodeType {
 					[] as INodeExecutionData[],
 				);
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					returnItems = this.helpers.returnJsonArray({ error: error.message });
 				} else {
 					await connection.end();
@@ -372,7 +371,7 @@ export class MySqlV1 implements INodeType {
 
 				returnItems = this.helpers.returnJsonArray(queryResult[0] as unknown as IDataObject);
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					returnItems = this.helpers.returnJsonArray({ error: error.message });
 				} else {
 					await connection.end();
@@ -407,7 +406,7 @@ export class MySqlV1 implements INodeType {
 					queryResult.map((result) => result[0]) as unknown as IDataObject[],
 				);
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					returnItems = this.helpers.returnJsonArray({ error: error.message });
 				} else {
 					await connection.end();

@@ -93,7 +93,7 @@ describe('HTTP Node Utils', () => {
 			);
 		});
 
-		it('should remove keys that contain sensitive data', async () => {
+		it('should remove keys that contain sensitive data and do not modify requestOptions', async () => {
 			const requestOptions: IRequestOptions = {
 				method: 'POST',
 				uri: 'https://example.com',
@@ -115,6 +115,14 @@ describe('HTTP Node Utils', () => {
 				method: 'POST',
 				uri: 'https://example.com',
 			});
+
+			expect(requestOptions).toEqual({
+				method: 'POST',
+				uri: 'https://example.com',
+				body: { sessionToken: 'secret', other: 'foo' },
+				headers: { authorization: 'secret', other: 'foo' },
+				auth: { user: 'user', password: 'secret' },
+			});
 		});
 
 		it('should remove secrets', async () => {
@@ -125,7 +133,9 @@ describe('HTTP Node Utils', () => {
 				headers: { authorization: 'secretAccessToken', other: 'foo' },
 			};
 
-			expect(sanitizeUiMessage(requestOptions, {}, ['secretAccessToken'])).toEqual({
+			const sanitizedRequest = sanitizeUiMessage(requestOptions, {}, ['secretAccessToken']);
+
+			expect(sanitizedRequest).toEqual({
 				body: {
 					nested: {
 						secret: REDACTED,

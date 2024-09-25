@@ -22,7 +22,7 @@ import { useWorkflowResourcesLocator } from './useWorkflowResourcesLocator';
 interface Props {
 	modelValue: INodeParameterResourceLocator;
 	eventBus?: EventBus;
-	inputSize: 'small' | 'mini' | 'medium' | 'large' | 'xlarge';
+	inputSize?: 'small' | 'mini' | 'medium' | 'large' | 'xlarge';
 	isValueExpression?: boolean;
 	isReadOnly?: boolean;
 	path: string;
@@ -87,7 +87,7 @@ const valueToDisplay = computed<NodeParameterValue>(() => {
 	}
 
 	if (isListMode.value) {
-		return props.modelValue ? props.modelValue.cachedResultName ?? props.modelValue.value : '';
+		return props.modelValue ? (props.modelValue.cachedResultName ?? props.modelValue.value) : '';
 	}
 
 	return props.modelValue ? props.modelValue.value : '';
@@ -108,7 +108,9 @@ function setWidth() {
 	}
 }
 
-function onInputChange(value: string): void {
+function onInputChange(value: NodeParameterValue): void {
+	if (typeof value !== 'string') return;
+
 	const params: INodeParameterResourceLocator = { __rl: true, value, mode: selectedMode.value };
 	if (isListMode.value) {
 		const resource = workflowsStore.getWorkflowById(value);
@@ -119,7 +121,7 @@ function onInputChange(value: string): void {
 	emit('update:modelValue', params);
 }
 
-function onListItemSelected(value: string) {
+function onListItemSelected(value: NodeParameterValue) {
 	onInputChange(value);
 	hideDropdown();
 }

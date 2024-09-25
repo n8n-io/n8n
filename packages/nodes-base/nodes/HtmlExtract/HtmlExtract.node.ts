@@ -283,7 +283,7 @@ export class HtmlExtract implements INodeType {
 					returnData.push(newItem);
 				}
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					returnData.push({
 						json: {
 							error: error.message,

@@ -19,7 +19,7 @@ export class FilterV2 implements INodeType {
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {
 			...baseDescription,
-			version: [2, 2.1],
+			version: [2, 2.1, 2.2],
 			defaults: {
 				name: 'Filter',
 				color: '#229eff',
@@ -39,6 +39,7 @@ export class FilterV2 implements INodeType {
 						filter: {
 							caseSensitive: '={{!$parameter.options.ignoreCase}}',
 							typeValidation: getTypeValidationStrictness(2.1),
+							version: '={{ $nodeVersion >= 2.2 ? 2 : 1 }}',
 						},
 					},
 				},
@@ -116,7 +117,7 @@ export class FilterV2 implements INodeType {
 					discardedItems.push(item);
 				}
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					discardedItems.push(item);
 				} else {
 					if (error instanceof NodeOperationError) {

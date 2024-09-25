@@ -1,21 +1,21 @@
 /* eslint-disable @typescript-eslint/no-loop-func */
-import { Container } from 'typedi';
 import { Flags } from '@oclif/core';
 import fs from 'fs';
-import os from 'os';
-import type { IRun, ITaskData } from 'n8n-workflow';
-import { ApplicationError, jsonParse } from 'n8n-workflow';
-import { sep } from 'path';
 import { diff } from 'json-diff';
 import pick from 'lodash/pick';
+import type { IRun, ITaskData, IWorkflowExecutionDataProcess } from 'n8n-workflow';
+import { ApplicationError, jsonParse } from 'n8n-workflow';
+import os from 'os';
+import { sep } from 'path';
+import { Container } from 'typedi';
 
 import { ActiveExecutions } from '@/active-executions';
-import { WorkflowRunner } from '@/workflow-runner';
-import type { IWorkflowDb, IWorkflowExecutionDataProcess } from '@/interfaces';
 import type { User } from '@/databases/entities/user';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import type { IWorkflowDb } from '@/interfaces';
 import { OwnershipService } from '@/services/ownership.service';
 import { findCliWorkflowStart } from '@/utils';
+import { WorkflowRunner } from '@/workflow-runner';
 
 import { BaseCommand } from './base-command';
 import type {
