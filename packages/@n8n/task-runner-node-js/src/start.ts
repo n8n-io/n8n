@@ -15,7 +15,7 @@ function readAndParseConfig(): Config {
 	a.ok(authToken, 'Missing task runner auth token. Use N8N_RUNNERS_AUTH_TOKEN to configure it');
 
 	return {
-		n8nUri: 'localhost:5678',
+		n8nUri: process.env.N8N_RUNNERS_N8N_URI ?? 'localhost:5678',
 		authToken,
 	};
 }
