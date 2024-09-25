@@ -404,7 +404,7 @@ export class WorkflowsController {
 		return await this.workflowExecutionService.executeManually(
 			req.body,
 			req.user,
-			req.headers['push-ref'] as string,
+			req.headers['push-ref'],
 			req.query.partialExecutionVersion === '-1'
 				? config.getEnv('featureFlags.partialExecutionVersionDefault')
 				: req.query.partialExecutionVersion,

@@ -8,6 +8,7 @@ import { ExternalStorageConfig } from './configs/external-storage.config';
 import { NodesConfig } from './configs/nodes.config';
 import { PublicApiConfig } from './configs/public-api.config';
 import { ScalingModeConfig } from './configs/scaling-mode.config';
+import { SentryConfig } from './configs/sentry.config';
 import { TemplatesConfig } from './configs/templates.config';
 import { UserManagementConfig } from './configs/user-management.config';
 import { VersionNotificationsConfig } from './configs/version-notifications.config';
@@ -48,6 +49,9 @@ export class GlobalConfig {
 
 	@Nested
 	workflows: WorkflowsConfig;
+
+	@Nested
+	sentry: SentryConfig;
 
 	/** Path n8n is deployed to */
 	@Env('N8N_PATH')
