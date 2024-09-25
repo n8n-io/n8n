@@ -1,4 +1,4 @@
-import { ApiKey } from '@/databases/entities/api-key';
+import type { ApiKey } from '@/databases/entities/api-key';
 import type { MigrationContext } from '@/databases/types';
 import { generateNanoId } from '@/databases/utils/generators';
 
@@ -39,7 +39,7 @@ export class AddApiKeysTable1724951148974 {
 		// Move the apiKey from the users table to the new table
 		usersWithApiKeys.forEach(async (user: { id: string; apiKey: string }) => {
 			await runQuery(
-				`INSERT INTO ${userApiKeysTable}(${idColumn}, ${userIdColumn}, ${apiKeyColumn}, ${labelColumn}) VALUES (:id, :userId, :apiKey, :label)`,
+				`INSERT INTO ${userApiKeysTable} (${idColumn}, ${userIdColumn}, ${apiKeyColumn}, ${labelColumn}) VALUES (:id, :userId, :apiKey, :label)`,
 				{
 					id: generateNanoId(),
 					userId: user.id,

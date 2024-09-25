@@ -1,8 +1,9 @@
+import type { ApiKey } from '@/databases/entities/api-key';
 import type { MigrationContext } from '@/databases/types';
 import { generateNanoId } from '@/databases/utils/generators';
 
 export class AddApiKeysTable1724951148974 {
-	async up({ queryRunner, tablePrefix }: MigrationContext) {
+	async up({ queryRunner, tablePrefix, runQuery }: MigrationContext) {
 		const tableName = `${tablePrefix}user_api_keys`;
 
 		// Create the table
@@ -21,13 +22,20 @@ export class AddApiKeysTable1724951148974 {
 		`);
 
 		const usersWithApiKeys = (await queryRunner.query(
-			`SELECT id, "apiKey", 'My API Key' FROM ${tablePrefix}user WHERE "apiKey" IS NOT NULL`,
-		)) as Array<{ id: string; apiKey: string }>;
+			`SELECT id, "apiKey" FROM ${tablePrefix}user WHERE "apiKey" IS NOT NULL`,
+		)) as Array<Partial<ApiKey>>;
 
 		// Move the apiKey from the users table to the new table
 		usersWithApiKeys.forEach(async (user: { id: string; apiKey: string }) => {
-			await queryRunner.query(`INSERT INTO ${tableName} ("id", "userId", "apiKey", label) VALUES (${generateNanoId()}, '${user.id}', '${user.apiKey}', 'My API Key')
-		`);
+			await runQuery(
+				`INSERT INTO ${tableName} ("id", "userId", "apiKey", "label") VALUES (:id, :userId, :apiKey, :label)`,
+				{
+					id: generateNanoId(),
+					userId: user.id,
+					apiKey: user.apiKey,
+					label: 'My API Key',
+				},
+			);
 		});
 
 		// Create temporary table to store the users dropping the api key column
