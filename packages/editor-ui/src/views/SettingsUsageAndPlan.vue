@@ -6,7 +6,6 @@ import { useUsageStore } from '@/stores/usage.store';
 import { telemetry } from '@/plugins/telemetry';
 import { i18n as locale } from '@/plugins/i18n';
 import { useUIStore } from '@/stores/ui.store';
-import { N8N_PRICING_PAGE_URL } from '@/constants';
 import { useToast } from '@/composables/useToast';
 import { hasPermission } from '@/utils/rbac/permissions';
 
@@ -65,10 +64,6 @@ const onLicenseActivation = async () => {
 };
 
 onMounted(async () => {
-	if (usageStore.isDesktop) {
-		return;
-	}
-
 	usageStore.setLoading(true);
 	if (route.query.key) {
 		try {
@@ -123,25 +118,12 @@ const onDialogClosed = () => {
 const onDialogOpened = () => {
 	activationKeyInput.value?.focus();
 };
-
-const openPricingPage = () => {
-	sendUsageTelemetry('desktop_view_plans');
-	window.open(N8N_PRICING_PAGE_URL, '_blank');
-};
 </script>
 
 <template>
 	<div class="settings-usage-and-plan">
 		<n8n-heading size="2xlarge">{{ locale.baseText('settings.usageAndPlan.title') }}</n8n-heading>
-		<n8n-action-box
-			v-if="usageStore.isDesktop"
-			:class="$style.actionBox"
-			:heading="locale.baseText('settings.usageAndPlan.desktop.title')"
-			:description="locale.baseText('settings.usageAndPlan.desktop.description')"
-			:button-text="locale.baseText('settings.usageAndPlan.button.plans')"
-			@click:button="openPricingPage"
-		/>
-		<div v-if="!usageStore.isDesktop && !usageStore.isLoading">
+		<div v-if="!usageStore.isLoading">
 			<n8n-heading :class="$style.title" size="large">
 				<i18n-t keypath="settings.usageAndPlan.description" tag="span">
 					<template #name>{{ usageStore.planName }}</template>

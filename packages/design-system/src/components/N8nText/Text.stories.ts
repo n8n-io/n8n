@@ -1,4 +1,5 @@
 import type { StoryFn } from '@storybook/vue3';
+
 import N8nText from './Text.vue';
 
 export default {

@@ -1,4 +1,4 @@
-import { Service } from 'typedi';
+import { NodeExecuteFunctions } from 'n8n-core';
 import type {
 	ILoadOptions,
 	ILoadOptionsFunctions,
@@ -19,7 +19,8 @@ import type {
 	IDataObject,
 } from 'n8n-workflow';
 import { Workflow, RoutingNode, ApplicationError } from 'n8n-workflow';
-import { NodeExecuteFunctions } from 'n8n-core';
+import { Service } from 'typedi';
+
 import { NodeTypes } from '@/node-types';
 
 @Service()

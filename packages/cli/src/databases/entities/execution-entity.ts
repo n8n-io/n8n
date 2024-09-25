@@ -1,4 +1,3 @@
-import { ExecutionStatus, WorkflowExecuteMode } from 'n8n-workflow';
 import {
 	Column,
 	Entity,
@@ -11,11 +10,15 @@ import {
 	Relation,
 	DeleteDateColumn,
 } from '@n8n/typeorm';
+import { ExecutionStatus, WorkflowExecuteMode } from 'n8n-workflow';
+
+import type { ExecutionAnnotation } from '@/databases/entities/execution-annotation';
+
 import { datetimeColumnType } from './abstract-entity';
-import { idStringifier } from '../utils/transformers';
 import type { ExecutionData } from './execution-data';
 import type { ExecutionMetadata } from './execution-metadata';
 import { WorkflowEntity } from './workflow-entity';
+import { idStringifier } from '../utils/transformers';
 
 @Entity()
 @Index(['workflowId', 'id'])
@@ -64,6 +67,9 @@ export class ExecutionEntity {
 
 	@OneToOne('ExecutionData', 'execution')
 	executionData: Relation<ExecutionData>;
+
+	@OneToOne('ExecutionAnnotation', 'execution')
+	annotation?: Relation<ExecutionAnnotation>;
 
 	@ManyToOne('WorkflowEntity')
 	workflow: WorkflowEntity;

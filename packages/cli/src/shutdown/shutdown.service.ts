@@ -1,8 +1,9 @@
-import { Container, Service } from 'typedi';
-import { ApplicationError, ErrorReporterProxy, assert } from 'n8n-workflow';
 import type { Class } from 'n8n-core';
-import { Logger } from '@/logger';
+import { ApplicationError, ErrorReporterProxy, assert } from 'n8n-workflow';
+import { Container, Service } from 'typedi';
+
 import { LOWEST_SHUTDOWN_PRIORITY, HIGHEST_SHUTDOWN_PRIORITY } from '@/constants';
+import { Logger } from '@/logger';
 
 type HandlerFn = () => Promise<void> | void;
 export type ServiceClass = Class<Record<string, HandlerFn>>;

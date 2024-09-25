@@ -1,18 +1,19 @@
-import { v5 as uuidv5, v3 as uuidv3, v4 as uuidv4, v1 as uuidv1 } from 'uuid';
 import { mock } from 'jest-mock-extended';
+import { v5 as uuidv5, v3 as uuidv3, v4 as uuidv4, v1 as uuidv1 } from 'uuid';
 
+import { STICKY_NODE_TYPE } from '@/Constants';
+import { ApplicationError } from '@/errors';
+import { NodeConnectionType, type IWorkflowBase } from '@/Interfaces';
+import * as nodeHelpers from '@/NodeHelpers';
 import {
 	ANONYMIZATION_CHARACTER as CHAR,
 	generateNodesGraph,
 	getDomainBase,
 	getDomainPath,
 } from '@/TelemetryHelpers';
-import { nodeTypes } from './ExpressionExtensions/Helpers';
-import * as nodeHelpers from '@/NodeHelpers';
-import { NodeConnectionType, type IWorkflowBase } from '@/Interfaces';
-import { STICKY_NODE_TYPE } from '@/Constants';
-import { ApplicationError } from '@/errors';
 import { randomInt } from '@/utils';
+
+import { nodeTypes } from './ExpressionExtensions/Helpers';
 
 describe('getDomainBase should return protocol plus domain', () => {
 	test('in valid URLs', () => {

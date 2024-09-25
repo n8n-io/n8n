@@ -1,6 +1,7 @@
 import { Container } from 'typedi';
 
-import { LdapService } from '@/ldap/ldap.service.ee';
+import type { User } from '@/databases/entities/user';
+import { EventService } from '@/events/event.service';
 import {
 	createLdapUserOnLocalDb,
 	getUserByEmail,
@@ -10,8 +11,7 @@ import {
 	createLdapAuthIdentity,
 	updateLdapUserOnLocalDb,
 } from '@/ldap/helpers.ee';
-import type { User } from '@/databases/entities/user';
-import { EventService } from '@/events/event.service';
+import { LdapService } from '@/ldap/ldap.service.ee';
 
 export const handleLdapLogin = async (
 	loginId: string,

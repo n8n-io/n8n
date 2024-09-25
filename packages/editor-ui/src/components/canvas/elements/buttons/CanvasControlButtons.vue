@@ -40,6 +40,18 @@ function onZoomToFit() {
 <template>
 	<Controls :show-zoom="false" :show-fit-view="false">
 		<KeyboardShortcutTooltip
+			:label="$locale.baseText('nodeView.zoomToFit')"
+			:shortcut="{ keys: ['1'] }"
+		>
+			<N8nIconButton
+				type="tertiary"
+				size="large"
+				icon="expand"
+				data-test-id="zoom-to-fit"
+				@click="onZoomToFit"
+			/>
+		</KeyboardShortcutTooltip>
+		<KeyboardShortcutTooltip
 			:label="$locale.baseText('nodeView.zoomIn')"
 			:shortcut="{ keys: ['+'] }"
 		>
@@ -61,18 +73,6 @@ function onZoomToFit() {
 				icon="search-minus"
 				data-test-id="zoom-out-button"
 				@click="onZoomOut"
-			/>
-		</KeyboardShortcutTooltip>
-		<KeyboardShortcutTooltip
-			:label="$locale.baseText('nodeView.zoomToFit')"
-			:shortcut="{ keys: ['1'] }"
-		>
-			<N8nIconButton
-				type="tertiary"
-				size="large"
-				icon="expand"
-				data-test-id="zoom-to-fit"
-				@click="onZoomToFit"
 			/>
 		</KeyboardShortcutTooltip>
 		<KeyboardShortcutTooltip

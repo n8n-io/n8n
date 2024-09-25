@@ -1,27 +1,28 @@
-import { Container } from 'typedi';
 import cookieParser from 'cookie-parser';
 import express from 'express';
 import type superagent from 'superagent';
 import request from 'supertest';
+import { Container } from 'typedi';
 import { URL } from 'url';
 
+import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import type { User } from '@/databases/entities/user';
 import { ControllerRegistry } from '@/decorators';
+import { License } from '@/license';
+import { Logger } from '@/logger';
 import { rawBodyReader, bodyParser } from '@/middlewares';
 import { PostHogClient } from '@/posthog';
 import { Push } from '@/push';
-import { License } from '@/license';
-import { Logger } from '@/logger';
-import { AuthService } from '@/auth/auth.service';
 import type { APIRequest } from '@/requests';
+import { Telemetry } from '@/telemetry';
 
 import { mockInstance } from '../../../shared/mocking';
-import * as testDb from '../test-db';
 import { PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } from '../constants';
-import type { SetupProps, TestServer } from '../types';
 import { LicenseMocker } from '../license';
+import * as testDb from '../test-db';
+import type { SetupProps, TestServer } from '../types';
 
 /**
  * Plugin to prefix a path segment into a request URL pathname.
@@ -44,9 +45,16 @@ function prefix(pathSegment: string) {
 }
 
 const browserId = 'test-browser-id';
-function createAgent(app: express.Application, options?: { auth: boolean; user: User }) {
+function createAgent(
+	app: express.Application,
+	options?: { auth: boolean; user?: User; noRest?: boolean },
+) {
 	const agent = request.agent(app);
-	void agent.use(prefix(REST_PATH_SEGMENT));
+
+	const withRestSegment = !options?.noRest;
+
+	if (withRestSegment) void agent.use(prefix(REST_PATH_SEGMENT));
+
 	if (options?.auth && options?.user) {
 		const token = Container.get(AuthService).issueJWT(options.user, browserId);
 		agent.jar.setCookie(`${AUTH_COOKIE_NAME}=${token}`);
@@ -83,12 +91,14 @@ export const setupTestServer = ({
 	mockInstance(Logger);
 	mockInstance(PostHogClient);
 	mockInstance(Push);
+	mockInstance(Telemetry);
 
 	const testServer: TestServer = {
 		app,
 		httpServer: app.listen(0),
 		authAgentFor: (user: User) => createAgent(app, { auth: true, user }),
 		authlessAgent: createAgent(app),
+		restlessAgent: createAgent(app, { auth: false, noRest: true }),
 		publicApiAgentFor: (user) => publicApiAgent(app, { user }),
 		license: new LicenseMocker(),
 	};
@@ -119,9 +129,20 @@ export const setupTestServer = ({
 			app.use(...apiRouters);
 		}
 
+		if (endpointGroups?.includes('health')) {
+			app.get('/healthz/readiness', async (_req, res) => {
+				testDb.isReady()
+					? res.status(200).send({ status: 'ok' })
+					: res.status(503).send({ status: 'error' });
+			});
+		}
 		if (endpointGroups.length) {
 			for (const group of endpointGroups) {
 				switch (group) {
+					case 'annotationTags':
+						await import('@/controllers/annotation-tags.controller');
+						break;
+
 					case 'credentials':
 						await import('@/credentials/credentials.controller');
 						break;

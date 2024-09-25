@@ -1,11 +1,12 @@
-import { Container } from 'typedi';
+import { GlobalConfig } from '@n8n/config';
 import convict from 'convict';
 import dotenv from 'dotenv';
-import { readFileSync } from 'fs';
 import { flatten } from 'flat';
+import { readFileSync } from 'fs';
 import merge from 'lodash/merge';
-import { GlobalConfig } from '@n8n/config';
 import { ApplicationError, setGlobalState } from 'n8n-workflow';
+import colors from 'picocolors';
+import { Container } from 'typedi';
 
 import { inTest, inE2ETests } from '@/constants';
 
@@ -104,7 +105,6 @@ if (userManagement.jwtRefreshTimeoutHours >= userManagement.jwtSessionDurationHo
 	config.set('userManagement.jwtRefreshTimeoutHours', 0);
 }
 
-import colors from 'picocolors';
 const executionProcess = config.getEnv('executions.process');
 if (executionProcess) {
 	console.error(

@@ -1,5 +1,6 @@
-import AssistantAvatar from './AssistantAvatar.vue';
 import type { StoryFn } from '@storybook/vue3';
+
+import AssistantAvatar from './AssistantAvatar.vue';
 
 export default {
 	title: 'Assistant/AssistantAvatar',

@@ -3,7 +3,6 @@
 import { computed, h, provide, toRef, useCssModule } from 'vue';
 import type { CanvasConnectionPort, CanvasElementPortWithRenderData } from '@/types';
 import { CanvasConnectionMode } from '@/types';
-
 import type { ValidConnectionFunc } from '@vue-flow/core';
 import { Handle } from '@vue-flow/core';
 import { NodeConnectionType } from 'n8n-workflow';
@@ -13,11 +12,13 @@ import CanvasHandleNonMainInput from '@/components/canvas/elements/handles/rende
 import CanvasHandleNonMainOutput from '@/components/canvas/elements/handles/render-types/CanvasHandleNonMainOutput.vue';
 import { CanvasNodeHandleKey } from '@/constants';
 import { createCanvasConnectionHandleString } from '@/utils/canvasUtilsV2';
+import { useCanvasNode } from '@/composables/useCanvasNode';
 
 const props = defineProps<{
 	mode: CanvasConnectionMode;
 	isConnected?: boolean;
 	isConnecting?: boolean;
+	isReadOnly?: boolean;
 	label?: string;
 	type: CanvasConnectionPort['type'];
 	index: CanvasConnectionPort['index'];
@@ -57,6 +58,18 @@ const isConnectableEnd = computed(() => {
 });
 
 const handleClasses = computed(() => [style.handle, style[props.type], style[props.mode]]);
+
+/**
+ * Run data
+ */
+
+const { runDataOutputMap } = useCanvasNode();
+
+const runData = computed(() =>
+	props.mode === CanvasConnectionMode.Output
+		? runDataOutputMap.value[props.type]?.[props.index]
+		: undefined,
+);
 
 /**
  * Render additional elements
@@ -99,15 +112,20 @@ function onAdd() {
 const label = toRef(props, 'label');
 const isConnected = toRef(props, 'isConnected');
 const isConnecting = toRef(props, 'isConnecting');
+const isReadOnly = toRef(props, 'isReadOnly');
 const mode = toRef(props, 'mode');
 const type = toRef(props, 'type');
+const index = toRef(props, 'index');
 
 provide(CanvasNodeHandleKey, {
 	label,
 	mode,
 	type,
+	index,
+	runData,
 	isConnected,
 	isConnecting,
+	isReadOnly,
 });
 </script>
 

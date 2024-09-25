@@ -19,6 +19,7 @@ import {
 	PERSONALIZATION_MODAL_KEY,
 	STORES,
 	TAGS_MANAGER_MODAL_KEY,
+	ANNOTATION_TAGS_MANAGER_MODAL_KEY,
 	NPS_SURVEY_MODAL_KEY,
 	VERSIONS_MODAL_KEY,
 	VIEWS,
@@ -59,7 +60,6 @@ import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { hasPermission } from '@/utils/rbac/permissions';
-import { useTelemetryStore } from '@/stores/telemetry.store';
 import { useUsersStore } from '@/stores/users.store';
 import { dismissBannerPermanently } from '@/api/ui';
 import type { BannerName } from 'n8n-workflow';
@@ -72,6 +72,7 @@ import {
 } from './ui.utils';
 import { computed, ref } from 'vue';
 import type { Connection } from '@vue-flow/core';
+import { useTelemetry } from '@/composables/useTelemetry';
 
 let savedTheme: ThemeOption = 'system';
 try {
@@ -108,6 +109,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				PERSONALIZATION_MODAL_KEY,
 				INVITE_USER_MODAL_KEY,
 				TAGS_MANAGER_MODAL_KEY,
+				ANNOTATION_TAGS_MANAGER_MODAL_KEY,
 				NPS_SURVEY_MODAL_KEY,
 				VERSIONS_MODAL_KEY,
 				WORKFLOW_LM_CHAT_MODAL_KEY,
@@ -198,11 +200,12 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const lastInteractedWithNodeConnection = ref<Connection | null>(null);
 	const lastInteractedWithNodeHandle = ref<string | null>(null);
 	const lastInteractedWithNodeId = ref<string | null>(null);
+	const lastCancelledConnectionPosition = ref<XYPosition | null>(null);
 
 	const settingsStore = useSettingsStore();
 	const workflowsStore = useWorkflowsStore();
 	const rootStore = useRootStore();
-	const telemetryStore = useTelemetryStore();
+	const telemetry = useTelemetry();
 	const cloudPlanStore = useCloudPlanStore();
 	const userStore = useUsersStore();
 
@@ -221,11 +224,9 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const contextBasedTranslationKeys = computed(() => {
 		const deploymentType = settingsStore.deploymentType;
 
-		let contextKey: '' | '.cloud' | '.desktop' = '';
+		let contextKey: '' | '.cloud' = '';
 		if (deploymentType === 'cloud') {
 			contextKey = '.cloud';
-		} else if (deploymentType === 'desktop_mac' || deploymentType === 'desktop_win') {
-			contextKey = '.desktop';
 		}
 
 		return {
@@ -563,7 +564,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		const { executionsLeft, workflowsLeft } = usageLeft;
 		const deploymentType = settingsStore.deploymentType;
 
-		telemetryStore.track('User clicked upgrade CTA', {
+		telemetry.track('User clicked upgrade CTA', {
 			source,
 			isTrial: userIsTrialing,
 			deploymentType,
@@ -622,6 +623,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		lastInteractedWithNodeConnection.value = null;
 		lastInteractedWithNodeHandle.value = null;
 		lastInteractedWithNodeId.value = null;
+		lastCancelledConnectionPosition.value = null;
 	}
 
 	return {
@@ -650,6 +652,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		lastInteractedWithNodeHandle,
 		lastInteractedWithNodeId,
 		lastInteractedWithNode,
+		lastCancelledConnectionPosition,
 		nodeViewOffsetPosition,
 		nodeViewMoveInProgress,
 		nodeViewInitialized,

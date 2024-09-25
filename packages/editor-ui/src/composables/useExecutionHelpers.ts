@@ -8,6 +8,7 @@ export interface IExecutionUIData {
 	startTime: string;
 	runningTime: string;
 	showTimestamp: boolean;
+	tags: Array<{ id: string; name: string }>;
 }
 
 export function useExecutionHelpers() {
@@ -20,6 +21,7 @@ export function useExecutionHelpers() {
 			label: 'Status unknown',
 			runningTime: '',
 			showTimestamp: true,
+			tags: execution.annotation?.tags ?? [],
 		};
 
 		if (execution.status === 'new') {

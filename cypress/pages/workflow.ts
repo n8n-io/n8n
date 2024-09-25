@@ -1,8 +1,8 @@
+import { BasePage } from './base';
+import { NodeCreator } from './features/node-creator';
 import { META_KEY } from '../constants';
 import { getVisibleSelect } from '../utils';
 import { getUniqueWorkflowName } from '../utils/workflowUtils';
-import { BasePage } from './base';
-import { NodeCreator } from './features/node-creator';
 
 const nodeCreator = new NodeCreator();
 export class WorkflowPage extends BasePage {

@@ -172,7 +172,7 @@ const dateTimePickerOptions = ref({
 });
 const isFocused = ref(false);
 
-const displayValue = computed<string | number | boolean | null>(() => {
+const displayValue = computed(() => {
 	if (remoteParameterOptionsLoadingIssues.value) {
 		if (!nodeType.value || nodeType.value?.codex?.categories?.includes(CORE_NODES_CATEGORY)) {
 			return i18n.baseText('parameterInput.loadOptionsError');
@@ -941,6 +941,14 @@ watch(remoteParameterOptionsLoading, () => {
 	tempValue.value = displayValue.value as string;
 });
 
+// Focus input field when changing from fixed value to expression
+watch(isModelValueExpression, async (isExpression, wasExpression) => {
+	if (isExpression && !wasExpression) {
+		await nextTick();
+		inputField.value?.focus();
+	}
+});
+
 onUpdated(async () => {
 	await nextTick();
 
@@ -1383,7 +1391,7 @@ onUpdated(async () => {
 						<div
 							v-if="option.description"
 							class="option-description"
-							v-html="getOptionsOptionDescription(option)"
+							v-n8n-html="getOptionsOptionDescription(option)"
 						></div>
 					</div>
 				</n8n-option>
@@ -1416,7 +1424,7 @@ onUpdated(async () => {
 						<div
 							v-if="option.description"
 							class="option-description"
-							v-html="getOptionsOptionDescription(option)"
+							v-n8n-html="getOptionsOptionDescription(option)"
 						></div>
 					</div>
 				</n8n-option>

@@ -2,7 +2,11 @@
 import { watch, computed, ref, onMounted } from 'vue';
 import ExecutionsFilter from '@/components/executions/ExecutionsFilter.vue';
 import GlobalExecutionsListItem from '@/components/executions/global/GlobalExecutionsListItem.vue';
-import { MODAL_CONFIRM } from '@/constants';
+import {
+	EnterpriseEditionFeature,
+	EXECUTION_ANNOTATION_EXPERIMENT,
+	MODAL_CONFIRM,
+} from '@/constants';
 import { useToast } from '@/composables/useToast';
 import { useMessage } from '@/composables/useMessage';
 import { useI18n } from '@/composables/useI18n';
@@ -13,13 +17,15 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useExecutionsStore } from '@/stores/executions.store';
 import type { PermissionsRecord } from '@/permissions';
 import { getResourcePermissions } from '@/permissions';
+import { usePostHog } from '@/stores/posthog.store';
+import { useSettingsStore } from '@/stores/settings.store';
 
 const props = withDefaults(
 	defineProps<{
 		executions: ExecutionSummaryWithScopes[];
 		filters: ExecutionFilterType;
-		total: number;
-		estimated: boolean;
+		total?: number;
+		estimated?: boolean;
 	}>(),
 	{
 		total: 0,
@@ -36,6 +42,8 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 const workflowsStore = useWorkflowsStore();
 const executionsStore = useExecutionsStore();
+const posthogStore = usePostHog();
+const settingsStore = useSettingsStore();
 
 const isMounted = ref(false);
 const allVisibleSelected = ref(false);
@@ -62,6 +70,12 @@ const workflows = computed<IWorkflowDb[]>(() => {
 		...workflowsStore.allWorkflows,
 	];
 });
+
+const isAnnotationEnabled = computed(
+	() =>
+		settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedExecutionFilters] &&
+		posthogStore.isFeatureEnabled(EXECUTION_ANNOTATION_EXPERIMENT),
+);
 
 watch(
 	() => props.executions,
@@ -109,10 +123,18 @@ function toggleSelectExecution(execution: ExecutionSummary) {
 }
 
 async function handleDeleteSelected() {
-	const deleteExecutions = await message.confirm(
+	// Prepend the message with a note about annotations if the feature is enabled
+	const confirmationText = [
+		isAnnotationEnabled.value && i18n.baseText('executionsList.confirmMessage.annotationsNote'),
 		i18n.baseText('executionsList.confirmMessage.message', {
 			interpolate: { count: selectedCount.value.toString() },
 		}),
+	]
+		.filter(Boolean)
+		.join(' ');
+
+	const deleteExecutions = await message.confirm(
+		confirmationText,
 		i18n.baseText('executionsList.confirmMessage.headline'),
 		{
 			type: 'warning',
@@ -258,6 +280,26 @@ async function stopExecution(execution: ExecutionSummary) {
 }
 
 async function deleteExecution(execution: ExecutionSummary) {
+	const hasAnnotation =
+		!!execution.annotation && (execution.annotation.vote || execution.annotation.tags.length > 0);
+
+	// Show a confirmation dialog if the execution has an annotation
+	if (hasAnnotation) {
+		const deleteConfirmed = await message.confirm(
+			i18n.baseText('executionsList.confirmMessage.annotatedExecutionMessage'),
+			i18n.baseText('executionDetails.confirmMessage.headline'),
+			{
+				type: 'warning',
+				confirmButtonText: i18n.baseText('executionDetails.confirmMessage.confirmButtonText'),
+				cancelButtonText: '',
+			},
+		);
+
+		if (deleteConfirmed !== MODAL_CONFIRM) {
+			return;
+		}
+	}
+
 	try {
 		await executionsStore.deleteExecutions({ ids: [execution.id] });
 

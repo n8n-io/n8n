@@ -334,7 +334,7 @@ export class Crypto implements INodeType {
 				},
 				type: 'options',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				options: supportedAlgorithms,
 				default: '',
 				required: true,

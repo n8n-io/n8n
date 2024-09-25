@@ -26,6 +26,46 @@ describe('CanvasNodeDefault', () => {
 		expect(getByTestId('canvas-default-node')).toMatchSnapshot();
 	});
 
+	describe('inputs', () => {
+		it('should adjust height css variable based on the number of inputs (1 input)', () => {
+			const { getByText } = renderComponent({
+				global: {
+					provide: {
+						...createCanvasNodeProvide({
+							data: {
+								inputs: [{ type: NodeConnectionType.Main, index: 0 }],
+							},
+						}),
+					},
+				},
+			});
+
+			const nodeElement = getByText('Test Node').closest('.node');
+			expect(nodeElement).toHaveStyle({ '--canvas-node--main-input-count': '1' }); // height calculation based on the number of inputs
+		});
+
+		it('should adjust height css variable based on the number of inputs (multiple inputs)', () => {
+			const { getByText } = renderComponent({
+				global: {
+					provide: {
+						...createCanvasNodeProvide({
+							data: {
+								inputs: [
+									{ type: NodeConnectionType.Main, index: 0 },
+									{ type: NodeConnectionType.Main, index: 0 },
+									{ type: NodeConnectionType.Main, index: 0 },
+								],
+							},
+						}),
+					},
+				},
+			});
+
+			const nodeElement = getByText('Test Node').closest('.node');
+			expect(nodeElement).toHaveStyle({ '--canvas-node--main-input-count': '3' }); // height calculation based on the number of inputs
+		});
+	});
+
 	describe('outputs', () => {
 		it('should adjust height css variable based on the number of outputs (1 output)', () => {
 			const { getByText } = renderComponent({

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import AssistantIcon from '../AskAssistantIcon/AssistantIcon.vue';
 
-withDefaults(defineProps<{ size: 'small' | 'mini' }>(), {
+withDefaults(defineProps<{ size?: 'small' | 'mini' }>(), {
 	size: 'small',
 });
 </script>

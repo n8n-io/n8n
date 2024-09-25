@@ -1,18 +1,18 @@
-import { Container } from 'typedi';
 import { randomString } from 'n8n-workflow';
+import { Container } from 'typedi';
 
 import type { User } from '@/databases/entities/user';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
+import { createTeamProject } from '@test-integration/db/projects';
 
-import { randomApiKey, randomName } from '../shared/random';
-import * as utils from '../shared/utils/';
-import type { CredentialPayload, SaveCredentialFunction } from '../shared/types';
-import * as testDb from '../shared/test-db';
 import { affixRoleToSaveCredential, createCredentials } from '../shared/db/credentials';
 import { addApiKey, createUser, createUserShell } from '../shared/db/users';
+import { randomApiKey, randomName } from '../shared/random';
+import * as testDb from '../shared/test-db';
+import type { CredentialPayload, SaveCredentialFunction } from '../shared/types';
 import type { SuperAgentTest } from '../shared/types';
-import { createTeamProject } from '@test-integration/db/projects';
+import * as utils from '../shared/utils/';
 
 let owner: User;
 let member: User;

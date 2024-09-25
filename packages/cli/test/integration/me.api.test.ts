@@ -1,20 +1,20 @@
-import { Container } from 'typedi';
+import { GlobalConfig } from '@n8n/config';
 import { IsNull } from '@n8n/typeorm';
+import type { IPersonalizationSurveyAnswersV4 } from 'n8n-workflow';
+import { Container } from 'typedi';
 import validator from 'validator';
 
 import type { User } from '@/databases/entities/user';
-import { UserRepository } from '@/databases/repositories/user.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
+import { UserRepository } from '@/databases/repositories/user.repository';
+import { mockInstance } from '@test/mocking';
 
 import { SUCCESS_RESPONSE_BODY } from './shared/constants';
+import { addApiKey, createOwner, createUser, createUserShell } from './shared/db/users';
 import { randomApiKey, randomEmail, randomName, randomValidPassword } from './shared/random';
 import * as testDb from './shared/test-db';
-import * as utils from './shared/utils/';
-import { addApiKey, createOwner, createUser, createUserShell } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
-import { mockInstance } from '@test/mocking';
-import { GlobalConfig } from '@n8n/config';
-import type { IPersonalizationSurveyAnswersV4 } from 'n8n-workflow';
+import * as utils from './shared/utils/';
 
 const testServer = utils.setupTestServer({ endpointGroups: ['me'] });
 
@@ -400,7 +400,7 @@ const SURVEY: IPersonalizationSurveyAnswersV4 = {
 	automationGoalDevopsOther: 'test',
 	companyIndustryExtended: ['test'],
 	otherCompanyIndustryExtended: ['test'],
-	companySize: 'test',
+	companySize: '20-99',
 	companyType: 'test',
 	automationGoalSm: ['test'],
 	automationGoalSmOther: 'test',

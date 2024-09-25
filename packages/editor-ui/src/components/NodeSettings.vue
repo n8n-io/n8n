@@ -1025,7 +1025,7 @@ onBeforeUnmount(() => {
 				"
 			/>
 			<div v-show="openPanel === 'params'">
-				<NodeWebhooks :node="node" :node-type="nodeType" />
+				<NodeWebhooks :node="node" :node-type-description="nodeType" />
 
 				<ParameterInputList
 					v-if="nodeValuesInitialized"
@@ -1147,10 +1147,10 @@ onBeforeUnmount(() => {
 		padding: var(--spacing-s) var(--spacing-s) var(--spacing-s) var(--spacing-s);
 		font-size: var(--font-size-l);
 		display: flex;
+		justify-content: space-between;
 
 		.node-name {
 			padding-top: var(--spacing-5xs);
-			flex-grow: 1;
 		}
 	}
 

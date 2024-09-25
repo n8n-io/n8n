@@ -1,29 +1,29 @@
-import validator from 'validator';
 import { Response } from 'express';
+import { ApplicationError } from 'n8n-workflow';
+import validator from 'validator';
 
+import { handleEmailLogin, handleLdapLogin } from '@/auth';
 import { AuthService } from '@/auth/auth.service';
-import { Get, Post, RestController } from '@/decorators';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import type { User } from '@/databases/entities/user';
-import { AuthenticatedRequest, LoginRequest, UserRequest } from '@/requests';
+import { UserRepository } from '@/databases/repositories/user.repository';
+import { Get, Post, RestController } from '@/decorators';
+import { AuthError } from '@/errors/response-errors/auth.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { EventService } from '@/events/event.service';
 import type { PublicUser } from '@/interfaces';
-import { handleEmailLogin, handleLdapLogin } from '@/auth';
+import { License } from '@/license';
+import { Logger } from '@/logger';
+import { MfaService } from '@/mfa/mfa.service';
 import { PostHogClient } from '@/posthog';
+import { AuthenticatedRequest, LoginRequest, UserRequest } from '@/requests';
+import { UserService } from '@/services/user.service';
 import {
 	getCurrentAuthenticationMethod,
 	isLdapCurrentAuthenticationMethod,
 	isSamlCurrentAuthenticationMethod,
 } from '@/sso/sso-helpers';
-import { License } from '@/license';
-import { UserService } from '@/services/user.service';
-import { MfaService } from '@/mfa/mfa.service';
-import { Logger } from '@/logger';
-import { AuthError } from '@/errors/response-errors/auth.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { ApplicationError } from 'n8n-workflow';
-import { UserRepository } from '@/databases/repositories/user.repository';
-import { EventService } from '@/events/event.service';
 
 @RestController()
 export class AuthController {
