@@ -280,8 +280,7 @@ const requiredPropertiesFilled = computed(() => {
 
 const credentialPermissions = computed(() => {
 	return getResourcePermissions(
-		((credentialId.value ? currentCredential.value : credentialData.value) as ICredentialsResponse)
-			?.scopes,
+		(currentCredential.value as ICredentialsResponse)?.scopes ?? homeProject.value?.scopes,
 	).credential;
 });
 
@@ -341,11 +340,8 @@ onMounted(async () => {
 			credentialTypeName: defaultCredentialTypeName.value,
 		});
 
-		const scopes = homeProject.value?.scopes ?? [];
-
 		credentialData.value = {
 			...credentialData.value,
-			scopes,
 			...(homeProject.value ? { homeProject: homeProject.value } : {}),
 		};
 	} else {
