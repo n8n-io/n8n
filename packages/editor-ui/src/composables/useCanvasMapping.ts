@@ -436,6 +436,10 @@ export function useCanvasMapping({
 
 		let status: CanvasConnectionData['status'];
 		if (fromNode) {
+			const { type, index } = parseCanvasConnectionHandleString(connection.sourceHandle);
+			const runDataTotal =
+				nodeExecutionRunDataOutputMapById.value[fromNode.id]?.[type]?.[index]?.total ?? 0;
+
 			if (nodeExecutionRunningById.value[fromNode.id]) {
 				status = 'running';
 			} else if (
@@ -445,7 +449,7 @@ export function useCanvasMapping({
 				status = 'pinned';
 			} else if (nodeHasIssuesById.value[fromNode.id]) {
 				status = 'error';
-			} else if (nodeExecutionRunDataById.value[fromNode.id]) {
+			} else if (runDataTotal > 0) {
 				status = 'success';
 			}
 		}
