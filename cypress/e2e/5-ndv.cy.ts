@@ -684,11 +684,33 @@ describe('NDV', () => {
 			action: 'Update a database page',
 		});
 
+		clickCreateNewCredential();
+		setCredentialValues({
+			apiKey: 'sk_test_123',
+		});
+
 		ndv.actions.addItemToFixedCollection('propertiesUi');
 		ndv.getters
 			.parameterInput('key')
 			.find('input')
 			.should('have.value', 'Error fetching options from Notion');
+	});
+
+	it('Should show a notice when remote options cannot be fetched because of missing credentials', () => {
+		cy.intercept('POST', '/rest/dynamic-node-parameters/options', { statusCode: 403 }).as(
+			'parameterOptions',
+		);
+
+		workflowPage.actions.addInitialNodeToCanvas(NOTION_NODE_NAME, {
+			keepNdvOpen: true,
+			action: 'Update a database page',
+		});
+
+		ndv.actions.addItemToFixedCollection('propertiesUi');
+		ndv.getters
+			.parameterInput('key')
+			.find('input')
+			.should('have.value', 'Set up credential to see options');
 	});
 
 	it('Should open appropriate node creator after clicking on connection hint link', () => {
