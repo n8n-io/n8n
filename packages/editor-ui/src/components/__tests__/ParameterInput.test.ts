@@ -173,7 +173,8 @@ describe('ParameterInput.vue', () => {
 			throw new Error('Node does not have any credentials set');
 		});
 
-		mockNodeTypesState.getNodeType = vi.fn(() => ({
+		// @ts-expect-error Readonly property
+		mockNodeTypesState.getNodeType = vi.fn().mockReturnValue({
 			displayName: 'Test',
 			credentials: [
 				{
@@ -181,7 +182,7 @@ describe('ParameterInput.vue', () => {
 					required: true,
 				},
 			],
-		}));
+		});
 
 		const { emitted, container, getByTestId } = renderComponent(ParameterInput, {
 			pinia: createTestingPinia(),
