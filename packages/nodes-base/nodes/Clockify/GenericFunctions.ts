@@ -63,7 +63,7 @@ export async function clockifyApiRequestAllItems(
 		}
 
 		query.page++;
-	} while (responseData.length !== 0);
+	} while (responseData.length !== 0 && returnData.length >= query['page-size']);
 
 	return returnData;
 }
