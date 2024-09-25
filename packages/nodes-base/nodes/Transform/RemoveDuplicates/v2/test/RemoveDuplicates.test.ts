@@ -94,13 +94,13 @@ describe('RemoveDuplicatesV2', () => {
 		);
 		(executeFunctions.helpers.checkProcessedAndRecord as jest.Mock).mockReturnValue({
 			new: [1, 3],
-			alreadyProcessed: [2],
+			processed: [2],
 		});
 
 		const result = await node.execute.call(executeFunctions);
-
-		expect(result).toHaveLength(1);
+		expect(result).toHaveLength(2);
 		expect(result[0]).toHaveLength(2);
+		expect(result[1]).toHaveLength(1);
 		expect(result[0][0].json).toEqual({ id: 1, name: 'John' });
 		expect(result[0][1].json).toEqual({ id: 3, name: 'Doe' });
 	});

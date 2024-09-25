@@ -28,6 +28,7 @@ const versionDescription: INodeTypeDescription = {
 	},
 	inputs: [NodeConnectionType.Main],
 	outputs: [NodeConnectionType.Main],
+	outputNames: ['Kept', 'Discarded'],
 	properties: [...removeDuplicatesNodeFields],
 };
 export class RemoveDuplicatesV2 implements INodeType {
@@ -43,7 +44,7 @@ export class RemoveDuplicatesV2 implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const operation = this.getNodeParameter('operation', 0);
-		const returnData: INodeExecutionData[] = [];
+		const returnData: INodeExecutionData[][] = [];
 		switch (operation) {
 			case 'removeDuplicateInputItems': {
 				const compare = this.getNodeParameter('compare', 0) as string;
@@ -162,9 +163,9 @@ export class RemoveDuplicatesV2 implements INodeType {
 						pairedItem: { item: index },
 					}));
 				}
-				returnData.push(...updatedItems);
+				returnData.push(updatedItems);
 
-				return [returnData];
+				return returnData;
 			}
 			case 'removeItemsSeenInPreviousExecutions': {
 				const logic = this.getNodeParameter('logic', 0);
@@ -200,14 +201,19 @@ export class RemoveDuplicatesV2 implements INodeType {
 						{ mode: 'entries', maxEntries } as ICheckProcessedOptions,
 					);
 					returnData.push(
-						...itemsProcessed.new
+						itemsProcessed.new
+							.map((key) => {
+								return itemMapping[key];
+							})
+							.flat(),
+						itemsProcessed.processed
 							.map((key) => {
 								return itemMapping[key];
 							})
 							.flat(),
 					);
 
-					return [returnData];
+					return returnData;
 				} else if (logic === 'removeItemsUpToStoredIncrementalKey') {
 					const context = this.getNodeParameter('options.scope', 0, 'node');
 
@@ -249,14 +255,19 @@ export class RemoveDuplicatesV2 implements INodeType {
 					);
 
 					returnData.push(
-						...itemsProcessed.new
+						itemsProcessed.new
+							.map((key) => {
+								return itemMapping[key];
+							})
+							.flat(),
+						itemsProcessed.processed
 							.map((key) => {
 								return itemMapping[key];
 							})
 							.flat(),
 					);
 
-					return [returnData];
+					return returnData;
 				} else if (logic === 'RemoveItemsUpToStoredDate') {
 					const context = this.getNodeParameter('options.scope', 0, 'node');
 
@@ -296,14 +307,19 @@ export class RemoveDuplicatesV2 implements INodeType {
 					);
 
 					returnData.push(
-						...itemsProcessed.new
+						itemsProcessed.new
+							.map((key) => {
+								return itemMapping[key];
+							})
+							.flat(),
+						itemsProcessed.processed
 							.map((key) => {
 								return itemMapping[key];
 							})
 							.flat(),
 					);
 
-					return [returnData];
+					return returnData;
 				} else {
 					return [items];
 				}
