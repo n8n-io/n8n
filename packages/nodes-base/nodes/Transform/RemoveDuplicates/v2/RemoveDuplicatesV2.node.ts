@@ -29,6 +29,15 @@ const versionDescription: INodeTypeDescription = {
 	inputs: [NodeConnectionType.Main],
 	outputs: [NodeConnectionType.Main],
 	outputNames: ['Kept', 'Discarded'],
+	hints: [
+		{
+			message: 'The dedupe key set in “Dedupe Field” has no value',
+			displayCondition:
+				'={{ $parameter["operation"] === "removeItemsSeenInPreviousExecutions" && ($parameter["logic"] === "removeItemsWithAlreadySeenKeyValues" && $parameter["dedupeField"] === undefined) || ($parameter["logic"] === "removeItemsUpToStoredIncrementalKey" && $parameter["incrementalDedupeField"] === undefined) || ($parameter["logic"] === "removeItemsUpToStoredDate" && $parameter["dateDedupeField"] === undefined) }}',
+			whenToDisplay: 'beforeExecution',
+			location: 'outputPane',
+		},
+	],
 	properties: [...removeDuplicatesNodeFields],
 };
 export class RemoveDuplicatesV2 implements INodeType {
@@ -246,12 +255,10 @@ export class RemoveDuplicatesV2 implements INodeType {
 						// TODO: Add continueOnFail, where should it and up?
 					}
 
-					const maxEntries = this.getNodeParameter('options.historySize', 0, 1000);
-
 					const itemsProcessed = await this.helpers.checkProcessedAndRecord(
 						Object.keys(itemMapping),
 						context as ProcessedDataContext,
-						{ mode: 'latestIncrementalKey', maxEntries } as ICheckProcessedOptions,
+						{ mode: 'latestIncrementalKey' } as ICheckProcessedOptions,
 					);
 
 					returnData.push(
@@ -268,7 +275,7 @@ export class RemoveDuplicatesV2 implements INodeType {
 					);
 
 					return returnData;
-				} else if (logic === 'RemoveItemsUpToStoredDate') {
+				} else if (logic === 'removeItemsUpToStoredDate') {
 					const context = this.getNodeParameter('options.scope', 0, 'node');
 
 					if (!['node', 'workflow'].includes(context as string)) {
@@ -299,11 +306,10 @@ export class RemoveDuplicatesV2 implements INodeType {
 						}
 						// TODO: Add continueOnFail, where should it and up?
 					}
-					const maxEntries = this.getNodeParameter('options.historySize', 0, 1000);
 					const itemsProcessed = await this.helpers.checkProcessedAndRecord(
 						Object.keys(itemMapping),
 						context as ProcessedDataContext,
-						{ mode: 'latestDate', maxEntries } as ICheckProcessedOptions,
+						{ mode: 'latestDate' } as ICheckProcessedOptions,
 					);
 
 					returnData.push(

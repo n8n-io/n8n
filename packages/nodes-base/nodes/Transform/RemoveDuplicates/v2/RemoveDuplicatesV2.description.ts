@@ -47,7 +47,7 @@ const logicOptions = [
 	},
 	{
 		name: 'Field Value Is a Date Later than Any Previous Date',
-		value: 'RemoveItemsUpToStoredDate',
+		value: 'removeItemsUpToStoredDate',
 		description:
 			'Works with date key values, removes all input items with key values up to the stored date',
 	},
@@ -165,7 +165,7 @@ export const removeDuplicatesNodeFields: INodeProperties[] = [
 		placeholder: ' e.g. 2024-08-09T13:44:16Z',
 		displayOptions: {
 			show: {
-				logic: ['RemoveItemsUpToStoredDate'],
+				logic: ['removeItemsUpToStoredDate'],
 			},
 		},
 	},
@@ -264,7 +264,7 @@ export const removeDuplicatesNodeFields: INodeProperties[] = [
 				hint: 'The max number of past items to store for deduplication',
 				displayOptions: {
 					show: {
-						'/operation': ['removeItemsSeenInPreviousExecutions'],
+						'/logic': ['removeItemsWithAlreadySeenKeyValues'],
 					},
 				},
 			},
