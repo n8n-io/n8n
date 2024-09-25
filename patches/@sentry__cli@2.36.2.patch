@@ -1,5 +1,5 @@
 diff --git a/js/helper.js b/js/helper.js
-index a4a7a61f0e226d7cb45f8d5db34c35cc9e62cf96..38fd3ec2214970b1c5dd22fdff902ff3b5eeddde 100644
+index 37798b9444d39a8713327ed12adf3e76f03188a4..08d49b7a5c058c4d29c9929c0c524c85b14b330e 100644
 --- a/js/helper.js
 +++ b/js/helper.js
 @@ -15,6 +15,7 @@ function getBinaryPath() {

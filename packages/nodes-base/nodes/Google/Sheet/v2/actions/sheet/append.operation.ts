@@ -211,7 +211,7 @@ export async function execute(
 ): Promise<INodeExecutionData[]> {
 	const items = this.getInputData();
 	const nodeVersion = this.getNode().typeVersion;
-	const dataMode =
+	let dataMode =
 		nodeVersion < 4
 			? (this.getNodeParameter('dataMode', 0) as string)
 			: (this.getNodeParameter('columns.mappingMode', 0) as string);
@@ -227,6 +227,10 @@ export async function execute(
 	}
 
 	const sheetData = await sheet.getData(range, 'FORMATTED_VALUE');
+
+	if (sheetData === undefined || !sheetData.length) {
+		dataMode = 'autoMapInputData';
+	}
 
 	if (nodeVersion >= 4.4 && dataMode !== 'autoMapInputData') {
 		//not possible to refresh columns when mode is autoMapInputData
