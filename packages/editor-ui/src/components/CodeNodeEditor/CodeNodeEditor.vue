@@ -396,11 +396,13 @@ async function onDrop(value: string, event: MouseEvent) {
 			v-model="activeTab"
 			type="card"
 			:before-leave="onBeforeTabLeave"
+			:class="$style.tabs"
 		>
 			<el-tab-pane
 				:label="$locale.baseText('codeNodeEditor.tabs.code')"
 				name="code"
 				data-test-id="code-node-tab-code"
+				:class="$style.fillHeight"
 			>
 				<DraggableTarget type="mapping" :disabled="!dragAndDropEnabled" @drop="onDrop">
 					<template #default="{ activeDrop, droppable }">
@@ -410,6 +412,7 @@ async function onDrop(value: string, event: MouseEvent) {
 								'ph-no-capture',
 								'code-editor-tabs',
 								$style.editorInput,
+								$style.fillHeight,
 								{ [$style.activeDrop]: activeDrop, [$style.droppable]: droppable },
 							]"
 						/>
@@ -480,6 +483,12 @@ async function onDrop(value: string, event: MouseEvent) {
 </style>
 
 <style lang="scss" module>
+.tabs {
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+}
+
 .code-node-editor-container {
 	position: relative;
 }

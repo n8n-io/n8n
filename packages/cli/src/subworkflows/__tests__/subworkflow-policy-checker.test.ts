@@ -10,7 +10,6 @@ import {
 	SUBWORKFLOW_DENIAL_BASE_DESCRIPTION,
 	SubworkflowPolicyDenialError,
 } from '@/errors/subworkflow-policy-denial.error';
-import type { License } from '@/license';
 import type { AccessService } from '@/services/access.service';
 import { OwnershipService } from '@/services/ownership.service';
 import type { UrlService } from '@/services/url.service';
@@ -20,7 +19,6 @@ import { SubworkflowPolicyChecker } from '../subworkflow-policy-checker.service'
 
 describe('SubworkflowPolicyChecker', () => {
 	const ownershipService = mockInstance(OwnershipService);
-	const license = mock<License>();
 	const globalConfig = mock<GlobalConfig>({
 		workflows: { callerPolicyDefaultOption: 'workflowsFromSameOwner' },
 	});
@@ -29,16 +27,11 @@ describe('SubworkflowPolicyChecker', () => {
 
 	const checker = new SubworkflowPolicyChecker(
 		mock(),
-		license,
 		ownershipService,
 		globalConfig,
 		accessService,
 		urlService,
 	);
-
-	beforeEach(() => {
-		license.isSharingEnabled.mockReturnValue(true);
-	});
 
 	afterEach(() => {
 		jest.restoreAllMocks();
@@ -107,24 +100,6 @@ describe('SubworkflowPolicyChecker', () => {
 	});
 
 	describe('`any` caller policy', () => {
-		it('if no sharing, should be overriden to `workflows-from-same-owner`', async () => {
-			license.isSharingEnabled.mockReturnValueOnce(false);
-
-			const parentWorkflow = mock<WorkflowEntity>();
-			const subworkflowId = 'subworkflow-id';
-			const subworkflow = mock<Workflow>({ id: subworkflowId, settings: { callerPolicy: 'any' } }); // should be overridden
-
-			const parentWorkflowProject = mock<Project>({ id: uuid() });
-			const subworkflowProject = mock<Project>({ id: uuid(), type: 'team' });
-
-			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(parentWorkflowProject);
-			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(subworkflowProject);
-
-			const check = checker.check(subworkflow, parentWorkflow.id);
-
-			await expect(check).rejects.toThrowError(SubworkflowPolicyDenialError);
-		});
-
 		it('should not throw on a regular subworkflow call', async () => {
 			const parentWorkflow = mock<WorkflowEntity>({ id: uuid() });
 			const subworkflow = mock<Workflow>({ settings: { callerPolicy: 'any' } });

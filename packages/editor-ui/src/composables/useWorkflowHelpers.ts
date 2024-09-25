@@ -66,7 +66,7 @@ import type { useRouter } from 'vue-router';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useTagsStore } from '@/stores/tags.store';
-import useWorkflowsEEStore from '@/stores/workflows.ee.store';
+import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import type { NavigationGuardNext } from 'vue-router';
 

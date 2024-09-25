@@ -1,7 +1,10 @@
+import { type ICredentialType } from 'n8n-workflow';
+
 import { clickCreateNewCredential, openCredentialSelect } from '../composables/ndv';
 import { GMAIL_NODE_NAME, SCHEDULE_TRIGGER_NODE_NAME } from '../constants';
 import { CredentialsModal, CredentialsPage, NDV, WorkflowPage } from '../pages';
 import { AIAssistant } from '../pages/features/ai-assistant';
+import { getVisibleSelect } from '../utils';
 
 const wf = new WorkflowPage();
 const ndv = new NDV();
@@ -327,8 +330,8 @@ describe('AI Assistant Credential Help', () => {
 		wf.actions.openNode('Gmail');
 		openCredentialSelect();
 		clickCreateNewCredential();
-		aiAssistant.getters.credentialEditAssistantButton().should('be.visible');
-		aiAssistant.getters.credentialEditAssistantButton().click();
+		aiAssistant.getters.credentialEditAssistantButton().find('button').should('be.visible');
+		aiAssistant.getters.credentialEditAssistantButton().find('button').click();
 		cy.wait('@chatRequest');
 		aiAssistant.getters.chatMessagesUser().should('have.length', 1);
 		aiAssistant.getters
@@ -340,7 +343,7 @@ describe('AI Assistant Credential Help', () => {
 			.chatMessagesAssistant()
 			.eq(0)
 			.should('contain.text', 'Hey, this is an assistant message');
-		aiAssistant.getters.credentialEditAssistantButton().should('be.disabled');
+		aiAssistant.getters.credentialEditAssistantButton().find('button').should('be.disabled');
 	});
 
 	it('should start credential help from credential list', () => {
@@ -358,8 +361,8 @@ describe('AI Assistant Credential Help', () => {
 
 		credentialsModal.getters.newCredentialTypeButton().click();
 
-		aiAssistant.getters.credentialEditAssistantButton().should('be.visible');
-		aiAssistant.getters.credentialEditAssistantButton().click();
+		aiAssistant.getters.credentialEditAssistantButton().find('button').should('be.visible');
+		aiAssistant.getters.credentialEditAssistantButton().find('button').click();
 		cy.wait('@chatRequest');
 		aiAssistant.getters.chatMessagesUser().should('have.length', 1);
 		aiAssistant.getters
@@ -371,7 +374,68 @@ describe('AI Assistant Credential Help', () => {
 			.chatMessagesAssistant()
 			.eq(0)
 			.should('contain.text', 'Hey, this is an assistant message');
-		aiAssistant.getters.credentialEditAssistantButton().should('be.disabled');
+		aiAssistant.getters.credentialEditAssistantButton().find('button').should('be.disabled');
+	});
+
+	it('should not show assistant button when click to connect', () => {
+		cy.intercept('/types/credentials.json', { middleware: true }, (req) => {
+			req.headers['cache-control'] = 'no-cache, no-store';
+
+			req.on('response', (res) => {
+				const credentials: ICredentialType[] = res.body || [];
+
+				const index = credentials.findIndex((c) => c.name === 'slackOAuth2Api');
+
+				credentials[index] = {
+					...credentials[index],
+					__overwrittenProperties: ['clientId', 'clientSecret'],
+				};
+			});
+		});
+
+		wf.actions.visit(true);
+		wf.actions.addNodeToCanvas('Manual');
+		wf.actions.addNodeToCanvas('Slack', true, true, 'Get a channel');
+		wf.getters.nodeCredentialsSelect().should('exist');
+		wf.getters.nodeCredentialsSelect().click();
+		getVisibleSelect().find('li').last().click();
+		credentialsModal.getters.credentialAuthTypeRadioButtons().first().click();
+		ndv.getters.copyInput().should('not.exist');
+		credentialsModal.getters.oauthConnectButton().should('have.length', 1);
+		credentialsModal.getters.credentialInputs().should('have.length', 0);
+		aiAssistant.getters.credentialEditAssistantButton().should('not.exist');
+
+		credentialsModal.getters.credentialAuthTypeRadioButtons().eq(1).click();
+		credentialsModal.getters.credentialInputs().should('have.length', 1);
+		aiAssistant.getters.credentialEditAssistantButton().should('exist');
+	});
+
+	it('should not show assistant button when click to connect with some fields', () => {
+		cy.intercept('/types/credentials.json', { middleware: true }, (req) => {
+			req.headers['cache-control'] = 'no-cache, no-store';
+
+			req.on('response', (res) => {
+				const credentials: ICredentialType[] = res.body || [];
+
+				const index = credentials.findIndex((c) => c.name === 'microsoftOutlookOAuth2Api');
+
+				credentials[index] = {
+					...credentials[index],
+					__overwrittenProperties: ['authUrl', 'accessTokenUrl', 'clientId', 'clientSecret'],
+				};
+			});
+		});
+
+		wf.actions.visit(true);
+		wf.actions.addNodeToCanvas('Manual');
+		wf.actions.addNodeToCanvas('Microsoft Outlook', true, true, 'Get a calendar');
+		wf.getters.nodeCredentialsSelect().should('exist');
+		wf.getters.nodeCredentialsSelect().click();
+		getVisibleSelect().find('li').last().click();
+		ndv.getters.copyInput().should('not.exist');
+		credentialsModal.getters.oauthConnectButton().should('have.length', 1);
+		credentialsModal.getters.credentialInputs().should('have.length', 1);
+		aiAssistant.getters.credentialEditAssistantButton().should('not.exist');
 	});
 });
 
