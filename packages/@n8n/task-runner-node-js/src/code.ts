@@ -51,8 +51,14 @@ const getAdditionalKeys = (): IWorkflowDataProxyAdditionalKeys => {
 };
 
 export class JsTaskRunner extends TaskRunner {
-	constructor(taskType: string, wsUrl: string, maxConcurrency: number, name?: string) {
-		super(taskType, wsUrl, maxConcurrency, name ?? 'Test Runner');
+	constructor(
+		taskType: string,
+		wsUrl: string,
+		grantToken: string,
+		maxConcurrency: number,
+		name?: string,
+	) {
+		super(taskType, wsUrl, grantToken, maxConcurrency, name ?? 'Test Runner');
 	}
 
 	async executeTask(task: Task<JSExecSettings>): Promise<TaskResultData> {

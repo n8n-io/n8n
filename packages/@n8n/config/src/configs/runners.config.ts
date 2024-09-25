@@ -7,5 +7,8 @@ export class TaskRunnersConfig {
 	disabled: boolean = true;
 
 	@Env('N8N_RUNNERS_PATH')
-	path: string = '/runners/_ws';
+	path: string = '/runners';
+
+	@Env('N8N_RUNNERS_AUTH_TOKEN')
+	authToken: string = '';
 }

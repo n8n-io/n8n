@@ -1,5 +1,7 @@
-import { type MessageEvent, WebSocket } from 'ws';
+import { URL } from 'node:url';
 import { nanoid } from 'nanoid';
+import { type MessageEvent, WebSocket } from 'ws';
+
 import {
 	RPC_ALLOW_LIST,
 	type RunnerMessage,
@@ -57,12 +59,21 @@ export class TaskRunner {
 
 	constructor(
 		public taskType: string,
-		private wsUrl: string,
+		wsUrl: string,
+		grantToken: string,
 		private maxConcurrency: number,
 		public name?: string,
 	) {
 		this.id = nanoid();
-		this.ws = new WebSocket(this.wsUrl + '?id=' + this.id);
+
+		const url = new URL(wsUrl);
+		url.searchParams.append('id', this.id);
+		this.ws = new WebSocket(url.toString(), {
+			headers: {
+				authorization: `Bearer ${grantToken}`,
+			},
+		});
+		console.log('1');
 		this.ws.addEventListener('message', this._wsMessage);
 		this.ws.addEventListener('close', this.stopTaskOffers);
 	}

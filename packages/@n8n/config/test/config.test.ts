@@ -220,8 +220,9 @@ describe('GlobalConfig', () => {
 			},
 		},
 		taskRunners: {
-			disabled: false,
-			path: '/runners/_ws',
+			disabled: true,
+			path: '/runners',
+			authToken: '',
 		},
 	};
 
