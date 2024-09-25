@@ -150,14 +150,7 @@ export class DatabaseExportService {
 		if (this.dbType === 'postgresdb') return;
 
 		if (this.dbType === 'sqlite' && column.type === Boolean) {
-			const value = row[column.propertyName];
-
-			strict(
-				value === 1 || value === 0,
-				'Expected boolean column in sqlite to contain number `1` or `0`',
-			);
-
-			row[column.propertyName] = value === 1;
+			row[column.propertyName] = Boolean(row[column.propertyName]);
 		}
 
 		if (
