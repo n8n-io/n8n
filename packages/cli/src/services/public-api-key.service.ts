@@ -18,13 +18,16 @@ export class PublicApiKeyService {
 	 */
 	async createPublicApiKeyForUser(user: User) {
 		const apiKey = this.createApiKeyString();
-		return await this.apiKeysRepository.save(
+		await this.apiKeysRepository.upsert(
 			this.apiKeysRepository.create({
 				userId: user.id,
 				apiKey,
 				label: 'My API Key',
 			}),
+			['apiKey'],
 		);
+
+		return await this.apiKeysRepository.findOneByOrFail({ apiKey });
 	}
 
 	async getRedactedApiKeysForUser(user: User) {

@@ -430,11 +430,13 @@ describe('MeController', () => {
 					createdAt: new Date(),
 				} as ApiKey;
 
-				apiKeysRepository.save.mockResolvedValue(apiKeyData);
+				apiKeysRepository.upsert.mockImplementation();
+
+				apiKeysRepository.findOneByOrFail.mockResolvedValue(apiKeyData);
 
 				const newApiKey = await controller.createAPIKey(req);
 
-				expect(apiKeysRepository.save).toHaveBeenCalled();
+				expect(apiKeysRepository.upsert).toHaveBeenCalled();
 				expect(apiKeyData).toEqual(newApiKey);
 			});
 		});
