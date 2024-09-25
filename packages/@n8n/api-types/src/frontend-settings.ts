@@ -109,7 +109,6 @@ export interface FrontendSettings {
 	deployment: {
 		type: string;
 	};
-	isNpmAvailable: boolean;
 	allowedModules: {
 		builtIn?: string[];
 		external?: string[];

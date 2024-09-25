@@ -6,6 +6,8 @@ import type { BooleanLicenseFeature } from '@/interfaces';
 
 export type Method = 'get' | 'post' | 'put' | 'patch' | 'delete';
 
+export type Arg = { type: 'body' | 'query' } | { type: 'param'; key: string };
+
 export interface RateLimit {
 	/**
 	 * The maximum number of requests to allow during the `window` before rate limiting the client.
@@ -35,6 +37,7 @@ export interface RouteMetadata {
 	rateLimit?: boolean | RateLimit;
 	licenseFeature?: BooleanLicenseFeature;
 	accessScope?: AccessScope;
+	args: Arg[];
 }
 
 export interface ControllerMetadata {

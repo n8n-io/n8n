@@ -141,7 +141,7 @@ export function prepareOutput(
 	) => NodeExecutionWithMetadata[],
 	itemData: IPairedItemData | IPairedItemData[],
 ) {
-	const returnData: INodeExecutionData[] = [];
+	let returnData: INodeExecutionData[] = [];
 
 	if (options.detailedOutput) {
 		response.forEach((entry, index) => {
@@ -154,7 +154,7 @@ export function prepareOutput(
 				itemData,
 			});
 
-			returnData.push(...executionData);
+			returnData = returnData.concat(executionData);
 		});
 	} else {
 		response
@@ -164,7 +164,7 @@ export function prepareOutput(
 					itemData: Array.isArray(itemData) ? itemData[index] : itemData,
 				});
 
-				returnData.push(...executionData);
+				returnData = returnData.concat(executionData);
 			});
 	}
 

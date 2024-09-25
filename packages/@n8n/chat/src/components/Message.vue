@@ -1,18 +1,20 @@
 <script lang="ts" setup>
 /* eslint-disable @typescript-eslint/naming-convention */
+import hljs from 'highlight.js/lib/core';
+import bash from 'highlight.js/lib/languages/bash';
+import javascript from 'highlight.js/lib/languages/javascript';
+import python from 'highlight.js/lib/languages/python';
+import typescript from 'highlight.js/lib/languages/typescript';
+import xml from 'highlight.js/lib/languages/xml';
+import type MarkdownIt from 'markdown-it';
+import markdownLink from 'markdown-it-link-attributes';
 import { computed, ref, toRefs, onMounted } from 'vue';
 import VueMarkdown from 'vue-markdown-render';
-import hljs from 'highlight.js/lib/core';
-import javascript from 'highlight.js/lib/languages/javascript';
-import typescript from 'highlight.js/lib/languages/typescript';
-import python from 'highlight.js/lib/languages/python';
-import xml from 'highlight.js/lib/languages/xml';
-import bash from 'highlight.js/lib/languages/bash';
-import markdownLink from 'markdown-it-link-attributes';
-import type MarkdownIt from 'markdown-it';
-import ChatFile from './ChatFile.vue';
-import type { ChatMessage, ChatMessageText } from '@n8n/chat/types';
+
 import { useOptions } from '@n8n/chat/composables';
+import type { ChatMessage, ChatMessageText } from '@n8n/chat/types';
+
+import ChatFile from './ChatFile.vue';
 
 const props = defineProps<{
 	message: ChatMessage;

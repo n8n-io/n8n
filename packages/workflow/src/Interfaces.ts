@@ -1,28 +1,28 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import type { CallbackManager as CallbackManagerLC } from '@langchain/core/callbacks/manager';
+import type { AxiosProxyConfig } from 'axios';
 import type * as express from 'express';
 import type FormData from 'form-data';
 import type { PathLike } from 'fs';
 import type { IncomingHttpHeaders } from 'http';
-import type { SecureContextOptions } from 'tls';
-import type { Readable } from 'stream';
-import type { URLSearchParams } from 'url';
 import type { RequestBodyMatcher } from 'nock';
 import type { Client as SSHClient } from 'ssh2';
+import type { Readable } from 'stream';
+import type { SecureContextOptions } from 'tls';
+import type { URLSearchParams } from 'url';
 
 import type { CODE_EXECUTION_MODES, CODE_LANGUAGES, LOG_LEVELS } from './Constants';
 import type { IDeferredPromise } from './DeferredPromise';
-import type { ExecutionStatus } from './ExecutionStatus';
+import type { ExecutionCancelledError } from './errors';
 import type { ExpressionError } from './errors/expression.error';
-import type { Workflow } from './Workflow';
+import type { NodeApiError } from './errors/node-api.error';
+import type { NodeOperationError } from './errors/node-operation.error';
 import type { WorkflowActivationError } from './errors/workflow-activation.error';
 import type { WorkflowOperationError } from './errors/workflow-operation.error';
+import type { ExecutionStatus } from './ExecutionStatus';
+import type { Workflow } from './Workflow';
 import type { WorkflowHooks } from './WorkflowHooks';
-import type { ExecutionCancelledError } from './errors';
-import type { NodeOperationError } from './errors/node-operation.error';
-import type { NodeApiError } from './errors/node-api.error';
-import type { AxiosProxyConfig } from 'axios';
-import type { CallbackManager as CallbackManagerLC } from '@langchain/core/callbacks/manager';
 
 export interface IAdditionalCredentialOptions {
 	oauth2?: IOAuth2Options;
@@ -2150,6 +2150,10 @@ export interface IWorkflowExecutionDataProcess {
 	destinationNode?: string;
 	restartExecutionId?: string;
 	executionMode: WorkflowExecuteMode;
+	/**
+	 * The data that is sent in the body of the webhook that started this
+	 * execution.
+	 */
 	executionData?: IRunExecutionData;
 	runData?: IRunData;
 	pinData?: IPinData;
@@ -2159,6 +2163,15 @@ export interface IWorkflowExecutionDataProcess {
 	workflowData: IWorkflowBase;
 	userId?: string;
 	projectId?: string;
+	/**
+	 * Defines which version of the partial execution flow is used.
+	 * Possible values are:
+	 *  0 - use the old flow
+	 *  1 - use the new flow
+	 * -1 - the backend chooses which flow based on the environment variable
+	 *      PARTIAL_EXECUTION_VERSION_DEFAULT
+	 */
+	partialExecutionVersion?: string;
 }
 
 export interface ExecuteWorkflowOptions {

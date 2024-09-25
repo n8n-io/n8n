@@ -14,6 +14,9 @@ export class OrchestrationHandlerWorkerService extends OrchestrationHandlerServi
 
 	async initSubscriber(options: WorkerCommandReceivedHandlerOptions) {
 		await this.subscriber.subscribe('n8n.commands');
-		this.subscriber.addMessageHandler(getWorkerCommandReceivedHandler(options));
+
+		this.subscriber.setMessageHandler('n8n.commands', async (message: string) => {
+			await getWorkerCommandReceivedHandler(message, options);
+		});
 	}
 }

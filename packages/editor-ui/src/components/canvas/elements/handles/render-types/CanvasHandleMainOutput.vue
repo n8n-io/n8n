@@ -37,7 +37,7 @@ const plusLineSize = computed(
 			small: 46,
 			medium: 66,
 			large: 80,
-		})[renderOptions.value.outputs?.labelSize ?? runData.value ? 'large' : 'small'],
+		})[(renderOptions.value.outputs?.labelSize ?? runData.value) ? 'large' : 'small'],
 );
 
 function onMouseEnter() {

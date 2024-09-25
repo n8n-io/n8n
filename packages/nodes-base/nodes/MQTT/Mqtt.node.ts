@@ -8,6 +8,7 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	NodeConnectionType,
+	ensureError,
 } from 'n8n-workflow';
 
 import { createClient, type MqttCredential } from './GenericFunctions';
@@ -116,10 +117,12 @@ export class Mqtt implements INodeType {
 				try {
 					const client = await createClient(credentials);
 					client.end();
-				} catch (error) {
+				} catch (e) {
+					const error = ensureError(e);
+
 					return {
 						status: 'Error',
-						message: (error as Error).message,
+						message: error.message,
 					};
 				}
 				return {
