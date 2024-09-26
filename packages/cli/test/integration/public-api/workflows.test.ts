@@ -17,9 +17,8 @@ import { createTeamProject } from '@test-integration/db/projects';
 
 import { mockInstance } from '../../shared/mocking';
 import { createTag } from '../shared/db/tags';
-import { createUser } from '../shared/db/users';
+import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
 import { createWorkflow, createWorkflowWithTrigger } from '../shared/db/workflows';
-import { randomApiKey } from '../shared/random';
 import * as testDb from '../shared/test-db';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
@@ -40,18 +39,13 @@ const license = testServer.license;
 mockInstance(ExecutionService);
 
 beforeAll(async () => {
-	owner = await createUser({
-		role: 'global:owner',
-		apiKey: randomApiKey(),
-	});
+	owner = await createOwnerWithApiKey();
 	ownerPersonalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
 		owner.id,
 	);
 
-	member = await createUser({
-		role: 'global:member',
-		apiKey: randomApiKey(),
-	});
+	member = await createMemberWithApiKey();
+
 	memberPersonalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
 		member.id,
 	);
