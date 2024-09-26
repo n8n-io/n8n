@@ -5,9 +5,7 @@ import type {
 	IN8nHttpFullResponse,
 	INodeExecutionData,
 	INodeProperties,
-	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
 
 import { getCursorPaginator, gongApiPaginateRequest } from '../GenericFunctions';
 
