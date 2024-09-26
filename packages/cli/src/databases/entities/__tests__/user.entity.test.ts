@@ -8,7 +8,6 @@ describe('User Entity', () => {
 				firstName: 'Don',
 				lastName: 'Joe',
 				password: '123456789',
-				apiKey: '123',
 			});
 			expect(JSON.stringify(user)).toEqual(
 				'{"email":"test@example.com","firstName":"Don","lastName":"Joe"}',

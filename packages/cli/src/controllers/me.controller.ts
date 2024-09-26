@@ -4,7 +4,6 @@ import {
 	UserUpdateRequestDto,
 } from '@n8n/api-types';
 import { plainToInstance } from 'class-transformer';
-import { randomBytes } from 'crypto';
 import { type RequestHandler, Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
@@ -22,12 +21,11 @@ import { MfaService } from '@/mfa/mfa.service';
 import { isApiEnabled } from '@/public-api';
 import { AuthenticatedRequest, MeRequest } from '@/requests';
 import { PasswordUtility } from '@/services/password.utility';
+import { PublicApiKeyService } from '@/services/public-api-key.service';
 import { UserService } from '@/services/user.service';
 import { isSamlLicensedAndEnabled } from '@/sso/saml/saml-helpers';
 
 import { PersonalizationSurveyAnswersV4 } from './survey-answers.dto';
-
-export const API_KEY_PREFIX = 'n8n_api_';
 
 export const isApiEnabledMiddleware: RequestHandler = (_, res, next) => {
 	if (isApiEnabled()) {
@@ -48,6 +46,7 @@ export class MeController {
 		private readonly userRepository: UserRepository,
 		private readonly eventService: EventService,
 		private readonly mfaService: MfaService,
+		private readonly publicApiKeyService: PublicApiKeyService,
 	) {}
 
 	/**
@@ -219,34 +218,32 @@ export class MeController {
 	}
 
 	/**
-	 * Creates an API Key
+	 * Create an API Key
 	 */
-	@Post('/api-key', { middlewares: [isApiEnabledMiddleware] })
+	@Post('/api-keys', { middlewares: [isApiEnabledMiddleware] })
 	async createAPIKey(req: AuthenticatedRequest) {
-		const apiKey = `n8n_api_${randomBytes(40).toString('hex')}`;
-
-		await this.userService.update(req.user.id, { apiKey });
+		const newApiKey = await this.publicApiKeyService.createPublicApiKeyForUser(req.user);
 
 		this.eventService.emit('public-api-key-created', { user: req.user, publicApi: false });
 
-		return { apiKey };
+		return newApiKey;
 	}
 
 	/**
-	 * Get an API Key
+	 * Get API keys
 	 */
-	@Get('/api-key', { middlewares: [isApiEnabledMiddleware] })
-	async getAPIKey(req: AuthenticatedRequest) {
-		const apiKey = this.redactApiKey(req.user.apiKey);
-		return { apiKey };
+	@Get('/api-keys', { middlewares: [isApiEnabledMiddleware] })
+	async getAPIKeys(req: AuthenticatedRequest) {
+		const apiKeys = await this.publicApiKeyService.getRedactedApiKeysForUser(req.user);
+		return apiKeys;
 	}
 
 	/**
-	 * Deletes an API Key
+	 * Delete an API Key
 	 */
-	@Delete('/api-key', { middlewares: [isApiEnabledMiddleware] })
-	async deleteAPIKey(req: AuthenticatedRequest) {
-		await this.userService.update(req.user.id, { apiKey: null });
+	@Delete('/api-keys/:id', { middlewares: [isApiEnabledMiddleware] })
+	async deleteAPIKey(req: MeRequest.DeleteAPIKey) {
+		await this.publicApiKeyService.deleteApiKeyForUser(req.user, req.params.id);
 
 		this.eventService.emit('public-api-key-deleted', { user: req.user, publicApi: false });
 
@@ -272,15 +269,5 @@ export class MeController {
 		});
 
 		return user.settings;
-	}
-
-	private redactApiKey(apiKey: string | null) {
-		if (!apiKey) return;
-		const keepLength = 5;
-		return (
-			API_KEY_PREFIX +
-			apiKey.slice(API_KEY_PREFIX.length, API_KEY_PREFIX.length + keepLength) +
-			'*'.repeat(apiKey.length - API_KEY_PREFIX.length - keepLength)
-		);
 	}
 }

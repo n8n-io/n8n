@@ -186,6 +186,7 @@ export declare namespace CredentialRequest {
 
 export declare namespace MeRequest {
 	export type SurveyAnswers = AuthenticatedRequest<{}, {}, IPersonalizationSurveyAnswersV4>;
+	export type DeleteAPIKey = AuthenticatedRequest<{ id: string }>;
 }
 
 export interface UserSetupPayload {
