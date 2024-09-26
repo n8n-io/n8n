@@ -54,7 +54,7 @@ export class ExecutionEntity {
 	 * is `null` when an execution is enqueued but has not started yet.
 	 */
 	@Column({ type: datetimeColumnType, nullable: true })
-	startedAt: Date;
+	startedAt: Date | null;
 
 	@Index()
 	@Column({ type: datetimeColumnType, nullable: true })
