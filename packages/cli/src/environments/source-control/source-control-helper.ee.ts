@@ -1,17 +1,19 @@
-import { Container } from 'typedi';
-import { License } from '@/license';
 import { generateKeyPairSync } from 'crypto';
-import type { KeyPair } from './types/key-pair';
 import { constants as fsConstants, mkdirSync, accessSync } from 'fs';
+import path from 'path';
+import { Container } from 'typedi';
+
+import { License } from '@/license';
+import { Logger } from '@/logger';
+
 import {
 	SOURCE_CONTROL_GIT_KEY_COMMENT,
 	SOURCE_CONTROL_TAGS_EXPORT_FILE,
 	SOURCE_CONTROL_VARIABLES_EXPORT_FILE,
 } from './constants';
-import type { SourceControlledFile } from './types/source-controlled-file';
-import path from 'path';
+import type { KeyPair } from './types/key-pair';
 import type { KeyPairType } from './types/key-pair-type';
-import { Logger } from '@/logger';
+import type { SourceControlledFile } from './types/source-controlled-file';
 
 export function stringContainsExpression(testString: string): boolean {
 	return /^=.*\{\{.*\}\}/.test(testString);

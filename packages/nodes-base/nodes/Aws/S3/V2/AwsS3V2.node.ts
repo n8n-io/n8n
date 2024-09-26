@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import { createHash } from 'crypto';
 import type { Readable } from 'stream';
 import { paramCase, snakeCase } from 'change-case';

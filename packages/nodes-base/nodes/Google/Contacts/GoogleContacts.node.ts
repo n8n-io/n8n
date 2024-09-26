@@ -92,6 +92,19 @@ export class GoogleContacts implements INodeType {
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
+
+		// Warmup cache
+		// https://developers.google.com/people/v1/contacts#protocol_1
+		if (resource === 'contact' && operation === 'getAll') {
+			await googleApiRequest.call(this, 'GET', '/people:searchContacts', undefined, {
+				query: '',
+				readMask: 'names',
+			});
+			await googleApiRequest.call(this, 'GET', '/people/me/connections', undefined, {
+				personFields: 'names',
+			});
+		}
+
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'contact') {

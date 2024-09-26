@@ -1,6 +1,6 @@
-import type { IN8nUISettings } from 'n8n-workflow';
+import type { FrontendSettings } from '@n8n/api-types';
 
-export const defaultSettings: IN8nUISettings = {
+export const defaultSettings: FrontendSettings = {
 	databaseType: 'sqlite',
 	isDocker: false,
 	pruning: {
@@ -46,7 +46,6 @@ export const defaultSettings: IN8nUISettings = {
 	hideUsagePage: false,
 	hiringBannerEnabled: false,
 	instanceId: '',
-	isNpmAvailable: false,
 	license: { environment: 'development', consumerId: 'unknown' },
 	logLevel: 'info',
 	maxExecutionTimeout: 0,

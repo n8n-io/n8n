@@ -45,8 +45,8 @@ const isSharingEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],
 );
 const credentialOwnerName = computed(() => {
-	const { firstName, lastName, email } = splitName(props.credential?.homeProject?.name ?? '');
-	return firstName || lastName ? `${firstName}${lastName ? ' ' + lastName : ''}` : email ?? '';
+	const { name, email } = splitName(props.credential?.homeProject?.name ?? '');
+	return name ?? email ?? '';
 });
 
 const credentialDataHomeProject = computed<ProjectSharingData | undefined>(() => {

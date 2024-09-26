@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -66,7 +65,7 @@ const versionDescription: INodeTypeDescription = {
 	properties: [
 		{
 			displayName:
-				"More powerful date functionality is available in <a href='https://docs.n8n.io/code-examples/expressions/luxon/' target='_blank'>expressions</a>,</br> e.g. <code>{{ $now.plus(1, 'week') }}</code>",
+				"More powerful date functionality is available in <a href='https://docs.n8n.io/code/expressions/luxon/' target='_blank'>expressions</a>,</br> e.g. <code>{{ $now.plus(1, 'week') }}</code>",
 			name: 'noticeDateTime',
 			type: 'notice',
 			default: '',
@@ -222,7 +221,7 @@ const versionDescription: INodeTypeDescription = {
 					},
 					default: 'UTC',
 					description:
-						'The timezone to convert from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						'The timezone to convert from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				},
 				{
 					displayName: 'To Timezone Name or ID',
@@ -233,7 +232,7 @@ const versionDescription: INodeTypeDescription = {
 					},
 					default: 'UTC',
 					description:
-						'The timezone to convert to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						'The timezone to convert to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				},
 			],
 		},

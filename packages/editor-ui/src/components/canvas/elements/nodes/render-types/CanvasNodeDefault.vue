@@ -30,7 +30,14 @@ const {
 	hasIssues,
 	render,
 } = useCanvasNode();
-const { mainOutputs, nonMainInputs, requiredNonMainInputs } = useNodeConnections({
+const {
+	mainOutputs,
+	mainOutputConnections,
+	mainInputs,
+	mainInputConnections,
+	nonMainInputs,
+	requiredNonMainInputs,
+} = useNodeConnections({
 	inputs,
 	outputs,
 	connections,
@@ -56,9 +63,9 @@ const classes = computed(() => {
 const styles = computed(() => {
 	const stylesObject: Record<string, string | number> = {};
 
-	if (renderOptions.value.configurable && requiredNonMainInputs.value.length > 0) {
+	if (renderOptions.value.configurable) {
 		let spacerCount = 0;
-		if (NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS) {
+		if (NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS && requiredNonMainInputs.value.length > 0) {
 			const requiredNonMainInputsCount = requiredNonMainInputs.value.length;
 			const optionalNonMainInputsCount = nonMainInputs.value.length - requiredNonMainInputsCount;
 			spacerCount = requiredNonMainInputsCount > 0 && optionalNonMainInputsCount > 0 ? 1 : 0;
@@ -67,6 +74,7 @@ const styles = computed(() => {
 		stylesObject['--configurable-node--input-count'] = nonMainInputs.value.length + spacerCount;
 	}
 
+	stylesObject['--canvas-node--main-input-count'] = mainInputs.value.length;
 	stylesObject['--canvas-node--main-output-count'] = mainOutputs.value.length;
 
 	return stylesObject;
@@ -85,6 +93,15 @@ const dataTestId = computed(() => {
 	return `canvas-${type}-node`;
 });
 
+const isStrikethroughVisible = computed(() => {
+	const isSingleMainInputNode =
+		mainInputs.value.length === 1 && mainInputConnections.value.length <= 1;
+	const isSingleMainOutputNode =
+		mainOutputs.value.length === 1 && mainOutputConnections.value.length <= 1;
+
+	return isDisabled.value && isSingleMainInputNode && isSingleMainOutputNode;
+});
+
 function openContextMenu(event: MouseEvent) {
 	emit('open:contextmenu', event);
 }
@@ -95,14 +112,14 @@ function openContextMenu(event: MouseEvent) {
 		<slot />
 		<N8nTooltip v-if="renderOptions.trigger" placement="bottom">
 			<template #content>
-				<span v-html="$locale.baseText('node.thisIsATriggerNode')" />
+				<span v-n8n-html="$locale.baseText('node.thisIsATriggerNode')" />
 			</template>
 			<div :class="$style.triggerIcon">
 				<FontAwesomeIcon icon="bolt" size="lg" />
 			</div>
 		</N8nTooltip>
 		<CanvasNodeStatusIcons :class="$style.statusIcons" />
-		<CanvasNodeDisabledStrikeThrough v-if="isDisabled" />
+		<CanvasNodeDisabledStrikeThrough v-if="isStrikethroughVisible" />
 		<div :class="$style.description">
 			<div v-if="label" :class="$style.label">
 				{{ label }}
@@ -115,7 +132,12 @@ function openContextMenu(event: MouseEvent) {
 
 <style lang="scss" module>
 .node {
-	--canvas-node--height: calc(100px + max(0, var(--canvas-node--main-output-count, 1) - 4) * 48px);
+	--canvas-node--max-vertical-handles: max(
+		var(--canvas-node--main-input-count),
+		var(--canvas-node--main-output-count),
+		1
+	);
+	--canvas-node--height: calc(100px + max(0, var(--canvas-node--max-vertical-handles) - 3) * 42px);
 	--canvas-node--width: 100px;
 	--canvas-node-border-width: 2px;
 	--configurable-node--min-input-count: 4;
@@ -161,7 +183,7 @@ function openContextMenu(event: MouseEvent) {
 	&.configurable {
 		--canvas-node--height: 100px;
 		--canvas-node--width: calc(
-			max(var(--configurable-node--input-count, 5), var(--configurable-node--min-input-count)) *
+			max(var(--configurable-node--input-count, 4), var(--configurable-node--min-input-count)) *
 				var(--configurable-node--input-width)
 		);
 

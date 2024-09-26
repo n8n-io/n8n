@@ -436,6 +436,10 @@ export class GoogleCalendar implements INodeType {
 						if (options.updatedMin) {
 							qs.updatedMin = addTimezoneToDate(options.updatedMin as string, tz || timezone);
 						}
+						if (options.fields) {
+							qs.fields = options.fields as string;
+						}
+
 						if (returnAll) {
 							responseData = await googleApiRequestAllItems.call(
 								this,

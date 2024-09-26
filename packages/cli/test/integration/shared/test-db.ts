@@ -1,13 +1,13 @@
-import { Container } from 'typedi';
+import { GlobalConfig } from '@n8n/config';
 import type { DataSourceOptions, Repository } from '@n8n/typeorm';
 import { DataSource as Connection } from '@n8n/typeorm';
-import { GlobalConfig } from '@n8n/config';
+import { kebabCase } from 'lodash';
 import type { Class } from 'n8n-core';
 import { randomString } from 'n8n-workflow';
+import { Container } from 'typedi';
 
-import * as Db from '@/db';
 import { getOptionOverrides } from '@/databases/config';
-import { kebabCase } from 'lodash';
+import * as Db from '@/db';
 
 export const testDbPrefix = 'n8n_test_';
 
@@ -39,11 +39,16 @@ export async function init() {
 	await Db.migrate();
 }
 
+export function isReady() {
+	return Db.connectionState.connected && Db.connectionState.migrated;
+}
+
 /**
  * Drop test DB, closing bootstrap connection if existing.
  */
 export async function terminate() {
 	await Db.close();
+	Db.connectionState.connected = false;
 }
 
 // Can't use `Object.keys(entities)` here because some entities have a `Entity` suffix, while the repositories don't
@@ -82,9 +87,18 @@ const repositories = [
  */
 export async function truncate(names: Array<(typeof repositories)[number]>) {
 	for (const name of names) {
-		const RepositoryClass: Class<Repository<object>> =
-			// eslint-disable-next-line n8n-local-rules/no-dynamic-import-template
-			(await import(`@/databases/repositories/${kebabCase(name)}.repository`))[`${name}Repository`];
+		let RepositoryClass: Class<Repository<object>>;
+
+		try {
+			RepositoryClass = (await import(`@/databases/repositories/${kebabCase(name)}.repository`))[
+				`${name}Repository`
+			];
+		} catch (e) {
+			RepositoryClass = (await import(`@/databases/repositories/${kebabCase(name)}.repository.ee`))[
+				`${name}Repository`
+			];
+		}
+
 		await Container.get(RepositoryClass).delete({});
 	}
 }

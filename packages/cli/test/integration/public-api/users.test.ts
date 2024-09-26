@@ -1,9 +1,10 @@
-import { setupTestServer } from '@test-integration/utils';
-import * as testDb from '../shared/test-db';
-import { createMember, createOwner, getUserById } from '@test-integration/db/users';
-import { mockInstance } from '@test/mocking';
-import { Telemetry } from '@/telemetry';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
+import { Telemetry } from '@/telemetry';
+import { mockInstance } from '@test/mocking';
+import { createMember, createOwner, getUserById } from '@test-integration/db/users';
+import { setupTestServer } from '@test-integration/utils';
+
+import * as testDb from '../shared/test-db';
 
 describe('Users in Public API', () => {
 	const testServer = setupTestServer({ endpointGroups: ['publicApi'] });
@@ -222,6 +223,29 @@ describe('Users in Public API', () => {
 			 */
 			expect(response.status).toBe(403);
 			expect(response.body).toHaveProperty('message', 'Forbidden');
+		});
+
+		it('should return a 400 on invalid payload', async () => {
+			/**
+			 * Arrange
+			 */
+			testServer.license.enable('feat:advancedPermissions');
+			const owner = await createOwner({ withApiKey: true });
+			const member = await createMember();
+			const payload = { newRoleName: 'invalid' };
+
+			/**
+			 * Act
+			 */
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.patch(`/users/${member.id}/role`)
+				.send(payload);
+
+			/**
+			 * Assert
+			 */
+			expect(response.status).toBe(400);
 		});
 
 		it("should change a user's role", async () => {

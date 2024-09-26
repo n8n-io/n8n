@@ -28,7 +28,7 @@ const appNodeCounts = computed(() => {
 <template>
 	<N8nNotice :class="$style.notice" theme="info">
 		<i18n-t tag="span" keypath="templateSetup.instructions" scope="global">
-			<span v-html="appNodeCounts" />
+			<span v-n8n-html="appNodeCounts" />
 		</i18n-t>
 	</N8nNotice>
 </template>

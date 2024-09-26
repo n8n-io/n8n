@@ -163,7 +163,7 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 			<p
 				:class="$style.communityNodeIcon"
 				@click="onCommunityNodeTooltipClick"
-				v-html="
+				v-n8n-html="
 					i18n.baseText('generic.communityNode.tooltip', {
 						interpolate: {
 							packageName: nodeType.name.split('.')[0],
