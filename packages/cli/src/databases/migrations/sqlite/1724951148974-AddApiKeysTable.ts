@@ -11,7 +11,7 @@ export class AddApiKeysTable1724951148974 {
 			CREATE TABLE ${tableName} (
 				id VARCHAR(36) PRIMARY KEY NOT NULL,
 				"userId" VARCHAR NOT NULL,
-				"label" VARCHAR(255) NOT NULL,
+				"label" VARCHAR(100) NOT NULL,
 				"apiKey" VARCHAR NOT NULL,
 				"createdAt" DATETIME(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
 				"updatedAt" DATETIME(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
