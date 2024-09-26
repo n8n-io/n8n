@@ -177,6 +177,15 @@ const displayValue = computed(() => {
 		if (!nodeType.value || nodeType.value?.codex?.categories?.includes(CORE_NODES_CATEGORY)) {
 			return i18n.baseText('parameterInput.loadOptionsError');
 		}
+
+		if (nodeType.value?.credentials && nodeType.value?.credentials?.length > 0) {
+			const credentialsType = nodeType.value?.credentials[0];
+
+			if (credentialsType.required && !node.value?.credentials) {
+				return i18n.baseText('parameterInput.loadOptionsCredentialsRequired');
+			}
+		}
+
 		return i18n.baseText('parameterInput.loadOptionsErrorService', {
 			interpolate: { service: nodeType.value.displayName },
 		});
@@ -1275,6 +1284,7 @@ onUpdated(async () => {
 					"
 					:title="displayTitle"
 					:placeholder="getPlaceholder()"
+					data-test-id="parameter-input-field"
 					@update:model-value="(valueChanged($event) as undefined) && onUpdateTextInput($event)"
 					@keydown.stop
 					@focus="setFocus"
