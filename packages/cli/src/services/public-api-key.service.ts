@@ -14,9 +14,8 @@ export class PublicApiKeyService {
 
 	/**
 	 * Creates a new public API key for the specified user.
-	 *
-	 * @param {User} user - The user for whom the API key is being created.
-	 * @returns {Promise<ApiKey>} A promise that resolves to the newly created API key.
+	 * @param user - The user for whom the API key is being created.
+	 * @returns A promise that resolves to the newly created API key.
 	 */
 	async createPublicApiKeyForUser(user: User) {
 		const apiKey = this.createApiKeyString();
@@ -34,9 +33,8 @@ export class PublicApiKeyService {
 
 	/**
 	 * Retrieves and redacts API keys for a given user.
-	 *
-	 * @param {User} user - The user for whom to retrieve and redact API keys.
-	 * @returns {Promise<Array<{ apiKey: string }>>} A promise that resolves to an array of objects containing redacted API keys.
+	 * @param user - The user for whom to retrieve and redact API keys.
+	 * @returns A promise that resolves to an array of objects containing redacted API keys.
 	 */
 	async getRedactedApiKeysForUser(user: User) {
 		const apiKeys = await this.apiKeyRepository.findBy({ userId: user.id });
@@ -61,9 +59,8 @@ export class PublicApiKeyService {
 
 	/**
 	 * Redacts an API key by keeping the first few characters and replacing the rest with asterisks.
-	 *
-	 * @param {string | null} apiKey - The API key to be redacted. If null, the function returns undefined.
-	 * @returns {string | undefined} The redacted API key with a fixed prefix and asterisks replacing the rest of the characters.
+	 * @param apiKey - The API key to be redacted. If null, the function returns undefined.
+	 * @returns The redacted API key with a fixed prefix and asterisks replacing the rest of the characters.
 	 * @example
 	 * ```typescript
 	 * const redactedKey = PublicApiKeyService.redactApiKey('12345-abcdef-67890');
