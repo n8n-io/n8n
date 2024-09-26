@@ -18,6 +18,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeHelpers, ApplicationError, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 import path from 'path';
+import picocolors from 'picocolors';
 import { Container, Service } from 'typedi';
 
 import {
@@ -146,6 +147,7 @@ export class LoadNodesAndCredentials {
 					path.join(nodeModulesDir, packagePath),
 				);
 			} catch (error) {
+				this.logger.error((error as Error).message);
 				ErrorReporter.error(error);
 			}
 		}
@@ -258,6 +260,13 @@ export class LoadNodesAndCredentials {
 		dir: string,
 	) {
 		const loader = new constructor(dir, this.excludeNodes, this.includeNodes);
+		if (loader.packageName in this.loaders) {
+			throw new ApplicationError(
+				picocolors.red(
+					`nodes package ${loader.packageName} is already loaded.\n Please delete this second copy at path ${dir}`,
+				),
+			);
+		}
 		await loader.loadAll();
 		this.loaders[loader.packageName] = loader;
 		return loader;
