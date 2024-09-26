@@ -58,7 +58,7 @@ export class UserService {
 			withScopes?: boolean;
 		},
 	) {
-		const { password, updatedAt, apiKey, authIdentities, ...rest } = user;
+		const { password, updatedAt, authIdentities, ...rest } = user;
 
 		const ldapIdentity = authIdentities?.find((i) => i.providerType === 'ldap');
 

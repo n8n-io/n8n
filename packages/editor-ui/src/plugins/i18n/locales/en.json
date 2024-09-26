@@ -1766,7 +1766,6 @@
 	"settings.api.view.copy": "Make sure to copy your API key now as you will not be able to see this again.",
 	"settings.api.view.info.api": "n8n API",
 	"settings.api.view.info.webhook": "webhook node",
-	"settings.api.view.myKey": "My API Key",
 	"settings.api.view.tryapi": "Try it out using the",
 	"settings.api.view.more-details": "You can find more details in",
 	"settings.api.view.external-docs": "the API documentation",
