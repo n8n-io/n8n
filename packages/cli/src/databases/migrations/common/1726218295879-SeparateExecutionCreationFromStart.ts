@@ -24,6 +24,9 @@ export class SeparateExecutionCreationFromStart1726218295879 implements Reversib
 			`SELECT ${id} FROM ${executionEntity}`,
 			async (batch: Array<{ id: string }>) => {
 				const ids = batch.map((row) => row.id).join(',');
+
+				if (ids.length === 0) return;
+
 				await runQuery(`
           UPDATE ${executionEntity}
           SET ${createdAt} = ${startedAt}
