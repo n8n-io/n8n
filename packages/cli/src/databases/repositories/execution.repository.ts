@@ -54,6 +54,8 @@ import { ExecutionDataRepository } from './execution-data.repository';
 import type { ExecutionData } from '../entities/execution-data';
 import { ExecutionEntity } from '../entities/execution-entity';
 import { ExecutionMetadata } from '../entities/execution-metadata';
+import { SharedWorkflow } from '../entities/shared-workflow';
+import { WorkflowEntity } from '../entities/workflow-entity';
 
 export interface IGetExecutionsQueryFilter {
 	id?: FindOperator<string> | string;
@@ -874,6 +876,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			metadata,
 			annotationTags,
 			vote,
+			projectId,
 		} = query;
 
 		const fields = Object.keys(this.summaryFields)
@@ -943,6 +946,12 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			if (vote) {
 				qb.andWhere('annotation.vote = :vote', { vote });
 			}
+		}
+
+		if (projectId) {
+			qb.innerJoin(WorkflowEntity, 'w', 'w.id = execution.workflowId')
+				.innerJoin(SharedWorkflow, 'sw', 'sw.workflowId = w.id')
+				.where('sw.projectId = :projectId', { projectId });
 		}
 
 		return qb;
