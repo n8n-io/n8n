@@ -1,4 +1,4 @@
-import { randomBytes } from 'crypto';
+import { randomBytes } from 'node:crypto';
 import Container, { Service } from 'typedi';
 
 import { ApiKey } from '@/databases/entities/api-key';
