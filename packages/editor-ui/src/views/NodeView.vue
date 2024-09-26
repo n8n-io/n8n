@@ -1,5 +1,5 @@
 <script lang="ts">
-import { defineAsyncComponent, defineComponent, nextTick, ref } from 'vue';
+import { defineAsyncComponent, defineComponent, nextTick, ref, h } from 'vue';
 import { mapStores, storeToRefs } from 'pinia';
 
 import type {
@@ -103,7 +103,6 @@ import type {
 	NodeCreatorOpenSource,
 	AddedNodesAndConnections,
 	ToggleNodeCreatorOptions,
-	IPushDataExecutionFinished,
 	NodeFilterType,
 } from '@/Interface';
 
@@ -182,6 +181,8 @@ import { usePostHog } from '@/stores/posthog.store';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { getResourcePermissions } from '@/permissions';
 import { useBeforeUnload } from '@/composables/useBeforeUnload';
+import NodeViewUnfinishedWorkflowMessage from '@/components/NodeViewUnfinishedWorkflowMessage.vue';
+import type { PushPayload } from '@n8n/api-types';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -506,7 +507,7 @@ export default defineComponent({
 		projectPermissions() {
 			const project = this.$route.query?.projectId
 				? this.projectsStore.myProjects.find((p) => p.id === this.$route.query.projectId)
-				: this.projectsStore.currentProject ?? this.projectsStore.personalProject;
+				: (this.projectsStore.currentProject ?? this.projectsStore.personalProject);
 			return getResourcePermissions(project?.scopes);
 		},
 	},
@@ -1063,13 +1064,7 @@ export default defineComponent({
 			if ((data as ExecutionSummary).waitTill) {
 				this.showMessage({
 					title: this.$locale.baseText('nodeView.thisExecutionHasntFinishedYet'),
-					message: `<a data-action="reload">${this.$locale.baseText(
-						'nodeView.refresh',
-					)}</a> ${this.$locale.baseText(
-						'nodeView.toSeeTheLatestStatus',
-					)}.<br/> <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/" target="_blank">${this.$locale.baseText(
-						'nodeView.moreInfo',
-					)}</a>`,
+					message: h(NodeViewUnfinishedWorkflowMessage),
 					type: 'warning',
 					duration: 0,
 				});
@@ -1719,7 +1714,7 @@ export default defineComponent({
 
 					this.workflowsStore.finishActiveExecution({
 						executionId,
-						data: { finished: true, stoppedAt: new Date() },
+						data: { finished: true, stoppedAt: new Date() } as IRun,
 					});
 					this.workflowsStore.executingNode.length = 0;
 					this.uiStore.removeActiveAction('workflowRunning');
@@ -1742,11 +1737,11 @@ export default defineComponent({
 						startedAt: execution.startedAt,
 						stoppedAt: execution.stoppedAt,
 					} as IRun;
-					const pushData = {
+					const pushData: PushPayload<'executionFinished'> = {
 						data: executedData,
 						executionId,
 						retryOf: execution.retryOf,
-					} as IPushDataExecutionFinished;
+					};
 					this.workflowsStore.finishActiveExecution(pushData);
 					this.titleSet(execution.workflowData.name, 'IDLE');
 					this.workflowsStore.executingNode.length = 0;
@@ -2931,6 +2926,7 @@ export default defineComponent({
 				}
 
 				if (
+					// @ts-expect-error Deprecated file
 					// eslint-disable-next-line no-constant-binary-expression
 					!(this.workflowPermissions.update ?? this.projectPermissions.workflow.update) ??
 					this.isReadOnlyRoute ??
@@ -2970,6 +2966,7 @@ export default defineComponent({
 				}
 
 				if (
+					// @ts-expect-error Deprecated file
 					// eslint-disable-next-line no-constant-binary-expression
 					!(this.workflowPermissions.update ?? this.projectPermissions.workflow.update) ??
 					this.isReadOnlyRoute ??

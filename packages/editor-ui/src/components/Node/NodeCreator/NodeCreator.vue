@@ -101,8 +101,8 @@ watch(
 );
 
 // Close node creator when the last view stacks is closed
-watch(viewStacksLength, (viewStacksLength) => {
-	if (viewStacksLength === 0) {
+watch(viewStacksLength, (value) => {
+	if (value === 0) {
 		emit('closeNodeCreator');
 		setShowScrim(false);
 	}

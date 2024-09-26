@@ -14,14 +14,15 @@ import {
 	WORKFLOW_SHARE_MODAL_KEY,
 } from '@/constants';
 import ShortenName from '@/components/ShortenName.vue';
-import TagsContainer from '@/components/TagsContainer.vue';
+import WorkflowTagsContainer from '@/components/WorkflowTagsContainer.vue';
 import PushConnectionTracker from '@/components/PushConnectionTracker.vue';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
 import SaveButton from '@/components/SaveButton.vue';
-import TagsDropdown from '@/components/TagsDropdown.vue';
+import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
 import InlineTextEdit from '@/components/InlineTextEdit.vue';
 import BreakpointsObserver from '@/components/BreakpointsObserver.vue';
 import WorkflowHistoryButton from '@/components/MainHeader/WorkflowHistoryButton.vue';
+import CollaborationPane from '@/components/MainHeader/CollaborationPane.vue';
 
 import { useRootStore } from '@/stores/root.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -57,8 +58,13 @@ import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { useLocalStorage } from '@vueuse/core';
 
 const props = defineProps<{
-	workflow: IWorkflowDb;
 	readOnly?: boolean;
+	id: IWorkflowDb['id'];
+	tags: IWorkflowDb['tags'];
+	name: IWorkflowDb['name'];
+	meta: IWorkflowDb['meta'];
+	scopes: IWorkflowDb['scopes'];
+	active: IWorkflowDb['active'];
 }>();
 
 const $style = useCssModule();
@@ -114,11 +120,7 @@ const hasChanged = (prev: string[], curr: string[]) => {
 };
 
 const isNewWorkflow = computed(() => {
-	return (
-		!props.workflow.id ||
-		props.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID ||
-		props.workflow.id === 'new'
-	);
+	return !props.id || props.id === PLACEHOLDER_EMPTY_WORKFLOW_ID || props.id === 'new';
 });
 
 const isWorkflowSaving = computed(() => {
@@ -137,9 +139,7 @@ const onExecutionsTab = computed(() => {
 	].includes((route.name as string) || '');
 });
 
-const workflowPermissions = computed(
-	() => getResourcePermissions(workflowsStore.getWorkflowById(props.workflow.id)?.scopes).workflow,
-);
+const workflowPermissions = computed(() => getResourcePermissions(props.scopes).workflow);
 
 const workflowMenuItems = computed<ActionDropdownItem[]>(() => {
 	const actions: ActionDropdownItem[] = [
@@ -154,7 +154,7 @@ const workflowMenuItems = computed<ActionDropdownItem[]>(() => {
 		actions.unshift({
 			id: WORKFLOW_MENU_ACTIONS.DUPLICATE,
 			label: locale.baseText('menuActions.duplicate'),
-			disabled: !onWorkflowPage.value || !props.workflow.id,
+			disabled: !onWorkflowPage.value || !props.id,
 		});
 
 		actions.push(
@@ -218,11 +218,11 @@ const isWorkflowHistoryFeatureEnabled = computed(() => {
 });
 
 const workflowTagIds = computed(() => {
-	return (props.workflow.tags ?? []).map((tag) => (typeof tag === 'string' ? tag : tag.id));
+	return (props.tags ?? []).map((tag) => (typeof tag === 'string' ? tag : tag.id));
 });
 
 watch(
-	() => props.workflow.id,
+	() => props.id,
 	() => {
 		isTagsEditEnabled.value = false;
 		isNameEditEnabled.value = false;
@@ -231,8 +231,8 @@ watch(
 
 function getWorkflowId(): string | undefined {
 	let id: string | undefined = undefined;
-	if (props.workflow.id !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
-		id = props.workflow.id;
+	if (props.id !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+		id = props.id;
 	} else if (route.params.name && route.params.name !== 'new') {
 		id = route.params.name as string;
 	}
@@ -248,8 +248,8 @@ async function onSaveButtonClick() {
 
 	const id = getWorkflowId();
 
-	const name = props.workflow.name;
-	const tags = props.workflow.tags as string[];
+	const name = props.name;
+	const tags = props.tags as string[];
 
 	const saved = await workflowHelpers.saveCurrentWorkflow({
 		id,
@@ -265,7 +265,7 @@ async function onSaveButtonClick() {
 		if (route.name === VIEWS.EXECUTION_DEBUG) {
 			await router.replace({
 				name: VIEWS.WORKFLOW,
-				params: { name: props.workflow.id },
+				params: { name: props.id },
 			});
 		}
 	}
@@ -274,18 +274,18 @@ async function onSaveButtonClick() {
 function onShareButtonClick() {
 	uiStore.openModalWithData({
 		name: WORKFLOW_SHARE_MODAL_KEY,
-		data: { id: props.workflow.id },
+		data: { id: props.id },
 	});
 
 	telemetry.track('User opened sharing modal', {
-		workflow_id: props.workflow.id,
+		workflow_id: props.id,
 		user_id_sharer: usersStore.currentUser?.id,
 		sub_view: route.name === VIEWS.WORKFLOWS ? 'Workflows listing' : 'Workflow editor',
 	});
 }
 
 function onTagsEditEnable() {
-	appliedTagIds.value = (props.workflow.tags ?? []) as string[];
+	appliedTagIds.value = (props.tags ?? []) as string[];
 	isTagsEditEnabled.value = true;
 
 	setTimeout(() => {
@@ -296,7 +296,7 @@ function onTagsEditEnable() {
 }
 
 async function onTagsBlur() {
-	const current = (props.workflow.tags ?? []) as string[];
+	const current = (props.tags ?? []) as string[];
 	const tags = appliedTagIds.value;
 	if (!hasChanged(current, tags)) {
 		isTagsEditEnabled.value = false;
@@ -310,7 +310,7 @@ async function onTagsBlur() {
 
 	const saved = await workflowHelpers.saveCurrentWorkflow({ tags });
 	telemetry.track('User edited workflow tags', {
-		workflow_id: props.workflow.id,
+		workflow_id: props.id,
 		new_tag_count: tags.length,
 	});
 
@@ -354,7 +354,7 @@ async function onNameSubmit({
 		return;
 	}
 
-	if (newName === props.workflow.name) {
+	if (newName === props.name) {
 		isNameEditEnabled.value = false;
 
 		onSubmit(true);
@@ -404,9 +404,9 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			uiStore.openModalWithData({
 				name: DUPLICATE_MODAL_KEY,
 				data: {
-					id: props.workflow.id,
-					name: props.workflow.name,
-					tags: props.workflow.tags,
+					id: props.id,
+					name: props.name,
+					tags: props.tags,
 				},
 			});
 			break;
@@ -417,7 +417,7 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			const exportData: IWorkflowToShare = {
 				...data,
 				meta: {
-					...props.workflow.meta,
+					...props.meta,
 					instanceId: rootStore.instanceId,
 				},
 				tags: (tags ?? []).map((tagId) => {
@@ -431,7 +431,7 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 				type: 'application/json;charset=utf-8',
 			});
 
-			let name = props.workflow.name || 'unsaved_workflow';
+			let name = props.name || 'unsaved_workflow';
 			name = name.replace(/[^a-z0-9]/gi, '_');
 
 			telemetry.track('User exported workflow', { workflow_id: workflowData.id });
@@ -532,7 +532,7 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 		case WORKFLOW_MENU_ACTIONS.DELETE: {
 			const deleteConfirmed = await message.confirm(
 				locale.baseText('mainSidebar.confirmMessage.workflowDelete.message', {
-					interpolate: { workflowName: props.workflow.name },
+					interpolate: { workflowName: props.name },
 				}),
 				locale.baseText('mainSidebar.confirmMessage.workflowDelete.headline'),
 				{
@@ -551,7 +551,7 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			}
 
 			try {
-				await workflowsStore.deleteWorkflow(props.workflow.id);
+				await workflowsStore.deleteWorkflow(props.id);
 			} catch (error) {
 				toast.showError(error, locale.baseText('generic.deleteWorkflowError'));
 				return;
@@ -607,15 +607,10 @@ function showCreateWorkflowSuccessToast(id?: string) {
 	<div :class="$style.container">
 		<BreakpointsObserver :value-x-s="15" :value-s-m="25" :value-m-d="50" class="name-container">
 			<template #default="{ value }">
-				<ShortenName
-					:name="workflow.name"
-					:limit="value"
-					:custom="true"
-					test-id="workflow-name-input"
-				>
+				<ShortenName :name="name" :limit="value" :custom="true" test-id="workflow-name-input">
 					<template #default="{ shortenedName }">
 						<InlineTextEdit
-							:model-value="workflow.name"
+							:model-value="name"
 							:preview-value="shortenedName"
 							:is-edit-enabled="isNameEditEnabled"
 							:max-length="MAX_WORKFLOW_NAME_LENGTH"
@@ -631,7 +626,7 @@ function showCreateWorkflowSuccessToast(id?: string) {
 		</BreakpointsObserver>
 
 		<span v-if="settingsStore.areTagsEnabled" class="tags" data-test-id="workflow-tags-container">
-			<TagsDropdown
+			<WorkflowTagsDropdown
 				v-if="isTagsEditEnabled && !readOnly && (isNewWorkflow || workflowPermissions.update)"
 				ref="dropdown"
 				v-model="appliedTagIds"
@@ -644,18 +639,16 @@ function showCreateWorkflowSuccessToast(id?: string) {
 			/>
 			<div
 				v-else-if="
-					(workflow.tags ?? []).length === 0 &&
-					!readOnly &&
-					(isNewWorkflow || workflowPermissions.update)
+					(tags ?? []).length === 0 && !readOnly && (isNewWorkflow || workflowPermissions.update)
 				"
 			>
 				<span class="add-tag clickable" data-test-id="new-tag-link" @click="onTagsEditEnable">
 					+ {{ $locale.baseText('workflowDetails.addTag') }}
 				</span>
 			</div>
-			<TagsContainer
+			<WorkflowTagsContainer
 				v-else
-				:key="workflow.id"
+				:key="id"
 				:tag-ids="workflowTagIds"
 				:clickable="true"
 				:responsive="true"
@@ -668,13 +661,14 @@ function showCreateWorkflowSuccessToast(id?: string) {
 		<PushConnectionTracker class="actions">
 			<span :class="`activator ${$style.group}`">
 				<WorkflowActivator
-					:workflow-active="workflow.active"
-					:workflow-id="workflow.id"
+					:workflow-active="active"
+					:workflow-id="id"
 					:workflow-permissions="workflowPermissions"
 				/>
 			</span>
 			<EnterpriseEdition :features="[EnterpriseEditionFeature.Sharing]">
 				<div :class="$style.group">
+					<CollaborationPane v-if="!isNewWorkflow" />
 					<N8nButton
 						type="secondary"
 						data-test-id="workflow-share-button"
@@ -725,7 +719,7 @@ function showCreateWorkflowSuccessToast(id?: string) {
 					@click="onSaveButtonClick"
 				/>
 				<WorkflowHistoryButton
-					:workflow-id="props.workflow.id"
+					:workflow-id="props.id"
 					:is-feature-enabled="isWorkflowHistoryFeatureEnabled"
 					:is-new-workflow="isNewWorkflow"
 					@upgrade="goToWorkflowHistoryUpgrade"

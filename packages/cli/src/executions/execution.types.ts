@@ -1,12 +1,14 @@
-import type { ExecutionEntity } from '@/databases/entities/execution-entity';
-import type { AuthenticatedRequest } from '@/requests';
 import type { Scope } from '@n8n/permissions';
 import type {
+	AnnotationVote,
 	ExecutionStatus,
 	ExecutionSummary,
 	IDataObject,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
+
+import type { ExecutionEntity } from '@/databases/entities/execution-entity';
+import type { AuthenticatedRequest } from '@/requests';
 
 export declare namespace ExecutionRequest {
 	namespace QueryParams {
@@ -34,6 +36,11 @@ export declare namespace ExecutionRequest {
 		};
 	}
 
+	type ExecutionUpdatePayload = {
+		tags?: string[];
+		vote?: AnnotationVote | null;
+	};
+
 	type GetMany = AuthenticatedRequest<{}, {}, {}, QueryParams.GetMany> & {
 		rangeQuery: ExecutionSummaries.RangeQuery; // parsed from query params
 	};
@@ -45,6 +52,8 @@ export declare namespace ExecutionRequest {
 	type Retry = AuthenticatedRequest<RouteParams.ExecutionId, {}, { loadWorkflow: boolean }, {}>;
 
 	type Stop = AuthenticatedRequest<RouteParams.ExecutionId>;
+
+	type Update = AuthenticatedRequest<RouteParams.ExecutionId, {}, ExecutionUpdatePayload, {}>;
 }
 
 export namespace ExecutionSummaries {
@@ -69,6 +78,8 @@ export namespace ExecutionSummaries {
 		metadata: Array<{ key: string; value: string }>;
 		startedAfter: string;
 		startedBefore: string;
+		annotationTags: string[]; // tag IDs
+		vote: AnnotationVote;
 	}>;
 
 	type AccessFields = {

@@ -1,10 +1,11 @@
-import { setupTestServer } from '@test-integration/utils';
-import { createMember, createOwner } from '@test-integration/db/users';
-import * as testDb from '../shared/test-db';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
-import { createTeamProject, getProjectByNameOrFail } from '@test-integration/db/projects';
-import { mockInstance } from '@test/mocking';
 import { Telemetry } from '@/telemetry';
+import { mockInstance } from '@test/mocking';
+import { createTeamProject, getProjectByNameOrFail } from '@test-integration/db/projects';
+import { createMember, createOwner } from '@test-integration/db/users';
+import { setupTestServer } from '@test-integration/utils';
+
+import * as testDb from '../shared/test-db';
 
 describe('Projects in Public API', () => {
 	const testServer = setupTestServer({ endpointGroups: ['publicApi'] });

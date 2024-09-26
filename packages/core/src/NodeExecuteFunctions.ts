@@ -39,7 +39,6 @@ import type {
 	BinaryHelperFunctions,
 	CloseFunction,
 	ContextType,
-	EventNamesAiNodesType,
 	FieldType,
 	FileSystemHelperFunctions,
 	FunctionsBase,
@@ -102,6 +101,7 @@ import type {
 	EnsureTypeOptions,
 	SSHTunnelFunctions,
 	SchedulingFunctions,
+	AiEvent,
 } from 'n8n-workflow';
 import {
 	NodeConnectionType,
@@ -159,6 +159,7 @@ import { InstanceSettings } from './InstanceSettings';
 import { ScheduledTaskManager } from './ScheduledTaskManager';
 import { SSHClientsManager } from './SSHClientsManager';
 import { binaryToBuffer } from './BinaryData/utils';
+import { getNodeAsTool } from './CreateNodeAsTool';
 
 axios.defaults.timeout = 300000;
 // Prevent axios from adding x-form-www-urlencoded headers by default
@@ -2780,12 +2781,6 @@ async function getInputConnectionData(
 				connectedNode.typeVersion,
 			);
 
-			if (!nodeType.supplyData) {
-				throw new ApplicationError('Node does not have a `supplyData` method defined', {
-					extra: { nodeName: connectedNode.name },
-				});
-			}
-
 			const context = Object.assign({}, this);
 
 			context.getNodeParameter = (
@@ -2852,6 +2847,18 @@ async function getInputConnectionData(
 					throw error;
 				}
 			};
+
+			if (!nodeType.supplyData) {
+				if (nodeType.description.outputs.includes(NodeConnectionType.AiTool)) {
+					nodeType.supplyData = async function (this: IExecuteFunctions) {
+						return getNodeAsTool(this, nodeType, this.getNode().parameters);
+					};
+				} else {
+					throw new ApplicationError('Node does not have a `supplyData` method defined', {
+						extra: { nodeName: connectedNode.name },
+					});
+				}
+			}
 
 			try {
 				const response = await nodeType.supplyData.call(context, itemIndex);
@@ -2988,6 +2995,8 @@ const getRequestHelperFunctions = (
 	workflow: Workflow,
 	node: INode,
 	additionalData: IWorkflowExecuteAdditionalData,
+	runExecutionData: IRunExecutionData | null = null,
+	connectionInputData: INodeExecutionData[] = [],
 ): RequestHelperFunctions => {
 	const getResolvedValue = (
 		parameterValue: NodeParameterValueType,
@@ -2997,8 +3006,6 @@ const getRequestHelperFunctions = (
 		additionalKeys?: IWorkflowDataProxyAdditionalKeys,
 		returnObjectAsString = false,
 	): NodeParameterValueType => {
-		const runExecutionData: IRunExecutionData | null = null;
-		const connectionInputData: INodeExecutionData[] = [];
 		const mode: WorkflowExecuteMode = 'internal';
 
 		if (
@@ -3867,7 +3874,13 @@ export function getExecuteFunctions(
 			helpers: {
 				createDeferredPromise,
 				copyInputItems,
-				...getRequestHelperFunctions(workflow, node, additionalData),
+				...getRequestHelperFunctions(
+					workflow,
+					node,
+					additionalData,
+					runExecutionData,
+					connectionInputData,
+				),
 				...getSSHTunnelFunctions(),
 				...getFileSystemHelperFunctions(node),
 				...getBinaryHelperFunctions(additionalData, workflow.id),
@@ -3881,8 +3894,8 @@ export function getExecuteFunctions(
 				constructExecutionMetaData,
 			},
 			nodeHelpers: getNodeHelperFunctions(additionalData, workflow.id),
-			logAiEvent: async (eventName: EventNamesAiNodesType, msg: string) => {
-				return await additionalData.logAiEvent(eventName, {
+			logAiEvent: async (eventName: AiEvent, msg: string) => {
+				return additionalData.logAiEvent(eventName, {
 					executionId: additionalData.executionId ?? 'unsaved-execution',
 					nodeName: node.name,
 					workflowName: workflow.name ?? 'Unnamed workflow',
@@ -4024,7 +4037,13 @@ export function getExecuteSingleFunctions(
 			},
 			helpers: {
 				createDeferredPromise,
-				...getRequestHelperFunctions(workflow, node, additionalData),
+				...getRequestHelperFunctions(
+					workflow,
+					node,
+					additionalData,
+					runExecutionData,
+					connectionInputData,
+				),
 				...getBinaryHelperFunctions(additionalData, workflow.id),
 
 				assertBinaryData: (propertyName, inputIndex = 0) =>
@@ -4032,8 +4051,8 @@ export function getExecuteSingleFunctions(
 				getBinaryDataBuffer: async (propertyName, inputIndex = 0) =>
 					await getBinaryDataBuffer(inputData, itemIndex, propertyName, inputIndex),
 			},
-			logAiEvent: async (eventName: EventNamesAiNodesType, msg: string) => {
-				return await additionalData.logAiEvent(eventName, {
+			logAiEvent: async (eventName: AiEvent, msg: string) => {
+				return additionalData.logAiEvent(eventName, {
 					executionId: additionalData.executionId ?? 'unsaved-execution',
 					nodeName: node.name,
 					workflowName: workflow.name ?? 'Unnamed workflow',

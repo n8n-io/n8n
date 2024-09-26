@@ -1,8 +1,6 @@
+import { GlobalConfig } from '@n8n/config';
 import glob from 'fast-glob';
-import { Container, Service } from 'typedi';
-import path from 'path';
 import fsPromises from 'fs/promises';
-
 import type { Class, DirectoryLoader, Types } from 'n8n-core';
 import {
 	CUSTOM_EXTENSION_ENV,
@@ -13,11 +11,14 @@ import {
 } from 'n8n-core';
 import type {
 	KnownNodesAndCredentials,
+	INodeTypeBaseDescription,
 	INodeTypeDescription,
 	INodeTypeData,
 	ICredentialTypeData,
 } from 'n8n-workflow';
-import { ApplicationError, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
+import { NodeHelpers, ApplicationError, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
+import path from 'path';
+import { Container, Service } from 'typedi';
 
 import {
 	CUSTOM_API_CALL_KEY,
@@ -27,7 +28,6 @@ import {
 	inE2ETests,
 } from '@/constants';
 import { Logger } from '@/logger';
-import { GlobalConfig } from '@n8n/config';
 
 interface LoadedNodesAndCredentials {
 	nodes: INodeTypeData;
@@ -38,8 +38,11 @@ interface LoadedNodesAndCredentials {
 export class LoadNodesAndCredentials {
 	private known: KnownNodesAndCredentials = { nodes: {}, credentials: {} };
 
+	// This contains the actually loaded objects, and their source paths
 	loaded: LoadedNodesAndCredentials = { nodes: {}, credentials: {} };
 
+	// For nodes, this only contains the descriptions, loaded from either the
+	// actual file, or the lazy loaded json
 	types: Types = { nodes: [], credentials: [] };
 
 	loaders: Record<string, DirectoryLoader> = {};
@@ -260,6 +263,34 @@ export class LoadNodesAndCredentials {
 		return loader;
 	}
 
+	/**
+	 * This creates all AI Agent tools by duplicating the node descriptions for
+	 * all nodes that are marked as `usableAsTool`. It basically modifies the
+	 * description. The actual wrapping happens in the langchain code for getting
+	 * the connected tools.
+	 */
+	createAiTools() {
+		const usableNodes: Array<INodeTypeBaseDescription | INodeTypeDescription> =
+			this.types.nodes.filter((nodetype) => nodetype.usableAsTool === true);
+
+		for (const usableNode of usableNodes) {
+			const description: INodeTypeBaseDescription | INodeTypeDescription =
+				structuredClone(usableNode);
+			const wrapped = NodeHelpers.convertNodeToAiTool({ description }).description;
+
+			this.types.nodes.push(wrapped);
+			this.known.nodes[wrapped.name] = structuredClone(this.known.nodes[usableNode.name]);
+
+			const credentialNames = Object.entries(this.known.credentials)
+				.filter(([_, credential]) => credential?.supportedNodes?.includes(usableNode.name))
+				.map(([credentialName]) => credentialName);
+
+			credentialNames.forEach((name) =>
+				this.known.credentials[name]?.supportedNodes?.push(wrapped.name),
+			);
+		}
+	}
+
 	async postProcessLoaders() {
 		this.known = { nodes: {}, credentials: {} };
 		this.loaded = { nodes: {}, credentials: {} };
@@ -307,6 +338,8 @@ export class LoadNodesAndCredentials {
 			}
 		}
 
+		this.createAiTools();
+
 		this.injectCustomApiCallOptions();
 
 		for (const postProcessor of this.postProcessors) {
@@ -342,7 +375,7 @@ export class LoadNodesAndCredentials {
 				loader.reset();
 				await loader.loadAll();
 				await this.postProcessLoaders();
-				push.broadcast('nodeDescriptionUpdated');
+				push.broadcast('nodeDescriptionUpdated', {});
 			}, 100);
 
 			const toWatch = loader.isLazyLoaded

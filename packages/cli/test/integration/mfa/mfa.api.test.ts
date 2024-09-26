@@ -1,5 +1,5 @@
-import Container from 'typedi';
 import { randomInt, randomString } from 'n8n-workflow';
+import Container from 'typedi';
 
 import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
@@ -7,10 +7,10 @@ import type { User } from '@/databases/entities/user';
 import { AuthUserRepository } from '@/databases/repositories/auth-user.repository';
 import { TOTPService } from '@/mfa/totp.service';
 
+import { createUser, createUserWithMfaEnabled } from '../shared/db/users';
+import { randomValidPassword, uniqueId } from '../shared/random';
 import * as testDb from '../shared/test-db';
 import * as utils from '../shared/utils';
-import { randomValidPassword, uniqueId } from '../shared/random';
-import { createUser, createUserWithMfaEnabled } from '../shared/db/users';
 
 jest.mock('@/telemetry');
 

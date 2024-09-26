@@ -1,6 +1,7 @@
-import { License } from '@/license';
 import { GlobalConfig } from '@n8n/config';
 import Container from 'typedi';
+
+import { License } from '@/license';
 
 export const updateIntervalTime = () =>
 	Container.get(GlobalConfig).externalSecrets.updateInterval * 1000;

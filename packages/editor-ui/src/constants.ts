@@ -48,6 +48,7 @@ export const DELETE_USER_MODAL_KEY = 'deleteUser';
 export const INVITE_USER_MODAL_KEY = 'inviteUser';
 export const DUPLICATE_MODAL_KEY = 'duplicate';
 export const TAGS_MANAGER_MODAL_KEY = 'tagsManager';
+export const ANNOTATION_TAGS_MANAGER_MODAL_KEY = 'annotationTagsManager';
 export const VERSIONS_MODAL_KEY = 'versions';
 export const WORKFLOW_SETTINGS_MODAL_KEY = 'settings';
 export const WORKFLOW_LM_CHAT_MODAL_KEY = 'lmChat';
@@ -97,8 +98,6 @@ export const NPM_KEYWORD_SEARCH_URL =
 	'https://www.npmjs.com/search?q=keywords%3An8n-community-node-package';
 export const N8N_QUEUE_MODE_DOCS_URL = `https://${DOCS_DOMAIN}/hosting/scaling/queue-mode/`;
 export const COMMUNITY_NODES_INSTALLATION_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/community-nodes/installation/gui-install/`;
-export const COMMUNITY_NODES_NPM_INSTALLATION_URL =
-	'https://docs.npmjs.com/downloading-and-installing-node-js-and-npm';
 export const COMMUNITY_NODES_RISKS_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/community-nodes/risks/`;
 export const COMMUNITY_NODES_BLOCKLIST_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/community-nodes/blocklist/`;
 export const CUSTOM_NODES_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/creating-nodes/code/create-n8n-nodes-module/`;
@@ -228,6 +227,8 @@ export const OPEN_URL_PANEL_TRIGGER_NODE_TYPES = [
 	FORM_TRIGGER_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
 ];
+
+export const LIST_LIKE_NODE_OPERATIONS = ['getAll', 'getMany', 'read', 'search'];
 
 export const PRODUCTION_ONLY_TRIGGER_NODE_TYPES = [CHAT_TRIGGER_NODE_TYPE];
 
@@ -630,6 +631,7 @@ export const enum STORES {
 	NODE_TYPES = 'nodeTypes',
 	CREDENTIALS = 'credentials',
 	TAGS = 'tags',
+	ANNOTATION_TAGS = 'annotationTags',
 	VERSIONS = 'versions',
 	NODE_CREATOR = 'nodeCreator',
 	WEBHOOKS = 'webhooks',
@@ -637,6 +639,7 @@ export const enum STORES {
 	CLOUD_PLAN = 'cloudPlan',
 	RBAC = 'rbac',
 	PUSH = 'push',
+	COLLABORATION = 'collaboration',
 	ASSISTANT = 'assistant',
 	BECOME_TEMPLATE_CREATOR = 'becomeTemplateCreator',
 	PROJECTS = 'projects',
@@ -691,12 +694,19 @@ export const MORE_ONBOARDING_OPTIONS_EXPERIMENT = {
 	variant: 'variant',
 };
 
+export const EXECUTION_ANNOTATION_EXPERIMENT = '023_execution_annotation';
+export const CREDENTIAL_DOCS_EXPERIMENT = {
+	name: '024_credential_docs',
+	control: 'control',
+	variant: 'variant',
+};
 export const EXPERIMENTS_TO_TRACK = [
 	ASK_AI_EXPERIMENT.name,
 	TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT,
 	CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT.name,
 	AI_ASSISTANT_EXPERIMENT.name,
 	MORE_ONBOARDING_OPTIONS_EXPERIMENT.name,
+	CREDENTIAL_DOCS_EXPERIMENT.name,
 ];
 
 export const MFA_FORM = {

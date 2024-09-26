@@ -1,7 +1,8 @@
+import { mock } from 'jest-mock-extended';
 import Container, { Service } from 'typedi';
+
 import { OnShutdown } from '@/decorators/on-shutdown';
 import { ShutdownService } from '@/shutdown/shutdown.service';
-import { mock } from 'jest-mock-extended';
 
 describe('OnShutdown', () => {
 	let shutdownService: ShutdownService;

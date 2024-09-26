@@ -26,8 +26,8 @@ const telemetry = useTelemetry();
 
 const projectId = ref<string | null>(null);
 const processedName = computed(() => {
-	const { firstName, lastName, email } = splitName(props.data.resource.homeProject?.name ?? '');
-	return !firstName ? email : `${firstName}${lastName ? ' ' + lastName : ''}`;
+	const { name, email } = splitName(props.data.resource.homeProject?.name ?? '');
+	return name ?? email;
 });
 const availableProjects = computed(() => {
 	return projectsStore.teamProjects.filter((p) => p.id !== props.data.resource.homeProject?.id);

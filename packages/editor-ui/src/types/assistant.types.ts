@@ -1,8 +1,8 @@
 import type { Schema } from '@/Interface';
-import type { INode, INodeParameters } from 'n8n-workflow';
+import type { IDataObject, INode, INodeParameters } from 'n8n-workflow';
 
 export namespace ChatRequest {
-	interface NodeExecutionSchema {
+	export interface NodeExecutionSchema {
 		nodeName: string;
 		schema: Schema;
 	}
@@ -21,6 +21,7 @@ export namespace ChatRequest {
 			stack?: string;
 		};
 		node: INode;
+		nodeInputData?: IDataObject;
 	}
 
 	export interface InitErrorHelper extends ErrorContext, WorkflowContext {
@@ -30,6 +31,28 @@ export namespace ChatRequest {
 			firstName: string;
 		};
 		authType?: { name: string; value: string };
+	}
+
+	export interface InitSupportChat {
+		role: 'user';
+		type: 'init-support-chat';
+		user: {
+			firstName: string;
+		};
+		question: string;
+	}
+
+	export interface InitCredHelp {
+		role: 'user';
+		type: 'init-cred-help';
+		user: {
+			firstName: string;
+		};
+		question: string;
+		credentialType: {
+			name: string;
+			displayName: string;
+		};
 	}
 
 	export type InteractionEventName = 'node-execution-succeeded' | 'node-execution-errored';
@@ -50,7 +73,7 @@ export namespace ChatRequest {
 
 	export type RequestPayload =
 		| {
-				payload: InitErrorHelper;
+				payload: InitErrorHelper | InitSupportChat | InitCredHelp;
 		  }
 		| {
 				payload: EventRequestPayload | UserChatMessage;
@@ -76,6 +99,8 @@ export namespace ChatRequest {
 		role: 'assistant';
 		type: 'message';
 		text: string;
+		step?: 'n8n_documentation' | 'n8n_forum';
+		codeSnippet?: string;
 	}
 
 	interface AssistantSummaryMessage {
@@ -98,8 +123,21 @@ export namespace ChatRequest {
 		text: string;
 	}
 
+	interface AgentThinkingStep {
+		role: 'assistant';
+		type: 'intermediate-step';
+		text: string;
+		step: string;
+	}
+
 	export type MessageResponse =
-		| ((AssistantChatMessage | CodeDiffMessage | AssistantSummaryMessage | AgentChatMessage) & {
+		| ((
+				| AssistantChatMessage
+				| CodeDiffMessage
+				| AssistantSummaryMessage
+				| AgentChatMessage
+				| AgentThinkingStep
+		  ) & {
 				quickReplies?: QuickReplyOption[];
 		  })
 		| EndSessionMessage;

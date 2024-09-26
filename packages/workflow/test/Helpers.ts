@@ -1,7 +1,7 @@
 import { readFileSync } from 'fs';
-import path from 'path';
 import { mock } from 'jest-mock-extended';
 import get from 'lodash/get';
+import path from 'path';
 
 import type {
 	IExecuteSingleFunctions,
@@ -13,6 +13,7 @@ import type {
 	IRunExecutionData,
 } from '@/Interfaces';
 import type { Workflow } from '@/Workflow';
+
 import { NodeTypes as NodeTypesClass } from './NodeTypes';
 
 export function getExecuteSingleFunctions(

@@ -1,22 +1,19 @@
 #!/usr/bin/env zx
 /**
  * Script to run benchmarks either on the cloud benchmark environment or locally.
+ * The cloud environment needs to be provisioned using Terraform before running the benchmarks.
  *
  * NOTE: Must be run in the root of the package.
- *
- * Usage:
- * 	 zx scripts/run.mjs
- *
  */
 // @ts-check
 import fs from 'fs';
 import minimist from 'minimist';
 import path from 'path';
-import { runInCloud } from './runInCloud.mjs';
-import { runLocally } from './runLocally.mjs';
+import { runInCloud } from './run-in-cloud.mjs';
+import { runLocally } from './run-locally.mjs';
 
 const paths = {
-	n8nSetupsDir: path.join(path.resolve('scripts'), 'n8nSetups'),
+	n8nSetupsDir: path.join(path.resolve('scripts'), 'n8n-setups'),
 };
 
 async function main() {
@@ -36,18 +33,32 @@ async function main() {
 			benchmarkTag: config.benchmarkTag,
 			isVerbose: config.isVerbose,
 			k6ApiToken: config.k6ApiToken,
+			resultWebhookUrl: config.resultWebhookUrl,
+			resultWebhookAuthHeader: config.resultWebhookAuthHeader,
+			n8nLicenseCert: config.n8nLicenseCert,
 			n8nTag: config.n8nTag,
 			n8nSetupsToUse,
+			vus: config.vus,
+			duration: config.duration,
 		});
-	} else {
+	} else if (config.env === 'local') {
 		await runLocally({
 			benchmarkTag: config.benchmarkTag,
 			isVerbose: config.isVerbose,
 			k6ApiToken: config.k6ApiToken,
+			resultWebhookUrl: config.resultWebhookUrl,
+			resultWebhookAuthHeader: config.resultWebhookAuthHeader,
+			n8nLicenseCert: config.n8nLicenseCert,
 			n8nTag: config.n8nTag,
 			runDir: config.runDir,
 			n8nSetupsToUse,
+			vus: config.vus,
+			duration: config.duration,
 		});
+	} else {
+		console.error('Invalid env:', config.env);
+		printUsage();
+		process.exit(1);
 	}
 }
 
@@ -65,7 +76,12 @@ function readAvailableN8nSetups() {
  * @property {string} n8nTag
  * @property {string} benchmarkTag
  * @property {string} [k6ApiToken]
+ * @property {string} [resultWebhookUrl]
+ * @property {string} [resultWebhookAuthHeader]
+ * @property {string} [n8nLicenseCert]
  * @property {string} [runDir]
+ * @property {string} [vus]
+ * @property {string} [duration]
  *
  * @returns {Promise<Config>}
  */
@@ -84,8 +100,15 @@ async function parseAndValidateConfig() {
 	const n8nTag = args.n8nTag || process.env.N8N_DOCKER_TAG || 'latest';
 	const benchmarkTag = args.benchmarkTag || process.env.BENCHMARK_DOCKER_TAG || 'latest';
 	const k6ApiToken = args.k6ApiToken || process.env.K6_API_TOKEN || undefined;
+	const resultWebhookUrl =
+		args.resultWebhookUrl || process.env.BENCHMARK_RESULT_WEBHOOK_URL || undefined;
+	const resultWebhookAuthHeader =
+		args.resultWebhookAuthHeader || process.env.BENCHMARK_RESULT_WEBHOOK_AUTH_HEADER || undefined;
+	const n8nLicenseCert = args.n8nLicenseCert || process.env.N8N_LICENSE_CERT || undefined;
 	const runDir = args.runDir || undefined;
 	const env = args.env || 'local';
+	const vus = args.vus;
+	const duration = args.duration;
 
 	if (!env) {
 		printUsage();
@@ -99,7 +122,12 @@ async function parseAndValidateConfig() {
 		n8nTag,
 		benchmarkTag,
 		k6ApiToken,
+		resultWebhookUrl,
+		resultWebhookAuthHeader,
+		n8nLicenseCert,
 		runDir,
+		vus,
+		duration,
 	};
 }
 
@@ -139,6 +167,8 @@ function printUsage() {
 	console.log('  --debug              Enable verbose output');
 	console.log('  --n8nTag             Docker tag for n8n image. Default is latest');
 	console.log('  --benchmarkTag       Docker tag for benchmark cli image. Default is latest');
+	console.log('  --vus                How many concurrent requests to make');
+	console.log('  --duration           Test duration, e.g. 1m or 30s');
 	console.log(
 		'  --k6ApiToken         API token for k6 cloud. Default is read from K6_API_TOKEN env var. If omitted, k6 cloud will not be used',
 	);
@@ -148,4 +178,9 @@ function printUsage() {
 	console.log('');
 }
 
-main().catch(console.error);
+main().catch((error) => {
+	console.error('An error occurred while running the benchmarks:');
+	console.error(error);
+
+	process.exit(1);
+});

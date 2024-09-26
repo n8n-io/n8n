@@ -122,6 +122,5 @@ export const useUsageStore = defineStore('usage', () => {
 			usage: executionCount.value,
 			quota: executionLimit.value,
 		})),
-		isDesktop: computed(() => settingsStore.isDesktopDeployment),
 	};
 });

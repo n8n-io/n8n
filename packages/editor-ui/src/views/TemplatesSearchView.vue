@@ -160,13 +160,13 @@ export default defineComponent({
 				this.areCategoriesPrepopulated = true;
 			}
 		},
-		onOpenCollection({ event, id }: { event: MouseEvent; id: string }) {
+		onOpenCollection({ event, id }: { event: MouseEvent; id: number }) {
 			this.navigateTo(event, VIEWS.COLLECTION, id);
 		},
-		onOpenTemplate({ event, id }: { event: MouseEvent; id: string }) {
+		onOpenTemplate({ event, id }: { event: MouseEvent; id: number }) {
 			this.navigateTo(event, VIEWS.TEMPLATE, id);
 		},
-		navigateTo(e: MouseEvent, page: string, id: string) {
+		navigateTo(e: MouseEvent, page: string, id: number) {
 			if (e.metaKey || e.ctrlKey) {
 				const route = this.$router.resolve({ name: page, params: { id } });
 				window.open(route.href, '_blank');
@@ -410,7 +410,7 @@ export default defineComponent({
 					/>
 					<div v-if="endOfSearchMessage" :class="$style.endText">
 						<n8n-text size="medium" color="text-base">
-							<span v-html="endOfSearchMessage" />
+							<span v-n8n-html="endOfSearchMessage" />
 						</n8n-text>
 					</div>
 				</div>

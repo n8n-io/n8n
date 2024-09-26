@@ -2,15 +2,17 @@ jest.mock('@/constants', () => ({
 	inProduction: true,
 }));
 
+import type { GlobalConfig } from '@n8n/config';
 import express from 'express';
-import { agent as testAgent } from 'supertest';
 import { mock } from 'jest-mock-extended';
+import { agent as testAgent } from 'supertest';
 
-import { ControllerRegistry, Get, Licensed, RestController } from '@/decorators';
 import type { AuthService } from '@/auth/auth.service';
+import { ControllerRegistry, Get, Licensed, RestController } from '@/decorators';
 import type { License } from '@/license';
 import type { SuperAgentTest } from '@test-integration/types';
-import type { GlobalConfig } from '@n8n/config';
+
+import { Param } from '../args';
 
 describe('ControllerRegistry', () => {
 	const license = mock<License>();
@@ -112,6 +114,28 @@ describe('ControllerRegistry', () => {
 			license.isFeatureEnabled.calledWith('feat:sharing').mockReturnValue(true);
 			await agent.get('/rest/test/with-sharing').expect(200);
 			expect(license.isFeatureEnabled).toHaveBeenCalled();
+		});
+	});
+
+	describe('Args', () => {
+		@RestController('/test')
+		// @ts-expect-error tsc complains about unused class
+		class TestController {
+			@Get('/args/:id')
+			args(req: express.Request, res: express.Response, @Param('id') id: string) {
+				res.setHeader('Testing', 'true');
+				return { url: req.url, id };
+			}
+		}
+
+		beforeEach(() => {
+			authService.authMiddleware.mockImplementation(async (_req, _res, next) => next());
+		});
+
+		it('should pass in correct args to the route handler', async () => {
+			const { headers, body } = await agent.get('/rest/test/args/1234').expect(200);
+			expect(headers.testing).toBe('true');
+			expect(body.data).toEqual({ url: '/args/1234', id: '1234' });
 		});
 	});
 });

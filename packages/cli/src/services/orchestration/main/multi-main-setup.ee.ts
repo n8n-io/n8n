@@ -1,11 +1,12 @@
-import config from '@/config';
-import { Service } from 'typedi';
-import { TIME } from '@/constants';
 import { InstanceSettings } from 'n8n-core';
 import { ErrorReporterProxy as EventReporter } from 'n8n-workflow';
+import { Service } from 'typedi';
+
+import config from '@/config';
+import { TIME } from '@/constants';
 import { Logger } from '@/logger';
-import { RedisServicePubSubPublisher } from '@/services/redis/redis-service-pub-sub-publisher';
-import { RedisClientService } from '@/services/redis/redis-client.service';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { RedisClientService } from '@/services/redis-client.service';
 import { TypedEmitter } from '@/typed-emitter';
 
 type MultiMainEvents = {
@@ -18,7 +19,7 @@ export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 	constructor(
 		private readonly logger: Logger,
 		private readonly instanceSettings: InstanceSettings,
-		private readonly redisPublisher: RedisServicePubSubPublisher,
+		private readonly publisher: Publisher,
 		private readonly redisClientService: RedisClientService,
 	) {
 		super();
@@ -41,12 +42,9 @@ export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 
 		await this.tryBecomeLeader(); // prevent initial wait
 
-		this.leaderCheckInterval = setInterval(
-			async () => {
-				await this.checkLeader();
-			},
-			config.getEnv('multiMainSetup.interval') * TIME.SECOND,
-		);
+		this.leaderCheckInterval = setInterval(async () => {
+			await this.checkLeader();
+		}, config.getEnv('multiMainSetup.interval') * TIME.SECOND);
 	}
 
 	async shutdown() {
@@ -54,16 +52,16 @@ export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 
 		const { isLeader } = this.instanceSettings;
 
-		if (isLeader) await this.redisPublisher.clear(this.leaderKey);
+		if (isLeader) await this.publisher.clear(this.leaderKey);
 	}
 
 	private async checkLeader() {
-		const leaderId = await this.redisPublisher.get(this.leaderKey);
+		const leaderId = await this.publisher.get(this.leaderKey);
 
 		if (leaderId === this.instanceId) {
 			this.logger.debug(`[Instance ID ${this.instanceId}] Leader is this instance`);
 
-			await this.redisPublisher.setExpiration(this.leaderKey, this.leaderKeyTtl);
+			await this.publisher.setExpiration(this.leaderKey, this.leaderKeyTtl);
 
 			return;
 		}
@@ -100,17 +98,14 @@ export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 
 	private async tryBecomeLeader() {
 		// this can only succeed if leadership is currently vacant
-		const keySetSuccessfully = await this.redisPublisher.setIfNotExists(
-			this.leaderKey,
-			this.instanceId,
-		);
+		const keySetSuccessfully = await this.publisher.setIfNotExists(this.leaderKey, this.instanceId);
 
 		if (keySetSuccessfully) {
 			this.logger.debug(`[Instance ID ${this.instanceId}] Leader is now this instance`);
 
 			this.instanceSettings.markAsLeader();
 
-			await this.redisPublisher.setExpiration(this.leaderKey, this.leaderKeyTtl);
+			await this.publisher.setExpiration(this.leaderKey, this.leaderKeyTtl);
 
 			/**
 			 * Gained leadership - start triggers, pollers, pruning, wait-tracking, license renewal, queue recovery
@@ -122,6 +117,6 @@ export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 	}
 
 	async fetchLeaderKey() {
-		return await this.redisPublisher.get(this.leaderKey);
+		return await this.publisher.get(this.leaderKey);
 	}
 }

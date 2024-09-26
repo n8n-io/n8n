@@ -118,19 +118,9 @@ resource "azurerm_linux_virtual_machine" "main" {
     version   = "latest"
   }
 
-	identity {
-		type = "SystemAssigned"
-	}
-
-  tags = var.tags
-}
-
-resource "azurerm_virtual_machine_extension" "entra_login" {
-  name                 = "AADSSHLoginForLinux"
-  virtual_machine_id   = azurerm_linux_virtual_machine.main.id
-  publisher            = "Microsoft.Azure.ActiveDirectory"
-  type                 = "AADSSHLoginForLinux"
-  type_handler_version = "1.0"
+  identity {
+    type = "SystemAssigned"
+  }
 
   tags = var.tags
 }

@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
@@ -328,7 +327,7 @@ export class MySqlV1 implements INodeType {
 							{ itemData: { item: index } },
 						);
 
-						collection.push(...executionData);
+						collection = collection.concat(executionData);
 
 						return collection;
 					},

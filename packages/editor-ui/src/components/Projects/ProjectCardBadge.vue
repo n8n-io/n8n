@@ -59,8 +59,8 @@ const badgeText = computed(() => {
 	) {
 		return i18n.baseText('generic.ownedByMe');
 	} else {
-		const { firstName, lastName, email } = splitName(props.resource.homeProject?.name ?? '');
-		return (!firstName ? email : `${firstName}${lastName ? ' ' + lastName : ''}`) ?? '';
+		const { name, email } = splitName(props.resource.homeProject?.name ?? '');
+		return name ?? email ?? '';
 	}
 });
 const badgeIcon = computed(() => {
