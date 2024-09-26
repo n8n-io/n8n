@@ -11,6 +11,10 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
+import { StrapiApi } from '@credentials/StrapiApi.credentials';
+import { StrapiTokenApi } from '@credentials/StrapiTokenApi.credentials';
+
+import { entryFields, entryOperations } from './EntryDescription';
 import {
 	getToken,
 	removeTrailingSlash,
@@ -18,10 +22,6 @@ import {
 	strapiApiRequestAllItems,
 	validateJSON,
 } from './GenericFunctions';
-
-import { StrapiApi, type StrapiApiCredential } from '@credentials/StrapiApi.credentials';
-import { StrapiTokenApi } from '../../credentials/StrapiTokenApi.credentials';
-import { entryFields, entryOperations } from './EntryDescription';
 
 export class Strapi implements INodeType {
 	description: INodeTypeDescription = {
@@ -145,7 +145,7 @@ export class Strapi implements INodeType {
 
 		const authenticationMethod = this.getNodeParameter('authentication', 0);
 
-		let apiVersion: StrapiApiCredential['apiVersion'];
+		let apiVersion: 'v3' | 'v4';
 
 		if (authenticationMethod === 'password') {
 			const { jwt } = await getToken.call(this);

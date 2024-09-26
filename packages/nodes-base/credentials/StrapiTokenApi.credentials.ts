@@ -5,28 +5,6 @@ import {
 	type ICredentialTestRequest,
 } from 'n8n-workflow';
 
-const strapiTokenApiCredentialSchema = CredentialSchema.create({
-	apiToken: CredentialSchema.password({ label: 'API Token' }),
-	url: CredentialSchema.url({ placeholder: 'https://api.example.com' }),
-	apiVersion: CredentialSchema.options({
-		label: 'API Version',
-		description: 'The version of api to be used',
-		options: [
-			{
-				label: 'Version 4',
-				value: 'v4',
-				description: 'API version supported by Strapi 4',
-			},
-			{
-				label: 'Version 3',
-				value: 'v3',
-				default: true,
-				description: 'API version supported by Strapi 3',
-			},
-		],
-	}),
-});
-
 export class StrapiTokenApi implements ICredentialType {
 	name = 'strapiTokenApi';
 
@@ -34,9 +12,29 @@ export class StrapiTokenApi implements ICredentialType {
 
 	documentationUrl = 'strapi';
 
-	properties = strapiTokenApiCredentialSchema.toNodeProperties();
+	schema = CredentialSchema.create({
+		apiToken: CredentialSchema.password({ label: 'API Token' }),
+		url: CredentialSchema.url({ placeholder: 'https://api.example.com' }),
+		apiVersion: CredentialSchema.options({
+			label: 'API Version',
+			description: 'The version of api to be used',
+			options: [
+				{
+					label: 'Version 4',
+					value: 'v4',
+					description: 'API version supported by Strapi 4',
+				},
+				{
+					label: 'Version 3',
+					value: 'v3',
+					default: true,
+					description: 'API version supported by Strapi 3',
+				},
+			],
+		}),
+	});
 
-	schema = strapiTokenApiCredentialSchema;
+	properties = this.schema.toNodeProperties();
 
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
