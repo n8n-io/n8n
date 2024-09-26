@@ -668,7 +668,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 				.should('have.length', 1);
 		});
 
-		it.only('should allow to change inaccessible credential when the workflow was moved to a team project', () => {
+		it('should allow to change inaccessible credential when the workflow was moved to a team project', () => {
 			cy.signinAsOwner();
 			cy.visit(workflowsPage.url);
 
@@ -735,7 +735,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			workflowsPage.getters.workflowCards().should('have.length', 1);
 			workflowsPage.getters.workflowCards().first().click();
 
-			// Change the inaccessible credential
+			// Check if the credential can be changed
 			workflowPage.getters.canvasNodeByName(NOTION_NODE_NAME).should('be.visible').dblclick();
 			ndv.getters.credentialInput().find('input').should('be.enabled');
 		});
