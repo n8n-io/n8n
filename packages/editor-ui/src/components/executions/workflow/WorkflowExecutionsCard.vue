@@ -236,10 +236,10 @@ function onRetryMenuItemSelect(action: string): void {
 	&.new {
 		&,
 		& .executionLink {
-			border-left: var(--spacing-4xs) var(--border-style-base) var(--execution-card-border-new);
+			border-left: var(--spacing-4xs) var(--border-style-base) var(--execution-card-border-waiting);
 		}
 		.statusLabel {
-			color: var(--color-secondary);
+			color: var(--execution-card-text-waiting);
 		}
 	}
 
