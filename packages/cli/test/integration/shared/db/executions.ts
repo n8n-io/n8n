@@ -4,7 +4,7 @@ import Container from 'typedi';
 import type { ExecutionData } from '@/databases/entities/execution-data';
 import type { ExecutionEntity } from '@/databases/entities/execution-entity';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
-import { AnnotationTagRepository } from '@/databases/repositories/annotation-tag.repository';
+import { AnnotationTagRepository } from '@/databases/repositories/annotation-tag.repository.ee';
 import { ExecutionDataRepository } from '@/databases/repositories/execution-data.repository';
 import { ExecutionMetadataRepository } from '@/databases/repositories/execution-metadata.repository';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';

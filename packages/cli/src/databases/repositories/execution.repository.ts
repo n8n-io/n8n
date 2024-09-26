@@ -36,9 +36,9 @@ import type {
 import { Service } from 'typedi';
 
 import config from '@/config';
-import { AnnotationTagEntity } from '@/databases/entities/annotation-tag-entity';
-import { AnnotationTagMapping } from '@/databases/entities/annotation-tag-mapping';
-import { ExecutionAnnotation } from '@/databases/entities/execution-annotation';
+import { AnnotationTagEntity } from '@/databases/entities/annotation-tag-entity.ee';
+import { AnnotationTagMapping } from '@/databases/entities/annotation-tag-mapping.ee';
+import { ExecutionAnnotation } from '@/databases/entities/execution-annotation.ee';
 import { PostgresLiveRowsRetrievalError } from '@/errors/postgres-live-rows-retrieval.error';
 import type { ExecutionSummaries } from '@/executions/execution.types';
 import type {
