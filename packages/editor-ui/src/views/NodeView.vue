@@ -425,7 +425,12 @@ export default defineComponent({
 			return this.workflowsStore.getWorkflowExecution;
 		},
 		workflowRunning(): boolean {
-			return this.uiStore.isActionActive.workflowRunning;
+			if (this.uiStore.isActionActive.workflowRunning) return true;
+			if (this.workflowsStore.activeExecutionId) {
+				const execution = this.workflowsStore.getWorkflowExecution;
+				if (execution && execution.status === 'waiting' && !execution.finished) return true;
+			}
+			return false;
 		},
 		currentWorkflow(): string {
 			return this.$route.params.name?.toString() || this.workflowsStore.workflowId;
@@ -946,7 +951,7 @@ export default defineComponent({
 				dangerouslyUseHTMLString: true,
 			});
 		},
-		clearExecutionData() {
+		async clearExecutionData() {
 			this.workflowsStore.workflowExecutionData = null;
 			this.nodeHelpers.updateNodesExecutionIssues();
 		},
@@ -2940,7 +2945,6 @@ export default defineComponent({
 				}
 
 				if (
-					// @ts-expect-error Deprecated file
 					// eslint-disable-next-line no-constant-binary-expression
 					!(this.workflowPermissions.update ?? this.projectPermissions.workflow.update) ??
 					this.isReadOnlyRoute ??
@@ -2980,7 +2984,6 @@ export default defineComponent({
 				}
 
 				if (
-					// @ts-expect-error Deprecated file
 					// eslint-disable-next-line no-constant-binary-expression
 					!(this.workflowPermissions.update ?? this.projectPermissions.workflow.update) ??
 					this.isReadOnlyRoute ??
