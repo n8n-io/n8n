@@ -196,7 +196,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		return executions.map((execution) => {
 			const { executionData, ...rest } = execution;
 			return rest;
-		});
+		}) as IExecutionFlattedDb[] | IExecutionResponse[] | IExecutionBase[];
 	}
 
 	reportInvalidExecutions(executions: ExecutionEntity[]) {
@@ -295,7 +295,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			}),
 			...(options?.includeAnnotation &&
 				serializedAnnotation && { annotation: serializedAnnotation }),
-		};
+		} as IExecutionFlattedDb | IExecutionResponse | IExecutionBase;
 	}
 
 	/**

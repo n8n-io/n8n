@@ -2120,6 +2120,7 @@ export interface IWorkflowBase {
 	name: string;
 	active: boolean;
 	createdAt: Date;
+	startedAt?: Date;
 	updatedAt: Date;
 	nodes: INode[];
 	connections: IConnections;
