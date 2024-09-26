@@ -1,9 +1,9 @@
+import { mock, type CalledWithMock } from 'jest-mock-extended';
 import type { MqttClient } from 'mqtt';
-import { mock } from 'jest-mock-extended';
 import type { ICredentialDataDecryptedObject, IExecuteFunctions } from 'n8n-workflow';
 
-import { Mqtt } from '../Mqtt.node';
 import { createClient } from '../GenericFunctions';
+import { Mqtt } from '../Mqtt.node';
 
 jest.mock('../GenericFunctions', () => {
 	const mockMqttClient = mock<MqttClient>();
@@ -12,6 +12,8 @@ jest.mock('../GenericFunctions', () => {
 	};
 });
 
+type GetCredentialsMock = CalledWithMock<Promise<ICredentialDataDecryptedObject>, [string]>;
+
 describe('MQTT Node', () => {
 	const credentials = mock<ICredentialDataDecryptedObject>();
 	const executeFunctions = mock<IExecuteFunctions>();
@@ -19,7 +21,10 @@ describe('MQTT Node', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 
-		executeFunctions.getCredentials.calledWith('mqtt').mockResolvedValue(credentials);
+		// Jest always uses the last fn overload's types, override to use the overload we need
+		(executeFunctions.getCredentials as unknown as GetCredentialsMock)
+			.calledWith('mqtt')
+			.mockResolvedValue(credentials);
 		executeFunctions.getInputData.mockReturnValue([{ json: { testing: true } }]);
 		executeFunctions.getNodeParameter.calledWith('topic', 0).mockReturnValue('test/topic');
 		executeFunctions.getNodeParameter.calledWith('options', 0).mockReturnValue({});
