@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useCredentialsStore } from '@/stores/credentials.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useRootStore } from '@/stores/root.store';
 import { useUIStore } from '@/stores/ui.store';
 import { getThemedValue } from '@/utils/nodeTypesUtils';
@@ -14,11 +15,21 @@ const props = defineProps<{
 const credentialsStore = useCredentialsStore();
 const rootStore = useRootStore();
 const uiStore = useUIStore();
+const nodeTypesStore = useNodeTypesStore();
 
 const credentialWithIcon = computed(() => getCredentialWithIcon(props.credentialTypeName));
 
+const nodeBasedIconUrl = computed(() => {
+	const icon = getThemedValue(credentialWithIcon.value?.icon);
+	if (!icon?.startsWith('node:')) return null;
+	return nodeTypesStore.getNodeType(icon.replace('node:', ''))?.iconUrl;
+});
+
 const iconSource = computed(() => {
-	const themeIconUrl = getThemedValue(credentialWithIcon.value?.iconUrl, uiStore.appliedTheme);
+	const themeIconUrl = getThemedValue(
+		nodeBasedIconUrl.value ?? credentialWithIcon.value?.iconUrl,
+		uiStore.appliedTheme,
+	);
 
 	if (!themeIconUrl) {
 		return undefined;
@@ -27,12 +38,18 @@ const iconSource = computed(() => {
 	return rootStore.baseUrl + themeIconUrl;
 });
 
-const iconType = computed(() => (iconSource.value ? 'file' : 'icon'));
+const iconType = computed(() => {
+	if (iconSource.value) return 'file';
+	else if (iconName.value) return 'icon';
+	return 'unknown';
+});
+
 const iconName = computed(() => {
 	const icon = getThemedValue(credentialWithIcon.value?.icon, uiStore.appliedTheme);
 	if (!icon || !icon?.startsWith('fa:')) return undefined;
 	return icon.replace('fa:', '');
 });
+
 const iconColor = computed(() => {
 	const { iconColor: color } = credentialWithIcon.value ?? {};
 	if (!color) return undefined;
@@ -68,5 +85,18 @@ function getCredentialWithIcon(name: string | null): ICredentialType | null {
 </script>
 
 <template>
-	<N8nNodeIcon :type="iconType" :size="26" :src="iconSource" :name="iconName" :color="iconColor" />
+	<N8nNodeIcon
+		:class="$style.icon"
+		:type="iconType"
+		:size="26"
+		:src="iconSource"
+		:name="iconName"
+		:color="iconColor"
+	/>
 </template>
+
+<style lang="scss" module>
+.icon {
+	--node-icon-color: var(--color-foreground-dark);
+}
+</style>
