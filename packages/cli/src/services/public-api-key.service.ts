@@ -10,7 +10,7 @@ export const API_KEY_PREFIX = 'n8n_api_';
 
 @Service()
 export class PublicApiKeyService {
-	constructor(private readonly apiKeysRepository: ApiKeyRepository) {}
+	constructor(private readonly apiKeyRepository: ApiKeyRepository) {}
 
 	/**
 	 * Creates a new public API key for the specified user.
@@ -20,8 +20,8 @@ export class PublicApiKeyService {
 	 */
 	async createPublicApiKeyForUser(user: User) {
 		const apiKey = this.createApiKeyString();
-		await this.apiKeysRepository.upsert(
-			this.apiKeysRepository.create({
+		await this.apiKeyRepository.upsert(
+			this.apiKeyRepository.create({
 				userId: user.id,
 				apiKey,
 				label: 'My API Key',
@@ -29,7 +29,7 @@ export class PublicApiKeyService {
 			['apiKey'],
 		);
 
-		return await this.apiKeysRepository.findOneByOrFail({ apiKey });
+		return await this.apiKeyRepository.findOneByOrFail({ apiKey });
 	}
 
 	/**
@@ -39,7 +39,7 @@ export class PublicApiKeyService {
 	 * @returns {Promise<Array<{ apiKey: string }>>} A promise that resolves to an array of objects containing redacted API keys.
 	 */
 	async getRedactedApiKeysForUser(user: User) {
-		const apiKeys = await this.apiKeysRepository.findBy({ userId: user.id });
+		const apiKeys = await this.apiKeyRepository.findBy({ userId: user.id });
 		return apiKeys.map((apiKeyRecord) => ({
 			...apiKeyRecord,
 			apiKey: this.redactApiKey(apiKeyRecord.apiKey),
@@ -47,7 +47,7 @@ export class PublicApiKeyService {
 	}
 
 	async deleteApiKeyForUser(user: User, apiKeyId: string) {
-		await this.apiKeysRepository.delete({ userId: user.id, id: apiKeyId });
+		await this.apiKeyRepository.delete({ userId: user.id, id: apiKeyId });
 	}
 
 	async getUserForApiKey(apiKey: string) {
