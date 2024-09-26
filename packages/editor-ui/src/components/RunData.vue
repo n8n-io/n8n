@@ -221,7 +221,6 @@ export default defineComponent({
 		},
 		isWaitNodeWaiting() {
 			return (
-				this.hasNodeRun &&
 				this.workflowExecution?.status === 'waiting' &&
 				this.node?.type === WAIT_NODE_TYPE &&
 				this.workflowExecution?.data?.resultData?.lastNodeExecuted === this.node?.name
@@ -1441,6 +1440,10 @@ export default defineComponent({
 				<NodeErrorView :error="subworkflowExecutionError" :class="$style.errorDisplay" />
 			</div>
 
+			<div v-else-if="isWaitNodeWaiting" :class="$style.center">
+				<slot name="node-waiting">xxx</slot>
+			</div>
+
 			<div v-else-if="!hasNodeRun && !(isInputSchemaView && node?.disabled)" :class="$style.center">
 				<slot name="node-not-run"></slot>
 			</div>
@@ -1508,10 +1511,6 @@ export default defineComponent({
 				<n8n-text v-else>
 					{{ noDataInBranchMessage }}
 				</n8n-text>
-			</div>
-
-			<div v-else-if="isWaitNodeWaiting" :class="$style.center">
-				<slot name="node-waiting">xxx</slot>
 			</div>
 
 			<div v-else-if="hasNodeRun && !inputData.length && !search" :class="$style.center">
