@@ -1,27 +1,27 @@
-import { BINARY_ENCODING, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
-import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
-
-import type { AgentAction, AgentFinish } from 'langchain/agents';
-import { AgentExecutor, createToolCallingAgent } from 'langchain/agents';
 import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
+import { HumanMessage } from '@langchain/core/messages';
+import type { BaseOutputParser, StructuredOutputParser } from '@langchain/core/output_parsers';
 import type { BaseMessagePromptTemplateLike } from '@langchain/core/prompts';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
-import { omit } from 'lodash';
+import { RunnableSequence } from '@langchain/core/runnables';
 import type { Tool } from '@langchain/core/tools';
 import { DynamicStructuredTool } from '@langchain/core/tools';
+import type { AgentAction, AgentFinish } from 'langchain/agents';
+import { AgentExecutor, createToolCallingAgent } from 'langchain/agents';
+import { OutputFixingParser } from 'langchain/output_parsers';
+import { omit } from 'lodash';
+import { BINARY_ENCODING, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import type { ZodObject } from 'zod';
 import { z } from 'zod';
-import type { BaseOutputParser, StructuredOutputParser } from '@langchain/core/output_parsers';
-import { OutputFixingParser } from 'langchain/output_parsers';
-import { HumanMessage } from '@langchain/core/messages';
-import { RunnableSequence } from '@langchain/core/runnables';
+
+import { SYSTEM_MESSAGE } from './prompt';
 import {
 	isChatInstance,
 	getPromptInputByType,
 	getOptionalOutputParsers,
 	getConnectedTools,
 } from '../../../../../utils/helpers';
-import { SYSTEM_MESSAGE } from './prompt';
 
 function getOutputParserSchema(outputParser: BaseOutputParser): ZodObject<any, any, any, any> {
 	const parserType = outputParser.lc_namespace[outputParser.lc_namespace.length - 1];

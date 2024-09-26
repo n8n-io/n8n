@@ -407,7 +407,7 @@ export function convertNodeToAiTool<
 				placeholder: `e.g. ${item.description.description}`,
 			};
 
-			item.description.properties.unshift(...[descProp]);
+			item.description.properties.unshift(descProp);
 
 			// If node has resource or operation we can determine pre-populate tool description based on it
 			// so we add the descriptionType property as the first property

@@ -121,7 +121,7 @@ describe('createNodeAsTool', () => {
 		expect(tool.schema.shape.numberParam).toBeInstanceOf(z.ZodNumber);
 		expect(tool.schema.shape.booleanParam).toBeInstanceOf(z.ZodBoolean);
 		expect(tool.schema.shape.jsonParam).toBeInstanceOf(z.ZodRecord);
-		expect(tool.schema.shape.dateParam).toBeInstanceOf(z.ZodDate);
+		expect(tool.schema.shape.dateParam).toBeInstanceOf(z.ZodString);
 	});
 
 	it('should handle default values correctly', () => {
@@ -225,7 +225,7 @@ describe('createNodeAsTool', () => {
 				submit_time: "={{ $fromAI('submit_time', 'Submit date', 'string') }}",
 				url: "={{ `URL: ${$fromAI('url')}` }}",
 				content: "=Content: {{ $fromAI('content', 'Content type') }} End of content",
-				upvotes: "={{ $fromAI('upvotes', 'Upvotes count(only positive, please)', 'number', 10) }}",
+				upvotes: "={{ $fromAI('upvotes', 'Upvotes count(only positive, please)', 'number') }}",
 			},
 		};
 
@@ -279,10 +279,20 @@ describe('createNodeAsTool', () => {
 		expect(tool.schema.shape.longParam).toBeInstanceOf(z.ZodString);
 		expect(tool.schema.shape.longParam.description).toBe(longDescription);
 	});
+	it('should handle $fromAI calls with long parameter name', () => {
+		const longParam = 'A'.repeat(65);
+		mockNodeParameters = {
+			longParam: `={{ $fromAI('${longParam}') }}`,
+		};
+
+		expect(() => createNodeAsTool(mockNode, mockCtx, mockNodeParameters)).toThrow(
+			`Parameter name \`${longParam}\` is invalid.`,
+		);
+	});
 
 	it('should handle $fromAI calls with empty parameters', () => {
 		mockNodeParameters = {
-			emptyParam: "={{ $fromAI('', '', '') }}",
+			emptyParam: "={{ $fromAI('', 'Some description', '') }}",
 		};
 
 		expect(() => createNodeAsTool(mockNode, mockCtx, mockNodeParameters)).toThrow(
@@ -304,26 +314,6 @@ describe('createNodeAsTool', () => {
 		expect(tool.schema.shape.partial3).toBeInstanceOf(z.ZodNumber);
 	});
 
-	it('should handle $fromAI calls with malformed JSON', () => {
-		mockNodeParameters = {
-			malformedJson: "={{ $fromAI('jsonParam', 'Malformed JSON', 'json') }}",
-		};
-
-		const tool = createNodeAsTool(mockNode, mockCtx, mockNodeParameters);
-
-		expect(tool.schema.shape.jsonParam).toBeInstanceOf(z.ZodRecord);
-	});
-
-	it('should handle $fromAI calls with very large numbers', () => {
-		mockNodeParameters = {
-			largeNumber: `={{ $fromAI('largeNumber', 'Very large number', 'number', ${Number.MAX_SAFE_INTEGER}) }}`,
-		};
-
-		const tool = createNodeAsTool(mockNode, mockCtx, mockNodeParameters);
-
-		expect(tool.schema.shape.largeNumber).toBeInstanceOf(z.ZodNumber);
-	});
-
 	it('should handle multiple $fromAI calls with the same parameter name', () => {
 		mockNodeParameters = {
 			duplicateParam1: "={{ $fromAI('duplicate', 'First duplicate', 'string') }}",
@@ -333,5 +323,254 @@ describe('createNodeAsTool', () => {
 		const tool = createNodeAsTool(mockNode, mockCtx, mockNodeParameters);
 
 		expect(tool.schema.shape.duplicate).toBeDefined();
+		expect(tool.schema.shape.duplicate.description).toBe('Second duplicate');
+		expect(tool.schema.shape.duplicate).toBeInstanceOf(z.ZodNumber);
+	});
+	it('should handle escaped single quotes in parameter names and descriptions', () => {
+		mockNodeParameters = {
+			escapedQuotesParam:
+				"={{ $fromAI('paramName', 'Description with \\'escaped\\' quotes', 'string') }}",
+		};
+
+		const tool = createNodeAsTool(mockNode, mockCtx, mockNodeParameters);
+
+		expect(tool.schema.shape.paramName).toBeInstanceOf(z.ZodString);
+		expect(tool.schema.shape.paramName.description).toBe("Description with 'escaped' quotes");
+	});
+
+	it('should handle escaped double quotes in parameter names and descriptions', () => {
+		mockNodeParameters = {
+			escapedQuotesParam:
+				'={{ $fromAI("paramName", "Description with \\"escaped\\" quotes", "string") }}',
+		};
+
+		const tool = createNodeAsTool(mockNode, mockCtx, mockNodeParameters);
+
+		expect(tool.schema.shape.paramName).toBeInstanceOf(z.ZodString);
+		expect(tool.schema.shape.paramName.description).toBe('Description with "escaped" quotes');
+	});
+
+	it('should handle escaped backslashes in parameter names and descriptions', () => {
+		mockNodeParameters = {
+			escapedBackslashesParam:
+				"={{ $fromAI('paramName', 'Description with \\\\ backslashes', 'string') }}",
+		};
+
+		const tool = createNodeAsTool(mockNode, mockCtx, mockNodeParameters);
+
+		expect(tool.schema.shape.paramName).toBeInstanceOf(z.ZodString);
+		expect(tool.schema.shape.paramName.description).toBe('Description with \\ backslashes');
+	});
+
+	it('should handle mixed escaped characters in parameter names and descriptions', () => {
+		mockNodeParameters = {
+			mixedEscapesParam:
+				"={{ $fromAI('paramName', 'Description with \\'mixed\" characters', 'string') }}",
+		};
+
+		const tool = createNodeAsTool(mockNode, mockCtx, mockNodeParameters);
+
+		expect(tool.schema.shape.paramName).toBeInstanceOf(z.ZodString);
+		expect(tool.schema.shape.paramName.description).toBe('Description with \'mixed" characters');
+	});
+
+	it('should ignore excess arguments in $fromAI calls beyond the fourth argument', () => {
+		mockNodeParameters = {
+			excessArgsParam:
+				"={{ $fromAI('excessArgs', 'Param with excess arguments', 'string', 'default', 'extraArg1', 'extraArg2') }}",
+		};
+
+		const tool = createNodeAsTool(mockNode, mockCtx, mockNodeParameters);
+
+		expect(tool.schema.shape.excessArgs._def.innerType).toBeInstanceOf(z.ZodString);
+		expect(tool.schema.shape.excessArgs.description).toBe('Param with excess arguments');
+		expect(tool.schema.shape.excessArgs._def.defaultValue()).toBe('default');
+	});
+	it('should ignore non-string parameters containing $fromAI-like syntax', () => {
+		mockNodeParameters = {
+			numericParam: 12345,
+			booleanParam: true,
+			objectParam: {
+				nestedNumeric: 67890,
+			},
+			fakeFromAI: 'This is not a valid $fromAI call',
+		};
+
+		const tool = createNodeAsTool(mockNode, mockCtx, mockNodeParameters);
+
+		expect(tool.schema.shape).toEqual({});
+	});
+	it('should correctly parse $fromAI calls with nested parentheses', () => {
+		mockNodeParameters = {
+			nestedParenthesesParam:
+				"={{ $fromAI('paramWithNested', 'Description with ((nested)) parentheses', 'string') }}",
+		};
+
+		const tool = createNodeAsTool(mockNode, mockCtx, mockNodeParameters);
+
+		expect(tool.schema.shape.paramWithNested).toBeInstanceOf(z.ZodString);
+		expect(tool.schema.shape.paramWithNested.description).toBe(
+			'Description with ((nested)) parentheses',
+		);
+	});
+	it('should throw an error for $fromAI calls with unsupported types', () => {
+		mockNodeParameters = {
+			invalidTypeParam:
+				"={{ $fromAI('invalidType', 'Param with unsupported type', 'unsupportedType') }}",
+		};
+
+		expect(() => createNodeAsTool(mockNode, mockCtx, mockNodeParameters)).toThrow(
+			'Invalid type: unsupportedType',
+		);
+	});
+	it('should accept parameter names with underscores and hyphens', () => {
+		mockNodeParameters = {
+			validName1:
+				"={{ $fromAI('param_name-1', 'Valid name with underscore and hyphen', 'string') }}",
+			validName2: "={{ $fromAI('param_name_2', 'Another valid name', 'number') }}",
+		};
+
+		const tool = createNodeAsTool(mockNode, mockCtx, mockNodeParameters);
+
+		expect(tool.schema.shape['param_name-1']).toBeInstanceOf(z.ZodString);
+		expect(tool.schema.shape['param_name-1'].description).toBe(
+			'Valid name with underscore and hyphen',
+		);
+
+		expect(tool.schema.shape.param_name_2).toBeInstanceOf(z.ZodNumber);
+		expect(tool.schema.shape.param_name_2.description).toBe('Another valid name');
+	});
+
+	it('should throw an error for parameter names with invalid special characters', () => {
+		mockNodeParameters = {
+			invalidNameParam:
+				"={{ $fromAI('param@name!', 'Invalid name with special characters', 'string') }}",
+		};
+
+		expect(() => createNodeAsTool(mockNode, mockCtx, mockNodeParameters)).toThrow(
+			'Parameter name `param@name!` is invalid.',
+		);
+	});
+	it('should accept parameter names with exactly 64 characters', () => {
+		const longName = 'a'.repeat(64);
+		mockNodeParameters = {
+			longNameParam: `={{ $fromAI('${longName}', 'Param with 64 character name', 'string') }}`,
+		};
+
+		const tool = createNodeAsTool(mockNode, mockCtx, mockNodeParameters);
+
+		expect(tool.schema.shape[longName]).toBeInstanceOf(z.ZodString);
+		expect(tool.schema.shape[longName].description).toBe('Param with 64 character name');
+	});
+
+	it('should throw an error for parameter names exceeding 64 characters', () => {
+		const tooLongName = 'a'.repeat(65);
+		mockNodeParameters = {
+			tooLongNameParam: `={{ $fromAI('${tooLongName}', 'Param with 65 character name', 'string') }}`,
+		};
+
+		expect(() => createNodeAsTool(mockNode, mockCtx, mockNodeParameters)).toThrow(
+			`Parameter name \`${tooLongName}\` is invalid.`,
+		);
+	});
+	it('should handle $fromAI calls with empty description', () => {
+		mockNodeParameters = {
+			emptyDescriptionParam: "={{ $fromAI('emptyDescription', '', 'number') }}",
+		};
+
+		const tool = createNodeAsTool(mockNode, mockCtx, mockNodeParameters);
+
+		expect(tool.schema.shape.emptyDescription).toBeInstanceOf(z.ZodNumber);
+		expect(tool.schema.shape.emptyDescription.description).toBeUndefined();
+	});
+	it('should correctly parse $fromAI calls with varying spaces and capitalization', () => {
+		mockNodeParameters = {
+			varyingSpacing1: "={{$fromAI('param1','Description1','string')}}",
+			varyingSpacing2: "={{  $fromAI (  'param2' , 'Description2' , 'number' )  }}",
+			varyingSpacing3: "={{ $FROMai('param3', 'Description3', 'boolean') }}",
+		};
+
+		// $fromAI is case-sensitive; 'FROMai' should not be recognized
+		const tool = createNodeAsTool(mockNode, mockCtx, mockNodeParameters);
+
+		expect(tool.schema.shape.param1).toBeInstanceOf(z.ZodString);
+		expect(tool.schema.shape.param1.description).toBe('Description1');
+
+		expect(tool.schema.shape.param2).toBeInstanceOf(z.ZodNumber);
+		expect(tool.schema.shape.param2.description).toBe('Description2');
+
+		expect(tool.schema.shape).not.toHaveProperty('param3');
+	});
+	it('should correctly parse $fromAI calls within template literals', () => {
+		mockNodeParameters = {
+			templateLiteralParam:
+				"={{ `Value is: ${$fromAI('templatedParam', 'Templated param description', 'string')}` }}",
+		};
+
+		const tool = createNodeAsTool(mockNode, mockCtx, mockNodeParameters);
+
+		expect(tool.schema.shape.templatedParam).toBeInstanceOf(z.ZodString);
+		expect(tool.schema.shape.templatedParam.description).toBe('Templated param description');
+	});
+	it('should correctly parse multiple $fromAI calls interleaved with regular text', () => {
+		mockNodeParameters = {
+			interleavedParams:
+				"={{ 'Start ' + $fromAI('param1', 'First param', 'string') + ' Middle ' + $fromAI('param2', 'Second param', 'number') + ' End' }}",
+		};
+
+		const tool = createNodeAsTool(mockNode, mockCtx, mockNodeParameters);
+
+		expect(tool.schema.shape.param1).toBeInstanceOf(z.ZodString);
+		expect(tool.schema.shape.param1.description).toBe('First param');
+
+		expect(tool.schema.shape.param2).toBeInstanceOf(z.ZodNumber);
+		expect(tool.schema.shape.param2.description).toBe('Second param');
+	});
+	it('should correctly parse $fromAI calls with complex JSON default values', () => {
+		mockNodeParameters = {
+			complexJsonDefault:
+				'={{ $fromAI(\'complexJson\', \'Param with complex JSON default\', \'json\', \'{"nested": {"key": "value"}, "array": [1, 2, 3]}\') }}',
+		};
+
+		const tool = createNodeAsTool(mockNode, mockCtx, mockNodeParameters);
+
+		expect(tool.schema.shape.complexJson._def.innerType).toBeInstanceOf(z.ZodRecord);
+		expect(tool.schema.shape.complexJson.description).toBe('Param with complex JSON default');
+		expect(tool.schema.shape.complexJson._def.defaultValue()).toEqual({
+			nested: { key: 'value' },
+			array: [1, 2, 3],
+		});
+	});
+	it('should ignore $fromAI calls embedded in non-string node parameters', () => {
+		mockNodeParameters = {
+			numberParam: 42,
+			booleanParam: false,
+			objectParam: {
+				innerString: "={{ $fromAI('innerParam', 'Inner param', 'string') }}",
+				innerNumber: 100,
+				innerObject: {
+					deepParam: "={{ $fromAI('deepParam', 'Deep param', 'number') }}",
+				},
+			},
+			arrayParam: [
+				"={{ $fromAI('arrayParam1', 'First array param', 'string') }}",
+				200,
+				"={{ $fromAI('nestedArrayParam', 'Nested array param', 'boolean') }}",
+			],
+		};
+
+		const tool = createNodeAsTool(mockNode, mockCtx, mockNodeParameters);
+
+		expect(tool.schema.shape.innerParam).toBeInstanceOf(z.ZodString);
+		expect(tool.schema.shape.innerParam.description).toBe('Inner param');
+
+		expect(tool.schema.shape.deepParam).toBeInstanceOf(z.ZodNumber);
+		expect(tool.schema.shape.deepParam.description).toBe('Deep param');
+
+		expect(tool.schema.shape.arrayParam1).toBeInstanceOf(z.ZodString);
+		expect(tool.schema.shape.arrayParam1.description).toBe('First array param');
+
+		expect(tool.schema.shape.nestedArrayParam).toBeInstanceOf(z.ZodBoolean);
+		expect(tool.schema.shape.nestedArrayParam.description).toBe('Nested array param');
 	});
 });

@@ -299,7 +299,7 @@ export const ROOT_DOLLAR_COMPLETIONS: Completion[] = [
 					{
 						name: 'type',
 						description: 'Type of the argument',
-						type: 'string | number | boolean | json | date',
+						type: 'string | number | boolean | json | date | datetime',
 						optional: true,
 					},
 					{
