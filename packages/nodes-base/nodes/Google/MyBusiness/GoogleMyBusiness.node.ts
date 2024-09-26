@@ -17,6 +17,15 @@ export class GoogleMyBusiness implements INodeType {
 		},
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
+		hints: [
+			{
+				message: 'Please select a parameter in the options to modify the post',
+				displayCondition:
+					'={{$parameter["resource"] === "post" && $parameter["operation"] === "update" && Object.keys($parameter["additionalOptions"]).length === 0}}',
+				whenToDisplay: 'beforeExecution',
+				location: 'outputPane',
+			},
+		],
 		credentials: [
 			{
 				name: 'googleMyBusinessOAuth2Api',

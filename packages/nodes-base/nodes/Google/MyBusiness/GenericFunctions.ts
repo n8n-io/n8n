@@ -114,50 +114,35 @@ export async function addUpdateMask(
 /* Helper to handle pagination */
 export async function handlePagination(
 	this: IExecutePaginationFunctions,
-	requestOptions: DeclarativeRestApiSettings.ResultOptions,
+	resultOptions: DeclarativeRestApiSettings.ResultOptions,
 ): Promise<INodeExecutionData[]> {
-	const aggregatedResult: IDataObject = {};
+	const aggregatedResult: IDataObject[] = [];
 	let nextPageToken: string | undefined;
-	let totalFetched = 0;
-	const limit = this.getNodeParameter('limit', 0) as number;
+	const limit = this.getNodeParameter('limit') as number;
+	const returnAll = this.getNodeParameter('returnAll') as boolean;
+	if (!returnAll) resultOptions.maxResults = limit;
+	resultOptions.paginate = true;
 
 	do {
 		if (nextPageToken) {
-			requestOptions.options.qs = { ...requestOptions.options.qs, pageToken: nextPageToken };
+			resultOptions.options.qs = { ...resultOptions.options.qs, pageToken: nextPageToken };
 		}
 
-		const responseData = await this.makeRoutingRequest(requestOptions);
+		const responseData = await this.makeRoutingRequest(resultOptions);
 
 		for (const page of responseData) {
 			for (const prop of possibleRootProperties) {
 				if (page.json[prop]) {
-					if (!aggregatedResult[prop]) aggregatedResult[prop] = [] as IDataObject[];
 					const currentData = page.json[prop] as IDataObject[];
-					const availableSpace = limit - totalFetched;
-					(aggregatedResult[prop] as IDataObject[]).push(...currentData.slice(0, availableSpace));
-					totalFetched = (aggregatedResult[prop] as IDataObject[]).length;
-				}
-			}
-
-			for (const key of Object.keys(page.json)) {
-				if (key !== 'nextPageToken' && !possibleRootProperties.includes(key)) {
-					aggregatedResult[key] = page.json[key];
+					aggregatedResult.push(...currentData);
 				}
 			}
 
 			nextPageToken = page.json.nextPageToken as string | undefined;
-			if (totalFetched >= limit) break;
 		}
-
-		if (totalFetched >= limit) break;
 	} while (nextPageToken);
 
-	const dataKey = possibleRootProperties.find((key) => aggregatedResult[key]);
-	if (dataKey && aggregatedResult[dataKey]) {
-		aggregatedResult[dataKey] = (aggregatedResult[dataKey] as IDataObject[]).slice(0, limit);
-	}
-
-	return [{ json: aggregatedResult }];
+	return aggregatedResult.map((item) => ({ json: item }));
 }
 
 /* Helper function used in listSearch methods */

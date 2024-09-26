@@ -457,7 +457,6 @@ export const postFields: INodeProperties[] = [
 				displayName: 'By name',
 				name: 'name',
 				type: 'string',
-				hint: 'Enter the post name',
 				validation: [
 					{
 						type: 'regex',
@@ -553,7 +552,7 @@ export const postFields: INodeProperties[] = [
 		name: 'post',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
-		description: 'Select the post to retrieve its details',
+		description: 'Select the post by name or URL to retrieve its details',
 		displayOptions: { show: { resource: ['post'], operation: ['get'] } },
 		modes: [
 			{
@@ -569,7 +568,6 @@ export const postFields: INodeProperties[] = [
 				displayName: 'By name',
 				name: 'name',
 				type: 'string',
-				hint: 'Enter the post name',
 				validation: [
 					{
 						type: 'regex',
@@ -659,6 +657,14 @@ export const postFields: INodeProperties[] = [
 				placeholder: 'e.g. locations/0123456789',
 			},
 		],
+	},
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		default: false,
+		description: 'Whether to return all results or only up to a given limit',
+		displayOptions: { show: { resource: ['post'], operation: ['getAll'] } },
+		type: 'boolean',
 	},
 	{
 		displayName: 'Limit',
@@ -768,7 +774,6 @@ export const postFields: INodeProperties[] = [
 				displayName: 'By name',
 				name: 'name',
 				type: 'string',
-				hint: 'Enter the post name',
 				validation: [
 					{
 						type: 'regex',

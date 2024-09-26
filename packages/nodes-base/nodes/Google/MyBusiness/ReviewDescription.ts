@@ -18,7 +18,7 @@ export const reviewOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'DELETE',
-						url: '=/{{$parameter["review"]/reply}}',
+						url: '=/{{$parameter["account"]}}/{{$parameter["location"]}}/reviews/{{$parameter["review"].split("reviews/").pop()}}/reply',
 					},
 				},
 			},
@@ -30,7 +30,7 @@ export const reviewOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/{{$parameter["review"]}}',
+						url: '=/{{$parameter["account"]}}/{{$parameter["location"]}}/reviews/{{$parameter["review"].split("reviews/").pop()}}',
 					},
 				},
 			},
@@ -59,7 +59,7 @@ export const reviewOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'PUT',
-						url: '=/{{$parameter["review"]}}/reply',
+						url: '=/{{$parameter["account"]}}/{{$parameter["location"]}}/reviews/{{$parameter["review"].split("reviews/").pop()}}/reply',
 					},
 				},
 			},
@@ -180,7 +180,6 @@ export const reviewFields: INodeProperties[] = [
 				displayName: 'By name',
 				name: 'name',
 				type: 'string',
-				hint: 'Enter the location name',
 				validation: [
 					{
 						type: 'regex',
@@ -307,7 +306,6 @@ export const reviewFields: INodeProperties[] = [
 				displayName: 'By name',
 				name: 'name',
 				type: 'string',
-				hint: 'Enter the location name',
 				validation: [
 					{
 						type: 'regex',
@@ -396,6 +394,14 @@ export const reviewFields: INodeProperties[] = [
 				placeholder: 'e.g. locations/0123456789',
 			},
 		],
+	},
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		default: false,
+		description: 'Whether to return all results or only up to a given limit',
+		displayOptions: { show: { resource: ['review'], operation: ['getAll'] } },
+		type: 'boolean',
 	},
 	{
 		displayName: 'Limit',
@@ -522,7 +528,6 @@ export const reviewFields: INodeProperties[] = [
 				displayName: 'By name',
 				name: 'name',
 				type: 'string',
-				hint: 'Enter the location name',
 				validation: [
 					{
 						type: 'regex',
