@@ -5,7 +5,9 @@ import type {
 	IN8nHttpFullResponse,
 	INodeExecutionData,
 	INodeProperties,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import { getCursorPaginator, gongApiPaginateRequest } from '../GenericFunctions';
 
@@ -44,6 +46,25 @@ export const callOperations: INodeProperties[] = [
 						body: {
 							filter: {},
 						},
+						ignoreHttpStatusErrors: true,
+					},
+					output: {
+						postReceive: [
+							async function (
+								this: IExecuteSingleFunctions,
+								data: INodeExecutionData[],
+								response: IN8nHttpFullResponse,
+							): Promise<INodeExecutionData[]> {
+								const userId = this.getNodeParameter(
+									'filters.primaryUserIds',
+									undefined,
+								) as IDataObject;
+								if (userId && response.statusCode === 404) {
+									return [{ json: { success: true } }];
+								}
+								return data;
+							},
+						],
 					},
 				},
 				action: 'Get many calls',
@@ -143,7 +164,6 @@ const getFields: INodeProperties[] = [
 				operation: ['get'],
 			},
 		},
-		placeholder: 'Add option',
 		options: [
 			{
 				displayName: 'Call Data to Include',
@@ -151,23 +171,22 @@ const getFields: INodeProperties[] = [
 				type: 'multiOptions',
 				default: [],
 				description:
-					'Whether to include specific Call properties in the returned results. Choose from a list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'The Call properties to include in the returned results. Choose from a list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				options: [
 					{
 						name: 'Action Items',
 						value: 'pointsOfInterest',
-						description: 'Whether to add call points of interest',
+						description: 'Call points of interest',
 					},
 					{
 						name: 'Audio and Video URLs',
 						value: 'media',
-						description:
-							'Whether to add audio and video URL of the call. The URLs will be available for 8 hours.',
+						description: 'Audio and video URL of the call. The URLs will be available for 8 hours.',
 					},
 					{
 						name: 'Brief',
 						value: 'brief',
-						description: 'Whether to add the spotlight call brief',
+						description: 'Spotlight call brief',
 						routing: {
 							send: {
 								type: 'body',
@@ -180,53 +199,52 @@ const getFields: INodeProperties[] = [
 					{
 						name: 'Comments',
 						value: 'publicComments',
-						description: 'Whether to add public comments made for this call',
+						description: 'Public comments made for this call',
 					},
 					{
 						name: 'Highlights',
 						value: 'highlights',
-						description: 'Whether to add the call highlights',
+						description: 'Call highlights',
 					},
 					{
 						name: 'Keypoints',
 						value: 'keyPoints',
-						description: 'Whether to add the key points of the call',
+						description: 'Key points of the call',
 					},
 					{
 						name: 'Outcome',
 						value: 'callOutcome',
-						description: 'Whether to add the outcome of the call',
+						description: 'Outcome of the call',
 					},
 					{
 						name: 'Outline',
 						value: 'outline',
-						description: 'Whether to add the call outline',
+						description: 'Call outline',
 					},
 					{
 						name: 'Participants',
 						value: 'parties',
-						description: 'Whether to add information about the participants of the call',
+						description: 'Information about the participants of the call',
 					},
 					{
 						name: 'Structure',
 						value: 'structure',
-						description: 'Whether to add the call agenda',
+						description: 'Call agenda',
 					},
 					{
 						name: 'Topics',
 						value: 'topics',
-						description: 'Whether to add the duration of call topics',
+						description: 'Duration of call topics',
 					},
 					{
 						name: 'Trackers',
 						value: 'trackers',
-						description:
-							'Whether to add the smart tracker and keyword tracker information for the call',
+						description: 'Smart tracker and keyword tracker information for the call',
 					},
 					{
 						name: 'Transcript',
 						value: 'transcript',
-						description: 'Whether to add information about the participants',
+						description: 'Information about the participants',
 					},
 				],
 				routing: {
@@ -301,6 +319,7 @@ const getFields: INodeProperties[] = [
 				},
 			},
 		],
+		placeholder: 'Add Option',
 		type: 'collection',
 	},
 ];
@@ -372,7 +391,6 @@ const getAllFields: INodeProperties[] = [
 				operation: ['getAll'],
 			},
 		},
-		placeholder: 'Add Filter',
 		options: [
 			{
 				displayName: 'After',
@@ -427,59 +445,29 @@ const getAllFields: INodeProperties[] = [
 			{
 				displayName: 'Call IDs',
 				name: 'callIds',
-				default: {
-					mode: 'list',
-					value: '',
-				},
+				default: '',
 				description: 'List of calls IDs to be filtered',
-				modes: [
-					{
-						displayName: 'From List',
-						name: 'list',
-						type: 'list',
-						typeOptions: {
-							searchListMethod: 'getCalls',
-							searchable: true,
-						},
-					},
-					{
-						displayName: 'By ID',
-						name: 'id',
-						placeholder: 'e.g. 7782342274025937895',
-						type: 'string',
-						validation: [
-							{
-								type: 'regex',
-								properties: {
-									regex: '[0-9]{1,20}',
-									errorMessage: 'Not a valid Gong Call ID',
-								},
-							},
-						],
-					},
-				],
-				required: true,
+				hint: 'Comma separated list of IDs, array of strings can be set in expression',
 				routing: {
 					send: {
 						type: 'body',
 						property: 'filter.callIds',
 						propertyInDotNotation: true,
-						value: '={{ $value.flatMap(x => x.value) }}',
+						value:
+							'={{ Array.isArray($value) ? $value.map(x => x.toString()) : $value.split(",").map(x => x.trim()) }}',
 					},
 				},
-				type: 'resourceLocator',
-				typeOptions: {
-					multipleValues: true,
-				},
+				placeholder: 'e.g. 7782342274025937895',
+				type: 'string',
 			},
 			{
-				displayName: 'User IDs',
+				displayName: 'Organizer',
 				name: 'primaryUserIds',
 				default: {
 					mode: 'list',
 					value: '',
 				},
-				description: 'Return only the calls hosted by the specified users',
+				description: 'Return only the calls hosted by the specified user',
 				modes: [
 					{
 						displayName: 'From List',
@@ -506,21 +494,18 @@ const getAllFields: INodeProperties[] = [
 						],
 					},
 				],
-				required: true,
 				routing: {
 					send: {
 						type: 'body',
 						property: 'filter.primaryUserIds',
 						propertyInDotNotation: true,
-						value: '={{ $value.flatMap(x => x.value) }}',
+						value: '={{ [$value] }}',
 					},
 				},
 				type: 'resourceLocator',
-				typeOptions: {
-					multipleValues: true,
-				},
 			},
 		],
+		placeholder: 'Add Filter',
 		type: 'collection',
 	},
 	{
@@ -533,7 +518,6 @@ const getAllFields: INodeProperties[] = [
 				operation: ['getAll'],
 			},
 		},
-		placeholder: 'Add option',
 		options: [
 			{
 				displayName: 'Call Data to Include',
@@ -541,17 +525,17 @@ const getAllFields: INodeProperties[] = [
 				type: 'multiOptions',
 				default: [],
 				description:
-					'Whether to include specific Call properties in the returned results. Choose from a list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'The Call properties to include in the returned results. Choose from a list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				options: [
 					{
 						name: 'Participants',
 						value: 'parties',
-						description: 'Whether to add information about the participants of the call',
+						description: 'Information about the participants of the call',
 					},
 					{
 						name: 'Topics',
 						value: 'topics',
-						description: 'Whether to add information about the topics of the call',
+						description: 'Information about the topics of the call',
 					},
 				],
 				routing: {
@@ -584,6 +568,7 @@ const getAllFields: INodeProperties[] = [
 				},
 			},
 		],
+		placeholder: 'Add Option',
 		type: 'collection',
 	},
 ];

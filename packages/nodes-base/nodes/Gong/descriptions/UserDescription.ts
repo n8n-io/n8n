@@ -214,50 +214,20 @@ const getAllOperation: INodeProperties[] = [
 			{
 				displayName: 'User IDs',
 				name: 'userIds',
-				default: {
-					mode: 'list',
-					value: '',
-				},
+				default: '',
 				description: "Set of Gong's unique numeric identifiers for the users (up to 20 digits)",
-				modes: [
-					{
-						displayName: 'From List',
-						name: 'list',
-						type: 'list',
-						typeOptions: {
-							searchListMethod: 'getUsers',
-							searchable: true,
-						},
-					},
-					{
-						displayName: 'By ID',
-						name: 'id',
-						placeholder: 'e.g. 7782342274025937895',
-						type: 'string',
-						validation: [
-							{
-								type: 'regex',
-								properties: {
-									regex: '[0-9]{1,20}',
-									errorMessage: 'Not a valid Gong User ID',
-								},
-							},
-						],
-					},
-				],
-				required: true,
+				hint: 'Comma separated list of IDs, array of strings can be set in expression',
 				routing: {
 					send: {
 						type: 'body',
 						property: 'filter.userIds',
 						propertyInDotNotation: true,
-						value: '={{ $value.flatMap(x => x.value) }}',
+						value:
+							'={{ Array.isArray($value) ? $value.map(x => x.toString()) : $value.split(",").map(x => x.trim()) }}',
 					},
 				},
-				type: 'resourceLocator',
-				typeOptions: {
-					multipleValues: true,
-				},
+				placeholder: 'e.g. 7782342274025937895',
+				type: 'string',
 			},
 		],
 		placeholder: 'Add Filter',

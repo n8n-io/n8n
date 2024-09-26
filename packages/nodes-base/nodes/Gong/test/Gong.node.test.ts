@@ -428,25 +428,12 @@ describe('Gong Node', () => {
 										fromDateTime: '2024-01-01T00:00:00Z',
 										toDateTime: '2024-12-31T00:00:00Z',
 										workspaceId: '3662366901393371750',
-										callIds: [
-											{
-												__rl: true,
-												value: '3662366901393371750',
-												mode: 'id',
-											},
-											{
-												__rl: true,
-												value: '3662366901393371751',
-												mode: 'id',
-											},
-										],
-										primaryUserIds: [
-											{
-												__rl: true,
-												value: '234599484848423',
-												mode: 'id',
-											},
-										],
+										callIds: "={{ ['3662366901393371750', '3662366901393371751'] }}",
+										primaryUserIds: {
+											__rl: true,
+											value: '234599484848423',
+											mode: 'id',
+										},
 									},
 									options: {
 										properties: ['parties', 'topics'],
@@ -564,7 +551,7 @@ describe('Gong Node', () => {
 				},
 			},
 			{
-				description: 'should get all calls with multiple id filters',
+				description: 'should return empty result if no calls found for user',
 				input: {
 					workflowData: {
 						nodes: [
@@ -579,29 +566,11 @@ describe('Gong Node', () => {
 							{
 								parameters: {
 									filters: {
-										callIds: [
-											{
-												__rl: true,
-												value: '=3662366901393371750',
-												mode: 'id',
-											},
-											{
-												__rl: true,
-												value: "={{ '3662366901393371751' }}",
-												mode: 'id',
-											},
-											{
-												__rl: true,
-												value: "={{ ['3662366901393371752','3662366901393731753'] }}",
-												mode: 'id',
-											},
-											{
-												__rl: true,
-												value: '3662366901393731754',
-												mode: 'list',
-												cachedResultName: 'Call name',
-											},
-										],
+										primaryUserIds: {
+											__rl: true,
+											value: '234599484848423',
+											mode: 'id',
+										},
 									},
 									options: {},
 									requestOptions: {},
@@ -646,20 +615,17 @@ describe('Gong Node', () => {
 						{
 							method: 'post',
 							path: '/v2/calls/extensive',
-							statusCode: 200,
+							statusCode: 400,
 							requestBody: {
 								filter: {
-									callIds: [
-										'3662366901393371750',
-										'3662366901393371751',
-										'3662366901393371752',
-										'3662366901393731753',
-										'3662366901393731754',
-									],
+									primaryUserIds: ['234599484848423'],
 								},
 								cursor: undefined,
 							},
-							responseBody: {},
+							responseBody: {
+								requestId: 'thrhbxbkqiw41ma1cl',
+								errors: ['No calls found corresponding to the provided filters'],
+							},
 						},
 					],
 				},
@@ -774,18 +740,7 @@ describe('Gong Node', () => {
 									filter: {
 										createdFromDateTime: '2024-01-01T00:00:00Z',
 										createdToDateTime: '2024-12-31T00:00:00Z',
-										userIds: [
-											{
-												__rl: true,
-												value: '234599484848423',
-												mode: 'id',
-											},
-											{
-												__rl: true,
-												value: '234599484848424',
-												mode: 'id',
-											},
-										],
+										userIds: '234599484848423, 234599484848424',
 									},
 									requestOptions: {},
 								},
