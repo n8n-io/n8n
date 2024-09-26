@@ -589,6 +589,12 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 			workflowsStore.addNode(nodeData);
 
+			workflowsStore.setNodePristine(nodeData.name, true);
+
+			nodeHelpers.updateNodeParameterIssues(nodeData);
+			nodeHelpers.updateNodeCredentialIssues(nodeData);
+			nodeHelpers.updateNodeInputIssues(nodeData);
+
 			if (!options.isAutoAdd) {
 				createConnectionToLastInteractedWithNode(nodeData, options);
 			}
@@ -605,8 +611,6 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 				ndvStore.setActiveNodeName(nodeData.name);
 			}
 		});
-
-		workflowsStore.setNodePristine(nodeData.name, true);
 
 		return nodeData;
 	}
@@ -1145,8 +1149,10 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			connection: mappedConnection,
 		});
 
-		nodeHelpers.updateNodeInputIssues(sourceNode);
-		nodeHelpers.updateNodeInputIssues(targetNode);
+		void nextTick(() => {
+			nodeHelpers.updateNodeInputIssues(sourceNode);
+			nodeHelpers.updateNodeInputIssues(targetNode);
+		});
 
 		uiStore.stateIsDirty = true;
 	}
