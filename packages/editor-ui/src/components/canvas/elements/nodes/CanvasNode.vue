@@ -313,7 +313,6 @@ onBeforeUnmount(() => {
 			@open:contextmenu="onOpenContextMenuFromNode"
 		>
 			<NodeIcon
-				v-if="nodeTypeDescription"
 				:node-type="nodeTypeDescription"
 				:size="nodeIconSize"
 				:shrink="false"

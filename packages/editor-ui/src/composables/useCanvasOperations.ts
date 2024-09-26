@@ -236,7 +236,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		await renameNode(currentName, previousName);
 	}
 
-	function connectAdjacentNodes(id: string) {
+	function connectAdjacentNodes(id: string, { trackHistory = false } = {}) {
 		const node = workflowsStore.getNodeById(id);
 
 		if (!node) {
@@ -261,6 +261,23 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 					const outgoingNodeId = workflowsStore.getNodeByName(outgoingConnection.node)?.id;
 
 					if (!outgoingNodeId) continue;
+
+					if (trackHistory) {
+						historyStore.pushCommandToUndo(
+							new AddConnectionCommand([
+								{
+									node: incomingConnection.node,
+									type,
+									index: 0,
+								},
+								{
+									node: outgoingConnection.node,
+									type,
+									index: 0,
+								},
+							]),
+						);
+					}
 
 					createConnection({
 						source: incomingNodeId,
@@ -289,8 +306,13 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			historyStore.startRecordingUndo();
 		}
 
-		connectAdjacentNodes(id);
-		workflowsStore.removeNodeConnectionsById(id);
+		if (uiStore.lastInteractedWithNodeId === id) {
+			uiStore.lastInteractedWithNodeId = null;
+		}
+
+		connectAdjacentNodes(id, { trackHistory });
+		deleteConnectionsByNodeId(id, { trackHistory, trackBulk: false });
+
 		workflowsStore.removeNodeExecutionDataById(id);
 		workflowsStore.removeNodeById(id);
 
@@ -423,16 +445,23 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		historyStore.stopRecordingUndo();
 	}
 
-	function requireNodeTypeDescription(type: INodeUi['type'], version?: INodeUi['typeVersion']) {
-		const nodeTypeDescription = nodeTypesStore.getNodeType(type, version);
-		if (!nodeTypeDescription) {
-			throw new Error(
-				i18n.baseText('nodeView.showMessage.addNodeButton.message', {
-					interpolate: { nodeTypeName: type },
-				}),
-			);
-		}
-		return nodeTypeDescription;
+	function requireNodeTypeDescription(
+		type: INodeUi['type'],
+		version?: INodeUi['typeVersion'],
+	): INodeTypeDescription {
+		return (
+			nodeTypesStore.getNodeType(type, version) ?? {
+				properties: [],
+				displayName: type,
+				name: type,
+				group: [],
+				description: '',
+				version: version ?? 1,
+				defaults: {},
+				inputs: [],
+				outputs: [],
+			}
+		);
 	}
 
 	async function addNodes(
@@ -1135,6 +1164,72 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		deleteConnection(mapLegacyConnectionToCanvasConnection(sourceNode, targetNode, connection));
 	}
 
+	function deleteConnectionsByNodeId(
+		targetNodeId: string,
+		{ trackHistory = false, trackBulk = true } = {},
+	) {
+		const targetNode = workflowsStore.getNodeById(targetNodeId);
+		if (!targetNode) {
+			return;
+		}
+
+		if (trackHistory && trackBulk) {
+			historyStore.startRecordingUndo();
+		}
+
+		const connections = workflowsStore.workflow.connections;
+		for (const nodeName of Object.keys(connections)) {
+			const node = workflowsStore.getNodeByName(nodeName);
+			if (!node) {
+				continue;
+			}
+
+			for (const type of Object.keys(connections[nodeName])) {
+				for (const index of Object.keys(connections[nodeName][type])) {
+					for (const connectionIndex of Object.keys(
+						connections[nodeName][type][parseInt(index, 10)],
+					)) {
+						const connectionData =
+							connections[nodeName][type][parseInt(index, 10)][parseInt(connectionIndex, 10)];
+						if (!connectionData) {
+							continue;
+						}
+
+						const connectionDataNode = workflowsStore.getNodeByName(connectionData.node);
+						if (
+							connectionDataNode &&
+							(connectionDataNode.id === targetNode.id || node.name === targetNode.name)
+						) {
+							deleteConnection(
+								{
+									source: node.id,
+									sourceHandle: createCanvasConnectionHandleString({
+										mode: CanvasConnectionMode.Output,
+										type: type as NodeConnectionType,
+										index: parseInt(index, 10),
+									}),
+									target: connectionDataNode.id,
+									targetHandle: createCanvasConnectionHandleString({
+										mode: CanvasConnectionMode.Input,
+										type: connectionData.type as NodeConnectionType,
+										index: connectionData.index,
+									}),
+								},
+								{ trackHistory, trackBulk: false },
+							);
+						}
+					}
+				}
+			}
+		}
+
+		delete workflowsStore.workflow.connections[targetNode.name];
+
+		if (trackHistory && trackBulk) {
+			historyStore.stopRecordingUndo();
+		}
+	}
+
 	function deleteConnection(
 		connection: Connection,
 		{ trackHistory = false, trackBulk = true } = {},
@@ -1777,6 +1872,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		revertCreateConnection,
 		deleteConnection,
 		revertDeleteConnection,
+		deleteConnectionsByNodeId,
 		isConnectionAllowed,
 		importWorkflowData,
 		fetchWorkflowDataFromUrl,
