@@ -1,6 +1,6 @@
 import z, { type ZodOptional, type ZodType } from 'zod';
 
-import type { INodeProperties } from '@/Interfaces';
+import type { INodeProperties } from '../Interfaces';
 
 function isObject(value: unknown): value is object {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
