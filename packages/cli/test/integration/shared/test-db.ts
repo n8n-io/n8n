@@ -90,12 +90,10 @@ export async function truncate(names: Array<(typeof repositories)[number]>) {
 		let RepositoryClass: Class<Repository<object>>;
 
 		try {
-			// eslint-disable-next-line n8n-local-rules/no-dynamic-import-template
 			RepositoryClass = (await import(`@/databases/repositories/${kebabCase(name)}.repository`))[
 				`${name}Repository`
 			];
 		} catch (e) {
-			// eslint-disable-next-line n8n-local-rules/no-dynamic-import-template
 			RepositoryClass = (await import(`@/databases/repositories/${kebabCase(name)}.repository.ee`))[
 				`${name}Repository`
 			];
