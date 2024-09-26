@@ -130,19 +130,20 @@ export class GoogleMyBusinessTrigger implements INodeType {
 	};
 
 	async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
-		if (this.getMode() === 'manual') {
-			throw new NodeOperationError(
-				this.getNode(),
-				'This trigger node is meant to be used only for pooling and does not support manual executions.',
-			);
-		}
-
 		const nodeStaticData = this.getWorkflowStaticData('node');
 		let responseData;
+		const qs: IDataObject = {};
 
 		// const event = this.getNodeParameter('event') as string; // Currently there is only one event
 		const account = (this.getNodeParameter('account') as { value: string; mode: string }).value;
 		const location = (this.getNodeParameter('location') as { value: string; mode: string }).value;
+
+		const manualMode = this.getMode() === 'manual';
+		if (manualMode) {
+			qs.pageSize = 1; // In manual mode we only want to fetch the latest review
+		} else {
+			qs.pageSize = 50; // Maximal page size for the get reviews endpoint
+		}
 
 		try {
 			responseData = (await googleApiRequest.call(
@@ -150,33 +151,35 @@ export class GoogleMyBusinessTrigger implements INodeType {
 				'GET',
 				`/${account}/${location}/reviews`,
 				{},
-				{
-					pageSize: 50, // Maximal page size for this endpoint
-				},
+				qs,
 			)) as { reviews: IDataObject[]; totalReviewCount: number; nextPageToken?: string };
 
-			// During the first execution there is no delta
-			if (!nodeStaticData.totalReviewCountLastTimeChecked) {
+			if (manualMode) {
+				responseData = responseData.reviews;
+			} else {
+				// During the first execution there is no delta
+				if (!nodeStaticData.totalReviewCountLastTimeChecked) {
+					nodeStaticData.totalReviewCountLastTimeChecked = responseData.totalReviewCount;
+					return null;
+				}
+
+				// When count did't change the node shouldn't trigger
+				if (
+					!responseData?.reviews?.length ||
+					nodeStaticData?.totalReviewCountLastTimeChecked === responseData?.totalReviewCount
+				) {
+					return null;
+				}
+
+				const numNewReviews =
+					// @ts-ignore
+					responseData.totalReviewCount - nodeStaticData.totalReviewCountLastTimeChecked;
 				nodeStaticData.totalReviewCountLastTimeChecked = responseData.totalReviewCount;
-				return null;
+
+				// By default the reviews will be sorted by updateTime in descending order
+				// Return only the delta reviews since last pooling
+				responseData = responseData.reviews.slice(0, numNewReviews);
 			}
-
-			// When count did't change the node shouldn't trigger
-			if (
-				!responseData?.reviews?.length ||
-				nodeStaticData?.totalReviewCountLastTimeChecked === responseData?.totalReviewCount
-			) {
-				return null;
-			}
-
-			const numNewReviews =
-				// @ts-ignore
-				responseData.totalReviewCount - nodeStaticData.totalReviewCountLastTimeChecked;
-			nodeStaticData.totalReviewCountLastTimeChecked = responseData.totalReviewCount;
-
-			// By default the reviews will be sorted by updateTime in descending order
-			// Return only the delta reviews since last pooling
-			responseData = responseData.reviews.slice(0, numNewReviews);
 
 			if (Array.isArray(responseData) && responseData.length) {
 				return [this.helpers.returnJsonArray(responseData)];
