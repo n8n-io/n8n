@@ -154,7 +154,7 @@ const onClick = (event: MouseEvent) => {
 		}
 	}
 	if (clickedLink) {
-		emit('markdown-click', clickedLink!, event);
+		emit('markdown-click', clickedLink, event);
 	}
 };
 
