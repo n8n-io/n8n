@@ -2,7 +2,7 @@ import { Column, Entity } from '@n8n/typeorm';
 
 import { WithStringId } from './abstract-entity';
 
-@Entity()
+@Entity('variable')
 export class Variables extends WithStringId {
 	@Column('text')
 	key: string;

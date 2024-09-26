@@ -190,7 +190,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	async findWebhookBasedActiveWorkflows() {
 		return await (this.createQueryBuilder('workflow')
 			.select('DISTINCT workflow.id, workflow.name')
-			.innerJoin(WebhookEntity, 'webhook_entity', 'workflow.id = webhook_entity.workflowId')
+			.innerJoin(WebhookEntity, 'webhook', 'workflow.id = webhook.workflowId')
 			.execute() as Promise<Array<{ id: string; name: string }>>);
 	}
 

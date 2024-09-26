@@ -20,7 +20,7 @@ import type { ExecutionMetadata } from './execution-metadata';
 import { WorkflowEntity } from './workflow-entity';
 import { idStringifier } from '../utils/transformers';
 
-@Entity()
+@Entity('execution')
 @Index(['workflowId', 'id'])
 @Index(['waitTill', 'id'])
 @Index(['finished', 'id'])

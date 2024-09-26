@@ -7,7 +7,7 @@ interface ISettingsDb {
 	loadOnStartup: boolean;
 }
 
-@Entity()
+@Entity('setting')
 export class Settings implements ISettingsDb {
 	@PrimaryColumn()
 	key: string;

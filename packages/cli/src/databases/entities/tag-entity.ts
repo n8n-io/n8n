@@ -5,7 +5,7 @@ import { WithTimestampsAndStringId } from './abstract-entity';
 import type { WorkflowEntity } from './workflow-entity';
 import type { WorkflowTagMapping } from './workflow-tag-mapping';
 
-@Entity()
+@Entity('tag')
 export class TagEntity extends WithTimestampsAndStringId {
 	@Column({ length: 24 })
 	@Index({ unique: true })

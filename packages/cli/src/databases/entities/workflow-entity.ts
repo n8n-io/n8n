@@ -12,7 +12,7 @@ import type { WorkflowStatistics } from './workflow-statistics';
 import type { WorkflowTagMapping } from './workflow-tag-mapping';
 import { objectRetriever, sqlite } from '../utils/transformers';
 
-@Entity()
+@Entity('workflow')
 export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkflowDb {
 	// TODO: Add XSS check
 	@Index({ unique: true })
@@ -53,7 +53,7 @@ export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkfl
 
 	@ManyToMany('TagEntity', 'workflows')
 	@JoinTable({
-		name: 'workflows_tags', // table name for the junction table of this relation
+		name: 'workflow_tag', // table name for the junction table of this relation
 		joinColumn: {
 			name: 'workflowId',
 			referencedColumnName: 'id',

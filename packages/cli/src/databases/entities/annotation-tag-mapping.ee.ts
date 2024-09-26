@@ -6,7 +6,7 @@ import type { ExecutionAnnotation } from './execution-annotation.ee';
 /**
  * This entity represents the junction table between the execution annotations and the tags
  */
-@Entity({ name: 'execution_annotation_tags' })
+@Entity({ name: 'execution_annotation_tag' })
 export class AnnotationTagMapping {
 	@PrimaryColumn()
 	annotationId: number;

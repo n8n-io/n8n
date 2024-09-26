@@ -3,7 +3,7 @@ import { Column, Entity, JoinColumn, OneToMany, PrimaryColumn } from '@n8n/typeo
 import { WithTimestamps } from './abstract-entity';
 import type { InstalledNodes } from './installed-nodes';
 
-@Entity()
+@Entity('installed_package')
 export class InstalledPackages extends WithTimestamps {
 	@PrimaryColumn()
 	packageName: string;

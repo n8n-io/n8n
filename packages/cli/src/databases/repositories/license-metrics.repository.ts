@@ -41,8 +41,8 @@ export class LicenseMetricsRepository extends Repository<LicenseMetrics> {
 		};
 
 		const userTable = this.toTableName('user');
-		const workflowTable = this.toTableName('workflow_entity');
-		const credentialTable = this.toTableName('credentials_entity');
+		const workflowTable = this.toTableName('workflow');
+		const credentialTable = this.toTableName('credential');
 		const workflowStatsTable = this.toTableName('workflow_statistics');
 
 		const [

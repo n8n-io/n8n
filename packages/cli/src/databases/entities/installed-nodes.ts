@@ -2,7 +2,7 @@ import { Column, Entity, JoinColumn, ManyToOne, PrimaryColumn } from '@n8n/typeo
 
 import { InstalledPackages } from './installed-packages';
 
-@Entity()
+@Entity('installed_node')
 export class InstalledNodes {
 	@Column()
 	name: string;

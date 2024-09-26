@@ -6,7 +6,7 @@ import { Project } from './project';
 
 export type CredentialSharingRole = 'credential:owner' | 'credential:user';
 
-@Entity()
+@Entity('shared_credential')
 export class SharedCredentials extends WithTimestamps {
 	@Column()
 	role: CredentialSharingRole;

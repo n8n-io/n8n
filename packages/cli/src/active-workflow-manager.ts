@@ -134,7 +134,7 @@ export class ActiveWorkflowManager {
 	}
 
 	/**
-	 * Register workflow-defined webhooks in the `workflow_entity` table.
+	 * Register workflow-defined webhooks in the `workflow` table.
 	 */
 	async addWebhooks(
 		workflow: Workflow,
@@ -506,7 +506,7 @@ export class ActiveWorkflowManager {
 	 * and so qualify as `webhook`, e.g. Stripe Trigger.
 	 *
 	 * Triggers and pollers are registered as active in memory at `ActiveWorkflows`,
-	 * but webhooks are registered by being entered in the `webhook_entity` table,
+	 * but webhooks are registered by being entered in the `webhook` table,
 	 * since webhooks do not require continuous execution.
 	 */
 	async add(

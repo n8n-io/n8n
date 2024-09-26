@@ -142,7 +142,7 @@ export class OrchestrationService {
 	// ----------------------------------
 
 	/**
-	 * Whether this instance may add webhooks to the `webhook_entity` table.
+	 * Whether this instance may add webhooks to the `webhook` table.
 	 */
 	shouldAddWebhooks(activationMode: WorkflowActivateMode) {
 		// Always try to populate the webhook entity table as well as register the webhooks

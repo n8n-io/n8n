@@ -43,6 +43,25 @@ export function isReady() {
 	return Db.connectionState.connected && Db.connectionState.migrated;
 }
 
+export async function getTableNames() {
+	const globalConfig = Container.get(GlobalConfig);
+	const dbType = globalConfig.database.type;
+	const schema = globalConfig.database.postgresdb.schema;
+	const dbName = globalConfig.database.mysqldb.database;
+
+	let sql = '';
+	if (dbType === 'sqlite') {
+		sql = "SELECT name FROM sqlite_schema WHERE type ='table' AND name NOT LIKE 'sqlite_%';";
+	} else if (dbType === 'postgresdb') {
+		sql = `SELECT tablename AS name FROM pg_tables WHERE schemaname = '${schema}'`;
+	} else {
+		sql = `SELECT table_name AS name FROM information_schema.tables WHERE table_schema = '${dbName}';`;
+	}
+
+	const tableNames = await Db.getConnection().query(sql);
+	return (tableNames as Array<{ name: string }>).map(({ name }) => name);
+}
+
 /**
  * Drop test DB, closing bootstrap connection if existing.
  */

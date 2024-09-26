@@ -63,6 +63,7 @@
     "@types/json-diff": "^1.0.0",
     "@types/jsonwebtoken": "^9.0.6",
     "@types/lodash": "catalog:",
+    "@types/pluralize": "^0.0.33",
     "@types/psl": "^1.1.0",
     "@types/replacestream": "^4.0.1",
     "@types/shelljs": "^0.8.11",
@@ -80,6 +81,7 @@
     "concurrently": "^8.2.0",
     "ioredis-mock": "^8.8.1",
     "mjml": "^4.15.3",
+    "pluralize": "^8.0.0",
     "ts-essentials": "^7.0.3"
   },
   "dependencies": {

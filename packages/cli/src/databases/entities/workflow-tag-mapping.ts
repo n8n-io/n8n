@@ -3,7 +3,7 @@ import { Entity, JoinColumn, ManyToOne, PrimaryColumn } from '@n8n/typeorm';
 import type { TagEntity } from './tag-entity';
 import type { WorkflowEntity } from './workflow-entity';
 
-@Entity({ name: 'workflows_tags' })
+@Entity({ name: 'workflow_tag' })
 export class WorkflowTagMapping {
 	@PrimaryColumn()
 	workflowId: string;

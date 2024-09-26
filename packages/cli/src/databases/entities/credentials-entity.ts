@@ -6,7 +6,7 @@ import type { ICredentialsDb } from '@/interfaces';
 import { WithTimestampsAndStringId } from './abstract-entity';
 import type { SharedCredentials } from './shared-credentials';
 
-@Entity()
+@Entity('credential')
 export class CredentialsEntity extends WithTimestampsAndStringId implements ICredentialsDb {
 	@Column({ length: 128 })
 	@IsString({ message: 'Credential `name` must be of type string.' })

@@ -16,7 +16,7 @@ import type { AnnotationTagEntity } from './annotation-tag-entity.ee';
 import type { AnnotationTagMapping } from './annotation-tag-mapping.ee';
 import { ExecutionEntity } from './execution-entity';
 
-@Entity({ name: 'execution_annotations' })
+@Entity({ name: 'execution_annotation' })
 export class ExecutionAnnotation {
 	@PrimaryGeneratedColumn()
 	id: number;
@@ -45,7 +45,7 @@ export class ExecutionAnnotation {
 
 	@ManyToMany('AnnotationTagEntity', 'annotations')
 	@JoinTable({
-		name: 'execution_annotation_tags', // table name for the junction table of this relation
+		name: 'execution_annotation_tag', // table name for the junction table of this relation
 		joinColumn: {
 			name: 'annotationId',
 			referencedColumnName: 'id',

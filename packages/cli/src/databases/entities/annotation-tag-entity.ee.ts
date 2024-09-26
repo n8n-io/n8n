@@ -6,7 +6,7 @@ import type { ExecutionAnnotation } from '@/databases/entities/execution-annotat
 
 import { WithTimestampsAndStringId } from './abstract-entity';
 
-@Entity()
+@Entity('annotation_tag')
 export class AnnotationTagEntity extends WithTimestampsAndStringId {
 	@Column({ length: 24 })
 	@Index({ unique: true })

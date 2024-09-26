@@ -1,7 +1,7 @@
 import { Column, Entity, Index, PrimaryColumn } from '@n8n/typeorm';
 import { IHttpRequestMethods } from 'n8n-workflow';
 
-@Entity()
+@Entity('webhook')
 @Index(['webhookId', 'method', 'pathLength'])
 export class WebhookEntity {
 	@Column()
