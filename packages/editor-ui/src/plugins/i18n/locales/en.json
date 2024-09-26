@@ -1361,6 +1361,7 @@
 	"parameterInput.loadingOptions": "Loading options...",
 	"parameterInput.loadOptionsErrorService": "Error fetching options from {service}",
 	"parameterInput.loadOptionsError": "Error fetching options",
+	"parameterInput.loadOptionsCredentialsRequired": "Set up credential to see options",
 	"parameterInput.openEditWindow": "Open Edit Window",
 	"parameterInput.parameter": "Parameter: \"{shortPath}\"",
 	"parameterInput.parameterHasExpression": "Parameter: \"{shortPath}\" has an expression",
