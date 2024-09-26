@@ -2945,6 +2945,7 @@ export default defineComponent({
 				}
 
 				if (
+					// @ts-expect-error Deprecated file
 					// eslint-disable-next-line no-constant-binary-expression
 					!(this.workflowPermissions.update ?? this.projectPermissions.workflow.update) ??
 					this.isReadOnlyRoute ??
@@ -2984,6 +2985,7 @@ export default defineComponent({
 				}
 
 				if (
+					// @ts-expect-error Deprecated file
 					// eslint-disable-next-line no-constant-binary-expression
 					!(this.workflowPermissions.update ?? this.projectPermissions.workflow.update) ??
 					this.isReadOnlyRoute ??
