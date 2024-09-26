@@ -26,17 +26,20 @@ export class AddApiKeysTable1724951148974 {
 		)) as Array<Partial<ApiKey>>;
 
 		// Move the apiKey from the users table to the new table
-		usersWithApiKeys.forEach(async (user: { id: string; apiKey: string }) => {
-			await runQuery(
-				`INSERT INTO ${tableName} ("id", "userId", "apiKey", "label") VALUES (:id, :userId, :apiKey, :label)`,
-				{
-					id: generateNanoId(),
-					userId: user.id,
-					apiKey: user.apiKey,
-					label: 'My API Key',
-				},
-			);
-		});
+		await Promise.all(
+			usersWithApiKeys.map(
+				async (user: { id: string; apiKey: string }) =>
+					await runQuery(
+						`INSERT INTO ${tableName} ("id", "userId", "apiKey", "label") VALUES (:id, :userId, :apiKey, :label)`,
+						{
+							id: generateNanoId(),
+							userId: user.id,
+							apiKey: user.apiKey,
+							label: 'My API Key',
+						},
+					),
+			),
+		);
 
 		// Create temporary table to store the users dropping the api key column
 		await queryRunner.query(`
