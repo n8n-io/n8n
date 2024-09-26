@@ -13,7 +13,7 @@ export class ApiKey extends WithTimestampsAndStringId {
 	)
 	user: User;
 
-	@Column('string')
+	@Column({ type: String })
 	userId: string;
 
 	@Column({ type: String })
