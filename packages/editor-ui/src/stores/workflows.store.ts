@@ -1144,10 +1144,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			parameters: newParameters as INodeParameters,
 		});
 
-		nodeMetadata.value[node.name] = {
-			...nodeMetadata.value[node.name],
-			parametersLastUpdatedAt: Date.now(),
-		};
+		nodeMetadata.value[node.name].parametersLastUpdatedAt = Date.now();
 	}
 
 	function setLastNodeParameters(updateInformation: IUpdateInformation): void {
