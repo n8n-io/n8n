@@ -15,7 +15,7 @@ import { usePostHog } from '@/stores/posthog.store';
 import { useTelemetry } from '@/composables/useTelemetry';
 import type { Placement } from '@floating-ui/core';
 import { useDebounce } from '@/composables/useDebounce';
-import AnnotationTagsDropdown from '@/components/AnnotationTagsDropdown.vue';
+import AnnotationTagsDropdown from '@/components/AnnotationTagsDropdown.ee.vue';
 
 export type ExecutionFilterProps = {
 	workflows?: Array<IWorkflowDb | IWorkflowShortResponse>;

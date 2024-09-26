@@ -48,7 +48,7 @@ import DuplicateWorkflowDialog from '@/components/DuplicateWorkflowDialog.vue';
 import ModalRoot from '@/components/ModalRoot.vue';
 import PersonalizationModal from '@/components/PersonalizationModal.vue';
 import WorkflowTagsManager from '@/components/TagsManager/WorkflowTagsManager.vue';
-import AnnotationTagsManager from '@/components/TagsManager/AnnotationTagsManager.vue';
+import AnnotationTagsManager from '@/components/TagsManager/AnnotationTagsManager.ee.vue';
 import UpdatesPanel from '@/components/UpdatesPanel.vue';
 import NpsSurvey from '@/components/NpsSurvey.vue';
 import WorkflowLMChat from '@/components/WorkflowLMChat/WorkflowLMChat.vue';
