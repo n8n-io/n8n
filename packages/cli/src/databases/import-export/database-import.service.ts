@@ -13,9 +13,8 @@ import { Logger } from '@/logger';
 import { isObjectLiteral } from '@/utils';
 
 import { MANIFEST_FILENAME } from './constants';
-import type { Manifest } from './manifest.schema';
 import { manifestSchema } from './manifest.schema';
-import type { DatabaseImportConfig } from './types';
+import type { DatabaseImportConfig, Manifest } from './types';
 import { MalformedManifestError } from '../../errors/malformed-manifest.error';
 import { MigrationsMismatchError } from '../../errors/migrations-mismatch.error';
 import { UnsupportedDestinationError } from '../../errors/unsupported-destination.error';
@@ -167,10 +166,11 @@ export class DatabaseImportService {
 	 * Adjust incremental ID sequences in Postgres to match the source database.
 	 */
 	private async adjustSequences() {
-		for (const { name, value } of this.manifest.sequences) {
+		for (const [rawSeqName, rawSeqValue] of Object.entries(this.manifest.sequences)) {
 			// `execution_metadata` has abnormally named and numbered sequence
-			const sequenceName = name === 'execution_metadata' ? `${name}_temp_id_seq` : `${name}_id_seq`;
-			const sequenceValue = value <= 0 ? 1 : value;
+			const sequenceName =
+				rawSeqName === 'execution_metadata' ? `${rawSeqName}_temp_id_seq` : `${rawSeqName}_id_seq`;
+			const sequenceValue = rawSeqValue <= 0 ? 1 : rawSeqValue;
 
 			await this.schemaService
 				.getDataSource()

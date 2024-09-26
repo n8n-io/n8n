@@ -31,8 +31,5 @@ export const manifestSchema = z.object({
 	 * Incremental ID sequences in tables being exported.
 	 * @example [ { name: 'workflow_entity', value: 123 }, { name: 'credentials_entity', value: 456 } ]
 	 */
-	sequences: z.array(z.object({ name: z.string(), value: z.number() })),
+	sequences: z.record(z.string(), z.number()),
 });
-
-/** Manifest describing the export, included as JSON file in the tarball. */
-export type Manifest = z.infer<typeof manifestSchema>;

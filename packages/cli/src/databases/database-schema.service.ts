@@ -7,7 +7,7 @@ import { Service } from 'typedi';
 
 import { NonEmptyTableError } from '@/errors/non-empty-table.error';
 
-import type { Sequence } from './import-export/types';
+import type { Sequence, SequenceRow } from './import-export/types';
 import { LastMigrationNotFoundError } from '../errors/last-migration-not-found.error';
 
 /**
@@ -72,24 +72,39 @@ export class DatabaseSchemaService {
 	/** Get the names and values of all incremental ID sequences. */
 	async getSequences() {
 		if (this.dbType === 'sqlite') {
-			return await this.dataSource.query<Sequence[]>(
+			const result = await this.dataSource.query<SequenceRow[]>(
 				"SELECT name, seq AS value FROM sqlite_sequence WHERE name != 'migrations';",
 			);
+
+			return result.reduce<Sequence>((acc, cur) => {
+				acc[cur.name] = cur.value;
+				return acc;
+			}, {});
 		}
 
 		if (this.dbType === 'postgresdb') {
-			return await this.dataSource.query<Sequence[]>(
+			const result = await this.dataSource.query<Sequence[]>(
 				"SELECT sequencename AS name, start_value AS value FROM pg_sequences WHERE sequencename != 'migrations_id_seq';",
 			);
+
+			return result.reduce<Sequence>((acc, cur) => {
+				acc[cur.name] = cur.value;
+				return acc;
+			}, {});
 		}
 
 		// @TODO: Does this work for MariaDB?
 		if (this.dbType === 'mysqldb' || this.dbType === 'mariadb') {
 			const schema = this.globalConfig.database.mysqldb.database; // @TODO: Why deprecated? How to filter otherwise?
-			return await this.dataSource.query<Sequence[]>(
+			const result = await this.dataSource.query<Sequence[]>(
 				`SELECT table_name AS name, ordinal_position AS value FROM information_schema.columns
 				WHERE table_schema = '${schema}' AND extra = 'auto_increment' AND table_name != 'migrations';`,
 			);
+
+			return result.reduce<Sequence>((acc, cur) => {
+				acc[cur.name] = cur.value;
+				return acc;
+			}, {});
 		}
 
 		throw new ApplicationError('Unknown database type', { extra: { dbType: this.dbType } });

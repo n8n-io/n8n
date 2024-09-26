@@ -1,54 +1,34 @@
 import { GlobalConfig } from '@n8n/config';
 import type { ColumnMetadata } from '@n8n/typeorm/metadata/ColumnMetadata';
-import archiver from 'archiver';
 import { jsonParse } from 'n8n-workflow';
 import fs from 'node:fs';
 import path from 'node:path';
-import { PassThrough } from 'node:stream';
+import { createGzip } from 'node:zlib';
+import tar from 'tar-stream';
 import { Service } from 'typedi';
 
 import { Logger } from '@/logger';
 
-import { MANIFEST_FILENAME } from './constants';
-import type { Manifest } from './manifest.schema';
-import type { DatabaseExportConfig, Row } from './types';
-import { FilesystemService } from '../../filesystem/filesystem.service';
+import { BATCH_SIZE, EXCLUDE_LIST, MANIFEST_FILENAME, ZIP_BASE_FILE_NAME } from './constants';
+import type { DatabaseExportConfig, Manifest, Row } from './types';
 import { DatabaseSchemaService } from '../database-schema.service';
 import type { DatabaseType } from '../types';
 
 // @TODO: Check minimum version for each DB type?
-// @TODO: Optional table exclude list
 
 @Service()
 export class DatabaseExportService {
 	private config: DatabaseExportConfig = {
-		storageDirPath: '/tmp/backup',
-		tarballBaseFileName: 'n8n-db-export',
-		batchSize: 500,
+		outDir: '/tmp/backup', // @TODO: Update to cwd
+		mode: 'full',
 	};
 
-	/** Paths to the files to include in the tarball. */
-	private readonly exportFilePaths: string[] = [];
-
-	/** Number of rows in tables being exported. */
-	private readonly rowCounts: { [tableName: string]: number } = {};
+	private readonly rowCounts: Manifest['rowCounts'] = {};
 
 	private readonly dbType: DatabaseType;
 
-	get tarballPath() {
-		const now = new Date();
-		const year = now.getFullYear();
-		const month = String(now.getMonth() + 1).padStart(2, '0');
-		const day = String(now.getDate()).padStart(2, '0');
-
-		const tarballFileName = `${this.config.tarballBaseFileName}-${year}-${month}-${day}.tar.gz`;
-
-		return path.join(this.config.storageDirPath, tarballFileName);
-	}
-
 	constructor(
 		private readonly globalConfig: GlobalConfig,
-		private readonly fsService: FilesystemService,
 		private readonly schemaService: DatabaseSchemaService,
 		private readonly logger: Logger,
 	) {
@@ -59,22 +39,31 @@ export class DatabaseExportService {
 		this.config = { ...this.config, ...config };
 	}
 
+	get tarballPath() {
+		const now = new Date();
+		const year = now.getFullYear();
+		const month = String(now.getMonth() + 1).padStart(2, '0');
+		const day = String(now.getDate()).padStart(2, '0');
+
+		const tarballFileName = `${ZIP_BASE_FILE_NAME}-${year}-${month}-${day}.tar.gz`;
+
+		return path.join(this.config.outDir, tarballFileName);
+	}
+
 	// #region Export
 
-	/** Export DB tables into a tarball of `.jsonl` files plus a `.json` metadata file. */
 	async export() {
-		await this.fsService.ensureDir(this.config.storageDirPath);
+		this.logger.info('[ExportService] Starting export', { outDir: this.config.outDir });
 
-		this.logger.info('[ExportService] Starting export', {
-			dbType: this.dbType,
-			storageDirPath: this.config.storageDirPath,
-		});
+		try {
+			await fs.promises.access(this.config.outDir);
+		} catch {
+			await fs.promises.mkdir(this.config.outDir, { recursive: true });
+		}
 
 		await this.writeTarball();
 
-		await this.postExportCleanup();
-
-		this.logger.info('[ExportService] Completed export', { tarballPath: this.tarballPath });
+		this.logger.info('[ExportService] Completed export', { zipPath: this.tarballPath });
 	}
 
 	// #endregion
@@ -82,48 +71,44 @@ export class DatabaseExportService {
 	// #region Export steps
 
 	private async writeTarball() {
-		const tarballPath = path.join(this.config.storageDirPath, this.tarballPath);
+		const pack = tar.pack();
 
-		const archive = archiver('zip', { zlib: { level: 9 } });
+		// DB row -> entryStream -> tarStream -> gzipStream -> writeStream
 
-		archive.pipe(fs.createWriteStream(tarballPath));
+		const tables =
+			this.config.mode === 'full'
+				? this.schemaService.getTables()
+				: this.schemaService.getTables().filter((t) => !EXCLUDE_LIST.includes(t.tableName));
 
-		const writeStream = new PassThrough();
-
-		for (const { tableName, columns } of this.schemaService.getTables()) {
-			archive.append(writeStream, { name: `${tableName}.jsonl` });
+		for (const { tableName, columns } of tables) {
+			const entry = pack.entry({ name: `${tableName}.jsonl` });
 
 			let offset = 0;
 			let totalRows = 0;
 
 			while (true) {
-				const rows = await this.schemaService
+				const batch = await this.schemaService
 					.getDataSource()
-					.query<Row[]>(
-						`SELECT * FROM ${tableName} LIMIT ${this.config.batchSize} OFFSET ${offset};`,
-					); // @TODO: Double-quotes for column in Postgres but not for other DB types?
+					.query<Row[]>(`SELECT * FROM ${tableName} LIMIT ${BATCH_SIZE} OFFSET ${offset};`);
+				// @TODO: Double quotes for Postgres but not others
 
-				if (rows.length === 0) break;
+				if (batch.length === 0) break;
 
-				for (const row of rows) {
+				for (const row of batch) {
 					for (const column of columns) {
 						this.normalizeRow(row, { column, tableName });
 					}
-
-					const json = JSON.stringify(row);
-					writeStream.write(json);
-					writeStream.write('\n');
+					entry.write(JSON.stringify(row) + '\n');
 				}
 
-				totalRows += rows.length;
-				offset += this.config.batchSize;
-
-				this.logger.info(`[ExportService] Exported ${totalRows} rows from ${tableName}`);
-
-				writeStream.end();
+				totalRows += batch.length;
+				offset += BATCH_SIZE;
 			}
 
+			if (totalRows === 0) continue;
+
 			this.rowCounts[tableName] = totalRows;
+			this.logger.info(`[ExportService] Exported ${totalRows} rows from ${tableName}`);
 		}
 
 		const manifest: Manifest = {
@@ -136,12 +121,14 @@ export class DatabaseExportService {
 
 		const manifestBuffer = Buffer.from(JSON.stringify(manifest, null, 2), 'utf-8');
 
-		archive.append(manifestBuffer, { name: MANIFEST_FILENAME });
+		pack.entry({ name: MANIFEST_FILENAME }, manifestBuffer);
 
-		await archive.finalize();
+		pack.finalize();
+
+		// pack.pipe(process.stdout);
+		pack.pipe(createGzip()).pipe(fs.createWriteStream(this.tarballPath));
 	}
 
-	/** Make values in SQLite and MySQL rows compatible with Postgres. */
 	private normalizeRow(
 		row: Row,
 		{ column, tableName }: { column: ColumnMetadata; tableName: string },
@@ -164,13 +151,6 @@ export class DatabaseExportService {
 		}
 
 		// @TODO: MySQL and MariaDB normalizations
-	}
-
-	/** Clear all `.jsonl` and `.json` files from the storage dir. */
-	async postExportCleanup() {
-		await this.fsService.removeFiles(this.exportFilePaths);
-
-		this.exportFilePaths.length = 0;
 	}
 
 	// #endregion
