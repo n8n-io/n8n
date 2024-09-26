@@ -1,5 +1,10 @@
 import type { INodeProperties } from 'n8n-workflow';
-import { addUpdateMask, handleDatesPresend, handlePagination } from './GenericFunctions';
+import {
+	addUpdateMaskPresend,
+	handleDatesPresend,
+	handleDisplayOptionsBugPresend,
+	handlePagination,
+} from './GenericFunctions';
 
 export const postOperations: INodeProperties[] = [
 	{
@@ -70,7 +75,9 @@ export const postOperations: INodeProperties[] = [
 				action: 'Update a post',
 				description: 'Update an existing post',
 				routing: {
-					send: { preSend: [handleDatesPresend, addUpdateMask] },
+					send: {
+						preSend: [handleDatesPresend, addUpdateMaskPresend, handleDisplayOptionsBugPresend],
+					},
 					request: {
 						method: 'PATCH',
 						url: '=/{{$parameter["post"]}}',
@@ -846,10 +853,11 @@ export const postFields: INodeProperties[] = [
 				type: 'options',
 				default: 'ACTION_TYPE_UNSPECIFIED',
 				description: 'The type of call to action',
-				displayOptions: { show: { postType: ['STANDARD', 'EVENT', 'ALERT'] } }, // ToDo: issue with displayOptions + routing. Tried also './postType'
-				routing: {
-					send: { type: 'body', property: 'callToAction.actionType' },
-				},
+				displayOptions: { show: { postType: ['STANDARD', 'EVENT', 'ALERT'] } },
+				// ToDo: There is a bug when using displayOptions + routing. Routing is handled as a presend function.
+				// routing: {
+				// 	send: { type: 'body', property: 'callToAction.actionType' },
+				// },
 				options: [
 					{
 						name: 'Action Type Unspecified',
@@ -895,10 +903,11 @@ export const postFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'The URL that users are sent to when clicking through the promotion',
-				displayOptions: { show: { postType: ['STANDARD', 'EVENT', 'ALERT'] } }, // ToDo: issue with displayOptions + routing. Tried also './postType'
-				routing: {
-					send: { type: 'body', property: 'callToAction.url' },
-				},
+				displayOptions: { show: { postType: ['STANDARD', 'EVENT', 'ALERT'] } },
+				// ToDo: There is a bug when using displayOptions + routing. Routing is handled as a presend function.
+				// routing: {
+				// 	send: { type: 'body', property: 'callToAction.url' },
+				// },
 			},
 			{
 				displayName: 'Title',
@@ -906,8 +915,9 @@ export const postFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'E.g. Sales this week.',
-				displayOptions: { show: { postType: ['EVENT'] } }, // ToDo: issue with displayOptions + routing. Tried also './postType'
-				routing: { send: { type: 'body', property: 'event.title' } },
+				displayOptions: { show: { postType: ['EVENT'] } },
+				// ToDo: There is a bug when using displayOptions + routing. Routing is handled as a presend function.
+				// routing: { send: { type: 'body', property: 'event.title' } },
 			},
 			{
 				displayName: 'Start Date and Time',
@@ -915,7 +925,7 @@ export const postFields: INodeProperties[] = [
 				type: 'dateTime',
 				default: '',
 				description: 'The start date and time of the event',
-				displayOptions: { show: { postType: ['EVENT'] } }, // ToDo: issue with displayOptions + routing. Tried also './postType'
+				displayOptions: { show: { postType: ['EVENT'] } },
 			},
 			{
 				displayName: 'End Date and Time',
@@ -923,7 +933,7 @@ export const postFields: INodeProperties[] = [
 				type: 'dateTime',
 				default: '',
 				description: 'The end date and time of the event',
-				displayOptions: { show: { postType: ['EVENT'] } }, // ToDo: issue with displayOptions + routing. Tried also './postType'
+				displayOptions: { show: { postType: ['EVENT'] } },
 			},
 			{
 				displayName: 'Title',
@@ -931,8 +941,9 @@ export const postFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'E.g. 20% off in store or online.',
-				displayOptions: { show: { postType: ['OFFER'] } }, // ToDo: issue with displayOptions + routing. Tried also './postType'
-				routing: { send: { type: 'body', property: 'event.title' } },
+				displayOptions: { show: { postType: ['OFFER'] } },
+				// ToDo: There is a bug when using displayOptions + routing. Routing is handled as a presend function.
+				// routing: { send: { type: 'body', property: 'event.title' } },
 			},
 			{
 				displayName: 'Start Date',
@@ -941,7 +952,7 @@ export const postFields: INodeProperties[] = [
 				default: '',
 				placeholder: 'YYYY-MM-DD',
 				description: 'The start date of the offer',
-				displayOptions: { show: { postType: ['OFFER'] } }, // ToDo: issue with displayOptions + routing. Tried also './postType'
+				displayOptions: { show: { postType: ['OFFER'] } },
 			},
 			{
 				displayName: 'End Date',
@@ -950,7 +961,7 @@ export const postFields: INodeProperties[] = [
 				default: '',
 				placeholder: 'YYYY-MM-DD',
 				description: 'The end date of the offer',
-				displayOptions: { show: { postType: ['OFFER'] } }, // ToDo: issue with displayOptions + routing. Tried also './postType'
+				displayOptions: { show: { postType: ['OFFER'] } },
 			},
 			{
 				displayName: 'Coupon Code',
@@ -958,10 +969,11 @@ export const postFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'The coupon code for the offer',
-				displayOptions: { show: { postType: ['OFFER'] } }, // ToDo: issue with displayOptions + routing. Tried also './postType'
-				routing: {
-					send: { type: 'body', property: 'offer.couponCode' },
-				},
+				displayOptions: { show: { postType: ['OFFER'] } },
+				// ToDo: There is a bug when using displayOptions + routing. Routing is handled as a presend function.
+				// routing: {
+				// 	send: { type: 'body', property: 'offer.couponCode' },
+				// },
 			},
 			{
 				displayName: 'Redeem Online Url',
@@ -969,10 +981,11 @@ export const postFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'Link to redeem the offer',
-				displayOptions: { show: { postType: ['OFFER'] } }, // ToDo: issue with displayOptions + routing. Tried also './postType'
-				routing: {
-					send: { type: 'body', property: 'offer.redeemOnlineUrl' },
-				},
+				displayOptions: { show: { postType: ['OFFER'] } },
+				// ToDo: There is a bug when using displayOptions + routing. Routing is handled as a presend function.
+				// routing: {
+				// 	send: { type: 'body', property: 'offer.redeemOnlineUrl' },
+				// },
 			},
 			{
 				displayName: 'Terms and Conditions',
@@ -980,10 +993,11 @@ export const postFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'The terms and conditions of the offer',
-				displayOptions: { show: { postType: ['OFFER'] } }, // ToDo: issue with displayOptions + routing. Tried also './postType'
-				routing: {
-					send: { type: 'body', property: 'offer.termsAndConditions' },
-				},
+				displayOptions: { show: { postType: ['OFFER'] } },
+				// ToDo: There is a bug when using displayOptions + routing. Routing is handled as a presend function.
+				// routing: {
+				// 	send: { type: 'body', property: 'offer.termsAndConditions' },
+				// },
 			},
 		],
 	},
