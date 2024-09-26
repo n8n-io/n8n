@@ -67,8 +67,7 @@ export class PublicApiKeyService {
 	 * console.log(redactedKey); // Output: '12345-*****'
 	 * ```
 	 */
-	redactApiKey(apiKey: string | null) {
-		if (!apiKey) return;
+	redactApiKey(apiKey: string) {
 		const keepLength = 5;
 		return (
 			API_KEY_PREFIX +
