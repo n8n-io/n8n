@@ -668,6 +668,78 @@ describe('Projects', { disableAutoLogin: true }, () => {
 				.should('have.length', 1);
 		});
 
+		it.only('should allow to change inaccessible credential when the workflow was moved to a team project', () => {
+			cy.signinAsOwner();
+			cy.visit(workflowsPage.url);
+
+			// Create a credential in the Home project
+			projects.getProjectTabCredentials().should('be.visible').click();
+			credentialsPage.getters.emptyListCreateCredentialButton().click();
+			projects.createCredential('Credential in Home project');
+
+			// Create a workflow in the Home project
+			projects.getHomeButton().click();
+			workflowsPage.getters.workflowCards().should('not.have.length');
+			workflowsPage.getters.newWorkflowButtonCard().click();
+			workflowsPage.getters.workflowCards().should('not.have.length');
+
+			workflowsPage.getters.newWorkflowButtonCard().click();
+			workflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+			workflowPage.actions.addNodeToCanvas(NOTION_NODE_NAME, true, true);
+			ndv.getters.backToCanvas().click();
+			workflowPage.actions.saveWorkflowOnButtonClick();
+
+			// Create a project and add a user to it
+			projects.createProject('Project 1');
+			projects.addProjectMember(INSTANCE_MEMBERS[0].email);
+			projects.getProjectSettingsSaveButton().click();
+
+			// Move the workflow from Home to Project 1
+			projects.getHomeButton().click();
+			workflowsPage.getters
+				.workflowCards()
+				.should('have.length', 1)
+				.filter(':contains("Owned by me")')
+				.should('exist');
+			workflowsPage.getters.workflowCardActions('My workflow').click();
+			workflowsPage.getters.workflowMoveButton().click();
+
+			projects
+				.getResourceMoveModal()
+				.should('be.visible')
+				.find('button:contains("Move workflow")')
+				.should('be.disabled');
+			projects.getProjectMoveSelect().click();
+			getVisibleSelect()
+				.find('li')
+				.should('have.length', 4)
+				.filter(':contains("Project 1")')
+				.click();
+			projects.getResourceMoveModal().find('button:contains("Move workflow")').click();
+
+			workflowsPage.getters
+				.workflowCards()
+				.should('have.length', 1)
+				.filter(':contains("Owned by me")')
+				.should('not.exist');
+
+			//Log out with instance owner and log in with the member user
+			mainSidebar.actions.openUserMenu();
+			cy.getByTestId('user-menu-item-logout').click();
+
+			cy.get('input[name="email"]').type(INSTANCE_MEMBERS[0].email);
+			cy.get('input[name="password"]').type(INSTANCE_MEMBERS[0].password);
+			cy.getByTestId('form-submit-button').click();
+
+			// Open the moved workflow
+			workflowsPage.getters.workflowCards().should('have.length', 1);
+			workflowsPage.getters.workflowCards().first().click();
+
+			// Change the inaccessible credential
+			workflowPage.getters.canvasNodeByName(NOTION_NODE_NAME).should('be.visible').dblclick();
+			ndv.getters.credentialInput().find('input').should('be.enabled');
+		});
+
 		it('should handle viewer role', () => {
 			cy.enableFeature('projectRole:viewer');
 			cy.signinAsOwner();
