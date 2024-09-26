@@ -96,15 +96,15 @@ export const addApiKey = async (user: User) => {
 
 export async function createOwnerWithApiKey() {
 	const owner = await createOwner();
-	const apiKeys = await addApiKey(owner);
-	owner.apiKeys = [apiKeys];
+	const apiKey = await addApiKey(owner);
+	owner.apiKeys = [apiKey];
 	return owner;
 }
 
 export async function createMemberWithApiKey() {
 	const member = await createMember();
-	const apiKeys = await addApiKey(member);
-	member.apiKeys = [apiKeys];
+	const apiKey = await addApiKey(member);
+	member.apiKeys = [apiKey];
 	return member;
 }
 
