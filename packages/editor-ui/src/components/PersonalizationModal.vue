@@ -25,7 +25,6 @@ import {
 	TELECOMS_INDUSTRY,
 	OTHER_AUTOMATION_GOAL,
 	COMPANY_TYPE_KEY,
-	EMAIL_KEY,
 	SAAS_COMPANY_TYPE,
 	ECOMMERCE_COMPANY_TYPE,
 	MSP_INDUSTRY,
@@ -85,7 +84,6 @@ import {
 import { useToast } from '@/composables/useToast';
 import Modal from '@/components/Modal.vue';
 import type { IFormInputs, IPersonalizationLatestVersion } from '@/Interface';
-import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/root.store';
 import { useUsersStore } from '@/stores/users.store';
 import { createEventBus, createFormEventBus } from 'n8n-design-system/utils';
@@ -102,7 +100,6 @@ const formBus = createFormEventBus();
 const { showError } = useToast();
 const i18n = useI18n();
 const rootStore = useRootStore();
-const settingsStore = useSettingsStore();
 const usersStore = useUsersStore();
 const posthogStore = usePostHog();
 const route = useRoute();
@@ -112,15 +109,6 @@ const formValues = ref<Record<string, string>>({});
 const isSaving = ref(false);
 
 const survey = computed<IFormInputs>(() => [
-	{
-		name: EMAIL_KEY,
-		properties: {
-			label: i18n.baseText('personalizationModal.yourEmailAddress'),
-			type: 'text',
-			placeholder: i18n.baseText('personalizationModal.email'),
-		},
-		shouldDisplay: () => settingsStore.isDesktopDeployment && !usersStore.currentUser?.firstName,
-	},
 	{
 		name: COMPANY_TYPE_KEY,
 		properties: {

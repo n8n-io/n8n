@@ -200,7 +200,7 @@ export default defineComponent({
 			MAX_DISPLAY_ITEMS_AUTO_ALL,
 			currentPage: 1,
 			pageSize: 10,
-			pageSizes: [10, 25, 50, 100],
+			pageSizes: [1, 10, 25, 50, 100],
 
 			pinDataDiscoveryTooltipVisible: false,
 			isControlledPinDataTooltip: false,
@@ -600,7 +600,7 @@ export default defineComponent({
 
 			if (error && errorsToTrack.some((e) => error.message?.toLowerCase().includes(e))) {
 				this.$telemetry.track(
-					`User encountered an error: "${error.message}"`,
+					'User encountered an error',
 					{
 						node: this.node.type,
 						errorMessage: error.message,

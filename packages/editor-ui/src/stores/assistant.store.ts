@@ -46,6 +46,10 @@ export const ENABLED_VIEWS = [
 	VIEWS.EXECUTION_PREVIEW,
 	VIEWS.WORKFLOWS,
 	VIEWS.CREDENTIALS,
+	VIEWS.PROJECTS_CREDENTIALS,
+	VIEWS.PROJECTS_WORKFLOWS,
+	VIEWS.PROJECT_SETTINGS,
+	VIEWS.TEMPLATE_SETUP,
 ];
 const READABLE_TYPES = ['code-diff', 'text', 'block'];
 
@@ -356,9 +360,9 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		resetAssistantChat();
 		chatSessionTask.value = credentialType ? 'credentials' : 'support';
 		chatSessionCredType.value = credentialType;
-		chatWindowOpen.value = true;
 		addUserMessage(userMessage, id);
 		addLoadingAssistantMessage(locale.baseText('aiAssistant.thinkingSteps.thinking'));
+		openChat();
 		streaming.value = true;
 
 		let payload: ChatRequest.InitSupportChat | ChatRequest.InitCredHelp = {

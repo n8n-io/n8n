@@ -2,13 +2,14 @@ import type { Redis as SingleNodeClient } from 'ioredis';
 import { mock } from 'jest-mock-extended';
 
 import config from '@/config';
-import type { RedisClientService } from '@/services/redis/redis-client.service';
+import type { RedisClientService } from '@/services/redis-client.service';
 
 import { Subscriber } from '../pubsub/subscriber.service';
 
 describe('Subscriber', () => {
 	beforeEach(() => {
 		config.set('executions.mode', 'queue');
+		jest.restoreAllMocks();
 	});
 
 	const client = mock<SingleNodeClient>();
@@ -47,14 +48,16 @@ describe('Subscriber', () => {
 		});
 	});
 
-	describe('setHandler', () => {
-		it('should set handler function', () => {
+	describe('setMessageHandler', () => {
+		it('should set message handler function for channel', () => {
 			const subscriber = new Subscriber(mock(), redisClientService);
+			const channel = 'n8n.commands';
 			const handlerFn = jest.fn();
 
-			subscriber.addMessageHandler(handlerFn);
+			subscriber.setMessageHandler(channel, handlerFn);
 
-			expect(client.on).toHaveBeenCalledWith('message', handlerFn);
+			// @ts-expect-error Private field
+			expect(subscriber.handlers).toEqual(new Map([[channel, handlerFn]]));
 		});
 	});
 });

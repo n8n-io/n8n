@@ -19,7 +19,7 @@ import OutputItemSelect from './InlineExpressionEditor/OutputItemSelect.vue';
 import { useI18n } from '@/composables/useI18n';
 import { useDebounce } from '@/composables/useDebounce';
 import DraggableTarget from './DraggableTarget.vue';
-import { dropInEditor } from '@/plugins/codemirror/dragAndDrop';
+import { dropInExpressionEditor } from '@/plugins/codemirror/dragAndDrop';
 
 import { APP_MODALS_ELEMENT_ID } from '@/constants';
 
@@ -119,7 +119,7 @@ function closeDialog() {
 async function onDrop(expression: string, event: MouseEvent) {
 	if (!inputEditor.value) return;
 
-	await dropInEditor(toRaw(inputEditor.value), event, expression);
+	await dropInExpressionEditor(toRaw(inputEditor.value), event, expression);
 }
 </script>
 
