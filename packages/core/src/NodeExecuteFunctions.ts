@@ -2005,7 +2005,7 @@ export async function getCredentials<T extends object = ICredentialDataDecrypted
 	connectionInputData?: INodeExecutionData[],
 	itemIndex?: number,
 ): Promise<T> {
-	const type = typeof credType === 'string' ? credType : credType.name;
+	const type = typeof credType === 'string' ? credType : new credType().name;
 	// Get the NodeType as it has the information if the credentials are required
 	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 	if (nodeType === undefined) {

@@ -9,7 +9,9 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
-import type { StrapiApiCredential } from '@credentials/StrapiApi.credentials';
+
+import { StrapiApi } from '@credentials/StrapiApi.credentials';
+import { StrapiTokenApi } from '@credentials/StrapiTokenApi.credentials';
 
 export const removeTrailingSlash = (url: string) => {
 	if (url.endsWith('/')) {
@@ -28,13 +30,9 @@ export async function strapiApiRequest(
 	headers: IDataObject = {},
 ) {
 	const authenticationMethod = this.getNodeParameter('authentication', 0);
-	let credentials: Pick<StrapiApiCredential, 'apiVersion' | 'url'>;
-
-	if (authenticationMethod === 'password') {
-		credentials = await this.getCredentials('strapiApi');
-	} else {
-		credentials = await this.getCredentials('strapiTokenApi');
-	}
+	const credentials = await this.getCredentials(
+		authenticationMethod === 'password' ? StrapiApi : StrapiTokenApi,
+	);
 
 	const url = removeTrailingSlash(credentials.url);
 
