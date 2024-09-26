@@ -860,6 +860,7 @@ async function onAddNodesAndConnections(
 	const mappedConnections: CanvasConnectionCreateData[] = connections.map(({ from, to }) => {
 		const fromNode = editableWorkflow.value.nodes[offsetIndex + from.nodeIndex];
 		const toNode = editableWorkflow.value.nodes[offsetIndex + to.nodeIndex];
+		const type = from.type ?? to.type ?? NodeConnectionType.Main;
 
 		return {
 			source: fromNode.id,
@@ -867,11 +868,11 @@ async function onAddNodesAndConnections(
 			data: {
 				source: {
 					index: from.outputIndex ?? 0,
-					type: NodeConnectionType.Main,
+					type,
 				},
 				target: {
 					index: to.inputIndex ?? 0,
-					type: NodeConnectionType.Main,
+					type,
 				},
 			},
 		};

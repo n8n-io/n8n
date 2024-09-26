@@ -34,8 +34,9 @@ import {
 	StandardSQL,
 	keywordCompletionSource,
 } from '@n8n/codemirror-lang-sql';
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, toRaw, watch } from 'vue';
 import { codeNodeEditorTheme } from '../CodeNodeEditor/theme';
+import { dropInExpressionEditor, mappingDropCursor } from '@/plugins/codemirror/dragAndDrop';
 
 const SQL_DIALECTS = {
 	StandardSQL,
@@ -111,6 +112,7 @@ const extensions = computed(() => {
 			foldGutter(),
 			dropCursor(),
 			bracketMatching(),
+			mappingDropCursor(),
 		]);
 	}
 	return baseExtensions;
@@ -178,11 +180,28 @@ function highlightLine(lineNumber: number | 'final') {
 		selection: { anchor: lineToHighlight.from },
 	});
 }
+
+async function onDrop(value: string, event: MouseEvent) {
+	if (!editor.value) return;
+
+	await dropInExpressionEditor(toRaw(editor.value), event, value);
+}
 </script>
 
 <template>
 	<div :class="$style.sqlEditor">
-		<div ref="sqlEditor" :class="$style.codemirror" data-test-id="sql-editor-container"></div>
+		<DraggableTarget type="mapping" :disabled="isReadOnly" @drop="onDrop">
+			<template #default="{ activeDrop, droppable }">
+				<div
+					ref="sqlEditor"
+					:class="[
+						$style.codemirror,
+						{ [$style.activeDrop]: activeDrop, [$style.droppable]: droppable },
+					]"
+					data-test-id="sql-editor-container"
+				></div>
+			</template>
+		</DraggableTarget>
 		<slot name="suffix" />
 		<InlineExpressionEditorOutput
 			v-if="!fullscreen"
@@ -201,5 +220,22 @@ function highlightLine(lineNumber: number | 'final') {
 
 .codemirror {
 	height: 100%;
+}
+
+.codemirror.droppable {
+	:global(.cm-editor) {
+		border-color: var(--color-ndv-droppable-parameter);
+		border-style: dashed;
+		border-width: 1.5px;
+	}
+}
+
+.codemirror.activeDrop {
+	:global(.cm-editor) {
+		border-color: var(--color-success);
+		border-style: solid;
+		cursor: grabbing;
+		border-width: 1px;
+	}
 }
 </style>

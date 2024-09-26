@@ -1530,8 +1530,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 
 		removeNode(node);
-
-		// @TODO When removing node connected between two nodes, create a connection between them
 	}
 
 	function removeNodeConnectionsById(nodeId: string): void {
