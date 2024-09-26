@@ -356,18 +356,21 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			workflowsStore.allNodes.some((node) => node.type === FORM_TRIGGER_NODE_TYPE);
 
 		const resolveWaitingNodesData = async (): Promise<void> => {
-			let delay = 300;
-			let timeoutId: NodeJS.Timeout | null = null;
-
 			return await new Promise<void>((resolve) => {
+				let delay = 300;
+				let timeoutId: NodeJS.Timeout | null = null;
+
 				const processExecution = async () => {
+					await useExternalHooks().run('workflowRun.runWorkflow', {
+						nodeName: options.destinationNode,
+						source: options.source,
+					});
 					const execution = await workflowsStore.getExecution((executionId as string) || '');
 
 					localStorage.removeItem(FORM_RELOAD);
 
 					if (!execution || workflowsStore.workflowExecutionData === null) {
 						uiStore.removeActiveAction('workflowRunning');
-						await stopCurrentExecution();
 						if (timeoutId) clearTimeout(timeoutId);
 						resolve();
 						return;
@@ -416,11 +419,6 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 		};
 
 		await resolveWaitingNodesData();
-
-		await useExternalHooks().run('workflowRun.runWorkflow', {
-			nodeName: options.destinationNode,
-			source: options.source,
-		});
 
 		return runWorkflowApiResponse;
 	}
