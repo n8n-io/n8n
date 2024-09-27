@@ -258,7 +258,7 @@ const WorkflowsView = defineComponent({
 			});
 		},
 		isValidProjectId(projectId: string) {
-			return this.projectsStore.projects.some((project) => project.id === projectId);
+			return this.projectsStore.availableProjects.some((project) => project.id === projectId);
 		},
 		async setFiltersFromQueryString() {
 			const { tags, status, search, homeProject } = this.$route.query;
@@ -266,7 +266,7 @@ const WorkflowsView = defineComponent({
 			const filtersToApply: { [key: string]: string | string[] | boolean } = {};
 
 			if (homeProject && typeof homeProject === 'string') {
-				await this.projectsStore.getAllProjects();
+				await this.projectsStore.getAvailableProjects();
 				if (this.isValidProjectId(homeProject)) {
 					filtersToApply.homeProject = homeProject;
 				}
