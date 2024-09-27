@@ -62,7 +62,9 @@ const classes = computed(() => {
 });
 
 const formattedStartedAtDate = computed(() => {
-	return props.execution.startedAt ? formatDate(props.execution.startedAt) : '';
+	return props.execution.startedAt
+		? formatDate(props.execution.startedAt)
+		: i18n.baseText('executionsList.startingSoon');
 });
 
 const formattedWaitTillDate = computed(() => {
