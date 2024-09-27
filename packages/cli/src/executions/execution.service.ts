@@ -21,7 +21,7 @@ import { ActiveExecutions } from '@/active-executions';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import config from '@/config';
 import type { User } from '@/databases/entities/user';
-import { AnnotationTagMappingRepository } from '@/databases/repositories/annotation-tag-mapping.repository';
+import { AnnotationTagMappingRepository } from '@/databases/repositories/annotation-tag-mapping.repository.ee';
 import { ExecutionAnnotationRepository } from '@/databases/repositories/execution-annotation.repository';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import type { IGetExecutionsQueryFilter } from '@/databases/repositories/execution.repository';

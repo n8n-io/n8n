@@ -26,7 +26,7 @@ import type {
 import type PCancelable from 'p-cancelable';
 
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
-import type { AnnotationTagEntity } from '@/databases/entities/annotation-tag-entity';
+import type { AnnotationTagEntity } from '@/databases/entities/annotation-tag-entity.ee';
 import type { AuthProviderType } from '@/databases/entities/auth-identity';
 import type { SharedCredentials } from '@/databases/entities/shared-credentials';
 import type { TagEntity } from '@/databases/entities/tag-entity';
