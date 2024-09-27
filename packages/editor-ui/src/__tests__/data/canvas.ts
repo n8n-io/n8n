@@ -1,5 +1,5 @@
 import { CanvasNodeHandleKey, CanvasNodeKey } from '@/constants';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import type {
 	CanvasNode,
 	CanvasNodeData,
@@ -141,7 +141,7 @@ export function createCanvasHandleProvide({
 			mode: ref(mode),
 			type: ref(type),
 			index: ref(index),
-			isConnected: ref(isConnected),
+			isConnected: computed(() => isConnected),
 			isConnecting: ref(isConnecting),
 			runData: ref(runData),
 			isReadOnly: ref(isReadOnly),
