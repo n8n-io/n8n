@@ -1512,6 +1512,10 @@ describe('PUT /workflows/:id/transfer', () => {
 		const secondProject = await createTeamProject('second-project', member);
 		const workflow = await createWorkflow({}, firstProject);
 
+		// Make data more similar to real world scenario by injecting additional records into the database
+		await createTeamProject('third-project', member);
+		await createWorkflow({}, firstProject);
+
 		/**
 		 * Act
 		 */
@@ -1523,6 +1527,13 @@ describe('PUT /workflows/:id/transfer', () => {
 		 * Assert
 		 */
 		expect(response.statusCode).toBe(204);
+
+		const workflowsInProjectResponse = await authMemberAgent
+			.get(`/workflows?projectId=${secondProject.id}`)
+			.send();
+
+		expect(workflowsInProjectResponse.statusCode).toBe(200);
+		expect(workflowsInProjectResponse.body.data[0].id).toBe(workflow.id);
 	});
 
 	test('if no destination project, should reject', async () => {
