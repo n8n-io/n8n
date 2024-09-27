@@ -64,6 +64,7 @@ import { CreateInvalidAuthTokenTable1723627610222 } from '../common/172362761022
 import { RefactorExecutionIndices1723796243146 } from '../common/1723796243146-RefactorExecutionIndices';
 import { CreateAnnotationTables1724753530828 } from '../common/1724753530828-CreateExecutionAnnotationTables';
 import { AddApiKeysTable1724951148974 } from '../common/1724951148974-AddApiKeysTable';
+import { SeparateExecutionCreationFromStart1727427440136 } from '../common/1727427440136-SeparateExecutionCreationFromStart';
 
 export const mysqlMigrations: Migration[] = [
 	InitialMigration1588157391238,
@@ -130,4 +131,5 @@ export const mysqlMigrations: Migration[] = [
 	RefactorExecutionIndices1723796243146,
 	CreateAnnotationTables1724753530828,
 	AddApiKeysTable1724951148974,
+	SeparateExecutionCreationFromStart1727427440136,
 ];

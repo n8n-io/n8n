@@ -115,6 +115,7 @@ export type SaveExecutionDataType = 'all' | 'none';
 export interface IExecutionBase {
 	id: string;
 	mode: WorkflowExecuteMode;
+	createdAt: Date; // set by DB
 	startedAt: Date;
 	stoppedAt?: Date; // empty value means execution is still running
 	workflowId: string;
@@ -131,10 +132,11 @@ export interface IExecutionDb extends IExecutionBase {
 	workflowData: IWorkflowBase;
 }
 
-/**
- * Payload for creating or updating an execution.
- */
-export type ExecutionPayload = Omit<IExecutionDb, 'id'>;
+/** Payload for creating an execution. */
+export type CreateExecutionPayload = Omit<IExecutionDb, 'id' | 'createdAt' | 'startedAt'>;
+
+/** Payload for updating an execution. */
+export type UpdateExecutionPayload = Omit<IExecutionDb, 'id' | 'createdAt'>;
 
 export interface IExecutionResponse extends IExecutionBase {
 	id: string;
