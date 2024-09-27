@@ -1,6 +1,6 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
-import type { IUser } from '@/Interface';
+import type { ApiKey, IUser } from '@/Interface';
 import { useToast } from '@/composables/useToast';
 import { useMessage } from '@/composables/useMessage';
 
@@ -29,7 +29,7 @@ export default defineComponent({
 		return {
 			loading: false,
 			mounted: false,
-			apiKey: '',
+			apiKeys: [] as ApiKey[],
 			swaggerUIEnabled: false,
 			apiDocsURL: '',
 		};
@@ -37,7 +37,7 @@ export default defineComponent({
 	mounted() {
 		if (!this.isPublicApiEnabled) return;
 
-		void this.getApiKey();
+		void this.getApiKeys();
 		const baseUrl = this.rootStore.baseUrl;
 		const apiPath = this.settingsStore.publicApiPath;
 		const latestVersion = this.settingsStore.publicApiLatestVersion;
@@ -61,7 +61,8 @@ export default defineComponent({
 			return this.settingsStore.isPublicApiEnabled;
 		},
 		isRedactedApiKey(): boolean {
-			return this.apiKey.includes('*');
+			if (!this.apiKeys) return false;
+			return this.apiKeys[0].apiKey.includes('*');
 		},
 	},
 	methods: {
@@ -81,9 +82,9 @@ export default defineComponent({
 				await this.deleteApiKey();
 			}
 		},
-		async getApiKey() {
+		async getApiKeys() {
 			try {
-				this.apiKey = (await this.settingsStore.getApiKey()) || '';
+				this.apiKeys = await this.settingsStore.getApiKeys();
 			} catch (error) {
 				this.showError(error, this.$locale.baseText('settings.api.view.error'));
 			} finally {
@@ -94,7 +95,8 @@ export default defineComponent({
 			this.loading = true;
 
 			try {
-				this.apiKey = (await this.settingsStore.createApiKey()) || '';
+				const newApiKey = await this.settingsStore.createApiKey();
+				this.apiKeys.push(newApiKey);
 			} catch (error) {
 				this.showError(error, this.$locale.baseText('settings.api.create.error'));
 			} finally {
@@ -104,12 +106,12 @@ export default defineComponent({
 		},
 		async deleteApiKey() {
 			try {
-				await this.settingsStore.deleteApiKey();
+				await this.settingsStore.deleteApiKey(this.apiKeys[0].id);
 				this.showMessage({
 					title: this.$locale.baseText('settings.api.delete.toast'),
 					type: 'success',
 				});
-				this.apiKey = '';
+				this.apiKeys = [];
 			} catch (error) {
 				this.showError(error, this.$locale.baseText('settings.api.delete.error'));
 			} finally {
@@ -134,7 +136,7 @@ export default defineComponent({
 			</n8n-heading>
 		</div>
 
-		<div v-if="apiKey">
+		<div v-if="apiKeys.length">
 			<p class="mb-s">
 				<n8n-info-tip :bold="false">
 					<i18n-t keypath="settings.api.view.info" tag="span">
@@ -161,10 +163,11 @@ export default defineComponent({
 						{{ $locale.baseText('generic.delete') }}
 					</n8n-link>
 				</span>
+
 				<div>
 					<CopyInput
-						:label="$locale.baseText('settings.api.view.myKey')"
-						:value="apiKey"
+						:label="apiKeys[0].label"
+						:value="apiKeys[0].apiKey"
 						:copy-button-text="$locale.baseText('generic.clickToCopy')"
 						:toast-title="$locale.baseText('settings.api.view.copy.toast')"
 						:redact-value="true"
