@@ -22,7 +22,7 @@ import { useAssistantStore } from '@/stores/assistant.store';
 import type { ChatRequest } from '@/types/assistant.types';
 import InlineAskAssistantButton from 'n8n-design-system/components/InlineAskAssistantButton/InlineAskAssistantButton.vue';
 import { useUIStore } from '@/stores/ui.store';
-import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
+import { isCommunityPackageName, simplifyErrorForAssistant } from '@/utils/nodeTypesUtils';
 
 type Props = {
 	// TODO: .node can be undefined
@@ -128,28 +128,6 @@ const assistantAlreadyAsked = computed(() => {
 		node: props.error.node || ndvStore.activeNode,
 	});
 });
-
-function simplifyErrorForAssistant(
-	error: NodeError | NodeApiError | NodeOperationError,
-): ChatRequest.ErrorContext['error'] {
-	const simple: ChatRequest.ErrorContext['error'] = {
-		name: error.name,
-		message: error.message,
-	};
-	if ('type' in error) {
-		simple.type = error.type;
-	}
-	if ('description' in error && error.description) {
-		simple.description = error.description;
-	}
-	if (error.stack) {
-		simple.stack = error.stack;
-	}
-	if ('lineNumber' in error) {
-		simple.lineNumber = error.lineNumber;
-	}
-	return simple;
-}
 
 function nodeVersionTag(nodeType: NodeError['node']): string {
 	if (!nodeType || ('hidden' in nodeType && nodeType.hidden)) {

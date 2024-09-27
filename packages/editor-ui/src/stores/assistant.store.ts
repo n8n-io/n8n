@@ -18,7 +18,7 @@ import { useRoute } from 'vue-router';
 import { useSettingsStore } from './settings.store';
 import { assert } from '@/utils/assert';
 import { useWorkflowsStore } from './workflows.store';
-import type { IDataObject, ICredentialType, INodeParameters } from 'n8n-workflow';
+import type { IDataObject, ICredentialType, INodeParameters, NodeError } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 import { ndvEventBus, codeNodeEditorEventBus } from '@/event-bus';
 import { useNDVStore } from './ndv.store';
@@ -30,6 +30,7 @@ import {
 	getNodesSchemas,
 	processNodeForAssistant,
 	isNodeReferencingInputData,
+	simplifyErrorForAssistant,
 } from '@/utils/nodeTypesUtils';
 import { useNodeTypesStore } from './nodeTypes.store';
 import { usePostHog } from './posthog.store';
@@ -369,10 +370,26 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		const activeCredential = isCredentialModalActive
 			? useCredentialsStore().getCredentialTypeByName(uiStore.activeCredentialType ?? '')
 			: undefined;
+		const executionResult = workflowsStore.workflowExecutionData?.data?.resultData;
+		const isCurrentNodeExecuted = Boolean(
+			executionResult?.runData?.hasOwnProperty(activeNode?.name ?? ''),
+		);
+		const currentNodeHasError =
+			executionResult?.error &&
+			'node' in executionResult.error &&
+			executionResult.error.node?.name === activeNode?.name;
+		const nodeError = currentNodeHasError ? (executionResult.error as NodeError) : undefined;
+		const executionStatus = isCurrentNodeExecuted
+			? {
+					status: nodeError ? 'error' : 'success',
+					error: nodeError ? simplifyErrorForAssistant(nodeError) : undefined,
+				}
+			: undefined;
 		return {
 			activeNodeInfo: {
 				node: activeNodeForLLM ?? undefined,
-				nodeIssues: activeNode?.issues ?? undefined,
+				nodeIssues: !isCurrentNodeExecuted ? activeNode?.issues : undefined,
+				executionStatus,
 			},
 			activeCredentials: activeCredential
 				? { name: activeCredential?.name, displayName: activeCredential?.displayName }

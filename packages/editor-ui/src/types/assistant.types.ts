@@ -83,6 +83,10 @@ export namespace ChatRequest {
 		activeNodeInfo?: {
 			node?: INode;
 			nodeIssues?: INodeIssues;
+			executionStatus?: {
+				status: string;
+				error?: ErrorContext['error'];
+			};
 		};
 		activeCredentials?: Pick<ICredentialType, 'name' | 'displayName'>;
 	}

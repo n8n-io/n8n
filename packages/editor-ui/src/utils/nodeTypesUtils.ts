@@ -25,6 +25,9 @@ import { isResourceLocatorValue } from '@/utils/typeGuards';
 import { isJsonKeyObject } from '@/utils/typesUtils';
 import {
 	deepCopy,
+	NodeApiError,
+	NodeError,
+	NodeOperationError,
 	type IDataObject,
 	type INode,
 	type INodeCredentialDescription,
@@ -579,6 +582,31 @@ export function processNodeForAssistant(node: INode, propsToRemove: string[]): I
 	);
 	nodeForLLM.parameters = resolvedParameters;
 	return nodeForLLM;
+}
+
+/**
+ * Simplify node error object for AI assistant
+ */
+export function simplifyErrorForAssistant(
+	error: NodeError | NodeApiError | NodeOperationError,
+): ChatRequest.ErrorContext['error'] {
+	const simple: ChatRequest.ErrorContext['error'] = {
+		name: error.name,
+		message: error.message,
+	};
+	if ('type' in error) {
+		simple.type = error.type;
+	}
+	if ('description' in error && error.description) {
+		simple.description = error.description;
+	}
+	if (error.stack) {
+		simple.stack = error.stack;
+	}
+	if ('lineNumber' in error) {
+		simple.lineNumber = error.lineNumber;
+	}
+	return simple;
 }
 
 export function isNodeReferencingInputData(node: INode): boolean {
