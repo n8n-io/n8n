@@ -41,7 +41,11 @@ import config from '@/config';
 import { CredentialsHelper } from '@/credentials-helper';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { ExternalHooks } from '@/external-hooks';
-import type { IWorkflowExecuteProcess, IWorkflowErrorData, ExecutionPayload } from '@/interfaces';
+import type {
+	IWorkflowExecuteProcess,
+	IWorkflowErrorData,
+	UpdateExecutionPayload,
+} from '@/interfaces';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
@@ -865,7 +869,7 @@ async function executeWorkflow(
 		// Therefore, database might not contain finished errors.
 		// Force an update to db as there should be no harm doing this
 
-		const fullExecutionData: ExecutionPayload = {
+		const fullExecutionData: UpdateExecutionPayload = {
 			data: fullRunData.data,
 			mode: fullRunData.mode,
 			finished: fullRunData.finished ? fullRunData.finished : false,
