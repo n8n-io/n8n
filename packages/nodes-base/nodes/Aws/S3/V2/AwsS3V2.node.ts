@@ -216,7 +216,7 @@ export class AwsS3V2 implements INodeType {
 						const servicePath = bucketName.includes('.') ? 's3' : `${bucketName}.s3`;
 						const basePath = bucketName.includes('.') ? `/${bucketName}` : '';
 						const returnAll = this.getNodeParameter('returnAll', 0);
-						const additionalFields = this.getNodeParameter('additionalFields', 0);
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (additionalFields.prefix) {
 							qs.prefix = additionalFields.prefix as string;
