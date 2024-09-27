@@ -174,7 +174,7 @@ export namespace PubSub {
 		targets?: string[];
 		command: WorkerResponseKey;
 	} & (WorkerResponseMap[WorkerResponseKey] extends never
-		? { payload?: never } // some commands carry no payload
+		? { payload?: never } // some responses carry no payload
 		: { payload: WorkerResponseMap[WorkerResponseKey] });
 
 	type ToWorkerResponse<WorkerResponseKey extends keyof WorkerResponseMap> = Resolve<
