@@ -90,7 +90,8 @@ export async function addUpdateMaskPresend(
 	const additionalOptions = this.getNodeParameter('additionalOptions') as IDataObject;
 	const propertyMapping: { [key: string]: string } = {
 		postType: 'topicType',
-		actionType: 'callToAction.actionType',
+		actionType: 'actionType',
+		callToActionType: 'callToAction.actionType',
 		url: 'callToAction.url',
 		startDateTime: 'event.schedule.startDate,event.schedule.startTime',
 		endDateTime: 'event.schedule.endDate,event.schedule.endTime',
@@ -101,13 +102,17 @@ export async function addUpdateMaskPresend(
 		redeemOnlineUrl: 'offer.redeemOnlineUrl',
 		termsAndConditions: 'offer.termsAndConditions',
 	};
-	const updateMask = Object.keys(additionalOptions)
-		.map((key) => propertyMapping[key] || key)
-		.join(',');
-	opts.qs = {
-		...opts.qs,
-		updateMask,
-	};
+
+	if (Object.keys(additionalOptions).length) {
+		const updateMask = Object.keys(additionalOptions)
+			.map((key) => propertyMapping[key] || key)
+			.join(',');
+		opts.qs = {
+			...opts.qs,
+			updateMask,
+		};
+	}
+
 	return opts;
 }
 
@@ -124,7 +129,7 @@ export async function handleDisplayOptionsBugPresend(
 
 	// Define a mapping between additionalOptions keys and their corresponding body paths
 	const mapping: { [key: string]: string } = {
-		actionType: 'callToAction.actionType',
+		callToActionType: 'callToAction.actionType',
 		url: 'callToAction.url',
 		title: 'event.title',
 		couponCode: 'offer.couponCode',

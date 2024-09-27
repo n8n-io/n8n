@@ -1,4 +1,13 @@
-import type { INodeProperties } from 'n8n-workflow';
+import {
+	NodeApiError,
+	NodeOperationError,
+	type IDataObject,
+	type IExecuteSingleFunctions,
+	type IN8nHttpFullResponse,
+	type INodeExecutionData,
+	type INodeProperties,
+	type JsonObject,
+} from 'n8n-workflow';
 import {
 	addUpdateMaskPresend,
 	handleDatesPresend,
@@ -36,7 +45,34 @@ export const postOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'DELETE',
-						url: '=//{{$parameter["post"]}}',
+						url: '=/{{$parameter["post"]}}',
+						ignoreHttpStatusErrors: true,
+					},
+					output: {
+						postReceive: [
+							async function (
+								this: IExecuteSingleFunctions,
+								data: INodeExecutionData[],
+								response: IN8nHttpFullResponse,
+							): Promise<INodeExecutionData[]> {
+								if (response.statusCode < 200 || response.statusCode >= 300) {
+									const post = this.getNodeParameter('post', undefined) as IDataObject;
+									if (post && response.statusCode === 404) {
+										// Don't return a 404 error if the post does not exist
+										throw new NodeOperationError(
+											this.getNode(),
+											'The post you are deleting could not be found. Adjust the "post" parameter setting to delete the post correctly',
+										);
+									}
+
+									throw new NodeApiError(this.getNode(), response.body as JsonObject, {
+										message: response.statusMessage,
+										httpCode: response.statusCode.toString(),
+									});
+								}
+								return data;
+							},
+						],
 					},
 				},
 			},
@@ -49,6 +85,33 @@ export const postOperations: INodeProperties[] = [
 					request: {
 						method: 'GET',
 						url: '=/{{$parameter["post"]}}',
+						ignoreHttpStatusErrors: true,
+					},
+					output: {
+						postReceive: [
+							async function (
+								this: IExecuteSingleFunctions,
+								data: INodeExecutionData[],
+								response: IN8nHttpFullResponse,
+							): Promise<INodeExecutionData[]> {
+								if (response.statusCode < 200 || response.statusCode >= 300) {
+									const post = this.getNodeParameter('post', undefined) as IDataObject;
+									if (post && response.statusCode === 404) {
+										// Don't return a 404 error if the post does not exist
+										throw new NodeOperationError(
+											this.getNode(),
+											'The post you are requesting could not be found. Adjust the "post" parameter setting to retrieve the post correctly',
+										);
+									}
+
+									throw new NodeApiError(this.getNode(), response.body as JsonObject, {
+										message: response.statusMessage,
+										httpCode: response.statusCode.toString(),
+									});
+								}
+								return data;
+							},
+						],
 					},
 				},
 			},
@@ -81,6 +144,39 @@ export const postOperations: INodeProperties[] = [
 					request: {
 						method: 'PATCH',
 						url: '=/{{$parameter["post"]}}',
+						ignoreHttpStatusErrors: true,
+					},
+					output: {
+						postReceive: [
+							async function (
+								this: IExecuteSingleFunctions,
+								data: INodeExecutionData[],
+								response: IN8nHttpFullResponse,
+							): Promise<INodeExecutionData[]> {
+								if (response.statusCode < 200 || response.statusCode >= 300) {
+									const post = this.getNodeParameter('post') as IDataObject;
+									const additionalOptions = this.getNodeParameter('additionalOptions') as IDataObject;
+									if (post && response.statusCode === 404) {
+										// Don't return a 404 error if the post does not exist
+										throw new NodeOperationError(
+											this.getNode(),
+											'The post you are updating could not be found. Adjust the "post" parameter setting to update the post correctly',
+										);
+									}
+
+									if (response.statusCode === 400 && Object.keys(additionalOptions).length === 0) {
+										// Only display the hint if no additional options are set
+										return [{ json: { success: true } }];
+									}
+
+									throw new NodeApiError(this.getNode(), response.body as JsonObject, {
+										message: response.statusMessage,
+										httpCode: response.statusCode.toString(),
+									});
+								}
+								return data;
+							},
+						],
 					},
 				},
 			},
@@ -203,6 +299,58 @@ export const postFields: INodeProperties[] = [
 		routing: { send: { type: 'body', property: 'summary' } },
 	},
 	{
+		displayName: 'Title',
+		name: 'title',
+		type: 'string',
+		default: '',
+		description: 'E.g. Sales this week.',
+		displayOptions: { show: { resource: ['post'], operation: ['create'], postType: ['EVENT'] } },
+		routing: { send: { type: 'body', property: 'event.title' } },
+	},
+	{
+		displayName: 'Start Date and Time',
+		name: 'startDateTime',
+		type: 'dateTime',
+		default: '',
+		description: 'The start date and time of the event',
+		displayOptions: { show: { resource: ['post'], operation: ['create'], postType: ['EVENT'] } },
+	},
+	{
+		displayName: 'End Date and Time',
+		name: 'endDateTime',
+		type: 'dateTime',
+		default: '',
+		description: 'The end date and time of the event',
+		displayOptions: { show: { resource: ['post'], operation: ['create'], postType: ['EVENT'] } },
+	},
+	{
+		displayName: 'Title',
+		name: 'title',
+		type: 'string',
+		default: '',
+		description: 'E.g. 20% off in store or online.',
+		displayOptions: { show: { resource: ['post'], operation: ['create'], postType: ['OFFER'] } },
+		routing: { send: { type: 'body', property: 'event.title' } },
+	},
+	{
+		displayName: 'Start Date',
+		name: 'startDate',
+		type: 'string',
+		default: '',
+		placeholder: 'YYYY-MM-DD',
+		description: 'The start date of the offer',
+		displayOptions: { show: { resource: ['post'], operation: ['create'], postType: ['OFFER'] } },
+	},
+	{
+		displayName: 'End Date',
+		name: 'endDate',
+		type: 'string',
+		default: '',
+		placeholder: 'YYYY-MM-DD',
+		description: 'The end date of the offer',
+		displayOptions: { show: { resource: ['post'], operation: ['create'], postType: ['OFFER'] } },
+	},
+	{
 		displayName: 'Options',
 		name: 'additionalOptions',
 		type: 'collection',
@@ -221,8 +369,31 @@ export const postFields: INodeProperties[] = [
 				routing: { send: { type: 'body', property: 'languageCode' } },
 			},
 			{
+				displayName: 'Alert Type',
+				name: 'alertType',
+				type: 'options',
+				default: 'ALERT_TYPE_UNSPECIFIED',
+				description: 'The sub-type of the alert',
+				displayOptions: { show: { '/postType': ['ALERT'] } },
+				routing: {
+					send: { type: 'body', property: 'alertType' },
+				},
+				options: [
+					{
+						name: 'Alert Type Unspecified',
+						value: 'ALERT_TYPE_UNSPECIFIED',
+						description: 'Sub-type unspecified',
+					},
+					{
+						name: 'Covid 19',
+						value: 'COVID_19',
+						description: 'This alert is related to the 2019 Coronavirus Disease pandemic',
+					},
+				],
+			},
+			{
 				displayName: 'Call to Action Type',
-				name: 'actionType',
+				name: 'callToActionType',
 				type: 'options',
 				default: 'ACTION_TYPE_UNSPECIFIED',
 				description: 'The type of call to action',
@@ -280,59 +451,6 @@ export const postFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Title',
-				name: 'title',
-				type: 'string',
-				default: '',
-				description: 'E.g. Sales this week.',
-				displayOptions: { show: { '/postType': ['EVENT'] } },
-				routing: { send: { type: 'body', property: 'event.title' } },
-			},
-			{
-				displayName: 'Start Date and Time',
-				name: 'startDateTime',
-				type: 'dateTime',
-				default: '',
-				description: 'The start date and time of the event',
-				displayOptions: { show: { '/postType': ['EVENT'] } },
-			},
-			{
-				displayName: 'End Date and Time',
-				name: 'endDateTime',
-				type: 'dateTime',
-				default: '',
-				description: 'The end date and time of the event',
-				displayOptions: { show: { '/postType': ['EVENT'] } },
-			},
-			{
-				displayName: 'Title',
-				name: 'title',
-				type: 'string',
-				default: '',
-				description: 'E.g. 20% off in store or online.',
-				displayOptions: { show: { '/postType': ['OFFER'] } },
-				routing: { send: { type: 'body', property: 'event.title' } },
-			},
-			{
-				displayName: 'Start Date',
-				name: 'startDate',
-				type: 'string',
-				default: '',
-				placeholder: 'YYYY-MM-DD',
-				description: 'The start date of the offer',
-				displayOptions: { show: { '/postType': ['OFFER'] } },
-			},
-			{
-				displayName: 'End Date',
-				name: 'endDate',
-				type: 'string',
-				default: '',
-				placeholder: 'YYYY-MM-DD',
-				description: 'The end date of the offer',
-				displayOptions: { show: { '/postType': ['OFFER'] } },
-				typeOptions: { useDateAndTime: false },
-			},
-			{
 				displayName: 'Coupon Code',
 				name: 'couponCode',
 				type: 'string',
@@ -356,13 +474,13 @@ export const postFields: INodeProperties[] = [
 			},
 			{
 				displayName: 'Terms and Conditions',
-				name: 'termsAndConditions',
+				name: 'termsConditions',
 				type: 'string',
 				default: '',
 				description: 'The terms and conditions of the offer',
 				displayOptions: { show: { '/postType': ['OFFER'] } },
 				routing: {
-					send: { type: 'body', property: 'offer.termsAndConditions' },
+					send: { type: 'body', property: 'offer.termsConditions' },
 				},
 			},
 		],
@@ -848,8 +966,31 @@ export const postFields: INodeProperties[] = [
 				routing: { send: { type: 'body', property: 'languageCode' } },
 			},
 			{
+				displayName: 'Alert Type',
+				name: 'alertType',
+				type: 'options',
+				default: 'ALERT_TYPE_UNSPECIFIED',
+				description: 'The sub-type of the alert',
+				displayOptions: { show: { postType: ['ALERT'] } },
+				routing: {
+					send: { type: 'body', property: 'alertType' },
+				},
+				options: [
+					{
+						name: 'Alert Type Unspecified',
+						value: 'ALERT_TYPE_UNSPECIFIED',
+						description: 'Sub-type unspecified',
+					},
+					{
+						name: 'Covid 19',
+						value: 'COVID_19',
+						description: 'This alert is related to the 2019 Coronavirus Disease pandemic',
+					},
+				],
+			},
+			{
 				displayName: 'Call to Action Type',
-				name: 'actionType',
+				name: 'callToActionType',
 				type: 'options',
 				default: 'ACTION_TYPE_UNSPECIFIED',
 				description: 'The type of call to action',
@@ -989,14 +1130,14 @@ export const postFields: INodeProperties[] = [
 			},
 			{
 				displayName: 'Terms and Conditions',
-				name: 'termsAndConditions',
+				name: 'termsConditions',
 				type: 'string',
 				default: '',
 				description: 'The terms and conditions of the offer',
 				displayOptions: { show: { postType: ['OFFER'] } },
 				// ToDo: There is a bug when using displayOptions + routing. Routing is handled as a presend function.
 				// routing: {
-				// 	send: { type: 'body', property: 'offer.termsAndConditions' },
+				// 	send: { type: 'body', property: 'offer.termsConditions' },
 				// },
 			},
 		],

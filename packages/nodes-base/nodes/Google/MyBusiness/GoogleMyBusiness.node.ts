@@ -22,8 +22,9 @@ export class GoogleMyBusiness implements INodeType {
 				message: 'Please select a parameter in the options to modify the post',
 				displayCondition:
 					'={{$parameter["resource"] === "post" && $parameter["operation"] === "update" && Object.keys($parameter["additionalOptions"]).length === 0}}',
-				whenToDisplay: 'beforeExecution',
+				whenToDisplay: 'always',
 				location: 'outputPane',
+				type: 'warning',
 			},
 		],
 		credentials: [

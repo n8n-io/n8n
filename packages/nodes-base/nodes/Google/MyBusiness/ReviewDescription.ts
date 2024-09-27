@@ -1,4 +1,13 @@
-import type { INodeProperties } from 'n8n-workflow';
+import {
+	NodeApiError,
+	NodeOperationError,
+	type IDataObject,
+	type IExecuteSingleFunctions,
+	type IN8nHttpFullResponse,
+	type INodeExecutionData,
+	type INodeProperties,
+	type JsonObject,
+} from 'n8n-workflow';
 import { handlePagination } from './GenericFunctions';
 
 export const reviewOperations: INodeProperties[] = [
@@ -18,7 +27,34 @@ export const reviewOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'DELETE',
-						url: '=/{{$parameter["account"]}}/{{$parameter["location"]}}/reviews/{{$parameter["review"].split("reviews/").pop()}}/reply',
+						url: '=/{{$parameter["account"]}}/{{$parameter["location"]}}/reviews/{{$parameter["review"].split("reviews/").pop().split("/reply")[0]}}/reply',
+						ignoreHttpStatusErrors: true,
+					},
+					output: {
+						postReceive: [
+							async function (
+								this: IExecuteSingleFunctions,
+								data: INodeExecutionData[],
+								response: IN8nHttpFullResponse,
+							): Promise<INodeExecutionData[]> {
+								if (response.statusCode < 200 || response.statusCode >= 300) {
+									const post = this.getNodeParameter('post', undefined) as IDataObject;
+									if (post && response.statusCode === 404) {
+										// Don't return a 404 error if the post does not exist
+										throw new NodeOperationError(
+											this.getNode(),
+											'The review you are deleting could not be found. Adjust the "review" parameter setting to update the review correctly',
+										);
+									}
+
+									throw new NodeApiError(this.getNode(), response.body as JsonObject, {
+										message: response.statusMessage,
+										httpCode: response.statusCode.toString(),
+									});
+								}
+								return data;
+							},
+						],
 					},
 				},
 			},
@@ -30,7 +66,35 @@ export const reviewOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/{{$parameter["account"]}}/{{$parameter["location"]}}/reviews/{{$parameter["review"].split("reviews/").pop()}}',
+						url: '=/{{$parameter["account"]}}/{{$parameter["location"]}}/reviews/{{$parameter["review"].split("reviews/").pop().split("/reply")[0]}}',
+						ignoreHttpStatusErrors: true,
+					},
+
+					output: {
+						postReceive: [
+							async function (
+								this: IExecuteSingleFunctions,
+								data: INodeExecutionData[],
+								response: IN8nHttpFullResponse,
+							): Promise<INodeExecutionData[]> {
+								if (response.statusCode < 200 || response.statusCode >= 300) {
+									const post = this.getNodeParameter('post', undefined) as IDataObject;
+									if (post && response.statusCode === 404) {
+										// Don't return a 404 error if the post does not exist
+										throw new NodeOperationError(
+											this.getNode(),
+											'The review you are requesting could not be found. Adjust the "review" parameter setting to update the review correctly',
+										);
+									}
+
+									throw new NodeApiError(this.getNode(), response.body as JsonObject, {
+										message: response.statusMessage,
+										httpCode: response.statusCode.toString(),
+									});
+								}
+								return data;
+							},
+						],
 					},
 				},
 			},
@@ -59,7 +123,34 @@ export const reviewOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'PUT',
-						url: '=/{{$parameter["account"]}}/{{$parameter["location"]}}/reviews/{{$parameter["review"].split("reviews/").pop()}}/reply',
+						url: '=/{{$parameter["account"]}}/{{$parameter["location"]}}/reviews/{{$parameter["review"].split("reviews/").pop().split("/reply")[0]}}/reply',
+						ignoreHttpStatusErrors: true,
+					},
+					output: {
+						postReceive: [
+							async function (
+								this: IExecuteSingleFunctions,
+								data: INodeExecutionData[],
+								response: IN8nHttpFullResponse,
+							): Promise<INodeExecutionData[]> {
+								if (response.statusCode < 200 || response.statusCode >= 300) {
+									const post = this.getNodeParameter('post', undefined) as IDataObject;
+									if (post && response.statusCode === 404) {
+										// Don't return a 404 error if the post does not exist
+										throw new NodeOperationError(
+											this.getNode(),
+											'The review you are replying to could not be found. Adjust the "review" parameter setting to reply to the review correctly',
+										);
+									}
+
+									throw new NodeApiError(this.getNode(), response.body as JsonObject, {
+										message: response.statusMessage,
+										httpCode: response.statusCode.toString(),
+									});
+								}
+								return data;
+							},
+						],
 					},
 				},
 			},
