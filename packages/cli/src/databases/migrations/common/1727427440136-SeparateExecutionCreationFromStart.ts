@@ -1,6 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '@/databases/types';
 
-export class SeparateExecutionCreationFromStart1726218295879 implements ReversibleMigration {
+export class SeparateExecutionCreationFromStart1727427440136 implements ReversibleMigration {
 	async up({
 		schemaBuilder: { addColumns, column, dropNotNull },
 		runQuery,
