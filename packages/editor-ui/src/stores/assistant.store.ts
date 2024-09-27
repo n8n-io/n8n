@@ -5,6 +5,7 @@ import {
 	STORES,
 	AI_ASSISTANT_EXPERIMENT,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
+	CREDENTIAL_EDIT_MODAL_KEY,
 } from '@/constants';
 import type { ChatRequest } from '@/types/assistant.types';
 import type { ChatUI } from 'n8n-design-system/types/assistant';
@@ -37,6 +38,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { useUIStore } from './ui.store';
 import AiUpdatedCodeMessage from '@/components/AiUpdatedCodeMessage.vue';
+import { useCredentialsStore } from './credentials.store';
 
 export const MAX_CHAT_WIDTH = 425;
 export const MIN_CHAT_WIDTH = 250;
@@ -355,6 +357,27 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		});
 	}
 
+	function getVisualContext(): ChatRequest.UserContext {
+		// TODO: Don't do this for credential help
+		const currentView = route.name as VIEWS;
+		const activeNode = workflowsStore.activeNode();
+		// TODO: What if user is looking at node config tab?
+		// TODO: Send node execution status, input data, and execution schema
+		const activeNodeForLLM = activeNode ? processNodeForAssistant(activeNode, ['position']) : null;
+		const activeModals = uiStore.activeModals;
+		// const isCredentialModalActive = activeModals.includes(CREDENTIAL_EDIT_MODAL_KEY);
+		// TODO: Only send if modal is active
+		const activeCredential = useCredentialsStore().getCredentialTypeByName(
+			uiStore.activeCredentialType ?? '',
+		);
+		return {
+			activeNode: activeNodeForLLM ?? undefined,
+			activeCredentials: activeCredential
+				? { name: activeCredential?.name, displayName: activeCredential?.displayName }
+				: undefined,
+		};
+	}
+
 	async function initSupportChat(userMessage: string, credentialType?: ICredentialType) {
 		const id = getRandomId();
 		resetAssistantChat();
@@ -365,12 +388,15 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		openChat();
 		streaming.value = true;
 
+		const visualContext = getVisualContext();
+
 		let payload: ChatRequest.InitSupportChat | ChatRequest.InitCredHelp = {
 			role: 'user',
 			type: 'init-support-chat',
 			user: {
 				firstName: usersStore.currentUser?.firstName ?? '',
 			},
+			context: visualContext,
 			question: userMessage,
 		};
 		if (credentialType) {
@@ -536,6 +562,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			) {
 				nodeExecutionStatus.value = 'not_executed';
 			}
+			const userContext = getVisualContext();
 			chatWithAssistant(
 				rootStore.restApiContext,
 				{
@@ -544,6 +571,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 						type: 'message',
 						text: chatMessage.text,
 						quickReplyType: chatMessage.quickReplyType,
+						context: userContext,
 					},
 					sessionId: currentSessionId.value,
 				},

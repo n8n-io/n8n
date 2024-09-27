@@ -986,6 +986,8 @@ async function onAuthTypeChanged(type: string): Promise<void> {
 	const credentialsForType = getNodeCredentialForSelectedAuthType(activeNodeType.value, type);
 	if (credentialsForType) {
 		selectedCredential.value = credentialsForType.name;
+		// Todo: Reset this once the modal is closed
+		uiStore.activeCredentialType = credentialsForType.name;
 		resetCredentialData();
 		// Update current node auth type so credentials dropdown can be displayed properly
 		updateNodeAuthType(ndvStore.activeNode, type);
