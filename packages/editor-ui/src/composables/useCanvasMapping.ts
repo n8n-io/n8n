@@ -22,6 +22,8 @@ import type {
 } from '@/types';
 import { CanvasConnectionMode, CanvasNodeRenderType } from '@/types';
 import {
+	BoundingBox,
+	checkOverlap,
 	mapLegacyConnectionsToCanvasConnections,
 	mapLegacyEndpointsToCanvasConnectionPort,
 	parseCanvasConnectionHandleString,
@@ -349,17 +351,65 @@ export function useCanvasMapping({
 	);
 
 	const additionalNodePropertiesById = computed(() => {
-		return nodes.value.reduce<Record<string, Partial<CanvasNode>>>((acc, node) => {
+		type NodeBoundingBox = BoundingBox & {
+			id: string;
+			area: number;
+			zIndex: number;
+		};
+
+		const stickyNodeBoundingBoxes = nodes.value.reduce<NodeBoundingBox[]>((acc, node) => {
 			if (node.type === STICKY_NODE_TYPE) {
-				acc[node.id] = {
-					style: {
-						zIndex: -1,
-					},
-				};
+				const x = node.position[0];
+				const y = node.position[1];
+				const width = node.parameters.width as number;
+				const height = node.parameters.height as number;
+
+				acc.push({
+					id: node.id,
+					x,
+					y,
+					width,
+					height,
+					area: width * height,
+					zIndex: 0,
+				});
 			}
 
 			return acc;
-		}, {});
+		}, []);
+
+		const sortedStickyNodeBoundingBoxes = stickyNodeBoundingBoxes.sort((a, b) => b.area - a.area);
+		sortedStickyNodeBoundingBoxes.forEach((node, index) => {
+			node.zIndex = index;
+		});
+
+		for (let i = 0; i < sortedStickyNodeBoundingBoxes.length; i++) {
+			const node1 = sortedStickyNodeBoundingBoxes[i];
+			for (let j = i + 1; j < sortedStickyNodeBoundingBoxes.length; j++) {
+				const node2 = sortedStickyNodeBoundingBoxes[j];
+				if (checkOverlap(node1, node2)) {
+					// Ensure node1 (smaller area) has a higher zIndex than node2 (larger area)
+					if (node1.area < node2.area && node1.zIndex <= node2.zIndex) {
+						node1.zIndex = node2.zIndex + 1;
+					} else if (node2.area < node1.area && node2.zIndex <= node1.zIndex) {
+						node2.zIndex = node1.zIndex + 1;
+					}
+				}
+			}
+		}
+
+		return sortedStickyNodeBoundingBoxes.reduce<Record<string, Partial<CanvasNode>>>(
+			(acc, node) => {
+				acc[node.id] = {
+					style: {
+						zIndex: node.zIndex,
+					},
+				};
+
+				return acc;
+			},
+			{},
+		);
 	});
 
 	const mappedNodes = computed<CanvasNode[]>(() => [

@@ -1,24 +1,21 @@
 .vue-flow__resize-control.line {
 	border-color: transparent;
+	border-width: var(--spacing-s);
 	z-index: 1;
 
 	&.top {
-		border-top-width: var(--spacing-s);
 		height: var(--spacing-s);
 	}
 
 	&.right {
-		border-right-width: var(--spacing-s);
 		width: var(--spacing-s);
 	}
 
 	&.bottom {
-		border-bottom-width: var(--spacing-s);
 		height: var(--spacing-s);
 	}
 
 	&.left {
-		border-left-width: var(--spacing-s);
 		width: var(--spacing-s);
 	}
 }
