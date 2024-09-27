@@ -38,6 +38,9 @@ export const FUNCTION_NODE_TYPE = 'n8n-nodes-base.function';
 export const FUNCTION_ITEM_NODE_TYPE = 'n8n-nodes-base.functionItem';
 export const MERGE_NODE_TYPE = 'n8n-nodes-base.merge';
 export const AI_TRANSFORM_NODE_TYPE = 'n8n-nodes-base.aiTransform';
+export const FORM_TRIGGER_NODE_TYPE = 'n8n-nodes-base.formTrigger';
+export const CHAT_TRIGGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.chatTrigger';
+export const WAIT_NODE_TYPE = 'n8n-nodes-base.wait';
 
 export const STARTING_NODE_TYPES = [
 	MANUAL_TRIGGER_NODE_TYPE,
