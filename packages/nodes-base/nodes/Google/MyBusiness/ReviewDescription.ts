@@ -38,9 +38,9 @@ export const reviewOperations: INodeProperties[] = [
 								response: IN8nHttpFullResponse,
 							): Promise<INodeExecutionData[]> {
 								if (response.statusCode < 200 || response.statusCode >= 300) {
-									const post = this.getNodeParameter('post', undefined) as IDataObject;
-									if (post && response.statusCode === 404) {
-										// Don't return a 404 error if the post does not exist
+									const review = this.getNodeParameter('review', undefined) as IDataObject;
+									if (review && response.statusCode === 404) {
+										// Don't return a 404 error if the review does not exist
 										throw new NodeOperationError(
 											this.getNode(),
 											'The review you are deleting could not be found. Adjust the "review" parameter setting to update the review correctly',
@@ -78,9 +78,9 @@ export const reviewOperations: INodeProperties[] = [
 								response: IN8nHttpFullResponse,
 							): Promise<INodeExecutionData[]> {
 								if (response.statusCode < 200 || response.statusCode >= 300) {
-									const post = this.getNodeParameter('post', undefined) as IDataObject;
-									if (post && response.statusCode === 404) {
-										// Don't return a 404 error if the post does not exist
+									const review = this.getNodeParameter('review', undefined) as IDataObject;
+									if (review && response.statusCode === 404) {
+										// Don't return a 404 error if the review does not exist
 										throw new NodeOperationError(
 											this.getNode(),
 											'The review you are requesting could not be found. Adjust the "review" parameter setting to update the review correctly',
@@ -134,9 +134,9 @@ export const reviewOperations: INodeProperties[] = [
 								response: IN8nHttpFullResponse,
 							): Promise<INodeExecutionData[]> {
 								if (response.statusCode < 200 || response.statusCode >= 300) {
-									const post = this.getNodeParameter('post', undefined) as IDataObject;
-									if (post && response.statusCode === 404) {
-										// Don't return a 404 error if the post does not exist
+									const review = this.getNodeParameter('review', undefined) as IDataObject;
+									if (review && response.statusCode === 404) {
+										// Don't return a 404 error if the review does not exist
 										throw new NodeOperationError(
 											this.getNode(),
 											'The review you are replying to could not be found. Adjust the "review" parameter setting to reply to the review correctly',
