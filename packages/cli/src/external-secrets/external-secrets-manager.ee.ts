@@ -79,7 +79,7 @@ export class ExternalSecretsManager {
 	}
 
 	async broadcastReloadExternalSecretsProviders() {
-		await Container.get(OrchestrationService).publish('reloadExternalSecretsProviders');
+		await Container.get(OrchestrationService).publish('reload-external-secrets-providers');
 	}
 
 	private decryptSecretsSettings(value: string): ExternalSecretsSettings {
