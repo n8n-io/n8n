@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import type { IFormInputs, IUser, ThemeOption } from '@/Interface';
 import {
 	CHANGE_PASSWORD_MODAL_KEY,
@@ -28,6 +29,7 @@ type UserBasicDetailsWithMfa = UserBasicDetailsForm & {
 
 const i18n = useI18n();
 const { showToast, showError } = useToast();
+const documentTitle = useDocumentTitle();
 
 const hasAnyBasicInfoChanges = ref<boolean>(false);
 const formInputs = ref<null | IFormInputs>(null);
@@ -80,6 +82,7 @@ const hasAnyChanges = computed(() => {
 });
 
 onMounted(() => {
+	documentTitle.set(i18n.baseText('settings.personal.personalSettings'));
 	formInputs.value = [
 		{
 			name: 'firstName',

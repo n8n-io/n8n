@@ -34,7 +34,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useProjectsStore } from '@/stores/projects.store';
 
 import { saveAs } from 'file-saver';
-import { useTitleChange } from '@/composables/useTitleChange';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { getResourcePermissions } from '@/permissions';
@@ -87,7 +87,7 @@ const locale = useI18n();
 const telemetry = useTelemetry();
 const message = useMessage();
 const toast = useToast();
-const titleChange = useTitleChange();
+const documentTitle = useDocumentTitle();
 const workflowHelpers = useWorkflowHelpers({ router });
 
 const isTagsEditEnabled = ref(false);
@@ -558,7 +558,7 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			}
 			uiStore.stateIsDirty = false;
 			// Reset tab title since workflow is deleted.
-			titleChange.titleReset();
+			documentTitle.reset();
 			toast.showMessage({
 				title: locale.baseText('mainSidebar.showMessage.handleSelect1.title'),
 				type: 'success',
