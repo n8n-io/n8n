@@ -358,6 +358,9 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		});
 	}
 
+	/**
+	 * Gets information about the current view and active node to provide context to the assistant
+	 */
 	function getVisualContext(): ChatRequest.UserContext | undefined {
 		if (chatSessionTask.value !== 'support') {
 			return undefined;
@@ -386,6 +389,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				}
 			: undefined;
 		return {
+			currentView,
 			activeNodeInfo: {
 				node: activeNodeForLLM ?? undefined,
 				nodeIssues: !isCurrentNodeExecuted ? activeNode?.issues : undefined,

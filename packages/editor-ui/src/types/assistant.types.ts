@@ -1,3 +1,4 @@
+import { VIEWS } from '@/constants';
 import type { Schema } from '@/Interface';
 import type {
 	ICredentialType,
@@ -89,6 +90,7 @@ export namespace ChatRequest {
 			};
 		};
 		activeCredentials?: Pick<ICredentialType, 'name' | 'displayName'>;
+		currentView: VIEWS;
 	}
 
 	export type RequestPayload =
