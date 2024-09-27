@@ -53,6 +53,7 @@ const handleString = computed(() =>
 		index: props.index,
 	}),
 );
+
 const handleClasses = computed(() => [style.handle, style[props.type], style[props.mode]]);
 
 /**
