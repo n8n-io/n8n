@@ -586,6 +586,9 @@ export function processNodeForAssistant(node: INode, propsToRemove: string[]): I
 }
 
 export function getNodeInfoForAssistant(node: INode) {
+	if (!node) {
+		return {};
+	}
 	const ndvStore = useNDVStore();
 	// Get all referenced nodes and their schemas
 	const referencedNodeNames = getReferencedNodes(node);

@@ -403,6 +403,14 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	}
 
 	async function initSupportChat(userMessage: string, credentialType?: ICredentialType) {
+		const visualContext = getVisualContext();
+		const activeNode = workflowsStore.activeNode() as INode;
+		const { authType, nodeInputData, schemas } = getNodeInfoForAssistant(activeNode);
+
+		if (authType) {
+			userMessage += ` I am using ${authType.name}.`;
+		}
+
 		const id = getRandomId();
 		resetAssistantChat();
 		chatSessionTask.value = credentialType ? 'credentials' : 'support';
@@ -411,10 +419,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		addLoadingAssistantMessage(locale.baseText('aiAssistant.thinkingSteps.thinking'));
 		openChat();
 		streaming.value = true;
-
-		const visualContext = getVisualContext();
-		const activeNode = workflowsStore.activeNode() as INode;
-		const { nodeInputData, schemas } = getNodeInfoForAssistant(activeNode);
 
 		let payload: ChatRequest.InitSupportChat | ChatRequest.InitCredHelp = {
 			role: 'user',
