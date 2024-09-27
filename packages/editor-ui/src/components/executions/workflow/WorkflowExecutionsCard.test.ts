@@ -150,4 +150,25 @@ describe('WorkflowExecutionsCard', () => {
 			}
 		},
 	);
+
+	test('displays correct text for new execution', () => {
+		const createdAt = new Date('2024-09-27T12:00:00Z');
+		const props = {
+			execution: {
+				id: '1',
+				mode: 'manual',
+				status: 'new',
+				createdAt: createdAt.toISOString(),
+			},
+			workflowPermissions: {
+				execute: true,
+			},
+		};
+
+		const { getByTestId } = renderComponent({ props });
+
+		const executionTimeElement = getByTestId('execution-time');
+		expect(executionTimeElement).toBeVisible();
+		expect(executionTimeElement.textContent).toBe('27 Sep - Starting soon');
+	});
 });
