@@ -61,7 +61,7 @@ describe('WorkflowsView', () => {
 		usersStore = useUsersStore();
 		projectsStore = useProjectsStore();
 
-		vi.spyOn(projectsStore, 'getAllProjects').mockImplementation(async () => {});
+		vi.spyOn(projectsStore, 'getAvailableProjects').mockImplementation(async () => {});
 
 		await settingsStore.getSettings();
 		await usersStore.fetchUsers();
