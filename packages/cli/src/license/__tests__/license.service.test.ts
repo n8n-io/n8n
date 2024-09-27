@@ -90,7 +90,7 @@ describe('LicenseService', () => {
 
 	describe('registerCommunityEdition', () => {
 		test('on success', async () => {
-			axios.post.mockResolvedValueOnce({ data: { title: 'Title', text: 'Text' } });
+			jest.spyOn(axios, 'post').mockResolvedValueOnce({ data: { title: 'Title', text: 'Text' } });
 			const data = await licenseService.registerCommunityEdition({
 				email: 'test@ema.il',
 				instanceId: '123',
@@ -102,7 +102,7 @@ describe('LicenseService', () => {
 		});
 
 		test('on failure', async () => {
-			axios.post.mockRejectedValueOnce(new AxiosError({ message: 'Failed' }));
+			jest.spyOn(axios, 'post').mockRejectedValueOnce(new AxiosError('Failed'));
 			return await expect(
 				licenseService.registerCommunityEdition({
 					email: 'test@ema.il',
