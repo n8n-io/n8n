@@ -51,6 +51,7 @@ import { useToast } from '@/composables/useToast';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { importCurlEventBus, ndvEventBus } from '@/event-bus';
+import { ProjectTypes } from '@/types/projects.types';
 
 const props = withDefaults(
 	defineProps<{
@@ -117,17 +118,29 @@ const hiddenIssuesInputs = ref<string[]>([]);
 const nodeSettings = ref<INodeProperties[]>([]);
 const subConnections = ref<InstanceType<typeof NDVSubConnections> | null>(null);
 
-const isReadOnly = computed(() => props.readOnly || props.foreignCredentials.length > 0);
-
+const currentWorkflowInstance = computed(() => workflowsStore.getCurrentWorkflow());
+const currentWorkflow = computed(() =>
+	workflowsStore.getWorkflowById(currentWorkflowInstance.value.id),
+);
+const hasForeignCredential = computed(() => props.foreignCredentials.length > 0);
+const isHomeProjectTeam = computed(
+	() => currentWorkflow.value.homeProject?.type === ProjectTypes.Team,
+);
+const isReadOnly = computed(
+	() => props.readOnly || (hasForeignCredential.value && !isHomeProjectTeam.value),
+);
 const node = computed(() => ndvStore.activeNode);
 
 const isTriggerNode = computed(() => !!node.value && nodeTypesStore.isTriggerNode(node.value.type));
 
 const isExecutable = computed(() => {
 	if (props.nodeType && node.value) {
-		const workflow = workflowsStore.getCurrentWorkflow();
-		const workflowNode = workflow.getNode(node.value.name);
-		const inputs = NodeHelpers.getNodeInputs(workflow, workflowNode!, props.nodeType);
+		const workflowNode = currentWorkflowInstance.value.getNode(node.value.name);
+		const inputs = NodeHelpers.getNodeInputs(
+			currentWorkflowInstance.value,
+			workflowNode!,
+			props.nodeType,
+		);
 		const inputNames = NodeHelpers.getConnectionTypes(inputs);
 
 		if (!inputNames.includes(NodeConnectionType.Main) && !isTriggerNode.value) {
@@ -194,8 +207,6 @@ const parametersNoneSetting = computed(() =>
 const outputPanelEditMode = computed(() => ndvStore.outputPanelEditMode);
 
 const isCommunityNode = computed(() => !!node.value && isCommunityPackageName(node.value.type));
-
-const hasForeignCredential = computed(() => props.foreignCredentials.length > 0);
 
 const usedCredentials = computed(() =>
 	Object.values(workflowsStore.usedCredentials).filter((credential) =>
@@ -1017,7 +1028,7 @@ onBeforeUnmount(() => {
 		</div>
 		<div v-if="node && nodeValid" class="node-parameters-wrapper" data-test-id="node-parameters">
 			<n8n-notice
-				v-if="hasForeignCredential"
+				v-if="hasForeignCredential && !isHomeProjectTeam"
 				:content="
 					$locale.baseText('nodeSettings.hasForeignCredential', {
 						interpolate: { owner: credentialOwnerName },
