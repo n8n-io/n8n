@@ -1,5 +1,5 @@
 <script lang="ts">
-import { defineAsyncComponent, defineComponent, nextTick, ref, h } from 'vue';
+import { defineAsyncComponent, defineComponent, nextTick, ref, h, computed } from 'vue';
 import { mapStores, storeToRefs } from 'pinia';
 
 import type {
@@ -188,6 +188,7 @@ interface AddNodeOptions {
 	position?: XYPosition;
 	dragAndDrop?: boolean;
 	name?: string;
+	search?: string;
 }
 
 const LazyNodeCreation = defineAsyncComponent(
@@ -2390,6 +2391,7 @@ export default defineComponent({
 					is_auto_add: isAutoAdd,
 					workflow_id: this.workflowsStore.workflowId,
 					drag_and_drop: options.dragAndDrop,
+					search: options.search,
 				};
 
 				if (lastSelectedNode) {
@@ -2499,6 +2501,11 @@ export default defineComponent({
 			const lastSelectedConnection = this.canvasStore.lastSelectedConnection;
 
 			this.historyStore.startRecordingUndo();
+
+			const lastActiveViewStack = useViewStacks().activeViewStack;
+			if (lastActiveViewStack) {
+				options.search = viewStack.search;
+			}
 
 			const newNodeData = await this.injectNode(
 				nodeTypeName,
