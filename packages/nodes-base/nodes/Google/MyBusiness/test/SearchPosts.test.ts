@@ -13,31 +13,27 @@ describe('GenericFunctions - searchPosts', () => {
 	} as unknown as ILoadOptionsFunctions;
 
 	beforeEach(() => {
-		// Clear mocks before each test
 		mockGoogleApiRequest.mockClear();
 		mockGetNodeParameter.mockClear();
-
-		// Always return the same parameter value
 		mockGetNodeParameter.mockReturnValue('parameterValue');
 	});
 
 	it('should return posts with filtering', async () => {
 		mockGoogleApiRequest.mockResolvedValue({
 			localPosts: [
-				{ name: 'accounts/123/locations/123/posts/123' },
-				{ name: 'accounts/123/locations/123/posts/234' },
+				{ name: 'accounts/123/locations/123/localPosts/123', summary: 'First Post' },
+				{ name: 'accounts/123/locations/123/localPosts/234', summary: 'Second Post' },
 			],
 		});
 
-		const filter = 'posts/123';
+		const filter = 'First';
 		const result = await searchPosts.call(mockContext, filter);
 
 		expect(result).toEqual({
 			results: [
 				{
-					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-					name: 'accounts/123/locations/123/posts/123',
-					value: 'accounts/123/locations/123/posts/123',
+					name: 'First Post',
+					value: 'accounts/123/locations/123/localPosts/123',
 				},
 			],
 			paginationToken: undefined,
@@ -54,28 +50,21 @@ describe('GenericFunctions - searchPosts', () => {
 
 	it('should handle pagination', async () => {
 		mockGoogleApiRequest.mockResolvedValue({
-			localPosts: [{ name: 'accounts/123/locations/123/posts/123' }],
+			localPosts: [{ name: 'accounts/123/locations/123/localPosts/123', summary: 'First Post' }],
 			nextPageToken: 'nextToken1',
 		});
 		mockGoogleApiRequest.mockResolvedValue({
-			localPosts: [{ name: 'accounts/123/locations/123/posts/234' }],
+			localPosts: [{ name: 'accounts/123/locations/123/localPosts/234', summary: 'Second Post' }],
 			nextPageToken: 'nextToken2',
 		});
 		mockGoogleApiRequest.mockResolvedValue({
-			localPosts: [{ name: 'accounts/123/locations/123/posts/345' }],
+			localPosts: [{ name: 'accounts/123/locations/123/localPosts/345', summary: 'Third Post' }],
 		});
 
 		const result = await searchPosts.call(mockContext);
 
 		expect(result).toEqual({
-			// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-			results: [
-				{
-					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-					name: 'accounts/123/locations/123/posts/345',
-					value: 'accounts/123/locations/123/posts/345',
-				},
-			],
+			results: [{ name: 'Third Post', value: 'accounts/123/locations/123/localPosts/345' }],
 			paginationToken: undefined,
 		});
 	});

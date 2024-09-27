@@ -16,15 +16,17 @@ describe('GenericFunctions - searchAccounts', () => {
 
 	it('should return accounts with filtering', async () => {
 		mockGoogleApiRequest.mockResolvedValue({
-			accounts: [{ name: 'accounts/123' }, { name: 'accounts/234' }],
+			accounts: [
+				{ name: 'accounts/123', accountName: 'Test Account 1' },
+				{ name: 'accounts/234', accountName: 'Test Account 2' },
+			],
 		});
 
 		const filter = '123';
 		const result = await searchAccounts.call(mockContext, filter);
 
 		expect(result).toEqual({
-			// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-			results: [{ name: 'accounts/123', value: 'accounts/123' }],
+			results: [{ name: 'Test Account 1', value: 'accounts/123' }],
 			paginationToken: undefined,
 		});
 	});
@@ -39,15 +41,15 @@ describe('GenericFunctions - searchAccounts', () => {
 
 	it('should handle pagination', async () => {
 		mockGoogleApiRequest.mockResolvedValue({
-			accounts: [{ name: 'accounts/123' }],
+			accounts: [{ name: 'accounts/123', accountName: 'Test Account 1' }],
 			nextPageToken: 'nextToken1',
 		});
 		mockGoogleApiRequest.mockResolvedValue({
-			accounts: [{ name: 'accounts/234' }],
+			accounts: [{ name: 'accounts/234', accountName: 'Test Account 2' }],
 			nextPageToken: 'nextToken2',
 		});
 		mockGoogleApiRequest.mockResolvedValue({
-			accounts: [{ name: 'accounts/345' }],
+			accounts: [{ name: 'accounts/345', accountName: 'Test Account 3' }],
 		});
 
 		const result = await searchAccounts.call(mockContext);
@@ -55,8 +57,7 @@ describe('GenericFunctions - searchAccounts', () => {
 		// The request would only return the last result
 		// N8N handles the pagination and adds the previous results to the results array
 		expect(result).toEqual({
-			// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-			results: [{ name: 'accounts/345', value: 'accounts/345' }],
+			results: [{ name: 'Test Account 3', value: 'accounts/345' }],
 			paginationToken: undefined,
 		});
 	});

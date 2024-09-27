@@ -1,3 +1,4 @@
+/* eslint-disable n8n-nodes-base/node-param-display-name-miscased */
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
 import { searchReviews } from '../GenericFunctions';
 
@@ -21,19 +22,18 @@ describe('GenericFunctions - searchReviews', () => {
 	it('should return reviews with filtering', async () => {
 		mockGoogleApiRequest.mockResolvedValue({
 			reviews: [
-				{ name: 'accounts/123/locations/123/reviews/123' },
-				{ name: 'accounts/123/locations/123/reviews/234' },
+				{ name: 'accounts/123/locations/123/reviews/123', comment: 'Great service!' },
+				{ name: 'accounts/123/locations/123/reviews/234', comment: 'Good experience.' },
 			],
 		});
 
-		const filter = 'reviews/123';
+		const filter = 'Great';
 		const result = await searchReviews.call(mockContext, filter);
 
 		expect(result).toEqual({
 			results: [
 				{
-					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-					name: 'accounts/123/locations/123/reviews/123',
+					name: 'Great service!',
 					value: 'accounts/123/locations/123/reviews/123',
 				},
 			],
@@ -50,32 +50,22 @@ describe('GenericFunctions - searchReviews', () => {
 	});
 
 	it('should handle pagination', async () => {
-		// Simulate paginated results from googleApiRequest
 		mockGoogleApiRequest.mockResolvedValue({
-			reviews: [{ name: 'accounts/123/locations/123/reviews/123' }],
+			reviews: [{ name: 'accounts/123/locations/123/reviews/123', comment: 'First Review' }],
 			nextPageToken: 'nextToken1',
 		});
 		mockGoogleApiRequest.mockResolvedValue({
-			reviews: [{ name: 'accounts/123/locations/123/reviews/234' }],
+			reviews: [{ name: 'accounts/123/locations/123/reviews/234', comment: 'Second Review' }],
 			nextPageToken: 'nextToken2',
 		});
 		mockGoogleApiRequest.mockResolvedValue({
-			reviews: [{ name: 'accounts/123/locations/123/reviews/345' }],
+			reviews: [{ name: 'accounts/123/locations/123/reviews/345', comment: 'Third Review' }],
 		});
 
-		// Call searchReviews
 		const result = await searchReviews.call(mockContext);
 
-		// The request would only return the last result
-		// N8N handles the pagination and adds the previous results to the results array
 		expect(result).toEqual({
-			results: [
-				{
-					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-					name: 'accounts/123/locations/123/reviews/345',
-					value: 'accounts/123/locations/123/reviews/345',
-				},
-			],
+			results: [{ name: 'Third Review', value: 'accounts/123/locations/123/reviews/345' }],
 			paginationToken: undefined,
 		});
 	});

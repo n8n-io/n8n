@@ -930,6 +930,7 @@ export const postFields: INodeProperties[] = [
 		name: 'notice',
 		type: 'notice',
 		default: '',
+		displayOptions: { show: { resource: ['post'], operation: ['update'] } },
 	},
 	{
 		displayName: 'Options',

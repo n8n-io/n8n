@@ -194,6 +194,10 @@ export async function handlePagination(
 				}
 			}
 
+			if (!returnAll && aggregatedResult.length >= limit) {
+				return aggregatedResult.slice(0, limit).map((item) => ({ json: item }));
+			}
+
 			nextPageToken = page.json.nextPageToken as string | undefined;
 		}
 	} while (nextPageToken);

@@ -1,5 +1,5 @@
 import type { IExecuteSingleFunctions, IHttpRequestOptions } from 'n8n-workflow';
-import { addUpdateMask } from '../GenericFunctions';
+import { addUpdateMaskPresend } from '../GenericFunctions';
 
 describe('GenericFunctions - addUpdateMask', () => {
 	const mockGetNodeParameter = jest.fn();
@@ -24,7 +24,7 @@ describe('GenericFunctions - addUpdateMask', () => {
 			qs: {},
 		};
 
-		const result = await addUpdateMask.call(mockContext, opts as IHttpRequestOptions);
+		const result = await addUpdateMaskPresend.call(mockContext, opts as IHttpRequestOptions);
 
 		expect(result.qs).toEqual({
 			updateMask:
@@ -39,11 +39,9 @@ describe('GenericFunctions - addUpdateMask', () => {
 			qs: {},
 		};
 
-		const result = await addUpdateMask.call(mockContext, opts as IHttpRequestOptions);
+		const result = await addUpdateMaskPresend.call(mockContext, opts as IHttpRequestOptions);
 
-		expect(result.qs).toEqual({
-			updateMask: '',
-		});
+		expect(result.qs).toEqual({});
 	});
 
 	it('should include unmapped properties in the updateMask', async () => {
@@ -56,7 +54,7 @@ describe('GenericFunctions - addUpdateMask', () => {
 			qs: {},
 		};
 
-		const result = await addUpdateMask.call(mockContext, opts as IHttpRequestOptions);
+		const result = await addUpdateMaskPresend.call(mockContext, opts as IHttpRequestOptions);
 
 		expect(result.qs).toEqual({
 			updateMask: 'topicType,unmappedProperty',
@@ -75,7 +73,7 @@ describe('GenericFunctions - addUpdateMask', () => {
 			},
 		};
 
-		const result = await addUpdateMask.call(mockContext, opts as IHttpRequestOptions);
+		const result = await addUpdateMaskPresend.call(mockContext, opts as IHttpRequestOptions);
 
 		expect(result.qs).toEqual({
 			existingQuery: 'existingValue',
