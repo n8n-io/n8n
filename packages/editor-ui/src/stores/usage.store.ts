@@ -86,9 +86,8 @@ export const useUsageStore = defineStore('usage', () => {
 		await usageApi.requestLicenseTrial(rootStore.restApiContext);
 	};
 
-	const registerCommunityEdition = async (email: string) => {
+	const registerCommunityEdition = async (email: string) =>
 		await usageApi.registerCommunityEdition(rootStore.restApiContext, { email });
-	};
 
 	return {
 		setLoading,

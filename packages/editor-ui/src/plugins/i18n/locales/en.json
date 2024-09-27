@@ -2645,7 +2645,7 @@
 	"feedback.negative": "I didn't find this helpful",
 	"communityPlusModal.badge": "Time limited offer",
 	"communityPlusModal.title": "Unlock selected Pro features",
-	"communityPlusModal.error.title": "Request failed",
+	"communityPlusModal.error.title": "License request failed",
 	"communityPlusModal.success.title": "Request sent",
 	"communityPlusModal.success.message": "License key will be sent to {email}",
 	"communityPlusModal.description": "Receive a free activation key to access a limited set of pro features on your n8n installation.",

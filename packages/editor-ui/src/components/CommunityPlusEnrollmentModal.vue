@@ -51,13 +51,15 @@ const closeModal = () => {
 
 const confirm = async () => {
 	try {
-		await usageStore.registerCommunityEdition(email.value);
+		const { title, text } = await usageStore.registerCommunityEdition(email.value);
 		closeModal();
 		toast.showMessage({
-			title: i18n.baseText('communityPlusModal.success.title'),
-			message: i18n.baseText('communityPlusModal.success.message', {
-				interpolate: { email: email.value },
-			}),
+			title: title ?? i18n.baseText('communityPlusModal.success.title'),
+			message:
+				text ??
+				i18n.baseText('communityPlusModal.success.message', {
+					interpolate: { email: email.value },
+				}),
 			type: 'success',
 		});
 	} catch (error) {

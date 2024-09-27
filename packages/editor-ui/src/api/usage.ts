@@ -25,6 +25,6 @@ export const requestLicenseTrial = async (
 export const registerCommunityEdition = async (
 	context: IRestApiContext,
 	data: { email: string },
-): Promise<void> => {
+): Promise<{ title: string; text: string }> => {
 	return await makeRestApiRequest(context, 'POST', '/license/enterprise/community-register', data);
 };

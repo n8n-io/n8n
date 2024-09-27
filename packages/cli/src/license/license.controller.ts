@@ -40,23 +40,12 @@ export class LicenseController {
 
 	@Post('/enterprise/community-register')
 	async registerCommunityEdition(req: LicenseRequest.RegisterCommunityEdition) {
-		try {
-			await this.licenseService.registerCommunityEdition({
-				email: req.body.email,
-				instanceId: this.instanceSettings.instanceId,
-				instanceUrl: this.urlService.getInstanceBaseUrl(),
-				licenseType: 'community-registered',
-			});
-		} catch (error: unknown) {
-			if (error instanceof Error) {
-				const errorMsg =
-					(error as AxiosError<{ message: string }>).response?.data?.message ?? error.message;
-
-				throw new BadRequestError(errorMsg);
-			} else {
-				throw new BadRequestError('Failed to register community edition');
-			}
-		}
+		return await this.licenseService.registerCommunityEdition({
+			email: req.body.email,
+			instanceId: this.instanceSettings.instanceId,
+			instanceUrl: this.urlService.getInstanceBaseUrl(),
+			licenseType: 'community-registered',
+		});
 	}
 
 	@Post('/activate')

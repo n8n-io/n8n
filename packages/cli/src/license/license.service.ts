@@ -1,3 +1,4 @@
+import type { AxiosError } from 'axios';
 import axios from 'axios';
 import { Service } from 'typedi';
 
@@ -70,13 +71,28 @@ export class LicenseService {
 		instanceId: string;
 		instanceUrl: string;
 		licenseType: string;
-	}) {
-		await axios.post('https://enterprise.n8n.io/payday/community-registered', {
-			email,
-			instanceId,
-			instanceUrl,
-			licenseType,
-		});
+	}): Promise<{ title: string; text: string }> {
+		try {
+			const { data } = await axios.post<{ title: string; text: string }>(
+				'https://enterprise.n8n.io/internal-production/community-registered',
+				{
+					email,
+					instanceId,
+					instanceUrl,
+					licenseType,
+				},
+			);
+			return data;
+		} catch (error: unknown) {
+			if (error instanceof Error) {
+				const errorMsg =
+					(error as AxiosError<{ message: string }>).response?.data?.message ?? error.message;
+
+				throw new BadRequestError(errorMsg);
+			} else {
+				throw new BadRequestError('Failed to register community edition');
+			}
+		}
 	}
 
 	getManagementJwt(): string {
