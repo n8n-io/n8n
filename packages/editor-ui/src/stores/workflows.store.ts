@@ -989,7 +989,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	function updateNodeAtIndex(nodeIndex: number, nodeData: Partial<INodeUi>): void {
 		if (nodeIndex !== -1) {
-			workflow.value.nodes[nodeIndex] = { ...workflow.value.nodes[nodeIndex], ...nodeData };
+			Object.assign(workflow.value.nodes[nodeIndex], nodeData);
 		}
 	}
 
