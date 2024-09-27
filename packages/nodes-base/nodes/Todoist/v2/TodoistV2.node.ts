@@ -13,7 +13,7 @@ import {
 
 import { todoistApiRequest } from '../GenericFunctions';
 
-import type { OperationType } from './Service';
+import type { OperationType, TodoistProjectType } from './Service';
 import { TodoistService } from './Service';
 
 // interface IBodyCreateTask {
@@ -610,22 +610,24 @@ export class TodoistV2 implements INodeType {
 
 	methods = {
 		listSearch: {
-			async searchProjects(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
-				const projects = await todoistApiRequest.call(this, 'GET', '/projects');
+			async searchProjects(
+				this: ILoadOptionsFunctions,
+				filter?: string,
+			): Promise<INodeListSearchResult> {
+				const projects: TodoistProjectType[] = await todoistApiRequest.call(
+					this,
+					'GET',
+					'/projects',
+				);
 				return {
-					results: projects.map((project: IDataObject) => ({
-						name: project.name,
-						value: project.id,
-					})),
-				};
-			},
-			async searchLabels(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
-				const labels = await todoistApiRequest.call(this, 'GET', '/labels');
-				return {
-					results: labels.map((label: IDataObject) => ({
-						name: label.name,
-						value: label.name,
-					})),
+					results: projects
+						.filter(
+							(project) => !filter || project.name.toLowerCase().includes(filter.toLowerCase()),
+						)
+						.map((project) => ({
+							name: project.name,
+							value: project.id,
+						})),
 				};
 			},
 		},
@@ -636,12 +638,9 @@ export class TodoistV2 implements INodeType {
 				const returnData: INodePropertyOptions[] = [];
 				const projects = await todoistApiRequest.call(this, 'GET', '/projects');
 				for (const project of projects) {
-					const projectName = project.name;
-					const projectId = project.id;
-
 					returnData.push({
-						name: projectName,
-						value: projectId,
+						name: project.name,
+						value: project.id,
 					});
 				}
 
@@ -666,12 +665,9 @@ export class TodoistV2 implements INodeType {
 					const qs: IDataObject = { project_id: projectId };
 					const sections = await todoistApiRequest.call(this, 'GET', '/sections', {}, qs);
 					for (const section of sections) {
-						const sectionName = section.name;
-						const sectionId = section.id;
-
 						returnData.push({
-							name: sectionName,
-							value: sectionId,
+							name: section.name,
+							value: section.id,
 						});
 					}
 				}
@@ -706,12 +702,9 @@ export class TodoistV2 implements INodeType {
 
 					const items = await todoistApiRequest.call(this, 'GET', '/tasks', {}, qs);
 					for (const item of items) {
-						const itemContent = item.content;
-						const itemId = item.id;
-
 						returnData.push({
-							name: itemContent,
-							value: itemId,
+							name: item.content,
+							value: item.id,
 						});
 					}
 				}
@@ -726,10 +719,9 @@ export class TodoistV2 implements INodeType {
 				const labels = await todoistApiRequest.call(this, 'GET', '/labels');
 
 				for (const label of labels) {
-					const labelName = label.name;
 					returnData.push({
-						name: labelName,
-						value: labelName,
+						name: label.name,
+						value: label.name,
 					});
 				}
 
