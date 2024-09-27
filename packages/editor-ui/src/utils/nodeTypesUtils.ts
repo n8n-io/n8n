@@ -18,6 +18,7 @@ import {
 } from '@/constants';
 import { i18n as locale } from '@/plugins/i18n';
 import { useCredentialsStore } from '@/stores/credentials.store';
+import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { ChatRequest } from '@/types/assistant.types';
@@ -582,6 +583,38 @@ export function processNodeForAssistant(node: INode, propsToRemove: string[]): I
 	);
 	nodeForLLM.parameters = resolvedParameters;
 	return nodeForLLM;
+}
+
+export function getNodeInfoForAssistant(node: INode) {
+	const ndvStore = useNDVStore();
+	// Get all referenced nodes and their schemas
+	const referencedNodeNames = getReferencedNodes(node);
+	const schemas = getNodesSchemas(referencedNodeNames);
+
+	// Get node credentials details for the ai assistant
+	const nodeType = useNodeTypesStore().getNodeType(node.type);
+	let authType = undefined;
+	if (nodeType) {
+		const authField = getMainAuthField(nodeType);
+		const credentialInUse = node.parameters[authField?.name ?? ''];
+		const availableAuthOptions = getNodeAuthOptions(nodeType);
+		authType = availableAuthOptions.find((option) => option.value === credentialInUse);
+	}
+	let nodeInputData: { inputNodeName?: string; inputData?: IDataObject } | undefined = undefined;
+	const ndvInput = ndvStore.ndvInputData;
+	if (isNodeReferencingInputData(node) && ndvInput?.length) {
+		const inputData = ndvStore.ndvInputData[0].json;
+		const inputNodeName = ndvStore.input.nodeName;
+		nodeInputData = {
+			inputNodeName,
+			inputData,
+		};
+	}
+	return {
+		authType,
+		schemas,
+		nodeInputData,
+	};
 }
 
 /**

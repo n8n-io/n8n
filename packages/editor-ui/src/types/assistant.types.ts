@@ -84,13 +84,15 @@ export namespace ChatRequest {
 		activeNodeInfo?: {
 			node?: INode;
 			nodeIssues?: INodeIssues;
+			nodeInputData?: IDataObject;
+			referencedNodes?: NodeExecutionSchema[];
 			executionStatus?: {
 				status: string;
 				error?: ErrorContext['error'];
 			};
 		};
 		activeCredentials?: Pick<ICredentialType, 'name' | 'displayName'>;
-		currentView: VIEWS;
+		currentView?: VIEWS;
 	}
 
 	export type RequestPayload =

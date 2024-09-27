@@ -18,7 +18,7 @@ import { useRoute } from 'vue-router';
 import { useSettingsStore } from './settings.store';
 import { assert } from '@/utils/assert';
 import { useWorkflowsStore } from './workflows.store';
-import type { IDataObject, ICredentialType, INodeParameters, NodeError } from 'n8n-workflow';
+import type { IDataObject, ICredentialType, INodeParameters, NodeError, INode } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 import { ndvEventBus, codeNodeEditorEventBus } from '@/event-bus';
 import { useNDVStore } from './ndv.store';
@@ -31,6 +31,7 @@ import {
 	processNodeForAssistant,
 	isNodeReferencingInputData,
 	simplifyErrorForAssistant,
+	getNodeInfoForAssistant,
 } from '@/utils/nodeTypesUtils';
 import { useNodeTypesStore } from './nodeTypes.store';
 import { usePostHog } from './posthog.store';
@@ -412,6 +413,8 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		streaming.value = true;
 
 		const visualContext = getVisualContext();
+		const activeNode = workflowsStore.activeNode() as INode;
+		const { nodeInputData, schemas } = getNodeInfoForAssistant(activeNode);
 
 		let payload: ChatRequest.InitSupportChat | ChatRequest.InitCredHelp = {
 			role: 'user',
@@ -419,7 +422,14 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			user: {
 				firstName: usersStore.currentUser?.firstName ?? '',
 			},
-			context: visualContext,
+			context: {
+				...visualContext,
+				activeNodeInfo: {
+					...visualContext?.activeNodeInfo,
+					nodeInputData,
+					referencedNodes: schemas,
+				},
+			},
 			question: userMessage,
 		};
 		if (credentialType) {
@@ -462,29 +472,8 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			currentSessionActiveExecutionId.value = workflowsStore.activeExecutionId;
 		}
 
-		// Get all referenced nodes and their schemas
-		const referencedNodeNames = getReferencedNodes(context.node);
-		const schemas = getNodesSchemas(referencedNodeNames);
+		const { authType, nodeInputData, schemas } = getNodeInfoForAssistant(context.node);
 
-		// Get node credentials details for the ai assistant
-		const nodeType = useNodeTypesStore().getNodeType(context.node.type);
-		let authType = undefined;
-		if (nodeType) {
-			const authField = getMainAuthField(nodeType);
-			const credentialInUse = context.node.parameters[authField?.name ?? ''];
-			const availableAuthOptions = getNodeAuthOptions(nodeType);
-			authType = availableAuthOptions.find((option) => option.value === credentialInUse);
-		}
-		let nodeInputData: { inputNodeName?: string; inputData?: IDataObject } | undefined = undefined;
-		const ndvInput = ndvStore.ndvInputData;
-		if (isNodeReferencingInputData(context.node) && ndvInput?.length) {
-			const inputData = ndvStore.ndvInputData[0].json;
-			const inputNodeName = ndvStore.input.nodeName;
-			nodeInputData = {
-				inputNodeName,
-				inputData,
-			};
-		}
 		addLoadingAssistantMessage(locale.baseText('aiAssistant.thinkingSteps.analyzingError'));
 		openChat();
 
