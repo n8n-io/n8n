@@ -254,6 +254,8 @@ describe('Workflow Executions', () => {
 			executionsTab.getters.workflowExecutionPreviewIframe().should('exist');
 			cy.go('back');
 
+			cy.url().should('not.include', '/executions');
+			cy.url().should('include', '/workflow/');
 			workflowPage.getters.nodeViewRoot().should('be.visible');
 		});
 	});
