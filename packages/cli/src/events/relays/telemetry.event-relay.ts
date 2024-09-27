@@ -11,7 +11,7 @@ import { N8N_VERSION } from '@/constants';
 import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import type { RelayEventMap } from '@/events/event-maps/relay.event-map';
+import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { EventService } from '@/events/event.service';
 import { determineFinalExecutionStatus } from '@/execution-lifecycle-hooks/shared/shared-hook-functions';
 import type { IExecutionTrackProperties } from '@/interfaces';

@@ -40,7 +40,7 @@ import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
 import { CredentialsHelper } from '@/credentials-helper';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import type { AiEventMap, AiEventPayload } from '@/events/event-maps/ai.event-map';
+import type { AiEventMap, AiEventPayload } from '@/events/maps/ai.event-map';
 import { ExternalHooks } from '@/external-hooks';
 import type {
 	IWorkflowExecuteProcess,

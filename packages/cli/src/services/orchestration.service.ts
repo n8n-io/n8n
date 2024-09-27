@@ -3,7 +3,7 @@ import type { WorkflowActivateMode } from 'n8n-workflow';
 import Container, { Service } from 'typedi';
 
 import config from '@/config';
-import type { PubSubCommandMap } from '@/events/event-maps/pub-sub.event-map';
+import type { PubSubCommandMap } from '@/events/maps/pub-sub.event-map';
 import { Logger } from '@/logger';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { Subscriber } from '@/scaling/pubsub/subscriber.service';

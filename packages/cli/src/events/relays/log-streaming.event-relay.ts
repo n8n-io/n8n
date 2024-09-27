@@ -3,8 +3,8 @@ import { Service } from 'typedi';
 
 import { Redactable } from '@/decorators/redactable';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import type { RelayEventMap } from '@/events/event-maps/relay.event-map';
 import { EventService } from '@/events/event.service';
+import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { EventRelay } from '@/events/relays/event-relay';
 
 @Service()
