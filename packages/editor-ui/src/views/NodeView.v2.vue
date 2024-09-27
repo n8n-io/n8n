@@ -319,12 +319,14 @@ async function initializeRoute() {
 
 		await initializeWorkspaceForExistingWorkflow(workflowId.value);
 
-		nodeHelpers.updateNodesInputIssues();
-		nodeHelpers.updateNodesCredentialsIssues();
-		nodeHelpers.updateNodesParameterIssues();
-
 		await loadCredentials();
 		await initializeDebugMode();
+
+		void nextTick(() => {
+			nodeHelpers.updateNodesInputIssues();
+			nodeHelpers.updateNodesCredentialsIssues();
+			nodeHelpers.updateNodesParameterIssues();
+		});
 	}
 }
 
