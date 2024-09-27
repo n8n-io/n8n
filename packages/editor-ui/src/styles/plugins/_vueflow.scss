@@ -58,4 +58,8 @@
 	&.dragging {
 		cursor: grabbing;
 	}
+
+	&:has(.sticky--active) {
+		z-index: 1 !important;
+	}
 }

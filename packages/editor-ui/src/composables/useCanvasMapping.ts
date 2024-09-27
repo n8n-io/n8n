@@ -351,18 +351,22 @@ export function useCanvasMapping({
 	);
 
 	const additionalNodePropertiesById = computed(() => {
-		type NodeBoundingBox = BoundingBox & {
+		type StickyNoteBoundingBox = BoundingBox & {
 			id: string;
 			area: number;
 			zIndex: number;
 		};
 
-		const stickyNodeBoundingBoxes = nodes.value.reduce<NodeBoundingBox[]>((acc, node) => {
+		const stickyNodeBaseZIndex = -100;
+
+		const stickyNodeBoundingBoxes = nodes.value.reduce<StickyNoteBoundingBox[]>((acc, node) => {
 			if (node.type === STICKY_NODE_TYPE) {
 				const x = node.position[0];
 				const y = node.position[1];
 				const width = node.parameters.width as number;
 				const height = node.parameters.height as number;
+
+				console.log({ node });
 
 				acc.push({
 					id: node.id,
@@ -371,7 +375,7 @@ export function useCanvasMapping({
 					width,
 					height,
 					area: width * height,
-					zIndex: 0,
+					zIndex: stickyNodeBaseZIndex,
 				});
 			}
 
@@ -380,7 +384,7 @@ export function useCanvasMapping({
 
 		const sortedStickyNodeBoundingBoxes = stickyNodeBoundingBoxes.sort((a, b) => b.area - a.area);
 		sortedStickyNodeBoundingBoxes.forEach((node, index) => {
-			node.zIndex = index;
+			node.zIndex = stickyNodeBaseZIndex + index;
 		});
 
 		for (let i = 0; i < sortedStickyNodeBoundingBoxes.length; i++) {
@@ -388,10 +392,11 @@ export function useCanvasMapping({
 			for (let j = i + 1; j < sortedStickyNodeBoundingBoxes.length; j++) {
 				const node2 = sortedStickyNodeBoundingBoxes[j];
 				if (checkOverlap(node1, node2)) {
-					// Ensure node1 (smaller area) has a higher zIndex than node2 (larger area)
 					if (node1.area < node2.area && node1.zIndex <= node2.zIndex) {
+						// Ensure node1 (smaller area) has a higher zIndex than node2 (larger area)
 						node1.zIndex = node2.zIndex + 1;
 					} else if (node2.area < node1.area && node2.zIndex <= node1.zIndex) {
+						// Ensure node2 (smaller area) has a higher zIndex than node1 (larger area)
 						node2.zIndex = node1.zIndex + 1;
 					}
 				}
