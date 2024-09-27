@@ -373,7 +373,7 @@ export function useCanvasMapping({
 				subtitle: nodeSubtitleById.value[node.id] ?? '',
 				type: node.type,
 				typeVersion: node.typeVersion,
-				disabled: !!node.disabled,
+				disabled: node.disabled,
 				inputs: nodeInputsById.value[node.id] ?? [],
 				outputs: nodeOutputsById.value[node.id] ?? [],
 				connections: {
