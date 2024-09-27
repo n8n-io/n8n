@@ -1,13 +1,12 @@
 import { mock } from 'jest-mock-extended';
 import merge from 'lodash/merge';
-import { returnJsonArray } from 'n8n-core';
+import { returnJsonArray, type InstanceSettings } from 'n8n-core';
 import { ScheduledTaskManager } from 'n8n-core/dist/ScheduledTaskManager';
 import type {
 	IDataObject,
 	INode,
 	INodeType,
 	ITriggerFunctions,
-	ITriggerResponse,
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
@@ -43,7 +42,7 @@ export const createTestTriggerNode = (Trigger: TriggerNodeTypeClass) => {
 		) as INode;
 		const workflow = mock<Workflow>({ timezone: options.timezone ?? 'Europe/Berlin' });
 
-		const scheduledTaskManager = new ScheduledTaskManager();
+		const scheduledTaskManager = new ScheduledTaskManager(mock<InstanceSettings>());
 		const helpers = mock<ITriggerFunctions['helpers']>({
 			returnJsonArray,
 			registerCron: (cronExpression, onTick) =>
@@ -64,31 +63,31 @@ export const createTestTriggerNode = (Trigger: TriggerNodeTypeClass) => {
 	};
 
 	return {
-		test: async (options: TestTriggerNodeOptions = {}) => {
+		trigger: async (options: TestTriggerNodeOptions = {}) => {
 			const triggerFunctions = setupTriggerFunctions('trigger', options);
 
-			const response: ITriggerResponse = await trigger.trigger.call(triggerFunctions);
+			const response = await trigger.trigger.call(triggerFunctions);
 
-			expect(response.manualTriggerFunction).toBeUndefined();
+			expect(response?.manualTriggerFunction).toBeUndefined();
 
 			return {
-				closeFunction: response.closeFunction,
-				manualTriggerFunction: response.manualTriggerFunction,
-				mocks: { emit },
+				close: jest.fn(response?.closeFunction),
+				emit,
 			};
 		},
 
-		testManual: async (options: TestTriggerNodeOptions = {}) => {
+		triggerManual: async (options: TestTriggerNodeOptions = {}) => {
 			const triggerFunctions = setupTriggerFunctions('manual', options);
 
-			const response: ITriggerResponse = await trigger.trigger.call(triggerFunctions);
+			const response = await trigger.trigger.call(triggerFunctions);
 
-			expect(response.manualTriggerFunction).toBeInstanceOf(Function);
+			expect(response?.manualTriggerFunction).toBeInstanceOf(Function);
+
+			await response?.manualTriggerFunction?.();
 
 			return {
-				closeFunction: response.closeFunction,
-				manualTriggerFunction: response.manualTriggerFunction,
-				mocks: { emit },
+				close: jest.fn(response?.closeFunction),
+				emit,
 			};
 		},
 	};
