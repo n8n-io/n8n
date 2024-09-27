@@ -941,7 +941,7 @@ function openContextMenu(event: MouseEvent, source: 'node-button' | 'node-right-
 			font-size: 3.75em;
 			line-height: 1.65em;
 			text-align: center;
-			color: var(--color-secondary);
+			color: hsla(var(--color-primary-h), var(--color-primary-s), var(--color-primary-l), 0.7);
 		}
 
 		.node-icon {
