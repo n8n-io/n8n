@@ -63,10 +63,11 @@ export default defineComponent({
 		},
 	},
 	async beforeMount() {
-		await this.projectsStore.getAllProjects();
+		await this.projectsStore.getAvailableProjects();
 		this.selectedProject =
-			this.projectsStore.projects.find((project) => project.id === this.modelValue.homeProject) ??
-			null;
+			this.projectsStore.availableProjects.find(
+				(project) => project.id === this.modelValue.homeProject,
+			) ?? null;
 	},
 	methods: {
 		setKeyValue(key: string, value: unknown) {
@@ -126,7 +127,7 @@ export default defineComponent({
 				/>
 				<ProjectSharing
 					v-model="selectedProject"
-					:projects="projectsStore.projects"
+					:projects="projectsStore.availableProjects"
 					:placeholder="$locale.baseText('forms.resourceFiltersDropdown.owner.placeholder')"
 					:empty-options-text="$locale.baseText('projects.sharing.noMatchingProjects')"
 					@update:model-value="setKeyValue('homeProject', ($event as ProjectSharingData).id)"
