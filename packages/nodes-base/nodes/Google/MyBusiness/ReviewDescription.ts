@@ -240,7 +240,7 @@ export const reviewFields: INodeProperties[] = [
 		required: true,
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
-		description: 'Select the review By name or URL to retrieve its details',
+		description: 'Select the review to retrieve its details',
 		displayOptions: { show: { resource: ['review'], operation: ['get'] } },
 		modes: [
 			{
@@ -366,7 +366,7 @@ export const reviewFields: INodeProperties[] = [
 		required: true,
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
-		description: 'Select the review By name or URL to retrieve its details',
+		description: 'Select the review to retrieve its details',
 		displayOptions: { show: { resource: ['review'], operation: ['delete'] } },
 		modes: [
 			{
@@ -588,7 +588,7 @@ export const reviewFields: INodeProperties[] = [
 		required: true,
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
-		description: 'Select the review By name or URL to retrieve its details',
+		description: 'Select the review to retrieve its details',
 		displayOptions: { show: { resource: ['review'], operation: ['reply'] } },
 		modes: [
 			{

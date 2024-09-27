@@ -11,7 +11,7 @@ import {
 import {
 	addUpdateMaskPresend,
 	handleDatesPresend,
-	handleDisplayOptionsBugPresend,
+	// handleDisplayOptionsBugPresend,
 	handlePagination,
 } from './GenericFunctions';
 
@@ -139,7 +139,11 @@ export const postOperations: INodeProperties[] = [
 				description: 'Update an existing post',
 				routing: {
 					send: {
-						preSend: [handleDatesPresend, addUpdateMaskPresend, handleDisplayOptionsBugPresend],
+						preSend: [
+							handleDatesPresend,
+							addUpdateMaskPresend,
+							// handleDisplayOptionsBugPresend
+						],
 					},
 					request: {
 						method: 'PATCH',
@@ -573,7 +577,7 @@ export const postFields: INodeProperties[] = [
 		name: 'post',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
-		description: 'Select the post by name or URL to retrieve its details',
+		description: 'Select the post to retrieve its details',
 		displayOptions: { show: { resource: ['post'], operation: ['delete'] } },
 		modes: [
 			{
@@ -684,7 +688,7 @@ export const postFields: INodeProperties[] = [
 		name: 'post',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
-		description: 'Select the post by name or URL to retrieve its details',
+		description: 'Select the post to retrieve its details',
 		displayOptions: { show: { resource: ['post'], operation: ['get'] } },
 		modes: [
 			{
@@ -890,7 +894,7 @@ export const postFields: INodeProperties[] = [
 		name: 'post',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
-		description: 'Select the post by name or URL to retrieve its details',
+		description: 'Select the post to retrieve its details',
 		displayOptions: { show: { resource: ['post'], operation: ['update'] } },
 		modes: [
 			{
@@ -921,6 +925,13 @@ export const postFields: INodeProperties[] = [
 		],
 	},
 	{
+		displayName:
+			"Make sure that the updated options are supported by the post type. <a target='_blank' href='https://developers.google.com/my-business/reference/rest/v4/accounts.locations.localPosts#resource:-localpost'>More info</a>.",
+		name: 'notice',
+		type: 'notice',
+		default: '',
+	},
+	{
 		displayName: 'Options',
 		name: 'additionalOptions',
 		type: 'collection',
@@ -928,6 +939,7 @@ export const postFields: INodeProperties[] = [
 		placeholder: 'Add Option',
 		displayOptions: { show: { resource: ['post'], operation: ['update'] } },
 		options: [
+			// The request fails when trying to update post type
 			// {
 			// 	displayName: 'Post Type',
 			// 	name: 'postType',
@@ -1002,10 +1014,10 @@ export const postFields: INodeProperties[] = [
 				default: 'ACTION_TYPE_UNSPECIFIED',
 				description: 'The type of call to action',
 				// displayOptions: { show: { postType: ['STANDARD', 'EVENT', 'ALERT'] } },
-				// ToDo: There is a bug when using displayOptions + routing. Routing is handled as a presend function.
-				// routing: {
-				// 	send: { type: 'body', property: 'callToAction.actionType' },
-				// },
+				// There is a bug when using displayOptions + routing. Routing can be handled with "handleDisplayOptionsBugPresend" if needed.
+				routing: {
+					send: { type: 'body', property: 'callToAction.actionType' },
+				},
 				options: [
 					{
 						name: 'Action Type Unspecified',
@@ -1052,10 +1064,10 @@ export const postFields: INodeProperties[] = [
 				default: '',
 				description: 'The URL that users are sent to when clicking through the promotion',
 				// displayOptions: { show: { postType: ['STANDARD', 'EVENT', 'ALERT'] } },
-				// ToDo: There is a bug when using displayOptions + routing. Routing is handled as a presend function.
-				// routing: {
-				// 	send: { type: 'body', property: 'callToAction.url' },
-				// },
+				// There is a bug when using displayOptions + routing. Routing can be handled with "handleDisplayOptionsBugPresend" if needed.
+				routing: {
+					send: { type: 'body', property: 'callToAction.url' },
+				},
 			},
 			// {
 			// 	displayName: 'Title',
@@ -1064,7 +1076,7 @@ export const postFields: INodeProperties[] = [
 			// 	default: '',
 			// 	description: 'E.g. Sales this week.',
 			// 	// displayOptions: { show: { postType: ['EVENT'] } },
-			// 	// ToDo: There is a bug when using displayOptions + routing. Routing is handled as a presend function.
+			// 	// There is a bug when using displayOptions + routing. Routing can be handled with "handleDisplayOptionsBugPresend" if needed.
 			// 	// routing: { send: { type: 'body', property: 'event.title' } },
 			// },
 			{
@@ -1090,8 +1102,8 @@ export const postFields: INodeProperties[] = [
 				default: '',
 				description: 'E.g. 20% off in store or online.',
 				// displayOptions: { show: { postType: ['OFFER'] } },
-				// ToDo: There is a bug when using displayOptions + routing. Routing is handled as a presend function.
-				// routing: { send: { type: 'body', property: 'event.title' } },
+				// There is a bug when using displayOptions + routing. Routing can be handled with "handleDisplayOptionsBugPresend" if needed.
+				routing: { send: { type: 'body', property: 'event.title' } },
 			},
 			{
 				displayName: 'Start Date',
@@ -1118,10 +1130,10 @@ export const postFields: INodeProperties[] = [
 				default: '',
 				description: 'The coupon code for the offer',
 				// displayOptions: { show: { postType: ['OFFER'] } },
-				// ToDo: There is a bug when using displayOptions + routing. Routing is handled as a presend function.
-				// routing: {
-				// 	send: { type: 'body', property: 'offer.couponCode' },
-				// },
+				// There is a bug when using displayOptions + routing. Routing can be handled with "handleDisplayOptionsBugPresend" if needed.
+				routing: {
+					send: { type: 'body', property: 'offer.couponCode' },
+				},
 			},
 			{
 				displayName: 'Redeem Online Url',
@@ -1130,10 +1142,10 @@ export const postFields: INodeProperties[] = [
 				default: '',
 				description: 'Link to redeem the offer',
 				// displayOptions: { show: { postType: ['OFFER'] } },
-				// ToDo: There is a bug when using displayOptions + routing. Routing is handled as a presend function.
-				// routing: {
-				// 	send: { type: 'body', property: 'offer.redeemOnlineUrl' },
-				// },
+				// There is a bug when using displayOptions + routing. Routing can be handled with "handleDisplayOptionsBugPresend" if needed.
+				routing: {
+					send: { type: 'body', property: 'offer.redeemOnlineUrl' },
+				},
 			},
 			{
 				displayName: 'Terms and Conditions',
@@ -1142,10 +1154,10 @@ export const postFields: INodeProperties[] = [
 				default: '',
 				description: 'The terms and conditions of the offer',
 				// displayOptions: { show: { postType: ['OFFER'] } },
-				// ToDo: There is a bug when using displayOptions + routing. Routing is handled as a presend function.
-				// routing: {
-				// 	send: { type: 'body', property: 'offer.termsConditions' },
-				// },
+				// There is a bug when using displayOptions + routing. Routing can be handled with "handleDisplayOptionsBugPresend" if needed.
+				routing: {
+					send: { type: 'body', property: 'offer.termsConditions' },
+				},
 			},
 		],
 	},
