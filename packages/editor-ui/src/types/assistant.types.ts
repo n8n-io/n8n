@@ -1,5 +1,11 @@
 import type { Schema } from '@/Interface';
-import type { ICredentialType, IDataObject, INode, INodeParameters } from 'n8n-workflow';
+import type {
+	ICredentialType,
+	IDataObject,
+	INode,
+	INodeIssues,
+	INodeParameters,
+} from 'n8n-workflow';
 
 export namespace ChatRequest {
 	export interface NodeExecutionSchema {
@@ -39,7 +45,7 @@ export namespace ChatRequest {
 		user: {
 			firstName: string;
 		};
-		context: UserContext;
+		context?: UserContext;
 		question: string;
 	}
 
@@ -74,7 +80,10 @@ export namespace ChatRequest {
 	}
 
 	export interface UserContext {
-		activeNode?: INode;
+		activeNodeInfo?: {
+			node?: INode;
+			nodeIssues?: INodeIssues;
+		};
 		activeCredentials?: Pick<ICredentialType, 'name' | 'displayName'>;
 	}
 

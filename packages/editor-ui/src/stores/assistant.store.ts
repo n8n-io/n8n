@@ -357,21 +357,23 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		});
 	}
 
-	function getVisualContext(): ChatRequest.UserContext {
-		// TODO: Don't do this for credential help
+	function getVisualContext(): ChatRequest.UserContext | undefined {
+		if (chatSessionTask.value !== 'support') {
+			return undefined;
+		}
 		const currentView = route.name as VIEWS;
 		const activeNode = workflowsStore.activeNode();
-		// TODO: What if user is looking at node config tab?
-		// TODO: Send node execution status, input data, and execution schema
 		const activeNodeForLLM = activeNode ? processNodeForAssistant(activeNode, ['position']) : null;
 		const activeModals = uiStore.activeModals;
-		// const isCredentialModalActive = activeModals.includes(CREDENTIAL_EDIT_MODAL_KEY);
-		// TODO: Only send if modal is active
-		const activeCredential = useCredentialsStore().getCredentialTypeByName(
-			uiStore.activeCredentialType ?? '',
-		);
+		const isCredentialModalActive = activeModals.includes(CREDENTIAL_EDIT_MODAL_KEY);
+		const activeCredential = isCredentialModalActive
+			? useCredentialsStore().getCredentialTypeByName(uiStore.activeCredentialType ?? '')
+			: undefined;
 		return {
-			activeNode: activeNodeForLLM ?? undefined,
+			activeNodeInfo: {
+				node: activeNodeForLLM ?? undefined,
+				nodeIssues: activeNode?.issues ?? undefined,
+			},
 			activeCredentials: activeCredential
 				? { name: activeCredential?.name, displayName: activeCredential?.displayName }
 				: undefined,
