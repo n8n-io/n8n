@@ -37,6 +37,7 @@ import { AddMfaColumns1690000000030 } from './1690000000040-AddMfaColumns';
 import { ExecutionSoftDelete1693491613982 } from './1693491613982-ExecutionSoftDelete';
 import { DropRoleMapping1705429061930 } from './1705429061930-DropRoleMapping';
 import { AddActivatedAtUserSetting1717498465931 } from './1717498465931-AddActivatedAtUserSetting';
+import { AddApiKeysTable1724951148974 } from './1724951148974-AddApiKeysTable';
 import { UniqueWorkflowNames1620821879465 } from '../common/1620821879465-UniqueWorkflowNames';
 import { UpdateWorkflowCredentials1630330987096 } from '../common/1630330987096-UpdateWorkflowCredentials';
 import { AddNodeIds1658930531669 } from '../common/1658930531669-AddNodeIds';
@@ -122,6 +123,7 @@ const sqliteMigrations: Migration[] = [
 	CreateInvalidAuthTokenTable1723627610222,
 	RefactorExecutionIndices1723796243146,
 	CreateAnnotationTables1724753530828,
+	AddApiKeysTable1724951148974,
 ];
 
 export { sqliteMigrations };

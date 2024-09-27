@@ -307,11 +307,11 @@ export async function execute(
 			if (handlingExtraDataOption === 'ignoreIt') {
 				inputData.push(items[i].json);
 			}
-			if (handlingExtraDataOption === 'error' && columnsToMatchOn[0] !== 'row_number') {
+			if (handlingExtraDataOption === 'error') {
 				Object.keys(items[i].json).forEach((key) => errorOnUnexpectedColumn(key, i));
 				inputData.push(items[i].json);
 			}
-			if (handlingExtraDataOption === 'insertInNewColumn' && columnsToMatchOn[0] !== 'row_number') {
+			if (handlingExtraDataOption === 'insertInNewColumn') {
 				Object.keys(items[i].json).forEach(addNewColumn);
 				inputData.push(items[i].json);
 			}
