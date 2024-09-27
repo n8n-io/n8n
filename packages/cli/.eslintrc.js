@@ -71,5 +71,11 @@ module.exports = {
 				],
 			},
 		},
+		{
+			files: ['./test/**/*.ts', './src/**/__tests__/**/*.ts'],
+			rules: {
+				'n8n-local-rules/no-dynamic-import-template': 'off',
+			},
+		},
 	],
 };

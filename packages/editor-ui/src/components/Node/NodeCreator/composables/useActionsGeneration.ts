@@ -60,6 +60,7 @@ function getNodeTypeBase(nodeTypeDescription: INodeTypeDescription, label?: stri
 			categories: [category],
 		},
 		iconUrl: nodeTypeDescription.iconUrl,
+		iconColor: nodeTypeDescription.iconColor,
 		outputs: nodeTypeDescription.outputs,
 		icon: nodeTypeDescription.icon,
 		defaults: nodeTypeDescription.defaults,

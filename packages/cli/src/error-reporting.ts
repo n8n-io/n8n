@@ -1,6 +1,7 @@
 import { GlobalConfig } from '@n8n/config';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { QueryFailedError } from '@n8n/typeorm';
+import { AxiosError } from 'axios';
 import { createHash } from 'crypto';
 import { ErrorReporterProxy, ApplicationError } from 'n8n-workflow';
 import Container from 'typedi';
@@ -66,6 +67,8 @@ export const initErrorHandling = async () => {
 		],
 		beforeSend(event, { originalException }) {
 			if (!originalException) return null;
+
+			if (originalException instanceof AxiosError) return null;
 
 			if (
 				originalException instanceof QueryFailedError &&
