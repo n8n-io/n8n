@@ -51,15 +51,13 @@ describe('When public API is disabled', () => {
 
 describe('Owner shell', () => {
 	let ownerShell: User;
-	let authOwnerShellAgent: SuperAgentTest;
 
 	beforeEach(async () => {
 		ownerShell = await createUserShell('global:owner');
-		authOwnerShellAgent = testServer.authAgentFor(ownerShell);
 	});
 
 	test('POST /api-keys should create an api key', async () => {
-		const newApiKeyResponse = await authOwnerShellAgent.post('/api-keys');
+		const newApiKeyResponse = await testServer.authAgentFor(ownerShell).post('/api-keys');
 
 		const newApiKey = newApiKeyResponse.body.data as ApiKey;
 
@@ -81,9 +79,9 @@ describe('Owner shell', () => {
 	});
 
 	test('GET /api-keys should fetch the api key redacted', async () => {
-		const newApiKeyResponse = await authOwnerShellAgent.post('/api-keys');
+		const newApiKeyResponse = await testServer.authAgentFor(ownerShell).post('/api-keys');
 
-		const retrieveAllApiKeysResponse = await authOwnerShellAgent.get('/api-keys');
+		const retrieveAllApiKeysResponse = await testServer.authAgentFor(ownerShell).get('/api-keys');
 
 		expect(retrieveAllApiKeysResponse.statusCode).toBe(200);
 
@@ -98,13 +96,13 @@ describe('Owner shell', () => {
 	});
 
 	test('DELETE /api-keys/:id should delete the api key', async () => {
-		const newApiKeyResponse = await authOwnerShellAgent.post('/api-keys');
+		const newApiKeyResponse = await testServer.authAgentFor(ownerShell).post('/api-keys');
 
-		const deleteApiKeyResponse = await authOwnerShellAgent.delete(
-			`/api-keys/${newApiKeyResponse.body.data.id}`,
-		);
+		const deleteApiKeyResponse = await testServer
+			.authAgentFor(ownerShell)
+			.delete(`/api-keys/${newApiKeyResponse.body.data.id}`);
 
-		const retrieveAllApiKeysResponse = await authOwnerShellAgent.get('/api-keys');
+		const retrieveAllApiKeysResponse = await testServer.authAgentFor(ownerShell).get('/api-keys');
 
 		expect(deleteApiKeyResponse.body.data.success).toBe(true);
 		expect(retrieveAllApiKeysResponse.body.data.length).toBe(0);
@@ -114,14 +112,12 @@ describe('Owner shell', () => {
 describe('Member', () => {
 	const memberPassword = randomValidPassword();
 	let member: User;
-	let authMemberAgent: SuperAgentTest;
 
 	beforeEach(async () => {
 		member = await createUser({
 			password: memberPassword,
 			role: 'global:member',
 		});
-		authMemberAgent = testServer.authAgentFor(member);
 		await utils.setInstanceOwnerSetUp(true);
 	});
 
