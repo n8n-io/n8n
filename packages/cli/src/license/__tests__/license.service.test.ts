@@ -103,7 +103,7 @@ describe('LicenseService', () => {
 
 		test('on failure', async () => {
 			jest.spyOn(axios, 'post').mockRejectedValueOnce(new AxiosError('Failed'));
-			return await expect(
+			await expect(
 				licenseService.registerCommunityEdition({
 					email: 'test@ema.il',
 					instanceId: '123',
