@@ -126,6 +126,7 @@ provide(CanvasNodeHandleKey, {
 	isConnected,
 	isConnecting,
 	isReadOnly,
+	handleString,
 });
 </script>
 

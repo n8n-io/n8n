@@ -21,7 +21,7 @@ export type CanvasEdgeProps = EdgeProps<CanvasConnectionData> & {
 
 const props = defineProps<CanvasEdgeProps>();
 
-const { onEdgeMouseEnter, onEdgeMouseLeave } = useVueFlow();
+const { onEdgeMouseEnter, onEdgeMouseLeave, emits, findEdge } = useVueFlow();
 
 const isHovered = ref(false);
 
@@ -33,6 +33,18 @@ onEdgeMouseLeave(({ edge }) => {
 	if (edge.id !== props.id) return;
 	isHovered.value = false;
 });
+
+const handleToolbarMouseEnter = (event: MouseEvent) => {
+	const edge = findEdge(props.id);
+	if (!edge) return;
+	void emits.edgeMouseEnter({ event, edge });
+};
+
+const handleToolbarMouseLEave = (event: MouseEvent) => {
+	const edge = findEdge(props.id);
+	if (!edge) return;
+	void emits.edgeMouseLeave({ event, edge });
+};
 
 const $style = useCssModule();
 
@@ -107,8 +119,8 @@ function onDelete() {
 			data-test-id="edge-label-wrapper"
 			:style="edgeToolbarStyle"
 			:class="$style.edgeLabelWrapper"
-			@mouseenter="isHovered = true"
-			@mouseleave="isHovered = false"
+			@mouseenter="handleToolbarMouseEnter"
+			@mouseleave="handleToolbarMouseLEave"
 		>
 			<CanvasEdgeToolbar
 				v-if="renderToolbar"
