@@ -1363,6 +1363,17 @@ export async function clearAllProcessedItems(
 		options,
 	);
 }
+export async function getProcessedDataCount(
+	context: ProcessedDataContext,
+	contextData: ICheckProcessedContextData,
+	options: ICheckProcessedOptions,
+): Promise<number> {
+	return await ProcessedDataManager.getInstance().getProcessedDataCount(
+		context,
+		contextData,
+		options,
+	);
+}
 function applyPaginationRequestData(
 	requestData: IRequestOptions,
 	paginationRequestData: PaginationOptions['request'],
@@ -3577,6 +3588,12 @@ const getCheckProcessedHelperFunctions = (
 		options: ICheckProcessedOptions,
 	): Promise<void> {
 		return await clearAllProcessedItems(context, { node, workflow }, options);
+	},
+	async getProcessedDataCount(
+		context: ProcessedDataContext,
+		options: ICheckProcessedOptions,
+	): Promise<number> {
+		return await getProcessedDataCount(context, { node, workflow }, options);
 	},
 });
 

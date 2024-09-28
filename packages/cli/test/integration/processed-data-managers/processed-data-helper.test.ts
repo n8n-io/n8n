@@ -95,8 +95,8 @@ afterAll(async () => {
 	await testDb.terminate();
 });
 
-describe('ProcessedDataManagers.NativeDatabase', () => {
-	test('ProcessedData (mode: entries): NativeDatabase should record and check data correctly', async () => {
+describe('ProcessedDataManagers.ProcessedDataHelper', () => {
+	test('ProcessedData (mode: entries): ProcessedDataHelper should record and check data correctly', async () => {
 		const context = 'node';
 		const contextData: ICheckProcessedContextData = {
 			workflow,
@@ -160,7 +160,7 @@ describe('ProcessedDataManagers.NativeDatabase', () => {
 		expect(processedData).toEqual({ new: ['b', 'd'], processed: ['a', 'c'] });
 	});
 
-	test('ProcessedData (mode: entries): NativeDatabase different contexts should not interfere with each other', async () => {
+	test('ProcessedData (mode: entries): ProcessedDataHelper different contexts should not interfere with each other', async () => {
 		const contextData: ICheckProcessedContextData = {
 			workflow,
 			node,
@@ -220,7 +220,7 @@ describe('ProcessedDataManagers.NativeDatabase', () => {
 		expect(processedData).toEqual({ new: ['b', 'd'], processed: ['a', 'c'] });
 	});
 
-	test('ProcessedData (mode: entries): NativeDatabase check maxEntries', async () => {
+	test('ProcessedData (mode: entries): ProcessedDataHelper check maxEntries', async () => {
 		const contextData: ICheckProcessedContextData = {
 			workflow,
 			node,
@@ -265,7 +265,7 @@ describe('ProcessedDataManagers.NativeDatabase', () => {
 		expect(processedData).toEqual({ new: ['0', '1', '7'], processed: ['2', '3', '4', '5', '6'] });
 	});
 
-	describe('ProcessedData (mode: latestIncrementalKey): NativeDatabase should record and check data correctly', () => {
+	describe('ProcessedData (mode: latestIncrementalKey): ProcessedDataHelper should record and check data correctly', () => {
 		const tests: Array<{
 			description: string;
 			data: Array<{
@@ -401,5 +401,86 @@ describe('ProcessedDataManagers.NativeDatabase', () => {
 				}
 			});
 		}
+	});
+
+	test('removeProcessed should throw error for latest modes', async () => {
+		const contextData: ICheckProcessedContextData = {
+			workflow,
+			node,
+		};
+
+		await expect(
+			ProcessedDataManager.getInstance().removeProcessed(['2022-01-01'], 'node', contextData, {
+				mode: 'latestDate',
+			}),
+		).rejects.toThrow('Removing processed data is not possible in mode "latest"');
+
+		await expect(
+			ProcessedDataManager.getInstance().removeProcessed([1], 'node', contextData, {
+				mode: 'latestIncrementalKey',
+			}),
+		).rejects.toThrow('Removing processed data is not possible in mode "latest"');
+	});
+
+	test('clearAllProcessedItems should delete all processed items for a given context', async () => {
+		const contextData: ICheckProcessedContextData = {
+			workflow,
+			node,
+		};
+
+		// First, add some data
+		await ProcessedDataManager.getInstance().checkProcessedAndRecord(
+			['a', 'b', 'c'],
+			'node',
+			contextData,
+			{ mode: 'entries' },
+		);
+
+		// Clear all processed items
+		await ProcessedDataManager.getInstance().clearAllProcessedItems('node', contextData, {
+			mode: 'entries',
+		});
+
+		// Check that all items are now considered new
+		const processedData = await ProcessedDataManager.getInstance().checkProcessed(
+			['a', 'b', 'c'],
+			'node',
+			contextData,
+			{ mode: 'entries' },
+		);
+
+		expect(processedData).toEqual({ new: ['a', 'b', 'c'], processed: [] });
+	});
+
+	test('getProcessedDataCount should return correct count for different modes', async () => {
+		const contextData: ICheckProcessedContextData = {
+			workflow,
+			node,
+		};
+
+		// Test for 'entries' mode
+		await ProcessedDataManager.getInstance().checkProcessedAndRecord(
+			['a', 'b', 'c'],
+			'node',
+			contextData,
+			{ mode: 'entries' },
+		);
+
+		const entriesCount = await ProcessedDataManager.getInstance().getProcessedDataCount(
+			'node',
+			contextData,
+			{ mode: 'entries' },
+		);
+
+		expect(entriesCount).toBe(3);
+
+		// Test for other modes (should return 0)
+		const latestCount = await ProcessedDataManager.getInstance().getProcessedDataCount(
+			'node',
+			contextData,
+			{ mode: 'latestDate' },
+		);
+
+		expect(latestCount).toBe(0);
 	});
 });

@@ -810,6 +810,10 @@ export interface CheckProcessedHelperFunctions {
 		context: ProcessedDataContext,
 		options: ICheckProcessedOptions,
 	): Promise<void>;
+	getProcessedDataCount(
+		context: ProcessedDataContext,
+		options: ICheckProcessedOptions,
+	): Promise<number>;
 }
 export interface NodeHelperFunctions {
 	copyBinaryFile(filePath: string, fileName: string, mimeType?: string): Promise<IBinaryData>;
@@ -2700,6 +2704,11 @@ export interface IProcessedDataManager {
 		contextData: ICheckProcessedContextData,
 		options: ICheckProcessedOptions,
 	): Promise<void>;
+	getProcessedDataCount(
+		context: ProcessedDataContext,
+		contextData: ICheckProcessedContextData,
+		options: ICheckProcessedOptions,
+	): Promise<number>;
 }
 
 export interface IProcessedDataManagers {

@@ -298,4 +298,25 @@ export class ProcessedDataHelper implements IProcessedDataManager {
 			context: ProcessedDataHelper.createContext(context, contextData),
 		});
 	}
+
+	async getProcessedDataCount(
+		context: ProcessedDataContext,
+		contextData: ICheckProcessedContextData,
+		options: ICheckProcessedOptions,
+	): Promise<number> {
+		const processedDataRepository = Container.get(ProcessedDataRepository);
+
+		const processedData = await processedDataRepository.findOne({
+			where: {
+				workflowId: contextData.workflow.id as string,
+				context: ProcessedDataHelper.createContext(context, contextData),
+			},
+		});
+
+		if (options.mode === 'entries') {
+			return (processedData?.value as IProcessedDataEntries)?.data?.length ?? 0;
+		} else {
+			return 0;
+		}
+	}
 }

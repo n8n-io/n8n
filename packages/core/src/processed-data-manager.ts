@@ -119,4 +119,16 @@ export class ProcessedDataManager {
 
 		throw new ApplicationError('There is no manager');
 	}
+
+	async getProcessedDataCount(
+		context: ProcessedDataContext,
+		contextData: ICheckProcessedContextData,
+		options: ICheckProcessedOptions,
+	): Promise<number> {
+		if (this.manager) {
+			return await this.manager.getProcessedDataCount(context, contextData, options);
+		}
+
+		throw new ApplicationError('There is no manager');
+	}
 }

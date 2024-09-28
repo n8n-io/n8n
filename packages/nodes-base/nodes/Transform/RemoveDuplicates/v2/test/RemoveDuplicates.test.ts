@@ -92,6 +92,7 @@ describe('RemoveDuplicatesV2', () => {
 				if (paramName === 'options.historySize') return 10;
 			},
 		);
+		executeFunctions.helpers.getProcessedDataCount = jest.fn().mockReturnValue(3);
 		(executeFunctions.helpers.checkProcessedAndRecord as jest.Mock).mockReturnValue({
 			new: [1, 3],
 			processed: [2],

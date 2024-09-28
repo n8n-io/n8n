@@ -1,5 +1,5 @@
 import { get, isEqual, lt, pick } from 'lodash';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeExecutionOutput, NodeOperationError } from 'n8n-workflow';
 import type {
 	INodeTypeBaseDescription,
 	IExecuteFunctions,
@@ -210,6 +210,10 @@ export class RemoveDuplicatesV2 implements INodeType {
 						context as ProcessedDataContext,
 						{ mode: 'entries', maxEntries } as ICheckProcessedOptions,
 					);
+					const processedDataCount = await this.helpers.getProcessedDataCount(
+						context as ProcessedDataContext,
+						{ mode: 'entries', maxEntries } as ICheckProcessedOptions,
+					);
 					returnData.push(
 						itemsProcessed.new
 							.map((key) => {
@@ -223,7 +227,15 @@ export class RemoveDuplicatesV2 implements INodeType {
 							.flat(),
 					);
 
-					return returnData;
+					const maxEntriesNum = Number(maxEntries);
+					if (maxEntriesNum > 0 && processedDataCount / maxEntriesNum > 0.8) {
+						return new NodeExecutionOutput(returnData, [
+							{
+								message: `Some duplicates may be not be removed since you're approaching the maximum history size (${maxEntriesNum} items). You can raise this limit using the ‘history size’ option.`,
+								location: 'outputPane',
+							},
+						]);
+					} else return returnData;
 				} else if (logic === 'removeItemsUpToStoredIncrementalKey') {
 					const context = this.getNodeParameter('options.scope', 0, 'node');
 
