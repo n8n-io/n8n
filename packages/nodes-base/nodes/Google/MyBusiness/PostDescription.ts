@@ -159,7 +159,9 @@ export const postOperations: INodeProperties[] = [
 							): Promise<INodeExecutionData[]> {
 								if (response.statusCode < 200 || response.statusCode >= 300) {
 									const post = this.getNodeParameter('post') as IDataObject;
-									const additionalOptions = this.getNodeParameter('additionalOptions') as IDataObject;
+									const additionalOptions = this.getNodeParameter(
+										'additionalOptions',
+									) as IDataObject;
 									if (post && response.statusCode === 404) {
 										// Don't return a 404 error if the post does not exist
 										throw new NodeOperationError(

@@ -42,7 +42,7 @@ describe('GenericFunctions - handleDatesPresend', () => {
 			body: {},
 		};
 
-		const result = await handleDatesPresend.call(mockContext, opts as	IHttpRequestOptions);
+		const result = await handleDatesPresend.call(mockContext, opts as IHttpRequestOptions);
 
 		expect(result.body).toEqual({
 			event: {
