@@ -54,6 +54,7 @@ export class RemoveDuplicatesV2 implements INodeType {
 		const items = this.getInputData();
 		const operation = this.getNodeParameter('operation', 0);
 		const returnData: INodeExecutionData[][] = [];
+		const DEFAULT_MAX_ENTRIES = 10000;
 		switch (operation) {
 			case 'removeDuplicateInputItems': {
 				const compare = this.getNodeParameter('compare', 0) as string;
@@ -202,7 +203,7 @@ export class RemoveDuplicatesV2 implements INodeType {
 						// TODO: Add continueOnFail, where should it and up?
 					}
 
-					const maxEntries = this.getNodeParameter('options.historySize', 0, 1000);
+					const maxEntries = this.getNodeParameter('options.historySize', 0, DEFAULT_MAX_ENTRIES);
 
 					const itemsProcessed = await this.helpers.checkProcessedAndRecord(
 						Object.keys(itemMapping),

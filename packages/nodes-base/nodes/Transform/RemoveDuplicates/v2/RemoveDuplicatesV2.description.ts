@@ -260,7 +260,7 @@ export const removeDuplicatesNodeFields: INodeProperties[] = [
 				displayName: 'History Size',
 				name: 'historySize',
 				type: 'number',
-				default: 1000,
+				default: 10000,
 				hint: 'The max number of past items to store for deduplication',
 				displayOptions: {
 					show: {
