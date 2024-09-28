@@ -8,6 +8,9 @@ import type {
 	INodeProperties,
 	JsonObject,
 } from 'n8n-workflow';
+
+import { NodeOperationError, jsonParse } from 'n8n-workflow';
+
 import { NodeApiError } from 'n8n-workflow';
 
 import { createTransport } from 'nodemailer';
@@ -38,7 +41,90 @@ const properties: INodeProperties[] = [
 		description:
 			'Email address of the recipient. You can also specify a name: Nathan Doe &lt;nate@n8n.io&gt;.',
 	},
-
+	{
+		displayName: 'Additional Headers',
+		name: 'additionalHeaders',
+		type: 'boolean',
+		default: false,
+		noDataExpression: true,
+		description: 'Add additional headers',
+	},
+	{
+		displayName: 'Specify Headers',
+		name: 'specifyHeaders',
+		type: 'options',
+		displayOptions: {
+			show: {
+				additionalHeaders: [true],
+			},
+		},
+		options: [
+			{
+				name: 'Using Fields Below',
+				value: 'keypair',
+			},
+			{
+				name: 'Using JSON',
+				value: 'json',
+			},
+		],
+		default: 'keypair',
+	},
+	{
+		displayName: 'Header Parameters',
+		name: 'headerParameters',
+		type: 'fixedCollection',
+		displayOptions: {
+			show: {
+				additionalHeaders: [true],
+				specifyHeaders: ['keypair'],
+			},
+		},
+		typeOptions: {
+			multipleValues: true,
+		},
+		placeholder: 'Add Parameter',
+		default: {
+			parameters: [
+				{
+					name: '',
+					value: '',
+				},
+			],
+		},
+		options: [
+			{
+				name: 'parameters',
+				displayName: 'Parameter',
+				values: [
+					{
+						displayName: 'Name',
+						name: 'name',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Value',
+						name: 'value',
+						type: 'string',
+						default: '',
+					},
+				],
+			},
+		],
+	},
+	{
+		displayName: 'JSON',
+		name: 'jsonHeaders',
+		type: 'json',
+		displayOptions: {
+			show: {
+				additionalHeaders: [true],
+				specifyHeaders: ['json'],
+			},
+		},
+		default: '',
+	},
 	{
 		displayName: 'Subject',
 		name: 'subject',
@@ -203,6 +289,16 @@ type EmailSendOptions = {
 	replyTo?: string;
 };
 
+async function reduceAsync<T, R>(
+	arr: T[],
+	reducer: (acc: Awaited<Promise<R>>, cur: T) => Promise<R>,
+	init: Promise<R> = Promise.resolve({} as R),
+): Promise<R> {
+	return await arr.reduce(async (promiseAcc, item) => {
+		return await reducer(await promiseAcc, item);
+	}, init);
+}
+
 function configureTransport(credentials: IDataObject, options: EmailSendOptions) {
 	const connectionOptions: SMTPTransport.Options = {
 		host: credentials.host as string,
@@ -264,6 +360,14 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 	const returnData: INodeExecutionData[] = [];
 	let item: INodeExecutionData;
 
+	const parametersToKeyValue = async (
+		accumulator: { [key: string]: any },
+		cur: { name: string; value: string; parameterType?: string; inputDataFieldName?: string },
+	) => {
+		accumulator[cur.name] = cur.value;
+		return accumulator;
+	};
+
 	for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 		try {
 			item = items[itemIndex];
@@ -274,9 +378,55 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			const emailFormat = this.getNodeParameter('emailFormat', itemIndex) as string;
 			const options = this.getNodeParameter('options', itemIndex, {}) as EmailSendOptions;
 
+			const additionalHeaders = this.getNodeParameter(
+				'additionalHeaders',
+				itemIndex,
+				false,
+			) as boolean;
+
+			const headerParameters = this.getNodeParameter(
+				'headerParameters.parameters',
+				itemIndex,
+				[],
+			) as [{ name: string; value: string }];
+
+			const specifyHeaders = this.getNodeParameter(
+				'specifyHeaders',
+				itemIndex,
+				'keypair',
+			) as string;
+
+			const jsonHeadersParameter = this.getNodeParameter('jsonHeaders', itemIndex, '') as string;
+
 			const credentials = await this.getCredentials('smtp');
 
 			const transporter = configureTransport(credentials, options);
+
+			// Get additional headers defined in the UI
+			let extraHeaders: IDataObject = {};
+			if (additionalHeaders && headerParameters) {
+				if (specifyHeaders === 'keypair') {
+					extraHeaders = await reduceAsync(
+						headerParameters.filter((header) => header.name),
+						parametersToKeyValue,
+					);
+				} else if (specifyHeaders === 'json') {
+					// body is specified using JSON
+					try {
+						JSON.parse(jsonHeadersParameter);
+					} catch {
+						throw new NodeOperationError(
+							this.getNode(),
+							'JSON parameter need to be an valid JSON',
+							{
+								itemIndex,
+							},
+						);
+					}
+
+					extraHeaders = jsonParse(jsonHeadersParameter);
+				}
+			}
 
 			const mailOptions: IDataObject = {
 				from: fromEmail,
@@ -285,6 +435,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				bcc: options.bccEmail,
 				subject,
 				replyTo: options.replyTo,
+				headers: extraHeaders,
 			};
 
 			if (emailFormat === 'text' || emailFormat === 'both') {
