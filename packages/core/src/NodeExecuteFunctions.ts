@@ -127,6 +127,7 @@ import {
 import type { Token } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
 import path from 'path';
+import { ProxyAgent } from 'proxy-agent';
 import { stringify } from 'qs';
 import { Readable } from 'stream';
 import Container from 'typedi';
@@ -162,6 +163,9 @@ import { ScheduledTaskManager } from './ScheduledTaskManager';
 import { getSecretsProxy } from './Secrets';
 import { SSHClientsManager } from './SSHClientsManager';
 
+const proxyAgent = new ProxyAgent();
+
+axios.defaults.proxy = false;
 axios.defaults.timeout = 300000;
 // Prevent axios from adding x-form-www-urlencoded headers by default
 axios.defaults.headers.post = {};
@@ -795,6 +799,8 @@ export async function proxyRequestToAxios(
 	}
 
 	axiosConfig = Object.assign(axiosConfig, await parseRequestObject(configObject));
+	axiosConfig.httpAgent = proxyAgent;
+	axiosConfig.httpsAgent = proxyAgent;
 
 	let requestFn: () => AxiosPromise;
 	if (configObject.auth?.sendImmediately === false) {
@@ -1013,6 +1019,9 @@ async function httpRequest(
 	) {
 		delete axiosRequest.data;
 	}
+
+	axiosRequest.httpAgent = proxyAgent;
+	axiosRequest.httpsAgent = proxyAgent;
 
 	let result: AxiosResponse<any>;
 	try {

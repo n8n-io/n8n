@@ -52,6 +52,7 @@
     "oauth-1.0a": "2.2.6",
     "p-cancelable": "2.1.1",
     "pretty-bytes": "5.6.0",
+    "proxy-agent": "6.4.0",
     "qs": "6.11.0",
     "ssh2": "1.15.0",
     "typedi": "catalog:",
