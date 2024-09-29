@@ -21,6 +21,7 @@
     "dist/**/*"
   ],
   "dependencies": {
-    "axios": "catalog:"
+    "axios": "catalog:",
+    "proxy-agent": "catalog:"
   }
 }

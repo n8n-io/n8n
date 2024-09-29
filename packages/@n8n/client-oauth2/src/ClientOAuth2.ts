@@ -4,6 +4,7 @@
 import axios from 'axios';
 import type { AxiosRequestConfig } from 'axios';
 import { Agent } from 'https';
+import { ProxyAgent } from 'proxy-agent';
 import * as qs from 'querystring';
 
 import type { ClientOAuth2TokenData } from './ClientOAuth2Token';
@@ -12,6 +13,9 @@ import { CodeFlow } from './CodeFlow';
 import { CredentialsFlow } from './CredentialsFlow';
 import type { Headers } from './types';
 import { getAuthError } from './utils';
+
+const proxyAgent = new ProxyAgent();
+axios.defaults.proxy = false;
 
 export interface ClientOAuth2RequestObject {
 	url: string;
@@ -110,6 +114,9 @@ export class ClientOAuth2 {
 		if (options.ignoreSSLIssues) {
 			requestConfig.httpsAgent = sslIgnoringAgent;
 		}
+
+		requestConfig.httpAgent = proxyAgent;
+		requestConfig.httpsAgent = proxyAgent;
 
 		const response = await axios.request(requestConfig);
 
