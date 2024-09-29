@@ -13,6 +13,10 @@ import jwt from 'jsonwebtoken';
 import type { AxiosRequestConfig } from 'axios';
 
 import axios from 'axios';
+import { ProxyAgent } from 'proxy-agent';
+
+let proxyAgent = new ProxyAgent();
+axios.defaults.proxy = false;
 
 export class GoogleApi implements ICredentialType {
 	name = 'googleApi';
@@ -148,6 +152,9 @@ export class GoogleApi implements ICredentialType {
 			}).toString(),
 			url: 'https://oauth2.googleapis.com/token',
 		};
+
+		axiosRequestConfig.httpAgent = proxyAgent;
+		axiosRequestConfig.httpsAgent = proxyAgent;
 
 		const result = await axios(axiosRequestConfig);
 
