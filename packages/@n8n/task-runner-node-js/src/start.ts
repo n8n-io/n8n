@@ -1,9 +1,10 @@
 import * as a from 'node:assert/strict';
 
-import { JsTaskRunner } from './code';
 import { authenticate } from './authenticator';
+import { JsTaskRunner } from './code';
 
-let _runner: JsTaskRunner;
+let _runner: JsTaskRunner | undefined;
+let isShuttingDown = false;
 
 type Config = {
 	n8nUri: string;
@@ -20,6 +21,28 @@ function readAndParseConfig(): Config {
 	};
 }
 
+function createSignalHandler(signal: string) {
+	return async function onSignal() {
+		if (isShuttingDown) {
+			return;
+		}
+
+		console.log(`Received ${signal} signal, shutting down...`);
+
+		isShuttingDown = true;
+		try {
+			if (_runner) {
+				await _runner.stop();
+				_runner = undefined;
+			}
+		} catch (error) {
+			console.error(`Error stopping task runner: ${error}`);
+		} finally {
+			process.exit(0);
+		}
+	};
+}
+
 void (async function start() {
 	const config = readAndParseConfig();
 
@@ -31,4 +54,7 @@ void (async function start() {
 	const wsUrl = `ws://${config.n8nUri}/rest/runners/_ws`;
 
 	_runner = new JsTaskRunner('javascript', wsUrl, grantToken, 5);
+
+	process.on('SIGINT', createSignalHandler('SIGINT'));
+	process.on('SIGTERM', createSignalHandler('SIGTERM'));
 })();

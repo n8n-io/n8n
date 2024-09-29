@@ -8,8 +8,6 @@ import {
 	type IWorkflowExecuteAdditionalData,
 	WorkflowDataProxy,
 	type WorkflowParameters,
-} from 'n8n-workflow';
-import {
 	type IDataObject,
 	type IExecuteData,
 	type INodeExecutionData,
