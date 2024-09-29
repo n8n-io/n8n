@@ -7,6 +7,10 @@ import type {
 } from 'n8n-workflow';
 
 import axios from 'axios';
+import { ProxyAgent } from 'proxy-agent';
+
+const proxyAgent = new ProxyAgent();
+axios.defaults.proxy = false;
 
 export class CiscoSecureEndpointApi implements ICredentialType {
 	name = 'ciscoSecureEndpointApi';
@@ -85,6 +89,8 @@ export class CiscoSecureEndpointApi implements ICredentialType {
 				grant_type: 'client_credentials',
 			}).toString(),
 			url: `https://visibility.${region}.cisco.com/iroh/oauth2/token`,
+			httpAgent: proxyAgent,
+			httpsAgent: proxyAgent,
 		});
 
 		const secureEndpointToken = await axios({
@@ -98,6 +104,8 @@ export class CiscoSecureEndpointApi implements ICredentialType {
 				grant_type: 'client_credentials',
 			}).toString(),
 			url: `https://api.${region}.cisco.com/v3/access_tokens`,
+			httpAgent: proxyAgent,
+			httpsAgent: proxyAgent,
 		});
 
 		const requestOptionsWithAuth: IHttpRequestOptions = {
