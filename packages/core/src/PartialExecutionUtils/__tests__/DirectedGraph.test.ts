@@ -90,6 +90,14 @@ describe('DirectedGraph', () => {
 	});
 
 	describe('removeNode', () => {
+		//              XX
+		//  ┌─────┐    ┌─────┐   ┌─────┐
+		//  │node0├───►│node1├──►│node2│
+		//  └─────┘    └─────┘   └─────┘
+		// turns into
+		//  ┌─────┐              ┌─────┐
+		//  │node0│              │node2│
+		//  └─────┘              └─────┘
 		test('remove node and all connections', () => {
 			// ARRANGE
 			const node0 = createNodeData({ name: 'node0' });
@@ -108,6 +116,14 @@ describe('DirectedGraph', () => {
 			);
 		});
 
+		//              XX
+		//  ┌─────┐    ┌─────┐   ┌─────┐
+		//  │node0├───►│node1├──►│node2│
+		//  └─────┘    └─────┘   └─────┘
+		// turns into
+		//  ┌─────┐   ┌─────┐
+		//  │node0├──►│node2│
+		//  └─────┘   └─────┘
 		test('remove node, but reconnect connections', () => {
 			// ARRANGE
 			const node0 = createNodeData({ name: 'node0' });
