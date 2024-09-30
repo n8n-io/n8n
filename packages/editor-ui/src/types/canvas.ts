@@ -7,7 +7,7 @@ import type {
 } from 'n8n-workflow';
 import type { DefaultEdge, Node, NodeProps, Position } from '@vue-flow/core';
 import type { IExecutionResponse, INodeUi } from '@/Interface';
-import type { Ref } from 'vue';
+import type { ComputedRef, Ref } from 'vue';
 import type { PartialBy } from '@/utils/typeHelpers';
 import type { EventBus } from 'n8n-design-system';
 
@@ -26,13 +26,14 @@ export const canvasConnectionModes = [
 export type CanvasConnectionPort = {
 	type: CanvasConnectionPortType;
 	required?: boolean;
+	maxConnections?: number;
 	index: number;
 	label?: string;
 };
 
 export interface CanvasElementPortWithRenderData extends CanvasConnectionPort {
 	handleId: string;
-	isConnected: boolean;
+	connectionsCount: number;
 	isConnecting: boolean;
 	position: Position;
 	offset?: { top?: string; left?: string };
@@ -166,7 +167,7 @@ export interface CanvasNodeHandleInjectionData {
 	type: Ref<NodeConnectionType>;
 	index: Ref<number>;
 	isRequired: Ref<boolean | undefined>;
-	isConnected: Ref<boolean | undefined>;
+	isConnected: ComputedRef<boolean | undefined>;
 	isConnecting: Ref<boolean | undefined>;
 	isReadOnly: Ref<boolean | undefined>;
 	runData: Ref<ExecutionOutputMapData | undefined>;
