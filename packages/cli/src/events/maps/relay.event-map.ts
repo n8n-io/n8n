@@ -11,7 +11,7 @@ import type { ProjectRole } from '@/databases/entities/project-relation';
 import type { GlobalRole } from '@/databases/entities/user';
 import type { IWorkflowDb } from '@/interfaces';
 
-import type { AiEventMap } from './ai-event-map';
+import type { AiEventMap } from './ai.event-map';
 
 export type UserLike = {
 	id: string;

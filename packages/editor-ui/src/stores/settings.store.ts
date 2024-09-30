@@ -17,7 +17,6 @@ import { useUIStore } from './ui.store';
 import { useUsersStore } from './users.store';
 import { useVersionsStore } from './versions.store';
 import { makeRestApiRequest } from '@/utils/apiUtils';
-import { useTitleChange } from '@/composables/useTitleChange';
 import { useToast } from '@/composables/useToast';
 import { i18n } from '@/plugins/i18n';
 
@@ -257,9 +256,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 			await getSettings();
 
 			ExpressionEvaluatorProxy.setEvaluator(settings.value.expressions.evaluator);
-
-			// Re-compute title since settings are now available
-			useTitleChange().titleReset();
 
 			initialized.value = true;
 		} catch (e) {
