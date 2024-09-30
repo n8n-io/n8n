@@ -3,6 +3,7 @@ import { defineComponent } from 'vue';
 import type { ApiKey, IUser } from '@/Interface';
 import { useToast } from '@/composables/useToast';
 import { useMessage } from '@/composables/useMessage';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
 
 import CopyInput from '@/components/CopyInput.vue';
 import { mapStores } from 'pinia';
@@ -23,6 +24,7 @@ export default defineComponent({
 			...useToast(),
 			...useMessage(),
 			...useUIStore(),
+			documentTitle: useDocumentTitle(),
 		};
 	},
 	data() {
@@ -35,6 +37,7 @@ export default defineComponent({
 		};
 	},
 	mounted() {
+		this.documentTitle.set(this.$locale.baseText('settings.api'));
 		if (!this.isPublicApiEnabled) return;
 
 		void this.getApiKeys();

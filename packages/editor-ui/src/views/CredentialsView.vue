@@ -18,6 +18,7 @@ import ProjectTabs from '@/components/Projects/ProjectTabs.vue';
 import useEnvironmentsStore from '@/stores/environments.ee.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { getResourcePermissions } from '@/permissions';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
 
 export default defineComponent({
 	name: 'CredentialsView',
@@ -35,6 +36,7 @@ export default defineComponent({
 			},
 			sourceControlStoreUnsubscribe: () => {},
 			loading: false,
+			documentTitle: useDocumentTitle(),
 		};
 	},
 	computed: {
@@ -86,6 +88,7 @@ export default defineComponent({
 		},
 	},
 	mounted() {
+		this.documentTitle.set(this.$locale.baseText('credentials.heading'));
 		this.sourceControlStoreUnsubscribe = this.sourceControlStore.$onAction(({ name, after }) => {
 			if (name === 'pullWorkfolder' && after) {
 				after(() => {

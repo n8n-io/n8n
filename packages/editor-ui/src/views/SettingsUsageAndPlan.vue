@@ -7,6 +7,7 @@ import { telemetry } from '@/plugins/telemetry';
 import { i18n as locale } from '@/plugins/i18n';
 import { useUIStore } from '@/stores/ui.store';
 import { useToast } from '@/composables/useToast';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { hasPermission } from '@/utils/rbac/permissions';
 
 const usageStore = useUsageStore();
@@ -14,6 +15,7 @@ const route = useRoute();
 const router = useRouter();
 const uiStore = useUIStore();
 const toast = useToast();
+const documentTitle = useDocumentTitle();
 
 const queryParamCallback = ref<string>(
 	`callback=${encodeURIComponent(`${window.location.origin}${window.location.pathname}`)}`,
@@ -64,6 +66,7 @@ const onLicenseActivation = async () => {
 };
 
 onMounted(async () => {
+	documentTitle.set(locale.baseText('settings.usageAndPlan.title'));
 	usageStore.setLoading(true);
 	if (route.query.key) {
 		try {
