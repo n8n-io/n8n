@@ -1,13 +1,11 @@
-import type {
-	IPollFunctions,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-} from 'n8n-workflow';
-
 import moment from 'moment-timezone';
-
-import { seaTableApiRequest, simplify_new, enrichColumns } from './v2/GenericFunctions';
+import {
+	type IPollFunctions,
+	type INodeExecutionData,
+	type INodeType,
+	type INodeTypeDescription,
+	NodeConnectionType,
+} from 'n8n-workflow';
 
 import type {
 	ICtx,
@@ -20,7 +18,7 @@ import type {
 	ICollaboratorsResult,
 	IColumnDigitalSignature,
 } from './v2/actions/Interfaces';
-
+import { seaTableApiRequest, simplify_new, enrichColumns } from './v2/GenericFunctions';
 import { loadOptions } from './v2/methods';
 
 export class SeaTableTrigger implements INodeType {
@@ -43,7 +41,7 @@ export class SeaTableTrigger implements INodeType {
 		],
 		polling: true,
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		properties: [
 			{
 				displayName: 'Event',
