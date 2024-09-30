@@ -38,7 +38,7 @@ const runDataLabel = computed(() =>
 
 const isHandlePlusVisible = computed(() => !isConnecting.value || isHovered.value);
 
-const plusStatus = computed(() => (runData.value ? 'success' : 'default'));
+const plusType = computed(() => (runData.value ? 'success' : 'default'));
 
 const plusLineSize = computed(
 	() =>
@@ -73,7 +73,7 @@ function onClickAdd() {
 				data-test-id="canvas-handle-plus"
 				:line-size="plusLineSize"
 				:handle-classes="handleClasses"
-				:status="plusStatus"
+				:type="plusType"
 				@mouseenter="onMouseEnter"
 				@mouseleave="onMouseLeave"
 				@click:plus="onClickAdd"
