@@ -61,6 +61,7 @@ const confirm = async () => {
 					interpolate: { email: email.value },
 				}),
 			type: 'success',
+			duration: 0,
 		});
 	} catch (error) {
 		toast.showError(error, i18n.baseText('communityPlusModal.error.title'));
@@ -122,7 +123,6 @@ const confirm = async () => {
 					:validate-on-blur="false"
 					:validation-rules="validationRules"
 					:validators="validators"
-					:info-text="i18n.baseText('communityPlusModal.input.info')"
 					@validate="valid = $event"
 				/>
 			</div>

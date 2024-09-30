@@ -2661,7 +2661,6 @@
 	"communityPlusModal.features.second.description": "Easily debug your workflows using data from failed executions",
 	"communityPlusModal.features.third.title": "Custom execution search",
 	"communityPlusModal.features.third.description": "Capture data during executions to provide advanced filtering to easily find what you need",
-	"communityPlusModal.input.info": "We'll only store this email to register your license and send your key",
 	"communityPlusModal.button.skip": "Skip",
 	"communityPlusModal.button.confirm": "Send me a free license key"
 }
