@@ -241,16 +241,14 @@ export class ChatTrigger extends Node {
 				default: {},
 				options: [
 					// CORS parameters are only valid for when chat is used in hosted or webhook mode
-					...(Array.isArray(commonCORSParameters)
-						? commonCORSParameters.map((p: INodeProperties) => ({
-								...p,
-								displayOptions: {
-									show: {
-										'/mode': ['hostedChat', 'webhook'],
-									},
-								},
-							}))
-						: []),
+					...commonCORSParameters.map((p) => ({
+						...p,
+						displayOptions: {
+							show: {
+								'/mode': ['hostedChat', 'webhook'],
+							},
+						},
+					})),
 					{
 						...allowFileUploadsOption,
 						displayOptions: {
