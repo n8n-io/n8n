@@ -1,19 +1,19 @@
 import {
-	mapLegacyConnectionsToCanvasConnections,
-	mapLegacyEndpointsToCanvasConnectionPort,
-	getUniqueNodeName,
-	mapCanvasConnectionToLegacyConnection,
-	parseCanvasConnectionHandleString,
 	createCanvasConnectionHandleString,
 	createCanvasConnectionId,
+	getUniqueNodeName,
+	mapCanvasConnectionToLegacyConnection,
+	mapLegacyConnectionsToCanvasConnections,
+	mapLegacyEndpointsToCanvasConnectionPort,
+	parseCanvasConnectionHandleString,
 	checkOverlap,
 } from '@/utils/canvasUtilsV2';
-import { NodeConnectionType, type IConnections, type INodeTypeDescription } from 'n8n-workflow';
+import { type IConnections, type INodeTypeDescription, NodeConnectionType } from 'n8n-workflow';
 import type { CanvasConnection } from '@/types';
+import { CanvasConnectionMode } from '@/types';
 import type { INodeUi } from '@/Interface';
 import type { Connection } from '@vue-flow/core';
 import { createTestNode } from '@/__tests__/mocks';
-import { CanvasConnectionMode } from '@/types';
 
 vi.mock('uuid', () => ({
 	v4: vi.fn(() => 'mock-uuid'),
@@ -800,6 +800,29 @@ describe('mapLegacyEndpointsToCanvasConnectionPort', () => {
 		expect(result).toEqual([
 			{ type: NodeConnectionType.Main, index: 0, label: 'Main Input', required: true },
 			{ type: NodeConnectionType.AiTool, index: 0, label: 'Optional Tool' },
+		]);
+	});
+
+	it('should map maxConnections correctly', () => {
+		const endpoints: INodeTypeDescription['inputs'] = [
+			NodeConnectionType.Main,
+			{
+				type: NodeConnectionType.AiMemory,
+				maxConnections: 1,
+				displayName: 'Optional Tool',
+				required: false,
+			},
+		];
+		const result = mapLegacyEndpointsToCanvasConnectionPort(endpoints);
+
+		expect(result).toEqual([
+			{
+				type: NodeConnectionType.Main,
+				maxConnections: undefined,
+				index: 0,
+				label: undefined,
+			},
+			{ type: NodeConnectionType.AiMemory, maxConnections: 1, index: 0, label: 'Optional Tool' },
 		]);
 	});
 });
