@@ -10,7 +10,7 @@ import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
 import { useUIStore } from '@/stores/ui.store';
 import { useOrchestrationStore } from '@/stores/orchestration.store';
-import { setPageTitle } from '@/utils/htmlUtils';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import WorkerCard from './Workers/WorkerCard.ee.vue';
 import { usePushConnection } from '@/composables/usePushConnection';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
@@ -36,6 +36,7 @@ export default defineComponent({
 			i18n,
 			pushConnection,
 			...useToast(),
+			documentTitle: useDocumentTitle(),
 		};
 	},
 	computed: {
@@ -58,7 +59,7 @@ export default defineComponent({
 		},
 	},
 	mounted() {
-		setPageTitle(`n8n - ${this.pageTitle}`);
+		this.documentTitle.set(this.pageTitle);
 
 		this.$telemetry.track('User viewed worker view', {
 			instance_id: this.rootStore.instanceId,

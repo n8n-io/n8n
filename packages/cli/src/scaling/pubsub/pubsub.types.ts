@@ -1,6 +1,4 @@
-import type { PushType, WorkerStatus } from '@n8n/api-types';
-
-import type { IWorkflowDb } from '@/interfaces';
+import type { PubSubCommandMap, PubSubWorkerResponseMap } from '@/events/maps/pub-sub.event-map';
 import type { Resolve } from '@/utlity.types';
 
 import type { COMMAND_PUBSUB_CHANNEL, WORKER_RESPONSE_PUBSUB_CHANNEL } from '../constants';
@@ -20,92 +18,17 @@ export namespace PubSub {
 	//            commands
 	// ----------------------------------
 
-	export type CommandMap = {
-		// #region Lifecycle
-
-		'reload-license': never;
-
-		'restart-event-bus': never;
-
-		'reload-external-secrets-providers': never;
-
-		// #endregion
-
-		// #region Community packages
-
-		'community-package-install': {
-			packageName: string;
-			packageVersion: string;
-		};
-
-		'community-package-update': {
-			packageName: string;
-			packageVersion: string;
-		};
-
-		'community-package-uninstall': {
-			packageName: string;
-		};
-
-		// #endregion
-
-		// #region Worker view
-
-		'get-worker-id': never;
-
-		'get-worker-status': never;
-
-		// #endregion
-
-		// #region Multi-main setup
-
-		'add-webhooks-triggers-and-pollers': {
-			workflowId: string;
-		};
-
-		'remove-triggers-and-pollers': {
-			workflowId: string;
-		};
-
-		'display-workflow-activation': {
-			workflowId: string;
-		};
-
-		'display-workflow-deactivation': {
-			workflowId: string;
-		};
-
-		'display-workflow-activation-error': {
-			workflowId: string;
-			errorMessage: string;
-		};
-
-		'relay-execution-lifecycle-event': {
-			type: PushType;
-			args: Record<string, unknown>;
-			pushRef: string;
-		};
-
-		'clear-test-webhooks': {
-			webhookKey: string;
-			workflowEntity: IWorkflowDb;
-			pushRef: string;
-		};
-
-		// #endregion
-	};
-
-	type _ToCommand<CommandKey extends keyof CommandMap> = {
+	type _ToCommand<CommandKey extends keyof PubSubCommandMap> = {
 		senderId: string;
 		targets?: string[];
 		command: CommandKey;
-	} & (CommandMap[CommandKey] extends never
+	} & (PubSubCommandMap[CommandKey] extends never
 		? { payload?: never } // some commands carry no payload
-		: { payload: CommandMap[CommandKey] });
+		: { payload: PubSubCommandMap[CommandKey] });
 
-	type ToCommand<CommandKey extends keyof CommandMap> = Resolve<_ToCommand<CommandKey>>;
+	type ToCommand<CommandKey extends keyof PubSubCommandMap> = Resolve<_ToCommand<CommandKey>>;
 
-	namespace Command {
+	namespace Commands {
 		export type ReloadLicense = ToCommand<'reload-license'>;
 		export type RestartEventBus = ToCommand<'restart-event-bus'>;
 		export type ReloadExternalSecretsProviders = ToCommand<'reload-external-secrets-providers'>;
@@ -125,63 +48,39 @@ export namespace PubSub {
 
 	/** Command sent via the `n8n.commands` pubsub channel. */
 	export type Command =
-		| Command.ReloadLicense
-		| Command.RestartEventBus
-		| Command.ReloadExternalSecretsProviders
-		| Command.CommunityPackageInstall
-		| Command.CommunityPackageUpdate
-		| Command.CommunityPackageUninstall
-		| Command.GetWorkerId
-		| Command.GetWorkerStatus
-		| Command.AddWebhooksTriggersAndPollers
-		| Command.RemoveTriggersAndPollers
-		| Command.DisplayWorkflowActivation
-		| Command.DisplayWorkflowDeactivation
-		| Command.DisplayWorkflowActivationError
-		| Command.RelayExecutionLifecycleEvent
-		| Command.ClearTestWebhooks;
+		| Commands.ReloadLicense
+		| Commands.RestartEventBus
+		| Commands.ReloadExternalSecretsProviders
+		| Commands.CommunityPackageInstall
+		| Commands.CommunityPackageUpdate
+		| Commands.CommunityPackageUninstall
+		| Commands.GetWorkerId
+		| Commands.GetWorkerStatus
+		| Commands.AddWebhooksTriggersAndPollers
+		| Commands.RemoveTriggersAndPollers
+		| Commands.DisplayWorkflowActivation
+		| Commands.DisplayWorkflowDeactivation
+		| Commands.DisplayWorkflowActivationError
+		| Commands.RelayExecutionLifecycleEvent
+		| Commands.ClearTestWebhooks;
 
 	// ----------------------------------
 	//         worker responses
 	// ----------------------------------
 
-	export type WorkerResponseMap = {
-		// #region Lifecycle
-
-		'restart-event-bus': {
-			result: 'success' | 'error';
-			error?: string;
-		};
-
-		'reload-external-secrets-providers': {
-			result: 'success' | 'error';
-			error?: string;
-		};
-
-		// #endregion
-
-		// #region Worker view
-
-		'get-worker-id': never;
-
-		'get-worker-status': WorkerStatus;
-
-		// #endregion
-	};
-
-	type _ToWorkerResponse<WorkerResponseKey extends keyof WorkerResponseMap> = {
+	type _ToWorkerResponse<WorkerResponseKey extends keyof PubSubWorkerResponseMap> = {
 		workerId: string;
 		targets?: string[];
 		command: WorkerResponseKey;
-	} & (WorkerResponseMap[WorkerResponseKey] extends never
+	} & (PubSubWorkerResponseMap[WorkerResponseKey] extends never
 		? { payload?: never } // some responses carry no payload
-		: { payload: WorkerResponseMap[WorkerResponseKey] });
+		: { payload: PubSubWorkerResponseMap[WorkerResponseKey] });
 
-	type ToWorkerResponse<WorkerResponseKey extends keyof WorkerResponseMap> = Resolve<
+	type ToWorkerResponse<WorkerResponseKey extends keyof PubSubWorkerResponseMap> = Resolve<
 		_ToWorkerResponse<WorkerResponseKey>
 	>;
 
-	namespace WorkerResponse {
+	namespace WorkerResponses {
 		export type RestartEventBus = ToWorkerResponse<'restart-event-bus'>;
 		export type ReloadExternalSecretsProviders =
 			ToWorkerResponse<'reload-external-secrets-providers'>;
@@ -191,8 +90,8 @@ export namespace PubSub {
 
 	/** Response sent via the `n8n.worker-response` pubsub channel. */
 	export type WorkerResponse =
-		| WorkerResponse.RestartEventBus
-		| WorkerResponse.ReloadExternalSecretsProviders
-		| WorkerResponse.GetWorkerId
-		| WorkerResponse.GetWorkerStatus;
+		| WorkerResponses.RestartEventBus
+		| WorkerResponses.ReloadExternalSecretsProviders
+		| WorkerResponses.GetWorkerId
+		| WorkerResponses.GetWorkerStatus;
 }

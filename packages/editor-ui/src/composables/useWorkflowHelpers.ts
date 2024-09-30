@@ -37,6 +37,7 @@ import type {
 	IWorkflowDataUpdate,
 	IWorkflowDb,
 	TargetItem,
+	WorkflowTitleStatus,
 	XYPosition,
 } from '@/Interface';
 
@@ -57,6 +58,7 @@ import { getSourceItems } from '@/utils/pairedItemUtils';
 import { v4 as uuid } from 'uuid';
 import { useSettingsStore } from '@/stores/settings.store';
 import { getCredentialTypeName, isCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
@@ -458,6 +460,17 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 	const message = useMessage();
 	const i18n = useI18n();
 	const telemetry = useTelemetry();
+	const documentTitle = useDocumentTitle();
+
+	const setDocumentTitle = (workflowName: string, status: WorkflowTitleStatus) => {
+		let icon = '⚠️';
+		if (status === 'EXECUTING') {
+			icon = '🔄';
+		} else if (status === 'IDLE') {
+			icon = '▶️';
+		}
+		documentTitle.set(`${icon} ${workflowName}`);
+	};
 
 	function getNodeTypesMaxCount() {
 		const nodes = workflowsStore.allNodes;
@@ -1172,6 +1185,7 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 	}
 
 	return {
+		setDocumentTitle,
 		resolveParameter,
 		resolveRequiredParameters,
 		getCurrentWorkflow,

@@ -12,6 +12,7 @@ import { useClipboard } from '@/composables/useClipboard';
 import type { UpdateGlobalRolePayload } from '@/api/users';
 import { computed, onMounted } from 'vue';
 import { useI18n } from '@/composables/useI18n';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
 
 const clipboard = useClipboard();
 const { showToast, showError } = useToast();
@@ -20,6 +21,7 @@ const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const ssoStore = useSSOStore();
+const documentTitle = useDocumentTitle();
 
 const i18n = useI18n();
 
@@ -28,6 +30,8 @@ const showUMSetupWarning = computed(() => {
 });
 
 onMounted(async () => {
+	documentTitle.set(i18n.baseText('settings.users'));
+
 	if (!showUMSetupWarning.value) {
 		await usersStore.fetchUsers();
 	}

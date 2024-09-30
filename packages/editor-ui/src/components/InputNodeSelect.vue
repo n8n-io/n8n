@@ -7,6 +7,7 @@ import { isPresent } from '@/utils/typesUtils';
 import type { IConnectedNode, Workflow } from 'n8n-workflow';
 import { computed } from 'vue';
 import NodeIcon from './NodeIcon.vue';
+import { truncate } from 'n8n-design-system';
 
 type Props = {
 	nodes: IConnectedNode[];
@@ -100,11 +101,7 @@ function getMultipleNodesText(nodeName: string): string {
 }
 
 function title(nodeName: string, length = 30) {
-	const truncated = nodeName.substring(0, length);
-	if (truncated.length < nodeName.length) {
-		return `${truncated}...`;
-	}
-	return truncated;
+	return truncate(nodeName, length);
 }
 
 function subtitle(nodeName: string, depth: number) {

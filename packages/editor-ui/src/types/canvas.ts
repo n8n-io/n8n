@@ -166,6 +166,7 @@ export interface CanvasNodeHandleInjectionData {
 	mode: Ref<CanvasConnectionMode>;
 	type: Ref<NodeConnectionType>;
 	index: Ref<number>;
+	isRequired: Ref<boolean | undefined>;
 	isConnected: ComputedRef<boolean | undefined>;
 	isConnecting: Ref<boolean | undefined>;
 	isReadOnly: Ref<boolean | undefined>;
@@ -185,4 +186,11 @@ export type ExecutionOutputMap = {
 	[connectionType: string]: {
 		[outputIndex: string]: ExecutionOutputMapData;
 	};
+};
+
+export type BoundingBox = {
+	x: number;
+	y: number;
+	width: number;
+	height: number;
 };
