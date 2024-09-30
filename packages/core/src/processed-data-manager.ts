@@ -1,3 +1,4 @@
+import get from 'lodash/get';
 import { ApplicationError } from 'n8n-workflow';
 import type {
 	IProcessedDataManager,
@@ -9,7 +10,6 @@ import type {
 	ProcessedDataItemTypes,
 	ICheckProcessedContextData,
 } from 'n8n-workflow';
-import get from 'lodash/get';
 
 export class ProcessedDataManager {
 	private static instance: ProcessedDataManager;
