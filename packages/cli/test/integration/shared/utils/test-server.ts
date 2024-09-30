@@ -273,6 +273,10 @@ export const setupTestServer = ({
 					case 'dynamic-node-parameters':
 						await import('@/controllers/dynamic-node-parameters.controller');
 						break;
+
+					case 'apiKeys':
+						await import('@/controllers/api-keys.controller');
+						break;
 				}
 			}
 
