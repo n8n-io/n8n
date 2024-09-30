@@ -3,9 +3,9 @@ import type { WorkflowActivateMode } from 'n8n-workflow';
 import Container, { Service } from 'typedi';
 
 import config from '@/config';
+import type { PubSubCommandMap } from '@/events/maps/pub-sub.event-map';
 import { Logger } from '@/logger';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
-import type { PubSub } from '@/scaling/pubsub/pubsub.types';
 import type { Subscriber } from '@/scaling/pubsub/subscriber.service';
 
 import { MultiMainSetup } from './orchestration/main/multi-main-setup.ee';
@@ -97,9 +97,9 @@ export class OrchestrationService {
 	//            pubsub
 	// ----------------------------------
 
-	async publish<CommandKey extends keyof PubSub.CommandMap>(
+	async publish<CommandKey extends keyof PubSubCommandMap>(
 		commandKey: CommandKey,
-		payload?: PubSub.CommandMap[CommandKey],
+		payload?: PubSubCommandMap[CommandKey],
 	) {
 		if (!this.sanityCheck()) return;
 
