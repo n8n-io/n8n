@@ -5,15 +5,23 @@ async function getAccessToken() {
 export async function authenticatedFetch<T>(...args: Parameters<typeof fetch>): Promise<T> {
 	const accessToken = await getAccessToken();
 
+	const body = args[1]?.body;
+	const headers: RequestInit['headers'] & { 'Content-Type'?: string } = {
+		...(accessToken ? { authorization: `Bearer ${accessToken}` } : {}),
+		...args[1]?.headers,
+	};
+
+	// Automatically set content type to application/json if body is FormData
+	if (body instanceof FormData) {
+		delete headers['Content-Type'];
+	} else {
+		headers['Content-Type'] = 'application/json';
+	}
 	const response = await fetch(args[0], {
 		...args[1],
 		mode: 'cors',
 		cache: 'no-cache',
-		headers: {
-			'Content-Type': 'application/json',
-			...(accessToken ? { authorization: `Bearer ${accessToken}` } : {}),
-			...args[1]?.headers,
-		},
+		headers,
 	});
 
 	return (await response.json()) as T;
@@ -35,6 +43,28 @@ export async function post<T>(url: string, body: object = {}, options: RequestIn
 		...options,
 		method: 'POST',
 		body: JSON.stringify(body),
+	});
+}
+export async function postWithFiles<T>(
+	url: string,
+	body: Record<string, unknown> = {},
+	files: File[] = [],
+	options: RequestInit = {},
+) {
+	const formData = new FormData();
+
+	for (const key in body) {
+		formData.append(key, body[key] as string);
+	}
+
+	for (const file of files) {
+		formData.append('files', file);
+	}
+
+	return await authenticatedFetch<T>(url, {
+		...options,
+		method: 'POST',
+		body: formData,
 	});
 }
 

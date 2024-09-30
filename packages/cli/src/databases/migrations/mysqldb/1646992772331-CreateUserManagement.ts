@@ -1,5 +1,6 @@
-import type { InsertResult, MigrationContext, ReversibleMigration } from '@db/types';
 import { v4 as uuid } from 'uuid';
+
+import type { InsertResult, MigrationContext, ReversibleMigration } from '@/databases/types';
 
 export class CreateUserManagement1646992772331 implements ReversibleMigration {
 	async up({ queryRunner, tablePrefix, loadSurveyFromDisk }: MigrationContext) {

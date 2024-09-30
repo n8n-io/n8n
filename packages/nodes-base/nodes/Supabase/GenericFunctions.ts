@@ -23,10 +23,10 @@ export async function supabaseApiRequest(
 	uri?: string,
 	headers: IDataObject = {},
 ) {
-	const credentials = (await this.getCredentials('supabaseApi')) as {
+	const credentials = await this.getCredentials<{
 		host: string;
 		serviceRole: string;
-	};
+	}>('supabaseApi');
 
 	const options: IRequestOptions = {
 		headers: {
@@ -142,7 +142,7 @@ export function getFilters(
 							name: 'keyName',
 							type: 'options',
 							description:
-								'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+								'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 							typeOptions: {
 								loadOptionsDependsOn: ['tableId'],
 								loadOptionsMethod: 'getTableColumns',
@@ -242,7 +242,7 @@ export function getFilters(
 		},
 		{
 			displayName:
-				'See <a href="https://postgrest.org/en/v9.0/api.html#horizontal-filtering-rows" target="_blank">PostgREST guide</a> to creating filters',
+				'See <a href="https://postgrest.org/en/stable/references/api/tables_views.html#horizontal-filtering" target="_blank">PostgREST guide</a> to creating filters',
 			name: 'jsonNotice',
 			type: 'notice',
 			displayOptions: {

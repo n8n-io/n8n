@@ -11,7 +11,13 @@ import type {
 	IHttpRequestMethods,
 	IRequestOptions,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError, sleep, removeCircularRefs } from 'n8n-workflow';
+import {
+	NodeApiError,
+	NodeOperationError,
+	sleep,
+	removeCircularRefs,
+	NodeConnectionType,
+} from 'n8n-workflow';
 
 import type { IAuthDataSanitizeKeys } from '../GenericFunctions';
 import { replaceNullValues, sanitizeUiMessage } from '../GenericFunctions';
@@ -37,8 +43,8 @@ export class HttpRequestV1 implements INodeType {
 				name: 'HTTP Request',
 				color: '#2200DD',
 			},
-			inputs: ['main'],
-			outputs: ['main'],
+			inputs: [NodeConnectionType.Main],
+			outputs: [NodeConnectionType.Main],
 			credentials: [
 				// ----------------------------------
 				//            v1 creds
@@ -259,7 +265,7 @@ export class HttpRequestV1 implements INodeType {
 					displayName: 'Options',
 					name: 'options',
 					type: 'collection',
-					placeholder: 'Add Option',
+					placeholder: 'Add option',
 					default: {},
 					options: [
 						{

@@ -7,6 +7,7 @@ import { useI18n } from '@/composables/useI18n';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useRootStore } from '@/stores/root.store';
 
 const IdentityProviderSettingsType = {
@@ -21,6 +22,7 @@ const ssoStore = useSSOStore();
 const uiStore = useUIStore();
 const message = useMessage();
 const toast = useToast();
+const documentTitle = useDocumentTitle();
 
 const ssoActivatedLabel = computed(() =>
 	ssoStore.isSamlLoginEnabled
@@ -134,7 +136,17 @@ const goToUpgrade = () => {
 	void uiStore.goToUpgrade('sso', 'upgrade-sso');
 };
 
+const isToggleSsoDisabled = computed(() => {
+	/** Allow users to disable SSO even if config request fails */
+	if (ssoStore.isSamlLoginEnabled) {
+		return false;
+	}
+
+	return !ssoSettingsSaved.value;
+});
+
 onMounted(async () => {
+	documentTitle.set(i18n.baseText('settings.sso.title'));
 	if (!ssoStore.isEnterpriseSamlEnabled) {
 		return;
 	}
@@ -162,7 +174,8 @@ onMounted(async () => {
 				</template>
 				<el-switch
 					v-model="ssoStore.isSamlLoginEnabled"
-					:disabled="!ssoSettingsSaved"
+					data-test-id="sso-toggle"
+					:disabled="isToggleSsoDisabled"
 					:class="$style.switch"
 					:inactive-text="ssoActivatedLabel"
 				/>
@@ -205,11 +218,18 @@ onMounted(async () => {
 						name="metadataUrl"
 						size="large"
 						:placeholder="i18n.baseText('settings.sso.settings.ips.url.placeholder')"
+						data-test-id="sso-provider-url"
 					/>
 					<small>{{ i18n.baseText('settings.sso.settings.ips.url.help') }}</small>
 				</div>
 				<div v-show="ipsType === IdentityProviderSettingsType.XML">
-					<n8n-input v-model="metadata" type="textarea" name="metadata" :rows="4" />
+					<n8n-input
+						v-model="metadata"
+						type="textarea"
+						name="metadata"
+						:rows="4"
+						data-test-id="sso-provider-xml"
+					/>
 					<small>{{ i18n.baseText('settings.sso.settings.ips.xml.help') }}</small>
 				</div>
 			</div>

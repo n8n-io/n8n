@@ -18,6 +18,10 @@ export async function verifyMfaToken(
 	return await makeRestApiRequest(context, 'POST', '/mfa/verify', data);
 }
 
-export async function disableMfa(context: IRestApiContext): Promise<void> {
-	return await makeRestApiRequest(context, 'DELETE', '/mfa/disable');
+export type DisableMfaParams = {
+	token: string;
+};
+
+export async function disableMfa(context: IRestApiContext, data: DisableMfaParams): Promise<void> {
+	return await makeRestApiRequest(context, 'POST', '/mfa/disable', data);
 }

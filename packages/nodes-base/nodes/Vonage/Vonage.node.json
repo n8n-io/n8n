@@ -6,7 +6,7 @@
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/vonage"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/vonage/"
 			}
 		],
 		"primaryDocumentation": [

@@ -6,7 +6,7 @@
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/stripe"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/stripe/"
 			}
 		],
 		"primaryDocumentation": [

@@ -5,6 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 export class ExecutionData implements INodeType {
 	description: INodeTypeDescription = {
@@ -19,12 +20,12 @@ export class ExecutionData implements INodeType {
 			name: 'Execution Data',
 			color: '#29A568',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		properties: [
 			{
 				displayName:
-					"Use this node to save fields you want to use later to easily find an execution (e.g. a user ID). You'll be able to search by this data in the 'executions' tab.<br>This feature is available on our Pro and Enterprise plans. <a href='https://n8n.io/pricing/' target='_blank'>More Info</a>.",
+					"Save important data using this node. It will be displayed on each execution for easy reference and you can filter by it.<br />Filtering is available on Pro and Enterprise plans. <a href='https://n8n.io/pricing/' target='_blank'>More Info</a>",
 				name: 'notice',
 				type: 'notice',
 				default: '',
@@ -37,9 +38,9 @@ export class ExecutionData implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Save Execution Data for Search',
+						name: 'Save Highlight Data (for Search/review)',
 						value: 'save',
-						action: 'Save execution data for search',
+						action: 'Save Highlight Data (for search/review)',
 					},
 				],
 			},

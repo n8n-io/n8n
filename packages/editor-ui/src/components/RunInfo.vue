@@ -1,3 +1,37 @@
+<script setup lang="ts">
+import type { ITaskData } from 'n8n-workflow';
+import { convertToDisplayDateComponents } from '@/utils/formatters/dateFormatter';
+import { computed } from 'vue';
+import { useI18n } from '@/composables/useI18n';
+
+const i18n = useI18n();
+
+const props = defineProps<{
+	taskData: ITaskData | null;
+	hasStaleData?: boolean;
+	hasPinData?: boolean;
+}>();
+
+const runTaskData = computed(() => {
+	return props.taskData;
+});
+
+const theme = computed(() => {
+	return props.taskData?.error ? 'danger' : 'success';
+});
+
+const runMetadata = computed(() => {
+	if (!runTaskData.value) {
+		return null;
+	}
+	const { date, time } = convertToDisplayDateComponents(runTaskData.value.startTime);
+	return {
+		executionTime: runTaskData.value.executionTime,
+		startTime: `${date} at ${time}`,
+	};
+});
+</script>
+
 <template>
 	<n8n-info-tip
 		v-if="hasStaleData"
@@ -7,8 +41,8 @@
 		data-test-id="node-run-info-stale"
 	>
 		<span
-			v-html="
-				$locale.baseText(
+			v-n8n-html="
+				i18n.baseText(
 					hasPinData
 						? 'ndv.output.staleDataWarning.pinData'
 						: 'ndv.output.staleDataWarning.regular',
@@ -26,52 +60,17 @@
 		<div>
 			<n8n-text :bold="true" size="small"
 				>{{
-					runTaskData.error
-						? $locale.baseText('runData.executionStatus.failed')
-						: $locale.baseText('runData.executionStatus.success')
+					runTaskData?.error
+						? i18n.baseText('runData.executionStatus.failed')
+						: i18n.baseText('runData.executionStatus.success')
 				}} </n8n-text
 			><br />
-			<n8n-text :bold="true" size="small">{{
-				$locale.baseText('runData.startTime') + ':'
-			}}</n8n-text>
+			<n8n-text :bold="true" size="small">{{ i18n.baseText('runData.startTime') + ':' }}</n8n-text>
 			{{ runMetadata.startTime }}<br />
 			<n8n-text :bold="true" size="small">{{
-				$locale.baseText('runData.executionTime') + ':'
+				i18n.baseText('runData.executionTime') + ':'
 			}}</n8n-text>
-			{{ runMetadata.executionTime }} {{ $locale.baseText('runData.ms') }}
+			{{ runMetadata.executionTime }} {{ i18n.baseText('runData.ms') }}
 		</div>
 	</n8n-info-tip>
 </template>
-
-<script lang="ts">
-import { defineComponent } from 'vue';
-import type { ITaskData } from 'n8n-workflow';
-import { convertToDisplayDateComponents } from '@/utils/formatters/dateFormatter';
-
-export default defineComponent({
-	props: {
-		taskData: {}, // ITaskData
-		hasStaleData: Boolean,
-		hasPinData: Boolean,
-	},
-
-	computed: {
-		theme(): string {
-			return this.runTaskData?.error ? 'danger' : 'success';
-		},
-		runTaskData(): ITaskData {
-			return this.taskData as ITaskData;
-		},
-		runMetadata(): { executionTime: number; startTime: string } | null {
-			if (!this.runTaskData) {
-				return null;
-			}
-			const { date, time } = convertToDisplayDateComponents(this.runTaskData.startTime);
-			return {
-				executionTime: this.runTaskData.executionTime,
-				startTime: `${date} at ${time}`,
-			};
-		},
-	},
-});
-</script>

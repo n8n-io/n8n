@@ -1,12 +1,12 @@
-import { Service } from 'typedi';
 import axios from 'axios';
+import { Service } from 'typedi';
 
-import { Logger } from '@/Logger';
-import { License } from '@/License';
-import { InternalHooks } from '@/InternalHooks';
-import type { User } from '@db/entities/User';
-import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import type { User } from '@/databases/entities/user';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { EventService } from '@/events/event.service';
+import { License } from '@/license';
+import { Logger } from '@/logger';
 import { UrlService } from '@/services/url.service';
 
 type LicenseError = Error & { errorId?: keyof typeof LicenseErrors };
@@ -26,9 +26,9 @@ export class LicenseService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly license: License,
-		private readonly internalHooks: InternalHooks,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly urlService: UrlService,
+		private readonly eventService: EventService,
 	) {}
 
 	async getLicenseData() {
@@ -78,13 +78,12 @@ export class LicenseService {
 			await this.license.renew();
 		} catch (e) {
 			const message = this.mapErrorMessage(e as LicenseError, 'renew');
-			// not awaiting so as not to make the endpoint hang
-			void this.internalHooks.onLicenseRenewAttempt({ success: false });
+
+			this.eventService.emit('license-renewal-attempted', { success: false });
 			throw new BadRequestError(message);
 		}
 
-		// not awaiting so as not to make the endpoint hang
-		void this.internalHooks.onLicenseRenewAttempt({ success: true });
+		this.eventService.emit('license-renewal-attempted', { success: true });
 	}
 
 	private mapErrorMessage(error: LicenseError, action: 'activate' | 'renew') {

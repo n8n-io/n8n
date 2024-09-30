@@ -2,12 +2,12 @@ import Container from 'typedi';
 
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 
-import * as testDb from '../../shared/testDb';
 import {
 	createWorkflowWithTrigger,
 	createWorkflow,
 	getAllWorkflows,
 } from '../../shared/db/workflows';
+import * as testDb from '../../shared/test-db';
 
 describe('WorkflowRepository', () => {
 	beforeAll(async () => {

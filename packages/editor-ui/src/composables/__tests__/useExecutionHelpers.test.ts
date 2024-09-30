@@ -9,7 +9,7 @@ describe('useExecutionHelpers()', () => {
 			['waiting', 'waiting', i18n.baseText('executionsList.waiting')],
 			['canceled', 'unknown', i18n.baseText('executionsList.canceled')],
 			['running', 'running', i18n.baseText('executionsList.running')],
-			['new', 'running', i18n.baseText('executionsList.running')],
+			['new', 'new', i18n.baseText('executionsList.new')],
 			['success', 'success', i18n.baseText('executionsList.succeeded')],
 			['error', 'error', i18n.baseText('executionsList.error')],
 			['crashed', 'error', i18n.baseText('executionsList.error')],
@@ -45,6 +45,27 @@ describe('useExecutionHelpers()', () => {
 					interpolate: { time, date },
 				}),
 			);
+		});
+	});
+
+	describe('isExecutionRetriable', () => {
+		const { isExecutionRetriable } = useExecutionHelpers();
+
+		it.each(['crashed', 'error'])('returns true when execution status is %s', (status) => {
+			expect(isExecutionRetriable({ status } as ExecutionSummary)).toEqual(true);
+		});
+
+		it.each(['canceled', 'new', 'running', 'success', 'unknown', 'waiting'])(
+			'returns false when execution status is %s',
+			(status) => {
+				expect(isExecutionRetriable({ status } as ExecutionSummary)).toEqual(false);
+			},
+		);
+
+		it('should return false if retrySuccessId is set', () => {
+			expect(
+				isExecutionRetriable({ status: 'crashed', retrySuccessId: '123' } as ExecutionSummary),
+			).toEqual(false);
 		});
 	});
 });

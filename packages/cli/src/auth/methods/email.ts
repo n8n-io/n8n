@@ -1,10 +1,11 @@
-import type { User } from '@db/entities/User';
-import { PasswordUtility } from '@/services/password.utility';
 import { Container } from 'typedi';
-import { InternalHooks } from '@/InternalHooks';
-import { isLdapLoginEnabled } from '@/Ldap/helpers';
-import { UserRepository } from '@db/repositories/user.repository';
+
+import type { User } from '@/databases/entities/user';
+import { UserRepository } from '@/databases/repositories/user.repository';
 import { AuthError } from '@/errors/response-errors/auth.error';
+import { EventService } from '@/events/event.service';
+import { isLdapLoginEnabled } from '@/ldap/helpers.ee';
+import { PasswordUtility } from '@/services/password.utility';
 
 export const handleEmailLogin = async (
 	email: string,
@@ -23,9 +24,7 @@ export const handleEmailLogin = async (
 	// so suggest to reset the password to gain access to the instance.
 	const ldapIdentity = user?.authIdentities?.find((i) => i.providerType === 'ldap');
 	if (user && ldapIdentity && !isLdapLoginEnabled()) {
-		void Container.get(InternalHooks).userLoginFailedDueToLdapDisabled({
-			user_id: user.id,
-		});
+		Container.get(EventService).emit('login-failed-due-to-ldap-disabled', { userId: user.id });
 
 		throw new AuthError('Reset your password to gain access to the instance.');
 	}

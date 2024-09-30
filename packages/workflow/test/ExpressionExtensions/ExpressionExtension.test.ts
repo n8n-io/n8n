@@ -4,9 +4,11 @@
 
 /* eslint-disable n8n-local-rules/no-interpolation-in-regular-string */
 
-import { extendTransform } from '@/Extensions';
+import { extendTransform, extend } from '@/Extensions';
 import { joinExpression, splitExpression } from '@/Extensions/ExpressionParser';
+
 import { evaluate } from './Helpers';
+import { ExpressionExtensionError } from '../../src/errors/expression-extension.error';
 
 describe('Expression Extension Transforms', () => {
 	describe('extend() transform', () => {
@@ -156,13 +158,11 @@ describe('tmpl Expression Parser', () => {
 		});
 
 		test('Multiple optional chains in an expression', () => {
-			expect(extendTransform('$json.test?.test2($json.test?.test2)')?.code)
-				.toBe(`window.chainCancelToken2 = ((window.chainValue2 = $json.test) ?? undefined) === undefined, window.chainCancelToken2 === true ? undefined : window.chainValue2.test2(
+			expect(extendTransform('$json.test?.test2($json.test?.test2)')?.code).toBe(`window.chainCancelToken2 = ((window.chainValue2 = $json.test) ?? undefined) === undefined, window.chainCancelToken2 === true ? undefined : window.chainValue2.test2(
   (window.chainCancelToken1 = ((window.chainValue1 = $json.test) ?? undefined) === undefined, window.chainCancelToken1 === true ? undefined : window.chainValue1.test2)
 );`);
 
-			expect(extendTransform('$json.test?.test2($json.test.sum?.())')?.code)
-				.toBe(`window.chainCancelToken2 = ((window.chainValue2 = $json.test) ?? undefined) === undefined, window.chainCancelToken2 === true ? undefined : window.chainValue2.test2(
+			expect(extendTransform('$json.test?.test2($json.test.sum?.())')?.code).toBe(`window.chainCancelToken2 = ((window.chainValue2 = $json.test) ?? undefined) === undefined, window.chainCancelToken2 === true ? undefined : window.chainValue2.test2(
   (window.chainCancelToken1 = ((window.chainValue1 = extendOptional($json.test, "sum")) ?? undefined) === undefined, window.chainCancelToken1 === true ? undefined : window.chainValue1())
 );`);
 		});
@@ -240,6 +240,30 @@ describe('tmpl Expression Parser', () => {
 			expect(evaluate('={{ $ifEmpty({}, "default") }}')).toEqual('default');
 			expect(evaluate('={{ $ifEmpty([1], "default") }}')).toEqual([1]);
 			expect(evaluate('={{ $ifEmpty({a: 1}, "default") }}')).toEqual({ a: 1 });
+		});
+	});
+
+	describe('Test extend with undefined', () => {
+		test('input is undefined', () => {
+			try {
+				extend(undefined, 'toDateTime', []);
+			} catch (error) {
+				expect(error).toBeInstanceOf(ExpressionExtensionError);
+				expect(error).toHaveProperty('message', "toDateTime can't be used on undefined value");
+			}
+		});
+		test('input is null', () => {
+			try {
+				extend(null, 'startsWith', []);
+			} catch (error) {
+				expect(error).toBeInstanceOf(ExpressionExtensionError);
+				expect(error).toHaveProperty('message', "startsWith can't be used on null value");
+			}
+		});
+		test('input should be converted to upper case', () => {
+			const result = extend('TEST', 'toUpperCase', []);
+
+			expect(result).toEqual('TEST');
 		});
 	});
 });

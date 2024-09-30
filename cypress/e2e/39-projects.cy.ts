@@ -1,4 +1,6 @@
+import * as projects from '../composables/projects';
 import {
+	INSTANCE_ADMIN,
 	INSTANCE_MEMBERS,
 	INSTANCE_OWNER,
 	MANUAL_TRIGGER_NODE_NAME,
@@ -11,9 +13,9 @@ import {
 	CredentialsPage,
 	WorkflowExecutionsTab,
 	NDV,
+	MainSidebar,
 } from '../pages';
-import * as projects from '../composables/projects';
-import { getVisibleSelect } from '../utils';
+import { getVisibleDropdown, getVisibleModalOverlay, getVisibleSelect } from '../utils';
 
 const workflowsPage = new WorkflowsPage();
 const workflowPage = new WorkflowPage();
@@ -21,6 +23,7 @@ const credentialsPage = new CredentialsPage();
 const credentialsModal = new CredentialsModal();
 const executionsTab = new WorkflowExecutionsTab();
 const ndv = new NDV();
+const mainSidebar = new MainSidebar();
 
 describe('Projects', { disableAutoLogin: true }, () => {
 	before(() => {
@@ -237,8 +240,28 @@ describe('Projects', { disableAutoLogin: true }, () => {
 		cy.signinAsMember(1);
 		cy.visit(workflowsPage.url);
 
-		projects.getAddProjectButton().should('not.exist');
+		cy.getByTestId('add-project-menu-item').should('not.exist');
 		projects.getMenuItems().should('not.exist');
+	});
+
+	it('should not show viewer role if not licensed', () => {
+		cy.signinAsOwner();
+		cy.visit(workflowsPage.url);
+
+		projects.getMenuItems().first().click();
+		projects.getProjectTabSettings().click();
+
+		cy.get(
+			`[data-test-id="user-list-item-${INSTANCE_MEMBERS[0].email}"] [data-test-id="projects-settings-user-role-select"]`,
+		).click();
+
+		cy.get('.el-select-dropdown__item.is-disabled')
+			.should('contain.text', 'Viewer')
+			.get('span:contains("Upgrade")')
+			.filter(':visible')
+			.click();
+
+		getVisibleModalOverlay().should('contain.text', 'Upgrade to unlock additional roles');
 	});
 
 	describe('when starting from scratch', () => {
@@ -257,7 +280,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 
 			// Create a project and add a credential to it
 			cy.intercept('POST', '/rest/projects').as('projectCreate');
-			projects.getAddProjectButton().should('contain', 'Add project').should('be.visible').click();
+			projects.getAddProjectButton().click();
 			cy.wait('@projectCreate');
 			projects.getMenuItems().should('have.length', 1);
 			projects.getMenuItems().first().click();
@@ -418,7 +441,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 		});
 
 		it('should move resources between projects', () => {
-			cy.signin(INSTANCE_OWNER);
+			cy.signinAsOwner();
 			cy.visit(workflowsPage.url);
 
 			// Create a workflow and a credential in the Home project
@@ -464,44 +487,15 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			projects
 				.getResourceMoveModal()
 				.should('be.visible')
-				.find('button:contains("Next")')
+				.find('button:contains("Move workflow")')
 				.should('be.disabled');
 			projects.getProjectMoveSelect().click();
 			getVisibleSelect()
 				.find('li')
-				.should('have.length', 2)
-				.first()
-				.should('contain.text', 'Project 1')
+				.should('have.length', 5)
+				.filter(':contains("Project 1")')
 				.click();
-			projects.getResourceMoveModal().find('button:contains("Next")').click();
-
-			projects
-				.getResourceMoveConfirmModal()
-				.should('be.visible')
-				.find('button:contains("Confirm")')
-				.should('be.disabled');
-
-			projects
-				.getResourceMoveConfirmModal()
-				.find('input[type="checkbox"]')
-				.first()
-				.parents('label')
-				.click();
-			projects
-				.getResourceMoveConfirmModal()
-				.find('button:contains("Confirm")')
-				.should('be.disabled');
-			projects
-				.getResourceMoveConfirmModal()
-				.find('input[type="checkbox"]')
-				.last()
-				.parents('label')
-				.click();
-			projects
-				.getResourceMoveConfirmModal()
-				.find('button:contains("Confirm")')
-				.should('not.be.disabled')
-				.click();
+			projects.getResourceMoveModal().find('button:contains("Move workflow")').click();
 
 			workflowsPage.getters
 				.workflowCards()
@@ -509,9 +503,77 @@ describe('Projects', { disableAutoLogin: true }, () => {
 				.filter(':contains("Owned by me")')
 				.should('not.exist');
 
-			// Move the credential from Project 1 to Project 2
+			// Move the workflow from Project 1 to Project 2
 			projects.getMenuItems().first().click();
 			workflowsPage.getters.workflowCards().should('have.length', 2);
+			workflowsPage.getters.workflowCardActions('Workflow in Home project').click();
+			workflowsPage.getters.workflowMoveButton().click();
+
+			projects
+				.getResourceMoveModal()
+				.should('be.visible')
+				.find('button:contains("Move workflow")')
+				.should('be.disabled');
+			projects.getProjectMoveSelect().click();
+			getVisibleSelect()
+				.find('li')
+				.should('have.length', 5)
+				.filter(':contains("Project 2")')
+				.click();
+			projects.getResourceMoveModal().find('button:contains("Move workflow")').click();
+
+			// Move the workflow from Project 2 to a member user
+			projects.getMenuItems().last().click();
+			workflowsPage.getters.workflowCards().should('have.length', 2);
+			workflowsPage.getters.workflowCardActions('Workflow in Home project').click();
+			workflowsPage.getters.workflowMoveButton().click();
+
+			projects
+				.getResourceMoveModal()
+				.should('be.visible')
+				.find('button:contains("Move workflow")')
+				.should('be.disabled');
+			projects.getProjectMoveSelect().click();
+			getVisibleSelect()
+				.find('li')
+				.should('have.length', 5)
+				.filter(`:contains("${INSTANCE_MEMBERS[0].email}")`)
+				.click();
+
+			projects.getResourceMoveModal().find('button:contains("Move workflow")').click();
+			workflowsPage.getters.workflowCards().should('have.length', 1);
+
+			// Move the workflow from member user back to Home
+			projects.getHomeButton().click();
+			workflowsPage.getters
+				.workflowCards()
+				.should('have.length', 3)
+				.filter(':has(.n8n-badge:contains("Project"))')
+				.should('have.length', 2);
+			workflowsPage.getters.workflowCardActions('Workflow in Home project').click();
+			workflowsPage.getters.workflowMoveButton().click();
+
+			projects
+				.getResourceMoveModal()
+				.should('be.visible')
+				.find('button:contains("Move workflow")')
+				.should('be.disabled');
+			projects.getProjectMoveSelect().click();
+			getVisibleSelect()
+				.find('li')
+				.should('have.length', 5)
+				.filter(`:contains("${INSTANCE_OWNER.email}")`)
+				.click();
+
+			projects.getResourceMoveModal().find('button:contains("Move workflow")').click();
+			workflowsPage.getters
+				.workflowCards()
+				.should('have.length', 3)
+				.filter(':contains("Owned by me")')
+				.should('have.length', 1);
+
+			// Move the credential from Project 1 to Project 2
+			projects.getMenuItems().first().click();
 			projects.getProjectTabCredentials().click();
 			credentialsPage.getters.credentialCards().should('have.length', 1);
 			credentialsPage.getters.credentialCardActions('Credential in Project 1').click();
@@ -520,48 +582,237 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			projects
 				.getResourceMoveModal()
 				.should('be.visible')
-				.find('button:contains("Next")')
+				.find('button:contains("Move credential")')
 				.should('be.disabled');
 			projects.getProjectMoveSelect().click();
 			getVisibleSelect()
 				.find('li')
-				.should('have.length', 1)
-				.first()
-				.should('contain.text', 'Project 2')
+				.should('have.length', 5)
+				.filter(':contains("Project 2")')
 				.click();
-			projects.getResourceMoveModal().find('button:contains("Next")').click();
+			projects.getResourceMoveModal().find('button:contains("Move credential")').click();
 
-			projects
-				.getResourceMoveConfirmModal()
-				.should('be.visible')
-				.find('button:contains("Confirm")')
-				.should('be.disabled');
-
-			projects
-				.getResourceMoveConfirmModal()
-				.find('input[type="checkbox"]')
-				.first()
-				.parents('label')
-				.click();
-			projects
-				.getResourceMoveConfirmModal()
-				.find('button:contains("Confirm")')
-				.should('be.disabled');
-			projects
-				.getResourceMoveConfirmModal()
-				.find('input[type="checkbox"]')
-				.last()
-				.parents('label')
-				.click();
-			projects
-				.getResourceMoveConfirmModal()
-				.find('button:contains("Confirm")')
-				.should('not.be.disabled')
-				.click();
 			credentialsPage.getters.credentialCards().should('not.have.length');
+
+			// Move the credential from Project 2 to admin user
 			projects.getMenuItems().last().click();
 			projects.getProjectTabCredentials().click();
 			credentialsPage.getters.credentialCards().should('have.length', 2);
+
+			credentialsPage.getters.credentialCardActions('Credential in Project 1').click();
+			credentialsPage.getters.credentialMoveButton().click();
+
+			projects
+				.getResourceMoveModal()
+				.should('be.visible')
+				.find('button:contains("Move credential")')
+				.should('be.disabled');
+			projects.getProjectMoveSelect().click();
+			getVisibleSelect()
+				.find('li')
+				.should('have.length', 5)
+				.filter(`:contains("${INSTANCE_ADMIN.email}")`)
+				.click();
+			projects.getResourceMoveModal().find('button:contains("Move credential")').click();
+			credentialsPage.getters.credentialCards().should('have.length', 1);
+
+			// Move the credential from admin user back to instance owner
+			projects.getHomeButton().click();
+			projects.getProjectTabCredentials().click();
+			credentialsPage.getters.credentialCards().should('have.length', 3);
+
+			credentialsPage.getters.credentialCardActions('Credential in Project 1').click();
+			credentialsPage.getters.credentialMoveButton().click();
+
+			projects
+				.getResourceMoveModal()
+				.should('be.visible')
+				.find('button:contains("Move credential")')
+				.should('be.disabled');
+			projects.getProjectMoveSelect().click();
+			getVisibleSelect()
+				.find('li')
+				.should('have.length', 5)
+				.filter(`:contains("${INSTANCE_OWNER.email}")`)
+				.click();
+			projects.getResourceMoveModal().find('button:contains("Move credential")').click();
+
+			credentialsPage.getters
+				.credentialCards()
+				.should('have.length', 3)
+				.filter(':contains("Owned by me")')
+				.should('have.length', 2);
+
+			// Move the credential from admin user back to its original project (Project 1)
+			credentialsPage.getters.credentialCardActions('Credential in Project 1').click();
+			credentialsPage.getters.credentialMoveButton().click();
+
+			projects
+				.getResourceMoveModal()
+				.should('be.visible')
+				.find('button:contains("Move credential")')
+				.should('be.disabled');
+			projects.getProjectMoveSelect().click();
+			getVisibleSelect()
+				.find('li')
+				.should('have.length', 5)
+				.filter(':contains("Project 1")')
+				.click();
+			projects.getResourceMoveModal().find('button:contains("Move credential")').click();
+
+			projects.getMenuItems().first().click();
+			projects.getProjectTabCredentials().click();
+			credentialsPage.getters
+				.credentialCards()
+				.filter(':contains("Credential in Project 1")')
+				.should('have.length', 1);
+		});
+
+		it('should allow to change inaccessible credential when the workflow was moved to a team project', () => {
+			cy.signinAsOwner();
+			cy.visit(workflowsPage.url);
+
+			// Create a credential in the Home project
+			projects.getProjectTabCredentials().should('be.visible').click();
+			credentialsPage.getters.emptyListCreateCredentialButton().click();
+			projects.createCredential('Credential in Home project');
+
+			// Create a workflow in the Home project
+			projects.getHomeButton().click();
+			workflowsPage.getters.workflowCards().should('not.have.length');
+			workflowsPage.getters.newWorkflowButtonCard().click();
+			workflowsPage.getters.workflowCards().should('not.have.length');
+
+			workflowsPage.getters.newWorkflowButtonCard().click();
+			workflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+			workflowPage.actions.addNodeToCanvas(NOTION_NODE_NAME, true, true);
+			ndv.getters.backToCanvas().click();
+			workflowPage.actions.saveWorkflowOnButtonClick();
+
+			// Create a project and add a user to it
+			projects.createProject('Project 1');
+			projects.addProjectMember(INSTANCE_MEMBERS[0].email);
+			projects.getProjectSettingsSaveButton().click();
+
+			// Move the workflow from Home to Project 1
+			projects.getHomeButton().click();
+			workflowsPage.getters
+				.workflowCards()
+				.should('have.length', 1)
+				.filter(':contains("Owned by me")')
+				.should('exist');
+			workflowsPage.getters.workflowCardActions('My workflow').click();
+			workflowsPage.getters.workflowMoveButton().click();
+
+			projects
+				.getResourceMoveModal()
+				.should('be.visible')
+				.find('button:contains("Move workflow")')
+				.should('be.disabled');
+			projects.getProjectMoveSelect().click();
+			getVisibleSelect()
+				.find('li')
+				.should('have.length', 4)
+				.filter(':contains("Project 1")')
+				.click();
+			projects.getResourceMoveModal().find('button:contains("Move workflow")').click();
+
+			workflowsPage.getters
+				.workflowCards()
+				.should('have.length', 1)
+				.filter(':contains("Owned by me")')
+				.should('not.exist');
+
+			//Log out with instance owner and log in with the member user
+			mainSidebar.actions.openUserMenu();
+			cy.getByTestId('user-menu-item-logout').click();
+
+			cy.get('input[name="email"]').type(INSTANCE_MEMBERS[0].email);
+			cy.get('input[name="password"]').type(INSTANCE_MEMBERS[0].password);
+			cy.getByTestId('form-submit-button').click();
+
+			// Open the moved workflow
+			workflowsPage.getters.workflowCards().should('have.length', 1);
+			workflowsPage.getters.workflowCards().first().click();
+
+			// Check if the credential can be changed
+			workflowPage.getters.canvasNodeByName(NOTION_NODE_NAME).should('be.visible').dblclick();
+			ndv.getters.credentialInput().find('input').should('be.enabled');
+		});
+
+		it('should handle viewer role', () => {
+			cy.enableFeature('projectRole:viewer');
+			cy.signinAsOwner();
+			cy.visit(workflowsPage.url);
+
+			projects.createProject('Development');
+			projects.addProjectMember(INSTANCE_MEMBERS[0].email, 'Viewer');
+			projects.getProjectSettingsSaveButton().click();
+
+			projects.getProjectTabWorkflows().click();
+			workflowsPage.getters.newWorkflowButtonCard().click();
+			projects.createWorkflow('Test_workflow_4_executions_view.json', 'WF with random error');
+			executionsTab.actions.createManualExecutions(2);
+			executionsTab.actions.toggleNodeEnabled('Error');
+			executionsTab.actions.createManualExecutions(2);
+			workflowPage.actions.saveWorkflowUsingKeyboardShortcut();
+
+			projects.getMenuItems().first().click();
+			projects.getProjectTabCredentials().click();
+			credentialsPage.getters.emptyListCreateCredentialButton().click();
+			projects.createCredential('Notion API');
+
+			mainSidebar.actions.openUserMenu();
+			cy.getByTestId('user-menu-item-logout').click();
+
+			cy.get('input[name="email"]').type(INSTANCE_MEMBERS[0].email);
+			cy.get('input[name="password"]').type(INSTANCE_MEMBERS[0].password);
+			cy.getByTestId('form-submit-button').click();
+
+			mainSidebar.getters.executions().click();
+			cy.getByTestId('global-execution-list-item').first().find('td:last button').click();
+			getVisibleDropdown()
+				.find('li')
+				.filter(':contains("Retry")')
+				.should('have.class', 'is-disabled');
+			getVisibleDropdown()
+				.find('li')
+				.filter(':contains("Delete")')
+				.should('have.class', 'is-disabled');
+
+			projects.getMenuItems().first().click();
+			cy.getByTestId('workflow-card-name').should('be.visible').first().click();
+			workflowPage.getters.nodeViewRoot().should('be.visible');
+			workflowPage.getters.executeWorkflowButton().should('not.exist');
+			workflowPage.getters.nodeCreatorPlusButton().should('not.exist');
+			workflowPage.getters.canvasNodes().should('have.length', 3).last().click();
+			cy.get('body').type('{backspace}');
+			workflowPage.getters.canvasNodes().should('have.length', 3).last().rightclick();
+			getVisibleDropdown()
+				.find('li')
+				.should('be.visible')
+				.filter(
+					':contains("Open"), :contains("Copy"), :contains("Select all"), :contains("Clear selection")',
+				)
+				.should('not.have.class', 'is-disabled');
+			cy.get('body').type('{esc}');
+
+			executionsTab.actions.switchToExecutionsTab();
+			cy.getByTestId('retry-execution-button')
+				.should('be.visible')
+				.find('.is-disabled')
+				.should('exist');
+			cy.get('button:contains("Debug")').should('be.disabled');
+			cy.get('button[title="Retry execution"]').should('be.disabled');
+			cy.get('button[title="Delete this execution"]').should('be.disabled');
+
+			projects.getMenuItems().first().click();
+			projects.getProjectTabCredentials().click();
+			credentialsPage.getters.credentialCards().filter(':contains("Notion")').click();
+			cy.getByTestId('node-credentials-config-container')
+				.should('be.visible')
+				.find('input')
+				.should('not.have.length');
 		});
 	});
 });

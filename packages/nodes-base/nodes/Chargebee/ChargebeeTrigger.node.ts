@@ -1,9 +1,10 @@
-import type {
-	IDataObject,
-	IWebhookFunctions,
-	INodeType,
-	INodeTypeDescription,
-	IWebhookResponseData,
+import {
+	type IDataObject,
+	type IWebhookFunctions,
+	type INodeType,
+	type INodeTypeDescription,
+	type IWebhookResponseData,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
 export class ChargebeeTrigger implements INodeType {
@@ -19,7 +20,7 @@ export class ChargebeeTrigger implements INodeType {
 			name: 'Chargebee Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		webhooks: [
 			{
 				name: 'default',

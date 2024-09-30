@@ -11,7 +11,7 @@ import type {
 	ITriggerResponse,
 	IRun,
 } from 'n8n-workflow';
-import { createDeferredPromise, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 export class KafkaTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -25,7 +25,7 @@ export class KafkaTrigger implements INodeType {
 			name: 'Kafka Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'kafka',
@@ -77,7 +77,7 @@ export class KafkaTrigger implements INodeType {
 				name: 'options',
 				type: 'collection',
 				default: {},
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				options: [
 					{
 						displayName: 'Allow Topic Creation',
@@ -281,13 +281,13 @@ export class KafkaTrigger implements INodeType {
 					}
 					let responsePromise = undefined;
 					if (!parallelProcessing && (options.nodeVersion as number) > 1) {
-						responsePromise = await createDeferredPromise<IRun>();
+						responsePromise = this.helpers.createDeferredPromise<IRun>();
 						this.emit([this.helpers.returnJsonArray([data])], undefined, responsePromise);
 					} else {
 						this.emit([this.helpers.returnJsonArray([data])]);
 					}
 					if (responsePromise) {
-						await responsePromise.promise();
+						await responsePromise.promise;
 					}
 				},
 			});

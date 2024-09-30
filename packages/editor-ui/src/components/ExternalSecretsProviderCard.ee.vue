@@ -133,6 +133,15 @@ async function onActionDropdownClick(id: string) {
 					</span>
 				</n8n-text>
 			</div>
+			<div v-if="provider.name === 'infisical'">
+				<font-awesome-icon
+					:class="$style['warningTriangle']"
+					icon="exclamation-triangle"
+				></font-awesome-icon>
+				<N8nBadge class="mr-xs" theme="tertiary" bold data-test-id="card-badge">
+					{{ i18n.baseText('settings.externalSecrets.card.deprecated') }}
+				</N8nBadge>
+			</div>
 			<div v-if="canConnect" :class="$style.cardActions">
 				<ExternalSecretsProviderConnectionSwitch
 					:provider="provider"
@@ -182,5 +191,10 @@ async function onActionDropdownClick(id: string) {
 	flex-direction: row;
 	align-items: center;
 	margin-left: var(--spacing-s);
+}
+
+.warningTriangle {
+	color: var(--color-warning);
+	margin-right: var(--spacing-2xs);
 }
 </style>

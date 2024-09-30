@@ -1,10 +1,35 @@
-import { type INodeProperties } from 'n8n-workflow';
-import type { QdrantLibArgs } from '@langchain/community/vectorstores/qdrant';
-import { QdrantVectorStore } from '@langchain/community/vectorstores/qdrant';
+import type { IDataObject, INodeProperties } from 'n8n-workflow';
+import type { QdrantLibArgs } from '@langchain/qdrant';
+import { QdrantVectorStore } from '@langchain/qdrant';
 import type { Schemas as QdrantSchemas } from '@qdrant/js-client-rest';
 import { createVectorStoreNode } from '../shared/createVectorStoreNode';
 import { qdrantCollectionRLC } from '../shared/descriptions';
 import { qdrantCollectionsSearch } from '../shared/methods/listSearch';
+import type { Embeddings } from '@langchain/core/embeddings';
+import type { Callbacks } from '@langchain/core/callbacks/manager';
+
+class ExtendedQdrantVectorStore extends QdrantVectorStore {
+	private static defaultFilter: IDataObject = {};
+
+	static async fromExistingCollection(
+		embeddings: Embeddings,
+		args: QdrantLibArgs,
+		defaultFilter: IDataObject = {},
+	): Promise<QdrantVectorStore> {
+		ExtendedQdrantVectorStore.defaultFilter = defaultFilter;
+		return await super.fromExistingCollection(embeddings, args);
+	}
+
+	async similaritySearch(
+		query: string,
+		k: number,
+		filter?: IDataObject,
+		callbacks?: Callbacks | undefined,
+	) {
+		const mergedFilter = { ...ExtendedQdrantVectorStore.defaultFilter, ...filter };
+		return await super.similaritySearch(query, k, mergedFilter, callbacks);
+	}
+}
 
 const sharedFields: INodeProperties[] = [qdrantCollectionRLC];
 
@@ -28,6 +53,31 @@ const insertFields: INodeProperties[] = [
 	},
 ];
 
+const retrieveFields: INodeProperties[] = [
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		options: [
+			{
+				displayName: 'Search Filter',
+				name: 'searchFilterJson',
+				type: 'json',
+				typeOptions: {
+					rows: 5,
+				},
+				default:
+					'{\n  "should": [\n    {\n      "key": "metadata.batch",\n      "match": {\n        "value": 12345\n      }\n    }\n  ]\n}',
+				validateType: 'object',
+				description:
+					'Filter pageContent or metadata using this <a href="https://qdrant.tech/documentation/concepts/filtering/" target="_blank">filtering syntax</a>',
+			},
+		],
+	},
+];
+
 export const VectorStoreQdrant = createVectorStoreNode({
 	meta: {
 		displayName: 'Qdrant Vector Store',
@@ -44,9 +94,11 @@ export const VectorStoreQdrant = createVectorStoreNode({
 		],
 	},
 	methods: { listSearch: { qdrantCollectionsSearch } },
+	loadFields: retrieveFields,
 	insertFields,
 	sharedFields,
-	async getVectorStoreClient(context, _, embeddings, itemIndex) {
+	retrieveFields,
+	async getVectorStoreClient(context, filter, embeddings, itemIndex) {
 		const collection = context.getNodeParameter('qdrantCollection', itemIndex, '', {
 			extractValue: true,
 		}) as string;
@@ -59,7 +111,7 @@ export const VectorStoreQdrant = createVectorStoreNode({
 			collectionName: collection,
 		};
 
-		return await QdrantVectorStore.fromExistingCollection(embeddings, config);
+		return await ExtendedQdrantVectorStore.fromExistingCollection(embeddings, config, filter);
 	},
 	async populateVectorStore(context, embeddings, documents, itemIndex) {
 		const collectionName = context.getNodeParameter('qdrantCollection', itemIndex, '', {

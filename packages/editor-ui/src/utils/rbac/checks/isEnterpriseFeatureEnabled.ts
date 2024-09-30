@@ -12,8 +12,8 @@ export const isEnterpriseFeatureEnabled: RBACPermissionCheck<EnterprisePermissio
 	const settingsStore = useSettingsStore();
 	const mode = options.mode ?? 'allOf';
 	if (mode === 'allOf') {
-		return features.every(settingsStore.isEnterpriseFeatureEnabled);
+		return features.every((feature) => settingsStore.isEnterpriseFeatureEnabled[feature]);
 	} else {
-		return features.some(settingsStore.isEnterpriseFeatureEnabled);
+		return features.some((feature) => settingsStore.isEnterpriseFeatureEnabled[feature]);
 	}
 };

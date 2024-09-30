@@ -1,5 +1,6 @@
 import type { Plugin } from 'vue';
-import type { ITelemetrySettings, ITelemetryTrackProperties, IDataObject } from 'n8n-workflow';
+import type { ITelemetrySettings } from '@n8n/api-types';
+import type { ITelemetryTrackProperties, IDataObject } from 'n8n-workflow';
 import type { RouteLocation } from 'vue-router';
 
 import type { INodeCreateElement, IUpdateInformation } from '@/Interface';
@@ -14,7 +15,6 @@ import { useRootStore } from '@/stores/root.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { usePostHog } from '@/stores/posthog.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useTelemetryStore } from '@/stores/telemetry.store';
 import { useUIStore } from '@/stores/ui.store';
 
 export class Telemetry {
@@ -73,7 +73,6 @@ export class Telemetry {
 			configUrl: 'https://api-rs.n8n.io',
 			...logging,
 		});
-		useTelemetryStore().init(this);
 
 		this.identify(instanceId, userId, versionCli, projectId);
 
@@ -145,6 +144,10 @@ export class Telemetry {
 		}
 	}
 
+	reset() {
+		this.rudderStack?.reset();
+	}
+
 	flushPageEvents() {
 		const queue = this.pageEventQueue;
 		this.pageEventQueue = [];
@@ -161,6 +164,20 @@ export class Telemetry {
 			switch (event) {
 				case 'askAi.generationFinished':
 					this.track('Ai code generation finished', properties, { withPostHog: true });
+				default:
+					break;
+			}
+		}
+	}
+
+	trackAiTransform(event: string, properties: IDataObject = {}) {
+		if (this.rudderStack) {
+			properties.session_id = useRootStore().pushRef;
+			properties.ndv_session_id = useNDVStore().pushRef;
+
+			switch (event) {
+				case 'generationFinished':
+					this.track('Ai Transform code generation finished', properties, { withPostHog: true });
 				default:
 					break;
 			}

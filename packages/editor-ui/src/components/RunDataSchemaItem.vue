@@ -77,44 +77,47 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 
 <template>
 	<div :class="$style.item" data-test-id="run-data-schema-item">
-		<div
-			v-if="level > 0 || (level === 0 && !isSchemaValueArray)"
-			:title="schema.type"
-			:class="{
-				[$style.pill]: true,
-				[$style.mappable]: mappingEnabled,
-				[$style.highlight]: dragged,
-			}"
-		>
-			<span
-				:class="$style.label"
-				:data-value="getJsonParameterPath(schema.path)"
-				:data-name="schemaName"
-				:data-path="schema.path"
-				:data-depth="level"
-				data-target="mappable"
+		<div :class="$style.itemContent">
+			<div
+				v-if="level > 0 || (level === 0 && !isSchemaValueArray)"
+				:title="schema.type"
+				:class="{
+					[$style.pill]: true,
+					[$style.mappable]: mappingEnabled,
+					[$style.highlight]: dragged,
+				}"
 			>
-				<font-awesome-icon :icon="getIconBySchemaType(schema.type)" size="sm" />
-				<TextWithHighlights
-					v-if="isSchemaParentTypeArray"
-					:content="props.parent?.key"
-					:search="props.search"
-				/>
-				<TextWithHighlights
-					v-if="key"
-					:class="{ [$style.arrayIndex]: isSchemaParentTypeArray }"
-					:content="key"
-					:search="props.search"
-				/>
+				<span
+					:class="$style.label"
+					:data-value="getJsonParameterPath(schema.path)"
+					:data-name="schemaName"
+					:data-path="schema.path"
+					:data-depth="level"
+					data-target="mappable"
+				>
+					<font-awesome-icon :icon="getIconBySchemaType(schema.type)" size="sm" />
+					<TextWithHighlights
+						v-if="isSchemaParentTypeArray"
+						:content="props.parent?.key"
+						:search="props.search"
+					/>
+					<TextWithHighlights
+						v-if="key"
+						:class="{ [$style.arrayIndex]: isSchemaParentTypeArray }"
+						:content="key"
+						:search="props.search"
+					/>
+				</span>
+			</div>
+
+			<span v-if="text" :class="$style.text" data-test-id="run-data-schema-item-value">
+				<template v-for="(line, index) in text.split('\n')" :key="`line-${index}`">
+					<span v-if="index > 0" :class="$style.newLine">\n</span>
+					<TextWithHighlights :content="line" :search="props.search" />
+				</template>
 			</span>
 		</div>
 
-		<span v-if="text" :class="$style.text">
-			<template v-for="(line, index) in text.split('\n')" :key="`line-${index}`">
-				<span v-if="index > 0" :class="$style.newLine">\n</span>
-				<TextWithHighlights :content="line" :search="props.search" />
-			</template>
-		</span>
 		<input v-if="level > 0 && isSchemaValueArray" :id="subKey" type="checkbox" inert checked />
 		<label v-if="level > 0 && isSchemaValueArray" :class="$style.toggle" :for="subKey">
 			<font-awesome-icon icon="angle-right" />
@@ -191,6 +194,14 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 	}
 }
 
+.itemContent {
+	display: flex;
+	gap: var(--spacing-2xs);
+	align-items: baseline;
+	flex-grow: 1;
+	min-width: 0;
+}
+
 .sub {
 	display: grid;
 	grid-template-rows: 0fr;
@@ -203,6 +214,7 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 	display: inline-flex;
 	flex-direction: column;
 	order: -1;
+	min-width: 0;
 
 	.innerSub > div:first-child {
 		margin-top: var(--spacing-2xs);
@@ -233,21 +245,14 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 	height: 24px;
 	padding: 0 var(--spacing-3xs);
 	border: 1px solid var(--color-foreground-light);
-	border-radius: 4px;
+	border-radius: var(--border-radius-base);
 	background-color: var(--color-background-xlight);
 	font-size: var(--font-size-2xs);
 	color: var(--color-text-dark);
+	max-width: 50%;
 
-	span {
-		display: flex;
-		height: 100%;
-		align-items: center;
-
-		svg {
-			path {
-				fill: var(--color-text-light);
-			}
-		}
+	path {
+		fill: var(--color-text-light);
 	}
 
 	&.mappable {
@@ -264,10 +269,25 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 }
 
 .label {
+	display: flex;
+	min-width: 0;
+	align-items: center;
+
 	> span {
+		display: flex;
+		align-items: center;
+
 		margin-left: var(--spacing-3xs);
 		padding-left: var(--spacing-3xs);
 		border-left: 1px solid var(--color-foreground-light);
+
+		overflow: hidden;
+
+		span {
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+		}
 
 		&.arrayIndex {
 			border: 0;

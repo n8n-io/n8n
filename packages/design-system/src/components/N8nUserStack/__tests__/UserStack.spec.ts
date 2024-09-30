@@ -1,6 +1,8 @@
 import { render } from '@testing-library/vue';
-import UserStack from '../UserStack.vue';
+
 import { N8nAvatar, N8nUserInfo } from 'n8n-design-system/main';
+
+import UserStack from '../UserStack.vue';
 
 describe('UserStack', () => {
 	it('should render flat user list', () => {
@@ -15,7 +17,6 @@ describe('UserStack', () => {
 							lastName: 'Side',
 							fullName: 'Sunny Side',
 							email: 'hello@n8n.io',
-							isDefaultUser: false,
 							isPendingUser: false,
 							isOwner: true,
 							signInType: 'email',
@@ -27,7 +28,6 @@ describe('UserStack', () => {
 							lastName: 'Dog',
 							fullName: 'Kobi Dog',
 							email: 'kobi@n8n.io',
-							isDefaultUser: false,
 							isPendingUser: false,
 							isOwner: false,
 							signInType: 'ldap',
@@ -59,7 +59,6 @@ describe('UserStack', () => {
 							lastName: 'Side',
 							fullName: 'Sunny Side',
 							email: 'hello@n8n.io',
-							isDefaultUser: false,
 							isPendingUser: false,
 							isOwner: true,
 							signInType: 'email',
@@ -71,7 +70,6 @@ describe('UserStack', () => {
 							lastName: 'Dog',
 							fullName: 'Kobi Dog',
 							email: 'kobi@n8n.io',
-							isDefaultUser: false,
 							isPendingUser: false,
 							isOwner: false,
 							signInType: 'ldap',
@@ -83,7 +81,6 @@ describe('UserStack', () => {
 							lastName: 'Doe',
 							fullName: 'John Doe',
 							email: 'john@n8n.io',
-							isDefaultUser: false,
 							isPendingUser: false,
 							isOwner: false,
 							signInType: 'email',
@@ -95,7 +92,6 @@ describe('UserStack', () => {
 							lastName: 'Doe',
 							fullName: 'Jane Doe',
 							email: 'jane@n8n.io',
-							isDefaultUser: false,
 							isPendingUser: false,
 							isOwner: false,
 							signInType: 'ldap',

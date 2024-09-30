@@ -304,11 +304,11 @@ describe('Test Google Sheets, lookupValues', () => {
 
 		const googleSheet = new GoogleSheet('spreadsheetId', fakeExecuteFunction);
 
-		const result = await googleSheet.lookupValues(
+		const result = await googleSheet.lookupValues({
 			inputData,
-			0,
-			1,
-			[
+			keyRowIndex: 0,
+			dataStartRowIndex: 1,
+			lookupValues: [
 				{
 					lookupColumn: 'num',
 					lookupValue: '1',
@@ -318,9 +318,9 @@ describe('Test Google Sheets, lookupValues', () => {
 					lookupValue: 'foo',
 				},
 			],
-			true,
-			'OR',
-		);
+			returnAllMatches: true,
+			combineFilters: 'OR',
+		});
 
 		expect(result).toBeDefined();
 		expect(result).toEqual([
@@ -366,11 +366,11 @@ describe('Test Google Sheets, lookupValues', () => {
 
 		const googleSheet = new GoogleSheet('spreadsheetId', fakeExecuteFunction);
 
-		const result = await googleSheet.lookupValues(
+		const result = await googleSheet.lookupValues({
 			inputData,
-			0,
-			1,
-			[
+			keyRowIndex: 0,
+			dataStartRowIndex: 1,
+			lookupValues: [
 				{
 					lookupColumn: 'num',
 					lookupValue: '1',
@@ -380,9 +380,9 @@ describe('Test Google Sheets, lookupValues', () => {
 					lookupValue: 'baz',
 				},
 			],
-			true,
-			'AND',
-		);
+			returnAllMatches: true,
+			combineFilters: 'AND',
+		});
 
 		expect(result).toBeDefined();
 		expect(result).toEqual([

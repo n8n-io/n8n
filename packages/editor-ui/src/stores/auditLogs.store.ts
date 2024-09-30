@@ -6,8 +6,8 @@ import { useSettingsStore } from '@/stores/settings.store';
 export const useAuditLogsStore = defineStore('auditLogs', () => {
 	const settingsStore = useSettingsStore();
 
-	const isEnterpriseAuditLogsFeatureEnabled = computed(() =>
-		settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.AuditLogs),
+	const isEnterpriseAuditLogsFeatureEnabled = computed(
+		() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AuditLogs],
 	);
 
 	return {

@@ -1,14 +1,15 @@
-import Container from 'typedi';
 import { mock } from 'jest-mock-extended';
-import { CredentialsEntity } from '@db/entities/CredentialsEntity';
-import { CredentialsRepository } from '@db/repositories/credentials.repository';
-import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
-import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import Container from 'typedi';
+
+import { CredentialsEntity } from '@/databases/entities/credentials-entity';
+import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
+import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { Telemetry } from '@/telemetry';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
-import * as testDb from '../shared/testDb';
 import { mockInstance } from '../../shared/mocking';
+import * as testDb from '../shared/test-db';
 import {
 	FIRST_CREDENTIAL_ID,
 	SECOND_CREDENTIAL_ID,
@@ -28,6 +29,8 @@ describe('EnterpriseWorkflowService', () => {
 			Container.get(SharedWorkflowRepository),
 			Container.get(WorkflowRepository),
 			Container.get(CredentialsRepository),
+			mock(),
+			mock(),
 			mock(),
 			mock(),
 		);

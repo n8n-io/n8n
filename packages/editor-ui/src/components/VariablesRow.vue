@@ -8,7 +8,7 @@ import { useClipboard } from '@/composables/useClipboard';
 import { EnterpriseEditionFeature } from '@/constants';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
-import { getVariablesPermissions } from '@/permissions';
+import { getResourcePermissions } from '@/permissions';
 import type { IResource } from './layouts/ResourcesListLayout.vue';
 
 const i18n = useI18n();
@@ -17,7 +17,12 @@ const { showMessage } = useToast();
 const settingsStore = useSettingsStore();
 const usersStore = useUsersStore();
 
-const emit = defineEmits(['save', 'cancel', 'edit', 'delete']);
+const emit = defineEmits<{
+	save: [data: IResource];
+	cancel: [data: IResource];
+	edit: [data: IResource];
+	delete: [data: IResource];
+}>();
 
 const props = withDefaults(
 	defineProps<{
@@ -29,7 +34,9 @@ const props = withDefaults(
 	},
 );
 
-const permissions = computed(() => getVariablesPermissions(usersStore.currentUser));
+const permissions = computed(
+	() => getResourcePermissions(usersStore.currentUser?.globalScopes).variable,
+);
 const modelValue = ref<IResource>({ ...props.data });
 
 const formValidationStatus = ref<Record<string, boolean>>({
@@ -45,8 +52,8 @@ const valueInputRef = ref<HTMLElement>();
 
 const usage = ref(`$vars.${props.data.name}`);
 
-const isFeatureEnabled = computed(() =>
-	settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Variables),
+const isFeatureEnabled = computed(
+	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables],
 );
 
 onMounted(() => {

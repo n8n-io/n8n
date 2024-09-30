@@ -25,6 +25,7 @@ export class ToolSerpApi implements INodeType {
 			categories: ['AI'],
 			subcategories: {
 				AI: ['Tools'],
+				Tools: ['Other Tools'],
 			},
 			resources: {
 				primaryDocumentation: [

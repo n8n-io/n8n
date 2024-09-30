@@ -4,7 +4,12 @@ import { OpenAIAssistantRunnable } from 'langchain/experimental/openai_assistant
 import type { OpenAIToolType } from 'langchain/dist/experimental/openai_assistant/schema';
 import { OpenAI as OpenAIClient } from 'openai';
 
-import { NodeConnectionType, NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
+import {
+	ApplicationError,
+	NodeConnectionType,
+	NodeOperationError,
+	updateDisplayOptions,
+} from 'n8n-workflow';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -163,7 +168,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	const agent = new OpenAIAssistantRunnable({ assistantId, client, asAgent: true });
 
-	const tools = await getConnectedTools(this, nodeVersion > 1);
+	const tools = await getConnectedTools(this, nodeVersion > 1, false);
 	let assistantTools;
 
 	if (tools.length) {
@@ -228,25 +233,36 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		}
 	}
 
-	const response = await agentExecutor.withConfig(getTracingConfig(this)).invoke(chainValues);
-	if (memory) {
-		await memory.saveContext({ input }, { output: response.output });
+	let filteredResponse: IDataObject = {};
+	try {
+		const response = await agentExecutor.withConfig(getTracingConfig(this)).invoke(chainValues);
+		if (memory) {
+			await memory.saveContext({ input }, { output: response.output });
 
-		if (response.threadId && response.runId) {
-			const threadRun = await client.beta.threads.runs.retrieve(response.threadId, response.runId);
-			response.usage = threadRun.usage;
+			if (response.threadId && response.runId) {
+				const threadRun = await client.beta.threads.runs.retrieve(
+					response.threadId,
+					response.runId,
+				);
+				response.usage = threadRun.usage;
+			}
+		}
+
+		if (
+			options.preserveOriginalTools !== false &&
+			nodeVersion >= 1.3 &&
+			(assistantTools ?? [])?.length
+		) {
+			await client.beta.assistants.update(assistantId, {
+				tools: assistantTools,
+			});
+		}
+		filteredResponse = omit(response, ['signal', 'timeout']) as IDataObject;
+	} catch (error) {
+		if (!(error instanceof ApplicationError)) {
+			throw new NodeOperationError(this.getNode(), error.message, { itemIndex: i });
 		}
 	}
 
-	if (
-		options.preserveOriginalTools !== false &&
-		nodeVersion >= 1.3 &&
-		(assistantTools ?? [])?.length
-	) {
-		await client.beta.assistants.update(assistantId, {
-			tools: assistantTools,
-		});
-	}
-	const filteredResponse = omit(response, ['signal', 'timeout']);
 	return [{ json: filteredResponse, pairedItem: { item: i } }];
 }

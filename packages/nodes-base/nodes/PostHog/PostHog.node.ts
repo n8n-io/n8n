@@ -5,6 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
 import type { IAlias, IEvent, IIdentity, ITrack } from './GenericFunctions';
@@ -30,8 +31,8 @@ export class PostHog implements INodeType {
 		defaults: {
 			name: 'PostHog',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'postHogApi',
@@ -121,7 +122,7 @@ export class PostHog implements INodeType {
 
 						returnData.push(responseData as IDataObject);
 					} catch (error) {
-						if (this.continueOnFail(error)) {
+						if (this.continueOnFail()) {
 							returnData.push({ error: error.message });
 							continue;
 						}
@@ -173,7 +174,7 @@ export class PostHog implements INodeType {
 
 					returnData.push(responseData as IDataObject);
 				} catch (error) {
-					if (this.continueOnFail(error)) {
+					if (this.continueOnFail()) {
 						returnData.push({ error: error.message });
 					} else {
 						throw error;
@@ -217,7 +218,7 @@ export class PostHog implements INodeType {
 
 						returnData.push(responseData as IDataObject);
 					} catch (error) {
-						if (this.continueOnFail(error)) {
+						if (this.continueOnFail()) {
 							returnData.push({ error: error.message });
 							continue;
 						}
@@ -273,7 +274,7 @@ export class PostHog implements INodeType {
 
 						returnData.push(responseData as IDataObject);
 					} catch (error) {
-						if (this.continueOnFail(error)) {
+						if (this.continueOnFail()) {
 							returnData.push({ error: error.message });
 							continue;
 						}

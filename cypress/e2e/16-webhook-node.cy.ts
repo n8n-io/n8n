@@ -1,7 +1,8 @@
 import { nanoid } from 'nanoid';
+
+import { BACKEND_BASE_URL, EDIT_FIELDS_SET_NODE_NAME } from '../constants';
 import { WorkflowPage, NDV, CredentialsModal } from '../pages';
 import { cowBase64 } from '../support/binaryTestFiles';
-import { BACKEND_BASE_URL, EDIT_FIELDS_SET_NODE_NAME } from '../constants';
 import { getVisibleSelect } from '../utils';
 
 const workflowPage = new WorkflowPage();

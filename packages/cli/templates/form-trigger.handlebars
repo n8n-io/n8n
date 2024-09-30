@@ -59,6 +59,9 @@
 				margin-bottom: 16px;
 			}
 
+			.n8n-link {
+				padding-bottom: 24px;
+			}
 			.n8n-link a {
 				color: #7e8186;
 				font-weight: 600;
@@ -103,11 +106,12 @@
 				border-radius: 6px;
 				width: 100%;
 				font-size: 14px;
-				color: #909399;
+				color: #71747A;
 				font-weight: 400;
 				padding: 12px;
 			}
 
+			form textarea:focus,
 			form input:focus {
 				outline: none;
 				border-color: rgb(90, 76, 194);
@@ -128,7 +132,7 @@
 				border-radius: 6px;
 				width: 100%;
 				font-size: 14px;
-				color: #909399;
+				color: #71747A;
 				font-weight: 400;
 				background-color: white;
 				padding: 12px;
@@ -139,6 +143,10 @@
 				font-family:
 					Open Sans,
 					sans-serif;
+			}
+
+			::placeholder {
+				opacity: 0.5;
 			}
 
 			#submit-btn {
@@ -225,8 +233,79 @@
 				height: 18px;
 				cursor: pointer;
 			}
-
+			/* required field ----------------------------- */
 			.form-required {
+			}
+			label.form-required::after {
+					content: ' *';
+					color: #ff6d5a;
+			}
+
+			hr {
+				border: 0;
+				height: 1px;
+				border-top: 1px solid #dbdfe7;
+				margin-top: 24px;
+				margin-bottom: 24px;
+				display: none;
+			}
+
+			.file-input-wrapper {
+				position: relative;
+				display: inline-block;
+				width: 100%;
+			}
+			input[type="file"] {
+			}
+			.clear-button {
+				position: absolute;
+				right: 5px;
+				top: 50%;
+				transform: translateY(-65%);
+				background-color: #7e8186;
+				border: none;
+				border-radius: 50%;
+				font-size: 14px;
+				font-weight: 600;
+				font-family:
+					Open Sans,
+					sans-serif;
+				color: white;
+				width: 20px;
+				height: 20px;
+				text-align: center;
+				line-height: 20px;
+				cursor: pointer;
+				display: none;
+			}
+			input[type="file"]:not(:empty) + .clear-button {
+					display: inline-block;
+			}
+
+			@media only screen and (max-width: 500px) {
+				body {
+					background-color: white;
+				}
+				hr {
+					display: block;
+				}
+				.container {
+					width: 95%;
+					min-height: 100vh;
+					padding: 24px;
+					background-color: white;
+					border: 0px solid #dbdfe7;
+					border-radius: 0px;
+					box-shadow: 0px 0px 0px 0px white;
+				}
+				.card {
+					padding: 0px;
+					background-color: white;
+					border: 0px solid #dbdfe7;
+					border-radius: 0px;
+					box-shadow: 0px 0px 0px 0px white;
+					margin-bottom: 0px;
+				}
 			}
 		</style>
 	</head>
@@ -238,20 +317,23 @@
 					<div class='test-notice'>
 						<p>This is test version of your form. Use it only for testing your Form Trigger.</p>
 					</div>
+					<hr>
 				{{/if}}
+
+
 
 				{{#if validForm}}
 					<form class='card' action='#' method='POST' name='n8n-form' id='n8n-form' novalidate>
 						<div class='form-header'>
 							<h1>{{formTitle}}</h1>
-							<p>{{formDescription}} </p>
+							<p style="white-space: pre-line">{{formDescription}} </p>
 						</div>
 
 						<div class='inputs-wrapper'>
 							{{#each formFields}}
 								{{#if isMultiSelect}}
 									<div>
-										<label class='form-label'>{{label}}</label>
+										<label class='form-label {{inputRequired}}'>{{label}}</label>
 										<div class='multiselect {{inputRequired}}' id='{{id}}'>
 											{{#each multiSelectOptions}}
 												<div class='multiselect-option'>
@@ -268,7 +350,7 @@
 
 								{{#if isSelect}}
 									<div class='form-group'>
-										<label class='form-label' for='{{id}}'>{{label}}</label>
+										<label class='form-label {{inputRequired}}' for='{{id}}'>{{label}}</label>
 										<div class='select-input'>
 											<select id='{{id}}' name='{{id}}' class='{{inputRequired}}'>
 												<option value='' disabled selected>Select an option ...</option>
@@ -285,12 +367,32 @@
 
 								{{#if isTextarea}}
 									<div class='form-group'>
-										<label class='form-label' for='{{id}}'>{{label}}</label>
+										<label class='form-label {{inputRequired}}' for='{{id}}'>{{label}}</label>
 										<textarea
 											class='form-input {{inputRequired}}'
 											id='{{id}}'
 											name='{{id}}'
-										></textarea>
+											placeholder="{{placeholder}}"
+										>{{defaultValue}}</textarea>
+										<p class='{{errorId}} error-hidden'>
+											This field is required
+										</p>
+									</div>
+								{{/if}}
+
+								{{#if isFileInput}}
+									<div class='form-group file-input-wrapper'>
+										<label class='form-label {{inputRequired}}' for='{{id}}'>{{label}}</label>
+										<input
+											class='form-input {{inputRequired}}'
+											type='file'
+											id='{{id}}'
+											name='{{id}}'
+											accept='{{acceptFileTypes}}'
+											{{multipleFiles}}
+											placeholder="{{placeholder}}"
+										/>
+										<button class="clear-button">&times;</button>
 										<p class='{{errorId}} error-hidden'>
 											This field is required
 										</p>
@@ -299,12 +401,14 @@
 
 								{{#if isInput}}
 									<div class='form-group'>
-										<label class='form-label' for='{{id}}'>{{label}}</label>
+										<label class='form-label {{inputRequired}}' for='{{id}}'>{{label}}</label>
 										<input
 											class='form-input {{inputRequired}}'
 											type='{{type}}'
 											id='{{id}}'
 											name='{{id}}'
+											value="{{defaultValue}}"
+											placeholder="{{placeholder}}"
 										/>
 										<p class='{{errorId}} error-hidden'>
 											This field is required
@@ -355,6 +459,7 @@
 				</div>
 
 				{{#if appendAttribution}}
+					<hr>
 					<div class='n8n-link'>
 						<a href={{n8nWebsiteLink}} target='_blank'>
 							Form automated with
@@ -388,6 +493,8 @@
 					</div>
 				{{/if}}
 
+
+
 				{{#if redirectUrl}}
 					<a id='redirectUrl' href='{{redirectUrl}}' style='display: none;'></a>
 				{{/if}}
@@ -396,10 +503,13 @@
 		</div>
 		<script>
 			function validateInput(input, errorElement) {
-				if (input.type === 'number' && input.value !== '') {
-					const value = input.value.trim();
+				const value = input.value.trim();
+				const type = input.type;
 
-					if (value === '' || isNaN(value)) {
+				if (type === 'email' && value !== '') {
+					return validateEmailInput(value, errorElement);
+				} else if (type === 'number' && value !== '') {
+					if (isNaN(value)) {
 						errorElement.textContent = 'Enter only numbers in this field';
 						errorElement.classList.add('error-show');
 						return false;
@@ -407,10 +517,26 @@
 						errorElement.classList.remove('error-show');
 						return true;
 					}
-				} else if (input.value === '') {
+				} else if (value === '') {
+					errorElement.textContent = 'This field is required';
 					errorElement.classList.add('error-show');
 					return false;
 				} else {
+					errorElement.classList.remove('error-show');
+					return true;
+				}
+			}
+
+			function validateEmailInput(value, errorElement) {
+				const regex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+				const isValidEmail = regex.test(value);
+
+				if (!isValidEmail) {
+					errorElement.textContent = 'Enter a valid email address in this field';
+					errorElement.classList.add('error-show');
+					return false;
+				} else {
+					errorElement.textContent = 'This field is required';
 					errorElement.classList.remove('error-show');
 					return true;
 				}
@@ -444,7 +570,44 @@
 
 			const form = document.querySelector('#n8n-form');
 
-			const requiredInputs = document.querySelectorAll('.form-required');
+			document.querySelectorAll("input[type=number]").forEach(function (element) {
+        element.addEventListener("wheel", function(event) {
+            if (document.activeElement === event.target) {
+                event.preventDefault();
+            }
+        });
+    	});
+
+			document.querySelectorAll('input[type="file"]').forEach(fileInput => {
+				const clearButton = fileInput.nextElementSibling;
+				let previousFiles = [];
+
+				fileInput.addEventListener('change', () => {
+					const files = fileInput.files;
+
+					if (files.length > 0) {
+							previousFiles = Array.from(files);
+							clearButton.style.display = 'inline-block';
+					} else {
+						if (previousFiles.length > 0) {
+							const dataTransfer = new DataTransfer();
+							previousFiles.forEach(file => dataTransfer.items.add(file));
+							fileInput.files = dataTransfer.files;
+							clearButton.style.display = 'inline-block';
+						}
+					}
+				});
+
+				clearButton.addEventListener('click', (event) => {
+					event.preventDefault();
+					fileInput.value = '';
+					previousFiles = [];
+					clearButton.style.display = 'none';
+				});
+			});
+
+			const requiredInputs = document.querySelectorAll('.form-required:not(label)');
+			const emailInputs = document.querySelectorAll("input[type=email]");
 
 			requiredInputs.forEach((input) => {
 				const errorSelector = `.error-${input.id}`;
@@ -464,9 +627,33 @@
 				}
 			});
 
+			emailInputs.forEach(function (input) {
+				const errorSelector = `.error-${input.id}`;
+				const error = document.querySelector(errorSelector);
+
+        input.addEventListener("input", function(event) {
+					const value = input.value.trim();
+					if (value === "") {
+						error.classList.remove('error-show');
+					} else {
+						validateEmailInput(value, error);
+					}
+        });
+    	});
+
 			form.addEventListener('submit', (e) => {
 				const valid = [];
 				e.preventDefault();
+
+				emailInputs.forEach(function (input) {
+					const value = input.value.trim();
+					if(value === '') {
+						return;
+					}
+					const errorSelector = `.error-${input.id}`;
+					const error = document.querySelector(errorSelector);
+					valid.push(validateEmailInput(value, error));
+				});
 
 				requiredInputs.forEach((input) => {
 					const errorSelector = `.error-${input.id}`;
@@ -480,7 +667,20 @@
 				});
 
 				if (valid.every((v) => v)) {
-					var formData = new FormData(form);
+					var formData = new FormData();
+
+					for (const filed of form.elements) {
+						if(filed.type !== 'file') {
+							formData.append(filed.name, filed.value);
+						} else {
+							for (const file of filed.files) {
+								if(file.size === 0) {
+									continue;
+								}
+								formData.append(filed.name, file);
+							}
+						}
+					}
 
 					document.querySelectorAll('.multiselect').forEach((multiselect) => {
 						const selectedValues = getSelectedValues(multiselect);

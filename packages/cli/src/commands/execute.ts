@@ -1,16 +1,15 @@
-import { Container } from 'typedi';
 import { Flags } from '@oclif/core';
-import type { IWorkflowBase } from 'n8n-workflow';
+import type { IWorkflowBase, IWorkflowExecutionDataProcess } from 'n8n-workflow';
 import { ApplicationError, ExecutionBaseError } from 'n8n-workflow';
+import { Container } from 'typedi';
 
-import { ActiveExecutions } from '@/ActiveExecutions';
-import { WorkflowRunner } from '@/WorkflowRunner';
-import type { IWorkflowExecutionDataProcess } from '@/Interfaces';
-import { findCliWorkflowStart, isWorkflowIdValid } from '@/utils';
-import { BaseCommand } from './BaseCommand';
-
-import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import { ActiveExecutions } from '@/active-executions';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { OwnershipService } from '@/services/ownership.service';
+import { findCliWorkflowStart, isWorkflowIdValid } from '@/utils';
+import { WorkflowRunner } from '@/workflow-runner';
+
+import { BaseCommand } from './base-command';
 
 export class Execute extends BaseCommand {
 	static description = '\nExecutes a given workflow';
@@ -26,6 +25,8 @@ export class Execute extends BaseCommand {
 			description: 'Outputs only JSON data, with no other text',
 		}),
 	};
+
+	override needsCommunityPackages = true;
 
 	async init() {
 		await super.init();

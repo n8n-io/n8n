@@ -1887,6 +1887,274 @@ describe('NodeHelpers', () => {
 					},
 				},
 			},
+			{
+				description:
+					'simple values with displayOptions "show" using exists condition. No values set.',
+				input: {
+					nodePropertiesArray: [
+						{
+							name: 'field1',
+							displayName: 'Field 1',
+							type: 'string',
+							default: '',
+						},
+						{
+							name: 'field2',
+							displayName: 'Field 2',
+							displayOptions: {
+								show: {
+									field1: [{ _cnd: { exists: true } }],
+								},
+							},
+							type: 'string',
+							default: 'default field2',
+						},
+					],
+					nodeValues: {},
+				},
+				output: {
+					noneDisplayedFalse: {
+						defaultsFalse: {},
+						defaultsTrue: {
+							field1: '',
+						},
+					},
+					noneDisplayedTrue: {
+						defaultsFalse: {},
+						defaultsTrue: {
+							field1: '',
+							field2: 'default field2',
+						},
+					},
+				},
+			},
+			{
+				description:
+					'simple values with displayOptions "show" using exists condition. Field1 has a value.',
+				input: {
+					nodePropertiesArray: [
+						{
+							name: 'field1',
+							displayName: 'Field 1',
+							type: 'string',
+							default: '',
+						},
+						{
+							name: 'field2',
+							displayName: 'Field 2',
+							displayOptions: {
+								show: {
+									field1: [{ _cnd: { exists: true } }],
+								},
+							},
+							type: 'string',
+							default: 'default field2',
+						},
+					],
+					nodeValues: {
+						field1: 'some value',
+					},
+				},
+				output: {
+					noneDisplayedFalse: {
+						defaultsFalse: {
+							field1: 'some value',
+						},
+						defaultsTrue: {
+							field1: 'some value',
+							field2: 'default field2',
+						},
+					},
+					noneDisplayedTrue: {
+						defaultsFalse: {
+							field1: 'some value',
+						},
+						defaultsTrue: {
+							field1: 'some value',
+							field2: 'default field2',
+						},
+					},
+				},
+			},
+			{
+				description:
+					'complex type "fixedCollection" with "multipleValues: false" and with displayOptions "show" using exists condition.',
+				input: {
+					nodePropertiesArray: [
+						{
+							name: 'values',
+							displayName: 'Values',
+							type: 'fixedCollection',
+							default: {},
+							options: [
+								{
+									name: 'data',
+									displayName: 'Data',
+									values: [
+										{
+											name: 'field1',
+											displayName: 'Field 1',
+											type: 'string',
+											default: '',
+										},
+										{
+											name: 'field2',
+											displayName: 'Field 2',
+											type: 'string',
+											displayOptions: {
+												show: {
+													field1: [{ _cnd: { exists: true } }],
+												},
+											},
+											default: 'default field2',
+										},
+									],
+								},
+							],
+						},
+					],
+					nodeValues: {
+						values: {
+							data: {
+								field1: 'some value',
+							},
+						},
+					},
+				},
+				output: {
+					noneDisplayedFalse: {
+						defaultsFalse: {
+							values: {
+								data: {
+									field1: 'some value',
+								},
+							},
+						},
+						defaultsTrue: {
+							values: {
+								data: {
+									field1: 'some value',
+									field2: 'default field2',
+								},
+							},
+						},
+					},
+					noneDisplayedTrue: {
+						defaultsFalse: {
+							values: {
+								data: {
+									field1: 'some value',
+								},
+							},
+						},
+						defaultsTrue: {
+							values: {
+								data: {
+									field1: 'some value',
+									field2: 'default field2',
+								},
+							},
+						},
+					},
+				},
+			},
+			{
+				description:
+					'complex type "collection" with "multipleValues: true" and with displayOptions "show" using exists condition.',
+				input: {
+					nodePropertiesArray: [
+						{
+							name: 'values',
+							displayName: 'Values',
+							type: 'collection',
+							typeOptions: {
+								multipleValues: true,
+							},
+							default: {},
+							options: [
+								{
+									name: 'field1',
+									displayName: 'Field 1',
+									type: 'string',
+									default: '',
+								},
+								{
+									name: 'field2',
+									displayName: 'Field 2',
+									type: 'string',
+									displayOptions: {
+										show: {
+											field1: [{ _cnd: { exists: true } }],
+										},
+									},
+									default: 'default field2',
+								},
+							],
+						},
+					],
+					nodeValues: {
+						values: [
+							{
+								field1: 'value1',
+							},
+							{
+								field1: '',
+							},
+							{},
+						],
+					},
+				},
+				output: {
+					noneDisplayedFalse: {
+						defaultsFalse: {
+							values: [
+								{
+									field1: 'value1',
+								},
+								{
+									field1: '',
+								},
+								{},
+							],
+						},
+						defaultsTrue: {
+							values: [
+								{
+									field1: 'value1',
+								},
+								{
+									field1: '',
+								},
+								{},
+							],
+						},
+					},
+					noneDisplayedTrue: {
+						defaultsFalse: {
+							values: [
+								{
+									field1: 'value1',
+								},
+								{
+									field1: '',
+								},
+								{},
+							],
+						},
+						defaultsTrue: {
+							values: [
+								{
+									field1: 'value1',
+								},
+								{
+									field1: '',
+								},
+								{},
+							],
+						},
+					},
+				},
+			},
 		];
 
 		for (const testData of tests) {

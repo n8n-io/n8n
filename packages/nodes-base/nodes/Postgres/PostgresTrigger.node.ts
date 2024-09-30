@@ -5,6 +5,7 @@ import {
 	type INodeTypeDescription,
 	type ITriggerFunctions,
 	type ITriggerResponse,
+	NodeConnectionType,
 } from 'n8n-workflow';
 import {
 	pgTriggerFunction,
@@ -38,7 +39,7 @@ export class PostgresTrigger implements INodeType {
 				"Once you've finished building your workflow, <a data-key='activate'>activate</a> it to have it also listen continuously (you just won't see those executions here).",
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'postgres',
@@ -213,7 +214,7 @@ export class PostgresTrigger implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				options: [
 					{
