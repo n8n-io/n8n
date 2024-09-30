@@ -366,8 +366,6 @@ export function useCanvasMapping({
 				const width = node.parameters.width as number;
 				const height = node.parameters.height as number;
 
-				console.log({ node });
-
 				acc.push({
 					id: node.id,
 					x,
@@ -546,6 +544,7 @@ export function useCanvasMapping({
 	}
 
 	return {
+		additionalNodePropertiesById,
 		nodeExecutionRunDataOutputMapById,
 		connections: mappedConnections,
 		nodes: mappedNodes,
