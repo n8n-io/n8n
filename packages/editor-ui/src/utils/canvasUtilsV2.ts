@@ -1,6 +1,6 @@
 import type { IConnection, IConnections, INodeTypeDescription } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
-import type { CanvasConnection, CanvasConnectionPort } from '@/types';
+import type { BoundingBox, CanvasConnection, CanvasConnectionPort } from '@/types';
 import { CanvasConnectionMode } from '@/types';
 import type { Connection } from '@vue-flow/core';
 import { v4 as uuid } from 'uuid';
@@ -207,13 +207,6 @@ export function getUniqueNodeName(name: string, existingNames: Set<string>): str
 
 	return `${name} ${uuid()}`;
 }
-
-export type BoundingBox = {
-	x: number;
-	y: number;
-	width: number;
-	height: number;
-};
 
 export function checkOverlap(node1: BoundingBox, node2: BoundingBox) {
 	return !(

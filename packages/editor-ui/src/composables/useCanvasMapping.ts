@@ -9,6 +9,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { Ref } from 'vue';
 import { computed } from 'vue';
 import type {
+	BoundingBox,
 	CanvasConnection,
 	CanvasConnectionData,
 	CanvasConnectionPort,
@@ -22,7 +23,6 @@ import type {
 } from '@/types';
 import { CanvasConnectionMode, CanvasNodeRenderType } from '@/types';
 import {
-	BoundingBox,
 	checkOverlap,
 	mapLegacyConnectionsToCanvasConnections,
 	mapLegacyEndpointsToCanvasConnectionPort,
