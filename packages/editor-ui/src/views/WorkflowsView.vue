@@ -17,6 +17,7 @@ import ProjectTabs from '@/components/Projects/ProjectTabs.vue';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { getResourcePermissions } from '@/permissions';
 import { usePostHog } from '@/stores/posthog.store';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
 
 interface Filters {
 	search: string;
@@ -49,6 +50,7 @@ const WorkflowsView = defineComponent({
 			} as Filters,
 			sourceControlStoreUnsubscribe: () => {},
 			loading: false,
+			documentTitle: useDocumentTitle(),
 		};
 	},
 	computed: {
@@ -149,6 +151,7 @@ const WorkflowsView = defineComponent({
 		},
 	},
 	async mounted() {
+		this.documentTitle.set(this.$locale.baseText('workflows.heading'));
 		await this.setFiltersFromQueryString();
 
 		void this.usersStore.showPersonalizationSurvey();

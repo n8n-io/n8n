@@ -13,7 +13,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { isFullTemplatesCollection } from '@/utils/templates/typeGuards';
 import { useRoute, useRouter } from 'vue-router';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { setPageTitle } from '@/utils/htmlUtils';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useI18n } from '@/composables/useI18n';
 
 const externalHooks = useExternalHooks();
@@ -25,6 +25,7 @@ const route = useRoute();
 const router = useRouter();
 const telemetry = useTelemetry();
 const i18n = useI18n();
+const documentTitle = useDocumentTitle();
 
 const loading = ref(true);
 const notFoundError = ref(false);
@@ -89,9 +90,9 @@ watch(
 	() => collection.value,
 	() => {
 		if (collection.value && 'full' in collection.value && collection.value.full) {
-			setPageTitle(`n8n - Template collection: ${collection.value.name}`);
+			documentTitle.set(`Template collection: ${collection.value.name}`);
 		} else {
-			setPageTitle('n8n - Templates');
+			documentTitle.set('Templates');
 		}
 	},
 );
