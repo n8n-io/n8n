@@ -52,9 +52,6 @@ function handleEsc() {
 function handleBlur() {
 	emit('blur');
 }
-
-// Fetch all tags when the component is created
-void tagsStore.fetchAll();
 </script>
 
 <template>

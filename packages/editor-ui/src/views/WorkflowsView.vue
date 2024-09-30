@@ -152,6 +152,9 @@ const WorkflowsView = defineComponent({
 	},
 	async mounted() {
 		this.documentTitle.set(this.$locale.baseText('workflows.heading'));
+
+		await this.tagsStore.fetchAll();
+
 		await this.setFiltersFromQueryString();
 
 		void this.usersStore.showPersonalizationSurvey();
