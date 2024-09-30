@@ -18,22 +18,16 @@ import { useRoute } from 'vue-router';
 import { useSettingsStore } from './settings.store';
 import { assert } from '@/utils/assert';
 import { useWorkflowsStore } from './workflows.store';
-import type { IDataObject, ICredentialType, INodeParameters, NodeError, INode } from 'n8n-workflow';
+import type { ICredentialType, INodeParameters, NodeError, INode } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 import { ndvEventBus, codeNodeEditorEventBus } from '@/event-bus';
 import { useNDVStore } from './ndv.store';
 import type { IUpdateInformation } from '@/Interface';
 import {
-	getMainAuthField,
-	getNodeAuthOptions,
-	getReferencedNodes,
-	getNodesSchemas,
 	processNodeForAssistant,
-	isNodeReferencingInputData,
 	simplifyErrorForAssistant,
 	getNodeInfoForAssistant,
 } from '@/utils/nodeTypesUtils';
-import { useNodeTypesStore } from './nodeTypes.store';
 import { usePostHog } from './posthog.store';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
@@ -403,6 +397,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	}
 
 	async function initSupportChat(userMessage: string, credentialType?: ICredentialType) {
+		resetAssistantChat();
 		chatSessionTask.value = credentialType ? 'credentials' : 'support';
 		const visualContext = getVisualContext();
 		const activeNode = workflowsStore.activeNode() as INode;
@@ -413,7 +408,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		}
 
 		const id = getRandomId();
-		resetAssistantChat();
 		chatSessionCredType.value = credentialType;
 		addUserMessage(userMessage, id);
 		addLoadingAssistantMessage(locale.baseText('aiAssistant.thinkingSteps.thinking'));
