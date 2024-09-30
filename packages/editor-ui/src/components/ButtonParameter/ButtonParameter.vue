@@ -7,8 +7,6 @@ import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
 import { useNDVStore } from '@/stores/ndv.store';
 import { getSchemas, getParentNodes } from './utils';
-import { ASK_AI_EXPERIMENT } from '@/constants';
-import { usePostHog } from '@/stores/posthog.store';
 import { useRootStore } from '@/stores/root.store';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { generateCodeForPrompt } from '@/api/ai';
@@ -16,6 +14,7 @@ import { generateCodeForPrompt } from '@/api/ai';
 import { format } from 'prettier';
 import jsParser from 'prettier/plugins/babel';
 import * as estree from 'prettier/plugins/estree';
+import { useSettingsStore } from '@/stores/settings.store';
 
 const emit = defineEmits<{
 	valueChanged: [value: IUpdateInformation];
@@ -27,8 +26,8 @@ const props = defineProps<{
 	path: string;
 }>();
 
-const posthog = usePostHog();
 const rootStore = useRootStore();
+const settingsStore = useSettingsStore();
 
 const i18n = useI18n();
 
@@ -95,10 +94,6 @@ async function onSubmit() {
 	try {
 		const schemas = getSchemas();
 		const version = rootStore.versionCli;
-		const model =
-			usePostHog().getVariant(ASK_AI_EXPERIMENT.name) === ASK_AI_EXPERIMENT.gpt4
-				? 'gpt-4'
-				: 'gpt-3.5-turbo-16k';
 
 		const payload = {
 			question: prompt.value,
@@ -108,13 +103,14 @@ async function onSubmit() {
 				ndvPushRef: useNDVStore().pushRef,
 				pushRef: rootStore.pushRef,
 			},
-			model,
+			model: 'gpt-3.5-turbo-16k',
 			n8nVersion: version,
+			forNode: 'transform',
 		};
 		switch (type) {
 			case 'askAiCodeGeneration':
 				let value;
-				if (posthog.isAiEnabled()) {
+				if (settingsStore.isAskAiEnabled) {
 					const { restApiContext } = useRootStore();
 					const { code } = await generateCodeForPrompt(restApiContext, payload);
 					value = code;

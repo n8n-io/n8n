@@ -16,12 +16,10 @@ import { useI18n } from '@/composables/useI18n';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { useNDVStore } from '@/stores/ndv.store';
-import { usePostHog } from '@/stores/posthog.store';
 import { useRootStore } from '@/stores/root.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { executionDataToJson } from '@/utils/nodeTypesUtils';
 import {
-	ASK_AI_EXPERIMENT,
 	ASK_AI_MAX_PROMPT_LENGTH,
 	ASK_AI_MIN_PROMPT_LENGTH,
 	ASK_AI_LOADING_DURATION_MS,
@@ -158,10 +156,6 @@ async function onSubmit() {
 
 	try {
 		const version = rootStore.versionCli;
-		const model =
-			usePostHog().getVariant(ASK_AI_EXPERIMENT.name) === ASK_AI_EXPERIMENT.gpt4
-				? 'gpt-4'
-				: 'gpt-3.5-turbo-16k';
 
 		const { code } = await generateCodeForPrompt(restApiContext, {
 			question: prompt.value,
@@ -171,8 +165,9 @@ async function onSubmit() {
 				ndvPushRef: useNDVStore().pushRef,
 				pushRef: rootStore.pushRef,
 			},
-			model,
+			model: 'gpt-3.5-turbo-16k',
 			n8nVersion: version,
+			forNode: 'code',
 		});
 
 		stopLoading();

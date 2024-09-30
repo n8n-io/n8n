@@ -106,6 +106,9 @@ export interface FrontendSettings {
 	aiAssistant: {
 		enabled: boolean;
 	};
+	askAi: {
+		enabled: boolean;
+	};
 	deployment: {
 		type: string;
 	};
@@ -152,9 +155,6 @@ export interface FrontendSettings {
 	};
 	banners: {
 		dismissed: string[];
-	};
-	ai: {
-		enabled: boolean;
 	};
 	workflowHistory: {
 		pruneTime: number;

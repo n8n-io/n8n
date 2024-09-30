@@ -20,7 +20,7 @@ import type { NodeViewItemSection } from './viewsData';
 import { i18n } from '@/plugins/i18n';
 import { sortBy } from 'lodash-es';
 
-import { usePostHog } from '@/stores/posthog.store';
+import { useSettingsStore } from '@/stores/settings.store';
 
 export function transformNodeType(
 	node: SimplifiedNodeType,
@@ -77,8 +77,8 @@ export function sortNodeCreateElements(nodes: INodeCreateElement[]) {
 }
 
 export function searchNodes(searchFilter: string, items: INodeCreateElement[]) {
-	const aiEnabled = usePostHog().isAiEnabled();
-	if (!aiEnabled) {
+	const askAiEnabled = useSettingsStore().isAskAiEnabled;
+	if (!askAiEnabled) {
 		items = items.filter((item) => item.key !== AI_TRANSFORM_NODE_TYPE);
 	}
 

@@ -11,7 +11,7 @@ import { N8N_VERSION } from '../constants';
 import { License } from '../license';
 
 @Service()
-export class AiAssistantService {
+export class AiService {
 	private client: AiAssistantClient | undefined;
 
 	constructor(private readonly licenseService: License) {}

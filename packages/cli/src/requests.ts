@@ -587,4 +587,6 @@ export declare namespace AiAssistantRequest {
 
 	type SuggestionPayload = { sessionId: string; suggestionId: string };
 	type ApplySuggestion = AuthenticatedRequest<{}, {}, SuggestionPayload>;
+	//@ts-ignore
+	type AskAi = AuthenticatedRequest<{}, {}, AiAssistantSDK.AskAiRequestPayload>;
 }

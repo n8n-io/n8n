@@ -7,18 +7,19 @@ import { WritableStream } from 'node:stream/web';
 import { Post, RestController } from '@/decorators';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { AiAssistantRequest } from '@/requests';
-import { AiAssistantService } from '@/services/ai-assistant.service';
+
+import { AiService } from '@/services/ai.service';
 
 type FlushableResponse = Response & { flush: () => void };
 
-@RestController('/ai-assistant')
-export class AiAssistantController {
-	constructor(private readonly aiAssistantService: AiAssistantService) {}
+@RestController('/ai')
+export class AiController {
+	constructor(private readonly aiService: AiService) {}
 
 	@Post('/chat', { rateLimit: { limit: 100 } })
 	async chat(req: AiAssistantRequest.Chat, res: FlushableResponse) {
 		try {
-			const aiResponse = await this.aiAssistantService.chat(req.body, req.user);
+			const aiResponse = await this.aiService.chat(req.body, req.user);
 			if (aiResponse.body) {
 				res.header('Content-type', 'application/json-lines').flush();
 				await aiResponse.body.pipeTo(
@@ -43,11 +44,28 @@ export class AiAssistantController {
 		req: AiAssistantRequest.ApplySuggestion,
 	): Promise<AiAssistantSDK.ApplySuggestionResponse> {
 		try {
-			return await this.aiAssistantService.applySuggestion(req.body, req.user);
+			return await this.aiService.applySuggestion(req.body, req.user);
 		} catch (e) {
 			assert(e instanceof Error);
 			ErrorReporterProxy.error(e);
 			throw new InternalServerError(`Something went wrong: ${e.message}`);
 		}
 	}
+
+	//WAIT UNTIL THE NEW VERSION OF THE AI SDK IS RELEASE TO UNCOMMENT THIS
+
+	// @Post('/ask-ai')
+	// async askAi(
+	// 	//@ts-ignore
+	// 	req: AiAssistantRequest.AskAiRequestPayload,
+	// 	//@ts-ignore
+	// ): Promise<AiAssistantRequest.AskAiResponsePayload> {
+	// 	try {
+	// 		// return await this.aiService.askAi(req.body, req.user);
+	// 	} catch (e) {
+	// 		assert(e instanceof Error);
+	// 		ErrorReporterProxy.error(e);
+	// 		throw new InternalServerError(`Something went wrong: ${e.message}`);
+	// 	}
+	// }
 }

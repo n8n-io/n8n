@@ -1,4 +1,4 @@
-import { chatWithAssistant, replaceCode } from '@/api/assistant';
+import { chatWithAssistant, replaceCode } from '@/api/ai';
 import {
 	VIEWS,
 	EDITABLE_CANVAS_VIEWS,
