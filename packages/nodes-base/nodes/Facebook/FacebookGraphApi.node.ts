@@ -8,7 +8,7 @@ import type {
 	IRequestOptions,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 export class FacebookGraphApi implements INodeType {
 	description: INodeTypeDescription = {
@@ -21,8 +21,8 @@ export class FacebookGraphApi implements INodeType {
 		defaults: {
 			name: 'Facebook Graph API',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'facebookGraphApi',
@@ -79,6 +79,18 @@ export class FacebookGraphApi implements INodeType {
 					{
 						name: 'Default',
 						value: '',
+					},
+					{
+						name: 'v20.0',
+						value: 'v20.0',
+					},
+					{
+						name: 'v19.0',
+						value: 'v19.0',
+					},
+					{
+						name: 'v18.0',
+						value: 'v18.0',
 					},
 					{
 						name: 'v17.0',
@@ -218,7 +230,7 @@ export class FacebookGraphApi implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				options: [
 					{
@@ -410,7 +422,7 @@ export class FacebookGraphApi implements INodeType {
 				// Now that the options are all set make the actual http request
 				response = await this.helpers.request(requestOptions);
 			} catch (error) {
-				if (!this.continueOnFail(error)) {
+				if (!this.continueOnFail()) {
 					throw new NodeApiError(this.getNode(), error as JsonObject);
 				}
 

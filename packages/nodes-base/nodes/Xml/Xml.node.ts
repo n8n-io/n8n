@@ -5,7 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError, deepCopy } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError, deepCopy } from 'n8n-workflow';
 
 export class Xml implements INodeType {
 	description: INodeTypeDescription = {
@@ -21,8 +21,8 @@ export class Xml implements INodeType {
 			name: 'XML',
 			color: '#333377',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		properties: [
 			{
 				displayName: 'Mode',
@@ -76,7 +76,7 @@ export class Xml implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				displayOptions: {
 					show: {
 						mode: ['jsonToxml'],
@@ -150,7 +150,7 @@ export class Xml implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				displayOptions: {
 					show: {
 						mode: ['xmlToJson'],
@@ -280,7 +280,7 @@ export class Xml implements INodeType {
 					});
 				}
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					items[itemIndex] = {
 						json: {
 							error: error.message,

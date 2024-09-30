@@ -76,7 +76,6 @@ module.exports = {
 				'n8n-nodes-base/node-execute-block-wrong-error-thrown': 'error',
 				'n8n-nodes-base/node-filename-against-convention': 'error',
 				'n8n-nodes-base/node-param-array-type-assertion': 'error',
-				'n8n-nodes-base/node-param-collection-type-unsorted-items': 'error',
 				'n8n-nodes-base/node-param-color-type-unused': 'error',
 				'n8n-nodes-base/node-param-default-missing': 'error',
 				'n8n-nodes-base/node-param-default-wrong-for-boolean': 'error',

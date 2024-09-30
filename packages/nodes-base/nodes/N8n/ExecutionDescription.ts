@@ -173,7 +173,7 @@ const getAllOperation: INodeProperties[] = [
 		name: 'options',
 		type: 'collection',
 		default: {},
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		displayOptions: {
 			show: {
 				resource: ['execution'],
@@ -218,7 +218,7 @@ const getOperation: INodeProperties[] = [
 		name: 'options',
 		type: 'collection',
 		default: {},
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		displayOptions: {
 			show: {
 				resource: ['execution'],

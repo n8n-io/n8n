@@ -1,9 +1,15 @@
+import {
+	parse as esprimaParse,
+	Syntax,
+	type Node as SyntaxNode,
+	type ExpressionStatement,
+} from 'esprima-next';
 import FormData from 'form-data';
 import { merge } from 'lodash';
 
 import { ALPHABET } from './Constants';
-import type { BinaryFileType, IDisplayOptions, INodeProperties, JsonObject } from './Interfaces';
 import { ApplicationError } from './errors/application.error';
+import type { BinaryFileType, IDisplayOptions, INodeProperties, JsonObject } from './Interfaces';
 
 const readStreamClasses = new Set(['ReadStream', 'Readable', 'ReadableStream']);
 
@@ -68,17 +74,74 @@ export const deepCopy = <T extends ((object | Date) & { toJSON?: () => string })
 };
 // eslint-enable
 
+function syntaxNodeToValue(expression?: SyntaxNode | null): unknown {
+	switch (expression?.type) {
+		case Syntax.ObjectExpression:
+			return Object.fromEntries(
+				expression.properties
+					.filter((prop) => prop.type === Syntax.Property)
+					.map(({ key, value }) => [syntaxNodeToValue(key), syntaxNodeToValue(value)]),
+			);
+		case Syntax.Identifier:
+			return expression.name;
+		case Syntax.Literal:
+			return expression.value;
+		case Syntax.ArrayExpression:
+			return expression.elements.map((exp) => syntaxNodeToValue(exp));
+		default:
+			return undefined;
+	}
+}
+
+/**
+ * Parse any JavaScript ObjectExpression, including:
+ * - single quoted keys
+ * - unquoted keys
+ */
+function parseJSObject(objectAsString: string): object {
+	const jsExpression = esprimaParse(`(${objectAsString})`).body.find(
+		(node): node is ExpressionStatement =>
+			node.type === Syntax.ExpressionStatement && node.expression.type === Syntax.ObjectExpression,
+	);
+
+	return syntaxNodeToValue(jsExpression?.expression) as object;
+}
+
 type MutuallyExclusive<T, U> =
 	| (T & { [k in Exclude<keyof U, keyof T>]?: never })
 	| (U & { [k in Exclude<keyof T, keyof U>]?: never });
 
-type JSONParseOptions<T> = MutuallyExclusive<{ errorMessage: string }, { fallbackValue: T }>;
+type JSONParseOptions<T> = { acceptJSObject?: boolean } & MutuallyExclusive<
+	{ errorMessage?: string },
+	{ fallbackValue?: T }
+>;
 
+/**
+ * Parses a JSON string into an object with optional error handling and recovery mechanisms.
+ *
+ * @param {string} jsonString - The JSON string to parse.
+ * @param {Object} [options] - Optional settings for parsing the JSON string. Either `fallbackValue` or `errorMessage` can be set, but not both.
+ * @param {boolean} [options.parseJSObject=false] - If true, attempts to recover from common JSON format errors by parsing the JSON string as a JavaScript Object.
+ * @param {string} [options.errorMessage] - A custom error message to throw if the JSON string cannot be parsed.
+ * @param {*} [options.fallbackValue] - A fallback value to return if the JSON string cannot be parsed.
+ * @returns {Object} - The parsed object, or the fallback value if parsing fails and `fallbackValue` is set.
+ */
 export const jsonParse = <T>(jsonString: string, options?: JSONParseOptions<T>): T => {
 	try {
 		return JSON.parse(jsonString) as T;
 	} catch (error) {
+		if (options?.acceptJSObject) {
+			try {
+				const jsonStringCleaned = parseJSObject(jsonString);
+				return jsonStringCleaned as T;
+			} catch (e) {
+				// Ignore this error and return the original error or the fallback value
+			}
+		}
 		if (options?.fallbackValue !== undefined) {
+			if (options.fallbackValue instanceof Function) {
+				return options.fallbackValue();
+			}
 			return options.fallbackValue;
 		} else if (options?.errorMessage) {
 			throw new ApplicationError(options.errorMessage);

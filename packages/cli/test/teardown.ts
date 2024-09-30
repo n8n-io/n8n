@@ -1,10 +1,12 @@
 import 'tsconfig-paths/register';
+import { GlobalConfig } from '@n8n/config';
 import { DataSource as Connection } from '@n8n/typeorm';
-import config from '@/config';
-import { getBootstrapDBOptions, testDbPrefix } from './integration/shared/testDb';
+import { Container } from 'typedi';
+
+import { getBootstrapDBOptions, testDbPrefix } from './integration/shared/test-db';
 
 export default async () => {
-	const dbType = config.getEnv('database.type');
+	const { type: dbType } = Container.get(GlobalConfig).database;
 	if (dbType !== 'postgresdb' && dbType !== 'mysqldb') return;
 
 	const connection = new Connection(getBootstrapDBOptions(dbType));

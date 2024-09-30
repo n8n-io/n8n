@@ -8,6 +8,7 @@ import type {
 	SupplyData,
 	ExecutionError,
 	IDataObject,
+	INodeParameterResourceLocator,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError, jsonParse } from 'n8n-workflow';
 import type { SetField, SetNodeOptions } from 'n8n-nodes-base/dist/nodes/Set/v2/helpers/interfaces';
@@ -28,19 +29,20 @@ import {
 } from '../../../utils/descriptions';
 export class ToolWorkflow implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Custom n8n Workflow Tool',
+		displayName: 'Call n8n Workflow Tool',
 		name: 'toolWorkflow',
 		icon: 'fa:network-wired',
 		group: ['transform'],
-		version: [1, 1.1],
+		version: [1, 1.1, 1.2],
 		description: 'Uses another n8n workflow as a tool. Allows packaging any n8n node(s) as a tool.',
 		defaults: {
-			name: 'Custom n8n Workflow Tool',
+			name: 'Call n8n Workflow Tool',
 		},
 		codex: {
 			categories: ['AI'],
 			subcategories: {
 				AI: ['Tools'],
+				Tools: ['Recommended Tools'],
 			},
 			resources: {
 				primaryDocumentation: [
@@ -141,12 +143,27 @@ export class ToolWorkflow implements INodeType {
 				displayOptions: {
 					show: {
 						source: ['database'],
+						'@version': [{ _cnd: { lte: 1.1 } }],
 					},
 				},
 				default: '',
 				required: true,
 				description: 'The workflow to execute',
 				hint: 'Can be found in the URL of the workflow',
+			},
+
+			{
+				displayName: 'Workflow',
+				name: 'workflowId',
+				type: 'workflowSelector',
+				displayOptions: {
+					show: {
+						source: ['database'],
+						'@version': [{ _cnd: { gte: 1.2 } }],
+					},
+				},
+				default: '',
+				required: true,
 			},
 
 			// ----------------------------------
@@ -367,7 +384,17 @@ export class ToolWorkflow implements INodeType {
 			const workflowInfo: IExecuteWorkflowInfo = {};
 			if (source === 'database') {
 				// Read workflow from database
-				workflowInfo.id = this.getNodeParameter('workflowId', itemIndex) as string;
+				const nodeVersion = this.getNode().typeVersion;
+				if (nodeVersion <= 1.1) {
+					workflowInfo.id = this.getNodeParameter('workflowId', itemIndex) as string;
+				} else {
+					const { value } = this.getNodeParameter(
+						'workflowId',
+						itemIndex,
+						{},
+					) as INodeParameterResourceLocator;
+					workflowInfo.id = value as string;
+				}
 			} else if (source === 'parameter') {
 				// Read workflow from parameter
 				const workflowJson = this.getNodeParameter('workflowJson', itemIndex) as string;
@@ -492,7 +519,7 @@ export class ToolWorkflow implements INodeType {
 		if (useSchema) {
 			try {
 				// We initialize these even though one of them will always be empty
-				// it makes it easer to navigate the ternary operator
+				// it makes it easier to navigate the ternary operator
 				const jsonExample = this.getNodeParameter('jsonSchemaExample', itemIndex, '') as string;
 				const inputSchema = this.getNodeParameter('inputSchema', itemIndex, '') as string;
 

@@ -141,7 +141,7 @@ export function prepareOutput(
 	) => NodeExecutionWithMetadata[],
 	itemData: IPairedItemData | IPairedItemData[],
 ) {
-	const returnData: INodeExecutionData[] = [];
+	let returnData: INodeExecutionData[] = [];
 
 	if (options.detailedOutput) {
 		response.forEach((entry, index) => {
@@ -154,7 +154,7 @@ export function prepareOutput(
 				itemData,
 			});
 
-			returnData.push(...executionData);
+			returnData = returnData.concat(executionData);
 		});
 	} else {
 		response
@@ -164,7 +164,7 @@ export function prepareOutput(
 					itemData: Array.isArray(itemData) ? itemData[index] : itemData,
 				});
 
-				returnData.push(...executionData);
+				returnData = returnData.concat(executionData);
 			});
 	}
 
@@ -264,7 +264,7 @@ export function configureQueryRunner(
 			} catch (err) {
 				const error = parseMySqlError.call(this, err, 0, formatedQueries);
 
-				if (!this.continueOnFail(err)) throw error;
+				if (!this.continueOnFail()) throw error;
 				returnData.push({ json: { message: error.message, error: { ...error } } });
 			}
 		} else {
@@ -302,7 +302,7 @@ export function configureQueryRunner(
 					} catch (err) {
 						const error = parseMySqlError.call(this, err, index, [formatedQuery]);
 
-						if (!this.continueOnFail(err)) {
+						if (!this.continueOnFail()) {
 							connection.release();
 							throw error;
 						}
@@ -352,7 +352,7 @@ export function configureQueryRunner(
 							connection.release();
 						}
 
-						if (!this.continueOnFail(err)) throw error;
+						if (!this.continueOnFail()) throw error;
 						returnData.push(prepareErrorItem(queries[index], error as Error, index));
 
 						// Return here because we already rolled back the transaction

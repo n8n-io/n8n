@@ -8,6 +8,7 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import { snakeCase } from 'change-case';
 import { workableApiRequest } from './GenericFunctions';
@@ -26,7 +27,7 @@ export class WorkableTrigger implements INodeType {
 			name: 'Workable Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'workableApi',
@@ -75,7 +76,7 @@ export class WorkableTrigger implements INodeType {
 						},
 						default: '',
 						description:
-							'Get notifications only for one job. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							'Get notifications only for one job. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Stage Name or ID',
@@ -86,7 +87,7 @@ export class WorkableTrigger implements INodeType {
 						},
 						default: '',
 						description:
-							'Get notifications for specific stages. e.g. \'hired\'. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							'Get notifications for specific stages. e.g. \'hired\'. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 				],
 			},
@@ -137,10 +138,10 @@ export class WorkableTrigger implements INodeType {
 				return false;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
-				const credentials = (await this.getCredentials('workableApi')) as {
+				const credentials = await this.getCredentials<{
 					accessToken: string;
 					subdomain: string;
-				};
+				}>('workableApi');
 				const webhookData = this.getWorkflowStaticData('node');
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const triggerOn = this.getNodeParameter('triggerOn') as string;

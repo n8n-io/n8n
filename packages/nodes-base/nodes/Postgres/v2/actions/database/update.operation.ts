@@ -76,13 +76,13 @@ const properties: INodeProperties[] = [
 		required: true,
 		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description:
-			'The column to compare when finding the rows to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/" target="_blank">expression</a>.',
+			'The column to compare when finding the rows to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/" target="_blank">expression</a>.',
 		typeOptions: {
 			loadOptionsMethod: 'getColumns',
 			loadOptionsDependsOn: ['schema.value', 'table.value'],
 		},
 		default: '',
-		hint: 'The column that identifies the row(s) to modify',
+		hint: 'The column to use when matching rows in Postgres to the input items of this node. Usually an ID.',
 		displayOptions: {
 			show: {
 				'@version': [2, 2.1],
@@ -131,7 +131,7 @@ const properties: INodeProperties[] = [
 						type: 'options',
 						// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 						description:
-							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/" target="_blank">expression</a>',
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/" target="_blank">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getColumnsWithoutColumnToMatchOn',
 							loadOptionsDependsOn: ['schema.value', 'table.value'],

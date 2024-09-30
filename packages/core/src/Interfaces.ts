@@ -1,5 +1,4 @@
 import type {
-	IPollResponse,
 	ITriggerResponse,
 	IWorkflowSettings as IWorkflowSettingsWorkflow,
 	ValidationResult,
@@ -18,7 +17,6 @@ export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
 }
 
 export interface IWorkflowData {
-	pollResponses?: IPollResponse[];
 	triggerResponses?: ITriggerResponse[];
 }
 

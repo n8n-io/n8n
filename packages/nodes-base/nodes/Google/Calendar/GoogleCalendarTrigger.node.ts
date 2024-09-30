@@ -5,7 +5,7 @@ import type {
 	INodeTypeDescription,
 	IPollFunctions,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
 
@@ -29,7 +29,7 @@ export class GoogleCalendarTrigger implements INodeType {
 			name: 'Google Calendar Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'googleCalendarOAuth2Api',
@@ -112,7 +112,7 @@ export class GoogleCalendarTrigger implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				options: [
 					{

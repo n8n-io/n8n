@@ -11,6 +11,8 @@ import merge from 'lodash/merge';
 import set from 'lodash/set';
 import url from 'node:url';
 
+import { NodeApiError } from './errors/node-api.error';
+import { NodeOperationError } from './errors/node-operation.error';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
@@ -40,14 +42,9 @@ import type {
 	JsonObject,
 	CloseFunction,
 } from './Interfaces';
-
 import * as NodeHelpers from './NodeHelpers';
-
-import type { Workflow } from './Workflow';
-
-import { NodeOperationError } from './errors/node-operation.error';
-import { NodeApiError } from './errors/node-api.error';
 import { sleep } from './utils';
+import type { Workflow } from './Workflow';
 
 export class RoutingNode {
 	additionalData: IWorkflowExecuteAdditionalData;
@@ -116,7 +113,9 @@ export class RoutingNode {
 			credentials = credentialsDecrypted.data;
 		} else if (credentialType) {
 			try {
-				credentials = (await executeFunctions.getCredentials(credentialType)) || {};
+				credentials =
+					(await executeFunctions.getCredentials<ICredentialDataDecryptedObject>(credentialType)) ||
+					{};
 			} catch (error) {
 				if (
 					nodeType.description.credentials?.length &&

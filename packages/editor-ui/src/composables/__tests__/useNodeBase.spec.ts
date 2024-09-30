@@ -1,7 +1,12 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { mock, mockClear } from 'vitest-mock-extended';
 import type { BrowserJsPlumbInstance } from '@jsplumb/browser-ui';
-import type { INode, INodeTypeDescription, Workflow } from 'n8n-workflow';
+import {
+	NodeConnectionType,
+	type INode,
+	type INodeTypeDescription,
+	type Workflow,
+} from 'n8n-workflow';
 
 import { useNodeBase } from '@/composables/useNodeBase';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -16,8 +21,8 @@ describe('useNodeBase', () => {
 
 	const jsPlumbInstance = mock<BrowserJsPlumbInstance>();
 	const nodeTypeDescription = mock<INodeTypeDescription>({
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 	});
 	const workflowObject = mock<Workflow>();
 	const node = mock<INode>();
@@ -140,21 +145,15 @@ describe('useNodeBase', () => {
 		it('should handle mouse left click correctly', () => {
 			const { mouseLeftClick } = nodeBase;
 
-			const isActionActiveFn = vi.fn().mockReturnValue(false);
-
-			// @ts-expect-error Pinia has a known issue when mocking getters, will be solved when migrating the uiStore to composition api
-			vi.spyOn(uiStore, 'isActionActive', 'get').mockReturnValue(isActionActiveFn);
-			// @ts-expect-error Pinia has a known issue when mocking getters, will be solved when migrating the uiStore to composition api
-			vi.spyOn(uiStore, 'isNodeSelected', 'get').mockReturnValue(() => false);
-
 			const event = new MouseEvent('click', {
 				bubbles: true,
 				cancelable: true,
 			});
 
+			uiStore.addActiveAction('notDragActive');
+
 			mouseLeftClick(event);
 
-			expect(isActionActiveFn).toHaveBeenCalledWith('dragActive');
 			expect(emit).toHaveBeenCalledWith('deselectAllNodes');
 			expect(emit).toHaveBeenCalledWith('nodeSelected', node.name);
 		});

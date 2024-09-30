@@ -1,13 +1,9 @@
-<template>
-	<N8nText :size="size" :color="color" :compact="true" class="n8n-icon" v-bind="$attrs">
-		<FontAwesomeIcon :icon="icon" :spin="spin" :class="$style[size]" />
-	</N8nText>
-</template>
-
 <script lang="ts" setup>
 import type { FontAwesomeIconProps } from '@fortawesome/vue-fontawesome';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+
 import type { IconSize, IconColor } from 'n8n-design-system/types/icon';
+
 import N8nText from '../N8nText';
 
 interface IconProps {
@@ -23,6 +19,12 @@ withDefaults(defineProps<IconProps>(), {
 	spin: false,
 });
 </script>
+
+<template>
+	<N8nText :size="size" :color="color" :compact="true" class="n8n-icon" v-bind="$attrs">
+		<FontAwesomeIcon :icon="icon" :spin="spin" :class="$style[size]" />
+	</N8nText>
+</template>
 
 <style lang="scss" module>
 .xlarge {

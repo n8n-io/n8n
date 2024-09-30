@@ -3,6 +3,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { createTestNode } from '@/__tests__/mocks';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { CUSTOM_API_CALL_KEY } from '@/constants';
 
 vi.mock('@/stores/workflows.store', () => ({
 	useWorkflowsStore: vi.fn(),
@@ -15,6 +16,34 @@ describe('useNodeHelpers()', () => {
 
 	afterEach(() => {
 		vi.clearAllMocks();
+	});
+
+	describe('isCustomApiCallSelected', () => {
+		test('should return `true` when resource includes `CUSTOM_API_CALL_KEY`', () => {
+			const nodeValues = {
+				parameters: { resource: CUSTOM_API_CALL_KEY },
+			};
+			expect(useNodeHelpers().isCustomApiCallSelected(nodeValues)).toBe(true);
+		});
+
+		test('should return `true` when operation includes `CUSTOM_API_CALL_KEY`', () => {
+			const nodeValues = {
+				parameters: {
+					operation: CUSTOM_API_CALL_KEY,
+				},
+			};
+			expect(useNodeHelpers().isCustomApiCallSelected(nodeValues)).toBe(true);
+		});
+
+		test('should return `false` when neither resource nor operation includes `CUSTOM_API_CALL_KEY`', () => {
+			const nodeValues = {
+				parameters: {
+					resource: 'users',
+					operation: 'get',
+				},
+			};
+			expect(useNodeHelpers().isCustomApiCallSelected(nodeValues)).toBe(false);
+		});
 	});
 
 	describe('getNodeInputData()', () => {

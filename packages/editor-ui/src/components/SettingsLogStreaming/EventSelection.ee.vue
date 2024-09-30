@@ -1,3 +1,59 @@
+<script lang="ts">
+import { ElCheckbox as Checkbox, type CheckboxValueType } from 'element-plus';
+import { mapStores } from 'pinia';
+import type { BaseTextKey } from '@/plugins/i18n';
+import { useLogStreamingStore } from '@/stores/logStreaming.store';
+
+export default {
+	name: 'EventSelection',
+	components: {
+		Checkbox,
+	},
+	props: {
+		destinationId: {
+			type: String,
+			default: 'defaultDestinationId',
+		},
+		readonly: Boolean,
+	},
+	data() {
+		return {
+			unchanged: true,
+		};
+	},
+	computed: {
+		...mapStores(useLogStreamingStore),
+		anonymizeAuditMessages() {
+			return this.logStreamingStore.items[this.destinationId]?.destination.anonymizeAuditMessages;
+		},
+	},
+	methods: {
+		onInput() {
+			this.$emit('input');
+		},
+		onCheckboxChecked(eventName: string, checked: CheckboxValueType) {
+			this.logStreamingStore.setSelectedInGroup(this.destinationId, eventName, Boolean(checked));
+			this.$forceUpdate();
+		},
+		anonymizeAuditMessagesChanged(value: CheckboxValueType) {
+			this.logStreamingStore.items[this.destinationId].destination.anonymizeAuditMessages =
+				Boolean(value);
+			this.$emit('change', { name: 'anonymizeAuditMessages', node: this.destinationId, value });
+			this.$forceUpdate();
+		},
+		groupLabelName(t: string): string {
+			return this.$locale.baseText(`settings.log-streaming.eventGroup.${t}` as BaseTextKey) ?? t;
+		},
+		groupLabelInfo(t: string): string | undefined {
+			const labelInfo = `settings.log-streaming.eventGroup.${t}.info`;
+			const infoText = this.$locale.baseText(labelInfo as BaseTextKey);
+			if (infoText === labelInfo || infoText === '') return;
+			return infoText;
+		},
+	},
+};
+</script>
+
 <template>
 	<div>
 		<div
@@ -67,62 +123,6 @@
 		</div>
 	</div>
 </template>
-
-<script lang="ts">
-import { ElCheckbox as Checkbox, type CheckboxValueType } from 'element-plus';
-import { mapStores } from 'pinia';
-import type { BaseTextKey } from '@/plugins/i18n';
-import { useLogStreamingStore } from '@/stores/logStreaming.store';
-
-export default {
-	name: 'EventSelection',
-	components: {
-		Checkbox,
-	},
-	props: {
-		destinationId: {
-			type: String,
-			default: 'defaultDestinationId',
-		},
-		readonly: Boolean,
-	},
-	data() {
-		return {
-			unchanged: true,
-		};
-	},
-	computed: {
-		...mapStores(useLogStreamingStore),
-		anonymizeAuditMessages() {
-			return this.logStreamingStore.items[this.destinationId]?.destination.anonymizeAuditMessages;
-		},
-	},
-	methods: {
-		onInput() {
-			this.$emit('input');
-		},
-		onCheckboxChecked(eventName: string, checked: CheckboxValueType) {
-			this.logStreamingStore.setSelectedInGroup(this.destinationId, eventName, Boolean(checked));
-			this.$forceUpdate();
-		},
-		anonymizeAuditMessagesChanged(value: CheckboxValueType) {
-			this.logStreamingStore.items[this.destinationId].destination.anonymizeAuditMessages =
-				Boolean(value);
-			this.$emit('change', { name: 'anonymizeAuditMessages', node: this.destinationId, value });
-			this.$forceUpdate();
-		},
-		groupLabelName(t: string): string {
-			return this.$locale.baseText(`settings.log-streaming.eventGroup.${t}` as BaseTextKey) ?? t;
-		},
-		groupLabelInfo(t: string): string | undefined {
-			const labelInfo = `settings.log-streaming.eventGroup.${t}.info`;
-			const infoText = this.$locale.baseText(labelInfo as BaseTextKey);
-			if (infoText === labelInfo || infoText === '') return;
-			return infoText;
-		},
-	},
-};
-</script>
 
 <style lang="scss" module>
 .eventListCard {

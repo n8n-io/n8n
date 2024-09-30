@@ -1,8 +1,67 @@
+<script setup lang="ts">
+import { ref, watch, onMounted, nextTick } from 'vue';
+import type { INodeProperties } from 'n8n-workflow';
+import { APP_MODALS_ELEMENT_ID } from '@/constants';
+
+const props = defineProps<{
+	dialogVisible: boolean;
+	parameter: INodeProperties;
+	path: string;
+	modelValue: string;
+	isReadOnly: boolean;
+}>();
+
+const emit = defineEmits<{
+	'update:modelValue': [value: string];
+	closeDialog: [];
+}>();
+
+const inputField = ref<HTMLInputElement | null>(null);
+const tempValue = ref('');
+
+watch(
+	() => props.dialogVisible,
+	async (newValue) => {
+		if (newValue) {
+			await nextTick();
+			inputField.value?.focus();
+		}
+	},
+);
+
+watch(
+	() => props.modelValue,
+	(value: string) => {
+		tempValue.value = value;
+	},
+);
+
+onMounted(() => {
+	tempValue.value = props.modelValue;
+});
+
+const valueChanged = (value: string) => {
+	emit('update:modelValue', value);
+};
+
+const onKeyDownEsc = () => {
+	// Resetting input value when closing the dialog, required when closing it using the `Esc` key
+	tempValue.value = props.modelValue;
+	closeDialog();
+};
+
+const closeDialog = () => {
+	// Handle the close externally as the visible parameter is an external prop
+	// and is so not allowed to be changed here.
+	emit('closeDialog');
+};
+</script>
+
 <template>
 	<div v-if="dialogVisible">
 		<el-dialog
 			:model-value="dialogVisible"
-			append-to-body
+			:append-to="`#${APP_MODALS_ELEMENT_ID}`"
 			width="80%"
 			:title="`${$locale.baseText('textEdit.edit')} ${$locale
 				.nodeText()
@@ -11,7 +70,7 @@
 		>
 			<div class="ignore-key-press">
 				<n8n-input-label :label="$locale.nodeText().inputLabelDisplayName(parameter, path)">
-					<div @keydown.stop @keydown.esc="onKeyDownEsc()">
+					<div @keydown.stop @keydown.esc="onKeyDownEsc">
 						<n8n-input
 							ref="inputField"
 							v-model="tempValue"
@@ -27,50 +86,3 @@
 		</el-dialog>
 	</div>
 </template>
-
-<script lang="ts">
-import { nextTick, defineComponent } from 'vue';
-
-export default defineComponent({
-	name: 'TextEdit',
-	props: ['dialogVisible', 'parameter', 'path', 'modelValue', 'isReadOnly'],
-	data() {
-		return {
-			tempValue: '', // el-input does not seem to work without v-model so add one
-		};
-	},
-	watch: {
-		async dialogVisible() {
-			if (this.dialogVisible === true) {
-				await nextTick();
-				(this.$refs.inputField as HTMLInputElement).focus();
-			}
-		},
-		modelValue(value: string) {
-			this.tempValue = value;
-		},
-	},
-	mounted() {
-		this.tempValue = this.modelValue as string;
-	},
-	methods: {
-		valueChanged(value: string) {
-			this.$emit('update:modelValue', value);
-		},
-
-		onKeyDownEsc() {
-			// Resetting input value when closing the dialog, required when closing it using the `Esc` key
-			this.tempValue = this.modelValue;
-
-			this.closeDialog();
-		},
-
-		closeDialog() {
-			// Handle the close externally as the visible parameter is an external prop
-			// and is so not allowed to be changed here.
-			this.$emit('closeDialog');
-			return false;
-		},
-	},
-});
-</script>

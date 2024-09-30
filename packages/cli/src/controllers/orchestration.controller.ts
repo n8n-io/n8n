@@ -1,7 +1,7 @@
 import { Post, RestController, GlobalScope } from '@/decorators';
+import { License } from '@/license';
 import { OrchestrationRequest } from '@/requests';
 import { OrchestrationService } from '@/services/orchestration.service';
-import { License } from '@/License';
 
 @RestController('/orchestration')
 export class OrchestrationController {

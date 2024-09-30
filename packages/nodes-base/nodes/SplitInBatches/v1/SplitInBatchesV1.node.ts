@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -6,7 +5,7 @@ import type {
 	INodeTypeDescription,
 	IPairedItemData,
 } from 'n8n-workflow';
-import { deepCopy } from 'n8n-workflow';
+import { NodeConnectionType, deepCopy } from 'n8n-workflow';
 
 export class SplitInBatchesV1 implements INodeType {
 	description: INodeTypeDescription = {
@@ -20,8 +19,8 @@ export class SplitInBatchesV1 implements INodeType {
 			name: 'Split In Batches',
 			color: '#007755',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		properties: [
 			{
 				displayName:
@@ -44,7 +43,7 @@ export class SplitInBatchesV1 implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				options: [
 					{

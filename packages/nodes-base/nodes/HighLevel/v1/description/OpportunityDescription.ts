@@ -109,7 +109,7 @@ const pipelineId: INodeProperties = {
 		},
 	},
 	description:
-		'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 	typeOptions: {
 		loadOptions: {
 			routing: {
@@ -153,7 +153,7 @@ const createProperties: INodeProperties[] = [
 		type: 'options',
 		required: true,
 		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 		displayOptions: {
 			show: {
 				resource: ['opportunity'],
@@ -269,7 +269,7 @@ const createProperties: INodeProperties[] = [
 				default: '',
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 				description:
-					'Choose staff member from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose staff member from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
@@ -427,7 +427,7 @@ const getAllProperties: INodeProperties[] = [
 				default: '',
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 				description:
-					'Choose staff member from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose staff member from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
@@ -482,7 +482,7 @@ const getAllProperties: INodeProperties[] = [
 				type: 'options',
 				default: '',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsDependsOn: ['pipelineId'],
 					loadOptionsMethod: 'getPipelineStages',
@@ -591,7 +591,7 @@ const updateProperties: INodeProperties[] = [
 				default: '',
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 				description:
-					'Choose staff member from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose staff member from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
@@ -659,7 +659,7 @@ const updateProperties: INodeProperties[] = [
 				type: 'options',
 				default: '',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsDependsOn: ['pipelineId'],
 					loadOptionsMethod: 'getPipelineStages',

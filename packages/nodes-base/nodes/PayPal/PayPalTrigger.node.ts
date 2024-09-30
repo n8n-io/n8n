@@ -9,7 +9,7 @@ import type {
 	IWebhookResponseData,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionType } from 'n8n-workflow';
 import { payPalApiRequest, upperFist } from './GenericFunctions';
 
 export class PayPalTrigger implements INodeType {
@@ -24,7 +24,7 @@ export class PayPalTrigger implements INodeType {
 			name: 'PayPal Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'payPalApi',
@@ -47,7 +47,7 @@ export class PayPalTrigger implements INodeType {
 				required: true,
 				default: [],
 				description:
-					'The event to listen to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'The event to listen to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getEvents',
 				},
@@ -162,7 +162,7 @@ export class PayPalTrigger implements INodeType {
 		const headerData = this.getHeaderData() as IDataObject;
 		const endpoint = '/notifications/verify-webhook-signature';
 
-		const { env } = (await this.getCredentials('payPalApi')) as { env: string };
+		const { env } = await this.getCredentials<{ env: string }>('payPalApi');
 
 		// if sanbox omit verification
 		if (env === 'sanbox') {

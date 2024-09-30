@@ -28,10 +28,10 @@ import {
 } from '@/constants';
 
 const emit = defineEmits<{
-	(e: 'submit', code: string): void;
-	(e: 'replaceCode', code: string): void;
-	(e: 'startedLoading'): void;
-	(e: 'finishedLoading'): void;
+	submit: [code: string];
+	replaceCode: [code: string];
+	startedLoading: [];
+	finishedLoading: [];
 }>();
 
 const props = defineProps<{

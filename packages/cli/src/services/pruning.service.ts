@@ -1,11 +1,13 @@
-import { Service } from 'typedi';
-import { BinaryDataService } from 'n8n-core';
-import { inTest, TIME } from '@/constants';
-import config from '@/config';
-import { ExecutionRepository } from '@db/repositories/execution.repository';
-import { Logger } from '@/Logger';
+import { BinaryDataService, InstanceSettings } from 'n8n-core';
 import { jsonStringify } from 'n8n-workflow';
-import { OnShutdown } from '@/decorators/OnShutdown';
+import { Service } from 'typedi';
+
+import config from '@/config';
+import { inTest, TIME } from '@/constants';
+import { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import { OnShutdown } from '@/decorators/on-shutdown';
+import { Logger } from '@/logger';
+
 import { OrchestrationService } from './orchestration.service';
 
 @Service()
@@ -25,6 +27,7 @@ export class PruningService {
 
 	constructor(
 		private readonly logger: Logger,
+		private readonly instanceSettings: InstanceSettings,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly binaryDataService: BinaryDataService,
 		private readonly orchestrationService: OrchestrationService,
@@ -45,19 +48,12 @@ export class PruningService {
 	}
 
 	private isPruningEnabled() {
-		if (
-			!config.getEnv('executions.pruneData') ||
-			inTest ||
-			config.get('generic.instanceType') !== 'main'
-		) {
+		const { instanceType, isFollower } = this.instanceSettings;
+		if (!config.getEnv('executions.pruneData') || inTest || instanceType !== 'main') {
 			return false;
 		}
 
-		if (
-			config.getEnv('multiMainSetup.enabled') &&
-			config.getEnv('generic.instanceType') === 'main' &&
-			config.getEnv('multiMainSetup.instanceType') === 'follower'
-		) {
+		if (config.getEnv('multiMainSetup.enabled') && instanceType === 'main' && isFollower) {
 			return false;
 		}
 

@@ -1,66 +1,3 @@
-<template>
-	<div :class="$style.block">
-		<header :class="$style.blockHeader" @click="onBlockHeaderClick">
-			<button :class="$style.blockToggle">
-				<font-awesome-icon :icon="isExpanded ? 'angle-down' : 'angle-up'" size="lg" />
-			</button>
-			<p :class="$style.blockTitle">{{ capitalize(runData.inOut) }}</p>
-			<!-- @click.stop to prevent event from bubbling to blockHeader and toggling expanded state when clicking on rawSwitch -->
-			<el-switch
-				v-if="contentParsed"
-				v-model="isShowRaw"
-				:class="$style.rawSwitch"
-				active-text="RAW JSON"
-				@click.stop
-			/>
-		</header>
-		<main
-			:class="{
-				[$style.blockContent]: true,
-				[$style.blockContentExpanded]: isExpanded,
-			}"
-		>
-			<div
-				v-for="({ parsedContent, raw }, index) in parsedRun"
-				:key="index"
-				:class="$style.contentText"
-				:data-content-type="parsedContent?.type"
-			>
-				<template v-if="parsedContent && !isShowRaw">
-					<template v-if="parsedContent.type === 'json'">
-						<VueMarkdown
-							:source="jsonToMarkdown(parsedContent.data as JsonMarkdown)"
-							:class="$style.markdown"
-						/>
-					</template>
-					<template v-if="parsedContent.type === 'markdown'">
-						<VueMarkdown :source="parsedContent.data" :class="$style.markdown" />
-					</template>
-					<p
-						v-if="parsedContent.type === 'text'"
-						:class="$style.runText"
-						v-text="parsedContent.data"
-					/>
-				</template>
-				<!-- We weren't able to parse text or raw switch -->
-				<template v-else>
-					<div :class="$style.rawContent">
-						<n8n-icon-button
-							size="small"
-							:class="$style.copyToClipboard"
-							type="secondary"
-							:title="$locale.baseText('nodeErrorView.copyToClipboard')"
-							icon="copy"
-							@click="onCopyToClipboard(raw)"
-						/>
-						<VueMarkdown :source="jsonToMarkdown(raw as JsonMarkdown)" :class="$style.markdown" />
-					</div>
-				</template>
-			</div>
-		</main>
-	</div>
-</template>
-
 <script lang="ts" setup>
 import type { IAiDataContent } from '@/Interface';
 import { capitalize } from 'lodash-es';
@@ -68,13 +5,16 @@ import { ref, onMounted } from 'vue';
 import type { ParsedAiContent } from './useAiContentParsers';
 import { useAiContentParsers } from './useAiContentParsers';
 import VueMarkdown from 'vue-markdown-render';
+import hljs from 'highlight.js/lib/core';
 import { useClipboard } from '@/composables/useClipboard';
 import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
-import { NodeConnectionType, type IDataObject } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
+import type { NodeError, IDataObject } from 'n8n-workflow';
 
 const props = defineProps<{
 	runData: IAiDataContent;
+	error?: NodeError;
 }>();
 
 const i18n = useI18n();
@@ -100,6 +40,27 @@ function getInitialExpandedState() {
 
 	return !collapsedTypes[props.runData.inOut].includes(props.runData.type);
 }
+
+function isJsonString(text: string) {
+	try {
+		JSON.parse(text);
+		return true;
+	} catch (e) {
+		return false;
+	}
+}
+
+const markdownOptions = {
+	highlight(str: string, lang: string) {
+		if (lang && hljs.getLanguage(lang)) {
+			try {
+				return hljs.highlight(str, { language: lang }).value;
+			} catch {}
+		}
+
+		return ''; // use external default escaping
+	},
+};
 
 function parseAiRunData(run: IAiDataContent) {
 	if (!run.data) {
@@ -138,7 +99,13 @@ function jsonToMarkdown(data: JsonMarkdown): string {
 	}
 
 	if (typeof data === 'string') {
-		return formatToJsonMarkdown(data);
+		// If data is a valid JSON string – format it as JSON markdown
+		if (isJsonString(data)) {
+			return formatToJsonMarkdown(data);
+		}
+
+		// Return original string otherwise
+		return data;
 	}
 
 	return formatToJsonMarkdown(JSON.stringify(data, null, 2));
@@ -175,6 +142,76 @@ onMounted(() => {
 });
 </script>
 
+<template>
+	<div :class="$style.block">
+		<header :class="$style.blockHeader" @click="onBlockHeaderClick">
+			<button :class="$style.blockToggle">
+				<font-awesome-icon :icon="isExpanded ? 'angle-down' : 'angle-up'" size="lg" />
+			</button>
+			<p :class="$style.blockTitle">{{ capitalize(runData.inOut) }}</p>
+			<!-- @click.stop to prevent event from bubbling to blockHeader and toggling expanded state when clicking on rawSwitch -->
+			<el-switch
+				v-if="contentParsed && !error"
+				v-model="isShowRaw"
+				:class="$style.rawSwitch"
+				active-text="RAW JSON"
+				@click.stop
+			/>
+		</header>
+		<main
+			:class="{
+				[$style.blockContent]: true,
+				[$style.blockContentExpanded]: isExpanded,
+			}"
+		>
+			<NodeErrorView v-if="error" :error="error" :class="$style.error" />
+			<div
+				v-for="({ parsedContent, raw }, index) in parsedRun"
+				v-else
+				:key="index"
+				:class="$style.contentText"
+				:data-content-type="parsedContent?.type"
+			>
+				<template v-if="parsedContent && !isShowRaw">
+					<template v-if="parsedContent.type === 'json'">
+						<VueMarkdown
+							:source="jsonToMarkdown(parsedContent.data as JsonMarkdown)"
+							:class="$style.markdown"
+							:options="markdownOptions"
+						/>
+					</template>
+					<template v-if="parsedContent.type === 'markdown'">
+						<VueMarkdown
+							:source="parsedContent.data"
+							:class="$style.markdown"
+							:options="markdownOptions"
+						/>
+					</template>
+					<p
+						v-if="parsedContent.type === 'text'"
+						:class="$style.runText"
+						v-text="parsedContent.data"
+					/>
+				</template>
+				<!-- We weren't able to parse text or raw switch -->
+				<template v-else>
+					<div :class="$style.rawContent">
+						<n8n-icon-button
+							size="small"
+							:class="$style.copyToClipboard"
+							type="secondary"
+							:title="$locale.baseText('nodeErrorView.copyToClipboard')"
+							icon="copy"
+							@click="onCopyToClipboard(raw)"
+						/>
+						<VueMarkdown :source="jsonToMarkdown(raw as JsonMarkdown)" :class="$style.markdown" />
+					</div>
+				</template>
+			</div>
+		</main>
+	</div>
+</template>
+
 <style lang="scss" module>
 .copyToClipboard {
 	position: absolute;
@@ -204,7 +241,7 @@ onMounted(() => {
 		}
 
 		pre {
-			background-color: var(--color-foreground-light);
+			background: var(--chat--message--pre--background);
 			border-radius: var(--border-radius-base);
 			line-height: var(--font-line-height-xloose);
 			padding: var(--spacing-s);
@@ -265,5 +302,8 @@ onMounted(() => {
 	background: none;
 	padding: 0;
 	color: var(--color-text-base);
+}
+.error {
+	padding: var(--spacing-s) 0;
 }
 </style>

@@ -1,3 +1,22 @@
+<script setup lang="ts">
+import {
+	REQUEST_NODE_FORM_URL,
+	REGULAR_NODE_CREATOR_VIEW,
+	TRIGGER_NODE_CREATOR_VIEW,
+} from '@/constants';
+import type { NodeFilterType } from '@/Interface';
+
+import NoResultsIcon from './NoResultsIcon.vue';
+
+export interface Props {
+	showIcon?: boolean;
+	showRequest?: boolean;
+	rootView?: NodeFilterType;
+}
+
+defineProps<Props>();
+</script>
+
 <template>
 	<div
 		:class="{ [$style.noResults]: true, [$style.iconless]: !showIcon }"
@@ -9,7 +28,10 @@
 		<div :class="$style.title">
 			<slot name="title" />
 			<p v-text="$locale.baseText('nodeCreator.noResults.weDidntMakeThatYet')" />
-			<div :class="$style.action">
+			<div
+				v-if="rootView === REGULAR_NODE_CREATOR_VIEW || rootView === TRIGGER_NODE_CREATOR_VIEW"
+				:class="$style.action"
+			>
 				{{ $locale.baseText('nodeCreator.noResults.dontWorryYouCanProbablyDoItWithThe') }}
 				<n8n-link v-if="rootView === REGULAR_NODE_CREATOR_VIEW" @click="$emit('addHttpNode')">
 					{{ $locale.baseText('nodeCreator.noResults.httpRequest') }}
@@ -40,25 +62,6 @@
 		</div>
 	</div>
 </template>
-
-<script setup lang="ts">
-import {
-	REQUEST_NODE_FORM_URL,
-	REGULAR_NODE_CREATOR_VIEW,
-	TRIGGER_NODE_CREATOR_VIEW,
-} from '@/constants';
-import type { NodeFilterType } from '@/Interface';
-
-import NoResultsIcon from './NoResultsIcon.vue';
-
-export interface Props {
-	showIcon?: boolean;
-	showRequest?: boolean;
-	rootView?: NodeFilterType;
-}
-
-defineProps<Props>();
-</script>
 
 <style lang="scss" module>
 .noResults {

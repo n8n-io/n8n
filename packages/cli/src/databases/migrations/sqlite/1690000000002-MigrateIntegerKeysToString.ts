@@ -1,9 +1,10 @@
+import { GlobalConfig } from '@n8n/config';
 import { statSync } from 'fs';
+import { InstanceSettings } from 'n8n-core';
 import path from 'path';
 import { Container } from 'typedi';
-import { InstanceSettings } from 'n8n-core';
-import type { MigrationContext, IrreversibleMigration } from '@db/types';
-import config from '@/config';
+
+import type { MigrationContext, IrreversibleMigration } from '@/databases/types';
 
 export class MigrateIntegerKeysToString1690000000002 implements IrreversibleMigration {
 	transaction = false as const;
@@ -193,7 +194,7 @@ const migrationsPruningEnabled = process.env.MIGRATIONS_PRUNING_ENABLED === 'tru
 function getSqliteDbFileSize(): number {
 	const filename = path.resolve(
 		Container.get(InstanceSettings).n8nFolder,
-		config.getEnv('database.sqlite.database'),
+		Container.get(GlobalConfig).database.sqlite.database,
 	);
 	const { size } = statSync(filename);
 	return size;

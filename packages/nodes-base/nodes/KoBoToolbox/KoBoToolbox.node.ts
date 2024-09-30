@@ -6,6 +6,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import {
 	downloadAttachments,
@@ -36,8 +37,8 @@ export class KoBoToolbox implements INodeType {
 		defaults: {
 			name: 'KoBoToolbox',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'koBoToolboxApi',

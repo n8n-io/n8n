@@ -555,7 +555,7 @@ export const messageFields: INodeProperties[] = [
 		},
 		default: {},
 		description: 'Other options to set',
-		placeholder: 'Add options',
+		placeholder: 'Add option',
 		options: [
 			{
 				displayName: 'Include Link to Workflow',
@@ -944,7 +944,7 @@ export const messageFields: INodeProperties[] = [
 		displayName: 'Update Fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -983,7 +983,30 @@ export const messageFields: INodeProperties[] = [
 			},
 		],
 	},
-
+	{
+		displayName: 'Options',
+		name: 'otherOptions',
+		type: 'collection',
+		displayOptions: {
+			show: {
+				operation: ['update'],
+				resource: ['message'],
+			},
+		},
+		default: {},
+		description: 'Other options to set',
+		placeholder: 'Add option',
+		options: [
+			{
+				displayName: 'Include Link to Workflow',
+				name: 'includeLinkToWorkflow',
+				type: 'boolean',
+				default: true,
+				description:
+					'Whether to append a link to this workflow at the end of the message. This is helpful if you have many workflows sending Slack messages.',
+			},
+		],
+	},
 	/* ----------------------------------------------------------------------- */
 	/*                                 message:delete
 	/* ----------------------------------------------------------------------- */
@@ -1221,14 +1244,14 @@ export const messageFields: INodeProperties[] = [
 				name: 'searchChannel',
 				type: 'multiOptions',
 				description:
-					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				default: [],
-				placeholder: 'Select a channel...',
 				typeOptions: {
 					loadOptionsMethod: 'getChannelsName',
 				},
 			},
 		],
 		default: {},
+		placeholder: 'Add option',
 	},
 ];

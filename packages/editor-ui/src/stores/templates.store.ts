@@ -289,8 +289,9 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 		},
 		async fetchTemplateById(templateId: string): Promise<ITemplatesWorkflowFull> {
 			const settingsStore = useSettingsStore();
+			const rootStore = useRootStore();
 			const apiEndpoint: string = settingsStore.templatesHost;
-			const versionCli: string = settingsStore.versionCli;
+			const versionCli: string = rootStore.versionCli;
 			const response = await getTemplateById(apiEndpoint, templateId, {
 				'n8n-version': versionCli,
 			});
@@ -305,8 +306,9 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 		},
 		async fetchCollectionById(collectionId: string): Promise<ITemplatesCollection | null> {
 			const settingsStore = useSettingsStore();
+			const rootStore = useRootStore();
 			const apiEndpoint: string = settingsStore.templatesHost;
-			const versionCli: string = settingsStore.versionCli;
+			const versionCli: string = rootStore.versionCli;
 			const response = await getCollectionById(apiEndpoint, collectionId, {
 				'n8n-version': versionCli,
 			});
@@ -325,8 +327,9 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 				return cachedCategories;
 			}
 			const settingsStore = useSettingsStore();
+			const rootStore = useRootStore();
 			const apiEndpoint: string = settingsStore.templatesHost;
-			const versionCli: string = settingsStore.versionCli;
+			const versionCli: string = rootStore.versionCli;
 			const response = await getCategories(apiEndpoint, { 'n8n-version': versionCli });
 			const categories = response.categories;
 
@@ -340,8 +343,9 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 			}
 
 			const settingsStore = useSettingsStore();
+			const rootStore = useRootStore();
 			const apiEndpoint: string = settingsStore.templatesHost;
-			const versionCli: string = settingsStore.versionCli;
+			const versionCli: string = rootStore.versionCli;
 			const response = await getCollections(apiEndpoint, query, { 'n8n-version': versionCli });
 			const collections = response.collections;
 
@@ -361,8 +365,9 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 			}
 
 			const settingsStore = useSettingsStore();
+			const rootStore = useRootStore();
 			const apiEndpoint: string = settingsStore.templatesHost;
-			const versionCli: string = settingsStore.versionCli;
+			const versionCli: string = rootStore.versionCli;
 
 			const payload = await getWorkflows(
 				apiEndpoint,
@@ -402,8 +407,9 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 		},
 		async getWorkflowTemplate(templateId: string): Promise<IWorkflowTemplate> {
 			const settingsStore = useSettingsStore();
+			const rootStore = useRootStore();
 			const apiEndpoint: string = settingsStore.templatesHost;
-			const versionCli: string = settingsStore.versionCli;
+			const versionCli: string = rootStore.versionCli;
 			return await getWorkflowTemplate(apiEndpoint, templateId, { 'n8n-version': versionCli });
 		},
 

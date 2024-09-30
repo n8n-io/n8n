@@ -1,23 +1,24 @@
+import { mock } from 'jest-mock-extended';
+import { Cipher } from 'n8n-core';
+import type { InstanceSettings } from 'n8n-core';
+import * as utils from 'n8n-workflow';
+import { nanoid } from 'nanoid';
 import fsp from 'node:fs/promises';
 import Container from 'typedi';
-import { mock } from 'jest-mock-extended';
-import * as utils from 'n8n-workflow';
-import { Cipher } from 'n8n-core';
-import { nanoid } from 'nanoid';
-import type { InstanceSettings } from 'n8n-core';
 
-import * as testDb from '../shared/testDb';
-import { SourceControlImportService } from '@/environments/sourceControl/sourceControlImport.service.ee';
-import { createMember, getGlobalOwner } from '../shared/db/users';
-import { SharedCredentialsRepository } from '@/databases/repositories/sharedCredentials.repository';
-import { mockInstance } from '../../shared/mocking';
-import type { SourceControlledFile } from '@/environments/sourceControl/types/sourceControlledFile';
-import type { ExportableCredential } from '@/environments/sourceControl/types/exportableCredential';
-import { createTeamProject, getPersonalProject } from '../shared/db/projects';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { saveCredential } from '../shared/db/credentials';
-import { randomCredentialPayload } from '../shared/random';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
+import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
+import { SourceControlImportService } from '@/environments/source-control/source-control-import.service.ee';
+import type { ExportableCredential } from '@/environments/source-control/types/exportable-credential';
+import type { SourceControlledFile } from '@/environments/source-control/types/source-controlled-file';
+
+import { mockInstance } from '../../shared/mocking';
+import { saveCredential } from '../shared/db/credentials';
+import { createTeamProject, getPersonalProject } from '../shared/db/projects';
+import { createMember, getGlobalOwner } from '../shared/db/users';
+import { randomCredentialPayload } from '../shared/random';
+import * as testDb from '../shared/test-db';
 
 describe('SourceControlImportService', () => {
 	let service: SourceControlImportService;

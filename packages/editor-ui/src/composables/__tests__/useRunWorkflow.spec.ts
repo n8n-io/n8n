@@ -25,14 +25,6 @@ vi.mock('@/stores/workflows.store', () => ({
 	}),
 }));
 
-vi.mock('@/stores/ui.store', () => ({
-	useUIStore: vi.fn().mockReturnValue({
-		isActionActive: vi.fn().mockReturnValue(false),
-		addActiveAction: vi.fn(),
-		removeActiveAction: vi.fn(),
-	}),
-}));
-
 vi.mock('@/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn().mockReturnValue({ track: vi.fn() }),
 }));
@@ -60,6 +52,7 @@ vi.mock('@/composables/useWorkflowHelpers', () => ({
 		getCurrentWorkflow: vi.fn(),
 		saveCurrentWorkflow: vi.fn(),
 		getWorkflowDataToSave: vi.fn(),
+		setDocumentTitle: vi.fn(),
 	}),
 }));
 
@@ -67,10 +60,6 @@ vi.mock('@/composables/useNodeHelpers', () => ({
 	useNodeHelpers: vi.fn().mockReturnValue({
 		updateNodesExecutionIssues: vi.fn(),
 	}),
-}));
-
-vi.mock('@/composables/useTitleChange', () => ({
-	useTitleChange: vi.fn().mockReturnValue({ titleSet: vi.fn() }),
 }));
 
 vi.mock('vue-router', async (importOriginal) => {
@@ -101,6 +90,10 @@ describe('useRunWorkflow({ router })', () => {
 
 		router = useRouter();
 		workflowHelpers = useWorkflowHelpers({ router });
+	});
+
+	beforeEach(() => {
+		uiStore.activeActions = [];
 	});
 
 	describe('runWorkflowApi()', () => {
@@ -157,7 +150,7 @@ describe('useRunWorkflow({ router })', () => {
 	describe('runWorkflow()', () => {
 		it('should return undefined if UI action "workflowRunning" is active', async () => {
 			const { runWorkflow } = useRunWorkflow({ router });
-			vi.mocked(uiStore).isActionActive.mockReturnValue(true);
+			uiStore.addActiveAction('workflowRunning');
 			const result = await runWorkflow({});
 			expect(result).toBeUndefined();
 		});
@@ -166,7 +159,7 @@ describe('useRunWorkflow({ router })', () => {
 			const mockExecutionResponse = { executionId: '123' };
 			const { runWorkflow } = useRunWorkflow({ router });
 
-			vi.mocked(uiStore).isActionActive.mockReturnValue(false);
+			vi.mocked(uiStore).activeActions = [''];
 			vi.mocked(workflowHelpers).getCurrentWorkflow.mockReturnValue({
 				name: 'Test Workflow',
 			} as unknown as Workflow);

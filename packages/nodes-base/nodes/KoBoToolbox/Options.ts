@@ -2,7 +2,7 @@ import type { INodeProperties } from 'n8n-workflow';
 
 export const options = {
 	displayName: 'Options',
-	placeholder: 'Add Option',
+	placeholder: 'Add option',
 	name: 'formatOptions',
 	type: 'collection',
 	default: {},

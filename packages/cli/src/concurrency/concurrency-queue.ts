@@ -1,9 +1,15 @@
 import { Service } from 'typedi';
-import { EventEmitter } from 'node:events';
-import debounce from 'lodash/debounce';
+
+import { TypedEmitter } from '@/typed-emitter';
+
+type ConcurrencyEvents = {
+	'execution-throttled': { executionId: string };
+	'execution-released': string;
+	'concurrency-check': { capacity: number };
+};
 
 @Service()
-export class ConcurrencyQueue extends EventEmitter {
+export class ConcurrencyQueue extends TypedEmitter<ConcurrencyEvents> {
 	private readonly queue: Array<{
 		executionId: string;
 		resolve: () => void;
@@ -49,7 +55,7 @@ export class ConcurrencyQueue extends EventEmitter {
 	}
 
 	getAll() {
-		return new Set(...this.queue.map((item) => item.executionId));
+		return new Set(this.queue.map((item) => item.executionId));
 	}
 
 	private resolveNext() {
@@ -63,9 +69,4 @@ export class ConcurrencyQueue extends EventEmitter {
 
 		resolve();
 	}
-
-	private debouncedEmit = debounce(
-		(event: string, payload: object) => this.emit(event, payload),
-		300,
-	);
 }

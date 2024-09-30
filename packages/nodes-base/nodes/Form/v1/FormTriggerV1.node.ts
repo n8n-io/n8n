@@ -1,6 +1,6 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import {
 	FORM_TRIGGER_PATH_IDENTIFIER,
+	NodeConnectionType,
 	type INodeType,
 	type INodeTypeBaseDescription,
 	type INodeTypeDescription,
@@ -27,9 +27,9 @@ const descriptionV1: INodeTypeDescription = {
 	defaults: {
 		name: 'n8n Form Trigger',
 	},
-	// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 	inputs: [],
-	outputs: ['main'],
+	outputs: [NodeConnectionType.Main],
 	webhooks: [
 		{
 			name: 'setup',
@@ -62,7 +62,7 @@ const descriptionV1: INodeTypeDescription = {
 			displayName: 'Options',
 			name: 'options',
 			type: 'collection',
-			placeholder: 'Add Option',
+			placeholder: 'Add option',
 			default: {},
 			displayOptions: {
 				hide: {

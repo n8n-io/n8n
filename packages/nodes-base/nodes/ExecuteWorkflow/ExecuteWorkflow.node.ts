@@ -1,11 +1,10 @@
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-
 import { generatePairedItemData } from '../../utils/utilities';
 import { getWorkflowInfo } from './GenericFunctions';
 
@@ -16,15 +15,15 @@ export class ExecuteWorkflow implements INodeType {
 		icon: 'fa:sign-in-alt',
 		iconColor: 'orange-red',
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1],
 		subtitle: '={{"Workflow: " + $parameter["workflowId"]}}',
 		description: 'Execute another workflow',
 		defaults: {
 			name: 'Execute Workflow',
 			color: '#ff6d5a',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		properties: [
 			{
 				displayName: 'Operation',
@@ -79,6 +78,7 @@ export class ExecuteWorkflow implements INodeType {
 				displayOptions: {
 					show: {
 						source: ['database'],
+						'@version': [1],
 					},
 				},
 				default: '',
@@ -87,7 +87,20 @@ export class ExecuteWorkflow implements INodeType {
 				description:
 					"Note on using an expression here: if this node is set to run once with all items, they will all be sent to the <em>same</em> workflow. That workflow's ID will be calculated by evaluating the expression for the <strong>first input item</strong>.",
 			},
-
+			{
+				displayName: 'Workflow',
+				name: 'workflowId',
+				type: 'workflowSelector',
+				displayOptions: {
+					show: {
+						source: ['database'],
+						'@version': [{ _cnd: { gte: 1.1 } }],
+					},
+				},
+				default: '',
+				required: true,
+				hint: "Note on using an expression here: if this node is set to run once with all items, they will all be sent to the <em>same</em> workflow. That workflow's ID will be calculated by evaluating the expression for the <strong>first input item</strong>.",
+			},
 			// ----------------------------------
 			//         source:localFile
 			// ----------------------------------
@@ -176,7 +189,7 @@ export class ExecuteWorkflow implements INodeType {
 				name: 'options',
 				type: 'collection',
 				default: {},
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				options: [
 					{
 						displayName: 'Wait For Sub-Workflow Completion',
@@ -230,8 +243,12 @@ export class ExecuteWorkflow implements INodeType {
 						returnData = [items];
 					}
 				} catch (error) {
-					if (this.continueOnFail(error)) {
-						return [[{ json: { error: error.message }, pairedItem: { item: i } }]];
+					if (this.continueOnFail()) {
+						if (returnData[i] === undefined) {
+							returnData[i] = [];
+						}
+						returnData[i].push({ json: { error: error.message }, pairedItem: { item: i } });
+						continue;
 					}
 					throw new NodeOperationError(this.getNode(), error, {
 						message: `Error executing workflow with item at index ${i}`,
@@ -280,7 +297,7 @@ export class ExecuteWorkflow implements INodeType {
 				return workflowResult;
 			} catch (error) {
 				const pairedItem = generatePairedItemData(items.length);
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					return [[{ json: { error: error.message }, pairedItem }]];
 				}
 				throw error;

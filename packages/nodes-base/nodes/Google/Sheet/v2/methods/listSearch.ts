@@ -84,7 +84,6 @@ export async function sheetsSearch(
 		returnData.push({
 			name: sheet.properties!.title as string,
 			value: (sheet.properties!.sheetId as number) || 'gid=0',
-			//prettier-ignore
 			url: `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit#gid=${sheet.properties!.sheetId}`,
 		});
 	}

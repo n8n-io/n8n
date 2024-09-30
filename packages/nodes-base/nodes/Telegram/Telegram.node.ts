@@ -8,9 +8,10 @@ import type {
 	INodeTypeDescription,
 	IHttpRequestMethods,
 } from 'n8n-workflow';
-import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
+import { BINARY_ENCODING, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import { addAdditionalFields, apiRequest, getPropertyName } from './GenericFunctions';
+import { appendAttributionOption } from '../../utils/descriptions';
 
 export class Telegram implements INodeType {
 	description: INodeTypeDescription = {
@@ -24,8 +25,8 @@ export class Telegram implements INodeType {
 		defaults: {
 			name: 'Telegram',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'telegramApi',
@@ -1289,6 +1290,26 @@ export class Telegram implements INodeType {
 														default: '',
 														description: 'HTTP or tg:// URL to be opened when button is pressed',
 													},
+													{
+														displayName: 'Web App',
+														name: 'web_app',
+														type: 'collection',
+														placeholder: 'Set Telegram Web App URL',
+														typeOptions: {
+															multipleValues: false,
+														},
+														default: {},
+														options: [
+															{
+																displayName: 'URL',
+																name: 'url',
+																type: 'string',
+																default: '',
+																description: 'An HTTPS URL of a Web App to be opened',
+															},
+														],
+														description: 'Launch the Telegram Web App',
+													},
 												],
 											},
 										],
@@ -1365,6 +1386,26 @@ export class Telegram implements INodeType {
 														default: false,
 														description: "Whether the user's request_location",
 													},
+													{
+														displayName: 'Web App',
+														name: 'web_app',
+														type: 'collection',
+														placeholder: 'Set Telegram Web App URL',
+														typeOptions: {
+															multipleValues: false,
+														},
+														default: {},
+														options: [
+															{
+																displayName: 'URL',
+																name: 'url',
+																type: 'string',
+																default: '',
+																description: 'An HTTPS URL of a Web App to be opened',
+															},
+														],
+														description: 'Launch the Telegram Web App',
+													},
 												],
 											},
 										],
@@ -1380,7 +1421,7 @@ export class Telegram implements INodeType {
 				displayName: 'Reply Keyboard Options',
 				name: 'replyKeyboardOptions',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				displayOptions: {
 					show: {
 						replyMarkup: ['replyKeyboard'],
@@ -1468,11 +1509,7 @@ export class Telegram implements INodeType {
 				default: {},
 				options: [
 					{
-						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-						displayName: 'Append n8n Attribution',
-						name: 'appendAttribution',
-						type: 'boolean',
-						default: true,
+						...appendAttributionOption,
 						description:
 							'Whether to include the phrase “This message was sent automatically with n8n” to the end of the message',
 						displayOptions: {
@@ -2102,7 +2139,7 @@ export class Telegram implements INodeType {
 				);
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					returnData.push({ json: {}, error: error.message });
 					continue;
 				}

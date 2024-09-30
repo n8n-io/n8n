@@ -313,7 +313,7 @@ export class OpenAiAssistant implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const nodeVersion = this.getNode().typeVersion;
-		const tools = await getConnectedTools(this, nodeVersion > 1);
+		const tools = await getConnectedTools(this, nodeVersion > 1, false);
 		const credentials = await this.getCredentials('openAiApi');
 
 		const items = this.getInputData();
@@ -383,7 +383,7 @@ export class OpenAiAssistant implements INodeType {
 
 				returnData.push({ json: response });
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					returnData.push({ json: { error: error.message }, pairedItem: { item: itemIndex } });
 					continue;
 				}

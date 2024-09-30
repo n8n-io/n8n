@@ -50,7 +50,7 @@ export const invoiceFields: INodeProperties[] = [
 		name: 'organizationId',
 		type: 'options',
 		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTenants',
 		},
@@ -153,7 +153,7 @@ export const invoiceFields: INodeProperties[] = [
 						name: 'itemCode',
 						type: 'options',
 						description:
-							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getItemCodes',
 							loadOptionsDependsOn: ['organizationId'],
@@ -165,7 +165,7 @@ export const invoiceFields: INodeProperties[] = [
 						name: 'accountCode',
 						type: 'options',
 						description:
-							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getAccountCodes',
 							loadOptionsDependsOn: ['organizationId'],
@@ -288,7 +288,7 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'brandingThemeId',
 				type: 'options',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getBrandingThemes',
 					loadOptionsDependsOn: ['organizationId'],
@@ -300,7 +300,7 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'currency',
 				type: 'options',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getCurrencies',
 					loadOptionsDependsOn: ['organizationId'],
@@ -425,7 +425,7 @@ export const invoiceFields: INodeProperties[] = [
 		name: 'organizationId',
 		type: 'options',
 		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTenants',
 		},
@@ -469,7 +469,7 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'brandingThemeId',
 				type: 'options',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getBrandingThemes',
 					loadOptionsDependsOn: ['organizationId'],
@@ -487,7 +487,7 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'currency',
 				type: 'options',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getCurrencies',
 					loadOptionsDependsOn: ['organizationId'],
@@ -605,7 +605,7 @@ export const invoiceFields: INodeProperties[] = [
 								name: 'itemCode',
 								type: 'options',
 								description:
-									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 								typeOptions: {
 									loadOptionsMethod: 'getItemCodes',
 									loadOptionsDependsOn: ['organizationId'],
@@ -617,7 +617,7 @@ export const invoiceFields: INodeProperties[] = [
 								name: 'accountCode',
 								type: 'options',
 								description:
-									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 								typeOptions: {
 									loadOptionsMethod: 'getAccountCodes',
 									loadOptionsDependsOn: ['organizationId'],
@@ -781,7 +781,7 @@ export const invoiceFields: INodeProperties[] = [
 		name: 'organizationId',
 		type: 'options',
 		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTenants',
 		},
@@ -815,7 +815,7 @@ export const invoiceFields: INodeProperties[] = [
 		name: 'organizationId',
 		type: 'options',
 		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTenants',
 		},
@@ -863,7 +863,7 @@ export const invoiceFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {

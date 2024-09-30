@@ -1,30 +1,69 @@
 import { NodeConnectionType, NodeOperationError, jsonStringify } from 'n8n-workflow';
-import type { EventNamesAiNodesType, IDataObject, IExecuteFunctions } from 'n8n-workflow';
+import type { AiEvent, IDataObject, IExecuteFunctions, IWebhookFunctions } from 'n8n-workflow';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { BaseOutputParser } from '@langchain/core/output_parsers';
 import type { BaseMessage } from '@langchain/core/messages';
-import { DynamicTool, type Tool } from '@langchain/core/tools';
+import type { Tool } from '@langchain/core/tools';
 import type { BaseLLM } from '@langchain/core/language_models/llms';
+import type { BaseChatMemory } from 'langchain/memory';
+import type { BaseChatMessageHistory } from '@langchain/core/chat_history';
+import { N8nTool } from './N8nTool';
+
+function hasMethods<T>(obj: unknown, ...methodNames: Array<string | symbol>): obj is T {
+	return methodNames.every(
+		(methodName) =>
+			typeof obj === 'object' &&
+			obj !== null &&
+			methodName in obj &&
+			typeof (obj as Record<string | symbol, unknown>)[methodName] === 'function',
+	);
+}
 
 export function getMetadataFiltersValues(
 	ctx: IExecuteFunctions,
 	itemIndex: number,
 ): Record<string, never> | undefined {
-	const metadata = ctx.getNodeParameter('options.metadata.metadataValues', itemIndex, []) as Array<{
-		name: string;
-		value: string;
-	}>;
-	if (metadata.length > 0) {
-		return metadata.reduce((acc, { name, value }) => ({ ...acc, [name]: value }), {});
+	const options = ctx.getNodeParameter('options', itemIndex, {});
+
+	if (options.metadata) {
+		const { metadataValues: metadata } = options.metadata as {
+			metadataValues: Array<{
+				name: string;
+				value: string;
+			}>;
+		};
+		if (metadata.length > 0) {
+			return metadata.reduce((acc, { name, value }) => ({ ...acc, [name]: value }), {});
+		}
+	}
+
+	if (options.searchFilterJson) {
+		return ctx.getNodeParameter('options.searchFilterJson', itemIndex, '', {
+			ensureType: 'object',
+		}) as Record<string, never>;
 	}
 
 	return undefined;
 }
 
+export function isBaseChatMemory(obj: unknown) {
+	return hasMethods<BaseChatMemory>(obj, 'loadMemoryVariables', 'saveContext');
+}
+
+export function isBaseChatMessageHistory(obj: unknown) {
+	return hasMethods<BaseChatMessageHistory>(obj, 'getMessages', 'addMessage');
+}
+
 export function isChatInstance(model: unknown): model is BaseChatModel {
-	const namespace = (model as BaseLLM | BaseChatModel)?.lc_namespace ?? [];
+	const namespace = (model as BaseLLM)?.lc_namespace ?? [];
 
 	return namespace.includes('chat_models');
+}
+
+export function isToolsInstance(model: unknown): model is Tool {
+	const namespace = (model as Tool)?.lc_namespace ?? [];
+
+	return namespace.includes('tools');
 }
 
 export async function getOptionalOutputParsers(
@@ -69,7 +108,7 @@ export function getPromptInputByType(options: {
 }
 
 export function getSessionId(
-	ctx: IExecuteFunctions,
+	ctx: IExecuteFunctions | IWebhookFunctions,
 	itemIndex: number,
 	selectorKey = 'sessionIdType',
 	autoSelect = 'fromInput',
@@ -79,7 +118,15 @@ export function getSessionId(
 	const selectorType = ctx.getNodeParameter(selectorKey, itemIndex) as string;
 
 	if (selectorType === autoSelect) {
-		sessionId = ctx.evaluateExpression('{{ $json.sessionId }}', itemIndex) as string;
+		// If memory node is used in webhook like node(like chat trigger node), it doesn't have access to evaluateExpression
+		// so we try to extract sessionId from the bodyData
+		if ('getBodyData' in ctx) {
+			const bodyData = ctx.getBodyData() ?? {};
+			sessionId = bodyData.sessionId as string;
+		} else {
+			sessionId = ctx.evaluateExpression('{{ $json.sessionId }}', itemIndex) as string;
+		}
+
 		if (sessionId === '' || sessionId === undefined) {
 			throw new NodeOperationError(ctx.getNode(), 'No session ID found', {
 				description:
@@ -103,7 +150,7 @@ export function getSessionId(
 
 export async function logAiEvent(
 	executeFunctions: IExecuteFunctions,
-	event: EventNamesAiNodesType,
+	event: AiEvent,
 	data?: IDataObject,
 ) {
 	try {
@@ -127,7 +174,11 @@ export function serializeChatHistory(chatHistory: BaseMessage[]): string {
 		.join('\n');
 }
 
-export const getConnectedTools = async (ctx: IExecuteFunctions, enforceUniqueNames: boolean) => {
+export const getConnectedTools = async (
+	ctx: IExecuteFunctions,
+	enforceUniqueNames: boolean,
+	convertStructuredTool: boolean = true,
+) => {
 	const connectedTools =
 		((await ctx.getInputConnectionData(NodeConnectionType.AiTool, 0)) as Tool[]) || [];
 
@@ -135,9 +186,9 @@ export const getConnectedTools = async (ctx: IExecuteFunctions, enforceUniqueNam
 
 	const seenNames = new Set<string>();
 
-	for (const tool of connectedTools) {
-		if (!(tool instanceof DynamicTool)) continue;
+	const finalTools = [];
 
+	for (const tool of connectedTools) {
 		const { name } = tool;
 		if (seenNames.has(name)) {
 			throw new NodeOperationError(
@@ -146,7 +197,13 @@ export const getConnectedTools = async (ctx: IExecuteFunctions, enforceUniqueNam
 			);
 		}
 		seenNames.add(name);
+
+		if (convertStructuredTool && tool instanceof N8nTool) {
+			finalTools.push(tool.asDynamicTool());
+		} else {
+			finalTools.push(tool);
+		}
 	}
 
-	return connectedTools;
+	return finalTools;
 };

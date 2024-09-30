@@ -1,26 +1,26 @@
-import { Container } from 'typedi';
 import { BinaryDataService } from 'n8n-core';
-import { type INode } from 'n8n-workflow';
-import { GithubApi } from 'n8n-nodes-base/credentials/GithubApi.credentials';
 import { Ftp } from 'n8n-nodes-base/credentials/Ftp.credentials';
+import { GithubApi } from 'n8n-nodes-base/credentials/GithubApi.credentials';
 import { Cron } from 'n8n-nodes-base/nodes/Cron/Cron.node';
 import { Set } from 'n8n-nodes-base/nodes/Set/Set.node';
 import { Start } from 'n8n-nodes-base/nodes/Start/Start.node';
+import { type INode } from 'n8n-workflow';
 import type request from 'supertest';
+import { Container } from 'typedi';
 import { v4 as uuid } from 'uuid';
 
 import config from '@/config';
-import { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import { SettingsRepository } from '@db/repositories/settings.repository';
 import { AUTH_COOKIE_NAME } from '@/constants';
+import { WorkflowEntity } from '@/databases/entities/workflow-entity';
+import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import { ExecutionService } from '@/executions/execution.service';
-import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Push } from '@/push';
 import { OrchestrationService } from '@/services/orchestration.service';
 
 import { mockInstance } from '../../../shared/mocking';
 
-export { setupTestServer } from './testServer';
+export { setupTestServer } from './test-server';
 
 // ----------------------------------
 //          initializers
@@ -37,7 +37,7 @@ export async function initActiveWorkflowManager() {
 
 	mockInstance(Push);
 	mockInstance(ExecutionService);
-	const { ActiveWorkflowManager } = await import('@/ActiveWorkflowManager');
+	const { ActiveWorkflowManager } = await import('@/active-workflow-manager');
 	const activeWorkflowManager = Container.get(ActiveWorkflowManager);
 	await activeWorkflowManager.init();
 	return activeWorkflowManager;
@@ -96,9 +96,10 @@ export async function initBinaryDataService(mode: 'default' | 'filesystem' = 'de
  * Extract the value (token) of the auth cookie in a response.
  */
 export function getAuthToken(response: request.Response, authCookieName = AUTH_COOKIE_NAME) {
-	const cookies: string[] = response.headers['set-cookie'];
+	const cookiesHeader = response.headers['set-cookie'];
+	if (!cookiesHeader) return undefined;
 
-	if (!cookies) return undefined;
+	const cookies = Array.isArray(cookiesHeader) ? cookiesHeader : [cookiesHeader];
 
 	const authCookie = cookies.find((c) => c.startsWith(`${authCookieName}=`));
 
@@ -136,7 +137,7 @@ export const setInstanceOwnerSetUp = async (value: boolean) => {
 //           community nodes
 // ----------------------------------
 
-export * from './communityNodes';
+export * from './community-nodes';
 
 // ----------------------------------
 //           workflow

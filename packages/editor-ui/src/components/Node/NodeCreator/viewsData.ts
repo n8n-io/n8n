@@ -1,4 +1,5 @@
 import {
+	AI_TRANSFORM_NODE_TYPE,
 	CORE_NODES_CATEGORY,
 	WEBHOOK_NODE_TYPE,
 	OTHER_TRIGGER_NODES_SUBCATEGORY,
@@ -61,6 +62,8 @@ import type { SimplifiedNodeType } from '@/Interface';
 import type { INodeTypeDescription, Themed } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 import { useTemplatesStore } from '@/stores/templates.store';
+import type { BaseTextKey } from '@/plugins/i18n';
+import { camelCase } from 'lodash-es';
 
 export interface NodeViewItemSection {
 	key: string;
@@ -78,6 +81,7 @@ export interface NodeViewItem {
 		iconProps?: {
 			color?: string;
 		};
+		info?: string;
 		url?: string;
 		connectionType?: NodeConnectionType;
 		panelClass?: string;
@@ -185,6 +189,17 @@ export function AINodesView(_nodes: SimplifiedNodeType[]): NodeView {
 		};
 	}
 
+	function getSubcategoryInfo(subcategory: string) {
+		const localeKey = `nodeCreator.subcategoryInfos.${camelCase(subcategory)}` as BaseTextKey;
+
+		const info = i18n.baseText(localeKey);
+
+		// Return undefined if the locale key is not found
+		if (info === localeKey) return undefined;
+
+		return info;
+	}
+
 	return {
 		value: AI_OTHERS_NODE_CREATOR_VIEW,
 		title: i18n.baseText('nodeCreator.aiPanel.aiOtherNodes'),
@@ -195,6 +210,7 @@ export function AINodesView(_nodes: SimplifiedNodeType[]): NodeView {
 				type: 'subcategory',
 				properties: {
 					title: AI_CATEGORY_DOCUMENT_LOADERS,
+					info: getSubcategoryInfo(AI_CATEGORY_DOCUMENT_LOADERS),
 					icon: 'file-import',
 					...getAISubcategoryProperties(NodeConnectionType.AiDocument),
 				},
@@ -204,6 +220,7 @@ export function AINodesView(_nodes: SimplifiedNodeType[]): NodeView {
 				type: 'subcategory',
 				properties: {
 					title: AI_CATEGORY_LANGUAGE_MODELS,
+					info: getSubcategoryInfo(AI_CATEGORY_LANGUAGE_MODELS),
 					icon: 'language',
 					...getAISubcategoryProperties(NodeConnectionType.AiLanguageModel),
 				},
@@ -213,6 +230,7 @@ export function AINodesView(_nodes: SimplifiedNodeType[]): NodeView {
 				type: 'subcategory',
 				properties: {
 					title: AI_CATEGORY_MEMORY,
+					info: getSubcategoryInfo(AI_CATEGORY_MEMORY),
 					icon: 'brain',
 					...getAISubcategoryProperties(NodeConnectionType.AiMemory),
 				},
@@ -222,6 +240,7 @@ export function AINodesView(_nodes: SimplifiedNodeType[]): NodeView {
 				type: 'subcategory',
 				properties: {
 					title: AI_CATEGORY_OUTPUTPARSER,
+					info: getSubcategoryInfo(AI_CATEGORY_OUTPUTPARSER),
 					icon: 'list',
 					...getAISubcategoryProperties(NodeConnectionType.AiOutputParser),
 				},
@@ -231,6 +250,7 @@ export function AINodesView(_nodes: SimplifiedNodeType[]): NodeView {
 				type: 'subcategory',
 				properties: {
 					title: AI_CATEGORY_RETRIEVERS,
+					info: getSubcategoryInfo(AI_CATEGORY_RETRIEVERS),
 					icon: 'search',
 					...getAISubcategoryProperties(NodeConnectionType.AiRetriever),
 				},
@@ -240,6 +260,7 @@ export function AINodesView(_nodes: SimplifiedNodeType[]): NodeView {
 				type: 'subcategory',
 				properties: {
 					title: AI_CATEGORY_TEXT_SPLITTERS,
+					info: getSubcategoryInfo(AI_CATEGORY_TEXT_SPLITTERS),
 					icon: 'grip-lines-vertical',
 					...getAISubcategoryProperties(NodeConnectionType.AiTextSplitter),
 				},
@@ -250,6 +271,7 @@ export function AINodesView(_nodes: SimplifiedNodeType[]): NodeView {
 				category: CORE_NODES_CATEGORY,
 				properties: {
 					title: AI_CATEGORY_TOOLS,
+					info: getSubcategoryInfo(AI_CATEGORY_TOOLS),
 					icon: 'tools',
 					...getAISubcategoryProperties(NodeConnectionType.AiTool),
 					sections: [
@@ -266,6 +288,7 @@ export function AINodesView(_nodes: SimplifiedNodeType[]): NodeView {
 				type: 'subcategory',
 				properties: {
 					title: AI_CATEGORY_EMBEDDING,
+					info: getSubcategoryInfo(AI_CATEGORY_EMBEDDING),
 					icon: 'vector-square',
 					...getAISubcategoryProperties(NodeConnectionType.AiEmbedding),
 				},
@@ -275,6 +298,7 @@ export function AINodesView(_nodes: SimplifiedNodeType[]): NodeView {
 				type: 'subcategory',
 				properties: {
 					title: AI_CATEGORY_VECTOR_STORES,
+					info: getSubcategoryInfo(AI_CATEGORY_VECTOR_STORES),
 					icon: 'project-diagram',
 					...getAISubcategoryProperties(NodeConnectionType.AiVectorStore),
 				},
@@ -406,6 +430,13 @@ export function TriggerView() {
 export function RegularView(nodes: SimplifiedNodeType[]) {
 	const i18n = useI18n();
 
+	const popularItemsSubcategory = [
+		SET_NODE_TYPE,
+		CODE_NODE_TYPE,
+		DATETIME_NODE_TYPE,
+		AI_TRANSFORM_NODE_TYPE,
+	];
+
 	const view: NodeView = {
 		value: REGULAR_NODE_CREATOR_VIEW,
 		title: i18n.baseText('nodeCreator.triggerHelperPanel.whatHappensNext'),
@@ -430,7 +461,7 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 						{
 							key: 'popular',
 							title: i18n.baseText('nodeCreator.sectionNames.popular'),
-							items: [SET_NODE_TYPE, CODE_NODE_TYPE, DATETIME_NODE_TYPE],
+							items: popularItemsSubcategory,
 						},
 						{
 							key: 'addOrRemove',

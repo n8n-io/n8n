@@ -41,7 +41,7 @@ describe('SettingsPersonalView', () => {
 		usersStore = useUsersStore(pinia);
 		uiStore = useUIStore(pinia);
 
-		usersStore.users[currentUser.id] = currentUser;
+		usersStore.usersById[currentUser.id] = currentUser;
 		usersStore.currentUserId = currentUser.id;
 
 		await settingsStore.getSettings();
@@ -92,6 +92,7 @@ describe('SettingsPersonalView', () => {
 		});
 
 		it('should commit the theme change after clicking save', async () => {
+			vi.spyOn(usersStore, 'updateUser').mockReturnValue(Promise.resolve());
 			const { getByPlaceholderText, findByText, getByTestId } = renderComponent({ pinia });
 			await waitAllPromises();
 
@@ -102,6 +103,9 @@ describe('SettingsPersonalView', () => {
 			await waitAllPromises();
 
 			getByTestId('save-settings-button').click();
+
+			await waitAllPromises();
+
 			expect(uiStore.theme).toBe('dark');
 		});
 	});

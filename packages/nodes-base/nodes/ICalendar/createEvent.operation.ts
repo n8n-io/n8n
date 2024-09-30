@@ -60,7 +60,7 @@ export const description: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			{
@@ -354,7 +354,7 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 			});
 		} catch (error) {
 			const errorDescription = error.description;
-			if (this.continueOnFail(error)) {
+			if (this.continueOnFail()) {
 				returnData.push({
 					json: {
 						error: error.message,

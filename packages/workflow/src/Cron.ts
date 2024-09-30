@@ -1,10 +1,10 @@
+import type { CronExpression } from './Interfaces';
 import { randomInt } from './utils';
 
 interface BaseTriggerTime<T extends string> {
 	mode: T;
 }
 
-type CronExpression = string;
 interface CustomTrigger extends BaseTriggerTime<'custom'> {
 	cronExpression: CronExpression;
 }
@@ -49,22 +49,24 @@ export type TriggerTime =
 	| EveryWeek
 	| EveryMonth;
 
-const randomSecond = () => randomInt(60).toString();
-
 export const toCronExpression = (item: TriggerTime): CronExpression => {
-	if (item.mode === 'everyMinute') return `${randomSecond()} * * * * *`;
-	if (item.mode === 'everyHour') return `${randomSecond()} ${item.minute} * * * *`;
+	const randomSecond = randomInt(60);
+
+	if (item.mode === 'everyMinute') return `${randomSecond} * * * * *`;
+	if (item.mode === 'everyHour') return `${randomSecond} ${item.minute} * * * *`;
 
 	if (item.mode === 'everyX') {
-		if (item.unit === 'minutes') return `${randomSecond()} */${item.value} * * * *`;
-		if (item.unit === 'hours') return `${randomSecond()} 0 */${item.value} * * *`;
+		if (item.unit === 'minutes') return `${randomSecond} */${item.value} * * * *`;
+
+		const randomMinute = randomInt(60);
+		if (item.unit === 'hours') return `${randomSecond} ${randomMinute} */${item.value} * * *`;
 	}
-	if (item.mode === 'everyDay') return `${randomSecond()} ${item.minute} ${item.hour} * * *`;
+	if (item.mode === 'everyDay') return `${randomSecond} ${item.minute} ${item.hour} * * *`;
 	if (item.mode === 'everyWeek')
-		return `${randomSecond()} ${item.minute} ${item.hour} * * ${item.weekday}`;
+		return `${randomSecond} ${item.minute} ${item.hour} * * ${item.weekday}`;
 
 	if (item.mode === 'everyMonth')
-		return `${randomSecond()} ${item.minute} ${item.hour} ${item.dayOfMonth} * *`;
+		return `${randomSecond} ${item.minute} ${item.hour} ${item.dayOfMonth} * *`;
 
-	return item.cronExpression.trim();
+	return item.cronExpression.trim() as CronExpression;
 };

@@ -14,7 +14,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { ApplicationError, NodeOperationError } from 'n8n-workflow';
+import { ApplicationError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import { generatePairedItemData } from '../../utils/utilities';
 
 export class Kafka implements INodeType {
@@ -28,8 +28,8 @@ export class Kafka implements INodeType {
 		defaults: {
 			name: 'Kafka',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'kafka',
@@ -178,7 +178,7 @@ export class Kafka implements INodeType {
 				name: 'options',
 				type: 'collection',
 				default: {},
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				options: [
 					{
 						displayName: 'Acks',
@@ -408,7 +408,7 @@ export class Kafka implements INodeType {
 
 			return [executionData];
 		} catch (error) {
-			if (this.continueOnFail(error)) {
+			if (this.continueOnFail()) {
 				return [[{ json: { error: error.message }, pairedItem: itemData }]];
 			} else {
 				throw error;

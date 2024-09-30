@@ -1,3 +1,151 @@
+<script setup lang="ts">
+import Modal from './Modal.vue';
+import {
+	MFA_AUTHENTICATION_TOKEN_INPUT_MAX_LENGTH,
+	MFA_AUTHENTICATION_TOKEN_WINDOW_EXPIRED,
+	MFA_SETUP_MODAL_KEY,
+} from '../constants';
+import { ref, onMounted } from 'vue';
+import { useUsersStore } from '@/stores/users.store';
+import { mfaEventBus } from '@/event-bus';
+import { useToast } from '@/composables/useToast';
+//@ts-ignore
+import QrcodeVue from 'qrcode.vue';
+import { useClipboard } from '@/composables/useClipboard';
+import { useI18n } from '@/composables/useI18n';
+
+// ---------------------------------------------------------------------------
+// #region Reactive properties
+// ---------------------------------------------------------------------------
+
+const MFA_SETUP_MODAL_KEY_NAME = ref(MFA_SETUP_MODAL_KEY);
+const modalBus = ref(mfaEventBus);
+const secret = ref('');
+const qrCode = ref('');
+const readyToSubmit = ref(false);
+const formBus = ref(mfaEventBus);
+const showRecoveryCodes = ref(false);
+const recoveryCodes = ref<string[]>([]);
+const recoveryCodesDownloaded = ref(false);
+const authenticatorCode = ref('');
+const infoTextErrorMessage = ref('');
+const loadingQrCode = ref(true);
+
+// #endregion
+
+// ---------------------------------------------------------------------------
+// #region Composable
+// ---------------------------------------------------------------------------
+
+const clipboard = useClipboard();
+const userStore = useUsersStore();
+const i18 = useI18n();
+const toast = useToast();
+
+// #endregion
+
+// ---------------------------------------------------------------------------
+// #region Methods
+// ---------------------------------------------------------------------------
+
+const closeDialog = () => {
+	modalBus.value.emit('close');
+};
+
+const onInput = (value: string) => {
+	if (value.length !== MFA_AUTHENTICATION_TOKEN_INPUT_MAX_LENGTH) {
+		infoTextErrorMessage.value = '';
+		return;
+	}
+	userStore
+		.verifyMfaToken({ token: value })
+		.then(() => {
+			showRecoveryCodes.value = true;
+			authenticatorCode.value = value;
+		})
+		.catch(() => {
+			infoTextErrorMessage.value = i18.baseText('mfa.setup.invalidCode');
+		});
+};
+
+const onCopySecretToClipboard = () => {
+	void clipboard.copy(secret.value);
+	toast.showToast({
+		title: i18.baseText('mfa.setup.step1.toast.copyToClipboard.title'),
+		message: i18.baseText('mfa.setup.step1.toast.copyToClipboard.message'),
+		type: 'success',
+	});
+};
+
+const onSaveClick = () => {
+	formBus.value.emit('submit');
+};
+
+const onDownloadClick = () => {
+	const filename = 'n8n-recovery-codes.txt';
+	const temporalElement = document.createElement('a');
+	temporalElement.setAttribute(
+		'href',
+		'data:text/plain;charset=utf-8,' + encodeURIComponent(recoveryCodes.value.join('\n')),
+	);
+	temporalElement.setAttribute('download', filename);
+	temporalElement.style.display = 'none';
+	document.body.appendChild(temporalElement);
+	temporalElement.click();
+	document.body.removeChild(temporalElement);
+	recoveryCodesDownloaded.value = true;
+};
+
+const onSetupClick = async () => {
+	try {
+		await userStore.enableMfa({ token: authenticatorCode.value });
+		closeDialog();
+		toast.showMessage({
+			type: 'success',
+			title: i18.baseText('mfa.setup.step2.toast.setupFinished.message'),
+		});
+	} catch (e) {
+		if (e.errorCode === MFA_AUTHENTICATION_TOKEN_WINDOW_EXPIRED) {
+			toast.showMessage({
+				type: 'error',
+				title: i18.baseText('mfa.setup.step2.toast.tokenExpired.error.message'),
+			});
+			return;
+		}
+
+		toast.showMessage({
+			type: 'error',
+			title: i18.baseText('mfa.setup.step2.toast.setupFinished.error.message'),
+		});
+	}
+};
+
+const getMfaQR = async () => {
+	try {
+		const response = await userStore.fetchMfaQR();
+		qrCode.value = response.qrCode;
+		secret.value = response.secret;
+		recoveryCodes.value = response.recoveryCodes;
+	} catch (error) {
+		toast.showError(error, i18.baseText('settings.api.view.error'));
+	} finally {
+		loadingQrCode.value = false;
+	}
+};
+
+// #endregion
+
+// ---------------------------------------------------------------------------
+// #region Lifecycle hooks
+// ---------------------------------------------------------------------------
+
+onMounted(async () => {
+	await getMfaQR();
+});
+
+// #endregion
+</script>
+
 <template>
 	<Modal
 		width="460px"
@@ -129,154 +277,6 @@
 		</template>
 	</Modal>
 </template>
-
-<script setup lang="ts">
-import Modal from './Modal.vue';
-import {
-	MFA_AUTHENTICATION_TOKEN_INPUT_MAX_LENGTH,
-	MFA_AUTHENTICATION_TOKEN_WINDOW_EXPIRED,
-	MFA_SETUP_MODAL_KEY,
-} from '../constants';
-import { ref, onMounted } from 'vue';
-import { useUsersStore } from '@/stores/users.store';
-import { mfaEventBus } from '@/event-bus';
-import { useToast } from '@/composables/useToast';
-//@ts-ignore
-import QrcodeVue from 'qrcode.vue';
-import { useClipboard } from '@/composables/useClipboard';
-import { useI18n } from '@/composables/useI18n';
-
-// ---------------------------------------------------------------------------
-// #region Reactive properties
-// ---------------------------------------------------------------------------
-
-const MFA_SETUP_MODAL_KEY_NAME = ref(MFA_SETUP_MODAL_KEY);
-const modalBus = ref(mfaEventBus);
-const secret = ref('');
-const qrCode = ref('');
-const readyToSubmit = ref(false);
-const formBus = ref(mfaEventBus);
-const showRecoveryCodes = ref(false);
-const recoveryCodes = ref<string[]>([]);
-const recoveryCodesDownloaded = ref(false);
-const authenticatorCode = ref('');
-const infoTextErrorMessage = ref('');
-const loadingQrCode = ref(true);
-
-// #endregion
-
-// ---------------------------------------------------------------------------
-// #region Composable
-// ---------------------------------------------------------------------------
-
-const clipboard = useClipboard();
-const userStore = useUsersStore();
-const i18 = useI18n();
-const toast = useToast();
-
-// #endregion
-
-// ---------------------------------------------------------------------------
-// #region Methods
-// ---------------------------------------------------------------------------
-
-const closeDialog = () => {
-	modalBus.value.emit('close');
-};
-
-const onInput = (value: string) => {
-	if (value.length !== MFA_AUTHENTICATION_TOKEN_INPUT_MAX_LENGTH) {
-		infoTextErrorMessage.value = '';
-		return;
-	}
-	userStore
-		.verifyMfaToken({ token: value })
-		.then(() => {
-			showRecoveryCodes.value = true;
-			authenticatorCode.value = value;
-		})
-		.catch(() => {
-			infoTextErrorMessage.value = i18.baseText('mfa.setup.invalidCode');
-		});
-};
-
-const onCopySecretToClipboard = () => {
-	void clipboard.copy(secret.value);
-	toast.showToast({
-		title: i18.baseText('mfa.setup.step1.toast.copyToClipboard.title'),
-		message: i18.baseText('mfa.setup.step1.toast.copyToClipboard.message'),
-		type: 'success',
-	});
-};
-
-const onSaveClick = () => {
-	formBus.value.emit('submit');
-};
-
-const onDownloadClick = () => {
-	const filename = 'n8n-recovery-codes.txt';
-	const temporalElement = document.createElement('a');
-	temporalElement.setAttribute(
-		'href',
-		'data:text/plain;charset=utf-8,' + encodeURIComponent(recoveryCodes.value.join('\n')),
-	);
-	temporalElement.setAttribute('download', filename);
-	temporalElement.style.display = 'none';
-	document.body.appendChild(temporalElement);
-	temporalElement.click();
-	document.body.removeChild(temporalElement);
-	recoveryCodesDownloaded.value = true;
-};
-
-const onSetupClick = async () => {
-	try {
-		await userStore.enableMfa({ token: authenticatorCode.value });
-		closeDialog();
-		toast.showMessage({
-			type: 'success',
-			title: i18.baseText('mfa.setup.step2.toast.setupFinished.message'),
-		});
-	} catch (e) {
-		if (e.errorCode === MFA_AUTHENTICATION_TOKEN_WINDOW_EXPIRED) {
-			toast.showMessage({
-				type: 'error',
-				title: i18.baseText('mfa.setup.step2.toast.tokenExpired.error.message'),
-			});
-			return;
-		}
-
-		toast.showMessage({
-			type: 'error',
-			title: i18.baseText('mfa.setup.step2.toast.setupFinished.error.message'),
-		});
-	}
-};
-
-const getMfaQR = async () => {
-	try {
-		const response = await userStore.getMfaQR();
-		qrCode.value = response.qrCode;
-		secret.value = response.secret;
-		recoveryCodes.value = response.recoveryCodes;
-	} catch (error) {
-		toast.showError(error, i18.baseText('settings.api.view.error'));
-	} finally {
-		loadingQrCode.value = false;
-	}
-};
-
-// #endregion
-
-// ---------------------------------------------------------------------------
-// #region Lifecycle hooks
-// ---------------------------------------------------------------------------
-
-onMounted(async () => {
-	await getMfaQR();
-});
-
-// #endregion
-</script>
 
 <style module lang="scss">
 .container {

@@ -7,8 +7,7 @@ on:
       - edited
       - synchronize
     branches:
-      - '**'
-      - '!release/*'
+      - 'master'
 
 jobs:
   check-pr-title:
@@ -29,6 +28,6 @@ jobs:
 
       - name: Validate PR title
         id: validate_pr_title
-        uses: n8n-io/validate-n8n-pull-request-title@v2.0.1
+        uses: n8n-io/validate-n8n-pull-request-title@v2.2.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

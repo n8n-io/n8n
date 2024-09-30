@@ -68,7 +68,7 @@ export const description: SheetProperties = [
 						},
 						default: '',
 						description:
-							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 					},
 					{
 						displayName: 'Value',
@@ -121,7 +121,7 @@ export const description: SheetProperties = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -135,6 +135,19 @@ export const description: SheetProperties = [
 		options: [
 			dataLocationOnSheet,
 			outputFormatting,
+			{
+				displayName: 'Return only First Matching Row',
+				name: 'returnFirstMatch',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to select the first row of the sheet or the first matching row (if filters are set)',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 4.5 } }],
+					},
+				},
+			},
 			{
 				displayName: 'When Filter Has Multiple Matches',
 				name: 'returnAllMatches',
@@ -154,6 +167,11 @@ export const description: SheetProperties = [
 				],
 				description:
 					'By default only the first result gets returned, Set to "Return All Matches" to get multiple matches',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { lt: 4.5 } }],
+					},
+				},
 			},
 		],
 	},
@@ -202,10 +220,11 @@ export async function execute(
 			return [];
 		}
 
-		const { data, headerRow, firstDataRow } = prepareSheetData(
-			sheetData,
-			dataLocationOnSheetOptions,
-		);
+		const {
+			data,
+			headerRow: keyRowIndex,
+			firstDataRow: dataStartRowIndex,
+		} = prepareSheetData(sheetData, dataLocationOnSheetOptions);
 
 		let responseData = [];
 
@@ -215,8 +234,15 @@ export async function execute(
 			[],
 		) as ILookupValues[];
 
+		const inputData = data as string[][];
+
 		if (lookupValues.length) {
-			const returnAllMatches = options.returnAllMatches === 'returnAllMatches' ? true : false;
+			let returnAllMatches;
+			if (nodeVersion < 4.5) {
+				returnAllMatches = options.returnAllMatches === 'returnAllMatches' ? true : false;
+			} else {
+				returnAllMatches = options.returnFirstMatch ? false : true;
+			}
 
 			if (nodeVersion <= 4.1) {
 				for (let i = 1; i < items.length; i++) {
@@ -235,16 +261,16 @@ export async function execute(
 				| 'AND'
 				| 'OR';
 
-			responseData = await sheet.lookupValues(
-				data as string[][],
-				headerRow,
-				firstDataRow,
+			responseData = await sheet.lookupValues({
+				inputData,
+				keyRowIndex,
+				dataStartRowIndex,
 				lookupValues,
 				returnAllMatches,
 				combineFilters,
-			);
+			});
 		} else {
-			responseData = sheet.structureArrayDataByColumn(data as string[][], headerRow, firstDataRow);
+			responseData = sheet.structureArrayDataByColumn(inputData, keyRowIndex, dataStartRowIndex);
 		}
 
 		returnData.push(

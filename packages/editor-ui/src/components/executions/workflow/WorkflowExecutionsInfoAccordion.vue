@@ -1,5 +1,194 @@
+<script setup lang="ts">
+import { computed, ref, watch, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { PLACEHOLDER_EMPTY_WORKFLOW_ID, WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
+import type { IWorkflowSettings } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
+import { useI18n } from '@/composables/useI18n';
+
+interface IWorkflowSaveSettings {
+	saveFailedExecutions: boolean;
+	saveSuccessfulExecutions: boolean;
+	saveTestExecutions: boolean;
+}
+
+const props = withDefaults(
+	defineProps<{
+		initiallyExpanded?: boolean;
+	}>(),
+	{
+		initiallyExpanded: false,
+	},
+);
+
+const router = useRouter();
+const workflowHelpers = useWorkflowHelpers({ router });
+const locale = useI18n();
+
+const settingsStore = useSettingsStore();
+const uiStore = useUIStore();
+const workflowsStore = useWorkflowsStore();
+const npsSurveyStore = useNpsSurveyStore();
+
+const defaultValues = ref({
+	saveFailedExecutions: 'all',
+	saveSuccessfulExecutions: 'all',
+	saveManualExecutions: false,
+});
+const workflowSaveSettings = ref({
+	saveFailedExecutions: false,
+	saveSuccessfulExecutions: false,
+	saveTestExecutions: false,
+} as IWorkflowSaveSettings);
+
+const accordionItems = computed(() => [
+	{
+		id: 'productionExecutions',
+		label: locale.baseText('executionsLandingPage.emptyState.accordion.productionExecutions'),
+		icon: productionExecutionsIcon.value.icon,
+		iconColor: productionExecutionsIcon.value.color,
+		tooltip:
+			productionExecutionsStatus.value === 'unknown'
+				? locale.baseText(
+						'executionsLandingPage.emptyState.accordion.productionExecutionsWarningTooltip',
+					)
+				: null,
+	},
+	{
+		id: 'manualExecutions',
+		label: locale.baseText('executionsLandingPage.emptyState.accordion.testExecutions'),
+		icon: workflowSaveSettings.value.saveTestExecutions ? 'check' : 'times',
+		iconColor: workflowSaveSettings.value.saveTestExecutions ? 'success' : 'danger',
+	},
+]);
+const shouldExpandAccordion = computed(() => {
+	if (!props.initiallyExpanded) {
+		return false;
+	}
+	return (
+		!workflowSaveSettings.value.saveFailedExecutions ||
+		!workflowSaveSettings.value.saveSuccessfulExecutions ||
+		!workflowSaveSettings.value.saveTestExecutions
+	);
+});
+const productionExecutionsIcon = computed(() => {
+	if (productionExecutionsStatus.value === 'saving') {
+		return { icon: 'check', color: 'success' };
+	} else if (productionExecutionsStatus.value === 'not-saving') {
+		return { icon: 'times', color: 'danger' };
+	}
+	return { icon: 'exclamation-triangle', color: 'warning' };
+});
+const productionExecutionsStatus = computed(() => {
+	if (
+		workflowSaveSettings.value.saveSuccessfulExecutions ===
+		workflowSaveSettings.value.saveFailedExecutions
+	) {
+		if (workflowSaveSettings.value.saveSuccessfulExecutions) {
+			return 'saving';
+		}
+		return 'not-saving';
+	} else {
+		return 'unknown';
+	}
+});
+const workflowSettings = computed(() => deepCopy(workflowsStore.workflowSettings));
+const accordionIcon = computed(() => {
+	if (
+		!workflowSaveSettings.value.saveTestExecutions ||
+		productionExecutionsStatus.value !== 'saving'
+	) {
+		return { icon: 'exclamation-triangle', color: 'warning' };
+	}
+	return null;
+});
+const currentWorkflowId = computed(() => workflowsStore.workflowId);
+const isNewWorkflow = computed(() => {
+	return (
+		!currentWorkflowId.value ||
+		currentWorkflowId.value === PLACEHOLDER_EMPTY_WORKFLOW_ID ||
+		currentWorkflowId.value === 'new'
+	);
+});
+const workflowName = computed(() => workflowsStore.workflowName);
+const currentWorkflowTagIds = computed(() => workflowsStore.workflowTags);
+
+watch(workflowSettings, (newSettings: IWorkflowSettings) => {
+	updateSettings(newSettings);
+});
+
+onMounted(() => {
+	defaultValues.value.saveFailedExecutions = settingsStore.saveDataErrorExecution;
+	defaultValues.value.saveSuccessfulExecutions = settingsStore.saveDataSuccessExecution;
+	defaultValues.value.saveManualExecutions = settingsStore.saveManualExecutions;
+	updateSettings(workflowSettings.value);
+});
+
+function updateSettings(wfSettings: IWorkflowSettings): void {
+	workflowSaveSettings.value.saveFailedExecutions =
+		wfSettings.saveDataErrorExecution === undefined
+			? defaultValues.value.saveFailedExecutions === 'all'
+			: wfSettings.saveDataErrorExecution === 'all';
+	workflowSaveSettings.value.saveSuccessfulExecutions =
+		wfSettings.saveDataSuccessExecution === undefined
+			? defaultValues.value.saveSuccessfulExecutions === 'all'
+			: wfSettings.saveDataSuccessExecution === 'all';
+	workflowSaveSettings.value.saveTestExecutions =
+		wfSettings.saveManualExecutions === undefined
+			? defaultValues.value.saveManualExecutions
+			: (wfSettings.saveManualExecutions as boolean);
+}
+
+function onAccordionClick(event: MouseEvent): void {
+	if (event.target instanceof HTMLAnchorElement) {
+		event.preventDefault();
+		uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
+	}
+}
+
+function onItemTooltipClick(item: string, event: MouseEvent): void {
+	if (item === 'productionExecutions' && event.target instanceof HTMLAnchorElement) {
+		event.preventDefault();
+		uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
+	}
+}
+
+function openWorkflowSettings(): void {
+	uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
+}
+
+async function onSaveWorkflowClick(): Promise<void> {
+	let currentId: string | undefined = undefined;
+	if (currentWorkflowId.value !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+		currentId = currentWorkflowId.value;
+	} else if (
+		router.currentRoute.value.params.name &&
+		router.currentRoute.value.params.name !== 'new'
+	) {
+		const routeName = router.currentRoute.value.params.name;
+		currentId = Array.isArray(routeName) ? routeName[0] : routeName;
+	}
+	if (!currentId) {
+		return;
+	}
+	const saved = await workflowHelpers.saveCurrentWorkflow({
+		id: currentId,
+		name: workflowName.value,
+		tags: currentWorkflowTagIds.value,
+	});
+	if (saved) {
+		await npsSurveyStore.fetchPromptsData();
+	}
+}
+</script>
+
 <template>
-	<n8n-info-accordion
+	<N8nInfoAccordion
 		:class="[$style.accordion, 'mt-2xl']"
 		:title="$locale.baseText('executionsLandingPage.emptyState.accordion.title')"
 		:items="accordionItems"
@@ -11,231 +200,29 @@
 		<template #customContent>
 			<footer class="mt-2xs">
 				{{ $locale.baseText('executionsLandingPage.emptyState.accordion.footer') }}
-				<n8n-tooltip :disabled="!isNewWorkflow">
+				<N8nTooltip :disabled="!isNewWorkflow">
 					<template #content>
 						<div>
-							<n8n-link @click.prevent="onSaveWorkflowClick">{{
+							<N8nLink @click.prevent="onSaveWorkflowClick">{{
 								$locale.baseText('executionsLandingPage.emptyState.accordion.footer.tooltipLink')
-							}}</n8n-link>
+							}}</N8nLink>
 							{{
 								$locale.baseText('executionsLandingPage.emptyState.accordion.footer.tooltipText')
 							}}
 						</div>
 					</template>
-					<n8n-link
+					<N8nLink
 						:class="{ [$style.disabled]: isNewWorkflow }"
 						size="small"
 						@click.prevent="openWorkflowSettings"
 					>
 						{{ $locale.baseText('executionsLandingPage.emptyState.accordion.footer.settingsLink') }}
-					</n8n-link>
-				</n8n-tooltip>
+					</N8nLink>
+				</N8nTooltip>
 			</footer>
 		</template>
-	</n8n-info-accordion>
+	</N8nInfoAccordion>
 </template>
-
-<script lang="ts">
-import { defineComponent } from 'vue';
-import { mapStores } from 'pinia';
-import { useRouter } from 'vue-router';
-import { useRootStore } from '@/stores/root.store';
-import { useSettingsStore } from '@/stores/settings.store';
-import { useUIStore } from '@/stores/ui.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID, WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
-import type { IWorkflowSettings } from 'n8n-workflow';
-import { deepCopy } from 'n8n-workflow';
-import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
-
-interface IWorkflowSaveSettings {
-	saveFailedExecutions: boolean;
-	saveSuccessfulExecutions: boolean;
-	saveTestExecutions: boolean;
-}
-
-export default defineComponent({
-	name: 'WorkflowExecutionsInfoAccordion',
-	props: {
-		initiallyExpanded: {
-			type: Boolean,
-			default: false,
-		},
-	},
-	setup() {
-		const router = useRouter();
-		const workflowHelpers = useWorkflowHelpers({ router });
-
-		return {
-			workflowHelpers,
-		};
-	},
-	data() {
-		return {
-			defaultValues: {
-				saveFailedExecutions: 'all',
-				saveSuccessfulExecutions: 'all',
-				saveManualExecutions: false,
-			},
-			workflowSaveSettings: {
-				saveFailedExecutions: false,
-				saveSuccessfulExecutions: false,
-				saveTestExecutions: false,
-			} as IWorkflowSaveSettings,
-		};
-	},
-	computed: {
-		...mapStores(useRootStore, useSettingsStore, useUIStore, useWorkflowsStore, useNpsSurveyStore),
-		accordionItems(): object[] {
-			return [
-				{
-					id: 'productionExecutions',
-					label: this.$locale.baseText(
-						'executionsLandingPage.emptyState.accordion.productionExecutions',
-					),
-					icon: this.productionExecutionsIcon.icon,
-					iconColor: this.productionExecutionsIcon.color,
-					tooltip:
-						this.productionExecutionsStatus === 'unknown'
-							? this.$locale.baseText(
-									'executionsLandingPage.emptyState.accordion.productionExecutionsWarningTooltip',
-								)
-							: null,
-				},
-				{
-					id: 'manualExecutions',
-					label: this.$locale.baseText('executionsLandingPage.emptyState.accordion.testExecutions'),
-					icon: this.workflowSaveSettings.saveTestExecutions ? 'check' : 'times',
-					iconColor: this.workflowSaveSettings.saveTestExecutions ? 'success' : 'danger',
-				},
-			];
-		},
-		shouldExpandAccordion(): boolean {
-			if (!this.initiallyExpanded) {
-				return false;
-			}
-			return (
-				!this.workflowSaveSettings.saveFailedExecutions ||
-				!this.workflowSaveSettings.saveSuccessfulExecutions ||
-				!this.workflowSaveSettings.saveTestExecutions
-			);
-		},
-		productionExecutionsIcon(): { icon: string; color: string } {
-			if (this.productionExecutionsStatus === 'saving') {
-				return { icon: 'check', color: 'success' };
-			} else if (this.productionExecutionsStatus === 'not-saving') {
-				return { icon: 'times', color: 'danger' };
-			}
-			return { icon: 'exclamation-triangle', color: 'warning' };
-		},
-		productionExecutionsStatus(): string {
-			if (
-				this.workflowSaveSettings.saveSuccessfulExecutions ===
-				this.workflowSaveSettings.saveFailedExecutions
-			) {
-				if (this.workflowSaveSettings.saveSuccessfulExecutions) {
-					return 'saving';
-				}
-				return 'not-saving';
-			} else {
-				return 'unknown';
-			}
-		},
-		workflowSettings(): IWorkflowSettings {
-			const workflowSettings = deepCopy(this.workflowsStore.workflowSettings);
-			return workflowSettings;
-		},
-		accordionIcon(): { icon: string; color: string } | null {
-			if (
-				!this.workflowSaveSettings.saveTestExecutions ||
-				this.productionExecutionsStatus !== 'saving'
-			) {
-				return { icon: 'exclamation-triangle', color: 'warning' };
-			}
-			return null;
-		},
-		currentWorkflowId(): string {
-			return this.workflowsStore.workflowId;
-		},
-		isNewWorkflow(): boolean {
-			return (
-				!this.currentWorkflowId ||
-				this.currentWorkflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID ||
-				this.currentWorkflowId === 'new'
-			);
-		},
-		workflowName(): string {
-			return this.workflowsStore.workflowName;
-		},
-		currentWorkflowTagIds(): string[] {
-			return this.workflowsStore.workflowTags;
-		},
-	},
-	watch: {
-		workflowSettings(newSettings: IWorkflowSettings) {
-			this.updateSettings(newSettings);
-		},
-	},
-	mounted() {
-		this.defaultValues.saveFailedExecutions = this.settingsStore.saveDataErrorExecution;
-		this.defaultValues.saveSuccessfulExecutions = this.settingsStore.saveDataSuccessExecution;
-		this.defaultValues.saveManualExecutions = this.settingsStore.saveManualExecutions;
-		this.updateSettings(this.workflowSettings);
-	},
-	methods: {
-		updateSettings(workflowSettings: IWorkflowSettings): void {
-			this.workflowSaveSettings.saveFailedExecutions =
-				workflowSettings.saveDataErrorExecution === undefined
-					? this.defaultValues.saveFailedExecutions === 'all'
-					: workflowSettings.saveDataErrorExecution === 'all';
-			this.workflowSaveSettings.saveSuccessfulExecutions =
-				workflowSettings.saveDataSuccessExecution === undefined
-					? this.defaultValues.saveSuccessfulExecutions === 'all'
-					: workflowSettings.saveDataSuccessExecution === 'all';
-			this.workflowSaveSettings.saveTestExecutions =
-				workflowSettings.saveManualExecutions === undefined
-					? this.defaultValues.saveManualExecutions
-					: (workflowSettings.saveManualExecutions as boolean);
-		},
-		onAccordionClick(event: MouseEvent): void {
-			if (event.target instanceof HTMLAnchorElement) {
-				event.preventDefault();
-				this.uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
-			}
-		},
-		onItemTooltipClick(item: string, event: MouseEvent): void {
-			if (item === 'productionExecutions' && event.target instanceof HTMLAnchorElement) {
-				event.preventDefault();
-				this.uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
-			}
-		},
-		openWorkflowSettings(): void {
-			this.uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
-		},
-		async onSaveWorkflowClick(): Promise<void> {
-			let currentId: string | undefined = undefined;
-			if (this.currentWorkflowId !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
-				currentId = this.currentWorkflowId;
-			} else if (this.$route.params.name && this.$route.params.name !== 'new') {
-				const routeName = this.$route.params.name;
-				currentId = Array.isArray(routeName) ? routeName[0] : routeName;
-			}
-			if (!currentId) {
-				return;
-			}
-			const saved = await this.workflowHelpers.saveCurrentWorkflow({
-				id: currentId,
-				name: this.workflowName,
-				tags: this.currentWorkflowTagIds,
-			});
-			if (saved) {
-				await this.npsSurveyStore.fetchPromptsData();
-			}
-		},
-	},
-});
-</script>
 
 <style module lang="scss">
 .accordion {

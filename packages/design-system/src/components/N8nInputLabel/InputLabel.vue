@@ -1,3 +1,37 @@
+<script lang="ts" setup>
+import type { TextColor } from 'n8n-design-system/types/text';
+
+import N8nIcon from '../N8nIcon';
+import N8nText from '../N8nText';
+import N8nTooltip from '../N8nTooltip';
+
+const SIZE = ['small', 'medium', 'large'] as const;
+
+interface InputLabelProps {
+	compact?: boolean;
+	color?: TextColor;
+	label?: string;
+	tooltipText?: string;
+	inputName?: string;
+	required?: boolean;
+	bold?: boolean;
+	size?: (typeof SIZE)[number];
+	underline?: boolean;
+	showTooltip?: boolean;
+	showOptions?: boolean;
+}
+
+defineOptions({ name: 'N8nInputLabel' });
+withDefaults(defineProps<InputLabelProps>(), {
+	compact: false,
+	bold: true,
+	size: 'medium',
+});
+
+const addTargetBlank = (html: string) =>
+	html && html.includes('href=') ? html.replace(/href=/g, 'target="_blank" href=') : html;
+</script>
+
 <template>
 	<div :class="$style.container" v-bind="$attrs" data-test-id="input-label">
 		<label
@@ -25,7 +59,7 @@
 				<N8nTooltip placement="top" :popper-class="$style.tooltipPopper" :show-after="300">
 					<N8nIcon icon="question-circle" size="small" />
 					<template #content>
-						<div v-html="addTargetBlank(tooltipText)" />
+						<div v-n8n-html="addTargetBlank(tooltipText)" />
 					</template>
 				</N8nTooltip>
 			</span>
@@ -44,39 +78,6 @@
 		<slot />
 	</div>
 </template>
-
-<script lang="ts" setup>
-import N8nText from '../N8nText';
-import N8nIcon from '../N8nIcon';
-import N8nTooltip from '../N8nTooltip';
-import type { TextColor } from 'n8n-design-system/types/text';
-
-const SIZE = ['small', 'medium'] as const;
-
-interface InputLabelProps {
-	compact?: boolean;
-	color?: TextColor;
-	label?: string;
-	tooltipText?: string;
-	inputName?: string;
-	required?: boolean;
-	bold?: boolean;
-	size?: (typeof SIZE)[number];
-	underline?: boolean;
-	showTooltip?: boolean;
-	showOptions?: boolean;
-}
-
-defineOptions({ name: 'N8nInputLabel' });
-withDefaults(defineProps<InputLabelProps>(), {
-	compact: false,
-	bold: true,
-	size: 'medium',
-});
-
-const addTargetBlank = (html: string) =>
-	html && html.includes('href=') ? html.replace(/href=/g, 'target="_blank" href=') : html;
-</script>
 
 <style lang="scss" module>
 .container {
@@ -185,10 +186,19 @@ const addTargetBlank = (html: string) =>
 }
 
 :root .tooltipPopper {
+	line-height: var(--font-line-height-compact);
 	max-width: 400px;
 
 	li {
 		margin-left: var(--spacing-s);
+	}
+
+	code {
+		color: var(--color-text-dark);
+		font-size: var(--font-size-3xs);
+		background: var(--color-background-medium);
+		padding: var(--spacing-5xs);
+		border-radius: var(--border-radius-base);
 	}
 }
 </style>
