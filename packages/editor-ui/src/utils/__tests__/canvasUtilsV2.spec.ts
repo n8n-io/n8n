@@ -6,6 +6,7 @@ import {
 	parseCanvasConnectionHandleString,
 	createCanvasConnectionHandleString,
 	createCanvasConnectionId,
+	checkOverlap,
 } from '@/utils/canvasUtilsV2';
 import { NodeConnectionType, type IConnections, type INodeTypeDescription } from 'n8n-workflow';
 import type { CanvasConnection } from '@/types';
@@ -830,5 +831,49 @@ describe('getUniqueNodeName', () => {
 		const existingNames = new Set([...Array(100).keys()].map((i) => `Node A ${i}`).concat([name]));
 		const result = getUniqueNodeName(name, existingNames);
 		expect(result).toBe('Node A mock-uuid');
+	});
+});
+
+describe('checkOverlap', () => {
+	it('should return true when nodes overlap', () => {
+		const node1 = { x: 0, y: 0, width: 10, height: 10 };
+		const node2 = { x: 5, y: 5, width: 10, height: 10 };
+		expect(checkOverlap(node1, node2)).toBe(true);
+	});
+
+	it('should return false when node1 is completely to the left of node2', () => {
+		const node1 = { x: 0, y: 0, width: 10, height: 10 };
+		const node2 = { x: 15, y: 0, width: 10, height: 10 };
+		expect(checkOverlap(node1, node2)).toBe(false);
+	});
+
+	it('should return false when node2 is completely to the left of node1', () => {
+		const node1 = { x: 15, y: 0, width: 10, height: 10 };
+		const node2 = { x: 0, y: 0, width: 10, height: 10 };
+		expect(checkOverlap(node1, node2)).toBe(false);
+	});
+
+	it('should return false when node1 is completely above node2', () => {
+		const node1 = { x: 0, y: 0, width: 10, height: 10 };
+		const node2 = { x: 0, y: 15, width: 10, height: 10 };
+		expect(checkOverlap(node1, node2)).toBe(false);
+	});
+
+	it('should return false when node2 is completely above node1', () => {
+		const node1 = { x: 0, y: 15, width: 10, height: 10 };
+		const node2 = { x: 0, y: 0, width: 10, height: 10 };
+		expect(checkOverlap(node1, node2)).toBe(false);
+	});
+
+	it('should return false when nodes touch at the edges', () => {
+		const node1 = { x: 0, y: 0, width: 10, height: 10 };
+		const node2 = { x: 10, y: 0, width: 10, height: 10 };
+		expect(checkOverlap(node1, node2)).toBe(false);
+	});
+
+	it('should return false when nodes touch at the corners', () => {
+		const node1 = { x: 0, y: 0, width: 10, height: 10 };
+		const node2 = { x: 10, y: 10, width: 10, height: 10 };
+		expect(checkOverlap(node1, node2)).toBe(false);
 	});
 });
