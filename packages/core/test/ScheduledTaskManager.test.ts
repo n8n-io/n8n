@@ -1,5 +1,5 @@
-import type { Workflow } from 'n8n-workflow';
 import { mock } from 'jest-mock-extended';
+import type { Workflow } from 'n8n-workflow';
 
 import type { InstanceSettings } from '@/InstanceSettings';
 import { ScheduledTaskManager } from '@/ScheduledTaskManager';

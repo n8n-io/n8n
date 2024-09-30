@@ -2,9 +2,9 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
+import * as assert from 'assert/strict';
 import { setMaxListeners } from 'events';
-import PCancelable from 'p-cancelable';
-
+import get from 'lodash/get';
 import type {
 	ExecutionBaseError,
 	ExecutionStatus,
@@ -46,11 +46,9 @@ import {
 	sleep,
 	ErrorReporterProxy,
 } from 'n8n-workflow';
-import get from 'lodash/get';
-import * as NodeExecuteFunctions from './NodeExecuteFunctions';
+import PCancelable from 'p-cancelable';
 
-import * as assert from 'assert/strict';
-import { recreateNodeExecutionStack } from './PartialExecutionUtils/recreateNodeExecutionStack';
+import * as NodeExecuteFunctions from './NodeExecuteFunctions';
 import {
 	DirectedGraph,
 	findCycles,
@@ -59,6 +57,7 @@ import {
 	findTriggerForPartialExecution,
 } from './PartialExecutionUtils';
 import { cleanRunData } from './PartialExecutionUtils/cleanRunData';
+import { recreateNodeExecutionStack } from './PartialExecutionUtils/recreateNodeExecutionStack';
 
 export class WorkflowExecute {
 	private status: ExecutionStatus = 'new';
