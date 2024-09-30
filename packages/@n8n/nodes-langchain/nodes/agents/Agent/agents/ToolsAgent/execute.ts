@@ -1,5 +1,6 @@
 import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
 import { HumanMessage } from '@langchain/core/messages';
+import type { BaseMessage } from '@langchain/core/messages';
 import type { BaseOutputParser, StructuredOutputParser } from '@langchain/core/output_parsers';
 import type { BaseMessagePromptTemplateLike } from '@langchain/core/prompts';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
@@ -91,8 +92,7 @@ function fixEmptyContentMessage(steps: AgentFinish | AgentAction[]) {
 	steps.forEach((step) => {
 		if ('messageLog' in step && step.messageLog !== undefined) {
 			if (Array.isArray(step.messageLog)) {
-				step.messageLog.forEach((message) => {
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+				step.messageLog.forEach((message: BaseMessage) => {
 					if ('content' in message && Array.isArray(message.content)) {
 						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 						(message.content as Array<{ input?: string | object }>).forEach((content) => {
