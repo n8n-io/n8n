@@ -27,10 +27,10 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 
 		/** How long (in ms) to wait before resetting the cumulative timeout. */
 		resetLength: 30_000,
-
-		/** Whether any client has lost connection to Redis. */
-		lostConnection: false,
 	};
+
+	/** Whether any client has lost connection to Redis. */
+	private lostConnection = false;
 
 	constructor(
 		private readonly logger: Logger,
@@ -53,9 +53,9 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 		});
 
 		client.on('ready', () => {
-			if (this.config.lostConnection) {
+			if (this.lostConnection) {
 				this.emit('connection-recovered');
-				this.config.lostConnection = false;
+				this.lostConnection = false;
 			}
 		});
 
@@ -212,7 +212,7 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 
 			this.logger.warn(`Lost Redis connection. ${reconnectionMsg} (${timeoutDetails})`);
 
-			this.config.lostConnection = true;
+			this.lostConnection = true;
 		});
 
 		this.on('connection-recovered', () => {
