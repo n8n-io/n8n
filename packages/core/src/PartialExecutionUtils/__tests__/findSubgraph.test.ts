@@ -13,7 +13,7 @@ import { createNodeData } from './helpers';
 import { DirectedGraph } from '../DirectedGraph';
 import { findSubgraph } from '../findSubgraph';
 
-describe('findSubgraph2', () => {
+describe('findSubgraph', () => {
 	//                 ►►
 	//  ┌───────┐     ┌───────────┐
 	//  │trigger├────►│destination│
