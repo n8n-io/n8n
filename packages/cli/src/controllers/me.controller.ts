@@ -18,22 +18,12 @@ import { validateEntity } from '@/generic-helpers';
 import type { PublicUser } from '@/interfaces';
 import { Logger } from '@/logger';
 import { MfaService } from '@/mfa/mfa.service';
-import { isApiEnabled } from '@/public-api';
 import { AuthenticatedRequest, MeRequest } from '@/requests';
 import { PasswordUtility } from '@/services/password.utility';
 import { UserService } from '@/services/user.service';
 import { isSamlLicensedAndEnabled } from '@/sso/saml/saml-helpers';
 
 import { PersonalizationSurveyAnswersV4 } from './survey-answers.dto';
-
-export const isApiEnabledMiddleware: RequestHandler = (_, res, next) => {
-	if (isApiEnabled()) {
-		next();
-	} else {
-		res.status(404).end();
-	}
-};
-
 @RestController('/me')
 export class MeController {
 	constructor(
