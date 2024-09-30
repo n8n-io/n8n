@@ -680,6 +680,9 @@ onMounted(() => {
 	[data-theme='dark'] & {
 		--chat--input--text-color: var(--input-font-color, var(--color-text-dark));
 	}
+	@media (prefers-color-scheme: dark) {
+		--chat--input--text-color: var(--input-font-color, var(--color-text-dark));
+	}
 
 	border-bottom-right-radius: var(--border-radius-base);
 	border-top-right-radius: var(--border-radius-base);
