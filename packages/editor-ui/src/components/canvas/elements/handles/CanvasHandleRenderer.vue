@@ -20,6 +20,7 @@ const props = defineProps<{
 	isConnecting?: boolean;
 	isReadOnly?: boolean;
 	label?: string;
+	required?: boolean;
 	type: CanvasConnectionPort['type'];
 	index: CanvasConnectionPort['index'];
 	position: CanvasElementPortWithRenderData['position'];
@@ -116,6 +117,7 @@ const isReadOnly = toRef(props, 'isReadOnly');
 const mode = toRef(props, 'mode');
 const type = toRef(props, 'type');
 const index = toRef(props, 'index');
+const isRequired = toRef(props, 'required');
 
 provide(CanvasNodeHandleKey, {
 	label,
@@ -123,6 +125,7 @@ provide(CanvasNodeHandleKey, {
 	type,
 	index,
 	runData,
+	isRequired,
 	isConnected,
 	isConnecting,
 	isReadOnly,
