@@ -13,7 +13,7 @@ import { generateHostInstanceId } from '@/databases/utils/generators';
 import * as Db from '@/db';
 import { initErrorHandling } from '@/error-reporting';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import { TelemetryEventRelay } from '@/events/telemetry-event-relay';
+import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { initExpressionEvaluator } from '@/expression-evaluator';
 import { ExternalHooks } from '@/external-hooks';
 import { ExternalSecretsManager } from '@/external-secrets/external-secrets-manager.ee';
