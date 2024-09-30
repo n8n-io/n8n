@@ -22,7 +22,7 @@ import type { Project } from '@/databases/entities/project';
 import type { User } from '@/databases/entities/user';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import type { ExecutionPayload, IWorkflowDb, IWorkflowErrorData } from '@/interfaces';
+import type { CreateExecutionPayload, IWorkflowDb, IWorkflowErrorData } from '@/interfaces';
 import { Logger } from '@/logger';
 import { NodeTypes } from '@/node-types';
 import { SubworkflowPolicyChecker } from '@/subworkflows/subworkflow-policy-checker.service';
@@ -206,11 +206,10 @@ export class WorkflowExecutionService {
 						initialNode,
 					);
 
-					const fullExecutionData: ExecutionPayload = {
+					const fullExecutionData: CreateExecutionPayload = {
 						data: fakeExecution.data,
 						mode: fakeExecution.mode,
 						finished: false,
-						startedAt: new Date(),
 						stoppedAt: new Date(),
 						workflowData,
 						waitTill: null,

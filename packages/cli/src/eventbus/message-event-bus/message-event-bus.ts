@@ -210,7 +210,7 @@ export class MessageEventBus extends EventEmitter {
 		this.destinations[destination.getId()] = destination;
 		this.destinations[destination.getId()].startListening();
 		if (notifyWorkers) {
-			await this.orchestrationService.publish('restartEventBus');
+			await this.orchestrationService.publish('restart-event-bus');
 		}
 		return destination;
 	}
@@ -236,7 +236,7 @@ export class MessageEventBus extends EventEmitter {
 			delete this.destinations[id];
 		}
 		if (notifyWorkers) {
-			await this.orchestrationService.publish('restartEventBus');
+			await this.orchestrationService.publish('restart-event-bus');
 		}
 		return result;
 	}

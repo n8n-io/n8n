@@ -33,6 +33,7 @@ async function createPiniaWithActiveNode() {
 
 	nodeTypesStore.setNodeTypes(defaultNodeDescriptions);
 	workflowsStore.workflow = workflow;
+	workflowsStore.nodeMetadata[node.name] = { pristine: true };
 	ndvStore.activeNodeName = node.name;
 
 	await useSettingsStore().getSettings();

@@ -3,7 +3,7 @@ import type { ExecutionStatus, IRun, IWorkflowBase } from 'n8n-workflow';
 import { Container } from 'typedi';
 
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import type { ExecutionPayload, IExecutionDb } from '@/interfaces';
+import type { IExecutionDb, UpdateExecutionPayload } from '@/interfaces';
 import { Logger } from '@/logger';
 import { ExecutionMetadataService } from '@/services/execution-metadata.service';
 import { isWorkflowIdValid } from '@/utils';
@@ -46,7 +46,7 @@ export function prepareExecutionDataForDbUpdate(parameters: {
 		'pinData',
 	]);
 
-	const fullExecutionData: ExecutionPayload = {
+	const fullExecutionData: UpdateExecutionPayload = {
 		data: runData.data,
 		mode: runData.mode,
 		finished: runData.finished ? runData.finished : false,

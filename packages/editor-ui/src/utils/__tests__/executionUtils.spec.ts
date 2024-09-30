@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { displayForm, openPopUpWindow } from '../executionUtils';
+import { displayForm, openPopUpWindow, executionFilterToQueryFilter } from '../executionUtils';
 import type { INode, IRunData, IPinData } from 'n8n-workflow';
 
 const FORM_TRIGGER_NODE_TYPE = 'formTrigger';
@@ -124,5 +124,13 @@ describe('displayForm', () => {
 		});
 
 		expect(openPopUpWindow).not.toHaveBeenCalled();
+	});
+
+	describe('executionFilterToQueryFilter()', () => {
+		it('adds "new" to the filter', () => {
+			expect(executionFilterToQueryFilter({ status: 'new' }).status).toStrictEqual(
+				expect.arrayContaining(['new']),
+			);
+		});
 	});
 });
