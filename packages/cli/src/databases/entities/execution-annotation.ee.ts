@@ -12,8 +12,8 @@ import {
 } from '@n8n/typeorm';
 import type { AnnotationVote } from 'n8n-workflow';
 
-import type { AnnotationTagEntity } from './annotation-tag-entity';
-import type { AnnotationTagMapping } from './annotation-tag-mapping';
+import type { AnnotationTagEntity } from './annotation-tag-entity.ee';
+import type { AnnotationTagMapping } from './annotation-tag-mapping.ee';
 import { ExecutionEntity } from './execution-entity';
 
 @Entity({ name: 'execution_annotations' })

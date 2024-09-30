@@ -3,10 +3,9 @@ import { Service } from 'typedi';
 
 import { Redactable } from '@/decorators/redactable';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import { EventRelay } from '@/events/event-relay';
-import type { RelayEventMap } from '@/events/relay-event-map';
-
-import { EventService } from './event.service';
+import { EventService } from '@/events/event.service';
+import type { RelayEventMap } from '@/events/maps/relay.event-map';
+import { EventRelay } from '@/events/relays/event-relay';
 
 @Service()
 export class LogStreamingEventRelay extends EventRelay {

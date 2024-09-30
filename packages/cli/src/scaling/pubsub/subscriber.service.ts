@@ -5,7 +5,7 @@ import config from '@/config';
 import { Logger } from '@/logger';
 import { RedisClientService } from '@/services/redis-client.service';
 
-import type { PubSubHandlerFn, PubSubChannel } from './pubsub.types';
+import type { PubSub } from './pubsub.types';
 
 /**
  * Responsible for subscribing to the pubsub channels used by scaling mode.
@@ -14,7 +14,7 @@ import type { PubSubHandlerFn, PubSubChannel } from './pubsub.types';
 export class Subscriber {
 	private readonly client: SingleNodeClient | MultiNodeClient;
 
-	private readonly handlers: Map<PubSubChannel, PubSubHandlerFn> = new Map();
+	private readonly handlers: Map<PubSub.Channel, PubSub.HandlerFn> = new Map();
 
 	// #region Lifecycle
 
@@ -29,7 +29,7 @@ export class Subscriber {
 
 		this.client.on('error', (error) => this.logger.error(error.message));
 
-		this.client.on('message', (channel: PubSubChannel, message) => {
+		this.client.on('message', (channel: PubSub.Channel, message) => {
 			this.handlers.get(channel)?.(message);
 		});
 	}
@@ -47,7 +47,7 @@ export class Subscriber {
 
 	// #region Subscribing
 
-	async subscribe(channel: PubSubChannel) {
+	async subscribe(channel: PubSub.Channel) {
 		await this.client.subscribe(channel, (error) => {
 			if (error) {
 				this.logger.error('Failed to subscribe to channel', { channel, cause: error });
@@ -59,7 +59,7 @@ export class Subscriber {
 	}
 
 	/** Set the message handler function for a channel. */
-	setMessageHandler(channel: PubSubChannel, handlerFn: PubSubHandlerFn) {
+	setMessageHandler(channel: PubSub.Channel, handlerFn: PubSub.HandlerFn) {
 		this.handlers.set(channel, handlerFn);
 	}
 
