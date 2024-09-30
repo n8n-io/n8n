@@ -202,11 +202,11 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 	private registerListeners() {
 		const { maxTimeout: maxTimeoutMs, retryInterval: retryIntervalMs } = this.config;
 
-		const retryInterval = Math.round(retryIntervalMs / 1000) + 's';
-		const maxTimeout = Math.round(maxTimeoutMs / 1000) + 's';
+		const retryInterval = this.formatTimeout(retryIntervalMs);
+		const maxTimeout = this.formatTimeout(maxTimeoutMs);
 
 		this.on('connection-lost', (cumulativeTimeoutMs) => {
-			const cumulativeTimeout = Math.round(cumulativeTimeoutMs / 1000) + 's';
+			const cumulativeTimeout = this.formatTimeout(cumulativeTimeoutMs);
 			const reconnectionMsg = `Trying to reconnect in ${retryInterval}...`;
 			const timeoutDetails = `${cumulativeTimeout}/${maxTimeout}`;
 
@@ -218,5 +218,12 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 		this.on('connection-recovered', () => {
 			this.logger.info('Recovered Redis connection');
 		});
+	}
+
+	private formatTimeout(timeoutMs: number) {
+		const timeoutSeconds = timeoutMs / 1000;
+		const roundedTimeout = Math.round(timeoutSeconds * 10) / 10;
+
+		return roundedTimeout + 's';
 	}
 }
