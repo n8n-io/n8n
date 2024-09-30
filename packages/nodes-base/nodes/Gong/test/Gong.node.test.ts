@@ -409,7 +409,7 @@ describe('Gong Node', () => {
 				},
 			},
 			{
-				description: 'should get all calls',
+				description: 'should get all calls with filters',
 				input: {
 					workflowData: {
 						nodes: [
@@ -505,7 +505,6 @@ describe('Gong Node', () => {
 									{
 										metaData: {
 											...gongApiResponse.postCallsExtensive.calls[0].metaData,
-											id: '3662366901393371750',
 										},
 									},
 								],
@@ -541,10 +540,84 @@ describe('Gong Node', () => {
 									{
 										metaData: {
 											...gongApiResponse.postCallsExtensive.calls[0].metaData,
-											id: '3662366901393371751',
+											id: '7782342274025937896',
+											url: 'https://app.gong.io/call?id=7782342274025937896',
 										},
 									},
 								],
+							},
+						},
+					],
+				},
+			},
+			{
+				description: 'should get limit 50 calls with no options and filters',
+				input: {
+					workflowData: {
+						nodes: [
+							{
+								parameters: {},
+								id: '416e4fc1-5055-4e61-854e-a6265256ac26',
+								name: "When clicking 'Test workflow'",
+								type: 'n8n-nodes-base.manualTrigger',
+								position: [820, 380],
+								typeVersion: 1,
+							},
+							{
+								parameters: {
+									filters: {},
+									options: {},
+									requestOptions: {},
+								},
+								id: 'c87d72ec-0683-4e32-9829-5e6ea1d1ee7d',
+								name: 'Gong',
+								type: 'n8n-nodes-base.gong',
+								typeVersion: 1,
+								position: [1040, 380],
+								credentials: {
+									gongApi: {
+										id: '1',
+										name: 'Gong account',
+									},
+								},
+							},
+						],
+						connections: {
+							"When clicking 'Test workflow'": {
+								main: [
+									[
+										{
+											node: 'Gong',
+											type: NodeConnectionType.Main,
+											index: 0,
+										},
+									],
+								],
+							},
+						},
+					},
+				},
+				output: {
+					nodeExecutionOrder: ['Start'],
+					nodeData: {
+						Gong: [Array.from({ length: 50 }, () => ({ ...gongNodeResponse.getAllCall[0] }))],
+					},
+				},
+				nock: {
+					baseUrl,
+					mocks: [
+						{
+							method: 'post',
+							path: '/v2/calls/extensive',
+							statusCode: 200,
+							requestBody: {
+								filter: {},
+							},
+							responseBody: {
+								...gongApiResponse.postCallsExtensive,
+								calls: Array.from({ length: 100 }, () => ({
+									metaData: { ...gongApiResponse.postCallsExtensive.calls[0].metaData },
+								})),
 							},
 						},
 					],

@@ -53,11 +53,11 @@ export const callOperations: INodeProperties[] = [
 								data: INodeExecutionData[],
 								response: IN8nHttpFullResponse,
 							): Promise<INodeExecutionData[]> {
-								const userId = this.getNodeParameter(
+								const primaryUserId = this.getNodeParameter(
 									'filters.primaryUserIds',
-									undefined,
+									null,
 								) as IDataObject;
-								if (userId && response.statusCode === 404) {
+								if (primaryUserId && response.statusCode === 404) {
 									return [{ json: { success: true } }];
 								}
 								return data;
