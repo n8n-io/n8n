@@ -118,6 +118,7 @@ export class TaskRunnerService {
 
 	removeConnection(id: TaskRunner['id']) {
 		if (id in this.runnerConnections) {
+			this.taskBroker.deregisterRunner(id);
 			this.runnerConnections[id].close();
 			delete this.runnerConnections[id];
 		}
