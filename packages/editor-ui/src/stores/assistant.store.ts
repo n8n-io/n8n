@@ -408,7 +408,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		const activeNode = workflowsStore.activeNode() as INode;
 		const { authType, nodeInputData, schemas } = getNodeInfoForAssistant(activeNode);
 
-		if (authType) {
+		if (authType && chatSessionTask.value === 'credentials') {
 			userMessage += ` I am using ${authType.name}.`;
 		}
 
