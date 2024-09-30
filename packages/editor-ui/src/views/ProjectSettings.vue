@@ -17,6 +17,7 @@ import { useRolesStore } from '@/stores/roles.store';
 import type { ProjectRole } from '@/types/roles.types';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
 
 type FormDataDiff = {
 	name?: string;
@@ -33,6 +34,7 @@ const cloudPlanStore = useCloudPlanStore();
 const toast = useToast();
 const router = useRouter();
 const telemetry = useTelemetry();
+const documentTitle = useDocumentTitle();
 const dialogVisible = ref(false);
 const upgradeDialogVisible = ref(false);
 
@@ -250,6 +252,7 @@ onBeforeMount(async () => {
 });
 
 onMounted(() => {
+	documentTitle.set(locale.baseText('projects.settings'));
 	selectProjectNameIfMatchesDefault();
 });
 </script>

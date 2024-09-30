@@ -46,7 +46,7 @@ import { useGlobalLinkActions } from '@/composables/useGlobalLinkActions';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import useCanvasMouseSelect from '@/composables/useCanvasMouseSelect';
 import { useExecutionDebugging } from '@/composables/useExecutionDebugging';
-import { useTitleChange } from '@/composables/useTitleChange';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useDataSchema } from '@/composables/useDataSchema';
 import { type ContextMenuAction, useContextMenu } from '@/composables/useContextMenu';
 import { useUniqueNodeName } from '@/composables/useUniqueNodeName';
@@ -258,7 +258,7 @@ export default defineComponent({
 			callDebounced,
 			...useCanvasMouseSelect(),
 			...useGlobalLinkActions(),
-			...useTitleChange(),
+			documentTitle: useDocumentTitle(),
 			...useToast(),
 			...useMessage(),
 			...useUniqueNodeName(),
@@ -591,7 +591,7 @@ export default defineComponent({
 			return;
 		}
 		this.canvasStore.initInstance(this.nodeViewRef);
-		this.titleReset();
+		this.documentTitle.reset();
 
 		window.addEventListener('message', this.onPostMessageReceived);
 
@@ -1719,7 +1719,7 @@ export default defineComponent({
 					this.workflowsStore.executingNode.length = 0;
 					this.uiStore.removeActiveAction('workflowRunning');
 
-					this.titleSet(this.workflowsStore.workflowName, 'IDLE');
+					this.workflowHelpers.setDocumentTitle(this.workflowsStore.workflowName, 'IDLE');
 					this.showMessage({
 						title: this.$locale.baseText('nodeView.showMessage.stopExecutionCatch.unsaved.title'),
 						message: this.$locale.baseText(
@@ -1743,7 +1743,7 @@ export default defineComponent({
 						retryOf: execution.retryOf,
 					};
 					this.workflowsStore.finishActiveExecution(pushData);
-					this.titleSet(execution.workflowData.name, 'IDLE');
+					this.workflowHelpers.setDocumentTitle(execution.workflowData.name, 'IDLE');
 					this.workflowsStore.executingNode.length = 0;
 					this.workflowsStore.setWorkflowExecutionData(executedData as IExecutionResponse);
 					this.uiStore.removeActiveAction('workflowRunning');
@@ -3410,7 +3410,7 @@ export default defineComponent({
 					}
 
 					if (workflow) {
-						this.titleSet(workflow.name, 'IDLE');
+						this.workflowHelpers.setDocumentTitle(workflow.name, 'IDLE');
 						await this.openWorkflow(workflow);
 						await this.checkAndInitDebugMode();
 
@@ -4371,7 +4371,7 @@ export default defineComponent({
 		},
 		async checkAndInitDebugMode() {
 			if (this.$route.name === VIEWS.EXECUTION_DEBUG) {
-				this.titleSet(this.workflowName, 'DEBUG');
+				this.workflowHelpers.setDocumentTitle(this.workflowName, 'DEBUG');
 				if (!this.workflowsStore.isInDebugMode) {
 					await this.applyExecutionData(this.$route.params.executionId as string);
 					this.workflowsStore.isInDebugMode = true;
@@ -4444,7 +4444,7 @@ export default defineComponent({
 					const workflow: IWorkflowDb | undefined =
 						await this.workflowsStore.fetchWorkflow(workflowId);
 					if (workflow) {
-						this.titleSet(workflow.name, 'IDLE');
+						this.workflowHelpers.setDocumentTitle(workflow.name, 'IDLE');
 						await this.openWorkflow(workflow);
 					}
 				}

@@ -52,6 +52,7 @@ vi.mock('@/composables/useWorkflowHelpers', () => ({
 		getCurrentWorkflow: vi.fn(),
 		saveCurrentWorkflow: vi.fn(),
 		getWorkflowDataToSave: vi.fn(),
+		setDocumentTitle: vi.fn(),
 	}),
 }));
 
@@ -59,10 +60,6 @@ vi.mock('@/composables/useNodeHelpers', () => ({
 	useNodeHelpers: vi.fn().mockReturnValue({
 		updateNodesExecutionIssues: vi.fn(),
 	}),
-}));
-
-vi.mock('@/composables/useTitleChange', () => ({
-	useTitleChange: vi.fn().mockReturnValue({ titleSet: vi.fn() }),
 }));
 
 vi.mock('vue-router', async (importOriginal) => {
