@@ -2,14 +2,13 @@
 import { computed, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import type { IExecutionUIData } from '@/composables/useExecutionHelpers';
-import { EnterpriseEditionFeature, EXECUTION_ANNOTATION_EXPERIMENT, VIEWS } from '@/constants';
+import { EnterpriseEditionFeature, VIEWS } from '@/constants';
 import ExecutionsTime from '@/components/executions/ExecutionsTime.vue';
 import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useI18n } from '@/composables/useI18n';
 import type { PermissionsRecord } from '@/permissions';
-import { usePostHog } from '@/stores/posthog.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { toDayMonth, toTime } from '@/utils/formatters/dateFormatter';
 
@@ -30,16 +29,10 @@ const locale = useI18n();
 
 const executionHelpers = useExecutionHelpers();
 const workflowsStore = useWorkflowsStore();
-const posthogStore = usePostHog();
 const settingsStore = useSettingsStore();
 
 const isAdvancedExecutionFilterEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedExecutionFilters],
-);
-const isAnnotationEnabled = computed(
-	() =>
-		isAdvancedExecutionFilterEnabled.value &&
-		posthogStore.isFeatureEnabled(EXECUTION_ANNOTATION_EXPERIMENT),
 );
 
 const currentWorkflow = computed(() => (route.params.name as string) || workflowsStore.workflowId);
@@ -143,7 +136,7 @@ function onRetryMenuItemSelect(action: string): void {
 						{{ locale.baseText('executionDetails.retry') }} #{{ execution.retryOf }}
 					</N8nText>
 				</div>
-				<div v-if="isAnnotationEnabled" :class="$style.annotation">
+				<div v-if="isAdvancedExecutionFilterEnabled" :class="$style.annotation">
 					<div v-if="execution.annotation?.vote" :class="$style.ratingIcon">
 						<FontAwesomeIcon
 							v-if="execution.annotation.vote == 'up'"
