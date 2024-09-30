@@ -1,20 +1,16 @@
 import { useSettingsStore } from '@/stores/settings.store';
 
-interface Options {
-	useDefaultPrefix?: boolean;
-}
-
 const DEFAULT_TITLE = 'Workflow Automation';
 
-export function useDocumentTitle({ useDefaultPrefix }: Options = { useDefaultPrefix: true }) {
+export function useDocumentTitle() {
 	const settingsStore = useSettingsStore();
 	const { releaseChannel } = settingsStore.settings;
-	const defaultPrefix =
-		!releaseChannel || releaseChannel === 'stable' ? 'n8n' : `[${releaseChannel.toUpperCase()}]`;
+	const suffix =
+		!releaseChannel || releaseChannel === 'stable' ? 'n8n' : `n8n[${releaseChannel.toUpperCase()}]`;
 
 	const set = (title: string) => {
-		const prefix = useDefaultPrefix ? `${defaultPrefix} - ` : '';
-		document.title = prefix + (title || DEFAULT_TITLE);
+		const sections = [title || DEFAULT_TITLE, suffix];
+		document.title = sections.join(' - ');
 	};
 
 	const reset = () => {

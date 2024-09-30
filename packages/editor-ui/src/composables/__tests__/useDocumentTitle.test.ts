@@ -12,26 +12,20 @@ describe('useDocumentTitle', () => {
 	it('should set the document title', () => {
 		const { set } = useDocumentTitle();
 		set('Test Title');
-		expect(document.title).toBe('n8n - Test Title');
+		expect(document.title).toBe('Test Title - n8n');
 	});
 
 	it('should reset the document title', () => {
 		const { set, reset } = useDocumentTitle();
 		set('Test Title');
 		reset();
-		expect(document.title).toBe('n8n - Workflow Automation');
-	});
-
-	it('should not use the default prefix if useDefaultPrefix is false', () => {
-		const { set } = useDocumentTitle({ useDefaultPrefix: false });
-		set('Test Title');
-		expect(document.title).toBe('Test Title');
+		expect(document.title).toBe('Workflow Automation - n8n');
 	});
 
 	it('should use the correct prefix for the release channel', () => {
 		settings.releaseChannel = 'beta';
 		const { set } = useDocumentTitle();
 		set('Test Title');
-		expect(document.title).toBe('[BETA] - Test Title');
+		expect(document.title).toBe('Test Title - n8n[BETA]');
 	});
 });
