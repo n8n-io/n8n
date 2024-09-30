@@ -27,8 +27,6 @@ export class Subscriber {
 
 		this.client = this.redisClientService.createClient({ type: 'subscriber(n8n)' });
 
-		this.client.on('error', (error) => this.logger.error(error.message));
-
 		this.client.on('message', (channel: PubSub.Channel, message) => {
 			this.handlers.get(channel)?.(message);
 		});
