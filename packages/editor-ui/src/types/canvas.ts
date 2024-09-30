@@ -185,3 +185,10 @@ export type ExecutionOutputMap = {
 		[outputIndex: string]: ExecutionOutputMapData;
 	};
 };
+
+export type BoundingBox = {
+	x: number;
+	y: number;
+	width: number;
+	height: number;
+};
