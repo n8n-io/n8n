@@ -4,7 +4,7 @@ import {
 	UserUpdateRequestDto,
 } from '@n8n/api-types';
 import { plainToInstance } from 'class-transformer';
-import { type RequestHandler, Response } from 'express';
+import { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
 import type { User } from '@/databases/entities/user';
