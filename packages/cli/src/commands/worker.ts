@@ -6,7 +6,7 @@ import config from '@/config';
 import { N8N_VERSION, inTest } from '@/constants';
 import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import { LogStreamingEventRelay } from '@/events/log-streaming-event-relay';
+import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
 import { JobProcessor } from '@/scaling/job-processor';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { ScalingService } from '@/scaling/scaling.service';

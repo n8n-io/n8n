@@ -21,7 +21,7 @@ import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { ControllerRegistry } from '@/decorators';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventService } from '@/events/event.service';
-import { LogStreamingEventRelay } from '@/events/log-streaming-event-relay';
+import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
 import type { ICredentialsOverwrite } from '@/interfaces';
 import { isLdapEnabled } from '@/ldap/helpers.ee';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
