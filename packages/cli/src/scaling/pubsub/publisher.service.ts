@@ -24,8 +24,6 @@ export class Publisher {
 		if (config.getEnv('executions.mode') !== 'queue') return;
 
 		this.client = this.redisClientService.createClient({ type: 'publisher(n8n)' });
-
-		this.client.on('error', (error) => this.logger.error(error.message));
 	}
 
 	getClient() {

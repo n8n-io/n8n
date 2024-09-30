@@ -173,38 +173,10 @@ export class ScalingService {
 	// #region Listeners
 
 	private registerListeners() {
-		let latestAttemptTs = 0;
-		let cumulativeTimeoutMs = 0;
-
-		const MAX_TIMEOUT_MS = this.globalConfig.queue.bull.redis.timeoutThreshold;
-		const RESET_LENGTH_MS = 30_000;
-
 		this.queue.on('error', (error: Error) => {
+			if ('code' in error && error.code === 'ECONNREFUSED') return; // handled by RedisClientService.retryStrategy
+
 			this.logger.error('[ScalingService] Queue errored', { error });
-
-			/**
-			 * On Redis connection failure, try to reconnect. On every failed attempt,
-			 * increment a cumulative timeout - if this exceeds a limit, exit the
-			 * process. Reset the cumulative timeout if >30s between retries.
-			 */
-			if (error.message.includes('ECONNREFUSED')) {
-				const nowTs = Date.now();
-				if (nowTs - latestAttemptTs > RESET_LENGTH_MS) {
-					latestAttemptTs = nowTs;
-					cumulativeTimeoutMs = 0;
-				} else {
-					cumulativeTimeoutMs += nowTs - latestAttemptTs;
-					latestAttemptTs = nowTs;
-					if (cumulativeTimeoutMs > MAX_TIMEOUT_MS) {
-						this.logger.error('[ScalingService] Redis unavailable after max timeout');
-						this.logger.error('[ScalingService] Exiting process...');
-						process.exit(1);
-					}
-				}
-
-				this.logger.warn('[ScalingService] Redis unavailable - retrying to connect...');
-				return;
-			}
 
 			throw error;
 		});
