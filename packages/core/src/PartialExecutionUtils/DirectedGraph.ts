@@ -67,6 +67,54 @@ export class DirectedGraph {
 		return this;
 	}
 
+	removeNode(node: INode, options?: { reconnectConnections: true }): GraphConnection[];
+	removeNode(node: INode, options?: { reconnectConnections: false }): undefined;
+	removeNode(node: INode, { reconnectConnections = false } = {}): undefined | GraphConnection[] {
+		if (reconnectConnections) {
+			const incomingConnections = this.getDirectParents(node);
+			const outgoingConnections = this.getDirectChildren(node);
+
+			const newConnections: GraphConnection[] = [];
+
+			for (const incomingConnection of incomingConnections) {
+				for (const outgoingConnection of outgoingConnections) {
+					const newConnection = {
+						...incomingConnection,
+						to: outgoingConnection.to,
+						inputIndex: outgoingConnection.inputIndex,
+						//outputIndex: outgoingConnection.outputIndex,
+					};
+
+					newConnections.push(newConnection);
+				}
+			}
+
+			for (const [key, connection] of this.connections.entries()) {
+				if (connection.to === node || connection.from === node) {
+					this.connections.delete(key);
+				}
+			}
+
+			for (const newConnection of newConnections) {
+				this.connections.set(this.makeKey(newConnection), newConnection);
+			}
+
+			this.nodes.delete(node.name);
+
+			return newConnections;
+		} else {
+			for (const [key, connection] of this.connections.entries()) {
+				if (connection.to === node || connection.from === node) {
+					this.connections.delete(key);
+				}
+			}
+
+			this.nodes.delete(node.name);
+
+			return;
+		}
+	}
+
 	addConnection(connectionInput: {
 		from: INode;
 		to: INode;
