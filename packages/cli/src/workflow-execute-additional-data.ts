@@ -40,6 +40,7 @@ import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
 import { CredentialsHelper } from '@/credentials-helper';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import type { AiEventMap, AiEventPayload } from '@/events/maps/ai.event-map';
 import { ExternalHooks } from '@/external-hooks';
 import type {
 	IWorkflowExecuteProcess,
@@ -53,7 +54,6 @@ import { findSubworkflowStart, isWorkflowIdValid } from '@/utils';
 import * as WorkflowHelpers from '@/workflow-helpers';
 
 import { WorkflowRepository } from './databases/repositories/workflow.repository';
-import type { AiEventMap, AiEventPayload } from './events/ai-event-map';
 import { EventService } from './events/event.service';
 import { restoreBinaryDataId } from './execution-lifecycle-hooks/restore-binary-data-id';
 import { saveExecutionProgress } from './execution-lifecycle-hooks/save-execution-progress';
