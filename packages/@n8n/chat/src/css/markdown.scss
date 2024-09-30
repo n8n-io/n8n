@@ -1,9 +1,9 @@
-@use "sass:meta";
+@use 'sass:meta';
 
-@include meta.load-css("highlight.js/styles/github.css");
+@include meta.load-css('highlight.js/styles/github.css');
 
-body[data-theme="dark"] {
-	@include meta.load-css("highlight.js/styles/github-dark-dimmed.css");
+body[data-theme='dark'] {
+	@include meta.load-css('highlight.js/styles/github-dark-dimmed.css');
 }
 
 // https://github.com/pxlrbt/markdown-css
