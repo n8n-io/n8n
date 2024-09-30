@@ -67,6 +67,16 @@ export class DirectedGraph {
 		return this;
 	}
 
+	/**
+	 * Removes a node from the graph.
+	 *
+	 * By default it will also remove all connections that use that node and
+	 * return nothing.
+	 *
+	 * If you pass `{ reconnectConnections: true }` it will rewire all
+	 * connections making sure all parent nodes are connected to all child nodes
+	 * and return the new connections.
+	 */
 	removeNode(node: INode, options?: { reconnectConnections: true }): GraphConnection[];
 	removeNode(node: INode, options?: { reconnectConnections: false }): undefined;
 	removeNode(node: INode, { reconnectConnections = false } = {}): undefined | GraphConnection[] {
