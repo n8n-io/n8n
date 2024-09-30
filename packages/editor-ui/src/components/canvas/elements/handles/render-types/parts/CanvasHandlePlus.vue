@@ -7,14 +7,14 @@ const props = withDefaults(
 		handleClasses?: string;
 		plusSize?: number;
 		lineSize?: number;
-		status?: 'success' | 'ai' | 'default';
+		type?: 'success' | 'ai' | 'default';
 	}>(),
 	{
 		position: 'right',
 		handleClasses: undefined,
 		plusSize: 24,
 		lineSize: 46,
-		status: 'default',
+		type: 'default',
 	},
 );
 
@@ -27,7 +27,7 @@ const style = useCssModule();
 const classes = computed(() => [
 	style.wrapper,
 	style[props.position],
-	style[props.status],
+	style[props.type],
 	props.handleClasses,
 ]);
 
