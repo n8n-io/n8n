@@ -1,3 +1,4 @@
+import * as a from 'assert/strict';
 import {
 	NodeConnectionType,
 	type IExecuteData,
@@ -11,7 +12,6 @@ import {
 	type IWaitingForExecutionSource,
 } from 'n8n-workflow';
 
-import * as a from 'assert/strict';
 import type { DirectedGraph } from './DirectedGraph';
 import { getIncomingData } from './getIncomingData';
 import { getSourceDataGroups } from './getSourceDataGroups';
