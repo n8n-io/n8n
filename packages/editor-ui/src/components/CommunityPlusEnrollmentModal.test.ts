@@ -74,6 +74,7 @@ describe('CommunityPlusEnrollmentModal', () => {
 			title: 'Title',
 			message: 'Text',
 			type: 'success',
+			duration: 0,
 		});
 		expect(closeCallbackSpy).toHaveBeenCalled();
 	});
