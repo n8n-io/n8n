@@ -14,19 +14,23 @@ import { CanvasNodeHandleKey } from '@/constants';
 import { createCanvasConnectionHandleString } from '@/utils/canvasUtilsV2';
 import { useCanvasNode } from '@/composables/useCanvasNode';
 
-const props = defineProps<{
-	mode: CanvasConnectionMode;
-	isConnected?: boolean;
-	isConnecting?: boolean;
-	isReadOnly?: boolean;
-	label?: string;
-	required?: boolean;
-	type: CanvasConnectionPort['type'];
-	index: CanvasConnectionPort['index'];
-	position: CanvasElementPortWithRenderData['position'];
-	offset: CanvasElementPortWithRenderData['offset'];
-	isValidConnection: ValidConnectionFunc;
-}>();
+const props = defineProps<
+	CanvasElementPortWithRenderData & {
+		type: CanvasConnectionPort['type'];
+		required?: CanvasConnectionPort['required'];
+		maxConnections?: CanvasConnectionPort['maxConnections'];
+		index: CanvasConnectionPort['index'];
+		label?: CanvasConnectionPort['label'];
+		handleId: CanvasElementPortWithRenderData['handleId'];
+		connectionsCount: CanvasElementPortWithRenderData['connectionsCount'];
+		isConnecting: CanvasElementPortWithRenderData['isConnecting'];
+		position: CanvasElementPortWithRenderData['position'];
+		offset?: CanvasElementPortWithRenderData['offset'];
+		mode: CanvasConnectionMode;
+		isReadOnly?: boolean;
+		isValidConnection: ValidConnectionFunc;
+	}
+>();
 
 const emit = defineEmits<{
 	add: [handle: string];
@@ -50,15 +54,29 @@ const handleString = computed(() =>
 	}),
 );
 
+const handleClasses = computed(() => [style.handle, style[props.type], style[props.mode]]);
+
+/**
+ * Connectable
+ */
+
+const connectionsLimitReached = computed(() => {
+	return props.maxConnections && props.connectionsCount >= props.maxConnections;
+});
+
 const isConnectableStart = computed(() => {
+	if (connectionsLimitReached.value) return false;
+
 	return props.mode === CanvasConnectionMode.Output || props.type !== NodeConnectionType.Main;
 });
 
 const isConnectableEnd = computed(() => {
+	if (connectionsLimitReached.value) return false;
+
 	return props.mode === CanvasConnectionMode.Input || props.type !== NodeConnectionType.Main;
 });
 
-const handleClasses = computed(() => [style.handle, style[props.type], style[props.mode]]);
+const isConnected = computed(() => props.connectionsCount > 0);
 
 /**
  * Run data
@@ -111,7 +129,6 @@ function onAdd() {
  */
 
 const label = toRef(props, 'label');
-const isConnected = toRef(props, 'isConnected');
 const isConnecting = toRef(props, 'isConnecting');
 const isReadOnly = toRef(props, 'isReadOnly');
 const mode = toRef(props, 'mode');
