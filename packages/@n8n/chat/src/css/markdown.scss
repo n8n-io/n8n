@@ -2,8 +2,18 @@
 
 @include meta.load-css('highlight.js/styles/github.css');
 
-body[data-theme='dark'] {
+@mixin hljs-dark-theme {
 	@include meta.load-css('highlight.js/styles/github-dark-dimmed.css');
+}
+
+body {
+	&[data-theme='dark'] {
+		@include hljs-dark-theme;
+	}
+
+	@media (prefers-color-scheme: dark) {
+		@include hljs-dark-theme;
+	}
 }
 
 // https://github.com/pxlrbt/markdown-css
