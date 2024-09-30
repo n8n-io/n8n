@@ -1,5 +1,5 @@
-import type { AxiosError } from 'axios';
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
+import { ensureError } from 'n8n-workflow';
 import { Service } from 'typedi';
 
 import type { User } from '@/databases/entities/user';
@@ -83,13 +83,13 @@ export class LicenseService {
 				},
 			);
 			return data;
-		} catch (error: unknown) {
-			if (error instanceof Error) {
-				const errorMsg =
-					(error as AxiosError<{ message: string }>).response?.data?.message ?? error.message;
-
-				throw new BadRequestError(errorMsg);
+		} catch (e: unknown) {
+			if (e instanceof AxiosError) {
+				const error = e as AxiosError<{ message: string }>;
+				const errorMsg = error.response?.data?.message ?? e.message;
+				throw new BadRequestError('Failed to register community edition: ' + errorMsg);
 			} else {
+				this.logger.error('Failed to register community edition', { error: ensureError(e) });
 				throw new BadRequestError('Failed to register community edition');
 			}
 		}

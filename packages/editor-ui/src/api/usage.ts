@@ -26,5 +26,10 @@ export const registerCommunityEdition = async (
 	context: IRestApiContext,
 	data: { email: string },
 ): Promise<{ title: string; text: string }> => {
-	return await makeRestApiRequest(context, 'POST', '/license/enterprise/community-register', data);
+	return await makeRestApiRequest(
+		context,
+		'POST',
+		'/license/enterprise/community-registered',
+		data,
+	);
 };
