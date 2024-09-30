@@ -1,4 +1,4 @@
-import type { INodeTypeDescription } from 'n8n-workflow';
+import { NodeConnectionType, type INodeTypeDescription } from 'n8n-workflow';
 import * as row from './row';
 import * as base from './base';
 import * as link from './link';
@@ -15,8 +15,8 @@ export const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'SeaTable',
 	},
-	inputs: ['main'],
-	outputs: ['main'],
+	inputs: [NodeConnectionType.Main],
+	outputs: [NodeConnectionType.Main],
 	credentials: [
 		{
 			name: 'seaTableApi',

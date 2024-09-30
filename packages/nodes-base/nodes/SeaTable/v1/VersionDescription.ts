@@ -1,5 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import type { INodeTypeDescription } from 'n8n-workflow';
+import { NodeConnectionType, type INodeTypeDescription } from 'n8n-workflow';
 import { rowFields, rowOperations } from './RowDescription';
 
 export const versionDescription: INodeTypeDescription = {
@@ -13,8 +13,8 @@ export const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'SeaTable',
 	},
-	inputs: ['main'],
-	outputs: ['main'],
+	inputs: [NodeConnectionType.Main],
+	outputs: [NodeConnectionType.Main],
 	credentials: [
 		{
 			name: 'seaTableApi',
