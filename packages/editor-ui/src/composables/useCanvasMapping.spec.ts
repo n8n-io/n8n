@@ -543,6 +543,141 @@ describe('useCanvasMapping', () => {
 				});
 			});
 		});
+
+		describe('additionalNodePropertiesById', () => {
+			it('should return empty object when there are no sticky nodes', () => {
+				const nodes = ref([]);
+				const connections = {};
+				const workflowObject = createTestWorkflowObject();
+				const { additionalNodePropertiesById } = useCanvasMapping({
+					nodes: ref(nodes),
+					connections: ref(connections),
+					workflowObject: ref(workflowObject) as Ref<Workflow>,
+				});
+				expect(additionalNodePropertiesById.value).toEqual({});
+			});
+
+			it('should calculate zIndex correctly for a single sticky node', () => {
+				const nodes = [
+					createTestNode({
+						id: '1',
+						type: STICKY_NODE_TYPE,
+						position: [0, 0],
+						parameters: { width: 100, height: 100 },
+					}),
+				];
+				const connections = {};
+				const workflowObject = createTestWorkflowObject();
+				const { additionalNodePropertiesById } = useCanvasMapping({
+					nodes: ref(nodes),
+					connections: ref(connections),
+					workflowObject: ref(workflowObject) as Ref<Workflow>,
+				});
+				expect(additionalNodePropertiesById.value[nodes[0].id]).toEqual({
+					style: { zIndex: -100 },
+				});
+			});
+
+			it('should calculate zIndex correctly for multiple sticky nodes with no overlap', () => {
+				const nodes = [
+					createTestNode({
+						id: '1',
+						type: STICKY_NODE_TYPE,
+						position: [0, 0],
+						parameters: { width: 100, height: 100 },
+					}),
+					createTestNode({
+						id: '2',
+						type: STICKY_NODE_TYPE,
+						position: [200, 200],
+						parameters: { width: 100, height: 100 },
+					}),
+				];
+				const connections = {};
+				const workflowObject = createTestWorkflowObject();
+				const { additionalNodePropertiesById } = useCanvasMapping({
+					nodes: ref(nodes),
+					connections: ref(connections),
+					workflowObject: ref(workflowObject) as Ref<Workflow>,
+				});
+
+				expect(additionalNodePropertiesById.value[nodes[0].id]).toEqual({
+					style: { zIndex: -100 },
+				});
+				expect(additionalNodePropertiesById.value[nodes[1].id]).toEqual({ style: { zIndex: -99 } });
+			});
+
+			it('should calculate zIndex correctly for overlapping sticky nodes', () => {
+				const nodes = [
+					createTestNode({
+						id: '1',
+						type: STICKY_NODE_TYPE,
+						position: [50, 50],
+						parameters: { width: 100, height: 100 },
+					}),
+					createTestNode({
+						id: '2',
+						type: STICKY_NODE_TYPE,
+						position: [0, 0],
+						parameters: { width: 150, height: 150 },
+					}),
+				];
+				const connections = {};
+				const workflowObject = createTestWorkflowObject();
+				const { additionalNodePropertiesById } = useCanvasMapping({
+					nodes: ref(nodes),
+					connections: ref(connections),
+					workflowObject: ref(workflowObject) as Ref<Workflow>,
+				});
+
+				expect(additionalNodePropertiesById.value[nodes[0].id]).toEqual({
+					style: { zIndex: -99 },
+				});
+				expect(additionalNodePropertiesById.value[nodes[1].id]).toEqual({
+					style: { zIndex: -100 },
+				});
+			});
+
+			it('calculates zIndex correctly for multiple overlapping sticky nodes', () => {
+				const nodes = [
+					createTestNode({
+						id: '1',
+						type: STICKY_NODE_TYPE,
+						position: [0, 0],
+						parameters: { width: 100, height: 100 },
+					}),
+					createTestNode({
+						id: '2',
+						type: STICKY_NODE_TYPE,
+						position: [25, 25],
+						parameters: { width: 50, height: 50 },
+					}),
+					createTestNode({
+						id: '3',
+						type: STICKY_NODE_TYPE,
+						position: [50, 50],
+						parameters: { width: 100, height: 100 },
+					}),
+				];
+				const connections = {};
+				const workflowObject = createTestWorkflowObject();
+				const { additionalNodePropertiesById } = useCanvasMapping({
+					nodes: ref(nodes),
+					connections: ref(connections),
+					workflowObject: ref(workflowObject) as Ref<Workflow>,
+				});
+
+				expect(additionalNodePropertiesById.value[nodes[0].id]).toEqual({
+					style: { zIndex: -100 },
+				});
+				expect(additionalNodePropertiesById.value[nodes[1].id]).toEqual({
+					style: { zIndex: -98 },
+				});
+				expect(additionalNodePropertiesById.value[nodes[2].id]).toEqual({
+					style: { zIndex: -99 },
+				});
+			});
+		});
 	});
 
 	describe('connections', () => {
