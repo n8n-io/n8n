@@ -1,4 +1,4 @@
-import { VIEWS } from '@/constants';
+import type { VIEWS } from '@/constants';
 import type { Schema } from '@/Interface';
 import type {
 	ICredentialType,

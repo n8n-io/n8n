@@ -24,11 +24,9 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { ChatRequest } from '@/types/assistant.types';
 import { isResourceLocatorValue } from '@/utils/typeGuards';
 import { isJsonKeyObject } from '@/utils/typesUtils';
+import type { NodeApiError, NodeError, NodeOperationError } from 'n8n-workflow';
 import {
 	deepCopy,
-	NodeApiError,
-	NodeError,
-	NodeOperationError,
 	type IDataObject,
 	type INode,
 	type INodeCredentialDescription,
