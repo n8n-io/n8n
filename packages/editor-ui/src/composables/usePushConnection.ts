@@ -18,7 +18,6 @@ import type { PushMessage, PushPayload } from '@n8n/api-types';
 
 import type { IExecutionResponse, IExecutionsCurrentSummaryExtended } from '@/Interface';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import { useTitleChange } from '@/composables/useTitleChange';
 import { useToast } from '@/composables/useToast';
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
 import { getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
@@ -43,7 +42,6 @@ type IPushDataExecutionFinishedPayload = PushPayload<'executionFinished'>;
 export function usePushConnection({ router }: { router: ReturnType<typeof useRouter> }) {
 	const workflowHelpers = useWorkflowHelpers({ router });
 	const nodeHelpers = useNodeHelpers();
-	const titleChange = useTitleChange();
 	const toast = useToast();
 	const i18n = useI18n();
 	const telemetry = useTelemetry();
@@ -324,7 +322,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 				}
 
 				// Workflow did start but had been put to wait
-				titleChange.titleSet(workflow.name as string, 'IDLE');
+				workflowHelpers.setDocumentTitle(workflow.name as string, 'IDLE');
 				toast.showToast({
 					title: 'Workflow started waiting',
 					message: `${action} <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/" target="_blank">More info</a>`,
@@ -333,7 +331,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 					dangerouslyUseHTMLString: true,
 				});
 			} else if (runDataExecuted.finished !== true) {
-				titleChange.titleSet(workflow.name as string, 'ERROR');
+				workflowHelpers.setDocumentTitle(workflow.name as string, 'ERROR');
 
 				if (
 					runDataExecuted.data.resultData.error?.name === 'ExpressionError' &&
@@ -442,7 +440,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 				}
 			} else {
 				// Workflow did execute without a problem
-				titleChange.titleSet(workflow.name as string, 'IDLE');
+				workflowHelpers.setDocumentTitle(workflow.name as string, 'IDLE');
 
 				const execution = workflowsStore.getWorkflowExecution;
 				if (execution?.executedNode) {

@@ -5,6 +5,7 @@ import { capitalizeFirstLetter } from '@/utils/htmlUtils';
 import { convertToDisplayDate } from '@/utils/typesUtils';
 import { useToast } from '@/composables/useToast';
 import { useMessage } from '@/composables/useMessage';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import type {
 	ILdapConfig,
 	ILdapSyncData,
@@ -65,6 +66,7 @@ type CellClassStyleMethodParams<T> = {
 const toast = useToast();
 const i18n = useI18n();
 const message = useMessage();
+const documentTitle = useDocumentTitle();
 
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
@@ -585,6 +587,7 @@ const reloadLdapSynchronizations = async () => {
 };
 
 onMounted(async () => {
+	documentTitle.set(i18n.baseText('settings.ldap'));
 	if (!isLDAPFeatureEnabled.value) return;
 	await getLdapConfig();
 });

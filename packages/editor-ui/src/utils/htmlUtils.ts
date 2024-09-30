@@ -48,10 +48,6 @@ export const sanitizeIfString = <T>(message: T): string | T => {
 	return message;
 };
 
-export function setPageTitle(title: string) {
-	window.document.title = title;
-}
-
 export function convertRemToPixels(rem: string) {
 	return parseInt(rem, 10) * parseFloat(getComputedStyle(document.documentElement).fontSize);
 }
