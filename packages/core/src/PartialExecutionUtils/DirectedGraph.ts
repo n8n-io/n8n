@@ -92,7 +92,6 @@ export class DirectedGraph {
 						...incomingConnection,
 						to: outgoingConnection.to,
 						inputIndex: outgoingConnection.inputIndex,
-						//outputIndex: outgoingConnection.outputIndex,
 					};
 
 					newConnections.push(newConnection);
