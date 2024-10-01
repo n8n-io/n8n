@@ -3,7 +3,6 @@ import callsites from 'callsites';
 import { InstanceSettings } from 'n8n-core';
 import { LoggerProxy, LOG_LEVELS } from 'n8n-workflow';
 import path, { basename } from 'node:path';
-import { inspect } from 'node:util';
 import { Service } from 'typedi';
 import winston from 'winston';
 
@@ -88,7 +87,7 @@ export class Logger {
 
 	private toPrintable(metadata: unknown) {
 		if (isObjectLiteral(metadata) && Object.keys(metadata).length > 0) {
-			return ' ' + JSON.stringify(inspect(metadata));
+			return ' ' + JSON.stringify(metadata);
 		}
 
 		return '';
