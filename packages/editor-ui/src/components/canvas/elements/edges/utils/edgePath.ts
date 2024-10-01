@@ -6,10 +6,9 @@ const EDGE_PADDING_TOP = 80;
 const EDGE_PADDING_BOTTOM = 140;
 const EDGE_PADDING_X = 40;
 const EDGE_BORDER_RADIUS = 16;
-const EDGE_BEZIER_OFFSET = 20; // Required to avoid glitching when initially interacting with the handle
+const HANDLE_SIZE = 20; // Required to avoid connection line glitching when initially interacting with the handle
 
-const isRightOfSourceHandle = (sourceX: number, targetX: number) =>
-	sourceX - EDGE_BEZIER_OFFSET > targetX;
+const isRightOfSourceHandle = (sourceX: number, targetX: number) => sourceX - HANDLE_SIZE > targetX;
 
 const pathIntersectsNodes = (targetY: number, sourceY: number) =>
 	Math.abs(targetY - sourceY) < EDGE_PADDING_BOTTOM;
