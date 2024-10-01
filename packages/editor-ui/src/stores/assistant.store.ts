@@ -383,7 +383,10 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				}
 			: undefined;
 		return {
-			currentView: assistantHelpers.getCurrentViewDescription(currentView),
+			currentView: {
+				name: currentView,
+				description: assistantHelpers.getCurrentViewDescription(currentView),
+			},
 			activeNodeInfo: {
 				node: activeNodeForLLM ?? undefined,
 				nodeIssues: !isCurrentNodeExecuted ? activeNode?.issues : undefined,
