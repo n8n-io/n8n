@@ -5,9 +5,15 @@ import type {
 	IN8nHttpFullResponse,
 	INodeExecutionData,
 	INodeProperties,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import { getCursorPaginator, gongApiPaginateRequest } from '../GenericFunctions';
+import {
+	getCursorPaginator,
+	gongApiPaginateRequest,
+	sendErrorPostReceive,
+} from '../GenericFunctions';
 
 export const callOperations: INodeProperties[] = [
 	{
@@ -29,6 +35,25 @@ export const callOperations: INodeProperties[] = [
 					request: {
 						method: 'POST',
 						url: '/v2/calls/extensive',
+						ignoreHttpStatusErrors: true,
+					},
+					output: {
+						postReceive: [
+							async function (
+								this: IExecuteSingleFunctions,
+								data: INodeExecutionData[],
+								response: IN8nHttpFullResponse,
+							): Promise<INodeExecutionData[]> {
+								if (response.statusCode === 404) {
+									throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
+										message: "The required call doesn't match any existing one",
+										description:
+											"Double-check the value in the parameter 'Call to Get' and try again",
+									});
+								}
+								return await sendErrorPostReceive.call(this, data, response);
+							},
+						],
 					},
 				},
 				action: 'Get call',
@@ -53,14 +78,16 @@ export const callOperations: INodeProperties[] = [
 								data: INodeExecutionData[],
 								response: IN8nHttpFullResponse,
 							): Promise<INodeExecutionData[]> {
-								const primaryUserId = this.getNodeParameter(
-									'filters.primaryUserIds',
-									null,
-								) as IDataObject;
-								if (primaryUserId && response.statusCode === 404) {
-									return [{ json: { success: true } }];
+								if (response.statusCode === 404) {
+									const primaryUserId = this.getNodeParameter(
+										'filters.primaryUserIds',
+										null,
+									) as IDataObject;
+									if (primaryUserId) {
+										return [{ json: { success: true } }];
+									}
 								}
-								return data;
+								return await sendErrorPostReceive.call(this, data, response);
 							},
 						],
 					},

@@ -688,12 +688,87 @@ describe('Gong Node', () => {
 						{
 							method: 'post',
 							path: '/v2/calls/extensive',
-							statusCode: 400,
+							statusCode: 404,
 							requestBody: {
 								filter: {
 									primaryUserIds: ['234599484848423'],
 								},
 								cursor: undefined,
+							},
+							responseBody: {
+								requestId: 'thrhbxbkqiw41ma1cl',
+								errors: ['No calls found corresponding to the provided filters'],
+							},
+						},
+					],
+				},
+			},
+			{
+				description: 'should handle error response',
+				input: {
+					workflowData: {
+						nodes: [
+							{
+								parameters: {},
+								id: '416e4fc1-5055-4e61-854e-a6265256ac26',
+								name: "When clicking 'Test workflow'",
+								type: 'n8n-nodes-base.manualTrigger',
+								position: [820, 380],
+								typeVersion: 1,
+							},
+							{
+								parameters: {
+									filters: {
+										workspaceId: '623457276584335',
+									},
+									options: {},
+									requestOptions: {},
+								},
+								id: 'c87d72ec-0683-4e32-9829-5e6ea1d1ee7d',
+								name: 'Gong',
+								type: 'n8n-nodes-base.gong',
+								typeVersion: 1,
+								position: [1040, 380],
+								credentials: {
+									gongApi: {
+										id: '1',
+										name: 'Gong account',
+									},
+								},
+							},
+						],
+						connections: {
+							"When clicking 'Test workflow'": {
+								main: [
+									[
+										{
+											node: 'Gong',
+											type: NodeConnectionType.Main,
+											index: 0,
+										},
+									],
+								],
+							},
+						},
+					},
+				},
+				output: {
+					nodeExecutionOrder: ['Start'],
+					nodeData: {
+						Gong: [],
+					},
+				},
+				nock: {
+					baseUrl,
+					mocks: [
+						{
+							method: 'post',
+							path: '/v2/calls/extensive',
+							statusCode: 404,
+							requestBody: {
+								filter: {
+									workspaceId: '623457276584335',
+								},
 							},
 							responseBody: {
 								requestId: 'thrhbxbkqiw41ma1cl',
@@ -709,6 +784,15 @@ describe('Gong Node', () => {
 
 		test.each(tests)('$description', async (testData) => {
 			const { result } = await executeWorkflow(testData, nodeTypes);
+
+			if (testData.description === 'should handle error response') {
+				// Only matches error message
+				expect(() => Helpers.getResultNodeData(result, testData)).toThrowError(
+					'The resource you are requesting could not be found',
+				);
+				return;
+			}
+
 			const resultNodeData = Helpers.getResultNodeData(result, testData);
 			resultNodeData.forEach(({ nodeName, resultData }) =>
 				expect(resultData).toEqual(testData.output.nodeData[nodeName]),
@@ -889,14 +973,96 @@ describe('Gong Node', () => {
 					],
 				},
 			},
+			{
+				description: 'should handle error response',
+				input: {
+					workflowData: {
+						nodes: [
+							{
+								parameters: {},
+								id: '416e4fc1-5055-4e61-854e-a6265256ac26',
+								name: "When clicking 'Test workflow'",
+								type: 'n8n-nodes-base.manualTrigger',
+								position: [820, 380],
+								typeVersion: 1,
+							},
+							{
+								parameters: {
+									resource: 'user',
+									operation: 'getAll',
+									filter: {
+										userIds: '234599484848423',
+									},
+									requestOptions: {},
+								},
+								id: 'c87d72ec-0683-4e32-9829-5e6ea1d1ee7d',
+								name: 'Gong',
+								type: 'n8n-nodes-base.gong',
+								typeVersion: 1,
+								position: [1040, 380],
+								credentials: {
+									gongApi: {
+										id: '1',
+										name: 'Gong account',
+									},
+								},
+							},
+						],
+						connections: {
+							"When clicking 'Test workflow'": {
+								main: [
+									[
+										{
+											node: 'Gong',
+											type: NodeConnectionType.Main,
+											index: 0,
+										},
+									],
+								],
+							},
+						},
+					},
+				},
+				output: {
+					nodeExecutionOrder: ['Start'],
+					nodeData: {
+						Gong: [],
+					},
+				},
+				nock: {
+					baseUrl,
+					mocks: [
+						{
+							method: 'post',
+							path: '/v2/users/extensive',
+							statusCode: 404,
+							requestBody: {
+								filter: {
+									userIds: ['234599484848423'],
+								},
+							},
+							responseBody: {
+								requestId: '26r8maav84ehguoddd7',
+								errors: ['The following userIds were not found: 234599484848423'],
+							},
+						},
+					],
+				},
+			},
 		];
 
-		console.log('temp1');
 		const nodeTypes = Helpers.setup(tests);
 
 		test.each(tests)('$description', async (testData) => {
 			const { result } = await executeWorkflow(testData, nodeTypes);
-			console.log('temp2');
+
+			if (testData.description === 'should handle error response') {
+				expect(() => Helpers.getResultNodeData(result, testData)).toThrow(
+					"The Users IDs don't match any existing user",
+				);
+				return;
+			}
+
 			const resultNodeData = Helpers.getResultNodeData(result, testData);
 			resultNodeData.forEach(({ nodeName, resultData }) =>
 				expect(resultData).toEqual(testData.output.nodeData[nodeName]),
