@@ -21,7 +21,7 @@
   ],
   "dependencies": {
     "iconv-lite": "0.6.3",
-    "imap": "0.8.19",
+    "@n8n/imap": "0.8.19",
     "quoted-printable": "1.0.1",
     "utf8": "3.0.0",
     "uuencode": "0.0.4"

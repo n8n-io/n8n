@@ -364,12 +364,12 @@ importers:
 
   packages/@n8n/imap:
     dependencies:
+      '@n8n/imap':
+        specifier: 0.8.19
+        version: 0.8.19
       iconv-lite:
         specifier: 0.6.3
         version: 0.6.3
-      imap:
-        specifier: 0.8.19
-        version: 0.8.19
       quoted-printable:
         specifier: 1.0.1
         version: 1.0.1
@@ -3822,6 +3822,10 @@ packages:
 
   '@n8n/codemirror-lang-sql@1.0.2':
     resolution: {integrity: sha512-sOf/KyewSu3Ikij0CkRtzJJDhRDZcwNCEYl8UdH4U/riL0/XZGcBD7MYofCCcKszanJZiEWRZ2KU1sRp234iMg==}
+
+  '@n8n/imap@0.8.19':
+    resolution: {integrity: sha512-V6JSZiYZhhPIiRyuI7lGymQPj1y8dv6mNvkvbaZufFzhPufUcyEv9TdoQdSzdD+n5/MZ0g3xcAdrfAMTcaKheQ==}
+    engines: {node: '>=18.0.0'}
 
   '@n8n/localtunnel@3.0.0':
     resolution: {integrity: sha512-0t/AUiZ8Oqo7AqYp2q2qmEC2p2lPP4CEdrGRB0J6nSC7ivOtr0p46Pw739UvUfJMU1bIKvzHIc5M9wCjH5Byjg==}
@@ -8352,10 +8356,6 @@ packages:
     resolution: {integrity: sha512-MAb38BcSbH0eHNBxn7ql2NH/kX33OkB3lZ1BNdh7ENeRChHTYsTvWrMubiIAMNS2llXEEgZ1MUOBtXChP3kaFQ==}
     engines: {node: '>= 4'}
 
-  imap@0.8.19:
-    resolution: {integrity: sha512-z5DxEA1uRnZG73UcPA4ES5NSCGnPuuouUx43OPX7KZx1yzq3N8/vx2mtXEShT5inxB3pRgnfG1hijfu7XN2YMw==}
-    engines: {node: '>=0.8.0'}
-
   immediate@3.0.6:
     resolution: {integrity: sha512-XXOFtyqDjNDAQxVfYxuF7g9Il/IbWmmlQg2MYKOH8ExIT1qg6xc4zyS3HaEEATgs1btfzxq15ciUiY7gjSXRGQ==}
 
@@ -12230,9 +12230,6 @@ packages:
     resolution: {integrity: sha512-yIQdxJpgkPamPPAPuGdS7Q548rLhny42tg8d4vyTNzFqvOnwqrgHXvgehT09U7fwrzxi3RxCiXjoNUNnNOlQ8A==}
     engines: {node: '>=6.0.0'}
 
-  utf7@1.0.2:
-    resolution: {integrity: sha512-qQrPtYLLLl12NF4DrM9CvfkxkYI97xOb5dsnGZHE3teFr0tWiEZ9UdgMPczv24vl708cYMpe6mGXGHrotIp3Bw==}
-
   utf8@2.1.2:
     resolution: {integrity: sha512-QXo+O/QkLP/x1nyi54uQiG0XrODxdysuQvE5dtVqv7F5K2Qb6FsN+qbr6KhF5wQ20tfcV3VQp0/2x1e1MRSPWg==}
 
@@ -15997,6 +15994,8 @@ snapshots:
     transitivePeerDependencies:
       - '@codemirror/view'
       - '@lezer/common'
+
+  '@n8n/imap@0.8.19': {}
 
   '@n8n/localtunnel@3.0.0':
     dependencies:
@@ -21867,11 +21866,6 @@ snapshots:
 
   ignore@5.2.4: {}
 
-  imap@0.8.19:
-    dependencies:
-      readable-stream: 1.1.14
-      utf7: 1.0.2
-
   immediate@3.0.6: {}
 
   immutable@4.2.2: {}
@@ -26580,10 +26574,6 @@ snapshots:
   url-template@2.0.8: {}
 
   url-value-parser@2.2.0: {}
-
-  utf7@1.0.2:
-    dependencies:
-      semver: 7.6.0
 
   utf8@2.1.2: {}
 
