@@ -1,7 +1,7 @@
 import type { MigrationContext } from '@/databases/types';
 
 export class StandardizeTableNames1727369628621 {
-	async up({ queryRunner, escape }: MigrationContext) {
+	async up({ escape, runQuery }: MigrationContext) {
 		const tableNameMap = {
 			annotation_tag_entity: 'annotation_tag',
 			credentials_entity: 'credential',
@@ -22,10 +22,9 @@ export class StandardizeTableNames1727369628621 {
 		} as const;
 
 		await Promise.all(
-			// eslint-disable-next-line @typescript-eslint/promise-function-async
-			Object.keys(tableNameMap).map((oldTableName) => {
+			Object.keys(tableNameMap).map(async (oldTableName) => {
 				const newTableName = tableNameMap[oldTableName as keyof typeof tableNameMap];
-				return queryRunner.query(
+				return await runQuery(
 					`ALTER TABLE ${escape.tableName(oldTableName)} RENAME TO ${escape.tableName(newTableName)}`,
 				);
 			}),
