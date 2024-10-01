@@ -23,7 +23,7 @@ import { VariablesRepository } from '@/databases/repositories/variables.reposito
 import { WorkflowTagMappingRepository } from '@/databases/repositories/workflow-tag-mapping.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import type { IWorkflowToImport } from '@/interfaces';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { isUniqueConstraintError } from '@/response-helper';
 import { assertNever } from '@/utils';
 

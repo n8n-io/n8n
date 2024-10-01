@@ -5,7 +5,7 @@ import { Container } from 'typedi';
 
 import type { SecretsProviderSettings, SecretsProviderState } from '@/interfaces';
 import { SecretsProvider } from '@/interfaces';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 
 import { DOCS_HELP_NOTICE, EXTERNAL_SECRETS_NAME_REGEX } from '../constants';
 import { preferGet } from '../external-secrets-helper.ee';
