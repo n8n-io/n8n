@@ -65,7 +65,7 @@ import { RefactorExecutionIndices1723796243146 } from '../common/1723796243146-R
 import { CreateAnnotationTables1724753530828 } from '../common/1724753530828-CreateExecutionAnnotationTables';
 import { AddApiKeysTable1724951148974 } from '../common/1724951148974-AddApiKeysTable';
 import { SeparateExecutionCreationFromStart1727427440136 } from '../common/1727427440136-SeparateExecutionCreationFromStart';
-import { StandardizeTableNames1727369628621 } from '../common/1727369628621-StandardizeTableNames';
+import { StandardizeTableNames1727815666629 } from '../common/1727815666629-StandardizeTableNames';
 
 export const mysqlMigrations: Migration[] = [
 	InitialMigration1588157391238,
@@ -133,5 +133,5 @@ export const mysqlMigrations: Migration[] = [
 	CreateAnnotationTables1724753530828,
 	AddApiKeysTable1724951148974,
 	SeparateExecutionCreationFromStart1727427440136,
-  StandardizeTableNames1727369628621,
+	StandardizeTableNames1727815666629,
 ];
