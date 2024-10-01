@@ -68,11 +68,11 @@ export class Logger {
 		this.internalLogger.log(level, message, { ...metadata, ...location });
 	}
 
-	private setLevel() {
+	private setLevel({ override }: { override?: LogLevel } = {}) {
 		const { levels } = this.internalLogger;
 
 		for (const logLevel of LOG_LEVELS) {
-			if (levels[logLevel] > levels[this.level]) {
+			if (levels[logLevel] > levels[override ?? this.level]) {
 				// winston defines `{ error: 0, warn: 1, info: 2, debug: 5 }`
 				// so numerically higher (less severe) log levels become no-op
 				// to prevent overhead from `callsites` calls
@@ -149,6 +149,8 @@ export class Logger {
 				'When using `DEBUG=n8n:*`, do not specify any other `n8n:` debug scopes',
 			);
 		}
+
+		this.setLevel({ override: 'info' }); // mute regular (non-scoped) debug logs
 
 		if (debugScopes.includes('*') || debugScopes.includes('n8n:*')) {
 			debugScopes.push(...NAMED_DEBUG_LOG_SCOPES);
