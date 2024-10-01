@@ -180,6 +180,7 @@
     "sqlite3": "5.1.7",
     "temp": "0.9.4",
     "tmp-promise": "3.0.3",
+    "vectordb": "^0.10.0",
     "zod": "catalog:",
     "zod-to-json-schema": "3.23.3"
   }

@@ -1,6 +1,31 @@
+import { LanceDB } from '@langchain/community/vectorstores/lancedb';
+import { connect, WriteMode } from 'vectordb';
+
 import type { INodeProperties } from 'n8n-workflow';
 import { createVectorStoreNode } from '../shared/createVectorStoreNode';
-import { MemoryVectorStoreManager } from '../shared/MemoryVectorStoreManager';
+
+export const lanceDBTableNameRLC: INodeProperties = {
+	displayName: 'Table Name',
+	name: 'tableName',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
+	required: true,
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			typeOptions: {
+				searchListMethod: 'lanceDBTableNameSearch',
+			},
+		},
+		{
+			displayName: 'ID',
+			name: 'id',
+			type: 'string',
+		},
+	],
+};
 
 const insertFields: INodeProperties[] = [
 	{
@@ -37,23 +62,43 @@ export const VectorStoreLanceDB = createVectorStoreNode({
 			placeholder: '/tmp/lancedb/',
 			description: 'Path of the LanceDB directory',
 		},
+		lanceDBTableNameRLC,
 	],
 	insertFields,
 	loadFields: [],
 	retrieveFields: [],
 	async getVectorStoreClient(context, _filter, embeddings, itemIndex) {
-		const workflowId = context.getWorkflow().id;
-		const memoryKey = context.getNodeParameter('memoryKey', itemIndex) as string;
-		const vectorStoreSingleton = MemoryVectorStoreManager.getInstance(embeddings);
+		const tableName = context.getNodeParameter('tableName', itemIndex, '', {
+			extractValue: true,
+		}) as string;
+		const dbUri = context.getNodeParameter('directoryPath', itemIndex, '', {
+			extractValue: true,
+		}) as string;
 
-		return await vectorStoreSingleton.getVectorStore(`${workflowId}__${memoryKey}`);
+		const db = await connect(dbUri);
+		const table = await db.openTable(tableName);
+
+		const client = new LanceDB(embeddings, { table });
+
+		const test = await client.similaritySearch('horror movie', 5);
+
+		console.log(test);
+
+		return client;
 	},
 	async populateVectorStore(context, embeddings, documents, itemIndex) {
-		const memoryKey = context.getNodeParameter('memoryKey', itemIndex) as string;
+		const tableName = context.getNodeParameter('tableName', itemIndex, '', {
+			extractValue: true,
+		}) as string;
+		const dbUri = context.getNodeParameter('directoryPath', itemIndex, '', {
+			extractValue: true,
+		}) as string;
 		const clearStore = context.getNodeParameter('clearStore', itemIndex) as boolean;
-		const workflowId = context.getWorkflow().id;
-		const vectorStoreInstance = MemoryVectorStoreManager.getInstance(embeddings);
 
-		void vectorStoreInstance.addDocuments(`${workflowId}__${memoryKey}`, documents, clearStore);
+		await LanceDB.fromDocuments(documents, embeddings, {
+			tableName,
+			uri: dbUri,
+			mode: clearStore ? WriteMode.Overwrite : WriteMode.Append,
+		});
 	},
 });
