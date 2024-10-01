@@ -10,6 +10,9 @@ import type {
 	INodeExecutionData,
 } from 'n8n-workflow';
 
+import get from 'lodash/get';
+import toPath from 'lodash/toPath';
+
 export async function gongApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
@@ -112,8 +115,12 @@ export const getCursorPaginator = (rootProperty: string) => {
 		const returnAll = this.getNodeParameter('returnAll', true) as boolean;
 
 		const extractItems = (page: INodeExecutionData) => {
-			const items = page.json[rootProperty] as IDataObject[];
-			if (items) {
+			const paths = toPath(rootProperty);
+			let items: IDataObject[] = [page.json];
+			for (const path of paths) {
+				items = items.flatMap((x) => get(x, path)) as IDataObject[];
+			}
+			if (items.length > 0) {
 				executions = executions.concat(items.map((item) => ({ json: item })));
 			}
 		};

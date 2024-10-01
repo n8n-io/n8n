@@ -339,7 +339,7 @@ const getAllFields: INodeProperties[] = [
 				paginate: '={{ $value }}',
 			},
 			operations: {
-				pagination: getCursorPaginator('calls'),
+				pagination: getCursorPaginator('calls.metaData'),
 			},
 		},
 		type: 'boolean',
@@ -367,6 +367,12 @@ const getAllFields: INodeProperties[] = [
 						type: 'rootProperty',
 						properties: {
 							property: 'calls',
+						},
+					},
+					{
+						type: 'rootProperty',
+						properties: {
+							property: 'metaData',
 						},
 					},
 					{
