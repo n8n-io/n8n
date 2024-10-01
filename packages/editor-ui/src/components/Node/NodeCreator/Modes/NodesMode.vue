@@ -41,7 +41,7 @@ const uiStore = useUIStore();
 const rootStore = useRootStore();
 
 const { mergedNodes, actions } = useNodeCreatorStore();
-const { pushViewStack, popViewStack } = useViewStacks();
+const { pushViewStack, popViewStack, isAiSubcategoryView } = useViewStacks();
 
 const { registerKeyHook } = useKeyboardNavigation();
 
@@ -90,7 +90,8 @@ function onSelected(item: INodeCreateElement) {
 
 	if (item.type === 'node') {
 		const nodeActions = actions?.[item.key] || [];
-		if (nodeActions.length <= 1) {
+		// Only show actions if there are more than one or if the view is not an AI subcategory
+		if (nodeActions.length <= 1 || isAiSubcategoryView(activeViewStack.value)) {
 			selectNodeType([item.key]);
 			return;
 		}
