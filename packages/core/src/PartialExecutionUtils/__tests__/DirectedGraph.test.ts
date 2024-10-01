@@ -197,6 +197,46 @@ describe('DirectedGraph', () => {
 			);
 		});
 
+		//               XX
+		//  ┌─────┐     ┌─────┐     ┌─────┐
+		//  │     │o   o│     │o    │     │
+		//  │     │o─┐ o│     │o    │     │
+		//  │node0│  └►o│node1│o ┌►o│node2│
+		//  │     │     │     │o─┘  │     │
+		//  │     │     │     │     │     │
+		//  └─────┘     └─────┘     └─────┘
+		// turns into
+		//  ┌─────┐                 ┌─────┐
+		//  │     │o                │     │
+		//  │     │o───────┐        │     │
+		//  │node0│        └──────►o│node2│
+		//  │     │                 │     │
+		//  │     │                 │     │
+		//  └─────┘                 └─────┘
+		test('remove node, reconnect connections and retaining the input indexes, even if the child has less inputs than the than the removed node had', () => {
+			// ARRANGE
+			const node0 = createNodeData({ name: 'node0' });
+			const node1 = createNodeData({ name: 'node1' });
+			const node2 = createNodeData({ name: 'node2' });
+			const graph = new DirectedGraph()
+				.addNodes(node0, node1, node2)
+				.addConnections(
+					{ from: node0, outputIndex: 1, inputIndex: 2, to: node1 },
+					{ from: node1, outputIndex: 3, inputIndex: 0, to: node2 },
+				);
+
+			// ACT
+			const newConnections = graph.removeNode(node1, { reconnectConnections: true });
+
+			// ASSERT
+			const expectedGraph = new DirectedGraph()
+				.addNodes(node0, node2)
+				.addConnections({ from: node0, outputIndex: 1, inputIndex: 0, to: node2 });
+			expect(newConnections).toHaveLength(1);
+			expect(newConnections).toEqual(expectedGraph.getConnections());
+			expect(graph).toEqual(expectedGraph);
+		});
+
 		//  ┌─────┐                ┌──────┐
 		//  │left0├─┐   XX       ┌►│right0│
 		//  └─────┘ │  ┌──────┐  │ └──────┘
