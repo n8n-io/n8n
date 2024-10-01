@@ -15,7 +15,7 @@ import { VariablesService } from '@/environments/variables/variables.service.ee'
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ExternalHooks } from '@/external-hooks';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import type { OAuthRequest } from '@/requests';
 import { SecretsHelper } from '@/secrets-helpers';
 import { mockInstance } from '@test/mocking';

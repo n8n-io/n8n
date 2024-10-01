@@ -19,7 +19,7 @@ import { ExternalHooks } from '@/external-hooks';
 import { ExternalSecretsManager } from '@/external-secrets/external-secrets-manager.ee';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { ShutdownService } from '@/shutdown/shutdown.service';
