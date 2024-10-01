@@ -211,5 +211,6 @@ export const useAIAssistantHelpers = () => {
 		isNodeReferencingInputData,
 		getNodesSchemas,
 		getCurrentViewDescription,
+		getReferencedNodes,
 	};
 };
