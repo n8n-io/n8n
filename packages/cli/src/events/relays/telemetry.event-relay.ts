@@ -12,14 +12,14 @@ import { ProjectRelationRepository } from '@/databases/repositories/project-rela
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { EventService } from '@/events/event.service';
-import type { RelayEventMap } from '@/events/relay-event-map';
+import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { determineFinalExecutionStatus } from '@/execution-lifecycle-hooks/shared/shared-hook-functions';
 import type { IExecutionTrackProperties } from '@/interfaces';
 import { License } from '@/license';
 import { NodeTypes } from '@/node-types';
 
 import { EventRelay } from './event-relay';
-import { Telemetry } from '../telemetry';
+import { Telemetry } from '../../telemetry';
 
 @Service()
 export class TelemetryEventRelay extends EventRelay {

@@ -159,6 +159,7 @@ test('should report credential in not recently executed workflow', async () => {
 	const savedExecution = await Container.get(ExecutionRepository).save({
 		finished: true,
 		mode: 'manual',
+		createdAt: date,
 		startedAt: date,
 		stoppedAt: date,
 		workflowId: workflow.id,
@@ -227,6 +228,7 @@ test('should not report credentials in recently executed workflow', async () => 
 	const savedExecution = await Container.get(ExecutionRepository).save({
 		finished: true,
 		mode: 'manual',
+		createdAt: date,
 		startedAt: date,
 		stoppedAt: date,
 		workflowId: workflow.id,

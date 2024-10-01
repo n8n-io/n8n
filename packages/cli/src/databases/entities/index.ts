@@ -1,11 +1,12 @@
-import { AnnotationTagEntity } from './annotation-tag-entity';
-import { AnnotationTagMapping } from './annotation-tag-mapping';
+import { AnnotationTagEntity } from './annotation-tag-entity.ee';
+import { AnnotationTagMapping } from './annotation-tag-mapping.ee';
+import { ApiKey } from './api-key';
 import { AuthIdentity } from './auth-identity';
 import { AuthProviderSyncHistory } from './auth-provider-sync-history';
 import { AuthUser } from './auth-user';
 import { CredentialsEntity } from './credentials-entity';
 import { EventDestinations } from './event-destinations';
-import { ExecutionAnnotation } from './execution-annotation';
+import { ExecutionAnnotation } from './execution-annotation.ee';
 import { ExecutionData } from './execution-data';
 import { ExecutionEntity } from './execution-entity';
 import { ExecutionMetadata } from './execution-metadata';
@@ -54,4 +55,5 @@ export const entities = {
 	WorkflowHistory,
 	Project,
 	ProjectRelation,
+	ApiKey,
 };

@@ -3,15 +3,12 @@ import type { WorkflowActivateMode } from 'n8n-workflow';
 import Container, { Service } from 'typedi';
 
 import config from '@/config';
-import { Logger } from '@/logger';
+import type { PubSubCommandMap } from '@/events/maps/pub-sub.event-map';
+import { Logger } from '@/logging/logger.service';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { Subscriber } from '@/scaling/pubsub/subscriber.service';
 
 import { MultiMainSetup } from './orchestration/main/multi-main-setup.ee';
-import type {
-	RedisServiceBaseCommand,
-	RedisServiceCommand,
-} from '../scaling/redis/redis-service-commands';
 
 @Service()
 export class OrchestrationService {
@@ -100,14 +97,18 @@ export class OrchestrationService {
 	//            pubsub
 	// ----------------------------------
 
-	async publish(command: RedisServiceCommand, data?: unknown) {
+	async publish<CommandKey extends keyof PubSubCommandMap>(
+		commandKey: CommandKey,
+		payload?: PubSubCommandMap[CommandKey],
+	) {
 		if (!this.sanityCheck()) return;
 
-		const payload = data as RedisServiceBaseCommand['payload'];
+		this.logger.debug(
+			`[Instance ID ${this.instanceId}] Publishing command "${commandKey}"`,
+			payload,
+		);
 
-		this.logger.debug(`[Instance ID ${this.instanceId}] Publishing command "${command}"`, payload);
-
-		await this.publisher.publishCommand({ command, payload });
+		await this.publisher.publishCommand({ command: commandKey, payload });
 	}
 
 	// ----------------------------------
@@ -117,7 +118,7 @@ export class OrchestrationService {
 	async getWorkerStatus(id?: string) {
 		if (!this.sanityCheck()) return;
 
-		const command = 'getStatus';
+		const command = 'get-worker-status';
 
 		this.logger.debug(`Sending "${command}" to command channel`);
 
@@ -130,7 +131,7 @@ export class OrchestrationService {
 	async getWorkerIds() {
 		if (!this.sanityCheck()) return;
 
-		const command = 'getId';
+		const command = 'get-worker-id';
 
 		this.logger.debug(`Sending "${command}" to command channel`);
 

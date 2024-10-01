@@ -13,7 +13,7 @@ import { N8N_VERSION, TEMPLATES_DIR, inDevelopment, inTest } from '@/constants';
 import * as Db from '@/db';
 import { OnShutdown } from '@/decorators/on-shutdown';
 import { ExternalHooks } from '@/external-hooks';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { rawBodyReader, bodyParser, corsMiddleware } from '@/middlewares';
 import { send, sendErrorResponse } from '@/response-helper';
 import { WaitingForms } from '@/waiting-forms';

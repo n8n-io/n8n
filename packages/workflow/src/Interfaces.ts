@@ -314,6 +314,7 @@ export interface ICredentialType {
 	name: string;
 	displayName: string;
 	icon?: Icon;
+	iconColor?: ThemeIconColor;
 	iconUrl?: Themed<string>;
 	extends?: string[];
 	properties: INodeProperties[];
@@ -327,6 +328,7 @@ export interface ICredentialType {
 	test?: ICredentialTestRequest;
 	genericAuth?: boolean;
 	httpRequestNode?: ICredentialHttpRequestNode;
+	supportedNodes?: string[];
 }
 
 export interface ICredentialTypes {
@@ -1619,7 +1621,7 @@ export interface IWorkflowIssues {
 	[key: string]: INodeIssues;
 }
 
-export type NodeIconColor =
+export type ThemeIconColor =
 	| 'gray'
 	| 'black'
 	| 'blue'
@@ -1644,7 +1646,7 @@ export interface INodeTypeBaseDescription {
 	displayName: string;
 	name: string;
 	icon?: Icon;
-	iconColor?: NodeIconColor;
+	iconColor?: ThemeIconColor;
 	iconUrl?: Themed<string>;
 	badgeIconUrl?: Themed<string>;
 	group: string[];
@@ -2122,6 +2124,7 @@ export interface IWorkflowBase {
 	name: string;
 	active: boolean;
 	createdAt: Date;
+	startedAt?: Date;
 	updatedAt: Date;
 	nodes: INode[];
 	connections: IConnections;
@@ -2483,6 +2486,7 @@ export interface ExecutionSummary {
 	retryOf?: string | null;
 	retrySuccessId?: string | null;
 	waitTill?: Date;
+	createdAt?: Date;
 	startedAt: Date;
 	stoppedAt?: Date;
 	workflowId: string;

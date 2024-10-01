@@ -1,12 +1,12 @@
 import type { Response } from 'express';
-import { Workflow, NodeHelpers } from 'n8n-workflow';
+import { Workflow, NodeHelpers, CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import type { INode, IWebhookData, IHttpRequestMethods } from 'n8n-workflow';
 import { Service } from 'typedi';
 
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { NodeTypes } from '@/node-types';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import { WebhookService } from '@/webhooks/webhook.service';
@@ -47,12 +47,18 @@ export class LiveWebhooks implements IWebhookManager {
 			select: ['nodes'],
 		});
 
+		const isChatWebhookNode = (type: string, webhookId?: string) =>
+			type === CHAT_TRIGGER_NODE_TYPE && `${webhookId}/chat` === path;
+
 		const nodes = workflowData?.nodes;
 		const webhookNode = nodes?.find(
-			({ type, parameters, typeVersion }) =>
-				parameters?.path === path &&
-				(parameters?.httpMethod ?? 'GET') === httpMethod &&
-				'webhook' in this.nodeTypes.getByNameAndVersion(type, typeVersion),
+			({ type, parameters, typeVersion, webhookId }) =>
+				(parameters?.path === path &&
+					(parameters?.httpMethod ?? 'GET') === httpMethod &&
+					'webhook' in this.nodeTypes.getByNameAndVersion(type, typeVersion)) ||
+				// Chat Trigger has doesn't have configurable path and is always using POST, so
+				// we need to use webhookId for matching
+				isChatWebhookNode(type, webhookId),
 		);
 		return webhookNode?.parameters?.options as WebhookAccessControlOptions;
 	}

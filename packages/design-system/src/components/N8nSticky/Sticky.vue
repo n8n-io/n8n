@@ -13,7 +13,7 @@ const props = withDefaults(defineProps<StickyProps>(), defaultStickyProps);
 const emit = defineEmits<{
 	edit: [editing: boolean];
 	'update:modelValue': [value: string];
-	'markdown-click': [link: string, e: Event];
+	'markdown-click': [link: HTMLAnchorElement, e: MouseEvent];
 }>();
 
 const { t } = useI18n();
@@ -63,7 +63,7 @@ const onUpdateModelValue = (value: string) => {
 	emit('update:modelValue', value);
 };
 
-const onMarkdownClick = (link: string, event: Event) => {
+const onMarkdownClick = (link: HTMLAnchorElement, event: MouseEvent) => {
 	emit('markdown-click', link, event);
 };
 

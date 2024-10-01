@@ -2,7 +2,7 @@ import { ApplicationError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { Service } from 'typedi';
 
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 
 import { TaskRejectError } from './errors';
 import type { N8nMessage, RunnerMessage, RequesterMessage, TaskResultData } from './runner-types';

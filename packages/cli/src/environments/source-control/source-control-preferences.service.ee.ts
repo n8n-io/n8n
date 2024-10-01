@@ -9,7 +9,7 @@ import Container, { Service } from 'typedi';
 
 import config from '@/config';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 
 import {
 	SOURCE_CONTROL_SSH_FOLDER,

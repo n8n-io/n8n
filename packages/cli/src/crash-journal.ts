@@ -6,7 +6,7 @@ import { join, dirname } from 'path';
 import { Container } from 'typedi';
 
 import { inProduction } from '@/constants';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 
 export const touchFile = async (filePath: string): Promise<void> => {
 	await mkdir(dirname(filePath), { recursive: true });

@@ -8,7 +8,7 @@ import { parse as parseUrl } from 'url';
 import { Server as WSServer } from 'ws';
 import type WebSocket from 'ws';
 
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { send } from '@/response-helper';
 import { TaskRunnerAuthController } from '@/runners/auth/task-runner-auth.controller';
 
