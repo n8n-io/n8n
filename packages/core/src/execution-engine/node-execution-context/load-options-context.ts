@@ -11,6 +11,7 @@ import type {
 
 import { NodeExecutionContext } from './node-execution-context';
 import { extractValue } from './utils/extract-value';
+import { getFileSystemHelperFunctions } from './utils/file-system-helper-functions';
 import { getRequestHelperFunctions } from './utils/request-helper-functions';
 import { getSSHTunnelFunctions } from './utils/ssh-tunnel-helper-functions';
 
@@ -28,6 +29,7 @@ export class LoadOptionsContext extends NodeExecutionContext implements ILoadOpt
 		this.helpers = {
 			...getSSHTunnelFunctions(),
 			...getRequestHelperFunctions(workflow, node, additionalData),
+			...getFileSystemHelperFunctions(node),
 		};
 	}
 

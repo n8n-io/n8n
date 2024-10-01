@@ -1027,7 +1027,7 @@ export interface ILoadOptionsFunctions extends FunctionsBase {
 	): NodeParameterValueType | object | undefined;
 	getCurrentNodeParameters(): INodeParameters | undefined;
 
-	helpers: RequestHelperFunctions & SSHTunnelFunctions;
+	helpers: RequestHelperFunctions & SSHTunnelFunctions & FileSystemHelperFunctions;
 }
 
 export type FieldValueOption = { name: string; type: FieldType | 'any' };
