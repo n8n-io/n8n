@@ -43,6 +43,13 @@ require('express-async-errors');
 require('source-map-support').install();
 require('reflect-metadata');
 
+// Skip loading dotenv in e2e tests.
+// Also, do not use `inE2ETests` from constants here, because that'd end up code that might read from `process.env` before the values are loaded from an `.env` file.
+if (process.env.E2E_TESTS !== 'true') {
+	// Loading dotenv early ensures that `process.env` is up-to-date everywhere in code
+	require('dotenv').config();
+}
+
 if (process.env.NODEJS_PREFER_IPV4 === 'true') {
 	require('dns').setDefaultResultOrder('ipv4first');
 }

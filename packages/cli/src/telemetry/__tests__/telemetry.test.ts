@@ -1,9 +1,11 @@
+import type { GlobalConfig } from '@n8n/config';
 import type RudderStack from '@rudderstack/rudder-sdk-node';
-import { Telemetry } from '@/telemetry';
-import config from '@/config';
-import { PostHogClient } from '@/posthog';
 import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
+
+import config from '@/config';
+import { PostHogClient } from '@/posthog';
+import { Telemetry } from '@/telemetry';
 import { mockInstance } from '@test/mocking';
 
 jest.unmock('@/telemetry');
@@ -40,10 +42,17 @@ describe('Telemetry', () => {
 	beforeEach(async () => {
 		spyTrack.mockClear();
 
-		const postHog = new PostHogClient(instanceSettings);
+		const postHog = new PostHogClient(instanceSettings, mock());
 		await postHog.init();
 
-		telemetry = new Telemetry(mock(), postHog, mock(), instanceSettings, mock());
+		telemetry = new Telemetry(
+			mock(),
+			postHog,
+			mock(),
+			instanceSettings,
+			mock(),
+			mock<GlobalConfig>({ logging: { level: 'info', outputs: ['console'] } }),
+		);
 		// @ts-expect-error Assigning to private property
 		telemetry.rudderStack = mockRudderStack;
 	});

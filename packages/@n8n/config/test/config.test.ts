@@ -1,6 +1,7 @@
 import fs from 'fs';
-import { Container } from 'typedi';
 import { mock } from 'jest-mock-extended';
+import { Container } from 'typedi';
+
 import { GlobalConfig } from '../src/index';
 
 jest.mock('fs');
@@ -176,6 +177,7 @@ describe('GlobalConfig', () => {
 			formTest: 'form-test',
 			formWaiting: 'form-waiting',
 			payloadSizeMax: 16,
+			formDataFileSizeMax: 200,
 			rest: 'rest',
 			webhook: 'webhook',
 			webhookTest: 'webhook-test',
@@ -217,6 +219,19 @@ describe('GlobalConfig', () => {
 					stalledInterval: 30_000,
 					maxStalledCount: 1,
 				},
+			},
+		},
+		sentry: {
+			backendDsn: '',
+			frontendDsn: '',
+		},
+		logging: {
+			level: 'info',
+			outputs: ['console'],
+			file: {
+				fileCountMax: 100,
+				fileSizeMax: 16,
+				location: 'logs/n8n.log',
 			},
 		},
 	};

@@ -1,5 +1,18 @@
 import type { ExecutionError } from 'n8n-workflow/src';
-import { NDV, WorkflowPage as WorkflowPageClass } from '../pages';
+
+import {
+	closeManualChatModal,
+	getManualChatMessages,
+	getManualChatModalLogs,
+	getManualChatModalLogsEntries,
+	sendManualChatMessage,
+} from '../composables/modals/chat-modal';
+import { setCredentialValues } from '../composables/modals/credential-modal';
+import {
+	clickCreateNewCredential,
+	clickExecuteNode,
+	clickGetBackToCanvas,
+} from '../composables/ndv';
 import {
 	addLanguageModelNodeToParent,
 	addMemoryNodeToParent,
@@ -18,19 +31,7 @@ import {
 	MANUAL_TRIGGER_NODE_DISPLAY_NAME,
 	MANUAL_TRIGGER_NODE_NAME,
 } from '../constants';
-import {
-	clickCreateNewCredential,
-	clickExecuteNode,
-	clickGetBackToCanvas,
-} from '../composables/ndv';
-import { setCredentialValues } from '../composables/modals/credential-modal';
-import {
-	closeManualChatModal,
-	getManualChatMessages,
-	getManualChatModalLogs,
-	getManualChatModalLogsEntries,
-	sendManualChatMessage,
-} from '../composables/modals/chat-modal';
+import { NDV, WorkflowPage as WorkflowPageClass } from '../pages';
 import { createMockNodeExecutionData, getVisibleSelect, runMockWorkflowExecution } from '../utils';
 
 const ndv = new NDV();

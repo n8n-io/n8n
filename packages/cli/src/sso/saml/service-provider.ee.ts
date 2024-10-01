@@ -1,6 +1,8 @@
-import { Container } from 'typedi';
 import type { ServiceProviderInstance } from 'samlify';
+import { Container } from 'typedi';
+
 import { UrlService } from '@/services/url.service';
+
 import type { SamlPreferences } from './types/saml-preferences';
 
 let serviceProviderInstance: ServiceProviderInstance | undefined;

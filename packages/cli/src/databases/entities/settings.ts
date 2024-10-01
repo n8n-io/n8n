@@ -1,5 +1,5 @@
-import type { IDataObject } from 'n8n-workflow';
 import { Column, Entity, PrimaryColumn } from '@n8n/typeorm';
+import type { IDataObject } from 'n8n-workflow';
 
 interface ISettingsDb {
 	key: string;

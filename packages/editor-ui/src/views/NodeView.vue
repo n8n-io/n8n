@@ -46,7 +46,7 @@ import { useGlobalLinkActions } from '@/composables/useGlobalLinkActions';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import useCanvasMouseSelect from '@/composables/useCanvasMouseSelect';
 import { useExecutionDebugging } from '@/composables/useExecutionDebugging';
-import { useTitleChange } from '@/composables/useTitleChange';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useDataSchema } from '@/composables/useDataSchema';
 import { type ContextMenuAction, useContextMenu } from '@/composables/useContextMenu';
 import { useUniqueNodeName } from '@/composables/useUniqueNodeName';
@@ -103,7 +103,6 @@ import type {
 	NodeCreatorOpenSource,
 	AddedNodesAndConnections,
 	ToggleNodeCreatorOptions,
-	IPushDataExecutionFinished,
 	NodeFilterType,
 } from '@/Interface';
 
@@ -183,6 +182,7 @@ import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { getResourcePermissions } from '@/permissions';
 import { useBeforeUnload } from '@/composables/useBeforeUnload';
 import NodeViewUnfinishedWorkflowMessage from '@/components/NodeViewUnfinishedWorkflowMessage.vue';
+import type { PushPayload } from '@n8n/api-types';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -258,7 +258,7 @@ export default defineComponent({
 			callDebounced,
 			...useCanvasMouseSelect(),
 			...useGlobalLinkActions(),
-			...useTitleChange(),
+			documentTitle: useDocumentTitle(),
 			...useToast(),
 			...useMessage(),
 			...useUniqueNodeName(),
@@ -507,7 +507,7 @@ export default defineComponent({
 		projectPermissions() {
 			const project = this.$route.query?.projectId
 				? this.projectsStore.myProjects.find((p) => p.id === this.$route.query.projectId)
-				: this.projectsStore.currentProject ?? this.projectsStore.personalProject;
+				: (this.projectsStore.currentProject ?? this.projectsStore.personalProject);
 			return getResourcePermissions(project?.scopes);
 		},
 	},
@@ -591,7 +591,7 @@ export default defineComponent({
 			return;
 		}
 		this.canvasStore.initInstance(this.nodeViewRef);
-		this.titleReset();
+		this.documentTitle.reset();
 
 		window.addEventListener('message', this.onPostMessageReceived);
 
@@ -1714,12 +1714,12 @@ export default defineComponent({
 
 					this.workflowsStore.finishActiveExecution({
 						executionId,
-						data: { finished: true, stoppedAt: new Date() },
+						data: { finished: true, stoppedAt: new Date() } as IRun,
 					});
 					this.workflowsStore.executingNode.length = 0;
 					this.uiStore.removeActiveAction('workflowRunning');
 
-					this.titleSet(this.workflowsStore.workflowName, 'IDLE');
+					this.workflowHelpers.setDocumentTitle(this.workflowsStore.workflowName, 'IDLE');
 					this.showMessage({
 						title: this.$locale.baseText('nodeView.showMessage.stopExecutionCatch.unsaved.title'),
 						message: this.$locale.baseText(
@@ -1737,13 +1737,13 @@ export default defineComponent({
 						startedAt: execution.startedAt,
 						stoppedAt: execution.stoppedAt,
 					} as IRun;
-					const pushData = {
+					const pushData: PushPayload<'executionFinished'> = {
 						data: executedData,
 						executionId,
 						retryOf: execution.retryOf,
-					} as IPushDataExecutionFinished;
+					};
 					this.workflowsStore.finishActiveExecution(pushData);
-					this.titleSet(execution.workflowData.name, 'IDLE');
+					this.workflowHelpers.setDocumentTitle(execution.workflowData.name, 'IDLE');
 					this.workflowsStore.executingNode.length = 0;
 					this.workflowsStore.setWorkflowExecutionData(executedData as IExecutionResponse);
 					this.uiStore.removeActiveAction('workflowRunning');
@@ -2926,6 +2926,7 @@ export default defineComponent({
 				}
 
 				if (
+					// @ts-expect-error Deprecated file
 					// eslint-disable-next-line no-constant-binary-expression
 					!(this.workflowPermissions.update ?? this.projectPermissions.workflow.update) ??
 					this.isReadOnlyRoute ??
@@ -2965,6 +2966,7 @@ export default defineComponent({
 				}
 
 				if (
+					// @ts-expect-error Deprecated file
 					// eslint-disable-next-line no-constant-binary-expression
 					!(this.workflowPermissions.update ?? this.projectPermissions.workflow.update) ??
 					this.isReadOnlyRoute ??
@@ -3408,7 +3410,7 @@ export default defineComponent({
 					}
 
 					if (workflow) {
-						this.titleSet(workflow.name, 'IDLE');
+						this.workflowHelpers.setDocumentTitle(workflow.name, 'IDLE');
 						await this.openWorkflow(workflow);
 						await this.checkAndInitDebugMode();
 
@@ -4369,7 +4371,7 @@ export default defineComponent({
 		},
 		async checkAndInitDebugMode() {
 			if (this.$route.name === VIEWS.EXECUTION_DEBUG) {
-				this.titleSet(this.workflowName, 'DEBUG');
+				this.workflowHelpers.setDocumentTitle(this.workflowName, 'DEBUG');
 				if (!this.workflowsStore.isInDebugMode) {
 					await this.applyExecutionData(this.$route.params.executionId as string);
 					this.workflowsStore.isInDebugMode = true;
@@ -4442,7 +4444,7 @@ export default defineComponent({
 					const workflow: IWorkflowDb | undefined =
 						await this.workflowsStore.fetchWorkflow(workflowId);
 					if (workflow) {
-						this.titleSet(workflow.name, 'IDLE');
+						this.workflowHelpers.setDocumentTitle(workflow.name, 'IDLE');
 						await this.openWorkflow(workflow);
 					}
 				}

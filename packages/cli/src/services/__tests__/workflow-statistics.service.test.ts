@@ -1,6 +1,4 @@
-import { Container } from 'typedi';
 import { GlobalConfig } from '@n8n/config';
-import type { IRun, WorkflowExecuteMode } from 'n8n-workflow';
 import {
 	QueryFailedError,
 	type DataSource,
@@ -9,17 +7,19 @@ import {
 } from '@n8n/typeorm';
 import { mocked } from 'jest-mock';
 import { mock } from 'jest-mock-extended';
+import type { IRun, WorkflowExecuteMode } from 'n8n-workflow';
+import { Container } from 'typedi';
 
 import config from '@/config';
+import type { Project } from '@/databases/entities/project';
 import type { User } from '@/databases/entities/user';
 import type { WorkflowStatistics } from '@/databases/entities/workflow-statistics';
 import { WorkflowStatisticsRepository } from '@/databases/repositories/workflow-statistics.repository';
-import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
-import { UserService } from '@/services/user.service';
-import { OwnershipService } from '@/services/ownership.service';
-import { mockInstance } from '@test/mocking';
-import type { Project } from '@/databases/entities/project';
 import type { EventService } from '@/events/event.service';
+import { OwnershipService } from '@/services/ownership.service';
+import { UserService } from '@/services/user.service';
+import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
+import { mockInstance } from '@test/mocking';
 
 describe('WorkflowStatisticsService', () => {
 	const fakeUser = mock<User>({ id: 'abcde-fghij' });
@@ -42,7 +42,7 @@ describe('WorkflowStatisticsService', () => {
 	config.set('diagnostics.enabled', true);
 	config.set('deployment.type', 'n8n-testing');
 	mocked(ownershipService.getWorkflowProjectCached).mockResolvedValue(fakeProject);
-	mocked(ownershipService.getProjectOwnerCached).mockResolvedValue(fakeUser);
+	mocked(ownershipService.getPersonalProjectOwnerCached).mockResolvedValue(fakeUser);
 	const updateSettingsMock = jest.spyOn(userService, 'updateSettings').mockImplementation();
 
 	const eventService = mock<EventService>();

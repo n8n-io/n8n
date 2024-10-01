@@ -22,7 +22,7 @@ export class Interval implements INodeType {
 			name: 'Interval',
 			color: '#00FF00',
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
 		outputs: [NodeConnectionType.Main],
 		properties: [

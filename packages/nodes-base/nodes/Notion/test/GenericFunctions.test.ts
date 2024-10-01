@@ -1,3 +1,4 @@
+import { databasePageUrlExtractionRegexp } from '../shared/constants';
 import { extractPageId, formatBlocks } from '../shared/GenericFunctions';
 
 describe('Test NotionV2, formatBlocks', () => {
@@ -41,11 +42,9 @@ describe('Test Notion', () => {
 		'f4c1217e48f711ef94540242ac120002', // Random v1 UUID
 	];
 	describe('extractPageId From URL', () => {
-		const extractPattern =
-			'(?:https|http)://www.notion.so/(?:[a-z0-9-]{2,}/)?(?:[a-zA-Z0-9-]{1,}-)?([0-9a-f]{8}[0-9a-f]{4}[0-9a-f]{4}[0-9a-f]{4}[0-9a-f]{12})';
 		// RLC does some Regex extraction before extractPageId is called
 		const extractIdFromUrl = (url: string): string => {
-			const match = url.match(extractPattern);
+			const match = url.match(databasePageUrlExtractionRegexp);
 			return match ? match[1] : url;
 		};
 

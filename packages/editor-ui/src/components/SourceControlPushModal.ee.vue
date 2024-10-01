@@ -262,66 +262,66 @@ function getStatusText(file: SourceControlAggregatedFile): string {
 			<div :class="$style.container">
 				<div v-if="files.length > 0">
 					<div v-if="workflowFiles.length > 0">
-						<n8n-text>
+						<n8n-text tag="div" class="mb-l">
 							{{ i18n.baseText('settings.sourceControl.modals.push.description') }}
 							<n8n-link :to="i18n.baseText('settings.sourceControl.docs.using.pushPull.url')">
 								{{ i18n.baseText('settings.sourceControl.modals.push.description.learnMore') }}
 							</n8n-link>
 						</n8n-text>
 
-						<div class="mt-l mb-2xs">
-							<n8n-checkbox
-								:indeterminate="selectAllIndeterminate"
-								:model-value="selectAll"
-								@update:model-value="onToggleSelectAll"
-							>
-								<n8n-text bold tag="strong">
-									{{ i18n.baseText('settings.sourceControl.modals.push.workflowsToCommit') }}
-								</n8n-text>
-								<n8n-text v-show="workflowFiles.length > 0" tag="strong">
-									({{ stagedWorkflowFiles.length }}/{{ workflowFiles.length }})
-								</n8n-text>
-							</n8n-checkbox>
-						</div>
-						<n8n-card
-							v-for="file in sortedFiles"
-							v-show="!defaultStagedFileTypes.includes(file.type)"
-							:key="file.file"
-							:class="$style.listItem"
-							@click="setStagedStatus(file, !staged[file.file])"
+						<n8n-checkbox
+							:class="$style.selectAll"
+							:indeterminate="selectAllIndeterminate"
+							:model-value="selectAll"
+							data-test-id="source-control-push-modal-toggle-all"
+							@update:model-value="onToggleSelectAll"
 						>
-							<div :class="$style.listItemBody">
-								<n8n-checkbox
-									:model-value="staged[file.file]"
-									:class="$style.listItemCheckbox"
-									@update:model-value="setStagedStatus(file, !staged[file.file])"
-								/>
-								<div>
-									<n8n-text v-if="file.status === 'deleted'" color="text-light">
-										<span v-if="file.type === 'workflow'"> Deleted Workflow: </span>
-										<span v-if="file.type === 'credential'"> Deleted Credential: </span>
-										<strong>{{ file.name || file.id }}</strong>
-									</n8n-text>
-									<n8n-text v-else bold> {{ file.name }} </n8n-text>
-									<div v-if="file.updatedAt">
-										<n8n-text color="text-light" size="small">
-											{{ renderUpdatedAt(file) }}
-										</n8n-text>
-									</div>
-								</div>
-								<div :class="$style.listItemStatus">
-									<n8n-badge
-										v-if="workflowId === file.id && file.type === 'workflow'"
-										class="mr-2xs"
-									>
-										Current workflow
-									</n8n-badge>
-									<n8n-badge :theme="statusToBadgeThemeMap[file.status] || 'default'">
-										{{ getStatusText(file) }}
-									</n8n-badge>
-								</div>
-							</div>
-						</n8n-card>
+							<n8n-text bold tag="strong">
+								{{ i18n.baseText('settings.sourceControl.modals.push.workflowsToCommit') }}
+							</n8n-text>
+							<n8n-text v-show="workflowFiles.length > 0" tag="strong">
+								({{ stagedWorkflowFiles.length }}/{{ workflowFiles.length }})
+							</n8n-text>
+						</n8n-checkbox>
+
+						<n8n-checkbox
+							v-for="file in sortedFiles"
+							:key="file.file"
+							:class="[
+								'scopedListItem',
+								$style.listItem,
+								{ [$style.hiddenListItem]: defaultStagedFileTypes.includes(file.type) },
+							]"
+							data-test-id="source-control-push-modal-file-checkbox"
+							:model-value="staged[file.file]"
+							@update:model-value="setStagedStatus(file, !staged[file.file])"
+						>
+							<span>
+								<n8n-text v-if="file.status === 'deleted'" color="text-light">
+									<span v-if="file.type === 'workflow'"> Deleted Workflow: </span>
+									<span v-if="file.type === 'credential'"> Deleted Credential: </span>
+									<strong>{{ file.name || file.id }}</strong>
+								</n8n-text>
+								<n8n-text v-else bold> {{ file.name }} </n8n-text>
+								<n8n-text
+									v-if="file.updatedAt"
+									tag="p"
+									class="mt-0"
+									color="text-light"
+									size="small"
+								>
+									{{ renderUpdatedAt(file) }}
+								</n8n-text>
+							</span>
+							<span>
+								<n8n-badge v-if="workflowId === file.id && file.type === 'workflow'" class="mr-2xs">
+									Current workflow
+								</n8n-badge>
+								<n8n-badge :theme="statusToBadgeThemeMap[file.status] || 'default'">
+									{{ getStatusText(file) }}
+								</n8n-badge>
+							</span>
+						</n8n-checkbox>
 					</div>
 					<n8n-notice v-else class="mt-0">
 						<i18n-t keypath="settings.sourceControl.modals.push.noWorkflowChanges">
@@ -380,11 +380,15 @@ function getStatusText(file: SourceControlAggregatedFile): string {
 }
 
 .listItem {
-	margin-top: var(--spacing-2xs);
-	margin-bottom: var(--spacing-2xs);
+	display: flex;
+	width: 100%;
+	align-items: center;
+	margin: var(--spacing-2xs) 0 var(--spacing-2xs);
+	padding: var(--spacing-xs);
 	cursor: pointer;
 	transition: border 0.3s ease;
-	padding: var(--spacing-xs);
+	border-radius: var(--border-radius-large);
+	border: var(--border-base);
 
 	&:hover {
 		border-color: var(--color-foreground-dark);
@@ -397,27 +401,30 @@ function getStatusText(file: SourceControlAggregatedFile): string {
 	&:last-child {
 		margin-bottom: 0;
 	}
+
+	&.hiddenListItem {
+		display: none !important;
+	}
 }
 
-.listItemBody {
-	display: flex;
-	flex-direction: row;
-	align-items: center;
-}
-
-.listItemCheckbox {
-	display: inline-flex !important;
-	margin-bottom: 0 !important;
-	margin-right: var(--spacing-2xs) !important;
-}
-
-.listItemStatus {
-	margin-left: auto;
+.selectAll {
+	float: left;
+	clear: both;
+	margin: 0 0 var(--spacing-2xs);
 }
 
 .footer {
 	display: flex;
 	flex-direction: row;
 	justify-content: flex-end;
+}
+</style>
+
+<style scoped lang="scss">
+.scopedListItem :deep(.el-checkbox__label) {
+	display: flex;
+	width: 100%;
+	justify-content: space-between;
+	align-items: center;
 }
 </style>

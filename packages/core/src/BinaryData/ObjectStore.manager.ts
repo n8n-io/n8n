@@ -1,11 +1,11 @@
 import fs from 'node:fs/promises';
+import type { Readable } from 'node:stream';
 import { Service } from 'typedi';
 import { v4 as uuid } from 'uuid';
+
+import type { BinaryData } from './types';
 import { binaryToBuffer } from './utils';
 import { ObjectStoreService } from '../ObjectStore/ObjectStore.service.ee';
-
-import type { Readable } from 'node:stream';
-import type { BinaryData } from './types';
 
 @Service()
 export class ObjectStoreManager implements BinaryData.Manager {

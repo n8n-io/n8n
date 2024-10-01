@@ -1,14 +1,14 @@
 import Container from 'typedi';
 
 import type { User } from '@/databases/entities/user';
+import { License } from '@/license';
+import { ProjectService } from '@/services/project.service';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
-import * as testDb from '../shared/test-db';
 import { createUser } from '../shared/db/users';
 import { createWorkflow, shareWorkflowWithUsers } from '../shared/db/workflows';
-import { ProjectService } from '@/services/project.service';
 import { LicenseMocker } from '../shared/license';
-import { License } from '@/license';
+import * as testDb from '../shared/test-db';
 
 let owner: User;
 let member: User;

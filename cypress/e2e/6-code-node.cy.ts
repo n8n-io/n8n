@@ -1,7 +1,8 @@
 import { nanoid } from 'nanoid';
-import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
+
 import { NDV } from '../pages/ndv';
 import { successToast } from '../pages/notifications';
+import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 
 const WorkflowPage = new WorkflowPageClass();
 const ndv = new NDV();
@@ -43,7 +44,9 @@ describe('Code node', () => {
 			const getParameter = () => ndv.getters.parameterInput('jsCode').should('be.visible');
 			const getEditor = () => getParameter().find('.cm-content').should('exist');
 
-			getEditor().type('{selectall}').paste(`$input.itemMatching()
+			getEditor()
+				.type('{selectall}')
+				.paste(`$input.itemMatching()
 $input.item
 $('When clicking ‘Test workflow’').item
 $input.first(1)
@@ -68,7 +71,9 @@ return
 
 			ndv.getters.parameterInput('mode').click();
 			ndv.actions.selectOptionInParameterDropdown('mode', 'Run Once for Each Item');
-			getEditor().type('{selectall}').paste(`$input.itemMatching()
+			getEditor()
+				.type('{selectall}')
+				.paste(`$input.itemMatching()
 $input.all()
 $input.first()
 $input.item()

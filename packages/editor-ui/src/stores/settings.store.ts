@@ -1,5 +1,6 @@
 import { computed, ref } from 'vue';
 import Bowser from 'bowser';
+import type { IUserManagementSettings, FrontendSettings } from '@n8n/api-types';
 
 import * as publicApiApi from '@/api/api-keys';
 import * as ldapApi from '@/api/ldap';
@@ -8,12 +9,7 @@ import { testHealthEndpoint } from '@/api/templates';
 import type { ILdapConfig } from '@/Interface';
 import { STORES, INSECURE_CONNECTION_WARNING } from '@/constants';
 import { UserManagementAuthenticationMethod } from '@/Interface';
-import type {
-	IDataObject,
-	IN8nUISettings,
-	WorkflowSettings,
-	IUserManagementSettings,
-} from 'n8n-workflow';
+import type { IDataObject, WorkflowSettings } from 'n8n-workflow';
 import { ExpressionEvaluatorProxy } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { useRootStore } from './root.store';
@@ -21,13 +17,12 @@ import { useUIStore } from './ui.store';
 import { useUsersStore } from './users.store';
 import { useVersionsStore } from './versions.store';
 import { makeRestApiRequest } from '@/utils/apiUtils';
-import { useTitleChange } from '@/composables/useTitleChange';
 import { useToast } from '@/composables/useToast';
 import { i18n } from '@/plugins/i18n';
 
 export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	const initialized = ref(false);
-	const settings = ref<IN8nUISettings>({} as IN8nUISettings);
+	const settings = ref<FrontendSettings>({} as FrontendSettings);
 	const userManagement = ref<IUserManagementSettings>({
 		quota: -1,
 		showSetupOnFirstLoad: false,
@@ -96,10 +91,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const deploymentType = computed(() => settings.value.deployment?.type || 'default');
 
-	const isDesktopDeployment = computed(() =>
-		settings.value.deployment?.type.startsWith('desktop_'),
-	);
-
 	const isCloudDeployment = computed(() => settings.value.deployment?.type === 'cloud');
 
 	const isSmtpSetup = computed(() => userManagement.value.smtpSetup);
@@ -136,8 +127,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isCommunityNodesFeatureEnabled = computed(() => settings.value.communityNodesEnabled);
 
-	const isNpmAvailable = computed(() => settings.value.isNpmAvailable);
-
 	const allowedModules = computed(() => settings.value.allowedModules);
 
 	const isQueueModeEnabled = computed(() => settings.value.executionMode === 'queue');
@@ -164,7 +153,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isDevRelease = computed(() => settings.value.releaseChannel === 'dev');
 
-	const setSettings = (newSettings: IN8nUISettings) => {
+	const setSettings = (newSettings: FrontendSettings) => {
 		settings.value = newSettings;
 		userManagement.value = newSettings.userManagement;
 		if (userManagement.value) {
@@ -208,7 +197,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		}
 	};
 
-	const setAllowedModules = (allowedModules: IN8nUISettings['allowedModules']) => {
+	const setAllowedModules = (allowedModules: FrontendSettings['allowedModules']) => {
 		settings.value.allowedModules = allowedModules;
 	};
 
@@ -253,7 +242,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		rootStore.setOauthCallbackUrls(fetchedSettings.oauthCallbackUrls);
 		rootStore.setN8nMetadata(fetchedSettings.n8nMetadata || {});
 		rootStore.setDefaultLocale(fetchedSettings.defaultLocale);
-		rootStore.setIsNpmAvailable(fetchedSettings.isNpmAvailable);
 		rootStore.setBinaryDataMode(fetchedSettings.binaryDataMode);
 		useVersionsStore().setVersionNotificationSettings(fetchedSettings.versionNotifications);
 	};
@@ -268,9 +256,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 			await getSettings();
 
 			ExpressionEvaluatorProxy.setEvaluator(settings.value.expressions.evaluator);
-
-			// Re-compute title since settings are now available
-			useTitleChange().titleReset();
 
 			initialized.value = true;
 		} catch (e) {
@@ -319,21 +304,19 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		templatesEndpointHealthy.value = true;
 	};
 
-	const getApiKey = async () => {
+	const getApiKeys = async () => {
 		const rootStore = useRootStore();
-		const { apiKey } = await publicApiApi.getApiKey(rootStore.restApiContext);
-		return apiKey;
+		return await publicApiApi.getApiKeys(rootStore.restApiContext);
 	};
 
 	const createApiKey = async () => {
 		const rootStore = useRootStore();
-		const { apiKey } = await publicApiApi.createApiKey(rootStore.restApiContext);
-		return apiKey;
+		return await publicApiApi.createApiKey(rootStore.restApiContext);
 	};
 
-	const deleteApiKey = async () => {
+	const deleteApiKey = async (id: string) => {
 		const rootStore = useRootStore();
-		await publicApiApi.deleteApiKey(rootStore.restApiContext);
+		await publicApiApi.deleteApiKey(rootStore.restApiContext, id);
 	};
 
 	const getLdapConfig = async () => {
@@ -367,7 +350,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	};
 
 	const reset = () => {
-		settings.value = {} as IN8nUISettings;
+		settings.value = {} as FrontendSettings;
 	};
 
 	return {
@@ -399,7 +382,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isSamlLoginEnabled,
 		showSetupPage,
 		deploymentType,
-		isDesktopDeployment,
 		isCloudDeployment,
 		isSmtpSetup,
 		isPersonalizationSurveyEnabled,
@@ -415,7 +397,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		templatesHost,
 		pushBackend,
 		isCommunityNodesFeatureEnabled,
-		isNpmAvailable,
 		allowedModules,
 		isQueueModeEnabled,
 		isWorkerViewAvailable,
@@ -436,7 +417,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		runLdapSync,
 		getTimezones,
 		createApiKey,
-		getApiKey,
+		getApiKeys,
 		deleteApiKey,
 		testTemplatesEndpoint,
 		submitContactInfo,

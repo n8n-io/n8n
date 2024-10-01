@@ -1,8 +1,8 @@
-import type { Response } from 'express';
 import type { AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
-import { WritableStream } from 'node:stream/web';
-import { strict as assert } from 'node:assert';
+import type { Response } from 'express';
 import { ErrorReporterProxy } from 'n8n-workflow';
+import { strict as assert } from 'node:assert';
+import { WritableStream } from 'node:stream/web';
 
 import { Post, RestController } from '@/decorators';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';

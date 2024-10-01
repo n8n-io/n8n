@@ -1,8 +1,6 @@
+import { GlobalConfig } from '@n8n/config';
 import glob from 'fast-glob';
-import { Container, Service } from 'typedi';
-import path from 'path';
 import fsPromises from 'fs/promises';
-
 import type { Class, DirectoryLoader, Types } from 'n8n-core';
 import {
 	CUSTOM_EXTENSION_ENV,
@@ -19,6 +17,9 @@ import type {
 	ICredentialTypeData,
 } from 'n8n-workflow';
 import { NodeHelpers, ApplicationError, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
+import path from 'path';
+import picocolors from 'picocolors';
+import { Container, Service } from 'typedi';
 
 import {
 	CUSTOM_API_CALL_KEY,
@@ -27,8 +28,7 @@ import {
 	CLI_DIR,
 	inE2ETests,
 } from '@/constants';
-import { Logger } from '@/logger';
-import { GlobalConfig } from '@n8n/config';
+import { Logger } from '@/logging/logger.service';
 
 interface LoadedNodesAndCredentials {
 	nodes: INodeTypeData;
@@ -147,6 +147,7 @@ export class LoadNodesAndCredentials {
 					path.join(nodeModulesDir, packagePath),
 				);
 			} catch (error) {
+				this.logger.error((error as Error).message);
 				ErrorReporter.error(error);
 			}
 		}
@@ -259,6 +260,13 @@ export class LoadNodesAndCredentials {
 		dir: string,
 	) {
 		const loader = new constructor(dir, this.excludeNodes, this.includeNodes);
+		if (loader.packageName in this.loaders) {
+			throw new ApplicationError(
+				picocolors.red(
+					`nodes package ${loader.packageName} is already loaded.\n Please delete this second copy at path ${dir}`,
+				),
+			);
+		}
 		await loader.loadAll();
 		this.loaders[loader.packageName] = loader;
 		return loader;
@@ -376,7 +384,7 @@ export class LoadNodesAndCredentials {
 				loader.reset();
 				await loader.loadAll();
 				await this.postProcessLoaders();
-				push.broadcast('nodeDescriptionUpdated');
+				push.broadcast('nodeDescriptionUpdated', {});
 			}, 100);
 
 			const toWatch = loader.isLazyLoaded

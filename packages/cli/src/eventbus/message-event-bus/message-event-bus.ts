@@ -1,4 +1,4 @@
-import { Service } from 'typedi';
+import { GlobalConfig } from '@n8n/config';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { DeleteResult } from '@n8n/typeorm';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
@@ -6,38 +6,38 @@ import { In } from '@n8n/typeorm';
 import EventEmitter from 'events';
 import uniqby from 'lodash/uniqBy';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
+import { Service } from 'typedi';
 
 import config from '@/config';
 import { EventDestinationsRepository } from '@/databases/repositories/event-destinations.repository';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { License } from '@/license';
+import { Logger } from '@/logging/logger.service';
 import { OrchestrationService } from '@/services/orchestration.service';
-import { Logger } from '@/logger';
 
-import type { EventMessageTypes } from '../event-message-classes/';
-import type { MessageEventBusDestination } from '../message-event-bus-destination/message-event-bus-destination.ee';
-import { MessageEventBusLogWriter } from '../message-event-bus-writer/message-event-bus-log-writer';
-import { messageEventBusDestinationFromDb } from '../message-event-bus-destination/message-event-bus-destination-from-db';
-import type { EventMessageConfirmSource } from '../event-message-classes/event-message-confirm';
-import type { EventMessageAuditOptions } from '../event-message-classes/event-message-audit';
-import { EventMessageAudit } from '../event-message-classes/event-message-audit';
-import type { EventMessageWorkflowOptions } from '../event-message-classes/event-message-workflow';
-import { EventMessageWorkflow } from '../event-message-classes/event-message-workflow';
-import type { EventMessageNodeOptions } from '../event-message-classes/event-message-node';
-import { EventMessageNode } from '../event-message-classes/event-message-node';
-import {
-	EventMessageGeneric,
-	eventMessageGenericDestinationTestEvent,
-} from '../event-message-classes/event-message-generic';
 import { ExecutionRecoveryService } from '../../executions/execution-recovery.service';
+import type { EventMessageTypes } from '../event-message-classes/';
 import {
 	EventMessageAiNode,
 	type EventMessageAiNodeOptions,
 } from '../event-message-classes/event-message-ai-node';
-import { License } from '@/license';
+import type { EventMessageAuditOptions } from '../event-message-classes/event-message-audit';
+import { EventMessageAudit } from '../event-message-classes/event-message-audit';
+import type { EventMessageConfirmSource } from '../event-message-classes/event-message-confirm';
 import type { EventMessageExecutionOptions } from '../event-message-classes/event-message-execution';
 import { EventMessageExecution } from '../event-message-classes/event-message-execution';
-import { GlobalConfig } from '@n8n/config';
+import {
+	EventMessageGeneric,
+	eventMessageGenericDestinationTestEvent,
+} from '../event-message-classes/event-message-generic';
+import type { EventMessageNodeOptions } from '../event-message-classes/event-message-node';
+import { EventMessageNode } from '../event-message-classes/event-message-node';
+import type { EventMessageWorkflowOptions } from '../event-message-classes/event-message-workflow';
+import { EventMessageWorkflow } from '../event-message-classes/event-message-workflow';
+import { messageEventBusDestinationFromDb } from '../message-event-bus-destination/message-event-bus-destination-from-db';
+import type { MessageEventBusDestination } from '../message-event-bus-destination/message-event-bus-destination.ee';
+import { MessageEventBusLogWriter } from '../message-event-bus-writer/message-event-bus-log-writer';
 
 export type EventMessageReturnMode = 'sent' | 'unsent' | 'all' | 'unfinished';
 
@@ -210,7 +210,7 @@ export class MessageEventBus extends EventEmitter {
 		this.destinations[destination.getId()] = destination;
 		this.destinations[destination.getId()].startListening();
 		if (notifyWorkers) {
-			await this.orchestrationService.publish('restartEventBus');
+			await this.orchestrationService.publish('restart-event-bus');
 		}
 		return destination;
 	}
@@ -236,7 +236,7 @@ export class MessageEventBus extends EventEmitter {
 			delete this.destinations[id];
 		}
 		if (notifyWorkers) {
-			await this.orchestrationService.publish('restartEventBus');
+			await this.orchestrationService.publish('restart-event-bus');
 		}
 		return result;
 	}

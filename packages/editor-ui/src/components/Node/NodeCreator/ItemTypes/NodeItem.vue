@@ -14,6 +14,7 @@ import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import NodeIcon from '@/components/NodeIcon.vue';
 
 import { useActions } from '../composables/useActions';
+import { useViewStacks } from '../composables/useViewStacks';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useNodeType } from '@/composables/useNodeType';
@@ -34,6 +35,7 @@ const telemetry = useTelemetry();
 
 const { actions } = useNodeCreatorStore();
 const { getAddedNodesAndConnections } = useActions();
+const { activeViewStack } = useViewStacks();
 const { isSubNodeType } = useNodeType({
 	nodeType: props.nodeType,
 });
@@ -61,7 +63,7 @@ const dataTestId = computed(() =>
 );
 
 const hasActions = computed(() => {
-	return nodeActions.value.length > 1;
+	return nodeActions.value.length > 1 && !activeViewStack.hideActions;
 });
 
 const nodeActions = computed(() => {
@@ -163,7 +165,7 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 			<p
 				:class="$style.communityNodeIcon"
 				@click="onCommunityNodeTooltipClick"
-				v-html="
+				v-n8n-html="
 					i18n.baseText('generic.communityNode.tooltip', {
 						interpolate: {
 							packageName: nodeType.name.split('.')[0],

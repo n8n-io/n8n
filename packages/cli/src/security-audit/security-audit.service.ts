@@ -2,10 +2,9 @@ import Container, { Service } from 'typedi';
 
 import config from '@/config';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-
 import { RISK_CATEGORIES } from '@/security-audit/constants';
-import { toReportTitle } from '@/security-audit/utils';
 import type { Risk, RiskReporter } from '@/security-audit/types';
+import { toReportTitle } from '@/security-audit/utils';
 
 @Service()
 export class SecurityAuditService {

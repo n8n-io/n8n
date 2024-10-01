@@ -1,15 +1,18 @@
-import { ExternalSecretsManager } from '@/external-secrets/external-secrets-manager.ee';
-import { License } from '@/license';
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { InstanceSettings } from 'n8n-core';
 import Container from 'typedi';
 import { Logger } from 'winston';
-import { messageToRedisServiceCommandObject, debounceMessageReceiver } from '../helpers';
+
 import config from '@/config';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { ExternalSecretsManager } from '@/external-secrets/external-secrets-manager.ee';
+import { License } from '@/license';
 import { CommunityPackagesService } from '@/services/community-packages.service';
+
+import { messageToRedisServiceCommandObject, debounceMessageReceiver } from '../helpers';
 
 export async function handleCommandMessageWebhook(messageString: string) {
 	const queueModeId = config.getEnv('redis.queueModeId');
-	const isMainInstance = config.getEnv('generic.instanceType') === 'main';
+	const isMainInstance = Container.get(InstanceSettings).instanceType === 'main';
 	const message = messageToRedisServiceCommandObject(messageString);
 	const logger = Container.get(Logger);
 
@@ -30,12 +33,9 @@ export async function handleCommandMessageWebhook(messageString: string) {
 		}
 
 		switch (message.command) {
-			case 'reloadLicense':
+			case 'reload-license':
 				if (!debounceMessageReceiver(message, 500)) {
-					message.payload = {
-						result: 'debounced',
-					};
-					return message;
+					return { ...message, payload: { result: 'debounced' } };
 				}
 
 				if (isMainInstance && !config.getEnv('multiMainSetup.enabled')) {
@@ -47,20 +47,14 @@ export async function handleCommandMessageWebhook(messageString: string) {
 				}
 				await Container.get(License).reload();
 				break;
-			case 'restartEventBus':
+			case 'restart-event-bus':
 				if (!debounceMessageReceiver(message, 200)) {
-					message.payload = {
-						result: 'debounced',
-					};
-					return message;
+					return { ...message, payload: { result: 'debounced' } };
 				}
 				await Container.get(MessageEventBus).restart();
-			case 'reloadExternalSecretsProviders':
+			case 'reload-external-secrets-providers':
 				if (!debounceMessageReceiver(message, 200)) {
-					message.payload = {
-						result: 'debounced',
-					};
-					return message;
+					return { ...message, payload: { result: 'debounced' } };
 				}
 				await Container.get(ExternalSecretsManager).reloadAllProviders();
 				break;
@@ -70,12 +64,15 @@ export async function handleCommandMessageWebhook(messageString: string) {
 				if (!debounceMessageReceiver(message, 200)) {
 					return message;
 				}
-				const { packageName, packageVersion } = message.payload;
+				const { packageName } = message.payload;
 				const communityPackagesService = Container.get(CommunityPackagesService);
 				if (message.command === 'community-package-uninstall') {
 					await communityPackagesService.removeNpmPackage(packageName);
 				} else {
-					await communityPackagesService.installOrUpdateNpmPackage(packageName, packageVersion);
+					await communityPackagesService.installOrUpdateNpmPackage(
+						packageName,
+						message.payload.packageVersion,
+					);
 				}
 				break;
 

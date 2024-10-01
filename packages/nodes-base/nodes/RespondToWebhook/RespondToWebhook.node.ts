@@ -8,7 +8,16 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { jsonParse, BINARY_ENCODING, NodeOperationError, NodeConnectionType } from 'n8n-workflow';
+import {
+	jsonParse,
+	BINARY_ENCODING,
+	NodeOperationError,
+	NodeConnectionType,
+	WEBHOOK_NODE_TYPE,
+	FORM_TRIGGER_NODE_TYPE,
+	CHAT_TRIGGER_NODE_TYPE,
+	WAIT_NODE_TYPE,
+} from 'n8n-workflow';
 import set from 'lodash/set';
 import jwt from 'jsonwebtoken';
 import { formatPrivateKey, generatePairedItemData } from '../../utils/utilities';
@@ -291,9 +300,10 @@ export class RespondToWebhook implements INodeType {
 		const nodeVersion = this.getNode().typeVersion;
 
 		const WEBHOOK_NODE_TYPES = [
-			'n8n-nodes-base.webhook',
-			'n8n-nodes-base.formTrigger',
-			'@n8n/n8n-nodes-langchain.chatTrigger',
+			WEBHOOK_NODE_TYPE,
+			FORM_TRIGGER_NODE_TYPE,
+			CHAT_TRIGGER_NODE_TYPE,
+			WAIT_NODE_TYPE,
 		];
 
 		try {

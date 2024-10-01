@@ -18,9 +18,6 @@ import type {
 	INodeMetadata,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
-	IPushDataExecutionFinished,
-	IPushDataNodeExecuteAfter,
-	IPushDataUnsavedExecutionFinished,
 	IStartRunData,
 	IUpdateInformation,
 	IUsedCredential,
@@ -74,6 +71,8 @@ import { i18n } from '@/plugins/i18n';
 import { computed, ref } from 'vue';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { ProjectSharingData } from '@/types/projects.types';
+import type { PushPayload } from '@n8n/api-types';
+import { useLocalStorage } from '@vueuse/core';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -101,6 +100,10 @@ let cachedWorkflow: Workflow | null = null;
 
 export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const uiStore = useUIStore();
+	// -1 means the backend chooses the default
+	// 0 is the old flow
+	// 1 is the new flow
+	const partialExecutionVersion = useLocalStorage('PartialExecution.version', -1);
 
 	const workflow = ref<IWorkflowDb>(createEmptyWorkflow());
 	const usedCredentials = ref<Record<string, IUsedCredential>>({});
@@ -986,15 +989,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	function updateNodeAtIndex(nodeIndex: number, nodeData: Partial<INodeUi>): void {
 		if (nodeIndex !== -1) {
-			const node = workflow.value.nodes[nodeIndex];
-			workflow.value = {
-				...workflow.value,
-				nodes: [
-					...workflow.value.nodes.slice(0, nodeIndex),
-					{ ...node, ...nodeData },
-					...workflow.value.nodes.slice(nodeIndex + 1),
-				],
-			};
+			Object.assign(workflow.value.nodes[nodeIndex], nodeData);
 		}
 	}
 
@@ -1020,12 +1015,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				issues: remainingNodeIssues,
 			});
 		} else {
-			if (node.issues === undefined) {
-				updateNodeAtIndex(nodeIndex, {
-					issues: {},
-				});
-			}
-
 			updateNodeAtIndex(nodeIndex, {
 				issues: {
 					...node.issues,
@@ -1050,7 +1039,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflow.value.nodes.push(nodeData);
 		// Init node metadata
 		if (!nodeMetadata.value[nodeData.name]) {
-			nodeMetadata.value = { ...nodeMetadata.value, [nodeData.name]: {} as INodeMetadata };
+			nodeMetadata.value[nodeData.name] = {} as INodeMetadata;
 		}
 	}
 
@@ -1155,13 +1144,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			parameters: newParameters as INodeParameters,
 		});
 
-		nodeMetadata.value = {
-			...nodeMetadata.value,
-			[node.name]: {
-				...nodeMetadata.value[node.name],
-				parametersLastUpdatedAt: Date.now(),
-			},
-		} as NodeMetadataMap;
+		nodeMetadata.value[node.name].parametersLastUpdatedAt = Date.now();
 	}
 
 	function setLastNodeParameters(updateInformation: IUpdateInformation): void {
@@ -1185,7 +1168,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 	}
 
-	function addNodeExecutionData(pushData: IPushDataNodeExecuteAfter): void {
+	function addNodeExecutionData(pushData: PushPayload<'nodeExecuteAfter'>): void {
 		if (!workflowExecutionData.value?.data) {
 			throw new Error('The "workflowExecutionData" is not initialized!');
 		}
@@ -1257,9 +1240,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		activeExecutionId.value = newActiveExecution.id;
 	}
 
-	function finishActiveExecution(
-		finishedActiveExecution: IPushDataExecutionFinished | IPushDataUnsavedExecutionFinished,
-	): void {
+	function finishActiveExecution(finishedActiveExecution: PushPayload<'executionFinished'>): void {
 		// Find the execution to set to finished
 		const activeExecutionIndex = activeExecutions.value.findIndex((execution) => {
 			return execution.id === finishedActiveExecution.executionId;
@@ -1394,7 +1375,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			return await makeRestApiRequest(
 				rootStore.restApiContext,
 				'POST',
-				`/workflows/${startRunData.workflowData.id}/run`,
+				`/workflows/${startRunData.workflowData.id}/run?partialExecutionVersion=${partialExecutionVersion.value}`,
 				startRunData as unknown as IDataObject,
 			);
 		} catch (error) {
@@ -1483,13 +1464,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function setNodePristine(nodeName: string, isPristine: boolean): void {
-		nodeMetadata.value = {
-			...nodeMetadata.value,
-			[nodeName]: {
-				...nodeMetadata.value[nodeName],
-				pristine: isPristine,
-			},
-		};
+		nodeMetadata.value[nodeName].pristine = isPristine;
 	}
 
 	function resetChatMessages(): void {
@@ -1524,8 +1499,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 
 		removeNode(node);
-
-		// @TODO When removing node connected between two nodes, create a connection between them
 	}
 
 	function removeNodeConnectionsById(nodeId: string): void {

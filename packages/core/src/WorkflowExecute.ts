@@ -2,9 +2,9 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
+import * as assert from 'assert/strict';
 import { setMaxListeners } from 'events';
-import PCancelable from 'p-cancelable';
-
+import get from 'lodash/get';
 import type {
 	ExecutionBaseError,
 	ExecutionStatus,
@@ -46,8 +46,18 @@ import {
 	sleep,
 	ErrorReporterProxy,
 } from 'n8n-workflow';
-import get from 'lodash/get';
+import PCancelable from 'p-cancelable';
+
 import * as NodeExecuteFunctions from './NodeExecuteFunctions';
+import {
+	DirectedGraph,
+	findCycles,
+	findStartNodes,
+	findSubgraph,
+	findTriggerForPartialExecution,
+} from './PartialExecutionUtils';
+import { cleanRunData } from './PartialExecutionUtils/cleanRunData';
+import { recreateNodeExecutionStack } from './PartialExecutionUtils/recreateNodeExecutionStack';
 
 export class WorkflowExecute {
 	private status: ExecutionStatus = 'new';
@@ -303,6 +313,83 @@ export class WorkflowExecute {
 		};
 
 		return this.processRunExecutionData(workflow);
+	}
+
+	// IMPORTANT: Do not add "async" to this function, it will then convert the
+	//            PCancelable to a regular Promise and does so not allow canceling
+	//            active executions anymore
+	// eslint-disable-next-line @typescript-eslint/promise-function-async
+	runPartialWorkflow2(
+		workflow: Workflow,
+		runData: IRunData,
+		destinationNodeName?: string,
+		pinData?: IPinData,
+	): PCancelable<IRun> {
+		// TODO: Refactor the call-site to make `destinationNodeName` a required
+		// after removing the old partial execution flow.
+		assert.ok(
+			destinationNodeName,
+			'a destinationNodeName is required for the new partial execution flow',
+		);
+
+		const destinationNode = workflow.getNode(destinationNodeName);
+		assert.ok(
+			destinationNode,
+			`Could not find a node with the name ${destinationNodeName} in the workflow.`,
+		);
+
+		// 1. Find the Trigger
+		const trigger = findTriggerForPartialExecution(workflow, destinationNodeName);
+		if (trigger === undefined) {
+			throw new ApplicationError(
+				'The destination node is not connected to any trigger. Partial executions need a trigger.',
+			);
+		}
+
+		// 2. Find the Subgraph
+		const graph = DirectedGraph.fromWorkflow(workflow);
+		const subgraph = findSubgraph(graph, destinationNode, trigger);
+		const filteredNodes = subgraph.getNodes();
+
+		// 3. Find the Start Nodes
+		const startNodes = findStartNodes(subgraph, trigger, destinationNode, runData);
+
+		// 4. Detect Cycles
+		const cycles = findCycles(workflow);
+
+		// 5. Handle Cycles
+		if (cycles.length) {
+			// TODO: handle
+		}
+
+		// 6. Clean Run Data
+		const newRunData: IRunData = cleanRunData(runData, graph, startNodes);
+
+		// 7. Recreate Execution Stack
+		const { nodeExecutionStack, waitingExecution, waitingExecutionSource } =
+			recreateNodeExecutionStack(subgraph, startNodes, destinationNode, runData, pinData ?? {});
+
+		// 8. Execute
+		this.status = 'running';
+		this.runExecutionData = {
+			startData: {
+				destinationNode: destinationNodeName,
+				runNodeFilter: Array.from(filteredNodes.values()).map((node) => node.name),
+			},
+			resultData: {
+				runData: newRunData,
+				pinData,
+			},
+			executionData: {
+				contextData: {},
+				nodeExecutionStack,
+				metadata: {},
+				waitingExecution,
+				waitingExecutionSource,
+			},
+		};
+
+		return this.processRunExecutionData(subgraph.toWorkflow({ ...workflow }));
 	}
 
 	/**
@@ -1651,9 +1738,9 @@ export class WorkflowExecute {
 							// array as this shows that the parent nodes executed but they did not have any
 							// data to pass on.
 							const inputsWithData = this.runExecutionData
-								.executionData!.waitingExecution[
-									nodeName
-								][firstRunIndex].main.map((data, index) => (data === null ? null : index))
+								.executionData!.waitingExecution[nodeName][firstRunIndex].main.map((data, index) =>
+									data === null ? null : index,
+								)
 								.filter((data) => data !== null);
 
 							if (requiredInputs !== undefined) {

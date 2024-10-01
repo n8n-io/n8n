@@ -9,6 +9,7 @@ import {
 import type { ChatRequest } from '@/types/assistant.types';
 import type { ChatUI } from 'n8n-design-system/types/assistant';
 import { defineStore } from 'pinia';
+import type { PushPayload } from '@n8n/api-types';
 import { computed, h, ref, watch } from 'vue';
 import { useRootStore } from './root.store';
 import { useUsersStore } from './users.store';
@@ -16,17 +17,18 @@ import { useRoute } from 'vue-router';
 import { useSettingsStore } from './settings.store';
 import { assert } from '@/utils/assert';
 import { useWorkflowsStore } from './workflows.store';
-import type { ICredentialType, INodeParameters } from 'n8n-workflow';
+import type { IDataObject, ICredentialType, INodeParameters } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 import { ndvEventBus, codeNodeEditorEventBus } from '@/event-bus';
 import { useNDVStore } from './ndv.store';
-import type { IPushDataNodeExecuteAfter, IUpdateInformation } from '@/Interface';
+import type { IUpdateInformation } from '@/Interface';
 import {
 	getMainAuthField,
 	getNodeAuthOptions,
 	getReferencedNodes,
 	getNodesSchemas,
-	pruneNodeProperties,
+	processNodeForAssistant,
+	isNodeReferencingInputData,
 } from '@/utils/nodeTypesUtils';
 import { useNodeTypesStore } from './nodeTypes.store';
 import { usePostHog } from './posthog.store';
@@ -44,6 +46,10 @@ export const ENABLED_VIEWS = [
 	VIEWS.EXECUTION_PREVIEW,
 	VIEWS.WORKFLOWS,
 	VIEWS.CREDENTIALS,
+	VIEWS.PROJECTS_CREDENTIALS,
+	VIEWS.PROJECTS_WORKFLOWS,
+	VIEWS.PROJECT_SETTINGS,
+	VIEWS.TEMPLATE_SETUP,
 ];
 const READABLE_TYPES = ['code-diff', 'text', 'block'];
 
@@ -354,9 +360,9 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		resetAssistantChat();
 		chatSessionTask.value = credentialType ? 'credentials' : 'support';
 		chatSessionCredType.value = credentialType;
-		chatWindowOpen.value = true;
 		addUserMessage(userMessage, id);
 		addLoadingAssistantMessage(locale.baseText('aiAssistant.thinkingSteps.thinking'));
+		openChat();
 		streaming.value = true;
 
 		let payload: ChatRequest.InitSupportChat | ChatRequest.InitCredHelp = {
@@ -420,6 +426,16 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			const availableAuthOptions = getNodeAuthOptions(nodeType);
 			authType = availableAuthOptions.find((option) => option.value === credentialInUse);
 		}
+		let nodeInputData: { inputNodeName?: string; inputData?: IDataObject } | undefined = undefined;
+		const ndvInput = ndvStore.ndvInputData;
+		if (isNodeReferencingInputData(context.node) && ndvInput?.length) {
+			const inputData = ndvStore.ndvInputData[0].json;
+			const inputNodeName = ndvStore.input.nodeName;
+			nodeInputData = {
+				inputNodeName,
+				inputData,
+			};
+		}
 		addLoadingAssistantMessage(locale.baseText('aiAssistant.thinkingSteps.analyzingError'));
 		openChat();
 
@@ -434,7 +450,8 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 						firstName: usersStore.currentUser?.firstName ?? '',
 					},
 					error: context.error,
-					node: pruneNodeProperties(context.node, ['position']),
+					node: processNodeForAssistant(context.node, ['position']),
+					nodeInputData,
 					executionSchema: schemas,
 					authType,
 				},
@@ -473,7 +490,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			(e) => handleServiceError(e, id),
 		);
 	}
-	async function onNodeExecution(pushEvent: IPushDataNodeExecuteAfter) {
+	async function onNodeExecution(pushEvent: PushPayload<'nodeExecuteAfter'>) {
 		if (!chatSessionError.value || pushEvent.nodeName !== chatSessionError.value.node.name) {
 			return;
 		}
@@ -579,7 +596,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			workflow_id: workflowsStore.workflowId,
 			node_type: chatSessionError.value?.node?.type,
 			error: chatSessionError.value?.error,
-			chat_session_id: currentSessionId,
+			chat_session_id: currentSessionId.value,
 		});
 	}
 

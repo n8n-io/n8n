@@ -2,9 +2,10 @@
 import { DateTime } from 'luxon';
 import type { EventMessageTypeNames, JsonObject } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
-import type { AbstractEventPayload } from './abstract-event-payload';
-import type { AbstractEventMessageOptions } from './abstract-event-message-options';
+
 import type { EventNamesTypes } from '.';
+import type { AbstractEventMessageOptions } from './abstract-event-message-options';
+import type { AbstractEventPayload } from './abstract-event-payload';
 
 function modifyUnderscoredKeys(
 	input: { [key: string]: any },
@@ -20,12 +21,10 @@ function modifyUnderscoredKeys(
 					result[key] = modifier(input[key]);
 				}
 			} else {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				result[key] = input[key];
 			}
 		} else if (typeof input[key] === 'object') {
 			if (Array.isArray(input[key])) {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
 				result[key] = input[key].map((item: any) => {
 					if (typeof item === 'object' && !Array.isArray(item)) {
 						return modifyUnderscoredKeys(item, modifier);

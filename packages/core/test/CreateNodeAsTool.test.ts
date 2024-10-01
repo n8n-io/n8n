@@ -1,7 +1,8 @@
-import { createNodeAsTool } from '@/CreateNodeAsTool';
 import type { IExecuteFunctions, INodeParameters, INodeType } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 import { z } from 'zod';
+
+import { createNodeAsTool } from '@/CreateNodeAsTool';
 
 jest.mock('@langchain/core/tools', () => ({
 	DynamicStructuredTool: jest.fn().mockImplementation((config) => ({

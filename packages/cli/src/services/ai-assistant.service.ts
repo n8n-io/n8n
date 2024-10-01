@@ -1,18 +1,24 @@
-import { Service } from 'typedi';
+import { GlobalConfig } from '@n8n/config';
 import type { AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
 import { assert, type IUser } from 'n8n-workflow';
-import { License } from '../license';
-import { N8N_VERSION } from '../constants';
+import { Service } from 'typedi';
+import type { Response } from 'undici';
+
 import config from '@/config';
 import type { AiAssistantRequest } from '@/requests';
-import type { Response } from 'undici';
+
+import { N8N_VERSION } from '../constants';
+import { License } from '../license';
 
 @Service()
 export class AiAssistantService {
 	private client: AiAssistantClient | undefined;
 
-	constructor(private readonly licenseService: License) {}
+	constructor(
+		private readonly licenseService: License,
+		private readonly globalConfig: GlobalConfig,
+	) {}
 
 	async init() {
 		const aiAssistantEnabled = this.licenseService.isAiAssistantEnabled();
@@ -23,7 +29,7 @@ export class AiAssistantService {
 		const licenseCert = await this.licenseService.loadCertStr();
 		const consumerId = this.licenseService.getConsumerId();
 		const baseUrl = config.get('aiAssistant.baseUrl');
-		const logLevel = config.getEnv('logs.level');
+		const logLevel = this.globalConfig.logging.level;
 
 		this.client = new AiAssistantClient({
 			licenseCert,
