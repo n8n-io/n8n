@@ -1617,6 +1617,8 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		source: string,
 		importTags = true,
 	): Promise<IWorkflowDataUpdate> {
+		uiStore.resetLastInteractedWith();
+
 		// If it is JSON check if it looks on the first look like data we can use
 		if (!workflowData.hasOwnProperty('nodes') || !workflowData.hasOwnProperty('connections')) {
 			return {};
