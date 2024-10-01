@@ -22,7 +22,8 @@ import { useAssistantStore } from '@/stores/assistant.store';
 import type { ChatRequest } from '@/types/assistant.types';
 import InlineAskAssistantButton from 'n8n-design-system/components/InlineAskAssistantButton/InlineAskAssistantButton.vue';
 import { useUIStore } from '@/stores/ui.store';
-import { isCommunityPackageName, simplifyErrorForAssistant } from '@/utils/nodeTypesUtils';
+import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
+import { useAIAssistantHelpers } from '@/composables/useAIAssistantHelpers';
 
 type Props = {
 	// TODO: .node can be undefined
@@ -34,6 +35,7 @@ const props = defineProps<Props>();
 const clipboard = useClipboard();
 const toast = useToast();
 const i18n = useI18n();
+const assistantHelpers = useAIAssistantHelpers();
 
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
@@ -124,7 +126,7 @@ const isAskAssistantAvailable = computed(() => {
 
 const assistantAlreadyAsked = computed(() => {
 	return assistantStore.isNodeErrorActive({
-		error: simplifyErrorForAssistant(props.error),
+		error: assistantHelpers.simplifyErrorForAssistant(props.error),
 		node: props.error.node || ndvStore.activeNode,
 	});
 });

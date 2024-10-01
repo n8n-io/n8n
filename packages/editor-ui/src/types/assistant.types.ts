@@ -92,7 +92,7 @@ export namespace ChatRequest {
 			};
 		};
 		activeCredentials?: Pick<ICredentialType, 'name' | 'displayName'>;
-		currentView?: VIEWS;
+		currentView?: string;
 	}
 
 	export type RequestPayload =

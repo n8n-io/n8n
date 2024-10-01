@@ -23,11 +23,6 @@ import { deepCopy } from 'n8n-workflow';
 import { ndvEventBus, codeNodeEditorEventBus } from '@/event-bus';
 import { useNDVStore } from './ndv.store';
 import type { IUpdateInformation } from '@/Interface';
-import {
-	processNodeForAssistant,
-	simplifyErrorForAssistant,
-	getNodeInfoForAssistant,
-} from '@/utils/nodeTypesUtils';
 import { usePostHog } from './posthog.store';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
@@ -35,6 +30,7 @@ import { useToast } from '@/composables/useToast';
 import { useUIStore } from './ui.store';
 import AiUpdatedCodeMessage from '@/components/AiUpdatedCodeMessage.vue';
 import { useCredentialsStore } from './credentials.store';
+import { useAIAssistantHelpers } from '@/composables/useAIAssistantHelpers';
 
 export const MAX_CHAT_WIDTH = 425;
 export const MIN_CHAT_WIDTH = 250;
@@ -67,6 +63,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	const { getVariant } = usePostHog();
 	const locale = useI18n();
 	const telemetry = useTelemetry();
+	const assistantHelpers = useAIAssistantHelpers();
 
 	const suggestions = ref<{
 		[suggestionId: string]: {
@@ -362,7 +359,9 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		}
 		const currentView = route.name as VIEWS;
 		const activeNode = workflowsStore.activeNode();
-		const activeNodeForLLM = activeNode ? processNodeForAssistant(activeNode, ['position']) : null;
+		const activeNodeForLLM = activeNode
+			? assistantHelpers.processNodeForAssistant(activeNode, ['position'])
+			: null;
 		const activeModals = uiStore.activeModals;
 		const isCredentialModalActive = activeModals.includes(CREDENTIAL_EDIT_MODAL_KEY);
 		const activeCredential = isCredentialModalActive
@@ -380,11 +379,11 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		const executionStatus = isCurrentNodeExecuted
 			? {
 					status: nodeError ? 'error' : 'success',
-					error: nodeError ? simplifyErrorForAssistant(nodeError) : undefined,
+					error: nodeError ? assistantHelpers.simplifyErrorForAssistant(nodeError) : undefined,
 				}
 			: undefined;
 		return {
-			currentView,
+			currentView: assistantHelpers.getCurrentViewDescription(currentView),
 			activeNodeInfo: {
 				node: activeNodeForLLM ?? undefined,
 				nodeIssues: !isCurrentNodeExecuted ? activeNode?.issues : undefined,
@@ -401,7 +400,8 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		chatSessionTask.value = credentialType ? 'credentials' : 'support';
 		const visualContext = getVisualContext();
 		const activeNode = workflowsStore.activeNode() as INode;
-		const { authType, nodeInputData, schemas } = getNodeInfoForAssistant(activeNode);
+		const { authType, nodeInputData, schemas } =
+			assistantHelpers.getNodeInfoForAssistant(activeNode);
 
 		if (authType && chatSessionTask.value === 'credentials') {
 			userMessage += ` I am using ${authType.name}.`;
@@ -470,7 +470,9 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			currentSessionActiveExecutionId.value = workflowsStore.activeExecutionId;
 		}
 
-		const { authType, nodeInputData, schemas } = getNodeInfoForAssistant(context.node);
+		const { authType, nodeInputData, schemas } = assistantHelpers.getNodeInfoForAssistant(
+			context.node,
+		);
 
 		addLoadingAssistantMessage(locale.baseText('aiAssistant.thinkingSteps.analyzingError'));
 		openChat();
@@ -486,7 +488,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 						firstName: usersStore.currentUser?.firstName ?? '',
 					},
 					error: context.error,
-					node: processNodeForAssistant(context.node, ['position']),
+					node: assistantHelpers.processNodeForAssistant(context.node, ['position']),
 					nodeInputData,
 					executionSchema: schemas,
 					authType,
