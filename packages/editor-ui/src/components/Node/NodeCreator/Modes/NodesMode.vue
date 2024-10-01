@@ -41,7 +41,7 @@ const uiStore = useUIStore();
 const rootStore = useRootStore();
 
 const { mergedNodes, actions } = useNodeCreatorStore();
-const { pushViewStack, popViewStack, isAiSubcategoryView } = useViewStacks();
+const { pushViewStack, popViewStack } = useViewStacks();
 
 const { registerKeyHook } = useKeyboardNavigation();
 

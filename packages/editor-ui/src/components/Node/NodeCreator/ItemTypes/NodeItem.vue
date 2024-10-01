@@ -35,7 +35,7 @@ const telemetry = useTelemetry();
 
 const { actions } = useNodeCreatorStore();
 const { getAddedNodesAndConnections } = useActions();
-const { isAiSubcategoryView, activeViewStack } = useViewStacks();
+const { activeViewStack } = useViewStacks();
 const { isSubNodeType } = useNodeType({
 	nodeType: props.nodeType,
 });

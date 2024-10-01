@@ -1,4 +1,9 @@
-import { addNodeToCanvas, addRetrieverNodeToParent, addVectorStoreNodeToParent, getNodeCreatorItems } from '../composables/workflow';
+import {
+	addNodeToCanvas,
+	addRetrieverNodeToParent,
+	addVectorStoreNodeToParent,
+	getNodeCreatorItems,
+} from '../composables/workflow';
 import { IF_NODE_NAME } from '../constants';
 import { NodeCreator } from '../pages/features/node-creator';
 import { NDV } from '../pages/ndv';
@@ -515,11 +520,7 @@ describe('Node Creator', () => {
 
 		nodeCreatorFeature.actions.openNodeCreator();
 
-		nodeCreatorFeature.getters
-			.searchBar()
-			.find('input')
-			.clear()
-			.type('Vector Store');
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('Vector Store');
 
 		getNodeCreatorItems().then((items) => {
 			const vectorStores = items.map((_i, el) => el.innerText);
@@ -533,14 +534,14 @@ describe('Node Creator', () => {
 				cy.realPress('ArrowLeft');
 			});
 		});
-	})
+	});
 
 	it('should add node directly for sub-connection', () => {
 		addNodeToCanvas('Question and Answer Chain', true);
 		addRetrieverNodeToParent('Vector Store Retriever', 'Question and Answer Chain');
-		cy.realPress('Escape')
+		cy.realPress('Escape');
 		addVectorStoreNodeToParent('In-Memory Vector Store', 'Vector Store Retriever');
-		cy.realPress('Escape')
+		cy.realPress('Escape');
 		WorkflowPage.getters.canvasNodes().should('have.length', 4);
 	});
 });
