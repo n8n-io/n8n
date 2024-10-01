@@ -74,7 +74,7 @@ export class LicenseService {
 	}): Promise<{ title: string; text: string }> {
 		try {
 			const { data } = await axios.post<{ title: string; text: string }>(
-				'https://enterprise.n8n.io/internal-production/community-registered',
+				'https://enterprise.n8n.io/community-registered',
 				{
 					email,
 					instanceId,
