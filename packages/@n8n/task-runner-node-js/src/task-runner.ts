@@ -1,6 +1,7 @@
 import { URL } from 'node:url';
 import { nanoid } from 'nanoid';
 import { type MessageEvent, WebSocket } from 'ws';
+import { ensureError } from 'n8n-workflow';
 
 import {
 	RPC_ALLOW_LIST,
@@ -40,22 +41,22 @@ export interface RPCCallObject {
 const VALID_TIME_MS = 1000;
 const VALID_EXTRA_MS = 100;
 
-export class TaskRunner {
-	id: string;
+export abstract class TaskRunner {
+	id: string = nanoid();
 
 	ws: WebSocket;
 
 	canSendOffers = false;
 
-	runningTasks: Record<Task['taskId'], Task> = {};
+	runningTasks: Map<Task['taskId'], Task> = new Map();
 
 	offerInterval: NodeJS.Timeout | undefined;
 
-	openOffers: Record<TaskOffer['offerId'], TaskOffer> = {};
+	openOffers: Map<TaskOffer['offerId'], TaskOffer> = new Map();
 
-	dataRequests: Record<DataRequest['requestId'], DataRequest> = {};
+	dataRequests: Map<DataRequest['requestId'], DataRequest> = new Map();
 
-	rpcCalls: Record<RPCCall['callId'], RPCCall> = {};
+	rpcCalls: Map<RPCCall['callId'], RPCCall> = new Map();
 
 	constructor(
 		public taskType: string,
@@ -64,8 +65,6 @@ export class TaskRunner {
 		private maxConcurrency: number,
 		public name?: string,
 	) {
-		this.id = nanoid();
-
 		const url = new URL(wsUrl);
 		url.searchParams.append('id', this.id);
 		this.ws = new WebSocket(url.toString(), {
@@ -73,12 +72,11 @@ export class TaskRunner {
 				authorization: `Bearer ${grantToken}`,
 			},
 		});
-		console.log('1');
-		this.ws.addEventListener('message', this._wsMessage);
+		this.ws.addEventListener('message', this.receiveMessage);
 		this.ws.addEventListener('close', this.stopTaskOffers);
 	}
 
-	private _wsMessage = (message: MessageEvent) => {
+	private receiveMessage = (message: MessageEvent) => {
 		// eslint-disable-next-line n8n-local-rules/no-uncaught-json-parse
 		const data = JSON.parse(message.data as string) as N8nMessage.ToRunner.All;
 		void this.onMessage(data);
@@ -102,8 +100,8 @@ export class TaskRunner {
 
 	deleteStaleOffers() {
 		for (const key of Object.keys(this.openOffers)) {
-			if (this.openOffers[key].validUntil < process.hrtime.bigint()) {
-				delete this.openOffers[key];
+			if (this.openOffers.get(key)!.validUntil < process.hrtime.bigint()) {
+				this.openOffers.delete(key);
 			}
 		}
 	}
@@ -115,21 +113,18 @@ export class TaskRunner {
 			this.maxConcurrency -
 			(Object.values(this.openOffers).length + Object.values(this.runningTasks).length);
 
-		if (offersToSend > 0) {
-			for (let i = 0; i < offersToSend; i++) {
-				const offer: TaskOffer = {
-					offerId: nanoid(),
-					validUntil:
-						process.hrtime.bigint() + BigInt((VALID_TIME_MS + VALID_EXTRA_MS) * 1_000_000), // Adding a little extra time to account for latency
-				};
-				this.openOffers[offer.offerId] = offer;
-				this.send({
-					type: 'runner:taskoffer',
-					taskType: this.taskType,
-					offerId: offer.offerId,
-					validFor: VALID_TIME_MS,
-				});
-			}
+		for (let i = 0; i < offersToSend; i++) {
+			const offer: TaskOffer = {
+				offerId: nanoid(),
+				validUntil: process.hrtime.bigint() + BigInt((VALID_TIME_MS + VALID_EXTRA_MS) * 1_000_000), // Adding a little extra time to account for latency
+			};
+			this.openOffers.set(offer.offerId, offer);
+			this.send({
+				type: 'runner:taskoffer',
+				taskType: this.taskType,
+				offerId: offer.offerId,
+				validFor: VALID_TIME_MS,
+			});
 		}
 	}
 
@@ -138,7 +133,6 @@ export class TaskRunner {
 	}
 
 	onMessage(message: N8nMessage.ToRunner.All) {
-		console.log({ message });
 		switch (message.type) {
 			case 'broker:inforequest':
 				this.send({
@@ -168,11 +162,12 @@ export class TaskRunner {
 	}
 
 	processDataResponse(requestId: string, data: unknown) {
-		const request = this.dataRequests[requestId];
+		const request = this.dataRequests.get(requestId);
 		if (!request) {
 			return;
 		}
-		delete this.dataRequests[requestId];
+		// Deleting of the request is handled in `requestData`, using a
+		// `finally` wrapped around the return
 		request.resolve(data);
 	}
 
@@ -189,25 +184,23 @@ export class TaskRunner {
 			});
 			return;
 		}
-		const offer = this.openOffers[offerId];
+		const offer = this.openOffers.get(offerId);
 		if (!offer) {
-			if (!this.hasOpenTasks()) {
-				this.send({
-					type: 'runner:taskrejected',
-					taskId,
-					reason: 'Offer expired and no open task slots',
-				});
-				return;
-			}
+			this.send({
+				type: 'runner:taskrejected',
+				taskId,
+				reason: 'Offer expired and no open task slots',
+			});
+			return;
 		} else {
-			delete this.openOffers[offerId];
+			this.openOffers.delete(offerId);
 		}
 
-		this.runningTasks[taskId] = {
+		this.runningTasks.set(taskId, {
 			taskId,
 			active: false,
 			cancelled: false,
-		};
+		});
 
 		this.send({
 			type: 'runner:taskaccepted',
@@ -216,7 +209,7 @@ export class TaskRunner {
 	}
 
 	taskCancelled(taskId: string) {
-		const task = this.runningTasks[taskId];
+		const task = this.runningTasks.get(taskId);
 		if (!task) {
 			return;
 		}
@@ -224,7 +217,7 @@ export class TaskRunner {
 		if (task.active) {
 			// TODO
 		} else {
-			delete this.runningTasks[taskId];
+			this.runningTasks.delete(taskId);
 		}
 		this.sendOffers();
 	}
@@ -235,7 +228,8 @@ export class TaskRunner {
 			taskId,
 			error,
 		});
-		delete this.runningTasks[taskId];
+		this.runningTasks.delete(taskId);
+		this.sendOffers();
 	}
 
 	taskDone(taskId: string, data: RunnerMessage.ToN8n.TaskDone['data']) {
@@ -244,16 +238,17 @@ export class TaskRunner {
 			taskId,
 			data,
 		});
-		delete this.runningTasks[taskId];
+		this.runningTasks.delete(taskId);
+		this.sendOffers();
 	}
 
 	async receivedSettings(taskId: string, settings: unknown) {
-		const task = this.runningTasks[taskId];
+		const task = this.runningTasks.get(taskId);
 		if (!task) {
 			return;
 		}
 		if (task.cancelled) {
-			delete this.runningTasks[taskId];
+			this.runningTasks.delete(taskId);
 			return;
 		}
 		task.settings = settings;
@@ -262,7 +257,7 @@ export class TaskRunner {
 			const data = await this.executeTask(task);
 			this.taskDone(taskId, data);
 		} catch (e) {
-			if ('message' in (e as Error)) {
+			if (ensureError(e)) {
 				this.taskErrored(taskId, (e as Error).message);
 			} else {
 				this.taskErrored(taskId, e);
@@ -282,12 +277,12 @@ export class TaskRunner {
 	): Promise<T> {
 		const requestId = nanoid();
 
-		const p = new Promise((resolve, reject) => {
-			this.dataRequests[requestId] = {
+		const p = new Promise<T>((resolve, reject) => {
+			this.dataRequests.set(requestId, {
 				requestId,
-				resolve,
+				resolve: resolve as (data: unknown) => void,
 				reject,
-			};
+			});
 		});
 
 		this.send({
@@ -298,18 +293,22 @@ export class TaskRunner {
 			param,
 		});
 
-		return p as T;
+		try {
+			return await p;
+		} finally {
+			this.dataRequests.delete(requestId);
+		}
 	}
 
 	async makeRpcCall(taskId: string, name: RunnerMessage.ToN8n.RPC['name'], params: unknown[]) {
 		const callId = nanoid();
 
 		const dataPromise = new Promise((resolve, reject) => {
-			this.rpcCalls[callId] = {
+			this.rpcCalls.set(callId, {
 				callId,
 				resolve,
 				reject,
-			};
+			});
 		});
 
 		this.send({
@@ -323,7 +322,7 @@ export class TaskRunner {
 		try {
 			return await dataPromise;
 		} finally {
-			delete this.rpcCalls[callId];
+			this.rpcCalls.delete(callId);
 		}
 	}
 
@@ -332,7 +331,7 @@ export class TaskRunner {
 		status: N8nMessage.ToRunner.RPCResponse['status'],
 		data: unknown,
 	) {
-		const call = this.rpcCalls[callId];
+		const call = this.rpcCalls.get(callId);
 		if (!call) {
 			return;
 		}
@@ -347,7 +346,6 @@ export class TaskRunner {
 		const rpcObject: RPCCallObject = {};
 		for (const r of RPC_ALLOW_LIST) {
 			const splitPath = r.split('.');
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			let obj = rpcObject;
 
 			splitPath.forEach((s, index) => {

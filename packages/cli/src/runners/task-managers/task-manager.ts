@@ -5,14 +5,16 @@ import {
 	type INodeExecutionData,
 	type ITaskDataConnections,
 	type INode,
-	ApplicationError,
 	type WorkflowParameters,
 	type INodeParameters,
 	type WorkflowExecuteMode,
 	type IExecuteData,
 	type IDataObject,
+	type IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
+
+import { TaskError } from '@/runners/errors';
 
 import {
 	RPC_ALLOW_LIST,
@@ -44,9 +46,25 @@ export interface TaskData {
 	defaultReturnRunIndex: number;
 	selfData: IDataObject;
 	contextNodeName: string;
+	additionalData: IWorkflowExecuteAdditionalData;
 }
 
-export interface AllData {
+export interface PartialAdditionalData {
+	executionId?: string;
+	restartExecutionId?: string;
+	restApiUrl: string;
+	instanceBaseUrl: string;
+	formWaitingBaseUrl: string;
+	webhookBaseUrl: string;
+	webhookWaitingBaseUrl: string;
+	webhookTestBaseUrl: string;
+	currentNodeParameters?: INodeParameters;
+	executionTimeoutTimestamp?: number;
+	userId?: string;
+	variables: IDataObject;
+}
+
+export interface AllCodeTaskData {
 	workflow: Omit<WorkflowParameters, 'nodeTypes'>;
 	inputData: ITaskDataConnections;
 	node: INode;
@@ -62,6 +80,7 @@ export interface AllData {
 	defaultReturnRunIndex: number;
 	selfData: IDataObject;
 	contextNodeName: string;
+	additionalData: PartialAdditionalData;
 }
 
 export interface TaskRequest {
@@ -76,8 +95,6 @@ export interface Task {
 	settings: unknown;
 	data: TaskData;
 }
-
-export class JobError extends ApplicationError {}
 
 interface ExecuteFunctionObject {
 	[name: string]: ((...args: unknown[]) => unknown) | ExecuteFunctionObject;
@@ -97,15 +114,16 @@ const workflowToParameters = (workflow: Workflow): Omit<WorkflowParameters, 'nod
 };
 
 export class TaskManager {
-	requestAcceptRejects: Record<string, { accept: RequestAccept; reject: RequestReject }> = {};
+	requestAcceptRejects: Map<string, { accept: RequestAccept; reject: RequestReject }> = new Map();
 
-	taskAcceptRejects: Record<string, { accept: TaskAccept; reject: TaskReject }> = {};
+	taskAcceptRejects: Map<string, { accept: TaskAccept; reject: TaskReject }> = new Map();
 
-	pendingRequests: Record<string, TaskRequest> = {};
+	pendingRequests: Map<string, TaskRequest> = new Map();
 
-	tasks: Record<string, Task> = {};
+	tasks: Map<string, Task> = new Map();
 
 	async startTask<T>(
+		additionalData: IWorkflowExecuteAdditionalData,
 		taskType: string,
 		settings: unknown,
 		executeFunctions: IExecuteFunctions,
@@ -140,6 +158,7 @@ export class TaskManager {
 			selfData,
 			contextNodeName,
 			activeNodeName,
+			additionalData,
 		};
 
 		const request: TaskRequest = {
@@ -149,13 +168,13 @@ export class TaskManager {
 			data,
 		};
 
-		this.pendingRequests[request.requestId] = request;
+		this.pendingRequests.set(request.requestId, request);
 
 		const taskIdPromise = new Promise<string>((resolve, reject) => {
-			this.requestAcceptRejects[request.requestId] = {
+			this.requestAcceptRejects.set(request.requestId, {
 				accept: resolve,
 				reject,
-			};
+			});
 		});
 
 		this.sendMessage({
@@ -171,14 +190,14 @@ export class TaskManager {
 			data,
 			settings,
 		};
-		this.tasks[task.taskId] = task;
+		this.tasks.set(task.taskId, task);
 
 		try {
 			const dataPromise = new Promise<TaskResultData>((resolve, reject) => {
-				this.taskAcceptRejects[task.taskId] = {
+				this.taskAcceptRejects.set(task.taskId, {
 					accept: resolve,
 					reject,
-				};
+				});
 			});
 
 			this.sendMessage({
@@ -188,6 +207,7 @@ export class TaskManager {
 			});
 
 			const resultData = await dataPromise;
+			// Set custom execution data (`$execution.customData`) if sent
 			if (resultData.customData) {
 				Object.entries(resultData.customData).forEach(([k, v]) => {
 					if (!runExecutionData.resultData.metadata) {
@@ -199,32 +219,31 @@ export class TaskManager {
 			return resultData.result as T;
 		} catch (e) {
 			if (typeof e === 'string') {
-				throw new JobError(e, {
+				throw new TaskError(e, {
 					level: 'error',
 				});
 			}
 			throw e;
 		} finally {
-			delete this.tasks[taskId];
+			this.tasks.delete(taskId);
 		}
 	}
 
 	sendMessage(_message: RequesterMessage.ToN8n.All) {}
 
 	onMessage(message: N8nMessage.ToRequester.All) {
-		console.log({ message });
 		switch (message.type) {
 			case 'broker:taskready':
-				this.jobReady(message.requestId, message.taskId);
+				this.taskReady(message.requestId, message.taskId);
 				break;
 			case 'broker:taskdone':
-				this.jobDone(message.taskId, message.data);
+				this.taskDone(message.taskId, message.data);
 				break;
 			case 'broker:taskerror':
-				this.jobError(message.taskId, message.error);
+				this.taskError(message.taskId, message.error);
 				break;
 			case 'broker:taskdatarequest':
-				this.sendJobData(message.taskId, message.requestId, message.requestType);
+				this.sendTaskData(message.taskId, message.requestId, message.requestType);
 				break;
 			case 'broker:rpc':
 				void this.handleRpc(message.taskId, message.callId, message.name, message.params);
@@ -232,20 +251,21 @@ export class TaskManager {
 		}
 	}
 
-	jobReady(requestId: string, jobId: string) {
-		if (!(requestId in this.requestAcceptRejects)) {
-			this.rejectJob(
-				jobId,
+	taskReady(requestId: string, taskId: string) {
+		const acceptReject = this.requestAcceptRejects.get(requestId);
+		if (!acceptReject) {
+			this.rejectTask(
+				taskId,
 				'Request ID not found. In multi-main setup, it is possible for one of the mains to have reported ready state already.',
 			);
 			return;
 		}
 
-		this.requestAcceptRejects[requestId].accept(jobId);
-		delete this.requestAcceptRejects[requestId];
+		acceptReject.accept(taskId);
+		this.requestAcceptRejects.delete(requestId);
 	}
 
-	rejectJob(jobId: string, reason: string) {
+	rejectTask(jobId: string, reason: string) {
 		this.sendMessage({
 			type: 'requester:taskcancel',
 			taskId: jobId,
@@ -253,33 +273,36 @@ export class TaskManager {
 		});
 	}
 
-	jobDone(jobId: string, data: TaskResultData) {
-		if (jobId in this.taskAcceptRejects) {
-			this.taskAcceptRejects[jobId].accept(data);
-			delete this.taskAcceptRejects[jobId];
+	taskDone(taskId: string, data: TaskResultData) {
+		const acceptReject = this.taskAcceptRejects.get(taskId);
+		if (acceptReject) {
+			acceptReject.accept(data);
+			this.taskAcceptRejects.delete(taskId);
 		}
 	}
 
-	jobError(jobId: string, error: unknown) {
-		if (jobId in this.taskAcceptRejects) {
-			this.taskAcceptRejects[jobId].reject(error);
-			delete this.taskAcceptRejects[jobId];
+	taskError(taskId: string, error: unknown) {
+		const acceptReject = this.taskAcceptRejects.get(taskId);
+		if (acceptReject) {
+			acceptReject.reject(error);
+			this.taskAcceptRejects.delete(taskId);
 		}
 	}
 
-	sendJobData(
-		jobId: string,
+	sendTaskData(
+		taskId: string,
 		requestId: string,
 		requestType: N8nMessage.ToRequester.TaskDataRequest['requestType'],
 	) {
-		const job = this.tasks[jobId];
+		const job = this.tasks.get(taskId);
 		if (!job) {
 			// TODO: logging
 			return;
 		}
 		if (requestType === 'all') {
 			const jd = job.data;
-			const data: AllData = {
+			const ad = jd.additionalData;
+			const data: AllCodeTaskData = {
 				workflow: workflowToParameters(jd.workflow),
 				connectionInputData: jd.connectionInputData,
 				inputData: jd.inputData,
@@ -294,10 +317,24 @@ export class TaskManager {
 				selfData: jd.selfData,
 				siblingParameters: jd.siblingParameters,
 				executeData: jd.executeData,
+				additionalData: {
+					formWaitingBaseUrl: ad.formWaitingBaseUrl,
+					instanceBaseUrl: ad.instanceBaseUrl,
+					restApiUrl: ad.restApiUrl,
+					variables: ad.variables,
+					webhookBaseUrl: ad.webhookBaseUrl,
+					webhookTestBaseUrl: ad.webhookTestBaseUrl,
+					webhookWaitingBaseUrl: ad.webhookWaitingBaseUrl,
+					currentNodeParameters: ad.currentNodeParameters,
+					executionId: ad.executionId,
+					executionTimeoutTimestamp: ad.executionTimeoutTimestamp,
+					restartExecutionId: ad.restartExecutionId,
+					userId: ad.userId,
+				},
 			};
 			this.sendMessage({
 				type: 'requester:taskdataresponse',
-				taskId: jobId,
+				taskId,
 				requestId,
 				data,
 			});
@@ -305,12 +342,12 @@ export class TaskManager {
 	}
 
 	async handleRpc(
-		jobId: string,
+		taskId: string,
 		callId: string,
 		name: N8nMessage.ToRequester.RPC['name'],
 		params: unknown[],
 	) {
-		const job = this.tasks[jobId];
+		const job = this.tasks.get(taskId);
 		if (!job) {
 			// TODO: logging
 			return;
@@ -320,7 +357,7 @@ export class TaskManager {
 			if (!RPC_ALLOW_LIST.includes(name)) {
 				this.sendMessage({
 					type: 'requester:rpcresponse',
-					taskId: jobId,
+					taskId,
 					callId,
 					status: 'error',
 					data: 'Method not allowed',
@@ -344,7 +381,7 @@ export class TaskManager {
 			if (!func) {
 				this.sendMessage({
 					type: 'requester:rpcresponse',
-					taskId: jobId,
+					taskId,
 					callId,
 					status: 'error',
 					data: 'Could not find method',
@@ -355,7 +392,7 @@ export class TaskManager {
 
 			this.sendMessage({
 				type: 'requester:rpcresponse',
-				taskId: jobId,
+				taskId,
 				callId,
 				status: 'success',
 				data,
@@ -363,7 +400,7 @@ export class TaskManager {
 		} catch (e) {
 			this.sendMessage({
 				type: 'requester:rpcresponse',
-				taskId: jobId,
+				taskId,
 				callId,
 				status: 'error',
 				data: e,

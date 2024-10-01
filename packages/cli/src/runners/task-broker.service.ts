@@ -4,11 +4,8 @@ import { Service } from 'typedi';
 
 import { Logger } from '@/logger';
 
+import { TaskRejectError } from './errors';
 import type { N8nMessage, RunnerMessage, RequesterMessage, TaskResultData } from './runner-types';
-
-export class TaskRejectError {
-	constructor(public reason: string) {}
-}
 
 export interface TaskRunner {
 	id: string;
@@ -51,24 +48,24 @@ type TaskRejectCallback = (reason: TaskRejectError) => void;
 
 @Service()
 export class TaskBroker {
-	private knownRunners: Record<
+	private knownRunners: Map<
 		TaskRunner['id'],
 		{ runner: TaskRunner; messageCallback: MessageCallback }
-	> = {};
+	> = new Map();
 
-	private requesters: Record<string, RequesterMessageCallback> = {};
+	private requesters: Map<string, RequesterMessageCallback> = new Map();
 
-	private tasks: Record<Task['id'], Task> = {};
+	private tasks: Map<Task['id'], Task> = new Map();
 
-	private runnerAcceptRejects: Record<
+	private runnerAcceptRejects: Map<
 		Task['id'],
 		{ accept: RunnerAcceptCallback; reject: TaskRejectCallback }
-	> = {};
+	> = new Map();
 
-	private requesterAcceptRejects: Record<
+	private requesterAcceptRejects: Map<
 		Task['id'],
 		{ accept: RequesterAcceptCallback; reject: TaskRejectCallback }
-	> = {};
+	> = new Map();
 
 	private pendingTaskOffers: TaskOffer[] = [];
 
@@ -90,35 +87,35 @@ export class TaskBroker {
 	}
 
 	registerRunner(runner: TaskRunner, messageCallback: MessageCallback) {
-		this.knownRunners[runner.id] = { runner, messageCallback };
+		this.knownRunners.set(runner.id, { runner, messageCallback });
 	}
 
 	deregisterRunner(runnerId: string) {
-		if (runnerId in this.knownRunners) {
-			delete this.knownRunners[runnerId];
+		if (this.knownRunners.has(runnerId)) {
+			this.knownRunners.delete(runnerId);
 		}
 	}
 
 	registerRequester(requesterId: string, messageCallback: RequesterMessageCallback) {
-		this.requesters[requesterId] = messageCallback;
+		this.requesters.set(requesterId, messageCallback);
 	}
 
 	deregisterRequester(requesterId: string) {
-		if (requesterId in this.requesters) {
-			delete this.requesters[requesterId];
+		if (this.requesters.has(requesterId)) {
+			this.requesters.delete(requesterId);
 		}
 	}
 
 	private async messageRunner(runnerId: TaskRunner['id'], message: N8nMessage.ToRunner.All) {
-		await this.knownRunners[runnerId]?.messageCallback(message);
+		await this.knownRunners.get(runnerId)?.messageCallback(message);
 	}
 
 	private async messageRequester(requesterId: string, message: N8nMessage.ToRequester.All) {
-		await this.requesters[requesterId]?.(message);
+		await this.requesters.get(requesterId)?.(message);
 	}
 
 	async onRunnerMessage(runnerId: TaskRunner['id'], message: RunnerMessage.ToN8n.All) {
-		const runner = this.knownRunners[runnerId];
+		const runner = this.knownRunners.get(runnerId);
 		if (!runner) {
 			return;
 		}
@@ -168,7 +165,7 @@ export class TaskBroker {
 		name: RunnerMessage.ToN8n.RPC['name'],
 		params: unknown[],
 	) {
-		const task = this.tasks[taskId];
+		const task = this.tasks.get(taskId);
 		if (!task) {
 			return;
 		}
@@ -182,16 +179,18 @@ export class TaskBroker {
 	}
 
 	handleRunnerAccept(taskId: Task['id']) {
-		if (this.runnerAcceptRejects[taskId]) {
-			this.runnerAcceptRejects[taskId].accept();
-			delete this.runnerAcceptRejects[taskId];
+		const acceptReject = this.runnerAcceptRejects.get(taskId);
+		if (acceptReject) {
+			acceptReject.accept();
+			this.runnerAcceptRejects.delete(taskId);
 		}
 	}
 
 	handleRunnerReject(taskId: Task['id'], reason: string) {
-		if (this.runnerAcceptRejects[taskId]) {
-			this.runnerAcceptRejects[taskId].reject(new TaskRejectError(reason));
-			delete this.runnerAcceptRejects[taskId];
+		const acceptReject = this.runnerAcceptRejects.get(taskId);
+		if (acceptReject) {
+			acceptReject.reject(new TaskRejectError(reason));
+			this.runnerAcceptRejects.delete(taskId);
 		}
 	}
 
@@ -201,7 +200,7 @@ export class TaskBroker {
 		requestType: RunnerMessage.ToN8n.TaskDataRequest['requestType'],
 		param?: string,
 	) {
-		const task = this.tasks[taskId];
+		const task = this.tasks.get(taskId);
 		if (!task) {
 			return;
 		}
@@ -219,7 +218,7 @@ export class TaskBroker {
 		requestId: RunnerMessage.ToN8n.TaskDataRequest['requestId'],
 		data: unknown,
 	) {
-		const task = this.tasks[taskId];
+		const task = this.tasks.get(taskId);
 		if (!task) {
 			return;
 		}
@@ -291,25 +290,27 @@ export class TaskBroker {
 		taskId: Task['id'],
 		settings: RequesterMessage.ToN8n.TaskSettings['settings'],
 	) {
-		if (this.requesterAcceptRejects[taskId]) {
-			this.requesterAcceptRejects[taskId].accept(settings);
-			delete this.requesterAcceptRejects[taskId];
+		const acceptReject = this.requesterAcceptRejects.get(taskId);
+		if (acceptReject) {
+			acceptReject.accept(settings);
+			this.requesterAcceptRejects.delete(taskId);
 		}
 	}
 
 	handleRequesterReject(taskId: Task['id'], reason: string) {
-		if (this.requesterAcceptRejects[taskId]) {
-			this.requesterAcceptRejects[taskId].reject(new TaskRejectError(reason));
-			delete this.requesterAcceptRejects[taskId];
+		const acceptReject = this.requesterAcceptRejects.get(taskId);
+		if (acceptReject) {
+			acceptReject.reject(new TaskRejectError(reason));
+			this.requesterAcceptRejects.delete(taskId);
 		}
 	}
 
 	private async cancelTask(taskId: Task['id'], reason: string) {
-		const task = this.tasks[taskId];
+		const task = this.tasks.get(taskId);
 		if (!task) {
 			return;
 		}
-		delete this.tasks[taskId];
+		this.tasks.delete(taskId);
 
 		await this.messageRunner(task.runnerId, {
 			type: 'broker:taskcancel',
@@ -319,11 +320,11 @@ export class TaskBroker {
 	}
 
 	private async failTask(taskId: Task['id'], reason: string) {
-		const task = this.tasks[taskId];
+		const task = this.tasks.get(taskId);
 		if (!task) {
 			return;
 		}
-		delete this.tasks[taskId];
+		this.tasks.delete(taskId);
 		// TODO: special message type?
 		await this.messageRequester(task.requesterId, {
 			type: 'broker:taskerror',
@@ -333,13 +334,13 @@ export class TaskBroker {
 	}
 
 	private async getRunnerOrFailTask(taskId: Task['id']): Promise<TaskRunner> {
-		const task = this.tasks[taskId];
+		const task = this.tasks.get(taskId);
 		if (!task) {
 			throw new ApplicationError(`Cannot find runner, failed to find task (${taskId})`, {
 				level: 'error',
 			});
 		}
-		const runner = this.knownRunners[task.runnerId];
+		const runner = this.knownRunners.get(task.runnerId);
 		if (!runner) {
 			const reason = `Cannot find runner, failed to find runner (${task.runnerId})`;
 			await this.failTask(taskId, reason);
@@ -360,29 +361,29 @@ export class TaskBroker {
 	}
 
 	async taskDoneHandler(taskId: Task['id'], data: TaskResultData) {
-		const task = this.tasks[taskId];
+		const task = this.tasks.get(taskId);
 		if (!task) {
 			return;
 		}
-		await this.requesters[task.requesterId]?.({
+		await this.requesters.get(task.requesterId)?.({
 			type: 'broker:taskdone',
 			taskId: task.id,
 			data,
 		});
-		delete this.tasks[task.id];
+		this.tasks.delete(task.id);
 	}
 
 	async taskErrorHandler(taskId: Task['id'], error: unknown) {
-		const task = this.tasks[taskId];
+		const task = this.tasks.get(taskId);
 		if (!task) {
 			return;
 		}
-		await this.requesters[task.requesterId]?.({
+		await this.requesters.get(task.requesterId)?.({
 			type: 'broker:taskerror',
 			taskId: task.id,
 			error,
 		});
-		delete this.tasks[task.id];
+		this.tasks.delete(task.id);
 	}
 
 	async acceptOffer(offer: TaskOffer, request: TaskRequest): Promise<void> {
@@ -390,7 +391,7 @@ export class TaskBroker {
 
 		try {
 			const acceptPromise = new Promise((resolve, reject) => {
-				this.runnerAcceptRejects[taskId] = { accept: resolve as () => void, reject };
+				this.runnerAcceptRejects.set(taskId, { accept: resolve as () => void, reject });
 
 				// TODO: customisable timeout
 				setTimeout(() => {
@@ -421,7 +422,7 @@ export class TaskBroker {
 			requesterId: request.requesterId,
 		};
 
-		this.tasks[taskId] = task;
+		this.tasks.set(taskId, task);
 		const requestIndex = this.pendingTaskRequests.findIndex(
 			(r) => r.requestId === request.requestId,
 		);
@@ -436,10 +437,10 @@ export class TaskBroker {
 		try {
 			const acceptPromise = new Promise<RequesterMessage.ToN8n.TaskSettings['settings']>(
 				(resolve, reject) => {
-					this.requesterAcceptRejects[taskId] = {
+					this.requesterAcceptRejects.set(taskId, {
 						accept: resolve as (settings: RequesterMessage.ToN8n.TaskSettings['settings']) => void,
 						reject,
-					};
+					});
 
 					// TODO: customisable timeout
 					setTimeout(() => {
@@ -534,7 +535,7 @@ export class TaskBroker {
 	}
 
 	setTasks(tasks: Record<string, Task>) {
-		this.tasks = tasks;
+		this.tasks = new Map(Object.entries(tasks));
 	}
 
 	setPendingTaskOffers(pendingTaskOffers: TaskOffer[]) {
@@ -551,6 +552,6 @@ export class TaskBroker {
 			{ accept: RunnerAcceptCallback; reject: TaskRejectCallback }
 		>,
 	) {
-		this.runnerAcceptRejects = runnerAcceptRejects;
+		this.runnerAcceptRejects = new Map(Object.entries(runnerAcceptRejects));
 	}
 }

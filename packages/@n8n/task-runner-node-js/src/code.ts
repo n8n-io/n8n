@@ -1,9 +1,11 @@
 import { runInNewContext, type Context } from 'node:vm';
+import * as a from 'node:assert';
 
 import {
 	type INode,
 	type INodeType,
 	type ITaskDataConnections,
+	type IWorkflowExecuteAdditionalData,
 	WorkflowDataProxy,
 	type WorkflowParameters,
 } from 'n8n-workflow';
@@ -13,10 +15,11 @@ import {
 	type INodeExecutionData,
 	type INodeParameters,
 	type IRunExecutionData,
-	type IWorkflowDataProxyAdditionalKeys,
+	// type IWorkflowDataProxyAdditionalKeys,
 	Workflow,
 	type WorkflowExecuteMode,
 } from 'n8n-workflow';
+import { getAdditionalKeys } from 'n8n-core';
 
 import type { TaskResultData } from './runner-types';
 import { type Task, TaskRunner } from './task-runner';
@@ -28,7 +31,22 @@ interface JSExecSettings {
 	mode: WorkflowExecuteMode;
 }
 
-export interface AllData {
+export interface PartialAdditionalData {
+	executionId?: string;
+	restartExecutionId?: string;
+	restApiUrl: string;
+	instanceBaseUrl: string;
+	formWaitingBaseUrl: string;
+	webhookBaseUrl: string;
+	webhookWaitingBaseUrl: string;
+	webhookTestBaseUrl: string;
+	currentNodeParameters?: INodeParameters;
+	executionTimeoutTimestamp?: number;
+	userId?: string;
+	variables: IDataObject;
+}
+
+export interface AllCodeTaskData {
 	workflow: Omit<WorkflowParameters, 'nodeTypes'>;
 	inputData: ITaskDataConnections;
 	node: INode;
@@ -44,11 +62,12 @@ export interface AllData {
 	defaultReturnRunIndex: number;
 	selfData: IDataObject;
 	contextNodeName: string;
+	additionalData: PartialAdditionalData;
 }
 
-const getAdditionalKeys = (): IWorkflowDataProxyAdditionalKeys => {
-	return {};
-};
+// const getAdditionalKeys = (): IWorkflowDataProxyAdditionalKeys => {
+// 	return {};
+// };
 
 export class JsTaskRunner extends TaskRunner {
 	constructor(
@@ -58,13 +77,14 @@ export class JsTaskRunner extends TaskRunner {
 		maxConcurrency: number,
 		name?: string,
 	) {
-		super(taskType, wsUrl, grantToken, maxConcurrency, name ?? 'Test Runner');
+		super(taskType, wsUrl, grantToken, maxConcurrency, name ?? 'JS Task Runner');
 	}
 
 	async executeTask(task: Task<JSExecSettings>): Promise<TaskResultData> {
-		const allData = await this.requestData<AllData>(task.taskId, 'all');
+		const allData = await this.requestData<AllCodeTaskData>(task.taskId, 'all');
 
-		const settings = task.settings!;
+		const settings = task.settings;
+		a.ok(settings, 'JS Code not sent to runner');
 
 		const workflowParams = allData.workflow;
 		const workflow = new Workflow({
@@ -91,7 +111,11 @@ export class JsTaskRunner extends TaskRunner {
 			allData.connectionInputData,
 			allData.siblingParameters,
 			settings.mode,
-			getAdditionalKeys(),
+			getAdditionalKeys(
+				allData.additionalData as IWorkflowExecuteAdditionalData,
+				allData.mode,
+				allData.runExecutionData,
+			),
 			allData.executeData,
 			allData.defaultReturnRunIndex,
 			allData.selfData,
@@ -103,7 +127,7 @@ export class JsTaskRunner extends TaskRunner {
 				const logOutput = args
 					.map((arg) => (typeof arg === 'object' && arg !== null ? JSON.stringify(arg) : arg))
 					.join(' ');
-				console.log(logOutput);
+				console.log('[JS Code]', logOutput);
 				void this.makeRpcCall(task.taskId, 'logNodeOutput', [logOutput]);
 			},
 		};
@@ -118,7 +142,7 @@ export class JsTaskRunner extends TaskRunner {
 		};
 
 		const result = (await runInNewContext(
-			`module.exports = async function() {${task.settings!.code}\n}()`,
+			`module.exports = async function() {${settings.code}\n}()`,
 			context,
 		)) as TaskResultData['result'];
 

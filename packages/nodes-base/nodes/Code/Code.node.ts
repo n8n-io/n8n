@@ -107,10 +107,10 @@ export class Code implements INodeType {
 				: 'javaScript';
 		const codeParameterName = language === 'python' ? 'pythonCode' : 'jsCode';
 
-		if (!runnersConfig.disabled) {
+		if (!runnersConfig.disabled && language === 'javaScript') {
 			// TODO: once per item
 			const code = this.getNodeParameter(codeParameterName, 0) as string;
-			const items = (await this.startJob(
+			const items = await this.startJob<INodeExecutionData[]>(
 				{ javaScript: 'javascript', python: 'python' }[language] ?? language,
 				{
 					code,
@@ -118,7 +118,7 @@ export class Code implements INodeType {
 					workflowMode,
 				},
 				0,
-			)) as INodeExecutionData[];
+			);
 
 			return [items];
 		}

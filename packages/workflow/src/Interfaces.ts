@@ -2239,6 +2239,7 @@ export interface IWorkflowExecuteAdditionalData {
 	logAiEvent: (eventName: AiEvent, payload: AiEventPayload) => void;
 	parentCallbackManager?: CallbackManager;
 	startAgentJob<T>(
+		additionalData: IWorkflowExecuteAdditionalData,
 		jobType: string,
 		settings: unknown,
 		executeFunctions: IExecuteFunctions,

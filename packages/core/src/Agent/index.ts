@@ -35,6 +35,7 @@ export const createAgentStartJob = (
 		itemIndex: number,
 	): Promise<T> {
 		return await additionalData.startAgentJob<T>(
+			additionalData,
 			jobType,
 			settings,
 			this,

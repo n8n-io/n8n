@@ -984,6 +984,7 @@ export async function getBase(
 		variables,
 		secretsHelpers: Container.get(SecretsHelper),
 		async startAgentJob(
+			additionalData: IWorkflowExecuteAdditionalData,
 			jobType: string,
 			settings: unknown,
 			executeFunctions: IExecuteFunctions,
@@ -1003,6 +1004,7 @@ export async function getBase(
 			contextNodeName?: string,
 		) {
 			return await Container.get(TaskManager).startTask(
+				additionalData,
 				jobType,
 				settings,
 				executeFunctions,

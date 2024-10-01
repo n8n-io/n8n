@@ -20,7 +20,6 @@
   "files": [
     "src/",
     "dist/",
-    "LICENSE.md",
     "package.json",
     "tsconfig.json"
   ],
@@ -28,9 +27,6 @@
   "module": "src/index.ts",
   "types": "dist/index.d.ts",
   "packageManager": "pnpm@9.6.0",
-  "keywords": [],
-  "author": "",
-  "license": "Apache-2.0",
   "devDependencies": {
     "@n8n_io/eslint-config": "^0.0.2",
     "@types/jest": "^29.5.0",
@@ -55,7 +51,8 @@
   "dependencies": {
     "jmespath": "^0.16.0",
     "luxon": "^3.5.0",
-    "n8n-workflow": "^1.48.0",
+    "n8n-workflow": "workspace:*",
+    "n8n-core": "workspace:*",
     "nanoid": "^3.3.6",
     "ws": "^8.18.0"
   }

@@ -1,7 +1,8 @@
 import { mock } from 'jest-mock-extended';
 
+import { TaskRejectError } from '../errors';
 import type { RunnerMessage, TaskResultData } from '../runner-types';
-import { TaskBroker, TaskRejectError } from '../task-broker.service';
+import { TaskBroker } from '../task-broker.service';
 import type { TaskOffer, TaskRequest, TaskRunner } from '../task-broker.service';
 
 describe('TaskBroker', () => {
@@ -60,13 +61,13 @@ describe('TaskBroker', () => {
 			taskBroker.registerRunner(runner, messageCallback);
 
 			const knownRunners = taskBroker.getKnownRunners();
-			const runnerIds = Object.keys(knownRunners);
+			const runnerIds = [...knownRunners.keys()];
 
 			expect(runnerIds).toHaveLength(1);
 			expect(runnerIds[0]).toEqual(runnerId);
 
-			expect(knownRunners[runnerId].runner).toEqual(runner);
-			expect(knownRunners[runnerId].messageCallback).toEqual(messageCallback);
+			expect(knownRunners.get(runnerId)!.runner).toEqual(runner);
+			expect(knownRunners.get(runnerId)!.messageCallback).toEqual(messageCallback);
 		});
 	});
 
@@ -78,12 +79,12 @@ describe('TaskBroker', () => {
 			taskBroker.registerRequester(requesterId, messageCallback);
 
 			const knownRequesters = taskBroker.getKnownRequesters();
-			const requesterIds = Object.keys(knownRequesters);
+			const requesterIds = [...knownRequesters.keys()];
 
 			expect(requesterIds).toHaveLength(1);
 			expect(requesterIds[0]).toEqual(requesterId);
 
-			expect(knownRequesters[requesterId]).toEqual(messageCallback);
+			expect(knownRequesters.get(requesterId)).toEqual(messageCallback);
 		});
 	});
 
@@ -142,6 +143,7 @@ describe('TaskBroker', () => {
 
 			taskBroker.taskRequested(request);
 
+			expect(taskBroker.acceptOffer).toHaveBeenCalled();
 			expect(taskBroker.getPendingTaskOffers()).toHaveLength(0);
 		});
 	});
@@ -171,6 +173,7 @@ describe('TaskBroker', () => {
 
 			taskBroker.taskOffered(offer);
 
+			expect(taskBroker.acceptOffer).toHaveBeenCalled();
 			expect(taskBroker.getPendingTaskOffers()).toHaveLength(0);
 		});
 	});
@@ -337,7 +340,7 @@ describe('TaskBroker', () => {
 
 			expect(accept).toHaveBeenCalled();
 			expect(reject).not.toHaveBeenCalled();
-			expect(runnerAcceptRejects[taskId]).toBeUndefined();
+			expect(runnerAcceptRejects.get(taskId)).toBeUndefined();
 		});
 
 		it('should handle `runner:taskrejected` message', async () => {
@@ -363,7 +366,7 @@ describe('TaskBroker', () => {
 
 			expect(accept).not.toHaveBeenCalled();
 			expect(reject).toHaveBeenCalledWith(new TaskRejectError(rejectionReason));
-			expect(runnerAcceptRejects[taskId]).toBeUndefined();
+			expect(runnerAcceptRejects.get(taskId)).toBeUndefined();
 		});
 
 		it('should handle `runner:taskdone` message', async () => {
@@ -394,7 +397,7 @@ describe('TaskBroker', () => {
 				data,
 			});
 
-			expect(taskBroker.getTasks()[taskId]).toBeUndefined();
+			expect(taskBroker.getTasks().get(taskId)).toBeUndefined();
 		});
 
 		it('should handle `runner:taskerror` message', async () => {

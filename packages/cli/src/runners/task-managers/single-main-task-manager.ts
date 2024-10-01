@@ -25,7 +25,6 @@ export class SingleMainTaskManager extends TaskManager {
 	}
 
 	sendMessage(message: RequesterMessage.ToN8n.All) {
-		console.log(message);
 		void this.taskBroker.onRequesterMessage(this.id, message);
 	}
 }
