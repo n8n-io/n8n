@@ -287,7 +287,8 @@ export const ROOT_DOLLAR_COMPLETIONS: Completion[] = [
 				args: [
 					{
 						name: 'key',
-						description: 'The key or name of the argument, has to be lowercase and without spaces',
+						description:
+							'The key or name of the argument, must be between 1 and 64 characters long and only contain lowercase letters, uppercase letters, numbers, underscores, and hyphens',
 						type: 'string',
 					},
 					{
@@ -299,7 +300,7 @@ export const ROOT_DOLLAR_COMPLETIONS: Completion[] = [
 					{
 						name: 'type',
 						description: 'Type of the argument',
-						type: 'string | number | boolean | json | date | datetime',
+						type: 'string | number | boolean | json',
 						optional: true,
 					},
 					{

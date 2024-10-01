@@ -159,7 +159,7 @@ import { InstanceSettings } from './InstanceSettings';
 import { ScheduledTaskManager } from './ScheduledTaskManager';
 import { SSHClientsManager } from './SSHClientsManager';
 import { binaryToBuffer } from './BinaryData/utils';
-import { getNodeAsTool } from './CreateNodeAsTool';
+import { createNodeAsTool } from './CreateNodeAsTool';
 
 axios.defaults.timeout = 300000;
 // Prevent axios from adding x-form-www-urlencoded headers by default
@@ -2851,7 +2851,7 @@ async function getInputConnectionData(
 			if (!nodeType.supplyData) {
 				if (nodeType.description.outputs.includes(NodeConnectionType.AiTool)) {
 					nodeType.supplyData = async function (this: IExecuteFunctions) {
-						return getNodeAsTool(this, nodeType, this.getNode().parameters);
+						return createNodeAsTool(this, nodeType, this.getNode().parameters);
 					};
 				} else {
 					throw new ApplicationError('Node does not have a `supplyData` method defined', {

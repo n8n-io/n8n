@@ -376,7 +376,7 @@ export function convertNodeToAiTool<
 
 		if (!item.description.properties.map((prop) => prop.name).includes('toolDescription')) {
 			const descriptionType: INodeProperties = {
-				displayName: 'Description Type',
+				displayName: 'Tool Description',
 				name: 'descriptionType',
 				type: 'options',
 				noDataExpression: true,
@@ -407,6 +407,13 @@ export function convertNodeToAiTool<
 				placeholder: `e.g. ${item.description.description}`,
 			};
 
+			const noticeProp: INodeProperties = {
+				displayName: 'Use the expression {{ $fromAI() }} for any data to be filled by the model',
+				name: 'notice',
+				type: 'notice',
+				default: '',
+			};
+
 			item.description.properties.unshift(descProp);
 
 			// If node has resource or operation we can determine pre-populate tool description based on it
@@ -420,6 +427,8 @@ export function convertNodeToAiTool<
 					},
 				};
 			}
+
+			item.description.properties.unshift(noticeProp);
 		}
 	}
 

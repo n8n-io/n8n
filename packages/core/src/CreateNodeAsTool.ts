@@ -3,7 +3,7 @@ import type { IExecuteFunctions, INodeParameters, INodeType } from 'n8n-workflow
 import { jsonParse, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import { z } from 'zod';
 
-type AllowedTypes = 'string' | 'number' | 'boolean' | 'json' | 'date' | 'datetime';
+type AllowedTypes = 'string' | 'number' | 'boolean' | 'json';
 interface FromAIArgument {
 	key: string;
 	description?: string;
@@ -48,14 +48,6 @@ class AIParametersParser {
 				break;
 			case 'json':
 				schema = z.record(z.any());
-				break;
-			// LLM seems to be struggling with using `format: 'date'` so we will use `string` instead
-			// with a custom description
-			case 'date':
-				schema = z.string().describe('ISO date format (YYYY-MM-DD)');
-				break;
-			case 'datetime':
-				schema = z.string().describe('ISO 8601 datetime format');
 				break;
 			default:
 				schema = z.string();
@@ -109,7 +101,7 @@ class AIParametersParser {
 	private extractFromAICalls(str: string): FromAIArgument[] {
 		const args: FromAIArgument[] = [];
 		// Regular expression to match the start of a $fromAI function call
-		const pattern = /\$fromAI\s*\(\s*/g;
+		const pattern = /\$fromAI\s*\(\s*/gi;
 		let match: RegExpExecArray | null;
 
 		while ((match = pattern.exec(str)) !== null) {
@@ -139,7 +131,7 @@ class AIParametersParser {
 					argsString += char;
 				} else {
 					// Handle characters outside quotes
-					if (char === "'" || char === '"') {
+					if (['"', "'", '`'].includes(char)) {
 						inQuotes = true;
 						quoteChar = char;
 					} else if (char === '(') {
@@ -208,7 +200,7 @@ class AIParametersParser {
 				continue;
 			}
 
-			if (char === '"' || char === "'") {
+			if (['"', "'", '`'].includes(char)) {
 				if (!inQuotes) {
 					inQuotes = true;
 					quoteChar = char;
@@ -241,11 +233,13 @@ class AIParametersParser {
 			const trimmed = arg.trim();
 			if (
 				(trimmed.startsWith("'") && trimmed.endsWith("'")) ||
+				(trimmed.startsWith('`') && trimmed.endsWith('`')) ||
 				(trimmed.startsWith('"') && trimmed.endsWith('"'))
 			) {
 				return trimmed
 					.slice(1, -1)
 					.replace(/\\'/g, "'")
+					.replace(/\\"/g, '`')
 					.replace(/\\"/g, '"')
 					.replace(/\\\\/g, '\\');
 			}
@@ -254,7 +248,7 @@ class AIParametersParser {
 
 		const type = cleanArgs?.[2] || 'string';
 
-		if (!['string', 'number', 'boolean', 'json', 'date', 'datetime'].includes(type.toLowerCase())) {
+		if (!['string', 'number', 'boolean', 'json'].includes(type.toLowerCase())) {
 			throw new NodeOperationError(this.ctx.getNode(), `Invalid type: ${type}`);
 		}
 
@@ -326,13 +320,41 @@ class AIParametersParser {
 
 		// Validate each collected argument
 		const nameValidationRegex = /^[a-zA-Z0-9_-]{1,64}$/;
+		const keyMap = new Map<string, FromAIArgument>();
 		for (const argument of collectedArguments) {
 			if (argument.key.length === 0 || !nameValidationRegex.test(argument.key)) {
-				const error = new Error(`Parameter name \`${argument.key}\` is invalid.`);
+				const isEmptyError = 'You must specify a key when using $fromAI()';
+				const isInvalidError = `Parameter key \`${argument.key}\` is invalid`;
+				const error = new Error(argument.key.length === 0 ? isEmptyError : isInvalidError);
 				throw new NodeOperationError(this.ctx.getNode(), error, {
 					description:
-						'Invalid parameter name, must be between 1 and 64 characters long and only contain letters, numbers, underscores, and hyphens',
+						'Invalid parameter key, must be between 1 and 64 characters long and only contain letters, numbers, underscores, and hyphens',
 				});
+			}
+
+			if (keyMap.has(argument.key)) {
+				// If the key already exists in the Map
+				const existingArg = keyMap.get(argument.key)!;
+
+				// Check if the existing argument has the same description and type
+				if (
+					existingArg.description !== argument.description ||
+					existingArg.type !== argument.type
+				) {
+					// If not, throw an error for inconsistent duplicate keys
+					throw new NodeOperationError(
+						this.ctx.getNode(),
+						`Duplicate key '${argument.key}' found with different description or type`,
+						{
+							description:
+								'Ensure all $fromAI() calls with the same key have consistent descriptions and types',
+						},
+					);
+				}
+				// If the duplicate key has consistent description and type, it's allowed (no action needed)
+			} else {
+				// If the key doesn't exist in the Map, add it
+				keyMap.set(argument.key, argument);
 			}
 		}
 
@@ -391,25 +413,6 @@ class AIParametersParser {
 }
 
 /**
- * Creates a DynamicStructuredTool from a node.
- *
- * Instantiates the AIParametersParser class to handle parsing and tool creation
- *
- * @param node The node type.
- * @param ctx The execution context.
- * @param nodeParameters The parameters of the node.
- * @returns A DynamicStructuredTool instance.
- */
-export function createNodeAsTool(
-	node: INodeType,
-	ctx: IExecuteFunctions,
-	nodeParameters: INodeParameters,
-): DynamicStructuredTool {
-	const parser = new AIParametersParser(ctx);
-	return parser.createTool(node, nodeParameters);
-}
-
-/**
  * Converts node into LangChain tool by analyzing node parameters,
  * identifying placeholders using the $fromAI function, and generating a Zod schema. It then creates
  * a DynamicStructuredTool that can be used in LangChain workflows.
@@ -419,7 +422,7 @@ export function createNodeAsTool(
  * @param nodeParameters The parameters of the node.
  * @returns An object containing the DynamicStructuredTool instance.
  */
-export function getNodeAsTool(
+export function createNodeAsTool(
 	ctx: IExecuteFunctions,
 	node: INodeType,
 	nodeParameters: INodeParameters,
