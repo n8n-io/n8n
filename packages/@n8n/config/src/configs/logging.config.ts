@@ -1,4 +1,5 @@
 import { Config, Env, Nested } from '../decorators';
+import { StringArray } from '../utils';
 
 @Config
 class FileLoggingConfig {
@@ -39,7 +40,7 @@ export class LoggingConfig {
 	 * @example `N8N_LOG_OUTPUT=console,file` will output to both console and file.
 	 */
 	@Env('N8N_LOG_OUTPUT')
-	output: string = 'console';
+	outputs: StringArray<'console' | 'file'> = ['console'];
 
 	@Nested
 	file: FileLoggingConfig;

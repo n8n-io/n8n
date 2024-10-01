@@ -51,7 +51,7 @@ describe('Telemetry', () => {
 			mock(),
 			instanceSettings,
 			mock(),
-			mock<GlobalConfig>({ logging: { level: 'info', output: 'console' } }),
+			mock<GlobalConfig>({ logging: { level: 'info', outputs: ['console'] } }),
 		);
 		// @ts-expect-error Assigning to private property
 		telemetry.rudderStack = mockRudderStack;

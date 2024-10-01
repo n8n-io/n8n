@@ -39,7 +39,7 @@ describe('TelemetryEventRelay', () => {
 		},
 		logging: {
 			level: 'info',
-			output: 'console',
+			outputs: ['console'],
 		},
 	});
 	const workflowRepository = mock<WorkflowRepository>();

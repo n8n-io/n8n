@@ -34,15 +34,13 @@ export class Logger {
 		if (!isSilent) {
 			this.setLevel();
 
-			if (this.outputs.includes('console')) this.setConsoleTransport();
-			if (this.outputs.includes('file')) this.setFileTransport();
+			const { outputs } = this.globalConfig.logging;
+
+			if (outputs.includes('console')) this.setConsoleTransport();
+			if (outputs.includes('file')) this.setFileTransport();
 		}
 
 		LoggerProxy.init(this);
-	}
-
-	get outputs() {
-		return this.globalConfig.logging.output.split(',').map((o) => o.trim());
 	}
 
 	private log(level: LogLevel, message: string, metadata: LogMetadata) {

@@ -10,7 +10,7 @@ describe('Logger', () => {
 			const globalConfig = mock<GlobalConfig>({
 				logging: {
 					level: 'info',
-					output: 'console',
+					outputs: ['console'],
 				},
 			});
 
@@ -29,7 +29,7 @@ describe('Logger', () => {
 			const globalConfig = mock<GlobalConfig>({
 				logging: {
 					level: 'info',
-					output: 'file',
+					outputs: ['file'],
 					file: {
 						fileSizeMax: 100,
 						fileCountMax: 16,
@@ -55,7 +55,7 @@ describe('Logger', () => {
 			const globalConfig = mock<GlobalConfig>({
 				logging: {
 					level: 'error',
-					output: 'console',
+					outputs: ['console'],
 				},
 			});
 
@@ -73,7 +73,7 @@ describe('Logger', () => {
 			const globalConfig = mock<GlobalConfig>({
 				logging: {
 					level: 'warn',
-					output: 'console',
+					outputs: ['console'],
 				},
 			});
 
@@ -91,7 +91,7 @@ describe('Logger', () => {
 			const globalConfig = mock<GlobalConfig>({
 				logging: {
 					level: 'info',
-					output: 'console',
+					outputs: ['console'],
 				},
 			});
 
@@ -109,7 +109,7 @@ describe('Logger', () => {
 			const globalConfig = mock<GlobalConfig>({
 				logging: {
 					level: 'debug',
-					output: 'console',
+					outputs: ['console'],
 				},
 			});
 
@@ -127,7 +127,7 @@ describe('Logger', () => {
 			const globalConfig = mock<GlobalConfig>({
 				logging: {
 					level: 'silent',
-					output: 'console',
+					outputs: ['console'],
 				},
 			});
 
