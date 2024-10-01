@@ -25,7 +25,7 @@ describe('License', () => {
 	});
 
 	let license: License;
-	const logger = mock<Logger>();
+	const logger = mock<Logger>({ debugFactory: () => jest.fn() });
 	const instanceSettings = mock<InstanceSettings>({
 		instanceId: MOCK_INSTANCE_ID,
 		instanceType: 'main',
@@ -264,7 +264,8 @@ describe('License', () => {
 
 	describe('reinit', () => {
 		it('should reinitialize license manager', async () => {
-			const license = new License(mock(), mock(), mock(), mock(), mock());
+			const logger = mock<Logger>({ debugFactory: () => jest.fn() });
+			const license = new License(logger, mock(), mock(), mock(), mock());
 			await license.init();
 
 			const initSpy = jest.spyOn(license, 'init');

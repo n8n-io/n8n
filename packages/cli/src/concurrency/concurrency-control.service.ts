@@ -45,7 +45,6 @@ export class ConcurrencyControlService {
 
 		if (this.productionLimit === -1 || config.getEnv('executions.mode') === 'queue') {
 			this.isEnabled = false;
-			this.debug('Service disabled');
 			return;
 		}
 

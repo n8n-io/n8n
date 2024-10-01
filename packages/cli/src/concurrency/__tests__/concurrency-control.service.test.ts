@@ -17,7 +17,7 @@ import type { Telemetry } from '@/telemetry';
 import { ConcurrencyQueue } from '../concurrency-queue';
 
 describe('ConcurrencyControlService', () => {
-	const logger = mock<Logger>();
+	const logger = mock<Logger>({ debugFactory: () => jest.fn() });
 	const executionRepository = mock<ExecutionRepository>();
 	const telemetry = mock<Telemetry>();
 	const eventService = mock<EventService>();
