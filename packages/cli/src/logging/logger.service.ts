@@ -1,13 +1,14 @@
 import { GlobalConfig } from '@n8n/config';
 import callsites from 'callsites';
 import { InstanceSettings } from 'n8n-core';
-import { LoggerProxy } from 'n8n-workflow';
+import { LoggerProxy, LOG_LEVELS } from 'n8n-workflow';
 import path, { basename } from 'node:path';
 import { Service } from 'typedi';
 import winston from 'winston';
 
 import { isObjectLiteral } from '@/utils';
 
+import { noOp } from './constants';
 import type { LogLocationMetadata, LogLevel, LogMetadata } from './types';
 
 @Service()
@@ -30,6 +31,8 @@ export class Logger {
 		});
 
 		if (!isSilent) {
+			this.setLevel();
+
 			const { outputs } = this.globalConfig.logging;
 
 			if (outputs.includes('console')) this.setConsoleTransport();
@@ -51,6 +54,18 @@ export class Logger {
 		}
 
 		this.internalLogger.log(level, message, { ...metadata, ...location });
+	}
+
+	private setLevel() {
+		const { levels } = this.internalLogger;
+
+		for (const logLevel of LOG_LEVELS) {
+			if (levels[logLevel] > levels[this.level]) {
+				// winston defines `{ error: 0, warn: 1, info: 2, debug: 5 }`
+				// so numerically higher (less severe) log levels become no-op
+				Object.defineProperty(this, logLevel, { value: noOp });
+			}
+		}
 	}
 
 	private setConsoleTransport() {
