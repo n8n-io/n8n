@@ -640,7 +640,9 @@ export class TelemetryEventRelay extends EventRelay {
 				}
 
 				if (telemetryProperties.is_manual) {
-					nodeGraphResult = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
+					nodeGraphResult = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes, {
+						runData: runData.data.resultData?.runData,
+					});
 					telemetryProperties.node_graph = nodeGraphResult.nodeGraph;
 					telemetryProperties.node_graph_string = JSON.stringify(nodeGraphResult.nodeGraph);
 
@@ -652,7 +654,9 @@ export class TelemetryEventRelay extends EventRelay {
 
 			if (telemetryProperties.is_manual) {
 				if (!nodeGraphResult) {
-					nodeGraphResult = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
+					nodeGraphResult = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes, {
+						runData: runData.data.resultData?.runData,
+					});
 				}
 
 				let userRole: 'owner' | 'sharee' | undefined = undefined;
@@ -677,7 +681,9 @@ export class TelemetryEventRelay extends EventRelay {
 				};
 
 				if (!manualExecEventProperties.node_graph_string) {
-					nodeGraphResult = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
+					nodeGraphResult = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes, {
+						runData: runData.data.resultData?.runData,
+					});
 					manualExecEventProperties.node_graph_string = JSON.stringify(nodeGraphResult.nodeGraph);
 				}
 
