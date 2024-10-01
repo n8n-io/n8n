@@ -37,6 +37,10 @@ describe('TelemetryEventRelay', () => {
 				includeQueueMetrics: false,
 			},
 		},
+		logging: {
+			level: 'info',
+			output: 'console',
+		},
 	});
 	const workflowRepository = mock<WorkflowRepository>();
 	const nodeTypes = mock<NodeTypes>();
