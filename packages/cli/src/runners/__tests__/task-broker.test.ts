@@ -428,7 +428,7 @@ describe('TaskBroker', () => {
 				error: errorMessage,
 			});
 
-			expect(taskBroker.getTasks()[taskId]).toBeUndefined();
+			expect(taskBroker.getTasks().get(taskId)).toBeUndefined();
 		});
 
 		it('should handle `runner:taskdatarequest` message', async () => {
