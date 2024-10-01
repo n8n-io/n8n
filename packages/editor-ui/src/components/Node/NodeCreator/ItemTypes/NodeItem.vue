@@ -63,7 +63,7 @@ const dataTestId = computed(() =>
 );
 
 const hasActions = computed(() => {
-	return nodeActions.value.length > 1 && !isAiSubcategoryView(activeViewStack);
+	return nodeActions.value.length > 1 && !activeViewStack.hideActions;
 });
 
 const nodeActions = computed(() => {
