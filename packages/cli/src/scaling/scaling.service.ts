@@ -11,7 +11,7 @@ import { ExecutionRepository } from '@/databases/repositories/execution.reposito
 import { OnShutdown } from '@/decorators/on-shutdown';
 import { MaxStalledCountError } from '@/errors/max-stalled-count.error';
 import { EventService } from '@/events/event.service';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { OrchestrationService } from '@/services/orchestration.service';
 
 import { JOB_TYPE_NAME, QUEUE_NAME } from './constants';

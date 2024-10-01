@@ -18,7 +18,7 @@ import type {
 	IExecutionDb,
 	IExecutionsCurrentSummary,
 } from '@/interfaces';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { isWorkflowIdValid } from '@/utils';
 
 import { ConcurrencyControlService } from './concurrency/concurrency-control.service';

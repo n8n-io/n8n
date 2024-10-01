@@ -4,7 +4,7 @@ import { Container } from 'typedi';
 
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import type { IExecutionDb, UpdateExecutionPayload } from '@/interfaces';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { ExecutionMetadataService } from '@/services/execution-metadata.service';
 import { isWorkflowIdValid } from '@/utils';
 
