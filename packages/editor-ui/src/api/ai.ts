@@ -37,7 +37,6 @@ export async function generateCodeForPrompt(
 	{
 		question,
 		context,
-		model,
 		n8nVersion,
 	}: {
 		question: string;
@@ -47,7 +46,6 @@ export async function generateCodeForPrompt(
 			pushRef: string;
 			ndvPushRef: string;
 		};
-		model: string;
 		n8nVersion: string;
 		forNode: 'code' | 'transform';
 	},
@@ -55,7 +53,6 @@ export async function generateCodeForPrompt(
 	return await makeRestApiRequest(ctx, 'POST', '/ai/ask-ai', {
 		question,
 		context,
-		model,
 		n8nVersion,
 	} as IDataObject);
 }

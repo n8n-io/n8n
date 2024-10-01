@@ -103,7 +103,6 @@ async function onSubmit() {
 				ndvPushRef: useNDVStore().pushRef,
 				pushRef: rootStore.pushRef,
 			},
-			model: 'gpt-3.5-turbo-16k',
 			n8nVersion: version,
 			forNode: 'transform',
 		};

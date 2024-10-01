@@ -53,4 +53,13 @@ export class AiService {
 
 		return await this.client.applySuggestion(payload, { id: user.id });
 	}
+
+	async askAi(payload: AiAssistantSDK.AskAiRequestPayload, user: IUser) {
+		if (!this.client) {
+			await this.init();
+		}
+		assert(this.client, 'Assistant client not setup');
+
+		return await this.client.askAi(payload, { id: user.id });
+	}
 }

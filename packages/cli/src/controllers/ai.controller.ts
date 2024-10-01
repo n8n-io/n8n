@@ -7,7 +7,6 @@ import { WritableStream } from 'node:stream/web';
 import { Post, RestController } from '@/decorators';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { AiAssistantRequest } from '@/requests';
-
 import { AiService } from '@/services/ai.service';
 
 type FlushableResponse = Response & { flush: () => void };
@@ -41,7 +40,7 @@ export class AiController {
 
 	@Post('/chat/apply-suggestion')
 	async applySuggestion(
-		req: AiAssistantRequest.ApplySuggestion,
+		req: AiAssistantRequest.ApplySuggestionPayload,
 	): Promise<AiAssistantSDK.ApplySuggestionResponse> {
 		try {
 			return await this.aiService.applySuggestion(req.body, req.user);
@@ -52,20 +51,14 @@ export class AiController {
 		}
 	}
 
-	//WAIT UNTIL THE NEW VERSION OF THE AI SDK IS RELEASE TO UNCOMMENT THIS
-
-	// @Post('/ask-ai')
-	// async askAi(
-	// 	//@ts-ignore
-	// 	req: AiAssistantRequest.AskAiRequestPayload,
-	// 	//@ts-ignore
-	// ): Promise<AiAssistantRequest.AskAiResponsePayload> {
-	// 	try {
-	// 		// return await this.aiService.askAi(req.body, req.user);
-	// 	} catch (e) {
-	// 		assert(e instanceof Error);
-	// 		ErrorReporterProxy.error(e);
-	// 		throw new InternalServerError(`Something went wrong: ${e.message}`);
-	// 	}
-	// }
+	@Post('/ask-ai')
+	async askAi(req: AiAssistantRequest.AskAiPayload): Promise<AiAssistantSDK.AskAiResponsePayload> {
+		try {
+			return await this.aiService.askAi(req.body, req.user);
+		} catch (e) {
+			assert(e instanceof Error);
+			ErrorReporterProxy.error(e);
+			throw new InternalServerError(`Something went wrong: ${e.message}`);
+		}
+	}
 }
