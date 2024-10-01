@@ -42,12 +42,12 @@ import { ExecutionAnnotation } from '@/databases/entities/execution-annotation.e
 import { PostgresLiveRowsRetrievalError } from '@/errors/postgres-live-rows-retrieval.error';
 import type { ExecutionSummaries } from '@/executions/execution.types';
 import type {
-	ExecutionPayload,
+	CreateExecutionPayload,
 	IExecutionBase,
 	IExecutionFlattedDb,
 	IExecutionResponse,
 } from '@/interfaces';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { separate } from '@/utils';
 
 import { ExecutionDataRepository } from './execution-data.repository';
@@ -198,7 +198,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		return executions.map((execution) => {
 			const { executionData, ...rest } = execution;
 			return rest;
-		});
+		}) as IExecutionFlattedDb[] | IExecutionResponse[] | IExecutionBase[];
 	}
 
 	reportInvalidExecutions(executions: ExecutionEntity[]) {
@@ -297,15 +297,15 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			}),
 			...(options?.includeAnnotation &&
 				serializedAnnotation && { annotation: serializedAnnotation }),
-		};
+		} as IExecutionFlattedDb | IExecutionResponse | IExecutionBase;
 	}
 
 	/**
 	 * Insert a new execution and its execution data using a transaction.
 	 */
-	async createNewExecution(execution: ExecutionPayload): Promise<string> {
+	async createNewExecution(execution: CreateExecutionPayload): Promise<string> {
 		const { data, workflowData, ...rest } = execution;
-		const { identifiers: inserted } = await this.insert(rest);
+		const { identifiers: inserted } = await this.insert({ ...rest, createdAt: new Date() });
 		const { id: executionId } = inserted[0] as { id: string };
 		const { connections, nodes, name, settings } = workflowData ?? {};
 		await this.executionDataRepository.insert({
@@ -344,16 +344,25 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		await this.update({ id: executionId }, { status });
 	}
 
-	async resetStartedAt(executionId: string) {
-		await this.update({ id: executionId }, { startedAt: new Date() });
+	async setRunning(executionId: string) {
+		const startedAt = new Date();
+
+		await this.update({ id: executionId }, { status: 'running', startedAt });
+
+		return startedAt;
 	}
 
 	async updateExistingExecution(executionId: string, execution: Partial<IExecutionResponse>) {
-		// Se isolate startedAt because it must be set when the execution starts and should never change.
-		// So we prevent updating it, if it's sent (it usually is and causes problems to executions that
-		// are resumed after waiting for some time, as a new startedAt is set)
-		const { id, data, workflowId, workflowData, startedAt, customData, ...executionInformation } =
-			execution;
+		const {
+			id,
+			data,
+			workflowId,
+			workflowData,
+			createdAt, // must never change
+			startedAt, // must never change
+			customData,
+			...executionInformation
+		} = execution;
 		if (Object.keys(executionInformation).length > 0) {
 			await this.update({ id: executionId }, executionInformation);
 		}
@@ -721,6 +730,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		mode: true,
 		retryOf: true,
 		status: true,
+		createdAt: true,
 		startedAt: true,
 		stoppedAt: true,
 	};
@@ -806,6 +816,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	// @tech_debt: These transformations should not be needed
 	private toSummary(execution: {
 		id: number | string;
+		createdAt?: Date | string;
 		startedAt?: Date | string;
 		stoppedAt?: Date | string;
 		waitTill?: Date | string | null;
@@ -816,6 +827,13 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			if (date.includes(' ')) return date.replace(' ', 'T') + 'Z';
 			return date;
 		};
+
+		if (execution.createdAt) {
+			execution.createdAt =
+				execution.createdAt instanceof Date
+					? execution.createdAt.toISOString()
+					: normalizeDateString(execution.createdAt);
+		}
 
 		if (execution.startedAt) {
 			execution.startedAt =

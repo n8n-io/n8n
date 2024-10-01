@@ -145,6 +145,13 @@ watchDebounced(
 	color: var(--color-text-base);
 	font-size: var(--font-size-2xs);
 	padding: var(--spacing-2xs);
+
+	code {
+		font-size: var(--font-size-3xs);
+		background: var(--color-background-base);
+		padding: var(--spacing-5xs);
+		border-radius: var(--border-radius-base);
+	}
 }
 
 .content {
@@ -163,13 +170,6 @@ watchDebounced(
 
 .text {
 	display: inline;
-}
-
-code {
-	font-size: var(--font-size-3xs);
-	background: var(--color-background-base);
-	padding: var(--spacing-5xs);
-	border-radius: var(--border-radius-base);
 }
 
 .pill {

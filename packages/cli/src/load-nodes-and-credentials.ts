@@ -28,7 +28,7 @@ import {
 	CLI_DIR,
 	inE2ETests,
 } from '@/constants';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 
 interface LoadedNodesAndCredentials {
 	nodes: INodeTypeData;

@@ -2,12 +2,10 @@ import type { Redis as SingleNodeClient, Cluster as MultiNodeClient } from 'iore
 import { Service } from 'typedi';
 
 import config from '@/config';
-import { Logger } from '@/logger';
-import type {
-	RedisServiceCommandObject,
-	RedisServiceWorkerResponseObject,
-} from '@/scaling/redis/redis-service-commands';
+import { Logger } from '@/logging/logger.service';
 import { RedisClientService } from '@/services/redis-client.service';
+
+import type { PubSub } from './pubsub.types';
 
 /**
  * Responsible for publishing messages into the pubsub channels used by scaling mode.
@@ -26,8 +24,6 @@ export class Publisher {
 		if (config.getEnv('executions.mode') !== 'queue') return;
 
 		this.client = this.redisClientService.createClient({ type: 'publisher(n8n)' });
-
-		this.client.on('error', (error) => this.logger.error(error.message));
 	}
 
 	getClient() {
@@ -44,7 +40,7 @@ export class Publisher {
 	// #region Publishing
 
 	/** Publish a command into the `n8n.commands` channel. */
-	async publishCommand(msg: Omit<RedisServiceCommandObject, 'senderId'>) {
+	async publishCommand(msg: Omit<PubSub.Command, 'senderId'>) {
 		await this.client.publish(
 			'n8n.commands',
 			JSON.stringify({ ...msg, senderId: config.getEnv('redis.queueModeId') }),
@@ -54,7 +50,7 @@ export class Publisher {
 	}
 
 	/** Publish a response for a command into the `n8n.worker-response` channel. */
-	async publishWorkerResponse(msg: RedisServiceWorkerResponseObject) {
+	async publishWorkerResponse(msg: PubSub.WorkerResponse) {
 		await this.client.publish('n8n.worker-response', JSON.stringify(msg));
 
 		this.logger.debug(`Published response for ${msg.command} to worker response channel`);

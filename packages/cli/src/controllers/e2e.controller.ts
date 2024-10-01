@@ -14,7 +14,7 @@ import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus'
 import type { BooleanLicenseFeature, NumericLicenseFeature } from '@/interfaces';
 import type { FeatureReturnType } from '@/license';
 import { License } from '@/license';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { MfaService } from '@/mfa/mfa.service';
 import { Push } from '@/push';
 import type { UserSetupPayload } from '@/requests';

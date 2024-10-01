@@ -181,12 +181,19 @@ export declare namespace CredentialRequest {
 }
 
 // ----------------------------------
+//               /api-keys
+// ----------------------------------
+
+export declare namespace ApiKeysRequest {
+	export type DeleteAPIKey = AuthenticatedRequest<{ id: string }>;
+}
+
+// ----------------------------------
 //               /me
 // ----------------------------------
 
 export declare namespace MeRequest {
 	export type SurveyAnswers = AuthenticatedRequest<{}, {}, IPersonalizationSurveyAnswersV4>;
-	export type DeleteAPIKey = AuthenticatedRequest<{ id: string }>;
 }
 
 export interface UserSetupPayload {

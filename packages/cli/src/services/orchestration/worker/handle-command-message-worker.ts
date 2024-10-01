@@ -6,9 +6,9 @@ import { N8N_VERSION } from '@/constants';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { ExternalSecretsManager } from '@/external-secrets/external-secrets-manager.ee';
 import { License } from '@/license';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { COMMAND_PUBSUB_CHANNEL } from '@/scaling/constants';
-import type { RedisServiceCommandObject } from '@/scaling/redis/redis-service-commands';
+import type { PubSub } from '@/scaling/pubsub/pubsub.types';
 import { CommunityPackagesService } from '@/services/community-packages.service';
 
 import type { WorkerCommandReceivedHandlerOptions } from './types';
@@ -22,9 +22,9 @@ export async function getWorkerCommandReceivedHandler(
 	if (!messageString) return;
 
 	const logger = Container.get(Logger);
-	let message: RedisServiceCommandObject;
+	let message: PubSub.Command;
 	try {
-		message = jsonParse<RedisServiceCommandObject>(messageString);
+		message = jsonParse<PubSub.Command>(messageString);
 	} catch {
 		logger.debug(
 			`Received invalid message via channel ${COMMAND_PUBSUB_CHANNEL}: "${messageString}"`,
@@ -39,11 +39,11 @@ export async function getWorkerCommandReceivedHandler(
 			return; // early return if the message is not for this worker
 		}
 		switch (message.command) {
-			case 'getStatus':
+			case 'get-worker-status':
 				if (!debounceMessageReceiver(message, 500)) return;
 				await options.publisher.publishWorkerResponse({
 					workerId: options.queueModeId,
-					command: 'getStatus',
+					command: 'get-worker-status',
 					payload: {
 						workerId: options.queueModeId,
 						runningJobsSummary: options.getRunningJobsSummary(),
@@ -66,20 +66,20 @@ export async function getWorkerCommandReceivedHandler(
 					},
 				});
 				break;
-			case 'getId':
+			case 'get-worker-id':
 				if (!debounceMessageReceiver(message, 500)) return;
 				await options.publisher.publishWorkerResponse({
 					workerId: options.queueModeId,
-					command: 'getId',
+					command: 'get-worker-id',
 				});
 				break;
-			case 'restartEventBus':
+			case 'restart-event-bus':
 				if (!debounceMessageReceiver(message, 500)) return;
 				try {
 					await Container.get(MessageEventBus).restart();
 					await options.publisher.publishWorkerResponse({
 						workerId: options.queueModeId,
-						command: 'restartEventBus',
+						command: 'restart-event-bus',
 						payload: {
 							result: 'success',
 						},
@@ -87,7 +87,7 @@ export async function getWorkerCommandReceivedHandler(
 				} catch (error) {
 					await options.publisher.publishWorkerResponse({
 						workerId: options.queueModeId,
-						command: 'restartEventBus',
+						command: 'restart-event-bus',
 						payload: {
 							result: 'error',
 							error: (error as Error).message,
@@ -95,13 +95,13 @@ export async function getWorkerCommandReceivedHandler(
 					});
 				}
 				break;
-			case 'reloadExternalSecretsProviders':
+			case 'reload-external-secrets-providers':
 				if (!debounceMessageReceiver(message, 500)) return;
 				try {
 					await Container.get(ExternalSecretsManager).reloadAllProviders();
 					await options.publisher.publishWorkerResponse({
 						workerId: options.queueModeId,
-						command: 'reloadExternalSecretsProviders',
+						command: 'reload-external-secrets-providers',
 						payload: {
 							result: 'success',
 						},
@@ -109,7 +109,7 @@ export async function getWorkerCommandReceivedHandler(
 				} catch (error) {
 					await options.publisher.publishWorkerResponse({
 						workerId: options.queueModeId,
-						command: 'reloadExternalSecretsProviders',
+						command: 'reload-external-secrets-providers',
 						payload: {
 							result: 'error',
 							error: (error as Error).message,
@@ -121,22 +121,20 @@ export async function getWorkerCommandReceivedHandler(
 			case 'community-package-update':
 			case 'community-package-uninstall':
 				if (!debounceMessageReceiver(message, 500)) return;
-				const { packageName, packageVersion } = message.payload;
+				const { packageName } = message.payload;
 				const communityPackagesService = Container.get(CommunityPackagesService);
 				if (message.command === 'community-package-uninstall') {
 					await communityPackagesService.removeNpmPackage(packageName);
 				} else {
-					await communityPackagesService.installOrUpdateNpmPackage(packageName, packageVersion);
+					await communityPackagesService.installOrUpdateNpmPackage(
+						packageName,
+						message.payload.packageVersion,
+					);
 				}
 				break;
-			case 'reloadLicense':
+			case 'reload-license':
 				if (!debounceMessageReceiver(message, 500)) return;
 				await Container.get(License).reload();
-				break;
-			case 'stopWorker':
-				if (!debounceMessageReceiver(message, 500)) return;
-				// TODO: implement proper shutdown
-				// await this.stopProcess();
 				break;
 			default:
 				if (

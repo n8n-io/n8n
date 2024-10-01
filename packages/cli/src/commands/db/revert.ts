@@ -8,7 +8,7 @@ import { Container } from 'typedi';
 import { getConnectionOptions } from '@/databases/config';
 import type { Migration } from '@/databases/types';
 import { wrapMigration } from '@/databases/utils/migration-helpers';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 
 // This function is extracted to make it easier to unit test it.
 // Mocking turned into a mess due to this command using typeorm and the db

@@ -118,7 +118,7 @@ function openContextMenu(event: MouseEvent) {
 				<FontAwesomeIcon icon="bolt" size="lg" />
 			</div>
 		</N8nTooltip>
-		<CanvasNodeStatusIcons :class="$style.statusIcons" />
+		<CanvasNodeStatusIcons v-if="!isDisabled" :class="$style.statusIcons" />
 		<CanvasNodeDisabledStrikeThrough v-if="isStrikethroughVisible" />
 		<div :class="$style.description">
 			<div v-if="label" :class="$style.label">
@@ -190,6 +190,7 @@ function openContextMenu(event: MouseEvent) {
 		.description {
 			top: unset;
 			position: relative;
+			margin-top: 0;
 			margin-left: var(--spacing-s);
 			width: auto;
 			min-width: unset;
@@ -198,6 +199,19 @@ function openContextMenu(event: MouseEvent) {
 						--configurable-node--icon-size
 					) - 2 * var(--spacing-s)
 			);
+		}
+
+		.label {
+			text-align: left;
+		}
+
+		&.configuration {
+			--canvas-node--height: 75px;
+
+			.statusIcons {
+				right: calc(-1 * var(--spacing-2xs));
+				bottom: 0;
+			}
 		}
 	}
 
