@@ -41,8 +41,8 @@ export class LicenseController {
 
 	@Post('/enterprise/community-registered')
 	async registerCommunityEdition(
-		req: AuthlessRequest,
-		res: Response,
+		_req: AuthlessRequest,
+		_res: Response,
 		@Body payload: CommunityRegisteredRequestDto,
 	) {
 		return await this.licenseService.registerCommunityEdition({
