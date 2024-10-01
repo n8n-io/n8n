@@ -3,7 +3,6 @@ import type { AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
 import { assert, type IUser } from 'n8n-workflow';
 import { Service } from 'typedi';
-import type { Response } from 'undici';
 
 import config from '@/config';
 import type { AiAssistantRequest } from '@/requests';
@@ -40,7 +39,7 @@ export class AiService {
 		});
 	}
 
-	async chat(payload: AiAssistantSDK.ChatRequestPayload, user: IUser): Promise<Response> {
+	async chat(payload: AiAssistantSDK.ChatRequestPayload, user: IUser) {
 		if (!this.client) {
 			await this.init();
 		}

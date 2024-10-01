@@ -15,6 +15,7 @@ import { format } from 'prettier';
 import jsParser from 'prettier/plugins/babel';
 import * as estree from 'prettier/plugins/estree';
 import { useSettingsStore } from '@/stores/settings.store';
+import type { AskAiRequest } from '@/types/assistant.types';
 
 const emit = defineEmits<{
 	valueChanged: [value: IUpdateInformation];
@@ -93,9 +94,8 @@ async function onSubmit() {
 
 	try {
 		const schemas = getSchemas();
-		const version = rootStore.versionCli;
 
-		const payload = {
+		const payload: AskAiRequest.RequestPayload = {
 			question: prompt.value,
 			context: {
 				schema: schemas.parentNodesSchemas,
@@ -103,7 +103,6 @@ async function onSubmit() {
 				ndvPushRef: useNDVStore().pushRef,
 				pushRef: rootStore.pushRef,
 			},
-			n8nVersion: version,
 			forNode: 'transform',
 		};
 		switch (type) {

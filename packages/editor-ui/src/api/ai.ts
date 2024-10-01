@@ -1,5 +1,5 @@
-import type { IRestApiContext, Schema } from '@/Interface';
-import type { ChatRequest, ReplaceCodeRequest } from '@/types/assistant.types';
+import type { IRestApiContext } from '@/Interface';
+import type { AskAiRequest, ChatRequest, ReplaceCodeRequest } from '@/types/assistant.types';
 import { makeRestApiRequest, streamRequest } from '@/utils/apiUtils';
 import type { IDataObject } from 'n8n-workflow';
 
@@ -34,25 +34,10 @@ export async function replaceCode(
 
 export async function generateCodeForPrompt(
 	ctx: IRestApiContext,
-	{
-		question,
-		context,
-		n8nVersion,
-	}: {
-		question: string;
-		context: {
-			schema: Array<{ nodeName: string; schema: Schema }>;
-			inputSchema: { nodeName: string; schema: Schema };
-			pushRef: string;
-			ndvPushRef: string;
-		};
-		n8nVersion: string;
-		forNode: 'code' | 'transform';
-	},
+	{ question, context }: AskAiRequest.RequestPayload,
 ): Promise<{ code: string }> {
 	return await makeRestApiRequest(ctx, 'POST', '/ai/ask-ai', {
 		question,
 		context,
-		n8nVersion,
 	} as IDataObject);
 }

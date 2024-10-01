@@ -24,6 +24,7 @@ import {
 	ASK_AI_MIN_PROMPT_LENGTH,
 	ASK_AI_LOADING_DURATION_MS,
 } from '@/constants';
+import type { AskAiRequest } from '@/types/assistant.types';
 
 const emit = defineEmits<{
 	submit: [code: string];
@@ -87,7 +88,7 @@ function getParentNodes() {
 			return name !== activeNode.name && nodes.findIndex((node) => node.name === name) === i;
 		})
 		.map((n) => getNodeByName(n.name))
-		.filter((n) => n !== null) as INodeUi[];
+		.filter((n) => n !== null);
 }
 
 function getSchemas() {
@@ -154,20 +155,19 @@ async function onSubmit() {
 
 	const rootStore = useRootStore();
 
-	try {
-		const version = rootStore.versionCli;
+	const payload: AskAiRequest.RequestPayload = {
+		question: prompt.value,
+		context: {
+			schema: schemas.parentNodesSchemas,
+			inputSchema: schemas.inputSchema!,
+			ndvPushRef: useNDVStore().pushRef,
+			pushRef: rootStore.pushRef,
+		},
+		forNode: 'code',
+	};
 
-		const { code } = await generateCodeForPrompt(restApiContext, {
-			question: prompt.value,
-			context: {
-				schema: schemas.parentNodesSchemas,
-				inputSchema: schemas.inputSchema!,
-				ndvPushRef: useNDVStore().pushRef,
-				pushRef: rootStore.pushRef,
-			},
-			n8nVersion: version,
-			forNode: 'code',
-		});
+	try {
+		const { code } = await generateCodeForPrompt(restApiContext, payload);
 
 		stopLoading();
 		emit('replaceCode', code);
