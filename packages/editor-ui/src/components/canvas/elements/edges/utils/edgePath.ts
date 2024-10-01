@@ -13,9 +13,6 @@ const isRightOfSourceHandle = (sourceX: number, targetX: number) => sourceX - HA
 const pathIntersectsNodes = (targetY: number, sourceY: number) =>
 	Math.abs(targetY - sourceY) < EDGE_PADDING_BOTTOM;
 
-const isMainConnectionType = (connectionType: NodeConnectionType) =>
-	connectionType === NodeConnectionType.Main;
-
 export function getCustomPath(
 	props: Pick<
 		EdgeProps,
@@ -30,7 +27,7 @@ export function getCustomPath(
 	const { targetX, targetY, sourceX, sourceY, sourcePosition, targetPosition } = props;
 	const yDiff = targetY - sourceY;
 
-	if (!isRightOfSourceHandle(sourceX, targetX) || !isMainConnectionType(connectionType)) {
+	if (!isRightOfSourceHandle(sourceX, targetX) || connectionType !== NodeConnectionType.Main) {
 		return getBezierPath(props);
 	}
 
