@@ -7,8 +7,6 @@ import type {
 	NodeAuthenticationOption,
 	SimplifiedNodeType,
 } from '@/Interface';
-import { useDataSchema } from '@/composables/useDataSchema';
-import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import {
 	CORE_NODES_CATEGORY,
 	MAIN_AUTH_FIELD_NAME,
@@ -18,26 +16,20 @@ import {
 } from '@/constants';
 import { i18n as locale } from '@/plugins/i18n';
 import { useCredentialsStore } from '@/stores/credentials.store';
-import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import type { ChatRequest } from '@/types/assistant.types';
 import { isResourceLocatorValue } from '@/utils/typeGuards';
 import { isJsonKeyObject } from '@/utils/typesUtils';
-import type { NodeApiError, NodeError, NodeOperationError } from 'n8n-workflow';
-import {
-	deepCopy,
-	type IDataObject,
-	type INode,
-	type INodeCredentialDescription,
-	type INodeExecutionData,
-	type INodeProperties,
-	type INodeTypeDescription,
-	type NodeParameterValueType,
-	type ResourceMapperField,
-	type Themed,
+import type {
+	IDataObject,
+	INodeCredentialDescription,
+	INodeExecutionData,
+	INodeProperties,
+	INodeTypeDescription,
+	NodeParameterValueType,
+	ResourceMapperField,
+	Themed,
 } from 'n8n-workflow';
-import { useRouter } from 'vue-router';
 
 /*
 	Constants and utility functions mainly used to get information about
