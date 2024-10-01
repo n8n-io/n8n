@@ -34,6 +34,7 @@ const settingsStore = useSettingsStore();
 const isAdvancedExecutionFilterEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedExecutionFilters],
 );
+const isAnnotationEnabled = computed(() => isAdvancedExecutionFilterEnabled.value);
 
 const currentWorkflow = computed(() => (route.params.name as string) || workflowsStore.workflowId);
 const retryExecutionActions = computed(() => [
@@ -136,7 +137,7 @@ function onRetryMenuItemSelect(action: string): void {
 						{{ locale.baseText('executionDetails.retry') }} #{{ execution.retryOf }}
 					</N8nText>
 				</div>
-				<div v-if="isAdvancedExecutionFilterEnabled" :class="$style.annotation">
+				<div v-if="isAnnotationEnabled" :class="$style.annotation">
 					<div v-if="execution.annotation?.vote" :class="$style.ratingIcon">
 						<FontAwesomeIcon
 							v-if="execution.annotation.vote == 'up'"
