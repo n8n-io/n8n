@@ -17,7 +17,7 @@ import { WorkflowRepository } from '@/databases/repositories/workflow.repository
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { TransferWorkflowError } from '@/errors/response-errors/transfer-workflow.error';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service';
 
