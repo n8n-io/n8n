@@ -170,7 +170,7 @@
     "typedi": "catalog:",
     "uuid": "catalog:",
     "validator": "13.7.0",
-    "winston": "3.8.2",
+    "winston": "3.14.2",
     "ws": "8.17.1",
     "xml2js": "catalog:",
     "xmllint-wasm": "3.0.1",

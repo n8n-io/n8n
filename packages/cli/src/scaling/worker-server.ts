@@ -16,7 +16,7 @@ import { PortTakenError } from '@/errors/port-taken.error';
 import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 import { ExternalHooks } from '@/external-hooks';
 import type { ICredentialsOverwrite } from '@/interfaces';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { PrometheusMetricsService } from '@/metrics/prometheus-metrics.service';
 import { rawBodyReader, bodyParser } from '@/middlewares';
 import * as ResponseHelper from '@/response-helper';

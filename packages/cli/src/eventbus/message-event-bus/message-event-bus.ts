@@ -13,7 +13,7 @@ import { EventDestinationsRepository } from '@/databases/repositories/event-dest
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { License } from '@/license';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { OrchestrationService } from '@/services/orchestration.service';
 
 import { ExecutionRecoveryService } from '../../executions/execution-recovery.service';

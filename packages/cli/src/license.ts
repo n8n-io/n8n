@@ -6,7 +6,7 @@ import Container, { Service } from 'typedi';
 import config from '@/config';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import { OnShutdown } from '@/decorators/on-shutdown';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { LicenseMetricsService } from '@/metrics/license-metrics.service';
 import { OrchestrationService } from '@/services/orchestration.service';
 

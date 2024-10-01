@@ -27,7 +27,7 @@ import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
 import type { IWorkflowResponse } from '@/interfaces';
 import { License } from '@/license';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { listQueryMiddleware } from '@/middlewares';
 import * as ResponseHelper from '@/response-helper';
 import { NamingService } from '@/services/naming.service';

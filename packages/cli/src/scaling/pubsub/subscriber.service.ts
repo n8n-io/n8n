@@ -2,7 +2,7 @@ import type { Redis as SingleNodeClient, Cluster as MultiNodeClient } from 'iore
 import { Service } from 'typedi';
 
 import config from '@/config';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { RedisClientService } from '@/services/redis-client.service';
 
 import type { PubSub } from './pubsub.types';

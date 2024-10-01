@@ -4,7 +4,7 @@ import path from 'path';
 import { Container } from 'typedi';
 
 import { License } from '@/license';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 
 import {
 	SOURCE_CONTROL_GIT_KEY_COMMENT,
