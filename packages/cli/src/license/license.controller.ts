@@ -1,9 +1,10 @@
+import { CommunityRegisteredRequestDto } from '@n8n/api-types';
 import type { AxiosError } from 'axios';
 import { InstanceSettings } from 'n8n-core';
 
-import { Get, Post, RestController, GlobalScope } from '@/decorators';
+import { Get, Post, RestController, GlobalScope, Body } from '@/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { AuthenticatedRequest, LicenseRequest } from '@/requests';
+import { AuthenticatedRequest, AuthlessRequest, LicenseRequest } from '@/requests';
 import { UrlService } from '@/services/url.service';
 
 import { LicenseService } from './license.service';
@@ -39,9 +40,13 @@ export class LicenseController {
 	}
 
 	@Post('/enterprise/community-registered')
-	async registerCommunityEdition(req: LicenseRequest.RegisterCommunityEdition) {
+	async registerCommunityEdition(
+		req: AuthlessRequest,
+		res: Response,
+		@Body payload: CommunityRegisteredRequestDto,
+	) {
 		return await this.licenseService.registerCommunityEdition({
-			email: req.body.email,
+			email: payload.email,
 			instanceId: this.instanceSettings.instanceId,
 			instanceUrl: this.urlService.getInstanceBaseUrl(),
 			licenseType: 'community-registered',

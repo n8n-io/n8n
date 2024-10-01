@@ -1,3 +1,4 @@
+import type { CommunityRegisteredRequestDto } from '@n8n/api-types';
 import { makeRestApiRequest } from '@/utils/apiUtils';
 import type { IRestApiContext, UsageState } from '@/Interface';
 
@@ -24,12 +25,12 @@ export const requestLicenseTrial = async (
 
 export const registerCommunityEdition = async (
 	context: IRestApiContext,
-	data: { email: string },
+	params: CommunityRegisteredRequestDto,
 ): Promise<{ title: string; text: string }> => {
 	return await makeRestApiRequest(
 		context,
 		'POST',
 		'/license/enterprise/community-registered',
-		data,
+		params,
 	);
 };
