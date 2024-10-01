@@ -6,7 +6,7 @@ import Container, { Service } from 'typedi';
 import config from '@/config';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import { OnShutdown } from '@/decorators/on-shutdown';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { LicenseMetricsService } from '@/metrics/license-metrics.service';
 import { OrchestrationService } from '@/services/orchestration.service';
 
@@ -146,7 +146,7 @@ export class License {
 				this.orchestrationService.isFollower
 			) {
 				this.logger.debug(
-					'[Multi-main setup] Instance is follower, skipping sending of "reloadLicense" command...',
+					'[Multi-main setup] Instance is follower, skipping sending of "reload-license" command...',
 				);
 				return;
 			}
@@ -160,7 +160,7 @@ export class License {
 
 		if (config.getEnv('executions.mode') === 'queue') {
 			const { Publisher } = await import('@/scaling/pubsub/publisher.service');
-			await Container.get(Publisher).publishCommand({ command: 'reloadLicense' });
+			await Container.get(Publisher).publishCommand({ command: 'reload-license' });
 		}
 
 		const isS3Selected = config.getEnv('binaryDataManager.mode') === 's3';

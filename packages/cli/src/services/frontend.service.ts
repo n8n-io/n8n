@@ -17,7 +17,7 @@ import { getVariablesLimit } from '@/environments/variables/environment-helpers'
 import { getLdapLoginLabel } from '@/ldap/helpers.ee';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { isApiEnabled } from '@/public-api';
 import type { CommunityPackagesService } from '@/services/community-packages.service';
 import { getSamlLoginLabel } from '@/sso/saml/saml-helpers';
@@ -123,7 +123,7 @@ export class FrontendService {
 				apiKey: config.getEnv('diagnostics.config.posthog.apiKey'),
 				autocapture: false,
 				disableSessionRecording: config.getEnv('deployment.type') !== 'cloud',
-				debug: config.getEnv('logs.level') === 'debug',
+				debug: this.globalConfig.logging.level === 'debug',
 			},
 			personalizationSurveyEnabled:
 				config.getEnv('personalization.enabled') && config.getEnv('diagnostics.enabled'),
@@ -153,7 +153,7 @@ export class FrontendService {
 				},
 			},
 			workflowTagsDisabled: config.getEnv('workflowTagsDisabled'),
-			logLevel: config.getEnv('logs.level'),
+			logLevel: this.globalConfig.logging.level,
 			hiringBannerEnabled: config.getEnv('hiringBanner.enabled'),
 			aiAssistant: {
 				enabled: false,

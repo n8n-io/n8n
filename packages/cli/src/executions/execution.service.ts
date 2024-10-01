@@ -32,13 +32,13 @@ import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type {
-	ExecutionPayload,
+	CreateExecutionPayload,
 	IExecutionFlattedResponse,
 	IExecutionResponse,
 	IWorkflowDb,
 } from '@/interfaces';
 import { License } from '@/license';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { NodeTypes } from '@/node-types';
 import { WaitTracker } from '@/wait-tracker';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -321,11 +321,10 @@ export class ExecutionService {
 			},
 		};
 
-		const fullExecutionData: ExecutionPayload = {
+		const fullExecutionData: CreateExecutionPayload = {
 			data: executionData,
 			mode,
 			finished: false,
-			startedAt: new Date(),
 			workflowData,
 			workflowId: workflow.id,
 			stoppedAt: new Date(),

@@ -8,7 +8,7 @@ import { Service } from 'typedi';
 import config from '@/config';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { NodeTypes } from '@/node-types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
@@ -47,7 +47,7 @@ export class JobProcessor {
 
 		this.logger.info(`[JobProcessor] Starting job ${job.id} (execution ${executionId})`);
 
-		await this.executionRepository.updateStatus(executionId, 'running');
+		const startedAt = await this.executionRepository.setRunning(executionId);
 
 		let { staticData } = execution.workflowData;
 
@@ -137,7 +137,7 @@ export class JobProcessor {
 			workflowId: execution.workflowId,
 			workflowName: execution.workflowData.name,
 			mode: execution.mode,
-			startedAt: execution.startedAt,
+			startedAt,
 			retryOf: execution.retryOf ?? '',
 			status: execution.status,
 		};

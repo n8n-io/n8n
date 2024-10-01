@@ -1,5 +1,5 @@
-import type { INode, Workflow } from 'n8n-workflow';
 import * as assert from 'assert/strict';
+import type { INode, Workflow } from 'n8n-workflow';
 
 function findAllParentTriggers(workflow: Workflow, destinationNodeName: string) {
 	const parentNodes = workflow

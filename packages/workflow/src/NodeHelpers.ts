@@ -259,7 +259,7 @@ const commonPollingParameters: INodeProperties[] = [
 	},
 ];
 
-const commonCORSParameters: INodeProperties[] = [
+export const commonCORSParameters: INodeProperties[] = [
 	{
 		displayName: 'Allowed Origins (CORS)',
 		name: 'allowedOrigins',
