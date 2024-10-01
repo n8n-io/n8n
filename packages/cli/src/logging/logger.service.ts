@@ -1,21 +1,31 @@
 import { GlobalConfig } from '@n8n/config';
 import callsites from 'callsites';
+import debug from 'debug';
 import { InstanceSettings } from 'n8n-core';
-import { LoggerProxy, LOG_LEVELS } from 'n8n-workflow';
+import { LoggerProxy, LOG_LEVELS, ApplicationError } from 'n8n-workflow';
+import { strict } from 'node:assert';
 import path, { basename } from 'node:path';
 import { Service } from 'typedi';
 import winston from 'winston';
 
 import { isObjectLiteral } from '@/utils';
 
-import { noOp } from './constants';
-import type { LogLocationMetadata, LogLevel, LogMetadata } from './types';
+import { DEBUG_LOG_SCOPES, NAMED_DEBUG_LOG_SCOPES, noOp } from './constants';
+import type {
+	LogLocationMetadata,
+	LogLevel,
+	LogMetadata,
+	NamedDebugLogScope,
+	DebugLogScope,
+} from './types';
 
 @Service()
 export class Logger {
 	private readonly internalLogger: winston.Logger;
 
 	private readonly level: LogLevel;
+
+	private readonly scopedDebugLoggers: Map<DebugLogScope, debug.Debugger> = new Map();
 
 	constructor(
 		private readonly globalConfig: GlobalConfig,
@@ -38,6 +48,8 @@ export class Logger {
 			if (outputs.includes('console')) this.setConsoleTransport();
 			if (outputs.includes('file')) this.setFileTransport();
 		}
+
+		this.setupScopedLoggers();
 
 		LoggerProxy.init(this);
 	}
@@ -117,6 +129,49 @@ export class Logger {
 			}),
 		);
 	}
+
+	// #region Scoped debug logging
+
+	private setupScopedLoggers() {
+		const { debugScopes } = this.globalConfig.logging;
+
+		if (debugScopes.length === 0) return;
+
+		if (debugScopes.includes('*') && debugScopes.length !== 1) {
+			throw new ApplicationError('When using `DEBUG=*`, do not specify any other debug scopes');
+		}
+
+		if (
+			debugScopes.includes('n8n:*') &&
+			debugScopes.filter((s) => s !== 'n8n:*').some((s) => s.startsWith('n8n:'))
+		) {
+			throw new ApplicationError(
+				'When using `DEBUG=n8n:*`, do not specify any other `n8n:` debug scopes',
+			);
+		}
+
+		if (debugScopes.includes('*') || debugScopes.includes('n8n:*')) {
+			debugScopes.push(...NAMED_DEBUG_LOG_SCOPES);
+		}
+
+		debug.enable(debugScopes.join(','));
+
+		for (const scope of DEBUG_LOG_SCOPES) {
+			this.scopedDebugLoggers.set(scope, debug(scope));
+		}
+	}
+
+	debugFactory(scope: NamedDebugLogScope) {
+		if (!debug.enabled(scope)) return noOp;
+
+		const scopedDebugLogger = this.scopedDebugLoggers.get(scope);
+
+		strict(scopedDebugLogger !== undefined, `Missing debug logger for enabled scope ${scope}`);
+
+		return scopedDebugLogger;
+	}
+
+	// #endregion
 
 	// #region Convenience methods
 

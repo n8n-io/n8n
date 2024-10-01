@@ -108,7 +108,7 @@ export class License {
 			});
 
 			await this.manager.initialize();
-			this.logger.debug('License initialized');
+			this.debug('License initialized');
 		} catch (e: unknown) {
 			if (e instanceof Error) {
 				this.logger.error('Could not initialize license manager sdk', e);
@@ -132,7 +132,7 @@ export class License {
 	}
 
 	async onFeatureChange(_features: TFeatures): Promise<void> {
-		this.logger.debug('License feature change detected', _features);
+		this.debug('License feature change detected', _features);
 
 		if (config.getEnv('executions.mode') === 'queue' && config.getEnv('multiMainSetup.enabled')) {
 			const isMultiMainLicensed = _features[LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES] as
@@ -145,14 +145,14 @@ export class License {
 				this.orchestrationService.isMultiMainSetupEnabled &&
 				this.orchestrationService.isFollower
 			) {
-				this.logger.debug(
+				this.debug(
 					'[Multi-main setup] Instance is follower, skipping sending of "reload-license" command...',
 				);
 				return;
 			}
 
 			if (this.orchestrationService.isMultiMainSetupEnabled && !isMultiMainLicensed) {
-				this.logger.debug(
+				this.debug(
 					'[Multi-main setup] License changed with no support for multi-main setup - no new followers will be allowed to init. To restore multi-main setup, please upgrade to a license that supports this feature.',
 				);
 			}
@@ -168,7 +168,7 @@ export class License {
 		const isS3Licensed = _features['feat:binaryDataS3'];
 
 		if (isS3Selected && isS3Available && !isS3Licensed) {
-			this.logger.debug(
+			this.debug(
 				'License changed with no support for external storage - blocking writes on object store. To restore writes, please upgrade to a license that supports this feature.',
 			);
 
@@ -195,7 +195,7 @@ export class License {
 		}
 
 		await this.manager.activate(activationKey);
-		this.logger.debug('License activated');
+		this.debug('License activated');
 	}
 
 	async reload(): Promise<void> {
@@ -203,7 +203,7 @@ export class License {
 			return;
 		}
 		await this.manager.reload();
-		this.logger.debug('License reloaded');
+		this.debug('License reloaded');
 	}
 
 	async renew() {
@@ -212,7 +212,7 @@ export class License {
 		}
 
 		await this.manager.renew();
-		this.logger.debug('License renewed');
+		this.debug('License renewed');
 	}
 
 	@OnShutdown()
@@ -226,7 +226,7 @@ export class License {
 		}
 
 		await this.manager.shutdown();
-		this.logger.debug('License shut down');
+		this.debug('License shut down');
 	}
 
 	isFeatureEnabled(feature: BooleanLicenseFeature) {
@@ -392,6 +392,8 @@ export class License {
 	async reinit() {
 		this.manager?.reset();
 		await this.init(true);
-		this.logger.debug('License reinitialized');
+		this.debug('License reinitialized');
 	}
+
+	private readonly debug = this.logger.debugFactory('n8n:license');
 }

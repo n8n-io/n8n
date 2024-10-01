@@ -1,6 +1,10 @@
 import { Config, Env, Nested } from '../decorators';
 import { StringArray } from '../utils';
 
+type NamedDebugLogScope = 'n8n:concurrency' | 'n8n:license';
+
+type DebugLogScope = '' | '*' | 'n8n:*' | NamedDebugLogScope;
+
 @Config
 class FileLoggingConfig {
 	/**
@@ -44,4 +48,19 @@ export class LoggingConfig {
 
 	@Nested
 	file: FileLoggingConfig;
+
+	/**
+	 * Which areas of functionality to include in debug logs. Disabled by default.
+	 * Currently supported debug log scopes:
+	 * - `n8n:concurrency`
+	 * - `n8n:license`
+	 *
+	 * @example
+	 * `DEBUG=n8n:concurrency` for a single n8n debug log scope
+	 * `DEBUG=n8n:concurrency,n8n:license` for multiple n8n debug log scopes
+	 * `DEBUG=n8n:*` for all n8n debug log scopes
+	 * `DEBUG=*` for all debug scopes
+	 */
+	@Env('DEBUG')
+	debugScopes: StringArray<DebugLogScope> = [''];
 }
