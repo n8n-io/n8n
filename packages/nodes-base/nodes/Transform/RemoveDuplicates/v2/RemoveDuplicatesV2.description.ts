@@ -35,21 +35,21 @@ const compareOptions = [
 ];
 const logicOptions = [
 	{
-		name: 'Field Value Is New',
+		name: 'Value Is New',
 		value: 'removeItemsWithAlreadySeenKeyValues',
-		description: 'Remove all input items with key values matching those already processed',
+		description: 'Remove all input items with values matching those already processed',
 	},
 	{
-		name: 'Field Value Is Higher than Any Previous Value',
+		name: 'Value Is Higher than Any Previous Value',
 		value: 'removeItemsUpToStoredIncrementalKey',
 		description:
-			'Works with incremental key values, removes all input items with key values up to the stored value',
+			'Works with incremental values, removes all input items with values up to the stored value',
 	},
 	{
-		name: 'Field Value Is a Date Later than Any Previous Date',
+		name: 'Value Is a Date Later than Any Previous Date',
 		value: 'removeItemsUpToStoredDate',
 		description:
-			'Works with date key values, removes all input items with key values up to the stored date',
+			'Works with date values, removes all input items with values up to the stored date',
 	},
 ];
 const manageDatabaseModeOptions = [
