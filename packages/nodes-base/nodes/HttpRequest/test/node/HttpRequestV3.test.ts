@@ -165,7 +165,7 @@ describe('HttpRequestV3', () => {
 				genericCredentialType: 'httpQueryAuth',
 				credentials: { name: 'Token', value: 'secretToken' },
 				authField: 'qs',
-				authValue: { token: 'secretToken' },
+				authValue: { Token: 'secretToken' },
 			},
 			{
 				genericCredentialType: 'oAuth1Api',

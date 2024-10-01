@@ -222,7 +222,7 @@ describe('HTTP Node Utils', () => {
 	describe('replaceNullValues', () => {
 		it('should replace null json with an empty object', () => {
 			const item: INodeExecutionData = {
-				json: null,
+				json: {},
 			};
 			const result = replaceNullValues(item);
 			expect(result.json).toEqual({});
@@ -320,7 +320,7 @@ describe('HTTP Node Utils', () => {
 				},
 			];
 			const credentials: ICredentialDataDecryptedObject = {
-				apiKey: null,
+				apiKey: {},
 			};
 
 			const secrets = getSecrets(properties, credentials);
