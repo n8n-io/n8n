@@ -1,6 +1,6 @@
 import type { MigrationContext } from '@/databases/types';
 
-export class StandardizeTableNames1727369628621 {
+export class StandardizeTableNames1727815666629 {
 	async up({ escape, runQuery }: MigrationContext) {
 		const tableNameMap = {
 			annotation_tag_entity: 'annotation_tag',

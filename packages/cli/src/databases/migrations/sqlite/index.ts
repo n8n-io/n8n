@@ -62,7 +62,7 @@ import { CreateInvalidAuthTokenTable1723627610222 } from '../common/172362761022
 import { RefactorExecutionIndices1723796243146 } from '../common/1723796243146-RefactorExecutionIndices';
 import { CreateAnnotationTables1724753530828 } from '../common/1724753530828-CreateExecutionAnnotationTables';
 import { SeparateExecutionCreationFromStart1727427440136 } from '../common/1727427440136-SeparateExecutionCreationFromStart';
-import { StandardizeTableNames1727369628621 } from '../common/1727369628621-StandardizeTableNames';
+import { StandardizeTableNames1727815666629 } from '../common/1727815666629-StandardizeTableNames';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -127,7 +127,7 @@ const sqliteMigrations: Migration[] = [
 	CreateAnnotationTables1724753530828,
 	AddApiKeysTable1724951148974,
 	SeparateExecutionCreationFromStart1727427440136,
-  StandardizeTableNames1727369628621,
+	StandardizeTableNames1727815666629,
 ];
 
 export { sqliteMigrations };
