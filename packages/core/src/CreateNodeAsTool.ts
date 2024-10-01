@@ -105,7 +105,7 @@ class AIParametersParser {
 		let match: RegExpExecArray | null;
 
 		while ((match = pattern.exec(str)) !== null) {
-			const startIndex = pattern.lastIndex;
+			const startIndex = match.index + match[0].length;
 			let current = startIndex;
 			let inQuotes = false;
 			let quoteChar = '';
