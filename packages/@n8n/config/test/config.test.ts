@@ -225,6 +225,15 @@ describe('GlobalConfig', () => {
 			backendDsn: '',
 			frontendDsn: '',
 		},
+		logging: {
+			level: 'info',
+			outputs: ['console'],
+			file: {
+				fileCountMax: 100,
+				fileSizeMax: 16,
+				location: 'logs/n8n.log',
+			},
+		},
 	};
 
 	it('should use all default values when no env variables are defined', () => {

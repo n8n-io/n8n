@@ -3,7 +3,7 @@ import { Service } from 'typedi';
 import type WebSocket from 'ws';
 
 import type { User } from '@/databases/entities/user';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 
 import { AbstractPush } from './abstract.push';
 

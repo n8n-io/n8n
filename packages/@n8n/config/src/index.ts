@@ -5,6 +5,7 @@ import { EndpointsConfig } from './configs/endpoints.config';
 import { EventBusConfig } from './configs/event-bus.config';
 import { ExternalSecretsConfig } from './configs/external-secrets.config';
 import { ExternalStorageConfig } from './configs/external-storage.config';
+import { LoggingConfig } from './configs/logging.config';
 import { NodesConfig } from './configs/nodes.config';
 import { PublicApiConfig } from './configs/public-api.config';
 import { ScalingModeConfig } from './configs/scaling-mode.config';
@@ -81,4 +82,7 @@ export class GlobalConfig {
 
 	@Nested
 	queue: ScalingModeConfig;
+
+	@Nested
+	logging: LoggingConfig;
 }
