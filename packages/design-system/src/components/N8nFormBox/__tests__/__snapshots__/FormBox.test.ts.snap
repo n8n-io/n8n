@@ -136,7 +136,7 @@ exports[`FormBox > should render the component 1`] = `
                 class=""
               >
                 <div
-                  class="el-input el-input--medium n8n-input"
+                  class="el-input el-input--default n8n-input"
                 >
                   <!-- input -->
                   
