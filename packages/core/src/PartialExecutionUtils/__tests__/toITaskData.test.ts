@@ -1,4 +1,5 @@
 import { NodeConnectionType } from 'n8n-workflow';
+
 import { toITaskData } from './helpers';
 
 test('toITaskData', function () {

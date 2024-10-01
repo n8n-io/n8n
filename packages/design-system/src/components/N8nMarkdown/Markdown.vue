@@ -136,7 +136,7 @@ const htmlContent = computed(() => {
 });
 
 const emit = defineEmits<{
-	'markdown-click': [link: string, e: MouseEvent];
+	'markdown-click': [link: HTMLAnchorElement, e: MouseEvent];
 	'update-content': [content: string];
 }>();
 
@@ -154,7 +154,7 @@ const onClick = (event: MouseEvent) => {
 		}
 	}
 	if (clickedLink) {
-		emit('markdown-click', clickedLink?.href, event);
+		emit('markdown-click', clickedLink, event);
 	}
 };
 

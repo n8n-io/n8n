@@ -18,7 +18,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import type { PublicUser } from '@/interfaces';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { listQueryMiddleware } from '@/middlewares';
 import { AuthenticatedRequest, ListQuery, UserRequest } from '@/requests';
 import { ProjectService } from '@/services/project.service';

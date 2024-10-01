@@ -177,6 +177,15 @@ const displayValue = computed(() => {
 		if (!nodeType.value || nodeType.value?.codex?.categories?.includes(CORE_NODES_CATEGORY)) {
 			return i18n.baseText('parameterInput.loadOptionsError');
 		}
+
+		if (nodeType.value?.credentials && nodeType.value?.credentials?.length > 0) {
+			const credentialsType = nodeType.value?.credentials[0];
+
+			if (credentialsType.required && !node.value?.credentials) {
+				return i18n.baseText('parameterInput.loadOptionsCredentialsRequired');
+			}
+		}
+
 		return i18n.baseText('parameterInput.loadOptionsErrorService', {
 			interpolate: { service: nodeType.value.displayName },
 		});
@@ -509,6 +518,28 @@ const isCodeNode = computed(
 );
 
 const isHtmlNode = computed(() => !!node.value && node.value.type === HTML_NODE_TYPE);
+
+const isInputTypeString = computed(() => props.parameter.type === 'string');
+const isInputTypeNumber = computed(() => props.parameter.type === 'number');
+
+const isInputDataEmpty = computed(() => ndvStore.isNDVDataEmpty('input'));
+const isDropDisabled = computed(
+	() =>
+		props.parameter.noDataExpression ||
+		props.isReadOnly ||
+		isResourceLocatorParameter.value ||
+		isModelValueExpression.value,
+);
+const showDragnDropTip = computed(
+	() =>
+		isFocused.value &&
+		(isInputTypeString.value || isInputTypeNumber.value) &&
+		!isModelValueExpression.value &&
+		!isDropDisabled.value &&
+		(!ndvStore.hasInputData || !isInputDataEmpty.value) &&
+		!ndvStore.isMappingOnboarded &&
+		ndvStore.isInputParentOfActiveNode,
+);
 
 function isRemoteParameterOption(option: INodePropertyOptions) {
 	return remoteParameterOptionsKeys.value.includes(option.name);
@@ -965,7 +996,11 @@ onUpdated(async () => {
 </script>
 
 <template>
-	<div ref="wrapper" :class="parameterInputClasses" @keydown.stop>
+	<div
+		ref="wrapper"
+		:class="[parameterInputClasses, { [$style.tipVisible]: showDragnDropTip }]"
+		@keydown.stop
+	>
 		<ExpressionEditModal
 			:dialog-visible="expressionEditDialogVisible"
 			:model-value="modelValueExpressionEdit"
@@ -1249,6 +1284,7 @@ onUpdated(async () => {
 					"
 					:title="displayTitle"
 					:placeholder="getPlaceholder()"
+					data-test-id="parameter-input-field"
 					@update:model-value="(valueChanged($event) as undefined) && onUpdateTextInput($event)"
 					@keydown.stop
 					@focus="setFocus"
@@ -1447,6 +1483,9 @@ onUpdated(async () => {
 				:disabled="isReadOnly"
 				@update:model-value="valueChanged"
 			/>
+			<div v-if="showDragnDropTip" :class="$style.tip">
+				<InlineExpressionTip />
+			</div>
 		</div>
 
 		<ParameterIssues
@@ -1477,6 +1516,7 @@ onUpdated(async () => {
 
 .parameter-input {
 	display: inline-block;
+	position: relative;
 
 	:deep(.color-input) {
 		display: flex;
@@ -1607,5 +1647,25 @@ onUpdated(async () => {
 	.code-node-editor {
 		height: 100%;
 	}
+}
+</style>
+
+<style lang="scss" module>
+.tipVisible {
+	--input-border-bottom-left-radius: 0;
+	--input-border-bottom-right-radius: 0;
+}
+
+.tip {
+	position: absolute;
+	z-index: 2;
+	top: 100%;
+	background: var(--color-code-background);
+	border: var(--border-base);
+	border-top: none;
+	width: 100%;
+	box-shadow: 0 2px 6px 0 rgba(#441c17, 0.1);
+	border-bottom-left-radius: 4px;
+	border-bottom-right-radius: 4px;
 }
 </style>

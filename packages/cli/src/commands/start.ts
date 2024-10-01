@@ -365,10 +365,9 @@ export class Start extends BaseCommand {
 
 		if (executions.length === 0) return;
 
-		this.logger.debug(
-			'[Startup] Found enqueued executions to run',
-			executions.map((e) => e.id),
-		);
+		this.logger.debug('[Startup] Found enqueued executions to run', {
+			executionIds: executions.map((e) => e.id),
+		});
 
 		const ownershipService = Container.get(OwnershipService);
 		const workflowRunner = Container.get(WorkflowRunner);

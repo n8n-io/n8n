@@ -9,8 +9,8 @@ import type { ProjectRelationRepository } from '@/databases/repositories/project
 import type { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { EventService } from '@/events/event.service';
-import type { RelayEventMap } from '@/events/relay-event-map';
-import { TelemetryEventRelay } from '@/events/telemetry-event-relay';
+import type { RelayEventMap } from '@/events/maps/relay.event-map';
+import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import type { IWorkflowDb } from '@/interfaces';
 import type { License } from '@/license';
 import type { NodeTypes } from '@/node-types';
@@ -36,6 +36,10 @@ describe('TelemetryEventRelay', () => {
 				includeMessageEventBusMetrics: false,
 				includeQueueMetrics: false,
 			},
+		},
+		logging: {
+			level: 'info',
+			outputs: ['console'],
 		},
 	});
 	const workflowRepository = mock<WorkflowRepository>();

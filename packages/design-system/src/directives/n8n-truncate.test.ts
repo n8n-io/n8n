@@ -24,7 +24,7 @@ describe('Directive n8n-truncate', () => {
 				},
 			},
 		);
-		expect(html()).toBe('<div>This is a very long text that...</div>');
+		expect(html()).toBe('<div>This is a very long text that ...</div>');
 	});
 
 	it('should truncate text to 30 chars in case of wrong argument', async () => {
@@ -48,7 +48,7 @@ describe('Directive n8n-truncate', () => {
 				},
 			},
 		);
-		expect(html()).toBe('<div>This is a very long text that...</div>');
+		expect(html()).toBe('<div>This is a very long text that ...</div>');
 	});
 
 	it('should truncate text to given length', async () => {
@@ -72,6 +72,6 @@ describe('Directive n8n-truncate', () => {
 				},
 			},
 		);
-		expect(html()).toBe('<div>This is a very long text...</div>');
+		expect(html()).toBe('<div>This is a very long text ...</div>');
 	});
 });

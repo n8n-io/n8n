@@ -12,7 +12,7 @@ import { SettingsRepository } from '@/databases/repositories/settings.repository
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { UrlService } from '@/services/url.service';
 
 import { SAML_PREFERENCES_DB_KEY } from './constants';

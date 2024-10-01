@@ -9,9 +9,9 @@
 // XX denotes that the node is disabled
 // PD denotes that the node has pinned data
 
+import { createNodeData } from './helpers';
 import { DirectedGraph } from '../DirectedGraph';
 import { findSubgraph } from '../findSubgraph';
-import { createNodeData } from './helpers';
 
 describe('findSubgraph2', () => {
 	//                 ►►

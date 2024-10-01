@@ -6,7 +6,7 @@ import { WorkflowRepository } from '@/databases/repositories/workflow.repository
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
 import { License } from '@/license';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { UrlService } from '@/services/url.service';
 
 type LicenseError = Error & { errorId?: keyof typeof LicenseErrors };

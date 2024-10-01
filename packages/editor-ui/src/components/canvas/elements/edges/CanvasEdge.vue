@@ -5,7 +5,7 @@ import { isValidNodeConnectionType } from '@/utils/typeGuards';
 import type { Connection, EdgeProps } from '@vue-flow/core';
 import { useVueFlow, BaseEdge, EdgeLabelRenderer } from '@vue-flow/core';
 import { NodeConnectionType } from 'n8n-workflow';
-import { computed, useCssModule, ref } from 'vue';
+import { computed, useCssModule, ref, toRef } from 'vue';
 import CanvasEdgeToolbar from './CanvasEdgeToolbar.vue';
 import { getCustomPath } from './utils/edgePath';
 
@@ -20,6 +20,8 @@ export type CanvasEdgeProps = EdgeProps<CanvasConnectionData> & {
 };
 
 const props = defineProps<CanvasEdgeProps>();
+
+const data = toRef(props, 'data');
 
 const { onEdgeMouseEnter, onEdgeMouseLeave } = useVueFlow();
 
@@ -44,6 +46,8 @@ const connectionType = computed(() =>
 
 const renderToolbar = computed(() => (props.selected || isHovered.value) && !props.readOnly);
 
+const isMainConnection = computed(() => data.value.source.type === NodeConnectionType.Main);
+
 const status = computed(() => props.data.status);
 const statusColor = computed(() => {
 	if (props.selected) {
@@ -54,6 +58,8 @@ const statusColor = computed(() => {
 		return 'var(--color-secondary)';
 	} else if (status.value === 'running') {
 		return 'var(--color-primary)';
+	} else if (!isMainConnection.value) {
+		return 'var(--node-type-supplemental-color)';
 	} else {
 		return 'var(--color-foreground-xdark)';
 	}
@@ -61,6 +67,7 @@ const statusColor = computed(() => {
 
 const edgeStyle = computed(() => ({
 	...props.style,
+	...(isMainConnection.value ? {} : { strokeDasharray: '8,8' }),
 	strokeWidth: 2,
 	stroke: isHovered.value ? 'var(--color-primary)' : statusColor.value,
 }));

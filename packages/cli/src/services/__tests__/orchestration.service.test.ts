@@ -9,7 +9,7 @@ import config from '@/config';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { ExternalSecretsManager } from '@/external-secrets/external-secrets-manager.ee';
 import { Push } from '@/push';
-import type { RedisServiceWorkerResponseObject } from '@/scaling/redis/redis-service-commands';
+import type { PubSub } from '@/scaling/pubsub/pubsub.types';
 import * as helpers from '@/services/orchestration/helpers';
 import { handleCommandMessageMain } from '@/services/orchestration/main/handle-command-message-main';
 import { handleWorkerResponseMessageMain } from '@/services/orchestration/main/handle-worker-response-message-main';
@@ -34,10 +34,9 @@ mockInstance(ActiveWorkflowManager);
 
 let queueModeId: string;
 
-const workerRestartEventBusResponse: RedisServiceWorkerResponseObject = {
-	senderId: 'test',
+const workerRestartEventBusResponse: PubSub.WorkerResponse = {
 	workerId: 'test',
-	command: 'restartEventBus',
+	command: 'restart-event-bus',
 	payload: {
 		result: 'success',
 	},
@@ -78,18 +77,18 @@ describe('Orchestration Service', () => {
 			JSON.stringify(workerRestartEventBusResponse),
 			mock<MainResponseReceivedHandlerOptions>(),
 		);
-		expect(response?.command).toEqual('restartEventBus');
+		expect(response?.command).toEqual('restart-event-bus');
 	});
 
 	test('should handle command messages from others', async () => {
 		const responseFalseId = await handleCommandMessageMain(
 			JSON.stringify({
 				senderId: 'test',
-				command: 'reloadLicense',
+				command: 'reload-license',
 			}),
 		);
 		expect(responseFalseId).toBeDefined();
-		expect(responseFalseId!.command).toEqual('reloadLicense');
+		expect(responseFalseId!.command).toEqual('reload-license');
 		expect(responseFalseId!.senderId).toEqual('test');
 	});
 
@@ -98,7 +97,7 @@ describe('Orchestration Service', () => {
 			JSON.stringify({ ...workerRestartEventBusResponse, senderId: queueModeId }),
 		);
 		expect(response).toBeDefined();
-		expect(response!.command).toEqual('restartEventBus');
+		expect(response!.command).toEqual('restart-event-bus');
 		expect(response!.senderId).toEqual(queueModeId);
 		expect(eventBus.restart).not.toHaveBeenCalled();
 	});
@@ -118,13 +117,13 @@ describe('Orchestration Service', () => {
 		const res1 = await handleCommandMessageMain(
 			JSON.stringify({
 				senderId: 'test',
-				command: 'reloadExternalSecretsProviders',
+				command: 'reload-external-secrets-providers',
 			}),
 		);
 		const res2 = await handleCommandMessageMain(
 			JSON.stringify({
 				senderId: 'test',
-				command: 'reloadExternalSecretsProviders',
+				command: 'reload-external-secrets-providers',
 			}),
 		);
 		expect(helpers.debounceMessageReceiver).toHaveBeenCalledTimes(2);

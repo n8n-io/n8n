@@ -20,7 +20,6 @@ import { useToast } from '@/composables/useToast';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 
 import { CHAT_TRIGGER_NODE_TYPE, WORKFLOW_LM_CHAT_MODAL_KEY } from '@/constants';
-import { useTitleChange } from '@/composables/useTitleChange';
 import { useRootStore } from '@/stores/root.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -41,7 +40,6 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 	const workflowHelpers = useWorkflowHelpers({ router: useRunWorkflowOpts.router });
 	const i18n = useI18n();
 	const toast = useToast();
-	const { titleSet } = useTitleChange();
 
 	const rootStore = useRootStore();
 	const uiStore = useUIStore();
@@ -93,7 +91,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			return;
 		}
 
-		titleSet(workflow.name as string, 'EXECUTING');
+		workflowHelpers.setDocumentTitle(workflow.name as string, 'EXECUTING');
 
 		toast.clearAllStickyNotifications();
 
@@ -309,7 +307,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 
 			return runWorkflowApiResponse;
 		} catch (error) {
-			titleSet(workflow.name as string, 'ERROR');
+			workflowHelpers.setDocumentTitle(workflow.name as string, 'ERROR');
 			toast.showError(error, i18n.baseText('workflowRun.showError.title'));
 			return undefined;
 		}
@@ -387,7 +385,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				workflowsStore.executingNode.length = 0;
 				uiStore.removeActiveAction('workflowRunning');
 
-				titleSet(workflowsStore.workflowName, 'IDLE');
+				workflowHelpers.setDocumentTitle(workflowsStore.workflowName, 'IDLE');
 				toast.showMessage({
 					title: i18n.baseText('nodeView.showMessage.stopExecutionCatch.unsaved.title'),
 					message: i18n.baseText('nodeView.showMessage.stopExecutionCatch.unsaved.message'),
@@ -408,7 +406,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 					retryOf: execution.retryOf,
 				};
 				workflowsStore.finishActiveExecution(pushData);
-				titleSet(execution.workflowData.name, 'IDLE');
+				workflowHelpers.setDocumentTitle(execution.workflowData.name, 'IDLE');
 				workflowsStore.executingNode.length = 0;
 				workflowsStore.setWorkflowExecutionData(executedData as IExecutionResponse);
 				uiStore.removeActiveAction('workflowRunning');

@@ -13,7 +13,7 @@ import { EventDestinationsRepository } from '@/databases/repositories/event-dest
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { License } from '@/license';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { OrchestrationService } from '@/services/orchestration.service';
 
 import { ExecutionRecoveryService } from '../../executions/execution-recovery.service';
@@ -210,7 +210,7 @@ export class MessageEventBus extends EventEmitter {
 		this.destinations[destination.getId()] = destination;
 		this.destinations[destination.getId()].startListening();
 		if (notifyWorkers) {
-			await this.orchestrationService.publish('restartEventBus');
+			await this.orchestrationService.publish('restart-event-bus');
 		}
 		return destination;
 	}
@@ -236,7 +236,7 @@ export class MessageEventBus extends EventEmitter {
 			delete this.destinations[id];
 		}
 		if (notifyWorkers) {
-			await this.orchestrationService.publish('restartEventBus');
+			await this.orchestrationService.publish('restart-event-bus');
 		}
 		return result;
 	}

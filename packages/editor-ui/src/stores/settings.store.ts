@@ -17,7 +17,6 @@ import { useUIStore } from './ui.store';
 import { useUsersStore } from './users.store';
 import { useVersionsStore } from './versions.store';
 import { makeRestApiRequest } from '@/utils/apiUtils';
-import { useTitleChange } from '@/composables/useTitleChange';
 import { useToast } from '@/composables/useToast';
 import { i18n } from '@/plugins/i18n';
 
@@ -258,9 +257,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 			ExpressionEvaluatorProxy.setEvaluator(settings.value.expressions.evaluator);
 
-			// Re-compute title since settings are now available
-			useTitleChange().titleReset();
-
 			initialized.value = true;
 		} catch (e) {
 			showToast({
@@ -308,21 +304,19 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		templatesEndpointHealthy.value = true;
 	};
 
-	const getApiKey = async () => {
+	const getApiKeys = async () => {
 		const rootStore = useRootStore();
-		const { apiKey } = await publicApiApi.getApiKey(rootStore.restApiContext);
-		return apiKey;
+		return await publicApiApi.getApiKeys(rootStore.restApiContext);
 	};
 
 	const createApiKey = async () => {
 		const rootStore = useRootStore();
-		const { apiKey } = await publicApiApi.createApiKey(rootStore.restApiContext);
-		return apiKey;
+		return await publicApiApi.createApiKey(rootStore.restApiContext);
 	};
 
-	const deleteApiKey = async () => {
+	const deleteApiKey = async (id: string) => {
 		const rootStore = useRootStore();
-		await publicApiApi.deleteApiKey(rootStore.restApiContext);
+		await publicApiApi.deleteApiKey(rootStore.restApiContext, id);
 	};
 
 	const getLdapConfig = async () => {
@@ -423,7 +417,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		runLdapSync,
 		getTimezones,
 		createApiKey,
-		getApiKey,
+		getApiKeys,
 		deleteApiKey,
 		testTemplatesEndpoint,
 		submitContactInfo,
