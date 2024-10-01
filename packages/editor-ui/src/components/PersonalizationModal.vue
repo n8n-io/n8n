@@ -578,11 +578,11 @@ const onSubmit = async (values: IPersonalizationLatestVersion) => {
 			personalization_survey_n8n_version: rootStore.versionCli,
 		};
 
-		await externalHooks.run('personalizationModal.onSubmit', completedSurvey);
-
-		await usersStore.submitPersonalizationSurvey(completedSurvey);
-
-		posthogStore.setMetadata(completedSurvey, 'user');
+		// await externalHooks.run('personalizationModal.onSubmit', completedSurvey);
+		//
+		// await usersStore.submitPersonalizationSurvey(completedSurvey);
+		//
+		// posthogStore.setMetadata(completedSurvey, 'user');
 	} catch (e) {
 		showError(e, 'Error while submitting results');
 	} finally {
