@@ -298,6 +298,16 @@ const WorkflowsView = defineComponent({
 				filtersToApply.status = status === 'true';
 			}
 
+			// remove all empty filters in the querystring
+			await this.$router.push({
+				query: {
+					...(tags && { tags }),
+					...(status && { status }),
+					...(search && { search }),
+					...(homeProject && { homeProject }),
+				},
+			});
+
 			if (Object.keys(filtersToApply).length) {
 				this.filters = {
 					...this.filters,
