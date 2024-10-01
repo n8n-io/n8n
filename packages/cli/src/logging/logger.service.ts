@@ -127,4 +127,6 @@ export class Logger {
 	getInternalLogger() {
 		return this.internalLogger;
 	}
+
+	// #endregion
 }
