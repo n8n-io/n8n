@@ -63,6 +63,7 @@ export class Logger {
 			if (levels[logLevel] > levels[this.level]) {
 				// winston defines `{ error: 0, warn: 1, info: 2, debug: 5 }`
 				// so numerically higher (less severe) log levels become no-op
+				// to prevent overhead from `callsites` calls
 				Object.defineProperty(this, logLevel, { value: noOp });
 			}
 		}
