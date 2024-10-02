@@ -837,6 +837,7 @@
   },
   "dependencies": {
     "@kafkajs/confluent-schema-registry": "1.0.6",
+    "@n8n/config": "workspace:*",
     "@n8n/imap": "workspace:*",
     "@n8n/vm2": "3.9.25",
     "amqplib": "0.10.3",
