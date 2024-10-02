@@ -91,9 +91,7 @@ export class TaskBroker {
 	}
 
 	deregisterRunner(runnerId: string) {
-		if (this.knownRunners.has(runnerId)) {
-			this.knownRunners.delete(runnerId);
-		}
+		this.knownRunners.delete(runnerId);
 	}
 
 	registerRequester(requesterId: string, messageCallback: RequesterMessageCallback) {
@@ -101,9 +99,7 @@ export class TaskBroker {
 	}
 
 	deregisterRequester(requesterId: string) {
-		if (this.requesters.has(requesterId)) {
-			this.requesters.delete(requesterId);
-		}
+		this.requesters.delete(requesterId);
 	}
 
 	private async messageRunner(runnerId: TaskRunner['id'], message: N8nMessage.ToRunner.All) {

@@ -65,10 +65,6 @@ export interface AllCodeTaskData {
 	additionalData: PartialAdditionalData;
 }
 
-// const getAdditionalKeys = (): IWorkflowDataProxyAdditionalKeys => {
-// 	return {};
-// };
-
 export class JsTaskRunner extends TaskRunner {
 	constructor(
 		taskType: string,

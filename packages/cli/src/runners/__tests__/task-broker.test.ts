@@ -66,8 +66,8 @@ describe('TaskBroker', () => {
 			expect(runnerIds).toHaveLength(1);
 			expect(runnerIds[0]).toEqual(runnerId);
 
-			expect(knownRunners.get(runnerId)!.runner).toEqual(runner);
-			expect(knownRunners.get(runnerId)!.messageCallback).toEqual(messageCallback);
+			expect(knownRunners.get(runnerId)?.runner).toEqual(runner);
+			expect(knownRunners.get(runnerId)?.messageCallback).toEqual(messageCallback);
 		});
 	});
 

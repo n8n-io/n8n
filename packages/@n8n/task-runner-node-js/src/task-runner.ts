@@ -99,11 +99,11 @@ export abstract class TaskRunner {
 	}
 
 	deleteStaleOffers() {
-		for (const key of Object.keys(this.openOffers)) {
-			if (this.openOffers.get(key)!.validUntil < process.hrtime.bigint()) {
+		this.openOffers.forEach((offer, key) => {
+			if (offer.validUntil < process.hrtime.bigint()) {
 				this.openOffers.delete(key);
 			}
-		}
+		});
 	}
 
 	sendOffers() {
