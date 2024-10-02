@@ -165,7 +165,7 @@ useKeybindings(
  * Nodes
  */
 
-const selectionKeyCode = computed(() => (isPanningEnabled.value ? null : 'Shift'));
+const selectionKeyCode = computed(() => (isPanningEnabled.value ? null : true));
 const lastSelectedNode = computed(() => selectedNodes.value[selectedNodes.value.length - 1]);
 const hasSelection = computed(() => selectedNodes.value.length > 0);
 const selectedNodeIds = computed(() => selectedNodes.value.map((node) => node.id));
