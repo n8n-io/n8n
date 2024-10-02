@@ -376,22 +376,12 @@ export class WorkflowRunner {
 			this.scalingService = Container.get(ScalingService);
 		}
 
-		let priority = 100;
-		if (realtime === true) {
-			// Jobs which require a direct response get a higher priority
-			priority = 50;
-		}
 		// TODO: For realtime jobs should probably also not do retry or not retry if they are older than x seconds.
 		//       Check if they get retried by default and how often.
-		const jobOptions = {
-			priority,
-			removeOnComplete: true,
-			removeOnFail: true,
-		};
 		let job: Job;
 		let hooks: WorkflowHooks;
 		try {
-			job = await this.scalingService.addJob(jobData, jobOptions);
+			job = await this.scalingService.addJob(jobData, { priority: realtime ? 50 : 100 });
 
 			hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerMain(
 				data.executionMode,
