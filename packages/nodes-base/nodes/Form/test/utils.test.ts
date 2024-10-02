@@ -211,9 +211,51 @@ describe('FormTrigger, prepareFormData', () => {
 
 		expect(result.formFields[0].isMultiSelect).toBe(true);
 		expect(result.formFields[0].multiSelectOptions).toEqual([
-			{ id: 'option0', label: 'Red' },
-			{ id: 'option1', label: 'Blue' },
-			{ id: 'option2', label: 'Green' },
+			{ id: 'option0_field-0', label: 'Red' },
+			{ id: 'option1_field-0', label: 'Blue' },
+			{ id: 'option2_field-0', label: 'Green' },
+		]);
+	});
+	it('should correctly handle multiselect fields with unique ids', () => {
+		const formFields: FormField[] = [
+			{
+				fieldLabel: 'Favorite Colors',
+				fieldType: 'text',
+				requiredField: true,
+				multiselect: true,
+				fieldOptions: { values: [{ option: 'Red' }, { option: 'Blue' }, { option: 'Green' }] },
+			},
+			{
+				fieldLabel: 'Favorite Colors',
+				fieldType: 'text',
+				requiredField: true,
+				multiselect: true,
+				fieldOptions: { values: [{ option: 'Red' }, { option: 'Blue' }, { option: 'Green' }] },
+			},
+		];
+
+		const query = { 'Favorite Colors': 'Red,Blue' };
+
+		const result = prepareFormData({
+			formTitle: 'Test Form',
+			formDescription: 'This is a test form',
+			formSubmittedText: 'Thank you',
+			redirectUrl: 'example.com',
+			formFields,
+			testRun: false,
+			query,
+		});
+
+		expect(result.formFields[0].isMultiSelect).toBe(true);
+		expect(result.formFields[0].multiSelectOptions).toEqual([
+			{ id: 'option0_field-0', label: 'Red' },
+			{ id: 'option1_field-0', label: 'Blue' },
+			{ id: 'option2_field-0', label: 'Green' },
+		]);
+		expect(result.formFields[1].multiSelectOptions).toEqual([
+			{ id: 'option0_field-1', label: 'Red' },
+			{ id: 'option1_field-1', label: 'Blue' },
+			{ id: 'option2_field-1', label: 'Green' },
 		]);
 	});
 });
