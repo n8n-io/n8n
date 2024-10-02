@@ -8,12 +8,7 @@ import {
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { IExecutionResponse, INodeUi, IWorkflowDb, IWorkflowSettings } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import {
-	TelemetryHelpers,
-	type ExecutionSummary,
-	type IConnection,
-	type INodeExecutionData,
-} from 'n8n-workflow';
+import { type ExecutionSummary, type IConnection, type INodeExecutionData } from 'n8n-workflow';
 import { stringSizeInBytes } from '@/utils/typesUtils';
 import { dataPinningEventBus } from '@/event-bus';
 import { useUIStore } from '@/stores/ui.store';
@@ -39,7 +34,6 @@ vi.mock('@/composables/useTelemetry', () => ({
 }));
 
 describe('useWorkflowsStore', () => {
-	let nodeTypesStore: ReturnType<typeof useNodeTypesStore>;
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	let uiStore: ReturnType<typeof useUIStore>;
 
