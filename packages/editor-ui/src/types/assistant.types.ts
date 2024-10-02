@@ -1,5 +1,5 @@
 import type { VIEWS } from '@/constants';
-import type { Schema } from '@/Interface';
+import type { NodeAuthenticationOption, Schema } from '@/Interface';
 import type {
 	ICredentialType,
 	IDataObject,
@@ -91,7 +91,7 @@ export namespace ChatRequest {
 				error?: ErrorContext['error'];
 			};
 		};
-		activeCredentials?: Pick<ICredentialType, 'name' | 'displayName'>;
+		activeCredentials?: Pick<ICredentialType, 'name' | 'displayName'> & { authType?: string };
 		currentView?: {
 			name: VIEWS;
 			description?: string;
@@ -172,6 +172,15 @@ export namespace ChatRequest {
 	export interface ResponsePayload {
 		sessionId?: string;
 		messages: MessageResponse[];
+	}
+
+	export interface NodeInfo {
+		authType?: NodeAuthenticationOption;
+		schemas?: NodeExecutionSchema[];
+		nodeInputData?: {
+			inputNodeName?: string;
+			inputData?: IDataObject;
+		};
 	}
 }
 

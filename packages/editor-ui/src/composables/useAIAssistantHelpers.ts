@@ -101,7 +101,7 @@ export const useAIAssistantHelpers = () => {
 		return nodeForLLM;
 	}
 
-	function getNodeInfoForAssistant(node: INode) {
+	function getNodeInfoForAssistant(node: INode): ChatRequest.NodeInfo {
 		if (!node) {
 			return {};
 		}

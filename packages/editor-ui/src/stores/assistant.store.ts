@@ -353,7 +353,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	/**
 	 * Gets information about the current view and active node to provide context to the assistant
 	 */
-	function getVisualContext(): ChatRequest.UserContext | undefined {
+	function getVisualContext(nodeInfo?: ChatRequest.NodeInfo): ChatRequest.UserContext | undefined {
 		if (chatSessionTask.value === 'error') {
 			return undefined;
 		}
@@ -391,9 +391,15 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				node: activeNodeForLLM ?? undefined,
 				nodeIssues: !isCurrentNodeExecuted ? activeNode?.issues : undefined,
 				executionStatus,
+				nodeInputData: nodeInfo?.nodeInputData,
+				referencedNodes: nodeInfo?.schemas,
 			},
 			activeCredentials: activeCredential
-				? { name: activeCredential?.name, displayName: activeCredential?.displayName }
+				? {
+						name: activeCredential?.name,
+						displayName: activeCredential?.displayName,
+						authType: nodeInfo?.authType?.name,
+					}
 				: undefined,
 		};
 	}
@@ -401,14 +407,14 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	async function initSupportChat(userMessage: string, credentialType?: ICredentialType) {
 		resetAssistantChat();
 		chatSessionTask.value = credentialType ? 'credentials' : 'support';
-		// For the initial message, only provide visual context if the task is support
-		const visualContext = chatSessionTask.value === 'support' ? getVisualContext() : undefined;
 		const activeNode = workflowsStore.activeNode() as INode;
-		const { authType, nodeInputData, schemas } =
-			assistantHelpers.getNodeInfoForAssistant(activeNode);
+		const nodeInfo = assistantHelpers.getNodeInfoForAssistant(activeNode);
+		// For the initial message, only provide visual context if the task is support
+		const visualContext =
+			chatSessionTask.value === 'support' ? getVisualContext(nodeInfo) : undefined;
 
-		if (authType && chatSessionTask.value === 'credentials') {
-			userMessage += ` I am using ${authType.name}.`;
+		if (nodeInfo.authType && chatSessionTask.value === 'credentials') {
+			userMessage += ` I am using ${nodeInfo.authType.name}.`;
 		}
 
 		const id = getRandomId();
@@ -424,14 +430,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			user: {
 				firstName: usersStore.currentUser?.firstName ?? '',
 			},
-			context: {
-				...visualContext,
-				activeNodeInfo: {
-					...visualContext?.activeNodeInfo,
-					nodeInputData,
-					referencedNodes: schemas,
-				},
-			},
+			context: visualContext,
 			question: userMessage,
 		};
 		if (credentialType) {
