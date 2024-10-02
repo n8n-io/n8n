@@ -386,6 +386,9 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 					}
 
 					if (execution.status === 'waiting' && execution.data?.waitTill) {
+						delete execution.data.resultData.runData[
+							execution.data.resultData.lastNodeExecuted as string
+						];
 						workflowsStore.setWorkflowExecutionRunData(execution.data);
 
 						const { lastNodeExecuted } = execution.data?.resultData || {};
