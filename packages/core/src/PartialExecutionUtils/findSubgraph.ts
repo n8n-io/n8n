@@ -21,7 +21,7 @@ function findSubgraphRecursive(
 		return;
 	}
 
-	let parentConnections = graph.getDirectParents(current);
+	let parentConnections = graph.getDirectParentConnections(current);
 
 	// If the current node has no parents, don’t keep this branch.
 	if (parentConnections.length === 0) {
