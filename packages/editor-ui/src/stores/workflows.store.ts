@@ -1182,8 +1182,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		if (pushData.data.error) {
 			const node = getNodeByName(nodeName);
-			console.log(workflowHelpers.getNodeTypes());
-			const workflow = await workflowHelpers.getWorkflowDataToSave();
 			telemetry.track(
 				'Manual exec errored',
 				{
@@ -1192,9 +1190,13 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 					node_type_version: node?.typeVersion,
 					node_id: node?.id,
 					node_graph_string: JSON.stringify(
-						TelemetryHelpers.generateNodesGraph(workflow, workflowHelpers.getNodeTypes(), {
-							isCloudDeployment: settingsStore.isCloudDeployment,
-						}).nodeGraph,
+						TelemetryHelpers.generateNodesGraph(
+							await workflowHelpers.getWorkflowDataToSave(),
+							workflowHelpers.getNodeTypes(),
+							{
+								isCloudDeployment: settingsStore.isCloudDeployment,
+							},
+						).nodeGraph,
 					),
 				},
 				{ withPostHog: true },
