@@ -24,7 +24,9 @@ export async function authenticate(opts: AuthOpts) {
 		});
 
 		if (!response.ok) {
-			throw new ApplicationError('');
+			throw new ApplicationError(
+				`Invalid response status ${response.status}: ${await response.text()}`,
+			);
 		}
 
 		const { data } = (await response.json()) as { data: { token: string } };
@@ -34,6 +36,12 @@ export async function authenticate(opts: AuthOpts) {
 		return grantToken;
 	} catch (e) {
 		console.error(e);
-		throw new ApplicationError('');
+		const error = e as Error;
+		throw new ApplicationError(
+			`Could not connect to n8n message broker ${opts.n8nUri}: ${error.message}`,
+			{
+				cause: error,
+			},
+		);
 	}
 }
