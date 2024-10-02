@@ -148,7 +148,7 @@ import {
 	UM_EMAIL_TEMPLATES_INVITE,
 	UM_EMAIL_TEMPLATES_PWRESET,
 } from './Constants';
-import { getNodeAsTool } from './CreateNodeAsTool';
+import { createNodeAsTool } from './CreateNodeAsTool';
 import {
 	getAllWorkflowExecutionMetadata,
 	getWorkflowExecutionMetadata,
@@ -2852,7 +2852,7 @@ async function getInputConnectionData(
 			if (!nodeType.supplyData) {
 				if (nodeType.description.outputs.includes(NodeConnectionType.AiTool)) {
 					nodeType.supplyData = async function (this: IExecuteFunctions) {
-						return getNodeAsTool(this, nodeType, this.getNode().parameters);
+						return createNodeAsTool(this, nodeType, this.getNode().parameters);
 					};
 				} else {
 					throw new ApplicationError('Node does not have a `supplyData` method defined', {
