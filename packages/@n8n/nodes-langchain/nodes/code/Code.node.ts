@@ -107,7 +107,7 @@ function getSandbox(
 	}
 	// eslint-disable-next-line @typescript-eslint/unbound-method
 
-	const sandbox = new JavaScriptSandbox(context, code, itemIndex, this.helpers, {
+	const sandbox = new JavaScriptSandbox(context, code, this.helpers, {
 		resolver: vmResolver,
 	});
 

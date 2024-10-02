@@ -199,9 +199,9 @@ export class ToolCode implements INodeType {
 
 			let sandbox: Sandbox;
 			if (language === 'javaScript') {
-				sandbox = new JavaScriptSandbox(context, code, index, this.helpers);
+				sandbox = new JavaScriptSandbox(context, code, this.helpers);
 			} else {
-				sandbox = new PythonSandbox(context, code, index, this.helpers);
+				sandbox = new PythonSandbox(context, code, this.helpers);
 			}
 
 			sandbox.on(
@@ -216,7 +216,7 @@ export class ToolCode implements INodeType {
 
 		const runFunction = async (query: string | IDataObject): Promise<string> => {
 			const sandbox = getSandbox(query, itemIndex);
-			return await (sandbox.runCode() as Promise<string>);
+			return await sandbox.runCode<string>();
 		};
 
 		const toolHandler = async (query: string | IDataObject): Promise<string> => {

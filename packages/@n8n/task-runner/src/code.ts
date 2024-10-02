@@ -1,19 +1,22 @@
 import { getAdditionalKeys } from 'n8n-core';
 import {
-	type INode,
-	type INodeType,
-	type ITaskDataConnections,
-	type IWorkflowExecuteAdditionalData,
 	WorkflowDataProxy,
-	type WorkflowParameters,
-	type IDataObject,
-	type IExecuteData,
-	type INodeExecutionData,
-	type INodeParameters,
-	type IRunExecutionData,
 	// type IWorkflowDataProxyAdditionalKeys,
 	Workflow,
-	type WorkflowExecuteMode,
+} from 'n8n-workflow';
+import type {
+	CodeExecutionMode,
+	INode,
+	INodeType,
+	ITaskDataConnections,
+	IWorkflowExecuteAdditionalData,
+	WorkflowParameters,
+	IDataObject,
+	IExecuteData,
+	INodeExecutionData,
+	INodeParameters,
+	IRunExecutionData,
+	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import * as a from 'node:assert';
 import { runInNewContext, type Context } from 'node:vm';
@@ -23,6 +26,8 @@ import { type Task, TaskRunner } from './task-runner';
 
 interface JSExecSettings {
 	code: string;
+	nodeMode: CodeExecutionMode;
+	workflowMode: WorkflowExecuteMode;
 
 	// For workflow data proxy
 	mode: WorkflowExecuteMode;
@@ -61,6 +66,8 @@ export interface AllCodeTaskData {
 	contextNodeName: string;
 	additionalData: PartialAdditionalData;
 }
+
+const noop = () => {};
 
 export class JsTaskRunner extends TaskRunner {
 	constructor(
@@ -116,20 +123,29 @@ export class JsTaskRunner extends TaskRunner {
 		);
 
 		const customConsole = {
-			log: (...args: unknown[]) => {
-				const logOutput = args
-					.map((arg) => (typeof arg === 'object' && arg !== null ? JSON.stringify(arg) : arg))
-					.join(' ');
-				console.log('[JS Code]', logOutput);
-				void this.makeRpcCall(task.taskId, 'logNodeOutput', [logOutput]);
-			},
+			log:
+				settings.workflowMode === 'manual'
+					? noop
+					: (...args: unknown[]) => {
+							const logOutput = args
+								.map((arg) => (typeof arg === 'object' && arg !== null ? JSON.stringify(arg) : arg))
+								.join(' ');
+							console.log('[JS Code]', logOutput);
+							void this.makeRpcCall(task.taskId, 'logNodeOutput', [logOutput]);
+						},
 		};
+
+		const itemContext =
+			settings.nodeMode === 'runOnceForEachItem'
+				? { item: dataProxy.getDataProxy().$input.item }
+				: { items: dataProxy.getDataProxy().$input.all() };
 
 		const context: Context = {
 			require,
 			module: {},
 			console: customConsole,
 
+			...itemContext,
 			...dataProxy.getDataProxy(),
 			...this.buildRpcCallObject(task.taskId),
 		};
