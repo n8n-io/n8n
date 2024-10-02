@@ -657,6 +657,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function setWorkflowExecutionData(workflowResultData: IExecutionResponse | null) {
+		if (workflowResultData?.data?.waitTill) {
+			delete workflowResultData.data.resultData.runData[
+				workflowResultData.data.resultData.lastNodeExecuted as string
+			];
+		}
 		workflowExecutionData.value = workflowResultData;
 		workflowExecutionPairedItemMappings.value = getPairedItemsMapping(workflowResultData);
 	}

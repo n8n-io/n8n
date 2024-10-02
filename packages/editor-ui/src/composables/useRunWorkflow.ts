@@ -22,7 +22,12 @@ import { NodeConnectionType } from 'n8n-workflow';
 import { useToast } from '@/composables/useToast';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 
-import { CHAT_TRIGGER_NODE_TYPE, FORM_TRIGGER_NODE_TYPE, WAIT_NODE_TYPE } from '@/constants';
+import {
+	CHAT_TRIGGER_NODE_TYPE,
+	FORM_TRIGGER_NODE_TYPE,
+	WAIT_NODE_TYPE,
+	WORKFLOW_LM_CHAT_MODAL_KEY,
+} from '@/constants';
 
 import { useRootStore } from '@/stores/root.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -381,9 +386,6 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 					}
 
 					if (execution.status === 'waiting' && execution.data?.waitTill) {
-						delete execution.data.resultData.runData[
-							execution.data.resultData.lastNodeExecuted as string
-						];
 						workflowsStore.setWorkflowExecutionRunData(execution.data);
 
 						const { lastNodeExecuted } = execution.data?.resultData || {};
