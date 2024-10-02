@@ -221,6 +221,11 @@ describe('GlobalConfig', () => {
 				},
 			},
 		},
+		taskRunners: {
+			disabled: true,
+			path: '/runners',
+			authToken: '',
+		},
 		sentry: {
 			backendDsn: '',
 			frontendDsn: '',
