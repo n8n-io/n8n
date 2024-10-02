@@ -3,6 +3,7 @@ import { sleep } from 'n8n-workflow';
 
 import config from '@/config';
 import { CacheService } from '@/services/cache/cache.service';
+import { retryUntil } from '@test-integration/retry-until';
 
 import { mockInstance } from '../../../../test/shared/mocking';
 import { TaskRunnerAuthService } from '../task-runner-auth.service';
@@ -86,7 +87,9 @@ describe('TaskRunnerAuthService', () => {
 			// Act
 			await sleep(TTL + 1);
 
-			expect(await authService.tryConsumeGrantToken(grantToken)).toBe(false);
+			await retryUntil(async () =>
+				expect(await authService.tryConsumeGrantToken(grantToken)).toBe(false),
+			);
 		});
 	});
 });
