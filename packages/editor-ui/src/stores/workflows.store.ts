@@ -74,6 +74,10 @@ import type { ProjectSharingData } from '@/types/projects.types';
 import type { PushPayload } from '@n8n/api-types';
 import { useLocalStorage } from '@vueuse/core';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { TelemetryHelpers } from 'n8n-workflow';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { useRouter } from 'vue-router';
+import { useSettingsStore } from './settings.store';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -102,6 +106,9 @@ let cachedWorkflow: Workflow | null = null;
 export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const uiStore = useUIStore();
 	const telemetry = useTelemetry();
+	const router = useRouter();
+	const workflowHelpers = useWorkflowHelpers({ router });
+	const settingsStore = useSettingsStore();
 	// -1 means the backend chooses the default
 	// 0 is the old flow
 	// 1 is the new flow
@@ -1170,17 +1177,25 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 	}
 
-	function trackNodeExecution(pushData: PushPayload<'nodeExecuteAfter'>): void {
-		if (pushData.data.error) {
-			const nodeName = pushData.nodeName;
-			const node = getNodeByName(nodeName);
+	async function trackNodeExecution(pushData: PushPayload<'nodeExecuteAfter'>): Promise<void> {
+		const nodeName = pushData.nodeName;
 
+		if (pushData.data.error) {
+			const node = getNodeByName(nodeName);
+			console.log(workflowHelpers.getNodeTypes());
+			const workflow = await workflowHelpers.getWorkflowDataToSave();
 			telemetry.track(
 				'Manual exec errored',
 				{
 					error_title: pushData.data.error.message,
 					node_type: node?.type,
 					node_type_version: node?.typeVersion,
+					node_id: node?.id,
+					node_graph_string: JSON.stringify(
+						TelemetryHelpers.generateNodesGraph(workflow, workflowHelpers.getNodeTypes(), {
+							isCloudDeployment: settingsStore.isCloudDeployment,
+						}).nodeGraph,
+					),
 				},
 				{ withPostHog: true },
 			);
@@ -1188,7 +1203,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function addNodeExecutionData(pushData: PushPayload<'nodeExecuteAfter'>): void {
-		console.log('pushData', pushData);
 		if (!workflowExecutionData.value?.data) {
 			throw new Error('The "workflowExecutionData" is not initialized!');
 		}
@@ -1210,7 +1224,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 		workflowExecutionData.value.data!.resultData.runData[pushData.nodeName].push(pushData.data);
 
-		trackNodeExecution(pushData);
+		void trackNodeExecution(pushData);
 	}
 
 	function clearNodeExecutionData(nodeName: string): void {

@@ -8,16 +8,17 @@ import {
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { IExecutionResponse, INodeUi, IWorkflowDb, IWorkflowSettings } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import type {
-	ExecutionError,
-	ExecutionSummary,
-	IConnection,
-	INodeExecutionData,
+import {
+	TelemetryHelpers,
+	type ExecutionSummary,
+	type IConnection,
+	type INodeExecutionData,
 } from 'n8n-workflow';
 import { stringSizeInBytes } from '@/utils/typesUtils';
 import { dataPinningEventBus } from '@/event-bus';
 import { useUIStore } from '@/stores/ui.store';
 import type { PushPayload } from '@n8n/api-types';
+import { flushPromises } from '@vue/test-utils';
 
 vi.mock('@/api/workflows', () => ({
 	getWorkflows: vi.fn(),
@@ -25,9 +26,10 @@ vi.mock('@/api/workflows', () => ({
 	getNewWorkflow: vi.fn(),
 }));
 
+const getNodeType = vi.fn();
 vi.mock('@/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(() => ({
-		getNodeType: vi.fn(),
+		getNodeType,
 	})),
 }));
 
@@ -37,12 +39,14 @@ vi.mock('@/composables/useTelemetry', () => ({
 }));
 
 describe('useWorkflowsStore', () => {
+	let nodeTypesStore: ReturnType<typeof useNodeTypesStore>;
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	let uiStore: ReturnType<typeof useUIStore>;
 
 	beforeEach(() => {
 		setActivePinia(createPinia());
 		workflowsStore = useWorkflowsStore();
+		nodeTypesStore = useNodeTypesStore();
 		uiStore = useUIStore();
 		track.mockReset();
 	});
@@ -454,7 +458,7 @@ describe('useWorkflowsStore', () => {
 		});
 	});
 
-	describe.only('addNodeExecutionData', () => {
+	describe('addNodeExecutionData', () => {
 		const executionReponse: IExecutionResponse = {
 			id: '1',
 			workflowData: {
@@ -562,6 +566,8 @@ describe('useWorkflowsStore', () => {
 
 		it('should add node success run data', () => {
 			workflowsStore.setWorkflowExecutionData(executionReponse);
+
+			// ACT
 			workflowsStore.addNodeExecutionData(successEvent);
 
 			expect(workflowsStore.workflowExecutionData).toEqual({
@@ -576,9 +582,38 @@ describe('useWorkflowsStore', () => {
 			});
 		});
 
-		it('should add node error event and track errored executions', () => {
+		it('should add node error event and track errored executions', async () => {
 			workflowsStore.setWorkflowExecutionData(executionReponse);
+			workflowsStore.addNode({
+				parameters: {},
+				id: '554c7ff4-7ee2-407c-8931-e34234c5056a',
+				name: 'Edit Fields',
+				type: 'n8n-nodes-base.set',
+				position: [680, 180],
+				typeVersion: 3.4,
+			});
+
+			getNodeType.mockReturnValue({
+				displayName: 'Edit Fields (Set)',
+				name: 'n8n-nodes-base.set',
+				icon: 'fa:pen',
+				group: ['input'],
+				description: 'Modify, add, or remove item fields',
+				defaultVersion: 3.4,
+				iconColor: 'blue',
+				version: [3, 3.1, 3.2, 3.3, 3.4],
+				subtitle: '={{$parameter["mode"]}}',
+				defaults: {
+					name: 'Edit Fields',
+				},
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [],
+			});
+
+			// ACT
 			workflowsStore.addNodeExecutionData(errorEvent);
+			await flushPromises();
 
 			expect(workflowsStore.workflowExecutionData).toEqual({
 				...executionReponse,
@@ -590,13 +625,15 @@ describe('useWorkflowsStore', () => {
 					},
 				},
 			});
-
 			expect(track).toHaveBeenCalledWith(
 				'Manual exec errored',
 				{
 					error_title: 'invalid syntax',
-					node_type: undefined,
-					node_type_version: undefined,
+					node_type: 'n8n-nodes-base.set',
+					node_type_version: 3.4,
+					node_id: '554c7ff4-7ee2-407c-8931-e34234c5056a',
+					node_graph_string:
+						'{"node_types":["n8n-nodes-base.set"],"node_connections":[],"nodes":{"0":{"id":"554c7ff4-7ee2-407c-8931-e34234c5056a","type":"n8n-nodes-base.set","version":3.4,"position":[680,180]}},"notes":{},"is_pinned":false}',
 				},
 				{
 					withPostHog: true,
