@@ -5,6 +5,7 @@ import CommunityPlusEnrollmentModal from '@/components/CommunityPlusEnrollmentMo
 import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '@/constants';
 import { useUsageStore } from '@/stores/usage.store';
 import { useToast } from '@/composables/useToast';
+import { useTelemetry } from '@/composables/useTelemetry';
 
 vi.mock('@/composables/useToast', () => {
 	const showMessage = vi.fn();
@@ -14,6 +15,17 @@ vi.mock('@/composables/useToast', () => {
 			return {
 				showMessage,
 				showError,
+			};
+		},
+	};
+});
+
+vi.mock('@/composables/useTelemetry', () => {
+	const track = vi.fn();
+	return {
+		useTelemetry: () => {
+			return {
+				track,
 			};
 		},
 	};
@@ -109,5 +121,24 @@ describe('CommunityPlusEnrollmentModal', () => {
 			'License request failed',
 		);
 		expect(closeCallbackSpy).not.toHaveBeenCalled();
+	});
+
+	it('should track skipping', async () => {
+		const closeCallbackSpy = vi.fn();
+		const telemetry = useTelemetry();
+
+		const props = {
+			modalName: COMMUNITY_PLUS_ENROLLMENT_MODAL,
+			data: {
+				closeCallback: closeCallbackSpy,
+			},
+		};
+
+		const { getByRole } = renderComponent({ props });
+		const skipButton = getByRole('button', { name: 'Skip' });
+		expect(skipButton).toBeVisible();
+
+		await userEvent.click(skipButton);
+		expect(telemetry.track).toHaveBeenCalledWith('User skipped community plus');
 	});
 });

@@ -8,6 +8,7 @@ import Modal from '@/components/Modal.vue';
 import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
 import { useUsageStore } from '@/stores/usage.store';
+import { useTelemetry } from '@/composables/useTelemetry';
 
 const props = defineProps<{
 	modalName: string;
@@ -19,6 +20,7 @@ const props = defineProps<{
 const i18n = useI18n();
 const toast = useToast();
 const usageStore = useUsageStore();
+const telemetry = useTelemetry();
 
 const valid = ref(false);
 const email = ref('');
@@ -45,6 +47,7 @@ const validators = ref<{ [key: string]: IValidator }>({
 const modalBus = createEventBus();
 
 const closeModal = () => {
+	telemetry.track('User skipped community plus');
 	modalBus.emit('close');
 	props.data.closeCallback();
 };
