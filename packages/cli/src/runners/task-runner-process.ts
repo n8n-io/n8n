@@ -1,9 +1,9 @@
-import { GlobalConfig } from '@n8n/config';
+// import { GlobalConfig } from '@n8n/config';
 import * as a from 'node:assert/strict';
-import { spawn } from 'node:child_process';
+import type { spawn } from 'node:child_process';
 import { Service } from 'typedi';
 
-import { TaskRunnerAuthService } from './auth/task-runner-auth.service';
+// import { TaskRunnerAuthService } from './auth/task-runner-auth.service';
 import { OnShutdown } from '../decorators/on-shutdown';
 
 type ChildProcess = ReturnType<typeof spawn>;
@@ -27,31 +27,31 @@ export class TaskRunnerProcess {
 	/** Promise that resolves after the process has exited */
 	private runPromise: Promise<void> | null = null;
 
-	private isShuttingDown = false;
+	// private isShuttingDown = false;
 
-	constructor(
-		private readonly globalConfig: GlobalConfig,
-		private readonly authService: TaskRunnerAuthService,
-	) {}
+	// constructor(
+	// 	private readonly globalConfig: GlobalConfig,
+	// 	private readonly authService: TaskRunnerAuthService,
+	// ) {}
 
 	async start() {
 		a.ok(!this.process, 'Task Runner Process already running');
 
-		const grantToken = await this.authService.createGrantToken();
-		const startScript = require.resolve('@n8n/task-runner');
+		// const grantToken = await this.authService.createGrantToken();
+		// // const startScript = require.resolve('@n8n/task-runner');
 
-		this.process = spawn('node', [startScript], {
-			env: {
-				PATH: process.env.PATH,
-				N8N_RUNNERS_GRANT_TOKEN: grantToken,
-				N8N_RUNNERS_N8N_URI: `localhost:${this.globalConfig.port}`,
-			},
-		});
+		// // this.process = spawn('node', [startScript], {
+		// // 	env: {
+		// // 		PATH: process.env.PATH,
+		// // 		N8N_RUNNERS_GRANT_TOKEN: grantToken,
+		// // 		N8N_RUNNERS_N8N_URI: `localhost:${this.globalConfig.port}`,
+		// // 	},
+		// // });
 
-		this.process.stdout?.pipe(process.stdout);
-		this.process.stderr?.pipe(process.stderr);
+		// this.process.stdout?.pipe(process.stdout);
+		// this.process.stderr?.pipe(process.stderr);
 
-		this.monitorProcess(this.process);
+		// this.monitorProcess(this.process);
 	}
 
 	@OnShutdown()
@@ -60,30 +60,30 @@ export class TaskRunnerProcess {
 			return;
 		}
 
-		this.isShuttingDown = true;
+		// this.isShuttingDown = true;
 
 		// TODO: Timeout & force kill
 		this.process.kill();
 		await this.runPromise;
 
-		this.isShuttingDown = false;
+		// this.isShuttingDown = false;
 	}
 
-	private monitorProcess(process: ChildProcess) {
-		this.runPromise = new Promise((resolve) => {
-			process.on('exit', (code) => {
-				this.onProcessExit(code, resolve);
-			});
-		});
-	}
+	// private monitorProcess(process: ChildProcess) {
+	// 	this.runPromise = new Promise((resolve) => {
+	// 		process.on('exit', (code) => {
+	// 			this.onProcessExit(code, resolve);
+	// 		});
+	// 	});
+	// }
 
-	private onProcessExit(_code: number | null, resolveFn: () => void) {
-		this.process = null;
-		resolveFn();
+	// private onProcessExit(_code: number | null, resolveFn: () => void) {
+	// 	this.process = null;
+	// 	resolveFn();
 
-		// If we are not shutting down, restart the process
-		if (!this.isShuttingDown) {
-			setImmediate(async () => await this.start());
-		}
-	}
+	// 	// If we are not shutting down, restart the process
+	// 	if (!this.isShuttingDown) {
+	// 		setImmediate(async () => await this.start());
+	// 	}
+	// }
 }

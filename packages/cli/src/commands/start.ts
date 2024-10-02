@@ -224,6 +224,9 @@ export class Start extends BaseCommand {
 		}
 
 		if (!this.globalConfig.taskRunners.disabled) {
+			console.warn(
+				'Task Runners is an experimental feature and is not recommended to be used in production.',
+			);
 			Container.set(TaskManager, new SingleMainTaskManager());
 			const { TaskRunnerProcess } = await import('@/runners/task-runner-process');
 			const runnerProcess = Container.get(TaskRunnerProcess);
