@@ -3,7 +3,7 @@ import * as a from 'node:assert/strict';
 import { authenticate } from './authenticator';
 import { JsTaskRunner } from './code';
 
-let _runner: JsTaskRunner | undefined;
+let runner: JsTaskRunner | undefined;
 let isShuttingDown = false;
 
 type Config = {
@@ -31,9 +31,9 @@ function createSignalHandler(signal: string) {
 
 		isShuttingDown = true;
 		try {
-			if (_runner) {
-				await _runner.stop();
-				_runner = undefined;
+			if (runner) {
+				await runner.stop();
+				runner = undefined;
 			}
 		} catch (error) {
 			console.error(`Error stopping task runner: ${error}`);
@@ -53,7 +53,7 @@ void (async function start() {
 
 	const wsUrl = `ws://${config.n8nUri}/rest/runners/_ws`;
 
-	_runner = new JsTaskRunner('javascript', wsUrl, grantToken, 5);
+	runner = new JsTaskRunner('javascript', wsUrl, grantToken, 5);
 
 	process.on('SIGINT', createSignalHandler('SIGINT'));
 	process.on('SIGTERM', createSignalHandler('SIGTERM'));
