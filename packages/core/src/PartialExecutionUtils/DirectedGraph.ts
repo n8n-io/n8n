@@ -82,7 +82,7 @@ export class DirectedGraph {
 	removeNode(node: INode, { reconnectConnections = false } = {}): undefined | GraphConnection[] {
 		if (reconnectConnections) {
 			const incomingConnections = this.getDirectParentConnections(node);
-			const outgoingConnections = this.getDirectChildren(node);
+			const outgoingConnections = this.getDirectChildConnections(node);
 
 			const newConnections: GraphConnection[] = [];
 
@@ -165,7 +165,7 @@ export class DirectedGraph {
 		return this;
 	}
 
-	getDirectChildren(node: INode) {
+	getDirectChildConnections(node: INode) {
 		const nodeExists = this.nodes.get(node.name) === node;
 		a.ok(nodeExists);
 
@@ -183,7 +183,7 @@ export class DirectedGraph {
 	}
 
 	private getChildrenRecursive(node: INode, children: Set<INode>) {
-		const directChildren = this.getDirectChildren(node);
+		const directChildren = this.getDirectChildConnections(node);
 
 		for (const directChild of directChildren) {
 			// Break out if we found a cycle.
