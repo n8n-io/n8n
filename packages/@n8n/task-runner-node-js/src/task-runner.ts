@@ -384,7 +384,7 @@ export abstract class TaskRunner {
 		// TODO: Make maxWaitTimeInMs configurable
 		const start = Date.now();
 
-		while (Object.values(this.runningTasks).length > 0) {
+		while (this.runningTasks.size > 0) {
 			if (Date.now() - start > maxWaitTimeInMs) {
 				throw new ApplicationError('Timeout while waiting for tasks to finish');
 			}
