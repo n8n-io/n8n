@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "description": "",
-  "main": "dist/index.js",
+  "main": "dist/start.js",
   "scripts": {
     "start": "node dist/start.js",
     "dev": "pnpm build && pnpm start",
@@ -23,9 +23,9 @@
     "package.json",
     "tsconfig.json"
   ],
-  "main": "dist/index.js",
-  "module": "src/index.ts",
-  "types": "dist/index.d.ts",
+  "main": "dist/start.js",
+  "module": "src/start.ts",
+  "types": "dist/start.d.ts",
   "packageManager": "pnpm@9.6.0",
   "devDependencies": {
     "@n8n_io/eslint-config": "^0.0.2",

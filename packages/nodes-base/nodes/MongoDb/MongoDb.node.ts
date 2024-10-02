@@ -45,6 +45,7 @@ export class MongoDb implements INodeType {
 		},
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
 		credentials: [
 			{
 				name: 'mongoDb',
