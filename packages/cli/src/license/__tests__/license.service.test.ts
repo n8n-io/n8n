@@ -90,7 +90,9 @@ describe('LicenseService', () => {
 
 	describe('registerCommunityEdition', () => {
 		test('on success', async () => {
-			jest.spyOn(axios, 'post').mockResolvedValueOnce({ data: { title: 'Title', text: 'Text' } });
+			jest
+				.spyOn(axios, 'post')
+				.mockResolvedValueOnce({ data: { title: 'Title', text: 'Text', licenseKey: 'abc-123' } });
 			const data = await licenseService.registerCommunityEdition({
 				email: 'test@ema.il',
 				instanceId: '123',
@@ -99,6 +101,10 @@ describe('LicenseService', () => {
 			});
 
 			expect(data).toEqual({ title: 'Title', text: 'Text' });
+			expect(eventService.emit).toHaveBeenCalledWith('license-community-plus-registered', {
+				email: 'test@ema.il',
+				licenseKey: 'abc-123',
+			});
 		});
 
 		test('on failure', async () => {
@@ -111,6 +117,7 @@ describe('LicenseService', () => {
 					licenseType: 'community-registered',
 				}),
 			).rejects.toThrowError('Failed');
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 	});
 });

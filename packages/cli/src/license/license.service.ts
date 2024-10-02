@@ -73,7 +73,9 @@ export class LicenseService {
 		licenseType: string;
 	}): Promise<{ title: string; text: string }> {
 		try {
-			const { data } = await axios.post<{ title: string; text: string }>(
+			const {
+				data: { licenseKey, ...rest },
+			} = await axios.post<{ title: string; text: string; licenseKey: string }>(
 				'https://enterprise.n8n.io/community-registered',
 				{
 					email,
@@ -82,7 +84,8 @@ export class LicenseService {
 					licenseType,
 				},
 			);
-			return data;
+			this.eventService.emit('license-community-plus-registered', { email, licenseKey });
+			return rest;
 		} catch (e: unknown) {
 			if (e instanceof AxiosError) {
 				const error = e as AxiosError<{ message: string }>;
