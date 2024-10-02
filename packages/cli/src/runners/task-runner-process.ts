@@ -38,9 +38,17 @@ export class TaskRunnerProcess {
 		a.ok(!this.process, 'Task Runner Process already running');
 
 		const grantToken = await this.authService.createGrantToken();
-		const startScript = require.resolve('@n8n/task-runner');
+		// const startScript = require.resolve('@n8n/task-runner');
 
-		this.process = spawn('node', [startScript], {
+		// this.process = spawn('node', [startScript], {
+		// 	env: {
+		// 		PATH: process.env.PATH,
+		// 		N8N_RUNNERS_GRANT_TOKEN: grantToken,
+		// 		N8N_RUNNERS_N8N_URI: `localhost:${this.globalConfig.port}`,
+		// 	},
+		// });
+
+		this.process = spawn(this.globalConfig.taskRunners.launcherPath, ['launch', 'javascript'], {
 			env: {
 				PATH: process.env.PATH,
 				N8N_RUNNERS_GRANT_TOKEN: grantToken,
