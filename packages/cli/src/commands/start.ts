@@ -225,6 +225,9 @@ export class Start extends BaseCommand {
 
 		if (!this.globalConfig.taskRunners.disabled) {
 			Container.set(TaskManager, new SingleMainTaskManager());
+			const { TaskRunnerProcess } = await import('@/runners/task-runner-process');
+			const runnerProcess = Container.get(TaskRunnerProcess);
+			await runnerProcess.start();
 		}
 	}
 

@@ -44,7 +44,7 @@ function getWsEndpoint(restEndpoint: string) {
 
 @Service()
 export class TaskRunnerService {
-	runnerConnections: Record<TaskRunner['id'], WebSocket> = {};
+	runnerConnections: Map<TaskRunner['id'], WebSocket> = new Map();
 
 	constructor(
 		private readonly logger: Logger,
@@ -52,7 +52,7 @@ export class TaskRunnerService {
 	) {}
 
 	sendMessage(id: TaskRunner['id'], message: N8nMessage.ToRunner.All) {
-		this.runnerConnections[id]?.send(JSON.stringify(message));
+		this.runnerConnections.get(id)?.send(JSON.stringify(message));
 	}
 
 	add(id: TaskRunner['id'], connection: WebSocket) {
@@ -75,7 +75,7 @@ export class TaskRunnerService {
 					this.removeConnection(id);
 					isConnected = true;
 
-					this.runnerConnections[id] = connection;
+					this.runnerConnections.set(id, connection);
 
 					this.taskBroker.registerRunner(
 						{
@@ -117,10 +117,11 @@ export class TaskRunnerService {
 	}
 
 	removeConnection(id: TaskRunner['id']) {
-		if (id in this.runnerConnections) {
+		const connection = this.runnerConnections.get(id);
+		if (connection) {
 			this.taskBroker.deregisterRunner(id);
-			this.runnerConnections[id].close();
-			delete this.runnerConnections[id];
+			connection.close();
+			this.runnerConnections.delete(id);
 		}
 	}
 
