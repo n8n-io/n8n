@@ -2,6 +2,7 @@ import { GlobalConfig } from '@n8n/config';
 import { InstanceSettings } from 'n8n-core';
 import { ApplicationError, BINARY_ENCODING, sleep, jsonStringify } from 'n8n-workflow';
 import type { IExecuteResponsePromiseData } from 'n8n-workflow';
+import { strict } from 'node:assert';
 import Container, { Service } from 'typedi';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -124,12 +125,24 @@ export class ScalingService {
 		return { active, waiting };
 	}
 
-	async addJob(jobData: JobData, jobOptions: JobOptions) {
-		const { executionId } = jobData;
+	/**
+	 * Add a job to the queue.
+	 *
+	 * @param jobData Data of the job to add to the queue.
+	 * @param priority Priority of the job, from `1` (highest) to `MAX_SAFE_INTEGER` (lowest).
+	 */
+	async addJob(jobData: JobData, { priority }: { priority: number }) {
+		strict(priority > 0 && priority <= Number.MAX_SAFE_INTEGER);
+
+		const jobOptions: JobOptions = {
+			priority,
+			removeOnComplete: true,
+			removeOnFail: true,
+		};
 
 		const job = await this.queue.add(JOB_TYPE_NAME, jobData, jobOptions);
 
-		this.logger.info(`[ScalingService] Added job ${job.id} (execution ${executionId})`);
+		this.logger.info(`[ScalingService] Added job ${job.id} (execution ${jobData.executionId})`);
 
 		return job;
 	}
