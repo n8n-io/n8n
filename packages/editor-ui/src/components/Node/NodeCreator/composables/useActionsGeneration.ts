@@ -12,6 +12,7 @@ import type {
 import { i18n } from '@/plugins/i18n';
 
 import { getCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
+import { formatTriggerActionName } from '../utils';
 
 const PLACEHOLDER_RECOMMENDED_ACTION_KEY = 'placeholder_recommended';
 
@@ -168,7 +169,7 @@ function triggersCategory(nodeTypeDescription: INodeTypeDescription): ActionType
 			displayName:
 				categoryItem.action ??
 				cachedBaseText('nodeCreator.actionsCategory.onEvent', {
-					interpolate: { event: startCase(categoryItem.name) },
+					interpolate: { event: formatTriggerActionName(categoryItem.name) },
 				}),
 			description: categoryItem.description ?? '',
 			displayOptions: matchedProperty.displayOptions,
