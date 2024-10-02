@@ -8,10 +8,16 @@ import {
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { IExecutionResponse, INodeUi, IWorkflowDb, IWorkflowSettings } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import type { ExecutionSummary, IConnection, INodeExecutionData } from 'n8n-workflow';
+import type {
+	ExecutionError,
+	ExecutionSummary,
+	IConnection,
+	INodeExecutionData,
+} from 'n8n-workflow';
 import { stringSizeInBytes } from '@/utils/typesUtils';
 import { dataPinningEventBus } from '@/event-bus';
 import { useUIStore } from '@/stores/ui.store';
+import type { PushPayload } from '@n8n/api-types';
 
 vi.mock('@/api/workflows', () => ({
 	getWorkflows: vi.fn(),
@@ -25,6 +31,11 @@ vi.mock('@/stores/nodeTypes.store', () => ({
 	})),
 }));
 
+const track = vi.fn();
+vi.mock('@/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track }),
+}));
+
 describe('useWorkflowsStore', () => {
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	let uiStore: ReturnType<typeof useUIStore>;
@@ -33,6 +44,7 @@ describe('useWorkflowsStore', () => {
 		setActivePinia(createPinia());
 		workflowsStore = useWorkflowsStore();
 		uiStore = useUIStore();
+		track.mockReset();
 	});
 
 	it('should initialize with default state', () => {
@@ -439,6 +451,157 @@ describe('useWorkflowsStore', () => {
 			const data = [{ json: 'testData' }] as unknown as INodeExecutionData[];
 			workflowsStore.pinData({ node, data });
 			expect(uiStore.stateIsDirty).toBe(true);
+		});
+	});
+
+	describe.only('addNodeExecutionData', () => {
+		const executionReponse: IExecutionResponse = {
+			id: '1',
+			workflowData: {
+				id: '1',
+				name: '',
+				createdAt: '1',
+				updatedAt: '1',
+				nodes: [],
+				connections: {},
+				active: false,
+				versionId: '1',
+			},
+			finished: false,
+			mode: 'cli',
+			startedAt: new Date(),
+			status: 'new',
+			data: {
+				resultData: {
+					runData: {},
+				},
+			},
+		};
+		const successEvent: PushPayload<'nodeExecuteAfter'> = {
+			executionId: '59',
+			nodeName: 'When clicking ‘Test workflow’',
+			data: {
+				hints: [],
+				startTime: 1727867966633,
+				executionTime: 1,
+				source: [],
+				executionStatus: 'success',
+				data: {
+					main: [
+						[
+							{
+								json: {},
+								pairedItem: {
+									item: 0,
+								},
+							},
+						],
+					],
+				},
+			},
+		};
+
+		const errorEvent: PushPayload<'nodeExecuteAfter'> = {
+			executionId: '61',
+			nodeName: 'Edit Fields',
+			data: {
+				hints: [],
+				startTime: 1727869043441,
+				executionTime: 2,
+				source: [
+					{
+						previousNode: 'When clicking ‘Test workflow’',
+					},
+				],
+				executionStatus: 'error',
+				// @ts-expect-error simpler data type, not BE class with methods
+				error: {
+					level: 'error',
+					tags: {
+						packageName: 'workflow',
+					},
+					context: {
+						itemIndex: 0,
+					},
+					functionality: 'regular',
+					name: 'NodeOperationError',
+					timestamp: 1727869043442,
+					node: {
+						parameters: {
+							mode: 'manual',
+							duplicateItem: false,
+							assignments: {
+								assignments: [
+									{
+										id: '87afdb19-4056-4551-93ef-d0126a34eb83',
+										name: "={{ $('Wh }}",
+										value: '',
+										type: 'string',
+									},
+								],
+							},
+							includeOtherFields: false,
+							options: {},
+						},
+						id: '9fb34d2d-7191-48de-8f18-91a6a28d0230',
+						name: 'Edit Fields',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3.4,
+						position: [1120, 180],
+					},
+					messages: [],
+					message: 'invalid syntax',
+					stack: 'NodeOperationError: invalid syntax',
+				},
+			},
+		};
+
+		it('should throw error if not initalized', () => {
+			expect(() => workflowsStore.addNodeExecutionData(successEvent)).toThrowError();
+		});
+
+		it('should add node success run data', () => {
+			workflowsStore.setWorkflowExecutionData(executionReponse);
+			workflowsStore.addNodeExecutionData(successEvent);
+
+			expect(workflowsStore.workflowExecutionData).toEqual({
+				...executionReponse,
+				data: {
+					resultData: {
+						runData: {
+							[successEvent.nodeName]: [successEvent.data],
+						},
+					},
+				},
+			});
+		});
+
+		it('should add node error event and track errored executions', () => {
+			workflowsStore.setWorkflowExecutionData(executionReponse);
+			workflowsStore.addNodeExecutionData(errorEvent);
+
+			expect(workflowsStore.workflowExecutionData).toEqual({
+				...executionReponse,
+				data: {
+					resultData: {
+						runData: {
+							[errorEvent.nodeName]: [errorEvent.data],
+						},
+					},
+				},
+			});
+
+			expect(track).toHaveBeenCalledWith(
+				'Manual exec errored',
+				{
+					error_title: 'invalid syntax',
+					node_type: undefined,
+					node_type_version: undefined,
+				},
+				{
+					withPostHog: true,
+				},
+			);
 		});
 	});
 });

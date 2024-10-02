@@ -73,6 +73,7 @@ import { useProjectsStore } from '@/stores/projects.store';
 import type { ProjectSharingData } from '@/types/projects.types';
 import type { PushPayload } from '@n8n/api-types';
 import { useLocalStorage } from '@vueuse/core';
+import { useTelemetry } from '@/composables/useTelemetry';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -100,6 +101,7 @@ let cachedWorkflow: Workflow | null = null;
 
 export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const uiStore = useUIStore();
+	const telemetry = useTelemetry();
 	// -1 means the backend chooses the default
 	// 0 is the old flow
 	// 1 is the new flow
@@ -1168,7 +1170,25 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 	}
 
+	function trackNodeExecution(pushData: PushPayload<'nodeExecuteAfter'>): void {
+		if (pushData.data.error) {
+			const nodeName = pushData.nodeName;
+			const node = getNodeByName(nodeName);
+
+			telemetry.track(
+				'Manual exec errored',
+				{
+					error_title: pushData.data.error.message,
+					node_type: node?.type,
+					node_type_version: node?.typeVersion,
+				},
+				{ withPostHog: true },
+			);
+		}
+	}
+
 	function addNodeExecutionData(pushData: PushPayload<'nodeExecuteAfter'>): void {
+		console.log('pushData', pushData);
 		if (!workflowExecutionData.value?.data) {
 			throw new Error('The "workflowExecutionData" is not initialized!');
 		}
@@ -1189,6 +1209,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			};
 		}
 		workflowExecutionData.value.data!.resultData.runData[pushData.nodeName].push(pushData.data);
+
+		trackNodeExecution(pushData);
 	}
 
 	function clearNodeExecutionData(nodeName: string): void {
