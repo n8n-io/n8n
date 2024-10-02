@@ -202,7 +202,7 @@ export class DirectedGraph {
 	 * argument.
 	 *
 	 * If the node being passed in is a child of itself (e.g. is part of a
-	 * cylce), the return set will contain it as well.
+	 * cycle), the return set will contain it as well.
 	 */
 	getChildren(node: INode) {
 		return this.getChildrenRecursive(node, new Set());
