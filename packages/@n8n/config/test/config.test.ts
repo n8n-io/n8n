@@ -225,6 +225,8 @@ describe('GlobalConfig', () => {
 			disabled: true,
 			path: '/runners',
 			authToken: '',
+			listen_address: '127.0.0.1',
+			port: 5679,
 		},
 		sentry: {
 			backendDsn: '',
