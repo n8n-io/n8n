@@ -7,7 +7,7 @@ import {
 } from '@n8n/typeorm';
 import { mocked } from 'jest-mock';
 import { mock } from 'jest-mock-extended';
-import type { IRun, WorkflowExecuteMode } from 'n8n-workflow';
+import type { INode, IRun, WorkflowExecuteMode } from 'n8n-workflow';
 import { Container } from 'typedi';
 
 import config from '@/config';
@@ -160,6 +160,22 @@ describe('WorkflowStatisticsService', () => {
 			await workflowStatisticsService.nodeFetchedData(workflowId, node);
 			expect(eventService.emit).toHaveBeenCalledWith('first-workflow-data-loaded', {
 				userId: fakeUser.id,
+				project: fakeProject.id,
+				workflowId,
+				nodeType: node.type,
+				nodeId: node.id,
+			});
+		});
+
+		test('should emit event with no `userId` if workflow is owned by team project', async () => {
+			const workflowId = '123';
+			ownershipService.getPersonalProjectOwnerCached.mockResolvedValueOnce(null);
+			const node = mock<INode>({ id: '123', type: 'n8n-nodes-base.noOp', credentials: {} });
+
+			await workflowStatisticsService.nodeFetchedData(workflowId, node);
+
+			expect(eventService.emit).toHaveBeenCalledWith('first-workflow-data-loaded', {
+				userId: '',
 				project: fakeProject.id,
 				workflowId,
 				nodeType: node.type,
