@@ -1,6 +1,4 @@
-import { runInNewContext, type Context } from 'node:vm';
-import * as a from 'node:assert';
-
+import { getAdditionalKeys } from 'n8n-core';
 import {
 	type INode,
 	type INodeType,
@@ -8,8 +6,6 @@ import {
 	type IWorkflowExecuteAdditionalData,
 	WorkflowDataProxy,
 	type WorkflowParameters,
-} from 'n8n-workflow';
-import {
 	type IDataObject,
 	type IExecuteData,
 	type INodeExecutionData,
@@ -19,7 +15,8 @@ import {
 	Workflow,
 	type WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { getAdditionalKeys } from 'n8n-core';
+import * as a from 'node:assert';
+import { runInNewContext, type Context } from 'node:vm';
 
 import type { TaskResultData } from './runner-types';
 import { type Task, TaskRunner } from './task-runner';
