@@ -12,6 +12,11 @@ export type GraphConnection = {
 // fromName-outputType-outputIndex-inputIndex-toName
 type DirectedGraphKey = `${string}-${NodeConnectionType}-${number}-${number}-${string}`;
 
+type RemoveNodeBaseOptions = {
+	reconnectConnections: boolean;
+	skipConnectionFn?: (connection: GraphConnection) => boolean;
+};
+
 /**
  * Represents a directed graph as an adjacency list, e.g. one list for the
  * vertices and one list for the edges.
@@ -77,17 +82,34 @@ export class DirectedGraph {
 	 * connections making sure all parent nodes are connected to all child nodes
 	 * and return the new connections.
 	 */
-	removeNode(node: INode, options?: { reconnectConnections: true }): GraphConnection[];
-	removeNode(node: INode, options?: { reconnectConnections: false }): undefined;
-	removeNode(node: INode, { reconnectConnections = false } = {}): undefined | GraphConnection[] {
-		if (reconnectConnections) {
+	removeNode(
+		node: INode,
+		options?: { reconnectConnections: true } & RemoveNodeBaseOptions,
+	): GraphConnection[];
+	removeNode(
+		node: INode,
+		options?: { reconnectConnections: false } & RemoveNodeBaseOptions,
+	): undefined;
+	removeNode(
+		node: INode,
+		options: RemoveNodeBaseOptions = { reconnectConnections: false },
+	): undefined | GraphConnection[] {
+		if (options.reconnectConnections) {
 			const incomingConnections = this.getDirectParentConnections(node);
 			const outgoingConnections = this.getDirectChildConnections(node);
 
 			const newConnections: GraphConnection[] = [];
 
 			for (const incomingConnection of incomingConnections) {
+				if (options.skipConnectionFn && options.skipConnectionFn(incomingConnection)) {
+					continue;
+				}
+
 				for (const outgoingConnection of outgoingConnections) {
+					if (options.skipConnectionFn && options.skipConnectionFn(outgoingConnection)) {
+						continue;
+					}
+
 					const newConnection = {
 						...incomingConnection,
 						to: outgoingConnection.to,
@@ -223,6 +245,27 @@ export class DirectedGraph {
 		}
 
 		return directParents;
+	}
+
+	private getParentConnectionsRecursive(node: INode, connections: Set<GraphConnection>) {
+		const parentConnections = this.getDirectParentConnections(node);
+
+		for (const connection of parentConnections) {
+			// break out of cycles
+			if (connections.has(connection)) {
+				continue;
+			}
+
+			connections.add(connection);
+
+			this.getParentConnectionsRecursive(connection.from, connections);
+		}
+
+		return connections;
+	}
+
+	getParentConnections(node: INode) {
+		return this.getParentConnectionsRecursive(node, new Set());
 	}
 
 	getConnection(
