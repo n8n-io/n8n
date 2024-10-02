@@ -26,6 +26,8 @@ interface Filters {
 	tags: string[];
 }
 
+type QueryFilters = Partial<Filters>;
+
 const StatusFilter = {
 	ACTIVE: true,
 	DEACTIVATED: false,
@@ -152,6 +154,9 @@ const WorkflowsView = defineComponent({
 	},
 	async mounted() {
 		this.documentTitle.set(this.$locale.baseText('workflows.heading'));
+
+		await this.tagsStore.fetchAll();
+
 		await this.setFiltersFromQueryString();
 
 		void this.usersStore.showPersonalizationSurvey();
@@ -263,10 +268,20 @@ const WorkflowsView = defineComponent({
 		isValidProjectId(projectId: string) {
 			return this.projectsStore.availableProjects.some((project) => project.id === projectId);
 		},
+		async removeInvalidQueryFiltersFromUrl(filtersToApply: QueryFilters) {
+			await this.$router.push({
+				query: {
+					...(filtersToApply.tags && { tags: filtersToApply.tags?.join(',') }),
+					...(filtersToApply.status && { status: filtersToApply.status?.toString() }),
+					...(filtersToApply.search && { search: filtersToApply.search }),
+					...(filtersToApply.homeProject && { homeProject: filtersToApply.homeProject }),
+				},
+			});
+		},
 		async setFiltersFromQueryString() {
 			const { tags, status, search, homeProject } = this.$route.query;
 
-			const filtersToApply: { [key: string]: string | string[] | boolean } = {};
+			const filtersToApply: QueryFilters = {};
 
 			if (homeProject && typeof homeProject === 'string') {
 				await this.projectsStore.getAvailableProjects();
@@ -294,6 +309,8 @@ const WorkflowsView = defineComponent({
 			) {
 				filtersToApply.status = status === 'true';
 			}
+
+			await this.removeInvalidQueryFiltersFromUrl(filtersToApply);
 
 			if (Object.keys(filtersToApply).length) {
 				this.filters = {
