@@ -14,9 +14,9 @@ import {
 	githubApiRequest,
 	githubApiRequestAllItems,
 	isBase64,
+	validateJSON,
 } from './GenericFunctions';
 import { getRepositories, getUsers, getWorkflows } from './SearchFunctions';
-import { validateJSON } from '../ClickUp/GenericFunctions';
 
 export class Github implements INodeType {
 	description: INodeTypeDescription = {
