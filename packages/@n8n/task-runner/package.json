@@ -7,7 +7,7 @@
     "dev": "pnpm build && pnpm start",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p ./tsconfig.build.json",
-    "format": "biome format --write src test",
+    "format": "biome format --write src",
     "format:check": "biome ci src test",
     "test": "jest",
     "lint": "eslint . --quiet",
