@@ -49,7 +49,8 @@ const renderToolbar = computed(() => (props.selected || isHovered.value) && !pro
 const isMainConnection = computed(() => data.value.source.type === NodeConnectionType.Main);
 
 const status = computed(() => props.data.status);
-const statusColor = computed(() => {
+
+const edgeColor = computed(() => {
 	if (props.selected) {
 		return 'var(--color-background-dark)';
 	} else if (status.value === 'success') {
@@ -69,10 +70,10 @@ const edgeStyle = computed(() => ({
 	...props.style,
 	...(isMainConnection.value ? {} : { strokeDasharray: '8,8' }),
 	strokeWidth: 2,
-	stroke: isHovered.value ? 'var(--color-primary)' : statusColor.value,
+	stroke: isHovered.value ? 'var(--color-primary)' : edgeColor.value,
 }));
 
-const edgeLabelStyle = computed(() => ({ color: statusColor.value }));
+const edgeLabelStyle = computed(() => ({ color: edgeColor.value }));
 
 const edgeToolbarStyle = computed(() => {
 	const [, labelX, labelY] = path.value;
@@ -81,7 +82,11 @@ const edgeToolbarStyle = computed(() => {
 	};
 });
 
-const path = computed(() => getCustomPath(props));
+const path = computed(() =>
+	getCustomPath(props, {
+		connectionType: connectionType.value,
+	}),
+);
 
 const connection = computed<Connection>(() => ({
 	source: props.source,

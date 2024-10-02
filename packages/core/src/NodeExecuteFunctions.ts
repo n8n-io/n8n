@@ -132,6 +132,7 @@ import { Readable } from 'stream';
 import Container from 'typedi';
 import url, { URL, URLSearchParams } from 'url';
 
+import { createAgentStartJob } from './Agent';
 import { BinaryDataService } from './BinaryData/BinaryData.service';
 import type { BinaryData } from './BinaryData/types';
 import { binaryToBuffer } from './BinaryData/utils';
@@ -3788,6 +3789,17 @@ export function getExecuteFunctions(
 					additionalData.setExecutionStatus('waiting');
 				}
 			},
+			logNodeOutput(...args: unknown[]): void {
+				if (mode === 'manual') {
+					// @ts-expect-error `args` is spreadable
+					this.sendMessageToUI(...args);
+					return;
+				}
+
+				if (process.env.CODE_ENABLE_STDOUT === 'true') {
+					console.log(`[Workflow "${this.getWorkflow().id}"][Node "${node.name}"]`, ...args);
+				}
+			},
 			sendMessageToUI(...args: any[]): void {
 				if (mode !== 'manual') {
 					return;
@@ -3905,6 +3917,19 @@ export function getExecuteFunctions(
 				});
 			},
 			getParentCallbackManager: () => additionalData.parentCallbackManager,
+			startJob: createAgentStartJob(
+				additionalData,
+				inputData,
+				node,
+				workflow,
+				runExecutionData,
+				runIndex,
+				node.name,
+				connectionInputData,
+				{},
+				mode,
+				executeData,
+			),
 		};
 	})(workflow, runExecutionData, connectionInputData, inputData, node) as IExecuteFunctions;
 }

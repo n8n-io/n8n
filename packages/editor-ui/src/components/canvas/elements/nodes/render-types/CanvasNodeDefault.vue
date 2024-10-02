@@ -118,7 +118,7 @@ function openContextMenu(event: MouseEvent) {
 				<FontAwesomeIcon icon="bolt" size="lg" />
 			</div>
 		</N8nTooltip>
-		<CanvasNodeStatusIcons :class="$style.statusIcons" />
+		<CanvasNodeStatusIcons v-if="!isDisabled" :class="$style.statusIcons" />
 		<CanvasNodeDisabledStrikeThrough v-if="isStrikethroughVisible" />
 		<div :class="$style.description">
 			<div v-if="label" :class="$style.label">

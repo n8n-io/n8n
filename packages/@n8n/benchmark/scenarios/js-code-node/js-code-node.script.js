@@ -12,7 +12,7 @@ export default function () {
 
 			try {
 				const body = JSON.parse(r.body);
-				return Array.isArray(body) ? body.length === 5 : false;
+				return Array.isArray(body) ? body.length === 100 : false;
 			} catch (error) {
 				console.error('Error parsing response body: ', error);
 				return false;
