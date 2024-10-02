@@ -37,7 +37,8 @@
     "test:nodes": "turbo run test:nodes --concurrency=1",
     "watch": "turbo run watch --parallel",
     "webhook": "./packages/cli/bin/n8n webhook",
-    "worker": "./packages/cli/bin/n8n worker"
+    "worker": "./packages/cli/bin/n8n worker",
+    "generate:types": "ts-node scripts/generate-types.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.0",
@@ -88,5 +89,9 @@
       "@types/ws@8.5.4": "patches/@types__ws@8.5.4.patch",
       "@types/uuencode@0.0.3": "patches/@types__uuencode@0.0.3.patch"
     }
+  },
+  "dependencies": {
+    "ts-morph": "^23.0.0",
+    "ts-node": "^10.9.2"
   }
 }
