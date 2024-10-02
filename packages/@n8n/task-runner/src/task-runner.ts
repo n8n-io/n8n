@@ -1,7 +1,7 @@
-import { URL } from 'node:url';
+import { ApplicationError, ensureError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
+import { URL } from 'node:url';
 import { type MessageEvent, WebSocket } from 'ws';
-import { ensureError } from 'n8n-workflow';
 
 import {
 	RPC_ALLOW_LIST,
@@ -267,7 +267,7 @@ export abstract class TaskRunner {
 
 	// eslint-disable-next-line @typescript-eslint/naming-convention
 	async executeTask(_task: Task): Promise<TaskResultData> {
-		throw new Error('Unimplemented');
+		throw new ApplicationError('Unimplemented');
 	}
 
 	async requestData<T = unknown>(
@@ -354,7 +354,7 @@ export abstract class TaskRunner {
 					obj = obj[s];
 					return;
 				}
-				obj[s] = async (...args: unknown[]) => this.makeRpcCall(taskId, r, args);
+				obj[s] = async (...args: unknown[]) => await this.makeRpcCall(taskId, r, args);
 			});
 		}
 		return rpcObject;
