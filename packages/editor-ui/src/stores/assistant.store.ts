@@ -354,7 +354,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	 * Gets information about the current view and active node to provide context to the assistant
 	 */
 	function getVisualContext(): ChatRequest.UserContext | undefined {
-		if (chatSessionTask.value !== 'support') {
+		if (chatSessionTask.value === 'error') {
 			return undefined;
 		}
 		const currentView = route.name as VIEWS;
@@ -401,7 +401,8 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	async function initSupportChat(userMessage: string, credentialType?: ICredentialType) {
 		resetAssistantChat();
 		chatSessionTask.value = credentialType ? 'credentials' : 'support';
-		const visualContext = getVisualContext();
+		// For the initial message, only provide visual context if the task is support
+		const visualContext = chatSessionTask.value === 'support' ? getVisualContext() : undefined;
 		const activeNode = workflowsStore.activeNode() as INode;
 		const { authType, nodeInputData, schemas } =
 			assistantHelpers.getNodeInfoForAssistant(activeNode);
