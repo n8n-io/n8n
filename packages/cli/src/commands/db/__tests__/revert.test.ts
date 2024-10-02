@@ -4,7 +4,7 @@ import { mock } from 'jest-mock-extended';
 
 import { main } from '@/commands/db/revert';
 import type { IrreversibleMigration, ReversibleMigration } from '@/databases/types';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { mockInstance } from '@test/mocking';
 
 const logger = mockInstance(Logger);

@@ -24,7 +24,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { hasSharing, type ListQuery } from '@/requests';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { OwnershipService } from '@/services/ownership.service';

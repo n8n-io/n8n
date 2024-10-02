@@ -221,9 +221,23 @@ describe('GlobalConfig', () => {
 				},
 			},
 		},
+		taskRunners: {
+			disabled: true,
+			path: '/runners',
+			authToken: '',
+		},
 		sentry: {
 			backendDsn: '',
 			frontendDsn: '',
+		},
+		logging: {
+			level: 'info',
+			outputs: ['console'],
+			file: {
+				fileCountMax: 100,
+				fileSizeMax: 16,
+				location: 'logs/n8n.log',
+			},
 		},
 	};
 

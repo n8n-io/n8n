@@ -42,6 +42,7 @@ export class GoogleCalendar implements INodeType {
 		},
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
 		credentials: [
 			{
 				name: 'googleCalendarOAuth2Api',

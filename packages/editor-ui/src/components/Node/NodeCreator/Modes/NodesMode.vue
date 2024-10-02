@@ -90,7 +90,8 @@ function onSelected(item: INodeCreateElement) {
 
 	if (item.type === 'node') {
 		const nodeActions = actions?.[item.key] || [];
-		if (nodeActions.length <= 1) {
+		// Only show actions if there are more than one or if the view is not an AI subcategory
+		if (nodeActions.length <= 1 || activeViewStack.value.hideActions) {
 			selectNodeType([item.key]);
 			return;
 		}

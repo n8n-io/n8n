@@ -4,7 +4,7 @@ import type { Cluster, RedisOptions } from 'ioredis';
 import { Service } from 'typedi';
 
 import { Debounce } from '@/decorators/debounce';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { TypedEmitter } from '@/typed-emitter';
 
 import type { RedisClientType } from '../scaling/redis/redis.types';

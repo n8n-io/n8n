@@ -26,7 +26,7 @@ import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { ExternalHooks } from '@/external-hooks';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { NodeTypes } from '@/node-types';
 import type { ScalingService } from '@/scaling/scaling.service';
 import type { Job, JobData, JobResult } from '@/scaling/scaling.types';
@@ -245,7 +245,7 @@ export class WorkflowRunner {
 			{ executionId },
 		);
 		let workflowExecution: PCancelable<IRun>;
-		await this.executionRepository.updateStatus(executionId, 'running');
+		await this.executionRepository.updateStatus(executionId, 'running'); // write
 
 		try {
 			additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(data, executionId);
@@ -376,22 +376,12 @@ export class WorkflowRunner {
 			this.scalingService = Container.get(ScalingService);
 		}
 
-		let priority = 100;
-		if (realtime === true) {
-			// Jobs which require a direct response get a higher priority
-			priority = 50;
-		}
 		// TODO: For realtime jobs should probably also not do retry or not retry if they are older than x seconds.
 		//       Check if they get retried by default and how often.
-		const jobOptions = {
-			priority,
-			removeOnComplete: true,
-			removeOnFail: true,
-		};
 		let job: Job;
 		let hooks: WorkflowHooks;
 		try {
-			job = await this.scalingService.addJob(jobData, jobOptions);
+			job = await this.scalingService.addJob(jobData, { priority: realtime ? 50 : 100 });
 
 			hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerMain(
 				data.executionMode,

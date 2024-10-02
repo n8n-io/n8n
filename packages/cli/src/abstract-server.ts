@@ -13,7 +13,7 @@ import { N8N_VERSION, TEMPLATES_DIR, inDevelopment, inTest } from '@/constants';
 import * as Db from '@/db';
 import { OnShutdown } from '@/decorators/on-shutdown';
 import { ExternalHooks } from '@/external-hooks';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { rawBodyReader, bodyParser, corsMiddleware } from '@/middlewares';
 import { send, sendErrorResponse } from '@/response-helper';
 import { WaitingForms } from '@/waiting-forms';
@@ -119,6 +119,8 @@ export abstract class AbstractServer {
 
 	protected setupPushServer() {}
 
+	protected setupRunnerServer() {}
+
 	private async setupHealthCheck() {
 		// main health check should not care about DB connections
 		this.app.get('/healthz', async (_req, res) => {
@@ -182,6 +184,10 @@ export abstract class AbstractServer {
 		if (!inTest) {
 			await this.setupErrorHandlers();
 			this.setupPushServer();
+
+			if (!this.globalConfig.taskRunners.disabled) {
+				this.setupRunnerServer();
+			}
 		}
 
 		this.setupCommonMiddlewares();
