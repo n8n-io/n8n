@@ -14,7 +14,6 @@ import { NodeConnectionType } from 'n8n-workflow';
 import { createNodeData } from './helpers';
 import { DirectedGraph } from '../DirectedGraph';
 import { findSubgraph } from '../findSubgraph';
-import { expects } from '@n8n/client-oauth2/src/utils';
 
 describe('findSubgraph', () => {
 	//                 ►►
