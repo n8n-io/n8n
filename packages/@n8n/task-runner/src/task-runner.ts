@@ -1,8 +1,7 @@
-import { ApplicationError } from 'n8n-workflow';
+import { ApplicationError, ensureError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { URL } from 'node:url';
 import { type MessageEvent, WebSocket } from 'ws';
-import { ensureError } from 'n8n-workflow';
 
 import {
 	RPC_ALLOW_LIST,

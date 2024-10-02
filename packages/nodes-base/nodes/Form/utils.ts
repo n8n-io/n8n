@@ -83,7 +83,7 @@ export function prepareFormData({
 			input.isMultiSelect = true;
 			input.multiSelectOptions =
 				field.fieldOptions?.values.map((e, i) => ({
-					id: `option${i}`,
+					id: `option${i}_${input.id}`,
 					label: e.option,
 				})) ?? [];
 		} else if (fieldType === 'file') {
