@@ -994,15 +994,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	function updateNodeAtIndex(nodeIndex: number, nodeData: Partial<INodeUi>): void {
 		if (nodeIndex !== -1) {
-			const node = workflow.value.nodes[nodeIndex];
-			workflow.value = {
-				...workflow.value,
-				nodes: [
-					...workflow.value.nodes.slice(0, nodeIndex),
-					{ ...node, ...nodeData },
-					...workflow.value.nodes.slice(nodeIndex + 1),
-				],
-			};
+			Object.assign(workflow.value.nodes[nodeIndex], nodeData);
 		}
 	}
 
@@ -1028,12 +1020,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				issues: remainingNodeIssues,
 			});
 		} else {
-			if (node.issues === undefined) {
-				updateNodeAtIndex(nodeIndex, {
-					issues: {},
-				});
-			}
-
 			updateNodeAtIndex(nodeIndex, {
 				issues: {
 					...node.issues,
@@ -1058,7 +1044,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflow.value.nodes.push(nodeData);
 		// Init node metadata
 		if (!nodeMetadata.value[nodeData.name]) {
-			nodeMetadata.value = { ...nodeMetadata.value, [nodeData.name]: {} as INodeMetadata };
+			nodeMetadata.value[nodeData.name] = {} as INodeMetadata;
 		}
 	}
 
@@ -1163,13 +1149,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			parameters: newParameters as INodeParameters,
 		});
 
-		nodeMetadata.value = {
-			...nodeMetadata.value,
-			[node.name]: {
-				...nodeMetadata.value[node.name],
-				parametersLastUpdatedAt: Date.now(),
-			},
-		} as NodeMetadataMap;
+		nodeMetadata.value[node.name].parametersLastUpdatedAt = Date.now();
 	}
 
 	function setLastNodeParameters(updateInformation: IUpdateInformation): void {
@@ -1489,13 +1469,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function setNodePristine(nodeName: string, isPristine: boolean): void {
-		nodeMetadata.value = {
-			...nodeMetadata.value,
-			[nodeName]: {
-				...nodeMetadata.value[nodeName],
-				pristine: isPristine,
-			},
-		};
+		nodeMetadata.value[nodeName].pristine = isPristine;
 	}
 
 	function resetChatMessages(): void {

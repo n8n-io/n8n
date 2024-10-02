@@ -4,37 +4,26 @@ import {
 	UserUpdateRequestDto,
 } from '@n8n/api-types';
 import { plainToInstance } from 'class-transformer';
-import { type RequestHandler, Response } from 'express';
+import { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
 import type { User } from '@/databases/entities/user';
 import { UserRepository } from '@/databases/repositories/user.repository';
-import { Body, Delete, Get, Patch, Post, RestController } from '@/decorators';
+import { Body, Patch, Post, RestController } from '@/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
 import type { PublicUser } from '@/interfaces';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { MfaService } from '@/mfa/mfa.service';
-import { isApiEnabled } from '@/public-api';
 import { AuthenticatedRequest, MeRequest } from '@/requests';
 import { PasswordUtility } from '@/services/password.utility';
-import { PublicApiKeyService } from '@/services/public-api-key.service';
 import { UserService } from '@/services/user.service';
 import { isSamlLicensedAndEnabled } from '@/sso/saml/saml-helpers';
 
 import { PersonalizationSurveyAnswersV4 } from './survey-answers.dto';
-
-export const isApiEnabledMiddleware: RequestHandler = (_, res, next) => {
-	if (isApiEnabled()) {
-		next();
-	} else {
-		res.status(404).end();
-	}
-};
-
 @RestController('/me')
 export class MeController {
 	constructor(
@@ -46,7 +35,6 @@ export class MeController {
 		private readonly userRepository: UserRepository,
 		private readonly eventService: EventService,
 		private readonly mfaService: MfaService,
-		private readonly publicApiKeyService: PublicApiKeyService,
 	) {}
 
 	/**
@@ -213,39 +201,6 @@ export class MeController {
 			userId: req.user.id,
 			answers: validatedAnswers,
 		});
-
-		return { success: true };
-	}
-
-	/**
-	 * Create an API Key
-	 */
-	@Post('/api-keys', { middlewares: [isApiEnabledMiddleware] })
-	async createAPIKey(req: AuthenticatedRequest) {
-		const newApiKey = await this.publicApiKeyService.createPublicApiKeyForUser(req.user);
-
-		this.eventService.emit('public-api-key-created', { user: req.user, publicApi: false });
-
-		return newApiKey;
-	}
-
-	/**
-	 * Get API keys
-	 */
-	@Get('/api-keys', { middlewares: [isApiEnabledMiddleware] })
-	async getAPIKeys(req: AuthenticatedRequest) {
-		const apiKeys = await this.publicApiKeyService.getRedactedApiKeysForUser(req.user);
-		return apiKeys;
-	}
-
-	/**
-	 * Delete an API Key
-	 */
-	@Delete('/api-keys/:id', { middlewares: [isApiEnabledMiddleware] })
-	async deleteAPIKey(req: MeRequest.DeleteAPIKey) {
-		await this.publicApiKeyService.deleteApiKeyForUser(req.user, req.params.id);
-
-		this.eventService.emit('public-api-key-deleted', { user: req.user, publicApi: false });
 
 		return { success: true };
 	}

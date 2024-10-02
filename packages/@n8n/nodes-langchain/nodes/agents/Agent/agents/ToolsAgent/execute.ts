@@ -1,27 +1,28 @@
-import { BINARY_ENCODING, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
-import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
-
-import type { AgentAction, AgentFinish } from 'langchain/agents';
-import { AgentExecutor, createToolCallingAgent } from 'langchain/agents';
 import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
+import { HumanMessage } from '@langchain/core/messages';
+import type { BaseMessage } from '@langchain/core/messages';
+import type { BaseOutputParser, StructuredOutputParser } from '@langchain/core/output_parsers';
 import type { BaseMessagePromptTemplateLike } from '@langchain/core/prompts';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
-import { omit } from 'lodash';
+import { RunnableSequence } from '@langchain/core/runnables';
 import type { Tool } from '@langchain/core/tools';
 import { DynamicStructuredTool } from '@langchain/core/tools';
+import type { AgentAction, AgentFinish } from 'langchain/agents';
+import { AgentExecutor, createToolCallingAgent } from 'langchain/agents';
+import { OutputFixingParser } from 'langchain/output_parsers';
+import { omit } from 'lodash';
+import { BINARY_ENCODING, jsonParse, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import type { ZodObject } from 'zod';
 import { z } from 'zod';
-import type { BaseOutputParser, StructuredOutputParser } from '@langchain/core/output_parsers';
-import { OutputFixingParser } from 'langchain/output_parsers';
-import { HumanMessage } from '@langchain/core/messages';
-import { RunnableSequence } from '@langchain/core/runnables';
+
+import { SYSTEM_MESSAGE } from './prompt';
 import {
 	isChatInstance,
 	getPromptInputByType,
 	getOptionalOutputParsers,
 	getConnectedTools,
 } from '../../../../../utils/helpers';
-import { SYSTEM_MESSAGE } from './prompt';
 
 function getOutputParserSchema(outputParser: BaseOutputParser): ZodObject<any, any, any, any> {
 	const parserType = outputParser.lc_namespace[outputParser.lc_namespace.length - 1];
@@ -73,6 +74,39 @@ async function extractBinaryMessages(ctx: IExecuteFunctions) {
 	return new HumanMessage({
 		content: [...binaryMessages],
 	});
+}
+/**
+ * Fixes empty content messages in agent steps.
+ *
+ * This function is necessary when using RunnableSequence.from in LangChain.
+ * If a tool doesn't have any arguments, LangChain returns input: '' (empty string).
+ * This can throw an error for some providers (like Anthropic) which expect the input to always be an object.
+ * This function replaces empty string inputs with empty objects to prevent such errors.
+ *
+ * @param steps - The agent steps to fix
+ * @returns The fixed agent steps
+ */
+function fixEmptyContentMessage(steps: AgentFinish | AgentAction[]) {
+	if (!Array.isArray(steps)) return steps;
+
+	steps.forEach((step) => {
+		if ('messageLog' in step && step.messageLog !== undefined) {
+			if (Array.isArray(step.messageLog)) {
+				step.messageLog.forEach((message: BaseMessage) => {
+					if ('content' in message && Array.isArray(message.content)) {
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+						(message.content as Array<{ input?: string | object }>).forEach((content) => {
+							if (content.input === '') {
+								content.input = {};
+							}
+						});
+					}
+				});
+			}
+		}
+	});
+
+	return steps;
 }
 
 export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -156,6 +190,14 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 		// If the steps do not contain multiple outputs, return them as is
 		return agentFinishSteps;
 	}
+
+	// If memory is connected we need to stringify the returnValues so that it can be saved in the memory as a string
+	function handleParsedStepOutput(output: Record<string, unknown>) {
+		return {
+			returnValues: memory ? { output: JSON.stringify(output) } : output,
+			log: 'Final response formatted',
+		};
+	}
 	async function agentStepsParser(
 		steps: AgentFinish | AgentAction[],
 	): Promise<AgentFinish | AgentAction[]> {
@@ -168,24 +210,18 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 					unknown
 				>;
 
-				return {
-					returnValues,
-					log: 'Final response formatted',
-				};
+				return handleParsedStepOutput(returnValues);
 			}
 		}
-		// If the steps are an AgentFinish and the outputParser is defined it must mean that the LLM didn't use `format_final_response` tool so we will parse the output manually
+
+		// If the steps are an AgentFinish and the outputParser is defined it must mean that the LLM didn't use `format_final_response` tool so we will try to parse the output manually
 		if (outputParser && typeof steps === 'object' && (steps as AgentFinish).returnValues) {
 			const finalResponse = (steps as AgentFinish).returnValues;
 			const returnValues = (await outputParser.parse(finalResponse as unknown as string)) as Record<
 				string,
 				unknown
 			>;
-
-			return {
-				returnValues,
-				log: 'Final response formatted',
-			};
+			return handleParsedStepOutput(returnValues);
 		}
 		return handleAgentFinishOutput(steps);
 	}
@@ -233,7 +269,7 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 	});
 	agent.streamRunnable = false;
 
-	const runnableAgent = RunnableSequence.from([agent, agentStepsParser]);
+	const runnableAgent = RunnableSequence.from([agent, agentStepsParser, fixEmptyContentMessage]);
 
 	const executor = AgentExecutor.fromAgentAndTools({
 		agent: runnableAgent,
@@ -272,6 +308,13 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 				formatting_instructions:
 					'IMPORTANT: Always call `format_final_response` to format your final response!',
 			});
+
+			if (memory && outputParser) {
+				const parsedOutput = jsonParse<{ output: Record<string, unknown> }>(
+					response.output as string,
+				);
+				response.output = parsedOutput?.output ?? parsedOutput;
+			}
 
 			returnData.push({
 				json: omit(

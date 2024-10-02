@@ -78,7 +78,7 @@ import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import { useExecutionsStore } from '@/stores/executions.store';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useMessage } from '@/composables/useMessage';
-import { useTitleChange } from '@/composables/useTitleChange';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useTelemetry } from '@/composables/useTelemetry';
@@ -122,7 +122,7 @@ const telemetry = useTelemetry();
 const externalHooks = useExternalHooks();
 const toast = useToast();
 const message = useMessage();
-const { titleReset, titleSet } = useTitleChange();
+const documentTitle = useDocumentTitle();
 const workflowHelpers = useWorkflowHelpers({ router });
 const nodeHelpers = useNodeHelpers();
 
@@ -320,12 +320,14 @@ async function initializeRoute() {
 
 		await initializeWorkspaceForExistingWorkflow(workflowId.value);
 
-		nodeHelpers.updateNodesInputIssues();
-		nodeHelpers.updateNodesCredentialsIssues();
-		nodeHelpers.updateNodesParameterIssues();
-
 		await loadCredentials();
 		await initializeDebugMode();
+
+		void nextTick(() => {
+			nodeHelpers.updateNodesInputIssues();
+			nodeHelpers.updateNodesCredentialsIssues();
+			nodeHelpers.updateNodesParameterIssues();
+		});
 	}
 }
 
@@ -370,7 +372,7 @@ async function initializeWorkspaceForExistingWorkflow(id: string) {
 
 async function openWorkflow(data: IWorkflowDb) {
 	resetWorkspace();
-	titleSet(editableWorkflow.value.name, 'IDLE');
+	workflowHelpers.setDocumentTitle(editableWorkflow.value.name, 'IDLE');
 
 	await initializeWorkspace(data);
 
@@ -1233,7 +1235,7 @@ async function onSourceControlPull() {
 		if (workflowId.value && !uiStore.stateIsDirty) {
 			const workflowData = await workflowsStore.fetchWorkflow(workflowId.value);
 			if (workflowData) {
-				titleSet(workflowData.name, 'IDLE');
+				workflowHelpers.setDocumentTitle(workflowData.name, 'IDLE');
 				await openWorkflow(workflowData);
 			}
 		}
@@ -1387,7 +1389,7 @@ function checkIfRouteIsAllowed() {
 
 async function initializeDebugMode() {
 	if (route.name === VIEWS.EXECUTION_DEBUG) {
-		titleSet(workflowsStore.workflowName, 'DEBUG');
+		workflowHelpers.setDocumentTitle(workflowsStore.workflowName, 'DEBUG');
 
 		if (!workflowsStore.isInDebugMode) {
 			await applyExecutionData(route.params.executionId as string);
@@ -1502,7 +1504,7 @@ onBeforeMount(() => {
 onMounted(() => {
 	canvasStore.startLoading();
 
-	titleReset();
+	documentTitle.reset();
 	resetWorkspace();
 
 	void initializeData().then(() => {

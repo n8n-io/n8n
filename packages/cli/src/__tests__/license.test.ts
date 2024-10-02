@@ -5,7 +5,7 @@ import type { InstanceSettings } from 'n8n-core';
 import config from '@/config';
 import { N8N_VERSION } from '@/constants';
 import { License } from '@/license';
-import type { Logger } from '@/logger';
+import type { Logger } from '@/logging/logger.service';
 
 jest.mock('@n8n_io/license-sdk');
 

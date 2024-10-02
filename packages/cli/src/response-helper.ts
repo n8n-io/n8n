@@ -10,9 +10,9 @@ import picocolors from 'picocolors';
 import Container from 'typedi';
 
 import { inDevelopment } from '@/constants';
+import { Logger } from '@/logging/logger.service';
 
 import { ResponseError } from './errors/response-errors/abstract/response.error';
-import { Logger } from './logger';
 
 export function sendSuccessResponse(
 	res: Response,

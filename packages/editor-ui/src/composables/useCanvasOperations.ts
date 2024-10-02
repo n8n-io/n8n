@@ -589,6 +589,12 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 			workflowsStore.addNode(nodeData);
 
+			workflowsStore.setNodePristine(nodeData.name, true);
+
+			nodeHelpers.updateNodeParameterIssues(nodeData);
+			nodeHelpers.updateNodeCredentialIssues(nodeData);
+			nodeHelpers.updateNodeInputIssues(nodeData);
+
 			if (!options.isAutoAdd) {
 				createConnectionToLastInteractedWithNode(nodeData, options);
 			}
@@ -605,8 +611,6 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 				ndvStore.setActiveNodeName(nodeData.name);
 			}
 		});
-
-		workflowsStore.setNodePristine(nodeData.name, true);
 
 		return nodeData;
 	}
@@ -1137,7 +1141,14 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			connection,
 		);
 
-		if (!isConnectionAllowed(sourceNode, targetNode, mappedConnection[1].type)) {
+		if (
+			!isConnectionAllowed(
+				sourceNode,
+				targetNode,
+				mappedConnection[0].type,
+				mappedConnection[1].type,
+			)
+		) {
 			return;
 		}
 
@@ -1145,8 +1156,10 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			connection: mappedConnection,
 		});
 
-		nodeHelpers.updateNodeInputIssues(sourceNode);
-		nodeHelpers.updateNodeInputIssues(targetNode);
+		void nextTick(() => {
+			nodeHelpers.updateNodeInputIssues(sourceNode);
+			nodeHelpers.updateNodeInputIssues(targetNode);
+		});
 
 		uiStore.stateIsDirty = true;
 	}
@@ -1272,7 +1285,8 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 	function isConnectionAllowed(
 		sourceNode: INodeUi,
 		targetNode: INodeUi,
-		connectionType: NodeConnectionType,
+		sourceConnectionType: NodeConnectionType,
+		targetConnectionType: NodeConnectionType,
 	): boolean {
 		const blocklist = [STICKY_NODE_TYPE];
 
@@ -1280,52 +1294,77 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			return false;
 		}
 
+		if (sourceConnectionType !== targetConnectionType) {
+			return false;
+		}
+
 		if (blocklist.includes(sourceNode.type) || blocklist.includes(targetNode.type)) {
 			return false;
 		}
 
+		const sourceNodeType = nodeTypesStore.getNodeType(sourceNode.type, sourceNode.typeVersion);
+		const sourceWorkflowNode = editableWorkflowObject.value.getNode(sourceNode.name);
+		if (!sourceWorkflowNode) {
+			return false;
+		}
+
+		let sourceNodeOutputs: Array<NodeConnectionType | INodeOutputConfiguration> = [];
+		if (sourceNodeType) {
+			sourceNodeOutputs =
+				NodeHelpers.getNodeOutputs(
+					editableWorkflowObject.value,
+					sourceWorkflowNode,
+					sourceNodeType,
+				) || [];
+		}
+
+		const sourceNodeHasOutputConnectionOfType = !!sourceNodeOutputs.find((output) => {
+			const outputType = typeof output === 'string' ? output : output.type;
+			return outputType === sourceConnectionType;
+		});
+
+		if (!sourceNodeHasOutputConnectionOfType) {
+			return false;
+		}
+
 		const targetNodeType = nodeTypesStore.getNodeType(targetNode.type, targetNode.typeVersion);
-		if (targetNodeType?.inputs?.length) {
-			const workflowNode = editableWorkflowObject.value.getNode(targetNode.name);
-			if (!workflowNode) {
+		const targetWorkflowNode = editableWorkflowObject.value.getNode(targetNode.name);
+		if (!targetWorkflowNode) {
+			return false;
+		}
+
+		let targetNodeInputs: Array<NodeConnectionType | INodeInputConfiguration> = [];
+		if (targetNodeType) {
+			targetNodeInputs =
+				NodeHelpers.getNodeInputs(
+					editableWorkflowObject.value,
+					targetWorkflowNode,
+					targetNodeType,
+				) || [];
+		}
+
+		const targetNodeHasInputConnectionOfType = !!targetNodeInputs.find((input) => {
+			const inputType = typeof input === 'string' ? input : input.type;
+			if (inputType !== targetConnectionType) return false;
+
+			const filter = typeof input === 'object' && 'filter' in input ? input.filter : undefined;
+			if (filter?.nodes.length && !filter.nodes.includes(sourceNode.type)) {
+				toast.showToast({
+					title: i18n.baseText('nodeView.showError.nodeNodeCompatible.title'),
+					message: i18n.baseText('nodeView.showError.nodeNodeCompatible.message', {
+						interpolate: { sourceNodeName: sourceNode.name, targetNodeName: targetNode.name },
+					}),
+					type: 'error',
+					duration: 5000,
+				});
+
 				return false;
 			}
 
-			let inputs: Array<NodeConnectionType | INodeInputConfiguration> = [];
-			if (targetNodeType) {
-				inputs =
-					NodeHelpers.getNodeInputs(editableWorkflowObject.value, workflowNode, targetNodeType) ||
-					[];
-			}
+			return true;
+		});
 
-			let targetHasConnectionTypeAsInput = false;
-			for (const input of inputs) {
-				const inputType = typeof input === 'string' ? input : input.type;
-				if (inputType === connectionType) {
-					if (typeof input === 'object' && 'filter' in input && input.filter?.nodes.length) {
-						if (!input.filter.nodes.includes(sourceNode.type)) {
-							// this.dropPrevented = true;
-							toast.showToast({
-								title: i18n.baseText('nodeView.showError.nodeNodeCompatible.title'),
-								message: i18n.baseText('nodeView.showError.nodeNodeCompatible.message', {
-									interpolate: { sourceNodeName: sourceNode.name, targetNodeName: targetNode.name },
-								}),
-								type: 'error',
-								duration: 5000,
-							});
-
-							return false;
-						}
-					}
-
-					targetHasConnectionTypeAsInput = true;
-				}
-			}
-
-			return targetHasConnectionTypeAsInput;
-		}
-
-		return false;
+		return targetNodeHasInputConnectionOfType;
 	}
 
 	function addConnections(connections: CanvasConnectionCreateData[] | CanvasConnection[]) {

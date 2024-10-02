@@ -1,7 +1,7 @@
 import { jsonParse } from 'n8n-workflow';
 import Container from 'typedi';
 
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { WORKER_RESPONSE_PUBSUB_CHANNEL } from '@/scaling/constants';
 import type { PubSub } from '@/scaling/pubsub/pubsub.types';
 

@@ -2,24 +2,36 @@
 import CanvasHandlePlus from '@/components/canvas/elements/handles/render-types/parts/CanvasHandlePlus.vue';
 import { useCanvasNodeHandle } from '@/composables/useCanvasNodeHandle';
 import { NodeConnectionType } from 'n8n-workflow';
-import { computed, ref } from 'vue';
+import { computed, ref, useCssModule } from 'vue';
 
 const emit = defineEmits<{
 	add: [];
 }>();
 
-const { label, isConnected, isConnecting, type } = useCanvasNodeHandle();
+const $style = useCssModule();
+
+const { label, isConnected, isConnecting, isRequired, type, runData } = useCanvasNodeHandle();
 
 const handleClasses = 'target';
+
+const classes = computed(() => ({
+	'canvas-node-handle-non-main-input': true,
+	[$style.handle]: true,
+	[$style.required]: isRequired.value,
+}));
 
 const supportsMultipleConnections = computed(() => type.value === NodeConnectionType.AiTool);
 
 const isHandlePlusAvailable = computed(
 	() => !isConnected.value || supportsMultipleConnections.value,
 );
+
 const isHandlePlusVisible = computed(
 	() => !isConnecting.value || isHovered.value || supportsMultipleConnections.value,
 );
+
+const plusType = computed(() => (runData.value ? 'success' : 'ai'));
+
 const isHovered = ref(false);
 
 function onMouseEnter() {
@@ -35,7 +47,7 @@ function onClickAdd() {
 }
 </script>
 <template>
-	<div :class="['canvas-node-handle-non-main-input', $style.handle]">
+	<div :class="classes">
 		<div :class="[$style.label]">{{ label }}</div>
 		<CanvasHandleDiamond :handle-classes="handleClasses" />
 		<Transition name="canvas-node-handle-non-main-input">
@@ -43,6 +55,7 @@ function onClickAdd() {
 				v-if="isHandlePlusAvailable"
 				v-show="isHandlePlusVisible"
 				:handle-classes="handleClasses"
+				:type="plusType"
 				position="bottom"
 				@mouseenter="onMouseEnter"
 				@mouseleave="onMouseLeave"
@@ -66,11 +79,16 @@ function onClickAdd() {
 	left: 50%;
 	transform: translate(-50%, 0);
 	font-size: var(--font-size-2xs);
-	color: var(--color-foreground-xdark);
+	color: var(--node-type-supplemental-color);
 	background: var(--color-canvas-label-background);
 	z-index: 1;
 	text-align: center;
 	white-space: nowrap;
+}
+
+.required .label::after {
+	content: '*';
+	color: var(--color-danger);
 }
 </style>
 
