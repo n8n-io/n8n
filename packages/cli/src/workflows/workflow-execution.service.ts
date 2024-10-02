@@ -89,13 +89,7 @@ export class WorkflowExecutionService {
 	}
 
 	async executeManually(
-		{
-			workflowData,
-			runData,
-			startNodes,
-			destinationNode,
-			postHogSessionId,
-		}: WorkflowRequest.ManualRunPayload,
+		{ workflowData, runData, startNodes, destinationNode }: WorkflowRequest.ManualRunPayload,
 		user: User,
 		pushRef?: string,
 		partialExecutionVersion?: string,
@@ -143,7 +137,6 @@ export class WorkflowExecutionService {
 			workflowData,
 			userId: user.id,
 			partialExecutionVersion: partialExecutionVersion ?? '0',
-			postHogSessionId,
 		};
 
 		const hasRunData = (node: INode) => runData !== undefined && !!runData[node.name];

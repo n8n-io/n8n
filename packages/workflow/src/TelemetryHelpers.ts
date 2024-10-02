@@ -140,7 +140,6 @@ export function generateNodesGraph(
 		nodeIdMap?: { [curr: string]: string };
 		isCloudDeployment?: boolean;
 		runData?: IRunData;
-		postHogSessionId?: string;
 	},
 ): INodesGraphResult {
 	const { runData } = options ?? {};

@@ -85,7 +85,6 @@ export type RelayEventMap = {
 		userId?: string;
 		workflow: IWorkflowBase;
 		runData?: IRun;
-		postHogSessionId?: string;
 	};
 
 	'workflow-sharing-updated': {
