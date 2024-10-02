@@ -202,6 +202,7 @@ export interface IStartRunData {
 	startNodes?: StartNodeData[];
 	destinationNode?: string;
 	runData?: IRunData;
+	postHogEventId?: string;
 }
 
 export interface ITableData {

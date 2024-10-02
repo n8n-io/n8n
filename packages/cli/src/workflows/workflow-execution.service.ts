@@ -94,7 +94,7 @@ export class WorkflowExecutionService {
 			runData,
 			startNodes,
 			destinationNode,
-			postHogSessionId,
+			postHogEventId,
 		}: WorkflowRequest.ManualRunPayload,
 		user: User,
 		pushRef?: string,
@@ -143,7 +143,7 @@ export class WorkflowExecutionService {
 			workflowData,
 			userId: user.id,
 			partialExecutionVersion: partialExecutionVersion ?? '0',
-			postHogSessionId,
+			postHogEventId,
 		};
 
 		const hasRunData = (node: INode) => runData !== undefined && !!runData[node.name];

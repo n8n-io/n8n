@@ -163,7 +163,7 @@ export class WorkflowRunner {
 						executionId,
 						userId: data.userId,
 						runData: executionData,
-						postHogSessionId: data.postHogSessionId,
+						postHogEventId: data.postHogEventId,
 					});
 					if (this.externalHooks.exists('workflow.postExecute')) {
 						try {

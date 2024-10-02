@@ -578,7 +578,7 @@ export class TelemetryEventRelay extends EventRelay {
 		workflow,
 		runData,
 		userId,
-		postHogSessionId,
+		postHogEventId,
 	}: RelayEventMap['workflow-post-execute']) {
 		if (!workflow.id) {
 			return;
@@ -679,7 +679,7 @@ export class TelemetryEventRelay extends EventRelay {
 					error_node_id: telemetryProperties.error_node_id as string,
 					webhook_domain: null,
 					sharing_role: userRole,
-					posthog_session_id: postHogSessionId,
+					posthog_event_id: postHogEventId,
 				};
 
 				if (!manualExecEventProperties.node_graph_string) {
