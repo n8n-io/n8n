@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { getReferencedNodes } from '../nodeTypesUtils';
 import type { INode } from 'n8n-workflow';
+import { useAIAssistantHelpers } from '../useAIAssistantHelpers';
+import { createTestingPinia } from '@pinia/testing';
+import { setActivePinia } from 'pinia';
 
 const referencedNodesTestCases: Array<{ caseName: string; node: INode; expected: string[] }> = [
 	{
@@ -376,8 +378,15 @@ const referencedNodesTestCases: Array<{ caseName: string; node: INode; expected:
 ];
 
 describe.each(referencedNodesTestCases)('getReferencedNodes', (testCase) => {
+	let aiAssistantHelpers: ReturnType<typeof useAIAssistantHelpers>;
+
+	beforeEach(() => {
+		setActivePinia(createTestingPinia());
+		aiAssistantHelpers = useAIAssistantHelpers();
+	});
+
 	const caseName = testCase.caseName;
 	it(`${caseName}`, () => {
-		expect(getReferencedNodes(testCase.node)).toEqual(testCase.expected);
+		expect(aiAssistantHelpers.getReferencedNodes(testCase.node)).toEqual(testCase.expected);
 	});
 });
