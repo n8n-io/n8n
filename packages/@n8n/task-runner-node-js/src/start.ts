@@ -1,4 +1,6 @@
 import * as a from 'node:assert/strict';
+import { ensureError } from 'n8n-workflow';
+
 import { JsTaskRunner } from './code';
 import { authenticate } from './authenticator';
 
@@ -39,6 +41,10 @@ void (async function start() {
 		});
 	}
 
-	const wsUrl = `ws://${config.n8nUri}/rest/runners/_ws`;
+	const wsUrl = `ws://${config.n8nUri}/runners/_ws`;
 	_runner = new JsTaskRunner('javascript', wsUrl, grantToken, 5);
-})();
+})().catch((e) => {
+	const error = ensureError(e);
+	console.error('Task runner failed to start', { error });
+	process.exit(1);
+});
