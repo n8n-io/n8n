@@ -239,7 +239,7 @@ class AIParametersParser {
 				return trimmed
 					.slice(1, -1)
 					.replace(/\\'/g, "'")
-					.replace(/\\"/g, '`')
+					.replace(/\\`/g, '`')
 					.replace(/\\"/g, '"')
 					.replace(/\\\\/g, '\\');
 			}
