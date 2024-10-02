@@ -204,7 +204,18 @@ export class RemoveDuplicatesV2 implements INodeType {
 					}
 
 					const maxEntries = this.getNodeParameter('options.historySize', 0, DEFAULT_MAX_ENTRIES);
+					const maxEntriesNum = Number(maxEntries);
 
+					const currentProcessedDataCount = await this.helpers.getProcessedDataCount(
+						context as ProcessedDataContext,
+						{ mode: 'entries', maxEntries } as ICheckProcessedOptions,
+					);
+					if (currentProcessedDataCount + items.length > maxEntriesNum) {
+						throw new NodeOperationError(
+							this.getNode(),
+							'The number of items to be processed exceeds the maximum history size. Please increase the history size or reduce the number of items to be processed.',
+						);
+					}
 					const itemsProcessed = await this.helpers.checkProcessedAndRecord(
 						Object.keys(itemMapping),
 						context as ProcessedDataContext,
@@ -227,8 +238,7 @@ export class RemoveDuplicatesV2 implements INodeType {
 							.flat(),
 					);
 
-					const maxEntriesNum = Number(maxEntries);
-					if (maxEntriesNum > 0 && processedDataCount / maxEntriesNum > 0.8) {
+					if (maxEntriesNum > 0 && processedDataCount / maxEntriesNum > 0.5) {
 						return new NodeExecutionOutput(returnData, [
 							{
 								message: `Some duplicates may be not be removed since you're approaching the maximum history size (${maxEntriesNum} items). You can raise this limit using the ‘history size’ option.`,

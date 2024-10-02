@@ -97,7 +97,7 @@ export class ProcessedDataHelper implements IProcessedDataManager {
 
 		if (processedData && processedData.value.mode !== options.mode) {
 			throw new ApplicationError(
-				'"Keep items where" is not compatible. Data got originally saved with a different "Keep items where"\'s value than the one used now. Try "Clean Database" to reset.',
+				'Deduplication data was originally saved with an incompatible setting of the ‘Keep Items Where’ parameter. ’Try Clean Database’ operation to reset.',
 			);
 		}
 
@@ -155,7 +155,7 @@ export class ProcessedDataHelper implements IProcessedDataManager {
 
 		if (processedData && processedData.value.mode !== options.mode) {
 			throw new ApplicationError(
-				'"Keep items where" is not compatible. Data got originally saved with a different "Keep items where"\'s value than the one used now. Try "Clean Database" to reset.',
+				'Deduplication data was originally saved with an incompatible setting of the ‘Keep Items Where’ parameter. ’Try Clean Database’ operation to reset.',
 			);
 		}
 
