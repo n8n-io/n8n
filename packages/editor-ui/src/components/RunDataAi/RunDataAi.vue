@@ -1,67 +1,3 @@
-<template>
-	<div v-if="aiData" :class="$style.container">
-		<div :class="{ [$style.tree]: true, [$style.slim]: slim }">
-			<ElTree
-				:data="executionTree"
-				:props="{ label: 'node' }"
-				default-expand-all
-				:indent="12"
-				:expand-on-click-node="false"
-				data-test-id="lm-chat-logs-tree"
-				@node-click="onItemClick"
-			>
-				<template #default="{ node, data }">
-					<div
-						:class="{
-							[$style.treeNode]: true,
-							[$style.isSelected]: isTreeNodeSelected(data),
-						}"
-						:data-tree-depth="data.depth"
-						:style="{ '--item-depth': data.depth }"
-					>
-						<button
-							v-if="data.children.length"
-							:class="$style.treeToggle"
-							@click="toggleTreeItem(node)"
-						>
-							<font-awesome-icon :icon="node.expanded ? 'angle-down' : 'angle-up'" />
-						</button>
-						<n8n-tooltip :disabled="!slim" placement="right">
-							<template #content>
-								{{ node.label }}
-							</template>
-							<span :class="$style.leafLabel">
-								<NodeIcon :node-type="getNodeType(data.node)!" :size="17" />
-								<span v-if="!slim" v-text="node.label" />
-							</span>
-						</n8n-tooltip>
-					</div>
-				</template>
-			</ElTree>
-		</div>
-		<div :class="$style.runData">
-			<div v-if="selectedRun.length === 0" :class="$style.empty">
-				<n8n-text size="large">
-					{{
-						$locale.baseText('ndv.output.ai.empty', {
-							interpolate: {
-								node: props.node.name,
-							},
-						})
-					}}
-				</n8n-text>
-			</div>
-			<div
-				v-for="(data, index) in selectedRun"
-				:key="`${data.node}__${data.runIndex}__index`"
-				data-test-id="lm-chat-logs-entry"
-			>
-				<RunDataAiContent :input-data="data" :content-index="index" />
-			</div>
-		</div>
-	</div>
-</template>
-
 <script lang="ts" setup>
 import type { Ref } from 'vue';
 import { computed, ref, watch } from 'vue';
@@ -89,7 +25,7 @@ interface TreeNode {
 }
 export interface Props {
 	node: INodeUi;
-	runIndex: number;
+	runIndex?: number;
 	hideTitle?: boolean;
 	slim?: boolean;
 }
@@ -268,6 +204,70 @@ const executionTree = computed<TreeNode[]>(() => {
 
 watch(() => props.runIndex, selectFirst, { immediate: true });
 </script>
+
+<template>
+	<div v-if="aiData" :class="$style.container">
+		<div :class="{ [$style.tree]: true, [$style.slim]: slim }">
+			<ElTree
+				:data="executionTree"
+				:props="{ label: 'node' }"
+				default-expand-all
+				:indent="12"
+				:expand-on-click-node="false"
+				data-test-id="lm-chat-logs-tree"
+				@node-click="onItemClick"
+			>
+				<template #default="{ node, data }">
+					<div
+						:class="{
+							[$style.treeNode]: true,
+							[$style.isSelected]: isTreeNodeSelected(data),
+						}"
+						:data-tree-depth="data.depth"
+						:style="{ '--item-depth': data.depth }"
+					>
+						<button
+							v-if="data.children.length"
+							:class="$style.treeToggle"
+							@click="toggleTreeItem(node)"
+						>
+							<font-awesome-icon :icon="node.expanded ? 'angle-down' : 'angle-up'" />
+						</button>
+						<n8n-tooltip :disabled="!slim" placement="right">
+							<template #content>
+								{{ node.label }}
+							</template>
+							<span :class="$style.leafLabel">
+								<NodeIcon :node-type="getNodeType(data.node)!" :size="17" />
+								<span v-if="!slim" v-text="node.label" />
+							</span>
+						</n8n-tooltip>
+					</div>
+				</template>
+			</ElTree>
+		</div>
+		<div :class="$style.runData">
+			<div v-if="selectedRun.length === 0" :class="$style.empty">
+				<n8n-text size="large">
+					{{
+						$locale.baseText('ndv.output.ai.empty', {
+							interpolate: {
+								node: props.node.name,
+							},
+						})
+					}}
+				</n8n-text>
+			</div>
+			<div
+				v-for="(data, index) in selectedRun"
+				:key="`${data.node}__${data.runIndex}__index`"
+				data-test-id="lm-chat-logs-entry"
+			>
+				<RunDataAiContent :input-data="data" :content-index="index" />
+			</div>
+		</div>
+	</div>
+</template>
 
 <style lang="scss" module>
 .treeToggle {

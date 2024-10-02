@@ -1,4 +1,5 @@
 import { type ICredentialType } from 'n8n-workflow';
+
 import {
 	AGENT_NODE_NAME,
 	AI_TOOL_HTTP_NODE_NAME,
@@ -112,13 +113,13 @@ describe('Credentials', () => {
 		workflowPage.getters.nodeCredentialsSelect().should('have.length', 2);
 
 		workflowPage.getters.nodeCredentialsSelect().first().click();
-		getVisibleSelect().find('li').last().click();
+		getVisibleSelect().find('li').contains('Create New Credential').click();
 		// This one should show auth type selector
 		credentialsModal.getters.credentialAuthTypeRadioButtons().should('have.length', 2);
 		cy.get('body').type('{esc}');
 
 		workflowPage.getters.nodeCredentialsSelect().last().click();
-		getVisibleSelect().find('li').last().click();
+		getVisibleSelect().find('li').contains('Create New Credential').click();
 		// This one should not show auth type selector
 		credentialsModal.getters.credentialsAuthTypeSelector().should('not.exist');
 	});

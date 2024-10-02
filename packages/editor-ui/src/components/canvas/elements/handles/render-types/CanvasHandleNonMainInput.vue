@@ -2,48 +2,108 @@
 import CanvasHandlePlus from '@/components/canvas/elements/handles/render-types/parts/CanvasHandlePlus.vue';
 import { useCanvasNodeHandle } from '@/composables/useCanvasNodeHandle';
 import { NodeConnectionType } from 'n8n-workflow';
-import { computed } from 'vue';
+import { computed, ref, useCssModule } from 'vue';
 
 const emit = defineEmits<{
 	add: [];
 }>();
 
-const { label, connected, type } = useCanvasNodeHandle();
+const $style = useCssModule();
 
-const isAddButtonVisible = computed(
-	() => !connected.value || type.value === NodeConnectionType.AiTool,
+const { label, isConnected, isConnecting, isRequired, type, runData } = useCanvasNodeHandle();
+
+const handleClasses = 'target';
+
+const classes = computed(() => ({
+	'canvas-node-handle-non-main-input': true,
+	[$style.handle]: true,
+	[$style.required]: isRequired.value,
+}));
+
+const supportsMultipleConnections = computed(() => type.value === NodeConnectionType.AiTool);
+
+const isHandlePlusAvailable = computed(
+	() => !isConnected.value || supportsMultipleConnections.value,
 );
+
+const isHandlePlusVisible = computed(
+	() => !isConnecting.value || isHovered.value || supportsMultipleConnections.value,
+);
+
+const plusType = computed(() => (runData.value ? 'success' : 'ai'));
+
+const isHovered = ref(false);
+
+function onMouseEnter() {
+	isHovered.value = true;
+}
+
+function onMouseLeave() {
+	isHovered.value = false;
+}
 
 function onClickAdd() {
 	emit('add');
 }
 </script>
 <template>
-	<div :class="['canvas-node-handle-non-main', $style.handle]">
-		<div :class="$style.label">{{ label }}</div>
-		<CanvasHandlePlus v-if="isAddButtonVisible" :class="$style.plus" @click="onClickAdd" />
+	<div :class="classes">
+		<div :class="[$style.label]">{{ label }}</div>
+		<CanvasHandleDiamond :handle-classes="handleClasses" />
+		<Transition name="canvas-node-handle-non-main-input">
+			<CanvasHandlePlus
+				v-if="isHandlePlusAvailable"
+				v-show="isHandlePlusVisible"
+				:handle-classes="handleClasses"
+				:type="plusType"
+				position="bottom"
+				@mouseenter="onMouseEnter"
+				@mouseleave="onMouseLeave"
+				@click:plus="onClickAdd"
+			/>
+		</Transition>
 	</div>
 </template>
 
 <style lang="scss" module>
 .handle {
-	:global(.vue-flow__handle:not(.connectionindicator)) + & {
-		display: none;
-	}
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
 }
 
 .label {
 	position: absolute;
-	top: 18px;
+	top: 20px;
 	left: 50%;
 	transform: translate(-50%, 0);
 	font-size: var(--font-size-2xs);
-	color: var(--color-foreground-xdark);
-	background: var(--color-background-light);
+	color: var(--node-type-supplemental-color);
+	background: var(--color-canvas-label-background);
 	z-index: 1;
+	text-align: center;
+	white-space: nowrap;
 }
 
-.plus {
-	transform: rotate(90deg) translateX(50%);
+.required .label::after {
+	content: '*';
+	color: var(--color-danger);
+}
+</style>
+
+<style lang="scss">
+.canvas-node-handle-non-main-input-enter-active,
+.canvas-node-handle-non-main-input-leave-active {
+	transform-origin: center 0;
+	transition-property: transform, opacity;
+	transition-duration: 0.2s;
+	transition-timing-function: ease;
+}
+
+.canvas-node-handle-non-main-input-enter-from,
+.canvas-node-handle-non-main-input-leave-to {
+	transform: scale(0);
+	opacity: 0;
 }
 </style>

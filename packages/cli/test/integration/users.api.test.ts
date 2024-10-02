@@ -3,31 +3,31 @@ import { v4 as uuid } from 'uuid';
 
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { UsersController } from '@/controllers/users.controller';
-import type { User } from '@db/entities/User';
-import { ProjectRepository } from '@db/repositories/project.repository';
-import { ProjectRelationRepository } from '@db/repositories/projectRelation.repository';
-import { UserRepository } from '@db/repositories/user.repository';
-import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
-import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
-import { CacheService } from '@/services/cache/cache.service';
+import type { User } from '@/databases/entities/user';
+import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
+import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
+import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
+import { UserRepository } from '@/databases/repositories/user.repository';
 import { ExecutionService } from '@/executions/execution.service';
+import { CacheService } from '@/services/cache/cache.service';
+import { Telemetry } from '@/telemetry';
 
+import { SUCCESS_RESPONSE_BODY } from './shared/constants';
 import {
 	getCredentialById,
 	saveCredential,
 	shareCredentialWithUsers,
 } from './shared/db/credentials';
+import { createTeamProject, getPersonalProject, linkUserToProject } from './shared/db/projects';
 import { createAdmin, createMember, createOwner, getUserById } from './shared/db/users';
 import { createWorkflow, getWorkflowById, shareWorkflowWithUsers } from './shared/db/workflows';
-import { SUCCESS_RESPONSE_BODY } from './shared/constants';
-import { validateUser } from './shared/utils/users';
 import { randomCredentialPayload } from './shared/random';
-import * as utils from './shared/utils/';
-import * as testDb from './shared/testDb';
-import { mockInstance } from '../shared/mocking';
+import * as testDb from './shared/test-db';
 import type { SuperAgentTest } from './shared/types';
-import { createTeamProject, getPersonalProject, linkUserToProject } from './shared/db/projects';
-import { Telemetry } from '@/telemetry';
+import * as utils from './shared/utils/';
+import { validateUser } from './shared/utils/users';
+import { mockInstance } from '../shared/mocking';
 
 mockInstance(Telemetry);
 mockInstance(ExecutionService);
@@ -672,9 +672,6 @@ describe('PATCH /users/:id/role', () => {
 		])('%s', async (_, payload) => {
 			const response = await adminAgent.patch(`/users/${member.id}/role`).send(payload);
 			expect(response.statusCode).toBe(400);
-			expect(response.body.message).toBe(
-				'newRoleName must be one of the following values: global:admin, global:member',
-			);
 		});
 	});
 

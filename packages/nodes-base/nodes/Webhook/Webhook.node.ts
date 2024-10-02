@@ -65,7 +65,7 @@ export class Webhook extends Node {
 			activationHint:
 				"Once you've finished building your workflow, run it without having to click this button by using the production webhook URL.",
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
 		outputs: `={{(${configuredOutputs})($parameter)}}`,
 		credentials: credentialsProperty(this.authPropertyName),
@@ -292,10 +292,10 @@ export class Webhook extends Node {
 			const processFiles: MultiPartFormData.File[] = [];
 			let multiFile = false;
 			if (Array.isArray(files[key])) {
-				processFiles.push(...(files[key] as MultiPartFormData.File[]));
+				processFiles.push(...files[key]);
 				multiFile = true;
 			} else {
-				processFiles.push(files[key] as MultiPartFormData.File);
+				processFiles.push(files[key]);
 			}
 
 			let fileCount = 0;

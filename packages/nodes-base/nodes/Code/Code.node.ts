@@ -1,12 +1,16 @@
-import type {
-	CodeExecutionMode,
-	CodeNodeEditorLanguage,
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
+import {
+	NodeConnectionType,
+	type CodeExecutionMode,
+	type CodeNodeEditorLanguage,
+	type IExecuteFunctions,
+	type INodeExecutionData,
+	type INodeType,
+	type INodeTypeDescription,
 } from 'n8n-workflow';
 import set from 'lodash/set';
+import Container from 'typedi';
+import { TaskRunnersConfig } from '@n8n/config';
+
 import { javascriptCodeDescription } from './descriptions/JavascriptCodeDescription';
 import { pythonCodeDescription } from './descriptions/PythonCodeDescription';
 import { JavaScriptSandbox } from './JavaScriptSandbox';
@@ -28,8 +32,8 @@ export class Code implements INodeType {
 		defaults: {
 			name: 'Code',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		parameterPane: 'wide',
 		properties: [
 			{
@@ -91,6 +95,8 @@ export class Code implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions) {
+		const runnersConfig = Container.get(TaskRunnersConfig);
+
 		const nodeMode = this.getNodeParameter('mode', 0) as CodeExecutionMode;
 		const workflowMode = this.getMode();
 
@@ -100,6 +106,22 @@ export class Code implements INodeType {
 				? (this.getNodeParameter('language', 0) as CodeNodeEditorLanguage)
 				: 'javaScript';
 		const codeParameterName = language === 'python' ? 'pythonCode' : 'jsCode';
+
+		if (!runnersConfig.disabled && language === 'javaScript') {
+			// TODO: once per item
+			const code = this.getNodeParameter(codeParameterName, 0) as string;
+			const items = await this.startJob<INodeExecutionData[]>(
+				{ javaScript: 'javascript', python: 'python' }[language] ?? language,
+				{
+					code,
+					nodeMode,
+					workflowMode,
+				},
+				0,
+			);
+
+			return [items];
+		}
 
 		const getSandbox = (index = 0) => {
 			const code = this.getNodeParameter(codeParameterName, index) as string;
@@ -134,7 +156,7 @@ export class Code implements INodeType {
 			try {
 				items = (await sandbox.runCodeAllItems()) as INodeExecutionData[];
 			} catch (error) {
-				if (!this.continueOnFail(error)) {
+				if (!this.continueOnFail()) {
 					set(error, 'node', node);
 					throw error;
 				}
@@ -162,7 +184,7 @@ export class Code implements INodeType {
 			try {
 				result = await sandbox.runCodeEachItem();
 			} catch (error) {
-				if (!this.continueOnFail(error)) {
+				if (!this.continueOnFail()) {
 					set(error, 'node', node);
 					throw error;
 				}

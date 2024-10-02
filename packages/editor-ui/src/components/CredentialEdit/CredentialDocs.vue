@@ -1,27 +1,3 @@
-<template>
-	<div :class="$style.docs">
-		<div :class="$style.header">
-			<p :class="$style.title">{{ i18n.baseText('credentialEdit.credentialEdit.setupGuide') }}</p>
-			<n8n-link
-				:class="$style.docsLink"
-				theme="text"
-				new-window
-				:to="documentationUrl"
-				@click="onDocumentationUrlClick"
-			>
-				{{ i18n.baseText('credentialEdit.credentialEdit.docs') }}
-				<n8n-icon icon="external-link-alt" size="small" :class="$style.externalIcon" />
-			</n8n-link>
-		</div>
-		<VueMarkdown :source="docs" :options="{ html: true }" :class="$style.markdown" />
-		<Feedback
-			:class="$style.feedback"
-			:model-value="submittedFeedback"
-			@update:model-value="onFeedback"
-		/>
-	</div>
-</template>
-
 <script setup lang="ts">
 import Feedback from '@/components/Feedback.vue';
 import { useI18n } from '@/composables/useI18n';
@@ -65,6 +41,30 @@ function onDocumentationUrlClick(): void {
 	});
 }
 </script>
+
+<template>
+	<div :class="$style.docs">
+		<div :class="$style.header">
+			<p :class="$style.title">{{ i18n.baseText('credentialEdit.credentialEdit.setupGuide') }}</p>
+			<n8n-link
+				:class="$style.docsLink"
+				theme="text"
+				new-window
+				:to="documentationUrl"
+				@click="onDocumentationUrlClick"
+			>
+				{{ i18n.baseText('credentialEdit.credentialEdit.docs') }}
+				<n8n-icon icon="external-link-alt" size="small" :class="$style.externalIcon" />
+			</n8n-link>
+		</div>
+		<VueMarkdown :source="docs" :options="{ html: true }" :class="$style.markdown" />
+		<Feedback
+			:class="$style.feedback"
+			:model-value="submittedFeedback"
+			@update:model-value="onFeedback"
+		/>
+	</div>
+</template>
 
 <style lang="scss" module>
 .docs {

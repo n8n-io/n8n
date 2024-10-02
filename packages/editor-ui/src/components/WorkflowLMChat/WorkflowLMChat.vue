@@ -1,80 +1,3 @@
-<template>
-	<Modal
-		:name="WORKFLOW_LM_CHAT_MODAL_KEY"
-		width="80%"
-		max-height="80%"
-		:title="
-			locale.baseText('chat.window.title', {
-				interpolate: {
-					nodeName: connectedNode?.name || locale.baseText('chat.window.noChatNode'),
-				},
-			})
-		"
-		:event-bus="modalBus"
-		:scrollable="false"
-		@keydown.stop
-	>
-		<template #content>
-			<div
-				:class="$style.workflowLmChat"
-				data-test-id="workflow-lm-chat-dialog"
-				:style="messageVars"
-			>
-				<MessagesList :messages="messages" :class="[$style.messages, 'ignore-key-press']">
-					<template #beforeMessage="{ message }">
-						<MessageOptionTooltip
-							v-if="message.sender === 'bot' && !message.id.includes('preload')"
-							placement="right"
-						>
-							{{ locale.baseText('chat.window.chat.chatMessageOptions.executionId') }}:
-							<a href="#" @click="displayExecution(message.id)">{{ message.id }}</a>
-						</MessageOptionTooltip>
-
-						<MessageOptionAction
-							v-if="isTextMessage(message) && message.sender === 'user'"
-							data-test-id="repost-message-button"
-							icon="redo"
-							:label="locale.baseText('chat.window.chat.chatMessageOptions.repostMessage')"
-							placement="left"
-							@click="repostMessage(message)"
-						/>
-
-						<MessageOptionAction
-							v-if="isTextMessage(message) && message.sender === 'user'"
-							data-test-id="reuse-message-button"
-							icon="copy"
-							:label="locale.baseText('chat.window.chat.chatMessageOptions.reuseMessage')"
-							placement="left"
-							@click="reuseMessage(message)"
-						/>
-					</template>
-				</MessagesList>
-				<div v-if="node" :class="$style.logsWrapper" data-test-id="lm-chat-logs">
-					<n8n-text :class="$style.logsTitle" tag="p" size="large">{{
-						locale.baseText('chat.window.logs')
-					}}</n8n-text>
-					<div :class="$style.logs">
-						<LazyRunDataAi :key="messages.length" :node="node" hide-title slim />
-					</div>
-				</div>
-			</div>
-		</template>
-		<template #footer>
-			<ChatInput
-				:class="$style.messagesInput"
-				data-test-id="lm-chat-inputs"
-				@arrow-key-down="onArrowKeyDown"
-			/>
-			<n8n-info-tip class="mt-s">
-				{{ locale.baseText('chatEmbed.infoTip.description') }}
-				<a @click="uiStore.openModal(CHAT_EMBED_MODAL_KEY)">
-					{{ locale.baseText('chatEmbed.infoTip.link') }}
-				</a>
-			</n8n-info-tip>
-		</template>
-	</Modal>
-</template>
-
 <script setup lang="ts">
 import type { Ref } from 'vue';
 import { defineAsyncComponent, provide, ref, computed, onMounted, nextTick } from 'vue';
@@ -589,6 +512,83 @@ onMounted(() => {
 });
 </script>
 
+<template>
+	<Modal
+		:name="WORKFLOW_LM_CHAT_MODAL_KEY"
+		width="80%"
+		max-height="80%"
+		:title="
+			locale.baseText('chat.window.title', {
+				interpolate: {
+					nodeName: connectedNode?.name || locale.baseText('chat.window.noChatNode'),
+				},
+			})
+		"
+		:event-bus="modalBus"
+		:scrollable="false"
+		@keydown.stop
+	>
+		<template #content>
+			<div
+				:class="$style.workflowLmChat"
+				data-test-id="workflow-lm-chat-dialog"
+				:style="messageVars"
+			>
+				<MessagesList :messages="messages" :class="[$style.messages, 'ignore-key-press']">
+					<template #beforeMessage="{ message }">
+						<MessageOptionTooltip
+							v-if="message.sender === 'bot' && !message.id.includes('preload')"
+							placement="right"
+						>
+							{{ locale.baseText('chat.window.chat.chatMessageOptions.executionId') }}:
+							<a href="#" @click="displayExecution(message.id)">{{ message.id }}</a>
+						</MessageOptionTooltip>
+
+						<MessageOptionAction
+							v-if="isTextMessage(message) && message.sender === 'user'"
+							data-test-id="repost-message-button"
+							icon="redo"
+							:label="locale.baseText('chat.window.chat.chatMessageOptions.repostMessage')"
+							placement="left"
+							@click="repostMessage(message)"
+						/>
+
+						<MessageOptionAction
+							v-if="isTextMessage(message) && message.sender === 'user'"
+							data-test-id="reuse-message-button"
+							icon="copy"
+							:label="locale.baseText('chat.window.chat.chatMessageOptions.reuseMessage')"
+							placement="left"
+							@click="reuseMessage(message)"
+						/>
+					</template>
+				</MessagesList>
+				<div v-if="node" :class="$style.logsWrapper" data-test-id="lm-chat-logs">
+					<n8n-text :class="$style.logsTitle" tag="p" size="large">{{
+						locale.baseText('chat.window.logs')
+					}}</n8n-text>
+					<div :class="$style.logs">
+						<LazyRunDataAi :key="messages.length" :node="node" hide-title slim />
+					</div>
+				</div>
+			</div>
+		</template>
+		<template #footer>
+			<ChatInput
+				:class="$style.messagesInput"
+				data-test-id="lm-chat-inputs"
+				@arrow-key-down="onArrowKeyDown"
+			/>
+			<n8n-info-tip class="mt-s">
+				{{ locale.baseText('chatEmbed.infoTip.description') }}
+				<a @click="uiStore.openModal(CHAT_EMBED_MODAL_KEY)">
+					{{ locale.baseText('chatEmbed.infoTip.link') }}
+				</a>
+			</n8n-info-tip>
+		</template>
+	</Modal>
+</template>
+
 <style lang="scss">
 .chat-message-markdown ul,
 .chat-message-markdown ol {
@@ -678,6 +678,9 @@ onMounted(() => {
 	--chat--input--background: var(--color-lm-chat-bot-background);
 
 	[data-theme='dark'] & {
+		--chat--input--text-color: var(--input-font-color, var(--color-text-dark));
+	}
+	@media (prefers-color-scheme: dark) {
 		--chat--input--text-color: var(--input-font-color, var(--color-text-dark));
 	}
 

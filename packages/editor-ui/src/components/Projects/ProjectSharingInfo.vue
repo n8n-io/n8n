@@ -9,7 +9,16 @@ type Props = {
 
 const props = defineProps<Props>();
 
-const processedName = computed(() => splitName(props.project.name ?? ''));
+const processedName = computed(() => {
+	const { name, email } = splitName(props.project.name ?? '');
+	const nameArray = name?.split(' ');
+	const lastName = nameArray?.pop() ?? '';
+	return {
+		firstName: nameArray?.join(' ') ?? '',
+		lastName,
+		email,
+	};
+});
 </script>
 <template>
 	<div :class="$style.projectInfo" data-test-id="project-sharing-info">
@@ -58,5 +67,9 @@ const processedName = computed(() => splitName(props.project.name ?? ''));
 .text {
 	display: flex;
 	flex-direction: column;
+
+	p {
+		margin: 0;
+	}
 }
 </style>

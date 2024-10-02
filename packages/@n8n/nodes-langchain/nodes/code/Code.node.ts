@@ -324,7 +324,7 @@ export class Code implements INodeType {
 		try {
 			items = await sandbox.runCodeAllItems(options);
 		} catch (error) {
-			if (!this.continueOnFail(error)) throw error;
+			if (!this.continueOnFail()) throw error;
 			items = [{ json: { error: (error as Error).message } }];
 			if (options.multiOutput) {
 				items = [items];

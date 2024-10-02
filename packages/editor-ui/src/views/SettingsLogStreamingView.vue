@@ -1,77 +1,3 @@
-<template>
-	<div>
-		<div :class="$style.header">
-			<div class="mb-2xl">
-				<n8n-heading size="2xlarge">
-					{{ $locale.baseText(`settings.log-streaming.heading`) }}
-				</n8n-heading>
-				<template v-if="environment !== 'production'">
-					<strong class="ml-m">Disable License ({{ environment }})&nbsp;</strong>
-					<el-switch v-model="disableLicense" size="large" data-test-id="disable-license-toggle" />
-				</template>
-			</div>
-		</div>
-		<template v-if="isLicensed">
-			<div class="mb-l">
-				<n8n-info-tip theme="info" type="note">
-					<span v-html="$locale.baseText('settings.log-streaming.infoText')"></span>
-				</n8n-info-tip>
-			</div>
-			<template v-if="storeHasItems()">
-				<el-row
-					v-for="item in sortedItemKeysByLabel"
-					:key="item.key"
-					:gutter="10"
-					:class="$style.destinationItem"
-				>
-					<el-col v-if="logStreamingStore.items[item.key]?.destination">
-						<EventDestinationCard
-							:destination="logStreamingStore.items[item.key]?.destination"
-							:event-bus="eventBus"
-							:readonly="!canManageLogStreaming"
-							@remove="onRemove(logStreamingStore.items[item.key]?.destination?.id)"
-							@edit="onEdit(logStreamingStore.items[item.key]?.destination?.id)"
-						/>
-					</el-col>
-				</el-row>
-				<div class="mt-m text-right">
-					<n8n-button v-if="canManageLogStreaming" size="large" @click="addDestination">
-						{{ $locale.baseText(`settings.log-streaming.add`) }}
-					</n8n-button>
-				</div>
-			</template>
-			<div v-else data-test-id="action-box-licensed">
-				<n8n-action-box
-					:button-text="$locale.baseText(`settings.log-streaming.add`)"
-					@click:button="addDestination"
-				>
-					<template #heading>
-						<span v-html="$locale.baseText(`settings.log-streaming.addFirstTitle`)" />
-					</template>
-				</n8n-action-box>
-			</div>
-		</template>
-		<template v-else>
-			<div v-if="$locale.baseText('settings.log-streaming.infoText')" class="mb-l">
-				<n8n-info-tip theme="info" type="note">
-					<span v-html="$locale.baseText('settings.log-streaming.infoText')"></span>
-				</n8n-info-tip>
-			</div>
-			<div data-test-id="action-box-unlicensed">
-				<n8n-action-box
-					:description="$locale.baseText('settings.log-streaming.actionBox.description')"
-					:button-text="$locale.baseText('settings.log-streaming.actionBox.button')"
-					@click:button="goToUpgrade"
-				>
-					<template #heading>
-						<span v-html="$locale.baseText('settings.log-streaming.actionBox.title')" />
-					</template>
-				</n8n-action-box>
-			</div>
-		</template>
-	</div>
-</template>
-
 <script lang="ts">
 import { defineComponent, nextTick } from 'vue';
 import { mapStores } from 'pinia';
@@ -87,6 +13,7 @@ import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 import { deepCopy, defaultMessageEventBusDestinationOptions } from 'n8n-workflow';
 import EventDestinationCard from '@/components/SettingsLogStreaming/EventDestinationCard.ee.vue';
 import { createEventBus } from 'n8n-design-system/utils';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
 
 export default defineComponent({
 	name: 'SettingsLogStreamingView',
@@ -100,9 +27,11 @@ export default defineComponent({
 			destinations: Array<MessageEventBusDestinationOptions>,
 			disableLicense: false,
 			allDestinations: [] as MessageEventBusDestinationOptions[],
+			documentTitle: useDocumentTitle(),
 		};
 	},
 	async mounted() {
+		this.documentTitle.set(this.$locale.baseText('settings.log-streaming.heading'));
 		if (!this.isLicensed) return;
 
 		// Prepare credentialsStore so modals can pick up credentials
@@ -169,7 +98,7 @@ export default defineComponent({
 		},
 		async getDestinationDataFromBackend(): Promise<void> {
 			this.logStreamingStore.clearEventNames();
-			this.logStreamingStore.clearDestinationItemTrees();
+			this.logStreamingStore.clearDestinations();
 			this.allDestinations = [];
 			const eventNamesData = await this.logStreamingStore.fetchEventNames();
 			if (eventNamesData) {
@@ -232,6 +161,80 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<div>
+		<div :class="$style.header">
+			<div class="mb-2xl">
+				<n8n-heading size="2xlarge">
+					{{ $locale.baseText(`settings.log-streaming.heading`) }}
+				</n8n-heading>
+				<template v-if="environment !== 'production'">
+					<strong class="ml-m">Disable License ({{ environment }})&nbsp;</strong>
+					<el-switch v-model="disableLicense" size="large" data-test-id="disable-license-toggle" />
+				</template>
+			</div>
+		</div>
+		<template v-if="isLicensed">
+			<div class="mb-l">
+				<n8n-info-tip theme="info" type="note">
+					<span v-n8n-html="$locale.baseText('settings.log-streaming.infoText')"></span>
+				</n8n-info-tip>
+			</div>
+			<template v-if="storeHasItems()">
+				<el-row
+					v-for="item in sortedItemKeysByLabel"
+					:key="item.key"
+					:gutter="10"
+					:class="$style.destinationItem"
+				>
+					<el-col v-if="logStreamingStore.items[item.key]?.destination">
+						<EventDestinationCard
+							:destination="logStreamingStore.items[item.key]?.destination"
+							:event-bus="eventBus"
+							:readonly="!canManageLogStreaming"
+							@remove="onRemove(logStreamingStore.items[item.key]?.destination?.id)"
+							@edit="onEdit(logStreamingStore.items[item.key]?.destination?.id)"
+						/>
+					</el-col>
+				</el-row>
+				<div class="mt-m text-right">
+					<n8n-button v-if="canManageLogStreaming" size="large" @click="addDestination">
+						{{ $locale.baseText(`settings.log-streaming.add`) }}
+					</n8n-button>
+				</div>
+			</template>
+			<div v-else data-test-id="action-box-licensed">
+				<n8n-action-box
+					:button-text="$locale.baseText(`settings.log-streaming.add`)"
+					@click:button="addDestination"
+				>
+					<template #heading>
+						<span v-n8n-html="$locale.baseText(`settings.log-streaming.addFirstTitle`)" />
+					</template>
+				</n8n-action-box>
+			</div>
+		</template>
+		<template v-else>
+			<div v-if="$locale.baseText('settings.log-streaming.infoText')" class="mb-l">
+				<n8n-info-tip theme="info" type="note">
+					<span v-n8n-html="$locale.baseText('settings.log-streaming.infoText')"></span>
+				</n8n-info-tip>
+			</div>
+			<div data-test-id="action-box-unlicensed">
+				<n8n-action-box
+					:description="$locale.baseText('settings.log-streaming.actionBox.description')"
+					:button-text="$locale.baseText('settings.log-streaming.actionBox.button')"
+					@click:button="goToUpgrade"
+				>
+					<template #heading>
+						<span v-n8n-html="$locale.baseText('settings.log-streaming.actionBox.title')" />
+					</template>
+				</n8n-action-box>
+			</div>
+		</template>
+	</div>
+</template>
 
 <style lang="scss" module>
 .header {

@@ -4,19 +4,49 @@ on:
   workflow_dispatch:
   pull_request_review:
     types: [submitted]
-    branch:
-      - 'master'
-    paths:
-      - packages/design-system/**
-      - .github/workflows/chromatic.yml
 
 concurrency:
   group: chromatic-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
+  get-metadata:
+    name: Get Metadata
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out current commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 2
+
+      - name: Determine changed files
+        uses: tomi/paths-filter-action@v3.0.2
+        id: changed
+        if: github.event_name == 'pull_request_review'
+        with:
+          filters: |
+            design_system:
+              - packages/design-system/**
+              - .github/workflows/chromatic.yml
+
+    outputs:
+      design_system_files_changed: ${{ steps.changed.outputs.design_system == 'true' }}
+      is_community_pr: ${{ contains(github.event.pull_request.labels.*.name, 'community') }}
+      is_pr_target_master: ${{ github.event.pull_request.base.ref == 'master' }}
+      is_dispatch: ${{ github.event_name == 'workflow_dispatch' }}
+      is_pr_approved: ${{ github.event.review.state == 'approved' }}
+
   chromatic:
-    if: ${{ github.event.review.state == 'approved' && !contains(github.event.pull_request.labels.*.name, 'community') }}
+    needs: [get-metadata]
+    if: |
+      needs.get-metadata.outputs.is_dispatch == 'true' ||
+      (
+       needs.get-metadata.outputs.design_system_files_changed == 'true' &&
+       needs.get-metadata.outputs.is_community_pr == 'false' &&
+       needs.get-metadata.outputs.is_pr_target_master == 'true' &&
+       needs.get-metadata.outputs.is_pr_approved == 'true'
+      )
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4.1.1

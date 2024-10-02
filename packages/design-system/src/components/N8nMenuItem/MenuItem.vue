@@ -1,3 +1,68 @@
+<script lang="ts" setup>
+import { ElSubMenu, ElMenuItem } from 'element-plus';
+import { computed, useCssModule } from 'vue';
+import { useRoute } from 'vue-router';
+
+import { doesMenuItemMatchCurrentRoute } from './routerUtil';
+import type { IMenuItem } from '../../types';
+import { getInitials } from '../../utils/labelUtil';
+import ConditionalRouterLink from '../ConditionalRouterLink';
+import N8nIcon from '../N8nIcon';
+import N8nTooltip from '../N8nTooltip';
+
+interface MenuItemProps {
+	item: IMenuItem;
+	compact?: boolean;
+	tooltipDelay?: number;
+	popperClass?: string;
+	mode?: 'router' | 'tabs';
+	activeTab?: string;
+	handleSelect?: (item: IMenuItem) => void;
+}
+
+const props = withDefaults(defineProps<MenuItemProps>(), {
+	compact: false,
+	tooltipDelay: 300,
+	popperClass: '',
+	mode: 'router',
+});
+
+const $style = useCssModule();
+const $route = useRoute();
+
+const availableChildren = computed((): IMenuItem[] =>
+	Array.isArray(props.item.children)
+		? props.item.children.filter((child) => child.available !== false)
+		: [],
+);
+
+const currentRoute = computed(() => {
+	return $route ?? { name: '', path: '' };
+});
+
+const submenuPopperClass = computed((): string => {
+	const popperClass = [$style.submenuPopper, props.popperClass];
+	if (props.compact) {
+		popperClass.push($style.compact);
+	}
+	return popperClass.join(' ');
+});
+
+const isActive = (item: IMenuItem): boolean => {
+	if (props.mode === 'router') {
+		return doesMenuItemMatchCurrentRoute(item, currentRoute.value);
+	} else {
+		return item.id === props.activeTab;
+	}
+};
+
+const isItemActive = (item: IMenuItem): boolean => {
+	const hasActiveChild =
+		Array.isArray(item.children) && item.children.some((child) => isActive(child));
+	return isActive(item) || hasActiveChild;
+};
+</script>
+
 <template>
 	<div :class="['n8n-menu-item', $style.item]">
 		<ElSubMenu
@@ -87,70 +152,6 @@
 		</N8nTooltip>
 	</div>
 </template>
-
-<script lang="ts" setup>
-import { computed, useCssModule } from 'vue';
-import { useRoute } from 'vue-router';
-import { ElSubMenu, ElMenuItem } from 'element-plus';
-import N8nTooltip from '../N8nTooltip';
-import N8nIcon from '../N8nIcon';
-import ConditionalRouterLink from '../ConditionalRouterLink';
-import type { IMenuItem } from '../../types';
-import { doesMenuItemMatchCurrentRoute } from './routerUtil';
-import { getInitials } from '../../utils/labelUtil';
-
-interface MenuItemProps {
-	item: IMenuItem;
-	compact?: boolean;
-	tooltipDelay?: number;
-	popperClass?: string;
-	mode?: 'router' | 'tabs';
-	activeTab?: string;
-	handleSelect?: (item: IMenuItem) => void;
-}
-
-const props = withDefaults(defineProps<MenuItemProps>(), {
-	compact: false,
-	tooltipDelay: 300,
-	popperClass: '',
-	mode: 'router',
-});
-
-const $style = useCssModule();
-const $route = useRoute();
-
-const availableChildren = computed((): IMenuItem[] =>
-	Array.isArray(props.item.children)
-		? props.item.children.filter((child) => child.available !== false)
-		: [],
-);
-
-const currentRoute = computed(() => {
-	return $route ?? { name: '', path: '' };
-});
-
-const submenuPopperClass = computed((): string => {
-	const popperClass = [$style.submenuPopper, props.popperClass];
-	if (props.compact) {
-		popperClass.push($style.compact);
-	}
-	return popperClass.join(' ');
-});
-
-const isActive = (item: IMenuItem): boolean => {
-	if (props.mode === 'router') {
-		return doesMenuItemMatchCurrentRoute(item, currentRoute.value);
-	} else {
-		return item.id === props.activeTab;
-	}
-};
-
-const isItemActive = (item: IMenuItem): boolean => {
-	const hasActiveChild =
-		Array.isArray(item.children) && item.children.some((child) => isActive(child));
-	return isActive(item) || hasActiveChild;
-};
-</script>
 
 <style module lang="scss">
 // Element menu-item overrides

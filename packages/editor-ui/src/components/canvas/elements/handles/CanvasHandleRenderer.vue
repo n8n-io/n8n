@@ -3,25 +3,34 @@
 import { computed, h, provide, toRef, useCssModule } from 'vue';
 import type { CanvasConnectionPort, CanvasElementPortWithRenderData } from '@/types';
 import { CanvasConnectionMode } from '@/types';
-
 import type { ValidConnectionFunc } from '@vue-flow/core';
 import { Handle } from '@vue-flow/core';
 import { NodeConnectionType } from 'n8n-workflow';
+import CanvasHandleMainInput from '@/components/canvas/elements/handles/render-types/CanvasHandleMainInput.vue';
 import CanvasHandleMainOutput from '@/components/canvas/elements/handles/render-types/CanvasHandleMainOutput.vue';
 import CanvasHandleNonMainInput from '@/components/canvas/elements/handles/render-types/CanvasHandleNonMainInput.vue';
+import CanvasHandleNonMainOutput from '@/components/canvas/elements/handles/render-types/CanvasHandleNonMainOutput.vue';
 import { CanvasNodeHandleKey } from '@/constants';
 import { createCanvasConnectionHandleString } from '@/utils/canvasUtilsV2';
+import { useCanvasNode } from '@/composables/useCanvasNode';
 
-const props = defineProps<{
-	mode: CanvasConnectionMode;
-	connected?: boolean;
-	label?: string;
-	type: CanvasConnectionPort['type'];
-	index: CanvasConnectionPort['index'];
-	position: CanvasElementPortWithRenderData['position'];
-	offset: CanvasElementPortWithRenderData['offset'];
-	isValidConnection: ValidConnectionFunc;
-}>();
+const props = defineProps<
+	CanvasElementPortWithRenderData & {
+		type: CanvasConnectionPort['type'];
+		required?: CanvasConnectionPort['required'];
+		maxConnections?: CanvasConnectionPort['maxConnections'];
+		index: CanvasConnectionPort['index'];
+		label?: CanvasConnectionPort['label'];
+		handleId: CanvasElementPortWithRenderData['handleId'];
+		connectionsCount: CanvasElementPortWithRenderData['connectionsCount'];
+		isConnecting: CanvasElementPortWithRenderData['isConnecting'];
+		position: CanvasElementPortWithRenderData['position'];
+		offset?: CanvasElementPortWithRenderData['offset'];
+		mode: CanvasConnectionMode;
+		isReadOnly?: boolean;
+		isValidConnection: ValidConnectionFunc;
+	}
+>();
 
 const emit = defineEmits<{
 	add: [handle: string];
@@ -45,26 +54,45 @@ const handleString = computed(() =>
 	}),
 );
 
+const handleClasses = computed(() => [style.handle, style[props.type], style[props.mode]]);
+
+/**
+ * Connectable
+ */
+
+const connectionsLimitReached = computed(() => {
+	return props.maxConnections && props.connectionsCount >= props.maxConnections;
+});
+
 const isConnectableStart = computed(() => {
+	if (connectionsLimitReached.value) return false;
+
 	return props.mode === CanvasConnectionMode.Output || props.type !== NodeConnectionType.Main;
 });
 
 const isConnectableEnd = computed(() => {
+	if (connectionsLimitReached.value) return false;
+
 	return props.mode === CanvasConnectionMode.Input || props.type !== NodeConnectionType.Main;
 });
 
-const handleClasses = computed(() => [style.handle, style[props.type], style[props.mode]]);
+const isConnected = computed(() => props.connectionsCount > 0);
+
+/**
+ * Run data
+ */
+
+const { runDataOutputMap } = useCanvasNode();
+
+const runData = computed(() =>
+	props.mode === CanvasConnectionMode.Output
+		? runDataOutputMap.value[props.type]?.[props.index]
+		: undefined,
+);
 
 /**
  * Render additional elements
  */
-
-const hasRenderType = computed(() => {
-	return (
-		(props.type === NodeConnectionType.Main && props.mode === CanvasConnectionMode.Output) ||
-		props.type !== NodeConnectionType.Main
-	);
-});
 
 const renderTypeClasses = computed(() => [style.renderType, style[props.position]]);
 
@@ -74,9 +102,13 @@ const RenderType = () => {
 	if (props.mode === CanvasConnectionMode.Output) {
 		if (props.type === NodeConnectionType.Main) {
 			Component = CanvasHandleMainOutput;
+		} else {
+			Component = CanvasHandleNonMainOutput;
 		}
 	} else {
-		if (props.type !== NodeConnectionType.Main) {
+		if (props.type === NodeConnectionType.Main) {
+			Component = CanvasHandleMainInput;
+		} else {
 			Component = CanvasHandleNonMainInput;
 		}
 	}
@@ -97,15 +129,23 @@ function onAdd() {
  */
 
 const label = toRef(props, 'label');
-const connected = toRef(props, 'connected');
+const isConnecting = toRef(props, 'isConnecting');
+const isReadOnly = toRef(props, 'isReadOnly');
 const mode = toRef(props, 'mode');
 const type = toRef(props, 'type');
+const index = toRef(props, 'index');
+const isRequired = toRef(props, 'required');
 
 provide(CanvasNodeHandleKey, {
 	label,
 	mode,
 	type,
-	connected,
+	index,
+	runData,
+	isRequired,
+	isConnected,
+	isConnecting,
+	isReadOnly,
 });
 </script>
 
@@ -120,78 +160,58 @@ provide(CanvasNodeHandleKey, {
 		:connectable-start="isConnectableStart"
 		:connectable-end="isConnectableEnd"
 		:is-valid-connection="isValidConnection"
-	/>
-	<RenderType
-		v-if="hasRenderType"
-		:class="renderTypeClasses"
-		:connected="connected"
-		:style="offset"
-		:label="label"
-		@add="onAdd"
-	/>
+	>
+		<RenderType
+			:class="renderTypeClasses"
+			:is-connected="isConnected"
+			:style="offset"
+			:label="label"
+			@add="onAdd"
+		/>
+	</Handle>
 </template>
 
 <style lang="scss" module>
 .handle {
-	width: 16px;
-	height: 16px;
+	--handle--indicator--width: 16px;
+	--handle--indicator--height: 16px;
+
+	width: var(--handle--indicator--width);
+	height: var(--handle--indicator--height);
 	display: inline-flex;
 	justify-content: center;
 	align-items: center;
 	border: 0;
 	z-index: 1;
-	background: var(--color-foreground-xdark);
-
-	&:hover {
-		background: var(--color-primary);
-	}
+	background: transparent;
+	border-radius: 0;
 
 	&.inputs {
 		&.main {
-			width: 8px;
-			border-radius: 0;
-		}
-
-		&:not(.main) {
-			width: 14px;
-			height: 14px;
-			transform-origin: 0 0;
-			transform: rotate(45deg) translate(2px, 2px);
-			border-radius: 0;
-			background: hsl(
-				var(--node-type-supplemental-color-h) var(--node-type-supplemental-color-s)
-					var(--node-type-supplemental-color-l)
-			);
-
-			&:hover {
-				background: var(--color-primary);
-			}
+			--handle--indicator--width: 8px;
 		}
 	}
 }
 
 .renderType {
-	position: absolute;
-	z-index: 0;
-
 	&.top {
-		top: 0;
-		transform: translate(-50%, -50%);
+		margin-bottom: calc(-1 * var(--handle--indicator--height));
+		transform: translate(0%, -50%);
 	}
 
 	&.right {
-		right: 0;
-		transform: translate(100%, -50%);
+		margin-left: calc(-1 * var(--handle--indicator--width));
+		transform: translate(50%, 0%);
 	}
 
 	&.left {
-		left: 0;
-		transform: translate(-50%, -50%);
+		margin-right: calc(-1 * var(--handle--indicator--width));
+		transform: translate(-50%, 0%);
 	}
 
 	&.bottom {
-		bottom: 0;
-		transform: translate(-50%, 50%);
+		margin-top: calc(-1 * var(--handle--indicator--height));
+		transform: translate(0%, 50%);
 	}
 }
 </style>

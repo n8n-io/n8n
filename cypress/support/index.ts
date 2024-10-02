@@ -1,7 +1,7 @@
 // Load type definitions that come with Cypress module
 /// <reference types="cypress" />
 
-import type { IN8nUISettings } from 'n8n-workflow';
+import type { FrontendSettings } from '@n8n/api-types';
 
 Cypress.Keyboard.defaults({
 	keystrokeDelay: 0,
@@ -10,6 +10,10 @@ Cypress.Keyboard.defaults({
 interface SigninPayload {
 	email: string;
 	password: string;
+}
+
+interface DragAndDropOptions {
+	position: 'top' | 'center' | 'bottom';
 }
 
 declare global {
@@ -41,7 +45,7 @@ declare global {
 			 */
 			signinAsMember(index?: number): void;
 			signout(): void;
-			overrideSettings(value: Partial<IN8nUISettings>): void;
+			overrideSettings(value: Partial<FrontendSettings>): void;
 			enableFeature(feature: string): void;
 			disableFeature(feature: string): void;
 			enableQueueMode(): void;
@@ -56,7 +60,11 @@ declare global {
 				target: [number, number],
 				options?: { abs?: boolean; index?: number; realMouse?: boolean; clickToFinish?: boolean },
 			): void;
-			draganddrop(draggableSelector: string, droppableSelector: string): void;
+			draganddrop(
+				draggableSelector: string,
+				droppableSelector: string,
+				options?: Partial<DragAndDropOptions>,
+			): void;
 			push(type: string, data: unknown): void;
 			shouldNotHaveConsoleErrors(): void;
 			window(): Chainable<

@@ -1,63 +1,8 @@
-<template>
-	<div :class="['n8n-tabs', $style.container]">
-		<div v-if="scrollPosition > 0" :class="$style.back" @click="scrollLeft">
-			<N8nIcon icon="chevron-left" size="small" />
-		</div>
-		<div v-if="canScrollRight" :class="$style.next" @click="scrollRight">
-			<N8nIcon icon="chevron-right" size="small" />
-		</div>
-		<div ref="tabs" :class="$style.tabs">
-			<div
-				v-for="option in options"
-				:id="option.value"
-				:key="option.value"
-				:class="{ [$style.alignRight]: option.align === 'right' }"
-			>
-				<n8n-tooltip :disabled="!option.tooltip" placement="bottom">
-					<template #content>
-						<div @click="handleTooltipClick(option.value, $event)" v-html="option.tooltip" />
-					</template>
-					<a
-						v-if="option.href"
-						target="_blank"
-						:href="option.href"
-						:class="[$style.link, $style.tab]"
-						@click="() => handleTabClick(option.value)"
-					>
-						<div>
-							{{ option.label }}
-							<span :class="$style.external">
-								<N8nIcon icon="external-link-alt" size="xsmall" />
-							</span>
-						</div>
-					</a>
-					<RouterLink
-						v-else-if="option.to"
-						:to="option.to"
-						:class="[$style.tab, { [$style.activeTab]: modelValue === option.value }]"
-					>
-						<N8nIcon v-if="option.icon" :icon="option.icon" size="medium" />
-						<span v-if="option.label">{{ option.label }}</span>
-					</RouterLink>
-					<div
-						v-else
-						:class="{ [$style.tab]: true, [$style.activeTab]: modelValue === option.value }"
-						:data-test-id="`tab-${option.value}`"
-						@click="() => handleTabClick(option.value)"
-					>
-						<N8nIcon v-if="option.icon" :icon="option.icon" size="small" />
-						<span v-if="option.label">{{ option.label }}</span>
-					</div>
-				</n8n-tooltip>
-			</div>
-		</div>
-	</div>
-</template>
-
 <script lang="ts" setup>
 import { onMounted, onUnmounted, ref } from 'vue';
-import N8nIcon from '../N8nIcon';
 import type { RouteLocationRaw } from 'vue-router';
+
+import N8nIcon from '../N8nIcon';
 
 interface TabOptions {
 	value: string;
@@ -127,6 +72,62 @@ const scroll = (left: number) => {
 const scrollLeft = () => scroll(-50);
 const scrollRight = () => scroll(50);
 </script>
+
+<template>
+	<div :class="['n8n-tabs', $style.container]">
+		<div v-if="scrollPosition > 0" :class="$style.back" @click="scrollLeft">
+			<N8nIcon icon="chevron-left" size="small" />
+		</div>
+		<div v-if="canScrollRight" :class="$style.next" @click="scrollRight">
+			<N8nIcon icon="chevron-right" size="small" />
+		</div>
+		<div ref="tabs" :class="$style.tabs">
+			<div
+				v-for="option in options"
+				:id="option.value"
+				:key="option.value"
+				:class="{ [$style.alignRight]: option.align === 'right' }"
+			>
+				<N8nTooltip :disabled="!option.tooltip" placement="bottom">
+					<template #content>
+						<div @click="handleTooltipClick(option.value, $event)" v-n8n-html="option.tooltip" />
+					</template>
+					<a
+						v-if="option.href"
+						target="_blank"
+						:href="option.href"
+						:class="[$style.link, $style.tab]"
+						@click="() => handleTabClick(option.value)"
+					>
+						<div>
+							{{ option.label }}
+							<span :class="$style.external">
+								<N8nIcon icon="external-link-alt" size="xsmall" />
+							</span>
+						</div>
+					</a>
+					<router-link
+						v-else-if="option.to"
+						:to="option.to"
+						:class="[$style.tab, { [$style.activeTab]: modelValue === option.value }]"
+					>
+						<N8nIcon v-if="option.icon" :icon="option.icon" size="medium" />
+						<span v-if="option.label">{{ option.label }}</span>
+					</router-link>
+					<div
+						v-else
+						:class="{ [$style.tab]: true, [$style.activeTab]: modelValue === option.value }"
+						:data-test-id="`tab-${option.value}`"
+						@click="() => handleTabClick(option.value)"
+					>
+						<N8nIcon v-if="option.icon" :icon="option.icon" size="small" />
+						<span v-if="option.label">{{ option.label }}</span>
+					</div>
+				</N8nTooltip>
+			</div>
+		</div>
+	</div>
+</template>
 
 <style lang="scss" module>
 .container {

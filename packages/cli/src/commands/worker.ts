@@ -1,36 +1,20 @@
-import { Container } from 'typedi';
 import { Flags, type Config } from '@oclif/core';
-import express from 'express';
-import http from 'http';
-import type PCancelable from 'p-cancelable';
-import { GlobalConfig } from '@n8n/config';
-import { WorkflowExecute } from 'n8n-core';
-import type { ExecutionStatus, IExecuteResponsePromiseData, INodeTypes, IRun } from 'n8n-workflow';
-import { Workflow, sleep, ApplicationError } from 'n8n-workflow';
+import { ApplicationError } from 'n8n-workflow';
+import { Container } from 'typedi';
 
-import * as Db from '@/Db';
-import * as ResponseHelper from '@/ResponseHelper';
-import * as WebhookHelpers from '@/WebhookHelpers';
-import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import config from '@/config';
-import type { Job, JobId, JobResponse, WebhookResponse } from '@/Queue';
-import { Queue } from '@/Queue';
 import { N8N_VERSION, inTest } from '@/constants';
-import { ExecutionRepository } from '@db/repositories/execution.repository';
-import { WorkflowRepository } from '@db/repositories/workflow.repository';
-import type { ICredentialsOverwrite } from '@/Interfaces';
-import { CredentialsOverwrites } from '@/CredentialsOverwrites';
-import { rawBodyReader, bodyParser } from '@/middlewares';
-import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
-import type { RedisServicePubSubSubscriber } from '@/services/redis/RedisServicePubSubSubscriber';
-import { EventMessageGeneric } from '@/eventbus/EventMessageClasses/EventMessageGeneric';
+import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
+import { JobProcessor } from '@/scaling/job-processor';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { ScalingService } from '@/scaling/scaling.service';
+import type { WorkerServerEndpointsConfig } from '@/scaling/worker-server';
 import { OrchestrationHandlerWorkerService } from '@/services/orchestration/worker/orchestration.handler.worker.service';
 import { OrchestrationWorkerService } from '@/services/orchestration/worker/orchestration.worker.service';
-import type { WorkerJobStatusSummary } from '@/services/orchestration/worker/types';
-import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
-import { BaseCommand } from './BaseCommand';
-import { MaxStalledCountError } from '@/errors/max-stalled-count.error';
-import { AuditEventRelay } from '@/eventbus/audit-event-relay.service';
+
+import { BaseCommand } from './base-command';
 
 export class Worker extends BaseCommand {
 	static description = '\nStarts a n8n worker';
@@ -45,17 +29,19 @@ export class Worker extends BaseCommand {
 		}),
 	};
 
-	static runningJobs: {
-		[key: string]: PCancelable<IRun>;
-	} = {};
+	/**
+	 * How many jobs this worker may run concurrently.
+	 *
+	 * Taken from env var `N8N_CONCURRENCY_PRODUCTION_LIMIT` if set to a value
+	 * other than -1, else taken from `--concurrency` flag.
+	 */
+	concurrency: number;
 
-	static runningJobsSummary: {
-		[jobId: string]: WorkerJobStatusSummary;
-	} = {};
+	scalingService: ScalingService;
 
-	static jobQueue: Queue;
+	jobProcessor: JobProcessor;
 
-	redisSubscriber: RedisServicePubSubSubscriber;
+	override needsCommunityPackages = true;
 
 	/**
 	 * Stop n8n in a graceful way.
@@ -67,165 +53,11 @@ export class Worker extends BaseCommand {
 
 		try {
 			await this.externalHooks?.run('n8n.stop', []);
-
-			const hardStopTimeMs = Date.now() + this.gracefulShutdownTimeoutInS * 1000;
-
-			// Wait for active workflow executions to finish
-			let count = 0;
-			while (Object.keys(Worker.runningJobs).length !== 0) {
-				if (count++ % 4 === 0) {
-					const waitLeft = Math.ceil((hardStopTimeMs - Date.now()) / 1000);
-					this.logger.info(
-						`Waiting for ${
-							Object.keys(Worker.runningJobs).length
-						} active executions to finish... (max wait ${waitLeft} more seconds)`,
-					);
-				}
-
-				await sleep(500);
-			}
 		} catch (error) {
 			await this.exitWithCrash('There was an error shutting down n8n.', error);
 		}
 
 		await this.exitSuccessFully();
-	}
-
-	async runJob(job: Job, nodeTypes: INodeTypes): Promise<JobResponse> {
-		const { executionId, loadStaticData } = job.data;
-		const executionRepository = Container.get(ExecutionRepository);
-		const fullExecutionData = await executionRepository.findSingleExecution(executionId, {
-			includeData: true,
-			unflattenData: true,
-		});
-
-		if (!fullExecutionData) {
-			this.logger.error(
-				`Worker failed to find data of execution "${executionId}" in database. Cannot continue.`,
-				{ executionId },
-			);
-			throw new ApplicationError(
-				'Unable to find data of execution in database. Aborting execution.',
-				{ extra: { executionId } },
-			);
-		}
-		const workflowId = fullExecutionData.workflowData.id;
-
-		this.logger.info(
-			`Start job: ${job.id} (Workflow ID: ${workflowId} | Execution: ${executionId})`,
-		);
-		await executionRepository.updateStatus(executionId, 'running');
-
-		let { staticData } = fullExecutionData.workflowData;
-		if (loadStaticData) {
-			const workflowData = await Container.get(WorkflowRepository).findOne({
-				select: ['id', 'staticData'],
-				where: {
-					id: workflowId,
-				},
-			});
-			if (workflowData === null) {
-				this.logger.error(
-					'Worker execution failed because workflow could not be found in database.',
-					{ workflowId, executionId },
-				);
-				throw new ApplicationError('Workflow could not be found', { extra: { workflowId } });
-			}
-			staticData = workflowData.staticData;
-		}
-
-		const workflowSettings = fullExecutionData.workflowData.settings ?? {};
-
-		let workflowTimeout = workflowSettings.executionTimeout ?? config.getEnv('executions.timeout'); // initialize with default
-
-		let executionTimeoutTimestamp: number | undefined;
-		if (workflowTimeout > 0) {
-			workflowTimeout = Math.min(workflowTimeout, config.getEnv('executions.maxTimeout'));
-			executionTimeoutTimestamp = Date.now() + workflowTimeout * 1000;
-		}
-
-		const workflow = new Workflow({
-			id: workflowId,
-			name: fullExecutionData.workflowData.name,
-			nodes: fullExecutionData.workflowData.nodes,
-			connections: fullExecutionData.workflowData.connections,
-			active: fullExecutionData.workflowData.active,
-			nodeTypes,
-			staticData,
-			settings: fullExecutionData.workflowData.settings,
-		});
-
-		const additionalData = await WorkflowExecuteAdditionalData.getBase(
-			undefined,
-			undefined,
-			executionTimeoutTimestamp,
-		);
-		additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerExecuter(
-			fullExecutionData.mode,
-			job.data.executionId,
-			fullExecutionData.workflowData,
-			{
-				retryOf: fullExecutionData.retryOf as string,
-			},
-		);
-
-		additionalData.hooks.hookFunctions.sendResponse = [
-			async (response: IExecuteResponsePromiseData): Promise<void> => {
-				const progress: WebhookResponse = {
-					executionId,
-					response: WebhookHelpers.encodeWebhookResponse(response),
-				};
-				await job.progress(progress);
-			},
-		];
-
-		additionalData.executionId = executionId;
-
-		additionalData.setExecutionStatus = (status: ExecutionStatus) => {
-			// Can't set the status directly in the queued worker, but it will happen in InternalHook.onWorkflowPostExecute
-			this.logger.debug(`Queued worker execution status for ${executionId} is "${status}"`);
-		};
-
-		let workflowExecute: WorkflowExecute;
-		let workflowRun: PCancelable<IRun>;
-		if (fullExecutionData.data !== undefined) {
-			workflowExecute = new WorkflowExecute(
-				additionalData,
-				fullExecutionData.mode,
-				fullExecutionData.data,
-			);
-			workflowRun = workflowExecute.processRunExecutionData(workflow);
-		} else {
-			// Execute all nodes
-			// Can execute without webhook so go on
-			workflowExecute = new WorkflowExecute(additionalData, fullExecutionData.mode);
-			workflowRun = workflowExecute.run(workflow);
-		}
-
-		Worker.runningJobs[job.id] = workflowRun;
-		Worker.runningJobsSummary[job.id] = {
-			jobId: job.id.toString(),
-			executionId,
-			workflowId: fullExecutionData.workflowId ?? '',
-			workflowName: fullExecutionData.workflowData.name,
-			mode: fullExecutionData.mode,
-			startedAt: fullExecutionData.startedAt,
-			retryOf: fullExecutionData.retryOf ?? '',
-			status: fullExecutionData.status,
-		};
-
-		// Wait till the execution is finished
-		await workflowRun;
-
-		delete Worker.runningJobs[job.id];
-		delete Worker.runningJobsSummary[job.id];
-
-		// do NOT call workflowExecuteAfter hook here, since it is being called from processSuccessExecution()
-		// already!
-
-		return {
-			success: true,
-		};
 	}
 
 	constructor(argv: string[], cmdConfig: Config) {
@@ -237,7 +69,6 @@ export class Worker extends BaseCommand {
 			);
 		}
 
-		this.setInstanceType('worker');
 		this.setInstanceQueueModeId();
 	}
 
@@ -245,7 +76,7 @@ export class Worker extends BaseCommand {
 		const { QUEUE_WORKER_TIMEOUT } = process.env;
 		if (QUEUE_WORKER_TIMEOUT) {
 			this.gracefulShutdownTimeoutInS =
-				parseInt(QUEUE_WORKER_TIMEOUT, 10) || config.default('queue.bull.gracefulShutdownTimeout');
+				parseInt(QUEUE_WORKER_TIMEOUT, 10) || this.globalConfig.queue.bull.gracefulShutdownTimeout;
 			this.logger.warn(
 				'QUEUE_WORKER_TIMEOUT has been deprecated. Rename it to N8N_GRACEFUL_SHUTDOWN_TIMEOUT.',
 			);
@@ -255,6 +86,7 @@ export class Worker extends BaseCommand {
 		this.logger.debug('Starting n8n worker...');
 		this.logger.debug(`Queue mode id: ${this.queueModeId}`);
 
+		await this.setConcurrency();
 		await super.init();
 
 		await this.initLicense();
@@ -267,8 +99,7 @@ export class Worker extends BaseCommand {
 		this.logger.debug('External secrets init complete');
 		await this.initEventBus();
 		this.logger.debug('Event bus init complete');
-		await this.initQueue();
-		this.logger.debug('Queue init complete');
+		await this.initScalingService();
 		await this.initOrchestration();
 		this.logger.debug('Orchestration init complete');
 
@@ -286,7 +117,7 @@ export class Worker extends BaseCommand {
 		await Container.get(MessageEventBus).initialize({
 			workerId: this.queueModeId,
 		});
-		Container.get(AuditEventRelay).init();
+		Container.get(LogStreamingEventRelay).init();
 	}
 
 	/**
@@ -299,195 +130,49 @@ export class Worker extends BaseCommand {
 		await Container.get(OrchestrationWorkerService).init();
 		await Container.get(OrchestrationHandlerWorkerService).initWithOptions({
 			queueModeId: this.queueModeId,
-			redisPublisher: Container.get(OrchestrationWorkerService).redisPublisher,
-			getRunningJobIds: () => Object.keys(Worker.runningJobs),
-			getRunningJobsSummary: () => Object.values(Worker.runningJobsSummary),
+			publisher: Container.get(Publisher),
+			getRunningJobIds: () => this.jobProcessor.getRunningJobIds(),
+			getRunningJobsSummary: () => this.jobProcessor.getRunningJobsSummary(),
 		});
 	}
 
-	async initQueue() {
+	async setConcurrency() {
 		const { flags } = await this.parse(Worker);
 
-		const redisConnectionTimeoutLimit = config.getEnv('queue.bull.redis.timeoutThreshold');
-
-		this.logger.debug(
-			`Opening Redis connection to listen to messages with timeout ${redisConnectionTimeoutLimit}`,
-		);
-
-		Worker.jobQueue = Container.get(Queue);
-		await Worker.jobQueue.init();
-		this.logger.debug('Queue singleton ready');
-
 		const envConcurrency = config.getEnv('executions.concurrency.productionLimit');
-		const concurrency = envConcurrency !== -1 ? envConcurrency : flags.concurrency;
-		Worker.jobQueue.setConcurrency(concurrency);
 
-		void Worker.jobQueue.process(async (job) => await this.runJob(job, this.nodeTypes));
-
-		Worker.jobQueue.getBullObjectInstance().on('global:progress', (jobId: JobId, progress) => {
-			// Progress of a job got updated which does get used
-			// to communicate that a job got canceled.
-
-			if (progress === -1) {
-				// Job has to get canceled
-				if (Worker.runningJobs[jobId] !== undefined) {
-					// Job is processed by current worker so cancel
-					Worker.runningJobs[jobId].cancel();
-					delete Worker.runningJobs[jobId];
-				}
-			}
-		});
-
-		let lastTimer = 0;
-		let cumulativeTimeout = 0;
-		Worker.jobQueue.getBullObjectInstance().on('error', (error: Error) => {
-			if (error.toString().includes('ECONNREFUSED')) {
-				const now = Date.now();
-				if (now - lastTimer > 30000) {
-					// Means we had no timeout at all or last timeout was temporary and we recovered
-					lastTimer = now;
-					cumulativeTimeout = 0;
-				} else {
-					cumulativeTimeout += now - lastTimer;
-					lastTimer = now;
-					if (cumulativeTimeout > redisConnectionTimeoutLimit) {
-						this.logger.error(
-							`Unable to connect to Redis after ${redisConnectionTimeoutLimit}. Exiting process.`,
-						);
-						process.exit(1);
-					}
-				}
-				this.logger.warn('Redis unavailable - trying to reconnect...');
-			} else if (error.toString().includes('Error initializing Lua scripts')) {
-				// This is a non-recoverable error
-				// Happens when worker starts and Redis is unavailable
-				// Even if Redis comes back online, worker will be zombie
-				this.logger.error('Error initializing worker.');
-				process.exit(2);
-			} else {
-				this.logger.error('Error from queue: ', error);
-
-				if (error.message.includes('job stalled more than maxStalledCount')) {
-					throw new MaxStalledCountError(error);
-				}
-
-				throw error;
-			}
-		});
+		this.concurrency = envConcurrency !== -1 ? envConcurrency : flags.concurrency;
 	}
 
-	async setupHealthMonitor() {
-		const port = config.getEnv('queue.health.port');
+	async initScalingService() {
+		const { ScalingService } = await import('@/scaling/scaling.service');
+		this.scalingService = Container.get(ScalingService);
 
-		const app = express();
-		app.disable('x-powered-by');
+		await this.scalingService.setupQueue();
 
-		const server = http.createServer(app);
+		this.scalingService.setupWorker(this.concurrency);
 
-		app.get(
-			'/healthz',
-
-			async (_req: express.Request, res: express.Response) => {
-				this.logger.debug('Health check started!');
-
-				const connection = Db.getConnection();
-
-				try {
-					if (!connection.isInitialized) {
-						// Connection is not active
-						throw new ApplicationError('No active database connection');
-					}
-					// DB ping
-					await connection.query('SELECT 1');
-				} catch (e) {
-					this.logger.error('No Database connection!', e as Error);
-					const error = new ServiceUnavailableError('No Database connection!');
-					return ResponseHelper.sendErrorResponse(res, error);
-				}
-
-				// Just to be complete, generally will the worker stop automatically
-				// if it loses the connection to redis
-				try {
-					// Redis ping
-					await Worker.jobQueue.ping();
-				} catch (e) {
-					this.logger.error('No Redis connection!', e as Error);
-					const error = new ServiceUnavailableError('No Redis connection!');
-					return ResponseHelper.sendErrorResponse(res, error);
-				}
-
-				// Everything fine
-				const responseData = {
-					status: 'ok',
-				};
-
-				this.logger.debug('Health check completed successfully!');
-
-				ResponseHelper.sendSuccessResponse(res, responseData, true, 200);
-			},
-		);
-
-		let presetCredentialsLoaded = false;
-
-		const globalConfig = Container.get(GlobalConfig);
-		const endpointPresetCredentials = globalConfig.credentials.overwrite.endpoint;
-		if (endpointPresetCredentials !== '') {
-			// POST endpoint to set preset credentials
-			app.post(
-				`/${endpointPresetCredentials}`,
-				rawBodyReader,
-				bodyParser,
-				async (req: express.Request, res: express.Response) => {
-					if (!presetCredentialsLoaded) {
-						const body = req.body as ICredentialsOverwrite;
-
-						if (req.contentType !== 'application/json') {
-							ResponseHelper.sendErrorResponse(
-								res,
-								new Error(
-									'Body must be a valid JSON, make sure the content-type is application/json',
-								),
-							);
-							return;
-						}
-
-						Container.get(CredentialsOverwrites).setData(body);
-						presetCredentialsLoaded = true;
-						ResponseHelper.sendSuccessResponse(res, { success: true }, true, 200);
-					} else {
-						ResponseHelper.sendErrorResponse(res, new Error('Preset credentials can be set once'));
-					}
-				},
-			);
-		}
-
-		server.on('error', (error: Error & { code: string }) => {
-			if (error.code === 'EADDRINUSE') {
-				this.logger.error(
-					`n8n's port ${port} is already in use. Do you have the n8n main process running on that port?`,
-				);
-				process.exit(1);
-			}
-		});
-
-		await new Promise<void>((resolve) => server.listen(port, () => resolve()));
-		await this.externalHooks?.run('worker.ready');
-		this.logger.info(`\nn8n worker health check via, port ${port}`);
+		this.jobProcessor = Container.get(JobProcessor);
 	}
 
 	async run() {
-		const { flags } = await this.parse(Worker);
-
 		this.logger.info('\nn8n worker is now ready');
 		this.logger.info(` * Version: ${N8N_VERSION}`);
-		this.logger.info(` * Concurrency: ${flags.concurrency}`);
+		this.logger.info(` * Concurrency: ${this.concurrency}`);
 		this.logger.info('');
 
-		if (config.getEnv('queue.health.active')) {
-			await this.setupHealthMonitor();
+		const endpointsConfig: WorkerServerEndpointsConfig = {
+			health: this.globalConfig.queue.health.active,
+			overwrites: this.globalConfig.credentials.overwrite.endpoint !== '',
+			metrics: this.globalConfig.endpoints.metrics.enable,
+		};
+
+		if (Object.values(endpointsConfig).some((e) => e)) {
+			const { WorkerServer } = await import('@/scaling/worker-server');
+			await Container.get(WorkerServer).init(endpointsConfig);
 		}
 
-		if (process.stdout.isTTY) {
+		if (!inTest && process.stdout.isTTY) {
 			process.stdin.setRawMode(true);
 			process.stdin.resume();
 			process.stdin.setEncoding('utf8');

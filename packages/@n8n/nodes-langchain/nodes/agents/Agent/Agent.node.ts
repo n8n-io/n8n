@@ -1,6 +1,5 @@
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type {
-	ConnectionTypes,
 	INodeInputConfiguration,
 	INodeInputFilter,
 	IExecuteFunctions,
@@ -9,7 +8,6 @@ import type {
 	INodeTypeDescription,
 	INodeProperties,
 } from 'n8n-workflow';
-import { getTemplateNoticeField } from '../../../utils/sharedFields';
 import { promptTypeOptions, textInput } from '../../../utils/descriptions';
 import { conversationalAgentProperties } from './agents/ConversationalAgent/description';
 import { conversationalAgentExecute } from './agents/ConversationalAgent/execute';
@@ -29,16 +27,16 @@ import { toolsAgentExecute } from './agents/ToolsAgent/execute';
 function getInputs(
 	agent: 'toolsAgent' | 'conversationalAgent' | 'openAiFunctionsAgent' | 'reActAgent' | 'sqlAgent',
 	hasOutputParser?: boolean,
-): Array<ConnectionTypes | INodeInputConfiguration> {
+): Array<NodeConnectionType | INodeInputConfiguration> {
 	interface SpecialInput {
-		type: ConnectionTypes;
+		type: NodeConnectionType;
 		filter?: INodeInputFilter;
 		required?: boolean;
 	}
 
 	const getInputData = (
 		inputs: SpecialInput[],
-	): Array<ConnectionTypes | INodeInputConfiguration> => {
+	): Array<NodeConnectionType | INodeInputConfiguration> => {
 		const displayNames: { [key: string]: string } = {
 			[NodeConnectionType.AiLanguageModel]: 'Model',
 			[NodeConnectionType.AiMemory]: 'Memory',
@@ -83,10 +81,10 @@ function getInputs(
 				filter: {
 					nodes: [
 						'@n8n/n8n-nodes-langchain.lmChatAnthropic',
+						'@n8n/n8n-nodes-langchain.lmChatAwsBedrock',
 						'@n8n/n8n-nodes-langchain.lmChatGroq',
 						'@n8n/n8n-nodes-langchain.lmChatOllama',
 						'@n8n/n8n-nodes-langchain.lmChatOpenAi',
-						'@n8n/n8n-nodes-langchain.lmChatGooglePalm',
 						'@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
 						'@n8n/n8n-nodes-langchain.lmChatGoogleVertex',
 						'@n8n/n8n-nodes-langchain.lmChatMistralCloud',
@@ -112,11 +110,13 @@ function getInputs(
 					nodes: [
 						'@n8n/n8n-nodes-langchain.lmChatAnthropic',
 						'@n8n/n8n-nodes-langchain.lmChatAzureOpenAi',
+						'@n8n/n8n-nodes-langchain.lmChatAwsBedrock',
 						'@n8n/n8n-nodes-langchain.lmChatMistralCloud',
 						'@n8n/n8n-nodes-langchain.lmChatOllama',
 						'@n8n/n8n-nodes-langchain.lmChatOpenAi',
 						'@n8n/n8n-nodes-langchain.lmChatGroq',
 						'@n8n/n8n-nodes-langchain.lmChatGoogleVertex',
+						'@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
 					],
 				},
 			},
@@ -305,10 +305,14 @@ export class Agent implements INodeType {
 		],
 		properties: [
 			{
-				...getTemplateNoticeField(1954),
+				displayName:
+					'Tip: Get a feel for agents with our quick <a href="https://docs.n8n.io/advanced-ai/intro-tutorial/" target="_blank">tutorial</a> or see an <a href="/templates/1954" target="_blank">example</a> of how this node works',
+				name: 'notice_tip',
+				type: 'notice',
+				default: '',
 				displayOptions: {
 					show: {
-						agent: ['conversationalAgent'],
+						agent: ['conversationalAgent', 'toolsAgent'],
 					},
 				},
 			},

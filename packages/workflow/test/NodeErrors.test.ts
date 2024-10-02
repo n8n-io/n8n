@@ -1,6 +1,7 @@
-import type { INode } from '@/Interfaces';
 import { NodeOperationError } from '@/errors';
 import { NodeApiError } from '@/errors/node-api.error';
+import type { INode, JsonObject } from '@/Interfaces';
+
 import { UNKNOWN_ERROR_DESCRIPTION, UNKNOWN_ERROR_MESSAGE } from '../src/Constants';
 
 const node: INode = {
@@ -259,5 +260,23 @@ describe('NodeApiError message and description logic', () => {
 
 		expect(nodeApiError.message).toEqual(UNKNOWN_ERROR_MESSAGE);
 		expect(nodeApiError.description).toEqual(UNKNOWN_ERROR_DESCRIPTION);
+	});
+
+	it('case: Error code sent as "any"', () => {
+		const error = {
+			code: 400,
+			message: "Invalid value 'test' for viewId parameter.",
+			status: 'INVALID_ARGUMENT',
+		};
+		const [message, ...rest] = error.message.split('\n');
+		const description = rest.join('\n');
+		const httpCode = error.code as any;
+		const nodeApiError = new NodeApiError(node, error as JsonObject, {
+			message,
+			description,
+			httpCode,
+		});
+
+		expect(nodeApiError.message).toEqual(error.message);
 	});
 });

@@ -20,6 +20,7 @@ const enum ProjectState {
 	Owned = 'owned',
 	Personal = 'personal',
 	Team = 'team',
+	SharedTeam = 'shared-team',
 	Unknown = 'unknown',
 }
 
@@ -44,6 +45,9 @@ const projectState = computed(() => {
 		}
 		return ProjectState.Personal;
 	} else if (props.resource.homeProject?.type === ProjectTypes.Team) {
+		if (props.resource.sharedWithProjects?.length) {
+			return ProjectState.SharedTeam;
+		}
 		return ProjectState.Team;
 	}
 	return ProjectState.Unknown;
@@ -55,8 +59,8 @@ const badgeText = computed(() => {
 	) {
 		return i18n.baseText('generic.ownedByMe');
 	} else {
-		const { firstName, lastName, email } = splitName(props.resource.homeProject?.name ?? '');
-		return (!firstName ? email : `${firstName}${lastName ? ' ' + lastName : ''}`) ?? '';
+		const { name, email } = splitName(props.resource.homeProject?.name ?? '');
+		return name ?? email ?? '';
 	}
 });
 const badgeIcon = computed(() => {
@@ -65,6 +69,7 @@ const badgeIcon = computed(() => {
 		case ProjectState.SharedOwned:
 			return 'user-friends';
 		case ProjectState.Team:
+		case ProjectState.SharedTeam:
 			return 'archive';
 		default:
 			return '';
@@ -99,6 +104,13 @@ const badgeTooltip = computed(() => {
 					name: badgeText.value,
 				},
 			});
+		case ProjectState.SharedTeam:
+			return i18n.baseText('projects.badge.tooltip.sharedTeam', {
+				interpolate: {
+					resourceTypeLabel: props.resourceTypeLabel,
+					name: badgeText.value,
+				},
+			});
 		default:
 			return '';
 	}
@@ -107,7 +119,7 @@ const badgeTooltip = computed(() => {
 <template>
 	<N8nTooltip :disabled="!badgeTooltip" placement="top">
 		<N8nBadge v-if="badgeText" class="mr-xs" theme="tertiary" bold data-test-id="card-badge">
-			{{ badgeText }}
+			<span v-n8n-truncate:20>{{ badgeText }}</span>
 			<N8nIcon v-if="badgeIcon" :icon="badgeIcon" size="small" class="ml-5xs" />
 		</N8nBadge>
 		<template #content>

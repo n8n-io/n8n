@@ -2,33 +2,34 @@
 /* eslint-disable @typescript-eslint/no-this-alias */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 
-import { DateTime, Duration, Interval, Settings } from 'luxon';
 import * as jmespath from 'jmespath';
+import { DateTime, Duration, Interval, Settings } from 'luxon';
 
-import type {
-	IDataObject,
-	IExecuteData,
-	INodeExecutionData,
-	INodeParameters,
-	IPairedItemData,
-	IRunExecutionData,
-	ISourceData,
-	ITaskData,
-	IWorkflowDataProxyAdditionalKeys,
-	IWorkflowDataProxyData,
-	INodeParameterResourceLocator,
-	NodeParameterValueType,
-	WorkflowExecuteMode,
-	ProxyInput,
+import { augmentArray, augmentObject } from './AugmentObject';
+import { SCRIPTING_NODE_TYPES } from './Constants';
+import { ApplicationError } from './errors/application.error';
+import { ExpressionError, type ExpressionErrorOptions } from './errors/expression.error';
+import { getGlobalState } from './GlobalState';
+import {
+	type IDataObject,
+	type IExecuteData,
+	type INodeExecutionData,
+	type INodeParameters,
+	type IPairedItemData,
+	type IRunExecutionData,
+	type ISourceData,
+	type ITaskData,
+	type IWorkflowDataProxyAdditionalKeys,
+	type IWorkflowDataProxyData,
+	type INodeParameterResourceLocator,
+	type NodeParameterValueType,
+	type WorkflowExecuteMode,
+	type ProxyInput,
+	NodeConnectionType,
 } from './Interfaces';
 import * as NodeHelpers from './NodeHelpers';
-import { ExpressionError, type ExpressionErrorOptions } from './errors/expression.error';
-import type { Workflow } from './Workflow';
-import { augmentArray, augmentObject } from './AugmentObject';
 import { deepCopy } from './utils';
-import { getGlobalState } from './GlobalState';
-import { ApplicationError } from './errors/application.error';
-import { SCRIPTING_NODE_TYPES } from './Constants';
+import type { Workflow } from './Workflow';
 import { getPinDataIfManualExecution } from './WorkflowDataProxyHelpers';
 
 export function isResourceLocatorValue(value: unknown): value is INodeParameterResourceLocator {
@@ -346,7 +347,7 @@ export class WorkflowDataProxy {
 				const nodeConnection = that.workflow.getNodeConnectionIndexes(
 					that.contextNodeName,
 					nodeName,
-					'main',
+					NodeConnectionType.Main,
 				);
 
 				if (nodeConnection === undefined) {

@@ -1,12 +1,12 @@
-import { Service } from 'typedi';
 import axios from 'axios';
+import { Service } from 'typedi';
 
-import { Logger } from '@/Logger';
-import { License } from '@/License';
-import { EventService } from '@/eventbus/event.service';
-import type { User } from '@db/entities/User';
-import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import type { User } from '@/databases/entities/user';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { EventService } from '@/events/event.service';
+import { License } from '@/license';
+import { Logger } from '@/logging/logger.service';
 import { UrlService } from '@/services/url.service';
 
 type LicenseError = Error & { errorId?: keyof typeof LicenseErrors };

@@ -1,20 +1,10 @@
-import type { ExecutionStatus, WorkflowExecuteMode } from 'n8n-workflow';
-import type { RedisServicePubSubPublisher } from '../../redis/RedisServicePubSubPublisher';
+import type { RunningJobSummary } from '@n8n/api-types';
+
+import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
 export interface WorkerCommandReceivedHandlerOptions {
 	queueModeId: string;
-	redisPublisher: RedisServicePubSubPublisher;
-	getRunningJobIds: () => string[];
-	getRunningJobsSummary: () => WorkerJobStatusSummary[];
-}
-
-export interface WorkerJobStatusSummary {
-	jobId: string;
-	executionId: string;
-	retryOf?: string;
-	startedAt: Date;
-	mode: WorkflowExecuteMode;
-	workflowName: string;
-	workflowId: string;
-	status: ExecutionStatus;
+	publisher: Publisher;
+	getRunningJobIds: () => Array<string | number>;
+	getRunningJobsSummary: () => RunningJobSummary[];
 }

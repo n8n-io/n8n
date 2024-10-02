@@ -1,18 +1,6 @@
-import { getNodeParameters } from './NodeHelpers';
-import type {
-	IConnection,
-	INode,
-	INodeNameIndex,
-	INodesGraph,
-	INodeGraphItem,
-	INodesGraphResult,
-	IWorkflowBase,
-	INodeTypes,
-	IDataObject,
-} from './Interfaces';
-import { ApplicationError } from './errors/application.error';
 import {
 	AGENT_LANGCHAIN_NODE_TYPE,
+	AI_TRANSFORM_NODE_TYPE,
 	CHAIN_LLM_LANGCHAIN_NODE_TYPE,
 	CHAIN_SUMMARIZATION_LANGCHAIN_NODE_TYPE,
 	EXECUTE_WORKFLOW_NODE_TYPE,
@@ -25,6 +13,19 @@ import {
 	WEBHOOK_NODE_TYPE,
 	WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
 } from './Constants';
+import { ApplicationError } from './errors/application.error';
+import type {
+	IConnection,
+	INode,
+	INodeNameIndex,
+	INodesGraph,
+	INodeGraphItem,
+	INodesGraphResult,
+	IWorkflowBase,
+	INodeTypes,
+	IDataObject,
+} from './Interfaces';
+import { getNodeParameters } from './NodeHelpers';
 
 export function getNodeTypeForName(workflow: IWorkflowBase, nodeName: string): INode | undefined {
 	return workflow.nodes.find((node) => node.name === nodeName);
@@ -207,7 +208,9 @@ export function generateNodesGraph(
 			nodeItem.src_node_id = options.nodeIdMap[node.id];
 		}
 
-		if (node.type === AGENT_LANGCHAIN_NODE_TYPE) {
+		if (node.type === AI_TRANSFORM_NODE_TYPE && options?.isCloudDeployment) {
+			nodeItem.prompts = { instructions: node.parameters.instructions as string };
+		} else if (node.type === AGENT_LANGCHAIN_NODE_TYPE) {
 			nodeItem.agent = (node.parameters.agent as string) ?? 'conversationalAgent';
 		} else if (node.type === MERGE_NODE_TYPE) {
 			nodeItem.operation = node.parameters.mode as string;

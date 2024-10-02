@@ -3,10 +3,18 @@ import { useToast } from '@/composables/useToast';
 import { useWorkflowActivate } from '@/composables/useWorkflowActivate';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { getActivatableTriggerNodes } from '@/utils/nodeTypesUtils';
-import { computed } from 'vue';
+import type { VNode } from 'vue';
+import { computed, h } from 'vue';
 import { useI18n } from '@/composables/useI18n';
+import type { PermissionsRecord } from '@/permissions';
+import { PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
+import WorkflowActivationErrorMessage from './WorkflowActivationErrorMessage.vue';
 
-const props = defineProps<{ workflowActive: boolean; workflowId: string }>();
+const props = defineProps<{
+	workflowActive: boolean;
+	workflowId: string;
+	workflowPermissions: PermissionsRecord['workflow'];
+}>();
 const { showMessage } = useToast();
 const workflowActivate = useWorkflowActivate();
 
@@ -35,9 +43,15 @@ const containsTrigger = computed((): boolean => {
 	return foundTriggers.length > 0;
 });
 
+const isNewWorkflow = computed(
+	() =>
+		!props.workflowId ||
+		props.workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID ||
+		props.workflowId === 'new',
+);
+
 const disabled = computed((): boolean => {
-	const isNewWorkflow = !props.workflowId;
-	if (isNewWorkflow || isCurrentWorkflow.value) {
+	if (isNewWorkflow.value || isCurrentWorkflow.value) {
 		return !props.workflowActive && !containsTrigger.value;
 	}
 
@@ -49,7 +63,7 @@ async function activeChanged(newActiveState: boolean) {
 }
 
 async function displayActivationError() {
-	let errorMessage: string;
+	let errorMessage: string | VNode;
 	try {
 		const errorData = await workflowsStore.getActivationError(props.workflowId);
 
@@ -58,10 +72,9 @@ async function displayActivationError() {
 				'workflowActivator.showMessage.displayActivationError.message.errorDataUndefined',
 			);
 		} else {
-			errorMessage = i18n.baseText(
-				'workflowActivator.showMessage.displayActivationError.message.errorDataNotUndefined',
-				{ interpolate: { message: errorData } },
-			);
+			errorMessage = h(WorkflowActivationErrorMessage, {
+				message: errorData,
+			});
 		}
 	} catch (error) {
 		errorMessage = i18n.baseText(
@@ -74,7 +87,6 @@ async function displayActivationError() {
 		message: errorMessage,
 		type: 'warning',
 		duration: 0,
-		dangerouslyUseHTMLString: true,
 	});
 }
 </script>
@@ -108,7 +120,11 @@ async function displayActivationError() {
 						? i18n.baseText('workflowActivator.deactivateWorkflow')
 						: i18n.baseText('workflowActivator.activateWorkflow')
 				"
-				:disabled="disabled || workflowActivate.updatingWorkflowActivation.value"
+				:disabled="
+					disabled ||
+					workflowActivate.updatingWorkflowActivation.value ||
+					(!isNewWorkflow && !workflowPermissions.update)
+				"
 				:active-color="getActiveColor"
 				inactive-color="#8899AA"
 				data-test-id="workflow-activate-switch"
@@ -122,7 +138,7 @@ async function displayActivationError() {
 				<template #content>
 					<div
 						@click="displayActivationError"
-						v-html="i18n.baseText('workflowActivator.theWorkflowIsSetToBeActiveBut')"
+						v-n8n-html="i18n.baseText('workflowActivator.theWorkflowIsSetToBeActiveBut')"
 					></div>
 				</template>
 				<font-awesome-icon icon="exclamation-triangle" @click="displayActivationError" />

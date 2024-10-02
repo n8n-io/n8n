@@ -1,5 +1,5 @@
-import { ROUTES } from '../constants';
 import { getManualChatModal } from './modals/chat-modal';
+import { ROUTES } from '../constants';
 
 /**
  * Types
@@ -143,6 +143,12 @@ export function addToolNodeToParent(nodeName: string, parentNodeName: string) {
 
 export function addOutputParserNodeToParent(nodeName: string, parentNodeName: string) {
 	addSupplementalNodeToParent(nodeName, 'ai_outputParser', parentNodeName);
+}
+export function addVectorStoreNodeToParent(nodeName: string, parentNodeName: string) {
+	addSupplementalNodeToParent(nodeName, 'ai_vectorStore', parentNodeName);
+}
+export function addRetrieverNodeToParent(nodeName: string, parentNodeName: string) {
+	addSupplementalNodeToParent(nodeName, 'ai_retriever', parentNodeName);
 }
 
 export function clickExecuteWorkflowButton() {

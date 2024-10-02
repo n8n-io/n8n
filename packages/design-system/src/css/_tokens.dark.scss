@@ -33,6 +33,29 @@
 
 	// Secondary tokens
 
+	// AI Assistant
+	--color-assistant-highlight-1: #8c90f2;
+	--color-assistant-highlight-2: #a977f0;
+	--color-assistant-highlight-3: #f0778b;
+	--color-askAssistant-button-background: #2e2e2e;
+	--color-askAssistant-button-background-hover: #383839;
+	--color-askAssistant-button-background-active: #414244;
+	--color-assistant-inner-highlight-hover: var(--color-askAssistant-button-background-hover);
+	--color-assistant-inner-highlight-active: var(--color-askAssistant-button-background-active);
+
+	--color-assistant-highlight-gradient: linear-gradient(
+		105deg,
+		var(--color-assistant-highlight-1) 0%,
+		var(--color-assistant-highlight-2) 50%,
+		var(--color-assistant-highlight-3) 100%
+	);
+	--color-assistant-highlight-reverse: linear-gradient(
+		105deg,
+		var(--color-assistant-highlight-3) 0%,
+		var(--color-assistant-highlight-2) 50%,
+		var(--color-assistant-highlight-1) 100%
+	);
+
 	// LangChain
 	--color-lm-chat-messages-background: var(--prim-gray-820);
 	--color-lm-chat-bot-background: var(--prim-gray-740);
@@ -48,6 +71,13 @@
 	--color-canvas-dot: var(--prim-gray-670);
 	--color-canvas-read-only-line: var(--prim-gray-800);
 	--color-canvas-selected: var(--prim-gray-0-alpha-025);
+	--color-canvas-selected-transparent: var(--color-canvas-selected);
+	--color-canvas-label-background: hsla(
+		var(--color-canvas-background-h),
+		var(--color-canvas-background-s),
+		var(--color-canvas-background-l),
+		0.85
+	);
 
 	// Nodes
 	--color-node-background: var(--prim-gray-740);
@@ -101,6 +131,7 @@
 	--color-pending-resolvable-foreground: var(--color-text-base);
 	--color-pending-resolvable-background: var(--prim-gray-70-alpha-01);
 	--color-expression-editor-background: var(--prim-gray-800);
+	--color-expression-editor-modal-background: var(--prim-gray-800);
 	--color-expression-syntax-example: var(--prim-gray-670);
 	--color-autocomplete-item-selected: var(--prim-color-secondary-tint-200);
 	--color-autocomplete-section-header-border: var(--prim-gray-540);
@@ -181,6 +212,7 @@
 	--execution-selector-background: var(--prim-gray-740);
 	--execution-selector-text: var(--color-text-base);
 	--execution-select-all-text: var(--color-text-base);
+	--execution-card-text-waiting: var(--prim-color-secondary-tint-100);
 
 	// NDV
 	--color-run-data-background: var(--prim-gray-800);
@@ -195,7 +227,7 @@
 	--color-notice-font: var(--prim-gray-0);
 
 	// Callout
-	--color-callout-info-border: var(--prim-gray-420);
+	--color-callout-info-border: var(--prim-gray-670);
 	--color-callout-info-background: var(--prim-gray-740);
 	--color-callout-info-font: var(--prim-gray-0);
 	--color-callout-success-border: var(--color-success);

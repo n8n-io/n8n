@@ -3,15 +3,17 @@
  */
 
 import { DateTime, Duration, Interval } from 'luxon';
-import { Workflow } from '@/Workflow';
-import * as Helpers from './Helpers';
-import type { ExpressionTestEvaluation, ExpressionTestTransform } from './ExpressionFixtures/base';
-import { baseFixtures } from './ExpressionFixtures/base';
-import type { INodeExecutionData } from '@/Interfaces';
-import { extendSyntax } from '@/Extensions/ExpressionExtension';
+
 import { ExpressionError } from '@/errors/expression.error';
 import { setDifferEnabled, setEvaluator } from '@/ExpressionEvaluatorProxy';
+import { extendSyntax } from '@/Extensions/ExpressionExtension';
+import type { INodeExecutionData } from '@/Interfaces';
+import { Workflow } from '@/Workflow';
+
 import { workflow } from './ExpressionExtensions/Helpers';
+import { baseFixtures } from './ExpressionFixtures/base';
+import type { ExpressionTestEvaluation, ExpressionTestTransform } from './ExpressionFixtures/base';
+import * as Helpers from './Helpers';
 
 setDifferEnabled(true);
 
@@ -74,7 +76,9 @@ for (const evaluator of ['tmpl', 'tournament'] as const) {
 				expect(evaluate('={{Reflect}}')).toEqual({});
 				expect(evaluate('={{Proxy}}')).toEqual({});
 
-				expect(evaluate('={{constructor}}')).toEqual({});
+				expect(() => evaluate('={{constructor}}')).toThrowError(
+					new ExpressionError('Cannot access "constructor" due to security concerns'),
+				);
 
 				expect(evaluate('={{escape}}')).toEqual({});
 				expect(evaluate('={{unescape}}')).toEqual({});
@@ -166,7 +170,7 @@ for (const evaluator of ['tmpl', 'tournament'] as const) {
 				const testFn = jest.fn();
 				Object.assign(global, { testFn });
 				expect(() => evaluate("={{ Date['constructor']('testFn()')()}}")).toThrowError(
-					new ExpressionError('Arbitrary code execution detected'),
+					new ExpressionError('Cannot access "constructor" due to security concerns'),
 				);
 				expect(testFn).not.toHaveBeenCalled();
 			});

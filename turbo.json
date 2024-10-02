@@ -1,6 +1,7 @@
 {
 	"$schema": "https://turbo.build/schema.json",
 	"ui": "stream",
+	"globalEnv": ["CI", "COVERAGE_ENABLED"],
 	"tasks": {
 		"clean": {
 			"cache": false
@@ -22,8 +23,10 @@
 			"dependsOn": ["^typecheck"]
 		},
 		"format": {},
+		"format:check": {},
 		"lint:backend": {
 			"dependsOn": [
+				"@n8n/api-types#lint",
 				"@n8n/config#lint",
 				"@n8n/client-oauth2#lint",
 				"@n8n/imap#lint",
@@ -51,6 +54,7 @@
 		"lintfix": {},
 		"test:backend": {
 			"dependsOn": [
+				"@n8n/api-types#test",
 				"@n8n/config#test",
 				"@n8n/client-oauth2#test",
 				"@n8n/imap#test",

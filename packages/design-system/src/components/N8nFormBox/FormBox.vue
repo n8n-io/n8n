@@ -1,3 +1,46 @@
+<script lang="ts" setup>
+import type { IFormInput } from 'n8n-design-system/types';
+
+import { createFormEventBus } from '../../utils';
+import N8nButton from '../N8nButton';
+import N8nFormInputs from '../N8nFormInputs';
+import N8nHeading from '../N8nHeading';
+import N8nLink from '../N8nLink';
+
+interface FormBoxProps {
+	title?: string;
+	inputs?: IFormInput[];
+	buttonText?: string;
+	buttonLoading?: boolean;
+	secondaryButtonText?: string;
+	redirectText?: string;
+	redirectLink?: string;
+}
+
+type Value = string | number | boolean | null | undefined;
+
+defineOptions({ name: 'N8nFormBox' });
+withDefaults(defineProps<FormBoxProps>(), {
+	title: '',
+	inputs: () => [],
+	buttonLoading: false,
+	redirectText: '',
+	redirectLink: '',
+});
+
+const formBus = createFormEventBus();
+const emit = defineEmits<{
+	submit: [value: { [key: string]: Value }];
+	update: [value: { name: string; value: Value }];
+	secondaryClick: [value: Event];
+}>();
+
+const onUpdateModelValue = (e: { name: string; value: Value }) => emit('update', e);
+const onSubmit = (e: { [key: string]: Value }) => emit('submit', e);
+const onButtonClick = () => formBus.emit('submit');
+const onSecondaryButtonClick = (event: Event) => emit('secondaryClick', event);
+</script>
+
 <template>
 	<div :class="['n8n-form-box', $style.container]">
 		<div v-if="title" :class="$style.heading">
@@ -37,48 +80,6 @@
 		<slot></slot>
 	</div>
 </template>
-
-<script lang="ts" setup>
-import N8nFormInputs from '../N8nFormInputs';
-import N8nHeading from '../N8nHeading';
-import N8nLink from '../N8nLink';
-import N8nButton from '../N8nButton';
-import type { IFormInput } from 'n8n-design-system/types';
-import { createEventBus } from '../../utils';
-
-interface FormBoxProps {
-	title?: string;
-	inputs?: IFormInput[];
-	buttonText?: string;
-	buttonLoading?: boolean;
-	secondaryButtonText?: string;
-	redirectText?: string;
-	redirectLink?: string;
-}
-
-type Value = string | number | boolean | null | undefined;
-
-defineOptions({ name: 'N8nFormBox' });
-withDefaults(defineProps<FormBoxProps>(), {
-	title: '',
-	inputs: () => [],
-	buttonLoading: false,
-	redirectText: '',
-	redirectLink: '',
-});
-
-const formBus = createEventBus();
-const emit = defineEmits<{
-	submit: [value: { [key: string]: Value }];
-	update: [value: { name: string; value: Value }];
-	secondaryClick: [value: Event];
-}>();
-
-const onUpdateModelValue = (e: { name: string; value: Value }) => emit('update', e);
-const onSubmit = (e: { [key: string]: Value }) => emit('submit', e);
-const onButtonClick = () => formBus.emit('submit');
-const onSecondaryButtonClick = (event: Event) => emit('secondaryClick', event);
-</script>
 
 <style lang="scss" module>
 .heading {

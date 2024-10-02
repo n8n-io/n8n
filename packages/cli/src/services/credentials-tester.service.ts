@@ -3,10 +3,8 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
-import { Service } from 'typedi';
-import { NodeExecuteFunctions } from 'n8n-core';
 import get from 'lodash/get';
-
+import { NodeExecuteFunctions } from 'n8n-core';
 import type {
 	ICredentialsDecrypted,
 	ICredentialTestFunction,
@@ -33,15 +31,17 @@ import {
 	ErrorReporterProxy as ErrorReporter,
 	ApplicationError,
 } from 'n8n-workflow';
+import { Service } from 'typedi';
 
-import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
-import type { User } from '@db/entities/User';
-import { NodeTypes } from '@/NodeTypes';
-import { CredentialTypes } from '@/CredentialTypes';
+import { CredentialTypes } from '@/credential-types';
+import type { User } from '@/databases/entities/user';
+import { Logger } from '@/logging/logger.service';
+import { NodeTypes } from '@/node-types';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+
 import { RESPONSE_ERROR_MESSAGES } from '../constants';
+import { CredentialsHelper } from '../credentials-helper';
 import { isObjectLiteral } from '../utils';
-import { Logger } from '@/Logger';
-import { CredentialsHelper } from '../CredentialsHelper';
 
 const { OAUTH2_CREDENTIAL_TEST_SUCCEEDED, OAUTH2_CREDENTIAL_TEST_FAILED } = RESPONSE_ERROR_MESSAGES;
 

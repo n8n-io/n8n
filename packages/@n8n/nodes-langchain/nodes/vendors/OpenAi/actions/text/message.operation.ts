@@ -6,13 +6,13 @@ import type {
 } from 'n8n-workflow';
 import { jsonParse, updateDisplayOptions } from 'n8n-workflow';
 import type { Tool } from '@langchain/core/tools';
+import _omit from 'lodash/omit';
 import { apiRequest } from '../../transport';
 import type { ChatCompletion } from '../../helpers/interfaces';
 import { formatToOpenAIAssistantTool } from '../../helpers/utils';
 import { modelRLC } from '../descriptions';
 import { getConnectedTools } from '../../../../../utils/helpers';
 import { MODELS_NOT_SUPPORT_FUNCTION_CALLS } from '../../helpers/constants';
-
 const properties: INodeProperties[] = [
 	modelRLC('modelSearch'),
 	{
@@ -170,6 +170,19 @@ const properties: INodeProperties[] = [
 					'An alternative to sampling with temperature, controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered. We generally recommend altering this or temperature but not both.',
 				type: 'number',
 			},
+			{
+				displayName: 'Max Tool Calls Iterations',
+				name: 'maxToolsIterations',
+				type: 'number',
+				default: 15,
+				description:
+					'The maximum number of tool iteration cycles the LLM will run before stopping. A single iteration can contain multiple tool calls. Set to 0 for no limit.',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.5 } }],
+					},
+				},
+			},
 		],
 	},
 ];
@@ -189,6 +202,10 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	let messages = this.getNodeParameter('messages.values', i, []) as IDataObject[];
 	const options = this.getNodeParameter('options', i, {});
 	const jsonOutput = this.getNodeParameter('jsonOutput', i, false) as boolean;
+	const maxToolsIterations =
+		nodeVersion >= 1.5 ? (this.getNodeParameter('options.maxToolsIterations', i, 15) as number) : 0;
+
+	const abortSignal = this.getExecutionCancelSignal();
 
 	if (options.maxTokens !== undefined) {
 		options.max_tokens = options.maxTokens;
@@ -219,7 +236,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	if (hideTools !== 'hide') {
 		const enforceUniqueNames = nodeVersion > 1;
-		externalTools = await getConnectedTools(this, enforceUniqueNames);
+		externalTools = await getConnectedTools(this, enforceUniqueNames, false);
 	}
 
 	if (externalTools.length) {
@@ -231,7 +248,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		messages,
 		tools,
 		response_format,
-		...options,
+		..._omit(options, ['maxToolsIterations']),
 	};
 
 	let response = (await apiRequest.call(this, 'POST', '/chat/completions', {
@@ -240,9 +257,17 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	if (!response) return [];
 
+	let currentIteration = 1;
 	let toolCalls = response?.choices[0]?.message?.tool_calls;
 
 	while (toolCalls?.length) {
+		// Break the loop if the max iterations is reached or the execution is canceled
+		if (
+			abortSignal?.aborted ||
+			(maxToolsIterations > 0 && currentIteration >= maxToolsIterations)
+		) {
+			break;
+		}
 		messages.push(response.choices[0].message);
 
 		for (const toolCall of toolCalls) {
@@ -274,6 +299,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		})) as ChatCompletion;
 
 		toolCalls = response.choices[0].message.tool_calls;
+		currentIteration += 1;
 	}
 
 	if (response_format) {

@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue';
-import N8nFormInput from '../N8nFormInput';
+
 import type { IFormInput } from '../../types';
+import type { FormEventBus } from '../../utils';
+import { createFormEventBus } from '../../utils';
+import N8nFormInput from '../N8nFormInput';
 import ResizeObserver from '../ResizeObserver';
-import type { EventBus } from '../../utils';
-import { createEventBus } from '../../utils';
 
 export type FormInputsProps = {
 	inputs?: IFormInput[];
-	eventBus?: EventBus;
+	eventBus?: FormEventBus;
 	columnView?: boolean;
 	verticalSpacing?: '' | 'xs' | 's' | 'm' | 'l' | 'xl';
 	teleported?: boolean;
@@ -19,7 +20,7 @@ type Value = string | number | boolean | null | undefined;
 
 const props = withDefaults(defineProps<FormInputsProps>(), {
 	inputs: () => [],
-	eventBus: createEventBus,
+	eventBus: createFormEventBus,
 	columnView: false,
 	verticalSpacing: '',
 	teleported: true,

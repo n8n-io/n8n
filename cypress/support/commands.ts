@@ -1,7 +1,7 @@
 import 'cypress-real-events';
+import type { FrontendSettings } from '@n8n/api-types';
 import FakeTimers from '@sinonjs/fake-timers';
-import type { IN8nUISettings } from 'n8n-workflow';
-import { WorkflowPage } from '../pages';
+
 import {
 	BACKEND_BASE_URL,
 	INSTANCE_ADMIN,
@@ -9,6 +9,7 @@ import {
 	INSTANCE_OWNER,
 	N8N_AUTH_COOKIE,
 } from '../constants';
+import { WorkflowPage } from '../pages';
 import { getUniqueWorkflowName } from '../utils/workflowUtils';
 
 Cypress.Commands.add('setAppDate', (targetDate: number | Date) => {
@@ -59,14 +60,18 @@ Cypress.Commands.add('waitForLoad', (waitForIntercepts = true) => {
 
 Cypress.Commands.add('signin', ({ email, password }) => {
 	void Cypress.session.clearAllSavedSessions();
-	cy.session([email, password], () =>
-		cy.request({
-			method: 'POST',
-			url: `${BACKEND_BASE_URL}/rest/login`,
-			body: { email, password },
-			failOnStatusCode: false,
-		}),
-	);
+	cy.session([email, password], () => {
+		return cy
+			.request({
+				method: 'POST',
+				url: `${BACKEND_BASE_URL}/rest/login`,
+				body: { email, password },
+				failOnStatusCode: false,
+			})
+			.then((response) => {
+				Cypress.env('currentUserId', response.body.data.id);
+			});
+	});
 });
 
 Cypress.Commands.add('signinAsOwner', () => cy.signin(INSTANCE_OWNER));
@@ -82,8 +87,8 @@ Cypress.Commands.add('signout', () => {
 	cy.getCookie(N8N_AUTH_COOKIE).should('not.exist');
 });
 
-export let settings: Partial<IN8nUISettings>;
-Cypress.Commands.add('overrideSettings', (value: Partial<IN8nUISettings>) => {
+export let settings: Partial<FrontendSettings>;
+Cypress.Commands.add('overrideSettings', (value: Partial<FrontendSettings>) => {
 	settings = value;
 });
 
@@ -175,7 +180,7 @@ Cypress.Commands.add('drag', (selector, pos, options) => {
 	});
 });
 
-Cypress.Commands.add('draganddrop', (draggableSelector, droppableSelector) => {
+Cypress.Commands.add('draganddrop', (draggableSelector, droppableSelector, options) => {
 	if (draggableSelector) {
 		cy.get(draggableSelector).should('exist');
 	}
@@ -197,7 +202,7 @@ Cypress.Commands.add('draganddrop', (draggableSelector, droppableSelector) => {
 			cy.get(droppableSelector).realMouseMove(0, 0);
 			cy.get(droppableSelector).realMouseMove(pageX, pageY);
 			cy.get(droppableSelector).realHover();
-			cy.get(droppableSelector).realMouseUp();
+			cy.get(droppableSelector).realMouseUp({ position: options?.position ?? 'top' });
 			if (draggableSelector) {
 				cy.get(draggableSelector).realMouseUp();
 			}

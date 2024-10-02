@@ -1,5 +1,6 @@
 import type { AuthenticatedRequest, AuthlessRequest } from '@/requests';
-import type { SamlPreferences } from './samlPreferences';
+
+import type { SamlPreferences } from './saml-preferences';
 
 export declare namespace SamlConfiguration {
 	type Update = AuthenticatedRequest<{}, {}, SamlPreferences, {}>;

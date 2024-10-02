@@ -1,157 +1,10 @@
-<template>
-	<ResourcesListLayout
-		ref="layout"
-		resource-key="workflows"
-		:resources="allWorkflows"
-		:filters="filters"
-		:additional-filters-handler="onFilter"
-		:type-props="{ itemSize: 80 }"
-		:shareable="isShareable"
-		:initialize="initialize"
-		:disabled="readOnlyEnv"
-		:loading="loading"
-		@click:add="addWorkflow"
-		@update:filters="onFiltersUpdated"
-	>
-		<template #header>
-			<ProjectTabs />
-		</template>
-		<template #add-button="{ disabled }">
-			<n8n-tooltip :disabled="!readOnlyEnv">
-				<div>
-					<n8n-button
-						size="large"
-						block
-						:disabled="disabled"
-						data-test-id="resources-list-add"
-						@click="addWorkflow"
-					>
-						{{ addWorkflowButtonText }}
-					</n8n-button>
-				</div>
-				<template #content>
-					<i18n-t tag="span" keypath="mainSidebar.workflows.readOnlyEnv.tooltip">
-						<template #link>
-							<a target="_blank" href="https://docs.n8n.io/source-control-environments/">
-								{{ $locale.baseText('mainSidebar.workflows.readOnlyEnv.tooltip.link') }}
-							</a>
-						</template>
-					</i18n-t>
-				</template>
-			</n8n-tooltip>
-		</template>
-		<template #default="{ data, updateItemSize }">
-			<WorkflowCard
-				data-test-id="resources-list-item"
-				class="mb-2xs"
-				:data="data"
-				:read-only="readOnlyEnv"
-				@expand:tags="updateItemSize(data)"
-				@click:tag="onClickTag"
-			/>
-		</template>
-		<template #empty>
-			<div class="text-center mt-s">
-				<n8n-heading tag="h2" size="xlarge" class="mb-2xs">
-					{{
-						currentUser.firstName
-							? $locale.baseText('workflows.empty.heading', {
-									interpolate: { name: currentUser.firstName },
-								})
-							: $locale.baseText('workflows.empty.heading.userNotSetup')
-					}}
-				</n8n-heading>
-				<n8n-text size="large" color="text-base">
-					{{
-						$locale.baseText(
-							readOnlyEnv
-								? 'workflows.empty.description.readOnlyEnv'
-								: 'workflows.empty.description',
-						)
-					}}
-				</n8n-text>
-			</div>
-			<div v-if="!readOnlyEnv" :class="['text-center', 'mt-2xl', $style.actionsContainer]">
-				<a
-					v-if="isSalesUser"
-					:href="getTemplateRepositoryURL()"
-					:class="$style.emptyStateCard"
-					target="_blank"
-				>
-					<n8n-card
-						hoverable
-						data-test-id="browse-sales-templates-card"
-						@click="trackCategoryLinkClick('Sales')"
-					>
-						<n8n-icon :class="$style.emptyStateCardIcon" icon="box-open" />
-						<n8n-text size="large" class="mt-xs" color="text-base">
-							{{ $locale.baseText('workflows.empty.browseTemplates') }}
-						</n8n-text>
-					</n8n-card>
-				</a>
-				<n8n-card
-					:class="$style.emptyStateCard"
-					hoverable
-					data-test-id="new-workflow-card"
-					@click="addWorkflow"
-				>
-					<n8n-icon :class="$style.emptyStateCardIcon" icon="file" />
-					<n8n-text size="large" class="mt-xs" color="text-base">
-						{{ $locale.baseText('workflows.empty.startFromScratch') }}
-					</n8n-text>
-				</n8n-card>
-			</div>
-		</template>
-		<template #filters="{ setKeyValue }">
-			<div v-if="settingsStore.areTagsEnabled" class="mb-s">
-				<n8n-input-label
-					:label="$locale.baseText('workflows.filters.tags')"
-					:bold="false"
-					size="small"
-					color="text-base"
-					class="mb-3xs"
-				/>
-				<TagsDropdown
-					:placeholder="$locale.baseText('workflowOpen.filterWorkflows')"
-					:model-value="filters.tags"
-					:create-enabled="false"
-					@update:model-value="setKeyValue('tags', $event)"
-				/>
-			</div>
-			<div class="mb-s">
-				<n8n-input-label
-					:label="$locale.baseText('workflows.filters.status')"
-					:bold="false"
-					size="small"
-					color="text-base"
-					class="mb-3xs"
-				/>
-				<n8n-select
-					data-test-id="status-dropdown"
-					:model-value="filters.status"
-					@update:model-value="setKeyValue('status', $event)"
-				>
-					<n8n-option
-						v-for="option in statusFilterOptions"
-						:key="option.label"
-						:label="option.label"
-						:value="option.value"
-						data-test-id="status"
-					>
-					</n8n-option>
-				</n8n-select>
-			</div>
-		</template>
-	</ResourcesListLayout>
-</template>
-
 <script lang="ts">
 import { defineComponent } from 'vue';
 import ResourcesListLayout, { type IResource } from '@/components/layouts/ResourcesListLayout.vue';
 import WorkflowCard from '@/components/WorkflowCard.vue';
-import { EnterpriseEditionFeature, VIEWS } from '@/constants';
+import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
+import { EnterpriseEditionFeature, MORE_ONBOARDING_OPTIONS_EXPERIMENT, VIEWS } from '@/constants';
 import type { ITag, IUser, IWorkflowDb } from '@/Interface';
-import TagsDropdown from '@/components/TagsDropdown.vue';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -162,6 +15,9 @@ import { useTagsStore } from '@/stores/tags.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import ProjectTabs from '@/components/Projects/ProjectTabs.vue';
 import { useTemplatesStore } from '@/stores/templates.store';
+import { getResourcePermissions } from '@/permissions';
+import { usePostHog } from '@/stores/posthog.store';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
 
 interface Filters {
 	search: string;
@@ -181,7 +37,7 @@ const WorkflowsView = defineComponent({
 	components: {
 		ResourcesListLayout,
 		WorkflowCard,
-		TagsDropdown,
+		WorkflowTagsDropdown,
 		ProjectTabs,
 	},
 	data() {
@@ -194,6 +50,7 @@ const WorkflowsView = defineComponent({
 			} as Filters,
 			sourceControlStoreUnsubscribe: () => {},
 			loading: false,
+			documentTitle: useDocumentTitle(),
 		};
 	},
 	computed: {
@@ -206,6 +63,7 @@ const WorkflowsView = defineComponent({
 			useTagsStore,
 			useProjectsStore,
 			useTemplatesStore,
+			usePostHog,
 		),
 		readOnlyEnv(): boolean {
 			return this.sourceControlStore.preferences.branchReadOnly;
@@ -249,6 +107,12 @@ const WorkflowsView = defineComponent({
 
 			return undefined;
 		},
+		isOnboardingExperimentEnabled() {
+			return (
+				this.posthogStore.getVariant(MORE_ONBOARDING_OPTIONS_EXPERIMENT.name) ===
+				MORE_ONBOARDING_OPTIONS_EXPERIMENT.variant
+			);
+		},
 		isSalesUser() {
 			if (!this.userRole) {
 				return false;
@@ -259,6 +123,20 @@ const WorkflowsView = defineComponent({
 			return this.projectsStore.currentProject
 				? this.$locale.baseText('workflows.project.add')
 				: this.$locale.baseText('workflows.add');
+		},
+		projectPermissions() {
+			return getResourcePermissions(
+				this.projectsStore.currentProject?.scopes ?? this.projectsStore.personalProject?.scopes,
+			);
+		},
+		emptyListDescription() {
+			if (this.readOnlyEnv) {
+				return this.$locale.baseText('workflows.empty.description.readOnlyEnv');
+			} else if (!this.projectPermissions.workflow.create) {
+				return this.$locale.baseText('workflows.empty.description.noPermission');
+			} else {
+				return this.$locale.baseText('workflows.empty.description');
+			}
 		},
 	},
 	watch: {
@@ -273,6 +151,7 @@ const WorkflowsView = defineComponent({
 		},
 	},
 	async mounted() {
+		this.documentTitle.set(this.$locale.baseText('workflows.heading'));
 		await this.setFiltersFromQueryString();
 
 		void this.usersStore.showPersonalizationSurvey();
@@ -302,9 +181,18 @@ const WorkflowsView = defineComponent({
 			this.$telemetry.track('User clicked add workflow button', {
 				source: 'Workflows list',
 			});
+			this.trackEmptyCardClick('blank');
 		},
 		getTemplateRepositoryURL() {
 			return this.templatesStore.websiteTemplateRepositoryURL;
+		},
+		trackEmptyCardClick(option: 'blank' | 'templates' | 'courses') {
+			this.$telemetry.track('User clicked empty page option', {
+				option,
+			});
+			if (option === 'templates' && this.isSalesUser) {
+				this.trackCategoryLinkClick('Sales');
+			}
 		},
 		trackCategoryLinkClick(category: string) {
 			this.$telemetry.track(`User clicked Browse ${category} Templates`, {
@@ -373,7 +261,7 @@ const WorkflowsView = defineComponent({
 			});
 		},
 		isValidProjectId(projectId: string) {
-			return this.projectsStore.projects.some((project) => project.id === projectId);
+			return this.projectsStore.availableProjects.some((project) => project.id === projectId);
 		},
 		async setFiltersFromQueryString() {
 			const { tags, status, search, homeProject } = this.$route.query;
@@ -381,7 +269,7 @@ const WorkflowsView = defineComponent({
 			const filtersToApply: { [key: string]: string | string[] | boolean } = {};
 
 			if (homeProject && typeof homeProject === 'string') {
-				await this.projectsStore.getAllProjects();
+				await this.projectsStore.getAvailableProjects();
 				if (this.isValidProjectId(homeProject)) {
 					filtersToApply.homeProject = homeProject;
 				}
@@ -419,6 +307,167 @@ const WorkflowsView = defineComponent({
 
 export default WorkflowsView;
 </script>
+
+<template>
+	<ResourcesListLayout
+		ref="layout"
+		resource-key="workflows"
+		:resources="allWorkflows"
+		:filters="filters"
+		:additional-filters-handler="onFilter"
+		:type-props="{ itemSize: 80 }"
+		:shareable="isShareable"
+		:initialize="initialize"
+		:disabled="readOnlyEnv || !projectPermissions.workflow.create"
+		:loading="loading"
+		@click:add="addWorkflow"
+		@update:filters="onFiltersUpdated"
+	>
+		<template #header>
+			<ProjectTabs />
+		</template>
+		<template #add-button="{ disabled }">
+			<n8n-tooltip :disabled="!readOnlyEnv">
+				<div>
+					<n8n-button
+						size="large"
+						block
+						:disabled="disabled"
+						data-test-id="resources-list-add"
+						@click="addWorkflow"
+					>
+						{{ addWorkflowButtonText }}
+					</n8n-button>
+				</div>
+				<template #content>
+					<i18n-t tag="span" keypath="mainSidebar.workflows.readOnlyEnv.tooltip">
+						<template #link>
+							<a target="_blank" href="https://docs.n8n.io/source-control-environments/">
+								{{ $locale.baseText('mainSidebar.workflows.readOnlyEnv.tooltip.link') }}
+							</a>
+						</template>
+					</i18n-t>
+				</template>
+			</n8n-tooltip>
+		</template>
+		<template #default="{ data, updateItemSize }">
+			<WorkflowCard
+				data-test-id="resources-list-item"
+				class="mb-2xs"
+				:data="data"
+				:read-only="readOnlyEnv"
+				@expand:tags="updateItemSize(data)"
+				@click:tag="onClickTag"
+			/>
+		</template>
+		<template #empty>
+			<div class="text-center mt-s">
+				<n8n-heading tag="h2" size="xlarge" class="mb-2xs">
+					{{
+						currentUser.firstName
+							? $locale.baseText('workflows.empty.heading', {
+									interpolate: { name: currentUser.firstName },
+								})
+							: $locale.baseText('workflows.empty.heading.userNotSetup')
+					}}
+				</n8n-heading>
+				<n8n-text v-if="!isOnboardingExperimentEnabled" size="large" color="text-base">
+					{{ emptyListDescription }}
+				</n8n-text>
+			</div>
+			<div
+				v-if="!readOnlyEnv && projectPermissions.workflow.create"
+				:class="['text-center', 'mt-2xl', $style.actionsContainer]"
+			>
+				<n8n-card
+					:class="$style.emptyStateCard"
+					hoverable
+					data-test-id="new-workflow-card"
+					@click="addWorkflow"
+				>
+					<n8n-icon :class="$style.emptyStateCardIcon" icon="file" />
+					<n8n-text size="large" class="mt-xs" color="text-dark">
+						{{ $locale.baseText('workflows.empty.startFromScratch') }}
+					</n8n-text>
+				</n8n-card>
+				<a
+					v-if="isSalesUser || isOnboardingExperimentEnabled"
+					href="https://docs.n8n.io/courses/#available-courses"
+					:class="$style.emptyStateCard"
+					target="_blank"
+				>
+					<n8n-card
+						hoverable
+						data-test-id="browse-sales-templates-card"
+						@click="trackEmptyCardClick('courses')"
+					>
+						<n8n-icon :class="$style.emptyStateCardIcon" icon="graduation-cap" />
+						<n8n-text size="large" class="mt-xs" color="text-dark">
+							{{ $locale.baseText('workflows.empty.learnN8n') }}
+						</n8n-text>
+					</n8n-card>
+				</a>
+				<a
+					v-if="isSalesUser || isOnboardingExperimentEnabled"
+					:href="getTemplateRepositoryURL()"
+					:class="$style.emptyStateCard"
+					target="_blank"
+				>
+					<n8n-card
+						hoverable
+						data-test-id="browse-sales-templates-card"
+						@click="trackEmptyCardClick('templates')"
+					>
+						<n8n-icon :class="$style.emptyStateCardIcon" icon="box-open" />
+						<n8n-text size="large" class="mt-xs" color="text-dark">
+							{{ $locale.baseText('workflows.empty.browseTemplates') }}
+						</n8n-text>
+					</n8n-card>
+				</a>
+			</div>
+		</template>
+		<template #filters="{ setKeyValue }">
+			<div v-if="settingsStore.areTagsEnabled" class="mb-s">
+				<n8n-input-label
+					:label="$locale.baseText('workflows.filters.tags')"
+					:bold="false"
+					size="small"
+					color="text-base"
+					class="mb-3xs"
+				/>
+				<WorkflowTagsDropdown
+					:placeholder="$locale.baseText('workflowOpen.filterWorkflows')"
+					:model-value="filters.tags"
+					:create-enabled="false"
+					@update:model-value="setKeyValue('tags', $event)"
+				/>
+			</div>
+			<div class="mb-s">
+				<n8n-input-label
+					:label="$locale.baseText('workflows.filters.status')"
+					:bold="false"
+					size="small"
+					color="text-base"
+					class="mb-3xs"
+				/>
+				<n8n-select
+					data-test-id="status-dropdown"
+					:model-value="filters.status"
+					@update:model-value="setKeyValue('status', $event)"
+				>
+					<n8n-option
+						v-for="option in statusFilterOptions"
+						:key="option.label"
+						:label="option.label"
+						:value="option.value"
+						data-test-id="status"
+					>
+					</n8n-option>
+				</n8n-select>
+			</div>
+		</template>
+	</ResourcesListLayout>
+</template>
 
 <style lang="scss" module>
 .actionsContainer {

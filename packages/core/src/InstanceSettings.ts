@@ -1,8 +1,8 @@
-import path from 'path';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { createHash, randomBytes } from 'crypto';
-import { Service } from 'typedi';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { ApplicationError, jsonParse } from 'n8n-workflow';
+import path from 'path';
+import { Service } from 'typedi';
 
 interface ReadOnlySettings {
 	encryptionKey: string;
@@ -13,6 +13,10 @@ interface WritableSettings {
 }
 
 type Settings = ReadOnlySettings & WritableSettings;
+
+type InstanceRole = 'unset' | 'leader' | 'follower';
+
+export type InstanceType = 'main' | 'webhook' | 'worker';
 
 const inTest = process.env.NODE_ENV === 'test';
 
@@ -37,6 +41,41 @@ export class InstanceSettings {
 	private settings = this.loadOrCreate();
 
 	readonly instanceId = this.generateInstanceId();
+
+	readonly instanceType: InstanceType;
+
+	constructor() {
+		const command = process.argv[2];
+		this.instanceType = ['webhook', 'worker'].includes(command)
+			? (command as InstanceType)
+			: 'main';
+	}
+
+	/**
+	 * A main is:
+	 * - `unset` during bootup,
+	 * - `leader` after bootup in single-main setup,
+	 * - `leader` or `follower` after bootup in multi-main setup.
+	 *
+	 * A non-main instance type (e.g. `worker`) is always `unset`.
+	 */
+	instanceRole: InstanceRole = 'unset';
+
+	get isLeader() {
+		return this.instanceRole === 'leader';
+	}
+
+	markAsLeader() {
+		this.instanceRole = 'leader';
+	}
+
+	get isFollower() {
+		return this.instanceRole === 'follower';
+	}
+
+	markAsFollower() {
+		this.instanceRole = 'follower';
+	}
 
 	get encryptionKey() {
 		return this.settings.encryptionKey;

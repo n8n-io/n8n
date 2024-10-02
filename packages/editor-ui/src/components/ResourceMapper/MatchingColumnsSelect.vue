@@ -9,22 +9,25 @@ import { computed, reactive, watch } from 'vue';
 import { i18n as locale } from '@/plugins/i18n';
 import { useNodeSpecificationValues } from '@/composables/useNodeSpecificationValues';
 import ParameterOptions from '@/components/ParameterOptions.vue';
+import { N8nInputLabel, N8nNotice, N8nSelect } from 'n8n-design-system';
 
 interface Props {
 	parameter: INodeProperties;
 	initialValue: string[];
 	fieldsToMap: ResourceMapperFields['fields'];
 	typeOptions: INodePropertyTypeOptions | undefined;
-	labelSize: string;
-	inputSize: string;
+	labelSize: 'small' | 'medium';
+	inputSize: 'small' | 'medium';
 	loading: boolean;
 	serviceName: string;
-	teleported?: boolean;
 	refreshInProgress: boolean;
+	teleported?: boolean;
+	isReadOnly?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
 	teleported: true,
+	isReadOnly: false,
 });
 const {
 	resourceMapperTypeOptions,
@@ -93,6 +96,7 @@ const fieldDescription = computed<string>(() => {
 				resourceMapperTypeOptions.value?.multiKeyMatch === true
 					? `${pluralFieldWord.value}`
 					: `${singularFieldWord.value}`,
+			nodeDisplayName: props.serviceName,
 		},
 	});
 });
@@ -167,7 +171,7 @@ defineExpose({
 
 <template>
 	<div class="mt-2xs" data-test-id="matching-column-select">
-		<n8n-input-label
+		<N8nInputLabel
 			v-if="availableMatchingFields.length > 0"
 			:label="fieldLabel"
 			:tooltip-text="fieldTooltip"
@@ -182,14 +186,15 @@ defineExpose({
 					:custom-actions="parameterActions"
 					:loading="props.refreshInProgress"
 					:loading-message="fetchingFieldsLabel"
+					:is-read-only="isReadOnly"
 					@update:model-value="onParameterActionSelected"
 				/>
 			</template>
-			<n8n-select
+			<N8nSelect
 				:multiple="resourceMapperTypeOptions?.multiKeyMatch === true"
 				:model-value="state.selected"
 				:size="props.inputSize"
-				:disabled="loading"
+				:disabled="loading || isReadOnly"
 				:teleported="teleported"
 				@update:model-value="onSelectionChange"
 			>
@@ -201,17 +206,17 @@ defineExpose({
 				>
 					{{ field.displayName }}
 				</n8n-option>
-			</n8n-select>
-			<n8n-text size="small">
+			</N8nSelect>
+			<N8nText size="small">
 				{{ fieldDescription }}
-			</n8n-text>
-		</n8n-input-label>
-		<n8n-notice v-else>
+			</N8nText>
+		</N8nInputLabel>
+		<N8nNotice v-else>
 			{{
 				locale.baseText('resourceMapper.columnsToMatchOn.noFieldsFound', {
 					interpolate: { fieldWord: singularFieldWord, serviceName: props.serviceName },
 				})
 			}}
-		</n8n-notice>
+		</N8nNotice>
 	</div>
 </template>

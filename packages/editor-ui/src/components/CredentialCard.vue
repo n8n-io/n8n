@@ -5,7 +5,7 @@ import type { ICredentialsResponse } from '@/Interface';
 import { MODAL_CONFIRM, PROJECT_MOVE_RESOURCE_MODAL } from '@/constants';
 import { useMessage } from '@/composables/useMessage';
 import CredentialIcon from '@/components/CredentialIcon.vue';
-import { getCredentialPermissions } from '@/permissions';
+import { getResourcePermissions } from '@/permissions';
 import { useUIStore } from '@/stores/ui.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import TimeAgo from '@/components/TimeAgo.vue';
@@ -14,7 +14,6 @@ import { useProjectsStore } from '@/stores/projects.store';
 import ProjectCardBadge from '@/components/Projects/ProjectCardBadge.vue';
 import { useI18n } from '@/composables/useI18n';
 import { ResourceType } from '@/utils/projects.utils';
-import { useSettingsStore } from '@/stores/settings.store';
 
 const CREDENTIAL_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
@@ -46,11 +45,10 @@ const message = useMessage();
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 const projectsStore = useProjectsStore();
-const settingsStore = useSettingsStore();
 
 const resourceTypeLabel = computed(() => locale.baseText('generic.credential').toLowerCase());
 const credentialType = computed(() => credentialsStore.getCredentialTypeByName(props.data.type));
-const credentialPermissions = computed(() => getCredentialPermissions(props.data));
+const credentialPermissions = computed(() => getResourcePermissions(props.data.scopes).credential);
 const actions = computed(() => {
 	const items = [
 		{
@@ -66,7 +64,7 @@ const actions = computed(() => {
 		});
 	}
 
-	if (credentialPermissions.value.move && !settingsStore.isCommunityPlan) {
+	if (credentialPermissions.value.move && projectsStore.isTeamProjectFeatureEnabled) {
 		items.push({
 			label: locale.baseText('credentials.item.move'),
 			value: CREDENTIAL_LIST_ITEM_ACTIONS.MOVE,
@@ -140,16 +138,19 @@ function moveResource() {
 		<template #header>
 			<n8n-heading tag="h2" bold :class="$style.cardHeading">
 				{{ data.name }}
+				<N8nBadge v-if="readOnly" class="ml-3xs" theme="tertiary" bold>
+					{{ locale.baseText('credentials.item.readonly') }}
+				</N8nBadge>
 			</n8n-heading>
 		</template>
 		<div :class="$style.cardDescription">
 			<n8n-text color="text-light" size="small">
 				<span v-if="credentialType">{{ credentialType.displayName }} | </span>
 				<span v-show="data"
-					>{{ $locale.baseText('credentials.item.updated') }} <TimeAgo :date="data.updatedAt" /> |
+					>{{ locale.baseText('credentials.item.updated') }} <TimeAgo :date="data.updatedAt" /> |
 				</span>
 				<span v-show="data"
-					>{{ $locale.baseText('credentials.item.created') }} {{ formattedCreatedAtDate }}
+					>{{ locale.baseText('credentials.item.created') }} {{ formattedCreatedAtDate }}
 				</span>
 			</n8n-text>
 		</div>

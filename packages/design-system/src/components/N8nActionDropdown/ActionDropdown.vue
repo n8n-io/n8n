@@ -1,3 +1,82 @@
+<script lang="ts" setup>
+// This component is visually similar to the ActionToggle component
+// but it offers more options when it comes to dropdown items styling
+// (supports icons, separators, custom styling and all options provided
+// by Element UI dropdown component).
+// It can be used in different parts of editor UI while ActionToggle
+// is designed to be used in card components.
+import { ElDropdown, ElDropdownMenu, ElDropdownItem, type Placement } from 'element-plus';
+import { ref, useCssModule, useAttrs, computed } from 'vue';
+
+import type { IconSize } from 'n8n-design-system/types/icon';
+
+import type { ActionDropdownItem } from '../../types';
+import N8nIcon from '../N8nIcon';
+import { N8nKeyboardShortcut } from '../N8nKeyboardShortcut';
+
+const TRIGGER = ['click', 'hover'] as const;
+
+interface ActionDropdownProps {
+	items: ActionDropdownItem[];
+	placement?: Placement;
+	activatorIcon?: string;
+	activatorSize?: IconSize;
+	iconSize?: IconSize;
+	trigger?: (typeof TRIGGER)[number];
+	hideArrow?: boolean;
+	teleported?: boolean;
+	disabled?: boolean;
+}
+
+const props = withDefaults(defineProps<ActionDropdownProps>(), {
+	placement: 'bottom',
+	activatorIcon: 'ellipsis-h',
+	activatorSize: 'medium',
+	iconSize: 'medium',
+	trigger: 'click',
+	hideArrow: false,
+	teleported: true,
+	disabled: false,
+});
+
+const attrs = useAttrs();
+const testIdPrefix = attrs['data-test-id'];
+
+const $style = useCssModule();
+const getItemClasses = (item: ActionDropdownItem): Record<string, boolean> => {
+	return {
+		[$style.itemContainer]: true,
+		[$style.disabled]: !!item.disabled,
+		[$style.hasCustomStyling]: item.customClass !== undefined,
+		...(item.customClass !== undefined ? { [item.customClass]: true } : {}),
+	};
+};
+
+const emit = defineEmits<{
+	select: [action: string];
+	visibleChange: [open: boolean];
+}>();
+const elementDropdown = ref<InstanceType<typeof ElDropdown>>();
+
+const popperClass = computed(
+	() => `${$style.shadow}${props.hideArrow ? ` ${$style.hideArrow}` : ''}`,
+);
+
+const onSelect = (action: string) => emit('select', action);
+const onVisibleChange = (open: boolean) => emit('visibleChange', open);
+
+const onButtonBlur = (event: FocusEvent) => {
+	// Hide dropdown when clicking outside of current document
+	if (elementDropdown.value?.handleClose && event.relatedTarget === null) {
+		elementDropdown.value.handleClose();
+	}
+};
+
+const open = () => elementDropdown.value?.handleOpen();
+const close = () => elementDropdown.value?.handleClose();
+defineExpose({ open, close });
+</script>
+
 <template>
 	<div :class="['action-dropdown-container', $style.actionDropdownContainer]">
 		<ElDropdown
@@ -6,6 +85,7 @@
 			:trigger="trigger"
 			:popper-class="popperClass"
 			:teleported="teleported"
+			:disabled="disabled"
 			@command="onSelect"
 			@visible-change="onVisibleChange"
 		>
@@ -50,81 +130,6 @@
 		</ElDropdown>
 	</div>
 </template>
-
-<script lang="ts" setup>
-// This component is visually similar to the ActionToggle component
-// but it offers more options when it comes to dropdown items styling
-// (supports icons, separators, custom styling and all options provided
-// by Element UI dropdown component).
-// It can be used in different parts of editor UI while ActionToggle
-// is designed to be used in card components.
-import { ref, useCssModule, useAttrs, computed } from 'vue';
-import { ElDropdown, ElDropdownMenu, ElDropdownItem, type Placement } from 'element-plus';
-import N8nIcon from '../N8nIcon';
-import { N8nKeyboardShortcut } from '../N8nKeyboardShortcut';
-import type { ActionDropdownItem } from '../../types';
-import type { IconSize } from 'n8n-design-system/types/icon';
-
-const TRIGGER = ['click', 'hover'] as const;
-
-interface ActionDropdownProps {
-	items: ActionDropdownItem[];
-	placement?: Placement;
-	activatorIcon?: string;
-	activatorSize?: IconSize;
-	iconSize?: IconSize;
-	trigger?: (typeof TRIGGER)[number];
-	hideArrow?: boolean;
-	teleported?: boolean;
-}
-
-const props = withDefaults(defineProps<ActionDropdownProps>(), {
-	placement: 'bottom',
-	activatorIcon: 'ellipsis-h',
-	activatorSize: 'medium',
-	iconSize: 'medium',
-	trigger: 'click',
-	hideArrow: false,
-	teleported: true,
-});
-
-const attrs = useAttrs();
-const testIdPrefix = attrs['data-test-id'];
-
-const $style = useCssModule();
-const getItemClasses = (item: ActionDropdownItem): Record<string, boolean> => {
-	return {
-		[$style.itemContainer]: true,
-		[$style.disabled]: !!item.disabled,
-		[$style.hasCustomStyling]: item.customClass !== undefined,
-		...(item.customClass !== undefined ? { [item.customClass]: true } : {}),
-	};
-};
-
-const emit = defineEmits<{
-	select: [action: string];
-	visibleChange: [open: boolean];
-}>();
-const elementDropdown = ref<InstanceType<typeof ElDropdown>>();
-
-const popperClass = computed(
-	() => `${$style.shadow}${props.hideArrow ? ` ${$style.hideArrow}` : ''}`,
-);
-
-const onSelect = (action: string) => emit('select', action);
-const onVisibleChange = (open: boolean) => emit('visibleChange', open);
-
-const onButtonBlur = (event: FocusEvent) => {
-	// Hide dropdown when clicking outside of current document
-	if (elementDropdown.value?.handleClose && event.relatedTarget === null) {
-		elementDropdown.value.handleClose();
-	}
-};
-
-const open = () => elementDropdown.value?.handleOpen();
-const close = () => elementDropdown.value?.handleClose();
-defineExpose({ open, close });
-</script>
 
 <style lang="scss" module>
 :global(.el-dropdown__list) {

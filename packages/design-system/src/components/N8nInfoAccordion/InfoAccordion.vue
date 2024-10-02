@@ -1,49 +1,11 @@
-<template>
-	<div :class="['accordion', $style.container]">
-		<div :class="{ [$style.header]: true, [$style.expanded]: expanded }" @click="toggle">
-			<N8nIcon
-				v-if="headerIcon"
-				:icon="headerIcon.icon"
-				:color="headerIcon.color"
-				size="small"
-				class="mr-2xs"
-			/>
-			<N8nText :class="$style.headerText" color="text-base" size="small" align="left" bold>{{
-				title
-			}}</N8nText>
-			<N8nIcon :icon="expanded ? 'chevron-up' : 'chevron-down'" bold />
-		</div>
-		<div
-			v-if="expanded"
-			:class="{ [$style.description]: true, [$style.collapsed]: !expanded }"
-			@click="onClick"
-		>
-			<!-- Info accordion can display list of items with icons or just a HTML description -->
-			<div v-if="items.length > 0" :class="$style.accordionItems">
-				<div v-for="item in items" :key="item.id" :class="$style.accordionItem">
-					<n8n-tooltip :disabled="!item.tooltip">
-						<template #content>
-							<div @click="onTooltipClick(item.id, $event)" v-html="item.tooltip"></div>
-						</template>
-						<N8nIcon :icon="item.icon" :color="item.iconColor" size="small" class="mr-2xs" />
-					</n8n-tooltip>
-					<N8nText size="small" color="text-base">{{ item.label }}</N8nText>
-				</div>
-			</div>
-			<N8nText color="text-base" size="small" align="left">
-				<span v-html="description"></span>
-			</N8nText>
-			<slot name="customContent"></slot>
-		</div>
-	</div>
-</template>
-
 <script lang="ts" setup>
 import { onMounted, ref } from 'vue';
-import N8nText from '../N8nText';
-import N8nIcon from '../N8nIcon';
+
 import type { IconColor } from 'n8n-design-system/types/icon';
+
 import { createEventBus, type EventBus } from '../../utils';
+import N8nIcon from '../N8nIcon';
+import N8nText from '../N8nText';
 
 interface IAccordionItem {
 	id: string;
@@ -89,6 +51,46 @@ const onClick = (e: MouseEvent) => emit('click:body', e);
 
 const onTooltipClick = (item: string, event: MouseEvent) => emit('tooltipClick', item, event);
 </script>
+
+<template>
+	<div :class="['accordion', $style.container]">
+		<div :class="{ [$style.header]: true, [$style.expanded]: expanded }" @click="toggle">
+			<N8nIcon
+				v-if="headerIcon"
+				:icon="headerIcon.icon"
+				:color="headerIcon.color"
+				size="small"
+				class="mr-2xs"
+			/>
+			<N8nText :class="$style.headerText" color="text-base" size="small" align="left" bold>{{
+				title
+			}}</N8nText>
+			<N8nIcon :icon="expanded ? 'chevron-up' : 'chevron-down'" bold />
+		</div>
+		<div
+			v-if="expanded"
+			:class="{ [$style.description]: true, [$style.collapsed]: !expanded }"
+			@click="onClick"
+		>
+			<!-- Info accordion can display list of items with icons or just a HTML description -->
+			<div v-if="items.length > 0" :class="$style.accordionItems">
+				<div v-for="item in items" :key="item.id" :class="$style.accordionItem">
+					<n8n-tooltip :disabled="!item.tooltip">
+						<template #content>
+							<div @click="onTooltipClick(item.id, $event)" v-n8n-html="item.tooltip"></div>
+						</template>
+						<N8nIcon :icon="item.icon" :color="item.iconColor" size="small" class="mr-2xs" />
+					</n8n-tooltip>
+					<N8nText size="small" color="text-base">{{ item.label }}</N8nText>
+				</div>
+			</div>
+			<N8nText color="text-base" size="small" align="left">
+				<span v-n8n-html="description"></span>
+			</N8nText>
+			<slot name="customContent"></slot>
+		</div>
+	</div>
+</template>
 
 <style lang="scss" module>
 .container {

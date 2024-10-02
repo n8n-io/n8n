@@ -1,4 +1,5 @@
 import fs from 'fs';
+
 import { InstanceSettings } from '@/InstanceSettings';
 
 describe('InstanceSettings', () => {

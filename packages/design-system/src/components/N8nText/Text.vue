@@ -1,11 +1,6 @@
-<template>
-	<component :is="tag" :class="['n8n-text', ...classes]" v-bind="$attrs">
-		<slot></slot>
-	</component>
-</template>
-
 <script lang="ts" setup>
 import { computed, useCssModule } from 'vue';
+
 import type { TextSize, TextColor, TextAlign } from 'n8n-design-system/types/text';
 
 interface TextProps {
@@ -45,6 +40,12 @@ const classes = computed(() => {
 	return applied.map((c) => $style[c]);
 });
 </script>
+
+<template>
+	<component :is="tag" :class="['n8n-text', ...classes]" v-bind="$attrs">
+		<slot></slot>
+	</component>
+</template>
 
 <style lang="scss" module>
 .bold {
