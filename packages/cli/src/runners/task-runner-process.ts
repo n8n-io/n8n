@@ -44,7 +44,7 @@ export class TaskRunnerProcess {
 			env: {
 				PATH: process.env.PATH,
 				N8N_RUNNERS_GRANT_TOKEN: grantToken,
-				N8N_RUNNERS_N8N_URI: `localhost:${this.globalConfig.port}`,
+				N8N_RUNNERS_N8N_URI: `localhost:${this.globalConfig.taskRunners.port}`,
 			},
 		});
 
