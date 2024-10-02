@@ -329,7 +329,10 @@ export default defineComponent({
 		activatePane() {
 			this.$emit('activatePane');
 		},
-		waitingNodeMessage(resume: string) {
+		waitingNodeMessage() {
+			const resume =
+				this.workflowsStore.workflowExecutionData?.data?.executionData?.nodeExecutionStack[0]?.node
+					?.parameters?.resume;
 			if (resume === 'form') {
 				return useI18n().baseText('ndv.output.waitNodeWaitingForFormSubmission');
 			}
@@ -461,7 +464,7 @@ export default defineComponent({
 		<template #node-waiting>
 			<n8n-text :bold="true" color="text-dark" size="large">Waiting for input</n8n-text>
 			<n8n-text>
-				{{ waitingNodeMessage(activeNode?.parameters?.resume as string) }}
+				{{ waitingNodeMessage() }}
 			</n8n-text>
 		</template>
 

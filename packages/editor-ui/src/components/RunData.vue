@@ -40,7 +40,6 @@ import {
 	MAX_DISPLAY_ITEMS_AUTO_ALL,
 	TEST_PIN_DATA,
 	HTML_NODE_TYPE,
-	WAIT_NODE_TYPE,
 } from '@/constants';
 
 import BinaryDataDisplay from '@/components/BinaryDataDisplay.vue';
@@ -222,7 +221,7 @@ export default defineComponent({
 		isWaitNodeWaiting() {
 			return (
 				this.workflowExecution?.status === 'waiting' &&
-				this.node?.type === WAIT_NODE_TYPE &&
+				this.workflowExecution.data?.waitTill &&
 				this.workflowExecution?.data?.resultData?.lastNodeExecuted === this.node?.name
 			);
 		},
