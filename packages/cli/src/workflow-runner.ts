@@ -245,7 +245,7 @@ export class WorkflowRunner {
 			{ executionId },
 		);
 		let workflowExecution: PCancelable<IRun>;
-		await this.executionRepository.updateStatus(executionId, 'running');
+		await this.executionRepository.updateStatus(executionId, 'running'); // write
 
 		try {
 			additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(data, executionId);
