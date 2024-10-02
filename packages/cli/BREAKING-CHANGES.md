@@ -2,6 +2,16 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 1.57.0
+
+### What changed?
+
+The `verbose` log level was merged into the `debug` log level.
+
+### When is action necessary?
+
+If you are setting the env var `N8N_LOG_LEVEL=verbose`, please update your log level to `N8N_LOG_LEVEL=debug`.
+
 ## 1.55.0
 
 ### What changed?
