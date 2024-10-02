@@ -8,7 +8,7 @@
     "typecheck": "tsc --noEmit",
     "build": "tsc -p ./tsconfig.build.json",
     "format": "biome format --write src",
-    "format:check": "biome ci src test",
+    "format:check": "biome ci src",
     "test": "echo \"Error: no tests in this package\" && exit 0",
     "lint": "eslint . --quiet",
     "lintfix": "eslint . --fix",
