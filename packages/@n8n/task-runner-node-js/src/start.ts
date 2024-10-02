@@ -1,8 +1,8 @@
 import * as a from 'node:assert/strict';
-
 import { ensureError } from 'n8n-workflow';
-import { authenticate } from './authenticator';
+
 import { JsTaskRunner } from './code';
+import { authenticate } from './authenticator';
 
 let runner: JsTaskRunner | undefined;
 let isShuttingDown = false;
@@ -71,4 +71,8 @@ void (async function start() {
 
 	process.on('SIGINT', createSignalHandler('SIGINT'));
 	process.on('SIGTERM', createSignalHandler('SIGTERM'));
-})();
+})().catch((e) => {
+	const error = ensureError(e);
+	console.error('Task runner failed to start', { error });
+	process.exit(1);
+});
