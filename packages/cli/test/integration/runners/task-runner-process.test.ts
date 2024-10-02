@@ -22,8 +22,8 @@ describe('TaskRunnerProcess', () => {
 		await runnerProcess.stop();
 	});
 
-	const getNumConnectedRunners = () => Object.keys(taskRunnerService.runnerConnections).length;
-	const getNumRegisteredRunners = () => Object.keys(taskBroker.getKnownRunners()).length;
+	const getNumConnectedRunners = () => taskRunnerService.runnerConnections.size;
+	const getNumRegisteredRunners = () => taskBroker.getKnownRunners().size;
 
 	it('should start and connect the task runner', async () => {
 		// Act
