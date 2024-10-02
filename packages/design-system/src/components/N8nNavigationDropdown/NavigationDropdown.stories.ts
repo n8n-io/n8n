@@ -1,10 +1,6 @@
 import { action } from '@storybook/addon-actions';
 import type { StoryFn } from '@storybook/vue3';
 
-// import N8nMenu from './Menu.vue';
-// import N8nIcon from '../N8nIcon';
-// import N8nText from '../N8nText';
-
 import NavigationDropdown from './NavigationDropdown.vue';
 
 export default {
