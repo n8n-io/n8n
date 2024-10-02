@@ -21,6 +21,8 @@ import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus'
 import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { License } from '@/license';
+import { SingleMainTaskManager } from '@/runners/task-managers/single-main-task-manager';
+import { TaskManager } from '@/runners/task-managers/task-manager';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { Server } from '@/server';
 import { OrchestrationHandlerMainService } from '@/services/orchestration/main/orchestration.handler.main.service';
@@ -219,6 +221,10 @@ export class Start extends BaseCommand {
 
 		if (!this.globalConfig.endpoints.disableUi) {
 			await this.generateStaticAssets();
+		}
+
+		if (!this.globalConfig.taskRunners.disabled) {
+			Container.set(TaskManager, new SingleMainTaskManager());
 		}
 	}
 
