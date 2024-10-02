@@ -22,7 +22,7 @@ export declare namespace WorkflowRequest {
 		runData: IRunData;
 		startNodes?: StartNodeData[];
 		destinationNode?: string;
-		postHogEventId?: string;
+		postHogSessionId?: string;
 	};
 
 	type Create = AuthenticatedRequest<{}, {}, CreateUpdatePayload>;

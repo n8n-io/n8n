@@ -2175,7 +2175,7 @@ export interface IWorkflowExecutionDataProcess {
 	 *      PARTIAL_EXECUTION_VERSION_DEFAULT
 	 */
 	partialExecutionVersion?: string;
-	postHogEventId?: string;
+	postHogSessionId?: string;
 }
 
 export interface ExecuteWorkflowOptions {
