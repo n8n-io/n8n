@@ -154,7 +154,7 @@ importers:
         version: 29.6.2
       jest-mock-extended:
         specifier: ^3.0.4
-        version: 3.0.4(jest@29.6.2(@types/node@18.16.16)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.6.2)))(typescript@5.6.2)
+        version: 3.0.4(jest@29.6.2)(typescript@5.6.2)
       lefthook:
         specifier: ^1.7.15
         version: 1.7.15
@@ -178,7 +178,7 @@ importers:
         version: 7.0.0
       ts-jest:
         specifier: ^29.1.1
-        version: 29.1.1(@babel/core@7.24.0)(@jest/types@29.6.1)(babel-jest@29.6.2(@babel/core@7.24.0))(jest@29.6.2(@types/node@18.16.16)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.6.2)))(typescript@5.6.2)
+        version: 29.1.1(@babel/core@7.24.0)(@jest/types@29.6.1)(babel-jest@29.6.2(@babel/core@7.24.0))(jest@29.6.2)(typescript@5.6.2)
       tsc-alias:
         specifier: ^1.8.7
         version: 1.8.7
@@ -463,7 +463,7 @@ importers:
         version: 0.5.0
       '@n8n/typeorm':
         specifier: 0.3.20-12
-        version: 0.3.20-12(@sentry/node@7.87.0)(ioredis@5.3.2)(mssql@10.0.2)(mysql2@3.11.0)(pg@8.12.0)(redis@4.6.12)(sqlite3@5.1.7)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.6.2))
+        version: 0.3.20-12(@sentry/node@7.87.0)(ioredis@5.3.2)(mssql@10.0.2)(mysql2@3.11.0)(pg@8.12.0)(redis@4.6.12)(sqlite3@5.1.7)(ts-node@10.9.2(typescript@5.6.2))
       '@n8n/vm2':
         specifier: 3.9.25
         version: 3.9.25
@@ -689,7 +689,7 @@ importers:
         version: 3.3.3
       ts-jest:
         specifier: ^29.1.0
-        version: 29.1.1(@babel/core@7.24.0)(@jest/types@29.6.1)(babel-jest@29.6.2(@babel/core@7.24.0))(jest@29.6.2(@types/node@18.16.16)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.6.2)))(typescript@5.6.2)
+        version: 29.1.1(@babel/core@7.24.0)(@jest/types@29.6.1)(babel-jest@29.6.2(@babel/core@7.24.0))(jest@29.6.2)(typescript@5.6.2)
       ts-node:
         specifier: ^10.9.1
         version: 10.9.2(@types/node@18.16.16)(typescript@5.6.2)
@@ -777,12 +777,9 @@ importers:
       '@n8n/permissions':
         specifier: workspace:*
         version: link:../@n8n/permissions
-      '@n8n/task-runner':
-        specifier: workspace:*
-        version: link:../@n8n/task-runner-node-js
       '@n8n/typeorm':
         specifier: 0.3.20-12
-        version: 0.3.20-12(@sentry/node@7.87.0)(ioredis@5.3.2)(mssql@10.0.2)(mysql2@3.11.0)(pg@8.12.0)(redis@4.6.14)(sqlite3@5.1.7)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.6.2))
+        version: 0.3.20-12(@sentry/node@7.87.0)(ioredis@5.3.2)(mssql@10.0.2)(mysql2@3.11.0)(pg@8.12.0)(redis@4.6.14)(sqlite3@5.1.7)(ts-node@10.9.2(typescript@5.6.2))
       '@n8n_io/ai-assistant-sdk':
         specifier: 1.9.4
         version: 1.9.4
@@ -1131,7 +1128,7 @@ importers:
     dependencies:
       '@langchain/core':
         specifier: 'catalog:'
-        version: 0.3.3(openai@4.63.0(encoding@0.1.13)(zod@3.23.8))
+        version: 0.3.3(openai@4.63.0)
       '@n8n/client-oauth2':
         specifier: workspace:*
         version: link:../@n8n/client-oauth2
@@ -1729,7 +1726,7 @@ importers:
         version: 0.5.37
       mongodb:
         specifier: 6.3.0
-        version: 6.3.0(@aws-sdk/credential-providers@3.645.0(@aws-sdk/client-sso-oidc@3.654.0(@aws-sdk/client-sts@3.654.0)))(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.7.1)
+        version: 6.3.0(@aws-sdk/credential-providers@3.645.0)(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.7.1)
       mqtt:
         specifier: 5.7.2
         version: 5.7.2
@@ -1953,7 +1950,7 @@ importers:
     devDependencies:
       '@langchain/core':
         specifier: 'catalog:'
-        version: 0.3.3(openai@4.63.0(encoding@0.1.13)(zod@3.23.8))
+        version: 0.3.3(openai@4.63.0)
       '@types/deep-equal':
         specifier: ^1.0.1
         version: 1.0.1
@@ -13527,7 +13524,7 @@ snapshots:
       '@aws-crypto/sha256-js': 5.2.0
       '@aws-sdk/client-sts': 3.654.0
       '@aws-sdk/core': 3.654.0
-      '@aws-sdk/credential-provider-node': 3.654.0(@aws-sdk/client-sso-oidc@3.654.0(@aws-sdk/client-sts@3.654.0))(@aws-sdk/client-sts@3.654.0)
+      '@aws-sdk/credential-provider-node': 3.654.0(@aws-sdk/client-sso-oidc@3.654.0(@aws-sdk/client-sts@3.654.0))(@aws-sdk/client-sts@3.645.0)
       '@aws-sdk/middleware-host-header': 3.654.0
       '@aws-sdk/middleware-logger': 3.654.0
       '@aws-sdk/middleware-recursion-detection': 3.654.0
@@ -14204,6 +14201,29 @@ snapshots:
       '@smithy/types': 3.4.2
       tslib: 2.6.2
 
+  '@aws-sdk/credential-providers@3.645.0':
+    dependencies:
+      '@aws-sdk/client-cognito-identity': 3.645.0
+      '@aws-sdk/client-sso': 3.645.0
+      '@aws-sdk/client-sts': 3.645.0
+      '@aws-sdk/credential-provider-cognito-identity': 3.645.0
+      '@aws-sdk/credential-provider-env': 3.620.1
+      '@aws-sdk/credential-provider-http': 3.635.0
+      '@aws-sdk/credential-provider-ini': 3.645.0(@aws-sdk/client-sso-oidc@3.645.0(@aws-sdk/client-sts@3.645.0))(@aws-sdk/client-sts@3.645.0)
+      '@aws-sdk/credential-provider-node': 3.645.0(@aws-sdk/client-sso-oidc@3.645.0(@aws-sdk/client-sts@3.645.0))(@aws-sdk/client-sts@3.645.0)
+      '@aws-sdk/credential-provider-process': 3.620.1
+      '@aws-sdk/credential-provider-sso': 3.645.0(@aws-sdk/client-sso-oidc@3.645.0(@aws-sdk/client-sts@3.645.0))
+      '@aws-sdk/credential-provider-web-identity': 3.621.0(@aws-sdk/client-sts@3.645.0)
+      '@aws-sdk/types': 3.609.0
+      '@smithy/credential-provider-imds': 3.2.3
+      '@smithy/property-provider': 3.1.6
+      '@smithy/types': 3.4.2
+      tslib: 2.6.2
+    transitivePeerDependencies:
+      - '@aws-sdk/client-sso-oidc'
+      - aws-crt
+    optional: true
+
   '@aws-sdk/credential-providers@3.645.0(@aws-sdk/client-sso-oidc@3.654.0(@aws-sdk/client-sts@3.654.0))':
     dependencies:
       '@aws-sdk/client-cognito-identity': 3.645.0
@@ -14484,7 +14504,7 @@ snapshots:
 
   '@aws-sdk/token-providers@3.654.0(@aws-sdk/client-sso-oidc@3.654.0(@aws-sdk/client-sts@3.654.0))':
     dependencies:
-      '@aws-sdk/client-sso-oidc': 3.654.0(@aws-sdk/client-sts@3.654.0)
+      '@aws-sdk/client-sso-oidc': 3.654.0(@aws-sdk/client-sts@3.645.0)
       '@aws-sdk/types': 3.654.0
       '@smithy/property-provider': 3.1.6
       '@smithy/shared-ini-file-loader': 3.1.7
@@ -15909,6 +15929,22 @@ snapshots:
     transitivePeerDependencies:
       - openai
 
+  '@langchain/core@0.3.3(openai@4.63.0)':
+    dependencies:
+      ansi-styles: 5.2.0
+      camelcase: 6.3.0
+      decamelize: 1.2.0
+      js-tiktoken: 1.0.12
+      langsmith: 0.1.59(openai@4.63.0)
+      mustache: 4.2.0
+      p-queue: 6.6.2
+      p-retry: 4.6.2
+      uuid: 10.0.0
+      zod: 3.23.8
+      zod-to-json-schema: 3.23.3(zod@3.23.8)
+    transitivePeerDependencies:
+      - openai
+
   '@langchain/google-common@0.1.1(@langchain/core@0.3.3(openai@4.63.0(encoding@0.1.13)(zod@3.23.8)))(zod@3.23.8)':
     dependencies:
       '@langchain/core': 0.3.3(openai@4.63.0(encoding@0.1.13)(zod@3.23.8))
@@ -16154,7 +16190,7 @@ snapshots:
       esprima-next: 5.8.4
       recast: 0.22.0
 
-  '@n8n/typeorm@0.3.20-12(@sentry/node@7.87.0)(ioredis@5.3.2)(mssql@10.0.2)(mysql2@3.11.0)(pg@8.12.0)(redis@4.6.12)(sqlite3@5.1.7)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.6.2))':
+  '@n8n/typeorm@0.3.20-12(@sentry/node@7.87.0)(ioredis@5.3.2)(mssql@10.0.2)(mysql2@3.11.0)(pg@8.12.0)(redis@4.6.12)(sqlite3@5.1.7)(ts-node@10.9.2(typescript@5.6.2))':
     dependencies:
       '@n8n/p-retry': 6.2.0-2
       '@sqltools/formatter': 1.2.5
@@ -16185,7 +16221,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@n8n/typeorm@0.3.20-12(@sentry/node@7.87.0)(ioredis@5.3.2)(mssql@10.0.2)(mysql2@3.11.0)(pg@8.12.0)(redis@4.6.14)(sqlite3@5.1.7)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.6.2))':
+  '@n8n/typeorm@0.3.20-12(@sentry/node@7.87.0)(ioredis@5.3.2)(mssql@10.0.2)(mysql2@3.11.0)(pg@8.12.0)(redis@4.6.14)(sqlite3@5.1.7)(ts-node@10.9.2(typescript@5.6.2))':
     dependencies:
       '@n8n/p-retry': 6.2.0-2
       '@sqltools/formatter': 1.2.5
@@ -22628,7 +22664,7 @@ snapshots:
       slash: 3.0.0
       stack-utils: 2.0.6
 
-  jest-mock-extended@3.0.4(jest@29.6.2(@types/node@18.16.16)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.6.2)))(typescript@5.6.2):
+  jest-mock-extended@3.0.4(jest@29.6.2)(typescript@5.6.2):
     dependencies:
       jest: 29.6.2(@types/node@18.16.16)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.6.2))
       ts-essentials: 7.0.3(typescript@5.6.2)
@@ -23093,6 +23129,17 @@ snapshots:
       uuid: 10.0.0
     optionalDependencies:
       openai: 4.63.0(encoding@0.1.13)(zod@3.23.8)
+
+  langsmith@0.1.59(openai@4.63.0):
+    dependencies:
+      '@types/uuid': 10.0.0
+      commander: 10.0.1
+      p-queue: 6.6.2
+      p-retry: 4.6.2
+      semver: 7.6.0
+      uuid: 10.0.0
+    optionalDependencies:
+      openai: 4.63.0(zod@3.23.8)
 
   lazy-ass@1.6.0: {}
 
@@ -23962,13 +24009,13 @@ snapshots:
       '@types/whatwg-url': 11.0.4
       whatwg-url: 13.0.0
 
-  mongodb@6.3.0(@aws-sdk/credential-providers@3.645.0(@aws-sdk/client-sso-oidc@3.654.0(@aws-sdk/client-sts@3.654.0)))(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.7.1):
+  mongodb@6.3.0(@aws-sdk/credential-providers@3.645.0)(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.7.1):
     dependencies:
       '@mongodb-js/saslprep': 1.1.0
       bson: 6.3.0
       mongodb-connection-string-url: 3.0.0
     optionalDependencies:
-      '@aws-sdk/credential-providers': 3.645.0(@aws-sdk/client-sso-oidc@3.654.0(@aws-sdk/client-sts@3.654.0))
+      '@aws-sdk/credential-providers': 3.645.0
       gcp-metadata: 5.3.0(encoding@0.1.13)
       socks: 2.7.1
 
@@ -24421,6 +24468,22 @@ snapshots:
     transitivePeerDependencies:
       - encoding
       - supports-color
+
+  openai@4.63.0(zod@3.23.8):
+    dependencies:
+      '@types/node': 18.16.16
+      '@types/node-fetch': 2.6.4
+      abort-controller: 3.0.0
+      agentkeepalive: 4.2.1
+      form-data-encoder: 1.7.2
+      formdata-node: 4.4.1
+      node-fetch: 2.7.0(encoding@0.1.13)
+    optionalDependencies:
+      zod: 3.23.8
+    transitivePeerDependencies:
+      - encoding
+      - supports-color
+    optional: true
 
   openapi-sampler@1.4.0:
     dependencies:
@@ -26441,7 +26504,7 @@ snapshots:
 
   ts-interface-checker@0.1.13: {}
 
-  ts-jest@29.1.1(@babel/core@7.24.0)(@jest/types@29.6.1)(babel-jest@29.6.2(@babel/core@7.24.0))(jest@29.6.2(@types/node@18.16.16)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.6.2)))(typescript@5.6.2):
+  ts-jest@29.1.1(@babel/core@7.24.0)(@jest/types@29.6.1)(babel-jest@29.6.2(@babel/core@7.24.0))(jest@29.6.2)(typescript@5.6.2):
     dependencies:
       bs-logger: 0.2.6
       fast-json-stable-stringify: 2.1.0
