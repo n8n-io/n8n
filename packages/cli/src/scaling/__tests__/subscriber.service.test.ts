@@ -17,14 +17,14 @@ describe('Subscriber', () => {
 
 	describe('constructor', () => {
 		it('should init Redis client in scaling mode', () => {
-			const subscriber = new Subscriber(mock(), redisClientService);
+			const subscriber = new Subscriber(mock(), redisClientService, mock());
 
 			expect(subscriber.getClient()).toEqual(client);
 		});
 
 		it('should not init Redis client in regular mode', () => {
 			config.set('executions.mode', 'regular');
-			const subscriber = new Subscriber(mock(), redisClientService);
+			const subscriber = new Subscriber(mock(), redisClientService, mock());
 
 			expect(subscriber.getClient()).toBeUndefined();
 		});
@@ -32,7 +32,7 @@ describe('Subscriber', () => {
 
 	describe('shutdown', () => {
 		it('should disconnect Redis client', () => {
-			const subscriber = new Subscriber(mock(), redisClientService);
+			const subscriber = new Subscriber(mock(), redisClientService, mock());
 			subscriber.shutdown();
 			expect(client.disconnect).toHaveBeenCalled();
 		});
@@ -40,7 +40,7 @@ describe('Subscriber', () => {
 
 	describe('subscribe', () => {
 		it('should subscribe to pubsub channel', async () => {
-			const subscriber = new Subscriber(mock(), redisClientService);
+			const subscriber = new Subscriber(mock(), redisClientService, mock());
 
 			await subscriber.subscribe('n8n.commands');
 
@@ -50,7 +50,7 @@ describe('Subscriber', () => {
 
 	describe('setMessageHandler', () => {
 		it('should set message handler function for channel', () => {
-			const subscriber = new Subscriber(mock(), redisClientService);
+			const subscriber = new Subscriber(mock(), redisClientService, mock());
 			const channel = 'n8n.commands';
 			const handlerFn = jest.fn();
 
