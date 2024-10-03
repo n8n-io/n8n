@@ -34,10 +34,11 @@ export async function replaceCode(
 
 export async function generateCodeForPrompt(
 	ctx: IRestApiContext,
-	{ question, context }: AskAiRequest.RequestPayload,
+	{ question, context, forNode }: AskAiRequest.RequestPayload,
 ): Promise<{ code: string }> {
 	return await makeRestApiRequest(ctx, 'POST', '/ai/ask-ai', {
 		question,
 		context,
+		forNode,
 	} as IDataObject);
 }

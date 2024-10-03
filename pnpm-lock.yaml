@@ -702,8 +702,8 @@ importers:
         specifier: 0.3.20-12
         version: 0.3.20-12(@sentry/node@7.87.0)(ioredis@5.3.2)(mssql@10.0.2)(mysql2@3.11.0)(pg@8.12.0)(redis@4.6.14)(sqlite3@5.1.7)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.6.2))
       '@n8n_io/ai-assistant-sdk':
-        specifier: 1.10.1
-        version: 1.10.1
+        specifier: 1.10.2
+        version: link:../../../ai-assistant-service/sdk
       '@n8n_io/license-sdk':
         specifier: 2.13.1
         version: 2.13.1
@@ -3903,10 +3903,6 @@ packages:
     resolution: {integrity: sha512-qoGLFzyHBW7HKpwXkl05QKsIh3GkDw6lOiTOWYlUDnOIQ1b7EgM+O5EMjrMGy7r+kz52+Q7o6GLxBIcxVI8rEg==}
     engines: {node: '>=18.10', pnpm: '>=9.6'}
     hasBin: true
-
-  '@n8n_io/ai-assistant-sdk@1.10.1':
-    resolution: {integrity: sha512-vqAOov1F/hebH0rg/YCN/RjC4y+T+wGRhSPdFT2esiMIjGZ91hi8Ywq1cjWsQavJ0owtSfatf3d8N6KCsRFVdQ==}
-    engines: {node: '>=20.15', pnpm: '>=8.14'}
 
   '@n8n_io/license-sdk@2.13.1':
     resolution: {integrity: sha512-R6min21m3OlZHYMpeT+8uuB5v4FG3rC00fvRNbVKzNEqNAvfF1dPm6i1fliy5sGKCQ6sh71kjQ9JgE7lRRzJDg==}
@@ -12124,10 +12120,6 @@ packages:
     resolution: {integrity: sha512-HR3W/bMGPSr90i8AAp2C4DM3wChFdJPLrWYpIS++LxS8K+W535qftjt+4MyjNYHeWabMj1nvtmLIi7l++iq91A==}
     engines: {node: '>=18.17'}
 
-  undici@6.19.8:
-    resolution: {integrity: sha512-U8uCCl2x9TK3WANvmBavymRzxbfFYG+tAu+fgx3zxQy3qdagQqBLwJVrdyO1TBfUXvfKveMKJZhpvUYoOjM+4g==}
-    engines: {node: '>=18.17'}
-
   unique-filename@1.1.1:
     resolution: {integrity: sha512-Vmp0jIp2ln35UTXuryvjzkjGdRyf9b2lTXuSYUiPmzRcl3FDtYqAwOnTJkAngD9SWhnoJzDbTKwaOrZ+STtxNQ==}
 
@@ -14315,7 +14307,7 @@ snapshots:
 
   '@aws-sdk/token-providers@3.654.0(@aws-sdk/client-sso-oidc@3.654.0(@aws-sdk/client-sts@3.654.0))':
     dependencies:
-      '@aws-sdk/client-sso-oidc': 3.654.0(@aws-sdk/client-sts@3.645.0)
+      '@aws-sdk/client-sso-oidc': 3.654.0(@aws-sdk/client-sts@3.654.0)
       '@aws-sdk/types': 3.654.0
       '@smithy/property-provider': 3.1.6
       '@smithy/shared-ini-file-loader': 3.1.7
@@ -16055,10 +16047,6 @@ snapshots:
     dependencies:
       acorn: 8.12.1
       acorn-walk: 8.3.2
-
-  '@n8n_io/ai-assistant-sdk@1.10.1':
-    dependencies:
-      undici: 6.19.8
 
   '@n8n_io/license-sdk@2.13.1':
     dependencies:
@@ -26410,8 +26398,6 @@ snapshots:
       '@fastify/busboy': 2.0.0
 
   undici@6.19.7: {}
-
-  undici@6.19.8: {}
 
   unique-filename@1.1.1:
     dependencies:
