@@ -31,6 +31,7 @@ import { GRID_SIZE } from '@/utils/nodeViewUtils';
 import { CanvasKey } from '@/constants';
 import { onKeyDown, onKeyUp } from '@vueuse/core';
 import CanvasArrowHeadMarker from './elements/edges/CanvasArrowHeadMarker.vue';
+import { OnConnectStartParams } from '@vue-flow/core/dist/types/connection';
 
 const $style = useCssModule();
 
@@ -231,7 +232,7 @@ const connectionCreated = ref(false);
 const connectingHandle = ref<ConnectStartEvent>();
 const connectedHandle = ref<Connection>();
 
-function onConnectStart(handle: ConnectStartEvent) {
+function onConnectStart(handle: OnConnectStartParams) {
 	emit('create:connection:start', handle);
 
 	connectingHandle.value = handle;
