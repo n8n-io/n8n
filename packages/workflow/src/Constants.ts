@@ -112,3 +112,5 @@ export const SINGLE_EXECUTION_NODES: { [key: string]: { [key: string]: NodeParam
 		operation: [undefined], // default info
 	},
 };
+
+export const SEND_AND_WAIT_OPERATION = 'sendAndWait';

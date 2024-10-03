@@ -1,4 +1,4 @@
-import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
+import { NodeOperationError, SEND_AND_WAIT_OPERATION, updateDisplayOptions } from 'n8n-workflow';
 import type { INodeProperties, IExecuteFunctions, IWebhookFunctions } from 'n8n-workflow';
 import type { IEmail } from './interfaces';
 import { escapeHtml } from './utilities';
@@ -224,7 +224,7 @@ export function getSendAndWaitProperties(
 		{
 			show: {
 				resource: [resource],
-				operation: ['sendAndWait'],
+				operation: [SEND_AND_WAIT_OPERATION],
 			},
 		},
 		sendAndWait,

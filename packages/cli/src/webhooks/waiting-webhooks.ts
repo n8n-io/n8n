@@ -1,5 +1,11 @@
 import type express from 'express';
-import { type INodes, type IWorkflowBase, NodeHelpers, Workflow } from 'n8n-workflow';
+import {
+	type INodes,
+	type IWorkflowBase,
+	NodeHelpers,
+	SEND_AND_WAIT_OPERATION,
+	Workflow,
+} from 'n8n-workflow';
 import { Service } from 'typedi';
 
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
@@ -46,7 +52,8 @@ export class WaitingWebhooks implements IWebhookManager {
 		return (
 			suffix &&
 			Object.keys(nodes).some(
-				(node) => nodes[node].id === suffix && nodes[node].parameters.operation === 'sendAndWait',
+				(node) =>
+					nodes[node].id === suffix && nodes[node].parameters.operation === SEND_AND_WAIT_OPERATION,
 			)
 		);
 	}

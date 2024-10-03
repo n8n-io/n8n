@@ -19,6 +19,7 @@ import {
 	BINARY_ENCODING,
 	NodeConnectionType,
 	NodeOperationError,
+	SEND_AND_WAIT_OPERATION,
 	WAIT_TIME_UNLIMITED,
 } from 'n8n-workflow';
 
@@ -369,7 +370,7 @@ export class SlackV2 implements INodeType {
 		const nodeVersion = this.getNode().typeVersion;
 		const instanceId = this.getInstanceId();
 
-		if (resource === 'message' && operation === 'sendAndWait') {
+		if (resource === 'message' && operation === SEND_AND_WAIT_OPERATION) {
 			await slackApiRequest.call(
 				this,
 				'POST',

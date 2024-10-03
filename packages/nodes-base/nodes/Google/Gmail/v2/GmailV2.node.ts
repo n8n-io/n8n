@@ -8,7 +8,12 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError, WAIT_TIME_UNLIMITED } from 'n8n-workflow';
+import {
+	NodeConnectionType,
+	NodeOperationError,
+	SEND_AND_WAIT_OPERATION,
+	WAIT_TIME_UNLIMITED,
+} from 'n8n-workflow';
 
 import type { IEmail } from '../../../../utils/interfaces';
 import {
@@ -257,7 +262,7 @@ export class GmailV2 implements INodeType {
 		const nodeVersion = this.getNode().typeVersion;
 		const instanceId = this.getInstanceId();
 
-		if (resource === 'message' && operation === 'sendAndWait') {
+		if (resource === 'message' && operation === SEND_AND_WAIT_OPERATION) {
 			const email: IEmail = createEmail(this);
 
 			await googleApiRequest.call(this, 'POST', '/gmail/v1/users/me/messages/send', {

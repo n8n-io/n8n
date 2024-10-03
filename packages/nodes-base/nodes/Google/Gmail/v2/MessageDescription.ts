@@ -1,4 +1,4 @@
-import { type INodeProperties } from 'n8n-workflow';
+import { SEND_AND_WAIT_OPERATION, type INodeProperties } from 'n8n-workflow';
 import { appendAttributionOption } from '../../../../utils/descriptions';
 
 export const messageOperations: INodeProperties[] = [
@@ -60,7 +60,7 @@ export const messageOperations: INodeProperties[] = [
 			},
 			{
 				name: 'Send and Wait for Approval',
-				value: 'sendAndWait',
+				value: SEND_AND_WAIT_OPERATION,
 				action: 'Send a message and wait for approval',
 			},
 		],
