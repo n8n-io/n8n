@@ -12,7 +12,7 @@ import Container from 'typedi';
 import { Worker } from 'worker_threads';
 
 import { inTest } from '@/constants';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 
 import type { EventMessageTypes } from '../event-message-classes';
 import { isEventMessageOptions } from '../event-message-classes/abstract-event-message';

@@ -524,6 +524,7 @@ export const MAPPING_PARAMS = [
 	'$input',
 	'$item',
 	'$jmespath',
+	'$fromAI',
 	'$json',
 	'$node',
 	'$now',
@@ -693,7 +694,6 @@ export const MORE_ONBOARDING_OPTIONS_EXPERIMENT = {
 	variant: 'variant',
 };
 
-export const EXECUTION_ANNOTATION_EXPERIMENT = '023_execution_annotation';
 export const CREDENTIAL_DOCS_EXPERIMENT = {
 	name: '024_credential_docs',
 	control: 'control',

@@ -3660,7 +3660,7 @@ describe('NodeHelpers', () => {
 		it('should modify the name and displayName correctly', () => {
 			const result = convertNodeToAiTool(fullNodeWrapper);
 			expect(result.description.name).toBe('testNodeTool');
-			expect(result.description.displayName).toBe('Test Node Tool (wrapped)');
+			expect(result.description.displayName).toBe('Test Node Tool');
 		});
 
 		it('should update inputs and outputs', () => {
@@ -3685,19 +3685,6 @@ describe('NodeHelpers', () => {
 			expect(toolDescriptionProp?.default).toBe(fullNodeWrapper.description.description);
 		});
 
-		it('should not add toolDescription property if it already exists', () => {
-			const toolDescriptionProp: INodeProperties = {
-				displayName: 'Tool Description',
-				name: 'toolDescription',
-				type: 'string',
-				default: 'Existing description',
-			};
-			fullNodeWrapper.description.properties = [toolDescriptionProp];
-			const result = convertNodeToAiTool(fullNodeWrapper);
-			expect(result.description.properties).toHaveLength(1);
-			expect(result.description.properties[0]).toEqual(toolDescriptionProp);
-		});
-
 		it('should set codex categories correctly', () => {
 			const result = convertNodeToAiTool(fullNodeWrapper);
 			expect(result.description.codex).toEqual({
@@ -3718,8 +3705,102 @@ describe('NodeHelpers', () => {
 			};
 			fullNodeWrapper.description.properties = [existingProp];
 			const result = convertNodeToAiTool(fullNodeWrapper);
-			expect(result.description.properties).toHaveLength(2); // Existing prop + toolDescription
+			expect(result.description.properties).toHaveLength(3); // Existing prop + toolDescription + notice
 			expect(result.description.properties).toContainEqual(existingProp);
+		});
+
+		it('should handle nodes with resource property', () => {
+			const resourceProp: INodeProperties = {
+				displayName: 'Resource',
+				name: 'resource',
+				type: 'options',
+				options: [{ name: 'User', value: 'user' }],
+				default: 'user',
+			};
+			fullNodeWrapper.description.properties = [resourceProp];
+			const result = convertNodeToAiTool(fullNodeWrapper);
+			expect(result.description.properties[1].name).toBe('descriptionType');
+			expect(result.description.properties[2].name).toBe('toolDescription');
+			expect(result.description.properties[3]).toEqual(resourceProp);
+		});
+
+		it('should handle nodes with operation property', () => {
+			const operationProp: INodeProperties = {
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				options: [{ name: 'Create', value: 'create' }],
+				default: 'create',
+			};
+			fullNodeWrapper.description.properties = [operationProp];
+			const result = convertNodeToAiTool(fullNodeWrapper);
+			expect(result.description.properties[1].name).toBe('descriptionType');
+			expect(result.description.properties[2].name).toBe('toolDescription');
+			expect(result.description.properties[3]).toEqual(operationProp);
+		});
+
+		it('should handle nodes with both resource and operation properties', () => {
+			const resourceProp: INodeProperties = {
+				displayName: 'Resource',
+				name: 'resource',
+				type: 'options',
+				options: [{ name: 'User', value: 'user' }],
+				default: 'user',
+			};
+			const operationProp: INodeProperties = {
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				options: [{ name: 'Create', value: 'create' }],
+				default: 'create',
+			};
+			fullNodeWrapper.description.properties = [resourceProp, operationProp];
+			const result = convertNodeToAiTool(fullNodeWrapper);
+			expect(result.description.properties[1].name).toBe('descriptionType');
+			expect(result.description.properties[2].name).toBe('toolDescription');
+			expect(result.description.properties[3]).toEqual(resourceProp);
+			expect(result.description.properties[4]).toEqual(operationProp);
+		});
+
+		it('should handle nodes with empty properties', () => {
+			fullNodeWrapper.description.properties = [];
+			const result = convertNodeToAiTool(fullNodeWrapper);
+			expect(result.description.properties).toHaveLength(2);
+			expect(result.description.properties[1].name).toBe('toolDescription');
+		});
+
+		it('should handle nodes with existing codex property', () => {
+			fullNodeWrapper.description.codex = {
+				categories: ['Existing'],
+				subcategories: {
+					Existing: ['Category'],
+				},
+			};
+			const result = convertNodeToAiTool(fullNodeWrapper);
+			expect(result.description.codex).toEqual({
+				categories: ['AI'],
+				subcategories: {
+					AI: ['Tools'],
+					Tools: ['Other Tools'],
+				},
+			});
+		});
+
+		it('should handle nodes with very long names', () => {
+			fullNodeWrapper.description.name = 'veryLongNodeNameThatExceedsNormalLimits'.repeat(10);
+			fullNodeWrapper.description.displayName =
+				'Very Long Node Name That Exceeds Normal Limits'.repeat(10);
+			const result = convertNodeToAiTool(fullNodeWrapper);
+			expect(result.description.name.endsWith('Tool')).toBe(true);
+			expect(result.description.displayName.endsWith('Tool')).toBe(true);
+		});
+
+		it('should handle nodes with special characters in name and displayName', () => {
+			fullNodeWrapper.description.name = 'special@#$%Node';
+			fullNodeWrapper.description.displayName = 'Special @#$% Node';
+			const result = convertNodeToAiTool(fullNodeWrapper);
+			expect(result.description.name).toBe('special@#$%NodeTool');
+			expect(result.description.displayName).toBe('Special @#$% Node Tool');
 		});
 	});
 });

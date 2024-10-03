@@ -144,6 +144,12 @@ export function addToolNodeToParent(nodeName: string, parentNodeName: string) {
 export function addOutputParserNodeToParent(nodeName: string, parentNodeName: string) {
 	addSupplementalNodeToParent(nodeName, 'ai_outputParser', parentNodeName);
 }
+export function addVectorStoreNodeToParent(nodeName: string, parentNodeName: string) {
+	addSupplementalNodeToParent(nodeName, 'ai_vectorStore', parentNodeName);
+}
+export function addRetrieverNodeToParent(nodeName: string, parentNodeName: string) {
+	addSupplementalNodeToParent(nodeName, 'ai_retriever', parentNodeName);
+}
 
 export function clickExecuteWorkflowButton() {
 	getExecuteWorkflowButton().click();

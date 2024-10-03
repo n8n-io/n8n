@@ -37,6 +37,7 @@ export class MicrosoftSql implements INodeType {
 		},
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
 		parameterPane: 'wide',
 		credentials: [
 			{

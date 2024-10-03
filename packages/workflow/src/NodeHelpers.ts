@@ -259,7 +259,7 @@ const commonPollingParameters: INodeProperties[] = [
 	},
 ];
 
-const commonCORSParameters: INodeProperties[] = [
+export const commonCORSParameters: INodeProperties[] = [
 	{
 		displayName: 'Allowed Origins (CORS)',
 		name: 'allowedOrigins',
@@ -359,7 +359,7 @@ const declarativeNodeOptionParameters: INodeProperties = {
 export function convertNodeToAiTool<
 	T extends object & { description: INodeTypeDescription | INodeTypeBaseDescription },
 >(item: T): T {
-	// quick helper function for typeguard down below
+	// quick helper function for type-guard down below
 	function isFullDescription(obj: unknown): obj is INodeTypeDescription {
 		return typeof obj === 'object' && obj !== null && 'properties' in obj;
 	}
@@ -368,9 +368,33 @@ export function convertNodeToAiTool<
 		item.description.name += 'Tool';
 		item.description.inputs = [];
 		item.description.outputs = [NodeConnectionType.AiTool];
-		item.description.displayName += ' Tool (wrapped)';
+		item.description.displayName += ' Tool';
 		delete item.description.usableAsTool;
+
+		const hasResource = item.description.properties.some((prop) => prop.name === 'resource');
+		const hasOperation = item.description.properties.some((prop) => prop.name === 'operation');
+
 		if (!item.description.properties.map((prop) => prop.name).includes('toolDescription')) {
+			const descriptionType: INodeProperties = {
+				displayName: 'Tool Description',
+				name: 'descriptionType',
+				type: 'options',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'Set Automatically',
+						value: 'auto',
+						description: 'Automatically set based on resource and operation',
+					},
+					{
+						name: 'Set Manually',
+						value: 'manual',
+						description: 'Manually set the description',
+					},
+				],
+				default: 'auto',
+			};
+
 			const descProp: INodeProperties = {
 				displayName: 'Description',
 				name: 'toolDescription',
@@ -382,7 +406,29 @@ export function convertNodeToAiTool<
 					'Explain to the LLM what this tool does, a good, specific description would allow LLMs to produce expected results much more often',
 				placeholder: `e.g. ${item.description.description}`,
 			};
+
+			const noticeProp: INodeProperties = {
+				displayName: 'Use the expression {{ $fromAI() }} for any data to be filled by the model',
+				name: 'notice',
+				type: 'notice',
+				default: '',
+			};
+
 			item.description.properties.unshift(descProp);
+
+			// If node has resource or operation we can determine pre-populate tool description based on it
+			// so we add the descriptionType property as the first property
+			if (hasResource || hasOperation) {
+				item.description.properties.unshift(descriptionType);
+
+				descProp.displayOptions = {
+					show: {
+						descriptionType: ['manual'],
+					},
+				};
+			}
+
+			item.description.properties.unshift(noticeProp);
 		}
 	}
 

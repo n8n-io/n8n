@@ -37,6 +37,7 @@ import { WorkflowRepository } from '@/databases/repositories/workflow.repository
 import { OnShutdown } from '@/decorators/on-shutdown';
 import { ExternalHooks } from '@/external-hooks';
 import type { IWorkflowDb } from '@/interfaces';
+import { Logger } from '@/logging/logger.service';
 import { NodeTypes } from '@/node-types';
 import { ActiveWorkflowsService } from '@/services/active-workflows.service';
 import { OrchestrationService } from '@/services/orchestration.service';
@@ -47,7 +48,6 @@ import { WorkflowExecutionService } from '@/workflows/workflow-execution.service
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 import { ExecutionService } from './executions/execution.service';
-import { Logger } from './logger';
 
 interface QueuedActivation {
 	activationMode: WorkflowActivateMode;

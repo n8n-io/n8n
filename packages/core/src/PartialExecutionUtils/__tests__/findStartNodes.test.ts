@@ -10,9 +10,10 @@
 // PD denotes that the node has pinned data
 
 import { type IPinData, type IRunData } from 'n8n-workflow';
+
 import { createNodeData, toITaskData } from './helpers';
-import { findStartNodes, isDirty } from '../findStartNodes';
 import { DirectedGraph } from '../DirectedGraph';
+import { findStartNodes, isDirty } from '../findStartNodes';
 
 describe('isDirty', () => {
 	test("if the node has pinned data it's not dirty", () => {

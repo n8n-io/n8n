@@ -9,8 +9,9 @@
 
 import type { IPinData } from 'n8n-workflow';
 import { NodeConnectionType, type IRunData } from 'n8n-workflow';
-import { DirectedGraph } from '../DirectedGraph';
+
 import { createNodeData, toITaskData } from './helpers';
+import { DirectedGraph } from '../DirectedGraph';
 import { getSourceDataGroups } from '../getSourceDataGroups';
 
 describe('getSourceDataGroups', () => {

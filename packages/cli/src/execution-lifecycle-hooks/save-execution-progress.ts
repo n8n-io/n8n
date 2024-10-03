@@ -4,7 +4,7 @@ import { Container } from 'typedi';
 
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { toSaveSettings } from '@/execution-lifecycle-hooks/to-save-settings';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 
 export async function saveExecutionProgress(
 	workflowData: IWorkflowBase,

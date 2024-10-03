@@ -3,7 +3,7 @@ import { type IDataObject, type Workflow, ErrorReporterProxy as ErrorReporter } 
 import { Service } from 'typedi';
 
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { isWorkflowIdValid } from '@/utils';
 
 @Service()

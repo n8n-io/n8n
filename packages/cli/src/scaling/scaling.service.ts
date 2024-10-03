@@ -2,6 +2,7 @@ import { GlobalConfig } from '@n8n/config';
 import { InstanceSettings } from 'n8n-core';
 import { ApplicationError, BINARY_ENCODING, sleep, jsonStringify } from 'n8n-workflow';
 import type { IExecuteResponsePromiseData } from 'n8n-workflow';
+import { strict } from 'node:assert';
 import Container, { Service } from 'typedi';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -11,7 +12,7 @@ import { ExecutionRepository } from '@/databases/repositories/execution.reposito
 import { OnShutdown } from '@/decorators/on-shutdown';
 import { MaxStalledCountError } from '@/errors/max-stalled-count.error';
 import { EventService } from '@/events/event.service';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { OrchestrationService } from '@/services/orchestration.service';
 
 import { JOB_TYPE_NAME, QUEUE_NAME } from './constants';
@@ -124,12 +125,24 @@ export class ScalingService {
 		return { active, waiting };
 	}
 
-	async addJob(jobData: JobData, jobOptions: JobOptions) {
-		const { executionId } = jobData;
+	/**
+	 * Add a job to the queue.
+	 *
+	 * @param jobData Data of the job to add to the queue.
+	 * @param priority Priority of the job, from `1` (highest) to `MAX_SAFE_INTEGER` (lowest).
+	 */
+	async addJob(jobData: JobData, { priority }: { priority: number }) {
+		strict(priority > 0 && priority <= Number.MAX_SAFE_INTEGER);
+
+		const jobOptions: JobOptions = {
+			priority,
+			removeOnComplete: true,
+			removeOnFail: true,
+		};
 
 		const job = await this.queue.add(JOB_TYPE_NAME, jobData, jobOptions);
 
-		this.logger.info(`[ScalingService] Added job ${job.id} (execution ${executionId})`);
+		this.logger.info(`[ScalingService] Added job ${job.id} (execution ${jobData.executionId})`);
 
 		return job;
 	}
@@ -173,38 +186,10 @@ export class ScalingService {
 	// #region Listeners
 
 	private registerListeners() {
-		let latestAttemptTs = 0;
-		let cumulativeTimeoutMs = 0;
-
-		const MAX_TIMEOUT_MS = this.globalConfig.queue.bull.redis.timeoutThreshold;
-		const RESET_LENGTH_MS = 30_000;
-
 		this.queue.on('error', (error: Error) => {
+			if ('code' in error && error.code === 'ECONNREFUSED') return; // handled by RedisClientService.retryStrategy
+
 			this.logger.error('[ScalingService] Queue errored', { error });
-
-			/**
-			 * On Redis connection failure, try to reconnect. On every failed attempt,
-			 * increment a cumulative timeout - if this exceeds a limit, exit the
-			 * process. Reset the cumulative timeout if >30s between retries.
-			 */
-			if (error.message.includes('ECONNREFUSED')) {
-				const nowTs = Date.now();
-				if (nowTs - latestAttemptTs > RESET_LENGTH_MS) {
-					latestAttemptTs = nowTs;
-					cumulativeTimeoutMs = 0;
-				} else {
-					cumulativeTimeoutMs += nowTs - latestAttemptTs;
-					latestAttemptTs = nowTs;
-					if (cumulativeTimeoutMs > MAX_TIMEOUT_MS) {
-						this.logger.error('[ScalingService] Redis unavailable after max timeout');
-						this.logger.error('[ScalingService] Exiting process...');
-						process.exit(1);
-					}
-				}
-
-				this.logger.warn('[ScalingService] Redis unavailable - retrying to connect...');
-				return;
-			}
 
 			throw error;
 		});

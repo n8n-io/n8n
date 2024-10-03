@@ -4,7 +4,7 @@ import Container, { Service } from 'typedi';
 
 import config from '@/config';
 import type { PubSubCommandMap } from '@/events/maps/pub-sub.event-map';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { Subscriber } from '@/scaling/pubsub/subscriber.service';
 

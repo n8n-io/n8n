@@ -2,7 +2,7 @@ import type { Redis as SingleNodeClient, Cluster as MultiNodeClient } from 'iore
 import { Service } from 'typedi';
 
 import config from '@/config';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { RedisClientService } from '@/services/redis-client.service';
 
 import type { PubSub } from './pubsub.types';
@@ -26,8 +26,6 @@ export class Subscriber {
 		if (config.getEnv('executions.mode') !== 'queue') return;
 
 		this.client = this.redisClientService.createClient({ type: 'subscriber(n8n)' });
-
-		this.client.on('error', (error) => this.logger.error(error.message));
 
 		this.client.on('message', (channel: PubSub.Channel, message) => {
 			this.handlers.get(channel)?.(message);
