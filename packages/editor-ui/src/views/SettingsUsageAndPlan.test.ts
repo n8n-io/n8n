@@ -18,8 +18,8 @@ vi.mock('vue-router', () => {
 		},
 	};
 });
-let usageStore: Parameters<typeof mockedStore>[0];
-let settingsStore: Parameters<typeof mockedStore>[0];
+let usageStore: ReturnType<typeof mockedStore<useUsageStore>>;
+let settingsStore: ReturnType<typeof mockedStore<useSettingsStore>>;
 
 const renderComponent = createComponentRenderer(SettingsUsageAndPlan);
 
