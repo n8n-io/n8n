@@ -204,7 +204,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		if (isVueFlowConnection(connection)) {
 			uiStore.lastInteractedWithNodeConnection = connection;
 		}
-		uiStore.lastInteractedWithNodeHandle = connection.sourceHandle ?? undefined;
+		uiStore.lastInteractedWithNodeHandle = connection.sourceHandle ?? null;
 		uiStore.lastInteractedWithNodeId = sourceNode.id;
 
 		setNodeCreatorState({
