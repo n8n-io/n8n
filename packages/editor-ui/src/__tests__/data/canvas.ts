@@ -92,7 +92,7 @@ export function createCanvasNodeProps({
 
 export function createCanvasProvide({
 	isExecuting = false,
-	connectingHandle = null,
+	connectingHandle = undefined,
 }: {
 	isExecuting?: boolean;
 	connectingHandle?: ConnectStartEvent;
