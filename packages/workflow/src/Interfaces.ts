@@ -952,6 +952,8 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			};
 
 		getParentCallbackManager(): CallbackManager | undefined;
+
+		startJob<T = unknown>(jobType: string, settings: unknown, itemIndex: number): Promise<T>;
 	};
 
 export interface IExecuteSingleFunctions extends BaseExecutionFunctions {
@@ -2239,6 +2241,26 @@ export interface IWorkflowExecuteAdditionalData {
 	secretsHelpers: SecretsHelpersBase;
 	logAiEvent: (eventName: AiEvent, payload: AiEventPayload) => void;
 	parentCallbackManager?: CallbackManager;
+	startAgentJob<T>(
+		additionalData: IWorkflowExecuteAdditionalData,
+		jobType: string,
+		settings: unknown,
+		executeFunctions: IExecuteFunctions,
+		inputData: ITaskDataConnections,
+		node: INode,
+		workflow: Workflow,
+		runExecutionData: IRunExecutionData,
+		runIndex: number,
+		itemIndex: number,
+		activeNodeName: string,
+		connectionInputData: INodeExecutionData[],
+		siblingParameters: INodeParameters,
+		mode: WorkflowExecuteMode,
+		executeData?: IExecuteData,
+		defaultReturnRunIndex?: number,
+		selfData?: IDataObject,
+		contextNodeName?: string,
+	): Promise<T>;
 }
 
 export type WorkflowExecuteMode =

@@ -65,7 +65,7 @@ describe('Resource Locator', () => {
 	});
 
 	it('should show appropriate errors when search filter is required', () => {
-		workflowPage.actions.addNodeToCanvas('Github', true, true, 'On Pull Request');
+		workflowPage.actions.addNodeToCanvas('Github', true, true, 'On pull request');
 		ndv.getters.resourceLocator('owner').should('be.visible');
 		ndv.getters.resourceLocatorInput('owner').click();
 		ndv.getters.resourceLocatorErrorMessage().should('contain', NO_CREDENTIALS_MESSAGE);

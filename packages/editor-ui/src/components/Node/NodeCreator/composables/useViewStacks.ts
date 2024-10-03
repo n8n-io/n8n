@@ -68,6 +68,7 @@ interface ViewStack {
 	searchItems?: SimplifiedNodeType[];
 	forceIncludeNodes?: string[];
 	mode?: 'actions' | 'nodes';
+	hideActions?: boolean;
 	baseFilter?: (item: INodeCreateElement) => boolean;
 	itemsMapper?: (item: INodeCreateElement) => INodeCreateElement;
 	panelClass?: string;
@@ -344,6 +345,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 					subcategory: connectionType,
 				};
 			},
+			hideActions: true,
 			preventBack: true,
 		});
 	}

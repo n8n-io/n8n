@@ -1,5 +1,3 @@
-import { Service } from 'typedi';
-
 import type {
 	IGetExecutePollFunctions,
 	IGetExecuteTriggerFunctions,
@@ -20,9 +18,10 @@ import {
 	WorkflowActivationError,
 	WorkflowDeactivationError,
 } from 'n8n-workflow';
+import { Service } from 'typedi';
 
-import { ScheduledTaskManager } from './ScheduledTaskManager';
 import type { IWorkflowData } from './Interfaces';
+import { ScheduledTaskManager } from './ScheduledTaskManager';
 
 @Service()
 export class ActiveWorkflows {

@@ -6,7 +6,7 @@ import { N8N_VERSION } from '@/constants';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { ExternalSecretsManager } from '@/external-secrets/external-secrets-manager.ee';
 import { License } from '@/license';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { COMMAND_PUBSUB_CHANNEL } from '@/scaling/constants';
 import type { PubSub } from '@/scaling/pubsub/pubsub.types';
 import { CommunityPackagesService } from '@/services/community-packages.service';

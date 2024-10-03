@@ -1,12 +1,21 @@
 <script lang="ts" setup>
 import { useCanvasNodeHandle } from '@/composables/useCanvasNodeHandle';
+import { computed, useCssModule } from 'vue';
 
-const { label } = useCanvasNodeHandle();
+const $style = useCssModule();
+
+const { label, isRequired } = useCanvasNodeHandle();
+
+const classes = computed(() => ({
+	'canvas-node-handle-main-input': true,
+	[$style.handle]: true,
+	[$style.required]: isRequired.value,
+}));
 
 const handleClasses = 'target';
 </script>
 <template>
-	<div :class="['canvas-node-handle-main-input', $style.handle]">
+	<div :class="classes">
 		<div :class="[$style.label]">{{ label }}</div>
 		<CanvasHandleRectangle :handle-classes="handleClasses" />
 	</div>
@@ -31,5 +40,10 @@ const handleClasses = 'target';
 	z-index: 1;
 	text-align: center;
 	white-space: nowrap;
+}
+
+.required .label::after {
+	content: '*';
+	color: var(--color-danger);
 }
 </style>

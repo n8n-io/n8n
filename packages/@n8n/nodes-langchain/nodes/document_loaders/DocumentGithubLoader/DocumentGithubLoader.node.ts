@@ -109,17 +109,22 @@ export class DocumentGithubLoader implements INodeType {
 			0,
 		)) as CharacterTextSplitter | undefined;
 
+		const { index } = this.addInputData(NodeConnectionType.AiDocument, [
+			[{ json: { repository, branch, ignorePaths, recursive } }],
+		]);
 		const docs = new GithubRepoLoader(repository, {
 			branch,
 			ignorePaths: (ignorePaths ?? '').split(',').map((p) => p.trim()),
 			recursive,
 			accessToken: (credentials.accessToken as string) || '',
+			apiUrl: credentials.server as string,
 		});
 
 		const loadedDocs = textSplitter
 			? await textSplitter.splitDocuments(await docs.load())
 			: await docs.load();
 
+		this.addOutputData(NodeConnectionType.AiDocument, index, [[{ json: { loadedDocs } }]]);
 		return {
 			response: logWrapper(loadedDocs, this),
 		};

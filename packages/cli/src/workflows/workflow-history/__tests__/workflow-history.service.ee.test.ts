@@ -3,7 +3,7 @@ import { mockClear } from 'jest-mock-extended';
 import { User } from '@/databases/entities/user';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { WorkflowHistoryRepository } from '@/databases/repositories/workflow-history.repository';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service.ee';
 import { mockInstance } from '@test/mocking';
 import { getWorkflow } from '@test-integration/workflow';

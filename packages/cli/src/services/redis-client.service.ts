@@ -3,24 +3,61 @@ import ioRedis from 'ioredis';
 import type { Cluster, RedisOptions } from 'ioredis';
 import { Service } from 'typedi';
 
-import { Logger } from '@/logger';
+import { Debounce } from '@/decorators/debounce';
+import { Logger } from '@/logging/logger.service';
+import { TypedEmitter } from '@/typed-emitter';
 
 import type { RedisClientType } from '../scaling/redis/redis.types';
 
+type RedisEventMap = {
+	'connection-lost': number;
+	'connection-recovered': never;
+};
+
 @Service()
-export class RedisClientService {
+export class RedisClientService extends TypedEmitter<RedisEventMap> {
 	private readonly clients = new Set<ioRedis | Cluster>();
+
+	private readonly config = {
+		/** How long (in ms) to try to reconnect for before exiting. */
+		maxTimeout: this.globalConfig.queue.bull.redis.timeoutThreshold,
+
+		/** How long (in ms) to wait between reconnection attempts. */
+		retryInterval: 1000,
+
+		/** How long (in ms) to wait before resetting the cumulative timeout. */
+		resetLength: 30_000,
+	};
+
+	/** Whether any client has lost connection to Redis. */
+	private lostConnection = false;
 
 	constructor(
 		private readonly logger: Logger,
 		private readonly globalConfig: GlobalConfig,
-	) {}
+	) {
+		super();
+		this.registerListeners();
+	}
 
 	createClient(arg: { type: RedisClientType; extraOptions?: RedisOptions }) {
 		const client =
 			this.clusterNodes().length > 0
 				? this.createClusterClient(arg)
 				: this.createRegularClient(arg);
+
+		client.on('error', (error) => {
+			if ('code' in error && error.code === 'ECONNREFUSED') return; // handled by retryStrategy
+
+			this.logger.error(`[Redis client] ${error.message}`, { error });
+		});
+
+		client.on('ready', () => {
+			if (this.lostConnection) {
+				this.emit('connection-recovered');
+				this.lostConnection = false;
+			}
+		});
 
 		this.clients.add(client);
 
@@ -118,32 +155,29 @@ export class RedisClientService {
 	 * Reset the cumulative timeout if >30s between reconnection attempts.
 	 */
 	private retryStrategy() {
-		const RETRY_INTERVAL = 500; // ms
-		const RESET_LENGTH = 30_000; // ms
-		const MAX_TIMEOUT = this.globalConfig.queue.bull.redis.timeoutThreshold;
-
 		let lastAttemptTs = 0;
 		let cumulativeTimeout = 0;
 
 		return () => {
 			const nowTs = Date.now();
 
-			if (nowTs - lastAttemptTs > RESET_LENGTH) {
+			if (nowTs - lastAttemptTs > this.config.resetLength) {
 				cumulativeTimeout = 0;
 				lastAttemptTs = nowTs;
 			} else {
 				cumulativeTimeout += nowTs - lastAttemptTs;
 				lastAttemptTs = nowTs;
-				if (cumulativeTimeout > MAX_TIMEOUT) {
-					this.logger.error(`[Redis] Unable to connect after max timeout of ${MAX_TIMEOUT} ms`);
-					this.logger.error('Exiting process...');
+				if (cumulativeTimeout > this.config.maxTimeout) {
+					const maxTimeout = Math.round(this.config.maxTimeout / 1000) + 's';
+					this.logger.error(`Unable to connect to Redis after trying to connect for ${maxTimeout}`);
+					this.logger.error('Exiting process due to Redis connection error');
 					process.exit(1);
 				}
 			}
 
-			this.logger.warn('Redis unavailable - trying to reconnect...');
+			this.emit('connection-lost', cumulativeTimeout);
 
-			return RETRY_INTERVAL;
+			return this.config.retryInterval;
 		};
 	}
 
@@ -155,5 +189,41 @@ export class RedisClientService {
 				const [host, port] = pair.split(':');
 				return { host, port: parseInt(port) };
 			});
+	}
+
+	@Debounce(1000)
+	emit<Event extends keyof RedisEventMap>(
+		event: Event,
+		...args: Array<RedisEventMap[Event]>
+	): boolean {
+		return super.emit(event, ...args);
+	}
+
+	private registerListeners() {
+		const { maxTimeout: maxTimeoutMs, retryInterval: retryIntervalMs } = this.config;
+
+		const retryInterval = this.formatTimeout(retryIntervalMs);
+		const maxTimeout = this.formatTimeout(maxTimeoutMs);
+
+		this.on('connection-lost', (cumulativeTimeoutMs) => {
+			const cumulativeTimeout = this.formatTimeout(cumulativeTimeoutMs);
+			const reconnectionMsg = `Trying to reconnect in ${retryInterval}...`;
+			const timeoutDetails = `${cumulativeTimeout}/${maxTimeout}`;
+
+			this.logger.warn(`Lost Redis connection. ${reconnectionMsg} (${timeoutDetails})`);
+
+			this.lostConnection = true;
+		});
+
+		this.on('connection-recovered', () => {
+			this.logger.info('Recovered Redis connection');
+		});
+	}
+
+	private formatTimeout(timeoutMs: number) {
+		const timeoutSeconds = timeoutMs / 1000;
+		const roundedTimeout = Math.round(timeoutSeconds * 10) / 10;
+
+		return roundedTimeout + 's';
 	}
 }

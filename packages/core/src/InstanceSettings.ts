@@ -1,8 +1,8 @@
-import path from 'path';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { createHash, randomBytes } from 'crypto';
-import { Service } from 'typedi';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { ApplicationError, jsonParse } from 'n8n-workflow';
+import path from 'path';
+import { Service } from 'typedi';
 
 interface ReadOnlySettings {
 	encryptionKey: string;
