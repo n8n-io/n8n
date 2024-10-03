@@ -2,6 +2,9 @@ import type { ExecutionStatus, IDataObject, INode, IPinData, IRunData } from 'n8
 import type { ExecutionFilterType, ExecutionsQueryFilter } from '@/Interface';
 import { isEmpty } from '@/utils/typesUtils';
 import { FORM_TRIGGER_NODE_TYPE } from '../constants';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useRootStore } from '@/stores/root.store';
+import { i18n } from '@/plugins/i18n';
 
 export function getDefaultExecutionFilters(): ExecutionFilterType {
 	return {
@@ -125,3 +128,28 @@ export function displayForm({
 		}
 	}
 }
+
+export const waitingNodeMessage = () => {
+	const lastNode =
+		useWorkflowsStore().workflowExecutionData?.data?.executionData?.nodeExecutionStack[0]?.node;
+	const resume = lastNode?.parameters?.resume;
+
+	if (resume) {
+		const { webhookSuffix } = (lastNode.parameters.options ?? {}) as { webhookSuffix: string };
+		const suffix = webhookSuffix && typeof webhookSuffix !== 'object' ? `/${webhookSuffix}` : '';
+
+		if (resume === 'form') {
+			const resumeUrl = `${useRootStore().formWaitingUrl}/${useWorkflowsStore().activeExecutionId}${suffix}`;
+
+			return `${i18n.baseText('ndv.output.waitNodeWaitingForFormSubmission')}<a href="${resumeUrl}" target="_blank">${resumeUrl}</a>`;
+		}
+
+		if (resume === 'webhook') {
+			return i18n.baseText('ndv.output.waitNodeWaitingForWebhook');
+		}
+
+		return i18n.baseText('ndv.output.waitNodeWaiting');
+	}
+
+	return '';
+};

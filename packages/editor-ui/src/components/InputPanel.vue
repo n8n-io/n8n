@@ -24,7 +24,7 @@ import InputNodeSelect from './InputNodeSelect.vue';
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import RunData from './RunData.vue';
 import WireMeUp from './WireMeUp.vue';
-import { useI18n } from '@/composables/useI18n';
+import { waitingNodeMessage } from '@/utils/executionUtils';
 
 type MappingMode = 'debugging' | 'mapping';
 
@@ -238,6 +238,9 @@ export default defineComponent({
 		isMultiInputNode(): boolean {
 			return this.activeNodeType !== null && this.activeNodeType.inputs.length > 1;
 		},
+		waitingMessage(): string {
+			return waitingNodeMessage();
+		},
 	},
 	watch: {
 		inputMode: {
@@ -328,18 +331,6 @@ export default defineComponent({
 		},
 		activatePane() {
 			this.$emit('activatePane');
-		},
-		waitingNodeMessage() {
-			const resume =
-				this.workflowsStore.workflowExecutionData?.data?.executionData?.nodeExecutionStack[0]?.node
-					?.parameters?.resume;
-			if (resume === 'form') {
-				return useI18n().baseText('ndv.output.waitNodeWaitingForFormSubmission');
-			}
-			if (resume === 'webhook') {
-				return useI18n().baseText('ndv.output.waitNodeWaitingForWebhook');
-			}
-			return useI18n().baseText('ndv.output.waitNodeWaiting');
 		},
 	},
 });
@@ -463,9 +454,7 @@ export default defineComponent({
 
 		<template #node-waiting>
 			<n8n-text :bold="true" color="text-dark" size="large">Waiting for input</n8n-text>
-			<n8n-text>
-				{{ waitingNodeMessage() }}
-			</n8n-text>
+			<n8n-text v-n8n-html="waitingMessage"></n8n-text>
 		</template>
 
 		<template #no-output-data>

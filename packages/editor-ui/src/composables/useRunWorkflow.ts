@@ -286,9 +286,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 					source: options.source,
 					getTestUrl,
 				});
-			} catch (error) {
-				console.log(error);
-			}
+			} catch (error) {}
 
 			await useExternalHooks().run('workflowRun.runWorkflow', {
 				nodeName: options.destinationNode,
