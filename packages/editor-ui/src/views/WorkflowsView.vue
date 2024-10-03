@@ -62,13 +62,6 @@ const StatusFilter = {
 	ALL: '',
 };
 
-const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
-const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
-const allWorkflows = computed(() => workflowsStore.allWorkflows as IResource[]);
-const isShareable = computed(
-	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],
-);
-
 const loading = ref(false);
 const filters = ref<Filters>({
 	search: '',
@@ -76,6 +69,13 @@ const filters = ref<Filters>({
 	status: StatusFilter.ALL,
 	tags: [],
 });
+
+const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
+const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
+const allWorkflows = computed(() => workflowsStore.allWorkflows as IResource[]);
+const isShareable = computed(
+	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],
+);
 
 const statusFilterOptions = computed(() => [
 	{
@@ -136,15 +136,6 @@ const emptyListDescription = computed(() => {
 		return i18n.baseText('workflows.empty.description');
 	}
 });
-
-watch(filters, () => saveFiltersOnQueryString(), { deep: true });
-
-watch(
-	() => route.params?.projectId,
-	async () => {
-		await initialize();
-	},
-);
 
 const onFilter = (
 	resource: IWorkflowDb,
@@ -295,6 +286,13 @@ sourceControlStore.$onAction(({ name, after }) => {
 	after(async () => await initialize());
 });
 
+watch(filters, () => saveFiltersOnQueryString(), { deep: true });
+
+watch(
+	() => route.params?.projectId,
+	async () => await initialize(),
+);
+
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('workflows.heading'));
 	await setFiltersFromQueryString();
@@ -304,7 +302,6 @@ onMounted(async () => {
 
 <template>
 	<ResourcesListLayout
-		ref="layout"
 		resource-key="workflows"
 		:resources="allWorkflows"
 		:filters="filters"
