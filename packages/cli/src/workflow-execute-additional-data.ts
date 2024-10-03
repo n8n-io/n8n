@@ -24,6 +24,8 @@ import type {
 	WorkflowExecuteMode,
 	ExecutionStatus,
 	ExecutionError,
+	IExecuteFunctions,
+	ITaskDataConnections,
 	ExecuteWorkflowOptions,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
@@ -40,8 +42,13 @@ import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
 import { CredentialsHelper } from '@/credentials-helper';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import type { AiEventMap, AiEventPayload } from '@/events/maps/ai.event-map';
 import { ExternalHooks } from '@/external-hooks';
-import type { IWorkflowExecuteProcess, IWorkflowErrorData, ExecutionPayload } from '@/interfaces';
+import type {
+	IWorkflowExecuteProcess,
+	IWorkflowErrorData,
+	UpdateExecutionPayload,
+} from '@/interfaces';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
@@ -49,7 +56,6 @@ import { findSubworkflowStart, isWorkflowIdValid } from '@/utils';
 import * as WorkflowHelpers from '@/workflow-helpers';
 
 import { WorkflowRepository } from './databases/repositories/workflow.repository';
-import type { AiEventMap, AiEventPayload } from './events/ai-event-map';
 import { EventService } from './events/event.service';
 import { restoreBinaryDataId } from './execution-lifecycle-hooks/restore-binary-data-id';
 import { saveExecutionProgress } from './execution-lifecycle-hooks/save-execution-progress';
@@ -59,7 +65,8 @@ import {
 	updateExistingExecution,
 } from './execution-lifecycle-hooks/shared/shared-hook-functions';
 import { toSaveSettings } from './execution-lifecycle-hooks/to-save-settings';
-import { Logger } from './logger';
+import { Logger } from './logging/logger.service';
+import { TaskManager } from './runners/task-managers/task-manager';
 import { SecretsHelper } from './secrets-helpers';
 import { OwnershipService } from './services/ownership.service';
 import { UrlService } from './services/url.service';
@@ -865,7 +872,7 @@ async function executeWorkflow(
 		// Therefore, database might not contain finished errors.
 		// Force an update to db as there should be no harm doing this
 
-		const fullExecutionData: ExecutionPayload = {
+		const fullExecutionData: UpdateExecutionPayload = {
 			data: fullRunData.data,
 			mode: fullRunData.mode,
 			finished: fullRunData.finished ? fullRunData.finished : false,
@@ -879,8 +886,7 @@ async function executeWorkflow(
 			fullExecutionData.workflowId = workflowData.id;
 		}
 
-		// remove execution from active executions
-		activeExecutions.remove(executionId, fullRunData);
+		activeExecutions.finalizeExecution(executionId, fullRunData);
 
 		await executionRepository.updateExistingExecution(executionId, fullExecutionData);
 		throw objectToError(
@@ -906,11 +912,11 @@ async function executeWorkflow(
 	if (data.finished === true || data.status === 'waiting') {
 		// Workflow did finish successfully
 
-		activeExecutions.remove(executionId, data);
+		activeExecutions.finalizeExecution(executionId, data);
 		const returnData = WorkflowHelpers.getDataLastExecutedNodeData(data);
 		return returnData!.data!.main;
 	}
-	activeExecutions.remove(executionId, data);
+	activeExecutions.finalizeExecution(executionId, data);
 
 	// Workflow did fail
 	const { error } = data.data.resultData;
@@ -981,6 +987,47 @@ export async function getBase(
 		setExecutionStatus,
 		variables,
 		secretsHelpers: Container.get(SecretsHelper),
+		async startAgentJob(
+			additionalData: IWorkflowExecuteAdditionalData,
+			jobType: string,
+			settings: unknown,
+			executeFunctions: IExecuteFunctions,
+			inputData: ITaskDataConnections,
+			node: INode,
+			workflow: Workflow,
+			runExecutionData: IRunExecutionData,
+			runIndex: number,
+			itemIndex: number,
+			activeNodeName: string,
+			connectionInputData: INodeExecutionData[],
+			siblingParameters: INodeParameters,
+			mode: WorkflowExecuteMode,
+			executeData?: IExecuteData,
+			defaultReturnRunIndex?: number,
+			selfData?: IDataObject,
+			contextNodeName?: string,
+		) {
+			return await Container.get(TaskManager).startTask(
+				additionalData,
+				jobType,
+				settings,
+				executeFunctions,
+				inputData,
+				node,
+				workflow,
+				runExecutionData,
+				runIndex,
+				itemIndex,
+				activeNodeName,
+				connectionInputData,
+				siblingParameters,
+				mode,
+				executeData,
+				defaultReturnRunIndex,
+				selfData,
+				contextNodeName,
+			);
+		},
 		logAiEvent: (eventName: keyof AiEventMap, payload: AiEventPayload) =>
 			eventService.emit(eventName, payload),
 	};

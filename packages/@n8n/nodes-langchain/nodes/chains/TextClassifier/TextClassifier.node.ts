@@ -1,3 +1,8 @@
+import type { BaseLanguageModel } from '@langchain/core/language_models/base';
+import { HumanMessage } from '@langchain/core/messages';
+import { SystemMessagePromptTemplate, ChatPromptTemplate } from '@langchain/core/prompts';
+import { OutputFixingParser, StructuredOutputParser } from 'langchain/output_parsers';
+import { NodeOperationError, NodeConnectionType } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -6,14 +11,8 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-
-import { NodeConnectionType } from 'n8n-workflow';
-
-import type { BaseLanguageModel } from '@langchain/core/language_models/base';
-import { HumanMessage } from '@langchain/core/messages';
-import { SystemMessagePromptTemplate, ChatPromptTemplate } from '@langchain/core/prompts';
-import { OutputFixingParser, StructuredOutputParser } from 'langchain/output_parsers';
 import { z } from 'zod';
+
 import { getTracingConfig } from '../../../utils/tracing';
 
 const SYSTEM_PROMPT_TEMPLATE =
@@ -172,10 +171,14 @@ export class TextClassifier implements INodeType {
 			0,
 		)) as BaseLanguageModel;
 
-		const categories = this.getNodeParameter('categories.categories', 0) as Array<{
+		const categories = this.getNodeParameter('categories.categories', 0, []) as Array<{
 			category: string;
 			description: string;
 		}>;
+
+		if (categories.length === 0) {
+			throw new NodeOperationError(this.getNode(), 'At least one category must be defined');
+		}
 
 		const options = this.getNodeParameter('options', 0, {}) as {
 			multiClass: boolean;
@@ -229,6 +232,7 @@ export class TextClassifier implements INodeType {
 			const systemPromptTemplateOpt = this.getNodeParameter(
 				'options.systemPromptTemplate',
 				itemIdx,
+				SYSTEM_PROMPT_TEMPLATE,
 			) as string;
 			const systemPromptTemplate = SystemMessagePromptTemplate.fromTemplate(
 				`${systemPromptTemplateOpt ?? SYSTEM_PROMPT_TEMPLATE}

@@ -26,7 +26,7 @@ import type {
 import type PCancelable from 'p-cancelable';
 
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
-import type { AnnotationTagEntity } from '@/databases/entities/annotation-tag-entity';
+import type { AnnotationTagEntity } from '@/databases/entities/annotation-tag-entity.ee';
 import type { AuthProviderType } from '@/databases/entities/auth-identity';
 import type { SharedCredentials } from '@/databases/entities/shared-credentials';
 import type { TagEntity } from '@/databases/entities/tag-entity';
@@ -115,6 +115,7 @@ export type SaveExecutionDataType = 'all' | 'none';
 export interface IExecutionBase {
 	id: string;
 	mode: WorkflowExecuteMode;
+	createdAt: Date; // set by DB
 	startedAt: Date;
 	stoppedAt?: Date; // empty value means execution is still running
 	workflowId: string;
@@ -131,10 +132,11 @@ export interface IExecutionDb extends IExecutionBase {
 	workflowData: IWorkflowBase;
 }
 
-/**
- * Payload for creating or updating an execution.
- */
-export type ExecutionPayload = Omit<IExecutionDb, 'id'>;
+/** Payload for creating an execution. */
+export type CreateExecutionPayload = Omit<IExecutionDb, 'id' | 'createdAt' | 'startedAt'>;
+
+/** Payload for updating an execution. */
+export type UpdateExecutionPayload = Omit<IExecutionDb, 'id' | 'createdAt'>;
 
 export interface IExecutionResponse extends IExecutionBase {
 	id: string;
@@ -193,7 +195,8 @@ export interface IExecutionsCurrentSummary {
 export interface IExecutingWorkflowData {
 	executionData: IWorkflowExecutionDataProcess;
 	startedAt: Date;
-	postExecutePromises: Array<IDeferredPromise<IRun | undefined>>;
+	/** This promise rejects when the execution is stopped. When the execution finishes (successfully or not), the promise resolves. */
+	postExecutePromise: IDeferredPromise<IRun | undefined>;
 	responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>;
 	workflowExecution?: PCancelable<IRun>;
 	status: ExecutionStatus;

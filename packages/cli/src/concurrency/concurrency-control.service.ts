@@ -7,7 +7,8 @@ import { InvalidConcurrencyLimitError } from '@/errors/invalid-concurrency-limit
 import { UnknownExecutionModeError } from '@/errors/unknown-execution-mode.error';
 import { EventService } from '@/events/event.service';
 import type { IExecutingWorkflowData } from '@/interfaces';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
+import type { LogMetadata } from '@/logging/types';
 import { Telemetry } from '@/telemetry';
 
 import { ConcurrencyQueue } from './concurrency-queue';
@@ -70,7 +71,6 @@ export class ConcurrencyControlService {
 
 		this.productionQueue.on('execution-released', async (executionId) => {
 			this.log('Execution released', { executionId });
-			await this.executionRepository.resetStartedAt(executionId);
 		});
 	}
 
@@ -171,8 +171,8 @@ export class ConcurrencyControlService {
 		throw new UnknownExecutionModeError(mode);
 	}
 
-	private log(message: string, meta?: object) {
-		this.logger.debug(['[Concurrency Control]', message].join(' '), meta);
+	private log(message: string, metadata?: LogMetadata) {
+		this.logger.debug(['[Concurrency Control]', message].join(' '), metadata);
 	}
 
 	private shouldReport(capacity: number) {

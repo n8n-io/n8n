@@ -1,6 +1,7 @@
 import { WorkflowHooks, type ExecutionError, type IWorkflowExecuteHooks } from 'n8n-workflow';
 import Container from 'typedi';
 
+import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
 import type { User } from '@/databases/entities/user';
 import { Telemetry } from '@/telemetry';
@@ -71,6 +72,10 @@ test('processError should process error', async () => {
 			finished: true,
 		},
 		workflow,
+	);
+	await Container.get(ActiveExecutions).add(
+		{ executionMode: 'webhook', workflowData: workflow },
+		execution.id,
 	);
 	config.set('executions.mode', 'regular');
 	await runner.processError(

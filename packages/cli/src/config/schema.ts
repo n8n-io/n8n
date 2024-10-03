@@ -1,7 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
 import convict from 'convict';
 import { InstanceSettings } from 'n8n-core';
-import { LOG_LEVELS } from 'n8n-workflow';
 import path from 'path';
 import { Container } from 'typedi';
 
@@ -296,41 +295,6 @@ export const schema = {
 		env: 'EXTERNAL_HOOK_FILES',
 	},
 
-	logs: {
-		level: {
-			doc: 'Log output level',
-			format: LOG_LEVELS,
-			default: 'info',
-			env: 'N8N_LOG_LEVEL',
-		},
-		output: {
-			doc: 'Where to output logs. Options are: console, file. Multiple can be separated by comma (",")',
-			format: String,
-			default: 'console',
-			env: 'N8N_LOG_OUTPUT',
-		},
-		file: {
-			fileCountMax: {
-				doc: 'Maximum number of files to keep.',
-				format: Number,
-				default: 100,
-				env: 'N8N_LOG_FILE_COUNT_MAX',
-			},
-			fileSizeMax: {
-				doc: 'Maximum size for each log file in MB.',
-				format: Number,
-				default: 16,
-				env: 'N8N_LOG_FILE_SIZE_MAX',
-			},
-			location: {
-				doc: 'Log file location; only used if log output is set to file.',
-				format: String,
-				default: path.join(Container.get(InstanceSettings).n8nFolder, 'logs/n8n.log'),
-				env: 'N8N_LOG_FILE_LOCATION',
-			},
-		},
-	},
-
 	push: {
 		backend: {
 			format: ['sse', 'websocket'] as const,
@@ -450,14 +414,6 @@ export const schema = {
 					format: String,
 					default: 'https://ph.n8n.io',
 					env: 'N8N_DIAGNOSTICS_POSTHOG_API_HOST',
-				},
-			},
-			sentry: {
-				dsn: {
-					doc: 'Data source name for error tracking on Sentry',
-					format: String,
-					default: '',
-					env: 'N8N_SENTRY_DSN',
 				},
 			},
 			frontend: {

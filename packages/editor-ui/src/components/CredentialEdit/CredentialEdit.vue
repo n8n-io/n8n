@@ -280,8 +280,7 @@ const requiredPropertiesFilled = computed(() => {
 
 const credentialPermissions = computed(() => {
 	return getResourcePermissions(
-		((credentialId.value ? currentCredential.value : credentialData.value) as ICredentialsResponse)
-			?.scopes,
+		(currentCredential.value as ICredentialsResponse)?.scopes ?? homeProject.value?.scopes,
 	).credential;
 });
 
@@ -341,11 +340,8 @@ onMounted(async () => {
 			credentialTypeName: defaultCredentialTypeName.value,
 		});
 
-		const scopes = homeProject.value?.scopes ?? [];
-
 		credentialData.value = {
 			...credentialData.value,
-			scopes,
 			...(homeProject.value ? { homeProject: homeProject.value } : {}),
 		};
 	} else {
@@ -424,6 +420,7 @@ async function beforeClose() {
 	}
 
 	if (!keepEditing) {
+		uiStore.activeCredentialType = null;
 		return true;
 	} else if (!requiredPropertiesFilled.value) {
 		showValidationWarning.value = true;
@@ -990,6 +987,7 @@ async function onAuthTypeChanged(type: string): Promise<void> {
 	const credentialsForType = getNodeCredentialForSelectedAuthType(activeNodeType.value, type);
 	if (credentialsForType) {
 		selectedCredential.value = credentialsForType.name;
+		uiStore.activeCredentialType = credentialsForType.name;
 		resetCredentialData();
 		// Update current node auth type so credentials dropdown can be displayed properly
 		updateNodeAuthType(ndvStore.activeNode, type);

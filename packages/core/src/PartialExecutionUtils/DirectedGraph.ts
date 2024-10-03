@@ -67,6 +67,63 @@ export class DirectedGraph {
 		return this;
 	}
 
+	/**
+	 * Removes a node from the graph.
+	 *
+	 * By default it will also remove all connections that use that node and
+	 * return nothing.
+	 *
+	 * If you pass `{ reconnectConnections: true }` it will rewire all
+	 * connections making sure all parent nodes are connected to all child nodes
+	 * and return the new connections.
+	 */
+	removeNode(node: INode, options?: { reconnectConnections: true }): GraphConnection[];
+	removeNode(node: INode, options?: { reconnectConnections: false }): undefined;
+	removeNode(node: INode, { reconnectConnections = false } = {}): undefined | GraphConnection[] {
+		if (reconnectConnections) {
+			const incomingConnections = this.getDirectParents(node);
+			const outgoingConnections = this.getDirectChildren(node);
+
+			const newConnections: GraphConnection[] = [];
+
+			for (const incomingConnection of incomingConnections) {
+				for (const outgoingConnection of outgoingConnections) {
+					const newConnection = {
+						...incomingConnection,
+						to: outgoingConnection.to,
+						inputIndex: outgoingConnection.inputIndex,
+					};
+
+					newConnections.push(newConnection);
+				}
+			}
+
+			for (const [key, connection] of this.connections.entries()) {
+				if (connection.to === node || connection.from === node) {
+					this.connections.delete(key);
+				}
+			}
+
+			for (const newConnection of newConnections) {
+				this.connections.set(this.makeKey(newConnection), newConnection);
+			}
+
+			this.nodes.delete(node.name);
+
+			return newConnections;
+		} else {
+			for (const [key, connection] of this.connections.entries()) {
+				if (connection.to === node || connection.from === node) {
+					this.connections.delete(key);
+				}
+			}
+
+			this.nodes.delete(node.name);
+
+			return;
+		}
+	}
+
 	addConnection(connectionInput: {
 		from: INode;
 		to: INode;
@@ -123,6 +180,32 @@ export class DirectedGraph {
 		}
 
 		return directChildren;
+	}
+
+	private getChildrenRecursive(node: INode, children: Set<INode>) {
+		const directChildren = this.getDirectChildren(node);
+
+		for (const directChild of directChildren) {
+			// Break out if we found a cycle.
+			if (children.has(directChild.to)) {
+				continue;
+			}
+			children.add(directChild.to);
+			this.getChildrenRecursive(directChild.to, children);
+		}
+
+		return children;
+	}
+
+	/**
+	 * Returns all nodes that are children of the node that is passed as an
+	 * argument.
+	 *
+	 * If the node being passed in is a child of itself (e.g. is part of a
+	 * cylce), the return set will contain it as well.
+	 */
+	getChildren(node: INode) {
+		return this.getChildrenRecursive(node, new Set());
 	}
 
 	getDirectParents(node: INode) {

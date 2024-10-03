@@ -2,9 +2,9 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
+import * as assert from 'assert/strict';
 import { setMaxListeners } from 'events';
-import PCancelable from 'p-cancelable';
-
+import get from 'lodash/get';
 import type {
 	ExecutionBaseError,
 	ExecutionStatus,
@@ -46,11 +46,9 @@ import {
 	sleep,
 	ErrorReporterProxy,
 } from 'n8n-workflow';
-import get from 'lodash/get';
-import * as NodeExecuteFunctions from './NodeExecuteFunctions';
+import PCancelable from 'p-cancelable';
 
-import * as assert from 'assert/strict';
-import { recreateNodeExecutionStack } from './PartialExecutionUtils/recreateNodeExecutionStack';
+import * as NodeExecuteFunctions from './NodeExecuteFunctions';
 import {
 	DirectedGraph,
 	findCycles,
@@ -58,6 +56,8 @@ import {
 	findSubgraph,
 	findTriggerForPartialExecution,
 } from './PartialExecutionUtils';
+import { cleanRunData } from './PartialExecutionUtils/cleanRunData';
+import { recreateNodeExecutionStack } from './PartialExecutionUtils/recreateNodeExecutionStack';
 
 export class WorkflowExecute {
 	private status: ExecutionStatus = 'new';
@@ -347,7 +347,8 @@ export class WorkflowExecute {
 		}
 
 		// 2. Find the Subgraph
-		const subgraph = findSubgraph(DirectedGraph.fromWorkflow(workflow), destinationNode, trigger);
+		const graph = DirectedGraph.fromWorkflow(workflow);
+		const subgraph = findSubgraph(graph, destinationNode, trigger);
 		const filteredNodes = subgraph.getNodes();
 
 		// 3. Find the Start Nodes
@@ -362,7 +363,7 @@ export class WorkflowExecute {
 		}
 
 		// 6. Clean Run Data
-		// TODO:
+		const newRunData: IRunData = cleanRunData(runData, graph, startNodes);
 
 		// 7. Recreate Execution Stack
 		const { nodeExecutionStack, waitingExecution, waitingExecutionSource } =
@@ -376,7 +377,7 @@ export class WorkflowExecute {
 				runNodeFilter: Array.from(filteredNodes.values()).map((node) => node.name),
 			},
 			resultData: {
-				runData,
+				runData: newRunData,
 				pinData,
 			},
 			executionData: {

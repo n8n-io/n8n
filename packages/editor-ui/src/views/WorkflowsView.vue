@@ -17,6 +17,7 @@ import ProjectTabs from '@/components/Projects/ProjectTabs.vue';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { getResourcePermissions } from '@/permissions';
 import { usePostHog } from '@/stores/posthog.store';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
 
 interface Filters {
 	search: string;
@@ -24,6 +25,8 @@ interface Filters {
 	status: string | boolean;
 	tags: string[];
 }
+
+type QueryFilters = Partial<Filters>;
 
 const StatusFilter = {
 	ACTIVE: true,
@@ -49,6 +52,7 @@ const WorkflowsView = defineComponent({
 			} as Filters,
 			sourceControlStoreUnsubscribe: () => {},
 			loading: false,
+			documentTitle: useDocumentTitle(),
 		};
 	},
 	computed: {
@@ -149,6 +153,10 @@ const WorkflowsView = defineComponent({
 		},
 	},
 	async mounted() {
+		this.documentTitle.set(this.$locale.baseText('workflows.heading'));
+
+		await this.tagsStore.fetchAll();
+
 		await this.setFiltersFromQueryString();
 
 		void this.usersStore.showPersonalizationSurvey();
@@ -258,15 +266,25 @@ const WorkflowsView = defineComponent({
 			});
 		},
 		isValidProjectId(projectId: string) {
-			return this.projectsStore.projects.some((project) => project.id === projectId);
+			return this.projectsStore.availableProjects.some((project) => project.id === projectId);
+		},
+		async removeInvalidQueryFiltersFromUrl(filtersToApply: QueryFilters) {
+			await this.$router.push({
+				query: {
+					...(filtersToApply.tags && { tags: filtersToApply.tags?.join(',') }),
+					...(filtersToApply.status && { status: filtersToApply.status?.toString() }),
+					...(filtersToApply.search && { search: filtersToApply.search }),
+					...(filtersToApply.homeProject && { homeProject: filtersToApply.homeProject }),
+				},
+			});
 		},
 		async setFiltersFromQueryString() {
 			const { tags, status, search, homeProject } = this.$route.query;
 
-			const filtersToApply: { [key: string]: string | string[] | boolean } = {};
+			const filtersToApply: QueryFilters = {};
 
 			if (homeProject && typeof homeProject === 'string') {
-				await this.projectsStore.getAllProjects();
+				await this.projectsStore.getAvailableProjects();
 				if (this.isValidProjectId(homeProject)) {
 					filtersToApply.homeProject = homeProject;
 				}
@@ -291,6 +309,8 @@ const WorkflowsView = defineComponent({
 			) {
 				filtersToApply.status = status === 'true';
 			}
+
+			await this.removeInvalidQueryFiltersFromUrl(filtersToApply);
 
 			if (Object.keys(filtersToApply).length) {
 				this.filters = {

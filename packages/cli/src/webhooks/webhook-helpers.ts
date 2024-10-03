@@ -8,7 +8,6 @@
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 import { GlobalConfig } from '@n8n/config';
 import type express from 'express';
-import formidable from 'formidable';
 import get from 'lodash/get';
 import { BinaryDataService, NodeExecuteFunctions } from 'n8n-core';
 import type {
@@ -49,10 +48,11 @@ import { InternalServerError } from '@/errors/response-errors/internal-server.er
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import type { IExecutionDb, IWorkflowDb } from '@/interfaces';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { parseBody } from '@/middlewares';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
+import { createMultiFormDataParser } from '@/webhooks/webhook-form-data';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -95,14 +95,8 @@ export function getWorkflowWebhooks(
 	return returnData;
 }
 
-const normalizeFormData = <T>(values: Record<string, T | T[]>) => {
-	for (const key in values) {
-		const value = values[key];
-		if (Array.isArray(value) && value.length === 1) {
-			values[key] = value[0];
-		}
-	}
-};
+const { formDataFileSizeMax } = Container.get(GlobalConfig).endpoints;
+const parseFormData = createMultiFormDataParser(formDataFileSizeMax);
 
 /**
  * Executes a webhook
@@ -239,22 +233,9 @@ export async function executeWebhook(
 		// if `Webhook` or `Wait` node, and binaryData is enabled, skip pre-parse the request-body
 		// always falsy for versions higher than 1
 		if (!binaryData) {
-			const { contentType, encoding } = req;
+			const { contentType } = req;
 			if (contentType === 'multipart/form-data') {
-				const { formDataFileSizeMax } = Container.get(GlobalConfig).endpoints;
-				const form = formidable({
-					multiples: true,
-					encoding: encoding as formidable.BufferEncoding,
-					maxFileSize: formDataFileSizeMax,
-					// TODO: pass a custom `fileWriteStreamHandler` to create binary data files directly
-				});
-				req.body = await new Promise((resolve) => {
-					form.parse(req, async (_err, data, files) => {
-						normalizeFormData(data);
-						normalizeFormData(files);
-						resolve({ data, files });
-					});
-				});
+				req.body = await parseFormData(req);
 			} else {
 				if (nodeVersion > 1) {
 					if (

@@ -2,10 +2,9 @@ import { jsonParse } from 'n8n-workflow';
 import os from 'node:os';
 import { Container } from 'typedi';
 
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { COMMAND_PUBSUB_CHANNEL } from '@/scaling/constants';
-
-import type { RedisServiceCommandObject } from '../../scaling/redis/redis-service-commands';
+import type { PubSub } from '@/scaling/pubsub/pubsub.types';
 
 export interface RedisServiceCommandLastReceived {
 	[date: string]: Date;
@@ -13,9 +12,9 @@ export interface RedisServiceCommandLastReceived {
 
 export function messageToRedisServiceCommandObject(messageString: string) {
 	if (!messageString) return;
-	let message: RedisServiceCommandObject;
+	let message: PubSub.Command;
 	try {
-		message = jsonParse<RedisServiceCommandObject>(messageString);
+		message = jsonParse<PubSub.Command>(messageString);
 	} catch {
 		Container.get(Logger).debug(
 			`Received invalid message via channel ${COMMAND_PUBSUB_CHANNEL}: "${messageString}"`,
@@ -27,7 +26,7 @@ export function messageToRedisServiceCommandObject(messageString: string) {
 
 const lastReceived: RedisServiceCommandLastReceived = {};
 
-export function debounceMessageReceiver(message: RedisServiceCommandObject, timeout: number = 100) {
+export function debounceMessageReceiver(message: PubSub.Command, timeout: number = 100) {
 	const now = new Date();
 	const lastReceivedDate = lastReceived[message.command];
 	if (lastReceivedDate && now.getTime() - lastReceivedDate.getTime() < timeout) {

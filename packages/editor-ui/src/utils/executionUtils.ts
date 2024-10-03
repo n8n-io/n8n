@@ -64,6 +64,9 @@ export const executionFilterToQueryFilter = (
 		case 'canceled':
 			queryFilter.status = ['canceled'];
 			break;
+		case 'new':
+			queryFilter.status = ['new'];
+			break;
 	}
 
 	return queryFilter;
