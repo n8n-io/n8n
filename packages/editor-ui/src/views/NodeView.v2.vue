@@ -773,6 +773,8 @@ function onCreateConnectionCancelled(
 	uiStore.lastCancelledConnectionPosition = [position.x, position.y];
 
 	setTimeout(() => {
+		if (!event.nodeId) return;
+
 		nodeCreatorStore.openNodeCreatorForConnectingNode({
 			connection: {
 				source: event.nodeId,

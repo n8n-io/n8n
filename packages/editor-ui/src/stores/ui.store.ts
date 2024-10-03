@@ -197,7 +197,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	// Last interacted with - Canvas v2 specific
 	const lastInteractedWithNodeConnection = ref<Connection | null>(null);
 	const lastInteractedWithNodeHandle = ref<string | null>(null);
-	const lastInteractedWithNodeId = ref<string | null>(null);
+	const lastInteractedWithNodeId = ref<string | undefined>(undefined);
 	const lastCancelledConnectionPosition = ref<XYPosition | null>(null);
 
 	const settingsStore = useSettingsStore();
