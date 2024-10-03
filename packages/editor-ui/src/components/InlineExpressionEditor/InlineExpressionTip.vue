@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from '@/composables/useI18n';
 import { useNDVStore } from '@/stores/ndv.store';
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { EditorSelection, EditorState, type SelectionRange } from '@codemirror/state';
 import { type Completion, CompletionContext } from '@codemirror/autocomplete';
 import { datatypeCompletions } from '@/plugins/codemirror/completions/datatype.completions';
@@ -75,9 +75,17 @@ function getCompletionsWithDot(): readonly Completion[] {
 	return completionResult?.options ?? [];
 }
 
-watch(tip, (newTip) => {
-	ndvStore.setHighlightDraggables(!ndvStore.isMappingOnboarded && newTip === 'drag');
+onBeforeUnmount(() => {
+	ndvStore.setHighlightDraggables(false);
 });
+
+watch(
+	tip,
+	(newTip) => {
+		ndvStore.setHighlightDraggables(!ndvStore.isMappingOnboarded && newTip === 'drag');
+	},
+	{ immediate: true },
+);
 
 watchDebounced(
 	[() => props.selection, () => props.unresolvedExpression],
@@ -137,6 +145,13 @@ watchDebounced(
 	color: var(--color-text-base);
 	font-size: var(--font-size-2xs);
 	padding: var(--spacing-2xs);
+
+	code {
+		font-size: var(--font-size-3xs);
+		background: var(--color-background-base);
+		padding: var(--spacing-5xs);
+		border-radius: var(--border-radius-base);
+	}
 }
 
 .content {
@@ -155,13 +170,6 @@ watchDebounced(
 
 .text {
 	display: inline;
-}
-
-code {
-	font-size: var(--font-size-3xs);
-	background: var(--color-background-base);
-	padding: var(--spacing-5xs);
-	border-radius: var(--border-radius-base);
 }
 
 .pill {

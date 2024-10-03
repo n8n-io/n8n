@@ -73,11 +73,13 @@ export = {
 	transferWorkflow: [
 		projectScope('workflow:move', 'workflow'),
 		async (req: WorkflowRequest.Transfer, res: express.Response) => {
+			const { id: workflowId } = req.params;
+
 			const body = z.object({ destinationProjectId: z.string() }).parse(req.body);
 
 			await Container.get(EnterpriseWorkflowService).transferOne(
 				req.user,
-				req.params.workflowId,
+				workflowId,
 				body.destinationProjectId,
 			);
 

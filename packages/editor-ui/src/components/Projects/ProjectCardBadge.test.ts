@@ -1,5 +1,6 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import ProjectCardBadge from '@/components/Projects/ProjectCardBadge.vue';
+import { truncate } from 'n8n-design-system';
 
 const renderComponent = createComponentRenderer(ProjectCardBadge);
 
@@ -56,6 +57,6 @@ describe('ProjectCardBadge', () => {
 				},
 			},
 		});
-		expect(getByText(result)).toBeVisible();
+		expect(getByText(truncate(result, 20))).toBeVisible();
 	});
 });

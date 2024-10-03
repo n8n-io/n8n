@@ -11,7 +11,7 @@ import { mockInstance } from '@test/mocking';
 import { JOB_TYPE_NAME, QUEUE_NAME } from '../constants';
 import type { JobProcessor } from '../job-processor';
 import { ScalingService } from '../scaling.service';
-import type { Job, JobData, JobOptions, JobQueue } from '../scaling.types';
+import type { Job, JobData, JobQueue } from '../scaling.types';
 
 const queue = mock<JobQueue>({
 	client: { ping: jest.fn() },
@@ -208,10 +208,13 @@ describe('ScalingService', () => {
 			queue.add.mockResolvedValue(mock<Job>({ id: '456' }));
 
 			const jobData = mock<JobData>({ executionId: '123' });
-			const jobOptions = mock<JobOptions>();
-			await scalingService.addJob(jobData, jobOptions);
+			await scalingService.addJob(jobData, { priority: 100 });
 
-			expect(queue.add).toHaveBeenCalledWith(JOB_TYPE_NAME, jobData, jobOptions);
+			expect(queue.add).toHaveBeenCalledWith(JOB_TYPE_NAME, jobData, {
+				priority: 100,
+				removeOnComplete: true,
+				removeOnFail: true,
+			});
 		});
 	});
 

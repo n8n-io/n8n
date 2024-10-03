@@ -22,6 +22,7 @@ describe('WorkflowsView', () => {
 	let projectsStore: ReturnType<typeof useProjectsStore>;
 
 	const routerReplaceMock = vi.fn();
+	const routerPushMock = vi.fn();
 
 	const renderComponent = createComponentRenderer(WorkflowsView, {
 		global: {
@@ -32,6 +33,7 @@ describe('WorkflowsView', () => {
 				},
 				$router: {
 					replace: routerReplaceMock,
+					push: routerPushMock,
 				},
 			},
 		},
@@ -61,7 +63,7 @@ describe('WorkflowsView', () => {
 		usersStore = useUsersStore();
 		projectsStore = useProjectsStore();
 
-		vi.spyOn(projectsStore, 'getAllProjects').mockImplementation(async () => {});
+		vi.spyOn(projectsStore, 'getAvailableProjects').mockImplementation(async () => {});
 
 		await settingsStore.getSettings();
 		await usersStore.fetchUsers();

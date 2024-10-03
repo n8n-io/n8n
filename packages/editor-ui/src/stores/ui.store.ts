@@ -35,7 +35,6 @@ import {
 	WORKFLOW_HISTORY_VERSION_RESTORE,
 	SETUP_CREDENTIALS_MODAL_KEY,
 	PROJECT_MOVE_RESOURCE_MODAL,
-	PROJECT_MOVE_RESOURCE_CONFIRM_MODAL,
 	NEW_ASSISTANT_SESSION_MODAL,
 	PROMPT_MFA_CODE_MODAL_KEY,
 } from '@/constants';
@@ -60,7 +59,6 @@ import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { hasPermission } from '@/utils/rbac/permissions';
-import { useTelemetryStore } from '@/stores/telemetry.store';
 import { useUsersStore } from '@/stores/users.store';
 import { dismissBannerPermanently } from '@/api/ui';
 import type { BannerName } from 'n8n-workflow';
@@ -73,6 +71,7 @@ import {
 } from './ui.utils';
 import { computed, ref } from 'vue';
 import type { Connection } from '@vue-flow/core';
+import { useTelemetry } from '@/composables/useTelemetry';
 
 let savedTheme: ThemeOption = 'system';
 try {
@@ -126,7 +125,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				WORKFLOW_HISTORY_VERSION_RESTORE,
 				SETUP_CREDENTIALS_MODAL_KEY,
 				PROJECT_MOVE_RESOURCE_MODAL,
-				PROJECT_MOVE_RESOURCE_CONFIRM_MODAL,
 				NEW_ASSISTANT_SESSION_MODAL,
 			].map((modalKey) => [modalKey, { open: false }]),
 		),
@@ -197,15 +195,15 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const appGridWidth = ref<number>(0);
 
 	// Last interacted with - Canvas v2 specific
-	const lastInteractedWithNodeConnection = ref<Connection | null>(null);
+	const lastInteractedWithNodeConnection = ref<Connection | undefined>();
 	const lastInteractedWithNodeHandle = ref<string | null>(null);
-	const lastInteractedWithNodeId = ref<string | null>(null);
-	const lastCancelledConnectionPosition = ref<XYPosition | null>(null);
+	const lastInteractedWithNodeId = ref<string | undefined>();
+	const lastCancelledConnectionPosition = ref<XYPosition | undefined>();
 
 	const settingsStore = useSettingsStore();
 	const workflowsStore = useWorkflowsStore();
 	const rootStore = useRootStore();
-	const telemetryStore = useTelemetryStore();
+	const telemetry = useTelemetry();
 	const cloudPlanStore = useCloudPlanStore();
 	const userStore = useUsersStore();
 
@@ -224,11 +222,9 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const contextBasedTranslationKeys = computed(() => {
 		const deploymentType = settingsStore.deploymentType;
 
-		let contextKey: '' | '.cloud' | '.desktop' = '';
+		let contextKey: '' | '.cloud' = '';
 		if (deploymentType === 'cloud') {
 			contextKey = '.cloud';
-		} else if (deploymentType === 'desktop_mac' || deploymentType === 'desktop_win') {
-			contextKey = '.desktop';
 		}
 
 		return {
@@ -306,6 +302,8 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			return acc;
 		}, {}),
 	);
+
+	const activeModals = computed(() => modalStack.value.map((modalName) => modalName));
 
 	const fakeDoorsByLocation = computed(() =>
 		fakeDoorFeatures.value.reduce((acc: { [uiLocation: string]: IFakeDoor }, fakeDoor) => {
@@ -566,7 +564,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		const { executionsLeft, workflowsLeft } = usageLeft;
 		const deploymentType = settingsStore.deploymentType;
 
-		telemetryStore.track('User clicked upgrade CTA', {
+		telemetry.track('User clicked upgrade CTA', {
 			source,
 			isTrial: userIsTrialing,
 			deploymentType,
@@ -622,10 +620,10 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	};
 
 	function resetLastInteractedWith() {
-		lastInteractedWithNodeConnection.value = null;
+		lastInteractedWithNodeConnection.value = undefined;
 		lastInteractedWithNodeHandle.value = null;
-		lastInteractedWithNodeId.value = null;
-		lastCancelledConnectionPosition.value = null;
+		lastInteractedWithNodeId.value = undefined;
+		lastCancelledConnectionPosition.value = undefined;
 	}
 
 	return {
@@ -704,6 +702,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		setNotificationsForView,
 		deleteNotificationsForView,
 		resetLastInteractedWith,
+		activeModals,
 	};
 });
 

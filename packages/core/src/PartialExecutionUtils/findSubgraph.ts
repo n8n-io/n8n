@@ -1,4 +1,5 @@
 import type { INode } from 'n8n-workflow';
+
 import type { GraphConnection } from './DirectedGraph';
 import { DirectedGraph } from './DirectedGraph';
 
@@ -50,27 +51,14 @@ function findSubgraphRecursive(
 	// Take every incoming connection and connect it to every node that is
 	// connected to the current node’s first output
 	if (current.disabled) {
-		const incomingConnections = graph.getDirectParents(current);
-		const outgoingConnections = graph
-			.getDirectChildren(current)
-			// NOTE: When a node is disabled only the first output gets data
-			.filter((connection) => connection.outputIndex === 0);
+		// The last segment on the current branch is still pointing to the removed
+		// node, so let's remove it.
+		currentBranch.pop();
 
-		parentConnections = [];
-
-		for (const incomingConnection of incomingConnections) {
-			for (const outgoingConnection of outgoingConnections) {
-				const newConnection = {
-					...incomingConnection,
-					to: outgoingConnection.to,
-					inputIndex: outgoingConnection.inputIndex,
-				};
-
-				parentConnections.push(newConnection);
-				currentBranch.pop();
-				currentBranch.push(newConnection);
-			}
-		}
+		// The node is replaced by a set of new connections, connecting the parents
+		// and children of it directly. In the recursive call below we'll follow
+		// them further.
+		parentConnections = graph.removeNode(current, { reconnectConnections: true });
 	}
 
 	// Recurse on each parent.

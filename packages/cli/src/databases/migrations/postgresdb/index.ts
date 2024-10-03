@@ -63,6 +63,8 @@ import { AddConstraintToExecutionMetadata1720101653148 } from '../common/1720101
 import { CreateInvalidAuthTokenTable1723627610222 } from '../common/1723627610222-CreateInvalidAuthTokenTable';
 import { RefactorExecutionIndices1723796243146 } from '../common/1723796243146-RefactorExecutionIndices';
 import { CreateAnnotationTables1724753530828 } from '../common/1724753530828-CreateExecutionAnnotationTables';
+import { AddApiKeysTable1724951148974 } from '../common/1724951148974-AddApiKeysTable';
+import { SeparateExecutionCreationFromStart1727427440136 } from '../common/1727427440136-SeparateExecutionCreationFromStart';
 
 export const postgresMigrations: Migration[] = [
 	InitialMigration1587669153312,
@@ -128,4 +130,6 @@ export const postgresMigrations: Migration[] = [
 	CreateInvalidAuthTokenTable1723627610222,
 	RefactorExecutionIndices1723796243146,
 	CreateAnnotationTables1724753530828,
+	AddApiKeysTable1724951148974,
+	SeparateExecutionCreationFromStart1727427440136,
 ];

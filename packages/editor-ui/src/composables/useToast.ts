@@ -164,7 +164,7 @@ export function useToast() {
 	}
 
 	function causedByCredential(message: string | undefined) {
-		if (!message) return false;
+		if (!message || typeof message !== 'string') return false;
 
 		return message.includes('Credentials for') && message.includes('are not set');
 	}

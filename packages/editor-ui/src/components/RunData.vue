@@ -200,7 +200,7 @@ export default defineComponent({
 			MAX_DISPLAY_ITEMS_AUTO_ALL,
 			currentPage: 1,
 			pageSize: 10,
-			pageSizes: [10, 25, 50, 100],
+			pageSizes: [1, 10, 25, 50, 100],
 
 			pinDataDiscoveryTooltipVisible: false,
 			isControlledPinDataTooltip: false,
@@ -217,6 +217,13 @@ export default defineComponent({
 		),
 		isReadOnlyRoute() {
 			return this.$route?.meta?.readOnlyCanvas === true;
+		},
+		isWaitNodeWaiting() {
+			return (
+				this.workflowExecution?.status === 'waiting' &&
+				this.workflowExecution.data?.waitTill &&
+				this.workflowExecution?.data?.resultData?.lastNodeExecuted === this.node?.name
+			);
 		},
 		activeNode(): INodeUi | null {
 			return this.ndvStore.activeNode;
@@ -600,7 +607,7 @@ export default defineComponent({
 
 			if (error && errorsToTrack.some((e) => error.message?.toLowerCase().includes(e))) {
 				this.$telemetry.track(
-					`User encountered an error: "${error.message}"`,
+					'User encountered an error',
 					{
 						node: this.node.type,
 						errorMessage: error.message,
@@ -1430,6 +1437,10 @@ export default defineComponent({
 				:class="$style.stretchVertically"
 			>
 				<NodeErrorView :error="subworkflowExecutionError" :class="$style.errorDisplay" />
+			</div>
+
+			<div v-else-if="isWaitNodeWaiting" :class="$style.center">
+				<slot name="node-waiting">xxx</slot>
 			</div>
 
 			<div v-else-if="!hasNodeRun && !(isInputSchemaView && node?.disabled)" :class="$style.center">

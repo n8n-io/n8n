@@ -18,7 +18,6 @@ import type { PushMessage, PushPayload } from '@n8n/api-types';
 
 import type { IExecutionResponse, IExecutionsCurrentSummaryExtended } from '@/Interface';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import { useTitleChange } from '@/composables/useTitleChange';
 import { useToast } from '@/composables/useToast';
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
 import { getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
@@ -43,7 +42,6 @@ type IPushDataExecutionFinishedPayload = PushPayload<'executionFinished'>;
 export function usePushConnection({ router }: { router: ReturnType<typeof useRouter> }) {
 	const workflowHelpers = useWorkflowHelpers({ router });
 	const nodeHelpers = useNodeHelpers();
-	const titleChange = useTitleChange();
 	const toast = useToast();
 	const i18n = useI18n();
 	const telemetry = useTelemetry();
@@ -307,7 +305,6 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 						? saveManualExecutions
 						: workflowSettings.saveManualExecutions;
 
-				let action;
 				if (!isSavingExecutions) {
 					globalLinkActionsEventBus.emit('registerGlobalLinkAction', {
 						key: 'open-settings',
@@ -316,24 +313,12 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 							uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
 						},
 					});
-
-					action =
-						'<a data-action="open-settings">Turn on saving manual executions</a> and run again to see what happened after this node.';
-				} else {
-					action = `<a href="/workflow/${workflow.id}/executions/${activeExecutionId}">View the execution</a> to see what happened after this node.`;
 				}
 
 				// Workflow did start but had been put to wait
-				titleChange.titleSet(workflow.name as string, 'IDLE');
-				toast.showToast({
-					title: 'Workflow started waiting',
-					message: `${action} <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/" target="_blank">More info</a>`,
-					type: 'success',
-					duration: 0,
-					dangerouslyUseHTMLString: true,
-				});
+				workflowHelpers.setDocumentTitle(workflow.name as string, 'IDLE');
 			} else if (runDataExecuted.finished !== true) {
-				titleChange.titleSet(workflow.name as string, 'ERROR');
+				workflowHelpers.setDocumentTitle(workflow.name as string, 'ERROR');
 
 				if (
 					runDataExecuted.data.resultData.error?.name === 'ExpressionError' &&
@@ -442,7 +427,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 				}
 			} else {
 				// Workflow did execute without a problem
-				titleChange.titleSet(workflow.name as string, 'IDLE');
+				workflowHelpers.setDocumentTitle(workflow.name as string, 'IDLE');
 
 				const execution = workflowsStore.getWorkflowExecution;
 				if (execution?.executedNode) {

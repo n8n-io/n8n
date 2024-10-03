@@ -2,15 +2,14 @@
 import {
 	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
 	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
-	COMMUNITY_NODES_NPM_INSTALLATION_URL,
 } from '@/constants';
 import CommunityPackageCard from '@/components/CommunityPackageCard.vue';
 import { useToast } from '@/composables/useToast';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import type { PublicInstalledPackage } from 'n8n-workflow';
 
 import { useCommunityNodesStore } from '@/stores/communityNodes.store';
 import { useUIStore } from '@/stores/ui.store';
-import { useSettingsStore } from '@/stores/settings.store';
 import { onBeforeUnmount, ref } from 'vue';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useRouter } from 'vue-router';
@@ -33,17 +32,13 @@ const externalHooks = useExternalHooks();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const toast = useToast();
+const documentTitle = useDocumentTitle();
 
 const communityNodesStore = useCommunityNodesStore();
-const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 
 const getEmptyStateDescription = computed(() => {
 	const packageCount = communityNodesStore.availablePackageCount;
-
-	if (settingsStore.isDesktopDeployment) {
-		return i18n.baseText('contextual.communityNodes.unavailable.description.desktop');
-	}
 
 	return packageCount < PACKAGE_COUNT_THRESHOLD
 		? i18n.baseText('settings.communityNodes.empty.description.no-packages', {
@@ -59,31 +54,11 @@ const getEmptyStateDescription = computed(() => {
 			});
 });
 
-const shouldShowInstallButton = computed(() => {
-	return settingsStore.isDesktopDeployment || settingsStore.isNpmAvailable;
-});
-
-const getEmptyStateButtonText = computed(() => {
-	if (settingsStore.isDesktopDeployment) {
-		return i18n.baseText('contextual.communityNodes.unavailable.button.desktop');
-	}
-
-	return shouldShowInstallButton.value
-		? i18n.baseText('settings.communityNodes.empty.installPackageLabel')
-		: '';
-});
+const getEmptyStateButtonText = computed(() =>
+	i18n.baseText('settings.communityNodes.empty.installPackageLabel'),
+);
 
 const actionBoxConfig = computed(() => {
-	if (!settingsStore.isNpmAvailable) {
-		return {
-			calloutText: i18n.baseText('settings.communityNodes.npmUnavailable.warning', {
-				interpolate: { npmUrl: COMMUNITY_NODES_NPM_INSTALLATION_URL },
-			}),
-			calloutTheme: 'warning',
-			hideButton: true,
-		};
-	}
-
 	return {
 		calloutText: '',
 		calloutTheme: '',
@@ -91,15 +66,7 @@ const actionBoxConfig = computed(() => {
 	};
 });
 
-const goToUpgrade = () => {
-	void uiStore.goToUpgrade('community-nodes', 'upgrade-community-nodes');
-};
-
 const onClickEmptyStateButton = () => {
-	if (settingsStore.isDesktopDeployment) {
-		return goToUpgrade();
-	}
-
 	openInstallModal();
 };
 
@@ -120,6 +87,7 @@ onBeforeMount(() => {
 });
 
 onMounted(async () => {
+	documentTitle.set(i18n.baseText('settings.communityNodes'));
 	try {
 		loading.value = true;
 		await communityNodesStore.fetchInstalledPackages();

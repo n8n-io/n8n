@@ -10,7 +10,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createExpressionTelemetryPayload } from '@/utils/telemetryUtils';
 
 import { useTelemetry } from '@/composables/useTelemetry';
-import { dropInEditor } from '@/plugins/codemirror/dragAndDrop';
+import { dropInExpressionEditor } from '@/plugins/codemirror/dragAndDrop';
 import type { Segment } from '@/types/expressions';
 import { startCompletion } from '@codemirror/autocomplete';
 import type { EditorState, SelectionRange } from '@codemirror/state';
@@ -119,7 +119,9 @@ async function onDrop(value: string, event: MouseEvent) {
 
 	if (!editor) return;
 
-	const droppedSelection = await dropInEditor(toRaw(editor), event, value);
+	const droppedSelection = await dropInExpressionEditor(toRaw(editor), event, value);
+
+	if (!ndvStore.isMappingOnboarded) ndvStore.setMappingOnboarded();
 
 	if (!ndvStore.isAutocompleteOnboarded) {
 		setCursorPosition((droppedSelection.ranges.at(0)?.head ?? 3) - 3);

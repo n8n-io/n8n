@@ -36,7 +36,7 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 		const useRedis = backend === 'redis' || (backend === 'auto' && mode === 'queue');
 
 		if (useRedis) {
-			const { RedisClientService } = await import('../redis/redis-client.service');
+			const { RedisClientService } = await import('../redis-client.service');
 			const redisClientService = Container.get(RedisClientService);
 
 			const prefixBase = config.getEnv('redis.prefix');
@@ -89,6 +89,9 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 	//             storing
 	// ----------------------------------
 
+	/**
+	 * @param ttl Time to live in milliseconds
+	 */
 	async set(key: string, value: unknown, ttl?: number) {
 		if (!this.cache) await this.init();
 

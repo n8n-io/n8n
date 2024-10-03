@@ -1,5 +1,5 @@
 import { CanvasNodeHandleKey, CanvasNodeKey } from '@/constants';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import type {
 	CanvasNode,
 	CanvasNodeData,
@@ -105,7 +105,7 @@ export function createCanvasNodeProvide({
 } = {}) {
 	const props = createCanvasNodeProps({ id, label, selected, readOnly, data });
 	return {
-		[`${CanvasNodeKey}`]: {
+		[String(CanvasNodeKey)]: {
 			id: ref(props.id),
 			label: ref(props.label),
 			selected: ref(props.selected),
@@ -125,6 +125,7 @@ export function createCanvasHandleProvide({
 	isConnected = false,
 	isConnecting = false,
 	isReadOnly = false,
+	isRequired = false,
 }: {
 	label?: string;
 	mode?: CanvasConnectionMode;
@@ -134,17 +135,19 @@ export function createCanvasHandleProvide({
 	isConnected?: boolean;
 	isConnecting?: boolean;
 	isReadOnly?: boolean;
+	isRequired?: boolean;
 } = {}) {
 	return {
-		[`${CanvasNodeHandleKey}`]: {
+		[String(CanvasNodeHandleKey)]: {
 			label: ref(label),
 			mode: ref(mode),
 			type: ref(type),
 			index: ref(index),
-			isConnected: ref(isConnected),
+			isConnected: computed(() => isConnected),
 			isConnecting: ref(isConnecting),
-			runData: ref(runData),
 			isReadOnly: ref(isReadOnly),
+			isRequired: ref(isRequired),
+			runData: ref(runData),
 		} satisfies CanvasNodeHandleInjectionData,
 	};
 }

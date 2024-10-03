@@ -9,11 +9,11 @@
 // XX denotes that the node is disabled
 // PD denotes that the node has pinned data
 
+import { createNodeData } from './helpers';
 import { DirectedGraph } from '../DirectedGraph';
 import { findSubgraph } from '../findSubgraph';
-import { createNodeData } from './helpers';
 
-describe('findSubgraph2', () => {
+describe('findSubgraph', () => {
 	//                 ►►
 	//  ┌───────┐     ┌───────────┐
 	//  │trigger├────►│destination│
@@ -83,6 +83,12 @@ describe('findSubgraph2', () => {
 	//  │trigger│         │disabled├─────►│destination│
 	//  │       ├────────►│        │      └───────────┘
 	//  └───────┘         └────────┘
+	// turns into
+	//  ┌───────┐       ►►
+	//  │       │      ┌───────────┐
+	//  │trigger├─────►│destination│
+	//  │       │      └───────────┘
+	//  └───────┘
 	test('skip disabled nodes', () => {
 		const trigger = createNodeData({ name: 'trigger' });
 		const disabled = createNodeData({ name: 'disabled', disabled: true });
@@ -94,6 +100,40 @@ describe('findSubgraph2', () => {
 
 		const subgraph = findSubgraph(graph, destination, trigger);
 
+		expect(subgraph).toEqual(
+			new DirectedGraph()
+				.addNodes(trigger, destination)
+				.addConnections({ from: trigger, to: destination }),
+		);
+	});
+
+	//                 XX          XX
+	//  ┌───────┐     ┌─────┐     ┌─────┐     ┌───────────┐
+	//  │trigger├────►│node1├────►│node2├────►│destination│
+	//  └───────┘     └─────┘     └─────┘     └───────────┘
+	// turns into
+	//  ┌───────┐     ┌───────────┐
+	//  │trigger├────►│destination│
+	//  └───────┘     └───────────┘
+	test('skip multiple disabled nodes', () => {
+		// ARRANGE
+		const trigger = createNodeData({ name: 'trigger' });
+		const disabledNode1 = createNodeData({ name: 'disabledNode1', disabled: true });
+		const disabledNode2 = createNodeData({ name: 'disabledNode2', disabled: true });
+		const destination = createNodeData({ name: 'destination' });
+
+		const graph = new DirectedGraph()
+			.addNodes(trigger, disabledNode1, disabledNode2, destination)
+			.addConnections(
+				{ from: trigger, to: disabledNode1 },
+				{ from: disabledNode1, to: disabledNode2 },
+				{ from: disabledNode2, to: destination },
+			);
+
+		// ACT
+		const subgraph = findSubgraph(graph, destination, trigger);
+
+		// ASSERT
 		expect(subgraph).toEqual(
 			new DirectedGraph()
 				.addNodes(trigger, destination)

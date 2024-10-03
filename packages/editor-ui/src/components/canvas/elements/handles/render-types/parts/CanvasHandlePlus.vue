@@ -7,14 +7,14 @@ const props = withDefaults(
 		handleClasses?: string;
 		plusSize?: number;
 		lineSize?: number;
-		state?: 'success' | 'default';
+		type?: 'success' | 'ai' | 'default';
 	}>(),
 	{
 		position: 'right',
 		handleClasses: undefined,
 		plusSize: 24,
 		lineSize: 46,
-		state: 'default',
+		type: 'default',
 	},
 );
 
@@ -27,7 +27,7 @@ const style = useCssModule();
 const classes = computed(() => [
 	style.wrapper,
 	style[props.position],
-	style[props.state],
+	style[props.type],
 	props.handleClasses,
 ]);
 
@@ -135,8 +135,26 @@ function onClick(event: MouseEvent) {
 .wrapper {
 	position: relative;
 
-	&.success .line {
-		stroke: var(--color-success);
+	&.ai {
+		.line {
+			stroke: var(--node-type-supplemental-color);
+		}
+
+		.plus {
+			path {
+				fill: var(--node-type-supplemental-color);
+			}
+
+			rect {
+				stroke: var(--node-type-supplemental-color);
+			}
+		}
+	}
+
+	&.success {
+		.line {
+			stroke: var(--color-success);
+		}
 	}
 }
 

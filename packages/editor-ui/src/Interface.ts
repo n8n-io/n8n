@@ -874,6 +874,7 @@ export interface RootState {
 	endpointFormWaiting: string;
 	endpointWebhook: string;
 	endpointWebhookTest: string;
+	endpointWebhookWaiting: string;
 	pushConnectionActive: boolean;
 	timezone: string;
 	executionTimeout: number;
@@ -887,7 +888,6 @@ export interface RootState {
 	urlBaseWebhook: string;
 	urlBaseEditor: string;
 	instanceId: string;
-	isNpmAvailable: boolean;
 	binaryDataMode: 'default' | 'filesystem' | 's3';
 }
 
@@ -906,6 +906,7 @@ export interface IRootState {
 	endpointFormWaiting: string;
 	endpointWebhook: string;
 	endpointWebhookTest: string;
+	endpointWebhookWaiting: string;
 	executionId: string | null;
 	executingNode: string[];
 	executionWaitingForWebhook: boolean;
@@ -935,7 +936,6 @@ export interface IRootState {
 	sidebarMenuItems: IMenuItem[];
 	instanceId: string;
 	nodeMetadata: NodeMetadataMap;
-	isNpmAvailable: boolean;
 	subworkflowExecutionError: Error | null;
 	binaryDataMode: string;
 }
@@ -1645,3 +1645,11 @@ export type EnterpriseEditionFeatureValue = keyof Omit<FrontendSettings['enterpr
 export interface IN8nPromptResponse {
 	updated: boolean;
 }
+
+export type ApiKey = {
+	id: string;
+	label: string;
+	apiKey: string;
+	createdAt: string;
+	updatedAt: string;
+};

@@ -7,12 +7,12 @@ import { useI18n } from 'n8n-design-system/composables/useI18n';
 const MIN_LINES = 4;
 
 interface Props {
-	title: string;
-	content: string;
-	replacing: boolean;
-	replaced: boolean;
-	error: boolean;
-	streaming: boolean;
+	title?: string;
+	content?: string;
+	replacing?: boolean;
+	replaced?: boolean;
+	error?: boolean;
+	streaming?: boolean;
 }
 
 type Line =

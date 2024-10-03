@@ -15,7 +15,6 @@ import { useRootStore } from '@/stores/root.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { usePostHog } from '@/stores/posthog.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useTelemetryStore } from '@/stores/telemetry.store';
 import { useUIStore } from '@/stores/ui.store';
 
 export class Telemetry {
@@ -74,7 +73,6 @@ export class Telemetry {
 			configUrl: 'https://api-rs.n8n.io',
 			...logging,
 		});
-		useTelemetryStore().init(this);
 
 		this.identify(instanceId, userId, versionCli, projectId);
 
@@ -96,6 +94,12 @@ export class Telemetry {
 			this.rudderStack?.identify(
 				`${instanceId}#${userId}${projectId ? '#' + projectId : ''}`,
 				traits,
+				{
+					context: {
+						// provide a fake IP address to instruct RudderStack to not use the user's IP address
+						ip: '0.0.0.0',
+					},
+				},
 			);
 		} else {
 			this.rudderStack?.reset();
@@ -114,7 +118,12 @@ export class Telemetry {
 			version_cli: useRootStore().versionCli,
 		};
 
-		this.rudderStack.track(event, updatedProperties);
+		this.rudderStack.track(event, updatedProperties, {
+			context: {
+				// provide a fake IP address to instruct RudderStack to not use the user's IP address
+				ip: '0.0.0.0',
+			},
+		});
 
 		if (options.withPostHog) {
 			usePostHog().capture(event, updatedProperties);
@@ -138,12 +147,21 @@ export class Telemetry {
 			properties.theme = useUIStore().appliedTheme;
 
 			const category = route.meta?.telemetry?.pageCategory || 'Editor';
-			this.rudderStack.page(category, pageName, properties);
+			this.rudderStack.page(category, pageName, properties, {
+				context: {
+					// provide a fake IP address to instruct RudderStack to not use the user's IP address
+					ip: '0.0.0.0',
+				},
+			});
 		} else {
 			this.pageEventQueue.push({
 				route,
 			});
 		}
+	}
+
+	reset() {
+		this.rudderStack?.reset();
 	}
 
 	flushPageEvents() {

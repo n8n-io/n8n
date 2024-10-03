@@ -8,7 +8,7 @@ import { TIME } from '@/constants';
 import type { ExecutionEntity } from '@/databases/entities/execution-entity';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { PruningService } from '@/services/pruning.service';
 
 import {

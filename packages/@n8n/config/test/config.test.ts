@@ -221,6 +221,26 @@ describe('GlobalConfig', () => {
 				},
 			},
 		},
+		taskRunners: {
+			disabled: true,
+			path: '/runners',
+			authToken: '',
+			listen_address: '127.0.0.1',
+			port: 5679,
+		},
+		sentry: {
+			backendDsn: '',
+			frontendDsn: '',
+		},
+		logging: {
+			level: 'info',
+			outputs: ['console'],
+			file: {
+				fileCountMax: 100,
+				fileSizeMax: 16,
+				location: 'logs/n8n.log',
+			},
+		},
 	};
 
 	it('should use all default values when no env variables are defined', () => {

@@ -22,7 +22,7 @@ import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import type { CommunityPackages } from '@/interfaces';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { toError } from '@/utils';
 
 import { OrchestrationService } from './orchestration.service';
