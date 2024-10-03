@@ -279,7 +279,7 @@ describe('useCanvasOperations', () => {
 			const position = resolveNodePosition({ ...node, position: undefined }, nodeTypeDescription);
 
 			expect(position).toEqual([200, 160]);
-			expect(uiStore.lastCancelledConnectionPosition).toBeNull();
+			expect(uiStore.lastCancelledConnectionPosition).toBeUndefined();
 		});
 
 		it('should place the node to the right of the last interacted with node', () => {
