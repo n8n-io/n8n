@@ -1,7 +1,10 @@
 import type { ExecutionStatus, IDataObject, INode, IPinData, IRunData } from 'n8n-workflow';
 import type { ExecutionFilterType, ExecutionsQueryFilter } from '@/Interface';
 import { isEmpty } from '@/utils/typesUtils';
-import { FORM_TRIGGER_NODE_TYPE, WAIT_NODE_TYPE } from '../constants';
+import { FORM_TRIGGER_NODE_TYPE } from '../constants';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useRootStore } from '@/stores/root.store';
+import { i18n } from '@/plugins/i18n';
 
 export function getDefaultExecutionFilters(): ExecutionFilterType {
 	return {
@@ -79,15 +82,15 @@ export const openPopUpWindow = (
 	const windowWidth = window.innerWidth;
 	const smallScreen = windowWidth <= 800;
 	if (options?.alwaysInNewTab || smallScreen) {
-		window.open(url, '_blank');
+		return window.open(url, '_blank');
 	} else {
 		const height = options?.width || 700;
 		const width = options?.height || window.innerHeight - 50;
 		const left = (window.innerWidth - height) / 2;
 		const top = 50;
 		const features = `width=${height},height=${width},left=${left},top=${top},resizable=yes,scrollbars=yes`;
-
-		window.open(url, '_blank', features);
+		const windowName = `form-waiting-since-${Date.now()}`;
+		return window.open(url, windowName, features);
 	}
 };
 
@@ -97,57 +100,69 @@ export function displayForm({
 	pinData,
 	destinationNode,
 	directParentNodes,
-	formWaitingUrl,
-	executionId,
 	source,
 	getTestUrl,
-	shouldShowForm,
 }: {
 	nodes: INode[];
 	runData: IRunData | undefined;
 	pinData: IPinData;
 	destinationNode: string | undefined;
 	directParentNodes: string[];
-	formWaitingUrl: string;
-	executionId: string | undefined;
 	source: string | undefined;
 	getTestUrl: (node: INode) => string;
-	shouldShowForm: (node: INode) => boolean;
 }) {
 	for (const node of nodes) {
 		const hasNodeRun = runData && runData?.hasOwnProperty(node.name);
 
 		if (hasNodeRun || pinData[node.name]) continue;
 
-		if (![FORM_TRIGGER_NODE_TYPE, WAIT_NODE_TYPE].includes(node.type)) {
-			continue;
-		}
+		if (![FORM_TRIGGER_NODE_TYPE].includes(node.type)) continue;
 
-		if (
-			destinationNode &&
-			destinationNode !== node.name &&
-			!directParentNodes.includes(node.name)
-		) {
+		if (destinationNode && destinationNode !== node.name && !directParentNodes.includes(node.name))
 			continue;
-		}
 
 		if (node.name === destinationNode || !node.disabled) {
 			let testUrl = '';
-
-			if (node.type === FORM_TRIGGER_NODE_TYPE) {
-				testUrl = getTestUrl(node);
-			}
-
-			if (node.type === WAIT_NODE_TYPE && node.parameters.resume === 'form' && executionId) {
-				if (!shouldShowForm(node)) continue;
-
-				const { webhookSuffix } = (node.parameters.options ?? {}) as IDataObject;
-				const suffix =
-					webhookSuffix && typeof webhookSuffix !== 'object' ? `/${webhookSuffix}` : '';
-				testUrl = `${formWaitingUrl}/${executionId}${suffix}`;
-			}
-
+			if (node.type === FORM_TRIGGER_NODE_TYPE) testUrl = getTestUrl(node);
 			if (testUrl && source !== 'RunData.ManualChatMessage') openPopUpWindow(testUrl);
 		}
 	}
 }
+
+export const waitingNodeTooltip = () => {
+	try {
+		const lastNode =
+			useWorkflowsStore().workflowExecutionData?.data?.executionData?.nodeExecutionStack[0]?.node;
+		const resume = lastNode?.parameters?.resume;
+
+		if (resume) {
+			if (!['webhook', 'form'].includes(resume as string)) {
+				return i18n.baseText('ndv.output.waitNodeWaiting');
+			}
+
+			const { webhookSuffix } = (lastNode.parameters.options ?? {}) as { webhookSuffix: string };
+			const suffix = webhookSuffix && typeof webhookSuffix !== 'object' ? `/${webhookSuffix}` : '';
+
+			let message = '';
+			let resumeUrl = '';
+
+			if (resume === 'form') {
+				resumeUrl = `${useRootStore().formWaitingUrl}/${useWorkflowsStore().activeExecutionId}${suffix}`;
+				message = i18n.baseText('ndv.output.waitNodeWaitingForFormSubmission');
+			}
+
+			if (resume === 'webhook') {
+				resumeUrl = `${useRootStore().webhookWaitingUrl}/${useWorkflowsStore().activeExecutionId}${suffix}`;
+				message = i18n.baseText('ndv.output.waitNodeWaitingForWebhook');
+			}
+
+			if (message && resumeUrl) {
+				return `${message}<a href="${resumeUrl}" target="_blank">${resumeUrl}</a>`;
+			}
+		}
+	} catch (error) {
+		// do not throw error if could not compose tooltip
+	}
+
+	return '';
+};
