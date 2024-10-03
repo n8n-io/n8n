@@ -1,5 +1,6 @@
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
+import { mockedStore } from '@/__tests__/utils';
 import { createComponentRenderer } from '@/__tests__/render';
 import CommunityPlusEnrollmentModal from '@/components/CommunityPlusEnrollmentModal.vue';
 import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '@/constants';
@@ -51,14 +52,13 @@ describe('CommunityPlusEnrollmentModal', () => {
 
 	it('should test enrolling', async () => {
 		const closeCallbackSpy = vi.fn();
-		const usageStore = useUsageStore();
-		const registerCommunityEditionSpy = vi
-			.spyOn(usageStore, 'registerCommunityEdition')
-			.mockResolvedValue({
-				title: 'Title',
-				text: 'Text',
-			});
+		const usageStore = mockedStore(useUsageStore);
 		const toast = useToast();
+
+		usageStore.registerCommunityEdition.mockResolvedValue({
+			title: 'Title',
+			text: 'Text',
+		});
 
 		const props = {
 			modalName: COMMUNITY_PLUS_ENROLLMENT_MODAL,
@@ -81,7 +81,7 @@ describe('CommunityPlusEnrollmentModal', () => {
 		expect(getByRole('button', { name: buttonLabel })).toBeEnabled();
 
 		await userEvent.click(getByRole('button', { name: buttonLabel }));
-		expect(registerCommunityEditionSpy).toHaveBeenCalledWith('test@ema.il');
+		expect(usageStore.registerCommunityEdition).toHaveBeenCalledWith('test@ema.il');
 		expect(toast.showMessage).toHaveBeenCalledWith({
 			title: 'Title',
 			message: 'Text',
@@ -93,11 +93,12 @@ describe('CommunityPlusEnrollmentModal', () => {
 
 	it('should test enrolling error', async () => {
 		const closeCallbackSpy = vi.fn();
-		const usageStore = useUsageStore();
-		const registerCommunityEditionSpy = vi
-			.spyOn(usageStore, 'registerCommunityEdition')
-			.mockRejectedValue(new Error('Failed to register community edition'));
+		const usageStore = mockedStore(useUsageStore);
 		const toast = useToast();
+
+		usageStore.registerCommunityEdition.mockRejectedValue(
+			new Error('Failed to register community edition'),
+		);
 
 		const props = {
 			modalName: COMMUNITY_PLUS_ENROLLMENT_MODAL,
@@ -115,7 +116,7 @@ describe('CommunityPlusEnrollmentModal', () => {
 		expect(getByRole('button', { name: buttonLabel })).toBeEnabled();
 
 		await userEvent.click(getByRole('button', { name: buttonLabel }));
-		expect(registerCommunityEditionSpy).toHaveBeenCalledWith('test@ema.il');
+		expect(usageStore.registerCommunityEdition).toHaveBeenCalledWith('test@ema.il');
 		expect(toast.showError).toHaveBeenCalledWith(
 			new Error('Failed to register community edition'),
 			'License request failed',
