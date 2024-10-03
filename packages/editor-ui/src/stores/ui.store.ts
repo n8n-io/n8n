@@ -195,10 +195,10 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const appGridWidth = ref<number>(0);
 
 	// Last interacted with - Canvas v2 specific
-	const lastInteractedWithNodeConnection = ref<Connection | null>(null);
+	const lastInteractedWithNodeConnection = ref<Connection | undefined>();
 	const lastInteractedWithNodeHandle = ref<string | null>(null);
-	const lastInteractedWithNodeId = ref<string | null>(null);
-	const lastCancelledConnectionPosition = ref<XYPosition | null>(null);
+	const lastInteractedWithNodeId = ref<string | undefined>();
+	const lastCancelledConnectionPosition = ref<XYPosition | undefined>();
 
 	const settingsStore = useSettingsStore();
 	const workflowsStore = useWorkflowsStore();
@@ -620,10 +620,10 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	};
 
 	function resetLastInteractedWith() {
-		lastInteractedWithNodeConnection.value = null;
+		lastInteractedWithNodeConnection.value = undefined;
 		lastInteractedWithNodeHandle.value = null;
-		lastInteractedWithNodeId.value = null;
-		lastCancelledConnectionPosition.value = null;
+		lastInteractedWithNodeId.value = undefined;
+		lastCancelledConnectionPosition.value = undefined;
 	}
 
 	return {
