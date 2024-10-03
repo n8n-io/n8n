@@ -32,6 +32,7 @@ describe('SettingsUsageAndPlan', () => {
 		settingsStore.settings = {
 			instanceId: 'instance-id',
 			license: {
+				consumerId: 'consumer-id',
 				environment: 'production',
 			},
 			versionCli: '0.0.0',
