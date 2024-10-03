@@ -18,7 +18,7 @@ import { Background } from '@vue-flow/background';
 import { MiniMap } from '@vue-flow/minimap';
 import Node from './elements/nodes/CanvasNode.vue';
 import Edge from './elements/edges/CanvasEdge.vue';
-import { computed, onMounted, onUnmounted, provide, ref, useCssModule, watch } from 'vue';
+import { computed, onMounted, onUnmounted, provide, ref, toRef, useCssModule, watch } from 'vue';
 import type { EventBus } from 'n8n-design-system';
 import { createEventBus } from 'n8n-design-system';
 import { useContextMenu, type ContextMenuAction } from '@/composables/useContextMenu';
@@ -78,6 +78,7 @@ const props = withDefaults(
 		controlsPosition?: PanelPosition;
 		eventBus?: EventBus<CanvasEventBusEvents>;
 		readOnly?: boolean;
+		executing?: boolean;
 		keyBindings?: boolean;
 	}>(),
 	{
@@ -87,6 +88,7 @@ const props = withDefaults(
 		controlsPosition: PanelPosition.BottomLeft,
 		eventBus: () => createEventBus(),
 		readOnly: false,
+		executing: false,
 		keyBindings: true,
 	},
 );
@@ -480,8 +482,11 @@ watch(() => props.readOnly, setReadonly, {
  * Provide
  */
 
+const isExecuting = toRef(props, 'executing');
+
 provide(CanvasKey, {
 	connectingHandle,
+	isExecuting,
 });
 </script>
 
