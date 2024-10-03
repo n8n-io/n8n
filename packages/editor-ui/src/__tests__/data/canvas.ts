@@ -1,11 +1,13 @@
-import { CanvasNodeHandleKey, CanvasNodeKey } from '@/constants';
+import { CanvasKey, CanvasNodeHandleKey, CanvasNodeKey } from '@/constants';
 import { computed, ref } from 'vue';
 import type {
+	CanvasInjectionData,
 	CanvasNode,
 	CanvasNodeData,
 	CanvasNodeEventBusEvents,
 	CanvasNodeHandleInjectionData,
 	CanvasNodeInjectionData,
+	ConnectStartEvent,
 	ExecutionOutputMapData,
 } from '@/types';
 import { CanvasConnectionMode, CanvasNodeRenderType } from '@/types';
@@ -85,6 +87,21 @@ export function createCanvasNodeProps({
 		selected,
 		readOnly,
 		data: createCanvasNodeData(data),
+	};
+}
+
+export function createCanvasProvide({
+	isExecuting = false,
+	connectingHandle = undefined,
+}: {
+	isExecuting?: boolean;
+	connectingHandle?: ConnectStartEvent;
+} = {}) {
+	return {
+		[String(CanvasKey)]: {
+			isExecuting: ref(isExecuting),
+			connectingHandle: ref(connectingHandle),
+		} satisfies CanvasInjectionData,
 	};
 }
 
