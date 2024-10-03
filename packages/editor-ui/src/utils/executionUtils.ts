@@ -129,26 +129,39 @@ export function displayForm({
 	}
 }
 
-export const waitingNodeMessage = () => {
-	const lastNode =
-		useWorkflowsStore().workflowExecutionData?.data?.executionData?.nodeExecutionStack[0]?.node;
-	const resume = lastNode?.parameters?.resume;
+export const waitingNodeTooltip = () => {
+	try {
+		const lastNode =
+			useWorkflowsStore().workflowExecutionData?.data?.executionData?.nodeExecutionStack[0]?.node;
+		const resume = lastNode?.parameters?.resume;
 
-	if (resume) {
-		const { webhookSuffix } = (lastNode.parameters.options ?? {}) as { webhookSuffix: string };
-		const suffix = webhookSuffix && typeof webhookSuffix !== 'object' ? `/${webhookSuffix}` : '';
+		if (resume) {
+			if (!['webhook', 'form'].includes(resume as string)) {
+				return i18n.baseText('ndv.output.waitNodeWaiting');
+			}
 
-		if (resume === 'form') {
-			const resumeUrl = `${useRootStore().formWaitingUrl}/${useWorkflowsStore().activeExecutionId}${suffix}`;
+			const { webhookSuffix } = (lastNode.parameters.options ?? {}) as { webhookSuffix: string };
+			const suffix = webhookSuffix && typeof webhookSuffix !== 'object' ? `/${webhookSuffix}` : '';
 
-			return `${i18n.baseText('ndv.output.waitNodeWaitingForFormSubmission')}<a href="${resumeUrl}" target="_blank">${resumeUrl}</a>`;
+			let message = '';
+			let resumeUrl = '';
+
+			if (resume === 'form') {
+				resumeUrl = `${useRootStore().formWaitingUrl}/${useWorkflowsStore().activeExecutionId}${suffix}`;
+				message = i18n.baseText('ndv.output.waitNodeWaitingForFormSubmission');
+			}
+
+			if (resume === 'webhook') {
+				resumeUrl = `${useRootStore().webhookWaitingUrl}/${useWorkflowsStore().activeExecutionId}${suffix}`;
+				message = i18n.baseText('ndv.output.waitNodeWaitingForWebhook');
+			}
+
+			if (message && resumeUrl) {
+				return `${message}<a href="${resumeUrl}" target="_blank">${resumeUrl}</a>`;
+			}
 		}
-
-		if (resume === 'webhook') {
-			return i18n.baseText('ndv.output.waitNodeWaitingForWebhook');
-		}
-
-		return i18n.baseText('ndv.output.waitNodeWaiting');
+	} catch (error) {
+		// do not throw error if could not compose tooltip
 	}
 
 	return '';

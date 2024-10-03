@@ -24,7 +24,7 @@ import InputNodeSelect from './InputNodeSelect.vue';
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import RunData from './RunData.vue';
 import WireMeUp from './WireMeUp.vue';
-import { waitingNodeMessage } from '@/utils/executionUtils';
+import { waitingNodeTooltip } from '@/utils/executionUtils';
 
 type MappingMode = 'debugging' | 'mapping';
 
@@ -239,7 +239,7 @@ export default defineComponent({
 			return this.activeNodeType !== null && this.activeNodeType.inputs.length > 1;
 		},
 		waitingMessage(): string {
-			return waitingNodeMessage();
+			return waitingNodeTooltip();
 		},
 	},
 	watch: {
