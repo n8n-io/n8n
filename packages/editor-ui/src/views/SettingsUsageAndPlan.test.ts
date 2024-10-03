@@ -4,6 +4,7 @@ import { mockedStore } from '@/__tests__/utils';
 import { useUsageStore } from '@/stores/usage.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import SettingsUsageAndPlan from '@/views/SettingsUsageAndPlan.vue';
+import { FrontendSettings } from '@n8n/api-types/src';
 
 vi.mock('vue-router', () => {
 	return {
@@ -32,11 +33,10 @@ describe('SettingsUsageAndPlan', () => {
 		settingsStore.settings = {
 			instanceId: 'instance-id',
 			license: {
-				consumerId: 'consumer-id',
 				environment: 'production',
 			},
 			versionCli: '0.0.0',
-		};
+		} as FrontendSettings;
 	});
 
 	it('should not throw errors when rendering', async () => {
