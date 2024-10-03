@@ -973,6 +973,7 @@ const isExecutionDisabled = computed(() => {
 	return !containsTriggerNodes.value || allTriggerNodesDisabled.value;
 });
 
+const isRunWorkflowButtonVisible = computed(() => !isOnlyChatTriggerNodeActive.value);
 const isStopExecutionButtonVisible = computed(
 	() => isWorkflowRunning.value && !isExecutionWaitingForWebhook.value,
 );
@@ -1598,6 +1599,7 @@ onBeforeUnmount(() => {
 	>
 		<div v-if="!isCanvasReadOnly" :class="$style.executionButtons">
 			<CanvasRunWorkflowButton
+				v-if="isRunWorkflowButtonVisible"
 				:waiting-for-webhook="isExecutionWaitingForWebhook"
 				:disabled="isExecutionDisabled"
 				:executing="isWorkflowRunning"
