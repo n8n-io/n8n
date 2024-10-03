@@ -218,7 +218,7 @@ export const VectorStorePGVector = createVectorStoreNode({
 		icon: 'file:postgres.svg',
 		displayName: 'Postgres PGVector Store',
 		docsUrl:
-			'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstoresupabase/',
+			'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstorepgvector/',
 		name: 'vectorStorePGVector',
 		credentials: [
 			{
