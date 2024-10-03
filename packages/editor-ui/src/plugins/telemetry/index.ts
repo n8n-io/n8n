@@ -94,6 +94,12 @@ export class Telemetry {
 			this.rudderStack?.identify(
 				`${instanceId}#${userId}${projectId ? '#' + projectId : ''}`,
 				traits,
+				{
+					context: {
+						// provide a fake IP address to instruct RudderStack to not use the user's IP address
+						ip: '0.0.0.0',
+					},
+				},
 			);
 		} else {
 			this.rudderStack?.reset();
@@ -112,7 +118,12 @@ export class Telemetry {
 			version_cli: useRootStore().versionCli,
 		};
 
-		this.rudderStack.track(event, updatedProperties);
+		this.rudderStack.track(event, updatedProperties, {
+			context: {
+				// provide a fake IP address to instruct RudderStack to not use the user's IP address
+				ip: '0.0.0.0',
+			},
+		});
 
 		if (options.withPostHog) {
 			usePostHog().capture(event, updatedProperties);
@@ -136,7 +147,12 @@ export class Telemetry {
 			properties.theme = useUIStore().appliedTheme;
 
 			const category = route.meta?.telemetry?.pageCategory || 'Editor';
-			this.rudderStack.page(category, pageName, properties);
+			this.rudderStack.page(category, pageName, properties, {
+				context: {
+					// provide a fake IP address to instruct RudderStack to not use the user's IP address
+					ip: '0.0.0.0',
+				},
+			});
 		} else {
 			this.pageEventQueue.push({
 				route,

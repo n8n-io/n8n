@@ -303,6 +303,8 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		}, {}),
 	);
 
+	const activeModals = computed(() => modalStack.value.map((modalName) => modalName));
+
 	const fakeDoorsByLocation = computed(() =>
 		fakeDoorFeatures.value.reduce((acc: { [uiLocation: string]: IFakeDoor }, fakeDoor) => {
 			fakeDoor.uiLocations.forEach((uiLocation: IFakeDoorLocation) => {
@@ -700,6 +702,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		setNotificationsForView,
 		deleteNotificationsForView,
 		resetLastInteractedWith,
+		activeModals,
 	};
 });
 

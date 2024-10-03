@@ -188,6 +188,10 @@ export class Telemetry {
 		this.rudderStack.identify({
 			userId: instanceId,
 			traits: { ...traits, instanceId },
+			context: {
+				// provide a fake IP address to instruct RudderStack to not use the user's IP address
+				ip: '0.0.0.0',
+			},
 		});
 	}
 
@@ -212,13 +216,18 @@ export class Telemetry {
 			userId: `${instanceId}${user_id ? `#${user_id}` : ''}`,
 			event: eventName,
 			properties: updatedProperties,
+			context: {},
 		};
 
 		if (withPostHog) {
 			this.postHog?.track(payload);
 		}
 
-		return this.rudderStack.track(payload);
+		return this.rudderStack.track({
+			...payload,
+			// provide a fake IP address to instruct RudderStack to not use the user's IP address
+			context: { ...payload.context, ip: '0.0.0.0' },
+		});
 	}
 
 	// test helpers
