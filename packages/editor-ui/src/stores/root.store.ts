@@ -19,6 +19,7 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		endpointFormWaiting: 'form-waiting',
 		endpointWebhook: 'webhook',
 		endpointWebhookTest: 'webhook-test',
+		endpointWebhookWaiting: 'webhook-waiting',
 		pushConnectionActive: true,
 		timezone: 'America/New_York',
 		executionTimeout: -1,
@@ -43,9 +44,15 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 
 	const formTestUrl = computed(() => `${state.value.urlBaseEditor}${state.value.endpointFormTest}`);
 
-	const formWaitingUrl = computed(() => `${state.value.baseUrl}${state.value.endpointFormWaiting}`);
+	const formWaitingUrl = computed(
+		() => `${state.value.urlBaseEditor}${state.value.endpointFormWaiting}`,
+	);
 
 	const webhookUrl = computed(() => `${state.value.urlBaseWebhook}${state.value.endpointWebhook}`);
+
+	const webhookWaitingUrl = computed(
+		() => `${state.value.urlBaseEditor}${state.value.endpointWebhookWaiting}`,
+	);
 
 	const pushRef = computed(() => state.value.pushRef);
 
@@ -131,6 +138,10 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		state.value.endpointWebhookTest = endpointWebhookTest;
 	};
 
+	const setEndpointWebhookWaiting = (endpointWebhookWaiting: string) => {
+		state.value.endpointWebhookWaiting = endpointWebhookWaiting;
+	};
+
 	const setTimezone = (timezone: string) => {
 		state.value.timezone = timezone;
 		setGlobalState({ defaultTimezone: timezone });
@@ -177,6 +188,7 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		formWaitingUrl,
 		webhookUrl,
 		webhookTestUrl,
+		webhookWaitingUrl,
 		restUrl,
 		restCloudApiContext,
 		restApiContext,
@@ -200,6 +212,7 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		setEndpointFormWaiting,
 		setEndpointWebhook,
 		setEndpointWebhookTest,
+		setEndpointWebhookWaiting,
 		setTimezone,
 		setExecutionTimeout,
 		setMaxExecutionTimeout,

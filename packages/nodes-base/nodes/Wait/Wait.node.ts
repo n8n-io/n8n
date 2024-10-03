@@ -238,14 +238,6 @@ export class Wait extends Webhook {
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: credentialsProperty(this.authPropertyName),
-		hints: [
-			{
-				message:
-					"When testing your workflow using the Editor UI, you can't see the rest of the execution following the Wait node. To inspect the execution results, enable Save Manual Executions in your Workflow settings so you can review the execution results there.",
-				location: 'outputPane',
-				whenToDisplay: 'beforeExecution',
-			},
-		],
 		webhooks: [
 			{
 				...defaultWebhookDescription,

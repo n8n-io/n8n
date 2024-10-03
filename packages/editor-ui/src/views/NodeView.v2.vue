@@ -153,7 +153,8 @@ const { addBeforeUnloadEventBindings, removeBeforeUnloadEventBindings } = useBef
 	route,
 });
 const { registerCustomAction, unregisterCustomAction } = useGlobalLinkActions();
-const { runWorkflow, stopCurrentExecution, stopWaitingForWebhook } = useRunWorkflow({ router });
+const { runWorkflow, runWorkflowResolvePending, stopCurrentExecution, stopWaitingForWebhook } =
+	useRunWorkflow({ router });
 const {
 	updateNodePosition,
 	updateNodesPosition,
@@ -950,7 +951,14 @@ const projectPermissions = computed(() => {
 
 const isStoppingExecution = ref(false);
 
-const isWorkflowRunning = computed(() => uiStore.isActionActive.workflowRunning);
+const isWorkflowRunning = computed(() => {
+	if (uiStore.isActionActive.workflowRunning) return true;
+	if (workflowsStore.activeExecutionId) {
+		const execution = workflowsStore.getWorkflowExecution;
+		if (execution && execution.status === 'waiting' && !execution.finished) return true;
+	}
+	return false;
+});
 const isExecutionWaitingForWebhook = computed(() => workflowsStore.executionWaitingForWebhook);
 
 const isExecutionDisabled = computed(() => {
@@ -985,7 +993,11 @@ const workflowExecutionData = computed(() => workflowsStore.workflowExecutionDat
 async function onRunWorkflow() {
 	trackRunWorkflow();
 
-	await runWorkflow({});
+	if (!isExecutionPreview.value && workflowsStore.isWaitingExecution) {
+		void runWorkflowResolvePending({});
+	} else {
+		void runWorkflow({});
+	}
 }
 
 function trackRunWorkflow() {
@@ -1010,7 +1022,12 @@ async function onRunWorkflowToNode(id: string) {
 	if (!node) return;
 
 	trackRunWorkflowToNode(node);
-	await runWorkflow({ destinationNode: node.name, source: 'Node.executeNode' });
+
+	if (!isExecutionPreview.value && workflowsStore.isWaitingExecution) {
+		void runWorkflowResolvePending({ destinationNode: node.name, source: 'Node.executeNode' });
+	} else {
+		void runWorkflow({ destinationNode: node.name, source: 'Node.executeNode' });
+	}
 }
 
 function trackRunWorkflowToNode(node: INodeUi) {

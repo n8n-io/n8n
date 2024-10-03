@@ -305,7 +305,6 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 						? saveManualExecutions
 						: workflowSettings.saveManualExecutions;
 
-				let action;
 				if (!isSavingExecutions) {
 					globalLinkActionsEventBus.emit('registerGlobalLinkAction', {
 						key: 'open-settings',
@@ -314,22 +313,10 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 							uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
 						},
 					});
-
-					action =
-						'<a data-action="open-settings">Turn on saving manual executions</a> and run again to see what happened after this node.';
-				} else {
-					action = `<a href="/workflow/${workflow.id}/executions/${activeExecutionId}">View the execution</a> to see what happened after this node.`;
 				}
 
 				// Workflow did start but had been put to wait
 				workflowHelpers.setDocumentTitle(workflow.name as string, 'IDLE');
-				toast.showToast({
-					title: 'Workflow started waiting',
-					message: `${action} <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/" target="_blank">More info</a>`,
-					type: 'success',
-					duration: 0,
-					dangerouslyUseHTMLString: true,
-				});
 			} else if (runDataExecuted.finished !== true) {
 				workflowHelpers.setDocumentTitle(workflow.name as string, 'ERROR');
 
