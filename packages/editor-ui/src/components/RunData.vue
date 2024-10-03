@@ -218,6 +218,13 @@ export default defineComponent({
 		isReadOnlyRoute() {
 			return this.$route?.meta?.readOnlyCanvas === true;
 		},
+		isWaitNodeWaiting() {
+			return (
+				this.workflowExecution?.status === 'waiting' &&
+				this.workflowExecution.data?.waitTill &&
+				this.workflowExecution?.data?.resultData?.lastNodeExecuted === this.node?.name
+			);
+		},
 		activeNode(): INodeUi | null {
 			return this.ndvStore.activeNode;
 		},
@@ -1430,6 +1437,10 @@ export default defineComponent({
 				:class="$style.stretchVertically"
 			>
 				<NodeErrorView :error="subworkflowExecutionError" :class="$style.errorDisplay" />
+			</div>
+
+			<div v-else-if="isWaitNodeWaiting" :class="$style.center">
+				<slot name="node-waiting">xxx</slot>
 			</div>
 
 			<div v-else-if="!hasNodeRun && !(isInputSchemaView && node?.disabled)" :class="$style.center">
