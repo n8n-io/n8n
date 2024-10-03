@@ -3,11 +3,10 @@ import {
 	type DistanceStrategy,
 	type PGVectorStoreArgs,
 } from '@langchain/community/vectorstores/pgvector';
-import type { Callbacks } from '@langchain/core/callbacks/manager';
 import type { EmbeddingsInterface } from '@langchain/core/embeddings';
 import type { PostgresNodeCredentials } from 'n8n-nodes-base/dist/nodes/Postgres/v2/helpers/interfaces';
 import { configurePostgres } from 'n8n-nodes-base/dist/nodes/Postgres/v2/transport';
-import type { IDataObject, INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 import type pg from 'pg';
 
 import { metadataFilterField } from '../../../utils/sharedFields';
