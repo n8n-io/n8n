@@ -702,8 +702,8 @@ importers:
         specifier: 0.3.20-12
         version: 0.3.20-12(@sentry/node@7.87.0)(ioredis@5.3.2)(mssql@10.0.2)(mysql2@3.11.0)(pg@8.12.0)(redis@4.6.14)(sqlite3@5.1.7)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.6.2))
       '@n8n_io/ai-assistant-sdk':
-        specifier: 1.10.2
-        version: link:../../../ai-assistant-service/sdk
+        specifier: 1.10.3
+        version: 1.10.3
       '@n8n_io/license-sdk':
         specifier: 2.13.1
         version: 2.13.1
@@ -3903,6 +3903,10 @@ packages:
     resolution: {integrity: sha512-qoGLFzyHBW7HKpwXkl05QKsIh3GkDw6lOiTOWYlUDnOIQ1b7EgM+O5EMjrMGy7r+kz52+Q7o6GLxBIcxVI8rEg==}
     engines: {node: '>=18.10', pnpm: '>=9.6'}
     hasBin: true
+
+  '@n8n_io/ai-assistant-sdk@1.10.3':
+    resolution: {integrity: sha512-oHuYryPoWa+KcIf7ihrlXSVpi3XhVPmZX4tUX4TMvgAeipu7yhf7ZSXQFeBUx6zD1oa2zOXIs4b0NsXELrZWqg==}
+    engines: {node: '>=20.15', pnpm: '>=8.14'}
 
   '@n8n_io/license-sdk@2.13.1':
     resolution: {integrity: sha512-R6min21m3OlZHYMpeT+8uuB5v4FG3rC00fvRNbVKzNEqNAvfF1dPm6i1fliy5sGKCQ6sh71kjQ9JgE7lRRzJDg==}
@@ -16047,6 +16051,8 @@ snapshots:
     dependencies:
       acorn: 8.12.1
       acorn-walk: 8.3.2
+
+  '@n8n_io/ai-assistant-sdk@1.10.3': {}
 
   '@n8n_io/license-sdk@2.13.1':
     dependencies:
