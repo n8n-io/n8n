@@ -4,19 +4,29 @@ import Container from 'typedi';
 import { TaskRunnerService } from '@/runners/runner-ws-server';
 import { TaskBroker } from '@/runners/task-broker.service';
 import { TaskRunnerProcess } from '@/runners/task-runner-process';
+import { TaskRunnerServer } from '@/runners/task-runner-server';
 import { retryUntil } from '@test-integration/retry-until';
-import { setupTaskRunnerTestServer } from '@test-integration/utils/task-runner-test-server';
 
 describe('TaskRunnerProcess', () => {
 	const authToken = 'token';
 	const globalConfig = Container.get(GlobalConfig);
 	globalConfig.taskRunners.authToken = authToken;
-	const testServer = setupTaskRunnerTestServer({});
-	globalConfig.port = testServer.port;
+	globalConfig.taskRunners.port = 0; // Use any port
+	const taskRunnerServer = Container.get(TaskRunnerServer);
 
 	const runnerProcess = Container.get(TaskRunnerProcess);
 	const taskBroker = Container.get(TaskBroker);
 	const taskRunnerService = Container.get(TaskRunnerService);
+
+	beforeAll(async () => {
+		await taskRunnerServer.start();
+		// Set the port to the actually used port
+		globalConfig.taskRunners.port = taskRunnerServer.port;
+	});
+
+	afterAll(async () => {
+		await taskRunnerServer.stop();
+	});
 
 	afterEach(async () => {
 		await runnerProcess.stop();

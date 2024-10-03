@@ -1,8 +1,8 @@
+import { ApplicationError, ensureError } from 'n8n-workflow';
 import * as a from 'node:assert/strict';
-import { JsTaskRunner } from './code';
-import { authenticate } from './authenticator';
 
-let _runner: JsTaskRunner;
+import { authenticate } from './authenticator';
+import { JsTaskRunner } from './code';
 
 type Config = {
 	n8nUri: string;
@@ -14,7 +14,7 @@ function readAndParseConfig(): Config {
 	const authToken = process.env.N8N_RUNNERS_AUTH_TOKEN;
 	const grantToken = process.env.N8N_RUNNERS_GRANT_TOKEN;
 	if (!authToken && !grantToken) {
-		throw new Error(
+		throw new ApplicationError(
 			'Missing task runner authentication. Use either N8N_RUNNERS_AUTH_TOKEN or N8N_RUNNERS_GRANT_TOKEN to configure it',
 		);
 	}
@@ -39,6 +39,10 @@ void (async function start() {
 		});
 	}
 
-	const wsUrl = `ws://${config.n8nUri}/rest/runners/_ws`;
-	_runner = new JsTaskRunner('javascript', wsUrl, grantToken, 5);
-})();
+	const wsUrl = `ws://${config.n8nUri}/runners/_ws`;
+	new JsTaskRunner('javascript', wsUrl, grantToken, 5);
+})().catch((e) => {
+	const error = ensureError(e);
+	console.error('Task runner failed to start', { error });
+	process.exit(1);
+});
