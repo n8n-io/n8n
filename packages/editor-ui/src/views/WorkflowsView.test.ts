@@ -210,6 +210,7 @@ describe('WorkflowsView', () => {
 
 			const { getAllByTestId } = renderComponent({ pinia });
 
+			expect(tagStore.fetchAll).toHaveBeenCalled();
 			await waitFor(() => expect(getAllByTestId('resources-list-item').length).toBe(1));
 		});
 
