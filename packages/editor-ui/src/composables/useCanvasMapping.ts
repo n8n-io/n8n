@@ -487,6 +487,8 @@ export function useCanvasMapping({
 	function getConnectionData(connection: CanvasConnection): CanvasConnectionData {
 		const fromNode = nodes.value.find((node) => node.name === connection.data?.fromNodeName);
 
+		console.log(nodeExecutionRunningById.value);
+
 		let status: CanvasConnectionData['status'];
 		if (fromNode) {
 			const { type, index } = parseCanvasConnectionHandleString(connection.sourceHandle);
