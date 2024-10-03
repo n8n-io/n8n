@@ -132,6 +132,7 @@ export type CanvasConnectionCreateData = {
 };
 
 export interface CanvasInjectionData {
+	isExecuting: Ref<boolean | undefined>;
 	connectingHandle: Ref<ConnectStartEvent | undefined>;
 }
 
