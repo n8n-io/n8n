@@ -55,8 +55,6 @@ interface Filters {
 	tags: string[];
 }
 
-type QueryFilters = Partial<Filters>;
-
 const StatusFilter = {
 	ACTIVE: true,
 	DEACTIVATED: false,
