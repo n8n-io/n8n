@@ -1797,6 +1797,7 @@
 	"settings.usageAndPlan.license.activation.error.title": "Activation failed",
 	"settings.usageAndPlan.license.activation.success.title": "License activated",
 	"settings.usageAndPlan.license.activation.success.message": "Your {name} {type} has been successfully activated.",
+	"settings.usageAndPlan.license.communityRegistered.tooltip": "You have registered your email to unlock additional features on your community plan",
 	"settings.externalSecrets.title": "External Secrets",
 	"settings.externalSecrets.info": "Connect external secrets tools for centralized credentials management across environments, and to enhance system security.",
 	"settings.externalSecrets.info.link": "More info",
