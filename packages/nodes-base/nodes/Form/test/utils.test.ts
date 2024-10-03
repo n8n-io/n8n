@@ -7,7 +7,6 @@ import type {
 } from 'n8n-workflow';
 import { DateTime } from 'luxon';
 import { formWebhook, prepareFormData, prepareFormReturnItem, resolveRawData } from '../utils';
-import type { FormField } from '../interfaces';
 
 describe('FormTrigger, formWebhook', () => {
 	beforeEach(() => {
@@ -376,7 +375,7 @@ describe('FormTrigger, prepareFormData', () => {
 		]);
 	});
 	it('should correctly handle multiselect fields with unique ids', () => {
-		const formFields: FormField[] = [
+		const formFields = [
 			{
 				fieldLabel: 'Favorite Colors',
 				fieldType: 'text',
