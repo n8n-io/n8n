@@ -234,7 +234,9 @@ export default defineComponent({
 		const { callDebounced } = useDebounce();
 		const canvasPanning = useCanvasPanning(nodeViewRootRef, { onMouseMoveEnd });
 		const workflowHelpers = useWorkflowHelpers({ router });
-		const { runWorkflow, stopCurrentExecution } = useRunWorkflow({ router });
+		const { runWorkflow, stopCurrentExecution, runWorkflowResolvePending } = useRunWorkflow({
+			router,
+		});
 		const { addBeforeUnloadEventBindings, removeBeforeUnloadEventBindings } = useBeforeUnload({
 			route,
 		});
@@ -254,6 +256,7 @@ export default defineComponent({
 			onMouseMoveEnd,
 			workflowHelpers,
 			runWorkflow,
+			runWorkflowResolvePending,
 			stopCurrentExecution,
 			callDebounced,
 			...useCanvasMouseSelect(),
@@ -422,7 +425,12 @@ export default defineComponent({
 			return this.workflowsStore.getWorkflowExecution;
 		},
 		workflowRunning(): boolean {
-			return this.uiStore.isActionActive.workflowRunning;
+			if (this.uiStore.isActionActive.workflowRunning) return true;
+			if (this.workflowsStore.activeExecutionId) {
+				const execution = this.workflowsStore.getWorkflowExecution;
+				if (execution && execution.status === 'waiting' && !execution.finished) return true;
+			}
+			return false;
 		},
 		currentWorkflow(): string {
 			return this.$route.params.name?.toString() || this.workflowsStore.workflowId;
@@ -847,7 +855,12 @@ export default defineComponent({
 			};
 			this.$telemetry.track('User clicked execute node button', telemetryPayload);
 			void this.externalHooks.run('nodeView.onRunNode', telemetryPayload);
-			void this.runWorkflow({ destinationNode: nodeName, source });
+
+			if (!this.isExecutionPreview && this.workflowsStore.isWaitingExecution) {
+				void this.runWorkflowResolvePending({ destinationNode: nodeName, source });
+			} else {
+				void this.runWorkflow({ destinationNode: nodeName, source });
+			}
 		},
 		async onOpenChat() {
 			const telemetryPayload = {
@@ -857,6 +870,7 @@ export default defineComponent({
 			void this.externalHooks.run('nodeView.onOpenChat', telemetryPayload);
 			this.uiStore.openModal(WORKFLOW_LM_CHAT_MODAL_KEY);
 		},
+
 		async onRunWorkflow() {
 			void this.workflowHelpers.getWorkflowDataToSave().then((workflowData) => {
 				const telemetryPayload = {
@@ -873,7 +887,12 @@ export default defineComponent({
 				void this.externalHooks.run('nodeView.onRunWorkflow', telemetryPayload);
 			});
 
-			await this.runWorkflow({});
+			if (!this.isExecutionPreview && this.workflowsStore.isWaitingExecution) {
+				void this.runWorkflowResolvePending({});
+			} else {
+				void this.runWorkflow({});
+			}
+
 			this.refreshEndpointsErrorsState();
 		},
 		resetEndpointsErrors() {
@@ -932,7 +951,7 @@ export default defineComponent({
 				dangerouslyUseHTMLString: true,
 			});
 		},
-		clearExecutionData() {
+		async clearExecutionData() {
 			this.workflowsStore.workflowExecutionData = null;
 			this.nodeHelpers.updateNodesExecutionIssues();
 		},
