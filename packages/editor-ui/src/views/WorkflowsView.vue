@@ -260,10 +260,8 @@ const setFiltersFromQueryString = async () => {
 	if (tags && typeof tags === 'string') {
 		await tagsStore.fetchAll();
 		const currentTags = tagsStore.allTags.map((tag) => tag.id);
-		const savedTags = tags.split(',').filter((tag) => currentTags.includes(tag));
-		if (savedTags.length) {
-			filtersToApply.tags = savedTags;
-		}
+
+		filtersToApply.tags = tags.split(',').filter((tag) => currentTags.includes(tag));
 	}
 
 	if (

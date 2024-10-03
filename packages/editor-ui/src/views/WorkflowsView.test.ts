@@ -269,6 +269,15 @@ describe('WorkflowsView', () => {
 			renderComponent({ pinia });
 			await waitFor(() => expect(router.currentRoute.value.query).toStrictEqual({}));
 		});
+
+		it('should remove invalid tabs', async () => {
+			await router.replace({ query: { tags: 'non-existing-tag' } });
+			const tagStore = mockedStore(useTagsStore);
+			tagStore.allTags = [{ id: 'test-tag', name: 'tag' }];
+			const pinia = createTestingPinia({ initialState });
+			renderComponent({ pinia });
+			await waitFor(() => expect(router.currentRoute.value.query).toStrictEqual({}));
+		});
 	});
 
 	it('should reinitialize on source control pullWorkfolder', async () => {
