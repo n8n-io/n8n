@@ -31,6 +31,7 @@ import {
 	N8nText,
 	N8nTooltip,
 } from 'n8n-design-system';
+import { pickBy } from 'lodash-es';
 
 const i18n = useI18n();
 const route = useRoute();
@@ -240,6 +241,8 @@ const saveFiltersOnQueryString = () => {
 		query.homeProject = filters.value.homeProject;
 	}
 
+	debugger;
+
 	void router.replace({
 		query: Object.keys(query).length ? query : undefined,
 	});
@@ -285,6 +288,8 @@ const setFiltersFromQueryString = async () => {
 	if (Object.keys(filtersToApply).length) {
 		Object.assign(filters.value, filtersToApply);
 	}
+
+	void router.replace({ query: pickBy(route.query) });
 };
 
 sourceControlStore.$onAction(({ name, after }) => {

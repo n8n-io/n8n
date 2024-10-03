@@ -262,6 +262,13 @@ describe('WorkflowsView', () => {
 			await userEvent.click(getByTestId('workflows-filter-reset'));
 			await waitFor(() => expect(getAllByTestId('resources-list-item').length).toBe(2));
 		});
+
+		it.only('should remove incomplete properties', async () => {
+			await router.replace({ query: { tags: '' } });
+			const pinia = createTestingPinia({ initialState });
+			renderComponent({ pinia });
+			await waitFor(() => expect(router.currentRoute.value.query).toStrictEqual({}));
+		});
 	});
 
 	it('should reinitialize on source control pullWorkfolder', async () => {
