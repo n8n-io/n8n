@@ -33,6 +33,7 @@ const emit = defineEmits<{
 		:ellipsis="false"
 		:class="$style.dropdown"
 		@select="emit('select', $event)"
+		menu-trigger="click"
 	>
 		<ElSubMenu
 			index="-1"
@@ -113,6 +114,10 @@ const emit = defineEmits<{
 		opacity: 1;
 		cursor: default;
 		color: var(--color-text-light);
+	}
+
+	:global(.el-sub-menu__icon-arrow svg) {
+		margin-top: auto;
 	}
 }
 
