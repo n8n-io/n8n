@@ -1067,7 +1067,7 @@ importers:
     dependencies:
       '@langchain/core':
         specifier: 'catalog:'
-        version: 0.3.3(openai@4.63.0(zod@3.23.8))
+        version: 0.3.3(openai@4.63.0(encoding@0.1.13)(zod@3.23.8))
       '@n8n/client-oauth2':
         specifier: workspace:*
         version: link:../@n8n/client-oauth2
@@ -1342,19 +1342,19 @@ importers:
         version: 8.31.0(vue@3.4.21(typescript@5.6.2))
       '@vue-flow/background':
         specifier: ^1.3.0
-        version: 1.3.0(@vue-flow/core@1.33.5(vue@3.4.21(typescript@5.6.2)))(vue@3.4.21(typescript@5.6.2))
+        version: 1.3.0(@vue-flow/core@1.41.2(vue@3.4.21(typescript@5.6.2)))(vue@3.4.21(typescript@5.6.2))
       '@vue-flow/controls':
-        specifier: ^1.1.1
-        version: 1.1.1(@vue-flow/core@1.33.5(vue@3.4.21(typescript@5.6.2)))(vue@3.4.21(typescript@5.6.2))
+        specifier: ^1.1.2
+        version: 1.1.2(@vue-flow/core@1.41.2(vue@3.4.21(typescript@5.6.2)))(vue@3.4.21(typescript@5.6.2))
       '@vue-flow/core':
-        specifier: ^1.33.5
-        version: 1.33.5(vue@3.4.21(typescript@5.6.2))
+        specifier: ^1.41.2
+        version: 1.41.2(vue@3.4.21(typescript@5.6.2))
       '@vue-flow/minimap':
-        specifier: ^1.4.0
-        version: 1.4.0(@vue-flow/core@1.33.5(vue@3.4.21(typescript@5.6.2)))(vue@3.4.21(typescript@5.6.2))
+        specifier: ^1.5.0
+        version: 1.5.0(@vue-flow/core@1.41.2(vue@3.4.21(typescript@5.6.2)))(vue@3.4.21(typescript@5.6.2))
       '@vue-flow/node-resizer':
         specifier: ^1.4.0
-        version: 1.4.0(@vue-flow/core@1.33.5(vue@3.4.21(typescript@5.6.2)))(vue@3.4.21(typescript@5.6.2))
+        version: 1.4.0(@vue-flow/core@1.41.2(vue@3.4.21(typescript@5.6.2)))(vue@3.4.21(typescript@5.6.2))
       '@vueuse/components':
         specifier: ^10.11.0
         version: 10.11.0(vue@3.4.21(typescript@5.6.2))
@@ -1665,7 +1665,7 @@ importers:
         version: 0.5.37
       mongodb:
         specifier: 6.3.0
-        version: 6.3.0(@aws-sdk/credential-providers@3.645.0)(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.7.1)
+        version: 6.3.0(@aws-sdk/credential-providers@3.645.0(@aws-sdk/client-sso-oidc@3.654.0(@aws-sdk/client-sts@3.654.0)))(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.7.1)
       mqtt:
         specifier: 5.7.2
         version: 5.7.2
@@ -1889,7 +1889,7 @@ importers:
     devDependencies:
       '@langchain/core':
         specifier: 'catalog:'
-        version: 0.3.3(openai@4.63.0)
+        version: 0.3.3(openai@4.63.0(encoding@0.1.13)(zod@3.23.8))
       '@types/deep-equal':
         specifier: ^1.0.1
         version: 1.0.1
@@ -5767,19 +5767,19 @@ packages:
       '@vue-flow/core': ^1.23.0
       vue: ^3.3.0
 
-  '@vue-flow/controls@1.1.1':
-    resolution: {integrity: sha512-TCoRD5aYZQsM/N7QlPJcIILg1Gxm0O/zoUikxaeadcom1OlKFHutY72agsySJEWM6fTlyb7w8DYCbB4T8YbFoQ==}
+  '@vue-flow/controls@1.1.2':
+    resolution: {integrity: sha512-6dtl/JnwDBNau5h3pDBdOCK6tdxiVAOL3cyruRL61gItwq5E97Hmjmj2BIIqX2p7gU1ENg3z80Z4zlu58fGlsg==}
     peerDependencies:
       '@vue-flow/core': ^1.23.0
       vue: ^3.3.0
 
-  '@vue-flow/core@1.33.5':
-    resolution: {integrity: sha512-Obo+KHmcww/NYGARMqVH1dhd42QeFzV+TNwytrjVgYCoMVCNjs/blCh437TYTsNy4vgX1NKpNwTbQrS+keurgA==}
+  '@vue-flow/core@1.41.2':
+    resolution: {integrity: sha512-nRGMXPH4oOyC5I1W8HLqGarBFYZZMNhuHlLaai7+LkDmzvGark+c/ucnJfwYaI2ho/CzQQ8q1J3jMcr+Np2kFA==}
     peerDependencies:
       vue: ^3.3.0
 
-  '@vue-flow/minimap@1.4.0':
-    resolution: {integrity: sha512-GetmN8uOQxIx4ja85VDnIwpZO5SnGIOfYSqUw8MRMbc8CdACun2M2e3FRaMZRaWapclU2ssXms4xHMWrA3YWpw==}
+  '@vue-flow/minimap@1.5.0':
+    resolution: {integrity: sha512-JhxXDF+8uTc7sgkZHDIvFpHqSl4wsK9xp8Kz5OHwNcXlgGcwqj4yad6jcc1B6bGxm+huESpNmoPotQbpMn6rVw==}
     peerDependencies:
       '@vue-flow/core': ^1.23.0
       vue: ^3.3.0
@@ -12985,7 +12985,7 @@ snapshots:
       '@aws-sdk/client-sso-oidc': 3.654.0(@aws-sdk/client-sts@3.645.0)
       '@aws-sdk/client-sts': 3.654.0
       '@aws-sdk/core': 3.654.0
-      '@aws-sdk/credential-provider-node': 3.654.0(@aws-sdk/client-sso-oidc@3.654.0(@aws-sdk/client-sts@3.654.0))(@aws-sdk/client-sts@3.645.0)
+      '@aws-sdk/credential-provider-node': 3.654.0(@aws-sdk/client-sso-oidc@3.654.0(@aws-sdk/client-sts@3.654.0))(@aws-sdk/client-sts@3.654.0)
       '@aws-sdk/middleware-host-header': 3.654.0
       '@aws-sdk/middleware-logger': 3.654.0
       '@aws-sdk/middleware-recursion-detection': 3.654.0
@@ -13130,7 +13130,7 @@ snapshots:
       '@aws-sdk/client-sso-oidc': 3.654.0(@aws-sdk/client-sts@3.654.0)
       '@aws-sdk/client-sts': 3.654.0
       '@aws-sdk/core': 3.654.0
-      '@aws-sdk/credential-provider-node': 3.654.0(@aws-sdk/client-sso-oidc@3.654.0(@aws-sdk/client-sts@3.654.0))(@aws-sdk/client-sts@3.645.0)
+      '@aws-sdk/credential-provider-node': 3.654.0(@aws-sdk/client-sso-oidc@3.654.0(@aws-sdk/client-sts@3.654.0))(@aws-sdk/client-sts@3.654.0)
       '@aws-sdk/middleware-host-header': 3.654.0
       '@aws-sdk/middleware-logger': 3.654.0
       '@aws-sdk/middleware-recursion-detection': 3.654.0
@@ -13377,7 +13377,7 @@ snapshots:
       '@aws-crypto/sha256-js': 5.2.0
       '@aws-sdk/client-sts': 3.654.0
       '@aws-sdk/core': 3.654.0
-      '@aws-sdk/credential-provider-node': 3.654.0(@aws-sdk/client-sso-oidc@3.654.0(@aws-sdk/client-sts@3.654.0))(@aws-sdk/client-sts@3.645.0)
+      '@aws-sdk/credential-provider-node': 3.654.0(@aws-sdk/client-sso-oidc@3.654.0(@aws-sdk/client-sts@3.654.0))(@aws-sdk/client-sts@3.654.0)
       '@aws-sdk/middleware-host-header': 3.654.0
       '@aws-sdk/middleware-logger': 3.654.0
       '@aws-sdk/middleware-recursion-detection': 3.654.0
@@ -13640,7 +13640,7 @@ snapshots:
       '@aws-crypto/sha256-js': 5.2.0
       '@aws-sdk/client-sso-oidc': 3.654.0(@aws-sdk/client-sts@3.654.0)
       '@aws-sdk/core': 3.654.0
-      '@aws-sdk/credential-provider-node': 3.654.0(@aws-sdk/client-sso-oidc@3.654.0(@aws-sdk/client-sts@3.654.0))(@aws-sdk/client-sts@3.645.0)
+      '@aws-sdk/credential-provider-node': 3.654.0(@aws-sdk/client-sso-oidc@3.654.0(@aws-sdk/client-sts@3.654.0))(@aws-sdk/client-sts@3.654.0)
       '@aws-sdk/middleware-host-header': 3.654.0
       '@aws-sdk/middleware-logger': 3.654.0
       '@aws-sdk/middleware-recursion-detection': 3.654.0
@@ -13820,25 +13820,6 @@ snapshots:
       - '@aws-sdk/client-sso-oidc'
       - aws-crt
 
-  '@aws-sdk/credential-provider-ini@3.645.0(@aws-sdk/client-sts@3.645.0)':
-    dependencies:
-      '@aws-sdk/client-sts': 3.645.0
-      '@aws-sdk/credential-provider-env': 3.620.1
-      '@aws-sdk/credential-provider-http': 3.635.0
-      '@aws-sdk/credential-provider-process': 3.620.1
-      '@aws-sdk/credential-provider-sso': 3.645.0
-      '@aws-sdk/credential-provider-web-identity': 3.621.0(@aws-sdk/client-sts@3.645.0)
-      '@aws-sdk/types': 3.609.0
-      '@smithy/credential-provider-imds': 3.2.0
-      '@smithy/property-provider': 3.1.3
-      '@smithy/shared-ini-file-loader': 3.1.4
-      '@smithy/types': 3.3.0
-      tslib: 2.6.2
-    transitivePeerDependencies:
-      - '@aws-sdk/client-sso-oidc'
-      - aws-crt
-    optional: true
-
   '@aws-sdk/credential-provider-ini@3.654.0(@aws-sdk/client-sso-oidc@3.654.0(@aws-sdk/client-sts@3.654.0))(@aws-sdk/client-sts@3.645.0)':
     dependencies:
       '@aws-sdk/client-sts': 3.645.0
@@ -13847,6 +13828,24 @@ snapshots:
       '@aws-sdk/credential-provider-process': 3.654.0
       '@aws-sdk/credential-provider-sso': 3.654.0(@aws-sdk/client-sso-oidc@3.654.0(@aws-sdk/client-sts@3.654.0))
       '@aws-sdk/credential-provider-web-identity': 3.654.0(@aws-sdk/client-sts@3.645.0)
+      '@aws-sdk/types': 3.654.0
+      '@smithy/credential-provider-imds': 3.2.3
+      '@smithy/property-provider': 3.1.6
+      '@smithy/shared-ini-file-loader': 3.1.7
+      '@smithy/types': 3.4.2
+      tslib: 2.6.2
+    transitivePeerDependencies:
+      - '@aws-sdk/client-sso-oidc'
+      - aws-crt
+
+  '@aws-sdk/credential-provider-ini@3.654.0(@aws-sdk/client-sso-oidc@3.654.0(@aws-sdk/client-sts@3.654.0))(@aws-sdk/client-sts@3.654.0)':
+    dependencies:
+      '@aws-sdk/client-sts': 3.654.0
+      '@aws-sdk/credential-provider-env': 3.654.0
+      '@aws-sdk/credential-provider-http': 3.654.0
+      '@aws-sdk/credential-provider-process': 3.654.0
+      '@aws-sdk/credential-provider-sso': 3.654.0(@aws-sdk/client-sso-oidc@3.654.0(@aws-sdk/client-sts@3.654.0))
+      '@aws-sdk/credential-provider-web-identity': 3.654.0(@aws-sdk/client-sts@3.654.0)
       '@aws-sdk/types': 3.654.0
       '@smithy/credential-provider-imds': 3.2.3
       '@smithy/property-provider': 3.1.6
@@ -13911,26 +13910,6 @@ snapshots:
       - '@aws-sdk/client-sts'
       - aws-crt
 
-  '@aws-sdk/credential-provider-node@3.645.0(@aws-sdk/client-sts@3.645.0)':
-    dependencies:
-      '@aws-sdk/credential-provider-env': 3.620.1
-      '@aws-sdk/credential-provider-http': 3.635.0
-      '@aws-sdk/credential-provider-ini': 3.645.0(@aws-sdk/client-sts@3.645.0)
-      '@aws-sdk/credential-provider-process': 3.620.1
-      '@aws-sdk/credential-provider-sso': 3.645.0
-      '@aws-sdk/credential-provider-web-identity': 3.621.0(@aws-sdk/client-sts@3.645.0)
-      '@aws-sdk/types': 3.609.0
-      '@smithy/credential-provider-imds': 3.2.0
-      '@smithy/property-provider': 3.1.3
-      '@smithy/shared-ini-file-loader': 3.1.4
-      '@smithy/types': 3.3.0
-      tslib: 2.6.2
-    transitivePeerDependencies:
-      - '@aws-sdk/client-sso-oidc'
-      - '@aws-sdk/client-sts'
-      - aws-crt
-    optional: true
-
   '@aws-sdk/credential-provider-node@3.654.0(@aws-sdk/client-sso-oidc@3.654.0(@aws-sdk/client-sts@3.654.0))(@aws-sdk/client-sts@3.645.0)':
     dependencies:
       '@aws-sdk/credential-provider-env': 3.654.0
@@ -13939,6 +13918,25 @@ snapshots:
       '@aws-sdk/credential-provider-process': 3.654.0
       '@aws-sdk/credential-provider-sso': 3.654.0(@aws-sdk/client-sso-oidc@3.654.0(@aws-sdk/client-sts@3.654.0))
       '@aws-sdk/credential-provider-web-identity': 3.654.0(@aws-sdk/client-sts@3.645.0)
+      '@aws-sdk/types': 3.654.0
+      '@smithy/credential-provider-imds': 3.2.3
+      '@smithy/property-provider': 3.1.6
+      '@smithy/shared-ini-file-loader': 3.1.7
+      '@smithy/types': 3.4.2
+      tslib: 2.6.2
+    transitivePeerDependencies:
+      - '@aws-sdk/client-sso-oidc'
+      - '@aws-sdk/client-sts'
+      - aws-crt
+
+  '@aws-sdk/credential-provider-node@3.654.0(@aws-sdk/client-sso-oidc@3.654.0(@aws-sdk/client-sts@3.654.0))(@aws-sdk/client-sts@3.654.0)':
+    dependencies:
+      '@aws-sdk/credential-provider-env': 3.654.0
+      '@aws-sdk/credential-provider-http': 3.654.0
+      '@aws-sdk/credential-provider-ini': 3.654.0(@aws-sdk/client-sso-oidc@3.654.0(@aws-sdk/client-sts@3.654.0))(@aws-sdk/client-sts@3.654.0)
+      '@aws-sdk/credential-provider-process': 3.654.0
+      '@aws-sdk/credential-provider-sso': 3.654.0(@aws-sdk/client-sso-oidc@3.654.0(@aws-sdk/client-sts@3.654.0))
+      '@aws-sdk/credential-provider-web-identity': 3.654.0(@aws-sdk/client-sts@3.654.0)
       '@aws-sdk/types': 3.654.0
       '@smithy/credential-provider-imds': 3.2.3
       '@smithy/property-provider': 3.1.6
@@ -13985,20 +13983,6 @@ snapshots:
       tslib: 2.6.2
     transitivePeerDependencies:
       - aws-crt
-
-  '@aws-sdk/credential-provider-sso@3.645.0':
-    dependencies:
-      '@aws-sdk/client-sso': 3.645.0
-      '@aws-sdk/token-providers': 3.614.0(@aws-sdk/client-sso-oidc@3.645.0(@aws-sdk/client-sts@3.645.0))
-      '@aws-sdk/types': 3.609.0
-      '@smithy/property-provider': 3.1.3
-      '@smithy/shared-ini-file-loader': 3.1.4
-      '@smithy/types': 3.3.0
-      tslib: 2.6.2
-    transitivePeerDependencies:
-      - '@aws-sdk/client-sso-oidc'
-      - aws-crt
-    optional: true
 
   '@aws-sdk/credential-provider-sso@3.645.0(@aws-sdk/client-sso-oidc@3.645.0(@aws-sdk/client-sts@3.645.0))':
     dependencies:
@@ -14062,28 +14046,13 @@ snapshots:
       '@smithy/types': 3.4.2
       tslib: 2.6.2
 
-  '@aws-sdk/credential-providers@3.645.0':
+  '@aws-sdk/credential-provider-web-identity@3.654.0(@aws-sdk/client-sts@3.654.0)':
     dependencies:
-      '@aws-sdk/client-cognito-identity': 3.645.0
-      '@aws-sdk/client-sso': 3.645.0
-      '@aws-sdk/client-sts': 3.645.0
-      '@aws-sdk/credential-provider-cognito-identity': 3.645.0
-      '@aws-sdk/credential-provider-env': 3.620.1
-      '@aws-sdk/credential-provider-http': 3.635.0
-      '@aws-sdk/credential-provider-ini': 3.645.0(@aws-sdk/client-sts@3.645.0)
-      '@aws-sdk/credential-provider-node': 3.645.0(@aws-sdk/client-sts@3.645.0)
-      '@aws-sdk/credential-provider-process': 3.620.1
-      '@aws-sdk/credential-provider-sso': 3.645.0
-      '@aws-sdk/credential-provider-web-identity': 3.621.0(@aws-sdk/client-sts@3.645.0)
-      '@aws-sdk/types': 3.609.0
-      '@smithy/credential-provider-imds': 3.2.3
+      '@aws-sdk/client-sts': 3.654.0
+      '@aws-sdk/types': 3.654.0
       '@smithy/property-provider': 3.1.6
       '@smithy/types': 3.4.2
       tslib: 2.6.2
-    transitivePeerDependencies:
-      - '@aws-sdk/client-sso-oidc'
-      - aws-crt
-    optional: true
 
   '@aws-sdk/credential-providers@3.645.0(@aws-sdk/client-sso-oidc@3.654.0(@aws-sdk/client-sts@3.654.0))':
     dependencies:
@@ -14365,7 +14334,7 @@ snapshots:
 
   '@aws-sdk/token-providers@3.654.0(@aws-sdk/client-sso-oidc@3.654.0(@aws-sdk/client-sts@3.654.0))':
     dependencies:
-      '@aws-sdk/client-sso-oidc': 3.654.0(@aws-sdk/client-sts@3.645.0)
+      '@aws-sdk/client-sso-oidc': 3.654.0(@aws-sdk/client-sts@3.654.0)
       '@aws-sdk/types': 3.654.0
       '@smithy/property-provider': 3.1.6
       '@smithy/shared-ini-file-loader': 3.1.7
@@ -14775,7 +14744,7 @@ snapshots:
 
   '@babel/parser@7.24.6':
     dependencies:
-      '@babel/types': 7.24.6
+      '@babel/types': 7.25.6
 
   '@babel/parser@7.25.6':
     dependencies:
@@ -15616,7 +15585,7 @@ snapshots:
   '@jridgewell/trace-mapping@0.3.25':
     dependencies:
       '@jridgewell/resolve-uri': 3.1.0
-      '@jridgewell/sourcemap-codec': 1.4.15
+      '@jridgewell/sourcemap-codec': 1.5.0
 
   '@jridgewell/trace-mapping@0.3.9':
     dependencies:
@@ -15783,38 +15752,6 @@ snapshots:
       decamelize: 1.2.0
       js-tiktoken: 1.0.12
       langsmith: 0.1.59(openai@4.63.0(encoding@0.1.13)(zod@3.23.8))
-      mustache: 4.2.0
-      p-queue: 6.6.2
-      p-retry: 4.6.2
-      uuid: 10.0.0
-      zod: 3.23.8
-      zod-to-json-schema: 3.23.3(zod@3.23.8)
-    transitivePeerDependencies:
-      - openai
-
-  '@langchain/core@0.3.3(openai@4.63.0(zod@3.23.8))':
-    dependencies:
-      ansi-styles: 5.2.0
-      camelcase: 6.3.0
-      decamelize: 1.2.0
-      js-tiktoken: 1.0.12
-      langsmith: 0.1.59(openai@4.63.0(zod@3.23.8))
-      mustache: 4.2.0
-      p-queue: 6.6.2
-      p-retry: 4.6.2
-      uuid: 10.0.0
-      zod: 3.23.8
-      zod-to-json-schema: 3.23.3(zod@3.23.8)
-    transitivePeerDependencies:
-      - openai
-
-  '@langchain/core@0.3.3(openai@4.63.0)':
-    dependencies:
-      ansi-styles: 5.2.0
-      camelcase: 6.3.0
-      decamelize: 1.2.0
-      js-tiktoken: 1.0.12
-      langsmith: 0.1.59(openai@4.63.0)
       mustache: 4.2.0
       p-queue: 6.6.2
       p-retry: 4.6.2
@@ -17732,7 +17669,7 @@ snapshots:
       express: 4.21.0
       find-cache-dir: 3.3.2
       fs-extra: 11.1.1
-      magic-string: 0.30.10
+      magic-string: 0.30.11
       storybook: 8.3.1
       ts-dedent: 2.2.0
       vite: 5.4.6(@types/node@18.16.16)(sass@1.64.1)(terser@5.16.1)
@@ -18687,17 +18624,17 @@ snapshots:
       '@volar/language-core': 2.2.5
       path-browserify: 1.0.1
 
-  '@vue-flow/background@1.3.0(@vue-flow/core@1.33.5(vue@3.4.21(typescript@5.6.2)))(vue@3.4.21(typescript@5.6.2))':
+  '@vue-flow/background@1.3.0(@vue-flow/core@1.41.2(vue@3.4.21(typescript@5.6.2)))(vue@3.4.21(typescript@5.6.2))':
     dependencies:
-      '@vue-flow/core': 1.33.5(vue@3.4.21(typescript@5.6.2))
+      '@vue-flow/core': 1.41.2(vue@3.4.21(typescript@5.6.2))
       vue: 3.4.21(typescript@5.6.2)
 
-  '@vue-flow/controls@1.1.1(@vue-flow/core@1.33.5(vue@3.4.21(typescript@5.6.2)))(vue@3.4.21(typescript@5.6.2))':
+  '@vue-flow/controls@1.1.2(@vue-flow/core@1.41.2(vue@3.4.21(typescript@5.6.2)))(vue@3.4.21(typescript@5.6.2))':
     dependencies:
-      '@vue-flow/core': 1.33.5(vue@3.4.21(typescript@5.6.2))
+      '@vue-flow/core': 1.41.2(vue@3.4.21(typescript@5.6.2))
       vue: 3.4.21(typescript@5.6.2)
 
-  '@vue-flow/core@1.33.5(vue@3.4.21(typescript@5.6.2))':
+  '@vue-flow/core@1.41.2(vue@3.4.21(typescript@5.6.2))':
     dependencies:
       '@vueuse/core': 10.11.0(vue@3.4.21(typescript@5.6.2))
       d3-drag: 3.0.0
@@ -18707,16 +18644,16 @@ snapshots:
     transitivePeerDependencies:
       - '@vue/composition-api'
 
-  '@vue-flow/minimap@1.4.0(@vue-flow/core@1.33.5(vue@3.4.21(typescript@5.6.2)))(vue@3.4.21(typescript@5.6.2))':
+  '@vue-flow/minimap@1.5.0(@vue-flow/core@1.41.2(vue@3.4.21(typescript@5.6.2)))(vue@3.4.21(typescript@5.6.2))':
     dependencies:
-      '@vue-flow/core': 1.33.5(vue@3.4.21(typescript@5.6.2))
+      '@vue-flow/core': 1.41.2(vue@3.4.21(typescript@5.6.2))
       d3-selection: 3.0.0
       d3-zoom: 3.0.0
       vue: 3.4.21(typescript@5.6.2)
 
-  '@vue-flow/node-resizer@1.4.0(@vue-flow/core@1.33.5(vue@3.4.21(typescript@5.6.2)))(vue@3.4.21(typescript@5.6.2))':
+  '@vue-flow/node-resizer@1.4.0(@vue-flow/core@1.41.2(vue@3.4.21(typescript@5.6.2)))(vue@3.4.21(typescript@5.6.2))':
     dependencies:
-      '@vue-flow/core': 1.33.5(vue@3.4.21(typescript@5.6.2))
+      '@vue-flow/core': 1.41.2(vue@3.4.21(typescript@5.6.2))
       d3-drag: 3.0.0
       d3-selection: 3.0.0
       vue: 3.4.21(typescript@5.6.2)
@@ -22562,7 +22499,7 @@ snapshots:
       '@babel/generator': 7.22.9
       '@babel/plugin-syntax-jsx': 7.18.6(@babel/core@7.24.0)
       '@babel/plugin-syntax-typescript': 7.20.0(@babel/core@7.24.0)
-      '@babel/types': 7.24.6
+      '@babel/types': 7.25.6
       '@jest/expect-utils': 29.6.2
       '@jest/transform': 29.6.2
       '@jest/types': 29.6.1
@@ -22931,28 +22868,6 @@ snapshots:
       uuid: 10.0.0
     optionalDependencies:
       openai: 4.63.0(encoding@0.1.13)(zod@3.23.8)
-
-  langsmith@0.1.59(openai@4.63.0(zod@3.23.8)):
-    dependencies:
-      '@types/uuid': 10.0.0
-      commander: 10.0.1
-      p-queue: 6.6.2
-      p-retry: 4.6.2
-      semver: 7.6.0
-      uuid: 10.0.0
-    optionalDependencies:
-      openai: 4.63.0(zod@3.23.8)
-
-  langsmith@0.1.59(openai@4.63.0):
-    dependencies:
-      '@types/uuid': 10.0.0
-      commander: 10.0.1
-      p-queue: 6.6.2
-      p-retry: 4.6.2
-      semver: 7.6.0
-      uuid: 10.0.0
-    optionalDependencies:
-      openai: 4.63.0(zod@3.23.8)
 
   lazy-ass@1.6.0: {}
 
@@ -23822,13 +23737,13 @@ snapshots:
       '@types/whatwg-url': 11.0.4
       whatwg-url: 13.0.0
 
-  mongodb@6.3.0(@aws-sdk/credential-providers@3.645.0)(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.7.1):
+  mongodb@6.3.0(@aws-sdk/credential-providers@3.645.0(@aws-sdk/client-sso-oidc@3.654.0(@aws-sdk/client-sts@3.654.0)))(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.7.1):
     dependencies:
       '@mongodb-js/saslprep': 1.1.0
       bson: 6.3.0
       mongodb-connection-string-url: 3.0.0
     optionalDependencies:
-      '@aws-sdk/credential-providers': 3.645.0
+      '@aws-sdk/credential-providers': 3.645.0(@aws-sdk/client-sso-oidc@3.654.0(@aws-sdk/client-sts@3.654.0))
       gcp-metadata: 5.3.0(encoding@0.1.13)
       socks: 2.7.1
 
@@ -24269,22 +24184,6 @@ snapshots:
       - encoding
       - supports-color
 
-  openai@4.63.0(zod@3.23.8):
-    dependencies:
-      '@types/node': 18.16.16
-      '@types/node-fetch': 2.6.4
-      abort-controller: 3.0.0
-      agentkeepalive: 4.2.1
-      form-data-encoder: 1.7.2
-      formdata-node: 4.4.1
-      node-fetch: 2.7.0(encoding@0.1.13)
-    optionalDependencies:
-      zod: 3.23.8
-    transitivePeerDependencies:
-      - encoding
-      - supports-color
-    optional: true
-
   openapi-sampler@1.4.0:
     dependencies:
       '@types/json-schema': 7.0.15
@@ -24627,7 +24526,7 @@ snapshots:
     dependencies:
       nanoid: 3.3.7
       picocolors: 1.0.1
-      source-map-js: 1.2.0
+      source-map-js: 1.2.1
 
   postcss@8.4.38:
     dependencies:
