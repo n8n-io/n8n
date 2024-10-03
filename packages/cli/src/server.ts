@@ -31,7 +31,6 @@ import { isApiEnabled, loadPublicApiVersions } from '@/public-api';
 import { setupPushServer, setupPushHandler, Push } from '@/push';
 import type { APIRequest } from '@/requests';
 import * as ResponseHelper from '@/response-helper';
-import { setupRunnerServer, setupRunnerHandler } from '@/runners/runner-ws-server';
 import type { FrontendService } from '@/services/frontend.service';
 import { OrchestrationService } from '@/services/orchestration.service';
 
@@ -201,10 +200,6 @@ export class Server extends AbstractServer {
 
 		const { restEndpoint, app } = this;
 		setupPushHandler(restEndpoint, app);
-
-		if (!this.globalConfig.taskRunners.disabled) {
-			setupRunnerHandler(restEndpoint, app);
-		}
 
 		const push = Container.get(Push);
 		if (push.isBidirectional) {
@@ -404,10 +399,5 @@ export class Server extends AbstractServer {
 	protected setupPushServer(): void {
 		const { restEndpoint, server, app } = this;
 		setupPushServer(restEndpoint, server, app);
-	}
-
-	protected setupRunnerServer(): void {
-		const { restEndpoint, server, app } = this;
-		setupRunnerServer(restEndpoint, server, app);
 	}
 }

@@ -1,6 +1,6 @@
 {
   "name": "n8n-editor-ui",
-  "version": "1.61.0",
+  "version": "1.62.1",
   "description": "Workflow Editor UI for n8n",
   "main": "index.js",
   "scripts": {
@@ -48,6 +48,7 @@
     "@vueuse/core": "^10.11.0",
     "axios": "catalog:",
     "bowser": "2.11.0",
+    "change-case": "^5.4.4",
     "chart.js": "^4.4.0",
     "codemirror-lang-html-n8n": "^1.0.0",
     "dateformat": "^3.0.3",
