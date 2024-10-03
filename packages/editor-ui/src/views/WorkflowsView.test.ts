@@ -263,7 +263,7 @@ describe('WorkflowsView', () => {
 			await waitFor(() => expect(getAllByTestId('resources-list-item').length).toBe(2));
 		});
 
-		it.only('should remove incomplete properties', async () => {
+		it('should remove incomplete properties', async () => {
 			await router.replace({ query: { tags: '' } });
 			const pinia = createTestingPinia({ initialState });
 			renderComponent({ pinia });
