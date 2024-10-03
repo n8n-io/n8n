@@ -307,7 +307,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		}
 
 		if (uiStore.lastInteractedWithNodeId === id) {
-			uiStore.lastInteractedWithNodeId = null;
+			uiStore.lastInteractedWithNodeId = undefined;
 		}
 
 		connectAdjacentNodes(id, { trackHistory });
@@ -387,7 +387,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 	function setNodeSelected(id?: string) {
 		if (!id) {
-			uiStore.lastInteractedWithNodeId = null;
+			uiStore.lastInteractedWithNodeId = undefined;
 			uiStore.lastSelectedNode = '';
 			return;
 		}
@@ -917,7 +917,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 				position = [newNodeInsertPosition[0] + xOffset, newNodeInsertPosition[1] + yOffset];
 
-				uiStore.lastCancelledConnectionPosition = null;
+				uiStore.lastCancelledConnectionPosition = undefined;
 			} else if (lastInteractedWithNodeTypeDescription) {
 				// When
 				// - clicking the plus button of a node handle
