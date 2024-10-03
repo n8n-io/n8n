@@ -241,8 +241,6 @@ const saveFiltersOnQueryString = () => {
 		query.homeProject = filters.value.homeProject;
 	}
 
-	debugger;
-
 	void router.replace({
 		query: Object.keys(query).length ? query : undefined,
 	});
