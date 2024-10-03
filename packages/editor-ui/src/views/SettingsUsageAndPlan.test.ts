@@ -2,9 +2,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import { useUsageStore } from '@/stores/usage.store';
-import { useSettingsStore } from '@/stores/settings.store';
 import SettingsUsageAndPlan from '@/views/SettingsUsageAndPlan.vue';
-import { FrontendSettings } from '@n8n/api-types/src';
 
 vi.mock('vue-router', () => {
 	return {
@@ -19,8 +17,8 @@ vi.mock('vue-router', () => {
 		},
 	};
 });
+
 let usageStore: ReturnType<typeof mockedStore<typeof useUsageStore>>;
-let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
 
 const renderComponent = createComponentRenderer(SettingsUsageAndPlan);
 
@@ -28,15 +26,6 @@ describe('SettingsUsageAndPlan', () => {
 	beforeEach(() => {
 		createTestingPinia();
 		usageStore = mockedStore(useUsageStore);
-		settingsStore = mockedStore(useSettingsStore);
-
-		settingsStore.settings = {
-			instanceId: 'instance-id',
-			license: {
-				environment: 'production',
-			},
-			versionCli: '0.0.0',
-		} as FrontendSettings;
 	});
 
 	it('should not throw errors when rendering', async () => {
@@ -51,7 +40,8 @@ describe('SettingsUsageAndPlan', () => {
 
 	it('should show community registered badge', async () => {
 		usageStore.isLoading = false;
-		usageStore.subscriptionAppUrl = 'https://example.com';
+		usageStore.viewPlansUrl = 'https://subscription.n8n.io';
+		usageStore.managePlanUrl = 'https://subscription.n8n.io';
 		usageStore.planName = 'Community registered';
 		const { getByRole, container } = renderComponent();
 		expect(getByRole('heading', { level: 3 })).toHaveTextContent('Community Edition');
