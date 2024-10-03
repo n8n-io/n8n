@@ -33,7 +33,6 @@ const emit = defineEmits<{
 		:ellipsis="false"
 		:class="$style.dropdown"
 		@select="emit('select', $event)"
-		menu-trigger="click"
 	>
 		<ElSubMenu
 			index="-1"
