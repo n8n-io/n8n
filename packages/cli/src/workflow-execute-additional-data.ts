@@ -798,7 +798,7 @@ async function executeWorkflow(
 	const runData = options.loadedRunData ?? (await getRunData(workflowData, options.inputData));
 
 	const executionId = await activeExecutions.add(runData);
-	await executionRepository.updateStatus(executionId, 'running');
+	await executionRepository.setRunning(executionId);
 
 	Container.get(EventService).emit('workflow-pre-execute', { executionId, data: runData });
 

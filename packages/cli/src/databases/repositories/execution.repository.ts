@@ -340,10 +340,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		]);
 	}
 
-	async updateStatus(executionId: string, status: ExecutionStatus) {
-		await this.update({ id: executionId }, { status });
-	}
-
 	async setRunning(executionId: string) {
 		const startedAt = new Date();
 
