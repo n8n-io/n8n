@@ -694,7 +694,7 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		}
 
 		const workflowId = workflowsStore.workflowId;
-		const path = getWebhookExpressionValue(webhookData, 'path', true, node.name);
+		const path = getWebhookExpressionValue(webhookData, 'path', true, node.name) ?? '';
 		const isFullPath =
 			(getWebhookExpressionValue(
 				webhookData,
