@@ -118,7 +118,7 @@ const confirm = async () => {
 				<N8nFormInput
 					id="email"
 					v-model="email"
-					label="Email"
+					:label="i18n.baseText('communityPlusModal.input.email.label')"
 					type="email"
 					name="email"
 					label-size="small"
