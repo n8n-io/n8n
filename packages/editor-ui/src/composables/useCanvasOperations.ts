@@ -888,6 +888,10 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		let position: XYPosition | undefined = node.position;
 		let pushOffsets: XYPosition = [40, 40];
 
+		if (position) {
+			return NodeViewUtils.getNewNodePosition(workflowsStore.allNodes, position, pushOffsets);
+		}
+
 		// Available when
 		// - clicking the plus button of a node handle
 		// - dragging an edge / connection of a node handle
