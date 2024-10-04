@@ -2,7 +2,11 @@ import { Config, Env, Nested } from '../decorators';
 
 @Config
 class HealthConfig {
-	/** Whether to enable the worker health check endpoint `/healthz`. */
+	/**
+	 * Whether to enable the worker health check endpoints:
+	 * - `/healthz` (worker alive)
+	 * - `/healthz/readiness` (worker connected to migrated database and connected to Redis)
+	 */
 	@Env('QUEUE_HEALTH_CHECK_ACTIVE')
 	active: boolean = false;
 
