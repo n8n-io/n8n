@@ -1370,7 +1370,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 	function addConnections(
 		connections: CanvasConnectionCreateData[] | CanvasConnection[],
-		{ trackBulk = true, trackHistory = false },
+		{ trackBulk = true, trackHistory = false } = {},
 	) {
 		if (trackBulk) {
 			historyStore.startRecordingUndo();
