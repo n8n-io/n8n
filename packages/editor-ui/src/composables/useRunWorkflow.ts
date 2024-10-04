@@ -17,7 +17,7 @@ import type {
 	IDataObject,
 } from 'n8n-workflow';
 
-import { NodeConnectionType } from 'n8n-workflow';
+import { FORM_NODE_TYPE, NodeConnectionType } from 'n8n-workflow';
 
 import { useToast } from '@/composables/useToast';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
@@ -373,11 +373,23 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 						return;
 					}
 
+					const { lastNodeExecuted } = execution.data?.resultData || {};
+					const lastNode = execution.workflowData.nodes.find((node) => {
+						return node.name === lastNodeExecuted;
+					});
+
+					if (!isFormShown && lastNode && lastNode.type === FORM_NODE_TYPE) {
+						const testUrl = `${rootStore.formWaitingUrl}/${executionId}`;
+						isFormShown = true;
+						openPopUpWindow(testUrl);
+					}
+
 					if (
 						execution.finished ||
 						['error', 'canceled', 'crashed', 'success'].includes(execution.status)
 					) {
 						workflowsStore.setWorkflowExecutionData(execution);
+						workflowsStore.activeExecutionId = null;
 						if (timeoutId) clearTimeout(timeoutId);
 						resolve();
 						return;
@@ -389,18 +401,12 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 						];
 						workflowsStore.setWorkflowExecutionRunData(execution.data);
 
-						const { lastNodeExecuted } = execution.data?.resultData || {};
-
-						const waitingNode = execution.workflowData.nodes.find((node) => {
-							return node.name === lastNodeExecuted;
-						});
-
 						if (
-							waitingNode &&
-							waitingNode.type === WAIT_NODE_TYPE &&
-							waitingNode.parameters.resume === 'form'
+							lastNode &&
+							lastNode.type === WAIT_NODE_TYPE &&
+							lastNode.parameters.resume === 'form'
 						) {
-							const testUrl = getFormResumeUrl(waitingNode, executionId as string);
+							const testUrl = getFormResumeUrl(lastNode, executionId as string);
 
 							if (isFormShown) {
 								localStorage.setItem(FORM_RELOAD, testUrl);

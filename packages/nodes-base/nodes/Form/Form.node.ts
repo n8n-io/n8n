@@ -198,14 +198,6 @@ export class Form extends Node {
 				isForm: true,
 			},
 		],
-		hints: [
-			{
-				message:
-					"When testing your workflow using the Editor UI, you can't see the rest of the execution following the n8n Form node. To inspect the execution results, enable Save Manual Executions in your Workflow settings so you can review the execution results in the Executions tab.",
-				location: 'outputPane',
-				whenToDisplay: 'beforeExecution',
-			},
-		],
 		properties: [
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
