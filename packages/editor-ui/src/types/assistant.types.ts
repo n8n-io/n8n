@@ -82,6 +82,7 @@ export namespace ChatRequest {
 		text: string;
 		quickReplyType?: string;
 		context?: UserContext;
+		workflowContext?: WorkflowContext;
 	}
 
 	export interface UserContext {

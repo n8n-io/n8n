@@ -83,6 +83,9 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	// We use streaming for assistants that support it, and this for agents
 	const assistantThinkingMessage = ref<string | undefined>();
 	const chatSessionTask = ref<'error' | 'support' | 'credentials' | undefined>();
+	// Indicate if last sent workflow and execution data is stale
+	const workflowDataStale = ref<boolean>(true);
+	const workflowExecutionDataStale = ref<boolean>(true);
 
 	const isExperimentEnabled = computed(
 		() => getVariant(AI_ASSISTANT_EXPERIMENT.name) === AI_ASSISTANT_EXPERIMENT.variant,
@@ -313,6 +316,8 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 
 	function onDoneStreaming(id: string) {
 		stopStreaming();
+		workflowDataStale.value = false;
+		workflowExecutionDataStale.value = false;
 		lastUnread.value = chatMessages.value.find(
 			(msg) =>
 				msg.id === id && !msg.read && msg.role === 'assistant' && READABLE_TYPES.includes(msg.type),
@@ -418,10 +423,16 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			user: {
 				firstName: usersStore.currentUser?.firstName ?? '',
 			},
+			// TODO:
+			// - Rename context --> userContext
+			// - Only send if there is no active node or credentials
+			// - Get workflow context in separate function
 			context: visualContext,
 			workflowContext: {
-				currentWorkflow: workflowsStore.workflow,
-				executionData: workflowsStore.workflowExecutionData?.data?.resultData,
+				currentWorkflow: workflowDataStale.value ? workflowsStore.workflow : undefined,
+				executionData: workflowExecutionDataStale.value
+					? workflowsStore.workflowExecutionData?.data?.resultData
+					: undefined,
 			},
 			question: userMessage,
 		};
@@ -583,6 +594,12 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 						text: chatMessage.text,
 						quickReplyType: chatMessage.quickReplyType,
 						context: userContext,
+						workflowContext: {
+							currentWorkflow: workflowDataStale.value ? workflowsStore.workflow : undefined,
+							executionData: workflowExecutionDataStale.value
+								? workflowsStore.workflowExecutionData?.data?.resultData
+								: undefined,
+						},
 					},
 					sessionId: currentSessionId.value,
 				},
@@ -771,6 +788,21 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		}
 		resetAssistantChat();
 	});
+
+	watch(
+		() => uiStore.stateIsDirty,
+		() => {
+			workflowDataStale.value = true;
+		},
+	);
+
+	watch(
+		() => workflowsStore.workflowExecutionData?.data?.resultData ?? {},
+		() => {
+			workflowExecutionDataStale.value = true;
+		},
+		{ deep: true, immediate: true },
+	);
 
 	return {
 		isAssistantEnabled,
