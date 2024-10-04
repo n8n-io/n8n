@@ -1368,26 +1368,40 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		return targetNodeHasInputConnectionOfType;
 	}
 
-	function addConnections(connections: CanvasConnectionCreateData[] | CanvasConnection[]) {
+	function addConnections(
+		connections: CanvasConnectionCreateData[] | CanvasConnection[],
+		{ trackBulk = true, trackHistory = false },
+	) {
+		if (trackBulk) {
+			historyStore.startRecordingUndo();
+		}
+
 		for (const { source, target, data } of connections) {
-			createConnection({
-				source,
-				sourceHandle: createCanvasConnectionHandleString({
-					mode: CanvasConnectionMode.Output,
-					type: isValidNodeConnectionType(data?.source.type)
-						? data?.source.type
-						: NodeConnectionType.Main,
-					index: data?.source.index ?? 0,
-				}),
-				target,
-				targetHandle: createCanvasConnectionHandleString({
-					mode: CanvasConnectionMode.Input,
-					type: isValidNodeConnectionType(data?.target.type)
-						? data?.target.type
-						: NodeConnectionType.Main,
-					index: data?.target.index ?? 0,
-				}),
-			});
+			createConnection(
+				{
+					source,
+					sourceHandle: createCanvasConnectionHandleString({
+						mode: CanvasConnectionMode.Output,
+						type: isValidNodeConnectionType(data?.source.type)
+							? data?.source.type
+							: NodeConnectionType.Main,
+						index: data?.source.index ?? 0,
+					}),
+					target,
+					targetHandle: createCanvasConnectionHandleString({
+						mode: CanvasConnectionMode.Input,
+						type: isValidNodeConnectionType(data?.target.type)
+							? data?.target.type
+							: NodeConnectionType.Main,
+						index: data?.target.index ?? 0,
+					}),
+				},
+				{ trackHistory },
+			);
+		}
+
+		if (trackBulk) {
+			historyStore.stopRecordingUndo();
 		}
 	}
 
@@ -1454,6 +1468,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 	async function addImportedNodesToWorkflow(
 		data: IWorkflowDataUpdate,
+		{ trackBulk = true, trackHistory = false } = {},
 	): Promise<IWorkflowDataUpdate> {
 		// Because nodes with the same name maybe already exist, it could
 		// be needed that they have to be renamed. Also could it be possible
@@ -1596,17 +1611,23 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		}
 
 		// Add the nodes with the changed node names, expressions and connections
-		historyStore.startRecordingUndo();
+		if (trackBulk) {
+			historyStore.startRecordingUndo();
+		}
 
-		await addNodes(Object.values(tempWorkflow.nodes));
+		await addNodes(Object.values(tempWorkflow.nodes), { trackBulk: false, trackHistory: true });
 		addConnections(
 			mapLegacyConnectionsToCanvasConnections(
 				tempWorkflow.connectionsBySourceNode,
 				Object.values(tempWorkflow.nodes),
 			),
+			{ trackBulk: false, trackHistory },
 		);
 
-		historyStore.stopRecordingUndo();
+		if (trackBulk) {
+			historyStore.stopRecordingUndo();
+		}
+
 		uiStore.stateIsDirty = true;
 
 		return {
