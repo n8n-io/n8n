@@ -88,6 +88,9 @@ export class ScalingService {
 			try {
 				await this.jobProcessor.processJob(job);
 			} catch (error: unknown) {
+				// Errors thrown here will be sent to the main instance by bull. Logging
+				// them out and rethrowing them allows to find out which worker had the
+				// issue.
 				this.logger.error('[ScalingService] Executing a job errored', { job, error });
 				ErrorReporterProxy.error(error);
 				throw error;
