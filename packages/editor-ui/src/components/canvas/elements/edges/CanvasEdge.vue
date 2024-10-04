@@ -44,7 +44,7 @@ const connectionType = computed(() =>
 		: NodeConnectionType.Main,
 );
 
-const renderToolbar = computed(() => (props.selected || isHovered.value) && !props.readOnly);
+const renderToolbar = computed(() => isHovered.value && !props.readOnly);
 
 const isMainConnection = computed(() => data.value.source.type === NodeConnectionType.Main);
 
