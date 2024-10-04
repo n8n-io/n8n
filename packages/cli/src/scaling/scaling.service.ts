@@ -1,6 +1,12 @@
 import { GlobalConfig } from '@n8n/config';
 import { InstanceSettings } from 'n8n-core';
-import { ApplicationError, BINARY_ENCODING, sleep, jsonStringify } from 'n8n-workflow';
+import {
+	ApplicationError,
+	BINARY_ENCODING,
+	sleep,
+	jsonStringify,
+	ErrorReporterProxy,
+} from 'n8n-workflow';
 import type { IExecuteResponsePromiseData } from 'n8n-workflow';
 import { strict } from 'node:assert';
 import Container, { Service } from 'typedi';
@@ -78,11 +84,15 @@ export class ScalingService {
 		this.assertWorker();
 		this.assertQueue();
 
-		void this.queue.process(
-			JOB_TYPE_NAME,
-			concurrency,
-			async (job: Job) => await this.jobProcessor.processJob(job),
-		);
+		void this.queue.process(JOB_TYPE_NAME, concurrency, async (job: Job) => {
+			try {
+				await this.jobProcessor.processJob(job);
+			} catch (error: unknown) {
+				this.logger.error('[ScalingService] Executing a job errored', { job, error });
+				ErrorReporterProxy.error(error);
+				throw error;
+			}
+		});
 
 		this.logger.debug('[ScalingService] Worker setup completed');
 	}
