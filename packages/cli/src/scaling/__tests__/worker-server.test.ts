@@ -75,10 +75,10 @@ describe('WorkerServer', () => {
 				globalConfig,
 				mock(),
 				mock(),
-				mock(),
 				externalHooks,
 				instanceSettings,
 				prometheusMetricsService,
+				mock(),
 			);
 
 			expect(procesExitSpy).toHaveBeenCalledWith(1);
