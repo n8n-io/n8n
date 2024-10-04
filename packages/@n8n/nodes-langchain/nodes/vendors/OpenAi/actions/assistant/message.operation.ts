@@ -64,6 +64,46 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
+		displayName: 'Thread',
+		name: 'thread',
+		type: 'string',
+		default: '',
+		description: 'Optional thread ID to associate with the assistant call',
+		placeholder: 'thread_mkSDM5vaYA8amDY9vvJTJRW8',
+	},
+	{
+		displayName: 'Vector',
+		name: 'vector',
+		type: 'string',
+		default: '',
+		description: 'Optional vector store ID to associate with the file call',
+		placeholder: 'vs_Z1YPXu95Cy8Ul954tejtQyrW',
+	},
+	{
+		displayName: 'File',
+		name: 'file',
+		type: 'string',
+		default: '',
+		description: 'Optional file ID to associate with the thread call',
+		placeholder: 'file-NSjtwlxIpfxIi3T6f8Uh3EdD',
+	},
+	{
+		displayName: 'Role',
+		name: 'role',
+		type: 'string',
+		default: '',
+		description: 'Use user or assistant',
+		placeholder: 'Role (user or assistant) for content input to associate with the file call',
+	},
+	{
+		displayName: 'Content',
+		name: 'content',
+		type: 'string',
+		default: '',
+		description: 'Prompt content input to associate with the file call',
+		placeholder: 'Describe what is in this document.',
+	},
+	{
 		displayName: 'Connect your own custom n8n tools to this node on the canvas',
 		name: 'noticeTools',
 		type: 'notice',
@@ -151,6 +191,11 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	}
 
 	const assistantId = this.getNodeParameter('assistantId', i, '', { extractValue: true }) as string;
+	const threadIdInput = this.getNodeParameter('thread', i, undefined) as string | undefined;
+	const vectorStoreId = this.getNodeParameter('vector', i) as string | undefined;
+	const fileId = this.getNodeParameter('file', i) as string | undefined;
+	const content = this.getNodeParameter('content', i) as string | undefined;
+	const role = this.getNodeParameter('role', i) as string | undefined;
 
 	const options = this.getNodeParameter('options', i, {}) as {
 		baseURL?: string;
@@ -165,6 +210,27 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		timeout: options.timeout ?? 10000,
 		baseURL: options.baseURL,
 	});
+
+	let vectorStoreToUpdate = vectorStoreId;
+	let vectorStoreAction = 'used'; // Assume we are using an existing vector_store_id
+
+	if (fileId && !vectorStoreId) {
+		// Create a new vector store and add the fileId to it
+		const newVectorStore = await client.beta.vectorStores.create({});
+		await client.beta.vectorStores.files.createAndPoll(newVectorStore.id, { file_id: fileId });
+		vectorStoreToUpdate = newVectorStore.id;
+		vectorStoreAction = 'created'; // Update to indicate that vector_store_id was created
+	} else if (fileId && vectorStoreId) {
+		// Add the fileId to the existing vector store
+		await client.beta.vectorStores.files.createAndPoll(vectorStoreId, { file_id: fileId });
+	}
+
+	if (vectorStoreToUpdate) {
+		// Update the assistant with the vectorStoreId
+		await client.beta.assistants.update(assistantId, {
+			tool_resources: { file_search: { vector_store_ids: [vectorStoreToUpdate] } },
+		});
+	}
 
 	const agent = new OpenAIAssistantRunnable({ assistantId, client, asAgent: true });
 
@@ -210,32 +276,60 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		signal: this.getExecutionCancelSignal(),
 		timeout: options.timeout ?? 10000,
 	};
-	let thread: OpenAIClient.Beta.Threads.Thread;
-	if (memory) {
-		const chatMessages = await memory.chatHistory.getMessages();
 
-		// Construct a new thread from the chat history to map the memory
-		if (chatMessages.length) {
-			const first32Messages = chatMessages.slice(0, 32);
-			// There is a undocumented limit of 32 messages per thread when creating a thread with messages
-			const mappedMessages: OpenAIClient.Beta.Threads.ThreadCreateParams.Message[] =
-				first32Messages.map(mapChatMessageToThreadMessage);
+	let thread: OpenAIClient.Beta.Threads.Thread | undefined;
 
-			thread = await client.beta.threads.create({ messages: mappedMessages });
-			const overLimitMessages = chatMessages.slice(32).map(mapChatMessageToThreadMessage);
+	if (threadIdInput) {
+		chainValues.threadId = threadIdInput;
+		if (fileId ?? content ?? role) {
+			// Add message with file attachment to the existing thread
+			await client.beta.threads.messages.create(threadIdInput, {
+				role: role as 'assistant',
+				content: content as 'Describe what is in this document.',
+				attachments: [{ file_id: fileId, tools: [{ type: 'file_search' }] }],
+			});
+		}
+	} else {
+		if (memory) {
+			const chatMessages = await memory.chatHistory.getMessages();
 
-			// Send the remaining messages that exceed the limit of 32 sequentially
-			for (const message of overLimitMessages) {
-				await client.beta.threads.messages.create(thread.id, message);
+			// Construct a new thread from the chat history to map the memory
+			if (chatMessages.length) {
+				const first32Messages = chatMessages.slice(0, 32);
+				// There is a undocumented limit of 32 messages per thread when creating a thread with messages
+				const mappedMessages: OpenAIClient.Beta.Threads.ThreadCreateParams.Message[] =
+					first32Messages.map(mapChatMessageToThreadMessage);
+
+				thread = await client.beta.threads.create({ messages: mappedMessages });
+				const overLimitMessages = chatMessages.slice(32).map(mapChatMessageToThreadMessage);
+
+				// Send the remaining messages that exceed the limit of 32 sequentially
+				for (const message of overLimitMessages) {
+					await client.beta.threads.messages.create(thread.id, message);
+				}
+
+				chainValues.threadId = thread.id;
+				if (fileId ?? content ?? role) {
+					// Include the file attachment in the newly created thread
+					await client.beta.threads.messages.create(thread.id, {
+						role: role as 'assistant',
+						content: content as 'Describe what is in this document.',
+						attachments: [{ file_id: fileId, tools: [{ type: 'file_search' }] }],
+					});
+				}
 			}
-
-			chainValues.threadId = thread.id;
 		}
 	}
 
 	let filteredResponse: IDataObject = {};
 	try {
 		const response = await agentExecutor.withConfig(getTracingConfig(this)).invoke(chainValues);
+
+		// Add vector_store_id and the action performed (created/used) to the response
+		response.vectorStoreId = vectorStoreToUpdate;
+		response.vectorStoreAction = vectorStoreAction;
+		response.fileId = fileId;
+
 		if (memory) {
 			await memory.saveContext({ input }, { output: response.output });
 
