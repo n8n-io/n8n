@@ -3,7 +3,6 @@ import * as workflowHelpers from '@/composables/useWorkflowHelpers';
 import { javascriptLanguage } from '@codemirror/lang-javascript';
 import { autocompletableNodeNames, expressionWithFirstItem } from '../utils';
 import type { MockInstance } from 'vitest';
-import { mockedStore } from '../../../../__tests__/utils';
 import * as ndvStore from '@/stores/ndv.store';
 import { NodeConnectionType, type IConnections } from 'n8n-workflow';
 
