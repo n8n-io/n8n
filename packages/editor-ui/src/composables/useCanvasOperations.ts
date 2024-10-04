@@ -58,7 +58,6 @@ import type {
 import { CanvasConnectionMode } from '@/types';
 import {
 	createCanvasConnectionHandleString,
-	getUniqueNodeName,
 	mapCanvasConnectionToLegacyConnection,
 	mapLegacyConnectionsToCanvasConnections,
 	mapLegacyConnectionToCanvasConnection,
@@ -96,6 +95,7 @@ import { v4 as uuid } from 'uuid';
 import { computed, nextTick, ref } from 'vue';
 import type { useRouter } from 'vue-router';
 import { useClipboard } from '@/composables/useClipboard';
+import { useUniqueNodeName } from '@/composables/useUniqueNodeName';
 import { isPresent } from '../utils/typesUtils';
 
 type AddNodeData = Partial<INodeUi> & {
@@ -201,12 +201,12 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		if (currentName === newName) {
 			return;
 		}
-
 		if (trackHistory) {
 			historyStore.startRecordingUndo();
 		}
 
-		newName = getUniqueNodeName(newName, workflowsStore.canvasNames);
+		const { uniqueNodeName } = useUniqueNodeName();
+		newName = uniqueNodeName(newName);
 
 		// Rename the node and update the connections
 		const workflow = workflowsStore.getCurrentWorkflow(true);
@@ -307,7 +307,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		}
 
 		if (uiStore.lastInteractedWithNodeId === id) {
-			uiStore.lastInteractedWithNodeId = null;
+			uiStore.lastInteractedWithNodeId = undefined;
 		}
 
 		connectAdjacentNodes(id, { trackHistory });
@@ -387,7 +387,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 	function setNodeSelected(id?: string) {
 		if (!id) {
-			uiStore.lastInteractedWithNodeId = null;
+			uiStore.lastInteractedWithNodeId = undefined;
 			uiStore.lastSelectedNode = '';
 			return;
 		}
@@ -917,7 +917,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 				position = [newNodeInsertPosition[0] + xOffset, newNodeInsertPosition[1] + yOffset];
 
-				uiStore.lastCancelledConnectionPosition = null;
+				uiStore.lastCancelledConnectionPosition = undefined;
 			} else if (lastInteractedWithNodeTypeDescription) {
 				// When
 				// - clicking the plus button of a node handle
@@ -1066,9 +1066,10 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 	}
 
 	function resolveNodeName(node: INodeUi) {
+		const { uniqueNodeName } = useUniqueNodeName();
 		const localizedName = i18n.localizeNodeName(node.name, node.type);
 
-		node.name = getUniqueNodeName(localizedName, workflowsStore.canvasNames);
+		node.name = uniqueNodeName(localizedName);
 	}
 
 	function resolveNodeWebhook(node: INodeUi, nodeTypeDescription: INodeTypeDescription) {
@@ -1482,6 +1483,8 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			data.nodes.map((node) => ({ name: node.type, version: node.typeVersion })),
 		);
 
+		const { uniqueNodeName } = useUniqueNodeName();
+
 		data.nodes.forEach((node) => {
 			if (nodeTypesCount[node.type] !== undefined) {
 				if (nodeTypesCount[node.type].exist >= nodeTypesCount[node.type].max) {
@@ -1503,7 +1506,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 			const localized = i18n.localizeNodeName(node.name, node.type);
 
-			newName = getUniqueNodeName(localized, newNodeNames);
+			newName = uniqueNodeName(localized, Array.from(newNodeNames));
 
 			newNodeNames.add(newName);
 			nodeNameTable[oldName] = newName;
@@ -1617,10 +1620,14 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		source: string,
 		importTags = true,
 	): Promise<IWorkflowDataUpdate> {
+		uiStore.resetLastInteractedWith();
+
 		// If it is JSON check if it looks on the first look like data we can use
 		if (!workflowData.hasOwnProperty('nodes') || !workflowData.hasOwnProperty('connections')) {
 			return {};
 		}
+
+		const { uniqueNodeName } = useUniqueNodeName();
 
 		try {
 			const nodeIdMap: { [prev: string]: string } = {};
@@ -1630,7 +1637,10 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 					// Provide a new name for nodes that don't have one
 					if (!node.name) {
 						const nodeType = nodeTypesStore.getNodeType(node.type);
-						const newName = getUniqueNodeName(nodeType?.displayName ?? node.type, nodeNames);
+						const newName = uniqueNodeName(
+							nodeType?.displayName ?? node.type,
+							Array.from(nodeNames),
+						);
 						node.name = newName;
 						nodeNames.add(newName);
 					}

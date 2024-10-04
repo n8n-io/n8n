@@ -38,7 +38,12 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
-import { CUSTOM_API_CALL_KEY, STICKY_NODE_TYPE, WAIT_TIME_UNLIMITED } from '@/constants';
+import {
+	CUSTOM_API_CALL_KEY,
+	STICKY_NODE_TYPE,
+	WAIT_NODE_TYPE,
+	WAIT_TIME_UNLIMITED,
+} from '@/constants';
 import { sanitizeHtml } from '@/utils/htmlUtils';
 import { MarkerType } from '@vue-flow/core';
 import { useNodeHelpers } from './useNodeHelpers';
@@ -233,7 +238,8 @@ export function useCanvasMapping({
 	const nodeExecutionStatusById = computed(() =>
 		nodes.value.reduce<Record<string, ExecutionStatus>>((acc, node) => {
 			acc[node.id] =
-				workflowsStore.getWorkflowRunData?.[node.name]?.filter(Boolean)[0].executionStatus ?? 'new';
+				workflowsStore.getWorkflowRunData?.[node.name]?.filter(Boolean)[0]?.executionStatus ??
+				'new';
 			return acc;
 		}, {}),
 	);
@@ -327,8 +333,21 @@ export function useCanvasMapping({
 			if (workflowExecution && lastNodeExecuted && isExecutionSummary(workflowExecution)) {
 				if (
 					node.name === workflowExecution.data?.resultData?.lastNodeExecuted &&
-					workflowExecution.waitTill
+					workflowExecution?.waitTill &&
+					!workflowExecution?.finished
 				) {
+					if (
+						node &&
+						node.type === WAIT_NODE_TYPE &&
+						['webhook', 'form'].includes(node.parameters.resume as string)
+					) {
+						acc[node.id] =
+							node.parameters.resume === 'webhook'
+								? i18n.baseText('node.theNodeIsWaitingWebhookCall')
+								: i18n.baseText('node.theNodeIsWaitingFormCall');
+						return acc;
+					}
+
 					const waitDate = new Date(workflowExecution.waitTill);
 
 					if (waitDate.toISOString() === WAIT_TIME_UNLIMITED) {
