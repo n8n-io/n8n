@@ -51,10 +51,10 @@ describe('WorkerServer', () => {
 						globalConfig,
 						mock(),
 						mock(),
-						mock(),
 						externalHooks,
 						mock<InstanceSettings>({ instanceType: 'webhook' }),
 						prometheusMetricsService,
+						mock(),
 					),
 			).toThrowError(AssertionError);
 		});
@@ -75,10 +75,10 @@ describe('WorkerServer', () => {
 						globalConfig,
 						mock(),
 						mock(),
-						mock(),
 						externalHooks,
 						instanceSettings,
 						prometheusMetricsService,
+						mock(),
 					),
 			).toThrowError(PortTakenError);
 		});
@@ -98,10 +98,10 @@ describe('WorkerServer', () => {
 				globalConfig,
 				mock(),
 				mock(),
-				mock(),
 				externalHooks,
 				instanceSettings,
 				prometheusMetricsService,
+				mock(),
 			);
 
 			const CREDENTIALS_OVERWRITE_ENDPOINT = 'credentials/overwrites';
@@ -132,10 +132,10 @@ describe('WorkerServer', () => {
 				globalConfig,
 				mock(),
 				mock(),
-				mock(),
 				externalHooks,
 				instanceSettings,
 				prometheusMetricsService,
+				mock(),
 			);
 
 			await workerServer.init({ health: true, overwrites: false, metrics: true });
@@ -153,10 +153,10 @@ describe('WorkerServer', () => {
 				globalConfig,
 				mock(),
 				mock(),
-				mock(),
 				externalHooks,
 				instanceSettings,
 				prometheusMetricsService,
+				mock(),
 			);
 			await expect(
 				workerServer.init({ health: false, overwrites: false, metrics: false }),
@@ -171,10 +171,10 @@ describe('WorkerServer', () => {
 				globalConfig,
 				mock(),
 				mock(),
-				mock(),
 				externalHooks,
 				instanceSettings,
 				prometheusMetricsService,
+				mock(),
 			);
 
 			server.listen.mockImplementation((_port, callback: () => void) => {
