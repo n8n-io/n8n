@@ -368,7 +368,7 @@ export class Code implements INodeType {
 		}
 
 		const sandbox = getSandbox.call(this, code.supplyData.code, { itemIndex });
-		const response = (await sandbox.runCode()) as Tool;
+		const response = await sandbox.runCode<Tool>();
 
 		return {
 			response: logWrapper(response, this),
