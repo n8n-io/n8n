@@ -11,7 +11,6 @@ import { ExternalSecretsManager } from '@/external-secrets/external-secrets-mana
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { ScalingService } from '@/scaling/scaling.service';
-import { OrchestrationHandlerWorkerService } from '@/services/orchestration/worker/orchestration.handler.worker.service';
 import { OrchestrationWorkerService } from '@/services/orchestration/worker/orchestration.worker.service';
 import { setupTestCommand } from '@test-integration/utils/test-command';
 
@@ -26,7 +25,6 @@ const externalSecretsManager = mockInstance(ExternalSecretsManager);
 const license = mockInstance(License, { loadCertStr: async () => '' });
 const messageEventBus = mockInstance(MessageEventBus);
 const logStreamingEventRelay = mockInstance(LogStreamingEventRelay);
-const orchestrationHandlerWorkerService = mockInstance(OrchestrationHandlerWorkerService);
 const scalingService = mockInstance(ScalingService);
 const orchestrationWorkerService = mockInstance(OrchestrationWorkerService);
 
@@ -47,6 +45,5 @@ test('worker initializes all its components', async () => {
 	expect(scalingService.setupWorker).toHaveBeenCalledTimes(1);
 	expect(logStreamingEventRelay.init).toHaveBeenCalledTimes(1);
 	expect(orchestrationWorkerService.init).toHaveBeenCalledTimes(1);
-	expect(orchestrationHandlerWorkerService.initWithOptions).toHaveBeenCalledTimes(1);
 	expect(messageEventBus.send).toHaveBeenCalledTimes(1);
 });

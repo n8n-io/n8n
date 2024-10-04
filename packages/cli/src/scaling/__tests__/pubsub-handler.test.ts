@@ -7,7 +7,9 @@ import type { ExternalSecretsManager } from '@/external-secrets/external-secrets
 import type { License } from '@/license';
 import type { CommunityPackagesService } from '@/services/community-packages.service';
 
+import type { Publisher } from '../pubsub/publisher.service';
 import { PubSubHandler } from '../pubsub/pubsub-handler';
+import type { WorkerStatus } from '../worker-status';
 
 describe('PubSubHandler', () => {
 	const eventService = new EventService();
@@ -15,6 +17,12 @@ describe('PubSubHandler', () => {
 	const eventbus = mock<MessageEventBus>();
 	const externalSecretsManager = mock<ExternalSecretsManager>();
 	const communityPackagesService = mock<CommunityPackagesService>();
+	const publisher = mock<Publisher>();
+	const workerStatus = mock<WorkerStatus>();
+
+	afterEach(() => {
+		eventService.removeAllListeners();
+	});
 
 	describe('in webhook process', () => {
 		const instanceSettings = mock<InstanceSettings>({ instanceType: 'webhook' });
@@ -30,6 +38,8 @@ describe('PubSubHandler', () => {
 				eventbus,
 				externalSecretsManager,
 				communityPackagesService,
+				publisher,
+				workerStatus,
 			).init();
 
 			expect(setupWebhookHandlersSpy).toHaveBeenCalled();
@@ -43,6 +53,8 @@ describe('PubSubHandler', () => {
 				eventbus,
 				externalSecretsManager,
 				communityPackagesService,
+				publisher,
+				workerStatus,
 			).init();
 
 			eventService.emit('reload-license');
@@ -58,6 +70,8 @@ describe('PubSubHandler', () => {
 				eventbus,
 				externalSecretsManager,
 				communityPackagesService,
+				publisher,
+				workerStatus,
 			).init();
 
 			eventService.emit('restart-event-bus');
@@ -73,6 +87,8 @@ describe('PubSubHandler', () => {
 				eventbus,
 				externalSecretsManager,
 				communityPackagesService,
+				publisher,
+				workerStatus,
 			).init();
 
 			eventService.emit('reload-external-secrets-providers');
@@ -88,6 +104,8 @@ describe('PubSubHandler', () => {
 				eventbus,
 				externalSecretsManager,
 				communityPackagesService,
+				publisher,
+				workerStatus,
 			).init();
 
 			eventService.emit('community-package-install', {
@@ -109,6 +127,8 @@ describe('PubSubHandler', () => {
 				eventbus,
 				externalSecretsManager,
 				communityPackagesService,
+				publisher,
+				workerStatus,
 			).init();
 
 			eventService.emit('community-package-update', {
@@ -130,6 +150,8 @@ describe('PubSubHandler', () => {
 				eventbus,
 				externalSecretsManager,
 				communityPackagesService,
+				publisher,
+				workerStatus,
 			).init();
 
 			eventService.emit('community-package-uninstall', {
@@ -137,6 +159,116 @@ describe('PubSubHandler', () => {
 			});
 
 			expect(communityPackagesService.removeNpmPackage).toHaveBeenCalledWith('test-package');
+		});
+	});
+
+	describe('in worker process', () => {
+		const instanceSettings = mock<InstanceSettings>({ instanceType: 'worker' });
+
+		it('should set up handlers in worker process', () => {
+			// @ts-expect-error Spying on private method
+			const setupWorkerHandlersSpy = jest.spyOn(PubSubHandler.prototype, 'setupWorkerHandlers');
+
+			new PubSubHandler(
+				eventService,
+				instanceSettings,
+				license,
+				eventbus,
+				externalSecretsManager,
+				communityPackagesService,
+				publisher,
+				workerStatus,
+			).init();
+
+			expect(setupWorkerHandlersSpy).toHaveBeenCalled();
+		});
+
+		it('should reload license on `reload-license` event', () => {
+			new PubSubHandler(
+				eventService,
+				instanceSettings,
+				license,
+				eventbus,
+				externalSecretsManager,
+				communityPackagesService,
+				publisher,
+				workerStatus,
+			).init();
+
+			eventService.emit('reload-license');
+
+			expect(license.reload).toHaveBeenCalled();
+		});
+
+		it('should restart event bus on `restart-event-bus` event', () => {
+			new PubSubHandler(
+				eventService,
+				instanceSettings,
+				license,
+				eventbus,
+				externalSecretsManager,
+				communityPackagesService,
+				publisher,
+				workerStatus,
+			).init();
+
+			eventService.emit('restart-event-bus');
+
+			expect(eventbus.restart).toHaveBeenCalled();
+		});
+
+		it('should reload providers on `reload-external-secrets-providers` event', () => {
+			new PubSubHandler(
+				eventService,
+				instanceSettings,
+				license,
+				eventbus,
+				externalSecretsManager,
+				communityPackagesService,
+				publisher,
+				workerStatus,
+			).init();
+
+			eventService.emit('reload-external-secrets-providers');
+
+			expect(externalSecretsManager.reloadAllProviders).toHaveBeenCalled();
+		});
+
+		it('should generate status on `get-worker-status` event', () => {
+			new PubSubHandler(
+				eventService,
+				instanceSettings,
+				license,
+				eventbus,
+				externalSecretsManager,
+				communityPackagesService,
+				publisher,
+				workerStatus,
+			).init();
+
+			eventService.emit('get-worker-status');
+
+			expect(workerStatus.generateStatus).toHaveBeenCalled();
+		});
+
+		it('should get worker ID on `get-worker-id` event', () => {
+			new PubSubHandler(
+				eventService,
+				instanceSettings,
+				license,
+				eventbus,
+				externalSecretsManager,
+				communityPackagesService,
+				publisher,
+				workerStatus,
+			).init();
+
+			eventService.emit('get-worker-id');
+
+			expect(publisher.publishWorkerResponse).toHaveBeenCalledWith({
+				workerId: expect.any(String),
+				command: 'get-worker-id',
+			});
 		});
 	});
 });
