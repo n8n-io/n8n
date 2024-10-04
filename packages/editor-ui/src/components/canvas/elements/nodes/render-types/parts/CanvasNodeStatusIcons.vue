@@ -86,6 +86,10 @@ const hideNodeIssues = computed(() => false); // @TODO Implement this
 	color: var(--color-success);
 }
 
+.waiting {
+	color: var(--color-secondary);
+}
+
 .pinnedData {
 	color: var(--color-secondary);
 }
