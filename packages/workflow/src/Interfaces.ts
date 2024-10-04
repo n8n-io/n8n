@@ -739,6 +739,7 @@ interface JsonHelperFunctions {
 export interface FileSystemHelperFunctions {
 	createReadStream(path: PathLike): Promise<Readable>;
 	getStoragePath(): string;
+	getVectorStorePath(): string;
 	writeContentToFile(
 		path: PathLike,
 		content: string | Buffer | Readable,
@@ -989,7 +990,7 @@ export interface ILoadOptionsFunctions extends FunctionsBase {
 		options?: IGetNodeParameterOptions,
 	): NodeParameterValueType | object | undefined;
 	getCurrentNodeParameters(): INodeParameters | undefined;
-	helpers: RequestHelperFunctions & SSHTunnelFunctions;
+	helpers: RequestHelperFunctions & SSHTunnelFunctions & FileSystemHelperFunctions;
 }
 
 export interface IPollFunctions

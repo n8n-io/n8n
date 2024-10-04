@@ -3416,6 +3416,11 @@ const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunctions =>
 		return path.join(Container.get(InstanceSettings).n8nFolder, `storage/${node.type}`);
 	},
 
+	getVectorStorePath() {
+		// FIXME: make customizable via config
+		return path.join(Container.get(InstanceSettings).n8nFolder, 'vector-store');
+	},
+
 	async writeContentToFile(filePath, content, flag) {
 		if (isFilePathBlocked(filePath as string)) {
 			throw new NodeOperationError(node, `The file "${String(filePath)}" is not writable.`, {
@@ -4150,6 +4155,7 @@ export function getLoadOptionsFunctions(
 			helpers: {
 				...getSSHTunnelFunctions(),
 				...getRequestHelperFunctions(workflow, node, additionalData),
+				...getFileSystemHelperFunctions(node),
 			},
 		};
 	})(workflow, node, path);

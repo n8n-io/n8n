@@ -1,7 +1,7 @@
 import { LanceDB } from '@langchain/community/vectorstores/lancedb';
 import { connect, WriteMode } from 'vectordb';
 
-import type { INodeProperties } from 'n8n-workflow';
+import type { ILoadOptionsFunctions, INodeProperties } from 'n8n-workflow';
 import { createVectorStoreNode } from '../shared/createVectorStoreNode';
 
 export const lanceDBTableNameRLC: INodeProperties = {
@@ -52,18 +52,7 @@ export const VectorStoreLanceDB = createVectorStoreNode({
 		docsUrl:
 			'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstorelancedb/',
 	},
-	sharedFields: [
-		{
-			displayName: 'Directory Path',
-			name: 'directoryPath',
-			type: 'string',
-			default: '',
-			required: true,
-			placeholder: '/tmp/lancedb/',
-			description: 'Path of the LanceDB directory',
-		},
-		lanceDBTableNameRLC,
-	],
+	sharedFields: [lanceDBTableNameRLC],
 	insertFields,
 	loadFields: [],
 	retrieveFields: [],
@@ -71,18 +60,17 @@ export const VectorStoreLanceDB = createVectorStoreNode({
 		const tableName = context.getNodeParameter('tableName', itemIndex, '', {
 			extractValue: true,
 		}) as string;
-		const dbUri = context.getNodeParameter('directoryPath', itemIndex, '', {
-			extractValue: true,
-		}) as string;
+
+		const dbUri = context.helpers.getVectorStorePath();
 
 		const db = await connect(dbUri);
 		const table = await db.openTable(tableName);
 
 		const client = new LanceDB(embeddings, { table });
 
-		const test = await client.similaritySearch('horror movie', 5);
-
-		console.log(test);
+		// const test = await client.similaritySearch('horror movie', 5);
+		//
+		// console.log(test);
 
 		return client;
 	},
@@ -90,15 +78,38 @@ export const VectorStoreLanceDB = createVectorStoreNode({
 		const tableName = context.getNodeParameter('tableName', itemIndex, '', {
 			extractValue: true,
 		}) as string;
-		const dbUri = context.getNodeParameter('directoryPath', itemIndex, '', {
-			extractValue: true,
-		}) as string;
+
+		const dbUri = context.helpers.getVectorStorePath();
+
 		const clearStore = context.getNodeParameter('clearStore', itemIndex) as boolean;
+
+		if (clearStore) {
+			const db = await connect(dbUri);
+			await db.dropTable(tableName);
+			console.log('cleared lancedb');
+		}
 
 		await LanceDB.fromDocuments(documents, embeddings, {
 			tableName,
 			uri: dbUri,
-			mode: clearStore ? WriteMode.Overwrite : WriteMode.Append,
+			mode: WriteMode.Append,
 		});
+	},
+	methods: {
+		listSearch: {
+			async lanceDBTableNameSearch(this: ILoadOptionsFunctions) {
+				const dbUri = this.helpers.getVectorStorePath();
+				const db = await connect(dbUri);
+
+				const tables = await db.tableNames();
+
+				return {
+					results: tables.map((t) => ({
+						name: t,
+						value: t,
+					})),
+				};
+			},
+		},
 	},
 });
