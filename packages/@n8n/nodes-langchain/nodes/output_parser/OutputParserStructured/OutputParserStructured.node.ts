@@ -1,4 +1,6 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import type { JSONSchema7 } from 'json-schema';
+import { StructuredOutputParser } from 'langchain/output_parsers';
+import get from 'lodash/get';
 import {
 	jsonParse,
 	type IExecuteFunctions,
@@ -9,47 +11,78 @@ import {
 	NodeConnectionType,
 } from 'n8n-workflow';
 import { z } from 'zod';
-import type { JSONSchema7 } from 'json-schema';
-import { StructuredOutputParser } from 'langchain/output_parsers';
-import { OutputParserException } from '@langchain/core/output_parsers';
-import get from 'lodash/get';
-import type { JavaScriptSandbox } from 'n8n-nodes-base/dist/nodes/Code/JavaScriptSandbox';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
-import { logWrapper } from '../../../utils/logWrapper';
-import { generateSchema, getSandboxWithZod } from '../../../utils/schemaParsing';
+
 import {
 	inputSchemaField,
 	jsonSchemaExampleField,
 	schemaTypeField,
 } from '../../../utils/descriptions';
+import { logWrapper } from '../../../utils/logWrapper';
+import { generateSchema, getSandboxWithZod } from '../../../utils/schemaParsing';
+import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { logAiEvent } from '../../../utils/helpers';
 
 const STRUCTURED_OUTPUT_KEY = '__structured__output';
 const STRUCTURED_OUTPUT_OBJECT_KEY = '__structured__output__object';
 const STRUCTURED_OUTPUT_ARRAY_KEY = '__structured__output__array';
 
 export class N8nStructuredOutputParser<T extends z.ZodTypeAny> extends StructuredOutputParser<T> {
-	async parse(text: string): Promise<z.infer<T>> {
+	context: IExecuteFunctions;
+
+	constructor(context: IExecuteFunctions, zodSchema: T) {
+		super(zodSchema);
+		this.context = context;
+	}
+
+	async parse(text: string, errorMapper?: (error: Error) => Error): Promise<object> {
+		// connectionType = NodeConnectionType.AiOutputParser;
+		// const stringifiedText = isObject(text) ? JSON.stringify(text) : text;
+		const { index } = this.context.addInputData(NodeConnectionType.AiOutputParser, [
+			[{ json: { action: 'parse', text } }],
+		]);
 		try {
 			const parsed = (await super.parse(text)) as object;
 
-			return (
-				get(parsed, [STRUCTURED_OUTPUT_KEY, STRUCTURED_OUTPUT_OBJECT_KEY]) ??
+			const result = (get(parsed, [STRUCTURED_OUTPUT_KEY, STRUCTURED_OUTPUT_OBJECT_KEY]) ??
 				get(parsed, [STRUCTURED_OUTPUT_KEY, STRUCTURED_OUTPUT_ARRAY_KEY]) ??
 				get(parsed, STRUCTURED_OUTPUT_KEY) ??
-				parsed
-			);
+				parsed) as Record<string, unknown>;
+
+			void logAiEvent(this.context, 'ai-output-parsed', { text, response: result });
+
+			this.context.addOutputData(NodeConnectionType.AiOutputParser, index, [
+				[{ json: { action: 'parse', response: result } }],
+			]);
+
+			return result;
 		} catch (e) {
-			// eslint-disable-next-line n8n-nodes-base/node-execute-block-wrong-error-thrown
-			throw new OutputParserException(`Failed to parse. Text: "${text}". Error: ${e}`, text);
+			const nodeError = new NodeOperationError(
+				this.context.getNode(),
+				"Model output doesn't fit required format",
+				{
+					description:
+						"To continue the execution when this happens, change the 'On Error' parameter in the root node's settings",
+				},
+			);
+
+			void logAiEvent(this.context, 'ai-output-parsed', {
+				text,
+				response: e.message ?? e,
+			});
+
+			this.context.addOutputData(NodeConnectionType.AiOutputParser, index, nodeError);
+			if (errorMapper) {
+				throw errorMapper(e);
+			}
+
+			throw nodeError;
 		}
 	}
 
-	static async fromZedJsonSchema(
-		sandboxedSchema: JavaScriptSandbox,
+	async fromZedJsonSchema(
+		zodSchema: z.ZodSchema<object>,
 		nodeVersion: number,
 	): Promise<StructuredOutputParser<z.ZodType<object, z.ZodTypeDef, object>>> {
-		const zodSchema = (await sandboxedSchema.runCode()) as z.ZodSchema<object>;
-
 		let returnSchema: z.ZodSchema<object>;
 		if (nodeVersion === 1) {
 			returnSchema = z.object({
@@ -82,7 +115,7 @@ export class N8nStructuredOutputParser<T extends z.ZodTypeAny> extends Structure
 			});
 		}
 
-		return N8nStructuredOutputParser.fromZodSchema(returnSchema);
+		return this;
 	}
 }
 export class OutputParserStructured implements INodeType {
@@ -207,10 +240,10 @@ export class OutputParserStructured implements INodeType {
 		const zodSchemaSandbox = getSandboxWithZod(this, jsonSchema, 0);
 		const nodeVersion = this.getNode().typeVersion;
 		try {
-			const parser = await N8nStructuredOutputParser.fromZedJsonSchema(
-				zodSchemaSandbox,
-				nodeVersion,
-			);
+			const zodSchema = (await zodSchemaSandbox.runCode()) as z.ZodSchema<object>;
+			const parserInstance = new N8nStructuredOutputParser(this, zodSchema);
+			const parser = await parserInstance.fromZedJsonSchema(zodSchema, nodeVersion);
+
 			return {
 				response: logWrapper(parser, this),
 			};
