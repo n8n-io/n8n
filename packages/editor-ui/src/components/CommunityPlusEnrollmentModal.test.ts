@@ -149,7 +149,12 @@ describe('CommunityPlusEnrollmentModal', () => {
 		const usersStore = mockedStore(useUsersStore);
 
 		usersStore.currentUser = {
+			id: '1',
 			email: 'test@n8n.io',
+			isDefaultUser: false,
+			isPending: false,
+			mfaEnabled: false,
+			isPendingUser: false,
 		};
 
 		const props = {
