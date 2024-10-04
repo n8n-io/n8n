@@ -7,6 +7,7 @@ import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '@/constants';
 import { useUsageStore } from '@/stores/usage.store';
 import { useToast } from '@/composables/useToast';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { useUsersStore } from '@/stores/users.store';
 
 vi.mock('@/composables/useToast', () => {
 	const showMessage = vi.fn();
@@ -141,5 +142,25 @@ describe('CommunityPlusEnrollmentModal', () => {
 
 		await userEvent.click(skipButton);
 		expect(telemetry.track).toHaveBeenCalledWith('User skipped community plus');
+	});
+
+	it('should use user email if possible', async () => {
+		const closeCallbackSpy = vi.fn();
+		const usersStore = mockedStore(useUsersStore);
+
+		usersStore.currentUser = {
+			email: 'test@n8n.io',
+		};
+
+		const props = {
+			modalName: COMMUNITY_PLUS_ENROLLMENT_MODAL,
+			data: {
+				closeCallback: closeCallbackSpy,
+			},
+		};
+
+		const { getByRole } = renderComponent({ props });
+		const emailInput = getByRole('textbox');
+		expect(emailInput).toHaveValue('test@n8n.io');
 	});
 });

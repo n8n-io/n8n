@@ -9,6 +9,7 @@ import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
 import { useUsageStore } from '@/stores/usage.store';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { useUsersStore } from '@/stores/users.store';
 
 const props = defineProps<{
 	modalName: string;
@@ -21,9 +22,10 @@ const i18n = useI18n();
 const toast = useToast();
 const usageStore = useUsageStore();
 const telemetry = useTelemetry();
+const usersStore = useUsersStore();
 
 const valid = ref(false);
-const email = ref('');
+const email = ref(usersStore.currentUser?.email ?? '');
 const validationRules = ref([{ name: 'email' }]);
 const validators = ref<{ [key: string]: IValidator }>({
 	email: {
