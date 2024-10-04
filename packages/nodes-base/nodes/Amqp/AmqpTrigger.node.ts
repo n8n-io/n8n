@@ -7,7 +7,13 @@ import type {
 	IDeferredPromise,
 	IRun,
 } from 'n8n-workflow';
-import { deepCopy, jsonParse, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import {
+	deepCopy,
+	jsonParse,
+	NodeConnectionType,
+	NodeOperationError,
+	TriggerCloseError,
+} from 'n8n-workflow';
 import type { ContainerOptions, EventContext, Message, ReceiverOptions } from 'rhea';
 import { create_container } from 'rhea';
 
@@ -256,11 +262,16 @@ export class AmqpTrigger implements INodeType {
 
 		// The "closeFunction" function gets called by n8n whenever
 		// the workflow gets deactivated and can so clean up.
-		async function closeFunction() {
-			container.removeAllListeners('receiver_open');
-			container.removeAllListeners('message');
-			connection.close();
-		}
+		const closeFunction = async () => {
+			try {
+				container.removeAllListeners('receiver_open');
+				container.removeAllListeners('message');
+				connection.close();
+			} catch (error) {
+				// eslint-disable-next-line n8n-nodes-base/node-execute-block-wrong-error-thrown
+				throw new TriggerCloseError(this.getNode(), { cause: error as Error, level: 'warning' });
+			}
+		};
 
 		// The "manualTriggerFunction" function gets called by n8n
 		// when a user is in the workflow editor and starts the
