@@ -198,6 +198,7 @@ describe('GlobalConfig', () => {
 			health: {
 				active: false,
 				port: 5678,
+				address: '0.0.0.0',
 			},
 			bull: {
 				redis: {
