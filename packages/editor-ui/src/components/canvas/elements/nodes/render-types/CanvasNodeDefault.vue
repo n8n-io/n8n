@@ -25,6 +25,8 @@ const {
 	isDisabled,
 	isSelected,
 	hasPinnedData,
+	executionStatus,
+	executionWaiting,
 	executionRunning,
 	hasRunData,
 	hasIssues,
@@ -53,6 +55,7 @@ const classes = computed(() => {
 		[$style.success]: hasRunData.value,
 		[$style.error]: hasIssues.value,
 		[$style.pinned]: hasPinnedData.value,
+		[$style.waiting]: executionWaiting.value ?? executionStatus.value === 'waiting',
 		[$style.running]: executionRunning.value,
 		[$style.configurable]: renderOptions.value.configurable,
 		[$style.configuration]: renderOptions.value.configuration,
@@ -243,6 +246,10 @@ function openContextMenu(event: MouseEvent) {
 	&.running {
 		background-color: var(--color-node-executing-background);
 		border-color: var(--color-canvas-node-running-border-color, var(--color-node-running-border));
+	}
+
+	&.waiting {
+		border-color: var(--color-canvas-node-waiting-border-color, var(--color-secondary));
 	}
 }
 
