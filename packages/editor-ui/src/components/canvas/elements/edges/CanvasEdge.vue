@@ -44,16 +44,14 @@ const connectionType = computed(() =>
 		: NodeConnectionType.Main,
 );
 
-const renderToolbar = computed(() => (props.selected || isHovered.value) && !props.readOnly);
+const renderToolbar = computed(() => isHovered.value && !props.readOnly);
 
 const isMainConnection = computed(() => data.value.source.type === NodeConnectionType.Main);
 
 const status = computed(() => props.data.status);
 
 const edgeColor = computed(() => {
-	if (props.selected) {
-		return 'var(--color-background-dark)';
-	} else if (status.value === 'success') {
+	if (status.value === 'success') {
 		return 'var(--color-success)';
 	} else if (status.value === 'pinned') {
 		return 'var(--color-secondary)';
@@ -61,6 +59,8 @@ const edgeColor = computed(() => {
 		return 'var(--color-primary)';
 	} else if (!isMainConnection.value) {
 		return 'var(--node-type-supplemental-color)';
+	} else if (props.selected) {
+		return 'var(--color-background-dark)';
 	} else {
 		return 'var(--color-foreground-xdark)';
 	}
