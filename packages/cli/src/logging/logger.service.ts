@@ -71,7 +71,18 @@ export class Logger {
 	}
 
 	private setConsoleTransport() {
-		const debugDev = winston.format.combine(
+		const format =
+			this.level === 'debug' && inDevelopment
+				? this.debugDevConsoleFormat()
+				: this.level === 'debug' && inProduction
+					? this.debugProdConsoleFormat()
+					: winston.format.printf(({ message }: { message: string }) => message);
+
+		this.internalLogger.add(new winston.transports.Console({ format }));
+	}
+
+	private debugDevConsoleFormat() {
+		return winston.format.combine(
 			winston.format.metadata(),
 			winston.format.timestamp({ format: () => this.devTsFormat() }),
 			winston.format.colorize({ all: true }),
@@ -83,8 +94,10 @@ export class Logger {
 				return [timestamp, level, message + ' ' + pc.dim(metadata)].join(SEPARATOR);
 			}),
 		);
+	}
 
-		const debugProd = winston.format.combine(
+	private debugProdConsoleFormat() {
+		return winston.format.combine(
 			winston.format.metadata(),
 			winston.format.timestamp(),
 			winston.format.printf(({ level, message, timestamp, metadata }) => {
@@ -92,15 +105,6 @@ export class Logger {
 				return `${timestamp} | ${level.padEnd(5)} | ${message}${_metadata ? ' ' + _metadata : ''}`;
 			}),
 		);
-
-		const format =
-			this.level === 'debug' && inDevelopment
-				? debugDev
-				: this.level === 'debug' && inProduction
-					? debugProd
-					: winston.format.printf(({ message }: { message: string }) => message);
-
-		this.internalLogger.add(new winston.transports.Console({ format }));
 	}
 
 	private devTsFormat() {
