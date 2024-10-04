@@ -11,6 +11,7 @@ import { ExternalSecretsManager } from '@/external-secrets/external-secrets-mana
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { ScalingService } from '@/scaling/scaling.service';
 import { OrchestrationWorkerService } from '@/services/orchestration/worker/orchestration.worker.service';
 import { setupTestCommand } from '@test-integration/utils/test-command';
@@ -29,6 +30,7 @@ const logStreamingEventRelay = mockInstance(LogStreamingEventRelay);
 const scalingService = mockInstance(ScalingService);
 const orchestrationWorkerService = mockInstance(OrchestrationWorkerService);
 mockInstance(Publisher);
+mockInstance(Subscriber);
 
 const command = setupTestCommand(Worker);
 
