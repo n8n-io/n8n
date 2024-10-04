@@ -7,7 +7,7 @@ will always have visible source code, be available to self-host, and allow you t
 functions, logic and apps. n8n's node-based approach makes it highly versatile, enabling you to connect
 anything to everything.
 
-![n8n.io - Screenshot](https://raw.githubusercontent.com/n8n-io/n8n/master/assets/n8n-screenshot.png)
+![n8n.io - Screenshot](https://raw.githubusercontent.com/n8n-io/n8n/master/assets/n8n-hero.png)
 
 ## Demo
 
@@ -58,8 +58,9 @@ While n8n cloud and n8n are the same in terms of features, n8n cloud provides ce
 
 With n8n's LangChain nodes you can build AI-powered functionality within your workflows. The LangChain nodes are configurable, meaning you can choose your preferred agent, LLM, memory, and so on. Alongside the LangChain nodes, you can connect any n8n node as normal: this means you can integrate your LangChain logic with other data sources and services.
 
-Learn more in the [documentation](https://docs.n8n.io/langchain/).
+Learn more in the [documentation](https://docs.n8n.io/advanced-ai/).
 
+- [Self-Hosted AI starter kit](https://github.com/n8n-io/self-hosted-ai-starter-kit)
 - [LangChain nodes package](https://www.npmjs.com/package/@n8n/n8n-nodes-langchain)
 - [Chatbot package](https://www.npmjs.com/package/@n8n/chat)
 
