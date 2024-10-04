@@ -135,6 +135,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 	const telemetry = useTelemetry();
 	const externalHooks = useExternalHooks();
 	const clipboard = useClipboard();
+	const { uniqueNodeName } = useUniqueNodeName();
 
 	const lastClickPosition = ref<XYPosition>([0, 0]);
 
@@ -205,7 +206,6 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			historyStore.startRecordingUndo();
 		}
 
-		const { uniqueNodeName } = useUniqueNodeName();
 		newName = uniqueNodeName(newName);
 
 		// Rename the node and update the connections
@@ -1066,7 +1066,6 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 	}
 
 	function resolveNodeName(node: INodeUi) {
-		const { uniqueNodeName } = useUniqueNodeName();
 		const localizedName = i18n.localizeNodeName(node.name, node.type);
 
 		node.name = uniqueNodeName(localizedName);
@@ -1483,8 +1482,6 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			data.nodes.map((node) => ({ name: node.type, version: node.typeVersion })),
 		);
 
-		const { uniqueNodeName } = useUniqueNodeName();
-
 		data.nodes.forEach((node) => {
 			if (nodeTypesCount[node.type] !== undefined) {
 				if (nodeTypesCount[node.type].exist >= nodeTypesCount[node.type].max) {
@@ -1626,8 +1623,6 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		if (!workflowData.hasOwnProperty('nodes') || !workflowData.hasOwnProperty('connections')) {
 			return {};
 		}
-
-		const { uniqueNodeName } = useUniqueNodeName();
 
 		try {
 			const nodeIdMap: { [prev: string]: string } = {};
