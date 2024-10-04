@@ -1,11 +1,12 @@
 import type { VIEWS } from '@/constants';
-import type { NodeAuthenticationOption, Schema } from '@/Interface';
+import type { IWorkflowDb, Schema } from '@/Interface';
 import type {
 	ICredentialType,
 	IDataObject,
 	INode,
 	INodeIssues,
 	INodeParameters,
+	IRunExecutionData,
 } from 'n8n-workflow';
 
 export namespace ChatRequest {
@@ -16,6 +17,8 @@ export namespace ChatRequest {
 
 	export interface WorkflowContext {
 		executionSchema?: NodeExecutionSchema[];
+		currentWorkflow?: IWorkflowDb;
+		executionData?: IRunExecutionData['resultData'];
 	}
 
 	export interface ErrorContext {
@@ -47,6 +50,7 @@ export namespace ChatRequest {
 			firstName: string;
 		};
 		context?: UserContext;
+		workflowContext?: WorkflowContext;
 		question: string;
 	}
 

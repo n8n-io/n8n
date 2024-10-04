@@ -124,18 +124,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			).length,
 	);
 
-	watch(route, () => {
-		const activeWorkflowId = workflowsStore.workflowId;
-		if (
-			!currentSessionId.value ||
-			currentSessionWorkflowId.value === PLACEHOLDER_EMPTY_WORKFLOW_ID ||
-			currentSessionWorkflowId.value === activeWorkflowId
-		) {
-			return;
-		}
-		resetAssistantChat();
-	});
-
 	function resetAssistantChat() {
 		clearMessages();
 		currentSessionId.value = undefined;
@@ -360,7 +348,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		const currentView = route.name as VIEWS;
 		const activeNode = workflowsStore.activeNode();
 		const activeNodeForLLM = activeNode
-			? assistantHelpers.processNodeForAssistant(activeNode, ['position'])
+			? assistantHelpers.processNodeForAssistant(activeNode, ['position', 'parameters.notice'])
 			: null;
 		const activeModals = uiStore.activeModals;
 		const isCredentialModalActive = activeModals.includes(CREDENTIAL_EDIT_MODAL_KEY);
@@ -431,6 +419,10 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				firstName: usersStore.currentUser?.firstName ?? '',
 			},
 			context: visualContext,
+			workflowContext: {
+				currentWorkflow: workflowsStore.workflow,
+				executionData: workflowsStore.workflowExecutionData?.data?.resultData,
+			},
 			question: userMessage,
 		};
 		if (credentialType) {
@@ -491,7 +483,10 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 						firstName: usersStore.currentUser?.firstName ?? '',
 					},
 					error: context.error,
-					node: assistantHelpers.processNodeForAssistant(context.node, ['position']),
+					node: assistantHelpers.processNodeForAssistant(context.node, [
+						'position',
+						'parameters.notice',
+					]),
 					nodeInputData,
 					executionSchema: schemas,
 					authType,
@@ -578,6 +573,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				nodeExecutionStatus.value = 'not_executed';
 			}
 			const userContext = getVisualContext();
+
 			chatWithAssistant(
 				rootStore.restApiContext,
 				{
@@ -763,6 +759,18 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			});
 		}
 	}
+
+	watch(route, () => {
+		const activeWorkflowId = workflowsStore.workflowId;
+		if (
+			!currentSessionId.value ||
+			currentSessionWorkflowId.value === PLACEHOLDER_EMPTY_WORKFLOW_ID ||
+			currentSessionWorkflowId.value === activeWorkflowId
+		) {
+			return;
+		}
+		resetAssistantChat();
+	});
 
 	return {
 		isAssistantEnabled,
