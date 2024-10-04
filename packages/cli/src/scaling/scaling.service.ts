@@ -91,7 +91,7 @@ export class ScalingService {
 				// Errors thrown here will be sent to the main instance by bull. Logging
 				// them out and rethrowing them allows to find out which worker had the
 				// issue.
-				this.logger.error('[ScalingService] Executing a job errored', { job, error });
+				this.logger.error('[ScalingService] Executing a job errored', { jobId: job.id, error });
 				ErrorReporterProxy.error(error);
 				throw error;
 			}
