@@ -200,8 +200,17 @@ function openPasswordModal() {
 	uiStore.openModal(CHANGE_PASSWORD_MODAL_KEY);
 }
 
-function onMfaEnableClick() {
-	uiStore.openModal(MFA_SETUP_MODAL_KEY);
+async function onMfaEnableClick() {
+	try {
+		await usersStore.canEnableMFA();
+		uiStore.openModal(MFA_SETUP_MODAL_KEY);
+	} catch (e) {
+		showToast({
+			title: i18n.baseText('settings.personal.mfa.toast.canEnableMfa.title'),
+			message: e.message,
+			type: 'error',
+		});
+	}
 }
 
 async function disableMfa(payload: MfaModalEvents['closed']) {

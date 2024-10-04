@@ -320,6 +320,10 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		return await mfaApi.verifyMfaToken(rootStore.restApiContext, data);
 	};
 
+	const canEnableMFA = async () => {
+		return await mfaApi.canEnableMFA(rootStore.restApiContext);
+	};
+
 	const enableMfa = async (data: { token: string }) => {
 		await mfaApi.enableMfa(rootStore.restApiContext, data);
 		if (currentUser.value) {
@@ -403,6 +407,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		verifyMfaToken,
 		enableMfa,
 		disableMfa,
+		canEnableMFA,
 		fetchUserCloudAccount,
 		confirmEmail,
 		updateGlobalRole,
