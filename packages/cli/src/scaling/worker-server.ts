@@ -11,7 +11,6 @@ import { CredentialsOverwrites } from '@/credentials-overwrites';
 import * as Db from '@/db';
 import { CredentialsOverwritesAlreadySetError } from '@/errors/credentials-overwrites-already-set.error';
 import { NonJsonBodyError } from '@/errors/non-json-body.error';
-import { PortTakenError } from '@/errors/port-taken.error';
 import { ExternalHooks } from '@/external-hooks';
 import type { ICredentialsOverwrite } from '@/interfaces';
 import { Logger } from '@/logging/logger.service';
@@ -37,6 +36,8 @@ export type WorkerServerEndpointsConfig = {
 @Service()
 export class WorkerServer {
 	private readonly port: number;
+
+	private readonly address: string;
 
 	private readonly server: Server;
 
@@ -64,9 +65,15 @@ export class WorkerServer {
 		this.server = http.createServer(this.app);
 
 		this.port = this.globalConfig.queue.health.port;
+		this.address = this.globalConfig.queue.health.address;
 
 		this.server.on('error', (error: NodeJS.ErrnoException) => {
-			if (error.code === 'EADDRINUSE') throw new PortTakenError(this.port);
+			if (error.code === 'EADDRINUSE') {
+				this.logger.error(
+					`Port ${this.port} is already in use, possibly by the n8n main process server. Please set a different port for the worker server.`,
+				);
+				process.exit(1);
+			}
 		});
 	}
 
@@ -77,7 +84,7 @@ export class WorkerServer {
 
 		await this.mountEndpoints();
 
-		await new Promise<void>((resolve) => this.server.listen(this.port, resolve));
+		await new Promise<void>((resolve) => this.server.listen(this.port, this.address, resolve));
 
 		await this.externalHooks.run('worker.ready');
 
