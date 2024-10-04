@@ -7,10 +7,9 @@ export class CreateProcessedDataTable1726606152711 implements ReversibleMigratio
 		await createTable(processedDataTableName)
 			.withColumns(
 				column('workflowId').varchar(36).notNull.primary,
-				column('value').varchar(255).notNull.primary,
+				column('value').varchar(255).notNull,
 				column('context').varchar(255).notNull.primary,
 			)
-			.withIndexOn(['workflowId', 'context', 'value'], true)
 			.withForeignKey('workflowId', {
 				tableName: 'workflow_entity',
 				columnName: 'id',

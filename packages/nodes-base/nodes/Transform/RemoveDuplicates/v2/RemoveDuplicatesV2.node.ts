@@ -15,6 +15,7 @@ import { compareItems, flattenKeys } from '@utils/utilities';
 import { removeDuplicatesNodeFields } from './RemoveDuplicatesV2.description';
 import { prepareFieldsArray } from '../../utils/utils';
 import { validateInputData } from '../utils';
+import { rm as fsRm } from 'fs/promises';
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Remove Duplicates',
 	name: 'removeDuplicates',
@@ -180,7 +181,11 @@ export class RemoveDuplicatesV2 implements INodeType {
 			case 'removeItemsSeenInPreviousExecutions': {
 				const logic = this.getNodeParameter('logic', 0);
 				if (logic === 'removeItemsWithAlreadySeenKeyValues') {
-					const context = this.getNodeParameter('options.scope', 0, 'node');
+					const context: ProcessedDataContext = this.getNodeParameter(
+						'options.scope',
+						0,
+						'node',
+					) as ProcessedDataContext;
 
 					if (!['node', 'workflow'].includes(context as string)) {
 						throw new NodeOperationError(
@@ -206,10 +211,10 @@ export class RemoveDuplicatesV2 implements INodeType {
 					const maxEntries = this.getNodeParameter('options.historySize', 0, DEFAULT_MAX_ENTRIES);
 					const maxEntriesNum = Number(maxEntries);
 
-					const currentProcessedDataCount = await this.helpers.getProcessedDataCount(
-						context as ProcessedDataContext,
-						{ mode: 'entries', maxEntries } as ICheckProcessedOptions,
-					);
+					const currentProcessedDataCount = await this.helpers.getProcessedDataCount(context, {
+						mode: 'entries',
+						maxEntries,
+					} as ICheckProcessedOptions);
 					if (currentProcessedDataCount + items.length > maxEntriesNum) {
 						throw new NodeOperationError(
 							this.getNode(),
@@ -218,13 +223,13 @@ export class RemoveDuplicatesV2 implements INodeType {
 					}
 					const itemsProcessed = await this.helpers.checkProcessedAndRecord(
 						Object.keys(itemMapping),
-						context as ProcessedDataContext,
+						context,
 						{ mode: 'entries', maxEntries } as ICheckProcessedOptions,
 					);
-					const processedDataCount = await this.helpers.getProcessedDataCount(
-						context as ProcessedDataContext,
-						{ mode: 'entries', maxEntries } as ICheckProcessedOptions,
-					);
+					const processedDataCount = await this.helpers.getProcessedDataCount(context, {
+						mode: 'entries',
+						maxEntries,
+					} as ICheckProcessedOptions);
 					returnData.push(
 						itemsProcessed.new
 							.map((key) => {
@@ -247,7 +252,7 @@ export class RemoveDuplicatesV2 implements INodeType {
 						]);
 					} else return returnData;
 				} else if (logic === 'removeItemsUpToStoredIncrementalKey') {
-					const context = this.getNodeParameter('options.scope', 0, 'node');
+					const context = this.getNodeParameter('options.scope', 0, 'node') as ProcessedDataContext;
 
 					if (!['node', 'workflow'].includes(context as string)) {
 						throw new NodeOperationError(
@@ -280,7 +285,7 @@ export class RemoveDuplicatesV2 implements INodeType {
 
 					const itemsProcessed = await this.helpers.checkProcessedAndRecord(
 						Object.keys(itemMapping),
-						context as ProcessedDataContext,
+						context,
 						{ mode: 'latestIncrementalKey' } as ICheckProcessedOptions,
 					);
 
@@ -299,7 +304,7 @@ export class RemoveDuplicatesV2 implements INodeType {
 
 					return returnData;
 				} else if (logic === 'removeItemsUpToStoredDate') {
-					const context = this.getNodeParameter('options.scope', 0, 'node');
+					const context = this.getNodeParameter('options.scope', 0, 'node') as ProcessedDataContext;
 
 					if (!['node', 'workflow'].includes(context as string)) {
 						throw new NodeOperationError(
@@ -331,7 +336,7 @@ export class RemoveDuplicatesV2 implements INodeType {
 					}
 					const itemsProcessed = await this.helpers.checkProcessedAndRecord(
 						Object.keys(itemMapping),
-						context as ProcessedDataContext,
+						context,
 						{ mode: 'latestDate' } as ICheckProcessedOptions,
 					);
 
@@ -358,8 +363,8 @@ export class RemoveDuplicatesV2 implements INodeType {
 				if (mode === 'updateKeyValuesInDatabase') {
 				} else if (mode === 'deleteKeyValuesFromDatabase') {
 				} else if (mode === 'cleanDatabase') {
-					const context = this.getNodeParameter('options.scope', 0, 'node');
-					await this.helpers.clearAllProcessedItems(context as ProcessedDataContext, {
+					const context = this.getNodeParameter('options.scope', 0, 'node') as ProcessedDataContext;
+					await this.helpers.clearAllProcessedItems(context, {
 						mode: 'entries',
 					});
 				}

@@ -8,7 +8,7 @@ import {
 	ProcessedDataManager,
 } from 'n8n-core';
 import { ApplicationError, ErrorReporterProxy as ErrorReporter, sleep } from 'n8n-workflow';
-import Container from 'typedi';
+import { Container } from 'typedi';
 
 import type { AbstractServer } from '@/abstract-server';
 import config from '@/config';

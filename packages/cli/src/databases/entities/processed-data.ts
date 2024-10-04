@@ -6,7 +6,6 @@ import { jsonColumnType, WithTimestamps } from './abstract-entity';
 import { objectRetriever } from '../utils/transformers';
 
 @Entity()
-@Index(['workflowId', 'context'], { unique: true })
 export class ProcessedData extends WithTimestamps {
 	@PrimaryColumn('varchar')
 	context: string;

@@ -3562,7 +3562,6 @@ const getCheckProcessedHelperFunctions = (
 	async checkProcessedItemsAndRecord(
 		propertyName: string,
 		items: IDataObject[],
-		// items: ProcessedDataItemTypes[],
 		context: ProcessedDataContext,
 		options: ICheckProcessedOptions,
 	): Promise<ICheckProcessedOutputItems> {

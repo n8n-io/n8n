@@ -59,7 +59,6 @@ export class ProcessedDataHelper implements IProcessedDataManager {
 		contextData: ICheckProcessedContextData,
 	): string {
 		if (context === 'node') {
-			console.log('contextData.node', contextData, contextData.node);
 			if (!contextData.node) {
 				throw new ApplicationError(
 					"No node information has been provided and can so not use context 'node'",
@@ -97,7 +96,7 @@ export class ProcessedDataHelper implements IProcessedDataManager {
 
 		if (processedData && processedData.value.mode !== options.mode) {
 			throw new ApplicationError(
-				'Deduplication data was originally saved with an incompatible setting of the ‘Keep Items Where’ parameter. ’Try Clean Database’ operation to reset.',
+				'Deduplication data was originally saved with an incompatible setting of the ‘Keep Items Where’ parameter. Try ’Clean Database’ operation to reset.',
 			);
 		}
 
@@ -290,9 +289,7 @@ export class ProcessedDataHelper implements IProcessedDataManager {
 	async clearAllProcessedItems(
 		context: ProcessedDataContext,
 		contextData: ICheckProcessedContextData,
-		options: ICheckProcessedOptions,
 	): Promise<void> {
-		console.log(options);
 		await Container.get(ProcessedDataRepository).delete({
 			workflowId: contextData.workflow.id as string,
 			context: ProcessedDataHelper.createContext(context, contextData),

@@ -35,10 +35,6 @@ export class ProcessedDataManager {
 		return ProcessedDataManager.instance;
 	}
 
-	static getManager(): string[] {
-		return Object.keys(ProcessedDataManager.instance.manager);
-	}
-
 	async checkProcessed(
 		items: ProcessedDataItemTypes[],
 		context: ProcessedDataContext,
