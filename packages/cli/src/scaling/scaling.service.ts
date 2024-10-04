@@ -186,14 +186,6 @@ export class ScalingService {
 	// #region Listeners
 
 	private registerListeners() {
-		this.queue.on('error', (error: Error) => {
-			if ('code' in error && error.code === 'ECONNREFUSED') return; // handled by RedisClientService.retryStrategy
-
-			this.logger.error('[ScalingService] Queue errored', { error });
-
-			throw error;
-		});
-
 		const { instanceType } = this.instanceSettings;
 		if (instanceType === 'main' || instanceType === 'webhook') {
 			this.registerMainOrWebhookListeners();
@@ -213,6 +205,8 @@ export class ScalingService {
 		});
 
 		this.queue.on('error', (error: Error) => {
+			if ('code' in error && error.code === 'ECONNREFUSED') return; // handled by RedisClientService.retryStrategy
+
 			if (error.message.includes('job stalled more than maxStalledCount')) {
 				throw new MaxStalledCountError(error);
 			}
@@ -227,6 +221,8 @@ export class ScalingService {
 				process.exit(1);
 			}
 
+			this.logger.error('[ScalingService] Queue errored', { error });
+
 			throw error;
 		});
 	}
@@ -235,6 +231,14 @@ export class ScalingService {
 	 * Register listeners on a `main` or `webhook` process for Bull queue events.
 	 */
 	private registerMainOrWebhookListeners() {
+		this.queue.on('error', (error: Error) => {
+			if ('code' in error && error.code === 'ECONNREFUSED') return; // handled by RedisClientService.retryStrategy
+
+			this.logger.error('[ScalingService] Queue errored', { error });
+
+			throw error;
+		});
+
 		this.queue.on('global:progress', (_jobId: JobId, msg: unknown) => {
 			if (!this.isPubSubMessage(msg)) return;
 
