@@ -1,154 +1,138 @@
-<script lang="ts">
+<script setup lang="ts">
+import { ref, computed, onMounted, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import type { ICredentialsResponse, ICredentialTypeMap } from '@/Interface';
-import { defineComponent } from 'vue';
-
 import type { IResource } from '@/components/layouts/ResourcesListLayout.vue';
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
 import CredentialCard from '@/components/CredentialCard.vue';
 import type { ICredentialType } from 'n8n-workflow';
 import { CREDENTIAL_SELECT_MODAL_KEY, EnterpriseEditionFeature } from '@/constants';
-import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useProjectsStore } from '@/stores/projects.store';
-import ProjectTabs from '@/components/Projects/ProjectTabs.vue';
 import useEnvironmentsStore from '@/stores/environments.ee.store';
 import { useSettingsStore } from '@/stores/settings.store';
+import ProjectTabs from '@/components/Projects/ProjectTabs.vue';
 import { getResourcePermissions } from '@/permissions';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { useI18n } from '@/composables/useI18n';
+import { N8nButton, N8nInputLabel, N8nSelect, N8nOption } from 'n8n-design-system';
 
-export default defineComponent({
-	name: 'CredentialsView',
-	components: {
-		ResourcesListLayout,
-		CredentialCard,
-		ProjectTabs,
-	},
-	data() {
-		return {
-			filters: {
-				search: '',
-				homeProject: '',
-				type: '',
-			},
-			sourceControlStoreUnsubscribe: () => {},
-			loading: false,
-			documentTitle: useDocumentTitle(),
-		};
-	},
-	computed: {
-		...mapStores(
-			useCredentialsStore,
-			useNodeTypesStore,
-			useUIStore,
-			useSourceControlStore,
-			useExternalSecretsStore,
-			useProjectsStore,
-		),
-		allCredentials(): IResource[] {
-			return this.credentialsStore.allCredentials.map((credential) => ({
-				id: credential.id,
-				name: credential.name,
-				value: '',
-				updatedAt: credential.updatedAt,
-				createdAt: credential.createdAt,
-				homeProject: credential.homeProject,
-				scopes: credential.scopes,
-				type: credential.type,
-				sharedWithProjects: credential.sharedWithProjects,
-				readOnly: !getResourcePermissions(credential.scopes).credential.update,
-			}));
-		},
-		allCredentialTypes(): ICredentialType[] {
-			return this.credentialsStore.allCredentialTypes;
-		},
-		credentialTypesById(): ICredentialTypeMap {
-			return this.credentialsStore.credentialTypesById;
-		},
-		addCredentialButtonText() {
-			return this.projectsStore.currentProject
-				? this.$locale.baseText('credentials.project.add')
-				: this.$locale.baseText('credentials.add');
-		},
-		readOnlyEnv(): boolean {
-			return this.sourceControlStore.preferences.branchReadOnly;
-		},
-		projectPermissions() {
-			return getResourcePermissions(
-				this.projectsStore.currentProject?.scopes ?? this.projectsStore.personalProject?.scopes,
-			);
-		},
-	},
-	watch: {
-		'$route.params.projectId'() {
-			void this.initialize();
-		},
-	},
-	mounted() {
-		this.documentTitle.set(this.$locale.baseText('credentials.heading'));
-		this.sourceControlStoreUnsubscribe = this.sourceControlStore.$onAction(({ name, after }) => {
-			if (name === 'pullWorkfolder' && after) {
-				after(() => {
-					void this.initialize();
-				});
-			}
-		});
-	},
-	beforeUnmount() {
-		this.sourceControlStoreUnsubscribe();
-	},
-	methods: {
-		addCredential() {
-			this.uiStore.openModal(CREDENTIAL_SELECT_MODAL_KEY);
+const credentialsStore = useCredentialsStore();
+const nodeTypesStore = useNodeTypesStore();
+const uiStore = useUIStore();
+const sourceControlStore = useSourceControlStore();
+const externalSecretsStore = useExternalSecretsStore();
+const projectsStore = useProjectsStore();
 
-			this.$telemetry.track('User clicked add cred button', {
-				source: 'Creds list',
-			});
-		},
-		async initialize() {
-			this.loading = true;
-			const isVarsEnabled =
-				useSettingsStore().isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables];
+const documentTitle = useDocumentTitle();
+const route = useRoute();
+const telemetry = useTelemetry();
+const i18n = useI18n();
 
-			const loadPromises = [
-				this.credentialsStore.fetchAllCredentials(
-					this.$route?.params?.projectId as string | undefined,
-				),
-				this.credentialsStore.fetchCredentialTypes(false),
-				this.externalSecretsStore.fetchAllSecrets(),
-				this.nodeTypesStore.loadNodeTypesIfNotLoaded(),
-				isVarsEnabled ? useEnvironmentsStore().fetchAllVariables() : Promise.resolve(), // for expression resolution
-			];
+const filters = ref({
+	search: '',
+	homeProject: '',
+	type: '',
+});
 
-			await Promise.all(loadPromises);
-			this.loading = false;
-		},
-		onFilter(
-			resource: ICredentialsResponse,
-			filters: { type: string[]; search: string },
-			matches: boolean,
-		): boolean {
-			if (filters.type.length > 0) {
-				matches = matches && filters.type.includes(resource.type);
-			}
+const loading = ref(false);
 
-			if (filters.search) {
-				const searchString = filters.search.toLowerCase();
+const allCredentials = computed<IResource[]>(() =>
+	credentialsStore.allCredentials.map((credential) => ({
+		id: credential.id,
+		name: credential.name,
+		value: '',
+		updatedAt: credential.updatedAt,
+		createdAt: credential.createdAt,
+		homeProject: credential.homeProject,
+		scopes: credential.scopes,
+		type: credential.type,
+		sharedWithProjects: credential.sharedWithProjects,
+		readOnly: !getResourcePermissions(credential.scopes).credential.update,
+	})),
+);
 
-				matches =
-					matches ||
-					(this.credentialTypesById[resource.type] &&
-						this.credentialTypesById[resource.type].displayName
-							.toLowerCase()
-							.includes(searchString));
-			}
+const allCredentialTypes = computed<ICredentialType[]>(() => credentialsStore.allCredentialTypes);
 
-			return matches;
-		},
-	},
+const credentialTypesById = computed<ICredentialTypeMap>(
+	() => credentialsStore.credentialTypesById,
+);
+
+const addCredentialButtonText = computed(() =>
+	projectsStore.currentProject
+		? i18n.baseText('credentials.project.add')
+		: i18n.baseText('credentials.add'),
+);
+
+const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
+
+const projectPermissions = computed(() =>
+	getResourcePermissions(
+		projectsStore.currentProject?.scopes ?? projectsStore.personalProject?.scopes,
+	),
+);
+
+const addCredential = () => {
+	uiStore.openModal(CREDENTIAL_SELECT_MODAL_KEY);
+	telemetry.track('User clicked add cred button', {
+		source: 'Creds list',
+	});
+};
+
+const onFilter = (
+	resource: ICredentialsResponse,
+	filtersToApply: { type: string[]; search: string },
+	matches: boolean,
+): boolean => {
+	if (filtersToApply.type.length > 0) {
+		matches = matches && filtersToApply.type.includes(resource.type);
+	}
+
+	if (filtersToApply.search) {
+		const searchString = filtersToApply.search.toLowerCase();
+
+		matches =
+			matches ||
+			(credentialTypesById.value[resource.type] &&
+				credentialTypesById.value[resource.type].displayName.toLowerCase().includes(searchString));
+	}
+
+	return matches;
+};
+
+const initialize = async () => {
+	loading.value = true;
+	const isVarsEnabled =
+		useSettingsStore().isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables];
+
+	const loadPromises = [
+		credentialsStore.fetchAllCredentials(route?.params?.projectId as string | undefined),
+		credentialsStore.fetchCredentialTypes(false),
+		externalSecretsStore.fetchAllSecrets(),
+		nodeTypesStore.loadNodeTypesIfNotLoaded(),
+		isVarsEnabled ? useEnvironmentsStore().fetchAllVariables() : Promise.resolve(), // for expression resolution
+	];
+
+	await Promise.all(loadPromises);
+	loading.value = false;
+};
+
+sourceControlStore.$onAction(({ name, after }) => {
+	if (name !== 'pullWorkfolder') return;
+	after(() => {
+		void initialize();
+	});
+});
+
+watch(() => route?.params?.projectId, initialize);
+
+onMounted(() => {
+	documentTitle.set(i18n.baseText('credentials.heading'));
 });
 </script>
 
@@ -171,7 +155,7 @@ export default defineComponent({
 		</template>
 		<template #add-button="{ disabled }">
 			<div>
-				<n8n-button
+				<N8nButton
 					size="large"
 					block
 					:disabled="disabled"
@@ -179,7 +163,7 @@ export default defineComponent({
 					@click="addCredential"
 				>
 					{{ addCredentialButtonText }}
-				</n8n-button>
+				</N8nButton>
 			</div>
 		</template>
 		<template #default="{ data }">
@@ -192,14 +176,14 @@ export default defineComponent({
 		</template>
 		<template #filters="{ setKeyValue }">
 			<div class="mb-s">
-				<n8n-input-label
-					:label="$locale.baseText('credentials.filters.type')"
+				<N8nInputLabel
+					:label="i18n.baseText('credentials.filters.type')"
 					:bold="false"
 					size="small"
 					color="text-base"
 					class="mb-3xs"
 				/>
-				<n8n-select
+				<N8nSelect
 					ref="typeInput"
 					:model-value="filters.type"
 					size="medium"
@@ -208,13 +192,13 @@ export default defineComponent({
 					:class="$style['type-input']"
 					@update:model-value="setKeyValue('type', $event)"
 				>
-					<n8n-option
+					<N8nOption
 						v-for="credentialType in allCredentialTypes"
 						:key="credentialType.name"
 						:value="credentialType.name"
 						:label="credentialType.displayName"
 					/>
-				</n8n-select>
+				</N8nSelect>
 			</div>
 		</template>
 	</ResourcesListLayout>
