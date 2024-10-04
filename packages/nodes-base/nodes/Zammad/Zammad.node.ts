@@ -662,13 +662,6 @@ export class Zammad implements INodeType {
 
 						// https://docs.zammad.org/en/latest/api/ticket/index.html#create
 
-						const body = {
-							article: {},
-							title: this.getNodeParameter('title', i) as string,
-							group: this.getNodeParameter('group', i) as string,
-							customer: this.getNodeParameter('customer', i) as string,
-						};
-
 						const article = this.getNodeParameter('article', i) as ZammadTypes.Article;
 
 						if (!Object.keys(article).length) {
@@ -679,10 +672,29 @@ export class Zammad implements INodeType {
 							articleDetails: { visibility, ...rest },
 						} = article;
 
-						body.article = {
-							...rest,
-							internal: visibility === 'internal',
+						const base = {
+							article: {
+								...rest,
+								internal: visibility === 'internal',
+							},
+							title: this.getNodeParameter('title', i) as string,
+							group: this.getNodeParameter('group', i) as string,
 						};
+
+						const createCustomerIfNotExists = this.getNodeParameter(
+							'createCustomerIfNotExists',
+							i,
+						) as boolean;
+
+						const body = createCustomerIfNotExists
+							? {
+									...base,
+									customer_id: 'guess:' + (this.getNodeParameter('customer', i) as string),
+								}
+							: {
+									...base,
+									customer: this.getNodeParameter('customer', i) as string,
+								};
 
 						responseData = await zammadApiRequest.call(this, 'POST', '/tickets', body);
 
