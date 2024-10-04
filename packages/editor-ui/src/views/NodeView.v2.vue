@@ -372,7 +372,7 @@ async function initializeWorkspaceForExistingWorkflow(id: string) {
 
 async function openWorkflow(data: IWorkflowDb) {
 	resetWorkspace();
-	workflowHelpers.setDocumentTitle(editableWorkflow.value.name, 'IDLE');
+	workflowHelpers.setDocumentTitle(data.name, 'IDLE');
 
 	await initializeWorkspace(data);
 
