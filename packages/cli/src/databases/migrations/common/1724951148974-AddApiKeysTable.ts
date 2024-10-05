@@ -61,6 +61,7 @@ export class AddApiKeysTable1724951148974 implements ReversibleMigration {
 		runQuery,
 		schemaBuilder: { dropTable, addColumns, createIndex, column },
 		escape,
+		isMysql,
 	}: MigrationContext) {
 		const userTable = escape.tableName('user');
 		const userApiKeysTable = escape.tableName('user_api_keys');
@@ -73,10 +74,25 @@ export class AddApiKeysTable1724951148974 implements ReversibleMigration {
 
 		await createIndex('user', ['apiKey'], true);
 
-		const oldestApiKeysPerUser = (await queryRunner.query(`
-				SELECT DISTINCT ON (${userIdColumn}) ${userIdColumn}, ${apiKeyColumn}, ${createdAtColumn}
+		const queryToGetUsersApiKeys = isMysql
+			? `
+			SELECT ${userIdColumn},
+				${apiKeyColumn},
+				${createdAtColumn}
+			FROM ${userApiKeysTable} u
+			WHERE ${createdAtColumn} = (SELECT Min(${createdAtColumn})
+																	FROM   ${userApiKeysTable}
+																	WHERE  ${userIdColumn} = u.${userIdColumn});`
+			: `
+				SELECT DISTINCT ON
+					(${userIdColumn}) ${userIdColumn},
+					${apiKeyColumn}, ${createdAtColumn}
 				FROM ${userApiKeysTable}
-				ORDER BY ${userIdColumn}, ${createdAtColumn} ASC;`)) as Array<Partial<ApiKey>>;
+				ORDER BY ${userIdColumn}, ${createdAtColumn} ASC;`;
+
+		const oldestApiKeysPerUser = (await queryRunner.query(queryToGetUsersApiKeys)) as Array<
+			Partial<ApiKey>
+		>;
 
 		await Promise.all(
 			oldestApiKeysPerUser.map(
