@@ -1,8 +1,8 @@
 import type { ApiKey } from '@/databases/entities/api-key';
-import type { MigrationContext } from '@/databases/types';
+import type { MigrationContext, ReversibleMigration } from '@/databases/types';
 import { generateNanoId } from '@/databases/utils/generators';
 
-export class AddApiKeysTable1724951148974 {
+export class AddApiKeysTable1724951148974 implements ReversibleMigration {
 	async up({ queryRunner, tablePrefix, runQuery }: MigrationContext) {
 		const tableName = `${tablePrefix}user_api_keys`;
 
@@ -73,5 +73,53 @@ export class AddApiKeysTable1724951148974 {
 
 		// Rename the temporary table to users
 		await queryRunner.query('ALTER TABLE users_new RENAME TO user;');
+	}
+
+	async down({
+		queryRunner,
+		runQuery,
+		schemaBuilder: { dropTable, addColumns, createIndex, column },
+		escape,
+	}: MigrationContext) {
+		const userTable = escape.tableName('user');
+		const userApiKeysTable = escape.tableName('user_api_keys');
+		const apiKeyColumn = escape.columnName('apiKey');
+		const userIdColumn = escape.columnName('userId');
+		const idColumn = escape.columnName('id');
+		const createdAtColumn = escape.columnName('createdAt');
+
+		const queryToGetUsersApiKeys = `
+		SELECT
+			${userIdColumn},
+			${apiKeyColumn},
+			${createdAtColumn}
+	FROM
+		${userApiKeysTable}
+	WHERE
+		${createdAtColumn} IN(
+			SELECT
+				MIN(${createdAtColumn})
+				FROM ${userApiKeysTable}
+			GROUP BY ${userIdColumn});`;
+
+		const oldestApiKeysPerUser = (await queryRunner.query(queryToGetUsersApiKeys)) as Array<
+			Partial<ApiKey>
+		>;
+
+		await addColumns('user', [column('apiKey').varchar()]);
+
+		await createIndex('user', ['apiKey'], true);
+
+		await Promise.all(
+			oldestApiKeysPerUser.map(
+				async (user: { userId: string; apiKey: string }) =>
+					await runQuery(
+						`UPDATE ${userTable} SET ${apiKeyColumn} = :apiKey WHERE ${idColumn} = :userId`,
+						user,
+					),
+			),
+		);
+
+		await dropTable('user_api_keys');
 	}
 }
