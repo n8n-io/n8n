@@ -153,6 +153,7 @@ export const removeDuplicatesNodeFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				logic: ['removeItemsUpToStoredIncrementalKey'],
+				'/operation': ['removeItemsSeenInPreviousExecutions'],
 			},
 		},
 	},
@@ -167,6 +168,7 @@ export const removeDuplicatesNodeFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				logic: ['removeItemsUpToStoredDate'],
+				'/operation': ['removeItemsSeenInPreviousExecutions'],
 			},
 		},
 	},

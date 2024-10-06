@@ -9,6 +9,7 @@ import type {
 	ProcessedDataItemTypes,
 	ProcessedDataMode,
 } from 'n8n-workflow';
+import * as assert from 'node:assert/strict';
 import { Container } from 'typedi';
 
 import { ProcessedDataRepository } from '@/databases/repositories/processed-data.repository';
@@ -166,9 +167,7 @@ export class ProcessedDataHelper implements IProcessedDataManager {
 	): Promise<ICheckProcessedOutput> {
 		const dbContext = ProcessedDataHelper.createContext(context, contextData);
 
-		if (contextData.workflow.id === undefined) {
-			throw new ApplicationError('Workflow has to have an ID set!');
-		}
+		assert.ok(contextData.workflow.id);
 
 		const processedData = await Container.get(ProcessedDataRepository).findOne({
 			where: {
@@ -285,6 +284,7 @@ export class ProcessedDataHelper implements IProcessedDataManager {
 		if (['latestIncrementalKey', 'latestDate'].includes(options.mode)) {
 			throw new ApplicationError('Removing processed data is not possible in mode "latest"');
 		}
+		assert.ok(contextData.workflow.id);
 
 		const processedData = await Container.get(ProcessedDataRepository).findOne({
 			where: {
