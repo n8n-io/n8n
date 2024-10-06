@@ -21,10 +21,10 @@ import type {
 import * as a from 'node:assert';
 import { runInNewContext, type Context } from 'node:vm';
 
-import { validateRunForAllItemsOutput, validateRunForEachItemOutput } from '@/result-validation';
+import type { TaskResultData } from '@/runner-types';
+import { type Task, TaskRunner } from '@/task-runner';
 
-import type { TaskResultData } from './runner-types';
-import { type Task, TaskRunner } from './task-runner';
+import { validateRunForAllItemsOutput, validateRunForEachItemOutput } from './result-validation';
 
 export interface JSExecSettings {
 	code: string;
