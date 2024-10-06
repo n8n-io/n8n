@@ -20,7 +20,7 @@ function readAndParseConfig(): Config {
 	}
 
 	return {
-		n8nUri: process.env.N8N_RUNNERS_N8N_URI ?? 'localhost:5678',
+		n8nUri: process.env.N8N_RUNNERS_N8N_URI ?? 'localhost:5679',
 		authToken,
 		grantToken,
 	};
