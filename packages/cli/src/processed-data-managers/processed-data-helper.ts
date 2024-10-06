@@ -125,7 +125,7 @@ export class ProcessedDataHelper implements IProcessedDataManager {
 		}
 
 		if (!processedData) {
-			// If there is nothing it the database all items are new
+			// If there is nothing in the database all items are new
 			returnData.new = items;
 			return returnData;
 		}
