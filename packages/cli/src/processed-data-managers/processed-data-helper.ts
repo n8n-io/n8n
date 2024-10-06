@@ -19,8 +19,32 @@ export class ProcessedDataHelper implements IProcessedDataManager {
 		items: ProcessedDataItemTypes[],
 		mode: ProcessedDataMode,
 	): ProcessedDataItemTypes[] {
-		return [...items].sort((a, b) => (ProcessedDataHelper.compareValues(mode, a, b) ? 1 : -1));
+		return items.slice().sort((a, b) => (ProcessedDataHelper.compareValues(mode, a, b) ? 1 : -1));
 	}
+	/**
+	 * Compares two values based on the provided mode ('latestIncrementalKey' or 'latestDate').
+	 *
+	 * @param {ProcessedDataMode} mode - The mode to determine the comparison logic. Can be either:
+	 *   - 'latestIncrementalKey': Compares numeric values and returns true if `value1` is greater than `value2`.
+	 *   - 'latestDate': Compares date strings and returns true if `value1` is a later date than `value2`.
+	 *
+	 * @param {ProcessedDataItemTypes} value1 - The first value to compare.
+	 *   - If the mode is 'latestIncrementalKey', this should be a numeric value or a string that can be converted to a number.
+	 *   - If the mode is 'latestDate', this should be a valid date string.
+	 *
+	 * @param {ProcessedDataItemTypes} value2 - The second value to compare.
+	 *   - If the mode is 'latestIncrementalKey', this should be a numeric value or a string that can be converted to a number.
+	 *   - If the mode is 'latestDate', this should be a valid date string.
+	 *
+	 * @returns {boolean} - Returns `true` if `value1` is greater than `value2` based on the comparison mode.
+	 *   - In 'latestIncrementalKey' mode, it returns `true` if `value1` is numerically greater than `value2`.
+	 *   - In 'latestDate' mode, it returns `true` if `value1` is a later date than `value2`.
+	 *
+	 * @throws {ApplicationError} - Throws an error if:
+	 *   - The mode is 'latestIncrementalKey' and the values are not valid numbers.
+	 *   - The mode is 'latestDate' and the values are not valid date strings.
+	 *   - An unsupported mode is provided.
+	 */
 
 	private static compareValues(
 		mode: ProcessedDataMode,
@@ -61,7 +85,7 @@ export class ProcessedDataHelper implements IProcessedDataManager {
 		if (context === 'node') {
 			if (!contextData.node) {
 				throw new ApplicationError(
-					"No node information has been provided and can so not use context 'node'",
+					"No node information has been provided and so cannot use context 'node'",
 				);
 			}
 			// Use the node ID to make sure that the data can still be accessed and does not get deleted
@@ -122,8 +146,9 @@ export class ProcessedDataHelper implements IProcessedDataManager {
 
 		const hashedItems = items.map((item) => ProcessedDataHelper.createValueHash(item));
 
+		const processedDataSet = new Set(processedData.value.data as string[]);
 		hashedItems.forEach((item, index) => {
-			if ((processedData.value.data as string[]).find((entry) => entry === item)) {
+			if (processedDataSet.has(item)) {
 				returnData.processed.push(items[index]);
 			} else {
 				returnData.new.push(items[index]);

@@ -65,16 +65,6 @@ export interface IProcessedDataEntries {
 }
 
 // ----------------------------------
-//               settings
-// ----------------------------------
-
-export interface ISettingsDb {
-	key: string;
-	value: string | boolean | IDataObject | number;
-	loadOnStartup: boolean;
-}
-
-// ----------------------------------
 //               tags
 // ----------------------------------
 

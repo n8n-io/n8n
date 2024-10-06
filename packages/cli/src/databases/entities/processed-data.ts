@@ -1,4 +1,4 @@
-import { Column, Entity, Index, PrimaryColumn } from '@n8n/typeorm';
+import { Column, Entity, PrimaryColumn } from '@n8n/typeorm';
 
 import type { IProcessedDataEntries, IProcessedDataLatest } from '@/interfaces';
 

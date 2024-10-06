@@ -15,7 +15,6 @@ import { compareItems, flattenKeys } from '@utils/utilities';
 import { removeDuplicatesNodeFields } from './RemoveDuplicatesV2.description';
 import { prepareFieldsArray } from '../../utils/utils';
 import { validateInputData } from '../utils';
-import { rm as fsRm } from 'fs/promises';
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Remove Duplicates',
 	name: 'removeDuplicates',
