@@ -1,5 +1,5 @@
 import type { VIEWS } from '@/constants';
-import type { IWorkflowDb, Schema } from '@/Interface';
+import type { IWorkflowDb, NodeAuthenticationOption, Schema } from '@/Interface';
 import type {
 	ICredentialType,
 	IDataObject,
