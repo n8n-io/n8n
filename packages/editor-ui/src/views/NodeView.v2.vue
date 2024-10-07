@@ -625,9 +625,7 @@ function onPinNodes(ids: string[], source: PinDataSource) {
 }
 
 async function onSaveWorkflow() {
-	if (isCanvasReadOnly.value) {
-		return;
-	}
+	if (isCanvasReadOnly.value) return;
 
 	const saved = await workflowHelpers.saveCurrentWorkflow();
 	if (saved) {
