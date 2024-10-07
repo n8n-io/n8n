@@ -1,4 +1,5 @@
 import { InstanceSettings } from 'n8n-core';
+import { ApplicationError } from 'n8n-workflow';
 import { Service } from 'typedi';
 
 import config from '@/config';
@@ -29,8 +30,18 @@ export class PubSubHandler {
 	) {}
 
 	init() {
-		if (this.instanceSettings.instanceType === 'webhook') this.setupWebhookHandlers();
-		if (this.instanceSettings.instanceType === 'worker') this.setupWorkerHandlers();
+		switch (this.instanceSettings.instanceType) {
+			case 'webhook':
+				this.setupWebhookHandlers();
+				break;
+			case 'worker':
+				this.setupWorkerHandlers();
+				break;
+			default:
+				throw new ApplicationError('PubSubHandler found unsupported process type', {
+					extra: { type: this.instanceSettings.instanceType },
+				});
+		}
 	}
 
 	private setupHandlers<EventNames extends keyof PubSubEventMap>(
