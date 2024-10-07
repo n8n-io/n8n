@@ -10,7 +10,7 @@ const emit = defineEmits<{
 
 const $style = useCssModule();
 
-const { label, isConnected, isConnecting, isRequired, type, runData } = useCanvasNodeHandle();
+const { label, isConnected, isConnecting, isRequired, type } = useCanvasNodeHandle();
 
 const handleClasses = 'target';
 
@@ -29,8 +29,6 @@ const isHandlePlusAvailable = computed(
 const isHandlePlusVisible = computed(
 	() => !isConnecting.value || isHovered.value || supportsMultipleConnections.value,
 );
-
-const plusType = computed(() => (runData.value ? 'success' : 'ai'));
 
 const isHovered = ref(false);
 
@@ -55,7 +53,7 @@ function onClickAdd() {
 				v-if="isHandlePlusAvailable"
 				v-show="isHandlePlusVisible"
 				:handle-classes="handleClasses"
-				:type="plusType"
+				type="secondary"
 				position="bottom"
 				@mouseenter="onMouseEnter"
 				@mouseleave="onMouseLeave"
