@@ -33,7 +33,7 @@ const canUserActivateLicense = computed(() =>
 );
 
 const badgedPlanName = computed(() => {
-	const [name, badge] = usageStore.planName.split(' ');
+	const [badge, name] = usageStore.planName.split(' ');
 	return {
 		name,
 		badge,
@@ -41,7 +41,7 @@ const badgedPlanName = computed(() => {
 });
 
 const isCommunityEditionRegistered = computed(
-	() => usageStore.planName.toLowerCase() === 'community registered',
+	() => usageStore.planName.toLowerCase() === 'registered community',
 );
 
 const showActivationSuccess = () => {

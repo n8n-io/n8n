@@ -2658,5 +2658,20 @@
 	"becomeCreator.closeButtonTitle": "Close",
 	"feedback.title": "Was this helpful?",
 	"feedback.positive": "I found this helpful",
-	"feedback.negative": "I didn't find this helpful"
+	"feedback.negative": "I didn't find this helpful",
+	"communityPlusModal.badge": "Time limited offer",
+	"communityPlusModal.title": "Unlock select paid features for free (forever)",
+	"communityPlusModal.error.title": "License request failed",
+	"communityPlusModal.success.title": "Request sent",
+	"communityPlusModal.success.message": "License key will be sent to {email}",
+	"communityPlusModal.description": "Receive a free activation key for the advanced features below - lifetime access.",
+	"communityPlusModal.features.first.title": "Workflow history",
+	"communityPlusModal.features.first.description": "Review and restore any workflow version from the last 24 hours",
+	"communityPlusModal.features.second.title": "Advanced debugging",
+	"communityPlusModal.features.second.description": "Easily fix any workflow execution that’s errored, then re-run it",
+	"communityPlusModal.features.third.title": "Execution search and tagging",
+	"communityPlusModal.features.third.description": "Search and organize past workflow executions for easier review",
+	"communityPlusModal.input.email.label": "Enter email to receive your license key",
+	"communityPlusModal.button.skip": "Skip",
+	"communityPlusModal.button.confirm": "Send me a free license key"
 }
