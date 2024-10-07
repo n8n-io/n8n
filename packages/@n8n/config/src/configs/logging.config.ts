@@ -63,6 +63,6 @@ export class LoggingConfig {
 	 * `N8N_LOG_SCOPES=license,waiting`
 	 */
 	@Env('N8N_LOG_SCOPES')
-	@IsIn(LOG_SCOPES)
+	@IsIn(LOG_SCOPES, { allowEmpty: true })
 	scopes: StringArray<LogScope> = [];
 }

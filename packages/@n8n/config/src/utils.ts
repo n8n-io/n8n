@@ -6,8 +6,13 @@ export class StringArray<T extends string> extends Array<T> {
 	}
 }
 
-export function IsIn<T>(allowedValues: readonly T[]) {
-	return function (target: object, propertyKey: string) {
+export function IsIn<T>(
+	allowedValues: readonly T[],
+	{ allowEmpty }: { allowEmpty: boolean },
+): PropertyDecorator {
+	return function (target: object, propertyKey: string | symbol) {
+		const field = String(propertyKey);
+
 		let value: T[];
 
 		const getter = function () {
@@ -17,14 +22,17 @@ export function IsIn<T>(allowedValues: readonly T[]) {
 		const setter = function (newVal: T[]) {
 			if (!Array.isArray(newVal)) {
 				// eslint-disable-next-line n8n-local-rules/no-plain-errors
-				throw new Error(`${propertyKey} must be an array.`);
+				throw new Error(`${field} must be an array.`);
+			}
+
+			if (allowEmpty && newVal.length === 0) {
+				value = newVal;
+				return;
 			}
 
 			if (newVal.length > 0 && !newVal.every((item) => allowedValues.includes(item))) {
 				// eslint-disable-next-line n8n-local-rules/no-plain-errors
-				throw new Error(
-					`Every item in \`${propertyKey}\` must be one of ${allowedValues.join(', ')}`,
-				);
+				throw new Error(`Every item in \`${field}\` must be one of ${allowedValues.join(', ')}`);
 			}
 
 			value = newVal;

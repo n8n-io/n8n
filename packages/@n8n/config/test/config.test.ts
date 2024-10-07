@@ -248,7 +248,8 @@ describe('GlobalConfig', () => {
 	it('should use all default values when no env variables are defined', () => {
 		process.env = {};
 		const config = Container.get(GlobalConfig);
-
+		// console.log('defaultConfig', defaultConfig);
+		console.log('config.logging', config.logging);
 		expect(deepCopy(config)).toEqual(defaultConfig);
 		expect(mockFs.readFileSync).not.toHaveBeenCalled();
 	});
