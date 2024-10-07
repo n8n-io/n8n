@@ -103,6 +103,8 @@ export namespace ChatRequest {
 		};
 	}
 
+	export type AssistantContext = UserContext & WorkflowContext;
+
 	export type RequestPayload =
 		| {
 				payload: InitErrorHelper | InitSupportChat | InitCredHelp;

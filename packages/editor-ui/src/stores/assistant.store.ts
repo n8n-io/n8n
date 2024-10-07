@@ -346,7 +346,9 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	/**
 	 * Gets information about the current view and active node to provide context to the assistant
 	 */
-	function getVisualContext(nodeInfo?: ChatRequest.NodeInfo): ChatRequest.UserContext | undefined {
+	function getVisualContext(
+		nodeInfo?: ChatRequest.NodeInfo,
+	): ChatRequest.AssistantContext | undefined {
 		if (chatSessionTask.value === 'error') {
 			return undefined;
 		}
@@ -394,6 +396,10 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 						authType: nodeInfo?.authType?.name,
 					}
 				: undefined,
+			currentWorkflow: workflowDataStale.value ? workflowsStore.workflow : undefined,
+			executionData: workflowExecutionDataStale.value
+				? workflowsStore.workflowExecutionData?.data?.resultData
+				: undefined,
 		};
 	}
 
@@ -423,17 +429,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			user: {
 				firstName: usersStore.currentUser?.firstName ?? '',
 			},
-			// TODO:
-			// - Rename context --> userContext
-			// - Only send if there is no active node or credentials
-			// - Get workflow context in separate function
 			context: visualContext,
-			workflowContext: {
-				currentWorkflow: workflowDataStale.value ? workflowsStore.workflow : undefined,
-				executionData: workflowExecutionDataStale.value
-					? workflowsStore.workflowExecutionData?.data?.resultData
-					: undefined,
-			},
 			question: userMessage,
 		};
 		if (credentialType) {
