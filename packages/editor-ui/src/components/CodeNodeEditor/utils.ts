@@ -9,6 +9,8 @@ export function walk<T extends RangeNode>(
 	test: (node: Node) => boolean,
 	found: Node[] = [],
 ) {
+	if (!node) return found as T[];
+
 	// @ts-ignore
 	if (test(node)) found.push(node);
 
