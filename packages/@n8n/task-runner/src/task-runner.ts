@@ -257,11 +257,8 @@ export abstract class TaskRunner {
 			const data = await this.executeTask(task);
 			this.taskDone(taskId, data);
 		} catch (e) {
-			if (ensureError(e)) {
-				this.taskErrored(taskId, (e as Error).message);
-			} else {
-				this.taskErrored(taskId, e);
-			}
+			const error = ensureError(e);
+			this.taskErrored(taskId, error);
 		}
 	}
 
