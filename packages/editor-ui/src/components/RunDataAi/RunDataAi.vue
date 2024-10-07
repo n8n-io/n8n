@@ -161,11 +161,11 @@ function getTreeNodeData(nodeName: string, currentDepth: number): TreeNode[] {
 		connections[key][0].flatMap((node) => getTreeNodeData(node.node, currentDepth + 1)),
 	);
 
+	children.sort((a, b) => a.startTime - b.startTime);
+
 	if (resultData.length) {
 		return resultData.map((r) => createNode(nodeName, currentDepth, r, children));
 	}
-
-	children.sort((a, b) => a.startTime - b.startTime);
 
 	return [createNode(nodeName, currentDepth, undefined, children)];
 }

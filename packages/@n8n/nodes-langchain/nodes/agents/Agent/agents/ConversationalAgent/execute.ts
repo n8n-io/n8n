@@ -1,19 +1,19 @@
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
-import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
-
-import { initializeAgentExecutorWithOptions } from 'langchain/agents';
 import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
 import type { BaseOutputParser } from '@langchain/core/output_parsers';
 import { PromptTemplate } from '@langchain/core/prompts';
+import { initializeAgentExecutorWithOptions } from 'langchain/agents';
 import { CombiningOutputParser } from 'langchain/output_parsers';
+import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+
 import {
 	isChatInstance,
 	getPromptInputByType,
-	getOptionalOutputParsers,
 	getConnectedTools,
 } from '../../../../../utils/helpers';
-import { getTracingConfig } from '../../../../../utils/tracing';
+import { getOptionalOutputParsers } from '../../../../../utils/output_parsers/N8nOutputParser';
 import { throwIfToolSchema } from '../../../../../utils/schemaParsing';
+import { getTracingConfig } from '../../../../../utils/tracing';
 
 export async function conversationalAgentExecute(
 	this: IExecuteFunctions,

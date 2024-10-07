@@ -1,7 +1,6 @@
 import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
 import { HumanMessage } from '@langchain/core/messages';
 import type { BaseMessage } from '@langchain/core/messages';
-import type { BaseOutputParser, StructuredOutputParser } from '@langchain/core/output_parsers';
 import type { BaseMessagePromptTemplateLike } from '@langchain/core/prompts';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
 import { RunnableSequence } from '@langchain/core/runnables';
@@ -9,7 +8,6 @@ import type { Tool } from '@langchain/core/tools';
 import { DynamicStructuredTool } from '@langchain/core/tools';
 import type { AgentAction, AgentFinish } from 'langchain/agents';
 import { AgentExecutor, createToolCallingAgent } from 'langchain/agents';
-import { OutputFixingParser } from 'langchain/output_parsers';
 import { omit } from 'lodash';
 import { BINARY_ENCODING, jsonParse, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
@@ -20,24 +18,16 @@ import { SYSTEM_MESSAGE } from './prompt';
 import {
 	isChatInstance,
 	getPromptInputByType,
-	getOptionalOutputParsers,
 	getConnectedTools,
 } from '../../../../../utils/helpers';
+import {
+	getOptionalOutputParsers,
+	type N8nOutputParser,
+} from '../../../../../utils/output_parsers/N8nOutputParser';
 
-function getOutputParserSchema(outputParser: BaseOutputParser): ZodObject<any, any, any, any> {
-	const parserType = outputParser.lc_namespace[outputParser.lc_namespace.length - 1];
-	let schema: ZodObject<any, any, any, any>;
-
-	if (parserType === 'structured') {
-		// If the output parser is a structured output parser, we will use the schema from the parser
-		schema = (outputParser as StructuredOutputParser<ZodObject<any, any, any, any>>).schema;
-	} else if (parserType === 'fix' && outputParser instanceof OutputFixingParser) {
-		// If the output parser is a fixing parser, we will use the schema from the connected structured output parser
-		schema = (outputParser.parser as StructuredOutputParser<ZodObject<any, any, any, any>>).schema;
-	} else {
-		// If the output parser is not a structured output parser, we will use a fallback schema
-		schema = z.object({ text: z.string() });
-	}
+function getOutputParserSchema(outputParser: N8nOutputParser): ZodObject<any, any, any, any> {
+	const schema =
+		(outputParser.getSchema() as ZodObject<any, any, any, any>) ?? z.object({ text: z.string() });
 
 	return schema;
 }
@@ -205,10 +195,9 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 			const responseParserTool = steps.find((step) => step.tool === 'format_final_response');
 			if (responseParserTool) {
 				const toolInput = responseParserTool?.toolInput;
-				const returnValues = (await outputParser.parse(toolInput as unknown as string)) as Record<
-					string,
-					unknown
-				>;
+				// Check if the tool input is a string or an object and convert it to a string
+				const parserInput = toolInput instanceof Object ? JSON.stringify(toolInput) : toolInput;
+				const returnValues = (await outputParser.parse(parserInput)) as Record<string, unknown>;
 
 				return handleParsedStepOutput(returnValues);
 			}

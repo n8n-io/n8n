@@ -9,9 +9,7 @@ import { BaseRetriever } from '@langchain/core/retrievers';
 import type { Tool } from '@langchain/core/tools';
 import { VectorStore } from '@langchain/core/vectorstores';
 import { TextSplitter } from '@langchain/textsplitters';
-import { BaseOutputParser } from '@langchain/core/output_parsers';
 import type { BaseDocumentLoader } from 'langchain/dist/document_loaders/base';
-import { isObject } from 'lodash';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError, NodeConnectionType } from 'n8n-workflow';
 
@@ -106,7 +104,6 @@ export function logWrapper(
 		| Tool
 		| BaseChatMemory
 		| BaseChatMessageHistory
-		| BaseOutputParser
 		| BaseRetriever
 		| Embeddings
 		| Document[]
@@ -215,44 +212,6 @@ export function logWrapper(
 					};
 				}
 			}
-
-			// ========== BaseOutputParser ==========
-			// if (originalInstance instanceof BaseOutputParser) {
-			// 	if (prop === 'parse' && 'parse' in target) {
-			// 		return async (text: string | Record<string, unknown>): Promise<unknown> => {
-			// 			connectionType = NodeConnectionType.AiOutputParser;
-			// 			const stringifiedText = isObject(text) ? JSON.stringify(text) : text;
-			// 			const { index } = executeFunctions.addInputData(connectionType, [
-			// 				[{ json: { action: 'parse', text: stringifiedText } }],
-			// 			]);
-
-			// 			try {
-			// 				const response = (await callMethodAsync.call(target, {
-			// 					executeFunctions,
-			// 					connectionType,
-			// 					currentNodeRunIndex: index,
-			// 					method: target[prop],
-			// 					arguments: [stringifiedText],
-			// 				})) as object;
-
-			// 				void logAiEvent(executeFunctions, 'ai-output-parsed', { text, response });
-			// 				executeFunctions.addOutputData(connectionType, index, [
-			// 					[{ json: { action: 'parse', response } }],
-			// 				]);
-			// 				return response;
-			// 			} catch (error) {
-			// 				void logAiEvent(executeFunctions, 'ai-output-parsed', {
-			// 					text,
-			// 					response: error.message ?? error,
-			// 				});
-			// 				executeFunctions.addOutputData(connectionType, index, [
-			// 					[{ json: { action: 'parse', response: error.message ?? error } }],
-			// 				]);
-			// 				throw error;
-			// 			}
-			// 		};
-			// 	}
-			// }
 
 			// ========== BaseRetriever ==========
 			if (originalInstance instanceof BaseRetriever) {
