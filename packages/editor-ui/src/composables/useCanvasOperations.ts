@@ -610,10 +610,10 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 			if (nodeData.type !== STICKY_NODE_TYPE) {
 				void externalHooks.run('nodeView.addNodeButton', { nodeTypeName: nodeData.type });
-			}
 
-			if (options.openNDV && !preventOpeningNDV) {
-				ndvStore.setActiveNodeName(nodeData.name);
+				if (options.openNDV && !preventOpeningNDV) {
+					ndvStore.setActiveNodeName(nodeData.name);
+				}
 			}
 		});
 
@@ -1435,6 +1435,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		workflowsStore.currentWorkflowExecutions = [];
 
 		// Reset actions
+		uiStore.resetLastInteractedWith();
 		uiStore.removeActiveAction('workflowRunning');
 		uiStore.stateIsDirty = false;
 
