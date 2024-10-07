@@ -1,12 +1,12 @@
 import { useActiveElement, useEventListener } from '@vueuse/core';
 import { useDeviceSupport } from 'n8n-design-system';
-import type { MaybeRef } from 'vue';
-import { computed, toValue, type MaybeRefOrGetter, unref } from 'vue';
+import type { MaybeRef, Ref } from 'vue';
+import { computed, toValue, unref } from 'vue';
 
 type KeyMap = Record<string, (event: KeyboardEvent) => void>;
 
 export const useKeybindings = (
-	keymap: MaybeRefOrGetter<KeyMap>,
+	keymap: Ref<KeyMap>,
 	options?: {
 		disabled: MaybeRef<boolean>;
 	},
