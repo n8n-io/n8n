@@ -8,10 +8,10 @@ import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-mess
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
 import { JobProcessor } from '@/scaling/job-processor';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { PubSubHandler } from '@/scaling/pubsub/pubsub-handler';
+import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import type { ScalingService } from '@/scaling/scaling.service';
 import type { WorkerServerEndpointsConfig } from '@/scaling/worker-server';
-import { OrchestrationHandlerWorkerService } from '@/services/orchestration/worker/orchestration.handler.worker.service';
 import { OrchestrationWorkerService } from '@/services/orchestration/worker/orchestration.worker.service';
 
 import { BaseCommand } from './base-command';
@@ -128,12 +128,11 @@ export class Worker extends BaseCommand {
 	 */
 	async initOrchestration() {
 		await Container.get(OrchestrationWorkerService).init();
-		await Container.get(OrchestrationHandlerWorkerService).initWithOptions({
-			queueModeId: this.queueModeId,
-			publisher: Container.get(Publisher),
-			getRunningJobIds: () => this.jobProcessor.getRunningJobIds(),
-			getRunningJobsSummary: () => this.jobProcessor.getRunningJobsSummary(),
-		});
+
+		Container.get(PubSubHandler).init();
+		const subscriber = Container.get(Subscriber);
+		await subscriber.subscribe('n8n.commands');
+		subscriber.setCommandMessageHandler();
 	}
 
 	async setConcurrency() {

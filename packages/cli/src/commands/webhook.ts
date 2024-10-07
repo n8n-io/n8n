@@ -112,10 +112,9 @@ export class Webhook extends BaseCommand {
 	async initOrchestration() {
 		await Container.get(OrchestrationWebhookService).init();
 
+		Container.get(PubSubHandler).init();
 		const subscriber = Container.get(Subscriber);
 		await subscriber.subscribe('n8n.commands');
 		subscriber.setCommandMessageHandler();
-
-		Container.get(PubSubHandler).init();
 	}
 }
