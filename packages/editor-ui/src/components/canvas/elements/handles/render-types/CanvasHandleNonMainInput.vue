@@ -30,8 +30,6 @@ const isHandlePlusVisible = computed(
 	() => !isConnecting.value || isHovered.value || supportsMultipleConnections.value,
 );
 
-const plusType = computed(() => ((runData.value?.total ?? 0) > 0 ? 'success' : 'ai'));
-
 const isHovered = ref(false);
 
 function onMouseEnter() {
@@ -55,7 +53,7 @@ function onClickAdd() {
 				v-if="isHandlePlusAvailable"
 				v-show="isHandlePlusVisible"
 				:handle-classes="handleClasses"
-				:type="plusType"
+				type="ai"
 				position="bottom"
 				@mouseenter="onMouseEnter"
 				@mouseleave="onMouseLeave"
