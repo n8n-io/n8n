@@ -80,10 +80,10 @@ export class AddApiKeysTable1724951148974 implements ReversibleMigration {
 	async down({
 		queryRunner,
 		runQuery,
-		schemaBuilder: { dropTable, addColumns, createIndex, column },
+		tablePrefix,
+		schemaBuilder: { dropTable, createIndex },
 		escape,
 	}: MigrationContext) {
-		const userTable = escape.tableName('user');
 		const userApiKeysTable = escape.tableName('user_api_keys');
 		const apiKeyColumn = escape.columnName('apiKey');
 		const userIdColumn = escape.columnName('userId');
@@ -108,7 +108,7 @@ export class AddApiKeysTable1724951148974 implements ReversibleMigration {
 			Partial<ApiKey>
 		>;
 
-		await addColumns('user', [column('apiKey').varchar()]);
+		await queryRunner.query(`ALTER TABLE ${tablePrefix}user ADD COLUMN "apiKey" varchar;`);
 
 		await createIndex('user', ['apiKey'], true);
 
@@ -116,7 +116,7 @@ export class AddApiKeysTable1724951148974 implements ReversibleMigration {
 			oldestApiKeysPerUser.map(
 				async (user: { userId: string; apiKey: string }) =>
 					await runQuery(
-						`UPDATE ${userTable} SET ${apiKeyColumn} = :apiKey WHERE ${idColumn} = :userId`,
+						`UPDATE ${tablePrefix}user SET ${apiKeyColumn} = :apiKey WHERE ${idColumn} = :userId`,
 						user,
 					),
 			),
