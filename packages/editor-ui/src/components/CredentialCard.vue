@@ -21,6 +21,10 @@ const CREDENTIAL_LIST_ITEM_ACTIONS = {
 	MOVE: 'move',
 };
 
+const emit = defineEmits<{
+	click: [credentialId: string];
+}>();
+
 const props = withDefaults(
 	defineProps<{
 		data: ICredentialsResponse;
@@ -83,7 +87,7 @@ const formattedCreatedAtDate = computed(() => {
 });
 
 function onClick() {
-	uiStore.openExistingCredential(props.data.id);
+	emit('click', props.data.id);
 }
 
 async function onAction(action: string) {
