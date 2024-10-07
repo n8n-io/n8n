@@ -13,7 +13,7 @@ import {
 } from 'n8n-workflow';
 
 import isEmpty from 'lodash/isEmpty';
-import type { IEmail } from '../../../../utils/interfaces';
+import type { IEmail } from '../../../../utils/sendAndWait/interfaces';
 import {
 	encodeEmail,
 	extractEmail,

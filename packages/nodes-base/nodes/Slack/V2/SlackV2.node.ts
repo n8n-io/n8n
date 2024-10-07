@@ -44,7 +44,7 @@ import {
 	getTarget,
 	createSendAndWaitMessageBody,
 } from './GenericFunctions';
-import { getSendAndWaitProperties, sendAndWaitWebhook } from '../../../utils/sendAndWait.utils';
+import { getSendAndWaitProperties, sendAndWaitWebhook } from '../../../utils/sendAndWait/utils';
 
 export class SlackV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -84,6 +84,7 @@ export class SlackV2 implements INodeType {
 					name: 'default',
 					httpMethod: 'GET',
 					responseMode: 'onReceived',
+					responseData: '',
 					path: '={{ $nodeId }}',
 					restartWebhook: true,
 					isFullPath: true,

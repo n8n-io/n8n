@@ -15,7 +15,7 @@ import {
 	WAIT_TIME_UNLIMITED,
 } from 'n8n-workflow';
 
-import type { IEmail } from '../../../../utils/interfaces';
+import type { IEmail } from '../../../../utils/sendAndWait/interfaces';
 import {
 	encodeEmail,
 	googleApiRequest,
@@ -42,7 +42,7 @@ import {
 	getSendAndWaitProperties,
 	createEmail,
 	sendAndWaitWebhook,
-} from '../../../../utils/sendAndWait.utils';
+} from '../../../../utils/sendAndWait/utils';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Gmail',
@@ -83,6 +83,7 @@ const versionDescription: INodeTypeDescription = {
 			name: 'default',
 			httpMethod: 'GET',
 			responseMode: 'onReceived',
+			responseData: '',
 			path: '={{ $nodeId }}',
 			restartWebhook: true,
 			isFullPath: true,

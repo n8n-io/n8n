@@ -27,7 +27,7 @@ export interface IAttachments {
 import MailComposer from 'nodemailer/lib/mail-composer';
 import { getGoogleAccessToken } from '../GenericFunctions';
 import { escapeHtml } from '../../../utils/utilities';
-import type { IEmail } from '../../../utils/interfaces';
+import type { IEmail } from '../../../utils/sendAndWait/interfaces';
 
 export async function googleApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,

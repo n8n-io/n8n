@@ -11,7 +11,7 @@ import type {
 import { NodeOperationError } from 'n8n-workflow';
 
 import get from 'lodash/get';
-import { getSendAndWaitConfig } from '../../../utils/sendAndWait.utils';
+import { getSendAndWaitConfig } from '../../../utils/sendAndWait/utils';
 
 export async function slackApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
