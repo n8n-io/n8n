@@ -306,6 +306,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 				tools: assistantTools,
 			});
 		}
+		// Exclude configuration and runId properties from the response
 		filteredResponse = omit(response, ['signal', 'timeout', 'content', 'runId']) as IDataObject;
 	} catch (error) {
 		if (!(error instanceof ApplicationError)) {
