@@ -242,7 +242,7 @@ const fallbackNodes = computed<INodeUi[]>(() =>
 );
 
 const keyBindingsEnabled = computed(() => {
-	return !ndvStore.activeNode;
+	return !ndvStore.activeNode && uiStore.activeModals.length === 0;
 });
 
 /**
@@ -372,7 +372,7 @@ async function initializeWorkspaceForExistingWorkflow(id: string) {
 
 async function openWorkflow(data: IWorkflowDb) {
 	resetWorkspace();
-	workflowHelpers.setDocumentTitle(editableWorkflow.value.name, 'IDLE');
+	workflowHelpers.setDocumentTitle(data.name, 'IDLE');
 
 	await initializeWorkspace(data);
 
@@ -551,11 +551,11 @@ async function onCopyNodes(ids: string[]) {
 }
 
 async function onClipboardPaste(plainTextData: string): Promise<void> {
-	if (getNodeViewTab(route) !== MAIN_HEADER_TABS.WORKFLOW) {
-		return;
-	}
-
-	if (!checkIfEditingIsAllowed()) {
+	if (
+		getNodeViewTab(route) !== MAIN_HEADER_TABS.WORKFLOW ||
+		!keyBindingsEnabled.value ||
+		!checkIfEditingIsAllowed()
+	) {
 		return;
 	}
 
