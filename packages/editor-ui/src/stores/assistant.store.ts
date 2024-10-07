@@ -579,7 +579,9 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			) {
 				nodeExecutionStatus.value = 'not_executed';
 			}
-			const userContext = getVisualContext();
+			const activeNode = workflowsStore.activeNode() as INode;
+			const nodeInfo = assistantHelpers.getNodeInfoForAssistant(activeNode);
+			const userContext = getVisualContext(nodeInfo);
 
 			chatWithAssistant(
 				rootStore.restApiContext,
