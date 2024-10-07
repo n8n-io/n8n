@@ -1,7 +1,7 @@
 import { computed, reactive } from 'vue';
 import { defineStore } from 'pinia';
 import type { UsageState } from '@/Interface';
-import { activateLicenseKey, getLicense, renewLicense, requestLicenseTrial } from '@/api/usage';
+import * as usageApi from '@/api/usage';
 import { useRootStore } from '@/stores/root.store';
 import { useSettingsStore } from '@/stores/settings.store';
 
@@ -63,19 +63,19 @@ export const useUsageStore = defineStore('usage', () => {
 	};
 
 	const getLicenseInfo = async () => {
-		const data = await getLicense(rootStore.restApiContext);
+		const data = await usageApi.getLicense(rootStore.restApiContext);
 		setData(data);
 	};
 
 	const activateLicense = async (activationKey: string) => {
-		const data = await activateLicenseKey(rootStore.restApiContext, { activationKey });
+		const data = await usageApi.activateLicenseKey(rootStore.restApiContext, { activationKey });
 		setData(data);
 		await settingsStore.getSettings();
 	};
 
 	const refreshLicenseManagementToken = async () => {
 		try {
-			const data = await renewLicense(rootStore.restApiContext);
+			const data = await usageApi.renewLicense(rootStore.restApiContext);
 			setData(data);
 		} catch (error) {
 			await getLicenseInfo();
@@ -83,8 +83,11 @@ export const useUsageStore = defineStore('usage', () => {
 	};
 
 	const requestEnterpriseLicenseTrial = async () => {
-		await requestLicenseTrial(rootStore.restApiContext);
+		await usageApi.requestLicenseTrial(rootStore.restApiContext);
 	};
+
+	const registerCommunityEdition = async (email: string) =>
+		await usageApi.registerCommunityEdition(rootStore.restApiContext, { email });
 
 	return {
 		setLoading,
@@ -93,6 +96,7 @@ export const useUsageStore = defineStore('usage', () => {
 		activateLicense,
 		refreshLicenseManagementToken,
 		requestEnterpriseLicenseTrial,
+		registerCommunityEdition,
 		planName,
 		planId,
 		executionLimit,
