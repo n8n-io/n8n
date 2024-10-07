@@ -7,7 +7,7 @@ import { createTransport } from 'nodemailer';
 import type SMTPConnection from 'nodemailer/lib/smtp-connection';
 import { Service } from 'typedi';
 
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 
 import type { MailData, SendEmailResult } from './interfaces';
 

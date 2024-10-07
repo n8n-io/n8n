@@ -19,6 +19,7 @@ import { sublimeSearch } from '@/utils/sortUtils';
 import type { NodeViewItemSection } from './viewsData';
 import { i18n } from '@/plugins/i18n';
 import { sortBy } from 'lodash-es';
+import * as changeCase from 'change-case';
 
 import { usePostHog } from '@/stores/posthog.store';
 
@@ -177,3 +178,11 @@ export function groupItemsInSections(
 
 	return result;
 }
+
+export const formatTriggerActionName = (actionPropertyName: string) => {
+	let name = actionPropertyName;
+	if (actionPropertyName.includes('.')) {
+		name = actionPropertyName.split('.').join(' ');
+	}
+	return changeCase.noCase(name);
+};

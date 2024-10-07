@@ -11,7 +11,7 @@ import type { ExecutionRepository } from '@/databases/repositories/execution.rep
 import { InvalidConcurrencyLimitError } from '@/errors/invalid-concurrency-limit.error';
 import type { EventService } from '@/events/event.service';
 import type { IExecutingWorkflowData } from '@/interfaces';
-import type { Logger } from '@/logger';
+import type { Logger } from '@/logging/logger.service';
 import type { Telemetry } from '@/telemetry';
 
 import { ConcurrencyQueue } from '../concurrency-queue';

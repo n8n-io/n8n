@@ -4,7 +4,8 @@ import { Container } from 'typedi';
 
 import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
-import { OrchestrationHandlerWebhookService } from '@/services/orchestration/webhook/orchestration.handler.webhook.service';
+import { PubSubHandler } from '@/scaling/pubsub/pubsub-handler';
+import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { OrchestrationWebhookService } from '@/services/orchestration/webhook/orchestration.webhook.service';
 import { WebhookServer } from '@/webhooks/webhook-server';
 
@@ -112,6 +113,10 @@ export class Webhook extends BaseCommand {
 
 	async initOrchestration() {
 		await Container.get(OrchestrationWebhookService).init();
-		await Container.get(OrchestrationHandlerWebhookService).init();
+
+		Container.get(PubSubHandler).init();
+		const subscriber = Container.get(Subscriber);
+		await subscriber.subscribe('n8n.commands');
+		subscriber.setCommandMessageHandler();
 	}
 }

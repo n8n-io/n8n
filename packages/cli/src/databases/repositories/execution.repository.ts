@@ -47,7 +47,7 @@ import type {
 	IExecutionFlattedDb,
 	IExecutionResponse,
 } from '@/interfaces';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { separate } from '@/utils';
 
 import { ExecutionDataRepository } from './execution-data.repository';
@@ -338,10 +338,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			this.delete(ids.executionId),
 			this.binaryDataService.deleteMany([ids]),
 		]);
-	}
-
-	async updateStatus(executionId: string, status: ExecutionStatus) {
-		await this.update({ id: executionId }, { status });
 	}
 
 	async setRunning(executionId: string) {

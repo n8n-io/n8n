@@ -6,7 +6,7 @@ import { Service } from 'typedi';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { NodeTypes } from '@/node-types';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import { WebhookService } from '@/webhooks/webhook.service';
@@ -160,8 +160,9 @@ export class LiveWebhooks implements IWebhookManager {
 		}
 
 		const webhook = await this.webhookService.findWebhook(httpMethod, path);
+		const webhookMethods = await this.getWebhookMethods(path);
 		if (webhook === null) {
-			throw new WebhookNotFoundError({ path, httpMethod }, { hint: 'production' });
+			throw new WebhookNotFoundError({ path, httpMethod, webhookMethods }, { hint: 'production' });
 		}
 
 		return webhook;

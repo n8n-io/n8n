@@ -11,7 +11,6 @@ import CanvasHandleMainOutput from '@/components/canvas/elements/handles/render-
 import CanvasHandleNonMainInput from '@/components/canvas/elements/handles/render-types/CanvasHandleNonMainInput.vue';
 import CanvasHandleNonMainOutput from '@/components/canvas/elements/handles/render-types/CanvasHandleNonMainOutput.vue';
 import { CanvasNodeHandleKey } from '@/constants';
-import { createCanvasConnectionHandleString } from '@/utils/canvasUtilsV2';
 import { useCanvasNode } from '@/composables/useCanvasNode';
 
 const props = defineProps<
@@ -44,14 +43,6 @@ const style = useCssModule();
 
 const handleType = computed(() =>
 	props.mode === CanvasConnectionMode.Input ? 'target' : 'source',
-);
-
-const handleString = computed(() =>
-	createCanvasConnectionHandleString({
-		mode: props.mode,
-		type: props.type,
-		index: props.index,
-	}),
 );
 
 const handleClasses = computed(() => [style.handle, style[props.type], style[props.mode]]);
@@ -121,7 +112,7 @@ const RenderType = () => {
  */
 
 function onAdd() {
-	emit('add', handleString.value);
+	emit('add', props.handleId);
 }
 
 /**
@@ -152,7 +143,7 @@ provide(CanvasNodeHandleKey, {
 <template>
 	<Handle
 		v-bind="$attrs"
-		:id="handleString"
+		:id="handleId"
 		:class="handleClasses"
 		:type="handleType"
 		:position="position"

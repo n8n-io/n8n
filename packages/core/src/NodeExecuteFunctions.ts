@@ -139,6 +139,7 @@ import { Readable } from 'stream';
 import Container from 'typedi';
 import url, { URL, URLSearchParams } from 'url';
 
+import { createAgentStartJob } from './Agent';
 import { BinaryDataService } from './BinaryData/BinaryData.service';
 import type { BinaryData } from './BinaryData/types';
 import { binaryToBuffer } from './BinaryData/utils';
@@ -156,6 +157,7 @@ import {
 } from './Constants';
 import { getNodeAsTool } from './CreateNodeAsTool';
 import { DataDeduplicationService } from './data-deduplication-service';
+import { createNodeAsTool } from './CreateNodeAsTool';
 import {
 	getAllWorkflowExecutionMetadata,
 	getWorkflowExecutionMetadata,
@@ -2939,7 +2941,7 @@ async function getInputConnectionData(
 			if (!nodeType.supplyData) {
 				if (nodeType.description.outputs.includes(NodeConnectionType.AiTool)) {
 					nodeType.supplyData = async function (this: IExecuteFunctions) {
-						return getNodeAsTool(this, nodeType, this.getNode().parameters);
+						return createNodeAsTool(this, nodeType, this.getNode().parameters);
 					};
 				} else {
 					throw new ApplicationError('Node does not have a `supplyData` method defined', {
@@ -3929,6 +3931,17 @@ export function getExecuteFunctions(
 					additionalData.setExecutionStatus('waiting');
 				}
 			},
+			logNodeOutput(...args: unknown[]): void {
+				if (mode === 'manual') {
+					// @ts-expect-error `args` is spreadable
+					this.sendMessageToUI(...args);
+					return;
+				}
+
+				if (process.env.CODE_ENABLE_STDOUT === 'true') {
+					console.log(`[Workflow "${this.getWorkflow().id}"][Node "${node.name}"]`, ...args);
+				}
+			},
 			sendMessageToUI(...args: any[]): void {
 				if (mode !== 'manual') {
 					return;
@@ -4047,6 +4060,19 @@ export function getExecuteFunctions(
 				});
 			},
 			getParentCallbackManager: () => additionalData.parentCallbackManager,
+			startJob: createAgentStartJob(
+				additionalData,
+				inputData,
+				node,
+				workflow,
+				runExecutionData,
+				runIndex,
+				node.name,
+				connectionInputData,
+				{},
+				mode,
+				executeData,
+			),
 		};
 	})(workflow, runExecutionData, connectionInputData, inputData, node) as IExecuteFunctions;
 }

@@ -124,7 +124,31 @@ describe('CanvasEdge', () => {
 
 		expect(edge).toHaveAttribute(
 			'd',
-			'M0 0L 32,0Q 40,0 40,8L 40,132Q 40,140 32,140L1 140L0 140M0 140L-40 140L -132,140Q -140,140 -140,132L -140,-92Q -140,-100 -132,-100L-100 -100',
+			'M0 0L 24,0Q 40,0 40,16L 40,124Q 40,140 24,140L1 140L0 140M0 140L-40 140L -124,140Q -140,140 -140,124L -140,-84Q -140,-100 -124,-100L-100 -100',
 		);
+	});
+
+	it('should render a correct bezier path when the connection is backwards and node connection type is non-main', () => {
+		const { container } = renderComponent({
+			props: {
+				...DEFAULT_PROPS,
+				data: {
+					...DEFAULT_PROPS.data,
+					source: {
+						type: NodeConnectionType.AiTool,
+					},
+				},
+				sourceX: 0,
+				sourceY: 0,
+				sourcePosition: Position.Right,
+				targetX: -100,
+				targetY: -100,
+				targetPosition: Position.Left,
+			},
+		});
+
+		const edge = container.querySelector('.vue-flow__edge-path');
+
+		expect(edge).toHaveAttribute('d', 'M0,0 C62.5,0 -162.5,-100 -100,-100');
 	});
 });

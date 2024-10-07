@@ -260,7 +260,10 @@ onBeforeUnmount(() => {
 		:class="[$style.canvasNode, { [$style.showToolbar]: showToolbar }]"
 		data-test-id="canvas-node"
 	>
-		<template v-for="source in mappedOutputs" :key="source.handleId">
+		<template
+			v-for="source in mappedOutputs"
+			:key="`${source.handleId}(${source.index + 1}/${mappedOutputs.length})`"
+		>
 			<CanvasHandleRenderer
 				v-bind="source"
 				:mode="CanvasConnectionMode.Output"
@@ -271,7 +274,10 @@ onBeforeUnmount(() => {
 			/>
 		</template>
 
-		<template v-for="target in mappedInputs" :key="target.handleId">
+		<template
+			v-for="target in mappedInputs"
+			:key="`${target.handleId}(${target.index + 1}/${mappedInputs.length})`"
+		>
 			<CanvasHandleRenderer
 				v-bind="target"
 				:mode="CanvasConnectionMode.Input"
