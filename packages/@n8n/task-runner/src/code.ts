@@ -1,28 +1,36 @@
 import { getAdditionalKeys } from 'n8n-core';
 import {
-	type INode,
-	type INodeType,
-	type ITaskDataConnections,
-	type IWorkflowExecuteAdditionalData,
 	WorkflowDataProxy,
-	type WorkflowParameters,
-	type IDataObject,
-	type IExecuteData,
-	type INodeExecutionData,
-	type INodeParameters,
-	type IRunExecutionData,
 	// type IWorkflowDataProxyAdditionalKeys,
 	Workflow,
-	type WorkflowExecuteMode,
+} from 'n8n-workflow';
+import type {
+	CodeExecutionMode,
+	INode,
+	INodeType,
+	ITaskDataConnections,
+	IWorkflowExecuteAdditionalData,
+	WorkflowParameters,
+	IDataObject,
+	IExecuteData,
+	INodeExecutionData,
+	INodeParameters,
+	IRunExecutionData,
+	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import * as a from 'node:assert';
 import { runInNewContext, type Context } from 'node:vm';
 
+import { validateRunForAllItemsOutput, validateRunForEachItemOutput } from '@/result-validation';
+
 import type { TaskResultData } from './runner-types';
 import { type Task, TaskRunner } from './task-runner';
 
-interface JSExecSettings {
+export interface JSExecSettings {
 	code: string;
+	nodeMode: CodeExecutionMode;
+	workflowMode: WorkflowExecuteMode;
+	continueOnFail: boolean;
 
 	// For workflow data proxy
 	mode: WorkflowExecuteMode;
@@ -62,6 +70,12 @@ export interface AllCodeTaskData {
 	additionalData: PartialAdditionalData;
 }
 
+type CustomConsole = {
+	log: (...args: unknown[]) => void;
+};
+
+const noop = () => {};
+
 export class JsTaskRunner extends TaskRunner {
 	constructor(
 		taskType: string,
@@ -95,15 +109,154 @@ export class JsTaskRunner extends TaskRunner {
 			},
 		});
 
-		const dataProxy = new WorkflowDataProxy(
+		const customConsole = {
+			log:
+				settings.workflowMode === 'manual'
+					? noop
+					: (...args: unknown[]) => {
+							const logOutput = args
+								.map((arg) => (typeof arg === 'object' && arg !== null ? JSON.stringify(arg) : arg))
+								.join(' ');
+							console.log('[JS Code]', logOutput);
+							void this.makeRpcCall(task.taskId, 'logNodeOutput', [logOutput]);
+						},
+		};
+
+		const result =
+			settings.nodeMode === 'runOnceForAllItems'
+				? await this.runForAllItems(task.taskId, settings, allData, workflow, customConsole)
+				: await this.runForEachItem(task.taskId, settings, allData, workflow, customConsole);
+
+		return {
+			result,
+			customData: allData.runExecutionData.resultData.metadata,
+		};
+	}
+
+	/**
+	 * Executes the requested code for all items in a single run
+	 */
+	private async runForAllItems(
+		taskId: string,
+		settings: JSExecSettings,
+		allData: AllCodeTaskData,
+		workflow: Workflow,
+		customConsole: CustomConsole,
+	): Promise<INodeExecutionData[]> {
+		const dataProxy = this.createDataProxy(allData, workflow, allData.itemIndex);
+		const inputItems = allData.connectionInputData;
+
+		const context: Context = {
+			require,
+			module: {},
+			console: customConsole,
+
+			items: inputItems,
+			...dataProxy,
+			...this.buildRpcCallObject(taskId),
+		};
+
+		try {
+			const result = (await runInNewContext(
+				`module.exports = async function() {${settings.code}\n}()`,
+				context,
+			)) as TaskResultData['result'];
+
+			if (result === null) {
+				return [];
+			}
+
+			return validateRunForAllItemsOutput(result);
+		} catch (error) {
+			if (settings.continueOnFail) {
+				return [{ json: { error: this.getErrorMessageFromVmError(error) } }];
+			}
+
+			(error as Record<string, unknown>).node = allData.node;
+			throw error;
+		}
+	}
+
+	/**
+	 * Executes the requested code for each item in the input data
+	 */
+	private async runForEachItem(
+		taskId: string,
+		settings: JSExecSettings,
+		allData: AllCodeTaskData,
+		workflow: Workflow,
+		customConsole: CustomConsole,
+	): Promise<INodeExecutionData[]> {
+		const inputItems = allData.connectionInputData;
+		const returnData: INodeExecutionData[] = [];
+
+		for (let index = 0; index < inputItems.length; index++) {
+			const item = inputItems[index];
+			const dataProxy = this.createDataProxy(allData, workflow, index);
+			const context: Context = {
+				require,
+				module: {},
+				console: customConsole,
+				item,
+
+				...dataProxy,
+				...this.buildRpcCallObject(taskId),
+			};
+
+			try {
+				let result = (await runInNewContext(
+					`module.exports = async function() {${settings.code}\n}()`,
+					context,
+				)) as INodeExecutionData | undefined;
+
+				// Filter out null values
+				if (result === null) {
+					continue;
+				}
+
+				result = validateRunForEachItemOutput(result, index);
+				if (result) {
+					returnData.push(
+						result.binary
+							? {
+									json: result.json,
+									pairedItem: { item: index },
+									binary: result.binary,
+								}
+							: {
+									json: result.json,
+									pairedItem: { item: index },
+								},
+					);
+				}
+			} catch (error) {
+				if (!settings.continueOnFail) {
+					(error as Record<string, unknown>).node = allData.node;
+					throw error;
+				}
+
+				returnData.push({
+					json: { error: this.getErrorMessageFromVmError(error) },
+					pairedItem: {
+						item: index,
+					},
+				});
+			}
+		}
+
+		return returnData;
+	}
+
+	private createDataProxy(allData: AllCodeTaskData, workflow: Workflow, itemIndex: number) {
+		return new WorkflowDataProxy(
 			workflow,
 			allData.runExecutionData,
 			allData.runIndex,
-			allData.itemIndex,
+			itemIndex,
 			allData.activeNodeName,
 			allData.connectionInputData,
 			allData.siblingParameters,
-			settings.mode,
+			allData.mode,
 			getAdditionalKeys(
 				allData.additionalData as IWorkflowExecuteAdditionalData,
 				allData.mode,
@@ -113,35 +266,14 @@ export class JsTaskRunner extends TaskRunner {
 			allData.defaultReturnRunIndex,
 			allData.selfData,
 			allData.contextNodeName,
-		);
+		).getDataProxy();
+	}
 
-		const customConsole = {
-			log: (...args: unknown[]) => {
-				const logOutput = args
-					.map((arg) => (typeof arg === 'object' && arg !== null ? JSON.stringify(arg) : arg))
-					.join(' ');
-				console.log('[JS Code]', logOutput);
-				void this.makeRpcCall(task.taskId, 'logNodeOutput', [logOutput]);
-			},
-		};
+	private getErrorMessageFromVmError(error: unknown): string {
+		if (typeof error === 'object' && !!error && 'message' in error) {
+			return error.message as string;
+		}
 
-		const context: Context = {
-			require,
-			module: {},
-			console: customConsole,
-
-			...dataProxy.getDataProxy(),
-			...this.buildRpcCallObject(task.taskId),
-		};
-
-		const result = (await runInNewContext(
-			`module.exports = async function() {${settings.code}\n}()`,
-			context,
-		)) as TaskResultData['result'];
-
-		return {
-			result,
-			customData: allData.runExecutionData.resultData.metadata,
-		};
+		return JSON.stringify(error);
 	}
 }
