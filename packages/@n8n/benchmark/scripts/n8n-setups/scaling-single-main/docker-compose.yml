@@ -7,7 +7,7 @@ services:
       - ${MOCK_API_DATA_PATH}/mappings:/home/wiremock/mappings
 
   redis:
-    image: redis:6-alpine
+    image: redis:6.2.14-alpine
     ports:
       - 6379:6379
     healthcheck:
@@ -16,7 +16,7 @@ services:
       timeout: 3s
 
   postgres:
-    image: postgres:16
+    image: postgres:16.4
     user: root:root
     restart: always
     environment:
