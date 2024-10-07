@@ -1,7 +1,7 @@
 import { renderComponent } from '@/__tests__/render';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { defineComponent, h } from 'vue';
+import { defineComponent, h, ref } from 'vue';
 import { useKeybindings } from '../useKeybindings';
 
 const renderTestComponent = async (...args: Parameters<typeof useKeybindings>) => {
@@ -19,7 +19,7 @@ describe('useKeybindings', () => {
 	it('should trigger case-insensitive keyboard shortcuts', async () => {
 		const saveSpy = vi.fn();
 		const saveAllSpy = vi.fn();
-		await renderTestComponent({ Ctrl_s: saveSpy, ctrl_Shift_S: saveAllSpy });
+		await renderTestComponent(ref({ Ctrl_s: saveSpy, ctrl_Shift_S: saveAllSpy }));
 		await userEvent.keyboard('{Control>}s');
 		expect(saveSpy).toHaveBeenCalled();
 		expect(saveAllSpy).not.toHaveBeenCalled();
@@ -31,7 +31,9 @@ describe('useKeybindings', () => {
 	it('should not trigger shortcuts when an input element has focus', async () => {
 		const saveSpy = vi.fn();
 		const saveAllSpy = vi.fn();
-		const { getByRole } = await renderTestComponent({ Ctrl_s: saveSpy, ctrl_Shift_S: saveAllSpy });
+		const { getByRole } = await renderTestComponent(
+			ref({ Ctrl_s: saveSpy, ctrl_Shift_S: saveAllSpy }),
+		);
 
 		getByRole('textbox').focus();
 
