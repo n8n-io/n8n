@@ -2,7 +2,7 @@ import { createHash } from 'crypto';
 import { ApplicationError } from 'n8n-workflow';
 import type {
 	ICheckProcessedContextData,
-	IProcessedDataManager,
+	IDataDeduplicator,
 	ICheckProcessedOptions,
 	ICheckProcessedOutput,
 	ProcessedDataContext,
@@ -15,7 +15,7 @@ import { Container } from 'typedi';
 import { ProcessedDataRepository } from '@/databases/repositories/processed-data.repository';
 import type { IProcessedDataEntries, IProcessedDataLatest } from '@/interfaces';
 
-export class ProcessedDataHelper implements IProcessedDataManager {
+export class ProcessedDataHelper implements IDataDeduplicator {
 	private static sortEntries(
 		items: ProcessedDataItemTypes[],
 		mode: ProcessedDataMode,

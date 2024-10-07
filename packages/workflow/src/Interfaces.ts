@@ -2677,7 +2677,7 @@ export interface IProcessedDataConfig {
 	mode: string;
 }
 
-export interface IProcessedDataManager {
+export interface IDataDeduplicator {
 	checkProcessed(
 		items: ProcessedDataItemTypes[],
 		context: ProcessedDataContext,
@@ -2709,10 +2709,6 @@ export interface IProcessedDataManager {
 		contextData: ICheckProcessedContextData,
 		options: ICheckProcessedOptions,
 	): Promise<number>;
-}
-
-export interface IProcessedDataManagers {
-	[key: string]: IProcessedDataManager;
 }
 
 export interface ICheckProcessedContextData {

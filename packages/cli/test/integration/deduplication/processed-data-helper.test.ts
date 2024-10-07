@@ -1,14 +1,14 @@
-import { ProcessedDataManager } from 'n8n-core';
+import { DataDeduplicationService } from 'n8n-core';
 import type { ICheckProcessedContextData, INodeTypeData } from 'n8n-workflow';
 import type { ICheckProcessedOutput, INode, ProcessedDataItemTypes } from 'n8n-workflow';
 import { Workflow } from 'n8n-workflow';
 
+import { getDataDeduplicationService } from '@/deduplication';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';
 import { mockInstance } from '@test/mocking';
 import { createWorkflow } from '@test-integration/db/workflows';
 
-import { getProcessedDataManager } from '../../../src/processed-data-managers';
 import * as testDb from '../shared/test-db';
 
 let workflow: Workflow;
@@ -83,8 +83,8 @@ beforeAll(async () => {
 		nodeTypes,
 	});
 
-	const processedDataManager = await getProcessedDataManager();
-	await ProcessedDataManager.init(processedDataManager);
+	const dataDeduplicationService = await getDataDeduplicationService();
+	await DataDeduplicationService.init(dataDeduplicationService);
 });
 
 beforeEach(async () => {
@@ -105,7 +105,7 @@ describe('ProcessedDataManagers.ProcessedDataHelper', () => {
 
 		let processedData: ICheckProcessedOutput;
 
-		processedData = await ProcessedDataManager.getInstance().checkProcessed(
+		processedData = await DataDeduplicationService.getInstance().checkProcessed(
 			['a', 'b'],
 			context,
 			contextData,
@@ -115,7 +115,7 @@ describe('ProcessedDataManagers.ProcessedDataHelper', () => {
 		// No data exists yet so has to be new
 		expect(processedData).toEqual({ new: ['a', 'b'], processed: [] });
 
-		processedData = await ProcessedDataManager.getInstance().checkProcessedAndRecord(
+		processedData = await DataDeduplicationService.getInstance().checkProcessedAndRecord(
 			['a', 'b'],
 			context,
 			contextData,
@@ -125,7 +125,7 @@ describe('ProcessedDataManagers.ProcessedDataHelper', () => {
 		// 'a' & 'b' got only checked before, so still has to be new
 		expect(processedData).toEqual({ new: ['a', 'b'], processed: [] });
 
-		processedData = await ProcessedDataManager.getInstance().checkProcessed(
+		processedData = await DataDeduplicationService.getInstance().checkProcessed(
 			['a', 'b', 'c'],
 			context,
 			contextData,
@@ -135,7 +135,7 @@ describe('ProcessedDataManagers.ProcessedDataHelper', () => {
 		// 'a' & 'b' got recorded before, 'c' never
 		expect(processedData).toEqual({ new: ['c'], processed: ['a', 'b'] });
 
-		processedData = await ProcessedDataManager.getInstance().checkProcessedAndRecord(
+		processedData = await DataDeduplicationService.getInstance().checkProcessedAndRecord(
 			['a', 'b', 'c', 'd'],
 			context,
 			contextData,
@@ -145,11 +145,11 @@ describe('ProcessedDataManagers.ProcessedDataHelper', () => {
 		// 'a' & 'b' got recorded before, 'c' only checked bfeore and 'd' has never been seen
 		expect(processedData).toEqual({ new: ['c', 'd'], processed: ['a', 'b'] });
 
-		await ProcessedDataManager.getInstance().removeProcessed(['b', 'd'], context, contextData, {
+		await DataDeduplicationService.getInstance().removeProcessed(['b', 'd'], context, contextData, {
 			mode: 'entries',
 		});
 
-		processedData = await ProcessedDataManager.getInstance().checkProcessed(
+		processedData = await DataDeduplicationService.getInstance().checkProcessed(
 			['a', 'b', 'c', 'd'],
 			context,
 			contextData,
@@ -169,7 +169,7 @@ describe('ProcessedDataManagers.ProcessedDataHelper', () => {
 		let processedData: ICheckProcessedOutput;
 
 		// Add data with context "node"
-		processedData = await ProcessedDataManager.getInstance().checkProcessedAndRecord(
+		processedData = await DataDeduplicationService.getInstance().checkProcessedAndRecord(
 			['a', 'b'],
 			'node',
 			contextData,
@@ -180,7 +180,7 @@ describe('ProcessedDataManagers.ProcessedDataHelper', () => {
 		expect(processedData).toEqual({ new: ['a', 'b'], processed: [] });
 
 		// Add data with context "workflow"
-		processedData = await ProcessedDataManager.getInstance().checkProcessedAndRecord(
+		processedData = await DataDeduplicationService.getInstance().checkProcessedAndRecord(
 			['a', 'b', 'c'],
 			'workflow',
 			contextData,
@@ -190,11 +190,11 @@ describe('ProcessedDataManagers.ProcessedDataHelper', () => {
 		// No data exists yet for context 'worklow' so has to be new
 		expect(processedData).toEqual({ new: ['a', 'b', 'c'], processed: [] });
 
-		await ProcessedDataManager.getInstance().removeProcessed(['a'], 'node', contextData, {
+		await DataDeduplicationService.getInstance().removeProcessed(['a'], 'node', contextData, {
 			mode: 'entries',
 		});
 
-		processedData = await ProcessedDataManager.getInstance().checkProcessed(
+		processedData = await DataDeduplicationService.getInstance().checkProcessed(
 			['a', 'b', 'c'],
 			'node',
 			contextData,
@@ -204,11 +204,11 @@ describe('ProcessedDataManagers.ProcessedDataHelper', () => {
 		// 'a' got removed for the context 'node' and 'c' never got saved, so only 'b' should be known
 		expect(processedData).toEqual({ new: ['a', 'c'], processed: ['b'] });
 
-		await ProcessedDataManager.getInstance().removeProcessed(['b'], 'workflow', contextData, {
+		await DataDeduplicationService.getInstance().removeProcessed(['b'], 'workflow', contextData, {
 			mode: 'entries',
 		});
 
-		processedData = await ProcessedDataManager.getInstance().checkProcessed(
+		processedData = await DataDeduplicationService.getInstance().checkProcessed(
 			['a', 'b', 'c', 'd'],
 			'workflow',
 			contextData,
@@ -228,7 +228,7 @@ describe('ProcessedDataManagers.ProcessedDataHelper', () => {
 
 		let processedData: ICheckProcessedOutput;
 
-		processedData = await ProcessedDataManager.getInstance().checkProcessedAndRecord(
+		processedData = await DataDeduplicationService.getInstance().checkProcessedAndRecord(
 			['0', '1', '2', '3'],
 			'node',
 			contextData,
@@ -239,7 +239,7 @@ describe('ProcessedDataManagers.ProcessedDataHelper', () => {
 		expect(processedData).toEqual({ new: ['0', '1', '2', '3'], processed: [] });
 
 		// Add data with context "workflow"
-		processedData = await ProcessedDataManager.getInstance().checkProcessedAndRecord(
+		processedData = await DataDeduplicationService.getInstance().checkProcessedAndRecord(
 			['4', '5', '6'],
 			'node',
 			contextData,
@@ -250,11 +250,11 @@ describe('ProcessedDataManagers.ProcessedDataHelper', () => {
 		expect(processedData).toEqual({ new: ['4', '5', '6'], processed: [] });
 
 		// This should not make a difference, removing an item which does not exist
-		await ProcessedDataManager.getInstance().removeProcessed(['a'], 'node', contextData, {
+		await DataDeduplicationService.getInstance().removeProcessed(['a'], 'node', contextData, {
 			mode: 'entries',
 		});
 
-		processedData = await ProcessedDataManager.getInstance().checkProcessed(
+		processedData = await DataDeduplicationService.getInstance().checkProcessed(
 			['0', '1', '2', '3', '4', '5', '6', '7'],
 			'node',
 			contextData,
@@ -390,7 +390,7 @@ describe('ProcessedDataManagers.ProcessedDataHelper', () => {
 				let processedData: ICheckProcessedOutput;
 
 				for (const data of testData.data) {
-					processedData = await ProcessedDataManager.getInstance()[data.operation](
+					processedData = await DataDeduplicationService.getInstance()[data.operation](
 						data.input,
 						context,
 						contextData,
@@ -410,13 +410,13 @@ describe('ProcessedDataManagers.ProcessedDataHelper', () => {
 		};
 
 		await expect(
-			ProcessedDataManager.getInstance().removeProcessed(['2022-01-01'], 'node', contextData, {
+			DataDeduplicationService.getInstance().removeProcessed(['2022-01-01'], 'node', contextData, {
 				mode: 'latestDate',
 			}),
 		).rejects.toThrow('Removing processed data is not possible in mode "latest"');
 
 		await expect(
-			ProcessedDataManager.getInstance().removeProcessed([1], 'node', contextData, {
+			DataDeduplicationService.getInstance().removeProcessed([1], 'node', contextData, {
 				mode: 'latestIncrementalKey',
 			}),
 		).rejects.toThrow('Removing processed data is not possible in mode "latest"');
@@ -429,7 +429,7 @@ describe('ProcessedDataManagers.ProcessedDataHelper', () => {
 		};
 
 		// First, add some data
-		await ProcessedDataManager.getInstance().checkProcessedAndRecord(
+		await DataDeduplicationService.getInstance().checkProcessedAndRecord(
 			['a', 'b', 'c'],
 			'node',
 			contextData,
@@ -437,12 +437,12 @@ describe('ProcessedDataManagers.ProcessedDataHelper', () => {
 		);
 
 		// Clear all processed items
-		await ProcessedDataManager.getInstance().clearAllProcessedItems('node', contextData, {
+		await DataDeduplicationService.getInstance().clearAllProcessedItems('node', contextData, {
 			mode: 'entries',
 		});
 
 		// Check that all items are now considered new
-		const processedData = await ProcessedDataManager.getInstance().checkProcessed(
+		const processedData = await DataDeduplicationService.getInstance().checkProcessed(
 			['a', 'b', 'c'],
 			'node',
 			contextData,
@@ -459,14 +459,14 @@ describe('ProcessedDataManagers.ProcessedDataHelper', () => {
 		};
 
 		// Test for 'entries' mode
-		await ProcessedDataManager.getInstance().checkProcessedAndRecord(
+		await DataDeduplicationService.getInstance().checkProcessedAndRecord(
 			['a', 'b', 'c'],
 			'node',
 			contextData,
 			{ mode: 'entries' },
 		);
 
-		const entriesCount = await ProcessedDataManager.getInstance().getProcessedDataCount(
+		const entriesCount = await DataDeduplicationService.getInstance().getProcessedDataCount(
 			'node',
 			contextData,
 			{ mode: 'entries' },
@@ -475,7 +475,7 @@ describe('ProcessedDataManagers.ProcessedDataHelper', () => {
 		expect(entriesCount).toBe(3);
 
 		// Test for other modes (should return 0)
-		const latestCount = await ProcessedDataManager.getInstance().getProcessedDataCount(
+		const latestCount = await DataDeduplicationService.getInstance().getProcessedDataCount(
 			'node',
 			contextData,
 			{ mode: 'latestDate' },

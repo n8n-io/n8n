@@ -5,7 +5,7 @@ import {
 	BinaryDataService,
 	InstanceSettings,
 	ObjectStoreService,
-	ProcessedDataManager,
+	DataDeduplicationService,
 } from 'n8n-core';
 import { ApplicationError, ErrorReporterProxy as ErrorReporter, sleep } from 'n8n-workflow';
 import { Container } from 'typedi';
@@ -16,6 +16,7 @@ import { LICENSE_FEATURES, inDevelopment, inTest } from '@/constants';
 import * as CrashJournal from '@/crash-journal';
 import { generateHostInstanceId } from '@/databases/utils/generators';
 import * as Db from '@/db';
+import { getDataDeduplicationService } from '@/deduplication';
 import { initErrorHandling } from '@/error-reporting';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
@@ -27,7 +28,6 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Logger } from '@/logger';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
-import { getProcessedDataManager } from '@/processed-data-managers';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { WorkflowHistoryManager } from '@/workflows/workflow-history/workflow-history-manager.ee';
 
@@ -267,9 +267,9 @@ export abstract class BaseCommand extends Command {
 		await Container.get(BinaryDataService).init(binaryDataConfig);
 	}
 
-	protected async initProcessedDataManager() {
-		const processedDataManager = await getProcessedDataManager();
-		await ProcessedDataManager.init(processedDataManager);
+	protected async initDataDeduplicationService() {
+		const dataDeduplicationService = await getDataDeduplicationService();
+		await DataDeduplicationService.init(dataDeduplicationService);
 	}
 
 	async initExternalHooks() {

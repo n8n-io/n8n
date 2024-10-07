@@ -1,7 +1,6 @@
 import get from 'lodash/get';
-import { ApplicationError } from 'n8n-workflow';
 import type {
-	IProcessedDataManager,
+	IDataDeduplicator,
 	ICheckProcessedOptions,
 	ICheckProcessedOutput,
 	ICheckProcessedOutputItems,
@@ -10,29 +9,45 @@ import type {
 	ProcessedDataItemTypes,
 	ICheckProcessedContextData,
 } from 'n8n-workflow';
+import * as assert from 'node:assert/strict';
+export class DataDeduplicationService {
+	private static instance: DataDeduplicationService;
 
-export class ProcessedDataManager {
-	private static instance: ProcessedDataManager;
+	private deduplicator: IDataDeduplicator;
 
-	private manager: IProcessedDataManager;
-
-	private constructor(manager: IProcessedDataManager) {
-		this.manager = manager;
+	private constructor(deduplicator: IDataDeduplicator) {
+		this.deduplicator = deduplicator;
 	}
 
-	static async init(manager: IProcessedDataManager): Promise<void> {
-		if (ProcessedDataManager.instance) {
-			throw new ApplicationError('Processed Data Manager is already initialized');
-		}
-
-		ProcessedDataManager.instance = new ProcessedDataManager(manager);
+	private assertDeduplicator() {
+		assert.ok(
+			this.deduplicator,
+			'Manager needs to initialized before use. Make sure to call init()',
+		);
 	}
 
-	static getInstance(): ProcessedDataManager {
-		if (!ProcessedDataManager.instance) {
-			throw new ApplicationError('Processed Data Manager is not initialized');
-		}
-		return ProcessedDataManager.instance;
+	private static assertInstance() {
+		assert.ok(
+			DataDeduplicationService.instance,
+			'Instance needs to initialized before use. Make sure to call init()',
+		);
+	}
+
+	private static assertSingleInstance() {
+		assert.ok(
+			!DataDeduplicationService.instance,
+			'Instance already initialized. Multiple initializations are not allowed.',
+		);
+	}
+
+	static async init(deduplicator: IDataDeduplicator): Promise<void> {
+		this.assertSingleInstance();
+		DataDeduplicationService.instance = new DataDeduplicationService(deduplicator);
+	}
+
+	static getInstance(): DataDeduplicationService {
+		this.assertInstance();
+		return DataDeduplicationService.instance;
 	}
 
 	async checkProcessed(
@@ -41,10 +56,8 @@ export class ProcessedDataManager {
 		contextData: ICheckProcessedContextData,
 		options: ICheckProcessedOptions,
 	): Promise<ICheckProcessedOutput> {
-		if (this.manager) {
-			return await this.manager.checkProcessed(items, context, contextData, options);
-		}
-		throw new ApplicationError('There is no manager');
+		this.assertDeduplicator();
+		return await this.deduplicator.checkProcessed(items, context, contextData, options);
 	}
 
 	async checkProcessedItemsAndRecord(
@@ -54,10 +67,7 @@ export class ProcessedDataManager {
 		contextData: ICheckProcessedContextData,
 		options: ICheckProcessedOptions,
 	): Promise<ICheckProcessedOutputItems> {
-		if (!this.manager) {
-			throw new ApplicationError('There is no manager');
-		}
-
+		this.assertDeduplicator();
 		let value;
 		const itemLookup = items.reduce((acc, cur, index) => {
 			value = JSON.stringify(get(cur, propertyName));
@@ -65,7 +75,7 @@ export class ProcessedDataManager {
 			return acc;
 		}, {});
 
-		const checkedItems = await this.manager.checkProcessedAndRecord(
+		const checkedItems = await this.deduplicator.checkProcessedAndRecord(
 			Object.keys(itemLookup),
 			context,
 			contextData,
@@ -84,11 +94,8 @@ export class ProcessedDataManager {
 		contextData: ICheckProcessedContextData,
 		options: ICheckProcessedOptions,
 	): Promise<ICheckProcessedOutput> {
-		if (this.manager) {
-			return await this.manager.checkProcessedAndRecord(items, context, contextData, options);
-		}
-
-		throw new ApplicationError('There is no manager');
+		this.assertDeduplicator();
+		return await this.deduplicator.checkProcessedAndRecord(items, context, contextData, options);
 	}
 
 	async removeProcessed(
@@ -97,11 +104,8 @@ export class ProcessedDataManager {
 		contextData: ICheckProcessedContextData,
 		options: ICheckProcessedOptions,
 	): Promise<void> {
-		if (this.manager) {
-			return await this.manager.removeProcessed(items, context, contextData, options);
-		}
-
-		throw new ApplicationError('There is no manager ');
+		this.assertDeduplicator();
+		return await this.deduplicator.removeProcessed(items, context, contextData, options);
 	}
 
 	async clearAllProcessedItems(
@@ -109,11 +113,8 @@ export class ProcessedDataManager {
 		contextData: ICheckProcessedContextData,
 		options: ICheckProcessedOptions,
 	): Promise<void> {
-		if (this.manager) {
-			return await this.manager.clearAllProcessedItems(context, contextData, options);
-		}
-
-		throw new ApplicationError('There is no manager');
+		this.assertDeduplicator();
+		return await this.deduplicator.clearAllProcessedItems(context, contextData, options);
 	}
 
 	async getProcessedDataCount(
@@ -121,10 +122,7 @@ export class ProcessedDataManager {
 		contextData: ICheckProcessedContextData,
 		options: ICheckProcessedOptions,
 	): Promise<number> {
-		if (this.manager) {
-			return await this.manager.getProcessedDataCount(context, contextData, options);
-		}
-
-		throw new ApplicationError('There is no manager');
+		this.assertDeduplicator();
+		return await this.deduplicator.getProcessedDataCount(context, contextData, options);
 	}
 }

@@ -155,6 +155,7 @@ import {
 	UM_EMAIL_TEMPLATES_PWRESET,
 } from './Constants';
 import { getNodeAsTool } from './CreateNodeAsTool';
+import { DataDeduplicationService } from './data-deduplication-service';
 import {
 	getAllWorkflowExecutionMetadata,
 	getWorkflowExecutionMetadata,
@@ -164,7 +165,6 @@ import {
 import { extractValue } from './ExtractValue';
 import { InstanceSettings } from './InstanceSettings';
 import type { ExtendedValidationResult, IResponseError } from './Interfaces';
-import { ProcessedDataManager } from './processed-data-manager';
 import { ScheduledTaskManager } from './ScheduledTaskManager';
 import { getSecretsProxy } from './Secrets';
 import { SSHClientsManager } from './SSHClientsManager';
@@ -1297,7 +1297,7 @@ export async function checkProcessed(
 	contextData: ICheckProcessedContextData,
 	options: ICheckProcessedOptions,
 ): Promise<ICheckProcessedOutput> {
-	return await ProcessedDataManager.getInstance().checkProcessed(
+	return await DataDeduplicationService.getInstance().checkProcessed(
 		items,
 		context,
 		contextData,
@@ -1311,7 +1311,7 @@ export async function checkProcessedAndRecord(
 	contextData: ICheckProcessedContextData,
 	options: ICheckProcessedOptions,
 ): Promise<ICheckProcessedOutput> {
-	return await ProcessedDataManager.getInstance().checkProcessedAndRecord(
+	return await DataDeduplicationService.getInstance().checkProcessedAndRecord(
 		items,
 		context,
 		contextData,
@@ -1327,7 +1327,7 @@ export async function checkProcessedItemsAndRecord(
 	contextData: ICheckProcessedContextData,
 	options: ICheckProcessedOptions,
 ): Promise<ICheckProcessedOutputItems> {
-	return await ProcessedDataManager.getInstance().checkProcessedItemsAndRecord(
+	return await DataDeduplicationService.getInstance().checkProcessedItemsAndRecord(
 		key,
 		items,
 		context,
@@ -1342,7 +1342,7 @@ export async function removeProcessed(
 	contextData: ICheckProcessedContextData,
 	options: ICheckProcessedOptions,
 ): Promise<void> {
-	return await ProcessedDataManager.getInstance().removeProcessed(
+	return await DataDeduplicationService.getInstance().removeProcessed(
 		items,
 		context,
 		contextData,
@@ -1355,7 +1355,7 @@ export async function clearAllProcessedItems(
 	contextData: ICheckProcessedContextData,
 	options: ICheckProcessedOptions,
 ): Promise<void> {
-	return await ProcessedDataManager.getInstance().clearAllProcessedItems(
+	return await DataDeduplicationService.getInstance().clearAllProcessedItems(
 		context,
 		contextData,
 		options,
@@ -1366,7 +1366,7 @@ export async function getProcessedDataCount(
 	contextData: ICheckProcessedContextData,
 	options: ICheckProcessedOptions,
 ): Promise<number> {
-	return await ProcessedDataManager.getInstance().getProcessedDataCount(
+	return await DataDeduplicationService.getInstance().getProcessedDataCount(
 		context,
 		contextData,
 		options,

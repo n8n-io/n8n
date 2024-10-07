@@ -31,7 +31,7 @@ export class Execute extends BaseCommand {
 	async init() {
 		await super.init();
 		await this.initBinaryDataService();
-		await this.initProcessedDataManager();
+		await this.initDataDeduplicationService();
 		await this.initExternalHooks();
 	}
 
