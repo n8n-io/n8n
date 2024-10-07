@@ -95,7 +95,6 @@ export class WorkerServer {
 		const { health, overwrites, metrics } = this.endpointsConfig;
 
 		if (health) {
-			// @TODO: This now mirrors main's healthcheck but alters preexisting behavior for /healthz. List as breaking change?
 			this.app.get('/healthz', async (_, res) => res.send({ status: 'ok' }));
 			this.app.get('/healthz/readiness', async (_, res) => await this.readiness(_, res));
 		}
