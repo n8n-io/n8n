@@ -3,6 +3,8 @@ import type { MigrationContext, ReversibleMigration } from '@/databases/types';
 import { generateNanoId } from '@/databases/utils/generators';
 
 export class AddApiKeysTable1724951148974 implements ReversibleMigration {
+	transaction = false as const;
+
 	async up({ queryRunner, tablePrefix, runQuery }: MigrationContext) {
 		const tableName = `${tablePrefix}user_api_keys`;
 
