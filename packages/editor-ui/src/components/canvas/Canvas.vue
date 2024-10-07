@@ -152,7 +152,9 @@ useKeybindings(
 		shift_s: () => emit('create:sticky'),
 		ctrl_alt_n: () => emit('create:workflow'),
 		ctrl_enter: () => emit('run:workflow'),
-		ctrl_s: () => emit('save:workflow'),
+		ctrl_s: () => {
+			if (!props.readOnly) emit('save:workflow');
+		},
 		ctrl_a: () => addSelectedNodes(graphNodes.value),
 		'+|=': async () => await onZoomIn(),
 		'-|_': async () => await onZoomOut(),
