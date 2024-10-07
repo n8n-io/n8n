@@ -2,7 +2,6 @@ import { GlobalConfig } from '@n8n/config';
 import type { Application } from 'express';
 import express from 'express';
 import { InstanceSettings } from 'n8n-core';
-import { ensureError } from 'n8n-workflow';
 import { strict as assert } from 'node:assert';
 import http from 'node:http';
 import type { Server } from 'node:http';
@@ -12,14 +11,13 @@ import { CredentialsOverwrites } from '@/credentials-overwrites';
 import * as Db from '@/db';
 import { CredentialsOverwritesAlreadySetError } from '@/errors/credentials-overwrites-already-set.error';
 import { NonJsonBodyError } from '@/errors/non-json-body.error';
-import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 import { ExternalHooks } from '@/external-hooks';
 import type { ICredentialsOverwrite } from '@/interfaces';
 import { Logger } from '@/logging/logger.service';
 import { PrometheusMetricsService } from '@/metrics/prometheus-metrics.service';
 import { rawBodyReader, bodyParser } from '@/middlewares';
 import * as ResponseHelper from '@/response-helper';
-import { ScalingService } from '@/scaling/scaling.service';
+import { RedisClientService } from '@/services/redis-client.service';
 
 export type WorkerServerEndpointsConfig = {
 	/** Whether the `/healthz` endpoint is enabled. */
@@ -52,11 +50,11 @@ export class WorkerServer {
 	constructor(
 		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
-		private readonly scalingService: ScalingService,
 		private readonly credentialsOverwrites: CredentialsOverwrites,
 		private readonly externalHooks: ExternalHooks,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly prometheusMetricsService: PrometheusMetricsService,
+		private readonly redisClientService: RedisClientService,
 	) {
 		assert(this.instanceSettings.instanceType === 'worker');
 
@@ -94,11 +92,14 @@ export class WorkerServer {
 	}
 
 	private async mountEndpoints() {
-		if (this.endpointsConfig.health) {
-			this.app.get('/healthz', async (req, res) => await this.healthcheck(req, res));
+		const { health, overwrites, metrics } = this.endpointsConfig;
+
+		if (health) {
+			this.app.get('/healthz', async (_, res) => res.send({ status: 'ok' }));
+			this.app.get('/healthz/readiness', async (_, res) => await this.readiness(_, res));
 		}
 
-		if (this.endpointsConfig.overwrites) {
+		if (overwrites) {
 			const { endpoint } = this.globalConfig.credentials.overwrite;
 
 			this.app.post(`/${endpoint}`, rawBodyReader, bodyParser, (req, res) =>
@@ -106,39 +107,20 @@ export class WorkerServer {
 			);
 		}
 
-		if (this.endpointsConfig.metrics) {
+		if (metrics) {
 			await this.prometheusMetricsService.init(this.app);
 		}
 	}
 
-	private async healthcheck(_req: express.Request, res: express.Response) {
-		this.logger.debug('[WorkerServer] Health check started');
+	private async readiness(_req: express.Request, res: express.Response) {
+		const isReady =
+			Db.connectionState.connected &&
+			Db.connectionState.migrated &&
+			this.redisClientService.isConnected();
 
-		try {
-			await Db.getConnection().query('SELECT 1');
-		} catch (value) {
-			this.logger.error('[WorkerServer] No database connection', ensureError(value));
-
-			return ResponseHelper.sendErrorResponse(
-				res,
-				new ServiceUnavailableError('No database connection'),
-			);
-		}
-
-		try {
-			await this.scalingService.pingQueue();
-		} catch (value) {
-			this.logger.error('[WorkerServer] No Redis connection', ensureError(value));
-
-			return ResponseHelper.sendErrorResponse(
-				res,
-				new ServiceUnavailableError('No Redis connection'),
-			);
-		}
-
-		this.logger.debug('[WorkerServer] Health check succeeded');
-
-		ResponseHelper.sendSuccessResponse(res, { status: 'ok' }, true, 200);
+		return isReady
+			? res.status(200).send({ status: 'ok' })
+			: res.status(503).send({ status: 'error' });
 	}
 
 	private handleOverwrites(
