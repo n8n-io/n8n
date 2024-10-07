@@ -1,4 +1,3 @@
-import { ok } from 'node:assert/strict';
 import {
 	ensureError,
 	type CodeExecutionMode,
