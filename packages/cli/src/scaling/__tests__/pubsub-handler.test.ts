@@ -29,7 +29,7 @@ describe('PubSubHandler', () => {
 
 		it('should set up handlers in webhook process', () => {
 			// @ts-expect-error Spying on private method
-			const setupWebhookHandlersSpy = jest.spyOn(PubSubHandler.prototype, 'setupWebhookHandlers');
+			const setupHandlersSpy = jest.spyOn(PubSubHandler.prototype, 'setupHandlers');
 
 			new PubSubHandler(
 				eventService,
@@ -42,7 +42,14 @@ describe('PubSubHandler', () => {
 				workerStatus,
 			).init();
 
-			expect(setupWebhookHandlersSpy).toHaveBeenCalled();
+			expect(setupHandlersSpy).toHaveBeenCalledWith({
+				'reload-license': expect.any(Function),
+				'restart-event-bus': expect.any(Function),
+				'reload-external-secrets-providers': expect.any(Function),
+				'community-package-install': expect.any(Function),
+				'community-package-update': expect.any(Function),
+				'community-package-uninstall': expect.any(Function),
+			});
 		});
 
 		it('should reload license on `reload-license` event', () => {
@@ -167,7 +174,7 @@ describe('PubSubHandler', () => {
 
 		it('should set up handlers in worker process', () => {
 			// @ts-expect-error Spying on private method
-			const setupWorkerHandlersSpy = jest.spyOn(PubSubHandler.prototype, 'setupWorkerHandlers');
+			const setupHandlersSpy = jest.spyOn(PubSubHandler.prototype, 'setupHandlers');
 
 			new PubSubHandler(
 				eventService,
@@ -180,7 +187,16 @@ describe('PubSubHandler', () => {
 				workerStatus,
 			).init();
 
-			expect(setupWorkerHandlersSpy).toHaveBeenCalled();
+			expect(setupHandlersSpy).toHaveBeenCalledWith({
+				'reload-license': expect.any(Function),
+				'restart-event-bus': expect.any(Function),
+				'reload-external-secrets-providers': expect.any(Function),
+				'community-package-install': expect.any(Function),
+				'community-package-update': expect.any(Function),
+				'community-package-uninstall': expect.any(Function),
+				'get-worker-status': expect.any(Function),
+				'get-worker-id': expect.any(Function),
+			});
 		});
 
 		it('should reload license on `reload-license` event', () => {

@@ -32,10 +32,23 @@ export class PubSubHandler {
 	init() {
 		switch (this.instanceSettings.instanceType) {
 			case 'webhook':
-				this.setupWebhookHandlers();
+				this.setupHandlers(this.commonHandlers);
 				break;
 			case 'worker':
-				this.setupWorkerHandlers();
+				this.setupHandlers({
+					...this.commonHandlers,
+					'get-worker-status': async () =>
+						await this.publisher.publishWorkerResponse({
+							workerId: config.getEnv('redis.queueModeId'),
+							command: 'get-worker-status',
+							payload: this.workerStatus.generateStatus(),
+						}),
+					'get-worker-id': async () =>
+						await this.publisher.publishWorkerResponse({
+							workerId: config.getEnv('redis.queueModeId'),
+							command: 'get-worker-id',
+						}),
+				});
 				break;
 			case 'main':
 				// TODO
@@ -59,52 +72,27 @@ export class PubSubHandler {
 		}
 	}
 
-	// #region Webhook process
-
-	private setupWebhookHandlers() {
-		this.setupHandlers({
-			'reload-license': async () => await this.license.reload(),
-			'restart-event-bus': async () => await this.eventbus.restart(),
-			'reload-external-secrets-providers': async () =>
-				await this.externalSecretsManager.reloadAllProviders(),
-			'community-package-install': async ({ packageName, packageVersion }) =>
-				await this.communityPackagesService.installOrUpdateNpmPackage(packageName, packageVersion),
-			'community-package-update': async ({ packageName, packageVersion }) =>
-				await this.communityPackagesService.installOrUpdateNpmPackage(packageName, packageVersion),
-			'community-package-uninstall': async ({ packageName }) =>
-				await this.communityPackagesService.removeNpmPackage(packageName),
-		});
-	}
-
-	// #endregion
-
-	// #region Worker process
-
-	private setupWorkerHandlers() {
-		this.setupHandlers({
-			'reload-license': async () => await this.license.reload(),
-			'restart-event-bus': async () => await this.eventbus.restart(),
-			'reload-external-secrets-providers': async () =>
-				await this.externalSecretsManager.reloadAllProviders(),
-			'community-package-install': async ({ packageName, packageVersion }) =>
-				await this.communityPackagesService.installOrUpdateNpmPackage(packageName, packageVersion),
-			'community-package-update': async ({ packageName, packageVersion }) =>
-				await this.communityPackagesService.installOrUpdateNpmPackage(packageName, packageVersion),
-			'community-package-uninstall': async ({ packageName }) =>
-				await this.communityPackagesService.removeNpmPackage(packageName),
-			'get-worker-status': async () =>
-				await this.publisher.publishWorkerResponse({
-					workerId: config.getEnv('redis.queueModeId'),
-					command: 'get-worker-status',
-					payload: this.workerStatus.generateStatus(),
-				}),
-			'get-worker-id': async () =>
-				await this.publisher.publishWorkerResponse({
-					workerId: config.getEnv('redis.queueModeId'),
-					command: 'get-worker-id',
-				}),
-		});
-	}
-
-	// #endregion
+	/** Handlers shared by webhook and worker processes. */
+	private commonHandlers: {
+		[K in keyof Pick<
+			PubSubEventMap,
+			| 'reload-license'
+			| 'restart-event-bus'
+			| 'reload-external-secrets-providers'
+			| 'community-package-install'
+			| 'community-package-update'
+			| 'community-package-uninstall'
+		>]: (event: PubSubEventMap[K]) => Promise<void>;
+	} = {
+		'reload-license': async () => await this.license.reload(),
+		'restart-event-bus': async () => await this.eventbus.restart(),
+		'reload-external-secrets-providers': async () =>
+			await this.externalSecretsManager.reloadAllProviders(),
+		'community-package-install': async ({ packageName, packageVersion }) =>
+			await this.communityPackagesService.installOrUpdateNpmPackage(packageName, packageVersion),
+		'community-package-update': async ({ packageName, packageVersion }) =>
+			await this.communityPackagesService.installOrUpdateNpmPackage(packageName, packageVersion),
+		'community-package-uninstall': async ({ packageName }) =>
+			await this.communityPackagesService.removeNpmPackage(packageName),
+	};
 }
