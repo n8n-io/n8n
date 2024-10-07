@@ -1,5 +1,4 @@
 import { InstanceSettings } from 'n8n-core';
-import { ApplicationError } from 'n8n-workflow';
 import { Service } from 'typedi';
 
 import config from '@/config';
@@ -10,6 +9,7 @@ import { ExternalSecretsManager } from '@/external-secrets/external-secrets-mana
 import { License } from '@/license';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { CommunityPackagesService } from '@/services/community-packages.service';
+import { assertNever } from '@/utils';
 
 import { WorkerStatus } from '../worker-status';
 
@@ -37,10 +37,11 @@ export class PubSubHandler {
 			case 'worker':
 				this.setupWorkerHandlers();
 				break;
+			case 'main':
+				// TODO
+				break;
 			default:
-				throw new ApplicationError('PubSubHandler found unsupported process type', {
-					extra: { type: this.instanceSettings.instanceType },
-				});
+				assertNever(this.instanceSettings.instanceType);
 		}
 	}
 
