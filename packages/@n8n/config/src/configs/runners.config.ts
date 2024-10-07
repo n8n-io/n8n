@@ -20,6 +20,13 @@ export class TaskRunnersConfig {
 	@Env('N8N_RUNNERS_SERVER_LISTEN_ADDRESS')
 	listen_address: string = '127.0.0.1';
 
+	@Env('N8N_RUNNERS_USE_LAUNCHER')
+	useLauncher: boolean = false;
+
 	@Env('N8N_RUNNERS_LAUNCHER_PATH')
 	launcherPath: string = '';
+
+	/** Which task runner to launch from the config */
+	@Env('N8N_RUNNERS_LAUNCHER_RUNNER')
+	launcherRunner: string = 'javascript';
 }

@@ -39,6 +39,11 @@ RUN \
 	mkdir .n8n && \
 	chown node:node .n8n
 
+ENV N8N_RUNNERS_USE_LAUNCHER=true
+ENV N8N_RUNNERS_LAUNCHER_PATH=/usr/bin/task-runner-launcher
+COPY /task-runner-launcher ${N8N_RUNNERS_LAUNCHER_PATH}
+RUN setcap "cap_setuid=ep cap_setgid=ep" /usr/bin/task-runner-launcher
+
 ENV SHELL /bin/sh
 USER node
 ENTRYPOINT ["tini", "--", "/docker-entrypoint.sh"]
