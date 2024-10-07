@@ -38,7 +38,7 @@ const runDataLabel = computed(() =>
 
 const isHandlePlusVisible = computed(() => !isConnecting.value || isHovered.value);
 
-const plusType = computed(() => (runData.value ? 'success' : 'default'));
+const plusType = computed(() => ((runData.value?.total ?? 0) > 0 ? 'success' : 'default'));
 
 const plusLineSize = computed(
 	() =>
