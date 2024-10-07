@@ -30,7 +30,7 @@ const isHandlePlusVisible = computed(
 	() => !isConnecting.value || isHovered.value || supportsMultipleConnections.value,
 );
 
-const plusType = computed(() => (runData.value ? 'success' : 'ai'));
+const plusType = computed(() => ((runData.value?.total ?? 0) > 0 ? 'success' : 'ai'));
 
 const isHovered = ref(false);
 
