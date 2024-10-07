@@ -32,6 +32,7 @@ import {
 	SETUP_CREDENTIALS_MODAL_KEY,
 	PROJECT_MOVE_RESOURCE_MODAL,
 	PROMPT_MFA_CODE_MODAL_KEY,
+	COMMUNITY_PLUS_ENROLLMENT_MODAL,
 } from '@/constants';
 
 import AboutModal from '@/components/AboutModal.vue';
@@ -67,6 +68,7 @@ import SetupWorkflowCredentialsModal from '@/components/SetupWorkflowCredentials
 import ProjectMoveResourceModal from '@/components/Projects/ProjectMoveResourceModal.vue';
 import NewAssistantSessionModal from '@/components/AskAssistant/NewAssistantSessionModal.vue';
 import PromptMfaCodeModal from './PromptMfaCodeModal/PromptMfaCodeModal.vue';
+import CommunityPlusEnrollmentModal from '@/components/CommunityPlusEnrollmentModal.vue';
 </script>
 
 <template>
@@ -250,6 +252,12 @@ import PromptMfaCodeModal from './PromptMfaCodeModal/PromptMfaCodeModal.vue';
 		<ModalRoot :name="NEW_ASSISTANT_SESSION_MODAL">
 			<template #default="{ modalName, data }">
 				<NewAssistantSessionModal :name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="COMMUNITY_PLUS_ENROLLMENT_MODAL">
+			<template #default="{ modalName, data }">
+				<CommunityPlusEnrollmentModal :modal-name="modalName" :data="data" />
 			</template>
 		</ModalRoot>
 	</div>

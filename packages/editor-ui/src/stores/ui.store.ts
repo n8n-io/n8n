@@ -37,6 +37,7 @@ import {
 	PROJECT_MOVE_RESOURCE_MODAL,
 	NEW_ASSISTANT_SESSION_MODAL,
 	PROMPT_MFA_CODE_MODAL_KEY,
+	COMMUNITY_PLUS_ENROLLMENT_MODAL,
 } from '@/constants';
 import type {
 	CloudUpdateLinkSourceType,
@@ -126,6 +127,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				SETUP_CREDENTIALS_MODAL_KEY,
 				PROJECT_MOVE_RESOURCE_MODAL,
 				NEW_ASSISTANT_SESSION_MODAL,
+				COMMUNITY_PLUS_ENROLLMENT_MODAL,
 			].map((modalKey) => [modalKey, { open: false }]),
 		),
 		[DELETE_USER_MODAL_KEY]: {
