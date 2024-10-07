@@ -42,10 +42,10 @@ describe('SettingsUsageAndPlan', () => {
 		usageStore.isLoading = false;
 		usageStore.viewPlansUrl = 'https://subscription.n8n.io';
 		usageStore.managePlanUrl = 'https://subscription.n8n.io';
-		usageStore.planName = 'Community registered';
+		usageStore.planName = 'Registered Community';
 		const { getByRole, container } = renderComponent();
 		expect(getByRole('heading', { level: 3 })).toHaveTextContent('Community Edition');
 		expect(getByRole('heading', { level: 3 })).toContain(container.querySelector('.n8n-badge'));
-		expect(container.querySelector('.n8n-badge')).toHaveTextContent('registered');
+		expect(container.querySelector('.n8n-badge')).toHaveTextContent('Registered');
 	});
 });
