@@ -306,7 +306,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 				tools: assistantTools,
 			});
 		}
-		// Exclude configuration and runId properties from the response
+		// Remove configuration properties and runId added by Langchain that are not relevant to the user
 		filteredResponse = omit(response, ['signal', 'timeout', 'content', 'runId']) as IDataObject;
 	} catch (error) {
 		if (!(error instanceof ApplicationError)) {
