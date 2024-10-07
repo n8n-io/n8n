@@ -33,7 +33,14 @@ const addTargetBlank = (html: string) =>
 </script>
 
 <template>
-	<div :class="$style.container" v-bind="$attrs" data-test-id="input-label">
+	<div
+		:class="{
+			[$style.container]: true,
+			[$style.withOptions]: $slots.options,
+		}"
+		v-bind="$attrs"
+		data-test-id="input-label"
+	>
 		<label
 			v-if="label || $slots.options"
 			:for="inputName"
@@ -116,7 +123,8 @@ const addTargetBlank = (html: string) =>
 		opacity: 1;
 		transition: opacity 100ms ease-in; // transition on hover in
 	}
-
+}
+.withOptions:hover {
 	.title > span {
 		text-overflow: ellipsis;
 		overflow: hidden;
