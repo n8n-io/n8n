@@ -1,5 +1,5 @@
 import { Config, Env, Nested } from '../decorators';
-import { IsIn, StringArray } from '../utils';
+import { StringArray } from '../utils';
 
 export const LOG_SCOPES = ['executions', 'license', 'scaling'] as const;
 
@@ -62,6 +62,5 @@ export class LoggingConfig {
 	 * `N8N_LOG_SCOPES=license,executions`
 	 */
 	@Env('N8N_LOG_SCOPES')
-	@IsIn(LOG_SCOPES, { allowEmpty: true })
 	scopes: StringArray<LogScope> = [];
 }
