@@ -1,7 +1,7 @@
 import { useActiveElement, useEventListener } from '@vueuse/core';
 import { useDeviceSupport } from 'n8n-design-system';
 import type { MaybeRef, Ref } from 'vue';
-import { computed, toValue, unref } from 'vue';
+import { computed, unref } from 'vue';
 
 type KeyMap = Record<string, (event: KeyboardEvent) => void>;
 
@@ -29,7 +29,7 @@ export const useKeybindings = (
 
 	const normalizedKeymap = computed(() =>
 		Object.fromEntries(
-			Object.entries(toValue(keymap))
+			Object.entries(keymap.value)
 				.map(([shortcut, handler]) => {
 					const shortcuts = shortcut.split('|');
 					return shortcuts.map((s) => [normalizeShortcutString(s), handler]);
