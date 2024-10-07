@@ -184,6 +184,16 @@ createChat({
 - **Type**: `string[]`
 - **Description**: The initial messages to be displayed in the Chat window.
 
+### `allowFileUploads`
+- **Type**: `Ref<boolean> | boolean`
+- **Default**: `false`
+- **Description**: Whether to allow file uploads in the chat. If set to `true`, users will be able to upload files through the chat interface.
+
+### `allowedFilesMimeTypes`
+- **Type**: `Ref<string> | string`
+- **Default**: `''`
+- **Description**: A comma-separated list of allowed MIME types for file uploads. Only applicable if `allowFileUploads` is set to `true`. If left empty, all file types are allowed. For example: `'image/*,application/pdf'`.
+
 ## Customization
 The Chat window is entirely customizable using CSS variables.
 

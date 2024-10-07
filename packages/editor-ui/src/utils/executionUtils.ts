@@ -1,4 +1,11 @@
-import type { ExecutionStatus, IDataObject, INode, IPinData, IRunData } from 'n8n-workflow';
+import {
+	SEND_AND_WAIT_OPERATION,
+	type ExecutionStatus,
+	type IDataObject,
+	type INode,
+	type IPinData,
+	type IRunData,
+} from 'n8n-workflow';
 import type { ExecutionFilterType, ExecutionsQueryFilter } from '@/Interface';
 import { isEmpty } from '@/utils/typesUtils';
 import { FORM_TRIGGER_NODE_TYPE } from '../constants';
@@ -159,6 +166,10 @@ export const waitingNodeTooltip = () => {
 			if (message && resumeUrl) {
 				return `${message}<a href="${resumeUrl}" target="_blank">${resumeUrl}</a>`;
 			}
+		}
+
+		if (lastNode?.parameters.operation === SEND_AND_WAIT_OPERATION) {
+			return i18n.baseText('ndv.output.sendAndWaitWaitingApproval');
 		}
 	} catch (error) {
 		// do not throw error if could not compose tooltip

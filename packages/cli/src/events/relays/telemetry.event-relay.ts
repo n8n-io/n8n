@@ -54,6 +54,7 @@ export class TelemetryEventRelay extends EventRelay {
 			'source-control-user-finished-push-ui': (event) =>
 				this.sourceControlUserFinishedPushUi(event),
 			'license-renewal-attempted': (event) => this.licenseRenewalAttempted(event),
+			'license-community-plus-registered': (event) => this.licenseCommunityPlusRegistered(event),
 			'variable-created': () => this.variableCreated(),
 			'external-secrets-provider-settings-saved': (event) =>
 				this.externalSecretsProviderSettingsSaved(event),
@@ -231,6 +232,16 @@ export class TelemetryEventRelay extends EventRelay {
 	private licenseRenewalAttempted({ success }: RelayEventMap['license-renewal-attempted']) {
 		this.telemetry.track('Instance attempted to refresh license', {
 			success,
+		});
+	}
+
+	private licenseCommunityPlusRegistered({
+		email,
+		licenseKey,
+	}: RelayEventMap['license-community-plus-registered']) {
+		this.telemetry.track('User registered for license community plus', {
+			email,
+			licenseKey,
 		});
 	}
 
