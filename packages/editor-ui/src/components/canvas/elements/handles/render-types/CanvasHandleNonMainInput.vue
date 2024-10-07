@@ -10,7 +10,7 @@ const emit = defineEmits<{
 
 const $style = useCssModule();
 
-const { label, isConnected, isConnecting, isRequired, type, runData } = useCanvasNodeHandle();
+const { label, isConnected, isConnecting, isRequired, type } = useCanvasNodeHandle();
 
 const handleClasses = 'target';
 
