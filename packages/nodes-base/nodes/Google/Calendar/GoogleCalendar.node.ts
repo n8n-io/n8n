@@ -34,7 +34,7 @@ export class GoogleCalendar implements INodeType {
 		name: 'googleCalendar',
 		icon: 'file:googleCalendar.svg',
 		group: ['input'],
-		version: [1, 1.1],
+		version: [1, 1.1, 1.2],
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Google Calendar API',
 		defaults: {
@@ -502,9 +502,41 @@ export class GoogleCalendar implements INodeType {
 								timeZone: updateTimezone,
 							};
 						}
+						// nodeVersion < 1.2
 						if (updateFields.attendees) {
 							body.attendees = [];
 							(updateFields.attendees as string[]).forEach((attendee) => {
+								body.attendees!.push.apply(
+									body.attendees,
+									attendee
+										.split(',')
+										.map((a) => a.trim())
+										.map((email) => ({ email })),
+								);
+							});
+						}
+						// nodeVersion >= 1.2
+						if (updateFields.attendeesUi) {
+							const { mode, attendees } = (
+								updateFields.attendeesUi as {
+									values: {
+										mode: string;
+										attendees: string[];
+									};
+								}
+							).values;
+							body.attendees = [];
+							if (mode === 'add') {
+								const event = await googleApiRequest.call(
+									this,
+									'GET',
+									`/calendar/v3/calendars/${calendarId}/events/${eventId}`,
+								);
+								((event?.attendees as IDataObject[]) || []).forEach((attendee) => {
+									body.attendees?.push(attendee);
+								});
+							}
+							(attendees as string[]).forEach((attendee) => {
 								body.attendees!.push.apply(
 									body.attendees,
 									attendee
