@@ -53,7 +53,7 @@ function onClickAdd() {
 				v-if="isHandlePlusAvailable"
 				v-show="isHandlePlusVisible"
 				:handle-classes="handleClasses"
-				type="ai"
+				type="secondary"
 				position="bottom"
 				@mouseenter="onMouseEnter"
 				@mouseleave="onMouseLeave"
