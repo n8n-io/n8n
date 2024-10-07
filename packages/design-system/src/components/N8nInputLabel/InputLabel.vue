@@ -43,7 +43,6 @@ const addTargetBlank = (html: string) =>
 				[$style.heading]: !!label,
 				[$style.underline]: underline,
 				[$style[size]]: true,
-				[$style.overflow]: !!$slots.options,
 			}"
 		>
 			<div v-if="label" :class="$style.title">
@@ -94,6 +93,9 @@ const addTargetBlank = (html: string) =>
 }
 .inputLabel {
 	display: block;
+
+	overflow-x: hidden;
+	overflow-y: clip;
 }
 .container:hover,
 .inputLabel:hover {
@@ -176,11 +178,6 @@ const addTargetBlank = (html: string) =>
 
 .visible {
 	opacity: 1;
-}
-
-.overflow {
-	overflow-x: hidden;
-	overflow-y: clip;
 }
 
 .textEllipses {
