@@ -22,7 +22,7 @@ import { useCredentialsStore } from '@/stores/credentials.store';
 import { waitFor } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
-import { SET_NODE_TYPE, STORES } from '@/constants';
+import { SET_NODE_TYPE, STICKY_NODE_TYPE, STORES } from '@/constants';
 import type { Connection } from '@vue-flow/core';
 import { useClipboard } from '@/composables/useClipboard';
 
@@ -251,6 +251,24 @@ describe('useCanvasOperations', () => {
 			);
 
 			await waitFor(() => expect(ndvStore.setActiveNodeName).toHaveBeenCalledWith('Test Name'));
+		});
+
+		it('should not set sticky node type as active node', async () => {
+			const ndvStore = useNDVStore();
+			const nodeTypeDescription = mockNodeTypeDescription({ name: STICKY_NODE_TYPE });
+
+			const { addNode } = useCanvasOperations({ router });
+			addNode(
+				{
+					type: STICKY_NODE_TYPE,
+					typeVersion: 1,
+					name: 'Test Name',
+				},
+				nodeTypeDescription,
+				{ openNDV: true },
+			);
+
+			await waitFor(() => expect(ndvStore.setActiveNodeName).not.toHaveBeenCalled());
 		});
 	});
 
