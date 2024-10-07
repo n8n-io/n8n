@@ -7,7 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 	ICheckProcessedOptions,
-	ProcessedDataContext,
+	DeduplicationScope,
 } from 'n8n-workflow';
 
 import { compareItems, flattenKeys } from '@utils/utilities';
@@ -180,16 +180,16 @@ export class RemoveDuplicatesV2 implements INodeType {
 			case 'removeItemsSeenInPreviousExecutions': {
 				const logic = this.getNodeParameter('logic', 0);
 				if (logic === 'removeItemsWithAlreadySeenKeyValues') {
-					const context: ProcessedDataContext = this.getNodeParameter(
+					const scope: DeduplicationScope = this.getNodeParameter(
 						'options.scope',
 						0,
 						'node',
-					) as ProcessedDataContext;
+					) as DeduplicationScope;
 
-					if (!['node', 'workflow'].includes(context as string)) {
+					if (!['node', 'workflow'].includes(scope as string)) {
 						throw new NodeOperationError(
 							this.getNode(),
-							`The context '${context}' is not supported. Please select either "node" or "workflow".`,
+							`The context '${scope}' is not supported. Please select either "node" or "workflow".`,
 						);
 					}
 
@@ -210,7 +210,7 @@ export class RemoveDuplicatesV2 implements INodeType {
 					const maxEntries = this.getNodeParameter('options.historySize', 0, DEFAULT_MAX_ENTRIES);
 					const maxEntriesNum = Number(maxEntries);
 
-					const currentProcessedDataCount = await this.helpers.getProcessedDataCount(context, {
+					const currentProcessedDataCount = await this.helpers.getProcessedDataCount(scope, {
 						mode: 'entries',
 						maxEntries,
 					} as ICheckProcessedOptions);
@@ -222,10 +222,10 @@ export class RemoveDuplicatesV2 implements INodeType {
 					}
 					const itemsProcessed = await this.helpers.checkProcessedAndRecord(
 						Object.keys(itemMapping),
-						context,
+						scope,
 						{ mode: 'entries', maxEntries } as ICheckProcessedOptions,
 					);
-					const processedDataCount = await this.helpers.getProcessedDataCount(context, {
+					const processedDataCount = await this.helpers.getProcessedDataCount(scope, {
 						mode: 'entries',
 						maxEntries,
 					} as ICheckProcessedOptions);
@@ -251,12 +251,12 @@ export class RemoveDuplicatesV2 implements INodeType {
 						]);
 					} else return returnData;
 				} else if (logic === 'removeItemsUpToStoredIncrementalKey') {
-					const context = this.getNodeParameter('options.scope', 0, 'node') as ProcessedDataContext;
+					const scope = this.getNodeParameter('options.scope', 0, 'node') as DeduplicationScope;
 
-					if (!['node', 'workflow'].includes(context as string)) {
+					if (!['node', 'workflow'].includes(scope as string)) {
 						throw new NodeOperationError(
 							this.getNode(),
-							`The context '${context}' is not supported. Please select either "node" or "workflow".`,
+							`The context '${scope}' is not supported. Please select either "node" or "workflow".`,
 						);
 					}
 
@@ -284,7 +284,7 @@ export class RemoveDuplicatesV2 implements INodeType {
 
 					const itemsProcessed = await this.helpers.checkProcessedAndRecord(
 						Object.keys(itemMapping),
-						context,
+						scope,
 						{ mode: 'latestIncrementalKey' } as ICheckProcessedOptions,
 					);
 
@@ -303,12 +303,12 @@ export class RemoveDuplicatesV2 implements INodeType {
 
 					return returnData;
 				} else if (logic === 'removeItemsUpToStoredDate') {
-					const context = this.getNodeParameter('options.scope', 0, 'node') as ProcessedDataContext;
+					const scope = this.getNodeParameter('options.scope', 0, 'node') as DeduplicationScope;
 
-					if (!['node', 'workflow'].includes(context as string)) {
+					if (!['node', 'workflow'].includes(scope as string)) {
 						throw new NodeOperationError(
 							this.getNode(),
-							`The context '${context}' is not supported. Please select either "node" or "workflow".`,
+							`The context '${scope}' is not supported. Please select either "node" or "workflow".`,
 						);
 					}
 
@@ -335,7 +335,7 @@ export class RemoveDuplicatesV2 implements INodeType {
 					}
 					const itemsProcessed = await this.helpers.checkProcessedAndRecord(
 						Object.keys(itemMapping),
-						context,
+						scope,
 						{ mode: 'latestDate' } as ICheckProcessedOptions,
 					);
 
@@ -362,8 +362,8 @@ export class RemoveDuplicatesV2 implements INodeType {
 				if (mode === 'updateKeyValuesInDatabase') {
 				} else if (mode === 'deleteKeyValuesFromDatabase') {
 				} else if (mode === 'cleanDatabase') {
-					const context = this.getNodeParameter('options.scope', 0, 'node') as ProcessedDataContext;
-					await this.helpers.clearAllProcessedItems(context, {
+					const scope = this.getNodeParameter('options.scope', 0, 'node') as DeduplicationScope;
+					await this.helpers.clearAllProcessedItems(scope, {
 						mode: 'entries',
 					});
 				}

@@ -1,7 +1,7 @@
 import { type IDataDeduplicator } from 'n8n-workflow';
 
-import { ProcessedDataHelper } from './processed-data-helper';
+import { DeduplicationHelper } from './deduplication-helper';
 
-export async function getDataDeduplicationService(): Promise<IDataDeduplicator> {
-	return new ProcessedDataHelper();
+export function getDataDeduplicationService(): IDataDeduplicator {
+	return new DeduplicationHelper();
 }

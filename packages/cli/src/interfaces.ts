@@ -22,8 +22,8 @@ import type {
 	INodeProperties,
 	IUserSettings,
 	IWorkflowExecutionDataProcess,
-	ProcessedDataMode,
-	ProcessedDataItemTypes,
+	DeduplicationMode,
+	DeduplicationItemTypes,
 } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
 
@@ -55,13 +55,13 @@ export interface ICredentialsOverwrite {
 // ----------------------------------
 
 export interface IProcessedDataLatest {
-	mode: ProcessedDataMode;
-	data: ProcessedDataItemTypes;
+	mode: DeduplicationMode;
+	data: DeduplicationItemTypes;
 }
 
 export interface IProcessedDataEntries {
-	mode: ProcessedDataMode;
-	data: ProcessedDataItemTypes[];
+	mode: DeduplicationMode;
+	data: DeduplicationItemTypes[];
 }
 
 // ----------------------------------

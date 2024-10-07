@@ -1,6 +1,6 @@
 import { DataDeduplicationService } from 'n8n-core';
 import type { ICheckProcessedContextData, INodeTypeData } from 'n8n-workflow';
-import type { ICheckProcessedOutput, INode, ProcessedDataItemTypes } from 'n8n-workflow';
+import type { IDeduplicationOutput, INode, DeduplicationItemTypes } from 'n8n-workflow';
 import { Workflow } from 'n8n-workflow';
 
 import { getDataDeduplicationService } from '@/deduplication';
@@ -83,7 +83,7 @@ beforeAll(async () => {
 		nodeTypes,
 	});
 
-	const dataDeduplicationService = await getDataDeduplicationService();
+	const dataDeduplicationService = getDataDeduplicationService();
 	await DataDeduplicationService.init(dataDeduplicationService);
 });
 
@@ -95,15 +95,15 @@ afterAll(async () => {
 	await testDb.terminate();
 });
 
-describe('ProcessedDataManagers.ProcessedDataHelper', () => {
-	test('ProcessedData (mode: entries): ProcessedDataHelper should record and check data correctly', async () => {
+describe('Deduplication.DeduplicationHelper', () => {
+	test('Deduplication (mode: entries): DeduplicationHelper should record and check data correctly', async () => {
 		const context = 'node';
 		const contextData: ICheckProcessedContextData = {
 			workflow,
 			node,
 		};
 
-		let processedData: ICheckProcessedOutput;
+		let processedData: IDeduplicationOutput;
 
 		processedData = await DataDeduplicationService.getInstance().checkProcessed(
 			['a', 'b'],
@@ -160,13 +160,13 @@ describe('ProcessedDataManagers.ProcessedDataHelper', () => {
 		expect(processedData).toEqual({ new: ['b', 'd'], processed: ['a', 'c'] });
 	});
 
-	test('ProcessedData (mode: entries): ProcessedDataHelper different contexts should not interfere with each other', async () => {
+	test('Deduplication (mode: entries): DeduplicationHelper different contexts should not interfere with each other', async () => {
 		const contextData: ICheckProcessedContextData = {
 			workflow,
 			node,
 		};
 
-		let processedData: ICheckProcessedOutput;
+		let processedData: IDeduplicationOutput;
 
 		// Add data with context "node"
 		processedData = await DataDeduplicationService.getInstance().checkProcessedAndRecord(
@@ -220,13 +220,13 @@ describe('ProcessedDataManagers.ProcessedDataHelper', () => {
 		expect(processedData).toEqual({ new: ['b', 'd'], processed: ['a', 'c'] });
 	});
 
-	test('ProcessedData (mode: entries): ProcessedDataHelper check maxEntries', async () => {
+	test('Deduplication (mode: entries): DeduplicationHelper check maxEntries', async () => {
 		const contextData: ICheckProcessedContextData = {
 			workflow,
 			node,
 		};
 
-		let processedData: ICheckProcessedOutput;
+		let processedData: IDeduplicationOutput;
 
 		processedData = await DataDeduplicationService.getInstance().checkProcessedAndRecord(
 			['0', '1', '2', '3'],
@@ -265,13 +265,13 @@ describe('ProcessedDataManagers.ProcessedDataHelper', () => {
 		expect(processedData).toEqual({ new: ['0', '1', '7'], processed: ['2', '3', '4', '5', '6'] });
 	});
 
-	describe('ProcessedData (mode: latestIncrementalKey): ProcessedDataHelper should record and check data correctly', () => {
+	describe('Deduplication (mode: latestIncrementalKey): DeduplicationHelper should record and check data correctly', () => {
 		const tests: Array<{
 			description: string;
 			data: Array<{
 				operation: 'checkProcessed' | 'checkProcessedAndRecord';
-				input: ProcessedDataItemTypes[];
-				output: ICheckProcessedOutput;
+				input: DeduplicationItemTypes[];
+				output: IDeduplicationOutput;
 			}>;
 		}> = [
 			{
@@ -387,7 +387,7 @@ describe('ProcessedDataManagers.ProcessedDataHelper', () => {
 				};
 				const mode = testData.description === 'dates' ? 'latestDate' : 'latestIncrementalKey';
 
-				let processedData: ICheckProcessedOutput;
+				let processedData: IDeduplicationOutput;
 
 				for (const data of testData.data) {
 					processedData = await DataDeduplicationService.getInstance()[data.operation](

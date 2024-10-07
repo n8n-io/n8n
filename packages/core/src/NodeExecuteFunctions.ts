@@ -102,12 +102,12 @@ import type {
 	EnsureTypeOptions,
 	SSHTunnelFunctions,
 	SchedulingFunctions,
-	CheckProcessedHelperFunctions,
-	ICheckProcessedOutput,
-	ICheckProcessedOutputItems,
+	DeduplicationHelperFunctions,
+	IDeduplicationOutput,
+	IDeduplicationOutputItems,
 	ICheckProcessedOptions,
-	ProcessedDataContext,
-	ProcessedDataItemTypes,
+	DeduplicationScope,
+	DeduplicationItemTypes,
 	ICheckProcessedContextData,
 	AiEvent,
 } from 'n8n-workflow';
@@ -1292,28 +1292,28 @@ async function prepareBinaryData(
 }
 
 export async function checkProcessed(
-	items: ProcessedDataItemTypes[],
-	context: ProcessedDataContext,
+	items: DeduplicationItemTypes[],
+	scope: DeduplicationScope,
 	contextData: ICheckProcessedContextData,
 	options: ICheckProcessedOptions,
-): Promise<ICheckProcessedOutput> {
+): Promise<IDeduplicationOutput> {
 	return await DataDeduplicationService.getInstance().checkProcessed(
 		items,
-		context,
+		scope,
 		contextData,
 		options,
 	);
 }
 
 export async function checkProcessedAndRecord(
-	items: ProcessedDataItemTypes[],
-	context: ProcessedDataContext,
+	items: DeduplicationItemTypes[],
+	scope: DeduplicationScope,
 	contextData: ICheckProcessedContextData,
 	options: ICheckProcessedOptions,
-): Promise<ICheckProcessedOutput> {
+): Promise<IDeduplicationOutput> {
 	return await DataDeduplicationService.getInstance().checkProcessedAndRecord(
 		items,
-		context,
+		scope,
 		contextData,
 		options,
 	);
@@ -1322,52 +1322,51 @@ export async function checkProcessedAndRecord(
 export async function checkProcessedItemsAndRecord(
 	key: string,
 	items: IDataObject[],
-	// items: ProcessedDataItemTypes[],
-	context: ProcessedDataContext,
+	scope: DeduplicationScope,
 	contextData: ICheckProcessedContextData,
 	options: ICheckProcessedOptions,
-): Promise<ICheckProcessedOutputItems> {
+): Promise<IDeduplicationOutputItems> {
 	return await DataDeduplicationService.getInstance().checkProcessedItemsAndRecord(
 		key,
 		items,
-		context,
+		scope,
 		contextData,
 		options,
 	);
 }
 
 export async function removeProcessed(
-	items: ProcessedDataItemTypes[],
-	context: ProcessedDataContext,
+	items: DeduplicationItemTypes[],
+	scope: DeduplicationScope,
 	contextData: ICheckProcessedContextData,
 	options: ICheckProcessedOptions,
 ): Promise<void> {
 	return await DataDeduplicationService.getInstance().removeProcessed(
 		items,
-		context,
+		scope,
 		contextData,
 		options,
 	);
 }
 
 export async function clearAllProcessedItems(
-	context: ProcessedDataContext,
+	scope: DeduplicationScope,
 	contextData: ICheckProcessedContextData,
 	options: ICheckProcessedOptions,
 ): Promise<void> {
 	return await DataDeduplicationService.getInstance().clearAllProcessedItems(
-		context,
+		scope,
 		contextData,
 		options,
 	);
 }
 export async function getProcessedDataCount(
-	context: ProcessedDataContext,
+	scope: DeduplicationScope,
 	contextData: ICheckProcessedContextData,
 	options: ICheckProcessedOptions,
 ): Promise<number> {
 	return await DataDeduplicationService.getInstance().getProcessedDataCount(
-		context,
+		scope,
 		contextData,
 		options,
 	);
@@ -3544,53 +3543,53 @@ const getBinaryHelperFunctions = (
 const getCheckProcessedHelperFunctions = (
 	workflow: Workflow,
 	node: INode,
-): CheckProcessedHelperFunctions => ({
+): DeduplicationHelperFunctions => ({
 	async checkProcessed(
-		items: ProcessedDataItemTypes[],
-		context: ProcessedDataContext,
+		items: DeduplicationItemTypes[],
+		scope: DeduplicationScope,
 		options: ICheckProcessedOptions,
-	): Promise<ICheckProcessedOutput> {
-		return await checkProcessed(items, context, { node, workflow }, options);
+	): Promise<IDeduplicationOutput> {
+		return await checkProcessed(items, scope, { node, workflow }, options);
 	},
 	async checkProcessedAndRecord(
-		items: ProcessedDataItemTypes[],
-		context: ProcessedDataContext,
+		items: DeduplicationItemTypes[],
+		scope: DeduplicationScope,
 		options: ICheckProcessedOptions,
-	): Promise<ICheckProcessedOutput> {
-		return await checkProcessedAndRecord(items, context, { node, workflow }, options);
+	): Promise<IDeduplicationOutput> {
+		return await checkProcessedAndRecord(items, scope, { node, workflow }, options);
 	},
 	async checkProcessedItemsAndRecord(
 		propertyName: string,
 		items: IDataObject[],
-		context: ProcessedDataContext,
+		scope: DeduplicationScope,
 		options: ICheckProcessedOptions,
-	): Promise<ICheckProcessedOutputItems> {
+	): Promise<IDeduplicationOutputItems> {
 		return await checkProcessedItemsAndRecord(
 			propertyName,
 			items,
-			context,
+			scope,
 			{ node, workflow },
 			options,
 		);
 	},
 	async removeProcessed(
-		items: ProcessedDataItemTypes[],
-		context: ProcessedDataContext,
+		items: DeduplicationItemTypes[],
+		scope: DeduplicationScope,
 		options: ICheckProcessedOptions,
 	): Promise<void> {
-		return await removeProcessed(items, context, { node, workflow }, options);
+		return await removeProcessed(items, scope, { node, workflow }, options);
 	},
 	async clearAllProcessedItems(
-		context: ProcessedDataContext,
+		scope: DeduplicationScope,
 		options: ICheckProcessedOptions,
 	): Promise<void> {
-		return await clearAllProcessedItems(context, { node, workflow }, options);
+		return await clearAllProcessedItems(scope, { node, workflow }, options);
 	},
 	async getProcessedDataCount(
-		context: ProcessedDataContext,
+		scope: DeduplicationScope,
 		options: ICheckProcessedOptions,
 	): Promise<number> {
-		return await getProcessedDataCount(context, { node, workflow }, options);
+		return await getProcessedDataCount(scope, { node, workflow }, options);
 	},
 });
 

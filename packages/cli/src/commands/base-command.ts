@@ -268,7 +268,7 @@ export abstract class BaseCommand extends Command {
 	}
 
 	protected async initDataDeduplicationService() {
-		const dataDeduplicationService = await getDataDeduplicationService();
+		const dataDeduplicationService = getDataDeduplicationService();
 		await DataDeduplicationService.init(dataDeduplicationService);
 	}
 

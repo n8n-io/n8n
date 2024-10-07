@@ -765,53 +765,50 @@ export interface BinaryHelperFunctions {
 	}>;
 }
 
-export type ProcessedDataContext = 'node' | 'workflow';
-export type ProcessedDataItemTypes = string | number;
-export type ProcessedDataMode = 'entries' | 'latestIncrementalKey' | 'latestDate';
+export type DeduplicationScope = 'node' | 'workflow';
+export type DeduplicationItemTypes = string | number;
+export type DeduplicationMode = 'entries' | 'latestIncrementalKey' | 'latestDate';
 
-export interface ICheckProcessedOutput {
-	new: ProcessedDataItemTypes[];
-	processed: ProcessedDataItemTypes[];
+export interface IDeduplicationOutput {
+	new: DeduplicationItemTypes[];
+	processed: DeduplicationItemTypes[];
 }
 
-export interface ICheckProcessedOutputItems {
+export interface IDeduplicationOutputItems {
 	new: IDataObject[];
 	processed: IDataObject[];
 }
 
 export interface ICheckProcessedOptions {
-	mode: ProcessedDataMode;
+	mode: DeduplicationMode;
 	maxEntries?: number;
 }
 
-export interface CheckProcessedHelperFunctions {
+export interface DeduplicationHelperFunctions {
 	checkProcessed(
-		items: ProcessedDataItemTypes[],
-		context: ProcessedDataContext,
+		items: DeduplicationItemTypes[],
+		scope: DeduplicationScope,
 		options: ICheckProcessedOptions,
-	): Promise<ICheckProcessedOutput>;
+	): Promise<IDeduplicationOutput>;
 	checkProcessedAndRecord(
-		items: ProcessedDataItemTypes[],
-		context: ProcessedDataContext,
+		items: DeduplicationItemTypes[],
+		scope: DeduplicationScope,
 		options: ICheckProcessedOptions,
-	): Promise<ICheckProcessedOutput>;
+	): Promise<IDeduplicationOutput>;
 	checkProcessedItemsAndRecord(
 		propertyName: string,
 		items: IDataObject[],
-		context: ProcessedDataContext,
+		scope: DeduplicationScope,
 		options: ICheckProcessedOptions,
-	): Promise<ICheckProcessedOutputItems>;
+	): Promise<IDeduplicationOutputItems>;
 	removeProcessed(
-		items: ProcessedDataItemTypes[],
-		context: ProcessedDataContext,
+		items: DeduplicationItemTypes[],
+		scope: DeduplicationScope,
 		options: ICheckProcessedOptions,
 	): Promise<void>;
-	clearAllProcessedItems(
-		context: ProcessedDataContext,
-		options: ICheckProcessedOptions,
-	): Promise<void>;
+	clearAllProcessedItems(scope: DeduplicationScope, options: ICheckProcessedOptions): Promise<void>;
 	getProcessedDataCount(
-		context: ProcessedDataContext,
+		scope: DeduplicationScope,
 		options: ICheckProcessedOptions,
 	): Promise<number>;
 }
@@ -988,7 +985,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		helpers: RequestHelperFunctions &
 			BaseHelperFunctions &
 			BinaryHelperFunctions &
-			CheckProcessedHelperFunctions &
+			DeduplicationHelperFunctions &
 			FileSystemHelperFunctions &
 			SSHTunnelFunctions &
 			JsonHelperFunctions & {
@@ -2679,33 +2676,33 @@ export interface IProcessedDataConfig {
 
 export interface IDataDeduplicator {
 	checkProcessed(
-		items: ProcessedDataItemTypes[],
-		context: ProcessedDataContext,
+		items: DeduplicationItemTypes[],
+		context: DeduplicationScope,
 		contextData: ICheckProcessedContextData,
 		options: ICheckProcessedOptions,
-	): Promise<ICheckProcessedOutput>;
+	): Promise<IDeduplicationOutput>;
 
 	checkProcessedAndRecord(
-		items: ProcessedDataItemTypes[],
-		context: ProcessedDataContext,
+		items: DeduplicationItemTypes[],
+		context: DeduplicationScope,
 		contextData: ICheckProcessedContextData,
 		options: ICheckProcessedOptions,
-	): Promise<ICheckProcessedOutput>;
+	): Promise<IDeduplicationOutput>;
 
 	removeProcessed(
-		items: ProcessedDataItemTypes[],
-		context: ProcessedDataContext,
+		items: DeduplicationItemTypes[],
+		context: DeduplicationScope,
 		contextData: ICheckProcessedContextData,
 		options: ICheckProcessedOptions,
 	): Promise<void>;
 
 	clearAllProcessedItems(
-		context: ProcessedDataContext,
+		context: DeduplicationScope,
 		contextData: ICheckProcessedContextData,
 		options: ICheckProcessedOptions,
 	): Promise<void>;
 	getProcessedDataCount(
-		context: ProcessedDataContext,
+		context: DeduplicationScope,
 		contextData: ICheckProcessedContextData,
 		options: ICheckProcessedOptions,
 	): Promise<number>;

@@ -2,14 +2,20 @@ import get from 'lodash/get';
 import type {
 	IDataDeduplicator,
 	ICheckProcessedOptions,
-	ICheckProcessedOutput,
-	ICheckProcessedOutputItems,
+	IDeduplicationOutput,
+	IDeduplicationOutputItems,
 	IDataObject,
-	ProcessedDataContext,
-	ProcessedDataItemTypes,
+	DeduplicationScope,
+	DeduplicationItemTypes,
 	ICheckProcessedContextData,
 } from 'n8n-workflow';
 import * as assert from 'node:assert/strict';
+
+/**
+ * A singleton service responsible for data deduplication.
+ * This service wraps around the IDataDeduplicator interface and provides methods to handle
+ * deduplication-related operations such as checking, recording, and clearing processed data.
+ */
 export class DataDeduplicationService {
 	private static instance: DataDeduplicationService;
 
@@ -51,22 +57,22 @@ export class DataDeduplicationService {
 	}
 
 	async checkProcessed(
-		items: ProcessedDataItemTypes[],
-		context: ProcessedDataContext,
+		items: DeduplicationItemTypes[],
+		scope: DeduplicationScope,
 		contextData: ICheckProcessedContextData,
 		options: ICheckProcessedOptions,
-	): Promise<ICheckProcessedOutput> {
+	): Promise<IDeduplicationOutput> {
 		this.assertDeduplicator();
-		return await this.deduplicator.checkProcessed(items, context, contextData, options);
+		return await this.deduplicator.checkProcessed(items, scope, contextData, options);
 	}
 
 	async checkProcessedItemsAndRecord(
 		propertyName: string,
 		items: IDataObject[],
-		context: ProcessedDataContext,
+		scope: DeduplicationScope,
 		contextData: ICheckProcessedContextData,
 		options: ICheckProcessedOptions,
-	): Promise<ICheckProcessedOutputItems> {
+	): Promise<IDeduplicationOutputItems> {
 		this.assertDeduplicator();
 		let value;
 		const itemLookup = items.reduce((acc, cur, index) => {
@@ -77,7 +83,7 @@ export class DataDeduplicationService {
 
 		const checkedItems = await this.deduplicator.checkProcessedAndRecord(
 			Object.keys(itemLookup),
-			context,
+			scope,
 			contextData,
 			options,
 		);
@@ -89,40 +95,40 @@ export class DataDeduplicationService {
 	}
 
 	async checkProcessedAndRecord(
-		items: ProcessedDataItemTypes[],
-		context: ProcessedDataContext,
+		items: DeduplicationItemTypes[],
+		scope: DeduplicationScope,
 		contextData: ICheckProcessedContextData,
 		options: ICheckProcessedOptions,
-	): Promise<ICheckProcessedOutput> {
+	): Promise<IDeduplicationOutput> {
 		this.assertDeduplicator();
-		return await this.deduplicator.checkProcessedAndRecord(items, context, contextData, options);
+		return await this.deduplicator.checkProcessedAndRecord(items, scope, contextData, options);
 	}
 
 	async removeProcessed(
-		items: ProcessedDataItemTypes[],
-		context: ProcessedDataContext,
+		items: DeduplicationItemTypes[],
+		scope: DeduplicationScope,
 		contextData: ICheckProcessedContextData,
 		options: ICheckProcessedOptions,
 	): Promise<void> {
 		this.assertDeduplicator();
-		return await this.deduplicator.removeProcessed(items, context, contextData, options);
+		return await this.deduplicator.removeProcessed(items, scope, contextData, options);
 	}
 
 	async clearAllProcessedItems(
-		context: ProcessedDataContext,
+		scope: DeduplicationScope,
 		contextData: ICheckProcessedContextData,
 		options: ICheckProcessedOptions,
 	): Promise<void> {
 		this.assertDeduplicator();
-		return await this.deduplicator.clearAllProcessedItems(context, contextData, options);
+		return await this.deduplicator.clearAllProcessedItems(scope, contextData, options);
 	}
 
 	async getProcessedDataCount(
-		context: ProcessedDataContext,
+		scope: DeduplicationScope,
 		contextData: ICheckProcessedContextData,
 		options: ICheckProcessedOptions,
 	): Promise<number> {
 		this.assertDeduplicator();
-		return await this.deduplicator.getProcessedDataCount(context, contextData, options);
+		return await this.deduplicator.getProcessedDataCount(scope, contextData, options);
 	}
 }
