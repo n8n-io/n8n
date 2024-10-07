@@ -1,3 +1,14 @@
+## [1.62.2](https://github.com/n8n-io/n8n/compare/n8n@1.62.1...n8n@1.62.2) (2024-10-07)
+
+
+### Bug Fixes
+
+* **core:** Allow loading nodes from multiple custom directories ([#11130](https://github.com/n8n-io/n8n/issues/11130)) ([e530bf5](https://github.com/n8n-io/n8n/commit/e530bf52a36d5c0fb7d915926e26d51c7a150d0d))
+* **core:** Always set `startedAt` when executions start running ([#11098](https://github.com/n8n-io/n8n/issues/11098)) ([f91fae5](https://github.com/n8n-io/n8n/commit/f91fae565cbf5f4dab54ce35282e2029e5bc15ff))
+* **core:** Print errors that happen before the execution starts on the worker instead of just on the main instance ([#11099](https://github.com/n8n-io/n8n/issues/11099)) ([563a0fc](https://github.com/n8n-io/n8n/commit/563a0fc446f0e6fd64e10ee473a40fd5333081d2))
+
+
+
 ## [1.62.1](https://github.com/n8n-io/n8n/compare/n8n@1.61.0...n8n@1.62.1) (2024-10-02)
 
 
