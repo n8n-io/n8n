@@ -117,7 +117,7 @@ export class WorkerServer {
 		try {
 			await Db.getConnection().query('SELECT 1');
 		} catch (value) {
-			this.logger.error('[WorkerServer] No database connection', ensureError(value));
+			this.logger.error('[WorkerServer] No database connection', { error: ensureError(value) });
 
 			return ResponseHelper.sendErrorResponse(
 				res,
@@ -128,7 +128,7 @@ export class WorkerServer {
 		try {
 			await this.scalingService.pingQueue();
 		} catch (value) {
-			this.logger.error('[WorkerServer] No Redis connection', ensureError(value));
+			this.logger.error('[WorkerServer] No Redis connection', { error: ensureError(value) });
 
 			return ResponseHelper.sendErrorResponse(
 				res,

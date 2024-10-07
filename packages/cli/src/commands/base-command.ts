@@ -284,7 +284,7 @@ export abstract class BaseCommand extends Command {
 				await this.license.activate(activationKey);
 				this.logger.debug('License init complete');
 			} catch (e) {
-				this.logger.error('Could not activate license', e as Error);
+				this.logger.error('Could not activate license', { error: e });
 			}
 		}
 	}

@@ -1,5 +1,9 @@
 import { Config, Env, Nested } from '../decorators';
-import { StringArray } from '../utils';
+import { IsIn, StringArray } from '../utils';
+
+export const LOG_SCOPES = ['concurrency', 'license', 'scaling', 'waiting'] as const;
+
+export type LogScope = (typeof LOG_SCOPES)[number];
 
 @Config
 class FileLoggingConfig {
@@ -44,4 +48,21 @@ export class LoggingConfig {
 
 	@Nested
 	file: FileLoggingConfig;
+
+	/**
+	 * Scopes to filter logs by. Disabled by default.
+	 *
+	 * Currently supported log scopes:
+	 * - `concurrency`
+	 * - `license`
+	 * - `scaling`
+	 * - `waiting`
+	 *
+	 * @example
+	 * `N8N_LOG_SCOPES=license`
+	 * `N8N_LOG_SCOPES=license,waiting`
+	 */
+	@Env('N8N_LOG_SCOPES')
+	@IsIn(LOG_SCOPES)
+	scopes: StringArray<LogScope> = [];
 }

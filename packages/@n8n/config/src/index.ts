@@ -18,6 +18,9 @@ import { VersionNotificationsConfig } from './configs/version-notifications.conf
 import { WorkflowsConfig } from './configs/workflows.config';
 import { Config, Env, Nested } from './decorators';
 
+export { LOG_SCOPES } from './configs/logging.config';
+export type { LogScope } from './configs/logging.config';
+
 @Config
 export class GlobalConfig {
 	@Nested

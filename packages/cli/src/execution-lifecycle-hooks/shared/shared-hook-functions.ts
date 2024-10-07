@@ -95,7 +95,7 @@ export async function updateExistingExecution(parameters: {
 			);
 		}
 	} catch (e) {
-		logger.error(`Failed to save metadata for execution ID ${executionId}`, e as Error);
+		logger.error(`Failed to save metadata for execution ID ${executionId}`, { error: e });
 	}
 
 	if (executionData.finished === true && executionData.retryOf !== undefined) {

@@ -241,6 +241,7 @@ describe('GlobalConfig', () => {
 				fileSizeMax: 16,
 				location: 'logs/n8n.log',
 			},
+			scopes: [],
 		},
 	};
 

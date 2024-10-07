@@ -79,10 +79,9 @@ export class WorkflowHistoryService {
 					workflowId,
 				});
 			} catch (e) {
-				this.logger.error(
-					`Failed to save workflow history version for workflow ${workflowId}`,
-					e as Error,
-				);
+				this.logger.error(`Failed to save workflow history version for workflow ${workflowId}`, {
+					error: e,
+				});
 			}
 		}
 	}
