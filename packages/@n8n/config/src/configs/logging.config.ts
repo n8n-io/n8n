@@ -1,7 +1,7 @@
 import { Config, Env, Nested } from '../decorators';
 import { IsIn, StringArray } from '../utils';
 
-export const LOG_SCOPES = ['concurrency', 'license', 'scaling', 'waiting'] as const;
+export const LOG_SCOPES = ['executions', 'license', 'scaling'] as const;
 
 export type LogScope = (typeof LOG_SCOPES)[number];
 
@@ -53,14 +53,13 @@ export class LoggingConfig {
 	 * Scopes to filter logs by. Disabled by default.
 	 *
 	 * Currently supported log scopes:
-	 * - `concurrency`
+	 * - `executions`
 	 * - `license`
 	 * - `scaling`
-	 * - `waiting`
 	 *
 	 * @example
 	 * `N8N_LOG_SCOPES=license`
-	 * `N8N_LOG_SCOPES=license,waiting`
+	 * `N8N_LOG_SCOPES=license,executions`
 	 */
 	@Env('N8N_LOG_SCOPES')
 	@IsIn(LOG_SCOPES, { allowEmpty: true })

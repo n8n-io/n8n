@@ -29,7 +29,7 @@ export class WaitTracker {
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly orchestrationService: OrchestrationService,
 	) {
-		this.logger = this.logger.withScope('waiting');
+		this.logger = this.logger.withScope('executions');
 	}
 
 	has(executionId: string) {
