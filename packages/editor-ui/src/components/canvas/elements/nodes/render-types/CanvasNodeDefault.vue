@@ -25,6 +25,8 @@ const {
 	isDisabled,
 	isSelected,
 	hasPinnedData,
+	executionStatus,
+	executionWaiting,
 	executionRunning,
 	hasRunData,
 	hasIssues,
@@ -53,6 +55,7 @@ const classes = computed(() => {
 		[$style.success]: hasRunData.value,
 		[$style.error]: hasIssues.value,
 		[$style.pinned]: hasPinnedData.value,
+		[$style.waiting]: executionWaiting.value ?? executionStatus.value === 'waiting',
 		[$style.running]: executionRunning.value,
 		[$style.configurable]: renderOptions.value.configurable,
 		[$style.configuration]: renderOptions.value.configuration,
@@ -123,7 +126,9 @@ function openContextMenu(event: MouseEvent) {
 		<div :class="$style.description">
 			<div v-if="label" :class="$style.label">
 				{{ label }}
-				<div v-if="isDisabled">({{ i18n.baseText('node.disabled') }})</div>
+			</div>
+			<div v-if="isDisabled" :class="$style.disabledLabel">
+				({{ i18n.baseText('node.disabled') }})
 			</div>
 			<div v-if="subtitle" :class="$style.subtitle">{{ subtitle }}</div>
 		</div>
@@ -244,6 +249,10 @@ function openContextMenu(event: MouseEvent) {
 		background-color: var(--color-node-executing-background);
 		border-color: var(--color-canvas-node-running-border-color, var(--color-node-running-border));
 	}
+
+	&.waiting {
+		border-color: var(--color-canvas-node-waiting-border-color, var(--color-secondary));
+	}
 }
 
 .description {
@@ -258,7 +267,8 @@ function openContextMenu(event: MouseEvent) {
 	align-items: center;
 }
 
-.label {
+.label,
+.disabledLabel {
 	font-size: var(--font-size-m);
 	text-align: center;
 	text-overflow: ellipsis;
