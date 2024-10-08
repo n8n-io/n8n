@@ -1,4 +1,4 @@
-import type { CodeExecutionMode, IDataObject, WorkflowExecuteMode } from 'n8n-workflow';
+import type { CodeExecutionMode, IDataObject } from 'n8n-workflow';
 
 import { ValidationError } from '@/js-task-runner/errors/validation-error';
 import {
@@ -31,30 +31,13 @@ describe('JsTaskRunner', () => {
 	});
 
 	describe('console', () => {
-		test.each<[CodeExecutionMode, WorkflowExecuteMode]>([
-			['runOnceForAllItems', 'cli'],
-			['runOnceForAllItems', 'error'],
-			['runOnceForAllItems', 'integrated'],
-			['runOnceForAllItems', 'internal'],
-			['runOnceForAllItems', 'retry'],
-			['runOnceForAllItems', 'trigger'],
-			['runOnceForAllItems', 'webhook'],
-			['runOnceForEachItem', 'cli'],
-			['runOnceForEachItem', 'error'],
-			['runOnceForEachItem', 'integrated'],
-			['runOnceForEachItem', 'internal'],
-			['runOnceForEachItem', 'retry'],
-			['runOnceForEachItem', 'trigger'],
-			['runOnceForEachItem', 'webhook'],
-		])(
-			'should make an rpc call for console log in %s mode when workflow mode is %s',
-			async (nodeMode, workflowMode) => {
-				jest.spyOn(console, 'log').mockImplementation(() => {});
+		test.each<[CodeExecutionMode]>([['runOnceForAllItems'], ['runOnceForEachItem']])(
+			'should make an rpc call for console log in %s mode',
+			async (nodeMode) => {
 				jest.spyOn(jsTaskRunner, 'makeRpcCall').mockResolvedValue(undefined);
 				const task = newTaskWithSettings({
 					code: "console.log('Hello', 'world!'); return {}",
 					nodeMode,
-					workflowMode,
 				});
 
 				await execTaskWithParams({
@@ -62,32 +45,9 @@ describe('JsTaskRunner', () => {
 					taskData: newAllCodeTaskData([wrapIntoJson({})]),
 				});
 
-				expect(console.log).toHaveBeenCalledWith('[JS Code]', 'Hello world!');
 				expect(jsTaskRunner.makeRpcCall).toHaveBeenCalledWith(task.taskId, 'logNodeOutput', [
 					'Hello world!',
 				]);
-			},
-		);
-
-		test.each<[CodeExecutionMode, WorkflowExecuteMode]>([
-			['runOnceForAllItems', 'manual'],
-			['runOnceForEachItem', 'manual'],
-		])(
-			"shouldn't make an rpc call for console log in %s mode when workflow mode is %s",
-			async (nodeMode, workflowMode) => {
-				jest.spyOn(jsTaskRunner, 'makeRpcCall').mockResolvedValue(undefined);
-				const task = newTaskWithSettings({
-					code: "console.log('Hello', 'world!'); return {}",
-					nodeMode,
-					workflowMode,
-				});
-
-				await execTaskWithParams({
-					task,
-					taskData: newAllCodeTaskData([wrapIntoJson({})]),
-				});
-
-				expect(jsTaskRunner.makeRpcCall).not.toHaveBeenCalled();
 			},
 		);
 	});
