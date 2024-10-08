@@ -420,6 +420,11 @@ export type RelayEventMap = {
 		success: boolean;
 	};
 
+	'license-community-plus-registered': {
+		email: string;
+		licenseKey: string;
+	};
+
 	// #endregion
 
 	// #region Variable
