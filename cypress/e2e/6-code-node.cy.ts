@@ -96,7 +96,7 @@ return []
 				cy.enableFeature('askAi');
 				WorkflowPage.actions.visit();
 
-				cy.window().then((win) => {
+				cy.window().then(() => {
 					WorkflowPage.actions.addInitialNodeToCanvas('Manual');
 					WorkflowPage.actions.addNodeToCanvas('Code', true, true);
 				});
