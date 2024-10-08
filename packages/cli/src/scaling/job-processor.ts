@@ -1,15 +1,18 @@
-import { Service } from 'typedi';
-import { BINARY_ENCODING, ApplicationError, Workflow } from 'n8n-workflow';
+import type { RunningJobSummary } from '@n8n/api-types';
 import { WorkflowExecute } from 'n8n-core';
-import { Logger } from '@/Logger';
+import { BINARY_ENCODING, ApplicationError, Workflow } from 'n8n-workflow';
+import type { ExecutionStatus, IExecuteResponsePromiseData, IRun } from 'n8n-workflow';
+import type PCancelable from 'p-cancelable';
+import { Service } from 'typedi';
+
 import config from '@/config';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
-import { NodeTypes } from '@/NodeTypes';
-import type { ExecutionStatus, IExecuteResponsePromiseData, IRun } from 'n8n-workflow';
-import type { Job, JobId, JobResult, RunningJob, RunningJobSummary } from './types';
-import type PCancelable from 'p-cancelable';
+import { Logger } from '@/logging/logger.service';
+import { NodeTypes } from '@/node-types';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+
+import type { Job, JobId, JobResult, RunningJob } from './scaling.types';
 
 /**
  * Responsible for processing jobs from the queue, i.e. running enqueued executions.
@@ -44,7 +47,7 @@ export class JobProcessor {
 
 		this.logger.info(`[JobProcessor] Starting job ${job.id} (execution ${executionId})`);
 
-		await this.executionRepository.updateStatus(executionId, 'running');
+		const startedAt = await this.executionRepository.setRunning(executionId);
 
 		let { staticData } = execution.workflowData;
 
@@ -134,7 +137,7 @@ export class JobProcessor {
 			workflowId: execution.workflowId,
 			workflowName: execution.workflowData.name,
 			mode: execution.mode,
-			startedAt: execution.startedAt,
+			startedAt,
 			retryOf: execution.retryOf ?? '',
 			status: execution.status,
 		};

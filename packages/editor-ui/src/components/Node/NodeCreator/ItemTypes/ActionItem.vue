@@ -1,25 +1,3 @@
-<template>
-	<n8n-node-creator-node
-		draggable
-		:class="$style.action"
-		:title="action.displayName"
-		:is-trigger="isTriggerAction(action)"
-		data-keyboard-nav="true"
-		@dragstart="onDragStart"
-		@dragend="onDragEnd"
-	>
-		<template #dragContent>
-			<div ref="draggableDataTransfer" :class="$style.draggableDataTransfer" />
-			<div v-show="dragging" :class="$style.draggable" :style="draggableStyle">
-				<NodeIcon :node-type="nodeType" :size="40" :shrink="false" @click.capture.stop />
-			</div>
-		</template>
-		<template #icon>
-			<NodeIcon :node-type="action" />
-		</template>
-	</n8n-node-creator-node>
-</template>
-
 <script setup lang="ts">
 import { reactive, computed, toRefs } from 'vue';
 import type { ActionTypeDescription, SimplifiedNodeType } from '@/Interface';
@@ -115,6 +93,28 @@ function onDragEnd(): void {
 }
 const { draggableDataTransfer, dragging } = toRefs(state);
 </script>
+
+<template>
+	<n8n-node-creator-node
+		draggable
+		:class="$style.action"
+		:title="action.displayName"
+		:is-trigger="isTriggerAction(action)"
+		data-keyboard-nav="true"
+		@dragstart="onDragStart"
+		@dragend="onDragEnd"
+	>
+		<template #dragContent>
+			<div ref="draggableDataTransfer" :class="$style.draggableDataTransfer" />
+			<div v-show="dragging" :class="$style.draggable" :style="draggableStyle">
+				<NodeIcon :node-type="nodeType" :size="40" :shrink="false" @click.capture.stop />
+			</div>
+		</template>
+		<template #icon>
+			<NodeIcon :node-type="action" />
+		</template>
+	</n8n-node-creator-node>
+</template>
 
 <style lang="scss" module>
 .action {

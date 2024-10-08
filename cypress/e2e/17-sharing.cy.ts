@@ -1,3 +1,4 @@
+import * as projects from '../composables/projects';
 import { INSTANCE_MEMBERS, INSTANCE_OWNER, INSTANCE_ADMIN, NOTION_NODE_NAME } from '../constants';
 import {
 	CredentialsModal,
@@ -7,8 +8,7 @@ import {
 	WorkflowSharingModal,
 	WorkflowsPage,
 } from '../pages';
-import { getVisibleDropdown, getVisibleSelect } from '../utils';
-import * as projects from '../composables/projects';
+import { getVisibleDropdown, getVisiblePopper, getVisibleSelect } from '../utils';
 
 /**
  * User U1 - Instance owner
@@ -180,7 +180,8 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 		).should('be.visible');
 
 		credentialsModal.getters.usersSelect().click();
-		cy.getByTestId('project-sharing-info')
+		getVisiblePopper()
+			.find('[data-test-id="project-sharing-info"]')
 			.filter(':visible')
 			.should('have.length', 3)
 			.contains(INSTANCE_ADMIN.email)

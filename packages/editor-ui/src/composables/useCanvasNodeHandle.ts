@@ -12,14 +12,24 @@ export function useCanvasNodeHandle() {
 	const handle = inject(CanvasNodeHandleKey);
 
 	const label = computed(() => handle?.label.value ?? '');
-	const connected = computed(() => handle?.connected.value ?? false);
+	const isConnected = computed(() => handle?.isConnected.value ?? false);
+	const isConnecting = computed(() => handle?.isConnecting.value ?? false);
+	const isReadOnly = computed(() => handle?.isReadOnly.value);
+	const isRequired = computed(() => handle?.isRequired.value);
 	const type = computed(() => handle?.type.value ?? NodeConnectionType.Main);
 	const mode = computed(() => handle?.mode.value ?? CanvasConnectionMode.Input);
+	const index = computed(() => handle?.index.value ?? 0);
+	const runData = computed(() => handle?.runData.value);
 
 	return {
 		label,
-		connected,
+		isConnected,
+		isConnecting,
+		isReadOnly,
+		isRequired,
 		type,
 		mode,
+		index,
+		runData,
 	};
 }

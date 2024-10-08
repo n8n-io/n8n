@@ -1,8 +1,8 @@
+import { setCredentialValues } from '../composables/modals/credential-modal';
+import { clickCreateNewCredential } from '../composables/ndv';
 import { MANUAL_TRIGGER_NODE_DISPLAY_NAME, NOTION_NODE_NAME } from '../constants';
 import { NDV, WorkflowPage } from '../pages';
 import { NodeCreator } from '../pages/features/node-creator';
-import { clickCreateNewCredential } from '../composables/ndv';
-import { setCredentialValues } from '../composables/modals/credential-modal';
 
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
@@ -132,6 +132,10 @@ describe('NDV', () => {
 				'contains.text',
 				"An expression here won't work because it uses .item and n8n can't figure out the matching item.",
 			);
+		ndv.getters.nodeRunErrorIndicator().should('be.visible');
+		// The error details should be hidden behind a tooltip
+		ndv.getters.nodeRunErrorIndicator().should('not.contain', 'Start Time');
+		ndv.getters.nodeRunErrorIndicator().should('not.contain', 'Execution Time');
 	});
 
 	it('should save workflow using keyboard shortcut from NDV', () => {
@@ -199,7 +203,7 @@ describe('NDV', () => {
 					.contains(key)
 					.should('be.visible');
 			});
-			getObjectValueItem().find('label').click();
+			getObjectValueItem().find('label').click({ force: true });
 			expandedObjectProps.forEach((key) => {
 				ndv.getters
 					.outputPanel()
@@ -582,7 +586,13 @@ describe('NDV', () => {
 		ndv.getters.outputTableRow(1).find('mark').should('have.text', '<lib');
 
 		ndv.getters.outputDisplayMode().find('label').eq(1).should('include.text', 'JSON');
-		ndv.getters.outputDisplayMode().find('label').eq(1).click();
+		ndv.getters
+			.outputDisplayMode()
+			.find('label')
+			.eq(1)
+			.scrollIntoView()
+			.should('be.visible')
+			.click();
 
 		ndv.getters.outputDataContainer().find('.json-data').should('exist');
 		ndv.getters
@@ -664,6 +674,23 @@ describe('NDV', () => {
 		ndv.getters.parameterInput('operation').find('input').should('have.value', 'Delete');
 	});
 
+	it('Should show a notice when remote options cannot be fetched because of missing credentials', () => {
+		cy.intercept('POST', '/rest/dynamic-node-parameters/options', { statusCode: 403 }).as(
+			'parameterOptions',
+		);
+
+		workflowPage.actions.addInitialNodeToCanvas(NOTION_NODE_NAME, {
+			keepNdvOpen: true,
+			action: 'Update a database page',
+		});
+
+		ndv.actions.addItemToFixedCollection('propertiesUi');
+		ndv.getters
+			.parameterInput('key')
+			.find('input')
+			.should('have.value', 'Set up credential to see options');
+	});
+
 	it('Should show error state when remote options cannot be fetched', () => {
 		cy.intercept('POST', '/rest/dynamic-node-parameters/options', { statusCode: 500 }).as(
 			'parameterOptions',
@@ -672,6 +699,11 @@ describe('NDV', () => {
 		workflowPage.actions.addInitialNodeToCanvas(NOTION_NODE_NAME, {
 			keepNdvOpen: true,
 			action: 'Update a database page',
+		});
+
+		clickCreateNewCredential();
+		setCredentialValues({
+			apiKey: 'sk_test_123',
 		});
 
 		ndv.actions.addItemToFixedCollection('propertiesUi');

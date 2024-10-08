@@ -49,6 +49,14 @@ class PrometheusMetricsConfig {
 	/** Whether to include metrics derived from n8n's internal events */
 	@Env('N8N_METRICS_INCLUDE_MESSAGE_EVENT_BUS_METRICS')
 	includeMessageEventBusMetrics: boolean = false;
+
+	/** Whether to include metrics for jobs in scaling mode. Not supported in multi-main setup. */
+	@Env('N8N_METRICS_INCLUDE_QUEUE_METRICS')
+	includeQueueMetrics: boolean = false;
+
+	/** How often (in seconds) to update queue metrics. */
+	@Env('N8N_METRICS_QUEUE_METRICS_INTERVAL')
+	queueMetricsInterval: number = 20;
 }
 
 @Config
@@ -56,6 +64,10 @@ export class EndpointsConfig {
 	/** Max payload size in MiB */
 	@Env('N8N_PAYLOAD_SIZE_MAX')
 	payloadSizeMax: number = 16;
+
+	/** Max payload size for files in form-data webhook payloads in MiB */
+	@Env('N8N_FORMDATA_FILE_SIZE_MAX')
+	formDataFileSizeMax: number = 200;
 
 	@Nested
 	metrics: PrometheusMetricsConfig;

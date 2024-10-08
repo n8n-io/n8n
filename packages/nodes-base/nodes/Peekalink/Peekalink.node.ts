@@ -5,6 +5,7 @@ import {
 	type INodeExecutionData,
 	type INodeTypeDescription,
 	type JsonObject,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
 export const apiUrl = 'https://api.peekalink.io';
@@ -24,8 +25,8 @@ export class Peekalink extends Node {
 		defaults: {
 			name: 'Peekalink',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'peekalinkApi',

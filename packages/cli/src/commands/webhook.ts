@@ -1,14 +1,15 @@
-import { Container } from 'typedi';
 import { Flags, type Config } from '@oclif/core';
 import { ApplicationError } from 'n8n-workflow';
+import { Container } from 'typedi';
 
+import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
-import { ActiveExecutions } from '@/ActiveExecutions';
-import { WebhookServer } from '@/webhooks/WebhookServer';
-import { BaseCommand } from './BaseCommand';
-
+import { PubSubHandler } from '@/scaling/pubsub/pubsub-handler';
+import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { OrchestrationWebhookService } from '@/services/orchestration/webhook/orchestration.webhook.service';
-import { OrchestrationHandlerWebhookService } from '@/services/orchestration/webhook/orchestration.handler.webhook.service';
+import { WebhookServer } from '@/webhooks/webhook-server';
+
+import { BaseCommand } from './base-command';
 
 export class Webhook extends BaseCommand {
 	static description = 'Starts n8n webhook process. Intercepts only production URLs.';
@@ -25,7 +26,6 @@ export class Webhook extends BaseCommand {
 
 	constructor(argv: string[], cmdConfig: Config) {
 		super(argv, cmdConfig);
-		this.setInstanceType('webhook');
 		if (this.queueModeId) {
 			this.logger.debug(`Webhook Instance queue mode id: ${this.queueModeId}`);
 		}
@@ -111,6 +111,10 @@ export class Webhook extends BaseCommand {
 
 	async initOrchestration() {
 		await Container.get(OrchestrationWebhookService).init();
-		await Container.get(OrchestrationHandlerWebhookService).init();
+
+		Container.get(PubSubHandler).init();
+		const subscriber = Container.get(Subscriber);
+		await subscriber.subscribe('n8n.commands');
+		subscriber.setCommandMessageHandler();
 	}
 }

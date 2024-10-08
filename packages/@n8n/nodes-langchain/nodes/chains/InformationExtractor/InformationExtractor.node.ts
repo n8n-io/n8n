@@ -262,7 +262,7 @@ export class InformationExtractor implements INodeType {
 			}
 
 			const zodSchemaSandbox = getSandboxWithZod(this, jsonSchema, 0);
-			const zodSchema = (await zodSchemaSandbox.runCode()) as z.ZodSchema<object>;
+			const zodSchema = await zodSchemaSandbox.runCode<z.ZodSchema<object>>();
 
 			parser = OutputFixingParser.fromLLM(llm, StructuredOutputParser.fromZodSchema(zodSchema));
 		}
@@ -294,7 +294,7 @@ export class InformationExtractor implements INodeType {
 				const output = await chain.invoke(messages);
 				resultData.push({ json: { output } });
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					resultData.push({ json: { error: error.message }, pairedItem: { item: itemIndex } });
 					continue;
 				}

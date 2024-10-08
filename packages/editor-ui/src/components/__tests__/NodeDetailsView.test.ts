@@ -14,6 +14,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import { setupServer } from '@/__tests__/server';
 import { defaultNodeDescriptions, mockNodes } from '@/__tests__/mocks';
+import { cleanupAppModals, createAppModals } from '@/__tests__/utils';
 
 async function createPiniaWithActiveNode() {
 	const node = mockNodes[0];
@@ -32,6 +33,7 @@ async function createPiniaWithActiveNode() {
 
 	nodeTypesStore.setNodeTypes(defaultNodeDescriptions);
 	workflowsStore.workflow = workflow;
+	workflowsStore.nodeMetadata[node.name] = { pristine: true };
 	ndvStore.activeNodeName = node.name;
 
 	await useSettingsStore().getSettings();
@@ -47,7 +49,12 @@ describe('NodeDetailsView', () => {
 		server = setupServer();
 	});
 
+	beforeEach(() => {
+		createAppModals();
+	});
+
 	afterEach(() => {
+		cleanupAppModals();
 		vi.clearAllMocks();
 	});
 
@@ -73,12 +80,10 @@ describe('NodeDetailsView', () => {
 			},
 		});
 
-		const wrapper = renderComponent({
+		const { getByTestId } = renderComponent({
 			pinia,
 		});
 
-		await waitFor(() =>
-			expect(wrapper.container.querySelector('.ndv-wrapper')).toBeInTheDocument(),
-		);
+		await waitFor(() => expect(getByTestId('ndv')).toBeInTheDocument());
 	});
 });

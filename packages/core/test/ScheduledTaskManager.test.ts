@@ -1,9 +1,11 @@
-import type { Workflow } from 'n8n-workflow';
 import { mock } from 'jest-mock-extended';
+import type { Workflow } from 'n8n-workflow';
 
+import type { InstanceSettings } from '@/InstanceSettings';
 import { ScheduledTaskManager } from '@/ScheduledTaskManager';
 
 describe('ScheduledTaskManager', () => {
+	const instanceSettings = mock<InstanceSettings>({ isLeader: true });
 	const workflow = mock<Workflow>({ timezone: 'GMT' });
 	const everyMinute = '0 * * * * *';
 	const onTick = jest.fn();
@@ -13,7 +15,7 @@ describe('ScheduledTaskManager', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 		jest.useFakeTimers();
-		scheduledTaskManager = new ScheduledTaskManager();
+		scheduledTaskManager = new ScheduledTaskManager(instanceSettings);
 	});
 
 	it('should throw when workflow timezone is invalid', () => {
@@ -39,6 +41,15 @@ describe('ScheduledTaskManager', () => {
 		expect(onTick).not.toHaveBeenCalled();
 		jest.advanceTimersByTime(10 * 60 * 1000); // 10 minutes
 		expect(onTick).toHaveBeenCalledTimes(10);
+	});
+
+	it('should should not invoke on follower instances', async () => {
+		scheduledTaskManager = new ScheduledTaskManager(mock<InstanceSettings>({ isLeader: false }));
+		scheduledTaskManager.registerCron(workflow, everyMinute, onTick);
+
+		expect(onTick).not.toHaveBeenCalled();
+		jest.advanceTimersByTime(10 * 60 * 1000); // 10 minutes
+		expect(onTick).not.toHaveBeenCalled();
 	});
 
 	it('should deregister CronJobs for a workflow', async () => {

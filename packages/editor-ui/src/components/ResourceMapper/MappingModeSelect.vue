@@ -3,20 +3,22 @@ import type { INodePropertyTypeOptions, ResourceMapperFields } from 'n8n-workflo
 import { computed, ref, watch } from 'vue';
 import { i18n as locale } from '@/plugins/i18n';
 import { useNodeSpecificationValues } from '@/composables/useNodeSpecificationValues';
+import { N8nInputLabel, N8nSelect, N8nText } from 'n8n-design-system';
 
 interface Props {
 	initialValue: string;
 	fieldsToMap: ResourceMapperFields['fields'];
-	inputSize: string;
-	labelSize: string;
+	inputSize: 'small' | 'medium';
+	labelSize: 'small' | 'medium';
 	typeOptions: INodePropertyTypeOptions | undefined;
 	serviceName: string;
 	loading: boolean;
 	loadingError: boolean;
 	teleported?: boolean;
+	isReadOnly?: boolean;
 }
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), { isReadOnly: false });
 const { resourceMapperTypeOptions, pluralFieldWord, singularFieldWord } =
 	useNodeSpecificationValues(props.typeOptions);
 
@@ -103,7 +105,7 @@ defineExpose({
 
 <template>
 	<div data-test-id="mapping-mode-select">
-		<n8n-input-label
+		<N8nInputLabel
 			:label="locale.baseText('resourceMapper.mappingMode.label')"
 			:bold="false"
 			:required="false"
@@ -111,13 +113,14 @@ defineExpose({
 			color="text-dark"
 		>
 			<div class="mt-5xs">
-				<n8n-select
+				<N8nSelect
 					:model-value="selected"
 					:teleported="teleported"
 					:size="props.inputSize"
+					:disabled="isReadOnly"
 					@update:model-value="onModeChanged"
 				>
-					<n8n-option
+					<N8nOption
 						v-for="option in mappingModeOptions"
 						:key="option.value"
 						:value="option.value"
@@ -128,14 +131,14 @@ defineExpose({
 							<div class="option-headline">
 								{{ option.name }}
 							</div>
-							<div class="option-description" v-html="option.description" />
+							<div class="option-description" v-n8n-html="option.description" />
 						</div>
-					</n8n-option>
-				</n8n-select>
+					</N8nOption>
+				</N8nSelect>
 			</div>
 			<div class="mt-5xs">
-				<n8n-text v-if="loading" size="small">
-					<n8n-icon icon="sync-alt" size="xsmall" :spin="true" />
+				<N8nText v-if="loading" size="small">
+					<N8nIcon icon="sync-alt" size="xsmall" :spin="true" />
 					{{
 						locale.baseText('resourceMapper.fetchingFields.message', {
 							interpolate: {
@@ -143,15 +146,15 @@ defineExpose({
 							},
 						})
 					}}
-				</n8n-text>
-				<n8n-text v-else-if="errorMessage !== ''" size="small" color="danger">
-					<n8n-icon icon="exclamation-triangle" size="xsmall" />
+				</N8nText>
+				<N8nText v-else-if="errorMessage !== ''" size="small" color="danger">
+					<N8nIcon icon="exclamation-triangle" size="xsmall" />
 					{{ errorMessage }}
-					<n8n-link size="small" theme="danger" :underline="true" @click="onRetryClick">
+					<N8nLink size="small" theme="danger" :underline="true" @click="onRetryClick">
 						{{ locale.baseText('generic.retry') }}
-					</n8n-link>
-				</n8n-text>
+					</N8nLink>
+				</N8nText>
 			</div>
-		</n8n-input-label>
+		</N8nInputLabel>
 	</div>
 </template>

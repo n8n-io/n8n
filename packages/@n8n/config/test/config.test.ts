@@ -1,6 +1,7 @@
 import fs from 'fs';
-import { Container } from 'typedi';
 import { mock } from 'jest-mock-extended';
+import { Container } from 'typedi';
+
 import { GlobalConfig } from '../src/index';
 
 jest.mock('fs');
@@ -16,6 +17,10 @@ describe('GlobalConfig', () => {
 	afterEach(() => {
 		process.env = originalEnv;
 	});
+
+	// deepCopy for diff to show plain objects
+	// eslint-disable-next-line n8n-local-rules/no-json-parse-json-stringify
+	const deepCopy = <T>(obj: T): T => JSON.parse(JSON.stringify(obj));
 
 	const defaultConfig: GlobalConfig = {
 		path: '/',
@@ -43,6 +48,7 @@ describe('GlobalConfig', () => {
 				poolSize: 2,
 				port: 5432,
 				schema: 'public',
+				connectionTimeoutMs: 20_000,
 				ssl: {
 					ca: '',
 					cert: '',
@@ -85,10 +91,10 @@ describe('GlobalConfig', () => {
 					},
 				},
 				template: {
-					credentialsShared: '',
-					invite: '',
-					passwordReset: '',
-					workflowShared: '',
+					'credentials-shared': '',
+					'user-invited': '',
+					'password-reset-requested': '',
+					'workflow-shared': '',
 				},
 			},
 		},
@@ -161,6 +167,8 @@ describe('GlobalConfig', () => {
 				includeApiMethodLabel: false,
 				includeCredentialTypeLabel: false,
 				includeApiStatusCodeLabel: false,
+				includeQueueMetrics: false,
+				queueMetricsInterval: 20,
 			},
 			additionalNonUIRoutes: '',
 			disableProductionWebhooksOnMainProcess: false,
@@ -169,6 +177,7 @@ describe('GlobalConfig', () => {
 			formTest: 'form-test',
 			formWaiting: 'form-waiting',
 			payloadSizeMax: 16,
+			formDataFileSizeMax: 200,
 			rest: 'rest',
 			webhook: 'webhook',
 			webhookTest: 'webhook-test',
@@ -181,7 +190,7 @@ describe('GlobalConfig', () => {
 				ttl: 3600000,
 			},
 			redis: {
-				prefix: 'redis',
+				prefix: 'cache',
 				ttl: 3600000,
 			},
 		},
@@ -189,6 +198,7 @@ describe('GlobalConfig', () => {
 			health: {
 				active: false,
 				port: 5678,
+				address: '0.0.0.0',
 			},
 			bull: {
 				redis: {
@@ -212,15 +222,31 @@ describe('GlobalConfig', () => {
 				},
 			},
 		},
+		taskRunners: {
+			disabled: true,
+			path: '/runners',
+			authToken: '',
+			listen_address: '127.0.0.1',
+			port: 5679,
+		},
+		sentry: {
+			backendDsn: '',
+			frontendDsn: '',
+		},
+		logging: {
+			level: 'info',
+			outputs: ['console'],
+			file: {
+				fileCountMax: 100,
+				fileSizeMax: 16,
+				location: 'logs/n8n.log',
+			},
+		},
 	};
 
 	it('should use all default values when no env variables are defined', () => {
 		process.env = {};
 		const config = Container.get(GlobalConfig);
-
-		// deepCopy for diff to show plain objects
-		// eslint-disable-next-line n8n-local-rules/no-json-parse-json-stringify
-		const deepCopy = <T>(obj: T): T => JSON.parse(JSON.stringify(obj));
 
 		expect(deepCopy(config)).toEqual(defaultConfig);
 		expect(mockFs.readFileSync).not.toHaveBeenCalled();
@@ -233,9 +259,11 @@ describe('GlobalConfig', () => {
 			DB_TABLE_PREFIX: 'test_',
 			NODES_INCLUDE: '["n8n-nodes-base.hackerNews"]',
 			DB_LOGGING_MAX_EXECUTION_TIME: '0',
+			N8N_METRICS: 'TRUE',
+			N8N_TEMPLATES_ENABLED: '0',
 		};
 		const config = Container.get(GlobalConfig);
-		expect(config).toEqual({
+		expect(deepCopy(config)).toEqual({
 			...defaultConfig,
 			database: {
 				logging: defaultConfig.database.logging,
@@ -249,9 +277,20 @@ describe('GlobalConfig', () => {
 				tablePrefix: 'test_',
 				type: 'sqlite',
 			},
+			endpoints: {
+				...defaultConfig.endpoints,
+				metrics: {
+					...defaultConfig.endpoints.metrics,
+					enable: true,
+				},
+			},
 			nodes: {
 				...defaultConfig.nodes,
 				include: ['n8n-nodes-base.hackerNews'],
+			},
+			templates: {
+				...defaultConfig.templates,
+				enabled: false,
 			},
 		});
 		expect(mockFs.readFileSync).not.toHaveBeenCalled();
@@ -265,7 +304,7 @@ describe('GlobalConfig', () => {
 		mockFs.readFileSync.calledWith(passwordFile, 'utf8').mockReturnValueOnce('password-from-file');
 
 		const config = Container.get(GlobalConfig);
-		expect(config).toEqual({
+		expect(deepCopy(config)).toEqual({
 			...defaultConfig,
 			database: {
 				...defaultConfig.database,

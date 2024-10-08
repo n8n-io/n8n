@@ -4,7 +4,7 @@ exports[`CanvasNodeDefault > configurable > should render configurable node corr
 <div
   class="node configurable"
   data-test-id="canvas-configurable-node"
-  style="--canvas-node--main-output-count: 0;"
+  style="--configurable-node--input-count: 0; --canvas-node--main-input-count: 0; --canvas-node--main-output-count: 0;"
 >
   
   
@@ -17,9 +17,9 @@ exports[`CanvasNodeDefault > configurable > should render configurable node corr
     <div
       class="label"
     >
-      Test Node 
-      <!--v-if-->
+      Test Node
     </div>
+    <!--v-if-->
     <div
       class="subtitle"
     >
@@ -33,7 +33,7 @@ exports[`CanvasNodeDefault > configuration > should render configurable configur
 <div
   class="node configurable configuration"
   data-test-id="canvas-configurable-node"
-  style="--canvas-node--main-output-count: 0;"
+  style="--configurable-node--input-count: 0; --canvas-node--main-input-count: 0; --canvas-node--main-output-count: 0;"
 >
   
   
@@ -46,9 +46,9 @@ exports[`CanvasNodeDefault > configuration > should render configurable configur
     <div
       class="label"
     >
-      Test Node 
-      <!--v-if-->
+      Test Node
     </div>
+    <!--v-if-->
     <div
       class="subtitle"
     >
@@ -62,7 +62,7 @@ exports[`CanvasNodeDefault > configuration > should render configuration node co
 <div
   class="node configuration"
   data-test-id="canvas-configuration-node"
-  style="--canvas-node--main-output-count: 0;"
+  style="--canvas-node--main-input-count: 0; --canvas-node--main-output-count: 0;"
 >
   
   
@@ -75,9 +75,9 @@ exports[`CanvasNodeDefault > configuration > should render configuration node co
     <div
       class="label"
     >
-      Test Node 
-      <!--v-if-->
+      Test Node
     </div>
+    <!--v-if-->
     <div
       class="subtitle"
     >
@@ -91,7 +91,7 @@ exports[`CanvasNodeDefault > should render node correctly 1`] = `
 <div
   class="node"
   data-test-id="canvas-default-node"
-  style="--canvas-node--main-output-count: 0;"
+  style="--canvas-node--main-input-count: 0; --canvas-node--main-output-count: 0;"
 >
   
   
@@ -104,9 +104,9 @@ exports[`CanvasNodeDefault > should render node correctly 1`] = `
     <div
       class="label"
     >
-      Test Node 
-      <!--v-if-->
+      Test Node
     </div>
+    <!--v-if-->
     <div
       class="subtitle"
     >
@@ -120,7 +120,7 @@ exports[`CanvasNodeDefault > trigger > should render trigger node correctly 1`] 
 <div
   class="node trigger"
   data-test-id="canvas-trigger-node"
-  style="--canvas-node--main-output-count: 0;"
+  style="--canvas-node--main-input-count: 0; --canvas-node--main-output-count: 0;"
 >
   
   
@@ -156,9 +156,9 @@ exports[`CanvasNodeDefault > trigger > should render trigger node correctly 1`] 
     <div
       class="label"
     >
-      Test Node 
-      <!--v-if-->
+      Test Node
     </div>
+    <!--v-if-->
     <div
       class="subtitle"
     >

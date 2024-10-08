@@ -1,6 +1,10 @@
-import type WebSocket from 'ws';
+import { ApplicationError, ErrorReporterProxy } from 'n8n-workflow';
 import { Service } from 'typedi';
-import { Logger } from '@/Logger';
+import type WebSocket from 'ws';
+
+import type { User } from '@/databases/entities/user';
+import { Logger } from '@/logging/logger.service';
+
 import { AbstractPush } from './abstract.push';
 
 function heartbeat(this: WebSocket) {
@@ -16,17 +20,43 @@ export class WebSocketPush extends AbstractPush<WebSocket> {
 		setInterval(() => this.pingAll(), 60 * 1000);
 	}
 
-	add(pushRef: string, connection: WebSocket) {
+	add(pushRef: string, userId: User['id'], connection: WebSocket) {
 		connection.isAlive = true;
 		connection.on('pong', heartbeat);
 
-		super.add(pushRef, connection);
+		super.add(pushRef, userId, connection);
+
+		const onMessage = (data: WebSocket.RawData) => {
+			try {
+				const buffer = Array.isArray(data) ? Buffer.concat(data) : Buffer.from(data);
+
+				this.onMessageReceived(pushRef, JSON.parse(buffer.toString('utf8')));
+			} catch (error) {
+				ErrorReporterProxy.error(
+					new ApplicationError('Error parsing push message', {
+						extra: {
+							userId,
+							data,
+						},
+						cause: error,
+					}),
+				);
+				this.logger.error("Couldn't parse message from editor-UI", {
+					error: error as unknown,
+					pushRef,
+					data,
+				});
+			}
+		};
 
 		// Makes sure to remove the session if the connection is closed
 		connection.once('close', () => {
 			connection.off('pong', heartbeat);
+			connection.off('message', onMessage);
 			this.remove(pushRef);
 		});
+
+		connection.on('message', onMessage);
 	}
 
 	protected close(connection: WebSocket): void {

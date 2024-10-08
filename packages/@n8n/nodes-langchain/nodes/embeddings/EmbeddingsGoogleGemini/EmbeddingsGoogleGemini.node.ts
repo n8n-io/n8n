@@ -117,7 +117,7 @@ export class EmbeddingsGoogleGemini implements INodeType {
 	};
 
 	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
-		this.logger.verbose('Supply data for embeddings Google Gemini');
+		this.logger.debug('Supply data for embeddings Google Gemini');
 		const modelName = this.getNodeParameter(
 			'modelName',
 			itemIndex,

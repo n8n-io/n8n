@@ -1,11 +1,26 @@
+import { GlobalConfig } from '@n8n/config';
+import { InstanceSettings } from 'n8n-core';
+import {
+	ApplicationError,
+	BINARY_ENCODING,
+	sleep,
+	jsonStringify,
+	ErrorReporterProxy,
+} from 'n8n-workflow';
+import type { IExecuteResponsePromiseData } from 'n8n-workflow';
+import { strict } from 'node:assert';
 import Container, { Service } from 'typedi';
-import { ApplicationError, BINARY_ENCODING, sleep, jsonStringify } from 'n8n-workflow';
-import { ActiveExecutions } from '@/ActiveExecutions';
+
+import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
-import { Logger } from '@/Logger';
-import { MaxStalledCountError } from '@/errors/max-stalled-count.error';
 import { HIGHEST_SHUTDOWN_PRIORITY, Time } from '@/constants';
-import { OnShutdown } from '@/decorators/OnShutdown';
+import { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import { OnShutdown } from '@/decorators/on-shutdown';
+import { MaxStalledCountError } from '@/errors/max-stalled-count.error';
+import { EventService } from '@/events/event.service';
+import { Logger } from '@/logging/logger.service';
+import { OrchestrationService } from '@/services/orchestration.service';
+
 import { JOB_TYPE_NAME, QUEUE_NAME } from './constants';
 import { JobProcessor } from './job-processor';
 import type {
@@ -13,22 +28,15 @@ import type {
 	Job,
 	JobData,
 	JobOptions,
-	JobMessage,
 	JobStatus,
 	JobId,
 	QueueRecoveryContext,
-} from './types';
-import type { IExecuteResponsePromiseData } from 'n8n-workflow';
-import { GlobalConfig } from '@n8n/config';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { InstanceSettings } from 'n8n-core';
-import { OrchestrationService } from '@/services/orchestration.service';
+	JobReport,
+} from './scaling.types';
 
 @Service()
 export class ScalingService {
 	private queue: JobQueue;
-
-	private readonly instanceType = config.getEnv('generic.instanceType');
 
 	constructor(
 		private readonly logger: Logger,
@@ -38,13 +46,14 @@ export class ScalingService {
 		private readonly executionRepository: ExecutionRepository,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly orchestrationService: OrchestrationService,
+		private readonly eventService: EventService,
 	) {}
 
 	// #region Lifecycle
 
 	async setupQueue() {
 		const { default: BullQueue } = await import('bull');
-		const { RedisClientService } = await import('@/services/redis/redis-client.service');
+		const { RedisClientService } = await import('@/services/redis-client.service');
 		const service = Container.get(RedisClientService);
 
 		const bullPrefix = this.globalConfig.queue.bull.prefix;
@@ -66,17 +75,31 @@ export class ScalingService {
 				.on('leader-stepdown', () => this.stopQueueRecovery());
 		}
 
+		this.scheduleQueueMetrics();
+
 		this.logger.debug('[ScalingService] Queue setup completed');
 	}
 
 	setupWorker(concurrency: number) {
 		this.assertWorker();
+		this.assertQueue();
 
-		void this.queue.process(
-			JOB_TYPE_NAME,
-			concurrency,
-			async (job: Job) => await this.jobProcessor.processJob(job),
-		);
+		void this.queue.process(JOB_TYPE_NAME, concurrency, async (job: Job) => {
+			try {
+				await this.jobProcessor.processJob(job);
+			} catch (error: unknown) {
+				// Errors thrown here will be sent to the main instance by bull. Logging
+				// them out and rethrowing them allows to find out which worker had the
+				// issue.
+				this.logger.error('[ScalingService] Executing a job errored', {
+					jobId: job.id,
+					executionId: job.data.executionId,
+					error,
+				});
+				ErrorReporterProxy.error(error);
+				throw error;
+			}
+		});
 
 		this.logger.debug('[ScalingService] Worker setup completed');
 	}
@@ -88,8 +111,9 @@ export class ScalingService {
 		this.logger.debug('[ScalingService] Queue paused');
 
 		this.stopQueueRecovery();
+		this.stopQueueMetrics();
 
-		this.logger.debug('[ScalingService] Queue recovery stopped');
+		this.logger.debug('[ScalingService] Queue recovery and metrics stopped');
 
 		let count = 0;
 
@@ -112,12 +136,30 @@ export class ScalingService {
 
 	// #region Jobs
 
-	async addJob(jobData: JobData, jobOptions: JobOptions) {
-		const { executionId } = jobData;
+	async getPendingJobCounts() {
+		const { active, waiting } = await this.queue.getJobCounts();
+
+		return { active, waiting };
+	}
+
+	/**
+	 * Add a job to the queue.
+	 *
+	 * @param jobData Data of the job to add to the queue.
+	 * @param priority Priority of the job, from `1` (highest) to `MAX_SAFE_INTEGER` (lowest).
+	 */
+	async addJob(jobData: JobData, { priority }: { priority: number }) {
+		strict(priority > 0 && priority <= Number.MAX_SAFE_INTEGER);
+
+		const jobOptions: JobOptions = {
+			priority,
+			removeOnComplete: true,
+			removeOnFail: true,
+		};
 
 		const job = await this.queue.add(JOB_TYPE_NAME, jobData, jobOptions);
 
-		this.logger.info(`[ScalingService] Added job ${job.id} (execution ${executionId})`);
+		this.logger.info(`[ScalingService] Added job ${job.id} (execution ${jobData.executionId})`);
 
 		return job;
 	}
@@ -161,59 +203,28 @@ export class ScalingService {
 	// #region Listeners
 
 	private registerListeners() {
-		this.queue.on('global:progress', (_jobId: JobId, msg: JobMessage) => {
-			if (msg.kind === 'respond-to-webhook') {
-				const { executionId, response } = msg;
-				this.activeExecutions.resolveResponsePromise(
-					executionId,
-					this.decodeWebhookResponse(response),
-				);
-			}
+		const { instanceType } = this.instanceSettings;
+		if (instanceType === 'main' || instanceType === 'webhook') {
+			this.registerMainOrWebhookListeners();
+		} else if (instanceType === 'worker') {
+			this.registerWorkerListeners();
+		}
+	}
+
+	/**
+	 * Register listeners on a `worker` process for Bull queue events.
+	 */
+	private registerWorkerListeners() {
+		this.queue.on('global:progress', (jobId: JobId, msg: unknown) => {
+			if (!this.isPubSubMessage(msg)) return;
+
+			if (msg.kind === 'abort-job') this.jobProcessor.stopJob(jobId);
 		});
-
-		this.queue.on('global:progress', (jobId: JobId, msg: JobMessage) => {
-			if (msg.kind === 'abort-job') {
-				this.jobProcessor.stopJob(jobId);
-			}
-		});
-
-		let latestAttemptTs = 0;
-		let cumulativeTimeoutMs = 0;
-
-		const MAX_TIMEOUT_MS = this.globalConfig.queue.bull.redis.timeoutThreshold;
-		const RESET_LENGTH_MS = 30_000;
 
 		this.queue.on('error', (error: Error) => {
-			this.logger.error('[ScalingService] Queue errored', { error });
+			if ('code' in error && error.code === 'ECONNREFUSED') return; // handled by RedisClientService.retryStrategy
 
-			/**
-			 * On Redis connection failure, try to reconnect. On every failed attempt,
-			 * increment a cumulative timeout - if this exceeds a limit, exit the
-			 * process. Reset the cumulative timeout if >30s between retries.
-			 */
-			if (error.message.includes('ECONNREFUSED')) {
-				const nowTs = Date.now();
-				if (nowTs - latestAttemptTs > RESET_LENGTH_MS) {
-					latestAttemptTs = nowTs;
-					cumulativeTimeoutMs = 0;
-				} else {
-					cumulativeTimeoutMs += nowTs - latestAttemptTs;
-					latestAttemptTs = nowTs;
-					if (cumulativeTimeoutMs > MAX_TIMEOUT_MS) {
-						this.logger.error('[ScalingService] Redis unavailable after max timeout');
-						this.logger.error('[ScalingService] Exiting process...');
-						process.exit(1);
-					}
-				}
-
-				this.logger.warn('[ScalingService] Redis unavailable - retrying to connect...');
-				return;
-			}
-
-			if (
-				this.instanceType === 'worker' &&
-				error.message.includes('job stalled more than maxStalledCount')
-			) {
+			if (error.message.includes('job stalled more than maxStalledCount')) {
 				throw new MaxStalledCountError(error);
 			}
 
@@ -221,17 +232,47 @@ export class ScalingService {
 			 * Non-recoverable error on worker start with Redis unavailable.
 			 * Even if Redis recovers, worker will remain unable to process jobs.
 			 */
-			if (
-				this.instanceType === 'worker' &&
-				error.message.includes('Error initializing Lua scripts')
-			) {
+			if (error.message.includes('Error initializing Lua scripts')) {
 				this.logger.error('[ScalingService] Fatal error initializing worker', { error });
 				this.logger.error('[ScalingService] Exiting process...');
 				process.exit(1);
 			}
 
+			this.logger.error('[ScalingService] Queue errored', { error });
+
 			throw error;
 		});
+	}
+
+	/**
+	 * Register listeners on a `main` or `webhook` process for Bull queue events.
+	 */
+	private registerMainOrWebhookListeners() {
+		this.queue.on('error', (error: Error) => {
+			if ('code' in error && error.code === 'ECONNREFUSED') return; // handled by RedisClientService.retryStrategy
+
+			this.logger.error('[ScalingService] Queue errored', { error });
+
+			throw error;
+		});
+
+		this.queue.on('global:progress', (_jobId: JobId, msg: unknown) => {
+			if (!this.isPubSubMessage(msg)) return;
+
+			if (msg.kind === 'respond-to-webhook') {
+				const decodedResponse = this.decodeWebhookResponse(msg.response);
+				this.activeExecutions.resolveResponsePromise(msg.executionId, decodedResponse);
+			}
+		});
+
+		if (this.isQueueMetricsEnabled) {
+			this.queue.on('global:completed', () => this.jobCounters.completed++);
+			this.queue.on('global:failed', () => this.jobCounters.failed++);
+		}
+	}
+
+	private isPubSubMessage(candidate: unknown): candidate is JobReport {
+		return typeof candidate === 'object' && candidate !== null && 'kind' in candidate;
 	}
 
 	// #endregion
@@ -252,11 +293,60 @@ export class ScalingService {
 		return response;
 	}
 
+	private assertQueue() {
+		if (this.queue) return;
+
+		throw new ApplicationError('This method must be called after `setupQueue`');
+	}
+
 	private assertWorker() {
-		if (this.instanceType === 'worker') return;
+		if (this.instanceSettings.instanceType === 'worker') return;
 
 		throw new ApplicationError('This method must be called on a `worker` instance');
 	}
+
+	// #region Queue metrics
+
+	/** Counters for completed and failed jobs, reset on each interval tick. */
+	private readonly jobCounters = { completed: 0, failed: 0 };
+
+	/** Interval for collecting queue metrics to expose via Prometheus. */
+	private queueMetricsInterval: NodeJS.Timer | undefined;
+
+	get isQueueMetricsEnabled() {
+		return (
+			this.globalConfig.endpoints.metrics.includeQueueMetrics &&
+			this.instanceSettings.instanceType === 'main' &&
+			!this.orchestrationService.isMultiMainSetupEnabled
+		);
+	}
+
+	/** Set up an interval to collect queue metrics and emit them in an event. */
+	private scheduleQueueMetrics() {
+		if (!this.isQueueMetricsEnabled || this.queueMetricsInterval) return;
+
+		this.queueMetricsInterval = setInterval(async () => {
+			const pendingJobCounts = await this.getPendingJobCounts();
+
+			this.eventService.emit('job-counts-updated', {
+				...pendingJobCounts, // active, waiting
+				...this.jobCounters, // completed, failed
+			});
+
+			this.jobCounters.completed = 0;
+			this.jobCounters.failed = 0;
+		}, this.globalConfig.endpoints.metrics.queueMetricsInterval * Time.seconds.toMilliseconds);
+	}
+
+	/** Stop collecting queue metrics. */
+	private stopQueueMetrics() {
+		if (this.queueMetricsInterval) {
+			clearInterval(this.queueMetricsInterval);
+			this.queueMetricsInterval = undefined;
+		}
+	}
+
+	// #endregion
 
 	// #region Queue recovery
 
@@ -265,7 +355,7 @@ export class ScalingService {
 		waitMs: config.getEnv('executions.queueRecovery.interval') * 60 * 1000,
 	};
 
-	scheduleQueueRecovery(waitMs = this.queueRecoveryContext.waitMs) {
+	private scheduleQueueRecovery(waitMs = this.queueRecoveryContext.waitMs) {
 		this.queueRecoveryContext.timeout = setTimeout(async () => {
 			try {
 				const nextWaitMs = await this.recoverFromQueue();
@@ -285,7 +375,7 @@ export class ScalingService {
 		this.logger.debug(`[ScalingService] Scheduled queue recovery check for next ${wait}`);
 	}
 
-	stopQueueRecovery() {
+	private stopQueueRecovery() {
 		clearTimeout(this.queueRecoveryContext.timeout);
 	}
 

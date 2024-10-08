@@ -1,10 +1,5 @@
-import type {
-	EventNamesAiNodesType,
-	IDataObject,
-	IExecuteFunctions,
-	IWebhookFunctions,
-} from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError, jsonStringify } from 'n8n-workflow';
+import type { AiEvent, IDataObject, IExecuteFunctions, IWebhookFunctions } from 'n8n-workflow';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { BaseOutputParser } from '@langchain/core/output_parsers';
 import type { BaseMessage } from '@langchain/core/messages';
@@ -155,7 +150,7 @@ export function getSessionId(
 
 export async function logAiEvent(
 	executeFunctions: IExecuteFunctions,
-	event: EventNamesAiNodesType,
+	event: AiEvent,
 	data?: IDataObject,
 ) {
 	try {

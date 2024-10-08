@@ -1,51 +1,3 @@
-<template>
-	<div
-		ref="codeNodeEditorContainerRef"
-		:class="['code-node-editor', $style['code-node-editor-container'], language]"
-		@mouseover="onMouseOver"
-		@mouseout="onMouseOut"
-	>
-		<el-tabs
-			v-if="aiEnabled"
-			ref="tabs"
-			v-model="activeTab"
-			type="card"
-			:before-leave="onBeforeTabLeave"
-		>
-			<el-tab-pane
-				:label="$locale.baseText('codeNodeEditor.tabs.code')"
-				name="code"
-				data-test-id="code-node-tab-code"
-			>
-				<div
-					ref="codeNodeEditorRef"
-					:class="['ph-no-capture', 'code-editor-tabs', $style.editorInput]"
-				/>
-				<slot name="suffix" />
-			</el-tab-pane>
-			<el-tab-pane
-				:label="$locale.baseText('codeNodeEditor.tabs.askAi')"
-				name="ask-ai"
-				data-test-id="code-node-tab-ai"
-			>
-				<!-- Key the AskAI tab to make sure it re-mounts when changing tabs -->
-				<AskAI
-					:key="activeTab"
-					:has-changes="hasChanges"
-					@replace-code="onReplaceCode"
-					@started-loading="onAiLoadStart"
-					@finished-loading="onAiLoadEnd"
-				/>
-			</el-tab-pane>
-		</el-tabs>
-		<!-- If AskAi not enabled, there's no point in rendering tabs -->
-		<div v-else :class="$style.fillHeight">
-			<div ref="codeNodeEditorRef" :class="['ph-no-capture', $style.fillHeight]" />
-			<slot name="suffix" />
-		</div>
-	</div>
-</template>
-
 <script setup lang="ts">
 import { javascript } from '@codemirror/lang-javascript';
 import { python } from '@codemirror/lang-python';
@@ -58,7 +10,7 @@ import type { CodeExecutionMode, CodeNodeEditorLanguage } from 'n8n-workflow';
 import { format } from 'prettier';
 import jsParser from 'prettier/plugins/babel';
 import * as estree from 'prettier/plugins/estree';
-import { type Ref, computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { type Ref, computed, nextTick, onBeforeUnmount, onMounted, ref, toRaw, watch } from 'vue';
 
 import { CODE_NODE_TYPE } from '@/constants';
 import { codeNodeEditorEventBus } from '@/event-bus';
@@ -74,6 +26,7 @@ import { useLinter } from './linter';
 import { codeNodeEditorTheme } from './theme';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { dropInCodeEditor, mappingDropCursor } from '@/plugins/codemirror/dragAndDrop';
 
 type Props = {
 	mode: CodeExecutionMode;
@@ -99,6 +52,7 @@ const emit = defineEmits<{
 const message = useMessage();
 const editor = ref(null) as Ref<EditorView | null>;
 const languageCompartment = ref(new Compartment());
+const dragAndDropCompartment = ref(new Compartment());
 const linterCompartment = ref(new Compartment());
 const isEditorHovered = ref(false);
 const isEditorFocused = ref(false);
@@ -118,7 +72,7 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 
 onMounted(() => {
-	if (!props.isReadOnly) codeNodeEditorEventBus.on('error-line-number', highlightLine);
+	if (!props.isReadOnly) codeNodeEditorEventBus.on('highlightLine', highlightLine);
 
 	codeNodeEditorEventBus.on('codeDiffApplied', diffApplied);
 
@@ -143,6 +97,7 @@ onMounted(() => {
 
 		extensions.push(
 			...writableEditorExtensions,
+			dragAndDropCompartment.value.of(dragAndDropExtension.value),
 			EditorView.domEventHandlers({
 				focus: () => {
 					isEditorFocused.value = true;
@@ -188,7 +143,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
 	codeNodeEditorEventBus.off('codeDiffApplied', diffApplied);
-	if (!props.isReadOnly) codeNodeEditorEventBus.off('error-line-number', highlightLine);
+	if (!props.isReadOnly) codeNodeEditorEventBus.off('highlightLine', highlightLine);
 });
 
 const aiEnabled = computed(() => {
@@ -198,6 +153,12 @@ const aiEnabled = computed(() => {
 const placeholder = computed(() => {
 	return CODE_PLACEHOLDERS[props.language]?.[props.mode] ?? '';
 });
+
+const dragAndDropEnabled = computed(() => {
+	return !props.isReadOnly && props.mode === 'runOnceForEachItem';
+});
+
+const dragAndDropExtension = computed(() => (dragAndDropEnabled.value ? mappingDropCursor() : []));
 
 // eslint-disable-next-line vue/return-in-computed-property
 const languageExtensions = computed<[LanguageSupport, ...Extension[]]>(() => {
@@ -236,6 +197,12 @@ watch(
 	},
 );
 
+watch(dragAndDropExtension, (extension) => {
+	editor.value?.dispatch({
+		effects: dragAndDropCompartment.value.reconfigure(extension),
+	});
+});
+
 watch(
 	() => props.language,
 	(_newLanguage, previousLanguage: CodeNodeEditorLanguage) => {
@@ -250,7 +217,6 @@ watch(
 		reloadLinter();
 	},
 );
-
 watch(
 	aiEnabled,
 	async (isEnabled) => {
@@ -409,11 +375,89 @@ function onAiLoadStart() {
 function onAiLoadEnd() {
 	isLoadingAIResponse.value = false;
 }
+
+async function onDrop(value: string, event: MouseEvent) {
+	if (!editor.value) return;
+
+	await dropInCodeEditor(toRaw(editor.value), event, value);
+}
 </script>
+
+<template>
+	<div
+		ref="codeNodeEditorContainerRef"
+		:class="['code-node-editor', $style['code-node-editor-container'], language]"
+		@mouseover="onMouseOver"
+		@mouseout="onMouseOut"
+	>
+		<el-tabs
+			v-if="aiEnabled"
+			ref="tabs"
+			v-model="activeTab"
+			type="card"
+			:before-leave="onBeforeTabLeave"
+			:class="$style.tabs"
+		>
+			<el-tab-pane
+				:label="$locale.baseText('codeNodeEditor.tabs.code')"
+				name="code"
+				data-test-id="code-node-tab-code"
+				:class="$style.fillHeight"
+			>
+				<DraggableTarget type="mapping" :disabled="!dragAndDropEnabled" @drop="onDrop">
+					<template #default="{ activeDrop, droppable }">
+						<div
+							ref="codeNodeEditorRef"
+							:class="[
+								'ph-no-capture',
+								'code-editor-tabs',
+								$style.editorInput,
+								$style.fillHeight,
+								{ [$style.activeDrop]: activeDrop, [$style.droppable]: droppable },
+							]"
+						/>
+					</template>
+				</DraggableTarget>
+				<slot name="suffix" />
+			</el-tab-pane>
+			<el-tab-pane
+				:label="$locale.baseText('codeNodeEditor.tabs.askAi')"
+				name="ask-ai"
+				data-test-id="code-node-tab-ai"
+			>
+				<!-- Key the AskAI tab to make sure it re-mounts when changing tabs -->
+				<AskAI
+					:key="activeTab"
+					:has-changes="hasChanges"
+					@replace-code="onReplaceCode"
+					@started-loading="onAiLoadStart"
+					@finished-loading="onAiLoadEnd"
+				/>
+			</el-tab-pane>
+		</el-tabs>
+		<!-- If AskAi not enabled, there's no point in rendering tabs -->
+		<div v-else :class="$style.fillHeight">
+			<DraggableTarget type="mapping" :disabled="!dragAndDropEnabled" @drop="onDrop">
+				<template #default="{ activeDrop, droppable }">
+					<div
+						ref="codeNodeEditorRef"
+						:class="[
+							'ph-no-capture',
+							$style.fillHeight,
+							$style.editorInput,
+							{ [$style.activeDrop]: activeDrop, [$style.droppable]: droppable },
+						]"
+					/>
+				</template>
+			</DraggableTarget>
+			<slot name="suffix" />
+		</div>
+	</div>
+</template>
 
 <style scoped lang="scss">
 :deep(.el-tabs) {
-	.code-editor-tabs .cm-editor {
+	.cm-editor {
 		border: 0;
 	}
 }
@@ -439,11 +483,34 @@ function onAiLoadEnd() {
 </style>
 
 <style lang="scss" module>
+.tabs {
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+}
+
 .code-node-editor-container {
 	position: relative;
 }
 
 .fillHeight {
 	height: 100%;
+}
+
+.editorInput.droppable {
+	:global(.cm-editor) {
+		border-color: var(--color-ndv-droppable-parameter);
+		border-style: dashed;
+		border-width: 1.5px;
+	}
+}
+
+.editorInput.activeDrop {
+	:global(.cm-editor) {
+		border-color: var(--color-success);
+		border-style: solid;
+		cursor: grabbing;
+		border-width: 1px;
+	}
 }
 </style>

@@ -1,7 +1,8 @@
-import SSEChannel from 'sse-channel';
 import { Service } from 'typedi';
 
-import { Logger } from '@/Logger';
+import type { User } from '@/databases/entities/user';
+import { Logger } from '@/logging/logger.service';
+import SSEChannel from 'sse-channel';
 
 import { AbstractPush } from './abstract.push';
 import type { PushRequest, PushResponse } from './types';
@@ -22,8 +23,8 @@ export class SSEPush extends AbstractPush<Connection> {
 		});
 	}
 
-	add(pushRef: string, connection: Connection) {
-		super.add(pushRef, connection);
+	add(pushRef: string, userId: User['id'], connection: Connection) {
+		super.add(pushRef, userId, connection);
 		this.channel.addClient(connection.req, connection.res);
 	}
 

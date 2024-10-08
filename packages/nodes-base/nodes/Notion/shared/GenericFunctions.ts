@@ -23,11 +23,11 @@ import moment from 'moment-timezone';
 import { validate as uuidValidate } from 'uuid';
 import set from 'lodash/set';
 import { filters } from './descriptions/Filters';
+import { blockUrlExtractionRegexp } from './constants';
 
 function uuidValidateWithoutDashes(this: IExecuteFunctions, value: string) {
 	if (uuidValidate(value)) return true;
 	if (value.length == 32) {
-		//prettier-ignore
 		const strWithDashes = `${value.slice(0, 8)}-${value.slice(8, 12)}-${value.slice(12, 16)}-${value.slice(16, 20)}-${value.slice(20)}`;
 		if (uuidValidate(strWithDashes)) return true;
 	}
@@ -309,7 +309,6 @@ export function formatBlocks(blocks: IDataObject[]) {
 			[block.type as string]: {
 				...(block.type === 'to_do' ? { checked: block.checked } : {}),
 				...(block.type === 'image' ? { type: 'external', external: { url: block.url } } : {}),
-				// prettier-ignore,
 				...(!['image'].includes(block.type as string) ? getTextBlocks(block) : {}),
 			},
 		});
@@ -867,9 +866,12 @@ export type FileRecord = {
 			  };
 	};
 };
-// prettier-ignore
-export async function downloadFiles(this: IExecuteFunctions | IPollFunctions, records: FileRecord[], pairedItem?: IPairedItemData[]): Promise<INodeExecutionData[]> {
 
+export async function downloadFiles(
+	this: IExecuteFunctions | IPollFunctions,
+	records: FileRecord[],
+	pairedItem?: IPairedItemData[],
+): Promise<INodeExecutionData[]> {
 	const elements: INodeExecutionData[] = [];
 	for (const record of records) {
 		const element: INodeExecutionData = { json: {}, binary: {} };
@@ -887,10 +889,12 @@ export async function downloadFiles(this: IExecuteFunctions | IPollFunctions, re
 							'',
 							{},
 							{},
-							file?.file?.url as string || file?.external?.url as string,
+							(file?.file?.url as string) || (file?.external?.url as string),
 							{ json: false, encoding: null },
 						);
-						element.binary![`${key}_${index}`] = await this.helpers.prepareBinaryData(data as Buffer);
+						element.binary![`${key}_${index}`] = await this.helpers.prepareBinaryData(
+							data as Buffer,
+						);
 					}
 				}
 			}
@@ -1149,8 +1153,7 @@ export function extractBlockId(this: IExecuteFunctions, nodeVersion: number, ite
 			const match = (blockIdRLCData.value as string).match(blockRegex);
 
 			if (match === null) {
-				const pageRegex =
-					/(?:https|http):\/\/www\.notion\.so\/(?:[a-z0-9-]{2,}\/)?(?:[a-zA-Z0-9-]{2,}-)?([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12})/;
+				const pageRegex = new RegExp(blockUrlExtractionRegexp);
 				const pageMatch = (blockIdRLCData.value as string).match(pageRegex);
 
 				if (pageMatch === null) {

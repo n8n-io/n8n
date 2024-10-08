@@ -151,7 +151,7 @@ export const clientFields: INodeProperties[] = [
 						name: 'countryCode',
 						type: 'options',
 						description:
-							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getCountryCodes',
 						},
@@ -266,7 +266,7 @@ export const clientFields: INodeProperties[] = [
 						name: 'countryCode',
 						type: 'options',
 						description:
-							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getCountryCodes',
 						},
@@ -393,6 +393,44 @@ export const clientFields: INodeProperties[] = [
 					},
 				],
 				default: 'invoices',
+			},
+			{
+				displayName: 'Status',
+				name: 'status',
+				type: 'options',
+				options: [
+					{
+						name: 'Active',
+						value: 'active',
+					},
+					{
+						name: 'Archived',
+						value: 'archived',
+					},
+					{
+						name: 'Deleted',
+						value: 'deleted',
+					},
+				],
+				default: 'active',
+			},
+			{
+				displayName: 'Created At',
+				name: 'createdAt',
+				type: 'dateTime',
+				default: '',
+			},
+			{
+				displayName: 'Updated At',
+				name: 'updatedAt',
+				type: 'dateTime',
+				default: '',
+			},
+			{
+				displayName: 'Is Deleted',
+				name: 'isDeleted',
+				type: 'boolean',
+				default: false,
 			},
 		],
 	},

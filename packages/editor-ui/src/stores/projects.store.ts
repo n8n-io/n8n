@@ -18,13 +18,17 @@ import { hasPermission } from '@/utils/rbac/permissions';
 import type { IWorkflowDb } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
+import { STORES } from '@/constants';
+import { useUsersStore } from '@/stores/users.store';
+import { getResourcePermissions } from '@/permissions';
 
-export const useProjectsStore = defineStore('projects', () => {
+export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 	const route = useRoute();
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
 	const workflowsStore = useWorkflowsStore();
 	const credentialsStore = useCredentialsStore();
+	const usersStore = useUsersStore();
 
 	const projects = ref<ProjectListItem[]>([]);
 	const myProjects = ref<ProjectListItem[]>([]);
@@ -36,6 +40,13 @@ export const useProjectsStore = defineStore('projects', () => {
 		public: 0,
 	});
 	const projectNavActiveIdState = ref<string | string[] | null>(null);
+
+	const globalProjectPermissions = computed(
+		() => getResourcePermissions(usersStore.currentUser?.globalScopes).project,
+	);
+	const availableProjects = computed(() =>
+		globalProjectPermissions.value.list ? projects.value : myProjects.value,
+	);
 
 	const currentProjectId = computed(
 		() =>
@@ -88,6 +99,14 @@ export const useProjectsStore = defineStore('projects', () => {
 
 	const getPersonalProject = async () => {
 		personalProject.value = await projectsApi.getPersonalProject(rootStore.restApiContext);
+	};
+
+	const getAvailableProjects = async () => {
+		if (globalProjectPermissions.value.list) {
+			await getAllProjects();
+		} else {
+			await getMyProjects();
+		}
 	};
 
 	const fetchProject = async (id: string) =>
@@ -188,6 +207,7 @@ export const useProjectsStore = defineStore('projects', () => {
 
 	return {
 		projects,
+		availableProjects,
 		myProjects,
 		personalProject,
 		currentProject,
@@ -205,6 +225,7 @@ export const useProjectsStore = defineStore('projects', () => {
 		getAllProjects,
 		getMyProjects,
 		getPersonalProject,
+		getAvailableProjects,
 		fetchProject,
 		getProject,
 		createProject,

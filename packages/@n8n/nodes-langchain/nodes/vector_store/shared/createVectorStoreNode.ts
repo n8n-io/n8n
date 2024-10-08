@@ -88,25 +88,25 @@ function getOperationModeOptions(args: VectorStoreNodeConstructorArgs): INodePro
 			name: 'Get Many',
 			value: 'load',
 			description: 'Get many ranked documents from vector store for query',
-			action: 'Get many ranked documents from vector store for query',
+			action: 'Get ranked documents from vector store',
 		},
 		{
 			name: 'Insert Documents',
 			value: 'insert',
 			description: 'Insert documents into vector store',
-			action: 'Insert documents into vector store',
+			action: 'Add documents to vector store',
 		},
 		{
 			name: 'Retrieve Documents (For Agent/Chain)',
 			value: 'retrieve',
 			description: 'Retrieve documents from vector store to be used with AI nodes',
-			action: 'Retrieve documents from vector store to be used with AI nodes',
+			action: 'Retrieve documents for AI processing',
 		},
 		{
 			name: 'Update Documents',
 			value: 'update',
 			description: 'Update documents in vector store by ID',
-			action: 'Update documents in vector store by ID',
+			action: 'Update vector store documents',
 		},
 	];
 
@@ -280,7 +280,7 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 					});
 
 					resultData.push(...serializedDocs);
-					void logAiEvent(this, 'n8n.ai.vector.store.searched', { query: prompt });
+					void logAiEvent(this, 'ai-vector-store-searched', { query: prompt });
 				}
 
 				return [resultData];
@@ -307,7 +307,7 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 					try {
 						await args.populateVectorStore(this, embeddings, processedDocuments, itemIndex);
 
-						void logAiEvent(this, 'n8n.ai.vector.store.populated');
+						void logAiEvent(this, 'ai-vector-store-populated');
 					} catch (error) {
 						throw error;
 					}
@@ -361,7 +361,7 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 							ids: [documentId],
 						});
 
-						void logAiEvent(this, 'n8n.ai.vector.store.updated');
+						void logAiEvent(this, 'ai-vector-store-updated');
 					} catch (error) {
 						throw error;
 					}

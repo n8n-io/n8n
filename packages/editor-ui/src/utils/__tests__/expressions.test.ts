@@ -1,5 +1,9 @@
 import { ExpressionError } from 'n8n-workflow';
-import { stringifyExpressionResult, unwrapExpression } from '../expressions';
+import {
+	removeExpressionPrefix,
+	stringifyExpressionResult,
+	unwrapExpression,
+} from '../expressions';
 
 describe('Utils: Expressions', () => {
 	describe('stringifyExpressionResult()', () => {
@@ -41,6 +45,16 @@ describe('Utils: Expressions', () => {
 	describe('unwrapExpression', () => {
 		it('should remove the brackets around an expression', () => {
 			expect(unwrapExpression('{{ $json.foo }}')).toBe('$json.foo');
+		});
+	});
+
+	describe('removeExpressionPrefix', () => {
+		it.each([
+			['=expression', 'expression'],
+			['notAnExpression', 'notAnExpression'],
+			[undefined, ''],
+		])('turns "%s" into "%s"', (input, output) => {
+			expect(removeExpressionPrefix(input)).toBe(output);
 		});
 	});
 });

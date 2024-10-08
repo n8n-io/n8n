@@ -1,94 +1,3 @@
-<template>
-	<el-dialog
-		width="calc(100vw - var(--spacing-3xl))"
-		append-to-body
-		:class="$style.modal"
-		:model-value="dialogVisible"
-		:before-close="closeDialog"
-	>
-		<button :class="$style.close" @click="closeDialog">
-			<Close height="18" width="18" />
-		</button>
-		<div :class="$style.container">
-			<div :class="$style.sidebar">
-				<N8nInput
-					v-model="search"
-					size="small"
-					:class="$style.search"
-					:placeholder="i18n.baseText('ndv.search.placeholder.input.schema')"
-				>
-					<template #prefix>
-						<N8nIcon :class="$style.ioSearchIcon" icon="search" />
-					</template>
-				</N8nInput>
-
-				<RunDataSchema
-					:class="$style.schema"
-					:search="appliedSearch"
-					:nodes="parentNodes"
-					mapping-enabled
-					pane-type="input"
-					connection-type="main"
-				/>
-			</div>
-
-			<div :class="$style.io">
-				<div :class="$style.input">
-					<div :class="$style.header">
-						<N8nText bold size="large">
-							{{ i18n.baseText('expressionEdit.expression') }}
-						</N8nText>
-						<N8nText
-							:class="$style.tip"
-							size="small"
-							v-html="i18n.baseText('expressionTip.javascript')"
-						/>
-					</div>
-
-					<DraggableTarget :class="$style.editorContainer" type="mapping" @drop="onDrop">
-						<template #default>
-							<ExpressionEditorModalInput
-								ref="expressionInputRef"
-								:model-value="modelValue"
-								:is-read-only="isReadOnly"
-								:path="path"
-								:class="[
-									$style.editor,
-									{
-										'ph-no-capture': redactValues,
-									},
-								]"
-								data-test-id="expression-modal-input"
-								@change="valueChanged"
-								@close="closeDialog"
-							/>
-						</template>
-					</DraggableTarget>
-				</div>
-
-				<div :class="$style.output">
-					<div :class="$style.header">
-						<N8nText bold size="large">
-							{{ i18n.baseText('parameterInput.result') }}
-						</N8nText>
-						<OutputItemSelect />
-					</div>
-
-					<div :class="[$style.editorContainer, { 'ph-no-capture': redactValues }]">
-						<ExpressionOutput
-							ref="expressionResultRef"
-							:class="$style.editor"
-							:segments="segments"
-							:extensions="theme"
-							data-test-id="expression-modal-output"
-						/>
-					</div>
-				</div>
-			</div>
-		</div>
-	</el-dialog>
-</template>
-
 <script setup lang="ts">
 import ExpressionEditorModalInput from '@/components/ExpressionEditorModal/ExpressionEditorModalInput.vue';
 import { computed, ref, toRaw, watch } from 'vue';
@@ -102,6 +11,7 @@ import { createExpressionTelemetryPayload } from '@/utils/telemetryUtils';
 import { useTelemetry } from '@/composables/useTelemetry';
 import type { Segment } from '@/types/expressions';
 import type { INodeProperties } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 import { outputTheme } from './ExpressionEditorModal/theme';
 import ExpressionOutput from './InlineExpressionEditor/ExpressionOutput.vue';
 import RunDataSchema from './RunDataSchema.vue';
@@ -109,7 +19,9 @@ import OutputItemSelect from './InlineExpressionEditor/OutputItemSelect.vue';
 import { useI18n } from '@/composables/useI18n';
 import { useDebounce } from '@/composables/useDebounce';
 import DraggableTarget from './DraggableTarget.vue';
-import { dropInEditor } from '@/plugins/codemirror/dragAndDrop';
+import { dropInExpressionEditor } from '@/plugins/codemirror/dragAndDrop';
+
+import { APP_MODALS_ELEMENT_ID } from '@/constants';
 
 type Props = {
 	parameter: INodeProperties;
@@ -207,9 +119,100 @@ function closeDialog() {
 async function onDrop(expression: string, event: MouseEvent) {
 	if (!inputEditor.value) return;
 
-	await dropInEditor(toRaw(inputEditor.value), event, expression);
+	await dropInExpressionEditor(toRaw(inputEditor.value), event, expression);
 }
 </script>
+
+<template>
+	<el-dialog
+		width="calc(100% - var(--spacing-3xl))"
+		:append-to="`#${APP_MODALS_ELEMENT_ID}`"
+		:class="$style.modal"
+		:model-value="dialogVisible"
+		:before-close="closeDialog"
+	>
+		<button :class="$style.close" @click="closeDialog">
+			<Close height="18" width="18" />
+		</button>
+		<div :class="$style.container">
+			<div :class="$style.sidebar">
+				<N8nInput
+					v-model="search"
+					size="small"
+					:class="$style.search"
+					:placeholder="i18n.baseText('ndv.search.placeholder.input.schema')"
+				>
+					<template #prefix>
+						<N8nIcon :class="$style.ioSearchIcon" icon="search" />
+					</template>
+				</N8nInput>
+
+				<RunDataSchema
+					:class="$style.schema"
+					:search="appliedSearch"
+					:nodes="parentNodes"
+					:mapping-enabled="!isReadOnly"
+					:connection-type="NodeConnectionType.Main"
+					pane-type="input"
+				/>
+			</div>
+
+			<div :class="$style.io">
+				<div :class="$style.input">
+					<div :class="$style.header">
+						<N8nText bold size="large">
+							{{ i18n.baseText('expressionEdit.expression') }}
+						</N8nText>
+						<N8nText
+							:class="$style.tip"
+							size="small"
+							v-n8n-html="i18n.baseText('expressionTip.javascript')"
+						/>
+					</div>
+
+					<DraggableTarget :class="$style.editorContainer" type="mapping" @drop="onDrop">
+						<template #default>
+							<ExpressionEditorModalInput
+								ref="expressionInputRef"
+								:model-value="modelValue"
+								:is-read-only="isReadOnly"
+								:path="path"
+								:class="[
+									$style.editor,
+									{
+										'ph-no-capture': redactValues,
+									},
+								]"
+								data-test-id="expression-modal-input"
+								@change="valueChanged"
+								@close="closeDialog"
+							/>
+						</template>
+					</DraggableTarget>
+				</div>
+
+				<div :class="$style.output">
+					<div :class="$style.header">
+						<N8nText bold size="large">
+							{{ i18n.baseText('parameterInput.result') }}
+						</N8nText>
+						<OutputItemSelect />
+					</div>
+
+					<div :class="[$style.editorContainer, { 'ph-no-capture': redactValues }]">
+						<ExpressionOutput
+							ref="expressionResultRef"
+							:class="$style.editor"
+							:segments="segments"
+							:extensions="theme"
+							data-test-id="expression-modal-output"
+						/>
+					</div>
+				</div>
+			</div>
+		</div>
+	</el-dialog>
+</template>
 
 <style module lang="scss">
 .modal {

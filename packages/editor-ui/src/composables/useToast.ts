@@ -20,9 +20,9 @@ export interface NotificationErrorWithNodeAndDescription extends ApplicationErro
 const messageDefaults: Partial<Omit<NotificationOptions, 'message'>> = {
 	dangerouslyUseHTMLString: false,
 	position: 'bottom-right',
-	zIndex: 3000, // above NDV and chat window
+	zIndex: 1900, // above NDV and below the modals
 	offset: 64,
-	appendTo: '#node-view-root',
+	appendTo: '#app-grid',
 	customClass: 'content-toast',
 };
 
@@ -164,7 +164,7 @@ export function useToast() {
 	}
 
 	function causedByCredential(message: string | undefined) {
-		if (!message) return false;
+		if (!message || typeof message !== 'string') return false;
 
 		return message.includes('Credentials for') && message.includes('are not set');
 	}

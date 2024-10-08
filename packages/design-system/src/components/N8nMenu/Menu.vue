@@ -1,64 +1,10 @@
-<template>
-	<div
-		:class="{
-			['menu-container']: true,
-			[$style.container]: true,
-			[$style.menuCollapsed]: collapsed,
-			[$style.transparentBackground]: transparentBackground,
-		}"
-	>
-		<div v-if="$slots.header" :class="$style.menuHeader">
-			<slot name="header"></slot>
-		</div>
-		<div :class="$style.menuContent">
-			<div :class="{ [$style.upperContent]: true, ['pt-xs']: $slots.menuPrefix }">
-				<div v-if="$slots.menuPrefix" :class="$style.menuPrefix">
-					<slot name="menuPrefix"></slot>
-				</div>
-				<ElMenu :default-active="defaultActive" :collapse="collapsed">
-					<N8nMenuItem
-						v-for="item in upperMenuItems"
-						:key="item.id"
-						:item="item"
-						:compact="collapsed"
-						:tooltip-delay="tooltipDelay"
-						:mode="mode"
-						:active-tab="activeTab"
-						:handle-select="onSelect"
-					/>
-				</ElMenu>
-			</div>
-			<div :class="[$style.lowerContent, 'pb-2xs']">
-				<slot name="beforeLowerMenu"></slot>
-				<ElMenu :default-active="defaultActive" :collapse="collapsed">
-					<N8nMenuItem
-						v-for="item in lowerMenuItems"
-						:key="item.id"
-						:item="item"
-						:compact="collapsed"
-						:tooltip-delay="tooltipDelay"
-						:mode="mode"
-						:active-tab="activeTab"
-						:handle-select="onSelect"
-					/>
-				</ElMenu>
-				<div v-if="$slots.menuSuffix" :class="$style.menuSuffix">
-					<slot name="menuSuffix"></slot>
-				</div>
-			</div>
-		</div>
-		<div v-if="$slots.footer" :class="$style.menuFooter">
-			<slot name="footer"></slot>
-		</div>
-	</div>
-</template>
-
 <script lang="ts" setup>
+import { ElMenu } from 'element-plus';
 import { computed, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
-import { ElMenu } from 'element-plus';
-import N8nMenuItem from '../N8nMenuItem';
+
 import type { IMenuItem } from '../../types';
+import N8nMenuItem from '../N8nMenuItem';
 import { doesMenuItemMatchCurrentRoute } from '../N8nMenuItem/routerUtil';
 
 interface MenuProps {
@@ -124,6 +70,61 @@ const onSelect = (item: IMenuItem): void => {
 	emit('update:modelValue', item.id);
 };
 </script>
+
+<template>
+	<div
+		:class="{
+			['menu-container']: true,
+			[$style.container]: true,
+			[$style.menuCollapsed]: collapsed,
+			[$style.transparentBackground]: transparentBackground,
+		}"
+	>
+		<div v-if="$slots.header" :class="$style.menuHeader">
+			<slot name="header"></slot>
+		</div>
+		<div :class="$style.menuContent">
+			<div :class="{ [$style.upperContent]: true, ['pt-xs']: $slots.menuPrefix }">
+				<div v-if="$slots.menuPrefix" :class="$style.menuPrefix">
+					<slot name="menuPrefix"></slot>
+				</div>
+				<ElMenu :default-active="defaultActive" :collapse="collapsed">
+					<N8nMenuItem
+						v-for="item in upperMenuItems"
+						:key="item.id"
+						:item="item"
+						:compact="collapsed"
+						:tooltip-delay="tooltipDelay"
+						:mode="mode"
+						:active-tab="activeTab"
+						:handle-select="onSelect"
+					/>
+				</ElMenu>
+			</div>
+			<div :class="[$style.lowerContent, 'pb-2xs']">
+				<slot name="beforeLowerMenu"></slot>
+				<ElMenu :default-active="defaultActive" :collapse="collapsed">
+					<N8nMenuItem
+						v-for="item in lowerMenuItems"
+						:key="item.id"
+						:item="item"
+						:compact="collapsed"
+						:tooltip-delay="tooltipDelay"
+						:mode="mode"
+						:active-tab="activeTab"
+						:handle-select="onSelect"
+					/>
+				</ElMenu>
+				<div v-if="$slots.menuSuffix" :class="$style.menuSuffix">
+					<slot name="menuSuffix"></slot>
+				</div>
+			</div>
+		</div>
+		<div v-if="$slots.footer" :class="$style.menuFooter">
+			<slot name="footer"></slot>
+		</div>
+	</div>
+</template>
 
 <style lang="scss" module>
 .container {

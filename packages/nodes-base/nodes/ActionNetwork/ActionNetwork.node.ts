@@ -5,7 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import {
 	actionNetworkApiRequest,
@@ -56,8 +56,8 @@ export class ActionNetwork implements INodeType {
 		defaults: {
 			name: 'Action Network',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'actionNetworkApi',
@@ -487,7 +487,7 @@ export class ActionNetwork implements INodeType {
 					? returnData.push(...(response as IDataObject[]))
 					: returnData.push(response as IDataObject);
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					returnData.push({ error: error.message });
 					continue;
 				}

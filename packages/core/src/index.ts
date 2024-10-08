@@ -10,7 +10,7 @@ export * from './Constants';
 export * from './Credentials';
 export * from './DirectoryLoader';
 export * from './Interfaces';
-export { InstanceSettings } from './InstanceSettings';
+export { InstanceSettings, InstanceType } from './InstanceSettings';
 export * from './NodeExecuteFunctions';
 export * from './WorkflowExecute';
 export { NodeExecuteFunctions };

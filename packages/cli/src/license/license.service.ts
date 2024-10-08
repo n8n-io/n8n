@@ -1,12 +1,13 @@
+import axios, { AxiosError } from 'axios';
+import { ensureError } from 'n8n-workflow';
 import { Service } from 'typedi';
-import axios from 'axios';
 
-import { Logger } from '@/Logger';
-import { License } from '@/License';
-import { EventService } from '@/events/event.service';
-import type { User } from '@db/entities/User';
-import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import type { User } from '@/databases/entities/user';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { EventService } from '@/events/event.service';
+import { License } from '@/license';
+import { Logger } from '@/logging/logger.service';
 import { UrlService } from '@/services/url.service';
 
 type LicenseError = Error & { errorId?: keyof typeof LicenseErrors };
@@ -58,6 +59,43 @@ export class LicenseService {
 			email: user.email,
 			instanceUrl: this.urlService.getWebhookBaseUrl(),
 		});
+	}
+
+	async registerCommunityEdition({
+		email,
+		instanceId,
+		instanceUrl,
+		licenseType,
+	}: {
+		email: string;
+		instanceId: string;
+		instanceUrl: string;
+		licenseType: string;
+	}): Promise<{ title: string; text: string }> {
+		try {
+			const {
+				data: { licenseKey, ...rest },
+			} = await axios.post<{ title: string; text: string; licenseKey: string }>(
+				'https://enterprise.n8n.io/community-registered',
+				{
+					email,
+					instanceId,
+					instanceUrl,
+					licenseType,
+				},
+			);
+			this.eventService.emit('license-community-plus-registered', { email, licenseKey });
+			return rest;
+		} catch (e: unknown) {
+			if (e instanceof AxiosError) {
+				const error = e as AxiosError<{ message: string }>;
+				const errorMsg = error.response?.data?.message ?? e.message;
+				throw new BadRequestError('Failed to register community edition: ' + errorMsg);
+			} else {
+				this.logger.error('Failed to register community edition', { error: ensureError(e) });
+				throw new BadRequestError('Failed to register community edition');
+			}
+		}
 	}
 
 	getManagementJwt(): string {

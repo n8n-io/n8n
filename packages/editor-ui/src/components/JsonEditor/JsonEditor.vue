@@ -1,10 +1,3 @@
-<template>
-	<div :class="$style.editor">
-		<div ref="jsonEditorRef" class="ph-no-capture json-editor"></div>
-		<slot name="suffix" />
-	</div>
-</template>
-
 <script setup lang="ts">
 import { history } from '@codemirror/commands';
 import { json, jsonParseLinter } from '@codemirror/lang-json';
@@ -31,6 +24,7 @@ import {
 } from '@/plugins/codemirror/keymap';
 import { n8nAutocompletion } from '@/plugins/codemirror/n8nLang';
 import { computed, onMounted, ref, watch } from 'vue';
+import { mappingDropCursor } from '@/plugins/codemirror/dragAndDrop';
 
 type Props = {
 	modelValue: string;
@@ -76,6 +70,7 @@ const extensions = computed(() => {
 			foldGutter(),
 			dropCursor(),
 			bracketMatching(),
+			mappingDropCursor(),
 			EditorView.updateListener.of((viewUpdate: ViewUpdate) => {
 				if (!viewUpdate.docChanged || !editor.value) return;
 				emit('update:modelValue', editor.value?.state.doc.toString());
@@ -114,6 +109,13 @@ function destroyEditor() {
 	editor.value?.destroy();
 }
 </script>
+
+<template>
+	<div :class="$style.editor">
+		<div ref="jsonEditorRef" class="ph-no-capture json-editor"></div>
+		<slot name="suffix" />
+	</div>
+</template>
 
 <style lang="scss" module>
 .editor {

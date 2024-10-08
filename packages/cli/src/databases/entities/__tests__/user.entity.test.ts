@@ -1,4 +1,4 @@
-import { User } from '@db/entities/User';
+import { User } from '@/databases/entities/user';
 
 describe('User Entity', () => {
 	describe('JSON.stringify', () => {
@@ -8,7 +8,6 @@ describe('User Entity', () => {
 				firstName: 'Don',
 				lastName: 'Joe',
 				password: '123456789',
-				apiKey: '123',
 			});
 			expect(JSON.stringify(user)).toEqual(
 				'{"email":"test@example.com","firstName":"Don","lastName":"Joe"}',

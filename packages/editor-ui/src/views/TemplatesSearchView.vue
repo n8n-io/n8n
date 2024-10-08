@@ -1,86 +1,3 @@
-<template>
-	<TemplatesView>
-		<template #header>
-			<div :class="$style.wrapper">
-				<div :class="$style.title">
-					<n8n-heading tag="h1" size="2xlarge">
-						{{ $locale.baseText('templates.heading') }}
-					</n8n-heading>
-				</div>
-				<div :class="$style.button">
-					<n8n-button
-						size="large"
-						type="secondary"
-						element="a"
-						:href="creatorHubUrl"
-						:label="$locale.baseText('templates.shareWorkflow')"
-						target="_blank"
-					/>
-				</div>
-			</div>
-		</template>
-		<template #content>
-			<div :class="$style.contentWrapper">
-				<div :class="$style.filters">
-					<TemplateFilters
-						:categories="templatesStore.allCategories"
-						:sort-on-populate="areCategoriesPrepopulated"
-						:selected="categories"
-						:loading="loadingCategories"
-						@clear="onCategoryUnselected"
-						@clear-all="onCategoriesCleared"
-						@select="onCategorySelected"
-					/>
-				</div>
-				<div :class="$style.search">
-					<n8n-input
-						:model-value="search"
-						:placeholder="$locale.baseText('templates.searchPlaceholder')"
-						clearable
-						data-test-id="template-search-input"
-						@update:model-value="onSearchInput"
-						@blur="trackSearch"
-					>
-						<template #prefix>
-							<font-awesome-icon icon="search" />
-						</template>
-					</n8n-input>
-					<div v-show="collections.length || loadingCollections" :class="$style.carouselContainer">
-						<div :class="$style.header">
-							<n8n-heading :bold="true" size="medium" color="text-light">
-								{{ $locale.baseText('templates.collections') }}
-								<span
-									v-if="!loadingCollections"
-									data-test-id="collection-count-label"
-									v-text="`(${collections.length})`"
-								/>
-							</n8n-heading>
-						</div>
-						<TemplatesInfoCarousel
-							:collections="collections"
-							:loading="loadingCollections"
-							@open-collection="onOpenCollection"
-						/>
-					</div>
-					<TemplateList
-						:infinite-scroll-enabled="true"
-						:loading="loadingWorkflows"
-						:workflows="workflows"
-						:total-count="totalWorkflows"
-						@load-more="onLoadMore"
-						@open-template="onOpenTemplate"
-					/>
-					<div v-if="endOfSearchMessage" :class="$style.endText">
-						<n8n-text size="medium" color="text-base">
-							<span v-html="endOfSearchMessage" />
-						</n8n-text>
-					</div>
-				</div>
-			</div>
-		</template>
-	</TemplatesView>
-</template>
-
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
@@ -96,7 +13,6 @@ import type {
 	ITemplatesCategory,
 } from '@/Interface';
 import type { IDataObject } from 'n8n-workflow';
-import { setPageTitle } from '@/utils/htmlUtils';
 import { CREATOR_HUB_URL, VIEWS } from '@/constants';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
@@ -105,6 +21,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useToast } from '@/composables/useToast';
 import { usePostHog } from '@/stores/posthog.store';
 import { useDebounce } from '@/composables/useDebounce';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
 
 interface ISearchEvent {
 	search_string: string;
@@ -138,6 +55,7 @@ export default defineComponent({
 		return {
 			callDebounced,
 			...useToast(),
+			documentTitle: useDocumentTitle(),
 		};
 	},
 	data() {
@@ -199,7 +117,7 @@ export default defineComponent({
 		},
 	},
 	async mounted() {
-		setPageTitle('n8n - Templates');
+		this.documentTitle.set('Templates');
 		await this.loadCategories();
 		void this.loadWorkflowsAndCollections(true);
 		void this.usersStore.showPersonalizationSurvey();
@@ -243,13 +161,13 @@ export default defineComponent({
 				this.areCategoriesPrepopulated = true;
 			}
 		},
-		onOpenCollection({ event, id }: { event: MouseEvent; id: string }) {
+		onOpenCollection({ event, id }: { event: MouseEvent; id: number }) {
 			this.navigateTo(event, VIEWS.COLLECTION, id);
 		},
-		onOpenTemplate({ event, id }: { event: MouseEvent; id: string }) {
+		onOpenTemplate({ event, id }: { event: MouseEvent; id: number }) {
 			this.navigateTo(event, VIEWS.TEMPLATE, id);
 		},
-		navigateTo(e: MouseEvent, page: string, id: string) {
+		navigateTo(e: MouseEvent, page: string, id: number) {
 			if (e.metaKey || e.ctrlKey) {
 				const route = this.$router.resolve({ name: page, params: { id } });
 				window.open(route.href, '_blank');
@@ -418,6 +336,89 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<TemplatesView>
+		<template #header>
+			<div :class="$style.wrapper">
+				<div :class="$style.title">
+					<n8n-heading tag="h1" size="2xlarge">
+						{{ $locale.baseText('templates.heading') }}
+					</n8n-heading>
+				</div>
+				<div :class="$style.button">
+					<n8n-button
+						size="large"
+						type="secondary"
+						element="a"
+						:href="creatorHubUrl"
+						:label="$locale.baseText('templates.shareWorkflow')"
+						target="_blank"
+					/>
+				</div>
+			</div>
+		</template>
+		<template #content>
+			<div :class="$style.contentWrapper">
+				<div :class="$style.filters">
+					<TemplateFilters
+						:categories="templatesStore.allCategories"
+						:sort-on-populate="areCategoriesPrepopulated"
+						:selected="categories"
+						:loading="loadingCategories"
+						@clear="onCategoryUnselected"
+						@clear-all="onCategoriesCleared"
+						@select="onCategorySelected"
+					/>
+				</div>
+				<div :class="$style.search">
+					<n8n-input
+						:model-value="search"
+						:placeholder="$locale.baseText('templates.searchPlaceholder')"
+						clearable
+						data-test-id="template-search-input"
+						@update:model-value="onSearchInput"
+						@blur="trackSearch"
+					>
+						<template #prefix>
+							<font-awesome-icon icon="search" />
+						</template>
+					</n8n-input>
+					<div v-show="collections.length || loadingCollections" :class="$style.carouselContainer">
+						<div :class="$style.header">
+							<n8n-heading :bold="true" size="medium" color="text-light">
+								{{ $locale.baseText('templates.collections') }}
+								<span
+									v-if="!loadingCollections"
+									data-test-id="collection-count-label"
+									v-text="`(${collections.length})`"
+								/>
+							</n8n-heading>
+						</div>
+						<TemplatesInfoCarousel
+							:collections="collections"
+							:loading="loadingCollections"
+							@open-collection="onOpenCollection"
+						/>
+					</div>
+					<TemplateList
+						:infinite-scroll-enabled="true"
+						:loading="loadingWorkflows"
+						:workflows="workflows"
+						:total-count="totalWorkflows"
+						@load-more="onLoadMore"
+						@open-template="onOpenTemplate"
+					/>
+					<div v-if="endOfSearchMessage" :class="$style.endText">
+						<n8n-text size="medium" color="text-base">
+							<span v-n8n-html="endOfSearchMessage" />
+						</n8n-text>
+					</div>
+				</div>
+			</div>
+		</template>
+	</TemplatesView>
+</template>
 
 <style lang="scss" module>
 .wrapper {

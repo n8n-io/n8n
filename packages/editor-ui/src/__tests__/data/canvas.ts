@@ -1,13 +1,19 @@
-import { CanvasNodeHandleKey, CanvasNodeKey } from '@/constants';
-import { ref } from 'vue';
+import { CanvasKey, CanvasNodeHandleKey, CanvasNodeKey } from '@/constants';
+import { computed, ref } from 'vue';
 import type {
+	CanvasInjectionData,
 	CanvasNode,
 	CanvasNodeData,
+	CanvasNodeEventBusEvents,
 	CanvasNodeHandleInjectionData,
 	CanvasNodeInjectionData,
+	ConnectStartEvent,
+	ExecutionOutputMapData,
 } from '@/types';
 import { CanvasConnectionMode, CanvasNodeRenderType } from '@/types';
 import { NodeConnectionType } from 'n8n-workflow';
+import type { EventBus } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system';
 
 export function createCanvasNodeData({
 	id = 'node',
@@ -22,7 +28,7 @@ export function createCanvasNodeData({
 	execution = { running: false },
 	issues = { items: [], visible: false },
 	pinnedData = { count: 0, visible: false },
-	runData = { count: 0, visible: false },
+	runData = { outputMap: {}, iterations: 0, visible: false },
 	render = {
 		type: CanvasNodeRenderType.Default,
 		options: { configurable: false, configuration: false, trigger: false },
@@ -84,24 +90,45 @@ export function createCanvasNodeProps({
 	};
 }
 
+export function createCanvasProvide({
+	isExecuting = false,
+	connectingHandle = undefined,
+}: {
+	isExecuting?: boolean;
+	connectingHandle?: ConnectStartEvent;
+} = {}) {
+	return {
+		[String(CanvasKey)]: {
+			isExecuting: ref(isExecuting),
+			connectingHandle: ref(connectingHandle),
+		} satisfies CanvasInjectionData,
+	};
+}
+
 export function createCanvasNodeProvide({
 	id = 'node',
 	label = 'Test Node',
 	selected = false,
+	readOnly = false,
 	data = {},
+	eventBus = createEventBus<CanvasNodeEventBusEvents>(),
 }: {
 	id?: string;
 	label?: string;
 	selected?: boolean;
+	readOnly?: boolean;
 	data?: Partial<CanvasNodeData>;
+	eventBus?: EventBus<CanvasNodeEventBusEvents>;
 } = {}) {
-	const props = createCanvasNodeProps({ id, label, selected, data });
+	const props = createCanvasNodeProps({ id, label, selected, readOnly, data });
 	return {
-		[`${CanvasNodeKey}`]: {
+		[String(CanvasNodeKey)]: {
 			id: ref(props.id),
 			label: ref(props.label),
 			selected: ref(props.selected),
+			readOnly: ref(props.readOnly),
 			data: ref(props.data),
+			eventBus: ref(eventBus),
 		} satisfies CanvasNodeInjectionData,
 	};
 }
@@ -110,19 +137,34 @@ export function createCanvasHandleProvide({
 	label = 'Handle',
 	mode = CanvasConnectionMode.Input,
 	type = NodeConnectionType.Main,
-	connected = false,
+	index = 0,
+	runData,
+	isConnected = false,
+	isConnecting = false,
+	isReadOnly = false,
+	isRequired = false,
 }: {
 	label?: string;
 	mode?: CanvasConnectionMode;
 	type?: NodeConnectionType;
-	connected?: boolean;
+	index?: number;
+	runData?: ExecutionOutputMapData;
+	isConnected?: boolean;
+	isConnecting?: boolean;
+	isReadOnly?: boolean;
+	isRequired?: boolean;
 } = {}) {
 	return {
-		[`${CanvasNodeHandleKey}`]: {
+		[String(CanvasNodeHandleKey)]: {
 			label: ref(label),
 			mode: ref(mode),
 			type: ref(type),
-			connected: ref(connected),
+			index: ref(index),
+			isConnected: computed(() => isConnected),
+			isConnecting: ref(isConnecting),
+			isReadOnly: ref(isReadOnly),
+			isRequired: ref(isRequired),
+			runData: ref(runData),
 		} satisfies CanvasNodeHandleInjectionData,
 	};
 }

@@ -1,18 +1,18 @@
+import { type INode, type INodeCredentialsDetails } from 'n8n-workflow';
 import { Service } from 'typedi';
 import { v4 as uuid } from 'uuid';
-import { type INode, type INodeCredentialsDetails } from 'n8n-workflow';
 
-import { Logger } from '@/Logger';
-import * as Db from '@/Db';
-import { CredentialsRepository } from '@db/repositories/credentials.repository';
-import { TagRepository } from '@db/repositories/tag.repository';
-import { SharedWorkflow } from '@db/entities/SharedWorkflow';
-import { replaceInvalidCredentials } from '@/WorkflowHelpers';
-import { Project } from '@db/entities/Project';
-import { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import { WorkflowTagMapping } from '@db/entities/WorkflowTagMapping';
-import type { TagEntity } from '@db/entities/TagEntity';
-import type { ICredentialsDb } from '@/Interfaces';
+import { Project } from '@/databases/entities/project';
+import { SharedWorkflow } from '@/databases/entities/shared-workflow';
+import type { TagEntity } from '@/databases/entities/tag-entity';
+import { WorkflowEntity } from '@/databases/entities/workflow-entity';
+import { WorkflowTagMapping } from '@/databases/entities/workflow-tag-mapping';
+import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
+import { TagRepository } from '@/databases/repositories/tag.repository';
+import * as Db from '@/db';
+import type { ICredentialsDb } from '@/interfaces';
+import { Logger } from '@/logging/logger.service';
+import { replaceInvalidCredentials } from '@/workflow-helpers';
 
 @Service()
 export class ImportService {

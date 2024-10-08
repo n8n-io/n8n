@@ -18,9 +18,9 @@ describe('CanvasHandlePlus', () => {
 		expect(html()).toMatchSnapshot();
 	});
 
-	it('emits click:plus event when plus icon is clicked', async () => {
+	it('should emit click:plus event when plus icon is clicked', async () => {
 		const { container, emitted } = renderComponent();
-		const plusIcon = container.querySelector('svg.plus');
+		const plusIcon = container.querySelector('.plus');
 
 		if (!plusIcon) throw new Error('Plus icon not found');
 
@@ -29,7 +29,7 @@ describe('CanvasHandlePlus', () => {
 		expect(emitted()).toHaveProperty('click:plus');
 	});
 
-	it('applies correct classes based on position prop', () => {
+	it('should apply correct classes based on position prop', () => {
 		const positions = ['top', 'right', 'bottom', 'left'];
 
 		positions.forEach((position) => {
@@ -40,15 +40,25 @@ describe('CanvasHandlePlus', () => {
 		});
 	});
 
-	it('renders SVG elements correctly', () => {
+	it('should apply correct classes based on status', () => {
+		const { container } = renderComponent({
+			props: { type: 'success' },
+		});
+
+		expect(container.firstChild).toHaveClass('success');
+	});
+
+	it('should render SVG elements correctly', () => {
 		const { container } = renderComponent();
 
-		const lineSvg = container.querySelector('svg.line');
-		expect(lineSvg).toBeTruthy();
-		expect(lineSvg?.getAttribute('viewBox')).toBe('0 0 46 24');
+		const svg = container.querySelector('svg');
+		expect(svg).toBeTruthy();
+		expect(svg?.getAttribute('viewBox')).toBe('0 0 70 24');
 
-		const plusSvg = container.querySelector('svg.plus');
+		const lineSvg = container.querySelector('line');
+		expect(lineSvg).toBeTruthy();
+
+		const plusSvg = container.querySelector('.plus');
 		expect(plusSvg).toBeTruthy();
-		expect(plusSvg?.getAttribute('viewBox')).toBe('0 0 24 24');
 	});
 });

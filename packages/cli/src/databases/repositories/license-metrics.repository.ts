@@ -1,6 +1,6 @@
-import { Service } from 'typedi';
 import { GlobalConfig } from '@n8n/config';
 import { DataSource, Repository, Entity } from '@n8n/typeorm';
+import { Service } from 'typedi';
 
 @Entity()
 export class LicenseMetrics {}

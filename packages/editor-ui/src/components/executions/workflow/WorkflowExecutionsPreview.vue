@@ -4,14 +4,16 @@ import { useRoute } from 'vue-router';
 import { ElDropdown } from 'element-plus';
 import { useExecutionDebugging } from '@/composables/useExecutionDebugging';
 import { useMessage } from '@/composables/useMessage';
+import WorkflowExecutionAnnotationPanel from '@/components/executions/workflow/WorkflowExecutionAnnotationPanel.ee.vue';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
-import { MODAL_CONFIRM, VIEWS } from '@/constants';
+import { EnterpriseEditionFeature, MODAL_CONFIRM, VIEWS } from '@/constants';
 import type { ExecutionSummary } from 'n8n-workflow';
 import type { IExecutionUIData } from '@/composables/useExecutionHelpers';
 import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useI18n } from '@/composables/useI18n';
 import { getResourcePermissions } from '@/permissions';
+import { useSettingsStore } from '@/stores/settings.store';
 
 type RetryDropdownRef = InstanceType<typeof ElDropdown>;
 
@@ -32,6 +34,7 @@ const executionHelpers = useExecutionHelpers();
 const message = useMessage();
 const executionDebugging = useExecutionDebugging();
 const workflowsStore = useWorkflowsStore();
+const settingsStore = useSettingsStore();
 
 const retryDropdownRef = ref<RetryDropdownRef | null>(null);
 const workflowId = computed(() => route.params.name as string);
@@ -57,9 +60,27 @@ const isRetriable = computed(
 	() => !!props.execution && executionHelpers.isExecutionRetriable(props.execution),
 );
 
+const isAnnotationEnabled = computed(
+	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedExecutionFilters],
+);
+
+const hasAnnotation = computed(
+	() =>
+		!!props.execution?.annotation &&
+		(props.execution?.annotation.vote || props.execution?.annotation.tags.length > 0),
+);
+
 async function onDeleteExecution(): Promise<void> {
-	const deleteConfirmed = await message.confirm(
+	// Prepend the message with a note about annotations if they exist
+	const confirmationText = [
+		hasAnnotation.value && locale.baseText('executionDetails.confirmMessage.annotationsNote'),
 		locale.baseText('executionDetails.confirmMessage.message'),
+	]
+		.filter(Boolean)
+		.join(' ');
+
+	const deleteConfirmed = await message.confirm(
+		confirmationText,
 		locale.baseText('executionDetails.confirmMessage.headline'),
 		{
 			type: 'warning',
@@ -105,7 +126,13 @@ function onRetryButtonBlur(event: FocusEvent) {
 		<N8nText :class="$style.runningMessage" color="text-light">
 			{{ locale.baseText('executionDetails.runningMessage') }}
 		</N8nText>
-		<N8nButton class="mt-l" type="tertiary" @click="handleStopClick">
+		<N8nButton
+			data-test-id="stop-execution"
+			class="mt-l"
+			type="tertiary"
+			:disabled="!workflowPermissions.execute"
+			@click="handleStopClick"
+		>
 			{{ locale.baseText('executionsList.stopExecution') }}
 		</N8nButton>
 	</div>
@@ -115,6 +142,7 @@ function onRetryButtonBlur(event: FocusEvent) {
 			:class="$style.executionDetails"
 			:data-test-id="`execution-preview-details-${executionId}`"
 		>
+			<WorkflowExecutionAnnotationPanel v-if="isAnnotationEnabled && execution" />
 			<div>
 				<N8nText size="large" color="text-base" :bold="true" data-test-id="execution-time">{{
 					executionUIDetails?.startTime

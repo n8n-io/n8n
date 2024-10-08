@@ -5,9 +5,11 @@ import { useI18n } from '@/composables/useI18n';
 export interface IExecutionUIData {
 	name: string;
 	label: string;
+	createdAt: string;
 	startTime: string;
 	runningTime: string;
 	showTimestamp: boolean;
+	tags: Array<{ id: string; name: string }>;
 }
 
 export function useExecutionHelpers() {
@@ -16,10 +18,12 @@ export function useExecutionHelpers() {
 	function getUIDetails(execution: ExecutionSummary): IExecutionUIData {
 		const status = {
 			name: 'unknown',
+			createdAt: execution.createdAt?.toString() ?? '',
 			startTime: formatDate(execution.startedAt),
 			label: 'Status unknown',
 			runningTime: '',
 			showTimestamp: true,
+			tags: execution.annotation?.tags ?? [],
 		};
 
 		if (execution.status === 'new') {

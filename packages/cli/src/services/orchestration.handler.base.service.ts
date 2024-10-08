@@ -1,19 +1,8 @@
-import Container from 'typedi';
-import { RedisService } from './redis.service';
-import type { RedisServicePubSubSubscriber } from './redis/RedisServicePubSubSubscriber';
-import type { WorkerCommandReceivedHandlerOptions } from './orchestration/worker/types';
 import type { MainResponseReceivedHandlerOptions } from './orchestration/main/types';
+import type { WorkerCommandReceivedHandlerOptions } from './orchestration/worker/types';
 
 export abstract class OrchestrationHandlerService {
 	protected initialized = false;
-
-	redisSubscriber: RedisServicePubSubSubscriber;
-
-	readonly redisService: RedisService;
-
-	constructor() {
-		this.redisService = Container.get(RedisService);
-	}
 
 	async init() {
 		await this.initSubscriber();
@@ -28,7 +17,6 @@ export abstract class OrchestrationHandlerService {
 	}
 
 	async shutdown() {
-		await this.redisSubscriber?.destroy();
 		this.initialized = false;
 	}
 

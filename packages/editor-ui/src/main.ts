@@ -1,4 +1,5 @@
 import { createApp } from 'vue';
+import * as Sentry from '@sentry/vue';
 
 import '@vue-flow/core/dist/style.css';
 import '@vue-flow/core/dist/theme-default.css';
@@ -29,10 +30,31 @@ import { FontAwesomePlugin } from './plugins/icons';
 import { createPinia, PiniaVuePlugin } from 'pinia';
 import { JsPlumbPlugin } from '@/plugins/jsplumb';
 import { ChartJSPlugin } from '@/plugins/chartjs';
+import { AxiosError } from 'axios';
 
 const pinia = createPinia();
 
 const app = createApp(App);
+
+if (window.sentry?.dsn) {
+	const { dsn, release, environment } = window.sentry;
+	Sentry.init({
+		app,
+		dsn,
+		release,
+		environment,
+		beforeSend(event, { originalException }) {
+			if (
+				!originalException ||
+				originalException instanceof AxiosError ||
+				(originalException instanceof Error && originalException.message.includes('ResizeObserver'))
+			) {
+				return null;
+			}
+			return event;
+		},
+	});
+}
 
 app.use(TelemetryPlugin);
 app.use(PiniaVuePlugin);

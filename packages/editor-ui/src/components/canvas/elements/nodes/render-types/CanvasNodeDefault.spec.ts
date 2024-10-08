@@ -4,7 +4,7 @@ import { NodeConnectionType } from 'n8n-workflow';
 import { createCanvasNodeProvide } from '@/__tests__/data';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-import { CanvasNodeRenderType } from '@/types';
+import { CanvasConnectionMode, CanvasNodeRenderType } from '@/types';
 
 const renderComponent = createComponentRenderer(CanvasNodeDefault);
 
@@ -24,6 +24,46 @@ describe('CanvasNodeDefault', () => {
 		});
 
 		expect(getByTestId('canvas-default-node')).toMatchSnapshot();
+	});
+
+	describe('inputs', () => {
+		it('should adjust height css variable based on the number of inputs (1 input)', () => {
+			const { getByText } = renderComponent({
+				global: {
+					provide: {
+						...createCanvasNodeProvide({
+							data: {
+								inputs: [{ type: NodeConnectionType.Main, index: 0 }],
+							},
+						}),
+					},
+				},
+			});
+
+			const nodeElement = getByText('Test Node').closest('.node');
+			expect(nodeElement).toHaveStyle({ '--canvas-node--main-input-count': '1' }); // height calculation based on the number of inputs
+		});
+
+		it('should adjust height css variable based on the number of inputs (multiple inputs)', () => {
+			const { getByText } = renderComponent({
+				global: {
+					provide: {
+						...createCanvasNodeProvide({
+							data: {
+								inputs: [
+									{ type: NodeConnectionType.Main, index: 0 },
+									{ type: NodeConnectionType.Main, index: 0 },
+									{ type: NodeConnectionType.Main, index: 0 },
+								],
+							},
+						}),
+					},
+				},
+			});
+
+			const nodeElement = getByText('Test Node').closest('.node');
+			expect(nodeElement).toHaveStyle({ '--canvas-node--main-input-count': '3' }); // height calculation based on the number of inputs
+		});
 	});
 
 	describe('outputs', () => {
@@ -117,6 +157,49 @@ describe('CanvasNodeDefault', () => {
 				},
 			});
 			expect(getByText('Test Node').closest('.node')).not.toHaveClass('disabled');
+		});
+
+		it('should render strike-through when node is disabled and has node input and output handles', () => {
+			const { container } = renderComponent({
+				global: {
+					provide: {
+						...createCanvasNodeProvide({
+							data: {
+								disabled: true,
+								inputs: [{ type: NodeConnectionType.Main, index: 0 }],
+								outputs: [{ type: NodeConnectionType.Main, index: 0 }],
+								connections: {
+									[CanvasConnectionMode.Input]: {
+										[NodeConnectionType.Main]: [
+											[{ node: 'node', type: NodeConnectionType.Main, index: 0 }],
+										],
+									},
+									[CanvasConnectionMode.Output]: {
+										[NodeConnectionType.Main]: [
+											[{ node: 'node', type: NodeConnectionType.Main, index: 0 }],
+										],
+									},
+								},
+							},
+						}),
+					},
+				},
+			});
+
+			expect(container.querySelector('.disabledStrikeThrough')).toBeVisible();
+		});
+	});
+
+	describe('waiting', () => {
+		it('should apply waiting class when node is waiting', () => {
+			const { getByText } = renderComponent({
+				global: {
+					provide: {
+						...createCanvasNodeProvide({ data: { execution: { running: true, waiting: '123' } } }),
+					},
+				},
+			});
+			expect(getByText('Test Node').closest('.node')).toHaveClass('waiting');
 		});
 	});
 

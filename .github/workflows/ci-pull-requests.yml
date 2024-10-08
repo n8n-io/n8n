@@ -1,6 +1,10 @@
 name: Build, unit test and lint branch
 
-on: [pull_request]
+on:
+  pull_request:
+    branches:
+      - '**'
+      - '!release/*'
 
 jobs:
   install-and-build:
@@ -9,7 +13,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4.1.1
         with:
-          repository: n8n-io/n8n
           ref: refs/pull/${{ github.event.pull_request.number }}/merge
 
       - run: corepack enable
@@ -26,6 +29,9 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+      - name: Run formatcheck
+        run: pnpm format:check
 
       - name: Run typecheck
         run: pnpm typecheck
