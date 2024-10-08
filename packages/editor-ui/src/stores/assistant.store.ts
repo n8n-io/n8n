@@ -296,11 +296,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				{ withPostHog: true },
 			);
 			// Track first user message in support chat now that we have a session id
-			if (
-				usersMessages.value.length === 1 &&
-				!currentSessionId.value &&
-				chatSessionTask.value === 'support'
-			) {
+			if (usersMessages.value.length === 1 && chatSessionTask.value === 'support') {
 				const firstUserMessage = usersMessages.value[0] as ChatUI.TextMessage;
 				trackUserMessage(firstUserMessage.content, false);
 			}
