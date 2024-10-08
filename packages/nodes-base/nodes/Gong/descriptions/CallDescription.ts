@@ -87,6 +87,10 @@ export const callOperations: INodeProperties[] = [
 									if (Object.keys(primaryUserId).length !== 0) {
 										return [{ json: { success: true } }];
 									}
+								} else if (response.statusCode === 400 || response.statusCode === 500) {
+									throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
+										description: 'Double-check the value(s) in the parameter(s)',
+									});
 								}
 								return await sendErrorPostReceive.call(this, data, response);
 							},
