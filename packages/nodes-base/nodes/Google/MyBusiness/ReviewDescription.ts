@@ -110,7 +110,8 @@ export const reviewOperations: INodeProperties[] = [
 						method: 'GET',
 						url: '=/{{$parameter["account"]}}/{{$parameter["location"]}}/reviews',
 						qs: {
-							pageSize: '={{$parameter["limit"]<50 ? $parameter["limit"] : 50}}', // Google allows maximum 50 results per page
+							pageSize:
+								'={{ $parameter["limit"] ? ($parameter["limit"] < 50 ? $parameter["limit"] : 50) : 50 }}', // Google allows maximum 50 results per page
 						},
 					},
 				},
@@ -504,7 +505,7 @@ export const reviewFields: INodeProperties[] = [
 		},
 		default: 20,
 		description: 'Max number of results to return',
-		displayOptions: { show: { resource: ['review'], operation: ['getAll'] } },
+		displayOptions: { show: { resource: ['review'], operation: ['getAll'], returnAll: [false] } },
 	},
 
 	/* -------------------------------------------------------------------------- */

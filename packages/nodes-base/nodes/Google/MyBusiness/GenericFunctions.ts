@@ -174,9 +174,12 @@ export async function handlePagination(
 ): Promise<INodeExecutionData[]> {
 	const aggregatedResult: IDataObject[] = [];
 	let nextPageToken: string | undefined;
-	const limit = this.getNodeParameter('limit') as number;
 	const returnAll = this.getNodeParameter('returnAll') as boolean;
-	if (!returnAll) resultOptions.maxResults = limit;
+	let limit = 100;
+	if (!returnAll) {
+		limit = this.getNodeParameter('limit') as number;
+		resultOptions.maxResults = limit;
+	}
 	resultOptions.paginate = true;
 
 	do {
@@ -358,7 +361,7 @@ export async function searchReviews(
 
 	const results: INodeListSearchItems[] = reviews
 		.map((a) => ({
-			name: a.comment.slice(0, a.comment.length < 50 ? a.comment.length : 50),
+			name: a.comment.length > 50 ? `${a.comment.slice(0, 50)}...` : a.comment,
 			value: a.name,
 		}))
 		.filter((a) => !filter || a.name.toLowerCase().includes(filter.toLowerCase()))
@@ -399,7 +402,7 @@ export async function searchPosts(
 
 	const results: INodeListSearchItems[] = localPosts
 		.map((a) => ({
-			name: a.summary.slice(0, a.summary.length < 50 ? a.summary.length : 50),
+			name: a.summary.length > 50 ? `${a.summary.slice(0, 50)}...` : a.summary,
 			value: a.name,
 		}))
 		.filter((a) => !filter || a.name.toLowerCase().includes(filter.toLowerCase()))

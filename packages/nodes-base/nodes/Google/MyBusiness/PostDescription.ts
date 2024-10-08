@@ -127,7 +127,8 @@ export const postOperations: INodeProperties[] = [
 						method: 'GET',
 						url: '=/{{$parameter["account"]}}/{{$parameter["location"]}}/localPosts',
 						qs: {
-							pageSize: '={{$parameter["limit"]<100 ? $parameter["limit"] : 100}}', // Google allows maximum 100 results per page
+							pageSize:
+								'={{ $parameter["limit"] ? ($parameter["limit"] < 100 ? $parameter["limit"] : 100) : 100 }}', // Google allows maximum 100 results per page
 						},
 					},
 				},
@@ -813,7 +814,7 @@ export const postFields: INodeProperties[] = [
 		},
 		default: 20,
 		description: 'Max number of results to return',
-		displayOptions: { show: { resource: ['post'], operation: ['getAll'] } },
+		displayOptions: { show: { resource: ['post'], operation: ['getAll'], returnAll: [false] } },
 	},
 
 	/* -------------------------------------------------------------------------- */
