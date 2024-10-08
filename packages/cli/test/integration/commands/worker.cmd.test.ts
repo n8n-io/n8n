@@ -5,11 +5,12 @@ import { BinaryDataService } from 'n8n-core';
 import { Worker } from '@/commands/worker';
 import config from '@/config';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import { LogStreamingEventRelay } from '@/events/log-streaming-event-relay';
+import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
 import { ExternalHooks } from '@/external-hooks';
 import { ExternalSecretsManager } from '@/external-secrets/external-secrets-manager.ee';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { ScalingService } from '@/scaling/scaling.service';
 import { OrchestrationHandlerWorkerService } from '@/services/orchestration/worker/orchestration.handler.worker.service';
 import { OrchestrationWorkerService } from '@/services/orchestration/worker/orchestration.worker.service';
@@ -29,12 +30,12 @@ const logStreamingEventRelay = mockInstance(LogStreamingEventRelay);
 const orchestrationHandlerWorkerService = mockInstance(OrchestrationHandlerWorkerService);
 const scalingService = mockInstance(ScalingService);
 const orchestrationWorkerService = mockInstance(OrchestrationWorkerService);
+mockInstance(Publisher);
 
 const command = setupTestCommand(Worker);
 
 test('worker initializes all its components', async () => {
 	const worker = await command.run();
-
 	expect(worker.queueModeId).toBeDefined();
 	expect(worker.queueModeId).toContain('worker');
 	expect(worker.queueModeId.length).toBeGreaterThan(15);

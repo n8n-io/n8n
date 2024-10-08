@@ -1,7 +1,8 @@
 import type { IRunData } from 'n8n-workflow';
+
+import { createNodeData, toITaskData } from './helpers';
 import { cleanRunData } from '../cleanRunData';
 import { DirectedGraph } from '../DirectedGraph';
-import { createNodeData, toITaskData } from './helpers';
 
 describe('cleanRunData', () => {
 	// ┌─────┐    ┌─────┐   ┌─────┐

@@ -2,6 +2,26 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+# 1.63.0
+
+### What changed?
+
+The worker server used to bind to IPv6 by default. It now binds to IPv4 by default.
+
+### When is action necessary?
+
+If you experience a port conflict error when starting a worker server using its default port, set a different port for the worker server with `QUEUE_HEALTH_CHECK_PORT`.
+
+## 1.57.0
+
+### What changed?
+
+The `verbose` log level was merged into the `debug` log level.
+
+### When is action necessary?
+
+If you are setting the env var `N8N_LOG_LEVEL=verbose`, please update your log level to `N8N_LOG_LEVEL=debug`.
+
 ## 1.55.0
 
 ### What changed?

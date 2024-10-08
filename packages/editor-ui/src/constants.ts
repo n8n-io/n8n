@@ -69,7 +69,6 @@ export const PROMPT_MFA_CODE_MODAL_KEY = 'promptMfaCode';
 export const WORKFLOW_HISTORY_VERSION_RESTORE = 'workflowHistoryVersionRestore';
 export const SETUP_CREDENTIALS_MODAL_KEY = 'setupCredentials';
 export const PROJECT_MOVE_RESOURCE_MODAL = 'projectMoveResourceModal';
-export const PROJECT_MOVE_RESOURCE_CONFIRM_MODAL = 'projectMoveResourceConfirmModal';
 export const NEW_ASSISTANT_SESSION_MODAL = 'newAssistantSession';
 export const EXTERNAL_SECRETS_PROVIDER_MODAL_KEY = 'externalSecretsProvider';
 
@@ -525,6 +524,7 @@ export const MAPPING_PARAMS = [
 	'$input',
 	'$item',
 	'$jmespath',
+	'$fromAI',
 	'$json',
 	'$node',
 	'$now',
@@ -694,7 +694,6 @@ export const MORE_ONBOARDING_OPTIONS_EXPERIMENT = {
 	variant: 'variant',
 };
 
-export const EXECUTION_ANNOTATION_EXPERIMENT = '023_execution_annotation';
 export const CREDENTIAL_DOCS_EXPERIMENT = {
 	name: '024_credential_docs',
 	control: 'control',

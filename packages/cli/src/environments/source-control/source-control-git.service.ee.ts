@@ -14,7 +14,7 @@ import type {
 import { Service } from 'typedi';
 
 import type { User } from '@/databases/entities/user';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { OwnershipService } from '@/services/ownership.service';
 
 import {

@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-nodes-langchain",
-  "version": "1.61.0",
+  "version": "1.62.1",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -150,7 +150,7 @@
     "@langchain/redis": "0.1.0",
     "@langchain/textsplitters": "0.1.0",
     "@mozilla/readability": "^0.5.0",
-    "@n8n/typeorm": "0.3.20-10",
+    "@n8n/typeorm": "0.3.20-12",
     "@n8n/vm2": "3.9.25",
     "@pinecone-database/pinecone": "3.0.3",
     "@qdrant/js-client-rest": "1.11.0",

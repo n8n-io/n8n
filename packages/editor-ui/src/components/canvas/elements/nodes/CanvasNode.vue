@@ -154,7 +154,7 @@ const createEndpointMappingFn =
 			index: endpoint.index,
 		});
 		const handleType = mode === CanvasConnectionMode.Input ? 'target' : 'source';
-		const isConnected = !!connections.value[mode][endpoint.type]?.[endpoint.index]?.length;
+		const connectionsCount = connections.value[mode][endpoint.type]?.[endpoint.index]?.length ?? 0;
 		const isConnecting =
 			connectingHandle.value?.nodeId === props.id &&
 			connectingHandle.value?.handleType === handleType &&
@@ -163,7 +163,7 @@ const createEndpointMappingFn =
 		return {
 			...endpoint,
 			handleId,
-			isConnected,
+			connectionsCount,
 			isConnecting,
 			position,
 			offset: {
@@ -260,36 +260,30 @@ onBeforeUnmount(() => {
 		:class="[$style.canvasNode, { [$style.showToolbar]: showToolbar }]"
 		data-test-id="canvas-node"
 	>
-		<template v-for="source in mappedOutputs" :key="source.handleId">
+		<template
+			v-for="source in mappedOutputs"
+			:key="`${source.handleId}(${source.index + 1}/${mappedOutputs.length})`"
+		>
 			<CanvasHandleRenderer
-				data-test-id="canvas-node-output-handle"
+				v-bind="source"
 				:mode="CanvasConnectionMode.Output"
-				:type="source.type"
-				:label="source.label"
-				:index="source.index"
-				:position="source.position"
-				:offset="source.offset"
-				:is-connected="source.isConnected"
-				:is-connecting="source.isConnecting"
 				:is-read-only="readOnly"
 				:is-valid-connection="isValidConnection"
+				data-test-id="canvas-node-output-handle"
 				@add="onAdd"
 			/>
 		</template>
 
-		<template v-for="target in mappedInputs" :key="target.handleId">
+		<template
+			v-for="target in mappedInputs"
+			:key="`${target.handleId}(${target.index + 1}/${mappedInputs.length})`"
+		>
 			<CanvasHandleRenderer
-				data-test-id="canvas-node-input-handle"
+				v-bind="target"
 				:mode="CanvasConnectionMode.Input"
-				:type="target.type"
-				:label="target.label"
-				:index="target.index"
-				:position="target.position"
-				:offset="target.offset"
-				:is-connected="target.isConnected"
-				:is-connecting="target.isConnecting"
 				:is-read-only="readOnly"
 				:is-valid-connection="isValidConnection"
+				data-test-id="canvas-node-input-handle"
 				@add="onAdd"
 			/>
 		</template>

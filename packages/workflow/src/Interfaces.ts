@@ -962,6 +962,8 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			};
 
 		getParentCallbackManager(): CallbackManager | undefined;
+
+		startJob<T = unknown>(jobType: string, settings: unknown, itemIndex: number): Promise<T>;
 	};
 
 export interface IExecuteSingleFunctions extends BaseExecutionFunctions {
@@ -2132,6 +2134,7 @@ export interface IWorkflowBase {
 	name: string;
 	active: boolean;
 	createdAt: Date;
+	startedAt?: Date;
 	updatedAt: Date;
 	nodes: INode[];
 	connections: IConnections;
@@ -2248,6 +2251,26 @@ export interface IWorkflowExecuteAdditionalData {
 	secretsHelpers: SecretsHelpersBase;
 	logAiEvent: (eventName: AiEvent, payload: AiEventPayload) => void;
 	parentCallbackManager?: CallbackManager;
+	startAgentJob<T>(
+		additionalData: IWorkflowExecuteAdditionalData,
+		jobType: string,
+		settings: unknown,
+		executeFunctions: IExecuteFunctions,
+		inputData: ITaskDataConnections,
+		node: INode,
+		workflow: Workflow,
+		runExecutionData: IRunExecutionData,
+		runIndex: number,
+		itemIndex: number,
+		activeNodeName: string,
+		connectionInputData: INodeExecutionData[],
+		siblingParameters: INodeParameters,
+		mode: WorkflowExecuteMode,
+		executeData?: IExecuteData,
+		defaultReturnRunIndex?: number,
+		selfData?: IDataObject,
+		contextNodeName?: string,
+	): Promise<T>;
 }
 
 export type WorkflowExecuteMode =
@@ -2473,6 +2496,7 @@ export interface ExecutionSummary {
 	retryOf?: string | null;
 	retrySuccessId?: string | null;
 	waitTill?: Date;
+	createdAt?: Date;
 	startedAt: Date;
 	stoppedAt?: Date;
 	workflowId: string;

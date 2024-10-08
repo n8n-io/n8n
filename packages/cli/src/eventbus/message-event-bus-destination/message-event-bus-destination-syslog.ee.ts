@@ -7,7 +7,7 @@ import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import syslog from 'syslog-client';
 import Container from 'typedi';
 
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 
 import { MessageEventBusDestination } from './message-event-bus-destination.ee';
 import { eventMessageGenericDestinationTestEvent } from '../event-message-classes/event-message-generic';

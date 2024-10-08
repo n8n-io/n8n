@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "1.61.0",
+  "version": "1.62.1",
   "description": "Base nodes of n8n",
   "main": "index.js",
   "scripts": {
@@ -331,6 +331,7 @@
       "dist/credentials/SurveyMonkeyApi.credentials.js",
       "dist/credentials/SurveyMonkeyOAuth2Api.credentials.js",
       "dist/credentials/SyncroMspApi.credentials.js",
+      "dist/credentials/SysdigApi.credentials.js",
       "dist/credentials/TaigaApi.credentials.js",
       "dist/credentials/TapfiliateApi.credentials.js",
       "dist/credentials/TelegramApi.credentials.js",
@@ -837,6 +838,7 @@
   },
   "dependencies": {
     "@kafkajs/confluent-schema-registry": "1.0.6",
+    "@n8n/config": "workspace:*",
     "@n8n/imap": "workspace:*",
     "@n8n/vm2": "3.9.25",
     "amqplib": "0.10.3",

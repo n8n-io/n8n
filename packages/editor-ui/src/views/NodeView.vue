@@ -46,7 +46,7 @@ import { useGlobalLinkActions } from '@/composables/useGlobalLinkActions';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import useCanvasMouseSelect from '@/composables/useCanvasMouseSelect';
 import { useExecutionDebugging } from '@/composables/useExecutionDebugging';
-import { useTitleChange } from '@/composables/useTitleChange';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useDataSchema } from '@/composables/useDataSchema';
 import { type ContextMenuAction, useContextMenu } from '@/composables/useContextMenu';
 import { useUniqueNodeName } from '@/composables/useUniqueNodeName';
@@ -234,7 +234,9 @@ export default defineComponent({
 		const { callDebounced } = useDebounce();
 		const canvasPanning = useCanvasPanning(nodeViewRootRef, { onMouseMoveEnd });
 		const workflowHelpers = useWorkflowHelpers({ router });
-		const { runWorkflow, stopCurrentExecution } = useRunWorkflow({ router });
+		const { runWorkflow, stopCurrentExecution, runWorkflowResolvePending } = useRunWorkflow({
+			router,
+		});
 		const { addBeforeUnloadEventBindings, removeBeforeUnloadEventBindings } = useBeforeUnload({
 			route,
 		});
@@ -254,11 +256,12 @@ export default defineComponent({
 			onMouseMoveEnd,
 			workflowHelpers,
 			runWorkflow,
+			runWorkflowResolvePending,
 			stopCurrentExecution,
 			callDebounced,
 			...useCanvasMouseSelect(),
 			...useGlobalLinkActions(),
-			...useTitleChange(),
+			documentTitle: useDocumentTitle(),
 			...useToast(),
 			...useMessage(),
 			...useUniqueNodeName(),
@@ -422,7 +425,12 @@ export default defineComponent({
 			return this.workflowsStore.getWorkflowExecution;
 		},
 		workflowRunning(): boolean {
-			return this.uiStore.isActionActive.workflowRunning;
+			if (this.uiStore.isActionActive.workflowRunning) return true;
+			if (this.workflowsStore.activeExecutionId) {
+				const execution = this.workflowsStore.getWorkflowExecution;
+				if (execution && execution.status === 'waiting' && !execution.finished) return true;
+			}
+			return false;
 		},
 		currentWorkflow(): string {
 			return this.$route.params.name?.toString() || this.workflowsStore.workflowId;
@@ -591,7 +599,7 @@ export default defineComponent({
 			return;
 		}
 		this.canvasStore.initInstance(this.nodeViewRef);
-		this.titleReset();
+		this.documentTitle.reset();
 
 		window.addEventListener('message', this.onPostMessageReceived);
 
@@ -847,7 +855,12 @@ export default defineComponent({
 			};
 			this.$telemetry.track('User clicked execute node button', telemetryPayload);
 			void this.externalHooks.run('nodeView.onRunNode', telemetryPayload);
-			void this.runWorkflow({ destinationNode: nodeName, source });
+
+			if (!this.isExecutionPreview && this.workflowsStore.isWaitingExecution) {
+				void this.runWorkflowResolvePending({ destinationNode: nodeName, source });
+			} else {
+				void this.runWorkflow({ destinationNode: nodeName, source });
+			}
 		},
 		async onOpenChat() {
 			const telemetryPayload = {
@@ -857,6 +870,7 @@ export default defineComponent({
 			void this.externalHooks.run('nodeView.onOpenChat', telemetryPayload);
 			this.uiStore.openModal(WORKFLOW_LM_CHAT_MODAL_KEY);
 		},
+
 		async onRunWorkflow() {
 			void this.workflowHelpers.getWorkflowDataToSave().then((workflowData) => {
 				const telemetryPayload = {
@@ -873,7 +887,12 @@ export default defineComponent({
 				void this.externalHooks.run('nodeView.onRunWorkflow', telemetryPayload);
 			});
 
-			await this.runWorkflow({});
+			if (!this.isExecutionPreview && this.workflowsStore.isWaitingExecution) {
+				void this.runWorkflowResolvePending({});
+			} else {
+				void this.runWorkflow({});
+			}
+
 			this.refreshEndpointsErrorsState();
 		},
 		resetEndpointsErrors() {
@@ -932,7 +951,7 @@ export default defineComponent({
 				dangerouslyUseHTMLString: true,
 			});
 		},
-		clearExecutionData() {
+		async clearExecutionData() {
 			this.workflowsStore.workflowExecutionData = null;
 			this.nodeHelpers.updateNodesExecutionIssues();
 		},
@@ -1719,7 +1738,7 @@ export default defineComponent({
 					this.workflowsStore.executingNode.length = 0;
 					this.uiStore.removeActiveAction('workflowRunning');
 
-					this.titleSet(this.workflowsStore.workflowName, 'IDLE');
+					this.workflowHelpers.setDocumentTitle(this.workflowsStore.workflowName, 'IDLE');
 					this.showMessage({
 						title: this.$locale.baseText('nodeView.showMessage.stopExecutionCatch.unsaved.title'),
 						message: this.$locale.baseText(
@@ -1743,7 +1762,7 @@ export default defineComponent({
 						retryOf: execution.retryOf,
 					};
 					this.workflowsStore.finishActiveExecution(pushData);
-					this.titleSet(execution.workflowData.name, 'IDLE');
+					this.workflowHelpers.setDocumentTitle(execution.workflowData.name, 'IDLE');
 					this.workflowsStore.executingNode.length = 0;
 					this.workflowsStore.setWorkflowExecutionData(executedData as IExecutionResponse);
 					this.uiStore.removeActiveAction('workflowRunning');
@@ -3410,7 +3429,7 @@ export default defineComponent({
 					}
 
 					if (workflow) {
-						this.titleSet(workflow.name, 'IDLE');
+						this.workflowHelpers.setDocumentTitle(workflow.name, 'IDLE');
 						await this.openWorkflow(workflow);
 						await this.checkAndInitDebugMode();
 
@@ -4371,7 +4390,7 @@ export default defineComponent({
 		},
 		async checkAndInitDebugMode() {
 			if (this.$route.name === VIEWS.EXECUTION_DEBUG) {
-				this.titleSet(this.workflowName, 'DEBUG');
+				this.workflowHelpers.setDocumentTitle(this.workflowName, 'DEBUG');
 				if (!this.workflowsStore.isInDebugMode) {
 					await this.applyExecutionData(this.$route.params.executionId as string);
 					this.workflowsStore.isInDebugMode = true;
@@ -4444,7 +4463,7 @@ export default defineComponent({
 					const workflow: IWorkflowDb | undefined =
 						await this.workflowsStore.fetchWorkflow(workflowId);
 					if (workflow) {
-						this.titleSet(workflow.name, 'IDLE');
+						this.workflowHelpers.setDocumentTitle(workflow.name, 'IDLE');
 						await this.openWorkflow(workflow);
 					}
 				}

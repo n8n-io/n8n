@@ -6,7 +6,7 @@ import { ExpressionError, type IPinData, type IRunData, type Workflow } from 'n8
 
 import { useRootStore } from '@/stores/root.store';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
-import type { IStartRunData, IWorkflowData } from '@/Interface';
+import type { IExecutionResponse, IStartRunData, IWorkflowData } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
@@ -22,6 +22,7 @@ vi.mock('@/stores/workflows.store', () => ({
 		executionWaitingForWebhook: false,
 		getCurrentWorkflow: vi.fn().mockReturnValue({ id: '123' }),
 		getNodeByName: vi.fn(),
+		getExecution: vi.fn(),
 	}),
 }));
 
@@ -52,6 +53,7 @@ vi.mock('@/composables/useWorkflowHelpers', () => ({
 		getCurrentWorkflow: vi.fn(),
 		saveCurrentWorkflow: vi.fn(),
 		getWorkflowDataToSave: vi.fn(),
+		setDocumentTitle: vi.fn(),
 	}),
 }));
 
@@ -59,10 +61,6 @@ vi.mock('@/composables/useNodeHelpers', () => ({
 	useNodeHelpers: vi.fn().mockReturnValue({
 		updateNodesExecutionIssues: vi.fn(),
 	}),
-}));
-
-vi.mock('@/composables/useTitleChange', () => ({
-	useTitleChange: vi.fn().mockReturnValue({ titleSet: vi.fn() }),
 }));
 
 vi.mock('vue-router', async (importOriginal) => {
@@ -304,6 +302,78 @@ describe('useRunWorkflow({ router })', () => {
 
 			expect(result.startNodeNames).toContain('node1');
 			expect(result.runData).toEqual(undefined);
+		});
+	});
+
+	describe('useRunWorkflow({ router }) - runWorkflowResolvePending', () => {
+		let uiStore: ReturnType<typeof useUIStore>;
+		let workflowsStore: ReturnType<typeof useWorkflowsStore>;
+		let router: ReturnType<typeof useRouter>;
+
+		beforeAll(() => {
+			const pinia = createTestingPinia({ stubActions: false });
+			setActivePinia(pinia);
+			rootStore = useRootStore();
+			uiStore = useUIStore();
+			workflowsStore = useWorkflowsStore();
+			router = useRouter();
+			workflowHelpers = useWorkflowHelpers({ router });
+		});
+
+		beforeEach(() => {
+			uiStore.activeActions = [];
+			vi.mocked(workflowsStore).runWorkflow.mockReset();
+		});
+
+		it('should resolve when runWorkflow finished', async () => {
+			const { runWorkflowResolvePending } = useRunWorkflow({ router });
+			const mockExecutionResponse = { executionId: '123' };
+
+			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockExecutionResponse);
+			vi.mocked(workflowsStore).allNodes = [];
+			vi.mocked(workflowsStore).getExecution.mockResolvedValue({
+				finished: true,
+			} as unknown as IExecutionResponse);
+			vi.mocked(workflowsStore).workflowExecutionData = {
+				id: '123',
+			} as unknown as IExecutionResponse;
+
+			const result = await runWorkflowResolvePending({});
+
+			expect(result).toEqual(mockExecutionResponse);
+		});
+
+		it('should return when workflowExecutionData is null', async () => {
+			const { runWorkflowResolvePending } = useRunWorkflow({ router });
+			const mockExecutionResponse = { executionId: '123' };
+
+			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockExecutionResponse);
+			vi.mocked(workflowsStore).allNodes = [];
+			vi.mocked(workflowsStore).getExecution.mockResolvedValue({
+				finished: true,
+			} as unknown as IExecutionResponse);
+			vi.mocked(workflowsStore).workflowExecutionData = null;
+
+			const result = await runWorkflowResolvePending({});
+
+			expect(result).toEqual(mockExecutionResponse);
+		});
+
+		it('should handle workflow execution error properly', async () => {
+			const { runWorkflowResolvePending } = useRunWorkflow({ router });
+			const mockExecutionResponse = { executionId: '123' };
+
+			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockExecutionResponse);
+			vi.mocked(workflowsStore).allNodes = [];
+			vi.mocked(workflowsStore).getExecution.mockResolvedValue({
+				finished: false,
+				status: 'error',
+			} as unknown as IExecutionResponse);
+
+			await runWorkflowResolvePending({});
+
+			expect(workflowsStore.setWorkflowExecutionData).toHaveBeenCalled();
+			expect(workflowsStore.workflowExecutionData).toBe(null);
 		});
 	});
 });

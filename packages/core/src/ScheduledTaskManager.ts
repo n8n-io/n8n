@@ -1,6 +1,7 @@
-import { Service } from 'typedi';
 import { CronJob } from 'cron';
 import type { CronExpression, Workflow } from 'n8n-workflow';
+import { Service } from 'typedi';
+
 import { InstanceSettings } from './InstanceSettings';
 
 @Service()
