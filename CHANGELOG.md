@@ -1,3 +1,12 @@
+## [1.62.3](https://github.com/n8n-io/n8n/compare/n8n@1.62.2...n8n@1.62.3) (2024-10-08)
+
+
+### Bug Fixes
+
+* Fix transaction handling for 'revert' command ([#11145](https://github.com/n8n-io/n8n/issues/11145)) ([d1fe22b](https://github.com/n8n-io/n8n/commit/d1fe22b987fda42cd0b82a48f4d04a048771f2b5))
+
+
+
 ## [1.62.2](https://github.com/n8n-io/n8n/compare/n8n@1.62.1...n8n@1.62.2) (2024-10-07)
 
 
