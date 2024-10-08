@@ -1,4 +1,4 @@
-import { IsBoolean, IsObject, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsObject, IsOptional } from 'class-validator';
 
 export class SourceControlPullWorkFolder {
 	@IsBoolean()
@@ -8,10 +8,6 @@ export class SourceControlPullWorkFolder {
 	@IsBoolean()
 	@IsOptional()
 	importAfterPull?: boolean = true;
-
-	@IsString({ each: true })
-	@IsOptional()
-	files?: Set<string>;
 
 	@IsObject()
 	@IsOptional()
