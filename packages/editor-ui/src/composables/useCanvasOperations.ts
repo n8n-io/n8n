@@ -1299,10 +1299,6 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 	): boolean {
 		const blocklist = [STICKY_NODE_TYPE];
 
-		if (sourceNode.id === targetNode.id) {
-			return false;
-		}
-
 		if (sourceConnectionType !== targetConnectionType) {
 			return false;
 		}
