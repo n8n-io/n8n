@@ -36,7 +36,7 @@ import type {
 	ITaskData,
 	Workflow,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
+import { NodeConnectionType, NodeHelpers, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import {
 	CUSTOM_API_CALL_KEY,
@@ -345,6 +345,11 @@ export function useCanvasMapping({
 							node.parameters.resume === 'webhook'
 								? i18n.baseText('node.theNodeIsWaitingWebhookCall')
 								: i18n.baseText('node.theNodeIsWaitingFormCall');
+						return acc;
+					}
+
+					if (node?.parameters.operation === SEND_AND_WAIT_OPERATION) {
+						acc[node.id] = i18n.baseText('node.theNodeIsWaitingUserInput');
 						return acc;
 					}
 

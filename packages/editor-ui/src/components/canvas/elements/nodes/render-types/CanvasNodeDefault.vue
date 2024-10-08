@@ -126,7 +126,9 @@ function openContextMenu(event: MouseEvent) {
 		<div :class="$style.description">
 			<div v-if="label" :class="$style.label">
 				{{ label }}
-				<div v-if="isDisabled">({{ i18n.baseText('node.disabled') }})</div>
+			</div>
+			<div v-if="isDisabled" :class="$style.disabledLabel">
+				({{ i18n.baseText('node.disabled') }})
 			</div>
 			<div v-if="subtitle" :class="$style.subtitle">{{ subtitle }}</div>
 		</div>
@@ -265,7 +267,8 @@ function openContextMenu(event: MouseEvent) {
 	align-items: center;
 }
 
-.label {
+.label,
+.disabledLabel {
 	font-size: var(--font-size-m);
 	text-align: center;
 	text-overflow: ellipsis;

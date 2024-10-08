@@ -22,6 +22,12 @@ export namespace PubSub {
 		senderId: string;
 		targets?: string[];
 		command: CommandKey;
+
+		/** Whether the command should be sent to the sender as well. */
+		selfSend?: boolean;
+
+		/** Whether the command should be debounced when received. */
+		debounce?: boolean;
 	} & (PubSubCommandMap[CommandKey] extends never
 		? { payload?: never } // some commands carry no payload
 		: { payload: PubSubCommandMap[CommandKey] });

@@ -7,7 +7,7 @@ services:
       - ${MOCK_API_DATA_PATH}/mappings:/home/wiremock/mappings
 
   postgres:
-    image: postgres:16
+    image: postgres:16.4
     restart: always
     user: root:root
     environment:
