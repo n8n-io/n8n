@@ -39,7 +39,7 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 
 	const pushWorkfolder = async (data: {
 		commitMessage: string;
-		fileNames?: Array<{
+		fileNames: Array<{
 			conflict: boolean;
 			file: string;
 			id: string;
@@ -55,7 +55,7 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 		await vcApi.pushWorkfolder(rootStore.restApiContext, {
 			force: data.force,
 			message: data.commitMessage,
-			...(data.fileNames ? { fileNames: data.fileNames } : {}),
+			fileNames: data.fileNames,
 		});
 	};
 
