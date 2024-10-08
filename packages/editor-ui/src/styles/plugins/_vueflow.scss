@@ -83,6 +83,10 @@
 		cursor: grabbing;
 	}
 
+	&.selected {
+		z-index: 1 !important;
+	}
+
 	&:has(.sticky--active) {
 		z-index: 1 !important;
 	}
@@ -97,4 +101,8 @@
 	margin-top: calc(-1 * var(--spacing-2xs));
 	margin-left: calc(-1 * var(--spacing-2xs));
 	padding: var(--spacing-2xs);
+}
+
+.vue-flow__edges {
+	z-index: 1 !important;
 }
