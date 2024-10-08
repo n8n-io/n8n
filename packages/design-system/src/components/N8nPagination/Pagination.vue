@@ -1,15 +1,29 @@
 <script setup lang="ts">
-import { paginationProps, ElPagination } from 'element-plus';
+import { ElPagination } from 'element-plus';
 
-defineProps({
-	...paginationProps,
-});
+defineProps<{
+	background?: boolean;
+	pagerCount?: number;
+	pageSize?: number;
+	total?: number;
+	currentPage?: number;
+	layout?: string;
+}>();
+
+defineEmits<{
+	'update:currentPage': [page: number];
+}>();
 </script>
 
 <template>
 	<ElPagination
 		class="is-background"
-		layout="prev, pager, next"
-		v-bind="{ ...$props, ...$attrs }"
+		:background="background"
+		:pager-count="pagerCount"
+		:page-size="pageSize"
+		:total="total"
+		:current-page="currentPage"
+		:layout="layout"
+		@update:current-page="(page) => $emit('update:currentPage', page)"
 	/>
 </template>

@@ -7,8 +7,6 @@ import { computed, onMounted } from 'vue';
 import { Chat, ChatWindow } from '@n8n/chat/components';
 import { useOptions } from '@n8n/chat/composables';
 
-defineProps({});
-
 const { options } = useOptions();
 
 const isFullscreen = computed<boolean>(() => options.mode === 'fullscreen');
