@@ -44,6 +44,7 @@ const addProject = computed<IMenuItem>(() => ({
 const getProjectMenuItem = (project: ProjectListItem) => ({
 	id: project.id,
 	label: project.name,
+	icon: 'layer-group',
 	route: {
 		to: {
 			name: VIEWS.PROJECTS_WORKFLOWS,
@@ -52,8 +53,18 @@ const getProjectMenuItem = (project: ProjectListItem) => ({
 	},
 });
 
-const homeClicked = () => {};
-const projectClicked = () => {};
+const personalProject = computed<IMenuItem>(() => ({
+	id: projectsStore.personalProject?.id ?? '',
+	label: locale.baseText('projects.menu.personal'),
+	icon: 'user',
+	route: {
+		to: {
+			name: VIEWS.PROJECTS_WORKFLOWS,
+			params: { projectId: projectsStore.personalProject?.id },
+		},
+	},
+}));
+
 const addProjectClicked = async () => {
 	isCreatingProject.value = true;
 
@@ -107,7 +118,6 @@ onMounted(async () => {
 			<N8nMenuItem
 				:item="home"
 				:compact="props.collapsed"
-				:handle-select="homeClicked"
 				:active-tab="projectsStore.projectNavActiveId"
 				mode="tabs"
 				data-test-id="project-home-menu-item"
@@ -120,7 +130,22 @@ onMounted(async () => {
 			"
 			class="mt-m mb-m"
 		/>
+		<N8nTooltip placement="right">
+			<template #content>
+				{{ locale.baseText('projects.menu.title') }}
+			</template>
+			<N8nText :class="$style.projectsLabel" bold>
+				<span>{{ locale.baseText('projects.menu.title') }}</span>
+			</N8nText>
+		</N8nTooltip>
 		<ElMenu v-if="displayProjects.length" :collapse="props.collapsed" :class="$style.projectItems">
+			<N8nMenuItem
+				:item="personalProject"
+				:compact="props.collapsed"
+				:active-tab="projectsStore.projectNavActiveId"
+				mode="tabs"
+				data-test-id="project-personal-menu-item"
+			/>
 			<N8nMenuItem
 				v-for="project in displayProjects"
 				:key="project.id"
@@ -129,7 +154,6 @@ onMounted(async () => {
 				}"
 				:item="getProjectMenuItem(project)"
 				:compact="props.collapsed"
-				:handle-select="projectClicked"
 				:active-tab="projectsStore.projectNavActiveId"
 				mode="tabs"
 				data-test-id="project-menu-item"
@@ -202,6 +226,15 @@ onMounted(async () => {
 
 .collapsed {
 	text-transform: uppercase;
+}
+
+.projectsLabel {
+	margin: 0 var(--spacing-xs) var(--spacing-m);
+	padding: 0 var(--spacing-s);
+	text-overflow: ellipsis;
+	overflow: hidden;
+	box-sizing: border-box;
+	color: var(--color-text-base);
 }
 </style>
 
