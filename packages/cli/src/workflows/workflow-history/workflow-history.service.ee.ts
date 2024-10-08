@@ -1,3 +1,4 @@
+import { ensureError } from 'n8n-workflow';
 import { Service } from 'typedi';
 
 import type { User } from '@/databases/entities/user';
@@ -79,8 +80,9 @@ export class WorkflowHistoryService {
 					workflowId,
 				});
 			} catch (e) {
+				const error = ensureError(e);
 				this.logger.error(`Failed to save workflow history version for workflow ${workflowId}`, {
-					error: e,
+					error,
 				});
 			}
 		}
