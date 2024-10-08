@@ -16,54 +16,6 @@ describe('GenericFunctions - handlePagination', () => {
 		mockGetNodeParameter.mockClear();
 	});
 
-	it('should handle pagination and aggregate results properly', async () => {
-		mockMakeRoutingRequest
-			.mockResolvedValueOnce([
-				{
-					json: {
-						localPosts: [{ id: 1 }, { id: 2 }],
-						nextPageToken: 'nextToken1',
-					},
-				},
-			])
-			.mockResolvedValueOnce([
-				{
-					json: {
-						localPosts: [{ id: 3 }, { id: 4 }],
-						nextPageToken: 'nextToken2',
-					},
-				},
-			])
-			.mockResolvedValueOnce([
-				{
-					json: {
-						localPosts: [{ id: 5 }],
-					},
-				},
-			]);
-
-		mockGetNodeParameter.mockReturnValueOnce(10);
-		mockGetNodeParameter.mockReturnValueOnce(true);
-
-		const requestOptions = {
-			options: {
-				qs: {},
-			},
-		} as unknown as DeclarativeRestApiSettings.ResultOptions;
-
-		const result = await handlePagination.call(mockContext, requestOptions);
-
-		expect(mockMakeRoutingRequest).toHaveBeenCalledTimes(3);
-
-		expect(result).toEqual([
-			{ json: { id: 1 } },
-			{ json: { id: 2 } },
-			{ json: { id: 3 } },
-			{ json: { id: 4 } },
-			{ json: { id: 5 } },
-		]);
-	});
-
 	it('should stop fetching when the limit is reached and returnAll is false', async () => {
 		mockMakeRoutingRequest
 			.mockResolvedValueOnce([
@@ -82,8 +34,8 @@ describe('GenericFunctions - handlePagination', () => {
 				},
 			]);
 
-		mockGetNodeParameter.mockReturnValueOnce(3);
 		mockGetNodeParameter.mockReturnValueOnce(false);
+		mockGetNodeParameter.mockReturnValueOnce(3);
 
 		const requestOptions = {
 			options: {
@@ -106,8 +58,8 @@ describe('GenericFunctions - handlePagination', () => {
 			},
 		]);
 
-		mockGetNodeParameter.mockReturnValueOnce(5);
 		mockGetNodeParameter.mockReturnValueOnce(false);
+		mockGetNodeParameter.mockReturnValueOnce(5);
 
 		const requestOptions = {
 			options: {
@@ -148,7 +100,6 @@ describe('GenericFunctions - handlePagination', () => {
 				},
 			]);
 
-		mockGetNodeParameter.mockReturnValueOnce(3);
 		mockGetNodeParameter.mockReturnValueOnce(true);
 
 		const requestOptions = {
