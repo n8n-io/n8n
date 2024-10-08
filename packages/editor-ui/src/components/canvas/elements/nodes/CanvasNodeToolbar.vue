@@ -3,6 +3,7 @@ import { computed, useCssModule } from 'vue';
 import { useI18n } from '@/composables/useI18n';
 import { useCanvasNode } from '@/composables/useCanvasNode';
 import { CanvasNodeRenderType } from '@/types';
+import { useCanvas } from '@/composables/useCanvas';
 
 const emit = defineEmits<{
 	delete: [];
@@ -19,13 +20,12 @@ const props = defineProps<{
 const $style = useCssModule();
 const i18n = useI18n();
 
-const { render } = useCanvasNode();
+const { isExecuting } = useCanvas();
+const { isDisabled, render } = useCanvasNode();
 
-// @TODO
-const workflowRunning = false;
-
-// @TODO
-const nodeDisabledTitle = 'Test';
+const nodeDisabledTitle = computed(() => {
+	return isDisabled.value ? i18n.baseText('node.disable') : i18n.baseText('node.enable');
+});
 
 const classes = computed(() => ({
 	[$style.canvasNodeToolbar]: true,
@@ -84,7 +84,7 @@ function onOpenContextMenu(event: MouseEvent) {
 				text
 				size="small"
 				icon="play"
-				:disabled="workflowRunning"
+				:disabled="isExecuting"
 				:title="i18n.baseText('node.testStep')"
 				@click="executeNode"
 			/>

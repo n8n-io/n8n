@@ -37,6 +37,10 @@ describe('TelemetryEventRelay', () => {
 				includeQueueMetrics: false,
 			},
 		},
+		logging: {
+			level: 'info',
+			outputs: ['console'],
+		},
 	});
 	const workflowRepository = mock<WorkflowRepository>();
 	const nodeTypes = mock<NodeTypes>();
@@ -1051,6 +1055,22 @@ describe('TelemetryEventRelay', () => {
 					public_api: false,
 				},
 			);
+		});
+	});
+
+	describe('Community+ registered', () => {
+		it('should track `license-community-plus-registered` event', () => {
+			const event: RelayEventMap['license-community-plus-registered'] = {
+				email: 'user@example.com',
+				licenseKey: 'license123',
+			};
+
+			eventService.emit('license-community-plus-registered', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User registered for license community plus', {
+				email: 'user@example.com',
+				licenseKey: 'license123',
+			});
 		});
 	});
 });

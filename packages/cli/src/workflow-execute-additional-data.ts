@@ -24,6 +24,8 @@ import type {
 	WorkflowExecuteMode,
 	ExecutionStatus,
 	ExecutionError,
+	IExecuteFunctions,
+	ITaskDataConnections,
 	ExecuteWorkflowOptions,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
@@ -63,7 +65,8 @@ import {
 	updateExistingExecution,
 } from './execution-lifecycle-hooks/shared/shared-hook-functions';
 import { toSaveSettings } from './execution-lifecycle-hooks/to-save-settings';
-import { Logger } from './logger';
+import { Logger } from './logging/logger.service';
+import { TaskManager } from './runners/task-managers/task-manager';
 import { SecretsHelper } from './secrets-helpers';
 import { OwnershipService } from './services/ownership.service';
 import { UrlService } from './services/url.service';
@@ -763,7 +766,7 @@ export async function getWorkflowData(
 /**
  * Executes the workflow with the given ID
  */
-async function executeWorkflow(
+export async function executeWorkflow(
 	workflowInfo: IExecuteWorkflowInfo,
 	additionalData: IWorkflowExecuteAdditionalData,
 	options: ExecuteWorkflowOptions,
@@ -795,7 +798,13 @@ async function executeWorkflow(
 	const runData = options.loadedRunData ?? (await getRunData(workflowData, options.inputData));
 
 	const executionId = await activeExecutions.add(runData);
-	await executionRepository.updateStatus(executionId, 'running');
+
+	/**
+	 * A subworkflow execution in queue mode is not enqueued, but rather runs in the
+	 * same worker process as the parent execution. Hence ensure the subworkflow
+	 * execution is marked as started as well.
+	 */
+	await executionRepository.setRunning(executionId);
 
 	Container.get(EventService).emit('workflow-pre-execute', { executionId, data: runData });
 
@@ -984,6 +993,47 @@ export async function getBase(
 		setExecutionStatus,
 		variables,
 		secretsHelpers: Container.get(SecretsHelper),
+		async startAgentJob(
+			additionalData: IWorkflowExecuteAdditionalData,
+			jobType: string,
+			settings: unknown,
+			executeFunctions: IExecuteFunctions,
+			inputData: ITaskDataConnections,
+			node: INode,
+			workflow: Workflow,
+			runExecutionData: IRunExecutionData,
+			runIndex: number,
+			itemIndex: number,
+			activeNodeName: string,
+			connectionInputData: INodeExecutionData[],
+			siblingParameters: INodeParameters,
+			mode: WorkflowExecuteMode,
+			executeData?: IExecuteData,
+			defaultReturnRunIndex?: number,
+			selfData?: IDataObject,
+			contextNodeName?: string,
+		) {
+			return await Container.get(TaskManager).startTask(
+				additionalData,
+				jobType,
+				settings,
+				executeFunctions,
+				inputData,
+				node,
+				workflow,
+				runExecutionData,
+				runIndex,
+				itemIndex,
+				activeNodeName,
+				connectionInputData,
+				siblingParameters,
+				mode,
+				executeData,
+				defaultReturnRunIndex,
+				selfData,
+				contextNodeName,
+			);
+		},
 		logAiEvent: (eventName: keyof AiEventMap, payload: AiEventPayload) =>
 			eventService.emit(eventName, payload),
 	};

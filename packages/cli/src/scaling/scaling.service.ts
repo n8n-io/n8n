@@ -1,7 +1,14 @@
 import { GlobalConfig } from '@n8n/config';
 import { InstanceSettings } from 'n8n-core';
-import { ApplicationError, BINARY_ENCODING, sleep, jsonStringify } from 'n8n-workflow';
+import {
+	ApplicationError,
+	BINARY_ENCODING,
+	sleep,
+	jsonStringify,
+	ErrorReporterProxy,
+} from 'n8n-workflow';
 import type { IExecuteResponsePromiseData } from 'n8n-workflow';
+import { strict } from 'node:assert';
 import Container, { Service } from 'typedi';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -11,7 +18,7 @@ import { ExecutionRepository } from '@/databases/repositories/execution.reposito
 import { OnShutdown } from '@/decorators/on-shutdown';
 import { MaxStalledCountError } from '@/errors/max-stalled-count.error';
 import { EventService } from '@/events/event.service';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { OrchestrationService } from '@/services/orchestration.service';
 
 import { JOB_TYPE_NAME, QUEUE_NAME } from './constants';
@@ -77,11 +84,22 @@ export class ScalingService {
 		this.assertWorker();
 		this.assertQueue();
 
-		void this.queue.process(
-			JOB_TYPE_NAME,
-			concurrency,
-			async (job: Job) => await this.jobProcessor.processJob(job),
-		);
+		void this.queue.process(JOB_TYPE_NAME, concurrency, async (job: Job) => {
+			try {
+				await this.jobProcessor.processJob(job);
+			} catch (error: unknown) {
+				// Errors thrown here will be sent to the main instance by bull. Logging
+				// them out and rethrowing them allows to find out which worker had the
+				// issue.
+				this.logger.error('[ScalingService] Executing a job errored', {
+					jobId: job.id,
+					executionId: job.data.executionId,
+					error,
+				});
+				ErrorReporterProxy.error(error);
+				throw error;
+			}
+		});
 
 		this.logger.debug('[ScalingService] Worker setup completed');
 	}
@@ -124,12 +142,24 @@ export class ScalingService {
 		return { active, waiting };
 	}
 
-	async addJob(jobData: JobData, jobOptions: JobOptions) {
-		const { executionId } = jobData;
+	/**
+	 * Add a job to the queue.
+	 *
+	 * @param jobData Data of the job to add to the queue.
+	 * @param priority Priority of the job, from `1` (highest) to `MAX_SAFE_INTEGER` (lowest).
+	 */
+	async addJob(jobData: JobData, { priority }: { priority: number }) {
+		strict(priority > 0 && priority <= Number.MAX_SAFE_INTEGER);
+
+		const jobOptions: JobOptions = {
+			priority,
+			removeOnComplete: true,
+			removeOnFail: true,
+		};
 
 		const job = await this.queue.add(JOB_TYPE_NAME, jobData, jobOptions);
 
-		this.logger.info(`[ScalingService] Added job ${job.id} (execution ${executionId})`);
+		this.logger.info(`[ScalingService] Added job ${job.id} (execution ${jobData.executionId})`);
 
 		return job;
 	}
@@ -173,14 +203,6 @@ export class ScalingService {
 	// #region Listeners
 
 	private registerListeners() {
-		this.queue.on('error', (error: Error) => {
-			if ('code' in error && error.code === 'ECONNREFUSED') return; // handled by RedisClientService.retryStrategy
-
-			this.logger.error('[ScalingService] Queue errored', { error });
-
-			throw error;
-		});
-
 		const { instanceType } = this.instanceSettings;
 		if (instanceType === 'main' || instanceType === 'webhook') {
 			this.registerMainOrWebhookListeners();
@@ -200,6 +222,8 @@ export class ScalingService {
 		});
 
 		this.queue.on('error', (error: Error) => {
+			if ('code' in error && error.code === 'ECONNREFUSED') return; // handled by RedisClientService.retryStrategy
+
 			if (error.message.includes('job stalled more than maxStalledCount')) {
 				throw new MaxStalledCountError(error);
 			}
@@ -214,6 +238,8 @@ export class ScalingService {
 				process.exit(1);
 			}
 
+			this.logger.error('[ScalingService] Queue errored', { error });
+
 			throw error;
 		});
 	}
@@ -222,6 +248,14 @@ export class ScalingService {
 	 * Register listeners on a `main` or `webhook` process for Bull queue events.
 	 */
 	private registerMainOrWebhookListeners() {
+		this.queue.on('error', (error: Error) => {
+			if ('code' in error && error.code === 'ECONNREFUSED') return; // handled by RedisClientService.retryStrategy
+
+			this.logger.error('[ScalingService] Queue errored', { error });
+
+			throw error;
+		});
+
 		this.queue.on('global:progress', (_jobId: JobId, msg: unknown) => {
 			if (!this.isPubSubMessage(msg)) return;
 
