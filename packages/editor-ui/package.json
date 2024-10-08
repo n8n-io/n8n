@@ -38,7 +38,7 @@
     "@n8n/codemirror-lang": "workspace:*",
     "@n8n/codemirror-lang-sql": "^1.0.2",
     "@n8n/permissions": "workspace:*",
-    "@sentry/vue": "^8.31.0",
+    "@sentry/vue": "catalog:frontend",
     "@vue-flow/background": "^1.3.0",
     "@vue-flow/controls": "^1.1.2",
     "@vue-flow/core": "^1.41.2",
