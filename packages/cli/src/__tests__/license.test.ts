@@ -5,7 +5,7 @@ import type { InstanceSettings } from 'n8n-core';
 import config from '@/config';
 import { N8N_VERSION } from '@/constants';
 import { License } from '@/license';
-import type { Logger } from '@/logging/logger.service';
+import { mockLogger } from '@test/mocking';
 
 jest.mock('@n8n_io/license-sdk');
 
@@ -25,7 +25,7 @@ describe('License', () => {
 	});
 
 	let license: License;
-	const logger = mock<Logger>();
+	const logger = mockLogger();
 	const instanceSettings = mock<InstanceSettings>({
 		instanceId: MOCK_INSTANCE_ID,
 		instanceType: 'main',
