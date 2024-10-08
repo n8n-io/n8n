@@ -1,8 +1,8 @@
 import { normalizeItems } from 'n8n-core';
 import type { INodeExecutionData } from 'n8n-workflow';
 
-import { isObject } from '@/obj-utils';
-import { ValidationError } from '@/validation-error';
+import { ValidationError } from './errors/validation-error';
+import { isObject } from './obj-utils';
 
 export const REQUIRED_N8N_ITEM_KEYS = new Set(['json', 'binary', 'pairedItem', 'error']);
 

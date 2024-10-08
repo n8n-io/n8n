@@ -1,8 +1,12 @@
 import type { CodeExecutionMode, IDataObject, WorkflowExecuteMode } from 'n8n-workflow';
 
-import { JsTaskRunner, type AllCodeTaskData, type JSExecSettings } from '@/code';
+import { ValidationError } from '@/js-task-runner/errors/validation-error';
+import {
+	JsTaskRunner,
+	type AllCodeTaskData,
+	type JSExecSettings,
+} from '@/js-task-runner/js-task-runner';
 import type { Task } from '@/task-runner';
-import { ValidationError } from '@/validation-error';
 
 import { newAllCodeTaskData, newTaskWithSettings, withPairedItem, wrapIntoJson } from './test-data';
 
