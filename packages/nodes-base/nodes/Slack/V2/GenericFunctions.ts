@@ -89,12 +89,12 @@ export async function slackApiRequest(
 					level: 'warning',
 				},
 			);
-
-			throw new NodeOperationError(
-				this.getNode(),
-				'Slack error response: ' + JSON.stringify(response.error),
-			);
 		}
+
+		throw new NodeOperationError(
+			this.getNode(),
+			'Slack error response: ' + JSON.stringify(response.error),
+		);
 	}
 
 	if (response.ts !== undefined) {
