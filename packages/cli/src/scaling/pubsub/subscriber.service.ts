@@ -70,12 +70,15 @@ export class Subscriber {
 	// #region Commands
 
 	setCommandMessageHandler() {
-		const handlerFn = debounce((str: string) => {
-			const msg = this.parseCommandMessage(str);
-			if (msg) this.eventService.emit(msg.command, msg.payload);
-		}, 300);
+		const handlerFn = (msg: PubSub.Command) => this.eventService.emit(msg.command, msg.payload);
+		const debouncedHandlerFn = debounce(handlerFn, 300);
 
-		this.setMessageHandler('n8n.commands', handlerFn);
+		this.setMessageHandler('n8n.commands', (str: string) => {
+			const msg = this.parseCommandMessage(str);
+			if (!msg) return;
+			if (msg.debounce) debouncedHandlerFn(msg);
+			else handlerFn(msg);
+		});
 	}
 
 	private parseCommandMessage(str: string) {
@@ -91,7 +94,10 @@ export class Subscriber {
 
 		const queueModeId = config.getEnv('redis.queueModeId');
 
-		if (msg.senderId === queueModeId || (msg.targets && !msg.targets.includes(queueModeId))) {
+		if (
+			!msg.selfSend &&
+			(msg.senderId === queueModeId || (msg.targets && !msg.targets.includes(queueModeId)))
+		) {
 			this.logger.debug('Disregarding message - not for this instance', msg);
 
 			return null;
