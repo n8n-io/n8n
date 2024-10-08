@@ -271,7 +271,7 @@ describe('MFA before enable checks', () => {
 		]);
 	});
 
-	test('POST /can-enable should not throw error if mfa.beforeSetup does not', async () => {
+	test('POST /can-enable should not throw error if mfa.beforeSetup does not exist', async () => {
 		externalHooks.run.mockResolvedValue(undefined);
 
 		await testServer.authAgentFor(owner).post('/mfa/can-enable').expect(200);
