@@ -10,3 +10,9 @@ export type { SendWorkerStatusMessage } from './push/worker';
 
 export type { BannerName } from './schemas/bannerName.schema';
 export { passwordSchema } from './schemas/password.schema';
+export {
+	type SourceControlledFile,
+	SOURCE_CONTROL_FILE_LOCATION,
+	SOURCE_CONTROL_FILE_STATUS,
+	SOURCE_CONTROL_FILE_TYPE,
+} from './schemas/source-controlled-file.schema';
