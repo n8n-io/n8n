@@ -10,7 +10,7 @@ import type {
 import { NodeApiError } from 'n8n-workflow';
 
 import {
-	getCursorPaginator,
+	getCursorPaginatorCalls,
 	gongApiPaginateRequest,
 	isValidNumberIds,
 	sendErrorPostReceive,
@@ -367,7 +367,7 @@ const getAllFields: INodeProperties[] = [
 				paginate: '={{ $value }}',
 			},
 			operations: {
-				pagination: getCursorPaginator('calls.metaData'),
+				pagination: getCursorPaginatorCalls(),
 			},
 		},
 		type: 'boolean',
@@ -393,11 +393,19 @@ const getAllFields: INodeProperties[] = [
 							property: 'calls',
 						},
 					},
-					{
-						type: 'rootProperty',
-						properties: {
-							property: 'metaData',
-						},
+					async function (
+						this: IExecuteSingleFunctions,
+						data: INodeExecutionData[],
+						_response: IN8nHttpFullResponse,
+					): Promise<INodeExecutionData[]> {
+						for (const item of data) {
+							if (item.json?.metaData) {
+								item.json = { ...(item.json.metaData as IDataObject), ...item.json };
+								delete item.json.metaData;
+							}
+						}
+
+						return data;
 					},
 					{
 						type: 'limit',
