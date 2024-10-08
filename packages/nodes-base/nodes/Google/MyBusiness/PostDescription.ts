@@ -369,18 +369,13 @@ export const postFields: INodeProperties[] = [
 		name: 'alertType',
 		required: true,
 		type: 'options',
-		default: 'ALERT_TYPE_UNSPECIFIED',
+		default: 'COVID_19',
 		description: 'The sub-type of the alert',
 		displayOptions: { show: { resource: ['post'], operation: ['create'], postType: ['ALERT'] } },
 		routing: {
 			send: { type: 'body', property: 'alertType' },
 		},
 		options: [
-			{
-				name: 'Alert Type Unspecified',
-				value: 'ALERT_TYPE_UNSPECIFIED',
-				description: 'Sub-type unspecified',
-			},
 			{
 				name: 'Covid 19',
 				value: 'COVID_19',
@@ -988,29 +983,6 @@ export const postFields: INodeProperties[] = [
 				description:
 					'The language code of the post content. <a href="https://cloud.google.com/translate/docs/languages" target="_blank">More info</a>.',
 				routing: { send: { type: 'body', property: 'languageCode' } },
-			},
-			{
-				displayName: 'Alert Type',
-				name: 'alertType',
-				type: 'options',
-				default: 'ALERT_TYPE_UNSPECIFIED',
-				description: 'The sub-type of the alert',
-				// displayOptions: { show: { postType: ['ALERT'] } },
-				routing: {
-					send: { type: 'body', property: 'alertType' },
-				},
-				options: [
-					{
-						name: 'Alert Type Unspecified',
-						value: 'ALERT_TYPE_UNSPECIFIED',
-						description: 'Sub-type unspecified',
-					},
-					{
-						name: 'Covid 19',
-						value: 'COVID_19',
-						description: 'This alert is related to the 2019 Coronavirus Disease pandemic',
-					},
-				],
 			},
 			{
 				displayName: 'Call to Action Type',
