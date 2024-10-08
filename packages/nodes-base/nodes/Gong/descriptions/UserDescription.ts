@@ -285,7 +285,7 @@ const getAllOperation: INodeProperties[] = [
 									| string[];
 								if (userIdsParam && !isValidNumberIds(userIdsParam)) {
 									throw new NodeApiError(this.getNode(), {
-										message: 'User IDs must be numbers',
+										message: 'User IDs must be numeric',
 										description: "Double-check the value in the parameter 'User IDs' and try again",
 									});
 								}

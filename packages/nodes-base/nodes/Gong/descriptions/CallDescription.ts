@@ -506,8 +506,8 @@ const getAllFields: INodeProperties[] = [
 									| string[];
 								if (callIdsParam && !isValidNumberIds(callIdsParam)) {
 									throw new NodeApiError(this.getNode(), {
-										message: 'User IDs must be numbers',
-										description: "Double-check the value in the parameter 'User IDs' and try again",
+										message: 'Call IDs must be numeric',
+										description: "Double-check the value in the parameter 'Call IDs' and try again",
 									});
 								}
 
