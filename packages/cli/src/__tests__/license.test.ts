@@ -196,7 +196,7 @@ describe('License', () => {
 				it('should enable renewal', async () => {
 					config.set('multiMainSetup.enabled', false);
 
-					await new License(mock(), mock(), mock(), mock(), mock()).init();
+					await new License(mockLogger(), mock(), mock(), mock(), mock()).init();
 
 					expect(LicenseManager).toHaveBeenCalledWith(
 						expect.objectContaining({ autoRenewEnabled: true, renewOnInit: true }),
@@ -208,7 +208,7 @@ describe('License', () => {
 				it('should disable renewal', async () => {
 					config.set('license.autoRenewEnabled', false);
 
-					await new License(mock(), mock(), mock(), mock(), mock()).init();
+					await new License(mockLogger(), mock(), mock(), mock(), mock()).init();
 
 					expect(LicenseManager).toHaveBeenCalledWith(
 						expect.objectContaining({ autoRenewEnabled: false, renewOnInit: false }),
@@ -226,7 +226,7 @@ describe('License', () => {
 						config.set('multiMainSetup.instanceType', status);
 						config.set('license.autoRenewEnabled', false);
 
-						await new License(mock(), mock(), mock(), mock(), mock()).init();
+						await new License(mockLogger(), mock(), mock(), mock(), mock()).init();
 
 						expect(LicenseManager).toHaveBeenCalledWith(
 							expect.objectContaining({ autoRenewEnabled: false, renewOnInit: false }),
@@ -241,7 +241,7 @@ describe('License', () => {
 					config.set('multiMainSetup.instanceType', status);
 					config.set('license.autoRenewEnabled', false);
 
-					await new License(mock(), mock(), mock(), mock(), mock()).init();
+					await new License(mockLogger(), mock(), mock(), mock(), mock()).init();
 
 					expect(LicenseManager).toHaveBeenCalledWith(
 						expect.objectContaining({ autoRenewEnabled: false, renewOnInit: false }),
@@ -252,7 +252,7 @@ describe('License', () => {
 					config.set('multiMainSetup.enabled', true);
 					config.set('multiMainSetup.instanceType', 'leader');
 
-					await new License(mock(), mock(), mock(), mock(), mock()).init();
+					await new License(mockLogger(), mock(), mock(), mock(), mock()).init();
 
 					expect(LicenseManager).toHaveBeenCalledWith(
 						expect.objectContaining({ autoRenewEnabled: true, renewOnInit: true }),
