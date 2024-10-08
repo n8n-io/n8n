@@ -1,5 +1,4 @@
 import { createHash } from 'crypto';
-import { ApplicationError } from 'n8n-workflow';
 import type {
 	ICheckProcessedContextData,
 	IDataDeduplicator,
@@ -13,6 +12,7 @@ import * as assert from 'node:assert/strict';
 import { Container } from 'typedi';
 
 import { ProcessedDataRepository } from '@/databases/repositories/processed-data.repository';
+import { DeduplicationError } from '@/errors/deduplication.error';
 import type { IProcessedDataEntries, IProcessedDataLatest } from '@/interfaces';
 
 export class DeduplicationHelper implements IDataDeduplicator {
@@ -41,7 +41,7 @@ export class DeduplicationHelper implements IDataDeduplicator {
 	 *   - In 'latestIncrementalKey' mode, it returns `true` if `value1` is numerically greater than `value2`.
 	 *   - In 'latestDate' mode, it returns `true` if `value1` is a later date than `value2`.
 	 *
-	 * @throws {ApplicationError} - Throws an error if:
+	 * @throws {DeduplicationError} - Throws an error if:
 	 *   - The mode is 'latestIncrementalKey' and the values are not valid numbers.
 	 *   - The mode is 'latestDate' and the values are not valid date strings.
 	 *   - An unsupported mode is provided.
@@ -58,7 +58,7 @@ export class DeduplicationHelper implements IDataDeduplicator {
 			if (!isNaN(num1) && !isNaN(num2)) {
 				return num1 > num2;
 			}
-			throw new ApplicationError(
+			throw new DeduplicationError(
 				'Invalid value. Only numbers are supported in mode "latestIncrementalKey"',
 			);
 		} else if (mode === 'latestDate') {
@@ -68,12 +68,12 @@ export class DeduplicationHelper implements IDataDeduplicator {
 			if (!isNaN(date1.getTime()) && !isNaN(date2.getTime())) {
 				return date1 > date2;
 			} else {
-				throw new ApplicationError(
+				throw new DeduplicationError(
 					'Invalid value. Only valid dates are supported in mode "latestDate"',
 				);
 			}
 		} else {
-			throw new ApplicationError(
+			throw new DeduplicationError(
 				"Invalid mode. Only 'latestIncrementalKey' and 'latestDate' are supported.",
 			);
 		}
@@ -85,15 +85,14 @@ export class DeduplicationHelper implements IDataDeduplicator {
 	): string {
 		if (scope === 'node') {
 			if (!contextData.node) {
-				throw new ApplicationError(
+				throw new DeduplicationError(
 					"No node information has been provided and so cannot use scope 'node'",
 				);
 			}
 			// Use the node ID to make sure that the data can still be accessed and does not get deleted
-			// whenver the node gets renamed
+			// whenever the node gets renamed
 			return `n:${contextData.node.id}`;
 		}
-
 		return '';
 	}
 
@@ -120,7 +119,7 @@ export class DeduplicationHelper implements IDataDeduplicator {
 		});
 
 		if (processedData && processedData.value.mode !== options.mode) {
-			throw new ApplicationError(
+			throw new DeduplicationError(
 				'Deduplication data was originally saved with an incompatible setting of the ‘Keep Items Where’ parameter. Try ’Clean Database’ operation to reset.',
 			);
 		}
@@ -177,8 +176,8 @@ export class DeduplicationHelper implements IDataDeduplicator {
 		});
 
 		if (processedData && processedData.value.mode !== options.mode) {
-			throw new ApplicationError(
-				'Deduplication data was originally saved with an incompatible setting of the ‘Keep Items Where’ parameter. ’Try Clean Database’ operation to reset.',
+			throw new DeduplicationError(
+				'Deduplication data was originally saved with an incompatible setting of the ‘Keep Items Where’ parameter. Try `Clean Database’ operation to reset.',
 			);
 		}
 
@@ -223,7 +222,10 @@ export class DeduplicationHelper implements IDataDeduplicator {
 
 			processedData.value.data = largestValue;
 
-			await Container.get(ProcessedDataRepository).save(processedData);
+			await Container.get(ProcessedDataRepository).update(
+				{ workflowId: processedData.workflowId, context: processedData.context },
+				processedData,
+			);
 
 			return returnData;
 		}
@@ -270,7 +272,10 @@ export class DeduplicationHelper implements IDataDeduplicator {
 			processedDataValue.data.splice(0, processedDataValue.data.length - options.maxEntries);
 		}
 
-		await Container.get(ProcessedDataRepository).save(processedData);
+		await Container.get(ProcessedDataRepository).update(
+			{ workflowId: processedData.workflowId, context: processedData.context },
+			processedData,
+		);
 
 		return returnData;
 	}
@@ -282,7 +287,7 @@ export class DeduplicationHelper implements IDataDeduplicator {
 		options: ICheckProcessedOptions,
 	): Promise<void> {
 		if (['latestIncrementalKey', 'latestDate'].includes(options.mode)) {
-			throw new ApplicationError('Removing processed data is not possible in mode "latest"');
+			throw new DeduplicationError('Removing processed data is not possible in mode "latest"');
 		}
 		assert.ok(contextData.workflow.id);
 
@@ -308,7 +313,10 @@ export class DeduplicationHelper implements IDataDeduplicator {
 			}
 		});
 
-		await Container.get(ProcessedDataRepository).save(processedData);
+		await Container.get(ProcessedDataRepository).update(
+			{ workflowId: processedData.workflowId, context: processedData.context },
+			processedData,
+		);
 	}
 
 	async clearAllProcessedItems(
