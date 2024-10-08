@@ -1069,7 +1069,7 @@ export class Nasa implements INodeType {
 				if (resource === 'astronomyPictureOfTheDay') {
 					download = this.getNodeParameter('download', 0);
 
-					if (download && responseData.media_type === 'image') {
+					if (download && responseData?.media_type === 'image') {
 						const binaryProperty = this.getNodeParameter('binaryPropertyName', i);
 
 						const data = await nasaApiRequest.call(
@@ -1134,7 +1134,7 @@ export class Nasa implements INodeType {
 			resource === 'astronomyPictureOfTheDay' &&
 			operation === 'get' &&
 			download &&
-			responseData.media_type === 'image'
+			responseData?.media_type === 'image'
 		) {
 			return [items];
 		} else {
