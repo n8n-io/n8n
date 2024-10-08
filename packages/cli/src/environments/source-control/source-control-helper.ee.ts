@@ -1,10 +1,13 @@
 import { generateKeyPairSync } from 'crypto';
 import { constants as fsConstants, mkdirSync, accessSync } from 'fs';
+import { ApplicationError } from 'n8n-workflow';
+import { ok } from 'node:assert/strict';
 import path from 'path';
 import { Container } from 'typedi';
 
 import { License } from '@/license';
 import { Logger } from '@/logging/logger.service';
+import { isContainedWithin } from '@/utils/path-util';
 
 import {
 	SOURCE_CONTROL_GIT_KEY_COMMENT,
@@ -162,4 +165,25 @@ export function getTrackingInformationFromPostPushResult(result: SourceControlle
 		variablesPushed:
 			uniques.filter((file) => file.pushed && file.file.startsWith('variable_stubs')).length ?? 0,
 	};
+}
+
+/**
+ * Normalizes and validates the given source controlled file path. Ensures
+ * the path is absolute and contained within the git folder.
+ *
+ * @throws {ApplicationError} If the path is not within the git folder
+ */
+export function normalizeAndValidateSourceControlledFilePath(
+	gitFolderPath: string,
+	filePath: string,
+) {
+	ok(path.isAbsolute(gitFolderPath), 'gitFolder must be an absolute path');
+
+	const normalizedPath = path.isAbsolute(filePath) ? filePath : path.join(gitFolderPath, filePath);
+
+	if (!isContainedWithin(gitFolderPath, filePath)) {
+		throw new ApplicationError(`File path ${filePath} is invalid`);
+	}
+
+	return normalizedPath;
 }

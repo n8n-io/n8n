@@ -27,6 +27,7 @@ catalog:
 catalogs:
   frontend:
     '@vitest/coverage-v8': ^2.0.5
+    '@sentry/vue': ^8.33.1
     vite: ^5.4.6
     vitest: ^2.1.1
     vitest-mock-extended: ^2.0.2

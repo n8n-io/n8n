@@ -27,17 +27,11 @@ export async function handleCommandMessageMain(messageString: string) {
 			`RedisCommandHandler(main): Received command message ${message.command} from ${message.senderId}`,
 		);
 
-		const selfSendingAllowed = [
-			'add-webhooks-triggers-and-pollers',
-			'remove-triggers-and-pollers',
-		].includes(message.command);
-
 		if (
-			!selfSendingAllowed &&
+			!message.selfSend &&
 			(message.senderId === queueModeId ||
 				(message.targets && !message.targets.includes(queueModeId)))
 		) {
-			// Skipping command message because it's not for this instance
 			logger.debug(
 				`Skipping command message ${message.command} because it's not for this instance.`,
 			);

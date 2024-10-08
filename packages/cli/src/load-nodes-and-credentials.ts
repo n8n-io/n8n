@@ -29,6 +29,7 @@ import {
 	inE2ETests,
 } from '@/constants';
 import { Logger } from '@/logging/logger.service';
+import { isContainedWithin } from '@/utils/path-util';
 
 interface LoadedNodesAndCredentials {
 	nodes: INodeTypeData;
@@ -155,14 +156,13 @@ export class LoadNodesAndCredentials {
 
 	resolveIcon(packageName: string, url: string): string | undefined {
 		const loader = this.loaders[packageName];
-		if (loader) {
-			const pathPrefix = `/icons/${packageName}/`;
-			const filePath = path.resolve(loader.directory, url.substring(pathPrefix.length));
-			if (!path.relative(loader.directory, filePath).includes('..')) {
-				return filePath;
-			}
+		if (!loader) {
+			return undefined;
 		}
-		return undefined;
+		const pathPrefix = `/icons/${packageName}/`;
+		const filePath = path.resolve(loader.directory, url.substring(pathPrefix.length));
+
+		return isContainedWithin(loader.directory, filePath) ? filePath : undefined;
 	}
 
 	getCustomDirectories(): string[] {
@@ -260,7 +260,7 @@ export class LoadNodesAndCredentials {
 		dir: string,
 	) {
 		const loader = new constructor(dir, this.excludeNodes, this.includeNodes);
-		if (loader.packageName in this.loaders) {
+		if (loader instanceof PackageDirectoryLoader && loader.packageName in this.loaders) {
 			throw new ApplicationError(
 				picocolors.red(
 					`nodes package ${loader.packageName} is already loaded.\n Please delete this second copy at path ${dir}`,
