@@ -5,26 +5,23 @@ import CredentialsView from '@/views/CredentialsView.vue';
 import { useUIStore } from '@/stores/ui.store';
 import { mockedStore } from '@/__tests__/utils';
 import { waitFor, within, fireEvent } from '@testing-library/vue';
-import { CREDENTIAL_SELECT_MODAL_KEY } from '@/constants';
+import { CREDENTIAL_SELECT_MODAL_KEY, STORES } from '@/constants';
 import userEvent from '@testing-library/user-event';
-import { STORES } from '@/constants';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { Project } from '@/types/projects.types';
+import { useRouter } from 'vue-router';
 
-const mockRoutePush = vi.fn();
-const mockRouteReplace = vi.fn();
-vi.mock('vue-router', async (importOriginal) => {
-	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
-	const actual = await importOriginal<typeof import('vue-router')>();
+vi.mock('vue-router', async () => {
+	const actual = await vi.importActual('vue-router');
+	const push = vi.fn();
+	const replace = vi.fn();
 	return {
 		...actual,
 		// your mocked methods
-		useRouter: () => {
-			return {
-				push: mockRoutePush,
-				replace: mockRouteReplace,
-			};
-		},
+		useRouter: () => ({
+			push,
+			replace,
+		}),
 	};
 });
 
@@ -35,14 +32,19 @@ const initialState = {
 };
 
 const renderComponent = createComponentRenderer(CredentialsView);
-
-afterEach(() => {
-	vi.clearAllMocks();
-});
+let router: ReturnType<typeof useRouter>;
 
 describe('CredentialsView', () => {
-	it('should render credentials', () => {
+	beforeEach(() => {
 		createTestingPinia({ initialState });
+		router = useRouter();
+	});
+
+	afterEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('should render credentials', () => {
 		const credentialsStore = mockedStore(useCredentialsStore);
 		credentialsStore.allCredentials = [
 			{
@@ -56,11 +58,10 @@ describe('CredentialsView', () => {
 		const projectsStore = mockedStore(useProjectsStore);
 		projectsStore.isProjectHome = false;
 		const { getByTestId } = renderComponent();
-		expect(getByTestId('resources-list-item')).toBeInTheDocument();
+		expect(getByTestId('resources-list-item')).toBeVisible();
 	});
 
 	it('should disable cards based on permissions', () => {
-		createTestingPinia({ initialState });
 		const credentialsStore = mockedStore(useCredentialsStore);
 		credentialsStore.allCredentials = [
 			{
@@ -91,14 +92,12 @@ describe('CredentialsView', () => {
 
 	describe('create credential', () => {
 		it('should show modal based on route param', async () => {
-			createTestingPinia({ initialState });
 			const uiStore = mockedStore(useUIStore);
 			renderComponent({ props: { credentialId: 'create' } });
 			expect(uiStore.openModal).toHaveBeenCalledWith(CREDENTIAL_SELECT_MODAL_KEY);
 		});
 
 		it('should update credentialId route param to create', async () => {
-			createTestingPinia({ initialState });
 			const projectsStore = mockedStore(useProjectsStore);
 			projectsStore.isProjectHome = false;
 			projectsStore.currentProject = { scopes: ['credential:create'] } as Project;
@@ -116,21 +115,19 @@ describe('CredentialsView', () => {
 
 			await userEvent.click(getByTestId('resources-list-add'));
 			await waitFor(() =>
-				expect(mockRouteReplace).toHaveBeenCalledWith({ params: { credentialId: 'create' } }),
+				expect(router.replace).toHaveBeenCalledWith({ params: { credentialId: 'create' } }),
 			);
 		});
 	});
 
 	describe('open existing credential', () => {
 		it('should show modal based on route param', async () => {
-			createTestingPinia({ initialState });
 			const uiStore = mockedStore(useUIStore);
 			renderComponent({ props: { credentialId: 'credential-id' } });
 			expect(uiStore.openExistingCredential).toHaveBeenCalledWith('credential-id');
 		});
 
-		it('should update credentialId route param to create', async () => {
-			createTestingPinia({ initialState });
+		it('should update credentialId route param when opened', async () => {
 			const projectsStore = mockedStore(useProjectsStore);
 			projectsStore.isProjectHome = false;
 			projectsStore.currentProject = { scopes: ['credential:read'] } as Project;
@@ -152,7 +149,7 @@ describe('CredentialsView', () => {
 			 */
 			await fireEvent.click(getByTestId('resources-list-item'));
 			await waitFor(() =>
-				expect(mockRouteReplace).toHaveBeenCalledWith({ params: { credentialId: '1' } }),
+				expect(router.replace).toHaveBeenCalledWith({ params: { credentialId: '1' } }),
 			);
 		});
 	});
