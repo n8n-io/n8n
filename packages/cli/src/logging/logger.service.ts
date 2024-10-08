@@ -94,17 +94,6 @@ export class Logger {
 	}
 
 	private setConsoleTransport() {
-		const scopeFilter = winston.format((info: TransformableInfo & { metadata: LogMetadata }) => {
-			if (
-				this.isScopingEnabled &&
-				(!info.metadata.scope || !this.scopes.has(info.metadata.scope))
-			) {
-				return false;
-			}
-
-			return info;
-		});
-
 		const format =
 			this.level === 'debug' && inDevelopment
 				? this.debugDevConsoleFormat()
