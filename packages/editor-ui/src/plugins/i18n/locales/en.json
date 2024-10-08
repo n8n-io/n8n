@@ -1788,6 +1788,8 @@
 	"settings.usageAndPlan.title": "Usage and plan",
 	"settings.usageAndPlan.description": "You’re on the {name} {type}",
 	"settings.usageAndPlan.plan": "Plan",
+	"settings.usageAndPlan.callOut": "{link} additional paid features for free (Forever)",
+	"settings.usageAndPlan.callOut.link": "Unlock",
 	"settings.usageAndPlan.edition": "Edition",
 	"settings.usageAndPlan.error": "@:_reusableBaseText.error",
 	"settings.usageAndPlan.activeWorkflows": "Active workflows",
