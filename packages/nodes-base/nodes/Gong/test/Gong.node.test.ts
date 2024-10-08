@@ -505,6 +505,10 @@ describe('Gong Node', () => {
 									{
 										metaData: {
 											...gongApiResponse.postCallsExtensive.calls[0].metaData,
+											parties: [...gongApiResponse.postCallsExtensive.calls[0].parties],
+											content: {
+												topics: [...gongApiResponse.postCallsExtensive.calls[0].content.topics],
+											},
 										},
 									},
 								],
@@ -542,6 +546,10 @@ describe('Gong Node', () => {
 											...gongApiResponse.postCallsExtensive.calls[0].metaData,
 											id: '7782342274025937896',
 											url: 'https://app.gong.io/call?id=7782342274025937896',
+										},
+										parties: [...gongApiResponse.postCallsExtensive.calls[0].parties],
+										content: {
+											topics: [...gongApiResponse.postCallsExtensive.calls[0].content.topics],
 										},
 									},
 								],
@@ -600,7 +608,9 @@ describe('Gong Node', () => {
 				output: {
 					nodeExecutionOrder: ['Start'],
 					nodeData: {
-						Gong: [Array.from({ length: 50 }, () => ({ ...gongNodeResponse.getAllCall[0] }))],
+						Gong: [
+							Array.from({ length: 50 }, () => ({ ...gongNodeResponse.getAllCallNoOptions[0] })),
+						],
 					},
 				},
 				nock: {
@@ -894,7 +904,7 @@ describe('Gong Node', () => {
 									resource: 'user',
 									operation: 'getAll',
 									returnAll: true,
-									filter: {
+									filters: {
 										createdFromDateTime: '2024-01-01T00:00:00Z',
 										createdToDateTime: '2024-12-31T00:00:00Z',
 										userIds: '234599484848423, 234599484848424',
@@ -990,7 +1000,7 @@ describe('Gong Node', () => {
 								parameters: {
 									resource: 'user',
 									operation: 'getAll',
-									filter: {
+									filters: {
 										userIds: '234599484848423',
 									},
 									requestOptions: {},

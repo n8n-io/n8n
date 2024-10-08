@@ -299,23 +299,6 @@ export const gongApiResponse = {
 };
 
 export const gongNodeResponse = {
-	createCall: [
-		{
-			json: {
-				requestId: '4al018gzaztcr8nbukw',
-				callId: '7782342274025937895',
-			},
-		},
-	],
-	createCallMedia: [
-		{
-			json: {
-				requestId: '4al018gzaztcr8nbukw',
-				callId: '7782342274025937895',
-				url: 'https://app.gong.io/call?id=7782342274025937895',
-			},
-		},
-	],
 	getCall: [
 		{
 			json: {
@@ -558,12 +541,116 @@ export const gongNodeResponse = {
 				meetingUrl: 'https://zoom.us/j/123',
 				isPrivate: false,
 				calendarEventId: 'abcde@google.com',
+				content: {
+					topics: [
+						{
+							name: 'Objections',
+							duration: 86,
+						},
+					],
+				},
+				parties: [
+					{
+						id: '56825452554556',
+						emailAddress: 'test@test.com',
+						name: 'Test User',
+						title: 'Enterprise Account Executive',
+						userId: '234599484848423',
+						speakerId: '6432345678555530067',
+						context: [
+							{
+								system: 'Salesforce',
+								objects: [
+									{
+										objectType: 'Contact',
+										objectId: '0013601230sV7grAAC',
+										fields: [
+											{
+												name: 'name',
+												value: 'Gong Inc.',
+											},
+										],
+										timing: 'Now',
+									},
+								],
+							},
+						],
+						affiliation: 'Internal',
+						phoneNumber: '+1 123-567-8989',
+						methods: ['Invitee'],
+					},
+				],
 			},
 		},
 		{
 			json: {
 				id: '7782342274025937896',
 				url: 'https://app.gong.io/call?id=7782342274025937896',
+				title: 'Example call',
+				scheduled: 1518863400,
+				started: 1518863400,
+				duration: 460,
+				primaryUserId: '234599484848423',
+				direction: 'Inbound',
+				system: 'Outreach',
+				scope: 'Internal',
+				media: 'Video',
+				language: 'eng',
+				workspaceId: '623457276584334',
+				sdrDisposition: 'Got the gatekeeper',
+				clientUniqueId: '7JEHFRGXDDZFEW2FC4U',
+				customData: 'Conference Call',
+				purpose: 'Demo Call',
+				meetingUrl: 'https://zoom.us/j/123',
+				isPrivate: false,
+				calendarEventId: 'abcde@google.com',
+				content: {
+					topics: [
+						{
+							name: 'Objections',
+							duration: 86,
+						},
+					],
+				},
+				parties: [
+					{
+						id: '56825452554556',
+						emailAddress: 'test@test.com',
+						name: 'Test User',
+						title: 'Enterprise Account Executive',
+						userId: '234599484848423',
+						speakerId: '6432345678555530067',
+						context: [
+							{
+								system: 'Salesforce',
+								objects: [
+									{
+										objectType: 'Contact',
+										objectId: '0013601230sV7grAAC',
+										fields: [
+											{
+												name: 'name',
+												value: 'Gong Inc.',
+											},
+										],
+										timing: 'Now',
+									},
+								],
+							},
+						],
+						affiliation: 'Internal',
+						phoneNumber: '+1 123-567-8989',
+						methods: ['Invitee'],
+					},
+				],
+			},
+		},
+	],
+	getAllCallNoOptions: [
+		{
+			json: {
+				id: '7782342274025937895',
+				url: 'https://app.gong.io/call?id=7782342274025937895',
 				title: 'Example call',
 				scheduled: 1518863400,
 				started: 1518863400,

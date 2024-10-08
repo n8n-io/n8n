@@ -84,7 +84,7 @@ export const callOperations: INodeProperties[] = [
 										'filters.primaryUserIds',
 										{},
 									) as IDataObject;
-									if (Object.keys(primaryUserId).length === 0) {
+									if (Object.keys(primaryUserId).length !== 0) {
 										return [{ json: { success: true } }];
 									}
 								}

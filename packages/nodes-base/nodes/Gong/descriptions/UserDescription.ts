@@ -76,7 +76,7 @@ export const userOperations: INodeProperties[] = [
 								response: IN8nHttpFullResponse,
 							): Promise<INodeExecutionData[]> {
 								if (response.statusCode === 404) {
-									const userIds = this.getNodeParameter('filter.userIds', '') as string;
+									const userIds = this.getNodeParameter('filters.userIds', '') as string;
 									if (userIds) {
 										throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
 											message: "The Users IDs don't match any existing user",
