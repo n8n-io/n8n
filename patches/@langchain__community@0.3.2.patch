@@ -1,0 +1,15 @@
+diff --git a/package.json b/package.json
+index cb94f7920c5ef6c2230b9f0ab0803cad01ccd069..e8f319e3fe58317c2d5bfcd519d3336284dd2c3f 100644
+--- a/package.json
++++ b/package.json
+@@ -234,8 +234,8 @@
+     "@datastax/astra-db-ts": "^1.0.0",
+     "@elastic/elasticsearch": "^8.4.0",
+     "@getmetal/metal-sdk": "*",
+-    "@getzep/zep-cloud": "^1.0.6",
+-    "@getzep/zep-js": "^0.9.0",
++    "@getzep/zep-cloud": "^1.0.12",
++    "@getzep/zep-js": "^2.0.2",
+     "@gomomento/sdk": "^1.51.1",
+     "@gomomento/sdk-core": "^1.51.1",
+     "@google-ai/generativelanguage": "*",

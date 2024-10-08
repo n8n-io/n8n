@@ -1,4 +1,9 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import { ZepMemory as ZepCloudMemory } from '@getzep/zep-cloud/langchain';
+import type { BaseChatMemory } from '@langchain/community/dist/memory/chat_memory';
+import { ZepMemory } from '@langchain/community/memory/zep';
+import type { InputValues, MemoryVariables } from '@langchain/core/memory';
+import type { BaseMessage } from '@langchain/core/messages';
 import {
 	NodeConnectionType,
 	type IExecuteFunctions,
@@ -7,21 +12,16 @@ import {
 	type SupplyData,
 	NodeOperationError,
 } from 'n8n-workflow';
-import { ZepMemory } from '@langchain/community/memory/zep';
-import { ZepCloudMemory } from '@langchain/community/memory/zep_cloud';
 
+import { getSessionId } from '../../../utils/helpers';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 import { sessionIdOption, sessionKeyProperty } from '../descriptions';
-import { getSessionId } from '../../../utils/helpers';
-import type { BaseChatMemory } from '@langchain/community/dist/memory/chat_memory';
-import type { InputValues, MemoryVariables } from '@langchain/core/memory';
-import type { BaseMessage } from '@langchain/core/messages';
 
 // Extend ZepCloudMemory to trim white space in messages.
 class WhiteSpaceTrimmedZepCloudMemory extends ZepCloudMemory {
 	override async loadMemoryVariables(values: InputValues): Promise<MemoryVariables> {
-		const memoryVariables = await super.loadMemoryVariables(values);
+		const memoryVariables = await super.loadMemoryVariables({ ...values, memoryType: 'perpetual' });
 		memoryVariables.chat_history = memoryVariables.chat_history.filter((m: BaseMessage) =>
 			m.content.toString().trim(),
 		);
@@ -129,17 +129,20 @@ export class MemoryZep implements INodeType {
 			memory = new WhiteSpaceTrimmedZepCloudMemory({
 				sessionId,
 				apiKey: credentials.apiKey,
-				memoryType: 'perpetual',
+				// memoryType: 'perpetual',
 				memoryKey: 'chat_history',
 				returnMessages: true,
 				inputKey: 'input',
 				outputKey: 'output',
-				separateMessages: false,
+				// separateMessages: false,
 			});
 		} else {
 			if (!credentials.apiUrl) {
 				throw new NodeOperationError(this.getNode(), 'API url is required to use Zep Open Source');
 			}
+
+			console.log({ sessionId });
+
 			memory = new ZepMemory({
 				sessionId,
 				baseURL: credentials.apiUrl,

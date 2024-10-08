@@ -47,7 +47,7 @@ export class ZepApi implements ICredentialType {
 		properties: {
 			headers: {
 				Authorization:
-					'={{$credentials.apiKey && !$credentials.cloud ? "Bearer " + $credentials.apiKey : "Api-Key " + $credentials.apiKey }}',
+					'={{$credentials.apiKey && !$credentials.cloud ? "Api-Key " + $credentials.apiKey : "Api-Key " + $credentials.apiKey }}',
 			},
 		},
 	};
@@ -55,7 +55,7 @@ export class ZepApi implements ICredentialType {
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{!$credentials.cloud ? $credentials.apiUrl : "https://api.getzep.com"}}',
-			url: '={{!$credentials.cloud ? "/api/v1/collection" : "/api/v2/collections"}}',
+			url: '={{!$credentials.cloud ? "/api/v2/sessions-ordered" : "/api/v2/collections"}}',
 		},
 	};
 }
