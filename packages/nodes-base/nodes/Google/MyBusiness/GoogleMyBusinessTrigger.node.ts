@@ -6,8 +6,8 @@ import {
 	type INodeExecutionData,
 	type INodeType,
 	type INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+
 import { googleApiRequest, searchAccounts, searchLocations } from './GenericFunctions';
 
 export class GoogleMyBusinessTrigger implements INodeType {

@@ -1,5 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-param-display-name-miscased */
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
+
 import { searchReviews } from '../GenericFunctions';
 
 describe('GenericFunctions - searchReviews', () => {

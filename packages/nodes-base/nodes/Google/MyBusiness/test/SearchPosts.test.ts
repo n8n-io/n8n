@@ -1,4 +1,5 @@
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
+
 import { searchPosts } from '../GenericFunctions';
 
 describe('GenericFunctions - searchPosts', () => {

@@ -1,4 +1,5 @@
 import type { IExecuteSingleFunctions, IHttpRequestOptions } from 'n8n-workflow';
+
 import { addUpdateMaskPresend } from '../GenericFunctions';
 
 describe('GenericFunctions - addUpdateMask', () => {

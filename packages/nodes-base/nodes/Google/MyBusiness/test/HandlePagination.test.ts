@@ -1,4 +1,5 @@
 import type { DeclarativeRestApiSettings, IExecutePaginationFunctions } from 'n8n-workflow';
+
 import { handlePagination } from '../GenericFunctions';
 
 describe('GenericFunctions - handlePagination', () => {

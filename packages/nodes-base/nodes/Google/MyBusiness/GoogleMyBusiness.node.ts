@@ -1,7 +1,8 @@
 import { NodeConnectionType, type INodeType, type INodeTypeDescription } from 'n8n-workflow';
+
+import { searchAccounts, searchLocations, searchPosts, searchReviews } from './GenericFunctions';
 import { postFields, postOperations } from './PostDescription';
 import { reviewFields, reviewOperations } from './ReviewDescription';
-import { searchAccounts, searchLocations, searchPosts, searchReviews } from './GenericFunctions';
 
 export class GoogleMyBusiness implements INodeType {
 	description: INodeTypeDescription = {
