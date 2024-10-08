@@ -155,9 +155,8 @@ import {
 	UM_EMAIL_TEMPLATES_INVITE,
 	UM_EMAIL_TEMPLATES_PWRESET,
 } from './Constants';
-import { getNodeAsTool } from './CreateNodeAsTool';
-import { DataDeduplicationService } from './data-deduplication-service';
 import { createNodeAsTool } from './CreateNodeAsTool';
+import { DataDeduplicationService } from './data-deduplication-service';
 import {
 	getAllWorkflowExecutionMetadata,
 	getWorkflowExecutionMetadata,
