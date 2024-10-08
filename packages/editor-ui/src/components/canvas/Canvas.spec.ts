@@ -87,6 +87,8 @@ describe('Canvas', () => {
 	});
 
 	it('should handle `update:nodes:position` event', async () => {
+		vi.useFakeTimers();
+
 		const nodes = [createCanvasNodeElement()];
 		const { container, emitted } = renderComponent({
 			props: {
@@ -110,22 +112,9 @@ describe('Canvas', () => {
 		});
 		await fireEvent.mouseUp(node, { view: window });
 
+		vi.advanceTimersByTime(250); // Event debounce time
+
 		expect(emitted()['update:nodes:position']).toEqual([
-			[
-				[
-					{
-						id: '1',
-						type: 'position',
-						dragging: true,
-						from: {
-							x: 100,
-							y: 100,
-							z: 0,
-						},
-						position: { x: 80, y: 80 },
-					},
-				],
-			],
 			[
 				[
 					{
