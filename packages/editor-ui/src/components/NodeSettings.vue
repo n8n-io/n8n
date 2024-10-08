@@ -5,6 +5,7 @@ import type {
 	INodeParameters,
 	INodeProperties,
 	NodeParameterValue,
+	IDataObject,
 } from 'n8n-workflow';
 import {
 	NodeHelpers,
@@ -26,6 +27,7 @@ import {
 	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
 	CUSTOM_NODES_DOCS_URL,
 	SHOULD_CLEAR_NODE_OUTPUTS,
+	SWITCH_NODE_TYPE,
 } from '@/constants';
 
 import NodeTitle from '@/components/NodeTitle.vue';
@@ -481,6 +483,72 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 		const nodeType = nodeTypesStore.getNodeType(_node.type, _node.typeVersion);
 		if (!nodeType) {
 			return;
+		}
+
+		if (nodeType.name === SWITCH_NODE_TYPE && parameterData.name === 'parameters.numberOutputs') {
+			const connections = currentWorkflow.value.connections;
+			const curentNumberOutputs = _node.parameters?.numberOutputs as number;
+			const newNumberOutputs = parameterData.value as number;
+
+			// remove extra outputs
+			if (newNumberOutputs < curentNumberOutputs) {
+				connections[_node.name].main = connections[_node.name].main.slice(0, newNumberOutputs);
+				workflowsStore.setConnections(connections);
+			}
+		}
+
+		if (
+			nodeType.name === SWITCH_NODE_TYPE &&
+			parameterData.name.includes('parameters.rules.values')
+		) {
+			const connections = currentWorkflow.value.connections;
+			const { fallbackOutput } = _node.parameters?.options as { fallbackOutput: string };
+
+			if (parameterData.value === undefined) {
+				function extractIndex(path: string): number | null {
+					const match = path.match(/parameters\.rules\.values\[(\d+)\]$/);
+					return match ? parseInt(match[1], 10) : null;
+				}
+
+				const index = extractIndex(parameterData.name);
+
+				// rule was removed
+				if (index !== null) {
+					connections[_node.name].main.splice(index, 1);
+				}
+
+				// all rules were removed
+				if (parameterData.name === 'parameters.rules.values') {
+					if (fallbackOutput === 'extra') {
+						connections[_node.name].main = [
+							connections[_node.name].main[connections[_node.name].main.length - 1],
+						];
+					} else {
+						connections[_node.name].main = [];
+					}
+				}
+			} else if (parameterData.name === 'parameters.rules.values') {
+				// rule was added
+				const currentRulesLength = (_node.parameters?.rules as { values: IDataObject[] })?.values
+					?.length;
+
+				const newRulesLength = (parameterData.value as IDataObject[])?.length;
+
+				if (newRulesLength - currentRulesLength === 1) {
+					if (fallbackOutput === 'extra') {
+						const lastConnection = connections[_node.name].main.pop();
+						connections[_node.name].main = [...connections[_node.name].main, []];
+
+						if (lastConnection) {
+							connections[_node.name].main.push(lastConnection);
+						}
+					} else {
+						connections[_node.name].main = [...connections[_node.name].main, []];
+					}
+				}
+			}
+
+			workflowsStore.setConnections(connections);
 		}
 
 		if (
