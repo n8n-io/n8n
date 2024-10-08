@@ -149,10 +149,10 @@ export class Strapi implements INodeType {
 
 		if (authenticationMethod === 'password') {
 			const { jwt } = await getToken.call(this);
-			apiVersion = (await this.getCredentials(StrapiApi)).apiVersion;
+			apiVersion = (await this.getCredential(StrapiApi)).apiVersion;
 			headers.Authorization = `Bearer ${jwt}`;
 		} else {
-			apiVersion = (await this.getCredentials(StrapiTokenApi)).apiVersion;
+			apiVersion = (await this.getCredential(StrapiTokenApi)).apiVersion;
 		}
 
 		for (let i = 0; i < length; i++) {

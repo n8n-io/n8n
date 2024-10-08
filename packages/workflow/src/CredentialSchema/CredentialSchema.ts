@@ -183,6 +183,8 @@ type NumberMetadata = BaseMetadata &
 		default: number;
 	}>;
 
+type PasswordMetadata = Omit<Optional<StringMetadata, 'label'>, 'password'>;
+
 type Option<V extends string> = {
 	label: string;
 	value: V;
@@ -224,7 +226,7 @@ export const CredentialSchema = {
 		return new CredentialSchemaRootObject(shape);
 	},
 
-	password(options: Omit<Optional<StringMetadata, 'label'>, 'password'> = {}) {
+	password<M extends PasswordMetadata>(options: M = {} as M) {
 		return new CredentialSchemaString(
 			{
 				password: true,
@@ -234,18 +236,20 @@ export const CredentialSchema = {
 			z.string(),
 		);
 	},
+
 	// eslint-disable-next-line id-denylist
 	string<M extends StringMetadata>(options: M) {
 		return new CredentialSchemaString(options, z.string());
 	},
+
 	// eslint-disable-next-line id-denylist
 	number<M extends NumberMetadata>(options: M) {
 		return new CredentialSchemaNumber(options, z.number());
 	},
-	url(options: Optional<StringMetadata, 'label'> = {}) {
+	url<M extends Optional<StringMetadata, 'label'>>(options: M) {
 		return new CredentialSchemaString({ label: 'URL', ...options }, z.string().url());
 	},
-	email(options: Optional<StringMetadata, 'label'> = {}) {
+	email<M extends Optional<StringMetadata, 'label'>>(options: M) {
 		return new CredentialSchemaString({ label: 'Email', ...options }, z.string().email());
 	},
 	options<V extends string, M extends OptionsMetadata<V>>(options: M) {

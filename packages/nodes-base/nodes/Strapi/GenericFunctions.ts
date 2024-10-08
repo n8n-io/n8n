@@ -30,7 +30,7 @@ export async function strapiApiRequest(
 	headers: IDataObject = {},
 ) {
 	const authenticationMethod = this.getNodeParameter('authentication', 0);
-	const credentials = await this.getCredentials(
+	const credentials = await this.getCredential(
 		authenticationMethod === 'password' ? StrapiApi : StrapiTokenApi,
 	);
 

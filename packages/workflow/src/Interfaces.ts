@@ -863,11 +863,14 @@ export type NodeTypeAndVersion = {
 
 export interface FunctionsBase {
 	logger: Logger;
+	/**
+	 * @deprecated Use getCredential instead for better type safety
+	 * */
 	getCredentials<T extends object = ICredentialDataDecryptedObject>(
 		type: string,
 		itemIndex?: number,
 	): Promise<T>;
-	getCredentials<T extends new () => ICredentialType>(
+	getCredential<T extends new () => ICredentialType>(
 		type: T,
 		itemIndex?: number,
 	): Promise<

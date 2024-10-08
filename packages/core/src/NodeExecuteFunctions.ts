@@ -1997,7 +1997,7 @@ export function getAdditionalKeys(
 export async function getCredentials<T extends object = ICredentialDataDecryptedObject>(
 	workflow: Workflow,
 	node: INode,
-	credType: string | (new () => ICredentialType),
+	type: string,
 	additionalData: IWorkflowExecuteAdditionalData,
 	mode: WorkflowExecuteMode,
 	executeData?: IExecuteData,
@@ -2006,7 +2006,6 @@ export async function getCredentials<T extends object = ICredentialDataDecrypted
 	connectionInputData?: INodeExecutionData[],
 	itemIndex?: number,
 ): Promise<T> {
-	const type = typeof credType === 'string' ? credType : new credType().name;
 	// Get the NodeType as it has the information if the credentials are required
 	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 	if (nodeType === undefined) {
@@ -2933,7 +2932,7 @@ const getCommonWorkflowFunctions = (
 	workflow: Workflow,
 	node: INode,
 	additionalData: IWorkflowExecuteAdditionalData,
-): Omit<FunctionsBase, 'getCredentials'> => ({
+): Omit<FunctionsBase, 'getCredentials' | 'getCredential'> => ({
 	logger: Logger,
 	getExecutionId: () => additionalData.executionId!,
 	getNode: () => deepCopy(node),
@@ -3473,6 +3472,10 @@ export function copyInputItems(items: INodeExecutionData[], properties: string[]
 	});
 }
 
+function credentialClassToType(CredentialType: new () => ICredentialType) {
+	return new CredentialType().name;
+}
+
 /**
  * Returns the execute functions the poll nodes have access to.
  */
@@ -3499,10 +3502,16 @@ export function getExecutePollFunctions(
 			},
 			getMode: () => mode,
 			getActivationMode: () => activation,
-			getCredentials: async (type: string | (new () => ICredentialType)) => {
-				const typeString = typeof type === 'string' ? type : type.name;
-				return await getCredentials(workflow, node, typeString, additionalData, mode);
-			},
+			getCredentials: async (type) =>
+				await getCredentials(workflow, node, type, additionalData, mode),
+			getCredential: async (CredentialType) =>
+				await getCredentials(
+					workflow,
+					node,
+					credentialClassToType(CredentialType),
+					additionalData,
+					mode,
+				),
 			getNodeParameter: (
 				parameterName: string,
 				fallbackValue?: any,
@@ -3565,8 +3574,16 @@ export function getExecuteTriggerFunctions(
 			},
 			getMode: () => mode,
 			getActivationMode: () => activation,
-			getCredentials: async (type: string | (new () => ICredentialType)) =>
+			getCredentials: async (type) =>
 				await getCredentials(workflow, node, type, additionalData, mode),
+			getCredential: async (CredentialType) =>
+				await getCredentials(
+					workflow,
+					node,
+					credentialClassToType(CredentialType),
+					additionalData,
+					mode,
+				),
 			getNodeParameter: (
 				parameterName: string,
 				fallbackValue?: any,
@@ -3625,11 +3642,24 @@ export function getExecuteFunctions(
 			...getCommonWorkflowFunctions(workflow, node, additionalData),
 			...executionCancellationFunctions(abortSignal),
 			getMode: () => mode,
-			getCredentials: async (type: string | (new () => ICredentialType), itemIndex: number) =>
+			getCredentials: async (type, itemIndex) =>
 				await getCredentials(
 					workflow,
 					node,
 					type,
+					additionalData,
+					mode,
+					executeData,
+					runExecutionData,
+					runIndex,
+					connectionInputData,
+					itemIndex,
+				),
+			getCredential: async (CredentialType, itemIndex) =>
+				await getCredentials(
+					workflow,
+					node,
+					credentialClassToType(CredentialType),
 					additionalData,
 					mode,
 					executeData,
@@ -3977,11 +4007,24 @@ export function getExecuteSingleFunctions(
 			getContext(type: ContextType): IContextObject {
 				return NodeHelpers.getContext(runExecutionData, type, node);
 			},
-			getCredentials: async (type: string | (new () => ICredentialType)) =>
+			getCredentials: async (type) =>
 				await getCredentials(
 					workflow,
 					node,
 					type,
+					additionalData,
+					mode,
+					executeData,
+					runExecutionData,
+					runIndex,
+					connectionInputData,
+					itemIndex,
+				),
+			getCredential: async (CredentialType, itemIndex) =>
+				await getCredentials(
+					workflow,
+					node,
+					credentialClassToType(CredentialType),
 					additionalData,
 					mode,
 					executeData,
@@ -4117,8 +4160,16 @@ export function getLoadOptionsFunctions(
 	return ((workflow: Workflow, node: INode, path: string) => {
 		return {
 			...getCommonWorkflowFunctions(workflow, node, additionalData),
-			getCredentials: async (type: string | (new () => ICredentialType)) =>
+			getCredentials: async (type) =>
 				await getCredentials(workflow, node, type, additionalData, 'internal'),
+			getCredential: async (CredentialType) =>
+				await getCredentials(
+					workflow,
+					node,
+					credentialClassToType(CredentialType),
+					additionalData,
+					'internal',
+				),
 			getCurrentNodeParameter: (
 				parameterPath: string,
 				options?: IGetNodeParameterOptions,
@@ -4198,8 +4249,16 @@ export function getExecuteHookFunctions(
 	return ((workflow: Workflow, node: INode) => {
 		return {
 			...getCommonWorkflowFunctions(workflow, node, additionalData),
-			getCredentials: async (type: string | (new () => ICredentialType)) =>
+			getCredentials: async (type) =>
 				await getCredentials(workflow, node, type, additionalData, mode),
+			getCredential: async (CredentialType) =>
+				await getCredentials(
+					workflow,
+					node,
+					credentialClassToType(CredentialType),
+					additionalData,
+					mode,
+				),
 			getMode: () => mode,
 			getActivationMode: () => activation,
 			getNodeParameter: (
@@ -4272,8 +4331,16 @@ export function getExecuteWebhookFunctions(
 				}
 				return additionalData.httpRequest.body;
 			},
-			getCredentials: async (type: string | (new () => ICredentialType)) =>
+			getCredentials: async (type) =>
 				await getCredentials(workflow, node, type, additionalData, mode),
+			getCredential: async (CredentialType) =>
+				await getCredentials(
+					workflow,
+					node,
+					credentialClassToType(CredentialType),
+					additionalData,
+					mode,
+				),
 			getHeaderData(): IncomingHttpHeaders {
 				if (additionalData.httpRequest === undefined) {
 					throw new ApplicationError('Request is missing');
