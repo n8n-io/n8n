@@ -135,7 +135,7 @@ function moveResource() {
 </script>
 
 <template>
-	<n8n-card :class="$style.cardLink" @click="onClick">
+	<n8n-card :class="$style.cardLink" @click.stop="onClick">
 		<template #prepend>
 			<CredentialIcon :credential-type-name="credentialType?.name ?? ''" />
 		</template>
