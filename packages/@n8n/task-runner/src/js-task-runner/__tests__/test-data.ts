@@ -2,7 +2,7 @@ import type { IDataObject, INode, INodeExecutionData, ITaskData } from 'n8n-work
 import { NodeConnectionType } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
-import type { AllCodeTaskData, JSExecSettings } from '@/code';
+import type { AllCodeTaskData, JSExecSettings } from '@/js-task-runner/js-task-runner';
 import type { Task } from '@/task-runner';
 
 /**
