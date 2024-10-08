@@ -29,7 +29,7 @@ import type { PinDataSource } from '@/composables/usePinnedData';
 import { isPresent } from '@/utils/typesUtils';
 import { GRID_SIZE } from '@/utils/nodeViewUtils';
 import { CanvasKey } from '@/constants';
-import { onKeyDown, onKeyUp } from '@vueuse/core';
+import { onKeyDown, onKeyUp, useDebounceFn } from '@vueuse/core';
 import CanvasArrowHeadMarker from './elements/edges/CanvasArrowHeadMarker.vue';
 
 const $style = useCssModule();
@@ -180,21 +180,22 @@ function onClickNodeAdd(id: string, handle: string) {
 	emit('click:node:add', id, handle);
 }
 
-function onUpdateNodesPosition(events: NodePositionChange[]) {
+// Debounced to prevent emitting too many events, necessary for undo/redo
+const onUpdateNodesPosition = useDebounceFn((events: NodePositionChange[]) => {
 	emit('update:nodes:position', events);
-}
+}, 200);
 
 function onUpdateNodePosition(id: string, position: XYPosition) {
 	emit('update:node:position', id, position);
 }
 
-function onNodesChange(events: NodeChange[]) {
-	const isPositionChangeEvent = (event: NodeChange): event is NodePositionChange =>
-		event.type === 'position' && 'position' in event;
+const isPositionChangeEvent = (event: NodeChange): event is NodePositionChange =>
+	event.type === 'position' && 'position' in event;
 
+function onNodesChange(events: NodeChange[]) {
 	const positionChangeEndEvents = events.filter(isPositionChangeEvent);
 	if (positionChangeEndEvents.length > 0) {
-		onUpdateNodesPosition(positionChangeEndEvents);
+		void onUpdateNodesPosition(positionChangeEndEvents);
 	}
 }
 
