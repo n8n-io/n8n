@@ -52,25 +52,28 @@ const projectState = computed(() => {
 	}
 	return ProjectState.Unknown;
 });
+
+const numberOfMembersInHomeTeamProject = computed(
+	() => props.resource.sharedWithProjects?.length ?? 0,
+);
+
 const badgeText = computed(() => {
+	const { name, email } = splitName(props.resource.homeProject?.name ?? '');
+	const display = name ?? email ?? '';
 	if (
 		projectState.value === ProjectState.Owned ||
 		projectState.value === ProjectState.SharedOwned
 	) {
-		return i18n.baseText('generic.ownedByMe');
+		return [display, i18n.baseText('generic.ownedByMe')].filter(Boolean).join(' ');
 	} else {
-		const { name, email } = splitName(props.resource.homeProject?.name ?? '');
-		return name ?? email ?? '';
+		return display;
 	}
 });
 const badgeIcon = computed(() => {
 	switch (projectState.value) {
-		case ProjectState.SharedPersonal:
-		case ProjectState.SharedOwned:
-			return 'user-friends';
 		case ProjectState.Team:
 		case ProjectState.SharedTeam:
-			return 'archive';
+			return 'layer-group';
 		default:
 			return '';
 	}
@@ -117,15 +120,47 @@ const badgeTooltip = computed(() => {
 });
 </script>
 <template>
-	<N8nTooltip :disabled="!badgeTooltip" placement="top">
-		<N8nBadge v-if="badgeText" class="mr-xs" theme="tertiary" bold data-test-id="card-badge">
+	<div class="mr-xs">
+		<N8nBadge
+			v-if="badgeText"
+			:class="$style.badge"
+			theme="tertiary"
+			bold
+			data-test-id="card-badge"
+		>
+			<N8nIcon v-if="badgeIcon" :icon="badgeIcon" size="small" class="mr-3xs" />
 			<span v-n8n-truncate:20>{{ badgeText }}</span>
-			<N8nIcon v-if="badgeIcon" :icon="badgeIcon" size="small" class="ml-5xs" />
 		</N8nBadge>
-		<template #content>
-			{{ badgeTooltip }}
-		</template>
-	</N8nTooltip>
+		<N8nBadge
+			v-if="numberOfMembersInHomeTeamProject"
+			:class="[$style.badge, $style.countBadge]"
+			theme="tertiary"
+			bold
+		>
+			+ {{ numberOfMembersInHomeTeamProject }}
+		</N8nBadge>
+	</div>
 </template>
 
-<style lang="scss" module></style>
+<style lang="scss" module>
+.badge {
+	padding: var(--spacing-4xs) var(--spacing-2xs);
+	background-color: var(--color-background-xlight);
+	border-color: var(--color-foreground-base);
+
+	z-index: 1;
+	position: relative;
+	:global(.n8n-text) {
+		color: var(--color-text-base);
+	}
+}
+
+.countBadge {
+	margin-left: -5px;
+	z-index: 0;
+	position: relative;
+	:global(.n8n-text) {
+		color: var(--color-text-light);
+	}
+}
+</style>
