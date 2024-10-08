@@ -44,6 +44,7 @@
     "@fortawesome/fontawesome-svg-core": "^1.2.36",
     "@fortawesome/free-solid-svg-icons": "^5.15.4",
     "@fortawesome/vue-fontawesome": "^3.0.3",
+    "@sentry/vue": "catalog:frontend",
     "element-plus": "2.4.3",
     "markdown-it": "^13.0.2",
     "markdown-it-emoji": "^2.0.2",

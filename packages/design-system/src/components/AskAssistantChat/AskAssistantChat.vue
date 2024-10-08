@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { captureException } from '@sentry/vue';
 import Markdown from 'markdown-it';
 import markdownLink from 'markdown-it-link-attributes';
 import { computed, ref } from 'vue';
@@ -99,6 +100,9 @@ function renderMarkdown(content: string) {
 	try {
 		return md.render(content);
 	} catch (e) {
+		captureException(e, {
+			extra: { content },
+		});
 		console.error(`Error parsing markdown content ${content}`);
 		return `<p>${t('assistantChat.errorParsingMarkdown')}</p>`;
 	}

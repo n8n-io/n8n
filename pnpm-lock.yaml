@@ -1171,6 +1171,9 @@ importers:
       '@fortawesome/vue-fontawesome':
         specifier: ^3.0.3
         version: 3.0.3(@fortawesome/fontawesome-svg-core@1.2.36)(vue@3.4.21(typescript@5.6.2))
+      '@sentry/vue':
+        specifier: catalog:frontend
+        version: 8.33.1(vue@3.4.21(typescript@5.6.2))
       element-plus:
         specifier: 2.4.3
         version: 2.4.3(vue@3.4.21(typescript@5.6.2))
