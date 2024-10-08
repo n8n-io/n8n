@@ -16,7 +16,6 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { createFormEventBus } from 'n8n-design-system/utils';
 import type { MfaModalEvents } from '@/event-bus/mfa';
 import { promptMfaCodeBus } from '@/event-bus/mfa';
-import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 
 type UserBasicDetailsForm = {
 	firstName: string;
