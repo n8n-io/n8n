@@ -1,15 +1,24 @@
 import { InstanceSettings } from 'n8n-core';
+import { ensureError } from 'n8n-workflow';
 import { Service } from 'typedi';
 
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import config from '@/config';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventService } from '@/events/event.service';
-import type { PubSubEventMap } from '@/events/maps/pub-sub.event-map';
+import type {
+	PubSubCommandMap,
+	PubSubEventMap,
+	PubSubWorkerResponseMap,
+} from '@/events/maps/pub-sub.event-map';
 import { ExternalSecretsManager } from '@/external-secrets/external-secrets-manager.ee';
 import { License } from '@/license';
+import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { CommunityPackagesService } from '@/services/community-packages.service';
 import { assertNever } from '@/utils';
+import { TestWebhooks } from '@/webhooks/test-webhooks';
 
 import { WorkerStatus } from '../worker-status';
 
@@ -27,15 +36,19 @@ export class PubSubHandler {
 		private readonly communityPackagesService: CommunityPackagesService,
 		private readonly publisher: Publisher,
 		private readonly workerStatus: WorkerStatus,
+		private readonly activeWorkflowManager: ActiveWorkflowManager,
+		private readonly push: Push,
+		private readonly workflowRepository: WorkflowRepository,
+		private readonly testWebhooks: TestWebhooks,
 	) {}
 
 	init() {
 		switch (this.instanceSettings.instanceType) {
 			case 'webhook':
-				this.setupHandlers(this.commonHandlers);
+				this.setupCommandHandlers(this.commonHandlers);
 				break;
 			case 'worker':
-				this.setupHandlers({
+				this.setupCommandHandlers({
 					...this.commonHandlers,
 					'get-worker-status': async () =>
 						await this.publisher.publishWorkerResponse({
@@ -51,20 +64,30 @@ export class PubSubHandler {
 				});
 				break;
 			case 'main':
-				// TODO
+				this.setupCommandHandlers({
+					...this.commonHandlers,
+					...this.multiMainSetupHandlers,
+				});
+				this.setupWorkerResponseHandlers({
+					'get-worker-status': async (payload) =>
+						this.push.broadcast('sendWorkerStatusMessage', {
+							workerId: payload.workerId,
+							status: payload,
+						}),
+				});
 				break;
 			default:
 				assertNever(this.instanceSettings.instanceType);
 		}
 	}
 
-	private setupHandlers<EventNames extends keyof PubSubEventMap>(
+	private setupCommandHandlers<EventNames extends keyof PubSubCommandMap>(
 		map: {
-			[EventName in EventNames]?: (event: PubSubEventMap[EventName]) => void | Promise<void>;
+			[EventName in EventNames]?: (event: PubSubCommandMap[EventName]) => void | Promise<void>;
 		},
 	) {
 		for (const [eventName, handlerFn] of Object.entries(map) as Array<
-			[EventNames, (event: PubSubEventMap[EventNames]) => void | Promise<void>]
+			[EventNames, (event: PubSubCommandMap[EventNames]) => void | Promise<void>]
 		>) {
 			this.eventService.on(eventName, async (event) => {
 				await handlerFn(event);
@@ -72,7 +95,24 @@ export class PubSubHandler {
 		}
 	}
 
-	/** Handlers shared by webhook and worker processes. */
+	// @TODO: Deduplicate with above
+	private setupWorkerResponseHandlers<EventNames extends keyof PubSubWorkerResponseMap>(
+		map: {
+			[EventName in EventNames]?: (
+				event: PubSubWorkerResponseMap[EventName],
+			) => void | Promise<void>;
+		},
+	) {
+		for (const [eventName, handlerFn] of Object.entries(map) as Array<
+			[EventNames, (event: PubSubWorkerResponseMap[EventNames]) => void | Promise<void>]
+		>) {
+			this.eventService.on(eventName, async (event) => {
+				await handlerFn(event);
+			});
+		}
+	}
+
+	/** Handlers shared by main, worker, and webhook processes. */
 	private commonHandlers: {
 		[K in keyof Pick<
 			PubSubEventMap,
@@ -94,5 +134,81 @@ export class PubSubHandler {
 			await this.communityPackagesService.installOrUpdateNpmPackage(packageName, packageVersion),
 		'community-package-uninstall': async ({ packageName }) =>
 			await this.communityPackagesService.removeNpmPackage(packageName),
+	};
+
+	private multiMainSetupHandlers: {
+		[K in keyof Pick<
+			PubSubEventMap,
+			| 'add-webhooks-triggers-and-pollers'
+			| 'remove-triggers-and-pollers'
+			| 'display-workflow-activation'
+			| 'display-workflow-deactivation'
+			| 'display-workflow-activation-error'
+			| 'relay-execution-lifecycle-event'
+			| 'clear-test-webhooks'
+		>]: (event: PubSubEventMap[K]) => Promise<void>;
+	} = {
+		'add-webhooks-triggers-and-pollers': async ({ workflowId }) => {
+			if (this.instanceSettings.isFollower) return;
+
+			try {
+				await this.activeWorkflowManager.add(workflowId, 'activate', undefined, {
+					shouldPublish: false, // prevent leader from re-publishing message
+				});
+
+				this.push.broadcast('workflowActivated', { workflowId });
+
+				await this.publisher.publishCommand({
+					command: 'display-workflow-activation',
+					payload: { workflowId },
+				}); // instruct followers to show activation in UI
+			} catch (e) {
+				const error = ensureError(e);
+				const { message } = error;
+
+				await this.workflowRepository.update(workflowId, { active: false });
+
+				this.push.broadcast('workflowFailedToActivate', { workflowId, errorMessage: message });
+
+				await this.publisher.publishCommand({
+					command: 'display-workflow-activation-error',
+					payload: { workflowId, errorMessage: message },
+				}); // instruct followers to show activation error in UI
+			}
+		},
+		'remove-triggers-and-pollers': async ({ workflowId }) => {
+			if (this.instanceSettings.isFollower) return;
+
+			await this.activeWorkflowManager.removeActivationError(workflowId);
+			await this.activeWorkflowManager.removeWorkflowTriggersAndPollers(workflowId);
+
+			this.push.broadcast('workflowDeactivated', { workflowId });
+
+			// instruct followers to show workflow deactivation in UI
+			await this.publisher.publishCommand({
+				command: 'display-workflow-deactivation',
+				payload: { workflowId },
+			});
+		},
+		'display-workflow-activation': async ({ workflowId }) =>
+			this.push.broadcast('workflowActivated', { workflowId }),
+		'display-workflow-deactivation': async ({ workflowId }) =>
+			this.push.broadcast('workflowDeactivated', { workflowId }),
+		'display-workflow-activation-error': async ({ workflowId, errorMessage }) =>
+			this.push.broadcast('workflowFailedToActivate', { workflowId, errorMessage }),
+		'relay-execution-lifecycle-event': async ({ type, args, pushRef }) => {
+			if (!this.push.getBackend().hasPushRef(pushRef)) return;
+
+			this.push.send(type, args, pushRef);
+		},
+		'clear-test-webhooks': async ({ webhookKey, workflowEntity, pushRef }) => {
+			if (!this.push.getBackend().hasPushRef(pushRef)) return;
+
+			this.testWebhooks.clearTimeout(webhookKey);
+
+			const workflow = this.testWebhooks.toWorkflow(workflowEntity);
+
+			await this.testWebhooks.deactivateWebhooks(workflow);
+		},
 	};
 }

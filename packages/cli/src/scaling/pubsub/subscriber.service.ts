@@ -81,6 +81,19 @@ export class Subscriber {
 		});
 	}
 
+	// @TODO: Deduplicate with above
+	setWorkerResponseMessageHandler() {
+		const handlerFn = (msg: PubSub.Command) => this.eventService.emit(msg.command, msg.payload);
+		const debouncedHandlerFn = debounce(handlerFn, 300);
+
+		this.setMessageHandler('n8n.worker-response', (str: string) => {
+			const msg = this.parseCommandMessage(str);
+			if (!msg) return;
+			if (msg.debounce) debouncedHandlerFn(msg);
+			else handlerFn(msg);
+		});
+	}
+
 	private parseCommandMessage(str: string) {
 		const msg = jsonParse<PubSub.Command | null>(str, { fallbackValue: null });
 
