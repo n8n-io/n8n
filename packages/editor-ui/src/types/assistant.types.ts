@@ -1,12 +1,14 @@
 import type { VIEWS } from '@/constants';
 import type { IWorkflowDb, NodeAuthenticationOption, Schema } from '@/Interface';
 import type {
+	ExecutionError,
 	ICredentialType,
 	IDataObject,
 	INode,
 	INodeIssues,
 	INodeParameters,
 	IRunExecutionData,
+	ITaskData,
 } from 'n8n-workflow';
 
 export namespace ChatRequest {
@@ -19,6 +21,13 @@ export namespace ChatRequest {
 		executionSchema?: NodeExecutionSchema[];
 		currentWorkflow?: IWorkflowDb;
 		executionData?: IRunExecutionData['resultData'];
+	}
+
+	export interface ExecutionResultData {
+		error?: ExecutionError;
+		runData: Record<string, Array<Omit<ITaskData, 'data'>>>;
+		lastNodeExecuted?: string;
+		metadata?: Record<string, string>;
 	}
 
 	export interface ErrorContext {
