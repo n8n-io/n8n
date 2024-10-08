@@ -1,6 +1,6 @@
-import { mock, type CalledWithMock } from 'jest-mock-extended';
+import { mock } from 'jest-mock-extended';
 import type { RedisClientType } from '@redis/client';
-import type { ICredentialDataDecryptedObject, IExecuteFunctions } from 'n8n-workflow';
+import type { IExecuteFunctions } from 'n8n-workflow';
 
 const mockClient = mock<RedisClientType>();
 const createClient = jest.fn().mockReturnValue(mockClient);
@@ -8,8 +8,6 @@ jest.mock('redis', () => ({ createClient }));
 
 import { Redis } from '../Redis.node';
 import { setupRedisClient } from '../utils';
-
-type GetCredentialsMock = CalledWithMock<Promise<ICredentialDataDecryptedObject>, [string]>;
 
 describe('Redis Node', () => {
 	const node = new Redis();
@@ -63,10 +61,7 @@ describe('Redis Node', () => {
 			password: 'random',
 		};
 
-		// Jest always uses the last fn overload's types, override to use the overload we need
-		(thisArg.getCredentials as unknown as GetCredentialsMock)
-			.calledWith('redis')
-			.mockResolvedValue(mockCredential);
+		thisArg.getCredentials.calledWith('redis').mockResolvedValue(mockCredential);
 
 		afterEach(() => {
 			expect(createClient).toHaveBeenCalled();

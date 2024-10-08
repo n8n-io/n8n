@@ -1,11 +1,9 @@
 import { returnJsonArray } from 'n8n-core';
-import { captor, mock, type CalledWithMock } from 'jest-mock-extended';
+import { captor, mock } from 'jest-mock-extended';
 import type { ICredentialDataDecryptedObject, ITriggerFunctions } from 'n8n-workflow';
 
 import { RedisTrigger } from '../RedisTrigger.node';
 import { type RedisClientType, setupRedisClient } from '../utils';
-
-type GetCredentialsMock = CalledWithMock<Promise<ICredentialDataDecryptedObject>, [string]>;
 
 jest.mock('../utils', () => {
 	const mockRedisClient = mock<RedisClientType>();
@@ -24,10 +22,7 @@ describe('Redis Trigger Node', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 
-		// Jest always uses the last fn overload's types, override to use the overload we need
-		(triggerFunctions.getCredentials as unknown as GetCredentialsMock)
-			.calledWith('redis')
-			.mockResolvedValue(credentials);
+		triggerFunctions.getCredentials.calledWith('redis').mockResolvedValue(credentials);
 		triggerFunctions.getNodeParameter.calledWith('channels').mockReturnValue(channel);
 	});
 
