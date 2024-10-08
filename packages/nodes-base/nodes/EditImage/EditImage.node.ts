@@ -1228,7 +1228,7 @@ export class EditImage implements INodeType {
 						// Combine the lines to a single string
 						const renderText = lines.join('\n');
 
-						let font = options.font as string | undefined;
+						let font = (options.font || operationData.font) as string | undefined;
 						if (!font) {
 							const fonts = await getSystemFonts();
 							font = fonts.find((_font) => _font.includes('Arial.'));
