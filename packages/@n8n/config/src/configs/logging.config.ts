@@ -1,6 +1,13 @@
 import { Config, Env, Nested } from '../decorators';
 import { StringArray } from '../utils';
 
+/**
+ * Scopes (areas of functionality) to filter logs by.
+ *
+ * `executions` -> execution lifecycle
+ * `license` -> license SDK
+ * `scaling` -> scaling mode
+ */
 export const LOG_SCOPES = ['executions', 'license', 'scaling'] as const;
 
 export type LogScope = (typeof LOG_SCOPES)[number];
