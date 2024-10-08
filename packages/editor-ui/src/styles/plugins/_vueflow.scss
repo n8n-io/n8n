@@ -70,7 +70,7 @@
 }
 
 /**
- * Node
+ * Nodes
  */
 
 .vue-flow__node {
@@ -102,6 +102,10 @@
 	margin-left: calc(-1 * var(--spacing-2xs));
 	padding: var(--spacing-2xs);
 }
+
+/**
+ * Edges
+ */
 
 .vue-flow__edges {
 	z-index: 1 !important;
