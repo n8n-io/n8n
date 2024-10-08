@@ -1,10 +1,8 @@
+import { compile } from 'handlebars';
+
 import type { SamlUserAttributes } from '../types/saml-user-attributes';
 
-export function getSamlConnectionTestFailedView(
-	message: string,
-	attributes?: SamlUserAttributes,
-): string {
-	return `
+const failedTemplate = compile<{ message?: string; attributes?: SamlUserAttributes }>(`
     <http>
     <head>
     <title>n8n - SAML Connection Test Result</title>
@@ -20,23 +18,34 @@ export function getSamlConnectionTestFailedView(
     <body>
     <div style="text-align:center">
     <h1>SAML Connection Test failed</h1>
-    <h2>${message ?? 'A common issue could be that no email attribute is set'}</h2>
+    <h2>{{message}}</h2>
     <button onclick="window.close()">You can close this window now</button>
     <p></p>
-    ${
-			attributes
-				? `
-        <h2>Here are the attributes returned by your SAML IdP:</h2>
-        <ul>
-        <li><strong>Email:</strong> ${attributes?.email ?? '(n/a)'}</li>
-        <li><strong>First Name:</strong> ${attributes?.firstName ?? '(n/a)'}</li>
-        <li><strong>Last Name:</strong> ${attributes?.lastName ?? '(n/a)'}</li>
-        <li><strong>UPN:</strong> ${attributes?.userPrincipalName ?? '(n/a)'}</li>
-        </ul>`
-				: ''
-		}
+    {{#with attributes}}
+    <h2>Here are the attributes returned by your SAML IdP:</h2>
+    <ul>
+    <li><strong>Email:</strong> {{email}}</li>
+    <li><strong>First Name:</strong> {{firstName}}</li>
+    <li><strong>Last Name:</strong> {{lastName}}</li>
+    <li><strong>UPN:</strong> {{userPrincipalName}}</li>
+    {{/with}}
+    </ul>
     </div>
     </body>
     </http>
-	`;
+`);
+
+export function getSamlConnectionTestFailedView(
+	message?: string,
+	attributes?: Partial<SamlUserAttributes>,
+): string {
+	return failedTemplate({
+		message: message ?? 'A common issue could be that no email attribute is set',
+		attributes: attributes && {
+			email: attributes.email ?? '(n/a)',
+			firstName: attributes.firstName ?? '(n/a)',
+			lastName: attributes.lastName ?? '(n/a)',
+			userPrincipalName: attributes.userPrincipalName ?? '(n/a)',
+		},
+	});
 }
