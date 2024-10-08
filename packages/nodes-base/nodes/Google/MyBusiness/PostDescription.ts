@@ -9,12 +9,7 @@ import {
 	type JsonObject,
 } from 'n8n-workflow';
 
-import {
-	addUpdateMaskPresend,
-	handleDatesPresend,
-	// handleDisplayOptionsBugPresend,
-	handlePagination,
-} from './GenericFunctions';
+import { addUpdateMaskPresend, handleDatesPresend, handlePagination } from './GenericFunctions';
 
 export const postOperations: INodeProperties[] = [
 	{
@@ -939,33 +934,6 @@ export const postFields: INodeProperties[] = [
 		placeholder: 'Add Option',
 		displayOptions: { show: { resource: ['post'], operation: ['update'] } },
 		options: [
-			// The request fails when trying to update post type
-			// {
-			// 	displayName: 'Post Type',
-			// 	name: 'postType',
-			// 	type: 'options',
-			// 	default: 'STANDARD',
-			// 	description: 'The type of post to create (standard, event, offer, or alert)',
-			// 	routing: { send: { type: 'body', property: 'topicType' } },
-			// 	options: [
-			// 		{
-			// 			name: 'Standard',
-			// 			value: 'STANDARD',
-			// 		},
-			// 		{
-			// 			name: 'Event',
-			// 			value: 'EVENT',
-			// 		},
-			// 		{
-			// 			name: 'Offer',
-			// 			value: 'OFFER',
-			// 		},
-			// 		{
-			// 			name: 'Alert',
-			// 			value: 'ALERT',
-			// 		},
-			// 	],
-			// },
 			{
 				displayName: 'Summary',
 				name: 'summary',
@@ -990,8 +958,6 @@ export const postFields: INodeProperties[] = [
 				type: 'options',
 				default: 'ACTION_TYPE_UNSPECIFIED',
 				description: 'The type of call to action',
-				// displayOptions: { show: { postType: ['STANDARD', 'EVENT', 'ALERT'] } },
-				// There is a bug when using displayOptions + routing. Routing can be handled with "handleDisplayOptionsBugPresend" if needed.
 				routing: {
 					send: { type: 'body', property: 'callToAction.actionType' },
 				},
@@ -1040,29 +1006,16 @@ export const postFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'The URL that users are sent to when clicking through the promotion',
-				// displayOptions: { show: { postType: ['STANDARD', 'EVENT', 'ALERT'] } },
-				// There is a bug when using displayOptions + routing. Routing can be handled with "handleDisplayOptionsBugPresend" if needed.
 				routing: {
 					send: { type: 'body', property: 'callToAction.url' },
 				},
 			},
-			// {
-			// 	displayName: 'Title',
-			// 	name: 'title',
-			// 	type: 'string',
-			// 	default: '',
-			// 	description: 'E.g. Sales this week.',
-			// 	// displayOptions: { show: { postType: ['EVENT'] } },
-			// 	// There is a bug when using displayOptions + routing. Routing can be handled with "handleDisplayOptionsBugPresend" if needed.
-			// 	// routing: { send: { type: 'body', property: 'event.title' } },
-			// },
 			{
 				displayName: 'Start Date and Time',
 				name: 'startDateTime',
 				type: 'dateTime',
 				default: '',
 				description: 'The start date and time of the event',
-				// displayOptions: { show: { postType: ['EVENT'] } },
 			},
 			{
 				displayName: 'End Date and Time',
@@ -1070,7 +1023,6 @@ export const postFields: INodeProperties[] = [
 				type: 'dateTime',
 				default: '',
 				description: 'The end date and time of the event',
-				// displayOptions: { show: { postType: ['EVENT'] } },
 			},
 			{
 				displayName: 'Title',
@@ -1078,8 +1030,6 @@ export const postFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'E.g. 20% off in store or online.',
-				// displayOptions: { show: { postType: ['OFFER'] } },
-				// There is a bug when using displayOptions + routing. Routing can be handled with "handleDisplayOptionsBugPresend" if needed.
 				routing: { send: { type: 'body', property: 'event.title' } },
 			},
 			{
@@ -1089,7 +1039,6 @@ export const postFields: INodeProperties[] = [
 				default: '',
 				placeholder: 'YYYY-MM-DD',
 				description: 'The start date of the offer',
-				// displayOptions: { show: { postType: ['OFFER'] } },
 			},
 			{
 				displayName: 'End Date',
@@ -1098,7 +1047,6 @@ export const postFields: INodeProperties[] = [
 				default: '',
 				placeholder: 'YYYY-MM-DD',
 				description: 'The end date of the offer',
-				// displayOptions: { show: { postType: ['OFFER'] } },
 			},
 			{
 				displayName: 'Coupon Code',
@@ -1106,8 +1054,6 @@ export const postFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'The coupon code for the offer',
-				// displayOptions: { show: { postType: ['OFFER'] } },
-				// There is a bug when using displayOptions + routing. Routing can be handled with "handleDisplayOptionsBugPresend" if needed.
 				routing: {
 					send: { type: 'body', property: 'offer.couponCode' },
 				},
@@ -1118,8 +1064,6 @@ export const postFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'Link to redeem the offer',
-				// displayOptions: { show: { postType: ['OFFER'] } },
-				// There is a bug when using displayOptions + routing. Routing can be handled with "handleDisplayOptionsBugPresend" if needed.
 				routing: {
 					send: { type: 'body', property: 'offer.redeemOnlineUrl' },
 				},
@@ -1130,8 +1074,6 @@ export const postFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'The terms and conditions of the offer',
-				// displayOptions: { show: { postType: ['OFFER'] } },
-				// There is a bug when using displayOptions + routing. Routing can be handled with "handleDisplayOptionsBugPresend" if needed.
 				routing: {
 					send: { type: 'body', property: 'offer.termsConditions' },
 				},

@@ -116,57 +116,6 @@ export async function addUpdateMaskPresend(
 	return opts;
 }
 
-/* Helper function to handle additional options.
- * There is a bug that the "routing" parameter does not work in combination with "displayOptions" when "displayOptions"
- * are set inside a collection and based on a property from the same collection.
- */
-export async function handleDisplayOptionsBugPresend(
-	this: IExecuteSingleFunctions,
-	opts: IHttpRequestOptions,
-): Promise<IHttpRequestOptions> {
-	const additionalOptions = this.getNodeParameter('additionalOptions') as IDataObject;
-	const body = Object.assign({}, opts.body) as IDataObject;
-
-	// Define a mapping between additionalOptions keys and their corresponding body paths
-	const mapping: { [key: string]: string } = {
-		callToActionType: 'callToAction.actionType',
-		url: 'callToAction.url',
-		title: 'event.title',
-		couponCode: 'offer.couponCode',
-		redeemOnlineUrl: 'offer.redeemOnlineUrl',
-		termsAndConditions: 'offer.termsAndConditions',
-	};
-
-	// Helper function to set a nested property dynamically, only if the value is not empty
-	function setNestedProperty(obj: IDataObject, path: string, value: any) {
-		// Avoid setting properties with undefined or empty string values
-		if (value === undefined || value === '') return;
-
-		const keys = path.split('.');
-		let current = obj;
-
-		// Create nested objects only if they are required and there is a value to set
-		keys.slice(0, -1).forEach((key) => {
-			if (!current[key]) {
-				current[key] = {}; // Create object only if it doesn't exist
-			}
-			current = current[key] as IDataObject;
-		});
-
-		// Set the final key to the value
-		current[keys[keys.length - 1]] = value;
-	}
-
-	// Iterate over the mapping and assign values from additionalOptions if present
-	Object.entries(mapping).forEach(([key, path]) => {
-		const value = additionalOptions[key];
-		setNestedProperty(body, path, value);
-	});
-
-	opts.body = body;
-	return opts;
-}
-
 /* Helper to handle pagination */
 export async function handlePagination(
 	this: IExecutePaginationFunctions,
