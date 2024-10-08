@@ -150,3 +150,24 @@ export async function sendErrorPostReceive(
 	}
 	return data;
 }
+
+export function isValidNumberIds(value: number | number[] | string | string[]): boolean {
+	if (typeof value === 'number') {
+		return true;
+	}
+
+	if (Array.isArray(value) && value.every((item) => typeof item === 'number')) {
+		return true;
+	}
+
+	if (typeof value === 'string') {
+		const parts = value.split(',');
+		return parts.every((part) => !isNaN(Number(part.trim())));
+	}
+
+	if (Array.isArray(value) && value.every((item) => typeof item === 'string')) {
+		return true;
+	}
+
+	return false;
+}

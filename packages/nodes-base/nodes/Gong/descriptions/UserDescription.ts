@@ -1,5 +1,7 @@
 import type {
+	IDataObject,
 	IExecuteSingleFunctions,
+	IHttpRequestOptions,
 	IN8nHttpFullResponse,
 	INodeExecutionData,
 	INodeProperties,
@@ -7,7 +9,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import { getCursorPaginator, sendErrorPostReceive } from '../GenericFunctions';
+import { getCursorPaginator, isValidNumberIds, sendErrorPostReceive } from '../GenericFunctions';
 
 export const userOperations: INodeProperties[] = [
 	{
@@ -178,6 +180,7 @@ const getAllOperation: INodeProperties[] = [
 			},
 		},
 		type: 'boolean',
+		validateType: 'boolean',
 	},
 	{
 		displayName: 'Limit',
@@ -213,10 +216,11 @@ const getAllOperation: INodeProperties[] = [
 		typeOptions: {
 			minValue: 1,
 		},
+		validateType: 'number',
 	},
 	{
-		displayName: 'Filter',
-		name: 'filter',
+		displayName: 'Filters',
+		name: 'filters',
 		default: {},
 		displayOptions: {
 			show: {
@@ -241,6 +245,7 @@ const getAllOperation: INodeProperties[] = [
 					},
 				},
 				type: 'dateTime',
+				validateType: 'dateTime',
 			},
 			{
 				displayName: 'Created Before',
@@ -258,6 +263,7 @@ const getAllOperation: INodeProperties[] = [
 					},
 				},
 				type: 'dateTime',
+				validateType: 'dateTime',
 			},
 			{
 				displayName: 'User IDs',
@@ -267,11 +273,39 @@ const getAllOperation: INodeProperties[] = [
 				hint: 'Comma separated list of IDs, array of strings can be set in expression',
 				routing: {
 					send: {
-						type: 'body',
-						property: 'filter.userIds',
-						propertyInDotNotation: true,
-						value:
-							'={{ Array.isArray($value) ? $value.map(x => x.toString()) : $value.split(",").map(x => x.trim()) }}',
+						preSend: [
+							async function (
+								this: IExecuteSingleFunctions,
+								requestOptions: IHttpRequestOptions,
+							): Promise<IHttpRequestOptions> {
+								const userIdsParam = this.getNodeParameter('filters.userIds') as
+									| number
+									| number[]
+									| string
+									| string[];
+								if (userIdsParam && !isValidNumberIds(userIdsParam)) {
+									throw new NodeApiError(this.getNode(), {
+										message: 'User IDs must be numbers',
+										description: "Double-check the value in the parameter 'User IDs' and try again",
+									});
+								}
+
+								const userIds = Array.isArray(userIdsParam)
+									? userIdsParam.map((x) => x.toString())
+									: userIdsParam
+											.toString()
+											.split(',')
+											.map((x) => x.trim());
+
+								requestOptions.body ||= {};
+								(requestOptions.body as IDataObject).filter ||= {};
+								Object.assign((requestOptions.body as IDataObject).filter as IDataObject, {
+									userIds,
+								});
+
+								return requestOptions;
+							},
+						],
 					},
 				},
 				placeholder: 'e.g. 7782342274025937895',

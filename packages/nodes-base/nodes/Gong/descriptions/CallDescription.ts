@@ -12,6 +12,7 @@ import { NodeApiError } from 'n8n-workflow';
 import {
 	getCursorPaginator,
 	gongApiPaginateRequest,
+	isValidNumberIds,
 	sendErrorPostReceive,
 } from '../GenericFunctions';
 
@@ -81,9 +82,9 @@ export const callOperations: INodeProperties[] = [
 								if (response.statusCode === 404) {
 									const primaryUserId = this.getNodeParameter(
 										'filters.primaryUserIds',
-										null,
+										{},
 									) as IDataObject;
-									if (primaryUserId) {
+									if (Object.keys(primaryUserId).length === 0) {
 										return [{ json: { success: true } }];
 									}
 								}
@@ -374,12 +375,8 @@ const getAllFields: INodeProperties[] = [
 	{
 		displayName: 'Limit',
 		name: 'limit',
-		type: 'number',
 		default: 50,
 		description: 'Max number of results to return',
-		typeOptions: {
-			minValue: 1,
-		},
 		displayOptions: {
 			show: {
 				resource: ['call'],
@@ -411,6 +408,11 @@ const getAllFields: INodeProperties[] = [
 				],
 			},
 		},
+		type: 'number',
+		typeOptions: {
+			minValue: 1,
+		},
+		validateType: 'number',
 	},
 	{
 		displayName: 'Filters',
@@ -439,6 +441,7 @@ const getAllFields: INodeProperties[] = [
 					},
 				},
 				type: 'dateTime',
+				validateType: 'dateTime',
 			},
 			{
 				displayName: 'Before',
@@ -456,6 +459,7 @@ const getAllFields: INodeProperties[] = [
 					},
 				},
 				type: 'dateTime',
+				validateType: 'dateTime',
 			},
 			{
 				displayName: 'Workspace ID',
@@ -472,6 +476,7 @@ const getAllFields: INodeProperties[] = [
 					},
 				},
 				type: 'string',
+				validateType: 'number',
 			},
 			{
 				displayName: 'Call IDs',
@@ -481,11 +486,39 @@ const getAllFields: INodeProperties[] = [
 				hint: 'Comma separated list of IDs, array of strings can be set in expression',
 				routing: {
 					send: {
-						type: 'body',
-						property: 'filter.callIds',
-						propertyInDotNotation: true,
-						value:
-							'={{ Array.isArray($value) ? $value.map(x => x.toString()) : $value.split(",").map(x => x.trim()) }}',
+						preSend: [
+							async function (
+								this: IExecuteSingleFunctions,
+								requestOptions: IHttpRequestOptions,
+							): Promise<IHttpRequestOptions> {
+								const callIdsParam = this.getNodeParameter('filters.callIds') as
+									| number
+									| number[]
+									| string
+									| string[];
+								if (callIdsParam && !isValidNumberIds(callIdsParam)) {
+									throw new NodeApiError(this.getNode(), {
+										message: 'User IDs must be numbers',
+										description: "Double-check the value in the parameter 'User IDs' and try again",
+									});
+								}
+
+								const callIds = Array.isArray(callIdsParam)
+									? callIdsParam.map((x) => x.toString())
+									: callIdsParam
+											.toString()
+											.split(',')
+											.map((x) => x.trim());
+
+								requestOptions.body ||= {};
+								(requestOptions.body as IDataObject).filter ||= {};
+								Object.assign((requestOptions.body as IDataObject).filter as IDataObject, {
+									callIds,
+								});
+
+								return requestOptions;
+							},
+						],
 					},
 				},
 				placeholder: 'e.g. 7782342274025937895',
