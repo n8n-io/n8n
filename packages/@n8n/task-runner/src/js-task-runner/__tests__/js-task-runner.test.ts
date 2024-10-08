@@ -1,3 +1,4 @@
+import { DateTime } from 'luxon';
 import type { CodeExecutionMode, IDataObject } from 'n8n-workflow';
 
 import { ValidationError } from '@/js-task-runner/errors/validation-error';
@@ -30,6 +31,36 @@ describe('JsTaskRunner', () => {
 		jest.restoreAllMocks();
 	});
 
+	const executeForAllItems = async ({
+		code,
+		inputItems,
+		settings,
+	}: { code: string; inputItems: IDataObject[]; settings?: Partial<JSExecSettings> }) => {
+		return await execTaskWithParams({
+			task: newTaskWithSettings({
+				code,
+				nodeMode: 'runOnceForAllItems',
+				...settings,
+			}),
+			taskData: newAllCodeTaskData(inputItems.map(wrapIntoJson)),
+		});
+	};
+
+	const executeForEachItem = async ({
+		code,
+		inputItems,
+		settings,
+	}: { code: string; inputItems: IDataObject[]; settings?: Partial<JSExecSettings> }) => {
+		return await execTaskWithParams({
+			task: newTaskWithSettings({
+				code,
+				nodeMode: 'runOnceForEachItem',
+				...settings,
+			}),
+			taskData: newAllCodeTaskData(inputItems.map(wrapIntoJson)),
+		});
+	};
+
 	describe('console', () => {
 		test.each<[CodeExecutionMode]>([['runOnceForAllItems'], ['runOnceForEachItem']])(
 			'should make an rpc call for console log in %s mode',
@@ -52,22 +83,107 @@ describe('JsTaskRunner', () => {
 		);
 	});
 
-	describe('runOnceForAllItems', () => {
-		const executeForAllItems = async ({
-			code,
-			inputItems,
-			settings,
-		}: { code: string; inputItems: IDataObject[]; settings?: Partial<JSExecSettings> }) => {
-			return await execTaskWithParams({
-				task: newTaskWithSettings({
-					code,
-					nodeMode: 'runOnceForAllItems',
-					...settings,
-				}),
-				taskData: newAllCodeTaskData(inputItems.map(wrapIntoJson)),
+	describe('built-in methods and variables available in the context', () => {
+		const inputItems = [{ a: 1 }];
+
+		const testExpressionForAllItems = async (
+			expression: string,
+			expected: IDataObject | string | number | boolean,
+		) => {
+			const needsWrapping = typeof expected !== 'object';
+			const outcome = await executeForAllItems({
+				code: needsWrapping ? `return { val: ${expression} }` : `return ${expression}`,
+				inputItems,
 			});
+
+			expect(outcome.result).toEqual([wrapIntoJson(needsWrapping ? { val: expected } : expected)]);
 		};
 
+		const testExpressionForEachItem = async (
+			expression: string,
+			expected: IDataObject | string | number | boolean,
+		) => {
+			const needsWrapping = typeof expected !== 'object';
+			const outcome = await executeForEachItem({
+				code: needsWrapping ? `return { val: ${expression} }` : `return ${expression}`,
+				inputItems,
+			});
+
+			expect(outcome.result).toEqual([
+				withPairedItem(0, wrapIntoJson(needsWrapping ? { val: expected } : expected)),
+			]);
+		};
+
+		const testGroups = {
+			// https://docs.n8n.io/code/builtin/current-node-input/
+			'current node input': [
+				['$input.first()', inputItems[0]],
+				['$input.last()', inputItems[inputItems.length - 1]],
+				['$input.params', { manualTriggerParam: 'empty' }],
+			],
+			// https://docs.n8n.io/code/builtin/output-other-nodes/
+			'output of other nodes': [
+				['$("Trigger").first()', inputItems[0]],
+				['$("Trigger").last()', inputItems[inputItems.length - 1]],
+				['$("Trigger").params', { manualTriggerParam: 'empty' }],
+			],
+			// https://docs.n8n.io/code/builtin/date-time/
+			'date and time': [
+				['$now', expect.any(DateTime)],
+				['$today', expect.any(DateTime)],
+				['{dt: DateTime}', { dt: expect.any(Function) }],
+			],
+			// https://docs.n8n.io/code/builtin/jmespath/
+			JMESPath: [['{ val: $jmespath([{ f: 1 },{ f: 2 }], "[*].f") }', { val: [1, 2] }]],
+			// https://docs.n8n.io/code/builtin/n8n-metadata/
+			'n8n metadata': [
+				[
+					'$execution',
+					{
+						id: 'exec-id',
+						mode: 'test',
+						resumeFormUrl: 'http://formWaitingBaseUrl/exec-id',
+						resumeUrl: 'http://webhookWaitingBaseUrl/exec-id',
+						customData: {
+							get: expect.any(Function),
+							getAll: expect.any(Function),
+							set: expect.any(Function),
+							setAll: expect.any(Function),
+						},
+					},
+				],
+				['$("Trigger").isExecuted', true],
+				['$nodeVersion', 2],
+				['$prevNode.name', 'Trigger'],
+				['$prevNode.outputIndex', 0],
+				['$runIndex', 0],
+				['{ wf: $workflow }', { wf: { active: true, id: '1', name: 'Test Workflow' } }],
+				['$vars', { var: 'value' }],
+			],
+		};
+
+		for (const [groupName, tests] of Object.entries(testGroups)) {
+			describe(`${groupName} runOnceForAllItems`, () => {
+				test.each(tests)(
+					'should have the %s available in the context',
+					async (expression, expected) => {
+						await testExpressionForAllItems(expression, expected);
+					},
+				);
+			});
+
+			describe(`${groupName} runOnceForEachItem`, () => {
+				test.each(tests)(
+					'should have the %s available in the context',
+					async (expression, expected) => {
+						await testExpressionForEachItem(expression, expected);
+					},
+				);
+			});
+		}
+	});
+
+	describe('runOnceForAllItems', () => {
 		describe('continue on fail', () => {
 			it('should return an item with the error if continueOnFail is true', async () => {
 				const outcome = await executeForAllItems({
@@ -181,21 +297,6 @@ describe('JsTaskRunner', () => {
 	});
 
 	describe('runForEachItem', () => {
-		const executeForEachItem = async ({
-			code,
-			inputItems,
-			settings,
-		}: { code: string; inputItems: IDataObject[]; settings?: Partial<JSExecSettings> }) => {
-			return await execTaskWithParams({
-				task: newTaskWithSettings({
-					code,
-					nodeMode: 'runOnceForEachItem',
-					...settings,
-				}),
-				taskData: newAllCodeTaskData(inputItems.map(wrapIntoJson)),
-			});
-		};
-
 		describe('continue on fail', () => {
 			it('should return an item with the error if continueOnFail is true', async () => {
 				const outcome = await executeForEachItem({
