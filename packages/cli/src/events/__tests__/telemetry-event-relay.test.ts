@@ -1057,4 +1057,20 @@ describe('TelemetryEventRelay', () => {
 			);
 		});
 	});
+
+	describe('Community+ registered', () => {
+		it('should track `license-community-plus-registered` event', () => {
+			const event: RelayEventMap['license-community-plus-registered'] = {
+				email: 'user@example.com',
+				licenseKey: 'license123',
+			};
+
+			eventService.emit('license-community-plus-registered', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User registered for license community plus', {
+				email: 'user@example.com',
+				licenseKey: 'license123',
+			});
+		});
+	});
 });
