@@ -215,6 +215,9 @@ async function onMfaEnableClick() {
 			message: e.message,
 			type: 'error',
 		});
+		try {
+			await usersStore.confirmEmail();
+		} catch {}
 	}
 }
 
