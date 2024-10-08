@@ -1,5 +1,5 @@
 import pick from 'lodash/pick';
-import type { ExecutionStatus, IRun, IWorkflowBase } from 'n8n-workflow';
+import { ensureError, type ExecutionStatus, type IRun, type IWorkflowBase } from 'n8n-workflow';
 import { Container } from 'typedi';
 
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
@@ -95,7 +95,8 @@ export async function updateExistingExecution(parameters: {
 			);
 		}
 	} catch (e) {
-		logger.error(`Failed to save metadata for execution ID ${executionId}`, { error: e });
+		const error = ensureError(e);
+		logger.error(`Failed to save metadata for execution ID ${executionId}`, { error });
 	}
 
 	if (executionData.finished === true && executionData.retryOf !== undefined) {

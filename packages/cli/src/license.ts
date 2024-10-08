@@ -111,9 +111,9 @@ export class License {
 
 			await this.manager.initialize();
 			this.logger.debug('License initialized');
-		} catch (e: unknown) {
-			if (e instanceof Error) {
-				this.logger.error('Could not initialize license manager sdk', { error: e });
+		} catch (error: unknown) {
+			if (error instanceof Error) {
+				this.logger.error('Could not initialize license manager sdk', { error });
 			}
 		}
 	}
