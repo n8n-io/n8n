@@ -5,7 +5,7 @@ FROM node:${NODE_VERSION}-alpine as builder
 
 # Install fonts
 RUN	\
-	apk --no-cache add --virtual fonts msttcorefonts-installer fontconfig libcap && \
+	apk --no-cache add --virtual fonts msttcorefonts-installer fontconfig && \
 	update-ms-fonts && \
 	fc-cache -f && \
 	apk del fonts && \
