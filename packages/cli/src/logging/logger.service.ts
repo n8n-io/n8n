@@ -1,5 +1,7 @@
+import type { LogScope } from '@n8n/config';
 import { GlobalConfig } from '@n8n/config';
 import callsites from 'callsites';
+import type { TransformableInfo } from 'logform';
 import { InstanceSettings } from 'n8n-core';
 import { LoggerProxy, LOG_LEVELS } from 'n8n-workflow';
 import path, { basename } from 'node:path';
@@ -15,9 +17,15 @@ import type { LogLocationMetadata, LogLevel, LogMetadata } from './types';
 
 @Service()
 export class Logger {
-	private readonly internalLogger: winston.Logger;
+	private internalLogger: winston.Logger;
 
 	private readonly level: LogLevel;
+
+	private readonly scopes: Set<LogScope>;
+
+	private get isScopingEnabled() {
+		return this.scopes.size > 0;
+	}
 
 	constructor(
 		private readonly globalConfig: GlobalConfig,
@@ -35,13 +43,28 @@ export class Logger {
 		if (!isSilent) {
 			this.setLevel();
 
-			const { outputs } = this.globalConfig.logging;
+			const { outputs, scopes } = this.globalConfig.logging;
 
 			if (outputs.includes('console')) this.setConsoleTransport();
 			if (outputs.includes('file')) this.setFileTransport();
+
+			this.scopes = new Set(scopes);
 		}
 
 		LoggerProxy.init(this);
+	}
+
+	private setInternalLogger(internalLogger: winston.Logger) {
+		this.internalLogger = internalLogger;
+	}
+
+	withScope(scope: LogScope) {
+		const scopedLogger = new Logger(this.globalConfig, this.instanceSettings);
+		const childLogger = this.internalLogger.child({ scope });
+
+		scopedLogger.setInternalLogger(childLogger);
+
+		return scopedLogger;
 	}
 
 	private log(level: LogLevel, message: string, metadata: LogMetadata) {
@@ -81,11 +104,22 @@ export class Logger {
 		this.internalLogger.add(new winston.transports.Console({ format }));
 	}
 
+	private scopeFilter() {
+		return winston.format((info: TransformableInfo & { metadata: LogMetadata }) => {
+			const shouldIncludeScope = info.metadata.scope && this.scopes.has(info.metadata.scope);
+
+			if (this.isScopingEnabled && !shouldIncludeScope) return false;
+
+			return info;
+		})();
+	}
+
 	private debugDevConsoleFormat() {
 		return winston.format.combine(
 			winston.format.metadata(),
 			winston.format.timestamp({ format: () => this.devTsFormat() }),
 			winston.format.colorize({ all: true }),
+			this.scopeFilter(),
 			winston.format.printf(({ level: _level, message, timestamp, metadata: _metadata }) => {
 				const SEPARATOR = ' '.repeat(3);
 				const LOG_LEVEL_COLUMN_WIDTH = 15; // 5 columns + ANSI color codes
@@ -100,6 +134,7 @@ export class Logger {
 		return winston.format.combine(
 			winston.format.metadata(),
 			winston.format.timestamp(),
+			this.scopeFilter(),
 			winston.format.printf(({ level, message, timestamp, metadata }) => {
 				const _metadata = this.toPrintable(metadata);
 				return `${timestamp} | ${level.padEnd(5)} | ${message}${_metadata ? ' ' + _metadata : ''}`;
