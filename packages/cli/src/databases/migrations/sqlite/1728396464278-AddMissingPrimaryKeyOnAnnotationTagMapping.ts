@@ -1,4 +1,4 @@
-import { ApplicationError } from 'n8n-workflow/src';
+import { ApplicationError } from 'n8n-workflow';
 
 import type { IrreversibleMigration, MigrationContext } from '@/databases/types';
 
