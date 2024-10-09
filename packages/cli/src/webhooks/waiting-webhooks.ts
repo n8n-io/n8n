@@ -1,5 +1,11 @@
 import type express from 'express';
-import { NodeHelpers, Workflow } from 'n8n-workflow';
+import {
+	type INodes,
+	type IWorkflowBase,
+	NodeHelpers,
+	SEND_AND_WAIT_OPERATION,
+	Workflow,
+} from 'n8n-workflow';
 import { Service } from 'typedi';
 
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
@@ -40,6 +46,84 @@ export class WaitingWebhooks implements IWebhookManager {
 
 	protected disableNode(execution: IExecutionResponse, _method?: string) {
 		execution.data.executionData!.nodeExecutionStack[0].node.disabled = true;
+	}
+
+	private isSendAndWaitRequest(nodes: INodes, suffix: string | undefined) {
+		return (
+			suffix &&
+			Object.keys(nodes).some(
+				(node) =>
+					nodes[node].id === suffix && nodes[node].parameters.operation === SEND_AND_WAIT_OPERATION,
+			)
+		);
+	}
+
+	private getWorkflow(workflowData: IWorkflowBase) {
+		return new Workflow({
+			id: workflowData.id,
+			name: workflowData.name,
+			nodes: workflowData.nodes,
+			connections: workflowData.connections,
+			active: workflowData.active,
+			nodeTypes: this.nodeTypes,
+			staticData: workflowData.staticData,
+			settings: workflowData.settings,
+		});
+	}
+
+	protected async getExecution(executionId: string) {
+		return await this.executionRepository.findSingleExecution(executionId, {
+			includeData: true,
+			unflattenData: true,
+		});
+	}
+
+	async executeWebhook(
+		req: WaitingWebhookRequest,
+		res: express.Response,
+	): Promise<IWebhookResponseCallbackData> {
+		const { path: executionId, suffix } = req.params;
+
+		this.logReceivedWebhook(req.method, executionId);
+
+		// Reset request parameters
+		req.params = {} as WaitingWebhookRequest['params'];
+
+		const execution = await this.getExecution(executionId);
+
+		if (!execution) {
+			throw new NotFoundError(`The execution "${executionId}" does not exist.`);
+		}
+
+		if (execution.status === 'running') {
+			throw new ConflictError(`The execution "${executionId}" is running already.`);
+		}
+
+		if (execution.data?.resultData?.error) {
+			throw new ConflictError(`The execution "${executionId} has finished already.`);
+		}
+
+		if (execution.finished) {
+			const { workflowData } = execution;
+			const { nodes } = this.getWorkflow(workflowData);
+			if (this.isSendAndWaitRequest(nodes, suffix)) {
+				res.render('send-and-wait-no-action-required', { isTestWebhook: false });
+				return { noWebhookResponse: true };
+			} else {
+				throw new ConflictError(`The execution "${executionId} has finished already.`);
+			}
+		}
+
+		const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
+
+		return await this.getWebhookExecutionData({
+			execution,
+			req,
+			res,
+			lastNodeExecuted,
+			executionId,
+			suffix,
+		});
 	}
 
 	protected async getWebhookExecutionData({
@@ -101,8 +185,13 @@ export class WaitingWebhooks implements IWebhookManager {
 		if (webhookData === undefined) {
 			// If no data got found it means that the execution can not be started via a webhook.
 			// Return 404 because we do not want to give any data if the execution exists or not.
-			const errorMessage = `The workflow for execution "${executionId}" does not contain a waiting webhook with a matching path/method.`;
-			throw new NotFoundError(errorMessage);
+			if (this.isSendAndWaitRequest(workflow.nodes, suffix)) {
+				res.render('send-and-wait-no-action-required', { isTestWebhook: false });
+				return { noWebhookResponse: true };
+			} else {
+				const errorMessage = `The workflow for execution "${executionId}" does not contain a waiting webhook with a matching path/method.`;
+				throw new NotFoundError(errorMessage);
+			}
 		}
 
 		const runExecutionData = execution.data;
@@ -128,50 +217,6 @@ export class WaitingWebhooks implements IWebhookManager {
 					resolve(data);
 				},
 			);
-		});
-	}
-
-	protected async getExecution(executionId: string) {
-		return await this.executionRepository.findSingleExecution(executionId, {
-			includeData: true,
-			unflattenData: true,
-		});
-	}
-
-	async executeWebhook(
-		req: WaitingWebhookRequest,
-		res: express.Response,
-	): Promise<IWebhookResponseCallbackData> {
-		const { path: executionId, suffix } = req.params;
-
-		this.logReceivedWebhook(req.method, executionId);
-
-		// Reset request parameters
-		req.params = {} as WaitingWebhookRequest['params'];
-
-		const execution = await this.getExecution(executionId);
-
-		if (!execution) {
-			throw new NotFoundError(`The execution "${executionId}" does not exist.`);
-		}
-
-		if (execution.status === 'running') {
-			throw new ConflictError(`The execution "${executionId}" is running already.`);
-		}
-
-		if (execution.finished || execution.data.resultData.error) {
-			throw new ConflictError(`The execution "${executionId}" has finished already.`);
-		}
-
-		const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
-
-		return await this.getWebhookExecutionData({
-			execution,
-			req,
-			res,
-			lastNodeExecuted,
-			executionId,
-			suffix,
 		});
 	}
 }
