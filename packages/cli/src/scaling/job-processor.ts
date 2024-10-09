@@ -48,7 +48,7 @@ export class JobProcessor {
 
 		const workflowId = execution.workflowData.id;
 
-		this.logger.info(`Worker started running job ${job.id} (execution ${executionId})`, {
+		this.logger.info(`Worker started running execution ${executionId} (job ${job.id})`, {
 			instanceType: 'worker',
 		});
 
