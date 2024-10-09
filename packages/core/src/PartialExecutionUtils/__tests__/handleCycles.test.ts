@@ -1,8 +1,28 @@
+// NOTE: Diagrams in this file have been created with https://asciiflow.com/#/
+// If you update the tests, please update the diagrams as well.
+// If you add a test, please create a new diagram.
+//
+// Map
+// 0  means the output has no run data
+// 1  means the output has run data
+// ►► denotes the node that the user wants to execute to
+// XX denotes that the node is disabled
+// PD denotes that the node has pinned data
+
 import { createNodeData } from './helpers';
 import { DirectedGraph } from '../DirectedGraph';
 import { handleCycles } from '../handleCycles';
 
 describe('handleCycles', () => {
+	//                 ┌────┐          ┌─────────┐
+	//┌───────┐        │    ├──────────►afterLoop│
+	//│trigger├────┬───►loop│          └─────────┘
+	//└───────┘    │   │    ├─┐		 ►►
+	//             │   └────┘ │   ┌──────┐
+	//             │          └───►inLoop├────┐
+	//             │              └──────┘    │
+	//             │                          │
+	//             └──────────────────────────┘
 	test('if the start node is within a cycle it returns the start of the cycle as the new start node', () => {
 		// ARRANGE
 		const trigger = createNodeData({ name: 'trigger' });
@@ -27,6 +47,15 @@ describe('handleCycles', () => {
 		expect(newStartNodes).toContainEqual(loop);
 	});
 
+	//                 ┌────┐          ┌─────────┐
+	//┌───────┐        │    ├──────────►afterLoop│
+	//│trigger├────┬───►loop│          └─────────┘
+	//└───────┘    │   │    ├─┐    ►►
+	//             │   └────┘ │   ┌──────┐
+	//             │          └───►inLoop├────┐
+	//             │              └──────┘    │
+	//             │                          │
+	//             └──────────────────────────┘
 	test('does not mutate `startNodes`', () => {
 		// ARRANGE
 		const trigger = createNodeData({ name: 'trigger' });
@@ -51,6 +80,16 @@ describe('handleCycles', () => {
 		expect(startNodes).toContainEqual(inLoop);
 	});
 
+	//                                  ►►
+	//                 ┌────┐          ┌─────────┐
+	//┌───────┐        │    ├──────────►afterLoop│
+	//│trigger├────┬───►loop│          └─────────┘
+	//└───────┘    │   │    ├─┐
+	//             │   └────┘ │   ┌──────┐
+	//             │          └───►inLoop├────┐
+	//             │              └──────┘    │
+	//             │                          │
+	//             └──────────────────────────┘
 	test('if the start node is not within a cycle it returns the same node as the new start node', () => {
 		// ARRANGE
 		const trigger = createNodeData({ name: 'trigger' });
