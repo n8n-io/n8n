@@ -195,7 +195,6 @@ describe('PubSubHandler', () => {
 				'community-package-update': expect.any(Function),
 				'community-package-uninstall': expect.any(Function),
 				'get-worker-status': expect.any(Function),
-				'get-worker-id': expect.any(Function),
 			});
 		});
 
@@ -265,26 +264,6 @@ describe('PubSubHandler', () => {
 			eventService.emit('get-worker-status');
 
 			expect(workerStatus.generateStatus).toHaveBeenCalled();
-		});
-
-		it('should get worker ID on `get-worker-id` event', () => {
-			new PubSubHandler(
-				eventService,
-				instanceSettings,
-				license,
-				eventbus,
-				externalSecretsManager,
-				communityPackagesService,
-				publisher,
-				workerStatus,
-			).init();
-
-			eventService.emit('get-worker-id');
-
-			expect(publisher.publishWorkerResponse).toHaveBeenCalledWith({
-				workerId: expect.any(String),
-				command: 'get-worker-id',
-			});
 		});
 	});
 });
