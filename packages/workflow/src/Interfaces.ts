@@ -2723,7 +2723,7 @@ export interface IDataDeduplicator {
 export interface ICheckProcessedContextData {
 	node?: INode;
 	workflow: {
-		id?: number | string;
+		id: string;
 		active: boolean;
 	};
 }

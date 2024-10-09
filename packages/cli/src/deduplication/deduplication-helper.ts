@@ -1,12 +1,13 @@
 import { createHash } from 'crypto';
-import type {
-	ICheckProcessedContextData,
-	IDataDeduplicator,
-	ICheckProcessedOptions,
-	IDeduplicationOutput,
-	DeduplicationScope,
-	DeduplicationItemTypes,
-	DeduplicationMode,
+import {
+	type ICheckProcessedContextData,
+	type IDataDeduplicator,
+	type ICheckProcessedOptions,
+	type IDeduplicationOutput,
+	type DeduplicationScope,
+	type DeduplicationItemTypes,
+	type DeduplicationMode,
+	tryToParseDateTime,
 } from 'n8n-workflow';
 import * as assert from 'node:assert/strict';
 import { Container } from 'typedi';
@@ -107,7 +108,7 @@ export class DeduplicationHelper implements IDataDeduplicator {
 	): Promise<ProcessedData | null> {
 		return await Container.get(ProcessedDataRepository).findOne({
 			where: {
-				workflowId: contextData.workflow.id as string,
+				workflowId: contextData.workflow.id,
 				context: DeduplicationHelper.createContext(scope, contextData),
 			},
 		});
@@ -119,6 +120,18 @@ export class DeduplicationHelper implements IDataDeduplicator {
 				'Deduplication data was originally saved with an incompatible setting of the ‘Keep Items Where’ parameter. Try ’Clean Database’ operation to reset.',
 			);
 		}
+	}
+
+	private processedDataHasEntries(
+		data: IProcessedDataEntries | IProcessedDataLatest,
+	): data is IProcessedDataEntries {
+		return Array.isArray(data.data);
+	}
+
+	private processedDataIsLatest(
+		data: IProcessedDataEntries | IProcessedDataLatest,
+	): data is IProcessedDataLatest {
+		return data && !Array.isArray(data.data);
 	}
 
 	async checkProcessedAndRecord(
@@ -141,7 +154,7 @@ export class DeduplicationHelper implements IDataDeduplicator {
 			if (!processedData) {
 				// All items are new so add new entries
 				await Container.get(ProcessedDataRepository).insert({
-					workflowId: contextData.workflow.id.toString(),
+					workflowId: contextData.workflow.id,
 					context: dbContext,
 					value: {
 						mode: options.mode,
@@ -160,8 +173,12 @@ export class DeduplicationHelper implements IDataDeduplicator {
 				processed: [],
 			};
 
-			let largestValue = processedData.value.data as DeduplicationItemTypes;
-			const processedDataValue = processedData.value as IProcessedDataLatest;
+			if (!this.processedDataIsLatest(processedData.value)) {
+				return returnData;
+			}
+
+			let largestValue = processedData.value.data;
+			const processedDataValue = processedData.value;
 
 			incomingItems.forEach((item) => {
 				if (DeduplicationHelper.compareValues(options.mode, item, processedDataValue.data)) {
@@ -192,7 +209,7 @@ export class DeduplicationHelper implements IDataDeduplicator {
 				hashedItems.splice(0, hashedItems.length - options.maxEntries);
 			}
 			await Container.get(ProcessedDataRepository).insert({
-				workflowId: contextData.workflow.id.toString(),
+				workflowId: contextData.workflow.id,
 				context: dbContext,
 				value: {
 					mode: options.mode,
@@ -211,7 +228,11 @@ export class DeduplicationHelper implements IDataDeduplicator {
 			processed: [],
 		};
 
-		const processedDataValue = processedData.value as IProcessedDataEntries;
+		if (!this.processedDataHasEntries(processedData.value)) {
+			return returnData;
+		}
+
+		const processedDataValue = processedData.value;
 
 		hashedItems.forEach((item, index) => {
 			if (processedDataValue.data.find((entry) => entry === item)) {
@@ -247,7 +268,7 @@ export class DeduplicationHelper implements IDataDeduplicator {
 
 		const processedData = await Container.get(ProcessedDataRepository).findOne({
 			where: {
-				workflowId: contextData.workflow.id as string,
+				workflowId: contextData.workflow.id,
 				context: DeduplicationHelper.createContext(scope, contextData),
 			},
 		});
@@ -258,7 +279,11 @@ export class DeduplicationHelper implements IDataDeduplicator {
 
 		const hashedItems = items.map((item) => DeduplicationHelper.createValueHash(item));
 
-		const processedDataValue = processedData.value as IProcessedDataEntries;
+		if (!this.processedDataHasEntries(processedData.value)) {
+			return;
+		}
+
+		const processedDataValue = processedData.value;
 
 		hashedItems.forEach((item) => {
 			const index = processedDataValue.data.findIndex((value) => value === item);
@@ -278,7 +303,7 @@ export class DeduplicationHelper implements IDataDeduplicator {
 		contextData: ICheckProcessedContextData,
 	): Promise<void> {
 		await Container.get(ProcessedDataRepository).delete({
-			workflowId: contextData.workflow.id as string,
+			workflowId: contextData.workflow.id,
 			context: DeduplicationHelper.createContext(scope, contextData),
 		});
 	}
@@ -292,13 +317,17 @@ export class DeduplicationHelper implements IDataDeduplicator {
 
 		const processedData = await processedDataRepository.findOne({
 			where: {
-				workflowId: contextData.workflow.id as string,
+				workflowId: contextData.workflow.id,
 				context: DeduplicationHelper.createContext(scope, contextData),
 			},
 		});
 
-		if (options.mode === 'entries') {
-			return (processedData?.value as IProcessedDataEntries)?.data?.length ?? 0;
+		if (
+			options.mode === 'entries' &&
+			processedData &&
+			this.processedDataHasEntries(processedData.value)
+		) {
+			return processedData.value.data.length;
 		} else {
 			return 0;
 		}

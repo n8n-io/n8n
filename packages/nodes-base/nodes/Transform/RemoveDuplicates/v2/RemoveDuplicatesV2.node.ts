@@ -5,7 +5,6 @@ import type {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	ICheckProcessedOptions,
 	DeduplicationScope,
 } from 'n8n-workflow';
 
@@ -59,14 +58,10 @@ export class RemoveDuplicatesV2 implements INodeType {
 				}
 				case 'removeItemsSeenInPreviousExecutions': {
 					const logic = this.getNodeParameter('logic', 0);
-					if (logic === 'removeItemsWithAlreadySeenKeyValues') {
-						const scope: DeduplicationScope = this.getNodeParameter(
-							'options.scope',
-							0,
-							'node',
-						) as DeduplicationScope;
+					const scope = this.getNodeParameter('options.scope', 0, 'node') as DeduplicationScope;
 
-						if (!['node', 'workflow'].includes(scope as string)) {
+					if (logic === 'removeItemsWithAlreadySeenKeyValues') {
+						if (!['node', 'workflow'].includes(scope)) {
 							throw new NodeOperationError(
 								this.getNode(),
 								`The scope '${scope}' is not supported. Please select either "node" or "workflow".`,
@@ -78,7 +73,7 @@ export class RemoveDuplicatesV2 implements INodeType {
 							[key: string]: INodeExecutionData[];
 						} = {};
 						for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-							checkValue = this.getNodeParameter('dedupeValue', itemIndex, '')?.toString() || '';
+							checkValue = this.getNodeParameter('dedupeValue', itemIndex, '')?.toString() ?? '';
 							if (itemMapping[checkValue]) {
 								itemMapping[checkValue].push(items[itemIndex]);
 							} else {
@@ -86,13 +81,17 @@ export class RemoveDuplicatesV2 implements INodeType {
 							}
 						}
 
-						const maxEntries = this.getNodeParameter('options.historySize', 0, DEFAULT_MAX_ENTRIES);
+						const maxEntries = this.getNodeParameter(
+							'options.historySize',
+							0,
+							DEFAULT_MAX_ENTRIES,
+						) as number;
 						const maxEntriesNum = Number(maxEntries);
 
 						const currentProcessedDataCount = await this.helpers.getProcessedDataCount(scope, {
 							mode: 'entries',
 							maxEntries,
-						} as ICheckProcessedOptions);
+						});
 						if (currentProcessedDataCount + items.length > maxEntriesNum) {
 							throw new NodeOperationError(
 								this.getNode(),
@@ -102,12 +101,12 @@ export class RemoveDuplicatesV2 implements INodeType {
 						const itemsProcessed = await this.helpers.checkProcessedAndRecord(
 							Object.keys(itemMapping),
 							scope,
-							{ mode: 'entries', maxEntries } as ICheckProcessedOptions,
+							{ mode: 'entries', maxEntries },
 						);
 						const processedDataCount = await this.helpers.getProcessedDataCount(scope, {
 							mode: 'entries',
 							maxEntries,
-						} as ICheckProcessedOptions);
+						});
 						returnData.push(
 							itemsProcessed.new
 								.map((key) => {
@@ -130,9 +129,7 @@ export class RemoveDuplicatesV2 implements INodeType {
 							]);
 						} else return returnData;
 					} else if (logic === 'removeItemsUpToStoredIncrementalKey') {
-						const scope = this.getNodeParameter('options.scope', 0, 'node') as DeduplicationScope;
-
-						if (!['node', 'workflow'].includes(scope as string)) {
+						if (!['node', 'workflow'].includes(scope)) {
 							throw new NodeOperationError(
 								this.getNode(),
 								`The scope '${scope}' is not supported. Please select either "node" or "workflow".`,
@@ -163,7 +160,7 @@ export class RemoveDuplicatesV2 implements INodeType {
 						const itemsProcessed = await this.helpers.checkProcessedAndRecord(
 							Object.keys(itemMapping),
 							scope,
-							{ mode: 'latestIncrementalKey' } as ICheckProcessedOptions,
+							{ mode: 'latestIncrementalKey' },
 						);
 
 						returnData.push(
@@ -181,9 +178,7 @@ export class RemoveDuplicatesV2 implements INodeType {
 
 						return returnData;
 					} else if (logic === 'removeItemsUpToStoredDate') {
-						const scope = this.getNodeParameter('options.scope', 0, 'node') as DeduplicationScope;
-
-						if (!['node', 'workflow'].includes(scope as string)) {
+						if (!['node', 'workflow'].includes(scope)) {
 							throw new NodeOperationError(
 								this.getNode(),
 								`The scope '${scope}' is not supported. Please select either "node" or "workflow".`,
@@ -197,7 +192,7 @@ export class RemoveDuplicatesV2 implements INodeType {
 
 						for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 							checkValue =
-								this.getNodeParameter('dateDedupeValue', itemIndex, '')?.toString() || '';
+								this.getNodeParameter('dateDedupeValue', itemIndex, '')?.toString() ?? '';
 							const date = new Date(checkValue);
 							if (isNaN(date.getTime())) {
 								throw new NodeOperationError(
@@ -214,7 +209,7 @@ export class RemoveDuplicatesV2 implements INodeType {
 						const itemsProcessed = await this.helpers.checkProcessedAndRecord(
 							Object.keys(itemMapping),
 							scope,
-							{ mode: 'latestDate' } as ICheckProcessedOptions,
+							{ mode: 'latestDate' },
 						);
 
 						returnData.push(
