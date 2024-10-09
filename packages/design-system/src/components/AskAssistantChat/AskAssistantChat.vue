@@ -100,7 +100,7 @@ function renderMarkdown(content: string) {
 	try {
 		return md.render(content);
 	} catch (e) {
-		captureException(e, {
+		captureException(new Error(`Error parsing assistant markdown: ${(e as Error).message}`), {
 			extra: { content },
 		});
 		console.error(`Error parsing markdown content ${content}`);
