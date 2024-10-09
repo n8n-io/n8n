@@ -246,10 +246,10 @@ export const CredentialSchema = {
 	number<M extends NumberMetadata>(options: M) {
 		return new CredentialSchemaNumber(options, z.number());
 	},
-	url<M extends Optional<StringMetadata, 'label'>>(options: M) {
+	url<M extends Optional<StringMetadata, 'label'>>(options: M = {} as M) {
 		return new CredentialSchemaString({ label: 'URL', ...options }, z.string().url());
 	},
-	email<M extends Optional<StringMetadata, 'label'>>(options: M) {
+	email<M extends Optional<StringMetadata, 'label'>>(options: M = {} as M) {
 		return new CredentialSchemaString({ label: 'Email', ...options }, z.string().email());
 	},
 	options<V extends string, M extends OptionsMetadata<V>>(options: M) {
