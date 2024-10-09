@@ -128,16 +128,6 @@ export class OrchestrationService {
 		});
 	}
 
-	async getWorkerIds() {
-		if (!this.sanityCheck()) return;
-
-		const command = 'get-worker-id';
-
-		this.logger.debug(`Sending "${command}" to command channel`);
-
-		await this.publisher.publishCommand({ command });
-	}
-
 	// ----------------------------------
 	//           activations
 	// ----------------------------------
