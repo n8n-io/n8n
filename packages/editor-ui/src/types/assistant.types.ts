@@ -195,3 +195,16 @@ export namespace ReplaceCodeRequest {
 		parameters: INodeParameters;
 	}
 }
+
+export namespace AskAiRequest {
+	export interface RequestPayload {
+		question: string;
+		context: {
+			schema: ChatRequest.NodeExecutionSchema[];
+			inputSchema: ChatRequest.NodeExecutionSchema;
+			pushRef: string;
+			ndvPushRef: string;
+		};
+		forNode: 'code' | 'transform';
+	}
+}

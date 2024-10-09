@@ -93,7 +93,7 @@
     "@n8n/permissions": "workspace:*",
     "@n8n/task-runner": "workspace:*",
     "@n8n/typeorm": "0.3.20-12",
-    "@n8n_io/ai-assistant-sdk": "1.9.4",
+    "@n8n_io/ai-assistant-sdk": "1.10.3",
     "@n8n_io/license-sdk": "2.13.1",
     "@oclif/core": "4.0.7",
     "@rudderstack/rudder-sdk-node": "2.0.9",
