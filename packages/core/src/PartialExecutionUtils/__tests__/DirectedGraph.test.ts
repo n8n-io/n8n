@@ -89,6 +89,60 @@ describe('DirectedGraph', () => {
 		});
 	});
 
+	describe('getParentConnections', () => {
+		// ┌─────┐   ┌─────┐   ┌─────┐   ┌─────┐
+		// │node1├──►│node2├──►│node3│──►│node4│
+		// └─────┘   └─────┘   └─────┘   └─────┘
+		test('returns all parent connections', () => {
+			// ARRANGE
+			const node1 = createNodeData({ name: 'Node1' });
+			const node2 = createNodeData({ name: 'Node2' });
+			const node3 = createNodeData({ name: 'Node3' });
+			const node4 = createNodeData({ name: 'Node4' });
+			const graph = new DirectedGraph()
+				.addNodes(node1, node2, node3, node4)
+				.addConnections(
+					{ from: node1, to: node2 },
+					{ from: node2, to: node3 },
+					{ from: node3, to: node4 },
+				);
+
+			// ACT
+			const connections = graph.getParentConnections(node3);
+
+			// ASSERT
+			const expectedConnections = graph.getConnections().filter((c) => c.to !== node4);
+			expect(connections.size).toBe(2);
+			expect(connections).toEqual(new Set(expectedConnections));
+		});
+
+		//     ┌─────┐    ┌─────┐   ┌─────┐
+		//  ┌─►│node1├───►│node2├──►│node3├─┐
+		//  │  └─────┘    └─────┘   └─────┘ │
+		//  │                               │
+		//  └───────────────────────────────┘
+		test('terminates when finding a cycle', () => {
+			// ARRANGE
+			const node1 = createNodeData({ name: 'Node1' });
+			const node2 = createNodeData({ name: 'Node2' });
+			const node3 = createNodeData({ name: 'Node3' });
+			const graph = new DirectedGraph()
+				.addNodes(node1, node2, node3)
+				.addConnections(
+					{ from: node1, to: node2 },
+					{ from: node2, to: node3 },
+					{ from: node3, to: node1 },
+				);
+
+			// ACT
+			const connections = graph.getParentConnections(node3);
+
+			// ASSERT
+			expect(connections.size).toBe(3);
+			expect(connections).toEqual(new Set(graph.getConnections()));
+		});
+	});
+
 	describe('removeNode', () => {
 		//              XX
 		//  ┌─────┐    ┌─────┐   ┌─────┐

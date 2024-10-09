@@ -80,7 +80,7 @@ function findStartNodesRecursive(
 	}
 
 	// Recurse with every direct child that is part of the sub graph.
-	const outGoingConnections = graph.getDirectChildren(current);
+	const outGoingConnections = graph.getDirectChildConnections(current);
 	for (const outGoingConnection of outGoingConnections) {
 		const nodeRunData = getIncomingData(
 			runData,
