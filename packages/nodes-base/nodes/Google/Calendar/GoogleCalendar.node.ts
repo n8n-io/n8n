@@ -91,7 +91,7 @@ export class GoogleCalendar implements INodeType {
 			// select them easily
 			async getConferenceSolutations(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const calendar = this.getCurrentNodeParameter('calendar') as string;
+				const calendar = this.getCurrentNodeParameter('calendar', { extractValue: true }) as string;
 				const posibleSolutions: IDataObject = {
 					eventHangout: 'Google Hangout',
 					eventNamedHangout: 'Google Hangout Classic',
