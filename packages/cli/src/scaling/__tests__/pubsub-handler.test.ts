@@ -37,7 +37,7 @@ describe('PubSubHandler', () => {
 
 		it('should set up handlers in webhook process', () => {
 			// @ts-expect-error Spying on private method
-			const setupHandlersSpy = jest.spyOn(PubSubHandler.prototype, 'setupHandlers');
+			const setupCommandHandlersSpy = jest.spyOn(PubSubHandler.prototype, 'setupCommandHandlers');
 
 			new PubSubHandler(
 				eventService,
@@ -54,7 +54,7 @@ describe('PubSubHandler', () => {
 				testWebhooks,
 			).init();
 
-			expect(setupHandlersSpy).toHaveBeenCalledWith({
+			expect(setupCommandHandlersSpy).toHaveBeenCalledWith({
 				'reload-license': expect.any(Function),
 				'restart-event-bus': expect.any(Function),
 				'reload-external-secrets-providers': expect.any(Function),
@@ -210,7 +210,7 @@ describe('PubSubHandler', () => {
 
 		it('should set up handlers in worker process', () => {
 			// @ts-expect-error Spying on private method
-			const setupHandlersSpy = jest.spyOn(PubSubHandler.prototype, 'setupHandlers');
+			const setupCommandHandlersSpy = jest.spyOn(PubSubHandler.prototype, 'setupCommandHandlers');
 
 			new PubSubHandler(
 				eventService,
@@ -227,7 +227,7 @@ describe('PubSubHandler', () => {
 				testWebhooks,
 			).init();
 
-			expect(setupHandlersSpy).toHaveBeenCalledWith({
+			expect(setupCommandHandlersSpy).toHaveBeenCalledWith({
 				'reload-license': expect.any(Function),
 				'restart-event-bus': expect.any(Function),
 				'reload-external-secrets-providers': expect.any(Function),
