@@ -307,6 +307,83 @@ describe('PubSubHandler', () => {
 			expect(externalSecretsManager.reloadAllProviders).toHaveBeenCalled();
 		});
 
+		it('should install community package on `community-package-install` event', () => {
+			new PubSubHandler(
+				eventService,
+				instanceSettings,
+				license,
+				eventbus,
+				externalSecretsManager,
+				communityPackagesService,
+				publisher,
+				workerStatusService,
+				activeWorkflowManager,
+				push,
+				workflowRepository,
+				testWebhooks,
+			).init();
+
+			eventService.emit('community-package-install', {
+				packageName: 'test-package',
+				packageVersion: '1.0.0',
+			});
+
+			expect(communityPackagesService.installOrUpdateNpmPackage).toHaveBeenCalledWith(
+				'test-package',
+				'1.0.0',
+			);
+		});
+
+		it('should update community package on `community-package-update` event', () => {
+			new PubSubHandler(
+				eventService,
+				instanceSettings,
+				license,
+				eventbus,
+				externalSecretsManager,
+				communityPackagesService,
+				publisher,
+				workerStatusService,
+				activeWorkflowManager,
+				push,
+				workflowRepository,
+				testWebhooks,
+			).init();
+
+			eventService.emit('community-package-update', {
+				packageName: 'test-package',
+				packageVersion: '1.0.0',
+			});
+
+			expect(communityPackagesService.installOrUpdateNpmPackage).toHaveBeenCalledWith(
+				'test-package',
+				'1.0.0',
+			);
+		});
+
+		it('should uninstall community package on `community-package-uninstall` event', () => {
+			new PubSubHandler(
+				eventService,
+				instanceSettings,
+				license,
+				eventbus,
+				externalSecretsManager,
+				communityPackagesService,
+				publisher,
+				workerStatusService,
+				activeWorkflowManager,
+				push,
+				workflowRepository,
+				testWebhooks,
+			).init();
+
+			eventService.emit('community-package-uninstall', {
+				packageName: 'test-package',
+			});
+
+			expect(communityPackagesService.removeNpmPackage).toHaveBeenCalledWith('test-package');
+		});
+
 		it('should generate status on `get-worker-status` event', () => {
 			new PubSubHandler(
 				eventService,
@@ -517,227 +594,284 @@ describe('PubSubHandler', () => {
 			expect(communityPackagesService.removeNpmPackage).toHaveBeenCalledWith('test-package');
 		});
 
-		it('should handle `add-webhooks-triggers-and-pollers` event', async () => {
-			new PubSubHandler(
-				eventService,
-				instanceSettings,
-				license,
-				eventbus,
-				externalSecretsManager,
-				communityPackagesService,
-				publisher,
-				workerStatusService,
-				activeWorkflowManager,
-				push,
-				workflowRepository,
-				testWebhooks,
-			).init();
+		describe('multi-main setup', () => {
+			it('if leader, should handle `add-webhooks-triggers-and-pollers` event', async () => {
+				new PubSubHandler(
+					eventService,
+					instanceSettings,
+					license,
+					eventbus,
+					externalSecretsManager,
+					communityPackagesService,
+					publisher,
+					workerStatusService,
+					activeWorkflowManager,
+					push,
+					workflowRepository,
+					testWebhooks,
+				).init();
 
-			const workflowId = 'test-workflow-id';
+				const workflowId = 'test-workflow-id';
 
-			eventService.emit('add-webhooks-triggers-and-pollers', { workflowId });
+				eventService.emit('add-webhooks-triggers-and-pollers', { workflowId });
 
-			await flushPromises();
+				await flushPromises();
 
-			expect(activeWorkflowManager.add).toHaveBeenCalledWith(workflowId, 'activate', undefined, {
-				shouldPublish: false,
+				expect(activeWorkflowManager.add).toHaveBeenCalledWith(workflowId, 'activate', undefined, {
+					shouldPublish: false,
+				});
+				expect(push.broadcast).toHaveBeenCalledWith('workflowActivated', { workflowId });
+				expect(publisher.publishCommand).toHaveBeenCalledWith({
+					command: 'display-workflow-activation',
+					payload: { workflowId },
+				});
 			});
-			expect(push.broadcast).toHaveBeenCalledWith('workflowActivated', { workflowId });
-			expect(publisher.publishCommand).toHaveBeenCalledWith({
-				command: 'display-workflow-activation',
-				payload: { workflowId },
+
+			it('if follower, should skip `add-webhooks-triggers-and-pollers` event', async () => {
+				new PubSubHandler(
+					eventService,
+					mock<InstanceSettings>({ instanceType: 'main', isLeader: false, isFollower: true }),
+					license,
+					eventbus,
+					externalSecretsManager,
+					communityPackagesService,
+					publisher,
+					workerStatusService,
+					activeWorkflowManager,
+					push,
+					workflowRepository,
+					testWebhooks,
+				).init();
+
+				const workflowId = 'test-workflow-id';
+
+				eventService.emit('add-webhooks-triggers-and-pollers', { workflowId });
+
+				await flushPromises();
+
+				expect(activeWorkflowManager.add).not.toHaveBeenCalled();
+				expect(push.broadcast).not.toHaveBeenCalled();
+				expect(publisher.publishCommand).not.toHaveBeenCalled();
 			});
-		});
 
-		it('should handle `remove-triggers-and-pollers` event', async () => {
-			new PubSubHandler(
-				eventService,
-				instanceSettings,
-				license,
-				eventbus,
-				externalSecretsManager,
-				communityPackagesService,
-				publisher,
-				workerStatusService,
-				activeWorkflowManager,
-				push,
-				workflowRepository,
-				testWebhooks,
-			).init();
+			it('if leader, should handle `remove-triggers-and-pollers` event', async () => {
+				new PubSubHandler(
+					eventService,
+					instanceSettings,
+					license,
+					eventbus,
+					externalSecretsManager,
+					communityPackagesService,
+					publisher,
+					workerStatusService,
+					activeWorkflowManager,
+					push,
+					workflowRepository,
+					testWebhooks,
+				).init();
 
-			const workflowId = 'test-workflow-id';
+				const workflowId = 'test-workflow-id';
 
-			eventService.emit('remove-triggers-and-pollers', { workflowId });
+				eventService.emit('remove-triggers-and-pollers', { workflowId });
 
-			await flushPromises();
+				await flushPromises();
 
-			expect(activeWorkflowManager.removeActivationError).toHaveBeenCalledWith(workflowId);
-			expect(activeWorkflowManager.removeWorkflowTriggersAndPollers).toHaveBeenCalledWith(
-				workflowId,
-			);
-			expect(push.broadcast).toHaveBeenCalledWith('workflowDeactivated', { workflowId });
-			expect(publisher.publishCommand).toHaveBeenCalledWith({
-				command: 'display-workflow-deactivation',
-				payload: { workflowId },
+				expect(activeWorkflowManager.removeActivationError).toHaveBeenCalledWith(workflowId);
+				expect(activeWorkflowManager.removeWorkflowTriggersAndPollers).toHaveBeenCalledWith(
+					workflowId,
+				);
+				expect(push.broadcast).toHaveBeenCalledWith('workflowDeactivated', { workflowId });
+				expect(publisher.publishCommand).toHaveBeenCalledWith({
+					command: 'display-workflow-deactivation',
+					payload: { workflowId },
+				});
 			});
-		});
 
-		it('should handle `display-workflow-activation` event', () => {
-			new PubSubHandler(
-				eventService,
-				instanceSettings,
-				license,
-				eventbus,
-				externalSecretsManager,
-				communityPackagesService,
-				publisher,
-				workerStatusService,
-				activeWorkflowManager,
-				push,
-				workflowRepository,
-				testWebhooks,
-			).init();
+			it('if follower, should skip `remove-triggers-and-pollers` event', async () => {
+				new PubSubHandler(
+					eventService,
+					mock<InstanceSettings>({ instanceType: 'main', isLeader: false, isFollower: true }),
+					license,
+					eventbus,
+					externalSecretsManager,
+					communityPackagesService,
+					publisher,
+					workerStatusService,
+					activeWorkflowManager,
+					push,
+					workflowRepository,
+					testWebhooks,
+				).init();
 
-			const workflowId = 'test-workflow-id';
+				const workflowId = 'test-workflow-id';
 
-			eventService.emit('display-workflow-activation', { workflowId });
+				eventService.emit('remove-triggers-and-pollers', { workflowId });
 
-			expect(push.broadcast).toHaveBeenCalledWith('workflowActivated', { workflowId });
-		});
+				await flushPromises();
 
-		it('should handle `display-workflow-deactivation` event', () => {
-			new PubSubHandler(
-				eventService,
-				instanceSettings,
-				license,
-				eventbus,
-				externalSecretsManager,
-				communityPackagesService,
-				publisher,
-				workerStatusService,
-				activeWorkflowManager,
-				push,
-				workflowRepository,
-				testWebhooks,
-			).init();
-
-			const workflowId = 'test-workflow-id';
-
-			eventService.emit('display-workflow-deactivation', { workflowId });
-
-			expect(push.broadcast).toHaveBeenCalledWith('workflowDeactivated', { workflowId });
-		});
-
-		it('should handle `display-workflow-activation-error` event', () => {
-			new PubSubHandler(
-				eventService,
-				instanceSettings,
-				license,
-				eventbus,
-				externalSecretsManager,
-				communityPackagesService,
-				publisher,
-				workerStatusService,
-				activeWorkflowManager,
-				push,
-				workflowRepository,
-				testWebhooks,
-			).init();
-
-			const workflowId = 'test-workflow-id';
-			const errorMessage = 'Test error message';
-
-			eventService.emit('display-workflow-activation-error', { workflowId, errorMessage });
-
-			expect(push.broadcast).toHaveBeenCalledWith('workflowFailedToActivate', {
-				workflowId,
-				errorMessage,
+				expect(activeWorkflowManager.removeActivationError).not.toHaveBeenCalled();
+				expect(activeWorkflowManager.removeWorkflowTriggersAndPollers).not.toHaveBeenCalled();
+				expect(push.broadcast).not.toHaveBeenCalled();
+				expect(publisher.publishCommand).not.toHaveBeenCalled();
 			});
-		});
 
-		it('should handle `relay-execution-lifecycle-event` event', () => {
-			new PubSubHandler(
-				eventService,
-				instanceSettings,
-				license,
-				eventbus,
-				externalSecretsManager,
-				communityPackagesService,
-				publisher,
-				workerStatusService,
-				activeWorkflowManager,
-				push,
-				workflowRepository,
-				testWebhooks,
-			).init();
+			it('should handle `display-workflow-activation` event', () => {
+				new PubSubHandler(
+					eventService,
+					instanceSettings,
+					license,
+					eventbus,
+					externalSecretsManager,
+					communityPackagesService,
+					publisher,
+					workerStatusService,
+					activeWorkflowManager,
+					push,
+					workflowRepository,
+					testWebhooks,
+				).init();
 
-			const pushRef = 'test-push-ref';
-			const type = 'executionStarted';
-			const args = { testArg: 'value' };
+				const workflowId = 'test-workflow-id';
 
-			push.getBackend.mockReturnValue(
-				mock<WebSocketPush>({ hasPushRef: jest.fn().mockReturnValue(true) }),
-			);
+				eventService.emit('display-workflow-activation', { workflowId });
 
-			eventService.emit('relay-execution-lifecycle-event', { type, args, pushRef });
+				expect(push.broadcast).toHaveBeenCalledWith('workflowActivated', { workflowId });
+			});
 
-			expect(push.send).toHaveBeenCalledWith(type, args, pushRef);
-		});
+			it('should handle `display-workflow-deactivation` event', () => {
+				new PubSubHandler(
+					eventService,
+					instanceSettings,
+					license,
+					eventbus,
+					externalSecretsManager,
+					communityPackagesService,
+					publisher,
+					workerStatusService,
+					activeWorkflowManager,
+					push,
+					workflowRepository,
+					testWebhooks,
+				).init();
 
-		it('should handle `clear-test-webhooks` event', () => {
-			new PubSubHandler(
-				eventService,
-				instanceSettings,
-				license,
-				eventbus,
-				externalSecretsManager,
-				communityPackagesService,
-				publisher,
-				workerStatusService,
-				activeWorkflowManager,
-				push,
-				workflowRepository,
-				testWebhooks,
-			).init();
+				const workflowId = 'test-workflow-id';
 
-			const webhookKey = 'test-webhook-key';
-			const workflowEntity = mock<IWorkflowDb>({ id: 'test-workflow-id' });
-			const pushRef = 'test-push-ref';
+				eventService.emit('display-workflow-deactivation', { workflowId });
 
-			push.getBackend.mockReturnValue(
-				mock<WebSocketPush>({ hasPushRef: jest.fn().mockReturnValue(true) }),
-			);
-			testWebhooks.toWorkflow.mockReturnValue(mock<Workflow>({ id: 'test-workflow-id' }));
+				expect(push.broadcast).toHaveBeenCalledWith('workflowDeactivated', { workflowId });
+			});
 
-			eventService.emit('clear-test-webhooks', { webhookKey, workflowEntity, pushRef });
+			it('should handle `display-workflow-activation-error` event', () => {
+				new PubSubHandler(
+					eventService,
+					instanceSettings,
+					license,
+					eventbus,
+					externalSecretsManager,
+					communityPackagesService,
+					publisher,
+					workerStatusService,
+					activeWorkflowManager,
+					push,
+					workflowRepository,
+					testWebhooks,
+				).init();
 
-			expect(testWebhooks.clearTimeout).toHaveBeenCalledWith(webhookKey);
-			expect(testWebhooks.deactivateWebhooks).toHaveBeenCalled();
-		});
+				const workflowId = 'test-workflow-id';
+				const errorMessage = 'Test error message';
 
-		it('should handle `response-to-get-worker-status event', () => {
-			new PubSubHandler(
-				eventService,
-				instanceSettings,
-				license,
-				eventbus,
-				externalSecretsManager,
-				communityPackagesService,
-				publisher,
-				workerStatusService,
-				activeWorkflowManager,
-				push,
-				workflowRepository,
-				testWebhooks,
-			).init();
+				eventService.emit('display-workflow-activation-error', { workflowId, errorMessage });
 
-			const workerStatus = mock<WorkerStatus>({ senderId: 'worker-1', loadAvg: [123] });
+				expect(push.broadcast).toHaveBeenCalledWith('workflowFailedToActivate', {
+					workflowId,
+					errorMessage,
+				});
+			});
 
-			eventService.emit('response-to-get-worker-status', workerStatus);
+			it('should handle `relay-execution-lifecycle-event` event', () => {
+				new PubSubHandler(
+					eventService,
+					instanceSettings,
+					license,
+					eventbus,
+					externalSecretsManager,
+					communityPackagesService,
+					publisher,
+					workerStatusService,
+					activeWorkflowManager,
+					push,
+					workflowRepository,
+					testWebhooks,
+				).init();
 
-			expect(push.broadcast).toHaveBeenCalledWith('sendWorkerStatusMessage', {
-				workerId: workerStatus.senderId,
-				status: workerStatus,
+				const pushRef = 'test-push-ref';
+				const type = 'executionStarted';
+				const args = { testArg: 'value' };
+
+				push.getBackend.mockReturnValue(
+					mock<WebSocketPush>({ hasPushRef: jest.fn().mockReturnValue(true) }),
+				);
+
+				eventService.emit('relay-execution-lifecycle-event', { type, args, pushRef });
+
+				expect(push.send).toHaveBeenCalledWith(type, args, pushRef);
+			});
+
+			it('should handle `clear-test-webhooks` event', () => {
+				new PubSubHandler(
+					eventService,
+					instanceSettings,
+					license,
+					eventbus,
+					externalSecretsManager,
+					communityPackagesService,
+					publisher,
+					workerStatusService,
+					activeWorkflowManager,
+					push,
+					workflowRepository,
+					testWebhooks,
+				).init();
+
+				const webhookKey = 'test-webhook-key';
+				const workflowEntity = mock<IWorkflowDb>({ id: 'test-workflow-id' });
+				const pushRef = 'test-push-ref';
+
+				push.getBackend.mockReturnValue(
+					mock<WebSocketPush>({ hasPushRef: jest.fn().mockReturnValue(true) }),
+				);
+				testWebhooks.toWorkflow.mockReturnValue(mock<Workflow>({ id: 'test-workflow-id' }));
+
+				eventService.emit('clear-test-webhooks', { webhookKey, workflowEntity, pushRef });
+
+				expect(testWebhooks.clearTimeout).toHaveBeenCalledWith(webhookKey);
+				expect(testWebhooks.deactivateWebhooks).toHaveBeenCalled();
+			});
+
+			it('should handle `response-to-get-worker-status event', () => {
+				new PubSubHandler(
+					eventService,
+					instanceSettings,
+					license,
+					eventbus,
+					externalSecretsManager,
+					communityPackagesService,
+					publisher,
+					workerStatusService,
+					activeWorkflowManager,
+					push,
+					workflowRepository,
+					testWebhooks,
+				).init();
+
+				const workerStatus = mock<WorkerStatus>({ senderId: 'worker-1', loadAvg: [123] });
+
+				eventService.emit('response-to-get-worker-status', workerStatus);
+
+				expect(push.broadcast).toHaveBeenCalledWith('sendWorkerStatusMessage', {
+					workerId: workerStatus.senderId,
+					status: workerStatus,
+				});
 			});
 		});
 	});
