@@ -14,8 +14,7 @@ type LicenseError = Error & { errorId?: keyof typeof LicenseErrors };
 
 export const LicenseErrors = {
 	SCHEMA_VALIDATION: 'Activation key is in the wrong format',
-	RESERVATION_EXHAUSTED:
-		'Activation key has been used too many times. Please contact sales@n8n.io if you would like to extend it',
+	RESERVATION_EXHAUSTED: 'Activation key has been used too many times',
 	RESERVATION_EXPIRED: 'Activation key has expired',
 	NOT_FOUND: 'Activation key not found',
 	RESERVATION_CONFLICT: 'Activation key not found',
