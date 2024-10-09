@@ -58,6 +58,8 @@ export class WorkerServer {
 	) {
 		assert(this.instanceSettings.instanceType === 'worker');
 
+		this.logger = this.logger.withScope('scaling');
+
 		this.app = express();
 
 		this.app.disable('x-powered-by');
@@ -110,6 +112,11 @@ export class WorkerServer {
 		if (metrics) {
 			await this.prometheusMetricsService.init(this.app);
 		}
+
+		this.logger.debug('Worker server initialized', {
+			instanceType: 'worker',
+			endpoints: Object.keys(this.endpointsConfig),
+		});
 	}
 
 	private async readiness(_req: express.Request, res: express.Response) {
@@ -140,6 +147,8 @@ export class WorkerServer {
 		this.credentialsOverwrites.setData(req.body);
 
 		this.overwritesLoaded = true;
+
+		this.logger.debug('Credentials overwrites ready', { instanceType: 'worker' });
 
 		ResponseHelper.sendSuccessResponse(res, { success: true }, true, 200);
 	}

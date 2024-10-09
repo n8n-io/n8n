@@ -26,7 +26,11 @@ export class JobProcessor {
 		private readonly executionRepository: ExecutionRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly nodeTypes: NodeTypes,
-	) {}
+	) {
+		this.logger = this.logger.withScope('scaling');
+
+		this.logger.debug('Job processor initialized');
+	}
 
 	async processJob(job: Job): Promise<JobResult> {
 		const { executionId, loadStaticData } = job.data;
@@ -37,15 +41,16 @@ export class JobProcessor {
 		});
 
 		if (!execution) {
-			this.logger.error('[JobProcessor] Failed to find execution data', { executionId });
 			throw new ApplicationError('Failed to find execution data. Aborting execution.', {
-				extra: { executionId },
+				extra: { executionId, jobId: job.id },
 			});
 		}
 
 		const workflowId = execution.workflowData.id;
 
-		this.logger.info(`[JobProcessor] Starting job ${job.id} (execution ${executionId})`);
+		this.logger.info(`Worker started running job ${job.id} (execution ${executionId})`, {
+			instanceType: 'worker',
+		});
 
 		const startedAt = await this.executionRepository.setRunning(executionId);
 
@@ -58,8 +63,9 @@ export class JobProcessor {
 			});
 
 			if (workflowData === null) {
-				this.logger.error('[JobProcessor] Failed to find workflow', { workflowId, executionId });
-				throw new ApplicationError('Failed to find workflow', { extra: { workflowId } });
+				throw new ApplicationError('Failed to find workflow', {
+					extra: { workflowId, instanceType: 'worker' },
+				});
 			}
 
 			staticData = workflowData.staticData;
@@ -102,10 +108,14 @@ export class JobProcessor {
 
 		additionalData.hooks.hookFunctions.sendResponse = [
 			async (response: IExecuteResponsePromiseData): Promise<void> => {
+				this.logger.debug(`Responding to webhook for execution ${executionId} (job ${job.id})`, {
+					instanceType: 'worker',
+				});
 				await job.progress({
 					kind: 'respond-to-webhook',
 					executionId,
 					response: this.encodeWebhookResponse(response),
+					workerId: config.getEnv('redis.queueModeId'),
 				});
 			},
 		];
@@ -115,7 +125,7 @@ export class JobProcessor {
 		additionalData.setExecutionStatus = (status: ExecutionStatus) => {
 			// Can't set the status directly in the queued worker, but it will happen in InternalHook.onWorkflowPostExecute
 			this.logger.debug(
-				`[JobProcessor] Queued worker execution status for ${executionId} is "${status}"`,
+				`Queued worker execution status for execution ${executionId} is "${status}"`,
 			);
 		};
 
@@ -148,7 +158,15 @@ export class JobProcessor {
 
 		delete this.runningJobs[job.id];
 
-		this.logger.debug('[JobProcessor] Job finished running', { jobId: job.id, executionId });
+		this.logger.info(`Worker finished running execution ${executionId} (job ${job.id})`, {
+			instanceType: 'worker',
+		});
+
+		await job.progress({
+			kind: 'job-finished',
+			executionId,
+			workerId: config.getEnv('redis.queueModeId'),
+		});
 
 		/**
 		 * @important Do NOT call `workflowExecuteAfter` hook here.

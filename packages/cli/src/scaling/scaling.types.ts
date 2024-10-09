@@ -23,16 +23,34 @@ export type JobStatus = Bull.JobStatus;
 
 export type JobOptions = Bull.JobOptions;
 
-export type JobReport = JobReportToMain | JobReportToWorker;
+/**
+ * Message sent via Bull's pubsub mechanism during the execution of a job.
+ * Do not confuse Bull's pubsub mechanism with n8n's own pubsub setup.
+ */
+export type JobMessage = JobMessageToMain | JobMessageToWorker;
 
-type JobReportToMain = RespondToWebhookMessage;
+type JobMessageToMain = RespondToWebhookMessage | JobFinishedMessage | JobFailedMessage;
 
-type JobReportToWorker = AbortJobMessage;
+type JobMessageToWorker = AbortJobMessage;
 
 type RespondToWebhookMessage = {
 	kind: 'respond-to-webhook';
 	executionId: string;
 	response: IExecuteResponsePromiseData;
+	workerId: string;
+};
+
+type JobFinishedMessage = {
+	kind: 'job-finished';
+	executionId: string;
+	workerId: string;
+};
+
+type JobFailedMessage = {
+	kind: 'job-failed';
+	executionId: string;
+	workerId: string;
+	error: Error;
 };
 
 type AbortJobMessage = {
