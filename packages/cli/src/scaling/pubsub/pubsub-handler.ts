@@ -126,7 +126,7 @@ export class PubSubHandler {
 	};
 
 	private multiMainHandlers: {
-		[EventName in keyof PubSub.MultiMainHandlers]: (
+		[EventName in keyof PubSub.MultiMainEvents]: (
 			event: PubSubEventMap[EventName],
 		) => Promise<void>;
 	} = {

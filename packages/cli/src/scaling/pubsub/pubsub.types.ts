@@ -116,7 +116,7 @@ export namespace PubSub {
 	>;
 
 	/** Multi-main events emitted from pubsub messages. */
-	export type MultiMainHandlers = Pick<
+	export type MultiMainEvents = Pick<
 		PubSubEventMap,
 		| 'add-webhooks-triggers-and-pollers'
 		| 'remove-triggers-and-pollers'

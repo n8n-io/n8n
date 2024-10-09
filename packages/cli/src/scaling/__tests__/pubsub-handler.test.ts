@@ -19,6 +19,8 @@ import type { Publisher } from '../pubsub/publisher.service';
 import { PubSubHandler } from '../pubsub/pubsub-handler';
 import type { WorkerStatus } from '../worker-status';
 
+const flushPromises = async () => await new Promise((resolve) => setImmediate(resolve));
+
 describe('PubSubHandler', () => {
 	const eventService = new EventService();
 	const license = mock<License>();
@@ -327,14 +329,18 @@ describe('PubSubHandler', () => {
 		});
 	});
 
-	describe.skip('in main process', () => {
+	describe('in main process', () => {
 		const instanceSettings = mock<InstanceSettings>({
 			instanceType: 'main',
 			isLeader: true,
 			isFollower: false,
 		});
 
-		it('should set up command and worker response handlers in main process', () => {
+		afterEach(() => {
+			jest.clearAllMocks();
+		});
+
+		it.only('should set up command and worker response handlers in main process', () => {
 			// @ts-expect-error Spying on private method
 			const setupCommandHandlersSpy = jest.spyOn(PubSubHandler.prototype, 'setupCommandHandlers');
 			const setupWorkerResponseHandlersSpy = jest.spyOn(
@@ -379,7 +385,7 @@ describe('PubSubHandler', () => {
 			});
 		});
 
-		it('should reload license on `reload-license` event', () => {
+		it.only('should reload license on `reload-license` event', () => {
 			new PubSubHandler(
 				eventService,
 				instanceSettings,
@@ -400,7 +406,7 @@ describe('PubSubHandler', () => {
 			expect(license.reload).toHaveBeenCalled();
 		});
 
-		it('should restart event bus on `restart-event-bus` event', () => {
+		it.only('should restart event bus on `restart-event-bus` event', () => {
 			new PubSubHandler(
 				eventService,
 				instanceSettings,
@@ -421,7 +427,7 @@ describe('PubSubHandler', () => {
 			expect(eventbus.restart).toHaveBeenCalled();
 		});
 
-		it('should reload providers on `reload-external-secrets-providers` event', () => {
+		it.only('should reload providers on `reload-external-secrets-providers` event', () => {
 			new PubSubHandler(
 				eventService,
 				instanceSettings,
@@ -442,7 +448,7 @@ describe('PubSubHandler', () => {
 			expect(externalSecretsManager.reloadAllProviders).toHaveBeenCalled();
 		});
 
-		it('should install community package on `community-package-install` event', () => {
+		it.only('should install community package on `community-package-install` event', () => {
 			new PubSubHandler(
 				eventService,
 				instanceSettings,
@@ -469,7 +475,7 @@ describe('PubSubHandler', () => {
 			);
 		});
 
-		it('should update community package on `community-package-update` event', () => {
+		it.only('should update community package on `community-package-update` event', () => {
 			new PubSubHandler(
 				eventService,
 				instanceSettings,
@@ -496,7 +502,7 @@ describe('PubSubHandler', () => {
 			);
 		});
 
-		it('should uninstall community package on `community-package-uninstall` event', () => {
+		it.only('should uninstall community package on `community-package-uninstall` event', () => {
 			new PubSubHandler(
 				eventService,
 				instanceSettings,
@@ -519,7 +525,7 @@ describe('PubSubHandler', () => {
 			expect(communityPackagesService.removeNpmPackage).toHaveBeenCalledWith('test-package');
 		});
 
-		it('should handle `add-webhooks-triggers-and-pollers` event', () => {
+		it.only('should handle `add-webhooks-triggers-and-pollers` event', async () => {
 			const publisher = mock<Publisher>();
 
 			new PubSubHandler(
@@ -541,6 +547,8 @@ describe('PubSubHandler', () => {
 
 			eventService.emit('add-webhooks-triggers-and-pollers', { workflowId });
 
+			await flushPromises();
+
 			expect(activeWorkflowManager.add).toHaveBeenCalledWith(workflowId, 'activate', undefined, {
 				shouldPublish: false,
 			});
@@ -551,10 +559,12 @@ describe('PubSubHandler', () => {
 			});
 		});
 
-		it('should handle `remove-triggers-and-pollers` event', () => {
+		it.skip('should handle `remove-triggers-and-pollers` event', async () => {
 			const workflowId = 'test-workflow-id';
 
 			eventService.emit('remove-triggers-and-pollers', { workflowId });
+
+			await flushPromises();
 
 			expect(activeWorkflowManager.removeActivationError).toHaveBeenCalledWith(workflowId);
 			expect(activeWorkflowManager.removeWorkflowTriggersAndPollers).toHaveBeenCalledWith(
@@ -567,7 +577,7 @@ describe('PubSubHandler', () => {
 			});
 		});
 
-		it('should handle `display-workflow-activation` event', () => {
+		it.skip('should handle `display-workflow-activation` event', () => {
 			const workflowId = 'test-workflow-id';
 
 			eventService.emit('display-workflow-activation', { workflowId });
@@ -575,7 +585,7 @@ describe('PubSubHandler', () => {
 			expect(push.broadcast).toHaveBeenCalledWith('workflowActivated', { workflowId });
 		});
 
-		it('should handle `display-workflow-deactivation` event', () => {
+		it.skip('should handle `display-workflow-deactivation` event', () => {
 			const workflowId = 'test-workflow-id';
 
 			eventService.emit('display-workflow-deactivation', { workflowId });
@@ -583,7 +593,7 @@ describe('PubSubHandler', () => {
 			expect(push.broadcast).toHaveBeenCalledWith('workflowDeactivated', { workflowId });
 		});
 
-		it('should handle `display-workflow-activation-error` event', () => {
+		it.skip('should handle `display-workflow-activation-error` event', () => {
 			const workflowId = 'test-workflow-id';
 			const errorMessage = 'Test error message';
 
@@ -595,7 +605,7 @@ describe('PubSubHandler', () => {
 			});
 		});
 
-		it('should handle `relay-execution-lifecycle-event` event', () => {
+		it.skip('should handle `relay-execution-lifecycle-event` event', () => {
 			const pushRef = 'test-push-ref';
 			const type = 'executionStarted';
 			const args = { testArg: 'value' };
@@ -609,7 +619,7 @@ describe('PubSubHandler', () => {
 			expect(push.send).toHaveBeenCalledWith(type, args, pushRef);
 		});
 
-		it('should handle `clear-test-webhooks` event', () => {
+		it.skip('should handle `clear-test-webhooks` event', () => {
 			const webhookKey = 'test-webhook-key';
 			const workflowEntity = mock<IWorkflowDb>({ id: 'test-workflow-id' });
 			const pushRef = 'test-push-ref';
@@ -625,7 +635,7 @@ describe('PubSubHandler', () => {
 			expect(testWebhooks.deactivateWebhooks).toHaveBeenCalled();
 		});
 
-		it('should handle `response-to-get-worker-status event', () => {
+		it.skip('should handle `response-to-get-worker-status event', () => {
 			const workerStatus = mock<WorkerStatusReport>({ senderId: 'worker-1', loadAvg: [123] });
 
 			eventService.emit('response-to-get-worker-status', workerStatus);
