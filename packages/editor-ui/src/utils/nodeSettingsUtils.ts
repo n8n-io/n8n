@@ -7,7 +7,7 @@ export function updateDynamicConnections(
 	connections: IConnections,
 	parameterData: IUpdateInformation<NodeParameterValueType>,
 ) {
-	console.log(node, connections, parameterData);
+	console.log(parameterData.name, parameterData.value);
 	if (node.type === SWITCH_NODE_TYPE && parameterData.name === 'parameters.numberOutputs') {
 		const curentNumberOutputs = node.parameters?.numberOutputs as number;
 		const newNumberOutputs = parameterData.value as number;
