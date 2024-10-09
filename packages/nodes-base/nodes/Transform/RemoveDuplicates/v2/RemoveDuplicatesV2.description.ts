@@ -128,8 +128,8 @@ export const removeDuplicatesNodeFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Dedupe Field',
-		name: 'dedupeField',
+		displayName: 'Value to Dedupe On',
+		name: 'dedupeValue',
 		type: 'string',
 		default: '',
 		description: 'Use an input field (or a combination of fields) that has a unique ID value',
@@ -143,8 +143,8 @@ export const removeDuplicatesNodeFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Dedupe Field',
-		name: 'incrementalDedupeField',
+		displayName: 'Value to Dedupe On',
+		name: 'incrementalDedupeValue',
 		type: 'number',
 		default: '',
 		description: 'Use an input field (or a combination of fields) that has an incremental value',
@@ -158,8 +158,8 @@ export const removeDuplicatesNodeFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Dedupe Field',
-		name: 'dateDedupeField',
+		displayName: 'Value to Dedupe On',
+		name: 'dateDedupeValue',
 		type: 'dateTime',
 		default: '',
 		description: 'Use an input field that has a date value in ISO format',

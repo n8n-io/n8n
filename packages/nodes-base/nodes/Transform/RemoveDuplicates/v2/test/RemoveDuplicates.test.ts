@@ -85,9 +85,9 @@ describe('RemoveDuplicatesV2', () => {
 			(paramName: string, itemIndex: number) => {
 				if (paramName === 'operation') return 'removeItemsSeenInPreviousExecutions';
 				if (paramName === 'logic') return 'removeItemsWithAlreadySeenKeyValues';
-				if (paramName === 'dedupeField' && itemIndex === 0) return 1;
-				if (paramName === 'dedupeField' && itemIndex === 1) return 2;
-				if (paramName === 'dedupeField' && itemIndex === 2) return 3;
+				if (paramName === 'dedupeValue' && itemIndex === 0) return 1;
+				if (paramName === 'dedupeValue' && itemIndex === 1) return 2;
+				if (paramName === 'dedupeValue' && itemIndex === 2) return 3;
 				if (paramName === 'options.scope') return 'node';
 				if (paramName === 'options.historySize') return 10;
 			},

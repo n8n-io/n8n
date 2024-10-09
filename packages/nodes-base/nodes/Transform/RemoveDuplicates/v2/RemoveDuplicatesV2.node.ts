@@ -28,9 +28,9 @@ const versionDescription: INodeTypeDescription = {
 	outputNames: ['Kept', 'Discarded'],
 	hints: [
 		{
-			message: 'The dedupe key set in “Dedupe Field” has no value',
+			message: 'The dedupe key set in “Value to Dedupe On” has no value',
 			displayCondition:
-				'={{ $parameter["operation"] === "removeItemsSeenInPreviousExecutions" && ($parameter["logic"] === "removeItemsWithAlreadySeenKeyValues" && $parameter["dedupeField"] === undefined) || ($parameter["logic"] === "removeItemsUpToStoredIncrementalKey" && $parameter["incrementalDedupeField"] === undefined) || ($parameter["logic"] === "removeItemsUpToStoredDate" && $parameter["dateDedupeField"] === undefined) }}',
+				'={{ $parameter["operation"] === "removeItemsSeenInPreviousExecutions" && ($parameter["logic"] === "removeItemsWithAlreadySeenKeyValues" && $parameter["dedupeValue"] === undefined) || ($parameter["logic"] === "removeItemsUpToStoredIncrementalKey" && $parameter["incrementalDedupeValue"] === undefined) || ($parameter["logic"] === "removeItemsUpToStoredDate" && $parameter["dateDedupeValue"] === undefined) }}',
 			whenToDisplay: 'beforeExecution',
 			location: 'outputPane',
 		},
@@ -77,7 +77,7 @@ export class RemoveDuplicatesV2 implements INodeType {
 						[key: string]: INodeExecutionData[];
 					} = {};
 					for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-						checkValue = this.getNodeParameter('dedupeField', itemIndex, '')?.toString() || '';
+						checkValue = this.getNodeParameter('dedupeValue', itemIndex, '')?.toString() || '';
 						if (itemMapping[checkValue]) {
 							itemMapping[checkValue].push(items[itemIndex]);
 						} else {
@@ -145,7 +145,7 @@ export class RemoveDuplicatesV2 implements INodeType {
 					} = {};
 
 					for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-						const incrementalKey = this.getNodeParameter('incrementalDedupeField', itemIndex, '');
+						const incrementalKey = this.getNodeParameter('incrementalDedupeValue', itemIndex, '');
 						parsedIncrementalKey = Number(incrementalKey);
 						if (isNaN(parsedIncrementalKey)) {
 							throw new NodeOperationError(
@@ -197,7 +197,7 @@ export class RemoveDuplicatesV2 implements INodeType {
 					} = {};
 
 					for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-						checkValue = this.getNodeParameter('dateDedupeField', itemIndex, '')?.toString() || '';
+						checkValue = this.getNodeParameter('dateDedupeValue', itemIndex, '')?.toString() || '';
 						const date = new Date(checkValue);
 						if (isNaN(date.getTime())) {
 							throw new NodeOperationError(
