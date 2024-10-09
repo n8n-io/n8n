@@ -310,7 +310,7 @@ export async function searchReviews(
 
 	const results: INodeListSearchItems[] = reviews
 		.map((a) => ({
-			name: a.comment.length > 50 ? `${a.comment.slice(0, 50)}...` : a.comment,
+			name: a.comment,
 			value: a.name,
 		}))
 		.filter((a) => !filter || a.name.toLowerCase().includes(filter.toLowerCase()))
@@ -351,7 +351,7 @@ export async function searchPosts(
 
 	const results: INodeListSearchItems[] = localPosts
 		.map((a) => ({
-			name: a.summary.length > 50 ? `${a.summary.slice(0, 50)}...` : a.summary,
+			name: a.summary,
 			value: a.name,
 		}))
 		.filter((a) => !filter || a.name.toLowerCase().includes(filter.toLowerCase()))
