@@ -80,25 +80,5 @@ export type PubSubCommandMap = {
 };
 
 export type PubSubWorkerResponseMap = {
-	// #region Lifecycle
-
-	'restart-event-bus': {
-		result: 'success' | 'error';
-		error?: string;
-	};
-
-	'reload-external-secrets-providers': {
-		result: 'success' | 'error';
-		error?: string;
-	};
-
-	// #endregion
-
-	// #region Worker view
-
-	'get-worker-id': never;
-
 	'get-worker-status': WorkerStatus;
-
-	// #endregion
 };

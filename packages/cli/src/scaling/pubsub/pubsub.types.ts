@@ -86,18 +86,6 @@ export namespace PubSub {
 		_ToWorkerResponse<WorkerResponseKey>
 	>;
 
-	namespace WorkerResponses {
-		export type RestartEventBus = ToWorkerResponse<'restart-event-bus'>;
-		export type ReloadExternalSecretsProviders =
-			ToWorkerResponse<'reload-external-secrets-providers'>;
-		export type GetWorkerId = ToWorkerResponse<'get-worker-id'>;
-		export type GetWorkerStatus = ToWorkerResponse<'get-worker-status'>;
-	}
-
 	/** Response sent via the `n8n.worker-response` pubsub channel. */
-	export type WorkerResponse =
-		| WorkerResponses.RestartEventBus
-		| WorkerResponses.ReloadExternalSecretsProviders
-		| WorkerResponses.GetWorkerId
-		| WorkerResponses.GetWorkerStatus;
+	export type WorkerResponse = ToWorkerResponse<'get-worker-status'>;
 }
