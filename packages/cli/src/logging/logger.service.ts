@@ -106,12 +106,9 @@ export class Logger {
 
 	private scopeFilter() {
 		return winston.format((info: TransformableInfo & { metadata: LogMetadata }) => {
-			if (
-				this.isScopingEnabled &&
-				(!info.metadata.scope || !this.scopes.has(info.metadata.scope))
-			) {
-				return false;
-			}
+			const shouldIncludeScope = info.metadata.scope && this.scopes.has(info.metadata.scope);
+
+			if (this.isScopingEnabled && !shouldIncludeScope) return false;
 
 			return info;
 		})();
