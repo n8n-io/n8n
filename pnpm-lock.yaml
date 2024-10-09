@@ -1484,8 +1484,8 @@ importers:
         specifier: ^0.1.3
         version: 0.1.3(pinia@2.1.6(typescript@5.6.2)(vue@3.5.11(typescript@5.6.2)))(vue@3.5.11(typescript@5.6.2))
       '@sentry/vite-plugin':
-        specifier: ^2.22.4
-        version: 2.22.4(encoding@0.1.13)
+        specifier: ^2.22.5
+        version: 2.22.5(encoding@0.1.13)
       '@types/dateformat':
         specifier: ^3.0.0
         version: 3.0.1
@@ -4066,16 +4066,16 @@ packages:
     resolution: {integrity: sha512-HYa0+rfFmYQ/DadXoiuarTSxrcnYDCd/fm0pFuOHjICtfja8IcLegVYP2/r3CgwB+IjquCtJ5kDcqS/NTgUcpA==}
     engines: {node: '>=8'}
 
-  '@sentry/babel-plugin-component-annotate@2.22.4':
-    resolution: {integrity: sha512-hbSq067KwmeKIEkmyzkTNJbmbtx2KRqvpiy9Q/DynI5Z46Nko/ppvgIfyFXK9DelwvEPOqZic4WXTIhO4iv3DA==}
+  '@sentry/babel-plugin-component-annotate@2.22.5':
+    resolution: {integrity: sha512-+93qwB9vTX1nj4hD8AMWowXZsZVkvmP9OwTqSh5d4kOeiJ+dZftUk4+FKeKkAX9lvY2reyHV8Gms5mo67c27RQ==}
     engines: {node: '>= 14'}
 
   '@sentry/browser@8.33.1':
     resolution: {integrity: sha512-c6zI/igexkLwZuGk+u8Rj26ChjxGgkhe6ZbKFsXCYaKAp5ep5X7HQRkkqgbxApiqlC0LduHdd/ymzh139JLg8w==}
     engines: {node: '>=14.18'}
 
-  '@sentry/bundler-plugin-core@2.22.4':
-    resolution: {integrity: sha512-25NiyV3v6mdqOXlpzbbJnq0FHdAu1uTEDr+DU8CzNLjIXlq2Sr2CFZ/mhRcR6daM8OAretJdQ34lu0yHUVeE4Q==}
+  '@sentry/bundler-plugin-core@2.22.5':
+    resolution: {integrity: sha512-nfvTthV0aNM9/MwgnCi1WjAlCtau1I4kw6+oZIDOwJRDqGNziz517mYRXSsvCUebtGxDZtPcF7hSEBMSHjpncA==}
     engines: {node: '>= 14'}
 
   '@sentry/cli-darwin@2.36.2':
@@ -4156,8 +4156,8 @@ packages:
     resolution: {integrity: sha512-uzuYpiiJuFY3N4WNHMBWUQX5oNv2t/TbG0OHRp3Rr7yeu+HSfD542TIp9/gMZ+G0Cxd8AmVO3wkKIFbk0TL4Qg==}
     engines: {node: '>=14.18'}
 
-  '@sentry/vite-plugin@2.22.4':
-    resolution: {integrity: sha512-C51PUlTv0BXN3+e9SjPHptNX3b9E0clrsaR5c//l/sFkQjuteDHKChA1gNzZSvfoa3gm9NzZAgpk3hVF2O3nBA==}
+  '@sentry/vite-plugin@2.22.5':
+    resolution: {integrity: sha512-dFARM360varU+hdU1MCpl0VTL03FkVIC+A9egCE+ureuOryjVNe3cm2mUjv/gnDHHNTOxWC2H2c8BlOkqTGP/w==}
     engines: {node: '>= 14'}
 
   '@sentry/vue@8.33.1':
@@ -15459,7 +15459,7 @@ snapshots:
       '@sentry/types': 7.87.0
       '@sentry/utils': 7.87.0
 
-  '@sentry/babel-plugin-component-annotate@2.22.4': {}
+  '@sentry/babel-plugin-component-annotate@2.22.5': {}
 
   '@sentry/browser@8.33.1':
     dependencies:
@@ -15471,10 +15471,10 @@ snapshots:
       '@sentry/types': 8.33.1
       '@sentry/utils': 8.33.1
 
-  '@sentry/bundler-plugin-core@2.22.4(encoding@0.1.13)':
+  '@sentry/bundler-plugin-core@2.22.5(encoding@0.1.13)':
     dependencies:
       '@babel/core': 7.24.0
-      '@sentry/babel-plugin-component-annotate': 2.22.4
+      '@sentry/babel-plugin-component-annotate': 2.22.5
       '@sentry/cli': 2.36.2(patch_hash=saib6xuadkfhahfipsdedqib2i)(encoding@0.1.13)
       dotenv: 16.3.1
       find-up: 5.0.0
@@ -15564,9 +15564,9 @@ snapshots:
     dependencies:
       '@sentry/types': 8.33.1
 
-  '@sentry/vite-plugin@2.22.4(encoding@0.1.13)':
+  '@sentry/vite-plugin@2.22.5(encoding@0.1.13)':
     dependencies:
-      '@sentry/bundler-plugin-core': 2.22.4(encoding@0.1.13)
+      '@sentry/bundler-plugin-core': 2.22.5(encoding@0.1.13)
       unplugin: 1.0.1
     transitivePeerDependencies:
       - encoding
@@ -21851,7 +21851,7 @@ snapshots:
 
   magic-string@0.30.8:
     dependencies:
-      '@jridgewell/sourcemap-codec': 1.4.15
+      '@jridgewell/sourcemap-codec': 1.5.0
 
   magicast@0.3.5:
     dependencies:
