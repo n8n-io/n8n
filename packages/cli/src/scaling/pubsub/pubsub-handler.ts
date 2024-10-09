@@ -7,11 +7,7 @@ import config from '@/config';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventService } from '@/events/event.service';
-import type {
-	PubSubCommandMap,
-	PubSubEventMap,
-	PubSubWorkerResponseMap,
-} from '@/events/maps/pub-sub.event-map';
+import type { PubSubEventMap } from '@/events/maps/pub-sub.event-map';
 import { ExternalSecretsManager } from '@/external-secrets/external-secrets-manager.ee';
 import { License } from '@/license';
 import { Push } from '@/push';
@@ -46,63 +42,43 @@ export class PubSubHandler {
 	init() {
 		switch (this.instanceSettings.instanceType) {
 			case 'webhook':
-				this.setupCommandHandlers(this.commonHandlers);
+				this.setupHandlers(this.commonHandlers);
 				break;
 			case 'worker':
-				this.setupCommandHandlers({
+				this.setupHandlers({
 					...this.commonHandlers,
-					'get-worker-status': async () => {
+					'get-worker-status': async () =>
 						await this.publisher.publishWorkerResponse({
 							senderId: config.getEnv('redis.queueModeId'),
 							response: 'response-to-get-worker-status',
 							payload: this.workerStatusService.generateStatus(),
-						});
-					},
+						}),
 				});
 				break;
 			case 'main':
-				this.setupCommandHandlers({
+				this.setupHandlers({
 					...this.commonHandlers,
 					...this.multiMainHandlers,
-				});
-				this.setupWorkerResponseHandlers({
-					'response-to-get-worker-status': async (payload) => {
+					'response-to-get-worker-status': async (payload) =>
 						this.push.broadcast('sendWorkerStatusMessage', {
 							workerId: payload.senderId,
 							status: payload,
-						});
-					},
+						}),
 				});
+
 				break;
 			default:
 				assertNever(this.instanceSettings.instanceType);
 		}
 	}
 
-	private setupCommandHandlers<EventNames extends keyof PubSubCommandMap>(
+	private setupHandlers<EventNames extends keyof PubSubEventMap>(
 		map: {
-			[EventName in EventNames]?: (event: PubSubCommandMap[EventName]) => void | Promise<void>;
+			[EventName in EventNames]?: (event: PubSubEventMap[EventName]) => void | Promise<void>;
 		},
 	) {
 		for (const [eventName, handlerFn] of Object.entries(map) as Array<
-			[EventNames, (event: PubSubCommandMap[EventNames]) => void | Promise<void>]
-		>) {
-			this.eventService.on(eventName, async (event) => {
-				await handlerFn(event);
-			});
-		}
-	}
-
-	// @TODO: Deduplicate with above
-	private setupWorkerResponseHandlers<EventNames extends keyof PubSubWorkerResponseMap>(
-		map: {
-			[EventName in EventNames]?: (
-				event: PubSubWorkerResponseMap[EventName],
-			) => void | Promise<void>;
-		},
-	) {
-		for (const [eventName, handlerFn] of Object.entries(map) as Array<
-			[EventNames, (event: PubSubWorkerResponseMap[EventNames]) => void | Promise<void>]
+			[EventNames, (event: PubSubEventMap[EventNames]) => void | Promise<void>]
 		>) {
 			this.eventService.on(eventName, async (event) => {
 				await handlerFn(event);
