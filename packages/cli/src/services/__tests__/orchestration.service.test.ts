@@ -51,16 +51,6 @@ describe('Orchestration Service', () => {
 		expect(queueModeId).toBeDefined();
 	});
 
-	test('should send command messages', async () => {
-		// @ts-expect-error Private field
-		jest.spyOn(os.publisher, 'publishCommand').mockImplementation(async () => {});
-		await os.getWorkerIds();
-		// @ts-expect-error Private field
-		expect(os.publisher.publishCommand).toHaveBeenCalled();
-		// @ts-expect-error Private field
-		jest.spyOn(os.publisher, 'publishCommand').mockRestore();
-	});
-
 	describe('shouldAddWebhooks', () => {
 		test('should return true for init', () => {
 			// We want to ensure that webhooks are populated on init

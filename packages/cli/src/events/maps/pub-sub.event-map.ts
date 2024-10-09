@@ -81,7 +81,5 @@ export type PubSubCommandMap = {
 };
 
 export type PubSubWorkerResponseMap = {
-	'get-worker-id': never;
-
-	'get-worker-status': WorkerStatusReport;
+	'response-to-get-worker-status': WorkerStatusReport;
 };

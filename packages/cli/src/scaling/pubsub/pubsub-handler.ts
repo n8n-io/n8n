@@ -50,17 +50,13 @@ export class PubSubHandler {
 			case 'worker':
 				this.setupCommandHandlers({
 					...this.commonHandlers,
-					'get-worker-status': async () =>
+					'get-worker-status': async () => {
 						await this.publisher.publishWorkerResponse({
 							workerId: config.getEnv('redis.queueModeId'),
-							command: 'get-worker-status',
+							response: 'response-to-get-worker-status',
 							payload: this.workerStatus.generateStatus(),
-						}),
-					'get-worker-id': async () =>
-						await this.publisher.publishWorkerResponse({
-							workerId: config.getEnv('redis.queueModeId'),
-							command: 'get-worker-id',
-						}),
+						});
+					},
 				});
 				break;
 			case 'main':
@@ -69,11 +65,12 @@ export class PubSubHandler {
 					...this.multiMainSetupHandlers,
 				});
 				this.setupWorkerResponseHandlers({
-					'get-worker-status': async (payload) =>
+					'response-to-get-worker-status': async (payload) => {
 						this.push.broadcast('sendWorkerStatusMessage', {
 							workerId: payload.workerId,
 							status: payload,
-						}),
+						});
+					},
 				});
 				break;
 			default:

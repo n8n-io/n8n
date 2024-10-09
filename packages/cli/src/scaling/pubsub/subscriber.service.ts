@@ -17,10 +17,6 @@ import type { PubSub } from './pubsub.types';
 export class Subscriber {
 	private readonly client: SingleNodeClient | MultiNodeClient;
 
-	private readonly handlers: Map<PubSub.Channel, PubSub.HandlerFn> = new Map();
-
-	// #region Lifecycle
-
 	constructor(
 		private readonly logger: Logger,
 		private readonly redisClientService: RedisClientService,
@@ -31,23 +27,25 @@ export class Subscriber {
 
 		this.client = this.redisClientService.createClient({ type: 'subscriber(n8n)' });
 
-		this.client.on('message', (channel: PubSub.Channel, message) => {
-			this.handlers.get(channel)?.(message);
-		});
-	}
+		const handlerFn = (msg: PubSub.Command | PubSub.WorkerResponse) => {
+			const eventName = 'command' in msg ? msg.command : msg.response;
+			this.eventService.emit(eventName, msg.payload);
+		};
 
-	getClient() {
-		return this.client;
+		const debouncedHandlerFn = debounce(handlerFn, 300);
+
+		this.client.on('message', (_channel: PubSub.Channel, str) => {
+			const msg = this.parseCommandMessage(str);
+			if (!msg) return;
+			if (msg.debounce) debouncedHandlerFn(msg);
+			else handlerFn(msg);
+		});
 	}
 
 	// @TODO: Use `@OnShutdown()` decorator
 	shutdown() {
 		this.client.disconnect();
 	}
-
-	// #endregion
-
-	// #region Subscribing
 
 	async subscribe(channel: PubSub.Channel) {
 		await this.client.subscribe(channel, (error) => {
@@ -57,40 +55,6 @@ export class Subscriber {
 			}
 
 			this.logger.debug('Subscribed to channel', { channel });
-		});
-	}
-
-	/** Set the message handler function for a channel. */
-	setMessageHandler(channel: PubSub.Channel, handlerFn: PubSub.HandlerFn) {
-		this.handlers.set(channel, handlerFn);
-	}
-
-	// #endregion
-
-	// #region Commands
-
-	setCommandMessageHandler() {
-		const handlerFn = (msg: PubSub.Command) => this.eventService.emit(msg.command, msg.payload);
-		const debouncedHandlerFn = debounce(handlerFn, 300);
-
-		this.setMessageHandler('n8n.commands', (str: string) => {
-			const msg = this.parseCommandMessage(str);
-			if (!msg) return;
-			if (msg.debounce) debouncedHandlerFn(msg);
-			else handlerFn(msg);
-		});
-	}
-
-	// @TODO: Deduplicate with above
-	setWorkerResponseMessageHandler() {
-		const handlerFn = (msg: PubSub.Command) => this.eventService.emit(msg.command, msg.payload);
-		const debouncedHandlerFn = debounce(handlerFn, 300);
-
-		this.setMessageHandler('n8n.worker-response', (str: string) => {
-			const msg = this.parseCommandMessage(str);
-			if (!msg) return;
-			if (msg.debounce) debouncedHandlerFn(msg);
-			else handlerFn(msg);
 		});
 	}
 
@@ -119,5 +83,7 @@ export class Subscriber {
 		return msg;
 	}
 
-	// #endregion
+	getClient() {
+		return this.client;
+	}
 }

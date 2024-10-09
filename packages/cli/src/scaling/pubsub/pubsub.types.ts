@@ -77,7 +77,7 @@ export namespace PubSub {
 	type _ToWorkerResponse<WorkerResponseKey extends keyof PubSubWorkerResponseMap> = {
 		workerId: string;
 		targets?: string[];
-		command: WorkerResponseKey;
+		response: WorkerResponseKey;
 	} & (PubSubWorkerResponseMap[WorkerResponseKey] extends never
 		? { payload?: never } // some responses carry no payload
 		: { payload: PubSubWorkerResponseMap[WorkerResponseKey] });
@@ -87,10 +87,9 @@ export namespace PubSub {
 	>;
 
 	namespace WorkerResponses {
-		export type GetWorkerId = ToWorkerResponse<'get-worker-id'>;
-		export type GetWorkerStatus = ToWorkerResponse<'get-worker-status'>;
+		export type GetWorkerStatus = ToWorkerResponse<'response-to-get-worker-status'>;
 	}
 
 	/** Response sent via the `n8n.worker-response` pubsub channel. */
-	export type WorkerResponse = WorkerResponses.GetWorkerId | WorkerResponses.GetWorkerStatus;
+	export type WorkerResponse = WorkerResponses.GetWorkerStatus;
 }

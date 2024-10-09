@@ -253,13 +253,10 @@ export class Start extends BaseCommand {
 		await orchestrationService.init();
 
 		Container.get(PubSubHandler).init();
-		const subscriber = Container.get(Subscriber);
 
+		const subscriber = Container.get(Subscriber);
 		await subscriber.subscribe('n8n.commands');
 		await subscriber.subscribe('n8n.worker-response');
-
-		subscriber.setCommandMessageHandler();
-		subscriber.setWorkerResponseMessageHandler();
 
 		if (!orchestrationService.isMultiMainSetupEnabled) return;
 
