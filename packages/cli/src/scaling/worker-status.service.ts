@@ -1,4 +1,4 @@
-import type { WorkerStatus as WorkerStatusReport } from '@n8n/api-types';
+import type { WorkerStatus } from '@n8n/api-types';
 import os from 'node:os';
 import { Service } from 'typedi';
 
@@ -8,10 +8,10 @@ import { N8N_VERSION } from '@/constants';
 import { JobProcessor } from './job-processor';
 
 @Service()
-export class WorkerStatus {
+export class WorkerStatusService {
 	constructor(private readonly jobProcessor: JobProcessor) {}
 
-	generateStatus(): WorkerStatusReport {
+	generateStatus(): WorkerStatus {
 		return {
 			senderId: config.getEnv('redis.queueModeId'),
 			runningJobsSummary: this.jobProcessor.getRunningJobsSummary(),

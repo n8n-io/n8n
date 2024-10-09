@@ -21,7 +21,7 @@ import { assertNever } from '@/utils';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
 
 import type { PubSub } from './pubsub.types';
-import { WorkerStatus } from '../worker-status';
+import { WorkerStatusService } from '../worker-status.service';
 
 /**
  * Responsible for handling events emitted from messages received via a pubsub channel.
@@ -36,7 +36,7 @@ export class PubSubHandler {
 		private readonly externalSecretsManager: ExternalSecretsManager,
 		private readonly communityPackagesService: CommunityPackagesService,
 		private readonly publisher: Publisher,
-		private readonly workerStatus: WorkerStatus,
+		private readonly workerStatusService: WorkerStatusService,
 		private readonly activeWorkflowManager: ActiveWorkflowManager,
 		private readonly push: Push,
 		private readonly workflowRepository: WorkflowRepository,
@@ -55,7 +55,7 @@ export class PubSubHandler {
 						await this.publisher.publishWorkerResponse({
 							senderId: config.getEnv('redis.queueModeId'),
 							response: 'response-to-get-worker-status',
-							payload: this.workerStatus.generateStatus(),
+							payload: this.workerStatusService.generateStatus(),
 						});
 					},
 				});

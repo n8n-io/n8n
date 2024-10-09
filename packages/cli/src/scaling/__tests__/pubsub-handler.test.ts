@@ -1,4 +1,4 @@
-import type { WorkerStatus as WorkerStatusReport } from '@n8n/api-types';
+import type { WorkerStatus } from '@n8n/api-types';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import type { Workflow } from 'n8n-workflow';
@@ -17,7 +17,7 @@ import type { TestWebhooks } from '@/webhooks/test-webhooks';
 
 import type { Publisher } from '../pubsub/publisher.service';
 import { PubSubHandler } from '../pubsub/pubsub-handler';
-import type { WorkerStatus } from '../worker-status';
+import type { WorkerStatusService } from '../worker-status.service';
 
 const flushPromises = async () => await new Promise((resolve) => setImmediate(resolve));
 
@@ -28,7 +28,7 @@ describe('PubSubHandler', () => {
 	const externalSecretsManager = mock<ExternalSecretsManager>();
 	const communityPackagesService = mock<CommunityPackagesService>();
 	const publisher = mock<Publisher>();
-	const workerStatus = mock<WorkerStatus>();
+	const workerStatusService = mock<WorkerStatusService>();
 	const activeWorkflowManager = mock<ActiveWorkflowManager>();
 	const push = mock<Push>();
 	const workflowRepository = mock<WorkflowRepository>();
@@ -53,7 +53,7 @@ describe('PubSubHandler', () => {
 				externalSecretsManager,
 				communityPackagesService,
 				publisher,
-				workerStatus,
+				workerStatusService,
 				activeWorkflowManager,
 				push,
 				workflowRepository,
@@ -79,7 +79,7 @@ describe('PubSubHandler', () => {
 				externalSecretsManager,
 				communityPackagesService,
 				publisher,
-				workerStatus,
+				workerStatusService,
 				activeWorkflowManager,
 				push,
 				workflowRepository,
@@ -100,7 +100,7 @@ describe('PubSubHandler', () => {
 				externalSecretsManager,
 				communityPackagesService,
 				publisher,
-				workerStatus,
+				workerStatusService,
 				activeWorkflowManager,
 				push,
 				workflowRepository,
@@ -121,7 +121,7 @@ describe('PubSubHandler', () => {
 				externalSecretsManager,
 				communityPackagesService,
 				publisher,
-				workerStatus,
+				workerStatusService,
 				activeWorkflowManager,
 				push,
 				workflowRepository,
@@ -142,7 +142,7 @@ describe('PubSubHandler', () => {
 				externalSecretsManager,
 				communityPackagesService,
 				publisher,
-				workerStatus,
+				workerStatusService,
 				activeWorkflowManager,
 				push,
 				workflowRepository,
@@ -169,7 +169,7 @@ describe('PubSubHandler', () => {
 				externalSecretsManager,
 				communityPackagesService,
 				publisher,
-				workerStatus,
+				workerStatusService,
 				activeWorkflowManager,
 				push,
 				workflowRepository,
@@ -196,7 +196,7 @@ describe('PubSubHandler', () => {
 				externalSecretsManager,
 				communityPackagesService,
 				publisher,
-				workerStatus,
+				workerStatusService,
 				activeWorkflowManager,
 				push,
 				workflowRepository,
@@ -226,7 +226,7 @@ describe('PubSubHandler', () => {
 				externalSecretsManager,
 				communityPackagesService,
 				publisher,
-				workerStatus,
+				workerStatusService,
 				activeWorkflowManager,
 				push,
 				workflowRepository,
@@ -253,7 +253,7 @@ describe('PubSubHandler', () => {
 				externalSecretsManager,
 				communityPackagesService,
 				publisher,
-				workerStatus,
+				workerStatusService,
 				activeWorkflowManager,
 				push,
 				workflowRepository,
@@ -274,7 +274,7 @@ describe('PubSubHandler', () => {
 				externalSecretsManager,
 				communityPackagesService,
 				publisher,
-				workerStatus,
+				workerStatusService,
 				activeWorkflowManager,
 				push,
 				workflowRepository,
@@ -295,7 +295,7 @@ describe('PubSubHandler', () => {
 				externalSecretsManager,
 				communityPackagesService,
 				publisher,
-				workerStatus,
+				workerStatusService,
 				activeWorkflowManager,
 				push,
 				workflowRepository,
@@ -316,7 +316,7 @@ describe('PubSubHandler', () => {
 				externalSecretsManager,
 				communityPackagesService,
 				publisher,
-				workerStatus,
+				workerStatusService,
 				activeWorkflowManager,
 				push,
 				workflowRepository,
@@ -325,7 +325,7 @@ describe('PubSubHandler', () => {
 
 			eventService.emit('get-worker-status');
 
-			expect(workerStatus.generateStatus).toHaveBeenCalled();
+			expect(workerStatusService.generateStatus).toHaveBeenCalled();
 		});
 	});
 
@@ -357,7 +357,7 @@ describe('PubSubHandler', () => {
 				externalSecretsManager,
 				communityPackagesService,
 				publisher,
-				workerStatus,
+				workerStatusService,
 				activeWorkflowManager,
 				push,
 				workflowRepository,
@@ -394,7 +394,7 @@ describe('PubSubHandler', () => {
 				externalSecretsManager,
 				communityPackagesService,
 				publisher,
-				workerStatus,
+				workerStatusService,
 				activeWorkflowManager,
 				push,
 				workflowRepository,
@@ -415,7 +415,7 @@ describe('PubSubHandler', () => {
 				externalSecretsManager,
 				communityPackagesService,
 				publisher,
-				workerStatus,
+				workerStatusService,
 				activeWorkflowManager,
 				push,
 				workflowRepository,
@@ -436,7 +436,7 @@ describe('PubSubHandler', () => {
 				externalSecretsManager,
 				communityPackagesService,
 				publisher,
-				workerStatus,
+				workerStatusService,
 				activeWorkflowManager,
 				push,
 				workflowRepository,
@@ -457,7 +457,7 @@ describe('PubSubHandler', () => {
 				externalSecretsManager,
 				communityPackagesService,
 				publisher,
-				workerStatus,
+				workerStatusService,
 				activeWorkflowManager,
 				push,
 				workflowRepository,
@@ -484,7 +484,7 @@ describe('PubSubHandler', () => {
 				externalSecretsManager,
 				communityPackagesService,
 				publisher,
-				workerStatus,
+				workerStatusService,
 				activeWorkflowManager,
 				push,
 				workflowRepository,
@@ -511,7 +511,7 @@ describe('PubSubHandler', () => {
 				externalSecretsManager,
 				communityPackagesService,
 				publisher,
-				workerStatus,
+				workerStatusService,
 				activeWorkflowManager,
 				push,
 				workflowRepository,
@@ -534,7 +534,7 @@ describe('PubSubHandler', () => {
 				externalSecretsManager,
 				communityPackagesService,
 				publisher,
-				workerStatus,
+				workerStatusService,
 				activeWorkflowManager,
 				push,
 				workflowRepository,
@@ -566,7 +566,7 @@ describe('PubSubHandler', () => {
 				externalSecretsManager,
 				communityPackagesService,
 				publisher,
-				workerStatus,
+				workerStatusService,
 				activeWorkflowManager,
 				push,
 				workflowRepository,
@@ -599,7 +599,7 @@ describe('PubSubHandler', () => {
 				externalSecretsManager,
 				communityPackagesService,
 				publisher,
-				workerStatus,
+				workerStatusService,
 				activeWorkflowManager,
 				push,
 				workflowRepository,
@@ -622,7 +622,7 @@ describe('PubSubHandler', () => {
 				externalSecretsManager,
 				communityPackagesService,
 				publisher,
-				workerStatus,
+				workerStatusService,
 				activeWorkflowManager,
 				push,
 				workflowRepository,
@@ -645,7 +645,7 @@ describe('PubSubHandler', () => {
 				externalSecretsManager,
 				communityPackagesService,
 				publisher,
-				workerStatus,
+				workerStatusService,
 				activeWorkflowManager,
 				push,
 				workflowRepository,
@@ -672,7 +672,7 @@ describe('PubSubHandler', () => {
 				externalSecretsManager,
 				communityPackagesService,
 				publisher,
-				workerStatus,
+				workerStatusService,
 				activeWorkflowManager,
 				push,
 				workflowRepository,
@@ -701,7 +701,7 @@ describe('PubSubHandler', () => {
 				externalSecretsManager,
 				communityPackagesService,
 				publisher,
-				workerStatus,
+				workerStatusService,
 				activeWorkflowManager,
 				push,
 				workflowRepository,
@@ -732,20 +732,20 @@ describe('PubSubHandler', () => {
 				externalSecretsManager,
 				communityPackagesService,
 				publisher,
-				workerStatus,
+				workerStatusService,
 				activeWorkflowManager,
 				push,
 				workflowRepository,
 				testWebhooks,
 			).init();
 
-			const workerStatusReport = mock<WorkerStatusReport>({ senderId: 'worker-1', loadAvg: [123] });
+			const workerStatus = mock<WorkerStatus>({ senderId: 'worker-1', loadAvg: [123] });
 
-			eventService.emit('response-to-get-worker-status', workerStatusReport);
+			eventService.emit('response-to-get-worker-status', workerStatus);
 
 			expect(push.broadcast).toHaveBeenCalledWith('sendWorkerStatusMessage', {
-				workerId: workerStatusReport.senderId,
-				status: workerStatusReport,
+				workerId: workerStatus.senderId,
+				status: workerStatus,
 			});
 		});
 	});
