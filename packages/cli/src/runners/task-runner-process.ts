@@ -111,7 +111,7 @@ export class TaskRunnerProcess {
 
 		const process = spawn(this.globalConfig.taskRunners.launcherPath, [
 			'kill',
-			'javascript',
+			this.globalConfig.taskRunners.launcherRunner,
 			this.process.pid.toString(),
 		]);
 
