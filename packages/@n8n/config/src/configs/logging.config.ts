@@ -57,7 +57,7 @@ export class LoggingConfig {
 	file: FileLoggingConfig;
 
 	/**
-	 * Scopes to filter logs by. Disabled by default.
+	 * Scopes to filter logs by. Nothing is filtered by default.
 	 *
 	 * Currently supported log scopes:
 	 * - `executions`
