@@ -41,9 +41,10 @@ export class JobProcessor {
 		});
 
 		if (!execution) {
-			throw new ApplicationError('Failed to find execution data. Aborting execution.', {
-				extra: { executionId, jobId: job.id },
-			});
+			throw new ApplicationError(
+				`Worker failed to find execution data for execution ${executionId} (job ${job.id})`,
+				{ extra: { executionId, jobId: job.id } },
+			);
 		}
 
 		const workflowId = execution.workflowData.id;
@@ -63,9 +64,10 @@ export class JobProcessor {
 			});
 
 			if (workflowData === null) {
-				throw new ApplicationError('Failed to find workflow', {
-					extra: { workflowId, instanceType: 'worker' },
-				});
+				throw new ApplicationError(
+					`Worker failed to find workflow ${workflowId} to run execution ${executionId}`,
+					{ extra: { workflowId, instanceType: 'worker' } },
+				);
 			}
 
 			staticData = workflowData.staticData;
