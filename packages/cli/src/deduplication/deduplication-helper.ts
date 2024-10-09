@@ -11,6 +11,7 @@ import type {
 import * as assert from 'node:assert/strict';
 import { Container } from 'typedi';
 
+import type { ProcessedData } from '@/databases/entities/processed-data';
 import { ProcessedDataRepository } from '@/databases/repositories/processed-data.repository';
 import { DeduplicationError } from '@/errors/deduplication.error';
 import type { IProcessedDataEntries, IProcessedDataLatest } from '@/interfaces';
@@ -100,6 +101,26 @@ export class DeduplicationHelper implements IDataDeduplicator {
 		return createHash('md5').update(value.toString()).digest('base64');
 	}
 
+	private async fetchProcessedData(
+		scope: DeduplicationScope,
+		contextData: ICheckProcessedContextData,
+	): Promise<ProcessedData | null> {
+		return await Container.get(ProcessedDataRepository).findOne({
+			where: {
+				workflowId: contextData.workflow.id as string,
+				context: DeduplicationHelper.createContext(scope, contextData),
+			},
+		});
+	}
+
+	private validateMode(processedData: ProcessedData | null, options: ICheckProcessedOptions) {
+		if (processedData && processedData.value.mode !== options.mode) {
+			throw new DeduplicationError(
+				'Deduplication data was originally saved with an incompatible setting of the ‘Keep Items Where’ parameter. Try ’Clean Database’ operation to reset.',
+			);
+		}
+	}
+
 	async checkProcessed(
 		items: DeduplicationItemTypes[],
 		scope: DeduplicationScope,
@@ -111,18 +132,9 @@ export class DeduplicationHelper implements IDataDeduplicator {
 			processed: [],
 		};
 
-		const processedData = await Container.get(ProcessedDataRepository).findOne({
-			where: {
-				workflowId: contextData.workflow.id as string,
-				context: DeduplicationHelper.createContext(scope, contextData),
-			},
-		});
+		const processedData = await this.fetchProcessedData(scope, contextData);
 
-		if (processedData && processedData.value.mode !== options.mode) {
-			throw new DeduplicationError(
-				'Deduplication data was originally saved with an incompatible setting of the ‘Keep Items Where’ parameter. Try ’Clean Database’ operation to reset.',
-			);
-		}
+		this.validateMode(processedData, options);
 
 		if (!processedData) {
 			// If there is nothing in the database all items are new
@@ -168,18 +180,9 @@ export class DeduplicationHelper implements IDataDeduplicator {
 
 		assert.ok(contextData.workflow.id);
 
-		const processedData = await Container.get(ProcessedDataRepository).findOne({
-			where: {
-				workflowId: contextData.workflow.id as string,
-				context: DeduplicationHelper.createContext(scope, contextData),
-			},
-		});
+		const processedData = await this.fetchProcessedData(scope, contextData);
 
-		if (processedData && processedData.value.mode !== options.mode) {
-			throw new DeduplicationError(
-				'Deduplication data was originally saved with an incompatible setting of the ‘Keep Items Where’ parameter. Try `Clean Database’ operation to reset.',
-			);
-		}
+		this.validateMode(processedData, options);
 
 		if (['latestIncrementalKey', 'latestDate'].includes(options.mode)) {
 			const incomingItems = DeduplicationHelper.sortEntries(items, options.mode);
