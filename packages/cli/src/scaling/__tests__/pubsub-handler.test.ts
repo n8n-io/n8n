@@ -1,11 +1,15 @@
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
+import type { ActiveWorkflowManager } from '@/active-workflow-manager';
+import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventService } from '@/events/event.service';
 import type { ExternalSecretsManager } from '@/external-secrets/external-secrets-manager.ee';
 import type { License } from '@/license';
+import type { Push } from '@/push';
 import type { CommunityPackagesService } from '@/services/community-packages.service';
+import type { TestWebhooks } from '@/webhooks/test-webhooks';
 
 import type { Publisher } from '../pubsub/publisher.service';
 import { PubSubHandler } from '../pubsub/pubsub-handler';
@@ -19,6 +23,10 @@ describe('PubSubHandler', () => {
 	const communityPackagesService = mock<CommunityPackagesService>();
 	const publisher = mock<Publisher>();
 	const workerStatus = mock<WorkerStatus>();
+	const activeWorkflowManager = mock<ActiveWorkflowManager>();
+	const push = mock<Push>();
+	const workflowRepository = mock<WorkflowRepository>();
+	const testWebhooks = mock<TestWebhooks>();
 
 	afterEach(() => {
 		eventService.removeAllListeners();
@@ -40,6 +48,10 @@ describe('PubSubHandler', () => {
 				communityPackagesService,
 				publisher,
 				workerStatus,
+				activeWorkflowManager,
+				push,
+				workflowRepository,
+				testWebhooks,
 			).init();
 
 			expect(setupHandlersSpy).toHaveBeenCalledWith({
@@ -62,6 +74,10 @@ describe('PubSubHandler', () => {
 				communityPackagesService,
 				publisher,
 				workerStatus,
+				activeWorkflowManager,
+				push,
+				workflowRepository,
+				testWebhooks,
 			).init();
 
 			eventService.emit('reload-license');
@@ -79,6 +95,10 @@ describe('PubSubHandler', () => {
 				communityPackagesService,
 				publisher,
 				workerStatus,
+				activeWorkflowManager,
+				push,
+				workflowRepository,
+				testWebhooks,
 			).init();
 
 			eventService.emit('restart-event-bus');
@@ -96,6 +116,10 @@ describe('PubSubHandler', () => {
 				communityPackagesService,
 				publisher,
 				workerStatus,
+				activeWorkflowManager,
+				push,
+				workflowRepository,
+				testWebhooks,
 			).init();
 
 			eventService.emit('reload-external-secrets-providers');
@@ -113,6 +137,10 @@ describe('PubSubHandler', () => {
 				communityPackagesService,
 				publisher,
 				workerStatus,
+				activeWorkflowManager,
+				push,
+				workflowRepository,
+				testWebhooks,
 			).init();
 
 			eventService.emit('community-package-install', {
@@ -136,6 +164,10 @@ describe('PubSubHandler', () => {
 				communityPackagesService,
 				publisher,
 				workerStatus,
+				activeWorkflowManager,
+				push,
+				workflowRepository,
+				testWebhooks,
 			).init();
 
 			eventService.emit('community-package-update', {
@@ -159,6 +191,10 @@ describe('PubSubHandler', () => {
 				communityPackagesService,
 				publisher,
 				workerStatus,
+				activeWorkflowManager,
+				push,
+				workflowRepository,
+				testWebhooks,
 			).init();
 
 			eventService.emit('community-package-uninstall', {
@@ -185,6 +221,10 @@ describe('PubSubHandler', () => {
 				communityPackagesService,
 				publisher,
 				workerStatus,
+				activeWorkflowManager,
+				push,
+				workflowRepository,
+				testWebhooks,
 			).init();
 
 			expect(setupHandlersSpy).toHaveBeenCalledWith({
@@ -209,6 +249,10 @@ describe('PubSubHandler', () => {
 				communityPackagesService,
 				publisher,
 				workerStatus,
+				activeWorkflowManager,
+				push,
+				workflowRepository,
+				testWebhooks,
 			).init();
 
 			eventService.emit('reload-license');
@@ -226,6 +270,10 @@ describe('PubSubHandler', () => {
 				communityPackagesService,
 				publisher,
 				workerStatus,
+				activeWorkflowManager,
+				push,
+				workflowRepository,
+				testWebhooks,
 			).init();
 
 			eventService.emit('restart-event-bus');
@@ -243,6 +291,10 @@ describe('PubSubHandler', () => {
 				communityPackagesService,
 				publisher,
 				workerStatus,
+				activeWorkflowManager,
+				push,
+				workflowRepository,
+				testWebhooks,
 			).init();
 
 			eventService.emit('reload-external-secrets-providers');
@@ -260,6 +312,10 @@ describe('PubSubHandler', () => {
 				communityPackagesService,
 				publisher,
 				workerStatus,
+				activeWorkflowManager,
+				push,
+				workflowRepository,
+				testWebhooks,
 			).init();
 
 			eventService.emit('get-worker-status');
@@ -277,6 +333,10 @@ describe('PubSubHandler', () => {
 				communityPackagesService,
 				publisher,
 				workerStatus,
+				activeWorkflowManager,
+				push,
+				workflowRepository,
+				testWebhooks,
 			).init();
 
 			eventService.emit('get-worker-id');
