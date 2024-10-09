@@ -37,7 +37,9 @@ export class License {
 		private readonly orchestrationService: OrchestrationService,
 		private readonly settingsRepository: SettingsRepository,
 		private readonly licenseMetricsService: LicenseMetricsService,
-	) {}
+	) {
+		this.logger = this.logger.withScope('license');
+	}
 
 	/**
 	 * Whether this instance should renew the license - on init and periodically.
@@ -109,9 +111,9 @@ export class License {
 
 			await this.manager.initialize();
 			this.logger.debug('License initialized');
-		} catch (e: unknown) {
-			if (e instanceof Error) {
-				this.logger.error('Could not initialize license manager sdk', e);
+		} catch (error: unknown) {
+			if (error instanceof Error) {
+				this.logger.error('Could not initialize license manager sdk', { error });
 			}
 		}
 	}
