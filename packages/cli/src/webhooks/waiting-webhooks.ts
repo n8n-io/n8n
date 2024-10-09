@@ -58,7 +58,7 @@ export class WaitingWebhooks implements IWebhookManager {
 		);
 	}
 
-	private getWorkflow(workflowData: IWorkflowBase) {
+	private createWorkflow(workflowData: IWorkflowBase) {
 		return new Workflow({
 			id: workflowData.id,
 			name: workflowData.name,
@@ -105,7 +105,7 @@ export class WaitingWebhooks implements IWebhookManager {
 
 		if (execution.finished) {
 			const { workflowData } = execution;
-			const { nodes } = this.getWorkflow(workflowData);
+			const { nodes } = this.createWorkflow(workflowData);
 			if (this.isSendAndWaitRequest(nodes, suffix)) {
 				res.render('send-and-wait-no-action-required', { isTestWebhook: false });
 				return { noWebhookResponse: true };
@@ -152,7 +152,7 @@ export class WaitingWebhooks implements IWebhookManager {
 		execution.data.resultData.runData[lastNodeExecuted].pop();
 
 		const { workflowData } = execution;
-		const workflow = this.getWorkflow(workflowData);
+		const workflow = this.createWorkflow(workflowData);
 
 		const workflowStartNode = workflow.getNode(lastNodeExecuted);
 		if (workflowStartNode === null) {

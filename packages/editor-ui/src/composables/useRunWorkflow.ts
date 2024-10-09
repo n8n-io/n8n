@@ -379,9 +379,23 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 					});
 
 					if (!isFormShown && lastNode && lastNode.type === FORM_NODE_TYPE) {
-						const testUrl = `${rootStore.formWaitingUrl}/${executionId}`;
-						isFormShown = true;
-						openPopUpWindow(testUrl);
+						if (options.destinationNode) {
+							// Check if the form trigger has starting data
+							// if not do not show form page as trigger would redirect page
+							// otherwise there would be duplicate popup
+							const formTrigger = execution?.workflowData.nodes.find((node) => {
+								return node.type === FORM_TRIGGER_NODE_TYPE;
+							});
+							const runNodeFilter = execution?.data?.startData?.runNodeFilter || [];
+							if (formTrigger && !runNodeFilter.includes(formTrigger.name)) {
+								isFormShown = true;
+							}
+						}
+						if (!isFormShown) {
+							const testUrl = `${rootStore.formWaitingUrl}/${executionId}`;
+							isFormShown = true;
+							openPopUpWindow(testUrl);
+						}
 					}
 
 					if (
