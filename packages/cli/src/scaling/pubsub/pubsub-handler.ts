@@ -53,7 +53,7 @@ export class PubSubHandler {
 					...this.commonHandlers,
 					'get-worker-status': async () => {
 						await this.publisher.publishWorkerResponse({
-							workerId: config.getEnv('redis.queueModeId'),
+							senderId: config.getEnv('redis.queueModeId'),
 							response: 'response-to-get-worker-status',
 							payload: this.workerStatus.generateStatus(),
 						});
@@ -68,7 +68,7 @@ export class PubSubHandler {
 				this.setupWorkerResponseHandlers({
 					'response-to-get-worker-status': async (payload) => {
 						this.push.broadcast('sendWorkerStatusMessage', {
-							workerId: payload.workerId,
+							workerId: payload.senderId,
 							status: payload,
 						});
 					},

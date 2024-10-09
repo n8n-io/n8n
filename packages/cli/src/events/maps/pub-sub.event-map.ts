@@ -1,7 +1,6 @@
-import type { PushType } from '@n8n/api-types';
+import type { PushType, WorkerStatus } from '@n8n/api-types';
 
 import type { IWorkflowDb } from '@/interfaces';
-import type { WorkerStatusReport } from '@/scaling/worker-status';
 
 export type PubSubEventMap = PubSubCommandMap & PubSubWorkerResponseMap;
 
@@ -81,5 +80,5 @@ export type PubSubCommandMap = {
 };
 
 export type PubSubWorkerResponseMap = {
-	'response-to-get-worker-status': WorkerStatusReport;
+	'response-to-get-worker-status': WorkerStatus;
 };

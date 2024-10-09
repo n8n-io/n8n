@@ -17,6 +17,8 @@ import type { PubSub } from './pubsub.types';
 export class Subscriber {
 	private readonly client: SingleNodeClient | MultiNodeClient;
 
+	// #region Lifecycle
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly redisClientService: RedisClientService,
@@ -35,17 +37,25 @@ export class Subscriber {
 		const debouncedHandlerFn = debounce(handlerFn, 300);
 
 		this.client.on('message', (_channel: PubSub.Channel, str) => {
-			const msg = this.parseCommandMessage(str);
+			const msg = this.parseMessage(str);
 			if (!msg) return;
 			if (msg.debounce) debouncedHandlerFn(msg);
 			else handlerFn(msg);
 		});
 	}
 
+	getClient() {
+		return this.client;
+	}
+
 	// @TODO: Use `@OnShutdown()` decorator
 	shutdown() {
 		this.client.disconnect();
 	}
+
+	// #endregion
+
+	// #region Subscribing
 
 	async subscribe(channel: PubSub.Channel) {
 		await this.client.subscribe(channel, (error) => {
@@ -58,16 +68,20 @@ export class Subscriber {
 		});
 	}
 
-	private parseCommandMessage(str: string) {
-		const msg = jsonParse<PubSub.Command | null>(str, { fallbackValue: null });
+	// #region Commands
+
+	private parseMessage(str: string) {
+		const msg = jsonParse<PubSub.Command | PubSub.WorkerResponse | null>(str, {
+			fallbackValue: null,
+		});
 
 		if (!msg) {
-			this.logger.debug('Received invalid string via command channel', { message: str });
+			this.logger.debug('Received invalid string via pubsub channel', { message: str });
 
 			return null;
 		}
 
-		this.logger.debug('Received message via command channel', msg);
+		this.logger.debug('Received message via pubsub channel', msg);
 
 		const queueModeId = config.getEnv('redis.queueModeId');
 
@@ -83,7 +97,5 @@ export class Subscriber {
 		return msg;
 	}
 
-	getClient() {
-		return this.client;
-	}
+	// #endregion
 }

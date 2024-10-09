@@ -1,4 +1,4 @@
-import type { RunningJobSummary } from '@n8n/api-types';
+import type { WorkerStatus as WorkerStatusReport } from '@n8n/api-types';
 import os from 'node:os';
 import { Service } from 'typedi';
 
@@ -7,32 +7,13 @@ import { N8N_VERSION } from '@/constants';
 
 import { JobProcessor } from './job-processor';
 
-export type WorkerStatusReport = {
-	workerId: string;
-	runningJobsSummary: RunningJobSummary[];
-	freeMem: number;
-	totalMem: number;
-	uptime: number;
-	loadAvg: number[];
-	cpus: string;
-	arch: string;
-	platform: NodeJS.Platform;
-	hostname: string;
-	interfaces: Array<{
-		family: 'IPv4' | 'IPv6';
-		address: string;
-		internal: boolean;
-	}>;
-	version: string;
-};
-
 @Service()
 export class WorkerStatus {
 	constructor(private readonly jobProcessor: JobProcessor) {}
 
 	generateStatus(): WorkerStatusReport {
 		return {
-			workerId: config.getEnv('redis.queueModeId'),
+			senderId: config.getEnv('redis.queueModeId'),
 			runningJobsSummary: this.jobProcessor.getRunningJobsSummary(),
 			freeMem: os.freemem(),
 			totalMem: os.totalmem(),

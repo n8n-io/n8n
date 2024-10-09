@@ -79,9 +79,20 @@ export namespace PubSub {
 	// ----------------------------------
 
 	type _ToWorkerResponse<WorkerResponseKey extends keyof PubSubWorkerResponseMap> = {
-		workerId: string;
+		/** ID of worker sending the response. */
+		senderId: string;
+
+		/** IDs of processes to send the response to. */
 		targets?: string[];
+
+		/** Content of worker response. */
 		response: WorkerResponseKey;
+
+		/** Whether the command should be sent to the sender as well. */
+		selfSend?: boolean;
+
+		/** Whether the command should be debounced when received. */
+		debounce?: boolean;
 	} & (PubSubWorkerResponseMap[WorkerResponseKey] extends never
 		? { payload?: never } // some responses carry no payload
 		: { payload: PubSubWorkerResponseMap[WorkerResponseKey] });
