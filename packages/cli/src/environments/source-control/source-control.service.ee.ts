@@ -25,6 +25,7 @@ import {
 	getTrackingInformationFromPrePushResult,
 	getTrackingInformationFromPullResult,
 	getVariablesPath,
+	normalizeAndValidateSourceControlledFilePath,
 	sourceControlFoldersExistCheck,
 } from './source-control-helper.ee';
 import { SourceControlImportService } from './source-control-import.service.ee';
@@ -80,7 +81,7 @@ export class SourceControlService {
 		});
 	}
 
-	private async sanityCheck(): Promise<void> {
+	public async sanityCheck(): Promise<void> {
 		try {
 			const foldersExisted = sourceControlFoldersExistCheck(
 				[this.gitFolder, this.sshFolder],
@@ -217,8 +218,20 @@ export class SourceControlService {
 			throw new BadRequestError('Cannot push onto read-only branch.');
 		}
 
+		const filesToPush = options.fileNames.map((file) => {
+			const normalizedPath = normalizeAndValidateSourceControlledFilePath(
+				this.gitFolder,
+				file.file,
+			);
+
+			return {
+				...file,
+				file: normalizedPath,
+			};
+		});
+
 		// only determine file status if not provided by the frontend
-		let statusResult: SourceControlledFile[] = options.fileNames;
+		let statusResult: SourceControlledFile[] = filesToPush;
 		if (statusResult.length === 0) {
 			statusResult = (await this.getStatus({
 				direction: 'push',
@@ -240,7 +253,7 @@ export class SourceControlService {
 
 		const filesToBePushed = new Set<string>();
 		const filesToBeDeleted = new Set<string>();
-		options.fileNames.forEach((e) => {
+		filesToPush.forEach((e) => {
 			if (e.status !== 'deleted') {
 				filesToBePushed.add(e.file);
 			} else {
@@ -250,12 +263,12 @@ export class SourceControlService {
 
 		this.sourceControlExportService.rmFilesFromExportFolder(filesToBeDeleted);
 
-		const workflowsToBeExported = options.fileNames.filter(
+		const workflowsToBeExported = filesToPush.filter(
 			(e) => e.type === 'workflow' && e.status !== 'deleted',
 		);
 		await this.sourceControlExportService.exportWorkflowsToWorkFolder(workflowsToBeExported);
 
-		const credentialsToBeExported = options.fileNames.filter(
+		const credentialsToBeExported = filesToPush.filter(
 			(e) => e.type === 'credential' && e.status !== 'deleted',
 		);
 		const credentialExportResult =
@@ -269,11 +282,11 @@ export class SourceControlService {
 			});
 		}
 
-		if (options.fileNames.find((e) => e.type === 'tags')) {
+		if (filesToPush.find((e) => e.type === 'tags')) {
 			await this.sourceControlExportService.exportTagsToWorkFolder();
 		}
 
-		if (options.fileNames.find((e) => e.type === 'variables')) {
+		if (filesToPush.find((e) => e.type === 'variables')) {
 			await this.sourceControlExportService.exportVariablesToWorkFolder();
 		}
 
@@ -281,7 +294,7 @@ export class SourceControlService {
 
 		for (let i = 0; i < statusResult.length; i++) {
 			// eslint-disable-next-line @typescript-eslint/no-loop-func
-			if (options.fileNames.find((file) => file.file === statusResult[i].file)) {
+			if (filesToPush.find((file) => file.file === statusResult[i].file)) {
 				statusResult[i].pushed = true;
 			}
 		}

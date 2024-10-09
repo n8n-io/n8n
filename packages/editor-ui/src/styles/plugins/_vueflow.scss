@@ -70,7 +70,7 @@
 }
 
 /**
- * Node
+ * Nodes
  */
 
 .vue-flow__node {
@@ -81,6 +81,10 @@
 
 	&.dragging {
 		cursor: grabbing;
+	}
+
+	&.selected {
+		z-index: 1 !important;
 	}
 
 	&:has(.sticky--active) {
@@ -97,4 +101,13 @@
 	margin-top: calc(-1 * var(--spacing-2xs));
 	margin-left: calc(-1 * var(--spacing-2xs));
 	padding: var(--spacing-2xs);
+}
+
+/**
+ * Edges
+ */
+
+.vue-flow__edges,
+.vue-flow__edge-labels {
+	z-index: 1 !important;
 }

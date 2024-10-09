@@ -21,10 +21,10 @@ import type {
 import * as a from 'node:assert';
 import { runInNewContext, type Context } from 'node:vm';
 
-import { validateRunForAllItemsOutput, validateRunForEachItemOutput } from '@/result-validation';
+import type { TaskResultData } from '@/runner-types';
+import { type Task, TaskRunner } from '@/task-runner';
 
-import type { TaskResultData } from './runner-types';
-import { type Task, TaskRunner } from './task-runner';
+import { validateRunForAllItemsOutput, validateRunForEachItemOutput } from './result-validation';
 
 export interface JSExecSettings {
 	code: string;
@@ -74,8 +74,6 @@ type CustomConsole = {
 	log: (...args: unknown[]) => void;
 };
 
-const noop = () => {};
-
 export class JsTaskRunner extends TaskRunner {
 	constructor(
 		taskType: string,
@@ -110,16 +108,14 @@ export class JsTaskRunner extends TaskRunner {
 		});
 
 		const customConsole = {
-			log:
-				settings.workflowMode === 'manual'
-					? noop
-					: (...args: unknown[]) => {
-							const logOutput = args
-								.map((arg) => (typeof arg === 'object' && arg !== null ? JSON.stringify(arg) : arg))
-								.join(' ');
-							console.log('[JS Code]', logOutput);
-							void this.makeRpcCall(task.taskId, 'logNodeOutput', [logOutput]);
-						},
+			// Send log output back to the main process. It will take care of forwarding
+			// it to the UI or printing to console.
+			log: (...args: unknown[]) => {
+				const logOutput = args
+					.map((arg) => (typeof arg === 'object' && arg !== null ? JSON.stringify(arg) : arg))
+					.join(' ');
+				void this.makeRpcCall(task.taskId, 'logNodeOutput', [logOutput]);
+			},
 		};
 
 		const result =
