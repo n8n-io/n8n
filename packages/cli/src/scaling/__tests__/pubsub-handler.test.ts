@@ -348,3 +348,5 @@ describe('PubSubHandler', () => {
 		});
 	});
 });
+
+// @TODO: Tests for pubsub handlers in main process
