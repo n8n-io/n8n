@@ -18,6 +18,7 @@ export * from './NodeHelpers';
 export * from './RoutingNode';
 export * from './Workflow';
 export * from './WorkflowDataProxy';
+export * from './WorkflowDataProxyEnvProvider';
 export * from './WorkflowHooks';
 export * from './VersionedNodeType';
 export * from './TypeValidation';
