@@ -34,6 +34,6 @@ catalogs:
     vitest-mock-extended: ^2.0.2
     vue: ^3.4.21
     vue-router: ^4.4.2
-    vue-tsc: ^2.0.19
+    vue-tsc: ^2.1.6
     vue-markdown-render: ^2.2.1
     highlight.js: ^11.8.0
