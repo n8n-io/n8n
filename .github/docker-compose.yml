@@ -3,7 +3,6 @@ version: '3.9'
 services:
   mysql:
     image: mysql:5.7
-    command: --sql_require_primary_key=ON
     environment:
       - MYSQL_DATABASE=n8n
       - MYSQL_ROOT_PASSWORD=password
