@@ -99,12 +99,6 @@ overrides:
   tslib: ^2.6.2
   tsconfig-paths: ^4.2.0
   typescript: ^5.6.2
-  '@vue/compiler-sfc': 3.5.11
-  '@vue/compiler-dom': 3.5.11
-  '@vue/language-core': 2.1.6
-  '@vue/shared': 3.5.11
-  vue-demi: 0.14.10
-  vue-template-compiler: 2.7.16
   vue-tsc: ^2.1.6
   ws: '>=8.17.1'
 
@@ -4712,7 +4706,7 @@ packages:
     resolution: {integrity: sha512-ls4RiHO1ta4mxqqajWRh8158uFObVrrtAPoxk7cIp4HrnQUj/ScKzqz53HxYpG3X6Zb7H2v+0eTGLSoy8HQ2nA==}
     engines: {node: '>=14'}
     peerDependencies:
-      '@vue/compiler-sfc': 3.5.11
+      '@vue/compiler-sfc': '>= 3'
       vue: '>= 3'
     peerDependenciesMeta:
       '@vue/compiler-sfc':
@@ -5356,9 +5350,6 @@ packages:
     peerDependencies:
       '@vue-flow/core': ^1.23.0
       vue: ^3.3.0
-
-  '@vue/compiler-core@3.4.21':
-    resolution: {integrity: sha512-MjXawxZf2SbZszLPYxaFCjxfibYrzr3eYbKxwpLR9EQN+oaziSu3qKVbwBERj1IFIB8OLUewxB5m/BFzi613og==}
 
   '@vue/compiler-core@3.5.11':
     resolution: {integrity: sha512-PwAdxs7/9Hc3ieBO12tXzmTD+Ln4qhT/56S+8DvrrZ4kLDn4Z/AMUr8tXJD0axiJBS0RKIoNaR0yMuQB9v9Udg==}
@@ -11871,8 +11862,8 @@ packages:
     peerDependencies:
       '@svgr/core': '>=7.0.0'
       '@svgx/core': ^1.0.1
-      '@vue/compiler-sfc': 3.5.11
-      vue-template-compiler: 2.7.16
+      '@vue/compiler-sfc': ^3.0.2 || ^2.7.0
+      vue-template-compiler: ^2.6.12
       vue-template-es2015-compiler: ^1.9.0
     peerDependenciesMeta:
       '@svgr/core':
@@ -16298,7 +16289,7 @@ snapshots:
       '@storybook/manager-api': 8.3.1(storybook@8.3.1)
       '@storybook/preview-api': 8.3.1(storybook@8.3.1)
       '@storybook/theming': 8.3.1(storybook@8.3.1)
-      '@vue/compiler-core': 3.4.21
+      '@vue/compiler-core': 3.5.11
       storybook: 8.3.1
       ts-dedent: 2.2.0
       type-fest: 2.19.0
@@ -17169,14 +17160,6 @@ snapshots:
       d3-drag: 3.0.0
       d3-selection: 3.0.0
       vue: 3.5.11(typescript@5.6.2)
-
-  '@vue/compiler-core@3.4.21':
-    dependencies:
-      '@babel/parser': 7.24.6
-      '@vue/shared': 3.5.11
-      entities: 4.5.0
-      estree-walker: 2.0.2
-      source-map-js: 1.2.0
 
   '@vue/compiler-core@3.5.11':
     dependencies:
