@@ -55,9 +55,9 @@ import {
 	findStartNodes,
 	findSubgraph,
 	findTriggerForPartialExecution,
+	cleanRunData,
+	recreateNodeExecutionStack,
 } from './PartialExecutionUtils';
-import { cleanRunData } from './PartialExecutionUtils/cleanRunData';
-import { recreateNodeExecutionStack } from './PartialExecutionUtils/recreateNodeExecutionStack';
 
 export class WorkflowExecute {
 	private status: ExecutionStatus = 'new';
