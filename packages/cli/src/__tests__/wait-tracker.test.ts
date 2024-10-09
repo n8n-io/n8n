@@ -5,6 +5,7 @@ import type { IExecutionResponse } from '@/interfaces';
 import type { MultiMainSetup } from '@/services/orchestration/main/multi-main-setup.ee';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { WaitTracker } from '@/wait-tracker';
+import { mockLogger } from '@test/mocking';
 
 jest.useFakeTimers();
 
@@ -21,7 +22,7 @@ describe('WaitTracker', () => {
 	let waitTracker: WaitTracker;
 	beforeEach(() => {
 		waitTracker = new WaitTracker(
-			mock(),
+			mockLogger(),
 			executionRepository,
 			mock(),
 			mock(),
