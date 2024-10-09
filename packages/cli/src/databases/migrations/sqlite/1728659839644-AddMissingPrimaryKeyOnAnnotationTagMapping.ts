@@ -1,3 +1,5 @@
+import { ApplicationError } from 'n8n-workflow/src';
+
 import type { IrreversibleMigration, MigrationContext } from '@/databases/types';
 
 const annotationsTableName = 'execution_annotations';
@@ -12,10 +14,19 @@ export class AddMissingPrimaryKeyOnAnnotationTagMapping1728659839644
 		tablePrefix,
 		schemaBuilder: { createTable, column, dropIndex },
 	}: MigrationContext) {
-		await queryRunner.createPrimaryKey(`${tablePrefix}${annotationTagMappingsTableName}`, [
-			'annotationId',
-			'tagId',
-		]);
+		// Check if the primary key already exists
+		const table = await queryRunner.getTable(`${tablePrefix}execution_annotation_tags`);
+
+		if (!table) {
+			throw new ApplicationError('execution_annotation_tags table not found');
+		}
+
+		const hasPrimaryKey = table.primaryColumns.length > 0;
+
+		// Do nothing if the primary key already exists
+		if (hasPrimaryKey) {
+			return;
+		}
 
 		// SQLite doesn't support adding a primary key to an existing table
 		// So we have to do the following steps:
