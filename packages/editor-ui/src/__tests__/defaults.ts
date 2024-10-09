@@ -111,7 +111,7 @@ export const defaultSettings: FrontendSettings = {
 	mfa: {
 		enabled: false,
 	},
-	ai: {
+	askAi: {
 		enabled: false,
 	},
 	workflowHistory: {

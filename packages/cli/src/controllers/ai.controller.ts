@@ -7,18 +7,18 @@ import { WritableStream } from 'node:stream/web';
 import { Post, RestController } from '@/decorators';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { AiAssistantRequest } from '@/requests';
-import { AiAssistantService } from '@/services/ai-assistant.service';
+import { AiService } from '@/services/ai.service';
 
 type FlushableResponse = Response & { flush: () => void };
 
-@RestController('/ai-assistant')
-export class AiAssistantController {
-	constructor(private readonly aiAssistantService: AiAssistantService) {}
+@RestController('/ai')
+export class AiController {
+	constructor(private readonly aiService: AiService) {}
 
 	@Post('/chat', { rateLimit: { limit: 100 } })
 	async chat(req: AiAssistantRequest.Chat, res: FlushableResponse) {
 		try {
-			const aiResponse = await this.aiAssistantService.chat(req.body, req.user);
+			const aiResponse = await this.aiService.chat(req.body, req.user);
 			if (aiResponse.body) {
 				res.header('Content-type', 'application/json-lines').flush();
 				await aiResponse.body.pipeTo(
@@ -40,10 +40,21 @@ export class AiAssistantController {
 
 	@Post('/chat/apply-suggestion')
 	async applySuggestion(
-		req: AiAssistantRequest.ApplySuggestion,
+		req: AiAssistantRequest.ApplySuggestionPayload,
 	): Promise<AiAssistantSDK.ApplySuggestionResponse> {
 		try {
-			return await this.aiAssistantService.applySuggestion(req.body, req.user);
+			return await this.aiService.applySuggestion(req.body, req.user);
+		} catch (e) {
+			assert(e instanceof Error);
+			ErrorReporterProxy.error(e);
+			throw new InternalServerError(`Something went wrong: ${e.message}`);
+		}
+	}
+
+	@Post('/ask-ai')
+	async askAi(req: AiAssistantRequest.AskAiPayload): Promise<AiAssistantSDK.AskAiResponsePayload> {
+		try {
+			return await this.aiService.askAi(req.body, req.user);
 		} catch (e) {
 			assert(e instanceof Error);
 			ErrorReporterProxy.error(e);

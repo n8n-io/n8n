@@ -3,7 +3,6 @@ import type { AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
 import { assert, type IUser } from 'n8n-workflow';
 import { Service } from 'typedi';
-import type { Response } from 'undici';
 
 import config from '@/config';
 import type { AiAssistantRequest } from '@/requests';
@@ -12,7 +11,7 @@ import { N8N_VERSION } from '../constants';
 import { License } from '../license';
 
 @Service()
-export class AiAssistantService {
+export class AiService {
 	private client: AiAssistantClient | undefined;
 
 	constructor(
@@ -40,7 +39,7 @@ export class AiAssistantService {
 		});
 	}
 
-	async chat(payload: AiAssistantSDK.ChatRequestPayload, user: IUser): Promise<Response> {
+	async chat(payload: AiAssistantSDK.ChatRequestPayload, user: IUser) {
 		if (!this.client) {
 			await this.init();
 		}
@@ -56,5 +55,14 @@ export class AiAssistantService {
 		assert(this.client, 'Assistant client not setup');
 
 		return await this.client.applySuggestion(payload, { id: user.id });
+	}
+
+	async askAi(payload: AiAssistantSDK.AskAiRequestPayload, user: IUser) {
+		if (!this.client) {
+			await this.init();
+		}
+		assert(this.client, 'Assistant client not setup');
+
+		return await this.client.askAi(payload, { id: user.id });
 	}
 }

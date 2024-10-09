@@ -91,28 +91,12 @@ return []
 	});
 
 	describe('Ask AI', () => {
-		it('tab should display based on experiment', () => {
-			WorkflowPage.actions.visit();
-			cy.window().then((win) => {
-				win.featureFlags.override('011_ask_AI', 'control');
-				WorkflowPage.actions.addInitialNodeToCanvas('Manual');
-				WorkflowPage.actions.addNodeToCanvas('Code');
-				WorkflowPage.actions.openNode('Code');
-
-				cy.getByTestId('code-node-tab-ai').should('not.exist');
-
-				ndv.actions.close();
-				win.featureFlags.override('011_ask_AI', undefined);
-				WorkflowPage.actions.openNode('Code');
-				cy.getByTestId('code-node-tab-ai').should('not.exist');
-			});
-		});
-
 		describe('Enabled', () => {
 			beforeEach(() => {
+				cy.enableFeature('askAi');
 				WorkflowPage.actions.visit();
-				cy.window().then((win) => {
-					win.featureFlags.override('011_ask_AI', 'gpt3');
+
+				cy.window().then(() => {
 					WorkflowPage.actions.addInitialNodeToCanvas('Manual');
 					WorkflowPage.actions.addNodeToCanvas('Code', true, true);
 				});
@@ -157,7 +141,7 @@ return []
 
 				cy.getByTestId('ask-ai-prompt-input').type(prompt);
 
-				cy.intercept('POST', '/rest/ask-ai', {
+				cy.intercept('POST', '/rest/ai/ask-ai', {
 					statusCode: 200,
 					body: {
 						data: {
@@ -169,9 +153,7 @@ return []
 				cy.getByTestId('ask-ai-cta').click();
 				const askAiReq = cy.wait('@ask-ai');
 
-				askAiReq
-					.its('request.body')
-					.should('have.keys', ['question', 'model', 'context', 'n8nVersion']);
+				askAiReq.its('request.body').should('have.keys', ['question', 'context', 'forNode']);
 
 				askAiReq.its('context').should('have.keys', ['schema', 'ndvPushRef', 'pushRef']);
 
@@ -195,7 +177,7 @@ return []
 				];
 
 				handledCodes.forEach(({ code, message }) => {
-					cy.intercept('POST', '/rest/ask-ai', {
+					cy.intercept('POST', '/rest/ai/ask-ai', {
 						statusCode: code,
 						status: code,
 					}).as('ask-ai');
