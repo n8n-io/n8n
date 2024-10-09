@@ -2,7 +2,7 @@ import { ApplicationError, ensureError } from 'n8n-workflow';
 import * as a from 'node:assert/strict';
 
 import { authenticate } from './authenticator';
-import { JsTaskRunner } from './code';
+import { JsTaskRunner } from './js-task-runner/js-task-runner';
 
 let runner: JsTaskRunner | undefined;
 let isShuttingDown = false;

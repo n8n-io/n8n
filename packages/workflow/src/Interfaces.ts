@@ -22,6 +22,7 @@ import type { WorkflowActivationError } from './errors/workflow-activation.error
 import type { WorkflowOperationError } from './errors/workflow-operation.error';
 import type { ExecutionStatus } from './ExecutionStatus';
 import type { Workflow } from './Workflow';
+import type { EnvProviderState } from './WorkflowDataProxyEnvProvider';
 import type { WorkflowHooks } from './WorkflowHooks';
 
 export interface IAdditionalCredentialOptions {
@@ -2299,6 +2300,7 @@ export interface IWorkflowExecuteAdditionalData {
 		connectionInputData: INodeExecutionData[],
 		siblingParameters: INodeParameters,
 		mode: WorkflowExecuteMode,
+		envProviderState: EnvProviderState,
 		executeData?: IExecuteData,
 		defaultReturnRunIndex?: number,
 		selfData?: IDataObject,

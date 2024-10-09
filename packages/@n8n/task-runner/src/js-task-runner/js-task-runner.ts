@@ -17,14 +17,15 @@ import type {
 	INodeParameters,
 	IRunExecutionData,
 	WorkflowExecuteMode,
+	EnvProviderState,
 } from 'n8n-workflow';
 import * as a from 'node:assert';
 import { runInNewContext, type Context } from 'node:vm';
 
-import { validateRunForAllItemsOutput, validateRunForEachItemOutput } from '@/result-validation';
+import type { TaskResultData } from '@/runner-types';
+import { type Task, TaskRunner } from '@/task-runner';
 
-import type { TaskResultData } from './runner-types';
-import { type Task, TaskRunner } from './task-runner';
+import { validateRunForAllItemsOutput, validateRunForEachItemOutput } from './result-validation';
 
 export interface JSExecSettings {
 	code: string;
@@ -63,6 +64,7 @@ export interface AllCodeTaskData {
 	connectionInputData: INodeExecutionData[];
 	siblingParameters: INodeParameters;
 	mode: WorkflowExecuteMode;
+	envProviderState?: EnvProviderState;
 	executeData?: IExecuteData;
 	defaultReturnRunIndex: number;
 	selfData: IDataObject;
@@ -73,8 +75,6 @@ export interface AllCodeTaskData {
 type CustomConsole = {
 	log: (...args: unknown[]) => void;
 };
-
-const noop = () => {};
 
 export class JsTaskRunner extends TaskRunner {
 	constructor(
@@ -110,16 +110,14 @@ export class JsTaskRunner extends TaskRunner {
 		});
 
 		const customConsole = {
-			log:
-				settings.workflowMode === 'manual'
-					? noop
-					: (...args: unknown[]) => {
-							const logOutput = args
-								.map((arg) => (typeof arg === 'object' && arg !== null ? JSON.stringify(arg) : arg))
-								.join(' ');
-							console.log('[JS Code]', logOutput);
-							void this.makeRpcCall(task.taskId, 'logNodeOutput', [logOutput]);
-						},
+			// Send log output back to the main process. It will take care of forwarding
+			// it to the UI or printing to console.
+			log: (...args: unknown[]) => {
+				const logOutput = args
+					.map((arg) => (typeof arg === 'object' && arg !== null ? JSON.stringify(arg) : arg))
+					.join(' ');
+				void this.makeRpcCall(task.taskId, 'logNodeOutput', [logOutput]);
+			},
 		};
 
 		const result =
@@ -266,6 +264,13 @@ export class JsTaskRunner extends TaskRunner {
 			allData.defaultReturnRunIndex,
 			allData.selfData,
 			allData.contextNodeName,
+			// Make sure that even if we don't receive the envProviderState for
+			// whatever reason, we don't expose the task runner's env to the code
+			allData.envProviderState ?? {
+				env: {},
+				isEnvAccessBlocked: false,
+				isProcessAvailable: true,
+			},
 		).getDataProxy();
 	}
 

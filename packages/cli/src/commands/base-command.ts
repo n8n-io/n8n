@@ -7,7 +7,12 @@ import {
 	ObjectStoreService,
 	DataDeduplicationService,
 } from 'n8n-core';
-import { ApplicationError, ErrorReporterProxy as ErrorReporter, sleep } from 'n8n-workflow';
+import {
+	ApplicationError,
+	ensureError,
+	ErrorReporterProxy as ErrorReporter,
+	sleep,
+} from 'n8n-workflow';
 import { Container } from 'typedi';
 
 import type { AbstractServer } from '@/abstract-server';
@@ -294,8 +299,9 @@ export abstract class BaseCommand extends Command {
 				this.logger.debug('Attempting license activation');
 				await this.license.activate(activationKey);
 				this.logger.debug('License init complete');
-			} catch (e) {
-				this.logger.error('Could not activate license', e as Error);
+			} catch (e: unknown) {
+				const error = ensureError(e);
+				this.logger.error('Could not activate license', { error });
 			}
 		}
 	}
