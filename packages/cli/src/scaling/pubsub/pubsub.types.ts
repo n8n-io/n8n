@@ -86,10 +86,6 @@ export namespace PubSub {
 		_ToWorkerResponse<WorkerResponseKey>
 	>;
 
-	namespace WorkerResponses {
-		export type GetWorkerStatus = ToWorkerResponse<'get-worker-status'>;
-	}
-
 	/** Response sent via the `n8n.worker-response` pubsub channel. */
-	export type WorkerResponse = WorkerResponses.GetWorkerStatus;
+	export type WorkerResponse = ToWorkerResponse<'get-worker-status'>;
 }
