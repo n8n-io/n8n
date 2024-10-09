@@ -86,11 +86,10 @@ export class Subscriber {
 		const queueModeId = config.getEnv('redis.queueModeId');
 
 		if (
+			'command' in msg &&
 			!msg.selfSend &&
 			(msg.senderId === queueModeId || (msg.targets && !msg.targets.includes(queueModeId)))
 		) {
-			this.logger.debug('Disregarding message - not for this instance', msg);
-
 			return null;
 		}
 

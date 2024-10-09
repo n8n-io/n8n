@@ -88,9 +88,6 @@ export namespace PubSub {
 		/** Content of worker response. */
 		response: WorkerResponseKey;
 
-		/** Whether the command should be sent to the sender as well. */
-		selfSend?: boolean;
-
 		/** Whether the command should be debounced when received. */
 		debounce?: boolean;
 	} & (PubSubWorkerResponseMap[WorkerResponseKey] extends never
