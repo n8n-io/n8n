@@ -4,6 +4,7 @@ import Container from 'typedi';
 import { Logger } from '@/logging/logger.service';
 import { WORKER_RESPONSE_PUBSUB_CHANNEL } from '@/scaling/constants';
 import type { PubSub } from '@/scaling/pubsub/pubsub.types';
+import { assertNever } from '@/utils';
 
 import type { MainResponseReceivedHandlerOptions } from './types';
 import { Push } from '../../../push';
@@ -32,12 +33,8 @@ export async function handleWorkerResponseMessageMain(
 				status: workerResponse.payload,
 			});
 			break;
-		case 'get-worker-id':
-			break;
 		default:
-			Container.get(Logger).debug(
-				`Received worker response ${workerResponse.command} from ${workerResponse.workerId}`,
-			);
+			assertNever(workerResponse.command);
 	}
 
 	return workerResponse;

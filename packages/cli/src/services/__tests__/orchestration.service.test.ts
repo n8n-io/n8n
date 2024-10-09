@@ -1,3 +1,4 @@
+import type { WorkerStatus } from '@n8n/api-types';
 import type Redis from 'ioredis';
 import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
@@ -34,12 +35,10 @@ mockInstance(ActiveWorkflowManager);
 
 let queueModeId: string;
 
-const workerRestartEventBusResponse: PubSub.WorkerResponse = {
+const workerStatusResponse: PubSub.WorkerResponse = {
 	workerId: 'test',
-	command: 'restart-event-bus',
-	payload: {
-		result: 'success',
-	},
+	command: 'get-worker-status',
+	payload: mock<WorkerStatus>(),
 };
 
 describe('Orchestration Service', () => {
@@ -74,10 +73,10 @@ describe('Orchestration Service', () => {
 
 	test('should handle worker responses', async () => {
 		const response = await handleWorkerResponseMessageMain(
-			JSON.stringify(workerRestartEventBusResponse),
+			JSON.stringify(workerStatusResponse),
 			mock<MainResponseReceivedHandlerOptions>(),
 		);
-		expect(response?.command).toEqual('restart-event-bus');
+		expect(response?.command).toEqual('get-worker-status');
 	});
 
 	test('should handle command messages from others', async () => {
@@ -94,10 +93,10 @@ describe('Orchestration Service', () => {
 
 	test('should reject command messages from itself', async () => {
 		const response = await handleCommandMessageMain(
-			JSON.stringify({ ...workerRestartEventBusResponse, senderId: queueModeId }),
+			JSON.stringify({ ...workerStatusResponse, senderId: queueModeId }),
 		);
 		expect(response).toBeDefined();
-		expect(response!.command).toEqual('restart-event-bus');
+		expect(response!.command).toEqual('get-worker-status');
 		expect(response!.senderId).toEqual(queueModeId);
 		expect(eventBus.restart).not.toHaveBeenCalled();
 	});
@@ -105,7 +104,7 @@ describe('Orchestration Service', () => {
 	test('should send command messages', async () => {
 		// @ts-expect-error Private field
 		jest.spyOn(os.publisher, 'publishCommand').mockImplementation(async () => {});
-		await os.getWorkerIds();
+		await os.getWorkerStatus();
 		// @ts-expect-error Private field
 		expect(os.publisher.publishCommand).toHaveBeenCalled();
 		// @ts-expect-error Private field

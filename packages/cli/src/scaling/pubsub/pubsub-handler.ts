@@ -43,11 +43,6 @@ export class PubSubHandler {
 							command: 'get-worker-status',
 							payload: this.workerStatus.generateStatus(),
 						}),
-					'get-worker-id': async () =>
-						await this.publisher.publishWorkerResponse({
-							workerId: config.getEnv('redis.queueModeId'),
-							command: 'get-worker-id',
-						}),
 				});
 				break;
 			case 'main':
