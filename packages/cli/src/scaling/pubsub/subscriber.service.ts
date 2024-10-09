@@ -81,8 +81,6 @@ export class Subscriber {
 			return null;
 		}
 
-		this.logger.debug('Received message via pubsub channel', msg);
-
 		const queueModeId = config.getEnv('redis.queueModeId');
 
 		if (
@@ -92,6 +90,8 @@ export class Subscriber {
 		) {
 			return null;
 		}
+
+		this.logger.debug('Received message via pubsub channel', msg);
 
 		return msg;
 	}
