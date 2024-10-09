@@ -143,7 +143,7 @@ export class WaitTracker {
 	}
 
 	stopTracking() {
-		this.logger.debug('Shutting down');
+		this.logger.debug('Shutting down wait tracking');
 
 		clearInterval(this.mainTimer);
 		Object.keys(this.waitingExecutions).forEach((executionId) => {
