@@ -4,3 +4,4 @@ export { findStartNodes } from './findStartNodes';
 export { findSubgraph } from './findSubgraph';
 export { findCycles } from './findCycles';
 export { recreateNodeExecutionStack } from './recreateNodeExecutionStack';
+export { cleanRunData } from './cleanRunData';
