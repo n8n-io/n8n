@@ -286,6 +286,149 @@ export class DirectedGraph {
 		);
 	}
 
+	/**
+	 * Returns all strongly connected components.
+	 *
+	 * Strongly connected components are a set of nodes where it's possible to
+	 * reach every node from every node.
+	 *
+	 * Strongly connected components are mutually exclusive in directed graphs,
+	 * e.g. they cannot overlap.
+	 *
+	 * The smallest strongly connected component is a single node, since it can
+	 * reach itself from itself by not following any edges.
+	 *
+	 * The algorithm implement here is Tarjan's algorithm.
+	 *
+	 * Example:
+	 * ┌─────┐    ┌─────┐    ┌─────┐    ┌─────┐
+	 * │node1├────►node2◄────┤node3├────►node5│
+	 * └─────┘    └──┬──┘    └──▲──┘    └▲───┬┘
+	 *               │          │        │   │
+	 *            ┌──▼──┐       │       ┌┴───▼┐
+	 *            │node4├───────┘       │node6│
+	 *            └─────┘               └─────┘
+	 *
+	 * The strongly connected components are
+	 * 1. node1
+	 * 2. node2, node4, node3
+	 * 3. node5, node6
+	 *
+	 * Further reading:
+	 * https://en.wikipedia.org/wiki/Strongly_connected_component
+	 * https://www.youtube.com/watch?v=wUgWX0nc4NY
+	 */
+	getStronglyConnectedComponents(): INode[][] {
+		let id = 0;
+		const visited: Set<INode> = new Set();
+		const ids: Map<INode, number> = new Map();
+		const lows: Map<INode, number> = new Map();
+		const stack: INode[] = [];
+		const stronglyConnectedComponents: INode[][] = [];
+
+		const followNode = (node: INode) => {
+			if (visited.has(node)) {
+				return;
+			}
+
+			visited.add(node);
+			lows.set(node, id);
+			ids.set(node, id);
+			id++;
+			stack.push(node);
+
+			const directChildren = this.getDirectChildConnections(node).map((c) => c.to);
+			for (const child of directChildren) {
+				followNode(child);
+
+				// if node is on stack min the low id
+				if (stack.includes(child)) {
+					const childId = lows.get(child);
+					const ownId = lows.get(node);
+					a.ok(childId !== undefined);
+					a.ok(ownId !== undefined);
+					const lowId = Math.min(childId, ownId);
+
+					lows.set(node, lowId);
+				}
+			}
+
+			// after we visited all children, check if the low id is the same as the
+			// nodes id, which means we found a strongly connected component
+			const ownId = ids.get(node);
+			const ownLow = lows.get(node);
+			a.ok(ownId !== undefined);
+			a.ok(ownLow !== undefined);
+
+			if (ownId === ownLow) {
+				// pop from the stack until the stack is empty or we find a node that
+				// has a different low id
+				const scc: INode[] = [];
+				let next = stack.at(-1);
+
+				while (next && lows.get(next) === ownId) {
+					stack.pop();
+					scc.push(next);
+					next = stack.at(-1);
+				}
+
+				if (scc.length > 0) {
+					stronglyConnectedComponents.push(scc);
+				}
+			}
+		};
+
+		for (const node of this.nodes.values()) {
+			followNode(node);
+		}
+
+		return stronglyConnectedComponents;
+	}
+
+	private depthFirstSearchRecursive(
+		from: INode,
+		fn: (node: INode) => boolean,
+		seen: Set<INode>,
+	): INode | undefined {
+		if (seen.has(from)) {
+			return;
+		}
+		seen.add(from);
+
+		if (fn(from)) {
+			return from;
+		}
+
+		for (const childConnection of this.getDirectChildConnections(from)) {
+			const found = this.depthFirstSearchRecursive(childConnection.to, fn, seen);
+
+			if (found) {
+				return found;
+			}
+		}
+
+		return;
+	}
+
+	/**
+	 * Like `Array.prototype.find` but for directed graphs.
+	 *
+	 * Starting from, and including, the `from` node this calls the provided
+	 * predicate function with every child node until the predicate function
+	 * returns true.
+	 *
+	 * The search is depth first, meaning every branch is exhausted before the
+	 * next branch is tried.
+	 *
+	 * The first node for which the predicate function returns true is returned.
+	 *
+	 * If the graph is exhausted and the predicate function never returned true,
+	 * undefined is returned instead.
+	 */
+	depthFirstSearch({ from, fn }: { from: INode; fn: (node: INode) => boolean }): INode | undefined {
+		return this.depthFirstSearchRecursive(from, fn, new Set());
+	}
+
 	toWorkflow(parameters: Omit<WorkflowParameters, 'nodes' | 'connections'>): Workflow {
 		return new Workflow({
 			...parameters,
