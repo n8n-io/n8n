@@ -1,4 +1,8 @@
-import type { PubSubCommandMap, PubSubWorkerResponseMap } from '@/events/maps/pub-sub.event-map';
+import type {
+	PubSubCommandMap,
+	PubSubEventMap,
+	PubSubWorkerResponseMap,
+} from '@/events/maps/pub-sub.event-map';
 import type { Resolve } from '@/utlity.types';
 
 import type { COMMAND_PUBSUB_CHANNEL, WORKER_RESPONSE_PUBSUB_CHANNEL } from '../constants';
@@ -92,4 +96,30 @@ export namespace PubSub {
 
 	/** Response sent via the `n8n.worker-response` pubsub channel. */
 	export type WorkerResponse = WorkerResponses.GetWorkerStatus;
+
+	/**
+	 * Of all events emitted from pubsub messages, these are the events where the
+	 * event handlers are shared by main, worker, and webhook processes.
+	 */
+	export type CommonEvents = Pick<
+		PubSubEventMap,
+		| 'reload-license'
+		| 'restart-event-bus'
+		| 'reload-external-secrets-providers'
+		| 'community-package-install'
+		| 'community-package-update'
+		| 'community-package-uninstall'
+	>;
+
+	/** Multi-main events emitted from pubsub messages. */
+	export type MultiMainHandlers = Pick<
+		PubSubEventMap,
+		| 'add-webhooks-triggers-and-pollers'
+		| 'remove-triggers-and-pollers'
+		| 'display-workflow-activation'
+		| 'display-workflow-deactivation'
+		| 'display-workflow-activation-error'
+		| 'relay-execution-lifecycle-event'
+		| 'clear-test-webhooks'
+	>;
 }

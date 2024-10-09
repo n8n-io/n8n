@@ -20,6 +20,7 @@ import { CommunityPackagesService } from '@/services/community-packages.service'
 import { assertNever } from '@/utils';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
 
+import type { PubSub } from './pubsub.types';
 import { WorkerStatus } from '../worker-status';
 
 /**
@@ -62,7 +63,7 @@ export class PubSubHandler {
 			case 'main':
 				this.setupCommandHandlers({
 					...this.commonHandlers,
-					...this.multiMainSetupHandlers,
+					...this.multiMainHandlers,
 				});
 				this.setupWorkerResponseHandlers({
 					'response-to-get-worker-status': async (payload) => {
@@ -109,17 +110,8 @@ export class PubSubHandler {
 		}
 	}
 
-	/** Handlers shared by main, worker, and webhook processes. */
 	private commonHandlers: {
-		[K in keyof Pick<
-			PubSubEventMap,
-			| 'reload-license'
-			| 'restart-event-bus'
-			| 'reload-external-secrets-providers'
-			| 'community-package-install'
-			| 'community-package-update'
-			| 'community-package-uninstall'
-		>]: (event: PubSubEventMap[K]) => Promise<void>;
+		[EventName in keyof PubSub.CommonEvents]: (event: PubSubEventMap[EventName]) => Promise<void>;
 	} = {
 		'reload-license': async () => await this.license.reload(),
 		'restart-event-bus': async () => await this.eventbus.restart(),
@@ -133,17 +125,10 @@ export class PubSubHandler {
 			await this.communityPackagesService.removeNpmPackage(packageName),
 	};
 
-	private multiMainSetupHandlers: {
-		[K in keyof Pick<
-			PubSubEventMap,
-			| 'add-webhooks-triggers-and-pollers'
-			| 'remove-triggers-and-pollers'
-			| 'display-workflow-activation'
-			| 'display-workflow-deactivation'
-			| 'display-workflow-activation-error'
-			| 'relay-execution-lifecycle-event'
-			| 'clear-test-webhooks'
-		>]: (event: PubSubEventMap[K]) => Promise<void>;
+	private multiMainHandlers: {
+		[EventName in keyof PubSub.MultiMainHandlers]: (
+			event: PubSubEventMap[EventName],
+		) => Promise<void>;
 	} = {
 		'add-webhooks-triggers-and-pollers': async ({ workflowId }) => {
 			if (this.instanceSettings.isFollower) return;
