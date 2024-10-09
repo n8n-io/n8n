@@ -267,6 +267,44 @@ describe('Telemetry', () => {
 			expect(execBuffer['2'].prod_success?.first).toEqual(execTime1);
 		});
 	});
+
+	describe('Rudderstack', () => {
+		test("should call rudderStack.identify() with a fake IP address to instruct Rudderstack to not use the user's IP address", () => {
+			const traits = {
+				name: 'Test User',
+				age: 30,
+				isActive: true,
+			};
+
+			telemetry.identify(traits);
+
+			const expectedArgs = {
+				userId: instanceId,
+				traits: { ...traits, instanceId },
+				context: {
+					ip: '0.0.0.0', // RudderStack anonymized IP
+				},
+			};
+
+			expect(mockRudderStack.identify).toHaveBeenCalledWith(expectedArgs);
+		});
+
+		test("should call rudderStack.track() with a fake IP address to instruct Rudderstack to not use the user's IP address", () => {
+			const eventName = 'Test Event';
+			const properties = { user_id: '1234' };
+
+			telemetry.track(eventName, properties);
+
+			expect(mockRudderStack.track).toHaveBeenCalledWith(
+				expect.objectContaining({
+					event: eventName,
+					context: {
+						ip: '0.0.0.0', // RudderStack anonymized IP
+					},
+				}),
+			);
+		});
+	});
 });
 
 const fakeJestSystemTime = (dateTime: string | Date): Date => {

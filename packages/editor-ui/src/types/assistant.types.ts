@@ -1,5 +1,12 @@
-import type { Schema } from '@/Interface';
-import type { IDataObject, INode, INodeParameters } from 'n8n-workflow';
+import type { VIEWS } from '@/constants';
+import type { NodeAuthenticationOption, Schema } from '@/Interface';
+import type {
+	ICredentialType,
+	IDataObject,
+	INode,
+	INodeIssues,
+	INodeParameters,
+} from 'n8n-workflow';
 
 export namespace ChatRequest {
 	export interface NodeExecutionSchema {
@@ -39,6 +46,7 @@ export namespace ChatRequest {
 		user: {
 			firstName: string;
 		};
+		context?: UserContext;
 		question: string;
 	}
 
@@ -69,6 +77,25 @@ export namespace ChatRequest {
 		type: 'message';
 		text: string;
 		quickReplyType?: string;
+		context?: UserContext;
+	}
+
+	export interface UserContext {
+		activeNodeInfo?: {
+			node?: INode;
+			nodeIssues?: INodeIssues;
+			nodeInputData?: IDataObject;
+			referencedNodes?: NodeExecutionSchema[];
+			executionStatus?: {
+				status: string;
+				error?: ErrorContext['error'];
+			};
+		};
+		activeCredentials?: Pick<ICredentialType, 'name' | 'displayName'> & { authType?: string };
+		currentView?: {
+			name: VIEWS;
+			description?: string;
+		};
 	}
 
 	export type RequestPayload =
@@ -145,6 +172,15 @@ export namespace ChatRequest {
 	export interface ResponsePayload {
 		sessionId?: string;
 		messages: MessageResponse[];
+	}
+
+	export interface NodeInfo {
+		authType?: NodeAuthenticationOption;
+		schemas?: NodeExecutionSchema[];
+		nodeInputData?: {
+			inputNodeName?: string;
+			inputData?: IDataObject;
+		};
 	}
 }
 

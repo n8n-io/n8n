@@ -198,6 +198,7 @@ describe('GlobalConfig', () => {
 			health: {
 				active: false,
 				port: 5678,
+				address: '0.0.0.0',
 			},
 			bull: {
 				redis: {
@@ -221,6 +222,13 @@ describe('GlobalConfig', () => {
 				},
 			},
 		},
+		taskRunners: {
+			disabled: true,
+			path: '/runners',
+			authToken: '',
+			listen_address: '127.0.0.1',
+			port: 5679,
+		},
 		sentry: {
 			backendDsn: '',
 			frontendDsn: '',
@@ -233,13 +241,13 @@ describe('GlobalConfig', () => {
 				fileSizeMax: 16,
 				location: 'logs/n8n.log',
 			},
+			scopes: [],
 		},
 	};
 
 	it('should use all default values when no env variables are defined', () => {
 		process.env = {};
 		const config = Container.get(GlobalConfig);
-
 		expect(deepCopy(config)).toEqual(defaultConfig);
 		expect(mockFs.readFileSync).not.toHaveBeenCalled();
 	});

@@ -83,9 +83,9 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 
 onBeforeMount(async () => {
-	if (rootStore.defaultLocale === 'en') return;
-
 	uiStore.activeCredentialType = props.credentialType.name;
+
+	if (rootStore.defaultLocale === 'en') return;
 
 	const key = `n8n-nodes-base.credentials.${props.credentialType.name}`;
 

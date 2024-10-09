@@ -16,6 +16,7 @@ export const defaultSettings: FrontendSettings = {
 	endpointFormWaiting: '',
 	endpointWebhook: '',
 	endpointWebhookTest: '',
+	endpointWebhookWaiting: '',
 	enterprise: {
 		sharing: false,
 		ldap: false,

@@ -176,7 +176,7 @@ describe('useNodeConnections', () => {
 			connections: defaultConnections,
 		});
 
-		it('returns false if source and target nodes are the same', () => {
+		it('returns true if source and target nodes are the same', () => {
 			const connection = {
 				source: 'node1',
 				target: 'node1',
@@ -191,7 +191,7 @@ describe('useNodeConnections', () => {
 					index: 0,
 				}),
 			};
-			expect(isValidConnection(connection)).toBe(false);
+			expect(isValidConnection(connection)).toBe(true);
 		});
 
 		it('returns false if source and target handles are of the same mode', () => {

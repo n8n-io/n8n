@@ -21,6 +21,7 @@ const props = withDefaults(
 		fallbackNodes?: IWorkflowDb['nodes'];
 		eventBus?: EventBus<CanvasEventBusEvents>;
 		readOnly?: boolean;
+		executing?: boolean;
 	}>(),
 	{
 		id: 'canvas',

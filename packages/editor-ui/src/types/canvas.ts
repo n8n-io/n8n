@@ -5,7 +5,7 @@ import type {
 	IConnection,
 	NodeConnectionType,
 } from 'n8n-workflow';
-import type { DefaultEdge, Node, NodeProps, Position } from '@vue-flow/core';
+import type { DefaultEdge, Node, NodeProps, Position, OnConnectStartParams } from '@vue-flow/core';
 import type { IExecutionResponse, INodeUi } from '@/Interface';
 import type { ComputedRef, Ref } from 'vue';
 import type { PartialBy } from '@/utils/typeHelpers';
@@ -132,6 +132,7 @@ export type CanvasConnectionCreateData = {
 };
 
 export interface CanvasInjectionData {
+	isExecuting: Ref<boolean | undefined>;
 	connectingHandle: Ref<ConnectStartEvent | undefined>;
 }
 
@@ -173,7 +174,9 @@ export interface CanvasNodeHandleInjectionData {
 	runData: Ref<ExecutionOutputMapData | undefined>;
 }
 
-export type ConnectStartEvent = { handleId: string; handleType: string; nodeId: string };
+export type ConnectStartEvent = {
+	event?: MouseEvent | undefined;
+} & OnConnectStartParams;
 
 export type CanvasNodeMoveEvent = { id: string; position: CanvasNode['position'] };
 
