@@ -76,7 +76,6 @@
     "@types/xml2js": "catalog:",
     "@types/yamljs": "^0.2.31",
     "@vvo/tzdb": "^6.141.0",
-    "chokidar": "^3.5.2",
     "concurrently": "^8.2.0",
     "ioredis-mock": "^8.8.1",
     "mjml": "^4.15.3",

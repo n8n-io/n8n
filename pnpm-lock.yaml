@@ -94,7 +94,7 @@ catalogs:
 
 overrides:
   '@types/node': ^18.16.16
-  chokidar: 3.5.2
+  chokidar: ^4.0.1
   esbuild: ^0.21.5
   formidable: 3.5.1
   pug: ^3.0.3
@@ -784,7 +784,7 @@ importers:
         version: 3.1.0
       curlconverter:
         specifier: 3.21.0
-        version: 3.21.0(chokidar@3.5.2)
+        version: 3.21.0(chokidar@4.0.1)
       dotenv:
         specifier: 8.6.0
         version: 8.6.0
@@ -1053,9 +1053,6 @@ importers:
       '@vvo/tzdb':
         specifier: ^6.141.0
         version: 6.141.0
-      chokidar:
-        specifier: 3.5.2
-        version: 3.5.2
       concurrently:
         specifier: ^8.2.0
         version: 8.2.0
@@ -1601,8 +1598,8 @@ importers:
         specifier: 1.0.0-rc.6
         version: 1.0.0-rc.6
       chokidar:
-        specifier: 3.5.2
-        version: 3.5.2
+        specifier: ^4.0.1
+        version: 4.0.1
       cron:
         specifier: 3.1.7
         version: 3.1.7
@@ -6750,9 +6747,9 @@ packages:
     resolution: {integrity: sha512-hjx1XE1M/D5pAtMgvWwE21QClmAEeGHOIDfycgmndisdNgI6PE1cGRQkMGBcsbUbmEQyWu5PJLUcAOjtQS8DWw==}
     engines: {node: '>= 0.12'}
 
-  chokidar@3.5.2:
-    resolution: {integrity: sha512-ekGhOnNVPgT77r4K/U3GDhu+FQ2S8TnK/s2KbIGXi0SZWuwkZ2QNyfWdZW+TVfn84DpEP7rLeCt2UI6bJ8GwbQ==}
-    engines: {node: '>= 8.10.0'}
+  chokidar@4.0.1:
+    resolution: {integrity: sha512-n8enUVCED/KVRQlab1hr3MVpcVMvxtZjmEa956u+4YijlmQED223XMSYj2tLuKvr4jcCTzNNMpQDUer72MMmzA==}
+    engines: {node: '>= 14.16.0'}
 
   chownr@1.1.4:
     resolution: {integrity: sha512-jJ0bqzaylmJtVnNgzTeSOs8DPavpbYgEr/b0YL8/2GO3xJEhInFmhKMUnEJQjZumK7KXGFhUy89PrsJWlakBVg==}
@@ -8764,10 +8761,6 @@ packages:
   is-bigint@1.0.4:
     resolution: {integrity: sha512-zB9CruMamjym81i2JZ3UMn54PKGsQzsJeo6xvN3HJJ4CAsQNB6iRutp2To77OfCNuoxspsIhzaPoO1zyCEhFOg==}
 
-  is-binary-path@2.1.0:
-    resolution: {integrity: sha512-ZMERYes6pDydyuGidse7OsHxtbI7WVeUEozgR/g7rd0xUimYNlvZRE/K2MgZTjWy725IfelLeVcEM97mmtRGXw==}
-    engines: {node: '>=8'}
-
   is-boolean-object@1.1.2:
     resolution: {integrity: sha512-gDYaKHJmnj4aWxyj6YHyXVpdQawtVLHU5cb+eztPGczf6cjuTdwve5ZIEfgXqH4e57An1D1AKf8CZ3kYrQRqYA==}
     engines: {node: '>= 0.4'}
@@ -10372,7 +10365,7 @@ packages:
     engines: {node: '>= 6.9.0'}
     hasBin: true
     peerDependencies:
-      chokidar: 3.5.2
+      chokidar: ^4.0.1
     peerDependenciesMeta:
       chokidar:
         optional: true
@@ -11209,9 +11202,9 @@ packages:
     resolution: {integrity: sha512-ePeK6cc1EcKLEhJFt/AebMCLL+GgSKhuygrZ/GLaKZYEecIgIECf4UaUuaByiGtzckwR4ain9VzUh95T1exYGw==}
     engines: {node: '>=8'}
 
-  readdirp@3.6.0:
-    resolution: {integrity: sha512-hOS089on8RduqdbhvQ5Z37A0ESjsqz6qnRcffsMU3495FuTdqSm+7bhJ29JvIOsBDEEnan5DPu9t3To9VRlMzA==}
-    engines: {node: '>=8.10.0'}
+  readdirp@4.0.2:
+    resolution: {integrity: sha512-yDMz9g+VaZkqBYS/ozoBJwaBhTbZo3UNYQHNRw1D3UFQB8oHB4uS/tAODO+ZLjGWmUbKnIlOWO+aaIiAxrUWHA==}
+    engines: {node: '>= 14.16.0'}
 
   readline-sync@1.4.10:
     resolution: {integrity: sha512-gNva8/6UAe8QYepIQH/jQ2qn91Qj0B9sYjMBBs3QOB8F2CXcKgLxQaJRP76sWVRQt+QU+8fAkCbCvjjMFu7Ycw==}
@@ -17059,7 +17052,7 @@ snapshots:
     dependencies:
       '@redocly/openapi-core': 1.25.5(encoding@0.1.13)
       abort-controller: 3.0.0
-      chokidar: 3.5.2
+      chokidar: 4.0.1
       colorette: 1.4.0
       core-js: 3.35.0
       form-data: 4.0.0
@@ -20579,17 +20572,9 @@ snapshots:
       parse5: 6.0.1
       parse5-htmlparser2-tree-adapter: 6.0.1
 
-  chokidar@3.5.2:
+  chokidar@4.0.1:
     dependencies:
-      anymatch: 3.1.3
-      braces: 3.0.2
-      glob-parent: 5.1.2
-      is-binary-path: 2.1.0
-      is-glob: 4.0.3
-      normalize-path: 3.0.0
-      readdirp: 3.6.0
-    optionalDependencies:
-      fsevents: 2.3.3
+      readdirp: 4.0.2
 
   chownr@1.1.4: {}
 
@@ -20979,12 +20964,12 @@ snapshots:
 
   csv-parse@5.5.0: {}
 
-  curlconverter@3.21.0(chokidar@3.5.2):
+  curlconverter@3.21.0(chokidar@4.0.1):
     dependencies:
       '@curlconverter/yargs': 0.0.2
       cookie: 0.4.2
       jsesc: 3.0.2
-      nunjucks: 3.2.4(chokidar@3.5.2)
+      nunjucks: 3.2.4(chokidar@4.0.1)
       query-string: 7.1.3
       string.prototype.startswith: 1.0.0
       yamljs: 0.3.0
@@ -21486,7 +21471,7 @@ snapshots:
       cheerio: 1.0.0
       enzyme-shallow-equal: 1.0.7
       function.prototype.name: 1.1.6
-      has: 1.0.3
+      has: 1.0.4
       html-element-map: 1.3.1
       is-boolean-object: 1.1.2
       is-callable: 1.2.7
@@ -21503,7 +21488,7 @@ snapshots:
       object.values: 1.1.7
       raf: 3.4.1
       rst-selector-parser: 2.2.3
-      string.prototype.trim: 1.2.8
+      string.prototype.trim: 1.2.9
 
   epub2@3.0.2(ts-toolbelt@9.6.0):
     dependencies:
@@ -23132,10 +23117,6 @@ snapshots:
     dependencies:
       has-bigints: 1.0.2
 
-  is-binary-path@2.1.0:
-    dependencies:
-      binary-extensions: 2.2.0
-
   is-boolean-object@1.1.2:
     dependencies:
       call-bind: 1.0.7
@@ -24564,7 +24545,7 @@ snapshots:
   mjml-cli@4.15.3(encoding@0.1.13):
     dependencies:
       '@babel/runtime': 7.24.7
-      chokidar: 3.5.2
+      chokidar: 4.0.1
       glob: 10.4.5
       html-minifier: 4.0.0
       js-beautify: 1.14.9
@@ -25129,7 +25110,7 @@ snapshots:
 
   nodemon@3.0.1:
     dependencies:
-      chokidar: 3.5.2
+      chokidar: 4.0.1
       debug: 3.2.7(supports-color@5.5.0)
       ignore-by-default: 1.0.1
       minimatch: 3.1.2
@@ -25191,13 +25172,13 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  nunjucks@3.2.4(chokidar@3.5.2):
+  nunjucks@3.2.4(chokidar@4.0.1):
     dependencies:
       a-sync-waterfall: 1.0.1
       asap: 2.0.6
       commander: 5.1.0
     optionalDependencies:
-      chokidar: 3.5.2
+      chokidar: 4.0.1
 
   nwsapi@2.2.7: {}
 
@@ -26118,9 +26099,7 @@ snapshots:
     dependencies:
       readable-stream: 3.6.0
 
-  readdirp@3.6.0:
-    dependencies:
-      picomatch: 2.3.1
+  readdirp@4.0.2: {}
 
   readline-sync@1.4.10: {}
 
@@ -26478,7 +26457,7 @@ snapshots:
 
   sass@1.64.1:
     dependencies:
-      chokidar: 3.5.2
+      chokidar: 4.0.1
       immutable: 4.2.2
       source-map-js: 1.0.2
 
@@ -27147,7 +27126,7 @@ snapshots:
     dependencies:
       '@alloc/quick-lru': 5.2.0
       arg: 5.0.2
-      chokidar: 3.5.2
+      chokidar: 4.0.1
       didyoumean: 1.2.2
       dlv: 1.1.3
       fast-glob: 3.3.2
@@ -27436,7 +27415,7 @@ snapshots:
 
   tsc-alias@1.8.7:
     dependencies:
-      chokidar: 3.5.2
+      chokidar: 4.0.1
       commander: 9.4.1
       globby: 11.1.0
       mylas: 2.1.13
@@ -27692,7 +27671,7 @@ snapshots:
     dependencies:
       '@antfu/utils': 0.7.10
       '@rollup/pluginutils': 5.1.0(rollup@4.22.2)
-      chokidar: 3.5.2
+      chokidar: 4.0.1
       debug: 4.3.5
       fast-glob: 3.3.2
       local-pkg: 0.5.0
@@ -27710,14 +27689,14 @@ snapshots:
   unplugin@1.0.1:
     dependencies:
       acorn: 8.12.1
-      chokidar: 3.5.2
+      chokidar: 4.0.1
       webpack-sources: 3.2.3
       webpack-virtual-modules: 0.5.0
 
   unplugin@1.11.0:
     dependencies:
       acorn: 8.12.1
-      chokidar: 3.5.2
+      chokidar: 4.0.1
       webpack-sources: 3.2.3
       webpack-virtual-modules: 0.6.1
 
