@@ -52,7 +52,7 @@ describe('Publisher', () => {
 
 			expect(client.publish).toHaveBeenCalledWith(
 				'n8n.commands',
-				JSON.stringify({ ...msg, senderId: queueModeId }),
+				JSON.stringify({ ...msg, senderId: queueModeId, selfSend: false, debounce: true }),
 			);
 		});
 	});

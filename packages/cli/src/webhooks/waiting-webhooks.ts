@@ -152,17 +152,7 @@ export class WaitingWebhooks implements IWebhookManager {
 		execution.data.resultData.runData[lastNodeExecuted].pop();
 
 		const { workflowData } = execution;
-
-		const workflow = new Workflow({
-			id: workflowData.id,
-			name: workflowData.name,
-			nodes: workflowData.nodes,
-			connections: workflowData.connections,
-			active: workflowData.active,
-			nodeTypes: this.nodeTypes,
-			staticData: workflowData.staticData,
-			settings: workflowData.settings,
-		});
+		const workflow = this.getWorkflow(workflowData);
 
 		const workflowStartNode = workflow.getNode(lastNodeExecuted);
 		if (workflowStartNode === null) {

@@ -190,6 +190,19 @@ describe('CanvasNodeDefault', () => {
 		});
 	});
 
+	describe('waiting', () => {
+		it('should apply waiting class when node is waiting', () => {
+			const { getByText } = renderComponent({
+				global: {
+					provide: {
+						...createCanvasNodeProvide({ data: { execution: { running: true, waiting: '123' } } }),
+					},
+				},
+			});
+			expect(getByText('Test Node').closest('.node')).toHaveClass('waiting');
+		});
+	});
+
 	describe('running', () => {
 		it('should apply running class when node is running', () => {
 			const { getByText } = renderComponent({

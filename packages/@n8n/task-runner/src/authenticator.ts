@@ -11,7 +11,7 @@ export type AuthOpts = {
  */
 export async function authenticate(opts: AuthOpts) {
 	try {
-		const authEndpoint = `http://${opts.n8nUri}/rest/runners/auth`;
+		const authEndpoint = `http://${opts.n8nUri}/runners/auth`;
 		const response = await fetch(authEndpoint, {
 			method: 'POST',
 			headers: {

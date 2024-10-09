@@ -2,6 +2,18 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+# 1.63.0
+
+### What changed?
+
+1. The worker server used to bind to IPv6 by default. It now binds to IPv4 by default.
+2. The worker server's `/healthz` used to report healthy status based on database and Redis checks. It now reports healthy status regardless of database and Redis status, and the database and Redis checks are part of `/healthz/readiness`.
+
+### When is action necessary?
+
+1. If you experience a port conflict error when starting a worker server using its default port, set a different port for the worker server with `QUEUE_HEALTH_CHECK_PORT`.
+2. If you are relying on database and Redis checks for worker health status, switch to checking `/healthz/readiness` instead of `/healthz`.
+
 ## 1.57.0
 
 ### What changed?

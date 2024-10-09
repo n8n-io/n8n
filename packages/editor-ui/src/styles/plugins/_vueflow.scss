@@ -1,3 +1,7 @@
+/**
+ * Resizer
+ */
+
 .vue-flow__resize-control.line {
 	border-color: transparent;
 	z-index: 1;
@@ -32,6 +36,10 @@
 	z-index: 1;
 }
 
+/**
+ * Minimap
+ */
+
 .vue-flow__minimap {
 	height: 120px;
 	overflow: hidden;
@@ -50,12 +58,20 @@
 	}
 }
 
+/**
+ * Pane
+ */
+
 .vue-flow__pane {
 	&,
 	&.draggable {
 		cursor: default;
 	}
 }
+
+/**
+ * Nodes
+ */
 
 .vue-flow__node {
 	&,
@@ -67,7 +83,31 @@
 		cursor: grabbing;
 	}
 
+	&.selected {
+		z-index: 1 !important;
+	}
+
 	&:has(.sticky--active) {
 		z-index: 1 !important;
 	}
+}
+
+/**
+ * Selection
+ */
+
+.vue-flow__nodesselection-rect {
+	box-sizing: content-box;
+	margin-top: calc(-1 * var(--spacing-2xs));
+	margin-left: calc(-1 * var(--spacing-2xs));
+	padding: var(--spacing-2xs);
+}
+
+/**
+ * Edges
+ */
+
+.vue-flow__edges,
+.vue-flow__edge-labels {
+	z-index: 1 !important;
 }
