@@ -63,15 +63,6 @@ const node: INode = {
 beforeAll(async () => {
 	await testDb.init();
 
-	const node: INode = {
-		id: 'uuid-1234',
-		parameters: {},
-		name: 'test',
-		type: 'test.set',
-		typeVersion: 1,
-		position: [0, 0],
-	};
-
 	const nodeTypes = mockInstance(NodeTypes);
 	const workflowEntityOriginal = await createWorkflow();
 
@@ -105,16 +96,6 @@ describe('Deduplication.DeduplicationHelper', () => {
 
 		let processedData: IDeduplicationOutput;
 
-		processedData = await DataDeduplicationService.getInstance().checkProcessed(
-			['a', 'b'],
-			context,
-			contextData,
-			{ mode: 'entries' },
-		);
-
-		// No data exists yet so has to be new
-		expect(processedData).toEqual({ new: ['a', 'b'], processed: [] });
-
 		processedData = await DataDeduplicationService.getInstance().checkProcessedAndRecord(
 			['a', 'b'],
 			context,
@@ -124,16 +105,6 @@ describe('Deduplication.DeduplicationHelper', () => {
 
 		// 'a' & 'b' got only checked before, so still has to be new
 		expect(processedData).toEqual({ new: ['a', 'b'], processed: [] });
-
-		processedData = await DataDeduplicationService.getInstance().checkProcessed(
-			['a', 'b', 'c'],
-			context,
-			contextData,
-			{ mode: 'entries' },
-		);
-
-		// 'a' & 'b' got recorded before, 'c' never
-		expect(processedData).toEqual({ new: ['c'], processed: ['a', 'b'] });
 
 		processedData = await DataDeduplicationService.getInstance().checkProcessedAndRecord(
 			['a', 'b', 'c', 'd'],
@@ -148,16 +119,6 @@ describe('Deduplication.DeduplicationHelper', () => {
 		await DataDeduplicationService.getInstance().removeProcessed(['b', 'd'], context, contextData, {
 			mode: 'entries',
 		});
-
-		processedData = await DataDeduplicationService.getInstance().checkProcessed(
-			['a', 'b', 'c', 'd'],
-			context,
-			contextData,
-			{ mode: 'entries' },
-		);
-
-		// 'b' & 'd' got removed from the database so they should be new, 'a' & 'b' should still be known
-		expect(processedData).toEqual({ new: ['b', 'd'], processed: ['a', 'c'] });
 	});
 
 	test('Deduplication (mode: entries): DeduplicationHelper different contexts should not interfere with each other', async () => {
@@ -194,7 +155,7 @@ describe('Deduplication.DeduplicationHelper', () => {
 			mode: 'entries',
 		});
 
-		processedData = await DataDeduplicationService.getInstance().checkProcessed(
+		processedData = await DataDeduplicationService.getInstance().checkProcessedAndRecord(
 			['a', 'b', 'c'],
 			'node',
 			contextData,
@@ -208,7 +169,7 @@ describe('Deduplication.DeduplicationHelper', () => {
 			mode: 'entries',
 		});
 
-		processedData = await DataDeduplicationService.getInstance().checkProcessed(
+		processedData = await DataDeduplicationService.getInstance().checkProcessedAndRecord(
 			['a', 'b', 'c', 'd'],
 			'workflow',
 			contextData,
@@ -254,7 +215,7 @@ describe('Deduplication.DeduplicationHelper', () => {
 			mode: 'entries',
 		});
 
-		processedData = await DataDeduplicationService.getInstance().checkProcessed(
+		processedData = await DataDeduplicationService.getInstance().checkProcessedAndRecord(
 			['0', '1', '2', '3', '4', '5', '6', '7'],
 			'node',
 			contextData,
@@ -269,7 +230,7 @@ describe('Deduplication.DeduplicationHelper', () => {
 		const tests: Array<{
 			description: string;
 			data: Array<{
-				operation: 'checkProcessed' | 'checkProcessedAndRecord';
+				operation: 'checkProcessedAndRecord';
 				input: DeduplicationItemTypes[];
 				output: IDeduplicationOutput;
 			}>;
@@ -278,34 +239,11 @@ describe('Deduplication.DeduplicationHelper', () => {
 				description: 'dates',
 				data: [
 					{
-						operation: 'checkProcessed',
-						input: [new Date('2022-01-02').toISOString(), new Date('2022-01-03').toISOString()],
-						output: {
-							new: [new Date('2022-01-02').toISOString(), new Date('2022-01-03').toISOString()],
-							processed: [],
-						},
-					},
-					{
 						operation: 'checkProcessedAndRecord',
 						input: [new Date('2022-01-02').toISOString(), new Date('2022-01-03').toISOString()],
 						output: {
 							new: [new Date('2022-01-02').toISOString(), new Date('2022-01-03').toISOString()],
 							processed: [],
-						},
-					},
-					{
-						operation: 'checkProcessed',
-						input: [
-							new Date('2022-01-02').toISOString(),
-							new Date('2022-01-03').toISOString(),
-							new Date('2022-01-04').toISOString(),
-						],
-						output: {
-							new: [new Date('2022-01-04').toISOString()],
-							processed: [
-								new Date('2022-01-02').toISOString(),
-								new Date('2022-01-03').toISOString(),
-							],
 						},
 					},
 					{
@@ -324,55 +262,20 @@ describe('Deduplication.DeduplicationHelper', () => {
 							],
 						},
 					},
-					{
-						operation: 'checkProcessed',
-						input: [
-							new Date('2022-01-01').toISOString(),
-							new Date('2022-01-02').toISOString(),
-							new Date('2022-01-03').toISOString(),
-							new Date('2022-01-04').toISOString(),
-							new Date('2022-01-06').toISOString(),
-							new Date('2022-01-07').toISOString(),
-						],
-						output: {
-							new: [new Date('2022-01-06').toISOString(), new Date('2022-01-07').toISOString()],
-							processed: [
-								new Date('2022-01-01').toISOString(),
-								new Date('2022-01-02').toISOString(),
-								new Date('2022-01-03').toISOString(),
-								new Date('2022-01-04').toISOString(),
-							],
-						},
-					},
 				],
 			},
 			{
 				description: 'numbers',
 				data: [
 					{
-						operation: 'checkProcessed',
-						input: [2, 3],
-						output: { new: [2, 3], processed: [] },
-					},
-					{
 						operation: 'checkProcessedAndRecord',
 						input: [2, 3],
 						output: { new: [2, 3], processed: [] },
-					},
-					{
-						operation: 'checkProcessed',
-						input: [2, 3, 4],
-						output: { new: [4], processed: [2, 3] },
 					},
 					{
 						operation: 'checkProcessedAndRecord',
 						input: [2, 3, 4, 5],
 						output: { new: [4, 5], processed: [2, 3] },
-					},
-					{
-						operation: 'checkProcessed',
-						input: [1, 2, 3, 4, 6, 7],
-						output: { new: [6, 7], processed: [1, 2, 3, 4] },
 					},
 				],
 			},
@@ -422,7 +325,36 @@ describe('Deduplication.DeduplicationHelper', () => {
 		).rejects.toThrow('Removing processed data is not possible in mode "latest"');
 	});
 
-	test('clearAllProcessedItems should delete all processed items for a given context', async () => {
+	test('clearAllProcessedItems should delete all processed items for workflow scope', async () => {
+		const contextData: ICheckProcessedContextData = {
+			workflow,
+		};
+
+		// First, add some data
+		await DataDeduplicationService.getInstance().checkProcessedAndRecord(
+			['a', 'b', 'c'],
+			'workflow',
+			contextData,
+			{ mode: 'entries' },
+		);
+
+		// Clear all processed items
+		await DataDeduplicationService.getInstance().clearAllProcessedItems('workflow', contextData, {
+			mode: 'entries',
+		});
+
+		// Check that all items are now considered new
+		const processedData = await DataDeduplicationService.getInstance().checkProcessedAndRecord(
+			['a', 'b', 'c'],
+			'workflow',
+			contextData,
+			{ mode: 'entries' },
+		);
+
+		expect(processedData).toEqual({ new: ['a', 'b', 'c'], processed: [] });
+	});
+
+	test('clearAllProcessedItems should delete all processed items for node scope', async () => {
 		const contextData: ICheckProcessedContextData = {
 			workflow,
 			node,
@@ -442,7 +374,7 @@ describe('Deduplication.DeduplicationHelper', () => {
 		});
 
 		// Check that all items are now considered new
-		const processedData = await DataDeduplicationService.getInstance().checkProcessed(
+		const processedData = await DataDeduplicationService.getInstance().checkProcessedAndRecord(
 			['a', 'b', 'c'],
 			'node',
 			contextData,

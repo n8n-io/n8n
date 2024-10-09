@@ -56,16 +56,6 @@ export class DataDeduplicationService {
 		return DataDeduplicationService.instance;
 	}
 
-	async checkProcessed(
-		items: DeduplicationItemTypes[],
-		scope: DeduplicationScope,
-		contextData: ICheckProcessedContextData,
-		options: ICheckProcessedOptions,
-	): Promise<IDeduplicationOutput> {
-		this.assertDeduplicator();
-		return await this.deduplicator.checkProcessed(items, scope, contextData, options);
-	}
-
 	async checkProcessedItemsAndRecord(
 		propertyName: string,
 		items: IDataObject[],

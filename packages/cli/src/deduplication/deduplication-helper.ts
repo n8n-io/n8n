@@ -121,55 +121,6 @@ export class DeduplicationHelper implements IDataDeduplicator {
 		}
 	}
 
-	async checkProcessed(
-		items: DeduplicationItemTypes[],
-		scope: DeduplicationScope,
-		contextData: ICheckProcessedContextData,
-		options: ICheckProcessedOptions,
-	): Promise<IDeduplicationOutput> {
-		const returnData: IDeduplicationOutput = {
-			new: [],
-			processed: [],
-		};
-
-		const processedData = await this.fetchProcessedData(scope, contextData);
-
-		this.validateMode(processedData, options);
-
-		if (!processedData) {
-			// If there is nothing in the database all items are new
-			returnData.new = items;
-			return returnData;
-		}
-
-		if (['latestIncrementalKey', 'latestDate'].includes(options.mode)) {
-			const processedDataValue = processedData.value as IProcessedDataLatest;
-
-			const incomingItems = DeduplicationHelper.sortEntries(items, options.mode);
-			incomingItems.forEach((item) => {
-				if (DeduplicationHelper.compareValues(options.mode, item, processedDataValue.data)) {
-					returnData.new.push(item);
-				} else {
-					returnData.processed.push(item);
-				}
-			});
-			return returnData;
-		}
-
-		const hashedItems = items.map((item) => DeduplicationHelper.createValueHash(item));
-
-		const processedDataSet = new Set(processedData.value.data as string[]);
-		hashedItems.forEach((item, index) => {
-			if (processedDataSet.has(item)) {
-				returnData.processed.push(items[index]);
-			} else {
-				returnData.new.push(items[index]);
-			}
-		});
-
-		return returnData;
-	}
-
 	async checkProcessedAndRecord(
 		items: DeduplicationItemTypes[],
 		scope: DeduplicationScope,

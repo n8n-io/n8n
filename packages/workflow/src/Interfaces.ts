@@ -785,11 +785,6 @@ export interface ICheckProcessedOptions {
 }
 
 export interface DeduplicationHelperFunctions {
-	checkProcessed(
-		items: DeduplicationItemTypes[],
-		scope: DeduplicationScope,
-		options: ICheckProcessedOptions,
-	): Promise<IDeduplicationOutput>;
 	checkProcessedAndRecord(
 		items: DeduplicationItemTypes[],
 		scope: DeduplicationScope,
@@ -2697,13 +2692,6 @@ export interface IProcessedDataConfig {
 }
 
 export interface IDataDeduplicator {
-	checkProcessed(
-		items: DeduplicationItemTypes[],
-		context: DeduplicationScope,
-		contextData: ICheckProcessedContextData,
-		options: ICheckProcessedOptions,
-	): Promise<IDeduplicationOutput>;
-
 	checkProcessedAndRecord(
 		items: DeduplicationItemTypes[],
 		context: DeduplicationScope,

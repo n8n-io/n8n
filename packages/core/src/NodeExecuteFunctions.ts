@@ -1292,20 +1292,6 @@ async function prepareBinaryData(
 	return await setBinaryDataBuffer(returnData, binaryData, workflowId, executionId);
 }
 
-export async function checkProcessed(
-	items: DeduplicationItemTypes[],
-	scope: DeduplicationScope,
-	contextData: ICheckProcessedContextData,
-	options: ICheckProcessedOptions,
-): Promise<IDeduplicationOutput> {
-	return await DataDeduplicationService.getInstance().checkProcessed(
-		items,
-		scope,
-		contextData,
-		options,
-	);
-}
-
 export async function checkProcessedAndRecord(
 	items: DeduplicationItemTypes[],
 	scope: DeduplicationScope,
@@ -3545,13 +3531,6 @@ const getCheckProcessedHelperFunctions = (
 	workflow: Workflow,
 	node: INode,
 ): DeduplicationHelperFunctions => ({
-	async checkProcessed(
-		items: DeduplicationItemTypes[],
-		scope: DeduplicationScope,
-		options: ICheckProcessedOptions,
-	): Promise<IDeduplicationOutput> {
-		return await checkProcessed(items, scope, { node, workflow }, options);
-	},
 	async checkProcessedAndRecord(
 		items: DeduplicationItemTypes[],
 		scope: DeduplicationScope,

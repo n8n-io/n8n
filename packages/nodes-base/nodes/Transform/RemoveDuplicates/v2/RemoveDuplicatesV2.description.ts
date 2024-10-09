@@ -268,6 +268,7 @@ export const removeDuplicatesNodeFields: INodeProperties[] = [
 				displayOptions: {
 					show: {
 						'/logic': ['removeItemsWithAlreadySeenKeyValues'],
+						'/operation': ['removeItemsSeenInPreviousExecutions'],
 					},
 				},
 			},
