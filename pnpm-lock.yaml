@@ -641,6 +641,10 @@ importers:
       ws:
         specifier: '>=8.17.1'
         version: 8.17.1
+    devDependencies:
+      luxon:
+        specifier: 'catalog:'
+        version: 3.4.4
 
   packages/@n8n_io/eslint-config:
     devDependencies:
