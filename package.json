@@ -69,7 +69,7 @@
     ],
     "overrides": {
       "@types/node": "^18.16.16",
-      "chokidar": "3.5.2",
+      "chokidar": "^4.0.1",
       "esbuild": "^0.21.5",
       "formidable": "3.5.1",
       "pug": "^3.0.3",
