@@ -181,6 +181,77 @@ describe('JsTaskRunner', () => {
 				);
 			});
 		}
+
+		describe('$env', () => {
+			it('should have the env available in context when access has not been blocked', async () => {
+				const outcome = await execTaskWithParams({
+					task: newTaskWithSettings({
+						code: 'return { val: $env.VAR1 }',
+						nodeMode: 'runOnceForAllItems',
+					}),
+					taskData: newAllCodeTaskData(inputItems.map(wrapIntoJson), {
+						envProviderState: {
+							isEnvAccessBlocked: false,
+							isProcessAvailable: true,
+							env: { VAR1: 'value' },
+						},
+					}),
+				});
+
+				expect(outcome.result).toEqual([wrapIntoJson({ val: 'value' })]);
+			});
+
+			it('should be possible to access env if it has been blocked', async () => {
+				await expect(
+					execTaskWithParams({
+						task: newTaskWithSettings({
+							code: 'return { val: $env.VAR1 }',
+							nodeMode: 'runOnceForAllItems',
+						}),
+						taskData: newAllCodeTaskData(inputItems.map(wrapIntoJson), {
+							envProviderState: {
+								isEnvAccessBlocked: true,
+								isProcessAvailable: true,
+								env: { VAR1: 'value' },
+							},
+						}),
+					}),
+				).rejects.toThrow('access to env vars denied');
+			});
+
+			it('should not be possible to iterate $env', async () => {
+				const outcome = await execTaskWithParams({
+					task: newTaskWithSettings({
+						code: 'return Object.values($env).concat(Object.keys($env))',
+						nodeMode: 'runOnceForAllItems',
+					}),
+					taskData: newAllCodeTaskData(inputItems.map(wrapIntoJson), {
+						envProviderState: {
+							isEnvAccessBlocked: false,
+							isProcessAvailable: true,
+							env: { VAR1: '1', VAR2: '2', VAR3: '3' },
+						},
+					}),
+				});
+
+				expect(outcome.result).toEqual([]);
+			});
+
+			it("should not expose task runner's env variables even if no env state is received", async () => {
+				process.env.N8N_RUNNERS_N8N_URI = 'http://127.0.0.1:5679';
+				const outcome = await execTaskWithParams({
+					task: newTaskWithSettings({
+						code: 'return { val: $env.N8N_RUNNERS_N8N_URI }',
+						nodeMode: 'runOnceForAllItems',
+					}),
+					taskData: newAllCodeTaskData(inputItems.map(wrapIntoJson), {
+						envProviderState: undefined,
+					}),
+				});
+
+				expect(outcome.result).toEqual([wrapIntoJson({ val: undefined })]);
+			});
+		});
 	});
 
 	describe('runOnceForAllItems', () => {

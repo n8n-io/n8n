@@ -119,6 +119,11 @@ export const newAllCodeTaskData = (
 		siblingParameters: {},
 		mode: 'manual',
 		selfData: {},
+		envProviderState: {
+			env: {},
+			isEnvAccessBlocked: true,
+			isProcessAvailable: true,
+		},
 		additionalData: {
 			executionId: 'exec-id',
 			instanceBaseUrl: '',
