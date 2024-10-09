@@ -1,4 +1,9 @@
-import { NodeConnectionType, NodeExecutionOutput, NodeOperationError } from 'n8n-workflow';
+import {
+	NodeConnectionType,
+	NodeExecutionOutput,
+	NodeOperationError,
+	tryToParseDateTime,
+} from 'n8n-workflow';
 import type {
 	INodeTypeBaseDescription,
 	IExecuteFunctions,
@@ -193,8 +198,10 @@ export class RemoveDuplicatesV2 implements INodeType {
 						for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 							checkValue =
 								this.getNodeParameter('dateDedupeValue', itemIndex, '')?.toString() ?? '';
-							const date = new Date(checkValue);
-							if (isNaN(date.getTime())) {
+
+							try {
+								tryToParseDateTime(checkValue);
+							} catch (error) {
 								throw new NodeOperationError(
 									this.getNode(),
 									`The value '${checkValue}' is not a valid date. Please provide a valid date.`,

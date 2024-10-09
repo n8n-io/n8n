@@ -64,12 +64,12 @@ export class DeduplicationHelper implements IDataDeduplicator {
 				'Invalid value. Only numbers are supported in mode "latestIncrementalKey"',
 			);
 		} else if (mode === 'latestDate') {
-			const date1 = new Date(value1 as string);
-			const date2 = new Date(value2 as string);
+			try {
+				const date1 = tryToParseDateTime(value1);
+				const date2 = tryToParseDateTime(value2);
 
-			if (!isNaN(date1.getTime()) && !isNaN(date2.getTime())) {
 				return date1 > date2;
-			} else {
+			} catch (error) {
 				throw new DeduplicationError(
 					'Invalid value. Only valid dates are supported in mode "latestDate"',
 				);
