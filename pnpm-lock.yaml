@@ -94,7 +94,7 @@ catalogs:
 
 overrides:
   '@types/node': ^18.16.16
-  chokidar: 3.5.2
+  chokidar: ^4.0.1
   esbuild: ^0.21.5
   formidable: 3.5.1
   pug: ^3.0.3
@@ -181,7 +181,7 @@ importers:
         version: 7.0.0
       ts-jest:
         specifier: ^29.1.1
-        version: 29.1.1(@babel/core@7.24.0)(@jest/types@29.6.3)(babel-jest@29.6.2(@babel/core@7.24.0))(jest@29.6.2(@types/node@18.16.16)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.6.2)))(typescript@5.6.2)
+        version: 29.1.1(@babel/core@7.24.0)(@jest/types@29.6.1)(babel-jest@29.6.2(@babel/core@7.24.0))(jest@29.6.2(@types/node@18.16.16)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.6.2)))(typescript@5.6.2)
       tsc-alias:
         specifier: ^1.8.7
         version: 1.8.7
@@ -784,7 +784,7 @@ importers:
         version: 3.1.0
       curlconverter:
         specifier: 3.21.0
-        version: 3.21.0(chokidar@3.5.2)
+        version: 3.21.0(chokidar@4.0.1)
       dotenv:
         specifier: 8.6.0
         version: 8.6.0
@@ -1053,9 +1053,6 @@ importers:
       '@vvo/tzdb':
         specifier: ^6.141.0
         version: 6.141.0
-      chokidar:
-        specifier: 3.5.2
-        version: 3.5.2
       concurrently:
         specifier: ^8.2.0
         version: 8.2.0
@@ -1601,8 +1598,8 @@ importers:
         specifier: 1.0.0-rc.6
         version: 1.0.0-rc.6
       chokidar:
-        specifier: 3.5.2
-        version: 3.5.2
+        specifier: ^4.0.1
+        version: 4.0.1
       cron:
         specifier: 3.1.7
         version: 3.1.7
@@ -3038,10 +3035,6 @@ packages:
 
   '@jest/types@29.6.1':
     resolution: {integrity: sha512-tPKQNMPuXgvdOn2/Lg9HNfUvjYVGolt04Hp03f5hAk878uwOLikN+JzeLY0HcVgKgFl9Hs3EIqpu3WX27XNhnw==}
-    engines: {node: ^14.15.0 || ^16.10.0 || >=18.0.0}
-
-  '@jest/types@29.6.3':
-    resolution: {integrity: sha512-u3UPsIilWKOM3F9CXtrG8LEJmNxwoCQC/XVj4IKYXvvpx7QIi/Kg1LI5uDmDpKlac62NUtX7eLjRh+jVZcLOzw==}
     engines: {node: ^14.15.0 || ^16.10.0 || >=18.0.0}
 
   '@jridgewell/gen-mapping@0.3.5':
@@ -5906,8 +5899,8 @@ packages:
   brace-expansion@2.0.1:
     resolution: {integrity: sha512-XnAIvQ8eM+kC6aULx6wuQiwVsnzsi9d3WxzV3FpWTGA19F621kwdbsAcFKXgKUHZWsy+mY6iL1sHTxWEFCytDA==}
 
-  braces@3.0.2:
-    resolution: {integrity: sha512-b8um+L1RzM3WDSzvhm6gIz1yfTbBt6YTlcEKAvsmqCZZFw46z626lVj9j1yEPW33H5H+lBQpZMP1k8l+78Ha0A==}
+  braces@3.0.3:
+    resolution: {integrity: sha512-yQbXgO/OSZVD2IsiLlro+7Hf6Q18EJrKSEsdoMzKePKXct3gvD8oLcOQdIzGupr5Fj+EDe8gO/lxc1BzfMpxvA==}
     engines: {node: '>=8'}
 
   browser-assert@1.2.1:
@@ -6103,9 +6096,9 @@ packages:
     resolution: {integrity: sha512-hjx1XE1M/D5pAtMgvWwE21QClmAEeGHOIDfycgmndisdNgI6PE1cGRQkMGBcsbUbmEQyWu5PJLUcAOjtQS8DWw==}
     engines: {node: '>= 0.12'}
 
-  chokidar@3.5.2:
-    resolution: {integrity: sha512-ekGhOnNVPgT77r4K/U3GDhu+FQ2S8TnK/s2KbIGXi0SZWuwkZ2QNyfWdZW+TVfn84DpEP7rLeCt2UI6bJ8GwbQ==}
-    engines: {node: '>= 8.10.0'}
+  chokidar@4.0.1:
+    resolution: {integrity: sha512-n8enUVCED/KVRQlab1hr3MVpcVMvxtZjmEa956u+4YijlmQED223XMSYj2tLuKvr4jcCTzNNMpQDUer72MMmzA==}
+    engines: {node: '>= 14.16.0'}
 
   chownr@1.1.4:
     resolution: {integrity: sha512-jJ0bqzaylmJtVnNgzTeSOs8DPavpbYgEr/b0YL8/2GO3xJEhInFmhKMUnEJQjZumK7KXGFhUy89PrsJWlakBVg==}
@@ -7435,8 +7428,8 @@ packages:
     resolution: {integrity: sha512-GTLKYyBSDz3nPhlLVPjPWZCnhkd9TrrRArNcy8Z+J2cqScB7h2McAzR6NBX6nYOoWafql0roY8hrocxnZBv9CQ==}
     engines: {node: '>= 10.4.0'}
 
-  fill-range@7.0.1:
-    resolution: {integrity: sha512-qOo9F+dMUmC2Lcb4BbVvnKJxTPjCm+RRpe4gDuGrzkL7mEVl/djYSu2OdQ2Pa302N4oqkSg9ir6jaLWJ2USVpQ==}
+  fill-range@7.1.1:
+    resolution: {integrity: sha512-YsGpe3WHLK8ZYi4tWDg2Jy3ebRz2rXowDxnld4bkQB00cc/1Zw9AWnC0i9ztDJitivtQvaI9KaLyKrc+hBW0yg==}
     engines: {node: '>=8'}
 
   filter-obj@1.1.0:
@@ -8103,10 +8096,6 @@ packages:
 
   is-bigint@1.0.4:
     resolution: {integrity: sha512-zB9CruMamjym81i2JZ3UMn54PKGsQzsJeo6xvN3HJJ4CAsQNB6iRutp2To77OfCNuoxspsIhzaPoO1zyCEhFOg==}
-
-  is-binary-path@2.1.0:
-    resolution: {integrity: sha512-ZMERYes6pDydyuGidse7OsHxtbI7WVeUEozgR/g7rd0xUimYNlvZRE/K2MgZTjWy725IfelLeVcEM97mmtRGXw==}
-    engines: {node: '>=8'}
 
   is-boolean-object@1.1.2:
     resolution: {integrity: sha512-gDYaKHJmnj4aWxyj6YHyXVpdQawtVLHU5cb+eztPGczf6cjuTdwve5ZIEfgXqH4e57An1D1AKf8CZ3kYrQRqYA==}
@@ -9155,8 +9144,8 @@ packages:
     resolution: {integrity: sha512-iclAHeNqNm68zFtnZ0e+1L2yUIdvzNoauKU4WBA3VvH/vPFieF7qfRlwUZU+DA9P9bPXIS90ulxoUoCH23sV2w==}
     engines: {node: '>= 0.6'}
 
-  micromatch@4.0.5:
-    resolution: {integrity: sha512-DMy+ERcEW2q8Z2Po+WNXuw3c5YaUSFjAO5GsJqfEl7UjvtIuFKO6ZrKvcItdy98dwFI2N1tg3zNIdKaQT+aNdA==}
+  micromatch@4.0.8:
+    resolution: {integrity: sha512-PXwfBhYu0hBCPw8Dn0E+WDYb7af3dSLVWKi3HGv84IdF4TyFoC0ysxFd0Goxw7nSv4T/PzEJQxsYsEiFCKo2BA==}
     engines: {node: '>=8.6'}
 
   mime-db@1.52.0:
@@ -9712,7 +9701,7 @@ packages:
     engines: {node: '>= 6.9.0'}
     hasBin: true
     peerDependencies:
-      chokidar: 3.5.2
+      chokidar: ^4.0.1
     peerDependenciesMeta:
       chokidar:
         optional: true
@@ -10549,9 +10538,9 @@ packages:
     resolution: {integrity: sha512-ePeK6cc1EcKLEhJFt/AebMCLL+GgSKhuygrZ/GLaKZYEecIgIECf4UaUuaByiGtzckwR4ain9VzUh95T1exYGw==}
     engines: {node: '>=8'}
 
-  readdirp@3.6.0:
-    resolution: {integrity: sha512-hOS089on8RduqdbhvQ5Z37A0ESjsqz6qnRcffsMU3495FuTdqSm+7bhJ29JvIOsBDEEnan5DPu9t3To9VRlMzA==}
-    engines: {node: '>=8.10.0'}
+  readdirp@4.0.2:
+    resolution: {integrity: sha512-yDMz9g+VaZkqBYS/ozoBJwaBhTbZo3UNYQHNRw1D3UFQB8oHB4uS/tAODO+ZLjGWmUbKnIlOWO+aaIiAxrUWHA==}
+    engines: {node: '>= 14.16.0'}
 
   readline-sync@1.4.10:
     resolution: {integrity: sha512-gNva8/6UAe8QYepIQH/jQ2qn91Qj0B9sYjMBBs3QOB8F2CXcKgLxQaJRP76sWVRQt+QU+8fAkCbCvjjMFu7Ycw==}
@@ -14373,7 +14362,7 @@ snapshots:
       jest-util: 29.6.2
       jest-validate: 29.6.2
       jest-watcher: 29.6.2
-      micromatch: 4.0.5
+      micromatch: 4.0.8
       pretty-format: 29.7.0
       slash: 3.0.0
       strip-ansi: 6.0.1
@@ -14492,7 +14481,7 @@ snapshots:
       jest-haste-map: 29.6.2
       jest-regex-util: 29.4.3
       jest-util: 29.6.2
-      micromatch: 4.0.5
+      micromatch: 4.0.8
       pirates: 4.0.6
       slash: 3.0.0
       write-file-atomic: 4.0.2
@@ -14507,16 +14496,6 @@ snapshots:
       '@types/node': 18.16.16
       '@types/yargs': 17.0.19
       chalk: 4.1.2
-
-  '@jest/types@29.6.3':
-    dependencies:
-      '@jest/schemas': 29.6.3
-      '@types/istanbul-lib-coverage': 2.0.4
-      '@types/istanbul-reports': 3.0.1
-      '@types/node': 18.16.16
-      '@types/yargs': 17.0.19
-      chalk: 4.1.2
-    optional: true
 
   '@jridgewell/gen-mapping@0.3.5':
     dependencies:
@@ -15266,7 +15245,7 @@ snapshots:
     dependencies:
       '@redocly/openapi-core': 1.25.5(encoding@0.1.13)
       abort-controller: 3.0.0
-      chokidar: 3.5.2
+      chokidar: 4.0.1
       colorette: 1.4.0
       core-js: 3.35.0
       form-data: 4.0.0
@@ -17871,9 +17850,9 @@ snapshots:
     dependencies:
       balanced-match: 1.0.2
 
-  braces@3.0.2:
+  braces@3.0.3:
     dependencies:
-      fill-range: 7.0.1
+      fill-range: 7.1.1
 
   browser-assert@1.2.1: {}
 
@@ -18136,17 +18115,9 @@ snapshots:
       parse5: 6.0.1
       parse5-htmlparser2-tree-adapter: 6.0.1
 
-  chokidar@3.5.2:
+  chokidar@4.0.1:
     dependencies:
-      anymatch: 3.1.3
-      braces: 3.0.2
-      glob-parent: 5.1.2
-      is-binary-path: 2.1.0
-      is-glob: 4.0.3
-      normalize-path: 3.0.0
-      readdirp: 3.6.0
-    optionalDependencies:
-      fsevents: 2.3.3
+      readdirp: 4.0.2
 
   chownr@1.1.4: {}
 
@@ -18536,12 +18507,12 @@ snapshots:
 
   csv-parse@5.5.0: {}
 
-  curlconverter@3.21.0(chokidar@3.5.2):
+  curlconverter@3.21.0(chokidar@4.0.1):
     dependencies:
       '@curlconverter/yargs': 0.0.2
       cookie: 0.4.2
       jsesc: 3.0.2
-      nunjucks: 3.2.4(chokidar@3.5.2)
+      nunjucks: 3.2.4(chokidar@4.0.1)
       query-string: 7.1.3
       string.prototype.startswith: 1.0.0
       yamljs: 0.3.0
@@ -19764,7 +19735,7 @@ snapshots:
       '@nodelib/fs.walk': 1.2.8
       glob-parent: 5.1.2
       merge2: 1.4.1
-      micromatch: 4.0.5
+      micromatch: 4.0.8
 
   fast-glob@3.3.2:
     dependencies:
@@ -19772,7 +19743,7 @@ snapshots:
       '@nodelib/fs.walk': 1.2.8
       glob-parent: 5.1.2
       merge2: 1.4.1
-      micromatch: 4.0.5
+      micromatch: 4.0.8
 
   fast-json-stable-stringify@2.1.0: {}
 
@@ -19845,7 +19816,7 @@ snapshots:
 
   filesize@10.1.0: {}
 
-  fill-range@7.0.1:
+  fill-range@7.1.1:
     dependencies:
       to-regex-range: 5.0.1
 
@@ -20673,10 +20644,6 @@ snapshots:
     dependencies:
       has-bigints: 1.0.2
 
-  is-binary-path@2.1.0:
-    dependencies:
-      binary-extensions: 2.2.0
-
   is-boolean-object@1.1.2:
     dependencies:
       call-bind: 1.0.7
@@ -20956,7 +20923,7 @@ snapshots:
       jest-runner: 29.6.2
       jest-util: 29.6.2
       jest-validate: 29.6.2
-      micromatch: 4.0.5
+      micromatch: 4.0.8
       parse-json: 5.2.0
       pretty-format: 29.7.0
       slash: 3.0.0
@@ -21033,7 +21000,7 @@ snapshots:
       jest-regex-util: 29.4.3
       jest-util: 29.6.2
       jest-worker: 29.6.2
-      micromatch: 4.0.5
+      micromatch: 4.0.8
       walker: 1.0.8
     optionalDependencies:
       fsevents: 2.3.3
@@ -21064,7 +21031,7 @@ snapshots:
       '@types/stack-utils': 2.0.1
       chalk: 4.1.2
       graceful-fs: 4.2.11
-      micromatch: 4.0.5
+      micromatch: 4.0.8
       pretty-format: 29.7.0
       slash: 3.0.0
       stack-utils: 2.0.6
@@ -21076,7 +21043,7 @@ snapshots:
       '@types/stack-utils': 2.0.1
       chalk: 4.1.2
       graceful-fs: 4.2.11
-      micromatch: 4.0.5
+      micromatch: 4.0.8
       pretty-format: 29.7.0
       slash: 3.0.0
       stack-utils: 2.0.6
@@ -21980,9 +21947,9 @@ snapshots:
 
   methods@1.1.2: {}
 
-  micromatch@4.0.5:
+  micromatch@4.0.8:
     dependencies:
-      braces: 3.0.2
+      braces: 3.0.3
       picomatch: 2.3.1
 
   mime-db@1.52.0: {}
@@ -22127,7 +22094,7 @@ snapshots:
   mjml-cli@4.15.3(encoding@0.1.13):
     dependencies:
       '@babel/runtime': 7.24.7
-      chokidar: 3.5.2
+      chokidar: 4.0.1
       glob: 10.4.5
       html-minifier: 4.0.0
       js-beautify: 1.14.9
@@ -22692,7 +22659,7 @@ snapshots:
 
   nodemon@3.0.1:
     dependencies:
-      chokidar: 3.5.2
+      chokidar: 4.0.1
       debug: 3.2.7(supports-color@5.5.0)
       ignore-by-default: 1.0.1
       minimatch: 3.1.2
@@ -22754,13 +22721,13 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  nunjucks@3.2.4(chokidar@3.5.2):
+  nunjucks@3.2.4(chokidar@4.0.1):
     dependencies:
       a-sync-waterfall: 1.0.1
       asap: 2.0.6
       commander: 5.1.0
     optionalDependencies:
-      chokidar: 3.5.2
+      chokidar: 4.0.1
 
   nwsapi@2.2.7: {}
 
@@ -23697,9 +23664,7 @@ snapshots:
     dependencies:
       readable-stream: 3.6.0
 
-  readdirp@3.6.0:
-    dependencies:
-      picomatch: 2.3.1
+  readdirp@4.0.2: {}
 
   readline-sync@1.4.10: {}
 
@@ -24057,7 +24022,7 @@ snapshots:
 
   sass@1.64.1:
     dependencies:
-      chokidar: 3.5.2
+      chokidar: 4.0.1
       immutable: 4.2.2
       source-map-js: 1.0.2
 
@@ -24726,7 +24691,7 @@ snapshots:
     dependencies:
       '@alloc/quick-lru': 5.2.0
       arg: 5.0.2
-      chokidar: 3.5.2
+      chokidar: 4.0.1
       didyoumean: 1.2.2
       dlv: 1.1.3
       fast-glob: 3.3.2
@@ -24734,7 +24699,7 @@ snapshots:
       is-glob: 4.0.3
       jiti: 1.21.0
       lilconfig: 2.1.0
-      micromatch: 4.0.5
+      micromatch: 4.0.8
       normalize-path: 3.0.0
       object-hash: 3.0.0
       picocolors: 1.0.1
@@ -24966,7 +24931,7 @@ snapshots:
 
   ts-interface-checker@0.1.13: {}
 
-  ts-jest@29.1.1(@babel/core@7.24.0)(@jest/types@29.6.3)(babel-jest@29.6.2(@babel/core@7.24.0))(jest@29.6.2(@types/node@18.16.16)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.6.2)))(typescript@5.6.2):
+  ts-jest@29.1.1(@babel/core@7.24.0)(@jest/types@29.6.1)(babel-jest@29.6.2(@babel/core@7.24.0))(jest@29.6.2(@types/node@18.16.16)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.6.2)))(typescript@5.6.2):
     dependencies:
       bs-logger: 0.2.6
       fast-json-stable-stringify: 2.1.0
@@ -24980,7 +24945,7 @@ snapshots:
       yargs-parser: 21.1.1
     optionalDependencies:
       '@babel/core': 7.24.0
-      '@jest/types': 29.6.3
+      '@jest/types': 29.6.1
       babel-jest: 29.6.2(@babel/core@7.24.0)
 
   ts-map@1.0.3: {}
@@ -25015,7 +24980,7 @@ snapshots:
 
   tsc-alias@1.8.7:
     dependencies:
-      chokidar: 3.5.2
+      chokidar: 4.0.1
       commander: 9.4.1
       globby: 11.1.0
       mylas: 2.1.13
@@ -25271,7 +25236,7 @@ snapshots:
     dependencies:
       '@antfu/utils': 0.7.10
       '@rollup/pluginutils': 5.1.0(rollup@4.24.0)
-      chokidar: 3.5.2
+      chokidar: 4.0.1
       debug: 4.3.5
       fast-glob: 3.3.2
       local-pkg: 0.5.0
@@ -25289,14 +25254,14 @@ snapshots:
   unplugin@1.0.1:
     dependencies:
       acorn: 8.12.1
-      chokidar: 3.5.2
+      chokidar: 4.0.1
       webpack-sources: 3.2.3
       webpack-virtual-modules: 0.5.0
 
   unplugin@1.11.0:
     dependencies:
       acorn: 8.12.1
-      chokidar: 3.5.2
+      chokidar: 4.0.1
       webpack-sources: 3.2.3
       webpack-virtual-modules: 0.6.1
 
