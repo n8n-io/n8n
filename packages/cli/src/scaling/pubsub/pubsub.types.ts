@@ -102,8 +102,8 @@ export namespace PubSub {
 	export type WorkerResponse = ToWorkerResponse<'response-to-get-worker-status'>;
 
 	/**
-	 * Of all events emitted from pubsub messages, these are the events where the
-	 * event handlers are shared by main, worker, and webhook processes.
+	 * Of all events emitted from pubsub messages, those whose handlers
+	 * are all present in main, worker, and webhook processes.
 	 */
 	export type CommonEvents = Pick<
 		PubSubEventMap,
