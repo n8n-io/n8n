@@ -26,5 +26,8 @@
     "n8n-core": "workspace:*",
     "nanoid": "^3.3.6",
     "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "luxon": "catalog:"
   }
 }
