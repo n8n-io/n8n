@@ -213,7 +213,7 @@ export class Start extends BaseCommand {
 		await this.initBinaryDataService();
 		this.logger.debug('Binary data service init complete');
 		await this.initDataDeduplicationService();
-		this.logger.debug('Processed data service init complete');
+		this.logger.debug('Data deduplication service init complete');
 		await this.initExternalHooks();
 		this.logger.debug('External hooks init complete');
 		await this.initExternalSecrets();
