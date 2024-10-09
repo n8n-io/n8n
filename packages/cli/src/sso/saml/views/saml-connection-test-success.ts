@@ -1,7 +1,8 @@
+import { compile } from 'handlebars';
+
 import type { SamlUserAttributes } from '../types/saml-user-attributes';
 
-export function getSamlConnectionTestSuccessView(attributes: SamlUserAttributes): string {
-	return `
+const successTemplate = compile<SamlUserAttributes>(`
     <http>
     <head>
     <title>n8n - SAML Connection Test Result</title>
@@ -21,13 +22,21 @@ export function getSamlConnectionTestSuccessView(attributes: SamlUserAttributes)
     <p></p>
     <h2>Here are the attributes returned by your SAML IdP:</h2>
     <ul>
-    <li><strong>Email:</strong> ${attributes.email ?? '(n/a)'}</li>
-    <li><strong>First Name:</strong> ${attributes.firstName ?? '(n/a)'}</li>
-    <li><strong>Last Name:</strong> ${attributes.lastName ?? '(n/a)'}</li>
-    <li><strong>UPN:</strong> ${attributes.userPrincipalName ?? '(n/a)'}</li>
+    <li><strong>Email:</strong> {{email}}</li>
+    <li><strong>First Name:</strong> {{firstName}}</li>
+    <li><strong>Last Name:</strong> {{lastName}}</li>
+    <li><strong>UPN:</strong> {{userPrincipalName}}</li>
     </ul>
     </div>
     </body>
     </http>
-	`;
+	`);
+
+export function getSamlConnectionTestSuccessView(attributes: Partial<SamlUserAttributes>): string {
+	return successTemplate({
+		email: attributes.email ?? '(n/a)',
+		firstName: attributes.firstName ?? '(n/a)',
+		lastName: attributes.lastName ?? '(n/a)',
+		userPrincipalName: attributes.userPrincipalName ?? '(n/a)',
+	});
 }
