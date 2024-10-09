@@ -244,13 +244,13 @@ describe('GlobalConfig', () => {
 				fileSizeMax: 16,
 				location: 'logs/n8n.log',
 			},
+			scopes: [],
 		},
 	};
 
 	it('should use all default values when no env variables are defined', () => {
 		process.env = {};
 		const config = Container.get(GlobalConfig);
-
 		expect(deepCopy(config)).toEqual(defaultConfig);
 		expect(mockFs.readFileSync).not.toHaveBeenCalled();
 	});

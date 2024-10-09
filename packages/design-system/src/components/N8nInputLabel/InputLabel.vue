@@ -33,7 +33,14 @@ const addTargetBlank = (html: string) =>
 </script>
 
 <template>
-	<div :class="$style.container" v-bind="$attrs" data-test-id="input-label">
+	<div
+		:class="{
+			[$style.container]: true,
+			[$style.withOptions]: $slots.options,
+		}"
+		v-bind="$attrs"
+		data-test-id="input-label"
+	>
 		<label
 			v-if="label || $slots.options"
 			:for="inputName"
@@ -47,7 +54,15 @@ const addTargetBlank = (html: string) =>
 			}"
 		>
 			<div v-if="label" :class="$style.title">
-				<N8nText :bold="bold" :size="size" :compact="compact" :color="color">
+				<N8nText
+					:bold="bold"
+					:size="size"
+					:compact="compact"
+					:color="color"
+					:class="{
+						[$style.textEllipses]: showOptions,
+					}"
+				>
 					{{ label }}
 					<N8nText v-if="required" color="primary" :bold="bold" :size="size">*</N8nText>
 				</N8nText>
@@ -105,6 +120,12 @@ const addTargetBlank = (html: string) =>
 	.overlay {
 		opacity: 1;
 		transition: opacity 100ms ease-in; // transition on hover in
+	}
+}
+.withOptions:hover {
+	.title > span {
+		text-overflow: ellipsis;
+		overflow: hidden;
 	}
 }
 
@@ -168,6 +189,11 @@ const addTargetBlank = (html: string) =>
 .overflow {
 	overflow-x: hidden;
 	overflow-y: clip;
+}
+
+.textEllipses {
+	text-overflow: ellipsis;
+	overflow: hidden;
 }
 
 .heading {

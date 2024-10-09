@@ -1534,7 +1534,7 @@ export default defineComponent({
 				return;
 			}
 
-			this.nodeHelpers.disableNodes(nodes, true);
+			this.nodeHelpers.disableNodes(nodes, { trackHistory: true, trackBulk: true });
 		},
 
 		togglePinNodes(nodes: INode[], source: 'keyboard-shortcut' | 'context-menu') {

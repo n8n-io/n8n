@@ -1,16 +1,17 @@
-import {
-	type IExecuteFunctions,
-	type Workflow,
-	type IRunExecutionData,
-	type INodeExecutionData,
-	type ITaskDataConnections,
-	type INode,
-	type WorkflowParameters,
-	type INodeParameters,
-	type WorkflowExecuteMode,
-	type IExecuteData,
-	type IDataObject,
-	type IWorkflowExecuteAdditionalData,
+import type {
+	EnvProviderState,
+	IExecuteFunctions,
+	Workflow,
+	IRunExecutionData,
+	INodeExecutionData,
+	ITaskDataConnections,
+	INode,
+	WorkflowParameters,
+	INodeParameters,
+	WorkflowExecuteMode,
+	IExecuteData,
+	IDataObject,
+	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
@@ -42,6 +43,7 @@ export interface TaskData {
 	connectionInputData: INodeExecutionData[];
 	siblingParameters: INodeParameters;
 	mode: WorkflowExecuteMode;
+	envProviderState: EnvProviderState;
 	executeData?: IExecuteData;
 	defaultReturnRunIndex: number;
 	selfData: IDataObject;
@@ -76,6 +78,7 @@ export interface AllCodeTaskData {
 	connectionInputData: INodeExecutionData[];
 	siblingParameters: INodeParameters;
 	mode: WorkflowExecuteMode;
+	envProviderState: EnvProviderState;
 	executeData?: IExecuteData;
 	defaultReturnRunIndex: number;
 	selfData: IDataObject;
@@ -137,6 +140,7 @@ export class TaskManager {
 		connectionInputData: INodeExecutionData[],
 		siblingParameters: INodeParameters,
 		mode: WorkflowExecuteMode,
+		envProviderState: EnvProviderState,
 		executeData?: IExecuteData,
 		defaultReturnRunIndex = -1,
 		selfData: IDataObject = {},
@@ -153,6 +157,7 @@ export class TaskManager {
 			itemIndex,
 			siblingParameters,
 			mode,
+			envProviderState,
 			executeData,
 			defaultReturnRunIndex,
 			selfData,
@@ -311,6 +316,7 @@ export class TaskManager {
 				contextNodeName: jd.contextNodeName,
 				defaultReturnRunIndex: jd.defaultReturnRunIndex,
 				mode: jd.mode,
+				envProviderState: jd.envProviderState,
 				node: jd.node,
 				runExecutionData: jd.runExecutionData,
 				runIndex: jd.runIndex,
