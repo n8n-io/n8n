@@ -164,7 +164,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			updateNodePosition(id, position, { trackHistory });
 		});
 
-		if (trackBulk) {
+		if (trackHistory && trackBulk) {
 			historyStore.stopRecordingUndo();
 		}
 	}
@@ -198,11 +198,16 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		updateNodePosition(node.id, position);
 	}
 
-	async function renameNode(currentName: string, newName: string, { trackHistory = false } = {}) {
+	async function renameNode(
+		currentName: string,
+		newName: string,
+		{ trackHistory = false, trackBulk = true } = {},
+	) {
 		if (currentName === newName) {
 			return;
 		}
-		if (trackHistory) {
+
+		if (trackHistory && trackBulk) {
 			historyStore.startRecordingUndo();
 		}
 
@@ -227,7 +232,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			ndvStore.activeNodeName = newName;
 		}
 
-		if (trackHistory) {
+		if (trackHistory && trackBulk) {
 			historyStore.stopRecordingUndo();
 		}
 	}
@@ -327,10 +332,16 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		trackDeleteNode(id);
 	}
 
-	function deleteNodes(ids: string[]) {
-		historyStore.startRecordingUndo();
-		ids.forEach((id) => deleteNode(id, { trackHistory: true, trackBulk: false }));
-		historyStore.stopRecordingUndo();
+	function deleteNodes(ids: string[], { trackHistory = true, trackBulk = true } = {}) {
+		if (trackHistory && trackBulk) {
+			historyStore.startRecordingUndo();
+		}
+
+		ids.forEach((id) => deleteNode(id, { trackHistory, trackBulk: false }));
+
+		if (trackHistory && trackBulk) {
+			historyStore.stopRecordingUndo();
+		}
 	}
 
 	function revertDeleteNode(node: INodeUi) {
@@ -401,18 +412,15 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		uiStore.lastSelectedNode = node.name;
 	}
 
-	function toggleNodesDisabled(
-		ids: string[],
-		{ trackHistory = true, trackBulk = true }: { trackHistory?: boolean; trackBulk?: boolean } = {},
-	) {
-		if (trackBulk) {
+	function toggleNodesDisabled(ids: string[], { trackHistory = true, trackBulk = true } = {}) {
+		if (trackHistory && trackBulk) {
 			historyStore.startRecordingUndo();
 		}
 
 		const nodes = workflowsStore.getNodesByIds(ids);
-		nodeHelpers.disableNodes(nodes, trackHistory);
+		nodeHelpers.disableNodes(nodes, { trackHistory, trackBulk: false });
 
-		if (trackBulk) {
+		if (trackHistory && trackBulk) {
 			historyStore.stopRecordingUndo();
 		}
 	}
@@ -424,8 +432,14 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		}
 	}
 
-	function toggleNodesPinned(ids: string[], source: PinDataSource) {
-		historyStore.startRecordingUndo();
+	function toggleNodesPinned(
+		ids: string[],
+		source: PinDataSource,
+		{ trackHistory = true, trackBulk = true } = {},
+	) {
+		if (trackHistory && trackBulk) {
+			historyStore.startRecordingUndo();
+		}
 
 		const nodes = workflowsStore.getNodesByIds(ids);
 		const nextStatePinned = nodes.some((node) => !workflowsStore.pinDataByNodeName(node.name));
@@ -442,7 +456,9 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			}
 		}
 
-		historyStore.stopRecordingUndo();
+		if (trackHistory && trackBulk) {
+			historyStore.stopRecordingUndo();
+		}
 	}
 
 	function requireNodeTypeDescription(
@@ -478,10 +494,6 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		let insertPosition = options.position;
 		let lastAddedNode: INodeUi | undefined;
 
-		if (options.trackBulk) {
-			historyStore.startRecordingUndo();
-		}
-
 		const nodesWithTypeVersion = nodes.map((node) => {
 			const typeVersion =
 				node.typeVersion ?? resolveNodeVersion(requireNodeTypeDescription(node.type));
@@ -493,7 +505,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 		await loadNodeTypesProperties(nodesWithTypeVersion);
 
-		if (options.trackBulk) {
+		if (options.trackHistory && options.trackBulk) {
 			historyStore.startRecordingUndo();
 		}
 
@@ -532,7 +544,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			updatePositionForNodeWithMultipleInputs(lastAddedNode);
 		}
 
-		if (options.trackBulk) {
+		if (options.trackHistory && options.trackBulk) {
 			historyStore.stopRecordingUndo();
 		}
 
@@ -588,11 +600,11 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 		workflowsStore.addNode(nodeData);
 
-		void nextTick(() => {
-			if (options.trackHistory) {
-				historyStore.pushCommandToUndo(new AddNodeCommand(nodeData));
-			}
+		if (options.trackHistory) {
+			historyStore.pushCommandToUndo(new AddNodeCommand(nodeData));
+		}
 
+		void nextTick(() => {
 			workflowsStore.setNodePristine(nodeData.name, true);
 
 			nodeHelpers.matchCredentials(nodeData);
@@ -1376,7 +1388,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		connections: CanvasConnectionCreateData[] | CanvasConnection[],
 		{ trackBulk = true, trackHistory = false } = {},
 	) {
-		if (trackBulk) {
+		if (trackBulk && trackHistory) {
 			historyStore.startRecordingUndo();
 		}
 
@@ -1404,7 +1416,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			);
 		}
 
-		if (trackBulk) {
+		if (trackBulk && trackHistory) {
 			historyStore.stopRecordingUndo();
 		}
 	}
@@ -1614,11 +1626,11 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		}
 
 		// Add the nodes with the changed node names, expressions and connections
-		if (trackBulk) {
+		if (trackBulk && trackHistory) {
 			historyStore.startRecordingUndo();
 		}
 
-		await addNodes(Object.values(tempWorkflow.nodes), { trackBulk: false, trackHistory: true });
+		await addNodes(Object.values(tempWorkflow.nodes), { trackBulk: false, trackHistory });
 		addConnections(
 			mapLegacyConnectionsToCanvasConnections(
 				tempWorkflow.connectionsBySourceNode,
@@ -1627,7 +1639,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			{ trackBulk: false, trackHistory },
 		);
 
-		if (trackBulk) {
+		if (trackBulk && trackHistory) {
 			historyStore.stopRecordingUndo();
 		}
 
@@ -1643,6 +1655,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		workflowData: IWorkflowDataUpdate,
 		source: string,
 		importTags = true,
+		{ trackBulk = true, trackHistory = true } = {},
 	): Promise<IWorkflowDataUpdate> {
 		uiStore.resetLastInteractedWith();
 
@@ -1731,7 +1744,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 				NodeViewUtils.getNewNodePosition(editableWorkflow.value.nodes, lastClickPosition.value),
 			);
 
-			await addImportedNodesToWorkflow(workflowData);
+			await addImportedNodesToWorkflow(workflowData, { trackBulk, trackHistory });
 
 			if (importTags && settingsStore.areTagsEnabled && Array.isArray(workflowData.tags)) {
 				await importWorkflowTags(workflowData);

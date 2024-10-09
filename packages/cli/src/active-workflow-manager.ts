@@ -750,7 +750,7 @@ export class ActiveWorkflowManager {
 		const wasRemoved = await this.activeWorkflows.remove(workflowId);
 
 		if (wasRemoved) {
-			this.logger.warn(`Removed triggers and pollers for workflow "${workflowId}"`, {
+			this.logger.debug(`Removed triggers and pollers for workflow "${workflowId}"`, {
 				workflowId,
 			});
 		}
