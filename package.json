@@ -77,7 +77,10 @@
       "tslib": "^2.6.2",
       "tsconfig-paths": "^4.2.0",
       "typescript": "^5.6.2",
+      "@vue/compiler-sfc": "3.5.11",
+      "@vue/compiler-dom": "3.5.11",
       "@vue/language-core": "2.1.6",
+      "@vue/shared": "3.5.11",
       "vue-template-compiler": "2.7.16",
       "vue-tsc": "^2.1.6",
       "ws": ">=8.17.1"
