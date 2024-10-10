@@ -1,3 +1,12 @@
+## [1.62.4](https://github.com/n8n-io/n8n/compare/n8n@1.62.3...n8n@1.62.4) (2024-10-10)
+
+
+### Bug Fixes
+
+* **editor:** Bring back the "Forgot password" link on SigninView ([#11216](https://github.com/n8n-io/n8n/issues/11216)) ([3e04853](https://github.com/n8n-io/n8n/commit/3e048535b7137ac1b4e66b5ed7c31b9543ddc3c7))
+
+
+
 ## [1.62.3](https://github.com/n8n-io/n8n/compare/n8n@1.62.2...n8n@1.62.3) (2024-10-08)
 
 
