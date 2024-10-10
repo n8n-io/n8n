@@ -84,7 +84,7 @@ const iconData = computed((): { icon: string; color: string } => {
 				</span>
 			</template>
 		</N8nTooltip>
-		<span v-else :class="$style.iconText">
+		<span v-else :class="$style.iconText" :style="{ color: iconData.color }">
 			<N8nIcon :icon="iconData.icon" />
 			<span>
 				<slot />
