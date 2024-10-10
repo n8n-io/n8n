@@ -53,7 +53,7 @@ const runMetadata = computed(() => {
 	<div v-else-if="runMetadata" style="display: flex; flex-direction: row; column-gap: 4px">
 		<n8n-info-tip
 			type="tooltip"
-			:theme="info"
+			theme="info"
 			:data-test-id="`node-run-info-${theme}`"
 			tooltip-placement="right"
 		>
@@ -78,7 +78,7 @@ const runMetadata = computed(() => {
 		<n8n-info-tip
 			type="note"
 			:theme="theme"
-			:data-test-id="`node-run-info-${theme}`"
+			:data-test-id="`node-run-status-${theme}`"
 			tooltip-placement="right"
 		/>
 	</div>
