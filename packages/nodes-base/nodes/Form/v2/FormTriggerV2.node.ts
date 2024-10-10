@@ -1,5 +1,6 @@
 import {
 	ADD_FORM_NOTICE,
+	type INodePropertyOptions,
 	NodeConnectionType,
 	type INodeProperties,
 	type INodeType,
@@ -34,7 +35,7 @@ const descriptionV2: INodeTypeDescription = {
 	name: 'formTrigger',
 	icon: 'file:form.svg',
 	group: ['trigger'],
-	version: [2, 2.1],
+	version: [2, 2.1, 2.2],
 	description: 'Generate webforms in n8n and pass their responses to the workflow',
 	defaults: {
 		name: 'On form submission',
@@ -48,7 +49,7 @@ const descriptionV2: INodeTypeDescription = {
 			httpMethod: 'GET',
 			responseMode: 'onReceived',
 			isFullPath: true,
-			path: '={{$parameter["path"]}}',
+			path: '={{ $parameter["path"] || $parameter["options"]?.path || $webhookId }}',
 			ndvHideUrl: true,
 			isForm: true,
 		},
@@ -58,7 +59,7 @@ const descriptionV2: INodeTypeDescription = {
 			responseMode: '={{$parameter["responseMode"]}}',
 			responseData: '={{$parameter["responseMode"] === "lastNode" ? "noData" : undefined}}',
 			isFullPath: true,
-			path: '={{$parameter["path"]}}',
+			path: '={{ $parameter["path"] || $parameter["options"]?.path || $webhookId }}',
 			ndvHideMethod: true,
 			isForm: true,
 		},
@@ -95,11 +96,18 @@ const descriptionV2: INodeTypeDescription = {
 			],
 			default: 'none',
 		},
-		webhookPath,
+		{ ...webhookPath, displayOptions: { show: { '@version': [{ _cnd: { lte: 2.1 } }] } } },
 		formTitle,
 		formDescription,
 		formFields,
-		formRespondMode,
+		{ ...formRespondMode, displayOptions: { show: { '@version': [{ _cnd: { lte: 2.1 } }] } } },
+		{
+			...formRespondMode,
+			options: (formRespondMode.options as INodePropertyOptions[])?.filter(
+				(option) => option.value !== 'responseNode',
+			),
+			displayOptions: { show: { '@version': [{ _cnd: { gte: 2.2 } }] } },
+		},
 		{
 			displayName:
 				"In the 'Respond to Webhook' node, select 'Respond With JSON' and set the <strong>formSubmittedText</strong> key to display a custom response in the form, or the <strong>redirectURL</strong> key to redirect users to a URL",
@@ -148,8 +156,14 @@ const descriptionV2: INodeTypeDescription = {
 					description: 'Whether to ignore requests from bots like link previewers and web crawlers',
 				},
 				{
+					...webhookPath,
+					required: false,
+					displayOptions: { show: { '@version': [{ _cnd: { gte: 2.2 } }] } },
+				},
+				{
 					...useWorkflowTimezone,
 					default: false,
+					description: "Whether to use the workflow timezone in 'submittedAt' field or UTC",
 					displayOptions: {
 						show: {
 							'@version': [2],
@@ -159,6 +173,7 @@ const descriptionV2: INodeTypeDescription = {
 				{
 					...useWorkflowTimezone,
 					default: true,
+					description: "Whether to use the workflow timezone in 'submittedAt' field or UTC",
 					displayOptions: {
 						show: {
 							'@version': [{ _cnd: { gt: 2 } }],

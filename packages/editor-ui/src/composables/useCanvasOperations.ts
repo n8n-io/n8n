@@ -1687,6 +1687,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 						);
 						if (isDuplicate) {
 							node.webhookId = uuid();
+							node.parameters.path = node.webhookId as string;
 						}
 					}
 

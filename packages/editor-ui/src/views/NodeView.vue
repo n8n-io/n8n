@@ -1928,6 +1928,7 @@ export default defineComponent({
 							).some((n) => n.webhookId === node.webhookId);
 							if (isDuplicate) {
 								node.webhookId = uuid();
+								node.parameters.path = node.webhookId as string;
 							}
 						}
 

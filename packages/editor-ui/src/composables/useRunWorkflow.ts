@@ -272,7 +272,11 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 
 			const getTestUrl = (() => {
 				return (node: INode) => {
-					return `${rootStore.formTestUrl}/${node.parameters.path}`;
+					const path =
+						node.parameters.path ||
+						(node.parameters.options as IDataObject)?.path ||
+						node.webhookId;
+					return `${rootStore.formTestUrl}/${path as string}`;
 				};
 			})();
 
