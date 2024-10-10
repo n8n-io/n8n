@@ -1,13 +1,12 @@
 /* eslint-disable @typescript-eslint/no-loop-func */
-import type { WorkflowTestData } from '@test/nodes/types';
-
+import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
 import {
 	getResultNodeData,
 	setup,
 	readJsonFileSync,
 	initBinaryDataService,
 } from '@test/nodes/Helpers';
-import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
+import type { WorkflowTestData } from '@test/nodes/types';
 
 describe('Execute iCalendar Node', () => {
 	beforeEach(async () => {
@@ -32,9 +31,9 @@ describe('Execute iCalendar Node', () => {
 										mimeType: 'text/calendar',
 										fileType: 'text',
 										fileExtension: 'ics',
-										data: 'QkVHSU46VkNBTEVOREFSDQpWRVJTSU9OOjIuMA0KQ0FMU0NBTEU6R1JFR09SSUFODQpQUk9ESUQ6YWRhbWdpYmJvbnMvaWNzDQpNRVRIT0Q6UFVCTElTSA0KWC1XUi1DQUxOQU1FOmRlZmF1bHQNClgtUFVCTElTSEVELVRUTDpQVDFIDQpCRUdJTjpWRVZFTlQNClVJRDpMWC1zckVYdkI1MXA1ZUxNS1gwTnkNClNVTU1BUlk6bmV3IGV2ZW50DQpEVFNUQU1QOjIwMjMwMjEwVDA5MzYwMFoNCkRUU1RBUlQ7VkFMVUU9REFURToyMDIzMDIyOA0KRFRFTkQ7VkFMVUU9REFURToyMDIzMDMwMQ0KQVRURU5ERUU7UlNWUD1GQUxTRTtDTj1QZXJzb246bWFpbHRvOnBlcnNvbjFAZW1haWwuY29tDQpFTkQ6VkVWRU5UDQpFTkQ6VkNBTEVOREFSDQo=',
+										data: 'QkVHSU46VkNBTEVOREFSDQpWRVJTSU9OOjIuMA0KQ0FMU0NBTEU6R1JFR09SSUFODQpQUk9ESUQ6YWRhbWdpYmJvbnMvaWNzDQpNRVRIT0Q6UFVCTElTSA0KWC1XUi1DQUxOQU1FOmRlZmF1bHQNClgtUFVCTElTSEVELVRUTDpQVDFIDQpCRUdJTjpWRVZFTlQNClVJRDp2ck1SekhmaXFveFBlajJhQWRvTzINClNVTU1BUlk6bmV3IGV2ZW50DQpEVFNUQU1QOjIwMjQxMDEwVDEzMTAwMFoNCkRUU1RBUlQ7VkFMVUU9REFURToyMDIzMDIyNw0KQVRURU5ERUU7UlNWUD1GQUxTRTtDTj1QZXJzb246bWFpbHRvOnBlcnNvbjFAZW1haWwuY29tDQpFTkQ6VkVWRU5UDQpFTkQ6VkNBTEVOREFSDQo=',
 										fileName: 'event.ics',
-										fileSize: '359 B',
+										fileSize: '332 B',
 									},
 								},
 							},
