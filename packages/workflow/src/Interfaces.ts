@@ -21,6 +21,7 @@ import type { NodeOperationError } from './errors/node-operation.error';
 import type { WorkflowActivationError } from './errors/workflow-activation.error';
 import type { WorkflowOperationError } from './errors/workflow-operation.error';
 import type { ExecutionStatus } from './ExecutionStatus';
+import type { Result } from './result';
 import type { Workflow } from './Workflow';
 import type { EnvProviderState } from './WorkflowDataProxyEnvProvider';
 import type { WorkflowHooks } from './WorkflowHooks';
@@ -997,7 +998,11 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 
 		getParentCallbackManager(): CallbackManager | undefined;
 
-		startJob<T = unknown>(jobType: string, settings: unknown, itemIndex: number): Promise<T>;
+		startJob<T = unknown, E = unknown>(
+			jobType: string,
+			settings: unknown,
+			itemIndex: number,
+		): Promise<Result<T, E>>;
 	};
 
 export interface IExecuteSingleFunctions extends BaseExecutionFunctions {
@@ -2285,7 +2290,7 @@ export interface IWorkflowExecuteAdditionalData {
 	secretsHelpers: SecretsHelpersBase;
 	logAiEvent: (eventName: AiEvent, payload: AiEventPayload) => void;
 	parentCallbackManager?: CallbackManager;
-	startAgentJob<T>(
+	startAgentJob<T, E = unknown>(
 		additionalData: IWorkflowExecuteAdditionalData,
 		jobType: string,
 		settings: unknown,
@@ -2305,7 +2310,7 @@ export interface IWorkflowExecuteAdditionalData {
 		defaultReturnRunIndex?: number,
 		selfData?: IDataObject,
 		contextNodeName?: string,
-	): Promise<T>;
+	): Promise<Result<T, E>>;
 }
 
 export type WorkflowExecuteMode =
@@ -2751,8 +2756,6 @@ export type BannerName =
 	| 'EMAIL_CONFIRMATION';
 
 export type Functionality = 'regular' | 'configuration-node' | 'pairedItem';
-
-export type Result<T, E> = { ok: true; result: T } | { ok: false; error: E };
 
 export type CallbackManager = CallbackManagerLC;
 

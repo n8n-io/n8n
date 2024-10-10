@@ -1,4 +1,4 @@
-import { ApplicationError, ensureError } from 'n8n-workflow';
+import { ApplicationError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { URL } from 'node:url';
 import { type MessageEvent, WebSocket } from 'ws';
@@ -256,8 +256,7 @@ export abstract class TaskRunner {
 		try {
 			const data = await this.executeTask(task);
 			this.taskDone(taskId, data);
-		} catch (e) {
-			const error = ensureError(e);
+		} catch (error) {
 			this.taskErrored(taskId, error);
 		}
 	}
