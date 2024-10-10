@@ -66,7 +66,13 @@ void (async function start() {
 	}
 
 	const wsUrl = `ws://${config.n8nUri}/runners/_ws`;
-	runner = new JsTaskRunner('javascript', wsUrl, grantToken, 5);
+	runner = new JsTaskRunner({
+		wsUrl,
+		grantToken,
+		maxConcurrency: 5,
+		allowedBuiltInModules: process.env.NODE_FUNCTION_ALLOW_BUILTIN,
+		allowedExternalModules: process.env.NODE_FUNCTION_ALLOW_EXTERNAL,
+	});
 
 	process.on('SIGINT', createSignalHandler('SIGINT'));
 	process.on('SIGTERM', createSignalHandler('SIGTERM'));
