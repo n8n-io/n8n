@@ -352,7 +352,7 @@ export class WorkflowExecute {
 		const filteredNodes = subgraph.getNodes();
 
 		// 3. Find the Start Nodes
-		const startNodes = findStartNodes(subgraph, trigger, destination, runData);
+		const startNodes = findStartNodes({ graph: subgraph, trigger, destination, runData });
 
 		// 4. Detect Cycles
 		const cycles = findCycles(workflow);
