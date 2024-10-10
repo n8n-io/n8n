@@ -50,6 +50,7 @@ const onClick = () => {
 		:style="{ height: sizes[size].height }"
 		:disabled="asked"
 		:tabindex="static ? '-1' : ''"
+		data-test-id="ask-assistant-button"
 		@click="onClick"
 	>
 		<div>
