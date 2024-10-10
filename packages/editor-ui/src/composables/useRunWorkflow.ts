@@ -382,26 +382,6 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 						return node.name === lastNodeExecuted;
 					});
 
-					if (!isFormShown && lastNode && lastNode.type === FORM_NODE_TYPE) {
-						if (options.destinationNode) {
-							// Check if the form trigger has starting data
-							// if not do not show form page as trigger would redirect page
-							// otherwise there would be duplicate popup
-							const formTrigger = execution?.workflowData.nodes.find((node) => {
-								return node.type === FORM_TRIGGER_NODE_TYPE;
-							});
-							const runNodeFilter = execution?.data?.startData?.runNodeFilter || [];
-							if (formTrigger && !runNodeFilter.includes(formTrigger.name)) {
-								isFormShown = true;
-							}
-						}
-						if (!isFormShown) {
-							const testUrl = `${rootStore.formWaitingUrl}/${executionId}`;
-							isFormShown = true;
-							openPopUpWindow(testUrl);
-						}
-					}
-
 					if (
 						execution.finished ||
 						['error', 'canceled', 'crashed', 'success'].includes(execution.status)
@@ -421,16 +401,37 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 
 						if (
 							lastNode &&
-							lastNode.type === WAIT_NODE_TYPE &&
-							lastNode.parameters.resume === 'form'
+							(lastNode.type === FORM_NODE_TYPE ||
+								(lastNode.type === WAIT_NODE_TYPE && lastNode.parameters.resume === 'form'))
 						) {
 							const testUrl = getFormResumeUrl(lastNode, executionId as string);
 
 							if (isFormShown) {
 								localStorage.setItem(FORM_RELOAD, testUrl);
 							} else {
-								isFormShown = true;
-								openPopUpWindow(testUrl);
+								if (options.destinationNode) {
+									// Check if the form trigger has starting data
+									// if not do not show next form as trigger would redirect to page
+									// otherwise there would be duplicate popup
+									const formTrigger = execution?.workflowData.nodes.find((node) => {
+										return node.type === FORM_TRIGGER_NODE_TYPE;
+									});
+									const runNodeFilter = execution?.data?.startData?.runNodeFilter || [];
+									if (formTrigger && !runNodeFilter.includes(formTrigger.name)) {
+										isFormShown = true;
+									}
+								}
+								if (!isFormShown) {
+									let testUrl = '';
+									if (lastNode.type === FORM_NODE_TYPE) {
+										testUrl = `${rootStore.formWaitingUrl}/${executionId}`;
+									} else {
+										testUrl = getFormResumeUrl(lastNode, executionId as string);
+									}
+
+									isFormShown = true;
+									if (testUrl) openPopUpWindow(testUrl);
+								}
 							}
 						}
 					}

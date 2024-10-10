@@ -10,6 +10,7 @@ import {
 	FORM_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	NodeOperationError,
+	WAIT_NODE_TYPE,
 	jsonParse,
 } from 'n8n-workflow';
 
@@ -398,6 +399,17 @@ export async function formWebhook(
 
 		if (options.buttonLabel) {
 			buttonLabel = options.buttonLabel;
+		}
+
+		if (!redirectUrl && node.type !== FORM_TRIGGER_NODE_TYPE) {
+			const connectedNodes = context.getChildNodes(context.getNode().name);
+			const hasNextPage = connectedNodes.some(
+				(n) => n.type === FORM_NODE_TYPE || n.type === WAIT_NODE_TYPE,
+			);
+
+			if (hasNextPage) {
+				redirectUrl = context.evaluateExpression('{{ $execution.resumeFormUrl }}') as string;
+			}
 		}
 
 		renderForm({

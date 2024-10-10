@@ -1,9 +1,11 @@
 import type express from 'express';
 import {
+	FORM_NODE_TYPE,
 	type INodes,
 	type IWorkflowBase,
 	NodeHelpers,
 	SEND_AND_WAIT_OPERATION,
+	WAIT_NODE_TYPE,
 	Workflow,
 } from 'n8n-workflow';
 import { Service } from 'typedi';
@@ -175,11 +177,26 @@ export class WaitingWebhooks implements IWebhookManager {
 		if (webhookData === undefined) {
 			// If no data got found it means that the execution can not be started via a webhook.
 			// Return 404 because we do not want to give any data if the execution exists or not.
+			const errorMessage = `The workflow for execution "${executionId}" does not contain a waiting webhook with a matching path/method.`;
+
 			if (this.isSendAndWaitRequest(workflow.nodes, suffix)) {
 				res.render('send-and-wait-no-action-required', { isTestWebhook: false });
 				return { noWebhookResponse: true };
+			} else if (!execution.data.resultData.error && execution.status === 'waiting') {
+				const childNodes = workflow.getChildNodes(
+					execution.data.resultData.lastNodeExecuted as string,
+				);
+				const hasChildForms = childNodes.some(
+					(node) =>
+						workflow.nodes[node].type === FORM_NODE_TYPE ||
+						workflow.nodes[node].type === WAIT_NODE_TYPE,
+				);
+				if (hasChildForms) {
+					return { noWebhookResponse: true };
+				} else {
+					throw new NotFoundError(errorMessage);
+				}
 			} else {
-				const errorMessage = `The workflow for execution "${executionId}" does not contain a waiting webhook with a matching path/method.`;
 				throw new NotFoundError(errorMessage);
 			}
 		}

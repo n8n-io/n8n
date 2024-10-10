@@ -15,6 +15,7 @@ import {
 	FORM_TRIGGER_NODE_TYPE,
 	tryToParseFormFields,
 	NodeConnectionType,
+	WAIT_NODE_TYPE,
 } from 'n8n-workflow';
 
 import { formDescription, formFields, formTitle } from '../Form/common.descriptions';
@@ -337,7 +338,9 @@ export class Form extends Node {
 
 			const connectedNodes = context.getChildNodes(context.getNode().name);
 
-			const hasNextPage = connectedNodes.some((node) => node.type === FORM_NODE_TYPE);
+			const hasNextPage = connectedNodes.some(
+				(node) => node.type === FORM_NODE_TYPE || node.type === WAIT_NODE_TYPE,
+			);
 
 			if (hasNextPage) {
 				redirectUrl = context.evaluateExpression('{{ $execution.resumeFormUrl }}') as string;
