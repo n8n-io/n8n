@@ -45,14 +45,22 @@ if (window.sentry?.dsn) {
 		release,
 		environment,
 		beforeSend(event, { originalException }) {
-			const ignoredErrorTypes = [ResponseError, AxiosError];
-			const ignoredErrorMessages = ['ResizeObserver'];
+			const ignoredErrors = [
+				{ instanceof: ResponseError, message: /ECONNREFUSED/ },
+				{ instanceof: AxiosError },
+				{ instanceof: Error, message: /ResizeObserver/ },
+			] as const;
 
 			if (
 				!originalException ||
-				ignoredErrorTypes.some((error) => originalException instanceof error) ||
-				(originalException instanceof Error &&
-					ignoredErrorMessages.some((message) => originalException.message.includes(message)))
+				ignoredErrors.some((entry) => {
+					const typeMatch = originalException instanceof entry.instanceof;
+					if (!typeMatch) {
+						return false;
+					}
+
+					return 'message' in entry ? entry.message.test(originalException.message) : true;
+				})
 			) {
 				return null;
 			}
