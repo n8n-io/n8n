@@ -13,6 +13,7 @@ import type { SecureContextOptions } from 'tls';
 import type { URLSearchParams } from 'url';
 
 import type { CODE_EXECUTION_MODES, CODE_LANGUAGES, LOG_LEVELS } from './Constants';
+import type { InferCredentialSchema, TCredentialSchema } from './CredentialSchema/CredentialSchema';
 import type { IDeferredPromise } from './DeferredPromise';
 import type { ExecutionCancelledError } from './errors';
 import type { ExpressionError } from './errors/expression.error';
@@ -330,6 +331,7 @@ export interface ICredentialType {
 	genericAuth?: boolean;
 	httpRequestNode?: ICredentialHttpRequestNode;
 	supportedNodes?: string[];
+	schema?: TCredentialSchema;
 }
 
 export interface ICredentialTypes {
@@ -862,10 +864,21 @@ export type NodeTypeAndVersion = {
 
 export interface FunctionsBase {
 	logger: Logger;
+	/**
+	 * @deprecated Use getCredential instead for better type safety
+	 * */
 	getCredentials<T extends object = ICredentialDataDecryptedObject>(
 		type: string,
 		itemIndex?: number,
 	): Promise<T>;
+	getCredential<T extends new () => ICredentialType>(
+		type: T,
+		itemIndex?: number,
+	): Promise<
+		InstanceType<T>['schema'] extends TCredentialSchema
+			? InferCredentialSchema<InstanceType<T>['schema']>
+			: ICredentialDataDecryptedObject
+	>;
 	getCredentialsProperties(type: string): INodeProperties[];
 	getExecutionId(): string;
 	getNode(): INode;

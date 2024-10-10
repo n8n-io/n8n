@@ -1,8 +1,8 @@
-import type {
-	IAuthenticateGeneric,
-	ICredentialTestRequest,
-	ICredentialType,
-	INodeProperties,
+import {
+	CredentialSchema,
+	type ICredentialType,
+	type IAuthenticateGeneric,
+	type ICredentialTestRequest,
 } from 'n8n-workflow';
 
 export class StrapiTokenApi implements ICredentialType {
@@ -12,41 +12,29 @@ export class StrapiTokenApi implements ICredentialType {
 
 	documentationUrl = 'strapi';
 
-	properties: INodeProperties[] = [
-		{
-			displayName: 'API Token',
-			name: 'apiToken',
-			type: 'string',
-			typeOptions: { password: true },
-			default: '',
-		},
-		{
-			displayName: 'URL',
-			name: 'url',
-			type: 'string',
-			default: '',
-			placeholder: 'https://api.example.com',
-		},
-		{
-			displayName: 'API Version',
-			name: 'apiVersion',
-			default: 'v3',
-			type: 'options',
+	schema = CredentialSchema.create({
+		apiToken: CredentialSchema.password({ label: 'API Token' }),
+		url: CredentialSchema.url({ placeholder: 'https://api.example.com' }),
+		apiVersion: CredentialSchema.options({
+			label: 'API Version',
 			description: 'The version of api to be used',
 			options: [
 				{
-					name: 'Version 4',
+					label: 'Version 4',
 					value: 'v4',
 					description: 'API version supported by Strapi 4',
 				},
 				{
-					name: 'Version 3',
+					label: 'Version 3',
 					value: 'v3',
+					default: true,
 					description: 'API version supported by Strapi 3',
 				},
 			],
-		},
-	];
+		}),
+	});
+
+	properties = this.schema.toNodeProperties();
 
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',

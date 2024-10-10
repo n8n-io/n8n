@@ -3,12 +3,15 @@
 	"compilerOptions": {
 		"paths": {
 			"@test/*": ["./test/*"],
-			"@utils/*": ["./utils/*"]
+			"@utils/*": ["./utils/*"],
+			"@nodes/*": ["./nodes/*"],
+			"@credentials/*": ["./credentials/*"]
 		},
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
 		// TODO: remove all options below this line
 		"noImplicitReturns": false,
-		"useUnknownInCatchVariables": false
+		"useUnknownInCatchVariables": false,
+		"preserveSymlinks": true
 	},
 	"include": ["credentials/**/*.ts", "nodes/**/*.ts", "test/**/*.ts", "utils/**/*.ts"],
 	"references": [
