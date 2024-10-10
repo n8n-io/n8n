@@ -52,6 +52,7 @@ import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { importCurlEventBus, ndvEventBus } from '@/event-bus';
 import { ProjectTypes } from '@/types/projects.types';
+import { updateDynamicConnections } from '@/utils/nodeSettingsUtils';
 
 const props = withDefaults(
 	defineProps<{
@@ -481,6 +482,16 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 		const nodeType = nodeTypesStore.getNodeType(_node.type, _node.typeVersion);
 		if (!nodeType) {
 			return;
+		}
+
+		const updatedConnections = updateDynamicConnections(
+			_node,
+			currentWorkflow.value.connections,
+			parameterData,
+		);
+
+		if (updatedConnections) {
+			workflowsStore.setConnections(updatedConnections);
 		}
 
 		if (
