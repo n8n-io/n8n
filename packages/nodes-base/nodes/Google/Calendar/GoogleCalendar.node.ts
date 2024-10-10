@@ -89,10 +89,10 @@ export class GoogleCalendar implements INodeType {
 		loadOptions: {
 			// Get all the calendars to display them to user so that they can
 			// select them easily
-			async getConferenceSolutations(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+			async getConferenceSolutions(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const calendar = this.getCurrentNodeParameter('calendar') as string;
-				const posibleSolutions: IDataObject = {
+				const calendar = this.getCurrentNodeParameter('calendar', { extractValue: true }) as string;
+				const possibleSolutions: IDataObject = {
 					eventHangout: 'Google Hangout',
 					eventNamedHangout: 'Google Hangout Classic',
 					hangoutsMeet: 'Google Meet',
@@ -106,7 +106,7 @@ export class GoogleCalendar implements INodeType {
 				);
 				for (const solution of allowedConferenceSolutionTypes) {
 					returnData.push({
-						name: posibleSolutions[solution] as string,
+						name: possibleSolutions[solution] as string,
 						value: solution,
 					});
 				}
