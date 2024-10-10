@@ -13,6 +13,7 @@ import {
 import type { Task } from '@/task-runner';
 
 import { newAllCodeTaskData, newTaskWithSettings, withPairedItem, wrapIntoJson } from './test-data';
+import { ExecutionError } from '../errors/execution-error';
 
 jest.mock('ws');
 
@@ -292,7 +293,7 @@ describe('JsTaskRunner', () => {
 				});
 
 				expect(outcome).toEqual({
-					result: [wrapIntoJson({ error: 'Error message' })],
+					result: [wrapIntoJson({ error: 'Error message [line 1]' })],
 					customData: undefined,
 				});
 			});
@@ -406,8 +407,8 @@ describe('JsTaskRunner', () => {
 
 				expect(outcome).toEqual({
 					result: [
-						withPairedItem(0, wrapIntoJson({ error: 'Error message' })),
-						withPairedItem(1, wrapIntoJson({ error: 'Error message' })),
+						withPairedItem(0, wrapIntoJson({ error: 'Error message [line 1]' })),
+						withPairedItem(1, wrapIntoJson({ error: 'Error message [line 1]' })),
 					],
 					customData: undefined,
 				});
@@ -705,5 +706,57 @@ describe('JsTaskRunner', () => {
 				},
 			);
 		});
+	});
+
+	describe('errors', () => {
+		test.each<[CodeExecutionMode]>([['runOnceForAllItems'], ['runOnceForEachItem']])(
+			'should throw an ExecutionError if the code is invalid in %s mode',
+			async (nodeMode) => {
+				await expect(
+					execTaskWithParams({
+						task: newTaskWithSettings({
+							code: 'unknown',
+							nodeMode,
+						}),
+						taskData: newAllCodeTaskData([wrapIntoJson({ a: 1 })]),
+					}),
+				).rejects.toThrow(ExecutionError);
+			},
+		);
+
+		it('sends serializes an error correctly', async () => {
+			const runner = createRunnerWithOpts({});
+			const taskId = '1';
+			const task = newTaskWithSettings({
+				code: 'unknown; return []',
+				nodeMode: 'runOnceForAllItems',
+				continueOnFail: false,
+				mode: 'manual',
+				workflowMode: 'manual',
+			});
+			runner.runningTasks.set(taskId, task);
+
+			const sendSpy = jest.spyOn(runner.ws, 'send').mockImplementation(() => {});
+			jest.spyOn(runner, 'sendOffers').mockImplementation(() => {});
+			jest
+				.spyOn(runner, 'requestData')
+				.mockResolvedValue(newAllCodeTaskData([wrapIntoJson({ a: 1 })]));
+
+			await runner.receivedSettings(taskId, task.settings);
+
+			expect(sendSpy).toHaveBeenCalledWith(
+				JSON.stringify({
+					type: 'runner:taskerror',
+					taskId,
+					error: {
+						message: 'unknown is not defined [line 1]',
+						description: 'ReferenceError',
+						lineNumber: 1,
+					},
+				}),
+			);
+
+			console.log('DONE');
+		}, 1000);
 	});
 });
