@@ -59,7 +59,7 @@ if (window.sentry?.dsn) {
 						return false;
 					}
 
-					return 'message' in entry ? entry.message.test(originalException.message) : true;
+					return 'message' in entry ? entry.message.test(originalException.message ?? '') : true;
 				})
 			) {
 				return null;
