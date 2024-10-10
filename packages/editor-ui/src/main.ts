@@ -30,55 +30,13 @@ import { FontAwesomePlugin } from './plugins/icons';
 import { createPinia, PiniaVuePlugin } from 'pinia';
 import { JsPlumbPlugin } from '@/plugins/jsplumb';
 import { ChartJSPlugin } from '@/plugins/chartjs';
-import { AxiosError } from 'axios';
-import { ResponseError } from '@/utils/apiUtils';
+import { SentryPlugin } from '@/plugins/sentry';
 
 const pinia = createPinia();
 
 const app = createApp(App);
 
-if (window.sentry?.dsn) {
-	const { dsn, release, environment } = window.sentry;
-	const ignoredErrors = [
-		{ instanceof: AxiosError },
-		{ instanceof: ResponseError, message: /ECONNREFUSED/ },
-		{ instanceof: ResponseError, message: "Can't connect to n8n." },
-		{ instanceof: Error, message: /ResizeObserver/ },
-	] as const;
-
-	Sentry.init({
-		app,
-		dsn,
-		release,
-		environment,
-		beforeSend(event, { originalException }) {
-			if (
-				!originalException ||
-				ignoredErrors.some((entry) => {
-					const typeMatch = originalException instanceof entry.instanceof;
-					if (!typeMatch) {
-						return false;
-					}
-
-					if ('message' in entry) {
-						if (entry.message instanceof RegExp) {
-							return entry.message.test(originalException.message ?? '');
-						} else {
-							return originalException.message === entry.message;
-						}
-					}
-
-					return true;
-				})
-			) {
-				return null;
-			}
-
-			return event;
-		},
-	});
-}
-
+app.use(SentryPlugin);
 app.use(TelemetryPlugin);
 app.use(PiniaVuePlugin);
 app.use(I18nPlugin);
