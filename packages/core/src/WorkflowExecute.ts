@@ -87,7 +87,7 @@ export class WorkflowExecute {
 	 * Executes the given workflow.
 	 *
 	 * @param {Workflow} workflow The workflow to execute
-	 * @param {INode[]} [startNodes] Node to start execution from
+	 * @param {INode[]} [startNode] Node to start execution from
 	 * @param {string} [destinationNode] Node to stop execution at
 	 */
 	// IMPORTANT: Do not add "async" to this function, it will then convert the
@@ -1058,7 +1058,7 @@ export class WorkflowExecute {
 						this.runExecutionData.startData!.runNodeFilter.indexOf(executionNode.name) === -1
 					) {
 						// If filter is set and node is not on filter skip it, that avoids the problem that it executes
-						// leafs that are parallel to a selected destinationNode. Normally it would execute them because
+						// leaves that are parallel to a selected destinationNode. Normally it would execute them because
 						// they have the same parent and it executes all child nodes.
 						continue;
 					}
@@ -1759,7 +1759,7 @@ export class WorkflowExecute {
 										continue;
 									}
 								} else {
-									// A certain amout of inputs are required (amount of inputs)
+									// A certain amount of inputs are required (amount of inputs)
 									if (inputsWithData.length < requiredInputs) {
 										continue;
 									}
@@ -1817,7 +1817,7 @@ export class WorkflowExecute {
 								// Node to add did not get found, rather an empty one removed so continue with search
 								waitingNodes = Object.keys(this.runExecutionData.executionData!.waitingExecution);
 								// Set counter to start again from the beginning. Set it to -1 as it auto increments
-								// after run. So only like that will we end up again ot 0.
+								// after run. So only like that will we end up again at 0.
 								i = -1;
 							}
 						}
