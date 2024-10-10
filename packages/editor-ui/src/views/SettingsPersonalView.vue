@@ -216,7 +216,7 @@ async function onMfaEnableClick() {
 			type: 'error',
 		});
 		try {
-			await usersStore.confirmEmail();
+			await usersStore.sendConfirmationEmail();
 		} catch {}
 	}
 }

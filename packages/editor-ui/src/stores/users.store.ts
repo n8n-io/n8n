@@ -351,8 +351,8 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		}
 	};
 
-	const confirmEmail = async () => {
-		await cloudApi.confirmEmail(rootStore.restApiContext);
+	const sendConfirmationEmail = async () => {
+		await cloudApi.sendConfirmationEmail(rootStore.restApiContext);
 	};
 
 	const updateGlobalRole = async ({ id, newRoleName }: UpdateGlobalRolePayload) => {
@@ -409,7 +409,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		disableMfa,
 		canEnableMFA,
 		fetchUserCloudAccount,
-		confirmEmail,
+		sendConfirmationEmail,
 		updateGlobalRole,
 		reset,
 	};
