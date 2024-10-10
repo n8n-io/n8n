@@ -61,7 +61,7 @@ describe('Publisher', () => {
 		it('should publish worker response into `n8n.worker-response` pubsub channel', async () => {
 			const publisher = new Publisher(mock(), redisClientService);
 			const msg = mock<PubSub.WorkerResponse>({
-				command: 'get-worker-status',
+				response: 'response-to-get-worker-status',
 			});
 
 			await publisher.publishWorkerResponse(msg);
