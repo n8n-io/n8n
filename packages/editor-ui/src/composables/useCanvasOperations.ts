@@ -68,6 +68,7 @@ import {
 	CONFIGURABLE_NODE_SIZE,
 	CONFIGURATION_NODE_SIZE,
 	DEFAULT_NODE_SIZE,
+	generateOffsets,
 	GRID_SIZE,
 	PUSH_NODES_OFFSET,
 } from '@/utils/nodeViewUtils';
@@ -954,35 +955,28 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 					shiftDownstreamNodesPosition(lastInteractedWithNode.name, PUSH_NODES_OFFSET, {
 						trackHistory: true,
 					});
+				}
 
-					const yOffsetValuesByOutputCount = [
-						[-nodeSize[1], nodeSize[1]],
-						[-nodeSize[1] - 2 * GRID_SIZE, 0, nodeSize[1] - 2 * GRID_SIZE],
-						[
-							-2 * nodeSize[1] - 2 * GRID_SIZE,
-							-nodeSize[1],
-							nodeSize[1],
-							2 * nodeSize[1] - 2 * GRID_SIZE,
-						],
-					];
+				const lastInteractedWithNodeOutputs = NodeHelpers.getNodeOutputs(
+					editableWorkflowObject.value,
+					lastInteractedWithNode,
+					lastInteractedWithNodeTypeDescription,
+				);
+				const lastInteractedWithNodeOutputTypes = NodeHelpers.getConnectionTypes(
+					lastInteractedWithNodeOutputs,
+				);
+				const lastInteractedWithNodeMainOutputs = lastInteractedWithNodeOutputTypes.filter(
+					(output) => output === NodeConnectionType.Main,
+				);
 
-					const lastInteractedWithNodeOutputs = NodeHelpers.getNodeOutputs(
-						editableWorkflowObject.value,
-						lastInteractedWithNode,
-						lastInteractedWithNodeTypeDescription,
-					);
-					const lastInteractedWithNodeOutputTypes = NodeHelpers.getConnectionTypes(
-						lastInteractedWithNodeOutputs,
-					);
-					const lastInteractedWithNodeMainOutputs = lastInteractedWithNodeOutputTypes.filter(
-						(output) => output === NodeConnectionType.Main,
+				if (lastInteractedWithNodeMainOutputs.length > 1) {
+					const yOffsetValues = generateOffsets(
+						lastInteractedWithNodeMainOutputs.length,
+						NodeViewUtils.NODE_SIZE,
+						NodeViewUtils.GRID_SIZE,
 					);
 
-					if (lastInteractedWithNodeMainOutputs.length > 1) {
-						const yOffsetValues =
-							yOffsetValuesByOutputCount[lastInteractedWithNodeMainOutputs.length - 2];
-						yOffset = yOffsetValues[connectionIndex];
-					}
+					yOffset = yOffsetValues[connectionIndex];
 				}
 
 				let outputs: Array<NodeConnectionType | INodeOutputConfiguration> = [];
