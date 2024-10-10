@@ -50,27 +50,36 @@ const runMetadata = computed(() => {
 			"
 		></span>
 	</n8n-info-tip>
-	<n8n-info-tip
-		v-else-if="runMetadata"
-		type="tooltip"
-		:theme="theme"
-		:data-test-id="`node-run-info-${theme}`"
-		tooltip-placement="right"
-	>
-		<div>
-			<n8n-text :bold="true" size="small"
-				>{{
-					runTaskData?.error
-						? i18n.baseText('runData.executionStatus.failed')
-						: i18n.baseText('runData.executionStatus.success')
-				}} </n8n-text
-			><br />
-			<n8n-text :bold="true" size="small">{{ i18n.baseText('runData.startTime') + ':' }}</n8n-text>
-			{{ runMetadata.startTime }}<br />
-			<n8n-text :bold="true" size="small">{{
-				i18n.baseText('runData.executionTime') + ':'
-			}}</n8n-text>
-			{{ runMetadata.executionTime }} {{ i18n.baseText('runData.ms') }}
-		</div>
-	</n8n-info-tip>
+	<div v-else-if="runMetadata" style="display: flex; flex-direction: row; column-gap: 4px">
+		<n8n-info-tip
+			type="tooltip"
+			:theme="info"
+			:data-test-id="`node-run-info-${theme}`"
+			tooltip-placement="right"
+		>
+			<div>
+				<n8n-text :bold="true" size="small"
+					>{{
+						runTaskData?.error
+							? i18n.baseText('runData.executionStatus.failed')
+							: i18n.baseText('runData.executionStatus.success')
+					}} </n8n-text
+				><br />
+				<n8n-text :bold="true" size="small">{{
+					i18n.baseText('runData.startTime') + ':'
+				}}</n8n-text>
+				{{ runMetadata.startTime }}<br />
+				<n8n-text :bold="true" size="small">{{
+					i18n.baseText('runData.executionTime') + ':'
+				}}</n8n-text>
+				{{ runMetadata.executionTime }} {{ i18n.baseText('runData.ms') }}
+			</div>
+		</n8n-info-tip>
+		<n8n-info-tip
+			type="note"
+			:theme="theme"
+			:data-test-id="`node-run-info-${theme}`"
+			tooltip-placement="right"
+		/>
+	</div>
 </template>
