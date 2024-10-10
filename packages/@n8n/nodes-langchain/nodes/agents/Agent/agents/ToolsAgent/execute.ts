@@ -294,14 +294,6 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 				throw new NodeOperationError(this.getNode(), 'The ‘text‘ parameter is empty.');
 			}
 
-			// OpenAI doesn't allow empty tools array so we will provide a more user-friendly error message
-			if (model.lc_namespace.includes('openai') && tools.length === 0) {
-				throw new NodeOperationError(
-					this.getNode(),
-					"Please connect at least one tool. If you don't need any, try the conversational agent instead",
-				);
-			}
-
 			const response = await executor.invoke({
 				input,
 				system_message: options.systemMessage ?? SYSTEM_MESSAGE,
