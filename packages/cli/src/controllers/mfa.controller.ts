@@ -1,11 +1,21 @@
 import { Get, Post, RestController } from '@/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ExternalHooks } from '@/external-hooks';
 import { MfaService } from '@/mfa/mfa.service';
 import { AuthenticatedRequest, MFA } from '@/requests';
 
 @RestController('/mfa')
 export class MFAController {
-	constructor(private mfaService: MfaService) {}
+	constructor(
+		private mfaService: MfaService,
+		private externalHooks: ExternalHooks,
+	) {}
+
+	@Post('/can-enable')
+	async canEnableMFA(req: AuthenticatedRequest) {
+		await this.externalHooks.run('mfa.beforeSetup', [req.user]);
+		return;
+	}
 
 	@Get('/qr')
 	async getQRCode(req: AuthenticatedRequest) {
@@ -51,6 +61,8 @@ export class MFAController {
 	async activateMFA(req: MFA.Activate) {
 		const { token = null } = req.body;
 		const { id, mfaEnabled } = req.user;
+
+		await this.externalHooks.run('mfa.beforeSetup', [req.user]);
 
 		const { decryptedSecret: secret, decryptedRecoveryCodes: recoveryCodes } =
 			await this.mfaService.getSecretAndRecoveryCodes(id);
