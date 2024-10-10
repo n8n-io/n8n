@@ -384,6 +384,10 @@ function copySuccess() {
 	});
 }
 
+function nodeInExclusionList() {
+	return ['n8n-nodes-base.function'].includes(node.value.type);
+}
+
 async function onAskAssistantClick() {
 	const { message, lineNumber, description } = props.error;
 	const sessionInProgress = !assistantStore.isSessionEnded;
@@ -428,7 +432,7 @@ async function onAskAssistantClick() {
 				v-n8n-html="getErrorDescription()"
 			></div>
 			<div
-				v-if="isAskAssistantAvailable"
+				v-if="isAskAssistantAvailable && !nodeInExclusionList()"
 				class="node-error-view__assistant-button"
 				data-test-id="node-error-view-ask-assistant-button"
 			>

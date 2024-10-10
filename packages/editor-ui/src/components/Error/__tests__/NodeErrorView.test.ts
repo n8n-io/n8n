@@ -1,9 +1,10 @@
 import { createComponentRenderer } from '@/__tests__/render';
-import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
+import { mockedStore, SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import NodeErrorView from '@/components/Error/NodeErrorView.vue';
 import { STORES } from '@/constants';
 import { createTestingPinia } from '@pinia/testing';
 import { type INode } from 'n8n-workflow';
+import { useAssistantStore } from '@/stores/assistant.store';
 
 const DEFAULT_SETUP = {
 	pinia: createTestingPinia({
@@ -62,5 +63,28 @@ describe('NodeErrorView.vue', () => {
 		const errorMessage = getByTestId('node-error-message');
 
 		expect(errorMessage).toHaveTextContent('Unexpected identifier [line 1]');
+	});
+
+	it('should not render AI assistant button when error happens in deprecated function node', async () => {
+		const aiAssistantStore = useAssistantStore(DEFAULT_SETUP.pinia);
+
+		//@ts-expect-error
+		aiAssistantStore.canShowAssistantButtonsOnCanvas = true;
+
+		const { queryByTestId } = renderComponent({
+			props: {
+				error: {
+					node: {
+						...mockNode,
+						type: 'n8n-nodes-base.function',
+						typeVersion: 1,
+					},
+				},
+			},
+		});
+
+		const aiAssistantButton = queryByTestId('ask-assistant-button');
+
+		expect(aiAssistantButton).toBeNull();
 	});
 });
