@@ -141,6 +141,11 @@ const descriptionV2: INodeTypeDescription = {
 					default: 'Submit',
 				},
 				{
+					...webhookPath,
+					required: false,
+					displayOptions: { show: { '@version': [{ _cnd: { gte: 2.2 } }] } },
+				},
+				{
 					...respondWithOptions,
 					displayOptions: {
 						hide: {
@@ -154,11 +159,6 @@ const descriptionV2: INodeTypeDescription = {
 					type: 'boolean',
 					default: false,
 					description: 'Whether to ignore requests from bots like link previewers and web crawlers',
-				},
-				{
-					...webhookPath,
-					required: false,
-					displayOptions: { show: { '@version': [{ _cnd: { gte: 2.2 } }] } },
 				},
 				{
 					...useWorkflowTimezone,
