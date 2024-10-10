@@ -848,6 +848,7 @@ exports[`AskAssistantChat > renders default placeholder chat correctly 1`] = `
             For specific tasks, you’ll see the 
             <button
               class="button"
+              data-test-id="ask-assistant-button"
               style="height: 18px;"
               tabindex="-1"
             >
@@ -1090,6 +1091,7 @@ exports[`AskAssistantChat > renders end of session chat correctly 1`] = `
             </span>
             <button
               class="button"
+              data-test-id="ask-assistant-button"
               style="height: 18px;"
               tabindex="-1"
             >
