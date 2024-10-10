@@ -31,6 +31,7 @@ import { createPinia, PiniaVuePlugin } from 'pinia';
 import { JsPlumbPlugin } from '@/plugins/jsplumb';
 import { ChartJSPlugin } from '@/plugins/chartjs';
 import { AxiosError } from 'axios';
+import { ResponseError } from '@/utils/apiUtils';
 
 const pinia = createPinia();
 
@@ -44,13 +45,18 @@ if (window.sentry?.dsn) {
 		release,
 		environment,
 		beforeSend(event, { originalException }) {
+			const ignoredErrorTypes = [ResponseError, AxiosError];
+			const ignoredErrorMessages = ['ResizeObserver'];
+
 			if (
 				!originalException ||
-				originalException instanceof AxiosError ||
-				(originalException instanceof Error && originalException.message.includes('ResizeObserver'))
+				ignoredErrorTypes.some((error) => originalException instanceof error) ||
+				(originalException instanceof Error &&
+					ignoredErrorMessages.some((message) => originalException.message.includes(message)))
 			) {
 				return null;
 			}
+
 			return event;
 		},
 	});
