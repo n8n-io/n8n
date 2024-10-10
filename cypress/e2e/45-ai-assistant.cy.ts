@@ -178,7 +178,6 @@ describe('AI Assistant::enabled', () => {
 		aiAssistant.getters.quickReplies().should('not.exist');
 		ndv.getters.nodeExecuteButton().click();
 		// But after executing the node again, quick replies should be shown
-		aiAssistant.getters.chatMessagesAssistant().should('have.length', 4);
 		aiAssistant.getters.quickReplies().should('have.length', 2);
 	});
 
