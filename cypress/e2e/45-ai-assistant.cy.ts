@@ -504,7 +504,7 @@ describe('General help', () => {
 
 	it('should send current context to support chat', () => {
 		cy.createFixtureWorkflow('aiAssistant/workflows/simple_http_request_workflow.json');
-		cy.intercept('POST', '/rest/ai-assistant/chat', {
+		cy.intercept('POST', '/rest/ai/chat', {
 			statusCode: 200,
 			fixture: 'aiAssistant/responses/simple_message_response.json',
 		}).as('chatRequest');
@@ -514,18 +514,17 @@ describe('General help', () => {
 
 		cy.wait('@chatRequest').then((interception) => {
 			const { body } = interception.request;
-			console.log(body);
 			// Body should contain the current workflow context
+			expect(body.payload).to.have.property('context');
 			expect(body.payload.context).to.have.property('currentView');
 			expect(body.payload.context.currentView.name).to.equal('NodeViewExisting');
-			expect(body.payload).to.have.property('workflowContext');
-			expect(body.payload.workflowContext).to.have.property('currentWorkflow');
+			expect(body.payload.context).to.have.property('currentWorkflow');
 		});
 	});
 
 	it('should not send workflow context if nothing changed', () => {
 		cy.createFixtureWorkflow('aiAssistant/workflows/simple_http_request_workflow.json');
-		cy.intercept('POST', '/rest/ai-assistant/chat', {
+		cy.intercept('POST', '/rest/ai/chat', {
 			statusCode: 200,
 			fixture: 'aiAssistant/responses/simple_message_response.json',
 		}).as('chatRequest');
@@ -540,8 +539,8 @@ describe('General help', () => {
 		cy.wait('@chatRequest').then((interception) => {
 			const { body } = interception.request;
 			// Workflow context should be empty
-			expect(body.payload).to.have.property('workflowContext');
-			expect(body.payload.workflowContext).to.be.empty;
+			expect(body.payload).to.have.property('context');
+			expect(body.payload.context).not.to.have.property('currentWorkflow');
 		});
 
 		// Update http request node url
@@ -556,11 +555,11 @@ describe('General help', () => {
 		cy.wait('@chatRequest').then((interception) => {
 			const { body } = interception.request;
 			// Both workflow and execution context should be sent
-			expect(body.payload).to.have.property('workflowContext');
-			expect(body.payload.workflowContext).to.have.property('currentWorkflow');
-			expect(body.payload.workflowContext.currentWorkflow).not.to.be.empty;
-			expect(body.payload.workflowContext).to.have.property('executionData');
-			expect(body.payload.workflowContext.executionData).not.to.be.empty;
+			expect(body.payload).to.have.property('context');
+			expect(body.payload.context).to.have.property('currentWorkflow');
+			expect(body.payload.context.currentWorkflow).not.to.be.empty;
+			expect(body.payload.context).to.have.property('executionData');
+			expect(body.payload.context.executionData).not.to.be.empty;
 		});
 	});
 });

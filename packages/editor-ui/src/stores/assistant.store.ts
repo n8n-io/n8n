@@ -589,12 +589,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 						text: chatMessage.text,
 						quickReplyType: chatMessage.quickReplyType,
 						context: userContext,
-						workflowContext: {
-							currentWorkflow: workflowDataStale.value ? workflowsStore.workflow : undefined,
-							executionData: workflowExecutionDataStale.value
-								? workflowsStore.workflowExecutionData?.data?.resultData
-								: undefined,
-						},
 					},
 					sessionId: currentSessionId.value,
 				},
