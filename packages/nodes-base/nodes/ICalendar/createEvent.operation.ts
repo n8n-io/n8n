@@ -289,7 +289,7 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 				end = start;
 			}
 
-			end = allDay ? moment(end).utc().add(1, 'day').format() : end;
+			end = allDay ? moment(end).utc().set({ hour: 23, minute: 59, second: 59 }).format() : end;
 
 			const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 			const options = this.getNodeParameter('additionalFields', i);
