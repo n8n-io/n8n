@@ -54,7 +54,7 @@ const runMetadata = computed(() => {
 		<n8n-info-tip
 			type="tooltip"
 			theme="info"
-			:data-test-id="`node-run-info-${theme}`"
+			:data-test-id="`node-run-info`"
 			tooltip-placement="right"
 		>
 			<div>
@@ -75,19 +75,13 @@ const runMetadata = computed(() => {
 				{{ runMetadata.executionTime }} {{ i18n.baseText('runData.ms') }}
 			</div>
 		</n8n-info-tip>
-		<n8n-info-tip
-			type="note"
-			:theme="theme"
-			:data-test-id="`node-run-status-${theme}`"
-			tooltip-placement="right"
-		/>
+		<n8n-info-tip type="note" :theme="theme" :data-test-id="`node-run-status-${theme}`" />
 	</div>
 </template>
 
 <style lang="scss" module>
 .tooltipRow {
 	display: flex;
-	flex-direction: row;
-	column-gap: 4px;
+	column-gap: var(--spacing-4xs);
 }
 </style>

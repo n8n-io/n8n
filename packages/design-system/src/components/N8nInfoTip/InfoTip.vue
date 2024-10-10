@@ -8,6 +8,15 @@ import N8nTooltip from '../N8nTooltip';
 const THEME = ['info', 'info-light', 'warning', 'danger', 'success'] as const;
 const TYPE = ['note', 'tooltip'] as const;
 
+const ICON_MAP = {
+	info: 'info-circle',
+	// eslint-disable-next-line @typescript-eslint/naming-convention
+	'info-light': 'info-circle',
+	warning: 'exclamation-triangle',
+	danger: 'exclamation-triangle',
+	success: 'check-circle',
+} as const;
+
 interface InfoTipProps {
 	theme?: (typeof THEME)[number];
 	type?: (typeof TYPE)[number];
@@ -24,38 +33,10 @@ const props = withDefaults(defineProps<InfoTipProps>(), {
 });
 
 const iconData = computed((): { icon: string; color: string } => {
-	switch (props.theme) {
-		case 'info':
-			return {
-				icon: 'info-circle',
-				color: '--color-text-light)',
-			};
-		case 'info-light':
-			return {
-				icon: 'info-circle',
-				color: 'var(--color-foreground-dark)',
-			};
-		case 'warning':
-			return {
-				icon: 'exclamation-triangle',
-				color: 'var(--color-warning)',
-			};
-		case 'danger':
-			return {
-				icon: 'exclamation-triangle',
-				color: 'var(--color-danger)',
-			};
-		case 'success':
-			return {
-				icon: 'check-circle',
-				color: 'var(--color-success)',
-			};
-		default:
-			return {
-				icon: 'info-circle',
-				color: '--color-text-light)',
-			};
-	}
+	return {
+		icon: ICON_MAP[props.theme],
+		color: props.theme,
+	};
 });
 </script>
 
@@ -70,13 +51,12 @@ const iconData = computed((): { icon: string; color: string } => {
 		}"
 	>
 		<N8nTooltip
-			v-if="type === 'tooltip'"
 			:placement="tooltipPlacement"
 			:popper-class="$style.tooltipPopper"
 			:disabled="type !== 'tooltip'"
 		>
-			<span :class="$style.iconText" :style="{ color: iconData.color }">
-				<N8nIcon :icon="iconData.icon" />
+			<span :class="$style.iconText">
+				<N8nIcon :icon="iconData.icon" :color="iconData.color" />
 			</span>
 			<template #content>
 				<span>
@@ -84,12 +64,6 @@ const iconData = computed((): { icon: string; color: string } => {
 				</span>
 			</template>
 		</N8nTooltip>
-		<span v-else :class="$style.iconText" :style="{ color: iconData.color }">
-			<N8nIcon :icon="iconData.icon" />
-			<span>
-				<slot />
-			</span>
-		</span>
 	</div>
 </template>
 
