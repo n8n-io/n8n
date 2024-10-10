@@ -76,6 +76,7 @@ import type { Connection } from '@vue-flow/core';
 import type {
 	IConnection,
 	IConnections,
+	IDataObject,
 	INode,
 	INodeConnections,
 	INodeCredentials,
@@ -1687,7 +1688,12 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 						);
 						if (isDuplicate) {
 							node.webhookId = uuid();
-							node.parameters.path = node.webhookId as string;
+
+							if (node.parameters.path) {
+								node.parameters.path = node.webhookId as string;
+							} else if ((node.parameters.options as IDataObject).path) {
+								(node.parameters.options as IDataObject).path = node.webhookId as string;
+							}
 						}
 					}
 
