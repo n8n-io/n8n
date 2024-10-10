@@ -30,6 +30,8 @@ import {
 import * as NodeHelpers from './NodeHelpers';
 import { deepCopy } from './utils';
 import type { Workflow } from './Workflow';
+import type { EnvProviderState } from './WorkflowDataProxyEnvProvider';
+import { createEnvProvider, createEnvProviderState } from './WorkflowDataProxyEnvProvider';
 import { getPinDataIfManualExecution } from './WorkflowDataProxyHelpers';
 
 export function isResourceLocatorValue(value: unknown): value is INodeParameterResourceLocator {
@@ -66,6 +68,7 @@ export class WorkflowDataProxy {
 		private defaultReturnRunIndex = -1,
 		private selfData: IDataObject = {},
 		private contextNodeName: string = activeNodeName,
+		private envProviderState?: EnvProviderState,
 	) {
 		this.runExecutionData = isScriptingNode(this.contextNodeName, workflow)
 			? runExecutionData !== null
@@ -482,40 +485,6 @@ export class WorkflowDataProxy {
 					}
 
 					return Reflect.get(target, name, receiver);
-				},
-			},
-		);
-	}
-
-	/**
-	 * Returns a proxy to query data from the environment
-	 *
-	 * @private
-	 */
-	private envGetter() {
-		const that = this;
-		return new Proxy(
-			{},
-			{
-				has: () => true,
-				get(_, name) {
-					if (name === 'isProxy') return true;
-
-					if (typeof process === 'undefined') {
-						throw new ExpressionError('not accessible via UI, please run node', {
-							runIndex: that.runIndex,
-							itemIndex: that.itemIndex,
-						});
-					}
-					if (process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE === 'true') {
-						throw new ExpressionError('access to env vars denied', {
-							causeDetailed:
-								'If you need access please contact the administrator to remove the environment variable ‘N8N_BLOCK_ENV_ACCESS_IN_NODE‘',
-							runIndex: that.runIndex,
-							itemIndex: that.itemIndex,
-						});
-					}
-					return process.env[name.toString()];
 				},
 			},
 		);
@@ -1303,7 +1272,11 @@ export class WorkflowDataProxy {
 
 			$binary: {}, // Placeholder
 			$data: {}, // Placeholder
-			$env: this.envGetter(),
+			$env: createEnvProvider(
+				that.runIndex,
+				that.itemIndex,
+				that.envProviderState ?? createEnvProviderState(),
+			),
 			$evaluateExpression: (expression: string, itemIndex?: number) => {
 				itemIndex = itemIndex || that.itemIndex;
 				return that.workflow.expression.getParameterValue(
@@ -1391,6 +1364,7 @@ export class WorkflowDataProxy {
 			$thisItemIndex: this.itemIndex,
 			$thisRunIndex: this.runIndex,
 			$nodeVersion: that.workflow.getNode(that.activeNodeName)?.typeVersion,
+			$nodeId: that.workflow.getNode(that.activeNodeName)?.id,
 		};
 
 		return new Proxy(base, {

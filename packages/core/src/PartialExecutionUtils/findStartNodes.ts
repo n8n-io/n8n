@@ -80,7 +80,7 @@ function findStartNodesRecursive(
 	}
 
 	// Recurse with every direct child that is part of the sub graph.
-	const outGoingConnections = graph.getDirectChildren(current);
+	const outGoingConnections = graph.getDirectChildConnections(current);
 	for (const outGoingConnection of outGoingConnections) {
 		const nodeRunData = getIncomingData(
 			runData,
@@ -131,13 +131,19 @@ function findStartNodesRecursive(
  * 	  - stop following the branch, there is no start node on this branch
  * 	4. Recurse with every direct child that is part of the sub graph
  */
-export function findStartNodes(
-	graph: DirectedGraph,
-	trigger: INode,
-	destination: INode,
-	runData: IRunData = {},
-	pinData: IPinData = {},
-): INode[] {
+export function findStartNodes(options: {
+	graph: DirectedGraph;
+	trigger: INode;
+	destination: INode;
+	runData?: IRunData;
+	pinData?: IPinData;
+}): INode[] {
+	const graph = options.graph;
+	const trigger = options.trigger;
+	const destination = options.destination;
+	const runData = options.runData ?? {};
+	const pinData = options.pinData ?? {};
+
 	const startNodes = findStartNodesRecursive(
 		graph,
 		trigger,

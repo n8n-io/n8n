@@ -1,4 +1,4 @@
-import { ApplicationError, ensureError } from 'n8n-workflow';
+import { ApplicationError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { URL } from 'node:url';
 import { type MessageEvent, WebSocket } from 'ws';
@@ -256,12 +256,8 @@ export abstract class TaskRunner {
 		try {
 			const data = await this.executeTask(task);
 			this.taskDone(taskId, data);
-		} catch (e) {
-			if (ensureError(e)) {
-				this.taskErrored(taskId, (e as Error).message);
-			} else {
-				this.taskErrored(taskId, e);
-			}
+		} catch (error) {
+			this.taskErrored(taskId, error);
 		}
 	}
 
@@ -358,5 +354,37 @@ export abstract class TaskRunner {
 			});
 		}
 		return rpcObject;
+	}
+
+	/** Close the connection gracefully and wait until has been closed */
+	async stop() {
+		this.stopTaskOffers();
+
+		await this.waitUntilAllTasksAreDone();
+
+		await this.closeConnection();
+	}
+
+	private async closeConnection() {
+		// 1000 is the standard close code
+		// https://www.rfc-editor.org/rfc/rfc6455.html#section-7.1.5
+		this.ws.close(1000, 'Shutting down');
+
+		await new Promise((resolve) => {
+			this.ws.once('close', resolve);
+		});
+	}
+
+	private async waitUntilAllTasksAreDone(maxWaitTimeInMs = 30_000) {
+		// TODO: Make maxWaitTimeInMs configurable
+		const start = Date.now();
+
+		while (this.runningTasks.size > 0) {
+			if (Date.now() - start > maxWaitTimeInMs) {
+				throw new ApplicationError('Timeout while waiting for tasks to finish');
+			}
+
+			await new Promise((resolve) => setTimeout(resolve, 100));
+		}
 	}
 }

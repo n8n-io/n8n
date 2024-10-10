@@ -82,6 +82,8 @@ export class Webhook extends BaseCommand {
 		this.logger.debug('Orchestration init complete');
 		await this.initBinaryDataService();
 		this.logger.debug('Binary data service init complete');
+		await this.initDataDeduplicationService();
+		this.logger.debug('Data deduplication service init complete');
 		await this.initExternalHooks();
 		this.logger.debug('External hooks init complete');
 		await this.initExternalSecrets();
@@ -112,10 +114,9 @@ export class Webhook extends BaseCommand {
 	async initOrchestration() {
 		await Container.get(OrchestrationWebhookService).init();
 
+		Container.get(PubSubHandler).init();
 		const subscriber = Container.get(Subscriber);
 		await subscriber.subscribe('n8n.commands');
 		subscriber.setCommandMessageHandler();
-
-		Container.get(PubSubHandler).init();
 	}
 }
