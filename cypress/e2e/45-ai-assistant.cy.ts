@@ -78,7 +78,7 @@ describe('AI Assistant::enabled', () => {
 	});
 
 	it('should start chat session from node error view', () => {
-		cy.intercept('POST', '/rest/ai-assistant/chat', {
+		cy.intercept('POST', '/rest/ai/chat', {
 			statusCode: 200,
 			fixture: 'aiAssistant/responses/simple_message_response.json',
 		}).as('chatRequest');
@@ -96,7 +96,7 @@ describe('AI Assistant::enabled', () => {
 	});
 
 	it('should render chat input correctly', () => {
-		cy.intercept('POST', '/rest/ai-assistant/chat', {
+		cy.intercept('POST', '/rest/ai/chat', {
 			statusCode: 200,
 			fixture: 'aiAssistant/responses/simple_message_response.json',
 		}).as('chatRequest');
@@ -129,7 +129,7 @@ describe('AI Assistant::enabled', () => {
 	});
 
 	it('should render and handle quick replies', () => {
-		cy.intercept('POST', '/rest/ai-assistant/chat', {
+		cy.intercept('POST', '/rest/ai/chat', {
 			statusCode: 200,
 			fixture: 'aiAssistant/responses/quick_reply_message_response.json',
 		}).as('chatRequest');
@@ -146,7 +146,7 @@ describe('AI Assistant::enabled', () => {
 	});
 
 	it('should show quick replies when node is executed after new suggestion', () => {
-		cy.intercept('POST', '/rest/ai-assistant/chat', (req) => {
+		cy.intercept('POST', '/rest/ai/chat', (req) => {
 			req.reply((res) => {
 				if (['init-error-helper', 'message'].includes(req.body.payload.type)) {
 					res.send({
@@ -183,7 +183,7 @@ describe('AI Assistant::enabled', () => {
 	});
 
 	it('should warn before starting a new session', () => {
-		cy.intercept('POST', '/rest/ai-assistant/chat', {
+		cy.intercept('POST', '/rest/ai/chat', {
 			statusCode: 200,
 			fixture: 'aiAssistant/responses/simple_message_response.json',
 		}).as('chatRequest');
@@ -210,11 +210,11 @@ describe('AI Assistant::enabled', () => {
 	});
 
 	it('should apply code diff to code node', () => {
-		cy.intercept('POST', '/rest/ai-assistant/chat', {
+		cy.intercept('POST', '/rest/ai/chat', {
 			statusCode: 200,
 			fixture: 'aiAssistant/responses/code_diff_suggestion_response.json',
 		}).as('chatRequest');
-		cy.intercept('POST', '/rest/ai-assistant/chat/apply-suggestion', {
+		cy.intercept('POST', '/rest/ai/chat/apply-suggestion', {
 			statusCode: 200,
 			fixture: 'aiAssistant/responses/apply_code_diff_response.json',
 		}).as('applySuggestion');
@@ -260,7 +260,7 @@ describe('AI Assistant::enabled', () => {
 	});
 
 	it('should end chat session when `end_session` event is received', () => {
-		cy.intercept('POST', '/rest/ai-assistant/chat', {
+		cy.intercept('POST', '/rest/ai/chat', {
 			statusCode: 200,
 			fixture: 'aiAssistant/responses/end_session_response.json',
 		}).as('chatRequest');
@@ -274,7 +274,7 @@ describe('AI Assistant::enabled', () => {
 	});
 
 	it('should reset session after it ended and sidebar is closed', () => {
-		cy.intercept('POST', '/rest/ai-assistant/chat', (req) => {
+		cy.intercept('POST', '/rest/ai/chat', (req) => {
 			req.reply((res) => {
 				if (['init-support-chat'].includes(req.body.payload.type)) {
 					res.send({
@@ -305,7 +305,7 @@ describe('AI Assistant::enabled', () => {
 	});
 
 	it('Should not reset assistant session when workflow is saved', () => {
-		cy.intercept('POST', '/rest/ai-assistant/chat', {
+		cy.intercept('POST', '/rest/ai/chat', {
 			statusCode: 200,
 			fixture: 'aiAssistant/responses/simple_message_response.json',
 		}).as('chatRequest');
@@ -330,7 +330,7 @@ describe('AI Assistant Credential Help', () => {
 	});
 
 	it('should start credential help from node credential', () => {
-		cy.intercept('POST', '/rest/ai-assistant/chat', {
+		cy.intercept('POST', '/rest/ai/chat', {
 			statusCode: 200,
 			fixture: 'aiAssistant/responses/simple_message_response.json',
 		}).as('chatRequest');
@@ -356,7 +356,7 @@ describe('AI Assistant Credential Help', () => {
 	});
 
 	it('should start credential help from credential list', () => {
-		cy.intercept('POST', '/rest/ai-assistant/chat', {
+		cy.intercept('POST', '/rest/ai/chat', {
 			statusCode: 200,
 			fixture: 'aiAssistant/responses/simple_message_response.json',
 		}).as('chatRequest');
@@ -455,7 +455,7 @@ describe('General help', () => {
 	});
 
 	it('assistant returns code snippet', () => {
-		cy.intercept('POST', '/rest/ai-assistant/chat', {
+		cy.intercept('POST', '/rest/ai/chat', {
 			statusCode: 200,
 			fixture: 'aiAssistant/responses/code_snippet_response.json',
 		}).as('chatRequest');

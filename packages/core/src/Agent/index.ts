@@ -11,6 +11,7 @@ import type {
 	IExecuteData,
 	IDataObject,
 } from 'n8n-workflow';
+import { createEnvProviderState } from 'n8n-workflow';
 
 export const createAgentStartJob = (
 	additionalData: IWorkflowExecuteAdditionalData,
@@ -49,6 +50,7 @@ export const createAgentStartJob = (
 			connectionInputData,
 			siblingParameters,
 			mode,
+			createEnvProviderState(),
 			executeData,
 			defaultReturnRunIndex,
 			selfData,
