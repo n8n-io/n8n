@@ -105,14 +105,17 @@ function findSubgraphRecursive(
  *      dataflow in the graph they are utility nodes, like the AI model used in a
  *      lang chain node.
  */
-export function findSubgraph(
-	graph: DirectedGraph,
-	destinationNode: INode,
-	trigger: INode,
-): DirectedGraph {
+export function findSubgraph(options: {
+	graph: DirectedGraph;
+	destination: INode;
+	trigger: INode;
+}): DirectedGraph {
+	const graph = options.graph;
+	const destination = options.destination;
+	const trigger = options.trigger;
 	const subgraph = new DirectedGraph();
 
-	findSubgraphRecursive(graph, destinationNode, destinationNode, trigger, subgraph, []);
+	findSubgraphRecursive(graph, destination, destination, trigger, subgraph, []);
 
 	// For each node in the subgraph, if it has parent connections of a type that
 	// is not `Main` in the input graph, add the connections and the nodes
