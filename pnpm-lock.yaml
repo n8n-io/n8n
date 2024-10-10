@@ -937,9 +937,6 @@ importers:
       sqlite3:
         specifier: 5.1.7
         version: 5.1.7
-      sse-channel:
-        specifier: 4.0.0
-        version: 4.0.0
       sshpk:
         specifier: 1.17.0
         version: 1.17.0
@@ -11080,9 +11077,6 @@ packages:
   sqlstring@2.3.3:
     resolution: {integrity: sha512-qC9iz2FlN7DQl3+wjwn3802RTyjCx7sDvfQEXchwa6CWOx07/WVfh91gBmQ9fahw8snwGEWU3xGzOt4tFyHLxg==}
     engines: {node: '>= 0.6'}
-
-  sse-channel@4.0.0:
-    resolution: {integrity: sha512-I539Tc0gyDTQ2QCSg4v78Flxo/UbqR9x7JoyPcqaPtwo+qzeOw/fF+aPSbk0xTvBQAAAZk7Dlkc8K1bum5GUnw==}
 
   ssh2-sftp-client@7.2.3:
     resolution: {integrity: sha512-Bmq4Uewu3e0XOwu5bnPbiS5KRQYv+dff5H6+85V4GZrPrt0Fkt1nUH+uXanyAkoNxUpzjnAPEEoLdOaBO9c3xw==}
@@ -24355,8 +24349,6 @@ snapshots:
       - supports-color
 
   sqlstring@2.3.3: {}
-
-  sse-channel@4.0.0: {}
 
   ssh2-sftp-client@7.2.3:
     dependencies:

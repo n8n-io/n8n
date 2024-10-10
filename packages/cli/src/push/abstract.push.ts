@@ -1,8 +1,9 @@
 import type { PushPayload, PushType } from '@n8n/api-types';
 import { assert, jsonStringify } from 'n8n-workflow';
+import { Service } from 'typedi';
 
 import type { User } from '@/databases/entities/user';
-import type { Logger } from '@/logging/logger.service';
+import { Logger } from '@/logging/logger.service';
 import type { OnPushMessage } from '@/push/types';
 import { TypedEmitter } from '@/typed-emitter';
 
@@ -16,6 +17,7 @@ export interface AbstractPushEvents {
  *
  * @emits message when a message is received from a client
  */
+@Service()
 export abstract class AbstractPush<Connection> extends TypedEmitter<AbstractPushEvents> {
 	protected connections: Record<string, Connection> = {};
 
@@ -23,9 +25,12 @@ export abstract class AbstractPush<Connection> extends TypedEmitter<AbstractPush
 
 	protected abstract close(connection: Connection): void;
 	protected abstract sendToOneConnection(connection: Connection, data: string): void;
+	protected abstract ping(connection: Connection): void;
 
 	constructor(protected readonly logger: Logger) {
 		super();
+		// Ping all connected clients every 60 seconds
+		setInterval(() => this.pingAll(), 60 * 1000);
 	}
 
 	protected add(pushRef: string, userId: User['id'], connection: Connection) {
@@ -72,6 +77,12 @@ export abstract class AbstractPush<Connection> extends TypedEmitter<AbstractPush
 			const connection = this.connections[pushRef];
 			assert(connection);
 			this.sendToOneConnection(connection, stringifiedPayload);
+		}
+	}
+
+	private pingAll() {
+		for (const pushRef in this.connections) {
+			this.ping(this.connections[pushRef]);
 		}
 	}
 
