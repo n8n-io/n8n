@@ -384,6 +384,120 @@ describe('Deduplication.DeduplicationHelper', () => {
 		expect(processedData).toEqual({ new: ['a', 'b', 'c'], processed: [] });
 	});
 
+	test('clearAllProcessedItems should not clear workflow processed items when clearing node scope', async () => {
+		const contextDataWorkflow: ICheckProcessedContextData = {
+			workflow,
+		};
+
+		const contextDataNode: ICheckProcessedContextData = {
+			workflow,
+			node,
+		};
+
+		// Add data for workflow scope
+		await DataDeduplicationService.getInstance().checkProcessedAndRecord(
+			['a', 'b', 'c'],
+			'workflow',
+			contextDataWorkflow,
+			{ mode: 'entries' },
+		);
+
+		// Add data for node scope
+		await DataDeduplicationService.getInstance().checkProcessedAndRecord(
+			['d', 'e', 'f'],
+			'node',
+			contextDataNode,
+			{ mode: 'entries' },
+		);
+
+		// Clear all processed items for node scope
+		await DataDeduplicationService.getInstance().clearAllProcessedItems('node', contextDataNode, {
+			mode: 'entries',
+		});
+
+		// Ensure workflow processed items are still intact
+		const processedDataWorkflow =
+			await DataDeduplicationService.getInstance().checkProcessedAndRecord(
+				['a', 'b', 'c'],
+				'workflow',
+				contextDataWorkflow,
+				{ mode: 'entries' },
+			);
+
+		// Workflow items should still be considered processed
+		expect(processedDataWorkflow).toEqual({ new: [], processed: ['a', 'b', 'c'] });
+
+		// Ensure node processed items have been cleared
+		const processedDataNode = await DataDeduplicationService.getInstance().checkProcessedAndRecord(
+			['d', 'e', 'f'],
+			'node',
+			contextDataNode,
+			{ mode: 'entries' },
+		);
+
+		// Node items should be considered new
+		expect(processedDataNode).toEqual({ new: ['d', 'e', 'f'], processed: [] });
+	});
+
+	test('clearAllProcessedItems should not clear node processed items when clearing workflow scope', async () => {
+		const contextDataWorkflow: ICheckProcessedContextData = {
+			workflow,
+		};
+
+		const contextDataNode: ICheckProcessedContextData = {
+			workflow,
+			node,
+		};
+
+		// Add data for workflow scope
+		await DataDeduplicationService.getInstance().checkProcessedAndRecord(
+			['a', 'b', 'c'],
+			'workflow',
+			contextDataWorkflow,
+			{ mode: 'entries' },
+		);
+
+		// Add data for node scope
+		await DataDeduplicationService.getInstance().checkProcessedAndRecord(
+			['d', 'e', 'f'],
+			'node',
+			contextDataNode,
+			{ mode: 'entries' },
+		);
+
+		// Clear all processed items for workflow scope
+		await DataDeduplicationService.getInstance().clearAllProcessedItems(
+			'workflow',
+			contextDataWorkflow,
+			{
+				mode: 'entries',
+			},
+		);
+
+		// Ensure node processed items are still intact
+		const processedDataNode = await DataDeduplicationService.getInstance().checkProcessedAndRecord(
+			['d', 'e', 'f'],
+			'node',
+			contextDataNode,
+			{ mode: 'entries' },
+		);
+
+		// Node items should still be considered processed
+		expect(processedDataNode).toEqual({ new: [], processed: ['d', 'e', 'f'] });
+
+		// Ensure workflow processed items have been cleared
+		const processedDataWorkflow =
+			await DataDeduplicationService.getInstance().checkProcessedAndRecord(
+				['a', 'b', 'c'],
+				'workflow',
+				contextDataWorkflow,
+				{ mode: 'entries' },
+			);
+
+		// Workflow items should be considered new
+		expect(processedDataWorkflow).toEqual({ new: ['a', 'b', 'c'], processed: [] });
+	});
+
 	test('getProcessedDataCount should return correct count for different modes', async () => {
 		const contextData: ICheckProcessedContextData = {
 			workflow,

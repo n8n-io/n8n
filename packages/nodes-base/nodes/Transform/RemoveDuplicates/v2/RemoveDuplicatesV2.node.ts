@@ -148,6 +148,12 @@ export class RemoveDuplicatesV2 implements INodeType {
 
 						for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 							const incrementalKey = this.getNodeParameter('incrementalDedupeValue', itemIndex, '');
+							if (!incrementalKey?.toString()) {
+								throw new NodeOperationError(
+									this.getNode(),
+									'The `Value to Dedupe` On is empty. Please provide a value.',
+								);
+							}
 							parsedIncrementalKey = Number(incrementalKey);
 							if (isNaN(parsedIncrementalKey)) {
 								throw new NodeOperationError(
@@ -198,7 +204,12 @@ export class RemoveDuplicatesV2 implements INodeType {
 						for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 							checkValue =
 								this.getNodeParameter('dateDedupeValue', itemIndex, '')?.toString() ?? '';
-
+							if (!checkValue) {
+								throw new NodeOperationError(
+									this.getNode(),
+									'The `Value to Dedupe` On is empty. Please provide a value.',
+								);
+							}
 							try {
 								tryToParseDateTime(checkValue);
 							} catch (error) {

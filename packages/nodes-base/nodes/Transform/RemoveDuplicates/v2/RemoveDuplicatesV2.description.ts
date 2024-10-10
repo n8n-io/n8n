@@ -135,6 +135,7 @@ export const removeDuplicatesNodeFields: INodeProperties[] = [
 		description: 'Use an input field (or a combination of fields) that has a unique ID value',
 		hint: 'The input field value to compare between items',
 		placeholder: 'e.g. ID',
+		required: true,
 		displayOptions: {
 			show: {
 				logic: ['removeItemsWithAlreadySeenKeyValues'],

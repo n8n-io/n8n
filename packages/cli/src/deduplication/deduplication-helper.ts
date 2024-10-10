@@ -22,7 +22,7 @@ export class DeduplicationHelper implements IDataDeduplicator {
 		items: DeduplicationItemTypes[],
 		mode: DeduplicationMode,
 	): DeduplicationItemTypes[] {
-		return items.slice().sort((a, b) => (DeduplicationHelper.compareValues(mode, a, b) ? 1 : -1));
+		return items.slice().sort((a, b) => DeduplicationHelper.compareValues(mode, a, b));
 	}
 	/**
 	 * Compares two values based on the provided mode ('latestIncrementalKey' or 'latestDate').
@@ -53,12 +53,12 @@ export class DeduplicationHelper implements IDataDeduplicator {
 		mode: DeduplicationMode,
 		value1: DeduplicationItemTypes,
 		value2: DeduplicationItemTypes,
-	): boolean {
+	): number {
 		if (mode === 'latestIncrementalKey') {
 			const num1 = Number(value1);
 			const num2 = Number(value2);
 			if (!isNaN(num1) && !isNaN(num2)) {
-				return num1 > num2;
+				return num1 === num2 ? 0 : num1 > num2 ? 1 : -1;
 			}
 			throw new DeduplicationError(
 				'Invalid value. Only numbers are supported in mode "latestIncrementalKey"',
@@ -68,7 +68,7 @@ export class DeduplicationHelper implements IDataDeduplicator {
 				const date1 = tryToParseDateTime(value1);
 				const date2 = tryToParseDateTime(value2);
 
-				return date1 > date2;
+				return date1 === date2 ? 0 : date1 > date2 ? 1 : -1;
 			} catch (error) {
 				throw new DeduplicationError(
 					'Invalid value. Only valid dates are supported in mode "latestDate"',
@@ -102,7 +102,7 @@ export class DeduplicationHelper implements IDataDeduplicator {
 		return createHash('md5').update(value.toString()).digest('base64');
 	}
 
-	private async fetchProcessedData(
+	private async findProcessedData(
 		scope: DeduplicationScope,
 		contextData: ICheckProcessedContextData,
 	): Promise<ProcessedData | null> {
@@ -134,73 +134,72 @@ export class DeduplicationHelper implements IDataDeduplicator {
 		return data && !Array.isArray(data.data);
 	}
 
-	async checkProcessedAndRecord(
+	private async handleLatestModes(
 		items: DeduplicationItemTypes[],
-		scope: DeduplicationScope,
 		contextData: ICheckProcessedContextData,
 		options: ICheckProcessedOptions,
+		processedData: ProcessedData | null,
+		dbContext: string,
 	): Promise<IDeduplicationOutput> {
-		const dbContext = DeduplicationHelper.createContext(scope, contextData);
+		const incomingItems = DeduplicationHelper.sortEntries(items, options.mode);
 
-		assert.ok(contextData.workflow.id);
-
-		const processedData = await this.fetchProcessedData(scope, contextData);
-
-		this.validateMode(processedData, options);
-
-		if (['latestIncrementalKey', 'latestDate'].includes(options.mode)) {
-			const incomingItems = DeduplicationHelper.sortEntries(items, options.mode);
-
-			if (!processedData) {
-				// All items are new so add new entries
-				await Container.get(ProcessedDataRepository).insert({
-					workflowId: contextData.workflow.id,
-					context: dbContext,
-					value: {
-						mode: options.mode,
-						data: incomingItems.pop(),
-					},
-				});
-
-				return {
-					new: items,
-					processed: [],
-				};
-			}
-
-			const returnData: IDeduplicationOutput = {
-				new: [],
-				processed: [],
-			};
-
-			if (!this.processedDataIsLatest(processedData.value)) {
-				return returnData;
-			}
-
-			let largestValue = processedData.value.data;
-			const processedDataValue = processedData.value;
-
-			incomingItems.forEach((item) => {
-				if (DeduplicationHelper.compareValues(options.mode, item, processedDataValue.data)) {
-					returnData.new.push(item);
-					if (DeduplicationHelper.compareValues(options.mode, item, largestValue)) {
-						largestValue = item;
-					}
-				} else {
-					returnData.processed.push(item);
-				}
+		if (!processedData) {
+			// All items are new so add new entries
+			await Container.get(ProcessedDataRepository).insert({
+				workflowId: contextData.workflow.id,
+				context: dbContext,
+				value: {
+					mode: options.mode,
+					data: incomingItems.pop(),
+				},
 			});
 
-			processedData.value.data = largestValue;
+			return {
+				new: items,
+				processed: [],
+			};
+		}
 
-			await Container.get(ProcessedDataRepository).update(
-				{ workflowId: processedData.workflowId, context: processedData.context },
-				processedData,
-			);
+		const returnData: IDeduplicationOutput = {
+			new: [],
+			processed: [],
+		};
 
+		if (!this.processedDataIsLatest(processedData.value)) {
 			return returnData;
 		}
 
+		let largestValue = processedData.value.data;
+		const processedDataValue = processedData.value;
+
+		incomingItems.forEach((item) => {
+			if (DeduplicationHelper.compareValues(options.mode, item, processedDataValue.data) === 1) {
+				returnData.new.push(item);
+				if (DeduplicationHelper.compareValues(options.mode, item, largestValue) === 1) {
+					largestValue = item;
+				}
+			} else {
+				returnData.processed.push(item);
+			}
+		});
+
+		processedData.value.data = largestValue;
+
+		await Container.get(ProcessedDataRepository).update(
+			{ workflowId: processedData.workflowId, context: processedData.context },
+			processedData,
+		);
+
+		return returnData;
+	}
+
+	private async handleHashedItems(
+		items: DeduplicationItemTypes[],
+		contextData: ICheckProcessedContextData,
+		options: ICheckProcessedOptions,
+		processedData: ProcessedData | null,
+		dbContext: string,
+	): Promise<IDeduplicationOutput> {
 		const hashedItems = items.map((item) => DeduplicationHelper.createValueHash(item));
 
 		if (!processedData) {
@@ -254,6 +253,27 @@ export class DeduplicationHelper implements IDataDeduplicator {
 		);
 
 		return returnData;
+	}
+
+	async checkProcessedAndRecord(
+		items: DeduplicationItemTypes[],
+		scope: DeduplicationScope,
+		contextData: ICheckProcessedContextData,
+		options: ICheckProcessedOptions,
+	): Promise<IDeduplicationOutput> {
+		const dbContext = DeduplicationHelper.createContext(scope, contextData);
+
+		assert.ok(contextData.workflow.id);
+
+		const processedData = await this.findProcessedData(scope, contextData);
+
+		this.validateMode(processedData, options);
+
+		if (['latestIncrementalKey', 'latestDate'].includes(options.mode)) {
+			return await this.handleLatestModes(items, contextData, options, processedData, dbContext);
+		}
+		//mode entries
+		return await this.handleHashedItems(items, contextData, options, processedData, dbContext);
 	}
 
 	async removeProcessed(
