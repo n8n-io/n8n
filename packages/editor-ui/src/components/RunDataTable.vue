@@ -390,11 +390,13 @@ export default defineComponent({
 <template>
 	<div :class="[$style.dataDisplay, { [$style.highlight]: highlight }]">
 		<table v-if="tableData.columns && tableData.columns.length === 0" :class="$style.table">
-			<tbody>
+			<thead>
 				<tr>
 					<th :class="$style.emptyCell"></th>
 					<th :class="$style.tableRightMargin"></th>
 				</tr>
+			</thead>
+			<tbody>
 				<tr
 					v-for="(_, index1) in tableData.data"
 					:key="index1"
