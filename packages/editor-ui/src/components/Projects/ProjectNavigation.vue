@@ -8,6 +8,7 @@ import { useProjectsStore } from '@/stores/projects.store';
 import type { ProjectListItem } from '@/types/projects.types';
 import { useToast } from '@/composables/useToast';
 import { useUIStore } from '@/stores/ui.store';
+import { sortByProperty } from '@/utils/sortUtils';
 
 type Props = {
 	collapsed: boolean;
@@ -75,21 +76,12 @@ const addProjectClicked = async () => {
 	}
 };
 
-const displayProjects = computed(() => {
-	return projectsStore.myProjects
-		.filter((p) => p.type === 'team')
-		.toSorted((a, b) => {
-			if (!a.name || !b.name) {
-				return 0;
-			}
-			if (a.name > b.name) {
-				return 1;
-			} else if (a.name < b.name) {
-				return -1;
-			}
-			return 0;
-		});
-});
+const displayProjects = computed(() =>
+	sortByProperty(
+		'name',
+		projectsStore.myProjects.filter((p) => p.type === 'team'),
+	),
+);
 
 const goToUpgrade = async () => {
 	await uiStore.goToUpgrade('rbac', 'upgrade-rbac');

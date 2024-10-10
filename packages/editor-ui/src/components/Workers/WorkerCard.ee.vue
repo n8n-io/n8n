@@ -7,6 +7,7 @@ import { averageWorkerLoadFromLoadsAsString, memAsGb } from '../../utils/workerU
 import WorkerJobAccordion from './WorkerJobAccordion.ee.vue';
 import WorkerNetAccordion from './WorkerNetAccordion.ee.vue';
 import WorkerChartsAccordion from './WorkerChartsAccordion.ee.vue';
+import { sortByProperty } from '@/utils/sortUtils';
 
 let interval: NodeJS.Timer;
 
@@ -23,8 +24,8 @@ const worker = computed((): WorkerStatus | undefined => {
 	return orchestrationStore.getWorkerStatus(props.workerId);
 });
 
-const sortedWorkerInterfaces = computed(
-	() => worker.value?.interfaces.toSorted((a, b) => a.family.localeCompare(b.family)) ?? [],
+const sortedWorkerInterfaces = computed(() =>
+	sortByProperty('family', worker.value?.interfaces.slice() ?? []),
 );
 
 function upTime(seconds: number): string {
