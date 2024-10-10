@@ -64,7 +64,9 @@ export function removeDuplicateInputItems(context: IExecuteFunctions, items: INo
 		: Object.keys(flattenKeys(items[0].json));
 
 	for (const item of items) {
-		const itemKeys = disableDotNotation ? Object.keys(item.json) : Object.keys(flattenKeys(item.json))
+		const itemKeys = disableDotNotation
+			? Object.keys(item.json)
+			: Object.keys(flattenKeys(item.json));
 		for (const key of itemKeys) {
 			if (!keys.includes(key)) {
 				keys.push(key);
