@@ -4,15 +4,180 @@
 	"codexVersion": "1.0",
 	"categories": ["Data & Storage"],
 	"resources": {
-		"credentialDocumentation": [
-			{
-				"url": "https://docs.n8n.io/integrations/builtin/credentials/nextCloud/"
-			}
-		],
-		"primaryDocumentation": [
-			{
-				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.nextcloud/"
-			}
-		]
+	  "credentialDocumentation": [
+		{
+		  "url": "https://docs.n8n.io/integrations/builtin/credentials/nextCloud/"
+		}
+	  ],
+	  "primaryDocumentation": [
+		{
+		  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.nextcloud/"
+		},
+		{
+		  "name": "Deck API Documentation",
+		  "url": "https://deck.readthedocs.io/en/latest/API/"
+		},
+		{
+		  "name": "Notes API Documentation",
+		  "url": "https://github.com/nextcloud/notes/blob/main/docs/api/README.md"
+		},
+		{
+		  "name": "Tables API Documentation",
+		  "url": "https://github.com/nextcloud/tables/wiki/API"
+		},
+		{
+		  "name": "Talk API Documentation",
+		  "url": "https://nextcloud-talk.readthedocs.io/en/latest/"
+		}
+	  ],
+	  "operations": {
+		"file": {
+		  "copy": {
+			"description": "Copy a file",
+			"action": "Copy a file"
+		  },
+		  "delete": {
+			"description": "Delete a file",
+			"action": "Delete a file"
+		  },
+		  "download": {
+			"description": "Download a file",
+			"action": "Download a file"
+		  },
+		  "move": {
+			"description": "Move a file",
+			"action": "Move a file"
+		  },
+		  "share": {
+			"description": "Share a file",
+			"action": "Share a file"
+		  },
+		  "upload": {
+			"description": "Upload a file",
+			"action": "Upload a file"
+		  }
+		},
+		"folder": {
+		  "copy": {
+			"description": "Copy a folder",
+			"action": "Copy a folder"
+		  },
+		  "create": {
+			"description": "Create a folder",
+			"action": "Create a folder"
+		  },
+		  "delete": {
+			"description": "Delete a folder",
+			"action": "Delete a folder"
+		  },
+		  "list": {
+			"description": "List contents of a folder",
+			"action": "List a folder"
+		  },
+		  "move": {
+			"description": "Move a folder",
+			"action": "Move a folder"
+		  },
+		  "share": {
+			"description": "Share a folder",
+			"action": "Share a folder"
+		  }
+		},
+		"user": {
+		  "create": {
+			"description": "Create a user",
+			"action": "Create a user"
+		  },
+		  "delete": {
+			"description": "Delete a user",
+			"action": "Delete a user"
+		  },
+		  "get": {
+			"description": "Get user details",
+			"action": "Get a user"
+		  },
+		  "getAll": {
+			"description": "Get all users",
+			"action": "Get many users"
+		  },
+		  "update": {
+			"description": "Update user details",
+			"action": "Update a user"
+		  }
+		},
+		"deck": {
+		  "createBoard": {
+			"description": "Create a new Deck board",
+			"action": "Create a Deck board"
+		  },
+		  "getBoards": {
+			"description": "Retrieve all Deck boards",
+			"action": "Get Deck boards"
+		  },
+		  "updateBoard": {
+			"description": "Update an existing Deck board",
+			"action": "Update a Deck board"
+		  },
+		  "deleteBoard": {
+			"description": "Delete a Deck board",
+			"action": "Delete a Deck board"
+		  }
+		},
+		"notes": {
+		  "createNote": {
+			"description": "Create a new Note",
+			"action": "Create a Note"
+		  },
+		  "getNotes": {
+			"description": "Retrieve all Notes",
+			"action": "Get Notes"
+		  },
+		  "updateNote": {
+			"description": "Update an existing Note",
+			"action": "Update a Note"
+		  },
+		  "deleteNote": {
+			"description": "Delete a Note",
+			"action": "Delete a Note"
+		  }
+		},
+		"tables": {
+		  "createTable": {
+			"description": "Create a new Table",
+			"action": "Create a Table"
+		  },
+		  "getTables": {
+			"description": "Retrieve all Tables",
+			"action": "Get Tables"
+		  },
+		  "updateTable": {
+			"description": "Update an existing Table",
+			"action": "Update a Table"
+		  },
+		  "deleteTable": {
+			"description": "Delete a Table",
+			"action": "Delete a Table"
+		  }
+		},
+		"talk": {
+		  "sendMessage": {
+			"description": "Send a message in a conversation",
+			"action": "Send a message"
+		  },
+		  "getConversations": {
+			"description": "Retrieve all Conversations",
+			"action": "Get Conversations"
+		  },
+		  "createConversation": {
+			"description": "Create a new Conversation",
+			"action": "Create a Conversation"
+		  },
+		  "deleteConversation": {
+			"description": "Delete a Conversation",
+			"action": "Delete a Conversation"
+		  }
+		}
+	  }
 	}
-}
+  }
+  
