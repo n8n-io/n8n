@@ -281,6 +281,7 @@ export class ToolHttpRequest implements INodeType {
 				'User-Agent': undefined,
 			},
 			body: {},
+			returnFullResponse: true,
 		};
 
 		const authentication = this.getNodeParameter('authentication', itemIndex, 'none') as

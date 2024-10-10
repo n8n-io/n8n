@@ -13,7 +13,7 @@ import { getOAuth2AdditionalParameters } from 'n8n-nodes-base/dist/nodes/HttpReq
 import set from 'lodash/set';
 import get from 'lodash/get';
 import unset from 'lodash/unset';
-
+import * as mime from 'mime-types';
 import cheerio from 'cheerio';
 import { convert } from 'html-to-text';
 
@@ -176,6 +176,7 @@ const htmlOptimizer = (ctx: IExecuteFunctions, itemIndex: number, maxLength: num
 			);
 		}
 		const returnData: string[] = [];
+
 		const html = cheerio.load(response);
 		const htmlElements = html(cssSelector);
 
@@ -574,6 +575,7 @@ export const configureToolFunction = (
 		// Clone options and rawRequestOptions to avoid mutating the original objects
 		const options: IHttpRequestOptions | null = structuredClone(requestOptions);
 		const clonedRawRequestOptions: { [key: string]: string } = structuredClone(rawRequestOptions);
+		let fullResponse: any;
 		let response: string = '';
 		let executionError: Error | undefined = undefined;
 
@@ -732,8 +734,6 @@ export const configureToolFunction = (
 				}
 			}
 		} catch (error) {
-			console.error(error);
-
 			const errorMessage = 'Input provided by model is not valid';
 
 			if (error instanceof NodeOperationError) {
@@ -749,10 +749,28 @@ export const configureToolFunction = (
 
 		if (options) {
 			try {
-				response = optimizeResponse(await httpRequest(options));
+				fullResponse = await httpRequest(options);
 			} catch (error) {
 				const httpCode = (error as NodeApiError).httpCode;
 				response = `${httpCode ? `HTTP ${httpCode} ` : ''}There was an error: "${error.message}"`;
+			}
+
+			if (!response) {
+				try {
+					// Check if the response is binary data
+					if (fullResponse?.headers?.['content-type']) {
+						const contentType = fullResponse.headers['content-type'] as string;
+						const mimeType = contentType.split(';')[0].trim();
+
+						if (mime.charset(mimeType) !== 'UTF-8') {
+							throw new NodeOperationError(ctx.getNode(), 'Binary data is not supported');
+						}
+					}
+
+					response = optimizeResponse(fullResponse.body);
+				} catch (error) {
+					response = `There was an error: "${error.message}"`;
+				}
 			}
 		}
 
