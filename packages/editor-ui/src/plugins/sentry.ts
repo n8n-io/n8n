@@ -42,7 +42,7 @@ export const SentryPlugin: Plugin = {
 			return;
 		}
 
-		const { dsn, release, environment } = window.sentry;
+		const { dsn, release, environment, serverName } = window.sentry;
 
 		Sentry.init({
 			app,
@@ -51,5 +51,9 @@ export const SentryPlugin: Plugin = {
 			environment,
 			beforeSend,
 		});
+
+		if (serverName) {
+			Sentry.setTag('server_name', serverName);
+		}
 	},
 };

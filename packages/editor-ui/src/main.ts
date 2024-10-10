@@ -1,5 +1,4 @@
 import { createApp } from 'vue';
-import * as Sentry from '@sentry/vue';
 
 import '@vue-flow/core/dist/style.css';
 import '@vue-flow/core/dist/theme-default.css';
