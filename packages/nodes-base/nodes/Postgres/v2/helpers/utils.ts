@@ -225,6 +225,7 @@ export function configureQueryRunner(
 
 		if (queryBatching === 'single') {
 			try {
+				// this try statement fails [ria]
 				returnData = (await db.multi(pgp.helpers.concat(queries)))
 					.map((result, i) => {
 						return this.helpers.constructExecutionMetaData(wrapData(result as IDataObject[]), {
