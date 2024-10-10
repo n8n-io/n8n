@@ -52,7 +52,7 @@ describe('Publisher', () => {
 
 			expect(client.publish).toHaveBeenCalledWith(
 				'n8n.commands',
-				JSON.stringify({ ...msg, senderId: queueModeId }),
+				JSON.stringify({ ...msg, senderId: queueModeId, selfSend: false, debounce: true }),
 			);
 		});
 	});
@@ -61,7 +61,7 @@ describe('Publisher', () => {
 		it('should publish worker response into `n8n.worker-response` pubsub channel', async () => {
 			const publisher = new Publisher(mock(), redisClientService);
 			const msg = mock<PubSub.WorkerResponse>({
-				command: 'reload-external-secrets-providers',
+				command: 'get-worker-status',
 			});
 
 			await publisher.publishWorkerResponse(msg);

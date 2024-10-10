@@ -53,7 +53,13 @@ import type {
 	IWorkflowSettings,
 	INodeType,
 } from 'n8n-workflow';
-import { deepCopy, NodeConnectionType, NodeHelpers, Workflow } from 'n8n-workflow';
+import {
+	deepCopy,
+	NodeConnectionType,
+	NodeHelpers,
+	SEND_AND_WAIT_OPERATION,
+	Workflow,
+} from 'n8n-workflow';
 import { findLast } from 'lodash-es';
 
 import { useRootStore } from '@/stores/root.store';
@@ -168,7 +174,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const allNodes = computed<INodeUi[]>(() => workflow.value.nodes);
 
 	const isWaitingExecution = computed(() => {
-		return allNodes.value.some((node) => node.type === WAIT_NODE_TYPE && node.disabled !== true);
+		return allNodes.value.some(
+			(node) =>
+				(node.type === WAIT_NODE_TYPE || node.parameters.operation === SEND_AND_WAIT_OPERATION) &&
+				node.disabled !== true,
+		);
 	});
 
 	// Names of all nodes currently on canvas.

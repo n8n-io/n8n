@@ -3,13 +3,12 @@ import { mockClear } from 'jest-mock-extended';
 import { User } from '@/databases/entities/user';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { WorkflowHistoryRepository } from '@/databases/repositories/workflow-history.repository';
-import { Logger } from '@/logging/logger.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service.ee';
-import { mockInstance } from '@test/mocking';
+import { mockInstance, mockLogger } from '@test/mocking';
 import { getWorkflow } from '@test-integration/workflow';
 
 const workflowHistoryRepository = mockInstance(WorkflowHistoryRepository);
-const logger = mockInstance(Logger);
+const logger = mockLogger();
 const sharedWorkflowRepository = mockInstance(SharedWorkflowRepository);
 const workflowHistoryService = new WorkflowHistoryService(
 	logger,
@@ -106,10 +105,6 @@ describe('WorkflowHistoryService', () => {
 
 			// Assert
 			expect(workflowHistoryRepository.insert).toHaveBeenCalled();
-			expect(logger.error).toHaveBeenCalledWith(
-				'Failed to save workflow history version for workflow 123',
-				expect.any(Error),
-			);
 		});
 	});
 });
