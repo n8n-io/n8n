@@ -252,6 +252,7 @@ export class Server extends AbstractServer {
 					JSON.stringify({
 						dsn: this.globalConfig.sentry.frontendDsn,
 						environment: process.env.ENVIRONMENT || 'development',
+						serverName: process.env.DEPLOYMENT_NAME,
 						release: N8N_VERSION,
 					}),
 				);
