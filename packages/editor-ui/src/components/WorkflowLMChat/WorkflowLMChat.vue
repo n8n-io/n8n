@@ -386,7 +386,7 @@ function extractResponseMessage(responseData?: IDataObject) {
 
 	const matchedOutput = get(responseData, matchedPath);
 	if (typeof matchedOutput === 'object') {
-		return '```json\n' + JSON.stringify(matchedOutput, null, 4) + '\n```';
+		return '```json\n' + JSON.stringify(matchedOutput, null, 2) + '\n```';
 	}
 
 	return matchedOutput?.toString() ?? '';
