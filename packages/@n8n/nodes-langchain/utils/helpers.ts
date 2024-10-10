@@ -98,10 +98,14 @@ export function getPromptInputByType(options: {
 	}
 
 	if (input === undefined) {
-		throw new NodeOperationError(ctx.getNode(), 'No prompt specified', {
-			description:
-				"Expected to find the prompt in an input field called 'chatInput' (this is what the chat trigger node outputs). To use something else, change the 'Prompt' parameter",
-		});
+		throw new NodeOperationError(
+			ctx.getNode(),
+			"Could not automatically set prompt from previous node. Please select 'Define below' in the Prompt parameter",
+			{
+				description:
+					"Expected to find the prompt in an input field called 'chatInput' (this is what the chat trigger node outputs). To use something else, change the 'Prompt' parameter",
+			},
+		);
 	}
 
 	return input;

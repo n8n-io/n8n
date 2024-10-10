@@ -181,10 +181,14 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	}
 
 	if (input === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No prompt specified', {
-			description:
-				"Expected to find the prompt in an input field called 'chatInput' (this is what the chat trigger node outputs). To use something else, change the 'Prompt' parameter",
-		});
+		throw new NodeOperationError(
+			this.getNode(),
+			"Could not automatically set prompt from previous node. Please select 'Define below' in the Prompt parameter",
+			{
+				description:
+					"Expected to find the prompt in an input field called 'chatInput' (this is what the chat trigger node outputs). To use something else, change the 'Prompt' parameter",
+			},
+		);
 	}
 
 	const assistantId = this.getNodeParameter('assistantId', i, '', { extractValue: true }) as string;
