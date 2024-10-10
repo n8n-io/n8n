@@ -120,7 +120,7 @@ function onClick(event: MouseEvent) {
 				stroke="var(--color-foreground-xdark)"
 				stroke-width="2"
 				rx="4"
-				fill="#ffffff"
+				fill="var(--color-foreground-xlight)"
 			/>
 			<path
 				:class="[handleClasses, 'clickable']"
