@@ -39,19 +39,19 @@ const app = createApp(App);
 
 if (window.sentry?.dsn) {
 	const { dsn, release, environment } = window.sentry;
+	const ignoredErrors = [
+		{ instanceof: AxiosError },
+		{ instanceof: ResponseError, message: /ECONNREFUSED/ },
+		{ instanceof: ResponseError, message: "Can't connect to n8n." },
+		{ instanceof: Error, message: /ResizeObserver/ },
+	] as const;
+
 	Sentry.init({
 		app,
 		dsn,
 		release,
 		environment,
 		beforeSend(event, { originalException }) {
-			const ignoredErrors = [
-				{ instanceof: AxiosError },
-				{ instanceof: ResponseError, message: /ECONNREFUSED/ },
-				{ instanceof: ResponseError, message: "Can't connect to n8n." },
-				{ instanceof: Error, message: /ResizeObserver/ },
-			] as const;
-
 			if (
 				!originalException ||
 				ignoredErrors.some((entry) => {
