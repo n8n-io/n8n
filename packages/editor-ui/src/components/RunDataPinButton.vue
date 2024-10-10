@@ -27,7 +27,7 @@ const visible = computed(() =>
 </script>
 
 <template>
-	<n8n-tooltip placement="bottom-end" :visible="visible" :disabled="props.disabled">
+	<n8n-tooltip placement="bottom-end" :visible="visible">
 		<template #content>
 			<div v-if="props.tooltipContentsVisibility.binaryDataTooltipContent">
 				{{ locale.baseText('ndv.pinData.pin.binary') }}
