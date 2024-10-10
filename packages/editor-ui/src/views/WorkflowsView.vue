@@ -32,6 +32,7 @@ import {
 	N8nTooltip,
 } from 'n8n-design-system';
 import { pickBy } from 'lodash-es';
+import WorkflowHeader from '@/components/WorkflowHeader.vue';
 
 const i18n = useI18n();
 const route = useRoute();
@@ -313,6 +314,15 @@ onMounted(async () => {
 		@update:filters="onFiltersUpdated"
 	>
 		<template #header>
+			<WorkflowHeader :icon="projectsStore.currentProject?.name ? 'layer-group' : 'home'">
+				<template #title>
+					{{ projectsStore.currentProject?.name ?? 'Home' }}
+				</template>
+				<template v-if="!projectsStore.currentProject?.name" #subtitle>
+					All the workflows, credentials, variables and executions you have access to
+				</template>
+				<template #actions> actions </template>
+			</WorkflowHeader>
 			<ProjectTabs />
 		</template>
 		<template #add-button="{ disabled }">
