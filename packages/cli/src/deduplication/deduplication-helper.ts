@@ -53,7 +53,7 @@ export class DeduplicationHelper implements IDataDeduplicator {
 		mode: DeduplicationMode,
 		value1: DeduplicationItemTypes,
 		value2: DeduplicationItemTypes,
-	): number {
+	): 1 | 0 | -1 {
 		if (mode === 'latestIncrementalKey') {
 			const num1 = Number(value1);
 			const num2 = Number(value2);
