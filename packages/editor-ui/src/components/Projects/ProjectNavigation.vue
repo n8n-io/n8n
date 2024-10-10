@@ -130,11 +130,11 @@ onMounted(async () => {
 			"
 			class="mt-m mb-m"
 		/>
-		<N8nTooltip placement="right">
-			<template #content>
+		<N8nTooltip v-if="displayProjects.length" placement="right" :disabled="!props.collapsed">
+			<template v-if="props.collapsed" #content>
 				{{ locale.baseText('projects.menu.title') }}
 			</template>
-			<N8nText :class="$style.projectsLabel" bold>
+			<N8nText :class="$style.projectsLabel" tag="h3" bold>
 				<span>{{ locale.baseText('projects.menu.title') }}</span>
 			</N8nText>
 		</N8nTooltip>
@@ -159,14 +159,14 @@ onMounted(async () => {
 				data-test-id="project-menu-item"
 			/>
 		</ElMenu>
-		<N8nTooltip placement="right" :disabled="projectsStore.canCreateProjects">
-			<ElMenu
-				v-if="
-					projectsStore.hasPermissionToCreateProjects && projectsStore.isTeamProjectFeatureEnabled
-				"
-				:collapse="props.collapsed"
-				class="pl-xs pr-xs"
-			>
+		<N8nTooltip
+			v-if="
+				projectsStore.hasPermissionToCreateProjects && projectsStore.isTeamProjectFeatureEnabled
+			"
+			placement="right"
+			:disabled="projectsStore.canCreateProjects"
+		>
+			<ElMenu :collapse="props.collapsed" class="pl-xs pr-xs">
 				<N8nMenuItem
 					:item="addProject"
 					:compact="props.collapsed"
@@ -229,7 +229,7 @@ onMounted(async () => {
 }
 
 .projectsLabel {
-	margin: 0 var(--spacing-xs) var(--spacing-m);
+	margin: 0 var(--spacing-xs) var(--spacing-s);
 	padding: 0 var(--spacing-s);
 	text-overflow: ellipsis;
 	overflow: hidden;
