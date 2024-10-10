@@ -8,37 +8,37 @@ function createErrorEvent(): Sentry.ErrorEvent {
 }
 
 describe('beforeSend', () => {
-	it('returns null when originalException is undefined', () => {
+	it('should return null when originalException is undefined', () => {
 		const event = createErrorEvent();
 		const hint = { originalException: undefined };
 		expect(beforeSend(event, hint)).toBeNull();
 	});
 
-	it('returns null when originalException matches ignoredErrors by instance and message', () => {
+	it('should return null when originalException matches ignoredErrors by instance and message', () => {
 		const event = createErrorEvent();
 		const hint = { originalException: new ResponseError("Can't connect to n8n.") };
 		expect(beforeSend(event, hint)).toBeNull();
 	});
 
-	it('returns null when originalException matches ignoredErrors by instance and message regex', () => {
+	it('should return null when originalException matches ignoredErrors by instance and message regex', () => {
 		const event = createErrorEvent();
 		const hint = { originalException: new ResponseError('ECONNREFUSED') };
 		expect(beforeSend(event, hint)).toBeNull();
 	});
 
-	it('returns null when originalException matches ignoredErrors by instance only', () => {
+	it('should return null when originalException matches ignoredErrors by instance only', () => {
 		const event = createErrorEvent();
 		const hint = { originalException: new AxiosError() };
 		expect(beforeSend(event, hint)).toBeNull();
 	});
 
-	it('returns null when originalException matches ignoredErrors by instance and message regex (ResizeObserver)', () => {
+	it('should return null when originalException matches ignoredErrors by instance and message regex (ResizeObserver)', () => {
 		const event = createErrorEvent();
 		const hint = { originalException: new Error('ResizeObserver loop limit exceeded') };
 		expect(beforeSend(event, hint)).toBeNull();
 	});
 
-	it('returns event when originalException does not match any ignoredErrors', () => {
+	it('should return event when originalException does not match any ignoredErrors', () => {
 		const event = createErrorEvent();
 		const hint = { originalException: new Error('Some other error') };
 		expect(beforeSend(event, hint)).toEqual(event);
