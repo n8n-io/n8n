@@ -586,5 +586,6 @@ export declare namespace AiAssistantRequest {
 	type Chat = AuthenticatedRequest<{}, {}, AiAssistantSDK.ChatRequestPayload>;
 
 	type SuggestionPayload = { sessionId: string; suggestionId: string };
-	type ApplySuggestion = AuthenticatedRequest<{}, {}, SuggestionPayload>;
+	type ApplySuggestionPayload = AuthenticatedRequest<{}, {}, SuggestionPayload>;
+	type AskAiPayload = AuthenticatedRequest<{}, {}, AiAssistantSDK.AskAiRequestPayload>;
 }

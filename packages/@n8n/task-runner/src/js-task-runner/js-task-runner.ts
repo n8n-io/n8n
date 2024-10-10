@@ -17,6 +17,7 @@ import type {
 	INodeParameters,
 	IRunExecutionData,
 	WorkflowExecuteMode,
+	EnvProviderState,
 } from 'n8n-workflow';
 import * as a from 'node:assert';
 import { runInNewContext, type Context } from 'node:vm';
@@ -63,6 +64,7 @@ export interface AllCodeTaskData {
 	connectionInputData: INodeExecutionData[];
 	siblingParameters: INodeParameters;
 	mode: WorkflowExecuteMode;
+	envProviderState?: EnvProviderState;
 	executeData?: IExecuteData;
 	defaultReturnRunIndex: number;
 	selfData: IDataObject;
@@ -262,6 +264,13 @@ export class JsTaskRunner extends TaskRunner {
 			allData.defaultReturnRunIndex,
 			allData.selfData,
 			allData.contextNodeName,
+			// Make sure that even if we don't receive the envProviderState for
+			// whatever reason, we don't expose the task runner's env to the code
+			allData.envProviderState ?? {
+				env: {},
+				isEnvAccessBlocked: false,
+				isProcessAvailable: true,
+			},
 		).getDataProxy();
 	}
 
