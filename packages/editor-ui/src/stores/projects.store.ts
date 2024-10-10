@@ -60,12 +60,8 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 	);
 	const teamProjects = computed(() => projects.value.filter((p) => p.type === ProjectTypes.Team));
 	const teamProjectsLimit = computed(() => settingsStore.settings.enterprise.projects.team.limit);
-	const isTeamProjectFeatureEnabled = computed<boolean>(
-		() => settingsStore.settings.enterprise.projects.team.limit !== 0,
-	);
-	const hasUnlimitedProjects = computed<boolean>(
-		() => settingsStore.settings.enterprise.projects.team.limit === -1,
-	);
+	const isTeamProjectFeatureEnabled = computed<boolean>(() => teamProjectsLimit.value !== 0);
+	const hasUnlimitedProjects = computed<boolean>(() => teamProjectsLimit.value === -1);
 	const isTeamProjectLimitExceeded = computed<boolean>(
 		() => projectsCount.value.team >= teamProjectsLimit.value,
 	);
