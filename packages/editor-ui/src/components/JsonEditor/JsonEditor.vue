@@ -111,18 +111,18 @@ function destroyEditor() {
 </script>
 
 <template>
-	<div :class="$style.editor">
-		<div ref="jsonEditorRef" class="ph-no-capture json-editor"></div>
+	<div :class="[$style['editor-container'], $style.fillHeight]">
+		<div ref="jsonEditorRef" :class="['ph-no-capture', $style.fillHeight]"></div>
 		<slot name="suffix" />
 	</div>
 </template>
 
 <style lang="scss" module>
-.editor {
-	height: 100%;
+.editor-container {
+	position: relative;
+}
 
-	& > div {
-		height: 100%;
-	}
+.fillHeight {
+	height: 100%;
 }
 </style>

@@ -5,7 +5,7 @@ import type {
 	NodeParameterValue,
 	NodeParameterValueType,
 } from 'n8n-workflow';
-import { deepCopy } from 'n8n-workflow';
+import { deepCopy, ADD_FORM_NOTICE } from 'n8n-workflow';
 import { computed, defineAsyncComponent, onErrorCaptured, ref, watch } from 'vue';
 
 import type { IUpdateInformation } from '@/Interface';
@@ -19,7 +19,7 @@ import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ResourceMapper from '@/components/ResourceMapper/ResourceMapper.vue';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import { KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
+import { FORM_NODE_TYPE, FORM_TRIGGER_NODE_TYPE, KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import {
@@ -91,7 +91,17 @@ const nodeType = computed(() => {
 });
 
 const filteredParameters = computed(() => {
-	return props.parameters.filter((parameter: INodeProperties) => displayNodeParameter(parameter));
+	const parameters = props.parameters.filter((parameter: INodeProperties) =>
+		displayNodeParameter(parameter),
+	);
+
+	const activeNode = ndvStore.activeNode;
+
+	if (activeNode && activeNode.type === FORM_TRIGGER_NODE_TYPE) {
+		return updateFormTriggerParameters(parameters, activeNode.name);
+	}
+
+	return parameters;
 });
 
 const filteredParameterNames = computed(() => {
@@ -150,6 +160,40 @@ watch(filteredParameterNames, (newValue, oldValue) => {
 		}
 	}
 });
+
+function updateFormTriggerParameters(parameters: INodeProperties[], triggerName: string) {
+	const workflow = workflowHelpers.getCurrentWorkflow();
+	const connectedNodes = workflow.getChildNodes(triggerName);
+
+	const hasFormPage = connectedNodes.some((nodeName) => {
+		const node = workflow.getNode(nodeName);
+		return node && node.type === FORM_NODE_TYPE;
+	});
+
+	if (hasFormPage) {
+		const triggerParameters: INodeProperties[] = [];
+
+		for (const parameter of parameters) {
+			if (parameter.name === 'responseMode') {
+				triggerParameters.push({
+					displayName: 'On submission, the user will be taken to the next form node',
+					name: 'formResponseModeNotice',
+					type: 'notice',
+					default: '',
+				});
+
+				continue;
+			}
+
+			if (parameter.name === ADD_FORM_NOTICE) continue;
+
+			triggerParameters.push(parameter);
+		}
+		return triggerParameters;
+	}
+
+	return parameters;
+}
 
 function onParameterBlur(parameterName: string) {
 	emit('parameterBlur', parameterName);

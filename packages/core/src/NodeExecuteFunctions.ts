@@ -4436,6 +4436,36 @@ export function getExecuteWebhookFunctions(
 				);
 			},
 			getMode: () => mode,
+			evaluateExpression: (expression: string, evaluateItemIndex?: number) => {
+				const itemIndex = evaluateItemIndex === undefined ? 0 : evaluateItemIndex;
+				const runIndex = 0;
+
+				let connectionInputData: INodeExecutionData[] = [];
+				let executionData: IExecuteData | undefined;
+
+				if (runExecutionData?.executionData !== undefined) {
+					executionData = runExecutionData.executionData.nodeExecutionStack[0];
+
+					if (executionData !== undefined) {
+						connectionInputData = executionData.data.main[0]!;
+					}
+				}
+
+				const additionalKeys = getAdditionalKeys(additionalData, mode, runExecutionData);
+
+				return workflow.expression.resolveSimpleParameterValue(
+					`=${expression}`,
+					{},
+					runExecutionData,
+					runIndex,
+					itemIndex,
+					node.name,
+					connectionInputData,
+					mode,
+					additionalKeys,
+					executionData,
+				);
+			},
 			getNodeParameter: (
 				parameterName: string,
 				fallbackValue?: any,

@@ -1,9 +1,11 @@
 import type express from 'express';
 import {
+	FORM_NODE_TYPE,
 	type INodes,
 	type IWorkflowBase,
 	NodeHelpers,
 	SEND_AND_WAIT_OPERATION,
+	WAIT_NODE_TYPE,
 	Workflow,
 } from 'n8n-workflow';
 import { Service } from 'typedi';
@@ -34,7 +36,7 @@ export class WaitingWebhooks implements IWebhookManager {
 
 	constructor(
 		protected readonly logger: Logger,
-		private readonly nodeTypes: NodeTypes,
+		protected readonly nodeTypes: NodeTypes,
 		private readonly executionRepository: ExecutionRepository,
 	) {}
 
@@ -58,7 +60,7 @@ export class WaitingWebhooks implements IWebhookManager {
 		);
 	}
 
-	private getWorkflow(workflowData: IWorkflowBase) {
+	private createWorkflow(workflowData: IWorkflowBase) {
 		return new Workflow({
 			id: workflowData.id,
 			name: workflowData.name,
@@ -68,6 +70,13 @@ export class WaitingWebhooks implements IWebhookManager {
 			nodeTypes: this.nodeTypes,
 			staticData: workflowData.staticData,
 			settings: workflowData.settings,
+		});
+	}
+
+	protected async getExecution(executionId: string) {
+		return await this.executionRepository.findSingleExecution(executionId, {
+			includeData: true,
+			unflattenData: true,
 		});
 	}
 
@@ -82,17 +91,14 @@ export class WaitingWebhooks implements IWebhookManager {
 		// Reset request parameters
 		req.params = {} as WaitingWebhookRequest['params'];
 
-		const execution = await this.executionRepository.findSingleExecution(executionId, {
-			includeData: true,
-			unflattenData: true,
-		});
+		const execution = await this.getExecution(executionId);
 
 		if (!execution) {
-			throw new NotFoundError(`The execution "${executionId} does not exist.`);
+			throw new NotFoundError(`The execution "${executionId}" does not exist.`);
 		}
 
 		if (execution.status === 'running') {
-			throw new ConflictError(`The execution "${executionId} is running already.`);
+			throw new ConflictError(`The execution "${executionId}" is running already.`);
 		}
 
 		if (execution.data?.resultData?.error) {
@@ -101,7 +107,7 @@ export class WaitingWebhooks implements IWebhookManager {
 
 		if (execution.finished) {
 			const { workflowData } = execution;
-			const { nodes } = this.getWorkflow(workflowData);
+			const { nodes } = this.createWorkflow(workflowData);
 			if (this.isSendAndWaitRequest(nodes, suffix)) {
 				res.render('send-and-wait-no-action-required', { isTestWebhook: false });
 				return { noWebhookResponse: true };
@@ -112,6 +118,31 @@ export class WaitingWebhooks implements IWebhookManager {
 
 		const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
 
+		return await this.getWebhookExecutionData({
+			execution,
+			req,
+			res,
+			lastNodeExecuted,
+			executionId,
+			suffix,
+		});
+	}
+
+	protected async getWebhookExecutionData({
+		execution,
+		req,
+		res,
+		lastNodeExecuted,
+		executionId,
+		suffix,
+	}: {
+		execution: IExecutionResponse;
+		req: WaitingWebhookRequest;
+		res: express.Response;
+		lastNodeExecuted: string;
+		executionId: string;
+		suffix?: string;
+	}): Promise<IWebhookResponseCallbackData> {
 		// Set the node as disabled so that the data does not get executed again as it would result
 		// in starting the wait all over again
 		this.disableNode(execution, req.method);
@@ -123,7 +154,7 @@ export class WaitingWebhooks implements IWebhookManager {
 		execution.data.resultData.runData[lastNodeExecuted].pop();
 
 		const { workflowData } = execution;
-		const workflow = this.getWorkflow(workflowData);
+		const workflow = this.createWorkflow(workflowData);
 
 		const workflowStartNode = workflow.getNode(lastNodeExecuted);
 		if (workflowStartNode === null) {
@@ -146,11 +177,26 @@ export class WaitingWebhooks implements IWebhookManager {
 		if (webhookData === undefined) {
 			// If no data got found it means that the execution can not be started via a webhook.
 			// Return 404 because we do not want to give any data if the execution exists or not.
+			const errorMessage = `The workflow for execution "${executionId}" does not contain a waiting webhook with a matching path/method.`;
+
 			if (this.isSendAndWaitRequest(workflow.nodes, suffix)) {
 				res.render('send-and-wait-no-action-required', { isTestWebhook: false });
 				return { noWebhookResponse: true };
+			} else if (!execution.data.resultData.error && execution.status === 'waiting') {
+				const childNodes = workflow.getChildNodes(
+					execution.data.resultData.lastNodeExecuted as string,
+				);
+				const hasChildForms = childNodes.some(
+					(node) =>
+						workflow.nodes[node].type === FORM_NODE_TYPE ||
+						workflow.nodes[node].type === WAIT_NODE_TYPE,
+				);
+				if (hasChildForms) {
+					return { noWebhookResponse: true };
+				} else {
+					throw new NotFoundError(errorMessage);
+				}
 			} else {
-				const errorMessage = `The workflow for execution "${executionId}" does not contain a waiting webhook with a matching path/method.`;
 				throw new NotFoundError(errorMessage);
 			}
 		}

@@ -1928,6 +1928,12 @@ export default defineComponent({
 							).some((n) => n.webhookId === node.webhookId);
 							if (isDuplicate) {
 								node.webhookId = uuid();
+
+								if (node.parameters.path) {
+									node.parameters.path = node.webhookId as string;
+								} else if ((node.parameters.options as IDataObject).path) {
+									(node.parameters.options as IDataObject).path = node.webhookId as string;
+								}
 							}
 						}
 

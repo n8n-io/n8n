@@ -1,4 +1,6 @@
 import {
+	ADD_FORM_NOTICE,
+	type INodePropertyOptions,
 	NodeConnectionType,
 	type INodeProperties,
 	type INodeType,
@@ -33,10 +35,10 @@ const descriptionV2: INodeTypeDescription = {
 	name: 'formTrigger',
 	icon: 'file:form.svg',
 	group: ['trigger'],
-	version: [2, 2.1],
-	description: 'Runs the flow when an n8n generated webform is submitted',
+	version: [2, 2.1, 2.2],
+	description: 'Generate webforms in n8n and pass their responses to the workflow',
 	defaults: {
-		name: 'n8n Form Trigger',
+		name: 'On form submission',
 	},
 
 	inputs: [],
@@ -47,7 +49,7 @@ const descriptionV2: INodeTypeDescription = {
 			httpMethod: 'GET',
 			responseMode: 'onReceived',
 			isFullPath: true,
-			path: '={{$parameter["path"]}}',
+			path: '={{ $parameter["path"] || $parameter["options"]?.path || $webhookId }}',
 			ndvHideUrl: true,
 			isForm: true,
 		},
@@ -57,7 +59,7 @@ const descriptionV2: INodeTypeDescription = {
 			responseMode: '={{$parameter["responseMode"]}}',
 			responseData: '={{$parameter["responseMode"] === "lastNode" ? "noData" : undefined}}',
 			isFullPath: true,
-			path: '={{$parameter["path"]}}',
+			path: '={{ $parameter["path"] || $parameter["options"]?.path || $webhookId }}',
 			ndvHideMethod: true,
 			isForm: true,
 		},
@@ -94,11 +96,18 @@ const descriptionV2: INodeTypeDescription = {
 			],
 			default: 'none',
 		},
-		webhookPath,
+		{ ...webhookPath, displayOptions: { show: { '@version': [{ _cnd: { lte: 2.1 } }] } } },
 		formTitle,
 		formDescription,
 		formFields,
-		formRespondMode,
+		{ ...formRespondMode, displayOptions: { show: { '@version': [{ _cnd: { lte: 2.1 } }] } } },
+		{
+			...formRespondMode,
+			options: (formRespondMode.options as INodePropertyOptions[])?.filter(
+				(option) => option.value !== 'responseNode',
+			),
+			displayOptions: { show: { '@version': [{ _cnd: { gte: 2.2 } }] } },
+		},
 		{
 			displayName:
 				"In the 'Respond to Webhook' node, select 'Respond With JSON' and set the <strong>formSubmittedText</strong> key to display a custom response in the form, or the <strong>redirectURL</strong> key to redirect users to a URL",
@@ -109,6 +118,13 @@ const descriptionV2: INodeTypeDescription = {
 			},
 			default: '',
 		},
+		// notice would be shown if no Form node was connected to trigger
+		{
+			displayName: 'Build multi-step forms by adding a form page later in your workflow',
+			name: ADD_FORM_NOTICE,
+			type: 'notice',
+			default: '',
+		},
 		{
 			displayName: 'Options',
 			name: 'options',
@@ -117,6 +133,18 @@ const descriptionV2: INodeTypeDescription = {
 			default: {},
 			options: [
 				appendAttributionToForm,
+				{
+					displayName: 'Button Label',
+					description: 'The label of the submit button in the form',
+					name: 'buttonLabel',
+					type: 'string',
+					default: 'Submit',
+				},
+				{
+					...webhookPath,
+					required: false,
+					displayOptions: { show: { '@version': [{ _cnd: { gte: 2.2 } }] } },
+				},
 				{
 					...respondWithOptions,
 					displayOptions: {
@@ -135,6 +163,7 @@ const descriptionV2: INodeTypeDescription = {
 				{
 					...useWorkflowTimezone,
 					default: false,
+					description: "Whether to use the workflow timezone in 'submittedAt' field or UTC",
 					displayOptions: {
 						show: {
 							'@version': [2],
@@ -144,6 +173,7 @@ const descriptionV2: INodeTypeDescription = {
 				{
 					...useWorkflowTimezone,
 					default: true,
+					description: "Whether to use the workflow timezone in 'submittedAt' field or UTC",
 					displayOptions: {
 						show: {
 							'@version': [{ _cnd: { gt: 2 } }],

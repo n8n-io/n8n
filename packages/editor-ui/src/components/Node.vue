@@ -2,6 +2,7 @@
 import { useStorage } from '@/composables/useStorage';
 import {
 	CUSTOM_API_CALL_KEY,
+	FORM_NODE_TYPE,
 	LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG,
 	MANUAL_TRIGGER_NODE_TYPE,
 	NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS,
@@ -338,6 +339,9 @@ const waiting = computed(() => {
 			}
 			if (node?.parameters.operation === SEND_AND_WAIT_OPERATION) {
 				return i18n.baseText('node.theNodeIsWaitingUserInput');
+			}
+			if (node?.type === FORM_NODE_TYPE) {
+				return i18n.baseText('node.theNodeIsWaitingFormCall');
 			}
 			const waitDate = new Date(workflowExecution.waitTill);
 			if (waitDate.toISOString() === WAIT_TIME_UNLIMITED) {

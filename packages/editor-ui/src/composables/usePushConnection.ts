@@ -36,6 +36,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import type { PushMessageQueueItem } from '@/types';
 import { useAssistantStore } from '@/stores/assistant.store';
 import NodeExecutionErrorMessage from '@/components/NodeExecutionErrorMessage.vue';
+import { useRootStore } from '@/stores/root.store';
 
 type IPushDataExecutionFinishedPayload = PushPayload<'executionFinished'>;
 
