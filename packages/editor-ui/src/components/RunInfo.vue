@@ -50,7 +50,7 @@ const runMetadata = computed(() => {
 			"
 		></span>
 	</n8n-info-tip>
-	<div v-else-if="runMetadata" style="display: flex; flex-direction: row; column-gap: 4px">
+	<div v-else-if="runMetadata" :class="$style.tooltipRow">
 		<n8n-info-tip
 			type="tooltip"
 			theme="info"
@@ -83,3 +83,11 @@ const runMetadata = computed(() => {
 		/>
 	</div>
 </template>
+
+<style lang="scss" module>
+.tooltipRow {
+	display: flex;
+	flex-direction: row;
+	column-gap: 4px;
+}
+</style>
