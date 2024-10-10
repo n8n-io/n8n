@@ -1,17 +1,16 @@
 import { hash } from 'bcryptjs';
-import { randomString } from 'n8n-workflow';
 import Container from 'typedi';
 
 import { AuthIdentity } from '@/databases/entities/auth-identity';
 import { type GlobalRole, type User } from '@/databases/entities/user';
-import { ApiKeyRepository } from '@/databases/repositories/api-key.repository';
 import { AuthIdentityRepository } from '@/databases/repositories/auth-identity.repository';
 import { AuthUserRepository } from '@/databases/repositories/auth-user.repository';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { MfaService } from '@/mfa/mfa.service';
 import { TOTPService } from '@/mfa/totp.service';
+import { PublicApiKeyService } from '@/services/public-api-key.service';
 
-import { randomApiKey, randomEmail, randomName, randomValidPassword } from '../random';
+import { randomEmail, randomName, randomValidPassword } from '../random';
 
 // pre-computed bcrypt hash for the string 'password', using `await hash('password', 10)`
 const passwordHash = '$2a$10$njedH7S6V5898mj6p0Jr..IGY9Ms.qNwR7RbSzzX9yubJocKfvGGK';
@@ -81,29 +80,20 @@ export async function createUserWithMfaEnabled(
 	};
 }
 
-const createApiKeyEntity = (user: User) => {
-	const apiKey = randomApiKey();
-	return Container.get(ApiKeyRepository).create({
-		userId: user.id,
-		label: randomString(10),
-		apiKey,
-	});
+export const addApiKey = async (user: User, { legacy = false } = {}) => {
+	return await Container.get(PublicApiKeyService).createPublicApiKeyForUser(user, { legacy });
 };
 
-export const addApiKey = async (user: User) => {
-	return await Container.get(ApiKeyRepository).save(createApiKeyEntity(user));
-};
-
-export async function createOwnerWithApiKey() {
+export async function createOwnerWithApiKey({ legacy = false } = {}) {
 	const owner = await createOwner();
-	const apiKey = await addApiKey(owner);
+	const apiKey = await addApiKey(owner, { legacy });
 	owner.apiKeys = [apiKey];
 	return owner;
 }
 
-export async function createMemberWithApiKey() {
+export async function createMemberWithApiKey({ legacy = false } = {}) {
 	const member = await createMember();
-	const apiKey = await addApiKey(member);
+	const apiKey = await addApiKey(member, { legacy });
 	member.apiKeys = [apiKey];
 	return member;
 }
