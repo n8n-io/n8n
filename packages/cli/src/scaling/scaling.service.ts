@@ -31,7 +31,7 @@ import type {
 	JobStatus,
 	JobId,
 	QueueRecoveryContext,
-	JobReport,
+	JobMessage,
 } from './scaling.types';
 
 @Service()
@@ -49,6 +49,8 @@ export class ScalingService {
 		private readonly eventService: EventService,
 	) {
 		this.logger = this.logger.withScope('scaling');
+
+		this.logger.debug('Scaling service initialized');
 	}
 
 	// #region Lifecycle
@@ -93,11 +95,18 @@ export class ScalingService {
 				// Errors thrown here will be sent to the main instance by bull. Logging
 				// them out and rethrowing them allows to find out which worker had the
 				// issue.
-				this.logger.error('Executing a job errored', {
-					jobId: job.id,
+				this.logger.error(
+					`Worker errored while running execution ${job.data.executionId} (job ${job.id})`,
+					{ error },
+				);
+
+				await job.progress({
+					kind: 'job-failed',
 					executionId: job.data.executionId,
+					workerId: config.getEnv('redis.queueModeId'),
 					error,
 				});
+
 				ErrorReporterProxy.error(error);
 				throw error;
 			}
@@ -161,7 +170,7 @@ export class ScalingService {
 
 		const job = await this.queue.add(JOB_TYPE_NAME, jobData, jobOptions);
 
-		this.logger.info(`Added job ${job.id} (execution ${jobData.executionId})`);
+		this.logger.info(`Enqueued execution ${jobData.executionId} (job ${job.id})`);
 
 		return job;
 	}
@@ -218,7 +227,7 @@ export class ScalingService {
 	 */
 	private registerWorkerListeners() {
 		this.queue.on('global:progress', (jobId: JobId, msg: unknown) => {
-			if (!this.isPubSubMessage(msg)) return;
+			if (!this.isBullMessage(msg)) return;
 
 			if (msg.kind === 'abort-job') this.jobProcessor.stopJob(jobId);
 		});
@@ -244,6 +253,8 @@ export class ScalingService {
 
 			throw error;
 		});
+
+		this.logger.debug('Registered listeners on Bull queue', { instanceType: 'worker' });
 	}
 
 	/**
@@ -258,12 +269,33 @@ export class ScalingService {
 			throw error;
 		});
 
-		this.queue.on('global:progress', (_jobId: JobId, msg: unknown) => {
-			if (!this.isPubSubMessage(msg)) return;
+		this.queue.on('global:progress', (jobId: JobId, msg: unknown) => {
+			if (!this.isBullMessage(msg)) return;
 
-			if (msg.kind === 'respond-to-webhook') {
-				const decodedResponse = this.decodeWebhookResponse(msg.response);
-				this.activeExecutions.resolveResponsePromise(msg.executionId, decodedResponse);
+			switch (msg.kind) {
+				case 'respond-to-webhook':
+					this.logger.debug(
+						`Queue reported execution ${msg.executionId} (job ${jobId}) responded to webhook`,
+						{
+							instanceType: this.instanceSettings.instanceType,
+							workerId: msg.workerId,
+						},
+					);
+					const decodedResponse = this.decodeWebhookResponse(msg.response);
+					this.activeExecutions.resolveResponsePromise(msg.executionId, decodedResponse);
+					break;
+				case 'job-finished':
+					this.logger.info(`Queue reported execution ${msg.executionId} (job ${jobId}) finished`, {
+						instanceType: this.instanceSettings.instanceType,
+						workerId: msg.workerId,
+					});
+					break;
+				case 'job-failed':
+					this.logger.error(`Queue reported execution ${msg.executionId} (job ${jobId}) failed`, {
+						errorMsg: msg.error,
+						workerId: msg.workerId,
+					});
+					break;
 			}
 		});
 
@@ -271,9 +303,13 @@ export class ScalingService {
 			this.queue.on('global:completed', () => this.jobCounters.completed++);
 			this.queue.on('global:failed', () => this.jobCounters.failed++);
 		}
+
+		this.logger.debug('Registered listeners on Bull queue', {
+			instanceType: this.instanceSettings.instanceType,
+		});
 	}
 
-	private isPubSubMessage(candidate: unknown): candidate is JobReport {
+	private isBullMessage(candidate: unknown): candidate is JobMessage {
 		return typeof candidate === 'object' && candidate !== null && 'kind' in candidate;
 	}
 
@@ -346,6 +382,8 @@ export class ScalingService {
 			clearInterval(this.queueMetricsInterval);
 			this.queueMetricsInterval = undefined;
 		}
+
+		this.logger.debug('Stopped collecting queue metrics');
 	}
 
 	// #endregion

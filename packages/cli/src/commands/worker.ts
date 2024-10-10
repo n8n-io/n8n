@@ -7,6 +7,7 @@ import { N8N_VERSION, inTest } from '@/constants';
 import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
+import { Logger } from '@/logging/logger.service';
 import { JobProcessor } from '@/scaling/job-processor';
 import { PubSubHandler } from '@/scaling/pubsub/pubsub-handler';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
@@ -63,6 +64,8 @@ export class Worker extends BaseCommand {
 	constructor(argv: string[], cmdConfig: Config) {
 		super(argv, cmdConfig);
 
+		this.logger = Container.get(Logger).withScope('scaling');
+
 		if (!process.env.N8N_ENCRYPTION_KEY) {
 			throw new ApplicationError(
 				'Missing encryption key. Worker started without the required N8N_ENCRYPTION_KEY env var. More information: https://docs.n8n.io/hosting/configuration/configuration-examples/encryption-key/',
@@ -90,7 +93,6 @@ export class Worker extends BaseCommand {
 		await super.init();
 
 		await this.initLicense();
-		this.logger.debug('License init complete');
 		await this.initBinaryDataService();
 		this.logger.debug('Binary data service init complete');
 		await this.initExternalHooks();
