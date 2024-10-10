@@ -554,6 +554,18 @@ export const eventFields: INodeProperties[] = [
 					'The maximum number of attendees to include in the response. If there are more than the specified number of attendees, only the participant is returned.',
 			},
 			{
+				displayName: 'Return Next Instance of Recurring Event',
+				name: 'returnNextInstance',
+				type: 'boolean',
+				default: true,
+				description: 'Whether to return next instances of recurring event, instead of event itself',
+				displayOptions: {
+					show: {
+						'@version': [1.2],
+					},
+				},
+			},
+			{
 				displayName: 'Timezone',
 				name: 'timeZone',
 				type: 'resourceLocator',
@@ -657,6 +669,14 @@ export const eventFields: INodeProperties[] = [
 				description: 'At least some part of the event must be before this time',
 			},
 			{
+				displayName: 'Expand Events',
+				name: 'singleEvents',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to expand recurring events into instances and only return single one-off events and instances of recurring events, but not the underlying recurring events themselves',
+			},
+			{
 				displayName: 'Fields',
 				name: 'fields',
 				type: 'string',
@@ -709,6 +729,18 @@ export const eventFields: INodeProperties[] = [
 					'Free text search terms to find events that match these terms in any field, except for extended properties',
 			},
 			{
+				displayName: 'Return Next Instance of Recurring Event',
+				name: 'returnNextInstance',
+				type: 'boolean',
+				default: true,
+				description: 'Whether to return next instances of recurring event, instead of event itself',
+				displayOptions: {
+					show: {
+						'@version': [1.2],
+					},
+				},
+			},
+			{
 				displayName: 'Show Deleted',
 				name: 'showDeleted',
 				type: 'boolean',
@@ -722,14 +754,6 @@ export const eventFields: INodeProperties[] = [
 				type: 'boolean',
 				default: false,
 				description: 'Whether to include hidden invitations in the result',
-			},
-			{
-				displayName: 'Single Events',
-				name: 'singleEvents',
-				type: 'boolean',
-				default: false,
-				description:
-					'Whether to expand recurring events into instances and only return single one-off events and instances of recurring events, but not the underlying recurring events themselves',
 			},
 			{
 				displayName: 'Timezone',
@@ -796,6 +820,30 @@ export const eventFields: INodeProperties[] = [
 			},
 		},
 		default: '',
+	},
+	{
+		displayName: 'Modify',
+		name: 'modifyTarget',
+		type: 'options',
+		options: [
+			{
+				name: 'Reccuring Event Instance',
+				value: 'instance',
+			},
+			{
+				name: 'Reccuring Event',
+				value: 'event',
+			},
+		],
+		default: 'instance',
+		displayOptions: {
+			show: {
+				'@version': [1.2],
+				resource: ['event'],
+				operation: ['update'],
+				eventId: [{ _cnd: { includes: '_' } }],
+			},
+		},
 	},
 	{
 		displayName: 'Use Default Reminders',
