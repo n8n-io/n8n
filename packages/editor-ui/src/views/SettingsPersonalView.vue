@@ -201,11 +201,12 @@ function openPasswordModal() {
 }
 
 async function onMfaEnableClick() {
-	try {
-		if (!settingsStore.isCloudDeployment || !usersStore.isInstanceOwner) {
-			return;
-		}
+	if (!settingsStore.isCloudDeployment || !usersStore.isInstanceOwner) {
+		uiStore.openModal(MFA_SETUP_MODAL_KEY);
+		return;
+	}
 
+	try {
 		await usersStore.canEnableMFA();
 		uiStore.openModal(MFA_SETUP_MODAL_KEY);
 	} catch (e) {
