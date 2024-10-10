@@ -332,9 +332,9 @@ export class WorkflowExecute {
 			'a destinationNodeName is required for the new partial execution flow',
 		);
 
-		const destinationNode = workflow.getNode(destinationNodeName);
+		const destination = workflow.getNode(destinationNodeName);
 		assert.ok(
-			destinationNode,
+			destination,
 			`Could not find a node with the name ${destinationNodeName} in the workflow.`,
 		);
 
@@ -348,11 +348,11 @@ export class WorkflowExecute {
 
 		// 2. Find the Subgraph
 		const graph = DirectedGraph.fromWorkflow(workflow);
-		const subgraph = findSubgraph(graph, destinationNode, trigger);
+		const subgraph = findSubgraph({ graph, destination, trigger });
 		const filteredNodes = subgraph.getNodes();
 
 		// 3. Find the Start Nodes
-		const startNodes = findStartNodes(subgraph, trigger, destinationNode, runData);
+		const startNodes = findStartNodes(subgraph, trigger, destination, runData);
 
 		// 4. Detect Cycles
 		const cycles = findCycles(workflow);
@@ -367,7 +367,7 @@ export class WorkflowExecute {
 
 		// 7. Recreate Execution Stack
 		const { nodeExecutionStack, waitingExecution, waitingExecutionSource } =
-			recreateNodeExecutionStack(subgraph, startNodes, destinationNode, runData, pinData ?? {});
+			recreateNodeExecutionStack(subgraph, startNodes, destination, runData, pinData ?? {});
 
 		// 8. Execute
 		this.status = 'running';
