@@ -46,8 +46,9 @@ if (window.sentry?.dsn) {
 		environment,
 		beforeSend(event, { originalException }) {
 			const ignoredErrors = [
-				{ instanceof: ResponseError, message: /ECONNREFUSED/ },
 				{ instanceof: AxiosError },
+				{ instanceof: ResponseError, message: /ECONNREFUSED/ },
+				{ instanceof: ResponseError, message: "Can't connect to n8n." },
 				{ instanceof: Error, message: /ResizeObserver/ },
 			] as const;
 
@@ -59,7 +60,15 @@ if (window.sentry?.dsn) {
 						return false;
 					}
 
-					return 'message' in entry ? entry.message.test(originalException.message ?? '') : true;
+					if ('message' in entry) {
+						if (entry.message instanceof RegExp) {
+							return entry.message.test(originalException.message ?? '');
+						} else {
+							return originalException.message === entry.message;
+						}
+					}
+
+					return true;
 				})
 			) {
 				return null;
