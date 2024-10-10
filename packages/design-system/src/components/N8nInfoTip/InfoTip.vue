@@ -2,6 +2,8 @@
 import type { Placement } from 'element-plus';
 import { computed } from 'vue';
 
+import type { IconColor } from 'n8n-design-system/types/icon';
+
 import N8nIcon from '../N8nIcon';
 import N8nTooltip from '../N8nTooltip';
 
@@ -16,6 +18,7 @@ const ICON_MAP = {
 	danger: 'exclamation-triangle',
 	success: 'check-circle',
 } as const;
+type IconMap = typeof ICON_MAP;
 
 interface InfoTipProps {
 	theme?: (typeof THEME)[number];
@@ -32,11 +35,11 @@ const props = withDefaults(defineProps<InfoTipProps>(), {
 	tooltipPlacement: 'top',
 });
 
-const iconData = computed((): { icon: string; color: string } => {
+const iconData = computed<{ icon: IconMap[keyof IconMap]; color: IconColor }>(() => {
 	return {
 		icon: ICON_MAP[props.theme],
-		color: props.theme,
-	};
+		color: props.theme === 'info' || props.theme === 'info-light' ? 'text-base' : props.theme,
+	} as const;
 });
 </script>
 
