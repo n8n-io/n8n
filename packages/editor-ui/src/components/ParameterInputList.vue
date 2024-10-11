@@ -19,7 +19,12 @@ import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ResourceMapper from '@/components/ResourceMapper/ResourceMapper.vue';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import { FORM_NODE_TYPE, FORM_TRIGGER_NODE_TYPE, KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
+import {
+	FORM_NODE_TYPE,
+	FORM_TRIGGER_NODE_TYPE,
+	KEEP_AUTH_IN_NDV_FOR_NODES,
+	WAIT_NODE_TYPE,
+} from '@/constants';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import {
@@ -99,6 +104,9 @@ const filteredParameters = computed(() => {
 
 	if (activeNode && activeNode.type === FORM_TRIGGER_NODE_TYPE) {
 		return updateFormTriggerParameters(parameters, activeNode.name);
+	}
+	if (activeNode && activeNode.type === WAIT_NODE_TYPE && activeNode.parameters.resume === 'form') {
+		return updateWaitParameters(parameters, activeNode.name);
 	}
 
 	return parameters;
@@ -187,9 +195,59 @@ function updateFormTriggerParameters(parameters: INodeProperties[], triggerName:
 
 			if (parameter.name === ADD_FORM_NOTICE) continue;
 
+			if (parameter.name === 'options') {
+				const options = (parameter.options as INodeProperties[]).filter(
+					(option) => option.name !== 'respondWithOptions',
+				);
+				triggerParameters.push({
+					...parameter,
+					options,
+				});
+				continue;
+			}
+
 			triggerParameters.push(parameter);
 		}
 		return triggerParameters;
+	}
+
+	return parameters;
+}
+
+function updateWaitParameters(parameters: INodeProperties[], nodeName: string) {
+	const workflow = workflowHelpers.getCurrentWorkflow();
+	const parentNodes = workflow.getParentNodes(nodeName);
+
+	const formTriggerName = parentNodes.find(
+		(node) => workflow.nodes[node].type === FORM_TRIGGER_NODE_TYPE,
+	);
+	if (!formTriggerName) return parameters;
+
+	const connectedNodes = workflow.getChildNodes(formTriggerName);
+
+	const hasFormPage = connectedNodes.some((nodeName) => {
+		const node = workflow.getNode(nodeName);
+		return node && node.type === FORM_NODE_TYPE;
+	});
+
+	if (hasFormPage) {
+		const waitNodeParameters: INodeProperties[] = [];
+
+		for (const parameter of parameters) {
+			if (parameter.name === 'options') {
+				const options = (parameter.options as INodeProperties[]).filter(
+					(option) => option.name !== 'respondWithOptions' && option.name !== 'webhookSuffix',
+				);
+				waitNodeParameters.push({
+					...parameter,
+					options,
+				});
+				continue;
+			}
+
+			waitNodeParameters.push(parameter);
+		}
+		return waitNodeParameters;
 	}
 
 	return parameters;

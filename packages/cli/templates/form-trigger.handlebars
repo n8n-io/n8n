@@ -751,6 +751,15 @@
 						.catch(function (error) {
 							console.error('Error:', error);
 						});
+
+						const interval = setInterval(function() {
+							const isSubmited = document.querySelector('#submitted-form').style.display;
+							if(isSubmited === 'block') {
+								clearInterval(interval);
+								return;
+							}
+							window.location.reload();
+						}, 2000);
 				}
 			});
 		</script>
