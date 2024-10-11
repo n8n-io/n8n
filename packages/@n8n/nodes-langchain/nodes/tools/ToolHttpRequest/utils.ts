@@ -1,3 +1,12 @@
+import { Readability } from '@mozilla/readability';
+import cheerio from 'cheerio';
+import { convert } from 'html-to-text';
+import { JSDOM } from 'jsdom';
+import get from 'lodash/get';
+import set from 'lodash/set';
+import unset from 'lodash/unset';
+import * as mime from 'mime-types';
+import { getOAuth2AdditionalParameters } from 'n8n-nodes-base/dist/nodes/HttpRequest/GenericFunctions';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -7,20 +16,8 @@ import type {
 	NodeApiError,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError, jsonParse } from 'n8n-workflow';
-
-import { getOAuth2AdditionalParameters } from 'n8n-nodes-base/dist/nodes/HttpRequest/GenericFunctions';
-
-import set from 'lodash/set';
-import get from 'lodash/get';
-import unset from 'lodash/unset';
-import * as mime from 'mime-types';
-import cheerio from 'cheerio';
-import { convert } from 'html-to-text';
-
-import { Readability } from '@mozilla/readability';
-import { JSDOM } from 'jsdom';
 import { z } from 'zod';
-import type { DynamicZodObject } from '../../../types/zod.types';
+
 import type {
 	ParameterInputType,
 	ParametersValues,
@@ -29,6 +26,7 @@ import type {
 	SendIn,
 	ToolParameter,
 } from './interfaces';
+import type { DynamicZodObject } from '../../../types/zod.types';
 
 const genericCredentialRequest = async (ctx: IExecuteFunctions, itemIndex: number) => {
 	const genericType = ctx.getNodeParameter('genericAuthType', itemIndex) as string;

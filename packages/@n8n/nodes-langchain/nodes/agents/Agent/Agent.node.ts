@@ -259,7 +259,7 @@ export class Agent implements INodeType {
 			color: '#404040',
 		},
 		codex: {
-			alias: ['Agent', 'LangChain', 'Chat', 'Conversational', 'Plan and Execute', 'ReAct', 'Tools'],
+			alias: ['LangChain', 'Chat', 'Conversational', 'Plan and Execute', 'ReAct', 'Tools'],
 			categories: ['AI'],
 			subcategories: {
 				AI: ['Agents', 'Root Nodes'],
