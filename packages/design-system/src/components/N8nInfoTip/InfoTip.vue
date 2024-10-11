@@ -53,7 +53,10 @@ const iconData = computed<{ icon: IconMap[keyof IconMap]; color: IconColor }>(()
 			[$style.bold]: bold,
 		}"
 	>
+		<!-- Note that the branching is required to support displaying
+		 the slot either in the tooltip of the icon or following it -->
 		<N8nTooltip
+			v-if="type === 'tooltip'"
 			:placement="tooltipPlacement"
 			:popper-class="$style.tooltipPopper"
 			:disabled="type !== 'tooltip'"
@@ -67,6 +70,12 @@ const iconData = computed<{ icon: IconMap[keyof IconMap]; color: IconColor }>(()
 				</span>
 			</template>
 		</N8nTooltip>
+		<span v-else :class="$style.iconText">
+			<N8nIcon :icon="iconData.icon" :color="iconData.color" />
+			<span>
+				<slot />
+			</span>
+		</span>
 	</div>
 </template>
 
