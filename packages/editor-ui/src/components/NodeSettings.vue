@@ -555,7 +555,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 		);
 
 		if (updatedConnections) {
-			workflowsStore.setConnections(updatedConnections);
+			workflowsStore.setConnections(updatedConnections, true);
 		}
 
 		workflowsStore.setNodeParameters(updateInformation);

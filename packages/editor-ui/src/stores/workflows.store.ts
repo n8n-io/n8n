@@ -996,8 +996,12 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflow.value.nodes = nodes;
 	}
 
-	function setConnections(connections: IConnections): void {
+	function setConnections(connections: IConnections, updateCashedWorkflow = false): void {
 		workflow.value.connections = connections;
+
+		if (updateCashedWorkflow) {
+			updateCachedWorkflow();
+		}
 	}
 
 	function resetAllNodesIssues(): boolean {

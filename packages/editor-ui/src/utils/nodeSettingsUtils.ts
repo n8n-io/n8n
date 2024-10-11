@@ -27,6 +27,20 @@ export function updateDynamicConnections(
 		}
 	}
 
+	if (
+		node.type === SWITCH_NODE_TYPE &&
+		parameterData.name === 'parameters.options.fallbackOutput'
+	) {
+		const curentFallbackOutput = (node.parameters?.options as { fallbackOutput: string })
+			?.fallbackOutput as string;
+		if (curentFallbackOutput === 'extra') {
+			if (!parameterData.value || parameterData.value !== 'extra') {
+				connections[node.name].main = connections[node.name].main.slice(0, -1);
+				return connections;
+			}
+		}
+	}
+
 	if (node.type === SWITCH_NODE_TYPE && parameterData.name.includes('parameters.rules.values')) {
 		const { fallbackOutput } = node.parameters?.options as { fallbackOutput: string };
 
