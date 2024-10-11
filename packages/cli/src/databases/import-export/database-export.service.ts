@@ -45,7 +45,7 @@ export class DatabaseExportService {
 		const month = String(now.getMonth() + 1).padStart(2, '0');
 		const day = String(now.getDate()).padStart(2, '0');
 
-		const tarballFileName = `${ZIP_BASE_FILE_NAME}-${year}-${month}-${day}.tar.gz`;
+		const tarballFileName = `${ZIP_BASE_FILE_NAME}-${year}-${month}-${day}.tar.zip`;
 
 		return path.join(this.config.outDir, tarballFileName);
 	}
@@ -73,6 +73,8 @@ export class DatabaseExportService {
 	private async writeTarball() {
 		const pack = tar.pack();
 
+		pack.pipe(createGzip()).pipe(fs.createWriteStream(this.tarballPath));
+
 		// DB row -> entryStream -> tarStream -> gzipStream -> writeStream
 
 		const tables =
@@ -81,7 +83,15 @@ export class DatabaseExportService {
 				: this.schemaService.getTables().filter((t) => !EXCLUDE_LIST.includes(t.tableName));
 
 		for (const { tableName, columns } of tables) {
-			const entry = pack.entry({ name: `${tableName}.jsonl` });
+			const totalRowsCount = await this.schemaService
+				.getDataSource()
+				.query(`SELECT COUNT(*) AS count FROM ${tableName}`)
+				.then((rows: Array<{ count: number }>) => rows[0].count);
+
+			if (totalRowsCount === 0) continue;
+
+			const tableFilePath = path.join(this.config.outDir, `${tableName}.jsonl`);
+			const writeStream = fs.createWriteStream(tableFilePath);
 
 			let offset = 0;
 			let totalRows = 0;
@@ -98,7 +108,9 @@ export class DatabaseExportService {
 					for (const column of columns) {
 						this.normalizeRow(row, { column, tableName });
 					}
-					entry.write(JSON.stringify(row) + '\n');
+					const json = JSON.stringify(row);
+					writeStream.write(json);
+					writeStream.write('\n');
 				}
 
 				totalRows += batch.length;
@@ -109,6 +121,10 @@ export class DatabaseExportService {
 
 			this.rowCounts[tableName] = totalRows;
 			this.logger.info(`[ExportService] Exported ${totalRows} rows from ${tableName}`);
+
+			writeStream.end();
+			pack.entry({ name: `${tableName}.jsonl` }, await fs.promises.readFile(tableFilePath));
+			await fs.promises.rm(tableFilePath);
 		}
 
 		const manifest: Manifest = {
@@ -124,9 +140,6 @@ export class DatabaseExportService {
 		pack.entry({ name: MANIFEST_FILENAME }, manifestBuffer);
 
 		pack.finalize();
-
-		// pack.pipe(process.stdout);
-		pack.pipe(createGzip()).pipe(fs.createWriteStream(this.tarballPath));
 	}
 
 	private normalizeRow(
