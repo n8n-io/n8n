@@ -160,4 +160,16 @@ describe('ProjectsNavigation', () => {
 		expect(getByTestId('project-personal-menu-item')).toBeVisible();
 		expect(getAllByTestId('project-menu-item')).toHaveLength(teamProjects.length);
 	});
+
+	it('should not show "Projects" title when the menu is collapsed', async () => {
+		projectsStore.myProjects = [...personalProjects, ...teamProjects];
+
+		const { queryByRole } = renderComponent({
+			props: {
+				collapsed: true,
+			},
+		});
+
+		expect(queryByRole('heading', { level: 3, name: 'Projects' })).not.toBeInTheDocument();
+	});
 });

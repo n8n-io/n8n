@@ -130,14 +130,9 @@ onMounted(async () => {
 			"
 			class="mt-m mb-m"
 		/>
-		<N8nTooltip v-if="displayProjects.length" placement="right" :disabled="!props.collapsed">
-			<template v-if="props.collapsed" #content>
-				{{ locale.baseText('projects.menu.title') }}
-			</template>
-			<N8nText :class="$style.projectsLabel" tag="h3" bold>
-				<span>{{ locale.baseText('projects.menu.title') }}</span>
-			</N8nText>
-		</N8nTooltip>
+		<N8nText v-if="!props.collapsed" :class="$style.projectsLabel" tag="h3" bold>
+			<span>{{ locale.baseText('projects.menu.title') }}</span>
+		</N8nText>
 		<ElMenu v-if="displayProjects.length" :collapse="props.collapsed" :class="$style.projectItems">
 			<N8nMenuItem
 				:item="personalProject"
