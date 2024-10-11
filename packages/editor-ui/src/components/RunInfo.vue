@@ -51,6 +51,7 @@ const runMetadata = computed(() => {
 		></span>
 	</n8n-info-tip>
 	<div v-else-if="runMetadata" :class="$style.tooltipRow">
+		<n8n-info-tip type="note" :theme="theme" :data-test-id="`node-run-status-${theme}`" />
 		<n8n-info-tip
 			type="tooltip"
 			theme="info"
@@ -75,7 +76,6 @@ const runMetadata = computed(() => {
 				{{ runMetadata.executionTime }} {{ i18n.baseText('runData.ms') }}
 			</div>
 		</n8n-info-tip>
-		<n8n-info-tip type="note" :theme="theme" :data-test-id="`node-run-status-${theme}`" />
 	</div>
 </template>
 
