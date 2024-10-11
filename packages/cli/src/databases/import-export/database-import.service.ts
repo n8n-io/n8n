@@ -25,7 +25,7 @@ import { DatabaseSchemaService } from '../database-schema.service';
 @Service()
 export class DatabaseImportService {
 	private config: DatabaseImportConfig = {
-		importFilePath: '/tmp/backup/n8n-db-export-2024-10-11.tar.gz',
+		importFilePath: '/tmp/backup/n8n-db-export-2024-10-11.tar.gz', // @TODO: Pass from command
 		extractDirPath: '/tmp/backup',
 		truncateDestination: true, // @TODO: Only for dev, default it to `false` later
 	};
