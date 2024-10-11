@@ -14,7 +14,7 @@ import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus'
 import type { BooleanLicenseFeature, NumericLicenseFeature } from '@/interfaces';
 import type { FeatureReturnType } from '@/license';
 import { License } from '@/license';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { MfaService } from '@/mfa/mfa.service';
 import { Push } from '@/push';
 import type { UserSetupPayload } from '@/requests';
@@ -92,6 +92,7 @@ export class E2EController {
 		[LICENSE_FEATURES.PROJECT_ROLE_VIEWER]: false,
 		[LICENSE_FEATURES.AI_ASSISTANT]: false,
 		[LICENSE_FEATURES.COMMUNITY_NODES_CUSTOM_REGISTRY]: false,
+		[LICENSE_FEATURES.ASK_AI]: false,
 	};
 
 	private numericFeatures: Record<NumericLicenseFeature, number> = {

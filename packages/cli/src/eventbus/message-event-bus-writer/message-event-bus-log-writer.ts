@@ -12,7 +12,7 @@ import Container from 'typedi';
 import { Worker } from 'worker_threads';
 
 import { inTest } from '@/constants';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 
 import type { EventMessageTypes } from '../event-message-classes';
 import { isEventMessageOptions } from '../event-message-classes/abstract-event-message';
@@ -149,7 +149,7 @@ export class MessageEventBusLogWriter {
 		this._worker = new Worker(workerFileName);
 		if (this.worker) {
 			this.worker.on('messageerror', async (error) => {
-				this.logger.error('Event Bus Log Writer thread error, attempting to restart...', error);
+				this.logger.error('Event Bus Log Writer thread error, attempting to restart...', { error });
 				await MessageEventBusLogWriter.instance.startThread();
 			});
 			return true;

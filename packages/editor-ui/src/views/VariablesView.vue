@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref, onBeforeMount, onBeforeUnmount } from 'vue';
+import { computed, ref, onBeforeMount, onBeforeUnmount, onMounted } from 'vue';
 import { useEnvironmentsStore } from '@/stores/environments.ee.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
@@ -9,6 +9,7 @@ import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { useMessage } from '@/composables/useMessage';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
 
 import type { IResource } from '@/components/layouts/ResourcesListLayout.vue';
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
@@ -28,6 +29,7 @@ const telemetry = useTelemetry();
 const i18n = useI18n();
 const message = useMessage();
 const sourceControlStore = useSourceControlStore();
+const documentTitle = useDocumentTitle();
 let sourceControlStoreUnsubscribe = () => {};
 
 const layoutRef = ref<InstanceType<typeof ResourcesListLayout> | null>(null);
@@ -247,6 +249,10 @@ onBeforeMount(() => {
 
 onBeforeUnmount(() => {
 	sourceControlStoreUnsubscribe();
+});
+
+onMounted(() => {
+	documentTitle.set(i18n.baseText('variables.heading'));
 });
 </script>
 

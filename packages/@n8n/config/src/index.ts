@@ -5,8 +5,11 @@ import { EndpointsConfig } from './configs/endpoints.config';
 import { EventBusConfig } from './configs/event-bus.config';
 import { ExternalSecretsConfig } from './configs/external-secrets.config';
 import { ExternalStorageConfig } from './configs/external-storage.config';
+import { LoggingConfig } from './configs/logging.config';
 import { NodesConfig } from './configs/nodes.config';
 import { PublicApiConfig } from './configs/public-api.config';
+import { TaskRunnersConfig } from './configs/runners.config';
+export { TaskRunnersConfig } from './configs/runners.config';
 import { ScalingModeConfig } from './configs/scaling-mode.config';
 import { SentryConfig } from './configs/sentry.config';
 import { TemplatesConfig } from './configs/templates.config';
@@ -14,6 +17,9 @@ import { UserManagementConfig } from './configs/user-management.config';
 import { VersionNotificationsConfig } from './configs/version-notifications.config';
 import { WorkflowsConfig } from './configs/workflows.config';
 import { Config, Env, Nested } from './decorators';
+
+export { LOG_SCOPES } from './configs/logging.config';
+export type { LogScope } from './configs/logging.config';
 
 @Config
 export class GlobalConfig {
@@ -81,4 +87,10 @@ export class GlobalConfig {
 
 	@Nested
 	queue: ScalingModeConfig;
+
+	@Nested
+	logging: LoggingConfig;
+
+	@Nested
+	taskRunners: TaskRunnersConfig;
 }

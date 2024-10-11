@@ -3,13 +3,10 @@ import { mock } from 'jest-mock-extended';
 
 import config from '@/config';
 import { generateNanoId } from '@/databases/utils/generators';
-import type {
-	RedisServiceCommandObject,
-	RedisServiceWorkerResponseObject,
-} from '@/scaling/redis/redis-service-commands';
 import type { RedisClientService } from '@/services/redis-client.service';
 
 import { Publisher } from '../pubsub/publisher.service';
+import type { PubSub } from '../pubsub/pubsub.types';
 
 describe('Publisher', () => {
 	let queueModeId: string;
@@ -49,13 +46,13 @@ describe('Publisher', () => {
 	describe('publishCommand', () => {
 		it('should publish command into `n8n.commands` pubsub channel', async () => {
 			const publisher = new Publisher(mock(), redisClientService);
-			const msg = mock<RedisServiceCommandObject>({ command: 'reloadLicense' });
+			const msg = mock<PubSub.Command>({ command: 'reload-license' });
 
 			await publisher.publishCommand(msg);
 
 			expect(client.publish).toHaveBeenCalledWith(
 				'n8n.commands',
-				JSON.stringify({ ...msg, senderId: queueModeId }),
+				JSON.stringify({ ...msg, senderId: queueModeId, selfSend: false, debounce: true }),
 			);
 		});
 	});
@@ -63,8 +60,8 @@ describe('Publisher', () => {
 	describe('publishWorkerResponse', () => {
 		it('should publish worker response into `n8n.worker-response` pubsub channel', async () => {
 			const publisher = new Publisher(mock(), redisClientService);
-			const msg = mock<RedisServiceWorkerResponseObject>({
-				command: 'reloadExternalSecretsProviders',
+			const msg = mock<PubSub.WorkerResponse>({
+				response: 'response-to-get-worker-status',
 			});
 
 			await publisher.publishWorkerResponse(msg);

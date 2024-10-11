@@ -75,7 +75,7 @@ describe('Top-level completions', () => {
 				section: METADATA_SECTION,
 			}),
 		);
-		expect(result?.[14]).toEqual(
+		expect(result?.[15]).toEqual(
 			expect.objectContaining({ label: '$max()', section: METHODS_SECTION }),
 		);
 	});

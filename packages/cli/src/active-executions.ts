@@ -13,12 +13,12 @@ import { Service } from 'typedi';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import type {
-	ExecutionPayload,
+	CreateExecutionPayload,
 	IExecutingWorkflowData,
 	IExecutionDb,
 	IExecutionsCurrentSummary,
 } from '@/interfaces';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { isWorkflowIdValid } from '@/utils';
 
 import { ConcurrencyControlService } from './concurrency/concurrency-control.service';
@@ -52,11 +52,10 @@ export class ActiveExecutions {
 		if (executionId === undefined) {
 			// Is a new execution so save in DB
 
-			const fullExecutionData: ExecutionPayload = {
+			const fullExecutionData: CreateExecutionPayload = {
 				data: executionData.executionData!,
 				mode,
 				finished: false,
-				startedAt: new Date(),
 				workflowData: executionData.workflowData,
 				status: executionStatus,
 				workflowId: executionData.workflowData.id,
@@ -74,7 +73,10 @@ export class ActiveExecutions {
 			executionId = await this.executionRepository.createNewExecution(fullExecutionData);
 			assert(executionId);
 
-			await this.concurrencyControl.throttle({ mode, executionId });
+			if (config.getEnv('executions.mode') === 'regular') {
+				await this.concurrencyControl.throttle({ mode, executionId });
+				await this.executionRepository.setRunning(executionId);
+			}
 			executionStatus = 'running';
 		} else {
 			// Is an existing execution we want to finish so update in DB
@@ -86,6 +88,7 @@ export class ActiveExecutions {
 				data: executionData.executionData!,
 				waitTill: null,
 				status: executionStatus,
+				// this is resuming, so keep `startedAt` as it was
 			};
 
 			await this.executionRepository.updateExistingExecution(executionId, execution);

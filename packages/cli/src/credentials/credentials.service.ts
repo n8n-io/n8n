@@ -33,7 +33,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
 import type { ICredentialsDb } from '@/interfaces';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { userHasScopes } from '@/permissions/check-access';
 import type { CredentialRequest, ListQuery } from '@/requests';
 import { CredentialsTester } from '@/services/credentials-tester.service';

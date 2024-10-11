@@ -1,18 +1,18 @@
 import {
-	mapLegacyConnectionsToCanvasConnections,
-	mapLegacyEndpointsToCanvasConnectionPort,
-	getUniqueNodeName,
-	mapCanvasConnectionToLegacyConnection,
-	parseCanvasConnectionHandleString,
 	createCanvasConnectionHandleString,
 	createCanvasConnectionId,
+	mapCanvasConnectionToLegacyConnection,
+	mapLegacyConnectionsToCanvasConnections,
+	mapLegacyEndpointsToCanvasConnectionPort,
+	parseCanvasConnectionHandleString,
+	checkOverlap,
 } from '@/utils/canvasUtilsV2';
-import { NodeConnectionType, type IConnections, type INodeTypeDescription } from 'n8n-workflow';
+import { type IConnections, type INodeTypeDescription, NodeConnectionType } from 'n8n-workflow';
 import type { CanvasConnection } from '@/types';
+import { CanvasConnectionMode } from '@/types';
 import type { INodeUi } from '@/Interface';
 import type { Connection } from '@vue-flow/core';
 import { createTestNode } from '@/__tests__/mocks';
-import { CanvasConnectionMode } from '@/types';
 
 vi.mock('uuid', () => ({
 	v4: vi.fn(() => 'mock-uuid'),
@@ -801,34 +801,71 @@ describe('mapLegacyEndpointsToCanvasConnectionPort', () => {
 			{ type: NodeConnectionType.AiTool, index: 0, label: 'Optional Tool' },
 		]);
 	});
+
+	it('should map maxConnections correctly', () => {
+		const endpoints: INodeTypeDescription['inputs'] = [
+			NodeConnectionType.Main,
+			{
+				type: NodeConnectionType.AiMemory,
+				maxConnections: 1,
+				displayName: 'Optional Tool',
+				required: false,
+			},
+		];
+		const result = mapLegacyEndpointsToCanvasConnectionPort(endpoints);
+
+		expect(result).toEqual([
+			{
+				type: NodeConnectionType.Main,
+				maxConnections: undefined,
+				index: 0,
+				label: undefined,
+			},
+			{ type: NodeConnectionType.AiMemory, maxConnections: 1, index: 0, label: 'Optional Tool' },
+		]);
+	});
 });
 
-describe('getUniqueNodeName', () => {
-	it('should return the original name if it is unique', () => {
-		const name = 'Node A';
-		const existingNames = new Set(['Node B', 'Node C']);
-		const result = getUniqueNodeName(name, existingNames);
-		expect(result).toBe(name);
+describe('checkOverlap', () => {
+	it('should return true when nodes overlap', () => {
+		const node1 = { x: 0, y: 0, width: 10, height: 10 };
+		const node2 = { x: 5, y: 5, width: 10, height: 10 };
+		expect(checkOverlap(node1, node2)).toBe(true);
 	});
 
-	it('should append a number to the name if it already exists', () => {
-		const name = 'Node A';
-		const existingNames = new Set(['Node A', 'Node B']);
-		const result = getUniqueNodeName(name, existingNames);
-		expect(result).toBe('Node A 1');
+	it('should return false when node1 is completely to the left of node2', () => {
+		const node1 = { x: 0, y: 0, width: 10, height: 10 };
+		const node2 = { x: 15, y: 0, width: 10, height: 10 };
+		expect(checkOverlap(node1, node2)).toBe(false);
 	});
 
-	it('should find the next available number for the name', () => {
-		const name = 'Node A';
-		const existingNames = new Set(['Node A', 'Node A 1', 'Node A 2']);
-		const result = getUniqueNodeName(name, existingNames);
-		expect(result).toBe('Node A 3');
+	it('should return false when node2 is completely to the left of node1', () => {
+		const node1 = { x: 15, y: 0, width: 10, height: 10 };
+		const node2 = { x: 0, y: 0, width: 10, height: 10 };
+		expect(checkOverlap(node1, node2)).toBe(false);
 	});
 
-	it('should use UUID if more than 99 variations exist', () => {
-		const name = 'Node A';
-		const existingNames = new Set([...Array(100).keys()].map((i) => `Node A ${i}`).concat([name]));
-		const result = getUniqueNodeName(name, existingNames);
-		expect(result).toBe('Node A mock-uuid');
+	it('should return false when node1 is completely above node2', () => {
+		const node1 = { x: 0, y: 0, width: 10, height: 10 };
+		const node2 = { x: 0, y: 15, width: 10, height: 10 };
+		expect(checkOverlap(node1, node2)).toBe(false);
+	});
+
+	it('should return false when node2 is completely above node1', () => {
+		const node1 = { x: 0, y: 15, width: 10, height: 10 };
+		const node2 = { x: 0, y: 0, width: 10, height: 10 };
+		expect(checkOverlap(node1, node2)).toBe(false);
+	});
+
+	it('should return false when nodes touch at the edges', () => {
+		const node1 = { x: 0, y: 0, width: 10, height: 10 };
+		const node2 = { x: 10, y: 0, width: 10, height: 10 };
+		expect(checkOverlap(node1, node2)).toBe(false);
+	});
+
+	it('should return false when nodes touch at the corners', () => {
+		const node1 = { x: 0, y: 0, width: 10, height: 10 };
+		const node2 = { x: 10, y: 10, width: 10, height: 10 };
+		expect(checkOverlap(node1, node2)).toBe(false);
 	});
 });

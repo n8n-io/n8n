@@ -67,6 +67,7 @@ const repositories = [
 	'Project',
 	'ProjectRelation',
 	'Role',
+	'ProcessedData',
 	'Project',
 	'ProjectRelation',
 	'Settings',
@@ -80,6 +81,7 @@ const repositories = [
 	'WorkflowHistory',
 	'WorkflowStatistics',
 	'WorkflowTagMapping',
+	'ApiKey',
 ] as const;
 
 /**
@@ -87,9 +89,18 @@ const repositories = [
  */
 export async function truncate(names: Array<(typeof repositories)[number]>) {
 	for (const name of names) {
-		const RepositoryClass: Class<Repository<object>> =
-			// eslint-disable-next-line n8n-local-rules/no-dynamic-import-template
-			(await import(`@/databases/repositories/${kebabCase(name)}.repository`))[`${name}Repository`];
+		let RepositoryClass: Class<Repository<object>>;
+
+		try {
+			RepositoryClass = (await import(`@/databases/repositories/${kebabCase(name)}.repository`))[
+				`${name}Repository`
+			];
+		} catch (e) {
+			RepositoryClass = (await import(`@/databases/repositories/${kebabCase(name)}.repository.ee`))[
+				`${name}Repository`
+			];
+		}
+
 		await Container.get(RepositoryClass).delete({});
 	}
 }

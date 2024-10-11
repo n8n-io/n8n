@@ -4,7 +4,8 @@ import { Container } from 'typedi';
 
 import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
-import { OrchestrationHandlerWebhookService } from '@/services/orchestration/webhook/orchestration.handler.webhook.service';
+import { PubSubHandler } from '@/scaling/pubsub/pubsub-handler';
+import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { OrchestrationWebhookService } from '@/services/orchestration/webhook/orchestration.webhook.service';
 import { WebhookServer } from '@/webhooks/webhook-server';
 
@@ -81,6 +82,8 @@ export class Webhook extends BaseCommand {
 		this.logger.debug('Orchestration init complete');
 		await this.initBinaryDataService();
 		this.logger.debug('Binary data service init complete');
+		await this.initDataDeduplicationService();
+		this.logger.debug('Data deduplication service init complete');
 		await this.initExternalHooks();
 		this.logger.debug('External hooks init complete');
 		await this.initExternalSecrets();
@@ -110,6 +113,8 @@ export class Webhook extends BaseCommand {
 
 	async initOrchestration() {
 		await Container.get(OrchestrationWebhookService).init();
-		await Container.get(OrchestrationHandlerWebhookService).init();
+
+		Container.get(PubSubHandler).init();
+		await Container.get(Subscriber).subscribe('n8n.commands');
 	}
 }

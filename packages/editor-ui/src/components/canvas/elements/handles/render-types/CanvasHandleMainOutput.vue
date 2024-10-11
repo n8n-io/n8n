@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { useCanvasNodeHandle } from '@/composables/useCanvasNodeHandle';
 import { useCanvasNode } from '@/composables/useCanvasNode';
-import { computed, ref } from 'vue';
+import { computed, ref, useCssModule } from 'vue';
 import type { CanvasNodeDefaultRender } from '@/types';
 import { useI18n } from '@/composables/useI18n';
 
@@ -9,14 +9,25 @@ const emit = defineEmits<{
 	add: [];
 }>();
 
+const $style = useCssModule();
+
 const i18n = useI18n();
 const { render } = useCanvasNode();
-const { label, isConnected, isConnecting, isReadOnly, runData } = useCanvasNodeHandle();
+const { label, isConnected, isConnecting, isReadOnly, isRequired, runData } = useCanvasNodeHandle();
 
 const handleClasses = 'source';
+
+const classes = computed(() => ({
+	'canvas-node-handle-main-output': true,
+	[$style.handle]: true,
+	[$style.required]: isRequired.value,
+}));
+
 const isHovered = ref(false);
 
 const renderOptions = computed(() => render.value.options as CanvasNodeDefaultRender['options']);
+
+const runDataTotal = computed(() => runData.value?.total ?? 0);
 
 const runDataLabel = computed(() =>
 	runData.value
@@ -29,7 +40,7 @@ const runDataLabel = computed(() =>
 
 const isHandlePlusVisible = computed(() => !isConnecting.value || isHovered.value);
 
-const plusState = computed(() => (runData.value ? 'success' : 'default'));
+const plusType = computed(() => (runDataTotal.value > 0 ? 'success' : 'default'));
 
 const plusLineSize = computed(
 	() =>
@@ -37,7 +48,7 @@ const plusLineSize = computed(
 			small: 46,
 			medium: 66,
 			large: 80,
-		})[(renderOptions.value.outputs?.labelSize ?? runData.value) ? 'large' : 'small'],
+		})[(runDataTotal.value > 0 ? 'large' : renderOptions.value.outputs?.labelSize) ?? 'small'],
 );
 
 function onMouseEnter() {
@@ -53,7 +64,7 @@ function onClickAdd() {
 }
 </script>
 <template>
-	<div :class="['canvas-node-handle-main-output', $style.handle]">
+	<div :class="classes">
 		<div v-if="label" :class="[$style.label, $style.outputLabel]">{{ label }}</div>
 		<div v-else-if="runData" :class="[$style.label, $style.runDataLabel]">{{ runDataLabel }}</div>
 		<CanvasHandleDot :handle-classes="handleClasses" />
@@ -64,7 +75,7 @@ function onClickAdd() {
 				data-test-id="canvas-handle-plus"
 				:line-size="plusLineSize"
 				:handle-classes="handleClasses"
-				:state="plusState"
+				:type="plusType"
 				@mouseenter="onMouseEnter"
 				@mouseleave="onMouseLeave"
 				@click:plus="onClickAdd"
@@ -89,6 +100,11 @@ function onClickAdd() {
 	white-space: nowrap;
 	text-overflow: ellipsis;
 	overflow: hidden;
+}
+
+.required .label::after {
+	content: '*';
+	color: var(--color-danger);
 }
 
 .outputLabel {

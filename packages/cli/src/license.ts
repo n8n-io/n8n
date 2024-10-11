@@ -6,7 +6,7 @@ import Container, { Service } from 'typedi';
 import config from '@/config';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import { OnShutdown } from '@/decorators/on-shutdown';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { LicenseMetricsService } from '@/metrics/license-metrics.service';
 import { OrchestrationService } from '@/services/orchestration.service';
 
@@ -37,7 +37,9 @@ export class License {
 		private readonly orchestrationService: OrchestrationService,
 		private readonly settingsRepository: SettingsRepository,
 		private readonly licenseMetricsService: LicenseMetricsService,
-	) {}
+	) {
+		this.logger = this.logger.withScope('license');
+	}
 
 	/**
 	 * Whether this instance should renew the license - on init and periodically.
@@ -109,9 +111,9 @@ export class License {
 
 			await this.manager.initialize();
 			this.logger.debug('License initialized');
-		} catch (e: unknown) {
-			if (e instanceof Error) {
-				this.logger.error('Could not initialize license manager sdk', e);
+		} catch (error: unknown) {
+			if (error instanceof Error) {
+				this.logger.error('Could not initialize license manager sdk', { error });
 			}
 		}
 	}
@@ -146,7 +148,7 @@ export class License {
 				this.orchestrationService.isFollower
 			) {
 				this.logger.debug(
-					'[Multi-main setup] Instance is follower, skipping sending of "reloadLicense" command...',
+					'[Multi-main setup] Instance is follower, skipping sending of "reload-license" command...',
 				);
 				return;
 			}
@@ -160,7 +162,7 @@ export class License {
 
 		if (config.getEnv('executions.mode') === 'queue') {
 			const { Publisher } = await import('@/scaling/pubsub/publisher.service');
-			await Container.get(Publisher).publishCommand({ command: 'reloadLicense' });
+			await Container.get(Publisher).publishCommand({ command: 'reload-license' });
 		}
 
 		const isS3Selected = config.getEnv('binaryDataManager.mode') === 's3';
@@ -251,6 +253,10 @@ export class License {
 
 	isAiAssistantEnabled() {
 		return this.isFeatureEnabled(LICENSE_FEATURES.AI_ASSISTANT);
+	}
+
+	isAskAiEnabled() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.ASK_AI);
 	}
 
 	isAdvancedExecutionFiltersEnabled() {

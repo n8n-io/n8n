@@ -9,11 +9,13 @@
 // XX denotes that the node is disabled
 // PD denotes that the node has pinned data
 
+import { NodeConnectionType } from 'n8n-workflow';
+
+import { createNodeData } from './helpers';
 import { DirectedGraph } from '../DirectedGraph';
 import { findSubgraph } from '../findSubgraph';
-import { createNodeData } from './helpers';
 
-describe('findSubgraph2', () => {
+describe('findSubgraph', () => {
 	//                 ►►
 	//  ┌───────┐     ┌───────────┐
 	//  │trigger├────►│destination│
@@ -26,7 +28,7 @@ describe('findSubgraph2', () => {
 			.addNodes(trigger, destination)
 			.addConnections({ from: trigger, to: destination });
 
-		const subgraph = findSubgraph(graph, destination, trigger);
+		const subgraph = findSubgraph({ graph, destination, trigger });
 
 		expect(subgraph).toEqual(graph);
 	});
@@ -48,7 +50,7 @@ describe('findSubgraph2', () => {
 				{ from: ifNode, to: noOp, outputIndex: 1 },
 			);
 
-		const subgraph = findSubgraph(graph, noOp, ifNode);
+		const subgraph = findSubgraph({ graph, destination: noOp, trigger: ifNode });
 
 		expect(subgraph).toEqual(graph);
 	});
@@ -68,7 +70,7 @@ describe('findSubgraph2', () => {
 			.addNodes(trigger, destination, node)
 			.addConnections({ from: trigger, to: destination }, { from: destination, to: node });
 
-		const subgraph = findSubgraph(graph, destination, trigger);
+		const subgraph = findSubgraph({ graph, destination, trigger });
 
 		expect(subgraph).toEqual(
 			new DirectedGraph()
@@ -83,6 +85,12 @@ describe('findSubgraph2', () => {
 	//  │trigger│         │disabled├─────►│destination│
 	//  │       ├────────►│        │      └───────────┘
 	//  └───────┘         └────────┘
+	// turns into
+	//  ┌───────┐       ►►
+	//  │       │      ┌───────────┐
+	//  │trigger├─────►│destination│
+	//  │       │      └───────────┘
+	//  └───────┘
 	test('skip disabled nodes', () => {
 		const trigger = createNodeData({ name: 'trigger' });
 		const disabled = createNodeData({ name: 'disabled', disabled: true });
@@ -92,8 +100,42 @@ describe('findSubgraph2', () => {
 			.addNodes(trigger, disabled, destination)
 			.addConnections({ from: trigger, to: disabled }, { from: disabled, to: destination });
 
-		const subgraph = findSubgraph(graph, destination, trigger);
+		const subgraph = findSubgraph({ graph, destination, trigger });
 
+		expect(subgraph).toEqual(
+			new DirectedGraph()
+				.addNodes(trigger, destination)
+				.addConnections({ from: trigger, to: destination }),
+		);
+	});
+
+	//                 XX          XX
+	//  ┌───────┐     ┌─────┐     ┌─────┐     ┌───────────┐
+	//  │trigger├────►│node1├────►│node2├────►│destination│
+	//  └───────┘     └─────┘     └─────┘     └───────────┘
+	// turns into
+	//  ┌───────┐     ┌───────────┐
+	//  │trigger├────►│destination│
+	//  └───────┘     └───────────┘
+	test('skip multiple disabled nodes', () => {
+		// ARRANGE
+		const trigger = createNodeData({ name: 'trigger' });
+		const disabledNode1 = createNodeData({ name: 'disabledNode1', disabled: true });
+		const disabledNode2 = createNodeData({ name: 'disabledNode2', disabled: true });
+		const destination = createNodeData({ name: 'destination' });
+
+		const graph = new DirectedGraph()
+			.addNodes(trigger, disabledNode1, disabledNode2, destination)
+			.addConnections(
+				{ from: trigger, to: disabledNode1 },
+				{ from: disabledNode1, to: disabledNode2 },
+				{ from: disabledNode2, to: destination },
+			);
+
+		// ACT
+		const subgraph = findSubgraph({ graph, destination, trigger });
+
+		// ASSERT
 		expect(subgraph).toEqual(
 			new DirectedGraph()
 				.addNodes(trigger, destination)
@@ -121,7 +163,7 @@ describe('findSubgraph2', () => {
 			);
 
 		// ACT
-		const subgraph = findSubgraph(graph, node2, trigger);
+		const subgraph = findSubgraph({ graph, destination: node2, trigger });
 
 		// ASSERT
 		expect(subgraph).toEqual(graph);
@@ -145,7 +187,7 @@ describe('findSubgraph2', () => {
 			.addConnections({ from: trigger, to: node1 }, { from: node2, to: node1 });
 
 		// ACT
-		const subgraph = findSubgraph(graph, node1, trigger);
+		const subgraph = findSubgraph({ graph, destination: node1, trigger });
 
 		// ASSERT
 		expect(subgraph).toEqual(
@@ -173,7 +215,7 @@ describe('findSubgraph2', () => {
 			);
 
 		// ACT
-		const subgraph = findSubgraph(graph, destination, trigger);
+		const subgraph = findSubgraph({ graph, destination, trigger });
 
 		// ASSERT
 		expect(subgraph).toEqual(
@@ -181,5 +223,111 @@ describe('findSubgraph2', () => {
 				.addNodes(trigger, destination)
 				.addConnections({ from: trigger, to: destination }),
 		);
+	});
+
+	describe('root nodes', () => {
+		//                 ►►
+		//  ┌───────┐      ┌───────────┐
+		//  │trigger├─────►│destination│
+		//  └───────┘      └──▲────────┘
+		//                    │AiLanguageModel
+		//                   ┌┴──────┐
+		//                   │aiModel│
+		//                   └───────┘
+		test('always retain connections that have a different type than `NodeConnectionType.Main`', () => {
+			// ARRANGE
+			const trigger = createNodeData({ name: 'trigger' });
+			const destination = createNodeData({ name: 'destination' });
+			const aiModel = createNodeData({ name: 'ai_model' });
+
+			const graph = new DirectedGraph()
+				.addNodes(trigger, destination, aiModel)
+				.addConnections(
+					{ from: trigger, to: destination },
+					{ from: aiModel, type: NodeConnectionType.AiLanguageModel, to: destination },
+				);
+
+			// ACT
+			const subgraph = findSubgraph({ graph, destination, trigger });
+
+			// ASSERT
+			expect(subgraph).toEqual(graph);
+		});
+
+		// This graph is not possible, it's only here to make sure `findSubgraph`
+		// does not follow non-Main connections.
+		//
+		//  ┌────┐   ┌───────────┐
+		//  │root┼───►destination│
+		//  └──▲─┘   └───────────┘
+		//     │AiLanguageModel
+		//    ┌┴──────┐
+		//    │aiModel│
+		//    └▲──────┘
+		//    ┌┴──────┐
+		//    │trigger│
+		//    └───────┘
+		// turns into an empty graph, because there is no `Main` typed connection
+		// connecting destination and trigger.
+		test('skip non-Main connection types', () => {
+			// ARRANGE
+			const trigger = createNodeData({ name: 'trigger' });
+			const root = createNodeData({ name: 'root' });
+			const aiModel = createNodeData({ name: 'aiModel' });
+			const destination = createNodeData({ name: 'destination' });
+			const graph = new DirectedGraph()
+				.addNodes(trigger, root, aiModel, destination)
+				.addConnections(
+					{ from: trigger, to: aiModel },
+					{ from: aiModel, type: NodeConnectionType.AiLanguageModel, to: root },
+					{ from: root, to: destination },
+				);
+
+			// ACT
+			const subgraph = findSubgraph({ graph, destination, trigger });
+
+			// ASSERT
+			expect(subgraph.getConnections()).toHaveLength(0);
+			expect(subgraph.getNodes().size).toBe(0);
+		});
+
+		//
+		//              XX
+		//  ┌───────┐   ┌────┐   ┌───────────┐
+		//  │trigger├───►root├───►destination│
+		//  └───────┘   └──▲─┘   └───────────┘
+		//                 │AiLanguageModel
+		//                ┌┴──────┐
+		//                │aiModel│
+		//                └───────┘
+		// turns into
+		//  ┌───────┐            ┌───────────┐
+		//  │trigger├────────────►destination│
+		//  └───────┘            └───────────┘
+		test('skip disabled root nodes', () => {
+			// ARRANGE
+			const trigger = createNodeData({ name: 'trigger' });
+			const root = createNodeData({ name: 'root', disabled: true });
+			const aiModel = createNodeData({ name: 'ai_model' });
+			const destination = createNodeData({ name: 'destination' });
+
+			const graph = new DirectedGraph()
+				.addNodes(trigger, root, aiModel, destination)
+				.addConnections(
+					{ from: trigger, to: root },
+					{ from: aiModel, type: NodeConnectionType.AiLanguageModel, to: root },
+					{ from: root, to: destination },
+				);
+
+			// ACT
+			const subgraph = findSubgraph({ graph, destination: root, trigger });
+
+			// ASSERT
+			expect(subgraph).toEqual(
+				new DirectedGraph()
+					.addNodes(trigger, destination)
+					.addConnections({ from: trigger, to: destination }),
+			);
+		});
 	});
 });

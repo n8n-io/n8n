@@ -9,12 +9,14 @@
 // XX denotes that the node is disabled
 // PD denotes that the node has pinned data
 
-import { recreateNodeExecutionStack } from '@/PartialExecutionUtils/recreateNodeExecutionStack';
-import { type IPinData, type IRunData } from 'n8n-workflow';
 import { AssertionError } from 'assert';
+import { type IPinData, type IRunData } from 'n8n-workflow';
+
+import { recreateNodeExecutionStack } from '@/PartialExecutionUtils/recreateNodeExecutionStack';
+
+import { createNodeData, toITaskData } from './helpers';
 import { DirectedGraph } from '../DirectedGraph';
 import { findSubgraph } from '../findSubgraph';
-import { createNodeData, toITaskData } from './helpers';
 
 describe('recreateNodeExecutionStack', () => {
 	//                   ►►
@@ -30,7 +32,7 @@ describe('recreateNodeExecutionStack', () => {
 			.addNodes(trigger, node)
 			.addConnections({ from: trigger, to: node });
 
-		const workflow = findSubgraph(graph, node, trigger);
+		const workflow = findSubgraph({ graph, destination: node, trigger });
 		const startNodes = [node];
 		const runData: IRunData = {
 			[trigger.name]: [toITaskData([{ data: { value: 1 } }])],

@@ -5,7 +5,7 @@ import jwt from 'jsonwebtoken';
 import { Container } from 'typedi';
 
 import { AUTH_COOKIE_NAME } from '@/constants';
-import { API_KEY_PREFIX, MeController } from '@/controllers/me.controller';
+import { MeController } from '@/controllers/me.controller';
 import type { User } from '@/databases/entities/user';
 import { AuthUserRepository } from '@/databases/repositories/auth-user.repository';
 import { InvalidAuthTokenRepository } from '@/databases/repositories/invalid-auth-token.repository';
@@ -406,34 +406,6 @@ describe('MeController', () => {
 			};
 
 			await expect(controller.storeSurveyAnswers(req)).rejects.toThrowError(BadRequestError);
-		});
-	});
-
-	describe('API Key methods', () => {
-		let req: AuthenticatedRequest;
-		beforeAll(() => {
-			req = mock({ user: mock<Partial<User>>({ id: '123', apiKey: `${API_KEY_PREFIX}test-key` }) });
-		});
-
-		describe('createAPIKey', () => {
-			it('should create and save an API key', async () => {
-				const { apiKey } = await controller.createAPIKey(req);
-				expect(userService.update).toHaveBeenCalledWith(req.user.id, { apiKey });
-			});
-		});
-
-		describe('getAPIKey', () => {
-			it('should return the users api key redacted', async () => {
-				const { apiKey } = await controller.getAPIKey(req);
-				expect(apiKey).not.toEqual(req.user.apiKey);
-			});
-		});
-
-		describe('deleteAPIKey', () => {
-			it('should delete the API key', async () => {
-				await controller.deleteAPIKey(req);
-				expect(userService.update).toHaveBeenCalledWith(req.user.id, { apiKey: null });
-			});
 		});
 	});
 });

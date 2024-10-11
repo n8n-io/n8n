@@ -11,7 +11,7 @@ import { SharedWorkflowRepository } from '@/databases/repositories/shared-workfl
 import { TagRepository } from '@/databases/repositories/tag.repository';
 import { WorkflowTagMappingRepository } from '@/databases/repositories/workflow-tag-mapping.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,

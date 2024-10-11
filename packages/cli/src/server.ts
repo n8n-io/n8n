@@ -21,7 +21,7 @@ import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { ControllerRegistry } from '@/decorators';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventService } from '@/events/event.service';
-import { LogStreamingEventRelay } from '@/events/log-streaming-event-relay';
+import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
 import type { ICredentialsOverwrite } from '@/interfaces';
 import { isLdapEnabled } from '@/ldap/helpers.ee';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
@@ -35,11 +35,11 @@ import type { FrontendService } from '@/services/frontend.service';
 import { OrchestrationService } from '@/services/orchestration.service';
 
 import '@/controllers/active-workflows.controller';
-import '@/controllers/annotation-tags.controller';
+import '@/controllers/annotation-tags.controller.ee';
 import '@/controllers/auth.controller';
 import '@/controllers/binary-data.controller';
 import '@/controllers/curl.controller';
-import '@/controllers/ai-assistant.controller';
+import '@/controllers/ai.controller';
 import '@/controllers/dynamic-node-parameters.controller';
 import '@/controllers/invitation.controller';
 import '@/controllers/me.controller';
@@ -56,6 +56,7 @@ import '@/controllers/translation.controller';
 import '@/controllers/users.controller';
 import '@/controllers/user-settings.controller';
 import '@/controllers/workflow-statistics.controller';
+import '@/controllers/api-keys.controller';
 import '@/credentials/credentials.controller';
 import '@/eventbus/event-bus.controller';
 import '@/events/events.controller';
@@ -251,6 +252,7 @@ export class Server extends AbstractServer {
 					JSON.stringify({
 						dsn: this.globalConfig.sentry.frontendDsn,
 						environment: process.env.ENVIRONMENT || 'development',
+						serverName: process.env.DEPLOYMENT_NAME,
 						release: N8N_VERSION,
 					}),
 				);

@@ -21,7 +21,9 @@ import type { NodeOperationError } from './errors/node-operation.error';
 import type { WorkflowActivationError } from './errors/workflow-activation.error';
 import type { WorkflowOperationError } from './errors/workflow-operation.error';
 import type { ExecutionStatus } from './ExecutionStatus';
+import type { Result } from './result';
 import type { Workflow } from './Workflow';
+import type { EnvProviderState } from './WorkflowDataProxyEnvProvider';
 import type { WorkflowHooks } from './WorkflowHooks';
 
 export interface IAdditionalCredentialOptions {
@@ -314,6 +316,7 @@ export interface ICredentialType {
 	name: string;
 	displayName: string;
 	icon?: Icon;
+	iconColor?: ThemeIconColor;
 	iconUrl?: Themed<string>;
 	extends?: string[];
 	properties: INodeProperties[];
@@ -327,6 +330,7 @@ export interface ICredentialType {
 	test?: ICredentialTestRequest;
 	genericAuth?: boolean;
 	httpRequestNode?: ICredentialHttpRequestNode;
+	supportedNodes?: string[];
 }
 
 export interface ICredentialTypes {
@@ -763,6 +767,48 @@ export interface BinaryHelperFunctions {
 	}>;
 }
 
+export type DeduplicationScope = 'node' | 'workflow';
+export type DeduplicationItemTypes = string | number;
+export type DeduplicationMode = 'entries' | 'latestIncrementalKey' | 'latestDate';
+
+export interface IDeduplicationOutput {
+	new: DeduplicationItemTypes[];
+	processed: DeduplicationItemTypes[];
+}
+
+export interface IDeduplicationOutputItems {
+	new: IDataObject[];
+	processed: IDataObject[];
+}
+
+export interface ICheckProcessedOptions {
+	mode: DeduplicationMode;
+	maxEntries?: number;
+}
+
+export interface DeduplicationHelperFunctions {
+	checkProcessedAndRecord(
+		items: DeduplicationItemTypes[],
+		scope: DeduplicationScope,
+		options: ICheckProcessedOptions,
+	): Promise<IDeduplicationOutput>;
+	checkProcessedItemsAndRecord(
+		propertyName: string,
+		items: IDataObject[],
+		scope: DeduplicationScope,
+		options: ICheckProcessedOptions,
+	): Promise<IDeduplicationOutputItems>;
+	removeProcessed(
+		items: DeduplicationItemTypes[],
+		scope: DeduplicationScope,
+		options: ICheckProcessedOptions,
+	): Promise<void>;
+	clearAllProcessedItems(scope: DeduplicationScope, options: ICheckProcessedOptions): Promise<void>;
+	getProcessedDataCount(
+		scope: DeduplicationScope,
+		options: ICheckProcessedOptions,
+	): Promise<number>;
+}
 export interface NodeHelperFunctions {
 	copyBinaryFile(filePath: string, fileName: string, mimeType?: string): Promise<IBinaryData>;
 }
@@ -936,6 +982,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		helpers: RequestHelperFunctions &
 			BaseHelperFunctions &
 			BinaryHelperFunctions &
+			DeduplicationHelperFunctions &
 			FileSystemHelperFunctions &
 			SSHTunnelFunctions &
 			JsonHelperFunctions & {
@@ -950,6 +997,12 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			};
 
 		getParentCallbackManager(): CallbackManager | undefined;
+
+		startJob<T = unknown, E = unknown>(
+			jobType: string,
+			settings: unknown,
+			itemIndex: number,
+		): Promise<Result<T, E>>;
 	};
 
 export interface IExecuteSingleFunctions extends BaseExecutionFunctions {
@@ -1617,7 +1670,7 @@ export interface IWorkflowIssues {
 	[key: string]: INodeIssues;
 }
 
-export type NodeIconColor =
+export type ThemeIconColor =
 	| 'gray'
 	| 'black'
 	| 'blue'
@@ -1642,7 +1695,7 @@ export interface INodeTypeBaseDescription {
 	displayName: string;
 	name: string;
 	icon?: Icon;
-	iconColor?: NodeIconColor;
+	iconColor?: ThemeIconColor;
 	iconUrl?: Themed<string>;
 	badgeIconUrl?: Themed<string>;
 	group: string[];
@@ -2120,6 +2173,7 @@ export interface IWorkflowBase {
 	name: string;
 	active: boolean;
 	createdAt: Date;
+	startedAt?: Date;
 	updatedAt: Date;
 	nodes: INode[];
 	connections: IConnections;
@@ -2236,6 +2290,27 @@ export interface IWorkflowExecuteAdditionalData {
 	secretsHelpers: SecretsHelpersBase;
 	logAiEvent: (eventName: AiEvent, payload: AiEventPayload) => void;
 	parentCallbackManager?: CallbackManager;
+	startAgentJob<T, E = unknown>(
+		additionalData: IWorkflowExecuteAdditionalData,
+		jobType: string,
+		settings: unknown,
+		executeFunctions: IExecuteFunctions,
+		inputData: ITaskDataConnections,
+		node: INode,
+		workflow: Workflow,
+		runExecutionData: IRunExecutionData,
+		runIndex: number,
+		itemIndex: number,
+		activeNodeName: string,
+		connectionInputData: INodeExecutionData[],
+		siblingParameters: INodeParameters,
+		mode: WorkflowExecuteMode,
+		envProviderState: EnvProviderState,
+		executeData?: IExecuteData,
+		defaultReturnRunIndex?: number,
+		selfData?: IDataObject,
+		contextNodeName?: string,
+	): Promise<Result<T, E>>;
 }
 
 export type WorkflowExecuteMode =
@@ -2461,6 +2536,7 @@ export interface ExecutionSummary {
 	retryOf?: string | null;
 	retrySuccessId?: string | null;
 	waitTill?: Date;
+	createdAt?: Date;
 	startedAt: Date;
 	stoppedAt?: Date;
 	workflowId: string;
@@ -2617,6 +2693,46 @@ export interface IUserSettings {
 	npsSurvey?: NpsSurveyState;
 }
 
+export interface IProcessedDataConfig {
+	availableModes: string;
+	mode: string;
+}
+
+export interface IDataDeduplicator {
+	checkProcessedAndRecord(
+		items: DeduplicationItemTypes[],
+		context: DeduplicationScope,
+		contextData: ICheckProcessedContextData,
+		options: ICheckProcessedOptions,
+	): Promise<IDeduplicationOutput>;
+
+	removeProcessed(
+		items: DeduplicationItemTypes[],
+		context: DeduplicationScope,
+		contextData: ICheckProcessedContextData,
+		options: ICheckProcessedOptions,
+	): Promise<void>;
+
+	clearAllProcessedItems(
+		context: DeduplicationScope,
+		contextData: ICheckProcessedContextData,
+		options: ICheckProcessedOptions,
+	): Promise<void>;
+	getProcessedDataCount(
+		context: DeduplicationScope,
+		contextData: ICheckProcessedContextData,
+		options: ICheckProcessedOptions,
+	): Promise<number>;
+}
+
+export interface ICheckProcessedContextData {
+	node?: INode;
+	workflow: {
+		id: string;
+		active: boolean;
+	};
+}
+
 export type ExpressionEvaluatorType = 'tmpl' | 'tournament';
 
 export type N8nAIProviderType = 'openai' | 'unknown';
@@ -2640,8 +2756,6 @@ export type BannerName =
 	| 'EMAIL_CONFIRMATION';
 
 export type Functionality = 'regular' | 'configuration-node' | 'pairedItem';
-
-export type Result<T, E> = { ok: true; result: T } | { ok: false; error: E };
 
 export type CallbackManager = CallbackManagerLC;
 

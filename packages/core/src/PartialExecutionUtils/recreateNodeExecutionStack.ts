@@ -1,3 +1,4 @@
+import * as a from 'assert/strict';
 import {
 	NodeConnectionType,
 	type IExecuteData,
@@ -11,7 +12,6 @@ import {
 	type IWaitingForExecutionSource,
 } from 'n8n-workflow';
 
-import * as a from 'assert/strict';
 import type { DirectedGraph } from './DirectedGraph';
 import { getIncomingData } from './getIncomingData';
 import { getSourceDataGroups } from './getSourceDataGroups';
@@ -44,12 +44,12 @@ export function recreateNodeExecutionStack(
 	// Validate invariants.
 
 	// The graph needs to be free of disabled nodes. If it's not it hasn't been
-	// passed through findSubgraph2.
+	// passed through findSubgraph.
 	for (const node of graph.getNodes().values()) {
 		a.notEqual(
 			node.disabled,
 			true,
-			`Graph contains disabled nodes. This is not supported. Make sure to pass the graph through "findSubgraph2" before calling "recreateNodeExecutionStack". The node in question is "${node.name}"`,
+			`Graph contains disabled nodes. This is not supported. Make sure to pass the graph through "findSubgraph" before calling "recreateNodeExecutionStack". The node in question is "${node.name}"`,
 		);
 	}
 
@@ -64,7 +64,7 @@ export function recreateNodeExecutionStack(
 
 	for (const startNode of startNodes) {
 		const incomingStartNodeConnections = graph
-			.getDirectParents(startNode)
+			.getDirectParentConnections(startNode)
 			.filter((c) => c.type === NodeConnectionType.Main);
 
 		let incomingData: INodeExecutionData[][] = [];
@@ -135,7 +135,7 @@ export function recreateNodeExecutionStack(
 			// Check if the destinationNode has to be added as waiting
 			// because some input data is already fully available
 			const incomingDestinationNodeConnections = graph
-				.getDirectParents(destinationNode)
+				.getDirectParentConnections(destinationNode)
 				.filter((c) => c.type === NodeConnectionType.Main);
 			if (incomingDestinationNodeConnections !== undefined) {
 				for (const connection of incomingDestinationNodeConnections) {

@@ -1,4 +1,5 @@
 import type { INode, IRunData } from 'n8n-workflow';
+
 import type { DirectedGraph } from './DirectedGraph';
 
 /**
