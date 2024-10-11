@@ -10,10 +10,12 @@ import { ExternalHooks } from '@/external-hooks';
 import { ExternalSecretsManager } from '@/external-secrets/external-secrets-manager.ee';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { ScalingService } from '@/scaling/scaling.service';
 import { OrchestrationWorkerService } from '@/services/orchestration/worker/orchestration.worker.service';
+import { Telemetry } from '@/telemetry';
 import { setupTestCommand } from '@test-integration/utils/test-command';
 
 import { mockInstance } from '../../shared/mocking';
@@ -31,6 +33,8 @@ const scalingService = mockInstance(ScalingService);
 const orchestrationWorkerService = mockInstance(OrchestrationWorkerService);
 mockInstance(Publisher);
 mockInstance(Subscriber);
+mockInstance(Telemetry);
+mockInstance(Push);
 
 const command = setupTestCommand(Worker);
 
