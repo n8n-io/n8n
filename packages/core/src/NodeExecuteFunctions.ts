@@ -2382,6 +2382,9 @@ export const validateValueAgainstSchema = (
 			parameterName,
 			parameterValue,
 			propertyDescription.validateType,
+			propertyDescription.validateType === 'options'
+				? { valueOptions: propertyDescription.options as INodePropertyOptions[] }
+				: undefined,
 		);
 	} else if (
 		propertyDescription.type === 'resourceMapper' &&
