@@ -1,10 +1,18 @@
 import { FileNotFoundError } from 'n8n-core';
 import { ensureError } from 'n8n-workflow';
 import fs from 'node:fs';
+import path from 'node:path';
+import { pipeline } from 'node:stream/promises';
+import { createGunzip } from 'node:zlib';
+import tar from 'tar-stream';
 import { Service } from 'typedi';
+
+import { Logger } from '@/logging/logger.service';
 
 @Service()
 export class FilesystemService {
+	constructor(private readonly logger: Logger) {}
+
 	/**
 	 * Ensure a directory exists by checking or creating it.
 	 * @param dirPath Path to the directory to check or create.
@@ -45,5 +53,32 @@ export class FilesystemService {
 				throw error;
 			}
 		}
+	}
+
+	/**
+	 * Extract a tarball to a given directory.
+	 * @param tarballPath Path to the tarball file to extract.
+	 * @param dstDir Path to the directory to extract the tarball into.
+	 * @returns Paths to the extracted files.
+	 */
+	async extractTarball(tarballPath: string, dstDir: string) {
+		await this.checkAccessible(tarballPath); // @TODO: Clearer error if tarball missing
+
+		const extractedFilePaths: string[] = [];
+
+		const extract = tar.extract();
+
+		extract.on('entry', async (header, stream, next) => {
+			const filePath = path.join(dstDir, header.name);
+			await pipeline(stream, fs.createWriteStream(filePath));
+			extractedFilePaths.push(filePath);
+			next();
+		});
+
+		await pipeline(fs.createReadStream(tarballPath), createGunzip(), extract);
+
+		this.logger.info('[FilesystemService] Extracted tarball', { tarballPath });
+
+		return extractedFilePaths;
 	}
 }

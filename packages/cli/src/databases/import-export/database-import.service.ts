@@ -3,9 +3,7 @@ import { ensureError, jsonParse } from 'n8n-workflow';
 import fs from 'node:fs';
 import path from 'node:path';
 import readline from 'node:readline';
-import { pipeline } from 'node:stream/promises';
 import { Service } from 'typedi';
-import { Extract } from 'unzip-stream';
 
 import { NotObjectLiteralError } from '@/errors/not-object-literal.error';
 import { RowCountMismatchError } from '@/errors/row-count-mismatch.error';
@@ -28,7 +26,7 @@ import { DatabaseSchemaService } from '../database-schema.service';
 @Service()
 export class DatabaseImportService {
 	private config: DatabaseImportConfig = {
-		importFilePath: '',
+		importFilePath: '/tmp/backup/n8n-db-export-2024-10-11.tar.gz',
 		extractDirPath: '/tmp/backup',
 		truncateDestination: true, // @TODO: Only for dev, default it to `false` later
 	};
@@ -85,12 +83,7 @@ export class DatabaseImportService {
 
 		if (dbType !== 'postgresdb') throw new UnsupportedDestinationError(dbType);
 
-		// @TODO: Stream instead of extracting to filesystem
-
-		await pipeline(
-			fs.createReadStream(this.config.importFilePath),
-			Extract({ path: this.config.extractDirPath }),
-		);
+		await this.fsService.extractTarball(this.config.importFilePath, this.config.extractDirPath);
 
 		this.manifest = await this.getManifest();
 
