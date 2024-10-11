@@ -47,17 +47,4 @@ describe('Subscriber', () => {
 			expect(client.subscribe).toHaveBeenCalledWith('n8n.commands', expect.any(Function));
 		});
 	});
-
-	describe('setMessageHandler', () => {
-		it('should set message handler function for channel', () => {
-			const subscriber = new Subscriber(mock(), redisClientService, mock());
-			const channel = 'n8n.commands';
-			const handlerFn = jest.fn();
-
-			subscriber.setMessageHandler(channel, handlerFn);
-
-			// @ts-expect-error Private field
-			expect(subscriber.handlers).toEqual(new Map([[channel, handlerFn]]));
-		});
-	});
 });

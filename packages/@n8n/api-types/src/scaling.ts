@@ -11,7 +11,7 @@ export type RunningJobSummary = {
 };
 
 export type WorkerStatus = {
-	workerId: string;
+	senderId: string;
 	runningJobsSummary: RunningJobSummary[];
 	freeMem: number;
 	totalMem: number;
