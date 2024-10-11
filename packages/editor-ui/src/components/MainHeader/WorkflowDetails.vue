@@ -742,7 +742,9 @@ function showCreateWorkflowSuccessToast(id?: string) {
 						@select="onWorkflowMenuSelect"
 						@visible-change="onWorkflowMenuOpen"
 					/>
-					<template #content> Try our new canvas </template>
+					<template #content>
+						{{ $locale.baseText('menuActions.nodeViewDiscovery.tooltip') }}
+					</template>
 				</N8nTooltip>
 			</div>
 		</PushConnectionTracker>

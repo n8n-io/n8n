@@ -3,6 +3,7 @@ import { useLocalStorage } from '@vueuse/core';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { debouncedRef } from '@vueuse/core';
 
 export function useNodeViewVersionSwitcher() {
 	const workflowsStore = useWorkflowsStore();
@@ -26,7 +27,7 @@ export function useNodeViewVersionSwitcher() {
 		nodeViewSwitcherDiscovered.value = true;
 	}
 
-	const isNodeViewDiscoveryTooltipVisible = computed(
+	const isNodeViewDiscoveryTooltipVisibleRaw = computed(
 		() =>
 			nodeViewVersion.value !== '2' &&
 			!(
@@ -34,6 +35,11 @@ export function useNodeViewVersionSwitcher() {
 				nodeViewSwitcherDropdownOpened.value ||
 				nodeViewSwitcherDiscovered.value
 			),
+	);
+
+	const isNodeViewDiscoveryTooltipVisible = debouncedRef(
+		isNodeViewDiscoveryTooltipVisibleRaw,
+		3000,
 	);
 
 	function switchNodeViewVersion() {
