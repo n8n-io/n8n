@@ -68,7 +68,7 @@ import {
 	CONFIGURABLE_NODE_SIZE,
 	CONFIGURATION_NODE_SIZE,
 	DEFAULT_NODE_SIZE,
-	GRID_SIZE,
+	generateOffsets,
 	PUSH_NODES_OFFSET,
 } from '@/utils/nodeViewUtils';
 import { isValidNodeConnectionType } from '@/utils/typeGuards';
@@ -926,6 +926,9 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 				lastInteractedWithNode.type,
 				lastInteractedWithNode.typeVersion,
 			);
+			const lastInteractedWithNodeObject = editableWorkflowObject.value.getNode(
+				lastInteractedWithNode.name,
+			);
 
 			const newNodeInsertPosition = uiStore.lastCancelledConnectionPosition;
 			if (newNodeInsertPosition) {
@@ -939,11 +942,37 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 				position = [newNodeInsertPosition[0] + xOffset, newNodeInsertPosition[1] + yOffset];
 
 				uiStore.lastCancelledConnectionPosition = undefined;
-			} else if (lastInteractedWithNodeTypeDescription) {
+			} else if (lastInteractedWithNodeTypeDescription && lastInteractedWithNodeObject) {
 				// When
 				// - clicking the plus button of a node handle
 				// - clicking the plus button of a node edge / connection
 				// - selecting a node, adding a node via the node creator
+
+				const lastInteractedWithNodeInputs = NodeHelpers.getNodeInputs(
+					editableWorkflowObject.value,
+					lastInteractedWithNodeObject,
+					lastInteractedWithNodeTypeDescription,
+				);
+				const lastInteractedWithNodeInputTypes = NodeHelpers.getConnectionTypes(
+					lastInteractedWithNodeInputs,
+				);
+
+				const lastInteractedWithNodeScopedInputTypes = (
+					lastInteractedWithNodeInputTypes || []
+				).filter((input) => input !== NodeConnectionType.Main);
+
+				const lastInteractedWithNodeOutputs = NodeHelpers.getNodeOutputs(
+					editableWorkflowObject.value,
+					lastInteractedWithNodeObject,
+					lastInteractedWithNodeTypeDescription,
+				);
+				const lastInteractedWithNodeOutputTypes = NodeHelpers.getConnectionTypes(
+					lastInteractedWithNodeOutputs,
+				);
+
+				const lastInteractedWithNodeMainOutputs = lastInteractedWithNodeOutputTypes.filter(
+					(output) => output === NodeConnectionType.Main,
+				);
 
 				let yOffset = 0;
 				if (lastInteractedWithNodeConnection) {
@@ -954,35 +983,16 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 					shiftDownstreamNodesPosition(lastInteractedWithNode.name, PUSH_NODES_OFFSET, {
 						trackHistory: true,
 					});
+				}
 
-					const yOffsetValuesByOutputCount = [
-						[-nodeSize[1], nodeSize[1]],
-						[-nodeSize[1] - 2 * GRID_SIZE, 0, nodeSize[1] - 2 * GRID_SIZE],
-						[
-							-2 * nodeSize[1] - 2 * GRID_SIZE,
-							-nodeSize[1],
-							nodeSize[1],
-							2 * nodeSize[1] - 2 * GRID_SIZE,
-						],
-					];
-
-					const lastInteractedWithNodeOutputs = NodeHelpers.getNodeOutputs(
-						editableWorkflowObject.value,
-						lastInteractedWithNode,
-						lastInteractedWithNodeTypeDescription,
-					);
-					const lastInteractedWithNodeOutputTypes = NodeHelpers.getConnectionTypes(
-						lastInteractedWithNodeOutputs,
-					);
-					const lastInteractedWithNodeMainOutputs = lastInteractedWithNodeOutputTypes.filter(
-						(output) => output === NodeConnectionType.Main,
+				if (lastInteractedWithNodeMainOutputs.length > 1) {
+					const yOffsetValues = generateOffsets(
+						lastInteractedWithNodeMainOutputs.length,
+						NodeViewUtils.NODE_SIZE,
+						NodeViewUtils.GRID_SIZE,
 					);
 
-					if (lastInteractedWithNodeMainOutputs.length > 1) {
-						const yOffsetValues =
-							yOffsetValuesByOutputCount[lastInteractedWithNodeMainOutputs.length - 2];
-						yOffset = yOffsetValues[connectionIndex];
-					}
+					yOffset = yOffsetValues[connectionIndex];
 				}
 
 				let outputs: Array<NodeConnectionType | INodeOutputConfiguration> = [];
@@ -999,31 +1009,16 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 					);
 				} catch (e) {}
 				const outputTypes = NodeHelpers.getConnectionTypes(outputs);
-				const lastInteractedWithNodeObject = editableWorkflowObject.value.getNode(
-					lastInteractedWithNode.name,
-				);
 
 				pushOffsets = [100, 0];
 
 				if (
 					outputTypes.length > 0 &&
-					outputTypes.every((outputName) => outputName !== NodeConnectionType.Main) &&
-					lastInteractedWithNodeObject
+					outputTypes.every((outputName) => outputName !== NodeConnectionType.Main)
 				) {
 					// When the added node has only non-main outputs (configuration nodes)
 					// We want to place the new node directly below the last interacted with node.
 
-					const lastInteractedWithNodeInputs = NodeHelpers.getNodeInputs(
-						editableWorkflowObject.value,
-						lastInteractedWithNodeObject,
-						lastInteractedWithNodeTypeDescription,
-					);
-					const lastInteractedWithNodeInputTypes = NodeHelpers.getConnectionTypes(
-						lastInteractedWithNodeInputs,
-					);
-					const lastInteractedWithNodeScopedInputTypes = (
-						lastInteractedWithNodeInputTypes || []
-					).filter((input) => input !== NodeConnectionType.Main);
 					const scopedConnectionIndex = lastInteractedWithNodeScopedInputTypes.findIndex(
 						(inputType) => outputs[0] === inputType,
 					);
@@ -1043,15 +1038,6 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 				} else {
 					// When the node has only main outputs, mixed outputs, or no outputs at all
 					// We want to place the new node directly to the right of the last interacted with node.
-
-					const lastInteractedWithNodeInputs = NodeHelpers.getNodeInputs(
-						editableWorkflowObject.value,
-						lastInteractedWithNode,
-						lastInteractedWithNodeTypeDescription,
-					);
-					const lastInteractedWithNodeInputTypes = NodeHelpers.getConnectionTypes(
-						lastInteractedWithNodeInputs,
-					);
 
 					let pushOffset = PUSH_NODES_OFFSET;
 					if (
