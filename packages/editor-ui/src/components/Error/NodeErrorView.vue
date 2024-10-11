@@ -121,7 +121,8 @@ const isAskAssistantAvailable = computed(() => {
 		return false;
 	}
 	const isCustomNode = node.value.type === undefined || isCommunityPackageName(node.value.type);
-	return assistantStore.canShowAssistantButtonsOnCanvas && !isCustomNode;
+
+	return assistantStore.canShowAssistantButtonsOnCanvas && !isCustomNode && !nodeIsHidden();
 });
 
 const assistantAlreadyAsked = computed(() => {
@@ -433,7 +434,7 @@ async function onAskAssistantClick() {
 				v-n8n-html="getErrorDescription()"
 			></div>
 			<div
-				v-if="isAskAssistantAvailable && !nodeIsHidden()"
+				v-if="isAskAssistantAvailable"
 				class="node-error-view__assistant-button"
 				data-test-id="node-error-view-ask-assistant-button"
 			>
