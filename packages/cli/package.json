@@ -163,7 +163,6 @@
     "simple-git": "3.17.0",
     "source-map-support": "0.5.21",
     "sqlite3": "5.1.7",
-    "sse-channel": "4.0.0",
     "sshpk": "1.17.0",
     "swagger-ui-express": "5.0.1",
     "syslog-client": "1.1.1",

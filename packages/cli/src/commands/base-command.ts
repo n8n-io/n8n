@@ -1,7 +1,12 @@
 import 'reflect-metadata';
 import { GlobalConfig } from '@n8n/config';
 import { Command, Errors } from '@oclif/core';
-import { BinaryDataService, InstanceSettings, ObjectStoreService } from 'n8n-core';
+import {
+	BinaryDataService,
+	InstanceSettings,
+	ObjectStoreService,
+	DataDeduplicationService,
+} from 'n8n-core';
 import {
 	ApplicationError,
 	ensureError,
@@ -16,6 +21,7 @@ import { LICENSE_FEATURES, inDevelopment, inTest } from '@/constants';
 import * as CrashJournal from '@/crash-journal';
 import { generateHostInstanceId } from '@/databases/utils/generators';
 import * as Db from '@/db';
+import { getDataDeduplicationService } from '@/deduplication';
 import { initErrorHandling } from '@/error-reporting';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
@@ -264,6 +270,11 @@ export abstract class BaseCommand extends Command {
 
 		const binaryDataConfig = config.getEnv('binaryDataManager');
 		await Container.get(BinaryDataService).init(binaryDataConfig);
+	}
+
+	protected async initDataDeduplicationService() {
+		const dataDeduplicationService = getDataDeduplicationService();
+		await DataDeduplicationService.init(dataDeduplicationService);
 	}
 
 	async initExternalHooks() {
