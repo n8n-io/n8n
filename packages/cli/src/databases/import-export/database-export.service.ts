@@ -7,7 +7,7 @@ import { createGzip } from 'node:zlib';
 import tar from 'tar-stream';
 import { Service } from 'typedi';
 
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 
 import { BATCH_SIZE, EXCLUDE_LIST, MANIFEST_FILENAME, ZIP_BASE_FILE_NAME } from './constants';
 import type { DatabaseExportConfig, Manifest, Row } from './types';

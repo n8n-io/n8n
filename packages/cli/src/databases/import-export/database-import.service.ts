@@ -9,7 +9,7 @@ import { Extract } from 'unzip-stream';
 
 import { NotObjectLiteralError } from '@/errors/not-object-literal.error';
 import { RowCountMismatchError } from '@/errors/row-count-mismatch.error';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { isObjectLiteral } from '@/utils';
 
 import { MANIFEST_FILENAME } from './constants';
