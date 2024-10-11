@@ -47,12 +47,7 @@ const getMfaEnabled = () => {
 	return router.currentRoute.value.query.mfaEnabled === 'true' ? true : false;
 };
 
-const isFormWithMFAToken = (values: { [key: string]: string }): values is { mfaToken: string } => {
-	return 'mfaToken' in values;
-};
-
 const onSubmit = async (values: { [key: string]: string }) => {
-	if (!isFormWithMFAToken(values)) return;
 	try {
 		loading.value = true;
 		const token = getResetToken();
