@@ -64,7 +64,7 @@ export function recreateNodeExecutionStack(
 
 	for (const startNode of startNodes) {
 		const incomingStartNodeConnections = graph
-			.getDirectParents(startNode)
+			.getDirectParentConnections(startNode)
 			.filter((c) => c.type === NodeConnectionType.Main);
 
 		let incomingData: INodeExecutionData[][] = [];
@@ -135,7 +135,7 @@ export function recreateNodeExecutionStack(
 			// Check if the destinationNode has to be added as waiting
 			// because some input data is already fully available
 			const incomingDestinationNodeConnections = graph
-				.getDirectParents(destinationNode)
+				.getDirectParentConnections(destinationNode)
 				.filter((c) => c.type === NodeConnectionType.Main);
 			if (incomingDestinationNodeConnections !== undefined) {
 				for (const connection of incomingDestinationNodeConnections) {

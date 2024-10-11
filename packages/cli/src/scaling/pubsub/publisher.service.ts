@@ -59,7 +59,7 @@ export class Publisher {
 	async publishWorkerResponse(msg: PubSub.WorkerResponse) {
 		await this.client.publish('n8n.worker-response', JSON.stringify(msg));
 
-		this.logger.debug(`Published response for ${msg.command} to worker response channel`);
+		this.logger.debug(`Published response ${msg.response} to worker response channel`);
 	}
 
 	// #endregion
