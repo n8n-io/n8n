@@ -2,10 +2,14 @@ import { computed, ref } from 'vue';
 import { useLocalStorage } from '@vueuse/core';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 export function useNodeViewVersionSwitcher() {
+	const workflowsStore = useWorkflowsStore();
 	const settingsStore = useSettingsStore();
 	const telemetry = useTelemetry();
+
+	const isNewUser = computed(() => workflowsStore.activeWorkflows.length === 0);
 
 	const nodeViewVersion = useLocalStorage(
 		'NodeView.version',
@@ -25,7 +29,11 @@ export function useNodeViewVersionSwitcher() {
 	const isNodeViewDiscoveryTooltipVisible = computed(
 		() =>
 			nodeViewVersion.value !== '2' &&
-			!(nodeViewSwitcherDropdownOpened.value || nodeViewSwitcherDiscovered.value),
+			!(
+				isNewUser.value ||
+				nodeViewSwitcherDropdownOpened.value ||
+				nodeViewSwitcherDiscovered.value
+			),
 	);
 
 	function switchNodeViewVersion() {
