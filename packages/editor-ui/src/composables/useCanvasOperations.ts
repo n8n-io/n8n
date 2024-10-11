@@ -69,7 +69,6 @@ import {
 	CONFIGURATION_NODE_SIZE,
 	DEFAULT_NODE_SIZE,
 	generateOffsets,
-	GRID_SIZE,
 	PUSH_NODES_OFFSET,
 } from '@/utils/nodeViewUtils';
 import { isValidNodeConnectionType } from '@/utils/typeGuards';
