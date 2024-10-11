@@ -1,9 +1,11 @@
+import { computed, ref } from 'vue';
 import { useLocalStorage } from '@vueuse/core';
 import { useSettingsStore } from '@/stores/settings.store';
-import { computed, ref } from 'vue';
+import { useTelemetry } from '@/composables/useTelemetry';
 
 export function useNodeViewVersionSwitcher() {
 	const settingsStore = useSettingsStore();
+	const telemetry = useTelemetry();
 
 	const nodeViewVersion = useLocalStorage(
 		'NodeView.version',
@@ -26,12 +28,14 @@ export function useNodeViewVersionSwitcher() {
 			!(nodeViewSwitcherDropdownOpened.value || nodeViewSwitcherDiscovered.value),
 	);
 
-	function toggleNodeViewVersion() {
-		if (nodeViewVersion.value === '1') {
-			nodeViewVersion.value = '2';
-		} else {
-			nodeViewVersion.value = '1';
-		}
+	function switchNodeViewVersion() {
+		const toVersion = nodeViewVersion.value === '1' ? '2' : '1';
+
+		telemetry.track('User switched canvas version', {
+			to_version: toVersion,
+		});
+
+		nodeViewVersion.value = toVersion;
 	}
 
 	return {
@@ -40,6 +44,6 @@ export function useNodeViewVersionSwitcher() {
 		isNodeViewDiscoveryTooltipVisible,
 		setNodeViewSwitcherDropdownOpened,
 		setNodeViewSwitcherDiscovered,
-		toggleNodeViewVersion,
+		switchNodeViewVersion,
 	};
 }

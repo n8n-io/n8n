@@ -103,7 +103,7 @@ const {
 	nodeViewVersion,
 	nodeViewSwitcherDiscovered,
 	isNodeViewDiscoveryTooltipVisible,
-	toggleNodeViewVersion,
+	switchNodeViewVersion,
 	setNodeViewSwitcherDropdownOpened,
 	setNodeViewSwitcherDiscovered,
 } = useNodeViewVersionSwitcher();
@@ -527,7 +527,7 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 				}
 			}
 
-			toggleNodeViewVersion();
+			switchNodeViewVersion();
 
 			break;
 		}
