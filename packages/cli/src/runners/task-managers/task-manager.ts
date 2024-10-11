@@ -1,21 +1,22 @@
-import type {
-	EnvProviderState,
-	IExecuteFunctions,
-	Workflow,
-	IRunExecutionData,
-	INodeExecutionData,
-	ITaskDataConnections,
-	INode,
-	WorkflowParameters,
-	INodeParameters,
-	WorkflowExecuteMode,
-	IExecuteData,
-	IDataObject,
-	IWorkflowExecuteAdditionalData,
+import {
+	type EnvProviderState,
+	type IExecuteFunctions,
+	type Workflow,
+	type IRunExecutionData,
+	type INodeExecutionData,
+	type ITaskDataConnections,
+	type INode,
+	type WorkflowParameters,
+	type INodeParameters,
+	type WorkflowExecuteMode,
+	type IExecuteData,
+	type IDataObject,
+	type IWorkflowExecuteAdditionalData,
+	type Result,
+	createResultOk,
+	createResultError,
 } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
-
-import { TaskError } from '@/runners/errors';
 
 import {
 	RPC_ALLOW_LIST,
@@ -125,7 +126,7 @@ export class TaskManager {
 
 	tasks: Map<string, Task> = new Map();
 
-	async startTask<T>(
+	async startTask<TData, TError>(
 		additionalData: IWorkflowExecuteAdditionalData,
 		taskType: string,
 		settings: unknown,
@@ -145,7 +146,7 @@ export class TaskManager {
 		defaultReturnRunIndex = -1,
 		selfData: IDataObject = {},
 		contextNodeName: string = activeNodeName,
-	): Promise<T> {
+	): Promise<Result<TData, TError>> {
 		const data: TaskData = {
 			workflow,
 			runExecutionData,
@@ -221,14 +222,10 @@ export class TaskManager {
 					runExecutionData.resultData.metadata[k] = v;
 				});
 			}
-			return resultData.result as T;
-		} catch (e) {
-			if (typeof e === 'string') {
-				throw new TaskError(e, {
-					level: 'error',
-				});
-			}
-			throw e;
+
+			return createResultOk(resultData.result as TData);
+		} catch (e: unknown) {
+			return createResultError(e as TError);
 		} finally {
 			this.tasks.delete(taskId);
 		}
