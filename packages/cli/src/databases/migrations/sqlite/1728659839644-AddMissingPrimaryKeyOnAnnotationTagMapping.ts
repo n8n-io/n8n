@@ -1,4 +1,4 @@
-import { ApplicationError } from 'n8n-workflow';
+import assert from 'node:assert';
 
 import type { IrreversibleMigration, MigrationContext } from '@/databases/types';
 
@@ -17,9 +17,7 @@ export class AddMissingPrimaryKeyOnAnnotationTagMapping1728659839644
 		// Check if the primary key already exists
 		const table = await queryRunner.getTable(`${tablePrefix}execution_annotation_tags`);
 
-		if (!table) {
-			throw new ApplicationError('execution_annotation_tags table not found');
-		}
+		assert(table, 'execution_annotation_tags table not found');
 
 		const hasPrimaryKey = table.primaryColumns.length > 0;
 
