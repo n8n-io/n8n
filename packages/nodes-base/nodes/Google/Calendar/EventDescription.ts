@@ -193,7 +193,7 @@ export const eventFields: INodeProperties[] = [
 				},
 				default: '',
 				description:
-					'The color of the event. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'The color of the event. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Conference Data',
@@ -214,9 +214,9 @@ export const eventFields: INodeProperties[] = [
 								name: 'conferenceSolution',
 								type: 'options',
 								description:
-									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 								typeOptions: {
-									loadOptionsMethod: 'getConferenceSolutations',
+									loadOptionsMethod: 'getConferenceSolutions',
 									loadOptionsDependsOn: ['calendar'],
 								},
 								default: '',
@@ -889,6 +889,58 @@ export const eventFields: INodeProperties[] = [
 			},
 			{
 				displayName: 'Attendees',
+				name: 'attendeesUi',
+				type: 'fixedCollection',
+				placeholder: 'Add Attendees',
+				default: {
+					values: {
+						mode: 'add',
+						attendees: [],
+					},
+				},
+				options: [
+					{
+						displayName: 'Values',
+						name: 'values',
+						values: [
+							{
+								displayName: 'Mode',
+								name: 'mode',
+								type: 'options',
+								default: 'add',
+								options: [
+									{
+										name: 'Add Attendees Below [Default]',
+										value: 'add',
+									},
+									{
+										name: 'Replace Attendees with Those Below',
+										value: 'replace',
+									},
+								],
+							},
+							{
+								displayName: 'Attendees',
+								name: 'attendees',
+								type: 'string',
+								typeOptions: {
+									multipleValues: true,
+									multipleValueButtonText: 'Add Attendee',
+								},
+								default: '',
+								description: 'The attendees of the event. Multiple ones can be separated by comma.',
+							},
+						],
+					},
+				],
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.2 } }],
+					},
+				},
+			},
+			{
+				displayName: 'Attendees',
 				name: 'attendees',
 				type: 'string',
 				typeOptions: {
@@ -897,6 +949,11 @@ export const eventFields: INodeProperties[] = [
 				},
 				default: '',
 				description: 'The attendees of the event. Multiple ones can be separated by comma.',
+				displayOptions: {
+					show: {
+						'@version': [1, 1.1],
+					},
+				},
 			},
 			{
 				displayName: 'Color Name or ID',
@@ -907,7 +964,7 @@ export const eventFields: INodeProperties[] = [
 				},
 				default: '',
 				description:
-					'The color of the event. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'The color of the event. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Description',

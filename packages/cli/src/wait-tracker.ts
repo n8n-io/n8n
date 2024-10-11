@@ -4,11 +4,12 @@ import {
 	type IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
 import { Service } from 'typedi';
-import { WorkflowRunner } from '@/workflow-runner';
+
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { OwnershipService } from '@/services/ownership.service';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { OrchestrationService } from '@/services/orchestration.service';
+import { OwnershipService } from '@/services/ownership.service';
+import { WorkflowRunner } from '@/workflow-runner';
 
 @Service()
 export class WaitTracker {
@@ -27,7 +28,9 @@ export class WaitTracker {
 		private readonly ownershipService: OwnershipService,
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly orchestrationService: OrchestrationService,
-	) {}
+	) {
+		this.logger = this.logger.withScope('executions');
+	}
 
 	has(executionId: string) {
 		return this.waitingExecutions[executionId] !== undefined;
@@ -49,7 +52,7 @@ export class WaitTracker {
 	}
 
 	private startTracking() {
-		this.logger.debug('Wait tracker started tracking waiting executions');
+		this.logger.debug('Started tracking waiting executions');
 
 		// Poll every 60 seconds a list of upcoming executions
 		this.mainTimer = setInterval(() => {
@@ -60,7 +63,7 @@ export class WaitTracker {
 	}
 
 	async getWaitingExecutions() {
-		this.logger.debug('Wait tracker querying database for waiting executions');
+		this.logger.debug('Querying database for waiting executions');
 
 		const executions = await this.executionRepository.getWaitingExecutions();
 
@@ -70,7 +73,7 @@ export class WaitTracker {
 
 		const executionIds = executions.map((execution) => execution.id).join(', ');
 		this.logger.debug(
-			`Wait tracker found ${executions.length} executions. Setting timer for IDs: ${executionIds}`,
+			`Found ${executions.length} executions. Setting timer for IDs: ${executionIds}`,
 		);
 
 		// Add timers for each waiting execution that they get started at the correct time
@@ -98,7 +101,7 @@ export class WaitTracker {
 	}
 
 	startExecution(executionId: string) {
-		this.logger.debug(`Wait tracker resuming execution ${executionId}`, { executionId });
+		this.logger.debug(`Resuming execution ${executionId}`, { executionId });
 		delete this.waitingExecutions[executionId];
 
 		(async () => {
@@ -140,7 +143,7 @@ export class WaitTracker {
 	}
 
 	stopTracking() {
-		this.logger.debug('Wait tracker shutting down');
+		this.logger.debug('Shutting down wait tracking');
 
 		clearInterval(this.mainTimer);
 		Object.keys(this.waitingExecutions).forEach((executionId) => {

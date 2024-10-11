@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import {
 	NodeOperationError,
 	NodeConnectionType,
@@ -115,7 +114,7 @@ export class AiTransform implements INodeType {
 			context.items = context.$input.all();
 
 			const Sandbox = JavaScriptSandbox;
-			const sandbox = new Sandbox(context, code, index, this.helpers);
+			const sandbox = new Sandbox(context, code, this.helpers);
 			sandbox.on(
 				'output',
 				workflowMode === 'manual'

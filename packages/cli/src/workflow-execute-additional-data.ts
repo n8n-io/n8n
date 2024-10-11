@@ -3,8 +3,16 @@
 
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+import type { PushType } from '@n8n/api-types';
+import { GlobalConfig } from '@n8n/config';
 import { WorkflowExecute } from 'n8n-core';
-
+import {
+	ApplicationError,
+	ErrorReporterProxy as ErrorReporter,
+	NodeOperationError,
+	Workflow,
+	WorkflowHooks,
+} from 'n8n-workflow';
 import type {
 	IDataObject,
 	IExecuteData,
@@ -23,56 +31,50 @@ import type {
 	WorkflowExecuteMode,
 	ExecutionStatus,
 	ExecutionError,
-	EventNamesAiNodesType,
+	IExecuteFunctions,
+	ITaskDataConnections,
 	ExecuteWorkflowOptions,
 	IWorkflowExecutionDataProcess,
+	EnvProviderState,
 } from 'n8n-workflow';
-import {
-	ApplicationError,
-	ErrorReporterProxy as ErrorReporter,
-	NodeOperationError,
-	Workflow,
-	WorkflowHooks,
-} from 'n8n-workflow';
-
 import { Container } from 'typedi';
-import config from '@/config';
+
 import { ActiveExecutions } from '@/active-executions';
+import config from '@/config';
 import { CredentialsHelper } from '@/credentials-helper';
+import { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import type { AiEventMap, AiEventPayload } from '@/events/maps/ai.event-map';
 import { ExternalHooks } from '@/external-hooks';
 import type {
-	IPushDataExecutionFinished,
 	IWorkflowExecuteProcess,
 	IWorkflowErrorData,
-	IPushDataType,
-	ExecutionPayload,
+	UpdateExecutionPayload,
 } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
-import * as WorkflowHelpers from '@/workflow-helpers';
-import { findSubworkflowStart, isWorkflowIdValid } from '@/utils';
-import { PermissionChecker } from './user-management/permission-checker';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
-import { SecretsHelper } from './secrets-helpers';
-import { OwnershipService } from './services/ownership.service';
+import { findSubworkflowStart, isWorkflowIdValid } from '@/utils';
+import * as WorkflowHelpers from '@/workflow-helpers';
+
+import { WorkflowRepository } from './databases/repositories/workflow.repository';
+import { EventService } from './events/event.service';
+import { restoreBinaryDataId } from './execution-lifecycle-hooks/restore-binary-data-id';
+import { saveExecutionProgress } from './execution-lifecycle-hooks/save-execution-progress';
 import {
 	determineFinalExecutionStatus,
 	prepareExecutionDataForDbUpdate,
 	updateExistingExecution,
 } from './execution-lifecycle-hooks/shared/shared-hook-functions';
-import { restoreBinaryDataId } from './execution-lifecycle-hooks/restore-binary-data-id';
 import { toSaveSettings } from './execution-lifecycle-hooks/to-save-settings';
-import { Logger } from './logger';
-import { saveExecutionProgress } from './execution-lifecycle-hooks/save-execution-progress';
-import { WorkflowStaticDataService } from './workflows/workflow-static-data.service';
-import { WorkflowRepository } from './databases/repositories/workflow.repository';
+import { Logger } from './logging/logger.service';
+import { TaskManager } from './runners/task-managers/task-manager';
+import { SecretsHelper } from './secrets-helpers';
+import { OwnershipService } from './services/ownership.service';
 import { UrlService } from './services/url.service';
-import { WorkflowExecutionService } from './workflows/workflow-execution.service';
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import { EventService } from './events/event.service';
-import { GlobalConfig } from '@n8n/config';
 import { SubworkflowPolicyChecker } from './subworkflows/subworkflow-policy-checker.service';
+import { PermissionChecker } from './user-management/permission-checker';
+import { WorkflowExecutionService } from './workflows/workflow-execution.service';
+import { WorkflowStaticDataService } from './workflows/workflow-static-data.service';
 
 export function objectToError(errorObject: unknown, workflow: Workflow): Error {
 	// TODO: Expand with other error types
@@ -300,7 +302,6 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 						startedAt: new Date(),
 						retryOf: this.retryOf,
 						workflowId,
-						pushRef,
 						workflowName,
 					},
 					pushRef,
@@ -347,13 +348,15 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 					workflowId,
 				});
 				// TODO: Look at this again
-				const sendData: IPushDataExecutionFinished = {
-					executionId,
-					data: pushRunData,
-					retryOf,
-				};
-
-				pushInstance.send('executionFinished', sendData, pushRef);
+				pushInstance.send(
+					'executionFinished',
+					{
+						executionId,
+						data: pushRunData,
+						retryOf,
+					},
+					pushRef,
+				);
 			},
 		],
 	};
@@ -764,7 +767,7 @@ export async function getWorkflowData(
 /**
  * Executes the workflow with the given ID
  */
-async function executeWorkflow(
+export async function executeWorkflow(
 	workflowInfo: IExecuteWorkflowInfo,
 	additionalData: IWorkflowExecuteAdditionalData,
 	options: ExecuteWorkflowOptions,
@@ -796,7 +799,13 @@ async function executeWorkflow(
 	const runData = options.loadedRunData ?? (await getRunData(workflowData, options.inputData));
 
 	const executionId = await activeExecutions.add(runData);
-	await executionRepository.updateStatus(executionId, 'running');
+
+	/**
+	 * A subworkflow execution in queue mode is not enqueued, but rather runs in the
+	 * same worker process as the parent execution. Hence ensure the subworkflow
+	 * execution is marked as started as well.
+	 */
+	await executionRepository.setRunning(executionId);
 
 	Container.get(EventService).emit('workflow-pre-execute', { executionId, data: runData });
 
@@ -807,6 +816,7 @@ async function executeWorkflow(
 			workflow,
 			options.parentWorkflowId,
 			options.node,
+			additionalData.userId,
 		);
 
 		// Create new additionalData to have different workflow loaded and to call
@@ -869,7 +879,7 @@ async function executeWorkflow(
 		// Therefore, database might not contain finished errors.
 		// Force an update to db as there should be no harm doing this
 
-		const fullExecutionData: ExecutionPayload = {
+		const fullExecutionData: UpdateExecutionPayload = {
 			data: fullRunData.data,
 			mode: fullRunData.mode,
 			finished: fullRunData.finished ? fullRunData.finished : false,
@@ -883,8 +893,7 @@ async function executeWorkflow(
 			fullExecutionData.workflowId = workflowData.id;
 		}
 
-		// remove execution from active executions
-		activeExecutions.remove(executionId, fullRunData);
+		activeExecutions.finalizeExecution(executionId, fullRunData);
 
 		await executionRepository.updateExistingExecution(executionId, fullExecutionData);
 		throw objectToError(
@@ -910,11 +919,11 @@ async function executeWorkflow(
 	if (data.finished === true || data.status === 'waiting') {
 		// Workflow did finish successfully
 
-		activeExecutions.remove(executionId, data);
+		activeExecutions.finalizeExecution(executionId, data);
 		const returnData = WorkflowHelpers.getDataLastExecutedNodeData(data);
 		return returnData!.data!.main;
 	}
-	activeExecutions.remove(executionId, data);
+	activeExecutions.finalizeExecution(executionId, data);
 
 	// Workflow did fail
 	const { error } = data.data.resultData;
@@ -938,7 +947,7 @@ export function setExecutionStatus(status: ExecutionStatus) {
 	Container.get(ActiveExecutions).setStatus(this.executionId, status);
 }
 
-export function sendDataToUI(type: string, data: IDataObject | IDataObject[]) {
+export function sendDataToUI(type: PushType, data: IDataObject | IDataObject[]) {
 	const { pushRef } = this;
 	if (pushRef === undefined) {
 		return;
@@ -947,7 +956,7 @@ export function sendDataToUI(type: string, data: IDataObject | IDataObject[]) {
 	// Push data to session which started workflow
 	try {
 		const pushInstance = Container.get(Push);
-		pushInstance.send(type as IPushDataType, data, pushRef);
+		pushInstance.send(type, data, pushRef);
 	} catch (error) {
 		const logger = Container.get(Logger);
 		logger.warn(`There was a problem sending message to UI: ${error.message}`);
@@ -968,6 +977,8 @@ export async function getBase(
 
 	const variables = await WorkflowHelpers.getVariables();
 
+	const eventService = Container.get(EventService);
+
 	return {
 		credentialsHelper: Container.get(CredentialsHelper),
 		executeWorkflow,
@@ -983,22 +994,51 @@ export async function getBase(
 		setExecutionStatus,
 		variables,
 		secretsHelpers: Container.get(SecretsHelper),
-		logAiEvent: async (
-			eventName: EventNamesAiNodesType,
-			payload: {
-				msg?: string | undefined;
-				executionId: string;
-				nodeName: string;
-				workflowId?: string | undefined;
-				workflowName: string;
-				nodeType?: string | undefined;
-			},
-		) => {
-			return await Container.get(MessageEventBus).sendAiNodeEvent({
-				eventName,
-				payload,
-			});
+		async startAgentJob(
+			additionalData: IWorkflowExecuteAdditionalData,
+			jobType: string,
+			settings: unknown,
+			executeFunctions: IExecuteFunctions,
+			inputData: ITaskDataConnections,
+			node: INode,
+			workflow: Workflow,
+			runExecutionData: IRunExecutionData,
+			runIndex: number,
+			itemIndex: number,
+			activeNodeName: string,
+			connectionInputData: INodeExecutionData[],
+			siblingParameters: INodeParameters,
+			mode: WorkflowExecuteMode,
+			envProviderState: EnvProviderState,
+			executeData?: IExecuteData,
+			defaultReturnRunIndex?: number,
+			selfData?: IDataObject,
+			contextNodeName?: string,
+		) {
+			return await Container.get(TaskManager).startTask(
+				additionalData,
+				jobType,
+				settings,
+				executeFunctions,
+				inputData,
+				node,
+				workflow,
+				runExecutionData,
+				runIndex,
+				itemIndex,
+				activeNodeName,
+				connectionInputData,
+				siblingParameters,
+				mode,
+				envProviderState,
+				executeData,
+				defaultReturnRunIndex,
+				selfData,
+				contextNodeName,
+			);
 		},
+		logAiEvent: (eventName: keyof AiEventMap, payload: AiEventPayload) =>
+			eventService.emit(eventName, payload),
 	};
 }
 

@@ -140,11 +140,11 @@ export class MqttTrigger implements INodeType {
 
 		if (this.getMode() === 'trigger') {
 			const donePromise = !options.parallelProcessing
-				? await this.helpers.createDeferredPromise<IRun>()
+				? this.helpers.createDeferredPromise<IRun>()
 				: undefined;
 			client.on('message', async (topic, payload) => {
 				this.emit(parsePayload(topic, payload), undefined, donePromise);
-				await donePromise?.promise();
+				await donePromise?.promise;
 			});
 			await client.subscribeAsync(topicsQoS);
 		}

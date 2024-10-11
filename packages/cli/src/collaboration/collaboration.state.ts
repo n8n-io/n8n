@@ -1,10 +1,10 @@
-import { Service } from 'typedi';
+import type { Iso8601DateTimeString } from '@n8n/api-types';
 import type { Workflow } from 'n8n-workflow';
+import { Service } from 'typedi';
 
 import { Time } from '@/constants';
-import type { Iso8601DateTimeString } from '@/interfaces';
-import { CacheService } from '@/services/cache/cache.service';
 import type { User } from '@/databases/entities/user';
+import { CacheService } from '@/services/cache/cache.service';
 
 type WorkflowCacheHash = Record<User['id'], Iso8601DateTimeString>;
 interface CacheEntry {

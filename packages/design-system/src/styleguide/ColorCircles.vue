@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
+
 import { getHex, resolveHSLCalc } from './ColorCircles.utils';
 
 const props = defineProps<{ colors: string[] }>();

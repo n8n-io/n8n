@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import {
 	NodeConnectionType,
 	type INodeProperties,
@@ -39,7 +38,7 @@ const descriptionV2: INodeTypeDescription = {
 	defaults: {
 		name: 'n8n Form Trigger',
 	},
-	// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 	inputs: [],
 	outputs: [NodeConnectionType.Main],
 	webhooks: [

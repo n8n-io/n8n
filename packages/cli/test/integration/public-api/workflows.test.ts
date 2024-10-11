@@ -1,28 +1,27 @@
-import { Container } from 'typedi';
 import type { INode } from 'n8n-workflow';
+import { Container } from 'typedi';
 
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import config from '@/config';
 import { STARTING_NODES } from '@/constants';
+import type { Project } from '@/databases/entities/project';
 import type { TagEntity } from '@/databases/entities/tag-entity';
 import type { User } from '@/databases/entities/user';
-import type { Project } from '@/databases/entities/project';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { WorkflowHistoryRepository } from '@/databases/repositories/workflow-history.repository';
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { ExecutionService } from '@/executions/execution.service';
-
-import { randomApiKey } from '../shared/random';
-import * as utils from '../shared/utils/';
-import * as testDb from '../shared/test-db';
-import { createUser } from '../shared/db/users';
-import { createWorkflow, createWorkflowWithTrigger } from '../shared/db/workflows';
-import { createTag } from '../shared/db/tags';
-import { mockInstance } from '../../shared/mocking';
-import type { SuperAgentTest } from '../shared/types';
-import { Telemetry } from '@/telemetry';
 import { ProjectService } from '@/services/project.service';
+import { Telemetry } from '@/telemetry';
 import { createTeamProject } from '@test-integration/db/projects';
+
+import { mockInstance } from '../../shared/mocking';
+import { createTag } from '../shared/db/tags';
+import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
+import { createWorkflow, createWorkflowWithTrigger } from '../shared/db/workflows';
+import * as testDb from '../shared/test-db';
+import type { SuperAgentTest } from '../shared/types';
+import * as utils from '../shared/utils/';
 
 mockInstance(Telemetry);
 
@@ -40,18 +39,13 @@ const license = testServer.license;
 mockInstance(ExecutionService);
 
 beforeAll(async () => {
-	owner = await createUser({
-		role: 'global:owner',
-		apiKey: randomApiKey(),
-	});
+	owner = await createOwnerWithApiKey();
 	ownerPersonalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
 		owner.id,
 	);
 
-	member = await createUser({
-		role: 'global:member',
-		apiKey: randomApiKey(),
-	});
+	member = await createMemberWithApiKey();
+
 	memberPersonalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
 		member.id,
 	);
@@ -1518,6 +1512,10 @@ describe('PUT /workflows/:id/transfer', () => {
 		const secondProject = await createTeamProject('second-project', member);
 		const workflow = await createWorkflow({}, firstProject);
 
+		// Make data more similar to real world scenario by injecting additional records into the database
+		await createTeamProject('third-project', member);
+		await createWorkflow({}, firstProject);
+
 		/**
 		 * Act
 		 */
@@ -1529,6 +1527,13 @@ describe('PUT /workflows/:id/transfer', () => {
 		 * Assert
 		 */
 		expect(response.statusCode).toBe(204);
+
+		const workflowsInProjectResponse = await authMemberAgent
+			.get(`/workflows?projectId=${secondProject.id}`)
+			.send();
+
+		expect(workflowsInProjectResponse.statusCode).toBe(200);
+		expect(workflowsInProjectResponse.body.data[0].id).toBe(workflow.id);
 	});
 
 	test('if no destination project, should reject', async () => {

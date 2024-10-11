@@ -1,15 +1,16 @@
+import type { AnnotationVote } from 'n8n-workflow';
 import Container from 'typedi';
+
 import type { ExecutionData } from '@/databases/entities/execution-data';
 import type { ExecutionEntity } from '@/databases/entities/execution-entity';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import { AnnotationTagRepository } from '@/databases/repositories/annotation-tag.repository.ee';
 import { ExecutionDataRepository } from '@/databases/repositories/execution-data.repository';
 import { ExecutionMetadataRepository } from '@/databases/repositories/execution-metadata.repository';
+import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { ExecutionService } from '@/executions/execution.service';
-import type { AnnotationVote } from 'n8n-workflow';
-import { mockInstance } from '@test/mocking';
 import { Telemetry } from '@/telemetry';
-import { AnnotationTagRepository } from '@/databases/repositories/annotation-tag.repository';
+import { mockInstance } from '@test/mocking';
 
 mockInstance(Telemetry);
 
@@ -38,6 +39,7 @@ export async function createExecution(
 	const execution = await Container.get(ExecutionRepository).save({
 		finished: finished ?? true,
 		mode: mode ?? 'manual',
+		createdAt: new Date(),
 		startedAt: startedAt ?? new Date(),
 		...(workflow !== undefined && { workflowId: workflow.id }),
 		stoppedAt: stoppedAt ?? new Date(),

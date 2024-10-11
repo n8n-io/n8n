@@ -1,21 +1,24 @@
+import { InstanceSettings } from 'n8n-core';
 import { Container } from 'typedi';
-import { debounceMessageReceiver, messageToRedisServiceCommandObject } from '../helpers';
+
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import config from '@/config';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { ExternalSecretsManager } from '@/external-secrets/external-secrets-manager.ee';
 import { License } from '@/license';
-import { Logger } from '@/logger';
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { Logger } from '@/logging/logger.service';
 import { Push } from '@/push';
-import { TestWebhooks } from '@/webhooks/test-webhooks';
-import { OrchestrationService } from '@/services/orchestration.service';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { CommunityPackagesService } from '@/services/community-packages.service';
+import { OrchestrationService } from '@/services/orchestration.service';
+import { TestWebhooks } from '@/webhooks/test-webhooks';
+
+import { debounceMessageReceiver, messageToRedisServiceCommandObject } from '../helpers';
 
 // eslint-disable-next-line complexity
 export async function handleCommandMessageMain(messageString: string) {
 	const queueModeId = config.getEnv('redis.queueModeId');
-	const isMainInstance = config.getEnv('generic.instanceType') === 'main';
+	const isMainInstance = Container.get(InstanceSettings).instanceType === 'main';
 	const message = messageToRedisServiceCommandObject(messageString);
 	const logger = Container.get(Logger);
 
@@ -24,17 +27,11 @@ export async function handleCommandMessageMain(messageString: string) {
 			`RedisCommandHandler(main): Received command message ${message.command} from ${message.senderId}`,
 		);
 
-		const selfSendingAllowed = [
-			'add-webhooks-triggers-and-pollers',
-			'remove-triggers-and-pollers',
-		].includes(message.command);
-
 		if (
-			!selfSendingAllowed &&
+			!message.selfSend &&
 			(message.senderId === queueModeId ||
 				(message.targets && !message.targets.includes(queueModeId)))
 		) {
-			// Skipping command message because it's not for this instance
 			logger.debug(
 				`Skipping command message ${message.command} because it's not for this instance.`,
 			);
@@ -44,12 +41,9 @@ export async function handleCommandMessageMain(messageString: string) {
 		const push = Container.get(Push);
 
 		switch (message.command) {
-			case 'reloadLicense':
+			case 'reload-license':
 				if (!debounceMessageReceiver(message, 500)) {
-					message.payload = {
-						result: 'debounced',
-					};
-					return message;
+					return { ...message, payload: { result: 'debounced' } };
 				}
 
 				if (isMainInstance && !config.getEnv('multiMainSetup.enabled')) {
@@ -57,20 +51,14 @@ export async function handleCommandMessageMain(messageString: string) {
 				}
 				await Container.get(License).reload();
 				break;
-			case 'restartEventBus':
+			case 'restart-event-bus':
 				if (!debounceMessageReceiver(message, 200)) {
-					message.payload = {
-						result: 'debounced',
-					};
-					return message;
+					return { ...message, payload: { result: 'debounced' } };
 				}
 				await Container.get(MessageEventBus).restart();
-			case 'reloadExternalSecretsProviders':
+			case 'reload-external-secrets-providers':
 				if (!debounceMessageReceiver(message, 200)) {
-					message.payload = {
-						result: 'debounced',
-					};
-					return message;
+					return { ...message, payload: { result: 'debounced' } };
 				}
 				await Container.get(ExternalSecretsManager).reloadAllProviders();
 				break;
@@ -80,19 +68,21 @@ export async function handleCommandMessageMain(messageString: string) {
 				if (!debounceMessageReceiver(message, 200)) {
 					return message;
 				}
-				const { packageName, packageVersion } = message.payload;
+				const { packageName } = message.payload;
 				const communityPackagesService = Container.get(CommunityPackagesService);
 				if (message.command === 'community-package-uninstall') {
 					await communityPackagesService.removeNpmPackage(packageName);
 				} else {
-					await communityPackagesService.installOrUpdateNpmPackage(packageName, packageVersion);
+					await communityPackagesService.installOrUpdateNpmPackage(
+						packageName,
+						message.payload.packageVersion,
+					);
 				}
 				break;
 
 			case 'add-webhooks-triggers-and-pollers': {
 				if (!debounceMessageReceiver(message, 100)) {
-					message.payload = { result: 'debounced' };
-					return message;
+					return { ...message, payload: { result: 'debounced' } };
 				}
 
 				const orchestrationService = Container.get(OrchestrationService);
@@ -121,7 +111,7 @@ export async function handleCommandMessageMain(messageString: string) {
 							errorMessage: error.message,
 						});
 
-						await Container.get(OrchestrationService).publish('workflow-failed-to-activate', {
+						await Container.get(OrchestrationService).publish('display-workflow-activation-error', {
 							workflowId,
 							errorMessage: error.message,
 						});
@@ -133,8 +123,7 @@ export async function handleCommandMessageMain(messageString: string) {
 
 			case 'remove-triggers-and-pollers': {
 				if (!debounceMessageReceiver(message, 100)) {
-					message.payload = { result: 'debounced' };
-					return message;
+					return { ...message, payload: { result: 'debounced' } };
 				}
 
 				const orchestrationService = Container.get(OrchestrationService);
@@ -160,8 +149,7 @@ export async function handleCommandMessageMain(messageString: string) {
 
 			case 'display-workflow-activation': {
 				if (!debounceMessageReceiver(message, 100)) {
-					message.payload = { result: 'debounced' };
-					return message;
+					return { ...message, payload: { result: 'debounced' } };
 				}
 
 				const { workflowId } = message.payload ?? {};
@@ -175,8 +163,7 @@ export async function handleCommandMessageMain(messageString: string) {
 
 			case 'display-workflow-deactivation': {
 				if (!debounceMessageReceiver(message, 100)) {
-					message.payload = { result: 'debounced' };
-					return message;
+					return { ...message, payload: { result: 'debounced' } };
 				}
 
 				const { workflowId } = message.payload ?? {};
@@ -188,10 +175,9 @@ export async function handleCommandMessageMain(messageString: string) {
 				break;
 			}
 
-			case 'workflow-failed-to-activate': {
+			case 'display-workflow-activation-error': {
 				if (!debounceMessageReceiver(message, 100)) {
-					message.payload = { result: 'debounced' };
-					return message;
+					return { ...message, payload: { result: 'debounced' } };
 				}
 
 				const { workflowId, errorMessage } = message.payload ?? {};

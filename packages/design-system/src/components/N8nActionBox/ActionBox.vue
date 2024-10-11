@@ -1,10 +1,11 @@
 <script lang="ts" setup>
+import N8nTooltip from 'n8n-design-system/components/N8nTooltip/Tooltip.vue';
+import type { ButtonType } from 'n8n-design-system/types/button';
+
 import N8nButton from '../N8nButton';
+import N8nCallout, { type CalloutTheme } from '../N8nCallout';
 import N8nHeading from '../N8nHeading';
 import N8nText from '../N8nText';
-import N8nCallout, { type CalloutTheme } from '../N8nCallout';
-import type { ButtonType } from 'n8n-design-system/types/button';
-import N8nTooltip from 'n8n-design-system/components/N8nTooltip/Tooltip.vue';
 
 interface ActionBoxProps {
 	emoji: string;
@@ -37,7 +38,7 @@ withDefaults(defineProps<ActionBoxProps>(), {
 		<div :class="$style.description" @click="$emit('descriptionClick', $event)">
 			<N8nText color="text-base">
 				<slot name="description">
-					<span v-html="description"></span>
+					<span v-n8n-html="description"></span>
 				</slot>
 			</N8nText>
 		</div>
@@ -61,7 +62,7 @@ withDefaults(defineProps<ActionBoxProps>(), {
 			:class="$style.callout"
 		>
 			<N8nText color="text-base">
-				<span size="small" v-html="calloutText"></span>
+				<span size="small" v-n8n-html="calloutText"></span>
 			</N8nText>
 		</N8nCallout>
 	</div>

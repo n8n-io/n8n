@@ -1,9 +1,10 @@
-import Container from 'typedi';
 import { BinaryDataService } from 'n8n-core';
-import type { IRun, WorkflowExecuteMode } from 'n8n-workflow';
 import type { BinaryData } from 'n8n-core';
+import type { IRun, WorkflowExecuteMode } from 'n8n-workflow';
+import Container from 'typedi';
+
 import config from '@/config';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 
 /**
  * Whenever the execution ID is not available to the binary data service at the

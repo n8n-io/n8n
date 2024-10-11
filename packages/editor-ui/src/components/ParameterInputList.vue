@@ -29,6 +29,7 @@ import {
 } from '@/utils/nodeTypesUtils';
 import { get, set } from 'lodash-es';
 import { useRouter } from 'vue-router';
+import { captureException } from '@sentry/vue';
 
 const LazyFixedCollectionParameter = defineAsyncComponent(
 	async () => await import('./FixedCollectionParameter.vue'),
@@ -73,7 +74,7 @@ onErrorCaptured((e, component) => {
 	}
 	asyncLoadingError.value = true;
 	console.error(e);
-	window?.Sentry?.captureException(e, {
+	captureException(e, {
 		tags: {
 			asyncLoadingError: true,
 		},
@@ -472,6 +473,7 @@ function getParameterValue<T extends NodeParameterValueType = NodeParameterValue
 				:node="node"
 				:path="getPath(parameter.name)"
 				:dependent-parameters-values="getDependentParametersValues(parameter)"
+				:is-read-only="isReadOnly"
 				input-size="small"
 				label-size="small"
 				@value-changed="valueChanged"

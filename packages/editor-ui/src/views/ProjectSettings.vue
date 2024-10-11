@@ -17,6 +17,7 @@ import { useRolesStore } from '@/stores/roles.store';
 import type { ProjectRole } from '@/types/roles.types';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
 
 type FormDataDiff = {
 	name?: string;
@@ -33,6 +34,7 @@ const cloudPlanStore = useCloudPlanStore();
 const toast = useToast();
 const router = useRouter();
 const telemetry = useTelemetry();
+const documentTitle = useDocumentTitle();
 const dialogVisible = ref(false);
 const upgradeDialogVisible = ref(false);
 
@@ -60,7 +62,9 @@ const usersList = computed(() =>
 );
 
 const projects = computed(() =>
-	projectsStore.projects.filter((project) => project.id !== projectsStore.currentProjectId),
+	projectsStore.availableProjects.filter(
+		(project) => project.id !== projectsStore.currentProjectId,
+	),
 );
 const projectRoles = computed(() =>
 	rolesStore.processedProjectRoles.map((role) => ({
@@ -200,7 +204,7 @@ const onSubmit = async () => {
 };
 
 const onDelete = async () => {
-	await projectsStore.getAllProjects();
+	await projectsStore.getAvailableProjects();
 	dialogVisible.value = true;
 };
 
@@ -248,6 +252,7 @@ onBeforeMount(async () => {
 });
 
 onMounted(() => {
+	documentTitle.set(locale.baseText('projects.settings'));
 	selectProjectNameIfMatchesDefault();
 });
 </script>

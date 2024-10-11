@@ -381,7 +381,7 @@ export const description: INodeProperties[] = [
 								},
 								default: '',
 								description:
-									'Sorts by metric values. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+									'Sorts by metric values. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 							},
 						],
 					},
@@ -406,7 +406,7 @@ export const description: INodeProperties[] = [
 								},
 								default: '',
 								description:
-									'Sorts by metric values. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+									'Sorts by metric values. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Order Type',

@@ -32,6 +32,23 @@ describe('CanvasHandleMainOutput', () => {
 		expect(queryByTestId('canvas-handle-plus')).not.toBeInTheDocument();
 	});
 
+	it('should render CanvasHandlePlus with success state when runData.total > 1', () => {
+		const { queryByTestId } = renderComponent({
+			global: {
+				provide: {
+					...createCanvasHandleProvide({
+						runData: {
+							total: 2,
+							iterations: 1,
+						},
+					}),
+				},
+			},
+		});
+
+		expect(queryByTestId('canvas-handle-plus')).toHaveClass('success');
+	});
+
 	it('should render run data label', async () => {
 		const runData = {
 			total: 1,

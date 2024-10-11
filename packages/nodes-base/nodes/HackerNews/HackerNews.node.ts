@@ -24,6 +24,7 @@ export class HackerNews implements INodeType {
 		},
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
 		properties: [
 			// ----------------------------------
 			//         Resources

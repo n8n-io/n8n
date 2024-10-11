@@ -1,29 +1,29 @@
-import { Container } from 'typedi';
-import type { FlowResult } from 'samlify/types/src/flow';
 import { randomString } from 'n8n-workflow';
+import type { FlowResult } from 'samlify/types/src/flow';
+import { Container } from 'typedi';
 
 import config from '@/config';
 import { AuthIdentity } from '@/databases/entities/auth-identity';
 import type { User } from '@/databases/entities/user';
-import { UserRepository } from '@/databases/repositories/user.repository';
 import { AuthIdentityRepository } from '@/databases/repositories/auth-identity.repository';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { UserRepository } from '@/databases/repositories/user.repository';
 import { AuthError } from '@/errors/response-errors/auth.error';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { License } from '@/license';
 import { PasswordUtility } from '@/services/password.utility';
 
+import { SAML_LOGIN_ENABLED, SAML_LOGIN_LABEL } from './constants';
+import { getServiceProviderConfigTestReturnUrl } from './service-provider.ee';
+import type { SamlConfiguration } from './types/requests';
+import type { SamlAttributeMapping } from './types/saml-attribute-mapping';
 import type { SamlPreferences } from './types/saml-preferences';
 import type { SamlUserAttributes } from './types/saml-user-attributes';
-import type { SamlAttributeMapping } from './types/saml-attribute-mapping';
-import { SAML_LOGIN_ENABLED, SAML_LOGIN_LABEL } from './constants';
 import {
 	getCurrentAuthenticationMethod,
 	isEmailCurrentAuthenticationMethod,
 	isSamlCurrentAuthenticationMethod,
 	setCurrentAuthenticationMethod,
 } from '../sso-helpers';
-import { getServiceProviderConfigTestReturnUrl } from './service-provider.ee';
-import type { SamlConfiguration } from './types/requests';
 
 /**
  *  Check whether the SAML feature is licensed and enabled in the instance

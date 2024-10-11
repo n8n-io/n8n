@@ -1,22 +1,25 @@
 import { jsonParse } from 'n8n-workflow';
 import Container from 'typedi';
-import { Logger } from '@/logger';
-import { Push } from '../../../push';
-import type { RedisServiceWorkerResponseObject } from '../../redis/redis-service-commands';
-import { WORKER_RESPONSE_REDIS_CHANNEL } from '@/services/redis/redis-constants';
+
+import { Logger } from '@/logging/logger.service';
+import { WORKER_RESPONSE_PUBSUB_CHANNEL } from '@/scaling/constants';
+import type { PubSub } from '@/scaling/pubsub/pubsub.types';
+import { assertNever } from '@/utils';
+
 import type { MainResponseReceivedHandlerOptions } from './types';
+import { Push } from '../../../push';
 
 export async function handleWorkerResponseMessageMain(
 	messageString: string,
 	options: MainResponseReceivedHandlerOptions,
 ) {
-	const workerResponse = jsonParse<RedisServiceWorkerResponseObject | null>(messageString, {
+	const workerResponse = jsonParse<PubSub.WorkerResponse | null>(messageString, {
 		fallbackValue: null,
 	});
 
 	if (!workerResponse) {
 		Container.get(Logger).debug(
-			`Received invalid message via channel ${WORKER_RESPONSE_REDIS_CHANNEL}: "${messageString}"`,
+			`Received invalid message via channel ${WORKER_RESPONSE_PUBSUB_CHANNEL}: "${messageString}"`,
 		);
 		return;
 	}
@@ -24,18 +27,14 @@ export async function handleWorkerResponseMessageMain(
 	if (workerResponse.targets && !workerResponse.targets.includes(options.queueModeId)) return;
 
 	switch (workerResponse.command) {
-		case 'getStatus':
+		case 'get-worker-status':
 			Container.get(Push).broadcast('sendWorkerStatusMessage', {
 				workerId: workerResponse.workerId,
 				status: workerResponse.payload,
 			});
 			break;
-		case 'getId':
-			break;
 		default:
-			Container.get(Logger).debug(
-				`Received worker response ${workerResponse.command} from ${workerResponse.workerId}`,
-			);
+			assertNever(workerResponse.command);
 	}
 
 	return workerResponse;

@@ -13,6 +13,7 @@ import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 import { deepCopy, defaultMessageEventBusDestinationOptions } from 'n8n-workflow';
 import EventDestinationCard from '@/components/SettingsLogStreaming/EventDestinationCard.ee.vue';
 import { createEventBus } from 'n8n-design-system/utils';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
 
 export default defineComponent({
 	name: 'SettingsLogStreamingView',
@@ -26,9 +27,11 @@ export default defineComponent({
 			destinations: Array<MessageEventBusDestinationOptions>,
 			disableLicense: false,
 			allDestinations: [] as MessageEventBusDestinationOptions[],
+			documentTitle: useDocumentTitle(),
 		};
 	},
 	async mounted() {
+		this.documentTitle.set(this.$locale.baseText('settings.log-streaming.heading'));
 		if (!this.isLicensed) return;
 
 		// Prepare credentialsStore so modals can pick up credentials
@@ -95,7 +98,7 @@ export default defineComponent({
 		},
 		async getDestinationDataFromBackend(): Promise<void> {
 			this.logStreamingStore.clearEventNames();
-			this.logStreamingStore.clearDestinationItemTrees();
+			this.logStreamingStore.clearDestinations();
 			this.allDestinations = [];
 			const eventNamesData = await this.logStreamingStore.fetchEventNames();
 			if (eventNamesData) {
@@ -175,7 +178,7 @@ export default defineComponent({
 		<template v-if="isLicensed">
 			<div class="mb-l">
 				<n8n-info-tip theme="info" type="note">
-					<span v-html="$locale.baseText('settings.log-streaming.infoText')"></span>
+					<span v-n8n-html="$locale.baseText('settings.log-streaming.infoText')"></span>
 				</n8n-info-tip>
 			</div>
 			<template v-if="storeHasItems()">
@@ -207,7 +210,7 @@ export default defineComponent({
 					@click:button="addDestination"
 				>
 					<template #heading>
-						<span v-html="$locale.baseText(`settings.log-streaming.addFirstTitle`)" />
+						<span v-n8n-html="$locale.baseText(`settings.log-streaming.addFirstTitle`)" />
 					</template>
 				</n8n-action-box>
 			</div>
@@ -215,7 +218,7 @@ export default defineComponent({
 		<template v-else>
 			<div v-if="$locale.baseText('settings.log-streaming.infoText')" class="mb-l">
 				<n8n-info-tip theme="info" type="note">
-					<span v-html="$locale.baseText('settings.log-streaming.infoText')"></span>
+					<span v-n8n-html="$locale.baseText('settings.log-streaming.infoText')"></span>
 				</n8n-info-tip>
 			</div>
 			<div data-test-id="action-box-unlicensed">
@@ -225,7 +228,7 @@ export default defineComponent({
 					@click:button="goToUpgrade"
 				>
 					<template #heading>
-						<span v-html="$locale.baseText('settings.log-streaming.actionBox.title')" />
+						<span v-n8n-html="$locale.baseText('settings.log-streaming.actionBox.title')" />
 					</template>
 				</n8n-action-box>
 			</div>

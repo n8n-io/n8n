@@ -1,6 +1,7 @@
 import fs from 'fs';
-import { Container } from 'typedi';
 import { mock } from 'jest-mock-extended';
+import { Container } from 'typedi';
+
 import { GlobalConfig } from '../src/index';
 
 jest.mock('fs');
@@ -176,6 +177,7 @@ describe('GlobalConfig', () => {
 			formTest: 'form-test',
 			formWaiting: 'form-waiting',
 			payloadSizeMax: 16,
+			formDataFileSizeMax: 200,
 			rest: 'rest',
 			webhook: 'webhook',
 			webhookTest: 'webhook-test',
@@ -196,6 +198,7 @@ describe('GlobalConfig', () => {
 			health: {
 				active: false,
 				port: 5678,
+				address: '0.0.0.0',
 			},
 			bull: {
 				redis: {
@@ -219,12 +222,32 @@ describe('GlobalConfig', () => {
 				},
 			},
 		},
+		taskRunners: {
+			disabled: true,
+			path: '/runners',
+			authToken: '',
+			listen_address: '127.0.0.1',
+			port: 5679,
+		},
+		sentry: {
+			backendDsn: '',
+			frontendDsn: '',
+		},
+		logging: {
+			level: 'info',
+			outputs: ['console'],
+			file: {
+				fileCountMax: 100,
+				fileSizeMax: 16,
+				location: 'logs/n8n.log',
+			},
+			scopes: [],
+		},
 	};
 
 	it('should use all default values when no env variables are defined', () => {
 		process.env = {};
 		const config = Container.get(GlobalConfig);
-
 		expect(deepCopy(config)).toEqual(defaultConfig);
 		expect(mockFs.readFileSync).not.toHaveBeenCalled();
 	});

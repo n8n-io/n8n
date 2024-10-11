@@ -1,14 +1,14 @@
 <script lang="ts" setup>
-import { computed, ref } from 'vue';
 import type { Options as MarkdownOptions } from 'markdown-it';
 import Markdown from 'markdown-it';
-import markdownLink from 'markdown-it-link-attributes';
 import markdownEmoji from 'markdown-it-emoji';
+import markdownLink from 'markdown-it-link-attributes';
 import markdownTaskLists from 'markdown-it-task-lists';
+import { computed, ref } from 'vue';
 import xss, { friendlyAttrValue, whiteList } from 'xss';
 
-import N8nLoading from '../N8nLoading';
 import { escapeMarkdown, toggleCheckbox } from '../../utils/markdown';
+import N8nLoading from '../N8nLoading';
 
 interface IImage {
 	id: string;
@@ -136,7 +136,7 @@ const htmlContent = computed(() => {
 });
 
 const emit = defineEmits<{
-	'markdown-click': [link: string, e: MouseEvent];
+	'markdown-click': [link: HTMLAnchorElement, e: MouseEvent];
 	'update-content': [content: string];
 }>();
 
@@ -154,7 +154,7 @@ const onClick = (event: MouseEvent) => {
 		}
 	}
 	if (clickedLink) {
-		emit('markdown-click', clickedLink?.href, event);
+		emit('markdown-click', clickedLink, event);
 	}
 };
 
@@ -202,7 +202,7 @@ const onCheckboxChange = (index: number) => {
 			@click="onClick"
 			@mousedown="onMouseDown"
 			@change="onChange"
-			v-html="htmlContent"
+			v-n8n-html="htmlContent"
 		/>
 		<div v-else :class="$style.markdown">
 			<div v-for="(_, index) in loadingBlocks" :key="index">

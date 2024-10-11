@@ -99,7 +99,7 @@ export const description: SheetProperties = [
 						name: 'fieldId',
 						type: 'options',
 						description:
-							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsDependsOn: ['sheetName.value'],
 							loadOptionsMethod: 'getSheetHeaderRowAndSkipEmpty',
@@ -211,7 +211,7 @@ export async function execute(
 ): Promise<INodeExecutionData[]> {
 	const items = this.getInputData();
 	const nodeVersion = this.getNode().typeVersion;
-	const dataMode =
+	let dataMode =
 		nodeVersion < 4
 			? (this.getNodeParameter('dataMode', 0) as string)
 			: (this.getNodeParameter('columns.mappingMode', 0) as string);
@@ -227,6 +227,10 @@ export async function execute(
 	}
 
 	const sheetData = await sheet.getData(range, 'FORMATTED_VALUE');
+
+	if (sheetData === undefined || !sheetData.length) {
+		dataMode = 'autoMapInputData';
+	}
 
 	if (nodeVersion >= 4.4 && dataMode !== 'autoMapInputData') {
 		//not possible to refresh columns when mode is autoMapInputData

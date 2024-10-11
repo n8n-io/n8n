@@ -1,4 +1,5 @@
 import { type ICredentialType } from 'n8n-workflow';
+
 import {
 	AGENT_NODE_NAME,
 	AI_TOOL_HTTP_NODE_NAME,

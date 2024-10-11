@@ -1,15 +1,16 @@
-import { ActiveExecutions } from '@/active-executions';
-import PCancelable from 'p-cancelable';
-import { v4 as uuid } from 'uuid';
+import { mock } from 'jest-mock-extended';
 import type {
 	IExecuteResponsePromiseData,
 	IRun,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
 import { createDeferredPromise } from 'n8n-workflow';
-import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { mock } from 'jest-mock-extended';
+import PCancelable from 'p-cancelable';
+import { v4 as uuid } from 'uuid';
+
+import { ActiveExecutions } from '@/active-executions';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
+import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { mockInstance } from '@test/mocking';
 
 const FAKE_EXECUTION_ID = '15';
@@ -84,19 +85,26 @@ describe('ActiveExecutions', () => {
 	test('Should attach and resolve response promise to existing execution', async () => {
 		const newExecution = mockExecutionData();
 		await activeExecutions.add(newExecution, FAKE_EXECUTION_ID);
-		const deferredPromise = await mockDeferredPromise();
+		const deferredPromise = mockDeferredPromise();
 		activeExecutions.attachResponsePromise(FAKE_EXECUTION_ID, deferredPromise);
 		const fakeResponse = { data: { resultData: { runData: {} } } };
 		activeExecutions.resolveResponsePromise(FAKE_EXECUTION_ID, fakeResponse);
 
-		await expect(deferredPromise.promise()).resolves.toEqual(fakeResponse);
+		await expect(deferredPromise.promise).resolves.toEqual(fakeResponse);
 	});
 
 	test('Should remove an existing execution', async () => {
+		// ARRANGE
 		const newExecution = mockExecutionData();
 		const executionId = await activeExecutions.add(newExecution);
-		activeExecutions.remove(executionId);
 
+		// ACT
+		activeExecutions.finalizeExecution(executionId);
+
+		// Wait until the next tick to ensure that the post-execution promise has settled
+		await new Promise(setImmediate);
+
+		// ASSERT
 		expect(activeExecutions.getActiveExecutions().length).toBe(0);
 	});
 
@@ -109,7 +117,7 @@ describe('ActiveExecutions', () => {
 			setTimeout(res, 100);
 		});
 		const fakeOutput = mockFullRunData();
-		activeExecutions.remove(executionId, fakeOutput);
+		activeExecutions.finalizeExecution(executionId, fakeOutput);
 
 		await expect(postExecutePromise).resolves.toEqual(fakeOutput);
 	});
@@ -125,7 +133,7 @@ describe('ActiveExecutions', () => {
 		const cancellablePromise = mockCancelablePromise();
 		cancellablePromise.cancel = cancelExecution;
 		activeExecutions.attachWorkflowExecution(executionId, cancellablePromise);
-		void activeExecutions.stopExecution(executionId);
+		activeExecutions.stopExecution(executionId);
 
 		expect(cancelExecution).toHaveBeenCalledTimes(1);
 	});
@@ -162,5 +170,5 @@ function mockFullRunData(): IRun {
 
 // eslint-disable-next-line @typescript-eslint/promise-function-async
 const mockCancelablePromise = () => new PCancelable<IRun>((resolve) => resolve());
-// eslint-disable-next-line @typescript-eslint/promise-function-async
+
 const mockDeferredPromise = () => createDeferredPromise<IExecuteResponsePromiseData>();

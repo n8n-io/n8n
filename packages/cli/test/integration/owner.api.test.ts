@@ -5,6 +5,7 @@ import config from '@/config';
 import type { User } from '@/databases/entities/user';
 import { UserRepository } from '@/databases/repositories/user.repository';
 
+import { createUserShell } from './shared/db/users';
 import {
 	randomEmail,
 	randomInvalidPassword,
@@ -13,7 +14,6 @@ import {
 } from './shared/random';
 import * as testDb from './shared/test-db';
 import * as utils from './shared/utils/';
-import { createUserShell } from './shared/db/users';
 
 const testServer = utils.setupTestServer({ endpointGroups: ['owner'] });
 

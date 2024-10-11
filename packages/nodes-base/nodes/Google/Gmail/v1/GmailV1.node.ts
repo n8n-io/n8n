@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import {
 	NodeConnectionType,
 	type IBinaryKeyData,
@@ -14,7 +13,7 @@ import {
 } from 'n8n-workflow';
 
 import isEmpty from 'lodash/isEmpty';
-import type { IEmail } from '../GenericFunctions';
+import type { IEmail } from '../../../../utils/sendAndWait/interfaces';
 import {
 	encodeEmail,
 	extractEmail,

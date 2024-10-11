@@ -1,10 +1,11 @@
-import { Service } from 'typedi';
 import { GlobalConfig } from '@n8n/config';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { deepCopy, jsonParse } from 'n8n-workflow';
-import type { ICredentialsOverwrite } from '@/interfaces';
+import { Service } from 'typedi';
+
 import { CredentialTypes } from '@/credential-types';
-import { Logger } from '@/logger';
+import type { ICredentialsOverwrite } from '@/interfaces';
+import { Logger } from '@/logging/logger.service';
 
 @Service()
 export class CredentialsOverwrites {

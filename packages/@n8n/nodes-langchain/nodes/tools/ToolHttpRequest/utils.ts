@@ -19,6 +19,8 @@ import { convert } from 'html-to-text';
 
 import { Readability } from '@mozilla/readability';
 import { JSDOM } from 'jsdom';
+import { z } from 'zod';
+import type { DynamicZodObject } from '../../../types/zod.types';
 import type {
 	ParameterInputType,
 	ParametersValues,
@@ -27,8 +29,6 @@ import type {
 	SendIn,
 	ToolParameter,
 } from './interfaces';
-import type { DynamicZodObject } from '../../../types/zod.types';
-import { z } from 'zod';
 
 const genericCredentialRequest = async (ctx: IExecuteFunctions, itemIndex: number) => {
 	const genericType = ctx.getNodeParameter('genericAuthType', itemIndex) as string;
@@ -571,8 +571,10 @@ export const configureToolFunction = (
 	return async (query: string | IDataObject): Promise<string> => {
 		const { index } = ctx.addInputData(NodeConnectionType.AiTool, [[{ json: { query } }]]);
 
+		// Clone options and rawRequestOptions to avoid mutating the original objects
+		const options: IHttpRequestOptions | null = structuredClone(requestOptions);
+		const clonedRawRequestOptions: { [key: string]: string } = structuredClone(rawRequestOptions);
 		let response: string = '';
-		let options: IHttpRequestOptions | null = null;
 		let executionError: Error | undefined = undefined;
 
 		if (!toolParameters.length) {
@@ -613,8 +615,6 @@ export const configureToolFunction = (
 						);
 					}
 				}
-
-				options = requestOptions;
 
 				for (const parameter of toolParameters) {
 					let argument = dataFromModel[parameter.name];
@@ -659,7 +659,7 @@ export const configureToolFunction = (
 							argument = String(argument);
 							if (
 								!argument.startsWith('"') &&
-								!rawRequestOptions[parameter.sendIn].includes(`"{${parameter.name}}"`)
+								!clonedRawRequestOptions[parameter.sendIn].includes(`"{${parameter.name}}"`)
 							) {
 								argument = `"${argument}"`;
 							}
@@ -669,10 +669,9 @@ export const configureToolFunction = (
 							argument = JSON.stringify(argument);
 						}
 
-						rawRequestOptions[parameter.sendIn] = rawRequestOptions[parameter.sendIn].replace(
-							`{${parameter.name}}`,
-							String(argument),
-						);
+						clonedRawRequestOptions[parameter.sendIn] = clonedRawRequestOptions[
+							parameter.sendIn
+						].replace(`{${parameter.name}}`, String(argument));
 						continue;
 					}
 
@@ -693,7 +692,7 @@ export const configureToolFunction = (
 					set(options, [parameter.sendIn, parameter.name], argument);
 				}
 
-				for (const [key, value] of Object.entries(rawRequestOptions)) {
+				for (const [key, value] of Object.entries(clonedRawRequestOptions)) {
 					if (value) {
 						let parsedValue;
 						try {

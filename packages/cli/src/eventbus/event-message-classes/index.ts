@@ -4,7 +4,25 @@ import type { EventMessageExecution } from './event-message-execution';
 import type { EventMessageGeneric } from './event-message-generic';
 import type { EventMessageNode } from './event-message-node';
 import type { EventMessageWorkflow } from './event-message-workflow';
-import { eventNamesAiNodes, type EventNamesAiNodesType } from 'n8n-workflow';
+
+export const eventNamesAiNodes = [
+	'n8n.ai.memory.get.messages',
+	'n8n.ai.memory.added.message',
+	'n8n.ai.output.parser.parsed',
+	'n8n.ai.retriever.get.relevant.documents',
+	'n8n.ai.embeddings.embedded.document',
+	'n8n.ai.embeddings.embedded.query',
+	'n8n.ai.document.processed',
+	'n8n.ai.text.splitter.split',
+	'n8n.ai.tool.called',
+	'n8n.ai.vector.store.searched',
+	'n8n.ai.llm.generated',
+	'n8n.ai.llm.error',
+	'n8n.ai.vector.store.populated',
+	'n8n.ai.vector.store.updated',
+] as const;
+
+export type EventNamesAiNodesType = (typeof eventNamesAiNodes)[number];
 
 export const eventNamesWorkflow = [
 	'n8n.workflow.started',
