@@ -45,7 +45,7 @@ export class DatabaseExportService {
 		const month = String(now.getMonth() + 1).padStart(2, '0');
 		const day = String(now.getDate()).padStart(2, '0');
 
-		const tarballFileName = `${ZIP_BASE_FILE_NAME}-${year}-${month}-${day}.tar.zip`;
+		const tarballFileName = `${ZIP_BASE_FILE_NAME}-${year}-${month}-${day}.tar.gz`;
 
 		return path.join(this.config.outDir, tarballFileName);
 	}
