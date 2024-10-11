@@ -23,9 +23,9 @@ import { ExecutionService } from '@/executions/execution.service';
 import { License } from '@/license';
 import { SingleMainTaskManager } from '@/runners/task-managers/single-main-task-manager';
 import { TaskManager } from '@/runners/task-managers/task-manager';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { PubSubHandler } from '@/scaling/pubsub/pubsub-handler';
+import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { Server } from '@/server';
-import { OrchestrationHandlerMainService } from '@/services/orchestration/main/orchestration.handler.main.service';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { PruningService } from '@/services/pruning.service';
@@ -254,10 +254,11 @@ export class Start extends BaseCommand {
 
 		await orchestrationService.init();
 
-		await Container.get(OrchestrationHandlerMainService).initWithOptions({
-			queueModeId: this.queueModeId,
-			publisher: Container.get(Publisher),
-		});
+		Container.get(PubSubHandler).init();
+
+		const subscriber = Container.get(Subscriber);
+		await subscriber.subscribe('n8n.commands');
+		await subscriber.subscribe('n8n.worker-response');
 
 		if (!orchestrationService.isMultiMainSetupEnabled) return;
 

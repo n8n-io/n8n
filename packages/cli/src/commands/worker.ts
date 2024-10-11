@@ -132,9 +132,7 @@ export class Worker extends BaseCommand {
 		await Container.get(OrchestrationWorkerService).init();
 
 		Container.get(PubSubHandler).init();
-		const subscriber = Container.get(Subscriber);
-		await subscriber.subscribe('n8n.commands');
-		subscriber.setCommandMessageHandler();
+		await Container.get(Subscriber).subscribe('n8n.commands');
 	}
 
 	async setConcurrency() {
