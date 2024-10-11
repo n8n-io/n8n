@@ -31,7 +31,7 @@ export class DatabaseImportService {
 	};
 
 	/** Paths to files extracted from the tarball. */
-	private readonly extractFilePaths: string[] = [];
+	private extractFilePaths: string[] = [];
 
 	private manifest: Manifest;
 
@@ -82,7 +82,10 @@ export class DatabaseImportService {
 
 		if (dbType !== 'postgresdb') throw new UnsupportedDestinationError(dbType);
 
-		await this.fsService.extractTarball(this.config.importFilePath, this.config.extractDirPath);
+		this.extractFilePaths = await this.fsService.extractTarball(
+			this.config.importFilePath,
+			this.config.extractDirPath,
+		);
 
 		this.manifest = await this.getManifest();
 
