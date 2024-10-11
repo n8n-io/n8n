@@ -1,3 +1,12 @@
+## [1.63.2](https://github.com/n8n-io/n8n/compare/n8n@1.63.1...n8n@1.63.2) (2024-10-11)
+
+
+### Bug Fixes
+
+* **editor:** Make submit in ChangePasswordView work again ([#11227](https://github.com/n8n-io/n8n/issues/11227)) ([4eb905a](https://github.com/n8n-io/n8n/commit/4eb905ab296432376120ae4715d5f1d58c9f678a))
+
+
+
 ## [1.63.1](https://github.com/n8n-io/n8n/compare/n8n@1.63.0...n8n@1.63.1) (2024-10-10)
 
 
