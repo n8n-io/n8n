@@ -10,7 +10,7 @@ import type { INodeUi, IRunDataDisplayMode } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { setActivePinia } from 'pinia';
 import { defaultNodeTypes } from '@/__tests__/mocks';
-import { INodeExecutionData } from 'n8n-workflow';
+import type { INodeExecutionData } from 'n8n-workflow';
 
 const nodes = [
 	{
