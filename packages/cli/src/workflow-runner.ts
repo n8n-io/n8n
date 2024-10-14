@@ -64,7 +64,7 @@ export class WorkflowRunner {
 		executionId: string,
 		hooks?: WorkflowHooks,
 	) {
-		ErrorReporter.error(error);
+		ErrorReporter.error(error, { executionId });
 
 		const isQueueMode = config.getEnv('executions.mode') === 'queue';
 
@@ -476,7 +476,6 @@ export class WorkflowRunner {
 						clearWatchdogInterval();
 					}
 				} catch (error) {
-					ErrorReporter.error(error);
 					// We use "getWorkflowHooksWorkerExecuter" as "getWorkflowHooksWorkerMain" does not contain the
 					// "workflowExecuteAfter" which we require.
 					const hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerExecuter(
