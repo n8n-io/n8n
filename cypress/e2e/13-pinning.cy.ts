@@ -218,7 +218,11 @@ describe('Data pinning', () => {
 	});
 
 	it('should show pinned data tooltip', () => {
-		const { callEndpoint } = simpleWebhookCall({ method: 'GET', webhookPath: nanoid(), executeNow: false });
+		const { callEndpoint } = simpleWebhookCall({
+			method: 'GET',
+			webhookPath: nanoid(),
+			executeNow: false,
+		});
 
 		ndv.actions.close();
 		workflowPage.actions.executeWorkflow();
@@ -230,7 +234,12 @@ describe('Data pinning', () => {
 		callEndpoint((response) => {
 			expect(response.status).to.eq(200);
 			getVisiblePopper().should('have.length', 1);
-			getVisiblePopper().eq(0).should('have.text', 'You can pin this output instead of waiting for a test event. Open node to do so.')
+			getVisiblePopper()
+				.eq(0)
+				.should(
+					'have.text',
+					'You can pin this output instead of waiting for a test event. Open node to do so.',
+				);
 		});
 	});
 
