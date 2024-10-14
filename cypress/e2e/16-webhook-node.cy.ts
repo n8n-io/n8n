@@ -67,7 +67,7 @@ export const simpleWebhookCall = (options: SimpleWebhookCallOptions) => {
 
 	const callEndpoint = (cb: (response: Cypress.Response<unknown>) => void) => {
 		cy.request(method, `${BACKEND_BASE_URL}/webhook-test/${webhookPath}`).then(cb);
-	}
+	};
 
 	if (executeNow) {
 		ndv.actions.execute();
@@ -81,7 +81,7 @@ export const simpleWebhookCall = (options: SimpleWebhookCallOptions) => {
 
 	return {
 		callEndpoint,
-	}
+	};
 };
 
 describe('Webhook Trigger node', () => {
