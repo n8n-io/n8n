@@ -25,6 +25,10 @@ import { runInNewContext, type Context } from 'node:vm';
 import type { TaskResultData } from '@/runner-types';
 import { type Task, TaskRunner } from '@/task-runner';
 
+import { isErrorLike } from './errors/error-like';
+import { ExecutionError } from './errors/execution-error';
+import type { RequireResolver } from './require-resolver';
+import { createRequireResolver } from './require-resolver';
 import { validateRunForAllItemsOutput, validateRunForEachItemOutput } from './result-validation';
 
 export interface JSExecSettings {
@@ -72,19 +76,47 @@ export interface AllCodeTaskData {
 	additionalData: PartialAdditionalData;
 }
 
+export interface JsTaskRunnerOpts {
+	wsUrl: string;
+	grantToken: string;
+	maxConcurrency: number;
+	name?: string;
+	/**
+	 * List of built-in nodejs modules that are allowed to be required in the
+	 * execution sandbox. Asterisk (*) can be used to allow all.
+	 */
+	allowedBuiltInModules?: string;
+	/**
+	 * List of npm modules that are allowed to be required in the execution
+	 * sandbox. Asterisk (*) can be used to allow all.
+	 */
+	allowedExternalModules?: string;
+}
+
 type CustomConsole = {
 	log: (...args: unknown[]) => void;
 };
 
 export class JsTaskRunner extends TaskRunner {
-	constructor(
-		taskType: string,
-		wsUrl: string,
-		grantToken: string,
-		maxConcurrency: number,
-		name?: string,
-	) {
-		super(taskType, wsUrl, grantToken, maxConcurrency, name ?? 'JS Task Runner');
+	private readonly requireResolver: RequireResolver;
+
+	constructor({
+		grantToken,
+		maxConcurrency,
+		wsUrl,
+		name = 'JS Task Runner',
+		allowedBuiltInModules,
+		allowedExternalModules,
+	}: JsTaskRunnerOpts) {
+		super('javascript', wsUrl, grantToken, maxConcurrency, name);
+
+		const parseModuleAllowList = (moduleList: string) =>
+			moduleList === '*' ? null : new Set(moduleList.split(',').map((x) => x.trim()));
+
+		this.requireResolver = createRequireResolver({
+			allowedBuiltInModules: parseModuleAllowList(allowedBuiltInModules ?? ''),
+			allowedExternalModules: parseModuleAllowList(allowedExternalModules ?? ''),
+		});
 	}
 
 	async executeTask(task: Task<JSExecSettings>): Promise<TaskResultData> {
@@ -145,7 +177,7 @@ export class JsTaskRunner extends TaskRunner {
 		const inputItems = allData.connectionInputData;
 
 		const context: Context = {
-			require,
+			require: this.requireResolver,
 			module: {},
 			console: customConsole,
 
@@ -156,7 +188,7 @@ export class JsTaskRunner extends TaskRunner {
 
 		try {
 			const result = (await runInNewContext(
-				`module.exports = async function() {${settings.code}\n}()`,
+				`module.exports = async function VmCodeWrapper() {${settings.code}\n}()`,
 				context,
 			)) as TaskResultData['result'];
 
@@ -165,12 +197,14 @@ export class JsTaskRunner extends TaskRunner {
 			}
 
 			return validateRunForAllItemsOutput(result);
-		} catch (error) {
+		} catch (e) {
+			// Errors thrown by the VM are not instances of Error, so map them to an ExecutionError
+			const error = this.toExecutionErrorIfNeeded(e);
+
 			if (settings.continueOnFail) {
-				return [{ json: { error: this.getErrorMessageFromVmError(error) } }];
+				return [{ json: { error: error.message } }];
 			}
 
-			(error as Record<string, unknown>).node = allData.node;
 			throw error;
 		}
 	}
@@ -192,7 +226,7 @@ export class JsTaskRunner extends TaskRunner {
 			const item = inputItems[index];
 			const dataProxy = this.createDataProxy(allData, workflow, index);
 			const context: Context = {
-				require,
+				require: this.requireResolver,
 				module: {},
 				console: customConsole,
 				item,
@@ -203,7 +237,7 @@ export class JsTaskRunner extends TaskRunner {
 
 			try {
 				let result = (await runInNewContext(
-					`module.exports = async function() {${settings.code}\n}()`,
+					`module.exports = async function VmCodeWrapper() {${settings.code}\n}()`,
 					context,
 				)) as INodeExecutionData | undefined;
 
@@ -227,14 +261,16 @@ export class JsTaskRunner extends TaskRunner {
 								},
 					);
 				}
-			} catch (error) {
+			} catch (e) {
+				// Errors thrown by the VM are not instances of Error, so map them to an ExecutionError
+				const error = this.toExecutionErrorIfNeeded(e);
+
 				if (!settings.continueOnFail) {
-					(error as Record<string, unknown>).node = allData.node;
 					throw error;
 				}
 
 				returnData.push({
-					json: { error: this.getErrorMessageFromVmError(error) },
+					json: { error: error.message },
 					pairedItem: {
 						item: index,
 					},
@@ -274,11 +310,15 @@ export class JsTaskRunner extends TaskRunner {
 		).getDataProxy();
 	}
 
-	private getErrorMessageFromVmError(error: unknown): string {
-		if (typeof error === 'object' && !!error && 'message' in error) {
-			return error.message as string;
+	private toExecutionErrorIfNeeded(error: unknown): Error {
+		if (error instanceof Error) {
+			return error;
 		}
 
-		return JSON.stringify(error);
+		if (isErrorLike(error)) {
+			return new ExecutionError(error);
+		}
+
+		return new ExecutionError({ message: JSON.stringify(error) });
 	}
 }
