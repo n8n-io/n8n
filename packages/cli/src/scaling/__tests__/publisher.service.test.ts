@@ -4,6 +4,7 @@ import { mock } from 'jest-mock-extended';
 import config from '@/config';
 import { generateNanoId } from '@/databases/utils/generators';
 import type { RedisClientService } from '@/services/redis-client.service';
+import { mockLogger } from '@test/mocking';
 
 import { Publisher } from '../pubsub/publisher.service';
 import type { PubSub } from '../pubsub/pubsub.types';
@@ -18,18 +19,19 @@ describe('Publisher', () => {
 	});
 
 	const client = mock<SingleNodeClient>();
+	const logger = mockLogger();
 	const redisClientService = mock<RedisClientService>({ createClient: () => client });
 
 	describe('constructor', () => {
 		it('should init Redis client in scaling mode', () => {
-			const publisher = new Publisher(mock(), redisClientService);
+			const publisher = new Publisher(logger, redisClientService);
 
 			expect(publisher.getClient()).toEqual(client);
 		});
 
 		it('should not init Redis client in regular mode', () => {
 			config.set('executions.mode', 'regular');
-			const publisher = new Publisher(mock(), redisClientService);
+			const publisher = new Publisher(logger, redisClientService);
 
 			expect(publisher.getClient()).toBeUndefined();
 		});
@@ -37,7 +39,7 @@ describe('Publisher', () => {
 
 	describe('shutdown', () => {
 		it('should disconnect Redis client', () => {
-			const publisher = new Publisher(mock(), redisClientService);
+			const publisher = new Publisher(logger, redisClientService);
 			publisher.shutdown();
 			expect(client.disconnect).toHaveBeenCalled();
 		});
@@ -45,7 +47,7 @@ describe('Publisher', () => {
 
 	describe('publishCommand', () => {
 		it('should publish command into `n8n.commands` pubsub channel', async () => {
-			const publisher = new Publisher(mock(), redisClientService);
+			const publisher = new Publisher(logger, redisClientService);
 			const msg = mock<PubSub.Command>({ command: 'reload-license' });
 
 			await publisher.publishCommand(msg);
@@ -59,7 +61,7 @@ describe('Publisher', () => {
 
 	describe('publishWorkerResponse', () => {
 		it('should publish worker response into `n8n.worker-response` pubsub channel', async () => {
-			const publisher = new Publisher(mock(), redisClientService);
+			const publisher = new Publisher(logger, redisClientService);
 			const msg = mock<PubSub.WorkerResponse>({
 				response: 'response-to-get-worker-status',
 			});
