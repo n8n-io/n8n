@@ -40,7 +40,6 @@ describe('useWorkflowsStore', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
 		workflowsStore = useWorkflowsStore();
-		nodeTypesStore = useNodeTypesStore();
 		uiStore = useUIStore();
 		track.mockReset();
 	});
