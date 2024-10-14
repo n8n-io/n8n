@@ -781,7 +781,7 @@ describe('generateNodesGraph', () => {
 		expect(() => generateNodesGraph(workflow, nodeTypes)).not.toThrow();
 	});
 
-	test.only('should add run and items count', () => {
+	test('should add run and items count', () => {
 		const workflow: IWorkflowBase = {
 			meta: {
 				instanceId: 'a786b722078489c1fa382391a9f3476c2784761624deb2dfb4634827256d51a0',
