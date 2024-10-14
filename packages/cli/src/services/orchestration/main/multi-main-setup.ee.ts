@@ -74,7 +74,7 @@ export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 
 				this.emit('leader-stepdown'); // lost leadership - stop triggers, pollers, pruning, wait-tracking, queue recovery
 
-				EventReporter.info('[Multi-main setup] Leader failed to renew leader key');
+				this.logger.warn('[Multi-main setup] Leader failed to renew leader key');
 			}
 
 			return;
