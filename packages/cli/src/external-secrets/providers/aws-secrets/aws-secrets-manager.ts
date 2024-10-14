@@ -95,14 +95,14 @@ export class AwsSecretsManager implements SecretsProvider {
 	}
 
 	async connect() {
-		const [wasSuccessful] = await this.test();
+		const [wasSuccessful, errorMsg] = await this.test();
 
 		this.state = wasSuccessful ? 'connected' : 'error';
 
 		if (wasSuccessful) {
 			this.logger.debug('AWS Secrets Manager provider connected');
 		} else {
-			this.logger.error('AWS Secrets Manager provider failed to connect');
+			this.logger.error('AWS Secrets Manager provider failed to connect', { errorMsg });
 		}
 	}
 
