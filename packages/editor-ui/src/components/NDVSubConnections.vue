@@ -191,7 +191,7 @@ defineExpose({
 </script>
 
 <template>
-	<div :class="$style.container">
+	<div :class="$style.container" v-if="possibleConnections.length">
 		<div
 			:class="$style.connections"
 			:style="`--possible-connections: ${possibleConnections.length}`"
