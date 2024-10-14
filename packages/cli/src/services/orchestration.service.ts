@@ -47,16 +47,6 @@ export class OrchestrationService {
 		return config.getEnv('redis.queueModeId');
 	}
 
-	/** @deprecated use InstanceSettings.isLeader */
-	get isLeader() {
-		return this.instanceSettings.isLeader;
-	}
-
-	/** @deprecated use InstanceSettings.isFollower */
-	get isFollower() {
-		return this.instanceSettings.isFollower;
-	}
-
 	sanityCheck() {
 		return this.isInitialized && config.get('executions.mode') === 'queue';
 	}
@@ -144,7 +134,7 @@ export class OrchestrationService {
 
 		if (activationMode === 'leadershipChange') return false;
 
-		return this.isLeader; // 'update' or 'activate'
+		return this.instanceSettings.isLeader; // 'update' or 'activate'
 	}
 
 	/**
@@ -154,6 +144,6 @@ export class OrchestrationService {
 	 * triggers and pollers in memory, to ensure they are not duplicated.
 	 */
 	shouldAddTriggersAndPollers() {
-		return this.isLeader;
+		return this.instanceSettings.isLeader;
 	}
 }
