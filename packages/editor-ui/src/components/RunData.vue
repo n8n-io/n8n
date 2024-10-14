@@ -1861,6 +1861,7 @@ export default defineComponent({
 	justify-content: space-between;
 	align-items: center;
 	min-height: 30px;
+	--color-tabs-arrow-buttons: var(--color-run-data-background);
 }
 
 .itemsCount {
