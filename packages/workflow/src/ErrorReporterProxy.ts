@@ -6,12 +6,17 @@ interface ErrorReporter {
 }
 
 const instance: ErrorReporter = {
-	report: (error) => {
+	report: (error, options) => {
 		if (error instanceof Error) {
 			let e = error;
+
+			const { executionId } = options ?? {};
+			const context = executionId ? ` (execution ${executionId})` : '';
+
 			do {
+				const msg = [e.message + context, e.stack ? `\n${e.stack}\n` : ''].join('');
 				const meta = e instanceof ApplicationError ? e.extra : undefined;
-				Logger.error(`${e.constructor.name}: ${e.message}`, meta);
+				Logger.error(msg, meta);
 				e = e.cause as Error;
 			} while (e);
 		}
