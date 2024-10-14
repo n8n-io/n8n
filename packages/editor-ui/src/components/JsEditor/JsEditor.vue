@@ -30,6 +30,7 @@ type Props = {
 	isReadOnly?: boolean;
 	fillParent?: boolean;
 	rows?: number;
+	posthogCapture?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), { fillParent: false, isReadOnly: false, rows: 4 });
@@ -119,7 +120,7 @@ const extensions = computed(() => {
 
 <template>
 	<div :class="$style.editor" :style="isReadOnly ? 'opacity: 0.7' : ''">
-		<div ref="jsEditorRef" class="ph-no-capture js-editor"></div>
+		<div ref="jsEditorRef" :class="posthogCapture ? '' : 'ph-no-capture' + 'js-editor'"></div>
 		<slot name="suffix" />
 	</div>
 </template>
