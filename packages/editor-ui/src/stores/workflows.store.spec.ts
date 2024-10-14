@@ -15,6 +15,19 @@ import { useUIStore } from '@/stores/ui.store';
 import type { PushPayload } from '@n8n/api-types';
 import { flushPromises } from '@vue/test-utils';
 
+vi.mock('vue-router', () => {
+	const push = vi.fn();
+	const resolve = vi.fn().mockReturnValue({ href: '' });
+	return {
+		useRouter: () => ({
+			push,
+			resolve,
+		}),
+		useRoute: () => ({}),
+		RouterLink: vi.fn(),
+	};
+});
+
 vi.mock('@/api/workflows', () => ({
 	getWorkflows: vi.fn(),
 	getWorkflow: vi.fn(),
