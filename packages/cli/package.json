@@ -130,6 +130,7 @@
     "ioredis": "5.3.2",
     "isbot": "3.6.13",
     "json-diff": "1.0.6",
+    "json-stream-stringify": "3.1.6",
     "jsonschema": "1.4.1",
     "jsonwebtoken": "9.0.2",
     "ldapts": "4.2.6",
