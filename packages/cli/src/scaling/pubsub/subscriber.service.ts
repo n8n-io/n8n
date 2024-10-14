@@ -17,8 +17,6 @@ import type { PubSub } from './pubsub.types';
 export class Subscriber {
 	private readonly client: SingleNodeClient | MultiNodeClient;
 
-	// #region Lifecycle
-
 	constructor(
 		private readonly logger: Logger,
 		private readonly redisClientService: RedisClientService,
@@ -26,6 +24,8 @@ export class Subscriber {
 	) {
 		// @TODO: Once this class is only ever initialized in scaling mode, throw in the next line instead.
 		if (config.getEnv('executions.mode') !== 'queue') return;
+
+		this.logger = this.logger.withScope('scaling');
 
 		this.client = this.redisClientService.createClient({ type: 'subscriber(n8n)' });
 
@@ -36,8 +36,8 @@ export class Subscriber {
 
 		const debouncedHandlerFn = debounce(handlerFn, 300);
 
-		this.client.on('message', (_channel: PubSub.Channel, str) => {
-			const msg = this.parseMessage(str);
+		this.client.on('message', (channel: PubSub.Channel, str) => {
+			const msg = this.parseMessage(str, channel);
 			if (!msg) return;
 			if (msg.debounce) debouncedHandlerFn(msg);
 			else handlerFn(msg);
@@ -53,31 +53,27 @@ export class Subscriber {
 		this.client.disconnect();
 	}
 
-	// #endregion
-
-	// #region Subscribing
-
 	async subscribe(channel: PubSub.Channel) {
 		await this.client.subscribe(channel, (error) => {
 			if (error) {
-				this.logger.error('Failed to subscribe to channel', { channel, cause: error });
+				this.logger.error(`Failed to subscribe to channel ${channel}`, { error });
 				return;
 			}
 
-			this.logger.debug('Subscribed to channel', { channel });
+			this.logger.debug(`Subscribed to channel ${channel}`);
 		});
 	}
 
-	// #region Commands
-
-	private parseMessage(str: string) {
+	private parseMessage(str: string, channel: PubSub.Channel) {
 		const msg = jsonParse<PubSub.Command | PubSub.WorkerResponse | null>(str, {
 			fallbackValue: null,
 		});
 
 		if (!msg) {
-			this.logger.debug('Received invalid string via pubsub channel', { message: str });
-
+			this.logger.error(`Received malformed message via channel ${channel}`, {
+				msg: str,
+				channel,
+			});
 			return null;
 		}
 
@@ -91,10 +87,13 @@ export class Subscriber {
 			return null;
 		}
 
-		this.logger.debug('Received message via pubsub channel', msg);
+		const msgName = 'command' in msg ? msg.command : msg.response;
+
+		this.logger.debug(`Received message ${msgName} via channel ${channel}`, {
+			msg,
+			channel,
+		});
 
 		return msg;
 	}
-
-	// #endregion
 }
