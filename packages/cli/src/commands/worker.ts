@@ -7,6 +7,8 @@ import { N8N_VERSION, inTest } from '@/constants';
 import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
+import { LocalTaskManager } from '@/runners/task-managers/local-task-manager';
+import { TaskManager } from '@/runners/task-managers/task-manager';
 import { JobProcessor } from '@/scaling/job-processor';
 import { PubSubHandler } from '@/scaling/pubsub/pubsub-handler';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
@@ -113,6 +115,17 @@ export class Worker extends BaseCommand {
 				},
 			}),
 		);
+
+		if (!this.globalConfig.taskRunners.disabled) {
+			Container.set(TaskManager, new LocalTaskManager());
+			const { TaskRunnerServer } = await import('@/runners/task-runner-server');
+			const taskRunnerServer = Container.get(TaskRunnerServer);
+			await taskRunnerServer.start();
+
+			const { TaskRunnerProcess } = await import('@/runners/task-runner-process');
+			const runnerProcess = Container.get(TaskRunnerProcess);
+			await runnerProcess.start();
+		}
 	}
 
 	async initEventBus() {

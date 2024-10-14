@@ -11,6 +11,8 @@ import { ExternalSecretsManager } from '@/external-secrets/external-secrets-mana
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Push } from '@/push';
+import { TaskRunnerAuthController } from '@/runners/auth/task-runner-auth.controller';
+import { TaskRunnerAuthService } from '@/runners/auth/task-runner-auth.service';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { ScalingService } from '@/scaling/scaling.service';
@@ -35,6 +37,8 @@ mockInstance(Publisher);
 mockInstance(Subscriber);
 mockInstance(Telemetry);
 mockInstance(Push);
+mockInstance(TaskRunnerAuthService, { createGrantToken: async () => '1234' });
+mockInstance(TaskRunnerAuthController);
 
 const command = setupTestCommand(Worker);
 
