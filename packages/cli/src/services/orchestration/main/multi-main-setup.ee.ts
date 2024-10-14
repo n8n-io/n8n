@@ -1,5 +1,4 @@
 import { InstanceSettings } from 'n8n-core';
-import { ErrorReporterProxy as EventReporter } from 'n8n-workflow';
 import { Service } from 'typedi';
 
 import config from '@/config';
