@@ -452,107 +452,7 @@ describe('useWorkflowsStore', () => {
 	});
 
 	describe('addNodeExecutionData', () => {
-		const executionReponse: IExecutionResponse = {
-			id: '1',
-			workflowData: {
-				id: '1',
-				name: '',
-				createdAt: '1',
-				updatedAt: '1',
-				nodes: [],
-				connections: {},
-				active: false,
-				versionId: '1',
-			},
-			finished: false,
-			mode: 'cli',
-			startedAt: new Date(),
-			status: 'new',
-			data: {
-				resultData: {
-					runData: {},
-				},
-			},
-		};
-		const successEvent: PushPayload<'nodeExecuteAfter'> = {
-			executionId: '59',
-			nodeName: 'When clicking ‘Test workflow’',
-			data: {
-				hints: [],
-				startTime: 1727867966633,
-				executionTime: 1,
-				source: [],
-				executionStatus: 'success',
-				data: {
-					main: [
-						[
-							{
-								json: {},
-								pairedItem: {
-									item: 0,
-								},
-							},
-						],
-					],
-				},
-			},
-		};
-
-		const errorEvent: PushPayload<'nodeExecuteAfter'> = {
-			executionId: '61',
-			nodeName: 'Edit Fields',
-			data: {
-				hints: [],
-				startTime: 1727869043441,
-				executionTime: 2,
-				source: [
-					{
-						previousNode: 'When clicking ‘Test workflow’',
-					},
-				],
-				executionStatus: 'error',
-				// @ts-expect-error simpler data type, not BE class with methods
-				error: {
-					level: 'error',
-					tags: {
-						packageName: 'workflow',
-					},
-					context: {
-						itemIndex: 0,
-					},
-					functionality: 'regular',
-					name: 'NodeOperationError',
-					timestamp: 1727869043442,
-					node: {
-						parameters: {
-							mode: 'manual',
-							duplicateItem: false,
-							assignments: {
-								assignments: [
-									{
-										id: '87afdb19-4056-4551-93ef-d0126a34eb83',
-										name: "={{ $('Wh }}",
-										value: '',
-										type: 'string',
-									},
-								],
-							},
-							includeOtherFields: false,
-							options: {},
-						},
-						id: '9fb34d2d-7191-48de-8f18-91a6a28d0230',
-						name: 'Edit Fields',
-						type: 'n8n-nodes-base.set',
-						typeVersion: 3.4,
-						position: [1120, 180],
-					},
-					messages: [],
-					message: 'invalid syntax',
-					stack: 'NodeOperationError: invalid syntax',
-				},
-			},
-		};
-
+		const { successEvent, errorEvent, executionReponse } = generateMockExecutionEvents();
 		it('should throw error if not initalized', () => {
 			expect(() => workflowsStore.addNodeExecutionData(successEvent)).toThrowError();
 		});
@@ -586,23 +486,7 @@ describe('useWorkflowsStore', () => {
 				typeVersion: 3.4,
 			});
 
-			getNodeType.mockReturnValue({
-				displayName: 'Edit Fields (Set)',
-				name: 'n8n-nodes-base.set',
-				icon: 'fa:pen',
-				group: ['input'],
-				description: 'Modify, add, or remove item fields',
-				defaultVersion: 3.4,
-				iconColor: 'blue',
-				version: [3, 3.1, 3.2, 3.3, 3.4],
-				subtitle: '={{$parameter["mode"]}}',
-				defaults: {
-					name: 'Edit Fields',
-				},
-				inputs: ['main'],
-				outputs: ['main'],
-				properties: [],
-			});
+			getNodeType.mockReturnValue(getMockEditFieldsNode());
 
 			// ACT
 			workflowsStore.addNodeExecutionData(errorEvent);
@@ -635,3 +519,128 @@ describe('useWorkflowsStore', () => {
 		});
 	});
 });
+
+function getMockEditFieldsNode() {
+	return {
+		displayName: 'Edit Fields (Set)',
+		name: 'n8n-nodes-base.set',
+		icon: 'fa:pen',
+		group: ['input'],
+		description: 'Modify, add, or remove item fields',
+		defaultVersion: 3.4,
+		iconColor: 'blue',
+		version: [3, 3.1, 3.2, 3.3, 3.4],
+		subtitle: '={{$parameter["mode"]}}',
+		defaults: {
+			name: 'Edit Fields',
+		},
+		inputs: ['main'],
+		outputs: ['main'],
+		properties: [],
+	};
+}
+
+function generateMockExecutionEvents() {
+	const executionReponse: IExecutionResponse = {
+		id: '1',
+		workflowData: {
+			id: '1',
+			name: '',
+			createdAt: '1',
+			updatedAt: '1',
+			nodes: [],
+			connections: {},
+			active: false,
+			versionId: '1',
+		},
+		finished: false,
+		mode: 'cli',
+		startedAt: new Date(),
+		status: 'new',
+		data: {
+			resultData: {
+				runData: {},
+			},
+		},
+	};
+	const successEvent: PushPayload<'nodeExecuteAfter'> = {
+		executionId: '59',
+		nodeName: 'When clicking ‘Test workflow’',
+		data: {
+			hints: [],
+			startTime: 1727867966633,
+			executionTime: 1,
+			source: [],
+			executionStatus: 'success',
+			data: {
+				main: [
+					[
+						{
+							json: {},
+							pairedItem: {
+								item: 0,
+							},
+						},
+					],
+				],
+			},
+		},
+	};
+
+	const errorEvent: PushPayload<'nodeExecuteAfter'> = {
+		executionId: '61',
+		nodeName: 'Edit Fields',
+		data: {
+			hints: [],
+			startTime: 1727869043441,
+			executionTime: 2,
+			source: [
+				{
+					previousNode: 'When clicking ‘Test workflow’',
+				},
+			],
+			executionStatus: 'error',
+			// @ts-expect-error simpler data type, not BE class with methods
+			error: {
+				level: 'error',
+				tags: {
+					packageName: 'workflow',
+				},
+				context: {
+					itemIndex: 0,
+				},
+				functionality: 'regular',
+				name: 'NodeOperationError',
+				timestamp: 1727869043442,
+				node: {
+					parameters: {
+						mode: 'manual',
+						duplicateItem: false,
+						assignments: {
+							assignments: [
+								{
+									id: '87afdb19-4056-4551-93ef-d0126a34eb83',
+									name: "={{ $('Wh }}",
+									value: '',
+									type: 'string',
+								},
+							],
+						},
+						includeOtherFields: false,
+						options: {},
+					},
+					id: '9fb34d2d-7191-48de-8f18-91a6a28d0230',
+					name: 'Edit Fields',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [1120, 180],
+				},
+				messages: [],
+				message: 'invalid syntax',
+				stack: 'NodeOperationError: invalid syntax',
+			},
+		},
+	};
+
+	return { executionReponse, errorEvent, successEvent };
+}
