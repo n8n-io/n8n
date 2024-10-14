@@ -209,7 +209,7 @@ export function configureQueryRunner(
 			return [];
 		}
 
-		const returnData: INodeExecutionData[] = [];
+		let returnData: INodeExecutionData[] = [];
 		const mode = (options.queryBatching as QueryMode) || BATCH_MODE.SINGLE;
 
 		const connection = await pool.getConnection();
@@ -252,8 +252,8 @@ export function configureQueryRunner(
 				//because single query is used in this mode mapping itemIndex not possible, setting all items as paired
 				const pairedItem = generatePairedItemData(queries.length);
 
-				returnData.push(
-					...prepareOutput(
+				returnData = returnData.concat(
+					prepareOutput(
 						response,
 						options,
 						statements,
@@ -290,8 +290,8 @@ export function configureQueryRunner(
 							responses.push(response);
 						}
 
-						returnData.push(
-							...prepareOutput(
+						returnData = returnData.concat(
+							prepareOutput(
 								responses,
 								options,
 								statements,
@@ -335,8 +335,8 @@ export function configureQueryRunner(
 							responses.push(response);
 						}
 
-						returnData.push(
-							...prepareOutput(
+						returnData = returnData.concat(
+							prepareOutput(
 								responses,
 								options,
 								statements,
