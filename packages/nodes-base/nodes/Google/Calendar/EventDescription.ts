@@ -557,11 +557,11 @@ export const eventFields: INodeProperties[] = [
 				displayName: 'Return Next Instance of Recurring Event',
 				name: 'returnNextInstance',
 				type: 'boolean',
-				default: true,
+				default: false,
 				description: 'Whether to return next instances of recurring event, instead of event itself',
 				displayOptions: {
 					show: {
-						'@version': [1.2],
+						'@version': [{ _cnd: { gte: 1.3 } }],
 					},
 				},
 			},
@@ -642,6 +642,34 @@ export const eventFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
+		displayName: 'After',
+		name: 'timeMin',
+		type: 'dateTime',
+		default: '',
+		description: 'At least some part of the event must be after this time',
+		displayOptions: {
+			show: {
+				'@version': [{ _cnd: { gte: 1.3 } }],
+				operation: ['getAll'],
+				resource: ['event'],
+			},
+		},
+	},
+	{
+		displayName: 'Before',
+		name: 'timeMax',
+		type: 'dateTime',
+		default: '',
+		description: 'At least some part of the event must be before this time',
+		displayOptions: {
+			show: {
+				'@version': [{ _cnd: { gte: 1.3 } }],
+				operation: ['getAll'],
+				resource: ['event'],
+			},
+		},
+	},
+	{
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
@@ -660,6 +688,11 @@ export const eventFields: INodeProperties[] = [
 				type: 'dateTime',
 				default: '',
 				description: 'At least some part of the event must be after this time',
+				displayOptions: {
+					hide: {
+						'@version': [{ _cnd: { gte: 1.3 } }],
+					},
+				},
 			},
 			{
 				displayName: 'Before',
@@ -667,6 +700,11 @@ export const eventFields: INodeProperties[] = [
 				type: 'dateTime',
 				default: '',
 				description: 'At least some part of the event must be before this time',
+				displayOptions: {
+					hide: {
+						'@version': [{ _cnd: { gte: 1.3 } }],
+					},
+				},
 			},
 			{
 				displayName: 'Expand Events',
@@ -675,6 +713,11 @@ export const eventFields: INodeProperties[] = [
 				default: false,
 				description:
 					'Whether to expand recurring events into instances and only return single one-off events and instances of recurring events, but not the underlying recurring events themselves',
+				displayOptions: {
+					hide: {
+						'@version': [{ _cnd: { gte: 1.3 } }],
+					},
+				},
 			},
 			{
 				displayName: 'Fields',
@@ -729,14 +772,30 @@ export const eventFields: INodeProperties[] = [
 					'Free text search terms to find events that match these terms in any field, except for extended properties',
 			},
 			{
-				displayName: 'Return Next Instance of Recurring Event',
-				name: 'returnNextInstance',
-				type: 'boolean',
-				default: true,
-				description: 'Whether to return next instances of recurring event, instead of event itself',
+				displayName: 'Recurring Event Handling',
+				name: 'recurringEventHandling',
+				type: 'options',
+				default: 'expand',
+				options: [
+					{
+						name: 'All Occurrences',
+						value: 'expand',
+						description: 'Return all instances of recurring event for specified time range',
+					},
+					{
+						name: 'First Occurrence',
+						value: 'first',
+						description: 'Return event with specified recurrence rule',
+					},
+					{
+						name: 'Next Occurrence',
+						value: 'next',
+						description: 'Return next instance of recurring event',
+					},
+				],
 				displayOptions: {
 					show: {
-						'@version': [1.2],
+						'@version': [{ _cnd: { gte: 1.3 } }],
 					},
 				},
 			},
@@ -838,7 +897,7 @@ export const eventFields: INodeProperties[] = [
 		default: 'instance',
 		displayOptions: {
 			show: {
-				'@version': [1.2],
+				'@version': [{ _cnd: { gte: 1.3 } }],
 				resource: ['event'],
 				operation: ['update'],
 				eventId: [{ _cnd: { includes: '_' } }],
