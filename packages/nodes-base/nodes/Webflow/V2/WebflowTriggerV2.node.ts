@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import type {
 	IHookFunctions,
 	IDataObject,
@@ -8,6 +7,7 @@ import type {
 	IWebhookFunctions,
 	IWebhookResponseData,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import { getSites, webflowApiRequest } from '../GenericFunctions';
 
@@ -26,9 +26,9 @@ export class WebflowTriggerV2 implements INodeType {
 			defaults: {
 				name: 'Webflow Trigger',
 			},
-			// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 			inputs: [],
-			outputs: ['main'],
+			outputs: [NodeConnectionType.Main],
 			credentials: [
 				{
 					name: 'webflowOAuth2Api',
@@ -54,7 +54,7 @@ export class WebflowTriggerV2 implements INodeType {
 						loadOptionsMethod: 'getSites',
 					},
 					description:
-						'Site that will trigger the events. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						'Site that will trigger the events. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				},
 				{
 					displayName: 'Event',

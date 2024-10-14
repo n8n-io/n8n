@@ -13,6 +13,7 @@ import {
 	INVITE_USER_MODAL_KEY,
 	PERSONALIZATION_MODAL_KEY,
 	TAGS_MANAGER_MODAL_KEY,
+	ANNOTATION_TAGS_MANAGER_MODAL_KEY,
 	NPS_SURVEY_MODAL_KEY,
 	NEW_ASSISTANT_SESSION_MODAL,
 	VERSIONS_MODAL_KEY,
@@ -30,8 +31,8 @@ import {
 	WORKFLOW_HISTORY_VERSION_RESTORE,
 	SETUP_CREDENTIALS_MODAL_KEY,
 	PROJECT_MOVE_RESOURCE_MODAL,
-	PROJECT_MOVE_RESOURCE_CONFIRM_MODAL,
 	PROMPT_MFA_CODE_MODAL_KEY,
+	COMMUNITY_PLUS_ENROLLMENT_MODAL,
 } from '@/constants';
 
 import AboutModal from '@/components/AboutModal.vue';
@@ -46,7 +47,8 @@ import CredentialsSelectModal from '@/components/CredentialsSelectModal.vue';
 import DuplicateWorkflowDialog from '@/components/DuplicateWorkflowDialog.vue';
 import ModalRoot from '@/components/ModalRoot.vue';
 import PersonalizationModal from '@/components/PersonalizationModal.vue';
-import TagsManager from '@/components/TagsManager/TagsManager.vue';
+import WorkflowTagsManager from '@/components/TagsManager/WorkflowTagsManager.vue';
+import AnnotationTagsManager from '@/components/TagsManager/AnnotationTagsManager.ee.vue';
 import UpdatesPanel from '@/components/UpdatesPanel.vue';
 import NpsSurvey from '@/components/NpsSurvey.vue';
 import WorkflowLMChat from '@/components/WorkflowLMChat/WorkflowLMChat.vue';
@@ -64,9 +66,9 @@ import DebugPaywallModal from '@/components/DebugPaywallModal.vue';
 import WorkflowHistoryVersionRestoreModal from '@/components/WorkflowHistory/WorkflowHistoryVersionRestoreModal.vue';
 import SetupWorkflowCredentialsModal from '@/components/SetupWorkflowCredentialsModal/SetupWorkflowCredentialsModal.vue';
 import ProjectMoveResourceModal from '@/components/Projects/ProjectMoveResourceModal.vue';
-import ProjectMoveResourceConfirmModal from '@/components/Projects/ProjectMoveResourceConfirmModal.vue';
 import NewAssistantSessionModal from '@/components/AskAssistant/NewAssistantSessionModal.vue';
 import PromptMfaCodeModal from './PromptMfaCodeModal/PromptMfaCodeModal.vue';
+import CommunityPlusEnrollmentModal from '@/components/CommunityPlusEnrollmentModal.vue';
 </script>
 
 <template>
@@ -105,7 +107,11 @@ import PromptMfaCodeModal from './PromptMfaCodeModal/PromptMfaCodeModal.vue';
 		</ModalRoot>
 
 		<ModalRoot :name="TAGS_MANAGER_MODAL_KEY">
-			<TagsManager />
+			<WorkflowTagsManager />
+		</ModalRoot>
+
+		<ModalRoot :name="ANNOTATION_TAGS_MANAGER_MODAL_KEY">
+			<AnnotationTagsManager />
 		</ModalRoot>
 
 		<ModalRoot :name="VERSIONS_MODAL_KEY" :keep-alive="true">
@@ -243,18 +249,15 @@ import PromptMfaCodeModal from './PromptMfaCodeModal/PromptMfaCodeModal.vue';
 				/>
 			</template>
 		</ModalRoot>
-		<ModalRoot :name="PROJECT_MOVE_RESOURCE_CONFIRM_MODAL">
-			<template #default="{ modalName, data }">
-				<ProjectMoveResourceConfirmModal
-					data-test-id="project-move-resource-confirm-modal"
-					:modal-name="modalName"
-					:data="data"
-				/>
-			</template>
-		</ModalRoot>
 		<ModalRoot :name="NEW_ASSISTANT_SESSION_MODAL">
 			<template #default="{ modalName, data }">
 				<NewAssistantSessionModal :name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="COMMUNITY_PLUS_ENROLLMENT_MODAL">
+			<template #default="{ modalName, data }">
+				<CommunityPlusEnrollmentModal :modal-name="modalName" :data="data" />
 			</template>
 		</ModalRoot>
 	</div>

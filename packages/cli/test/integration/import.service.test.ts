@@ -1,17 +1,18 @@
-import Container from 'typedi';
 import { mock } from 'jest-mock-extended';
-import { v4 as uuid } from 'uuid';
 import type { INode } from 'n8n-workflow';
+import Container from 'typedi';
+import { v4 as uuid } from 'uuid';
 
+import type { Project } from '@/databases/entities/project';
+import { TagEntity } from '@/databases/entities/tag-entity';
+import type { User } from '@/databases/entities/user';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
+import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { TagRepository } from '@/databases/repositories/tag.repository';
-import { ImportService } from '@/services/import.service';
-import { TagEntity } from '@/databases/entities/TagEntity';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
+import { ImportService } from '@/services/import.service';
 
-import * as testDb from './shared/testDb';
-import { mockInstance } from '../shared/mocking';
+import { getPersonalProject } from './shared/db/projects';
 import { createMember, createOwner } from './shared/db/users';
 import {
 	createWorkflow,
@@ -19,10 +20,8 @@ import {
 	getWorkflowById,
 	newWorkflow,
 } from './shared/db/workflows';
-
-import type { User } from '@db/entities/User';
-import type { Project } from '@/databases/entities/Project';
-import { getPersonalProject } from './shared/db/projects';
+import * as testDb from './shared/test-db';
+import { mockInstance } from '../shared/mocking';
 
 describe('ImportService', () => {
 	let importService: ImportService;

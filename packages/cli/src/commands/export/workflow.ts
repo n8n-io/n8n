@@ -1,10 +1,12 @@
 import { Flags } from '@oclif/core';
 import fs from 'fs';
-import path from 'path';
-import { BaseCommand } from '../BaseCommand';
-import { WorkflowRepository } from '@db/repositories/workflow.repository';
-import Container from 'typedi';
 import { ApplicationError } from 'n8n-workflow';
+import path from 'path';
+import Container from 'typedi';
+
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+
+import { BaseCommand } from '../base-command';
 
 export class ExportWorkflowsCommand extends BaseCommand {
 	static description = 'Export workflows';

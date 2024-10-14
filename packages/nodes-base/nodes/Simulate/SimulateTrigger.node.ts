@@ -1,4 +1,4 @@
-import { sleep, NodeOperationError, jsonParse } from 'n8n-workflow';
+import { sleep, NodeOperationError, jsonParse, NodeConnectionType } from 'n8n-workflow';
 import type {
 	IDataObject,
 	ITriggerFunctions,
@@ -30,7 +30,7 @@ export class SimulateTrigger implements INodeType {
 			color: '#b0b0b0',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		properties: [
 			{ ...iconSelector, default: 'n8n-nodes-base.manualTrigger' },
 			subtitleProperty,

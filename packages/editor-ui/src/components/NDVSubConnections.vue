@@ -1,123 +1,3 @@
-<template>
-	<div :class="$style.container">
-		<div
-			:class="$style.connections"
-			:style="`--possible-connections: ${possibleConnections.length}`"
-		>
-			<div
-				v-for="connection in possibleConnections"
-				:key="connection.type"
-				:data-test-id="`subnode-connection-group-${connection.type}`"
-			>
-				<div :class="$style.connectionType">
-					<span
-						:class="{
-							[$style.connectionLabel]: true,
-							[$style.hasIssues]: hasInputIssues(connection.type),
-						}"
-						v-text="`${connection.displayName}${connection.required ? ' *' : ''}`"
-					/>
-					<div
-						v-on-click-outside="() => expandConnectionGroup(connection.type, false)"
-						:class="{
-							[$style.connectedNodesWrapper]: true,
-							[$style.connectedNodesWrapperExpanded]: expandedGroups.includes(connection.type),
-						}"
-						:style="`--nodes-length: ${connectedNodes[connection.type].length}`"
-						@click="expandConnectionGroup(connection.type, true)"
-					>
-						<div
-							v-if="
-								connectedNodes[connection.type].length >= 1 ? connection.maxConnections !== 1 : true
-							"
-							:class="{
-								[$style.plusButton]: true,
-								[$style.hasIssues]: hasInputIssues(connection.type),
-							}"
-							@click="onPlusClick(connection.type)"
-						>
-							<n8n-tooltip
-								placement="top"
-								:teleported="true"
-								:offset="10"
-								:show-after="300"
-								:disabled="
-									shouldShowConnectionTooltip(connection.type) &&
-									connectedNodes[connection.type].length >= 1
-								"
-							>
-								<template #content>
-									Add {{ connection.displayName }}
-									<template v-if="hasInputIssues(connection.type)">
-										<TitledList
-											:title="`${$locale.baseText('node.issues')}:`"
-											:items="nodeInputIssues[connection.type]"
-										/>
-									</template>
-								</template>
-								<n8n-icon-button
-									size="medium"
-									icon="plus"
-									type="tertiary"
-									:data-test-id="`add-subnode-${connection.type}`"
-								/>
-							</n8n-tooltip>
-						</div>
-						<div
-							v-if="connectedNodes[connection.type].length > 0"
-							:class="{
-								[$style.connectedNodes]: true,
-								[$style.connectedNodesMultiple]: connectedNodes[connection.type].length > 1,
-							}"
-						>
-							<div
-								v-for="(node, index) in connectedNodes[connection.type]"
-								:key="node.node.name"
-								:class="{ [$style.nodeWrapper]: true, [$style.hasIssues]: node.issues }"
-								data-test-id="floating-subnode"
-								:data-node-name="node.node.name"
-								:style="`--node-index: ${index}`"
-							>
-								<n8n-tooltip
-									:key="node.node.name"
-									placement="top"
-									:teleported="true"
-									:offset="10"
-									:show-after="300"
-									:disabled="shouldShowConnectionTooltip(connection.type)"
-								>
-									<template #content>
-										{{ node.node.name }}
-										<template v-if="node.issues">
-											<TitledList
-												:title="`${$locale.baseText('node.issues')}:`"
-												:items="node.issues"
-											/>
-										</template>
-									</template>
-
-									<div
-										:class="$style.connectedNode"
-										@click="onNodeClick(node.node.name, connection.type)"
-									>
-										<NodeIcon
-											:node-type="node.nodeType"
-											:node-name="node.node.name"
-											tooltip-position="top"
-											:size="20"
-											circle
-										/>
-									</div>
-								</n8n-tooltip>
-							</div>
-						</div>
-					</div>
-				</div>
-			</div>
-		</div>
-	</div>
-</template>
-
 <script setup lang="ts">
 import type { INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -127,8 +7,13 @@ import { NodeHelpers } from 'n8n-workflow';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import NodeIcon from '@/components/NodeIcon.vue';
 import TitledList from '@/components/TitledList.vue';
-import type { ConnectionTypes, INodeInputConfiguration, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	NodeConnectionType,
+	INodeInputConfiguration,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 import { useDebounce } from '@/composables/useDebounce';
+import { OnClickOutside } from '@vueuse/components';
 
 interface Props {
 	rootNode: INodeUi;
@@ -141,7 +26,7 @@ const nodeHelpers = useNodeHelpers();
 const { debounce } = useDebounce();
 const emit = defineEmits<{
 	switchSelectedNode: [nodeName: string];
-	openConnectionNodeCreator: [nodeName: string, connectionType: ConnectionTypes];
+	openConnectionNodeCreator: [nodeName: string, connectionType: NodeConnectionType];
 }>();
 
 interface NodeConfig {
@@ -152,7 +37,7 @@ interface NodeConfig {
 
 const possibleConnections = ref<INodeInputConfiguration[]>([]);
 
-const expandedGroups = ref<ConnectionTypes[]>([]);
+const expandedGroups = ref<NodeConnectionType[]>([]);
 const shouldShowNodeInputIssues = ref(false);
 
 const nodeType = computed(() =>
@@ -173,7 +58,7 @@ const nodeInputIssues = computed(() => {
 	return issues?.input ?? {};
 });
 
-const connectedNodes = computed<Record<ConnectionTypes, NodeConfig[]>>(() => {
+const connectedNodes = computed<Record<NodeConnectionType, NodeConfig[]>>(() => {
 	return possibleConnections.value.reduce(
 		(acc, connection) => {
 			const nodes = getINodesFromNames(
@@ -181,24 +66,24 @@ const connectedNodes = computed<Record<ConnectionTypes, NodeConfig[]>>(() => {
 			);
 			return { ...acc, [connection.type]: nodes };
 		},
-		{} as Record<ConnectionTypes, NodeConfig[]>,
+		{} as Record<NodeConnectionType, NodeConfig[]>,
 	);
 });
 
-function getConnectionConfig(connectionType: ConnectionTypes) {
+function getConnectionConfig(connectionType: NodeConnectionType) {
 	return possibleConnections.value.find((c) => c.type === connectionType);
 }
 
-function isMultiConnection(connectionType: ConnectionTypes) {
+function isMultiConnection(connectionType: NodeConnectionType) {
 	const connectionConfig = getConnectionConfig(connectionType);
 	return connectionConfig?.maxConnections !== 1;
 }
 
-function shouldShowConnectionTooltip(connectionType: ConnectionTypes) {
+function shouldShowConnectionTooltip(connectionType: NodeConnectionType) {
 	return isMultiConnection(connectionType) && !expandedGroups.value.includes(connectionType);
 }
 
-function expandConnectionGroup(connectionType: ConnectionTypes, isExpanded: boolean) {
+function expandConnectionGroup(connectionType: NodeConnectionType, isExpanded: boolean) {
 	// If the connection is a single connection, we don't need to expand the group
 	if (!isMultiConnection(connectionType)) {
 		return;
@@ -228,14 +113,14 @@ function getINodesFromNames(names: string[]): NodeConfig[] {
 		.filter((n): n is NodeConfig => n !== null);
 }
 
-function hasInputIssues(connectionType: ConnectionTypes) {
+function hasInputIssues(connectionType: NodeConnectionType) {
 	return (
 		shouldShowNodeInputIssues.value && (nodeInputIssues.value[connectionType] ?? []).length > 0
 	);
 }
 
 function isNodeInputConfiguration(
-	connectionConfig: ConnectionTypes | INodeInputConfiguration,
+	connectionConfig: NodeConnectionType | INodeInputConfiguration,
 ): connectionConfig is INodeInputConfiguration {
 	if (typeof connectionConfig === 'string') return false;
 
@@ -256,7 +141,7 @@ function getPossibleSubInputConnections(): INodeInputConfiguration[] {
 	return nonMainInputs;
 }
 
-function onNodeClick(nodeName: string, connectionType: ConnectionTypes) {
+function onNodeClick(nodeName: string, connectionType: NodeConnectionType) {
 	if (isMultiConnection(connectionType) && !expandedGroups.value.includes(connectionType)) {
 		expandConnectionGroup(connectionType, true);
 		return;
@@ -265,7 +150,7 @@ function onNodeClick(nodeName: string, connectionType: ConnectionTypes) {
 	emit('switchSelectedNode', nodeName);
 }
 
-function onPlusClick(connectionType: ConnectionTypes) {
+function onPlusClick(connectionType: NodeConnectionType) {
 	const connectionNodes = connectedNodes.value[connectionType];
 	if (
 		isMultiConnection(connectionType) &&
@@ -304,6 +189,130 @@ defineExpose({
 	showNodeInputsIssues,
 });
 </script>
+
+<template>
+	<div :class="$style.container">
+		<div
+			:class="$style.connections"
+			:style="`--possible-connections: ${possibleConnections.length}`"
+		>
+			<div
+				v-for="connection in possibleConnections"
+				:key="connection.type"
+				:data-test-id="`subnode-connection-group-${connection.type}`"
+			>
+				<div :class="$style.connectionType">
+					<span
+						:class="{
+							[$style.connectionLabel]: true,
+							[$style.hasIssues]: hasInputIssues(connection.type),
+						}"
+						v-text="`${connection.displayName}${connection.required ? ' *' : ''}`"
+					/>
+					<OnClickOutside @trigger="expandConnectionGroup(connection.type, false)">
+						<div
+							ref="connectedNodesWrapper"
+							:class="{
+								[$style.connectedNodesWrapper]: true,
+								[$style.connectedNodesWrapperExpanded]: expandedGroups.includes(connection.type),
+							}"
+							:style="`--nodes-length: ${connectedNodes[connection.type].length}`"
+							@click="expandConnectionGroup(connection.type, true)"
+						>
+							<div
+								v-if="
+									connectedNodes[connection.type].length >= 1
+										? connection.maxConnections !== 1
+										: true
+								"
+								:class="{
+									[$style.plusButton]: true,
+									[$style.hasIssues]: hasInputIssues(connection.type),
+								}"
+								@click="onPlusClick(connection.type)"
+							>
+								<n8n-tooltip
+									placement="top"
+									:teleported="true"
+									:offset="10"
+									:show-after="300"
+									:disabled="
+										shouldShowConnectionTooltip(connection.type) &&
+										connectedNodes[connection.type].length >= 1
+									"
+								>
+									<template #content>
+										Add {{ connection.displayName }}
+										<template v-if="hasInputIssues(connection.type)">
+											<TitledList
+												:title="`${$locale.baseText('node.issues')}:`"
+												:items="nodeInputIssues[connection.type]"
+											/>
+										</template>
+									</template>
+									<n8n-icon-button
+										size="medium"
+										icon="plus"
+										type="tertiary"
+										:data-test-id="`add-subnode-${connection.type}`"
+									/>
+								</n8n-tooltip>
+							</div>
+							<div
+								v-if="connectedNodes[connection.type].length > 0"
+								:class="{
+									[$style.connectedNodes]: true,
+									[$style.connectedNodesMultiple]: connectedNodes[connection.type].length > 1,
+								}"
+							>
+								<div
+									v-for="(node, index) in connectedNodes[connection.type]"
+									:key="node.node.name"
+									:class="{ [$style.nodeWrapper]: true, [$style.hasIssues]: node.issues }"
+									data-test-id="floating-subnode"
+									:data-node-name="node.node.name"
+									:style="`--node-index: ${index}`"
+								>
+									<n8n-tooltip
+										:key="node.node.name"
+										placement="top"
+										:teleported="true"
+										:offset="10"
+										:show-after="300"
+										:disabled="shouldShowConnectionTooltip(connection.type)"
+									>
+										<template #content>
+											{{ node.node.name }}
+											<template v-if="node.issues">
+												<TitledList
+													:title="`${$locale.baseText('node.issues')}:`"
+													:items="node.issues"
+												/>
+											</template>
+										</template>
+
+										<div
+											:class="$style.connectedNode"
+											@click="onNodeClick(node.node.name, connection.type)"
+										>
+											<NodeIcon
+												:node-type="node.nodeType"
+												:node-name="node.node.name"
+												tooltip-position="top"
+												:size="20"
+												circle
+											/>
+										</div>
+									</n8n-tooltip>
+								</div>
+							</div>
+						</div>
+					</OnClickOutside>
+				</div>
+			</div>
+		</div>
+	</div>
+</template>
 
 <style lang="scss" module>
 @keyframes horizontal-shake {

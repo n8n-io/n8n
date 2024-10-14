@@ -19,6 +19,8 @@ module.exports = {
 	],
 
 	rules: {
+		'unicorn/filename-case': ['error', { case: 'kebabCase' }],
+
 		'n8n-local-rules/no-dynamic-import-template': 'error',
 		'n8n-local-rules/misplaced-n8n-typeorm-import': 'error',
 		'n8n-local-rules/no-type-unsafe-event-emitter': 'error',
@@ -26,7 +28,6 @@ module.exports = {
 
 		// TODO: Remove this
 		'import/no-cycle': 'warn',
-		'import/order': 'off',
 		'import/extensions': 'warn',
 		'@typescript-eslint/ban-ts-comment': ['warn', { 'ts-ignore': true }],
 		'@typescript-eslint/no-explicit-any': 'warn',
@@ -39,6 +40,12 @@ module.exports = {
 	},
 
 	overrides: [
+		{
+			files: ['./src/databases/migrations/**/*.ts'],
+			rules: {
+				'unicorn/filename-case': 'off',
+			},
+		},
 		{
 			files: ['./src/databases/**/*.ts', './test/**/*.ts', './src/**/__tests__/**/*.ts'],
 			rules: {
@@ -62,6 +69,12 @@ module.exports = {
 						},
 					},
 				],
+			},
+		},
+		{
+			files: ['./test/**/*.ts', './src/**/__tests__/**/*.ts'],
+			rules: {
+				'n8n-local-rules/no-dynamic-import-template': 'off',
 			},
 		},
 	],

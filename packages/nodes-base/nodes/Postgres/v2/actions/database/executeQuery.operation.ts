@@ -80,7 +80,7 @@ export async function execute(
 			const rawReplacements = (node.parameters.options as IDataObject)?.queryReplacement as string;
 
 			const stringToArray = (str: NodeParameterValueType | undefined) => {
-				if (!str) return [];
+				if (str === undefined) return [];
 				return String(str)
 					.split(',')
 					.filter((entry) => entry)

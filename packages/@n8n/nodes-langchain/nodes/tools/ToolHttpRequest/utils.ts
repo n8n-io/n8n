@@ -1,3 +1,12 @@
+import { Readability } from '@mozilla/readability';
+import cheerio from 'cheerio';
+import { convert } from 'html-to-text';
+import { JSDOM } from 'jsdom';
+import get from 'lodash/get';
+import set from 'lodash/set';
+import unset from 'lodash/unset';
+import * as mime from 'mime-types';
+import { getOAuth2AdditionalParameters } from 'n8n-nodes-base/dist/nodes/HttpRequest/GenericFunctions';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -7,18 +16,8 @@ import type {
 	NodeApiError,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError, jsonParse } from 'n8n-workflow';
+import { z } from 'zod';
 
-import { getOAuth2AdditionalParameters } from 'n8n-nodes-base/dist/nodes/HttpRequest/GenericFunctions';
-
-import set from 'lodash/set';
-import get from 'lodash/get';
-import unset from 'lodash/unset';
-
-import cheerio from 'cheerio';
-import { convert } from 'html-to-text';
-
-import { Readability } from '@mozilla/readability';
-import { JSDOM } from 'jsdom';
 import type {
 	ParameterInputType,
 	ParametersValues,
@@ -28,7 +27,6 @@ import type {
 	ToolParameter,
 } from './interfaces';
 import type { DynamicZodObject } from '../../../types/zod.types';
-import { z } from 'zod';
 
 const genericCredentialRequest = async (ctx: IExecuteFunctions, itemIndex: number) => {
 	const genericType = ctx.getNodeParameter('genericAuthType', itemIndex) as string;
@@ -176,6 +174,7 @@ const htmlOptimizer = (ctx: IExecuteFunctions, itemIndex: number, maxLength: num
 			);
 		}
 		const returnData: string[] = [];
+
 		const html = cheerio.load(response);
 		const htmlElements = html(cssSelector);
 
@@ -571,8 +570,11 @@ export const configureToolFunction = (
 	return async (query: string | IDataObject): Promise<string> => {
 		const { index } = ctx.addInputData(NodeConnectionType.AiTool, [[{ json: { query } }]]);
 
+		// Clone options and rawRequestOptions to avoid mutating the original objects
+		const options: IHttpRequestOptions | null = structuredClone(requestOptions);
+		const clonedRawRequestOptions: { [key: string]: string } = structuredClone(rawRequestOptions);
+		let fullResponse: any;
 		let response: string = '';
-		let options: IHttpRequestOptions | null = null;
 		let executionError: Error | undefined = undefined;
 
 		if (!toolParameters.length) {
@@ -613,8 +615,6 @@ export const configureToolFunction = (
 						);
 					}
 				}
-
-				options = requestOptions;
 
 				for (const parameter of toolParameters) {
 					let argument = dataFromModel[parameter.name];
@@ -659,7 +659,7 @@ export const configureToolFunction = (
 							argument = String(argument);
 							if (
 								!argument.startsWith('"') &&
-								!rawRequestOptions[parameter.sendIn].includes(`"{${parameter.name}}"`)
+								!clonedRawRequestOptions[parameter.sendIn].includes(`"{${parameter.name}}"`)
 							) {
 								argument = `"${argument}"`;
 							}
@@ -669,10 +669,9 @@ export const configureToolFunction = (
 							argument = JSON.stringify(argument);
 						}
 
-						rawRequestOptions[parameter.sendIn] = rawRequestOptions[parameter.sendIn].replace(
-							`{${parameter.name}}`,
-							String(argument),
-						);
+						clonedRawRequestOptions[parameter.sendIn] = clonedRawRequestOptions[
+							parameter.sendIn
+						].replace(`{${parameter.name}}`, String(argument));
 						continue;
 					}
 
@@ -693,7 +692,7 @@ export const configureToolFunction = (
 					set(options, [parameter.sendIn, parameter.name], argument);
 				}
 
-				for (const [key, value] of Object.entries(rawRequestOptions)) {
+				for (const [key, value] of Object.entries(clonedRawRequestOptions)) {
 					if (value) {
 						let parsedValue;
 						try {
@@ -733,8 +732,6 @@ export const configureToolFunction = (
 				}
 			}
 		} catch (error) {
-			console.error(error);
-
 			const errorMessage = 'Input provided by model is not valid';
 
 			if (error instanceof NodeOperationError) {
@@ -750,10 +747,28 @@ export const configureToolFunction = (
 
 		if (options) {
 			try {
-				response = optimizeResponse(await httpRequest(options));
+				fullResponse = await httpRequest(options);
 			} catch (error) {
 				const httpCode = (error as NodeApiError).httpCode;
 				response = `${httpCode ? `HTTP ${httpCode} ` : ''}There was an error: "${error.message}"`;
+			}
+
+			if (!response) {
+				try {
+					// Check if the response is binary data
+					if (fullResponse?.headers?.['content-type']) {
+						const contentType = fullResponse.headers['content-type'] as string;
+						const mimeType = contentType.split(';')[0].trim();
+
+						if (mime.charset(mimeType) !== 'UTF-8') {
+							throw new NodeOperationError(ctx.getNode(), 'Binary data is not supported');
+						}
+					}
+
+					response = optimizeResponse(fullResponse.body);
+				} catch (error) {
+					response = `There was an error: "${error.message}"`;
+				}
 			}
 		}
 

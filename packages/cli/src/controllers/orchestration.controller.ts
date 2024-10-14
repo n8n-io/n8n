@@ -1,7 +1,7 @@
 import { Post, RestController, GlobalScope } from '@/decorators';
+import { License } from '@/license';
 import { OrchestrationRequest } from '@/requests';
 import { OrchestrationService } from '@/services/orchestration.service';
-import { License } from '@/License';
 
 @RestController('/orchestration')
 export class OrchestrationController {
@@ -27,12 +27,5 @@ export class OrchestrationController {
 	async getWorkersStatusAll() {
 		if (!this.licenseService.isWorkerViewLicensed()) return;
 		return await this.orchestrationService.getWorkerStatus();
-	}
-
-	@GlobalScope('orchestration:list')
-	@Post('/worker/ids')
-	async getWorkerIdsAll() {
-		if (!this.licenseService.isWorkerViewLicensed()) return;
-		return await this.orchestrationService.getWorkerIds();
 	}
 }

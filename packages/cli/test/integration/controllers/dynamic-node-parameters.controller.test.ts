@@ -1,16 +1,16 @@
+import { mock } from 'jest-mock-extended';
 import type {
 	INodeListSearchResult,
 	IWorkflowExecuteAdditionalData,
 	ResourceMapperFields,
 } from 'n8n-workflow';
-import { mock } from 'jest-mock-extended';
 
-import { DynamicNodeParametersService } from '@/services/dynamicNodeParameters.service';
-import * as AdditionalData from '@/WorkflowExecuteAdditionalData';
+import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
+import * as AdditionalData from '@/workflow-execute-additional-data';
 
 import { createOwner } from '../shared/db/users';
-import { setupTestServer } from '../shared/utils';
 import type { SuperAgentTest } from '../shared/types';
+import { setupTestServer } from '../shared/utils';
 
 describe('DynamicNodeParametersController', () => {
 	const testServer = setupTestServer({ endpointGroups: ['dynamic-node-parameters'] });

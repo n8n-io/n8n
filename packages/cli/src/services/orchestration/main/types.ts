@@ -1,6 +1,6 @@
-import type { RedisServicePubSubPublisher } from '@/services/redis/RedisServicePubSubPublisher';
+import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
 export type MainResponseReceivedHandlerOptions = {
 	queueModeId: string;
-	redisPublisher: RedisServicePubSubPublisher;
+	publisher: Publisher;
 };

@@ -1,9 +1,16 @@
-import { NDV, WorkflowPage } from '../pages';
+import { type ICredentialType } from 'n8n-workflow';
+
+import { clickCreateNewCredential, openCredentialSelect } from '../composables/ndv';
+import { GMAIL_NODE_NAME, SCHEDULE_TRIGGER_NODE_NAME } from '../constants';
+import { CredentialsModal, CredentialsPage, NDV, WorkflowPage } from '../pages';
 import { AIAssistant } from '../pages/features/ai-assistant';
+import { getVisibleSelect } from '../utils';
 
 const wf = new WorkflowPage();
 const ndv = new NDV();
 const aiAssistant = new AIAssistant();
+const credentialsPage = new CredentialsPage();
+const credentialsModal = new CredentialsModal();
 
 describe('AI Assistant::disabled', () => {
 	beforeEach(() => {
@@ -31,10 +38,11 @@ describe('AI Assistant::enabled', () => {
 		aiAssistant.getters.askAssistantFloatingButton().click();
 		aiAssistant.getters.askAssistantChat().should('be.visible');
 		aiAssistant.getters.placeholderMessage().should('be.visible');
-		aiAssistant.getters.chatInputWrapper().should('not.exist');
+		aiAssistant.getters.chatInput().should('be.visible');
+		aiAssistant.getters.sendMessageButton().should('be.disabled');
 		aiAssistant.getters.closeChatButton().should('be.visible');
 		aiAssistant.getters.closeChatButton().click();
-		aiAssistant.getters.askAssistantChat().should('not.exist');
+		aiAssistant.getters.askAssistantChat().should('not.be.visible');
 	});
 
 	it('should resize assistant chat up', () => {
@@ -70,11 +78,11 @@ describe('AI Assistant::enabled', () => {
 	});
 
 	it('should start chat session from node error view', () => {
-		cy.intercept('POST', '/rest/ai-assistant/chat', {
+		cy.intercept('POST', '/rest/ai/chat', {
 			statusCode: 200,
-			fixture: 'aiAssistant/simple_message_response.json',
+			fixture: 'aiAssistant/responses/simple_message_response.json',
 		}).as('chatRequest');
-		cy.createFixtureWorkflow('aiAssistant/test_workflow.json');
+		cy.createFixtureWorkflow('aiAssistant/workflows/test_workflow.json');
 		wf.actions.openNode('Stop and Error');
 		ndv.getters.nodeExecuteButton().click();
 		aiAssistant.getters.nodeErrorViewAssistantButton().click();
@@ -88,11 +96,11 @@ describe('AI Assistant::enabled', () => {
 	});
 
 	it('should render chat input correctly', () => {
-		cy.intercept('POST', '/rest/ai-assistant/chat', {
+		cy.intercept('POST', '/rest/ai/chat', {
 			statusCode: 200,
-			fixture: 'aiAssistant/simple_message_response.json',
+			fixture: 'aiAssistant/responses/simple_message_response.json',
 		}).as('chatRequest');
-		cy.createFixtureWorkflow('aiAssistant/test_workflow.json');
+		cy.createFixtureWorkflow('aiAssistant/workflows/test_workflow.json');
 		wf.actions.openNode('Stop and Error');
 		ndv.getters.nodeExecuteButton().click();
 		aiAssistant.getters.nodeErrorViewAssistantButton().click();
@@ -121,54 +129,37 @@ describe('AI Assistant::enabled', () => {
 	});
 
 	it('should render and handle quick replies', () => {
-		cy.intercept('POST', '/rest/ai-assistant/chat', {
+		cy.intercept('POST', '/rest/ai/chat', {
 			statusCode: 200,
-			fixture: 'aiAssistant/quick_reply_message_response.json',
+			fixture: 'aiAssistant/responses/quick_reply_message_response.json',
 		}).as('chatRequest');
-		cy.createFixtureWorkflow('aiAssistant/test_workflow.json');
+		cy.createFixtureWorkflow('aiAssistant/workflows/test_workflow.json');
 		wf.actions.openNode('Stop and Error');
 		ndv.getters.nodeExecuteButton().click();
 		aiAssistant.getters.nodeErrorViewAssistantButton().click();
 		cy.wait('@chatRequest');
-		aiAssistant.getters.quickReplies().should('have.length', 2);
-		aiAssistant.getters.quickReplies().eq(0).click();
+		aiAssistant.getters.quickReplyButtons().should('have.length', 2);
+		aiAssistant.getters.quickReplyButtons().eq(0).click();
 		cy.wait('@chatRequest');
 		aiAssistant.getters.chatMessagesUser().should('have.length', 1);
 		aiAssistant.getters.chatMessagesUser().eq(0).should('contain.text', "Sure, let's do it");
 	});
 
-	it('should send message to assistant when node is executed', () => {
-		cy.intercept('POST', '/rest/ai-assistant/chat', {
-			statusCode: 200,
-			fixture: 'aiAssistant/simple_message_response.json',
-		}).as('chatRequest');
-		cy.createFixtureWorkflow('aiAssistant/test_workflow.json');
-		wf.actions.openNode('Edit Fields');
-		ndv.getters.nodeExecuteButton().click();
-		aiAssistant.getters.nodeErrorViewAssistantButton().click();
-		cy.wait('@chatRequest');
-		aiAssistant.getters.chatMessagesAssistant().should('have.length', 1);
-		// Executing the same node should sende a new message to the assistant automatically
-		ndv.getters.nodeExecuteButton().click();
-		cy.wait('@chatRequest');
-		aiAssistant.getters.chatMessagesAssistant().should('have.length', 2);
-	});
-
 	it('should warn before starting a new session', () => {
-		cy.intercept('POST', '/rest/ai-assistant/chat', {
+		cy.intercept('POST', '/rest/ai/chat', {
 			statusCode: 200,
-			fixture: 'aiAssistant/simple_message_response.json',
+			fixture: 'aiAssistant/responses/simple_message_response.json',
 		}).as('chatRequest');
-		cy.createFixtureWorkflow('aiAssistant/test_workflow.json');
+		cy.createFixtureWorkflow('aiAssistant/workflows/test_workflow.json');
 		wf.actions.openNode('Edit Fields');
 		ndv.getters.nodeExecuteButton().click();
-		aiAssistant.getters.nodeErrorViewAssistantButton().click();
+		aiAssistant.getters.nodeErrorViewAssistantButton().click({ force: true });
 		cy.wait('@chatRequest');
 		aiAssistant.getters.closeChatButton().click();
 		ndv.getters.backToCanvas().click();
 		wf.actions.openNode('Stop and Error');
 		ndv.getters.nodeExecuteButton().click();
-		aiAssistant.getters.nodeErrorViewAssistantButton().click();
+		aiAssistant.getters.nodeErrorViewAssistantButton().click({ force: true });
 		// Since we already have an active session, a warning should be shown
 		aiAssistant.getters.newAssistantSessionModal().should('be.visible');
 		aiAssistant.getters
@@ -182,15 +173,15 @@ describe('AI Assistant::enabled', () => {
 	});
 
 	it('should apply code diff to code node', () => {
-		cy.intercept('POST', '/rest/ai-assistant/chat', {
+		cy.intercept('POST', '/rest/ai/chat', {
 			statusCode: 200,
-			fixture: 'aiAssistant/code_diff_suggestion_response.json',
+			fixture: 'aiAssistant/responses/code_diff_suggestion_response.json',
 		}).as('chatRequest');
-		cy.intercept('POST', '/rest/ai-assistant/chat/apply-suggestion', {
+		cy.intercept('POST', '/rest/ai/chat/apply-suggestion', {
 			statusCode: 200,
-			fixture: 'aiAssistant/apply_code_diff_response.json',
+			fixture: 'aiAssistant/responses/apply_code_diff_response.json',
 		}).as('applySuggestion');
-		cy.createFixtureWorkflow('aiAssistant/test_workflow.json');
+		cy.createFixtureWorkflow('aiAssistant/workflows/test_workflow.json');
 		wf.actions.openNode('Code');
 		ndv.getters.nodeExecuteButton().click();
 		aiAssistant.getters.nodeErrorViewAssistantButton().click({ force: true });
@@ -232,16 +223,306 @@ describe('AI Assistant::enabled', () => {
 	});
 
 	it('should end chat session when `end_session` event is received', () => {
-		cy.intercept('POST', '/rest/ai-assistant/chat', {
+		cy.intercept('POST', '/rest/ai/chat', {
 			statusCode: 200,
-			fixture: 'aiAssistant/end_session_response.json',
+			fixture: 'aiAssistant/responses/end_session_response.json',
 		}).as('chatRequest');
-		cy.createFixtureWorkflow('aiAssistant/test_workflow.json');
+		cy.createFixtureWorkflow('aiAssistant/workflows/test_workflow.json');
 		wf.actions.openNode('Stop and Error');
 		ndv.getters.nodeExecuteButton().click();
 		aiAssistant.getters.nodeErrorViewAssistantButton().click();
 		cy.wait('@chatRequest');
 		aiAssistant.getters.chatMessagesSystem().should('have.length', 1);
 		aiAssistant.getters.chatMessagesSystem().first().should('contain.text', 'session has ended');
+	});
+
+	it('should reset session after it ended and sidebar is closed', () => {
+		cy.intercept('POST', '/rest/ai/chat', (req) => {
+			req.reply((res) => {
+				if (['init-support-chat'].includes(req.body.payload.type)) {
+					res.send({
+						statusCode: 200,
+						fixture: 'aiAssistant/responses/simple_message_response.json',
+					});
+				} else {
+					res.send({ statusCode: 200, fixture: 'aiAssistant/responses/end_session_response.json' });
+				}
+			});
+		}).as('chatRequest');
+		aiAssistant.actions.openChat();
+		aiAssistant.actions.sendMessage('Hello');
+		cy.wait('@chatRequest');
+		aiAssistant.actions.closeChat();
+		aiAssistant.actions.openChat();
+		// After closing and reopening the chat, all messages should be still there
+		aiAssistant.getters.chatMessagesAll().should('have.length', 2);
+		// End the session
+		aiAssistant.actions.sendMessage('Thanks, bye');
+		cy.wait('@chatRequest');
+		aiAssistant.getters.chatMessagesSystem().should('have.length', 1);
+		aiAssistant.getters.chatMessagesSystem().first().should('contain.text', 'session has ended');
+		aiAssistant.actions.closeChat();
+		aiAssistant.actions.openChat();
+		// Now, session should be reset
+		aiAssistant.getters.placeholderMessage().should('be.visible');
+	});
+
+	it('Should not reset assistant session when workflow is saved', () => {
+		cy.intercept('POST', '/rest/ai/chat', {
+			statusCode: 200,
+			fixture: 'aiAssistant/responses/simple_message_response.json',
+		}).as('chatRequest');
+		wf.actions.addInitialNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
+		aiAssistant.actions.openChat();
+		aiAssistant.actions.sendMessage('Hello');
+		wf.actions.openNode(SCHEDULE_TRIGGER_NODE_NAME);
+		ndv.getters.nodeExecuteButton().click();
+		wf.getters.isWorkflowSaved();
+		aiAssistant.getters.placeholderMessage().should('not.exist');
+	});
+});
+
+describe('AI Assistant Credential Help', () => {
+	beforeEach(() => {
+		aiAssistant.actions.enableAssistant();
+		wf.actions.visit();
+	});
+
+	after(() => {
+		aiAssistant.actions.disableAssistant();
+	});
+
+	it('should start credential help from node credential', () => {
+		cy.intercept('POST', '/rest/ai/chat', {
+			statusCode: 200,
+			fixture: 'aiAssistant/responses/simple_message_response.json',
+		}).as('chatRequest');
+		wf.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
+		wf.actions.addNodeToCanvas(GMAIL_NODE_NAME);
+		wf.actions.openNode('Gmail');
+		openCredentialSelect();
+		clickCreateNewCredential();
+		aiAssistant.getters.credentialEditAssistantButton().find('button').should('be.visible');
+		aiAssistant.getters.credentialEditAssistantButton().find('button').click();
+		cy.wait('@chatRequest');
+		aiAssistant.getters.chatMessagesUser().should('have.length', 1);
+		aiAssistant.getters
+			.chatMessagesUser()
+			.eq(0)
+			.should('contain.text', 'How do I set up the credentials for Gmail OAuth2 API?');
+
+		aiAssistant.getters
+			.chatMessagesAssistant()
+			.eq(0)
+			.should('contain.text', 'Hey, this is an assistant message');
+		aiAssistant.getters.credentialEditAssistantButton().find('button').should('be.disabled');
+	});
+
+	it('should start credential help from credential list', () => {
+		cy.intercept('POST', '/rest/ai/chat', {
+			statusCode: 200,
+			fixture: 'aiAssistant/responses/simple_message_response.json',
+		}).as('chatRequest');
+
+		cy.visit(credentialsPage.url);
+		credentialsPage.getters.emptyListCreateCredentialButton().click();
+
+		credentialsModal.getters.newCredentialModal().should('be.visible');
+		credentialsModal.getters.newCredentialTypeSelect().should('be.visible');
+		credentialsModal.getters.newCredentialTypeOption('Notion API').click();
+
+		credentialsModal.getters.newCredentialTypeButton().click();
+
+		aiAssistant.getters.credentialEditAssistantButton().find('button').should('be.visible');
+		aiAssistant.getters.credentialEditAssistantButton().find('button').click();
+		cy.wait('@chatRequest');
+		aiAssistant.getters.chatMessagesUser().should('have.length', 1);
+		aiAssistant.getters
+			.chatMessagesUser()
+			.eq(0)
+			.should('contain.text', 'How do I set up the credentials for Notion API?');
+
+		aiAssistant.getters
+			.chatMessagesAssistant()
+			.eq(0)
+			.should('contain.text', 'Hey, this is an assistant message');
+		aiAssistant.getters.credentialEditAssistantButton().find('button').should('be.disabled');
+	});
+
+	it('should not show assistant button when click to connect', () => {
+		cy.intercept('/types/credentials.json', { middleware: true }, (req) => {
+			req.headers['cache-control'] = 'no-cache, no-store';
+
+			req.on('response', (res) => {
+				const credentials: ICredentialType[] = res.body || [];
+
+				const index = credentials.findIndex((c) => c.name === 'slackOAuth2Api');
+
+				credentials[index] = {
+					...credentials[index],
+					__overwrittenProperties: ['clientId', 'clientSecret'],
+				};
+			});
+		});
+
+		wf.actions.visit(true);
+		wf.actions.addNodeToCanvas('Manual');
+		wf.actions.addNodeToCanvas('Slack', true, true, 'Get a channel');
+		wf.getters.nodeCredentialsSelect().should('exist');
+		wf.getters.nodeCredentialsSelect().click();
+		getVisibleSelect().find('li').last().click();
+		credentialsModal.getters.credentialAuthTypeRadioButtons().first().click();
+		ndv.getters.copyInput().should('not.exist');
+		credentialsModal.getters.oauthConnectButton().should('have.length', 1);
+		credentialsModal.getters.credentialInputs().should('have.length', 0);
+		aiAssistant.getters.credentialEditAssistantButton().should('not.exist');
+
+		credentialsModal.getters.credentialAuthTypeRadioButtons().eq(1).click();
+		credentialsModal.getters.credentialInputs().should('have.length', 1);
+		aiAssistant.getters.credentialEditAssistantButton().should('exist');
+	});
+
+	it('should not show assistant button when click to connect with some fields', () => {
+		cy.intercept('/types/credentials.json', { middleware: true }, (req) => {
+			req.headers['cache-control'] = 'no-cache, no-store';
+
+			req.on('response', (res) => {
+				const credentials: ICredentialType[] = res.body || [];
+
+				const index = credentials.findIndex((c) => c.name === 'microsoftOutlookOAuth2Api');
+
+				credentials[index] = {
+					...credentials[index],
+					__overwrittenProperties: ['authUrl', 'accessTokenUrl', 'clientId', 'clientSecret'],
+				};
+			});
+		});
+
+		wf.actions.visit(true);
+		wf.actions.addNodeToCanvas('Manual');
+		wf.actions.addNodeToCanvas('Microsoft Outlook', true, true, 'Get a calendar');
+		wf.getters.nodeCredentialsSelect().should('exist');
+		wf.getters.nodeCredentialsSelect().click();
+		getVisibleSelect().find('li').last().click();
+		ndv.getters.copyInput().should('not.exist');
+		credentialsModal.getters.oauthConnectButton().should('have.length', 1);
+		credentialsModal.getters.credentialInputs().should('have.length', 1);
+		aiAssistant.getters.credentialEditAssistantButton().should('not.exist');
+	});
+});
+
+describe('General help', () => {
+	beforeEach(() => {
+		aiAssistant.actions.enableAssistant();
+		wf.actions.visit();
+	});
+
+	it('assistant returns code snippet', () => {
+		cy.intercept('POST', '/rest/ai/chat', {
+			statusCode: 200,
+			fixture: 'aiAssistant/responses/code_snippet_response.json',
+		}).as('chatRequest');
+
+		aiAssistant.getters.askAssistantFloatingButton().should('be.visible');
+		aiAssistant.getters.askAssistantFloatingButton().click();
+		aiAssistant.getters.askAssistantChat().should('be.visible');
+		aiAssistant.getters.placeholderMessage().should('be.visible');
+		aiAssistant.getters.chatInput().should('be.visible');
+
+		aiAssistant.getters.chatInput().type('Show me an expression');
+		aiAssistant.getters.sendMessageButton().click();
+
+		aiAssistant.getters.chatMessagesAll().should('have.length', 3);
+		aiAssistant.getters.chatMessagesUser().eq(0).should('contain.text', 'Show me an expression');
+
+		aiAssistant.getters
+			.chatMessagesAssistant()
+			.eq(0)
+			.should('contain.text', 'To use expressions in n8n, follow these steps:');
+
+		aiAssistant.getters
+			.chatMessagesAssistant()
+			.eq(0)
+			.should(
+				'include.html',
+				`<pre><code class="language-json">[
+  {
+    "headers": {
+      "host": "n8n.instance.address",
+      ...
+    },
+    "params": {},
+    "query": {},
+    "body": {
+      "name": "Jim",
+      "age": 30,
+      "city": "New York"
+    }
+  }
+]
+</code></pre>`,
+			);
+		aiAssistant.getters.codeSnippet().should('have.text', '{{$json.body.city}}');
+	});
+
+	it('should send current context to support chat', () => {
+		cy.createFixtureWorkflow('aiAssistant/workflows/simple_http_request_workflow.json');
+		cy.intercept('POST', '/rest/ai/chat', {
+			statusCode: 200,
+			fixture: 'aiAssistant/responses/simple_message_response.json',
+		}).as('chatRequest');
+
+		aiAssistant.getters.askAssistantFloatingButton().click();
+		aiAssistant.actions.sendMessage('What is wrong with this workflow?');
+
+		cy.wait('@chatRequest').then((interception) => {
+			const { body } = interception.request;
+			// Body should contain the current workflow context
+			expect(body.payload).to.have.property('context');
+			expect(body.payload.context).to.have.property('currentView');
+			expect(body.payload.context.currentView.name).to.equal('NodeViewExisting');
+			expect(body.payload.context).to.have.property('currentWorkflow');
+		});
+	});
+
+	it('should not send workflow context if nothing changed', () => {
+		cy.createFixtureWorkflow('aiAssistant/workflows/simple_http_request_workflow.json');
+		cy.intercept('POST', '/rest/ai/chat', {
+			statusCode: 200,
+			fixture: 'aiAssistant/responses/simple_message_response.json',
+		}).as('chatRequest');
+
+		aiAssistant.getters.askAssistantFloatingButton().click();
+		aiAssistant.actions.sendMessage('What is wrong with this workflow?');
+		cy.wait('@chatRequest');
+
+		// Send another message without changing workflow or executing any node
+		aiAssistant.actions.sendMessage('And now?');
+
+		cy.wait('@chatRequest').then((interception) => {
+			const { body } = interception.request;
+			// Workflow context should be empty
+			expect(body.payload).to.have.property('context');
+			expect(body.payload.context).not.to.have.property('currentWorkflow');
+		});
+
+		// Update http request node url
+		wf.actions.openNode('HTTP Request');
+		ndv.actions.typeIntoParameterInput('url', 'https://example.com');
+		ndv.actions.close();
+		// Also execute the workflow
+		wf.actions.executeWorkflow();
+
+		// Send another message
+		aiAssistant.actions.sendMessage('What about now?');
+		cy.wait('@chatRequest').then((interception) => {
+			const { body } = interception.request;
+			// Both workflow and execution context should be sent
+			expect(body.payload).to.have.property('context');
+			expect(body.payload.context).to.have.property('currentWorkflow');
+			expect(body.payload.context.currentWorkflow).not.to.be.empty;
+			expect(body.payload.context).to.have.property('executionData');
+			expect(body.payload.context.executionData).not.to.be.empty;
+		});
 	});
 });

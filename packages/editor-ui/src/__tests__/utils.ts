@@ -3,6 +3,10 @@ import userEvent from '@testing-library/user-event';
 import type { ISettingsState } from '@/Interface';
 import { UserManagementAuthenticationMethod } from '@/Interface';
 import { defaultSettings } from './defaults';
+import { APP_MODALS_ELEMENT_ID } from '@/constants';
+import type { Mock } from 'vitest';
+import type { Store, StoreDefinition } from 'pinia';
+import type { ComputedRef } from 'vue';
 
 /**
  * Retries the given assertion until it passes or the timeout is reached
@@ -72,7 +76,7 @@ export const SETTINGS_STORE_DEFAULT_STATE: ISettingsState = {
 };
 
 export const getDropdownItems = async (dropdownTriggerParent: HTMLElement) => {
-	await userEvent.click(within(dropdownTriggerParent).getByRole('textbox'));
+	await userEvent.click(within(dropdownTriggerParent).getByRole('combobox'));
 	const selectTrigger = dropdownTriggerParent.querySelector(
 		'.select-trigger[aria-describedby]',
 	) as HTMLElement;
@@ -83,4 +87,52 @@ export const getDropdownItems = async (dropdownTriggerParent: HTMLElement) => {
 	await waitFor(() => expect(selectDropdown).toBeInTheDocument());
 
 	return selectDropdown.querySelectorAll('.el-select-dropdown__item');
+};
+
+export const getSelectedDropdownValue = async (items: NodeListOf<Element>) => {
+	const selectedItem = Array.from(items).find((item) => item.classList.contains('selected'));
+	expect(selectedItem).toBeInTheDocument();
+	return selectedItem?.querySelector('p')?.textContent?.trim();
+};
+
+/**
+ * Create a container for teleported modals
+ *
+ * More info: https://test-utils.vuejs.org/guide/advanced/teleport#Mounting-the-Component
+ * @returns {HTMLElement} appModals
+ */
+export const createAppModals = () => {
+	const appModals = document.createElement('div');
+	appModals.id = APP_MODALS_ELEMENT_ID;
+	document.body.appendChild(appModals);
+	return appModals;
+};
+
+export const cleanupAppModals = () => {
+	document.body.innerHTML = '';
+};
+
+/**
+ * Typescript helper for mocking pinia store actions return value
+ *
+ * @see https://pinia.vuejs.org/cookbook/testing.html#Mocking-the-returned-value-of-an-action
+ */
+export const mockedStore = <TStoreDef extends () => unknown>(
+	useStore: TStoreDef,
+): TStoreDef extends StoreDefinition<infer Id, infer State, infer Getters, infer Actions>
+	? Store<
+			Id,
+			State,
+			Record<string, never>,
+			{
+				[K in keyof Actions]: Actions[K] extends (...args: infer Args) => infer ReturnT
+					? Mock<(...args: Args) => ReturnT>
+					: Actions[K];
+			}
+		> & {
+			[K in keyof Getters]: Getters[K] extends ComputedRef<infer T> ? T : never;
+		}
+	: ReturnType<TStoreDef> => {
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	return useStore() as any;
 };

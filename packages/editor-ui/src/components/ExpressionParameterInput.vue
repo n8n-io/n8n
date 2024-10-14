@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, toRaw, watch } from 'vue';
+import { onClickOutside } from '@vueuse/core';
 
 import ExpressionFunctionIcon from '@/components/ExpressionFunctionIcon.vue';
 import InlineExpressionEditorInput from '@/components/InlineExpressionEditor/InlineExpressionEditorInput.vue';
@@ -9,7 +10,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createExpressionTelemetryPayload } from '@/utils/telemetryUtils';
 
 import { useTelemetry } from '@/composables/useTelemetry';
-import { dropInEditor } from '@/plugins/codemirror/dragAndDrop';
+import { dropInExpressionEditor } from '@/plugins/codemirror/dragAndDrop';
 import type { Segment } from '@/types/expressions';
 import { startCompletion } from '@codemirror/autocomplete';
 import type { EditorState, SelectionRange } from '@codemirror/state';
@@ -21,6 +22,7 @@ const segments = ref<Segment[]>([]);
 const editorState = ref<EditorState>();
 const selection = ref<SelectionRange>();
 const inlineInput = ref<InstanceType<typeof InlineExpressionEditorInput>>();
+const container = ref<HTMLDivElement>();
 
 type Props = {
 	path: string;
@@ -117,7 +119,9 @@ async function onDrop(value: string, event: MouseEvent) {
 
 	if (!editor) return;
 
-	const droppedSelection = await dropInEditor(toRaw(editor), event, value);
+	const droppedSelection = await dropInExpressionEditor(toRaw(editor), event, value);
+
+	if (!ndvStore.isMappingOnboarded) ndvStore.setMappingOnboarded();
 
 	if (!ndvStore.isAutocompleteOnboarded) {
 		setCursorPosition((droppedSelection.ranges.at(0)?.head ?? 3) - 3);
@@ -156,15 +160,13 @@ watch(isDragging, (newIsDragging) => {
 	}
 });
 
+onClickOutside(container, (event) => onBlur(event));
+
 defineExpose({ focus });
 </script>
 
 <template>
-	<div
-		v-on-click-outside="onBlur"
-		:class="$style['expression-parameter-input']"
-		@keydown.tab="onBlur"
-	>
+	<div ref="container" :class="$style['expression-parameter-input']" @keydown.tab="onBlur">
 		<div
 			:class="[
 				$style['all-sections'],

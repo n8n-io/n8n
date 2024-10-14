@@ -4,8 +4,9 @@ import type {
 	INodeTypeDescription,
 	ITriggerResponse,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
-type eventType = 'Instance started' | undefined;
+type eventType = 'Instance started' | 'Workflow activated' | 'Workflow updated' | undefined;
 
 export class N8nTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -21,7 +22,7 @@ export class N8nTrigger implements INodeType {
 			name: 'n8n Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		properties: [
 			{
 				displayName: 'Events',
@@ -29,13 +30,27 @@ export class N8nTrigger implements INodeType {
 				type: 'multiOptions',
 				required: true,
 				default: [],
-				description:
-					'Specifies under which conditions an execution should happen: <b>Instance started</b>: Triggers when this n8n instance is started or re-started',
+				description: `Specifies under which conditions an execution should happen:
+				<ul>
+					<li><b>Active Workflow Updated</b>: Triggers when this workflow is updated</li>
+					<li><b>Instance Started</b>:  Triggers when this n8n instance is started or re-started</li>
+					<li><b>Workflow Activated</b>: Triggers when this workflow is activated</li>
+				</ul>`,
 				options: [
+					{
+						name: 'Active Workflow Updated',
+						value: 'update',
+						description: 'Triggers when this workflow is updated',
+					},
 					{
 						name: 'Instance Started',
 						value: 'init',
 						description: 'Triggers when this n8n instance is started or re-started',
+					},
+					{
+						name: 'Workflow Activated',
+						value: 'activate',
+						description: 'Triggers when this workflow is activated',
 					},
 				],
 			},
@@ -43,12 +58,18 @@ export class N8nTrigger implements INodeType {
 	};
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
-		const events = this.getNodeParameter('events', []) as string[];
+		const events = (this.getNodeParameter('events') as string[]) || [];
 
 		const activationMode = this.getActivationMode();
 
 		if (events.includes(activationMode)) {
 			let event: eventType;
+			if (activationMode === 'activate') {
+				event = 'Workflow activated';
+			}
+			if (activationMode === 'update') {
+				event = 'Workflow updated';
+			}
 			if (activationMode === 'init') {
 				event = 'Instance started';
 			}

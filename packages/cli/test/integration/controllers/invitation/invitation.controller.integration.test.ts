@@ -1,30 +1,29 @@
-import Container from 'typedi';
 import { Not } from '@n8n/typeorm';
-import { EventService } from '@/events/event.service';
-import { ExternalHooks } from '@/ExternalHooks';
-import { UserManagementMailer } from '@/UserManagement/email';
-import { UserRepository } from '@/databases/repositories/user.repository';
-import { PasswordUtility } from '@/services/password.utility';
+import Container from 'typedi';
 
-import {
-	randomEmail,
-	randomInvalidPassword,
-	randomName,
-	randomValidPassword,
-} from '../../shared/random';
-import { createMember, createOwner, createUserShell } from '../../shared/db/users';
-import { mockInstance } from '../../../shared/mocking';
-import * as utils from '../../shared/utils';
+import type { User } from '@/databases/entities/user';
+import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
+import { UserRepository } from '@/databases/repositories/user.repository';
+import { EventService } from '@/events/event.service';
+import { ExternalHooks } from '@/external-hooks';
+import { PasswordUtility } from '@/services/password.utility';
+import { UserManagementMailer } from '@/user-management/email';
 
 import {
 	assertReturnedUserProps,
 	assertStoredUserProps,
 	assertUserInviteResult,
 } from './assertions';
-
-import type { User } from '@/databases/entities/User';
+import { mockInstance } from '../../../shared/mocking';
+import { createMember, createOwner, createUserShell } from '../../shared/db/users';
+import {
+	randomEmail,
+	randomInvalidPassword,
+	randomName,
+	randomValidPassword,
+} from '../../shared/random';
+import * as utils from '../../shared/utils';
 import type { UserInvitationResult } from '../../shared/utils/users';
-import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
 
 describe('InvitationController', () => {
 	const mailer = mockInstance(UserManagementMailer);

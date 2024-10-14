@@ -2,13 +2,21 @@ import { Config, Env, Nested } from '../decorators';
 
 @Config
 class HealthConfig {
-	/** Whether to enable the worker health check endpoint `/healthz`. */
+	/**
+	 * Whether to enable the worker health check endpoints:
+	 * - `/healthz` (worker alive)
+	 * - `/healthz/readiness` (worker connected to migrated database and connected to Redis)
+	 */
 	@Env('QUEUE_HEALTH_CHECK_ACTIVE')
 	active: boolean = false;
 
-	/** Port for worker to respond to health checks requests on, if enabled. */
+	/** Port for worker server to listen on. */
 	@Env('QUEUE_HEALTH_CHECK_PORT')
 	port: number = 5678;
+
+	/** IP address for worker server to listen on. */
+	@Env('N8N_WORKER_SERVER_ADDRESS')
+	address: string = '0.0.0.0';
 }
 
 @Config

@@ -1,7 +1,9 @@
-import N8nUsersList from './UsersList.vue';
 import { action } from '@storybook/addon-actions';
 import type { StoryFn } from '@storybook/vue3';
+
 import type { IUser } from 'n8n-design-system/types';
+
+import N8nUsersList from './UsersList.vue';
 
 export default {
 	title: 'Modules/UsersList',

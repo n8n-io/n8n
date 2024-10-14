@@ -1,17 +1,17 @@
-import { Service } from 'typedi';
 import type { IUserSettings } from 'n8n-workflow';
 import { ApplicationError, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
+import { Service } from 'typedi';
 
-import type { User, AssignableRole } from '@db/entities/User';
-import { UserRepository } from '@db/repositories/user.repository';
-import type { Invitation, PublicUser } from '@/Interfaces';
-import type { PostHogClient } from '@/posthog';
-import { Logger } from '@/Logger';
-import { UserManagementMailer } from '@/UserManagement/email';
-import { UrlService } from '@/services/url.service';
-import type { UserRequest } from '@/requests';
+import type { User, AssignableRole } from '@/databases/entities/user';
+import { UserRepository } from '@/databases/repositories/user.repository';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { EventService } from '@/events/event.service';
+import type { Invitation, PublicUser } from '@/interfaces';
+import { Logger } from '@/logging/logger.service';
+import type { PostHogClient } from '@/posthog';
+import type { UserRequest } from '@/requests';
+import { UrlService } from '@/services/url.service';
+import { UserManagementMailer } from '@/user-management/email';
 
 @Service()
 export class UserService {
@@ -58,7 +58,7 @@ export class UserService {
 			withScopes?: boolean;
 		},
 	) {
-		const { password, updatedAt, apiKey, authIdentities, ...rest } = user;
+		const { password, updatedAt, authIdentities, ...rest } = user;
 
 		const ldapIdentity = authIdentities?.find((i) => i.providerType === 'ldap');
 
@@ -138,7 +138,6 @@ export class UserService {
 					const result = await this.mailer.invite({
 						email,
 						inviteAcceptUrl,
-						domain,
 					});
 					if (result.emailSent) {
 						invitedUser.user.emailSent = true;
@@ -168,7 +167,6 @@ export class UserService {
 						this.logger.error('Failed to send email', {
 							userId: owner.id,
 							inviteAcceptUrl,
-							domain,
 							email,
 						});
 						invitedUser.error = e.message;

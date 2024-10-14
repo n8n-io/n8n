@@ -1,14 +1,33 @@
-import type { Schema } from '@/Interface';
-import type { INode, INodeParameters } from 'n8n-workflow';
+import type { VIEWS } from '@/constants';
+import type { IWorkflowDb, NodeAuthenticationOption, Schema } from '@/Interface';
+import type {
+	ExecutionError,
+	ICredentialType,
+	IDataObject,
+	INode,
+	INodeIssues,
+	INodeParameters,
+	IRunExecutionData,
+	ITaskData,
+} from 'n8n-workflow';
 
 export namespace ChatRequest {
-	interface NodeExecutionSchema {
+	export interface NodeExecutionSchema {
 		nodeName: string;
 		schema: Schema;
 	}
 
 	export interface WorkflowContext {
 		executionSchema?: NodeExecutionSchema[];
+		currentWorkflow?: IWorkflowDb;
+		executionData?: IRunExecutionData['resultData'];
+	}
+
+	export interface ExecutionResultData {
+		error?: ExecutionError;
+		runData: Record<string, Array<Omit<ITaskData, 'data'>>>;
+		lastNodeExecuted?: string;
+		metadata?: Record<string, string>;
 	}
 
 	export interface ErrorContext {
@@ -21,6 +40,7 @@ export namespace ChatRequest {
 			stack?: string;
 		};
 		node: INode;
+		nodeInputData?: IDataObject;
 	}
 
 	export interface InitErrorHelper extends ErrorContext, WorkflowContext {
@@ -30,6 +50,30 @@ export namespace ChatRequest {
 			firstName: string;
 		};
 		authType?: { name: string; value: string };
+	}
+
+	export interface InitSupportChat {
+		role: 'user';
+		type: 'init-support-chat';
+		user: {
+			firstName: string;
+		};
+		context?: UserContext;
+		workflowContext?: WorkflowContext;
+		question: string;
+	}
+
+	export interface InitCredHelp {
+		role: 'user';
+		type: 'init-cred-help';
+		user: {
+			firstName: string;
+		};
+		question: string;
+		credentialType: {
+			name: string;
+			displayName: string;
+		};
 	}
 
 	export type InteractionEventName = 'node-execution-succeeded' | 'node-execution-errored';
@@ -46,11 +90,33 @@ export namespace ChatRequest {
 		type: 'message';
 		text: string;
 		quickReplyType?: string;
+		context?: UserContext;
+		workflowContext?: WorkflowContext;
 	}
+
+	export interface UserContext {
+		activeNodeInfo?: {
+			node?: INode;
+			nodeIssues?: INodeIssues;
+			nodeInputData?: IDataObject;
+			referencedNodes?: NodeExecutionSchema[];
+			executionStatus?: {
+				status: string;
+				error?: ErrorContext['error'];
+			};
+		};
+		activeCredentials?: Pick<ICredentialType, 'name' | 'displayName'> & { authType?: string };
+		currentView?: {
+			name: VIEWS;
+			description?: string;
+		};
+	}
+
+	export type AssistantContext = UserContext & WorkflowContext;
 
 	export type RequestPayload =
 		| {
-				payload: InitErrorHelper;
+				payload: InitErrorHelper | InitSupportChat | InitCredHelp;
 		  }
 		| {
 				payload: EventRequestPayload | UserChatMessage;
@@ -76,6 +142,8 @@ export namespace ChatRequest {
 		role: 'assistant';
 		type: 'message';
 		text: string;
+		step?: 'n8n_documentation' | 'n8n_forum';
+		codeSnippet?: string;
 	}
 
 	interface AssistantSummaryMessage {
@@ -98,8 +166,21 @@ export namespace ChatRequest {
 		text: string;
 	}
 
+	interface AgentThinkingStep {
+		role: 'assistant';
+		type: 'intermediate-step';
+		text: string;
+		step: string;
+	}
+
 	export type MessageResponse =
-		| ((AssistantChatMessage | CodeDiffMessage | AssistantSummaryMessage | AgentChatMessage) & {
+		| ((
+				| AssistantChatMessage
+				| CodeDiffMessage
+				| AssistantSummaryMessage
+				| AgentChatMessage
+				| AgentThinkingStep
+		  ) & {
 				quickReplies?: QuickReplyOption[];
 		  })
 		| EndSessionMessage;
@@ -107,6 +188,15 @@ export namespace ChatRequest {
 	export interface ResponsePayload {
 		sessionId?: string;
 		messages: MessageResponse[];
+	}
+
+	export interface NodeInfo {
+		authType?: NodeAuthenticationOption;
+		schemas?: NodeExecutionSchema[];
+		nodeInputData?: {
+			inputNodeName?: string;
+			inputData?: IDataObject;
+		};
 	}
 }
 
@@ -119,5 +209,18 @@ export namespace ReplaceCodeRequest {
 	export interface ResponsePayload {
 		sessionId: string;
 		parameters: INodeParameters;
+	}
+}
+
+export namespace AskAiRequest {
+	export interface RequestPayload {
+		question: string;
+		context: {
+			schema: ChatRequest.NodeExecutionSchema[];
+			inputSchema: ChatRequest.NodeExecutionSchema;
+			pushRef: string;
+			ndvPushRef: string;
+		};
+		forNode: 'code' | 'transform';
 	}
 }

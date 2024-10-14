@@ -8,6 +8,8 @@ on:
     paths:
       - packages/cli/src/databases/**
       - .github/workflows/ci-postgres-mysql.yml
+  pull_request_review:
+    types: [submitted]
 
 concurrency:
   group: db-${{ github.event.pull_request.number || github.ref }}
@@ -17,6 +19,7 @@ jobs:
   build:
     name: Install & Build
     runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request_review' || startsWith(github.event.pull_request.base.ref, 'release/')
     steps:
       - uses: actions/checkout@v4.1.1
       - run: corepack enable

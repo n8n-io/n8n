@@ -56,12 +56,12 @@ jobs:
           git push -f origin refs/remotes/origin/${{ github.event.inputs.base-branch }}:refs/heads/release/${{ env.NEXT_RELEASE }}
 
       - name: Push the release branch, and Create the PR
-        uses: peter-evans/create-pull-request@v5
+        uses: peter-evans/create-pull-request@v6
         with:
           base: 'release/${{ env.NEXT_RELEASE }}'
-          branch: '${{ env.NEXT_RELEASE }}-pr'
+          branch: 'release-pr/${{ env.NEXT_RELEASE }}'
           commit-message: ':rocket: Release ${{ env.NEXT_RELEASE }}'
           delete-branch: true
-          labels: 'release'
+          labels: release,release:${{ github.event.inputs.release-type }}
           title: ':rocket: Release ${{ env.NEXT_RELEASE }}'
           body-path: 'CHANGELOG-${{ env.NEXT_RELEASE }}.md'

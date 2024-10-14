@@ -1,7 +1,7 @@
-import { Service } from 'typedi';
-import { Client, type ConnectConfig } from 'ssh2';
-import { createHash } from 'node:crypto';
 import type { SSHCredentials } from 'n8n-workflow';
+import { createHash } from 'node:crypto';
+import { Client, type ConnectConfig } from 'ssh2';
+import { Service } from 'typedi';
 
 @Service()
 export class SSHClientsManager {

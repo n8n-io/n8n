@@ -1,10 +1,14 @@
-import { LicenseErrors, LicenseService } from '@/license/license.service';
-import type { License } from '@/License';
-import type { EventService } from '@/events/event.service';
-import type { WorkflowRepository } from '@db/repositories/workflow.repository';
 import type { TEntitlement } from '@n8n_io/license-sdk';
+import axios, { AxiosError } from 'axios';
 import { mock } from 'jest-mock-extended';
+
+import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import type { EventService } from '@/events/event.service';
+import type { License } from '@/license';
+import { LicenseErrors, LicenseService } from '@/license/license.service';
+
+jest.mock('axios');
 
 describe('LicenseService', () => {
 	const license = mock<License>();
@@ -81,6 +85,39 @@ describe('LicenseService', () => {
 			expect(eventService.emit).toHaveBeenCalledWith('license-renewal-attempted', {
 				success: false,
 			});
+		});
+	});
+
+	describe('registerCommunityEdition', () => {
+		test('on success', async () => {
+			jest
+				.spyOn(axios, 'post')
+				.mockResolvedValueOnce({ data: { title: 'Title', text: 'Text', licenseKey: 'abc-123' } });
+			const data = await licenseService.registerCommunityEdition({
+				email: 'test@ema.il',
+				instanceId: '123',
+				instanceUrl: 'http://localhost',
+				licenseType: 'community-registered',
+			});
+
+			expect(data).toEqual({ title: 'Title', text: 'Text' });
+			expect(eventService.emit).toHaveBeenCalledWith('license-community-plus-registered', {
+				email: 'test@ema.il',
+				licenseKey: 'abc-123',
+			});
+		});
+
+		test('on failure', async () => {
+			jest.spyOn(axios, 'post').mockRejectedValueOnce(new AxiosError('Failed'));
+			await expect(
+				licenseService.registerCommunityEdition({
+					email: 'test@ema.il',
+					instanceId: '123',
+					instanceUrl: 'http://localhost',
+					licenseType: 'community-registered',
+				}),
+			).rejects.toThrowError('Failed');
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 	});
 });

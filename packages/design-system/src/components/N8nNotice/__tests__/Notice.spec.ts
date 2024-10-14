@@ -1,6 +1,9 @@
 import { render } from '@testing-library/vue';
-import N8nNotice from '../Notice.vue';
+
 import { N8nText } from 'n8n-design-system/components';
+import { n8nHtml } from 'n8n-design-system/directives';
+
+import N8nNotice from '../Notice.vue';
 
 describe('components', () => {
 	describe('N8nNotice', () => {
@@ -41,6 +44,9 @@ describe('components', () => {
 							content: '<strong>Hello world!</strong> This is a notice.',
 						},
 						global: {
+							directives: {
+								n8nHtml,
+							},
 							components: {
 								'n8n-text': N8nText,
 							},

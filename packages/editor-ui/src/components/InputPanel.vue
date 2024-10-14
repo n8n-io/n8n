@@ -1,138 +1,3 @@
-<template>
-	<RunData
-		:node="currentNode"
-		:nodes="isMappingMode ? rootNodesParents : parentNodes"
-		:workflow="workflow"
-		:run-index="runIndex"
-		:linked-runs="linkedRuns"
-		:can-link-runs="!mappedNode && canLinkRuns"
-		:too-much-data-title="$locale.baseText('ndv.input.tooMuchData.title')"
-		:no-data-in-branch-message="$locale.baseText('ndv.input.noOutputDataInBranch')"
-		:is-executing="isExecutingPrevious"
-		:executing-message="$locale.baseText('ndv.input.executingPrevious')"
-		:push-ref="pushRef"
-		:override-outputs="connectedCurrentNodeOutputs"
-		:mapping-enabled="isMappingEnabled"
-		:distance-from-active="currentNodeDepth"
-		:is-production-execution-preview="isProductionExecutionPreview"
-		:is-pane-active="isPaneActive"
-		pane-type="input"
-		data-test-id="ndv-input-panel"
-		@activate-pane="activatePane"
-		@item-hover="$emit('itemHover', $event)"
-		@link-run="onLinkRun"
-		@unlink-run="onUnlinkRun"
-		@run-change="onRunIndexChange"
-		@table-mounted="$emit('tableMounted', $event)"
-		@search="$emit('search', $event)"
-	>
-		<template #header>
-			<div :class="$style.titleSection">
-				<span :class="$style.title">{{ $locale.baseText('ndv.input') }}</span>
-				<n8n-radio-buttons
-					v-if="isActiveNodeConfig && !readOnly"
-					:options="inputModes"
-					:model-value="inputMode"
-					@update:model-value="onInputModeChange"
-				/>
-			</div>
-		</template>
-		<template #input-select>
-			<InputNodeSelect
-				v-if="parentNodes.length && currentNodeName"
-				:model-value="currentNodeName"
-				:workflow="workflow"
-				:nodes="parentNodes"
-				@update:model-value="onInputNodeChange"
-			/>
-		</template>
-		<template v-if="isMappingMode" #before-data>
-			<!--
-						Hide the run linking buttons for both input and ouput panels when in 'Mapping Mode' because the run indices wouldn't match.
-						Although this is not the most elegant solution, it's straightforward and simpler than introducing a new props and logic to handle this.
-				-->
-			<component :is="'style'">button.linkRun { display: none }</component>
-			<div :class="$style.mappedNode">
-				<InputNodeSelect
-					:model-value="mappedNode"
-					:workflow="workflow"
-					:nodes="rootNodesParents"
-					@update:model-value="onMappedNodeSelected"
-				/>
-			</div>
-		</template>
-		<template #node-not-run>
-			<div
-				v-if="(isActiveNodeConfig && rootNode) || parentNodes.length"
-				:class="$style.noOutputData"
-			>
-				<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{
-					$locale.baseText('ndv.input.noOutputData.title')
-				}}</n8n-text>
-				<n8n-tooltip v-if="!readOnly" :visible="showDraggableHint && showDraggableHintWithDelay">
-					<template #content>
-						<div
-							v-html="
-								$locale.baseText('dataMapping.dragFromPreviousHint', {
-									interpolate: { name: focusedMappableInput },
-								})
-							"
-						></div>
-					</template>
-					<NodeExecuteButton
-						type="secondary"
-						hide-icon
-						:transparent="true"
-						:node-name="isActiveNodeConfig ? rootNode : currentNodeName ?? ''"
-						:label="$locale.baseText('ndv.input.noOutputData.executePrevious')"
-						telemetry-source="inputs"
-						data-test-id="execute-previous-node"
-						@execute="onNodeExecute"
-					/>
-				</n8n-tooltip>
-				<n8n-text v-if="!readOnly" tag="div" size="small">
-					{{ $locale.baseText('ndv.input.noOutputData.hint') }}
-				</n8n-text>
-			</div>
-			<div v-else :class="$style.notConnected">
-				<div>
-					<WireMeUp />
-				</div>
-				<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{
-					$locale.baseText('ndv.input.notConnected.title')
-				}}</n8n-text>
-				<n8n-text tag="div">
-					{{ $locale.baseText('ndv.input.notConnected.message') }}
-					<a
-						href="https://docs.n8n.io/workflows/connections/"
-						target="_blank"
-						@click="onConnectionHelpClick"
-					>
-						{{ $locale.baseText('ndv.input.notConnected.learnMore') }}
-					</a>
-				</n8n-text>
-			</div>
-		</template>
-
-		<template #no-output-data>
-			<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{
-				$locale.baseText('ndv.input.noOutputData')
-			}}</n8n-text>
-		</template>
-
-		<template #recovered-artificial-output-data>
-			<div :class="$style.recoveredOutputData">
-				<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{
-					$locale.baseText('executionDetails.executionFailed.recoveredNodeTitle')
-				}}</n8n-text>
-				<n8n-text>
-					{{ $locale.baseText('executionDetails.executionFailed.recoveredNodeMessage') }}
-				</n8n-text>
-			</div>
-		</template>
-	</RunData>
-</template>
-
 <script lang="ts">
 import type { INodeUi } from '@/Interface';
 import {
@@ -146,7 +11,6 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type {
-	ConnectionTypes,
 	IConnectedNode,
 	INodeInputConfiguration,
 	INodeOutputConfiguration,
@@ -160,6 +24,7 @@ import InputNodeSelect from './InputNodeSelect.vue';
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import RunData from './RunData.vue';
 import WireMeUp from './WireMeUp.vue';
+import { waitingNodeTooltip } from '@/utils/executionUtils';
 
 type MappingMode = 'debugging' | 'mapping';
 
@@ -256,10 +121,10 @@ export default defineComponent({
 			} else {
 				// If we can not figure out the node type we set no outputs
 				if (!Array.isArray(inputs)) {
-					inputs = [] as ConnectionTypes[];
+					inputs = [] as NodeConnectionType[];
 				}
 				if (!Array.isArray(outputs)) {
-					outputs = [] as ConnectionTypes[];
+					outputs = [] as NodeConnectionType[];
 				}
 			}
 
@@ -319,7 +184,7 @@ export default defineComponent({
 		},
 		rootNodesParents() {
 			const workflow = this.workflow;
-			const parentNodes = [...workflow.getParentNodes(this.rootNode, 'main')]
+			const parentNodes = [...workflow.getParentNodes(this.rootNode, NodeConnectionType.Main)]
 				.reverse()
 				.map((parent): IConnectedNode => ({ name: parent, depth: 1, indicies: [] }));
 
@@ -373,6 +238,9 @@ export default defineComponent({
 		isMultiInputNode(): boolean {
 			return this.activeNodeType !== null && this.activeNodeType.inputs.length > 1;
 		},
+		waitingMessage(): string {
+			return waitingNodeTooltip();
+		},
 	},
 	watch: {
 		inputMode: {
@@ -409,8 +277,8 @@ export default defineComponent({
 	},
 	methods: {
 		filterOutConnectionType(
-			item: ConnectionTypes | INodeOutputConfiguration | INodeInputConfiguration,
-			type: ConnectionTypes,
+			item: NodeConnectionType | INodeOutputConfiguration | INodeInputConfiguration,
+			type: NodeConnectionType,
 		) {
 			if (!item) return false;
 
@@ -467,6 +335,146 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<RunData
+		:node="currentNode"
+		:nodes="isMappingMode ? rootNodesParents : parentNodes"
+		:workflow="workflow"
+		:run-index="runIndex"
+		:linked-runs="linkedRuns"
+		:can-link-runs="!mappedNode && canLinkRuns"
+		:too-much-data-title="$locale.baseText('ndv.input.tooMuchData.title')"
+		:no-data-in-branch-message="$locale.baseText('ndv.input.noOutputDataInBranch')"
+		:is-executing="isExecutingPrevious"
+		:executing-message="$locale.baseText('ndv.input.executingPrevious')"
+		:push-ref="pushRef"
+		:override-outputs="connectedCurrentNodeOutputs"
+		:mapping-enabled="isMappingEnabled"
+		:distance-from-active="currentNodeDepth"
+		:is-production-execution-preview="isProductionExecutionPreview"
+		:is-pane-active="isPaneActive"
+		pane-type="input"
+		data-test-id="ndv-input-panel"
+		@activate-pane="activatePane"
+		@item-hover="$emit('itemHover', $event)"
+		@link-run="onLinkRun"
+		@unlink-run="onUnlinkRun"
+		@run-change="onRunIndexChange"
+		@table-mounted="$emit('tableMounted', $event)"
+		@search="$emit('search', $event)"
+	>
+		<template #header>
+			<div :class="$style.titleSection">
+				<span :class="$style.title">{{ $locale.baseText('ndv.input') }}</span>
+				<n8n-radio-buttons
+					v-if="isActiveNodeConfig && !readOnly"
+					:options="inputModes"
+					:model-value="inputMode"
+					@update:model-value="onInputModeChange"
+				/>
+			</div>
+		</template>
+		<template #input-select>
+			<InputNodeSelect
+				v-if="parentNodes.length && currentNodeName"
+				:model-value="currentNodeName"
+				:workflow="workflow"
+				:nodes="parentNodes"
+				@update:model-value="onInputNodeChange"
+			/>
+		</template>
+		<template v-if="isMappingMode" #before-data>
+			<!--
+						Hide the run linking buttons for both input and ouput panels when in 'Mapping Mode' because the run indices wouldn't match.
+						Although this is not the most elegant solution, it's straightforward and simpler than introducing a new props and logic to handle this.
+				-->
+			<component :is="'style'">button.linkRun { display: none }</component>
+			<div :class="$style.mappedNode">
+				<InputNodeSelect
+					:model-value="mappedNode"
+					:workflow="workflow"
+					:nodes="rootNodesParents"
+					@update:model-value="onMappedNodeSelected"
+				/>
+			</div>
+		</template>
+		<template #node-not-run>
+			<div
+				v-if="(isActiveNodeConfig && rootNode) || parentNodes.length"
+				:class="$style.noOutputData"
+			>
+				<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{
+					$locale.baseText('ndv.input.noOutputData.title')
+				}}</n8n-text>
+				<n8n-tooltip v-if="!readOnly" :visible="showDraggableHint && showDraggableHintWithDelay">
+					<template #content>
+						<div
+							v-n8n-html="
+								$locale.baseText('dataMapping.dragFromPreviousHint', {
+									interpolate: { name: focusedMappableInput },
+								})
+							"
+						></div>
+					</template>
+					<NodeExecuteButton
+						type="secondary"
+						hide-icon
+						:transparent="true"
+						:node-name="isActiveNodeConfig ? rootNode : (currentNodeName ?? '')"
+						:label="$locale.baseText('ndv.input.noOutputData.executePrevious')"
+						telemetry-source="inputs"
+						data-test-id="execute-previous-node"
+						@execute="onNodeExecute"
+					/>
+				</n8n-tooltip>
+				<n8n-text v-if="!readOnly" tag="div" size="small">
+					{{ $locale.baseText('ndv.input.noOutputData.hint') }}
+				</n8n-text>
+			</div>
+			<div v-else :class="$style.notConnected">
+				<div>
+					<WireMeUp />
+				</div>
+				<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{
+					$locale.baseText('ndv.input.notConnected.title')
+				}}</n8n-text>
+				<n8n-text tag="div">
+					{{ $locale.baseText('ndv.input.notConnected.message') }}
+					<a
+						href="https://docs.n8n.io/workflows/connections/"
+						target="_blank"
+						@click="onConnectionHelpClick"
+					>
+						{{ $locale.baseText('ndv.input.notConnected.learnMore') }}
+					</a>
+				</n8n-text>
+			</div>
+		</template>
+
+		<template #node-waiting>
+			<n8n-text :bold="true" color="text-dark" size="large">Waiting for input</n8n-text>
+			<n8n-text v-n8n-html="waitingMessage"></n8n-text>
+		</template>
+
+		<template #no-output-data>
+			<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{
+				$locale.baseText('ndv.input.noOutputData')
+			}}</n8n-text>
+		</template>
+
+		<template #recovered-artificial-output-data>
+			<div :class="$style.recoveredOutputData">
+				<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{
+					$locale.baseText('executionDetails.executionFailed.recoveredNodeTitle')
+				}}</n8n-text>
+				<n8n-text>
+					{{ $locale.baseText('executionDetails.executionFailed.recoveredNodeMessage') }}
+				</n8n-text>
+			</div>
+		</template>
+	</RunData>
+</template>
 
 <style lang="scss" module>
 .mappedNode {

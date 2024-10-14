@@ -34,9 +34,17 @@ export const returnAllOrLimit: INodeProperties[] = [
 ];
 
 export const looseTypeValidationProperty: INodeProperties = {
-	displayName: 'Less Strict Type Validation',
-	description: 'Whether to try casting value types based on the selected operator',
+	displayName: 'Convert types where required',
+	description:
+		'If the type of an expression doesn\'t match the type of the comparison, n8n will try to cast the expression to the required type. E.g. for booleans <code>"false"</code> or <code>0</code> will be cast to <code>false</code>',
 	name: 'looseTypeValidation',
+	type: 'boolean',
+	default: true,
+};
+
+export const appendAttributionOption: INodeProperties = {
+	displayName: 'Append n8n Attribution',
+	name: 'appendAttribution',
 	type: 'boolean',
 	default: true,
 };

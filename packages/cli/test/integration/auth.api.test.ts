@@ -3,16 +3,16 @@ import validator from 'validator';
 
 import config from '@/config';
 import { AUTH_COOKIE_NAME } from '@/constants';
-import type { User } from '@db/entities/User';
-import { UserRepository } from '@db/repositories/user.repository';
-import { MfaService } from '@/Mfa/mfa.service';
+import type { User } from '@/databases/entities/user';
+import { UserRepository } from '@/databases/repositories/user.repository';
+import { MfaService } from '@/mfa/mfa.service';
 
 import { LOGGED_OUT_RESPONSE_BODY } from './shared/constants';
-import { randomValidPassword } from './shared/random';
-import * as testDb from './shared/testDb';
-import * as utils from './shared/utils/';
 import { createUser, createUserShell } from './shared/db/users';
+import { randomValidPassword } from './shared/random';
+import * as testDb from './shared/test-db';
 import type { SuperAgentTest } from './shared/types';
+import * as utils from './shared/utils/';
 
 let owner: User;
 let authOwnerAgent: SuperAgentTest;
@@ -386,13 +386,19 @@ describe('GET /resolve-signup-token', () => {
 describe('POST /logout', () => {
 	test('should log user out', async () => {
 		const owner = await createUser({ role: 'global:owner' });
+		const ownerAgent = testServer.authAgentFor(owner);
+		// @ts-expect-error `accessInfo` types are incorrect
+		const cookie = ownerAgent.jar.getCookie(AUTH_COOKIE_NAME, { path: '/' });
 
-		const response = await testServer.authAgentFor(owner).post('/logout');
+		const response = await ownerAgent.post('/logout');
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body).toEqual(LOGGED_OUT_RESPONSE_BODY);
 
 		const authToken = utils.getAuthToken(response);
 		expect(authToken).toBeUndefined();
+
+		ownerAgent.jar.setCookie(`${AUTH_COOKIE_NAME}=${cookie!.value}`);
+		await ownerAgent.get('/login').expect(401);
 	});
 });

@@ -1,13 +1,15 @@
-import type { User } from '@/databases/entities/User';
-import type { CredentialsEntity } from '@/databases/entities/CredentialsEntity';
+import Container from 'typedi';
+
+import { CredentialsService } from '@/credentials/credentials.service';
+import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
+import type { User } from '@/databases/entities/user';
+import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
+import { createTeamProject, linkUserToProject } from '@test-integration/db/projects';
+
 import { saveCredential, shareCredentialWithUsers } from '../shared/db/credentials';
 import { createMember } from '../shared/db/users';
 import { randomCredentialPayload } from '../shared/random';
-import { SharedCredentialsRepository } from '@/databases/repositories/sharedCredentials.repository';
-import Container from 'typedi';
-import { CredentialsService } from '@/credentials/credentials.service';
-import * as testDb from '../shared/testDb';
-import { createTeamProject, linkUserToProject } from '@test-integration/db/projects';
+import * as testDb from '../shared/test-db';
 
 const credentialPayload = randomCredentialPayload();
 let memberWhoOwnsCredential: User;

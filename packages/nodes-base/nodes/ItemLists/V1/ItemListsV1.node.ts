@@ -6,7 +6,7 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import get from 'lodash/get';
 import isEmpty from 'lodash/isEmpty';
@@ -30,8 +30,8 @@ export class ItemListsV1 implements INodeType {
 			defaults: {
 				name: 'Item Lists',
 			},
-			inputs: ['main'],
-			outputs: ['main'],
+			inputs: [NodeConnectionType.Main],
+			outputs: [NodeConnectionType.Main],
 			credentials: [],
 			properties: [
 				{

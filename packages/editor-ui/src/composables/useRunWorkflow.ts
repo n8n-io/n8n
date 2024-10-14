@@ -1,12 +1,11 @@
 import type {
 	IExecutionPushResponse,
 	IExecutionResponse,
-	IPushDataExecutionFinished,
 	IStartRunData,
 	IWorkflowDb,
 } from '@/Interface';
+
 import type {
-	IDataObject,
 	IRunData,
 	IRunExecutionData,
 	ITaskData,
@@ -14,7 +13,10 @@ import type {
 	Workflow,
 	StartNodeData,
 	IRun,
+	INode,
+	IDataObject,
 } from 'n8n-workflow';
+
 import { NodeConnectionType } from 'n8n-workflow';
 
 import { useToast } from '@/composables/useToast';
@@ -26,12 +28,11 @@ import {
 	WAIT_NODE_TYPE,
 	WORKFLOW_LM_CHAT_MODAL_KEY,
 } from '@/constants';
-import { useTitleChange } from '@/composables/useTitleChange';
+
 import { useRootStore } from '@/stores/root.store';
 import { useUIStore } from '@/stores/ui.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { openPopUpWindow } from '@/utils/executionUtils';
+import { displayForm, openPopUpWindow } from '@/utils/executionUtils';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import type { useRouter } from 'vue-router';
@@ -39,17 +40,19 @@ import { isEmpty } from '@/utils/typesUtils';
 import { useI18n } from '@/composables/useI18n';
 import { get } from 'lodash-es';
 import { useExecutionsStore } from '@/stores/executions.store';
+import type { PushPayload } from '@n8n/api-types';
+import { useLocalStorage } from '@vueuse/core';
+
+const FORM_RELOAD = 'n8n_redirect_to_next_form_test_page';
 
 export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof useRouter> }) {
 	const nodeHelpers = useNodeHelpers();
 	const workflowHelpers = useWorkflowHelpers({ router: useRunWorkflowOpts.router });
 	const i18n = useI18n();
 	const toast = useToast();
-	const { titleSet } = useTitleChange();
 
 	const rootStore = useRootStore();
 	const uiStore = useUIStore();
-	const nodeTypesStore = useNodeTypesStore();
 	const workflowsStore = useWorkflowsStore();
 	const executionsStore = useExecutionsStore();
 
@@ -97,7 +100,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			return;
 		}
 
-		titleSet(workflow.name as string, 'EXECUTING');
+		workflowHelpers.setDocumentTitle(workflow.name as string, 'EXECUTING');
 
 		toast.clearAllStickyNotifications();
 
@@ -218,9 +221,15 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				};
 			});
 
+			// -1 means the backend chooses the default
+			// 0 is the old flow
+			// 1 is the new flow
+			const partialExecutionVersion = useLocalStorage('PartialExecution.version', -1);
 			const startRunData: IStartRunData = {
 				workflowData,
-				runData: newRunData,
+				// With the new partial execution version the backend decides what run
+				// data to use and what to ignore.
+				runData: partialExecutionVersion.value === 1 ? (runData ?? undefined) : newRunData,
 				startNodes,
 			};
 			if ('destinationNode' in options) {
@@ -261,58 +270,23 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			const runWorkflowApiResponse = await runWorkflowApi(startRunData);
 			const pinData = workflowData.pinData ?? {};
 
-			for (const node of workflowData.nodes) {
-				if (pinData[node.name]) continue;
+			const getTestUrl = (() => {
+				return (node: INode) => {
+					return `${rootStore.formTestUrl}/${node.parameters.path}`;
+				};
+			})();
 
-				if (![FORM_TRIGGER_NODE_TYPE, WAIT_NODE_TYPE].includes(node.type)) {
-					continue;
-				}
-
-				if (
-					options.destinationNode &&
-					options.destinationNode !== node.name &&
-					!directParentNodes.includes(node.name)
-				) {
-					continue;
-				}
-
-				if (node.name === options.destinationNode || !node.disabled) {
-					let testUrl = '';
-
-					if (node.type === FORM_TRIGGER_NODE_TYPE) {
-						const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
-						if (nodeType?.webhooks?.length) {
-							testUrl = workflowHelpers.getWebhookUrl(nodeType.webhooks[0], node, 'test');
-						}
-					}
-
-					if (
-						node.type === WAIT_NODE_TYPE &&
-						node.parameters.resume === 'form' &&
-						runWorkflowApiResponse.executionId
-					) {
-						const workflowTriggerNodes = workflow
-							.getTriggerNodes()
-							.map((triggerNode) => triggerNode.name);
-
-						const showForm =
-							options.destinationNode === node.name ||
-							directParentNodes.includes(node.name) ||
-							workflowTriggerNodes.some((triggerNode) =>
-								workflowsStore.isNodeInOutgoingNodeConnections(triggerNode, node.name),
-							);
-
-						if (!showForm) continue;
-
-						const { webhookSuffix } = (node.parameters.options ?? {}) as IDataObject;
-						const suffix =
-							webhookSuffix && typeof webhookSuffix !== 'object' ? `/${webhookSuffix}` : '';
-						testUrl = `${rootStore.formWaitingUrl}/${runWorkflowApiResponse.executionId}${suffix}`;
-					}
-
-					if (testUrl && options.source !== 'RunData.ManualChatMessage') openPopUpWindow(testUrl);
-				}
-			}
+			try {
+				displayForm({
+					nodes: workflowData.nodes,
+					runData: workflowsStore.getWorkflowExecution?.data?.resultData?.runData,
+					destinationNode: options.destinationNode,
+					pinData,
+					directParentNodes,
+					source: options.source,
+					getTestUrl,
+				});
+			} catch (error) {}
 
 			await useExternalHooks().run('workflowRun.runWorkflow', {
 				nodeName: options.destinationNode,
@@ -321,10 +295,133 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 
 			return runWorkflowApiResponse;
 		} catch (error) {
-			titleSet(workflow.name as string, 'ERROR');
+			workflowHelpers.setDocumentTitle(workflow.name as string, 'ERROR');
 			toast.showError(error, i18n.baseText('workflowRun.showError.title'));
 			return undefined;
 		}
+	}
+
+	function getFormResumeUrl(node: INode, executionId: string) {
+		const { webhookSuffix } = (node.parameters.options ?? {}) as IDataObject;
+		const suffix = webhookSuffix && typeof webhookSuffix !== 'object' ? `/${webhookSuffix}` : '';
+		const testUrl = `${rootStore.formWaitingUrl}/${executionId}${suffix}`;
+		return testUrl;
+	}
+
+	async function runWorkflowResolvePending(options: {
+		destinationNode?: string;
+		triggerNode?: string;
+		nodeData?: ITaskData;
+		source?: string;
+	}): Promise<IExecutionPushResponse | undefined> {
+		let runWorkflowApiResponse = await runWorkflow(options);
+		let { executionId } = runWorkflowApiResponse || {};
+
+		const MAX_DELAY = 3000;
+
+		const waitForWebhook = async (): Promise<string> => {
+			return await new Promise<string>((resolve) => {
+				let delay = 300;
+				let timeoutId: NodeJS.Timeout | null = null;
+
+				const checkWebhook = async () => {
+					await useExternalHooks().run('workflowRun.runWorkflow', {
+						nodeName: options.destinationNode,
+						source: options.source,
+					});
+
+					if (workflowsStore.activeExecutionId) {
+						executionId = workflowsStore.activeExecutionId;
+						runWorkflowApiResponse = { executionId };
+
+						if (timeoutId) clearTimeout(timeoutId);
+
+						resolve(executionId);
+					}
+
+					delay = Math.min(delay * 1.1, MAX_DELAY);
+					timeoutId = setTimeout(checkWebhook, delay);
+				};
+				timeoutId = setTimeout(checkWebhook, delay);
+			});
+		};
+
+		if (!executionId) executionId = await waitForWebhook();
+
+		let isFormShown =
+			!options.destinationNode &&
+			workflowsStore.allNodes.some((node) => node.type === FORM_TRIGGER_NODE_TYPE);
+
+		const resolveWaitingNodesData = async (): Promise<void> => {
+			return await new Promise<void>((resolve) => {
+				let delay = 300;
+				let timeoutId: NodeJS.Timeout | null = null;
+
+				const processExecution = async () => {
+					await useExternalHooks().run('workflowRun.runWorkflow', {
+						nodeName: options.destinationNode,
+						source: options.source,
+					});
+					const execution = await workflowsStore.getExecution((executionId as string) || '');
+
+					localStorage.removeItem(FORM_RELOAD);
+
+					if (!execution || workflowsStore.workflowExecutionData === null) {
+						uiStore.removeActiveAction('workflowRunning');
+						if (timeoutId) clearTimeout(timeoutId);
+						resolve();
+						return;
+					}
+
+					if (
+						execution.finished ||
+						['error', 'canceled', 'crashed', 'success'].includes(execution.status)
+					) {
+						workflowsStore.setWorkflowExecutionData(execution);
+						workflowsStore.activeExecutionId = null;
+						if (timeoutId) clearTimeout(timeoutId);
+						resolve();
+						return;
+					}
+
+					if (execution.status === 'waiting' && execution.data?.waitTill) {
+						delete execution.data.resultData.runData[
+							execution.data.resultData.lastNodeExecuted as string
+						];
+						workflowsStore.setWorkflowExecutionRunData(execution.data);
+
+						const { lastNodeExecuted } = execution.data?.resultData || {};
+
+						const waitingNode = execution.workflowData.nodes.find((node) => {
+							return node.name === lastNodeExecuted;
+						});
+
+						if (
+							waitingNode &&
+							waitingNode.type === WAIT_NODE_TYPE &&
+							waitingNode.parameters.resume === 'form'
+						) {
+							const testUrl = getFormResumeUrl(waitingNode, executionId as string);
+
+							if (isFormShown) {
+								localStorage.setItem(FORM_RELOAD, testUrl);
+							} else {
+								isFormShown = true;
+								openPopUpWindow(testUrl);
+							}
+						}
+					}
+
+					delay = Math.min(delay * 1.1, MAX_DELAY);
+					timeoutId = setTimeout(processExecution, delay);
+				};
+				timeoutId = setTimeout(processExecution, delay);
+			});
+		};
+
+		await resolveWaitingNodesData();
+
+		return runWorkflowApiResponse;
 	}
 
 	function consolidateRunDataAndStartNodes(
@@ -394,12 +491,12 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				// execution finished but was not saved (e.g. due to low connectivity)
 				workflowsStore.finishActiveExecution({
 					executionId,
-					data: { finished: true, stoppedAt: new Date() },
+					data: { finished: true, stoppedAt: new Date() } as IRun,
 				});
 				workflowsStore.executingNode.length = 0;
 				uiStore.removeActiveAction('workflowRunning');
 
-				titleSet(workflowsStore.workflowName, 'IDLE');
+				workflowHelpers.setDocumentTitle(workflowsStore.workflowName, 'IDLE');
 				toast.showMessage({
 					title: i18n.baseText('nodeView.showMessage.stopExecutionCatch.unsaved.title'),
 					message: i18n.baseText('nodeView.showMessage.stopExecutionCatch.unsaved.message'),
@@ -414,13 +511,13 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 					startedAt: execution.startedAt,
 					stoppedAt: execution.stoppedAt,
 				} as IRun;
-				const pushData = {
+				const pushData: PushPayload<'executionFinished'> = {
 					data: executedData,
 					executionId,
 					retryOf: execution.retryOf,
-				} as IPushDataExecutionFinished;
+				};
 				workflowsStore.finishActiveExecution(pushData);
-				titleSet(execution.workflowData.name, 'IDLE');
+				workflowHelpers.setDocumentTitle(execution.workflowData.name, 'IDLE');
 				workflowsStore.executingNode.length = 0;
 				workflowsStore.setWorkflowExecutionData(executedData as IExecutionResponse);
 				uiStore.removeActiveAction('workflowRunning');
@@ -447,6 +544,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 	return {
 		consolidateRunDataAndStartNodes,
 		runWorkflow,
+		runWorkflowResolvePending,
 		runWorkflowApi,
 		stopCurrentExecution,
 		stopWaitingForWebhook,

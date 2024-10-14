@@ -1,5 +1,6 @@
-import CodeDiff from './CodeDiff.vue';
 import type { StoryFn } from '@storybook/vue3';
+
+import CodeDiff from './CodeDiff.vue';
 
 export default {
 	title: 'Assistant/CodeDiff',

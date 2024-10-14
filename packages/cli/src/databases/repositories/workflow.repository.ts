@@ -1,4 +1,3 @@
-import { Service } from 'typedi';
 import { GlobalConfig } from '@n8n/config';
 import {
 	DataSource,
@@ -11,11 +10,14 @@ import {
 	type FindManyOptions,
 	type FindOptionsRelations,
 } from '@n8n/typeorm';
+import { Service } from 'typedi';
+
+import config from '@/config';
 import type { ListQuery } from '@/requests';
 import { isStringArray } from '@/utils';
-import config from '@/config';
-import { WorkflowEntity } from '../entities/WorkflowEntity';
-import { WebhookEntity } from '../entities/WebhookEntity';
+
+import { WebhookEntity } from '../entities/webhook-entity';
+import { WorkflowEntity } from '../entities/workflow-entity';
 
 @Service()
 export class WorkflowRepository extends Repository<WorkflowEntity> {

@@ -1,8 +1,7 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import { isoCountryCodes } from '@utils/ISOCountryCodes';
-
 import { addressFixedCollection, phoneNumbersFixedCollection } from '../utils/sharedFields';
+import { isoCountryCodes } from '@utils/ISOCountryCodes';
 
 export const companyOperations: INodeProperties[] = [
 	{

@@ -1,14 +1,14 @@
 import { Container } from 'typedi';
 
-import type { Variables } from '@db/entities/Variables';
-import { VariablesRepository } from '@db/repositories/variables.repository';
-import { generateNanoId } from '@db/utils/generators';
+import type { Variables } from '@/databases/entities/variables';
+import { VariablesRepository } from '@/databases/repositories/variables.repository';
+import { generateNanoId } from '@/databases/utils/generators';
 import { VariablesService } from '@/environments/variables/variables.service.ee';
 
-import * as testDb from './shared/testDb';
-import * as utils from './shared/utils/';
 import { createOwner, createUser } from './shared/db/users';
+import * as testDb from './shared/test-db';
 import type { SuperAgentTest } from './shared/types';
+import * as utils from './shared/utils/';
 
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;

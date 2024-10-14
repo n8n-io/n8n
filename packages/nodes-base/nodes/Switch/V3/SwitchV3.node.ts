@@ -11,10 +11,10 @@ import type {
 } from 'n8n-workflow';
 import { ApplicationError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import set from 'lodash/set';
-import { capitalize } from '@utils/utilities';
 import { ENABLE_LESS_STRICT_TYPE_VALIDATION } from '../../../utils/constants';
 import { looseTypeValidationProperty } from '../../../utils/descriptions';
 import { getTypeValidationParameter, getTypeValidationStrictness } from '../../If/V2/utils';
+import { capitalize } from '@utils/utilities';
 
 const configuredOutputs = (parameters: INodeParameters) => {
 	const mode = parameters.mode as string;
@@ -50,12 +50,12 @@ export class SwitchV3 implements INodeType {
 		this.description = {
 			...baseDescription,
 			subtitle: `=mode: {{(${capitalize})($parameter["mode"])}}`,
-			version: [3, 3.1],
+			version: [3, 3.1, 3.2],
 			defaults: {
 				name: 'Switch',
 				color: '#506000',
 			},
-			inputs: ['main'],
+			inputs: [NodeConnectionType.Main],
 			outputs: `={{(${configuredOutputs})($parameter)}}`,
 			properties: [
 				{
@@ -160,6 +160,7 @@ export class SwitchV3 implements INodeType {
 										filter: {
 											caseSensitive: '={{!$parameter.options.ignoreCase}}',
 											typeValidation: getTypeValidationStrictness(3.1),
+											version: '={{ $nodeVersion >= 3.2 ? 2 : 1 }}',
 										},
 									},
 								},
@@ -396,7 +397,7 @@ export class SwitchV3 implements INodeType {
 					}
 				}
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					returnData[0].push({ json: { error: error.message } });
 					continue;
 				}

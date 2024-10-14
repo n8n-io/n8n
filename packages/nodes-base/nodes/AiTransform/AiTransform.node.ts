@@ -1,6 +1,6 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import {
 	NodeOperationError,
+	NodeConnectionType,
 	type IExecuteFunctions,
 	type INodeExecutionData,
 	type INodeType,
@@ -26,8 +26,8 @@ export class AiTransform implements INodeType {
 		defaults: {
 			name: 'AI Transform',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		parameterPane: 'wide',
 		properties: [
 			{
@@ -114,7 +114,7 @@ export class AiTransform implements INodeType {
 			context.items = context.$input.all();
 
 			const Sandbox = JavaScriptSandbox;
-			const sandbox = new Sandbox(context, code, index, this.helpers);
+			const sandbox = new Sandbox(context, code, this.helpers);
 			sandbox.on(
 				'output',
 				workflowMode === 'manual'
@@ -132,7 +132,7 @@ export class AiTransform implements INodeType {
 		try {
 			items = (await sandbox.runCodeAllItems()) as INodeExecutionData[];
 		} catch (error) {
-			if (!this.continueOnFail(error)) {
+			if (!this.continueOnFail()) {
 				set(error, 'node', node);
 				throw error;
 			}

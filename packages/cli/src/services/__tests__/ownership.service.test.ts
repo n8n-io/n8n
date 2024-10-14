@@ -1,16 +1,17 @@
-import { OwnershipService } from '@/services/ownership.service';
-import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
-import { SharedWorkflow } from '@db/entities/SharedWorkflow';
-import { User } from '@db/entities/User';
-import type { SharedCredentials } from '@db/entities/SharedCredentials';
-import { mockInstance } from '@test/mocking';
-import { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
-import { UserRepository } from '@/databases/repositories/user.repository';
 import { mock } from 'jest-mock-extended';
-import { Project } from '@/databases/entities/Project';
-import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
-import { ProjectRelation } from '@/databases/entities/ProjectRelation';
-import { mockCredential, mockProject } from '@test/mockObjects';
+
+import { Project } from '@/databases/entities/project';
+import { ProjectRelation } from '@/databases/entities/project-relation';
+import type { SharedCredentials } from '@/databases/entities/shared-credentials';
+import { SharedWorkflow } from '@/databases/entities/shared-workflow';
+import { User } from '@/databases/entities/user';
+import { WorkflowEntity } from '@/databases/entities/workflow-entity';
+import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
+import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
+import { UserRepository } from '@/databases/repositories/user.repository';
+import { OwnershipService } from '@/services/ownership.service';
+import { mockCredential, mockProject } from '@test/mock-objects';
+import { mockInstance } from '@test/mocking';
 
 describe('OwnershipService', () => {
 	const userRepository = mockInstance(UserRepository);
@@ -64,7 +65,7 @@ describe('OwnershipService', () => {
 
 			projectRelationRepository.getPersonalProjectOwners.mockResolvedValueOnce([projectRelation]);
 
-			const returnedOwner = await ownershipService.getProjectOwnerCached('some-project-id');
+			const returnedOwner = await ownershipService.getPersonalProjectOwnerCached('some-project-id');
 
 			expect(returnedOwner).toBe(mockOwner);
 		});
@@ -72,7 +73,7 @@ describe('OwnershipService', () => {
 		test('should not throw if no project owner found, should return null instead', async () => {
 			projectRelationRepository.getPersonalProjectOwners.mockResolvedValueOnce([]);
 
-			const owner = await ownershipService.getProjectOwnerCached('some-project-id');
+			const owner = await ownershipService.getPersonalProjectOwnerCached('some-project-id');
 
 			expect(owner).toBeNull();
 		});
@@ -91,7 +92,7 @@ describe('OwnershipService', () => {
 
 			projectRelationRepository.getPersonalProjectOwners.mockResolvedValueOnce([projectRelation]);
 
-			const returnedOwner = await ownershipService.getProjectOwnerCached('some-project-id');
+			const returnedOwner = await ownershipService.getPersonalProjectOwnerCached('some-project-id');
 
 			expect(returnedOwner).toBe(mockOwner);
 		});
@@ -99,7 +100,7 @@ describe('OwnershipService', () => {
 		test('should not throw if no project owner found, should return null instead', async () => {
 			projectRelationRepository.getPersonalProjectOwners.mockResolvedValueOnce([]);
 
-			const owner = await ownershipService.getProjectOwnerCached('some-project-id');
+			const owner = await ownershipService.getPersonalProjectOwnerCached('some-project-id');
 
 			expect(owner).toBeNull();
 		});

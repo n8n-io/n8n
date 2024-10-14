@@ -1,27 +1,12 @@
-<template>
-	<span :class="['n8n-avatar', $style.container]" v-bind="$attrs">
-		<Avatar
-			v-if="name"
-			:size="getSize(size)"
-			:name="name"
-			variant="marble"
-			:colors="getColors(colors)"
-		/>
-		<div v-else :class="[$style.empty, $style[size]]"></div>
-		<span v-if="firstName || lastName" :class="[$style.initials, $style[`text-${size}`]]">
-			{{ initials }}
-		</span>
-	</span>
-</template>
-
 <script lang="ts" setup>
 import { computed } from 'vue';
 import Avatar from 'vue-boring-avatars';
+
 import { getInitials } from '../../utils/labelUtil';
 
 interface AvatarProps {
-	firstName: string;
-	lastName: string;
+	firstName?: string;
+	lastName?: string;
 	size?: 'xsmall' | 'small' | 'medium' | 'large';
 	colors?: string[];
 }
@@ -57,12 +42,32 @@ const sizes: { [size: string]: number } = {
 const getSize = (size: string): number => sizes[size];
 </script>
 
+<template>
+	<span :class="['n8n-avatar', $style.container]" v-bind="$attrs">
+		<Avatar
+			v-if="name"
+			:size="getSize(size)"
+			:name="name"
+			variant="marble"
+			:colors="getColors(colors)"
+		/>
+		<div v-else :class="[$style.empty, $style[size]]"></div>
+		<span v-if="firstName || lastName" :class="[$style.initials, $style[`text-${size}`]]">
+			{{ initials }}
+		</span>
+	</span>
+</template>
+
 <style lang="scss" module>
 .container {
 	position: relative;
 	display: inline-flex;
 	justify-content: center;
 	align-items: center;
+
+	svg {
+		border-radius: 50%;
+	}
 }
 
 .empty {

@@ -8,18 +8,17 @@ on:
       - 'release/*'
 
 jobs:
-  publish-release:
-    if: github.event.pull_request.merged == true
+  publish-to-npm:
+    name: Publish to NPM
     runs-on: ubuntu-latest
-
+    if: github.event.pull_request.merged == true
+    timeout-minutes: 10
     permissions:
-      contents: write
       id-token: write
-
-    timeout-minutes: 60
     env:
       NPM_CONFIG_PROVENANCE: true
-
+    outputs:
+      release: ${{ steps.set-release.outputs.release }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4.1.1
@@ -51,25 +50,97 @@ jobs:
           pnpm publish -r --publish-branch ${{github.event.pull_request.base.ref}} --access public --tag rc --no-git-checks
           npm dist-tag rm n8n rc
 
+      - id: set-release
+        run: echo "release=${{ env.RELEASE }}" >> $GITHUB_OUTPUT
+
+  publish-to-docker-hub:
+    name: Publish to DockerHub
+    needs: [publish-to-npm]
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.1.1
+        with:
+          fetch-depth: 0
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3.0.0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3.0.0
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3.0.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3.0.0
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build
+        uses: docker/build-push-action@v5.1.0
+        with:
+          context: ./docker/images/n8n
+          build-args: |
+            N8N_VERSION=${{ needs.publish-to-npm.outputs.release }}
+          platforms: linux/amd64,linux/arm64
+          provenance: false
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/n8n:${{ needs.publish-to-npm.outputs.release }}
+            ghcr.io/${{ github.repository_owner }}/n8n:${{ needs.publish-to-npm.outputs.release }}
+
+  create-github-release:
+    name: Create a GitHub Release
+    needs: [publish-to-npm, publish-to-docker-hub]
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true
+    timeout-minutes: 5
+
+    permissions:
+      contents: write
+      id-token: write
+
+    steps:
       - name: Create a Release on GitHub
         uses: ncipollo/release-action@v1
         with:
           commit: ${{github.event.pull_request.base.ref}}
-          tag: 'n8n@${{env.RELEASE}}'
+          tag: 'n8n@${{ needs.publish-to-npm.outputs.release }}'
           prerelease: true
           makeLatest: false
           body: ${{github.event.pull_request.body}}
 
+  trigger-release-note:
+    name: Trigger a release note
+    needs: [publish-to-npm, create-github-release]
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
       - name: Trigger a release note
-        continue-on-error: true
-        run: curl -u docsWorkflows:${{ secrets.N8N_WEBHOOK_DOCS_PASSWORD }} --request GET 'https://internal.users.n8n.cloud/webhook/trigger-release-note' --header 'Content-Type:application/json' --data '{"version":"${{env.RELEASE}}"}'
+        run: curl -u docsWorkflows:${{ secrets.N8N_WEBHOOK_DOCS_PASSWORD }} --request GET 'https://internal.users.n8n.cloud/webhook/trigger-release-note' --header 'Content-Type:application/json' --data '{"version":"${{ needs.publish-to-npm.outputs.release }}"}'
 
-      # - name: Merge Release into 'master'
-      #   run: |
-      #     git fetch origin
-      #     git checkout --track origin/master
-      #     git config user.name "Jan Oberhauser"
-      #     git config user.email jan.oberhauser@gmail.com
-      #     git merge --ff n8n@${{env.RELEASE}}
-      #     git push origin master
-      #     git push origin :${{github.event.pull_request.base.ref}}
+  # merge-back-into-master:
+  #   name: Merge back into master
+  #   needs: [publish-to-npm, create-github-release]
+  #   if: ${{ github.event.pull_request.merged == true && !contains(github.event.pull_request.labels.*.name, 'release:patch') }}
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4.1.1
+  #       with:
+  #         fetch-depth: 0
+  #     - run: |
+  #         git checkout --track origin/master
+  #         git config user.name "github-actions[bot]"
+  #         git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+  #         git merge --ff n8n@${{ needs.publish-to-npm.outputs.release }}
+  #         git push origin master
+  #         git push origin :${{github.event.pull_request.base.ref}}

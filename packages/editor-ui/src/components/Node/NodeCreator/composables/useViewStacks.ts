@@ -36,8 +36,14 @@ import { useI18n } from '@/composables/useI18n';
 import { useKeyboardNavigation } from './useKeyboardNavigation';
 
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import type { INodeInputFilter, NodeConnectionType, Themed } from 'n8n-workflow';
+import {
+	AI_TRANSFORM_NODE_TYPE,
+	type INodeInputFilter,
+	type NodeConnectionType,
+	type Themed,
+} from 'n8n-workflow';
 import { useCanvasStore } from '@/stores/canvas.store';
+import { useSettingsStore } from '@/stores/settings.store';
 
 interface ViewStack {
 	uuid?: string;
@@ -62,6 +68,7 @@ interface ViewStack {
 	searchItems?: SimplifiedNodeType[];
 	forceIncludeNodes?: string[];
 	mode?: 'actions' | 'nodes';
+	hideActions?: boolean;
 	baseFilter?: (item: INodeCreateElement) => boolean;
 	itemsMapper?: (item: INodeCreateElement) => INodeCreateElement;
 	panelClass?: string;
@@ -72,6 +79,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 	const nodeCreatorStore = useNodeCreatorStore();
 	const { getActiveItemIndex } = useKeyboardNavigation();
 	const i18n = useI18n();
+	const settingsStore = useSettingsStore();
 
 	const viewStacks = ref<ViewStack[]>([]);
 
@@ -338,6 +346,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 					subcategory: connectionType,
 				};
 			},
+			hideActions: true,
 			preventBack: true,
 		});
 	}
@@ -350,7 +359,14 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 
 		if (!stack?.items) {
 			const subcategory = stack?.subcategory ?? DEFAULT_SUBCATEGORY;
-			const itemsInSubcategory = itemsBySubcategory.value[subcategory];
+			let itemsInSubcategory = itemsBySubcategory.value[subcategory];
+
+			const isAskAiEnabled = settingsStore.isAskAiEnabled;
+			if (!isAskAiEnabled) {
+				itemsInSubcategory = itemsInSubcategory.filter(
+					(item) => item.key !== AI_TRANSFORM_NODE_TYPE,
+				);
+			}
 			const sections = stack.sections;
 
 			if (sections) {
