@@ -1,13 +1,13 @@
 import { Flags, type Config } from '@oclif/core';
-import { ApplicationError } from 'n8n-workflow';
 import { Container } from 'typedi';
 
 import config from '@/config';
 import { N8N_VERSION, inTest } from '@/constants';
+import { WorkerMissingEncryptionKey } from '@/errors/worker-missing-encryption-key.error';
 import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
-import { JobProcessor } from '@/scaling/job-processor';
+import { Logger } from '@/logging/logger.service';
 import { PubSubHandler } from '@/scaling/pubsub/pubsub-handler';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import type { ScalingService } from '@/scaling/scaling.service';
@@ -39,8 +39,6 @@ export class Worker extends BaseCommand {
 
 	scalingService: ScalingService;
 
-	jobProcessor: JobProcessor;
-
 	override needsCommunityPackages = true;
 
 	/**
@@ -49,25 +47,23 @@ export class Worker extends BaseCommand {
 	 * get removed.
 	 */
 	async stopProcess() {
-		this.logger.info('Stopping n8n...');
+		this.logger.info('Stopping worker...');
 
 		try {
 			await this.externalHooks?.run('n8n.stop', []);
 		} catch (error) {
-			await this.exitWithCrash('There was an error shutting down n8n.', error);
+			await this.exitWithCrash('Error shutting down worker', error);
 		}
 
 		await this.exitSuccessFully();
 	}
 
 	constructor(argv: string[], cmdConfig: Config) {
+		if (!process.env.N8N_ENCRYPTION_KEY) throw new WorkerMissingEncryptionKey();
+
 		super(argv, cmdConfig);
 
-		if (!process.env.N8N_ENCRYPTION_KEY) {
-			throw new ApplicationError(
-				'Missing encryption key. Worker started without the required N8N_ENCRYPTION_KEY env var. More information: https://docs.n8n.io/hosting/configuration/configuration-examples/encryption-key/',
-			);
-		}
+		this.logger = Container.get(Logger).withScope('scaling');
 
 		this.setInstanceQueueModeId();
 	}
@@ -84,7 +80,7 @@ export class Worker extends BaseCommand {
 		await this.initCrashJournal();
 
 		this.logger.debug('Starting n8n worker...');
-		this.logger.debug(`Queue mode id: ${this.queueModeId}`);
+		this.logger.debug(`Host ID: ${this.queueModeId}`);
 
 		await this.setConcurrency();
 		await super.init();
@@ -133,6 +129,8 @@ export class Worker extends BaseCommand {
 
 		Container.get(PubSubHandler).init();
 		await Container.get(Subscriber).subscribe('n8n.commands');
+
+		this.logger.withScope('scaling').debug('Pubsub setup ready');
 	}
 
 	async setConcurrency() {
@@ -150,8 +148,6 @@ export class Worker extends BaseCommand {
 		await this.scalingService.setupQueue();
 
 		this.scalingService.setupWorker(this.concurrency);
-
-		this.jobProcessor = Container.get(JobProcessor);
 	}
 
 	async run() {
