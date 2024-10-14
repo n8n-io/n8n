@@ -35,6 +35,8 @@ mockInstance(Subscriber);
 const command = setupTestCommand(Worker);
 
 test('worker initializes all its components', async () => {
+	config.set('executions.mode', 'regular'); // should be overridden
+
 	const worker = await command.run();
 	expect(worker.queueModeId).toBeDefined();
 	expect(worker.queueModeId).toContain('worker');
@@ -49,4 +51,6 @@ test('worker initializes all its components', async () => {
 	expect(logStreamingEventRelay.init).toHaveBeenCalledTimes(1);
 	expect(orchestrationWorkerService.init).toHaveBeenCalledTimes(1);
 	expect(messageEventBus.send).toHaveBeenCalledTimes(1);
+
+	expect(config.getEnv('executions.mode')).toBe('queue');
 });

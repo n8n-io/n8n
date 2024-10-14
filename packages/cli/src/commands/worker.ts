@@ -61,6 +61,10 @@ export class Worker extends BaseCommand {
 	}
 
 	constructor(argv: string[], cmdConfig: Config) {
+		if (config.getEnv('executions.mode') !== 'queue') {
+			config.set('executions.mode', 'queue');
+		}
+
 		super(argv, cmdConfig);
 
 		if (!process.env.N8N_ENCRYPTION_KEY) {
