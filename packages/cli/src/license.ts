@@ -143,10 +143,7 @@ export class License {
 
 			this.orchestrationService.setMultiMainSetupLicensed(isMultiMainLicensed ?? false);
 
-			if (
-				this.orchestrationService.isMultiMainSetupEnabled &&
-				this.orchestrationService.isFollower
-			) {
+			if (this.orchestrationService.isMultiMainSetupEnabled && this.instanceSettings.isFollower) {
 				this.logger.debug(
 					'[Multi-main setup] Instance is follower, skipping sending of "reload-license" command...',
 				);
