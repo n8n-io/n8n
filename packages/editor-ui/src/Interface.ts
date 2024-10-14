@@ -116,10 +116,6 @@ declare global {
 		};
 		// eslint-disable-next-line @typescript-eslint/naming-convention
 		Cypress: unknown;
-
-		Sentry?: {
-			captureException: (error: Error, metadata?: unknown) => void;
-		};
 	}
 }
 
@@ -874,6 +870,7 @@ export interface RootState {
 	endpointFormWaiting: string;
 	endpointWebhook: string;
 	endpointWebhookTest: string;
+	endpointWebhookWaiting: string;
 	pushConnectionActive: boolean;
 	timezone: string;
 	executionTimeout: number;
@@ -905,6 +902,7 @@ export interface IRootState {
 	endpointFormWaiting: string;
 	endpointWebhook: string;
 	endpointWebhookTest: string;
+	endpointWebhookWaiting: string;
 	executionId: string | null;
 	executingNode: string[];
 	executionWaitingForWebhook: boolean;

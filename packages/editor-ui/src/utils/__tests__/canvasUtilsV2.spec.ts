@@ -1,7 +1,6 @@
 import {
 	createCanvasConnectionHandleString,
 	createCanvasConnectionId,
-	getUniqueNodeName,
 	mapCanvasConnectionToLegacyConnection,
 	mapLegacyConnectionsToCanvasConnections,
 	mapLegacyEndpointsToCanvasConnectionPort,
@@ -824,36 +823,6 @@ describe('mapLegacyEndpointsToCanvasConnectionPort', () => {
 			},
 			{ type: NodeConnectionType.AiMemory, maxConnections: 1, index: 0, label: 'Optional Tool' },
 		]);
-	});
-});
-
-describe('getUniqueNodeName', () => {
-	it('should return the original name if it is unique', () => {
-		const name = 'Node A';
-		const existingNames = new Set(['Node B', 'Node C']);
-		const result = getUniqueNodeName(name, existingNames);
-		expect(result).toBe(name);
-	});
-
-	it('should append a number to the name if it already exists', () => {
-		const name = 'Node A';
-		const existingNames = new Set(['Node A', 'Node B']);
-		const result = getUniqueNodeName(name, existingNames);
-		expect(result).toBe('Node A 1');
-	});
-
-	it('should find the next available number for the name', () => {
-		const name = 'Node A';
-		const existingNames = new Set(['Node A', 'Node A 1', 'Node A 2']);
-		const result = getUniqueNodeName(name, existingNames);
-		expect(result).toBe('Node A 3');
-	});
-
-	it('should use UUID if more than 99 variations exist', () => {
-		const name = 'Node A';
-		const existingNames = new Set([...Array(100).keys()].map((i) => `Node A ${i}`).concat([name]));
-		const result = getUniqueNodeName(name, existingNames);
-		expect(result).toBe('Node A mock-uuid');
 	});
 });
 

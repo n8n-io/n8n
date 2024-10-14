@@ -102,6 +102,13 @@ import type {
 	EnsureTypeOptions,
 	SSHTunnelFunctions,
 	SchedulingFunctions,
+	DeduplicationHelperFunctions,
+	IDeduplicationOutput,
+	IDeduplicationOutputItems,
+	ICheckProcessedOptions,
+	DeduplicationScope,
+	DeduplicationItemTypes,
+	ICheckProcessedContextData,
 	AiEvent,
 } from 'n8n-workflow';
 import {
@@ -132,6 +139,7 @@ import { Readable } from 'stream';
 import Container from 'typedi';
 import url, { URL, URLSearchParams } from 'url';
 
+import { createAgentStartJob } from './Agent';
 import { BinaryDataService } from './BinaryData/BinaryData.service';
 import type { BinaryData } from './BinaryData/types';
 import { binaryToBuffer } from './BinaryData/utils';
@@ -147,7 +155,8 @@ import {
 	UM_EMAIL_TEMPLATES_INVITE,
 	UM_EMAIL_TEMPLATES_PWRESET,
 } from './Constants';
-import { getNodeAsTool } from './CreateNodeAsTool';
+import { createNodeAsTool } from './CreateNodeAsTool';
+import { DataDeduplicationService } from './data-deduplication-service';
 import {
 	getAllWorkflowExecutionMetadata,
 	getWorkflowExecutionMetadata,
@@ -1283,6 +1292,72 @@ async function prepareBinaryData(
 	return await setBinaryDataBuffer(returnData, binaryData, workflowId, executionId);
 }
 
+export async function checkProcessedAndRecord(
+	items: DeduplicationItemTypes[],
+	scope: DeduplicationScope,
+	contextData: ICheckProcessedContextData,
+	options: ICheckProcessedOptions,
+): Promise<IDeduplicationOutput> {
+	return await DataDeduplicationService.getInstance().checkProcessedAndRecord(
+		items,
+		scope,
+		contextData,
+		options,
+	);
+}
+
+export async function checkProcessedItemsAndRecord(
+	key: string,
+	items: IDataObject[],
+	scope: DeduplicationScope,
+	contextData: ICheckProcessedContextData,
+	options: ICheckProcessedOptions,
+): Promise<IDeduplicationOutputItems> {
+	return await DataDeduplicationService.getInstance().checkProcessedItemsAndRecord(
+		key,
+		items,
+		scope,
+		contextData,
+		options,
+	);
+}
+
+export async function removeProcessed(
+	items: DeduplicationItemTypes[],
+	scope: DeduplicationScope,
+	contextData: ICheckProcessedContextData,
+	options: ICheckProcessedOptions,
+): Promise<void> {
+	return await DataDeduplicationService.getInstance().removeProcessed(
+		items,
+		scope,
+		contextData,
+		options,
+	);
+}
+
+export async function clearAllProcessedItems(
+	scope: DeduplicationScope,
+	contextData: ICheckProcessedContextData,
+	options: ICheckProcessedOptions,
+): Promise<void> {
+	return await DataDeduplicationService.getInstance().clearAllProcessedItems(
+		scope,
+		contextData,
+		options,
+	);
+}
+export async function getProcessedDataCount(
+	scope: DeduplicationScope,
+	contextData: ICheckProcessedContextData,
+	options: ICheckProcessedOptions,
+): Promise<number> {
+	return await DataDeduplicationService.getInstance().getProcessedDataCount(
+		scope,
+		contextData,
+		options,
+	);
+}
 function applyPaginationRequestData(
 	requestData: IRequestOptions,
 	paginationRequestData: PaginationOptions['request'],
@@ -2851,7 +2926,7 @@ async function getInputConnectionData(
 			if (!nodeType.supplyData) {
 				if (nodeType.description.outputs.includes(NodeConnectionType.AiTool)) {
 					nodeType.supplyData = async function (this: IExecuteFunctions) {
-						return getNodeAsTool(this, nodeType, this.getNode().parameters);
+						return createNodeAsTool(this, nodeType, this.getNode().parameters);
 					};
 				} else {
 					throw new ApplicationError('Node does not have a `supplyData` method defined', {
@@ -3452,6 +3527,52 @@ const getBinaryHelperFunctions = (
 	},
 });
 
+const getCheckProcessedHelperFunctions = (
+	workflow: Workflow,
+	node: INode,
+): DeduplicationHelperFunctions => ({
+	async checkProcessedAndRecord(
+		items: DeduplicationItemTypes[],
+		scope: DeduplicationScope,
+		options: ICheckProcessedOptions,
+	): Promise<IDeduplicationOutput> {
+		return await checkProcessedAndRecord(items, scope, { node, workflow }, options);
+	},
+	async checkProcessedItemsAndRecord(
+		propertyName: string,
+		items: IDataObject[],
+		scope: DeduplicationScope,
+		options: ICheckProcessedOptions,
+	): Promise<IDeduplicationOutputItems> {
+		return await checkProcessedItemsAndRecord(
+			propertyName,
+			items,
+			scope,
+			{ node, workflow },
+			options,
+		);
+	},
+	async removeProcessed(
+		items: DeduplicationItemTypes[],
+		scope: DeduplicationScope,
+		options: ICheckProcessedOptions,
+	): Promise<void> {
+		return await removeProcessed(items, scope, { node, workflow }, options);
+	},
+	async clearAllProcessedItems(
+		scope: DeduplicationScope,
+		options: ICheckProcessedOptions,
+	): Promise<void> {
+		return await clearAllProcessedItems(scope, { node, workflow }, options);
+	},
+	async getProcessedDataCount(
+		scope: DeduplicationScope,
+		options: ICheckProcessedOptions,
+	): Promise<number> {
+		return await getProcessedDataCount(scope, { node, workflow }, options);
+	},
+});
+
 /**
  * Returns a copy of the items which only contains the json data and
  * of that only the defined properties
@@ -3788,6 +3909,17 @@ export function getExecuteFunctions(
 					additionalData.setExecutionStatus('waiting');
 				}
 			},
+			logNodeOutput(...args: unknown[]): void {
+				if (mode === 'manual') {
+					// @ts-expect-error `args` is spreadable
+					this.sendMessageToUI(...args);
+					return;
+				}
+
+				if (process.env.CODE_ENABLE_STDOUT === 'true') {
+					console.log(`[Workflow "${this.getWorkflow().id}"][Node "${node.name}"]`, ...args);
+				}
+			},
 			sendMessageToUI(...args: any[]): void {
 				if (mode !== 'manual') {
 					return;
@@ -3884,6 +4016,7 @@ export function getExecuteFunctions(
 				...getSSHTunnelFunctions(),
 				...getFileSystemHelperFunctions(node),
 				...getBinaryHelperFunctions(additionalData, workflow.id),
+				...getCheckProcessedHelperFunctions(workflow, node),
 				assertBinaryData: (itemIndex, propertyName) =>
 					assertBinaryData(inputData, node, itemIndex, propertyName, 0),
 				getBinaryDataBuffer: async (itemIndex, propertyName) =>
@@ -3905,6 +4038,19 @@ export function getExecuteFunctions(
 				});
 			},
 			getParentCallbackManager: () => additionalData.parentCallbackManager,
+			startJob: createAgentStartJob(
+				additionalData,
+				inputData,
+				node,
+				workflow,
+				runExecutionData,
+				runIndex,
+				node.name,
+				connectionInputData,
+				{},
+				mode,
+				executeData,
+			),
 		};
 	})(workflow, runExecutionData, connectionInputData, inputData, node) as IExecuteFunctions;
 }

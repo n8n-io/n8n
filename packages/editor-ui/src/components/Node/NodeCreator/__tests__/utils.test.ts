@@ -1,5 +1,5 @@
 import type { SectionCreateElement } from '@/Interface';
-import { groupItemsInSections, sortNodeCreateElements } from '../utils';
+import { formatTriggerActionName, groupItemsInSections, sortNodeCreateElements } from '../utils';
 import { mockActionCreateElement, mockNodeCreateElement, mockSectionCreateElement } from './utils';
 
 describe('NodeCreator - utils', () => {
@@ -60,6 +60,17 @@ describe('NodeCreator - utils', () => {
 			const node2 = mockActionCreateElement();
 			const node3 = mockSectionCreateElement();
 			expect(sortNodeCreateElements([node1, node2, node3])).toEqual([node1, node2, node3]);
+		});
+	});
+
+	describe('formatTriggerActionName', () => {
+		test.each([
+			['project.created', 'project created'],
+			['Project Created', 'project created'],
+			['field.value.created', 'field value created'],
+			['attendee.checked_in', 'attendee checked in'],
+		])('Action name %i should become as %i', (actionName, expected) => {
+			expect(formatTriggerActionName(actionName)).toEqual(expected);
 		});
 	});
 });

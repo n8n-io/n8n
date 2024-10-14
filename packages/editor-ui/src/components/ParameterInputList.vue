@@ -29,6 +29,7 @@ import {
 } from '@/utils/nodeTypesUtils';
 import { get, set } from 'lodash-es';
 import { useRouter } from 'vue-router';
+import { captureException } from '@sentry/vue';
 
 const LazyFixedCollectionParameter = defineAsyncComponent(
 	async () => await import('./FixedCollectionParameter.vue'),
@@ -73,7 +74,7 @@ onErrorCaptured((e, component) => {
 	}
 	asyncLoadingError.value = true;
 	console.error(e);
-	window?.Sentry?.captureException(e, {
+	captureException(e, {
 		tags: {
 			asyncLoadingError: true,
 		},

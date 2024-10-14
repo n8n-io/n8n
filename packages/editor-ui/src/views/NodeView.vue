@@ -161,6 +161,7 @@ import {
 	getConnectorPaintStyleData,
 	OVERLAY_ENDPOINT_ARROW_ID,
 	getEndpointScope,
+	generateOffsets,
 } from '@/utils/nodeViewUtils';
 import { useViewStacks } from '@/components/Node/NodeCreator/composables/useViewStacks';
 import { useExternalHooks } from '@/composables/useExternalHooks';
@@ -234,7 +235,9 @@ export default defineComponent({
 		const { callDebounced } = useDebounce();
 		const canvasPanning = useCanvasPanning(nodeViewRootRef, { onMouseMoveEnd });
 		const workflowHelpers = useWorkflowHelpers({ router });
-		const { runWorkflow, stopCurrentExecution } = useRunWorkflow({ router });
+		const { runWorkflow, stopCurrentExecution, runWorkflowResolvePending } = useRunWorkflow({
+			router,
+		});
 		const { addBeforeUnloadEventBindings, removeBeforeUnloadEventBindings } = useBeforeUnload({
 			route,
 		});
@@ -254,6 +257,7 @@ export default defineComponent({
 			onMouseMoveEnd,
 			workflowHelpers,
 			runWorkflow,
+			runWorkflowResolvePending,
 			stopCurrentExecution,
 			callDebounced,
 			...useCanvasMouseSelect(),
@@ -422,7 +426,12 @@ export default defineComponent({
 			return this.workflowsStore.getWorkflowExecution;
 		},
 		workflowRunning(): boolean {
-			return this.uiStore.isActionActive.workflowRunning;
+			if (this.uiStore.isActionActive.workflowRunning) return true;
+			if (this.workflowsStore.activeExecutionId) {
+				const execution = this.workflowsStore.getWorkflowExecution;
+				if (execution && execution.status === 'waiting' && !execution.finished) return true;
+			}
+			return false;
 		},
 		currentWorkflow(): string {
 			return this.$route.params.name?.toString() || this.workflowsStore.workflowId;
@@ -847,7 +856,12 @@ export default defineComponent({
 			};
 			this.$telemetry.track('User clicked execute node button', telemetryPayload);
 			void this.externalHooks.run('nodeView.onRunNode', telemetryPayload);
-			void this.runWorkflow({ destinationNode: nodeName, source });
+
+			if (!this.isExecutionPreview && this.workflowsStore.isWaitingExecution) {
+				void this.runWorkflowResolvePending({ destinationNode: nodeName, source });
+			} else {
+				void this.runWorkflow({ destinationNode: nodeName, source });
+			}
 		},
 		async onOpenChat() {
 			const telemetryPayload = {
@@ -857,6 +871,7 @@ export default defineComponent({
 			void this.externalHooks.run('nodeView.onOpenChat', telemetryPayload);
 			this.uiStore.openModal(WORKFLOW_LM_CHAT_MODAL_KEY);
 		},
+
 		async onRunWorkflow() {
 			void this.workflowHelpers.getWorkflowDataToSave().then((workflowData) => {
 				const telemetryPayload = {
@@ -873,7 +888,12 @@ export default defineComponent({
 				void this.externalHooks.run('nodeView.onRunWorkflow', telemetryPayload);
 			});
 
-			await this.runWorkflow({});
+			if (!this.isExecutionPreview && this.workflowsStore.isWaitingExecution) {
+				void this.runWorkflowResolvePending({});
+			} else {
+				void this.runWorkflow({});
+			}
+
 			this.refreshEndpointsErrorsState();
 		},
 		resetEndpointsErrors() {
@@ -932,7 +952,7 @@ export default defineComponent({
 				dangerouslyUseHTMLString: true,
 			});
 		},
-		clearExecutionData() {
+		async clearExecutionData() {
 			this.workflowsStore.workflowExecutionData = null;
 			this.nodeHelpers.updateNodesExecutionIssues();
 		},
@@ -1515,7 +1535,7 @@ export default defineComponent({
 				return;
 			}
 
-			this.nodeHelpers.disableNodes(nodes, true);
+			this.nodeHelpers.disableNodes(nodes, { trackHistory: true, trackBulk: true });
 		},
 
 		togglePinNodes(nodes: INode[], source: 'keyboard-shortcut' | 'context-menu') {
@@ -2256,12 +2276,6 @@ export default defineComponent({
 						);
 
 						if (sourceNodeType) {
-							const offsets = [
-								[-100, 100],
-								[-140, 0, 140],
-								[-240, -100, 100, 240],
-							];
-
 							const sourceNodeOutputs = NodeHelpers.getNodeOutputs(
 								workflow,
 								lastSelectedNode,
@@ -2274,7 +2288,11 @@ export default defineComponent({
 							);
 
 							if (sourceNodeOutputMainOutputs.length > 1) {
-								const offset = offsets[sourceNodeOutputMainOutputs.length - 2];
+								const offset = generateOffsets(
+									sourceNodeOutputMainOutputs.length,
+									NodeViewUtils.NODE_SIZE,
+									NodeViewUtils.GRID_SIZE,
+								);
 								const sourceOutputIndex = lastSelectedConnection.__meta
 									? lastSelectedConnection.__meta.sourceOutputIndex
 									: 0;

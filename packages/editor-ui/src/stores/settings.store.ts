@@ -87,6 +87,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isAiAssistantEnabled = computed(() => settings.value.aiAssistant?.enabled);
 
+	const isAskAiEnabled = computed(() => settings.value.askAi?.enabled);
+
 	const showSetupPage = computed(() => userManagement.value.showSetupOnFirstLoad);
 
 	const deploymentType = computed(() => settings.value.deployment?.type || 'default');
@@ -235,6 +237,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		rootStore.setEndpointFormWaiting(fetchedSettings.endpointFormWaiting);
 		rootStore.setEndpointWebhook(fetchedSettings.endpointWebhook);
 		rootStore.setEndpointWebhookTest(fetchedSettings.endpointWebhookTest);
+		rootStore.setEndpointWebhookWaiting(fetchedSettings.endpointWebhookWaiting);
 		rootStore.setTimezone(fetchedSettings.timezone);
 		rootStore.setExecutionTimeout(fetchedSettings.executionTimeout);
 		rootStore.setMaxExecutionTimeout(fetchedSettings.maxExecutionTimeout);
@@ -409,6 +412,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		saveManualExecutions,
 		saveDataProgressExecution,
 		isCommunityPlan,
+		isAskAiEnabled,
 		reset,
 		testLdapConnection,
 		getLdapConfig,

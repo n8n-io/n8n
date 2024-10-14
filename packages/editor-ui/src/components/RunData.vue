@@ -218,6 +218,13 @@ export default defineComponent({
 		isReadOnlyRoute() {
 			return this.$route?.meta?.readOnlyCanvas === true;
 		},
+		isWaitNodeWaiting() {
+			return (
+				this.workflowExecution?.status === 'waiting' &&
+				this.workflowExecution.data?.waitTill &&
+				this.workflowExecution?.data?.resultData?.lastNodeExecuted === this.node?.name
+			);
+		},
 		activeNode(): INodeUi | null {
 			return this.ndvStore.activeNode;
 		},
@@ -239,8 +246,8 @@ export default defineComponent({
 		isSchemaView(): boolean {
 			return this.displayMode === 'schema';
 		},
-		isInputSchemaView(): boolean {
-			return this.isSchemaView && this.paneType === 'input';
+		displaysMultipleNodes(): boolean {
+			return this.isSchemaView && this.paneType === 'input' && this.nodes.length > 0;
 		},
 		isTriggerNode(): boolean {
 			if (this.node === null) {
@@ -1300,7 +1307,7 @@ export default defineComponent({
 		</div>
 
 		<div
-			v-if="maxRunIndex > 0 && !isInputSchemaView"
+			v-if="maxRunIndex > 0 && !displaysMultipleNodes"
 			v-show="!editMode.enabled"
 			:class="$style.runSelector"
 		>
@@ -1342,7 +1349,7 @@ export default defineComponent({
 			<slot name="run-info"></slot>
 		</div>
 
-		<slot v-if="!isInputSchemaView" name="before-data" />
+		<slot v-if="!displaysMultipleNodes" name="before-data" />
 
 		<n8n-callout
 			v-for="hint in getNodeHints()"
@@ -1354,7 +1361,7 @@ export default defineComponent({
 		</n8n-callout>
 
 		<div
-			v-if="maxOutputIndex > 0 && branches.length > 1 && !isInputSchemaView"
+			v-if="maxOutputIndex > 0 && branches.length > 1 && !displaysMultipleNodes"
 			:class="$style.outputs"
 			data-test-id="branches"
 		>
@@ -1375,7 +1382,7 @@ export default defineComponent({
 				hasNodeRun &&
 				((dataCount > 0 && maxRunIndex === 0) || search) &&
 				!isArtificialRecoveredEventItem &&
-				!isInputSchemaView
+				!displaysMultipleNodes
 			"
 			v-show="!editMode.enabled && !hasRunError"
 			:class="[$style.itemsCount, { [$style.muted]: paneType === 'input' && maxRunIndex === 0 }]"
@@ -1432,12 +1439,19 @@ export default defineComponent({
 				<NodeErrorView :error="subworkflowExecutionError" :class="$style.errorDisplay" />
 			</div>
 
-			<div v-else-if="!hasNodeRun && !(isInputSchemaView && node?.disabled)" :class="$style.center">
+			<div v-else-if="isWaitNodeWaiting" :class="$style.center">
+				<slot name="node-waiting">xxx</slot>
+			</div>
+
+			<div
+				v-else-if="!hasNodeRun && !(displaysMultipleNodes && node?.disabled)"
+				:class="$style.center"
+			>
 				<slot name="node-not-run"></slot>
 			</div>
 
 			<div
-				v-else-if="paneType === 'input' && !isInputSchemaView && node?.disabled"
+				v-else-if="paneType === 'input' && !displaysMultipleNodes && node?.disabled"
 				:class="$style.center"
 			>
 				<n8n-text>

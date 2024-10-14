@@ -170,3 +170,38 @@ test('revert the last migration if it has a down migration', async () => {
 	expect(dataSource.undoLastMigration).toHaveBeenCalled();
 	expect(dataSource.destroy).toHaveBeenCalled();
 });
+
+test("don't use transaction if the last migration has transaction = false", async () => {
+	//
+	// ARRANGE
+	//
+	class TestMigration implements ReversibleMigration {
+		name = 'ReversibleMigration';
+
+		transaction = false as const;
+
+		async up() {}
+
+		async down() {}
+	}
+
+	const migrationsInDb: Migration[] = [
+		{ id: 1, timestamp: Date.now(), name: 'ReversibleMigration' },
+	];
+	const dataSource = mock<DataSource>({ migrations: [new TestMigration()] });
+
+	const migrationExecutor = mock<MigrationExecutor>();
+	migrationExecutor.getExecutedMigrations.mockResolvedValue(migrationsInDb);
+
+	//
+	// ACT
+	//
+	await main(logger, dataSource, migrationExecutor);
+
+	//
+	// ASSERT
+	//
+	expect(dataSource.undoLastMigration).toHaveBeenCalledWith({
+		transaction: 'none',
+	});
+});

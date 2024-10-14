@@ -1,7 +1,7 @@
 import { fireEvent } from '@testing-library/vue';
 import CanvasNodeToolbar from '@/components/canvas/elements/nodes/CanvasNodeToolbar.vue';
 import { createComponentRenderer } from '@/__tests__/render';
-import { createCanvasNodeProvide } from '@/__tests__/data';
+import { createCanvasNodeProvide, createCanvasProvide } from '@/__tests__/data';
 import { CanvasNodeRenderType } from '@/types';
 
 const renderComponent = createComponentRenderer(CanvasNodeToolbar);
@@ -12,11 +12,27 @@ describe('CanvasNodeToolbar', () => {
 			global: {
 				provide: {
 					...createCanvasNodeProvide(),
+					...createCanvasProvide(),
 				},
 			},
 		});
 
 		expect(getByTestId('execute-node-button')).toBeInTheDocument();
+	});
+
+	it('should render disabled execute node button when canvas is executing', () => {
+		const { getByTestId } = renderComponent({
+			global: {
+				provide: {
+					...createCanvasNodeProvide(),
+					...createCanvasProvide({
+						isExecuting: true,
+					}),
+				},
+			},
+		});
+
+		expect(getByTestId('execute-node-button')).toBeDisabled();
 	});
 
 	it('should not render execute node button when renderType is configuration', async () => {
@@ -31,6 +47,7 @@ describe('CanvasNodeToolbar', () => {
 							},
 						},
 					}),
+					...createCanvasProvide(),
 				},
 			},
 		});
@@ -43,6 +60,7 @@ describe('CanvasNodeToolbar', () => {
 			global: {
 				provide: {
 					...createCanvasNodeProvide(),
+					...createCanvasProvide(),
 				},
 			},
 		});
@@ -57,6 +75,7 @@ describe('CanvasNodeToolbar', () => {
 			global: {
 				provide: {
 					...createCanvasNodeProvide(),
+					...createCanvasProvide(),
 				},
 			},
 		});
@@ -71,6 +90,7 @@ describe('CanvasNodeToolbar', () => {
 			global: {
 				provide: {
 					...createCanvasNodeProvide(),
+					...createCanvasProvide(),
 				},
 			},
 		});
@@ -85,6 +105,7 @@ describe('CanvasNodeToolbar', () => {
 			global: {
 				provide: {
 					...createCanvasNodeProvide(),
+					...createCanvasProvide(),
 				},
 			},
 		});
@@ -106,6 +127,7 @@ describe('CanvasNodeToolbar', () => {
 							},
 						},
 					}),
+					...createCanvasProvide(),
 				},
 			},
 		});

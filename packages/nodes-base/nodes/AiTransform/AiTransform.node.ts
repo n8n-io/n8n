@@ -114,7 +114,7 @@ export class AiTransform implements INodeType {
 			context.items = context.$input.all();
 
 			const Sandbox = JavaScriptSandbox;
-			const sandbox = new Sandbox(context, code, index, this.helpers);
+			const sandbox = new Sandbox(context, code, this.helpers);
 			sandbox.on(
 				'output',
 				workflowMode === 'manual'

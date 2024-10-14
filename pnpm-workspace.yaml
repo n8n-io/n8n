@@ -12,6 +12,7 @@ catalog:
   '@types/xml2js': ^0.4.14
   axios: 1.7.4
   basic-auth: 2.0.1
+  chokidar: 4.0.1
   fast-glob: 3.2.12
   form-data: 4.0.0
   lodash: 4.17.21
@@ -26,12 +27,13 @@ catalog:
 
 catalogs:
   frontend:
-    '@vitest/coverage-v8': ^2.0.5
-    vite: ^5.4.6
-    vitest: ^2.1.1
+    '@vitest/coverage-v8': ^2.1.2
+    '@sentry/vue': ^8.33.1
+    vite: ^5.4.8
+    vitest: ^2.1.2
     vitest-mock-extended: ^2.0.2
-    vue: ^3.4.21
-    vue-router: ^4.4.2
-    vue-tsc: ^2.0.19
+    vue: ^3.5.11
+    vue-router: ^4.4.5
+    vue-tsc: ^2.1.6
     vue-markdown-render: ^2.2.1
     highlight.js: ^11.8.0

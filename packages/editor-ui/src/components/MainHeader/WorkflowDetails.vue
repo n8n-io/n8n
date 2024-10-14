@@ -367,6 +367,7 @@ async function onNameSubmit({
 	if (saved) {
 		isNameEditEnabled.value = false;
 		showCreateWorkflowSuccessToast(id);
+		workflowHelpers.setDocumentTitle(newName, 'IDLE');
 	}
 	uiStore.removeActiveAction('workflowSaving');
 	onSubmit(saved);
