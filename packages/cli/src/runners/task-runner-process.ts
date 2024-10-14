@@ -114,14 +114,14 @@ export class TaskRunnerProcess {
 			return;
 		}
 
-		const process = spawn(this.globalConfig.taskRunners.launcherPath, [
+		const killProcess = spawn(this.globalConfig.taskRunners.launcherPath, [
 			'kill',
 			this.globalConfig.taskRunners.launcherRunner,
 			this.process.pid.toString(),
 		]);
 
 		await new Promise<void>((resolve) => {
-			process.on('exit', () => {
+			killProcess.on('exit', () => {
 				resolve();
 			});
 		});
