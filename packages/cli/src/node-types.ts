@@ -44,7 +44,33 @@ export class NodeTypes implements INodeTypes {
 	}
 
 	getByNameAndVersion(nodeType: string, version?: number): INodeType {
-		return NodeHelpers.getVersionedNodeType(this.getNode(nodeType).type, version);
+		const origType = nodeType;
+		const toolRequested = nodeType.match(/n8n-nodes-base\..*Tool$/);
+		// Make sure the nodeType to actually get from disk is the un-wrapped type
+		if (toolRequested) {
+			nodeType = nodeType.replace(/Tool$/, '');
+		}
+
+		const node = this.getNode(nodeType);
+		const versionedNode = NodeHelpers.getVersionedNodeType(node.type, version);
+		if (versionedNode.description.usableAsTool) {
+			const { loadedNodes, knownNodes } = this.loadNodesAndCredentials;
+			if (toolRequested && origType in loadedNodes) {
+				return loadedNodes[origType].type as INodeType;
+			}
+			const { className, sourcePath } = knownNodes[nodeType];
+			// Need to load the class from disk again, because we can't clone an existing type,
+			// and we don't want to change the "normal" version of the node.
+			const clone = this.loadOriginalClass(sourcePath, className);
+			const clonedNode = NodeHelpers.getVersionedNodeType(clone, version);
+			const tool = NodeHelpers.convertNodeToAiTool(clonedNode);
+			loadedNodes[nodeType + 'Tool'] = { sourcePath, type: tool };
+			if (toolRequested) {
+				return tool as INodeType;
+			}
+		}
+
+		return versionedNode;
 	}
 
 	/* Some nodeTypes need to get special parameters applied like the polling nodes the polling times */
@@ -67,19 +93,18 @@ export class NodeTypes implements INodeTypes {
 
 		if (type in knownNodes) {
 			const { className, sourcePath } = knownNodes[type];
-			const loaded: INodeType = loadClassInIsolation(sourcePath, className);
-			NodeHelpers.applySpecialNodeParameters(loaded);
-
+			const loaded = this.loadOriginalClass(sourcePath, className);
 			loadedNodes[type] = { sourcePath, type: loaded };
-			if (loaded.description.usableAsTool) {
-				const clone = structuredClone(loaded);
-				const tool = NodeHelpers.convertNodeToAiTool(clone);
-				loadedNodes[type + 'Tool'] = { sourcePath, type: tool };
-			}
 			return loadedNodes[type];
 		}
 
 		throw new UnrecognizedNodeTypeError(type);
+	}
+
+	private loadOriginalClass(sourcePath: string, className: string): INodeType {
+		const loaded: INodeType = loadClassInIsolation(sourcePath, className);
+		NodeHelpers.applySpecialNodeParameters(loaded);
+		return loaded;
 	}
 
 	async getNodeTranslationPath({
