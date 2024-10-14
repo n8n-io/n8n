@@ -88,10 +88,9 @@ describe('NDVSubConnections', () => {
 		vi.advanceTimersByTime(1000); // Event debounce time
 
 		await waitFor(() => {});
-		expect(getByTestId('sub-connections-container')).toBeVisible();
 		expect(getByTestId('subnode-connection-group-ai_tool')).toBeVisible();
 		expect(html()).toEqual(
-			`<div class="container" data-test-id="sub-connections-container">
+			`<div class="container">
   <div class="connections" style="--possible-connections: 1;">
     <div data-test-id="subnode-connection-group-ai_tool">
       <div class="connectionType"><span class="connectionLabel">Tools</span>
