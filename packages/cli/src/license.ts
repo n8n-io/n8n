@@ -255,6 +255,10 @@ export class License {
 		return this.isFeatureEnabled(LICENSE_FEATURES.AI_ASSISTANT);
 	}
 
+	isAskAiEnabled() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.ASK_AI);
+	}
+
 	isAdvancedExecutionFiltersEnabled() {
 		return this.isFeatureEnabled(LICENSE_FEATURES.ADVANCED_EXECUTION_FILTERS);
 	}

@@ -35,7 +35,7 @@ export const error = (e: unknown, options?: ReportingOptions) => {
 
 export const info = (msg: string, options?: ReportingOptions) => {
 	Logger.info(msg);
-	instance.report(msg, options);
+	instance.report(msg, { ...options, level: 'info' });
 };
 
 export const warn = (warning: Error | string, options?: ReportingOptions) =>

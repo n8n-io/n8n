@@ -1,6 +1,6 @@
-import { ApplicationError } from 'n8n-workflow';
+import { SerializableError } from './serializable-error';
 
-export class ValidationError extends ApplicationError {
+export class ValidationError extends SerializableError {
 	description = '';
 
 	itemIndex: number | undefined = undefined;

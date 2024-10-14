@@ -1,6 +1,7 @@
 import { GlobalConfig } from '@n8n/config';
 import * as a from 'node:assert/strict';
 import { spawn } from 'node:child_process';
+import * as process from 'node:process';
 import { Service } from 'typedi';
 
 import { TaskRunnerAuthService } from './auth/task-runner-auth.service';
@@ -58,6 +59,8 @@ export class TaskRunnerProcess {
 				PATH: process.env.PATH,
 				N8N_RUNNERS_GRANT_TOKEN: grantToken,
 				N8N_RUNNERS_N8N_URI: n8nUri,
+				NODE_FUNCTION_ALLOW_BUILTIN: process.env.NODE_FUNCTION_ALLOW_BUILTIN,
+				NODE_FUNCTION_ALLOW_EXTERNAL: process.env.NODE_FUNCTION_ALLOW_EXTERNAL,
 			},
 		});
 	}
@@ -71,6 +74,8 @@ export class TaskRunnerProcess {
 					PATH: process.env.PATH,
 					N8N_RUNNERS_GRANT_TOKEN: grantToken,
 					N8N_RUNNERS_N8N_URI: n8nUri,
+					NODE_FUNCTION_ALLOW_BUILTIN: process.env.NODE_FUNCTION_ALLOW_BUILTIN,
+					NODE_FUNCTION_ALLOW_EXTERNAL: process.env.NODE_FUNCTION_ALLOW_EXTERNAL,
 					// For debug logging if enabled
 					RUST_LOG: process.env.RUST_LOG,
 				},
@@ -122,9 +127,9 @@ export class TaskRunnerProcess {
 		});
 	}
 
-	private monitorProcess(process: ChildProcess) {
+	private monitorProcess(taskRunnerProcess: ChildProcess) {
 		this.runPromise = new Promise((resolve) => {
-			process.on('exit', (code) => {
+			taskRunnerProcess.on('exit', (code) => {
 				this.onProcessExit(code, resolve);
 			});
 		});

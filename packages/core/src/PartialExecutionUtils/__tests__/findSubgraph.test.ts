@@ -28,7 +28,7 @@ describe('findSubgraph', () => {
 			.addNodes(trigger, destination)
 			.addConnections({ from: trigger, to: destination });
 
-		const subgraph = findSubgraph(graph, destination, trigger);
+		const subgraph = findSubgraph({ graph, destination, trigger });
 
 		expect(subgraph).toEqual(graph);
 	});
@@ -50,7 +50,7 @@ describe('findSubgraph', () => {
 				{ from: ifNode, to: noOp, outputIndex: 1 },
 			);
 
-		const subgraph = findSubgraph(graph, noOp, ifNode);
+		const subgraph = findSubgraph({ graph, destination: noOp, trigger: ifNode });
 
 		expect(subgraph).toEqual(graph);
 	});
@@ -70,7 +70,7 @@ describe('findSubgraph', () => {
 			.addNodes(trigger, destination, node)
 			.addConnections({ from: trigger, to: destination }, { from: destination, to: node });
 
-		const subgraph = findSubgraph(graph, destination, trigger);
+		const subgraph = findSubgraph({ graph, destination, trigger });
 
 		expect(subgraph).toEqual(
 			new DirectedGraph()
@@ -100,7 +100,7 @@ describe('findSubgraph', () => {
 			.addNodes(trigger, disabled, destination)
 			.addConnections({ from: trigger, to: disabled }, { from: disabled, to: destination });
 
-		const subgraph = findSubgraph(graph, destination, trigger);
+		const subgraph = findSubgraph({ graph, destination, trigger });
 
 		expect(subgraph).toEqual(
 			new DirectedGraph()
@@ -133,7 +133,7 @@ describe('findSubgraph', () => {
 			);
 
 		// ACT
-		const subgraph = findSubgraph(graph, destination, trigger);
+		const subgraph = findSubgraph({ graph, destination, trigger });
 
 		// ASSERT
 		expect(subgraph).toEqual(
@@ -163,7 +163,7 @@ describe('findSubgraph', () => {
 			);
 
 		// ACT
-		const subgraph = findSubgraph(graph, node2, trigger);
+		const subgraph = findSubgraph({ graph, destination: node2, trigger });
 
 		// ASSERT
 		expect(subgraph).toEqual(graph);
@@ -187,7 +187,7 @@ describe('findSubgraph', () => {
 			.addConnections({ from: trigger, to: node1 }, { from: node2, to: node1 });
 
 		// ACT
-		const subgraph = findSubgraph(graph, node1, trigger);
+		const subgraph = findSubgraph({ graph, destination: node1, trigger });
 
 		// ASSERT
 		expect(subgraph).toEqual(
@@ -215,7 +215,7 @@ describe('findSubgraph', () => {
 			);
 
 		// ACT
-		const subgraph = findSubgraph(graph, destination, trigger);
+		const subgraph = findSubgraph({ graph, destination, trigger });
 
 		// ASSERT
 		expect(subgraph).toEqual(
@@ -248,7 +248,7 @@ describe('findSubgraph', () => {
 				);
 
 			// ACT
-			const subgraph = findSubgraph(graph, destination, trigger);
+			const subgraph = findSubgraph({ graph, destination, trigger });
 
 			// ASSERT
 			expect(subgraph).toEqual(graph);
@@ -284,7 +284,7 @@ describe('findSubgraph', () => {
 				);
 
 			// ACT
-			const subgraph = findSubgraph(graph, destination, trigger);
+			const subgraph = findSubgraph({ graph, destination, trigger });
 
 			// ASSERT
 			expect(subgraph.getConnections()).toHaveLength(0);
@@ -320,7 +320,7 @@ describe('findSubgraph', () => {
 				);
 
 			// ACT
-			const subgraph = findSubgraph(graph, root, trigger);
+			const subgraph = findSubgraph({ graph, destination: root, trigger });
 
 			// ASSERT
 			expect(subgraph).toEqual(

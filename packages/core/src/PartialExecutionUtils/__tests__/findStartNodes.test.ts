@@ -46,7 +46,7 @@ describe('findStartNodes', () => {
 		const node = createNodeData({ name: 'Basic Node' });
 		const graph = new DirectedGraph().addNode(node);
 
-		const startNodes = findStartNodes(graph, node, node);
+		const startNodes = findStartNodes({ graph, trigger: node, destination: node });
 
 		expect(startNodes).toHaveLength(1);
 		expect(startNodes[0]).toEqual(node);
@@ -65,7 +65,7 @@ describe('findStartNodes', () => {
 
 		// if the trigger has no run data
 		{
-			const startNodes = findStartNodes(graph, trigger, destination);
+			const startNodes = findStartNodes({ graph, trigger, destination });
 
 			expect(startNodes).toHaveLength(1);
 			expect(startNodes[0]).toEqual(trigger);
@@ -77,7 +77,7 @@ describe('findStartNodes', () => {
 				[trigger.name]: [toITaskData([{ data: { value: 1 } }])],
 			};
 
-			const startNodes = findStartNodes(graph, trigger, destination, runData);
+			const startNodes = findStartNodes({ graph, trigger, destination, runData });
 
 			expect(startNodes).toHaveLength(1);
 			expect(startNodes[0]).toEqual(destination);
@@ -112,7 +112,7 @@ describe('findStartNodes', () => {
 		};
 
 		// ACT
-		const startNodes = findStartNodes(graph, trigger, node, runData);
+		const startNodes = findStartNodes({ graph, trigger, destination: node, runData });
 
 		// ASSERT
 		expect(startNodes).toHaveLength(1);
@@ -153,7 +153,7 @@ describe('findStartNodes', () => {
 
 		{
 			// ACT
-			const startNodes = findStartNodes(graph, trigger, node4);
+			const startNodes = findStartNodes({ graph, trigger, destination: node4 });
 
 			// ASSERT
 			expect(startNodes).toHaveLength(1);
@@ -172,7 +172,7 @@ describe('findStartNodes', () => {
 			};
 
 			// ACT
-			const startNodes = findStartNodes(graph, trigger, node4, runData);
+			const startNodes = findStartNodes({ graph, trigger, destination: node4, runData });
 
 			// ASSERT
 			expect(startNodes).toHaveLength(1);
@@ -201,8 +201,13 @@ describe('findStartNodes', () => {
 			);
 
 		// ACT
-		const startNodes = findStartNodes(graph, trigger, node, {
-			[trigger.name]: [toITaskData([{ data: { value: 1 }, outputIndex: 0 }])],
+		const startNodes = findStartNodes({
+			graph,
+			trigger,
+			destination: node,
+			runData: {
+				[trigger.name]: [toITaskData([{ data: { value: 1 }, outputIndex: 0 }])],
+			},
 		});
 
 		// ASSERT
@@ -231,8 +236,13 @@ describe('findStartNodes', () => {
 			);
 
 		// ACT
-		const startNodes = findStartNodes(graph, trigger, node, {
-			[trigger.name]: [toITaskData([{ data: { value: 1 }, outputIndex: 1 }])],
+		const startNodes = findStartNodes({
+			graph,
+			trigger,
+			destination: node,
+			runData: {
+				[trigger.name]: [toITaskData([{ data: { value: 1 }, outputIndex: 1 }])],
+			},
 		});
 
 		// ASSERT
@@ -261,13 +271,18 @@ describe('findStartNodes', () => {
 			);
 
 		// ACT
-		const startNodes = findStartNodes(graph, trigger, node, {
-			[trigger.name]: [
-				toITaskData([
-					{ data: { value: 1 }, outputIndex: 0 },
-					{ data: { value: 1 }, outputIndex: 1 },
-				]),
-			],
+		const startNodes = findStartNodes({
+			graph,
+			trigger,
+			destination: node,
+			runData: {
+				[trigger.name]: [
+					toITaskData([
+						{ data: { value: 1 }, outputIndex: 0 },
+						{ data: { value: 1 }, outputIndex: 1 },
+					]),
+				],
+			},
 		});
 
 		// ASSERT
@@ -297,10 +312,15 @@ describe('findStartNodes', () => {
 			);
 
 		// ACT
-		const startNodes = findStartNodes(graph, trigger, node3, {
-			[trigger.name]: [toITaskData([{ data: { value: 1 }, outputIndex: 0 }])],
-			[node1.name]: [toITaskData([{ data: { value: 1 }, outputIndex: 0 }])],
-			[node2.name]: [toITaskData([{ data: { value: 1 }, outputIndex: 0 }])],
+		const startNodes = findStartNodes({
+			graph,
+			trigger,
+			destination: node3,
+			runData: {
+				[trigger.name]: [toITaskData([{ data: { value: 1 }, outputIndex: 0 }])],
+				[node1.name]: [toITaskData([{ data: { value: 1 }, outputIndex: 0 }])],
+				[node2.name]: [toITaskData([{ data: { value: 1 }, outputIndex: 0 }])],
+			},
 		});
 
 		// ASSERT
@@ -329,9 +349,14 @@ describe('findStartNodes', () => {
 			);
 
 		// ACT
-		const startNodes = findStartNodes(graph, node1, node2, {
-			[trigger.name]: [toITaskData([{ data: { value: 1 } }])],
-			[node1.name]: [toITaskData([{ data: { value: 1 }, outputIndex: 1 }])],
+		const startNodes = findStartNodes({
+			graph,
+			trigger: node1,
+			destination: node2,
+			runData: {
+				[trigger.name]: [toITaskData([{ data: { value: 1 } }])],
+				[node1.name]: [toITaskData([{ data: { value: 1 }, outputIndex: 1 }])],
+			},
 		});
 
 		// ASSERT
@@ -364,7 +389,7 @@ describe('findStartNodes', () => {
 		const pinData: IPinData = {};
 
 		// ACT
-		const startNodes = findStartNodes(graph, trigger, node2, runData, pinData);
+		const startNodes = findStartNodes({ graph, trigger, destination: node2, runData, pinData });
 
 		// ASSERT
 		expect(startNodes).toHaveLength(1);
