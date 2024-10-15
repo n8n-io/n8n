@@ -48,6 +48,7 @@ import { WorkflowExecutionService } from '@/workflows/workflow-execution.service
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 import { ExecutionService } from './executions/execution.service';
+import { Publisher } from './scaling/pubsub/publisher.service';
 
 interface QueuedActivation {
 	activationMode: WorkflowActivateMode;
@@ -75,6 +76,7 @@ export class ActiveWorkflowManager {
 		private readonly activeWorkflowsService: ActiveWorkflowsService,
 		private readonly workflowExecutionService: WorkflowExecutionService,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly publisher: Publisher,
 	) {}
 
 	async init() {
@@ -517,8 +519,9 @@ export class ActiveWorkflowManager {
 		{ shouldPublish } = { shouldPublish: true },
 	) {
 		if (this.orchestrationService.isMultiMainSetupEnabled && shouldPublish) {
-			await this.orchestrationService.publish('add-webhooks-triggers-and-pollers', {
-				workflowId,
+			void this.publisher.publishCommand({
+				command: 'add-webhooks-triggers-and-pollers',
+				payload: { workflowId },
 			});
 
 			return;
@@ -717,7 +720,10 @@ export class ActiveWorkflowManager {
 				);
 			}
 
-			await this.orchestrationService.publish('remove-triggers-and-pollers', { workflowId });
+			void this.publisher.publishCommand({
+				command: 'remove-triggers-and-pollers',
+				payload: { workflowId },
+			});
 
 			return;
 		}
