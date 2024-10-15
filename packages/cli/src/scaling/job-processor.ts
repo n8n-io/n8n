@@ -1,5 +1,5 @@
 import type { RunningJobSummary } from '@n8n/api-types';
-import { WorkflowExecute } from 'n8n-core';
+import { InstanceSettings, WorkflowExecute } from 'n8n-core';
 import { BINARY_ENCODING, ApplicationError, Workflow } from 'n8n-workflow';
 import type { ExecutionStatus, IExecuteResponsePromiseData, IRun } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
@@ -33,6 +33,7 @@ export class JobProcessor {
 		private readonly executionRepository: ExecutionRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly nodeTypes: NodeTypes,
+		private readonly instanceSettings: InstanceSettings,
 	) {
 		this.logger = this.logger.withScope('scaling');
 	}
@@ -120,7 +121,7 @@ export class JobProcessor {
 					kind: 'respond-to-webhook',
 					executionId,
 					response: this.encodeWebhookResponse(response),
-					workerId: config.getEnv('redis.queueModeId'),
+					workerId: this.instanceSettings.hostId,
 				};
 
 				await job.progress(msg);
@@ -173,7 +174,7 @@ export class JobProcessor {
 		const msg: JobFinishedMessage = {
 			kind: 'job-finished',
 			executionId,
-			workerId: config.getEnv('redis.queueModeId'),
+			workerId: this.instanceSettings.hostId,
 		};
 
 		await job.progress(msg);

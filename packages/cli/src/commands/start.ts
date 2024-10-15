@@ -72,7 +72,7 @@ export class Start extends BaseCommand {
 
 	constructor(argv: string[], cmdConfig: Config) {
 		super(argv, cmdConfig);
-		this.setInstanceQueueModeId();
+		this.instanceSettings.setHostId();
 	}
 
 	/**
@@ -176,7 +176,7 @@ export class Start extends BaseCommand {
 		if (config.getEnv('executions.mode') === 'queue') {
 			const scopedLogger = this.logger.withScope('scaling');
 			scopedLogger.debug('Starting main instance in scaling mode');
-			scopedLogger.debug(`Host ID: ${this.queueModeId}`);
+			scopedLogger.debug(`Host ID: ${this.instanceSettings.hostId}`);
 		}
 
 		const { flags } = await this.parse(Start);

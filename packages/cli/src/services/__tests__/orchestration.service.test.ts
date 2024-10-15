@@ -23,15 +23,11 @@ redisClientService.createClient.mockReturnValue(mockRedisClient);
 const os = Container.get(OrchestrationService);
 mockInstance(ActiveWorkflowManager);
 
-let queueModeId: string;
-
 describe('Orchestration Service', () => {
 	mockInstance(Push);
 	mockInstance(ExternalSecretsManager);
 
 	beforeAll(async () => {
-		queueModeId = config.get('redis.queueModeId');
-
 		// @ts-expect-error readonly property
 		instanceSettings.instanceType = 'main';
 	});
@@ -48,7 +44,6 @@ describe('Orchestration Service', () => {
 		await os.init();
 		// @ts-expect-error Private field
 		expect(os.publisher).toBeDefined();
-		expect(queueModeId).toBeDefined();
 	});
 
 	describe('shouldAddWebhooks', () => {

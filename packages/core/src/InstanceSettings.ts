@@ -1,8 +1,12 @@
 import { createHash, randomBytes } from 'crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
-import { ApplicationError, jsonParse } from 'n8n-workflow';
+import { ApplicationError, jsonParse, ALPHABET } from 'n8n-workflow';
+import { customAlphabet } from 'nanoid';
+import { strict } from 'node:assert';
 import path from 'path';
 import { Service } from 'typedi';
+
+const nanoid = customAlphabet(ALPHABET, 16);
 
 interface ReadOnlySettings {
 	encryptionKey: string;
@@ -60,6 +64,21 @@ export class InstanceSettings {
 	 * A non-main instance type (e.g. `worker`) is always `unset`.
 	 */
 	instanceRole: InstanceRole = 'unset';
+
+	/**
+	 * ID of this n8n instance in the context of scaling mode.
+	 *
+	 * @example 'main-bnxa1riryKUNHtln'
+	 * @example 'worker-nDJR0FnSd2Vf6DB5'
+	 * @example 'webhook-jxQ7AO8IzxEtfW1F'
+	 */
+	hostId = '';
+
+	setHostId() {
+		strict(this.hostId === '', 'Expected `hostId` to be unset');
+
+		this.hostId = `${this.instanceType}-${nanoid()}`;
+	}
 
 	get isLeader() {
 		return this.instanceRole === 'leader';
