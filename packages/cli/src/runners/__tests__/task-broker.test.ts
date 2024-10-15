@@ -117,7 +117,7 @@ describe('TaskBroker', () => {
 				validUntil: createValidUntil(1000),
 			});
 			taskBroker.taskOffered({
-				offerId: 'offer1',
+				offerId: 'offer2',
 				runnerId: 'runner2',
 				taskType: 'mock',
 				validFor: 1000,
@@ -127,7 +127,7 @@ describe('TaskBroker', () => {
 
 			const offers = taskBroker.getPendingTaskOffers();
 			expect(offers).toHaveLength(1);
-			expect(offers.filter((o) => o.runnerId !== runnerId)).toHaveLength(1);
+			expect(offers[0].runnerId).toBe('runner2');
 		});
 
 		it('should fail any running tasks for that runner', () => {
@@ -148,8 +148,8 @@ describe('TaskBroker', () => {
 			});
 			taskBroker.deregisterRunner(runnerId);
 
-			expect(failSpy).toBeCalledWith(taskId, 'The Task Runner has disconnected');
-			expect(rejectSpy).toBeCalledWith(taskId, 'The Task Runner has disconnected');
+			expect(failSpy).toBeCalledWith(taskId, `The Task Runner (${runnerId}) has disconnected`);
+			expect(rejectSpy).toBeCalledWith(taskId, `The Task Runner (${runnerId}) has disconnected`);
 		});
 	});
 

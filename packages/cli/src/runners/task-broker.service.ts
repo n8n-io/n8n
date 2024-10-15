@@ -75,8 +75,8 @@ export class TaskBroker {
 
 	expireTasks() {
 		const now = process.hrtime.bigint();
-		for (let i = this.pendingTaskOffers.length; i >= 0; i--) {
-			if (this.pendingTaskOffers[i]?.validUntil < now) {
+		for (let i = this.pendingTaskOffers.length - 1; i >= 0; i--) {
+			if (this.pendingTaskOffers[i].validUntil < now) {
 				this.pendingTaskOffers.splice(i, 1);
 			}
 		}
@@ -90,8 +90,8 @@ export class TaskBroker {
 		this.knownRunners.delete(runnerId);
 
 		// Remove any pending offers
-		for (let i = this.pendingTaskOffers.length; i >= 0; i--) {
-			if (this.pendingTaskOffers[i]?.runnerId === runnerId) {
+		for (let i = this.pendingTaskOffers.length - 1; i >= 0; i--) {
+			if (this.pendingTaskOffers[i].runnerId === runnerId) {
 				this.pendingTaskOffers.splice(i, 1);
 			}
 		}
@@ -99,8 +99,8 @@ export class TaskBroker {
 		// Fail any tasks
 		for (const task of this.tasks.values()) {
 			if (task.runnerId === runnerId) {
-				void this.failTask(task.id, 'The Task Runner has disconnected');
-				this.handleRunnerReject(task.id, 'The Task Runner has disconnected');
+				void this.failTask(task.id, `The Task Runner (${runnerId}) has disconnected`);
+				this.handleRunnerReject(task.id, `The Task Runner (${runnerId}) has disconnected`);
 			}
 		}
 	}
