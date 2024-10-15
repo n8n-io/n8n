@@ -6,12 +6,12 @@
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://gong.app.gong.io/settings/api/documentation"
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.gong/"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://gong.app.gong.io/settings/api/documentation"
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.gong/"
 			}
 		]
 	}
