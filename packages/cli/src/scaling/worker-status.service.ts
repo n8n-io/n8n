@@ -1,19 +1,22 @@
 import type { WorkerStatus } from '@n8n/api-types';
+import { InstanceSettings } from 'n8n-core';
 import os from 'node:os';
 import { Service } from 'typedi';
 
-import config from '@/config';
 import { N8N_VERSION } from '@/constants';
 
 import { JobProcessor } from './job-processor';
 
 @Service()
 export class WorkerStatusService {
-	constructor(private readonly jobProcessor: JobProcessor) {}
+	constructor(
+		private readonly jobProcessor: JobProcessor,
+		private readonly instanceSettings: InstanceSettings,
+	) {}
 
 	generateStatus(): WorkerStatus {
 		return {
-			senderId: config.getEnv('redis.queueModeId'),
+			senderId: this.instanceSettings.hostId,
 			runningJobsSummary: this.jobProcessor.getRunningJobsSummary(),
 			freeMem: os.freemem(),
 			totalMem: os.totalmem(),

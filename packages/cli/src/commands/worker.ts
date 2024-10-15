@@ -70,8 +70,6 @@ export class Worker extends BaseCommand {
 		super(argv, cmdConfig);
 
 		this.logger = Container.get(Logger).withScope('scaling');
-
-		this.setInstanceQueueModeId();
 	}
 
 	async init() {
@@ -86,7 +84,7 @@ export class Worker extends BaseCommand {
 		await this.initCrashJournal();
 
 		this.logger.debug('Starting n8n worker...');
-		this.logger.debug(`Host ID: ${this.queueModeId}`);
+		this.logger.debug(`Host ID: ${this.instanceSettings.hostId}`);
 
 		await this.setConcurrency();
 		await super.init();
@@ -111,7 +109,7 @@ export class Worker extends BaseCommand {
 			new EventMessageGeneric({
 				eventName: 'n8n.worker.started',
 				payload: {
-					workerId: this.queueModeId,
+					workerId: this.instanceSettings.hostId,
 				},
 			}),
 		);
@@ -130,7 +128,7 @@ export class Worker extends BaseCommand {
 
 	async initEventBus() {
 		await Container.get(MessageEventBus).initialize({
-			workerId: this.queueModeId,
+			workerId: this.instanceSettings.hostId,
 		});
 		Container.get(LogStreamingEventRelay).init();
 	}
