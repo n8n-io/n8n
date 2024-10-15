@@ -526,8 +526,8 @@ export class ActiveWorkflowManager {
 
 		let workflow: Workflow;
 
-		const shouldAddWebhooks = this.orchestrationService.shouldAddWebhooks(activationMode);
-		const shouldAddTriggersAndPollers = this.orchestrationService.shouldAddTriggersAndPollers();
+		const shouldAddWebhooks = this.shouldAddWebhooks(activationMode);
+		const shouldAddTriggersAndPollers = this.shouldAddTriggersAndPollers();
 
 		const shouldDisplayActivationMessage =
 			(shouldAddWebhooks || shouldAddTriggersAndPollers) &&
@@ -809,5 +809,30 @@ export class ActiveWorkflowManager {
 
 	async removeActivationError(workflowId: string) {
 		await this.activationErrorsService.deregister(workflowId);
+	}
+
+	/**
+	 * Whether this instance may add webhooks to the `webhook_entity` table.
+	 */
+	shouldAddWebhooks(activationMode: WorkflowActivateMode) {
+		// Always try to populate the webhook entity table as well as register the webhooks
+		// to prevent issues with users upgrading from a version < 1.15, where the webhook entity
+		// was cleared on shutdown to anything past 1.28.0, where we stopped populating it on init,
+		// causing all webhooks to break
+		if (activationMode === 'init') return true;
+
+		if (activationMode === 'leadershipChange') return false;
+
+		return this.instanceSettings.isLeader; // 'update' or 'activate'
+	}
+
+	/**
+	 * Whether this instance may add triggers and pollers to memory.
+	 *
+	 * In both single- and multi-main setup, only the leader is allowed to manage
+	 * triggers and pollers in memory, to ensure they are not duplicated.
+	 */
+	shouldAddTriggersAndPollers() {
+		return this.instanceSettings.isLeader;
 	}
 }
