@@ -21,7 +21,7 @@ import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus'
 import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { License } from '@/license';
-import { SingleMainTaskManager } from '@/runners/task-managers/single-main-task-manager';
+import { LocalTaskManager } from '@/runners/task-managers/local-task-manager';
 import { TaskManager } from '@/runners/task-managers/task-manager';
 import { PubSubHandler } from '@/scaling/pubsub/pubsub-handler';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
@@ -227,7 +227,7 @@ export class Start extends BaseCommand {
 		}
 
 		if (!this.globalConfig.taskRunners.disabled) {
-			Container.set(TaskManager, new SingleMainTaskManager());
+			Container.set(TaskManager, new LocalTaskManager());
 			const { TaskRunnerServer } = await import('@/runners/task-runner-server');
 			const taskRunnerServer = Container.get(TaskRunnerServer);
 			await taskRunnerServer.start();
