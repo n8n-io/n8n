@@ -6,7 +6,7 @@ import type {
 	IDataObject,
 	IHttpRequestOptions,
 } from 'n8n-workflow';
-import { ExpressionEvaluatorProxy, NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 import nock from 'nock';
 
 import { gongApiResponse, gongNodeResponse } from './mocks';
@@ -14,11 +14,6 @@ import { FAKE_CREDENTIALS_DATA } from '../../../test/nodes/FakeCredentialsMap';
 
 describe('Gong Node', () => {
 	const baseUrl = 'https://api.gong.io';
-
-	beforeAll(() => {
-		// Test expression '={{ Array.isArray($value) ? $value.map(x => x.toString()) : $value.split(",").map(x => x.trim()) }}',
-		ExpressionEvaluatorProxy.setEvaluator('tournament');
-	});
 
 	beforeEach(() => {
 		// https://github.com/nock/nock/issues/2057#issuecomment-663665683
@@ -120,9 +115,9 @@ describe('Gong Node', () => {
 					nodeExecutionOrder: ['Start'],
 					nodeData: {
 						'Gong gongApi': [[{ json: { metaData: gongNodeResponse.getCall[0].json.metaData } }]],
-						// 'Gong gongOAuth2Api': [
-						// 	[{ json: { metaData: gongNodeResponse.getCall[0].json.metaData } }],
-						// ],
+						'Gong gongOAuth2Api': [
+							[{ json: { metaData: gongNodeResponse.getCall[0].json.metaData } }],
+						],
 					},
 				},
 			},
