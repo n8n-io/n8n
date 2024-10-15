@@ -1,3 +1,5 @@
+import get from 'lodash/get';
+import toPath from 'lodash/toPath';
 import type {
 	DeclarativeRestApiSettings,
 	IDataObject,
@@ -12,9 +14,6 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
-
-import get from 'lodash/get';
-import toPath from 'lodash/toPath';
 
 export async function gongApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,

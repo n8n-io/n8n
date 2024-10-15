@@ -1,15 +1,16 @@
-import nock from 'nock';
+import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
+import * as Helpers from '@test/nodes/Helpers';
+import type { WorkflowTestData } from '@test/nodes/types';
 import type {
 	ICredentialDataDecryptedObject,
 	IDataObject,
 	IHttpRequestOptions,
 } from 'n8n-workflow';
 import { ExpressionEvaluatorProxy, NodeConnectionType } from 'n8n-workflow';
-import { FAKE_CREDENTIALS_DATA } from '../../../test/nodes/FakeCredentialsMap';
+import nock from 'nock';
+
 import { gongApiResponse, gongNodeResponse } from './mocks';
-import type { WorkflowTestData } from '@test/nodes/types';
-import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
-import * as Helpers from '@test/nodes/Helpers';
+import { FAKE_CREDENTIALS_DATA } from '../../../test/nodes/FakeCredentialsMap';
 
 describe('Gong Node', () => {
 	const baseUrl = 'https://api.gong.io';
