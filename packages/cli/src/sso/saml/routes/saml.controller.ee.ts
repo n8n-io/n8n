@@ -26,8 +26,6 @@ import {
 import type { SamlLoginBinding } from '../types';
 import { SamlConfiguration } from '../types/requests';
 import { getInitSSOFormView } from '../views/init-sso-post';
-import { getSamlConnectionTestFailedView } from '../views/saml-connection-test-failed';
-import { getSamlConnectionTestSuccessView } from '../views/saml-connection-test-success';
 
 @RestController('/sso/saml')
 export class SamlController {
@@ -92,7 +90,7 @@ export class SamlController {
 	/**
 	 * Assertion Consumer Service endpoint
 	 */
-	@Get('/acs', { middlewares: [samlLicensedMiddleware], skipAuth: true })
+	@Get('/acs', { middlewares: [samlLicensedMiddleware], skipAuth: true, usesTemplates: true })
 	async acsGet(req: SamlConfiguration.AcsRequest, res: express.Response) {
 		return await this.acsHandler(req, res, 'redirect');
 	}
@@ -100,7 +98,7 @@ export class SamlController {
 	/**
 	 * Assertion Consumer Service endpoint
 	 */
-	@Post('/acs', { middlewares: [samlLicensedMiddleware], skipAuth: true })
+	@Post('/acs', { middlewares: [samlLicensedMiddleware], skipAuth: true, usesTemplates: true })
 	async acsPost(req: SamlConfiguration.AcsRequest, res: express.Response) {
 		return await this.acsHandler(req, res, 'post');
 	}
@@ -120,9 +118,12 @@ export class SamlController {
 			// if RelayState is set to the test connection Url, this is a test connection
 			if (isConnectionTestRequest(req)) {
 				if (loginResult.authenticatedUser) {
-					return res.send(getSamlConnectionTestSuccessView(loginResult.attributes));
+					return res.render('saml-connection-test-success', loginResult.attributes);
 				} else {
-					return res.send(getSamlConnectionTestFailedView('', loginResult.attributes));
+					return res.render('saml-connection-test-failed', {
+						message: '',
+						attributes: loginResult.attributes,
+					});
 				}
 			}
 			if (loginResult.authenticatedUser) {
@@ -151,7 +152,7 @@ export class SamlController {
 			throw new AuthError('SAML Authentication failed');
 		} catch (error) {
 			if (isConnectionTestRequest(req)) {
-				return res.send(getSamlConnectionTestFailedView((error as Error).message));
+				return res.render('saml-connection-test-failed', { message: (error as Error).message });
 			}
 			this.eventService.emit('user-login-failed', {
 				userEmail: 'unknown',
