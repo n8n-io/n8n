@@ -1,3 +1,12 @@
+## [1.63.4](https://github.com/n8n-io/n8n/compare/n8n@1.63.3...n8n@1.63.4) (2024-10-15)
+
+
+### Bug Fixes
+
+* **core:** Wrap nodes for tool use at a suitable time ([#11238](https://github.com/n8n-io/n8n/issues/11238)) ([2fb2a2f](https://github.com/n8n-io/n8n/commit/2fb2a2fa7cd1246936b253132c5ada3e5feb2502))
+
+
+
 ## [1.63.3](https://github.com/n8n-io/n8n/compare/n8n@1.63.2...n8n@1.63.3) (2024-10-15)
 
 
