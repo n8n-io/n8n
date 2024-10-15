@@ -8,10 +8,12 @@ import {
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { IExecutionResponse, INodeUi, IWorkflowDb, IWorkflowSettings } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import type { ExecutionSummary, IConnection, INodeExecutionData } from 'n8n-workflow';
+import { type ExecutionSummary, type IConnection, type INodeExecutionData } from 'n8n-workflow';
 import { stringSizeInBytes } from '@/utils/typesUtils';
 import { dataPinningEventBus } from '@/event-bus';
 import { useUIStore } from '@/stores/ui.store';
+import type { PushPayload } from '@n8n/api-types';
+import { flushPromises } from '@vue/test-utils';
 
 vi.mock('@/api/workflows', () => ({
 	getWorkflows: vi.fn(),
@@ -19,10 +21,16 @@ vi.mock('@/api/workflows', () => ({
 	getNewWorkflow: vi.fn(),
 }));
 
+const getNodeType = vi.fn();
 vi.mock('@/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(() => ({
-		getNodeType: vi.fn(),
+		getNodeType,
 	})),
+}));
+
+const track = vi.fn();
+vi.mock('@/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track }),
 }));
 
 describe('useWorkflowsStore', () => {
@@ -33,6 +41,7 @@ describe('useWorkflowsStore', () => {
 		setActivePinia(createPinia());
 		workflowsStore = useWorkflowsStore();
 		uiStore = useUIStore();
+		track.mockReset();
 	});
 
 	it('should initialize with default state', () => {
@@ -441,4 +450,197 @@ describe('useWorkflowsStore', () => {
 			expect(uiStore.stateIsDirty).toBe(true);
 		});
 	});
+
+	describe('addNodeExecutionData', () => {
+		const { successEvent, errorEvent, executionReponse } = generateMockExecutionEvents();
+		it('should throw error if not initalized', () => {
+			expect(() => workflowsStore.addNodeExecutionData(successEvent)).toThrowError();
+		});
+
+		it('should add node success run data', () => {
+			workflowsStore.setWorkflowExecutionData(executionReponse);
+
+			// ACT
+			workflowsStore.addNodeExecutionData(successEvent);
+
+			expect(workflowsStore.workflowExecutionData).toEqual({
+				...executionReponse,
+				data: {
+					resultData: {
+						runData: {
+							[successEvent.nodeName]: [successEvent.data],
+						},
+					},
+				},
+			});
+		});
+
+		it('should add node error event and track errored executions', async () => {
+			workflowsStore.setWorkflowExecutionData(executionReponse);
+			workflowsStore.addNode({
+				parameters: {},
+				id: '554c7ff4-7ee2-407c-8931-e34234c5056a',
+				name: 'Edit Fields',
+				type: 'n8n-nodes-base.set',
+				position: [680, 180],
+				typeVersion: 3.4,
+			});
+
+			getNodeType.mockReturnValue(getMockEditFieldsNode());
+
+			// ACT
+			workflowsStore.addNodeExecutionData(errorEvent);
+			await flushPromises();
+
+			expect(workflowsStore.workflowExecutionData).toEqual({
+				...executionReponse,
+				data: {
+					resultData: {
+						runData: {
+							[errorEvent.nodeName]: [errorEvent.data],
+						},
+					},
+				},
+			});
+			expect(track).toHaveBeenCalledWith(
+				'Manual exec errored',
+				{
+					error_title: 'invalid syntax',
+					node_type: 'n8n-nodes-base.set',
+					node_type_version: 3.4,
+					node_id: '554c7ff4-7ee2-407c-8931-e34234c5056a',
+					node_graph_string:
+						'{"node_types":["n8n-nodes-base.set"],"node_connections":[],"nodes":{"0":{"id":"554c7ff4-7ee2-407c-8931-e34234c5056a","type":"n8n-nodes-base.set","version":3.4,"position":[680,180]}},"notes":{},"is_pinned":false}',
+				},
+				{
+					withPostHog: true,
+				},
+			);
+		});
+	});
 });
+
+function getMockEditFieldsNode() {
+	return {
+		displayName: 'Edit Fields (Set)',
+		name: 'n8n-nodes-base.set',
+		icon: 'fa:pen',
+		group: ['input'],
+		description: 'Modify, add, or remove item fields',
+		defaultVersion: 3.4,
+		iconColor: 'blue',
+		version: [3, 3.1, 3.2, 3.3, 3.4],
+		subtitle: '={{$parameter["mode"]}}',
+		defaults: {
+			name: 'Edit Fields',
+		},
+		inputs: ['main'],
+		outputs: ['main'],
+		properties: [],
+	};
+}
+
+function generateMockExecutionEvents() {
+	const executionReponse: IExecutionResponse = {
+		id: '1',
+		workflowData: {
+			id: '1',
+			name: '',
+			createdAt: '1',
+			updatedAt: '1',
+			nodes: [],
+			connections: {},
+			active: false,
+			versionId: '1',
+		},
+		finished: false,
+		mode: 'cli',
+		startedAt: new Date(),
+		status: 'new',
+		data: {
+			resultData: {
+				runData: {},
+			},
+		},
+	};
+	const successEvent: PushPayload<'nodeExecuteAfter'> = {
+		executionId: '59',
+		nodeName: 'When clicking ‘Test workflow’',
+		data: {
+			hints: [],
+			startTime: 1727867966633,
+			executionTime: 1,
+			source: [],
+			executionStatus: 'success',
+			data: {
+				main: [
+					[
+						{
+							json: {},
+							pairedItem: {
+								item: 0,
+							},
+						},
+					],
+				],
+			},
+		},
+	};
+
+	const errorEvent: PushPayload<'nodeExecuteAfter'> = {
+		executionId: '61',
+		nodeName: 'Edit Fields',
+		data: {
+			hints: [],
+			startTime: 1727869043441,
+			executionTime: 2,
+			source: [
+				{
+					previousNode: 'When clicking ‘Test workflow’',
+				},
+			],
+			executionStatus: 'error',
+			// @ts-expect-error simpler data type, not BE class with methods
+			error: {
+				level: 'error',
+				tags: {
+					packageName: 'workflow',
+				},
+				context: {
+					itemIndex: 0,
+				},
+				functionality: 'regular',
+				name: 'NodeOperationError',
+				timestamp: 1727869043442,
+				node: {
+					parameters: {
+						mode: 'manual',
+						duplicateItem: false,
+						assignments: {
+							assignments: [
+								{
+									id: '87afdb19-4056-4551-93ef-d0126a34eb83',
+									name: "={{ $('Wh }}",
+									value: '',
+									type: 'string',
+								},
+							],
+						},
+						includeOtherFields: false,
+						options: {},
+					},
+					id: '9fb34d2d-7191-48de-8f18-91a6a28d0230',
+					name: 'Edit Fields',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [1120, 180],
+				},
+				messages: [],
+				message: 'invalid syntax',
+				stack: 'NodeOperationError: invalid syntax',
+			},
+		},
+	};
+
+	return { executionReponse, errorEvent, successEvent };
+}
