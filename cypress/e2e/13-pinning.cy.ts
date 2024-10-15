@@ -243,7 +243,7 @@ describe('Data pinning', () => {
 		});
 	});
 
-	it('should show pinned data tooltip', () => {
+	it('should not show pinned data tooltip', () => {
 		cy.createFixtureWorkflow('Pinned_webhook_node.json', 'Test');
 		workflowPage.actions.executeWorkflow();
 
