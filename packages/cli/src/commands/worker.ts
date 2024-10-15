@@ -14,7 +14,7 @@ import { PubSubHandler } from '@/scaling/pubsub/pubsub-handler';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import type { ScalingService } from '@/scaling/scaling.service';
 import type { WorkerServerEndpointsConfig } from '@/scaling/worker-server';
-import { OrchestrationWorkerService } from '@/services/orchestration/worker/orchestration.worker.service';
+import { OrchestrationService } from '@/services/orchestration.service';
 
 import { BaseCommand } from './base-command';
 
@@ -140,7 +140,7 @@ export class Worker extends BaseCommand {
 	 * The subscription connection adds a handler to handle the command messages
 	 */
 	async initOrchestration() {
-		await Container.get(OrchestrationWorkerService).init();
+		await Container.get(OrchestrationService).init();
 
 		Container.get(PubSubHandler).init();
 		await Container.get(Subscriber).subscribe('n8n.commands');
