@@ -38,7 +38,6 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'license:manage',
 	'logStreaming:manage',
 	'orchestration:read',
-	'orchestration:list',
 	'saml:manage',
 	'securityAudit:generate',
 	'sourceControl:pull',
