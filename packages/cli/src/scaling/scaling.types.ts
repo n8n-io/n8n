@@ -56,6 +56,7 @@ export type JobFailedMessage = {
 	executionId: string;
 	workerId: string;
 	errorMsg: string;
+	errorStack: string;
 };
 
 /** Message sent by main to worker to abort a job. */
