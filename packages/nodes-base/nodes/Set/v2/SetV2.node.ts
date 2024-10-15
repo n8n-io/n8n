@@ -178,6 +178,7 @@ const versionDescription: INodeTypeDescription = {
 			displayOptions: {
 				show: {
 					include: ['selected'],
+					'/includeOtherFields': [true],
 				},
 			},
 		},
@@ -193,6 +194,7 @@ const versionDescription: INodeTypeDescription = {
 			displayOptions: {
 				show: {
 					include: ['except'],
+					'/includeOtherFields': [true],
 				},
 			},
 		},
