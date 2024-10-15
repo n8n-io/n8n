@@ -117,7 +117,13 @@ export class RoutingNode {
 				credentialDescription = nodeType.description.credentials.find((x) =>
 					x.displayOptions?.show?.authentication?.includes(authenticationMethod),
 				);
-				// Todo: throw error if not found?
+				if (!credentialDescription) {
+					throw new NodeOperationError(
+						this.node,
+						`Node type "${this.node.type}" does not have any credentials of type "${authenticationMethod}" defined`,
+						{ level: 'warning' },
+					);
+				}
 			}
 		}
 
