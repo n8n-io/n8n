@@ -1,3 +1,12 @@
+## [1.63.3](https://github.com/n8n-io/n8n/compare/n8n@1.63.2...n8n@1.63.3) (2024-10-15)
+
+
+### Bug Fixes
+
+* **core:** Override executions mode if `regular` during worker startup ([#11250](https://github.com/n8n-io/n8n/issues/11250)) ([0d40874](https://github.com/n8n-io/n8n/commit/0d4087468957da7b954f68730030bfd416b26212))
+
+
+
 ## [1.63.2](https://github.com/n8n-io/n8n/compare/n8n@1.63.1...n8n@1.63.2) (2024-10-11)
 
 
