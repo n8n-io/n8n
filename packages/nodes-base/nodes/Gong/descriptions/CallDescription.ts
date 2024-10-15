@@ -13,6 +13,7 @@ import {
 	gongApiPaginateRequest,
 	isValidNumberIds,
 	handleErrorPostReceive,
+	extractCalls,
 } from '../GenericFunctions';
 
 export const callOperations: INodeProperties[] = [
@@ -354,25 +355,12 @@ const getAllFields: INodeProperties[] = [
 		routing: {
 			output: {
 				postReceive: [
-					{
-						type: 'rootProperty',
-						properties: {
-							property: 'calls',
-						},
-					},
 					async function (
 						this: IExecuteSingleFunctions,
-						data: INodeExecutionData[],
+						items: INodeExecutionData[],
 						_response: IN8nHttpFullResponse,
 					): Promise<INodeExecutionData[]> {
-						for (const item of data) {
-							if (item.json?.metaData) {
-								item.json = { ...(item.json.metaData as IDataObject), ...item.json };
-								delete item.json.metaData;
-							}
-						}
-
-						return data;
+						return extractCalls(items);
 					},
 					{
 						type: 'limit',

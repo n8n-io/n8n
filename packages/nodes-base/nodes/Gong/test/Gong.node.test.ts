@@ -685,7 +685,7 @@ describe('Gong Node', () => {
 				output: {
 					nodeExecutionOrder: ['Start'],
 					nodeData: {
-						Gong: [[{ json: undefined }]],
+						Gong: [[{ json: {} }]],
 					},
 				},
 				nock: {

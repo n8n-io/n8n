@@ -105,7 +105,9 @@ export async function gongApiPaginateRequest(
 	}
 }
 
-const getCursorPaginator = (extractItems: (page: INodeExecutionData) => INodeExecutionData[]) => {
+const getCursorPaginator = (
+	extractItems: (items: INodeExecutionData[]) => INodeExecutionData[],
+) => {
 	return async function cursorPagination(
 		this: IExecutePaginationFunctions,
 		requestOptions: DeclarativeRestApiSettings.ResultOptions,
@@ -120,28 +122,24 @@ const getCursorPaginator = (extractItems: (page: INodeExecutionData) => INodeExe
 			responseData = await this.makeRoutingRequest(requestOptions);
 			const lastItem = responseData[responseData.length - 1].json;
 			nextCursor = (lastItem.records as IDataObject)?.cursor as string | undefined;
-			for (const page of responseData) {
-				executions = executions.concat(extractItems(page));
-			}
+			executions = executions.concat(extractItems(responseData));
 		} while (returnAll && nextCursor);
 
 		return executions;
 	};
 };
 
-const extractCalls = (page: INodeExecutionData): INodeExecutionData[] => {
-	const items: IDataObject[] = get(page.json, 'calls') as IDataObject[];
-	return items
-		.filter((item) => item?.metaData)
-		.map((item) => {
-			const { metaData, ...rest } = item;
-			return { json: { ...(metaData as IDataObject), ...rest } };
-		});
+export const extractCalls = (items: INodeExecutionData[]): INodeExecutionData[] => {
+	const calls: IDataObject[] = items.flatMap((item) => get(item.json, 'calls') as IDataObject[]);
+	return calls.map((call) => {
+		const { metaData, ...rest } = call ?? {};
+		return { json: { ...(metaData as IDataObject), ...rest } };
+	});
 };
 
-const extractUsers = (page: INodeExecutionData): INodeExecutionData[] => {
-	const items: IDataObject[] = get(page.json, 'users') as IDataObject[];
-	return items.map((item) => ({ json: item }));
+export const extractUsers = (items: INodeExecutionData[]): INodeExecutionData[] => {
+	const users: IDataObject[] = items.flatMap((item) => get(item.json, 'users') as IDataObject[]);
+	return users.map((user) => ({ json: user }));
 };
 
 export const getCursorPaginatorCalls = () => {
@@ -172,7 +170,7 @@ export async function handleErrorPostReceive(
 				if (response.statusCode === 404) {
 					const primaryUserId = this.getNodeParameter('filters.primaryUserIds', {}) as IDataObject;
 					if (Object.keys(primaryUserId).length !== 0) {
-						return [{ json: { success: true } }];
+						return [{ json: {} }];
 					}
 				} else if (response.statusCode === 400 || response.statusCode === 500) {
 					throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
