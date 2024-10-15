@@ -269,6 +269,13 @@ export default defineComponent({
 				!(this.binaryData && this.binaryData.length > 0)
 			);
 		},
+		showPinDataButton(): boolean {
+			if (this.binaryData?.length) {
+				return this.isPaneTypeOutput && !!this.rawInputData.length && !this.editMode.enabled;
+			}
+
+			return this.canPinData && !!this.rawInputData.length && !this.editMode.enabled;
+		},
 		displayModes(): Array<{ label: string; value: string }> {
 			const defaults = [
 				{ label: this.$locale.baseText('runData.table'), value: 'table' },
@@ -1269,7 +1276,7 @@ export default defineComponent({
 				/>
 
 				<RunDataPinButton
-					v-if="(canPinData || !!binaryData?.length) && rawInputData.length && !editMode.enabled"
+					v-if="showPinDataButton"
 					:disabled="
 						(!rawInputData.length && !pinnedData.hasData.value) ||
 						isReadOnlyRoute ||
