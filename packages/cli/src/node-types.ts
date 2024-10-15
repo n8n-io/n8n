@@ -58,17 +58,23 @@ export class NodeTypes implements INodeTypes {
 		if (!versionedNode.description.usableAsTool)
 			throw new ApplicationError('Node cannot be used as a tool', { extra: { nodeType } });
 
-		const { loadedNodes, knownNodes } = this.loadNodesAndCredentials;
+		const { loadedNodes } = this.loadNodesAndCredentials;
 		if (origType in loadedNodes) {
 			return loadedNodes[origType].type as INodeType;
 		}
 
-		// Need to load the class from disk again, because we can't clone an existing type,
-		// and we don't want to change the "normal" version of the node.
-		const clonedNode = Object.create(versionedNode) as INodeType;
+		// Instead of modifying the existing type, we extend it into a new type object
+		const clonedProperties = Object.create(
+			versionedNode.description.properties,
+		) as INodeTypeDescription['properties'];
+		const clonedDescription = Object.create(versionedNode.description, {
+			properties: { value: clonedProperties },
+		}) as INodeTypeDescription;
+		const clonedNode = Object.create(versionedNode, {
+			description: { value: clonedDescription },
+		}) as INodeType;
 		const tool = NodeHelpers.convertNodeToAiTool(clonedNode);
-		const { sourcePath } = knownNodes[nodeType];
-		loadedNodes[nodeType + 'Tool'] = { sourcePath, type: tool };
+		loadedNodes[nodeType + 'Tool'] = { sourcePath: '', type: tool };
 		return tool;
 	}
 
@@ -94,6 +100,7 @@ export class NodeTypes implements INodeTypes {
 			const { className, sourcePath } = knownNodes[type];
 			const loaded: INodeType = loadClassInIsolation(sourcePath, className);
 			NodeHelpers.applySpecialNodeParameters(loaded);
+
 			loadedNodes[type] = { sourcePath, type: loaded };
 			return loadedNodes[type];
 		}
