@@ -32,7 +32,7 @@ describe('recreateNodeExecutionStack', () => {
 			.addNodes(trigger, node)
 			.addConnections({ from: trigger, to: node });
 
-		const workflow = findSubgraph(graph, node, trigger);
+		const workflow = findSubgraph({ graph, destination: node, trigger });
 		const startNodes = [node];
 		const runData: IRunData = {
 			[trigger.name]: [toITaskData([{ data: { value: 1 } }])],

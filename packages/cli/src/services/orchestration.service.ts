@@ -43,20 +43,6 @@ export class OrchestrationService {
 		return !this.isMultiMainSetupEnabled;
 	}
 
-	get instanceId() {
-		return config.getEnv('redis.queueModeId');
-	}
-
-	/** @deprecated use InstanceSettings.isLeader */
-	get isLeader() {
-		return this.instanceSettings.isLeader;
-	}
-
-	/** @deprecated use InstanceSettings.isFollower */
-	get isFollower() {
-		return this.instanceSettings.isFollower;
-	}
-
 	sanityCheck() {
 		return this.isInitialized && config.get('executions.mode') === 'queue';
 	}
@@ -104,7 +90,7 @@ export class OrchestrationService {
 		if (!this.sanityCheck()) return;
 
 		this.logger.debug(
-			`[Instance ID ${this.instanceId}] Publishing command "${commandKey}"`,
+			`[Instance ID ${this.instanceSettings.hostId}] Publishing command "${commandKey}"`,
 			payload,
 		);
 
@@ -128,16 +114,6 @@ export class OrchestrationService {
 		});
 	}
 
-	async getWorkerIds() {
-		if (!this.sanityCheck()) return;
-
-		const command = 'get-worker-id';
-
-		this.logger.debug(`Sending "${command}" to command channel`);
-
-		await this.publisher.publishCommand({ command });
-	}
-
 	// ----------------------------------
 	//           activations
 	// ----------------------------------
@@ -154,7 +130,7 @@ export class OrchestrationService {
 
 		if (activationMode === 'leadershipChange') return false;
 
-		return this.isLeader; // 'update' or 'activate'
+		return this.instanceSettings.isLeader; // 'update' or 'activate'
 	}
 
 	/**
@@ -164,6 +140,6 @@ export class OrchestrationService {
 	 * triggers and pollers in memory, to ensure they are not duplicated.
 	 */
 	shouldAddTriggersAndPollers() {
-		return this.isLeader;
+		return this.instanceSettings.isLeader;
 	}
 }

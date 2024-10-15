@@ -1,4 +1,5 @@
 import {
+	type EnvProviderState,
 	type IExecuteFunctions,
 	type Workflow,
 	type IRunExecutionData,
@@ -11,10 +12,11 @@ import {
 	type IExecuteData,
 	type IDataObject,
 	type IWorkflowExecuteAdditionalData,
+	type Result,
+	createResultOk,
+	createResultError,
 } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
-
-import { TaskError } from '@/runners/errors';
 
 import {
 	RPC_ALLOW_LIST,
@@ -42,6 +44,7 @@ export interface TaskData {
 	connectionInputData: INodeExecutionData[];
 	siblingParameters: INodeParameters;
 	mode: WorkflowExecuteMode;
+	envProviderState: EnvProviderState;
 	executeData?: IExecuteData;
 	defaultReturnRunIndex: number;
 	selfData: IDataObject;
@@ -76,6 +79,7 @@ export interface AllCodeTaskData {
 	connectionInputData: INodeExecutionData[];
 	siblingParameters: INodeParameters;
 	mode: WorkflowExecuteMode;
+	envProviderState: EnvProviderState;
 	executeData?: IExecuteData;
 	defaultReturnRunIndex: number;
 	selfData: IDataObject;
@@ -122,7 +126,7 @@ export class TaskManager {
 
 	tasks: Map<string, Task> = new Map();
 
-	async startTask<T>(
+	async startTask<TData, TError>(
 		additionalData: IWorkflowExecuteAdditionalData,
 		taskType: string,
 		settings: unknown,
@@ -137,11 +141,12 @@ export class TaskManager {
 		connectionInputData: INodeExecutionData[],
 		siblingParameters: INodeParameters,
 		mode: WorkflowExecuteMode,
+		envProviderState: EnvProviderState,
 		executeData?: IExecuteData,
 		defaultReturnRunIndex = -1,
 		selfData: IDataObject = {},
 		contextNodeName: string = activeNodeName,
-	): Promise<T> {
+	): Promise<Result<TData, TError>> {
 		const data: TaskData = {
 			workflow,
 			runExecutionData,
@@ -153,6 +158,7 @@ export class TaskManager {
 			itemIndex,
 			siblingParameters,
 			mode,
+			envProviderState,
 			executeData,
 			defaultReturnRunIndex,
 			selfData,
@@ -216,14 +222,10 @@ export class TaskManager {
 					runExecutionData.resultData.metadata[k] = v;
 				});
 			}
-			return resultData.result as T;
-		} catch (e) {
-			if (typeof e === 'string') {
-				throw new TaskError(e, {
-					level: 'error',
-				});
-			}
-			throw e;
+
+			return createResultOk(resultData.result as TData);
+		} catch (e: unknown) {
+			return createResultError(e as TError);
 		} finally {
 			this.tasks.delete(taskId);
 		}
@@ -311,6 +313,7 @@ export class TaskManager {
 				contextNodeName: jd.contextNodeName,
 				defaultReturnRunIndex: jd.defaultReturnRunIndex,
 				mode: jd.mode,
+				envProviderState: jd.envProviderState,
 				node: jd.node,
 				runExecutionData: jd.runExecutionData,
 				runIndex: jd.runIndex,

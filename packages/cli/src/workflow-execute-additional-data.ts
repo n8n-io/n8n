@@ -6,6 +6,13 @@
 import type { PushType } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import { WorkflowExecute } from 'n8n-core';
+import {
+	ApplicationError,
+	ErrorReporterProxy as ErrorReporter,
+	NodeOperationError,
+	Workflow,
+	WorkflowHooks,
+} from 'n8n-workflow';
 import type {
 	IDataObject,
 	IExecuteData,
@@ -28,13 +35,7 @@ import type {
 	ITaskDataConnections,
 	ExecuteWorkflowOptions,
 	IWorkflowExecutionDataProcess,
-} from 'n8n-workflow';
-import {
-	ApplicationError,
-	ErrorReporterProxy as ErrorReporter,
-	NodeOperationError,
-	Workflow,
-	WorkflowHooks,
+	EnvProviderState,
 } from 'n8n-workflow';
 import { Container } from 'typedi';
 
@@ -1008,6 +1009,7 @@ export async function getBase(
 			connectionInputData: INodeExecutionData[],
 			siblingParameters: INodeParameters,
 			mode: WorkflowExecuteMode,
+			envProviderState: EnvProviderState,
 			executeData?: IExecuteData,
 			defaultReturnRunIndex?: number,
 			selfData?: IDataObject,
@@ -1028,6 +1030,7 @@ export async function getBase(
 				connectionInputData,
 				siblingParameters,
 				mode,
+				envProviderState,
 				executeData,
 				defaultReturnRunIndex,
 				selfData,

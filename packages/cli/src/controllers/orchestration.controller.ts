@@ -28,11 +28,4 @@ export class OrchestrationController {
 		if (!this.licenseService.isWorkerViewLicensed()) return;
 		return await this.orchestrationService.getWorkerStatus();
 	}
-
-	@GlobalScope('orchestration:list')
-	@Post('/worker/ids')
-	async getWorkerIdsAll() {
-		if (!this.licenseService.isWorkerViewLicensed()) return;
-		return await this.orchestrationService.getWorkerIds();
-	}
 }

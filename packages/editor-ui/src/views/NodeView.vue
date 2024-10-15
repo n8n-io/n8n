@@ -161,6 +161,7 @@ import {
 	getConnectorPaintStyleData,
 	OVERLAY_ENDPOINT_ARROW_ID,
 	getEndpointScope,
+	generateOffsets,
 } from '@/utils/nodeViewUtils';
 import { useViewStacks } from '@/components/Node/NodeCreator/composables/useViewStacks';
 import { useExternalHooks } from '@/composables/useExternalHooks';
@@ -2275,12 +2276,6 @@ export default defineComponent({
 						);
 
 						if (sourceNodeType) {
-							const offsets = [
-								[-100, 100],
-								[-140, 0, 140],
-								[-240, -100, 100, 240],
-							];
-
 							const sourceNodeOutputs = NodeHelpers.getNodeOutputs(
 								workflow,
 								lastSelectedNode,
@@ -2293,7 +2288,11 @@ export default defineComponent({
 							);
 
 							if (sourceNodeOutputMainOutputs.length > 1) {
-								const offset = offsets[sourceNodeOutputMainOutputs.length - 2];
+								const offset = generateOffsets(
+									sourceNodeOutputMainOutputs.length,
+									NodeViewUtils.NODE_SIZE,
+									NodeViewUtils.GRID_SIZE,
+								);
 								const sourceOutputIndex = lastSelectedConnection.__meta
 									? lastSelectedConnection.__meta.sourceOutputIndex
 									: 0;

@@ -178,6 +178,7 @@ const versionDescription: INodeTypeDescription = {
 			displayOptions: {
 				show: {
 					include: ['selected'],
+					'@version': [3, 3.1, 3.2],
 				},
 			},
 		},
@@ -193,6 +194,45 @@ const versionDescription: INodeTypeDescription = {
 			displayOptions: {
 				show: {
 					include: ['except'],
+					'@version': [3, 3.1, 3.2],
+				},
+			},
+		},
+		{
+			displayName: 'Fields to Include',
+			name: 'includeFields',
+			type: 'string',
+			default: '',
+			placeholder: 'e.g. fieldToInclude1,fieldToInclude2',
+			description:
+				'Comma-separated list of the field names you want to include in the output. You can drag the selected fields from the input panel.',
+			requiresDataPath: 'multiple',
+			displayOptions: {
+				show: {
+					include: ['selected'],
+					'/includeOtherFields': [true],
+				},
+				hide: {
+					'@version': [3, 3.1, 3.2],
+				},
+			},
+		},
+		{
+			displayName: 'Fields to Exclude',
+			name: 'excludeFields',
+			type: 'string',
+			default: '',
+			placeholder: 'e.g. fieldToExclude1,fieldToExclude2',
+			description:
+				'Comma-separated list of the field names you want to exclude from the output. You can drag the selected fields from the input panel.',
+			requiresDataPath: 'multiple',
+			displayOptions: {
+				show: {
+					include: ['except'],
+					'/includeOtherFields': [true],
+				},
+				hide: {
+					'@version': [3, 3.1, 3.2],
 				},
 			},
 		},
