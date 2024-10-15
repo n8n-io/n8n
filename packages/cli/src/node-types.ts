@@ -52,10 +52,10 @@ export class NodeTypes implements INodeTypes {
 		}
 
 		const node = this.getNode(nodeType);
-		const versionedNode = NodeHelpers.getVersionedNodeType(node.type, version);
-		if (!toolRequested) return versionedNode;
+		const versionedNodeType = NodeHelpers.getVersionedNodeType(node.type, version);
+		if (!toolRequested) return versionedNodeType;
 
-		if (!versionedNode.description.usableAsTool)
+		if (!versionedNodeType.description.usableAsTool)
 			throw new ApplicationError('Node cannot be used as a tool', { extra: { nodeType } });
 
 		const { loadedNodes } = this.loadNodesAndCredentials;
@@ -65,12 +65,12 @@ export class NodeTypes implements INodeTypes {
 
 		// Instead of modifying the existing type, we extend it into a new type object
 		const clonedProperties = Object.create(
-			versionedNode.description.properties,
+			versionedNodeType.description.properties,
 		) as INodeTypeDescription['properties'];
-		const clonedDescription = Object.create(versionedNode.description, {
+		const clonedDescription = Object.create(versionedNodeType.description, {
 			properties: { value: clonedProperties },
 		}) as INodeTypeDescription;
-		const clonedNode = Object.create(versionedNode, {
+		const clonedNode = Object.create(versionedNodeType, {
 			description: { value: clonedDescription },
 		}) as INodeType;
 		const tool = NodeHelpers.convertNodeToAiTool(clonedNode);
