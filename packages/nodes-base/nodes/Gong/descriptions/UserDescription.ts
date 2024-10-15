@@ -12,7 +12,7 @@ import { NodeApiError } from 'n8n-workflow';
 import {
 	getCursorPaginatorUsers,
 	isValidNumberIds,
-	sendErrorPostReceive,
+	handleErrorPostReceive,
 } from '../GenericFunctions';
 
 export const userOperations: INodeProperties[] = [
@@ -39,22 +39,7 @@ export const userOperations: INodeProperties[] = [
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
-						postReceive: [
-							async function (
-								this: IExecuteSingleFunctions,
-								data: INodeExecutionData[],
-								response: IN8nHttpFullResponse,
-							): Promise<INodeExecutionData[]> {
-								if (response.statusCode === 404) {
-									throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
-										message: "The required user doesn't match any existing one",
-										description:
-											"Double-check the value in the parameter 'User to Get' and try again",
-									});
-								}
-								return await sendErrorPostReceive.call(this, data, response);
-							},
-						],
+						postReceive: [handleErrorPostReceive],
 					},
 				},
 			},
@@ -73,25 +58,7 @@ export const userOperations: INodeProperties[] = [
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
-						postReceive: [
-							async function (
-								this: IExecuteSingleFunctions,
-								data: INodeExecutionData[],
-								response: IN8nHttpFullResponse,
-							): Promise<INodeExecutionData[]> {
-								if (response.statusCode === 404) {
-									const userIds = this.getNodeParameter('filters.userIds', '') as string;
-									if (userIds) {
-										throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
-											message: "The Users IDs don't match any existing user",
-											description:
-												"Double-check the values in the parameter 'Users IDs' and try again",
-										});
-									}
-								}
-								return await sendErrorPostReceive.call(this, data, response);
-							},
-						],
+						postReceive: [handleErrorPostReceive],
 					},
 				},
 			},

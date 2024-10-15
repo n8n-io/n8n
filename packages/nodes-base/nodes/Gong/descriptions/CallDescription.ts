@@ -5,7 +5,6 @@ import type {
 	IN8nHttpFullResponse,
 	INodeExecutionData,
 	INodeProperties,
-	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
@@ -13,7 +12,7 @@ import {
 	getCursorPaginatorCalls,
 	gongApiPaginateRequest,
 	isValidNumberIds,
-	sendErrorPostReceive,
+	handleErrorPostReceive,
 } from '../GenericFunctions';
 
 export const callOperations: INodeProperties[] = [
@@ -39,22 +38,7 @@ export const callOperations: INodeProperties[] = [
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
-						postReceive: [
-							async function (
-								this: IExecuteSingleFunctions,
-								data: INodeExecutionData[],
-								response: IN8nHttpFullResponse,
-							): Promise<INodeExecutionData[]> {
-								if (response.statusCode === 404) {
-									throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
-										message: "The required call doesn't match any existing one",
-										description:
-											"Double-check the value in the parameter 'Call to Get' and try again",
-									});
-								}
-								return await sendErrorPostReceive.call(this, data, response);
-							},
-						],
+						postReceive: [handleErrorPostReceive],
 					},
 				},
 				action: 'Get call',
@@ -73,28 +57,7 @@ export const callOperations: INodeProperties[] = [
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
-						postReceive: [
-							async function (
-								this: IExecuteSingleFunctions,
-								data: INodeExecutionData[],
-								response: IN8nHttpFullResponse,
-							): Promise<INodeExecutionData[]> {
-								if (response.statusCode === 404) {
-									const primaryUserId = this.getNodeParameter(
-										'filters.primaryUserIds',
-										{},
-									) as IDataObject;
-									if (Object.keys(primaryUserId).length !== 0) {
-										return [{ json: { success: true } }];
-									}
-								} else if (response.statusCode === 400 || response.statusCode === 500) {
-									throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
-										description: 'Double-check the value(s) in the parameter(s)',
-									});
-								}
-								return await sendErrorPostReceive.call(this, data, response);
-							},
-						],
+						postReceive: [handleErrorPostReceive],
 					},
 				},
 				action: 'Get many calls',

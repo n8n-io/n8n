@@ -153,14 +153,58 @@ export const getCursorPaginatorUsers = () => {
 	return getCursorPaginator(extractUsers);
 };
 
-export async function sendErrorPostReceive(
+export async function handleErrorPostReceive(
 	this: IExecuteSingleFunctions,
 	data: INodeExecutionData[],
 	response: IN8nHttpFullResponse,
 ): Promise<INodeExecutionData[]> {
 	if (String(response.statusCode).startsWith('4') || String(response.statusCode).startsWith('5')) {
+		const { resource, operation } = this.getNode().parameters;
+
+		if (resource === 'call') {
+			if (operation === 'get') {
+				if (response.statusCode === 404) {
+					throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
+						message: "The required call doesn't match any existing one",
+						description: "Double-check the value in the parameter 'Call to Get' and try again",
+					});
+				}
+			} else if (operation === 'getAll') {
+				if (response.statusCode === 404) {
+					const primaryUserId = this.getNodeParameter('filters.primaryUserIds', {}) as IDataObject;
+					if (Object.keys(primaryUserId).length !== 0) {
+						return [{ json: { success: true } }];
+					}
+				} else if (response.statusCode === 400 || response.statusCode === 500) {
+					throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
+						description: 'Double-check the value(s) in the parameter(s)',
+					});
+				}
+			}
+		} else if (resource === 'user') {
+			if (operation === 'get') {
+				if (response.statusCode === 404) {
+					throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
+						message: "The required user doesn't match any existing one",
+						description: "Double-check the value in the parameter 'User to Get' and try again",
+					});
+				}
+			} else if (operation === 'getAll') {
+				if (response.statusCode === 404) {
+					const userIds = this.getNodeParameter('filters.userIds', '') as string;
+					if (userIds) {
+						throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
+							message: "The Users IDs don't match any existing user",
+							description: "Double-check the values in the parameter 'Users IDs' and try again",
+						});
+					}
+				}
+			}
+		}
+
 		throw new NodeApiError(this.getNode(), response as unknown as JsonObject);
 	}
+
 	return data;
 }
 
