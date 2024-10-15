@@ -48,10 +48,8 @@ const command = setupTestCommand(Worker);
 test('worker initializes all its components', async () => {
 	config.set('executions.mode', 'regular'); // should be overridden
 
-	const worker = await command.run();
-	expect(worker.queueModeId).toBeDefined();
-	expect(worker.queueModeId).toContain('worker');
-	expect(worker.queueModeId.length).toBeGreaterThan(15);
+	await command.run();
+
 	expect(license.init).toHaveBeenCalledTimes(1);
 	expect(binaryDataService.init).toHaveBeenCalledTimes(1);
 	expect(externalHooks.init).toHaveBeenCalledTimes(1);

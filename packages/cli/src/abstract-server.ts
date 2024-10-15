@@ -5,7 +5,6 @@ import { engine as expressHandlebars } from 'express-handlebars';
 import { readFile } from 'fs/promises';
 import type { Server } from 'http';
 import isbot from 'isbot';
-import type { InstanceType } from 'n8n-core';
 import { Container, Service } from 'typedi';
 
 import config from '@/config';
@@ -22,7 +21,6 @@ import { TestWebhooks } from '@/webhooks/test-webhooks';
 import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
 import { createWebhookHandlerFor } from '@/webhooks/webhook-request-handler';
 
-import { generateHostInstanceId } from './databases/utils/generators';
 import { ServiceUnavailableError } from './errors/response-errors/service-unavailable.error';
 
 @Service()
@@ -61,7 +59,7 @@ export abstract class AbstractServer {
 
 	readonly uniqueInstanceId: string;
 
-	constructor(instanceType: Exclude<InstanceType, 'worker'>) {
+	constructor() {
 		this.app = express();
 		this.app.disable('x-powered-by');
 
@@ -84,8 +82,6 @@ export abstract class AbstractServer {
 		this.endpointWebhook = this.globalConfig.endpoints.webhook;
 		this.endpointWebhookTest = this.globalConfig.endpoints.webhookTest;
 		this.endpointWebhookWaiting = this.globalConfig.endpoints.webhookWaiting;
-
-		this.uniqueInstanceId = generateHostInstanceId(instanceType);
 
 		this.logger = Container.get(Logger);
 	}

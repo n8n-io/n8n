@@ -24,10 +24,6 @@ export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 		super();
 	}
 
-	get instanceId() {
-		return config.getEnv('redis.queueModeId');
-	}
-
 	private leaderKey: string;
 
 	private readonly leaderKeyTtl = config.getEnv('multiMainSetup.ttl');
@@ -57,16 +53,18 @@ export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 	private async checkLeader() {
 		const leaderId = await this.publisher.get(this.leaderKey);
 
-		if (leaderId === this.instanceId) {
-			this.logger.debug(`[Instance ID ${this.instanceId}] Leader is this instance`);
+		const { hostId } = this.instanceSettings;
+
+		if (leaderId === hostId) {
+			this.logger.debug(`[Instance ID ${hostId}] Leader is this instance`);
 
 			await this.publisher.setExpiration(this.leaderKey, this.leaderKeyTtl);
 
 			return;
 		}
 
-		if (leaderId && leaderId !== this.instanceId) {
-			this.logger.debug(`[Instance ID ${this.instanceId}] Leader is other instance "${leaderId}"`);
+		if (leaderId && leaderId !== hostId) {
+			this.logger.debug(`[Instance ID ${hostId}] Leader is other instance "${leaderId}"`);
 
 			if (this.instanceSettings.isLeader) {
 				this.instanceSettings.markAsFollower();
@@ -81,7 +79,7 @@ export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 
 		if (!leaderId) {
 			this.logger.debug(
-				`[Instance ID ${this.instanceId}] Leadership vacant, attempting to become leader...`,
+				`[Instance ID ${hostId}] Leadership vacant, attempting to become leader...`,
 			);
 
 			this.instanceSettings.markAsFollower();
@@ -96,11 +94,13 @@ export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 	}
 
 	private async tryBecomeLeader() {
+		const { hostId } = this.instanceSettings;
+
 		// this can only succeed if leadership is currently vacant
-		const keySetSuccessfully = await this.publisher.setIfNotExists(this.leaderKey, this.instanceId);
+		const keySetSuccessfully = await this.publisher.setIfNotExists(this.leaderKey, hostId);
 
 		if (keySetSuccessfully) {
-			this.logger.debug(`[Instance ID ${this.instanceId}] Leader is now this instance`);
+			this.logger.debug(`[Instance ID ${hostId}] Leader is now this instance`);
 
 			this.instanceSettings.markAsLeader();
 
