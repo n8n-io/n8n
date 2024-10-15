@@ -10,7 +10,7 @@ export class GongApi implements ICredentialType {
 
 	displayName = 'Gong API';
 
-	documentationUrl = 'https://gong.app.gong.io/settings/api/documentation';
+	documentationUrl = 'gong';
 
 	properties: INodeProperties[] = [
 		{

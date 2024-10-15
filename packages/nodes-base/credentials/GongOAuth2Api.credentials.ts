@@ -7,7 +7,7 @@ export class GongOAuth2Api implements ICredentialType {
 
 	displayName = 'Gong OAuth2 API';
 
-	documentationUrl = 'https://help.gong.io/docs/create-an-app-for-gong';
+	documentationUrl = 'gong';
 
 	properties: INodeProperties[] = [
 		{
