@@ -106,7 +106,7 @@ export async function gongApiPaginateRequest(
 	}
 }
 
-export const getCursorPaginator = (rootProperty: string | null = null) => {
+const getCursorPaginator = (extractItems: (page: INodeExecutionData) => INodeExecutionData[]) => {
 	return async function cursorPagination(
 		this: IExecutePaginationFunctions,
 		requestOptions: DeclarativeRestApiSettings.ResultOptions,
@@ -116,69 +116,41 @@ export const getCursorPaginator = (rootProperty: string | null = null) => {
 		let nextCursor: string | undefined = undefined;
 		const returnAll = this.getNodeParameter('returnAll', true) as boolean;
 
-		const extractItems = (page: INodeExecutionData) => {
-			let items: IDataObject[] = [page.json];
-			if (rootProperty) {
-				const paths = toPath(rootProperty);
-				for (const path of paths) {
-					items = items.flatMap((x) => get(x, path)) as IDataObject[];
-				}
-			}
-			if (items.length > 0) {
-				executions = executions.concat(items.map((item) => ({ json: item })));
-			}
-		};
-
 		do {
 			(requestOptions.options.body as IDataObject).cursor = nextCursor;
 			responseData = await this.makeRoutingRequest(requestOptions);
 			const lastItem = responseData[responseData.length - 1].json;
 			nextCursor = (lastItem.records as IDataObject)?.cursor as string | undefined;
-			responseData.forEach(extractItems);
+			for (const page of responseData) {
+				executions = executions.concat(extractItems(page));
+			}
 		} while (returnAll && nextCursor);
 
 		return executions;
 	};
 };
 
+const extractCalls = (page: INodeExecutionData): INodeExecutionData[] => {
+	const items: IDataObject[] = get(page.json, 'calls') as IDataObject[];
+	return items
+		.filter((item) => item?.metaData)
+		.map((item) => {
+			const { metaData, ...rest } = item;
+			return { json: { ...(metaData as IDataObject), ...rest } };
+		});
+};
+
+const extractUsers = (page: INodeExecutionData): INodeExecutionData[] => {
+	const items: IDataObject[] = get(page.json, 'users') as IDataObject[];
+	return items.map((item) => ({ json: item }));
+};
+
 export const getCursorPaginatorCalls = () => {
-	return async function cursorPagination(
-		this: IExecutePaginationFunctions,
-		requestOptions: DeclarativeRestApiSettings.ResultOptions,
-	): Promise<INodeExecutionData[]> {
-		let executions: INodeExecutionData[] = [];
-		let responseData: INodeExecutionData[];
-		let nextCursor: string | undefined = undefined;
-		const returnAll = this.getNodeParameter('returnAll', true) as boolean;
+	return getCursorPaginator(extractCalls);
+};
 
-		const extractItems = (page: INodeExecutionData) => {
-			let items: IDataObject[] = [page.json];
-			items = items.flatMap((x) => get(x, 'calls')) as IDataObject[];
-			if (items.length > 0) {
-				for (let i = 0; i < items.length; i++) {
-					const item = items[i];
-					if (item?.metaData) {
-						items[i] = {
-							...(item.metaData as IDataObject),
-							...item,
-						};
-						delete items[i].metaData;
-					}
-				}
-				executions = executions.concat(items.map((item) => ({ json: item })));
-			}
-		};
-
-		do {
-			(requestOptions.options.body as IDataObject).cursor = nextCursor;
-			responseData = await this.makeRoutingRequest(requestOptions);
-			const lastItem = responseData[responseData.length - 1].json;
-			nextCursor = (lastItem.records as IDataObject)?.cursor as string | undefined;
-			responseData.forEach(extractItems);
-		} while (returnAll && nextCursor);
-
-		return executions;
-	};
+export const getCursorPaginatorUsers = () => {
+	return getCursorPaginator(extractUsers);
 };
 
 export async function sendErrorPostReceive(

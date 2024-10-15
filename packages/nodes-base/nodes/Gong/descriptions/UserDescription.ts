@@ -9,7 +9,11 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import { getCursorPaginator, isValidNumberIds, sendErrorPostReceive } from '../GenericFunctions';
+import {
+	getCursorPaginatorUsers,
+	isValidNumberIds,
+	sendErrorPostReceive,
+} from '../GenericFunctions';
 
 export const userOperations: INodeProperties[] = [
 	{
@@ -176,7 +180,7 @@ const getAllOperation: INodeProperties[] = [
 				paginate: '={{ $value }}',
 			},
 			operations: {
-				pagination: getCursorPaginator('users'),
+				pagination: getCursorPaginatorUsers(),
 			},
 		},
 		type: 'boolean',
