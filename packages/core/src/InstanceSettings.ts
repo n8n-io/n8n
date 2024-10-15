@@ -2,7 +2,6 @@ import { createHash, randomBytes } from 'crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { ApplicationError, jsonParse, ALPHABET } from 'n8n-workflow';
 import { customAlphabet } from 'nanoid';
-import { strict } from 'node:assert';
 import path from 'path';
 import { Service } from 'typedi';
 
@@ -59,6 +58,8 @@ export class InstanceSettings {
 		this.instanceType = ['webhook', 'worker'].includes(command)
 			? (command as InstanceType)
 			: 'main';
+
+		this.hostId = `${this.instanceType}-${nanoid()}`;
 	}
 
 	/**
@@ -79,13 +80,7 @@ export class InstanceSettings {
 	 * @example 'worker-nDJR0FnSd2Vf6DB5'
 	 * @example 'webhook-jxQ7AO8IzxEtfW1F'
 	 */
-	hostId = '';
-
-	setHostId() {
-		strict(this.hostId === '', 'Expected `hostId` to be unset');
-
-		this.hostId = `${this.instanceType}-${nanoid()}`;
-	}
+	readonly hostId: string;
 
 	get isLeader() {
 		return this.instanceRole === 'leader';

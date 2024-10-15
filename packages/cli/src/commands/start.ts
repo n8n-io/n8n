@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import { Flags, type Config } from '@oclif/core';
+import { Flags } from '@oclif/core';
 import glob from 'fast-glob';
 import { createReadStream, createWriteStream, existsSync } from 'fs';
 import { mkdir } from 'fs/promises';
@@ -69,11 +69,6 @@ export class Start extends BaseCommand {
 	protected server = Container.get(Server);
 
 	override needsCommunityPackages = true;
-
-	constructor(argv: string[], cmdConfig: Config) {
-		super(argv, cmdConfig);
-		this.instanceSettings.setHostId();
-	}
 
 	/**
 	 * Opens the UI in browser

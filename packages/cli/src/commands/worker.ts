@@ -68,8 +68,6 @@ export class Worker extends BaseCommand {
 		super(argv, cmdConfig);
 
 		this.logger = Container.get(Logger).withScope('scaling');
-
-		this.instanceSettings.setHostId();
 	}
 
 	async init() {

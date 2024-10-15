@@ -1,4 +1,4 @@
-import { Flags, type Config } from '@oclif/core';
+import { Flags } from '@oclif/core';
 import { ApplicationError } from 'n8n-workflow';
 import { Container } from 'typedi';
 
@@ -23,11 +23,6 @@ export class Webhook extends BaseCommand {
 	protected server = Container.get(WebhookServer);
 
 	override needsCommunityPackages = true;
-
-	constructor(argv: string[], cmdConfig: Config) {
-		super(argv, cmdConfig);
-		this.instanceSettings.setHostId();
-	}
 
 	/**
 	 * Stops n8n in a graceful way.
