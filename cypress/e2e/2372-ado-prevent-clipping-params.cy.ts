@@ -68,9 +68,19 @@ describe('ADO-2362 ADO-2350 NDV Prevent clipping long parameters and scrolling t
 
 		ndv.getters.inlineExpressionEditorInput().eq(0).should('be.visible');
 		// should be scrolled at top
-		ndv.getters.inlineExpressionEditorInput().eq(0).find('.cm-line').eq(0).should('have.text', '1 visible!');
+		ndv.getters
+			.inlineExpressionEditorInput()
+			.eq(0)
+			.find('.cm-line')
+			.eq(0)
+			.should('have.text', '1 visible!');
 		ndv.getters.inlineExpressionEditorInput().eq(0).find('.cm-line').eq(0).should('be.visible');
-		ndv.getters.inlineExpressionEditorInput().eq(0).find('.cm-line').eq(6).should('have.text', '7 not visible!');
+		ndv.getters
+			.inlineExpressionEditorInput()
+			.eq(0)
+			.find('.cm-line')
+			.eq(6)
+			.should('have.text', '7 not visible!');
 		ndv.getters.inlineExpressionEditorInput().eq(0).find('.cm-line').eq(6).should('not.be.visible');
 	});
 });
