@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 
-import { ActiveWorkflows, NodeExecuteFunctions } from 'n8n-core';
+import { ActiveWorkflows, InstanceSettings, NodeExecuteFunctions } from 'n8n-core';
 import type {
 	ExecutionError,
 	IDeferredPromise,
@@ -74,6 +74,7 @@ export class ActiveWorkflowManager {
 		private readonly workflowStaticDataService: WorkflowStaticDataService,
 		private readonly activeWorkflowsService: ActiveWorkflowsService,
 		private readonly workflowExecutionService: WorkflowExecutionService,
+		private readonly instanceSettings: InstanceSettings,
 	) {}
 
 	async init() {
@@ -423,7 +424,7 @@ export class ActiveWorkflowManager {
 
 		if (dbWorkflows.length === 0) return;
 
-		if (this.orchestrationService.isLeader) {
+		if (this.instanceSettings.isLeader) {
 			this.logger.info(' ================================');
 			this.logger.info('   Start Active Workflows:');
 			this.logger.info(' ================================');

@@ -15,6 +15,7 @@ vi.mock('vue-router', () => ({
 		fullPath: vi.fn(),
 	}),
 	RouterLink: vi.fn(),
+	useRouter: vi.fn(),
 }));
 
 let route: ReturnType<typeof useRoute>;

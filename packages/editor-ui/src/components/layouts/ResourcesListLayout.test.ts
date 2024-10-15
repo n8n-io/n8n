@@ -10,6 +10,7 @@ vi.mock('vue-router', async (importOriginal) => {
 		useRoute: () => ({
 			params: {},
 		}),
+		useRouter: vi.fn(),
 	};
 });
 

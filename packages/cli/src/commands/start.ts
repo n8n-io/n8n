@@ -21,7 +21,7 @@ import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus'
 import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { License } from '@/license';
-import { SingleMainTaskManager } from '@/runners/task-managers/single-main-task-manager';
+import { LocalTaskManager } from '@/runners/task-managers/local-task-manager';
 import { TaskManager } from '@/runners/task-managers/task-manager';
 import { PubSubHandler } from '@/scaling/pubsub/pubsub-handler';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
@@ -174,8 +174,9 @@ export class Start extends BaseCommand {
 
 		this.logger.info('Initializing n8n process');
 		if (config.getEnv('executions.mode') === 'queue') {
-			this.logger.debug('Main Instance running in queue mode');
-			this.logger.debug(`Queue mode id: ${this.queueModeId}`);
+			const scopedLogger = this.logger.withScope('scaling');
+			scopedLogger.debug('Starting main instance in scaling mode');
+			scopedLogger.debug(`Host ID: ${this.queueModeId}`);
 		}
 
 		const { flags } = await this.parse(Start);
@@ -226,7 +227,7 @@ export class Start extends BaseCommand {
 		}
 
 		if (!this.globalConfig.taskRunners.disabled) {
-			Container.set(TaskManager, new SingleMainTaskManager());
+			Container.set(TaskManager, new LocalTaskManager());
 			const { TaskRunnerServer } = await import('@/runners/task-runner-server');
 			const taskRunnerServer = Container.get(TaskRunnerServer);
 			await taskRunnerServer.start();
@@ -259,6 +260,8 @@ export class Start extends BaseCommand {
 		const subscriber = Container.get(Subscriber);
 		await subscriber.subscribe('n8n.commands');
 		await subscriber.subscribe('n8n.worker-response');
+
+		this.logger.withScope('scaling').debug('Pubsub setup completed');
 
 		if (!orchestrationService.isMultiMainSetupEnabled) return;
 
