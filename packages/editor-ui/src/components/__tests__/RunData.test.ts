@@ -23,7 +23,7 @@ const nodes = [
 ] as INodeUi[];
 
 describe('RunData', () => {
-	it("should render pin button in output panel disabled if there's binary data", () => {
+	it("should render pin button in output panel disabled when there's binary data", () => {
 		const { getByTestId } = render(
 			[
 				{
@@ -43,7 +43,7 @@ describe('RunData', () => {
 		expect(getByTestId('ndv-pin-data')).toHaveAttribute('disabled');
 	});
 
-	it("should not render pin button in input panel disabled even if there's binary data", () => {
+	it("should not render pin button in input panel when there's binary data", () => {
 		const { queryByTestId } = render(
 			[
 				{
