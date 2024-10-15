@@ -111,6 +111,10 @@ export function prepareOptions(options: IDataObject, guildId?: string) {
 		};
 	}
 
+	if (options.raw_json) {
+		return {...options, ...(JSON.parse(options.raw_json))}
+	}
+
 	return options;
 }
 
