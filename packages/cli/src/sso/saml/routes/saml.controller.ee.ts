@@ -10,6 +10,7 @@ import { AuthError } from '@/errors/response-errors/auth.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
 import { AuthenticatedRequest } from '@/requests';
+import { sendErrorResponse } from '@/response-helper';
 import { UrlService } from '@/services/url.service';
 
 import {
@@ -149,7 +150,8 @@ export class SamlController {
 				userEmail: loginResult.attributes.email ?? 'unknown',
 				authenticationMethod: 'saml',
 			});
-			throw new AuthError('SAML Authentication failed');
+			// Need to manually send the error response since we're using templates
+			return sendErrorResponse(res, new AuthError('SAML Authentication failed'));
 		} catch (error) {
 			if (isConnectionTestRequest(req)) {
 				return res.render('saml-connection-test-failed', { message: (error as Error).message });
@@ -158,7 +160,11 @@ export class SamlController {
 				userEmail: 'unknown',
 				authenticationMethod: 'saml',
 			});
-			throw new AuthError('SAML Authentication failed: ' + (error as Error).message);
+			// Need to manually send the error response since we're using templates
+			return sendErrorResponse(
+				res,
+				new AuthError('SAML Authentication failed: ' + (error as Error).message),
+			);
 		}
 	}
 
