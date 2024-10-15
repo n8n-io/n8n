@@ -1,5 +1,4 @@
-import { ClientSecretCredential } from '@azure/identity';
-import { SecretClient } from '@azure/keyvault-secrets';
+import type { SecretClient } from '@azure/keyvault-secrets';
 import type { INodeProperties } from 'n8n-workflow';
 
 import { DOCS_HELP_NOTICE, EXTERNAL_SECRETS_NAME_REGEX } from '@/external-secrets/constants';
@@ -71,6 +70,9 @@ export class AzureKeyVault implements SecretsProvider {
 
 	async connect() {
 		const { vaultName, tenantId, clientId, clientSecret } = this.settings;
+
+		const { ClientSecretCredential } = await import('@azure/identity');
+		const { SecretClient } = await import('@azure/keyvault-secrets');
 
 		try {
 			const credential = new ClientSecretCredential(tenantId, clientId, clientSecret);
