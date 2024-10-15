@@ -1,6 +1,8 @@
 process.argv[2] = 'worker';
 
+import { TaskRunnersConfig } from '@n8n/config';
 import { BinaryDataService } from 'n8n-core';
+import Container from 'typedi';
 
 import { Worker } from '@/commands/worker';
 import config from '@/config';
@@ -11,8 +13,8 @@ import { ExternalSecretsManager } from '@/external-secrets/external-secrets-mana
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Push } from '@/push';
-import { TaskRunnerAuthController } from '@/runners/auth/task-runner-auth.controller';
-import { TaskRunnerAuthService } from '@/runners/auth/task-runner-auth.service';
+import { TaskRunnerProcess } from '@/runners/task-runner-process';
+import { TaskRunnerServer } from '@/runners/task-runner-server';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { ScalingService } from '@/scaling/scaling.service';
@@ -24,6 +26,7 @@ import { mockInstance } from '../../shared/mocking';
 
 config.set('executions.mode', 'queue');
 config.set('binaryDataManager.availableModes', 'filesystem');
+Container.get(TaskRunnersConfig).disabled = false;
 mockInstance(LoadNodesAndCredentials);
 const binaryDataService = mockInstance(BinaryDataService);
 const externalHooks = mockInstance(ExternalHooks);
@@ -33,12 +36,12 @@ const messageEventBus = mockInstance(MessageEventBus);
 const logStreamingEventRelay = mockInstance(LogStreamingEventRelay);
 const scalingService = mockInstance(ScalingService);
 const orchestrationWorkerService = mockInstance(OrchestrationWorkerService);
+const taskRunnerServer = mockInstance(TaskRunnerServer);
+const taskRunnerProcess = mockInstance(TaskRunnerProcess);
 mockInstance(Publisher);
 mockInstance(Subscriber);
 mockInstance(Telemetry);
 mockInstance(Push);
-mockInstance(TaskRunnerAuthService, { createGrantToken: async () => '1234' });
-mockInstance(TaskRunnerAuthController);
 
 const command = setupTestCommand(Worker);
 
@@ -59,6 +62,8 @@ test('worker initializes all its components', async () => {
 	expect(logStreamingEventRelay.init).toHaveBeenCalledTimes(1);
 	expect(orchestrationWorkerService.init).toHaveBeenCalledTimes(1);
 	expect(messageEventBus.send).toHaveBeenCalledTimes(1);
+	expect(taskRunnerServer.start).toHaveBeenCalledTimes(1);
+	expect(taskRunnerProcess.start).toHaveBeenCalledTimes(1);
 
 	expect(config.getEnv('executions.mode')).toBe('queue');
 });
