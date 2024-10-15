@@ -1,4 +1,5 @@
 import type { Redis as SingleNodeClient, Cluster as MultiNodeClient } from 'ioredis';
+import { InstanceSettings } from 'n8n-core';
 import { Service } from 'typedi';
 
 import config from '@/config';
@@ -20,6 +21,7 @@ export class Publisher {
 	constructor(
 		private readonly logger: Logger,
 		private readonly redisClientService: RedisClientService,
+		private readonly instanceSettings: InstanceSettings,
 	) {
 		// @TODO: Once this class is only ever initialized in scaling mode, throw in the next line instead.
 		if (config.getEnv('executions.mode') !== 'queue') return;
@@ -48,7 +50,7 @@ export class Publisher {
 			'n8n.commands',
 			JSON.stringify({
 				...msg,
-				senderId: config.getEnv('redis.queueModeId'),
+				senderId: this.instanceSettings.hostId,
 				selfSend: SELF_SEND_COMMANDS.has(msg.command),
 				debounce: !IMMEDIATE_COMMANDS.has(msg.command),
 			}),

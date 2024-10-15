@@ -43,10 +43,6 @@ export class OrchestrationService {
 		return !this.isMultiMainSetupEnabled;
 	}
 
-	get instanceId() {
-		return config.getEnv('redis.queueModeId');
-	}
-
 	sanityCheck() {
 		return this.isInitialized && config.get('executions.mode') === 'queue';
 	}
@@ -94,7 +90,7 @@ export class OrchestrationService {
 		if (!this.sanityCheck()) return;
 
 		this.logger.debug(
-			`[Instance ID ${this.instanceId}] Publishing command "${commandKey}"`,
+			`[Instance ID ${this.instanceSettings.hostId}] Publishing command "${commandKey}"`,
 			payload,
 		);
 
