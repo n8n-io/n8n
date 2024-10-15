@@ -22,8 +22,10 @@ export class GongApi implements ICredentialType {
 		{
 			displayName: 'Access Key',
 			name: 'accessKey',
-			// eslint-disable-next-line n8n-nodes-base/cred-class-field-type-options-password-missing
 			type: 'string',
+			typeOptions: {
+				password: true,
+			},
 			default: '',
 		},
 		{
