@@ -112,7 +112,7 @@ export class ScalingService {
 		const msg: JobFailedMessage = {
 			kind: 'job-failed',
 			executionId,
-			workerId: config.getEnv('redis.queueModeId'),
+			workerId: this.instanceSettings.hostId,
 			errorMsg: error.message,
 		};
 

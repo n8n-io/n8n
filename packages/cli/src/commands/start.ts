@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import { Flags, type Config } from '@oclif/core';
+import { Flags } from '@oclif/core';
 import glob from 'fast-glob';
 import { createReadStream, createWriteStream, existsSync } from 'fs';
 import { mkdir } from 'fs/promises';
@@ -69,11 +69,6 @@ export class Start extends BaseCommand {
 	protected server = Container.get(Server);
 
 	override needsCommunityPackages = true;
-
-	constructor(argv: string[], cmdConfig: Config) {
-		super(argv, cmdConfig);
-		this.setInstanceQueueModeId();
-	}
 
 	/**
 	 * Opens the UI in browser
@@ -176,7 +171,7 @@ export class Start extends BaseCommand {
 		if (config.getEnv('executions.mode') === 'queue') {
 			const scopedLogger = this.logger.withScope('scaling');
 			scopedLogger.debug('Starting main instance in scaling mode');
-			scopedLogger.debug(`Host ID: ${this.queueModeId}`);
+			scopedLogger.debug(`Host ID: ${this.instanceSettings.hostId}`);
 		}
 
 		const { flags } = await this.parse(Start);
