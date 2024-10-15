@@ -1,4 +1,4 @@
-import { Flags, type Config } from '@oclif/core';
+import { Flags } from '@oclif/core';
 import { ApplicationError } from 'n8n-workflow';
 import { Container } from 'typedi';
 
@@ -23,14 +23,6 @@ export class Webhook extends BaseCommand {
 	protected server = Container.get(WebhookServer);
 
 	override needsCommunityPackages = true;
-
-	constructor(argv: string[], cmdConfig: Config) {
-		super(argv, cmdConfig);
-		if (this.queueModeId) {
-			this.logger.debug(`Webhook Instance queue mode id: ${this.queueModeId}`);
-		}
-		this.setInstanceQueueModeId();
-	}
 
 	/**
 	 * Stops n8n in a graceful way.
@@ -71,8 +63,8 @@ export class Webhook extends BaseCommand {
 		await this.initCrashJournal();
 		this.logger.debug('Crash journal initialized');
 
-		this.logger.info('Initializing n8n webhook process');
-		this.logger.debug(`Queue mode id: ${this.queueModeId}`);
+		this.logger.info('Starting n8n webhook process...');
+		this.logger.debug(`Host ID: ${this.instanceSettings.hostId}`);
 
 		await super.init();
 
@@ -100,7 +92,6 @@ export class Webhook extends BaseCommand {
 		const { ScalingService } = await import('@/scaling/scaling.service');
 		await Container.get(ScalingService).setupQueue();
 		await this.server.start();
-		this.logger.debug(`Webhook listener ID: ${this.server.uniqueInstanceId}`);
 		this.logger.info('Webhook listener waiting for requests.');
 
 		// Make sure that the process does not close
