@@ -270,7 +270,7 @@ export default defineComponent({
 			);
 		},
 		showPinDataButton(): boolean {
-			if (!this.rawInputData.length || !this.editMode.enabled) {
+			if (!this.rawInputData.length || this.editMode.enabled) {
 				return false;
 			}
 
