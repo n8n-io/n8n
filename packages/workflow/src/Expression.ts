@@ -1,73 +1,119 @@
-/* eslint-disable id-denylist */
-// @ts-ignore
 import * as tmpl from '@n8n_io/riot-tmpl';
 import { DateTime, Duration, Interval } from 'luxon';
 
-// eslint-disable-next-line import/no-cycle
-import {
-	ExpressionError,
+import { ApplicationError } from './errors/application.error';
+import { ExpressionExtensionError } from './errors/expression-extension.error';
+import { ExpressionError } from './errors/expression.error';
+import { evaluateExpression, setErrorHandler } from './ExpressionEvaluatorProxy';
+import { sanitizer, sanitizerName } from './ExpressionSandboxing';
+import { extend, extendOptional } from './Extensions';
+import { extendSyntax } from './Extensions/ExpressionExtension';
+import { extendedFunctions } from './Extensions/ExtendedFunctions';
+import { getGlobalState } from './GlobalState';
+import type {
+	IDataObject,
 	IExecuteData,
 	INode,
 	INodeExecutionData,
+	INodeParameterResourceLocator,
 	INodeParameters,
 	IRunExecutionData,
 	IWorkflowDataProxyAdditionalKeys,
+	IWorkflowDataProxyData,
 	NodeParameterValue,
-	Workflow,
-	WorkflowDataProxy,
+	NodeParameterValueType,
 	WorkflowExecuteMode,
-} from '.';
+} from './Interfaces';
+import type { Workflow } from './Workflow';
+import { WorkflowDataProxy } from './WorkflowDataProxy';
 
-// @ts-ignore
+const IS_FRONTEND_IN_DEV_MODE =
+	typeof process === 'object' &&
+	Object.keys(process).length === 1 &&
+	'env' in process &&
+	Object.keys(process.env).length === 0;
 
-// Set it to use double curly brackets instead of single ones
-// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-tmpl.brackets.set('{{ }}');
+const IS_FRONTEND = typeof process === 'undefined' || IS_FRONTEND_IN_DEV_MODE;
+
+const isSyntaxError = (error: unknown): error is SyntaxError =>
+	error instanceof SyntaxError || (error instanceof Error && error.name === 'SyntaxError');
+
+const isExpressionError = (error: unknown): error is ExpressionError =>
+	error instanceof ExpressionError || error instanceof ExpressionExtensionError;
+
+const isTypeError = (error: unknown): error is TypeError =>
+	error instanceof TypeError || (error instanceof Error && error.name === 'TypeError');
 
 // Make sure that error get forwarded
-// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-tmpl.tmpl.errorHandler = (error: Error) => {
-	if (error instanceof ExpressionError) {
-		if (error.context.failExecution) {
-			throw error;
-		}
-	}
+setErrorHandler((error: Error) => {
+	if (isExpressionError(error)) throw error;
+});
+
+const AsyncFunction = (async () => {}).constructor as FunctionConstructor;
+
+const fnConstructors = {
+	sync: Function.prototype.constructor,
+
+	async: AsyncFunction.prototype.constructor,
+	mock: () => {
+		throw new ExpressionError('Arbitrary code execution detected');
+	},
 };
 
 export class Expression {
-	workflow: Workflow;
+	constructor(private readonly workflow: Workflow) {}
 
-	constructor(workflow: Workflow) {
-		this.workflow = workflow;
+	static resolveWithoutWorkflow(expression: string, data: IDataObject = {}) {
+		return tmpl.tmpl(expression, data);
 	}
 
 	/**
 	 * Converts an object to a string in a way to make it clear that
 	 * the value comes from an object
 	 *
-	 * @param {object} value
-	 * @returns {string}
-	 * @memberof Workflow
 	 */
 	convertObjectValueToString(value: object): string {
-		const typeName = Array.isArray(value) ? 'Array' : 'Object';
-		return `[${typeName}: ${JSON.stringify(value)}]`;
+		if (value instanceof DateTime && value.invalidReason !== null) {
+			throw new ApplicationError('invalid DateTime');
+		}
+
+		if (value === null) {
+			return 'null';
+		}
+
+		let typeName = value.constructor.name ?? 'Object';
+		if (DateTime.isDateTime(value)) {
+			typeName = 'DateTime';
+		}
+
+		let result = '';
+		if (value instanceof Date) {
+			// We don't want to use JSON.stringify for dates since it disregards workflow timezone
+			result = DateTime.fromJSDate(value, {
+				zone: this.workflow.settings?.timezone ?? getGlobalState().defaultTimezone,
+			}).toISO();
+		} else if (DateTime.isDateTime(value)) {
+			result = value.toString();
+		} else {
+			result = JSON.stringify(value);
+		}
+
+		result = result
+			.replace(/,"/g, ', "') // spacing for
+			.replace(/":/g, '": '); // readability
+
+		return `[${typeName}: ${result}]`;
 	}
 
 	/**
-	 * Resolves the paramter value.  If it is an expression it will execute it and
+	 * Resolves the parameter value.  If it is an expression it will execute it and
 	 * return the result. For everything simply the supplied value will be returned.
 	 *
-	 * @param {NodeParameterValue} parameterValue
 	 * @param {(IRunExecutionData | null)} runExecutionData
-	 * @param {number} runIndex
-	 * @param {number} itemIndex
-	 * @param {string} activeNodeName
-	 * @param {INodeExecutionData[]} connectionInputData
 	 * @param {boolean} [returnObjectAsString=false]
-	 * @returns {(NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[])}
-	 * @memberof Workflow
 	 */
+	// TODO: Clean that up at some point and move all the options into an options object
+	// eslint-disable-next-line complexity
 	resolveSimpleParameterValue(
 		parameterValue: NodeParameterValue,
 		siblingParameters: INodeParameters,
@@ -77,11 +123,11 @@ export class Expression {
 		activeNodeName: string,
 		connectionInputData: INodeExecutionData[],
 		mode: WorkflowExecuteMode,
-		timezone: string,
 		additionalKeys: IWorkflowDataProxyAdditionalKeys,
 		executeData?: IExecuteData,
 		returnObjectAsString = false,
 		selfData = {},
+		contextNodeName?: string,
 	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] {
 		// Check if it is an expression
 		if (typeof parameterValue !== 'string' || parameterValue.charAt(0) !== '=') {
@@ -92,7 +138,7 @@ export class Expression {
 		// Is an expression
 
 		// Remove the equal sign
-		// eslint-disable-next-line no-param-reassign
+
 		parameterValue = parameterValue.substr(1);
 
 		// Generate a data proxy which allows to query workflow data
@@ -105,32 +151,33 @@ export class Expression {
 			connectionInputData,
 			siblingParameters,
 			mode,
-			timezone,
 			additionalKeys,
 			executeData,
 			-1,
 			selfData,
+			contextNodeName,
 		);
 		const data = dataProxy.getDataProxy();
 
 		// Support only a subset of process properties
-		// @ts-ignore
-		data.process = {
-			arch: process.arch,
-			env: process.env,
-			platform: process.platform,
-			pid: process.pid,
-			ppid: process.ppid,
-			release: process.release,
-			version: process.pid,
-			versions: process.versions,
-		};
+		data.process =
+			typeof process !== 'undefined'
+				? {
+						arch: process.arch,
+						env: process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE === 'true' ? {} : process.env,
+						platform: process.platform,
+						pid: process.pid,
+						ppid: process.ppid,
+						release: process.release,
+						version: process.pid,
+						versions: process.versions,
+					}
+				: {};
 
 		/**
 		 * Denylist
 		 */
 
-		// @ts-ignore
 		data.document = {};
 		data.global = {};
 		data.window = {};
@@ -170,7 +217,6 @@ export class Expression {
 		data.Reflect = {};
 		data.Proxy = {};
 
-		// @ts-ignore
 		data.constructor = {};
 
 		// Deprecated
@@ -223,11 +269,13 @@ export class Expression {
 		data.Intl = typeof Intl !== 'undefined' ? Intl : {};
 
 		// Text
+		// eslint-disable-next-line id-denylist
 		data.String = String;
 		data.RegExp = RegExp;
 
 		// Math
 		data.Math = Math;
+		// eslint-disable-next-line id-denylist
 		data.Number = Number;
 		data.BigInt = typeof BigInt !== 'undefined' ? BigInt : {};
 		data.Infinity = Infinity;
@@ -250,55 +298,92 @@ export class Expression {
 		data.decodeURIComponent = decodeURIComponent;
 
 		// Other
+		// eslint-disable-next-line id-denylist
 		data.Boolean = Boolean;
 		data.Symbol = Symbol;
 
-		// Execute the expression
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		let returnValue;
-		try {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-			returnValue = tmpl.tmpl(parameterValue, data);
-		} catch (error) {
-			if (error instanceof ExpressionError) {
-				// Ignore all errors except if they are ExpressionErrors and they are supposed
-				// to fail the execution
-				if (error.context.failExecution) {
-					throw error;
-				}
-			}
+		// expression extensions
+		data.extend = extend;
+		data.extendOptional = extendOptional;
+
+		data[sanitizerName] = sanitizer;
+
+		Object.assign(data, extendedFunctions);
+
+		const constructorValidation = new RegExp(/\.\s*constructor/gm);
+		if (parameterValue.match(constructorValidation)) {
+			throw new ExpressionError('Expression contains invalid constructor function call', {
+				causeDetailed: 'Constructor override attempt is not allowed due to security concerns',
+				runIndex,
+				itemIndex,
+			});
 		}
 
+		// Execute the expression
+		const extendedExpression = extendSyntax(parameterValue);
+		const returnValue = this.renderExpression(extendedExpression, data);
 		if (typeof returnValue === 'function') {
-			throw new Error('Expression resolved to a function. Please add "()"');
+			if (returnValue.name === '$') throw new ApplicationError('invalid syntax');
+
+			if (returnValue.name === 'DateTime')
+				throw new ApplicationError('this is a DateTime, please access its methods');
+
+			throw new ApplicationError('this is a function, please add ()');
+		} else if (typeof returnValue === 'string') {
+			return returnValue;
 		} else if (returnValue !== null && typeof returnValue === 'object') {
 			if (returnObjectAsString) {
 				return this.convertObjectValueToString(returnValue);
 			}
 		}
 
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 		return returnValue;
+	}
+
+	private renderExpression(
+		expression: string,
+		data: IWorkflowDataProxyData,
+	): tmpl.ReturnValue | undefined {
+		try {
+			[Function, AsyncFunction].forEach(({ prototype }) =>
+				Object.defineProperty(prototype, 'constructor', { value: fnConstructors.mock }),
+			);
+			return evaluateExpression(expression, data);
+		} catch (error) {
+			if (isExpressionError(error)) throw error;
+
+			if (isSyntaxError(error)) throw new ApplicationError('invalid syntax');
+
+			if (isTypeError(error) && IS_FRONTEND && error.message.endsWith('is not a function')) {
+				const match = error.message.match(/(?<msg>[^.]+is not a function)/);
+
+				if (!match?.groups?.msg) return null;
+
+				throw new ApplicationError(match.groups.msg);
+			}
+		} finally {
+			Object.defineProperty(Function.prototype, 'constructor', { value: fnConstructors.sync });
+			Object.defineProperty(AsyncFunction.prototype, 'constructor', {
+				value: fnConstructors.async,
+			});
+		}
+
+		return null;
 	}
 
 	/**
 	 * Resolves value of parameter. But does not work for workflow-data.
 	 *
-	 * @param {INode} node
 	 * @param {(string | undefined)} parameterValue
-	 * @param {string} [defaultValue]
-	 * @returns {(string | undefined)}
-	 * @memberof Workflow
 	 */
 	getSimpleParameterValue(
 		node: INode,
 		parameterValue: string | boolean | undefined,
 		mode: WorkflowExecuteMode,
-		timezone: string,
 		additionalKeys: IWorkflowDataProxyAdditionalKeys,
 		executeData?: IExecuteData,
-		defaultValue?: boolean | number | string,
-	): boolean | number | string | undefined {
+		defaultValue?: boolean | number | string | unknown[],
+	): boolean | number | string | undefined | unknown[] {
 		if (parameterValue === undefined) {
 			// Value is not set so return the default
 			return defaultValue;
@@ -322,7 +407,6 @@ export class Expression {
 			node.name,
 			connectionInputData,
 			mode,
-			timezone,
 			additionalKeys,
 			executeData,
 		) as boolean | number | string | undefined;
@@ -331,27 +415,18 @@ export class Expression {
 	/**
 	 * Resolves value of complex parameter. But does not work for workflow-data.
 	 *
-	 * @param {INode} node
 	 * @param {(NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[])} parameterValue
 	 * @param {(NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | undefined)} [defaultValue]
-	 * @returns {(NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | undefined)}
-	 * @memberof Workflow
 	 */
 	getComplexParameterValue(
 		node: INode,
 		parameterValue: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
 		mode: WorkflowExecuteMode,
-		timezone: string,
 		additionalKeys: IWorkflowDataProxyAdditionalKeys,
 		executeData?: IExecuteData,
-		defaultValue:
-			| NodeParameterValue
-			| INodeParameters
-			| NodeParameterValue[]
-			| INodeParameters[]
-			| undefined = undefined,
+		defaultValue: NodeParameterValueType | undefined = undefined,
 		selfData = {},
-	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | undefined {
+	): NodeParameterValueType | undefined {
 		if (parameterValue === undefined) {
 			// Value is not set so return the default
 			return defaultValue;
@@ -376,7 +451,6 @@ export class Expression {
 			node.name,
 			connectionInputData,
 			mode,
-			timezone,
 			additionalKeys,
 			executeData,
 			false,
@@ -392,7 +466,6 @@ export class Expression {
 			node.name,
 			connectionInputData,
 			mode,
-			timezone,
 			additionalKeys,
 			executeData,
 			false,
@@ -407,38 +480,31 @@ export class Expression {
 	 *
 	 * @param {(NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[])} parameterValue
 	 * @param {(IRunExecutionData | null)} runExecutionData
-	 * @param {number} runIndex
-	 * @param {number} itemIndex
-	 * @param {string} activeNodeName
-	 * @param {INodeExecutionData[]} connectionInputData
 	 * @param {boolean} [returnObjectAsString=false]
-	 * @returns {(NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[])}
-	 * @memberof Workflow
 	 */
+	// TODO: Clean that up at some point and move all the options into an options object
 	getParameterValue(
-		parameterValue: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
+		parameterValue: NodeParameterValueType | INodeParameterResourceLocator,
 		runExecutionData: IRunExecutionData | null,
 		runIndex: number,
 		itemIndex: number,
 		activeNodeName: string,
 		connectionInputData: INodeExecutionData[],
 		mode: WorkflowExecuteMode,
-		timezone: string,
 		additionalKeys: IWorkflowDataProxyAdditionalKeys,
 		executeData?: IExecuteData,
 		returnObjectAsString = false,
 		selfData = {},
-	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] {
+		contextNodeName?: string,
+	): NodeParameterValueType {
 		// Helper function which returns true when the parameter is a complex one or array
-		const isComplexParameter = (
-			value: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
-		) => {
+		const isComplexParameter = (value: NodeParameterValueType) => {
 			return typeof value === 'object';
 		};
 
 		// Helper function which resolves a parameter value depending on if it is simply or not
 		const resolveParameterValue = (
-			value: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
+			value: NodeParameterValueType,
 			siblingParameters: INodeParameters,
 		) => {
 			if (isComplexParameter(value)) {
@@ -450,13 +516,14 @@ export class Expression {
 					activeNodeName,
 					connectionInputData,
 					mode,
-					timezone,
 					additionalKeys,
 					executeData,
 					returnObjectAsString,
 					selfData,
+					contextNodeName,
 				);
 			}
+
 			return this.resolveSimpleParameterValue(
 				value as NodeParameterValue,
 				siblingParameters,
@@ -466,11 +533,11 @@ export class Expression {
 				activeNodeName,
 				connectionInputData,
 				mode,
-				timezone,
 				additionalKeys,
 				executeData,
 				returnObjectAsString,
 				selfData,
+				contextNodeName,
 			);
 		};
 
@@ -485,40 +552,37 @@ export class Expression {
 				activeNodeName,
 				connectionInputData,
 				mode,
-				timezone,
 				additionalKeys,
 				executeData,
 				returnObjectAsString,
 				selfData,
+				contextNodeName,
 			);
 		}
 
 		// The parameter value is complex so resolve depending on type
-
 		if (Array.isArray(parameterValue)) {
 			// Data is an array
-			const returnData = [];
-			// eslint-disable-next-line no-restricted-syntax
-			for (const item of parameterValue) {
-				returnData.push(resolveParameterValue(item, {}));
-			}
-
-			if (returnObjectAsString && typeof returnData === 'object') {
-				return this.convertObjectValueToString(returnData);
-			}
-
+			const returnData = parameterValue.map((item) =>
+				resolveParameterValue(item as NodeParameterValueType, {}),
+			);
 			return returnData as NodeParameterValue[] | INodeParameters[];
 		}
+
 		if (parameterValue === null || parameterValue === undefined) {
 			return parameterValue;
 		}
 
+		if (typeof parameterValue !== 'object') {
+			return {};
+		}
+
 		// Data is an object
 		const returnData: INodeParameters = {};
-		// eslint-disable-next-line no-restricted-syntax
-		for (const key of Object.keys(parameterValue)) {
+
+		for (const [key, value] of Object.entries(parameterValue)) {
 			returnData[key] = resolveParameterValue(
-				(parameterValue as INodeParameters)[key],
+				value as NodeParameterValueType,
 				parameterValue as INodeParameters,
 			);
 		}

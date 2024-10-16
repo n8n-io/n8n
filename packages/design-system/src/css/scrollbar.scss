@@ -1,0 +1,72 @@
+@use 'mixins/mixins';
+@use './common/var';
+
+@include mixins.b(scrollbar) {
+	overflow: hidden;
+	position: relative;
+
+	&:hover,
+	&:active,
+	&:focus {
+		> .el-scrollbar__bar {
+			opacity: 1;
+			transition: opacity 340ms ease-out;
+		}
+	}
+
+	@include mixins.e(wrap) {
+		overflow: scroll;
+		height: 100%;
+
+		@include mixins.m(hidden-default) {
+			scrollbar-width: none;
+			&::-webkit-scrollbar {
+				width: 0;
+				height: 0;
+			}
+		}
+	}
+
+	@include mixins.e(thumb) {
+		position: relative;
+		display: block;
+		width: 0;
+		height: 0;
+		cursor: pointer;
+		border-radius: inherit;
+		background-color: var.$scrollbar-background-color;
+		transition: 0.3s background-color;
+
+		&:hover {
+			background-color: var.$scrollbar-hover-background-color;
+		}
+	}
+
+	@include mixins.e(bar) {
+		position: absolute;
+		right: 2px;
+		bottom: 2px;
+		z-index: 1;
+		border-radius: 4px;
+		opacity: 0;
+		transition: opacity 120ms ease-out;
+
+		@include mixins.when(vertical) {
+			width: 6px;
+			top: 2px;
+
+			> div {
+				width: 100%;
+			}
+		}
+
+		@include mixins.when(horizontal) {
+			height: 6px;
+			left: 2px;
+
+			> div {
+				height: 100%;
+			}
+		}
+	}
+}

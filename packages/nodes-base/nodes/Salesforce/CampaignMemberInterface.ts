@@ -1,4 +1,3 @@
-
 export interface ICampaignMember {
 	CampaignId?: string;
 	ContactId?: string;

@@ -1,153 +1,202 @@
-<template>
-	<IntersectionObserver :threshold="1.0" @observed="onObserved" class="tags-container" :enabled="responsive">
-		<template>
-			<span class="tags">
-				<span
-					v-for="tag in tags"
-					:key="tag.id"
-					:class="{clickable: !tag.hidden}"
-					@click="(e) => onClick(e, tag)"
-				>
-					<el-tag
-						:title="tag.title"
-						type="info"
-						size="small"
-						v-if="tag.isCount"
-						class="count-container"
-					>
-						{{ tag.name }}
-					</el-tag>
-					<IntersectionObserved
-						:class="{hidden: tag.hidden}"
-						:data-id="tag.id"
-						:enabled="responsive"
-						v-else
-					>
-						<el-tag
-							:title="tag.name"
-							type="info"
-							size="small"
-							:class="{hoverable}"
-						>
-							{{ tag.name }}
-						</el-tag>
-					</IntersectionObserved>
-				</span>
-			</span>
-		</template>
-	</IntersectionObserver>
-</template>
-
-<script lang="ts">
-import Vue from 'vue';
-
-import { ITag } from '@/Interface';
+<script lang="ts" setup>
+import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue';
+import type { ComponentInstance } from 'vue';
+import type { ITag } from '@/Interface';
 import IntersectionObserver from './IntersectionObserver.vue';
 import IntersectionObserved from './IntersectionObserved.vue';
+import { createEventBus } from 'n8n-design-system/utils';
+import { debounce } from 'lodash-es';
 
-// random upper limit if none is set to minimize performance impact of observers
-const DEFAULT_MAX_TAGS_LIMIT = 20;
-
-interface TagEl extends ITag {
-	hidden?: boolean;
-	title?: string;
-	isCount?: boolean;
+interface TagsContainerProps {
+	tagIds: string[];
+	tagsById: { [id: string]: ITag };
+	limit?: number;
+	clickable?: boolean;
+	responsive?: boolean;
+	hoverable?: boolean;
 }
 
-export default Vue.extend({
-	components: { IntersectionObserver, IntersectionObserved },
-	name: 'TagsContainer',
-	props: [
-		"tagIds",
-		"limit",
-		"clickable",
-		"responsive",
-		"hoverable",
-	],
-	data() {
-		return {
-			visibility: {} as {[id: string]: boolean},
+const props = withDefaults(defineProps<TagsContainerProps>(), {
+	limit: 20,
+	clickable: false,
+	responsive: false,
+	hoverable: false,
+});
+
+const emit = defineEmits<{
+	click: [tagId: string];
+}>();
+
+// Data
+const maxWidth = ref(320);
+const intersectionEventBus = createEventBus();
+const visibility = ref<{ [id: string]: boolean }>({});
+const tagsContainer = ref<ComponentInstance<typeof IntersectionObserver>>();
+
+// Computed
+const style = computed(() => ({
+	'max-width': `${maxWidth.value}px`,
+}));
+
+const tags = computed(() => {
+	const allTags = props.tagIds.map((tagId: string) => props.tagsById[tagId]).filter(Boolean);
+
+	let toDisplay: Array<ITag & { hidden?: boolean; title?: string; isCount?: boolean }> = props.limit
+		? allTags.slice(0, props.limit)
+		: allTags;
+
+	toDisplay = toDisplay.map((tag: ITag) => ({
+		...tag,
+		hidden: props.responsive && !visibility.value[tag.id],
+	}));
+
+	let visibleCount = toDisplay.length;
+	if (props.responsive) {
+		visibleCount = Object.values(visibility.value).reduce(
+			(accu, val) => (val ? accu + 1 : accu),
+			0,
+		);
+	}
+
+	if (visibleCount < allTags.length) {
+		const hidden = allTags.slice(visibleCount);
+		const hiddenTitle = hidden.reduce(
+			(accu: string, tag: ITag) => (accu ? `${accu}, ${tag.name}` : tag.name),
+			'',
+		);
+
+		const countTag = {
+			id: 'count',
+			name: `+${hidden.length}`,
+			title: hiddenTitle,
+			isCount: true,
 		};
-	},
-	computed: {
-		tags() {
-			const tags = this.$props.tagIds.map((tagId: string) => this.$store.getters['tags/getTagById'](tagId))
-				.filter(Boolean); // if tag has been deleted from store
+		toDisplay.splice(visibleCount, 0, countTag);
+	}
 
-			const limit = this.$props.limit || DEFAULT_MAX_TAGS_LIMIT;
+	return toDisplay;
+});
 
-			let toDisplay: TagEl[] = limit ? tags.slice(0, limit) : tags;
-			toDisplay = toDisplay.map((tag: ITag) => ({...tag, hidden: this.$props.responsive && !this.$data.visibility[tag.id]}));
+// Methods
+const setMaxWidth = () => {
+	const container = tagsContainer.value?.$el as HTMLElement;
+	const parent = container?.parentNode as HTMLElement;
 
-			let visibleCount = toDisplay.length;
-			if (this.$props.responsive) {
-				visibleCount = Object.values(this.visibility).reduce((accu, val) => val ? accu + 1 : accu, 0);
-			}
+	if (parent) {
+		maxWidth.value = 0;
+		void nextTick(() => {
+			maxWidth.value = parent.clientWidth;
+		});
+	}
+};
 
-			if (visibleCount < tags.length) {
-				const hidden = tags.slice(visibleCount);
-				const hiddenTitle = hidden.reduce((accu: string, tag: ITag) => {
-					return accu ? `${accu}, ${tag.name}` : tag.name;
-				}, '');
+const debouncedSetMaxWidth = debounce(setMaxWidth, 100);
 
-				const countTag: TagEl = {
-					id: 'count',
-					name: `+${hidden.length}`,
-					title: hiddenTitle,
-					isCount: true,
-				};
-				toDisplay.splice(visibleCount, 0, countTag);
-			}
+const onObserved = ({ el, isIntersecting }: { el: HTMLElement; isIntersecting: boolean }) => {
+	if (el.dataset.id) {
+		visibility.value = { ...visibility.value, [el.dataset.id]: isIntersecting };
+	}
+};
 
-			return toDisplay;
-		},
-	},
-	methods: {
-		onObserved({el, isIntersecting}: {el: HTMLElement, isIntersecting: boolean}) {
-			if (el.dataset.id) {
-				Vue.set(this.$data.visibility, el.dataset.id, isIntersecting);
-			}
-		},
-		onClick(e: MouseEvent, tag: TagEl) {
-			if (this.clickable) {
-				e.stopPropagation();
-			}
+const onClick = (e: MouseEvent, tag: ITag & { hidden?: boolean }) => {
+	if (props.clickable) {
+		e.stopPropagation();
+	}
 
-			// if tag is hidden or not displayed
-			if (!tag.hidden) {
-				this.$emit('click', tag.id);
-			}
-		},
-	},
+	if (!tag.hidden) {
+		emit('click', tag.id);
+	}
+};
+
+// Lifecycle hooks
+onMounted(() => {
+	setMaxWidth();
+	window.addEventListener('resize', debouncedSetMaxWidth);
+});
+
+onBeforeUnmount(() => {
+	window.removeEventListener('resize', debouncedSetMaxWidth);
 });
 </script>
 
+<template>
+	<IntersectionObserver
+		ref="tagsContainer"
+		:threshold="1.0"
+		class="tags-container"
+		:style="style"
+		:enabled="responsive"
+		:event-bus="intersectionEventBus"
+		@observed="onObserved"
+	>
+		<span class="tags">
+			<span
+				v-for="tag in tags"
+				:key="tag.id"
+				:class="{ clickable: !tag.hidden }"
+				@click="(e) => onClick(e, tag)"
+			>
+				<el-tag
+					v-if="tag.isCount"
+					:title="tag.title"
+					type="info"
+					size="small"
+					class="count-container"
+					:disable-transitions="true"
+				>
+					{{ tag.name }}
+				</el-tag>
+				<IntersectionObserved
+					v-else
+					:class="{ hideTag: tag.hidden }"
+					:data-id="tag.id"
+					:enabled="responsive"
+					:event-bus="intersectionEventBus"
+				>
+					<el-tag
+						:title="tag.name"
+						type="info"
+						size="small"
+						:class="{ hoverable }"
+						:disable-transitions="true"
+					>
+						{{ tag.name }}
+					</el-tag>
+				</IntersectionObserved>
+			</span>
+		</span>
+	</IntersectionObserver>
+</template>
+
 <style lang="scss" scoped>
-	.tags-container {
-		display: inline-flex;
-		overflow: hidden;
-	}
+.tags-container {
+	display: block;
+	max-width: 300px;
+}
 
-	.tags {
-		display: flex;
+.tags {
+	display: block;
+	white-space: nowrap;
+	overflow: hidden;
+	max-width: 100%;
 
-		> span {
-			padding-right: 4px; // why not margin? for space between tags to be clickable
-		}
+	> span {
+		padding-right: 4px; // why not margin? for space between tags to be clickable
 	}
+}
 
-	.hidden {
-		visibility: hidden;
-	}
+.hideTag {
+	visibility: hidden;
+}
 
-	.el-tag.hoverable:hover {
-		border-color: $--color-primary;
-	}
+.el-tag.hoverable:hover {
+	border-color: $color-primary;
+}
 
-	.count-container {
-		position: absolute;
-		max-width: 40px;
-		text-overflow: ellipsis;
-		overflow: hidden;
-	}
+.count-container {
+	position: absolute;
+	max-width: 40px;
+	text-overflow: ellipsis;
+	overflow: hidden;
+}
 </style>

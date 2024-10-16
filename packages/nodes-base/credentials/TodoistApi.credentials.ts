@@ -1,4 +1,4 @@
-import {
+import type {
 	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -6,16 +6,19 @@ import {
 } from 'n8n-workflow';
 export class TodoistApi implements ICredentialType {
 	name = 'todoistApi';
+
 	displayName = 'Todoist API';
+
 	documentationUrl = 'todoist';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',
 			name: 'apiKey',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
-
 	];
 
 	authenticate: IAuthenticateGeneric = {
@@ -29,7 +32,7 @@ export class TodoistApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: 'https://api.todoist.com/rest/v1',
+			baseURL: 'https://api.todoist.com/rest/v2',
 			url: '/labels',
 		},
 	};

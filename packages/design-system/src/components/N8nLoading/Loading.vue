@@ -1,11 +1,44 @@
-<template>
-	<el-skeleton :loading="loading" :animated="animated">
-		<template slot="template">
-			<el-skeleton-item
-				v-if="variant === 'button'"
-				:variant="variant"
-			/>
+<script lang="ts" setup>
+import { ElSkeleton, ElSkeletonItem } from 'element-plus';
 
+const VARIANT = [
+	'custom',
+	'p',
+	'text',
+	'h1',
+	'h3',
+	'text',
+	'caption',
+	'button',
+	'image',
+	'circle',
+	'rect',
+] as const;
+
+interface LoadingProps {
+	animated?: boolean;
+	loading?: boolean;
+	rows?: number;
+	shrinkLast?: boolean;
+	variant?: (typeof VARIANT)[number];
+}
+
+withDefaults(defineProps<LoadingProps>(), {
+	animated: true,
+	loading: true,
+	rows: 1,
+	shrinkLast: true,
+	variant: 'p',
+});
+</script>
+
+<template>
+	<ElSkeleton
+		:loading="loading"
+		:animated="animated"
+		:class="['n8n-loading', `n8n-loading-${variant}`]"
+	>
+		<template #template>
 			<div v-if="variant === 'h1'">
 				<div
 					v-for="(item, index) in rows"
@@ -14,73 +47,47 @@
 						[$style.h1Last]: item === rows && rows > 1 && shrinkLast,
 					}"
 				>
-					<el-skeleton-item
-						:variant="variant"
-					/>
+					<ElSkeletonItem :variant="variant" />
 				</div>
 			</div>
-			<el-skeleton-item
-				v-if="variant === 'image'"
-				:variant="variant"
-			/>
-			<div v-if="variant === 'p'">
+			<div v-else-if="variant === 'p'">
 				<div
 					v-for="(item, index) in rows"
 					:key="index"
 					:class="{
 						[$style.pLast]: item === rows && rows > 1 && shrinkLast,
-					}">
-						<el-skeleton-item
-							:variant="variant"
-						/>
+					}"
+				>
+					<ElSkeletonItem :variant="variant" />
 				</div>
 			</div>
+			<div v-else-if="variant === 'custom'" :class="$style.custom">
+				<ElSkeletonItem />
+			</div>
+			<ElSkeletonItem v-else :variant="variant" />
 		</template>
-	</el-skeleton>
+	</ElSkeleton>
 </template>
-
-<script lang="ts">
-import ElSkeleton from 'element-ui/lib/skeleton';
-import ElSkeletonItem from 'element-ui/lib/skeleton-item';
-
-export default {
-	name: 'n8n-loading',
-	components: {
-		ElSkeleton,
-		ElSkeletonItem,
-	},
-	props: {
-		animated: {
-			type: Boolean,
-			default: true,
-		},
-		loading: {
-			type: Boolean,
-			default: true,
-		},
-		rows: {
-			type: Number,
-			default: 1,
-		},
-		shrinkLast: {
-			type: Boolean,
-			default: true,
-		},
-		variant: {
-			type: String,
-			default: 'p',
-			validator: (value: string): boolean => ['p', 'h1', 'button', 'image'].includes(value),
-		},
-	},
-};
-</script>
 
 <style lang="scss" module>
 .h1Last {
-  width: 40%;
+	width: 40%;
 }
-
 .pLast {
-  width: 61%;
+	width: 61%;
+}
+.custom {
+	width: 100%;
+	height: 100%;
+}
+</style>
+
+<style lang="scss">
+.n8n-loading-custom.el-skeleton {
+	&,
+	.el-skeleton__item {
+		width: 100%;
+		height: 100%;
+	}
 }
 </style>

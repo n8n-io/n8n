@@ -1,0 +1,306 @@
+{
+	"name": "If node unit test",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "cc223c0f-eae7-4647-907a-8e44f1762442",
+			"name": "On clicking 'execute'",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [
+				-2440,
+				520
+			]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  { value: true, value2: false },\n  { value: false, value2: true },\n];"
+			},
+			"id": "2aa0a57b-b25a-4293-b7bf-fc240d4d21f4",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [
+				-2240,
+				520
+			]
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"boolean": [
+						{
+							"value1": "={{ $json[\"value\"] }}",
+							"value2": true
+						},
+						{
+							"value1": "={{ $json.value2 }}",
+							"value2": true
+						}
+					]
+				},
+				"combineOperation": "any"
+			},
+			"id": "44d65f81-a358-4ec3-bea6-9760b1dba386",
+			"name": "IF ANY",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 1,
+			"position": [
+				-2000,
+				700
+			],
+			"alwaysOutputData": false
+		},
+		{
+			"parameters": {},
+			"id": "db5d7a75-18d4-4721-bb81-1a9f8f4fce01",
+			"name": "On True ANY",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [
+				-1760,
+				620
+			]
+		},
+		{
+			"parameters": {},
+			"id": "033fe413-65fe-413d-87d7-53358c8e43a1",
+			"name": "On False ANY",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [
+				-1760,
+				800
+			]
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"boolean": [
+						{
+							"value1": "={{ $json[\"value\"] }}",
+							"value2": true
+						}
+					]
+				}
+			},
+			"id": "787d9236-d7eb-442b-afef-91e6066b925c",
+			"name": "IF",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 1,
+			"position": [
+				-2000,
+				340
+			]
+		},
+		{
+			"parameters": {},
+			"id": "c46df596-7cec-4a67-a50c-240e992f5c4d",
+			"name": "On True",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [
+				-1760,
+				260
+			]
+		},
+		{
+			"parameters": {},
+			"id": "86510ba2-8744-4383-b5a0-5c6b67625cd8",
+			"name": "On False",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [
+				-1760,
+				420
+			]
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"boolean": [
+						{
+							"value1": "={{ $json[\"value\"] }}",
+							"operation": "notEqual",
+							"value2": true
+						}
+					]
+				}
+			},
+			"id": "2b031214-fff5-475b-88f9-a091a48bcc1e",
+			"name": "IF Not Equal",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 1,
+			"position": [
+				-1420,
+				520
+			]
+		},
+		{
+			"parameters": {},
+			"id": "da080483-32b2-429c-8d06-61e40a86c8d5",
+			"name": "On True Not Equal",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [
+				-1180,
+				420
+			]
+		},
+		{
+			"parameters": {},
+			"id": "d373dd92-dede-4629-ab23-61e1dd89bc46",
+			"name": "On False Not Equal",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [
+				-1180,
+				600
+			]
+		}
+	],
+	"pinData": {
+		"On True": [
+			{
+				"json": {
+					"value": true,
+					"value2": false
+				}
+			}
+		],
+		"On False": [
+			{
+				"json": {
+					"value": false,
+					"value2": true
+				}
+			}
+		],
+		"On True Not Equal": [
+			{
+				"json": {
+					"value": false,
+					"value2": true
+				}
+			}
+		],
+		"On False Not Equal": [
+			{
+				"json": {
+					"value": true,
+					"value2": false
+				}
+			}
+		],
+		"On True ANY": [
+			{
+				"json": {
+					"value": true,
+					"value2": false
+				}
+			},
+			{
+				"json": {
+					"value": false,
+					"value2": true
+				}
+			}
+		]
+	},
+	"connections": {
+		"On clicking 'execute'": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code": {
+			"main": [
+				[
+					{
+						"node": "IF",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "IF ANY",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "IF Not Equal",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"IF ANY": {
+			"main": [
+				[
+					{
+						"node": "On True ANY",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "On False ANY",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"IF": {
+			"main": [
+				[
+					{
+						"node": "On True",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "On False",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"IF Not Equal": {
+			"main": [
+				[
+					{
+						"node": "On True Not Equal",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "On False Not Equal",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "5d748d36-ca05-4f7a-b253-70c42e5473ca",
+	"id": "181",
+	"meta": {
+		"instanceId": "104a4d08d8897b8bdeb38aaca515021075e0bd8544c983c2bb8c86e6a8e6081c"
+	},
+	"tags": []
+}

@@ -1,8 +1,5 @@
-import {
+import type {
 	IExecuteFunctions,
-} from 'n8n-core';
-
-import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -10,20 +7,13 @@ import {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
-import {
-	demioApiRequest,
-} from './GenericFunctions';
+import { demioApiRequest } from './GenericFunctions';
 
-import {
-	eventFields,
-	eventOperations,
-} from './EventDescription';
+import { eventFields, eventOperations } from './EventDescription';
 
-import {
-	reportFields,
-	reportOperations,
-} from './ReportDescription';
+import { reportFields, reportOperations } from './ReportDescription';
 
 export class Demio implements INodeType {
 	description: INodeTypeDescription = {
@@ -37,8 +27,8 @@ export class Demio implements INodeType {
 		defaults: {
 			name: 'Demio',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'demioApi',
@@ -74,19 +64,11 @@ export class Demio implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the events to display them to user so that he can
+			// Get all the events to display them to user so that they can
 			// select them easily
-			async getEvents(
-				this: ILoadOptionsFunctions,
-			): Promise<INodePropertyOptions[]> {
+			async getEvents(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const events = await demioApiRequest.call(
-					this,
-					'GET',
-					`/events`,
-					{},
-					{ type: 'upcoming' },
-				);
+				const events = await demioApiRequest.call(this, 'GET', '/events', {}, { type: 'upcoming' });
 				for (const event of events) {
 					returnData.push({
 						name: event.name,
@@ -96,11 +78,9 @@ export class Demio implements INodeType {
 				return returnData;
 			},
 
-			// Get all the sessions to display them to user so that he can
+			// Get all the sessions to display them to user so that they can
 			// select them easily
-			async getEventSessions(
-				this: ILoadOptionsFunctions,
-			): Promise<INodePropertyOptions[]> {
+			async getEventSessions(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const eventId = this.getCurrentNodeParameter('eventId') as string;
 				const qs: IDataObject = {};
 
@@ -111,12 +91,7 @@ export class Demio implements INodeType {
 				}
 
 				const returnData: INodePropertyOptions[] = [];
-				const { dates } = await demioApiRequest.call(
-					this,
-					'GET',
-					`/event/${eventId}`,
-					{},
-				);
+				const { dates } = await demioApiRequest.call(this, 'GET', `/event/${eventId}`, {});
 				for (const date of dates) {
 					returnData.push({
 						name: date.datetime,
@@ -134,42 +109,45 @@ export class Demio implements INodeType {
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'event') {
 					if (operation === 'get') {
 						const id = this.getNodeParameter('eventId', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (additionalFields.date_id !== undefined) {
-							responseData = await demioApiRequest.call(this, 'GET', `/event/${id}/date/${additionalFields.date_id}`);
+							responseData = await demioApiRequest.call(
+								this,
+								'GET',
+								`/event/${id}/date/${additionalFields.date_id}`,
+							);
 						} else {
 							Object.assign(qs, additionalFields);
 							responseData = await demioApiRequest.call(this, 'GET', `/event/${id}`, {}, qs);
 						}
 					}
 					if (operation === 'getAll') {
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const filters = this.getNodeParameter('filters', i);
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						Object.assign(qs, filters);
 
-						responseData = await demioApiRequest.call(this, 'GET', `/events`, {}, qs);
+						responseData = await demioApiRequest.call(this, 'GET', '/events', {}, qs);
 
-						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+						if (!returnAll) {
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
-
 					}
 					if (operation === 'register') {
 						const eventId = this.getNodeParameter('eventId', i) as string;
 						const firstName = this.getNodeParameter('firstName', i) as string;
 						const email = this.getNodeParameter('email', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const body: IDataObject = {
 							name: firstName,
@@ -180,23 +158,34 @@ export class Demio implements INodeType {
 						Object.assign(body, additionalFields);
 
 						if (additionalFields.customFieldsUi) {
-							const customFields = (additionalFields.customFieldsUi as IDataObject || {}).customFieldsValues as IDataObject[] || [];
-							const data = customFields.reduce((obj, value) => Object.assign(obj, { [`${value.fieldId}`]: value.value }), {});
+							const customFields =
+								((additionalFields.customFieldsUi as IDataObject)
+									?.customFieldsValues as IDataObject[]) || [];
+							const data = customFields.reduce(
+								(obj, value) => Object.assign(obj, { [`${value.fieldId}`]: value.value }),
+								{},
+							);
 							Object.assign(body, data);
 							delete additionalFields.customFields;
 						}
 
-						responseData = await demioApiRequest.call(this, 'PUT', `/event/register`, body);
+						responseData = await demioApiRequest.call(this, 'PUT', '/event/register', body);
 					}
 				}
 				if (resource === 'report') {
 					if (operation === 'get') {
 						const sessionId = this.getNodeParameter('dateId', i) as string;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 
 						Object.assign(qs, filters);
 
-						responseData = await demioApiRequest.call(this, 'GET', `/report/${sessionId}/participants`, {}, qs);
+						responseData = await demioApiRequest.call(
+							this,
+							'GET',
+							`/report/${sessionId}/participants`,
+							{},
+							qs,
+						);
 						responseData = responseData.participants;
 					}
 				}

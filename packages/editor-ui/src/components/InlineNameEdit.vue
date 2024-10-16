@@ -1,86 +1,90 @@
+<script setup lang="ts">
+import { nextTick, ref } from 'vue';
+import { useToast } from '@/composables/useToast';
+import { onClickOutside } from '@vueuse/core';
+
+interface Props {
+	modelValue: string;
+	subtitle: string;
+	type: string;
+	readonly: boolean;
+}
+const props = defineProps<Props>();
+
+const emit = defineEmits<{
+	'update:modelValue': [value: string];
+}>();
+
+const isNameEdit = ref(false);
+const nameInput = ref<HTMLInputElement | null>(null);
+const { showToast } = useToast();
+
+const onNameEdit = (value: string) => {
+	emit('update:modelValue', value);
+};
+
+const enableNameEdit = () => {
+	isNameEdit.value = true;
+	void nextTick(() => {
+		if (nameInput.value) {
+			nameInput.value.focus();
+		}
+	});
+};
+
+const disableNameEdit = () => {
+	if (!props.modelValue) {
+		emit('update:modelValue', `Untitled ${props.type}`);
+		showToast({
+			title: 'Error',
+			message: `${props.type} name cannot be empty`,
+			type: 'warning',
+		});
+	}
+	isNameEdit.value = false;
+};
+
+onClickOutside(nameInput, disableNameEdit);
+</script>
+
 <template>
 	<div :class="$style.container">
+		<span v-if="readonly" :class="$style.headline">
+			{{ modelValue }}
+		</span>
 		<div
-			:class="$style.headline"
+			v-else
+			:class="[$style.headline, $style['headline-editable']]"
 			@keydown.stop
 			@click="enableNameEdit"
-			v-click-outside="disableNameEdit"
 		>
 			<div v-if="!isNameEdit">
-				<span>{{ name }}</span>
+				<span>{{ modelValue }}</span>
 				<i><font-awesome-icon icon="pen" /></i>
 			</div>
 			<div v-else :class="$style.nameInput">
 				<n8n-input
-					:value="name"
-					size="xlarge"
 					ref="nameInput"
-					@input="onNameEdit"
-					@change="disableNameEdit"
+					:model-value="modelValue"
+					size="xlarge"
 					:maxlength="64"
+					@update:model-value="onNameEdit"
+					@change="disableNameEdit"
 				/>
 			</div>
 		</div>
-		<div :class="$style.subtitle" v-if="!isNameEdit">{{ subtitle }}</div>
+		<div v-if="!isNameEdit && subtitle" :class="$style.subtitle">
+			{{ subtitle }}
+		</div>
 	</div>
 </template>
 
-<script lang="ts">
-import mixins from 'vue-typed-mixins';
-import { showMessage } from './mixins/showMessage';
-
-export default mixins(showMessage).extend({
-	name: 'InlineNameEdit',
-	props: {
-		name: {
-			type: String,
-		},
-		subtitle: {
-			type: String,
-		},
-		type: {
-			type: String,
-		},
-	},
-	data() {
-		return {
-			isNameEdit: false,
-		};
-	},
-	methods: {
-		onNameEdit(value: string) {
-			this.$emit('input', value);
-		},
-		enableNameEdit() {
-			this.isNameEdit = true;
-
-			setTimeout(() => {
-				const input = this.$refs.nameInput as HTMLInputElement;
-				if (input) {
-					input.focus();
-				}
-			}, 0);
-		},
-		disableNameEdit() {
-			if (!this.name) {
-				this.$emit('input', `Untitled ${this.type}`);
-
-				this.$showToast({
-					title: 'Error',
-					message: `${this.type} name cannot be empty`,
-					type: 'warning',
-				});
-			}
-
-			this.isNameEdit = false;
-		},
-	},
-});
-</script>
-
-
 <style module lang="scss">
 .container {
+	display: flex;
+	align-items: flex-start;
+	justify-content: center;
+	flex-direction: column;
 	min-height: 36px;
 }
 
@@ -89,7 +93,6 @@ export default mixins(showMessage).extend({
 	line-height: 1.4;
 	margin-bottom: var(--spacing-5xs);
 	display: inline-block;
-	cursor: pointer;
 	padding: 0 var(--spacing-4xs);
 	border-radius: var(--border-radius-base);
 	position: relative;
@@ -103,6 +106,10 @@ export default mixins(showMessage).extend({
 		margin-left: 8px;
 		color: var(--color-text-base);
 	}
+}
+
+.headline-editable {
+	cursor: pointer;
 
 	&:hover {
 		background-color: var(--color-background-base);
@@ -113,9 +120,11 @@ export default mixins(showMessage).extend({
 .nameInput {
 	z-index: 1;
 	position: absolute;
-	top: -13px;
-	left: -9px;
+	margin-top: 1px;
+	top: 50%;
+	left: 0;
 	width: 400px;
+	transform: translateY(-50%);
 }
 
 .subtitle {
@@ -124,5 +133,4 @@ export default mixins(showMessage).extend({
 	margin-left: 4px;
 	font-weight: 400;
 }
-
 </style>

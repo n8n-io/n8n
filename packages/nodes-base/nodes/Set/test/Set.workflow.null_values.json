@@ -1,0 +1,244 @@
+{
+  "name": "My workflow 31",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "9fe8b524-b618-4abb-821f-227ae5cc1f12",
+      "name": "When clicking \"Execute Workflow\"",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        560,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "fields": {
+          "values": [
+            {
+              "name": "test1",
+              "stringValue": "={{ null }}"
+            },
+            {
+              "name": "test2",
+              "stringValue": "={{ undefined }}"
+            }
+          ]
+        },
+        "options": {
+          "ignoreConversionErrors": true
+        }
+      },
+      "id": "78f2ad0d-e129-448b-ae78-5bfdba587186",
+      "name": "Edit Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.2,
+      "position": [
+        1000,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "fields": {
+          "values": [
+            {
+              "name": "test1",
+              "type": "numberValue",
+              "numberValue": "={{ null }}"
+            },
+            {
+              "name": "test2",
+              "type": "numberValue",
+              "numberValue": "={{ undefined }}"
+            }
+          ]
+        },
+        "options": {
+          "ignoreConversionErrors": true
+        }
+      },
+      "id": "ceaad5a1-b78c-4d38-b80d-f608f8c95f71",
+      "name": "Edit Fields1",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.2,
+      "position": [
+        1000,
+        440
+      ]
+    },
+    {
+      "parameters": {
+        "fields": {
+          "values": [
+            {
+              "name": "test1",
+              "type": "booleanValue",
+              "booleanValue": "={{ null }}"
+            },
+            {
+              "name": "test2",
+              "type": "booleanValue",
+              "booleanValue": "={{ undefined }}"
+            }
+          ]
+        },
+        "options": {
+          "ignoreConversionErrors": true
+        }
+      },
+      "id": "0048be99-0bce-4073-86e6-2622169fe9ab",
+      "name": "Edit Fields2",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.2,
+      "position": [
+        1000,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "fields": {
+          "values": [
+            {
+              "name": "test1",
+              "type": "arrayValue",
+              "arrayValue": "={{ null }}"
+            },
+            {
+              "name": "test2",
+              "type": "arrayValue",
+              "arrayValue": "={{ undefined }}"
+            }
+          ]
+        },
+        "options": {
+          "ignoreConversionErrors": true
+        }
+      },
+      "id": "aa254a34-9267-42a2-9730-c2ab64760721",
+      "name": "Edit Fields3",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.2,
+      "position": [
+        1000,
+        840
+      ]
+    },
+    {
+      "parameters": {
+        "fields": {
+          "values": [
+            {
+              "name": "test1",
+              "type": "objectValue",
+              "objectValue": "={{ null }}"
+            },
+            {
+              "name": "test2",
+              "type": "objectValue",
+              "objectValue": "={{ undefined }}"
+            }
+          ]
+        },
+        "options": {
+          "ignoreConversionErrors": true
+        }
+      },
+      "id": "03e4acf2-ceaf-4a27-adb7-d074a95e9cc9",
+      "name": "Edit Fields4",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.2,
+      "position": [
+        1000,
+        1020
+      ]
+    }
+  ],
+  "pinData": {
+    "Edit Fields": [
+      {
+        "json": {
+          "test1": null,
+          "test2": null
+        }
+      }
+    ],
+    "Edit Fields1": [
+      {
+        "json": {
+          "test1": null,
+          "test2": null
+        }
+      }
+    ],
+    "Edit Fields2": [
+      {
+        "json": {
+          "test1": null,
+          "test2": null
+        }
+      }
+    ],
+    "Edit Fields3": [
+      {
+        "json": {
+          "test1": null,
+          "test2": null
+        }
+      }
+    ],
+    "Edit Fields4": [
+      {
+        "json": {
+          "test1": null,
+          "test2": null
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When clicking \"Execute Workflow\"": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Edit Fields2",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Edit Fields3",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Edit Fields4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "016f70db-c529-43e9-a077-2e0d81859747",
+  "id": "ZfMuVQ1861mlPIKe",
+  "meta": {
+    "instanceId": "b888bd11cd1ddbb95450babf3e199556799d999b896f650de768b8370ee50363"
+  },
+  "tags": []
+}

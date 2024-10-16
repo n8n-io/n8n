@@ -18,6 +18,7 @@ Currently, n8n does _not_ allow for internalization of:
 - options that rely on `loadOptionsMethod`.
 
 Pending functionality:
+
 - Search in nodes panel by translated node name
 - UI responsiveness to differently sized strings
 - Locale-aware number formatting
@@ -30,7 +31,7 @@ By default, n8n runs in the `en` (English) locale. To have run it in a different
 
 ```
 export N8N_DEFAULT_LOCALE=de
-npm run start
+pnpm start
 ```
 
 Output:
@@ -101,6 +102,7 @@ credentials
 			├── githubApi.json
 			└── githubOAuth2Api.json
 ```
+
 Every credential must have its own credential translation file.
 
 The name of the credential translation file must be sourced from the credential's `description.name` property:
@@ -186,7 +188,7 @@ The object for each node credential parameter allows for the keys `displayName`,
 	"server.displayName": "🇩🇪 Github Server",
 	"server.description": "🇩🇪 The server to connect to. Only has to be set if Github Enterprise is used.",
 	"user.placeholder": "🇩🇪 Hans",
-	"accessToken.placeholder": "🇩🇪 123",
+	"accessToken.placeholder": "🇩🇪 123"
 }
 ```
 
@@ -217,8 +219,10 @@ export class Github implements INodeType {
 
 ```json
 {
-	"header.displayName": "🇩🇪 GitHub",
-	"header.description": "🇩🇪 Consume GitHub API",
+	"header": {
+		"displayName": "🇩🇪 GitHub",
+		"description": "🇩🇪 Consume GitHub API"
+	}
 }
 ```
 
@@ -255,7 +259,7 @@ export class Github implements INodeType {
 
 ```json
 {
-	"nodeView.resource.displayName": "🇩🇪 Resource",
+	"nodeView.resource.displayName": "🇩🇪 Resource"
 }
 ```
 
@@ -280,7 +284,7 @@ Allowed keys: `displayName`, `description`, `placeholder`
 {
 	"nodeView.owner.displayName": "🇩🇪 Repository Owner",
 	"nodeView.owner.placeholder": "🇩🇪 n8n-io",
-	"nodeView.owner.description": "🇩🇪 Owner of the repository",
+	"nodeView.owner.description": "🇩🇪 Owner of the repository"
 }
 ```
 
@@ -319,7 +323,7 @@ Allowed subkeys: `options.{optionName}.displayName` and `options.{optionName}.de
 	"nodeView.resource.displayName": "🇩🇪 Resource",
 	"nodeView.resource.description": "🇩🇪 Resource to operate on",
 	"nodeView.resource.options.file.name": "🇩🇪 File",
-	"nodeView.resource.options.issue.name": "🇩🇪 Issue",
+	"nodeView.resource.options.issue.name": "🇩🇪 Issue"
 }
 ```
 
@@ -333,7 +337,7 @@ For nodes whose credentials may be used in the HTTP Request node, an additional 
 {
 	"nodeView.resource.options.file.name": "🇩🇪 File",
 	"nodeView.resource.options.issue.name": "🇩🇪 Issue",
-	"nodeView.resource.options.__CUSTOM_API_CALL__.name": "🇩🇪 Custom API Call",
+	"nodeView.resource.options.__CUSTOM_API_CALL__.name": "🇩🇪 Custom API Call"
 }
 ```
 
@@ -444,7 +448,7 @@ Example of `fixedCollection` parameter:
 	"nodeView.additionalParameters.options.author.values.name.placeholder": "🇩🇪 Jan",
 	"nodeView.additionalParameters.options.author.values.email.displayName": "🇩🇪 Email",
 	"nodeView.additionalParameters.options.author.values.email.description": "🇩🇪 Email of the author of the commit",
-	"nodeView.additionalParameters.options.author.values.email.placeholder": "🇩🇪 jan@n8n.io",
+	"nodeView.additionalParameters.options.author.values.email.placeholder": "🇩🇪 jan@n8n.io"
 }
 ```
 
@@ -464,7 +468,7 @@ When translating a base text file at `/packages/editor-ui/src/plugins/i18n/local
 
 ```sh
 export N8N_DEFAULT_LOCALE=de
-npm run start
+pnpm start
 ```
 
 2. Open another terminal:
@@ -472,7 +476,7 @@ npm run start
 ```sh
 export N8N_DEFAULT_LOCALE=de
 cd packages/editor-ui
-npm run dev
+pnpm dev
 ```
 
 Changing the base text file will trigger a rebuild of the client at `http://localhost:8080`.
@@ -485,7 +489,7 @@ When translating a dynamic text file at `/packages/nodes-base/nodes/{node}/trans
 
 ```sh
 export N8N_DEFAULT_LOCALE=de
-npm run start
+pnpm start
 ```
 
 2. Open another terminal:
@@ -493,8 +497,8 @@ npm run start
 ```sh
 export N8N_DEFAULT_LOCALE=de
 cd packages/nodes-base
-npm run build:translations
-npm run watch
+pnpm n8n-generate-translations
+pnpm watch
 ```
 
 After changing the dynamic text file:
@@ -502,6 +506,6 @@ After changing the dynamic text file:
 1. Stop and restart the first terminal.
 2. Refresh the browser at `http://localhost:5678`
 
-If a `headerText` section was changed, re-run `npm run build:translations` in `/nodes-base`.
+If a `headerText` section was changed, re-run `pnpm n8n-generate-translations` in `/nodes-base`.
 
 > **Note**: To translate base and dynamic text simultaneously, run three terminals following the steps from both sections (first terminal running only once) and browse `http://localhost:8080`.

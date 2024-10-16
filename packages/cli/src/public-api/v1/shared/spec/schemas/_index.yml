@@ -1,0 +1,32 @@
+Error:
+  $ref: './error.yml'
+Role:
+  $ref: './../../../handlers/users/spec/schemas/role.yml'
+Execution:
+  $ref: './../../../handlers/executions/spec/schemas/execution.yml'
+Node:
+  $ref: './../../../handlers/workflows/spec/schemas/node.yml'
+Tag:
+  $ref: './../../../handlers/tags/spec/schemas/tag.yml'
+Workflow:
+  $ref: './../../../handlers/workflows/spec/schemas/workflow.yml'
+WorkflowSettings:
+  $ref: './../../../handlers/workflows/spec/schemas/workflowSettings.yml'
+ExecutionList:
+  $ref: './../../../handlers/executions/spec/schemas/executionList.yml'
+WorkflowList:
+  $ref: './../../../handlers/workflows/spec/schemas/workflowList.yml'
+Credential:
+  $ref: './../../../handlers/credentials/spec/schemas/credential.yml'
+CredentialType:
+  $ref: './../../../handlers/credentials/spec/schemas/credentialType.yml'
+Audit:
+  $ref: './../../../handlers/audit/spec/schemas/audit.yml'
+Pull:
+  $ref: './../../../handlers/source-control/spec/schemas/pull.yml'
+ImportResult:
+  $ref: './../../../handlers/source-control/spec/schemas/importResult.yml'
+UserList:
+  $ref: './../../../handlers/users/spec/schemas/userList.yml'
+User:
+  $ref: './../../../handlers/users/spec/schemas/user.yml'

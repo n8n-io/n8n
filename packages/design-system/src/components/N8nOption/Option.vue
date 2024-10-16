@@ -1,7 +1,12 @@
-<script lang="ts">
-import ElOption from 'element-ui/lib/option';
+<script setup lang="ts">
+import { ElOption } from 'element-plus';
 
-ElOption.name = 'n8n-option';
-
-export default ElOption;
+const props = defineProps({
+	...ElOption.props,
+	value: { type: [String, Number], required: true },
+});
 </script>
+
+<template>
+	<ElOption v-bind="{ ...$props, ...$attrs }" :value="props.value"><slot /></ElOption>
+</template>

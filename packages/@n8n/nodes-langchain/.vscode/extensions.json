@@ -1,0 +1,3 @@
+{
+	"recommendations": ["dbaeumer.vscode-eslint", "EditorConfig.EditorConfig", "biomejs.biome"]
+}

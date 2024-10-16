@@ -2,19 +2,16 @@
 	"node": "n8n-nodes-base.pushcut",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Communication",
-		"Productivity"
-	],
+	"categories": ["Communication", "Productivity"],
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/pushcut"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/pushcut/"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.pushcut/"
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.pushcut/"
 			}
 		]
 	}

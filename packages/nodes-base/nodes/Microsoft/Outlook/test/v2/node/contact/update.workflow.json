@@ -1,0 +1,138 @@
+{
+  "name": "My workflow 21",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "e524f588-b6a3-4849-8777-b32a8a755ae5",
+      "name": "When clicking \"Execute Workflow\"",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        820,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "contact",
+        "operation": "update",
+        "contactId": {
+          "__rl": true,
+          "value": "AAMkADlhOTA0MTc5LWUwOTMtNDRkZS05NzE0LTNlYmI0ZWM5OWI5OABGAAAAAABPLqzvT6b9RLP0CKzHiJrRBwBZf4De-LkrSqpPI8eyjUmAAAAAAAEOAABZf4De-LkrSqpPI8eyjUmAAAFXBCQuAAA=",
+          "mode": "list",
+          "cachedResultName": "User Name"
+        },
+        "additionalFields": {
+          "businessAddress": {
+            "values": {
+              "city": "City",
+              "countryOrRegion": "Country",
+              "postalCode": "777777",
+              "state": "State",
+              "street": "Street"
+            }
+          },
+          "businessPhones": "999000555777",
+          "displayName": "Username",
+          "manager": "Manager"
+        }
+      },
+      "id": "baff6798-0304-4255-bdb0-dd3f2659373b",
+      "name": "Microsoft Outlook",
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        360
+      ],
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "iXJCki7i5Vz0bdks",
+          "name": "Microsoft Outlook account 2"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "Microsoft Outlook": [
+      {
+        "json": {
+          "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#users('b834447b-6848-4af9-8390-d2259ce46b74')/contacts/$entity",
+          "@odata.etag": "W/\"EQAAABYAAABZf4De/LkrSqpPI8eyjUmAAAFW3Bou\"",
+          "id": "AAMkADlhOTA0MTc5LWUwOTMtNDRkZS05NzE0LTNlYmI0ZWM5OWI5OABGAAAAAABPLqzvT6b9RLP0CKzHiJrRBwBZf4De-LkrSqpPI8eyjUmAAAAAAAEOAABZf4De-LkrSqpPI8eyjUmAAAFXBCQuAAA=",
+          "createdDateTime": "2023-09-04T08:48:39Z",
+          "lastModifiedDateTime": "2023-09-04T09:06:21Z",
+          "changeKey": "EQAAABYAAABZf4De/LkrSqpPI8eyjUmAAAFW3Bou",
+          "categories": [
+            "blue",
+            "green"
+          ],
+          "parentFolderId": "AAMkADlhOTA0MTc5LWUwOTMtNDRkZS05NzE0LTNlYmI0ZWM5OWI5OAAuAAAAAABPLqzvT6b9RLP0CKzHiJrRAQBZf4De-LkrSqpPI8eyjUmAAAAAAAEOAAA=",
+          "birthday": "1991-09-19T11:59:00Z",
+          "fileAs": "",
+          "displayName": "Username",
+          "givenName": "User",
+          "initials": null,
+          "middleName": null,
+          "nickName": null,
+          "surname": "Name",
+          "title": "Title",
+          "yomiGivenName": null,
+          "yomiSurname": null,
+          "yomiCompanyName": null,
+          "generation": null,
+          "imAddresses": [],
+          "jobTitle": null,
+          "companyName": "Company",
+          "department": "IT",
+          "officeLocation": null,
+          "profession": null,
+          "businessHomePage": null,
+          "assistantName": "Assistant",
+          "manager": "Manager",
+          "homePhones": [],
+          "mobilePhone": "",
+          "businessPhones": [
+            "999000555777"
+          ],
+          "spouseName": "",
+          "personalNotes": "",
+          "children": [],
+          "emailAddresses": [],
+          "homeAddress": {},
+          "businessAddress": {
+            "street": "Street",
+            "city": "City",
+            "state": "State",
+            "countryOrRegion": "Country",
+            "postalCode": "777777"
+          },
+          "otherAddress": {}
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When clicking \"Execute Workflow\"": {
+      "main": [
+        [
+          {
+            "node": "Microsoft Outlook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "842587ce-f153-49ac-8818-d173d4d6aac6",
+  "id": "1CYHzBXQw1nfPGtB",
+  "meta": {
+    "instanceId": "b888bd11cd1ddbb95450babf3e199556799d999b896f650de768b8370ee50363"
+  },
+  "tags": []
+}

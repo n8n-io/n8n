@@ -1,5 +1,4 @@
 export interface IContact {
-	// tslint:disable-next-line: no-any
 	[key: string]: any;
 	LastName?: string;
 	Fax?: string;

@@ -2,18 +2,16 @@
 	"node": "n8n-nodes-base.gitlabTrigger",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Development"
-	],
+	"categories": ["Development"],
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/gitlab"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/gitlab/"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.gitlabTrigger/"
+				"url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.gitlabtrigger/"
 			}
 		]
 	}

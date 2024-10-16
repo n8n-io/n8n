@@ -1,14 +1,16 @@
-import {
+import type {
 	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
 } from 'n8n-workflow';
-
 export class ShopifyAccessTokenApi implements ICredentialType {
 	name = 'shopifyAccessTokenApi';
+
 	displayName = 'Shopify Access Token API';
+
 	documentationUrl = 'shopify';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Shop Subdomain',
@@ -23,6 +25,7 @@ export class ShopifyAccessTokenApi implements ICredentialType {
 			name: 'accessToken',
 			required: true,
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 		{
@@ -30,10 +33,12 @@ export class ShopifyAccessTokenApi implements ICredentialType {
 			name: 'appSecretKey',
 			required: true,
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 			description: 'Secret key needed to verify the webhook when using Shopify Trigger node',
 		},
 	];
+
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {
@@ -42,9 +47,10 @@ export class ShopifyAccessTokenApi implements ICredentialType {
 			},
 		},
 	};
+
 	test: ICredentialTestRequest = {
-	request: {
-			baseURL: '=https://{{$credentials?.shopSubdomain}}.myshopify.com/admin/api/2019-10',
+		request: {
+			baseURL: '=https://{{$credentials?.shopSubdomain}}.myshopify.com/admin/api/2024-07',
 			url: '/products.json',
 		},
 	};

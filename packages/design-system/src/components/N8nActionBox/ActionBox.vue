@@ -1,42 +1,72 @@
-<template functional>
-	<div :class="$style.container">
-		<div :class="$style.heading" v-if="props.heading">
-			<component :is="$options.components.N8nHeading" size="xlarge" align="center">{{ props.heading }}</component>
-		</div>
-		<div :class="$style.description">
-			<n8n-text color="text-base"><span v-html="props.description"></span></n8n-text>
-		</div>
-		<component :is="$options.components.N8nButton" :label="props.buttonText" size="large"
-			@click="(e) => listeners.click && listeners.click(e)"
-		/>
-	</div>
-</template>
+<script lang="ts" setup>
+import N8nTooltip from 'n8n-design-system/components/N8nTooltip/Tooltip.vue';
+import type { ButtonType } from 'n8n-design-system/types/button';
 
-<script lang="ts">
 import N8nButton from '../N8nButton';
+import N8nCallout, { type CalloutTheme } from '../N8nCallout';
 import N8nHeading from '../N8nHeading';
 import N8nText from '../N8nText';
 
-export default {
-	name: 'n8n-action-box',
-	props: {
-		heading: {
-			type: String,
-		},
-		buttonText: {
-			type: String,
-		},
-		description: {
-			type: String,
-		},
-	},
-	components: {
-		N8nButton,
-		N8nHeading,
-		N8nText,
-	},
-};
+interface ActionBoxProps {
+	emoji: string;
+	heading: string;
+	buttonText: string;
+	buttonType: ButtonType;
+	buttonDisabled?: boolean;
+	description: string;
+	calloutText?: string;
+	calloutTheme?: CalloutTheme;
+	calloutIcon?: string;
+}
+
+defineOptions({ name: 'N8nActionBox' });
+withDefaults(defineProps<ActionBoxProps>(), {
+	calloutTheme: 'info',
+});
 </script>
+
+<template>
+	<div :class="['n8n-action-box', $style.container]" data-test-id="action-box">
+		<div v-if="emoji" :class="$style.emoji">
+			{{ emoji }}
+		</div>
+		<div v-if="heading || $slots.heading" :class="$style.heading">
+			<N8nHeading size="xlarge" align="center">
+				<slot name="heading">{{ heading }}</slot>
+			</N8nHeading>
+		</div>
+		<div :class="$style.description" @click="$emit('descriptionClick', $event)">
+			<N8nText color="text-base">
+				<slot name="description">
+					<span v-n8n-html="description"></span>
+				</slot>
+			</N8nText>
+		</div>
+		<N8nTooltip :disabled="!buttonDisabled">
+			<template #content>
+				<slot name="disabledButtonTooltip"></slot>
+			</template>
+			<N8nButton
+				v-if="buttonText"
+				:label="buttonText"
+				:type="buttonType"
+				:disabled="buttonDisabled"
+				size="large"
+				@click="$emit('click:button', $event)"
+			/>
+		</N8nTooltip>
+		<N8nCallout
+			v-if="calloutText"
+			:theme="calloutTheme"
+			:icon="calloutIcon"
+			:class="$style.callout"
+		>
+			<N8nText color="text-base">
+				<span size="small" v-n8n-html="calloutText"></span>
+			</N8nText>
+		</N8nCallout>
+	</div>
+</template>
 
 <style lang="scss" module>
 .container {
@@ -45,10 +75,14 @@ export default {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	padding: var(--spacing-3xl) 20%;
+	padding: var(--spacing-3xl);
 
 	> * {
 		margin-bottom: var(--spacing-l);
+
+		&:last-child {
+			margin-bottom: 0;
+		}
 	}
 }
 
@@ -58,9 +92,17 @@ export default {
 
 .heading {
 	margin-bottom: var(--spacing-l);
+	text-align: center;
 }
 
 .description {
+	color: var(--color-text-base);
 	margin-bottom: var(--spacing-xl);
+	text-align: center;
+}
+
+.callout {
+	width: 100%;
+	text-align: left;
 }
 </style>

@@ -2,18 +2,16 @@
 	"node": "n8n-nodes-base.matrix",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Communication"
-	],
+	"categories": ["Communication"],
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/matrix"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/matrix/"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.matrix/"
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.matrix/"
 			}
 		],
 		"generic": [

@@ -1,0 +1,121 @@
+@use 'mixins/mixins';
+@use './common/var';
+@use './checkbox';
+@use './radio';
+@use './scrollbar';
+
+@include mixins.b(cascader-panel) {
+	display: flex;
+	border-radius: var.$cascader-menu-radius;
+	font-size: var.$cascader-menu-font-size;
+
+	@include mixins.when(bordered) {
+		border: var.$cascader-menu-border;
+		border-radius: var.$cascader-menu-radius;
+	}
+}
+
+@include mixins.b(cascader-menu) {
+	min-width: 180px;
+	box-sizing: border-box;
+	color: var.$cascader-menu-font-color;
+	border-right: var.$cascader-menu-border;
+
+	&:last-child {
+		border-right: none;
+		.el-cascader-node {
+			padding-right: 20px;
+		}
+	}
+
+	@include mixins.e(wrap) {
+		height: 204px;
+	}
+
+	@include mixins.e(list) {
+		position: relative;
+		min-height: 100%;
+		margin: 0;
+		padding: 6px 0;
+		list-style: none;
+		box-sizing: border-box;
+	}
+
+	@include mixins.e(hover-zone) {
+		position: absolute;
+		top: 0;
+		left: 0;
+		width: 100%;
+		height: 100%;
+		pointer-events: none;
+	}
+
+	@include mixins.e(empty-text) {
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
+		text-align: center;
+		color: var.$cascader-color-empty;
+	}
+}
+
+@include mixins.b(cascader-node) {
+	position: relative;
+	display: flex;
+	align-items: center;
+	padding: 0 30px 0 20px;
+	height: 34px;
+	line-height: 34px;
+	outline: none;
+
+	&.is-selectable.in-active-path {
+		color: var.$cascader-menu-font-color;
+	}
+
+	&.in-active-path,
+	&.is-selectable.in-checked-path,
+	&.is-active {
+		color: var.$cascader-menu-selected-font-color;
+		font-weight: bold;
+	}
+
+	&:not(.is-disabled) {
+		cursor: pointer;
+		&:hover,
+		&:focus {
+			background: var.$cascader-node-background-hover;
+		}
+	}
+
+	@include mixins.when(disabled) {
+		color: var.$cascader-node-color-disabled;
+		cursor: not-allowed;
+	}
+
+	@include mixins.e(prefix) {
+		position: absolute;
+		left: 10px;
+	}
+
+	@include mixins.e(postfix) {
+		position: absolute;
+		right: 10px;
+	}
+
+	@include mixins.e(label) {
+		flex: 1;
+		padding: 0 10px;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	> .el-radio {
+		margin-right: 0;
+
+		.el-radio__label {
+			padding-left: 0;
+		}
+	}
+}

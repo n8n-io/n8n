@@ -1,11 +1,12 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class SshPassword implements ICredentialType {
 	name = 'sshPassword';
+
 	displayName = 'SSH Password';
+
+	documentationUrl = 'ssh';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Host',

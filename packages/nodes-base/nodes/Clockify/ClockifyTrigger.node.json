@@ -2,19 +2,16 @@
 	"node": "n8n-nodes-base.clockifyTrigger",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Utility",
-		"Productivity"
-	],
+	"categories": ["Utility", "Productivity"],
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/clockify"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/clockify/"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.clockifyTrigger/"
+				"url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.clockifytrigger/"
 			}
 		]
 	}

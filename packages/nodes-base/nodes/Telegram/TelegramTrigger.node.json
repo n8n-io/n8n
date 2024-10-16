@@ -2,18 +2,16 @@
 	"node": "n8n-nodes-base.telegramTrigger",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Communication"
-	],
+	"categories": ["Communication"],
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/telegram"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/telegram/"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.telegramTrigger/"
+				"url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.telegramtrigger/"
 			}
 		],
 		"generic": [

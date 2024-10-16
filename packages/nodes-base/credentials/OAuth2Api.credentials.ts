@@ -1,14 +1,14 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
-
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class OAuth2Api implements ICredentialType {
 	name = 'oAuth2Api';
+
 	displayName = 'OAuth2 API';
+
 	documentationUrl = 'httpRequest';
+
 	genericAuth = true;
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Grant Type',
@@ -23,6 +23,10 @@ export class OAuth2Api implements ICredentialType {
 					name: 'Client Credentials',
 					value: 'clientCredentials',
 				},
+				{
+					name: 'PKCE',
+					value: 'pkce',
+				},
 			],
 			default: 'authorizationCode',
 		},
@@ -32,9 +36,7 @@ export class OAuth2Api implements ICredentialType {
 			type: 'string',
 			displayOptions: {
 				show: {
-					grantType: [
-						'authorizationCode',
-					],
+					grantType: ['authorizationCode', 'pkce'],
 				},
 			},
 			default: '',
@@ -64,6 +66,9 @@ export class OAuth2Api implements ICredentialType {
 			default: '',
 			required: true,
 		},
+		// WARNING: if you are extending from this credentials and allow user to set their own scopes
+		// you HAVE TO add it to GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE in packages/cli/src/constants.ts
+		// track any updates to this behavior in N8N-7424
 		{
 			displayName: 'Scope',
 			name: 'scope',
@@ -76,26 +81,18 @@ export class OAuth2Api implements ICredentialType {
 			type: 'string',
 			displayOptions: {
 				show: {
-					grantType: [
-						'authorizationCode',
-					],
+					grantType: ['authorizationCode', 'pkce'],
 				},
 			},
 			default: '',
-			description: 'For some services additional query parameters have to be set which can be defined here',
+			description:
+				'For some services additional query parameters have to be set which can be defined here',
 			placeholder: 'access_type=offline',
 		},
 		{
 			displayName: 'Authentication',
 			name: 'authentication',
 			type: 'options',
-			displayOptions: {
-				show: {
-					grantType: [
-						'authorizationCode',
-					],
-				},
-			},
 			options: [
 				{
 					name: 'Body',
@@ -109,6 +106,13 @@ export class OAuth2Api implements ICredentialType {
 				},
 			],
 			default: 'header',
+		},
+		{
+			displayName: 'Ignore SSL Issues',
+			name: 'ignoreSSLIssues',
+			type: 'boolean',
+			default: false,
+			doNotInherit: true,
 		},
 	];
 }

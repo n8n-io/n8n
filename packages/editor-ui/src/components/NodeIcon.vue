@@ -1,143 +1,133 @@
-<template>
-	<div class="node-icon-wrapper" :style="iconStyleData">
-		<div v-if="nodeIconData !== null" class="icon">
-			<img v-if="nodeIconData.type === 'file'" :src="nodeIconData.fileBuffer || nodeIconData.path" :style="imageStyleData" />
-			<font-awesome-icon v-else :icon="nodeIconData.icon || nodeIconData.path" :style="fontStyleData" />
-		</div>
-		<div v-else class="node-icon-placeholder">
-			{{nodeType !== null ? nodeType.displayName.charAt(0) : '?' }}
-		</div>
-	</div>
-</template>
+<script setup lang="ts">
+import type { IVersionNode, SimplifiedNodeType } from '@/Interface';
+import { useRootStore } from '@/stores/root.store';
+import { useUIStore } from '@/stores/ui.store';
+import {
+	getBadgeIconUrl,
+	getNodeIcon,
+	getNodeIconColor,
+	getNodeIconUrl,
+} from '@/utils/nodeTypesUtils';
+import type { INodeTypeDescription } from 'n8n-workflow';
+import { computed } from 'vue';
 
-<script lang="ts">
-
-import { IVersionNode } from '@/Interface';
-import { INodeTypeDescription } from 'n8n-workflow';
-import Vue from 'vue';
-
-interface NodeIconData {
-	type: string;
+interface NodeIconSource {
 	path?: string;
-	fileExtension?: string;
 	fileBuffer?: string;
+	icon?: string;
 }
 
-export default Vue.extend({
-	name: 'NodeIcon',
-	props: {
-		nodeType: {},
-		size: {
-			type: Number,
-		},
-		disabled: {
-			type: Boolean,
-			default: false,
-		},
-		circle: {
-			type: Boolean,
-			default: false,
-		},
-	},
-	computed: {
-		iconStyleData (): object {
-			const nodeType = this.nodeType as INodeTypeDescription | IVersionNode | null;
-			const color = nodeType ? nodeType.defaults && nodeType!.defaults.color : '';
-			if (!this.size) {
-				return {color};
-			}
+type Props = {
+	nodeType?: INodeTypeDescription | SimplifiedNodeType | IVersionNode | null;
+	size?: number;
+	disabled?: boolean;
+	circle?: boolean;
+	colorDefault?: string;
+	showTooltip?: boolean;
+	tooltipPosition?: 'top' | 'bottom' | 'left' | 'right';
+	nodeName?: string;
+};
 
+const props = withDefaults(defineProps<Props>(), {
+	nodeType: undefined,
+	size: undefined,
+	circle: false,
+	disabled: false,
+	showTooltip: false,
+	tooltipPosition: 'top',
+	colorDefault: '',
+	nodeName: '',
+});
+
+const emit = defineEmits<{
+	click: [];
+}>();
+
+const rootStore = useRootStore();
+const uiStore = useUIStore();
+
+const iconType = computed(() => {
+	const nodeType = props.nodeType;
+
+	if (nodeType) {
+		if (nodeType.iconUrl) return 'file';
+		if ('iconData' in nodeType && nodeType.iconData) {
+			return nodeType.iconData.type;
+		}
+		if (nodeType.icon) {
+			const icon = getNodeIcon(nodeType, uiStore.appliedTheme);
+			return icon && icon.split(':')[0] === 'file' ? 'file' : 'icon';
+		}
+	}
+
+	return 'unknown';
+});
+
+const color = computed(() => getNodeIconColor(props.nodeType) ?? props.colorDefault ?? '');
+
+const iconSource = computed<NodeIconSource>(() => {
+	const nodeType = props.nodeType;
+	const baseUrl = rootStore.baseUrl;
+
+	if (nodeType) {
+		// If node type has icon data, use it
+		if ('iconData' in nodeType && nodeType.iconData) {
 			return {
-				color,
-				width: this.size + 'px',
-				height: this.size + 'px',
-				'font-size': this.size + 'px',
-				'line-height': this.size + 'px',
-				'border-radius': this.circle ? '50%': '2px',
-				...(this.disabled && {
-					color: '#ccc',
-					'-webkit-filter': 'contrast(40%) brightness(1.5) grayscale(100%)',
-					'filter': 'contrast(40%) brightness(1.5) grayscale(100%)',
-				}),
+				icon: nodeType.iconData.icon,
+				fileBuffer: nodeType.iconData.fileBuffer,
 			};
-		},
-		fontStyleData (): object {
-			return {
-				'max-width': this.size + 'px',
-			};
-		},
-		imageStyleData (): object {
-			return {
-				width: '100%',
-				'max-width': '100%',
-				'max-height': '100%',
-			};
-		},
-		isSvgIcon (): boolean {
-			if (this.nodeIconData && this.nodeIconData.type === 'file' && this.nodeIconData.fileExtension === 'svg') {
-				return true;
-			}
-			return false;
-		},
-		nodeIconData (): null | NodeIconData {
-			const nodeType = this.nodeType as INodeTypeDescription | IVersionNode | null;
-			if (nodeType === null) {
-				return null;
-			}
+		}
 
-			if ((nodeType as IVersionNode).iconData) {
-				return (nodeType as IVersionNode).iconData;
-			}
+		const iconUrl = getNodeIconUrl(nodeType, uiStore.appliedTheme);
+		if (iconUrl) {
+			return { path: baseUrl + iconUrl };
+		}
+		// Otherwise, extract it from icon prop
+		if (nodeType.icon) {
+			const icon = getNodeIcon(nodeType, uiStore.appliedTheme);
 
-			const restUrl = this.$store.getters.getRestUrl;
-
-			if (nodeType.icon) {
-				let type, path;
-				[type, path] = nodeType.icon.split(':');
-				const returnData: NodeIconData = {
-					type,
-					path,
-				};
-
+			if (icon) {
+				const [type, path] = icon.split(':');
 				if (type === 'file') {
-					returnData.path = restUrl + '/node-icon/' + nodeType.name;
-					returnData.fileExtension = path.split('.').slice(-1).join();
+					throw new Error(`Unexpected icon: ${icon}`);
 				}
 
-				return returnData;
+				return { icon: path };
 			}
-			return null;
-		},
-	},
+		}
+	}
+
+	return {};
+});
+
+const badge = computed(() => {
+	const nodeType = props.nodeType;
+	if (nodeType && 'badgeIconUrl' in nodeType && nodeType.badgeIconUrl) {
+		return {
+			type: 'file',
+			src: rootStore.baseUrl + getBadgeIconUrl(nodeType, uiStore.appliedTheme),
+		};
+	}
+
+	return undefined;
 });
 </script>
 
-<style lang="scss">
+<template>
+	<n8n-node-icon
+		:type="iconType"
+		:src="iconSource.path || iconSource.fileBuffer"
+		:name="iconSource.icon"
+		:color="color"
+		:disabled="disabled"
+		:size="size"
+		:circle="circle"
+		:node-type-name="nodeName ?? nodeType?.displayName ?? ''"
+		:show-tooltip="showTooltip"
+		:tooltip-position="tooltipPosition"
+		:badge="badge"
+		@click="emit('click')"
+	></n8n-node-icon>
+</template>
 
-.node-icon-wrapper {
-	width: 26px;
-	height: 26px;
-	border-radius: 2px;
-	color: #444;
-	line-height: 26px;
-	font-size: 1.1em;
-	overflow: hidden;
-	text-align: center;
-	font-weight: bold;
-	font-size: 20px;
-
-	.icon {
-		height: 100%;
-		width: 100%;
-
-		display: flex;
-		justify-content: center;
-		align-items: center;
-	}
-
-	.node-icon-placeholder {
-		text-align: center;
-	}
-}
-
-</style>
+<style lang="scss" module></style>

@@ -1,36 +1,28 @@
+import type { IResult } from 'mssql';
 import {
-	IExecuteFunctions,
-} from 'n8n-core';
-
-import {
-	IDataObject,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-	NodeOperationError,
+	type IExecuteFunctions,
+	type ICredentialDataDecryptedObject,
+	type ICredentialsDecrypted,
+	type ICredentialTestFunctions,
+	type IDataObject,
+	type INodeCredentialTestResult,
+	type INodeExecutionData,
+	type INodeType,
+	type INodeTypeDescription,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
-import {
-	chunk,
-	flatten,
-} from '../../utils/utilities';
-
-import mssql from 'mssql';
+import type { ITables } from './interfaces';
 
 import {
-	ITables,
-} from './TableInterface';
-
-import {
-	copyInputItem,
+	configurePool,
 	createTableStruct,
-	executeQueryQueue,
-	extractDeleteValues,
-	extractUpdateCondition,
-	extractUpdateSet,
-	extractValues,
-	formatColumns,
+	deleteOperation,
+	insertOperation,
+	updateOperation,
 } from './GenericFunctions';
+
+import { flatten, generatePairedItemData, getResolvables } from '@utils/utilities';
 
 export class MicrosoftSql implements INodeType {
 	description: INodeTypeDescription = {
@@ -38,17 +30,20 @@ export class MicrosoftSql implements INodeType {
 		name: 'microsoftSql',
 		icon: 'file:mssql.svg',
 		group: ['input'],
-		version: 1,
+		version: [1, 1.1],
 		description: 'Get, add and update data in Microsoft SQL',
 		defaults: {
 			name: 'Microsoft SQL',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		parameterPane: 'wide',
 		credentials: [
 			{
 				name: 'microsoftSql',
 				required: true,
+				testedBy: 'microsoftSqlConnectionTest',
 			},
 		],
 		properties: [
@@ -93,8 +88,10 @@ export class MicrosoftSql implements INodeType {
 				displayName: 'Query',
 				name: 'query',
 				type: 'string',
+				noDataExpression: true,
 				typeOptions: {
-					alwaysOpenEditWindow: true,
+					editor: 'sqlEditor',
+					sqlDialect: 'MSSQL',
 				},
 				displayOptions: {
 					show: {
@@ -102,7 +99,7 @@ export class MicrosoftSql implements INodeType {
 					},
 				},
 				default: '',
-				// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
+
 				placeholder: 'SELECT id, name FROM product WHERE id < 40',
 				required: true,
 				description: 'The SQL query to execute',
@@ -128,15 +125,16 @@ export class MicrosoftSql implements INodeType {
 				displayName: 'Columns',
 				name: 'columns',
 				type: 'string',
+				requiresDataPath: 'multiple',
 				displayOptions: {
 					show: {
 						operation: ['insert'],
 					},
 				},
 				default: '',
-				// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 				placeholder: 'id,name,description',
-				description: 'Comma-separated list of the properties which should used as columns for the new rows',
+				description:
+					'Comma-separated list of the properties which should used as columns for the new rows',
 			},
 
 			// ----------------------------------
@@ -159,6 +157,7 @@ export class MicrosoftSql implements INodeType {
 				displayName: 'Update Key',
 				name: 'updateKey',
 				type: 'string',
+				requiresDataPath: 'single',
 				displayOptions: {
 					show: {
 						operation: ['update'],
@@ -167,12 +166,14 @@ export class MicrosoftSql implements INodeType {
 				default: 'id',
 				required: true,
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
-				description: 'Name of the property which decides which rows in the database should be updated. Normally that would be "id".',
+				description:
+					'Name of the property which decides which rows in the database should be updated. Normally that would be "id".',
 			},
 			{
 				displayName: 'Columns',
 				name: 'columns',
 				type: 'string',
+				requiresDataPath: 'multiple',
 				displayOptions: {
 					show: {
 						operation: ['update'],
@@ -180,7 +181,8 @@ export class MicrosoftSql implements INodeType {
 				},
 				default: '',
 				placeholder: 'name,description',
-				description: 'Comma-separated list of the properties which should used as columns for rows to update',
+				description:
+					'Comma-separated list of the properties which should used as columns for rows to update',
 			},
 
 			// ----------------------------------
@@ -203,6 +205,7 @@ export class MicrosoftSql implements INodeType {
 				displayName: 'Delete Key',
 				name: 'deleteKey',
 				type: 'string',
+				requiresDataPath: 'single',
 				displayOptions: {
 					show: {
 						operation: ['delete'],
@@ -211,198 +214,162 @@ export class MicrosoftSql implements INodeType {
 				default: 'id',
 				required: true,
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
-				description: 'Name of the property which decides which rows in the database should be deleted. Normally that would be "id".',
+				description:
+					'Name of the property which decides which rows in the database should be deleted. Normally that would be "id".',
 			},
 		],
+	};
+
+	methods = {
+		credentialTest: {
+			async microsoftSqlConnectionTest(
+				this: ICredentialTestFunctions,
+				credential: ICredentialsDecrypted,
+			): Promise<INodeCredentialTestResult> {
+				const credentials = credential.data as ICredentialDataDecryptedObject;
+				try {
+					const pool = configurePool(credentials);
+					await pool.connect();
+				} catch (error) {
+					return {
+						status: 'Error',
+						message: error.message,
+					};
+				}
+				return {
+					status: 'OK',
+					message: 'Connection successful!',
+				};
+			},
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const credentials = await this.getCredentials('microsoftSql');
 
-		const config = {
-			server: credentials.server as string,
-			port: credentials.port as number,
-			database: credentials.database as string,
-			user: credentials.user as string,
-			password: credentials.password as string,
-			domain: credentials.domain ? (credentials.domain as string) : undefined,
-			connectionTimeout: credentials.connectTimeout as number,
-			requestTimeout: credentials.requestTimeout as number,
-			options: {
-				encrypt: credentials.tls as boolean,
-				enableArithAbort: false,
-			},
-		};
-
-		const pool = new mssql.ConnectionPool(config);
+		const pool = configurePool(credentials);
 		await pool.connect();
 
-		let returnItems = [];
+		let responseData: IDataObject | IDataObject[] = [];
+		let returnData: INodeExecutionData[] = [];
 
 		const items = this.getInputData();
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
+		const nodeVersion = this.getNode().typeVersion;
 
+		if (operation === 'executeQuery' && nodeVersion >= 1.1) {
+			for (let i = 0; i < items.length; i++) {
+				try {
+					let rawQuery = this.getNodeParameter('query', i) as string;
+
+					for (const resolvable of getResolvables(rawQuery)) {
+						rawQuery = rawQuery.replace(
+							resolvable,
+							this.evaluateExpression(resolvable, i) as string,
+						);
+					}
+
+					const { recordsets }: IResult<any[]> = await pool.request().query(rawQuery);
+
+					const result: IDataObject[] = recordsets.length > 1 ? flatten(recordsets) : recordsets[0];
+
+					for (const entry of result) {
+						returnData.push({
+							json: entry,
+							pairedItem: [{ item: i }],
+						});
+					}
+				} catch (error) {
+					if (this.continueOnFail()) {
+						returnData.push({
+							json: { error: error.message },
+							pairedItem: [{ item: i }],
+						});
+						continue;
+					}
+					await pool.close();
+					throw error;
+				}
+			}
+
+			await pool.close();
+			return [returnData];
+		}
 		try {
 			if (operation === 'executeQuery') {
-				// ----------------------------------
-				//         executeQuery
-				// ----------------------------------
+				let rawQuery = this.getNodeParameter('query', 0) as string;
 
-				const rawQuery = this.getNodeParameter('query', 0) as string;
+				for (const resolvable of getResolvables(rawQuery)) {
+					rawQuery = rawQuery.replace(resolvable, this.evaluateExpression(resolvable, 0) as string);
+				}
 
-				const queryResult = await pool.request().query(rawQuery);
+				const { recordsets }: IResult<any[]> = await pool.request().query(rawQuery);
 
-				const result =
-					queryResult.recordsets.length > 1
-						? flatten(queryResult.recordsets)
-						: queryResult.recordsets[0];
+				const result = recordsets.length > 1 ? flatten(recordsets) : recordsets[0];
 
-				returnItems = this.helpers.returnJsonArray(result as IDataObject[]);
-			} else if (operation === 'insert') {
-				// ----------------------------------
-				//         insert
-				// ----------------------------------
+				responseData = result;
+			}
 
+			if (operation === 'insert') {
 				const tables = createTableStruct(this.getNodeParameter, items);
-				await executeQueryQueue(
-					tables,
-					({
-						table,
-						columnString,
-						items,
-					}: {
-						table: string;
-						columnString: string;
-						items: IDataObject[];
-					}): Array<Promise<object>> => {
-						return chunk(items, 1000).map(insertValues => {
-							const values = insertValues
-								.map((item: IDataObject) => extractValues(item))
-								.join(',');
-							return pool
-								.request()
-								.query(
-									`INSERT INTO ${table}(${formatColumns(columnString)}) VALUES ${values};`,
-								);
-						});
-					},
-				);
 
-				returnItems = items;
-			} else if (operation === 'update') {
-				// ----------------------------------
-				//         update
-				// ----------------------------------
+				await insertOperation(tables, pool);
 
+				responseData = items;
+			}
+
+			if (operation === 'update') {
 				const updateKeys = items.map(
-					(item, index) => this.getNodeParameter('updateKey', index) as string,
+					(_, index) => this.getNodeParameter('updateKey', index) as string,
 				);
+
 				const tables = createTableStruct(
 					this.getNodeParameter,
 					items,
 					['updateKey'].concat(updateKeys),
 					'updateKey',
 				);
-				await executeQueryQueue(
-					tables,
-					({
-						table,
-						columnString,
-						items,
-					}: {
-						table: string;
-						columnString: string;
-						items: IDataObject[];
-					}): Array<Promise<object>> => {
-						return items.map(item => {
-							const columns = columnString
-								.split(',')
-								.map(column => column.trim());
 
-							const setValues = extractUpdateSet(item, columns);
-							const condition = extractUpdateCondition(
-								item,
-								item.updateKey as string,
-							);
+				await updateOperation(tables, pool);
 
-							return pool
-								.request()
-								.query(`UPDATE ${table} SET ${setValues} WHERE ${condition};`);
-						});
-					},
-				);
+				responseData = items;
+			}
 
-				returnItems = items;
-			} else if (operation === 'delete') {
-				// ----------------------------------
-				//         delete
-				// ----------------------------------
-
-				const tables = items.reduce((tables, item, index) => {
+			if (operation === 'delete') {
+				const tables = items.reduce((acc, item, index) => {
 					const table = this.getNodeParameter('table', index) as string;
 					const deleteKey = this.getNodeParameter('deleteKey', index) as string;
-					if (tables[table] === undefined) {
-						tables[table] = {};
+					if (acc[table] === undefined) {
+						acc[table] = {};
 					}
-					if (tables[table][deleteKey] === undefined) {
-						tables[table][deleteKey] = [];
+					if (acc[table][deleteKey] === undefined) {
+						acc[table][deleteKey] = [];
 					}
-					tables[table][deleteKey].push(item);
-					return tables;
+					acc[table][deleteKey].push(item);
+					return acc;
 				}, {} as ITables);
 
-				const queriesResults = await Promise.all(
-					Object.keys(tables).map(table => {
-						const deleteKeyResults = Object.keys(tables[table]).map(
-							deleteKey => {
-								const deleteItemsList = chunk(
-									tables[table][deleteKey].map(item =>
-										copyInputItem(item as INodeExecutionData, [deleteKey]),
-									),
-									1000,
-								);
-								const queryQueue = deleteItemsList.map(deleteValues => {
-									return pool
-										.request()
-										.query(
-											`DELETE FROM ${table} WHERE "${deleteKey}" IN ${extractDeleteValues(
-												deleteValues,
-												deleteKey,
-											)};`,
-										);
-								});
-								return Promise.all(queryQueue);
-							},
-						);
-						return Promise.all(deleteKeyResults);
-					}),
-				);
-
-				const rowsDeleted = flatten(queriesResults).reduce(
-					(acc: number, resp: mssql.IResult<object>): number =>
-						(acc += resp.rowsAffected.reduce((sum, val) => (sum += val))),
-					0,
-				);
-
-				returnItems = this.helpers.returnJsonArray({
-					rowsDeleted,
-				} as IDataObject);
-			} else {
-				await pool.close();
-				throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not supported!`);
+				responseData = await deleteOperation(tables, pool);
 			}
+
+			const itemData = generatePairedItemData(items.length);
+
+			returnData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(responseData),
+				{ itemData },
+			);
 		} catch (error) {
-			if (this.continueOnFail() === true) {
-				returnItems = items;
+			if (this.continueOnFail()) {
+				responseData = items;
 			} else {
 				await pool.close();
 				throw error;
 			}
 		}
 
-		// Close the connection
+		// shuts down the connection pool associated with the db object to allow the process to finish
 		await pool.close();
 
-		return this.prepareOutputData(returnItems);
+		return [returnData];
 	}
 }

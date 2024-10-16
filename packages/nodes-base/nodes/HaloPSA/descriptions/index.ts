@@ -11,5 +11,5 @@ export {
 	ticketFields,
 	ticketOperations,
 	userFields,
-	userOperations
+	userOperations,
 };

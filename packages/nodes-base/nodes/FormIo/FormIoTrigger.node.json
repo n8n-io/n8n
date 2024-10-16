@@ -2,18 +2,16 @@
 	"node": "n8n-nodes-base.formIoTrigger",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Communication"
-	],
+	"categories": ["Communication"],
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/formIoTrigger"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/formIoTrigger/"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.formIoTrigger/"
+				"url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.formiotrigger/"
 			}
 		]
 	}

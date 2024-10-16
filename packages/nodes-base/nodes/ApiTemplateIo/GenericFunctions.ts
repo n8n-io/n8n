@@ -1,21 +1,20 @@
-import {
-	OptionsWithUri,
-} from 'request';
-
-import {
+import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
+	JsonObject,
+	IRequestOptions,
+	IHttpRequestMethods,
+} from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 export async function apiTemplateIoApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	qs = {},
 	body = {},
 ) {
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			'user-agent': 'n8n',
 			Accept: 'application/json',
@@ -38,31 +37,34 @@ export async function apiTemplateIoApiRequest(
 	}
 
 	try {
-		const response = await this.helpers.requestWithAuthentication.call(this, 'apiTemplateIoApi',options);
+		const response = await this.helpers.requestWithAuthentication.call(
+			this,
+			'apiTemplateIoApi',
+			options,
+		);
 		if (response.status === 'error') {
-			throw new NodeApiError(this.getNode(), response.message);
+			throw new NodeApiError(this.getNode(), response.message as JsonObject);
 		}
 		return response;
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
-export async function loadResource(
-	this: ILoadOptionsFunctions,
-	resource: 'image' | 'pdf',
-) {
+export async function loadResource(this: ILoadOptionsFunctions, resource: 'image' | 'pdf') {
 	const target = resource === 'image' ? ['JPEG', 'PNG'] : ['PDF'];
 	const templates = await apiTemplateIoApiRequest.call(this, 'GET', '/list-templates');
-	const filtered = templates.filter(({ format }: { format: 'PDF' | 'JPEG' | 'PNG' }) => target.includes(format));
+	const filtered = templates.filter(({ format }: { format: 'PDF' | 'JPEG' | 'PNG' }) =>
+		target.includes(format),
+	);
 
-	return filtered.map(({ format, name, id }: { format: string, name: string, id: string }) => ({
+	return filtered.map(({ format, name, id }: { format: string; name: string; id: string }) => ({
 		name: `${name} (${format})`,
 		value: id,
 	}));
 }
 
-export function validateJSON(json: string | object | undefined): any { // tslint:disable-line:no-any
+export function validateJSON(json: string | object | undefined): any {
 	let result;
 	if (typeof json === 'object') {
 		return json;
@@ -75,9 +77,8 @@ export function validateJSON(json: string | object | undefined): any { // tslint
 	return result;
 }
 
-
-export function downloadImage(this: IExecuteFunctions, url: string) {
-	return this.helpers.request({
+export async function downloadImage(this: IExecuteFunctions, url: string) {
+	return await this.helpers.request({
 		uri: url,
 		method: 'GET',
 		json: false,

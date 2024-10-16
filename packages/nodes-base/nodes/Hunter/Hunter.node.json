@@ -2,18 +2,16 @@
 	"node": "n8n-nodes-base.hunter",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Sales"
-	],
+	"categories": ["Sales"],
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/hunter"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/hunter/"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.hunter/"
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.hunter/"
 			}
 		]
 	}

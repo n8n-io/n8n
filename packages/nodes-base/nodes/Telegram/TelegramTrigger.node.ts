@@ -1,23 +1,17 @@
-import {
+import crypto from 'crypto';
+import type {
 	IHookFunctions,
 	IWebhookFunctions,
-} from 'n8n-core';
-
-import {
 	IDataObject,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
-import {
-	apiRequest,
-	getImageBySize,
-} from './GenericFunctions';
+import { apiRequest, getImageBySize, getSecretToken } from './GenericFunctions';
 
-import {
-	IEvent,
-} from './IEvent';
+import type { IEvent } from './IEvent';
 
 export class TelegramTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -25,14 +19,15 @@ export class TelegramTrigger implements INodeType {
 		name: 'telegramTrigger',
 		icon: 'file:telegram.svg',
 		group: ['trigger'],
-		version: 1,
+		version: [1, 1.1],
+		defaultVersion: 1.1,
 		subtitle: '=Updates: {{$parameter["updates"].join(", ")}}',
 		description: 'Starts the workflow on a Telegram update',
 		defaults: {
 			name: 'Telegram Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'telegramApi',
@@ -49,7 +44,14 @@ export class TelegramTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Updates',
+				displayName:
+					'Due to Telegram API limitations, you can use just one Telegram trigger for each bot at a time',
+				name: 'telegramTriggerNotice',
+				type: 'notice',
+				default: '',
+			},
+			{
+				displayName: 'Trigger On',
 				name: 'updates',
 				type: 'multiOptions',
 				options: [
@@ -66,17 +68,20 @@ export class TelegramTrigger implements INodeType {
 					{
 						name: 'Channel Post',
 						value: 'channel_post',
-						description: 'Trigger on new incoming channel post of any kind — text, photo, sticker, etc',
+						description:
+							'Trigger on new incoming channel post of any kind — text, photo, sticker, etc',
 					},
 					{
 						name: 'Edited Channel Post',
 						value: 'edited_channel_post',
-						description: 'Trigger on new version of a channel post that is known to the bot and was edited',
+						description:
+							'Trigger on new version of a channel post that is known to the bot and was edited',
 					},
 					{
 						name: 'Edited Message',
 						value: 'edited_message',
-						description: 'Trigger on new version of a channel post that is known to the bot and was edited',
+						description:
+							'Trigger on new version of a channel post that is known to the bot and was edited',
 					},
 					{
 						name: 'Inline Query',
@@ -91,22 +96,32 @@ export class TelegramTrigger implements INodeType {
 					{
 						name: 'Poll',
 						value: 'poll',
-						description: 'Trigger on new poll state. Bots receive only updates about stopped polls and polls, which are sent by the bot.',
+						action: 'On Poll Change',
+						description:
+							'Trigger on new poll state. Bots receive only updates about stopped polls and polls, which are sent by the bot.',
 					},
 					{
 						name: 'Pre-Checkout Query',
 						value: 'pre_checkout_query',
-						description: 'Trigger on new incoming pre-checkout query. Contains full information about checkout.',
+						description:
+							'Trigger on new incoming pre-checkout query. Contains full information about checkout.',
 					},
 					{
 						name: 'Shipping Query',
 						value: 'shipping_query',
-						description: 'Trigger on new incoming shipping query. Only for invoices with flexible price.',
+						description:
+							'Trigger on new incoming shipping query. Only for invoices with flexible price.',
 					},
 				],
 				required: true,
 				default: [],
-				description: 'The update types to listen to',
+			},
+			{
+				displayName:
+					'Every uploaded attachment, even if sent in a group, will trigger a separate event. You can identify that an attachment belongs to a certain group by <code>media_group_id</code> .',
+				name: 'attachmentNotice',
+				type: 'notice',
+				default: '',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -121,7 +136,8 @@ export class TelegramTrigger implements INodeType {
 						type: 'boolean',
 						default: false,
 						// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
-						description: 'Telegram delivers the image in multiple sizes. By default, just the large image would be downloaded. If you want to change the size, set the field \'Image Size\'.',
+						description:
+							"Telegram delivers the image in multiple sizes. By default, just the large image would be downloaded. If you want to change the size, set the field 'Image Size'.",
 					},
 					{
 						displayName: 'Image Size',
@@ -129,9 +145,7 @@ export class TelegramTrigger implements INodeType {
 						type: 'options',
 						displayOptions: {
 							show: {
-								download: [
-									true,
-								],
+								download: [true],
 							},
 						},
 						options: [
@@ -160,7 +174,6 @@ export class TelegramTrigger implements INodeType {
 		],
 	};
 
-	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
@@ -179,15 +192,18 @@ export class TelegramTrigger implements INodeType {
 
 				let allowedUpdates = this.getNodeParameter('updates') as string[];
 
-				if (allowedUpdates.includes('*')) {
+				if ((allowedUpdates || []).includes('*')) {
 					allowedUpdates = [];
 				}
 
 				const endpoint = 'setWebhook';
 
+				const secret_token = getSecretToken.call(this);
+
 				const body = {
 					url: webhookUrl,
 					allowed_updates: allowedUpdates,
+					secret_token,
 				};
 
 				await apiRequest.call(this, 'POST', endpoint, body);
@@ -210,15 +226,30 @@ export class TelegramTrigger implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
-
 		const credentials = await this.getCredentials('telegramApi');
 
 		const bodyData = this.getBodyData() as IEvent;
+		const headerData = this.getHeaderData();
+
+		const nodeVersion = this.getNode().typeVersion;
+		if (nodeVersion > 1) {
+			const secret = getSecretToken.call(this);
+			const secretBuffer = Buffer.from(secret);
+			const headerSecretBuffer = Buffer.from(
+				String(headerData['x-telegram-bot-api-secret-token'] ?? ''),
+			);
+			if (!crypto.timingSafeEqual(secretBuffer, headerSecretBuffer)) {
+				const res = this.getResponseObject();
+				res.status(403).json({ message: 'Provided secret is not valid' });
+				return {
+					noWebhookResponse: true,
+				};
+			}
+		}
 
 		const additionalFields = this.getNodeParameter('additionalFields') as IDataObject;
 
 		if (additionalFields.download === true) {
-
 			let imageSize = 'large';
 
 			let key: 'message' | 'channel_post' = 'message';
@@ -227,18 +258,22 @@ export class TelegramTrigger implements INodeType {
 				key = 'channel_post';
 			}
 
-			if ((bodyData[key] && bodyData[key]?.photo && Array.isArray(bodyData[key]?.photo) || bodyData[key]?.document)) {
-
+			if (
+				(bodyData[key]?.photo && Array.isArray(bodyData[key]?.photo)) ||
+				bodyData[key]?.document ||
+				bodyData[key]?.video
+			) {
 				if (additionalFields.imageSize) {
-
 					imageSize = additionalFields.imageSize as string;
 				}
 
 				let fileId;
 
 				if (bodyData[key]?.photo) {
-
-					let image = getImageBySize(bodyData[key]?.photo as IDataObject[], imageSize) as IDataObject;
+					let image = getImageBySize(
+						bodyData[key]?.photo as IDataObject[],
+						imageSize,
+					) as IDataObject;
 
 					// When the image is sent from the desktop app telegram does not resize the image
 					// So return the only image avaiable
@@ -248,21 +283,38 @@ export class TelegramTrigger implements INodeType {
 					}
 
 					fileId = image.file_id;
-
+				} else if (bodyData[key]?.video) {
+					fileId = bodyData[key]?.video?.file_id;
 				} else {
-
 					fileId = bodyData[key]?.document?.file_id;
 				}
 
-				const { result: { file_path } } = await apiRequest.call(this, 'GET', `getFile?file_id=${fileId}`, {});
+				const {
+					result: { file_path },
+				} = await apiRequest.call(this, 'GET', `getFile?file_id=${fileId}`, {});
 
-				const file = await apiRequest.call(this, 'GET', '', {}, {}, { json: false, encoding: null, uri: `https://api.telegram.org/file/bot${credentials.accessToken}/${file_path}`, resolveWithFullResponse: true });
+				const file = await apiRequest.call(
+					this,
+					'GET',
+					'',
+					{},
+					{},
+					{
+						json: false,
+						encoding: null,
+						uri: `${credentials.baseUrl}/file/bot${credentials.accessToken}/${file_path}`,
+						resolveWithFullResponse: true,
+					},
+				);
 
 				const data = Buffer.from(file.body as string);
 
 				const fileName = file_path.split('/').pop();
 
-				const binaryData = await this.helpers.prepareBinaryData(data as unknown as Buffer, fileName);
+				const binaryData = await this.helpers.prepareBinaryData(
+					data as unknown as Buffer,
+					fileName as string,
+				);
 
 				return {
 					workflowData: [
@@ -280,9 +332,7 @@ export class TelegramTrigger implements INodeType {
 		}
 
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray([bodyData as unknown as IDataObject]),
-			],
+			workflowData: [this.helpers.returnJsonArray([bodyData as unknown as IDataObject])],
 		};
 	}
 }

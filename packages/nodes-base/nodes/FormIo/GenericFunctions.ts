@@ -1,14 +1,13 @@
-import {
+import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import {
 	IHookFunctions,
 	IWebhookFunctions,
-	NodeApiError,
+	JsonObject,
+	IRequestOptions,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
-
+import { ApplicationError, NodeApiError } from 'n8n-workflow';
 
 interface IFormIoCredentials {
 	environment: 'cloudHosted' | ' selfHosted';
@@ -19,9 +18,11 @@ interface IFormIoCredentials {
 
 /**
  * Method has the logic to get jwt token from Form.io
- * @param this
  */
-async function getToken(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, credentials: IFormIoCredentials) {
+async function getToken(
+	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
+	credentials: IFormIoCredentials,
+) {
 	const base = credentials.domain || 'https://formio.form.io';
 	const options = {
 		headers: {
@@ -37,24 +38,30 @@ async function getToken(this: IExecuteFunctions | IWebhookFunctions | IHookFunct
 		uri: `${base}/user/login`,
 		json: true,
 		resolveWithFullResponse: true,
-	};
+	} satisfies IRequestOptions;
 
 	try {
-		const responseObject = await this.helpers.request!(options);
+		const responseObject = await this.helpers.request(options);
 		return responseObject.headers['x-jwt-token'];
 	} catch (error) {
-		throw new Error(`Authentication Failed for Form.io. Please provide valid credentails/ endpoint details`);
+		throw new ApplicationError(
+			'Authentication Failed for Form.io. Please provide valid credentails/ endpoint details',
+			{ level: 'warning' },
+		);
 	}
 }
 
 /**
  * Method will call register or list webhooks based on the passed method in the parameter
- * @param this
- * @param method
  */
-export async function formIoApiRequest(this: IHookFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, endpoint: string, body = {}, qs = {}): Promise<any> { // tslint:disable-line:no-any
-
-	const credentials = await this.getCredentials('formIoApi') as unknown as IFormIoCredentials;
+export async function formIoApiRequest(
+	this: IHookFunctions | ILoadOptionsFunctions | IWebhookFunctions,
+	method: IHttpRequestMethods,
+	endpoint: string,
+	body = {},
+	qs = {},
+): Promise<any> {
+	const credentials = await this.getCredentials<IFormIoCredentials>('formIoApi');
 
 	const token = await getToken.call(this, credentials);
 
@@ -73,8 +80,8 @@ export async function formIoApiRequest(this: IHookFunctions | ILoadOptionsFuncti
 	};
 
 	try {
-		return await this.helpers.request!.call(this, options);
+		return await this.helpers.request.call(this, options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

@@ -2,18 +2,16 @@
 	"node": "n8n-nodes-base.airtableTrigger",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Data & Storage"
-	],
+	"categories": ["Data & Storage"],
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/airtable"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/airtable/"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.airtableTrigger/"
+				"url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.airtabletrigger/"
 			}
 		]
 	}

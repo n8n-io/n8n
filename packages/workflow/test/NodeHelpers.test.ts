@@ -1,12 +1,28 @@
-import { INodeParameters, INodeProperties, NodeHelpers } from '../src';
+import {
+	NodeConnectionType,
+	type INode,
+	type INodeParameters,
+	type INodeProperties,
+	type INodeType,
+	type INodeTypeDescription,
+} from '@/Interfaces';
+import {
+	getNodeParameters,
+	getNodeHints,
+	isSingleExecution,
+	isSubNodeType,
+	applyDeclarativeNodeOptionParameters,
+	convertNodeToAiTool,
+} from '@/NodeHelpers';
+import type { Workflow } from '@/Workflow';
 
-describe('Workflow', () => {
-	describe('getParameterValue', () => {
+describe('NodeHelpers', () => {
+	describe('getNodeParameters', () => {
 		const tests: Array<{
 			description: string;
 			input: {
 				nodePropertiesArray: INodeProperties[];
-				nodeValues: INodeParameters;
+				nodeValues: INodeParameters | null;
 			};
 			output: {
 				noneDisplayedFalse: {
@@ -2249,7 +2265,7 @@ describe('Workflow', () => {
 			},
 			{
 				description:
-					'One property which is dependeny on two identically named properties of which only one gets displayed with different options. No value set at all.',
+					'One property which is dependency on two identically named properties of which only one gets displayed with different options. No value set at all.',
 				input: {
 					nodePropertiesArray: [
 						{
@@ -2360,7 +2376,7 @@ describe('Workflow', () => {
 			},
 			{
 				description:
-					'One property which is dependeny on two identically named properties of which only one gets displayed with different options. No value set at all. Order reversed',
+					'One property which is dependency on two identically named properties of which only one gets displayed with different options. No value set at all. Order reversed',
 				input: {
 					nodePropertiesArray: [
 						{
@@ -2471,7 +2487,7 @@ describe('Workflow', () => {
 			},
 			{
 				description:
-					'One property which is dependeny on two identically named properties of which only one gets displayed with different options. No value set at all.',
+					'One property which is dependency on two identically named properties of which only one gets displayed with different options. No value set at all.',
 				input: {
 					nodePropertiesArray: [
 						{
@@ -3335,12 +3351,67 @@ describe('Workflow', () => {
 					},
 				},
 			},
+			{
+				description: 'nodeValues is null (for example when resolving expression fails)',
+				input: {
+					nodePropertiesArray: [
+						{
+							displayName: 'Custom Properties',
+							name: 'customPropertiesUi',
+							placeholder: 'Add Custom Property',
+							type: 'fixedCollection',
+							typeOptions: {
+								multipleValues: true,
+							},
+							default: {},
+							options: [
+								{
+									name: 'customPropertiesValues',
+									displayName: 'Custom Property',
+									values: [
+										{
+											displayName: 'Property Name or ID',
+											name: 'property',
+											type: 'options',
+											typeOptions: {
+												loadOptionsMethod: 'getDealCustomProperties',
+											},
+											default: '',
+											description:
+												'Name of the property. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+										},
+										{
+											displayName: 'Value',
+											name: 'value',
+											type: 'string',
+											default: '',
+											required: true,
+											description: 'Value of the property',
+										},
+									],
+								},
+							],
+						},
+					],
+					nodeValues: null,
+				},
+				output: {
+					noneDisplayedFalse: {
+						defaultsFalse: {},
+						defaultsTrue: {},
+					},
+					noneDisplayedTrue: {
+						defaultsFalse: {},
+						defaultsTrue: {},
+					},
+				},
+			},
 		];
 
 		for (const testData of tests) {
 			test(testData.description, () => {
 				// returnDefaults: false | returnNoneDisplayed: false
-				let result = NodeHelpers.getNodeParameters(
+				let result = getNodeParameters(
 					testData.input.nodePropertiesArray,
 					testData.input.nodeValues,
 					false,
@@ -3350,7 +3421,7 @@ describe('Workflow', () => {
 				expect(result).toEqual(testData.output.noneDisplayedFalse.defaultsFalse);
 
 				// returnDefaults: true | returnNoneDisplayed: false
-				result = NodeHelpers.getNodeParameters(
+				result = getNodeParameters(
 					testData.input.nodePropertiesArray,
 					testData.input.nodeValues,
 					true,
@@ -3360,7 +3431,7 @@ describe('Workflow', () => {
 				expect(result).toEqual(testData.output.noneDisplayedFalse.defaultsTrue);
 
 				// returnDefaults: false | returnNoneDisplayed: true
-				result = NodeHelpers.getNodeParameters(
+				result = getNodeParameters(
 					testData.input.nodePropertiesArray,
 					testData.input.nodeValues,
 					false,
@@ -3370,7 +3441,7 @@ describe('Workflow', () => {
 				expect(result).toEqual(testData.output.noneDisplayedTrue.defaultsFalse);
 
 				// returnDefaults: true | returnNoneDisplayed: true
-				result = NodeHelpers.getNodeParameters(
+				result = getNodeParameters(
 					testData.input.nodePropertiesArray,
 					testData.input.nodeValues,
 					true,
@@ -3380,5 +3451,356 @@ describe('Workflow', () => {
 				expect(result).toEqual(testData.output.noneDisplayedTrue.defaultsTrue);
 			});
 		}
+	});
+
+	describe('getNodeHints', () => {
+		//TODO: Add more tests here when hints are added to some node types
+		test('should return node hints if present in node type', () => {
+			const testType = {
+				hints: [
+					{
+						message: 'TEST HINT',
+					},
+				],
+			} as INodeTypeDescription;
+
+			const workflow = {} as unknown as Workflow;
+
+			const node: INode = {
+				name: 'Test Node Hints',
+			} as INode;
+			const nodeType = testType;
+
+			const hints = getNodeHints(workflow, node, nodeType);
+
+			expect(hints).toHaveLength(1);
+			expect(hints[0].message).toEqual('TEST HINT');
+		});
+		test('should not include hint if displayCondition is false', () => {
+			const testType = {
+				hints: [
+					{
+						message: 'TEST HINT',
+						displayCondition: 'FALSE DISPLAY CONDITION EXPESSION',
+					},
+				],
+			} as INodeTypeDescription;
+
+			const workflow = {
+				expression: {
+					getSimpleParameterValue(
+						_node: string,
+						_parameter: string,
+						_mode: string,
+						_additionalData = {},
+					) {
+						return false;
+					},
+				},
+			} as unknown as Workflow;
+
+			const node: INode = {
+				name: 'Test Node Hints',
+			} as INode;
+			const nodeType = testType;
+
+			const hints = getNodeHints(workflow, node, nodeType);
+
+			expect(hints).toHaveLength(0);
+		});
+		test('should include hint if displayCondition is true', () => {
+			const testType = {
+				hints: [
+					{
+						message: 'TEST HINT',
+						displayCondition: 'TRUE DISPLAY CONDITION EXPESSION',
+					},
+				],
+			} as INodeTypeDescription;
+
+			const workflow = {
+				expression: {
+					getSimpleParameterValue(
+						_node: string,
+						_parameter: string,
+						_mode: string,
+						_additionalData = {},
+					) {
+						return true;
+					},
+				},
+			} as unknown as Workflow;
+
+			const node: INode = {
+				name: 'Test Node Hints',
+			} as INode;
+			const nodeType = testType;
+
+			const hints = getNodeHints(workflow, node, nodeType);
+
+			expect(hints).toHaveLength(1);
+		});
+	});
+
+	describe('isSingleExecution', () => {
+		test('should determine based on node parameters if it would be executed once', () => {
+			expect(isSingleExecution('n8n-nodes-base.code', {})).toEqual(true);
+			expect(isSingleExecution('n8n-nodes-base.code', { mode: 'runOnceForEachItem' })).toEqual(
+				false,
+			);
+			expect(isSingleExecution('n8n-nodes-base.executeWorkflow', {})).toEqual(true);
+			expect(isSingleExecution('n8n-nodes-base.executeWorkflow', { mode: 'each' })).toEqual(false);
+			expect(isSingleExecution('n8n-nodes-base.crateDb', {})).toEqual(true);
+			expect(isSingleExecution('n8n-nodes-base.crateDb', { operation: 'update' })).toEqual(true);
+			expect(isSingleExecution('n8n-nodes-base.timescaleDb', {})).toEqual(true);
+			expect(isSingleExecution('n8n-nodes-base.timescaleDb', { operation: 'update' })).toEqual(
+				true,
+			);
+			expect(isSingleExecution('n8n-nodes-base.microsoftSql', {})).toEqual(true);
+			expect(isSingleExecution('n8n-nodes-base.microsoftSql', { operation: 'update' })).toEqual(
+				true,
+			);
+			expect(isSingleExecution('n8n-nodes-base.microsoftSql', { operation: 'delete' })).toEqual(
+				true,
+			);
+			expect(isSingleExecution('n8n-nodes-base.questDb', {})).toEqual(true);
+			expect(isSingleExecution('n8n-nodes-base.mongoDb', { operation: 'insert' })).toEqual(true);
+			expect(isSingleExecution('n8n-nodes-base.mongoDb', { operation: 'update' })).toEqual(true);
+			expect(isSingleExecution('n8n-nodes-base.redis', {})).toEqual(true);
+		});
+	});
+
+	describe('isSubNodeType', () => {
+		const tests: Array<[boolean, Pick<INodeTypeDescription, 'outputs'> | null]> = [
+			[false, null],
+			[false, { outputs: '={{random_expression}}' }],
+			[false, { outputs: [] }],
+			[false, { outputs: [NodeConnectionType.Main] }],
+			[true, { outputs: [NodeConnectionType.AiAgent] }],
+			[true, { outputs: [NodeConnectionType.Main, NodeConnectionType.AiAgent] }],
+		];
+		test.each(tests)('should return %p for %o', (expected, nodeType) => {
+			expect(isSubNodeType(nodeType)).toBe(expected);
+		});
+	});
+
+	describe('applyDeclarativeNodeOptionParameters', () => {
+		test.each([
+			[
+				'node with execute method',
+				{
+					execute: jest.fn(),
+					description: {
+						properties: [],
+					},
+				},
+			],
+			[
+				'node with trigger method',
+				{
+					trigger: jest.fn(),
+					description: {
+						properties: [],
+					},
+				},
+			],
+			[
+				'node with webhook method',
+				{
+					webhook: jest.fn(),
+					description: {
+						properties: [],
+					},
+				},
+			],
+			[
+				'a polling node-type',
+				{
+					description: {
+						polling: true,
+						properties: [],
+					},
+				},
+			],
+			[
+				'a node-type with a non-main output',
+				{
+					description: {
+						outputs: ['main', 'ai_agent'],
+						properties: [],
+					},
+				},
+			],
+		])('should not modify properties on node with %s method', (_, nodeTypeName) => {
+			const nodeType = nodeTypeName as unknown as INodeType;
+			applyDeclarativeNodeOptionParameters(nodeType);
+			expect(nodeType.description.properties).toEqual([]);
+		});
+	});
+
+	describe('convertNodeToAiTool', () => {
+		let fullNodeWrapper: { description: INodeTypeDescription };
+
+		beforeEach(() => {
+			fullNodeWrapper = {
+				description: {
+					displayName: 'Test Node',
+					name: 'testNode',
+					group: ['test'],
+					description: 'A test node',
+					version: 1,
+					defaults: {},
+					inputs: [NodeConnectionType.Main],
+					outputs: [NodeConnectionType.Main],
+					properties: [],
+				},
+			};
+		});
+
+		it('should modify the name and displayName correctly', () => {
+			const result = convertNodeToAiTool(fullNodeWrapper);
+			expect(result.description.name).toBe('testNodeTool');
+			expect(result.description.displayName).toBe('Test Node Tool');
+		});
+
+		it('should update inputs and outputs', () => {
+			const result = convertNodeToAiTool(fullNodeWrapper);
+			expect(result.description.inputs).toEqual([]);
+			expect(result.description.outputs).toEqual([NodeConnectionType.AiTool]);
+		});
+
+		it('should remove the usableAsTool property', () => {
+			fullNodeWrapper.description.usableAsTool = true;
+			const result = convertNodeToAiTool(fullNodeWrapper);
+			expect(result.description.usableAsTool).toBeUndefined();
+		});
+
+		it("should add toolDescription property if it doesn't exist", () => {
+			const result = convertNodeToAiTool(fullNodeWrapper);
+			const toolDescriptionProp = result.description.properties.find(
+				(prop) => prop.name === 'toolDescription',
+			);
+			expect(toolDescriptionProp).toBeDefined();
+			expect(toolDescriptionProp?.type).toBe('string');
+			expect(toolDescriptionProp?.default).toBe(fullNodeWrapper.description.description);
+		});
+
+		it('should set codex categories correctly', () => {
+			const result = convertNodeToAiTool(fullNodeWrapper);
+			expect(result.description.codex).toEqual({
+				categories: ['AI'],
+				subcategories: {
+					AI: ['Tools'],
+					Tools: ['Other Tools'],
+				},
+			});
+		});
+
+		it('should preserve existing properties', () => {
+			const existingProp: INodeProperties = {
+				displayName: 'Existing Prop',
+				name: 'existingProp',
+				type: 'string',
+				default: 'test',
+			};
+			fullNodeWrapper.description.properties = [existingProp];
+			const result = convertNodeToAiTool(fullNodeWrapper);
+			expect(result.description.properties).toHaveLength(3); // Existing prop + toolDescription + notice
+			expect(result.description.properties).toContainEqual(existingProp);
+		});
+
+		it('should handle nodes with resource property', () => {
+			const resourceProp: INodeProperties = {
+				displayName: 'Resource',
+				name: 'resource',
+				type: 'options',
+				options: [{ name: 'User', value: 'user' }],
+				default: 'user',
+			};
+			fullNodeWrapper.description.properties = [resourceProp];
+			const result = convertNodeToAiTool(fullNodeWrapper);
+			expect(result.description.properties[1].name).toBe('descriptionType');
+			expect(result.description.properties[2].name).toBe('toolDescription');
+			expect(result.description.properties[3]).toEqual(resourceProp);
+		});
+
+		it('should handle nodes with operation property', () => {
+			const operationProp: INodeProperties = {
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				options: [{ name: 'Create', value: 'create' }],
+				default: 'create',
+			};
+			fullNodeWrapper.description.properties = [operationProp];
+			const result = convertNodeToAiTool(fullNodeWrapper);
+			expect(result.description.properties[1].name).toBe('descriptionType');
+			expect(result.description.properties[2].name).toBe('toolDescription');
+			expect(result.description.properties[3]).toEqual(operationProp);
+		});
+
+		it('should handle nodes with both resource and operation properties', () => {
+			const resourceProp: INodeProperties = {
+				displayName: 'Resource',
+				name: 'resource',
+				type: 'options',
+				options: [{ name: 'User', value: 'user' }],
+				default: 'user',
+			};
+			const operationProp: INodeProperties = {
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				options: [{ name: 'Create', value: 'create' }],
+				default: 'create',
+			};
+			fullNodeWrapper.description.properties = [resourceProp, operationProp];
+			const result = convertNodeToAiTool(fullNodeWrapper);
+			expect(result.description.properties[1].name).toBe('descriptionType');
+			expect(result.description.properties[2].name).toBe('toolDescription');
+			expect(result.description.properties[3]).toEqual(resourceProp);
+			expect(result.description.properties[4]).toEqual(operationProp);
+		});
+
+		it('should handle nodes with empty properties', () => {
+			fullNodeWrapper.description.properties = [];
+			const result = convertNodeToAiTool(fullNodeWrapper);
+			expect(result.description.properties).toHaveLength(2);
+			expect(result.description.properties[1].name).toBe('toolDescription');
+		});
+
+		it('should handle nodes with existing codex property', () => {
+			fullNodeWrapper.description.codex = {
+				categories: ['Existing'],
+				subcategories: {
+					Existing: ['Category'],
+				},
+			};
+			const result = convertNodeToAiTool(fullNodeWrapper);
+			expect(result.description.codex).toEqual({
+				categories: ['AI'],
+				subcategories: {
+					AI: ['Tools'],
+					Tools: ['Other Tools'],
+				},
+			});
+		});
+
+		it('should handle nodes with very long names', () => {
+			fullNodeWrapper.description.name = 'veryLongNodeNameThatExceedsNormalLimits'.repeat(10);
+			fullNodeWrapper.description.displayName =
+				'Very Long Node Name That Exceeds Normal Limits'.repeat(10);
+			const result = convertNodeToAiTool(fullNodeWrapper);
+			expect(result.description.name.endsWith('Tool')).toBe(true);
+			expect(result.description.displayName.endsWith('Tool')).toBe(true);
+		});
+
+		it('should handle nodes with special characters in name and displayName', () => {
+			fullNodeWrapper.description.name = 'special@#$%Node';
+			fullNodeWrapper.description.displayName = 'Special @#$% Node';
+			const result = convertNodeToAiTool(fullNodeWrapper);
+			expect(result.description.name).toBe('special@#$%NodeTool');
+			expect(result.description.displayName).toBe('Special @#$% Node Tool');
+		});
 	});
 });

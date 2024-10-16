@@ -1,12 +1,21 @@
-@use "./fonts.scss";
+@use './fonts.scss';
 
-@use "~/theme/src/base.scss" with (
-	$font-path: '~element-ui/lib/theme-chalk/fonts',
-);
+@use '../src/css/base.scss'; // @TODO CHECK IF NEEDED with (
+//	$font-path: 'element-ui/lib/theme-chalk/fonts'
+//);
 
-@use "~/theme/src/reset.scss";
-@use "~/theme/src/index.scss";
+@use '../src/css/reset.scss';
+@use '../src/css/index.scss';
 
 .multi-container > * {
 	margin-bottom: 10px;
+}
+
+#storybook-root > div:not([class]) > *,
+#storybook-root > * {
+	margin: var(--spacing-5xs);
+}
+
+body {
+	padding: 0 !important;
 }

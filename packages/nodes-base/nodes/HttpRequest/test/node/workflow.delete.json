@@ -1,0 +1,60 @@
+{
+	"name": "http request test",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "12433cfb-74d9-4bf1-9afd-0ab9afc9ef19",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [820, 360]
+		},
+		{
+			"parameters": {
+				"method": "DELETE",
+				"url": "https://dummyjson.com/todos/1",
+				"options": {}
+			},
+			"id": "312e64ca-00bf-40e6-b21d-1f73930ef98c",
+			"name": "HTTP Request",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 3,
+			"position": [1100, 360]
+		}
+	],
+	"pinData": {
+		"HTTP Request": [
+			{
+				"json": {
+					"id": 1,
+					"todo": "Do something nice for someone I care about",
+					"completed": true,
+					"userId": 26,
+					"isDeleted": true,
+					"deletedOn": "2023-02-09T05:37:31.720Z"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "HTTP Request",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "b1c4f6ef-0d15-49f3-b46d-447671b1583e",
+	"id": "108",
+	"meta": {
+		"instanceId": "36203ea1ce3cef713fa25999bd9874ae26b9e4c2c3a90a365f2882a154d031d0"
+	},
+	"tags": []
+}

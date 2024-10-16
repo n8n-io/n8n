@@ -1,47 +1,101 @@
-import express from 'express';
+import { Container } from 'typedi';
 
-import { Db } from '../../../src';
-import { Reset } from '../../../commands/user-management/reset';
-import * as utils from '../shared/utils';
-import * as testDb from '../shared/testDb';
-import type { Role } from '../../../src/databases/entities/Role';
+import { Reset } from '@/commands/user-management/reset';
+import { CredentialsEntity } from '@/databases/entities/credentials-entity';
+import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
+import { SettingsRepository } from '@/databases/repositories/settings.repository';
+import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
+import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
+import { UserRepository } from '@/databases/repositories/user.repository';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { NodeTypes } from '@/node-types';
+import { setupTestCommand } from '@test-integration/utils/test-command';
 
-let app: express.Application;
-let testDbName = '';
-let globalOwnerRole: Role;
+import { mockInstance } from '../../shared/mocking';
+import { encryptCredentialData, saveCredential } from '../shared/db/credentials';
+import { getPersonalProject } from '../shared/db/projects';
+import { createMember, createUser } from '../shared/db/users';
+import { createWorkflow } from '../shared/db/workflows';
+import { randomCredentialPayload } from '../shared/random';
+import * as testDb from '../shared/test-db';
 
-beforeAll(async () => {
-	app = await utils.initTestServer({ endpointGroups: ['owner'], applyAuth: true });
-	const initResult = await testDb.init();
-	testDbName = initResult.testDbName;
-
-	globalOwnerRole = await testDb.getGlobalOwnerRole();
-});
+mockInstance(LoadNodesAndCredentials);
+mockInstance(NodeTypes);
+const command = setupTestCommand(Reset);
 
 beforeEach(async () => {
-	await testDb.truncate(['User'], testDbName);
-});
-
-afterAll(async () => {
-	await testDb.terminate(testDbName);
+	await testDb.truncate(['User']);
 });
 
 test('user-management:reset should reset DB to default user state', async () => {
-	await testDb.createUser({ globalRole: globalOwnerRole });
+	//
+	// ARRANGE
+	//
+	const owner = await createUser({ role: 'global:owner' });
+	const ownerProject = await getPersonalProject(owner);
 
-	await Reset.run();
+	// should be deleted
+	const member = await createMember();
 
-	const user = await Db.collections.User.findOne({ globalRole: globalOwnerRole });
+	// should be re-owned
+	const workflow = await createWorkflow({}, member);
+	const credential = await saveCredential(randomCredentialPayload(), {
+		user: member,
+		role: 'credential:owner',
+	});
 
-	if (!user) {
-		fail('No owner found after DB reset to default user state');
-	}
+	// dangling credentials should also be re-owned
+	const danglingCredential = await Container.get(CredentialsRepository).save(
+		await encryptCredentialData(Object.assign(new CredentialsEntity(), randomCredentialPayload())),
+	);
 
-	expect(user.email).toBeNull();
-	expect(user.firstName).toBeNull();
-	expect(user.lastName).toBeNull();
-	expect(user.password).toBeNull();
-	expect(user.resetPasswordToken).toBeNull();
-	expect(user.resetPasswordTokenExpiration).toBeNull();
-	expect(user.personalizationAnswers).toBeNull();
+	// mark instance as set up
+	await Container.get(SettingsRepository).update(
+		{ key: 'userManagement.isInstanceOwnerSetUp' },
+		{ value: 'true' },
+	);
+
+	//
+	// ACT
+	//
+	await command.run();
+
+	//
+	// ASSERT
+	//
+
+	// check if the owner account was reset:
+	await expect(
+		Container.get(UserRepository).findOneBy({ role: 'global:owner' }),
+	).resolves.toMatchObject({
+		email: null,
+		firstName: null,
+		lastName: null,
+		password: null,
+		personalizationAnswers: null,
+	});
+
+	// all members were deleted:
+	const members = await Container.get(UserRepository).findOneBy({ role: 'global:member' });
+	expect(members).toBeNull();
+
+	// all workflows are owned by the owner:
+	await expect(
+		Container.get(SharedWorkflowRepository).findBy({ workflowId: workflow.id }),
+	).resolves.toMatchObject([{ projectId: ownerProject.id, role: 'workflow:owner' }]);
+
+	// all credentials are owned by the owner
+	await expect(
+		Container.get(SharedCredentialsRepository).findBy({ credentialsId: credential.id }),
+	).resolves.toMatchObject([{ projectId: ownerProject.id, role: 'credential:owner' }]);
+
+	// all dangling credentials are owned by the owner
+	await expect(
+		Container.get(SharedCredentialsRepository).findBy({ credentialsId: danglingCredential.id }),
+	).resolves.toMatchObject([{ projectId: ownerProject.id, role: 'credential:owner' }]);
+
+	// the instance is marked as not set up:
+	await expect(
+		Container.get(SettingsRepository).findBy({ key: 'userManagement.isInstanceOwnerSetUp' }),
+	).resolves.toMatchObject([{ value: 'false' }]);
 });

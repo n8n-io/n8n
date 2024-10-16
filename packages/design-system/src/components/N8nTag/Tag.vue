@@ -1,25 +1,37 @@
-<template functional>
-	<span :class="$style.tag" v-text="props.text" @click="(e) => listeners.click && listeners.click(e)" />
-</template>
-
-<script lang="ts">
-export default {
-	name: 'n8n-tag',
-	props: {
-		text: {
-			type: String,
-		},
-	},
-};
+<script lang="ts" setup>
+interface TagProps {
+	text: string;
+	clickable?: boolean;
+}
+defineOptions({ name: 'N8nTag' });
+withDefaults(defineProps<TagProps>(), {
+	clickable: true,
+});
 </script>
+
+<template>
+	<span :class="['n8n-tag', $style.tag, { [$style.clickable]: clickable }]" v-bind="$attrs">
+		{{ text }}
+	</span>
+</template>
 
 <style lang="scss" module>
 .tag {
 	min-width: max-content;
-	padding: var(--spacing-4xs);
-	background-color: var(--color-foreground-base);
+	padding: 1px var(--spacing-4xs);
+	color: var(--color-text-dark);
+	background-color: var(--color-background-base);
 	border-radius: var(--border-radius-base);
 	font-size: var(--font-size-2xs);
-	cursor: pointer;
+
+	transition: background-color 0.3s ease;
+
+	&.clickable {
+		cursor: pointer;
+
+		&:hover {
+			background-color: var(--color-background-medium);
+		}
+	}
 }
 </style>

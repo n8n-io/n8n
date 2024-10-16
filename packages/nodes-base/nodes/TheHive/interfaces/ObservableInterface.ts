@@ -1,25 +1,23 @@
-import {
-	TLP
-} from './AlertInterface';
+import type { TLP } from './AlertInterface';
 
-export enum ObservableStatus {
+export const enum ObservableStatus {
 	OK = 'Ok',
 	DELETED = 'Deleted',
 }
-export enum ObservableDataType {
-	'domain' = 'domain',
-	'file' = 'file',
-	'filename' = 'filename',
-	'fqdn' = 'fqdn',
-	'hash' = 'hash',
-	'ip' = 'ip',
-	'mail' = 'mail',
-	'mail_subject' = 'mail_subject',
-	'other' = 'other',
-	'regexp' = 'regexp',
-	'registry' = 'registry',
-	'uri_path' = 'uri_path',
-	'url' = 'url',
+export const enum ObservableDataType {
+	domain = 'domain',
+	file = 'file',
+	filename = 'filename',
+	fqdn = 'fqdn',
+	hash = 'hash',
+	ip = 'ip',
+	mail = 'mail',
+	mail_subject = 'mail_subject',
+	other = 'other',
+	regexp = 'regexp',
+	registry = 'registry',
+	uri_path = 'uri_path',
+	url = 'url',
 	'user-agent' = 'user-agent',
 }
 

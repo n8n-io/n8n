@@ -2,19 +2,16 @@
 	"node": "n8n-nodes-base.mailerLiteTrigger",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Communication",
-		"Marketing & Content"
-	],
+	"categories": ["Communication", "Marketing"],
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/mailerLite"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/mailerLite/"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.mailerLiteTrigger/"
+				"url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.mailerlitetrigger/"
 			}
 		]
 	}

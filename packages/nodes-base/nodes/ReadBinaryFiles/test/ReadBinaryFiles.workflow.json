@@ -1,0 +1,45 @@
+{
+	"name": "Read Binary Files test",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "90c8a569-5351-44a4-9073-b8d114108676",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [680, 640]
+		},
+		{
+			"parameters": {
+				"fileSelector": "C:/Test/data/*.json"
+			},
+			"id": "b4974ce2-9bc8-4242-b6f9-86b43608b521",
+			"name": "Read Binary Files",
+			"type": "n8n-nodes-base.readBinaryFiles",
+			"typeVersion": 1,
+			"position": [880, 640]
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Read Binary Files",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "973f1d06-f5e6-4e05-8136-02f6518ad37b",
+	"id": "190",
+	"meta": {
+		"instanceId": "104a4d08d8897b8bdeb38aaca515021075e0bd8544c983c2bb8c86e6a8e6081c"
+	},
+	"tags": []
+}

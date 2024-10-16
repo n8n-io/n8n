@@ -1,4 +1,3 @@
-
 export interface ICreateMemberBody {
 	base: {
 		email?: string;

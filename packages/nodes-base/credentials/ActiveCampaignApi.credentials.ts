@@ -1,15 +1,17 @@
-import {
+import type {
 	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
 } from 'n8n-workflow';
 
-
 export class ActiveCampaignApi implements ICredentialType {
 	name = 'activeCampaignApi';
+
 	displayName = 'ActiveCampaign API';
+
 	documentationUrl = 'activeCampaign';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API URL',
@@ -21,9 +23,11 @@ export class ActiveCampaignApi implements ICredentialType {
 			displayName: 'API Key',
 			name: 'apiKey',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];
+
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {
@@ -32,6 +36,7 @@ export class ActiveCampaignApi implements ICredentialType {
 			},
 		},
 	};
+
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{$credentials.apiUrl}}',

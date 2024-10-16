@@ -1,97 +1,104 @@
+<script setup lang="ts">
+import { ref, watch } from 'vue';
+import ExpandableInputEdit from '@/components/ExpandableInput/ExpandableInputEdit.vue';
+import ExpandableInputPreview from '@/components/ExpandableInput/ExpandableInputPreview.vue';
+import { createEventBus } from 'n8n-design-system/utils';
+
+const props = withDefaults(
+	defineProps<{
+		isEditEnabled: boolean;
+		modelValue: string;
+		placeholder: string;
+		maxLength: number;
+		previewValue: string;
+		disabled: boolean;
+	}>(),
+	{
+		isEditEnabled: false,
+		modelValue: '',
+		placeholder: '',
+		maxLength: 0,
+		previewValue: '',
+		disabled: false,
+	},
+);
+
+const emit = defineEmits<{
+	toggle: [];
+	submit: [payload: { name: string; onSubmit: (updated: boolean) => void }];
+}>();
+
+const isDisabled = ref(props.disabled);
+const newValue = ref('');
+const escPressed = ref(false);
+const inputBus = ref(createEventBus());
+
+watch(
+	() => props.disabled,
+	(value) => {
+		isDisabled.value = value;
+	},
+);
+
+function onInput(val: string) {
+	if (isDisabled.value) return;
+	newValue.value = val;
+}
+
+function onClick() {
+	if (isDisabled.value) return;
+	newValue.value = props.modelValue;
+	emit('toggle');
+}
+
+function onBlur() {
+	if (isDisabled.value) return;
+	if (!escPressed.value) {
+		submit();
+	}
+	escPressed.value = false;
+}
+
+function submit() {
+	if (isDisabled.value) return;
+	const onSubmit = (updated: boolean) => {
+		isDisabled.value = false;
+		if (!updated) {
+			inputBus.value.emit('focus');
+		}
+	};
+	isDisabled.value = true;
+	emit('submit', { name: newValue.value, onSubmit });
+}
+
+function onEscape() {
+	if (isDisabled.value) return;
+	escPressed.value = true;
+	emit('toggle');
+}
+</script>
+
 <template>
-	<span @keydown.stop class="inline-edit" >
-		<span v-if="isEditEnabled">
+	<span class="inline-edit" @keydown.stop>
+		<span v-if="isEditEnabled && !isDisabled">
 			<ExpandableInputEdit
+				v-model="newValue"
 				:placeholder="placeholder"
-				:value="newValue"
 				:maxlength="maxLength"
 				:autofocus="true"
-				:eventBus="inputBus"
-				@input="onInput"
+				:event-bus="inputBus"
+				@update:model-value="onInput"
 				@esc="onEscape"
 				@blur="onBlur"
 				@enter="submit"
 			/>
 		</span>
 
-		<span @click="onClick" class="preview"  v-else>
-			<ExpandableInputPreview
-				:value="previewValue || value"
-			/>
+		<span v-else class="preview" @click="onClick">
+			<ExpandableInputPreview :model-value="previewValue || modelValue" />
 		</span>
 	</span>
 </template>
-
-<script lang="ts">
-import Vue from "vue";
-import ExpandableInputEdit from "@/components/ExpandableInput/ExpandableInputEdit.vue";
-import ExpandableInputPreview from "@/components/ExpandableInput/ExpandableInputPreview.vue";
-
-export default Vue.extend({
-	name: "InlineTextEdit",
-	components: { ExpandableInputEdit, ExpandableInputPreview },
-	props: ['isEditEnabled', 'value', 'placeholder', 'maxLength', 'previewValue'],
-	data() {
-		return {
-			newValue: '',
-			escPressed: false,
-			disabled: false,
-			inputBus: new Vue(),
-		};
-	},
-	methods: {
-		onInput(newValue: string) {
-			if (this.disabled) {
-				return;
-			}
-
-			this.newValue = newValue;
-		},
-		onClick() {
-			if (this.disabled) {
-				return;
-			}
-
-			this.$data.newValue = this.$props.value;
-			this.$emit('toggle');
-		},
-		onBlur() {
-			if (this.disabled) {
-				return;
-			}
-
-			if (!this.$data.escPressed) {
-				this.submit();
-			}
-			this.$data.escPressed = false;
-		},
-		submit() {
-			if (this.disabled) {
-				return;
-			}
-
-			const onSubmit = (updated: boolean) => {
-				this.$data.disabled = false;
-
-				if (!updated) {
-					this.$data.inputBus.$emit('focus');
-				}
-			};
-
-			this.$data.disabled = true;
-			this.$emit('submit', this.newValue, onSubmit);
-		},
-		onEscape() {
-			if (this.disabled) {
-				return;
-			}
-
-			this.$data.escPressed = true;
-			this.$emit('toggle');
-		},
-	},
-});
-</script>
 
 <style lang="scss" scoped>
 .preview {

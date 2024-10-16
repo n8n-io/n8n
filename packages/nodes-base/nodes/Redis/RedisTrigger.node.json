@@ -2,20 +2,16 @@
 	"node": "n8n-nodes-base.redisTrigger",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Communication",
-		"Development",
-		"Data & Storage"
-	],
+	"categories": ["Communication", "Development", "Data & Storage"],
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/redis"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/redis/"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.redisTrigger/"
+				"url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.redistrigger/"
 			}
 		]
 	}

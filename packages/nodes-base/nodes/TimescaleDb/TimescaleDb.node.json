@@ -2,19 +2,16 @@
 	"node": "n8n-nodes-base.timescaleDb",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Data & Storage",
-		"Development"
-	],
+	"categories": ["Data & Storage", "Development"],
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/timescaleDb"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/timescaleDb/"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.timescaleDb/"
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.timescaledb/"
 			}
 		]
 	}

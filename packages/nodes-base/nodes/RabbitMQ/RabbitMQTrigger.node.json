@@ -2,18 +2,16 @@
 	"node": "n8n-nodes-base.rabbitmqTrigger",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Development"
-	],
+	"categories": ["Development"],
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/rabbitMQ"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/rabbitMQ/"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.rabbitmqTrigger/"
+				"url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.rabbitmqtrigger/"
 			}
 		]
 	}

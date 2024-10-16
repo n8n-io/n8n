@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const organizationDescription: INodeProperties[] = [
 	// ----------------------------------
@@ -13,9 +11,7 @@ export const organizationDescription: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'organization',
-				],
+				resource: ['organization'],
 			},
 		},
 		options: [
@@ -38,10 +34,10 @@ export const organizationDescription: INodeProperties[] = [
 				action: 'Get an organization',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all organizations',
-				action: 'Get all organizations',
+				description: 'Retrieve many organizations',
+				action: 'Get many organizations',
 			},
 			{
 				name: 'Update',
@@ -64,12 +60,8 @@ export const organizationDescription: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'organization',
-				],
+				operation: ['create'],
+				resource: ['organization'],
 			},
 		},
 	},
@@ -77,17 +69,14 @@ export const organizationDescription: INodeProperties[] = [
 		displayName: 'Organization ID',
 		name: 'id',
 		type: 'string',
-		description: 'Organization to update. Specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'Organization to update. Specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'organization',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['organization'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -95,17 +84,14 @@ export const organizationDescription: INodeProperties[] = [
 		displayName: 'Organization ID',
 		name: 'id',
 		type: 'string',
-		description: 'Organization to delete. Specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'Organization to delete. Specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'organization',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['organization'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -113,17 +99,14 @@ export const organizationDescription: INodeProperties[] = [
 		displayName: 'Organization ID',
 		name: 'id',
 		type: 'string',
-		description: 'Organization to retrieve. Specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'Organization to retrieve. Specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'organization',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['organization'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -133,22 +116,54 @@ export const organizationDescription: INodeProperties[] = [
 		type: 'collection',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'organization',
-				],
+				operation: ['create'],
+				resource: ['organization'],
 			},
 		},
 		default: {},
 		placeholder: 'Add Field',
 		options: [
 			{
+				displayName: 'Shared',
+				name: 'shared',
+				type: 'boolean',
+				default: false,
+				description: 'Whether the organization is shared with other instances',
+			},
+			{
+				displayName: 'Domain',
+				name: 'domain',
+				type: 'string',
+				default: '',
+				description: 'The domain associated with the organization',
+			},
+			{
+				displayName: 'Domain Assignment',
+				name: 'domain_assignment',
+				type: 'boolean',
+				default: true,
+				description: 'Whether to assign users based on their email domain',
+			},
+			{
 				displayName: 'Active',
 				name: 'active',
 				type: 'boolean',
 				default: true,
+				description: 'Whether the organization is active',
+			},
+			{
+				displayName: 'VIP',
+				name: 'vip',
+				type: 'boolean',
+				default: false,
+				description: 'Whether the organization is marked as VIP',
+			},
+			{
+				displayName: 'Notes',
+				name: 'note',
+				type: 'string',
+				default: '',
+				description: 'A note about the organization',
 			},
 			{
 				displayName: 'Custom Fields',
@@ -172,7 +187,8 @@ export const organizationDescription: INodeProperties[] = [
 									loadOptionsMethod: 'loadOrganizationCustomFields',
 								},
 								default: '',
-								description: 'Name of the custom field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+								description:
+									'Name of the custom field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Value',
@@ -184,15 +200,6 @@ export const organizationDescription: INodeProperties[] = [
 						],
 					},
 				],
-			},
-			{
-				displayName: 'Notes',
-				name: 'note',
-				type: 'string',
-				default: '',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 			},
 		],
 	},
@@ -202,22 +209,54 @@ export const organizationDescription: INodeProperties[] = [
 		type: 'collection',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'organization',
-				],
+				operation: ['update'],
+				resource: ['organization'],
 			},
 		},
 		default: {},
 		placeholder: 'Add Field',
 		options: [
 			{
+				displayName: 'Shared',
+				name: 'shared',
+				type: 'boolean',
+				default: false,
+				description: 'Whether the organization is shared with other instances',
+			},
+			{
+				displayName: 'Domain',
+				name: 'domain',
+				type: 'string',
+				default: '',
+				description: 'The domain associated with the organization',
+			},
+			{
+				displayName: 'Domain Assignment',
+				name: 'domain_assignment',
+				type: 'boolean',
+				default: true,
+				description: 'Whether to assign users based on their email domain',
+			},
+			{
 				displayName: 'Active',
 				name: 'active',
 				type: 'boolean',
 				default: true,
+				description: 'Whether the organization is active',
+			},
+			{
+				displayName: 'VIP',
+				name: 'vip',
+				type: 'boolean',
+				default: false,
+				description: 'Whether the organization is marked as VIP',
+			},
+			{
+				displayName: 'Notes',
+				name: 'note',
+				type: 'string',
+				default: '',
+				description: 'A note about the organization',
 			},
 			{
 				displayName: 'Custom Fields',
@@ -241,7 +280,8 @@ export const organizationDescription: INodeProperties[] = [
 									loadOptionsMethod: 'loadOrganizationCustomFields',
 								},
 								default: '',
-								description: 'Name of the custom field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+								description:
+									'Name of the custom field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Value',
@@ -253,21 +293,6 @@ export const organizationDescription: INodeProperties[] = [
 						],
 					},
 				],
-			},
-			{
-				displayName: 'Organization Name',
-				name: 'name',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Notes',
-				name: 'note',
-				type: 'string',
-				default: '',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 			},
 		],
 	},
@@ -279,12 +304,8 @@ export const organizationDescription: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'organization',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['organization'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -299,15 +320,9 @@ export const organizationDescription: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'organization',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['organization'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},

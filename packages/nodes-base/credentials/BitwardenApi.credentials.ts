@@ -1,14 +1,14 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 // https://bitwarden.com/help/article/public-api/#authentication
 
 export class BitwardenApi implements ICredentialType {
 	name = 'bitwardenApi';
+
 	displayName = 'Bitwarden API';
+
 	documentationUrl = 'bitwarden';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Client ID',
@@ -20,6 +20,7 @@ export class BitwardenApi implements ICredentialType {
 			displayName: 'Client Secret',
 			name: 'clientSecret',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 		{
@@ -46,9 +47,7 @@ export class BitwardenApi implements ICredentialType {
 			placeholder: 'https://www.mydomain.com',
 			displayOptions: {
 				show: {
-					environment: [
-						'selfHosted',
-					],
+					environment: ['selfHosted'],
 				},
 			},
 		},

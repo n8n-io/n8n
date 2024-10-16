@@ -1,0 +1,168 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`components > N8nColorPicker > should render with input 1`] = `
+<div>
+  <span
+    class="n8n-color-picker component"
+    data-v-dab78bb8=""
+  >
+    
+    <div
+      aria-description="current color is . press enter to select a new color."
+      aria-disabled="false"
+      aria-label="color picker"
+      class="el-color-picker el-color-picker--large el-tooltip__trigger el-tooltip__trigger"
+      role="button"
+      tabindex="0"
+    >
+      <!--v-if-->
+      <div
+        class="el-color-picker__trigger"
+      >
+        <span
+          class="el-color-picker__color"
+        >
+          <span
+            class="el-color-picker__color-inner"
+            style="background-color: transparent;"
+          >
+            <i
+              class="el-icon el-color-picker__icon is-icon-arrow-down"
+              style="display: none;"
+            >
+              
+              <svg
+                viewBox="0 0 1024 1024"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M831.872 340.864 512 652.672 192.128 340.864a30.592 30.592 0 0 0-42.752 0 29.12 29.12 0 0 0 0 41.6L489.664 714.24a32 32 0 0 0 44.672 0l340.288-331.712a29.12 29.12 0 0 0 0-41.728 30.592 30.592 0 0 0-42.752 0z"
+                  fill="currentColor"
+                />
+              </svg>
+              
+            </i>
+            <i
+              class="el-icon el-color-picker__empty is-icon-close"
+            >
+              
+              <svg
+                viewBox="0 0 1024 1024"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M764.288 214.592 512 466.88 259.712 214.592a31.936 31.936 0 0 0-45.12 45.12L466.752 512 214.528 764.224a31.936 31.936 0 1 0 45.12 45.184L512 557.184l252.288 252.288a31.936 31.936 0 0 0 45.12-45.12L557.12 512.064l252.288-252.352a31.936 31.936 0 1 0-45.12-45.184z"
+                  fill="currentColor"
+                />
+              </svg>
+              
+            </i>
+          </span>
+        </span>
+      </div>
+    </div>
+    <!--teleport start-->
+    <!--teleport end-->
+    
+    <div
+      class="el-input el-input--large n8n-input input input"
+      data-v-dab78bb8=""
+    >
+      <!-- input -->
+      
+      <!-- prepend slot -->
+      <!--v-if-->
+      <div
+        class="el-input__wrapper"
+      >
+        <!-- prefix slot -->
+        <!--v-if-->
+        <input
+          autocomplete="off"
+          class="el-input__inner"
+          name="color-picker"
+          placeholder=""
+          rows="2"
+          tabindex="0"
+          title=""
+          type="text"
+        />
+        <!-- suffix slot -->
+        <!--v-if-->
+      </div>
+      <!-- append slot -->
+      <!--v-if-->
+      
+    </div>
+  </span>
+</div>
+`;
+
+exports[`components > N8nColorPicker > should render without input 1`] = `
+<div>
+  <span
+    class="n8n-color-picker component"
+    data-v-dab78bb8=""
+  >
+    
+    <div
+      aria-description="current color is . press enter to select a new color."
+      aria-disabled="false"
+      aria-label="color picker"
+      class="el-color-picker el-color-picker--large el-tooltip__trigger el-tooltip__trigger"
+      role="button"
+      tabindex="0"
+    >
+      <!--v-if-->
+      <div
+        class="el-color-picker__trigger"
+      >
+        <span
+          class="el-color-picker__color"
+        >
+          <span
+            class="el-color-picker__color-inner"
+            style="background-color: transparent;"
+          >
+            <i
+              class="el-icon el-color-picker__icon is-icon-arrow-down"
+              style="display: none;"
+            >
+              
+              <svg
+                viewBox="0 0 1024 1024"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M831.872 340.864 512 652.672 192.128 340.864a30.592 30.592 0 0 0-42.752 0 29.12 29.12 0 0 0 0 41.6L489.664 714.24a32 32 0 0 0 44.672 0l340.288-331.712a29.12 29.12 0 0 0 0-41.728 30.592 30.592 0 0 0-42.752 0z"
+                  fill="currentColor"
+                />
+              </svg>
+              
+            </i>
+            <i
+              class="el-icon el-color-picker__empty is-icon-close"
+            >
+              
+              <svg
+                viewBox="0 0 1024 1024"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M764.288 214.592 512 466.88 259.712 214.592a31.936 31.936 0 0 0-45.12 45.12L466.752 512 214.528 764.224a31.936 31.936 0 1 0 45.12 45.184L512 557.184l252.288 252.288a31.936 31.936 0 0 0 45.12-45.12L557.12 512.064l252.288-252.352a31.936 31.936 0 1 0-45.12-45.184z"
+                  fill="currentColor"
+                />
+              </svg>
+              
+            </i>
+          </span>
+        </span>
+      </div>
+    </div>
+    <!--teleport start-->
+    <!--teleport end-->
+    
+    <!--v-if-->
+  </span>
+</div>
+`;

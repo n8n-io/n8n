@@ -1,6 +1,4 @@
-import {
-	OnfleetWebhooksMapping,
-} from './interfaces';
+import type { OnfleetWebhooksMapping } from './interfaces';
 
 export const webhookMapping: OnfleetWebhooksMapping = {
 	taskStarted: {

@@ -2,18 +2,16 @@
 	"node": "n8n-nodes-base.awsTranscribe",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Development"
-	],
+	"categories": ["Development"],
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/aws"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/aws/"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.awsTranscribe/"
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.awstranscribe/"
 			}
 		]
 	}

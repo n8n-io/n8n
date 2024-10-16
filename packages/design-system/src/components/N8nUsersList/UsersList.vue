@@ -1,127 +1,120 @@
+<script lang="ts" setup>
+import { computed } from 'vue';
+
+import { useI18n } from '../../composables/useI18n';
+import type { IUser, UserAction } from '../../types';
+import N8nActionToggle from '../N8nActionToggle';
+import N8nBadge from '../N8nBadge';
+import N8nUserInfo from '../N8nUserInfo';
+
+interface UsersListProps {
+	users: IUser[];
+	readonly?: boolean;
+	currentUserId?: string;
+	actions?: UserAction[];
+	isSamlLoginEnabled?: boolean;
+}
+
+const props = withDefaults(defineProps<UsersListProps>(), {
+	readonly: false,
+	currentUserId: '',
+	users: () => [],
+	actions: () => [],
+	isSamlLoginEnabled: false,
+});
+
+const { t } = useI18n();
+
+const sortedUsers = computed(() =>
+	[...props.users].sort((a: IUser, b: IUser) => {
+		if (!a.email || !b.email) {
+			throw new Error('Expected all users to have email');
+		}
+
+		// invited users sorted by email
+		if (a.isPendingUser && b.isPendingUser) {
+			return a.email > b.email ? 1 : -1;
+		}
+
+		if (a.isPendingUser) {
+			return -1;
+		}
+		if (b.isPendingUser) {
+			return 1;
+		}
+
+		if (a.isOwner) {
+			return -1;
+		}
+		if (b.isOwner) {
+			return 1;
+		}
+
+		if (a.lastName && b.lastName && a.firstName && b.firstName) {
+			if (a.lastName !== b.lastName) {
+				return a.lastName > b.lastName ? 1 : -1;
+			}
+			if (a.firstName !== b.firstName) {
+				return a.firstName > b.firstName ? 1 : -1;
+			}
+		}
+
+		return a.email > b.email ? 1 : -1;
+	}),
+);
+
+const defaultGuard = () => true;
+const getActions = (user: IUser): UserAction[] => {
+	if (user.isOwner) return [];
+
+	return props.actions.filter((action) => (action.guard ?? defaultGuard)(user));
+};
+
+const emit = defineEmits<{
+	action: [value: { action: string; userId: string }];
+}>();
+const onUserAction = (user: IUser, action: string) =>
+	emit('action', {
+		action,
+		userId: user.id,
+	});
+</script>
+
 <template>
 	<div>
 		<div
 			v-for="(user, i) in sortedUsers"
 			:key="user.id"
 			:class="i === sortedUsers.length - 1 ? $style.itemContainer : $style.itemWithBorder"
+			:data-test-id="`user-list-item-${user.email}`"
 		>
-			<n8n-user-info v-bind="user" :isCurrentUser="currentUserId === user.id" />
+			<N8nUserInfo
+				v-bind="user"
+				:is-current-user="currentUserId === user.id"
+				:is-saml-login-enabled="isSamlLoginEnabled"
+			/>
 			<div :class="$style.badgeContainer">
-				<n8n-badge v-if="user.isOwner" theme="secondary">{{ t('nds.auth.roles.owner') }}</n8n-badge>
-				<n8n-action-toggle
-					v-if="!user.isOwner"
+				<N8nBadge v-if="user.isOwner" theme="tertiary" bold>
+					{{ t('nds.auth.roles.owner') }}
+				</N8nBadge>
+				<slot v-if="!user.isOwner && !readonly" name="actions" :user="user" />
+				<N8nActionToggle
+					v-if="
+						!user.isOwner &&
+						user.signInType !== 'ldap' &&
+						!readonly &&
+						getActions(user).length > 0 &&
+						actions.length > 0
+					"
 					placement="bottom"
 					:actions="getActions(user)"
-					@action="(action) => onUserAction(user, action)"
+					theme="dark"
+					@action="(action: string) => onUserAction(user, action)"
 				/>
 			</div>
 		</div>
 	</div>
 </template>
-
-<script lang="ts">
-import { IUser } from '../../types';
-import Vue from 'vue';
-import N8nActionToggle from '../N8nActionToggle';
-import N8nBadge from '../N8nBadge';
-import N8nIcon from '../N8nIcon';
-import N8nLink from '../N8nLink';
-import N8nText from '../N8nText';
-import N8nUserInfo from '../N8nUserInfo';
-import Locale from '../../mixins/locale';
-import mixins from 'vue-typed-mixins';
-
-export default mixins(Locale).extend({
-	name: 'n8n-users-list',
-	components: {
-		N8nActionToggle,
-		N8nBadge,
-		N8nUserInfo,
-	},
-	props: {
-		users: {
-			type: Array,
-			required: true,
-			default() {
-				return [];
-			},
-		},
-		currentUserId: {
-			type: String,
-		},
-	},
-	computed: {
-		sortedUsers(): IUser[] {
-			return [...(this.users as IUser[])].sort((a: IUser, b: IUser) => {
-				// invited users sorted by email
-				if (a.isPendingUser && b.isPendingUser) {
-					return a.email > b.email ? 1 : -1;
-				}
-
-				if (a.isPendingUser) {
-					return -1;
-				}
-				if (b.isPendingUser) {
-					return 1;
-				}
-
-				if (a.isOwner) {
-					return -1;
-				}
-				if (b.isOwner) {
-					return 1;
-				}
-
-				if (a.lastName && b.lastName && a.firstName && b.firstName) {
-					if (a.lastName !== b.lastName) {
-						return a.lastName > b.lastName ? 1 : -1;
-					}
-					if (a.firstName !== b.firstName) {
-						return a.firstName > b.firstName? 1 : -1;
-					}
-				}
-
-				return a.email > b.email ? 1 : -1;
-			});
-		},
-	},
-	methods: {
-		getActions(user: IUser) {
-			const DELETE = {
-				label: this.t('nds.usersList.deleteUser'),
-				value: 'delete',
-			};
-
-			const REINVITE = {
-				label: this.t('nds.usersList.reinviteUser'),
-				value: 'reinvite',
-			};
-
-			if (user.isOwner)	{
-				return [];
-			}
-
-			if (user.firstName) {
-				return [
-					DELETE,
-				];
-			}
-			else {
-				return [
-					REINVITE,
-					DELETE,
-				];
-			}
-		},
-		onUserAction(user: IUser, action: string) {
-			if (action === 'delete' || action === 'reinvite') {
-				this.$emit(action, user.id);
-			}
-		},
-	},
-});
-</script>
-
 
 <style lang="scss" module>
 .itemContainer {

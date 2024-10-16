@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const mediaOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const mediaOperations: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [
-					'media',
-				],
+				resource: ['media'],
 			},
 		},
 		options: [
@@ -27,7 +23,7 @@ export const mediaOperations: INodeProperties[] = [
 	},
 ];
 
-export const  mediaFields: INodeProperties[] = [
+export const mediaFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                 media:download                             */
 	/* -------------------------------------------------------------------------- */
@@ -38,33 +34,25 @@ export const  mediaFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'media',
-				],
-				operation: [
-					'download',
-				],
+				resource: ['media'],
+				operation: ['download'],
 			},
 		},
 		default: '',
 		description: 'Name of the media that is being downloaded',
 	},
 	{
-		displayName: 'Binary Property',
+		displayName: 'Put Output File in Field',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'media',
-				],
-				operation: [
-					'download',
-				],
+				resource: ['media'],
+				operation: ['download'],
 			},
 		},
-		description: 'Name of the binary property to which to write the data of the read file',
+		hint: 'The name of the output binary field to put the file in',
 	},
 ];

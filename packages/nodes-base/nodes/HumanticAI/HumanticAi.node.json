@@ -2,18 +2,16 @@
 	"node": "n8n-nodes-base.humanticAi",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Analytics"
-	],
+	"categories": ["Analytics"],
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/humanticAi"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/humanticAi/"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.humanticAi/"
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.humanticai/"
 			}
 		],
 		"generic": [

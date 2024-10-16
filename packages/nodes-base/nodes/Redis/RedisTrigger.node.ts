@@ -1,16 +1,17 @@
-import {
+import type {
 	ITriggerFunctions,
-} from 'n8n-core';
-
-import {
-	IDataObject,
 	INodeType,
 	INodeTypeDescription,
 	ITriggerResponse,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
-import redis from 'redis';
+import { redisConnectionTest, setupRedisClient } from './utils';
+
+interface Options {
+	jsonParseBody: boolean;
+	onlyMessage: boolean;
+}
 
 export class RedisTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -24,11 +25,12 @@ export class RedisTrigger implements INodeType {
 			name: 'Redis Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'redis',
 				required: true,
+				testedBy: 'redisConnectionTest',
 			},
 		],
 		properties: [
@@ -38,13 +40,14 @@ export class RedisTrigger implements INodeType {
 				type: 'string',
 				default: '',
 				required: true,
-				description: 'Channels to subscribe to, multiple channels be defined with comma. Wildcard character(*) is supported.',
+				description:
+					'Channels to subscribe to, multiple channels be defined with comma. Wildcard character(*) is supported.',
 			},
 			{
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				options: [
 					{
@@ -66,68 +69,50 @@ export class RedisTrigger implements INodeType {
 		],
 	};
 
-	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
+	methods = {
+		credentialTest: { redisConnectionTest },
+	};
 
+	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
 		const credentials = await this.getCredentials('redis');
 
-		const redisOptions: redis.ClientOpts = {
-			host: credentials.host as string,
-			port: credentials.port as number,
-			db: credentials.database as number,
-		};
-
-		if (credentials.password) {
-			redisOptions.password = credentials.password as string;
-		}
-
 		const channels = (this.getNodeParameter('channels') as string).split(',');
-
-		const options = this.getNodeParameter('options') as IDataObject;
+		const options = this.getNodeParameter('options') as Options;
 
 		if (!channels) {
 			throw new NodeOperationError(this.getNode(), 'Channels are mandatory!');
 		}
 
-		const client = redis.createClient(redisOptions);
+		const client = setupRedisClient(credentials);
+		await client.connect();
+		await client.ping();
 
-		const self = this;
+		const onMessage = (message: string, channel: string) => {
+			if (options.jsonParseBody) {
+				try {
+					message = JSON.parse(message);
+				} catch (error) {}
+			}
 
-		async function manualTriggerFunction() {
-			await new Promise((resolve, reject) => {
-				client.on('connect', () => {
-					for (const channel of channels) {
-						client.psubscribe(channel);
-					}
-					client.on('pmessage', (pattern: string, channel: string, message: string) => {
-						if (options.jsonParseBody) {
-							try {
-								message = JSON.parse(message);
-							} catch (error) { }
-						}
+			const data = options.onlyMessage ? { message } : { channel, message };
+			this.emit([this.helpers.returnJsonArray(data)]);
+		};
 
-						if (options.onlyMessage) {
-							self.emit([self.helpers.returnJsonArray({message})]);
-							resolve(true);
-							return;
-						}
-
-						self.emit([self.helpers.returnJsonArray({channel, message})]);
-						resolve(true);
-					});
-				});
-
-				client.on('error', (error) => {
-					reject(error);
+		const manualTriggerFunction = async () =>
+			await new Promise<void>(async (resolve) => {
+				await client.pSubscribe(channels, (message, channel) => {
+					onMessage(message, channel);
+					resolve();
 				});
 			});
-		}
 
 		if (this.getMode() === 'trigger') {
-			await manualTriggerFunction();
+			await client.pSubscribe(channels, onMessage);
 		}
 
 		async function closeFunction() {
-			client.quit();
+			await client.pUnsubscribe();
+			await client.quit();
 		}
 
 		return {

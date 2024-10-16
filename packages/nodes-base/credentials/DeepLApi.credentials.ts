@@ -1,4 +1,4 @@
-import {
+import type {
 	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -7,13 +7,17 @@ import {
 
 export class DeepLApi implements ICredentialType {
 	name = 'deepLApi';
+
 	displayName = 'DeepL API';
+
 	documentationUrl = 'deepL';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',
 			name: 'apiKey',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 		{
@@ -45,7 +49,8 @@ export class DeepLApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: '={{$credentials.apiPlan === "pro" ? "https://api.deepl.com/v2" : "https://api-free.deepl.com/v2" }}',
+			baseURL:
+				'={{$credentials.apiPlan === "pro" ? "https://api.deepl.com/v2" : "https://api-free.deepl.com/v2" }}',
 			url: '/usage',
 		},
 	};

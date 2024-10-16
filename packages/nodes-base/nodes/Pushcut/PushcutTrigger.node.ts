@@ -1,18 +1,13 @@
 import {
-	IHookFunctions,
-	IWebhookFunctions,
-} from 'n8n-core';
-
-import {
-	IDataObject,
-	INodeType,
-	INodeTypeDescription,
-	IWebhookResponseData,
+	type IHookFunctions,
+	type IWebhookFunctions,
+	type INodeType,
+	type INodeTypeDescription,
+	type IWebhookResponseData,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
-import {
-	pushcutApiRequest,
-} from './GenericFunctions';
+import { pushcutApiRequest } from './GenericFunctions';
 
 export class PushcutTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -27,7 +22,7 @@ export class PushcutTrigger implements INodeType {
 			name: 'Pushcut Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'pushcutApi',
@@ -47,13 +42,13 @@ export class PushcutTrigger implements INodeType {
 				displayName: 'Action Name',
 				name: 'actionName',
 				type: 'string',
-				description: 'Choose any name you would like. It will show up as a server action in the app.',
+				description:
+					'Choose any name you would like. It will show up as a server action in the app.',
 				default: '',
 			},
 		],
 	};
 
-	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
@@ -66,8 +61,7 @@ export class PushcutTrigger implements INodeType {
 				const webhooks = await pushcutApiRequest.call(this, 'GET', endpoint, {});
 
 				for (const webhook of webhooks) {
-					if (webhook.url === webhookUrl &&
-						webhook.actionName === actionName) {
+					if (webhook.url === webhookUrl && webhook.actionName === actionName) {
 						webhookData.webhookId = webhook.id;
 						return true;
 					}
@@ -100,7 +94,6 @@ export class PushcutTrigger implements INodeType {
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
 				if (webhookData.webhookId !== undefined) {
-
 					const endpoint = `/subscriptions/${webhookData.webhookId}`;
 
 					try {
@@ -110,7 +103,7 @@ export class PushcutTrigger implements INodeType {
 					}
 
 					// Remove from the static workflow data so that it is clear
-					// that no webhooks are registred anymore
+					// that no webhooks are registered anymore
 					delete webhookData.webhookId;
 				}
 				return true;
@@ -119,12 +112,10 @@ export class PushcutTrigger implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
-		const body = this.getBodyData() as IDataObject;
+		const body = this.getBodyData();
 
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray(body),
-			],
+			workflowData: [this.helpers.returnJsonArray(body)],
 		};
 	}
 }

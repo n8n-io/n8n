@@ -2,24 +2,21 @@
 	"node": "n8n-nodes-base.ftp",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Data & Storage",
-		"Development",
-		"Utility"
-	],
+	"categories": ["Core Nodes", "Data & Storage", "Development", "Utility"],
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/ftp"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/ftp/"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.ftp/"
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.ftp/"
 			}
 		]
 	},
-	"alias": [
-		"SFTP"
-	]
+	"alias": ["SFTP", "FTP", "Binary", "File", "Transfer"],
+	"subcategories": {
+		"Core Nodes": ["Files", "Helpers"]
+	}
 }

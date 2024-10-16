@@ -1,22 +1,26 @@
+<script lang="ts">
+import { defineComponent } from 'vue';
+import TitledList from '@/components/TitledList.vue';
+
+export default defineComponent({
+	name: 'ParameterIssues',
+	components: {
+		TitledList,
+	},
+	props: ['issues'],
+});
+</script>
+
 <template>
-	<div :class="$style['parameter-issues']" v-if="issues.length">
-		<n8n-tooltip placement="top" >
-			<div slot="content" v-html="`${$locale.baseText('parameterInput.issues')}:<br />&nbsp;&nbsp;- ` + issues.join('<br />&nbsp;&nbsp;- ')"></div>
+	<div v-if="issues.length" :class="$style['parameter-issues']" data-test-id="parameter-issues">
+		<n8n-tooltip placement="top">
+			<template #content>
+				<TitledList :title="`${$locale.baseText('parameterInput.issues')}:`" :items="issues" />
+			</template>
 			<font-awesome-icon icon="exclamation-triangle" />
 		</n8n-tooltip>
 	</div>
 </template>
-
-<script lang="ts">
-import Vue from 'vue';
-
-export default Vue.extend({
-	name: 'ParameterIssues',
-	props: [
-		'issues',
-	],
-});
-</script>
 
 <style module lang="scss">
 .parameter-issues {

@@ -1,32 +1,27 @@
-<template>
-	<span :title="name">
-		<slot :shortenedName="shortenedName"></slot>
-	</span>
-</template>
-
-<script lang="ts">
-import Vue from "vue";
+<script setup lang="ts">
+import { computed } from 'vue';
+import { shorten } from '@/utils/typesUtils';
 
 const DEFAULT_WORKFLOW_NAME_LIMIT = 25;
 const WORKFLOW_NAME_END_COUNT_TO_KEEP = 4;
 
-export default Vue.extend({
-	name: "ShortenName",
-	props: ["name", "limit"],
-	computed: {
-		shortenedName(): string {
-			const name = this.$props.name;
+interface Props {
+	name: string;
+	testId: string;
+	limit?: number;
+}
 
-			const limit = this.$props.limit || DEFAULT_WORKFLOW_NAME_LIMIT;
-			if (name.length <= limit) {
-				return name;
-			}
-
-			const first = name.slice(0, limit - WORKFLOW_NAME_END_COUNT_TO_KEEP);
-			const last = name.slice(name.length - WORKFLOW_NAME_END_COUNT_TO_KEEP, name.length);
-
-			return `${first}...${last}`;
-		},
-	},
+const props = withDefaults(defineProps<Props>(), {
+	limit: DEFAULT_WORKFLOW_NAME_LIMIT,
 });
+
+const shortenedName = computed(() =>
+	shorten(props.name, props.limit, WORKFLOW_NAME_END_COUNT_TO_KEEP),
+);
 </script>
+
+<template>
+	<span :title="name" :data-test-id="testId">
+		<slot :shortened-name="shortenedName"></slot>
+	</span>
+</template>

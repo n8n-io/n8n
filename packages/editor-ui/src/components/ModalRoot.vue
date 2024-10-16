@@ -1,36 +1,36 @@
-<template>
-	<div
-			v-if="isOpen(name) || keepAlive"
-	>
-		<slot
-			:modalName="name"
-			:active="isActive(name)"
-			:open="isOpen(name)"
-			:activeId="getActiveId(name)"
-			:mode="getMode(name)"
-		></slot>
-	</div>
-</template>
-
 <script lang="ts">
-import Vue from "vue";
+import type { PropType } from 'vue';
+import { defineComponent } from 'vue';
+import { useUIStore } from '@/stores/ui.store';
+import { mapStores } from 'pinia';
+import type { ModalKey } from '@/Interface';
 
-export default Vue.extend({
-	name: "ModalRoot",
-	props: ["name", "keepAlive"],
-	methods: {
-		isActive(name: string) {
-			return this.$store.getters['ui/isModalActive'](name);
+export default defineComponent({
+	name: 'ModalRoot',
+	props: {
+		name: {
+			type: String as PropType<ModalKey>,
+			required: true,
 		},
-		isOpen(name: string) {
-			return this.$store.getters['ui/isModalOpen'](name);
+		keepAlive: {
+			type: Boolean,
 		},
-		getMode(name: string) {
-			return this.$store.getters['ui/getModalMode'](name);
-		},
-		getActiveId(name: string) {
-			return this.$store.getters['ui/getModalActiveId'](name);
-		},
+	},
+	computed: {
+		...mapStores(useUIStore),
 	},
 });
 </script>
+
+<template>
+	<div v-if="uiStore.modalsById[name].open || keepAlive">
+		<slot
+			:modal-name="name"
+			:active="uiStore.isModalActiveById[name]"
+			:open="uiStore.modalsById[name].open"
+			:active-id="uiStore.modalsById[name].activeId"
+			:mode="uiStore.modalsById[name].mode"
+			:data="uiStore.modalsById[name].data"
+		></slot>
+	</div>
+</template>

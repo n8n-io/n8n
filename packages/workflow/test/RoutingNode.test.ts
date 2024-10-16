@@ -1,29 +1,33 @@
-import {
+import { mock } from 'jest-mock-extended';
+
+import type {
 	INode,
 	INodeExecutionData,
 	INodeParameters,
-	IRequestOptionsFromParameters,
+	DeclarativeRestApiSettings,
 	IRunExecutionData,
-	RoutingNode,
-	Workflow,
 	INodeProperties,
-	IDataObject,
 	IExecuteSingleFunctions,
 	IHttpRequestOptions,
-	IN8nHttpFullResponse,
 	ITaskDataConnections,
 	INodeExecuteFunctions,
 	IN8nRequestOperations,
 	INodeCredentialDescription,
 	IExecuteData,
-} from '../src';
+	INodeTypeDescription,
+	IWorkflowExecuteAdditionalData,
+	IExecuteFunctions,
+} from '@/Interfaces';
+import { applyDeclarativeNodeOptionParameters } from '@/NodeHelpers';
+import { RoutingNode } from '@/RoutingNode';
+import * as utilsModule from '@/utils';
+import { Workflow } from '@/Workflow';
 
 import * as Helpers from './Helpers';
 
 const postReceiveFunction1 = async function (
 	this: IExecuteSingleFunctions,
 	items: INodeExecutionData[],
-	response: IN8nHttpFullResponse,
 ): Promise<INodeExecutionData[]> {
 	items.forEach((item) => (item.json1 = { success: true }));
 	return items;
@@ -33,12 +37,31 @@ const preSendFunction1 = async function (
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
-	requestOptions.headers = (requestOptions.headers || {}) as IDataObject;
+	requestOptions.headers = requestOptions.headers || {};
 	requestOptions.headers.addedIn = 'preSendFunction1';
 	return requestOptions;
 };
 
 describe('RoutingNode', () => {
+	const additionalData = mock<IWorkflowExecuteAdditionalData>();
+
+	test('applyDeclarativeNodeOptionParameters', () => {
+		const nodeTypes = Helpers.NodeTypes();
+		const nodeType = nodeTypes.getByNameAndVersion('test.setMulti');
+
+		applyDeclarativeNodeOptionParameters(nodeType);
+
+		const options = nodeType.description.properties.find(
+			(property) => property.name === 'requestOptions',
+		);
+
+		expect(options?.options).toBeDefined;
+
+		const optionNames = options!.options!.map((option) => option.name);
+
+		expect(optionNames).toEqual(['batching', 'allowUnauthorizedCerts', 'proxy', 'timeout']);
+	});
+
 	describe('getRequestOptionsFromParameters', () => {
 		const tests: Array<{
 			description: string;
@@ -46,7 +69,7 @@ describe('RoutingNode', () => {
 				nodeParameters: INodeParameters;
 				nodeTypeProperties: INodeProperties;
 			};
-			output: IRequestOptionsFromParameters | undefined;
+			output: DeclarativeRestApiSettings.ResultOptions | undefined;
 		}> = [
 			{
 				description: 'single parameter, only send defined, fixed value',
@@ -167,7 +190,7 @@ describe('RoutingNode', () => {
 				},
 			},
 			{
-				description: 'mutliple parameters, complex example with everything',
+				description: 'multiple parameters, complex example with everything',
 				input: {
 					nodeParameters: {
 						multipleFields: {
@@ -175,6 +198,8 @@ describe('RoutingNode', () => {
 							value2: 'v2',
 							value3: 'v3',
 							value4: 4,
+							value6: 'value1,value2',
+							value7: 'value3,value4',
 							lowerLevel: {
 								lowLevelValue1: 1,
 								lowLevelValue2: 'llv2',
@@ -333,6 +358,37 @@ describe('RoutingNode', () => {
 									},
 								},
 							},
+
+							// Test resolve of value and properties including as objects
+							{
+								displayName: 'Value 6',
+								name: 'value6',
+								type: 'string',
+								routing: {
+									send: {
+										// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
+										property: '={{ `value${5+1}A` }}',
+										type: 'query',
+										value: '={{$value.toUpperCase()}}',
+									},
+								},
+								default: '',
+							},
+							{
+								displayName: 'Value 7',
+								name: 'value7',
+								type: 'string',
+								routing: {
+									send: {
+										// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
+										property: '={{ `value${6+1}B` }}',
+										type: 'body',
+										value: "={{$value.split(',')}}",
+									},
+								},
+								default: '',
+							},
+
 							{
 								displayName: 'Lower Level',
 								name: 'lowerLevel',
@@ -508,10 +564,12 @@ describe('RoutingNode', () => {
 								name: 'cSName1',
 								value: 'cSValue1',
 							},
+							value6A: 'VALUE1,VALUE2',
 						},
 						body: {
 							value1: 'v1',
 							'topLevel.value2': 'v2',
+							value7B: ['value3', 'value4'],
 							lowerLevel: {
 								value3: 'v3',
 							},
@@ -542,6 +600,8 @@ describe('RoutingNode', () => {
 									value2: 'v2',
 									value3: 'v3',
 									value4: 4,
+									value6: 'value1,value2',
+									value7: 'value3,value4',
 									lowerLevel: {
 										lowLevelValue1: 1,
 										lowLevelValue2: 'llv2',
@@ -613,6 +673,7 @@ describe('RoutingNode', () => {
 			name: 'test',
 			type: 'test.set',
 			typeVersion: 1,
+			id: 'uuid-1234',
 			position: [0, 0],
 		};
 
@@ -621,7 +682,6 @@ describe('RoutingNode', () => {
 		const itemIndex = 0;
 		const connectionInputData: INodeExecutionData[] = [];
 		const runExecutionData: IRunExecutionData = { resultData: { runData: {} } };
-		const additionalData = Helpers.WorkflowExecuteAdditionalData();
 		const path = '';
 		const nodeType = nodeTypes.getByNameAndVersion(node.type);
 
@@ -631,10 +691,8 @@ describe('RoutingNode', () => {
 		};
 
 		for (const testData of tests) {
-			test(testData.description, () => {
+			test(testData.description, async () => {
 				node.parameters = testData.input.nodeParameters;
-
-				// @ts-ignore
 				nodeType.description.properties = [testData.input.nodeTypeProperties];
 
 				const workflow = new Workflow({
@@ -657,17 +715,8 @@ describe('RoutingNode', () => {
 					workflow,
 					runExecutionData,
 					runIndex,
-					connectionInputData,
-					{},
 					node,
 					itemIndex,
-					additionalData,
-					{
-						node,
-						data: {},
-						source: null,
-					},
-					mode,
 				);
 
 				const result = routingNode.getRequestOptionsFromParameters(
@@ -688,6 +737,11 @@ describe('RoutingNode', () => {
 		const tests: Array<{
 			description: string;
 			input: {
+				specialTestOptions?: {
+					applyDeclarativeNodeOptionParameters?: boolean;
+					numberOfItems?: number;
+					sleepCalls?: number[][];
+				};
 				nodeType: {
 					properties?: INodeProperties[];
 					credentials?: INodeCredentialDescription[];
@@ -743,6 +797,7 @@ describe('RoutingNode', () => {
 									},
 									baseURL: 'http://127.0.0.1:5678',
 									returnFullResponse: true,
+									timeout: 300000,
 								},
 							},
 						},
@@ -792,6 +847,7 @@ describe('RoutingNode', () => {
 									},
 									baseURL: 'http://127.0.0.1:5678',
 									returnFullResponse: true,
+									timeout: 300000,
 								},
 							},
 						},
@@ -847,6 +903,7 @@ describe('RoutingNode', () => {
 									},
 									baseURL: 'http://127.0.0.1:5678',
 									returnFullResponse: true,
+									timeout: 300000,
 								},
 							},
 						},
@@ -902,6 +959,7 @@ describe('RoutingNode', () => {
 									},
 									baseURL: 'http://127.0.0.1:5678',
 									returnFullResponse: true,
+									timeout: 300000,
 								},
 							},
 						},
@@ -959,6 +1017,7 @@ describe('RoutingNode', () => {
 										offset: 10,
 									},
 									returnFullResponse: true,
+									timeout: 300000,
 								},
 							},
 						},
@@ -966,7 +1025,154 @@ describe('RoutingNode', () => {
 				],
 			},
 			{
-				description: 'mutliple parameters, complex example with everything',
+				description: 'multiple parameters, from applyDeclarativeNodeOptionParameters',
+				input: {
+					specialTestOptions: {
+						applyDeclarativeNodeOptionParameters: true,
+						numberOfItems: 5,
+						sleepCalls: [[500], [500]],
+					},
+					node: {
+						parameters: {
+							requestOptions: {
+								allowUnauthorizedCerts: true,
+								batching: {
+									batch: {
+										batchSize: 2,
+										batchInterval: 500,
+									},
+								},
+								proxy: 'http://user:password@127.0.0.1:8080',
+								timeout: 123,
+							},
+						},
+					},
+					nodeType: {
+						properties: [],
+					},
+				},
+				output: [
+					[
+						{
+							json: {
+								headers: {},
+								statusCode: 200,
+								requestOptions: {
+									qs: {},
+									headers: {},
+									proxy: {
+										auth: {
+											username: 'user',
+											password: 'password',
+										},
+										host: '127.0.0.1',
+										protocol: 'http',
+										port: 8080,
+									},
+									body: {},
+									returnFullResponse: true,
+									skipSslCertificateValidation: true,
+									timeout: 123,
+								},
+							},
+						},
+						{
+							json: {
+								headers: {},
+								statusCode: 200,
+								requestOptions: {
+									qs: {},
+									headers: {},
+									proxy: {
+										auth: {
+											username: 'user',
+											password: 'password',
+										},
+										host: '127.0.0.1',
+										protocol: 'http',
+										port: 8080,
+									},
+									body: {},
+									returnFullResponse: true,
+									skipSslCertificateValidation: true,
+									timeout: 123,
+								},
+							},
+						},
+						{
+							json: {
+								headers: {},
+								statusCode: 200,
+								requestOptions: {
+									qs: {},
+									headers: {},
+									proxy: {
+										auth: {
+											username: 'user',
+											password: 'password',
+										},
+										host: '127.0.0.1',
+										protocol: 'http',
+										port: 8080,
+									},
+									body: {},
+									returnFullResponse: true,
+									skipSslCertificateValidation: true,
+									timeout: 123,
+								},
+							},
+						},
+						{
+							json: {
+								headers: {},
+								statusCode: 200,
+								requestOptions: {
+									qs: {},
+									headers: {},
+									proxy: {
+										auth: {
+											username: 'user',
+											password: 'password',
+										},
+										host: '127.0.0.1',
+										protocol: 'http',
+										port: 8080,
+									},
+									body: {},
+									returnFullResponse: true,
+									skipSslCertificateValidation: true,
+									timeout: 123,
+								},
+							},
+						},
+						{
+							json: {
+								headers: {},
+								statusCode: 200,
+								requestOptions: {
+									qs: {},
+									headers: {},
+									proxy: {
+										auth: {
+											username: 'user',
+											password: 'password',
+										},
+										host: '127.0.0.1',
+										protocol: 'http',
+										port: 8080,
+									},
+									body: {},
+									returnFullResponse: true,
+									skipSslCertificateValidation: true,
+									timeout: 123,
+								},
+							},
+						},
+					],
+				],
+			},
+			{
+				description: 'multiple parameters, complex example with everything',
 				input: {
 					node: {
 						parameters: {
@@ -1395,6 +1601,7 @@ describe('RoutingNode', () => {
 									addedIn: 'preSendFunction1',
 								},
 								returnFullResponse: true,
+								timeout: 300000,
 							},
 						},
 					],
@@ -1490,6 +1697,7 @@ describe('RoutingNode', () => {
 											baseURL: 'http://127.0.0.1:5678',
 											url: '/test-url',
 											returnFullResponse: true,
+											timeout: 300000,
 										},
 									},
 								},
@@ -1572,7 +1780,7 @@ describe('RoutingNode', () => {
 				],
 			},
 			{
-				description: 'single parameter, mutliple postReceive: rootProperty, setKeyValue, sort',
+				description: 'single parameter, multiple postReceive: rootProperty, setKeyValue, sort',
 				input: {
 					nodeType: {
 						requestDefaults: {
@@ -1659,6 +1867,7 @@ describe('RoutingNode', () => {
 			name: 'test',
 			type: 'test.set',
 			typeVersion: 1,
+			id: 'uuid-1234',
 			position: [0, 0],
 		};
 
@@ -1667,17 +1876,13 @@ describe('RoutingNode', () => {
 		const itemIndex = 0;
 		const connectionInputData: INodeExecutionData[] = [];
 		const runExecutionData: IRunExecutionData = { resultData: { runData: {} } };
-		const additionalData = Helpers.WorkflowExecuteAdditionalData();
 		const nodeType = nodeTypes.getByNameAndVersion(baseNode.type);
+		applyDeclarativeNodeOptionParameters(nodeType);
+
+		const propertiesOriginal = nodeType.description.properties;
 
 		const inputData: ITaskDataConnections = {
-			main: [
-				[
-					{
-						json: {},
-					},
-				],
-			],
+			main: [[]],
 		};
 
 		for (const testData of tests) {
@@ -1689,8 +1894,10 @@ describe('RoutingNode', () => {
 					connections: {},
 				};
 
-				// @ts-ignore
-				nodeType.description = { ...testData.input.nodeType };
+				nodeType.description = { ...testData.input.nodeType } as INodeTypeDescription;
+				if (testData.input.specialTestOptions?.applyDeclarativeNodeOptionParameters) {
+					nodeType.description.properties = propertiesOriginal;
+				}
 
 				const workflow = new Workflow({
 					nodes: workflowData.nodes,
@@ -1714,45 +1921,59 @@ describe('RoutingNode', () => {
 					source: null,
 				} as IExecuteData;
 
-				// @ts-ignore
-				const nodeExecuteFunctions: INodeExecuteFunctions = {
-					getExecuteFunctions: () => {
-						return Helpers.getExecuteFunctions(
-							workflow,
-							runExecutionData,
-							runIndex,
-							connectionInputData,
-							{},
-							node,
-							itemIndex,
-							additionalData,
-							executeData,
-							mode,
-						);
-					},
-					getExecuteSingleFunctions: () => {
-						return Helpers.getExecuteSingleFunctions(
-							workflow,
-							runExecutionData,
-							runIndex,
-							connectionInputData,
-							{},
-							node,
-							itemIndex,
-							additionalData,
-							executeData,
-							mode,
-						);
-					},
+				const executeFunctions = mock<IExecuteFunctions>();
+				const executeSingleFunctions = Helpers.getExecuteSingleFunctions(
+					workflow,
+					runExecutionData,
+					runIndex,
+					node,
+					itemIndex,
+				);
+
+				const nodeExecuteFunctions: Partial<INodeExecuteFunctions> = {
+					getExecuteFunctions: () => executeFunctions,
+					getExecuteSingleFunctions: () => executeSingleFunctions,
 				};
+
+				const numberOfItems = testData.input.specialTestOptions?.numberOfItems ?? 1;
+				if (!inputData.main[0] || inputData.main[0].length !== numberOfItems) {
+					inputData.main[0] = [];
+					for (let i = 0; i < numberOfItems; i++) {
+						inputData.main[0].push({ json: {} });
+					}
+				}
+
+				const spy = jest.spyOn(utilsModule, 'sleep').mockReturnValue(
+					new Promise((resolve) => {
+						resolve();
+					}),
+				);
+
+				spy.mockClear();
+
+				executeFunctions.getNodeParameter.mockImplementation(
+					(parameterName: string) => testData.input.node.parameters[parameterName] || {},
+				);
+
+				const getNodeParameter = executeSingleFunctions.getNodeParameter;
+				executeSingleFunctions.getNodeParameter = (parameterName: string) =>
+					parameterName in testData.input.node.parameters
+						? testData.input.node.parameters[parameterName]
+						: (getNodeParameter(parameterName) ?? {});
 
 				const result = await routingNode.runNode(
 					inputData,
 					runIndex,
 					nodeType,
 					executeData,
-					nodeExecuteFunctions,
+					nodeExecuteFunctions as INodeExecuteFunctions,
 				);
+
+				if (testData.input.specialTestOptions?.sleepCalls) {
+					expect(spy.mock.calls).toEqual(testData.input.specialTestOptions?.sleepCalls);
+				} else {
+					expect(spy).toHaveBeenCalledTimes(0);
+				}
 
 				expect(result).toEqual(testData.output);
 			});
@@ -1763,12 +1984,7 @@ describe('RoutingNode', () => {
 		const tests: Array<{
 			description: string;
 			input: {
-				nodeType: {
-					properties?: INodeProperties[];
-					credentials?: INodeCredentialDescription[];
-					requestDefaults?: IHttpRequestOptions;
-					requestOperations?: IN8nRequestOperations;
-				};
+				nodeType: Partial<INodeTypeDescription>;
 				node: {
 					parameters: INodeParameters;
 				};
@@ -1817,6 +2033,7 @@ describe('RoutingNode', () => {
 									},
 									baseURL: 'http://127.0.0.1:5678',
 									returnFullResponse: true,
+									timeout: 300000,
 								},
 							},
 						},
@@ -1831,6 +2048,7 @@ describe('RoutingNode', () => {
 			name: 'test',
 			type: 'test.set',
 			typeVersion: 1,
+			id: 'uuid-1234',
 			position: [0, 0],
 		};
 
@@ -1839,7 +2057,6 @@ describe('RoutingNode', () => {
 		const itemIndex = 0;
 		const connectionInputData: INodeExecutionData[] = [];
 		const runExecutionData: IRunExecutionData = { resultData: { runData: {} } };
-		const additionalData = Helpers.WorkflowExecuteAdditionalData();
 		const nodeType = nodeTypes.getByNameAndVersion(baseNode.type);
 
 		const inputData: ITaskDataConnections = {
@@ -1867,8 +2084,7 @@ describe('RoutingNode', () => {
 					connections: {},
 				};
 
-				// @ts-ignore
-				nodeType.description = { ...testData.input.nodeType };
+				nodeType.description = { ...testData.input.nodeType } as INodeTypeDescription;
 
 				const workflow = new Workflow({
 					nodes: workflowData.nodes,
@@ -1894,37 +2110,21 @@ describe('RoutingNode', () => {
 
 				let currentItemIndex = 0;
 				for (let iteration = 0; iteration < inputData.main[0]!.length; iteration++) {
-					// @ts-ignore
-					const nodeExecuteFunctions: INodeExecuteFunctions = {
-						getExecuteFunctions: () => {
-							return Helpers.getExecuteFunctions(
-								workflow,
-								runExecutionData,
-								runIndex,
-								connectionInputData,
-								{},
-								node,
-								itemIndex + iteration,
-								additionalData,
-								executeData,
-								mode,
-							);
-						},
+					const nodeExecuteFunctions: Partial<INodeExecuteFunctions> = {
 						getExecuteSingleFunctions: () => {
 							return Helpers.getExecuteSingleFunctions(
 								workflow,
 								runExecutionData,
 								runIndex,
-								connectionInputData,
-								{},
 								node,
 								itemIndex + iteration,
-								additionalData,
-								executeData,
-								mode,
 							);
 						},
 					};
+
+					if (!nodeExecuteFunctions.getExecuteSingleFunctions) {
+						fail('Expected nodeExecuteFunctions to contain getExecuteSingleFunctions');
+					}
 
 					const routingNodeExecutionContext = nodeExecuteFunctions.getExecuteSingleFunctions(
 						routingNode.workflow,

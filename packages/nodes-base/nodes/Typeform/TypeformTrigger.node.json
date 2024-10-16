@@ -2,18 +2,16 @@
 	"node": "n8n-nodes-base.typeformTrigger",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Communication"
-	],
+	"categories": ["Communication"],
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/typeform"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/typeform/"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.typeformTrigger/"
+				"url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.typeformtrigger/"
 			}
 		],
 		"generic": [
@@ -68,7 +66,5 @@
 			}
 		]
 	},
-	"alias": [
-		"Form"
-	]
+	"alias": ["Form"]
 }

@@ -2,18 +2,16 @@
 	"node": "n8n-nodes-base.githubTrigger",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Development"
-	],
+	"categories": ["Development"],
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/github"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/github/"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.githubTrigger/"
+				"url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.githubtrigger/"
 			}
 		],
 		"generic": [

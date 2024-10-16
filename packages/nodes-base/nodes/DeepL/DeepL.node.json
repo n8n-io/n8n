@@ -2,23 +2,18 @@
 	"node": "n8n-nodes-base.deepL",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Utility"
-	],
+	"categories": ["Utility"],
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/deepL"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/deepL/"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.deepL/"
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.deepl/"
 			}
 		]
 	},
-	"alias": [
-		"Translate",
-		"Translator"
-	]
+	"alias": ["Translate", "Translator"]
 }

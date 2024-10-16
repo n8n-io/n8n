@@ -1,4 +1,5 @@
-import { IDataObject, ObservableObject } from '../src';
+import type { IDataObject } from '@/Interfaces';
+import * as ObservableObject from '@/ObservableObject';
 
 describe('ObservableObject', () => {
 	test('should recognize that item on parent level got added (init empty)', () => {

@@ -1,13 +1,13 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
-
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
+import { sshTunnelProperties } from '@utils/sshTunnel.properties';
 
 export class Postgres implements ICredentialType {
 	name = 'postgres';
+
 	displayName = 'Postgres';
+
 	documentationUrl = 'postgres';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Host',
@@ -49,9 +49,7 @@ export class Postgres implements ICredentialType {
 			type: 'options',
 			displayOptions: {
 				show: {
-					allowUnauthorizedCerts: [
-						false,
-					],
+					allowUnauthorizedCerts: [false],
 				},
 			},
 			options: [
@@ -67,14 +65,6 @@ export class Postgres implements ICredentialType {
 					name: 'Require',
 					value: 'require',
 				},
-				{
-					name: 'Verify (Not Implemented)',
-					value: 'verify',
-				},
-				{
-					name: 'Verify-Full (Not Implemented)',
-					value: 'verify-full',
-				},
 			],
 			default: 'disable',
 		},
@@ -84,5 +74,6 @@ export class Postgres implements ICredentialType {
 			type: 'number',
 			default: 5432,
 		},
+		...sshTunnelProperties,
 	];
 }

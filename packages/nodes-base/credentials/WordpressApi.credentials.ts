@@ -1,4 +1,4 @@
-import {
+import type {
 	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -7,8 +7,11 @@ import {
 
 export class WordpressApi implements ICredentialType {
 	name = 'wordpressApi';
+
 	displayName = 'Wordpress API';
+
 	documentationUrl = 'wordpress';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Username',
@@ -32,22 +35,31 @@ export class WordpressApi implements ICredentialType {
 			default: '',
 			placeholder: 'https://example.com',
 		},
-	];
- authenticate: IAuthenticateGeneric = {
-	type: 'generic',
-	properties: {
-		auth: {
-			username: '={{$credentials.username}}',
-			password: '={{$credentials.password}}',
+		{
+			displayName: 'Ignore SSL Issues',
+			name: 'allowUnauthorizedCerts',
+			type: 'boolean',
+			description: 'Whether to connect even if SSL certificate validation is not possible',
+			default: false,
 		},
-	},
-};
+	];
+
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
+		properties: {
+			auth: {
+				username: '={{$credentials.username}}',
+				password: '={{$credentials.password}}',
+			},
+		},
+	};
+
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{$credentials?.url}}/wp-json/wp/v2',
 			url: '/users',
 			method: 'GET',
+			skipSslCertificateValidation: '={{$credentials.allowUnauthorizedCerts}}',
 		},
 	};
 }
-

@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="200px"
+   height="200px"
+   viewBox="0 0 200 200"
+   version="1.1"
+   id="svg10"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <!-- Generator: Sketch 3.3.2 (12043) - http://www.bohemiancoding.com/sketch -->
+  <title
+     id="title1">Group</title>
+  <desc
+     id="desc1">Created with Sketch.</desc>
+  <defs
+     id="defs1">
+    <filter
+       style="color-interpolation-filters:sRGB"
+       id="filter11"
+       x="-0.18346753"
+       y="-0.076523014"
+       width="1.3669351"
+       height="1.153046">
+      <feGaussianBlur
+         stdDeviation="1.2230926"
+         id="feGaussianBlur11" />
+    </filter>
+    <filter
+       style="color-interpolation-filters:sRGB"
+       id="filter12"
+       x="-0.18346753"
+       y="-0.076523014"
+       width="1.3669351"
+       height="1.153046">
+      <feGaussianBlur
+         stdDeviation="1.2230926"
+         id="feGaussianBlur12" />
+    </filter>
+  </defs>
+  <g
+     id="layer1" />
+  <g
+     transform="translate(57.626456,48.948311)"
+     id="Shape-6">
+    <g
+       id="g12"
+       transform="matrix(1.8791546,0,0,1.8791546,-51.584186,-42.862227)">
+      <path
+         d="M 42.223544,27.435493 V -0.303311 H 58.223226 V 27.435493 L 50.223385,38.05668 Z"
+         fill="#ffffff"
+         id="path11"
+         style="fill:#ececec;stroke-width:1.04876;filter:url(#filter12)" />
+      <path
+         d="M 57.5,26.9 V 0 h -15 V 26.9 L 50,37.2 Z"
+         fill="#ffffff"
+         id="path1-7" />
+      <path
+         d="M 42.223544,72.517876 V 100.25668 H 58.223226 V 72.517876 L 50.223385,61.896689 Z"
+         fill="#ffffff"
+         id="path10"
+         style="fill:#ececec;stroke-width:1.04876;filter:url(#filter11)" />
+      <path
+         d="m 42.623319,73.156936 v 26.900004 h 15 V 73.156936 l -7.5,-10.3 z"
+         fill="#ffffff"
+         id="path2-5" />
+      <path
+         d="M 57.5,73.1 73.3,94.9 85.5,86 69.6,64.3 57.5,60.3 Z"
+         fill="#00f2e6"
+         id="path3-3" />
+      <path
+         d="M 42.5,26.9 26.7,5.1 14.5,14 l 15.9,21.7 12.1,4 z"
+         fill="#00f2e6"
+         id="path4-5" />
+      <path
+         d="M 30.4,35.7 4.8,27.4 0.1,41.7 25.7,50 37.9,46.1 Z"
+         fill="#00b9f1"
+         id="path5-6" />
+      <path
+         d="M 62.1,53.9 69.6,64.3 95.2,72.6 99.9,58.3 74.3,50 Z"
+         fill="#00b9f1"
+         id="path6-2" />
+      <path
+         d="M 74.3,50 99.9,41.7 95.2,27.4 69.6,35.7 62.1,46.1 Z"
+         fill="#d63aff"
+         id="path7-9" />
+      <path
+         d="M 25.7,50 0.1,58.3 4.8,72.6 30.4,64.3 37.9,53.9 Z"
+         fill="#d63aff"
+         id="path8-1" />
+      <path
+         d="M 30.4,64.3 14.5,86 26.7,94.9 42.5,73.1 V 60.3 Z"
+         fill="#fb015b"
+         id="path9-2" />
+      <path
+         d="M 69.6,35.7 85.5,14 73.3,5.1 57.5,26.9 v 12.8 z"
+         fill="#fb015b"
+         id="path10-7" />
+    </g>
+  </g>
+  <metadata
+     id="metadata12">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:title>Group</dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+</svg>

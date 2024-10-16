@@ -1,0 +1,33 @@
+{
+  "name": "@n8n/task-runner",
+  "version": "1.2.0",
+  "scripts": {
+    "clean": "rimraf dist .turbo",
+    "start": "node dist/start.js",
+    "dev": "pnpm build && pnpm start",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p ./tsconfig.build.json && tsc-alias -p tsconfig.build.json",
+    "format": "biome format --write src",
+    "format:check": "biome ci src",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "lint": "eslint . --quiet",
+    "lintfix": "eslint . --fix",
+    "watch": "concurrently \"tsc -w -p tsconfig.build.json\" \"tsc-alias -w -p tsconfig.build.json\""
+  },
+  "main": "dist/start.js",
+  "module": "src/start.ts",
+  "types": "dist/start.d.ts",
+  "files": [
+    "dist/**/*"
+  ],
+  "dependencies": {
+    "n8n-workflow": "workspace:*",
+    "n8n-core": "workspace:*",
+    "nanoid": "^3.3.6",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "luxon": "catalog:"
+  }
+}

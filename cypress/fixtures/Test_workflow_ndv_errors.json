@@ -1,0 +1,29 @@
+{
+	"meta": {
+		"instanceId": "3204fc455f5cbeb4e71fdbd3b1dfaf0b088088dea3e639de49e61462b80ffc1d"
+	},
+	"nodes": [
+		{
+			"parameters": {
+				"application": {
+					"__rl": true,
+					"mode": "url",
+					"value": "",
+					"__regex": "https://airtable.com/([a-zA-Z0-9]{2,})"
+				},
+				"table": {
+					"__rl": true,
+					"mode": "url",
+					"value": "",
+					"__regex": "https://airtable.com/[a-zA-Z0-9]{2,}/([a-zA-Z0-9]{2,})"
+				}
+			},
+			"id": "e0c0cf7e-aa98-4b72-9645-6e64e2902bd1",
+			"name": "Airtable",
+			"type": "n8n-nodes-base.airtable",
+			"typeVersion": 1,
+			"position": [380, 180]
+		}
+	],
+	"connections": {}
+}

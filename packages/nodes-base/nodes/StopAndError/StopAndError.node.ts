@@ -1,13 +1,11 @@
-import {
+import type {
 	IExecuteFunctions,
-} from 'n8n-core';
-
-import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
+	JsonObject,
 } from 'n8n-workflow';
+import { jsonParse, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 const errorObjectPlaceholder = `{
 	"code": "404",
@@ -19,15 +17,16 @@ export class StopAndError implements INodeType {
 		displayName: 'Stop and Error',
 		name: 'stopAndError',
 		icon: 'fa:exclamation-triangle',
+		iconColor: 'red',
 		group: ['input'],
 		version: 1,
 		description: 'Throw an error in the workflow',
 		defaults: {
-			name: 'Stop And Error',
+			name: 'Stop and Error',
 			color: '#ff0000',
 		},
-		inputs: ['main'],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
+		inputs: [NodeConnectionType.Main],
+
 		outputs: [],
 		properties: [
 			{
@@ -52,16 +51,11 @@ export class StopAndError implements INodeType {
 				name: 'errorMessage',
 				type: 'string',
 				placeholder: 'An error occurred!',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				required: true,
 				displayOptions: {
 					show: {
-						errorType: [
-							'errorMessage',
-						],
+						errorType: ['errorMessage'],
 					},
 				},
 			},
@@ -78,26 +72,25 @@ export class StopAndError implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						errorType: [
-							'errorObject',
-						],
+						errorType: ['errorObject'],
 					},
 				},
 			},
 		],
 	};
 
-	execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const errorType = this.getNodeParameter('errorType', 0) as 'errorMessage' | 'errorObject';
 		const { id: workflowId, name: workflowName } = this.getWorkflow();
 
-		let toThrow: string | { name: string; message: string; [otherKey: string]: unknown };
+		let toThrow: string | JsonObject;
 
 		if (errorType === 'errorMessage') {
 			toThrow = this.getNodeParameter('errorMessage', 0) as string;
 		} else {
 			const json = this.getNodeParameter('errorObject', 0) as string;
-			const errorObject = JSON.parse(json);
+
+			const errorObject = jsonParse<JsonObject>(json);
 
 			toThrow = {
 				name: 'User-thrown error',

@@ -1,134 +1,104 @@
-<template>
-	<TemplatesView>
-		<template v-slot:header>
-			<div :class="$style.wrapper">
-				<div :class="$style.title">
-					<n8n-heading tag="h1" size="2xlarge">
-						{{ $locale.baseText('templates.heading') }}
-					</n8n-heading>
-				</div>
-				<div :class="$style.button">
-					<n8n-button
-						size="large"
-						:label="$locale.baseText('templates.newButton')"
-						@click="openNewWorkflow"
-					/>
-				</div>
-			</div>
-		</template>
-		<template v-slot:content>
-			<div :class="$style.contentWrapper">
-				<div :class="$style.filters">
-					<TemplateFilters
-						:categories="allCategories"
-						:sortOnPopulate="areCategoriesPrepopulated"
-						:loading="loadingCategories"
-						:selected="categories"
-						@clear="onCategoryUnselected"
-						@clearAll="onCategoriesCleared"
-						@select="onCategorySelected"
-					/>
-				</div>
-				<div :class="$style.search">
-					<n8n-input
-						:value="search"
-						:placeholder="$locale.baseText('templates.searchPlaceholder')"
-						@input="onSearchInput"
-						@blur="trackSearch"
-						clearable
-					>
-						<font-awesome-icon icon="search" slot="prefix" />
-					</n8n-input>
-					<div :class="$style.carouselContainer" v-show="collections.length || loadingCollections">
-						<div :class="$style.header">
-							<n8n-heading :bold="true" size="medium" color="text-light">
-								{{ $locale.baseText('templates.collections') }}
-								<span v-if="!loadingCollections" v-text="`(${collections.length})`" />
-							</n8n-heading>
-						</div>
-
-						<CollectionsCarousel
-							:collections="collections"
-							:loading="loadingCollections"
-							@openCollection="onOpenCollection"
-						/>
-					</div>
-					<TemplateList
-						:infinite-scroll-enabled="true"
-						:loading="loadingWorkflows"
-						:total-workflows="totalWorkflows"
-						:workflows="workflows"
-						@loadMore="onLoadMore"
-						@openTemplate="onOpenTemplate"
-					/>
-					<div v-if="endOfSearchMessage" :class="$style.endText">
-						<n8n-text size="medium" color="text-base">
-							<span v-html="endOfSearchMessage" />
-						</n8n-text>
-					</div>
-				</div>
-			</div>
-		</template>
-	</TemplatesView>
-</template>
-
 <script lang="ts">
-import CollectionsCarousel from '@/components/CollectionsCarousel.vue';
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
+import TemplatesInfoCarousel from '@/components/TemplatesInfoCarousel.vue';
 import TemplateFilters from '@/components/TemplateFilters.vue';
 import TemplateList from '@/components/TemplateList.vue';
-import TemplatesView from './TemplatesView.vue';
+import TemplatesView from '@/views/TemplatesView.vue';
 
-import { genericHelpers } from '@/components/mixins/genericHelpers';
-import { ITemplatesCollection, ITemplatesWorkflow, ITemplatesQuery, ITemplatesCategory } from '@/Interface';
-import mixins from 'vue-typed-mixins';
-import { mapGetters } from 'vuex';
-import { IDataObject } from 'n8n-workflow';
-import { setPageTitle } from '@/components/helpers';
-import { VIEWS } from '@/constants';
+import type {
+	ITemplatesCollection,
+	ITemplatesWorkflow,
+	ITemplatesQuery,
+	ITemplatesCategory,
+} from '@/Interface';
+import type { IDataObject } from 'n8n-workflow';
+import { CREATOR_HUB_URL, VIEWS } from '@/constants';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useTemplatesStore } from '@/stores/templates.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useToast } from '@/composables/useToast';
+import { usePostHog } from '@/stores/posthog.store';
+import { useDebounce } from '@/composables/useDebounce';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
 
 interface ISearchEvent {
 	search_string: string;
 	workflow_results_count: number;
 	collection_results_count: number;
 	categories_applied: ITemplatesCategory[];
-	wf_template_repo_session_id: number;
+	wf_template_repo_session_id: string;
 }
 
-export default mixins(genericHelpers).extend({
+export default defineComponent({
 	name: 'TemplatesSearchView',
 	components: {
-		CollectionsCarousel,
+		TemplatesInfoCarousel,
 		TemplateFilters,
 		TemplateList,
 		TemplatesView,
 	},
+	beforeRouteLeave(_to, _from, next) {
+		const contentArea = document.getElementById('content');
+		if (contentArea) {
+			// When leaving this page, store current scroll position in route data
+			this.$route.meta?.setScrollPosition?.(contentArea.scrollTop);
+		}
+
+		this.trackSearch();
+		next();
+	},
+	setup() {
+		const { callDebounced } = useDebounce();
+
+		return {
+			callDebounced,
+			...useToast(),
+			documentTitle: useDocumentTitle(),
+		};
+	},
+	data() {
+		return {
+			areCategoriesPrepopulated: false,
+			categories: [] as ITemplatesCategory[],
+			loading: true,
+			loadingCategories: true,
+			loadingCollections: true,
+			loadingWorkflows: true,
+			search: '',
+			searchEventToTrack: null as null | ISearchEvent,
+			errorLoadingWorkflows: false,
+			creatorHubUrl: CREATOR_HUB_URL as string,
+		};
+	},
 	computed: {
-		...mapGetters('templates', ['allCategories', 'getSearchedWorkflowsTotal', 'getSearchedWorkflows', 'getSearchedCollections']),
-		...mapGetters('settings', ['isTemplatesEndpointReachable']),
+		...mapStores(useSettingsStore, useTemplatesStore, useUIStore, useUsersStore, usePostHog),
+		totalWorkflows(): number {
+			return this.templatesStore.getSearchedWorkflowsTotal(this.createQueryObject('name'));
+		},
+		workflows(): ITemplatesWorkflow[] {
+			return this.templatesStore.getSearchedWorkflows(this.createQueryObject('name')) ?? [];
+		},
 		collections(): ITemplatesCollection[] {
-			return this.getSearchedCollections(this.query) || [];
+			return this.templatesStore.getSearchedCollections(this.createQueryObject('id')) ?? [];
 		},
 		endOfSearchMessage(): string | null {
 			if (this.loadingWorkflows) {
 				return null;
 			}
-			if (this.workflows.length && this.workflows.length >= this.totalWorkflows) {
-				return this.$locale.baseText('templates.endResult');
-			}
-			if (!this.loadingCollections && this.workflows.length === 0 && this.collections.length === 0) {
-				if (!this.isTemplatesEndpointReachable && this.errorLoadingWorkflows) {
+			if (
+				!this.loadingCollections &&
+				this.workflows.length === 0 &&
+				this.collections.length === 0
+			) {
+				if (!this.settingsStore.isTemplatesEndpointReachable && this.errorLoadingWorkflows) {
 					return this.$locale.baseText('templates.connectionWarning');
 				}
 				return this.$locale.baseText('templates.noSearchResults');
 			}
 
 			return null;
-		},
-		query(): ITemplatesQuery {
-			return {
-				categories: this.categories,
-				search: this.search,
-			};
 		},
 		nothingFound(): boolean {
 			return (
@@ -138,45 +108,77 @@ export default mixins(genericHelpers).extend({
 				this.collections.length === 0
 			);
 		},
-		totalWorkflows(): number {
-			return this.getSearchedWorkflowsTotal(this.query);
-		},
-		workflows(): ITemplatesWorkflow[] {
-			return this.getSearchedWorkflows(this.query) || [];
+	},
+	watch: {
+		workflows(newWorkflows) {
+			if (newWorkflows.length === 0) {
+				this.scrollTo(0);
+			}
 		},
 	},
-	data() {
-		return {
-			areCategoriesPrepopulated: false,
-			categories: [] as number[],
-			loading: true,
-			loadingCategories: true,
-			loadingCollections: true,
-			loadingWorkflows: true,
-			search: '',
-			searchEventToTrack: null as null | ISearchEvent,
-			errorLoadingWorkflows: false,
-		};
+	async mounted() {
+		this.documentTitle.set('Templates');
+		await this.loadCategories();
+		void this.loadWorkflowsAndCollections(true);
+		void this.usersStore.showPersonalizationSurvey();
+
+		this.restoreSearchFromRoute();
+
+		setTimeout(() => {
+			// Check if there is scroll position saved in route and scroll to it
+			const scrollOffset = this.$route.meta?.scrollOffset;
+			if (typeof scrollOffset === 'number' && scrollOffset > 0) {
+				this.scrollTo(scrollOffset, 'auto');
+			}
+		}, 100);
 	},
 	methods: {
-		onOpenCollection({event, id}: {event: MouseEvent, id: string}) {
+		createQueryObject(categoryId: 'name' | 'id'): ITemplatesQuery {
+			// We are using category names for template search and ids for collection search
+			return {
+				categories: this.categories.map((category) =>
+					categoryId === 'name' ? category.name : String(category.id),
+				),
+				search: this.search,
+			};
+		},
+		restoreSearchFromRoute() {
+			let updateSearch = false;
+			if (this.$route.query.search && typeof this.$route.query.search === 'string') {
+				this.search = this.$route.query.search;
+				updateSearch = true;
+			}
+			if (typeof this.$route.query.categories === 'string' && this.$route.query.categories.length) {
+				const categoriesFromURL = this.$route.query.categories.split(',');
+				this.categories = this.templatesStore.allCategories.filter((category) =>
+					categoriesFromURL.includes(category.id.toString()),
+				);
+				updateSearch = true;
+			}
+			if (updateSearch) {
+				this.updateSearch();
+				this.trackCategories();
+				this.areCategoriesPrepopulated = true;
+			}
+		},
+		onOpenCollection({ event, id }: { event: MouseEvent; id: number }) {
 			this.navigateTo(event, VIEWS.COLLECTION, id);
 		},
-		onOpenTemplate({event, id}: {event: MouseEvent, id: string}) {
+		onOpenTemplate({ event, id }: { event: MouseEvent; id: number }) {
 			this.navigateTo(event, VIEWS.TEMPLATE, id);
 		},
-		navigateTo(e: MouseEvent, page: string, id: string) {
+		navigateTo(e: MouseEvent, page: string, id: number) {
 			if (e.metaKey || e.ctrlKey) {
 				const route = this.$router.resolve({ name: page, params: { id } });
 				window.open(route.href, '_blank');
 				return;
 			} else {
-				this.$router.push({ name: page, params: { id } });
+				void this.$router.push({ name: page, params: { id } });
 			}
 		},
 		updateSearch() {
-			this.updateQueryParam(this.search, this.categories.join(','));
-			this.loadWorkflowsAndCollections(false);
+			this.updateQueryParam(this.search, this.categories.map((category) => category.id).join(','));
+			void this.loadWorkflowsAndCollections(false);
 		},
 		updateSearchTracking(search: string, categories: number[]) {
 			if (!search) {
@@ -188,40 +190,43 @@ export default mixins(genericHelpers).extend({
 
 			this.searchEventToTrack = {
 				search_string: search,
-				workflow_results_count: this.getSearchedWorkflowsTotal({search, categories}),
-				collection_results_count: this.getSearchedCollections({search, categories}).length,
+				workflow_results_count: this.workflows.length,
+				collection_results_count: this.collections.length,
 				categories_applied: categories.map((categoryId) =>
-					this.$store.getters['templates/getCategoryById'](categoryId),
+					this.templatesStore.getCategoryById(categoryId.toString()),
 				) as ITemplatesCategory[],
-				wf_template_repo_session_id: this.$store.getters['templates/currentSessionId'],
+				wf_template_repo_session_id: this.templatesStore.currentSessionId,
 			};
 		},
 		trackSearch() {
 			if (this.searchEventToTrack) {
-				this.$telemetry.track('User searched workflow templates', this.searchEventToTrack as unknown as IDataObject);
+				this.$telemetry.track(
+					'User searched workflow templates',
+					this.searchEventToTrack as unknown as IDataObject,
+				);
 				this.searchEventToTrack = null;
 			}
-		},
-		openNewWorkflow() {
-			this.$router.push({ name: VIEWS.NEW_WORKFLOW });
 		},
 		onSearchInput(search: string) {
 			this.loadingWorkflows = true;
 			this.loadingCollections = true;
 			this.search = search;
-			this.callDebounced('updateSearch', { debounceTime: 500, trailing: true });
+			void this.callDebounced(this.updateSearch, {
+				debounceTime: 500,
+				trailing: true,
+			});
 
 			if (search.length === 0) {
 				this.trackSearch();
 			}
 		},
-		onCategorySelected(selected: number) {
+		onCategorySelected(selected: ITemplatesCategory) {
 			this.categories = this.categories.concat(selected);
 			this.updateSearch();
 			this.trackCategories();
 		},
-		onCategoryUnselected(selected: number) {
-			this.categories = this.categories.filter((id) => id !== selected);
+		onCategoryUnselected(selected: ITemplatesCategory) {
+			this.categories = this.categories.filter((category) => category.id !== selected.id);
 			this.updateSearch();
 			this.trackCategories();
 		},
@@ -233,10 +238,8 @@ export default mixins(genericHelpers).extend({
 			if (this.categories.length) {
 				this.$telemetry.track('User changed template filters', {
 					search_string: this.search,
-					categories_applied: this.categories.map((categoryId: number) =>
-						this.$store.getters['templates/getCategoryById'](categoryId),
-					),
-					wf_template_repo_session_id: this.$store.getters['templates/currentSessionId'],
+					categories_applied: this.categories,
+					wf_template_repo_session_id: this.templatesStore.currentSessionId,
 				});
 			}
 		},
@@ -255,7 +258,7 @@ export default mixins(genericHelpers).extend({
 				delete query.search;
 			}
 
-			this.$router.replace({ query });
+			void this.$router.replace({ query });
 		},
 		async onLoadMore() {
 			if (this.workflows.length >= this.totalWorkflows) {
@@ -263,12 +266,12 @@ export default mixins(genericHelpers).extend({
 			}
 			try {
 				this.loadingWorkflows = true;
-				await this.$store.dispatch('templates/getMoreWorkflows', {
-					categories: this.categories,
+				await this.templatesStore.getMoreWorkflows({
+					categories: this.categories.map((category) => category.name),
 					search: this.search,
 				});
 			} catch (e) {
-				this.$showMessage({
+				this.showMessage({
 					title: 'Error',
 					message: 'Could not load more workflows',
 					type: 'error',
@@ -279,30 +282,27 @@ export default mixins(genericHelpers).extend({
 		},
 		async loadCategories() {
 			try {
-				await this.$store.dispatch('templates/getCategories');
-			} catch (e) {
-			}
-
+				await this.templatesStore.getCategories();
+			} catch (e) {}
 			this.loadingCategories = false;
 		},
 		async loadCollections() {
 			try {
 				this.loadingCollections = true;
-				await this.$store.dispatch('templates/getCollections', {
-					categories: this.categories,
+				await this.templatesStore.getCollections({
+					categories: this.categories.map((category) => String(category.id)),
 					search: this.search,
 				});
-			} catch (e) {
-			}
+			} catch (e) {}
 
 			this.loadingCollections = false;
 		},
 		async loadWorkflows() {
 			try {
 				this.loadingWorkflows = true;
-				await this.$store.dispatch('templates/getWorkflows', {
+				await this.templatesStore.getWorkflows({
 					search: this.search,
-					categories: this.categories,
+					categories: this.categories.map((category) => category.name),
 				});
 				this.errorLoadingWorkflows = false;
 			} catch (e) {
@@ -316,47 +316,109 @@ export default mixins(genericHelpers).extend({
 			const categories = [...this.categories];
 			await Promise.all([this.loadWorkflows(), this.loadCollections()]);
 			if (!initialLoad) {
-				this.updateSearchTracking(search, categories);
+				this.updateSearchTracking(
+					search,
+					categories.map((category) => category.id),
+				);
 			}
 		},
-		scrollToTop() {
+		scrollTo(position: number, behavior: ScrollBehavior = 'smooth') {
 			setTimeout(() => {
-				window.scrollTo({
-					top: 0,
-					behavior: 'smooth',
-				});
-			}, 100);
+				const contentArea = document.getElementById('content');
+				if (contentArea) {
+					contentArea.scrollTo({
+						top: position,
+						behavior,
+					});
+				}
+			}, 0);
 		},
-	},
-	watch: {
-		workflows(newWorkflows) {
-			if (newWorkflows.length === 0) {
-				this.scrollToTop();
-			}
-		},
-	},
-	beforeRouteLeave(to, from, next) {
-		this.trackSearch();
-		next();
-	},
-	async mounted() {
-		setPageTitle('n8n - Templates');
-		this.loadCategories();
-		this.loadWorkflowsAndCollections(true);
-		this.$store.dispatch('users/showPersonalizationSurvey');
-	},
-	async created() {
-		if (this.$route.query.search && typeof this.$route.query.search === 'string') {
-			this.search = this.$route.query.search;
-		}
-
-		if (typeof this.$route.query.categories === 'string' && this.$route.query.categories.length) {
-			this.categories = this.$route.query.categories.split(',').map((categoryId) => parseInt(categoryId, 10));
-			this.areCategoriesPrepopulated = true;
-		}
 	},
 });
 </script>
+
+<template>
+	<TemplatesView>
+		<template #header>
+			<div :class="$style.wrapper">
+				<div :class="$style.title">
+					<n8n-heading tag="h1" size="2xlarge">
+						{{ $locale.baseText('templates.heading') }}
+					</n8n-heading>
+				</div>
+				<div :class="$style.button">
+					<n8n-button
+						size="large"
+						type="secondary"
+						element="a"
+						:href="creatorHubUrl"
+						:label="$locale.baseText('templates.shareWorkflow')"
+						target="_blank"
+					/>
+				</div>
+			</div>
+		</template>
+		<template #content>
+			<div :class="$style.contentWrapper">
+				<div :class="$style.filters">
+					<TemplateFilters
+						:categories="templatesStore.allCategories"
+						:sort-on-populate="areCategoriesPrepopulated"
+						:selected="categories"
+						:loading="loadingCategories"
+						@clear="onCategoryUnselected"
+						@clear-all="onCategoriesCleared"
+						@select="onCategorySelected"
+					/>
+				</div>
+				<div :class="$style.search">
+					<n8n-input
+						:model-value="search"
+						:placeholder="$locale.baseText('templates.searchPlaceholder')"
+						clearable
+						data-test-id="template-search-input"
+						@update:model-value="onSearchInput"
+						@blur="trackSearch"
+					>
+						<template #prefix>
+							<font-awesome-icon icon="search" />
+						</template>
+					</n8n-input>
+					<div v-show="collections.length || loadingCollections" :class="$style.carouselContainer">
+						<div :class="$style.header">
+							<n8n-heading :bold="true" size="medium" color="text-light">
+								{{ $locale.baseText('templates.collections') }}
+								<span
+									v-if="!loadingCollections"
+									data-test-id="collection-count-label"
+									v-text="`(${collections.length})`"
+								/>
+							</n8n-heading>
+						</div>
+						<TemplatesInfoCarousel
+							:collections="collections"
+							:loading="loadingCollections"
+							@open-collection="onOpenCollection"
+						/>
+					</div>
+					<TemplateList
+						:infinite-scroll-enabled="true"
+						:loading="loadingWorkflows"
+						:workflows="workflows"
+						:total-count="totalWorkflows"
+						@load-more="onLoadMore"
+						@open-template="onOpenTemplate"
+					/>
+					<div v-if="endOfSearchMessage" :class="$style.endText">
+						<n8n-text size="medium" color="text-base">
+							<span v-n8n-html="endOfSearchMessage" />
+						</n8n-text>
+					</div>
+				</div>
+			</div>
+		</template>
+	</TemplatesView>
+</template>
 
 <style lang="scss" module>
 .wrapper {
@@ -368,7 +430,7 @@ export default mixins(genericHelpers).extend({
 	display: flex;
 	justify-content: space-between;
 
-	@media (max-width: $--breakpoint-xs) {
+	@media (max-width: $breakpoint-xs) {
 		flex-direction: column;
 	}
 }
@@ -376,17 +438,17 @@ export default mixins(genericHelpers).extend({
 .filters {
 	width: 200px;
 	margin-bottom: var(--spacing-xl);
+	margin-right: var(--spacing-2xl);
 }
 
 .search {
 	width: 100%;
-	padding-left: var(--spacing-2xl);
 
 	> * {
 		margin-bottom: var(--spacing-l);
 	}
 
-	@media (max-width: $--breakpoint-xs) {
+	@media (max-width: $breakpoint-xs) {
 		padding-left: 0;
 	}
 }
@@ -394,5 +456,4 @@ export default mixins(genericHelpers).extend({
 .header {
 	margin-bottom: var(--spacing-2xs);
 }
-
 </style>

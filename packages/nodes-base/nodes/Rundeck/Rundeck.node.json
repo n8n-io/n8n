@@ -2,19 +2,16 @@
 	"node": "n8n-nodes-base.rundeck",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Communication",
-		"Development"
-	],
+	"categories": ["Communication", "Development"],
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/rundeck"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/rundeck/"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.rundeck/"
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.rundeck/"
 			}
 		]
 	}

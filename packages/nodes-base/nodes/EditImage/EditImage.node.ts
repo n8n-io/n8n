@@ -1,91 +1,90 @@
-import {
-	BINARY_ENCODING,
-	IExecuteFunctions,
-} from 'n8n-core';
-import {
+import { parse as pathParse } from 'path';
+import { writeFile as fsWriteFile } from 'fs/promises';
+import type {
 	IDataObject,
+	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodeProperties,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeConnectionType, deepCopy } from 'n8n-workflow';
 import gm from 'gm';
 import { file } from 'tmp-promise';
-import {
-	parse as pathParse,
-} from 'path';
-import {
-	writeFile as fsWriteFile,
-} from 'fs';
-import { promisify } from 'util';
-const fsWriteFileAsync = promisify(fsWriteFile);
 import getSystemFonts from 'get-system-fonts';
-
 
 const nodeOperations: INodePropertyOptions[] = [
 	{
 		name: 'Blur',
 		value: 'blur',
 		description: 'Adds a blur to the image and so makes it less sharp',
+		action: 'Blur Image',
 	},
 	{
 		name: 'Border',
 		value: 'border',
 		description: 'Adds a border to the image',
+		action: 'Border Image',
 	},
 	{
 		name: 'Composite',
 		value: 'composite',
 		description: 'Composite image on top of another one',
+		action: 'Composite Image',
 	},
 	{
 		name: 'Create',
 		value: 'create',
 		description: 'Create a new image',
+		action: 'Create Image',
 	},
 	{
 		name: 'Crop',
 		value: 'crop',
 		description: 'Crops the image',
+		action: 'Crop Image',
 	},
 	{
 		name: 'Draw',
 		value: 'draw',
 		description: 'Draw on image',
+		action: 'Draw Image',
 	},
 	{
 		name: 'Rotate',
 		value: 'rotate',
 		description: 'Rotate image',
+		action: 'Rotate Image',
 	},
 	{
 		name: 'Resize',
 		value: 'resize',
 		description: 'Change the size of image',
+		action: 'Resize Image',
 	},
 	{
 		name: 'Shear',
 		value: 'shear',
 		description: 'Shear image along the X or Y axis',
+		action: 'Shear Image',
 	},
 	{
 		name: 'Text',
 		value: 'text',
 		description: 'Adds text to image',
+		action: 'Apply Text to Image',
 	},
 	{
 		name: 'Transparent',
 		value: 'transparent',
 		description: 'Make a color in image transparent',
+		action: 'Add Transparency to Image',
 	},
 ];
 
-
 const nodeOperationOptions: INodeProperties[] = [
-
 	// ----------------------------------
 	//         create
 	// ----------------------------------
@@ -99,9 +98,7 @@ const nodeOperationOptions: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
+				operation: ['create'],
 			},
 		},
 		description: 'The background color of the image to create',
@@ -116,9 +113,7 @@ const nodeOperationOptions: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
+				operation: ['create'],
 			},
 		},
 		description: 'The width of the image to create',
@@ -133,14 +128,11 @@ const nodeOperationOptions: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
+				operation: ['create'],
 			},
 		},
 		description: 'The height of the image to create',
 	},
-
 
 	// ----------------------------------
 	//         draw
@@ -151,9 +143,7 @@ const nodeOperationOptions: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				operation: [
-					'draw',
-				],
+				operation: ['draw'],
 			},
 		},
 		options: [
@@ -183,9 +173,7 @@ const nodeOperationOptions: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'draw',
-				],
+				operation: ['draw'],
 			},
 		},
 		description: 'The color of the primitive to draw',
@@ -197,14 +185,8 @@ const nodeOperationOptions: INodeProperties[] = [
 		default: 50,
 		displayOptions: {
 			show: {
-				operation: [
-					'draw',
-				],
-				primitive: [
-					'circle',
-					'line',
-					'rectangle',
-				],
+				operation: ['draw'],
+				primitive: ['circle', 'line', 'rectangle'],
 			},
 		},
 		description: 'X (horizontal) start position of the primitive',
@@ -216,14 +198,8 @@ const nodeOperationOptions: INodeProperties[] = [
 		default: 50,
 		displayOptions: {
 			show: {
-				operation: [
-					'draw',
-				],
-				primitive: [
-					'circle',
-					'line',
-					'rectangle',
-				],
+				operation: ['draw'],
+				primitive: ['circle', 'line', 'rectangle'],
 			},
 		},
 		description: 'Y (horizontal) start position of the primitive',
@@ -235,14 +211,8 @@ const nodeOperationOptions: INodeProperties[] = [
 		default: 250,
 		displayOptions: {
 			show: {
-				operation: [
-					'draw',
-				],
-				primitive: [
-					'circle',
-					'line',
-					'rectangle',
-				],
+				operation: ['draw'],
+				primitive: ['circle', 'line', 'rectangle'],
 			},
 		},
 		description: 'X (horizontal) end position of the primitive',
@@ -254,14 +224,8 @@ const nodeOperationOptions: INodeProperties[] = [
 		default: 250,
 		displayOptions: {
 			show: {
-				operation: [
-					'draw',
-				],
-				primitive: [
-					'circle',
-					'line',
-					'rectangle',
-				],
+				operation: ['draw'],
+				primitive: ['circle', 'line', 'rectangle'],
 			},
 		},
 		description: 'Y (horizontal) end position of the primitive',
@@ -273,12 +237,8 @@ const nodeOperationOptions: INodeProperties[] = [
 		default: 0,
 		displayOptions: {
 			show: {
-				operation: [
-					'draw',
-				],
-				primitive: [
-					'rectangle',
-				],
+				operation: ['draw'],
+				primitive: ['rectangle'],
 			},
 		},
 		description: 'The radius of the corner to create round corners',
@@ -298,9 +258,7 @@ const nodeOperationOptions: INodeProperties[] = [
 		placeholder: 'Text to render',
 		displayOptions: {
 			show: {
-				operation: [
-					'text',
-				],
+				operation: ['text'],
 			},
 		},
 		description: 'Text to write on the image',
@@ -312,9 +270,7 @@ const nodeOperationOptions: INodeProperties[] = [
 		default: 18,
 		displayOptions: {
 			show: {
-				operation: [
-					'text',
-				],
+				operation: ['text'],
 			},
 		},
 		description: 'Size of the text',
@@ -326,9 +282,7 @@ const nodeOperationOptions: INodeProperties[] = [
 		default: '#000000',
 		displayOptions: {
 			show: {
-				operation: [
-					'text',
-				],
+				operation: ['text'],
 			},
 		},
 		description: 'Color of the text',
@@ -340,9 +294,7 @@ const nodeOperationOptions: INodeProperties[] = [
 		default: 50,
 		displayOptions: {
 			show: {
-				operation: [
-					'text',
-				],
+				operation: ['text'],
 			},
 		},
 		description: 'X (horizontal) position of the text',
@@ -354,9 +306,7 @@ const nodeOperationOptions: INodeProperties[] = [
 		default: 50,
 		displayOptions: {
 			show: {
-				operation: [
-					'text',
-				],
+				operation: ['text'],
 			},
 		},
 		description: 'Y (vertical) position of the text',
@@ -371,9 +321,7 @@ const nodeOperationOptions: INodeProperties[] = [
 		default: 80,
 		displayOptions: {
 			show: {
-				operation: [
-					'text',
-				],
+				operation: ['text'],
 			},
 		},
 		description: 'Max amount of characters in a line before a line-break should get added',
@@ -393,9 +341,7 @@ const nodeOperationOptions: INodeProperties[] = [
 		default: 5,
 		displayOptions: {
 			show: {
-				operation: [
-					'blur',
-				],
+				operation: ['blur'],
 			},
 		},
 		description: 'How strong the blur should be',
@@ -411,14 +357,11 @@ const nodeOperationOptions: INodeProperties[] = [
 		default: 2,
 		displayOptions: {
 			show: {
-				operation: [
-					'blur',
-				],
+				operation: ['blur'],
 			},
 		},
 		description: 'The sigma of the blur',
 	},
-
 
 	// ----------------------------------
 	//         border
@@ -430,9 +373,7 @@ const nodeOperationOptions: INodeProperties[] = [
 		default: 10,
 		displayOptions: {
 			show: {
-				operation: [
-					'border',
-				],
+				operation: ['border'],
 			},
 		},
 		description: 'The width of the border',
@@ -444,9 +385,7 @@ const nodeOperationOptions: INodeProperties[] = [
 		default: 10,
 		displayOptions: {
 			show: {
-				operation: [
-					'border',
-				],
+				operation: ['border'],
 			},
 		},
 		description: 'The height of the border',
@@ -458,14 +397,11 @@ const nodeOperationOptions: INodeProperties[] = [
 		default: '#000000',
 		displayOptions: {
 			show: {
-				operation: [
-					'border',
-				],
+				operation: ['border'],
 			},
 		},
 		description: 'Color of the border',
 	},
-
 
 	// ----------------------------------
 	//         composite
@@ -478,12 +414,11 @@ const nodeOperationOptions: INodeProperties[] = [
 		placeholder: 'data2',
 		displayOptions: {
 			show: {
-				operation: [
-					'composite',
-				],
+				operation: ['composite'],
 			},
 		},
-		description: 'The name of the binary property which contains the data of the image to composite on top of image which is found in Property Name',
+		description:
+			'The name of the binary property which contains the data of the image to composite on top of image which is found in Property Name',
 	},
 	{
 		displayName: 'Operator',
@@ -491,9 +426,7 @@ const nodeOperationOptions: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				operation: [
-					'composite',
-				],
+				operation: ['composite'],
 			},
 		},
 		options: [
@@ -596,9 +529,7 @@ const nodeOperationOptions: INodeProperties[] = [
 		default: 0,
 		displayOptions: {
 			show: {
-				operation: [
-					'composite',
-				],
+				operation: ['composite'],
 			},
 		},
 		description: 'X (horizontal) position of composite image',
@@ -610,9 +541,7 @@ const nodeOperationOptions: INodeProperties[] = [
 		default: 0,
 		displayOptions: {
 			show: {
-				operation: [
-					'composite',
-				],
+				operation: ['composite'],
 			},
 		},
 		description: 'Y (vertical) position of composite image',
@@ -628,9 +557,7 @@ const nodeOperationOptions: INodeProperties[] = [
 		default: 500,
 		displayOptions: {
 			show: {
-				operation: [
-					'crop',
-				],
+				operation: ['crop'],
 			},
 		},
 		description: 'Crop width',
@@ -642,9 +569,7 @@ const nodeOperationOptions: INodeProperties[] = [
 		default: 500,
 		displayOptions: {
 			show: {
-				operation: [
-					'crop',
-				],
+				operation: ['crop'],
 			},
 		},
 		description: 'Crop height',
@@ -656,9 +581,7 @@ const nodeOperationOptions: INodeProperties[] = [
 		default: 0,
 		displayOptions: {
 			show: {
-				operation: [
-					'crop',
-				],
+				operation: ['crop'],
 			},
 		},
 		description: 'X (horizontal) position to crop from',
@@ -670,9 +593,7 @@ const nodeOperationOptions: INodeProperties[] = [
 		default: 0,
 		displayOptions: {
 			show: {
-				operation: [
-					'crop',
-				],
+				operation: ['crop'],
 			},
 		},
 		description: 'Y (vertical) position to crop from',
@@ -688,9 +609,7 @@ const nodeOperationOptions: INodeProperties[] = [
 		default: 500,
 		displayOptions: {
 			show: {
-				operation: [
-					'resize',
-				],
+				operation: ['resize'],
 			},
 		},
 		description: 'New width of the image',
@@ -702,9 +621,7 @@ const nodeOperationOptions: INodeProperties[] = [
 		default: 500,
 		displayOptions: {
 			show: {
-				operation: [
-					'resize',
-				],
+				operation: ['resize'],
 			},
 		},
 		description: 'New height of the image',
@@ -748,9 +665,7 @@ const nodeOperationOptions: INodeProperties[] = [
 		default: 'maximumArea',
 		displayOptions: {
 			show: {
-				operation: [
-					'resize',
-				],
+				operation: ['resize'],
 			},
 		},
 		description: 'How to resize the image',
@@ -770,9 +685,7 @@ const nodeOperationOptions: INodeProperties[] = [
 		default: 0,
 		displayOptions: {
 			show: {
-				operation: [
-					'rotate',
-				],
+				operation: ['rotate'],
 			},
 		},
 		description: 'How much the image should be rotated',
@@ -787,14 +700,12 @@ const nodeOperationOptions: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'rotate',
-				],
+				operation: ['rotate'],
 			},
 		},
-		description: 'The color to use for the background when image gets rotated by anything which is not a multiple of 90',
+		description:
+			'The color to use for the background when image gets rotated by anything which is not a multiple of 90',
 	},
-
 
 	// ----------------------------------
 	//         shear
@@ -806,9 +717,7 @@ const nodeOperationOptions: INodeProperties[] = [
 		default: 0,
 		displayOptions: {
 			show: {
-				operation: [
-					'shear',
-				],
+				operation: ['shear'],
 			},
 		},
 		description: 'X (horizontal) shear degrees',
@@ -820,14 +729,11 @@ const nodeOperationOptions: INodeProperties[] = [
 		default: 0,
 		displayOptions: {
 			show: {
-				operation: [
-					'shear',
-				],
+				operation: ['shear'],
 			},
 		},
 		description: 'Y (vertical) shear degrees',
 	},
-
 
 	// ----------------------------------
 	//         transparent
@@ -839,21 +745,19 @@ const nodeOperationOptions: INodeProperties[] = [
 		default: '#ff0000',
 		displayOptions: {
 			show: {
-				operation: [
-					'transparent',
-				],
+				operation: ['transparent'],
 			},
 		},
 		description: 'The color to make transparent',
 	},
 ];
 
-
 export class EditImage implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Edit Image',
 		name: 'editImage',
 		icon: 'fa:image',
+		iconColor: 'purple',
 		group: ['transform'],
 		version: 1,
 		description: 'Edits an image like blur, resize or adding border and text',
@@ -861,8 +765,8 @@ export class EditImage implements INodeType {
 			name: 'Edit Image',
 			color: '#553399',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		properties: [
 			{
 				displayName: 'Operation',
@@ -882,10 +786,14 @@ export class EditImage implements INodeType {
 					},
 					...nodeOperations,
 				].sort((a, b) => {
-					if ((a as INodePropertyOptions).name.toLowerCase() < (b as INodePropertyOptions).name.toLowerCase()) { return -1; }
-					if ((a as INodePropertyOptions).name.toLowerCase() > (b as INodePropertyOptions).name.toLowerCase()) { return 1; }
+					if (a.name.toLowerCase() < b.name.toLowerCase()) {
+						return -1;
+					}
+					if (a.name.toLowerCase() > b.name.toLowerCase()) {
+						return 1;
+					}
 					return 0;
-				}) as INodePropertyOptions[],
+				}),
 				default: 'border',
 			},
 			{
@@ -895,7 +803,6 @@ export class EditImage implements INodeType {
 				default: 'data',
 				description: 'Name of the binary property in which the image data can be found',
 			},
-
 
 			// ----------------------------------
 			//         multiStep
@@ -911,9 +818,7 @@ export class EditImage implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						operation: [
-							'multiStep',
-						],
+						operation: ['multiStep'],
 					},
 				},
 				description: 'The operations to perform',
@@ -938,16 +843,15 @@ export class EditImage implements INodeType {
 								type: 'options',
 								displayOptions: {
 									show: {
-										'operation': [
-											'text',
-										],
+										operation: ['text'],
 									},
 								},
 								typeOptions: {
 									loadOptionsMethod: 'getFonts',
 								},
 								default: 'default',
-								description: 'The font to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+								description:
+									'The font to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 							},
 						],
 					},
@@ -959,13 +863,11 @@ export class EditImage implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				displayOptions: {
 					hide: {
-						operation: [
-							'information',
-						],
+						operation: ['information'],
 					},
 				},
 				options: [
@@ -982,16 +884,15 @@ export class EditImage implements INodeType {
 						type: 'options',
 						displayOptions: {
 							show: {
-								'/operation': [
-									'text',
-								],
+								'/operation': ['text'],
 							},
 						},
 						typeOptions: {
 							loadOptionsMethod: 'getFonts',
 						},
 						default: 'default',
-						description: 'The font to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						description:
+							'The font to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Format',
@@ -1018,6 +919,10 @@ export class EditImage implements INodeType {
 								name: 'tiff',
 								value: 'tiff',
 							},
+							{
+								name: 'WebP',
+								value: 'webp',
+							},
 						],
 						default: 'jpeg',
 						description: 'Set the output image format',
@@ -1033,11 +938,7 @@ export class EditImage implements INodeType {
 						default: 100,
 						displayOptions: {
 							show: {
-								format: [
-									'jpeg',
-									'png',
-									'tiff',
-								],
+								format: ['jpeg', 'png', 'tiff'],
 							},
 						},
 						description: 'Sets the jpeg|png|tiff compression level from 0 to 100 (best)',
@@ -1047,30 +948,32 @@ export class EditImage implements INodeType {
 		],
 	};
 
-
 	methods = {
 		loadOptions: {
 			async getFonts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-
 				// @ts-ignore
 				const files = await getSystemFonts();
 				const returnData: INodePropertyOptions[] = [];
 
-				files.forEach((file: string) => {
-					const pathParts = pathParse(file);
+				files.forEach((entry: string) => {
+					const pathParts = pathParse(entry);
 					if (!pathParts.ext) {
 						return;
 					}
 
 					returnData.push({
 						name: pathParts.name,
-						value: file,
+						value: entry,
 					});
 				});
 
 				returnData.sort((a, b) => {
-					if (a.name < b.name) { return -1; }
-					if (a.name > b.name) { return 1; }
+					if (a.name < b.name) {
+						return -1;
+					}
+					if (a.name > b.name) {
+						return 1;
+					}
 					return 0;
 				});
 
@@ -1081,7 +984,6 @@ export class EditImage implements INodeType {
 
 				return returnData;
 			},
-
 		},
 	};
 
@@ -1093,50 +995,26 @@ export class EditImage implements INodeType {
 		let item: INodeExecutionData;
 
 		for (let itemIndex = 0; itemIndex < length; itemIndex++) {
-
 			try {
-
 				item = items[itemIndex];
 
+				const operation = this.getNodeParameter('operation', itemIndex);
+				const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex);
 
-				const operation = this.getNodeParameter('operation', itemIndex) as string;
-				const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex) as string;
-
-				const options = this.getNodeParameter('options', itemIndex,{}) as IDataObject;
+				const options = this.getNodeParameter('options', itemIndex, {});
 
 				const cleanupFunctions: Array<() => void> = [];
 
 				let gmInstance: gm.State;
 
 				const requiredOperationParameters: {
-					[key: string]: string[],
+					[key: string]: string[];
 				} = {
-					blur: [
-						'blur',
-						'sigma',
-					],
-					border: [
-						'borderColor',
-						'borderWidth',
-						'borderHeight',
-					],
-					create: [
-						'backgroundColor',
-						'height',
-						'width',
-					],
-					crop: [
-						'height',
-						'positionX',
-						'positionY',
-						'width',
-					],
-					composite: [
-						'dataPropertyNameComposite',
-						'operator',
-						'positionX',
-						'positionY',
-					],
+					blur: ['blur', 'sigma'],
+					border: ['borderColor', 'borderWidth', 'borderHeight'],
+					create: ['backgroundColor', 'height', 'width'],
+					crop: ['height', 'positionX', 'positionY', 'width'],
+					composite: ['dataPropertyNameComposite', 'operator', 'positionX', 'positionY'],
 					draw: [
 						'color',
 						'cornerRadius',
@@ -1147,39 +1025,24 @@ export class EditImage implements INodeType {
 						'startPositionY',
 					],
 					information: [],
-					resize: [
-						'height',
-						'resizeOption',
-						'width',
-					],
-					rotate: [
-						'backgroundColor',
-						'rotate',
-					],
-					shear: [
-						'degreesX',
-						'degreesY',
-					],
-					text: [
-						'font',
-						'fontColor',
-						'fontSize',
-						'lineLength',
-						'positionX',
-						'positionY',
-						'text',
-					],
+					resize: ['height', 'resizeOption', 'width'],
+					rotate: ['backgroundColor', 'rotate'],
+					shear: ['degreesX', 'degreesY'],
+					text: ['font', 'fontColor', 'fontSize', 'lineLength', 'positionX', 'positionY', 'text'],
+					transparent: ['color'],
 				};
 
 				let operations: IDataObject[] = [];
 				if (operation === 'multiStep') {
 					// Operation parameters are already in the correct format
-					const operationsData = this.getNodeParameter('operations', itemIndex ,{ operations: [] }) as IDataObject;
+					const operationsData = this.getNodeParameter('operations', itemIndex, {
+						operations: [],
+					}) as IDataObject;
 					operations = operationsData.operations as IDataObject[];
 				} else {
 					// Operation parameters have to first get collected
 					const operationParameters: IDataObject = {};
-					requiredOperationParameters[operation].forEach(parameterName => {
+					requiredOperationParameters[operation].forEach((parameterName) => {
 						try {
 							operationParameters[parameterName] = this.getNodeParameter(parameterName, itemIndex);
 						} catch (error) {}
@@ -1195,15 +1058,11 @@ export class EditImage implements INodeType {
 
 				if (operations[0].operation !== 'create') {
 					// "create" generates a new image so does not require any incoming data.
-					if (item.binary === undefined) {
-						throw new NodeOperationError(this.getNode(), 'Item does not contain any binary data.', { itemIndex });
-					}
-
-					if (item.binary[dataPropertyName as string] === undefined) {
-						throw new NodeOperationError(this.getNode(), `Item does not contain any binary data with the name "${dataPropertyName}".`, { itemIndex });
-					}
-
-					const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(itemIndex, dataPropertyName);
+					this.helpers.assertBinaryData(itemIndex, dataPropertyName);
+					const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
+						itemIndex,
+						dataPropertyName,
+					);
 					gmInstance = gm(binaryDataBuffer);
 					gmInstance = gmInstance.background('transparent');
 				}
@@ -1219,12 +1078,12 @@ export class EditImage implements INodeType {
 				if (operation === 'information') {
 					// Just return the information
 					const imageData = await new Promise<IDataObject>((resolve, reject) => {
-						gmInstance = gmInstance.identify((error, imageData) => {
+						gmInstance = gmInstance.identify((error, data) => {
 							if (error) {
 								reject(error);
 								return;
 							}
-							resolve(imageData as unknown as IDataObject);
+							resolve(data as unknown as IDataObject);
 						});
 					});
 
@@ -1234,29 +1093,40 @@ export class EditImage implements INodeType {
 				for (let i = 0; i < operations.length; i++) {
 					const operationData = operations[i];
 					if (operationData.operation === 'blur') {
-						gmInstance = gmInstance!.blur(operationData.blur as number, operationData.sigma as number);
+						gmInstance = gmInstance!.blur(
+							operationData.blur as number,
+							operationData.sigma as number,
+						);
 					} else if (operationData.operation === 'border') {
-						gmInstance = gmInstance!.borderColor(operationData.borderColor as string).border(operationData.borderWidth as number, operationData.borderHeight as number);
+						gmInstance = gmInstance!
+							.borderColor(operationData.borderColor as string)
+							.border(operationData.borderWidth as number, operationData.borderHeight as number);
 					} else if (operationData.operation === 'composite') {
 						const positionX = operationData.positionX as number;
 						const positionY = operationData.positionY as number;
 						const operator = operationData.operator as string;
 
-						const geometryString = (positionX >= 0 ? '+' : '') + positionX + (positionY >= 0 ? '+' : '') + positionY;
+						const geometryString =
+							(positionX >= 0 ? '+' : '') + positionX + (positionY >= 0 ? '+' : '') + positionY;
 
-						if (item.binary![operationData.dataPropertyNameComposite as string] === undefined) {
-							throw new NodeOperationError(this.getNode(), `Item does not contain any binary data with the name "${operationData.dataPropertyNameComposite}".`, { itemIndex });
-						}
+						const binaryPropertyName = operationData.dataPropertyNameComposite as string;
+						this.helpers.assertBinaryData(itemIndex, binaryPropertyName);
+						const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
+							itemIndex,
+							binaryPropertyName,
+						);
 
-						const { fd, path, cleanup } = await file();
+						const { path, cleanup } = await file();
 						cleanupFunctions.push(cleanup);
-						const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(itemIndex, operationData.dataPropertyNameComposite as string);
-						await fsWriteFileAsync(fd, binaryDataBuffer);
+						await fsWriteFile(path, binaryDataBuffer);
 
 						if (operations[0].operation === 'create') {
 							// It seems like if the image gets created newly we have to create a new gm instance
 							// else it fails for some reason
-							gmInstance = gm(gmInstance!.stream('png')).compose(operator).geometry(geometryString).composite(path);
+							gmInstance = gm(gmInstance!.stream('png'))
+								.compose(operator)
+								.geometry(geometryString)
+								.composite(path);
 						} else {
 							gmInstance = gmInstance!.compose(operator).geometry(geometryString).composite(path);
 						}
@@ -1267,21 +1137,46 @@ export class EditImage implements INodeType {
 							gmInstance = gm(gmInstance.stream());
 						}
 					} else if (operationData.operation === 'create') {
-						gmInstance = gm(operationData.width as number, operationData.height as number, operationData.backgroundColor as string);
-							if (!options.format) {
-								options.format = 'png';
-							}
+						gmInstance = gm(
+							operationData.width as number,
+							operationData.height as number,
+							operationData.backgroundColor as string,
+						);
+						if (!options.format) {
+							options.format = 'png';
+						}
 					} else if (operationData.operation === 'crop') {
-						gmInstance = gmInstance!.crop(operationData.width as number, operationData.height as number, operationData.positionX as number, operationData.positionY as number);
+						gmInstance = gmInstance!.crop(
+							operationData.width as number,
+							operationData.height as number,
+							operationData.positionX as number,
+							operationData.positionY as number,
+						);
 					} else if (operationData.operation === 'draw') {
 						gmInstance = gmInstance!.fill(operationData.color as string);
 
 						if (operationData.primitive === 'line') {
-							gmInstance = gmInstance.drawLine(operationData.startPositionX as number, operationData.startPositionY as number, operationData.endPositionX as number, operationData.endPositionY as number);
+							gmInstance = gmInstance.drawLine(
+								operationData.startPositionX as number,
+								operationData.startPositionY as number,
+								operationData.endPositionX as number,
+								operationData.endPositionY as number,
+							);
 						} else if (operationData.primitive === 'circle') {
-							gmInstance = gmInstance.drawCircle(operationData.startPositionX as number, operationData.startPositionY as number, operationData.endPositionX as number, operationData.endPositionY as number);
+							gmInstance = gmInstance.drawCircle(
+								operationData.startPositionX as number,
+								operationData.startPositionY as number,
+								operationData.endPositionX as number,
+								operationData.endPositionY as number,
+							);
 						} else if (operationData.primitive === 'rectangle') {
-							gmInstance = gmInstance.drawRectangle(operationData.startPositionX as number, operationData.startPositionY as number, operationData.endPositionX as number, operationData.endPositionY as number, operationData.cornerRadius as number || undefined);
+							gmInstance = gmInstance.drawRectangle(
+								operationData.startPositionX as number,
+								operationData.startPositionY as number,
+								operationData.endPositionX as number,
+								operationData.endPositionY as number,
+								(operationData.cornerRadius as number) || undefined,
+							);
 						}
 					} else if (operationData.operation === 'resize') {
 						const resizeOption = operationData.resizeOption as string;
@@ -1300,18 +1195,31 @@ export class EditImage implements INodeType {
 							option = '%';
 						}
 
-						gmInstance = gmInstance!.resize(operationData.width as number, operationData.height as number, option);
+						gmInstance = gmInstance!.resize(
+							operationData.width as number,
+							operationData.height as number,
+							option,
+						);
 					} else if (operationData.operation === 'rotate') {
-						gmInstance = gmInstance!.rotate(operationData.backgroundColor as string, operationData.rotate as number);
+						gmInstance = gmInstance!.rotate(
+							operationData.backgroundColor as string,
+							operationData.rotate as number,
+						);
 					} else if (operationData.operation === 'shear') {
-						gmInstance = gmInstance!.shear(operationData.degreesX as number, operationData.degreesY as number);
+						gmInstance = gmInstance!.shear(
+							operationData.degreesX as number,
+							operationData.degreesY as number,
+						);
 					} else if (operationData.operation === 'text') {
 						// Split the text in multiple lines
 						const lines: string[] = [];
 						let currentLine = '';
 						(operationData.text as string).split('\n').forEach((textLine: string) => {
 							textLine.split(' ').forEach((textPart: string) => {
-								if ((currentLine.length + textPart.length + 1) > (operationData.lineLength as number)) {
+								if (
+									currentLine.length + textPart.length + 1 >
+									(operationData.lineLength as number)
+								) {
 									lines.push(currentLine.trim());
 									currentLine = `${textPart} `;
 									return;
@@ -1335,25 +1243,29 @@ export class EditImage implements INodeType {
 						gmInstance = gmInstance!
 							.fill(operationData.fontColor as string)
 							.fontSize(operationData.fontSize as number)
-							.drawText(operationData.positionX as number, operationData.positionY as number, renderText);
-						} else if (operationData.operation === 'transparent') {
-							gmInstance = gmInstance!.transparent(operationData.color as string);
-						}
+							.drawText(
+								operationData.positionX as number,
+								operationData.positionY as number,
+								renderText,
+							);
+					} else if (operationData.operation === 'transparent') {
+						gmInstance = gmInstance!.transparent(operationData.color as string);
+					}
 				}
 
-				if (item.binary !== undefined) {
+				if (item.binary !== undefined && newItem.binary) {
 					// Create a shallow copy of the binary data so that the old
 					// data references which do not get changed still stay behind
 					// but the incoming data does not get changed.
 					Object.assign(newItem.binary, item.binary);
 					// Make a deep copy of the binary data we change
-					if (newItem.binary![dataPropertyName as string]) {
-						newItem.binary![dataPropertyName as string] = JSON.parse(JSON.stringify(newItem.binary![dataPropertyName as string]));
+					if (newItem.binary[dataPropertyName]) {
+						newItem.binary[dataPropertyName] = deepCopy(newItem.binary[dataPropertyName]);
 					}
 				}
 
-				if (newItem.binary![dataPropertyName as string] === undefined) {
-					newItem.binary![dataPropertyName as string] = {
+				if (newItem.binary![dataPropertyName] === undefined) {
+					newItem.binary![dataPropertyName] = {
 						data: '',
 						mimeType: '',
 					};
@@ -1365,36 +1277,38 @@ export class EditImage implements INodeType {
 
 				if (options.format !== undefined) {
 					gmInstance = gmInstance!.setFormat(options.format as string);
-					newItem.binary![dataPropertyName as string].fileExtension = options.format as string;
-					newItem.binary![dataPropertyName as string].mimeType = `image/${options.format}`;
-					const fileName = newItem.binary![dataPropertyName as string].fileName;
-					if (fileName && fileName.includes('.')) {
-						newItem.binary![dataPropertyName as string].fileName = fileName.split('.').slice(0, -1).join('.') + '.' + options.format;
+					newItem.binary![dataPropertyName].fileExtension = options.format as string;
+					newItem.binary![dataPropertyName].mimeType = `image/${options.format}`;
+					const fileName = newItem.binary![dataPropertyName].fileName;
+					if (fileName?.includes('.')) {
+						newItem.binary![dataPropertyName].fileName =
+							fileName.split('.').slice(0, -1).join('.') + '.' + options.format;
 					}
 				}
 
 				if (options.fileName !== undefined) {
-					newItem.binary![dataPropertyName as string].fileName = options.fileName as string;
+					newItem.binary![dataPropertyName].fileName = options.fileName as string;
 				}
 
-				returnData.push(await (new Promise<INodeExecutionData>((resolve, reject) => {
-					gmInstance
-						.toBuffer(async (error: Error | null, buffer: Buffer) => {
-							cleanupFunctions.forEach(async cleanup => await cleanup());
+				returnData.push(
+					await new Promise<INodeExecutionData>((resolve, reject) => {
+						gmInstance.toBuffer(async (error: Error | null, buffer: Buffer) => {
+							cleanupFunctions.forEach(async (cleanup) => cleanup());
 
 							if (error) {
 								return reject(error);
 							}
 
 							const binaryData = await this.helpers.prepareBinaryData(Buffer.from(buffer));
-							newItem.binary![dataPropertyName as string] = {
-								...newItem.binary![dataPropertyName as string], ...binaryData,
+							newItem.binary![dataPropertyName] = {
+								...newItem.binary![dataPropertyName],
+								...binaryData,
 							};
 
 							return resolve(newItem);
 						});
-				})));
-
+					}),
+				);
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({
@@ -1410,6 +1324,6 @@ export class EditImage implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

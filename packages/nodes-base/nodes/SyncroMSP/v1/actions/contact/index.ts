@@ -1,20 +1,11 @@
-
+import type { INodeProperties } from 'n8n-workflow';
 import * as getAll from './getAll';
 import * as create from './create';
 import * as get from './get';
 import * as update from './update';
 import * as del from './del';
 
-import { INodeProperties } from 'n8n-workflow';
-
-export {
-	getAll,
-	create,
-	del as delete,
-	update,
-	get,
-};
-
+export { getAll, create, del as delete, update, get };
 
 export const descriptions = [
 	{
@@ -24,9 +15,7 @@ export const descriptions = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
+				resource: ['contact'],
 			},
 		},
 		options: [
@@ -49,10 +38,10 @@ export const descriptions = [
 				action: 'Get a contact',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all contacts',
-				action: 'Get all contacts',
+				description: 'Retrieve many contacts',
+				action: 'Get many contacts',
 			},
 			{
 				name: 'Update',

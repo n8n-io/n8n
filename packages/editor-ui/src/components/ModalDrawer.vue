@@ -1,40 +1,30 @@
-<template>
-	<el-drawer
-		:direction="direction"
-		:visible="visible"
-		:size="width"
-		:before-close="close"
-		:modal="modal"
-		:wrapperClosable="wrapperClosable"
-		>
-		<template v-slot:title>
-			<slot name="header" />
-		</template>
-		<template>
-			<span @keydown.stop>
-				<slot name="content"/>
-			</span>
-		</template>
-	</el-drawer>
-</template>
-
 <script lang="ts">
-import Vue from "vue";
+import { useUIStore } from '@/stores/ui.store';
+import { mapStores } from 'pinia';
+import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
+import type { EventBus } from 'n8n-design-system';
+import { ElDrawer } from 'element-plus';
 
-export default Vue.extend({
-	name: "ModalDrawer",
+export default defineComponent({
+	name: 'ModalDrawer',
+	components: {
+		ElDrawer,
+	},
 	props: {
 		name: {
 			type: String,
+			required: true,
 		},
 		beforeClose: {
 			type: Function,
 		},
 		eventBus: {
-			type: Vue,
+			type: Object as PropType<EventBus>,
 		},
 		direction: {
-			type: String,
+			type: String as PropType<'ltr' | 'rtl' | 'ttb' | 'btt'>,
+			required: true,
 		},
 		modal: {
 			type: Boolean,
@@ -50,24 +40,23 @@ export default Vue.extend({
 	},
 	mounted() {
 		window.addEventListener('keydown', this.onWindowKeydown);
-
-		if (this.$props.eventBus) {
-			this.$props.eventBus.$on('close', () => {
-				this.close();
-			});
-		}
+		this.eventBus?.on('close', this.close);
 
 		const activeElement = document.activeElement as HTMLElement;
 		if (activeElement) {
 			activeElement.blur();
 		}
 	},
-	beforeDestroy() {
+	beforeUnmount() {
+		this.eventBus?.off('close', this.close);
 		window.removeEventListener('keydown', this.onWindowKeydown);
+	},
+	computed: {
+		...mapStores(useUIStore),
 	},
 	methods: {
 		onWindowKeydown(event: KeyboardEvent) {
-			if (!this.isActive) {
+			if (!this.uiStore.isModalActiveById[this.name]) {
 				return;
 			}
 
@@ -76,31 +65,41 @@ export default Vue.extend({
 			}
 		},
 		handleEnter() {
-			if (this.isActive) {
+			if (this.uiStore.isModalActiveById[this.name]) {
 				this.$emit('enter');
 			}
 		},
 		async close() {
 			if (this.beforeClose) {
 				const shouldClose = await this.beforeClose();
-				if (shouldClose === false) { // must be strictly false to stop modal from closing
+				if (shouldClose === false) {
+					// must be strictly false to stop modal from closing
 					return;
 				}
 			}
-
-			this.$store.commit('ui/closeModal', this.$props.name);
-		},
-	},
-	computed: {
-		isActive(): boolean {
-			return this.$store.getters['ui/isModalActive'](this.$props.name);
-		},
-		visible(): boolean {
-			return this.$store.getters['ui/isModalOpen'](this.$props.name);
+			this.uiStore.closeModal(this.name);
 		},
 	},
 });
 </script>
+
+<template>
+	<ElDrawer
+		:direction="direction"
+		:model-value="uiStore.modalsById[name].open"
+		:size="width"
+		:before-close="close"
+		:modal="modal"
+		:wrapper-closable="wrapperClosable"
+	>
+		<template #header>
+			<slot name="header" />
+		</template>
+		<span @keydown.stop>
+			<slot name="content" />
+		</span>
+	</ElDrawer>
+</template>
 
 <style lang="scss">
 .el-drawer__header {

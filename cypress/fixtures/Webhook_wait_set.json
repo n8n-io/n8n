@@ -1,0 +1,81 @@
+{
+  "name": "Webhook wait set",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "23fc3930-b8f9-41d9-89db-b647291a2201",
+        "options": {}
+      },
+      "id": "70d84fe7-e221-4978-a15e-3984f2df645f",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        500,
+        580
+      ],
+      "webhookId": "23fc3930-b8f9-41d9-89db-b647291a2201"
+    },
+    {
+      "parameters": {
+        "amount": 2,
+        "unit": "seconds"
+      },
+      "id": "7f15f650-99bc-400b-8db8-67be53003fa3",
+      "name": "Wait",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [
+        720,
+        580
+      ],
+      "webhookId": "18a12605-1fbd-49da-854e-268ab6db1ea3"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "5bdafae4-e297-463f-991f-b8ea14983026",
+      "name": "Set",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        940,
+        580
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Set",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "0c67e557-1faf-446e-881e-3245228c627e",
+  "id": "1038",
+  "meta": {
+    "instanceId": "8a47b83b4479b11330fdf21ccc96d4a8117035a968612e452b4c87bfd09c16c7"
+  },
+  "tags": []
+}

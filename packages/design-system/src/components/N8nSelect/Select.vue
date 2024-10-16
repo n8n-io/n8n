@@ -1,132 +1,146 @@
-<template functional>
-	<div :class="{[$style.container]: true, [$style.withPrepend]: !!$slots.prepend}">
+<script setup lang="ts">
+import { ElSelect } from 'element-plus';
+import type { PropType } from 'vue';
+import { computed, ref, useAttrs } from 'vue';
+
+import type { SelectSize } from 'n8n-design-system/types';
+
+import { isEventBindingElementAttribute } from '../../utils';
+
+type InnerSelectRef = InstanceType<typeof ElSelect>;
+
+const props = defineProps({
+	...ElSelect.props,
+	modelValue: {},
+	size: {
+		type: String as PropType<SelectSize>,
+		default: 'large',
+	},
+	placeholder: {
+		type: String,
+	},
+	disabled: {
+		type: Boolean,
+	},
+	filterable: {
+		type: Boolean,
+	},
+	defaultFirstOption: {
+		type: Boolean,
+	},
+	multiple: {
+		type: Boolean,
+	},
+	filterMethod: {
+		type: Function,
+	},
+	loading: {
+		type: Boolean,
+	},
+	loadingText: {
+		type: String,
+	},
+	popperClass: {
+		type: String,
+	},
+	popperAppendToBody: {
+		type: Boolean,
+	},
+	limitPopperWidth: {
+		type: Boolean,
+	},
+	noDataText: {
+		type: String,
+	},
+});
+
+const attrs = useAttrs();
+const innerSelect = ref<InnerSelectRef | null>(null);
+
+const listeners = computed(() => {
+	return Object.entries(attrs).reduce<Record<string, unknown>>((acc, [key, value]) => {
+		if (isEventBindingElementAttribute(value, key)) {
+			acc[key] = value;
+		}
+		return acc;
+	}, {});
+});
+
+const computedSize = computed(() => {
+	if (props.size === 'mini') {
+		return 'small';
+	}
+	if (props.size === 'medium') {
+		return 'default';
+	}
+	if (props.size === 'xlarge') {
+		return undefined;
+	}
+	return props.size;
+});
+
+const classes = computed(() => {
+	return props.size === 'xlarge' ? 'xlarge' : '';
+});
+
+const focus = () => {
+	innerSelect.value?.focus();
+};
+
+const blur = () => {
+	innerSelect.value?.blur();
+};
+
+const focusOnInput = () => {
+	if (!innerSelect.value) return;
+
+	const inputRef = innerSelect.value.$refs.input as HTMLInputElement | undefined;
+	inputRef?.focus();
+};
+
+defineExpose({
+	focus,
+	blur,
+	focusOnInput,
+	innerSelect,
+});
+</script>
+
+<template>
+	<div
+		:class="{
+			'n8n-select': true,
+			[$style.container]: true,
+			[$style.withPrepend]: !!$slots.prepend,
+		}"
+	>
 		<div v-if="$slots.prepend" :class="$style.prepend">
 			<slot name="prepend" />
 		</div>
-		<component
-			:is="$options.components.ElSelect"
-			v-bind="props"
-			:value="props.value"
-			:size="$options.methods.getSize(props.size)"
-			:class="$style[$options.methods.getClass(props)]"
-			:popper-class="$options.methods.getPopperClass(props, $style)"
-			v-on="listeners"
-			:ref="data.ref"
+		<ElSelect
+			v-bind="{ ...$props, ...listeners }"
+			ref="innerSelect"
+			:model-value="props.modelValue ?? undefined"
+			:size="computedSize"
+			:popper-class="props.popperClass"
+			:class="$style[classes]"
 		>
-			<template v-slot:prefix>
+			<template v-if="$slots.prefix" #prefix>
 				<slot name="prefix" />
 			</template>
-			<template v-slot:suffix>
+			<template v-if="$slots.suffix" #suffix>
 				<slot name="suffix" />
 			</template>
-			<template v-slot:default>
-				<slot></slot>
-			</template>
-		</component>
+			<slot></slot>
+		</ElSelect>
 	</div>
 </template>
-
-<script lang="ts">
-import ElSelect from 'element-ui/lib/select';
-
-interface IProps {
-	size?: string;
-	limitPopperWidth?: string;
-	popperClass?: string;
-}
-
-export default {
-	name: 'n8n-select',
-	components: {
-		ElSelect,
-	},
-	props: {
-		value: {
-		},
-		size: {
-			type: String,
-			default: 'large',
-			validator: (value: string): boolean =>
-				['mini', 'small', 'medium', 'large', 'xlarge'].includes(value),
-		},
-		placeholder: {
-			type: String,
-		},
-		disabled: {
-			type: Boolean,
-		},
-		filterable: {
-			type: Boolean,
-		},
-		defaultFirstOption: {
-			type: Boolean,
-		},
-		multiple: {
-			type: Boolean,
-		},
-		filterMethod: {
-			type: Function,
-		},
-		loading: {
-			type: Boolean,
-		},
-		loadingText: {
-			type: String,
-		},
-		popperClass: {
-			type: String,
-		},
-		popperAppendToBody: {
-			type: Boolean,
-		},
-		limitPopperWidth: {
-			type: Boolean,
-		},
-		noDataText: {
-			type: String,
-		},
-	},
-	methods: {
-		getSize(size: string): string | undefined {
-			if (size === 'xlarge') {
-				return undefined;
-			}
-
-			return size;
-		},
-		getClass(props: IProps): string {
-			if (props.size === 'xlarge') {
-				return 'xlarge';
-			}
-
-			return '';
-		},
-		getPopperClass(props: IProps, $style: any): string {
-			let classes = props.popperClass || '';
-			if (props.limitPopperWidth) {
-				classes = `${classes} ${$style.limitPopperWidth}`;
-			}
-
-			return classes;
-		},
-	},
-};
-</script>
 
 <style lang="scss" module>
 .xlarge {
 	--input-font-size: var(--font-size-m);
 	input {
 		height: 48px;
-	}
-}
-
-.limitPopperWidth {
-	width: 0;
-
-	li > span {
-		text-overflow: ellipsis;
-		overflow-x: hidden;
 	}
 }
 
@@ -139,6 +153,9 @@ export default {
 	input {
 		border-top-left-radius: 0;
 		border-bottom-left-radius: 0;
+		@-moz-document url-prefix() {
+			padding: 0 var(--spacing-3xs);
+		}
 	}
 }
 

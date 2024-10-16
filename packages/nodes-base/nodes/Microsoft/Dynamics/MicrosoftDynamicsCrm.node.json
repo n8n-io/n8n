@@ -2,19 +2,16 @@
 	"node": "n8n-nodes-base.microsoftDynamicsCrm",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Marketing & Content",
-		"Sales"
-	],
+	"categories": ["Marketing", "Sales"],
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/microsoft"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/microsoft/"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.microsoftDynamicsCrm/"
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.microsoftdynamicscrm/"
 			}
 		]
 	}

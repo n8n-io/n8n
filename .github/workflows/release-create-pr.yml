@@ -1,0 +1,67 @@
+name: 'Release: Create Pull Request'
+
+on:
+  workflow_dispatch:
+    inputs:
+      base-branch:
+        description: 'The branch, tag, or commit to create this release PR from.'
+        required: true
+        default: 'master'
+
+      release-type:
+        description: 'A SemVer release type.'
+        required: true
+        type: choice
+        default: 'minor'
+        options:
+          - patch
+          - minor
+          - major
+
+jobs:
+  create-release-pr:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      pull-requests: write
+
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.1.1
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.inputs.base-branch }}
+
+      - run: corepack enable
+      - uses: actions/setup-node@v4.0.2
+        with:
+          node-version: 20.x
+
+      - run: npm install --prefix=.github/scripts --no-package-lock
+
+      - name: Bump package versions
+        run: |
+          echo "NEXT_RELEASE=$(node .github/scripts/bump-versions.mjs)" >> $GITHUB_ENV
+        env:
+          RELEASE_TYPE: ${{ github.event.inputs.release-type }}
+
+      - name: Update Changelog
+        run: node .github/scripts/update-changelog.mjs
+
+      - name: Push the base branch
+        run: |
+          git push -f origin refs/remotes/origin/${{ github.event.inputs.base-branch }}:refs/heads/release/${{ env.NEXT_RELEASE }}
+
+      - name: Push the release branch, and Create the PR
+        uses: peter-evans/create-pull-request@v6
+        with:
+          base: 'release/${{ env.NEXT_RELEASE }}'
+          branch: 'release-pr/${{ env.NEXT_RELEASE }}'
+          commit-message: ':rocket: Release ${{ env.NEXT_RELEASE }}'
+          delete-branch: true
+          labels: release,release:${{ github.event.inputs.release-type }}
+          title: ':rocket: Release ${{ env.NEXT_RELEASE }}'
+          body-path: 'CHANGELOG-${{ env.NEXT_RELEASE }}.md'

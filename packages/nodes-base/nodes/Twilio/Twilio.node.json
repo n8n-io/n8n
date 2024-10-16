@@ -2,19 +2,16 @@
 	"node": "n8n-nodes-base.twilio",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Communication",
-		"Development"
-	],
+	"categories": ["Communication", "Development"],
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/twilio"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/twilio/"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.twilio/"
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.twilio/"
 			}
 		],
 		"generic": [
@@ -60,9 +57,5 @@
 			}
 		]
 	},
-	"alias": [
-		"SMS",
-		"Phone",
-		"Voice"
-	]
+	"alias": ["SMS", "Phone", "Voice"]
 }

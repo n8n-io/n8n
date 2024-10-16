@@ -1,44 +1,41 @@
-import {
+import type {
 	IExecuteFunctions,
 	IHookFunctions,
-} from 'n8n-core';
-
-import {
 	IDataObject,
 	ILoadOptionsFunctions,
-	NodeApiError,
+	JsonObject,
+	IHttpRequestMethods,
+	IRequestOptions,
 } from 'n8n-workflow';
-
-import {
-	OptionsWithUri,
-} from 'request';
+import { NodeApiError } from 'n8n-workflow';
 
 /**
  * Make an authenticated API request to Bubble.
  */
 export async function bubbleApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject,
 	qs: IDataObject,
 ) {
-
-	const { apiToken, appName, domain, environment, hosting } = await this.getCredentials('bubbleApi') as {
-		apiToken: string,
-		appName: string,
-		domain: string,
-		environment: 'development' | 'live',
-		hosting: 'bubbleHosted' | 'selfHosted',
+	const { apiToken, appName, domain, environment, hosting } = (await this.getCredentials(
+		'bubbleApi',
+	)) as {
+		apiToken: string;
+		appName: string;
+		domain: string;
+		environment: 'development' | 'live';
+		hosting: 'bubbleHosted' | 'selfHosted';
 	};
 
 	const rootUrl = hosting === 'bubbleHosted' ? `https://${appName}.bubbleapps.io` : domain;
 	const urlSegment = environment === 'development' ? '/version-test/api/1.1' : '/api/1.1';
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			'user-agent': 'n8n',
-			'Authorization': `Bearer ${apiToken}`,
+			Authorization: `Bearer ${apiToken}`,
 		},
 		method,
 		uri: `${rootUrl}${urlSegment}${endpoint}`,
@@ -56,9 +53,9 @@ export async function bubbleApiRequest(
 	}
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -67,7 +64,7 @@ export async function bubbleApiRequest(
  */
 export async function bubbleApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject,
 	qs: IDataObject,
@@ -76,18 +73,17 @@ export async function bubbleApiRequestAllItems(
 
 	let responseData;
 	qs.limit = 100;
+	qs.cursor = 0;
 	do {
 		responseData = await bubbleApiRequest.call(this, method, endpoint, body, qs);
-		qs.cursor = responseData.cursor;
-		returnData.push.apply(returnData, responseData['response']['results']);
-	} while (
-		responseData.response.remaining !== 0
-	);
+		qs.cursor += qs.limit;
+		returnData.push.apply(returnData, responseData.response.results as IDataObject[]);
+	} while (responseData.response.remaining !== 0);
 
 	return returnData;
 }
 
-export function validateJSON(json: string | undefined): any { // tslint:disable-line:no-any
+export function validateJSON(json: string | undefined): any {
 	let result;
 	try {
 		result = JSON.parse(json!);

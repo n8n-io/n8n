@@ -6,12 +6,12 @@
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/baserow"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/baserow/"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.baserow/"
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.baserow/"
 			}
 		],
 		"generic": []

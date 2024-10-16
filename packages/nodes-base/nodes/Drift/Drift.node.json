@@ -2,18 +2,16 @@
 	"node": "n8n-nodes-base.drift",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Sales"
-	],
+	"categories": ["Sales"],
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/drift"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/drift/"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.drift/"
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.drift/"
 			}
 		]
 	}

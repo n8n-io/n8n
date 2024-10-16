@@ -1,21 +1,15 @@
 import {
-	IHookFunctions,
-	IWebhookFunctions,
-} from 'n8n-core';
-
-import {
-	INodeType,
-	INodeTypeDescription,
-	IWebhookResponseData,
-	NodeOperationError,
+	type IHookFunctions,
+	type IWebhookFunctions,
+	type INodeType,
+	type INodeTypeDescription,
+	type IWebhookResponseData,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
-import {
-	apiRequest,
-} from './GenericFunctions';
+import { apiRequest } from './GenericFunctions';
 
 // import { createHmac } from 'crypto';
-
 
 export class TrelloTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -29,7 +23,7 @@ export class TrelloTrigger implements INodeType {
 			name: 'Trello Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'trelloApi',
@@ -61,10 +55,8 @@ export class TrelloTrigger implements INodeType {
 				description: 'ID of the model of which to subscribe to events',
 			},
 		],
-
 	};
 
-	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
@@ -134,7 +126,7 @@ export class TrelloTrigger implements INodeType {
 					}
 
 					// Remove from the static workflow data so that it is clear
-					// that no webhooks are registred anymore
+					// that no webhooks are registered anymore
 					delete webhookData.webhookId;
 				}
 
@@ -142,8 +134,6 @@ export class TrelloTrigger implements INodeType {
 			},
 		},
 	};
-
-
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const webhookName = this.getWebhookName();
@@ -174,9 +164,7 @@ export class TrelloTrigger implements INodeType {
 		// }
 
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray(bodyData),
-			],
+			workflowData: [this.helpers.returnJsonArray(bodyData)],
 		};
 	}
 }

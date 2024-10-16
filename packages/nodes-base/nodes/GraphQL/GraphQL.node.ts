@@ -1,17 +1,16 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 	JsonObject,
-	NodeApiError,
-	NodeOperationError,
+	IRequestOptionsSimplified,
+	IRequestOptions,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
-
-import { OptionsWithUri } from 'request';
-import { RequestPromiseOptions } from 'request-promise-native';
+import { NodeApiError, NodeConnectionType, NodeOperationError, jsonParse } from 'n8n-workflow';
 
 export class GraphQL implements INodeType {
 	description: INodeTypeDescription = {
@@ -25,17 +24,24 @@ export class GraphQL implements INodeType {
 		defaults: {
 			name: 'GraphQL',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'httpBasicAuth',
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'basicAuth',
-						],
+						authentication: ['basicAuth'],
+					},
+				},
+			},
+			{
+				name: 'httpCustomAuth',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['customAuth'],
 					},
 				},
 			},
@@ -44,9 +50,7 @@ export class GraphQL implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'digestAuth',
-						],
+						authentication: ['digestAuth'],
 					},
 				},
 			},
@@ -55,9 +59,7 @@ export class GraphQL implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'headerAuth',
-						],
+						authentication: ['headerAuth'],
 					},
 				},
 			},
@@ -66,9 +68,7 @@ export class GraphQL implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'queryAuth',
-						],
+						authentication: ['queryAuth'],
 					},
 				},
 			},
@@ -77,9 +77,7 @@ export class GraphQL implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'oAuth1',
-						],
+						authentication: ['oAuth1'],
 					},
 				},
 			},
@@ -88,9 +86,7 @@ export class GraphQL implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'oAuth2',
-						],
+						authentication: ['oAuth2'],
 					},
 				},
 			},
@@ -104,6 +100,10 @@ export class GraphQL implements INodeType {
 					{
 						name: 'Basic Auth',
 						value: 'basicAuth',
+					},
+					{
+						name: 'Custom Auth',
+						value: 'customAuth',
 					},
 					{
 						name: 'Digest Auth',
@@ -165,7 +165,8 @@ export class GraphQL implements INodeType {
 				type: 'boolean',
 				default: false,
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-ignore-ssl-issues
-				description: 'Whether to download the response even if SSL certificate validation is not possible',
+				description:
+					'Whether to download the response even if SSL certificate validation is not possible',
 			},
 			{
 				displayName: 'Request Format',
@@ -184,9 +185,7 @@ export class GraphQL implements INodeType {
 				],
 				displayOptions: {
 					show: {
-						requestMethod: [
-							'POST',
-						],
+						requestMethod: ['POST'],
 					},
 				},
 				default: 'graphql',
@@ -208,12 +207,8 @@ export class GraphQL implements INodeType {
 				description: 'Query variables',
 				displayOptions: {
 					show: {
-						requestFormat: [
-							'json',
-						],
-						requestMethod: [
-							'POST',
-						],
+						requestFormat: ['json'],
+						requestMethod: ['POST'],
 					},
 				},
 			},
@@ -225,12 +220,8 @@ export class GraphQL implements INodeType {
 				description: 'Name of operation to execute',
 				displayOptions: {
 					show: {
-						requestFormat: [
-							'json',
-						],
-						requestMethod: [
-							'POST',
-						],
+						requestFormat: ['json'],
+						requestMethod: ['POST'],
 					},
 				},
 			},
@@ -259,9 +250,7 @@ export class GraphQL implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						responseFormat: [
-							'string',
-						],
+						responseFormat: ['string'],
 					},
 				},
 				description: 'Name of the property to which to write the response data',
@@ -304,12 +293,11 @@ export class GraphQL implements INodeType {
 		],
 	};
 
-
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-
 		const items = this.getInputData();
 		let httpBasicAuth;
 		let httpDigestAuth;
+		let httpCustomAuth;
 		let httpHeaderAuth;
 		let httpQueryAuth;
 		let oAuth1Api;
@@ -317,52 +305,66 @@ export class GraphQL implements INodeType {
 
 		try {
 			httpBasicAuth = await this.getCredentials('httpBasicAuth');
-		} catch(error) {
+		} catch (error) {
+			// Do nothing
+		}
+		try {
+			httpCustomAuth = await this.getCredentials('httpCustomAuth');
+		} catch (error) {
 			// Do nothing
 		}
 		try {
 			httpDigestAuth = await this.getCredentials('httpDigestAuth');
-		} catch(error) {
+		} catch (error) {
 			// Do nothing
 		}
 		try {
 			httpHeaderAuth = await this.getCredentials('httpHeaderAuth');
-		} catch(error) {
+		} catch (error) {
 			// Do nothing
 		}
 		try {
 			httpQueryAuth = await this.getCredentials('httpQueryAuth');
-		} catch(error) {
+		} catch (error) {
 			// Do nothing
 		}
 		try {
 			oAuth1Api = await this.getCredentials('oAuth1Api');
-		} catch(error) {
+		} catch (error) {
 			// Do nothing
 		}
 		try {
 			oAuth2Api = await this.getCredentials('oAuth2Api');
-		} catch(error) {
+		} catch (error) {
 			// Do nothing
 		}
 
-
-		let requestOptions: OptionsWithUri & RequestPromiseOptions;
+		let requestOptions: IRequestOptions;
 
 		const returnItems: INodeExecutionData[] = [];
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
-				const requestMethod = this.getNodeParameter('requestMethod', itemIndex, 'POST') as string;
+				const requestMethod = this.getNodeParameter(
+					'requestMethod',
+					itemIndex,
+					'POST',
+				) as IHttpRequestMethods;
 				const endpoint = this.getNodeParameter('endpoint', itemIndex, '') as string;
-				const requestFormat = this.getNodeParameter('requestFormat', itemIndex, 'graphql') as string;
+				const requestFormat = this.getNodeParameter(
+					'requestFormat',
+					itemIndex,
+					'graphql',
+				) as string;
 				const responseFormat = this.getNodeParameter('responseFormat', 0) as string;
-
-				const { parameter }: { parameter?: Array<{ name: string, value: string }> } = this
-					.getNodeParameter('headerParametersUi', itemIndex, {}) as IDataObject;
-				const headerParameters = (parameter || []).reduce((result, item) => ({
-					...result,
-					[item.name]: item.value,
-				}), {});
+				const { parameter }: { parameter?: Array<{ name: string; value: string }> } =
+					this.getNodeParameter('headerParametersUi', itemIndex, {}) as IDataObject;
+				const headerParameters = (parameter || []).reduce(
+					(result, item) => ({
+						...result,
+						[item.name]: item.value,
+					}),
+					{},
+				);
 
 				requestOptions = {
 					headers: {
@@ -372,7 +374,7 @@ export class GraphQL implements INodeType {
 					method: requestMethod,
 					uri: endpoint,
 					simple: false,
-					rejectUnauthorized: !this.getNodeParameter('allowUnauthorizedCerts', itemIndex, false) as boolean,
+					rejectUnauthorized: !this.getNodeParameter('allowUnauthorizedCerts', itemIndex, false),
 				};
 
 				// Add credentials if any are set
@@ -382,6 +384,21 @@ export class GraphQL implements INodeType {
 						pass: httpBasicAuth.password as string,
 					};
 				}
+				if (httpCustomAuth !== undefined) {
+					const customAuth = jsonParse<IRequestOptionsSimplified>(
+						(httpCustomAuth.json as string) || '{}',
+						{ errorMessage: 'Invalid Custom Auth JSON' },
+					);
+					if (customAuth.headers) {
+						requestOptions.headers = { ...requestOptions.headers, ...customAuth.headers };
+					}
+					if (customAuth.body) {
+						requestOptions.body = { ...requestOptions.body, ...customAuth.body };
+					}
+					if (customAuth.qs) {
+						requestOptions.qs = { ...requestOptions.qs, ...customAuth.qs };
+					}
+				}
 				if (httpHeaderAuth !== undefined) {
 					requestOptions.headers![httpHeaderAuth.name as string] = httpHeaderAuth.value;
 				}
@@ -389,7 +406,7 @@ export class GraphQL implements INodeType {
 					if (!requestOptions.qs) {
 						requestOptions.qs = {};
 					}
-					requestOptions.qs![httpQueryAuth.name as string] = httpQueryAuth.value;
+					requestOptions.qs[httpQueryAuth.name as string] = httpQueryAuth.value;
 				}
 				if (httpDigestAuth !== undefined) {
 					requestOptions.auth = {
@@ -407,22 +424,31 @@ export class GraphQL implements INodeType {
 					requestOptions.qs.query = gqlQuery;
 				} else {
 					if (requestFormat === 'json') {
-						requestOptions.body = {
+						const jsonBody = {
+							...requestOptions.body,
 							query: gqlQuery,
 							variables: this.getNodeParameter('variables', itemIndex, {}) as object,
 							operationName: this.getNodeParameter('operationName', itemIndex) as string,
 						};
-						if (typeof requestOptions.body.variables === 'string') {
+						if (typeof jsonBody.variables === 'string') {
 							try {
-								requestOptions.body.variables = JSON.parse(requestOptions.body.variables || '{}');
+								jsonBody.variables = JSON.parse(jsonBody.variables || '{}');
 							} catch (error) {
-								throw new NodeOperationError(this.getNode(), 'Using variables failed:\n' + requestOptions.body.variables + '\n\nWith error message:\n' + error, { itemIndex });
+								throw new NodeOperationError(
+									this.getNode(),
+									'Using variables failed:\n' +
+										(jsonBody.variables as string) +
+										'\n\nWith error message:\n' +
+										(error as string),
+									{ itemIndex },
+								);
 							}
 						}
-						if (requestOptions.body.operationName === '') {
-							requestOptions.body.operationName = null;
+						if (jsonBody.operationName === '') {
+							jsonBody.operationName = null;
 						}
 						requestOptions.json = true;
+						requestOptions.body = jsonBody;
 					} else {
 						requestOptions.body = gqlQuery;
 					}
@@ -433,13 +459,14 @@ export class GraphQL implements INodeType {
 				if (oAuth1Api !== undefined) {
 					response = await this.helpers.requestOAuth1.call(this, 'oAuth1Api', requestOptions);
 				} else if (oAuth2Api !== undefined) {
-					response = await this.helpers.requestOAuth2.call(this, 'oAuth2Api', requestOptions, { tokenType: 'Bearer' });
+					response = await this.helpers.requestOAuth2.call(this, 'oAuth2Api', requestOptions, {
+						tokenType: 'Bearer',
+					});
 				} else {
 					response = await this.helpers.request(requestOptions);
 				}
 				if (responseFormat === 'string') {
-					const dataPropertyName = this.getNodeParameter('dataPropertyName', 0) as string;
-
+					const dataPropertyName = this.getNodeParameter('dataPropertyName', 0);
 					returnItems.push({
 						json: {
 							[dataPropertyName]: response,
@@ -450,26 +477,54 @@ export class GraphQL implements INodeType {
 						try {
 							response = JSON.parse(response);
 						} catch (error) {
-							throw new NodeOperationError(this.getNode(), 'Response body is not valid JSON. Change "Response Format" to "String"', { itemIndex });
+							throw new NodeOperationError(
+								this.getNode(),
+								'Response body is not valid JSON. Change "Response Format" to "String"',
+								{ itemIndex },
+							);
 						}
 					}
 
-					if (response.errors) {
-						const message = response.errors?.map((error: IDataObject) => error.message).join(', ') || 'Unexpected error';
-						throw new NodeApiError(this.getNode(), response.errors, { message });
-					}
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(response as IDataObject),
+						{ itemData: { item: itemIndex } },
+					);
+					returnItems.push(...executionData);
+				}
 
-					returnItems.push({ json: response });
+				// parse error string messages
+				if (typeof response === 'string' && response.startsWith('{"errors":')) {
+					try {
+						const errorResponse = JSON.parse(response) as IDataObject;
+						if (Array.isArray(errorResponse.errors)) {
+							response = errorResponse;
+						}
+					} catch (e) {}
+				}
+				// throw from response object.errors[]
+				if (typeof response === 'object' && response.errors) {
+					const message =
+						response.errors?.map((error: IDataObject) => error.message).join(', ') ||
+						'Unexpected error';
+					throw new NodeApiError(this.getNode(), response.errors as JsonObject, { message });
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnItems.push({ json: { error: (error as JsonObject).message } });
+					const errorData = this.helpers.returnJsonArray({
+						$error: error,
+						json: this.getInputData(itemIndex),
+						itemIndex,
+					});
+					const exectionErrorWithMetaData = this.helpers.constructExecutionMetaData(errorData, {
+						itemData: { item: itemIndex },
+					});
+					returnItems.push(...exectionErrorWithMetaData);
 					continue;
 				}
 				throw error;
 			}
 		}
 
-		return this.prepareOutputData(returnItems);
+		return [returnItems];
 	}
 }

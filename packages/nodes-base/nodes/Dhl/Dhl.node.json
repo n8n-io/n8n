@@ -2,22 +2,18 @@
 	"node": "n8n-nodes-base.dhl",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Miscellaneous"
-	],
+	"categories": ["Miscellaneous"],
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/dhl"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/dhl/"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.dhl/"
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.dhl/"
 			}
 		]
 	},
-	"alias": [
-		"Shipping"
-	]
+	"alias": ["Shipping"]
 }

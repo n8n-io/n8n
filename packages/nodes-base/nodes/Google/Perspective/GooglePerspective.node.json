@@ -2,19 +2,16 @@
 	"node": "n8n-nodes-base.googlePerspective",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Analytics",
-		"Utility"
-	],
+	"categories": ["Analytics", "Utility"],
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/google"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.googlePerspective/"
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googleperspective/"
 			}
 		],
 		"generic": [
@@ -25,7 +22,5 @@
 			}
 		]
 	},
-	"alias": [
-		"Moderation"
-	]
+	"alias": ["Moderation"]
 }

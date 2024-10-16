@@ -2,19 +2,16 @@
 	"node": "n8n-nodes-base.togglTrigger",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Productivity",
-		"Utility"
-	],
+	"categories": ["Productivity", "Utility"],
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/toggl"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/toggl/"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.togglTrigger/"
+				"url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.toggltrigger/"
 			}
 		]
 	}

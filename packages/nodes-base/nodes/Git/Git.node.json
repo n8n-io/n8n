@@ -2,23 +2,18 @@
 	"node": "n8n-nodes-base.git",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Core Nodes",
-		"Development"
-	],
+	"categories": ["Core Nodes", "Development"],
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/git"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/git/"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.git/"
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.git/"
 			}
 		]
 	},
-	"subcategories": [
-		"Helpers"
-	]
+	"subcategories": ["Helpers"]
 }

@@ -1,59 +1,41 @@
-<template functional>
-	<span>
-		<router-link
-			v-if="$options.methods.useRouterLink(props)"
-			:to="props.to"
-			@click="(e) => listeners.click && listeners.click(e)"
-		>
-			<slot></slot>
-		</router-link>
-		<a
-			v-else
-			:href="props.to"
-			@click="(e) => listeners.click && listeners.click(e)"
-			:target="$options.methods.openNewWindow(props) ? '_blank': '_self'"
-		>
-			<slot></slot>
-		</a>
-	</span>
-</template>
+<script lang="ts" setup>
+import { computed } from 'vue';
+import { type RouteLocationRaw } from 'vue-router';
 
-<script lang="ts">
-import Vue from 'vue';
+interface RouteProps {
+	to?: RouteLocationRaw | string;
+	newWindow?: boolean;
+}
 
-export default {
-	name: 'n8n-route',
-	props: {
-		to: {
-			type: String || Object,
-		},
-		newWindow: {
-			type: Boolean || undefined,
-			default: undefined,
-		},
-	},
-	methods: {
-		useRouterLink(props: {to: object | string, newWindow: boolean | undefined}) {
-			if (props.newWindow === true) {
-				// router-link does not support click events and opening in new window
-				return false;
-			}
-			if (typeof props.to === 'string') {
-				return props.to.startsWith('/');
-			}
+defineOptions({ name: 'N8nRoute' });
+const props = defineProps<RouteProps>();
 
-			return props.to !== undefined;
-		},
-		openNewWindow(props: {to: string, newWindow: boolean | undefined}) {
-			if (props.newWindow !== undefined) {
-				return props.newWindow;
-			}
-			if (typeof props.to === 'string') {
-				return !props.to.startsWith('/');
-			}
-			return true;
-		},
-	},
-};
+const useRouterLink = computed(() => {
+	if (props.newWindow) {
+		// router-link does not support click events and opening in new window
+		return false;
+	}
+
+	if (typeof props.to === 'string') {
+		return props.to.startsWith('/');
+	}
+
+	return props.to !== undefined;
+});
+
+const openNewWindow = computed(() => !useRouterLink.value);
 </script>
 
+<template>
+	<router-link v-if="useRouterLink && to" :to="to" v-bind="$attrs">
+		<slot></slot>
+	</router-link>
+	<a
+		v-else
+		:href="to ? `${to}` : undefined"
+		:target="openNewWindow ? '_blank' : '_self'"
+		v-bind="$attrs"
+	>
+		<slot></slot>
+	</a>
+</template>

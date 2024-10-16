@@ -1,14 +1,17 @@
-// From: https://gist.github.com/compulim/8b49b0a744a3eeb2205e2b9506201e50
+type ResolveFn<T> = (result: T | PromiseLike<T>) => void;
+type RejectFn = (error: Error) => void;
+
 export interface IDeferredPromise<T> {
-	promise: () => Promise<T>;
-	reject: (error: Error) => void;
-	resolve: (result: T) => void;
+	promise: Promise<T>;
+	resolve: ResolveFn<T>;
+	reject: RejectFn;
 }
 
-export async function createDeferredPromise<T>(): Promise<IDeferredPromise<T>> {
-	return new Promise<IDeferredPromise<T>>((resolveCreate) => {
-		const promise = new Promise<T>((resolve, reject) => {
-			resolveCreate({ promise: async () => promise, resolve, reject });
-		});
+export function createDeferredPromise<T = void>(): IDeferredPromise<T> {
+	const deferred: Partial<IDeferredPromise<T>> = {};
+	deferred.promise = new Promise<T>((resolve, reject) => {
+		deferred.resolve = resolve;
+		deferred.reject = reject;
 	});
+	return deferred as IDeferredPromise<T>;
 }

@@ -2,18 +2,16 @@
 	"node": "n8n-nodes-base.medium",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Marketing & Content"
-	],
+	"categories": ["Marketing"],
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/medium"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/medium/"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.medium/"
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.medium/"
 			}
 		],
 		"generic": [

@@ -1,36 +1,32 @@
-import {
-	OptionsWithUri,
-} from 'request';
-
-import {
+import type {
+	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import {
-	IDataObject, NodeApiError, NodeOperationError,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-export async function uprocApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = await this.getCredentials('uprocApi');
-	const token = Buffer.from(`${credentials.email}:${credentials.apiKey}`).toString('base64');
-	const options: OptionsWithUri = {
-		headers: {
-			Authorization: `Basic ${token}`,
-			'User-agent': 'n8n',
-		},
+export async function uprocApiRequest(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
+	body: any = {},
+	qs: IDataObject = {},
+	_option: IDataObject = {},
+): Promise<any> {
+	const options: IHttpRequestOptions = {
 		method,
 		qs,
 		body,
-		uri: uri || `https://api.uproc.io/api/v2/process`,
+		url: 'https://api.uproc.io/api/v2/process',
 		json: true,
 	};
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.httpRequestWithAuthentication.call(this, 'uprocApi', options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

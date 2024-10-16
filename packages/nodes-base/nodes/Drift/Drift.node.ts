@@ -1,29 +1,21 @@
-import {
+import type {
 	IExecuteFunctions,
-} from 'n8n-core';
-import {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import {
-	driftApiRequest,
-} from './GenericFunctions';
-import {
-	contactFields,
-	contactOperations,
-} from './ContactDescription';
-import {
-	IContact,
-} from './ContactInterface';
+import { NodeConnectionType } from 'n8n-workflow';
+import { driftApiRequest } from './GenericFunctions';
+import { contactFields, contactOperations } from './ContactDescription';
+import type { IContact } from './ContactInterface';
 
 export class Drift implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Drift',
 		name: 'drift',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
-		icon: 'file:drift.png',
+
+		icon: { light: 'file:drift.svg', dark: 'file:drift.dark.svg' },
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -31,17 +23,15 @@ export class Drift implements INodeType {
 		defaults: {
 			name: 'Drift',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'driftApi',
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'accessToken',
-						],
+						authentication: ['accessToken'],
 					},
 				},
 			},
@@ -50,9 +40,7 @@ export class Drift implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'oAuth2',
-						],
+						authentication: ['oAuth2'],
 					},
 				},
 			},
@@ -97,16 +85,15 @@ export class Drift implements INodeType {
 		const returnData: IDataObject[] = [];
 		const length = items.length;
 		let responseData;
-		const qs: IDataObject = {};
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'contact') {
 					//https://devdocs.drift.com/docs/creating-a-contact
 					if (operation === 'create') {
 						const email = this.getNodeParameter('email', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IContact = {
 							email,
 						};
@@ -116,13 +103,15 @@ export class Drift implements INodeType {
 						if (additionalFields.phone) {
 							body.phone = additionalFields.phone as string;
 						}
-						responseData = await driftApiRequest.call(this, 'POST', '/contacts', { attributes: body });
+						responseData = await driftApiRequest.call(this, 'POST', '/contacts', {
+							attributes: body,
+						});
 						responseData = responseData.data;
 					}
 					//https://devdocs.drift.com/docs/updating-a-contact
 					if (operation === 'update') {
 						const contactId = this.getNodeParameter('contactId', i) as string;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						const body: IContact = {};
 						if (updateFields.name) {
 							body.name = updateFields.name as string;
@@ -133,7 +122,9 @@ export class Drift implements INodeType {
 						if (updateFields.email) {
 							body.email = updateFields.email as string;
 						}
-						responseData = await driftApiRequest.call(this, 'PATCH', `/contacts/${contactId}`, { attributes: body });
+						responseData = await driftApiRequest.call(this, 'PATCH', `/contacts/${contactId}`, {
+							attributes: body,
+						});
 						responseData = responseData.data;
 					}
 					//https://devdocs.drift.com/docs/retrieving-contact

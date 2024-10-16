@@ -2,19 +2,16 @@
 	"node": "n8n-nodes-base.postgres",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Development",
-		"Data & Storage"
-	],
+	"categories": ["Development", "Data & Storage"],
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/postgres"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/postgres/"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.postgres/"
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.postgres/"
 			}
 		],
 		"generic": [

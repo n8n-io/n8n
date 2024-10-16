@@ -2,18 +2,16 @@
 	"node": "n8n-nodes-base.awsTextract",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Utility"
-	],
+	"categories": ["Utility"],
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/aws"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/aws/"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.awsTextract/"
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.awstextract/"
 			}
 		],
 		"generic": [

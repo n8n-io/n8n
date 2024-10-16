@@ -2,19 +2,16 @@
 	"node": "n8n-nodes-base.phantombuster",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Sales",
-		"Marketing & Content"
-	],
+	"categories": ["Sales", "Marketing"],
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/phantombuster"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/phantombuster/"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.phantombuster/"
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.phantombuster/"
 			}
 		]
 	}

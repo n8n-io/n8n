@@ -2,19 +2,16 @@
 	"node": "n8n-nodes-base.linkedIn",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Marketing & Content",
-		"Communication"
-	],
+	"categories": ["Marketing", "Communication"],
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/linkedIn"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/linkedIn/"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.linkedIn/"
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.linkedin/"
 			}
 		],
 		"generic": [

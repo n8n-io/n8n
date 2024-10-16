@@ -1,139 +1,118 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import {
-	databaseFields,
-	databaseOperations,
-} from '../DatabaseDescription';
+import { NodeConnectionType, type INodeTypeDescription } from 'n8n-workflow';
+import { databaseFields, databaseOperations } from '../shared/descriptions/DatabaseDescription';
 
-import {
-	userFields,
-	userOperations,
-} from '../UserDescription';
+import { userFields, userOperations } from '../shared/descriptions/UserDescription';
 
-import {
-	pageFields,
-	pageOperations,
-} from '../PageDescription';
+import { pageFields, pageOperations } from '../shared/descriptions/PageDescription';
 
-import {
-	blockFields,
-	blockOperations,
-} from '../BlockDescription';
+import { blockFields, blockOperations } from '../shared/descriptions/BlockDescription';
 
 import {
 	databasePageFields,
 	databasePageOperations,
-} from '../DatabasePageDescription';
-
-import {
-	INodeTypeDescription,
-} from 'n8n-workflow';
+} from '../shared/descriptions/DatabasePageDescription';
 
 export const versionDescription: INodeTypeDescription = {
-		displayName: 'Notion (Beta)',
-		name: 'notion',
-		icon: 'file:notion.svg',
-		group: ['output'],
-		version: 1,
-		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume Notion API (Beta)',
-		defaults: {
-			name: 'Notion',
-			color: '#000000',
-		},
-		inputs: ['main'],
-		outputs: ['main'],
-		credentials: [
-			{
-				name: 'notionApi',
-				required: true,
-				// displayOptions: {
-				// 	show: {
-				// 		authentication: [
-				// 			'apiKey',
-				// 		],
-				// 	},
-				// },
-			},
-			// {
-			// 	name: 'notionOAuth2Api',
-			// 	required: true,
-			// 	displayOptions: {
-			// 		show: {
-			// 			authentication: [
-			// 				'oAuth2',
-			// 			],
-			// 		},
+	displayName: 'Notion',
+	name: 'notion',
+	icon: 'file:notion.svg',
+	group: ['output'],
+	version: 1,
+	subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
+	description: 'Consume Notion API',
+	defaults: {
+		name: 'Notion',
+	},
+	inputs: [NodeConnectionType.Main],
+	outputs: [NodeConnectionType.Main],
+	credentials: [
+		{
+			name: 'notionApi',
+			required: true,
+			// displayOptions: {
+			// 	show: {
+			// 		authentication: [
+			// 			'apiKey',
+			// 		],
 			// 	},
 			// },
-		],
-		properties: [
-			// {
-			// 	displayName: 'Authentication',
-			// 	name: 'authentication',
-			// 	type: 'options',
-			// 	options: [
-			// 		{
-			// 			name: 'API Key',
-			// 			value: 'apiKey',
-			// 		},
-			// 		{
-			// 			name: 'OAuth2',
-			// 			value: 'oAuth2',
-			// 		},
-			// 	],
-			// 	default: 'apiKey',
-			// 	description: 'The resource to operate on.',
-			// },
-			{
-				displayName: 'To access content, make sure it\'s shared with your integration in Notion',
-				name: 'notionNotice',
-				type: 'notice',
-				default: '',
-			},
-			{
-				displayName: 'Version',
-				name: 'version',
-				type: 'hidden',
-				default: 1,
-			},
-			{
-				displayName: 'Resource',
-				name: 'resource',
-				type: 'options',
-				noDataExpression: true,
-				options: [
-					{
-						name: 'Block',
-						value: 'block',
-					},
-					{
-						name: 'Database',
-						value: 'database',
-					},
-					{
-						name: 'Database Page',
-						value: 'databasePage',
-					},
-					{
-						name: 'Page',
-						value: 'page',
-					},
-					{
-						name: 'User',
-						value: 'user',
-					},
-				],
-				default: 'page',
-			},
-			...blockOperations,
-			...blockFields,
-			...databaseOperations,
-			...databaseFields,
-			...databasePageOperations,
-			...databasePageFields,
-			...pageOperations,
-			...pageFields,
-			...userOperations,
-			...userFields,
-		],
-	};
+		},
+		// {
+		// 	name: 'notionOAuth2Api',
+		// 	required: true,
+		// 	displayOptions: {
+		// 		show: {
+		// 			authentication: [
+		// 				'oAuth2',
+		// 			],
+		// 		},
+		// 	},
+		// },
+	],
+	properties: [
+		// {
+		// 	displayName: 'Authentication',
+		// 	name: 'authentication',
+		// 	type: 'options',
+		// 	options: [
+		// 		{
+		// 			name: 'API Key',
+		// 			value: 'apiKey',
+		// 		},
+		// 		{
+		// 			name: 'OAuth2',
+		// 			value: 'oAuth2',
+		// 		},
+		// 	],
+		// 	default: 'apiKey',
+		// 	description: 'The resource to operate on.',
+		// },
+		{
+			displayName:
+				'In Notion, make sure to <a href="https://www.notion.so/help/add-and-manage-connections-with-the-api" target="_blank">add your connection</a> to the pages you want to access.',
+			name: 'notionNotice',
+			type: 'notice',
+			default: '',
+		},
+		{
+			displayName: 'Resource',
+			name: 'resource',
+			type: 'options',
+			noDataExpression: true,
+			options: [
+				{
+					name: 'Block',
+					value: 'block',
+				},
+				{
+					name: 'Database',
+					value: 'database',
+				},
+				{
+					name: 'Database Page',
+					value: 'databasePage',
+				},
+				{
+					name: 'Page',
+					value: 'page',
+				},
+				{
+					name: 'User',
+					value: 'user',
+				},
+			],
+			default: 'page',
+		},
+		...blockOperations,
+		...blockFields,
+		...databaseOperations,
+		...databaseFields,
+		...databasePageOperations,
+		...databasePageFields,
+		...pageOperations,
+		...pageFields,
+		...userOperations,
+		...userFields,
+	],
+};

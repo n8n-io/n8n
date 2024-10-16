@@ -1,15 +1,14 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class TwitterOAuth1Api implements ICredentialType {
 	name = 'twitterOAuth1Api';
-	extends = [
-		'oAuth1Api',
-	];
-	displayName = 'Twitter OAuth API';
+
+	extends = ['oAuth1Api'];
+
+	displayName = 'X OAuth API';
+
 	documentationUrl = 'twitter';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Request Token URL',
@@ -34,6 +33,13 @@ export class TwitterOAuth1Api implements ICredentialType {
 			name: 'signatureMethod',
 			type: 'hidden',
 			default: 'HMAC-SHA1',
+		},
+		{
+			displayName:
+				'Some operations require a Basic or Pro API. Refer to <a href="https://developer.x.com/en/docs/twitter-api" target="_blank">X API Docs</a> for more information.',
+			name: 'apiPermissions',
+			type: 'notice',
+			default: '',
 		},
 	];
 }

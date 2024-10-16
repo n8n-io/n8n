@@ -1,60 +1,80 @@
+<script setup lang="ts">
+import type { EventBus } from 'n8n-design-system';
+import { onBeforeUnmount, onMounted, ref } from 'vue';
+import ExpandableInputBase from './ExpandableInputBase.vue';
+import { onClickOutside } from '@vueuse/core';
+
+type Props = {
+	modelValue: string;
+	placeholder: string;
+	maxlength?: number;
+	autofocus?: boolean;
+	eventBus?: EventBus;
+};
+
+const props = defineProps<Props>();
+const emit = defineEmits<{
+	'update:model-value': [value: string];
+	enter: [value: string];
+	blur: [value: string];
+	esc: [];
+}>();
+
+const inputRef = ref<HTMLInputElement>();
+
+onMounted(() => {
+	// autofocus on input element is not reliable
+	if (props.autofocus && inputRef.value) {
+		focus();
+	}
+	props.eventBus?.on('focus', focus);
+});
+
+onBeforeUnmount(() => {
+	props.eventBus?.off('focus', focus);
+});
+
+function focus() {
+	if (inputRef.value) {
+		inputRef.value.focus();
+	}
+}
+
+function onInput() {
+	if (inputRef.value) {
+		emit('update:model-value', inputRef.value.value);
+	}
+}
+
+function onEnter() {
+	if (inputRef.value) {
+		emit('enter', inputRef.value.value);
+	}
+}
+
+onClickOutside(inputRef, () => {
+	if (inputRef.value) {
+		emit('blur', inputRef.value.value);
+	}
+});
+
+function onEscape() {
+	emit('esc');
+}
+</script>
+
 <template>
-	<ExpandableInputBase :value="value" :placeholder="placeholder">
+	<ExpandableInputBase :model-value="modelValue" :placeholder="placeholder">
 		<input
+			ref="inputRef"
 			class="el-input__inner"
-			:value="value"
+			:value="modelValue"
 			:placeholder="placeholder"
 			:maxlength="maxlength"
+			size="4"
 			@input="onInput"
 			@keydown.enter="onEnter"
 			@keydown.esc="onEscape"
-			ref="input"
-			size="4"
-			v-click-outside="onClickOutside"
 		/>
 	</ExpandableInputBase>
 </template>
-
-<script lang="ts">
-import Vue from "vue";
-import ExpandableInputBase from "./ExpandableInputBase.vue";
-
-export default Vue.extend({
-	components: { ExpandableInputBase },
-	name: "ExpandableInputEdit",
-	props: ['value', 'placeholder', 'maxlength', 'autofocus', 'eventBus'],
-	mounted() {
-		// autofocus on input element is not reliable
-		if (this.$props.autofocus && this.$refs.input) {
-			this.focus();
-		}
-
-		if (this.$props.eventBus) {
-			this.$props.eventBus.$on('focus', () => {
-				this.focus();
-			});
-		}
-	},
-	methods: {
-		focus() {
-			if (this.$refs.input) {
-				(this.$refs.input as HTMLInputElement).focus();
-			}
-		},
-		onInput() {
-			this.$emit('input', (this.$refs.input as HTMLInputElement).value);
-		},
-		onEnter() {
-			this.$emit('enter', (this.$refs.input as HTMLInputElement).value);
-		},
-		onClickOutside(e: Event) {
-			if (e.type === 'click') {
-				this.$emit('blur', (this.$refs.input as HTMLInputElement).value);
-			}
-		},
-		onEscape() {
-			this.$emit('esc');
-		},
-	},
-});
-</script>

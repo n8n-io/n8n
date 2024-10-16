@@ -1,12 +1,6 @@
-import {
-	INodeType,
-	INodeTypeDescription,
-} from 'n8n-workflow';
+import { NodeConnectionType, type INodeType, type INodeTypeDescription } from 'n8n-workflow';
 
-import {
-	campaignFields,
-	campaignOperations,
-} from './CampaignDescription';
+import { campaignFields, campaignOperations } from './CampaignDescription';
 
 export class GoogleAds implements INodeType {
 	description: INodeTypeDescription = {
@@ -19,10 +13,9 @@ export class GoogleAds implements INodeType {
 		description: 'Use the Google Ads API',
 		defaults: {
 			name: 'Google Ads',
-			color: '#ff0000',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'googleAdsOAuth2Api',
@@ -30,7 +23,7 @@ export class GoogleAds implements INodeType {
 				testedBy: {
 					request: {
 						method: 'GET',
-						url: '/v9/customers:listAccessibleCustomers',
+						url: '/v17/customers:listAccessibleCustomers',
 					},
 				},
 			},
@@ -61,15 +54,14 @@ export class GoogleAds implements INodeType {
 			//-------------------------------
 			...campaignOperations,
 			{
-				displayName: 'Divide field names expressed with <i>micros</i> by 1,000,000 to get the actual value',
+				displayName:
+					'Divide field names expressed with <i>micros</i> by 1,000,000 to get the actual value',
 				name: 'campaigsNotice',
 				type: 'notice',
 				default: '',
 				displayOptions: {
 					show: {
-						resource: [
-							'campaign',
-						],
+						resource: ['campaign'],
 					},
 				},
 			},

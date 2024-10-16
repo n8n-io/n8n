@@ -1,4 +1,4 @@
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -8,8 +8,11 @@ import {
 
 export class DiscourseApi implements ICredentialType {
 	name = 'discourseApi';
+
 	displayName = 'Discourse API';
+
 	documentationUrl = 'discourse';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'URL',
@@ -23,6 +26,7 @@ export class DiscourseApi implements ICredentialType {
 			name: 'apiKey',
 			required: true,
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 		{
@@ -34,7 +38,10 @@ export class DiscourseApi implements ICredentialType {
 		},
 	];
 
-	async authenticate(credentials: ICredentialDataDecryptedObject, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
+	async authenticate(
+		credentials: ICredentialDataDecryptedObject,
+		requestOptions: IHttpRequestOptions,
+	): Promise<IHttpRequestOptions> {
 		requestOptions.headers = {
 			'Api-Key': credentials.apiKey,
 			'Api-Username': credentials.username,
@@ -50,7 +57,7 @@ export class DiscourseApi implements ICredentialType {
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{$credentials.url}}',
-			url: '/admin/groups.json',
+			url: '/groups.json',
 			method: 'GET',
 		},
 	};

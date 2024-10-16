@@ -1,6 +1,15 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
+import { updateDisplayOptions } from '../../../utils/utilities';
+import { searchProperties } from './common.descriptions';
+
+const searchDisplayOptions = {
+	show: {
+		resource: ['attribute'],
+		operation: ['search'],
+	},
+};
+
+const searchDescription = updateDisplayOptions(searchDisplayOptions, searchProperties);
 
 export const attributeOperations: INodeProperties[] = [
 	{
@@ -9,9 +18,7 @@ export const attributeOperations: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [
-					'attribute',
-				],
+				resource: ['attribute'],
 			},
 		},
 		noDataExpression: true,
@@ -32,9 +39,14 @@ export const attributeOperations: INodeProperties[] = [
 				action: 'Get an attribute',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get all attributes',
+				action: 'Get many attributes',
+			},
+			{
+				name: 'Search',
+				value: 'search',
+				action: 'Get a filtered list of attributes',
 			},
 			{
 				name: 'Update',
@@ -59,12 +71,8 @@ export const attributeFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'attribute',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['attribute'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -90,16 +98,12 @@ export const attributeFields: INodeProperties[] = [
 		default: 'text',
 		displayOptions: {
 			show: {
-				resource: [
-					'attribute',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['attribute'],
+				operation: ['create'],
 			},
 		},
 	},
-		{
+	{
 		displayName: 'Value',
 		name: 'value',
 		type: 'string',
@@ -107,12 +111,8 @@ export const attributeFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'attribute',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['attribute'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -124,12 +124,8 @@ export const attributeFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'attribute',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['attribute'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -171,7 +167,8 @@ export const attributeFields: INodeProperties[] = [
 				name: 'sharing_group_id',
 				type: 'options',
 				default: '',
-				description: 'Use only for when <code>Sharing Group</code> is selected in <code>Distribution</code>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'Use only for when <code>Sharing Group</code> is selected in <code>Distribution</code>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getSharingGroups',
 				},
@@ -191,12 +188,8 @@ export const attributeFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'attribute',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['attribute'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -213,12 +206,8 @@ export const attributeFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'attribute',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['attribute'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -230,12 +219,8 @@ export const attributeFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'attribute',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['attribute'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -250,18 +235,17 @@ export const attributeFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'attribute',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['attribute'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
+
+	// ----------------------------------------
+	//            attribute: search
+	// ----------------------------------------
+	...searchDescription,
 
 	// ----------------------------------------
 	//            attribute: update
@@ -275,12 +259,8 @@ export const attributeFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'attribute',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['attribute'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -292,12 +272,8 @@ export const attributeFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'attribute',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['attribute'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -340,7 +316,8 @@ export const attributeFields: INodeProperties[] = [
 				type: 'options',
 				default: '',
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>. Use only for when <code>Sharing Group</code> is selected in <code>Distribution</code>.',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>. Use only for when <code>Sharing Group</code> is selected in <code>Distribution</code>.',
 				typeOptions: {
 					loadOptionsMethod: 'getSharingGroups',
 				},

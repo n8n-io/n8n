@@ -2,19 +2,17 @@
 	"node": "n8n-nodes-base.onfleet",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Miscellaneous"
-	],
+	"categories": ["Miscellaneous"],
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/onfleet/"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/onfleet/"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.onfleet/"
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.onfleet/"
 			}
 		]
-	},
+	}
 }

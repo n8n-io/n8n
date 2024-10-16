@@ -1,0 +1,29 @@
+{
+	"node": "n8n-nodes-base.removeDuplicates",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"details": "",
+	"categories": ["Core Nodes"],
+	"resources": {
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.removeduplicates/"
+			}
+		],
+		"generic": []
+	},
+	"alias": [
+		"Dedupe",
+		"Deduplicate",
+		"Duplicates",
+		"Remove",
+		"Unique",
+		"Transform",
+		"Array",
+		"List",
+		"Item"
+	],
+	"subcategories": {
+		"Core Nodes": ["Data Transformation"]
+	}
+}

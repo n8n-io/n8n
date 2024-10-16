@@ -1,589 +1,941 @@
-import express from 'express';
-import validator from 'validator';
+import Container from 'typedi';
 import { v4 as uuid } from 'uuid';
 
-import { Db } from '../../src';
-import config from '../../config';
+import { RESPONSE_ERROR_MESSAGES } from '@/constants';
+import { UsersController } from '@/controllers/users.controller';
+import type { User } from '@/databases/entities/user';
+import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
+import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
+import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
+import { UserRepository } from '@/databases/repositories/user.repository';
+import { ExecutionService } from '@/executions/execution.service';
+import { CacheService } from '@/services/cache/cache.service';
+import { Telemetry } from '@/telemetry';
+
 import { SUCCESS_RESPONSE_BODY } from './shared/constants';
 import {
-	randomEmail,
-	randomValidPassword,
-	randomName,
-	randomInvalidPassword,
-} from './shared/random';
-import { CredentialsEntity } from '../../src/databases/entities/CredentialsEntity';
-import { WorkflowEntity } from '../../src/databases/entities/WorkflowEntity';
-import type { Role } from '../../src/databases/entities/Role';
-import type { User } from '../../src/databases/entities/User';
-import * as utils from './shared/utils';
-import * as testDb from './shared/testDb';
-import { compareHash } from '../../src/UserManagement/UserManagementHelper';
+	getCredentialById,
+	saveCredential,
+	shareCredentialWithUsers,
+} from './shared/db/credentials';
+import { createTeamProject, getPersonalProject, linkUserToProject } from './shared/db/projects';
+import { createAdmin, createMember, createOwner, getUserById } from './shared/db/users';
+import { createWorkflow, getWorkflowById, shareWorkflowWithUsers } from './shared/db/workflows';
+import { randomCredentialPayload } from './shared/random';
+import * as testDb from './shared/test-db';
+import type { SuperAgentTest } from './shared/types';
+import * as utils from './shared/utils/';
+import { validateUser } from './shared/utils/users';
+import { mockInstance } from '../shared/mocking';
 
-jest.mock('../../src/telemetry');
-jest.mock('../../src/UserManagement/email/NodeMailer');
+mockInstance(Telemetry);
+mockInstance(ExecutionService);
 
-let app: express.Application;
-let testDbName = '';
-let globalMemberRole: Role;
-let globalOwnerRole: Role;
-let workflowOwnerRole: Role;
-let credentialOwnerRole: Role;
-
-beforeAll(async () => {
-	app = await utils.initTestServer({ endpointGroups: ['users'], applyAuth: true });
-	const initResult = await testDb.init();
-	testDbName = initResult.testDbName;
-
-	const [
-		fetchedGlobalOwnerRole,
-		fetchedGlobalMemberRole,
-		fetchedWorkflowOwnerRole,
-		fetchedCredentialOwnerRole,
-	] = await testDb.getAllRoles();
-
-	globalOwnerRole = fetchedGlobalOwnerRole;
-	globalMemberRole = fetchedGlobalMemberRole;
-	workflowOwnerRole = fetchedWorkflowOwnerRole;
-	credentialOwnerRole = fetchedCredentialOwnerRole;
-
-	utils.initTestTelemetry();
-	utils.initTestLogger();
+const testServer = utils.setupTestServer({
+	endpointGroups: ['users'],
+	enabledFeatures: ['feat:advancedPermissions'],
 });
 
-beforeEach(async () => {
-	await testDb.truncate(
-		['User', 'SharedCredentials', 'SharedWorkflow', 'Workflow', 'Credentials'],
-		testDbName,
-	);
+describe('GET /users', () => {
+	let owner: User;
+	let member: User;
+	let ownerAgent: SuperAgentTest;
 
-	jest.mock('../../config');
+	beforeAll(async () => {
+		await testDb.truncate(['User']);
 
-	config.set('userManagement.disabled', false);
-	config.set('userManagement.isInstanceOwnerSetUp', true);
-	config.set('userManagement.emails.mode', '');
-});
+		owner = await createOwner();
+		member = await createMember();
+		await createMember();
 
-afterAll(async () => {
-	await testDb.terminate(testDbName);
-});
-
-test('GET /users should return all users', async () => {
-	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
-	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
-
-	await testDb.createUser({ globalRole: globalMemberRole });
-
-	const response = await authOwnerAgent.get('/users');
-
-	expect(response.statusCode).toBe(200);
-	expect(response.body.data.length).toBe(2);
-
-	await Promise.all(
-		response.body.data.map(async (user: User) => {
-			const {
-				id,
-				email,
-				firstName,
-				lastName,
-				personalizationAnswers,
-				globalRole,
-				password,
-				resetPasswordToken,
-				isPending,
-				apiKey,
-			} = user;
-
-			expect(validator.isUUID(id)).toBe(true);
-			expect(email).toBeDefined();
-			expect(firstName).toBeDefined();
-			expect(lastName).toBeDefined();
-			expect(personalizationAnswers).toBeUndefined();
-			expect(password).toBeUndefined();
-			expect(resetPasswordToken).toBeUndefined();
-			expect(isPending).toBe(false);
-			expect(globalRole).toBeDefined();
-			expect(apiKey).not.toBeDefined();
-		}),
-	);
-});
-
-test('DELETE /users/:id should delete the user', async () => {
-	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
-	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
-
-	const userToDelete = await testDb.createUser({ globalRole: globalMemberRole });
-
-	const newWorkflow = new WorkflowEntity();
-
-	Object.assign(newWorkflow, {
-		name: randomName(),
-		active: false,
-		connections: {},
-		nodes: [],
+		ownerAgent = testServer.authAgentFor(owner);
 	});
 
-	const savedWorkflow = await Db.collections.Workflow.save(newWorkflow);
+	test('should return all users', async () => {
+		const response = await ownerAgent.get('/users').expect(200);
 
-	await Db.collections.SharedWorkflow.save({
-		role: workflowOwnerRole,
-		user: userToDelete,
-		workflow: savedWorkflow,
+		expect(response.body.data).toHaveLength(3);
+
+		response.body.data.forEach(validateUser);
 	});
 
-	const newCredential = new CredentialsEntity();
+	describe('list query options', () => {
+		describe('filter', () => {
+			test('should filter users by field: email', async () => {
+				const response = await ownerAgent
+					.get('/users')
+					.query(`filter={ "email": "${member.email}" }`)
+					.expect(200);
 
-	Object.assign(newCredential, {
-		name: randomName(),
-		data: '',
-		type: '',
-		nodesAccess: [],
-	});
+				expect(response.body.data).toHaveLength(1);
 
-	const savedCredential = await Db.collections.Credentials.save(newCredential);
+				const [user] = response.body.data;
 
-	await Db.collections.SharedCredentials.save({
-		role: credentialOwnerRole,
-		user: userToDelete,
-		credentials: savedCredential,
-	});
+				expect(user.email).toBe(member.email);
 
-	const response = await authOwnerAgent.delete(`/users/${userToDelete.id}`);
+				const _response = await ownerAgent
+					.get('/users')
+					.query('filter={ "email": "non@existing.com" }')
+					.expect(200);
 
-	expect(response.statusCode).toBe(200);
-	expect(response.body).toEqual(SUCCESS_RESPONSE_BODY);
-
-	const user = await Db.collections.User.findOne(userToDelete.id);
-	expect(user).toBeUndefined(); // deleted
-
-	const sharedWorkflow = await Db.collections.SharedWorkflow.findOne({
-		relations: ['user'],
-		where: { user: userToDelete },
-	});
-	expect(sharedWorkflow).toBeUndefined(); // deleted
-
-	const sharedCredential = await Db.collections.SharedCredentials.findOne({
-		relations: ['user'],
-		where: { user: userToDelete },
-	});
-	expect(sharedCredential).toBeUndefined(); // deleted
-
-	const workflow = await Db.collections.Workflow.findOne(savedWorkflow.id);
-	expect(workflow).toBeUndefined(); // deleted
-
-	// TODO: Include active workflow and check whether webhook has been removed
-
-	const credential = await Db.collections.Credentials.findOne(savedCredential.id);
-	expect(credential).toBeUndefined(); // deleted
-});
-
-test('DELETE /users/:id should fail to delete self', async () => {
-	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
-	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
-
-	const response = await authOwnerAgent.delete(`/users/${owner.id}`);
-
-	expect(response.statusCode).toBe(400);
-
-	const user = await Db.collections.User.findOne(owner.id);
-	expect(user).toBeDefined();
-});
-
-test('DELETE /users/:id should fail if user to delete is transferee', async () => {
-	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
-	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
-
-	const { id: idToDelete } = await testDb.createUser({ globalRole: globalMemberRole });
-
-	const response = await authOwnerAgent.delete(`/users/${idToDelete}`).query({
-		transferId: idToDelete,
-	});
-
-	expect(response.statusCode).toBe(400);
-
-	const user = await Db.collections.User.findOne(idToDelete);
-	expect(user).toBeDefined();
-});
-
-test('DELETE /users/:id with transferId should perform transfer', async () => {
-	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
-	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
-
-	const userToDelete = await Db.collections.User.save({
-		id: uuid(),
-		email: randomEmail(),
-		password: randomValidPassword(),
-		firstName: randomName(),
-		lastName: randomName(),
-		createdAt: new Date(),
-		updatedAt: new Date(),
-		globalRole: workflowOwnerRole,
-	});
-
-	const newWorkflow = new WorkflowEntity();
-
-	Object.assign(newWorkflow, {
-		name: randomName(),
-		active: false,
-		connections: {},
-		nodes: [],
-	});
-
-	const savedWorkflow = await Db.collections.Workflow.save(newWorkflow);
-
-	await Db.collections.SharedWorkflow.save({
-		role: workflowOwnerRole,
-		user: userToDelete,
-		workflow: savedWorkflow,
-	});
-
-	const newCredential = new CredentialsEntity();
-
-	Object.assign(newCredential, {
-		name: randomName(),
-		data: '',
-		type: '',
-		nodesAccess: [],
-	});
-
-	const savedCredential = await Db.collections.Credentials.save(newCredential);
-
-	await Db.collections.SharedCredentials.save({
-		role: credentialOwnerRole,
-		user: userToDelete,
-		credentials: savedCredential,
-	});
-
-	const response = await authOwnerAgent.delete(`/users/${userToDelete.id}`).query({
-		transferId: owner.id,
-	});
-
-	expect(response.statusCode).toBe(200);
-
-	const sharedWorkflow = await Db.collections.SharedWorkflow.findOneOrFail({
-		relations: ['user'],
-		where: { user: owner },
-	});
-
-	const sharedCredential = await Db.collections.SharedCredentials.findOneOrFail({
-		relations: ['user'],
-		where: { user: owner },
-	});
-
-	const deletedUser = await Db.collections.User.findOne(userToDelete);
-
-	expect(sharedWorkflow.user.id).toBe(owner.id);
-	expect(sharedCredential.user.id).toBe(owner.id);
-	expect(deletedUser).toBeUndefined();
-});
-
-test('GET /resolve-signup-token should validate invite token', async () => {
-	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
-	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
-
-	const memberShell = await testDb.createUserShell(globalMemberRole);
-
-	const response = await authOwnerAgent
-		.get('/resolve-signup-token')
-		.query({ inviterId: owner.id })
-		.query({ inviteeId: memberShell.id });
-
-	expect(response.statusCode).toBe(200);
-	expect(response.body).toEqual({
-		data: {
-			inviter: {
-				firstName: owner.firstName,
-				lastName: owner.lastName,
-			},
-		},
-	});
-});
-
-test('GET /resolve-signup-token should fail with invalid inputs', async () => {
-	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
-	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
-
-	const { id: inviteeId } = await testDb.createUser({ globalRole: globalMemberRole });
-
-	const first = await authOwnerAgent.get('/resolve-signup-token').query({ inviterId: owner.id });
-
-	const second = await authOwnerAgent.get('/resolve-signup-token').query({ inviteeId });
-
-	const third = await authOwnerAgent.get('/resolve-signup-token').query({
-		inviterId: '5531199e-b7ae-425b-a326-a95ef8cca59d',
-		inviteeId: 'cb133beb-7729-4c34-8cd1-a06be8834d9d',
-	});
-
-	// user is already set up, so call should error
-	const fourth = await authOwnerAgent
-		.get('/resolve-signup-token')
-		.query({ inviterId: owner.id })
-		.query({ inviteeId });
-
-	// cause inconsistent DB state
-	await Db.collections.User.update(owner.id, { email: '' });
-	const fifth = await authOwnerAgent
-		.get('/resolve-signup-token')
-		.query({ inviterId: owner.id })
-		.query({ inviteeId });
-
-	for (const response of [first, second, third, fourth, fifth]) {
-		expect(response.statusCode).toBe(400);
-	}
-});
-
-test('POST /users/:id should fill out a user shell', async () => {
-	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
-
-	const memberShell = await testDb.createUserShell(globalMemberRole);
-
-	const memberData = {
-		inviterId: owner.id,
-		firstName: randomName(),
-		lastName: randomName(),
-		password: randomValidPassword(),
-	};
-
-	const authlessAgent = utils.createAgent(app);
-
-	const response = await authlessAgent.post(`/users/${memberShell.id}`).send(memberData);
-
-	const {
-		id,
-		email,
-		firstName,
-		lastName,
-		personalizationAnswers,
-		password,
-		resetPasswordToken,
-		globalRole,
-		isPending,
-		apiKey,
-	} = response.body.data;
-
-	expect(validator.isUUID(id)).toBe(true);
-	expect(email).toBeDefined();
-	expect(firstName).toBe(memberData.firstName);
-	expect(lastName).toBe(memberData.lastName);
-	expect(personalizationAnswers).toBeNull();
-	expect(password).toBeUndefined();
-	expect(resetPasswordToken).toBeUndefined();
-	expect(isPending).toBe(false);
-	expect(globalRole).toBeDefined();
-	expect(apiKey).not.toBeDefined();
-
-	const authToken = utils.getAuthToken(response);
-	expect(authToken).toBeDefined();
-
-	const member = await Db.collections.User.findOneOrFail(memberShell.id);
-	expect(member.firstName).toBe(memberData.firstName);
-	expect(member.lastName).toBe(memberData.lastName);
-	expect(member.password).not.toBe(memberData.password);
-});
-
-test('POST /users/:id should fail with invalid inputs', async () => {
-	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
-
-	const authlessAgent = utils.createAgent(app);
-
-	const memberShellEmail = randomEmail();
-
-	const memberShell = await Db.collections.User.save({
-		email: memberShellEmail,
-		globalRole: globalMemberRole,
-	});
-
-	const invalidPayloads = [
-		{
-			firstName: randomName(),
-			lastName: randomName(),
-			password: randomValidPassword(),
-		},
-		{
-			inviterId: owner.id,
-			firstName: randomName(),
-			password: randomValidPassword(),
-		},
-		{
-			inviterId: owner.id,
-			firstName: randomName(),
-			password: randomValidPassword(),
-		},
-		{
-			inviterId: owner.id,
-			firstName: randomName(),
-			lastName: randomName(),
-		},
-		{
-			inviterId: owner.id,
-			firstName: randomName(),
-			lastName: randomName(),
-			password: randomInvalidPassword(),
-		},
-	];
-
-	await Promise.all(
-		invalidPayloads.map(async (invalidPayload) => {
-			const response = await authlessAgent.post(`/users/${memberShell.id}`).send(invalidPayload);
-			expect(response.statusCode).toBe(400);
-
-			const storedUser = await Db.collections.User.findOneOrFail({
-				where: { email: memberShellEmail },
+				expect(_response.body.data).toHaveLength(0);
 			});
 
-			expect(storedUser.firstName).toBeNull();
-			expect(storedUser.lastName).toBeNull();
-			expect(storedUser.password).toBeNull();
-		}),
-	);
-});
+			test('should filter users by field: firstName', async () => {
+				const response = await ownerAgent
+					.get('/users')
+					.query(`filter={ "firstName": "${member.firstName}" }`)
+					.expect(200);
 
-test('POST /users/:id should fail with already accepted invite', async () => {
-	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
-	const member = await testDb.createUser({ globalRole: globalMemberRole });
+				expect(response.body.data).toHaveLength(1);
 
-	const newMemberData = {
-		inviterId: owner.id,
-		firstName: randomName(),
-		lastName: randomName(),
-		password: randomValidPassword(),
-	};
+				const [user] = response.body.data;
 
-	const authlessAgent = utils.createAgent(app);
+				expect(user.email).toBe(member.email);
 
-	const response = await authlessAgent.post(`/users/${member.id}`).send(newMemberData);
+				const _response = await ownerAgent
+					.get('/users')
+					.query('filter={ "firstName": "Non-Existing" }')
+					.expect(200);
 
-	expect(response.statusCode).toBe(400);
+				expect(_response.body.data).toHaveLength(0);
+			});
 
-	const storedMember = await Db.collections.User.findOneOrFail({
-		where: { email: member.email },
+			test('should filter users by field: lastName', async () => {
+				const response = await ownerAgent
+					.get('/users')
+					.query(`filter={ "lastName": "${member.lastName}" }`)
+					.expect(200);
+
+				expect(response.body.data).toHaveLength(1);
+
+				const [user] = response.body.data;
+
+				expect(user.email).toBe(member.email);
+
+				const _response = await ownerAgent
+					.get('/users')
+					.query('filter={ "lastName": "Non-Existing" }')
+					.expect(200);
+
+				expect(_response.body.data).toHaveLength(0);
+			});
+
+			test('should filter users by computed field: isOwner', async () => {
+				const response = await ownerAgent
+					.get('/users')
+					.query('filter={ "isOwner": true }')
+					.expect(200);
+
+				expect(response.body.data).toHaveLength(1);
+
+				const [user] = response.body.data;
+
+				expect(user.isOwner).toBe(true);
+
+				const _response = await ownerAgent
+					.get('/users')
+					.query('filter={ "isOwner": false }')
+					.expect(200);
+
+				expect(_response.body.data).toHaveLength(2);
+
+				const [_user] = _response.body.data;
+
+				expect(_user.isOwner).toBe(false);
+			});
+		});
+
+		describe('select', () => {
+			test('should select user field: id', async () => {
+				const response = await ownerAgent.get('/users').query('select=["id"]').expect(200);
+
+				expect(response.body).toEqual({
+					data: [
+						{ id: expect.any(String) },
+						{ id: expect.any(String) },
+						{ id: expect.any(String) },
+					],
+				});
+			});
+
+			test('should select user field: email', async () => {
+				const response = await ownerAgent.get('/users').query('select=["email"]').expect(200);
+
+				expect(response.body).toEqual({
+					data: [
+						{ email: expect.any(String) },
+						{ email: expect.any(String) },
+						{ email: expect.any(String) },
+					],
+				});
+			});
+
+			test('should select user field: firstName', async () => {
+				const response = await ownerAgent.get('/users').query('select=["firstName"]').expect(200);
+
+				expect(response.body).toEqual({
+					data: [
+						{ firstName: expect.any(String) },
+						{ firstName: expect.any(String) },
+						{ firstName: expect.any(String) },
+					],
+				});
+			});
+
+			test('should select user field: lastName', async () => {
+				const response = await ownerAgent.get('/users').query('select=["lastName"]').expect(200);
+
+				expect(response.body).toEqual({
+					data: [
+						{ lastName: expect.any(String) },
+						{ lastName: expect.any(String) },
+						{ lastName: expect.any(String) },
+					],
+				});
+			});
+		});
+
+		describe('take', () => {
+			test('should return n users or less, without skip', async () => {
+				const response = await ownerAgent.get('/users').query('take=2').expect(200);
+
+				expect(response.body.data).toHaveLength(2);
+
+				response.body.data.forEach(validateUser);
+
+				const _response = await ownerAgent.get('/users').query('take=1').expect(200);
+
+				expect(_response.body.data).toHaveLength(1);
+
+				_response.body.data.forEach(validateUser);
+			});
+
+			test('should return n users or less, with skip', async () => {
+				const response = await ownerAgent.get('/users').query('take=1&skip=1').expect(200);
+
+				expect(response.body.data).toHaveLength(1);
+
+				response.body.data.forEach(validateUser);
+			});
+		});
+
+		describe('auxiliary fields', () => {
+			/**
+			 * Some list query options require auxiliary fields:
+			 *
+			 * - `select` with `take` requires `id` (for pagination)
+			 */
+			test('should support options that require auxiliary fields', async () => {
+				const response = await ownerAgent
+					.get('/users')
+					.query('filter={ "isOwner": true }&select=["firstName"]&take=1')
+					.expect(200);
+
+				expect(response.body).toEqual({ data: [{ firstName: expect.any(String) }] });
+			});
+		});
 	});
-	expect(storedMember.firstName).not.toBe(newMemberData.firstName);
-	expect(storedMember.lastName).not.toBe(newMemberData.lastName);
-
-	const comparisonResult = await compareHash(member.password, storedMember.password);
-	expect(comparisonResult).toBe(false);
-	expect(storedMember.password).not.toBe(newMemberData.password);
 });
 
-test('POST /users should fail if emailing is not set up', async () => {
-	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
-	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
+describe('GET /users/:id/password-reset-link', () => {
+	let owner: User;
+	let admin: User;
+	let member: User;
 
-	const response = await authOwnerAgent.post('/users').send([{ email: randomEmail() }]);
+	beforeAll(async () => {
+		await testDb.truncate(['User']);
 
-	expect(response.statusCode).toBe(500);
+		[owner, admin, member] = await Promise.all([createOwner(), createAdmin(), createMember()]);
+	});
+
+	it('should allow owners to generate password reset links for admins and members', async () => {
+		const ownerAgent = testServer.authAgentFor(owner);
+		await ownerAgent.get(`/users/${owner.id}/password-reset-link`).expect(200);
+		await ownerAgent.get(`/users/${admin.id}/password-reset-link`).expect(200);
+		await ownerAgent.get(`/users/${member.id}/password-reset-link`).expect(200);
+	});
+
+	it('should allow admins to generate password reset links for admins and members, but not owners', async () => {
+		const adminAgent = testServer.authAgentFor(admin);
+		await adminAgent.get(`/users/${owner.id}/password-reset-link`).expect(403);
+		await adminAgent.get(`/users/${admin.id}/password-reset-link`).expect(200);
+		await adminAgent.get(`/users/${member.id}/password-reset-link`).expect(200);
+	});
+
+	it('should not allow members to generate password reset links for anyone', async () => {
+		const memberAgent = testServer.authAgentFor(member);
+		await memberAgent.get(`/users/${owner.id}/password-reset-link`).expect(403);
+		await memberAgent.get(`/users/${admin.id}/password-reset-link`).expect(403);
+		await memberAgent.get(`/users/${member.id}/password-reset-link`).expect(403);
+	});
 });
 
-test('POST /users should fail if user management is disabled', async () => {
-	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
-	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
+describe('DELETE /users/:id', () => {
+	let owner: User;
+	let ownerAgent: SuperAgentTest;
 
-	config.set('userManagement.disabled', true);
+	beforeAll(async () => {
+		await testDb.truncate(['User']);
 
-	const response = await authOwnerAgent.post('/users').send([{ email: randomEmail() }]);
+		owner = await createOwner();
+		ownerAgent = testServer.authAgentFor(owner);
+	});
 
-	expect(response.statusCode).toBe(500);
+	test('should delete user and their resources', async () => {
+		//
+		// ARRANGE
+		//
+		// @TODO: Include active workflow and check whether webhook has been removed
+
+		const member = await createMember();
+		const memberPersonalProject = await getPersonalProject(member);
+
+		// stays untouched
+		const teamProject = await createTeamProject();
+		// will be deleted
+		await linkUserToProject(member, teamProject, 'project:admin');
+
+		const [savedWorkflow, savedCredential, teamWorkflow, teamCredential] = await Promise.all([
+			// personal resource -> deleted
+			createWorkflow({}, member),
+			saveCredential(randomCredentialPayload(), {
+				user: member,
+				role: 'credential:owner',
+			}),
+			// resources in a team project -> untouched
+			createWorkflow({}, teamProject),
+			saveCredential(randomCredentialPayload(), {
+				project: teamProject,
+				role: 'credential:owner',
+			}),
+		]);
+
+		//
+		// ACT
+		//
+		await ownerAgent.delete(`/users/${member.id}`).expect(200, SUCCESS_RESPONSE_BODY);
+
+		//
+		// ASSERT
+		//
+		const userRepository = Container.get(UserRepository);
+		const projectRepository = Container.get(ProjectRepository);
+		const projectRelationRepository = Container.get(ProjectRelationRepository);
+		const sharedWorkflowRepository = Container.get(SharedWorkflowRepository);
+		const sharedCredentialsRepository = Container.get(SharedCredentialsRepository);
+
+		await Promise.all([
+			// user, their personal project and their relationship to the team project is gone
+			expect(userRepository.findOneBy({ id: member.id })).resolves.toBeNull(),
+			expect(projectRepository.findOneBy({ id: memberPersonalProject.id })).resolves.toBeNull(),
+			expect(
+				projectRelationRepository.findOneBy({ userId: member.id, projectId: teamProject.id }),
+			).resolves.toBeNull(),
+
+			// their personal workflows and and credentials are gone
+			expect(
+				sharedWorkflowRepository.findOneBy({
+					workflowId: savedWorkflow.id,
+					projectId: memberPersonalProject.id,
+				}),
+			).resolves.toBeNull(),
+			expect(
+				sharedCredentialsRepository.findOneBy({
+					credentialsId: savedCredential.id,
+					projectId: memberPersonalProject.id,
+				}),
+			).resolves.toBeNull(),
+
+			// team workflows and credentials are untouched
+			expect(
+				sharedWorkflowRepository.findOneBy({
+					workflowId: teamWorkflow.id,
+					projectId: teamProject.id,
+					role: 'workflow:owner',
+				}),
+			).resolves.not.toBeNull(),
+			expect(
+				sharedCredentialsRepository.findOneBy({
+					credentialsId: teamCredential.id,
+					projectId: teamProject.id,
+					role: 'credential:owner',
+				}),
+			).resolves.not.toBeNull(),
+		]);
+
+		const user = await Container.get(UserRepository).findOneBy({ id: member.id });
+		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
+			where: { projectId: memberPersonalProject.id, role: 'workflow:owner' },
+		});
+		const sharedCredential = await Container.get(SharedCredentialsRepository).findOne({
+			where: { projectId: memberPersonalProject.id, role: 'credential:owner' },
+		});
+		const workflow = await getWorkflowById(savedWorkflow.id);
+		const credential = await getCredentialById(savedCredential.id);
+
+		expect(user).toBeNull();
+		expect(sharedWorkflow).toBeNull();
+		expect(sharedCredential).toBeNull();
+		expect(workflow).toBeNull();
+		expect(credential).toBeNull();
+	});
+
+	test('should delete user and team relations and transfer their personal resources', async () => {
+		//
+		// ARRANGE
+		//
+		const [member, transferee, otherMember] = await Promise.all([
+			createMember(),
+			createMember(),
+			createMember(),
+		]);
+
+		// stays untouched
+		const teamProject = await createTeamProject();
+		await Promise.all([
+			// will be deleted
+			linkUserToProject(member, teamProject, 'project:admin'),
+
+			// stays untouched
+			linkUserToProject(transferee, teamProject, 'project:editor'),
+		]);
+
+		const [
+			ownedWorkflow,
+			ownedCredential,
+			teamWorkflow,
+			teamCredential,
+			sharedByOtherMemberWorkflow,
+			sharedByOtherMemberCredential,
+			sharedByTransfereeWorkflow,
+			sharedByTransfereeCredential,
+		] = await Promise.all([
+			// personal resource
+			// -> transferred to transferee's personal project
+			createWorkflow({}, member),
+			saveCredential(randomCredentialPayload(), {
+				user: member,
+				role: 'credential:owner',
+			}),
+
+			// resources in a team project
+			// -> untouched
+			createWorkflow({}, teamProject),
+			saveCredential(randomCredentialPayload(), {
+				project: teamProject,
+				role: 'credential:owner',
+			}),
+
+			// credential and workflow that are shared with the user to delete
+			// -> transferred to transferee's personal project
+			createWorkflow({}, otherMember),
+			saveCredential(randomCredentialPayload(), {
+				user: otherMember,
+				role: 'credential:owner',
+			}),
+
+			// credential and workflow that are shared with the user to delete but owned by the transferee
+			// -> not transferred but deleted
+			createWorkflow({}, transferee),
+			saveCredential(randomCredentialPayload(), {
+				user: transferee,
+				role: 'credential:owner',
+			}),
+		]);
+
+		await Promise.all([
+			shareWorkflowWithUsers(sharedByOtherMemberWorkflow, [member]),
+			shareCredentialWithUsers(sharedByOtherMemberCredential, [member]),
+
+			shareWorkflowWithUsers(sharedByTransfereeWorkflow, [member]),
+			shareCredentialWithUsers(sharedByTransfereeCredential, [member]),
+		]);
+
+		const [memberPersonalProject, transfereePersonalProject] = await Promise.all([
+			getPersonalProject(member),
+			getPersonalProject(transferee),
+		]);
+
+		const deleteSpy = jest.spyOn(Container.get(CacheService), 'deleteMany');
+
+		//
+		// ACT
+		//
+		await ownerAgent
+			.delete(`/users/${member.id}`)
+			.query({ transferId: transfereePersonalProject.id })
+			.expect(200);
+
+		//
+		// ASSERT
+		//
+
+		expect(deleteSpy).toBeCalledWith(
+			expect.arrayContaining([
+				`credential-can-use-secrets:${sharedByTransfereeCredential.id}`,
+				`credential-can-use-secrets:${ownedCredential.id}`,
+			]),
+		);
+		deleteSpy.mockClear();
+
+		const userRepository = Container.get(UserRepository);
+		const projectRepository = Container.get(ProjectRepository);
+		const projectRelationRepository = Container.get(ProjectRelationRepository);
+		const sharedWorkflowRepository = Container.get(SharedWorkflowRepository);
+		const sharedCredentialsRepository = Container.get(SharedCredentialsRepository);
+
+		await Promise.all([
+			// user, their personal project and their relationship to the team project is gone
+			expect(userRepository.findOneBy({ id: member.id })).resolves.toBeNull(),
+			expect(projectRepository.findOneBy({ id: memberPersonalProject.id })).resolves.toBeNull(),
+			expect(
+				projectRelationRepository.findOneBy({
+					projectId: teamProject.id,
+					userId: member.id,
+				}),
+			).resolves.toBeNull(),
+
+			// their owned workflow and credential are transferred to the transferee
+			expect(
+				sharedWorkflowRepository.findOneBy({
+					workflowId: ownedWorkflow.id,
+					projectId: transfereePersonalProject.id,
+					role: 'workflow:owner',
+				}),
+			).resolves.not.toBeNull,
+			expect(
+				sharedCredentialsRepository.findOneBy({
+					credentialsId: ownedCredential.id,
+					projectId: transfereePersonalProject.id,
+					role: 'credential:owner',
+				}),
+			).resolves.not.toBeNull(),
+
+			// the credential and workflow shared with them by another member is now shared with the transferee
+			expect(
+				sharedWorkflowRepository.findOneBy({
+					workflowId: sharedByOtherMemberWorkflow.id,
+					projectId: transfereePersonalProject.id,
+					role: 'workflow:editor',
+				}),
+			).resolves.not.toBeNull(),
+			expect(
+				sharedCredentialsRepository.findOneBy({
+					credentialsId: sharedByOtherMemberCredential.id,
+					projectId: transfereePersonalProject.id,
+					role: 'credential:user',
+				}),
+			),
+
+			// the transferee is still owner of the workflow and credential they shared with the user to delete
+			expect(
+				sharedWorkflowRepository.findOneBy({
+					workflowId: sharedByTransfereeWorkflow.id,
+					projectId: transfereePersonalProject.id,
+					role: 'workflow:owner',
+				}),
+			).resolves.not.toBeNull(),
+			expect(
+				sharedCredentialsRepository.findOneBy({
+					credentialsId: sharedByTransfereeCredential.id,
+					projectId: transfereePersonalProject.id,
+					role: 'credential:owner',
+				}),
+			).resolves.not.toBeNull(),
+
+			// the transferee's relationship to the team project is unchanged
+			expect(
+				projectRepository.findOneBy({
+					id: teamProject.id,
+					projectRelations: {
+						userId: transferee.id,
+						role: 'project:editor',
+					},
+				}),
+			).resolves.not.toBeNull(),
+
+			// the sharing of the team workflow is unchanged
+			expect(
+				sharedWorkflowRepository.findOneBy({
+					workflowId: teamWorkflow.id,
+					projectId: teamProject.id,
+					role: 'workflow:owner',
+				}),
+			).resolves.not.toBeNull(),
+
+			// the sharing of the team credential is unchanged
+			expect(
+				sharedCredentialsRepository.findOneBy({
+					credentialsId: teamCredential.id,
+					projectId: teamProject.id,
+					role: 'credential:owner',
+				}),
+			).resolves.not.toBeNull(),
+		]);
+	});
+
+	test('should fail to delete self', async () => {
+		await ownerAgent.delete(`/users/${owner.id}`).expect(400);
+
+		const user = await getUserById(owner.id);
+
+		expect(user).toBeDefined();
+	});
+
+	test('should fail to delete the instance owner', async () => {
+		const admin = await createAdmin();
+		const adminAgent = testServer.authAgentFor(admin);
+		await adminAgent.delete(`/users/${owner.id}`).expect(403);
+
+		const user = await getUserById(owner.id);
+		expect(user).toBeDefined();
+	});
+
+	test('should fail to delete a user that does not exist', async () => {
+		await ownerAgent.delete(`/users/${uuid()}`).query({ transferId: '' }).expect(404);
+	});
+
+	test('should fail to transfer to a project that does not exist', async () => {
+		const member = await createMember();
+
+		await ownerAgent.delete(`/users/${member.id}`).query({ transferId: 'foobar' }).expect(404);
+
+		const user = await Container.get(UserRepository).findOneBy({ id: member.id });
+
+		expect(user).toBeDefined();
+	});
+
+	test('should fail to delete if user to delete is transferee', async () => {
+		const member = await createMember();
+		const personalProject = await getPersonalProject(member);
+
+		await ownerAgent
+			.delete(`/users/${member.id}`)
+			.query({ transferId: personalProject.id })
+			.expect(400);
+
+		const user = await Container.get(UserRepository).findOneBy({ id: member.id });
+
+		expect(user).toBeDefined();
+	});
 });
 
-test('POST /users should email invites and create user shells but ignore existing', async () => {
-	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
-	const member = await testDb.createUser({ globalRole: globalMemberRole });
-	const memberShell = await testDb.createUserShell(globalMemberRole);
-	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
+describe('PATCH /users/:id/role', () => {
+	let owner: User;
+	let admin: User;
+	let otherAdmin: User;
+	let member: User;
+	let otherMember: User;
 
-	config.set('userManagement.emails.mode', 'smtp');
+	let ownerAgent: SuperAgentTest;
+	let adminAgent: SuperAgentTest;
+	let memberAgent: SuperAgentTest;
+	let authlessAgent: SuperAgentTest;
 
-	const testEmails = [randomEmail(), randomEmail().toUpperCase(), memberShell.email, member.email];
+	const { NO_ADMIN_ON_OWNER, NO_USER, NO_OWNER_ON_OWNER } =
+		UsersController.ERROR_MESSAGES.CHANGE_ROLE;
 
-	const payload = testEmails.map((e) => ({ email: e }));
+	beforeAll(async () => {
+		await testDb.truncate(['User']);
 
-	const response = await authOwnerAgent.post('/users').send(payload);
+		[owner, admin, otherAdmin, member, otherMember] = await Promise.all([
+			await createOwner(),
+			await createAdmin(),
+			await createAdmin(),
+			await createMember(),
+			await createMember(),
+		]);
 
-	expect(response.statusCode).toBe(200);
+		ownerAgent = testServer.authAgentFor(owner);
+		adminAgent = testServer.authAgentFor(admin);
+		memberAgent = testServer.authAgentFor(member);
+		authlessAgent = testServer.authlessAgent;
+	});
 
-	for (const {
-		user: { id, email: receivedEmail },
-		error,
-	} of response.body.data) {
-		expect(validator.isUUID(id)).toBe(true);
-		expect(id).not.toBe(member.id);
+	describe('unauthenticated user', () => {
+		test('should receive 401', async () => {
+			const response = await authlessAgent.patch(`/users/${member.id}/role`).send({
+				newRoleName: 'global:admin',
+			});
 
-		const lowerCasedEmail = receivedEmail.toLowerCase();
-		expect(receivedEmail).toBe(lowerCasedEmail);
-		expect(payload.some(({ email }) => email.toLowerCase() === lowerCasedEmail)).toBe(true);
+			expect(response.statusCode).toBe(401);
+		});
+	});
 
-		if (error) {
-			expect(error).toBe('Email could not be sent');
-		}
-
-		const storedUser = await Db.collections.User.findOneOrFail(id);
-		const { firstName, lastName, personalizationAnswers, password, resetPasswordToken } =
-			storedUser;
-
-		expect(firstName).toBeNull();
-		expect(lastName).toBeNull();
-		expect(personalizationAnswers).toBeNull();
-		expect(password).toBeNull();
-		expect(resetPasswordToken).toBeNull();
-	}
-});
-
-test('POST /users should fail with invalid inputs', async () => {
-	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
-	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
-
-	config.set('userManagement.emails.mode', 'smtp');
-
-	const invalidPayloads = [
-		randomEmail(),
-		[randomEmail()],
-		{},
-		[{ name: randomName() }],
-		[{ email: randomName() }],
-	];
-
-	await Promise.all(
-		invalidPayloads.map(async (invalidPayload) => {
-			const response = await authOwnerAgent.post('/users').send(invalidPayload);
+	describe('Invalid payload should return 400 when newRoleName', () => {
+		test.each([
+			['is missing', {}],
+			['is `owner`', { newRoleName: 'global:owner' }],
+			['is an array', { newRoleName: ['global:owner'] }],
+		])('%s', async (_, payload) => {
+			const response = await adminAgent.patch(`/users/${member.id}/role`).send(payload);
 			expect(response.statusCode).toBe(400);
+		});
+	});
 
-			const users = await Db.collections.User.find();
-			expect(users.length).toBe(1); // DB unaffected
-		}),
-	);
+	describe('member', () => {
+		test('should fail to demote owner to member', async () => {
+			await memberAgent
+				.patch(`/users/${owner.id}/role`)
+				.send({
+					newRoleName: 'global:member',
+				})
+				.expect(403, { status: 'error', message: RESPONSE_ERROR_MESSAGES.MISSING_SCOPE });
+		});
+
+		test('should fail to demote owner to admin', async () => {
+			await memberAgent
+				.patch(`/users/${owner.id}/role`)
+				.send({
+					newRoleName: 'global:admin',
+				})
+				.expect(403, { status: 'error', message: RESPONSE_ERROR_MESSAGES.MISSING_SCOPE });
+		});
+
+		test('should fail to demote admin to member', async () => {
+			await memberAgent
+				.patch(`/users/${admin.id}/role`)
+				.send({
+					newRoleName: 'global:member',
+				})
+				.expect(403, { status: 'error', message: RESPONSE_ERROR_MESSAGES.MISSING_SCOPE });
+		});
+
+		test('should fail to promote other member to owner', async () => {
+			await memberAgent
+				.patch(`/users/${otherMember.id}/role`)
+				.send({
+					newRoleName: 'global:owner',
+				})
+				.expect(403, { status: 'error', message: RESPONSE_ERROR_MESSAGES.MISSING_SCOPE });
+		});
+
+		test('should fail to promote other member to admin', async () => {
+			await memberAgent
+				.patch(`/users/${otherMember.id}/role`)
+				.send({
+					newRoleName: 'global:admin',
+				})
+				.expect(403, { status: 'error', message: RESPONSE_ERROR_MESSAGES.MISSING_SCOPE });
+		});
+
+		test('should fail to promote self to admin', async () => {
+			await memberAgent
+				.patch(`/users/${member.id}/role`)
+				.send({
+					newRoleName: 'global:admin',
+				})
+				.expect(403, { status: 'error', message: RESPONSE_ERROR_MESSAGES.MISSING_SCOPE });
+		});
+
+		test('should fail to promote self to owner', async () => {
+			await memberAgent
+				.patch(`/users/${member.id}/role`)
+				.send({
+					newRoleName: 'global:owner',
+				})
+				.expect(403, { status: 'error', message: RESPONSE_ERROR_MESSAGES.MISSING_SCOPE });
+		});
+	});
+
+	describe('admin', () => {
+		test('should receive 404 on unknown target user', async () => {
+			const response = await adminAgent
+				.patch('/users/c2317ff3-7a9f-4fd4-ad2b-7331f6359260/role')
+				.send({
+					newRoleName: 'global:member',
+				});
+
+			expect(response.statusCode).toBe(404);
+			expect(response.body.message).toBe(NO_USER);
+		});
+
+		test('should fail to demote owner to admin', async () => {
+			const response = await adminAgent.patch(`/users/${owner.id}/role`).send({
+				newRoleName: 'global:admin',
+			});
+
+			expect(response.statusCode).toBe(403);
+			expect(response.body.message).toBe(NO_ADMIN_ON_OWNER);
+		});
+
+		test('should fail to demote owner to member', async () => {
+			const response = await adminAgent.patch(`/users/${owner.id}/role`).send({
+				newRoleName: 'global:member',
+			});
+
+			expect(response.statusCode).toBe(403);
+			expect(response.body.message).toBe(NO_ADMIN_ON_OWNER);
+		});
+
+		test('should fail to promote member to admin if not licensed', async () => {
+			testServer.license.disable('feat:advancedPermissions');
+
+			const response = await adminAgent.patch(`/users/${member.id}/role`).send({
+				newRoleName: 'global:admin',
+			});
+
+			expect(response.statusCode).toBe(403);
+			expect(response.body.message).toBe('Plan lacks license for this feature');
+		});
+
+		test('should be able to demote admin to member', async () => {
+			const response = await adminAgent.patch(`/users/${otherAdmin.id}/role`).send({
+				newRoleName: 'global:member',
+			});
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data).toStrictEqual({ success: true });
+
+			const user = await getUserById(otherAdmin.id);
+
+			expect(user.role).toBe('global:member');
+
+			// restore other admin
+
+			otherAdmin = await createAdmin();
+			adminAgent = testServer.authAgentFor(otherAdmin);
+		});
+
+		test('should be able to demote self to member', async () => {
+			const response = await adminAgent.patch(`/users/${admin.id}/role`).send({
+				newRoleName: 'global:member',
+			});
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data).toStrictEqual({ success: true });
+
+			const user = await getUserById(admin.id);
+
+			expect(user.role).toBe('global:member');
+
+			// restore admin
+
+			admin = await createAdmin();
+			adminAgent = testServer.authAgentFor(admin);
+		});
+
+		test('should be able to promote member to admin if licensed', async () => {
+			const response = await adminAgent.patch(`/users/${member.id}/role`).send({
+				newRoleName: 'global:admin',
+			});
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data).toStrictEqual({ success: true });
+
+			const user = await getUserById(admin.id);
+
+			expect(user.role).toBe('global:admin');
+
+			// restore member
+
+			member = await createMember();
+			memberAgent = testServer.authAgentFor(member);
+		});
+	});
+
+	describe('owner', () => {
+		test('should fail to demote self to admin', async () => {
+			const response = await ownerAgent.patch(`/users/${owner.id}/role`).send({
+				newRoleName: 'global:admin',
+			});
+
+			expect(response.statusCode).toBe(403);
+			expect(response.body.message).toBe(NO_OWNER_ON_OWNER);
+		});
+
+		test('should fail to demote self to member', async () => {
+			const response = await ownerAgent.patch(`/users/${owner.id}/role`).send({
+				newRoleName: 'global:member',
+			});
+
+			expect(response.statusCode).toBe(403);
+			expect(response.body.message).toBe(NO_OWNER_ON_OWNER);
+		});
+
+		test('should fail to promote member to admin if not licensed', async () => {
+			testServer.license.disable('feat:advancedPermissions');
+
+			const response = await ownerAgent.patch(`/users/${member.id}/role`).send({
+				newRoleName: 'global:admin',
+			});
+
+			expect(response.statusCode).toBe(403);
+			expect(response.body.message).toBe('Plan lacks license for this feature');
+		});
+
+		test('should be able to promote member to admin if licensed', async () => {
+			const response = await ownerAgent.patch(`/users/${member.id}/role`).send({
+				newRoleName: 'global:admin',
+			});
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data).toStrictEqual({ success: true });
+
+			const user = await getUserById(admin.id);
+
+			expect(user.role).toBe('global:admin');
+
+			// restore member
+
+			member = await createMember();
+			memberAgent = testServer.authAgentFor(member);
+		});
+
+		test('should be able to demote admin to member', async () => {
+			const response = await ownerAgent.patch(`/users/${admin.id}/role`).send({
+				newRoleName: 'global:member',
+			});
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data).toStrictEqual({ success: true });
+
+			const user = await getUserById(admin.id);
+
+			expect(user.role).toBe('global:member');
+
+			// restore admin
+
+			admin = await createAdmin();
+			adminAgent = testServer.authAgentFor(admin);
+		});
+	});
+
+	test("should clear credential external secrets usability cache when changing a user's role", async () => {
+		const user = await createAdmin();
+
+		const [project1, project2] = await Promise.all([
+			createTeamProject(undefined, user),
+			createTeamProject(),
+		]);
+
+		await Promise.all([
+			saveCredential(randomCredentialPayload(), {
+				user,
+				role: 'credential:owner',
+			}),
+			saveCredential(randomCredentialPayload(), {
+				project: project1,
+				role: 'credential:owner',
+			}),
+			saveCredential(randomCredentialPayload(), {
+				project: project2,
+				role: 'credential:owner',
+			}),
+			linkUserToProject(user, project2, 'project:editor'),
+		]);
+
+		const deleteSpy = jest.spyOn(Container.get(CacheService), 'deleteMany');
+		const response = await ownerAgent.patch(`/users/${user.id}/role`).send({
+			newRoleName: 'global:member',
+		});
+
+		expect(deleteSpy).toBeCalledTimes(2);
+		deleteSpy.mockClear();
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toStrictEqual({ success: true });
+	});
 });
-
-test('POST /users should ignore an empty payload', async () => {
-	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
-	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
-
-	config.set('userManagement.emails.mode', 'smtp');
-
-	const response = await authOwnerAgent.post('/users').send([]);
-
-	const { data } = response.body;
-
-	expect(response.statusCode).toBe(200);
-	expect(Array.isArray(data)).toBe(true);
-	expect(data.length).toBe(0);
-
-	const users = await Db.collections.User.find();
-	expect(users.length).toBe(1);
-});
-
-// TODO: /users/:id/reinvite route tests missing
-
-// TODO: UserManagementMailer is a singleton - cannot reinstantiate with wrong creds
-// test('POST /users should error for wrong SMTP config', async () => {
-// 	const owner = await Db.collections.User.findOneOrFail();
-// 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
-
-// 	config.set('userManagement.emails.mode', 'smtp');
-// 	config.set('userManagement.emails.smtp.host', 'XYZ'); // break SMTP config
-
-// 	const payload = TEST_EMAILS_TO_CREATE_USER_SHELLS.map((e) => ({ email: e }));
-
-// 	const response = await authOwnerAgent.post('/users').send(payload);
-
-// 	expect(response.statusCode).toBe(500);
-// });

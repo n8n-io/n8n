@@ -2,18 +2,16 @@
 	"node": "n8n-nodes-base.wooCommerce",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Sales"
-	],
+	"categories": ["Sales"],
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/wooCommerce"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/wooCommerce/"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.wooCommerce/"
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.woocommerce/"
 			}
 		]
 	}

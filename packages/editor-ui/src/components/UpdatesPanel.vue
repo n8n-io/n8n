@@ -1,67 +1,15 @@
-<template>
-	<ModalDrawer
-		:name="VERSIONS_MODAL_KEY"
-		direction="ltr"
-		width="520px"
-	>
-		<template slot="header">
-			<span :class="$style.title">
-				{{ $locale.baseText('updatesPanel.weVeBeenBusy') }}
-			</span>
-		</template>
-		<template slot="content">
-			<section :class="$style['description']">
-				<p v-if="currentVersion">
-					{{ $locale.baseText(
-						'updatesPanel.youReOnVersion',
-						{ interpolate: { currentVersionName: currentVersion.name } }
-					) }}
-					<strong><TimeAgo :date="currentVersion.createdAt" /></strong>{{ $locale.baseText('updatesPanel.andIs') }} <strong>{{ $locale.baseText(
-							'updatesPanel.version',
-							{
-								interpolate: {
-									numberOfVersions: nextVersions.length,
-									howManySuffix: nextVersions.length > 1 ? "s" : "",
-								}
-							}
-					)}}</strong> {{ $locale.baseText('updatesPanel.behindTheLatest') }}
-				</p>
-
-				<n8n-link
-					v-if="infoUrl"
-					:to="infoUrl"
-					:bold="true"
-				>
-					<font-awesome-icon icon="info-circle"></font-awesome-icon>
-					<span>
-						{{ $locale.baseText('updatesPanel.howToUpdateYourN8nVersion') }}
-					</span>
-				</n8n-link>
-
-			</section>
-			<section :class="$style.versions">
-				<div
-					v-for="version in nextVersions"
-					:key="version.name"
-					:class="$style['versions-card']"
-				>
-					<VersionCard :version="version" />
-				</div>
-			</section>
-		</template>
-	</ModalDrawer>
-</template>
-
 <script lang="ts">
-import Vue from 'vue';
-import { mapGetters } from 'vuex';
+import { defineComponent } from 'vue';
 
 import ModalDrawer from './ModalDrawer.vue';
 import TimeAgo from './TimeAgo.vue';
 import VersionCard from './VersionCard.vue';
 import { VERSIONS_MODAL_KEY } from '../constants';
+import { mapStores } from 'pinia';
+import { useVersionsStore } from '@/stores/versions.store';
+import type { IVersion } from '@/Interface';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'UpdatesPanel',
 	components: {
 		ModalDrawer,
@@ -69,7 +17,16 @@ export default Vue.extend({
 		TimeAgo,
 	},
 	computed: {
-		...mapGetters('versions', ['nextVersions', 'currentVersion', 'infoUrl']),
+		...mapStores(useVersionsStore),
+		nextVersions(): IVersion[] {
+			return this.versionsStore.nextVersions;
+		},
+		currentVersion(): IVersion | undefined {
+			return this.versionsStore.currentVersion;
+		},
+		infoUrl(): string {
+			return this.versionsStore.infoUrl;
+		},
 	},
 	data() {
 		return {
@@ -79,12 +36,65 @@ export default Vue.extend({
 });
 </script>
 
+<template>
+	<ModalDrawer
+		:name="VERSIONS_MODAL_KEY"
+		direction="ltr"
+		width="520px"
+		data-test-id="version-updates-panel"
+	>
+		<template #header>
+			<span :class="$style.title">
+				{{ $locale.baseText('updatesPanel.weVeBeenBusy') }}
+			</span>
+		</template>
+		<template #content>
+			<section :class="$style['description']">
+				<p v-if="currentVersion">
+					{{
+						$locale.baseText('updatesPanel.youReOnVersion', {
+							interpolate: { currentVersionName: currentVersion.name },
+						})
+					}}
+					<strong>
+						<TimeAgo :date="currentVersion.createdAt" />
+					</strong>
+					{{ $locale.baseText('updatesPanel.andIs') }}
+					<strong>
+						{{
+							$locale.baseText('updatesPanel.version', {
+								interpolate: {
+									numberOfVersions: nextVersions.length,
+									howManySuffix: nextVersions.length > 1 ? 's' : '',
+								},
+							})
+						}}
+					</strong>
+					{{ $locale.baseText('updatesPanel.behindTheLatest') }}
+				</p>
+
+				<n8n-link v-if="infoUrl" :to="infoUrl" :bold="true">
+					<font-awesome-icon icon="info-circle" class="mr-2xs" />
+					<span>
+						{{ $locale.baseText('updatesPanel.howToUpdateYourN8nVersion') }}
+					</span>
+				</n8n-link>
+			</section>
+			<section :class="$style.versions">
+				<div v-for="version in nextVersions" :key="version.name" :class="$style['versions-card']">
+					<VersionCard :version="version" />
+				</div>
+			</section>
+		</template>
+	</ModalDrawer>
+</template>
+
 <style module lang="scss">
 .title {
 	margin: 0;
 	font-size: 24px;
 	line-height: 24px;
-	color: $--updates-panel-text-color;
+	color: $updates-panel-text-color;
 	font-weight: 400;
 }
 
@@ -96,7 +106,7 @@ export default Vue.extend({
 	p {
 		font-size: 16px;
 		line-height: 22px;
-		color: $--updates-panel-description-text-color;
+		color: $updates-panel-description-text-color;
 		font-weight: 400;
 		margin: 0 0 16px 0;
 	}
@@ -107,8 +117,8 @@ export default Vue.extend({
 }
 
 .versions {
-	background-color: $--updates-panel-dark-background-color;
-	border-top: $--updates-panel-border;
+	background-color: $updates-panel-dark-background-color;
+	border-top: $updates-panel-border;
 	height: 100%;
 	padding: 30px;
 	overflow-y: scroll;

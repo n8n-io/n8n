@@ -1,206 +1,183 @@
+<script setup lang="ts">
+import { ElDialog } from 'element-plus';
+import { computed, onMounted, onBeforeUnmount } from 'vue';
+import type { EventBus } from 'n8n-design-system';
+import { useUIStore } from '@/stores/ui.store';
+import type { ModalKey } from '@/Interface';
+import { APP_MODALS_ELEMENT_ID } from '@/constants';
+
+const props = withDefaults(
+	defineProps<{
+		name: ModalKey;
+		title?: string;
+		subtitle?: string;
+		eventBus?: EventBus;
+		showClose?: boolean;
+		loading?: boolean;
+		classic?: boolean;
+		// eslint-disable-next-line @typescript-eslint/no-invalid-void-type
+		beforeClose?: () => boolean | Promise<boolean | void> | void;
+		customClass?: string;
+		center?: boolean;
+		width?: string;
+		minWidth?: string;
+		maxWidth?: string;
+		height?: string;
+		minHeight?: string;
+		maxHeight?: string;
+		scrollable?: boolean;
+		centerTitle?: boolean;
+		closeOnClickModal?: boolean;
+		closeOnPressEscape?: boolean;
+		appendToBody?: boolean;
+	}>(),
+	{
+		title: '',
+		subtitle: '',
+		showClose: true,
+		loading: false,
+		classic: false,
+		customClass: '',
+		center: true,
+		width: '50%',
+		scrollable: false,
+		centerTitle: false,
+		closeOnClickModal: true,
+		closeOnPressEscape: true,
+		appendToBody: false,
+	},
+);
+
+const emit = defineEmits<{ enter: [] }>();
+
+const styles = computed(() => {
+	const styles: { [prop: string]: string } = {};
+	if (props.height) {
+		styles['--dialog-height'] = props.height;
+	}
+	if (props.minHeight) {
+		styles['--dialog-min-height'] = props.minHeight;
+	}
+	if (props.maxHeight) {
+		styles['--dialog-max-height'] = props.maxHeight;
+	}
+	if (props.maxWidth) {
+		styles['--dialog-max-width'] = props.maxWidth;
+	}
+	if (props.minWidth) {
+		styles['--dialog-min-width'] = props.minWidth;
+	}
+	return styles;
+});
+
+const appModalsId = `#${APP_MODALS_ELEMENT_ID}`;
+
+onMounted(() => {
+	window.addEventListener('keydown', onWindowKeydown);
+	props.eventBus?.on('close', closeDialog);
+	const activeElement = document.activeElement as HTMLElement;
+	if (activeElement) {
+		activeElement.blur();
+	}
+});
+
+onBeforeUnmount(() => {
+	props.eventBus?.off('close', closeDialog);
+	window.removeEventListener('keydown', onWindowKeydown);
+});
+
+const uiStore = useUIStore();
+
+function handleEnter() {
+	if (!uiStore.isModalActiveById[props.name]) return;
+	emit('enter');
+}
+
+function onWindowKeydown(event: KeyboardEvent) {
+	if (event?.keyCode === 13) handleEnter();
+}
+
+async function closeDialog(returnData?: unknown) {
+	if (props.beforeClose) {
+		const shouldClose = await props.beforeClose();
+		if (shouldClose === false) {
+			// must be strictly false to stop modal from closing
+			return;
+		}
+	}
+	uiStore.closeModal(props.name);
+	props.eventBus?.emit('closed', returnData);
+}
+
+async function onCloseDialog() {
+	await closeDialog();
+}
+
+function getCustomClass() {
+	let classes = props.customClass || '';
+
+	if (props.classic) {
+		classes = `${classes} classic`;
+	}
+
+	return classes;
+}
+</script>
+
 <template>
-	<el-dialog
-		:visible="visible"
-		:before-close="closeDialog"
-		:class="{'dialog-wrapper': true, [$style.center]: center, scrollable: scrollable}"
+	<ElDialog
+		:model-value="uiStore.modalsById[name].open"
+		:before-close="onCloseDialog"
+		:class="{
+			'dialog-wrapper': true,
+			scrollable: scrollable,
+			[getCustomClass()]: true,
+		}"
+		:center="center"
 		:width="width"
 		:show-close="showClose"
-		:custom-class="getCustomClass()"
 		:close-on-click-modal="closeOnClickModal"
 		:close-on-press-escape="closeOnPressEscape"
 		:style="styles"
-		append-to-body
+		:append-to="appendToBody ? undefined : appModalsId"
+		:append-to-body="appendToBody"
+		:data-test-id="`${name}-modal`"
+		:modal-class="center ? $style.center : ''"
+		:z-index="2000"
 	>
-		<template v-slot:title v-if="$scopedSlots.header">
-			<slot name="header" v-if="!loading" />
+		<template v-if="$slots.header" #header>
+			<slot v-if="!loading" name="header" />
 		</template>
-		<template v-slot:title v-else-if="title">
+		<template v-else-if="title" #title>
 			<div :class="centerTitle ? $style.centerTitle : ''">
 				<div v-if="title">
-					<n8n-heading tag="h1" size="xlarge">{{title}}</n8n-heading>
+					<n8n-heading tag="h1" size="xlarge">{{ title }}</n8n-heading>
 				</div>
 				<div v-if="subtitle" :class="$style.subtitle">
-					<n8n-heading tag="h3" size="small" color="text-light">{{subtitle}}</n8n-heading>
+					<n8n-heading tag="h3" size="small" color="text-light">{{ subtitle }}</n8n-heading>
 				</div>
 			</div>
 		</template>
-		<div class="modal-content" @keydown.stop @keydown.enter="handleEnter" @keydown.esc="closeDialog">
-			<slot v-if="!loading"  name="content"/>
-			<div :class="$style.loader" v-else>
+		<div
+			class="modal-content"
+			@keydown.stop
+			@keydown.enter="handleEnter"
+			@keydown.esc="onCloseDialog"
+		>
+			<slot v-if="!loading" name="content" />
+			<div v-else :class="$style.loader">
 				<n8n-spinner />
 			</div>
 		</div>
-		<div v-if="!loading && $scopedSlots.footer" :class="$style.footer">
+		<div v-if="!loading && $slots.footer" :class="$style.footer">
 			<slot name="footer" :close="closeDialog" />
 		</div>
-	</el-dialog>
+	</ElDialog>
 </template>
-
-<script lang="ts">
-import Vue from "vue";
-
-export default Vue.extend({
-	name: "Modal",
-	props: {
-		name: {
-			type: String,
-		},
-		title: {
-			type: String,
-		},
-		subtitle: {
-			type: String,
-		},
-		eventBus: {
-			type: Vue,
-		},
-		showClose: {
-			type: Boolean,
-			default: true,
-		},
-		loading: {
-			type: Boolean,
-		},
-		classic: {
-			type: Boolean,
-		},
-		beforeClose: {
-			type: Function,
-		},
-		customClass: {
-			type: String,
-		},
-		center: {
-			type: Boolean,
-		},
-		width: {
-			type: String,
-			default: '50%',
-		},
-		minWidth: {
-			type: String,
-		},
-		maxWidth: {
-			type: String,
-		},
-		height: {
-			type: String,
-		},
-		minHeight: {
-			type: String,
-		},
-		maxHeight: {
-			type: String,
-		},
-		scrollable: {
-			type: Boolean,
-			default: false,
-		},
-		centerTitle: {
-			type: Boolean,
-			default: false,
-		},
-		closeOnClickModal: {
-			type: Boolean,
-			default: true,
-		},
-		closeOnPressEscape: {
-			type: Boolean,
-			default: true,
-		},
-	},
-	mounted() {
-		window.addEventListener('keydown', this.onWindowKeydown);
-
-		if (this.$props.eventBus) {
-			this.$props.eventBus.$on('close', () => {
-				this.closeDialog();
-			});
-
-			this.$props.eventBus.$on('closeAll', () => {
-				this.closeAllDialogs();
-			});
-		}
-
-		const activeElement = document.activeElement as HTMLElement;
-		if (activeElement) {
-			activeElement.blur();
-		}
-	},
-	beforeDestroy() {
-		window.removeEventListener('keydown', this.onWindowKeydown);
-	},
-	methods: {
-		onWindowKeydown(event: KeyboardEvent) {
-			if (!this.isActive) {
-				return;
-			}
-
-			if (event && event.keyCode === 13) {
-				this.handleEnter();
-			}
-		},
-		handleEnter() {
-			if (this.isActive) {
-				this.$emit('enter');
-			}
-		},
-		closeAllDialogs() {
-			this.$store.commit('ui/closeAllModals');
-		},
-		async closeDialog() {
-			if (this.beforeClose) {
-				const shouldClose = await this.beforeClose();
-				if (shouldClose === false) { // must be strictly false to stop modal from closing
-					return;
-				}
-			}
-
-			this.$store.commit('ui/closeModal', this.$props.name);
-		},
-		getCustomClass() {
-			let classes = this.$props.customClass || '';
-
-			if (this.$props.classic) {
-				classes = `${classes} classic`;
-			}
-
-			return classes;
-		},
-	},
-	computed: {
-		isActive(): boolean {
-			return this.$store.getters['ui/isModalActive'](this.$props.name);
-		},
-		visible(): boolean {
-			return this.$store.getters['ui/isModalOpen'](this.$props.name);
-		},
-		styles() {
-			const styles: {[prop: string]: string} = {};
-			if (this.height) {
-				styles['--dialog-height'] = this.height;
-			}
-			if (this.minHeight) {
-				styles['--dialog-min-height'] = this.minHeight;
-			}
-			if (this.maxHeight) {
-				styles['--dialog-max-height'] = this.maxHeight;
-			}
-			if (this.maxWidth) {
-				styles['--dialog-max-width'] = this.maxWidth;
-			}
-			if (this.minWidth) {
-				styles['--dialog-min-width'] = this.minWidth;
-			}
-			return styles;
-		},
-	},
-});
-</script>
 
 <style lang="scss">
 .dialog-wrapper {
-	.el-dialog {
+	&.el-dialog {
 		display: flex;
 		flex-direction: column;
 		max-width: var(--dialog-max-width, 80%);
@@ -219,6 +196,7 @@ export default Vue.extend({
 
 	.modal-content {
 		overflow: hidden;
+		overflow-y: auto;
 		flex-grow: 1;
 	}
 
@@ -229,10 +207,8 @@ export default Vue.extend({
 </style>
 
 <style lang="scss" module>
-.center {
-		display: flex;
-		align-items: center;
-		justify-content: center;
+.center > div {
+	justify-content: center;
 }
 
 .loader {

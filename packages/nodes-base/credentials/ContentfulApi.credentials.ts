@@ -1,13 +1,13 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 //https://www.contentful.com/developers/docs/references/authentication/
 export class ContentfulApi implements ICredentialType {
 	name = 'contentfulApi';
-	displayName = 'Contenful API';
+
+	displayName = 'Contentful API';
+
 	documentationUrl = 'contentful';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Space ID',
@@ -21,15 +21,19 @@ export class ContentfulApi implements ICredentialType {
 			displayName: 'Content Delivery API Access Token',
 			name: 'ContentDeliveryaccessToken',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
-			description: 'Access token that has access to the space. Can be left empty if only Delivery API should be used.',
+			description:
+				'Access token that has access to the space. Can be left empty if only Delivery API should be used.',
 		},
 		{
 			displayName: 'Content Preview API Access Token',
 			name: 'ContentPreviewaccessToken',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
-			description: 'Access token that has access to the space. Can be left empty if only Preview API should be used.',
+			description:
+				'Access token that has access to the space. Can be left empty if only Preview API should be used.',
 		},
 	];
 }

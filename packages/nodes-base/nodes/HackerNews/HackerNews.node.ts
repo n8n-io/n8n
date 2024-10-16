@@ -1,19 +1,13 @@
-import {
+import type {
 	IExecuteFunctions,
-} from 'n8n-core';
-
-import {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
-import {
-	hackerNewsApiRequest,
-	hackerNewsApiRequestAllItems,
-} from './GenericFunctions';
+import { hackerNewsApiRequest, hackerNewsApiRequestAllItems } from './GenericFunctions';
 
 export class HackerNews implements INodeType {
 	description: INodeTypeDescription = {
@@ -28,8 +22,9 @@ export class HackerNews implements INodeType {
 		defaults: {
 			name: 'Hacker News',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
 		properties: [
 			// ----------------------------------
 			//         Resources
@@ -56,7 +51,6 @@ export class HackerNews implements INodeType {
 				default: 'article',
 			},
 
-
 			// ----------------------------------
 			//         Operations
 			// ----------------------------------
@@ -67,17 +61,15 @@ export class HackerNews implements INodeType {
 				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'all',
-						],
+						resource: ['all'],
 					},
 				},
 				options: [
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
-						description: 'Get all items',
-						action: 'Get all items',
+						description: 'Get many items',
+						action: 'Get many items',
 					},
 				],
 				default: 'getAll',
@@ -89,9 +81,7 @@ export class HackerNews implements INodeType {
 				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'article',
-						],
+						resource: ['article'],
 					},
 				},
 				options: [
@@ -111,9 +101,7 @@ export class HackerNews implements INodeType {
 				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'user',
-						],
+						resource: ['user'],
 					},
 				},
 				options: [
@@ -138,12 +126,8 @@ export class HackerNews implements INodeType {
 				description: 'The ID of the Hacker News article to be returned',
 				displayOptions: {
 					show: {
-						resource: [
-							'article',
-						],
-						operation: [
-							'get',
-						],
+						resource: ['article'],
+						operation: ['get'],
 					},
 				},
 			},
@@ -156,12 +140,8 @@ export class HackerNews implements INodeType {
 				description: 'The Hacker News user to be returned',
 				displayOptions: {
 					show: {
-						resource: [
-							'user',
-						],
-						operation: [
-							'get',
-						],
+						resource: ['user'],
+						operation: ['get'],
 					},
 				},
 			},
@@ -173,12 +153,8 @@ export class HackerNews implements INodeType {
 				description: 'Whether to return all results or only up to a given limit',
 				displayOptions: {
 					show: {
-						resource: [
-							'all',
-						],
-						operation: [
-							'getAll',
-						],
+						resource: ['all'],
+						operation: ['getAll'],
 					},
 				},
 			},
@@ -193,15 +169,9 @@ export class HackerNews implements INodeType {
 				description: 'Max number of results to return',
 				displayOptions: {
 					show: {
-						resource: [
-							'all',
-						],
-						operation: [
-							'getAll',
-						],
-						returnAll: [
-							false,
-						],
+						resource: ['all'],
+						operation: ['getAll'],
+						returnAll: [false],
 					},
 				},
 			},
@@ -213,12 +183,8 @@ export class HackerNews implements INodeType {
 				default: {},
 				displayOptions: {
 					show: {
-						resource: [
-							'article',
-						],
-						operation: [
-							'get',
-						],
+						resource: ['article'],
+						operation: ['get'],
 					},
 				},
 				options: [
@@ -239,12 +205,8 @@ export class HackerNews implements INodeType {
 				default: {},
 				displayOptions: {
 					show: {
-						resource: [
-							'all',
-						],
-						operation: [
-							'getAll',
-						],
+						resource: ['all'],
+						operation: ['getAll'],
 					},
 				},
 				options: [
@@ -299,13 +261,12 @@ export class HackerNews implements INodeType {
 		],
 	};
 
-
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		let returnAll = false;
 
 		for (let i = 0; i < items.length; i++) {
@@ -316,8 +277,7 @@ export class HackerNews implements INodeType {
 
 				if (resource === 'all') {
 					if (operation === 'getAll') {
-
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const keyword = additionalFields.keyword as string;
 						const tags = additionalFields.tags as string[];
 
@@ -326,45 +286,50 @@ export class HackerNews implements INodeType {
 							tags: tags ? tags.join() : '',
 						};
 
-						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						returnAll = this.getNodeParameter('returnAll', i);
 
 						if (!returnAll) {
-							qs.hitsPerPage = this.getNodeParameter('limit', i) as number;
+							qs.hitsPerPage = this.getNodeParameter('limit', i);
 						}
 
 						endpoint = 'search?';
-
 					} else {
-						throw new NodeOperationError(this.getNode(), `The operation '${operation}' is unknown!`, { itemIndex: i });
+						throw new NodeOperationError(
+							this.getNode(),
+							`The operation '${operation}' is unknown!`,
+							{ itemIndex: i },
+						);
 					}
 				} else if (resource === 'article') {
-
 					if (operation === 'get') {
-
 						endpoint = `items/${this.getNodeParameter('articleId', i)}`;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						includeComments = additionalFields.includeComments as boolean;
-
 					} else {
-						throw new NodeOperationError(this.getNode(), `The operation '${operation}' is unknown!`, { itemIndex: i });
+						throw new NodeOperationError(
+							this.getNode(),
+							`The operation '${operation}' is unknown!`,
+							{ itemIndex: i },
+						);
 					}
-
 				} else if (resource === 'user') {
-
 					if (operation === 'get') {
 						endpoint = `users/${this.getNodeParameter('username', i)}`;
-
 					} else {
-						throw new NodeOperationError(this.getNode(), `The operation '${operation}' is unknown!`, { itemIndex: i });
+						throw new NodeOperationError(
+							this.getNode(),
+							`The operation '${operation}' is unknown!`,
+							{ itemIndex: i },
+						);
 					}
-
 				} else {
-					throw new NodeOperationError(this.getNode(), `The resource '${resource}' is unknown!`, { itemIndex: i });
+					throw new NodeOperationError(this.getNode(), `The resource '${resource}' is unknown!`, {
+						itemIndex: i,
+					});
 				}
 
-
 				let responseData;
-				if (returnAll === true) {
+				if (returnAll) {
 					responseData = await hackerNewsApiRequestAllItems.call(this, 'GET', endpoint, qs);
 				} else {
 					responseData = await hackerNewsApiRequest.call(this, 'GET', endpoint, qs);
@@ -377,21 +342,25 @@ export class HackerNews implements INodeType {
 					delete responseData.children;
 				}
 
-				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData as IDataObject[]);
-				} else {
-					returnData.push(responseData as IDataObject);
-				}
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData as IDataObject),
+					{ itemData: { item: i } },
+				);
+
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 				throw error;
 			}
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
-
+		return [returnData];
 	}
 }

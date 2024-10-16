@@ -2,19 +2,16 @@
 	"node": "n8n-nodes-base.mandrill",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Communication",
-		"Development"
-	],
+	"categories": ["Communication", "Development"],
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/mandrill"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/mandrill/"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.mandrill/"
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.mandrill/"
 			}
 		],
 		"generic": [

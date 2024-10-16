@@ -1,9 +1,6 @@
-import {
+import type {
 	IHookFunctions,
 	IWebhookFunctions,
-} from 'n8n-core';
-
-import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
@@ -11,15 +8,10 @@ import {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
-
-import {
-	netlifyApiRequest,
-} from './GenericFunctions';
-
-import {
-	snakeCase,
-} from 'change-case';
+import { snakeCase } from 'change-case';
+import { netlifyApiRequest } from './GenericFunctions';
 
 export class NetlifyTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -34,7 +26,7 @@ export class NetlifyTrigger implements INodeType {
 			name: 'Netlify Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'netlifyApi',
@@ -59,7 +51,8 @@ export class NetlifyTrigger implements INodeType {
 				typeOptions: {
 					loadOptionsMethod: 'getSites',
 				},
-				description: 'Select the Site ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'Select the Site ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Event',
@@ -93,16 +86,15 @@ export class NetlifyTrigger implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						event: [
-							'submissionCreated',
-						],
+						event: ['submissionCreated'],
 					},
 				},
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getForms',
 				},
-				description: 'Select a form. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'Select a form. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Simplify',
@@ -110,18 +102,16 @@ export class NetlifyTrigger implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						event: [
-							'submissionCreated',
-						],
+						event: ['submissionCreated'],
 					},
 				},
 				default: true,
-				description: 'Whether to return a simplified version of the response instead of the raw data',
+				description:
+					'Whether to return a simplified version of the response instead of the raw data',
 			},
 		],
 	};
 
-	// @ts-ignore
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
@@ -179,11 +169,7 @@ export class NetlifyTrigger implements INodeType {
 		loadOptions: {
 			async getSites(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const sites = await netlifyApiRequest.call(
-					this,
-					'GET',
-					'/sites',
-				);
+				const sites = await netlifyApiRequest.call(this, 'GET', '/sites');
 				for (const site of sites) {
 					returnData.push({
 						name: site.name,
@@ -196,11 +182,7 @@ export class NetlifyTrigger implements INodeType {
 			async getForms(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const siteId = this.getNodeParameter('siteId');
-				const forms = await netlifyApiRequest.call(
-					this,
-					'GET',
-					`/sites/${siteId}/forms`,
-				);
+				const forms = await netlifyApiRequest.call(this, 'GET', `/sites/${siteId}/forms`);
 				for (const form of forms) {
 					returnData.push({
 						name: form.name,
@@ -219,14 +201,12 @@ export class NetlifyTrigger implements INodeType {
 		const event = this.getNodeParameter('event') as string;
 		let response = req.body;
 
-		if (simple === true && event === 'submissionCreated') {
+		if (simple && event === 'submissionCreated') {
 			response = response.data;
 		}
 
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray(response),
-			],
+			workflowData: [this.helpers.returnJsonArray(response as IDataObject)],
 		};
 	}
 }

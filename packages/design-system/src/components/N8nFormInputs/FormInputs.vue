@@ -1,23 +1,134 @@
+<script setup lang="ts">
+import { computed, onMounted, reactive, ref, watch } from 'vue';
+
+import type { IFormInput } from '../../types';
+import type { FormEventBus } from '../../utils';
+import { createFormEventBus } from '../../utils';
+import N8nFormInput from '../N8nFormInput';
+import ResizeObserver from '../ResizeObserver';
+
+export type FormInputsProps = {
+	inputs?: IFormInput[];
+	eventBus?: FormEventBus;
+	columnView?: boolean;
+	verticalSpacing?: '' | 'xs' | 's' | 'm' | 'l' | 'xl';
+	teleported?: boolean;
+};
+
+type Value = string | number | boolean | null | undefined;
+
+const props = withDefaults(defineProps<FormInputsProps>(), {
+	inputs: () => [],
+	eventBus: createFormEventBus,
+	columnView: false,
+	verticalSpacing: '',
+	teleported: true,
+});
+
+const emit = defineEmits<{
+	update: [value: { name: string; value: Value }];
+	'update:modelValue': [value: Record<string, Value>];
+	submit: [value: Record<string, Value>];
+	ready: [value: boolean];
+}>();
+
+const showValidationWarnings = ref(false);
+const values = reactive<Record<string, Value>>({});
+const validity = ref<Record<string, boolean>>({});
+
+const filteredInputs = computed(() => {
+	return props.inputs.filter((input) =>
+		typeof input.shouldDisplay === 'function' ? input.shouldDisplay(values) : true,
+	);
+});
+
+const isReadyToSubmit = computed(() => {
+	return Object.values(validity.value).every((valid) => !!valid);
+});
+
+watch(isReadyToSubmit, (ready) => {
+	emit('ready', ready);
+});
+
+function onUpdateModelValue(name: string, value: Value) {
+	values[name] = value;
+	emit('update', { name, value });
+	emit('update:modelValue', values);
+}
+
+function onValidate(name: string, isValid: boolean) {
+	validity.value = {
+		...validity.value,
+		[name]: isValid,
+	};
+}
+
+function getValues() {
+	return { ...values };
+}
+
+defineExpose({ getValues });
+
+function onSubmit() {
+	showValidationWarnings.value = true;
+
+	if (!isReadyToSubmit.value) {
+		return;
+	}
+
+	const toSubmit = filteredInputs.value.reduce<Record<string, Value>>((valuesToSubmit, input) => {
+		if (values[input.name]) {
+			valuesToSubmit[input.name] = values[input.name];
+		}
+		return valuesToSubmit;
+	}, {});
+
+	emit('submit', toSubmit);
+}
+
+onMounted(() => {
+	for (const input of props.inputs) {
+		if ('initialValue' in input) {
+			values[input.name] = input.initialValue;
+		}
+	}
+
+	if (props.eventBus) {
+		props.eventBus.on('submit', onSubmit);
+	}
+});
+</script>
+
 <template>
-	<ResizeObserver
-		:breakpoints="[{bp: 'md', width: 500}]"
-	>
-		<template v-slot="{ bp }">
-			<div :class="bp === 'md' || columnView? $style.grid : $style.gridMulti">
+	<ResizeObserver :breakpoints="[{ bp: 'md', width: 500 }]">
+		<template #default="{ bp }">
+			<div :class="bp === 'md' || columnView ? $style.grid : $style.gridMulti">
 				<div
-					v-for="(input) in filteredInputs"
+					v-for="(input, index) in filteredInputs"
 					:key="input.name"
+					:class="{ [`mt-${verticalSpacing}`]: verticalSpacing && index > 0 }"
 				>
-					<n8n-text color="text-base" v-if="input.properties.type === 'info'" tag="div" align="center">
-						{{input.properties.label}}
+					<n8n-text
+						v-if="input.properties.type === 'info'"
+						color="text-base"
+						tag="div"
+						:size="input.properties.labelSize"
+						:align="input.properties.labelAlignment"
+						class="form-text"
+					>
+						{{ input.properties.label }}
 					</n8n-text>
-					<n8n-form-input
+					<N8nFormInput
 						v-else
 						v-bind="input.properties"
-						:value="values[input.name]"
-						:showValidationWarnings="showValidationWarnings"
-						@input="(value) => onInput(input.name, value)"
-						@validate="(value) => onValidate(input.name, value)"
+						:name="input.name"
+						:label="input.properties.label || ''"
+						:model-value="values[input.name]"
+						:data-test-id="input.name"
+						:show-validation-warnings="showValidationWarnings"
+						:teleported="teleported"
+						@update:model-value="(value: Value) => onUpdateModelValue(input.name, value)"
+						@validate="(value: boolean) => onValidate(input.name, value)"
 						@enter="onSubmit"
 					/>
 				</div>
@@ -25,96 +136,6 @@
 		</template>
 	</ResizeObserver>
 </template>
-
-<script lang="ts">
-import Vue from 'vue';
-import N8nFormInput from '../N8nFormInput';
-import { IFormInputs } from '../../types';
-import ResizeObserver from '../ResizeObserver';
-
-export default Vue.extend({
-	name: 'n8n-form-inputs',
-	components: {
-		N8nFormInput,
-		ResizeObserver,
-	},
-	props: {
-		inputs: {
-			type: Array,
-			default() {
-				return [[]];
-			},
-		},
-		eventBus: {
-			type: Vue,
-		},
-		columnView: {
-			type: Boolean,
-		},
-	},
-	data() {
-		return {
-			showValidationWarnings: false,
-			values: {} as {[key: string]: any},
-			validity: {} as {[key: string]: boolean},
-		};
-	},
-	mounted() {
-		(this.inputs as IFormInputs).forEach((input: IFormInput) => {
-			if (input.hasOwnProperty('initialValue')) {
-				Vue.set(this.values, input.name, input.initialValue);
-			}
-		});
-
-		if (this.eventBus) {
-			this.eventBus.$on('submit', this.onSubmit);
-		}
-	},
-	computed: {
-		filteredInputs(): IFormInput[] {
-			return this.inputs.filter((input: IFormInput) => typeof input.shouldDisplay === 'function'? input.shouldDisplay(this.values): true);
-		},
-		isReadyToSubmit(): boolean {
-			for (let key in this.validity) {
-				if (!this.validity[key]) {
-					return false;
-				}
-			}
-
-			return true;
-		},
-	},
-	methods: {
-		onInput(name: string, value: any) {
-			this.values = {
-				...this.values,
-				[name]: value,
-			};
-			this.$emit('input', {name, value});
-		},
-		onValidate(name: string, valid: boolean) {
-			Vue.set(this.validity, name, valid);
-		},
-		onSubmit() {
-			this.showValidationWarnings = true;
-			if (this.isReadyToSubmit) {
-				const toSubmit = this.filteredInputs.reduce((accu, input: IFormInput) => {
-					if (this.values[input.name]) {
-						accu[input.name] = this.values[input.name];
-					}
-					return accu;
-				}, {});
-				this.$emit('submit', toSubmit);
-			}
-		},
-	},
-	watch: {
-		isReadyToSubmit(ready: boolean) {
-			this.$emit('ready', ready);
-		},
-	},
-});
-</script>
 
 <style lang="scss" module>
 .grid {
@@ -127,5 +148,4 @@ export default Vue.extend({
 	composes: grid;
 	grid-template-columns: repeat(2, 1fr);
 }
-
 </style>

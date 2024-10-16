@@ -1,5 +1,9 @@
-import {fireEvent, render} from '@testing-library/vue';
-import N8nNotice from "../Notice.vue";
+import { render } from '@testing-library/vue';
+
+import { N8nText } from 'n8n-design-system/components';
+import { n8nHtml } from 'n8n-design-system/directives';
+
+import N8nNotice from '../Notice.vue';
 
 describe('components', () => {
 	describe('N8nNotice', () => {
@@ -11,7 +15,9 @@ describe('components', () => {
 				slots: {
 					default: 'This is a notice.',
 				},
-				stubs: ['n8n-text'],
+				global: {
+					stubs: ['n8n-text'],
+				},
 			});
 			expect(wrapper.html()).toMatchSnapshot();
 		});
@@ -24,7 +30,9 @@ describe('components', () => {
 							id: 'notice',
 							content: 'This is a notice.',
 						},
-						stubs: ['n8n-text'],
+						global: {
+							stubs: ['n8n-text'],
+						},
 					});
 					expect(wrapper.html()).toMatchSnapshot();
 				});
@@ -35,7 +43,14 @@ describe('components', () => {
 							id: 'notice',
 							content: '<strong>Hello world!</strong> This is a notice.',
 						},
-						stubs: ['n8n-text'],
+						global: {
+							directives: {
+								n8nHtml,
+							},
+							components: {
+								'n8n-text': N8nText,
+							},
+						},
 					});
 
 					expect(wrapper.container.querySelectorAll('strong')).toHaveLength(1);
@@ -48,7 +63,9 @@ describe('components', () => {
 							id: 'notice',
 							content: '<script>alert(1);</script> This is a notice.',
 						},
-						stubs: ['n8n-text'],
+						global: {
+							stubs: ['n8n-text'],
+						},
 					});
 
 					expect(wrapper.container.querySelector('script')).not.toBeTruthy();

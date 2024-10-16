@@ -1,19 +1,19 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
-/* eslint-disable import/no-cycle */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
-/* eslint-disable no-param-reassign */
-/* eslint-disable no-continue */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
+
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable no-await-in-loop */
-/* eslint-disable no-restricted-syntax */
-import get from 'lodash.get';
-import merge from 'lodash.merge';
-import set from 'lodash.set';
 
-import {
+import get from 'lodash/get';
+import merge from 'lodash/merge';
+import set from 'lodash/set';
+import url from 'node:url';
+
+import { NodeApiError } from './errors/node-api.error';
+import { NodeOperationError } from './errors/node-operation.error';
+import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	IHttpRequestOptions,
@@ -24,28 +24,28 @@ import {
 	INodeParameters,
 	INodePropertyOptions,
 	INodeType,
-	IRequestOptionsFromParameters,
+	DeclarativeRestApiSettings,
 	IRunExecutionData,
 	ITaskDataConnections,
 	IWorkflowDataProxyAdditionalKeys,
 	IWorkflowExecuteAdditionalData,
-	NodeApiError,
-	NodeHelpers,
-	NodeOperationError,
 	NodeParameterValue,
-	Workflow,
 	WorkflowExecuteMode,
-} from '.';
-
-import {
 	IDataObject,
 	IExecuteData,
 	IExecuteSingleFunctions,
 	IN8nRequestOperations,
 	INodeProperties,
 	INodePropertyCollection,
+	NodeParameterValueType,
 	PostReceiveAction,
+	JsonObject,
+	CloseFunction,
+	INodeCredentialDescription,
 } from './Interfaces';
+import * as NodeHelpers from './NodeHelpers';
+import { sleep } from './utils';
+import type { Workflow } from './Workflow';
 
 export class RoutingNode {
 	additionalData: IWorkflowExecuteAdditionalData;
@@ -76,6 +76,7 @@ export class RoutingNode {
 		this.workflow = workflow;
 	}
 
+	// eslint-disable-next-line complexity
 	async runNode(
 		inputData: ITaskDataConnections,
 		runIndex: number,
@@ -83,16 +84,12 @@ export class RoutingNode {
 		executeData: IExecuteData,
 		nodeExecuteFunctions: INodeExecuteFunctions,
 		credentialsDecrypted?: ICredentialsDecrypted,
+		abortSignal?: AbortSignal,
 	): Promise<INodeExecutionData[][] | null | undefined> {
 		const items = inputData.main[0] as INodeExecutionData[];
 		const returnData: INodeExecutionData[] = [];
-		let responseData;
 
-		let credentialType: string | undefined;
-
-		if (nodeType.description.credentials?.length) {
-			credentialType = nodeType.description.credentials[0].name;
-		}
+		const closeFunctions: CloseFunction[] = [];
 		const executeFunctions = nodeExecuteFunctions.getExecuteFunctions(
 			this.workflow,
 			this.runExecutionData,
@@ -103,31 +100,88 @@ export class RoutingNode {
 			this.additionalData,
 			executeData,
 			this.mode,
+			closeFunctions,
+			abortSignal,
 		);
+
+		let credentialDescription: INodeCredentialDescription | undefined;
+
+		if (nodeType.description.credentials?.length) {
+			if (nodeType.description.credentials.length === 1) {
+				credentialDescription = nodeType.description.credentials[0];
+			} else {
+				const authenticationMethod = executeFunctions.getNodeParameter(
+					'authentication',
+					0,
+				) as string;
+				credentialDescription = nodeType.description.credentials.find((x) =>
+					x.displayOptions?.show?.authentication?.includes(authenticationMethod),
+				);
+				if (!credentialDescription) {
+					throw new NodeOperationError(
+						this.node,
+						`Node type "${this.node.type}" does not have any credentials of type "${authenticationMethod}" defined`,
+						{ level: 'warning' },
+					);
+				}
+			}
+		}
 
 		let credentials: ICredentialDataDecryptedObject | undefined;
 		if (credentialsDecrypted) {
 			credentials = credentialsDecrypted.data;
-		} else if (credentialType) {
-			credentials = (await executeFunctions.getCredentials(credentialType)) || {};
+		} else if (credentialDescription) {
+			try {
+				credentials =
+					(await executeFunctions.getCredentials<ICredentialDataDecryptedObject>(
+						credentialDescription.name,
+					)) || {};
+			} catch (error) {
+				if (credentialDescription.required) {
+					// Only throw error if credential is mandatory
+					throw error;
+				} else {
+					// Do not request cred type since it doesn't exist
+					credentialDescription = undefined;
+				}
+			}
 		}
 
-		// TODO: Think about how batching could be handled for REST APIs which support it
-		for (let i = 0; i < items.length; i++) {
-			try {
-				const thisArgs = nodeExecuteFunctions.getExecuteSingleFunctions(
+		const { batching } = executeFunctions.getNodeParameter('requestOptions', 0, {}) as {
+			batching: { batch: { batchSize: number; batchInterval: number } };
+		};
+
+		const batchSize = batching?.batch?.batchSize > 0 ? batching?.batch?.batchSize : 1;
+		const batchInterval = batching?.batch.batchInterval;
+
+		const requestPromises = [];
+		const itemContext: Array<{
+			thisArgs: IExecuteSingleFunctions;
+			requestData: DeclarativeRestApiSettings.ResultOptions;
+		}> = [];
+
+		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+			if (itemIndex > 0 && batchSize >= 0 && batchInterval > 0) {
+				if (itemIndex % batchSize === 0) {
+					await sleep(batchInterval);
+				}
+			}
+
+			itemContext.push({
+				thisArgs: nodeExecuteFunctions.getExecuteSingleFunctions(
 					this.workflow,
 					this.runExecutionData,
 					runIndex,
 					this.connectionInputData,
 					inputData,
 					this.node,
-					i,
+					itemIndex,
 					this.additionalData,
 					executeData,
 					this.mode,
-				);
-				const requestData: IRequestOptionsFromParameters = {
+					abortSignal,
+				),
+				requestData: {
 					options: {
 						qs: {},
 						body: {},
@@ -136,86 +190,168 @@ export class RoutingNode {
 					preSend: [],
 					postReceive: [],
 					requestOperations: {},
+				} as DeclarativeRestApiSettings.ResultOptions,
+			});
+
+			const { proxy, timeout, allowUnauthorizedCerts } = itemContext[
+				itemIndex
+			].thisArgs.getNodeParameter('requestOptions', 0, {}) as {
+				proxy: string;
+				timeout: number;
+				allowUnauthorizedCerts: boolean;
+			};
+
+			if (nodeType.description.requestOperations) {
+				itemContext[itemIndex].requestData.requestOperations = {
+					...nodeType.description.requestOperations,
 				};
+			}
 
-				if (nodeType.description.requestOperations) {
-					requestData.requestOperations = { ...nodeType.description.requestOperations };
-				}
-
-				if (nodeType.description.requestDefaults) {
-					for (const key of Object.keys(nodeType.description.requestDefaults)) {
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
-						let value = (nodeType.description.requestDefaults as Record<string, any>)[key];
-						// If the value is an expression resolve it
-						value = this.getParameterValue(
-							value,
-							i,
-							runIndex,
-							executeData,
-							{ $credentials: credentials },
-							false,
-						) as string;
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
-						(requestData.options as Record<string, any>)[key] = value;
-					}
-				}
-
-				for (const property of nodeType.description.properties) {
-					let value = get(this.node.parameters, property.name, []) as string | NodeParameterValue;
+			if (nodeType.description.requestDefaults) {
+				for (const key of Object.keys(nodeType.description.requestDefaults)) {
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					let value = (nodeType.description.requestDefaults as Record<string, any>)[key];
 					// If the value is an expression resolve it
 					value = this.getParameterValue(
 						value,
-						i,
+						itemIndex,
 						runIndex,
 						executeData,
-						{ $credentials: credentials },
-						true,
-					) as string | NodeParameterValue;
-
-					const tempOptions = this.getRequestOptionsFromParameters(
-						thisArgs,
-						property,
-						i,
-						runIndex,
-						'',
-						{ $credentials: credentials, $value: value },
-					);
-
-					this.mergeOptions(requestData, tempOptions);
+						{ $credentials: credentials, $version: this.node.typeVersion },
+						false,
+					) as string;
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					(itemContext[itemIndex].requestData.options as Record<string, any>)[key] = value;
 				}
+			}
 
-				// TODO: Change to handle some requests in parallel (should be configurable)
-				responseData = await this.makeRoutingRequest(
-					requestData,
-					thisArgs,
-					i,
+			for (const property of nodeType.description.properties) {
+				let value = get(this.node.parameters, property.name, []) as string | NodeParameterValue;
+				// If the value is an expression resolve it
+				value = this.getParameterValue(
+					value,
+					itemIndex,
 					runIndex,
-					credentialType,
-					requestData.requestOperations,
-					credentialsDecrypted,
+					executeData,
+					{ $credentials: credentials, $version: this.node.typeVersion },
+					false,
+				) as string | NodeParameterValue;
+
+				const tempOptions = this.getRequestOptionsFromParameters(
+					itemContext[itemIndex].thisArgs,
+					property,
+					itemIndex,
+					runIndex,
+					'',
+					{ $credentials: credentials, $value: value, $version: this.node.typeVersion },
 				);
 
-				if (requestData.maxResults) {
-					// Remove not needed items in case APIs return to many
-					responseData.splice(requestData.maxResults as number);
+				this.mergeOptions(itemContext[itemIndex].requestData, tempOptions);
+			}
+
+			if (proxy) {
+				const proxyParsed = url.parse(proxy);
+				const proxyProperties = ['host', 'port'];
+
+				for (const property of proxyProperties) {
+					if (
+						!(property in proxyParsed) ||
+						proxyParsed[property as keyof typeof proxyParsed] === null
+					) {
+						throw new NodeOperationError(this.node, 'The proxy is not value', {
+							runIndex,
+							itemIndex,
+							description: `The proxy URL does not contain a valid value for "${property}"`,
+						});
+					}
 				}
 
-				returnData.push(...responseData);
-			} catch (error) {
-				if (get(this.node, 'continueOnFail', false)) {
-					returnData.push({ json: {}, error: error.message });
+				itemContext[itemIndex].requestData.options.proxy = {
+					host: proxyParsed.hostname as string,
+					port: parseInt(proxyParsed.port!),
+					protocol: proxyParsed.protocol?.replace(/:$/, '') || undefined,
+				};
+
+				if (proxyParsed.auth) {
+					const [username, password] = proxyParsed.auth.split(':');
+					itemContext[itemIndex].requestData.options.proxy!.auth = {
+						username,
+						password,
+					};
+				}
+			}
+
+			if (allowUnauthorizedCerts) {
+				itemContext[itemIndex].requestData.options.skipSslCertificateValidation =
+					allowUnauthorizedCerts;
+			}
+
+			if (timeout) {
+				itemContext[itemIndex].requestData.options.timeout = timeout;
+			} else {
+				// set default timeout to 5 minutes
+				itemContext[itemIndex].requestData.options.timeout = 300_000;
+			}
+
+			requestPromises.push(
+				this.makeRoutingRequest(
+					itemContext[itemIndex].requestData,
+					itemContext[itemIndex].thisArgs,
+					itemIndex,
+					runIndex,
+					credentialDescription?.name,
+					itemContext[itemIndex].requestData.requestOperations,
+					credentialsDecrypted,
+				),
+			);
+		}
+
+		const promisesResponses = await Promise.allSettled(requestPromises);
+		let responseData: any;
+		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+			responseData = promisesResponses.shift();
+			if (responseData!.status !== 'fulfilled') {
+				if (responseData.reason.statusCode === 429) {
+					responseData.reason.message =
+						"Try spacing your requests out using the batching settings under 'Options'";
+				}
+
+				const error = responseData.reason;
+
+				if (itemContext[itemIndex].thisArgs?.continueOnFail()) {
+					returnData.push({ json: {}, error: error as NodeApiError });
 					continue;
 				}
-				throw new NodeApiError(this.node, error, { runIndex, itemIndex: i });
+
+				if (error instanceof NodeApiError) {
+					set(error, 'context.itemIndex', itemIndex);
+					set(error, 'context.runIndex', runIndex);
+					throw error;
+				}
+
+				throw new NodeApiError(this.node, error as JsonObject, {
+					runIndex,
+					itemIndex,
+					message: error?.message,
+					description: error?.description,
+					httpCode: error.isAxiosError && error.response ? String(error.response?.status) : 'none',
+				});
 			}
+
+			if (itemContext[itemIndex].requestData.maxResults) {
+				// Remove not needed items in case APIs return to many
+				responseData.value.splice(itemContext[itemIndex].requestData.maxResults as number);
+			}
+
+			returnData.push(...responseData.value);
 		}
 
 		return [returnData];
 	}
 
 	mergeOptions(
-		destinationOptions: IRequestOptionsFromParameters,
-		sourceOptions?: IRequestOptionsFromParameters,
+		destinationOptions: DeclarativeRestApiSettings.ResultOptions,
+		sourceOptions?: DeclarativeRestApiSettings.ResultOptions,
 	): void {
 		if (sourceOptions) {
 			destinationOptions.paginate = destinationOptions.paginate ?? sourceOptions.paginate;
@@ -225,7 +361,7 @@ export class RoutingNode {
 			merge(destinationOptions.options, sourceOptions.options);
 			destinationOptions.preSend.push(...sourceOptions.preSend);
 			destinationOptions.postReceive.push(...sourceOptions.postReceive);
-			if (sourceOptions.requestOperations) {
+			if (sourceOptions.requestOperations && destinationOptions.requestOperations) {
 				destinationOptions.requestOperations = Object.assign(
 					destinationOptions.requestOperations,
 					sourceOptions.requestOperations,
@@ -244,12 +380,11 @@ export class RoutingNode {
 		runIndex: number,
 	): Promise<INodeExecutionData[]> {
 		if (typeof action === 'function') {
-			return action.call(executeSingleFunctions, inputData, responseData);
+			return await action.call(executeSingleFunctions, inputData, responseData);
 		}
 		if (action.type === 'rootProperty') {
 			try {
 				return inputData.flatMap((item) => {
-					// let itemContent = item.json[action.properties.property];
 					let itemContent = get(item.json, action.properties.property);
 
 					if (!Array.isArray(itemContent)) {
@@ -261,13 +396,46 @@ export class RoutingNode {
 						};
 					});
 				});
-			} catch (e) {
-				throw new NodeOperationError(
-					this.node,
-					`The rootProperty "${action.properties.property}" could not be found on item.`,
-					{ runIndex, itemIndex },
-				);
+			} catch (error) {
+				throw new NodeOperationError(this.node, error as Error, {
+					runIndex,
+					itemIndex,
+					description: `The rootProperty "${action.properties.property}" could not be found on item.`,
+				});
 			}
+		}
+		if (action.type === 'filter') {
+			const passValue = action.properties.pass;
+
+			inputData = inputData.filter((item) => {
+				// If the value is an expression resolve it
+				return this.getParameterValue(
+					passValue,
+					itemIndex,
+					runIndex,
+					executeSingleFunctions.getExecuteData(),
+					{
+						$response: responseData,
+						$responseItem: item.json,
+						$value: parameterValue,
+						$version: this.node.typeVersion,
+					},
+					false,
+				) as boolean;
+			});
+
+			return inputData;
+		}
+		if (action.type === 'limit') {
+			const maxResults = this.getParameterValue(
+				action.properties.maxResults,
+				itemIndex,
+				runIndex,
+				executeSingleFunctions.getExecuteData(),
+				{ $response: responseData, $value: parameterValue, $version: this.node.typeVersion },
+				false,
+			) as string;
+			return inputData.slice(0, parseInt(maxResults, 10));
 		}
 		if (action.type === 'set') {
 			const { value } = action.properties;
@@ -279,7 +447,7 @@ export class RoutingNode {
 						itemIndex,
 						runIndex,
 						executeSingleFunctions.getExecuteData(),
-						{ $response: responseData, $value: parameterValue },
+						{ $response: responseData, $value: parameterValue, $version: this.node.typeVersion },
 						false,
 					) as IDataObject,
 				},
@@ -289,12 +457,8 @@ export class RoutingNode {
 			// Sort the returned options
 			const sortKey = action.properties.key;
 			inputData.sort((a, b) => {
-				const aSortValue = a.json[sortKey]
-					? (a.json[sortKey]?.toString().toLowerCase() as string)
-					: '';
-				const bSortValue = b.json[sortKey]
-					? (b.json[sortKey]?.toString().toLowerCase() as string)
-					: '';
+				const aSortValue = a.json[sortKey]?.toString().toLowerCase() ?? '';
+				const bSortValue = b.json[sortKey]?.toString().toLowerCase() ?? '';
 				if (aSortValue < bSortValue) {
 					return -1;
 				}
@@ -309,7 +473,6 @@ export class RoutingNode {
 		if (action.type === 'setKeyValue') {
 			const returnData: INodeExecutionData[] = [];
 
-			// eslint-disable-next-line @typescript-eslint/no-loop-func
 			inputData.forEach((item) => {
 				const returnItem: IDataObject = {};
 				for (const key of Object.keys(action.properties)) {
@@ -330,8 +493,9 @@ export class RoutingNode {
 							$response: responseData,
 							$responseItem: item.json,
 							$value: parameterValue,
+							$version: this.node.typeVersion,
 						},
-						true,
+						false,
 					) as string;
 					// eslint-disable-next-line @typescript-eslint/no-explicit-any
 					(returnItem as Record<string, any>)[key] = propertyValue;
@@ -342,7 +506,7 @@ export class RoutingNode {
 			return returnData;
 		}
 		if (action.type === 'binaryData') {
-			responseData.body = Buffer.from(responseData.body as string);
+			const body = (responseData.body = Buffer.from(responseData.body as string));
 			let { destinationProperty } = action.properties;
 
 			destinationProperty = this.getParameterValue(
@@ -350,11 +514,11 @@ export class RoutingNode {
 				itemIndex,
 				runIndex,
 				executeSingleFunctions.getExecuteData(),
-				{ $response: responseData, $value: parameterValue },
+				{ $response: responseData, $value: parameterValue, $version: this.node.typeVersion },
 				false,
 			) as string;
 
-			const binaryData = await executeSingleFunctions.helpers.prepareBinaryData(responseData.body);
+			const binaryData = await executeSingleFunctions.helpers.prepareBinaryData(body);
 
 			return inputData.map((item) => {
 				if (typeof item.json === 'string') {
@@ -373,28 +537,13 @@ export class RoutingNode {
 		return [];
 	}
 
-	async rawRoutingRequest(
+	async postProcessResponseData(
 		executeSingleFunctions: IExecuteSingleFunctions,
-		requestData: IRequestOptionsFromParameters,
+		responseData: IN8nHttpFullResponse,
+		requestData: DeclarativeRestApiSettings.ResultOptions,
 		itemIndex: number,
 		runIndex: number,
-		credentialType?: string,
-		credentialsDecrypted?: ICredentialsDecrypted,
 	): Promise<INodeExecutionData[]> {
-		let responseData: IN8nHttpFullResponse;
-		requestData.options.returnFullResponse = true;
-		if (credentialType) {
-			responseData = (await executeSingleFunctions.helpers.httpRequestWithAuthentication.call(
-				executeSingleFunctions,
-				credentialType,
-				requestData.options as IHttpRequestOptions,
-				{ credentialsDecrypted },
-			)) as IN8nHttpFullResponse;
-		} else {
-			responseData = (await executeSingleFunctions.helpers.httpRequest(
-				requestData.options as IHttpRequestOptions,
-			)) as IN8nHttpFullResponse;
-		}
 		let returnData: INodeExecutionData[] = [
 			{
 				json: responseData.body as IDataObject,
@@ -418,7 +567,7 @@ export class RoutingNode {
 			}
 		} else {
 			// No postReceive functionality got defined so simply add data as it is
-			// eslint-disable-next-line no-lonely-if
+
 			if (Array.isArray(responseData.body)) {
 				returnData = responseData.body.map((json) => {
 					return {
@@ -433,8 +582,32 @@ export class RoutingNode {
 		return returnData;
 	}
 
+	async rawRoutingRequest(
+		executeSingleFunctions: IExecuteSingleFunctions,
+		requestData: DeclarativeRestApiSettings.ResultOptions,
+		credentialType?: string,
+		credentialsDecrypted?: ICredentialsDecrypted,
+	): Promise<IN8nHttpFullResponse> {
+		let responseData: IN8nHttpFullResponse;
+		requestData.options.returnFullResponse = true;
+		if (credentialType) {
+			responseData = (await executeSingleFunctions.helpers.httpRequestWithAuthentication.call(
+				executeSingleFunctions,
+				credentialType,
+				requestData.options as IHttpRequestOptions,
+				{ credentialsDecrypted },
+			)) as IN8nHttpFullResponse;
+		} else {
+			responseData = (await executeSingleFunctions.helpers.httpRequest(
+				requestData.options as IHttpRequestOptions,
+			)) as IN8nHttpFullResponse;
+		}
+
+		return responseData;
+	}
+
 	async makeRoutingRequest(
-		requestData: IRequestOptionsFromParameters,
+		requestData: DeclarativeRestApiSettings.ResultOptions,
 		executeSingleFunctions: IExecuteSingleFunctions,
 		itemIndex: number,
 		runIndex: number,
@@ -452,14 +625,21 @@ export class RoutingNode {
 
 		const executePaginationFunctions = {
 			...executeSingleFunctions,
-			makeRoutingRequest: async (requestOptions: IRequestOptionsFromParameters) => {
-				return this.rawRoutingRequest(
+			makeRoutingRequest: async (requestOptions: DeclarativeRestApiSettings.ResultOptions) => {
+				return await this.rawRoutingRequest(
 					executeSingleFunctions,
 					requestOptions,
-					itemIndex,
-					runIndex,
 					credentialType,
 					credentialsDecrypted,
+				).then(
+					async (data) =>
+						await this.postProcessResponseData(
+							executeSingleFunctions,
+							data,
+							requestData,
+							itemIndex,
+							runIndex,
+						),
 				);
 			},
 		};
@@ -475,14 +655,68 @@ export class RoutingNode {
 				);
 			} else {
 				// Pagination via JSON properties
-				const { properties } = requestOperations.pagination;
 				responseData = [];
 				if (!requestData.options.qs) {
 					requestData.options.qs = {};
 				}
 
 				// Different predefined pagination types
-				if (requestOperations.pagination.type === 'offset') {
+				if (requestOperations.pagination.type === 'generic') {
+					let tempResponseData: IN8nHttpFullResponse;
+					let tempResponseItems: INodeExecutionData[];
+					let makeAdditionalRequest: boolean;
+					let paginateRequestData: IHttpRequestOptions;
+
+					const additionalKeys = {
+						$request: requestData.options,
+						$response: {} as IN8nHttpFullResponse,
+						$version: this.node.typeVersion,
+					};
+
+					do {
+						additionalKeys.$request = requestData.options;
+
+						paginateRequestData = this.getParameterValue(
+							requestOperations.pagination.properties.request as unknown as NodeParameterValueType,
+							itemIndex,
+							runIndex,
+							executeSingleFunctions.getExecuteData(),
+							additionalKeys,
+							false,
+						) as object as IHttpRequestOptions;
+
+						// Make the HTTP request
+						tempResponseData = await this.rawRoutingRequest(
+							executeSingleFunctions,
+							{ ...requestData, options: { ...requestData.options, ...paginateRequestData } },
+							credentialType,
+							credentialsDecrypted,
+						);
+
+						additionalKeys.$response = tempResponseData;
+
+						tempResponseItems = await this.postProcessResponseData(
+							executeSingleFunctions,
+							tempResponseData,
+							requestData,
+							itemIndex,
+							runIndex,
+						);
+
+						responseData.push(...tempResponseItems);
+
+						makeAdditionalRequest = this.getParameterValue(
+							requestOperations.pagination.properties.continue,
+							itemIndex,
+							runIndex,
+							executeSingleFunctions.getExecuteData(),
+							additionalKeys,
+							false,
+						) as boolean;
+					} while (makeAdditionalRequest);
+				} else if (requestOperations.pagination.type === 'offset') {
+					const { properties } = requestOperations.pagination;
+
 					const optionsType = properties.type === 'body' ? 'body' : 'qs';
 					if (properties.type === 'body' && !requestData.options.body) {
 						requestData.options.body = {};
@@ -506,10 +740,17 @@ export class RoutingNode {
 						tempResponseData = await this.rawRoutingRequest(
 							executeSingleFunctions,
 							requestData,
-							itemIndex,
-							runIndex,
 							credentialType,
 							credentialsDecrypted,
+						).then(
+							async (data) =>
+								await this.postProcessResponseData(
+									executeSingleFunctions,
+									data,
+									requestData,
+									itemIndex,
+									runIndex,
+								),
 						);
 
 						(requestData.options[optionsType] as IDataObject)[properties.offsetParameter] =
@@ -545,23 +786,30 @@ export class RoutingNode {
 			responseData = await this.rawRoutingRequest(
 				executeSingleFunctions,
 				requestData,
-				itemIndex,
-				runIndex,
 				credentialType,
 				credentialsDecrypted,
+			).then(
+				async (data) =>
+					await this.postProcessResponseData(
+						executeSingleFunctions,
+						data,
+						requestData,
+						itemIndex,
+						runIndex,
+					),
 			);
 		}
 		return responseData;
 	}
 
 	getParameterValue(
-		parameterValue: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
+		parameterValue: NodeParameterValueType,
 		itemIndex: number,
 		runIndex: number,
 		executeData: IExecuteData,
 		additionalKeys?: IWorkflowDataProxyAdditionalKeys,
 		returnObjectAsString = false,
-	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | string {
+	): NodeParameterValueType {
 		if (
 			typeof parameterValue === 'object' ||
 			(typeof parameterValue === 'string' && parameterValue.charAt(0) === '=')
@@ -574,7 +822,6 @@ export class RoutingNode {
 				this.node.name,
 				this.connectionInputData,
 				this.mode,
-				this.additionalData.timezone,
 				additionalKeys ?? {},
 				executeData,
 				returnObjectAsString,
@@ -584,6 +831,7 @@ export class RoutingNode {
 		return parameterValue;
 	}
 
+	// eslint-disable-next-line complexity
 	getRequestOptionsFromParameters(
 		executeSingleFunctions: IExecuteSingleFunctions,
 		nodeProperties: INodeProperties | INodePropertyOptions,
@@ -591,8 +839,8 @@ export class RoutingNode {
 		runIndex: number,
 		path: string,
 		additionalKeys?: IWorkflowDataProxyAdditionalKeys,
-	): IRequestOptionsFromParameters | undefined {
-		const returnData: IRequestOptionsFromParameters = {
+	): DeclarativeRestApiSettings.ResultOptions | undefined {
+		const returnData: DeclarativeRestApiSettings.ResultOptions = {
 			options: {
 				qs: {},
 				body: {},
@@ -617,8 +865,15 @@ export class RoutingNode {
 		if (nodeProperties.routing) {
 			let parameterValue: string | undefined;
 			if (basePath + nodeProperties.name && 'type' in nodeProperties) {
+				// Extract value if it has extractValue defined or if it's a
+				// resourceLocator component. Resource locators are likely to have extractors
+				// and we can't know if the mode has one unless we dig all the way in.
+				const shouldExtractValue =
+					nodeProperties.extractValue !== undefined || nodeProperties.type === 'resourceLocator';
 				parameterValue = executeSingleFunctions.getNodeParameter(
 					basePath + nodeProperties.name,
+					undefined,
+					{ extractValue: shouldExtractValue },
 				) as string;
 			}
 
@@ -638,6 +893,7 @@ export class RoutingNode {
 						{ ...additionalKeys, $value: parameterValue },
 						false,
 					) as string;
+
 					// eslint-disable-next-line @typescript-eslint/no-explicit-any
 					(returnData.options as Record<string, any>)[key] = propertyValue;
 				}
@@ -668,22 +924,22 @@ export class RoutingNode {
 							runIndex,
 							executeSingleFunctions.getExecuteData(),
 							{ ...additionalKeys, $value: value },
-							true,
+							false,
 						) as string;
 					}
 
 					if (nodeProperties.routing.send.type === 'body') {
 						// Send in "body"
-						// eslint-disable-next-line no-lonely-if
+
 						if (nodeProperties.routing.send.propertyInDotNotation === false) {
 							// eslint-disable-next-line @typescript-eslint/no-explicit-any
-							(returnData.options.body as Record<string, any>)![propertyName] = value;
+							(returnData.options.body as Record<string, any>)[propertyName] = value;
 						} else {
 							set(returnData.options.body as object, propertyName, value);
 						}
 					} else {
 						// Send in "query"
-						// eslint-disable-next-line no-lonely-if
+
 						if (nodeProperties.routing.send.propertyInDotNotation === false) {
 							returnData.options.qs![propertyName] = value;
 						} else {
@@ -732,12 +988,34 @@ export class RoutingNode {
 				}
 
 				if (nodeProperties.routing.output.postReceive) {
-					returnData.postReceive.push({
-						data: {
-							parameterValue,
-						},
-						actions: nodeProperties.routing.output.postReceive,
+					const postReceiveActions = nodeProperties.routing.output.postReceive.filter((action) => {
+						if (typeof action === 'function') {
+							return true;
+						}
+
+						if (typeof action.enabled === 'string' && action.enabled.charAt(0) === '=') {
+							// If the propertyName is an expression resolve it
+							return this.getParameterValue(
+								action.enabled,
+								itemIndex,
+								runIndex,
+								executeSingleFunctions.getExecuteData(),
+								{ ...additionalKeys, $value: parameterValue },
+								true,
+							) as boolean;
+						}
+
+						return action.enabled !== false;
 					});
+
+					if (postReceiveActions.length) {
+						returnData.postReceive.push({
+							data: {
+								parameterValue,
+							},
+							actions: postReceiveActions,
+						});
+					}
 				}
 			}
 		}
@@ -773,7 +1051,7 @@ export class RoutingNode {
 					itemIndex,
 					runIndex,
 					`${basePath}${nodeProperties.name}`,
-					{ $value: optionValue },
+					{ $value: optionValue, $version: this.node.typeVersion },
 				);
 
 				this.mergeOptions(returnData, tempOptions);
@@ -797,6 +1075,7 @@ export class RoutingNode {
 						itemIndex,
 						runIndex,
 						`${basePath}${nodeProperties.name}`,
+						{ $version: this.node.typeVersion },
 					);
 
 					this.mergeOptions(returnData, tempOptions);

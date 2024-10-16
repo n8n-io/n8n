@@ -1,70 +1,36 @@
-import {
+import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import {
 	IDataObject,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
-import {
-	clientFields,
-	clientOperations,
-} from './ClientDescription';
+import { clientFields, clientOperations } from './ClientDescription';
 
-import {
-	contactFields,
-	contactOperations,
-} from './ContactDescription';
+import { contactFields, contactOperations } from './ContactDescription';
 
-import {
-	companyOperations,
-} from './CompanyDescription';
+import { companyOperations } from './CompanyDescription';
 
-import {
-	estimateFields,
-	estimateOperations,
-} from './EstimateDescription';
+import { estimateFields, estimateOperations } from './EstimateDescription';
 
-import {
-	expenseFields,
-	expenseOperations,
-} from './ExpenseDescription';
+import { expenseFields, expenseOperations } from './ExpenseDescription';
 
-import {
-	getAllResource,
-	harvestApiRequest,
-} from './GenericFunctions';
+import { getAllResource, harvestApiRequest } from './GenericFunctions';
 
-import {
-	invoiceFields,
-	invoiceOperations,
-} from './InvoiceDescription';
+import { invoiceFields, invoiceOperations } from './InvoiceDescription';
 
-import {
-	projectFields,
-	projectOperations,
-} from './ProjectDescription';
+import { projectFields, projectOperations } from './ProjectDescription';
 
-import {
-	taskFields,
-	taskOperations,
-} from './TaskDescription';
+import { taskFields, taskOperations } from './TaskDescription';
 
-import {
-	timeEntryFields,
-	timeEntryOperations,
-} from './TimeEntryDescription';
+import { timeEntryFields, timeEntryOperations } from './TimeEntryDescription';
 
-import {
-	userFields,
-	userOperations,
-} from './UserDescription';
+import { userFields, userOperations } from './UserDescription';
 
 export class Harvest implements INodeType {
 	description: INodeTypeDescription = {
@@ -79,17 +45,15 @@ export class Harvest implements INodeType {
 		defaults: {
 			name: 'Harvest',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'harvestApi',
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'accessToken',
-						],
+						authentication: ['accessToken'],
 					},
 				},
 			},
@@ -98,9 +62,7 @@ export class Harvest implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'oAuth2',
-						],
+						authentication: ['oAuth2'],
 					},
 				},
 			},
@@ -123,14 +85,12 @@ export class Harvest implements INodeType {
 				default: 'accessToken',
 			},
 
-
 			{
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
 				noDataExpression: true,
 				options: [
-
 					{
 						name: 'Client',
 						value: 'client',
@@ -191,7 +151,8 @@ export class Harvest implements INodeType {
 				displayName: 'Account Name or ID',
 				name: 'accountId',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				required: true,
 				typeOptions: {
 					loadOptionsMethod: 'getAccounts',
@@ -214,11 +175,19 @@ export class Harvest implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available accounts to display them to user so that he can
+			// Get all the available accounts to display them to user so that they can
 			// select them easily
 			async getAccounts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const { accounts } = await harvestApiRequest.call(this, 'GET', {}, '', {}, {}, 'https://id.getharvest.com/api/v2/accounts');
+				const { accounts } = await harvestApiRequest.call(
+					this,
+					'GET',
+					{},
+					'',
+					{},
+					{},
+					'https://id.getharvest.com/api/v2/accounts',
+				);
 				for (const account of accounts) {
 					const accountName = account.name;
 					const accountId = account.id;
@@ -234,13 +203,13 @@ export class Harvest implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let endpoint = '';
-		let requestMethod = '';
+		let requestMethod: IHttpRequestMethods;
 		let body: IDataObject | Buffer;
 		let qs: IDataObject;
 
@@ -261,15 +230,23 @@ export class Harvest implements INodeType {
 						endpoint = `time_entries/${id}`;
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push(responseData);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
+							{ itemData: { item: i } },
+						);
 
+						returnData.push(...executionData);
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//         getAll
 						// ----------------------------------
 						const responseData: IDataObject[] = await getAllResource.call(this, 'time_entries', i);
-						returnData.push.apply(returnData, responseData);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
 
+						returnData.push(...executionData);
 					} else if (operation === 'createByStartEnd') {
 						// ----------------------------------
 						//         createByStartEnd
@@ -282,12 +259,22 @@ export class Harvest implements INodeType {
 						body.task_id = this.getNodeParameter('taskId', i) as string;
 						body.spent_date = this.getNodeParameter('spentDate', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						Object.assign(body, additionalFields);
 
-						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
-						returnData.push(responseData);
+						const responseData = await harvestApiRequest.call(
+							this,
+							requestMethod,
+							qs,
+							endpoint,
+							body,
+						);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
+							{ itemData: { item: i } },
+						);
 
+						returnData.push(...executionData);
 					} else if (operation === 'createByDuration') {
 						// ----------------------------------
 						//         createByDuration
@@ -300,12 +287,23 @@ export class Harvest implements INodeType {
 						body.task_id = this.getNodeParameter('taskId', i) as string;
 						body.spent_date = this.getNodeParameter('spentDate', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						Object.assign(body, additionalFields);
 
-						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
-						returnData.push(responseData);
+						const responseData = await harvestApiRequest.call(
+							this,
+							requestMethod,
+							qs,
+							endpoint,
+							body,
+						);
 
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//         delete
@@ -316,7 +314,13 @@ export class Harvest implements INodeType {
 						endpoint = `time_entries/${id}`;
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push(responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'deleteExternal') {
 						// ----------------------------------
 						//         deleteExternal
@@ -327,8 +331,13 @@ export class Harvest implements INodeType {
 						endpoint = `time_entries/${id}/external_reference`;
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push(responseData);
 
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'restartTime') {
 						// ----------------------------------
 						//         restartTime
@@ -339,8 +348,13 @@ export class Harvest implements INodeType {
 						endpoint = `time_entries/${id}/restart`;
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push(responseData);
 
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'stopTime') {
 						// ----------------------------------
 						//         stopTime
@@ -351,8 +365,13 @@ export class Harvest implements INodeType {
 						endpoint = `time_entries/${id}/stop`;
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push(responseData);
 
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         update
@@ -362,16 +381,30 @@ export class Harvest implements INodeType {
 						const id = this.getNodeParameter('id', i) as string;
 						endpoint = `time_entries/${id}`;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						Object.assign(body, updateFields);
-						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
-						returnData.push(responseData);
+						const responseData = await harvestApiRequest.call(
+							this,
+							requestMethod,
+							qs,
+							endpoint,
+							body,
+						);
 
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else {
-						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`, { itemIndex: i });
+						throw new NodeOperationError(
+							this.getNode(),
+							`The operation "${operation}" is not known!`,
+							{ itemIndex: i },
+						);
 					}
-
 				} else if (resource === 'client') {
 					if (operation === 'get') {
 						// ----------------------------------
@@ -384,16 +417,26 @@ export class Harvest implements INodeType {
 						endpoint = `clients/${id}`;
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push(responseData);
 
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//         getAll
 						// ----------------------------------
 
 						const responseData: IDataObject[] = await getAllResource.call(this, 'clients', i);
-						returnData.push.apply(returnData, responseData);
 
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'create') {
 						// ----------------------------------
 						//         create
@@ -404,12 +447,23 @@ export class Harvest implements INodeType {
 
 						body.name = this.getNodeParameter('name', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						Object.assign(body, additionalFields);
 
-						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
-						returnData.push(responseData);
+						const responseData = await harvestApiRequest.call(
+							this,
+							requestMethod,
+							qs,
+							endpoint,
+							body,
+						);
 
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         update
@@ -419,12 +473,23 @@ export class Harvest implements INodeType {
 						const id = this.getNodeParameter('id', i) as string;
 						endpoint = `clients/${id}`;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						Object.assign(qs, updateFields);
 
-						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
-						returnData.push(responseData);
+						const responseData = await harvestApiRequest.call(
+							this,
+							requestMethod,
+							qs,
+							endpoint,
+							body,
+						);
 
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//         delete
@@ -435,9 +500,19 @@ export class Harvest implements INodeType {
 						endpoint = `clients/${id}`;
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push(responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else {
-						throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, { itemIndex: i });
+						throw new NodeOperationError(
+							this.getNode(),
+							`The resource "${resource}" is not known!`,
+							{ itemIndex: i },
+						);
 					}
 				} else if (resource === 'project') {
 					if (operation === 'get') {
@@ -451,16 +526,26 @@ export class Harvest implements INodeType {
 						endpoint = `projects/${id}`;
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push(responseData);
 
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//         getAll
 						// ----------------------------------
 
 						const responseData: IDataObject[] = await getAllResource.call(this, 'projects', i);
-						returnData.push.apply(returnData, responseData);
 
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'create') {
 						// ----------------------------------
 						//         create
@@ -475,12 +560,23 @@ export class Harvest implements INodeType {
 						body.bill_by = this.getNodeParameter('billBy', i) as string;
 						body.budget_by = this.getNodeParameter('budgetBy', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						Object.assign(body, additionalFields);
 
-						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
-						returnData.push(responseData);
+						const responseData = await harvestApiRequest.call(
+							this,
+							requestMethod,
+							qs,
+							endpoint,
+							body,
+						);
 
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         update
@@ -490,12 +586,23 @@ export class Harvest implements INodeType {
 						const id = this.getNodeParameter('id', i) as string;
 						endpoint = `projects/${id}`;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						Object.assign(body, updateFields);
-						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
-						returnData.push(responseData);
+						const responseData = await harvestApiRequest.call(
+							this,
+							requestMethod,
+							qs,
+							endpoint,
+							body,
+						);
 
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//         delete
@@ -506,9 +613,19 @@ export class Harvest implements INodeType {
 						endpoint = `projects/${id}`;
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push(responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else {
-						throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, { itemIndex: i });
+						throw new NodeOperationError(
+							this.getNode(),
+							`The resource "${resource}" is not known!`,
+							{ itemIndex: i },
+						);
 					}
 				} else if (resource === 'user') {
 					if (operation === 'get') {
@@ -522,16 +639,26 @@ export class Harvest implements INodeType {
 						endpoint = `users/${id}`;
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push(responseData);
 
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//         getAll
 						// ----------------------------------
 
 						const responseData: IDataObject[] = await getAllResource.call(this, 'users', i);
-						returnData.push.apply(returnData, responseData);
 
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'me') {
 						// ----------------------------------
 						//         me
@@ -539,11 +666,16 @@ export class Harvest implements INodeType {
 
 						requestMethod = 'GET';
 
-						endpoint = `users/me`;
+						endpoint = 'users/me';
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push(responseData);
 
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'create') {
 						// ----------------------------------
 						//         create
@@ -556,12 +688,23 @@ export class Harvest implements INodeType {
 						body.last_name = this.getNodeParameter('lastName', i) as string;
 						body.email = this.getNodeParameter('email', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						Object.assign(body, additionalFields);
 
-						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
-						returnData.push(responseData);
+						const responseData = await harvestApiRequest.call(
+							this,
+							requestMethod,
+							qs,
+							endpoint,
+							body,
+						);
 
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         update
@@ -571,12 +714,23 @@ export class Harvest implements INodeType {
 						const id = this.getNodeParameter('id', i) as string;
 						endpoint = `users/${id}`;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						Object.assign(qs, updateFields);
 
-						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
-						returnData.push(responseData);
+						const responseData = await harvestApiRequest.call(
+							this,
+							requestMethod,
+							qs,
+							endpoint,
+							body,
+						);
 
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//         delete
@@ -587,9 +741,19 @@ export class Harvest implements INodeType {
 						endpoint = `users/${id}`;
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push(responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else {
-						throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, { itemIndex: i });
+						throw new NodeOperationError(
+							this.getNode(),
+							`The resource "${resource}" is not known!`,
+							{ itemIndex: i },
+						);
 					}
 				} else if (resource === 'contact') {
 					if (operation === 'get') {
@@ -603,16 +767,26 @@ export class Harvest implements INodeType {
 						endpoint = `contacts/${id}`;
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push(responseData);
 
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//         getAll
 						// ----------------------------------
 
 						const responseData: IDataObject[] = await getAllResource.call(this, 'contacts', i);
-						returnData.push.apply(returnData, responseData);
 
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'create') {
 						// ----------------------------------
 						//         create
@@ -624,12 +798,23 @@ export class Harvest implements INodeType {
 						body.client_id = this.getNodeParameter('clientId', i) as string;
 						body.first_name = this.getNodeParameter('firstName', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						Object.assign(body, additionalFields);
 
-						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
-						returnData.push(responseData);
+						const responseData = await harvestApiRequest.call(
+							this,
+							requestMethod,
+							qs,
+							endpoint,
+							body,
+						);
 
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         update
@@ -639,12 +824,23 @@ export class Harvest implements INodeType {
 						const id = this.getNodeParameter('id', i) as string;
 						endpoint = `contacts/${id}`;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						Object.assign(qs, updateFields);
 
-						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
-						returnData.push(responseData);
+						const responseData = await harvestApiRequest.call(
+							this,
+							requestMethod,
+							qs,
+							endpoint,
+							body,
+						);
 
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//         delete
@@ -655,9 +851,19 @@ export class Harvest implements INodeType {
 						endpoint = `contacts/${id}`;
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push(responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else {
-						throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, { itemIndex: i });
+						throw new NodeOperationError(
+							this.getNode(),
+							`The resource "${resource}" is not known!`,
+							{ itemIndex: i },
+						);
 					}
 				} else if (resource === 'company') {
 					if (operation === 'get') {
@@ -666,13 +872,22 @@ export class Harvest implements INodeType {
 						// ----------------------------------
 
 						requestMethod = 'GET';
-						endpoint = `company`;
+						endpoint = 'company';
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push(responseData);
 
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else {
-						throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, { itemIndex: i });
+						throw new NodeOperationError(
+							this.getNode(),
+							`The resource "${resource}" is not known!`,
+							{ itemIndex: i },
+						);
 					}
 				} else if (resource === 'task') {
 					if (operation === 'get') {
@@ -686,16 +901,26 @@ export class Harvest implements INodeType {
 						endpoint = `tasks/${id}`;
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push(responseData);
 
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//         getAll
 						// ----------------------------------
 
 						const responseData: IDataObject[] = await getAllResource.call(this, 'tasks', i);
-						returnData.push.apply(returnData, responseData);
 
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'create') {
 						// ----------------------------------
 						//         create
@@ -706,12 +931,23 @@ export class Harvest implements INodeType {
 
 						body.name = this.getNodeParameter('name', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						Object.assign(body, additionalFields);
 
-						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
-						returnData.push(responseData);
+						const responseData = await harvestApiRequest.call(
+							this,
+							requestMethod,
+							qs,
+							endpoint,
+							body,
+						);
 
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         update
@@ -721,12 +957,23 @@ export class Harvest implements INodeType {
 						const id = this.getNodeParameter('id', i) as string;
 						endpoint = `tasks/${id}`;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						Object.assign(qs, updateFields);
 
-						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
-						returnData.push(responseData);
+						const responseData = await harvestApiRequest.call(
+							this,
+							requestMethod,
+							qs,
+							endpoint,
+							body,
+						);
 
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//         delete
@@ -737,9 +984,19 @@ export class Harvest implements INodeType {
 						endpoint = `tasks/${id}`;
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push(responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else {
-						throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, { itemIndex: i });
+						throw new NodeOperationError(
+							this.getNode(),
+							`The resource "${resource}" is not known!`,
+							{ itemIndex: i },
+						);
 					}
 				} else if (resource === 'invoice') {
 					if (operation === 'get') {
@@ -753,16 +1010,26 @@ export class Harvest implements INodeType {
 						endpoint = `invoices/${id}`;
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push(responseData);
 
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//         getAll
 						// ----------------------------------
 
 						const responseData: IDataObject[] = await getAllResource.call(this, 'invoices', i);
-						returnData.push.apply(returnData, responseData);
 
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'create') {
 						// ----------------------------------
 						//         create
@@ -773,12 +1040,23 @@ export class Harvest implements INodeType {
 
 						body.client_id = this.getNodeParameter('clientId', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						Object.assign(body, additionalFields);
 
-						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
-						returnData.push(responseData);
+						const responseData = await harvestApiRequest.call(
+							this,
+							requestMethod,
+							qs,
+							endpoint,
+							body,
+						);
 
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         update
@@ -788,12 +1066,23 @@ export class Harvest implements INodeType {
 						const id = this.getNodeParameter('id', i) as string;
 						endpoint = `invoices/${id}`;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						Object.assign(qs, updateFields);
 
-						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
-						returnData.push(responseData);
+						const responseData = await harvestApiRequest.call(
+							this,
+							requestMethod,
+							qs,
+							endpoint,
+							body,
+						);
 
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//         delete
@@ -804,9 +1093,19 @@ export class Harvest implements INodeType {
 						endpoint = `invoices/${id}`;
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push(responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else {
-						throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, { itemIndex: i });
+						throw new NodeOperationError(
+							this.getNode(),
+							`The resource "${resource}" is not known!`,
+							{ itemIndex: i },
+						);
 					}
 				} else if (resource === 'expense') {
 					if (operation === 'get') {
@@ -820,16 +1119,26 @@ export class Harvest implements INodeType {
 						endpoint = `expenses/${id}`;
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push(responseData);
 
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//         getAll
 						// ----------------------------------
 
 						const responseData: IDataObject[] = await getAllResource.call(this, 'expenses', i);
-						returnData.push.apply(returnData, responseData);
 
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'create') {
 						// ----------------------------------
 						//         create
@@ -842,12 +1151,23 @@ export class Harvest implements INodeType {
 						body.expense_category_id = this.getNodeParameter('expenseCategoryId', i) as string;
 						body.spent_date = this.getNodeParameter('spentDate', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						Object.assign(body, additionalFields);
 
-						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
-						returnData.push(responseData);
+						const responseData = await harvestApiRequest.call(
+							this,
+							requestMethod,
+							qs,
+							endpoint,
+							body,
+						);
 
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         update
@@ -857,12 +1177,23 @@ export class Harvest implements INodeType {
 						const id = this.getNodeParameter('id', i) as string;
 						endpoint = `expenses/${id}`;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						Object.assign(qs, updateFields);
 
-						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
-						returnData.push(responseData);
+						const responseData = await harvestApiRequest.call(
+							this,
+							requestMethod,
+							qs,
+							endpoint,
+							body,
+						);
 
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//         delete
@@ -873,9 +1204,19 @@ export class Harvest implements INodeType {
 						endpoint = `expenses/${id}`;
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push(responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else {
-						throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, { itemIndex: i });
+						throw new NodeOperationError(
+							this.getNode(),
+							`The resource "${resource}" is not known!`,
+							{ itemIndex: i },
+						);
 					}
 				} else if (resource === 'estimate') {
 					if (operation === 'get') {
@@ -889,16 +1230,26 @@ export class Harvest implements INodeType {
 						endpoint = `estimates/${id}`;
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push(responseData);
 
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//         getAll
 						// ----------------------------------
 
 						const responseData: IDataObject[] = await getAllResource.call(this, 'estimates', i);
-						returnData.push.apply(returnData, responseData);
 
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'create') {
 						// ----------------------------------
 						//         create
@@ -909,12 +1260,23 @@ export class Harvest implements INodeType {
 
 						body.client_id = this.getNodeParameter('clientId', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						Object.assign(body, additionalFields);
 
-						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
-						returnData.push(responseData);
+						const responseData = await harvestApiRequest.call(
+							this,
+							requestMethod,
+							qs,
+							endpoint,
+							body,
+						);
 
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         update
@@ -924,12 +1286,23 @@ export class Harvest implements INodeType {
 						const id = this.getNodeParameter('id', i) as string;
 						endpoint = `estimates/${id}`;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						Object.assign(qs, updateFields);
 
-						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
-						returnData.push(responseData);
+						const responseData = await harvestApiRequest.call(
+							this,
+							requestMethod,
+							qs,
+							endpoint,
+							body,
+						);
 
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//         delete
@@ -940,23 +1313,39 @@ export class Harvest implements INodeType {
 						endpoint = `estimates/${id}`;
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push(responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else {
-						throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, { itemIndex: i });
+						throw new NodeOperationError(
+							this.getNode(),
+							`The resource "${resource}" is not known!`,
+							{ itemIndex: i },
+						);
 					}
 				} else {
-					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, { itemIndex: i });
+					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, {
+						itemIndex: i,
+					});
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+
+					returnData.push(...executionErrorData);
 					continue;
 				}
 				throw error;
 			}
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
+		return [returnData];
 	}
-
 }

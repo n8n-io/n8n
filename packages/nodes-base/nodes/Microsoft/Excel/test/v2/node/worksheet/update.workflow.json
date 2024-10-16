@@ -1,0 +1,154 @@
+{
+	"name": "My workflow 5",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "875e8784-eb59-40d8-ba45-129a5e29881c",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [380, 140]
+		},
+		{
+			"parameters": {
+				"resource": "worksheet",
+				"operation": "update",
+				"workbook": {
+					"__rl": true,
+					"value": "01FUWX3BQ4ATCOZNR265GLA6IJEZDQUE4I",
+					"mode": "list",
+					"cachedResultName": "ПРРО копія"
+				},
+				"worksheet": {
+					"__rl": true,
+					"value": "={A0883CFE-D27E-4ECC-B94B-981830AAD55B}",
+					"mode": "id"
+				},
+				"columnToMatchOn": "id",
+				"valueToMatchOn": "3",
+				"fieldsUi": {
+					"values": [
+						{
+							"column": "name",
+							"fieldValue": "Sam"
+						},
+						{
+							"column": "age",
+							"fieldValue": "34"
+						},
+						{
+							"column": "data",
+							"fieldValue": "data 4"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "0e0ac1d2-242c-486a-9287-c70307645acc",
+			"name": "Microsoft Excel 365",
+			"type": "n8n-nodes-base.microsoftExcel",
+			"typeVersion": 2,
+			"position": [860, 140],
+			"credentials": {
+				"microsoftExcelOAuth2Api": {
+					"id": "70",
+					"name": "Microsoft Excel account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "worksheet",
+				"operation": "update",
+				"workbook": {
+					"__rl": true,
+					"value": "01FUWX3BQ4ATCOZNR265GLA6IJEZDQUE4I",
+					"mode": "list",
+					"cachedResultName": "ПРРО копія"
+				},
+				"worksheet": {
+					"__rl": true,
+					"value": "={426949D7-797F-43A9-A8A4-8FE283495A82}",
+					"mode": "id"
+				},
+				"dataMode": "autoMap",
+				"columnToMatchOn": "id",
+				"options": {}
+			},
+			"id": "d3209da3-cfaf-40a6-a318-c66c2931a28a",
+			"name": "Microsoft Excel 3651",
+			"type": "n8n-nodes-base.microsoftExcel",
+			"typeVersion": 2,
+			"position": [860, 380],
+			"credentials": {
+				"microsoftExcelOAuth2Api": {
+					"id": "70",
+					"name": "Microsoft Excel account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"jsCode": "return {\n  id: 3,\n  name: 'Don',\n  age: 37,\n  data: 'data 44',\n};"
+			},
+			"id": "eb908630-7324-46a5-890d-b5cfccf17cb2",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [660, 380]
+		}
+	],
+	"pinData": {
+		"Microsoft Excel 365": [
+			{
+				"json": {
+					"id": 3,
+					"name": "Sam",
+					"age": 34,
+					"data": "data 4"
+				}
+			}
+		],
+		"Microsoft Excel 3651": [
+			{
+				"json": {
+					"id": 3,
+					"name": "Don",
+					"age": 37,
+					"data": "data 44"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Microsoft Excel 365",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code": {
+			"main": [
+				[
+					{
+						"node": "Microsoft Excel 3651",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {}
+}

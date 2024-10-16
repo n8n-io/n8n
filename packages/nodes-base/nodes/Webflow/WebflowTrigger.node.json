@@ -2,18 +2,16 @@
 	"node": "n8n-nodes-base.webflowTrigger",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Marketing & Content"
-	],
+	"categories": ["Marketing"],
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/webflow"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/webflow/"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.webflowTrigger/"
+				"url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.webflowtrigger/"
 			}
 		]
 	}

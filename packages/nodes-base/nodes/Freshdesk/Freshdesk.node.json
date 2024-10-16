@@ -2,18 +2,16 @@
 	"node": "n8n-nodes-base.freshdesk",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Communication"
-	],
+	"categories": ["Communication"],
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/freshdesk"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/freshdesk/"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.freshdesk/"
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.freshdesk/"
 			}
 		]
 	}

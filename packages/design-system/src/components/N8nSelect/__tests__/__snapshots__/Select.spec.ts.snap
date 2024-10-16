@@ -1,0 +1,25 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`components > N8nSelect > should render correctly 1`] = `
+"<div class="n8n-select container">
+  <!--v-if-->
+  <div class="el-select el-select--large" popperappendtobody="false" limitpopperwidth="false">
+    <div class="select-trigger el-tooltip__trigger el-tooltip__trigger">
+      <!--v-if-->
+      <!--v-if-->
+      <div class="el-input el-input--large el-input--suffix">
+        <!-- input -->
+        <!-- prepend slot -->
+        <!--v-if-->
+        <div class="el-input__wrapper">
+          <!-- prefix slot -->
+          <!--v-if--><input class="el-input__inner" role="combobox" aria-activedescendant="" aria-expanded="false" aria-autocomplete="none" aria-haspopup="listbox" type="text" readonly="" autocomplete="off" tabindex="0" placeholder="Select"><!-- suffix slot --><span class="el-input__suffix"><span class="el-input__suffix-inner"><i class="el-icon el-select__caret el-select__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><path fill="currentColor" d="M831.872 340.864 512 652.672 192.128 340.864a30.592 30.592 0 0 0-42.752 0 29.12 29.12 0 0 0 0 41.6L489.664 714.24a32 32 0 0 0 44.672 0l340.288-331.712a29.12 29.12 0 0 0 0-41.728 30.592 30.592 0 0 0-42.752 0z"></path></svg></i><!--v-if--><!--v-if--><!--v-if--><!--v-if--><!--v-if--><!--v-if--></span></span>
+        </div><!-- append slot -->
+        <!--v-if-->
+      </div>
+    </div>
+    <!--teleport start-->
+    <!--teleport end-->
+  </div>
+</div>"
+`;

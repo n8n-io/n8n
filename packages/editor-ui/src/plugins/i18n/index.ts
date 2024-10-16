@@ -1,45 +1,34 @@
-import _Vue from "vue";
+import type { Plugin } from 'vue';
 import axios from 'axios';
-import VueI18n from 'vue-i18n';
-import { Store } from "vuex";
-import Vue from 'vue';
-import { INodeTranslationHeaders, IRootState } from '@/Interface';
+import { createI18n } from 'vue-i18n';
+import { locale, type N8nLocaleTranslateFn } from 'n8n-design-system';
+import type { INodeProperties, INodePropertyCollection, INodePropertyOptions } from 'n8n-workflow';
+
+import type { INodeTranslationHeaders } from '@/Interface';
+import { useUIStore } from '@/stores/ui.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useRootStore } from '@/stores/root.store';
+import englishBaseText from './locales/en.json';
 import {
 	deriveMiddleKey,
 	isNestedInCollectionLike,
 	normalize,
 	insertOptionsAndValues,
-} from "./utils";
-import {
-	locale,
-} from 'n8n-design-system';
+} from './utils';
 
-import englishBaseText from './locales/en.json';
+export const i18nInstance = createI18n({
+	locale: 'en',
+	fallbackLocale: 'en',
+	messages: { en: englishBaseText },
+});
 
-Vue.use(VueI18n);
-locale.use('en');
-
-export function I18nPlugin(vue: typeof _Vue, store: Store<IRootState>): void {
-	const i18n = new I18nClass(store);
-
-	Object.defineProperty(vue, '$locale', {
-		get() { return i18n; },
-	});
-
-	Object.defineProperty(vue.prototype, '$locale', {
-		get() { return i18n; },
-	});
-}
+type BaseTextOptions = { adjustToNumber?: number; interpolate?: Record<string, string | number> };
 
 export class I18nClass {
-	$store: Store<IRootState>;
+	private baseTextCache = new Map<string, string>();
 
-	constructor(store: Store<IRootState>) {
-		this.$store = store;
-	}
-
-	private get i18n(): VueI18n {
-		return i18nInstance;
+	private get i18n() {
+		return i18nInstance.global;
 	}
 
 	// ----------------------------------
@@ -61,50 +50,73 @@ export class I18nClass {
 	/**
 	 * Render a string of base text, i.e. a string with a fixed path to the localized value. Optionally allows for [interpolation](https://kazupon.github.io/vue-i18n/guide/formatting.html#named-formatting) when the localized value contains a string between curly braces.
 	 */
-	baseText(
-		key: BaseTextKey,
-		options?: { adjustToNumber?: number; interpolate?: { [key: string]: string } },
-	): string {
-		if (options && options.adjustToNumber) {
-			return this.i18n.tc(key, options.adjustToNumber, options && options.interpolate).toString();
+	baseText(key: BaseTextKey, options?: BaseTextOptions): string {
+		// Create a unique cache key
+		const cacheKey = `${key}-${JSON.stringify(options)}`;
+
+		// Check if the result is already cached
+		if (this.baseTextCache.has(cacheKey)) {
+			return this.baseTextCache.get(cacheKey) ?? key;
 		}
 
-		return this.i18n.t(key, options && options.interpolate).toString();
+		let result: string;
+		if (options?.adjustToNumber !== undefined) {
+			result = this.i18n.tc(key, options.adjustToNumber, options?.interpolate ?? {}).toString();
+		} else {
+			result = this.i18n.t(key, options?.interpolate ?? {}).toString();
+		}
+
+		// Store the result in the cache
+		this.baseTextCache.set(cacheKey, result);
+
+		return result;
 	}
 
 	/**
 	 * Render a string of dynamic text, i.e. a string with a constructed path to the localized value.
 	 */
-	private dynamicRender(
-		{ key, fallback }: { key: string; fallback: string; },
-	) {
-		return this.i18n.te(key) ? this.i18n.t(key).toString() : fallback;
+	private dynamicRender({ key, fallback }: { key: string; fallback?: string }) {
+		return this.i18n.te(key) ? this.i18n.t(key).toString() : (fallback ?? '');
+	}
+
+	displayTimer(msPassed: number, showMs = false): string {
+		if (msPassed < 60000) {
+			if (!showMs) {
+				return `${Math.floor(msPassed / 1000)}${this.baseText('genericHelpers.secShort')}`;
+			}
+
+			return `${msPassed / 1000}${this.baseText('genericHelpers.secShort')}`;
+		}
+
+		const secondsPassed = Math.floor(msPassed / 1000);
+		const minutesPassed = Math.floor(secondsPassed / 60);
+		const secondsLeft = (secondsPassed - minutesPassed * 60).toString().padStart(2, '0');
+
+		return `${minutesPassed}:${secondsLeft}${this.baseText('genericHelpers.minShort')}`;
 	}
 
 	/**
 	 * Render a string of header text (a node's name and description),
 	 * used variously in the nodes panel, under the node icon, etc.
 	 */
-	headerText(arg: { key: string; fallback: string; }) {
+	headerText(arg: { key: string; fallback: string }) {
 		return this.dynamicRender(arg);
 	}
 
 	/**
 	 * Namespace for methods to render text in the credentials details modal.
 	 */
-	credText () {
-		const credentialType = this.$store.getters.activeCredentialType;
+	credText() {
+		const uiStore = useUIStore();
+		const credentialType = uiStore.activeCredentialType;
 		const credentialPrefix = `n8n-nodes-base.credentials.${credentialType}`;
 		const context = this;
 
 		return {
-
 			/**
 			 * Display name for a top-level param.
 			 */
-			inputLabelDisplayName(
-				{ name: parameterName, displayName }: { name: string; displayName: string; },
-			) {
+			inputLabelDisplayName({ name: parameterName, displayName }: INodeProperties) {
 				if (['clientId', 'clientSecret'].includes(parameterName)) {
 					return context.dynamicRender({
 						key: `_reusableDynamicText.oauth2.${parameterName}`,
@@ -121,9 +133,7 @@ export class I18nClass {
 			/**
 			 * Hint for a top-level param.
 			 */
-			hint(
-				{ name: parameterName, hint }: { name: string; hint: string; },
-			) {
+			hint({ name: parameterName, hint }: INodeProperties) {
 				return context.dynamicRender({
 					key: `${credentialPrefix}.${parameterName}.hint`,
 					fallback: hint,
@@ -133,9 +143,7 @@ export class I18nClass {
 			/**
 			 * Description (tooltip text) for an input label param.
 			 */
-			inputLabelDescription(
-				{ name: parameterName, description }: { name: string; description: string; },
-			) {
+			inputLabelDescription({ name: parameterName, description }: INodeProperties) {
 				return context.dynamicRender({
 					key: `${credentialPrefix}.${parameterName}.description`,
 					fallback: description,
@@ -146,8 +154,8 @@ export class I18nClass {
 			 * Display name for an option inside an `options` or `multiOptions` param.
 			 */
 			optionsOptionDisplayName(
-				{ name: parameterName }: { name: string; },
-				{ value: optionName, name: displayName }: { value: string; name: string; },
+				{ name: parameterName }: INodeProperties,
+				{ value: optionName, name: displayName }: INodePropertyOptions,
 			) {
 				return context.dynamicRender({
 					key: `${credentialPrefix}.${parameterName}.options.${optionName}.displayName`,
@@ -159,8 +167,8 @@ export class I18nClass {
 			 * Description for an option inside an `options` or `multiOptions` param.
 			 */
 			optionsOptionDescription(
-				{ name: parameterName }: { name: string; },
-				{ value: optionName, description }: { value: string; description: string; },
+				{ name: parameterName }: INodeProperties,
+				{ value: optionName, description }: INodePropertyOptions,
 			) {
 				return context.dynamicRender({
 					key: `${credentialPrefix}.${parameterName}.options.${optionName}.description`,
@@ -171,9 +179,7 @@ export class I18nClass {
 			/**
 			 * Placeholder for a `string` param.
 			 */
-			placeholder(
-				{ name: parameterName, placeholder }: { name: string; placeholder: string; },
-			) {
+			placeholder({ name: parameterName, placeholder }: INodeProperties) {
 				return context.dynamicRender({
 					key: `${credentialPrefix}.${parameterName}.placeholder`,
 					fallback: placeholder,
@@ -186,8 +192,9 @@ export class I18nClass {
 	 * Namespace for methods to render text in the node details view,
 	 * except for `eventTriggerDescription`.
 	 */
-	nodeText () {
-		const activeNode = this.$store.getters.activeNode;
+	nodeText() {
+		const ndvStore = useNDVStore();
+		const activeNode = ndvStore.activeNode;
 		const nodeType = activeNode ? this.shortNodeType(activeNode.type) : ''; // unused in eventTriggerDescription
 		const initialKey = `n8n-nodes-base.nodes.${nodeType}.nodeView`;
 		const context = this;
@@ -196,10 +203,7 @@ export class I18nClass {
 			/**
 			 * Display name for an input label, whether top-level or nested.
 			 */
-			inputLabelDisplayName(
-				parameter: { name: string; displayName: string; type: string },
-				path: string,
-			) {
+			inputLabelDisplayName(parameter: INodeProperties | INodePropertyCollection, path: string) {
 				const middleKey = deriveMiddleKey(path, parameter);
 
 				return context.dynamicRender({
@@ -211,10 +215,7 @@ export class I18nClass {
 			/**
 			 * Description (tooltip text) for an input label, whether top-level or nested.
 			 */
-			inputLabelDescription(
-				parameter: { name: string; description: string; type: string },
-				path: string,
-			) {
+			inputLabelDescription(parameter: INodeProperties, path: string) {
 				const middleKey = deriveMiddleKey(path, parameter);
 
 				return context.dynamicRender({
@@ -226,10 +227,7 @@ export class I18nClass {
 			/**
 			 * Hint for an input, whether top-level or nested.
 			 */
-			hint(
-				parameter: { name: string; hint: string; type: string },
-				path: string,
-			) {
+			hint(parameter: INodeProperties, path: string) {
 				const middleKey = deriveMiddleKey(path, parameter);
 
 				return context.dynamicRender({
@@ -244,10 +242,7 @@ export class I18nClass {
 			 * - For an input label, the placeholder is unselectable greyed-out sample text.
 			 * - For a `collection` or `fixedCollection`, the placeholder is the button text.
 			 */
-			placeholder(
-				parameter: { name: string; placeholder: string; type: string },
-				path: string,
-			) {
+			placeholder(parameter: INodeProperties, path: string) {
 				let middleKey = parameter.name;
 
 				if (isNestedInCollectionLike(path)) {
@@ -266,8 +261,8 @@ export class I18nClass {
 			 * whether top-level or nested.
 			 */
 			optionsOptionDisplayName(
-				parameter: { name: string; },
-				{ value: optionName, name: displayName }: { value: string; name: string; },
+				parameter: INodeProperties,
+				{ value: optionName, name: displayName }: INodePropertyOptions,
 				path: string,
 			) {
 				let middleKey = parameter.name;
@@ -288,8 +283,8 @@ export class I18nClass {
 			 * whether top-level or nested.
 			 */
 			optionsOptionDescription(
-				parameter: { name: string; },
-				{ value: optionName, description }: { value: string; description: string; },
+				parameter: INodeProperties,
+				{ value: optionName, description }: INodePropertyOptions,
 				path: string,
 			) {
 				let middleKey = parameter.name;
@@ -311,8 +306,8 @@ export class I18nClass {
 			 * be nested in a `collection` or in a `fixedCollection`.
 			 */
 			collectionOptionDisplayName(
-				parameter: { name: string; },
-				{ name: optionName, displayName }: { name: string; displayName: string; },
+				parameter: INodeProperties,
+				{ name: optionName, displayName }: INodePropertyCollection,
 				path: string,
 			) {
 				let middleKey = parameter.name;
@@ -332,20 +327,14 @@ export class I18nClass {
 			 * Text for a button to add another option inside a `collection` or
 			 * `fixedCollection` param having `multipleValues: true`.
 			 */
-			multipleValueButtonText(
-				{ name: parameterName, typeOptions: { multipleValueButtonText } }:
-				{ name: string; typeOptions: { multipleValueButtonText: string; } },
-			) {
+			multipleValueButtonText({ name: parameterName, typeOptions }: INodeProperties) {
 				return context.dynamicRender({
 					key: `${initialKey}.${parameterName}.multipleValueButtonText`,
-					fallback: multipleValueButtonText,
+					fallback: typeOptions?.multipleValueButtonText,
 				});
 			},
 
-			eventTriggerDescription(
-				nodeType: string,
-				eventTriggerDescription: string,
-			) {
+			eventTriggerDescription(nodeType: string, eventTriggerDescription: string) {
 				return context.dynamicRender({
 					key: `n8n-nodes-base.nodes.${nodeType}.nodeView.eventTriggerDescription`,
 					fallback: eventTriggerDescription,
@@ -353,52 +342,58 @@ export class I18nClass {
 			},
 		};
 	}
+
+	localizeNodeName(nodeName: string, type: string) {
+		const isEnglishLocale = useRootStore().defaultLocale === 'en';
+
+		if (isEnglishLocale) return nodeName;
+
+		const nodeTypeName = this.shortNodeType(type);
+
+		return this.headerText({
+			key: `headers.${nodeTypeName}.displayName`,
+			fallback: nodeName,
+		});
+	}
+
+	autocompleteUIValues: Record<string, string | undefined> = {
+		docLinkLabel: this.baseText('expressionEdit.learnMore'),
+	};
 }
-
-const i18nInstance = new VueI18n({
-	locale: 'en',
-	fallbackLocale: 'en',
-	messages: { en: englishBaseText },
-	silentTranslationWarn: true,
-});
-
-locale.i18n((key: string, options?: {interpolate: object}) => i18nInstance.t(key, options && options.interpolate));
 
 const loadedLanguages = ['en'];
 
-function setLanguage(language: string) {
-	i18nInstance.locale = language;
+async function setLanguage(language: string) {
+	i18nInstance.global.locale = language as 'en';
 	axios.defaults.headers.common['Accept-Language'] = language;
 	document!.querySelector('html')!.setAttribute('lang', language);
 
 	// update n8n design system and element ui
-	locale.use(language);
+	await locale.use(language);
 
 	return language;
 }
 
-export async function loadLanguage(language?: string) {
-	if (!language) return Promise.resolve();
-
-	if (i18nInstance.locale === language) {
-		return Promise.resolve(setLanguage(language));
+export async function loadLanguage(language: string) {
+	if (i18nInstance.global.locale === language) {
+		return await setLanguage(language);
 	}
 
 	if (loadedLanguages.includes(language)) {
-		return Promise.resolve(setLanguage(language));
+		return await setLanguage(language);
 	}
 
-	const { numberFormats, ...rest } = require(`./locales/${language}.json`);
+	const { numberFormats, ...rest } = (await import(`./locales/${language}.json`)).default;
 
-	i18nInstance.setLocaleMessage(language, rest);
+	i18nInstance.global.setLocaleMessage(language, rest);
 
 	if (numberFormats) {
-		i18nInstance.setNumberFormat(language, numberFormats);
+		i18nInstance.global.setNumberFormat(language, numberFormats);
 	}
 
 	loadedLanguages.push(language);
 
-	setLanguage(language);
+	return await setLanguage(language);
 }
 
 /**
@@ -408,25 +403,13 @@ export function addNodeTranslation(
 	nodeTranslation: { [nodeType: string]: object },
 	language: string,
 ) {
-	const oldNodesBase = i18nInstance.messages[language]['n8n-nodes-base'] || {};
-
-	const updatedNodes = {
-		// @ts-ignore
-		...oldNodesBase.nodes,
-		...nodeTranslation,
+	const newMessages = {
+		'n8n-nodes-base': {
+			nodes: nodeTranslation,
+		},
 	};
 
-	const newNodesBase = {
-		'n8n-nodes-base': Object.assign(
-			oldNodesBase,
-			{ nodes: updatedNodes },
-		),
-	};
-
-	i18nInstance.setLocaleMessage(
-		language,
-		Object.assign(i18nInstance.messages[language], newNodesBase),
-	);
+	i18nInstance.global.mergeLocaleMessage(language, newMessages);
 }
 
 /**
@@ -436,56 +419,43 @@ export function addCredentialTranslation(
 	nodeCredentialTranslation: { [credentialType: string]: object },
 	language: string,
 ) {
-	const oldNodesBase = i18nInstance.messages[language]['n8n-nodes-base'] || {};
-
-	const updatedCredentials = {
-		// @ts-ignore
-		...oldNodesBase.credentials,
-		...nodeCredentialTranslation,
+	const newMessages = {
+		'n8n-nodes-base': {
+			credentials: nodeCredentialTranslation,
+		},
 	};
 
-	const newNodesBase = {
-		'n8n-nodes-base': Object.assign(
-			oldNodesBase,
-			{ credentials: updatedCredentials },
-		),
-	};
-
-	i18nInstance.setLocaleMessage(
-		language,
-		Object.assign(i18nInstance.messages[language], newNodesBase),
-	);
+	i18nInstance.global.mergeLocaleMessage(language, newMessages);
 }
 
 /**
  * Add a node's header strings to the i18n instance's `messages` object.
  */
-export function addHeaders(
-	headers: INodeTranslationHeaders,
-	language: string,
-) {
-	i18nInstance.setLocaleMessage(
-		language,
-		Object.assign(i18nInstance.messages[language], { headers }),
-	);
+export function addHeaders(headers: INodeTranslationHeaders, language: string) {
+	i18nInstance.global.mergeLocaleMessage(language, { headers });
 }
+
+export const i18n: I18nClass = new I18nClass();
+
+export const I18nPlugin: Plugin = {
+	async install(app) {
+		locale.i18n(((key: string, options?: BaseTextOptions) =>
+			i18nInstance.global.t(key, options?.interpolate ?? {})) as N8nLocaleTranslateFn);
+
+		app.config.globalProperties.$locale = i18n;
+
+		await locale.use('en');
+	},
+};
 
 // ----------------------------------
 //             typings
 // ----------------------------------
 
-declare module 'vue/types/vue' {
-	interface Vue {
-		$locale: I18nClass;
-	}
-}
-
-type GetBaseTextKey<T> = T extends `_${string}` ? never :  T;
+type GetBaseTextKey<T> = T extends `_${string}` ? never : T;
 
 export type BaseTextKey = GetBaseTextKey<keyof typeof englishBaseText>;
 
-type GetCategoryName<T> = T extends `nodeCreator.categoryNames.${infer C}`
-	? C
-	: never;
+type GetCategoryName<T> = T extends `nodeCreator.categoryNames.${infer C}` ? C : never;
 
 export type CategoryName = GetCategoryName<keyof typeof englishBaseText>;

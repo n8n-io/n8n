@@ -2,19 +2,16 @@
 	"node": "n8n-nodes-base.awsS3",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Development",
-		"Data & Storage"
-	],
+	"categories": ["Development", "Data & Storage"],
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/aws"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/aws/"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.awsS3/"
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.awss3/"
 			}
 		],
 		"generic": [

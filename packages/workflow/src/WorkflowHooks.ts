@@ -1,5 +1,4 @@
-// eslint-disable-next-line import/no-cycle
-import {
+import type {
 	IWorkflowBase,
 	IWorkflowExecuteHooks,
 	IWorkflowHooksOptionalParameters,
@@ -13,7 +12,7 @@ export class WorkflowHooks {
 
 	executionId: string;
 
-	sessionId?: string;
+	pushRef?: string;
 
 	retryOf?: string;
 
@@ -26,24 +25,23 @@ export class WorkflowHooks {
 		workflowData: IWorkflowBase,
 		optionalParameters?: IWorkflowHooksOptionalParameters,
 	) {
-		// eslint-disable-next-line no-param-reassign, @typescript-eslint/prefer-nullish-coalescing
+		// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
 		optionalParameters = optionalParameters || {};
 
 		this.hookFunctions = hookFunctions;
 		this.mode = mode;
 		this.executionId = executionId;
 		this.workflowData = workflowData;
-		this.sessionId = optionalParameters.sessionId;
-		this.retryOf = optionalParameters.retryOf;
+		this.pushRef = optionalParameters.pushRef;
+		// retryOf might be `null` from TypeORM
+		this.retryOf = optionalParameters.retryOf ?? undefined;
 	}
 
-	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types, @typescript-eslint/no-explicit-any
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	async executeHookFunctions(hookName: string, parameters: any[]) {
-		// tslint:disable-line:no-any
-		if (this.hookFunctions[hookName] !== undefined && Array.isArray(this.hookFunctions[hookName])) {
-			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion, no-restricted-syntax
-			for (const hookFunction of this.hookFunctions[hookName]!) {
-				// eslint-disable-next-line no-await-in-loop
+		const hooks = this.hookFunctions[hookName];
+		if (hooks !== undefined && Array.isArray(hooks)) {
+			for (const hookFunction of hooks) {
 				await hookFunction.apply(this, parameters);
 			}
 		}

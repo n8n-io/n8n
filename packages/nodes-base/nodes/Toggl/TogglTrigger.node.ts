@@ -1,14 +1,15 @@
-import { IPollFunctions } from 'n8n-core';
-import {
+import type {
+	IPollFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
-	NodeOperationError,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
-import moment from 'moment';
+import moment from 'moment-timezone';
+import { DateTime } from 'luxon';
 import { togglApiRequest } from './GenericFunctions';
 
 export class TogglTrigger implements INodeType {
@@ -21,7 +22,7 @@ export class TogglTrigger implements INodeType {
 		version: 1,
 		description: 'Starts the workflow when Toggl events occur',
 		defaults: {
-			name: 'Toggl',
+			name: 'Toggl Trigger',
 		},
 		credentials: [
 			{
@@ -31,7 +32,7 @@ export class TogglTrigger implements INodeType {
 		],
 		polling: true,
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		properties: [
 			{
 				displayName: 'Event',
@@ -62,14 +63,14 @@ export class TogglTrigger implements INodeType {
 
 		const qs: IDataObject = {};
 		let timeEntries = [];
-		qs.start_date = webhookData.lastTimeChecked;
+		qs.start_date = webhookData.lastTimeChecked ?? DateTime.now().toISODate();
 		qs.end_date = moment().format();
 
 		try {
 			timeEntries = await togglApiRequest.call(this, 'GET', endpoint, {}, qs);
 			webhookData.lastTimeChecked = qs.end_date;
 		} catch (error) {
-			throw new NodeApiError(this.getNode(), error);
+			throw new NodeApiError(this.getNode(), error as JsonObject);
 		}
 		if (Array.isArray(timeEntries) && timeEntries.length !== 0) {
 			return [this.helpers.returnJsonArray(timeEntries)];
@@ -77,5 +78,4 @@ export class TogglTrigger implements INodeType {
 
 		return null;
 	}
-
 }

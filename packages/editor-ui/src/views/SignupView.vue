@@ -1,113 +1,154 @@
+<script lang="ts" setup>
+import AuthView from '@/views/AuthView.vue';
+import { useToast } from '@/composables/useToast';
+
+import { computed, onMounted, ref } from 'vue';
+import type { IFormBoxConfig } from '@/Interface';
+import { VIEWS } from '@/constants';
+import { useUIStore } from '@/stores/ui.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useI18n } from '@/composables/useI18n';
+import { useRoute, useRouter } from 'vue-router';
+
+const uiStore = useUIStore();
+const usersStore = useUsersStore();
+
+const toast = useToast();
+const i18n = useI18n();
+const router = useRouter();
+const route = useRoute();
+
+const FORM_CONFIG: IFormBoxConfig = {
+	title: i18n.baseText('auth.signup.setupYourAccount'),
+	buttonText: i18n.baseText('auth.signup.finishAccountSetup'),
+	inputs: [
+		{
+			name: 'firstName',
+			properties: {
+				label: i18n.baseText('auth.firstName'),
+				maxlength: 32,
+				required: true,
+				autocomplete: 'given-name',
+				capitalize: true,
+			},
+		},
+		{
+			name: 'lastName',
+			properties: {
+				label: i18n.baseText('auth.lastName'),
+				maxlength: 32,
+				required: true,
+				autocomplete: 'family-name',
+				capitalize: true,
+			},
+		},
+		{
+			name: 'password',
+			properties: {
+				label: i18n.baseText('auth.password'),
+				type: 'password',
+				validationRules: [{ name: 'DEFAULT_PASSWORD_RULES' }],
+				required: true,
+				infoText: i18n.baseText('auth.defaultPasswordRequirements'),
+				autocomplete: 'new-password',
+				capitalize: true,
+			},
+		},
+		{
+			name: 'agree',
+			properties: {
+				label: i18n.baseText('auth.agreement.label'),
+				type: 'checkbox',
+			},
+		},
+	],
+};
+
+const loading = ref(false);
+const inviter = ref<null | { firstName: string; lastName: string }>(null);
+const inviterId = ref<string | null>(null);
+const inviteeId = ref<string | null>(null);
+
+const inviteMessage = computed(() => {
+	if (!inviter.value) {
+		return '';
+	}
+
+	return i18n.baseText('settings.signup.signUpInviterInfo', {
+		interpolate: { firstName: inviter.value.firstName, lastName: inviter.value.lastName },
+	});
+});
+
+onMounted(async () => {
+	const inviterIdParam = getQueryParameter('inviterId');
+	const inviteeIdParam = getQueryParameter('inviteeId');
+	try {
+		if (!inviterIdParam || !inviteeIdParam) {
+			throw new Error(i18n.baseText('auth.signup.missingTokenError'));
+		}
+
+		inviterId.value = inviterIdParam;
+		inviteeId.value = inviteeIdParam;
+
+		const invite = await usersStore.validateSignupToken({
+			inviteeId: inviteeId.value,
+			inviterId: inviterId.value,
+		});
+		inviter.value = invite.inviter as { firstName: string; lastName: string };
+	} catch (e) {
+		toast.showError(e, i18n.baseText('auth.signup.tokenValidationError'));
+		void router.replace({ name: VIEWS.SIGNIN });
+	}
+});
+
+async function onSubmit(values: { [key: string]: string | boolean }) {
+	if (!inviterId.value || !inviteeId.value) {
+		toast.showError(
+			new Error(i18n.baseText('auth.signup.tokenValidationError')),
+			i18n.baseText('auth.signup.setupYourAccountError'),
+		);
+		return;
+	}
+
+	try {
+		loading.value = true;
+		await usersStore.acceptInvitation({
+			...values,
+			inviterId: inviterId.value,
+			inviteeId: inviteeId.value,
+		} as {
+			inviteeId: string;
+			inviterId: string;
+			firstName: string;
+			lastName: string;
+			password: string;
+		});
+
+		if (values.agree === true) {
+			try {
+				await uiStore.submitContactEmail(values.email.toString(), values.agree);
+			} catch {}
+		}
+
+		await router.push({ name: VIEWS.HOMEPAGE });
+	} catch (error) {
+		toast.showError(error, i18n.baseText('auth.signup.setupYourAccountError'));
+	}
+	loading.value = false;
+}
+
+function getQueryParameter(key: 'inviterId' | 'inviteeId'): string | null {
+	return !route.query[key] || typeof route.query[key] !== 'string'
+		? null
+		: (route.query[key] as string);
+}
+</script>
+
 <template>
 	<AuthView
 		:form="FORM_CONFIG"
-		:formLoading="loading"
+		:form-loading="loading"
 		:subtitle="inviteMessage"
 		@submit="onSubmit"
 	/>
 </template>
-
-<script lang="ts">
-import AuthView from './AuthView.vue';
-import { showMessage } from '@/components/mixins/showMessage';
-
-import mixins from 'vue-typed-mixins';
-import { IFormBoxConfig } from '@/Interface';
-import { VIEWS } from '@/constants';
-
-export default mixins(
-	showMessage,
-).extend({
-	name: 'SignupView',
-	components: {
-		AuthView,
-	},
-	data() {
-		const FORM_CONFIG: IFormBoxConfig = {
-			title: this.$locale.baseText('auth.signup.setupYourAccount'),
-			buttonText: this.$locale.baseText('auth.signup.finishAccountSetup'),
-			inputs: [
-				{
-					name: 'firstName',
-					properties: {
-						label: this.$locale.baseText('auth.firstName'),
-						maxlength: 32,
-						required: true,
-						autocomplete: 'given-name',
-						capitalize: true,
-					},
-				},
-				{
-					name: 'lastName',
-					properties: {
-						label: this.$locale.baseText('auth.lastName'),
-						maxlength: 32,
-						required: true,
-						autocomplete: 'family-name',
-						capitalize: true,
-					},
-				},
-				{
-					name: 'password',
-					properties: {
-						label: this.$locale.baseText('auth.password'),
-						type: 'password',
-						validationRules: [{ name: 'DEFAULT_PASSWORD_RULES' }],
-						required: true,
-						infoText: this.$locale.baseText('auth.defaultPasswordRequirements'),
-						autocomplete: 'new-password',
-						capitalize: true,
-					},
-				},
-			],
-		};
-		return {
-			FORM_CONFIG,
-			loading: false,
-			inviter: null as null | {firstName: string, lastName: string},
-		};
-	},
-	async mounted() {
-		const inviterId = this.$route.query.inviterId;
-		const inviteeId = this.$route.query.inviteeId;
-		try {
-			if (!inviterId || !inviteeId) {
-				throw new Error(this.$locale.baseText('auth.signup.missingTokenError'));
-			}
-
-			const invite = await this.$store.dispatch('users/validateSignupToken', { inviterId, inviteeId});
-			this.inviter = invite.inviter as {firstName: string, lastName: string};
-		} catch (e) {
-			this.$showError(e, this.$locale.baseText('auth.signup.tokenValidationError'));
-			this.$router.replace({name: VIEWS.SIGNIN});
-		}
-	},
-	computed: {
-		inviteMessage(): null | string {
-			if (!this.inviter) {
-				return null;
-			}
-
-			return this.$locale.baseText(
-				'settings.signup.signUpInviterInfo',
-				{ interpolate: { firstName: this.inviter.firstName, lastName: this.inviter.lastName }},
-			);
-		},
-	},
-	methods: {
-		async onSubmit(values: {[key: string]: string}) {
-			try {
-				this.loading = true;
-				const inviterId = this.$route.query.inviterId;
-				const inviteeId = this.$route.query.inviteeId;
-				await this.$store.dispatch('users/signup', {...values, inviterId, inviteeId});
-
-				await this.$router.push({ name: VIEWS.HOMEPAGE });
-			} catch (error) {
-				this.$showError(error, this.$locale.baseText('auth.signup.setupYourAccountError'));
-			}
-			this.loading = false;
-		},
-	},
-});
-</script>

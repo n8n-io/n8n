@@ -1,50 +1,20 @@
-<template functional>
-	<component :is="$options.components.N8nButton"
-		:type="props.type"
-		:disabled="props.disabled"
-		:size="props.size"
-		:loading="props.loading"
-		:title="props.title"
-		:icon="props.icon"
-		:theme="props.theme"
-		@click="(e) => listeners.click && listeners.click(e)"
-		circle
-	/>
-</template>
+<script lang="ts" setup>
+import type { IconButtonProps } from 'n8n-design-system/types/button';
 
-<script lang="ts">
 import N8nButton from '../N8nButton';
 
-export default {
-	name: 'n8n-icon-button',
-	components: {
-		N8nButton,
-	},
-	props: {
-		type: {
-			type: String,
-		},
-		title: {
-			type: String,
-		},
-		size: {
-			type: String,
-			default: 'medium',
-		},
-		loading: {
-			type: Boolean,
-			default: false,
-		},
-		disabled: {
-			type: Boolean,
-			default: false,
-		},
-		icon: {
-			required: true,
-		},
-		theme: {
-			type: String,
-		},
-	},
-};
+defineOptions({ name: 'N8nIconButton' });
+withDefaults(defineProps<IconButtonProps>(), {
+	type: 'primary',
+	size: 'medium',
+	loading: false,
+	outline: false,
+	text: false,
+	disabled: false,
+	active: false,
+});
 </script>
+
+<template>
+	<N8nButton square v-bind="{ ...$attrs, ...$props }" />
+</template>

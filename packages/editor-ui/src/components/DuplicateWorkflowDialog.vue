@@ -1,140 +1,193 @@
+<script lang="ts" setup>
+import { ref, watch, onMounted, nextTick } from 'vue';
+import { MAX_WORKFLOW_NAME_LENGTH, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
+import { useToast } from '@/composables/useToast';
+import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
+import Modal from '@/components/Modal.vue';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import type { IWorkflowDataUpdate } from '@/Interface';
+import { createEventBus } from 'n8n-design-system/utils';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { useRouter } from 'vue-router';
+import { useI18n } from '@/composables/useI18n';
+import { useTelemetry } from '@/composables/useTelemetry';
+
+const props = defineProps<{
+	modalName: string;
+	isActive: boolean;
+	data: { tags: string[]; id: string; name: string };
+}>();
+
+const router = useRouter();
+const workflowHelpers = useWorkflowHelpers({ router });
+const { showMessage, showError } = useToast();
+const i18n = useI18n();
+const telemetry = useTelemetry();
+
+const credentialsStore = useCredentialsStore();
+const settingsStore = useSettingsStore();
+const workflowsStore = useWorkflowsStore();
+
+const name = ref('');
+const currentTagIds = ref(props.data.tags);
+const isSaving = ref(false);
+const prevTagIds = ref(currentTagIds.value);
+const modalBus = createEventBus();
+const dropdownBus = createEventBus();
+
+const nameInputRef = ref<HTMLElement>();
+
+const focusOnSelect = () => {
+	dropdownBus.emit('focus');
+};
+
+const focusOnNameInput = () => {
+	if (nameInputRef.value?.focus) {
+		nameInputRef.value.focus();
+	}
+};
+
+const onTagsBlur = () => {
+	prevTagIds.value = currentTagIds.value;
+};
+
+const onTagsEsc = () => {
+	currentTagIds.value = prevTagIds.value;
+};
+
+const closeDialog = () => {
+	modalBus.emit('close');
+};
+
+const save = async (): Promise<void> => {
+	const workflowName = name.value.trim();
+	if (!workflowName) {
+		showMessage({
+			title: i18n.baseText('duplicateWorkflowDialog.errors.missingName.title'),
+			message: i18n.baseText('duplicateWorkflowDialog.errors.missingName.message'),
+			type: 'error',
+		});
+		return;
+	}
+
+	const currentWorkflowId = props.data.id;
+	isSaving.value = true;
+
+	try {
+		let workflowToUpdate: IWorkflowDataUpdate | undefined;
+		if (currentWorkflowId !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+			const {
+				createdAt,
+				updatedAt,
+				usedCredentials,
+				id,
+				homeProject,
+				sharedWithProjects,
+				...workflow
+			} = await workflowsStore.fetchWorkflow(props.data.id);
+			workflowToUpdate = workflow;
+
+			workflowHelpers.removeForeignCredentialsFromWorkflow(
+				workflowToUpdate,
+				credentialsStore.allCredentials,
+			);
+		}
+
+		const saved = await workflowHelpers.saveAsNewWorkflow({
+			name: workflowName,
+			data: workflowToUpdate,
+			tags: currentTagIds.value,
+			resetWebhookUrls: true,
+			openInNewWindow: true,
+			resetNodeIds: true,
+		});
+
+		if (saved) {
+			closeDialog();
+			telemetry.track('User duplicated workflow', {
+				old_workflow_id: currentWorkflowId,
+				workflow_id: props.data.id,
+				sharing_role: workflowHelpers.getWorkflowProjectRole(props.data.id),
+			});
+		}
+	} catch (error) {
+		if (error.httpStatusCode === 403) {
+			error.message = i18n.baseText('duplicateWorkflowDialog.errors.forbidden.message');
+			showError(error, i18n.baseText('duplicateWorkflowDialog.errors.forbidden.title'));
+		} else {
+			showError(error, i18n.baseText('duplicateWorkflowDialog.errors.generic.title'));
+		}
+	} finally {
+		isSaving.value = false;
+	}
+};
+
+watch(
+	() => props.isActive,
+	(active) => {
+		if (active) {
+			focusOnSelect();
+		}
+	},
+);
+
+onMounted(async () => {
+	name.value = await workflowsStore.getDuplicateCurrentWorkflowName(props.data.name);
+	await nextTick();
+	focusOnNameInput();
+});
+</script>
+
 <template>
 	<Modal
 		:name="modalName"
-		:eventBus="modalBus"
-		@enter="save"
-		:title="$locale.baseText('duplicateWorkflowDialog.duplicateWorkflow')"
+		:event-bus="modalBus"
+		:title="i18n.baseText('duplicateWorkflowDialog.duplicateWorkflow')"
 		:center="true"
 		width="420px"
+		@enter="save"
 	>
-		<template v-slot:content>
+		<template #content>
 			<div :class="$style.content">
 				<n8n-input
+					ref="nameInputRef"
 					v-model="name"
-					ref="nameInput"
-					:placeholder="$locale.baseText('duplicateWorkflowDialog.enterWorkflowName')"
+					:placeholder="i18n.baseText('duplicateWorkflowDialog.enterWorkflowName')"
 					:maxlength="MAX_WORKFLOW_NAME_LENGTH"
 				/>
-				<TagsDropdown
-					v-if="areTagsEnabled"
-					:createEnabled="true"
-					:currentTagIds="currentTagIds"
-					:eventBus="dropdownBus"
+				<WorkflowTagsDropdown
+					v-if="settingsStore.areTagsEnabled"
+					ref="dropdown"
+					v-model="currentTagIds"
+					:create-enabled="true"
+					:event-bus="dropdownBus"
+					:placeholder="i18n.baseText('duplicateWorkflowDialog.chooseOrCreateATag')"
 					@blur="onTagsBlur"
 					@esc="onTagsEsc"
-					@update="onTagsUpdate"
-					:placeholder="$locale.baseText('duplicateWorkflowDialog.chooseOrCreateATag')"
-					ref="dropdown"
 				/>
 			</div>
 		</template>
-		<template v-slot:footer="{ close }">
+		<template #footer="{ close }">
 			<div :class="$style.footer">
-				<n8n-button @click="save" :loading="isSaving" :label="$locale.baseText('duplicateWorkflowDialog.save')" float="right" />
-				<n8n-button type="outline" @click="close" :disabled="isSaving" :label="$locale.baseText('duplicateWorkflowDialog.cancel')" float="right" />
+				<n8n-button
+					:loading="isSaving"
+					:label="i18n.baseText('duplicateWorkflowDialog.save')"
+					float="right"
+					@click="save"
+				/>
+				<n8n-button
+					type="secondary"
+					:disabled="isSaving"
+					:label="i18n.baseText('duplicateWorkflowDialog.cancel')"
+					float="right"
+					@click="close"
+				/>
 			</div>
 		</template>
 	</Modal>
 </template>
-
-<script lang="ts">
-import Vue from "vue";
-import mixins from "vue-typed-mixins";
-
-import { MAX_WORKFLOW_NAME_LENGTH } from "@/constants";
-import { workflowHelpers } from "@/components/mixins/workflowHelpers";
-import { showMessage } from "@/components/mixins/showMessage";
-import TagsDropdown from "@/components/TagsDropdown.vue";
-import Modal from "./Modal.vue";
-import { mapGetters } from "vuex";
-
-export default mixins(showMessage, workflowHelpers).extend({
-	components: { TagsDropdown, Modal },
-	name: "DuplicateWorkflow",
-	props: ["modalName", "isActive"],
-	data() {
-		const currentTagIds = this.$store.getters[
-			"workflowTags"
-		] as string[];
-
-		return {
-			name: '',
-			currentTagIds,
-			isSaving: false,
-			modalBus: new Vue(),
-			dropdownBus: new Vue(),
-			MAX_WORKFLOW_NAME_LENGTH,
-			prevTagIds: currentTagIds,
-		};
-	},
-	async mounted() {
-		this.$data.name = await this.$store.dispatch('workflows/getDuplicateCurrentWorkflowName');
-		this.$nextTick(() => this.focusOnNameInput());
-	},
-	computed: {
-		...mapGetters('settings', ['areTagsEnabled']),
-	},
-	watch: {
-		isActive(active) {
-			if (active) {
-				this.focusOnSelect();
-			}
-		},
-	},
-	methods: {
-		focusOnSelect() {
-			this.dropdownBus.$emit('focus');
-		},
-		focusOnNameInput() {
-			const input = this.$refs.nameInput as HTMLElement;
-			if (input && input.focus) {
-				input.focus();
-			}
-		},
-		onTagsBlur() {
-			this.prevTagIds = this.currentTagIds;
-		},
-		onTagsEsc() {
-			// revert last changes
-			this.currentTagIds = this.prevTagIds;
-		},
-		onTagsUpdate(tagIds: string[]) {
-			this.currentTagIds = tagIds;
-		},
-		async save(): Promise<void> {
-			const name = this.name.trim();
-			if (!name) {
-				this.$showMessage({
-					title: this.$locale.baseText('duplicateWorkflowDialog.showMessage.title'),
-					message: this.$locale.baseText('duplicateWorkflowDialog.showMessage.message'),
-					type: "error",
-				});
-
-				return;
-			}
-
-			const currentWorkflowId = this.$store.getters.workflowId;
-
-			this.$data.isSaving = true;
-
-			const saved = await this.saveAsNewWorkflow({name, tags: this.currentTagIds, resetWebhookUrls: true, openInNewWindow: true});
-
-			if (saved) {
-				this.closeDialog();
-				this.$telemetry.track('User duplicated workflow', {
-					old_workflow_id: currentWorkflowId,
-					workflow_id: this.$store.getters.workflowId,
-				});
-			}
-
-			this.$data.isSaving = false;
-		},
-		closeDialog(): void {
-			this.modalBus.$emit("close");
-		},
-	},
-});
-</script>
 
 <style lang="scss" module>
 .content {

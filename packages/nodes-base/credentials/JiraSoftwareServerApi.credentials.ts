@@ -1,4 +1,4 @@
-import {
+import type {
 	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -7,8 +7,11 @@ import {
 
 export class JiraSoftwareServerApi implements ICredentialType {
 	name = 'jiraSoftwareServerApi';
+
 	displayName = 'Jira SW Server API';
+
 	documentationUrl = 'jira';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Email',
@@ -34,15 +37,17 @@ export class JiraSoftwareServerApi implements ICredentialType {
 			placeholder: 'https://example.com',
 		},
 	];
+
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {
-			auth:{
+			auth: {
 				username: '={{$credentials.email}}',
 				password: '={{$credentials.password}}',
 			},
 		},
 	};
+
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{$credentials?.domain}}',

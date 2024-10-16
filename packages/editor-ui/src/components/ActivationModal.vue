@@ -1,110 +1,130 @@
+<script setup lang="ts">
+import { computed, ref } from 'vue';
+
+import Modal from '@/components/Modal.vue';
+import {
+	WORKFLOW_ACTIVE_MODAL_KEY,
+	WORKFLOW_SETTINGS_MODAL_KEY,
+	LOCAL_STORAGE_ACTIVATION_FLAG,
+	VIEWS,
+} from '../constants';
+import { getActivatableTriggerNodes, getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useStorage } from '@/composables/useStorage';
+import { useExecutionsStore } from '@/stores/executions.store';
+import { useRouter } from 'vue-router';
+import { useI18n } from '@/composables/useI18n';
+
+const checked = ref(false);
+
+const executionsStore = useExecutionsStore();
+const workflowsStore = useWorkflowsStore();
+const nodeTypesStore = useNodeTypesStore();
+const uiStore = useUIStore();
+
+const router = useRouter();
+const i18n = useI18n();
+
+const triggerContent = computed(() => {
+	const foundTriggers = getActivatableTriggerNodes(workflowsStore.workflowTriggerNodes);
+	if (!foundTriggers.length) {
+		return '';
+	}
+
+	if (foundTriggers.length > 1) {
+		return i18n.baseText('activationModal.yourTriggersWillNowFire');
+	}
+
+	const trigger = foundTriggers[0];
+
+	const triggerNodeType = nodeTypesStore.getNodeType(trigger.type, trigger.typeVersion);
+	if (triggerNodeType) {
+		if (triggerNodeType.activationMessage) {
+			return triggerNodeType.activationMessage;
+		}
+
+		const serviceName = getTriggerNodeServiceName(triggerNodeType);
+		if (trigger.webhookId) {
+			return i18n.baseText('activationModal.yourWorkflowWillNowListenForEvents', {
+				interpolate: {
+					serviceName,
+				},
+			});
+		} else if (triggerNodeType.polling) {
+			return i18n.baseText('activationModal.yourWorkflowWillNowRegularlyCheck', {
+				interpolate: {
+					serviceName,
+				},
+			});
+		}
+	}
+	return i18n.baseText('activationModal.yourTriggerWillNowFire');
+});
+
+const showExecutionsList = async () => {
+	const activeExecution = executionsStore.activeExecution;
+	const currentWorkflow = workflowsStore.workflowId;
+
+	if (activeExecution) {
+		router
+			.push({
+				name: VIEWS.EXECUTION_PREVIEW,
+				params: { name: currentWorkflow, executionId: activeExecution.id },
+			})
+			.catch(() => {});
+	} else {
+		router.push({ name: VIEWS.EXECUTION_HOME, params: { name: currentWorkflow } }).catch(() => {});
+	}
+	uiStore.closeModal(WORKFLOW_ACTIVE_MODAL_KEY);
+};
+
+const showSettings = async () => {
+	uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
+};
+
+const handleCheckboxChange = (checkboxValue: boolean) => {
+	checked.value = checkboxValue;
+	useStorage(LOCAL_STORAGE_ACTIVATION_FLAG).value = checkboxValue.toString();
+};
+</script>
+
 <template>
 	<Modal
 		:name="WORKFLOW_ACTIVE_MODAL_KEY"
-		:title="$locale.baseText('activationModal.workflowActivated')"
+		:title="i18n.baseText('activationModal.workflowActivated')"
 		width="460px"
 	>
-		<template v-slot:content>
+		<template #content>
 			<div>
 				<n8n-text>{{ triggerContent }}</n8n-text>
 			</div>
 			<div :class="$style.spaced">
 				<n8n-text>
 					<n8n-text :bold="true">
-						{{ $locale.baseText('activationModal.theseExecutionsWillNotShowUp') }}
+						{{ i18n.baseText('activationModal.theseExecutionsWillNotShowUp') }}
 					</n8n-text>
-					{{ $locale.baseText('activationModal.butYouCanSeeThem') }}
+					{{ i18n.baseText('activationModal.butYouCanSeeThem') }}
 					<a @click="showExecutionsList">
-						{{ $locale.baseText('activationModal.executionList') }}
+						{{ i18n.baseText('activationModal.executionList') }}
 					</a>
-					{{ $locale.baseText('activationModal.ifYouChooseTo') }}
-					<a @click="showSettings">{{ $locale.baseText('activationModal.saveExecutions') }}</a>
+					{{ i18n.baseText('activationModal.ifYouChooseTo') }}
+					<a @click="showSettings">{{ i18n.baseText('activationModal.saveExecutions') }}</a>
 				</n8n-text>
 			</div>
 		</template>
 
-
-		<template v-slot:footer="{ close }">
+		<template #footer="{ close }">
 			<div :class="$style.footer">
-				<el-checkbox :value="checked" @change="handleCheckboxChange">{{ $locale.baseText('activationModal.dontShowAgain') }}</el-checkbox>
-				<n8n-button @click="close" :label="$locale.baseText('activationModal.gotIt')" />
+				<el-checkbox :model-value="checked" @update:model-value="handleCheckboxChange">{{
+					i18n.baseText('generic.dontShowAgain')
+				}}</el-checkbox>
+				<n8n-button :label="i18n.baseText('activationModal.gotIt')" @click="close" />
 			</div>
 		</template>
 	</Modal>
 </template>
-
-<script lang="ts">
-import Vue from 'vue';
-
-import Modal from '@/components/Modal.vue';
-import { WORKFLOW_ACTIVE_MODAL_KEY, EXECUTIONS_MODAL_KEY, WORKFLOW_SETTINGS_MODAL_KEY, LOCAL_STORAGE_ACTIVATION_FLAG } from '../constants';
-import { getActivatableTriggerNodes, getTriggerNodeServiceName } from './helpers';
-import { INodeTypeDescription } from 'n8n-workflow';
-
-export default Vue.extend({
-	name: 'ActivationModal',
-	components: {
-		Modal,
-	},
-	props: [
-		'modalName',
-	],
-	data () {
-		return {
-			WORKFLOW_ACTIVE_MODAL_KEY,
-			checked: false,
-		};
-	},
-	methods: {
-		async showExecutionsList () {
-			this.$store.dispatch('ui/openModal', EXECUTIONS_MODAL_KEY);
-		},
-		async showSettings() {
-			this.$store.dispatch('ui/openModal', WORKFLOW_SETTINGS_MODAL_KEY);
-		},
-		handleCheckboxChange (checkboxValue: boolean) {
-			this.checked = checkboxValue;
-			window.localStorage.setItem(LOCAL_STORAGE_ACTIVATION_FLAG, checkboxValue.toString());
-		},
-	},
-	computed: {
-		triggerContent (): string {
-			const foundTriggers = getActivatableTriggerNodes(this.$store.getters.workflowTriggerNodes);
-			if (!foundTriggers.length) {
-				return '';
-			}
-
-			if (foundTriggers.length > 1) {
-				return this.$locale.baseText('activationModal.yourTriggersWillNowFire');
-			}
-
-			const trigger = foundTriggers[0];
-
-			const triggerNodeType = this.$store.getters.nodeType(trigger.type, trigger.typeVersion) as INodeTypeDescription;
-			if (triggerNodeType.activationMessage) {
-				return triggerNodeType.activationMessage;
-			}
-
-			const serviceName = getTriggerNodeServiceName(triggerNodeType);
-			if (trigger.webhookId) {
-				return this.$locale.baseText('activationModal.yourWorkflowWillNowListenForEvents', {
-					interpolate: {
-						serviceName,
-					},
-				});
-			} else if (triggerNodeType.polling) {
-				return this.$locale.baseText('activationModal.yourWorkflowWillNowRegularlyCheck', {
-					interpolate: {
-						serviceName,
-					},
-				});
-			} else {
-				return this.$locale.baseText('activationModal.yourTriggerWillNowFire');
-			}
-		},
-	},
-});
-</script>
 
 <style lang="scss" module>
 .spaced {
@@ -118,5 +138,4 @@ export default Vue.extend({
 		margin-left: var(--spacing-s);
 	}
 }
-
 </style>

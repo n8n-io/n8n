@@ -1,23 +1,14 @@
-import {
+import type {
 	IExecuteFunctions,
-} from 'n8n-core';
-import {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import {
-	upleadApiRequest,
-} from './GenericFunctions';
-import {
-	companyFields,
-	companyOperations,
-} from './CompanyDesciption';
-import {
-	personFields,
-	personOperations,
-} from './PersonDescription';
+import { NodeConnectionType } from 'n8n-workflow';
+import { upleadApiRequest } from './GenericFunctions';
+import { companyFields, companyOperations } from './CompanyDesciption';
+import { personFields, personOperations } from './PersonDescription';
 
 export class Uplead implements INodeType {
 	description: INodeTypeDescription = {
@@ -32,8 +23,8 @@ export class Uplead implements INodeType {
 		defaults: {
 			name: 'Uplead',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'upleadApi',
@@ -50,12 +41,14 @@ export class Uplead implements INodeType {
 					{
 						name: 'Company',
 						value: 'company',
-						description: 'Company API lets you lookup company data via a domain name or company name',
+						description:
+							'Company API lets you lookup company data via a domain name or company name',
 					},
 					{
 						name: 'Person',
 						value: 'person',
-						description: 'Person API lets you lookup a person based on an email address OR based on a domain name + first name + last name',
+						description:
+							'Person API lets you lookup a person based on an email address OR based on a domain name + first name + last name',
 					},
 				],
 				default: 'company',
@@ -73,8 +66,8 @@ export class Uplead implements INodeType {
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'person') {

@@ -1,22 +1,23 @@
-import {
+import type {
 	IExecuteFunctions,
 	IHookFunctions,
-} from 'n8n-core';
-
-import {
-	IDataObject, NodeApiError, NodeOperationError,
+	IDataObject,
+	JsonObject,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 /**
  * Make an API request to MSG91
  *
- * @param {IHookFunctions} this
- * @param {string} method
- * @param {string} url
- * @param {object} body
- * @returns {Promise<any>}
  */
-export async function msg91ApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: IDataObject, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
+export async function msg91ApiRequest(
+	this: IHookFunctions | IExecuteFunctions,
+	method: IHttpRequestMethods,
+	endpoint: string,
+	body: IDataObject,
+	query?: IDataObject,
+): Promise<any> {
 	const credentials = await this.getCredentials('msg91Api');
 
 	if (query === undefined) {
@@ -36,6 +37,6 @@ export async function msg91ApiRequest(this: IHookFunctions | IExecuteFunctions, 
 	try {
 		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

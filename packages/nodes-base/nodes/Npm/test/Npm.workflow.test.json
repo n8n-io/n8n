@@ -1,0 +1,117 @@
+{
+	"name": "Test NPM",
+	"nodes": [
+		{
+			"parameters": {},
+			"name": "Execute Workflow",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [620, 440]
+		},
+		{
+			"parameters": {
+				"resource": "distTag",
+				"operation": "getMany",
+				"packageName": "n8n"
+			},
+			"name": "Get All dist-tags",
+			"type": "n8n-nodes-base.npm",
+			"credentials": {
+				"npmApi": {
+					"id": "1"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "package",
+				"operation": "getVersions",
+				"packageName": "n8n"
+			},
+			"name": "Get Versions",
+			"type": "n8n-nodes-base.npm",
+			"credentials": {
+				"npmApi": {
+					"id": "1"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "package",
+				"operation": "getMetadata",
+				"packageName": "n8n",
+				"packageVersion": "latest"
+			},
+			"name": "Get Metadata",
+			"type": "n8n-nodes-base.npm",
+			"credentials": {
+				"npmApi": {
+					"id": "1"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Get All dist-tags": [
+			{
+				"json": {
+					"latest": "0.225.2",
+					"next": "0.226.2"
+				}
+			}
+		],
+		"Get Versions": [
+			{
+				"json": {
+					"version": "0.227.0",
+					"published_at": "2023-05-03T13:44:32.079Z"
+				}
+			},
+			{
+				"json": {
+					"version": "0.226.2",
+					"published_at": "2023-05-03T09:41:30.844Z"
+				}
+			},
+			{
+				"json": {
+					"version": "0.225.2",
+					"published_at": "2023-04-25T09:45:36.407Z"
+				}
+			}
+		],
+		"Get Metadata": [
+			{
+				"json": {
+					"name": "n8n",
+					"version": "0.225.2",
+					"rest": "of the properties"
+				}
+			}
+		]
+	},
+	"connections": {
+		"Execute Workflow": {
+			"main": [
+				[
+					{
+						"node": "Get All dist-tags",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Versions",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Metadata",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

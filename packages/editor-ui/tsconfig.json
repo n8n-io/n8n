@@ -1,45 +1,30 @@
 {
+	"extends": "../../tsconfig.json",
 	"compilerOptions": {
+		"rootDirs": [".", "../design-system/src", "../@n8n/chat/src"],
+		"outDir": "dist",
 		"target": "esnext",
 		"module": "esnext",
-		"removeComments": true,
-		"forceConsistentCasingInFileNames": true,
-		"noImplicitReturns": true,
-		"strict": true,
-		"jsx": "preserve",
-		"skipLibCheck": true,
+		"allowJs": true,
 		"importHelpers": true,
-		"moduleResolution": "node",
-		"esModuleInterop": true,
+		"incremental": false,
 		"allowSyntheticDefaultImports": true,
-		"useUnknownInCatchVariables": false,
 		"resolveJsonModule": true,
-		"sourceMap": true,
 		"baseUrl": ".",
 		"types": [
-			"webpack-env",
-			"jest"
+			"vitest/globals",
+			"unplugin-icons/types/vue",
+			"../design-system/src/shims-modules.d.ts"
 		],
 		"paths": {
-			"@/*": [
-				"src/*"
-			]
+			"@/*": ["./src/*"],
+			"n8n-design-system": ["../design-system/src/main.ts"],
+			"n8n-design-system/*": ["../design-system/src/*"],
+			"@n8n/chat/*": ["../@n8n/chat/src/*"]
 		},
-		"lib": [
-			"esnext",
-			"dom",
-			"dom.iterable",
-			"scripthost"
-		]
+		"lib": ["esnext", "dom", "dom.iterable", "scripthost"],
+		// TODO: remove all options below this line
+		"useUnknownInCatchVariables": false
 	},
-	"include": [
-		"src/**/*.ts",
-		"src/**/*.tsx",
-		"src/**/*.vue",
-		"tests/**/*.ts",
-		"tests/**/*.tsx",
-	],
-	"exclude": [
-		"node_modules"
-	]
+	"include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.vue"]
 }

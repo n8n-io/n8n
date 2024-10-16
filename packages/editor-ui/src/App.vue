@@ -1,204 +1,169 @@
+<script setup lang="ts">
+import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue';
+import { useRoute } from 'vue-router';
+import LoadingView from '@/views/LoadingView.vue';
+import BannerStack from '@/components/banners/BannerStack.vue';
+import AskAssistantChat from '@/components/AskAssistant/AskAssistantChat.vue';
+import Modals from '@/components/Modals.vue';
+import Telemetry from '@/components/Telemetry.vue';
+import AskAssistantFloatingButton from '@/components/AskAssistant/AskAssistantFloatingButton.vue';
+import { loadLanguage } from '@/plugins/i18n';
+import { useExternalHooks } from '@/composables/useExternalHooks';
+import { APP_MODALS_ELEMENT_ID, HIRING_BANNER, VIEWS } from '@/constants';
+import { useRootStore } from '@/stores/root.store';
+import { useAssistantStore } from '@/stores/assistant.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useHistoryHelper } from '@/composables/useHistoryHelper';
+
+const route = useRoute();
+const rootStore = useRootStore();
+const assistantStore = useAssistantStore();
+const uiStore = useUIStore();
+const usersStore = useUsersStore();
+const settingsStore = useSettingsStore();
+
+// Initialize undo/redo
+useHistoryHelper(route);
+
+const loading = ref(true);
+const defaultLocale = computed(() => rootStore.defaultLocale);
+const isDemoMode = computed(() => route.name === VIEWS.DEMO);
+const showAssistantButton = computed(() => assistantStore.canShowAssistantButtonsOnCanvas);
+
+const appGrid = ref<Element | null>(null);
+
+const assistantSidebarWidth = computed(() => assistantStore.chatWidth);
+
+watch(defaultLocale, (newLocale) => {
+	void loadLanguage(newLocale);
+});
+
+onMounted(async () => {
+	logHiringBanner();
+	void useExternalHooks().run('app.mount');
+	loading.value = false;
+	window.addEventListener('resize', updateGridWidth);
+	await updateGridWidth();
+});
+
+onBeforeUnmount(() => {
+	window.removeEventListener('resize', updateGridWidth);
+});
+
+// As assistant sidebar width changes, recalculate the total width regularly
+watch(assistantSidebarWidth, async () => {
+	await updateGridWidth();
+});
+
+const logHiringBanner = () => {
+	if (settingsStore.isHiringBannerEnabled && !isDemoMode.value) {
+		console.log(HIRING_BANNER);
+	}
+};
+
+const updateGridWidth = async () => {
+	await nextTick();
+	if (appGrid.value) {
+		uiStore.appGridWidth = appGrid.value.clientWidth;
+	}
+};
+</script>
+
 <template>
-	<div :class="$style.container">
-		<LoadingView v-if="loading" />
-		<div v-else id="app" :class="$style.container">
+	<LoadingView v-if="loading" />
+	<div
+		v-else
+		id="n8n-app"
+		:class="{
+			[$style.container]: true,
+			[$style.sidebarCollapsed]: uiStore.sidebarMenuCollapsed,
+		}"
+	>
+		<div id="app-grid" ref="appGrid" :class="$style['app-grid']">
+			<div id="banners" :class="$style.banners">
+				<BannerStack v-if="!isDemoMode" />
+			</div>
 			<div id="header" :class="$style.header">
 				<router-view name="header"></router-view>
 			</div>
-			<div id="sidebar" :class="$style.sidebar">
+			<div v-if="usersStore.currentUser" id="sidebar" :class="$style.sidebar">
 				<router-view name="sidebar"></router-view>
 			</div>
 			<div id="content" :class="$style.content">
-				<router-view />
+				<router-view v-slot="{ Component }">
+					<keep-alive v-if="$route.meta.keepWorkflowAlive" include="NodeViewSwitcher" :max="1">
+						<component :is="Component" />
+					</keep-alive>
+					<component :is="Component" v-else />
+				</router-view>
 			</div>
-			<Modals />
+			<div :id="APP_MODALS_ELEMENT_ID" :class="$style.modals">
+				<Modals />
+			</div>
 			<Telemetry />
+			<AskAssistantFloatingButton v-if="showAssistantButton" />
 		</div>
+		<AskAssistantChat />
 	</div>
 </template>
 
-<script lang="ts">
-import Modals from './components/Modals.vue';
-import LoadingView from './views/LoadingView.vue';
-import Telemetry from './components/Telemetry.vue';
-import { HIRING_BANNER, VIEWS } from './constants';
-
-import mixins from 'vue-typed-mixins';
-import { showMessage } from './components/mixins/showMessage';
-import { IUser } from './Interface';
-import { mapGetters } from 'vuex';
-import { userHelpers } from './components/mixins/userHelpers';
-import { addHeaders, loadLanguage } from './plugins/i18n';
-import { restApi } from '@/components/mixins/restApi';
-
-export default mixins(
-	showMessage,
-	userHelpers,
-	restApi,
-).extend({
-	name: 'App',
-	components: {
-		LoadingView,
-		Telemetry,
-		Modals,
-	},
-	computed: {
-		...mapGetters('settings', ['isHiringBannerEnabled', 'isTemplatesEnabled', 'isTemplatesEndpointReachable', 'isUserManagementEnabled', 'showSetupPage']),
-		...mapGetters('users', ['currentUser']),
-		defaultLocale (): string {
-			return this.$store.getters.defaultLocale;
-		},
-	},
-	data() {
-		return {
-			loading: true,
-		};
-	},
-	methods: {
-		async initSettings(): Promise<void> {
-			try {
-				await this.$store.dispatch('settings/getSettings');
-			} catch (e) {
-				this.$showToast({
-					title: this.$locale.baseText('startupError'),
-					message: this.$locale.baseText('startupError.message'),
-					type: 'error',
-					duration: 0,
-				});
-
-				throw e;
-			}
-		},
-		async loginWithCookie(): Promise<void> {
-			try {
-				await this.$store.dispatch('users/loginWithCookie');
-			} catch (e) {}
-		},
-		async initTemplates(): Promise<void> {
-			if (!this.isTemplatesEnabled) {
-				return;
-			}
-
-			try {
-				await this.$store.dispatch('settings/testTemplatesEndpoint');
-			} catch (e) {
-			}
-		},
-		logHiringBanner() {
-			if (this.isHiringBannerEnabled && this.$route.name !== VIEWS.DEMO) {
-				console.log(HIRING_BANNER); // eslint-disable-line no-console
-			}
-		},
-		async initialize(): Promise<void> {
-			await this.initSettings();
-			await Promise.all([this.loginWithCookie(), this.initTemplates()]);
-		},
-		trackPage() {
-			this.$store.commit('ui/setCurrentView', this.$route.name);
-			if (this.$route && this.$route.meta && this.$route.meta.templatesEnabled) {
-				this.$store.commit('templates/setSessionId');
-			}
-			else {
-				this.$store.commit('templates/resetSessionId'); // reset telemetry session id when user leaves template pages
-			}
-
-			this.$telemetry.page(this.$route);
-		},
-		authenticate() {
-			// redirect to setup page. user should be redirected to this only once
-			if (this.isUserManagementEnabled && this.showSetupPage) {
-				if (this.$route.name === VIEWS.SETUP) {
-					return;
-				}
-
-				this.$router.replace({ name: VIEWS.SETUP });
-				return;
-			}
-
-			if (this.canUserAccessCurrentRoute()) {
-				return;
-			}
-
-			// if cannot access page and not logged in, ask to sign in
-			const user = this.currentUser as IUser | null;
-			if (!user) {
-				const redirect =
-					this.$route.query.redirect ||
-					encodeURIComponent(`${window.location.pathname}${window.location.search}`);
-				this.$router.replace({ name: VIEWS.SIGNIN, query: { redirect } });
-				return;
-			}
-
-			// if cannot access page and is logged in, respect signin redirect
-			if (this.$route.name === VIEWS.SIGNIN && typeof this.$route.query.redirect === 'string') {
-				const redirect = decodeURIComponent(this.$route.query.redirect);
-				if (redirect.startsWith('/')) { // protect against phishing
-					this.$router.replace(redirect);
-					return;
-				}
-			}
-
-			// if cannot access page and is logged in
-			this.$router.replace({ name: VIEWS.HOMEPAGE });
-		},
-		redirectIfNecessary() {
-			const redirect = this.$route.meta && typeof this.$route.meta.getRedirect === 'function' && this.$route.meta.getRedirect(this.$store);
-			if (redirect) {
-				this.$router.replace(redirect);
-			}
-		},
-	},
-	async mounted() {
-		await this.initialize();
-		this.logHiringBanner();
-		this.authenticate();
-		this.redirectIfNecessary();
-
-		this.loading = false;
-
-		this.trackPage();
-		this.$externalHooks().run('app.mount');
-
-		if (this.defaultLocale !== 'en') {
-			const headers = await this.restApi().getNodeTranslationHeaders();
-			if (headers) addHeaders(headers, this.defaultLocale);
-		}
-	},
-	watch: {
-		$route(route) {
-			this.authenticate();
-			this.redirectIfNecessary();
-
-			this.trackPage();
-		},
-		defaultLocale(newLocale) {
-			loadLanguage(newLocale);
-		},
-	},
-});
-</script>
-
 <style lang="scss" module>
+// On the root level, whole app is a flex container
+// with app grid and assistant sidebar as children
 .container {
-	height: 100%;
-	width: 100%;
+	height: 100vh;
+	overflow: hidden;
+	display: flex;
+}
+
+// App grid is the main app layout including modals and other absolute positioned elements
+.app-grid {
+	position: relative;
+	display: grid;
+	height: 100vh;
+	flex-basis: 100%;
+	grid-template-areas:
+		'banners banners'
+		'sidebar header'
+		'sidebar content';
+	grid-auto-columns: minmax(0, max-content) 1fr;
+	grid-template-rows: auto fit-content($header-height) 1fr;
+}
+
+.banners {
+	grid-area: banners;
+	z-index: 999;
 }
 
 .content {
-	composes: container;
-	background-color: var(--color-background-light);
+	display: flex;
+	grid-area: content;
 	position: relative;
+	overflow: auto;
+	height: 100%;
+	width: 100%;
+	justify-content: center;
+
+	main {
+		width: 100%;
+		height: 100%;
+	}
 }
 
 .header {
-	z-index: 10;
-	position: fixed;
-	width: 100%;
+	grid-area: header;
+	z-index: 99;
 }
 
 .sidebar {
-	z-index: 15;
-	position: fixed;
+	grid-area: sidebar;
+	height: 100%;
+	z-index: 999;
+}
+
+.modals {
+	width: 100%;
 }
 </style>
-

@@ -2,19 +2,16 @@
 	"node": "n8n-nodes-base.mqtt",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Development",
-		"Communication"
-	],
+	"categories": ["Development", "Communication"],
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/mqtt"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/mqtt/"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.mqtt/"
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.mqtt/"
 			}
 		]
 	}

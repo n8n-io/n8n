@@ -2,18 +2,16 @@
 	"node": "n8n-nodes-base.philipsHue",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Miscellaneous"
-	],
+	"categories": ["Miscellaneous"],
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/philipsHue"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/philipsHue/"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.philipsHue/"
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.philipshue/"
 			}
 		]
 	}

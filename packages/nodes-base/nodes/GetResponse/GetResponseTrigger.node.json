@@ -2,19 +2,16 @@
 	"node": "n8n-nodes-base.getResponseTrigger",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Communication",
-		"Marketing & Content"
-	],
+	"categories": ["Communication", "Marketing"],
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/getResponse"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/getResponse/"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.getResponseTrigger/"
+				"url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.getresponsetrigger/"
 			}
 		]
 	}

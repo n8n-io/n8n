@@ -1,8 +1,6 @@
-import {
-	IDataObject,
-} from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
 
-export enum JobStatus {
+export const enum JobStatus {
 	WAITING = 'Waiting',
 	INPROGRESS = 'InProgress',
 	SUCCESS = 'Success',
@@ -10,27 +8,27 @@ export enum JobStatus {
 	DELETED = 'Deleted',
 }
 
-export enum TLP {
+export const enum TLP {
 	white,
 	green,
 	amber,
 	red,
 }
 
-export enum ObservableDataType {
-	'domain' = 'domain',
-	'file' = 'file',
-	'filename' = 'filename',
-	'fqdn' = 'fqdn',
-	'hash' = 'hash',
-	'ip' = 'ip',
-	'mail' = 'mail',
-	'mail_subject' = 'mail_subject',
-	'other' = 'other',
-	'regexp' = 'regexp',
-	'registry' = 'registry',
-	'uri_path' = 'uri_path',
-	'url' = 'url',
+export const enum ObservableDataType {
+	domain = 'domain',
+	file = 'file',
+	filename = 'filename',
+	fqdn = 'fqdn',
+	hash = 'hash',
+	ip = 'ip',
+	mail = 'mail',
+	mail_subject = 'mail_subject',
+	other = 'other',
+	regexp = 'regexp',
+	registry = 'registry',
+	uri_path = 'uri_path',
+	url = 'url',
 	'user-agent' = 'user-agent',
 }
 export interface IJob {

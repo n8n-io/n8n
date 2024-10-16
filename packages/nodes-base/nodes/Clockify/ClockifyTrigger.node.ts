@@ -1,7 +1,7 @@
 import moment from 'moment-timezone';
 
-import { IPollFunctions } from 'n8n-core';
-import {
+import type {
+	IPollFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -9,20 +9,18 @@ import {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
-import {
-	clockifyApiRequest,
-} from './GenericFunctions';
+import { clockifyApiRequest } from './GenericFunctions';
 
 import { EntryTypeEnum } from './EntryTypeEnum';
-import { IUserDto } from './UserDtos';
-import { IWorkspaceDto } from './WorkpaceInterfaces';
-
+import type { IUserDto } from './UserDtos';
+import type { IWorkspaceDto } from './WorkpaceInterfaces';
 
 export class ClockifyTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Clockify Trigger',
-		icon: 'file:clockify.svg',
+		icon: { light: 'file:clockify.svg', dark: 'file:clockify.dark.svg' },
 		name: 'clockifyTrigger',
 		group: ['trigger'],
 		version: 1,
@@ -31,7 +29,7 @@ export class ClockifyTrigger implements INodeType {
 			name: 'Clockify Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'clockifyApi',
@@ -44,7 +42,8 @@ export class ClockifyTrigger implements INodeType {
 				displayName: 'Workspace Name or ID',
 				name: 'workspaceId',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'listWorkspaces',
 				},
@@ -72,14 +71,17 @@ export class ClockifyTrigger implements INodeType {
 		loadOptions: {
 			async listWorkspaces(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const rtv: INodePropertyOptions[] = [];
-				const workspaces: IWorkspaceDto[] = await clockifyApiRequest.call(this, 'GET', 'workspaces');
+				const workspaces: IWorkspaceDto[] = await clockifyApiRequest.call(
+					this,
+					'GET',
+					'workspaces',
+				);
 				if (undefined !== workspaces) {
-					workspaces.forEach(value => {
-						rtv.push(
-							{
-								name: value.name,
-								value: value.id,
-							});
+					workspaces.forEach((value) => {
+						rtv.push({
+							name: value.name,
+							value: value.id,
+						});
 					});
 				}
 				return rtv;
