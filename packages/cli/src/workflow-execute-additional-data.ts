@@ -5,7 +5,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import type { PushType } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
-import { WorkflowExecute } from 'n8n-core';
+import { InstanceSettings, WorkflowExecute } from 'n8n-core';
 import {
 	ApplicationError,
 	ErrorReporterProxy as ErrorReporter,
@@ -1076,6 +1076,17 @@ export function getWorkflowHooksWorkerExecuter(
 	for (const key of Object.keys(preExecuteFunctions)) {
 		const hooks = hookFunctions[key] ?? [];
 		hooks.push.apply(hookFunctions[key], preExecuteFunctions[key]);
+	}
+
+	if (mode === 'manual' && Container.get(InstanceSettings).instanceType === 'worker') {
+		const pushHooks = hookFunctionsPush();
+		for (const key of Object.keys(pushHooks)) {
+			if (hookFunctions[key] === undefined) {
+				hookFunctions[key] = [];
+			}
+			// eslint-disable-next-line prefer-spread
+			hookFunctions[key].push.apply(hookFunctions[key], pushHooks[key]);
+		}
 	}
 
 	return new WorkflowHooks(hookFunctions, mode, executionId, workflowData, optionalParameters);

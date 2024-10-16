@@ -2,6 +2,7 @@ import type { PushPayload, PushType } from '@n8n/api-types';
 import type { Application } from 'express';
 import { ServerResponse } from 'http';
 import type { Server } from 'http';
+import { InstanceSettings } from 'n8n-core';
 import type { Socket } from 'net';
 import { Container, Service } from 'typedi';
 import { parse as parseUrl } from 'url';
@@ -39,7 +40,10 @@ export class Push extends TypedEmitter<PushEvents> {
 
 	private backend = useWebSockets ? Container.get(WebSocketPush) : Container.get(SSEPush);
 
-	constructor(private readonly orchestrationService: OrchestrationService) {
+	constructor(
+		private readonly orchestrationService: OrchestrationService,
+		private readonly instanceSettings: InstanceSettings,
+	) {
 		super();
 
 		if (useWebSockets) this.backend.on('message', (msg) => this.emit('message', msg));
@@ -82,13 +86,23 @@ export class Push extends TypedEmitter<PushEvents> {
 	}
 
 	send<Type extends PushType>(type: Type, data: PushPayload<Type>, pushRef: string) {
-		/**
-		 * Multi-main setup: In a manual webhook execution, the main process that
-		 * handles a webhook might not be the same as the main process that created
-		 * the webhook. If so, the handler process commands the creator process to
-		 * relay the former's execution lifecycle events to the creator's frontend.
-		 */
-		if (this.orchestrationService.isMultiMainSetupEnabled && !this.backend.hasPushRef(pushRef)) {
+		const isWorker = this.instanceSettings.instanceType === 'worker';
+
+		const isMainOnMultiMain =
+			this.instanceSettings.instanceType === 'main' &&
+			this.orchestrationService.isMultiMainSetupEnabled;
+
+		if (isWorker || (isMainOnMultiMain && !this.backend.hasPushRef(pushRef))) {
+			/**
+			 * Worker: Since a worker has no connection to the UI, send a command via
+			 * pubsub so that the main process who holds that session can relay
+			 * execution lifecycle events to it.
+			 *
+			 * Multi-main setup: In a manual webhook execution, the main process that
+			 * handles a webhook might not be the same as the main process that created
+			 * the webhook. If so, the handler process commands the creator process to
+			 * relay the former's execution lifecycle events to the creator's frontend.
+			 */
 			const payload = { type, args: data, pushRef };
 			void this.orchestrationService.publish('relay-execution-lifecycle-event', payload);
 			return;
