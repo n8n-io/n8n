@@ -491,11 +491,6 @@ export const schema = {
 			default: 'n8n',
 			env: 'N8N_REDIS_KEY_PREFIX',
 		},
-		queueModeId: {
-			doc: 'Unique ID for this n8n instance, is usually set automatically by n8n during startup',
-			format: String,
-			default: '',
-		},
 	},
 
 	/**
