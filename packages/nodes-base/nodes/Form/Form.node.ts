@@ -92,7 +92,7 @@ const completionProperties = updateDisplayOptions(
 	},
 	[
 		{
-			displayName: 'On N8n Form Submission',
+			displayName: 'On n8n Form Submission',
 			name: 'respondWith',
 			type: 'options',
 			default: 'text',
