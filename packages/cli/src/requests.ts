@@ -479,15 +479,6 @@ export declare namespace ExternalSecretsRequest {
 }
 
 // ----------------------------------
-//           /orchestration
-// ----------------------------------
-//
-export declare namespace OrchestrationRequest {
-	type GetAll = AuthenticatedRequest;
-	type Get = AuthenticatedRequest<{ id: string }, {}, {}, {}>;
-}
-
-// ----------------------------------
 //           /workflow-history
 // ----------------------------------
 
