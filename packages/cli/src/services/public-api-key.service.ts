@@ -1,5 +1,4 @@
 import { ApplicationError } from 'n8n-workflow';
-import { randomBytes } from 'node:crypto';
 import type { OpenAPIV3 } from 'openapi-types';
 import { Service } from 'typedi';
 
@@ -12,7 +11,6 @@ import type { AuthenticatedRequest } from '@/requests';
 
 import { JwtService } from './jwt.service';
 
-const LEGACY_API_KEY_PREFIX = 'n8n_api_';
 const API_KEY_AUDIENCE = 'public-api';
 const API_KEY_ISSUER = 'n8n';
 
@@ -30,8 +28,8 @@ export class PublicApiKeyService {
 	 * @param user - The user for whom the API key is being created.
 	 * @returns A promise that resolves to the newly created API key.
 	 */
-	async createPublicApiKeyForUser(user: User, { legacy = false } = {}) {
-		const apiKey = legacy ? this.generateLegacyApiKey() : this.generateApiKey(user);
+	async createPublicApiKeyForUser(user: User) {
+		const apiKey = this.generateApiKey(user);
 		await this.apiKeyRepository.upsert(
 			this.apiKeyRepository.create({
 				userId: user.id,
@@ -95,19 +93,6 @@ export class PublicApiKeyService {
 		return completeRedactedApiKey.slice(0, maxLength);
 	}
 
-	private isLegacyApiKey(apiKey: string) {
-		return apiKey.startsWith(LEGACY_API_KEY_PREFIX);
-	}
-
-	private isValidApiKey(apiKey: string) {
-		try {
-			const { aud } = this.jwtService.verify(apiKey);
-			return aud === API_KEY_AUDIENCE;
-		} catch {
-			return false;
-		}
-	}
-
 	getAuthMiddleware(version: string) {
 		return async (
 			req: AuthenticatedRequest,
@@ -119,14 +104,6 @@ export class PublicApiKeyService {
 			const user = await this.getUserForApiKey(providedApiKey);
 
 			if (!user) return false;
-
-			/*
-				Legacy API keys will be deprecated in n8n v2.
-				Then we can delete the first check and always validate the API key.
-			*/
-			if (!this.isLegacyApiKey(providedApiKey) && !this.isValidApiKey(providedApiKey)) {
-				return false;
-			}
 
 			this.eventService.emit('public-api-invoked', {
 				userId: user.id,
@@ -140,8 +117,6 @@ export class PublicApiKeyService {
 			return true;
 		};
 	}
-
-	private generateLegacyApiKey = () => `${LEGACY_API_KEY_PREFIX}${randomBytes(40).toString('hex')}`;
 
 	private generateApiKey = (user: User) =>
 		this.jwtService.sign({ sub: user.id, iss: API_KEY_ISSUER, aud: API_KEY_AUDIENCE });

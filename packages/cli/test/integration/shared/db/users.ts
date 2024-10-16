@@ -80,20 +80,20 @@ export async function createUserWithMfaEnabled(
 	};
 }
 
-export const addApiKey = async (user: User, { legacy = false } = {}) => {
-	return await Container.get(PublicApiKeyService).createPublicApiKeyForUser(user, { legacy });
+export const addApiKey = async (user: User) => {
+	return await Container.get(PublicApiKeyService).createPublicApiKeyForUser(user);
 };
 
-export async function createOwnerWithApiKey({ legacy = false } = {}) {
+export async function createOwnerWithApiKey() {
 	const owner = await createOwner();
-	const apiKey = await addApiKey(owner, { legacy });
+	const apiKey = await addApiKey(owner);
 	owner.apiKeys = [apiKey];
 	return owner;
 }
 
-export async function createMemberWithApiKey({ legacy = false } = {}) {
+export async function createMemberWithApiKey() {
 	const member = await createMember();
-	const apiKey = await addApiKey(member, { legacy });
+	const apiKey = await addApiKey(member);
 	member.apiKeys = [apiKey];
 	return member;
 }

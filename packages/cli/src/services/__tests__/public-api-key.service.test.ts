@@ -105,37 +105,6 @@ describe('PublicApiKeyService', () => {
 			expect(response).toBe(false);
 		});
 
-		it('should return false if valid api key does not have the right audience', async () => {
-			//Arrange
-
-			const apiKey = jwtService.sign({ sub: '123', aud: 'non-public-api-key' });
-			const path = '/test';
-			const method = 'GET';
-			const apiVersion = 'v1';
-
-			const publicApiKeyService = new PublicApiKeyService(
-				apiKeyRepository,
-				userRepository,
-				jwtService,
-				eventService,
-			);
-
-			const owner = await createOwnerWithApiKey();
-			const [{ id }] = owner.apiKeys;
-
-			await apiKeyRepository.update({ id }, { apiKey });
-
-			const middleware = publicApiKeyService.getAuthMiddleware(apiVersion);
-
-			//Act
-
-			const response = await middleware(mockReqWith(apiKey, path, method), {}, securitySchema);
-
-			//Assert
-
-			expect(response).toBe(false);
-		});
-
 		it('should return true if valid api key exist in the database', async () => {
 			//Arrange
 
@@ -171,75 +140,6 @@ describe('PublicApiKeyService', () => {
 					path,
 					method,
 					apiVersion: 'v1',
-				}),
-			);
-		});
-
-		it('should return false if legacy api key is not in database', async () => {
-			//Arrange
-
-			const path = '/test';
-			const method = 'GET';
-			const apiVersion = 'v1';
-
-			const publicApiKeyService = new PublicApiKeyService(
-				apiKeyRepository,
-				userRepository,
-				jwtService,
-				eventService,
-			);
-
-			const owner = await createOwnerWithApiKey({ legacy: true });
-			const [{ apiKey }] = owner.apiKeys;
-
-			await apiKeyRepository.delete({ userId: owner.id });
-
-			const middleware = publicApiKeyService.getAuthMiddleware(apiVersion);
-
-			//Act
-
-			const response = await middleware(mockReqWith(apiKey, path, method), {}, securitySchema);
-
-			//Assert
-
-			expect(response).toBe(false);
-		});
-
-		it('should return true if legacy api key exist in the database', async () => {
-			//Arrange
-
-			const path = '/test';
-			const method = 'GET';
-			const apiVersion = 'v1';
-
-			const publicApiKeyService = new PublicApiKeyService(
-				apiKeyRepository,
-				userRepository,
-				jwtService,
-				eventService,
-			);
-
-			const owner = await createOwnerWithApiKey({ legacy: true });
-
-			const [{ apiKey }] = owner.apiKeys;
-
-			const middleware = publicApiKeyService.getAuthMiddleware(apiVersion);
-
-			//Act
-
-			const response = await middleware(mockReqWith(apiKey, path, method), {}, securitySchema);
-
-			//Assert
-
-			expect(response).toBe(true);
-			expect(eventService.emit).toHaveBeenCalledTimes(1);
-			expect(eventService.emit).toHaveBeenCalledWith(
-				'public-api-invoked',
-				expect.objectContaining({
-					userId: owner.id,
-					path,
-					method,
-					apiVersion,
 				}),
 			);
 		});
