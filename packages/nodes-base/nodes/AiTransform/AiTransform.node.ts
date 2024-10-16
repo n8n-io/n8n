@@ -52,7 +52,7 @@ export class AiTransform implements INodeType {
 				},
 			},
 			{
-				displayName: 'Transformation Code',
+				displayName: 'Generated JavaScript',
 				name: 'jsCode',
 				type: 'string',
 				typeOptions: {

@@ -1382,6 +1382,7 @@
 	"parameterInput.parameterHasIssues": "Parameter: \"{shortPath}\" has issues",
 	"parameterInput.parameterHasIssuesAndExpression": "Parameter: \"{shortPath}\" has issues and an expression",
 	"parameterInput.refreshList": "Refresh List",
+	"parameterInput.clearContents": "Clear contents",
 	"parameterInput.resetValue": "Reset Value",
 	"parameterInput.select": "Select",
 	"parameterInput.selectDateAndTime": "Select date and time",

@@ -5,6 +5,8 @@ import type { PropType } from 'vue';
 import { isResourceLocatorValue } from '@/utils/typeGuards';
 import { isValueExpression } from '@/utils/nodeTypesUtils';
 import { i18n } from '@/plugins/i18n';
+import { useNDVStore } from '@/stores/ndv.store';
+import { AI_TRANSFORM_NODE_TYPE } from '@/constants';
 
 export default defineComponent({
 	name: 'ParameterOptions',
@@ -49,6 +51,9 @@ export default defineComponent({
 	},
 	emits: ['update:modelValue', 'menu-expanded'],
 	computed: {
+		activeNode() {
+			return useNDVStore().activeNode;
+		},
 		isDefault(): boolean {
 			return this.parameter.default === this.value;
 		},
@@ -106,7 +111,7 @@ export default defineComponent({
 
 			const actions = [
 				{
-					label: this.$locale.baseText('parameterInput.resetValue'),
+					label: this.resetValueLabel,
 					value: 'resetValue',
 					disabled: this.isDefault,
 				},
@@ -128,6 +133,14 @@ export default defineComponent({
 			}
 
 			return actions;
+		},
+
+		resetValueLabel() {
+			if (this.activeNode && [AI_TRANSFORM_NODE_TYPE].includes(this.activeNode.type)) {
+				return i18n.baseText('parameterInput.clearContents');
+			}
+
+			return this.$locale.baseText('parameterInput.resetValue');
 		},
 	},
 	methods: {
