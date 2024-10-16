@@ -1,6 +1,7 @@
 import { GlobalConfig } from '@n8n/config';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { QueryFailedError } from '@n8n/typeorm';
+import { setTag } from '@sentry/node';
 import { AxiosError } from 'axios';
 import { createHash } from 'crypto';
 import { InstanceSettings } from 'n8n-core';
@@ -83,12 +84,7 @@ export const initErrorHandling = async () => {
 				if (level === 'warning') return null;
 				event.level = level;
 				if (extra) event.extra = { ...event.extra, ...extra };
-				if (tags)
-					event.tags = {
-						...event.tags,
-						...tags,
-						server_type: Container.get(InstanceSettings).instanceType,
-					};
+				if (tags) event.tags = { ...event.tags, ...tags };
 			}
 
 			if (originalException instanceof Error && originalException.stack) {
@@ -100,6 +96,8 @@ export const initErrorHandling = async () => {
 			return event;
 		},
 	});
+
+	setTag('server_type', Container.get(InstanceSettings).instanceType);
 
 	ErrorReporterProxy.init({
 		report: (error, options) => captureException(error, options),
