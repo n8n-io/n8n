@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "1.62.1",
+  "version": "1.64.0",
   "description": "Base nodes of n8n",
   "main": "index.js",
   "scripts": {
@@ -125,6 +125,8 @@
       "dist/credentials/GitlabOAuth2Api.credentials.js",
       "dist/credentials/GitPassword.credentials.js",
       "dist/credentials/GmailOAuth2Api.credentials.js",
+      "dist/credentials/GongApi.credentials.js",
+      "dist/credentials/GongOAuth2Api.credentials.js",
       "dist/credentials/GoogleAdsOAuth2Api.credentials.js",
       "dist/credentials/GoogleAnalyticsOAuth2Api.credentials.js",
       "dist/credentials/GoogleApi.credentials.js",
@@ -518,6 +520,7 @@
       "dist/nodes/Github/GithubTrigger.node.js",
       "dist/nodes/Gitlab/Gitlab.node.js",
       "dist/nodes/Gitlab/GitlabTrigger.node.js",
+      "dist/nodes/Gong/Gong.node.js",
       "dist/nodes/Google/Ads/GoogleAds.node.js",
       "dist/nodes/Google/Analytics/GoogleAnalytics.node.js",
       "dist/nodes/Google/BigQuery/GoogleBigQuery.node.js",
@@ -851,7 +854,7 @@
     "basic-auth": "catalog:",
     "change-case": "4.1.2",
     "cheerio": "1.0.0-rc.6",
-    "chokidar": "3.5.2",
+    "chokidar": "catalog:",
     "cron": "3.1.7",
     "csv-parse": "5.5.0",
     "currency-codes": "2.1.0",

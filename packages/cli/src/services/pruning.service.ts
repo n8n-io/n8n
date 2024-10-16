@@ -37,7 +37,8 @@ export class PruningService {
 	 * @important Requires `OrchestrationService` to be initialized.
 	 */
 	init() {
-		const { isLeader, isMultiMainSetupEnabled } = this.orchestrationService;
+		const { isLeader } = this.instanceSettings;
+		const { isMultiMainSetupEnabled } = this.orchestrationService;
 
 		if (isLeader) this.startPruning();
 

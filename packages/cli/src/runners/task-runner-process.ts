@@ -1,6 +1,7 @@
 import { GlobalConfig } from '@n8n/config';
 import * as a from 'node:assert/strict';
 import { spawn } from 'node:child_process';
+import * as process from 'node:process';
 import { Service } from 'typedi';
 
 import { TaskRunnerAuthService } from './auth/task-runner-auth.service';
@@ -38,20 +39,48 @@ export class TaskRunnerProcess {
 		a.ok(!this.process, 'Task Runner Process already running');
 
 		const grantToken = await this.authService.createGrantToken();
-		const startScript = require.resolve('@n8n/task-runner');
 
-		this.process = spawn('node', [startScript], {
-			env: {
-				PATH: process.env.PATH,
-				N8N_RUNNERS_GRANT_TOKEN: grantToken,
-				N8N_RUNNERS_N8N_URI: `127.0.0.1:${this.globalConfig.taskRunners.port}`,
-			},
-		});
+		const n8nUri = `127.0.0.1:${this.globalConfig.taskRunners.port}`;
+		this.process = this.globalConfig.taskRunners.useLauncher
+			? this.startLauncher(grantToken, n8nUri)
+			: this.startNode(grantToken, n8nUri);
 
 		this.process.stdout?.pipe(process.stdout);
 		this.process.stderr?.pipe(process.stderr);
 
 		this.monitorProcess(this.process);
+	}
+
+	startNode(grantToken: string, n8nUri: string) {
+		const startScript = require.resolve('@n8n/task-runner');
+
+		return spawn('node', [startScript], {
+			env: {
+				PATH: process.env.PATH,
+				N8N_RUNNERS_GRANT_TOKEN: grantToken,
+				N8N_RUNNERS_N8N_URI: n8nUri,
+				NODE_FUNCTION_ALLOW_BUILTIN: process.env.NODE_FUNCTION_ALLOW_BUILTIN,
+				NODE_FUNCTION_ALLOW_EXTERNAL: process.env.NODE_FUNCTION_ALLOW_EXTERNAL,
+			},
+		});
+	}
+
+	startLauncher(grantToken: string, n8nUri: string) {
+		return spawn(
+			this.globalConfig.taskRunners.launcherPath,
+			['launch', this.globalConfig.taskRunners.launcherRunner],
+			{
+				env: {
+					PATH: process.env.PATH,
+					N8N_RUNNERS_GRANT_TOKEN: grantToken,
+					N8N_RUNNERS_N8N_URI: n8nUri,
+					NODE_FUNCTION_ALLOW_BUILTIN: process.env.NODE_FUNCTION_ALLOW_BUILTIN,
+					NODE_FUNCTION_ALLOW_EXTERNAL: process.env.NODE_FUNCTION_ALLOW_EXTERNAL,
+					// For debug logging if enabled
+					RUST_LOG: process.env.RUST_LOG,
+				},
+			},
+		);
 	}
 
 	@OnShutdown()
@@ -63,15 +92,44 @@ export class TaskRunnerProcess {
 		this.isShuttingDown = true;
 
 		// TODO: Timeout & force kill
-		this.process.kill();
+		if (this.globalConfig.taskRunners.useLauncher) {
+			await this.killLauncher();
+		} else {
+			this.killNode();
+		}
 		await this.runPromise;
 
 		this.isShuttingDown = false;
 	}
 
-	private monitorProcess(process: ChildProcess) {
+	killNode() {
+		if (!this.process) {
+			return;
+		}
+		this.process.kill();
+	}
+
+	async killLauncher() {
+		if (!this.process?.pid) {
+			return;
+		}
+
+		const killProcess = spawn(this.globalConfig.taskRunners.launcherPath, [
+			'kill',
+			this.globalConfig.taskRunners.launcherRunner,
+			this.process.pid.toString(),
+		]);
+
+		await new Promise<void>((resolve) => {
+			killProcess.on('exit', () => {
+				resolve();
+			});
+		});
+	}
+
+	private monitorProcess(taskRunnerProcess: ChildProcess) {
 		this.runPromise = new Promise((resolve) => {
-			process.on('exit', (code) => {
+			taskRunnerProcess.on('exit', (code) => {
 				this.onProcessExit(code, resolve);
 			});
 		});
