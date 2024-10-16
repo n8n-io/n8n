@@ -13,7 +13,7 @@ import {
 	FailedProvider,
 	MockProviders,
 } from '@test/external-secrets/utils';
-import { mockInstance } from '@test/mocking';
+import { mockInstance, mockLogger } from '@test/mocking';
 
 describe('External Secrets Manager', () => {
 	const connectedDate = '2023-08-01T12:32:29.000Z';
@@ -49,7 +49,7 @@ describe('External Secrets Manager', () => {
 		license.isExternalSecretsEnabled.mockReturnValue(true);
 		settingsRepo.getEncryptedSecretsProviderSettings.mockResolvedValue(settings);
 		manager = new ExternalSecretsManager(
-			mock(),
+			mockLogger(),
 			settingsRepo,
 			license,
 			providersMock,

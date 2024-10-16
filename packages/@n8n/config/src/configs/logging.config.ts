@@ -8,7 +8,7 @@ import { StringArray } from '../utils';
  * `license` -> license SDK
  * `scaling` -> scaling mode
  */
-export const LOG_SCOPES = ['executions', 'license', 'scaling'] as const;
+export const LOG_SCOPES = ['executions', 'external-secrets', 'license', 'scaling'] as const;
 
 export type LogScope = (typeof LOG_SCOPES)[number];
 
@@ -63,6 +63,7 @@ export class LoggingConfig {
 	 * - `executions`
 	 * - `license`
 	 * - `scaling`
+	 * - `external-secrets`
 	 *
 	 * @example
 	 * `N8N_LOG_SCOPES=license`
