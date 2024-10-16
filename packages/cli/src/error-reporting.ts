@@ -85,7 +85,7 @@ export class ErrorReporting {
 		this.initialized = true;
 	}
 
-	private async beforeSend(event: ErrorEvent, { originalException }: EventHint) {
+	async beforeSend(event: ErrorEvent, { originalException }: EventHint) {
 		if (!originalException) return null;
 
 		if (originalException instanceof Promise) {
