@@ -5,6 +5,7 @@ import {
 	type INodeTypeDescription,
 	type ITriggerResponse,
 	NodeConnectionType,
+	TriggerCloseError,
 } from 'n8n-workflow';
 
 import { watch } from 'chokidar';
@@ -242,9 +243,14 @@ export class LocalFileTrigger implements INodeType {
 			watcher.on(eventName, (pathString) => executeTrigger(eventName, pathString as string));
 		}
 
-		async function closeFunction() {
-			return await watcher.close();
-		}
+		const closeFunction = async () => {
+			try {
+				return await watcher.close();
+			} catch (error) {
+				// eslint-disable-next-line n8n-nodes-base/node-execute-block-wrong-error-thrown
+				throw new TriggerCloseError(this.getNode(), { cause: error as Error, level: 'warning' });
+			}
+		};
 
 		return {
 			closeFunction,

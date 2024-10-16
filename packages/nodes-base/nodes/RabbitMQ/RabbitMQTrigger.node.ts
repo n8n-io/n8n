@@ -10,7 +10,7 @@ import type {
 	ITriggerFunctions,
 	ITriggerResponse,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError, TriggerCloseError } from 'n8n-workflow';
 
 import { rabbitDefaultOptions } from './DefaultOptions';
 
@@ -229,9 +229,14 @@ export class RabbitMQTrigger implements INodeType {
 			};
 
 			const closeFunction = async () => {
-				await channel.close();
-				await channel.connection.close();
-				return;
+				try {
+					await channel.close();
+					await channel.connection.close();
+					return;
+				} catch (error) {
+					// eslint-disable-next-line n8n-nodes-base/node-execute-block-wrong-error-thrown
+					throw new TriggerCloseError(this.getNode(), { cause: error as Error, level: 'warning' });
+				}
 			};
 
 			return {
