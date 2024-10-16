@@ -7,42 +7,50 @@ import { parseSchema } from './parse-schema';
 import type { JsonSchemaObject, Refs } from '../types';
 import { its } from '../utils/its';
 
+function parseObjectProperties(objectSchema: JsonSchemaObject & { type: 'object' }, refs: Refs) {
+	if (!objectSchema.properties) {
+		return undefined;
+	}
+
+	const propertyKeys = Object.keys(objectSchema.properties);
+	if (propertyKeys.length === 0) {
+		return z.object({});
+	}
+
+	const properties: Record<string, z.ZodTypeAny> = {};
+
+	for (const key of propertyKeys) {
+		const propJsonSchema = objectSchema.properties[key];
+
+		const propZodSchema = parseSchema(propJsonSchema, {
+			...refs,
+			path: [...refs.path, 'properties', key],
+		});
+
+		const hasDefault = typeof propJsonSchema === 'object' && propJsonSchema.default !== undefined;
+
+		const required = Array.isArray(objectSchema.required)
+			? objectSchema.required.includes(key)
+			: typeof propJsonSchema === 'object' && propJsonSchema.required === true;
+
+		const isOptional = !hasDefault && !required;
+
+		properties[key] = isOptional ? propZodSchema.optional() : propZodSchema;
+	}
+
+	return z.object(properties);
+}
+
 export function parseObject(
 	objectSchema: JsonSchemaObject & { type: 'object' },
 	refs: Refs,
 ): z.ZodTypeAny {
-	let zodSchema: z.ZodObject<Record<string, z.ZodTypeAny>, 'strip', z.ZodTypeAny> | undefined =
-		undefined;
+	const hasPatternProperties = Object.keys(objectSchema.patternProperties ?? {}).length > 0;
 
-	if (objectSchema.properties) {
-		if (!Object.keys(objectSchema.properties).length) {
-			zodSchema = z.object({});
-		} else {
-			const properties: Record<string, z.ZodTypeAny> = {};
-
-			for (const key of Object.keys(objectSchema.properties)) {
-				const propJsonSchema = objectSchema.properties[key];
-
-				const propZodSchema = parseSchema(propJsonSchema, {
-					...refs,
-					path: [...refs.path, 'properties', key],
-				});
-
-				const hasDefault =
-					typeof propJsonSchema === 'object' && propJsonSchema.default !== undefined;
-
-				const required = Array.isArray(objectSchema.required)
-					? objectSchema.required.includes(key)
-					: typeof propJsonSchema === 'object' && propJsonSchema.required === true;
-
-				const isOptional = !hasDefault && !required;
-
-				properties[key] = isOptional ? propZodSchema.optional() : propZodSchema;
-			}
-
-			zodSchema = z.object(properties);
-		}
-	}
+	const propertiesSchema:
+		| z.ZodObject<Record<string, z.ZodTypeAny>, 'strip', z.ZodTypeAny>
+		| undefined = parseObjectProperties(objectSchema, refs);
+	let zodSchema: z.ZodTypeAny | undefined = propertiesSchema;
 
 	const additionalProperties =
 		objectSchema.additionalProperties !== undefined
@@ -52,129 +60,100 @@ export function parseObject(
 				})
 			: undefined;
 
-	// let patternProperties: z.ZodTypeAny | undefined = undefined;
-	const patternProperties: string | undefined = undefined;
-
-	// TODO: Pattern properties
 	if (objectSchema.patternProperties) {
-		throw new Error('patternProperties not implemented');
-		// const parsedPatternProperties = Object.fromEntries(
-		// 	Object.entries(objectSchema.patternProperties).map(([key, value]) => {
-		// 		return [
-		// 			key,
-		// 			parseSchema(value, {
-		// 				...refs,
-		// 				path: [...refs.path, 'patternProperties', key],
-		// 			}),
-		// 		];
-		// 	}, {}),
-		// );
+		const parsedPatternProperties = Object.fromEntries(
+			Object.entries(objectSchema.patternProperties).map(([key, value]) => {
+				return [
+					key,
+					parseSchema(value, {
+						...refs,
+						path: [...refs.path, 'patternProperties', key],
+					}),
+				];
+			}),
+		);
+		const patternPropertyValues = Object.values(parsedPatternProperties);
 
-		// patternProperties = '';
+		if (propertiesSchema) {
+			if (additionalProperties) {
+				zodSchema = propertiesSchema.catchall(
+					z.union([...patternPropertyValues, additionalProperties] as [z.ZodTypeAny, z.ZodTypeAny]),
+				);
+			} else if (Object.keys(parsedPatternProperties).length > 1) {
+				zodSchema = propertiesSchema.catchall(
+					z.union(patternPropertyValues as [z.ZodTypeAny, z.ZodTypeAny]),
+				);
+			} else {
+				zodSchema = propertiesSchema.catchall(patternPropertyValues[0]);
+			}
+		} else {
+			if (additionalProperties) {
+				zodSchema = z.record(
+					z.union([...patternPropertyValues, additionalProperties] as [z.ZodTypeAny, z.ZodTypeAny]),
+				);
+			} else if (patternPropertyValues.length > 1) {
+				zodSchema = z.record(z.union(patternPropertyValues as [z.ZodTypeAny, z.ZodTypeAny]));
+			} else {
+				zodSchema = z.record(patternPropertyValues[0]);
+			}
+		}
 
-		// if (zodSchema) {
-		// 	if (additionalProperties) {
-		// 		patternProperties += `.catchall(z.union([${[
-		// 			...Object.values(parsedPatternProperties),
-		// 			additionalProperties,
-		// 		].join(', ')}]))`;
-		// 	} else if (Object.keys(parsedPatternProperties).length > 1) {
-		// 		patternProperties += `.catchall(z.union([${Object.values(parsedPatternProperties).join(
-		// 			', ',
-		// 		)}]))`;
-		// 	} else {
-		// 		patternProperties += `.catchall(${Object.values(parsedPatternProperties)})`;
-		// 	}
-		// } else {
-		// 	if (additionalProperties) {
-		// 		patternProperties += `z.record(z.union([${[
-		// 			...Object.values(parsedPatternProperties),
-		// 			additionalProperties,
-		// 		].join(', ')}]))`;
-		// 	} else if (Object.keys(parsedPatternProperties).length > 1) {
-		// 		patternProperties += `z.record(z.union([${Object.values(parsedPatternProperties).join(
-		// 			', ',
-		// 		)}]))`;
-		// 	} else {
-		// 		patternProperties += `z.record(${Object.values(parsedPatternProperties)})`;
-		// 	}
-		// }
+		const objectPropertyKeys = new Set(Object.keys(objectSchema.properties ?? {}));
+		zodSchema = zodSchema.superRefine((value: Record<string, unknown>, ctx) => {
+			for (const key in value) {
+				let wasMatched = objectPropertyKeys.has(key);
 
-		// patternProperties += '.superRefine((value, ctx) => {\n';
+				for (const patternPropertyKey in objectSchema.patternProperties) {
+					const regex = new RegExp(patternPropertyKey);
+					if (key.match(regex)) {
+						wasMatched = true;
+						const result = parsedPatternProperties[patternPropertyKey].safeParse(value[key]);
+						if (!result.success) {
+							ctx.addIssue({
+								path: [...ctx.path, key],
+								code: 'custom',
+								message: `Invalid input: Key matching regex /${key}/ must match schema`,
+								params: {
+									issues: result.error.issues,
+								},
+							});
+						}
+					}
+				}
 
-		// patternProperties += 'for (const key in value) {\n';
-
-		// if (additionalProperties) {
-		// 	if (objectSchema.properties) {
-		// 		patternProperties += `let evaluated = [${Object.keys(objectSchema.properties)
-		// 			.map((key) => JSON.stringify(key))
-		// 			.join(', ')}].includes(key)\n`;
-		// 	} else {
-		// 		patternProperties += `let evaluated = false\n`;
-		// 	}
-		// }
-
-		// for (const key in objectSchema.patternProperties) {
-		// 	patternProperties += 'if (key.match(new RegExp(' + JSON.stringify(key) + '))) {\n';
-		// 	if (additionalProperties) {
-		// 		patternProperties += 'evaluated = true\n';
-		// 	}
-		// 	patternProperties +=
-		// 		'const result = ' + parsedPatternProperties[key] + '.safeParse(value[key])\n';
-		// 	patternProperties += 'if (!result.success) {\n';
-
-		// 	patternProperties += `ctx.addIssue({
-		//       path: [...ctx.path, key],
-		//       code: 'custom',
-		//       message: \`Invalid input: Key matching regex /\${key}/ must match schema\`,
-		//       params: {
-		//         issues: result.error.issues
-		//       }
-		//     })\n`;
-
-		// 	patternProperties += '}\n';
-		// 	patternProperties += '}\n';
-		// }
-
-		// if (additionalProperties) {
-		// 	patternProperties += 'if (!evaluated) {\n';
-		// 	patternProperties += 'const result = ' + additionalProperties + '.safeParse(value[key])\n';
-		// 	patternProperties += 'if (!result.success) {\n';
-
-		// 	patternProperties += `ctx.addIssue({
-		//       path: [...ctx.path, key],
-		//       code: 'custom',
-		//       message: \`Invalid input: must match catchall schema\`,
-		//       params: {
-		//         issues: result.error.issues
-		//       }
-		//     })\n`;
-
-		// 	patternProperties += '}\n';
-		// 	patternProperties += '}\n';
-		// }
-		// patternProperties += '}\n';
-		// patternProperties += '})';
+				if (!wasMatched && additionalProperties) {
+					const result = additionalProperties.safeParse(value[key]);
+					if (!result.success) {
+						ctx.addIssue({
+							path: [...ctx.path, key],
+							code: 'custom',
+							message: 'Invalid input: must match catchall schema',
+							params: {
+								issues: result.error.issues,
+							},
+						});
+					}
+				}
+			}
+		});
 	}
 
 	let output: z.ZodTypeAny;
-	if (zodSchema) {
-		if (patternProperties) {
-			// TODO: Implement patternProperties
-			// output = schema + patternProperties;
-			output = zodSchema;
+	if (propertiesSchema) {
+		if (hasPatternProperties) {
+			output = zodSchema!;
 		} else if (additionalProperties) {
 			if (additionalProperties instanceof z.ZodNever) {
-				output = zodSchema.strict();
+				output = propertiesSchema.strict();
 			} else {
-				output = zodSchema.catchall(additionalProperties);
+				output = propertiesSchema.catchall(additionalProperties);
 			}
 		} else {
-			output = zodSchema;
+			output = zodSchema!;
 		}
 	} else {
-		if (patternProperties) {
-			output = z.any(); //patternProperties;
+		if (hasPatternProperties) {
+			output = zodSchema!;
 		} else if (additionalProperties) {
 			output = z.record(additionalProperties);
 		} else {

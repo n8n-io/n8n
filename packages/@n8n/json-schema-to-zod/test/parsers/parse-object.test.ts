@@ -502,7 +502,7 @@ describe('parseObject', () => {
 		});
 	});
 
-	test.skip('Functional tests - properties and single-item patternProperties', () => {
+	test('Functional tests - properties and single-item patternProperties', () => {
 		const schema: JSONSchema7 & { type: 'object' } = {
 			type: 'object',
 			required: ['a'],
@@ -519,30 +519,51 @@ describe('parseObject', () => {
 			},
 		};
 
-		const expected = `z.object({ "a": z.string(), "b": z.number().optional() }).catchall(z.array(z.any())).superRefine((value, ctx) => {
-for (const key in value) {
-if (key.match(new RegExp("\\\\."))) {
-const result = z.array(z.any()).safeParse(value[key])
-if (!result.success) {
-ctx.addIssue({
-          path: [...ctx.path, key],
-          code: 'custom',
-          message: \`Invalid input: Key matching regex /\${key}/ must match schema\`,
-          params: {
-            issues: result.error.issues
-          }
-        })
-}
-}
-}
-})`;
+		const expected = z
+			.object({ a: z.string(), b: z.number().optional() })
+			.catchall(z.array(z.any()))
+			.superRefine((value, ctx) => {
+				for (const key in value) {
+					if (key.match(new RegExp('\\\\.'))) {
+						const result = z.array(z.any()).safeParse(value[key]);
+						if (!result.success) {
+							ctx.addIssue({
+								path: [...ctx.path, key],
+								code: 'custom',
+								message: `Invalid input: Key matching regex /${key}/ must match schema`,
+								params: {
+									issues: result.error.issues,
+								},
+							});
+						}
+					}
+				}
+			});
 
 		const result = parseObject(schema, { path: [], seen: new Map() });
 
-		expect(result, expected);
+		expect(result).toMatchZod(expected);
+
+		expect(run(result, { a: 'a', b: 2, '.': [] })).toEqual({
+			success: true,
+			data: { a: 'a', b: 2, '.': [] },
+		});
+
+		expect(run(result, { a: 'a', b: 2, '.': '[]' })).toEqual({
+			success: false,
+			error: new ZodError([
+				{
+					code: 'invalid_type',
+					expected: 'array',
+					received: 'string',
+					path: ['.'],
+					message: 'Expected array, received string',
+				},
+			]),
+		});
 	});
 
-	test.skip('Functional tests - properties, additionalProperties and patternProperties', () => {
+	test('Functional tests - properties, additionalProperties and patternProperties', () => {
 		const schema: JSONSchema7 & { type: 'object' } = {
 			type: 'object',
 			required: ['a'],
@@ -561,56 +582,59 @@ ctx.addIssue({
 			},
 		};
 
-		const expected = `z.object({ "a": z.string(), "b": z.number().optional() }).catchall(z.union([z.array(z.any()), z.array(z.any()).min(1), z.boolean()])).superRefine((value, ctx) => {
-for (const key in value) {
-let evaluated = ["a", "b"].includes(key)
-if (key.match(new RegExp("\\\\."))) {
-evaluated = true
-const result = z.array(z.any()).safeParse(value[key])
-if (!result.success) {
-ctx.addIssue({
-          path: [...ctx.path, key],
-          code: 'custom',
-          message: \`Invalid input: Key matching regex /\${key}/ must match schema\`,
-          params: {
-            issues: result.error.issues
-          }
-        })
-}
-}
-if (key.match(new RegExp("\\\\,"))) {
-evaluated = true
-const result = z.array(z.any()).min(1).safeParse(value[key])
-if (!result.success) {
-ctx.addIssue({
-          path: [...ctx.path, key],
-          code: 'custom',
-          message: \`Invalid input: Key matching regex /\${key}/ must match schema\`,
-          params: {
-            issues: result.error.issues
-          }
-        })
-}
-}
-if (!evaluated) {
-const result = z.boolean().safeParse(value[key])
-if (!result.success) {
-ctx.addIssue({
-          path: [...ctx.path, key],
-          code: 'custom',
-          message: \`Invalid input: must match catchall schema\`,
-          params: {
-            issues: result.error.issues
-          }
-        })
-}
-}
-}
-})`;
+		const expected = z
+			.object({ a: z.string(), b: z.number().optional() })
+			.catchall(z.union([z.array(z.any()), z.array(z.any()).min(1), z.boolean()]))
+			.superRefine((value, ctx) => {
+				for (const key in value) {
+					let evaluated = ['a', 'b'].includes(key);
+					if (key.match(new RegExp('\\\\.'))) {
+						evaluated = true;
+						const result = z.array(z.any()).safeParse(value[key]);
+						if (!result.success) {
+							ctx.addIssue({
+								path: [...ctx.path, key],
+								code: 'custom',
+								message: `Invalid input: Key matching regex /${key}/ must match schema`,
+								params: {
+									issues: result.error.issues,
+								},
+							});
+						}
+					}
+					if (key.match(new RegExp('\\\\,'))) {
+						evaluated = true;
+						const result = z.array(z.any()).min(1).safeParse(value[key]);
+						if (!result.success) {
+							ctx.addIssue({
+								path: [...ctx.path, key],
+								code: 'custom',
+								message: `Invalid input: Key matching regex /${key}/ must match schema`,
+								params: {
+									issues: result.error.issues,
+								},
+							});
+						}
+					}
+					if (!evaluated) {
+						const result = z.boolean().safeParse(value[key]);
+						if (!result.success) {
+							ctx.addIssue({
+								path: [...ctx.path, key],
+								code: 'custom',
+								message: 'Invalid input: must match catchall schema',
+								params: {
+									issues: result.error.issues,
+								},
+							});
+						}
+					}
+				}
+			});
 
 		const result = parseObject(schema, { path: [], seen: new Map() });
 
-		expect(result, expected);
+		expect(result).toMatchZod(expected);
 	});
 
 	test('Functional tests - additionalProperties', () => {
@@ -626,7 +650,7 @@ ctx.addIssue({
 		expect(result).toMatchZod(expected);
 	});
 
-	test.skip('Functional tests - additionalProperties and patternProperties', () => {
+	test('Functional tests - additionalProperties and patternProperties', () => {
 		const schema: JSONSchema7 & { type: 'object' } = {
 			type: 'object',
 			additionalProperties: { type: 'boolean' },
@@ -636,56 +660,58 @@ ctx.addIssue({
 			},
 		};
 
-		const expected = `z.record(z.union([z.array(z.any()), z.array(z.any()).min(1), z.boolean()])).superRefine((value, ctx) => {
-for (const key in value) {
-let evaluated = false
-if (key.match(new RegExp(\"\\\\.\"))) {
-evaluated = true
-const result = z.array(z.any()).safeParse(value[key])
-if (!result.success) {
-ctx.addIssue({
-          path: [...ctx.path, key],
-          code: 'custom',
-          message: \`Invalid input: Key matching regex /\${key}/ must match schema\`,
-          params: {
-            issues: result.error.issues
-          }
-        })
-}
-}
-if (key.match(new RegExp(\"\\\\,\"))) {
-evaluated = true
-const result = z.array(z.any()).min(1).safeParse(value[key])
-if (!result.success) {
-ctx.addIssue({
-          path: [...ctx.path, key],
-          code: 'custom',
-          message: \`Invalid input: Key matching regex /\${key}/ must match schema\`,
-          params: {
-            issues: result.error.issues
-          }
-        })
-}
-}
-if (!evaluated) {
-const result = z.boolean().safeParse(value[key])
-if (!result.success) {
-ctx.addIssue({
-          path: [...ctx.path, key],
-          code: 'custom',
-          message: \`Invalid input: must match catchall schema\`,
-          params: {
-            issues: result.error.issues
-          }
-        })
-}
-}
-}
-})`;
+		const expected = z
+			.record(z.union([z.array(z.any()), z.array(z.any()).min(1), z.boolean()]))
+			.superRefine((value, ctx) => {
+				for (const key in value) {
+					let evaluated = false;
+					if (key.match(new RegExp('\\\\.'))) {
+						evaluated = true;
+						const result = z.array(z.any()).safeParse(value[key]);
+						if (!result.success) {
+							ctx.addIssue({
+								path: [...ctx.path, key],
+								code: 'custom',
+								message: `Invalid input: Key matching regex /${key}/ must match schema`,
+								params: {
+									issues: result.error.issues,
+								},
+							});
+						}
+					}
+					if (key.match(new RegExp('\\\\,'))) {
+						evaluated = true;
+						const result = z.array(z.any()).min(1).safeParse(value[key]);
+						if (!result.success) {
+							ctx.addIssue({
+								path: [...ctx.path, key],
+								code: 'custom',
+								message: `Invalid input: Key matching regex /${key}/ must match schema`,
+								params: {
+									issues: result.error.issues,
+								},
+							});
+						}
+					}
+					if (!evaluated) {
+						const result = z.boolean().safeParse(value[key]);
+						if (!result.success) {
+							ctx.addIssue({
+								path: [...ctx.path, key],
+								code: 'custom',
+								message: 'Invalid input: must match catchall schema',
+								params: {
+									issues: result.error.issues,
+								},
+							});
+						}
+					}
+				}
+			});
 
 		const result = parseObject(schema, { path: [], seen: new Map() });
 
-		expect(result, expected);
+		expect(result).toMatchZod(expected);
 
 		expect(run(result, { x: true, '.': [], ',': [] })).toEqual({
 			success: false,
@@ -712,7 +738,7 @@ ctx.addIssue({
 		});
 	});
 
-	test.skip('Functional tests - single-item patternProperties', () => {
+	test('Functional tests - single-item patternProperties', () => {
 		const schema: JSONSchema7 & { type: 'object' } = {
 			type: 'object',
 			patternProperties: {
@@ -720,30 +746,30 @@ ctx.addIssue({
 			},
 		};
 
-		const expected = `z.record(z.array(z.any())).superRefine((value, ctx) => {
-for (const key in value) {
-if (key.match(new RegExp("\\\\."))) {
-const result = z.array(z.any()).safeParse(value[key])
-if (!result.success) {
-ctx.addIssue({
-          path: [...ctx.path, key],
-          code: 'custom',
-          message: \`Invalid input: Key matching regex /\${key}/ must match schema\`,
-          params: {
-            issues: result.error.issues
-          }
-        })
-}
-}
-}
-})`;
+		const expected = z.record(z.array(z.any())).superRefine((value, ctx) => {
+			for (const key in value) {
+				if (key.match(new RegExp('\\\\.'))) {
+					const result = z.array(z.any()).safeParse(value[key]);
+					if (!result.success) {
+						ctx.addIssue({
+							path: [...ctx.path, key],
+							code: 'custom',
+							message: `Invalid input: Key matching regex /${key}/ must match schema`,
+							params: {
+								issues: result.error.issues,
+							},
+						});
+					}
+				}
+			}
+		});
 
 		const result = parseObject(schema, { path: [], seen: new Map() });
 
-		expect(result, expected);
+		expect(result).toMatchZod(expected);
 	});
 
-	test.skip('Functional tests - patternProperties', () => {
+	test('Functional tests - patternProperties', () => {
 		const schema: JSONSchema7 & { type: 'object' } = {
 			type: 'object',
 			patternProperties: {
@@ -752,36 +778,38 @@ ctx.addIssue({
 			},
 		};
 
-		const expected = `z.record(z.union([z.array(z.any()), z.array(z.any()).min(1)])).superRefine((value, ctx) => {
-for (const key in value) {
-if (key.match(new RegExp(\"\\\\.\"))) {
-const result = z.array(z.any()).safeParse(value[key])
-if (!result.success) {
-ctx.addIssue({
-          path: [...ctx.path, key],
-          code: 'custom',
-          message: \`Invalid input: Key matching regex /\${key}/ must match schema\`,
-          params: {
-            issues: result.error.issues
-          }
-        })
-}
-}
-if (key.match(new RegExp(\"\\\\,\"))) {
-const result = z.array(z.any()).min(1).safeParse(value[key])
-if (!result.success) {
-ctx.addIssue({
-          path: [...ctx.path, key],
-          code: 'custom',
-          message: \`Invalid input: Key matching regex /\${key}/ must match schema\`,
-          params: {
-            issues: result.error.issues
-          }
-        })
-}
-}
-}
-})`;
+		const expected = z
+			.record(z.union([z.array(z.any()), z.array(z.any()).min(1)]))
+			.superRefine((value, ctx) => {
+				for (const key in value) {
+					if (key.match(new RegExp('\\.'))) {
+						const result = z.array(z.any()).safeParse(value[key]);
+						if (!result.success) {
+							ctx.addIssue({
+								path: [...ctx.path, key],
+								code: 'custom',
+								message: `Invalid input: Key matching regex /${key}/ must match schema`,
+								params: {
+									issues: result.error.issues,
+								},
+							});
+						}
+					}
+					if (key.match(new RegExp('\\,'))) {
+						const result = z.array(z.any()).min(1).safeParse(value[key]);
+						if (!result.success) {
+							ctx.addIssue({
+								path: [...ctx.path, key],
+								code: 'custom',
+								message: `Invalid input: Key matching regex /${key}/ must match schema`,
+								params: {
+									issues: result.error.issues,
+								},
+							});
+						}
+					}
+				}
+			});
 
 		const result = parseObject(schema, { path: [], seen: new Map() });
 
@@ -814,10 +842,10 @@ ctx.addIssue({
 			]),
 		});
 
-		expect(result, expected);
+		expect(result).toMatchZod(expected);
 	});
 
-	test.skip('Functional tests - patternProperties and properties', () => {
+	test('Functional tests - patternProperties and properties', () => {
 		const schema: JSONSchema7 & { type: 'object' } = {
 			type: 'object',
 			required: ['a'],
@@ -835,39 +863,42 @@ ctx.addIssue({
 			},
 		};
 
-		const expected = `z.object({ "a": z.string(), "b": z.number().optional() }).catchall(z.union([z.array(z.any()), z.array(z.any()).min(1)])).superRefine((value, ctx) => {
-for (const key in value) {
-if (key.match(new RegExp(\"\\\\.\"))) {
-const result = z.array(z.any()).safeParse(value[key])
-if (!result.success) {
-ctx.addIssue({
-          path: [...ctx.path, key],
-          code: 'custom',
-          message: \`Invalid input: Key matching regex /\${key}/ must match schema\`,
-          params: {
-            issues: result.error.issues
-          }
-        })
-}
-}
-if (key.match(new RegExp(\"\\\\,\"))) {
-const result = z.array(z.any()).min(1).safeParse(value[key])
-if (!result.success) {
-ctx.addIssue({
-          path: [...ctx.path, key],
-          code: 'custom',
-          message: \`Invalid input: Key matching regex /\${key}/ must match schema\`,
-          params: {
-            issues: result.error.issues
-          }
-        })
-}
-}
-}
-})`;
+		const expected = z
+			.object({ a: z.string(), b: z.number().optional() })
+			.catchall(z.union([z.array(z.any()), z.array(z.any()).min(1)]))
+			.superRefine((value, ctx) => {
+				for (const key in value) {
+					if (key.match(new RegExp('\\.'))) {
+						const result = z.array(z.any()).safeParse(value[key]);
+						if (!result.success) {
+							ctx.addIssue({
+								path: [...ctx.path, key],
+								code: 'custom',
+								message: `Invalid input: Key matching regex /${key}/ must match schema`,
+								params: {
+									issues: result.error.issues,
+								},
+							});
+						}
+					}
+					if (key.match(new RegExp('\\,'))) {
+						const result = z.array(z.any()).min(1).safeParse(value[key]);
+						if (!result.success) {
+							ctx.addIssue({
+								path: [...ctx.path, key],
+								code: 'custom',
+								message: `Invalid input: Key matching regex /${key}/ must match schema`,
+								params: {
+									issues: result.error.issues,
+								},
+							});
+						}
+					}
+				}
+			});
 
 		const result = parseObject(schema, { path: [], seen: new Map() });
 
-		expect(result, expected);
+		expect(result).toMatchZod(expected);
 	});
 });
