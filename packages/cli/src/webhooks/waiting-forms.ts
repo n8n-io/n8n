@@ -75,14 +75,11 @@ export class WaitingForms extends WaitingWebhooks {
 					</script>
 				`);
 
-					return {
-						noWebhookResponse: true,
-					};
-				} else {
-					return {
-						noWebhookResponse: true,
-					};
-				}
+				} 
+	return {
+		noWebhookResponse: true,
+	};
+				
 			}
 			throw new ConflictError(`The execution "${executionId}" is running already.`);
 		}
