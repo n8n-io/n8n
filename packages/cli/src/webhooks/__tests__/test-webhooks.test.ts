@@ -39,7 +39,7 @@ let testWebhooks: TestWebhooks;
 
 describe('TestWebhooks', () => {
 	beforeAll(() => {
-		testWebhooks = new TestWebhooks(mock(), mock(), registrations, mock());
+		testWebhooks = new TestWebhooks(mock(), mock(), registrations, mock(), mock());
 		jest.useFakeTimers();
 	});
 
