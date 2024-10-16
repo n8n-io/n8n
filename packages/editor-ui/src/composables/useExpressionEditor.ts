@@ -383,7 +383,7 @@ export const useExpressionEditor = ({
 					if (/\[Object:\s(\{.+\}|\{\})\]/.test(resolved)) {
 						resolved = resolved.replace(/(\[Object: |\]$)/g, '');
 						try {
-							resolved = String(JSON.parse(resolved as string));
+							resolved = String(JSON.parse(resolved));
 						} catch (error) {}
 					}
 
