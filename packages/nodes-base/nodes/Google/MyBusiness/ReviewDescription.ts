@@ -1,15 +1,11 @@
-import {
-	NodeApiError,
-	NodeOperationError,
-	type IDataObject,
-	type IExecuteSingleFunctions,
-	type IN8nHttpFullResponse,
-	type INodeExecutionData,
-	type INodeProperties,
-	type JsonObject,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-import { handlePagination } from './GenericFunctions';
+import {
+	handleErrorsDeleteReply,
+	handleErrorsGetReview,
+	handleErrorsReplyToReview,
+	handlePagination,
+} from './GenericFunctions';
 
 export const reviewOperations: INodeProperties[] = [
 	{
@@ -32,30 +28,7 @@ export const reviewOperations: INodeProperties[] = [
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
-						postReceive: [
-							async function (
-								this: IExecuteSingleFunctions,
-								data: INodeExecutionData[],
-								response: IN8nHttpFullResponse,
-							): Promise<INodeExecutionData[]> {
-								if (response.statusCode < 200 || response.statusCode >= 300) {
-									const review = this.getNodeParameter('review', undefined) as IDataObject;
-									if (review && response.statusCode === 404) {
-										// Don't return a 404 error if the review does not exist
-										throw new NodeOperationError(
-											this.getNode(),
-											'The review you are deleting could not be found. Adjust the "review" parameter setting to update the review correctly',
-										);
-									}
-
-									throw new NodeApiError(this.getNode(), response.body as JsonObject, {
-										message: response.statusMessage,
-										httpCode: response.statusCode.toString(),
-									});
-								}
-								return data;
-							},
-						],
+						postReceive: [handleErrorsDeleteReply],
 					},
 				},
 			},
@@ -72,30 +45,7 @@ export const reviewOperations: INodeProperties[] = [
 					},
 
 					output: {
-						postReceive: [
-							async function (
-								this: IExecuteSingleFunctions,
-								data: INodeExecutionData[],
-								response: IN8nHttpFullResponse,
-							): Promise<INodeExecutionData[]> {
-								if (response.statusCode < 200 || response.statusCode >= 300) {
-									const review = this.getNodeParameter('review', undefined) as IDataObject;
-									if (review && response.statusCode === 404) {
-										// Don't return a 404 error if the review does not exist
-										throw new NodeOperationError(
-											this.getNode(),
-											'The review you are requesting could not be found. Adjust the "review" parameter setting to update the review correctly',
-										);
-									}
-
-									throw new NodeApiError(this.getNode(), response.body as JsonObject, {
-										message: response.statusMessage,
-										httpCode: response.statusCode.toString(),
-									});
-								}
-								return data;
-							},
-						],
+						postReceive: [handleErrorsGetReview],
 					},
 				},
 			},
@@ -129,30 +79,7 @@ export const reviewOperations: INodeProperties[] = [
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
-						postReceive: [
-							async function (
-								this: IExecuteSingleFunctions,
-								data: INodeExecutionData[],
-								response: IN8nHttpFullResponse,
-							): Promise<INodeExecutionData[]> {
-								if (response.statusCode < 200 || response.statusCode >= 300) {
-									const review = this.getNodeParameter('review', undefined) as IDataObject;
-									if (review && response.statusCode === 404) {
-										// Don't return a 404 error if the review does not exist
-										throw new NodeOperationError(
-											this.getNode(),
-											'The review you are replying to could not be found. Adjust the "review" parameter setting to reply to the review correctly',
-										);
-									}
-
-									throw new NodeApiError(this.getNode(), response.body as JsonObject, {
-										message: response.statusMessage,
-										httpCode: response.statusCode.toString(),
-									});
-								}
-								return data;
-							},
-						],
+						postReceive: [handleErrorsReplyToReview],
 					},
 				},
 			},

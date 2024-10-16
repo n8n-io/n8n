@@ -1,5 +1,6 @@
 import {
 	NodeApiError,
+	NodeOperationError,
 	type DeclarativeRestApiSettings,
 	type IDataObject,
 	type IExecutePaginationFunctions,
@@ -7,6 +8,7 @@ import {
 	type IHttpRequestMethods,
 	type IHttpRequestOptions,
 	type ILoadOptionsFunctions,
+	type IN8nHttpFullResponse,
 	type INodeExecutionData,
 	type INodeListSearchItems,
 	type INodeListSearchResult,
@@ -27,7 +29,7 @@ const getAllParams = (execFns: IExecuteSingleFunctions): Record<string, unknown>
 	return { ...params, ...additionalOptions };
 };
 
-/* Helper to adjust date-time parameters for API requests */
+/* Helper function to adjust date-time parameters for API requests */
 export async function handleDatesPresend(
 	this: IExecuteSingleFunctions,
 	opts: IHttpRequestOptions,
@@ -116,7 +118,7 @@ export async function addUpdateMaskPresend(
 	return opts;
 }
 
-/* Helper to handle pagination */
+/* Helper function to handle pagination */
 export async function handlePagination(
 	this: IExecutePaginationFunctions,
 	resultOptions: DeclarativeRestApiSettings.ResultOptions,
@@ -157,6 +159,158 @@ export async function handlePagination(
 	return aggregatedResult.map((item) => ({ json: item }));
 }
 
+/* Helper functions to handle errors */
+
+export async function handleErrorsDeletePost(
+	this: IExecuteSingleFunctions,
+	data: INodeExecutionData[],
+	response: IN8nHttpFullResponse,
+): Promise<INodeExecutionData[]> {
+	if (response.statusCode < 200 || response.statusCode >= 300) {
+		const post = this.getNodeParameter('post', undefined) as IDataObject;
+
+		// Provide a better error message
+		if (post && response.statusCode === 404) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'The post you are deleting could not be found. Adjust the "post" parameter setting to delete the post correctly.',
+			);
+		}
+
+		throw new NodeApiError(this.getNode(), response.body as JsonObject, {
+			message: response.statusMessage,
+			httpCode: response.statusCode.toString(),
+		});
+	}
+	return data;
+}
+
+export async function handleErrorsGetPost(
+	this: IExecuteSingleFunctions,
+	data: INodeExecutionData[],
+	response: IN8nHttpFullResponse,
+): Promise<INodeExecutionData[]> {
+	if (response.statusCode < 200 || response.statusCode >= 300) {
+		const post = this.getNodeParameter('post', undefined) as IDataObject;
+
+		// Provide a better error message
+		if (post && response.statusCode === 404) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'The post you are requesting could not be found. Adjust the "post" parameter setting to retrieve the post correctly.',
+			);
+		}
+
+		throw new NodeApiError(this.getNode(), response.body as JsonObject, {
+			message: response.statusMessage,
+			httpCode: response.statusCode.toString(),
+		});
+	}
+	return data;
+}
+
+export async function handleErrorsUpdatePost(
+	this: IExecuteSingleFunctions,
+	data: INodeExecutionData[],
+	response: IN8nHttpFullResponse,
+): Promise<INodeExecutionData[]> {
+	if (response.statusCode < 200 || response.statusCode >= 300) {
+		const post = this.getNodeParameter('post') as IDataObject;
+		const additionalOptions = this.getNodeParameter('additionalOptions') as IDataObject;
+
+		// Provide a better error message
+		if (post && response.statusCode === 404) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'The post you are updating could not be found. Adjust the "post" parameter setting to update the post correctly.',
+			);
+		}
+
+		// Do not throw an error if the user didn't set additional options (a hint will be shown)
+		if (response.statusCode === 400 && Object.keys(additionalOptions).length === 0) {
+			return [{ json: { success: true } }];
+		}
+
+		throw new NodeApiError(this.getNode(), response.body as JsonObject, {
+			message: response.statusMessage,
+			httpCode: response.statusCode.toString(),
+		});
+	}
+	return data;
+}
+
+export async function handleErrorsDeleteReply(
+	this: IExecuteSingleFunctions,
+	data: INodeExecutionData[],
+	response: IN8nHttpFullResponse,
+): Promise<INodeExecutionData[]> {
+	if (response.statusCode < 200 || response.statusCode >= 300) {
+		const review = this.getNodeParameter('review', undefined) as IDataObject;
+
+		// Provide a better error message
+		if (review && response.statusCode === 404) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'The review you are deleting could not be found. Adjust the "review" parameter setting to update the review correctly.',
+			);
+		}
+
+		throw new NodeApiError(this.getNode(), response.body as JsonObject, {
+			message: response.statusMessage,
+			httpCode: response.statusCode.toString(),
+		});
+	}
+	return data;
+}
+
+export async function handleErrorsGetReview(
+	this: IExecuteSingleFunctions,
+	data: INodeExecutionData[],
+	response: IN8nHttpFullResponse,
+): Promise<INodeExecutionData[]> {
+	if (response.statusCode < 200 || response.statusCode >= 300) {
+		const review = this.getNodeParameter('review', undefined) as IDataObject;
+
+		// Provide a better error message
+		if (review && response.statusCode === 404) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'The review you are requesting could not be found. Adjust the "review" parameter setting to update the review correctly.',
+			);
+		}
+
+		throw new NodeApiError(this.getNode(), response.body as JsonObject, {
+			message: response.statusMessage,
+			httpCode: response.statusCode.toString(),
+		});
+	}
+	return data;
+}
+
+export async function handleErrorsReplyToReview(
+	this: IExecuteSingleFunctions,
+	data: INodeExecutionData[],
+	response: IN8nHttpFullResponse,
+): Promise<INodeExecutionData[]> {
+	if (response.statusCode < 200 || response.statusCode >= 300) {
+		const review = this.getNodeParameter('review', undefined) as IDataObject;
+
+		// Provide a better error message
+		if (review && response.statusCode === 404) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'The review you are replying to could not be found. Adjust the "review" parameter setting to reply to the review correctly.',
+			);
+		}
+
+		throw new NodeApiError(this.getNode(), response.body as JsonObject, {
+			message: response.statusMessage,
+			httpCode: response.statusCode.toString(),
+		});
+	}
+	return data;
+}
+
 /* Helper function used in listSearch methods */
 export async function googleApiRequest(
 	this: ILoadOptionsFunctions | IPollFunctions,
@@ -192,6 +346,7 @@ export async function googleApiRequest(
 }
 
 /* listSearch methods */
+
 export async function searchAccounts(
 	this: ILoadOptionsFunctions,
 	filter?: string,

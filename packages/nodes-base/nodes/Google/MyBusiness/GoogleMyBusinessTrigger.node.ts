@@ -134,7 +134,6 @@ export class GoogleMyBusinessTrigger implements INodeType {
 		let responseData;
 		const qs: IDataObject = {};
 
-		// const event = this.getNodeParameter('event') as string; // Currently there is only one event
 		const account = (this.getNodeParameter('account') as { value: string; mode: string }).value;
 		const location = (this.getNodeParameter('location') as { value: string; mode: string }).value;
 

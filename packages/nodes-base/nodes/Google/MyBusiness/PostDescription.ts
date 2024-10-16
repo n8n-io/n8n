@@ -1,15 +1,13 @@
-import {
-	NodeApiError,
-	NodeOperationError,
-	type IDataObject,
-	type IExecuteSingleFunctions,
-	type IN8nHttpFullResponse,
-	type INodeExecutionData,
-	type INodeProperties,
-	type JsonObject,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-import { addUpdateMaskPresend, handleDatesPresend, handlePagination } from './GenericFunctions';
+import {
+	addUpdateMaskPresend,
+	handleDatesPresend,
+	handleErrorsDeletePost,
+	handleErrorsGetPost,
+	handleErrorsUpdatePost,
+	handlePagination,
+} from './GenericFunctions';
 
 export const postOperations: INodeProperties[] = [
 	{
@@ -45,30 +43,7 @@ export const postOperations: INodeProperties[] = [
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
-						postReceive: [
-							async function (
-								this: IExecuteSingleFunctions,
-								data: INodeExecutionData[],
-								response: IN8nHttpFullResponse,
-							): Promise<INodeExecutionData[]> {
-								if (response.statusCode < 200 || response.statusCode >= 300) {
-									const post = this.getNodeParameter('post', undefined) as IDataObject;
-									if (post && response.statusCode === 404) {
-										// Don't return a 404 error if the post does not exist
-										throw new NodeOperationError(
-											this.getNode(),
-											'The post you are deleting could not be found. Adjust the "post" parameter setting to delete the post correctly',
-										);
-									}
-
-									throw new NodeApiError(this.getNode(), response.body as JsonObject, {
-										message: response.statusMessage,
-										httpCode: response.statusCode.toString(),
-									});
-								}
-								return data;
-							},
-						],
+						postReceive: [handleErrorsDeletePost],
 					},
 				},
 			},
@@ -84,30 +59,7 @@ export const postOperations: INodeProperties[] = [
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
-						postReceive: [
-							async function (
-								this: IExecuteSingleFunctions,
-								data: INodeExecutionData[],
-								response: IN8nHttpFullResponse,
-							): Promise<INodeExecutionData[]> {
-								if (response.statusCode < 200 || response.statusCode >= 300) {
-									const post = this.getNodeParameter('post', undefined) as IDataObject;
-									if (post && response.statusCode === 404) {
-										// Don't return a 404 error if the post does not exist
-										throw new NodeOperationError(
-											this.getNode(),
-											'The post you are requesting could not be found. Adjust the "post" parameter setting to retrieve the post correctly',
-										);
-									}
-
-									throw new NodeApiError(this.getNode(), response.body as JsonObject, {
-										message: response.statusMessage,
-										httpCode: response.statusCode.toString(),
-									});
-								}
-								return data;
-							},
-						],
+						postReceive: [handleErrorsGetPost],
 					},
 				},
 			},
@@ -136,11 +88,7 @@ export const postOperations: INodeProperties[] = [
 				description: 'Update an existing post',
 				routing: {
 					send: {
-						preSend: [
-							handleDatesPresend,
-							addUpdateMaskPresend,
-							// handleDisplayOptionsBugPresend
-						],
+						preSend: [handleDatesPresend, addUpdateMaskPresend],
 					},
 					request: {
 						method: 'PATCH',
@@ -148,38 +96,7 @@ export const postOperations: INodeProperties[] = [
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
-						postReceive: [
-							async function (
-								this: IExecuteSingleFunctions,
-								data: INodeExecutionData[],
-								response: IN8nHttpFullResponse,
-							): Promise<INodeExecutionData[]> {
-								if (response.statusCode < 200 || response.statusCode >= 300) {
-									const post = this.getNodeParameter('post') as IDataObject;
-									const additionalOptions = this.getNodeParameter(
-										'additionalOptions',
-									) as IDataObject;
-									if (post && response.statusCode === 404) {
-										// Don't return a 404 error if the post does not exist
-										throw new NodeOperationError(
-											this.getNode(),
-											'The post you are updating could not be found. Adjust the "post" parameter setting to update the post correctly',
-										);
-									}
-
-									if (response.statusCode === 400 && Object.keys(additionalOptions).length === 0) {
-										// Only display the hint if no additional options are set
-										return [{ json: { success: true } }];
-									}
-
-									throw new NodeApiError(this.getNode(), response.body as JsonObject, {
-										message: response.statusMessage,
-										httpCode: response.statusCode.toString(),
-									});
-								}
-								return data;
-							},
-						],
+						postReceive: [handleErrorsUpdatePost],
 					},
 				},
 			},
