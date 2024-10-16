@@ -3,6 +3,7 @@ import { GlobalConfig } from '@n8n/config';
 import { QueryFailedError } from '@n8n/typeorm';
 import { AxiosError } from 'axios';
 import { createHash } from 'crypto';
+import { InstanceSettings } from 'n8n-core';
 import { ErrorReporterProxy, ApplicationError } from 'n8n-workflow';
 import Container from 'typedi';
 
@@ -82,7 +83,12 @@ export const initErrorHandling = async () => {
 				if (level === 'warning') return null;
 				event.level = level;
 				if (extra) event.extra = { ...event.extra, ...extra };
-				if (tags) event.tags = { ...event.tags, ...tags };
+				if (tags)
+					event.tags = {
+						...event.tags,
+						...tags,
+						server_type: Container.get(InstanceSettings).instanceType,
+					};
 			}
 
 			if (originalException instanceof Error && originalException.stack) {
