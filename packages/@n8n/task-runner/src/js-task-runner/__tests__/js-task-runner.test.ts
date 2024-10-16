@@ -281,6 +281,20 @@ describe('JsTaskRunner', () => {
 				expect(outcome.result).toEqual([wrapIntoJson({ val: undefined })]);
 			});
 		});
+
+		it('should allow access to Node.js Buffers', async () => {
+			const outcome = await execTaskWithParams({
+				task: newTaskWithSettings({
+					code: 'return { val: Buffer.from("test-buffer").toString() }',
+					nodeMode: 'runOnceForAllItems',
+				}),
+				taskData: newAllCodeTaskData(inputItems.map(wrapIntoJson), {
+					envProviderState: undefined,
+				}),
+			});
+
+			expect(outcome.result).toEqual([wrapIntoJson({ val: 'test-buffer' })]);
+		});
 	});
 
 	describe('runOnceForAllItems', () => {
@@ -755,8 +769,6 @@ describe('JsTaskRunner', () => {
 					},
 				}),
 			);
-
-			console.log('DONE');
 		}, 1000);
 	});
 });
