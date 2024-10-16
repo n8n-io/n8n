@@ -16,6 +16,7 @@ import jsParser from 'prettier/plugins/babel';
 import * as estree from 'prettier/plugins/estree';
 import { useSettingsStore } from '@/stores/settings.store';
 import type { AskAiRequest } from '@/types/assistant.types';
+import { propertyNameFromExpression } from '../../utils/mappingUtils';
 
 const emit = defineEmits<{
 	valueChanged: [value: IUpdateInformation];
@@ -171,6 +172,16 @@ function onPromptInput(inputValue: string) {
 onMounted(() => {
 	parentNodes.value = getParentNodes();
 });
+
+async function onDrop(value: string) {
+	value = propertyNameFromExpression(value);
+
+	prompt.value = `${prompt.value} ${value}`;
+	emit('valueChanged', {
+		name: getPath(props.parameter.name),
+		value: prompt.value,
+	});
+}
 </script>
 
 <template>
@@ -193,16 +204,23 @@ onMounted(() => {
 					v-text="`${prompt.length} / ${inputFieldMaxLength}`"
 				/>
 			</div>
-			<N8nInput
-				v-model="prompt"
-				:class="$style.input"
-				style="border: 1px solid var(--color-foreground-base)"
-				type="textarea"
-				:rows="6"
-				:maxlength="inputFieldMaxLength"
-				:placeholder="parameter.placeholder"
-				@input="onPromptInput"
-			/>
+			<DraggableTarget type="mapping" :disabled="isLoading" @drop="onDrop">
+				<template #default="{ activeDrop, droppable }">
+					<N8nInput
+						v-model="prompt"
+						:class="[
+							$style.input,
+							{ [$style.activeDrop]: activeDrop, [$style.droppable]: droppable },
+						]"
+						style="border: 1.5px solid var(--color-foreground-base)"
+						type="textarea"
+						:rows="6"
+						:maxlength="inputFieldMaxLength"
+						:placeholder="parameter.placeholder"
+						@input="onPromptInput"
+					/>
+				</template>
+			</DraggableTarget>
 		</div>
 		<div :class="$style.controls">
 			<N8nTooltip :disabled="isSubmitEnabled">
@@ -234,7 +252,7 @@ onMounted(() => {
 
 <style module lang="scss">
 .input * {
-	border: 0 !important;
+	border: 1.5px transparent !important;
 }
 .input textarea {
 	font-size: var(--font-size-2xs);
@@ -272,5 +290,14 @@ onMounted(() => {
 	padding: var(--spacing-2xs) 0;
 	display: flex;
 	justify-content: flex-end;
+}
+
+.droppable {
+	border: 1.5px dashed var(--color-ndv-droppable-parameter) !important;
+}
+
+.activeDrop {
+	border: 1.5px solid var(--color-success) !important;
+	cursor: grabbing;
 }
 </style>
