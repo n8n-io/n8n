@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable n8n-nodes-base/node-param-description-excess-final-period */
 import type { INodeProperties } from 'n8n-workflow';
 
 export const calendarOperations: INodeProperties[] = [
@@ -16,7 +14,7 @@ export const calendarOperations: INodeProperties[] = [
 			{
 				name: 'Book Appointment',
 				value: 'bookAppointment',
-				action: 'Book Appointment in a calendar',
+				action: 'Book appointment in a calendar',
 				routing: {
 					request: {
 						method: 'POST',
@@ -27,7 +25,7 @@ export const calendarOperations: INodeProperties[] = [
 			{
 				name: 'Get Free Slots',
 				value: 'getFreeSlots',
-				action: 'Get Free Slots of a calendar',
+				action: 'Get free slots of a calendar',
 				routing: {
 					request: {
 						method: 'GET',
@@ -336,7 +334,7 @@ const getFreeSlotsProperties: INodeProperties[] = [
 				name: 'userId',
 				type: 'string',
 				default: '',
-				description: 'User ID to filter the slots (optional).',
+				description: 'User ID to filter the slots (optional)',
 				routing: {
 					send: {
 						type: 'query',
@@ -355,7 +353,7 @@ const getFreeSlotsProperties: INodeProperties[] = [
 						name: 'userIds',
 						type: 'string',
 						default: '',
-						description: 'Comma-separated list of user IDs to filter the slots.',
+						description: 'Comma-separated list of user IDs to filter the slots',
 						routing: {
 							send: {
 								type: 'query',
@@ -371,7 +369,7 @@ const getFreeSlotsProperties: INodeProperties[] = [
 				type: 'boolean',
 				default: false,
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
-				description: 'Apply Look Busy to the slots.',
+				description: 'Apply Look Busy to the slots',
 				routing: {
 					send: {
 						type: 'query',

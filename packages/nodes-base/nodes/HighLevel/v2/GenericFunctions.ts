@@ -15,7 +15,6 @@ import type {
 	IWebhookFunctions,
 } from 'n8n-workflow';
 import { ApplicationError, NodeApiError } from 'n8n-workflow';
-
 import type { ToISOTimeOptions } from 'luxon';
 import { DateTime } from 'luxon';
 
@@ -157,6 +156,52 @@ export async function addLocationIdPreSendAction(
 	return requestOptions;
 }
 
+export const addNotePostReceiveAction = async function (
+	this: IExecuteSingleFunctions,
+	items: INodeExecutionData[],
+	response: IN8nHttpFullResponse,
+): Promise<INodeExecutionData[]> {
+	const note = this.getNodeParameter('additionalFields.notes', 0) as string;
+
+	// If no note is provided, do nothing and return the items as they are
+	if (!note) {
+		return items;
+	}
+	const contact: IDataObject = (response.body as IDataObject).contact as IDataObject;
+
+	// Ensure there is a valid response and extract contactId and userId
+	if (!response || !response.body || !contact) {
+		throw new ApplicationError('No response data available to extract contact ID and user ID.');
+	}
+
+	const contactId = contact.id;
+	const userId = contact.locationId;
+	const requestBody = {
+		userId,
+		body: note,
+	};
+
+	// Add note to contact
+	const responseData = (await this.helpers.httpRequestWithAuthentication.call(
+		this,
+		'highLevelOAuth2Api',
+		{
+			method: 'POST',
+			url: `https://services.leadconnectorhq.com/contacts/${contactId}/notes`,
+			body: requestBody,
+			headers: {
+				Accept: 'application/json',
+				'Content-Type': 'application/json',
+				Version: '2021-07-28',
+			},
+			json: true,
+		},
+	)) as IDataObject;
+
+	// Return the original items after adding the note
+	return items;
+};
+
 export async function highLevelApiRequest(
 	this:
 		| IExecuteFunctions
@@ -237,7 +282,7 @@ export async function highLevelApiPagination(
 	};
 	const rootProperty = resourceMapping[resource];
 
-	requestData.options.qs = requestData.options.qs || {};
+	requestData.options.qs = requestData.options.qs ?? {};
 	if (returnAll) requestData.options.qs.limit = 100;
 
 	let responseTotal = 0;
@@ -345,27 +390,42 @@ export async function getUsers(this: ILoadOptionsFunctions): Promise<INodeProper
 	return options;
 }
 
-export async function getTimezones(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-	try {
-		const locationId = this.getCurrentNodeParameter('locationId') as string;
-		if (!locationId) {
-			throw new ApplicationError('Location ID is not available.');
+export async function addCustomFieldsPreSendAction(
+	this: IExecuteSingleFunctions,
+	requestOptions: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	const requestBody = requestOptions.body as IDataObject;
+
+	if (requestBody && requestBody.customFields) {
+		const rawCustomFields = requestBody.customFields as IDataObject;
+
+		// Define the structure of fieldId
+		interface FieldIdType {
+			value: unknown;
+			cachedResultName?: string;
 		}
-		const responseData = await highLevelApiRequest.call(
-			this,
-			'GET',
-			`/locations/${locationId}/timezones`,
-			undefined,
-		);
-		const timezones = responseData?.timeZones ?? [];
-		if (timezones.length === 0) {
-			throw new ApplicationError('No timezones available.');
+
+		// Ensure rawCustomFields.values is an array of objects with fieldId and fieldValue
+		if (rawCustomFields && Array.isArray(rawCustomFields.values)) {
+			const formattedCustomFields = rawCustomFields.values.map((field: unknown) => {
+				// Assert that field is of the expected shape
+				const typedField = field as { fieldId: FieldIdType; fieldValue: unknown };
+
+				const fieldId = typedField.fieldId;
+
+				if (typeof fieldId === 'object' && fieldId !== null && 'value' in fieldId) {
+					return {
+						id: fieldId.value,
+						key: fieldId.cachedResultName ?? 'default_key',
+						field_value: typedField.fieldValue,
+					};
+				} else {
+					throw new ApplicationError('Error processing custom fields.');
+				}
+			});
+			requestBody.customFields = formattedCustomFields;
 		}
-		return timezones.map((zone: string) => ({
-			name: zone.trim(),
-			value: zone.trim(),
-		})) as INodePropertyOptions[];
-	} catch (error) {
-		throw new ApplicationError('Error fetching timezones from HighLevel API.');
 	}
+
+	return requestOptions;
 }
