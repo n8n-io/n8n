@@ -1,7 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { QueryFailedError } from '@n8n/typeorm';
-import { setTag } from '@sentry/node';
 import { AxiosError } from 'axios';
 import { createHash } from 'crypto';
 import { InstanceSettings } from 'n8n-core';
@@ -32,7 +31,7 @@ export const initErrorHandling = async () => {
 		DEPLOYMENT_NAME: serverName,
 	} = process.env;
 
-	const { init, captureException } = await import('@sentry/node');
+	const { init, captureException, setTag } = await import('@sentry/node');
 
 	const { RewriteFrames } = await import('@sentry/integrations');
 	const { Integrations } = await import('@sentry/node');
