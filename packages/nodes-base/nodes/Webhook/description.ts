@@ -262,7 +262,8 @@ export const optionsProperty: INodeProperties = {
 			type: 'string',
 			placeholder: 'e.g. 127.0.0.1',
 			default: '',
-			description: 'Comma-separated list of allowed IP addresses. Leave empty to allow all IPs.',
+			description:
+				'Comma-separated list of allowed IP addresses. Leave empty to allow all IPs, If you are running n8n behind a proxy make sure to set "N8N_PROXY_HOPS" to the number of hops the proxy is away from n8n.',
 		},
 		{
 			displayName: 'No Response Body',
