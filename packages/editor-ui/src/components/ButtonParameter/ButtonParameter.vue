@@ -17,6 +17,8 @@ import * as estree from 'prettier/plugins/estree';
 import { useSettingsStore } from '@/stores/settings.store';
 import type { AskAiRequest } from '@/types/assistant.types';
 
+const AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT = 'codeGeneratedForPrompt';
+
 const emit = defineEmits<{
 	valueChanged: [value: IUpdateInformation];
 }>();
@@ -29,6 +31,7 @@ const props = defineProps<{
 
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
+const { activeNode } = useNDVStore();
 
 const i18n = useI18n();
 
@@ -53,6 +56,11 @@ const isSubmitEnabled = computed(() => {
 
 	return true;
 });
+const promptUpdated = computed(() => {
+	const lastPrompt = activeNode?.parameters[AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT];
+	if (!lastPrompt) return false;
+	return lastPrompt !== prompt.value;
+});
 
 function startLoading() {
 	isLoading.value = true;
@@ -69,7 +77,6 @@ function getPath(parameter: string) {
 }
 
 async function onSubmit() {
-	const { activeNode } = useNDVStore();
 	const { showMessage } = useToast();
 	const action: string | NodePropertyAction | undefined =
 		props.parameter.typeOptions?.buttonConfig?.action;
@@ -128,7 +135,14 @@ async function onSubmit() {
 					value: formattedCode,
 				};
 
+				//updade code parameter
 				emit('valueChanged', updateInformation);
+
+				//update code generated for prompt parameter
+				emit('valueChanged', {
+					name: getPath(AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT),
+					value: prompt.value,
+				});
 
 				useTelemetry().trackAiTransform('generationFinished', {
 					prompt: prompt.value,
@@ -191,6 +205,11 @@ onMounted(() => {
 					v-show="prompt.length > 1"
 					:class="$style.counter"
 					v-text="`${prompt.length} / ${inputFieldMaxLength}`"
+				/>
+				<span
+					v-if="promptUpdated"
+					:class="$style['warning-text']"
+					v-text="'Prompt changed, click \'Generate Code\' before testing this node'"
 				/>
 			</div>
 			<N8nInput
@@ -272,5 +291,8 @@ onMounted(() => {
 	padding: var(--spacing-2xs) 0;
 	display: flex;
 	justify-content: flex-end;
+}
+.warning-text {
+	color: var(--prim-color-primary);
 }
 </style>

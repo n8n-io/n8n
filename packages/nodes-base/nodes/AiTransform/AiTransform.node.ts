@@ -5,6 +5,7 @@ import {
 	type INodeExecutionData,
 	type INodeType,
 	type INodeTypeDescription,
+	AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT,
 } from 'n8n-workflow';
 
 import set from 'lodash/set';
@@ -52,6 +53,12 @@ export class AiTransform implements INodeType {
 				},
 			},
 			{
+				displayName: 'Code Generated For Prompt',
+				name: AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT,
+				type: 'hidden',
+				default: '',
+			},
+			{
 				displayName: 'Generated JavaScript',
 				name: 'jsCode',
 				type: 'string',
@@ -60,8 +67,7 @@ export class AiTransform implements INodeType {
 					editorIsReadOnly: true,
 				},
 				default: '',
-				description:
-					'Read-only. To edit this code, adjust the prompt or copy and paste it into a Code node.',
+				hint: 'Read-only. To edit this code, adjust the prompt or copy and paste it into a Code node.',
 				noDataExpression: true,
 			},
 			{
