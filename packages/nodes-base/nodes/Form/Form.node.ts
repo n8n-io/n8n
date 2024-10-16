@@ -13,7 +13,7 @@ import {
 	NodeOperationError,
 	FORM_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
-	tryToParseFormFields,
+	tryToParseJsonToFormFields,
 	NodeConnectionType,
 	WAIT_NODE_TYPE,
 } from 'n8n-workflow';
@@ -92,6 +92,7 @@ const completionProperties = updateDisplayOptions(
 	},
 	[
 		{
+			// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 			displayName: 'On n8n Form Submission',
 			name: 'respondWith',
 			type: 'options',
@@ -252,7 +253,7 @@ export class Form extends Node {
 					rawExpressions: true,
 				}) as string;
 
-				fields = tryToParseFormFields(resolveRawData(context, jsonOutput));
+				fields = tryToParseJsonToFormFields(resolveRawData(context, jsonOutput));
 			} catch (error) {
 				throw new NodeOperationError(context.getNode(), error.message, {
 					description: error.message,

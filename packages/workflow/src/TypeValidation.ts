@@ -176,7 +176,7 @@ const ALLOWED_FIELD_TYPES = [
 	'textarea',
 ];
 
-export const tryToParseFormFields = (value: unknown): FormFieldsParameter => {
+export const tryToParseJsonToFormFields = (value: unknown): FormFieldsParameter => {
 	const fields: FormFieldsParameter = [];
 
 	try {
@@ -422,7 +422,7 @@ export function validateFieldType(
 		}
 		case 'form-fields': {
 			try {
-				return { valid: true, newValue: tryToParseFormFields(value) };
+				return { valid: true, newValue: tryToParseJsonToFormFields(value) };
 			} catch (e) {
 				return {
 					valid: false,

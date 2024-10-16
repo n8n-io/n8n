@@ -404,7 +404,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 							(lastNode.type === FORM_NODE_TYPE ||
 								(lastNode.type === WAIT_NODE_TYPE && lastNode.parameters.resume === 'form'))
 						) {
-							const testUrl = getFormResumeUrl(lastNode, executionId as string);
+							let testUrl = getFormResumeUrl(lastNode, executionId as string);
 
 							if (isFormShown) {
 								localStorage.setItem(FORM_RELOAD, testUrl);
@@ -422,7 +422,6 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 									}
 								}
 								if (!isFormShown) {
-									let testUrl = '';
 									if (lastNode.type === FORM_NODE_TYPE) {
 										testUrl = `${rootStore.formWaitingUrl}/${executionId}`;
 									} else {
