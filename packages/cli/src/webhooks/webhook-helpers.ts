@@ -273,7 +273,7 @@ export async function executeWebhook(
 				: 'Webhook';
 			let errorMessage = `Workflow ${webhookType} Error: Workflow could not be started!`;
 
-			// if workflow started manually, show and actual error message
+			// if workflow started manually, show an actual error message
 			if (err instanceof NodeOperationError && err.type === 'manual-form-test') {
 				errorMessage = err.message;
 			}
