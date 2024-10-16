@@ -5,7 +5,7 @@ import type { RequesterMessage } from '../runner-types';
 import type { RequesterMessageCallback } from '../task-broker.service';
 import { TaskBroker } from '../task-broker.service';
 
-export class SingleMainTaskManager extends TaskManager {
+export class LocalTaskManager extends TaskManager {
 	taskBroker: TaskBroker;
 
 	id: string = 'single-main';

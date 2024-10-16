@@ -1,4 +1,4 @@
-import { SecretManagerServiceClient as GcpClient } from '@google-cloud/secret-manager';
+import type { SecretManagerServiceClient as GcpClient } from '@google-cloud/secret-manager';
 import { ensureError, jsonParse, type INodeProperties } from 'n8n-workflow';
 import Container from 'typedi';
 
@@ -50,6 +50,8 @@ export class GcpSecretsManager implements SecretsProvider {
 
 	async connect() {
 		const { projectId, privateKey, clientEmail } = this.settings;
+
+		const { SecretManagerServiceClient: GcpClient } = await import('@google-cloud/secret-manager');
 
 		try {
 			this.client = new GcpClient({
