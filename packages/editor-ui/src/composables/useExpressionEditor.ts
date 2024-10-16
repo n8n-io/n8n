@@ -390,7 +390,7 @@ export const useExpressionEditor = ({
 					if (/\[Array:\s\[.+\]\]/.test(resolved)) {
 						resolved = resolved.replace(/(\[Array: |\]$)/g, '');
 						try {
-							resolved = String(JSON.parse(resolved as string));
+							resolved = String(JSON.parse(resolved));
 						} catch (error) {}
 					}
 
