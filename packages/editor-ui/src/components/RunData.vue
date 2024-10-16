@@ -270,11 +270,15 @@ export default defineComponent({
 			);
 		},
 		showPinDataButton(): boolean {
-			if (this.binaryData?.length) {
-				return this.isPaneTypeOutput && !!this.rawInputData.length && !this.editMode.enabled;
+			if (!this.rawInputData.length || !this.editMode.enabled) {
+				return false;
 			}
 
-			return this.canPinData && !!this.rawInputData.length && !this.editMode.enabled;
+			if (this.binaryData?.length) {
+				return this.isPaneTypeOutput;
+			}
+
+			return this.canPinData;
 		},
 		displayModes(): Array<{ label: string; value: string }> {
 			const defaults = [
