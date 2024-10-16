@@ -7,6 +7,7 @@ import {
 	NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS,
 	SIMULATE_NODE_TYPE,
 	SIMULATE_TRIGGER_NODE_TYPE,
+	WAIT_NODE_TYPE,
 	WAIT_TIME_UNLIMITED,
 } from '@/constants';
 import type {
@@ -16,7 +17,7 @@ import type {
 	NodeOperationError,
 	Workflow,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
+import { NodeConnectionType, NodeHelpers, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import type { StyleValue } from 'vue';
 import { computed, onMounted, ref, watch } from 'vue';
 import xss from 'xss';
@@ -268,7 +269,7 @@ const nodeClass = computed(() => {
 const nodeExecutionStatus = computed(() => {
 	const nodeExecutionRunData = workflowsStore.getWorkflowRunData?.[props.name];
 	if (nodeExecutionRunData) {
-		return nodeExecutionRunData.filter(Boolean)[0].executionStatus ?? '';
+		return nodeExecutionRunData.filter(Boolean)[0]?.executionStatus ?? '';
 	}
 	return '';
 });
@@ -320,9 +321,24 @@ const nodeTitle = computed(() => {
 const waiting = computed(() => {
 	const workflowExecution = workflowsStore.getWorkflowExecution as ExecutionSummary;
 
-	if (workflowExecution?.waitTill) {
+	if (workflowExecution?.waitTill && !workflowExecution?.finished) {
 		const lastNodeExecuted = get(workflowExecution, 'data.resultData.lastNodeExecuted');
 		if (props.name === lastNodeExecuted) {
+			const node = props.workflow.getNode(lastNodeExecuted);
+			if (
+				node &&
+				node.type === WAIT_NODE_TYPE &&
+				['webhook', 'form'].includes(node.parameters.resume as string)
+			) {
+				const event =
+					node.parameters.resume === 'webhook'
+						? i18n.baseText('node.theNodeIsWaitingWebhookCall')
+						: i18n.baseText('node.theNodeIsWaitingFormCall');
+				return event;
+			}
+			if (node?.parameters.operation === SEND_AND_WAIT_OPERATION) {
+				return i18n.baseText('node.theNodeIsWaitingUserInput');
+			}
 			const waitDate = new Date(workflowExecution.waitTill);
 			if (waitDate.toISOString() === WAIT_TIME_UNLIMITED) {
 				return i18n.baseText('node.theNodeIsWaitingIndefinitelyForAnIncomingWebhookCall');
@@ -507,7 +523,8 @@ function showPinDataDiscoveryTooltip(dataItemsCount: number): void {
 		isManualTypeNode.value ||
 		isScheduledGroup.value ||
 		uiStore.isAnyModalOpen ||
-		dataItemsCount === 0
+		dataItemsCount === 0 ||
+		pinnedData.hasData.value
 	)
 		return;
 
@@ -633,7 +650,7 @@ function openContextMenu(event: MouseEvent, source: 'node-button' | 'node-right-
 				<i v-if="isTriggerNode" class="trigger-icon">
 					<n8n-tooltip placement="bottom">
 						<template #content>
-							<span v-html="i18n.baseText('node.thisIsATriggerNode')" />
+							<span v-n8n-html="i18n.baseText('node.thisIsATriggerNode')" />
 						</template>
 						<FontAwesomeIcon icon="bolt" size="lg" />
 					</n8n-tooltip>
@@ -672,6 +689,10 @@ function openContextMenu(event: MouseEvent, source: 'node-button' | 'node-right-
 				</div>
 
 				<div class="node-executing-info" :title="i18n.baseText('node.nodeIsExecuting')">
+					<FontAwesomeIcon icon="sync-alt" spin />
+				</div>
+
+				<div v-if="waiting" class="node-waiting-spinner" :title="waiting">
 					<FontAwesomeIcon icon="sync-alt" spin />
 				</div>
 
@@ -901,6 +922,20 @@ function openContextMenu(event: MouseEvent, source: 'node-button' | 'node-right-
 
 		.node-executing-info {
 			display: none;
+			position: absolute;
+			left: 0px;
+			top: 0px;
+			z-index: 12;
+			width: 100%;
+			height: 100%;
+			font-size: 3.75em;
+			line-height: 1.65em;
+			text-align: center;
+			color: hsla(var(--color-primary-h), var(--color-primary-s), var(--color-primary-l), 0.7);
+		}
+
+		.node-waiting-spinner {
+			display: inline-block;
 			position: absolute;
 			left: 0px;
 			top: 0px;

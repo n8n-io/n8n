@@ -1,5 +1,6 @@
-import { CredentialTypes } from '@/credential-types';
 import { Container } from 'typedi';
+
+import { CredentialTypes } from '@/credential-types';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { mockInstance } from '@test/mocking';
 

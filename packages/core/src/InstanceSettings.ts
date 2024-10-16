@@ -1,8 +1,11 @@
-import path from 'path';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { createHash, randomBytes } from 'crypto';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
+import { ApplicationError, jsonParse, ALPHABET } from 'n8n-workflow';
+import { customAlphabet } from 'nanoid';
+import path from 'path';
 import { Service } from 'typedi';
-import { ApplicationError, jsonParse } from 'n8n-workflow';
+
+const nanoid = customAlphabet(ALPHABET, 16);
 
 interface ReadOnlySettings {
 	encryptionKey: string;
@@ -15,6 +18,8 @@ interface WritableSettings {
 type Settings = ReadOnlySettings & WritableSettings;
 
 type InstanceRole = 'unset' | 'leader' | 'follower';
+
+export type InstanceType = 'main' | 'webhook' | 'worker';
 
 const inTest = process.env.NODE_ENV === 'test';
 
@@ -38,7 +43,24 @@ export class InstanceSettings {
 
 	private settings = this.loadOrCreate();
 
+	/**
+	 * Fixed ID of this n8n instance, for telemetry.
+	 * Derived from encryption key. Do not confuse with `hostId`.
+	 *
+	 * @example '258fce876abf5ea60eb86a2e777e5e190ff8f3e36b5b37aafec6636c31d4d1f9'
+	 */
 	readonly instanceId = this.generateInstanceId();
+
+	readonly instanceType: InstanceType;
+
+	constructor() {
+		const command = process.argv[2];
+		this.instanceType = ['webhook', 'worker'].includes(command)
+			? (command as InstanceType)
+			: 'main';
+
+		this.hostId = `${this.instanceType}-${nanoid()}`;
+	}
 
 	/**
 	 * A main is:
@@ -49,6 +71,16 @@ export class InstanceSettings {
 	 * A non-main instance type (e.g. `worker`) is always `unset`.
 	 */
 	instanceRole: InstanceRole = 'unset';
+
+	/**
+	 * Transient ID of this n8n instance, for scaling mode.
+	 * Reset on restart. Do not confuse with `instanceId`.
+	 *
+	 * @example 'main-bnxa1riryKUNHtln'
+	 * @example 'worker-nDJR0FnSd2Vf6DB5'
+	 * @example 'webhook-jxQ7AO8IzxEtfW1F'
+	 */
+	readonly hostId: string;
 
 	get isLeader() {
 		return this.instanceRole === 'leader';

@@ -18,6 +18,7 @@ import {
 	CREDENTIAL_DOCS_EXPERIMENT,
 	DOCS_DOMAIN,
 	EnterpriseEditionFeature,
+	NEW_ASSISTANT_SESSION_MODAL,
 } from '@/constants';
 import type { PermissionsRecord } from '@/permissions';
 import { addCredentialTranslation } from '@/plugins/i18n';
@@ -34,6 +35,8 @@ import OauthButton from './OauthButton.vue';
 import CredentialDocs from './CredentialDocs.vue';
 import { CREDENTIAL_MARKDOWN_DOCS } from './docs';
 import { usePostHog } from '@/stores/posthog.store';
+import { useAssistantStore } from '@/stores/assistant.store';
+import InlineAskAssistantButton from 'n8n-design-system/components/InlineAskAssistantButton/InlineAskAssistantButton.vue';
 
 type Props = {
 	mode: string;
@@ -74,14 +77,15 @@ const ndvStore = useNDVStore();
 const rootStore = useRootStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
+const assistantStore = useAssistantStore();
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
 
 onBeforeMount(async () => {
-	if (rootStore.defaultLocale === 'en') return;
-
 	uiStore.activeCredentialType = props.credentialType.name;
+
+	if (rootStore.defaultLocale === 'en') return;
 
 	const key = `n8n-nodes-base.credentials.${props.credentialType.name}`;
 
@@ -167,6 +171,20 @@ const isMissingCredentials = computed(() => props.credentialType === null);
 
 const isNewCredential = computed(() => props.mode === 'new' && !props.credentialId);
 
+const isAskAssistantAvailable = computed(
+	() =>
+		documentationUrl.value &&
+		documentationUrl.value.includes(DOCS_DOMAIN) &&
+		props.credentialProperties.length &&
+		props.credentialPermissions.update &&
+		!(props.isOAuthType && props.requiredPropertiesFilled) &&
+		assistantStore.isAssistantEnabled,
+);
+
+const assistantAlreadyAsked = computed<boolean>(() => {
+	return assistantStore.isCredTypeActive(props.credentialType);
+});
+
 const docs = computed(() => CREDENTIAL_MARKDOWN_DOCS[props.credentialType.name]);
 const showCredentialDocs = computed(
 	() =>
@@ -189,6 +207,24 @@ function onDocumentationUrlClick(): void {
 
 function onAuthTypeChange(newType: string): void {
 	emit('authTypeChanged', newType);
+}
+
+async function onAskAssistantClick() {
+	const sessionInProgress = !assistantStore.isSessionEnded;
+	if (sessionInProgress) {
+		uiStore.openModalWithData({
+			name: NEW_ASSISTANT_SESSION_MODAL,
+			data: {
+				context: {
+					credHelp: {
+						credType: props.credentialType,
+					},
+				},
+			},
+		});
+		return;
+	}
+	await assistantStore.initCredHelp(props.credentialType);
 }
 
 watch(showOAuthSuccessBanner, (newValue, oldValue) => {
@@ -283,6 +319,15 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					:credential-type="credentialType"
 					@auth-type-changed="onAuthTypeChange"
 				/>
+
+				<div
+					v-if="isAskAssistantAvailable"
+					:class="$style.askAssistantButton"
+					data-test-id="credential-edit-ask-assistant-button"
+				>
+					<InlineAskAssistantButton :asked="assistantAlreadyAsked" @click="onAskAssistantClick" />
+					<span>for setup instructions</span>
+				</div>
 
 				<CopyInput
 					v-if="isOAuthType && !allOAuth2BasePropertiesOverridden"
@@ -383,5 +428,14 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 
 .googleReconnectLabel {
 	margin-right: var(--spacing-3xs);
+}
+
+.askAssistantButton {
+	display: flex;
+	align-items: center;
+	> span {
+		margin-left: var(--spacing-3xs);
+		font-size: var(--font-size-s);
+	}
 }
 </style>

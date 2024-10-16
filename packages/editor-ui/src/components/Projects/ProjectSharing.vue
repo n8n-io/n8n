@@ -26,7 +26,7 @@ const emit = defineEmits<{
 	projectRemoved: [value: ProjectSharingData];
 }>();
 
-const selectedProject = ref(Array.isArray(model.value) ? '' : model.value?.id ?? '');
+const selectedProject = ref(Array.isArray(model.value) ? '' : (model.value?.id ?? ''));
 const filter = ref('');
 const selectPlaceholder = computed(
 	() => props.placeholder ?? locale.baseText('projects.sharing.select.placeholder'),

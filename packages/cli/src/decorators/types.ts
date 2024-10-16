@@ -1,9 +1,12 @@
+import type { Scope } from '@n8n/permissions';
 import type { RequestHandler } from 'express';
 import type { Class } from 'n8n-core';
+
 import type { BooleanLicenseFeature } from '@/interfaces';
-import type { Scope } from '@n8n/permissions';
 
 export type Method = 'get' | 'post' | 'put' | 'patch' | 'delete';
+
+export type Arg = { type: 'body' | 'query' } | { type: 'param'; key: string };
 
 export interface RateLimit {
 	/**
@@ -34,6 +37,7 @@ export interface RouteMetadata {
 	rateLimit?: boolean | RateLimit;
 	licenseFeature?: BooleanLicenseFeature;
 	accessScope?: AccessScope;
+	args: Arg[];
 }
 
 export interface ControllerMetadata {

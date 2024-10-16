@@ -1,7 +1,8 @@
 <script lang="ts" setup>
 import { onMounted, onUnmounted, ref } from 'vue';
-import N8nIcon from '../N8nIcon';
 import type { RouteLocationRaw } from 'vue-router';
+
+import N8nIcon from '../N8nIcon';
 
 interface TabOptions {
 	value: string;
@@ -89,7 +90,7 @@ const scrollRight = () => scroll(50);
 			>
 				<N8nTooltip :disabled="!option.tooltip" placement="bottom">
 					<template #content>
-						<div @click="handleTooltipClick(option.value, $event)" v-html="option.tooltip" />
+						<div @click="handleTooltipClick(option.value, $event)" v-n8n-html="option.tooltip" />
 					</template>
 					<a
 						v-if="option.href"
@@ -199,7 +200,7 @@ const scrollRight = () => scroll(50);
 
 .button {
 	position: absolute;
-	background-color: var(--color-background-base);
+	background-color: var(--color-tabs-arrow-buttons, var(--color-background-base));
 	z-index: 1;
 	height: 24px;
 	width: 10px;

@@ -1,4 +1,3 @@
-import { Container } from 'typedi';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { EntityManager } from '@n8n/typeorm';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
@@ -8,11 +7,12 @@ import {
 	ensureError,
 	ErrorReporterProxy as ErrorReporter,
 } from 'n8n-workflow';
+import { Container } from 'typedi';
 
 import { inTest } from '@/constants';
-import { wrapMigration } from '@/databases/utils/migration-helpers';
-import type { Migration } from '@/databases/types';
 import { getConnectionOptions, arePostgresOptions } from '@/databases/config';
+import type { Migration } from '@/databases/types';
+import { wrapMigration } from '@/databases/utils/migration-helpers';
 
 let connection: Connection;
 

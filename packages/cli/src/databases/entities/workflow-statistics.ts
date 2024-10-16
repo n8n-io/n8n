@@ -1,4 +1,5 @@
 import { Column, Entity, ManyToOne, PrimaryColumn } from '@n8n/typeorm';
+
 import { datetimeColumnType } from './abstract-entity';
 import { WorkflowEntity } from './workflow-entity';
 

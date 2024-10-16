@@ -6,15 +6,18 @@ import { useUsageStore } from '@/stores/usage.store';
 import { telemetry } from '@/plugins/telemetry';
 import { i18n as locale } from '@/plugins/i18n';
 import { useUIStore } from '@/stores/ui.store';
-import { N8N_PRICING_PAGE_URL } from '@/constants';
 import { useToast } from '@/composables/useToast';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { hasPermission } from '@/utils/rbac/permissions';
+import N8nInfoTip from 'n8n-design-system/components/N8nInfoTip';
+import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '@/constants';
 
 const usageStore = useUsageStore();
 const route = useRoute();
 const router = useRouter();
 const uiStore = useUIStore();
 const toast = useToast();
+const documentTitle = useDocumentTitle();
 
 const queryParamCallback = ref<string>(
 	`callback=${encodeURIComponent(`${window.location.origin}${window.location.pathname}`)}`,
@@ -29,6 +32,20 @@ const activationKeyInput = ref<HTMLInputElement | null>(null);
 
 const canUserActivateLicense = computed(() =>
 	hasPermission(['rbac'], { rbac: { scope: 'license:manage' } }),
+);
+
+const badgedPlanName = computed(() => {
+	const [badge, name] = usageStore.planName.split(' ');
+	return {
+		name,
+		badge,
+	};
+});
+
+const isCommunity = computed(() => usageStore.planName.toLowerCase() === 'community');
+
+const isCommunityEditionRegistered = computed(
+	() => usageStore.planName.toLowerCase() === 'registered community',
 );
 
 const showActivationSuccess = () => {
@@ -65,10 +82,7 @@ const onLicenseActivation = async () => {
 };
 
 onMounted(async () => {
-	if (usageStore.isDesktop) {
-		return;
-	}
-
+	documentTitle.set(locale.baseText('settings.usageAndPlan.title'));
 	usageStore.setLoading(true);
 	if (route.query.key) {
 		try {
@@ -124,27 +138,20 @@ const onDialogOpened = () => {
 	activationKeyInput.value?.focus();
 };
 
-const openPricingPage = () => {
-	sendUsageTelemetry('desktop_view_plans');
-	window.open(N8N_PRICING_PAGE_URL, '_blank');
+const openCommunityRegisterModal = () => {
+	uiStore.openModal(COMMUNITY_PLUS_ENROLLMENT_MODAL);
 };
 </script>
 
 <template>
 	<div class="settings-usage-and-plan">
-		<n8n-heading size="2xlarge">{{ locale.baseText('settings.usageAndPlan.title') }}</n8n-heading>
-		<n8n-action-box
-			v-if="usageStore.isDesktop"
-			:class="$style.actionBox"
-			:heading="locale.baseText('settings.usageAndPlan.desktop.title')"
-			:description="locale.baseText('settings.usageAndPlan.desktop.description')"
-			:button-text="locale.baseText('settings.usageAndPlan.button.plans')"
-			@click:button="openPricingPage"
-		/>
-		<div v-if="!usageStore.isDesktop && !usageStore.isLoading">
-			<n8n-heading :class="$style.title" size="large">
+		<n8n-heading tag="h2" size="2xlarge">{{
+			locale.baseText('settings.usageAndPlan.title')
+		}}</n8n-heading>
+		<div v-if="!usageStore.isLoading">
+			<n8n-heading tag="h3" :class="$style.title" size="large">
 				<i18n-t keypath="settings.usageAndPlan.description" tag="span">
-					<template #name>{{ usageStore.planName }}</template>
+					<template #name>{{ badgedPlanName.name ?? usageStore.planName }}</template>
 					<template #type>
 						<span v-if="usageStore.planId">{{
 							locale.baseText('settings.usageAndPlan.plan')
@@ -152,7 +159,32 @@ const openPricingPage = () => {
 						<span v-else>{{ locale.baseText('settings.usageAndPlan.edition') }}</span>
 					</template>
 				</i18n-t>
+				<span v-if="badgedPlanName.badge && badgedPlanName.name" :class="$style.titleTooltip">
+					<N8nTooltip placement="top">
+						<template #content>
+							<i18n-t
+								v-if="isCommunityEditionRegistered"
+								keypath="settings.usageAndPlan.license.communityRegistered.tooltip"
+							>
+							</i18n-t>
+						</template>
+						<N8nBadge>{{ badgedPlanName.badge }}</N8nBadge>
+					</N8nTooltip>
+				</span>
 			</n8n-heading>
+
+			<N8nNotice v-if="isCommunity" class="mt-0" theme="warning">
+				<i18n-t keypath="settings.usageAndPlan.callOut">
+					<template #link>
+						<N8nButton
+							class="pl-0 pr-0"
+							text
+							:label="locale.baseText('settings.usageAndPlan.callOut.link')"
+							@click="openCommunityRegisterModal"
+						/>
+					</template>
+				</i18n-t>
+			</N8nNotice>
 
 			<div :class="$style.quota">
 				<n8n-text size="medium" color="text-light">
@@ -181,9 +213,7 @@ const openPricingPage = () => {
 				</div>
 			</div>
 
-			<n8n-info-tip>{{
-				locale.baseText('settings.usageAndPlan.activeWorkflows.hint')
-			}}</n8n-info-tip>
+			<N8nInfoTip>{{ locale.baseText('settings.usageAndPlan.activeWorkflows.hint') }}</N8nInfoTip>
 
 			<div :class="$style.buttons">
 				<n8n-button
@@ -254,7 +284,8 @@ const openPricingPage = () => {
 }
 
 .title {
-	display: block;
+	display: flex;
+	align-items: center;
 	padding: var(--spacing-2xl) 0 var(--spacing-m);
 }
 
@@ -323,6 +354,12 @@ const openPricingPage = () => {
 div[class*='info'] > span > span:last-child {
 	line-height: 1.4;
 	padding: 0 0 0 var(--spacing-4xs);
+}
+
+.titleTooltip {
+	display: flex;
+	align-items: center;
+	margin: 0 0 0 var(--spacing-2xs);
 }
 </style>
 

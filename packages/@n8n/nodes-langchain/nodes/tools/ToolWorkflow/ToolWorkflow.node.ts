@@ -530,7 +530,7 @@ export class ToolWorkflow implements INodeType {
 						: jsonParse<JSONSchema7>(inputSchema);
 
 				const zodSchemaSandbox = getSandboxWithZod(this, jsonSchema, 0);
-				const zodSchema = (await zodSchemaSandbox.runCode()) as DynamicZodObject;
+				const zodSchema = await zodSchemaSandbox.runCode<DynamicZodObject>();
 
 				tool = new DynamicStructuredTool<typeof zodSchema>({
 					schema: zodSchema,

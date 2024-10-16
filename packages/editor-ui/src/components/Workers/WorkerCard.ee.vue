@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { useOrchestrationStore } from '@/stores/orchestration.store';
-import type { IPushDataWorkerStatusPayload } from '@/Interface';
 import { computed, onMounted, onBeforeUnmount, ref } from 'vue';
+import type { WorkerStatus } from '@n8n/api-types';
+
+import { useOrchestrationStore } from '@/stores/orchestration.store';
 import { averageWorkerLoadFromLoadsAsString, memAsGb } from '../../utils/workerUtils';
 import WorkerJobAccordion from './WorkerJobAccordion.ee.vue';
 import WorkerNetAccordion from './WorkerNetAccordion.ee.vue';
@@ -18,7 +19,7 @@ const props = defineProps<{
 const secondsSinceLastUpdateString = ref<string>('0');
 const stale = ref<boolean>(false);
 
-const worker = computed((): IPushDataWorkerStatusPayload | undefined => {
+const worker = computed((): WorkerStatus | undefined => {
 	return orchestrationStore.getWorkerStatus(props.workerId);
 });
 
@@ -62,7 +63,7 @@ onBeforeUnmount(() => {
 				:class="stale ? [$style.cardHeading, $style.stale] : [$style.cardHeading]"
 				data-test-id="worker-card-name"
 			>
-				Name: {{ worker.workerId }} ({{ worker.hostname }}) <br />
+				Name: {{ worker.senderId }} ({{ worker.hostname }}) <br />
 				Average Load: {{ averageWorkerLoadFromLoadsAsString(worker.loadAvg ?? [0]) }} | Free Memory:
 				{{ memAsGb(worker.freeMem).toFixed(2) }}GB / {{ memAsGb(worker.totalMem).toFixed(2) }}GB
 				{{ stale ? ' (stale)' : '' }}
@@ -77,7 +78,7 @@ onBeforeUnmount(() => {
 				>
 				<WorkerJobAccordion :items="worker.runningJobsSummary" />
 				<WorkerNetAccordion :items="sortedWorkerInterfaces" />
-				<WorkerChartsAccordion :worker-id="worker.workerId" />
+				<WorkerChartsAccordion :worker-id="worker.senderId" />
 			</n8n-text>
 		</div>
 		<template #append>

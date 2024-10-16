@@ -1,19 +1,20 @@
-import { mock } from 'jest-mock-extended';
-import { TelemetryEventRelay } from '@/events/telemetry-event-relay';
-import { EventService } from '@/events/event.service';
-import config from '@/config';
-import type { IWorkflowBase } from 'n8n-workflow';
-import type { IWorkflowDb } from '@/interfaces';
-import type { Telemetry } from '@/telemetry';
-import type { License } from '@/license';
 import type { GlobalConfig } from '@n8n/config';
-import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import type { NodeTypes } from '@/node-types';
-import type { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import type { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
-import type { RelayEventMap } from '@/events/relay-event-map';
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
+import { mock } from 'jest-mock-extended';
+import type { IWorkflowBase } from 'n8n-workflow';
+
+import config from '@/config';
 import { N8N_VERSION } from '@/constants';
+import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
+import type { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
+import type { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
+import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { EventService } from '@/events/event.service';
+import type { RelayEventMap } from '@/events/maps/relay.event-map';
+import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
+import type { IWorkflowDb } from '@/interfaces';
+import type { License } from '@/license';
+import type { NodeTypes } from '@/node-types';
+import type { Telemetry } from '@/telemetry';
 
 const flushPromises = async () => await new Promise((resolve) => setImmediate(resolve));
 
@@ -35,6 +36,10 @@ describe('TelemetryEventRelay', () => {
 				includeMessageEventBusMetrics: false,
 				includeQueueMetrics: false,
 			},
+		},
+		logging: {
+			level: 'info',
+			outputs: ['console'],
 		},
 	});
 	const workflowRepository = mock<WorkflowRepository>();
@@ -1050,6 +1055,22 @@ describe('TelemetryEventRelay', () => {
 					public_api: false,
 				},
 			);
+		});
+	});
+
+	describe('Community+ registered', () => {
+		it('should track `license-community-plus-registered` event', () => {
+			const event: RelayEventMap['license-community-plus-registered'] = {
+				email: 'user@example.com',
+				licenseKey: 'license123',
+			};
+
+			eventService.emit('license-community-plus-registered', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User registered for license community plus', {
+				email: 'user@example.com',
+				licenseKey: 'license123',
+			});
 		});
 	});
 });

@@ -1,11 +1,12 @@
 import { Command, Flags } from '@oclif/core';
-import { ScenarioLoader } from '@/scenario/scenarioLoader';
-import { ScenarioRunner } from '@/testExecution/scenarioRunner';
-import { N8nApiClient } from '@/n8nApiClient/n8nApiClient';
-import { ScenarioDataFileLoader } from '@/scenario/scenarioDataLoader';
-import type { K6Tag } from '@/testExecution/k6Executor';
-import { K6Executor } from '@/testExecution/k6Executor';
-import { testScenariosPath } from '@/config/commonFlags';
+
+import { testScenariosPath } from '@/config/common-flags';
+import { N8nApiClient } from '@/n8n-api-client/n8n-api-client';
+import { ScenarioDataFileLoader } from '@/scenario/scenario-data-loader';
+import { ScenarioLoader } from '@/scenario/scenario-loader';
+import type { K6Tag } from '@/test-execution/k6-executor';
+import { K6Executor } from '@/test-execution/k6-executor';
+import { ScenarioRunner } from '@/test-execution/scenario-runner';
 
 export default class RunCommand extends Command {
 	static description = 'Run all (default) or specified test scenarios';
@@ -35,6 +36,16 @@ export default class RunCommand extends Command {
 			doc: 'The API token for k6 cloud',
 			default: undefined,
 			env: 'K6_API_TOKEN',
+		}),
+		resultWebhookUrl: Flags.string({
+			doc: 'The URL where the benchmark results should be sent to',
+			default: undefined,
+			env: 'BENCHMARK_RESULT_WEBHOOK_URL',
+		}),
+		resultWebhookAuthHeader: Flags.string({
+			doc: 'The Authorization header value for the benchmark results webhook',
+			default: undefined,
+			env: 'BENCHMARK_RESULT_WEBHOOK_AUTH_HEADER',
 		}),
 		n8nUserPassword: Flags.string({
 			description: 'The password of the n8n user',
@@ -70,6 +81,12 @@ export default class RunCommand extends Command {
 				k6ApiToken: flags.k6ApiToken,
 				n8nApiBaseUrl: flags.n8nBaseUrl,
 				tags,
+				resultsWebhook: flags.resultWebhookUrl
+					? {
+							url: flags.resultWebhookUrl,
+							authHeader: flags.resultWebhookAuthHeader,
+						}
+					: undefined,
 			}),
 			{
 				email: flags.n8nUserEmail,

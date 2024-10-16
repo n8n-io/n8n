@@ -1,4 +1,5 @@
 import { Service } from 'typedi';
+
 import { CacheService } from '@/services/cache/cache.service';
 
 @Service()

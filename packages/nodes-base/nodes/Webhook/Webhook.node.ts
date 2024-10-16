@@ -65,7 +65,7 @@ export class Webhook extends Node {
 			activationHint:
 				"Once you've finished building your workflow, run it without having to click this button by using the production webhook URL.",
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
 		outputs: `={{(${configuredOutputs})($parameter)}}`,
 		credentials: credentialsProperty(this.authPropertyName),

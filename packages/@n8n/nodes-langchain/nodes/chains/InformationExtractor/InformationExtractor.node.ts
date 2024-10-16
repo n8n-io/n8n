@@ -262,7 +262,7 @@ export class InformationExtractor implements INodeType {
 			}
 
 			const zodSchemaSandbox = getSandboxWithZod(this, jsonSchema, 0);
-			const zodSchema = (await zodSchemaSandbox.runCode()) as z.ZodSchema<object>;
+			const zodSchema = await zodSchemaSandbox.runCode<z.ZodSchema<object>>();
 
 			parser = OutputFixingParser.fromLLM(llm, StructuredOutputParser.fromZodSchema(zodSchema));
 		}

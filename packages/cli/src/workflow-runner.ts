@@ -2,9 +2,8 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import { Container, Service } from 'typedi';
-import { WorkflowExecute } from 'n8n-core';
-
+import { GlobalConfig } from '@n8n/config';
+import { InstanceSettings, WorkflowExecute } from 'n8n-core';
 import type {
 	ExecutionError,
 	IDeferredPromise,
@@ -13,31 +12,31 @@ import type {
 	IRun,
 	WorkflowExecuteMode,
 	WorkflowHooks,
+	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
 import {
 	ErrorReporterProxy as ErrorReporter,
 	ExecutionCancelledError,
 	Workflow,
 } from 'n8n-workflow';
-
 import PCancelable from 'p-cancelable';
+import { Container, Service } from 'typedi';
 
 import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { ExternalHooks } from '@/external-hooks';
-import type { IExecutionResponse, IWorkflowExecutionDataProcess } from '@/interfaces';
+import { Logger } from '@/logging/logger.service';
 import { NodeTypes } from '@/node-types';
-import type { Job, JobData, JobResult } from '@/scaling/scaling.types';
 import type { ScalingService } from '@/scaling/scaling.service';
-import * as WorkflowHelpers from '@/workflow-helpers';
-import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import { generateFailedExecutionFromError } from '@/workflow-helpers';
+import type { Job, JobData, JobResult } from '@/scaling/scaling.types';
 import { PermissionChecker } from '@/user-management/permission-checker';
-import { Logger } from '@/logger';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import * as WorkflowHelpers from '@/workflow-helpers';
+import { generateFailedExecutionFromError } from '@/workflow-helpers';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
+
 import { EventService } from './events/event.service';
-import { GlobalConfig } from '@n8n/config';
 
 @Service()
 export class WorkflowRunner {
@@ -54,6 +53,7 @@ export class WorkflowRunner {
 		private readonly nodeTypes: NodeTypes,
 		private readonly permissionChecker: PermissionChecker,
 		private readonly eventService: EventService,
+		private readonly instanceSettings: InstanceSettings,
 	) {}
 
 	/** The process did error */
@@ -64,7 +64,7 @@ export class WorkflowRunner {
 		executionId: string,
 		hooks?: WorkflowHooks,
 	) {
-		ErrorReporter.error(error);
+		ErrorReporter.error(error, { executionId });
 
 		const isQueueMode = config.getEnv('executions.mode') === 'queue';
 
@@ -101,14 +101,16 @@ export class WorkflowRunner {
 
 		// Remove from active execution with empty data. That will
 		// set the execution to failed.
-		this.activeExecutions.remove(executionId, fullRunData);
+		this.activeExecutions.finalizeExecution(executionId, fullRunData);
 
 		if (hooks) {
 			await hooks.executeHookFunctions('workflowExecuteAfter', [fullRunData]);
 		}
 	}
 
-	/** Run the workflow */
+	/** Run the workflow
+	 * @param realtime This is used in queue mode to change the priority of an execution, making sure they are picked up quicker.
+	 */
 	async run(
 		data: IWorkflowExecutionDataProcess,
 		loadStaticData?: boolean,
@@ -129,7 +131,7 @@ export class WorkflowRunner {
 			await workflowHooks.executeHookFunctions('workflowExecuteBefore', []);
 			await workflowHooks.executeHookFunctions('workflowExecuteAfter', [runData]);
 			responsePromise?.reject(error);
-			this.activeExecutions.remove(executionId);
+			this.activeExecutions.finalizeExecution(executionId);
 			return executionId;
 		}
 
@@ -150,7 +152,7 @@ export class WorkflowRunner {
 		// since these calls are now done by the worker directly
 		if (
 			this.executionsMode !== 'queue' ||
-			config.getEnv('generic.instanceType') === 'worker' ||
+			this.instanceSettings.instanceType === 'worker' ||
 			data.executionMode === 'manual'
 		) {
 			const postExecutePromise = this.activeExecutions.getPostExecutePromise(executionId);
@@ -243,7 +245,7 @@ export class WorkflowRunner {
 			{ executionId },
 		);
 		let workflowExecution: PCancelable<IRun>;
-		await this.executionRepository.updateStatus(executionId, 'running');
+		await this.executionRepository.setRunning(executionId); // write
 
 		try {
 			additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(data, executionId);
@@ -277,6 +279,7 @@ export class WorkflowRunner {
 				data.startNodes === undefined ||
 				data.startNodes.length === 0
 			) {
+				// Full Execution
 				this.logger.debug(`Execution ID ${executionId} will run executing all nodes.`, {
 					executionId,
 				});
@@ -293,16 +296,27 @@ export class WorkflowRunner {
 					data.pinData,
 				);
 			} else {
+				// Partial Execution
 				this.logger.debug(`Execution ID ${executionId} is a partial execution.`, { executionId });
 				// Execute only the nodes between start and destination nodes
 				const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
-				workflowExecution = workflowExecute.runPartialWorkflow(
-					workflow,
-					data.runData,
-					data.startNodes,
-					data.destinationNode,
-					data.pinData,
-				);
+
+				if (data.partialExecutionVersion === '1') {
+					workflowExecution = workflowExecute.runPartialWorkflow2(
+						workflow,
+						data.runData,
+						data.destinationNode,
+						data.pinData,
+					);
+				} else {
+					workflowExecution = workflowExecute.runPartialWorkflow(
+						workflow,
+						data.runData,
+						data.startNodes,
+						data.destinationNode,
+						data.pinData,
+					);
+				}
 			}
 
 			this.activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
@@ -321,7 +335,7 @@ export class WorkflowRunner {
 						fullRunData.finished = false;
 					}
 					fullRunData.status = this.activeExecutions.getStatus(executionId);
-					this.activeExecutions.remove(executionId, fullRunData);
+					this.activeExecutions.finalizeExecution(executionId, fullRunData);
 				})
 				.catch(
 					async (error) =>
@@ -362,22 +376,12 @@ export class WorkflowRunner {
 			this.scalingService = Container.get(ScalingService);
 		}
 
-		let priority = 100;
-		if (realtime === true) {
-			// Jobs which require a direct response get a higher priority
-			priority = 50;
-		}
 		// TODO: For realtime jobs should probably also not do retry or not retry if they are older than x seconds.
 		//       Check if they get retried by default and how often.
-		const jobOptions = {
-			priority,
-			removeOnComplete: true,
-			removeOnFail: true,
-		};
 		let job: Job;
 		let hooks: WorkflowHooks;
 		try {
-			job = await this.scalingService.addJob(jobData, jobOptions);
+			job = await this.scalingService.addJob(jobData, { priority: realtime ? 50 : 100 });
 
 			hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerMain(
 				data.executionMode,
@@ -472,7 +476,6 @@ export class WorkflowRunner {
 						clearWatchdogInterval();
 					}
 				} catch (error) {
-					ErrorReporter.error(error);
 					// We use "getWorkflowHooksWorkerExecuter" as "getWorkflowHooksWorkerMain" does not contain the
 					// "workflowExecuteAfter" which we require.
 					const hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerExecuter(
@@ -490,45 +493,24 @@ export class WorkflowRunner {
 					reject(error);
 				}
 
-				// optimization: only pull and unflatten execution data from the Db when it is needed
-				const executionHasPostExecutionPromises =
-					this.activeExecutions.getPostExecutePromiseCount(executionId) > 0;
-
-				if (executionHasPostExecutionPromises) {
-					this.logger.debug(
-						`Reading execution data for execution ${executionId} from db for PostExecutionPromise.`,
-					);
-				} else {
-					this.logger.debug(
-						`Skipping execution data for execution ${executionId} since there are no PostExecutionPromise.`,
-					);
-				}
-
 				const fullExecutionData = await this.executionRepository.findSingleExecution(executionId, {
-					includeData: executionHasPostExecutionPromises,
-					unflattenData: executionHasPostExecutionPromises,
+					includeData: true,
+					unflattenData: true,
 				});
 				if (!fullExecutionData) {
 					return reject(new Error(`Could not find execution with id "${executionId}"`));
 				}
 
 				const runData: IRun = {
-					data: {},
 					finished: fullExecutionData.finished,
 					mode: fullExecutionData.mode,
 					startedAt: fullExecutionData.startedAt,
 					stoppedAt: fullExecutionData.stoppedAt,
 					status: fullExecutionData.status,
-				} as IRun;
+					data: fullExecutionData.data,
+				};
 
-				if (executionHasPostExecutionPromises) {
-					runData.data = (fullExecutionData as IExecutionResponse).data;
-				}
-
-				// NOTE: due to the optimization of not loading the execution data from the db when no post execution promises are present,
-				// the execution data in runData.data MAY not be available here.
-				// This means that any function expecting with runData has to check if the runData.data defined from this point
-				this.activeExecutions.remove(executionId, runData);
+				this.activeExecutions.finalizeExecution(executionId, runData);
 
 				// Normally also static data should be supplied here but as it only used for sending
 				// data to editor-UI is not needed.

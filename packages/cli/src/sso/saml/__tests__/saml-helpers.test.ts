@@ -1,11 +1,11 @@
+import type { AuthIdentity } from '@/databases/entities/auth-identity';
 import { User } from '@/databases/entities/user';
+import { AuthIdentityRepository } from '@/databases/repositories/auth-identity.repository';
+import { UserRepository } from '@/databases/repositories/user.repository';
 import { generateNanoId } from '@/databases/utils/generators';
 import * as helpers from '@/sso/saml/saml-helpers';
 import type { SamlUserAttributes } from '@/sso/saml/types/saml-user-attributes';
 import { mockInstance } from '@test/mocking';
-import { UserRepository } from '@/databases/repositories/user.repository';
-import type { AuthIdentity } from '@/databases/entities/auth-identity';
-import { AuthIdentityRepository } from '@/databases/repositories/auth-identity.repository';
 
 const userRepository = mockInstance(UserRepository);
 mockInstance(AuthIdentityRepository);

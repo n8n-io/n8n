@@ -7,7 +7,6 @@ import type {
 	ConnectStartEvent,
 } from '@/types';
 import type {
-	EdgeMouseEvent,
 	Connection,
 	XYPosition,
 	ViewportTransform,
@@ -19,7 +18,7 @@ import { Background } from '@vue-flow/background';
 import { MiniMap } from '@vue-flow/minimap';
 import Node from './elements/nodes/CanvasNode.vue';
 import Edge from './elements/edges/CanvasEdge.vue';
-import { computed, onMounted, onUnmounted, provide, ref, useCssModule, watch } from 'vue';
+import { computed, onMounted, onUnmounted, provide, ref, toRef, useCssModule, watch } from 'vue';
 import type { EventBus } from 'n8n-design-system';
 import { createEventBus } from 'n8n-design-system';
 import { useContextMenu, type ContextMenuAction } from '@/composables/useContextMenu';
@@ -30,7 +29,8 @@ import type { PinDataSource } from '@/composables/usePinnedData';
 import { isPresent } from '@/utils/typesUtils';
 import { GRID_SIZE } from '@/utils/nodeViewUtils';
 import { CanvasKey } from '@/constants';
-import { onKeyDown, onKeyUp } from '@vueuse/core';
+import { onKeyDown, onKeyUp, useDebounceFn } from '@vueuse/core';
+import CanvasArrowHeadMarker from './elements/edges/CanvasArrowHeadMarker.vue';
 
 const $style = useCssModule();
 
@@ -78,6 +78,7 @@ const props = withDefaults(
 		controlsPosition?: PanelPosition;
 		eventBus?: EventBus<CanvasEventBusEvents>;
 		readOnly?: boolean;
+		executing?: boolean;
 		keyBindings?: boolean;
 	}>(),
 	{
@@ -87,6 +88,7 @@ const props = withDefaults(
 		controlsPosition: PanelPosition.BottomLeft,
 		eventBus: () => createEventBus(),
 		readOnly: false,
+		executing: false,
 		keyBindings: true,
 	},
 );
@@ -122,7 +124,10 @@ const classes = computed(() => ({
 
 const disableKeyBindings = computed(() => !props.keyBindings);
 
-const panningKeyCode = 'Shift';
+/**
+ * @see https://developer.mozilla.org/en-US/docs/Web/API/UI_Events/Keyboard_event_key_values#whitespace_keys
+ */
+const panningKeyCode = ' ';
 const isPanningEnabled = ref(false);
 
 onKeyDown(panningKeyCode, () => {
@@ -133,30 +138,34 @@ onKeyUp(panningKeyCode, () => {
 	isPanningEnabled.value = false;
 });
 
-useKeybindings(
-	{
-		ctrl_c: emitWithSelectedNodes((ids) => emit('copy:nodes', ids)),
-		ctrl_x: emitWithSelectedNodes((ids) => emit('cut:nodes', ids)),
-		'delete|backspace': emitWithSelectedNodes((ids) => emit('delete:nodes', ids)),
-		ctrl_d: emitWithSelectedNodes((ids) => emit('duplicate:nodes', ids)),
-		d: emitWithSelectedNodes((ids) => emit('update:nodes:enabled', ids)),
-		p: emitWithSelectedNodes((ids) => emit('update:nodes:pin', ids, 'keyboard-shortcut')),
-		enter: emitWithLastSelectedNode((id) => onSetNodeActive(id)),
-		f2: emitWithLastSelectedNode((id) => emit('update:node:name', id)),
-		tab: () => emit('create:node', 'tab'),
-		shift_s: () => emit('create:sticky'),
-		ctrl_alt_n: () => emit('create:workflow'),
-		ctrl_enter: () => emit('run:workflow'),
-		ctrl_s: () => emit('save:workflow'),
-		ctrl_a: () => addSelectedNodes(graphNodes.value),
-		'+|=': async () => await onZoomIn(),
-		'-|_': async () => await onZoomOut(),
-		0: async () => await onResetZoom(),
-		1: async () => await onFitView(),
-		// @TODO implement arrow key shortcuts to modify selection
-	},
-	{ disabled: disableKeyBindings },
-);
+const keyMap = computed(() => ({
+	ctrl_c: emitWithSelectedNodes((ids) => emit('copy:nodes', ids)),
+	enter: emitWithLastSelectedNode((id) => onSetNodeActive(id)),
+	ctrl_a: () => addSelectedNodes(graphNodes.value),
+	'+|=': async () => await onZoomIn(),
+	'-|_': async () => await onZoomOut(),
+	0: async () => await onResetZoom(),
+	1: async () => await onFitView(),
+	// @TODO implement arrow key shortcuts to modify selection
+
+	...(props.readOnly
+		? {}
+		: {
+				ctrl_x: emitWithSelectedNodes((ids) => emit('cut:nodes', ids)),
+				'delete|backspace': emitWithSelectedNodes((ids) => emit('delete:nodes', ids)),
+				ctrl_d: emitWithSelectedNodes((ids) => emit('duplicate:nodes', ids)),
+				d: emitWithSelectedNodes((ids) => emit('update:nodes:enabled', ids)),
+				p: emitWithSelectedNodes((ids) => emit('update:nodes:pin', ids, 'keyboard-shortcut')),
+				f2: emitWithLastSelectedNode((id) => emit('update:node:name', id)),
+				tab: () => emit('create:node', 'tab'),
+				shift_s: () => emit('create:sticky'),
+				ctrl_alt_n: () => emit('create:workflow'),
+				ctrl_enter: () => emit('run:workflow'),
+				ctrl_s: () => emit('save:workflow'),
+			}),
+}));
+
+useKeybindings(keyMap, { disabled: disableKeyBindings });
 
 /**
  * Nodes
@@ -171,21 +180,22 @@ function onClickNodeAdd(id: string, handle: string) {
 	emit('click:node:add', id, handle);
 }
 
-function onUpdateNodesPosition(events: NodePositionChange[]) {
+// Debounced to prevent emitting too many events, necessary for undo/redo
+const onUpdateNodesPosition = useDebounceFn((events: NodePositionChange[]) => {
 	emit('update:nodes:position', events);
-}
+}, 200);
 
 function onUpdateNodePosition(id: string, position: XYPosition) {
 	emit('update:node:position', id, position);
 }
 
-function onNodesChange(events: NodeChange[]) {
-	const isPositionChangeEvent = (event: NodeChange): event is NodePositionChange =>
-		event.type === 'position' && 'position' in event;
+const isPositionChangeEvent = (event: NodeChange): event is NodePositionChange =>
+	event.type === 'position' && 'position' in event;
 
+function onNodesChange(events: NodeChange[]) {
 	const positionChangeEndEvents = events.filter(isPositionChangeEvent);
 	if (positionChangeEndEvents.length > 0) {
-		onUpdateNodesPosition(positionChangeEndEvents);
+		void onUpdateNodesPosition(positionChangeEndEvents);
 	}
 }
 
@@ -261,19 +271,7 @@ function onClickConnectionAdd(connection: Connection) {
 	emit('click:connection:add', connection);
 }
 
-/**
- * Connection hover
- */
-
-const hoveredEdges = ref<Record<string, boolean>>({});
-
-function onMouseEnterEdge(event: EdgeMouseEvent) {
-	hoveredEdges.value[event.edge.id] = true;
-}
-
-function onMouseLeaveEdge(event: EdgeMouseEvent) {
-	hoveredEdges.value[event.edge.id] = false;
-}
+const arrowHeadMarkerId = ref('custom-arrow-head');
 
 /**
  * Executions
@@ -489,8 +487,11 @@ watch(() => props.readOnly, setReadonly, {
  * Provide
  */
 
+const isExecuting = toRef(props, 'executing');
+
 provide(CanvasKey, {
 	connectingHandle,
+	isExecuting,
 });
 </script>
 
@@ -501,6 +502,7 @@ provide(CanvasKey, {
 		:edges="connections"
 		:apply-changes="false"
 		:connection-line-options="{ markerEnd: MarkerType.ArrowClosed }"
+		:connection-radius="60"
 		pan-on-scroll
 		snap-to-grid
 		:snap-grid="[GRID_SIZE, GRID_SIZE]"
@@ -510,8 +512,6 @@ provide(CanvasKey, {
 		:selection-key-code="selectionKeyCode"
 		:pan-activation-key-code="panningKeyCode"
 		data-test-id="canvas"
-		@edge-mouse-enter="onMouseEnterEdge"
-		@edge-mouse-leave="onMouseLeaveEdge"
 		@connect-start="onConnectStart"
 		@connect="onConnect"
 		@connect-end="onConnectEnd"
@@ -542,8 +542,8 @@ provide(CanvasKey, {
 		<template #edge-canvas-edge="canvasEdgeProps">
 			<Edge
 				v-bind="canvasEdgeProps"
+				:marker-end="`url(#${arrowHeadMarkerId})`"
 				:read-only="readOnly"
-				:hovered="hoveredEdges[canvasEdgeProps.id]"
 				@add="onClickConnectionAdd"
 				@delete="onDeleteConnection"
 			/>
@@ -552,6 +552,8 @@ provide(CanvasKey, {
 		<template #connection-line="connectionLineProps">
 			<CanvasConnectionLine v-bind="connectionLineProps" />
 		</template>
+
+		<CanvasArrowHeadMarker :id="arrowHeadMarkerId" />
 
 		<Background data-test-id="canvas-background" pattern-color="#aaa" :gap="GRID_SIZE" />
 
@@ -566,7 +568,6 @@ provide(CanvasKey, {
 				pannable
 				zoomable
 				:node-class-name="minimapNodeClassnameFn"
-				mask-color="var(--color-background-base)"
 				:node-border-radius="16"
 				@mouseenter="onMinimapMouseEnter"
 				@mouseleave="onMinimapMouseLeave"

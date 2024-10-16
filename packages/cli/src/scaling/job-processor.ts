@@ -1,15 +1,25 @@
-import { Service } from 'typedi';
+import type { RunningJobSummary } from '@n8n/api-types';
+import { InstanceSettings, WorkflowExecute } from 'n8n-core';
 import { BINARY_ENCODING, ApplicationError, Workflow } from 'n8n-workflow';
-import { WorkflowExecute } from 'n8n-core';
-import { Logger } from '@/logger';
+import type { ExecutionStatus, IExecuteResponsePromiseData, IRun } from 'n8n-workflow';
+import type PCancelable from 'p-cancelable';
+import { Service } from 'typedi';
+
 import config from '@/config';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import { Logger } from '@/logging/logger.service';
 import { NodeTypes } from '@/node-types';
-import type { ExecutionStatus, IExecuteResponsePromiseData, IRun } from 'n8n-workflow';
-import type { Job, JobId, JobResult, RunningJob, RunningJobSummary } from './scaling.types';
-import type PCancelable from 'p-cancelable';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+
+import type {
+	Job,
+	JobFinishedMessage,
+	JobId,
+	JobResult,
+	RespondToWebhookMessage,
+	RunningJob,
+} from './scaling.types';
 
 /**
  * Responsible for processing jobs from the queue, i.e. running enqueued executions.
@@ -23,7 +33,10 @@ export class JobProcessor {
 		private readonly executionRepository: ExecutionRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly nodeTypes: NodeTypes,
-	) {}
+		private readonly instanceSettings: InstanceSettings,
+	) {
+		this.logger = this.logger.withScope('scaling');
+	}
 
 	async processJob(job: Job): Promise<JobResult> {
 		const { executionId, loadStaticData } = job.data;
@@ -34,17 +47,20 @@ export class JobProcessor {
 		});
 
 		if (!execution) {
-			this.logger.error('[JobProcessor] Failed to find execution data', { executionId });
-			throw new ApplicationError('Failed to find execution data. Aborting execution.', {
-				extra: { executionId },
-			});
+			throw new ApplicationError(
+				`Worker failed to find data for execution ${executionId} (job ${job.id})`,
+				{ level: 'warning' },
+			);
 		}
 
 		const workflowId = execution.workflowData.id;
 
-		this.logger.info(`[JobProcessor] Starting job ${job.id} (execution ${executionId})`);
+		this.logger.info(`Worker started execution ${executionId} (job ${job.id})`, {
+			executionId,
+			jobId: job.id,
+		});
 
-		await this.executionRepository.updateStatus(executionId, 'running');
+		const startedAt = await this.executionRepository.setRunning(executionId);
 
 		let { staticData } = execution.workflowData;
 
@@ -55,8 +71,10 @@ export class JobProcessor {
 			});
 
 			if (workflowData === null) {
-				this.logger.error('[JobProcessor] Failed to find workflow', { workflowId, executionId });
-				throw new ApplicationError('Failed to find workflow', { extra: { workflowId } });
+				throw new ApplicationError(
+					`Worker failed to find workflow ${workflowId} to run execution ${executionId} (job ${job.id})`,
+					{ level: 'warning' },
+				);
 			}
 
 			staticData = workflowData.staticData;
@@ -99,11 +117,14 @@ export class JobProcessor {
 
 		additionalData.hooks.hookFunctions.sendResponse = [
 			async (response: IExecuteResponsePromiseData): Promise<void> => {
-				await job.progress({
+				const msg: RespondToWebhookMessage = {
 					kind: 'respond-to-webhook',
 					executionId,
 					response: this.encodeWebhookResponse(response),
-				});
+					workerId: this.instanceSettings.hostId,
+				};
+
+				await job.progress(msg);
 			},
 		];
 
@@ -112,7 +133,7 @@ export class JobProcessor {
 		additionalData.setExecutionStatus = (status: ExecutionStatus) => {
 			// Can't set the status directly in the queued worker, but it will happen in InternalHook.onWorkflowPostExecute
 			this.logger.debug(
-				`[JobProcessor] Queued worker execution status for ${executionId} is "${status}"`,
+				`Queued worker execution status for execution ${executionId} (job ${job.id}) is "${status}"`,
 			);
 		};
 
@@ -134,7 +155,7 @@ export class JobProcessor {
 			workflowId: execution.workflowId,
 			workflowName: execution.workflowData.name,
 			mode: execution.mode,
-			startedAt: execution.startedAt,
+			startedAt,
 			retryOf: execution.retryOf ?? '',
 			status: execution.status,
 		};
@@ -145,7 +166,18 @@ export class JobProcessor {
 
 		delete this.runningJobs[job.id];
 
-		this.logger.debug('[JobProcessor] Job finished running', { jobId: job.id, executionId });
+		this.logger.info(`Worker finished execution ${executionId} (job ${job.id})`, {
+			executionId,
+			jobId: job.id,
+		});
+
+		const msg: JobFinishedMessage = {
+			kind: 'job-finished',
+			executionId,
+			workerId: this.instanceSettings.hostId,
+		};
+
+		await job.progress(msg);
 
 		/**
 		 * @important Do NOT call `workflowExecuteAfter` hook here.

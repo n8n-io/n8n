@@ -1,8 +1,10 @@
 import { Column, Entity, Index, OneToMany } from '@n8n/typeorm';
 import { IsObject, IsString, Length } from 'class-validator';
-import type { SharedCredentials } from './shared-credentials';
-import { WithTimestampsAndStringId } from './abstract-entity';
+
 import type { ICredentialsDb } from '@/interfaces';
+
+import { WithTimestampsAndStringId } from './abstract-entity';
+import type { SharedCredentials } from './shared-credentials';
 
 @Entity()
 export class CredentialsEntity extends WithTimestampsAndStringId implements ICredentialsDb {
@@ -26,4 +28,9 @@ export class CredentialsEntity extends WithTimestampsAndStringId implements ICre
 
 	@OneToMany('SharedCredentials', 'credentials')
 	shared: SharedCredentials[];
+
+	toJSON() {
+		const { shared, ...rest } = this;
+		return rest;
+	}
 }

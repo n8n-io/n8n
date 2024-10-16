@@ -56,6 +56,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import { useNodeType } from '@/composables/useNodeType';
 import { useToast } from '@/composables/useToast';
 import { isEqual, isObject } from 'lodash-es';
 import { useExternalHooks } from '@/composables/useExternalHooks';
@@ -171,12 +172,16 @@ export default defineComponent({
 			runIndex: props.runIndex,
 			displayMode: ndvStore.getPanelDisplayMode(props.paneType),
 		});
+		const { isSubNodeType } = useNodeType({
+			node,
+		});
 
 		return {
 			...useToast(),
 			externalHooks,
 			nodeHelpers,
 			pinnedData,
+			isSubNodeType,
 		};
 	},
 	data() {
@@ -195,7 +200,7 @@ export default defineComponent({
 			MAX_DISPLAY_ITEMS_AUTO_ALL,
 			currentPage: 1,
 			pageSize: 10,
-			pageSizes: [10, 25, 50, 100],
+			pageSizes: [1, 10, 25, 50, 100],
 
 			pinDataDiscoveryTooltipVisible: false,
 			isControlledPinDataTooltip: false,
@@ -212,6 +217,13 @@ export default defineComponent({
 		),
 		isReadOnlyRoute() {
 			return this.$route?.meta?.readOnlyCanvas === true;
+		},
+		isWaitNodeWaiting() {
+			return (
+				this.workflowExecution?.status === 'waiting' &&
+				this.workflowExecution.data?.waitTill &&
+				this.workflowExecution?.data?.resultData?.lastNodeExecuted === this.node?.name
+			);
 		},
 		activeNode(): INodeUi | null {
 			return this.ndvStore.activeNode;
@@ -234,8 +246,8 @@ export default defineComponent({
 		isSchemaView(): boolean {
 			return this.displayMode === 'schema';
 		},
-		isInputSchemaView(): boolean {
-			return this.isSchemaView && this.paneType === 'input';
+		displaysMultipleNodes(): boolean {
+			return this.isSchemaView && this.paneType === 'input' && this.nodes.length > 0;
 		},
 		isTriggerNode(): boolean {
 			if (this.node === null) {
@@ -307,6 +319,12 @@ export default defineComponent({
 		workflowRunErrorAsNodeError(): NodeError | null {
 			if (!this.node) {
 				return null;
+			}
+
+			// If the node is a sub-node, we need to get the parent node error to check for input errors
+			if (this.isSubNodeType && this.paneType === 'input') {
+				const parentNode = this.workflow.getChildNodes(this.node?.name ?? '', 'ALL_NON_MAIN')[0];
+				return this.workflowRunData?.[parentNode]?.[this.runIndex]?.error as NodeError;
 			}
 			return this.workflowRunData?.[this.node?.name]?.[this.runIndex]?.error as NodeError;
 		},
@@ -589,7 +607,7 @@ export default defineComponent({
 
 			if (error && errorsToTrack.some((e) => error.message?.toLowerCase().includes(e))) {
 				this.$telemetry.track(
-					`User encountered an error: "${error.message}"`,
+					'User encountered an error',
 					{
 						node: this.node.type,
 						errorMessage: error.message,
@@ -1289,7 +1307,7 @@ export default defineComponent({
 		</div>
 
 		<div
-			v-if="maxRunIndex > 0 && !isInputSchemaView"
+			v-if="maxRunIndex > 0 && !displaysMultipleNodes"
 			v-show="!editMode.enabled"
 			:class="$style.runSelector"
 		>
@@ -1331,7 +1349,7 @@ export default defineComponent({
 			<slot name="run-info"></slot>
 		</div>
 
-		<slot v-if="!isInputSchemaView" name="before-data" />
+		<slot v-if="!displaysMultipleNodes" name="before-data" />
 
 		<n8n-callout
 			v-for="hint in getNodeHints()"
@@ -1339,11 +1357,11 @@ export default defineComponent({
 			:class="$style.hintCallout"
 			:theme="hint.type || 'info'"
 		>
-			<n8n-text size="small" v-html="hint.message"></n8n-text>
+			<n8n-text size="small" v-n8n-html="hint.message"></n8n-text>
 		</n8n-callout>
 
 		<div
-			v-if="maxOutputIndex > 0 && branches.length > 1 && !isInputSchemaView"
+			v-if="maxOutputIndex > 0 && branches.length > 1 && !displaysMultipleNodes"
 			:class="$style.outputs"
 			data-test-id="branches"
 		>
@@ -1364,7 +1382,7 @@ export default defineComponent({
 				hasNodeRun &&
 				((dataCount > 0 && maxRunIndex === 0) || search) &&
 				!isArtificialRecoveredEventItem &&
-				!isInputSchemaView
+				!displaysMultipleNodes
 			"
 			v-show="!editMode.enabled && !hasRunError"
 			:class="[$style.itemsCount, { [$style.muted]: paneType === 'input' && maxRunIndex === 0 }]"
@@ -1421,12 +1439,19 @@ export default defineComponent({
 				<NodeErrorView :error="subworkflowExecutionError" :class="$style.errorDisplay" />
 			</div>
 
-			<div v-else-if="!hasNodeRun && !(isInputSchemaView && node?.disabled)" :class="$style.center">
+			<div v-else-if="isWaitNodeWaiting" :class="$style.center">
+				<slot name="node-waiting">xxx</slot>
+			</div>
+
+			<div
+				v-else-if="!hasNodeRun && !(displaysMultipleNodes && node?.disabled)"
+				:class="$style.center"
+			>
 				<slot name="node-not-run"></slot>
 			</div>
 
 			<div
-				v-else-if="paneType === 'input' && !isInputSchemaView && node?.disabled"
+				v-else-if="paneType === 'input' && !displaysMultipleNodes && node?.disabled"
 				:class="$style.center"
 			>
 				<n8n-text>
@@ -1498,7 +1523,7 @@ export default defineComponent({
 				<n8n-text :bold="true" color="text-dark" size="large">{{ tooMuchDataTitle }}</n8n-text>
 				<n8n-text align="center" tag="div"
 					><span
-						v-html="
+						v-n8n-html="
 							$locale.baseText('ndv.output.tooMuchData.message', {
 								interpolate: { size: dataSizeInMB },
 							})
@@ -1836,6 +1861,7 @@ export default defineComponent({
 	justify-content: space-between;
 	align-items: center;
 	min-height: 30px;
+	--color-tabs-arrow-buttons: var(--color-run-data-background);
 }
 
 .itemsCount {

@@ -5,7 +5,7 @@ import { useLogStreamingStore } from '@/stores/logStreaming.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import ParameterInputList from '@/components/ParameterInputList.vue';
-import type { IMenuItem, INodeUi, IUpdateInformation } from '@/Interface';
+import type { IMenuItem, INodeUi, IUpdateInformation, ModalKey } from '@/Interface';
 import type {
 	IDataObject,
 	NodeParameterValue,
@@ -54,7 +54,10 @@ export default defineComponent({
 		EventSelection,
 	},
 	props: {
-		modalName: String,
+		modalName: {
+			type: String as PropType<ModalKey>,
+			required: true,
+		},
 		destination: {
 			type: Object,
 			default: () => deepCopy(defaultMessageEventBusDestinationOptions),

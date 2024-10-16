@@ -87,6 +87,8 @@ describe('Canvas', () => {
 	});
 
 	it('should handle `update:nodes:position` event', async () => {
+		vi.useFakeTimers();
+
 		const nodes = [createCanvasNodeElement()];
 		const { container, emitted } = renderComponent({
 			props: {
@@ -110,22 +112,9 @@ describe('Canvas', () => {
 		});
 		await fireEvent.mouseUp(node, { view: window });
 
+		vi.advanceTimersByTime(250); // Event debounce time
+
 		expect(emitted()['update:nodes:position']).toEqual([
-			[
-				[
-					{
-						id: '1',
-						type: 'position',
-						dragging: true,
-						from: {
-							x: 100,
-							y: 100,
-							z: 0,
-						},
-						position: { x: 80, y: 80 },
-					},
-				],
-			],
 			[
 				[
 					{
@@ -164,7 +153,7 @@ describe('Canvas', () => {
 			const pane = canvas.querySelector('.vue-flow__pane');
 			if (!pane) throw new Error('VueFlow pane not found');
 
-			await fireEvent.keyDown(pane, { view: window, key: 'Shift' });
+			await fireEvent.keyDown(pane, { view: window, key: ' ' });
 			await fireEvent.mouseDown(pane, { view: window });
 			await fireEvent.mouseMove(pane, {
 				view: window,
@@ -172,7 +161,7 @@ describe('Canvas', () => {
 				clientY: 100,
 			});
 			await fireEvent.mouseUp(pane, { view: window });
-			await fireEvent.keyUp(pane, { view: window, key: 'Shift' });
+			await fireEvent.keyUp(pane, { view: window, key: ' ' });
 
 			vi.advanceTimersByTime(minimapTransitionDuration);
 			await waitFor(() => expect(getByTestId('canvas-minimap')).toBeVisible());
@@ -196,7 +185,7 @@ describe('Canvas', () => {
 			const pane = canvas.querySelector('.vue-flow__pane');
 			if (!pane) throw new Error('VueFlow pane not found');
 
-			await fireEvent.keyDown(pane, { view: window, key: 'Shift' });
+			await fireEvent.keyDown(pane, { view: window, key: ' ' });
 			await fireEvent.mouseDown(pane, { view: window });
 			await fireEvent.mouseMove(pane, {
 				view: window,
@@ -204,7 +193,7 @@ describe('Canvas', () => {
 				clientY: 100,
 			});
 			await fireEvent.mouseUp(pane, { view: window });
-			await fireEvent.keyUp(pane, { view: window, key: 'Shift' });
+			await fireEvent.keyUp(pane, { view: window, key: ' ' });
 
 			vi.advanceTimersByTime(minimapTransitionDuration);
 			await waitFor(() => expect(getByTestId('canvas-minimap')).toBeVisible());

@@ -19,7 +19,7 @@ interface IWorkflowSaveSettings {
 
 const props = withDefaults(
 	defineProps<{
-		initiallyExpanded: boolean;
+		initiallyExpanded?: boolean;
 	}>(),
 	{
 		initiallyExpanded: false,

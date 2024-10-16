@@ -1,40 +1,43 @@
-import { Service } from 'typedi';
+import { writeFileSync } from 'fs';
+import { ApplicationError } from 'n8n-workflow';
 import path from 'path';
+import type { PushResult } from 'simple-git';
+import { Service } from 'typedi';
+
+import type { TagEntity } from '@/databases/entities/tag-entity';
+import type { User } from '@/databases/entities/user';
+import type { Variables } from '@/databases/entities/variables';
+import { TagRepository } from '@/databases/repositories/tag.repository';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { EventService } from '@/events/event.service';
+import { Logger } from '@/logging/logger.service';
+
+import {
+	SOURCE_CONTROL_DEFAULT_EMAIL,
+	SOURCE_CONTROL_DEFAULT_NAME,
+	SOURCE_CONTROL_README,
+} from './constants';
+import { SourceControlExportService } from './source-control-export.service.ee';
+import { SourceControlGitService } from './source-control-git.service.ee';
 import {
 	getTagsPath,
 	getTrackingInformationFromPostPushResult,
 	getTrackingInformationFromPrePushResult,
 	getTrackingInformationFromPullResult,
 	getVariablesPath,
+	normalizeAndValidateSourceControlledFilePath,
 	sourceControlFoldersExistCheck,
 } from './source-control-helper.ee';
-import type { SourceControlPreferences } from './types/source-control-preferences';
-import {
-	SOURCE_CONTROL_DEFAULT_EMAIL,
-	SOURCE_CONTROL_DEFAULT_NAME,
-	SOURCE_CONTROL_README,
-} from './constants';
-import { SourceControlGitService } from './source-control-git.service.ee';
-import type { PushResult } from 'simple-git';
-import { SourceControlExportService } from './source-control-export.service.ee';
-import type { ImportResult } from './types/import-result';
-import type { SourceControlPushWorkFolder } from './types/source-control-push-work-folder';
-import type { SourceControllPullOptions } from './types/source-control-pull-work-folder';
-import type { SourceControlledFile } from './types/source-controlled-file';
-import { SourceControlPreferencesService } from './source-control-preferences.service.ee';
-import { writeFileSync } from 'fs';
 import { SourceControlImportService } from './source-control-import.service.ee';
-import type { User } from '@/databases/entities/user';
-import type { SourceControlGetStatus } from './types/source-control-get-status';
-import type { TagEntity } from '@/databases/entities/tag-entity';
-import type { Variables } from '@/databases/entities/variables';
-import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
+import { SourceControlPreferencesService } from './source-control-preferences.service.ee';
 import type { ExportableCredential } from './types/exportable-credential';
-import { EventService } from '@/events/event.service';
-import { TagRepository } from '@/databases/repositories/tag.repository';
-import { Logger } from '@/logger';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ApplicationError } from 'n8n-workflow';
+import type { ImportResult } from './types/import-result';
+import type { SourceControlGetStatus } from './types/source-control-get-status';
+import type { SourceControlPreferences } from './types/source-control-preferences';
+import type { SourceControllPullOptions } from './types/source-control-pull-work-folder';
+import type { SourceControlPushWorkFolder } from './types/source-control-push-work-folder';
+import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
+import type { SourceControlledFile } from './types/source-controlled-file';
 
 @Service()
 export class SourceControlService {
@@ -78,7 +81,7 @@ export class SourceControlService {
 		});
 	}
 
-	private async sanityCheck(): Promise<void> {
+	public async sanityCheck(): Promise<void> {
 		try {
 			const foldersExisted = sourceControlFoldersExistCheck(
 				[this.gitFolder, this.sshFolder],
@@ -215,8 +218,20 @@ export class SourceControlService {
 			throw new BadRequestError('Cannot push onto read-only branch.');
 		}
 
+		const filesToPush = options.fileNames.map((file) => {
+			const normalizedPath = normalizeAndValidateSourceControlledFilePath(
+				this.gitFolder,
+				file.file,
+			);
+
+			return {
+				...file,
+				file: normalizedPath,
+			};
+		});
+
 		// only determine file status if not provided by the frontend
-		let statusResult: SourceControlledFile[] = options.fileNames;
+		let statusResult: SourceControlledFile[] = filesToPush;
 		if (statusResult.length === 0) {
 			statusResult = (await this.getStatus({
 				direction: 'push',
@@ -238,7 +253,7 @@ export class SourceControlService {
 
 		const filesToBePushed = new Set<string>();
 		const filesToBeDeleted = new Set<string>();
-		options.fileNames.forEach((e) => {
+		filesToPush.forEach((e) => {
 			if (e.status !== 'deleted') {
 				filesToBePushed.add(e.file);
 			} else {
@@ -248,12 +263,12 @@ export class SourceControlService {
 
 		this.sourceControlExportService.rmFilesFromExportFolder(filesToBeDeleted);
 
-		const workflowsToBeExported = options.fileNames.filter(
+		const workflowsToBeExported = filesToPush.filter(
 			(e) => e.type === 'workflow' && e.status !== 'deleted',
 		);
 		await this.sourceControlExportService.exportWorkflowsToWorkFolder(workflowsToBeExported);
 
-		const credentialsToBeExported = options.fileNames.filter(
+		const credentialsToBeExported = filesToPush.filter(
 			(e) => e.type === 'credential' && e.status !== 'deleted',
 		);
 		const credentialExportResult =
@@ -267,11 +282,11 @@ export class SourceControlService {
 			});
 		}
 
-		if (options.fileNames.find((e) => e.type === 'tags')) {
+		if (filesToPush.find((e) => e.type === 'tags')) {
 			await this.sourceControlExportService.exportTagsToWorkFolder();
 		}
 
-		if (options.fileNames.find((e) => e.type === 'variables')) {
+		if (filesToPush.find((e) => e.type === 'variables')) {
 			await this.sourceControlExportService.exportVariablesToWorkFolder();
 		}
 
@@ -279,7 +294,7 @@ export class SourceControlService {
 
 		for (let i = 0; i < statusResult.length; i++) {
 			// eslint-disable-next-line @typescript-eslint/no-loop-func
-			if (options.fileNames.find((file) => file.file === statusResult[i].file)) {
+			if (filesToPush.find((file) => file.file === statusResult[i].file)) {
 				statusResult[i].pushed = true;
 			}
 		}

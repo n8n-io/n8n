@@ -1,17 +1,22 @@
-import { Container } from 'typedi';
-import { License } from '@/license';
 import { generateKeyPairSync } from 'crypto';
-import type { KeyPair } from './types/key-pair';
 import { constants as fsConstants, mkdirSync, accessSync } from 'fs';
+import { ApplicationError } from 'n8n-workflow';
+import { ok } from 'node:assert/strict';
+import path from 'path';
+import { Container } from 'typedi';
+
+import { License } from '@/license';
+import { Logger } from '@/logging/logger.service';
+import { isContainedWithin } from '@/utils/path-util';
+
 import {
 	SOURCE_CONTROL_GIT_KEY_COMMENT,
 	SOURCE_CONTROL_TAGS_EXPORT_FILE,
 	SOURCE_CONTROL_VARIABLES_EXPORT_FILE,
 } from './constants';
-import type { SourceControlledFile } from './types/source-controlled-file';
-import path from 'path';
+import type { KeyPair } from './types/key-pair';
 import type { KeyPairType } from './types/key-pair-type';
-import { Logger } from '@/logger';
+import type { SourceControlledFile } from './types/source-controlled-file';
 
 export function stringContainsExpression(testString: string): boolean {
 	return /^=.*\{\{.*\}\}/.test(testString);
@@ -160,4 +165,25 @@ export function getTrackingInformationFromPostPushResult(result: SourceControlle
 		variablesPushed:
 			uniques.filter((file) => file.pushed && file.file.startsWith('variable_stubs')).length ?? 0,
 	};
+}
+
+/**
+ * Normalizes and validates the given source controlled file path. Ensures
+ * the path is absolute and contained within the git folder.
+ *
+ * @throws {ApplicationError} If the path is not within the git folder
+ */
+export function normalizeAndValidateSourceControlledFilePath(
+	gitFolderPath: string,
+	filePath: string,
+) {
+	ok(path.isAbsolute(gitFolderPath), 'gitFolder must be an absolute path');
+
+	const normalizedPath = path.isAbsolute(filePath) ? filePath : path.join(gitFolderPath, filePath);
+
+	if (!isContainedWithin(gitFolderPath, filePath)) {
+		throw new ApplicationError(`File path ${filePath} is invalid`);
+	}
+
+	return normalizedPath;
 }

@@ -25,7 +25,7 @@ interface TreeNode {
 }
 export interface Props {
 	node: INodeUi;
-	runIndex: number;
+	runIndex?: number;
 	hideTitle?: boolean;
 	slim?: boolean;
 }

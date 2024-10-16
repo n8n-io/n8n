@@ -19,7 +19,7 @@ const properties: INodeProperties[] = [
 		},
 		default: '',
 		description:
-			'ID of the site containing the collection whose items to add to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'ID of the site containing the collection whose items to add to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Collection Name or ID',
@@ -32,7 +32,7 @@ const properties: INodeProperties[] = [
 		},
 		default: '',
 		description:
-			'ID of the collection to add an item to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'ID of the collection to add an item to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Item ID',
@@ -74,7 +74,7 @@ const properties: INodeProperties[] = [
 						},
 						default: '',
 						description:
-							'Field to set for the item to create. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							'Field to set for the item to create. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Field Value',

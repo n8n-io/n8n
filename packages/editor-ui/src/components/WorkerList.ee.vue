@@ -1,17 +1,18 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
+import { useRouter } from 'vue-router';
 import { mapStores } from 'pinia';
+import type { WorkerStatus } from '@n8n/api-types';
+import type { ExecutionStatus } from 'n8n-workflow';
+
 import PushConnectionTracker from '@/components/PushConnectionTracker.vue';
 import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
-import type { IPushDataWorkerStatusPayload } from '@/Interface';
-import type { ExecutionStatus } from 'n8n-workflow';
 import { useUIStore } from '@/stores/ui.store';
 import { useOrchestrationStore } from '@/stores/orchestration.store';
-import { setPageTitle } from '@/utils/htmlUtils';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import WorkerCard from './Workers/WorkerCard.ee.vue';
 import { usePushConnection } from '@/composables/usePushConnection';
-import { useRouter } from 'vue-router';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { useRootStore } from '@/stores/root.store';
 
@@ -35,12 +36,13 @@ export default defineComponent({
 			i18n,
 			pushConnection,
 			...useToast(),
+			documentTitle: useDocumentTitle(),
 		};
 	},
 	computed: {
 		...mapStores(useRootStore, useUIStore, usePushConnectionStore, useOrchestrationStore),
-		combinedWorkers(): IPushDataWorkerStatusPayload[] {
-			const returnData: IPushDataWorkerStatusPayload[] = [];
+		combinedWorkers(): WorkerStatus[] {
+			const returnData: WorkerStatus[] = [];
 			for (const workerId in this.orchestrationManagerStore.workers) {
 				returnData.push(this.orchestrationManagerStore.workers[workerId]);
 			}
@@ -57,7 +59,7 @@ export default defineComponent({
 		},
 	},
 	mounted() {
-		setPageTitle(`n8n - ${this.pageTitle}`);
+		this.documentTitle.set(this.pageTitle);
 
 		this.$telemetry.track('User viewed worker view', {
 			instance_id: this.rootStore.instanceId,
@@ -85,14 +87,14 @@ export default defineComponent({
 		averageLoadAvg(loads: number[]) {
 			return (loads.reduce((prev, curr) => prev + curr, 0) / loads.length).toFixed(2);
 		},
-		getStatus(payload: IPushDataWorkerStatusPayload): ExecutionStatus {
+		getStatus(payload: WorkerStatus): ExecutionStatus {
 			if (payload.runningJobsSummary.length > 0) {
 				return 'running';
 			} else {
 				return 'success';
 			}
 		},
-		getRowClass(payload: IPushDataWorkerStatusPayload): string {
+		getRowClass(payload: WorkerStatus): string {
 			return [this.$style.execRow, this.$style[this.getStatus(payload)]].join(' ');
 		},
 	},

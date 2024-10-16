@@ -80,11 +80,11 @@
 	--color-canvas-read-only-line: var(--prim-gray-30);
 	--color-canvas-selected: var(--prim-gray-70);
 	--color-canvas-selected-transparent: hsla(var(--prim-gray-h), 47%, 30%, 0.1);
-  --color-canvas-label-background: hsla(
-			var(--color-canvas-background-h),
-			var(--color-canvas-background-s),
-			var(--color-canvas-background-l),
-			0.85
+	--color-canvas-label-background: hsla(
+		var(--color-canvas-background-h),
+		var(--color-canvas-background-s),
+		var(--color-canvas-background-l),
+		0.85
 	);
 
 	// Nodes
@@ -273,6 +273,7 @@
 	--execution-card-border-running: var(--prim-color-alt-b-tint-250);
 	--execution-card-border-unknown: var(--prim-gray-120);
 	--execution-card-background-hover: var(--color-foreground-light);
+	--execution-card-text-waiting: var(--color-secondary);
 	--execution-selector-background: var(--color-background-dark);
 	--execution-selector-text: var(--color-text-xlight);
 	--execution-select-all-text: var(--color-danger);

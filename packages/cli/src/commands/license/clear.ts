@@ -1,8 +1,10 @@
 import { Container } from 'typedi';
+
 import { SETTINGS_LICENSE_CERT_KEY } from '@/constants';
-import { BaseCommand } from '../base-command';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import { License } from '@/license';
+
+import { BaseCommand } from '../base-command';
 
 export class ClearLicenseCommand extends BaseCommand {
 	static description = 'Clear license';

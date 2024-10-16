@@ -1,3 +1,5 @@
+import type { Dirent } from 'fs';
+import { readdir } from 'fs/promises';
 import { loadClassInIsolation } from 'n8n-core';
 import type {
 	INodeType,
@@ -7,12 +9,11 @@ import type {
 	LoadedClass,
 } from 'n8n-workflow';
 import { ApplicationError, NodeHelpers } from 'n8n-workflow';
-import { Service } from 'typedi';
-import { LoadNodesAndCredentials } from './load-nodes-and-credentials';
 import { join, dirname } from 'path';
-import { readdir } from 'fs/promises';
-import type { Dirent } from 'fs';
+import { Service } from 'typedi';
+
 import { UnrecognizedNodeTypeError } from './errors/unrecognized-node-type.error';
+import { LoadNodesAndCredentials } from './load-nodes-and-credentials';
 
 @Service()
 export class NodeTypes implements INodeTypes {
@@ -43,15 +44,38 @@ export class NodeTypes implements INodeTypes {
 	}
 
 	getByNameAndVersion(nodeType: string, version?: number): INodeType {
-		const versionedNodeType = NodeHelpers.getVersionedNodeType(
-			this.getNode(nodeType).type,
-			version,
-		);
-		if (versionedNodeType.description.usableAsTool) {
-			return NodeHelpers.convertNodeToAiTool(versionedNodeType);
+		const origType = nodeType;
+		const toolRequested = nodeType.startsWith('n8n-nodes-base') && nodeType.endsWith('Tool');
+		// Make sure the nodeType to actually get from disk is the un-wrapped type
+		if (toolRequested) {
+			nodeType = nodeType.replace(/Tool$/, '');
 		}
 
-		return versionedNodeType;
+		const node = this.getNode(nodeType);
+		const versionedNodeType = NodeHelpers.getVersionedNodeType(node.type, version);
+		if (!toolRequested) return versionedNodeType;
+
+		if (!versionedNodeType.description.usableAsTool)
+			throw new ApplicationError('Node cannot be used as a tool', { extra: { nodeType } });
+
+		const { loadedNodes } = this.loadNodesAndCredentials;
+		if (origType in loadedNodes) {
+			return loadedNodes[origType].type as INodeType;
+		}
+
+		// Instead of modifying the existing type, we extend it into a new type object
+		const clonedProperties = Object.create(
+			versionedNodeType.description.properties,
+		) as INodeTypeDescription['properties'];
+		const clonedDescription = Object.create(versionedNodeType.description, {
+			properties: { value: clonedProperties },
+		}) as INodeTypeDescription;
+		const clonedNode = Object.create(versionedNodeType, {
+			description: { value: clonedDescription },
+		}) as INodeType;
+		const tool = NodeHelpers.convertNodeToAiTool(clonedNode);
+		loadedNodes[nodeType + 'Tool'] = { sourcePath: '', type: tool };
+		return tool;
 	}
 
 	/* Some nodeTypes need to get special parameters applied like the polling nodes the polling times */

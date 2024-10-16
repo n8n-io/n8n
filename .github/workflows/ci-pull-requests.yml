@@ -30,6 +30,9 @@ jobs:
       - name: Build
         run: pnpm build
 
+      - name: Run formatcheck
+        run: pnpm format:check
+
       - name: Run typecheck
         run: pnpm typecheck
 
