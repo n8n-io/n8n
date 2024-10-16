@@ -1,5 +1,6 @@
 import type { Redis as SingleNodeClient, Cluster as MultiNodeClient } from 'ioredis';
 import debounce from 'lodash/debounce';
+import { InstanceSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 import { Service } from 'typedi';
 
@@ -21,6 +22,7 @@ export class Subscriber {
 		private readonly logger: Logger,
 		private readonly redisClientService: RedisClientService,
 		private readonly eventService: EventService,
+		private readonly instanceSettings: InstanceSettings,
 	) {
 		// @TODO: Once this class is only ever initialized in scaling mode, throw in the next line instead.
 		if (config.getEnv('executions.mode') !== 'queue') return;
@@ -77,12 +79,12 @@ export class Subscriber {
 			return null;
 		}
 
-		const queueModeId = config.getEnv('redis.queueModeId');
+		const { hostId } = this.instanceSettings;
 
 		if (
 			'command' in msg &&
 			!msg.selfSend &&
-			(msg.senderId === queueModeId || (msg.targets && !msg.targets.includes(queueModeId)))
+			(msg.senderId === hostId || (msg.targets && !msg.targets.includes(hostId)))
 		) {
 			return null;
 		}

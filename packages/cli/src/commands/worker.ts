@@ -8,11 +8,13 @@ import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-mess
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
 import { Logger } from '@/logging/logger.service';
+import { LocalTaskManager } from '@/runners/task-managers/local-task-manager';
+import { TaskManager } from '@/runners/task-managers/task-manager';
 import { PubSubHandler } from '@/scaling/pubsub/pubsub-handler';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import type { ScalingService } from '@/scaling/scaling.service';
 import type { WorkerServerEndpointsConfig } from '@/scaling/worker-server';
-import { OrchestrationWorkerService } from '@/services/orchestration/worker/orchestration.worker.service';
+import { OrchestrationService } from '@/services/orchestration.service';
 
 import { BaseCommand } from './base-command';
 
@@ -68,8 +70,6 @@ export class Worker extends BaseCommand {
 		super(argv, cmdConfig);
 
 		this.logger = Container.get(Logger).withScope('scaling');
-
-		this.setInstanceQueueModeId();
 	}
 
 	async init() {
@@ -84,7 +84,7 @@ export class Worker extends BaseCommand {
 		await this.initCrashJournal();
 
 		this.logger.debug('Starting n8n worker...');
-		this.logger.debug(`Host ID: ${this.queueModeId}`);
+		this.logger.debug(`Host ID: ${this.instanceSettings.hostId}`);
 
 		await this.setConcurrency();
 		await super.init();
@@ -109,15 +109,26 @@ export class Worker extends BaseCommand {
 			new EventMessageGeneric({
 				eventName: 'n8n.worker.started',
 				payload: {
-					workerId: this.queueModeId,
+					workerId: this.instanceSettings.hostId,
 				},
 			}),
 		);
+
+		if (!this.globalConfig.taskRunners.disabled) {
+			Container.set(TaskManager, new LocalTaskManager());
+			const { TaskRunnerServer } = await import('@/runners/task-runner-server');
+			const taskRunnerServer = Container.get(TaskRunnerServer);
+			await taskRunnerServer.start();
+
+			const { TaskRunnerProcess } = await import('@/runners/task-runner-process');
+			const runnerProcess = Container.get(TaskRunnerProcess);
+			await runnerProcess.start();
+		}
 	}
 
 	async initEventBus() {
 		await Container.get(MessageEventBus).initialize({
-			workerId: this.queueModeId,
+			workerId: this.instanceSettings.hostId,
 		});
 		Container.get(LogStreamingEventRelay).init();
 	}
@@ -129,7 +140,7 @@ export class Worker extends BaseCommand {
 	 * The subscription connection adds a handler to handle the command messages
 	 */
 	async initOrchestration() {
-		await Container.get(OrchestrationWorkerService).init();
+		await Container.get(OrchestrationService).init();
 
 		Container.get(PubSubHandler).init();
 		await Container.get(Subscriber).subscribe('n8n.commands');
