@@ -527,7 +527,8 @@ function showPinDataDiscoveryTooltip(dataItemsCount: number): void {
 		isManualTypeNode.value ||
 		isScheduledGroup.value ||
 		uiStore.isAnyModalOpen ||
-		dataItemsCount === 0
+		dataItemsCount === 0 ||
+		pinnedData.hasData.value
 	)
 		return;
 
