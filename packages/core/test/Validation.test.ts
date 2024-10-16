@@ -1,4 +1,5 @@
 import type { IDataObject, INode, INodeType } from 'n8n-workflow';
+import { ExpressionError } from 'n8n-workflow';
 
 import { validateValueAgainstSchema } from '@/NodeExecuteFunctions';
 
@@ -58,6 +59,10 @@ describe('Validation', () => {
 											{
 												name: 'Object',
 												value: 'objectValue',
+											},
+											{
+												name: 'Options',
+												value: 'optionsValue',
 											},
 										],
 										default: 'stringValue',
@@ -136,6 +141,28 @@ describe('Validation', () => {
 										},
 										validateType: 'object',
 									},
+									{
+										displayName: 'Value',
+										name: 'optionsValue',
+										type: 'options',
+										default: 'option1',
+										options: [
+											{
+												name: 'Option 1',
+												value: 'option1',
+											},
+											{
+												name: 'Option 2',
+												value: 'option2',
+											},
+										],
+										displayOptions: {
+											show: {
+												type: ['optionsValue'],
+											},
+										},
+										validateType: 'options',
+									},
 								],
 							},
 						],
@@ -191,6 +218,11 @@ describe('Validation', () => {
 				type: 'objectValue',
 				objectValue: '{ "key": "value" }',
 			},
+			{
+				name: 'opt1',
+				type: 'optionsValue',
+				optionsValue: 'option1',
+			},
 		];
 
 		const parameterName = 'fields.values';
@@ -207,6 +239,7 @@ describe('Validation', () => {
 		// value should be type object
 		expect(typeof (result as IDataObject[])[3].objectValue).toEqual('object');
 		expect(((result as IDataObject[])[3].objectValue as IDataObject).key).toEqual('value');
+		expect((result as IDataObject[])[4].optionsValue).toEqual('option1');
 	});
 
 	test('should validate single value parameter', () => {
@@ -245,5 +278,51 @@ describe('Validation', () => {
 
 		// value should be type number
 		expect(typeof result).toEqual('number');
+	});
+
+	test('should fail validation for invalid values', () => {
+		const nodeType = {
+			description: {
+				properties: [
+					{
+						displayName: 'Value',
+						name: 'optionsValue',
+						type: 'options',
+						default: 'option1',
+						options: [
+							{
+								name: 'Option 1',
+								value: 'option1',
+							},
+							{
+								name: 'Option 2',
+								value: 'option2',
+							},
+						],
+						validateType: 'options',
+					},
+				],
+			},
+		} as unknown as INodeType;
+
+		const node = {
+			parameters: {
+				assignments: {
+					assignments: [],
+				},
+				options: {},
+			},
+			name: 'Edit Fields',
+			type: 'n8n-nodes-base.set',
+			typeVersion: 3,
+		} as unknown as INode;
+
+		const value = 'option3';
+
+		const parameterName = 'optionsValue';
+
+		expect(() => validateValueAgainstSchema(node, nodeType, value, parameterName, 0, 0)).toThrow(
+			ExpressionError,
+		);
 	});
 });
