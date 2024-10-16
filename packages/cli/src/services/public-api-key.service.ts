@@ -1,4 +1,3 @@
-import { ApplicationError } from 'n8n-workflow';
 import type { OpenAPIV3 } from 'openapi-types';
 import { Service } from 'typedi';
 
@@ -13,6 +12,8 @@ import { JwtService } from './jwt.service';
 
 const API_KEY_AUDIENCE = 'public-api';
 const API_KEY_ISSUER = 'n8n';
+const REDACT_API_KEY_REVEAL_COUNT = 15;
+const REDACT_API_KEY_MAX_LENGTH = 80;
 
 @Service()
 export class PublicApiKeyService {
@@ -71,8 +72,6 @@ export class PublicApiKeyService {
 	/**
 	 * Redacts an API key by keeping the first few characters and replacing the rest with asterisks.
 	 * @param apiKey - The API key to be redacted. If null, the function returns undefined.
-	 * @param revealCount - Number of characters to reveal.
-	 * @param maxLength - Maximum length of the redacted API key.
 	 * @returns The redacted API key with a fixed prefix and asterisks replacing the rest of the characters.
 	 * @example
 	 * ```typescript
@@ -80,17 +79,13 @@ export class PublicApiKeyService {
 	 * console.log(redactedKey); // Output: '12345-*****'
 	 * ```
 	 */
-	redactApiKey(apiKey: string, revealCount = 15, maxLength = 80) {
-		if (revealCount < 0 || revealCount > apiKey.length) {
-			throw new ApplicationError('Invalid reveal count');
-		}
-
-		const visiblePart = apiKey.slice(0, revealCount);
-		const redactedPart = '*'.repeat(apiKey.length - revealCount);
+	redactApiKey(apiKey: string) {
+		const visiblePart = apiKey.slice(0, REDACT_API_KEY_REVEAL_COUNT);
+		const redactedPart = '*'.repeat(apiKey.length - REDACT_API_KEY_REVEAL_COUNT);
 
 		const completeRedactedApiKey = visiblePart + redactedPart;
 
-		return completeRedactedApiKey.slice(0, maxLength);
+		return completeRedactedApiKey.slice(0, REDACT_API_KEY_MAX_LENGTH);
 	}
 
 	getAuthMiddleware(version: string) {
