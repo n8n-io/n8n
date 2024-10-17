@@ -63,6 +63,7 @@ const resetManager = async () => {
 			mockProvidersInstance,
 			Container.get(Cipher),
 			eventService,
+			mock(),
 		),
 	);
 

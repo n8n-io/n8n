@@ -8,6 +8,7 @@ import * as http from 'node:http';
 import type { ExternalHooks } from '@/external-hooks';
 import type { PrometheusMetricsService } from '@/metrics/prometheus-metrics.service';
 import { bodyParser, rawBodyReader } from '@/middlewares';
+import { mockLogger } from '@test/mocking';
 
 import { WorkerServer } from '../worker-server';
 
@@ -48,7 +49,7 @@ describe('WorkerServer', () => {
 				() =>
 					new WorkerServer(
 						globalConfig,
-						mock(),
+						mockLogger(),
 						mock(),
 						externalHooks,
 						mock<InstanceSettings>({ instanceType: 'webhook' }),
@@ -73,7 +74,7 @@ describe('WorkerServer', () => {
 
 			new WorkerServer(
 				globalConfig,
-				mock(),
+				mockLogger(),
 				mock(),
 				externalHooks,
 				instanceSettings,
@@ -100,7 +101,7 @@ describe('WorkerServer', () => {
 
 			const workerServer = new WorkerServer(
 				globalConfig,
-				mock(),
+				mockLogger(),
 				mock(),
 				externalHooks,
 				instanceSettings,
@@ -135,7 +136,7 @@ describe('WorkerServer', () => {
 
 			const workerServer = new WorkerServer(
 				globalConfig,
-				mock(),
+				mockLogger(),
 				mock(),
 				externalHooks,
 				instanceSettings,
@@ -156,7 +157,7 @@ describe('WorkerServer', () => {
 
 			const workerServer = new WorkerServer(
 				globalConfig,
-				mock(),
+				mockLogger(),
 				mock(),
 				externalHooks,
 				instanceSettings,
@@ -174,7 +175,7 @@ describe('WorkerServer', () => {
 
 			const workerServer = new WorkerServer(
 				globalConfig,
-				mock(),
+				mockLogger(),
 				mock(),
 				externalHooks,
 				instanceSettings,

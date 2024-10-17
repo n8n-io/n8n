@@ -228,6 +228,9 @@ describe('GlobalConfig', () => {
 			authToken: '',
 			listen_address: '127.0.0.1',
 			port: 5679,
+			useLauncher: false,
+			launcherPath: '',
+			launcherRunner: 'javascript',
 		},
 		sentry: {
 			backendDsn: '',
@@ -242,6 +245,11 @@ describe('GlobalConfig', () => {
 				location: 'logs/n8n.log',
 			},
 			scopes: [],
+		},
+		multiMainSetup: {
+			enabled: false,
+			ttl: 10,
+			interval: 3,
 		},
 	};
 
