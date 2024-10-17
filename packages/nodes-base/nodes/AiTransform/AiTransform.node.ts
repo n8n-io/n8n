@@ -6,6 +6,7 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT,
+	AI_TRANSFORM_JS_CODE,
 } from 'n8n-workflow';
 
 import set from 'lodash/set';
@@ -47,7 +48,7 @@ export class AiTransform implements INodeType {
 						inputFieldMaxLength: 500,
 						action: {
 							type: 'askAiCodeGeneration',
-							target: 'jsCode',
+							target: AI_TRANSFORM_JS_CODE,
 						},
 					},
 				},
@@ -60,7 +61,7 @@ export class AiTransform implements INodeType {
 			},
 			{
 				displayName: 'Generated JavaScript',
-				name: 'jsCode',
+				name: AI_TRANSFORM_JS_CODE,
 				type: 'string',
 				typeOptions: {
 					editor: 'jsEditor',

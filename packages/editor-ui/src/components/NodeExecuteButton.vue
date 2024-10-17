@@ -7,7 +7,12 @@ import {
 	FORM_TRIGGER_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
 } from '@/constants';
-import type { INodeTypeDescription } from 'n8n-workflow';
+import {
+	AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT,
+	AI_TRANSFORM_JS_CODE,
+	AI_TRANSFORM_NODE_TYPE,
+	type INodeTypeDescription,
+} from 'n8n-workflow';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -21,6 +26,8 @@ import { useUIStore } from '@/stores/ui.store';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { type IUpdateInformation } from '../Interface';
+import { generaCodeForAiTransform } from '@/components/ButtonParameter/utils';
 
 const NODE_TEST_STEP_POPUP_COUNT_KEY = 'N8N_NODE_TEST_STEP_POPUP_COUNT';
 const MAX_POPUP_COUNT = 10;
@@ -47,6 +54,7 @@ const props = withDefaults(
 const emit = defineEmits<{
 	stopExecution: [];
 	execute: [];
+	valueChanged: [value: IUpdateInformation];
 }>();
 
 defineOptions({
@@ -227,6 +235,37 @@ function onMouseOver() {
 }
 
 async function onClick() {
+	if (
+		node.value?.type === AI_TRANSFORM_NODE_TYPE &&
+		!node.value?.parameters?.jsCode &&
+		node.value?.parameters?.instructions
+	) {
+		// Generate code if user didn't clicked 'Generate Code' button
+		// and update parameters
+		try {
+			const prompt = node.value?.parameters?.instructions as string;
+			const updateInformation = await generaCodeForAiTransform(
+				prompt,
+				`parameters.${AI_TRANSFORM_JS_CODE}`,
+			);
+			if (!updateInformation) return;
+
+			emit('valueChanged', updateInformation);
+
+			emit('valueChanged', {
+				name: `parameters.${AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT}`,
+				value: prompt,
+			});
+
+			useTelemetry().trackAiTransform('generationFinished', {
+				prompt,
+				code: updateInformation.value,
+			});
+		} catch (error) {
+			// throw error defined in the node about code missing
+		}
+	}
+
 	if (isChatNode.value || (isChatChild.value && ndvStore.isNDVDataEmpty('input'))) {
 		ndvStore.setActiveNodeName(null);
 		nodeViewEventBus.emit('openChat');
