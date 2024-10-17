@@ -1,21 +1,15 @@
 <script setup lang="ts">
-import { ApplicationError, type INodeProperties, type NodePropertyAction } from 'n8n-workflow';
+import { type INodeProperties, type NodePropertyAction } from 'n8n-workflow';
 import type { INodeUi, IUpdateInformation } from '@/Interface';
 import { ref, computed, onMounted } from 'vue';
 import { N8nButton, N8nInput, N8nTooltip } from 'n8n-design-system/components';
 import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
 import { useNDVStore } from '@/stores/ndv.store';
-import { getSchemas, getParentNodes } from './utils';
-import { useRootStore } from '@/stores/root.store';
+import { getParentNodes, generaCodeForAiTransform } from './utils';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { generateCodeForPrompt } from '@/api/ai';
 
-import { format } from 'prettier';
-import jsParser from 'prettier/plugins/babel';
-import * as estree from 'prettier/plugins/estree';
-import { useSettingsStore } from '@/stores/settings.store';
-import type { AskAiRequest } from '@/types/assistant.types';
+const AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT = 'codeGeneratedForPrompt';
 
 const emit = defineEmits<{
 	valueChanged: [value: IUpdateInformation];
@@ -27,8 +21,7 @@ const props = defineProps<{
 	path: string;
 }>();
 
-const rootStore = useRootStore();
-const settingsStore = useSettingsStore();
+const { activeNode } = useNDVStore();
 
 const i18n = useI18n();
 
@@ -53,6 +46,11 @@ const isSubmitEnabled = computed(() => {
 
 	return true;
 });
+const promptUpdated = computed(() => {
+	const lastPrompt = activeNode?.parameters[AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT] as string;
+	if (!lastPrompt) return false;
+	return lastPrompt.trim() !== prompt.value.trim();
+});
 
 function startLoading() {
 	isLoading.value = true;
@@ -69,7 +67,6 @@ function getPath(parameter: string) {
 }
 
 async function onSubmit() {
-	const { activeNode } = useNDVStore();
 	const { showMessage } = useToast();
 	const action: string | NodePropertyAction | undefined =
 		props.parameter.typeOptions?.buttonConfig?.action;
@@ -93,46 +90,26 @@ async function onSubmit() {
 	startLoading();
 
 	try {
-		const schemas = getSchemas();
-
-		const payload: AskAiRequest.RequestPayload = {
-			question: prompt.value,
-			context: {
-				schema: schemas.parentNodesSchemas,
-				inputSchema: schemas.inputSchema!,
-				ndvPushRef: useNDVStore().pushRef,
-				pushRef: rootStore.pushRef,
-			},
-			forNode: 'transform',
-		};
 		switch (type) {
 			case 'askAiCodeGeneration':
-				let value;
-				if (settingsStore.isAskAiEnabled) {
-					const { restApiContext } = useRootStore();
-					const { code } = await generateCodeForPrompt(restApiContext, payload);
-					value = code;
-				} else {
-					throw new ApplicationError('AI code generation is not enabled');
-				}
+				const updateInformation = await generaCodeForAiTransform(
+					prompt.value,
+					getPath(target as string),
+				);
+				if (!updateInformation) return;
 
-				if (value === undefined) return;
-
-				const formattedCode = await format(String(value), {
-					parser: 'babel',
-					plugins: [jsParser, estree],
-				});
-
-				const updateInformation = {
-					name: getPath(target as string),
-					value: formattedCode,
-				};
-
+				//updade code parameter
 				emit('valueChanged', updateInformation);
+
+				//update code generated for prompt parameter
+				emit('valueChanged', {
+					name: getPath(AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT),
+					value: prompt.value,
+				});
 
 				useTelemetry().trackAiTransform('generationFinished', {
 					prompt: prompt.value,
-					code: formattedCode,
+					code: updateInformation.value,
 				});
 				break;
 			default:
@@ -191,6 +168,11 @@ onMounted(() => {
 					v-show="prompt.length > 1"
 					:class="$style.counter"
 					v-text="`${prompt.length} / ${inputFieldMaxLength}`"
+				/>
+				<span
+					v-if="promptUpdated"
+					:class="$style['warning-text']"
+					v-text="'Prompt changed, click \'Generate Code\' before testing this node'"
 				/>
 			</div>
 			<N8nInput
@@ -272,5 +254,8 @@ onMounted(() => {
 	padding: var(--spacing-2xs) 0;
 	display: flex;
 	justify-content: flex-end;
+}
+.warning-text {
+	color: var(--prim-color-primary);
 }
 </style>
