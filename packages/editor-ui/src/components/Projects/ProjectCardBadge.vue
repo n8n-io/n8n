@@ -84,6 +84,7 @@ const badgeTooltip = computed(() => {
 			return i18n.baseText('projects.badge.tooltip.sharedOwned', {
 				interpolate: {
 					resourceTypeLabel: props.resourceTypeLabel,
+					count: numberOfMembersInHomeTeamProject.value,
 				},
 			});
 		case ProjectState.SharedPersonal:
@@ -91,6 +92,7 @@ const badgeTooltip = computed(() => {
 				interpolate: {
 					resourceTypeLabel: props.resourceTypeLabel,
 					name: badgeText.value,
+					count: numberOfMembersInHomeTeamProject.value,
 				},
 			});
 		case ProjectState.Personal:
@@ -112,6 +114,7 @@ const badgeTooltip = computed(() => {
 				interpolate: {
 					resourceTypeLabel: props.resourceTypeLabel,
 					name: badgeText.value,
+					count: numberOfMembersInHomeTeamProject.value,
 				},
 			});
 		default:
@@ -120,26 +123,31 @@ const badgeTooltip = computed(() => {
 });
 </script>
 <template>
-	<div class="mr-xs">
-		<N8nBadge
-			v-if="badgeText"
-			:class="$style.badge"
-			theme="tertiary"
-			bold
-			data-test-id="card-badge"
-		>
-			<N8nIcon v-if="badgeIcon" :icon="badgeIcon" size="small" class="mr-3xs" />
-			<span v-n8n-truncate:20>{{ badgeText }}</span>
-		</N8nBadge>
-		<N8nBadge
-			v-if="numberOfMembersInHomeTeamProject"
-			:class="[$style.badge, $style.countBadge]"
-			theme="tertiary"
-			bold
-		>
-			+ {{ numberOfMembersInHomeTeamProject }}
-		</N8nBadge>
-	</div>
+	<N8nTooltip :disabled="!badgeTooltip" placement="top">
+		<div class="mr-xs">
+			<N8nBadge
+				v-if="badgeText"
+				:class="$style.badge"
+				theme="tertiary"
+				bold
+				data-test-id="card-badge"
+			>
+				<N8nIcon v-if="badgeIcon" :icon="badgeIcon" size="small" class="mr-3xs" />
+				<span v-n8n-truncate:20>{{ badgeText }}</span>
+			</N8nBadge>
+			<N8nBadge
+				v-if="numberOfMembersInHomeTeamProject"
+				:class="[$style.badge, $style.countBadge]"
+				theme="tertiary"
+				bold
+			>
+				+ {{ numberOfMembersInHomeTeamProject }}
+			</N8nBadge>
+		</div>
+		<template #content>
+			{{ badgeTooltip }}
+		</template>
+	</N8nTooltip>
 </template>
 
 <style lang="scss" module>
