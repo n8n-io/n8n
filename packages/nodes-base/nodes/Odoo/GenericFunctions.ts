@@ -12,6 +12,7 @@ const serviceJSONRPC = 'object';
 const methodJSONRPC = 'execute';
 
 export const mapOperationToJSONRPC = {
+	count: 'search_count',
 	create: 'create',
 	get: 'read',
 	getAll: 'search_read',
@@ -72,7 +73,7 @@ export interface IOdooResponseFields {
 	}>;
 }
 
-type OdooCRUD = 'create' | 'update' | 'delete' | 'get' | 'getAll';
+type OdooCRUD = 'create' | 'update' | 'delete' | 'get' | 'getAll' | 'count';
 
 export function odooGetDBName(databaseName: string | undefined, url: string) {
 	if (databaseName) return databaseName;
@@ -199,6 +200,42 @@ export async function odooCreate(
 
 		const result = await odooJSONRPCRequest.call(this, body, url);
 		return { id: result };
+	} catch (error) {
+		throw new NodeApiError(this.getNode(), error as JsonObject);
+	}
+}
+
+export async function odooCount(
+	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	db: string,
+	userID: number,
+	password: string,
+	resource: string,
+	operation: OdooCRUD,
+	url: string,
+	filters?: IOdooFilterOperations,
+) {
+	try {
+		const body = {
+			jsonrpc: '2.0',
+			method: 'call',
+			params: {
+				service: serviceJSONRPC,
+				method: methodJSONRPC,
+				args: [
+					db,
+					userID,
+					password,
+					mapOdooResources[resource] || resource,
+					mapOperationToJSONRPC[operation],
+					(filters && processFilters(filters)) || [],
+				],
+			},
+			id: Math.floor(Math.random() * 100),
+		};
+
+		const result = await odooJSONRPCRequest.call(this, body, url);
+		return { result };
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
