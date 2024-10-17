@@ -1,4 +1,8 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import { OutputParserException } from '@langchain/core/output_parsers';
+import type { JSONSchema7 } from 'json-schema';
+import { StructuredOutputParser } from 'langchain/output_parsers';
+import get from 'lodash/get';
 import {
 	jsonParse,
 	type IExecuteFunctions,
@@ -9,19 +13,15 @@ import {
 	NodeConnectionType,
 } from 'n8n-workflow';
 import { z } from 'zod';
-import type { JSONSchema7 } from 'json-schema';
-import { StructuredOutputParser } from 'langchain/output_parsers';
-import { OutputParserException } from '@langchain/core/output_parsers';
-import get from 'lodash/get';
-import type { JavaScriptSandbox } from 'n8n-nodes-base/dist/nodes/Code/JavaScriptSandbox';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
-import { logWrapper } from '../../../utils/logWrapper';
-import { generateSchema, getSandboxWithZod } from '../../../utils/schemaParsing';
+
 import {
 	inputSchemaField,
 	jsonSchemaExampleField,
 	schemaTypeField,
 } from '../../../utils/descriptions';
+import { logWrapper } from '../../../utils/logWrapper';
+import { convertJsonSchemaToZod, generateSchema } from '../../../utils/schemaParsing';
+import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
 const STRUCTURED_OUTPUT_KEY = '__structured__output';
 const STRUCTURED_OUTPUT_OBJECT_KEY = '__structured__output__object';
@@ -44,12 +44,10 @@ export class N8nStructuredOutputParser<T extends z.ZodTypeAny> extends Structure
 		}
 	}
 
-	static async fromZedJsonSchema(
-		sandboxedSchema: JavaScriptSandbox,
+	static async fromZedSchema(
+		zodSchema: z.ZodSchema<object>,
 		nodeVersion: number,
 	): Promise<StructuredOutputParser<z.ZodType<object, z.ZodTypeDef, object>>> {
-		const zodSchema = await sandboxedSchema.runCode<z.ZodSchema<object>>();
-
 		let returnSchema: z.ZodSchema<object>;
 		if (nodeVersion === 1) {
 			returnSchema = z.object({
@@ -204,13 +202,10 @@ export class OutputParserStructured implements INodeType {
 		const jsonSchema =
 			schemaType === 'fromJson' ? generateSchema(jsonExample) : jsonParse<JSONSchema7>(inputSchema);
 
-		const zodSchemaSandbox = getSandboxWithZod(this, jsonSchema, 0);
+		const zodSchema = convertJsonSchemaToZod<z.ZodSchema<object>>(jsonSchema);
 		const nodeVersion = this.getNode().typeVersion;
 		try {
-			const parser = await N8nStructuredOutputParser.fromZedJsonSchema(
-				zodSchemaSandbox,
-				nodeVersion,
-			);
+			const parser = await N8nStructuredOutputParser.fromZedSchema(zodSchema, nodeVersion);
 			return {
 				response: logWrapper(parser, this),
 			};

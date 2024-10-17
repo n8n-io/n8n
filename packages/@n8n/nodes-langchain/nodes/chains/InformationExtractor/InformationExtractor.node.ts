@@ -1,3 +1,8 @@
+import type { BaseLanguageModel } from '@langchain/core/language_models/base';
+import { HumanMessage } from '@langchain/core/messages';
+import { ChatPromptTemplate, SystemMessagePromptTemplate } from '@langchain/core/prompts';
+import type { JSONSchema7 } from 'json-schema';
+import { OutputFixingParser, StructuredOutputParser } from 'langchain/output_parsers';
 import { jsonParse, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type {
 	INodeType,
@@ -6,21 +11,17 @@ import type {
 	INodeExecutionData,
 	INodePropertyOptions,
 } from 'n8n-workflow';
-import type { JSONSchema7 } from 'json-schema';
-import type { BaseLanguageModel } from '@langchain/core/language_models/base';
-import { ChatPromptTemplate, SystemMessagePromptTemplate } from '@langchain/core/prompts';
 import type { z } from 'zod';
-import { OutputFixingParser, StructuredOutputParser } from 'langchain/output_parsers';
-import { HumanMessage } from '@langchain/core/messages';
-import { generateSchema, getSandboxWithZod } from '../../../utils/schemaParsing';
+
+import { makeZodSchemaFromAttributes } from './helpers';
+import type { AttributeDefinition } from './types';
 import {
 	inputSchemaField,
 	jsonSchemaExampleField,
 	schemaTypeField,
 } from '../../../utils/descriptions';
+import { convertJsonSchemaToZod, generateSchema } from '../../../utils/schemaParsing';
 import { getTracingConfig } from '../../../utils/tracing';
-import type { AttributeDefinition } from './types';
-import { makeZodSchemaFromAttributes } from './helpers';
 
 const SYSTEM_PROMPT_TEMPLATE = `You are an expert extraction algorithm.
 Only extract relevant information from the text.
@@ -261,8 +262,7 @@ export class InformationExtractor implements INodeType {
 				jsonSchema = jsonParse<JSONSchema7>(inputSchema);
 			}
 
-			const zodSchemaSandbox = getSandboxWithZod(this, jsonSchema, 0);
-			const zodSchema = await zodSchemaSandbox.runCode<z.ZodSchema<object>>();
+			const zodSchema = convertJsonSchemaToZod<z.ZodSchema<object>>(jsonSchema);
 
 			parser = OutputFixingParser.fromLLM(llm, StructuredOutputParser.fromZodSchema(zodSchema));
 		}
