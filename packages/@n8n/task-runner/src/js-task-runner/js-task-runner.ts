@@ -27,6 +27,7 @@ import { type Task, TaskRunner } from '@/task-runner';
 
 import { isErrorLike } from './errors/error-like';
 import { ExecutionError } from './errors/execution-error';
+import { makeSerializable } from './errors/serializable-error';
 import type { RequireResolver } from './require-resolver';
 import { createRequireResolver } from './require-resolver';
 import { validateRunForAllItemsOutput, validateRunForEachItemOutput } from './result-validation';
@@ -181,6 +182,17 @@ export class JsTaskRunner extends TaskRunner {
 			module: {},
 			console: customConsole,
 
+			// Exposed Node.js globals in vm2
+			Buffer,
+			Function,
+			eval,
+			setTimeout,
+			setInterval,
+			setImmediate,
+			clearTimeout,
+			clearInterval,
+			clearImmediate,
+
 			items: inputItems,
 			...dataProxy,
 			...this.buildRpcCallObject(taskId),
@@ -188,7 +200,7 @@ export class JsTaskRunner extends TaskRunner {
 
 		try {
 			const result = (await runInNewContext(
-				`module.exports = async function VmCodeWrapper() {${settings.code}\n}()`,
+				`globalThis.global = globalThis; module.exports = async function VmCodeWrapper() {${settings.code}\n}()`,
 				context,
 			)) as TaskResultData['result'];
 
@@ -312,7 +324,7 @@ export class JsTaskRunner extends TaskRunner {
 
 	private toExecutionErrorIfNeeded(error: unknown): Error {
 		if (error instanceof Error) {
-			return error;
+			return makeSerializable(error);
 		}
 
 		if (isErrorLike(error)) {

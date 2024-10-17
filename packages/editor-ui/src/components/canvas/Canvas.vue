@@ -31,6 +31,7 @@ import { GRID_SIZE } from '@/utils/nodeViewUtils';
 import { CanvasKey } from '@/constants';
 import { onKeyDown, onKeyUp, useDebounceFn } from '@vueuse/core';
 import CanvasArrowHeadMarker from './elements/edges/CanvasArrowHeadMarker.vue';
+import { CanvasNodeRenderType } from '@/types';
 
 const $style = useCssModule();
 
@@ -108,6 +109,7 @@ const {
 	nodes: graphNodes,
 	onPaneReady,
 	findNode,
+	onNodesInitialized,
 } = useVueFlow({ id: props.id, deleteKeyCode: null });
 
 const isPaneReady = ref(false);
@@ -477,6 +479,11 @@ onUnmounted(() => {
 onPaneReady(async () => {
 	await onFitView();
 	isPaneReady.value = true;
+});
+
+onNodesInitialized((nodes) => {
+	if (nodes.length !== 1 || nodes[0].data?.render.type !== CanvasNodeRenderType.AddNodes) return;
+	void onFitView();
 });
 
 watch(() => props.readOnly, setReadonly, {

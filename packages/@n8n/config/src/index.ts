@@ -6,6 +6,7 @@ import { EventBusConfig } from './configs/event-bus.config';
 import { ExternalSecretsConfig } from './configs/external-secrets.config';
 import { ExternalStorageConfig } from './configs/external-storage.config';
 import { LoggingConfig } from './configs/logging.config';
+import { MultiMainSetupConfig } from './configs/multi-main-setup.config';
 import { NodesConfig } from './configs/nodes.config';
 import { PublicApiConfig } from './configs/public-api.config';
 import { TaskRunnersConfig } from './configs/runners.config';
@@ -93,4 +94,7 @@ export class GlobalConfig {
 
 	@Nested
 	taskRunners: TaskRunnersConfig;
+
+	@Nested
+	multiMainSetup: MultiMainSetupConfig;
 }
