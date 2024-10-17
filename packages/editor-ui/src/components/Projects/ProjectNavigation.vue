@@ -32,6 +32,7 @@ const home = computed<IMenuItem>(() => ({
 		to: { name: VIEWS.HOMEPAGE },
 	},
 }));
+
 const addProject = computed<IMenuItem>(() => ({
 	id: 'addProject',
 	label: locale.baseText('projects.menu.addProject'),
@@ -102,6 +103,10 @@ const displayProjects = computed(() => {
 		});
 });
 
+const canCreateProjects = computed(
+	() => projectsStore.hasPermissionToCreateProjects && projectsStore.isTeamProjectFeatureEnabled,
+);
+
 const goToUpgrade = async () => {
 	await uiStore.goToUpgrade('rbac', 'upgrade-rbac');
 };
@@ -123,14 +128,13 @@ onMounted(async () => {
 				data-test-id="project-home-menu-item"
 			/>
 		</ElMenu>
-		<hr
-			v-if="
-				displayProjects.length ||
-				(projectsStore.hasPermissionToCreateProjects && projectsStore.isTeamProjectFeatureEnabled)
-			"
-			class="mt-m mb-m"
-		/>
-		<N8nText v-if="!props.collapsed" :class="$style.projectsLabel" tag="h3" bold>
+		<hr v-if="displayProjects.length || canCreateProjects" class="mt-m mb-m" />
+		<N8nText
+			v-if="!props.collapsed && displayProjects.length"
+			:class="$style.projectsLabel"
+			tag="h3"
+			bold
+		>
 			<span>{{ locale.baseText('projects.menu.title') }}</span>
 		</N8nText>
 		<ElMenu v-if="displayProjects.length" :collapse="props.collapsed" :class="$style.projectItems">
@@ -155,9 +159,7 @@ onMounted(async () => {
 			/>
 		</ElMenu>
 		<N8nTooltip
-			v-if="
-				projectsStore.hasPermissionToCreateProjects && projectsStore.isTeamProjectFeatureEnabled
-			"
+			v-if="canCreateProjects"
 			placement="right"
 			:disabled="projectsStore.canCreateProjects"
 		>
@@ -189,13 +191,7 @@ onMounted(async () => {
 				</i18n-t>
 			</template>
 		</N8nTooltip>
-		<hr
-			v-if="
-				displayProjects.length ||
-				(projectsStore.hasPermissionToCreateProjects && projectsStore.isTeamProjectFeatureEnabled)
-			"
-			class="mt-m mb-m"
-		/>
+		<hr v-if="displayProjects.length || canCreateProjects" class="mt-m mb-m" />
 	</div>
 </template>
 
