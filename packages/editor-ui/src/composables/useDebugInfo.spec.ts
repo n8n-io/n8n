@@ -5,18 +5,11 @@ import { useRootStore } from '@/stores/root.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useDeviceSupport } from 'n8n-design-system';
 import type { RootState } from '@/Interface';
+import type { RecursivePartial } from '@/type-utils';
 
 vi.mock('@/stores/root.store');
 vi.mock('@/stores/settings.store');
 vi.mock('n8n-design-system');
-
-type RecursivePartial<T> = {
-	[P in keyof T]?: T[P] extends Array<infer U>
-		? Array<RecursivePartial<U>>
-		: T[P] extends object | undefined
-			? RecursivePartial<T[P]>
-			: T[P];
-};
 
 const mockDate = new Date(2022, 0, 1);
 vi.setSystemTime(mockDate);
