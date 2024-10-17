@@ -20,7 +20,7 @@ type MultiMainEvents = {
 	/**
 	 * Emitted when this instance gains leadership. In response, its various
 	 * services will start triggers, pollers, pruning, wait-tracking, license
-	 * renewal, queue recovery.
+	 * renewal, queue recovery, etc.
 	 */
 	'leader-takeover': never;
 };
