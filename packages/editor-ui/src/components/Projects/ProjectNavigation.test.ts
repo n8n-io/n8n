@@ -172,4 +172,16 @@ describe('ProjectsNavigation', () => {
 
 		expect(queryByRole('heading', { level: 3, name: 'Projects' })).not.toBeInTheDocument();
 	});
+
+	it('should not show "Projects" title when there are no available projects', async () => {
+		projectsStore.myProjects = [];
+
+		const { queryByRole } = renderComponent({
+			props: {
+				collapsed: false,
+			},
+		});
+
+		expect(queryByRole('heading', { level: 3, name: 'Projects' })).not.toBeInTheDocument();
+	});
 });
