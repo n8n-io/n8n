@@ -394,6 +394,18 @@ importers:
         specifier: ^0.0.3
         version: 0.0.3(patch_hash=3i7wecddkama6vhpu5o37g24u4)
 
+  packages/@n8n/json-schema-to-zod:
+    devDependencies:
+      '@types/json-schema':
+        specifier: ^7.0.15
+        version: 7.0.15
+      '@types/node':
+        specifier: ^18.16.16
+        version: 18.16.16
+      zod:
+        specifier: 'catalog:'
+        version: 3.23.8
+
   packages/@n8n/nodes-langchain:
     dependencies:
       '@aws-sdk/client-sso-oidc':
