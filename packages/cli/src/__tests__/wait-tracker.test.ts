@@ -13,7 +13,7 @@ jest.useFakeTimers();
 describe('WaitTracker', () => {
 	const executionRepository = mock<ExecutionRepository>();
 	const multiMainSetup = mock<MultiMainSetup>();
-	const orchestrationService = new OrchestrationService(mock(), mock(), multiMainSetup);
+	const orchestrationService = new OrchestrationService(mock(), multiMainSetup);
 	const instanceSettings = mock<InstanceSettings>({ isLeader: true });
 
 	const execution = mock<IExecutionResponse>({
