@@ -1,17 +1,9 @@
-import { IsBoolean, IsObject, IsOptional } from 'class-validator';
+import { IsBoolean, IsOptional } from 'class-validator';
 
 export class SourceControlPullWorkFolder {
 	@IsBoolean()
 	@IsOptional()
 	force?: boolean;
-
-	@IsBoolean()
-	@IsOptional()
-	importAfterPull?: boolean = true;
-
-	@IsObject()
-	@IsOptional()
-	variables?: { [key: string]: string };
 }
 
 export class SourceControllPullOptions {
@@ -19,6 +11,4 @@ export class SourceControllPullOptions {
 	userId: string;
 
 	force?: boolean;
-
-	variables?: { [key: string]: string };
 }
