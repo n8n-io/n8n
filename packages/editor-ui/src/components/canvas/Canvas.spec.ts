@@ -207,4 +207,17 @@ describe('Canvas', () => {
 			await waitFor(() => expect(getByTestId('canvas-minimap')).not.toBeVisible());
 		});
 	});
+
+	describe('background', () => {
+		it('should render default background', () => {
+			const { container } = renderComponent();
+			expect(container.querySelector('#pattern-canvas')).toBeInTheDocument();
+		});
+
+		it('should render striped background', () => {
+			const { container } = renderComponent({ props: { readOnly: true } });
+			expect(container.querySelector('#pattern-canvas')).not.toBeInTheDocument();
+			expect(container.querySelector('#diagonalHatch')).toBeInTheDocument();
+		});
+	});
 });
