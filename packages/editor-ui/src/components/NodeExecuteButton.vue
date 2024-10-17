@@ -62,6 +62,7 @@ defineOptions({
 });
 
 const lastPopupCountUpdate = ref(0);
+const codeGenerationInProgress = ref(false);
 
 const router = useRouter();
 const { runWorkflowResolvePending, stopCurrentExecution } = useRunWorkflow({ router });
@@ -84,6 +85,8 @@ const nodeType = computed((): INodeTypeDescription | null => {
 });
 
 const isNodeRunning = computed(() => {
+	if (codeGenerationInProgress.value) return true;
+
 	const triggeredNode = workflowsStore.executedNode;
 	return (
 		uiStore.isActionActive.workflowRunning &&
@@ -148,6 +151,10 @@ const hasIssues = computed(() =>
 const disabledHint = computed(() => {
 	if (isListeningForEvents.value) {
 		return '';
+	}
+
+	if (codeGenerationInProgress.value) {
+		return i18n.baseText('ndv.execute.generatingCode');
 	}
 
 	if (isTriggerNode.value && node?.value?.disabled) {
@@ -242,6 +249,7 @@ async function onClick() {
 	) {
 		// Generate code if user didn't clicked 'Generate Code' button
 		// and update parameters
+		codeGenerationInProgress.value = true;
 		try {
 			const prompt = node.value?.parameters?.instructions as string;
 			const updateInformation = await generaCodeForAiTransform(
@@ -264,6 +272,7 @@ async function onClick() {
 		} catch (error) {
 			// throw error defined in the node about code missing
 		}
+		codeGenerationInProgress.value = false;
 	}
 
 	if (isChatNode.value || (isChatChild.value && ndvStore.isNDVDataEmpty('input'))) {

@@ -47,9 +47,9 @@ const isSubmitEnabled = computed(() => {
 	return true;
 });
 const promptUpdated = computed(() => {
-	const lastPrompt = activeNode?.parameters[AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT];
+	const lastPrompt = activeNode?.parameters[AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT] as string;
 	if (!lastPrompt) return false;
-	return lastPrompt !== prompt.value;
+	return lastPrompt.trim() !== prompt.value.trim();
 });
 
 function startLoading() {
