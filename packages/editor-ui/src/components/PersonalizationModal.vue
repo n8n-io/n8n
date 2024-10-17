@@ -548,23 +548,30 @@ const onSave = () => {
 	formBus.emit('submit');
 };
 
+const closeCallback = () => {
+	const isPartOfOnboardingExperiment =
+		posthogStore.getVariant(MORE_ONBOARDING_OPTIONS_EXPERIMENT.name) ===
+		MORE_ONBOARDING_OPTIONS_EXPERIMENT.control;
+	// In case the redirect to homepage for new users didn't happen
+	// we try again after closing the modal
+	if (route.name !== VIEWS.HOMEPAGE && !isPartOfOnboardingExperiment) {
+		void router.replace({ name: VIEWS.HOMEPAGE });
+	}
+};
+
 const closeDialog = () => {
 	modalBus.emit('close');
-	uiStore.openModalWithData({
-		name: COMMUNITY_PLUS_ENROLLMENT_MODAL,
-		data: {
-			closeCallback: () => {
-				const isPartOfOnboardingExperiment =
-					posthogStore.getVariant(MORE_ONBOARDING_OPTIONS_EXPERIMENT.name) ===
-					MORE_ONBOARDING_OPTIONS_EXPERIMENT.control;
-				// In case the redirect to homepage for new users didn't happen
-				// we try again after closing the modal
-				if (route.name !== VIEWS.HOMEPAGE && !isPartOfOnboardingExperiment) {
-					void router.replace({ name: VIEWS.HOMEPAGE });
-				}
+
+	if (usersStore.isInstanceOwner) {
+		uiStore.openModalWithData({
+			name: COMMUNITY_PLUS_ENROLLMENT_MODAL,
+			data: {
+				closeCallback,
 			},
-		},
-	});
+		});
+	} else {
+		closeCallback();
+	}
 };
 
 const onSubmit = async (values: IPersonalizationLatestVersion) => {
