@@ -5,7 +5,7 @@ import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { generateNanoId } from '@/databases/utils/generators';
-import { MultiMainSetup } from '@/services/orchestration/main/multi-main-setup.ee';
+import { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 
 import { createOwner } from './shared/db/users';
 import { randomName } from './shared/random';

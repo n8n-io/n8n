@@ -246,6 +246,11 @@ describe('GlobalConfig', () => {
 			},
 			scopes: [],
 		},
+		multiMainSetup: {
+			enabled: false,
+			ttl: 10,
+			interval: 3,
+		},
 	};
 
 	it('should use all default values when no env variables are defined', () => {

@@ -83,7 +83,7 @@ export class Webhook extends BaseCommand {
 	}
 
 	async run() {
-		if (config.getEnv('multiMainSetup.enabled')) {
+		if (this.globalConfig.multiMainSetup.enabled) {
 			throw new ApplicationError(
 				'Webhook process cannot be started when multi-main setup is enabled.',
 			);
