@@ -635,12 +635,13 @@ export function displayParameter(
 	parameter: INodeProperties | INodeCredentialDescription,
 	node: Pick<INode, 'typeVersion'> | null, // Allow null as it does also get used by credentials and they do not have versioning yet
 	nodeValuesRoot?: INodeParameters,
+	displayKey: 'displayOptions' | 'disabledOptions' = 'displayOptions',
 ) {
-	if (!parameter.displayOptions) {
+	if (!parameter[displayKey]) {
 		return true;
 	}
 
-	const { show, hide } = parameter.displayOptions;
+	const { show, hide } = parameter[displayKey];
 
 	nodeValuesRoot = nodeValuesRoot || nodeValues;
 
@@ -687,7 +688,11 @@ export function displayParameterPath(
 	parameter: INodeProperties | INodeCredentialDescription,
 	path: string,
 	node: Pick<INode, 'typeVersion'> | null,
+	displayKey: 'displayOptions' | 'disabledOptions' = 'displayOptions',
 ) {
+	if (displayKey === 'disabledOptions') {
+		console.log('Computing disabled');
+	}
 	let resolvedNodeValues = nodeValues;
 	if (path !== '') {
 		resolvedNodeValues = get(nodeValues, path) as INodeParameters;
@@ -699,7 +704,7 @@ export function displayParameterPath(
 		nodeValuesRoot = get(nodeValues, 'parameters') as INodeParameters;
 	}
 
-	return displayParameter(resolvedNodeValues, parameter, node, nodeValuesRoot);
+	return displayParameter(resolvedNodeValues, parameter, node, nodeValuesRoot, displayKey);
 }
 
 /**

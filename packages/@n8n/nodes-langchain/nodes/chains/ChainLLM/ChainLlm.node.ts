@@ -348,6 +348,19 @@ export class ChainLlm implements INodeType {
 				name: 'text',
 				type: 'string',
 				required: true,
+				default: '={{ $json.chatInput }}',
+				placeholder: 'e.g. Hello, how can you help me?',
+				typeOptions: {
+					rows: 2,
+				},
+				disabledOptions: { show: { promptType: ['auto'] } },
+				displayOptions: { show: { promptType: ['auto'] } },
+			},
+			{
+				displayName: 'Text',
+				name: 'text',
+				type: 'string',
+				required: true,
 				default: '',
 				placeholder: 'e.g. Hello, how can you help me?',
 				typeOptions: {
