@@ -15,9 +15,9 @@ export default function () {
 
 	const res = http.post(`${apiBaseUrl}/webhook/binary-files-benchmark`, data);
 
-	if (res?.status !== 200) {
+	if (res.status !== 200) {
 		console.error(
-			`Invalid response. Received status ${res?.status}. Body: ${JSON.stringify(res?.body)}`,
+			`Invalid response. Received status ${res.status}. Body: ${JSON.stringify(res.body)}`,
 		);
 	}
 
