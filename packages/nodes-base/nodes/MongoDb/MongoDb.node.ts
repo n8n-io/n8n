@@ -81,7 +81,6 @@ export class MongoDb implements INodeType {
 					const { databases } = await client.db().admin().listDatabases();
 
 					if (!(databases as IDataObject[]).map((db) => db.name).includes(database)) {
-						// eslint-disable-next-line n8n-nodes-base/node-execute-block-wrong-error-thrown
 						throw new ApplicationError(`Database "${database}" does not exist`, {
 							level: 'warning',
 						});

@@ -1056,10 +1056,10 @@ export class InvoiceNinja implements INodeType {
 						const paymentId = this.getNodeParameter('paymentId', i) as string;
 						const body: IBankTransaction = {};
 						if (bankTransactionId) {
-							body.id = bankTransactionId as string;
+							body.id = bankTransactionId;
 						}
 						if (paymentId) {
-							body.paymentId = paymentId as string;
+							body.paymentId = paymentId;
 						}
 						responseData = await invoiceNinjaApiRequest.call(
 							this,
