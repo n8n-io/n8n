@@ -133,7 +133,7 @@ export const invoiceFields: INodeProperties[] = [
 			{
 				displayName: 'State',
 				name: 'state',
-				type: 'multiOptions',
+				type: 'options',
 				options: [
 					{
 						name: 'Draft',
