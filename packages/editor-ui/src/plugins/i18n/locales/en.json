@@ -876,6 +876,7 @@
 	"mainSidebar.helpMenuItems.documentation": "Documentation",
 	"mainSidebar.helpMenuItems.forum": "Forum",
 	"mainSidebar.helpMenuItems.quickstart": "Quickstart",
+	"mainSidebar.helpMenuItems.reportBug": "Report bug",
 	"mainSidebar.new": "New",
 	"mainSidebar.newTemplate": "New from template",
 	"mainSidebar.open": "Open",

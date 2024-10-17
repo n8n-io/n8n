@@ -22,7 +22,7 @@ const emit = defineEmits<{
 
 const { getReportingURL } = useBugReporting();
 
-const bugReportingUrl = computed(() => getReportingURL({ source: 'canvas-bug-button' }));
+const bugReportingUrl = computed(() => getReportingURL({ medium: 'canvas_bug_button' }));
 const isResetZoomVisible = computed(() => props.zoom !== 1);
 
 function onResetZoom() {
