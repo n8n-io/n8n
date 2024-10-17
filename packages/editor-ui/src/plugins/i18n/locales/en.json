@@ -2481,6 +2481,8 @@
 	"settings.mfa.updateConfiguration": "MFA configuration updated",
 	"settings.mfa.invalidAuthenticatorCode": "Invalid authenticator code",
 	"projects.menu.home": "Home",
+	"projects.menu.title": "Projects",
+	"projects.menu.personal": "Personal",
 	"projects.menu.addProject": "Add project",
 	"projects.settings": "Project settings",
 	"projects.settings.newProjectName": "My project",

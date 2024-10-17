@@ -181,6 +181,17 @@ export class JsTaskRunner extends TaskRunner {
 			module: {},
 			console: customConsole,
 
+			// Exposed Node.js globals in vm2
+			Buffer,
+			Function,
+			eval,
+			setTimeout,
+			setInterval,
+			setImmediate,
+			clearTimeout,
+			clearInterval,
+			clearImmediate,
+
 			items: inputItems,
 			...dataProxy,
 			...this.buildRpcCallObject(taskId),
@@ -188,7 +199,7 @@ export class JsTaskRunner extends TaskRunner {
 
 		try {
 			const result = (await runInNewContext(
-				`module.exports = async function VmCodeWrapper() {${settings.code}\n}()`,
+				`globalThis.global = globalThis; module.exports = async function VmCodeWrapper() {${settings.code}\n}()`,
 				context,
 			)) as TaskResultData['result'];
 
