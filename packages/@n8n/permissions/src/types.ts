@@ -13,6 +13,7 @@ export type WildcardScope = `${Resource}:*` | '*';
 export type AnnotationTagScope = ResourceScope<'annotationTag'>;
 export type AuditLogsScope = ResourceScope<'auditLogs', 'manage'>;
 export type BannerScope = ResourceScope<'banner', 'dismiss'>;
+export type CommunityScope = ResourceScope<'community', 'register'>;
 export type CommunityPackageScope = ResourceScope<
 	'communityPackage',
 	'install' | 'uninstall' | 'update' | 'list' | 'manage'
@@ -36,6 +37,7 @@ export type SamlScope = ResourceScope<'saml', 'manage'>;
 export type SecurityAuditScope = ResourceScope<'securityAudit', 'generate'>;
 export type SourceControlScope = ResourceScope<'sourceControl', 'pull' | 'push' | 'manage'>;
 export type TagScope = ResourceScope<'tag'>;
+export type UsageScope = ResourceScope<'usage', 'read'>;
 export type UserScope = ResourceScope<'user', DefaultOperations | 'resetPassword' | 'changeRole'>;
 export type VariableScope = ResourceScope<'variable'>;
 export type WorkersViewScope = ResourceScope<'workersView', 'manage'>;
@@ -48,6 +50,7 @@ export type Scope =
 	| AnnotationTagScope
 	| AuditLogsScope
 	| BannerScope
+	| CommunityScope
 	| CommunityPackageScope
 	| CredentialScope
 	| ExternalSecretProviderScope
@@ -62,6 +65,7 @@ export type Scope =
 	| SecurityAuditScope
 	| SourceControlScope
 	| TagScope
+	| UsageScope
 	| UserScope
 	| VariableScope
 	| WorkersViewScope

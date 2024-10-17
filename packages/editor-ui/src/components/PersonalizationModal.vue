@@ -93,6 +93,7 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useI18n } from '@/composables/useI18n';
 import { useRoute, useRouter } from 'vue-router';
 import { useUIStore } from '@/stores/ui.store';
+import { getResourcePermissions } from '@/permissions';
 
 const SURVEY_VERSION = 'v4';
 
@@ -110,7 +111,9 @@ const uiStore = useUIStore();
 
 const formValues = ref<Record<string, string>>({});
 const isSaving = ref(false);
-
+const userPermissions = computed(() =>
+	getResourcePermissions(usersStore.currentUser?.globalScopes),
+);
 const survey = computed<IFormInputs>(() => [
 	{
 		name: COMPANY_TYPE_KEY,
@@ -562,7 +565,7 @@ const closeCallback = () => {
 const closeDialog = () => {
 	modalBus.emit('close');
 
-	if (usersStore.isInstanceOwner) {
+	if (userPermissions.value.community.register) {
 		uiStore.openModalWithData({
 			name: COMMUNITY_PLUS_ENROLLMENT_MODAL,
 			data: {
