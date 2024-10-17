@@ -32,6 +32,7 @@ import { CanvasKey } from '@/constants';
 import { onKeyDown, onKeyUp, useDebounceFn } from '@vueuse/core';
 import CanvasArrowHeadMarker from './elements/edges/CanvasArrowHeadMarker.vue';
 import { CanvasNodeRenderType } from '@/types';
+import CanvasBackgroundStripedPattern from './elements/CanvasBackgroundStripedPattern.vue';
 
 const $style = useCssModule();
 
@@ -110,6 +111,7 @@ const {
 	onPaneReady,
 	findNode,
 	onNodesInitialized,
+	viewport,
 } = useVueFlow({ id: props.id, deleteKeyCode: null });
 
 const isPaneReady = ref(false);
@@ -562,7 +564,12 @@ provide(CanvasKey, {
 
 		<CanvasArrowHeadMarker :id="arrowHeadMarkerId" />
 
-		<Background data-test-id="canvas-background" pattern-color="#aaa" :gap="GRID_SIZE" />
+		<Background data-test-id="canvas-background" pattern-color="#aaa" :gap="GRID_SIZE">
+			<template #pattern-container>
+				<CanvasBackgroundStripedPattern :x="viewport.x" :y="viewport.y" :zoom="viewport.zoom" />
+			</template>
+			<rect v-if="readOnly" x="0" y="0" width="100%" height="100%" fill="url(#diagonalHatch)" />
+		</Background>
 
 		<Transition name="minimap">
 			<MiniMap
