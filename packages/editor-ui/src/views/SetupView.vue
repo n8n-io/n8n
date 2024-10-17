@@ -103,7 +103,7 @@ const onSubmit = async (values: { [key: string]: string | boolean }) => {
 			if (isPartOfOnboardingExperiment) {
 				await router.push({ name: VIEWS.WORKFLOWS });
 			} else {
-				await router.push({ name: VIEWS.NEW_WORKFLOW });
+				await router.push({ name: VIEWS.HOMEPAGE });
 			}
 		} else {
 			await router.push({ name: VIEWS.USERS_SETTINGS });
