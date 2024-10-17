@@ -8,7 +8,7 @@ import type {
 	INodeTypeDescription,
 	INodeProperties,
 } from 'n8n-workflow';
-import { promptTypeOptions, textInput } from '../../../utils/descriptions';
+
 import { conversationalAgentProperties } from './agents/ConversationalAgent/description';
 import { conversationalAgentExecute } from './agents/ConversationalAgent/execute';
 import { openAiFunctionsAgentProperties } from './agents/OpenAiFunctionsAgent/description';
@@ -21,6 +21,7 @@ import { sqlAgentAgentProperties } from './agents/SqlAgent/description';
 import { sqlAgentAgentExecute } from './agents/SqlAgent/execute';
 import { toolsAgentProperties } from './agents/ToolsAgent/description';
 import { toolsAgentExecute } from './agents/ToolsAgent/execute';
+import { promptTypeOptions, textInput } from '../../../utils/descriptions';
 
 // Function used in the inputs expression to figure out which inputs to
 // display based on the agent type
@@ -352,6 +353,23 @@ export class Agent implements INodeType {
 				},
 			},
 			{
+				displayName: 'For more reliable structured output parsing, consider using the Tools agent',
+				name: 'notice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						hasOutputParser: [true],
+						agent: [
+							'conversationalAgent',
+							'reActAgent',
+							'planAndExecuteAgent',
+							'openAiFunctionsAgent',
+						],
+					},
+				},
+			},
+			{
 				displayName: 'Require Specific Output Format',
 				name: 'hasOutputParser',
 				type: 'boolean',
@@ -372,6 +390,7 @@ export class Agent implements INodeType {
 				displayOptions: {
 					show: {
 						hasOutputParser: [true],
+						agent: ['toolsAgent'],
 					},
 				},
 			},
