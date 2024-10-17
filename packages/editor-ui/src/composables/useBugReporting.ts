@@ -1,8 +1,4 @@
-/**
- * Report bugs to Forum
- */
-
-import { useDebugInfo } from './useDebugInfo';
+import { useDebugInfo } from '@/composables/useDebugInfo';
 
 const BASE_FORUM_URL =
 	'https://community.n8n.io/new-topic?utm_source=n8n_app&category=questions&tags=bug-report';

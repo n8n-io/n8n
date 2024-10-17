@@ -1,5 +1,6 @@
 import { useRootStore } from '@/stores/root.store';
 import { useSettingsStore } from '@/stores/settings.store';
+import { useDeviceSupport } from 'n8n-design-system';
 import type { WorkflowSettings } from 'n8n-workflow';
 
 type DebugInfo = {
@@ -36,11 +37,16 @@ type DebugInfo = {
 		secureCookie?: boolean;
 		blockFileAccessToN8nFiles?: boolean;
 	};
+	client: {
+		userAgent: string;
+		isTouchDevice: boolean;
+	};
 };
 
 export function useDebugInfo() {
 	const settingsStore = useSettingsStore();
 	const rootStore = useRootStore();
+	const { isTouchDevice, userAgent } = useDeviceSupport();
 
 	const coreInfo = (skipSensitive?: boolean) => {
 		const info = {
@@ -109,11 +115,19 @@ export function useDebugInfo() {
 		return info;
 	};
 
+	const client = (): DebugInfo['client'] => {
+		return {
+			userAgent,
+			isTouchDevice,
+		};
+	};
+
 	const gatherDebugInfo = (skipSensitive?: boolean) => {
 		const debugInfo: DebugInfo = {
 			core: coreInfo(skipSensitive),
 			storage: storageInfo(),
 			pruning: pruningInfo(),
+			client: client(),
 		};
 
 		const security = securityInfo();
