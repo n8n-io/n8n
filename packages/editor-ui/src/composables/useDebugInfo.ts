@@ -10,7 +10,7 @@ type DebugInfo = {
 		database: 'sqlite' | 'mysql' | 'mariadb' | 'postgres';
 		executionMode: 'regular' | 'scaling';
 		license: 'community' | 'enterprise (production)' | 'enterprise (sandbox)';
-		consumerId: string;
+		consumerId?: string;
 		concurrency: number;
 	};
 	storage: {
@@ -42,8 +42,8 @@ export function useDebugInfo() {
 	const settingsStore = useSettingsStore();
 	const rootStore = useRootStore();
 
-	const coreInfo = () => {
-		return {
+	const coreInfo = (skipSensitive?: boolean) => {
+		const info = {
 			n8nVersion: rootStore.versionCli,
 			platform:
 				settingsStore.isDocker && settingsStore.deploymentType === 'cloud'
@@ -65,8 +65,16 @@ export function useDebugInfo() {
 				: settingsStore.settings.license.environment === 'production'
 					? 'enterprise (production)'
 					: 'enterprise (sandbox)',
-			consumerId: settingsStore.consumerId,
 		} as const;
+
+		if (!skipSensitive) {
+			return {
+				...info,
+				consumerId: !skipSensitive ? settingsStore.consumerId : undefined,
+			};
+		}
+
+		return info;
 	};
 
 	const storageInfo = (): DebugInfo['storage'] => {
@@ -101,9 +109,9 @@ export function useDebugInfo() {
 		return info;
 	};
 
-	const gatherDebugInfo = () => {
+	const gatherDebugInfo = (skipSensitive?: boolean) => {
 		const debugInfo: DebugInfo = {
-			core: coreInfo(),
+			core: coreInfo(skipSensitive),
 			storage: storageInfo(),
 			pruning: pruningInfo(),
 		};
@@ -115,11 +123,15 @@ export function useDebugInfo() {
 		return debugInfo;
 	};
 
-	const toMarkdown = (debugInfo: DebugInfo): string => {
-		let markdown = '# Debug info\n\n';
+	const toMarkdown = (
+		debugInfo: DebugInfo,
+		{ secondaryHeader }: { secondaryHeader?: boolean },
+	): string => {
+		const extraLevel = secondaryHeader ? '#' : '';
+		let markdown = `${extraLevel}# Debug info\n\n`;
 
 		for (const sectionKey in debugInfo) {
-			markdown += `## ${sectionKey}\n\n`;
+			markdown += `${extraLevel}## ${sectionKey}\n\n`;
 
 			const section = debugInfo[sectionKey as keyof DebugInfo];
 
@@ -140,8 +152,11 @@ export function useDebugInfo() {
 		return `${markdown}Generated at: ${new Date().toISOString()}`;
 	};
 
-	const generateDebugInfo = () => {
-		return appendTimestamp(toMarkdown(gatherDebugInfo()));
+	const generateDebugInfo = ({
+		skipSensitive,
+		secondaryHeader,
+	}: { skipSensitive?: boolean; secondaryHeader?: boolean } = {}) => {
+		return appendTimestamp(toMarkdown(gatherDebugInfo(skipSensitive), { secondaryHeader }));
 	};
 
 	return {

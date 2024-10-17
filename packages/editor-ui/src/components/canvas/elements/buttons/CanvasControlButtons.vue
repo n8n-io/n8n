@@ -2,6 +2,7 @@
 import { Controls } from '@vue-flow/controls';
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
 import { computed } from 'vue';
+import { useBugReporting } from '@/composables/useBugReporting';
 
 const props = withDefaults(
 	defineProps<{
@@ -19,6 +20,9 @@ const emit = defineEmits<{
 	'zoom-to-fit': [];
 }>();
 
+const { getReportingURL } = useBugReporting();
+
+const bugReportingUrl = computed(() => getReportingURL({ source: 'canvas-bug-button' }));
 const isResetZoomVisible = computed(() => props.zoom !== 1);
 
 function onResetZoom() {
@@ -87,6 +91,11 @@ function onZoomToFit() {
 				data-test-id="reset-zoom-button"
 				@click="onResetZoom"
 			/>
+		</KeyboardShortcutTooltip>
+		<KeyboardShortcutTooltip :label="$locale.baseText('nodeView.reportBug')">
+			<a :href="bugReportingUrl" target="_blank">
+				<N8nIconButton type="tertiary" size="large" icon="bug" data-test-id="report-bug" />
+			</a>
 		</KeyboardShortcutTooltip>
 	</Controls>
 </template>
