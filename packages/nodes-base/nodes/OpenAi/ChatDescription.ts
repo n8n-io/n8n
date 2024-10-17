@@ -162,6 +162,7 @@ const completeOperations: INodeProperties[] = [
 			sortable: true,
 			multipleValues: true,
 		},
+		description: 'The prompt can be a list of messages or a single message, depending on what you want to achieve and the model you are using. <a href="https://platform.openai.com/docs/guides/chat">More info</a>.',
 		displayOptions: {
 			show: {
 				resource: ['chat'],
@@ -183,14 +184,17 @@ const completeOperations: INodeProperties[] = [
 							{
 								name: 'Assistant',
 								value: 'assistant',
+								description: 'Store prior responses',
 							},
 							{
 								name: 'System',
 								value: 'system',
+								description: 'Set the behavior of the assistant',
 							},
 							{
 								name: 'User',
 								value: 'user',
+								description: 'Instruct the assistant',
 							},
 						],
 						default: 'user',
@@ -312,7 +316,7 @@ const sharedOperations: INodeProperties[] = [
 			{
 				displayName: 'Maximum Number of Tokens',
 				name: 'maxTokens',
-				default: 16,
+				default: 128,
 				description:
 					'The maximum number of tokens to generate in the completion. Most models have a context length of 2048 tokens (except for the newest models, which support 32,768).',
 				type: 'number',
