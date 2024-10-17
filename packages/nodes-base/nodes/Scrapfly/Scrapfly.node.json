@@ -1,0 +1,18 @@
+{
+	"node": "n8n-nodes-base.FriendGrid",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["development", "data-and-storage"],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://scrapfly.io/dashboard"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://scrapfly.io/docs"
+			}
+		]
+	}
+}
