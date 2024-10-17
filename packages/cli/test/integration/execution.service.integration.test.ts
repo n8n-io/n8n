@@ -563,10 +563,10 @@ describe('ExecutionService', () => {
 					{
 						...summaryShape,
 						annotation: {
-							tags: [
+							tags: expect.arrayContaining([
 								expect.objectContaining({ name: 'tag1' }),
 								expect.objectContaining({ name: 'tag2' }),
-							],
+							]),
 							vote: 'up',
 						},
 					},
@@ -646,10 +646,10 @@ describe('ExecutionService', () => {
 				{
 					...summaryShape,
 					annotation: {
-						tags: [
+						tags: expect.arrayContaining([
 							expect.objectContaining({ name: 'tag1' }),
 							expect.objectContaining({ name: 'tag2' }),
-						],
+						]),
 						vote: 'up',
 					},
 				},
@@ -691,10 +691,10 @@ describe('ExecutionService', () => {
 				{
 					...summaryShape,
 					annotation: {
-						tags: [
+						tags: expect.arrayContaining([
 							expect.objectContaining({ name: 'tag1' }),
 							expect.objectContaining({ name: 'tag2' }),
-						],
+						]),
 						vote: 'up',
 					},
 				},

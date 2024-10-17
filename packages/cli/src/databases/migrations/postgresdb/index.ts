@@ -66,6 +66,7 @@ import { CreateAnnotationTables1724753530828 } from '../common/1724753530828-Cre
 import { AddApiKeysTable1724951148974 } from '../common/1724951148974-AddApiKeysTable';
 import { CreateProcessedDataTable1726606152711 } from '../common/1726606152711-CreateProcessedDataTable';
 import { SeparateExecutionCreationFromStart1727427440136 } from '../common/1727427440136-SeparateExecutionCreationFromStart';
+import { AddMissingPrimaryKeyOnAnnotationTagMapping1728659839644 } from '../common/1728659839644-AddMissingPrimaryKeyOnAnnotationTagMapping';
 
 export const postgresMigrations: Migration[] = [
 	InitialMigration1587669153312,
@@ -134,4 +135,5 @@ export const postgresMigrations: Migration[] = [
 	AddApiKeysTable1724951148974,
 	SeparateExecutionCreationFromStart1727427440136,
 	CreateProcessedDataTable1726606152711,
+	AddMissingPrimaryKeyOnAnnotationTagMapping1728659839644,
 ];
