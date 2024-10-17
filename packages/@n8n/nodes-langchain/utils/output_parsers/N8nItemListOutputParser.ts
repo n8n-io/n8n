@@ -1,9 +1,9 @@
 import { BaseOutputParser, OutputParserException } from '@langchain/core/output_parsers';
 
-export class ItemListOutputParser extends BaseOutputParser<string[]> {
+export class N8nItemListOutputParser extends BaseOutputParser<string[]> {
 	lc_namespace = ['n8n-nodes-langchain', 'output_parsers', 'list_items'];
 
-	private numberOfItems: number | undefined;
+	private numberOfItems: number = 3;
 
 	private separator: string;
 
@@ -39,7 +39,7 @@ export class ItemListOutputParser extends BaseOutputParser<string[]> {
 			this.numberOfItems ? this.numberOfItems + ' ' : ''
 		}items separated by`;
 
-		const numberOfExamples = this.numberOfItems ?? 3;
+		const numberOfExamples = this.numberOfItems;
 
 		const examples: string[] = [];
 		for (let i = 1; i <= numberOfExamples; i++) {
@@ -47,5 +47,9 @@ export class ItemListOutputParser extends BaseOutputParser<string[]> {
 		}
 
 		return `${instructions} "${this.separator}" (for example: "${examples.join(this.separator)}")`;
+	}
+
+	getSchema() {
+		return;
 	}
 }
