@@ -564,27 +564,6 @@ export const schema = {
 		},
 	},
 
-	multiMainSetup: {
-		enabled: {
-			doc: 'Whether to enable multi-main setup for queue mode (license required)',
-			format: Boolean,
-			default: false,
-			env: 'N8N_MULTI_MAIN_SETUP_ENABLED',
-		},
-		ttl: {
-			doc: 'Time to live (in seconds) for leader key in multi-main setup',
-			format: Number,
-			default: 10,
-			env: 'N8N_MULTI_MAIN_SETUP_KEY_TTL',
-		},
-		interval: {
-			doc: 'Interval (in seconds) for leader check in multi-main setup',
-			format: Number,
-			default: 3,
-			env: 'N8N_MULTI_MAIN_SETUP_CHECK_INTERVAL',
-		},
-	},
-
 	proxy_hops: {
 		format: Number,
 		default: 0,
