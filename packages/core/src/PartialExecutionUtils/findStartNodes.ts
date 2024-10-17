@@ -137,7 +137,7 @@ export function findStartNodes(options: {
 	destination: INode;
 	runData?: IRunData;
 	pinData?: IPinData;
-}): INode[] {
+}): Set<INode> {
 	const graph = options.graph;
 	const trigger = options.trigger;
 	const destination = options.destination;
@@ -156,5 +156,5 @@ export function findStartNodes(options: {
 		new Set(),
 	);
 
-	return [...startNodes];
+	return startNodes;
 }
