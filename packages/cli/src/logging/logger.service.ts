@@ -1,11 +1,15 @@
+import type { LogScope } from '@n8n/config';
 import { GlobalConfig } from '@n8n/config';
 import callsites from 'callsites';
+import type { TransformableInfo } from 'logform';
 import { InstanceSettings } from 'n8n-core';
 import { LoggerProxy, LOG_LEVELS } from 'n8n-workflow';
 import path, { basename } from 'node:path';
+import pc from 'picocolors';
 import { Service } from 'typedi';
 import winston from 'winston';
 
+import { inDevelopment, inProduction } from '@/constants';
 import { isObjectLiteral } from '@/utils';
 
 import { noOp } from './constants';
@@ -13,9 +17,15 @@ import type { LogLocationMetadata, LogLevel, LogMetadata } from './types';
 
 @Service()
 export class Logger {
-	private readonly internalLogger: winston.Logger;
+	private internalLogger: winston.Logger;
 
 	private readonly level: LogLevel;
+
+	private readonly scopes: Set<LogScope>;
+
+	private get isScopingEnabled() {
+		return this.scopes.size > 0;
+	}
 
 	constructor(
 		private readonly globalConfig: GlobalConfig,
@@ -33,13 +43,28 @@ export class Logger {
 		if (!isSilent) {
 			this.setLevel();
 
-			const { outputs } = this.globalConfig.logging;
+			const { outputs, scopes } = this.globalConfig.logging;
 
 			if (outputs.includes('console')) this.setConsoleTransport();
 			if (outputs.includes('file')) this.setFileTransport();
+
+			this.scopes = new Set(scopes);
 		}
 
 		LoggerProxy.init(this);
+	}
+
+	private setInternalLogger(internalLogger: winston.Logger) {
+		this.internalLogger = internalLogger;
+	}
+
+	withScope(scope: LogScope) {
+		const scopedLogger = new Logger(this.globalConfig, this.instanceSettings);
+		const childLogger = this.internalLogger.child({ scope });
+
+		scopedLogger.setInternalLogger(childLogger);
+
+		return scopedLogger;
 	}
 
 	private log(level: LogLevel, message: string, metadata: LogMetadata) {
@@ -61,8 +86,7 @@ export class Logger {
 
 		for (const logLevel of LOG_LEVELS) {
 			if (levels[logLevel] > levels[this.level]) {
-				// winston defines `{ error: 0, warn: 1, info: 2, debug: 5 }`
-				// so numerically higher (less severe) log levels become no-op
+				// numerically higher (less severe) log levels become no-op
 				// to prevent overhead from `callsites` calls
 				Object.defineProperty(this, logLevel, { value: noOp });
 			}
@@ -71,24 +95,72 @@ export class Logger {
 
 	private setConsoleTransport() {
 		const format =
-			this.level === 'debug'
-				? winston.format.combine(
-						winston.format.metadata(),
-						winston.format.timestamp(),
-						winston.format.colorize({ all: true }),
-						winston.format.printf(({ level, message, timestamp, metadata }) => {
-							const _metadata = this.toPrintable(metadata);
-							return `${timestamp} | ${level.padEnd(18)} | ${message}${_metadata}`;
-						}),
-					)
-				: winston.format.printf(({ message }: { message: string }) => message);
+			this.level === 'debug' && inDevelopment
+				? this.debugDevConsoleFormat()
+				: this.level === 'debug' && inProduction
+					? this.debugProdConsoleFormat()
+					: winston.format.printf(({ message }: { message: string }) => message);
 
 		this.internalLogger.add(new winston.transports.Console({ format }));
 	}
 
+	private scopeFilter() {
+		return winston.format((info: TransformableInfo & { metadata: LogMetadata }) => {
+			const shouldIncludeScope = info.metadata.scope && this.scopes.has(info.metadata.scope);
+
+			if (this.isScopingEnabled && !shouldIncludeScope) return false;
+
+			return info;
+		})();
+	}
+
+	private debugDevConsoleFormat() {
+		return winston.format.combine(
+			winston.format.metadata(),
+			winston.format.timestamp({ format: () => this.devTsFormat() }),
+			winston.format.colorize({ all: true }),
+			this.scopeFilter(),
+			winston.format.printf(({ level: _level, message, timestamp, metadata: _metadata }) => {
+				const SEPARATOR = ' '.repeat(3);
+				const LOG_LEVEL_COLUMN_WIDTH = 15; // 5 columns + ANSI color codes
+				const level = _level.toLowerCase().padEnd(LOG_LEVEL_COLUMN_WIDTH, ' ');
+				const metadata = this.toPrintable(_metadata);
+				return [timestamp, level, message + ' ' + pc.dim(metadata)].join(SEPARATOR);
+			}),
+		);
+	}
+
+	private debugProdConsoleFormat() {
+		return winston.format.combine(
+			winston.format.metadata(),
+			winston.format.timestamp(),
+			this.scopeFilter(),
+			winston.format.printf(({ level, message, timestamp, metadata }) => {
+				const _metadata = this.toPrintable(metadata);
+				return `${timestamp} | ${level.padEnd(5)} | ${message}${_metadata ? ' ' + _metadata : ''}`;
+			}),
+		);
+	}
+
+	private devTsFormat() {
+		const now = new Date();
+		const pad = (num: number, digits: number = 2) => num.toString().padStart(digits, '0');
+		const hours = pad(now.getHours());
+		const minutes = pad(now.getMinutes());
+		const seconds = pad(now.getSeconds());
+		const milliseconds = pad(now.getMilliseconds(), 3);
+		return `${hours}:${minutes}:${seconds}.${milliseconds}`;
+	}
+
 	private toPrintable(metadata: unknown) {
 		if (isObjectLiteral(metadata) && Object.keys(metadata).length > 0) {
-			return ' ' + JSON.stringify(metadata);
+			return inProduction
+				? JSON.stringify(metadata)
+				: JSON.stringify(metadata)
+						.replace(/{"/g, '{ "')
+						.replace(/,"/g, ', "')
+						.replace(/:/g, ': ')
+						.replace(/}/g, ' }'); // spacing for readability
 		}
 
 		return '';

@@ -12,6 +12,7 @@ type activationType = 'activate' | 'update';
 export class WorkflowTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Workflow Trigger',
+		hidden: true,
 		name: 'workflowTrigger',
 		icon: 'fa:network-wired',
 		iconColor: 'orange-red',
@@ -28,6 +29,13 @@ export class WorkflowTrigger implements INodeType {
 		inputs: [],
 		outputs: [NodeConnectionType.Main],
 		properties: [
+			{
+				displayName:
+					"This node is deprecated and would not be updated in the future. Please use 'n8n Trigger' node instead.",
+				name: 'oldVersionNotice',
+				type: 'notice',
+				default: '',
+			},
 			{
 				displayName: 'Events',
 				name: 'events',

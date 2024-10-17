@@ -1,18 +1,20 @@
 import { Flags, type Config } from '@oclif/core';
-import { ApplicationError } from 'n8n-workflow';
 import { Container } from 'typedi';
 
 import config from '@/config';
 import { N8N_VERSION, inTest } from '@/constants';
+import { WorkerMissingEncryptionKey } from '@/errors/worker-missing-encryption-key.error';
 import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
-import { JobProcessor } from '@/scaling/job-processor';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { Logger } from '@/logging/logger.service';
+import { LocalTaskManager } from '@/runners/task-managers/local-task-manager';
+import { TaskManager } from '@/runners/task-managers/task-manager';
+import { PubSubHandler } from '@/scaling/pubsub/pubsub-handler';
+import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import type { ScalingService } from '@/scaling/scaling.service';
 import type { WorkerServerEndpointsConfig } from '@/scaling/worker-server';
-import { OrchestrationHandlerWorkerService } from '@/services/orchestration/worker/orchestration.handler.worker.service';
-import { OrchestrationWorkerService } from '@/services/orchestration/worker/orchestration.worker.service';
+import { OrchestrationService } from '@/services/orchestration.service';
 
 import { BaseCommand } from './base-command';
 
@@ -39,8 +41,6 @@ export class Worker extends BaseCommand {
 
 	scalingService: ScalingService;
 
-	jobProcessor: JobProcessor;
-
 	override needsCommunityPackages = true;
 
 	/**
@@ -49,27 +49,27 @@ export class Worker extends BaseCommand {
 	 * get removed.
 	 */
 	async stopProcess() {
-		this.logger.info('Stopping n8n...');
+		this.logger.info('Stopping worker...');
 
 		try {
 			await this.externalHooks?.run('n8n.stop', []);
 		} catch (error) {
-			await this.exitWithCrash('There was an error shutting down n8n.', error);
+			await this.exitWithCrash('Error shutting down worker', error);
 		}
 
 		await this.exitSuccessFully();
 	}
 
 	constructor(argv: string[], cmdConfig: Config) {
-		super(argv, cmdConfig);
+		if (!process.env.N8N_ENCRYPTION_KEY) throw new WorkerMissingEncryptionKey();
 
-		if (!process.env.N8N_ENCRYPTION_KEY) {
-			throw new ApplicationError(
-				'Missing encryption key. Worker started without the required N8N_ENCRYPTION_KEY env var. More information: https://docs.n8n.io/hosting/configuration/configuration-examples/encryption-key/',
-			);
+		if (config.getEnv('executions.mode') !== 'queue') {
+			config.set('executions.mode', 'queue');
 		}
 
-		this.setInstanceQueueModeId();
+		super(argv, cmdConfig);
+
+		this.logger = Container.get(Logger).withScope('scaling');
 	}
 
 	async init() {
@@ -84,7 +84,7 @@ export class Worker extends BaseCommand {
 		await this.initCrashJournal();
 
 		this.logger.debug('Starting n8n worker...');
-		this.logger.debug(`Queue mode id: ${this.queueModeId}`);
+		this.logger.debug(`Host ID: ${this.instanceSettings.hostId}`);
 
 		await this.setConcurrency();
 		await super.init();
@@ -93,6 +93,8 @@ export class Worker extends BaseCommand {
 		this.logger.debug('License init complete');
 		await this.initBinaryDataService();
 		this.logger.debug('Binary data service init complete');
+		await this.initDataDeduplicationService();
+		this.logger.debug('Data deduplication service init complete');
 		await this.initExternalHooks();
 		this.logger.debug('External hooks init complete');
 		await this.initExternalSecrets();
@@ -107,15 +109,26 @@ export class Worker extends BaseCommand {
 			new EventMessageGeneric({
 				eventName: 'n8n.worker.started',
 				payload: {
-					workerId: this.queueModeId,
+					workerId: this.instanceSettings.hostId,
 				},
 			}),
 		);
+
+		if (!this.globalConfig.taskRunners.disabled) {
+			Container.set(TaskManager, new LocalTaskManager());
+			const { TaskRunnerServer } = await import('@/runners/task-runner-server');
+			const taskRunnerServer = Container.get(TaskRunnerServer);
+			await taskRunnerServer.start();
+
+			const { TaskRunnerProcess } = await import('@/runners/task-runner-process');
+			const runnerProcess = Container.get(TaskRunnerProcess);
+			await runnerProcess.start();
+		}
 	}
 
 	async initEventBus() {
 		await Container.get(MessageEventBus).initialize({
-			workerId: this.queueModeId,
+			workerId: this.instanceSettings.hostId,
 		});
 		Container.get(LogStreamingEventRelay).init();
 	}
@@ -127,13 +140,12 @@ export class Worker extends BaseCommand {
 	 * The subscription connection adds a handler to handle the command messages
 	 */
 	async initOrchestration() {
-		await Container.get(OrchestrationWorkerService).init();
-		await Container.get(OrchestrationHandlerWorkerService).initWithOptions({
-			queueModeId: this.queueModeId,
-			publisher: Container.get(Publisher),
-			getRunningJobIds: () => this.jobProcessor.getRunningJobIds(),
-			getRunningJobsSummary: () => this.jobProcessor.getRunningJobsSummary(),
-		});
+		await Container.get(OrchestrationService).init();
+
+		Container.get(PubSubHandler).init();
+		await Container.get(Subscriber).subscribe('n8n.commands');
+
+		this.logger.withScope('scaling').debug('Pubsub setup ready');
 	}
 
 	async setConcurrency() {
@@ -151,8 +163,6 @@ export class Worker extends BaseCommand {
 		await this.scalingService.setupQueue();
 
 		this.scalingService.setupWorker(this.concurrency);
-
-		this.jobProcessor = Container.get(JobProcessor);
 	}
 
 	async run() {

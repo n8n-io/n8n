@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "1.62.1",
+  "version": "1.64.0",
   "private": true,
   "engines": {
     "node": ">=20.15",
@@ -69,14 +69,15 @@
     ],
     "overrides": {
       "@types/node": "^18.16.16",
-      "chokidar": "3.5.2",
-      "esbuild": "^0.20.2",
+      "chokidar": "^4.0.1",
+      "esbuild": "^0.24.0",
       "formidable": "3.5.1",
       "pug": "^3.0.3",
       "semver": "^7.5.4",
       "tslib": "^2.6.2",
       "tsconfig-paths": "^4.2.0",
       "typescript": "^5.6.2",
+      "vue-tsc": "^2.1.6",
       "ws": ">=8.17.1"
     },
     "patchedDependencies": {

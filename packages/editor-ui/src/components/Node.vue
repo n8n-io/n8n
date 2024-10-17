@@ -17,7 +17,7 @@ import type {
 	NodeOperationError,
 	Workflow,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
+import { NodeConnectionType, NodeHelpers, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import type { StyleValue } from 'vue';
 import { computed, onMounted, ref, watch } from 'vue';
 import xss from 'xss';
@@ -336,6 +336,9 @@ const waiting = computed(() => {
 						: i18n.baseText('node.theNodeIsWaitingFormCall');
 				return event;
 			}
+			if (node?.parameters.operation === SEND_AND_WAIT_OPERATION) {
+				return i18n.baseText('node.theNodeIsWaitingUserInput');
+			}
 			const waitDate = new Date(workflowExecution.waitTill);
 			if (waitDate.toISOString() === WAIT_TIME_UNLIMITED) {
 				return i18n.baseText('node.theNodeIsWaitingIndefinitelyForAnIncomingWebhookCall');
@@ -520,7 +523,8 @@ function showPinDataDiscoveryTooltip(dataItemsCount: number): void {
 		isManualTypeNode.value ||
 		isScheduledGroup.value ||
 		uiStore.isAnyModalOpen ||
-		dataItemsCount === 0
+		dataItemsCount === 0 ||
+		pinnedData.hasData.value
 	)
 		return;
 

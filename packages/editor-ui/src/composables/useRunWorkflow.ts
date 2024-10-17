@@ -378,6 +378,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 						['error', 'canceled', 'crashed', 'success'].includes(execution.status)
 					) {
 						workflowsStore.setWorkflowExecutionData(execution);
+						workflowsStore.activeExecutionId = null;
 						if (timeoutId) clearTimeout(timeoutId);
 						resolve();
 						return;

@@ -21,7 +21,9 @@ import type { NodeOperationError } from './errors/node-operation.error';
 import type { WorkflowActivationError } from './errors/workflow-activation.error';
 import type { WorkflowOperationError } from './errors/workflow-operation.error';
 import type { ExecutionStatus } from './ExecutionStatus';
+import type { Result } from './result';
 import type { Workflow } from './Workflow';
+import type { EnvProviderState } from './WorkflowDataProxyEnvProvider';
 import type { WorkflowHooks } from './WorkflowHooks';
 
 export interface IAdditionalCredentialOptions {
@@ -765,6 +767,48 @@ export interface BinaryHelperFunctions {
 	}>;
 }
 
+export type DeduplicationScope = 'node' | 'workflow';
+export type DeduplicationItemTypes = string | number;
+export type DeduplicationMode = 'entries' | 'latestIncrementalKey' | 'latestDate';
+
+export interface IDeduplicationOutput {
+	new: DeduplicationItemTypes[];
+	processed: DeduplicationItemTypes[];
+}
+
+export interface IDeduplicationOutputItems {
+	new: IDataObject[];
+	processed: IDataObject[];
+}
+
+export interface ICheckProcessedOptions {
+	mode: DeduplicationMode;
+	maxEntries?: number;
+}
+
+export interface DeduplicationHelperFunctions {
+	checkProcessedAndRecord(
+		items: DeduplicationItemTypes[],
+		scope: DeduplicationScope,
+		options: ICheckProcessedOptions,
+	): Promise<IDeduplicationOutput>;
+	checkProcessedItemsAndRecord(
+		propertyName: string,
+		items: IDataObject[],
+		scope: DeduplicationScope,
+		options: ICheckProcessedOptions,
+	): Promise<IDeduplicationOutputItems>;
+	removeProcessed(
+		items: DeduplicationItemTypes[],
+		scope: DeduplicationScope,
+		options: ICheckProcessedOptions,
+	): Promise<void>;
+	clearAllProcessedItems(scope: DeduplicationScope, options: ICheckProcessedOptions): Promise<void>;
+	getProcessedDataCount(
+		scope: DeduplicationScope,
+		options: ICheckProcessedOptions,
+	): Promise<number>;
+}
 export interface NodeHelperFunctions {
 	copyBinaryFile(filePath: string, fileName: string, mimeType?: string): Promise<IBinaryData>;
 }
@@ -938,6 +982,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		helpers: RequestHelperFunctions &
 			BaseHelperFunctions &
 			BinaryHelperFunctions &
+			DeduplicationHelperFunctions &
 			FileSystemHelperFunctions &
 			SSHTunnelFunctions &
 			JsonHelperFunctions & {
@@ -953,7 +998,11 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 
 		getParentCallbackManager(): CallbackManager | undefined;
 
-		startJob<T = unknown>(jobType: string, settings: unknown, itemIndex: number): Promise<T>;
+		startJob<T = unknown, E = unknown>(
+			jobType: string,
+			settings: unknown,
+			itemIndex: number,
+		): Promise<Result<T, E>>;
 	};
 
 export interface IExecuteSingleFunctions extends BaseExecutionFunctions {
@@ -2241,7 +2290,7 @@ export interface IWorkflowExecuteAdditionalData {
 	secretsHelpers: SecretsHelpersBase;
 	logAiEvent: (eventName: AiEvent, payload: AiEventPayload) => void;
 	parentCallbackManager?: CallbackManager;
-	startAgentJob<T>(
+	startAgentJob<T, E = unknown>(
 		additionalData: IWorkflowExecuteAdditionalData,
 		jobType: string,
 		settings: unknown,
@@ -2256,11 +2305,12 @@ export interface IWorkflowExecuteAdditionalData {
 		connectionInputData: INodeExecutionData[],
 		siblingParameters: INodeParameters,
 		mode: WorkflowExecuteMode,
+		envProviderState: EnvProviderState,
 		executeData?: IExecuteData,
 		defaultReturnRunIndex?: number,
 		selfData?: IDataObject,
 		contextNodeName?: string,
-	): Promise<T>;
+	): Promise<Result<T, E>>;
 }
 
 export type WorkflowExecuteMode =
@@ -2327,7 +2377,7 @@ export interface WorkflowTestData {
 	nock?: {
 		baseUrl: string;
 		mocks: Array<{
-			method: 'get' | 'post';
+			method: 'delete' | 'get' | 'post' | 'put';
 			path: string;
 			requestBody?: RequestBodyMatcher;
 			statusCode: number;
@@ -2432,6 +2482,8 @@ export interface INodeGraphItem {
 	toolSettings?: IDataObject; //various langchain tool's settings
 	sql?: string; //merge node combineBySql, cloud only
 	workflow_id?: string; //@n8n/n8n-nodes-langchain.toolWorkflow and n8n-nodes-base.executeWorkflow
+	runs?: number;
+	items_total?: number;
 }
 
 export interface INodeNameIndex {
@@ -2643,6 +2695,46 @@ export interface IUserSettings {
 	npsSurvey?: NpsSurveyState;
 }
 
+export interface IProcessedDataConfig {
+	availableModes: string;
+	mode: string;
+}
+
+export interface IDataDeduplicator {
+	checkProcessedAndRecord(
+		items: DeduplicationItemTypes[],
+		context: DeduplicationScope,
+		contextData: ICheckProcessedContextData,
+		options: ICheckProcessedOptions,
+	): Promise<IDeduplicationOutput>;
+
+	removeProcessed(
+		items: DeduplicationItemTypes[],
+		context: DeduplicationScope,
+		contextData: ICheckProcessedContextData,
+		options: ICheckProcessedOptions,
+	): Promise<void>;
+
+	clearAllProcessedItems(
+		context: DeduplicationScope,
+		contextData: ICheckProcessedContextData,
+		options: ICheckProcessedOptions,
+	): Promise<void>;
+	getProcessedDataCount(
+		context: DeduplicationScope,
+		contextData: ICheckProcessedContextData,
+		options: ICheckProcessedOptions,
+	): Promise<number>;
+}
+
+export interface ICheckProcessedContextData {
+	node?: INode;
+	workflow: {
+		id: string;
+		active: boolean;
+	};
+}
+
 export type ExpressionEvaluatorType = 'tmpl' | 'tournament';
 
 export type N8nAIProviderType = 'openai' | 'unknown';
@@ -2666,8 +2758,6 @@ export type BannerName =
 	| 'EMAIL_CONFIRMATION';
 
 export type Functionality = 'regular' | 'configuration-node' | 'pairedItem';
-
-export type Result<T, E> = { ok: true; result: T } | { ok: false; error: E };
 
 export type CallbackManager = CallbackManagerLC;
 

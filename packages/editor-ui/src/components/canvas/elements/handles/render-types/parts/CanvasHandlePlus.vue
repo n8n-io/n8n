@@ -7,7 +7,7 @@ const props = withDefaults(
 		handleClasses?: string;
 		plusSize?: number;
 		lineSize?: number;
-		type?: 'success' | 'ai' | 'default';
+		type?: 'success' | 'secondary' | 'default';
 	}>(),
 	{
 		position: 'right',
@@ -120,7 +120,7 @@ function onClick(event: MouseEvent) {
 				stroke="var(--color-foreground-xdark)"
 				stroke-width="2"
 				rx="4"
-				fill="#ffffff"
+				fill="var(--color-foreground-xlight)"
 			/>
 			<path
 				:class="[handleClasses, 'clickable']"
@@ -135,7 +135,7 @@ function onClick(event: MouseEvent) {
 .wrapper {
 	position: relative;
 
-	&.ai {
+	&.secondary {
 		.line {
 			stroke: var(--node-type-supplemental-color);
 		}

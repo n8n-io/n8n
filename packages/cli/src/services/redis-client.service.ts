@@ -40,6 +40,10 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 		this.registerListeners();
 	}
 
+	isConnected() {
+		return !this.lostConnection;
+	}
+
 	createClient(arg: { type: RedisClientType; extraOptions?: RedisOptions }) {
 		const client =
 			this.clusterNodes().length > 0

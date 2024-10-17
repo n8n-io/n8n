@@ -156,7 +156,7 @@ export class NDV extends BasePage {
 			this.getters.nodeExecuteButton().first().click();
 		},
 		close: () => {
-			this.getters.backToCanvas().click();
+			this.getters.backToCanvas().click({ force: true });
 		},
 		openInlineExpressionEditor: () => {
 			cy.contains('Expression').invoke('show').click();

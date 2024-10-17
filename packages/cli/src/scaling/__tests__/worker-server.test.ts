@@ -8,6 +8,7 @@ import * as http from 'node:http';
 import type { ExternalHooks } from '@/external-hooks';
 import type { PrometheusMetricsService } from '@/metrics/prometheus-metrics.service';
 import { bodyParser, rawBodyReader } from '@/middlewares';
+import { mockLogger } from '@test/mocking';
 
 import { WorkerServer } from '../worker-server';
 
@@ -48,12 +49,12 @@ describe('WorkerServer', () => {
 				() =>
 					new WorkerServer(
 						globalConfig,
-						mock(),
-						mock(),
+						mockLogger(),
 						mock(),
 						externalHooks,
 						mock<InstanceSettings>({ instanceType: 'webhook' }),
 						prometheusMetricsService,
+						mock(),
 					),
 			).toThrowError(AssertionError);
 		});
@@ -73,12 +74,12 @@ describe('WorkerServer', () => {
 
 			new WorkerServer(
 				globalConfig,
-				mock(),
-				mock(),
+				mockLogger(),
 				mock(),
 				externalHooks,
 				instanceSettings,
 				prometheusMetricsService,
+				mock(),
 			);
 
 			expect(procesExitSpy).toHaveBeenCalledWith(1);
@@ -100,12 +101,12 @@ describe('WorkerServer', () => {
 
 			const workerServer = new WorkerServer(
 				globalConfig,
-				mock(),
-				mock(),
+				mockLogger(),
 				mock(),
 				externalHooks,
 				instanceSettings,
 				prometheusMetricsService,
+				mock(),
 			);
 
 			const CREDENTIALS_OVERWRITE_ENDPOINT = 'credentials/overwrites';
@@ -135,12 +136,12 @@ describe('WorkerServer', () => {
 
 			const workerServer = new WorkerServer(
 				globalConfig,
-				mock(),
-				mock(),
+				mockLogger(),
 				mock(),
 				externalHooks,
 				instanceSettings,
 				prometheusMetricsService,
+				mock(),
 			);
 
 			await workerServer.init({ health: true, overwrites: false, metrics: true });
@@ -156,12 +157,12 @@ describe('WorkerServer', () => {
 
 			const workerServer = new WorkerServer(
 				globalConfig,
-				mock(),
-				mock(),
+				mockLogger(),
 				mock(),
 				externalHooks,
 				instanceSettings,
 				prometheusMetricsService,
+				mock(),
 			);
 			await expect(
 				workerServer.init({ health: false, overwrites: false, metrics: false }),
@@ -174,12 +175,12 @@ describe('WorkerServer', () => {
 
 			const workerServer = new WorkerServer(
 				globalConfig,
-				mock(),
-				mock(),
+				mockLogger(),
 				mock(),
 				externalHooks,
 				instanceSettings,
 				prometheusMetricsService,
+				mock(),
 			);
 
 			server.listen.mockImplementation((...args: unknown[]) => {

@@ -10,7 +10,9 @@ import type {
 	INodeParameters,
 	IExecuteData,
 	IDataObject,
+	Result,
 } from 'n8n-workflow';
+import { createEnvProviderState } from 'n8n-workflow';
 
 export const createAgentStartJob = (
 	additionalData: IWorkflowExecuteAdditionalData,
@@ -28,13 +30,13 @@ export const createAgentStartJob = (
 	selfData?: IDataObject,
 	contextNodeName?: string,
 ): IExecuteFunctions['startJob'] => {
-	return async function startJob<T = unknown>(
+	return async function startJob<T = unknown, E = unknown>(
 		this: IExecuteFunctions,
 		jobType: string,
 		settings: unknown,
 		itemIndex: number,
-	): Promise<T> {
-		return await additionalData.startAgentJob<T>(
+	): Promise<Result<T, E>> {
+		return await additionalData.startAgentJob<T, E>(
 			additionalData,
 			jobType,
 			settings,
@@ -49,6 +51,7 @@ export const createAgentStartJob = (
 			connectionInputData,
 			siblingParameters,
 			mode,
+			createEnvProviderState(),
 			executeData,
 			defaultReturnRunIndex,
 			selfData,
