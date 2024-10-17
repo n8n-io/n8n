@@ -8,6 +8,7 @@ describe('permissions', () => {
 			annotationTag: {},
 			auditLogs: {},
 			banner: {},
+			community: {},
 			communityPackage: {},
 			credential: {},
 			externalSecretsProvider: {},
@@ -23,6 +24,7 @@ describe('permissions', () => {
 			sourceControl: {},
 			tag: {},
 			user: {},
+			usage: {},
 			variable: {},
 			workersView: {},
 			workflow: {},
@@ -62,6 +64,7 @@ describe('permissions', () => {
 			annotationTag: {},
 			auditLogs: {},
 			banner: {},
+			community: {},
 			communityPackage: {},
 			credential: {
 				create: true,
@@ -95,6 +98,7 @@ describe('permissions', () => {
 				read: true,
 				update: true,
 			},
+			usage: {},
 			user: {
 				list: true,
 			},
