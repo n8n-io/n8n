@@ -112,8 +112,9 @@ export class ScalingService {
 		const msg: JobFailedMessage = {
 			kind: 'job-failed',
 			executionId,
-			workerId: config.getEnv('redis.queueModeId'),
+			workerId: this.instanceSettings.hostId,
 			errorMsg: error.message,
+			errorStack: error.stack ?? '',
 		};
 
 		await job.progress(msg);
@@ -295,12 +296,18 @@ export class ScalingService {
 					});
 					break;
 				case 'job-failed':
-					this.logger.error(`Execution ${msg.executionId} (job ${jobId}) failed`, {
-						workerId: msg.workerId,
-						errorMsg: msg.errorMsg,
-						executionId: msg.executionId,
-						jobId,
-					});
+					this.logger.error(
+						[
+							`Execution ${msg.executionId} (job ${jobId}) failed`,
+							msg.errorStack ? `\n${msg.errorStack}\n` : '',
+						].join(''),
+						{
+							workerId: msg.workerId,
+							errorMsg: msg.errorMsg,
+							executionId: msg.executionId,
+							jobId,
+						},
+					);
 					break;
 				case 'abort-job':
 					break; // only for worker

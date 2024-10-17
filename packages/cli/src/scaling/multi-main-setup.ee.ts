@@ -1,3 +1,4 @@
+import { GlobalConfig } from '@n8n/config';
 import { InstanceSettings } from 'n8n-core';
 import { Service } from 'typedi';
 
@@ -9,10 +10,22 @@ import { RedisClientService } from '@/services/redis-client.service';
 import { TypedEmitter } from '@/typed-emitter';
 
 type MultiMainEvents = {
+	/**
+	 * Emitted when this instance loses leadership. In response, its various
+	 * services will stop triggers, pollers, pruning, wait-tracking, license
+	 * renewal, queue recovery, etc.
+	 */
 	'leader-stepdown': never;
+
+	/**
+	 * Emitted when this instance gains leadership. In response, its various
+	 * services will start triggers, pollers, pruning, wait-tracking, license
+	 * renewal, queue recovery, etc.
+	 */
 	'leader-takeover': never;
 };
 
+/** Designates leader and followers when running multiple main processes. */
 @Service()
 export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 	constructor(
@@ -20,17 +33,15 @@ export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly publisher: Publisher,
 		private readonly redisClientService: RedisClientService,
+		private readonly globalConfig: GlobalConfig,
 	) {
 		super();
-	}
-
-	get instanceId() {
-		return config.getEnv('redis.queueModeId');
+		this.logger = this.logger.withScope('scaling');
 	}
 
 	private leaderKey: string;
 
-	private readonly leaderKeyTtl = config.getEnv('multiMainSetup.ttl');
+	private readonly leaderKeyTtl = this.globalConfig.multiMainSetup.ttl;
 
 	private leaderCheckInterval: NodeJS.Timer | undefined;
 
@@ -43,7 +54,7 @@ export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 
 		this.leaderCheckInterval = setInterval(async () => {
 			await this.checkLeader();
-		}, config.getEnv('multiMainSetup.interval') * TIME.SECOND);
+		}, this.globalConfig.multiMainSetup.interval * TIME.SECOND);
 	}
 
 	async shutdown() {
@@ -57,21 +68,23 @@ export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 	private async checkLeader() {
 		const leaderId = await this.publisher.get(this.leaderKey);
 
-		if (leaderId === this.instanceId) {
-			this.logger.debug(`[Instance ID ${this.instanceId}] Leader is this instance`);
+		const { hostId } = this.instanceSettings;
+
+		if (leaderId === hostId) {
+			this.logger.debug(`[Instance ID ${hostId}] Leader is this instance`);
 
 			await this.publisher.setExpiration(this.leaderKey, this.leaderKeyTtl);
 
 			return;
 		}
 
-		if (leaderId && leaderId !== this.instanceId) {
-			this.logger.debug(`[Instance ID ${this.instanceId}] Leader is other instance "${leaderId}"`);
+		if (leaderId && leaderId !== hostId) {
+			this.logger.debug(`[Instance ID ${hostId}] Leader is other instance "${leaderId}"`);
 
 			if (this.instanceSettings.isLeader) {
 				this.instanceSettings.markAsFollower();
 
-				this.emit('leader-stepdown'); // lost leadership - stop triggers, pollers, pruning, wait-tracking, queue recovery
+				this.emit('leader-stepdown');
 
 				this.logger.warn('[Multi-main setup] Leader failed to renew leader key');
 			}
@@ -81,14 +94,11 @@ export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 
 		if (!leaderId) {
 			this.logger.debug(
-				`[Instance ID ${this.instanceId}] Leadership vacant, attempting to become leader...`,
+				`[Instance ID ${hostId}] Leadership vacant, attempting to become leader...`,
 			);
 
 			this.instanceSettings.markAsFollower();
 
-			/**
-			 * Lost leadership - stop triggers, pollers, pruning, wait tracking, license renewal, queue recovery
-			 */
 			this.emit('leader-stepdown');
 
 			await this.tryBecomeLeader();
@@ -96,19 +106,18 @@ export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 	}
 
 	private async tryBecomeLeader() {
+		const { hostId } = this.instanceSettings;
+
 		// this can only succeed if leadership is currently vacant
-		const keySetSuccessfully = await this.publisher.setIfNotExists(this.leaderKey, this.instanceId);
+		const keySetSuccessfully = await this.publisher.setIfNotExists(this.leaderKey, hostId);
 
 		if (keySetSuccessfully) {
-			this.logger.debug(`[Instance ID ${this.instanceId}] Leader is now this instance`);
+			this.logger.debug(`[Instance ID ${hostId}] Leader is now this instance`);
 
 			this.instanceSettings.markAsLeader();
 
 			await this.publisher.setExpiration(this.leaderKey, this.leaderKeyTtl);
 
-			/**
-			 * Gained leadership - start triggers, pollers, pruning, wait-tracking, license renewal, queue recovery
-			 */
 			this.emit('leader-takeover');
 		} else {
 			this.instanceSettings.markAsFollower();

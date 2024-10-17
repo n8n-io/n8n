@@ -3,7 +3,7 @@ import type { InstanceSettings } from 'n8n-core';
 
 import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import type { IExecutionResponse } from '@/interfaces';
-import type { MultiMainSetup } from '@/services/orchestration/main/multi-main-setup.ee';
+import type { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { WaitTracker } from '@/wait-tracker';
 import { mockLogger } from '@test/mocking';
@@ -13,7 +13,7 @@ jest.useFakeTimers();
 describe('WaitTracker', () => {
 	const executionRepository = mock<ExecutionRepository>();
 	const multiMainSetup = mock<MultiMainSetup>();
-	const orchestrationService = new OrchestrationService(mock(), mock(), multiMainSetup);
+	const orchestrationService = new OrchestrationService(mock(), multiMainSetup, mock());
 	const instanceSettings = mock<InstanceSettings>({ isLeader: true });
 
 	const execution = mock<IExecutionResponse>({
