@@ -565,10 +565,10 @@ provide(CanvasKey, {
 		<CanvasArrowHeadMarker :id="arrowHeadMarkerId" />
 
 		<Background data-test-id="canvas-background" pattern-color="#aaa" :gap="GRID_SIZE">
-			<template #pattern-container>
+			<template v-if="readOnly" #pattern-container>
 				<CanvasBackgroundStripedPattern :x="viewport.x" :y="viewport.y" :zoom="viewport.zoom" />
+				<rect x="0" y="0" width="100%" height="100%" fill="url(#diagonalHatch)" />
 			</template>
-			<rect v-if="readOnly" x="0" y="0" width="100%" height="100%" fill="url(#diagonalHatch)" />
 		</Background>
 
 		<Transition name="minimap">
