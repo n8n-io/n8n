@@ -128,7 +128,7 @@ export class LmChatOpenAi implements INodeType {
 						property: 'model',
 					},
 				},
-				default: 'gpt-4o',
+				default: 'gpt-4o-mini',
 			},
 			{
 				displayName:
