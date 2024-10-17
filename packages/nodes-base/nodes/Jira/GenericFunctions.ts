@@ -23,14 +23,17 @@ export async function jiraSoftwareCloudApiRequest(
 	const jiraVersion = this.getNodeParameter('jiraVersion', 0) as string;
 
 	let domain = '';
-	let credentialType: string;
+	let credentialType = 'jiraSoftwareCloudApi';
 
-	if (jiraVersion === 'server') {
-		domain = (await this.getCredentials('jiraSoftwareServerApi')).domain as string;
-		credentialType = 'jiraSoftwareServerApi';
+	if (jiraVersion === 'cloudOAuth2') {
+		const cloudID = this.getNodeParameter('cloudID', 0) as string;
+		credentialType = 'jiraSoftwareCloudOAuth2Api';
+		domain = `https://api.atlassian.com/ex/jira/${cloudID}`;
 	} else {
-		domain = (await this.getCredentials('jiraSoftwareCloudApi')).domain as string;
-		credentialType = 'jiraSoftwareCloudApi';
+		if (jiraVersion === 'server') {
+			credentialType = 'jiraSoftwareServerApi';
+		}
+		domain = (await this.getCredentials(credentialType)).domain as string;
 	}
 
 	const options: IRequestOptions = {
