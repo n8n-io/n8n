@@ -758,17 +758,20 @@ describe('JsTaskRunner', () => {
 
 			await runner.receivedSettings(taskId, task.settings);
 
-			expect(sendSpy).toHaveBeenCalledWith(
-				JSON.stringify({
-					type: 'runner:taskerror',
-					taskId,
-					error: {
-						message: 'unknown is not defined [line 1]',
-						description: 'ReferenceError',
-						lineNumber: 1,
-					},
-				}),
-			);
-		}, 1000);
+			expect(sendSpy).toHaveBeenCalled();
+			const calledWith = sendSpy.mock.calls[0][0] as string;
+			expect(typeof calledWith).toBe('string');
+			const calledObject = JSON.parse(calledWith);
+			expect(calledObject).toEqual({
+				type: 'runner:taskerror',
+				taskId,
+				error: {
+					stack: expect.any(String),
+					message: 'unknown is not defined [line 1]',
+					description: 'ReferenceError',
+					lineNumber: 1,
+				},
+			});
+		});
 	});
 });
