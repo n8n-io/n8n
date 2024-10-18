@@ -69,6 +69,7 @@ Cypress.Commands.add('signin', ({ email, password }) => {
 				failOnStatusCode: false,
 			})
 			.then((response) => {
+				window.localStorage.setItem('NodeView.switcher.discovered', '1'); // @TODO Remove this once the switcher is removed
 				Cypress.env('currentUserId', response.body.data.id);
 			});
 	});
