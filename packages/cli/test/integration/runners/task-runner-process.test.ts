@@ -96,7 +96,6 @@ describe('TaskRunnerProcess', () => {
 		await retryUntil(() => expect(getNumConnectedRunners()).toBe(1));
 		expect(getNumConnectedRunners()).toBe(1);
 		expect(getNumRegisteredRunners()).toBe(1);
-		expect(runnerProcess.pid).toBeDefined();
 		expect(runnerProcess.pid).not.toBe(processId);
 	});
 
