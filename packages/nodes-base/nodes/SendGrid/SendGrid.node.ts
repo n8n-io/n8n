@@ -532,7 +532,13 @@ export class SendGrid implements INodeType {
 							enableSandbox: boolean;
 							sendAt: string;
 							headers: { details: Array<{ key: string; value: string }> };
-							attachments: string;
+							attachments: {
+								data: {
+									property: string;
+									disposition: 'attachment' | 'inline';
+									contentId: string;
+								}[];
+							};
 							categories: string;
 							ipPoolName: string;
 						};
@@ -582,11 +588,11 @@ export class SendGrid implements INodeType {
 							];
 						}
 
-						if (attachments) {
+						if (attachments?.data) {
 							const attachmentsToSend = [];
-							const binaryProperties = attachments.split(',').map((p) => p.trim());
 
-							for (const property of binaryProperties) {
+							for (const ai in attachments.data) {
+								const { property, disposition, contentId } = attachments.data[ai];
 								const binaryData = this.helpers.assertBinaryData(i, property);
 								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, property);
 
@@ -594,6 +600,8 @@ export class SendGrid implements INodeType {
 									content: dataBuffer.toString('base64'),
 									filename: binaryData.fileName || 'unknown',
 									type: binaryData.mimeType,
+									disposition,
+									content_id: contentId || `attachment${ai}`,
 								});
 							}
 
