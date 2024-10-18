@@ -1,15 +1,15 @@
 import { useDebugInfo } from '@/composables/useDebugInfo';
 
-const BASE_FORUM_URL =
-	'https://community.n8n.io/new-topic?utm_source=n8n_app&category=questions&tags=bug-report';
+const BASE_FORUM_URL = 'https://github.com/n8n-io/n8n/issues/new?labels=bug-report';
 
 const REPORT_TEMPLATE = `
-> Hey! The fastest way to find solutions is by using the 🔎 search function at the upper right.
-> If your question hasn't been asked before, please follow the template below. Skip the questions that are not relevant to you.
+<!-- Please follow the template below. Skip the questions that are not relevant to you. -->
 
 ## Describe the problem/error/question
 
+
 ## What is the error message (if any)?
+
 
 ## Please share your workflow/screenshots/recording
 
@@ -19,7 +19,8 @@ const REPORT_TEMPLATE = `
 
 
 ## Share the output returned by the last node
-> If you need help with data transformations, please also share your expected output.
+<!-- If you need help with data transformations, please also share your expected output. -->
+
 `;
 
 export function useBugReporting() {
