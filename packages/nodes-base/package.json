@@ -182,6 +182,7 @@
       "dist/credentials/JenkinsApi.credentials.js",
       "dist/credentials/JiraSoftwareCloudApi.credentials.js",
       "dist/credentials/JiraSoftwareServerApi.credentials.js",
+      "dist/credentials/JiraSoftwareServerPatApi.credentials.js",
       "dist/credentials/JotFormApi.credentials.js",
       "dist/credentials/JwtAuth.credentials.js",
       "dist/credentials/Kafka.credentials.js",
