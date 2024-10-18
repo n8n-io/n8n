@@ -10,7 +10,7 @@ import type { DirectedGraph } from './DirectedGraph';
 export function cleanRunData(
 	runData: IRunData,
 	graph: DirectedGraph,
-	startNodes: INode[],
+	startNodes: Set<INode>,
 ): IRunData {
 	const newRunData: IRunData = { ...runData };
 
