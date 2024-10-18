@@ -97,7 +97,6 @@ describe('permissions', () => {
 				read: true,
 				update: true,
 			},
-			usage: {},
 			user: {
 				list: true,
 			},
