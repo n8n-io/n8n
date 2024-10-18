@@ -175,7 +175,6 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		position: CanvasNode['position'],
 		{ trackHistory = false } = {},
 	) {
-		console.log('🚀 ~ useCanvasOperations ~ position:', position);
 		const node = workflowsStore.getNodeById(id);
 		if (!node) {
 			return;

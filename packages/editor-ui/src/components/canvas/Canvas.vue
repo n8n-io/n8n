@@ -188,7 +188,6 @@ const onUpdateNodesPosition = useDebounceFn((events: NodePositionChange[]) => {
 }, 200);
 
 function onUpdateNodePosition(id: string, position: XYPosition) {
-	console.log('🚀 ~ onUpdateNodePosition ~ position:', position);
 	emit('update:node:position', id, position);
 }
 

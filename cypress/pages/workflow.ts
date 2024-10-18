@@ -119,7 +119,7 @@ export class WorkflowPage extends BasePage {
 		),
 		nodeView: () => cy.ifCanvasVersion(
 			() => cy.getByTestId('node-view'),
-			() => cy.get('.vue-flow__transformationpane.vue-flow__container'),
+			() => cy.get('[data-test-id="canvas-wrapper"]'),
 		),
 		inlineExpressionEditorInput: () =>
 			cy.getByTestId('inline-expression-editor-input').find('[role=textbox]'),

@@ -1439,6 +1439,7 @@ function selectNodes(ids: string[]) {
 function onClickPane(position: CanvasNode['position']) {
 	lastClickPosition.value = [position.x, position.y];
 	uiStore.isCreateNodeActive = false;
+	setNodeSelected();
 }
 
 /**
