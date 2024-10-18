@@ -22,7 +22,6 @@ const emit = defineEmits<{
 
 const { getReportingURL } = useBugReporting();
 
-const bugReportingUrl = computed(() => getReportingURL({ medium: 'canvas_bug_button' }));
 const isResetZoomVisible = computed(() => props.zoom !== 1);
 
 function onResetZoom() {
@@ -93,7 +92,7 @@ function onZoomToFit() {
 			/>
 		</KeyboardShortcutTooltip>
 		<KeyboardShortcutTooltip :label="$locale.baseText('nodeView.reportBug')">
-			<a :href="bugReportingUrl" target="_blank">
+			<a :href="getReportingURL()" target="_blank">
 				<N8nIconButton type="tertiary" size="large" icon="bug" data-test-id="report-bug" />
 			</a>
 		</KeyboardShortcutTooltip>

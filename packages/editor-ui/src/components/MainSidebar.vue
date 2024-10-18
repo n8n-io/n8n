@@ -150,7 +150,7 @@ const mainMenuItems = ref([
 				icon: 'bug',
 				label: locale.baseText('mainSidebar.helpMenuItems.reportBug'),
 				link: {
-					href: getReportingURL({ medium: 'app_sidebar' }),
+					href: getReportingURL(),
 					target: '_blank',
 				},
 			},

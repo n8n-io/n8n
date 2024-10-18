@@ -26,10 +26,8 @@ const REPORT_TEMPLATE = `
 export function useBugReporting() {
 	const debugInfo = useDebugInfo();
 
-	const getReportingURL = (config: { medium: string }) => {
+	const getReportingURL = () => {
 		const url = new URL(BASE_FORUM_URL);
-
-		url.searchParams.append('utm_medium', config.medium);
 
 		const report = `${REPORT_TEMPLATE}\n${debugInfo.generateDebugInfo({ skipSensitive: true, secondaryHeader: true })}}`;
 		url.searchParams.append('body', report);
