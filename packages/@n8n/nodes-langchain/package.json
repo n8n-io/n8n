@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-nodes-langchain",
-  "version": "1.63.0",
+  "version": "1.64.0",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -124,6 +124,7 @@
     "@types/cheerio": "^0.22.15",
     "@types/html-to-text": "^9.0.1",
     "@types/json-schema": "^7.0.15",
+    "@types/mime-types": "^2.1.0",
     "@types/pg": "^8.11.6",
     "@types/temp": "^0.9.1",
     "n8n-core": "workspace:*"
@@ -167,10 +168,11 @@
     "generate-schema": "2.6.0",
     "html-to-text": "9.0.5",
     "jsdom": "23.0.1",
-    "json-schema-to-zod": "2.1.0",
+    "@n8n/json-schema-to-zod": "workspace:*",
     "langchain": "0.3.2",
     "lodash": "catalog:",
     "mammoth": "1.7.2",
+    "mime-types": "2.1.35",
     "n8n-nodes-base": "workspace:*",
     "n8n-workflow": "workspace:*",
     "openai": "4.63.0",

@@ -285,10 +285,16 @@ describe('useCanvasOperations', () => {
 
 		it('should place the node at the last cancelled connection position', () => {
 			const uiStore = mockedStore(useUIStore);
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
 			const node = createTestNode({ id: '0' });
 			const nodeTypeDescription = mockNodeTypeDescription();
 
 			vi.spyOn(uiStore, 'lastInteractedWithNode', 'get').mockReturnValue(node);
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeDescription);
+			workflowsStore.getCurrentWorkflow.mockReturnValue(
+				createTestWorkflowObject(workflowsStore.workflow),
+			);
 
 			uiStore.lastInteractedWithNodeHandle = 'inputs/main/0';
 			uiStore.lastCancelledConnectionPosition = [200, 200];
@@ -307,6 +313,7 @@ describe('useCanvasOperations', () => {
 
 			const node = createTestNode({ id: '0' });
 			const nodeTypeDescription = mockNodeTypeDescription();
+			const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
 
 			uiStore.lastInteractedWithNode = createTestNode({
 				position: [100, 100],
@@ -314,9 +321,8 @@ describe('useCanvasOperations', () => {
 				typeVersion: 1,
 			});
 			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeDescription);
-			workflowsStore.getCurrentWorkflow.mockReturnValue(
-				createTestWorkflowObject(workflowsStore.workflow),
-			);
+			workflowsStore.getCurrentWorkflow.mockReturnValue(workflowObject);
+			workflowObject.getNode = vi.fn().mockReturnValue(node);
 
 			const { resolveNodePosition } = useCanvasOperations({ router });
 			const position = resolveNodePosition({ ...node, position: undefined }, nodeTypeDescription);
@@ -331,6 +337,7 @@ describe('useCanvasOperations', () => {
 
 			const node = createTestNode({ id: '0' });
 			const nodeTypeDescription = mockNodeTypeDescription();
+			const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
 
 			uiStore.lastInteractedWithNode = createTestNode({
 				position: [100, 100],
@@ -338,9 +345,8 @@ describe('useCanvasOperations', () => {
 				typeVersion: 1,
 			});
 			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeDescription);
-			workflowsStore.getCurrentWorkflow.mockReturnValue(
-				createTestWorkflowObject(workflowsStore.workflow),
-			);
+			workflowsStore.getCurrentWorkflow.mockReturnValue(workflowObject);
+			workflowObject.getNode = vi.fn().mockReturnValue(node);
 
 			vi.spyOn(NodeHelpers, 'getNodeOutputs').mockReturnValueOnce([
 				{ type: NodeConnectionType.AiTool },
