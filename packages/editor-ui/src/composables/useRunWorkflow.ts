@@ -387,7 +387,6 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 						['error', 'canceled', 'crashed', 'success'].includes(execution.status)
 					) {
 						workflowsStore.setWorkflowExecutionData(execution);
-						workflowsStore.activeExecutionId = null;
 						if (timeoutId) clearTimeout(timeoutId);
 						resolve();
 						return;
@@ -443,6 +442,14 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 		};
 
 		await resolveWaitingNodesData();
+
+		const execution = await workflowsStore.getExecution((executionId as string) || '');
+		if (
+			execution &&
+			(execution.finished || ['error', 'canceled', 'crashed', 'success'].includes(execution.status))
+		) {
+			workflowsStore.activeExecutionId = null;
+		}
 
 		return runWorkflowApiResponse;
 	}
