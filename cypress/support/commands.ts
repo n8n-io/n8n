@@ -170,6 +170,7 @@ Cypress.Commands.add('drag', (selector, pos, options) => {
 			element.realMouseMove(newPosition.x, newPosition.y);
 			element.realMouseUp();
 		} else {
+			element.click({force: true});
 			element.trigger('mousedown', { force: true });
 			element.trigger('mousemove', {
 				which: 1,

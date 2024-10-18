@@ -216,7 +216,7 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		WorkflowPage.getters.canvasNodes().should('have.length', 0);
 	});
 
-	// TODO: Figure out how to test moving of the node
+	// FIXME: Figure out how to test moving of the node
 	it.skip('should move node', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 		WorkflowPage.getters.canvasNodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
@@ -252,7 +252,7 @@ describe('Canvas Node Manipulation and Navigation', () => {
 
 	describe('Canvas Zoom Functionality', () => {
 		const checkZoomLevel = (expectedFactor: number) => {
-			return WorkflowPage.getters.nodeView().should(($nodeView) => {
+			return WorkflowPage.getters.canvasViewport().should(($nodeView) => {
 				const newTransform = $nodeView.css('transform');
 				const newScale = parseFloat(newTransform.split(',')[0].slice(7));
 				expect(newScale).to.be.closeTo(expectedFactor, 0.2);
@@ -266,7 +266,7 @@ describe('Canvas Node Manipulation and Navigation', () => {
 
 		it('should zoom in', () => {
 			WorkflowPage.getters.zoomInButton().should('be.visible');
-			WorkflowPage.getters.nodeView().then(($nodeView) => {
+			WorkflowPage.getters.canvasViewport().then(($nodeView) => {
 				const initialTransform = $nodeView.css('transform');
 				const initialScale = parseFloat(initialTransform.split(',')[0].slice(7));
 
@@ -443,7 +443,7 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		WorkflowPage.getters.canvasNodes().should('have.length', 2);
 		WorkflowPage.getters.nodeConnections().should('have.length', 1);
 	});
-	// TODO: FIX
+	// FIXME: Credentials should show issue on the first open
 	it.skip('should remove unknown credentials on pasting workflow', () => {
 		cy.fixture('workflow-with-unknown-credentials.json').then((data) => {
 			cy.get('body').paste(JSON.stringify(data));
@@ -456,7 +456,7 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		});
 	});
 
-	// TODO: FIX
+	// FIXME: Unknown nodes should still render connection endpoints
 	it.skip('should render connections correctly if unkown nodes are present', () => {
 		const unknownNodeName = 'Unknown node';
 		cy.createFixtureWorkflow('workflow-with-unknown-nodes.json', 'Unknown nodes');

@@ -1704,7 +1704,7 @@ export default defineComponent({
 				if (data.nodes.length > 0) {
 					if (!isCut) {
 						this.showMessage({
-							title: 'Copied!',
+							title: this.$locale.baseText('generic.copiedToClipboard'),
 							message: '',
 							type: 'success',
 						});

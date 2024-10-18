@@ -83,7 +83,10 @@ export class WorkflowPage extends BasePage {
 			() => cy.get('.node-box.disabled'),
 			() => cy.get('[data-test-id="canvas-node"] > [class*="node"][class*="disabled"]')
 		),
-		selectedNodes: () => this.getters.canvasNodes().filter('.jtk-drag-selected'),
+		selectedNodes: () => cy.ifCanvasVersion(
+			() => this.getters.canvasNodes().filter('.jtk-drag-selected'),
+			() => this.getters.canvasNodes().parent().filter('.selected'),
+		),
 		// Workflow menu items
 		workflowMenuItemDuplicate: () => cy.getByTestId('workflow-menu-item-duplicate'),
 		workflowMenuItemDownload: () => cy.getByTestId('workflow-menu-item-download'),
@@ -121,6 +124,10 @@ export class WorkflowPage extends BasePage {
 			() => cy.getByTestId('node-view'),
 			() => cy.get('[data-test-id="canvas-wrapper"]'),
 		),
+		canvasViewport: () => cy.ifCanvasVersion(
+			() => cy.getByTestId('node-view'),
+			() => cy.get('.vue-flow__transformationpane.vue-flow__container'),
+		),
 		inlineExpressionEditorInput: () =>
 			cy.getByTestId('inline-expression-editor-input').find('[role=textbox]'),
 		inlineExpressionEditorOutput: () => cy.getByTestId('inline-expression-editor-output'),
@@ -148,8 +155,13 @@ export class WorkflowPage extends BasePage {
 			() => cy.get(`[data-test-id="edge-label-wrapper"][data-source-node-name="${sourceNodeName}"][data-target-node-name="${targetNodeName}"]`)
 		),
 		getConnectionActionsBetweenNodes: (sourceNodeName: string, targetNodeName: string) =>
-			cy.get(
-				`.connection-actions[data-source-node="${sourceNodeName}"][data-target-node="${targetNodeName}"]`,
+			cy.ifCanvasVersion(
+				() => cy.get(
+					`.connection-actions[data-source-node="${sourceNodeName}"][data-target-node="${targetNodeName}"]`,
+				),
+				() => cy.get(
+					`[data-test-id="edge-label-wrapper"][data-source-node-name="${sourceNodeName}"][data-target-node-name="${targetNodeName}"] [data-test-id="canvas-edge-toolbar"]`,
+				)
 			),
 		addStickyButton: () => cy.getByTestId('add-sticky-button'),
 		stickies: () => cy.getByTestId('sticky'),
@@ -157,6 +169,18 @@ export class WorkflowPage extends BasePage {
 		workflowHistoryButton: () => cy.getByTestId('workflow-history-button'),
 		colors: () => cy.getByTestId('color'),
 		contextMenuAction: (action: string) => cy.getByTestId(`context-menu-item-${action}`),
+		getNodeLeftPosition: (element: JQuery<HTMLElement>) => {
+			if (window.localStorage.getItem('NodeView.version') === '2') {
+				return parseFloat(element.parent().css('transform').split(',')[4]);
+			}
+			return parseFloat(element.css('left'));
+		},
+		getNodeTopPosition: (element: JQuery<HTMLElement>) => {
+			if (window.localStorage.getItem('NodeView.version') === '2') {
+				return parseFloat(element.parent().css('transform').split(',')[5]);
+			}
+			return parseFloat(element.css('top'));
+		},
 	};
 
 	actions = {
@@ -362,7 +386,7 @@ export class WorkflowPage extends BasePage {
 			cy.window().then((win) => {
 				// Pinch-to-zoom simulates a 'wheel' event with ctrlKey: true (same as zooming by scrolling)
 				this.getters.nodeView().trigger('wheel', {
-					force: true,
+					// force: true,
 					bubbles: true,
 					ctrlKey: true,
 					pageX: win.innerWidth / 2,
@@ -374,7 +398,8 @@ export class WorkflowPage extends BasePage {
 		},
 		/** Certain keyboard shortcuts are not possible on Cypress via a simple `.type`, and some delays are needed to emulate these events */
 		hitComboShortcut: (modifier: string, key: string) => {
-			cy.get('body').wait(100).type(modifier, { delay: 100, release: false }).type(key);
+			cy.get('body').type(modifier, { delay: 100, release: false, force: true })
+			cy.get('body').type(key, { force: true });
 		},
 		hitUndo: () => {
 			this.actions.hitComboShortcut(`{${META_KEY}}`, 'z');
@@ -422,7 +447,10 @@ export class WorkflowPage extends BasePage {
 			this.getters.getConnectionBetweenNodes(sourceNodeName, targetNodeName).first().realHover();
 			this.getters
 				.getConnectionActionsBetweenNodes(sourceNodeName, targetNodeName)
-				.find('.add')
+				.ifCanvasVersion(
+					() => cy.find('.add'),
+					() => cy.get('[data-test-id="add-connection-button"]')
+				)
 				.first()
 				.click({ force: true });
 
@@ -432,7 +460,10 @@ export class WorkflowPage extends BasePage {
 			this.getters.getConnectionBetweenNodes(sourceNodeName, targetNodeName).first().realHover();
 			this.getters
 				.getConnectionActionsBetweenNodes(sourceNodeName, targetNodeName)
-				.find('.delete')
+				.ifCanvasVersion(
+					() => cy.find('.delete'),
+					() => cy.get('[data-test-id="delete-connection-button"]')
+				)
 				.first()
 				.click({ force: true });
 		},
