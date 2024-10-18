@@ -175,6 +175,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		position: CanvasNode['position'],
 		{ trackHistory = false } = {},
 	) {
+		console.log('🚀 ~ useCanvasOperations ~ position:', position);
 		const node = workflowsStore.getNodeById(id);
 		if (!node) {
 			return;
@@ -541,9 +542,12 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			];
 		}
 
-		if (lastAddedNode) {
-			updatePositionForNodeWithMultipleInputs(lastAddedNode);
-		}
+		setTimeout(() => {
+			if (lastAddedNode) {
+				updatePositionForNodeWithMultipleInputs(lastAddedNode);
+				setNodeSelected(lastAddedNode.id);
+			}
+		}, 0);
 
 		if (options.trackHistory && options.trackBulk) {
 			historyStore.stopRecordingUndo();
@@ -605,31 +609,34 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			historyStore.pushCommandToUndo(new AddNodeCommand(nodeData));
 		}
 
-		void nextTick(() => {
-			workflowsStore.setNodePristine(nodeData.name, true);
+		// void nextTick(() => {
+		workflowsStore.setNodePristine(nodeData.name, true);
 
-			nodeHelpers.matchCredentials(nodeData);
-			nodeHelpers.updateNodeParameterIssues(nodeData);
-			nodeHelpers.updateNodeCredentialIssues(nodeData);
-			nodeHelpers.updateNodeInputIssues(nodeData);
+		nodeHelpers.matchCredentials(nodeData);
+		nodeHelpers.updateNodeParameterIssues(nodeData);
+		nodeHelpers.updateNodeCredentialIssues(nodeData);
+		nodeHelpers.updateNodeInputIssues(nodeData);
 
-			if (!options.isAutoAdd) {
-				createConnectionToLastInteractedWithNode(nodeData, options);
+		if (!options.isAutoAdd) {
+			createConnectionToLastInteractedWithNode(nodeData, options);
+			// uiStore.lastSelectedNode = nodeData.name;
+			// uiStore.lastInteractedWithNodeId = nodeData.id;
+		}
+
+		if (options.telemetry) {
+			trackAddNode(nodeData, options);
+		}
+
+		if (nodeData.type !== STICKY_NODE_TYPE) {
+			void externalHooks.run('nodeView.addNodeButton', { nodeTypeName: nodeData.type });
+
+			if (options.openNDV && !preventOpeningNDV) {
+				ndvStore.setActiveNodeName(nodeData.name);
 			}
+		}
+		// });
 
-			if (options.telemetry) {
-				trackAddNode(nodeData, options);
-			}
-
-			if (nodeData.type !== STICKY_NODE_TYPE) {
-				void externalHooks.run('nodeView.addNodeButton', { nodeTypeName: nodeData.type });
-
-				if (options.openNDV && !preventOpeningNDV) {
-					ndvStore.setActiveNodeName(nodeData.name);
-				}
-			}
-		});
-
+		console.log('🚀 ~ useCanvasOperations ~ nodeData:', nodeData);
 		return nodeData;
 	}
 
@@ -644,6 +651,10 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 	function createConnectionToLastInteractedWithNode(node: INodeUi, options: AddNodeOptions = {}) {
 		const lastInteractedWithNode = uiStore.lastInteractedWithNode;
+		console.log(
+			'🚀 ~ createConnectionToLastInteractedWithNode ~ lastInteractedWithNode:',
+			lastInteractedWithNode,
+		);
 		if (!lastInteractedWithNode) {
 			return;
 		}

@@ -42,6 +42,7 @@ const wrapperBoundingRect = ref<DOMRect | undefined>();
 const isStickyNotesButtonVisible = ref(true);
 
 const onMouseMove = useThrottleFn((event: MouseEvent) => {
+	// console.log("🚀 ~ onMouseMove ~ event:", event)
 	if (wrapperBoundingRect.value) {
 		const offset = 100;
 		isStickyNotesButtonVisible.value =

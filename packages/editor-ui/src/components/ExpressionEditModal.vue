@@ -26,7 +26,7 @@ import { APP_MODALS_ELEMENT_ID } from '@/constants';
 type Props = {
 	parameter: INodeProperties;
 	path: string;
-	modelValue: string;
+	modelValue: string | boolean;
 	dialogVisible?: boolean;
 	eventSource?: string;
 	redactValues?: boolean;
@@ -78,14 +78,14 @@ watch(
 		void externalHooks.run('expressionEdit.dialogVisibleChanged', {
 			dialogVisible: newValue,
 			parameter: props.parameter,
-			value: props.modelValue,
+			value: props.modelValue.toString(),
 			resolvedExpressionValue,
 		});
 
 		if (!newValue) {
 			const telemetryPayload = createExpressionTelemetryPayload(
 				segments.value,
-				props.modelValue,
+				props.modelValue.toString(),
 				workflowsStore.workflowId,
 				ndvStore.pushRef,
 				ndvStore.activeNode?.type ?? '',

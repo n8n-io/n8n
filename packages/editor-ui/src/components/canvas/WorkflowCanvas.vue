@@ -52,7 +52,7 @@ const { nodes: mappedNodes, connections: mappedConnections } = useCanvasMapping(
 </script>
 
 <template>
-	<div :class="$style.wrapper">
+	<div :class="$style.wrapper" data-test-id="canvas-wrapper">
 		<div :class="$style.canvas">
 			<Canvas
 				v-if="workflow"

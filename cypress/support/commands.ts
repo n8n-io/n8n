@@ -26,6 +26,13 @@ Cypress.Commands.add('getByTestId', (selector, ...args) => {
 	return cy.get(`[data-test-id="${selector}"]`, ...args);
 });
 
+Cypress.Commands.add('ifCanvasVersion', (getterV1, getterV2) => {
+	if (window.localStorage.getItem('NodeView.version') === '2') {
+		return getterV2();
+	}
+	return getterV1();
+});
+
 Cypress.Commands.add(
 	'createFixtureWorkflow',
 	(fixtureKey: string, workflowName = getUniqueWorkflowName()) => {
@@ -153,20 +160,32 @@ Cypress.Commands.add('drag', (selector, pos, options) => {
 
 	element.then(([$el]) => {
 		const originalLocation = $el.getBoundingClientRect();
+		console.log('🚀 ~ element.then ~ originalLocation:', originalLocation);
 		const newPosition = {
 			x: options?.abs ? xDiff : originalLocation.right + xDiff,
 			y: options?.abs ? yDiff : originalLocation.top + yDiff,
 		};
 		if (options?.realMouse) {
-			element.realMouseDown();
-			element.realMouseMove(newPosition.x, newPosition.y);
+			console.log('🚀 ~ element.then ~ element:', element);
+
+			element.realMouseDown({ position: 'center' });
+			element.realMouseMove(1000, 1000, { position: 'center' });
 			element.realMouseUp();
 		} else {
-			element.trigger('mousedown', { force: true });
+			element.trigger('mousedown', { view: window });
 			element.trigger('mousemove', {
-				which: 1,
-				pageX: newPosition.x,
-				pageY: newPosition.y,
+				// which: 1,
+				x: 500,
+				y: 500,
+				clientX: 500,
+				clientY: 500,
+				pageX: 500,
+				pageY: 500,
+				offsetX: 500,
+				offsetY: 500,
+				deltaX: 500,
+				deltaY: 500,
+				view: window,
 				force: true,
 			});
 			if (options?.clickToFinish) {
@@ -174,7 +193,10 @@ Cypress.Commands.add('drag', (selector, pos, options) => {
 				// For some reason, mouseup isn't working when moving nodes
 				cy.get('body').click(newPosition.x, newPosition.y);
 			} else {
-				element.trigger('mouseup', { force: true });
+				element.trigger('mouseup', {
+					view: window,
+					force: true,
+				});
 			}
 		}
 	});
@@ -196,7 +218,7 @@ Cypress.Commands.add('draganddrop', (draggableSelector, droppableSelector, optio
 
 			if (draggableSelector) {
 				// We can't use realMouseDown here because it hangs headless run
-				cy.get(draggableSelector).trigger('mousedown');
+				cy.get(draggableSelector).realMouseDown();
 			}
 			// We don't chain these commands to make sure cy.get is re-trying correctly
 			cy.get(droppableSelector).realMouseMove(0, 0);
