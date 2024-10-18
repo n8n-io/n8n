@@ -23,10 +23,14 @@ export class TaskRunnerProcess {
 		return this.process?.pid;
 	}
 
+	/** Promise that resolves when the process has exited */
+	public get runPromise() {
+		return this._runPromise;
+	}
+
 	private process: ChildProcess | null = null;
 
-	/** Promise that resolves after the process has exited */
-	private runPromise: Promise<void> | null = null;
+	private _runPromise: Promise<void> | null = null;
 
 	private isShuttingDown = false;
 
@@ -97,7 +101,7 @@ export class TaskRunnerProcess {
 		} else {
 			this.killNode();
 		}
-		await this.runPromise;
+		await this._runPromise;
 
 		this.isShuttingDown = false;
 	}
@@ -128,7 +132,7 @@ export class TaskRunnerProcess {
 	}
 
 	private monitorProcess(taskRunnerProcess: ChildProcess) {
-		this.runPromise = new Promise((resolve) => {
+		this._runPromise = new Promise((resolve) => {
 			taskRunnerProcess.on('exit', (code) => {
 				this.onProcessExit(code, resolve);
 			});
