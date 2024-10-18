@@ -1330,6 +1330,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		if (finishedActiveExecution.data && (finishedActiveExecution.data as IRun).data) {
 			setWorkflowExecutionRunData((finishedActiveExecution.data as IRun).data);
 		}
+
+		activeExecutionId.value = null;
 	}
 
 	function setActiveExecutions(newActiveExecutions: IExecutionsCurrentSummaryExtended[]): void {
