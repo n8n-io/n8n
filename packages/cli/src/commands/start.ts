@@ -222,15 +222,21 @@ export class Start extends BaseCommand {
 			await this.generateStaticAssets();
 		}
 
-		if (!this.globalConfig.taskRunners.disabled) {
+		const { taskRunners: taskRunnerConfig } = this.globalConfig;
+		if (!taskRunnerConfig.disabled) {
 			Container.set(TaskManager, new LocalTaskManager());
 			const { TaskRunnerServer } = await import('@/runners/task-runner-server');
 			const taskRunnerServer = Container.get(TaskRunnerServer);
 			await taskRunnerServer.start();
 
-			const { TaskRunnerProcess } = await import('@/runners/task-runner-process');
-			const runnerProcess = Container.get(TaskRunnerProcess);
-			await runnerProcess.start();
+			if (
+				taskRunnerConfig.mode === 'internal_childprocess' ||
+				taskRunnerConfig.mode === 'internal_launcher'
+			) {
+				const { TaskRunnerProcess } = await import('@/runners/task-runner-process');
+				const runnerProcess = Container.get(TaskRunnerProcess);
+				await runnerProcess.start();
+			}
 		}
 	}
 
