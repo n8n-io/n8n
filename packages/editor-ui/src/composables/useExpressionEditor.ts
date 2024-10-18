@@ -209,7 +209,7 @@ export const useExpressionEditor = ({
 		if (editor.value) {
 			editor.value.destroy();
 		}
-		editor.value = new EditorView({ parent, state, scrollTo: EditorView.scrollIntoView(0) });
+		editor.value = new EditorView({ parent, state });
 		debouncedUpdateSegments();
 	});
 
