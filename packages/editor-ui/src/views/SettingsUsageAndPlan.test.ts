@@ -7,7 +7,7 @@ import SettingsUsageAndPlan from '@/views/SettingsUsageAndPlan.vue';
 import { useUIStore } from '@/stores/ui.store';
 import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '@/constants';
 import { useUsersStore } from '@/stores/users.store';
-import { IUser } from '@/Interface';
+import type { IUser } from '@/Interface';
 
 vi.mock('vue-router', () => {
 	return {
