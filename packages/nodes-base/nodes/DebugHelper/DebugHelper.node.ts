@@ -277,7 +277,6 @@ export class DebugHelper implements INodeType {
 									message: throwErrorMessage,
 								});
 							case 'Error':
-								// eslint-disable-next-line n8n-nodes-base/node-execute-block-wrong-error-thrown
 								throw new ApplicationError(throwErrorMessage);
 							default:
 								break;
