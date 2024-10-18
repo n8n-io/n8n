@@ -320,9 +320,9 @@ export class DirectedGraph {
 	 */
 	getStronglyConnectedComponents(): Array<Set<INode>> {
 		let id = 0;
-		const visited: Set<INode> = new Set();
-		const ids: Map<INode, number> = new Map();
-		const lows: Map<INode, number> = new Map();
+		const visited = new Set<INode>();
+		const ids = new Map<INode, number>();
+		const lowLinkValues = new Map<INode, number>();
 		const stack: INode[] = [];
 		const stronglyConnectedComponents: Array<Set<INode>> = [];
 
@@ -332,7 +332,7 @@ export class DirectedGraph {
 			}
 
 			visited.add(node);
-			lows.set(node, id);
+			lowLinkValues.set(node, id);
 			ids.set(node, id);
 			id++;
 			stack.push(node);
@@ -343,30 +343,30 @@ export class DirectedGraph {
 
 				// if node is on stack min the low id
 				if (stack.includes(child)) {
-					const childId = lows.get(child);
-					const ownId = lows.get(node);
-					a.ok(childId !== undefined);
-					a.ok(ownId !== undefined);
-					const lowId = Math.min(childId, ownId);
+					const childLowLinkValue = lowLinkValues.get(child);
+					const ownLowLinkValue = lowLinkValues.get(node);
+					a.ok(childLowLinkValue !== undefined);
+					a.ok(ownLowLinkValue !== undefined);
+					const lowestLowLinkValue = Math.min(childLowLinkValue, ownLowLinkValue);
 
-					lows.set(node, lowId);
+					lowLinkValues.set(node, lowestLowLinkValue);
 				}
 			}
 
 			// after we visited all children, check if the low id is the same as the
 			// nodes id, which means we found a strongly connected component
 			const ownId = ids.get(node);
-			const ownLow = lows.get(node);
+			const ownLowLinkValue = lowLinkValues.get(node);
 			a.ok(ownId !== undefined);
-			a.ok(ownLow !== undefined);
+			a.ok(ownLowLinkValue !== undefined);
 
-			if (ownId === ownLow) {
+			if (ownId === ownLowLinkValue) {
 				// pop from the stack until the stack is empty or we find a node that
 				// has a different low id
 				const scc: Set<INode> = new Set();
 				let next = stack.at(-1);
 
-				while (next && lows.get(next) === ownId) {
+				while (next && lowLinkValues.get(next) === ownId) {
 					stack.pop();
 					scc.add(next);
 					next = stack.at(-1);
@@ -391,7 +391,7 @@ export class DirectedGraph {
 		seen: Set<INode>,
 	): INode | undefined {
 		if (seen.has(from)) {
-			return;
+			return undefined;
 		}
 		seen.add(from);
 
@@ -407,7 +407,7 @@ export class DirectedGraph {
 			}
 		}
 
-		return;
+		return undefined;
 	}
 
 	/**
