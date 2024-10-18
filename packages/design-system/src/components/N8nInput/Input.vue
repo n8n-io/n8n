@@ -81,6 +81,7 @@ defineExpose({ focus, blur, select });
 		:clearable="clearable"
 		:rows="rows"
 		:title="title"
+		:maxlength="maxlength"
 		v-bind="$attrs"
 	>
 		<template v-if="$slots.prepend" #prepend>

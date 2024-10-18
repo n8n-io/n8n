@@ -240,6 +240,8 @@ onMounted(() => {
 	bottom: var(--spacing-2xs);
 	left: var(--spacing-xs);
 	right: var(--spacing-xs);
+	gap: 10px;
+	align-items: end;
 	z-index: 1;
 
 	* {
@@ -249,6 +251,7 @@ onMounted(() => {
 }
 .counter {
 	color: var(--color-text-light);
+	flex-shrink: 0;
 }
 .controls {
 	padding: var(--spacing-2xs) 0;
@@ -256,6 +259,7 @@ onMounted(() => {
 	justify-content: flex-end;
 }
 .warning-text {
-	color: var(--prim-color-primary);
+	color: var(--color-warning);
+	line-height: 1.2;
 }
 </style>
