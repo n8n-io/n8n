@@ -11,8 +11,11 @@ vi.mock('@/stores/root.store');
 vi.mock('@/stores/settings.store');
 vi.mock('n8n-design-system');
 
-const mockDate = new Date(2022, 0, 1);
-vi.setSystemTime(mockDate);
+const NOW = 1717602004819;
+
+vi.useFakeTimers({
+	now: NOW,
+});
 
 describe('useDebugInfo', () => {
 	let rootStoreMock: RecursivePartial<RootState>;
@@ -104,7 +107,7 @@ describe('useDebugInfo', () => {
 - blockFileAccessToN8nFiles: false
 - secureCookie: false
 
-Generated at: 2021-12-31T23:00:00.000Z`);
+Generated at: 2024-06-05T15:40:04.819Z`);
 	});
 
 	it('should generate debug info without sensitive data', () => {
