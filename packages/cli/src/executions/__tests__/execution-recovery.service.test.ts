@@ -54,6 +54,31 @@ describe('ExecutionRecoveryService', () => {
 	});
 
 	describe('recoverFromLogs', () => {
+		describe('if not main', () => {
+			test('should do nothing', async () => {
+				const executionRecoveryService = new ExecutionRecoveryService(
+					mock(),
+					mock<InstanceSettings>({ instanceType: 'worker' }),
+					push,
+					executionRepository,
+					mock(),
+				);
+				// @ts-expect-error Private method
+				const amendSpy = jest.spyOn(executionRecoveryService, 'amend');
+				const messages = setupMessages('123', 'Some workflow');
+
+				/**
+				 * Act
+				 */
+				await executionRecoveryService.recoverFromLogs('123', messages);
+
+				/**
+				 * Assert
+				 */
+				expect(amendSpy).not.toHaveBeenCalled();
+			});
+		});
+
 		describe('if follower', () => {
 			test('should do nothing', async () => {
 				/**

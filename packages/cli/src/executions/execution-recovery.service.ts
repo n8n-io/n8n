@@ -12,7 +12,7 @@ import { EventService } from '@/events/event.service';
 import type { IExecutionResponse } from '@/interfaces';
 import { Logger } from '@/logging/logger.service';
 import { Push } from '@/push';
-import { getWorkflowHooksMain } from '@/workflow-execute-additional-data'; // @TODO: Dependency cycle
+import { getWorkflowHooksMain } from '@/workflow-execute-additional-data';
 
 import type { EventMessageTypes } from '../eventbus/event-message-classes';
 
@@ -33,7 +33,7 @@ export class ExecutionRecoveryService {
 	 * Recover key properties of a truncated execution using event logs.
 	 */
 	async recoverFromLogs(executionId: string, messages: EventMessageTypes[]) {
-		if (this.instanceSettings.isFollower) return;
+		if (this.instanceSettings.instanceType !== 'main' || this.instanceSettings.isFollower) return;
 
 		const amendedExecution = await this.amend(executionId, messages);
 
