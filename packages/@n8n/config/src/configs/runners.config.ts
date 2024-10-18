@@ -18,7 +18,7 @@ export class TaskRunnersConfig {
 
 	/** IP address task runners server should listen on */
 	@Env('N8N_RUNNERS_SERVER_LISTEN_ADDRESS')
-	listen_address: string = '127.0.0.1';
+	listenAddress: string = '127.0.0.1';
 
 	@Env('N8N_RUNNERS_USE_LAUNCHER')
 	useLauncher: boolean = false;

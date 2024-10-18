@@ -88,7 +88,7 @@ export class TaskRunnerServer {
 		this.server = createHttpServer(app);
 
 		const {
-			taskRunners: { port, listen_address: address },
+			taskRunners: { port, listenAddress: address },
 		} = this.globalConfig;
 
 		this.server.on('error', (error: Error & { code: string }) => {
