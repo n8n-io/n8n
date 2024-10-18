@@ -447,14 +447,11 @@ export const routes: RouteRecordRaw[] = [
 					settingsView: SettingsUsageAndPlan,
 				},
 				meta: {
-					middleware: ['authenticated', 'custom', 'rbac'],
+					middleware: ['authenticated', 'custom'],
 					middlewareOptions: {
 						custom: () => {
 							const settingsStore = useSettingsStore();
 							return !settingsStore.settings.hideUsagePage;
-						},
-						rbac: {
-							scope: ['usage:read'],
 						},
 					},
 					telemetry: {

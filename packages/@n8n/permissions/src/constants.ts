@@ -18,7 +18,6 @@ export const RESOURCES = {
 	securityAudit: ['generate'] as const,
 	sourceControl: ['pull', 'push', 'manage'] as const,
 	tag: [...DEFAULT_OPERATIONS] as const,
-	usage: ['read'] as const,
 	user: ['resetPassword', 'changeRole', ...DEFAULT_OPERATIONS] as const,
 	variable: [...DEFAULT_OPERATIONS] as const,
 	workersView: ['manage'] as const,

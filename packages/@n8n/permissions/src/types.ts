@@ -37,7 +37,6 @@ export type SamlScope = ResourceScope<'saml', 'manage'>;
 export type SecurityAuditScope = ResourceScope<'securityAudit', 'generate'>;
 export type SourceControlScope = ResourceScope<'sourceControl', 'pull' | 'push' | 'manage'>;
 export type TagScope = ResourceScope<'tag'>;
-export type UsageScope = ResourceScope<'usage', 'read'>;
 export type UserScope = ResourceScope<'user', DefaultOperations | 'resetPassword' | 'changeRole'>;
 export type VariableScope = ResourceScope<'variable'>;
 export type WorkersViewScope = ResourceScope<'workersView', 'manage'>;
@@ -65,7 +64,6 @@ export type Scope =
 	| SecurityAuditScope
 	| SourceControlScope
 	| TagScope
-	| UsageScope
 	| UserScope
 	| VariableScope
 	| WorkersViewScope

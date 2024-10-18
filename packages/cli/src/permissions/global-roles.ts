@@ -49,7 +49,6 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'tag:update',
 	'tag:delete',
 	'tag:list',
-	'usage:read',
 	'user:create',
 	'user:read',
 	'user:update',

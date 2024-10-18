@@ -24,7 +24,6 @@ describe('permissions', () => {
 			sourceControl: {},
 			tag: {},
 			user: {},
-			usage: {},
 			variable: {},
 			workersView: {},
 			workflow: {},

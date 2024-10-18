@@ -15,7 +15,6 @@ export const useRBACStore = defineStore(STORES.RBAC, () => {
 		workflow: {},
 		tag: {},
 		annotationTag: {},
-		usage: {},
 		user: {},
 		credential: {},
 		variable: {},
