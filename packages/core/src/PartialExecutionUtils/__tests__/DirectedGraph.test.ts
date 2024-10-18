@@ -123,7 +123,17 @@ describe('DirectedGraph', () => {
 			expect(stronglyConnectedComponents).toContainEqual(new Set([node3, node2, node1]));
 		});
 
-		// TODO: create diagram
+		//                ┌────┐
+		//  ┌───────┐     │    ├─
+		//  │trigger├──┬──►loop│
+		//  └───────┘  │  │    ├────┐
+		//             │  └────┘    │
+		//             └─────────┐  │
+		//                ┌────┐ │  │
+		//            ┌───►node├─┘  │
+		//            │   └────┘    │
+		//            │             │
+		//            └─────────────┘
 		test('find strongly connected components even if they use different output indexes', () => {
 			// ARRANGE
 			const trigger = createNodeData({ name: 'trigger' });
