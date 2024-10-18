@@ -1,15 +1,28 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import CanvasControlButtons from './CanvasControlButtons.vue';
+import { setActivePinia } from 'pinia';
+import { createTestingPinia } from '@pinia/testing';
+
+const NOW = 1717602004819;
+
+vi.useFakeTimers({
+	now: NOW,
+});
 
 const renderComponent = createComponentRenderer(CanvasControlButtons);
 
 describe('CanvasControlButtons', () => {
+	beforeAll(() => {
+		setActivePinia(createTestingPinia());
+	});
+
 	it('should render correctly', () => {
 		const wrapper = renderComponent();
 
 		expect(wrapper.getByTestId('zoom-in-button')).toBeVisible();
 		expect(wrapper.getByTestId('zoom-out-button')).toBeVisible();
 		expect(wrapper.getByTestId('zoom-to-fit')).toBeVisible();
+		expect(wrapper.getByTestId('report-bug')).toBeVisible();
 
 		expect(wrapper.html()).toMatchSnapshot();
 	});

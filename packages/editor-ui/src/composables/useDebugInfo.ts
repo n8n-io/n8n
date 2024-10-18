@@ -66,11 +66,12 @@ export function useDebugInfo() {
 						: settingsStore.databaseType,
 			executionMode: settingsStore.isQueueModeEnabled ? 'scaling' : 'regular',
 			concurrency: settingsStore.settings.concurrency,
-			license: settingsStore.isCommunityPlan
-				? 'community'
-				: settingsStore.settings.license.environment === 'production'
-					? 'enterprise (production)'
-					: 'enterprise (sandbox)',
+			license:
+				settingsStore.isCommunityPlan || !settingsStore.settings.license
+					? 'community'
+					: settingsStore.settings.license.environment === 'production'
+						? 'enterprise (production)'
+						: 'enterprise (sandbox)',
 		} as const;
 
 		if (!skipSensitive) {
@@ -95,7 +96,7 @@ export function useDebugInfo() {
 	};
 
 	const pruningInfo = () => {
-		if (!settingsStore.pruning.isEnabled) return { enabled: false } as const;
+		if (!settingsStore.pruning?.isEnabled) return { enabled: false } as const;
 
 		return {
 			enabled: true,
@@ -107,8 +108,8 @@ export function useDebugInfo() {
 	const securityInfo = () => {
 		const info: DebugInfo['security'] = {};
 
-		if (!settingsStore.security.blockFileAccessToN8nFiles) info.blockFileAccessToN8nFiles = false;
-		if (!settingsStore.security.secureCookie) info.secureCookie = false;
+		if (!settingsStore.security?.blockFileAccessToN8nFiles) info.blockFileAccessToN8nFiles = false;
+		if (!settingsStore.security?.secureCookie) info.secureCookie = false;
 
 		if (Object.keys(info).length === 0) return;
 
