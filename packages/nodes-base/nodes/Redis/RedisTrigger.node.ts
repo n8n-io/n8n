@@ -4,7 +4,7 @@ import type {
 	INodeTypeDescription,
 	ITriggerResponse,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError, TriggerCloseError } from 'n8n-workflow';
 
 import { redisConnectionTest, setupRedisClient } from './utils';
 
@@ -110,10 +110,15 @@ export class RedisTrigger implements INodeType {
 			await client.pSubscribe(channels, onMessage);
 		}
 
-		async function closeFunction() {
-			await client.pUnsubscribe();
-			await client.quit();
-		}
+		const closeFunction = async () => {
+			try {
+				await client.pUnsubscribe();
+				await client.quit();
+			} catch (error) {
+				// eslint-disable-next-line n8n-nodes-base/node-execute-block-wrong-error-thrown
+				throw new TriggerCloseError(this.getNode(), { cause: error as Error, level: 'warning' });
+			}
+		};
 
 		return {
 			closeFunction,
