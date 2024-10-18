@@ -613,6 +613,28 @@ describe('useCanvasOperations', () => {
 			expect(setNodePositionByIdSpy).toHaveBeenCalledWith(nodes[1].id, expect.any(Object));
 			expect(setNodePositionByIdSpy).toHaveBeenCalledWith(nodes[2].id, expect.any(Object));
 		});
+
+		it('should return newly added nodes', async () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const nodeTypesStore = useNodeTypesStore();
+			const nodeTypeName = 'type';
+			const nodes = [
+				mockNode({ name: 'Node 1', type: nodeTypeName, position: [30, 40] }),
+				mockNode({ name: 'Node 2', type: nodeTypeName, position: [100, 240] }),
+			];
+
+			workflowsStore.getCurrentWorkflow.mockReturnValue(
+				createTestWorkflowObject(workflowsStore.workflow),
+			);
+
+			nodeTypesStore.nodeTypes = {
+				[nodeTypeName]: { 1: mockNodeTypeDescription({ name: nodeTypeName }) },
+			};
+
+			const { addNodes } = useCanvasOperations({ router });
+			const added = await addNodes(nodes, {});
+			expect(added.length).toBe(2);
+		});
 	});
 
 	describe('revertAddNode', () => {
