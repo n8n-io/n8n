@@ -443,6 +443,8 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 
 		await resolveWaitingNodesData();
 
+		// having active execution id causes issue when re-running workflow that has execution data
+		// so we remove it after execution has been resolved
 		const execution = await workflowsStore.getExecution((executionId as string) || '');
 		if (
 			execution &&
