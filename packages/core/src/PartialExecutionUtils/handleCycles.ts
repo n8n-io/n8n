@@ -23,7 +23,7 @@ export function handleCycles(
 	// any inputs and thus cannot build a cycle.
 	//
 	// We're not interested in them so we filter them out.
-	const cycles = graph.getStronglyConnectedComponents().filter((cycle) => cycle.length >= 1);
+	const cycles = graph.getStronglyConnectedComponents().filter((cycle) => cycle.size >= 1);
 	const newStartNodes: Set<INode> = new Set(startNodes);
 
 	// For each start node, check if the node is part of a cycle and if it is
@@ -31,11 +31,11 @@ export function handleCycles(
 	if (cycles.length) {
 		for (const startNode of startNodes) {
 			for (const cycle of cycles) {
-				const isPartOfCycle = cycle.includes(startNode);
+				const isPartOfCycle = cycle.has(startNode);
 				if (isPartOfCycle) {
 					const firstNode = graph.depthFirstSearch({
 						from: trigger,
-						fn: (node) => cycle.includes(node),
+						fn: (node) => cycle.has(node),
 					});
 
 					a.ok(

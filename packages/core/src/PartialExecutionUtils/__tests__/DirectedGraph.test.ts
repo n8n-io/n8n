@@ -119,8 +119,8 @@ describe('DirectedGraph', () => {
 
 			// ASSERT
 			expect(stronglyConnectedComponents).toHaveLength(2);
-			expect(stronglyConnectedComponents).toContainEqual([node4]);
-			expect(stronglyConnectedComponents).toContainEqual([node3, node2, node1]);
+			expect(stronglyConnectedComponents).toContainEqual(new Set([node4]));
+			expect(stronglyConnectedComponents).toContainEqual(new Set([node3, node2, node1]));
 		});
 
 		// TODO: create diagram
@@ -142,8 +142,8 @@ describe('DirectedGraph', () => {
 
 			// ASSERT
 			expect(stronglyConnectedComponents).toHaveLength(2);
-			expect(stronglyConnectedComponents).toContainEqual([trigger]);
-			expect(stronglyConnectedComponents).toContainEqual([node, loop]);
+			expect(stronglyConnectedComponents).toContainEqual(new Set([trigger]));
+			expect(stronglyConnectedComponents).toContainEqual(new Set([node, loop]));
 		});
 	});
 

@@ -318,13 +318,13 @@ export class DirectedGraph {
 	 * https://en.wikipedia.org/wiki/Strongly_connected_component
 	 * https://www.youtube.com/watch?v=wUgWX0nc4NY
 	 */
-	getStronglyConnectedComponents(): INode[][] {
+	getStronglyConnectedComponents(): Array<Set<INode>> {
 		let id = 0;
 		const visited: Set<INode> = new Set();
 		const ids: Map<INode, number> = new Map();
 		const lows: Map<INode, number> = new Map();
 		const stack: INode[] = [];
-		const stronglyConnectedComponents: INode[][] = [];
+		const stronglyConnectedComponents: Array<Set<INode>> = [];
 
 		const followNode = (node: INode) => {
 			if (visited.has(node)) {
@@ -363,16 +363,16 @@ export class DirectedGraph {
 			if (ownId === ownLow) {
 				// pop from the stack until the stack is empty or we find a node that
 				// has a different low id
-				const scc: INode[] = [];
+				const scc: Set<INode> = new Set();
 				let next = stack.at(-1);
 
 				while (next && lows.get(next) === ownId) {
 					stack.pop();
-					scc.push(next);
+					scc.add(next);
 					next = stack.at(-1);
 				}
 
-				if (scc.length > 0) {
+				if (scc.size > 0) {
 					stronglyConnectedComponents.push(scc);
 				}
 			}
