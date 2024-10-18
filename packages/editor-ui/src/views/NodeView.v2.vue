@@ -241,6 +241,8 @@ const fallbackNodes = computed<INodeUi[]>(() =>
 			],
 );
 
+const showFallbackNodes = computed(() => triggerNodes.value.length === 0);
+
 const keyBindingsEnabled = computed(() => {
 	return !ndvStore.activeNode && uiStore.activeModals.length === 0;
 });
@@ -1566,6 +1568,7 @@ onBeforeUnmount(() => {
 		:workflow="editableWorkflow"
 		:workflow-object="editableWorkflowObject"
 		:fallback-nodes="fallbackNodes"
+		:show-fallback-nodes="showFallbackNodes"
 		:event-bus="canvasEventBus"
 		:read-only="isCanvasReadOnly"
 		:executing="isWorkflowRunning"
