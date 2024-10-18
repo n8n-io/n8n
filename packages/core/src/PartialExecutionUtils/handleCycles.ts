@@ -28,24 +28,26 @@ export function handleCycles(
 
 	// For each start node, check if the node is part of a cycle and if it is
 	// replace the start node with the start of the cycle.
-	if (cycles.length) {
-		for (const startNode of startNodes) {
-			for (const cycle of cycles) {
-				const isPartOfCycle = cycle.has(startNode);
-				if (isPartOfCycle) {
-					const firstNode = graph.depthFirstSearch({
-						from: trigger,
-						fn: (node) => cycle.has(node),
-					});
+	if (cycles.length === 0) {
+		return newStartNodes;
+	}
 
-					a.ok(
-						firstNode,
-						"the trigger must be connected to the cycle, otherwise the cycle wouldn't be part of the subgraph",
-					);
+	for (const startNode of startNodes) {
+		for (const cycle of cycles) {
+			const isPartOfCycle = cycle.has(startNode);
+			if (isPartOfCycle) {
+				const firstNode = graph.depthFirstSearch({
+					from: trigger,
+					fn: (node) => cycle.has(node),
+				});
 
-					newStartNodes.delete(startNode);
-					newStartNodes.add(firstNode);
-				}
+				a.ok(
+					firstNode,
+					"the trigger must be connected to the cycle, otherwise the cycle wouldn't be part of the subgraph",
+				);
+
+				newStartNodes.delete(startNode);
+				newStartNodes.add(firstNode);
 			}
 		}
 	}
