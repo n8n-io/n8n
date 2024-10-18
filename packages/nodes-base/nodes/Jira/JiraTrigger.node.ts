@@ -6,6 +6,8 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
+	ILoadOptionsFunctions,
+	INodePropertyOptions,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
@@ -42,6 +44,15 @@ export class JiraTrigger implements INodeType {
 				displayOptions: {
 					show: {
 						jiraVersion: ['server'],
+					},
+				},
+			},
+			{
+				name: 'jiraSoftwareCloudOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						jiraVersion: ['cloudOAuth2'],
 					},
 				},
 			},
@@ -84,6 +95,10 @@ export class JiraTrigger implements INodeType {
 						value: 'cloud',
 					},
 					{
+						name: 'Cloud OAuth2',
+						value: 'cloudOAuth2',
+					},
+					{
 						name: 'Server (Self Hosted)',
 						value: 'server',
 					},
@@ -124,6 +139,23 @@ export class JiraTrigger implements INodeType {
 						'@version': [1],
 					},
 				},
+			},
+			{
+				displayName: 'Jira Instance Name or ID',
+				name: 'cloudID',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				displayOptions: {
+					show: {
+						jiraVersion: ['cloudOAuth2'],
+					},
+				},
+				typeOptions: {
+					loadOptionsMethod: 'getCloudIDs',
+					loadOptionsDependsOn: ['jiraVersion'],
+				},
+				default: '',
 			},
 			{
 				displayName: 'Events',
@@ -386,6 +418,35 @@ export class JiraTrigger implements INodeType {
 				],
 			},
 		],
+	};
+
+	methods = {
+		loadOptions: {
+			async getCloudIDs(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+
+				const instances = await jiraSoftwareCloudApiRequest.call(
+					this,
+					'',
+					'GET',
+					{},
+					{},
+					'https://api.atlassian.com/oauth/token/accessible-resources',
+				);
+
+				for (const instance of instances) {
+					const instanceName = `${instance.name} (${instance.url.replace(/https?:\/\//i, '')})`;
+					const instanceId = instance.id;
+
+					returnData.push({
+						name: instanceName,
+						value: instanceId,
+					});
+				}
+
+				return returnData;
+			},
+		},
 	};
 
 	webhookMethods = {

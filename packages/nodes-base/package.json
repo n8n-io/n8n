@@ -181,6 +181,7 @@
       "dist/credentials/IterableApi.credentials.js",
       "dist/credentials/JenkinsApi.credentials.js",
       "dist/credentials/JiraSoftwareCloudApi.credentials.js",
+      "dist/credentials/JiraSoftwareCloudOAuth2Api.credentials.js",
       "dist/credentials/JiraSoftwareServerApi.credentials.js",
       "dist/credentials/JotFormApi.credentials.js",
       "dist/credentials/JwtAuth.credentials.js",
