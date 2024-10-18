@@ -312,13 +312,6 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 		return testUrl;
 	}
 
-	function isExecutionResolved(execution: IExecutionResponse | undefined) {
-		return (
-			execution &&
-			(execution.finished || ['error', 'canceled', 'crashed', 'success'].includes(execution.status))
-		);
-	}
-
 	async function runWorkflowResolvePending(options: {
 		destinationNode?: string;
 		triggerNode?: string;
@@ -389,8 +382,12 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 						return node.name === lastNodeExecuted;
 					});
 
-					if (isExecutionResolved(execution)) {
+					if (
+						execution.finished ||
+						['error', 'canceled', 'crashed', 'success'].includes(execution.status)
+					) {
 						workflowsStore.setWorkflowExecutionData(execution);
+						workflowsStore.activeExecutionId = null;
 						if (timeoutId) clearTimeout(timeoutId);
 						resolve();
 						return;
@@ -446,13 +443,6 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 		};
 
 		await resolveWaitingNodesData();
-
-		// having active execution id causes issue when re-running workflow that has execution data
-		// so we remove it after execution has been resolved
-		const execution = await workflowsStore.getExecution((executionId as string) || '');
-		if (isExecutionResolved(execution)) {
-			workflowsStore.activeExecutionId = null;
-		}
 
 		return runWorkflowApiResponse;
 	}
