@@ -973,6 +973,7 @@ onBeforeUnmount(() => {
 						telemetry-source="parameters"
 						@execute="onNodeExecute"
 						@stop-execution="onStopExecution"
+						@value-changed="valueChanged"
 					/>
 				</div>
 			</div>

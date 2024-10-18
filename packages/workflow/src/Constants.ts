@@ -117,3 +117,5 @@ export const SINGLE_EXECUTION_NODES: { [key: string]: { [key: string]: NodeParam
 };
 
 export const SEND_AND_WAIT_OPERATION = 'sendAndWait';
+export const AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT = 'codeGeneratedForPrompt';
+export const AI_TRANSFORM_JS_CODE = 'jsCode';
