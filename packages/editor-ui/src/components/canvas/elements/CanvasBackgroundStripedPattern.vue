@@ -1,4 +1,5 @@
 <script setup lang="ts">
+/* eslint-disable vue/no-multiple-template-root */
 /**
  * @see https://github.com/bcakmakoglu/vue-flow/blob/master/packages/background/src/Background.vue
  */
@@ -25,6 +26,7 @@ const patternOffset = computed(() => scaledGap.value / 2);
 	>
 		<path :d="`M0 ${scaledGap / 2} H${scaledGap}`" :stroke-width="scaledGap / 2" />
 	</pattern>
+	<rect x="0" y="0" width="100%" height="100%" fill="url(#diagonalHatch)" />
 </template>
 
 <style scoped>
