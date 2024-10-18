@@ -39,6 +39,7 @@ import type {
 	ViewportTransform,
 	XYPosition as VueFlowXYPosition,
 } from '@vue-flow/core';
+import { useVueFlow } from '@vue-flow/core';
 import type {
 	CanvasConnectionCreateData,
 	CanvasEventBusEvents,
@@ -857,8 +858,16 @@ async function onAddNodesAndConnections(
 		return;
 	}
 
-	await addNodes(nodes, { dragAndDrop, position, trackHistory: true, telemetry: true });
-	await nextTick();
+	const { onNodesInitialized, addSelectedNodes, findNode } = useVueFlow({
+		id: editableWorkflow.value.id,
+	});
+
+	const addedNodes = await addNodes(nodes, {
+		dragAndDrop,
+		position,
+		trackHistory: true,
+		telemetry: true,
+	});
 
 	const offsetIndex = editableWorkflow.value.nodes.length - nodes.length;
 	const mappedConnections: CanvasConnectionCreateData[] = connections.map(({ from, to }) => {
@@ -882,10 +891,17 @@ async function onAddNodesAndConnections(
 		};
 	});
 
-	addConnections(mappedConnections);
+	const { off } = onNodesInitialized(() => {
+		addConnections(mappedConnections);
 
-	void nextTick(() => {
-		uiStore.resetLastInteractedWith();
+		const lastAddedNode = addedNodes.at(-1);
+		const uiNode = lastAddedNode?.id ? findNode(lastAddedNode.id) : undefined;
+		if (lastAddedNode && uiNode) {
+			setNodeSelected(lastAddedNode.id);
+			addSelectedNodes([uiNode]);
+		}
+
+		off();
 	});
 }
 
@@ -1563,6 +1579,7 @@ onBeforeUnmount(() => {
 <template>
 	<WorkflowCanvas
 		v-if="editableWorkflow && editableWorkflowObject && !isLoading"
+		:id="editableWorkflow.id"
 		:workflow="editableWorkflow"
 		:workflow-object="editableWorkflowObject"
 		:fallback-nodes="fallbackNodes"
