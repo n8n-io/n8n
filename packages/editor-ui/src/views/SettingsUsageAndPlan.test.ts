@@ -6,6 +6,8 @@ import { useUsageStore } from '@/stores/usage.store';
 import SettingsUsageAndPlan from '@/views/SettingsUsageAndPlan.vue';
 import { useUIStore } from '@/stores/ui.store';
 import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '@/constants';
+import { useUsersStore } from '@/stores/users.store';
+import type { IUser } from '@/Interface';
 
 vi.mock('vue-router', () => {
 	return {
@@ -23,6 +25,7 @@ vi.mock('vue-router', () => {
 
 let usageStore: ReturnType<typeof mockedStore<typeof useUsageStore>>;
 let uiStore: ReturnType<typeof mockedStore<typeof useUIStore>>;
+let usersStore: ReturnType<typeof mockedStore<typeof useUsersStore>>;
 
 const renderComponent = createComponentRenderer(SettingsUsageAndPlan);
 
@@ -31,6 +34,7 @@ describe('SettingsUsageAndPlan', () => {
 		createTestingPinia();
 		usageStore = mockedStore(useUsageStore);
 		uiStore = mockedStore(useUIStore);
+		usersStore = mockedStore(useUsersStore);
 
 		usageStore.viewPlansUrl = 'https://subscription.n8n.io';
 		usageStore.managePlanUrl = 'https://subscription.n8n.io';
@@ -49,6 +53,9 @@ describe('SettingsUsageAndPlan', () => {
 	it('should not show badge but unlock notice', async () => {
 		usageStore.isLoading = false;
 		usageStore.planName = 'Community';
+		usersStore.currentUser = {
+			globalScopes: ['community:register'],
+		} as IUser;
 		const { getByRole, container } = renderComponent();
 		expect(getByRole('heading', { level: 3 })).toHaveTextContent('Community');
 		expect(container.querySelector('.n8n-badge')).toBeNull();
