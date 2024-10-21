@@ -6,12 +6,14 @@ import type { ProjectSharingData } from '@/types/projects.types';
 import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
 import PageViewLayoutList from '@/components/layouts/PageViewLayoutList.vue';
 import ResourceFiltersDropdown from '@/components/forms/ResourceFiltersDropdown.vue';
+import WorkflowHeader from '@/components/WorkflowHeader.vue';
 import { useUsersStore } from '@/stores/users.store';
 import type { DatatableColumn } from 'n8n-design-system';
 import { useI18n } from '@/composables/useI18n';
 import { useDebounce } from '@/composables/useDebounce';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useRoute } from 'vue-router';
+import { useProjectsStore } from '@/stores/projects.store';
 
 // eslint-disable-next-line unused-imports/no-unused-imports, @typescript-eslint/no-unused-vars
 import type { BaseTextKey } from '@/plugins/i18n';
@@ -44,6 +46,7 @@ export default defineComponent({
 		PageViewLayout,
 		PageViewLayoutList,
 		ResourceFiltersDropdown,
+		WorkflowHeader,
 	},
 	props: {
 		resourceKey: {
@@ -113,6 +116,7 @@ export default defineComponent({
 		const i18n = useI18n();
 		const { callDebounced } = useDebounce();
 		const usersStore = useUsersStore();
+		const projectsStore = useProjectsStore();
 		const telemetry = useTelemetry();
 
 		const sortBy = ref(props.sortOptions[0]);
@@ -343,6 +347,7 @@ export default defineComponent({
 			i18n,
 			search,
 			usersStore,
+			projectsStore,
 			filterKeys,
 			currentPage,
 			rowsPerPage,
@@ -369,7 +374,17 @@ export default defineComponent({
 
 <template>
 	<PageViewLayout>
-		<template #header> <slot name="header" /> </template>
+		<template #header>
+			<WorkflowHeader :icon="projectsStore.currentProject?.name ? 'layer-group' : 'home'">
+				<template #title>
+					{{ projectsStore.currentProject?.name ?? 'Home' }}
+				</template>
+				<template v-if="!projectsStore.currentProject?.name" #subtitle>
+					All the workflows, credentials, variables and executions you have access to
+				</template>
+			</WorkflowHeader>
+			<slot name="header" />
+		</template>
 		<div v-if="loading" class="resource-list-loading">
 			<n8n-loading :rows="25" :shrink-last="false" />
 		</div>
