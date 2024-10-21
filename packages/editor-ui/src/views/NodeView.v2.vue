@@ -858,10 +858,6 @@ async function onAddNodesAndConnections(
 		return;
 	}
 
-	const { onNodesInitialized, addSelectedNodes, findNode } = useVueFlow({
-		id: editableWorkflow.value.id,
-	});
-
 	const addedNodes = await addNodes(nodes, {
 		dragAndDrop,
 		position,
@@ -891,17 +887,11 @@ async function onAddNodesAndConnections(
 		};
 	});
 
-	const { off } = onNodesInitialized(() => {
-		addConnections(mappedConnections);
+	addConnections(mappedConnections);
 
-		const lastAddedNode = addedNodes.at(-1);
-		const uiNode = lastAddedNode?.id ? findNode(lastAddedNode.id) : undefined;
-		if (lastAddedNode && uiNode) {
-			setNodeSelected(lastAddedNode.id);
-			addSelectedNodes([uiNode]);
-		}
-
-		off();
+	void nextTick(() => {
+		uiStore.resetLastInteractedWith();
+		selectNodes([addedNodes[addedNodes.length - 1].id]);
 	});
 }
 
