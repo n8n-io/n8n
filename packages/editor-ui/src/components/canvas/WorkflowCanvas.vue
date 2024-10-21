@@ -56,6 +56,7 @@ const { nodes: mappedNodes, connections: mappedConnections } = useCanvasMapping(
 		<div :class="$style.canvas">
 			<Canvas
 				v-if="workflow"
+				:id="id"
 				:nodes="mappedNodes"
 				:connections="mappedConnections"
 				:show-bug-reporting-button="showBugReportingButton"
