@@ -1,15 +1,61 @@
-import type { Mock } from 'vitest';
+// import type { Mock } from 'vitest';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useDebugInfo } from './useDebugInfo';
-import { useRootStore } from '@/stores/root.store';
-import { useSettingsStore } from '@/stores/settings.store';
-import { useDeviceSupport } from 'n8n-design-system';
 import type { RootState } from '@/Interface';
+import type { useSettingsStore as useSettingsStoreType } from '@/stores/settings.store';
 import type { RecursivePartial } from '@/type-utils';
 
-vi.mock('@/stores/root.store');
-vi.mock('@/stores/settings.store');
-vi.mock('n8n-design-system');
+vi.mock('@/stores/root.store', () => ({
+	useRootStore: (): Partial<RootState> => ({
+		versionCli: '0.123.0',
+	}),
+}));
+
+const MOCK_BASE_SETTINGS: RecursivePartial<ReturnType<typeof useSettingsStoreType>> = {
+	isDocker: true,
+	deploymentType: 'cloud',
+	nodeJsVersion: '14.17.0',
+	databaseType: 'postgresdb',
+	isQueueModeEnabled: false,
+	settings: {
+		concurrency: 10,
+		license: {
+			consumerId: 'consumer-id',
+			environment: 'production',
+		},
+	},
+	isCommunityPlan: true,
+	consumerId: 'consumer-123',
+	saveDataSuccessExecution: 'all',
+	saveDataErrorExecution: 'none',
+	saveDataProgressExecution: true,
+	saveManualExecutions: true,
+	binaryDataMode: 'default',
+	pruning: {
+		isEnabled: true,
+		maxAge: 24,
+		maxCount: 100,
+	},
+	security: {
+		blockFileAccessToN8nFiles: false,
+		secureCookie: false,
+	},
+};
+
+const { useSettingsStore } = vi.hoisted(() => ({
+	useSettingsStore: vi.fn(),
+}));
+
+vi.mock('@/stores/settings.store', () => ({
+	useSettingsStore,
+}));
+
+vi.mock('n8n-design-system', () => ({
+	useDeviceSupport: () => ({
+		isTouchDevice: false,
+		userAgent: 'Mozilla/5.0',
+	}),
+}));
 
 const NOW = 1717602004819;
 
@@ -18,96 +64,15 @@ vi.useFakeTimers({
 });
 
 describe('useDebugInfo', () => {
-	let rootStoreMock: RecursivePartial<RootState>;
-	let settingsStoreMock: RecursivePartial<ReturnType<typeof useSettingsStore>>;
-	let deviceSupportMock: RecursivePartial<ReturnType<typeof useDeviceSupport>>;
-
 	beforeEach(() => {
-		rootStoreMock = {
-			versionCli: '0.123.0',
-		};
-		settingsStoreMock = {
-			isDocker: true,
-			deploymentType: 'cloud',
-			nodeJsVersion: '14.17.0',
-			databaseType: 'postgresdb',
-			isQueueModeEnabled: false,
-			settings: {
-				concurrency: 10,
-				license: {
-					consumerId: 'consumer-id',
-					environment: 'production',
-				},
-			},
-			isCommunityPlan: true,
-			consumerId: 'consumer-123',
-			saveDataSuccessExecution: 'all',
-			saveDataErrorExecution: 'none',
-			saveDataProgressExecution: true,
-			saveManualExecutions: true,
-			binaryDataMode: 'default',
-			pruning: {
-				isEnabled: true,
-				maxAge: 24,
-				maxCount: 100,
-			},
-			security: {
-				blockFileAccessToN8nFiles: false,
-				secureCookie: false,
-			},
-		};
-		deviceSupportMock = {
-			isTouchDevice: false,
-			userAgent: 'Mozilla/5.0',
-		};
-
-		(useRootStore as unknown as Mock).mockReturnValue(rootStoreMock);
-		(useSettingsStore as unknown as Mock).mockReturnValue(settingsStoreMock);
-		(useDeviceSupport as unknown as Mock).mockReturnValue(deviceSupportMock);
+		useSettingsStore.mockReturnValue(MOCK_BASE_SETTINGS);
 	});
 
 	it('should generate debug info', () => {
 		const { generateDebugInfo } = useDebugInfo();
 		const debugInfo = generateDebugInfo();
 
-		expect(debugInfo).toEqual(`# Debug info
-
-## core
-
-- n8nVersion: 0.123.0
-- platform: docker (cloud)
-- nodeJsVersion: 14.17.0
-- database: postgres
-- executionMode: regular
-- concurrency: 10
-- license: community
-- consumerId: consumer-123
-
-## storage
-
-- success: all
-- error: none
-- progress: true
-- manual: true
-- binaryMode: memory
-
-## pruning
-
-- enabled: true
-- maxAge: 24 hours
-- maxCount: 100 executions
-
-## client
-
-- userAgent: Mozilla/5.0
-- isTouchDevice: false
-
-## security
-
-- blockFileAccessToN8nFiles: false
-- secureCookie: false
-
-Generated at: 2024-06-05T15:40:04.819Z`);
+		expect(debugInfo).toMatchSnapshot();
 	});
 
 	it('should generate debug info without sensitive data', () => {
@@ -119,9 +84,6 @@ Generated at: 2024-06-05T15:40:04.819Z`);
 	});
 
 	it('should include security info if insecure settings are found', () => {
-		settingsStoreMock.security!.blockFileAccessToN8nFiles = false;
-		settingsStoreMock.security!.secureCookie = false;
-
 		const { generateDebugInfo } = useDebugInfo();
 		const debugInfo = generateDebugInfo();
 
@@ -130,8 +92,14 @@ Generated at: 2024-06-05T15:40:04.819Z`);
 	});
 
 	it('should not include security info if all settings are secure', () => {
-		settingsStoreMock.security!.blockFileAccessToN8nFiles = true;
-		settingsStoreMock.security!.secureCookie = true;
+		useSettingsStore.mockReturnValue({
+			...MOCK_BASE_SETTINGS,
+			security: {
+				...MOCK_BASE_SETTINGS.security,
+				blockFileAccessToN8nFiles: true,
+				secureCookie: true,
+			},
+		});
 
 		const { generateDebugInfo } = useDebugInfo();
 		const debugInfo = generateDebugInfo();
