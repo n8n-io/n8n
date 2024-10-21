@@ -26,7 +26,7 @@ import { APP_MODALS_ELEMENT_ID } from '@/constants';
 type Props = {
 	parameter: INodeProperties;
 	path: string;
-	modelValue: string | boolean;
+	modelValue: string;
 	dialogVisible?: boolean;
 	eventSource?: string;
 	redactValues?: boolean;
