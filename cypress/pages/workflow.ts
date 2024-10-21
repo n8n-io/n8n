@@ -81,7 +81,7 @@ export class WorkflowPage extends BasePage {
 		nodeEndpoints: () => cy.get('.jtk-endpoint-connected'),
 		disabledNodes: () => cy.ifCanvasVersion(
 			() => cy.get('.node-box.disabled'),
-			() => cy.get('[data-test-id="canvas-node"] > [class*="node"][class*="disabled"]')
+			() => cy.get('[data-test-id="canvas-trigger-node"][class*="disabled"]')
 		),
 		selectedNodes: () => cy.ifCanvasVersion(
 			() => this.getters.canvasNodes().filter('.jtk-drag-selected'),
@@ -154,6 +154,14 @@ export class WorkflowPage extends BasePage {
 			),
 			() => cy.get(`[data-test-id="edge-label-wrapper"][data-source-node-name="${sourceNodeName}"][data-target-node-name="${targetNodeName}"]`)
 		),
+		// getConnectionStateBetweenNodes: (sourceNodeName: string, targetNodeName: string) => cy.ifCanvasVersion(
+		// 	() => {
+		// 		return this.getters.getConnectionBetweenNodes(sourceNodeName, targetNodeName).its('class')
+		// 	},
+		// 	() => {
+		// 		return this.getters.getConnectionBetweenNodes(sourceNodeName, targetNodeName).its('class')
+		// 	}
+		// ),
 		getConnectionActionsBetweenNodes: (sourceNodeName: string, targetNodeName: string) =>
 			cy.ifCanvasVersion(
 				() => cy.get(
