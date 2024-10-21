@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from 'crypto';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
-import { ApplicationError, jsonParse, ALPHABET } from 'n8n-workflow';
+import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'fs';
+import { ApplicationError, jsonParse, ALPHABET, ensureError } from 'n8n-workflow';
 import { customAlphabet } from 'nanoid';
 import path from 'path';
 import { Service } from 'typedi';
@@ -126,6 +126,7 @@ export class InstanceSettings {
 	private loadOrCreate(): Settings {
 		if (existsSync(this.settingsFile)) {
 			const content = readFileSync(this.settingsFile, 'utf8');
+			this.ensureSettingsFilePermissions();
 
 			const settings = jsonParse<Settings>(content, {
 				errorMessage: `Error parsing n8n-config file "${this.settingsFile}". It does not seem to be valid JSON.`,
@@ -155,6 +156,7 @@ export class InstanceSettings {
 		if (!inTest && !process.env.N8N_ENCRYPTION_KEY) {
 			console.info(`No encryption key found - Auto-generated and saved to: ${this.settingsFile}`);
 		}
+		this.ensureSettingsFilePermissions();
 
 		return settings;
 	}
@@ -169,5 +171,32 @@ export class InstanceSettings {
 	private save(settings: Settings) {
 		this.settings = settings;
 		writeFileSync(this.settingsFile, JSON.stringify(settings, null, '\t'), 'utf-8');
+	}
+
+	/**
+	 * Ensures that the settings file has the r/w permissions only for the owner.
+	 */
+	private ensureSettingsFilePermissions() {
+		try {
+			const stats = statSync(this.settingsFile);
+			const permissions = stats.mode & 0o777;
+			// 0o600 = r/w for owner, nothing for others
+			if (permissions !== 0o600) {
+				if (!inTest) {
+					console.warn(
+						`Settings file permissions are too wide (0o${permissions.toString(8)}). Changing it to 0o600...`,
+					);
+				}
+				chmodSync(this.settingsFile, 0o600);
+			}
+		} catch (e) {
+			// Some filesystems don't support permissions. In this case we log the
+			// error and ignore it. We might want to prevent the app startup in the
+			// future in this case.
+			if (!inTest) {
+				const error = ensureError(e);
+				console.warn(`Could not ensure settings file permissions: ${error.message}`);
+			}
+		}
 	}
 }

@@ -6,7 +6,13 @@ describe('InstanceSettings', () => {
 	process.env.N8N_USER_FOLDER = '/test';
 
 	const existSpy = jest.spyOn(fs, 'existsSync');
-	beforeEach(() => jest.resetAllMocks());
+	const statSpy = jest.spyOn(fs, 'statSync');
+	const chmodSpy = jest.spyOn(fs, 'chmodSync');
+
+	beforeEach(() => {
+		jest.resetAllMocks();
+		statSpy.mockReturnValue({ mode: 0o600 } as fs.Stats);
+	});
 
 	describe('If the settings file exists', () => {
 		const readSpy = jest.spyOn(fs, 'readFileSync');
@@ -31,6 +37,26 @@ describe('InstanceSettings', () => {
 			process.env.N8N_ENCRYPTION_KEY = 'key_2';
 			expect(() => new InstanceSettings()).toThrowError();
 		});
+
+		it('should check if the settings file has the correct permissions', () => {
+			process.env.N8N_ENCRYPTION_KEY = 'test_key';
+			readSpy.mockReturnValueOnce(JSON.stringify({ encryptionKey: 'test_key' }));
+			statSpy.mockReturnValueOnce({ mode: 0o600 } as fs.Stats);
+			const settings = new InstanceSettings();
+			expect(settings.encryptionKey).toEqual('test_key');
+			expect(settings.instanceId).toEqual(
+				'6ce26c63596f0cc4323563c529acfca0cccb0e57f6533d79a60a42c9ff862ae7',
+			);
+			expect(statSpy).toHaveBeenCalledWith('/test/.n8n/config');
+		});
+
+		it('should fix the permissions if settings file has incorrect permissions', () => {
+			readSpy.mockReturnValueOnce(JSON.stringify({ encryptionKey: 'test_key' }));
+			statSpy.mockReturnValueOnce({ mode: 0o644 } as fs.Stats);
+			new InstanceSettings();
+			expect(statSpy).toHaveBeenCalledWith('/test/.n8n/config');
+			expect(chmodSpy).toHaveBeenCalledWith('/test/.n8n/config', 0o600);
+		});
 	});
 
 	describe('If the settings file does not exist', () => {
@@ -43,6 +69,7 @@ describe('InstanceSettings', () => {
 		});
 
 		it('should create a new settings file', () => {
+			process.env.N8N_ENCRYPTION_KEY = 'key_2';
 			const settings = new InstanceSettings();
 			expect(settings.encryptionKey).not.toEqual('test_key');
 			expect(mkdirSpy).toHaveBeenCalledWith('/test/.n8n', { recursive: true });
@@ -67,6 +94,13 @@ describe('InstanceSettings', () => {
 				expect.stringContaining('"encryptionKey":'),
 				'utf-8',
 			);
+		});
+
+		it('should set the permissions of the settings file', () => {
+			statSpy.mockReturnValueOnce({ mode: 0o644 } as fs.Stats);
+			new InstanceSettings();
+			expect(statSpy).toHaveBeenCalledWith('/test/.n8n/config');
+			expect(chmodSpy).toHaveBeenCalledWith('/test/.n8n/config', 0o600);
 		});
 	});
 
