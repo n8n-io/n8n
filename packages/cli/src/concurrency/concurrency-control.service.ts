@@ -33,7 +33,7 @@ export class ConcurrencyControlService {
 		private readonly telemetry: Telemetry,
 		private readonly eventService: EventService,
 	) {
-		this.logger = this.logger.scoped(['concurrency']);
+		this.logger = this.logger.scoped('concurrency');
 
 		this.productionLimit = config.getEnv('executions.concurrency.productionLimit');
 

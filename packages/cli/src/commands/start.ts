@@ -170,7 +170,7 @@ export class Start extends BaseCommand {
 
 		this.logger.info('Initializing n8n process');
 		if (config.getEnv('executions.mode') === 'queue') {
-			const scopedLogger = this.logger.scoped(['scaling']);
+			const scopedLogger = this.logger.scoped('scaling');
 			scopedLogger.debug('Starting main instance in scaling mode');
 			scopedLogger.debug(`Host ID: ${this.instanceSettings.hostId}`);
 		}

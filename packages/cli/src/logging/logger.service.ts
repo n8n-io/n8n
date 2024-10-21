@@ -59,7 +59,8 @@ export class Logger {
 	}
 
 	/** Create a logger that injects the given scopes into its log metadata. */
-	scoped(scopes: LogScope[]) {
+	scoped(scopes: LogScope | LogScope[]) {
+		scopes = Array.isArray(scopes) ? scopes : [scopes];
 		const scopedLogger = new Logger(this.globalConfig, this.instanceSettings);
 		const childLogger = this.internalLogger.child({ scopes });
 

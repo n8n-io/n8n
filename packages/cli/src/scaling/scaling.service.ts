@@ -51,7 +51,7 @@ export class ScalingService {
 		private readonly orchestrationService: OrchestrationService,
 		private readonly eventService: EventService,
 	) {
-		this.logger = this.logger.scoped(['scaling']);
+		this.logger = this.logger.scoped('scaling');
 	}
 
 	// #region Lifecycle

@@ -69,7 +69,7 @@ export class Worker extends BaseCommand {
 
 		super(argv, cmdConfig);
 
-		this.logger = Container.get(Logger).scoped(['scaling']);
+		this.logger = Container.get(Logger).scoped('scaling');
 	}
 
 	async init() {
