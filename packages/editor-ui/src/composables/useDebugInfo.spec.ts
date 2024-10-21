@@ -1,4 +1,3 @@
-// import type { Mock } from 'vitest';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useDebugInfo } from './useDebugInfo';
 import type { RootState } from '@/Interface';

@@ -4,10 +4,10 @@ import type { Placement } from 'element-plus';
 
 interface Props {
 	label: string;
-	shortcut: KeyboardShortcut | undefined;
+	shortcut?: KeyboardShortcut;
 	placement?: Placement;
 }
-withDefaults(defineProps<Props>(), { placement: 'top' });
+withDefaults(defineProps<Props>(), { placement: 'top', shortcut: undefined });
 </script>
 
 <template>
