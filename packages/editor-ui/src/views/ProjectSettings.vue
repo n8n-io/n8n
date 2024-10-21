@@ -18,6 +18,7 @@ import type { ProjectRole } from '@/types/roles.types';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
+import ResourceListHeader from '@/components/layouts/ResourceListHeader.vue';
 
 type FormDataDiff = {
 	name?: string;
@@ -247,6 +248,31 @@ watch(
 	{ immediate: true },
 );
 
+const headerIcon = computed(() => {
+	if (projectsStore.currentProject?.type === 'personal') {
+		return 'user';
+	} else if (projectsStore.currentProject?.name) {
+		return 'layer-group';
+	} else {
+		return 'home';
+	}
+});
+
+const projectName = computed(() => {
+	if (!projectsStore.currentProject) {
+		return locale.baseText('projects.menu.home');
+	} else if (projectsStore.currentProject.type === 'personal') {
+		return locale.baseText('projects.menu.personal');
+	} else {
+		return projectsStore.currentProject.name;
+	}
+});
+
+const projectDescription = computed(() => {
+	if (projectsStore.currentProject) return;
+	return locale.baseText('projects.home.description');
+});
+
 onBeforeMount(async () => {
 	await usersStore.fetchUsers();
 });
@@ -260,6 +286,14 @@ onMounted(() => {
 <template>
 	<div :class="$style.projectSettings">
 		<div :class="$style.header">
+			<ResourceListHeader :icon="headerIcon" data-test-id="list-layout-header">
+				<template #title>
+					{{ projectName }}
+				</template>
+				<template v-if="projectDescription" #subtitle>
+					{{ projectDescription }}
+				</template>
+			</ResourceListHeader>
 			<ProjectTabs />
 		</div>
 		<form @submit.prevent="onSubmit">
