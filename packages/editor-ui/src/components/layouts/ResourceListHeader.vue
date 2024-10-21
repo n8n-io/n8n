@@ -28,6 +28,7 @@ defineProps<{ icon: string }>();
 	align-items: center;
 	gap: 8px;
 	padding-bottom: var(--spacing-m);
+	min-height: 64px;
 }
 
 .icon {

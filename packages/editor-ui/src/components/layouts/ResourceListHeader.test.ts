@@ -1,7 +1,7 @@
 import { createComponentRenderer } from '@/__tests__/render';
-import WorkflowHeader from './WorkflowHeader.vue';
+import ResourceListHeader from './ResourceListHeader.vue';
 
-const renderComponent = createComponentRenderer(WorkflowHeader);
+const renderComponent = createComponentRenderer(ResourceListHeader);
 
 describe('WorkflowHeader', () => {
 	it('should render icon prop', () => {

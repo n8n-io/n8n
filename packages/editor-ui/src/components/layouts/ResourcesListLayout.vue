@@ -6,7 +6,7 @@ import type { ProjectSharingData } from '@/types/projects.types';
 import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
 import PageViewLayoutList from '@/components/layouts/PageViewLayoutList.vue';
 import ResourceFiltersDropdown from '@/components/forms/ResourceFiltersDropdown.vue';
-import WorkflowHeader from '@/components/WorkflowHeader.vue';
+import ResourceListHeader from '@/components/layouts/ResourceListHeader.vue';
 import { useUsersStore } from '@/stores/users.store';
 import type { DatatableColumn } from 'n8n-design-system';
 import { useI18n } from '@/composables/useI18n';
@@ -46,7 +46,7 @@ export default defineComponent({
 		PageViewLayout,
 		PageViewLayoutList,
 		ResourceFiltersDropdown,
-		WorkflowHeader,
+		ResourceListHeader,
 	},
 	props: {
 		resourceKey: {
@@ -365,7 +365,7 @@ export default defineComponent({
 
 		const projectDescription = computed(() => {
 			if (projectsStore.currentProject) return;
-			return 'All the workflows, credentials, variables and executions you have access to';
+			return i18n.baseText('projects.home.description');
 		});
 
 		return {
@@ -403,14 +403,14 @@ export default defineComponent({
 <template>
 	<PageViewLayout>
 		<template #header>
-			<WorkflowHeader :icon="headerIcon" data-test-id="list-layout-header">
+			<ResourceListHeader :icon="headerIcon" data-test-id="list-layout-header">
 				<template #title>
 					{{ projectName }}
 				</template>
 				<template v-if="projectDescription" #subtitle>
 					{{ projectDescription }}
 				</template>
-			</WorkflowHeader>
+			</ResourceListHeader>
 			<slot name="header" />
 		</template>
 		<div v-if="loading" class="resource-list-loading">
