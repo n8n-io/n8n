@@ -1572,6 +1572,7 @@ onBeforeUnmount(() => {
 		:event-bus="canvasEventBus"
 		:read-only="isCanvasReadOnly"
 		:executing="isWorkflowRunning"
+		:show-bug-reporting-button="!isDemoRoute || !!executionsStore.activeExecution"
 		:key-bindings="keyBindingsEnabled"
 		@update:nodes:position="onUpdateNodesPosition"
 		@update:node:position="onUpdateNodePosition"

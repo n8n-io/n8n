@@ -2,13 +2,17 @@
 import { Controls } from '@vue-flow/controls';
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
 import { computed } from 'vue';
+import { useBugReporting } from '@/composables/useBugReporting';
+import { useTelemetry } from '@/composables/useTelemetry';
 
 const props = withDefaults(
 	defineProps<{
 		zoom?: number;
+		showBugReportingButton?: boolean;
 	}>(),
 	{
 		zoom: 1,
+		showBugReportingButton: false,
 	},
 );
 
@@ -18,6 +22,9 @@ const emit = defineEmits<{
 	'zoom-out': [];
 	'zoom-to-fit': [];
 }>();
+
+const { getReportingURL } = useBugReporting();
+const telemetry = useTelemetry();
 
 const isResetZoomVisible = computed(() => props.zoom !== 1);
 
@@ -35,6 +42,10 @@ function onZoomOut() {
 
 function onZoomToFit() {
 	emit('zoom-to-fit');
+}
+
+function trackBugReport() {
+	telemetry.track('User clicked bug report button in canvas', {}, { withPostHog: true });
 }
 </script>
 <template>
@@ -87,6 +98,14 @@ function onZoomToFit() {
 				data-test-id="reset-zoom-button"
 				@click="onResetZoom"
 			/>
+		</KeyboardShortcutTooltip>
+		<KeyboardShortcutTooltip
+			v-if="props.showBugReportingButton"
+			:label="$locale.baseText('nodeView.reportBug')"
+		>
+			<a :href="getReportingURL()" target="_blank" @click="trackBugReport">
+				<N8nIconButton type="tertiary" size="large" icon="bug" data-test-id="report-bug" />
+			</a>
 		</KeyboardShortcutTooltip>
 	</Controls>
 </template>
