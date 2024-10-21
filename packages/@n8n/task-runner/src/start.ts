@@ -2,7 +2,7 @@ import { ApplicationError, ensureError } from 'n8n-workflow';
 import * as a from 'node:assert/strict';
 
 import { authenticate } from './authenticator';
-import { JsTaskRunner } from './code';
+import { JsTaskRunner } from './js-task-runner/js-task-runner';
 
 let runner: JsTaskRunner | undefined;
 let isShuttingDown = false;
@@ -66,7 +66,13 @@ void (async function start() {
 	}
 
 	const wsUrl = `ws://${config.n8nUri}/runners/_ws`;
-	runner = new JsTaskRunner('javascript', wsUrl, grantToken, 5);
+	runner = new JsTaskRunner({
+		wsUrl,
+		grantToken,
+		maxConcurrency: 5,
+		allowedBuiltInModules: process.env.NODE_FUNCTION_ALLOW_BUILTIN,
+		allowedExternalModules: process.env.NODE_FUNCTION_ALLOW_EXTERNAL,
+	});
 
 	process.on('SIGINT', createSignalHandler('SIGINT'));
 	process.on('SIGTERM', createSignalHandler('SIGTERM'));

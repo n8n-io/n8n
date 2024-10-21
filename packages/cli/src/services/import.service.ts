@@ -88,8 +88,7 @@ export class ImportService {
 		try {
 			await replaceInvalidCredentials(workflow);
 		} catch (e) {
-			const error = e instanceof Error ? e : new Error(`${e}`);
-			this.logger.error('Failed to replace invalid credential', error);
+			this.logger.error('Failed to replace invalid credential', { error: e });
 		}
 	}
 

@@ -11,13 +11,13 @@ import type { ExecutionRepository } from '@/databases/repositories/execution.rep
 import { InvalidConcurrencyLimitError } from '@/errors/invalid-concurrency-limit.error';
 import type { EventService } from '@/events/event.service';
 import type { IExecutingWorkflowData } from '@/interfaces';
-import type { Logger } from '@/logging/logger.service';
 import type { Telemetry } from '@/telemetry';
+import { mockLogger } from '@test/mocking';
 
 import { ConcurrencyQueue } from '../concurrency-queue';
 
 describe('ConcurrencyControlService', () => {
-	const logger = mock<Logger>();
+	const logger = mockLogger();
 	const executionRepository = mock<ExecutionRepository>();
 	const telemetry = mock<Telemetry>();
 	const eventService = mock<EventService>();

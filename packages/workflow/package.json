@@ -1,6 +1,6 @@
 {
   "name": "n8n-workflow",
-  "version": "1.61.1",
+  "version": "1.63.0",
   "description": "Workflow base code of n8n",
   "main": "dist/index.js",
   "module": "src/index.ts",

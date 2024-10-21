@@ -2,7 +2,12 @@
 import { In } from '@n8n/typeorm';
 import glob from 'fast-glob';
 import { Credentials, InstanceSettings } from 'n8n-core';
-import { ApplicationError, jsonParse, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
+import {
+	ApplicationError,
+	jsonParse,
+	ErrorReporterProxy as ErrorReporter,
+	ensureError,
+} from 'n8n-workflow';
 import { readFile as fsReadFile } from 'node:fs/promises';
 import path from 'path';
 import { Container, Service } from 'typedi';
@@ -274,8 +279,9 @@ export class SourceControlImportService {
 					this.logger.debug(`Reactivating workflow id ${existingWorkflow.id}`);
 					await workflowManager.add(existingWorkflow.id, 'activate');
 					// update the versionId of the workflow to match the imported workflow
-				} catch (error) {
-					this.logger.error(`Failed to activate workflow ${existingWorkflow.id}`, error as Error);
+				} catch (e) {
+					const error = ensureError(e);
+					this.logger.error(`Failed to activate workflow ${existingWorkflow.id}`, { error });
 				} finally {
 					await Container.get(WorkflowRepository).update(
 						{ id: existingWorkflow.id },
@@ -377,8 +383,9 @@ export class SourceControlImportService {
 				await fsReadFile(candidate.file, { encoding: 'utf8' }),
 				{ fallbackValue: { tags: [], mappings: [] } },
 			);
-		} catch (error) {
-			this.logger.error(`Failed to import tags from file ${candidate.file}`, error as Error);
+		} catch (e) {
+			const error = ensureError(e);
+			this.logger.error(`Failed to import tags from file ${candidate.file}`, { error });
 			return;
 		}
 
@@ -444,8 +451,8 @@ export class SourceControlImportService {
 				await fsReadFile(candidate.file, { encoding: 'utf8' }),
 				{ fallbackValue: [] },
 			);
-		} catch (error) {
-			this.logger.error(`Failed to import tags from file ${candidate.file}`, error as Error);
+		} catch (e) {
+			this.logger.error(`Failed to import tags from file ${candidate.file}`, { error: e });
 			return;
 		}
 		const overriddenKeys = Object.keys(valueOverrides ?? {});

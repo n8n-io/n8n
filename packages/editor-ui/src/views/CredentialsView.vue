@@ -1,13 +1,17 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import type { ICredentialsResponse, ICredentialTypeMap } from '@/Interface';
 import type { IResource } from '@/components/layouts/ResourcesListLayout.vue';
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
 import CredentialCard from '@/components/CredentialCard.vue';
 import type { ICredentialType } from 'n8n-workflow';
-import { CREDENTIAL_SELECT_MODAL_KEY, EnterpriseEditionFeature } from '@/constants';
-import { useUIStore } from '@/stores/ui.store';
+import {
+	CREDENTIAL_SELECT_MODAL_KEY,
+	CREDENTIAL_EDIT_MODAL_KEY,
+	EnterpriseEditionFeature,
+} from '@/constants';
+import { useUIStore, listenForModalChanges } from '@/stores/ui.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
@@ -22,6 +26,10 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@/composables/useI18n';
 import { N8nButton, N8nInputLabel, N8nSelect, N8nOption } from 'n8n-design-system';
 
+const props = defineProps<{
+	credentialId?: string;
+}>();
+
 const credentialsStore = useCredentialsStore();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
@@ -31,6 +39,7 @@ const projectsStore = useProjectsStore();
 
 const documentTitle = useDocumentTitle();
 const route = useRoute();
+const router = useRouter();
 const telemetry = useTelemetry();
 const i18n = useI18n();
 
@@ -77,12 +86,42 @@ const projectPermissions = computed(() =>
 	),
 );
 
+const setRouteCredentialId = (credentialId?: string) => {
+	void router.replace({ params: { credentialId } });
+};
+
 const addCredential = () => {
-	uiStore.openModal(CREDENTIAL_SELECT_MODAL_KEY);
+	setRouteCredentialId('create');
 	telemetry.track('User clicked add cred button', {
 		source: 'Creds list',
 	});
 };
+
+listenForModalChanges({
+	store: uiStore,
+	onModalClosed(modalName) {
+		if ([CREDENTIAL_SELECT_MODAL_KEY, CREDENTIAL_EDIT_MODAL_KEY].includes(modalName as string)) {
+			void router.replace({ params: { credentialId: '' } });
+		}
+	},
+});
+
+watch(
+	() => props.credentialId,
+	(id) => {
+		if (!id) return;
+
+		if (id === 'create') {
+			uiStore.openModal(CREDENTIAL_SELECT_MODAL_KEY);
+			return;
+		}
+
+		uiStore.openExistingCredential(id);
+	},
+	{
+		immediate: true,
+	},
+);
 
 const onFilter = (
 	resource: ICredentialsResponse,
@@ -172,6 +211,7 @@ onMounted(() => {
 				class="mb-2xs"
 				:data="data"
 				:read-only="data.readOnly"
+				@click="setRouteCredentialId"
 			/>
 		</template>
 		<template #filters="{ setKeyValue }">

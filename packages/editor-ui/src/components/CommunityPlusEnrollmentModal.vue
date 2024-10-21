@@ -13,8 +13,8 @@ import { useUsersStore } from '@/stores/users.store';
 
 const props = defineProps<{
 	modalName: string;
-	data: {
-		closeCallback: () => void;
+	data?: {
+		closeCallback?: () => void;
 	};
 }>();
 
@@ -51,7 +51,7 @@ const modalBus = createEventBus();
 const closeModal = () => {
 	telemetry.track('User skipped community plus');
 	modalBus.emit('close');
-	props.data.closeCallback();
+	props.data?.closeCallback?.();
 };
 
 const confirm = async () => {

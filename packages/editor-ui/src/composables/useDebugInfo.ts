@@ -1,5 +1,6 @@
 import { useRootStore } from '@/stores/root.store';
 import { useSettingsStore } from '@/stores/settings.store';
+import { useDeviceSupport } from 'n8n-design-system';
 import type { WorkflowSettings } from 'n8n-workflow';
 
 type DebugInfo = {
@@ -10,7 +11,7 @@ type DebugInfo = {
 		database: 'sqlite' | 'mysql' | 'mariadb' | 'postgres';
 		executionMode: 'regular' | 'scaling';
 		license: 'community' | 'enterprise (production)' | 'enterprise (sandbox)';
-		consumerId: string;
+		consumerId?: string;
 		concurrency: number;
 	};
 	storage: {
@@ -36,14 +37,19 @@ type DebugInfo = {
 		secureCookie?: boolean;
 		blockFileAccessToN8nFiles?: boolean;
 	};
+	client: {
+		userAgent: string;
+		isTouchDevice: boolean;
+	};
 };
 
 export function useDebugInfo() {
 	const settingsStore = useSettingsStore();
 	const rootStore = useRootStore();
+	const { isTouchDevice, userAgent } = useDeviceSupport();
 
-	const coreInfo = () => {
-		return {
+	const coreInfo = (skipSensitive?: boolean) => {
+		const info = {
 			n8nVersion: rootStore.versionCli,
 			platform:
 				settingsStore.isDocker && settingsStore.deploymentType === 'cloud'
@@ -60,13 +66,22 @@ export function useDebugInfo() {
 						: settingsStore.databaseType,
 			executionMode: settingsStore.isQueueModeEnabled ? 'scaling' : 'regular',
 			concurrency: settingsStore.settings.concurrency,
-			license: settingsStore.isCommunityPlan
-				? 'community'
-				: settingsStore.settings.license.environment === 'production'
-					? 'enterprise (production)'
-					: 'enterprise (sandbox)',
-			consumerId: settingsStore.consumerId,
+			license:
+				settingsStore.isCommunityPlan || !settingsStore.settings.license
+					? 'community'
+					: settingsStore.settings.license.environment === 'production'
+						? 'enterprise (production)'
+						: 'enterprise (sandbox)',
 		} as const;
+
+		if (!skipSensitive) {
+			return {
+				...info,
+				consumerId: !skipSensitive ? settingsStore.consumerId : undefined,
+			};
+		}
+
+		return info;
 	};
 
 	const storageInfo = (): DebugInfo['storage'] => {
@@ -101,11 +116,19 @@ export function useDebugInfo() {
 		return info;
 	};
 
-	const gatherDebugInfo = () => {
+	const client = (): DebugInfo['client'] => {
+		return {
+			userAgent,
+			isTouchDevice,
+		};
+	};
+
+	const gatherDebugInfo = (skipSensitive?: boolean) => {
 		const debugInfo: DebugInfo = {
-			core: coreInfo(),
+			core: coreInfo(skipSensitive),
 			storage: storageInfo(),
 			pruning: pruningInfo(),
+			client: client(),
 		};
 
 		const security = securityInfo();
@@ -115,11 +138,15 @@ export function useDebugInfo() {
 		return debugInfo;
 	};
 
-	const toMarkdown = (debugInfo: DebugInfo): string => {
-		let markdown = '# Debug info\n\n';
+	const toMarkdown = (
+		debugInfo: DebugInfo,
+		{ secondaryHeader }: { secondaryHeader?: boolean },
+	): string => {
+		const extraLevel = secondaryHeader ? '#' : '';
+		let markdown = `${extraLevel}# Debug info\n\n`;
 
 		for (const sectionKey in debugInfo) {
-			markdown += `## ${sectionKey}\n\n`;
+			markdown += `${extraLevel}## ${sectionKey}\n\n`;
 
 			const section = debugInfo[sectionKey as keyof DebugInfo];
 
@@ -140,8 +167,11 @@ export function useDebugInfo() {
 		return `${markdown}Generated at: ${new Date().toISOString()}`;
 	};
 
-	const generateDebugInfo = () => {
-		return appendTimestamp(toMarkdown(gatherDebugInfo()));
+	const generateDebugInfo = ({
+		skipSensitive,
+		secondaryHeader,
+	}: { skipSensitive?: boolean; secondaryHeader?: boolean } = {}) => {
+		return appendTimestamp(toMarkdown(gatherDebugInfo(skipSensitive), { secondaryHeader }));
 	};
 
 	return {

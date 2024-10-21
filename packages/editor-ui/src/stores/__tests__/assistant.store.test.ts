@@ -15,7 +15,7 @@ import { merge } from 'lodash-es';
 import { DEFAULT_POSTHOG_SETTINGS } from './posthog.test';
 import { AI_ASSISTANT_EXPERIMENT, VIEWS } from '@/constants';
 import { reactive } from 'vue';
-import * as chatAPI from '@/api/assistant';
+import * as chatAPI from '@/api/ai';
 import * as telemetryModule from '@/composables/useTelemetry';
 import type { Telemetry } from '@/plugins/telemetry';
 

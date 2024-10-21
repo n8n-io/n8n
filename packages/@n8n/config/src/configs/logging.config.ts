@@ -1,6 +1,17 @@
 import { Config, Env, Nested } from '../decorators';
 import { StringArray } from '../utils';
 
+/**
+ * Scopes (areas of functionality) to filter logs by.
+ *
+ * `executions` -> execution lifecycle
+ * `license` -> license SDK
+ * `scaling` -> scaling mode
+ */
+export const LOG_SCOPES = ['executions', 'license', 'scaling'] as const;
+
+export type LogScope = (typeof LOG_SCOPES)[number];
+
 @Config
 class FileLoggingConfig {
 	/**
@@ -44,4 +55,19 @@ export class LoggingConfig {
 
 	@Nested
 	file: FileLoggingConfig;
+
+	/**
+	 * Scopes to filter logs by. Nothing is filtered by default.
+	 *
+	 * Currently supported log scopes:
+	 * - `executions`
+	 * - `license`
+	 * - `scaling`
+	 *
+	 * @example
+	 * `N8N_LOG_SCOPES=license`
+	 * `N8N_LOG_SCOPES=license,executions`
+	 */
+	@Env('N8N_LOG_SCOPES')
+	scopes: StringArray<LogScope> = [];
 }

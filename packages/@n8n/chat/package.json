@@ -1,6 +1,6 @@
 {
   "name": "@n8n/chat",
-  "version": "0.27.1",
+  "version": "0.29.0",
   "scripts": {
     "dev": "pnpm run storybook",
     "build": "pnpm build:vite && pnpm build:bundle",
@@ -50,7 +50,7 @@
     "unplugin-icons": "^0.19.0",
     "vite": "catalog:frontend",
     "vitest": "catalog:frontend",
-    "vite-plugin-dts": "^3.9.1",
+    "vite-plugin-dts": "^4.2.3",
     "vue-tsc": "catalog:frontend"
   },
   "files": [

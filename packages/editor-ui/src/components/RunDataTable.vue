@@ -390,25 +390,29 @@ export default defineComponent({
 <template>
 	<div :class="[$style.dataDisplay, { [$style.highlight]: highlight }]">
 		<table v-if="tableData.columns && tableData.columns.length === 0" :class="$style.table">
-			<tr>
-				<th :class="$style.emptyCell"></th>
-				<th :class="$style.tableRightMargin"></th>
-			</tr>
-			<tr
-				v-for="(_, index1) in tableData.data"
-				:key="index1"
-				:class="{ [$style.hoveringRow]: isHoveringRow(index1) }"
-			>
-				<td
-					:data-row="index1"
-					:data-col="0"
-					@mouseenter="onMouseEnterCell"
-					@mouseleave="onMouseLeaveCell"
+			<thead>
+				<tr>
+					<th :class="$style.emptyCell"></th>
+					<th :class="$style.tableRightMargin"></th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr
+					v-for="(_, index1) in tableData.data"
+					:key="index1"
+					:class="{ [$style.hoveringRow]: isHoveringRow(index1) }"
 				>
-					<n8n-info-tip>{{ $locale.baseText('runData.emptyItemHint') }}</n8n-info-tip>
-				</td>
-				<td :class="$style.tableRightMargin"></td>
-			</tr>
+					<td
+						:data-row="index1"
+						:data-col="0"
+						@mouseenter="onMouseEnterCell"
+						@mouseleave="onMouseLeaveCell"
+					>
+						<n8n-info-tip>{{ $locale.baseText('runData.emptyItemHint') }}</n8n-info-tip>
+					</td>
+					<td :class="$style.tableRightMargin"></td>
+				</tr>
+			</tbody>
 		</table>
 		<table v-else :class="$style.table">
 			<thead>

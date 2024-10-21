@@ -11,6 +11,7 @@ describe('Logger', () => {
 				logging: {
 					level: 'info',
 					outputs: ['console'],
+					scopes: [],
 				},
 			});
 
@@ -30,6 +31,7 @@ describe('Logger', () => {
 				logging: {
 					level: 'info',
 					outputs: ['file'],
+					scopes: [],
 					file: {
 						fileSizeMax: 100,
 						fileCountMax: 16,
@@ -56,6 +58,7 @@ describe('Logger', () => {
 				logging: {
 					level: 'error',
 					outputs: ['console'],
+					scopes: [],
 				},
 			});
 
@@ -74,6 +77,7 @@ describe('Logger', () => {
 				logging: {
 					level: 'warn',
 					outputs: ['console'],
+					scopes: [],
 				},
 			});
 
@@ -92,6 +96,7 @@ describe('Logger', () => {
 				logging: {
 					level: 'info',
 					outputs: ['console'],
+					scopes: [],
 				},
 			});
 
@@ -110,6 +115,7 @@ describe('Logger', () => {
 				logging: {
 					level: 'debug',
 					outputs: ['console'],
+					scopes: [],
 				},
 			});
 
@@ -128,6 +134,7 @@ describe('Logger', () => {
 				logging: {
 					level: 'silent',
 					outputs: ['console'],
+					scopes: [],
 				},
 			});
 

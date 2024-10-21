@@ -1299,18 +1299,29 @@ export class SlackV2 implements INodeType {
 
 							options.fields = fields;
 						}
+
 						Object.assign(body, options);
+						let requestBody: IDataObject = { profile: body };
+
+						let userId;
+						if (options.user) {
+							userId = options.user;
+							delete body.user;
+							requestBody = { profile: body, user: userId };
+						}
+
 						responseData = await slackApiRequest.call(
 							this,
 							'POST',
 							'/users.profile.set',
-							{ profile: body },
+							requestBody,
 							qs,
 						);
 
 						responseData = responseData.profile;
 					}
 				}
+
 				if (resource === 'userGroup') {
 					//https://api.slack.com/methods/usergroups.create
 					if (operation === 'create') {

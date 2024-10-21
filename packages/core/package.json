@@ -1,6 +1,6 @@
 {
   "name": "n8n-core",
-  "version": "1.62.1",
+  "version": "1.64.0",
   "description": "Core functionality of n8n",
   "main": "dist/index",
   "types": "dist/index.d.ts",
@@ -36,6 +36,7 @@
     "@types/xml2js": "catalog:"
   },
   "dependencies": {
+    "@langchain/core": "catalog:",
     "@n8n/client-oauth2": "workspace:*",
     "aws4": "1.11.0",
     "axios": "catalog:",
@@ -45,10 +46,10 @@
     "file-type": "16.5.4",
     "form-data": "catalog:",
     "lodash": "catalog:",
-    "@langchain/core": "catalog:",
     "luxon": "catalog:",
     "mime-types": "2.1.35",
     "n8n-workflow": "workspace:*",
+    "nanoid": "catalog:",
     "oauth-1.0a": "2.2.6",
     "p-cancelable": "2.1.1",
     "pretty-bytes": "5.6.0",

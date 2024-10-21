@@ -29,8 +29,10 @@ import type { PinDataSource } from '@/composables/usePinnedData';
 import { isPresent } from '@/utils/typesUtils';
 import { GRID_SIZE } from '@/utils/nodeViewUtils';
 import { CanvasKey } from '@/constants';
-import { onKeyDown, onKeyUp } from '@vueuse/core';
+import { onKeyDown, onKeyUp, useDebounceFn } from '@vueuse/core';
 import CanvasArrowHeadMarker from './elements/edges/CanvasArrowHeadMarker.vue';
+import { CanvasNodeRenderType } from '@/types';
+import CanvasBackgroundStripedPattern from './elements/CanvasBackgroundStripedPattern.vue';
 
 const $style = useCssModule();
 
@@ -80,6 +82,7 @@ const props = withDefaults(
 		readOnly?: boolean;
 		executing?: boolean;
 		keyBindings?: boolean;
+		showBugReportingButton?: boolean;
 	}>(),
 	{
 		id: 'canvas',
@@ -108,6 +111,8 @@ const {
 	nodes: graphNodes,
 	onPaneReady,
 	findNode,
+	onNodesInitialized,
+	viewport,
 } = useVueFlow({ id: props.id, deleteKeyCode: null });
 
 const isPaneReady = ref(false);
@@ -180,21 +185,22 @@ function onClickNodeAdd(id: string, handle: string) {
 	emit('click:node:add', id, handle);
 }
 
-function onUpdateNodesPosition(events: NodePositionChange[]) {
+// Debounced to prevent emitting too many events, necessary for undo/redo
+const onUpdateNodesPosition = useDebounceFn((events: NodePositionChange[]) => {
 	emit('update:nodes:position', events);
-}
+}, 200);
 
 function onUpdateNodePosition(id: string, position: XYPosition) {
 	emit('update:node:position', id, position);
 }
 
-function onNodesChange(events: NodeChange[]) {
-	const isPositionChangeEvent = (event: NodeChange): event is NodePositionChange =>
-		event.type === 'position' && 'position' in event;
+const isPositionChangeEvent = (event: NodeChange): event is NodePositionChange =>
+	event.type === 'position' && 'position' in event;
 
+function onNodesChange(events: NodeChange[]) {
 	const positionChangeEndEvents = events.filter(isPositionChangeEvent);
 	if (positionChangeEndEvents.length > 0) {
-		onUpdateNodesPosition(positionChangeEndEvents);
+		void onUpdateNodesPosition(positionChangeEndEvents);
 	}
 }
 
@@ -478,6 +484,11 @@ onPaneReady(async () => {
 	isPaneReady.value = true;
 });
 
+onNodesInitialized((nodes) => {
+	if (nodes.length !== 1 || nodes[0].data?.render.type !== CanvasNodeRenderType.AddNodes) return;
+	void onFitView();
+});
+
 watch(() => props.readOnly, setReadonly, {
 	immediate: true,
 });
@@ -554,7 +565,11 @@ provide(CanvasKey, {
 
 		<CanvasArrowHeadMarker :id="arrowHeadMarkerId" />
 
-		<Background data-test-id="canvas-background" pattern-color="#aaa" :gap="GRID_SIZE" />
+		<Background data-test-id="canvas-background" pattern-color="#aaa" :gap="GRID_SIZE">
+			<template v-if="readOnly" #pattern-container>
+				<CanvasBackgroundStripedPattern :x="viewport.x" :y="viewport.y" :zoom="viewport.zoom" />
+			</template>
+		</Background>
 
 		<Transition name="minimap">
 			<MiniMap
@@ -578,6 +593,7 @@ provide(CanvasKey, {
 			:class="$style.canvasControls"
 			:position="controlsPosition"
 			:show-interactive="false"
+			:show-bug-reporting-button="showBugReportingButton"
 			:zoom="zoom"
 			@zoom-to-fit="onFitView"
 			@zoom-in="onZoomIn"

@@ -12,7 +12,9 @@ import { mockInstance, mockEntityManager } from '@test/mocking';
 
 describe('ExecutionRepository', () => {
 	const entityManager = mockEntityManager(ExecutionEntity);
-	const globalConfig = mockInstance(GlobalConfig, { logging: { outputs: ['console'] } });
+	const globalConfig = mockInstance(GlobalConfig, {
+		logging: { outputs: ['console'], scopes: [] },
+	});
 	const binaryDataService = mockInstance(BinaryDataService);
 	const executionRepository = Container.get(ExecutionRepository);
 	const mockDate = new Date('2023-12-28 12:34:56.789Z');

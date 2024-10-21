@@ -79,6 +79,16 @@ export async function slackApiRequest(
 					level: 'warning',
 				},
 			);
+		} else if (response.error === 'not_admin') {
+			throw new NodeOperationError(
+				this.getNode(),
+				'Need higher Role Level for this Operation (e.g. Owner or Admin Rights)',
+				{
+					description:
+						'Hint: Check the Role of your Slack App Integration. For more information see the Slack Documentation - https://slack.com/help/articles/360018112273-Types-of-roles-in-Slack',
+					level: 'warning',
+				},
+			);
 		}
 
 		throw new NodeOperationError(
@@ -86,6 +96,7 @@ export async function slackApiRequest(
 			'Slack error response: ' + JSON.stringify(response.error),
 		);
 	}
+
 	if (response.ts !== undefined) {
 		Object.assign(response, { message_timestamp: response.ts });
 		delete response.ts;

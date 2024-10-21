@@ -4,6 +4,8 @@ import type { Class } from 'n8n-core';
 import type { DeepPartial } from 'ts-essentials';
 import { Container } from 'typedi';
 
+import type { Logger } from '@/logging/logger.service';
+
 export const mockInstance = <T>(
 	serviceClass: Class<T>,
 	data: DeepPartial<T> | undefined = undefined,
@@ -22,3 +24,6 @@ export const mockEntityManager = (entityClass: Class) => {
 	Object.assign(entityManager, { connection: dataSource });
 	return entityManager;
 };
+
+export const mockLogger = () =>
+	mock<Logger>({ withScope: jest.fn().mockReturnValue(mock<Logger>()) });

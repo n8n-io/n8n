@@ -1,11 +1,14 @@
 import type { VIEWS } from '@/constants';
-import type { NodeAuthenticationOption, Schema } from '@/Interface';
+import type { IWorkflowDb, NodeAuthenticationOption, Schema } from '@/Interface';
 import type {
+	ExecutionError,
 	ICredentialType,
 	IDataObject,
 	INode,
 	INodeIssues,
 	INodeParameters,
+	IRunExecutionData,
+	ITaskData,
 } from 'n8n-workflow';
 
 export namespace ChatRequest {
@@ -16,6 +19,15 @@ export namespace ChatRequest {
 
 	export interface WorkflowContext {
 		executionSchema?: NodeExecutionSchema[];
+		currentWorkflow?: IWorkflowDb;
+		executionData?: IRunExecutionData['resultData'];
+	}
+
+	export interface ExecutionResultData {
+		error?: ExecutionError;
+		runData: Record<string, Array<Omit<ITaskData, 'data'>>>;
+		lastNodeExecuted?: string;
+		metadata?: Record<string, string>;
 	}
 
 	export interface ErrorContext {
@@ -47,6 +59,7 @@ export namespace ChatRequest {
 			firstName: string;
 		};
 		context?: UserContext;
+		workflowContext?: WorkflowContext;
 		question: string;
 	}
 
@@ -78,6 +91,7 @@ export namespace ChatRequest {
 		text: string;
 		quickReplyType?: string;
 		context?: UserContext;
+		workflowContext?: WorkflowContext;
 	}
 
 	export interface UserContext {
@@ -97,6 +111,8 @@ export namespace ChatRequest {
 			description?: string;
 		};
 	}
+
+	export type AssistantContext = UserContext & WorkflowContext;
 
 	export type RequestPayload =
 		| {
@@ -193,5 +209,18 @@ export namespace ReplaceCodeRequest {
 	export interface ResponsePayload {
 		sessionId: string;
 		parameters: INodeParameters;
+	}
+}
+
+export namespace AskAiRequest {
+	export interface RequestPayload {
+		question: string;
+		context: {
+			schema: ChatRequest.NodeExecutionSchema[];
+			inputSchema: ChatRequest.NodeExecutionSchema;
+			pushRef: string;
+			ndvPushRef: string;
+		};
+		forNode: 'code' | 'transform';
 	}
 }

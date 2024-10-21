@@ -1,17 +1,20 @@
 import { mock } from 'jest-mock-extended';
+import type { InstanceSettings } from 'n8n-core';
 
 import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import type { IExecutionResponse } from '@/interfaces';
-import type { MultiMainSetup } from '@/services/orchestration/main/multi-main-setup.ee';
+import type { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { WaitTracker } from '@/wait-tracker';
+import { mockLogger } from '@test/mocking';
 
 jest.useFakeTimers();
 
 describe('WaitTracker', () => {
 	const executionRepository = mock<ExecutionRepository>();
 	const multiMainSetup = mock<MultiMainSetup>();
-	const orchestrationService = new OrchestrationService(mock(), mock(), multiMainSetup);
+	const orchestrationService = new OrchestrationService(mock(), multiMainSetup, mock());
+	const instanceSettings = mock<InstanceSettings>({ isLeader: true });
 
 	const execution = mock<IExecutionResponse>({
 		id: '123',
@@ -21,11 +24,12 @@ describe('WaitTracker', () => {
 	let waitTracker: WaitTracker;
 	beforeEach(() => {
 		waitTracker = new WaitTracker(
-			mock(),
+			mockLogger(),
 			executionRepository,
 			mock(),
 			mock(),
 			orchestrationService,
+			instanceSettings,
 		);
 		multiMainSetup.on.mockReturnThis();
 	});
@@ -36,7 +40,6 @@ describe('WaitTracker', () => {
 
 	describe('init()', () => {
 		it('should query DB for waiting executions if leader', async () => {
-			jest.spyOn(orchestrationService, 'isLeader', 'get').mockReturnValue(true);
 			executionRepository.getWaitingExecutions.mockResolvedValue([execution]);
 
 			waitTracker.init();
@@ -119,7 +122,6 @@ describe('WaitTracker', () => {
 
 	describe('multi-main setup', () => {
 		it('should start tracking if leader', () => {
-			jest.spyOn(orchestrationService, 'isLeader', 'get').mockReturnValue(true);
 			jest.spyOn(orchestrationService, 'isSingleMainSetup', 'get').mockReturnValue(false);
 
 			executionRepository.getWaitingExecutions.mockResolvedValue([]);
@@ -130,7 +132,14 @@ describe('WaitTracker', () => {
 		});
 
 		it('should not start tracking if follower', () => {
-			jest.spyOn(orchestrationService, 'isLeader', 'get').mockReturnValue(false);
+			const waitTracker = new WaitTracker(
+				mockLogger(),
+				executionRepository,
+				mock(),
+				mock(),
+				orchestrationService,
+				mock<InstanceSettings>({ isLeader: false }),
+			);
 			jest.spyOn(orchestrationService, 'isSingleMainSetup', 'get').mockReturnValue(false);
 
 			executionRepository.getWaitingExecutions.mockResolvedValue([]);

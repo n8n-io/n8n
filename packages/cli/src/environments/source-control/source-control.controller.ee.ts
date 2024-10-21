@@ -170,6 +170,7 @@ export class SourceControlController {
 		if (this.sourceControlPreferencesService.isBranchReadOnly()) {
 			throw new BadRequestError('Cannot push onto read-only branch.');
 		}
+
 		try {
 			await this.sourceControlService.setGitUserDetails(
 				`${req.user.firstName} ${req.user.lastName}`,

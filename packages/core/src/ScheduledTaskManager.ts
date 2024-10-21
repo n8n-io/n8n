@@ -30,8 +30,9 @@ export class ScheduledTaskManager {
 
 	deregisterCrons(workflowId: string) {
 		const cronJobs = this.cronJobs.get(workflowId) ?? [];
-		for (const cronJob of cronJobs) {
-			cronJob.stop();
+		while (cronJobs.length) {
+			const cronJob = cronJobs.pop();
+			if (cronJob) cronJob.stop();
 		}
 	}
 

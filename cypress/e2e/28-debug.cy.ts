@@ -117,7 +117,8 @@ describe('Debug', () => {
 		workflowPage.getters.canvasNodes().last().find('.node-info-icon').should('be.empty');
 
 		workflowPage.getters.canvasNodes().first().dblclick();
-		ndv.getters.pinDataButton().click();
+		ndv.actions.unPinData();
+
 		ndv.actions.close();
 
 		workflowPage.actions.saveWorkflowUsingKeyboardShortcut();

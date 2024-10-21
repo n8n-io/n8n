@@ -16,7 +16,7 @@ import {
 	schemaTypeField,
 } from '../../../utils/descriptions';
 import { N8nStructuredOutputParser } from '../../../utils/output_parsers/N8nOutputParser';
-import { generateSchema, getSandboxWithZod } from '../../../utils/schemaParsing';
+import { convertJsonSchemaToZod, generateSchema } from '../../../utils/schemaParsing';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
 export class OutputParserStructured implements INodeType {
@@ -138,17 +138,10 @@ export class OutputParserStructured implements INodeType {
 		const jsonSchema =
 			schemaType === 'fromJson' ? generateSchema(jsonExample) : jsonParse<JSONSchema7>(inputSchema);
 
-		const zodSchemaSandbox = getSandboxWithZod(this, jsonSchema, 0);
+		const zodSchema = convertJsonSchemaToZod<z.ZodSchema<object>>(jsonSchema);
 		const nodeVersion = this.getNode().typeVersion;
 		try {
-			const zodSchema = await zodSchemaSandbox.runCode<z.ZodSchema<object>>();
-
-			const parser = await N8nStructuredOutputParser.fromZedJsonSchema(
-				zodSchema,
-				nodeVersion,
-				this,
-			);
-
+			const parser = N8nStructuredOutputParser.fromZedJsonSchema(zodSchema, nodeVersion, this);
 			return {
 				response: parser,
 			};

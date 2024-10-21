@@ -32,15 +32,15 @@ export const useOrchestrationStore = defineStore('orchestrationManager', {
 	}),
 	actions: {
 		updateWorkerStatus(data: WorkerStatus) {
-			this.workers[data.workerId] = data;
-			if (!this.workersHistory[data.workerId]) {
-				this.workersHistory[data.workerId] = [];
+			this.workers[data.senderId] = data;
+			if (!this.workersHistory[data.senderId]) {
+				this.workersHistory[data.senderId] = [];
 			}
-			this.workersHistory[data.workerId].push({ data, timestamp: Date.now() });
-			if (this.workersHistory[data.workerId].length > WORKER_HISTORY_LENGTH) {
-				this.workersHistory[data.workerId].shift();
+			this.workersHistory[data.senderId].push({ data, timestamp: Date.now() });
+			if (this.workersHistory[data.senderId].length > WORKER_HISTORY_LENGTH) {
+				this.workersHistory[data.senderId].shift();
 			}
-			this.workersLastUpdated[data.workerId] = Date.now();
+			this.workersLastUpdated[data.senderId] = Date.now();
 
 			this.initialStatusReceived = true;
 		},

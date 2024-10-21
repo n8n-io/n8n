@@ -96,7 +96,7 @@ export class FrontendService {
 			executionTimeout: config.getEnv('executions.timeout'),
 			maxExecutionTimeout: config.getEnv('executions.maxTimeout'),
 			workflowCallerPolicyDefaultOption: this.globalConfig.workflows.callerPolicyDefaultOption,
-			timezone: config.getEnv('generic.timezone'),
+			timezone: this.globalConfig.generic.timezone,
 			urlBaseWebhook: this.urlService.getWebhookBaseUrl(),
 			urlBaseEditor: instanceBaseUrl,
 			binaryDataMode: config.getEnv('binaryDataManager.mode'),
@@ -106,7 +106,7 @@ export class FrontendService {
 			authCookie: {
 				secure: config.getEnv('secure_cookie'),
 			},
-			releaseChannel: config.getEnv('generic.releaseChannel'),
+			releaseChannel: this.globalConfig.generic.releaseChannel,
 			oauthCallbackUrls: {
 				oauth1: `${instanceBaseUrl}/${restEndpoint}/oauth1-credential/callback`,
 				oauth2: `${instanceBaseUrl}/${restEndpoint}/oauth2-credential/callback`,
@@ -212,8 +212,8 @@ export class FrontendService {
 			banners: {
 				dismissed: [],
 			},
-			ai: {
-				enabled: config.getEnv('ai.enabled'),
+			askAi: {
+				enabled: false,
 			},
 			workflowHistory: {
 				pruneTime: -1,
@@ -274,6 +274,7 @@ export class FrontendService {
 		const isS3Available = config.getEnv('binaryDataManager.availableModes').includes('s3');
 		const isS3Licensed = this.license.isBinaryDataS3Licensed();
 		const isAiAssistantEnabled = this.license.isAiAssistantEnabled();
+		const isAskAiEnabled = this.license.isAskAiEnabled();
 
 		this.settings.license.planName = this.license.getPlanName();
 		this.settings.license.consumerId = this.license.getConsumerId();
@@ -328,6 +329,10 @@ export class FrontendService {
 
 		if (isAiAssistantEnabled) {
 			this.settings.aiAssistant.enabled = isAiAssistantEnabled;
+		}
+
+		if (isAskAiEnabled) {
+			this.settings.askAi.enabled = isAskAiEnabled;
 		}
 
 		this.settings.mfa.enabled = config.get('mfa.enabled');

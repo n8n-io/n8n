@@ -43,7 +43,7 @@ import {
 	type Themed,
 } from 'n8n-workflow';
 import { useCanvasStore } from '@/stores/canvas.store';
-import { usePostHog } from '../../../../stores/posthog.store';
+import { useSettingsStore } from '@/stores/settings.store';
 
 interface ViewStack {
 	uuid?: string;
@@ -79,6 +79,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 	const nodeCreatorStore = useNodeCreatorStore();
 	const { getActiveItemIndex } = useKeyboardNavigation();
 	const i18n = useI18n();
+	const settingsStore = useSettingsStore();
 
 	const viewStacks = ref<ViewStack[]>([]);
 
@@ -360,8 +361,8 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 			const subcategory = stack?.subcategory ?? DEFAULT_SUBCATEGORY;
 			let itemsInSubcategory = itemsBySubcategory.value[subcategory];
 
-			const aiEnabled = usePostHog().isAiEnabled();
-			if (!aiEnabled) {
+			const isAskAiEnabled = settingsStore.isAskAiEnabled;
+			if (!isAskAiEnabled) {
 				itemsInSubcategory = itemsInSubcategory.filter(
 					(item) => item.key !== AI_TRANSFORM_NODE_TYPE,
 				);

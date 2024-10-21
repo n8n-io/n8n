@@ -14,6 +14,7 @@ export { InstanceSettings, InstanceType } from './InstanceSettings';
 export * from './NodeExecuteFunctions';
 export * from './WorkflowExecute';
 export { NodeExecuteFunctions };
+export * from './data-deduplication-service';
 export * from './errors';
 export { ObjectStoreService } from './ObjectStore/ObjectStore.service.ee';
 export { BinaryData } from './BinaryData/types';

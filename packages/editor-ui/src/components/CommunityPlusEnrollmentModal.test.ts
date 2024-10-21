@@ -51,6 +51,14 @@ describe('CommunityPlusEnrollmentModal', () => {
 		createTestingPinia();
 	});
 
+	it('should not throw error opened only with the name', () => {
+		const props = {
+			modalName: COMMUNITY_PLUS_ENROLLMENT_MODAL,
+		};
+
+		expect(() => renderComponent({ props })).not.toThrow();
+	});
+
 	it('should test enrolling', async () => {
 		const closeCallbackSpy = vi.fn();
 		const usageStore = mockedStore(useUsageStore);
@@ -167,5 +175,19 @@ describe('CommunityPlusEnrollmentModal', () => {
 		const { getByRole } = renderComponent({ props });
 		const emailInput = getByRole('textbox');
 		expect(emailInput).toHaveValue('test@n8n.io');
+	});
+
+	it('should not throw error if no close callback provided', async () => {
+		const consoleErrorSpy = vi.spyOn(console, 'error');
+		const props = {
+			modalName: COMMUNITY_PLUS_ENROLLMENT_MODAL,
+		};
+
+		const { getByRole } = renderComponent({ props });
+		const skipButton = getByRole('button', { name: 'Skip' });
+		expect(skipButton).toBeVisible();
+
+		await userEvent.click(skipButton);
+		expect(consoleErrorSpy).not.toHaveBeenCalled();
 	});
 });

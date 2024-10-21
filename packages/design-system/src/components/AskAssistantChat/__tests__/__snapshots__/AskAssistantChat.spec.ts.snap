@@ -64,7 +64,7 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
         class="back"
         data-test-id="close-chat-button"
       >
-        <n8n-icon
+        <n8n-icon-stub
           color="text-base"
           icon="arrow-right"
         />
@@ -400,16 +400,14 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
               <div
                 class="actions"
               >
-                <n8n-button
+                <n8n-button-stub
                   data-test-id="replace-code-button"
                   disabled="false"
                   icon="refresh"
                   loading="false"
                   size="mini"
                   type="primary"
-                >
-                  Replace my code
-                </n8n-button>
+                />
               </div>
             </div>
           </div>
@@ -422,7 +420,7 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
           <div
             class="roleName userSection"
           >
-            <n8n-avatar
+            <n8n-avatar-stub
               first-name="Kobi"
               last-name="Dog"
               size="xsmall"
@@ -683,16 +681,14 @@ Testing more code
               <div
                 class="actions"
               >
-                <n8n-button
+                <n8n-button-stub
                   data-test-id="replace-code-button"
                   disabled="false"
                   icon="refresh"
                   loading="false"
                   size="mini"
                   type="primary"
-                >
-                  Replace my code
-                </n8n-button>
+                />
               </div>
             </div>
           </div>
@@ -708,22 +704,18 @@ Testing more code
             <div
               data-test-id="quick-replies"
             >
-              <n8n-button
+              <n8n-button-stub
                 size="mini"
                 type="secondary"
-              >
-                Give me another solution
-              </n8n-button>
+              />
             </div>
             <div
               data-test-id="quick-replies"
             >
-              <n8n-button
+              <n8n-button-stub
                 size="mini"
                 type="secondary"
-              >
-                All good
-              </n8n-button>
+              />
             </div>
             
           </div>
@@ -742,7 +734,7 @@ Testing more code
         rows="1"
         wrap="hard"
       />
-      <n8n-icon-button
+      <n8n-icon-button-stub
         class="sendButton"
         data-test-id="send-message-button"
         disabled="true"
@@ -819,7 +811,7 @@ exports[`AskAssistantChat > renders default placeholder chat correctly 1`] = `
         class="back"
         data-test-id="close-chat-button"
       >
-        <n8n-icon
+        <n8n-icon-stub
           color="text-base"
           icon="arrow-right"
         />
@@ -848,6 +840,7 @@ exports[`AskAssistantChat > renders default placeholder chat correctly 1`] = `
             For specific tasks, you’ll see the 
             <button
               class="button"
+              data-test-id="ask-assistant-button"
               style="height: 18px;"
               tabindex="-1"
             >
@@ -916,7 +909,7 @@ exports[`AskAssistantChat > renders default placeholder chat correctly 1`] = `
         rows="1"
         wrap="hard"
       />
-      <n8n-icon-button
+      <n8n-icon-button-stub
         class="sendButton"
         data-test-id="send-message-button"
         disabled="true"
@@ -993,7 +986,7 @@ exports[`AskAssistantChat > renders end of session chat correctly 1`] = `
         class="back"
         data-test-id="close-chat-button"
       >
-        <n8n-icon
+        <n8n-icon-stub
           color="text-base"
           icon="arrow-right"
         />
@@ -1090,6 +1083,7 @@ exports[`AskAssistantChat > renders end of session chat correctly 1`] = `
             </span>
             <button
               class="button"
+              data-test-id="ask-assistant-button"
               style="height: 18px;"
               tabindex="-1"
             >
@@ -1161,7 +1155,7 @@ exports[`AskAssistantChat > renders end of session chat correctly 1`] = `
         rows="1"
         wrap="hard"
       />
-      <n8n-icon-button
+      <n8n-icon-button-stub
         class="sendButton"
         data-test-id="send-message-button"
         disabled="true"
@@ -1238,7 +1232,7 @@ exports[`AskAssistantChat > renders message with code snippet 1`] = `
         class="back"
         data-test-id="close-chat-button"
       >
-        <n8n-icon
+        <n8n-icon-stub
           color="text-base"
           icon="arrow-right"
         />
@@ -1405,7 +1399,7 @@ catch(e) {
         rows="1"
         wrap="hard"
       />
-      <n8n-icon-button
+      <n8n-icon-button-stub
         class="sendButton"
         data-test-id="send-message-button"
         disabled="true"
@@ -1482,7 +1476,7 @@ exports[`AskAssistantChat > renders streaming chat correctly 1`] = `
         class="back"
         data-test-id="close-chat-button"
       >
-        <n8n-icon
+        <n8n-icon-stub
           color="text-base"
           icon="arrow-right"
         />
@@ -1581,7 +1575,7 @@ exports[`AskAssistantChat > renders streaming chat correctly 1`] = `
         rows="1"
         wrap="hard"
       />
-      <n8n-icon-button
+      <n8n-icon-button-stub
         class="sendButton"
         data-test-id="send-message-button"
         disabled="true"
