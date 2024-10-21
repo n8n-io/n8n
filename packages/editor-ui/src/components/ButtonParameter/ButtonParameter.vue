@@ -8,6 +8,7 @@ import { useToast } from '@/composables/useToast';
 import { useNDVStore } from '@/stores/ndv.store';
 import { getParentNodes, generaCodeForAiTransform } from './utils';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { useUIStore } from '@/stores/ui.store';
 
 const AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT = 'codeGeneratedForPrompt';
 
@@ -145,6 +146,16 @@ function onPromptInput(inputValue: string) {
 	});
 }
 
+function useDarkBackdrop(): string {
+	const theme = useUIStore().appliedTheme;
+
+	if (theme === 'light') {
+		return 'background-color: var(--color-background-xlight);';
+	} else {
+		return 'background-color: var(--color-background-light);';
+	}
+}
+
 onMounted(() => {
 	parentNodes.value = getParentNodes();
 });
@@ -162,7 +173,7 @@ onMounted(() => {
 		>
 		</n8n-input-label>
 		<div :class="$style.inputContainer" :hidden="!hasInputField">
-			<div :class="$style.meta">
+			<div :class="$style.meta" :style="useDarkBackdrop()">
 				<span
 					v-if="inputFieldMaxLength"
 					v-show="prompt.length > 1"
@@ -237,7 +248,11 @@ onMounted(() => {
 	display: flex;
 	justify-content: space-between;
 	position: absolute;
-	bottom: var(--spacing-2xs);
+	padding-bottom: var(--spacing-2xs);
+	padding-top: var(--spacing-2xs);
+	margin: 1px;
+	margin-right: var(--spacing-s);
+	bottom: 0;
 	left: var(--spacing-xs);
 	right: var(--spacing-xs);
 	gap: 10px;
