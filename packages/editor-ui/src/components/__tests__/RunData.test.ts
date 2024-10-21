@@ -238,6 +238,9 @@ describe('RunData', () => {
 				};
 			},
 			global: {
+				stubs: {
+					RunDataPinButton: { template: '<button data-test-id="ndv-pin-data"></button>' },
+				},
 				mocks: {
 					$route: {
 						name: VIEWS.WORKFLOW,
