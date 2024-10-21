@@ -79,7 +79,7 @@ export class EmbeddingsOpenAi implements INodeType {
 			},
 		],
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1],
 		description: 'Use Embeddings OpenAI',
 		defaults: {
 			name: 'Embeddings OpenAI',

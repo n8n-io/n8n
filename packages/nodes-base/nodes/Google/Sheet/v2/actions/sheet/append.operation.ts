@@ -230,7 +230,7 @@ export async function execute(
 	const sheetNameWithRangeForKeyRow = `${sheetNameForKeyRow}!1:${keyRowIndex}`;
 	const sheetData = await sheet.getData(sheetNameWithRangeForKeyRow, 'FORMATTED_VALUE');
 
-	if (sheetData === undefined || !sheetData.length) {
+	if (!sheetData?.length) {
 		dataMode = 'autoMapInputData';
 	}
 
