@@ -343,6 +343,31 @@ export default defineComponent({
 			}
 		});
 
+		const headerIcon = computed(() => {
+			if (projectsStore.currentProject?.type === 'personal') {
+				return 'user';
+			} else if (projectsStore.currentProject?.name) {
+				return 'layer-group';
+			} else {
+				return 'home';
+			}
+		});
+
+		const projectName = computed(() => {
+			if (!projectsStore.currentProject) {
+				return i18n.baseText('projects.menu.home');
+			} else if (projectsStore.currentProject.type === 'personal') {
+				return i18n.baseText('projects.menu.personal');
+			} else {
+				return projectsStore.currentProject.name;
+			}
+		});
+
+		const projectDescription = computed(() => {
+			if (projectsStore.currentProject) return;
+			return 'All the workflows, credentials, variables and executions you have access to';
+		});
+
 		return {
 			i18n,
 			search,
@@ -367,6 +392,9 @@ export default defineComponent({
 			setCurrentPage,
 			setRowsPerPage,
 			onSearch,
+			headerIcon,
+			projectName,
+			projectDescription,
 		};
 	},
 });
@@ -375,12 +403,12 @@ export default defineComponent({
 <template>
 	<PageViewLayout>
 		<template #header>
-			<WorkflowHeader :icon="projectsStore.currentProject?.name ? 'layer-group' : 'home'">
+			<WorkflowHeader :icon="headerIcon" data-test-id="list-layout-header">
 				<template #title>
-					{{ projectsStore.currentProject?.name ?? 'Home' }}
+					{{ projectName }}
 				</template>
-				<template v-if="!projectsStore.currentProject?.name" #subtitle>
-					All the workflows, credentials, variables and executions you have access to
+				<template v-if="projectDescription" #subtitle>
+					{{ projectDescription }}
 				</template>
 			</WorkflowHeader>
 			<slot name="header" />
