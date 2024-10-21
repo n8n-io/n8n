@@ -55,7 +55,8 @@ export abstract class BaseCommand extends Command {
 	/**
 	 * How long to wait for graceful shutdown before force killing the process.
 	 */
-	protected gracefulShutdownTimeoutInS = config.getEnv('generic.gracefulShutdownTimeout');
+	protected gracefulShutdownTimeoutInS =
+		Container.get(GlobalConfig).generic.gracefulShutdownTimeout;
 
 	/** Whether to init community packages (if enabled) */
 	protected needsCommunityPackages = false;

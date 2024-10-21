@@ -250,6 +250,11 @@ describe('GlobalConfig', () => {
 			ttl: 10,
 			interval: 3,
 		},
+		generic: {
+			timezone: 'America/New_York',
+			releaseChannel: 'dev',
+			gracefulShutdownTimeout: 30,
+		},
 	};
 
 	it('should use all default values when no env variables are defined', () => {
