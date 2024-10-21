@@ -492,8 +492,9 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			telemetry?: boolean;
 		} = {},
 	) {
-		let insertPosition = options.position;
+		const addedNodes: INodeUi[] = [];
 		let lastAddedNode: INodeUi | undefined;
+		let insertPosition = options.position;
 
 		const nodesWithTypeVersion = nodes.map((node) => {
 			const typeVersion =
@@ -528,6 +529,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 						isAutoAdd,
 					},
 				);
+				addedNodes.push(lastAddedNode);
 			} catch (error) {
 				toast.showError(error, i18n.baseText('error'));
 				console.error(error);
@@ -552,6 +554,8 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		if (!options.keepPristine) {
 			uiStore.stateIsDirty = true;
 		}
+
+		return addedNodes;
 	}
 
 	function updatePositionForNodeWithMultipleInputs(node: INodeUi) {

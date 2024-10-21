@@ -859,8 +859,12 @@ async function onAddNodesAndConnections(
 		return;
 	}
 
-	await addNodes(nodes, { dragAndDrop, position, trackHistory: true, telemetry: true });
-	await nextTick();
+	const addedNodes = await addNodes(nodes, {
+		dragAndDrop,
+		position,
+		trackHistory: true,
+		telemetry: true,
+	});
 
 	const offsetIndex = editableWorkflow.value.nodes.length - nodes.length;
 	const mappedConnections: CanvasConnectionCreateData[] = connections.map(({ from, to }) => {
@@ -888,6 +892,7 @@ async function onAddNodesAndConnections(
 
 	void nextTick(() => {
 		uiStore.resetLastInteractedWith();
+		selectNodes([addedNodes[addedNodes.length - 1].id]);
 	});
 }
 
