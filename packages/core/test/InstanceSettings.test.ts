@@ -69,4 +69,19 @@ describe('InstanceSettings', () => {
 			);
 		});
 	});
+
+	describe('constructor', () => {
+		it('should generate a `hostId`', () => {
+			const encryptionKey = 'test_key';
+			process.env.N8N_ENCRYPTION_KEY = encryptionKey;
+			jest.spyOn(fs, 'existsSync').mockReturnValueOnce(true);
+			jest.spyOn(fs, 'readFileSync').mockReturnValueOnce(JSON.stringify({ encryptionKey }));
+
+			const settings = new InstanceSettings();
+
+			const [instanceType, nanoid] = settings.hostId.split('-');
+			expect(instanceType).toEqual('main');
+			expect(nanoid).toHaveLength(16); // e.g. sDX6ZPc0bozv66zM
+		});
+	});
 });

@@ -1,6 +1,6 @@
 import { Cipher } from 'n8n-core';
 import { jsonParse, type IDataObject, ApplicationError } from 'n8n-workflow';
-import Container, { Service } from 'typedi';
+import { Service } from 'typedi';
 
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import { EventService } from '@/events/event.service';
@@ -11,7 +11,7 @@ import type {
 } from '@/interfaces';
 import { License } from '@/license';
 import { Logger } from '@/logging/logger.service';
-import { OrchestrationService } from '@/services/orchestration.service';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { EXTERNAL_SECRETS_INITIAL_BACKOFF, EXTERNAL_SECRETS_MAX_BACKOFF } from './constants';
 import { updateIntervalTime } from './external-secrets-helper.ee';
@@ -38,6 +38,7 @@ export class ExternalSecretsManager {
 		private readonly secretsProviders: ExternalSecretsProviders,
 		private readonly cipher: Cipher,
 		private readonly eventService: EventService,
+		private readonly publisher: Publisher,
 	) {}
 
 	async init(): Promise<void> {
@@ -78,8 +79,8 @@ export class ExternalSecretsManager {
 		}
 	}
 
-	async broadcastReloadExternalSecretsProviders() {
-		await Container.get(OrchestrationService).publish('reload-external-secrets-providers');
+	broadcastReloadExternalSecretsProviders() {
+		void this.publisher.publishCommand({ command: 'reload-external-secrets-providers' });
 	}
 
 	private decryptSecretsSettings(value: string): ExternalSecretsSettings {
@@ -280,7 +281,7 @@ export class ExternalSecretsManager {
 		await this.saveAndSetSettings(settings, this.settingsRepo);
 		this.cachedSettings = settings;
 		await this.reloadProvider(provider);
-		await this.broadcastReloadExternalSecretsProviders();
+		this.broadcastReloadExternalSecretsProviders();
 
 		void this.trackProviderSave(provider, isNewProvider, userId);
 	}
@@ -300,7 +301,7 @@ export class ExternalSecretsManager {
 		this.cachedSettings = settings;
 		await this.reloadProvider(provider);
 		await this.updateSecrets();
-		await this.broadcastReloadExternalSecretsProviders();
+		this.broadcastReloadExternalSecretsProviders();
 	}
 
 	private async trackProviderSave(vaultType: string, isNew: boolean, userId?: string) {
@@ -380,7 +381,7 @@ export class ExternalSecretsManager {
 		}
 		try {
 			await this.providers[provider].update();
-			await this.broadcastReloadExternalSecretsProviders();
+			this.broadcastReloadExternalSecretsProviders();
 			return true;
 		} catch {
 			return false;

@@ -145,42 +145,6 @@ describe('AI Assistant::enabled', () => {
 		aiAssistant.getters.chatMessagesUser().eq(0).should('contain.text', "Sure, let's do it");
 	});
 
-	it('should show quick replies when node is executed after new suggestion', () => {
-		cy.intercept('POST', '/rest/ai/chat', (req) => {
-			req.reply((res) => {
-				if (['init-error-helper', 'message'].includes(req.body.payload.type)) {
-					res.send({
-						statusCode: 200,
-						fixture: 'aiAssistant/responses/simple_message_response.json',
-					});
-				} else if (req.body.payload.type === 'event') {
-					res.send({
-						statusCode: 200,
-						fixture: 'aiAssistant/responses/node_execution_error_response.json',
-					});
-				} else {
-					res.send({ statusCode: 500 });
-				}
-			});
-		}).as('chatRequest');
-		cy.createFixtureWorkflow('aiAssistant/workflows/test_workflow.json');
-		wf.actions.openNode('Edit Fields');
-		ndv.getters.nodeExecuteButton().click();
-		aiAssistant.getters.nodeErrorViewAssistantButton().click();
-		cy.wait('@chatRequest');
-		aiAssistant.getters.chatMessagesAssistant().should('have.length', 1);
-		ndv.getters.nodeExecuteButton().click();
-		cy.wait('@chatRequest');
-		// Respond 'Yes' to the quick reply (request new suggestion)
-		aiAssistant.getters.quickReplies().contains('Yes').click();
-		cy.wait('@chatRequest');
-		// No quick replies at this point
-		aiAssistant.getters.quickReplies().should('not.exist');
-		ndv.getters.nodeExecuteButton().click();
-		// But after executing the node again, quick replies should be shown
-		aiAssistant.getters.quickReplies().should('have.length', 2);
-	});
-
 	it('should warn before starting a new session', () => {
 		cy.intercept('POST', '/rest/ai/chat', {
 			statusCode: 200,

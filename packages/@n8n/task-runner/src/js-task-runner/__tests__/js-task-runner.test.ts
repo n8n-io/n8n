@@ -281,6 +281,20 @@ describe('JsTaskRunner', () => {
 				expect(outcome.result).toEqual([wrapIntoJson({ val: undefined })]);
 			});
 		});
+
+		it('should allow access to Node.js Buffers', async () => {
+			const outcome = await execTaskWithParams({
+				task: newTaskWithSettings({
+					code: 'return { val: Buffer.from("test-buffer").toString() }',
+					nodeMode: 'runOnceForAllItems',
+				}),
+				taskData: newAllCodeTaskData(inputItems.map(wrapIntoJson), {
+					envProviderState: undefined,
+				}),
+			});
+
+			expect(outcome.result).toEqual([wrapIntoJson({ val: 'test-buffer' })]);
+		});
 	});
 
 	describe('runOnceForAllItems', () => {
@@ -744,19 +758,20 @@ describe('JsTaskRunner', () => {
 
 			await runner.receivedSettings(taskId, task.settings);
 
-			expect(sendSpy).toHaveBeenCalledWith(
-				JSON.stringify({
-					type: 'runner:taskerror',
-					taskId,
-					error: {
-						message: 'unknown is not defined [line 1]',
-						description: 'ReferenceError',
-						lineNumber: 1,
-					},
-				}),
-			);
-
-			console.log('DONE');
-		}, 1000);
+			expect(sendSpy).toHaveBeenCalled();
+			const calledWith = sendSpy.mock.calls[0][0] as string;
+			expect(typeof calledWith).toBe('string');
+			const calledObject = JSON.parse(calledWith);
+			expect(calledObject).toEqual({
+				type: 'runner:taskerror',
+				taskId,
+				error: {
+					stack: expect.any(String),
+					message: 'unknown is not defined [line 1]',
+					description: 'ReferenceError',
+					lineNumber: 1,
+				},
+			});
+		});
 	});
 });
