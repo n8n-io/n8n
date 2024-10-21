@@ -18,6 +18,7 @@ import type {
 	IRunExecutionData,
 	WorkflowExecuteMode,
 	EnvProviderState,
+	INodeTypes,
 } from 'n8n-workflow';
 import * as a from 'node:assert';
 import { runInNewContext, type Context } from 'node:vm';
@@ -129,17 +130,7 @@ export class JsTaskRunner extends TaskRunner {
 		const workflowParams = allData.workflow;
 		const workflow = new Workflow({
 			...workflowParams,
-			nodeTypes: {
-				getByNameAndVersion() {
-					return undefined as unknown as INodeType;
-				},
-				getByName() {
-					return undefined as unknown as INodeType;
-				},
-				getKnownTypes() {
-					return {};
-				},
-			},
+			nodeTypes: this.nodeTypes,
 		});
 
 		const customConsole = {
