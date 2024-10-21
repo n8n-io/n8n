@@ -37,7 +37,7 @@ export class WorkflowPage extends BasePage {
 				.should('have.length.greaterThan', 0)
 				.findChildByTestId('node-issues'),
 		getEndpointSelector: (type: 'input' | 'output' | 'plus', nodeName: string, index = 0) => {
-			if (window.localStorage.getItem('NodeView.version') === '2') {
+			if (cy.isCanvasV2()) {
 				if (type === 'input') {
 					return `[data-test-id="canvas-node-input-handle"][data-node-name="${nodeName}"][data-handle-index="${index}"]`;
 				}
@@ -154,14 +154,6 @@ export class WorkflowPage extends BasePage {
 			),
 			() => cy.get(`[data-test-id="edge-label-wrapper"][data-source-node-name="${sourceNodeName}"][data-target-node-name="${targetNodeName}"]`)
 		),
-		// getConnectionStateBetweenNodes: (sourceNodeName: string, targetNodeName: string) => cy.ifCanvasVersion(
-		// 	() => {
-		// 		return this.getters.getConnectionBetweenNodes(sourceNodeName, targetNodeName).its('class')
-		// 	},
-		// 	() => {
-		// 		return this.getters.getConnectionBetweenNodes(sourceNodeName, targetNodeName).its('class')
-		// 	}
-		// ),
 		getConnectionActionsBetweenNodes: (sourceNodeName: string, targetNodeName: string) =>
 			cy.ifCanvasVersion(
 				() => cy.get(
@@ -178,13 +170,13 @@ export class WorkflowPage extends BasePage {
 		colors: () => cy.getByTestId('color'),
 		contextMenuAction: (action: string) => cy.getByTestId(`context-menu-item-${action}`),
 		getNodeLeftPosition: (element: JQuery<HTMLElement>) => {
-			if (window.localStorage.getItem('NodeView.version') === '2') {
+			if (cy.isCanvasV2()) {
 				return parseFloat(element.parent().css('transform').split(',')[4]);
 			}
 			return parseFloat(element.css('left'));
 		},
 		getNodeTopPosition: (element: JQuery<HTMLElement>) => {
-			if (window.localStorage.getItem('NodeView.version') === '2') {
+			if (cy.isCanvasV2()) {
 				return parseFloat(element.parent().css('transform').split(',')[5]);
 			}
 			return parseFloat(element.css('top'));
@@ -261,10 +253,10 @@ export class WorkflowPage extends BasePage {
 				: this.getters.nodeViewBackground();
 
 			if (method === 'right-click') {
-				target.rightclick(nodeTypeName ? 'center' : 'topLeft');
+				target.rightclick(nodeTypeName ? 'center' : 'topLeft', { force: true });
 			} else {
 				target.realHover();
-				target.find('[data-test-id="overflow-node-button"]').click();
+				target.find('[data-test-id="overflow-node-button"]').click({ force: true });
 			}
 		},
 		openNode: (nodeTypeName: string) => {
@@ -394,7 +386,7 @@ export class WorkflowPage extends BasePage {
 			cy.window().then((win) => {
 				// Pinch-to-zoom simulates a 'wheel' event with ctrlKey: true (same as zooming by scrolling)
 				this.getters.nodeView().trigger('wheel', {
-					// force: true,
+					force: true,
 					bubbles: true,
 					ctrlKey: true,
 					pageX: win.innerWidth / 2,
@@ -406,8 +398,7 @@ export class WorkflowPage extends BasePage {
 		},
 		/** Certain keyboard shortcuts are not possible on Cypress via a simple `.type`, and some delays are needed to emulate these events */
 		hitComboShortcut: (modifier: string, key: string) => {
-			cy.get('body').type(modifier, { delay: 100, release: false, force: true })
-			cy.get('body').type(key, { force: true });
+			cy.get('body').wait(100).type(modifier, { delay: 100, release: false }).type(key);
 		},
 		hitUndo: () => {
 			this.actions.hitComboShortcut(`{${META_KEY}}`, 'z');

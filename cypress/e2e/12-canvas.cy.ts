@@ -67,7 +67,7 @@ describe('Canvas Node Manipulation and Navigation', () => {
 			WorkflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME, true);
 			WorkflowPage.getters
 				.nodeView()
-				.click((i + 1) * 200, (i + 1) * 200);
+				.click((i + 1) * 200, (i + 1) * 200, { force: true });
 		}
 		WorkflowPage.actions.zoomToFit();
 
@@ -216,8 +216,8 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		WorkflowPage.getters.canvasNodes().should('have.length', 0);
 	});
 
-	// FIXME: Figure out how to test moving of the node
-	it.skip('should move node', () => {
+	// FIXME: Canvas V2: Figure out how to test moving of the node
+	it('should move node', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 		WorkflowPage.getters.canvasNodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
@@ -229,15 +229,15 @@ describe('Canvas Node Manipulation and Navigation', () => {
 			.then(($node) => {
 				const { left, top } = $node.position();
 
-				cy.ifCanvasVersion(
-					() => cy.drag('[data-test-id="canvas-node"].jtk-drag-selected', [50, 150], {
-						clickToFinish: true,
-					}),
-					() => cy.drag('.vue-flow__node', [300, 300], {
-						// clickToFinish: true,
+				if (cy.isCanvasV2()) {
+					cy.drag('.vue-flow__node', [300, 300], {
 						realMouse: true,
-					}),
-				)
+					});
+				} else {
+					cy.drag('[data-test-id="canvas-node"].jtk-drag-selected', [50, 150], {
+						clickToFinish: true,
+					});
+				}
 
 				WorkflowPage.getters
 					.canvasNodes()
@@ -443,8 +443,8 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		WorkflowPage.getters.canvasNodes().should('have.length', 2);
 		WorkflowPage.getters.nodeConnections().should('have.length', 1);
 	});
-	// FIXME: Credentials should show issue on the first open
-	it.skip('should remove unknown credentials on pasting workflow', () => {
+	// FIXME: Canvas V2: Credentials should show issue on the first open
+	it('should remove unknown credentials on pasting workflow', () => {
 		cy.fixture('workflow-with-unknown-credentials.json').then((data) => {
 			cy.get('body').paste(JSON.stringify(data));
 
@@ -456,8 +456,8 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		});
 	});
 
-	// FIXME: Unknown nodes should still render connection endpoints
-	it.skip('should render connections correctly if unkown nodes are present', () => {
+	// FIXME: Canvas V2: Unknown nodes should still render connection endpoints
+	it('should render connections correctly if unkown nodes are present', () => {
 		const unknownNodeName = 'Unknown node';
 		cy.createFixtureWorkflow('workflow-with-unknown-nodes.json', 'Unknown nodes');
 

@@ -205,8 +205,8 @@ describe('Execution', () => {
 		workflowPage.getters.clearExecutionDataButton().should('not.exist');
 	});
 
-	// FIXME: Webhook should show waiting state but it doesn't
-	it.skip('should test webhook workflow stop', () => {
+	// FIXME: Canvas V2: Webhook should show waiting state but it doesn't
+	it('should test webhook workflow stop', () => {
 		cy.createFixtureWorkflow('Webhook_wait_set.json');
 
 		// Check workflow buttons
@@ -295,8 +295,8 @@ describe('Execution', () => {
 		});
 	});
 
-	// FIXME: Missing pinned states for `edge-label-wrapper`
-	describe.skip('connections should be colored differently for pinned data', () => {
+	// FIXME: Canvas V2: Missing pinned states for `edge-label-wrapper`
+	describe('connections should be colored differently for pinned data', () => {
 		beforeEach(() => {
 			cy.createFixtureWorkflow('Schedule_pinned.json');
 			workflowPage.actions.deselectAll();

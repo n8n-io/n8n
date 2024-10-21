@@ -26,11 +26,12 @@ Cypress.Commands.add('getByTestId', (selector, ...args) => {
 	return cy.get(`[data-test-id="${selector}"]`, ...args);
 });
 
+Cypress.Commands.add('isCanvasV2', () => {
+	return Cypress.env('NODE_VIEW_VERSION') === 2;
+})
+
 Cypress.Commands.add('ifCanvasVersion', (getterV1, getterV2) => {
-	if (window.localStorage.getItem('NodeView.version') === '2') {
-		return getterV2();
-	}
-	return getterV1();
+	return cy.isCanvasV2() ? getterV2() : getterV1();
 });
 
 Cypress.Commands.add(
@@ -169,7 +170,6 @@ Cypress.Commands.add('drag', (selector, pos, options) => {
 			element.realMouseMove(newPosition.x, newPosition.y);
 			element.realMouseUp();
 		} else {
-			element.click({force: true});
 			element.trigger('mousedown', { force: true });
 			element.trigger('mousemove', {
 				which: 1,

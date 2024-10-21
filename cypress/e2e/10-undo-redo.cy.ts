@@ -20,8 +20,8 @@ describe('Undo/Redo', () => {
 		WorkflowPage.actions.visit();
 	});
 
-	// FIXME: Fix redo connections
-	it.skip('should undo/redo adding node in the middle', () => {
+	// FIXME: Canvas V2: Fix redo connections
+	it('should undo/redo adding node in the middle', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		WorkflowPage.actions.addNodeBetweenNodes(
@@ -116,8 +116,8 @@ describe('Undo/Redo', () => {
 	});
 
 
-	// FIXME: Fix undo/redo moving nodes
-	it.skip('should undo/redo moving nodes', () => {
+	// FIXME: Canvas V2: Fix moving of nodes via e2e tests
+	it('should undo/redo moving nodes', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		WorkflowPage.getters.canvasNodeByName(CODE_NODE_NAME).then(($node) => {
@@ -156,8 +156,8 @@ describe('Undo/Redo', () => {
 		WorkflowPage.actions.hitRedo();
 		WorkflowPage.getters.nodeConnections().should('have.length', 0);
 	});
-	// FIXME: Fix disconnecting by moving
-	it.skip('should undo/redo deleting a connection by moving it away', () => {
+	// FIXME: Canvas V2: Fix disconnecting by moving
+	it('should undo/redo deleting a connection by moving it away', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		cy.drag('.rect-input-endpoint.jtk-endpoint-connected', [0, -100]);
@@ -205,8 +205,8 @@ describe('Undo/Redo', () => {
 		WorkflowPage.getters.disabledNodes().should('have.length', 2);
 	});
 
-	// FIXME: Fix undo renaming node
-	it.skip('should undo/redo renaming node using keyboard shortcut', () => {
+	// FIXME: Canvas V2: Fix undo renaming node
+	it('should undo/redo renaming node using keyboard shortcut', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		WorkflowPage.getters.canvasNodes().last().click();
@@ -244,8 +244,8 @@ describe('Undo/Redo', () => {
 		});
 	});
 
-	// FIXME: Figure out why moving doesn't work from e2e
-	it.skip('should undo/redo multiple steps', () => {
+	// FIXME: Canvas V2: Figure out why moving doesn't work from e2e
+	it('should undo/redo multiple steps', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		// WorkflowPage.actions.addNodeToCanvas(SET_NODE_NAME);
