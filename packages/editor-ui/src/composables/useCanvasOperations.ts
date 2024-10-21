@@ -608,7 +608,6 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			historyStore.pushCommandToUndo(new AddNodeCommand(nodeData));
 		}
 
-		// void nextTick(() => {
 		workflowsStore.setNodePristine(nodeData.name, true);
 
 		nodeHelpers.matchCredentials(nodeData);
@@ -618,8 +617,6 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 		if (!options.isAutoAdd) {
 			createConnectionToLastInteractedWithNode(nodeData, options);
-			// uiStore.lastSelectedNode = nodeData.name;
-			// uiStore.lastInteractedWithNodeId = nodeData.id;
 		}
 
 		if (options.telemetry) {
@@ -633,9 +630,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 				ndvStore.setActiveNodeName(nodeData.name);
 			}
 		}
-		// });
 
-		console.log('🚀 ~ useCanvasOperations ~ nodeData:', nodeData);
 		return nodeData;
 	}
 
@@ -650,10 +645,6 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 	function createConnectionToLastInteractedWithNode(node: INodeUi, options: AddNodeOptions = {}) {
 		const lastInteractedWithNode = uiStore.lastInteractedWithNode;
-		console.log(
-			'🚀 ~ createConnectionToLastInteractedWithNode ~ lastInteractedWithNode:',
-			lastInteractedWithNode,
-		);
 		if (!lastInteractedWithNode) {
 			return;
 		}

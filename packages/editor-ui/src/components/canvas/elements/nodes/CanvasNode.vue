@@ -204,12 +204,10 @@ function onOpenContextMenuFromNode(event: MouseEvent) {
 	emit('open:contextmenu', props.id, event, 'node-right-click');
 }
 function onUpdate(parameters: Record<string, unknown>) {
-	console.log('🚀 ~ onUpdate ~ parameters:', parameters);
 	emit('update', props.id, parameters);
 }
 
 function onMove(position: XYPosition) {
-	console.log('🚀 ~ onMove ~ position:', position);
 	emit('move', props.id, position);
 }
 

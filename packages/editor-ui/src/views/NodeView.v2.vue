@@ -493,7 +493,6 @@ const allTriggerNodesDisabled = computed(() => {
 });
 
 function onUpdateNodesPosition(events: CanvasNodeMoveEvent[]) {
-	console.log('🚀 ~ onUpdateNodesPosition ~ events:', events);
 	updateNodesPosition(events, { trackHistory: true });
 }
 
