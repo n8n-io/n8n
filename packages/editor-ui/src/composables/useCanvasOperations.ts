@@ -544,12 +544,9 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			];
 		}
 
-		setTimeout(() => {
-			if (lastAddedNode) {
-				updatePositionForNodeWithMultipleInputs(lastAddedNode);
-				setNodeSelected(lastAddedNode.id);
-			}
-		}, 0);
+		if (lastAddedNode) {
+			updatePositionForNodeWithMultipleInputs(lastAddedNode);
+		}
 
 		if (options.trackHistory && options.trackBulk) {
 			historyStore.stopRecordingUndo();
@@ -620,10 +617,10 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		void nextTick(() => {
 			workflowsStore.setNodePristine(nodeData.name, true);
 
-		nodeHelpers.matchCredentials(nodeData);
-		nodeHelpers.updateNodeParameterIssues(nodeData);
-		nodeHelpers.updateNodeCredentialIssues(nodeData);
-		nodeHelpers.updateNodeInputIssues(nodeData);
+			nodeHelpers.matchCredentials(nodeData);
+			nodeHelpers.updateNodeParameterIssues(nodeData);
+			nodeHelpers.updateNodeCredentialIssues(nodeData);
+			nodeHelpers.updateNodeInputIssues(nodeData);
 
 			if (options.telemetry) {
 				trackAddNode(nodeData, options);
