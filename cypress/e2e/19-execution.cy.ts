@@ -119,7 +119,7 @@ describe('Execution', () => {
 			.within(() => cy.get('.fa-check'))
 			.should('exist');
 
-		if(isCanvasV2()) {
+		if (isCanvasV2()) {
 			workflowPage.getters
 				.canvasNodeByName('Wait')
 				.within(() => cy.get('.fa-sync-alt').should('not.exist'));
@@ -277,7 +277,7 @@ describe('Execution', () => {
 			.within(() => cy.get('.fa-check'))
 			.should('exist');
 
-		if(isCanvasV2()) {
+		if (isCanvasV2()) {
 			workflowPage.getters
 				.canvasNodeByName('Wait')
 				.within(() => cy.get('.fa-sync-alt').should('not.exist'));

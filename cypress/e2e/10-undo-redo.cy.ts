@@ -115,7 +115,6 @@ describe('Undo/Redo', () => {
 		WorkflowPage.getters.nodeConnections().should('have.length', 0);
 	});
 
-
 	// FIXME: Canvas V2: Fix moving of nodes via e2e tests
 	it('should undo/redo moving nodes', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);

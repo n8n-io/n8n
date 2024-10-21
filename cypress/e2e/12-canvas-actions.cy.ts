@@ -41,7 +41,9 @@ describe('Canvas Actions', () => {
 			WorkflowPage.getters.getEndpointSelector('input', `${EDIT_FIELDS_SET_NODE_NAME}1`),
 		);
 
-		WorkflowPage.getters.getConnectionBetweenNodes(MANUAL_TRIGGER_NODE_DISPLAY_NAME, `${EDIT_FIELDS_SET_NODE_NAME}1`).should('be.visible');
+		WorkflowPage.getters
+			.getConnectionBetweenNodes(MANUAL_TRIGGER_NODE_DISPLAY_NAME, `${EDIT_FIELDS_SET_NODE_NAME}1`)
+			.should('be.visible');
 
 		WorkflowPage.getters.nodeConnections().should('have.length', 1);
 		// Disconnect Set1
@@ -74,7 +76,7 @@ describe('Canvas Actions', () => {
 
 	it('should add a connected node using plus endpoint', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
-		WorkflowPage.getters.canvasNodePlusEndpointByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click()
+		WorkflowPage.getters.canvasNodePlusEndpointByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
 		WorkflowPage.getters.nodeCreatorSearchBar().should('be.visible');
 		WorkflowPage.getters.nodeCreatorSearchBar().type(CODE_NODE_NAME);
 		WorkflowPage.getters.nodeCreatorSearchBar().type('{enter}');
@@ -85,7 +87,7 @@ describe('Canvas Actions', () => {
 
 	it('should add a connected node dragging from node creator', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
-		WorkflowPage.getters.canvasNodePlusEndpointByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click()
+		WorkflowPage.getters.canvasNodePlusEndpointByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
 		WorkflowPage.getters.nodeCreatorSearchBar().should('be.visible');
 		WorkflowPage.getters.nodeCreatorSearchBar().type(CODE_NODE_NAME);
 		cy.drag(WorkflowPage.getters.nodeCreatorNodeItems().first(), [100, 100], {
@@ -99,7 +101,7 @@ describe('Canvas Actions', () => {
 
 	it('should open a category when trying to drag and drop it on the canvas', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
-		WorkflowPage.getters.canvasNodePlusEndpointByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click()
+		WorkflowPage.getters.canvasNodePlusEndpointByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
 		WorkflowPage.getters.nodeCreatorSearchBar().should('be.visible');
 		WorkflowPage.getters.nodeCreatorSearchBar().type(CODE_NODE_NAME);
 		cy.drag(WorkflowPage.getters.nodeCreatorActionItems().first(), [100, 100], {
@@ -114,7 +116,7 @@ describe('Canvas Actions', () => {
 	it('should add disconnected node if nothing is selected', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 		// Deselect nodes
-		WorkflowPage.getters.nodeView().click({ force: true});
+		WorkflowPage.getters.nodeView().click({ force: true });
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		WorkflowPage.getters.canvasNodes().should('have.length', 2);
 		WorkflowPage.getters.nodeConnections().should('have.length', 0);
@@ -134,7 +136,6 @@ describe('Canvas Actions', () => {
 		);
 		WorkflowPage.getters.canvasNodes().should('have.length', 4);
 		WorkflowPage.getters.nodeConnections().should('have.length', 3);
-
 
 		WorkflowPage.getters.canvasNodeByName(EDIT_FIELDS_SET_NODE_NAME).then(($editFieldsNode) => {
 			const editFieldsNodeLeft = WorkflowPage.getters.getNodeLeftPosition($editFieldsNode);
@@ -241,20 +242,21 @@ describe('Canvas Actions', () => {
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		cy.wait(500);
 		cy.get('body').type('{leftArrow}');
-		const selectedCanvasNodes = () => cy.ifCanvasVersion(
-			() => WorkflowPage.getters.canvasNodes(),
-			() => WorkflowPage.getters.canvasNodes().parent()
-		)
+		const selectedCanvasNodes = () =>
+			cy.ifCanvasVersion(
+				() => WorkflowPage.getters.canvasNodes(),
+				() => WorkflowPage.getters.canvasNodes().parent(),
+			);
 
 		cy.ifCanvasVersion(
 			() => selectedCanvasNodes().first().should('have.class', 'jtk-drag-selected'),
-			() => selectedCanvasNodes().first().should('have.class', 'selected')
-		)
+			() => selectedCanvasNodes().first().should('have.class', 'selected'),
+		);
 		cy.get('body').type('{rightArrow}');
 		cy.ifCanvasVersion(
 			() => selectedCanvasNodes().last().should('have.class', 'jtk-drag-selected'),
-			() => selectedCanvasNodes().last().should('have.class', 'selected')
-		)
+			() => selectedCanvasNodes().last().should('have.class', 'selected'),
+		);
 	});
 
 	// FIXME: Canvas V2: Selection via shift and arrow keys is broken
