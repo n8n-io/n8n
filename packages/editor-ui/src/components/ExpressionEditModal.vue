@@ -78,14 +78,14 @@ watch(
 		void externalHooks.run('expressionEdit.dialogVisibleChanged', {
 			dialogVisible: newValue,
 			parameter: props.parameter,
-			value: props.modelValue,
+			value: props.modelValue.toString(),
 			resolvedExpressionValue,
 		});
 
 		if (!newValue) {
 			const telemetryPayload = createExpressionTelemetryPayload(
 				segments.value,
-				props.modelValue,
+				props.modelValue.toString(),
 				workflowsStore.workflowId,
 				ndvStore.pushRef,
 				ndvStore.activeNode?.type ?? '',

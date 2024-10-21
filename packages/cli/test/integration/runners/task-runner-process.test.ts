@@ -88,15 +88,15 @@ describe('TaskRunnerProcess', () => {
 		// @ts-expect-error private property
 		runnerProcess.process?.kill('SIGKILL');
 
-		// Assert
-		// Wait until the runner is running again
-		await retryUntil(() => expect(runnerProcess.isRunning).toBeTruthy());
-		expect(runnerProcess.pid).not.toBe(processId);
+		// Wait until the runner has exited
+		await runnerProcess.runPromise;
 
+		// Assert
 		// Wait until the runner has connected again
 		await retryUntil(() => expect(getNumConnectedRunners()).toBe(1));
 		expect(getNumConnectedRunners()).toBe(1);
 		expect(getNumRegisteredRunners()).toBe(1);
+		expect(runnerProcess.pid).not.toBe(processId);
 	});
 
 	it('should launch runner directly if not using a launcher', async () => {

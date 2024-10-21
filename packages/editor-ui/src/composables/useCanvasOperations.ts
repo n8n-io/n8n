@@ -76,6 +76,7 @@ import type { Connection } from '@vue-flow/core';
 import type {
 	IConnection,
 	IConnections,
+	IDataObject,
 	INode,
 	INodeConnections,
 	INodeCredentials,
@@ -493,6 +494,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 	) {
 		let insertPosition = options.position;
 		let lastAddedNode: INodeUi | undefined;
+		const addedNodes: INodeUi[] = [];
 
 		const nodesWithTypeVersion = nodes.map((node) => {
 			const typeVersion =
@@ -515,7 +517,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			const nodeTypeDescription = requireNodeTypeDescription(node.type, node.typeVersion);
 
 			try {
-				lastAddedNode = addNode(
+				const newNode = addNode(
 					{
 						...node,
 						position,
@@ -527,6 +529,8 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 						isAutoAdd,
 					},
 				);
+				lastAddedNode = newNode;
+				addedNodes.push(newNode);
 			} catch (error) {
 				toast.showError(error, i18n.baseText('error'));
 				console.error(error);
@@ -551,6 +555,8 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		if (!options.keepPristine) {
 			uiStore.stateIsDirty = true;
 		}
+
+		return addedNodes;
 	}
 
 	function updatePositionForNodeWithMultipleInputs(node: INodeUi) {
@@ -604,6 +610,10 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			historyStore.pushCommandToUndo(new AddNodeCommand(nodeData));
 		}
 
+		if (!options.isAutoAdd) {
+			createConnectionToLastInteractedWithNode(nodeData, options);
+		}
+
 		void nextTick(() => {
 			workflowsStore.setNodePristine(nodeData.name, true);
 
@@ -611,10 +621,6 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			nodeHelpers.updateNodeParameterIssues(nodeData);
 			nodeHelpers.updateNodeCredentialIssues(nodeData);
 			nodeHelpers.updateNodeInputIssues(nodeData);
-
-			if (!options.isAutoAdd) {
-				createConnectionToLastInteractedWithNode(nodeData, options);
-			}
 
 			if (options.telemetry) {
 				trackAddNode(nodeData, options);
@@ -1673,6 +1679,12 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 						);
 						if (isDuplicate) {
 							node.webhookId = uuid();
+
+							if (node.parameters.path) {
+								node.parameters.path = node.webhookId as string;
+							} else if ((node.parameters.options as IDataObject).path) {
+								(node.parameters.options as IDataObject).path = node.webhookId as string;
+							}
 						}
 					}
 
@@ -1772,9 +1784,6 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		}, []);
 
 		workflowsStore.addWorkflowTagIds(tagIds);
-		setTimeout(() => {
-			nodeHelpers.addPinDataConnections(workflowsStore.pinnedWorkflowData);
-		});
 	}
 
 	async function fetchWorkflowDataFromUrl(url: string): Promise<IWorkflowDataUpdate | undefined> {

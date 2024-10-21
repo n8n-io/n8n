@@ -3,6 +3,7 @@ import {
 	DEFAULT_NEW_WORKFLOW_NAME,
 	DUPLICATE_POSTFFIX,
 	ERROR_TRIGGER_NODE_TYPE,
+	FORM_NODE_TYPE,
 	MAX_WORKFLOW_NAME_LENGTH,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	START_NODE_TYPE,
@@ -185,7 +186,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const isWaitingExecution = computed(() => {
 		return allNodes.value.some(
 			(node) =>
-				(node.type === WAIT_NODE_TYPE || node.parameters.operation === SEND_AND_WAIT_OPERATION) &&
+				(node.type === WAIT_NODE_TYPE ||
+					node.type === FORM_NODE_TYPE ||
+					node.parameters.operation === SEND_AND_WAIT_OPERATION) &&
 				node.disabled !== true,
 		);
 	});

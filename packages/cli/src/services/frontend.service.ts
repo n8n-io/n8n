@@ -96,7 +96,7 @@ export class FrontendService {
 			executionTimeout: config.getEnv('executions.timeout'),
 			maxExecutionTimeout: config.getEnv('executions.maxTimeout'),
 			workflowCallerPolicyDefaultOption: this.globalConfig.workflows.callerPolicyDefaultOption,
-			timezone: config.getEnv('generic.timezone'),
+			timezone: this.globalConfig.generic.timezone,
 			urlBaseWebhook: this.urlService.getWebhookBaseUrl(),
 			urlBaseEditor: instanceBaseUrl,
 			binaryDataMode: config.getEnv('binaryDataManager.mode'),
@@ -106,7 +106,7 @@ export class FrontendService {
 			authCookie: {
 				secure: config.getEnv('secure_cookie'),
 			},
-			releaseChannel: config.getEnv('generic.releaseChannel'),
+			releaseChannel: this.globalConfig.generic.releaseChannel,
 			oauthCallbackUrls: {
 				oauth1: `${instanceBaseUrl}/${restEndpoint}/oauth1-credential/callback`,
 				oauth2: `${instanceBaseUrl}/${restEndpoint}/oauth2-credential/callback`,

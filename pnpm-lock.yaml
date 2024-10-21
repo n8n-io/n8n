@@ -477,6 +477,9 @@ importers:
       '@mozilla/readability':
         specifier: 0.5.0
         version: 0.5.0
+      '@n8n/json-schema-to-zod':
+        specifier: workspace:*
+        version: link:../json-schema-to-zod
       '@n8n/typeorm':
         specifier: 0.3.20-12
         version: 0.3.20-12(@sentry/node@7.87.0)(ioredis@5.3.2)(mssql@10.0.2)(mysql2@3.11.0)(pg@8.12.0)(redis@4.6.12)(sqlite3@5.1.7)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.6.2))
@@ -522,9 +525,6 @@ importers:
       jsdom:
         specifier: 23.0.1
         version: 23.0.1
-      json-schema-to-zod:
-        specifier: 2.1.0
-        version: 2.1.0
       langchain:
         specifier: 0.3.2
         version: 0.3.2(u4cmnaniapk3e37ytin75vjstm)
@@ -1850,8 +1850,8 @@ importers:
         specifier: 'catalog:'
         version: 0.4.14
       eslint-plugin-n8n-nodes-base:
-        specifier: ^1.16.2
-        version: 1.16.2(eslint@8.57.0)(typescript@5.6.2)
+        specifier: ^1.16.3
+        version: 1.16.3(eslint@8.57.0)(typescript@5.6.2)
       n8n-core:
         specifier: workspace:*
         version: link:../core
@@ -7145,8 +7145,8 @@ packages:
   eslint-plugin-n8n-local-rules@1.0.0:
     resolution: {integrity: sha512-qe6sVFDP1Vj5eXlqZxYZpIjwYvhuqXlI0P8OfPyhiPOhMkFtr0TpFphD8/6WCzkm7LJCvG1eJEzURCtMIsFTAg==}
 
-  eslint-plugin-n8n-nodes-base@1.16.2:
-    resolution: {integrity: sha512-Qj8S+YgymYkt/5Fr1buwOTjl0jAERJBp3MA5V8M6NR1HYfErKazVjpOPEy5+04c0vAQZO1mPLGAzanxqqNUIng==}
+  eslint-plugin-n8n-nodes-base@1.16.3:
+    resolution: {integrity: sha512-edLX42Vg4B+y0kzkitTVDmHZQrG5/wUZO874N5Z9leBuxt5TG1pqMY4zdr35RlpM4p4REr/T9x+6DpsQSL63WA==}
     engines: {node: '>=20.15', pnpm: '>=9.6'}
 
   eslint-plugin-unicorn@51.0.1:
@@ -8601,10 +8601,6 @@ packages:
 
   json-pointer@0.6.2:
     resolution: {integrity: sha512-vLWcKbOaXlO+jvRy4qNd+TI1QUPZzfJj1tpJ3vAXDych5XJf93ftpUKe5pKCrzyIIwgBJcOcCVRUfqQP25afBw==}
-
-  json-schema-to-zod@2.1.0:
-    resolution: {integrity: sha512-7ishNgYY+AbIKeeHcp5xCOdJbdVwSfDx/4V2ktc16LUusCJJbz2fEKdWUmAxhKIiYzhZ9Fp4E8OsAoM/h9cOLA==}
-    hasBin: true
 
   json-schema-traverse@0.4.1:
     resolution: {integrity: sha512-xbbCH5dCYU5T8LcEhhuh7HJ88HXuW3qsI3Y0zOZFKfZEHcpWiHU/Jxzk629Brsab/mMiHQti9wMP+845RPe3Vg==}
@@ -19386,7 +19382,7 @@ snapshots:
 
   eslint-plugin-n8n-local-rules@1.0.0: {}
 
-  eslint-plugin-n8n-nodes-base@1.16.2(eslint@8.57.0)(typescript@5.6.2):
+  eslint-plugin-n8n-nodes-base@1.16.3(eslint@8.57.0)(typescript@5.6.2):
     dependencies:
       '@typescript-eslint/utils': 6.21.0(eslint@8.57.0)(typescript@5.6.2)
       camel-case: 4.1.2
@@ -21339,8 +21335,6 @@ snapshots:
   json-pointer@0.6.2:
     dependencies:
       foreach: 2.0.6
-
-  json-schema-to-zod@2.1.0: {}
 
   json-schema-traverse@0.4.1: {}
 

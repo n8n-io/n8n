@@ -51,13 +51,13 @@ import PCancelable from 'p-cancelable';
 import * as NodeExecuteFunctions from './NodeExecuteFunctions';
 import {
 	DirectedGraph,
-	findCycles,
 	findStartNodes,
 	findSubgraph,
 	findTriggerForPartialExecution,
+	cleanRunData,
+	recreateNodeExecutionStack,
+	handleCycles,
 } from './PartialExecutionUtils';
-import { cleanRunData } from './PartialExecutionUtils/cleanRunData';
-import { recreateNodeExecutionStack } from './PartialExecutionUtils/recreateNodeExecutionStack';
 
 export class WorkflowExecute {
 	private status: ExecutionStatus = 'new';
@@ -352,15 +352,11 @@ export class WorkflowExecute {
 		const filteredNodes = subgraph.getNodes();
 
 		// 3. Find the Start Nodes
-		const startNodes = findStartNodes({ graph: subgraph, trigger, destination, runData });
+		let startNodes = findStartNodes({ graph: subgraph, trigger, destination, runData });
 
 		// 4. Detect Cycles
-		const cycles = findCycles(workflow);
-
 		// 5. Handle Cycles
-		if (cycles.length) {
-			// TODO: handle
-		}
+		startNodes = handleCycles(graph, startNodes, trigger);
 
 		// 6. Clean Run Data
 		const newRunData: IRunData = cleanRunData(runData, graph, startNodes);

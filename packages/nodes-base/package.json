@@ -503,6 +503,7 @@
       "dist/nodes/Filter/Filter.node.js",
       "dist/nodes/Flow/Flow.node.js",
       "dist/nodes/Flow/FlowTrigger.node.js",
+      "dist/nodes/Form/Form.node.js",
       "dist/nodes/Form/FormTrigger.node.js",
       "dist/nodes/FormIo/FormIoTrigger.node.js",
       "dist/nodes/Formstack/FormstackTrigger.node.js",
@@ -839,7 +840,7 @@
     "@types/ssh2-sftp-client": "^5.1.0",
     "@types/uuid": "catalog:",
     "@types/xml2js": "catalog:",
-    "eslint-plugin-n8n-nodes-base": "^1.16.2",
+    "eslint-plugin-n8n-nodes-base": "^1.16.3",
     "n8n-core": "workspace:*"
   },
   "dependencies": {
