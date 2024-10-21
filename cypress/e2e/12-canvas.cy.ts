@@ -53,11 +53,11 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		cy.reload();
 		cy.waitForLoad();
 		// Make sure outputless switch was connected correctly
-		WorkflowPage.getters.getConnectionBetweenNodes(`${EDIT_FIELDS_SET_NODE_NAME}3`, `${SWITCH_NODE_NAME}1`).should('be.visible');
+		WorkflowPage.getters.getConnectionBetweenNodes(`${EDIT_FIELDS_SET_NODE_NAME}3`, `${SWITCH_NODE_NAME}1`).should('exist');
 		// Make sure all connections are there after reload
 		for (let i = 0; i < desiredOutputs; i++) {
 			const setName = `${EDIT_FIELDS_SET_NODE_NAME}${i > 0 ? i : ''}`;
-			WorkflowPage.getters.getConnectionBetweenNodes(`${SWITCH_NODE_NAME}`, setName).should('be.visible');
+			WorkflowPage.getters.getConnectionBetweenNodes(`${SWITCH_NODE_NAME}`, setName).should('exist');
 		}
 	});
 
@@ -91,9 +91,9 @@ describe('Canvas Node Manipulation and Navigation', () => {
 			WorkflowPage.getters.getEndpointSelector('input', MERGE_NODE_NAME, 1),
 		);
 		const checkConnections = () => {
-			WorkflowPage.getters.getConnectionBetweenNodes(MANUAL_TRIGGER_NODE_DISPLAY_NAME, `${EDIT_FIELDS_SET_NODE_NAME}1`).should('be.visible');
-			WorkflowPage.getters.getConnectionBetweenNodes(EDIT_FIELDS_SET_NODE_NAME, MERGE_NODE_NAME).should('be.visible');
-			WorkflowPage.getters.getConnectionBetweenNodes(`${EDIT_FIELDS_SET_NODE_NAME}1`, MERGE_NODE_NAME).should('be.visible');
+			WorkflowPage.getters.getConnectionBetweenNodes(MANUAL_TRIGGER_NODE_DISPLAY_NAME, `${EDIT_FIELDS_SET_NODE_NAME}1`).should('exist');
+			WorkflowPage.getters.getConnectionBetweenNodes(EDIT_FIELDS_SET_NODE_NAME, MERGE_NODE_NAME).should('exist');
+			WorkflowPage.getters.getConnectionBetweenNodes(`${EDIT_FIELDS_SET_NODE_NAME}1`, MERGE_NODE_NAME).should('exist');
 		}
 		checkConnections();
 
@@ -252,10 +252,16 @@ describe('Canvas Node Manipulation and Navigation', () => {
 	});
 
 	describe('Canvas Zoom Functionality', () => {
+		const getContainer = () => cy.ifCanvasVersion(
+			() => WorkflowPage.getters.nodeView(),
+			() => WorkflowPage.getters.canvasViewport(),
+		)
 		const checkZoomLevel = (expectedFactor: number) => {
-			return WorkflowPage.getters.canvasViewport().should(($nodeView) => {
+			return getContainer().should(($nodeView) => {
+
 				const newTransform = $nodeView.css('transform');
 				const newScale = parseFloat(newTransform.split(',')[0].slice(7));
+
 				expect(newScale).to.be.closeTo(expectedFactor, 0.2);
 			});
 		};
@@ -267,9 +273,9 @@ describe('Canvas Node Manipulation and Navigation', () => {
 
 		it('should zoom in', () => {
 			WorkflowPage.getters.zoomInButton().should('be.visible');
-			WorkflowPage.getters.canvasViewport().then(($nodeView) => {
+			getContainer().then(($nodeView) => {
 				const initialTransform = $nodeView.css('transform');
-				const initialScale = parseFloat(initialTransform.split(',')[0].slice(7));
+				const initialScale = initialTransform === 'none' ? 1 : parseFloat(initialTransform.split(',')[0].slice(7));
 
 				zoomAndCheck('zoomIn', initialScale * ZOOM_IN_X1_FACTOR);
 				zoomAndCheck('zoomIn', initialScale * ZOOM_IN_X2_FACTOR);

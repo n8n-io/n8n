@@ -18,7 +18,7 @@ describe('Canvas Actions', () => {
 
 	// FIXME: Canvas V2: Missing execute button if no nodes
 	it('should render canvas', () => {
-		WorkflowPage.getters.nodeView().should('be.visible');
+		WorkflowPage.getters.nodeViewRoot().should('be.visible');
 		WorkflowPage.getters.canvasPlusButton().should('be.visible');
 		WorkflowPage.getters.zoomToFitButton().should('be.visible');
 		WorkflowPage.getters.zoomInButton().should('be.visible');
@@ -41,7 +41,7 @@ describe('Canvas Actions', () => {
 			WorkflowPage.getters.getEndpointSelector('input', `${EDIT_FIELDS_SET_NODE_NAME}1`),
 		);
 
-		WorkflowPage.getters.getConnectionBetweenNodes(MANUAL_TRIGGER_NODE_NAME, `${EDIT_FIELDS_SET_NODE_NAME}1`).should('be.visible');
+		WorkflowPage.getters.getConnectionBetweenNodes(MANUAL_TRIGGER_NODE_DISPLAY_NAME, `${EDIT_FIELDS_SET_NODE_NAME}1`).should('be.visible');
 
 		WorkflowPage.getters.nodeConnections().should('have.length', 1);
 		// Disconnect Set1

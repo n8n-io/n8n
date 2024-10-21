@@ -73,7 +73,10 @@ export class WorkflowPage extends BasePage {
 		expressionModalInput: () => cy.getByTestId('expression-modal-input').find('[role=textbox]'),
 		expressionModalOutput: () => cy.getByTestId('expression-modal-output'),
 
-		nodeViewRoot: () => cy.getByTestId('node-view-root'),
+		nodeViewRoot: () => cy.ifCanvasVersion(
+			() => cy.getByTestId('node-view-root'),
+			() => this.getters.nodeView()
+		),
 		copyPasteInput: () => cy.getByTestId('hidden-copy-paste'),
 		nodeConnections: () => cy.ifCanvasVersion(
 			() => cy.get('.jtk-connector'),
