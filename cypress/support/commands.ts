@@ -74,6 +74,10 @@ Cypress.Commands.add('signin', ({ email, password }) => {
 			})
 			.then((response) => {
 				Cypress.env('currentUserId', response.body.data.id);
+
+				cy.window().then((win) => {
+					win.localStorage.setItem('NodeView.switcher.discovered', 'true'); // @TODO Remove this once the switcher is removed
+				});
 			});
 	});
 });

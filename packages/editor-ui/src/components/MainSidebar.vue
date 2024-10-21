@@ -20,6 +20,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useUserHelpers } from '@/composables/useUserHelpers';
 
 import { ABOUT_MODAL_KEY, VERSIONS_MODAL_KEY, VIEWS } from '@/constants';
+import { useBugReporting } from '@/composables/useBugReporting';
 
 const becomeTemplateCreatorStore = useBecomeTemplateCreatorStore();
 const cloudPlanStore = useCloudPlanStore();
@@ -37,6 +38,7 @@ const locale = useI18n();
 const route = useRoute();
 const router = useRouter();
 const telemetry = useTelemetry();
+const { getReportingURL } = useBugReporting();
 
 useUserHelpers(router, route);
 
@@ -140,6 +142,15 @@ const mainMenuItems = ref([
 				label: locale.baseText('mainSidebar.helpMenuItems.course'),
 				link: {
 					href: 'https://docs.n8n.io/courses/',
+					target: '_blank',
+				},
+			},
+			{
+				id: 'report-bug',
+				icon: 'bug',
+				label: locale.baseText('mainSidebar.helpMenuItems.reportBug'),
+				link: {
+					href: getReportingURL(),
 					target: '_blank',
 				},
 			},
