@@ -10,6 +10,7 @@ import type { INodeUi, IRunDataDisplayMode, NodePanelType } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { setActivePinia } from 'pinia';
 import { defaultNodeTypes } from '@/__tests__/mocks';
+import type { INodeExecutionData } from 'n8n-workflow';
 
 const nodes = [
 	{
@@ -57,6 +58,7 @@ describe('RunData', () => {
 				},
 			],
 			'binary',
+			undefined,
 			'input',
 		);
 
@@ -135,9 +137,27 @@ describe('RunData', () => {
 		expect(getByTestId('ndv-binary-data_0')).toBeInTheDocument();
 	});
 
+	it('should not render pin data button when there is no output data', async () => {
+		const { queryByTestId } = render([], 'table');
+		expect(queryByTestId('ndv-pin-data')).not.toBeInTheDocument();
+	});
+
+	it('should disable pin data button when data is pinned', async () => {
+		const { getByTestId } = render([], 'table', [{ json: { name: 'Test' } }]);
+		const pinDataButton = getByTestId('ndv-pin-data');
+		expect(pinDataButton).toBeDisabled();
+	});
+
+	it('should enable pin data button when data is not pinned', async () => {
+		const { getByTestId } = render([{ json: { name: 'Test' } }], 'table');
+		const pinDataButton = getByTestId('ndv-pin-data');
+		expect(pinDataButton).toBeEnabled();
+	});
+
 	const render = (
 		outputData: unknown[],
 		displayMode: IRunDataDisplayMode,
+		pinnedData?: INodeExecutionData[],
 		paneType: NodePanelType = 'output',
 	) => {
 		const pinia = createTestingPinia({
@@ -198,11 +218,17 @@ describe('RunData', () => {
 
 		const workflowsStore = useWorkflowsStore();
 		vi.mocked(workflowsStore).getNodeByName.mockReturnValue(nodes[0]);
+		if (pinnedData) {
+			vi.mocked(workflowsStore).pinDataByNodeName.mockReturnValue(pinnedData);
+		}
 
 		return createComponentRenderer(RunData, {
 			props: {
 				node: {
 					name: 'Test Node',
+				},
+				workflow: {
+					nodes,
 				},
 			},
 			data() {

@@ -40,6 +40,7 @@ import { NodeConnectionType, NodeHelpers, SEND_AND_WAIT_OPERATION } from 'n8n-wo
 import type { INodeUi } from '@/Interface';
 import {
 	CUSTOM_API_CALL_KEY,
+	FORM_NODE_TYPE,
 	STICKY_NODE_TYPE,
 	WAIT_NODE_TYPE,
 	WAIT_TIME_UNLIMITED,
@@ -350,6 +351,11 @@ export function useCanvasMapping({
 
 					if (node?.parameters.operation === SEND_AND_WAIT_OPERATION) {
 						acc[node.id] = i18n.baseText('node.theNodeIsWaitingUserInput');
+						return acc;
+					}
+
+					if (node?.type === FORM_NODE_TYPE) {
+						acc[node.id] = i18n.baseText('node.theNodeIsWaitingFormCall');
 						return acc;
 					}
 

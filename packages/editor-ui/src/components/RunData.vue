@@ -255,6 +255,30 @@ export default defineComponent({
 			}
 			return this.nodeTypesStore.isTriggerNode(this.node.type);
 		},
+		showPinButton(): boolean {
+			if (!this.rawInputData.length && !this.pinnedData.hasData.value) {
+				return false;
+			}
+
+			if (this.editMode.enabled) {
+				return false;
+			}
+
+			if (this.binaryData?.length) {
+				return this.isPaneTypeOutput;
+			}
+
+			return this.canPinData;
+		},
+		pinButtonDisabled(): boolean {
+			return (
+				this.pinnedData.hasData.value ||
+				!this.rawInputData.length ||
+				!!this.binaryData?.length ||
+				this.isReadOnlyRoute ||
+				this.readOnlyEnv
+			);
+		},
 		canPinData(): boolean {
 			if (this.node === null) {
 				return false;
@@ -268,17 +292,6 @@ export default defineComponent({
 				this.pinnedData.isValidNodeType.value &&
 				!(this.binaryData && this.binaryData.length > 0)
 			);
-		},
-		showPinDataButton(): boolean {
-			if (!this.rawInputData.length || this.editMode.enabled) {
-				return false;
-			}
-
-			if (this.binaryData?.length) {
-				return this.isPaneTypeOutput;
-			}
-
-			return this.canPinData;
 		},
 		displayModes(): Array<{ label: string; value: string }> {
 			const defaults = [
@@ -1210,6 +1223,7 @@ export default defineComponent({
 					size="small"
 					underline
 					bold
+					data-test-id="ndv-unpin-data"
 					@click.stop="onTogglePinData({ source: 'banner-link' })"
 				>
 					{{ $locale.baseText('runData.pindata.unpin') }}
@@ -1280,13 +1294,8 @@ export default defineComponent({
 				/>
 
 				<RunDataPinButton
-					v-if="showPinDataButton"
-					:disabled="
-						(!rawInputData.length && !pinnedData.hasData.value) ||
-						isReadOnlyRoute ||
-						readOnlyEnv ||
-						!!binaryData?.length
-					"
+					v-if="showPinButton"
+					:disabled="pinButtonDisabled"
 					:tooltip-contents-visibility="{
 						binaryDataTooltipContent: !!binaryData?.length,
 						pinDataDiscoveryTooltipContent:

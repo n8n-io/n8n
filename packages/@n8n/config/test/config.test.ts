@@ -211,7 +211,6 @@ describe('GlobalConfig', () => {
 					clusterNodes: '',
 					tls: false,
 				},
-				queueRecoveryInterval: 60,
 				gracefulShutdownTimeout: 30,
 				prefix: 'bull',
 				settings: {
