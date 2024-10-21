@@ -133,9 +133,10 @@ describe('NDV', () => {
 				"An expression here won't work because it uses .item and n8n can't figure out the matching item.",
 			);
 		ndv.getters.nodeRunErrorIndicator().should('be.visible');
+		ndv.getters.nodeRunTooltipIndicator().should('be.visible');
 		// The error details should be hidden behind a tooltip
-		ndv.getters.nodeRunErrorIndicator().should('not.contain', 'Start Time');
-		ndv.getters.nodeRunErrorIndicator().should('not.contain', 'Execution Time');
+		ndv.getters.nodeRunTooltipIndicator().should('not.contain', 'Start Time');
+		ndv.getters.nodeRunTooltipIndicator().should('not.contain', 'Execution Time');
 	});
 
 	it('should save workflow using keyboard shortcut from NDV', () => {
@@ -617,8 +618,10 @@ describe('NDV', () => {
 		// Should not show run info before execution
 		ndv.getters.nodeRunSuccessIndicator().should('not.exist');
 		ndv.getters.nodeRunErrorIndicator().should('not.exist');
+		ndv.getters.nodeRunTooltipIndicator().should('not.exist');
 		ndv.getters.nodeExecuteButton().click();
 		ndv.getters.nodeRunSuccessIndicator().should('exist');
+		ndv.getters.nodeRunTooltipIndicator().should('exist');
 	});
 
 	it('should properly show node execution indicator for multiple nodes', () => {
@@ -630,6 +633,7 @@ describe('NDV', () => {
 		// Manual tigger node should show success indicator
 		workflowPage.actions.openNode('When clicking ‘Test workflow’');
 		ndv.getters.nodeRunSuccessIndicator().should('exist');
+		ndv.getters.nodeRunTooltipIndicator().should('exist');
 		// Code node should show error
 		ndv.getters.backToCanvas().click();
 		workflowPage.actions.openNode('Code');
