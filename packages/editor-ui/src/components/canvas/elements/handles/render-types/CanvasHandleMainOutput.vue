@@ -20,6 +20,7 @@ const handleClasses = 'source';
 const classes = computed(() => ({
 	'canvas-node-handle-main-output': true,
 	[$style.handle]: true,
+	[$style.connected]: isConnected.value,
 	[$style.required]: isRequired.value,
 }));
 
@@ -51,6 +52,16 @@ const plusLineSize = computed(
 		})[(runDataTotal.value > 0 ? 'large' : renderOptions.value.outputs?.labelSize) ?? 'small'],
 );
 
+const outputLabelClasses = computed(() => ({
+	[$style.label]: true,
+	[$style.outputLabel]: true,
+}));
+
+const runDataLabelClasses = computed(() => ({
+	[$style.label]: true,
+	[$style.runDataLabel]: true,
+}));
+
 function onMouseEnter() {
 	isHovered.value = true;
 }
@@ -65,8 +76,10 @@ function onClickAdd() {
 </script>
 <template>
 	<div :class="classes">
-		<div v-if="label" :class="[$style.label, $style.outputLabel]">{{ label }}</div>
-		<div v-else-if="runData" :class="[$style.label, $style.runDataLabel]">{{ runDataLabel }}</div>
+		<div v-if="label" :class="outputLabelClasses">
+			{{ label }}
+		</div>
+		<div v-else-if="runData" :class="runDataLabelClasses">{{ runDataLabel }}</div>
 		<CanvasHandleDot :handle-classes="handleClasses" />
 		<Transition name="canvas-node-handle-main-output">
 			<CanvasHandlePlus
@@ -90,6 +103,10 @@ function onClickAdd() {
 	flex-direction: row;
 	align-items: center;
 	justify-content: center;
+
+	&.connected .label {
+		max-width: 96px;
+	}
 }
 
 .label {
