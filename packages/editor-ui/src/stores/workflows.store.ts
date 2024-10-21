@@ -183,14 +183,29 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	const allNodes = computed<INodeUi[]>(() => workflow.value.nodes);
 
-	const isWaitingExecution = computed(() => {
-		return allNodes.value.some(
-			(node) =>
-				(node.type === WAIT_NODE_TYPE ||
-					node.type === FORM_NODE_TYPE ||
-					node.parameters.operation === SEND_AND_WAIT_OPERATION) &&
-				node.disabled !== true,
+	const willNodeWait = (node: INodeUi): boolean => {
+		return (
+			(node.type === WAIT_NODE_TYPE ||
+				node.type === FORM_NODE_TYPE ||
+				node.parameters.operation === SEND_AND_WAIT_OPERATION) &&
+			node.disabled !== true
 		);
+	};
+
+	const isWaitingExecution = computed(() => {
+		const activeNode = useNDVStore().activeNode;
+
+		if (activeNode) {
+			const workflow = getCurrentWorkflow();
+			const parentNodes = workflow.getParentNodes(activeNode.name);
+
+			for (const parentNode of parentNodes) {
+				if (willNodeWait(workflow.nodes[parentNode])) {
+					return true;
+				}
+			}
+		}
+		return allNodes.value.some((node) => willNodeWait(node));
 	});
 
 	// Names of all nodes currently on canvas.
