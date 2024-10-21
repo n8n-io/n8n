@@ -108,8 +108,8 @@ export function useDebugInfo() {
 	const securityInfo = () => {
 		const info: DebugInfo['security'] = {};
 
-		if (!settingsStore.security?.blockFileAccessToN8nFiles) info.blockFileAccessToN8nFiles = false;
-		if (!settingsStore.security?.secureCookie) info.secureCookie = false;
+		if (!settingsStore.security.blockFileAccessToN8nFiles) info.blockFileAccessToN8nFiles = false;
+		if (!settingsStore.security.secureCookie) info.secureCookie = false;
 
 		if (Object.keys(info).length === 0) return;
 
