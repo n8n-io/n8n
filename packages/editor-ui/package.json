@@ -14,7 +14,7 @@
     "format:check": "biome ci . && prettier --check . --ignore-path ../../.prettierignore",
     "serve": "cross-env VUE_APP_URL_BASE_API=http://localhost:5678/ vite --host 0.0.0.0 --port 8080 dev",
     "test": "vitest run",
-    "test:dev": "vitest"
+    "test:dev": "vitest --silent=false"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.16.0",
