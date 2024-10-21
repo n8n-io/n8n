@@ -889,10 +889,8 @@ async function onAddNodesAndConnections(
 
 	addConnections(mappedConnections);
 
-	void nextTick(() => {
-		uiStore.resetLastInteractedWith();
-		selectNodes([addedNodes[addedNodes.length - 1].id]);
-	});
+	uiStore.resetLastInteractedWith();
+	selectNodes([addedNodes[addedNodes.length - 1].id]);
 }
 
 async function onRevertAddNode({ node }: { node: INodeUi }) {

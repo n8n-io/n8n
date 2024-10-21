@@ -610,6 +610,10 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			historyStore.pushCommandToUndo(new AddNodeCommand(nodeData));
 		}
 
+		if (!options.isAutoAdd) {
+			createConnectionToLastInteractedWithNode(nodeData, options);
+		}
+
 		void nextTick(() => {
 			workflowsStore.setNodePristine(nodeData.name, true);
 
@@ -617,10 +621,6 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			nodeHelpers.updateNodeParameterIssues(nodeData);
 			nodeHelpers.updateNodeCredentialIssues(nodeData);
 			nodeHelpers.updateNodeInputIssues(nodeData);
-
-			if (!options.isAutoAdd) {
-				createConnectionToLastInteractedWithNode(nodeData, options);
-			}
 
 			if (options.telemetry) {
 				trackAddNode(nodeData, options);
