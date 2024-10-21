@@ -8,6 +8,7 @@ describe('permissions', () => {
 			annotationTag: {},
 			auditLogs: {},
 			banner: {},
+			community: {},
 			communityPackage: {},
 			credential: {},
 			externalSecretsProvider: {},
@@ -62,6 +63,7 @@ describe('permissions', () => {
 			annotationTag: {},
 			auditLogs: {},
 			banner: {},
+			community: {},
 			communityPackage: {},
 			credential: {
 				create: true,

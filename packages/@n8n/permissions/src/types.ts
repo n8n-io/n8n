@@ -13,6 +13,7 @@ export type WildcardScope = `${Resource}:*` | '*';
 export type AnnotationTagScope = ResourceScope<'annotationTag'>;
 export type AuditLogsScope = ResourceScope<'auditLogs', 'manage'>;
 export type BannerScope = ResourceScope<'banner', 'dismiss'>;
+export type CommunityScope = ResourceScope<'community', 'register'>;
 export type CommunityPackageScope = ResourceScope<
 	'communityPackage',
 	'install' | 'uninstall' | 'update' | 'list' | 'manage'
@@ -48,6 +49,7 @@ export type Scope =
 	| AnnotationTagScope
 	| AuditLogsScope
 	| BannerScope
+	| CommunityScope
 	| CommunityPackageScope
 	| CredentialScope
 	| ExternalSecretProviderScope
