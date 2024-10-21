@@ -14,7 +14,7 @@ const userEmail = computed(() => {
 
 async function onConfirmEmailClick() {
 	try {
-		await useUsersStore().confirmEmail();
+		await useUsersStore().sendConfirmationEmail();
 		toast.showMessage({
 			type: 'success',
 			title: locale.baseText('banners.confirmEmail.toast.success.heading'),

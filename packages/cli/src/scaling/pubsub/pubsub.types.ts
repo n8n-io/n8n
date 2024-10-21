@@ -88,7 +88,7 @@ export namespace PubSub {
 		/** Content of worker response. */
 		response: WorkerResponseKey;
 
-		/** Whether the command should be debounced when received. */
+		/** Whether the worker response should be debounced when received. */
 		debounce?: boolean;
 	} & (PubSubWorkerResponseMap[WorkerResponseKey] extends never
 		? { payload?: never } // some responses carry no payload
@@ -100,6 +100,10 @@ export namespace PubSub {
 
 	/** Response sent via the `n8n.worker-response` pubsub channel. */
 	export type WorkerResponse = ToWorkerResponse<'response-to-get-worker-status'>;
+
+	// ----------------------------------
+	//              events
+	// ----------------------------------
 
 	/**
 	 * Of all events emitted from pubsub messages, those whose handlers

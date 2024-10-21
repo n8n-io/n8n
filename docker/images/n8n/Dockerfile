@@ -22,6 +22,30 @@ RUN set -eux; \
 	find /usr/local/lib/node_modules/n8n -type f -name "*.ts" -o -name "*.js.map" -o -name "*.vue" | xargs rm -f && \
 	rm -rf /root/.npm
 
+# Setup the Task Runner Launcher
+ARG TARGETPLATFORM
+ARG LAUNCHER_VERSION=0.1.1
+ENV N8N_RUNNERS_USE_LAUNCHER=true \
+    N8N_RUNNERS_LAUNCHER_PATH=/usr/local/bin/task-runner-launcher
+COPY n8n-task-runners.json /etc/n8n-task-runners.json
+# First, download, verify, then extract the launcher binary
+# Second, chmod with 4555 to allow the use of setuid
+# Third, create a new user and group to execute the Task Runners under
+RUN \
+	if [[ "$TARGETPLATFORM" = "linux/amd64" ]]; then export ARCH_NAME="x86_64"; \
+	elif [[ "$TARGETPLATFORM" = "linux/arm64" ]]; then export ARCH_NAME="aarch64"; fi; \
+	mkdir /launcher-temp && \
+	cd /launcher-temp && \
+	wget https://github.com/n8n-io/task-runner-launcher/releases/download/${LAUNCHER_VERSION}/task-runner-launcher-$ARCH_NAME-unknown-linux-musl.zip && \
+	wget https://github.com/n8n-io/task-runner-launcher/releases/download/${LAUNCHER_VERSION}/task-runner-launcher-$ARCH_NAME-unknown-linux-musl.sha256 && \
+	sha256sum -c task-runner-launcher-$ARCH_NAME-unknown-linux-musl.sha256 && \
+	unzip -d $(dirname ${N8N_RUNNERS_LAUNCHER_PATH}) task-runner-launcher-$ARCH_NAME-unknown-linux-musl.zip task-runner-launcher && \
+	cd - && \
+	rm -r /launcher-temp && \
+	chmod 4555 ${N8N_RUNNERS_LAUNCHER_PATH} && \
+	addgroup -g 2000 task-runner && \
+	adduser -D -u 2000 -g "Task Runner User" -G task-runner task-runner
+
 COPY docker-entrypoint.sh /
 
 RUN \

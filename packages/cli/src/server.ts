@@ -79,8 +79,9 @@ export class Server extends AbstractServer {
 		private readonly orchestrationService: OrchestrationService,
 		private readonly postHogClient: PostHogClient,
 		private readonly eventService: EventService,
+		private readonly instanceSettings: InstanceSettings,
 	) {
-		super('main');
+		super();
 
 		this.testWebhooksEnabled = true;
 		this.webhooksEnabled = !this.globalConfig.endpoints.disableProductionWebhooksOnMainProcess;
@@ -97,7 +98,7 @@ export class Server extends AbstractServer {
 		this.endpointPresetCredentials = this.globalConfig.credentials.overwrite.endpoint;
 
 		await super.start();
-		this.logger.debug(`Server ID: ${this.uniqueInstanceId}`);
+		this.logger.debug(`Server ID: ${this.instanceSettings.hostId}`);
 
 		if (inDevelopment && process.env.N8N_DEV_RELOAD === 'true') {
 			void this.loadNodesAndCredentials.setupHotReload();

@@ -290,7 +290,7 @@ export class PostgresTrigger implements INodeType {
 					await connection.query('SELECT 1');
 				} catch {
 					// connection already closed. Can't perform cleanup
-					// eslint-disable-next-line n8n-nodes-base/node-execute-block-wrong-error-thrown
+
 					throw new TriggerCloseError(this.getNode(), { level: 'warning' });
 				}
 
@@ -316,7 +316,6 @@ export class PostgresTrigger implements INodeType {
 						]);
 					}
 				} catch (error) {
-					// eslint-disable-next-line n8n-nodes-base/node-execute-block-wrong-error-thrown
 					throw new TriggerCloseError(this.getNode(), { cause: error as Error, level: 'error' });
 				}
 			} finally {
