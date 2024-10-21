@@ -6,7 +6,7 @@ import RunData from '@/components/RunData.vue';
 import { SET_NODE_TYPE, STORES, VIEWS } from '@/constants';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import { createComponentRenderer } from '@/__tests__/render';
-import type { INodeUi, IRunDataDisplayMode } from '@/Interface';
+import type { INodeUi, IRunDataDisplayMode, NodePanelType } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { setActivePinia } from 'pinia';
 import { defaultNodeTypes } from '@/__tests__/mocks';
@@ -24,6 +24,47 @@ const nodes = [
 ] as INodeUi[];
 
 describe('RunData', () => {
+	it("should render pin button in output panel disabled when there's binary data", () => {
+		const { getByTestId } = render(
+			[
+				{
+					json: {},
+					binary: {
+						data: {
+							fileName: 'test.xyz',
+							mimeType: 'application/octet-stream',
+						},
+					},
+				},
+			],
+			'binary',
+		);
+
+		expect(getByTestId('ndv-pin-data')).toBeInTheDocument();
+		expect(getByTestId('ndv-pin-data')).toHaveAttribute('disabled');
+	});
+
+	it("should not render pin button in input panel when there's binary data", () => {
+		const { queryByTestId } = render(
+			[
+				{
+					json: {},
+					binary: {
+						data: {
+							fileName: 'test.xyz',
+							mimeType: 'application/octet-stream',
+						},
+					},
+				},
+			],
+			'binary',
+			undefined,
+			'input',
+		);
+
+		expect(queryByTestId('ndv-pin-data')).not.toBeInTheDocument();
+	});
+
 	it('should render data correctly even when "item.json" has another "json" key', async () => {
 		const { getByText, getAllByTestId, getByTestId } = render(
 			[
@@ -117,6 +158,7 @@ describe('RunData', () => {
 		outputData: unknown[],
 		displayMode: IRunDataDisplayMode,
 		pinnedData?: INodeExecutionData[],
+		paneType: NodePanelType = 'output',
 	) => {
 		const pinia = createTestingPinia({
 			initialState: {
@@ -196,6 +238,9 @@ describe('RunData', () => {
 				};
 			},
 			global: {
+				stubs: {
+					RunDataPinButton: { template: '<button data-test-id="ndv-pin-data"></button>' },
+				},
 				mocks: {
 					$route: {
 						name: VIEWS.WORKFLOW,
@@ -211,7 +256,7 @@ describe('RunData', () => {
 				},
 				nodes: [{ name: 'Test Node', indicies: [], depth: 1 }],
 				runIndex: 0,
-				paneType: 'output',
+				paneType,
 				isExecuting: false,
 				mappingEnabled: true,
 				distanceFromActive: 0,
