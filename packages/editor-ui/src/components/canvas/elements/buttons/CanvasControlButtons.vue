@@ -8,9 +8,11 @@ import { useTelemetry } from '@/composables/useTelemetry';
 const props = withDefaults(
 	defineProps<{
 		zoom?: number;
+		showBugReportingButton?: boolean;
 	}>(),
 	{
 		zoom: 1,
+		showBugReportingButton: false,
 	},
 );
 
@@ -97,7 +99,10 @@ function trackBugReport() {
 				@click="onResetZoom"
 			/>
 		</KeyboardShortcutTooltip>
-		<KeyboardShortcutTooltip :label="$locale.baseText('nodeView.reportBug')">
+		<KeyboardShortcutTooltip
+			v-if="props.showBugReportingButton"
+			:label="$locale.baseText('nodeView.reportBug')"
+		>
 			<a :href="getReportingURL()" target="_blank" @click="trackBugReport">
 				<N8nIconButton type="tertiary" size="large" icon="bug" data-test-id="report-bug" />
 			</a>

@@ -80,6 +80,7 @@ const props = withDefaults(
 		readOnly?: boolean;
 		executing?: boolean;
 		keyBindings?: boolean;
+		showBugReportingButton?: boolean;
 	}>(),
 	{
 		id: 'canvas',
@@ -579,6 +580,7 @@ provide(CanvasKey, {
 			:class="$style.canvasControls"
 			:position="controlsPosition"
 			:show-interactive="false"
+			:show-bug-reporting-button="showBugReportingButton"
 			:zoom="zoom"
 			@zoom-to-fit="onFitView"
 			@zoom-in="onZoomIn"
