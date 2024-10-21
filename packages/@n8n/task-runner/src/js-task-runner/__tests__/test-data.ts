@@ -65,6 +65,9 @@ export const newAllCodeTaskData = (
 	const manualTriggerNode = newNode({
 		name: 'Trigger',
 		type: 'n8n-nodes-base.manualTrigger',
+		parameters: {
+			manualTriggerParam: 'empty',
+		},
 	});
 
 	return {
@@ -116,15 +119,32 @@ export const newAllCodeTaskData = (
 		siblingParameters: {},
 		mode: 'manual',
 		selfData: {},
+		envProviderState: {
+			env: {},
+			isEnvAccessBlocked: true,
+			isProcessAvailable: true,
+		},
 		additionalData: {
-			formWaitingBaseUrl: '',
+			executionId: 'exec-id',
 			instanceBaseUrl: '',
 			restartExecutionId: '',
 			restApiUrl: '',
-			webhookBaseUrl: '',
-			webhookTestBaseUrl: '',
-			webhookWaitingBaseUrl: '',
-			variables: {},
+			formWaitingBaseUrl: 'http://formWaitingBaseUrl',
+			webhookBaseUrl: 'http://webhookBaseUrl',
+			webhookTestBaseUrl: 'http://webhookTestBaseUrl',
+			webhookWaitingBaseUrl: 'http://webhookWaitingBaseUrl',
+			variables: {
+				var: 'value',
+			},
+		},
+		executeData: {
+			node: codeNode,
+			data: {
+				main: [codeNodeInputData],
+			},
+			source: {
+				main: [{ previousNode: manualTriggerNode.name }],
+			},
 		},
 		...opts,
 	};

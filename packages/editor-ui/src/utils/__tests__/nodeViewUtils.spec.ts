@@ -1,4 +1,4 @@
-import { getGenericHints } from '../nodeViewUtils';
+import { generateOffsets, getGenericHints } from '../nodeViewUtils';
 import type { INode, INodeTypeDescription, INodeExecutionData, Workflow } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import { NodeHelpers } from 'n8n-workflow';
@@ -135,5 +135,37 @@ describe('getGenericHints', () => {
 				location: 'outputPane',
 			},
 		]);
+	});
+});
+
+describe('generateOffsets', () => {
+	it('should return correct offsets for 0 nodes', () => {
+		const result = generateOffsets(0, 100, 20);
+		expect(result).toEqual([]);
+	});
+
+	it('should return correct offsets for 1 node', () => {
+		const result = generateOffsets(1, 100, 20);
+		expect(result).toEqual([0]);
+	});
+
+	it('should return correct offsets for 2 nodes', () => {
+		const result = generateOffsets(2, 100, 20);
+		expect(result).toEqual([-100, 100]);
+	});
+
+	it('should return correct offsets for 3 nodes', () => {
+		const result = generateOffsets(3, 100, 20);
+		expect(result).toEqual([-120, 0, 120]);
+	});
+
+	it('should return correct offsets for 4 nodes', () => {
+		const result = generateOffsets(4, 100, 20);
+		expect(result).toEqual([-220, -100, 100, 220]);
+	});
+
+	it('should return correct offsets for large node count', () => {
+		const result = generateOffsets(10, 100, 20);
+		expect(result).toEqual([-580, -460, -340, -220, -100, 100, 220, 340, 460, 580]);
 	});
 });

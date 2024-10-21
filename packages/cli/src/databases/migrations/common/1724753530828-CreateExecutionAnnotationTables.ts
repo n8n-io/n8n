@@ -25,7 +25,10 @@ export class CreateAnnotationTables1724753530828 implements ReversibleMigration 
 			.withIndexOn('name', true).withTimestamps;
 
 		await createTable(annotationTagMappingsTableName)
-			.withColumns(column('annotationId').int.notNull, column('tagId').varchar(24).notNull)
+			.withColumns(
+				column('annotationId').int.notNull.primary,
+				column('tagId').varchar(24).notNull.primary,
+			)
 			.withForeignKey('annotationId', {
 				tableName: annotationsTableName,
 				columnName: 'id',

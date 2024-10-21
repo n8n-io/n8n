@@ -26,7 +26,7 @@ type RunDetail = {
 	options: SerializedSecret | SerializedNotImplemented | SerializedFields;
 };
 
-const TIKTOKEN_ESTIMATE_MODEL = 'gpt-3.5-turbo';
+const TIKTOKEN_ESTIMATE_MODEL = 'gpt-4o';
 export class N8nLlmTracing extends BaseCallbackHandler {
 	name = 'N8nLlmTracing';
 

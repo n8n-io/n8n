@@ -9,6 +9,7 @@
 // XX denotes that the node is disabled
 // PD denotes that the node has pinned data
 
+import type { INode } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 
 import { createNodeData, defaultWorkflowParameter } from './helpers';
@@ -86,6 +87,169 @@ describe('DirectedGraph', () => {
 			// ASSERT
 			expect(children.size).toBe(3);
 			expect(children).toEqual(new Set([node1, node2, node3]));
+		});
+	});
+
+	describe('getStronglyConnectedComponents', () => {
+		// ┌─────┐    ┌─────┐    ┌─────┐
+		// │node1├───►│node2├───►│node4│
+		// └─────┘    └──┬──┘    └─────┘
+		//    ▲          │
+		//    │          │
+		// ┌──┴──┐       │
+		// │node3│◄──────┘
+		// └─────┘
+		test('find strongly connected components', () => {
+			// ARRANGE
+			const node1 = createNodeData({ name: 'Node1' });
+			const node2 = createNodeData({ name: 'Node2' });
+			const node3 = createNodeData({ name: 'Node3' });
+			const node4 = createNodeData({ name: 'Node4' });
+			const graph = new DirectedGraph()
+				.addNodes(node1, node2, node3, node4)
+				.addConnections(
+					{ from: node1, to: node2 },
+					{ from: node2, to: node3 },
+					{ from: node3, to: node1 },
+					{ from: node2, to: node4 },
+				);
+
+			// ACT
+			const stronglyConnectedComponents = graph.getStronglyConnectedComponents();
+
+			// ASSERT
+			expect(stronglyConnectedComponents).toHaveLength(2);
+			expect(stronglyConnectedComponents).toContainEqual(new Set([node4]));
+			expect(stronglyConnectedComponents).toContainEqual(new Set([node3, node2, node1]));
+		});
+
+		//                ┌────┐
+		//  ┌───────┐     │    ├─
+		//  │trigger├──┬──►loop│
+		//  └───────┘  │  │    ├────┐
+		//             │  └────┘    │
+		//             └─────────┐  │
+		//                ┌────┐ │  │
+		//            ┌───►node├─┘  │
+		//            │   └────┘    │
+		//            │             │
+		//            └─────────────┘
+		test('find strongly connected components even if they use different output indexes', () => {
+			// ARRANGE
+			const trigger = createNodeData({ name: 'trigger' });
+			const loop = createNodeData({ name: 'loop' });
+			const node = createNodeData({ name: 'node' });
+			const graph = new DirectedGraph()
+				.addNodes(trigger, loop, node)
+				.addConnections(
+					{ from: trigger, to: loop },
+					{ from: loop, outputIndex: 1, to: node },
+					{ from: node, to: loop },
+				);
+
+			// ACT
+			const stronglyConnectedComponents = graph.getStronglyConnectedComponents();
+
+			// ASSERT
+			expect(stronglyConnectedComponents).toHaveLength(2);
+			expect(stronglyConnectedComponents).toContainEqual(new Set([trigger]));
+			expect(stronglyConnectedComponents).toContainEqual(new Set([node, loop]));
+		});
+	});
+
+	describe('depthFirstSearch', () => {
+		// ┌─────┐    ┌─────┐    ┌─────┐    ┌─────┐    ┌─────┐
+		// │node0├───►│node1├───►│node2├───►│node4│───►│node5│
+		// └─────┘    └─────┘    └──┬──┘    └─────┘    └─────┘
+		//               ▲          │
+		//               │          │
+		//            ┌──┴──┐       │
+		//            │node3│◄──────┘
+		//            └─────┘
+		test('calls nodes in the correct order and stops when it found the node', () => {
+			// ARRANGE
+			const node0 = createNodeData({ name: 'Node0' });
+			const node1 = createNodeData({ name: 'Node1' });
+			const node2 = createNodeData({ name: 'Node2' });
+			const node3 = createNodeData({ name: 'Node3' });
+			const node4 = createNodeData({ name: 'Node4' });
+			const node5 = createNodeData({ name: 'Node5' });
+			const graph = new DirectedGraph()
+				.addNodes(node0, node1, node2, node3, node4, node5)
+				.addConnections(
+					{ from: node0, to: node1 },
+					{ from: node1, to: node2 },
+					{ from: node2, to: node3 },
+					{ from: node3, to: node1 },
+					{ from: node2, to: node4 },
+					{ from: node4, to: node5 },
+				);
+			const fn = jest.fn().mockImplementation((node: INode) => node === node4);
+
+			// ACT
+			const foundNode = graph.depthFirstSearch({
+				from: node0,
+				fn,
+			});
+
+			// ASSERT
+			expect(foundNode).toBe(node4);
+			expect(fn).toHaveBeenCalledTimes(5);
+			expect(fn.mock.calls).toEqual([[node0], [node1], [node2], [node3], [node4]]);
+		});
+	});
+
+	describe('getParentConnections', () => {
+		// ┌─────┐   ┌─────┐   ┌─────┐   ┌─────┐
+		// │node1├──►│node2├──►│node3│──►│node4│
+		// └─────┘   └─────┘   └─────┘   └─────┘
+		test('returns all parent connections', () => {
+			// ARRANGE
+			const node1 = createNodeData({ name: 'Node1' });
+			const node2 = createNodeData({ name: 'Node2' });
+			const node3 = createNodeData({ name: 'Node3' });
+			const node4 = createNodeData({ name: 'Node4' });
+			const graph = new DirectedGraph()
+				.addNodes(node1, node2, node3, node4)
+				.addConnections(
+					{ from: node1, to: node2 },
+					{ from: node2, to: node3 },
+					{ from: node3, to: node4 },
+				);
+
+			// ACT
+			const connections = graph.getParentConnections(node3);
+
+			// ASSERT
+			const expectedConnections = graph.getConnections().filter((c) => c.to !== node4);
+			expect(connections.size).toBe(2);
+			expect(connections).toEqual(new Set(expectedConnections));
+		});
+
+		//     ┌─────┐    ┌─────┐   ┌─────┐
+		//  ┌─►│node1├───►│node2├──►│node3├─┐
+		//  │  └─────┘    └─────┘   └─────┘ │
+		//  │                               │
+		//  └───────────────────────────────┘
+		test('terminates when finding a cycle', () => {
+			// ARRANGE
+			const node1 = createNodeData({ name: 'Node1' });
+			const node2 = createNodeData({ name: 'Node2' });
+			const node3 = createNodeData({ name: 'Node3' });
+			const graph = new DirectedGraph()
+				.addNodes(node1, node2, node3)
+				.addConnections(
+					{ from: node1, to: node2 },
+					{ from: node2, to: node3 },
+					{ from: node3, to: node1 },
+				);
+
+			// ACT
+			const connections = graph.getParentConnections(node3);
+
+			// ASSERT
+			expect(connections.size).toBe(3);
+			expect(connections).toEqual(new Set(graph.getConnections()));
 		});
 	});
 

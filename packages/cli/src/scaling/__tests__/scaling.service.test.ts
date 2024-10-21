@@ -6,7 +6,7 @@ import { ApplicationError } from 'n8n-workflow';
 import Container from 'typedi';
 
 import type { OrchestrationService } from '@/services/orchestration.service';
-import { mockInstance } from '@test/mocking';
+import { mockInstance, mockLogger } from '@test/mocking';
 
 import { JOB_TYPE_NAME, QUEUE_NAME } from '../constants';
 import type { JobProcessor } from '../job-processor';
@@ -74,7 +74,7 @@ describe('ScalingService', () => {
 		instanceSettings.markAsLeader();
 
 		scalingService = new ScalingService(
-			mock(),
+			mockLogger(),
 			mock(),
 			jobProcessor,
 			globalConfig,

@@ -58,6 +58,8 @@ export class WorkerServer {
 	) {
 		assert(this.instanceSettings.instanceType === 'worker');
 
+		this.logger = this.logger.withScope('scaling');
+
 		this.app = express();
 
 		this.app.disable('x-powered-by');
@@ -83,6 +85,10 @@ export class WorkerServer {
 		this.endpointsConfig = endpointsConfig;
 
 		await this.mountEndpoints();
+
+		this.logger.debug('Worker server initialized', {
+			endpoints: Object.keys(this.endpointsConfig),
+		});
 
 		await new Promise<void>((resolve) => this.server.listen(this.port, this.address, resolve));
 
@@ -140,6 +146,8 @@ export class WorkerServer {
 		this.credentialsOverwrites.setData(req.body);
 
 		this.overwritesLoaded = true;
+
+		this.logger.debug('Worker loaded credentials overwrites');
 
 		ResponseHelper.sendSuccessResponse(res, { success: true }, true, 200);
 	}

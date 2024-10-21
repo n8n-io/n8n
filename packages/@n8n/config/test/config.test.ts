@@ -211,7 +211,6 @@ describe('GlobalConfig', () => {
 					clusterNodes: '',
 					tls: false,
 				},
-				queueRecoveryInterval: 60,
 				gracefulShutdownTimeout: 30,
 				prefix: 'bull',
 				settings: {
@@ -228,6 +227,9 @@ describe('GlobalConfig', () => {
 			authToken: '',
 			listen_address: '127.0.0.1',
 			port: 5679,
+			useLauncher: false,
+			launcherPath: '',
+			launcherRunner: 'javascript',
 		},
 		sentry: {
 			backendDsn: '',
@@ -241,13 +243,23 @@ describe('GlobalConfig', () => {
 				fileSizeMax: 16,
 				location: 'logs/n8n.log',
 			},
+			scopes: [],
+		},
+		multiMainSetup: {
+			enabled: false,
+			ttl: 10,
+			interval: 3,
+		},
+		generic: {
+			timezone: 'America/New_York',
+			releaseChannel: 'dev',
+			gracefulShutdownTimeout: 30,
 		},
 	};
 
 	it('should use all default values when no env variables are defined', () => {
 		process.env = {};
 		const config = Container.get(GlobalConfig);
-
 		expect(deepCopy(config)).toEqual(defaultConfig);
 		expect(mockFs.readFileSync).not.toHaveBeenCalled();
 	});

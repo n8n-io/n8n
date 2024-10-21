@@ -91,6 +91,7 @@ export const LICENSE_FEATURES = {
 	PROJECT_ROLE_EDITOR: 'feat:projectRole:editor',
 	PROJECT_ROLE_VIEWER: 'feat:projectRole:viewer',
 	AI_ASSISTANT: 'feat:aiAssistant',
+	ASK_AI: 'feat:askAi',
 	COMMUNITY_NODES_CUSTOM_REGISTRY: 'feat:communityNodes:customRegistry',
 } as const;
 
