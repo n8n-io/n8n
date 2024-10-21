@@ -162,33 +162,6 @@ export const schema = {
 		},
 	},
 
-	generic: {
-		// The timezone to use. Is important for nodes like "Cron" which start the
-		// workflow automatically at a specified time. This setting can also be
-		// overwritten on a per workflow basis in the workflow settings in the
-		// editor.
-		timezone: {
-			doc: 'The timezone to use',
-			format: '*',
-			default: 'America/New_York',
-			env: 'GENERIC_TIMEZONE',
-		},
-
-		releaseChannel: {
-			doc: 'N8N release channel',
-			format: ['stable', 'beta', 'nightly', 'dev'] as const,
-			default: 'dev',
-			env: 'N8N_RELEASE_TYPE',
-		},
-
-		gracefulShutdownTimeout: {
-			doc: 'How long should n8n process wait for components to shut down before exiting the process (seconds)',
-			format: Number,
-			default: 30,
-			env: 'N8N_GRACEFUL_SHUTDOWN_TIMEOUT',
-		},
-	},
-
 	secure_cookie: {
 		doc: 'This sets the `Secure` flag on n8n auth cookie',
 		format: Boolean,
