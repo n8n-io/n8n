@@ -198,12 +198,15 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		if (activeNode) {
 			const workflow = getCurrentWorkflow();
 			const parentNodes = workflow.getParentNodes(activeNode.name);
+			parentNodes.push(activeNode.name);
 
 			for (const parentNode of parentNodes) {
 				if (willNodeWait(workflow.nodes[parentNode])) {
 					return true;
 				}
 			}
+
+			return false;
 		}
 		return allNodes.value.some((node) => willNodeWait(node));
 	});
