@@ -39,7 +39,6 @@ import type {
 	ViewportTransform,
 	XYPosition as VueFlowXYPosition,
 } from '@vue-flow/core';
-import { useVueFlow } from '@vue-flow/core';
 import type {
 	CanvasConnectionCreateData,
 	CanvasEventBusEvents,
