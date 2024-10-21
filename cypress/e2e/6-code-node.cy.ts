@@ -162,21 +162,21 @@ return []
 				cy.get('#tab-code').should('have.class', 'is-active');
 			});
 
-			it('should show error based on status code', () => {
-				const prompt = nanoid(20);
-				cy.get('#tab-ask-ai').click();
-				ndv.actions.executePrevious();
+			const handledCodes = [
+				{ code: 400, message: 'Code generation failed due to an unknown reason' },
+				{ code: 413, message: 'Your workflow data is too large for AI to process' },
+				{ code: 429, message: "We've hit our rate limit with our AI partner" },
+				{ code: 500, message: 'Code generation failed due to an unknown reason' },
+			];
 
-				cy.getByTestId('ask-ai-prompt-input').type(prompt);
+			handledCodes.forEach(({ code, message }) => {
+				it(`should show error based on status code ${code}`, () => {
+					const prompt = nanoid(20);
+					cy.get('#tab-ask-ai').click();
+					ndv.actions.executePrevious();
 
-				const handledCodes = [
-					{ code: 400, message: 'Code generation failed due to an unknown reason' },
-					{ code: 413, message: 'Your workflow data is too large for AI to process' },
-					{ code: 429, message: "We've hit our rate limit with our AI partner" },
-					{ code: 500, message: 'Code generation failed due to an unknown reason' },
-				];
+					cy.getByTestId('ask-ai-prompt-input').type(prompt);
 
-				handledCodes.forEach(({ code, message }) => {
 					cy.intercept('POST', '/rest/ai/ask-ai', {
 						statusCode: code,
 						status: code,
