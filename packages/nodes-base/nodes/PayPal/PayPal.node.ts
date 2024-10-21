@@ -16,6 +16,7 @@ import {
 	payoutItemOperations,
 	payoutOperations,
 } from './PaymentDescription';
+import { transactionOperations, transactionFields } from './TransactionDescription';
 import type {
 	IAmount,
 	IItem,
@@ -62,6 +63,10 @@ export class PayPal implements INodeType {
 						name: 'Payout Item',
 						value: 'payoutItem',
 					},
+					{
+						name: 'Transaction Search',
+						value: 'transactionSearch',
+					},
 				],
 				default: 'payout',
 			},
@@ -71,6 +76,9 @@ export class PayPal implements INodeType {
 			...payoutItemOperations,
 			...payoutFields,
 			...payoutItemFields,
+			// Transaction Search
+			...transactionOperations,
+			...transactionFields,
 		],
 	};
 
@@ -212,7 +220,9 @@ export class PayPal implements INodeType {
 							responseData = responseData.items;
 						}
 					}
-				} else if (resource === 'payoutItem') {
+				}
+
+				if (resource === 'payoutItem') {
 					if (operation === 'get') {
 						const payoutItemId = this.getNodeParameter('payoutItemId', i) as string;
 						responseData = await payPalApiRequest.call(
@@ -232,6 +242,101 @@ export class PayPal implements INodeType {
 							{},
 							qs,
 						);
+					}
+				}
+				if (resource === 'transactionSearch') {
+					if (operation === 'listtransactions') {
+						const transaction_id = this.getNodeParameter('transaction_id', i) as string;
+						const transaction_type = this.getNodeParameter('transaction_type', i) as string;
+						const transaction_status = this.getNodeParameter('transaction_status', i) as string;
+						const transaction_amount = this.getNodeParameter('transaction_amount', i) as string;
+						const transaction_currency = this.getNodeParameter('transaction_currency', i) as string;
+						const start_date = this.getNodeParameter('start_date', i) as string;
+						const end_date = this.getNodeParameter('end_date', i) as string;
+						const payment_instrument_type = this.getNodeParameter(
+							'payment_instrument_type',
+							i,
+						) as string;
+						const store_id = this.getNodeParameter('store_id', i) as string;
+						const terminal_id = this.getNodeParameter('terminal_id', i) as string;
+						const fields = this.getNodeParameter('fields', i) as string;
+						const balance_affecting_records_only = this.getNodeParameter(
+							'balance_affecting_records_only',
+							i,
+						) as string;
+
+						/*				        const qs = {
+				          transaction_id,
+				          transaction_type,
+				          transaction_status,
+				          transaction_amount,
+				          transaction_currency,
+				          start_date: new Date(start_date).toISOString(),
+				          end_date: new Date(end_date).toISOString(),
+				          payment_instrument_type,
+				          store_id,
+				          terminal_id,
+				          fields,
+				          balance_affecting_records_only,
+				        };*/
+
+						qs.start_date = new Date(start_date).toISOString();
+						qs.end_date = new Date(end_date).toISOString();
+
+						if (transaction_id) {
+							qs.transaction_id = transaction_id;
+						}
+						if (transaction_type) {
+							qs.transaction_type = transaction_type;
+						}
+						if (transaction_status) {
+							qs.transaction_status = transaction_status;
+						}
+						if (transaction_amount) {
+							qs.transaction_amount = transaction_amount;
+						}
+						if (transaction_currency) {
+							qs.transaction_currency = transaction_currency;
+						}
+						if (payment_instrument_type) {
+							qs.payment_instrument_type = payment_instrument_type;
+						}
+						if (store_id) {
+							qs.store_id = store_id;
+						}
+						if (terminal_id) {
+							qs.terminal_id = terminal_id;
+						}
+						if (fields) {
+							qs.fields = fields;
+						}
+						if (balance_affecting_records_only) {
+							qs.balance_affecting_records_only = balance_affecting_records_only;
+						}
+
+						responseData = await payPalApiRequest.call(
+							this,
+							'/reporting/transactions',
+							'GET',
+							{},
+							qs,
+						);
+					}
+					if (operation === 'listAllBalances') {
+						const as_of_time = this.getNodeParameter('as_of_time', 0) as string;
+						const currency_code = this.getNodeParameter('currency_code', 0) as string;
+
+						// Ensure dates are in the correct ISO 8601 format with timezone
+						const formattedas_of_time = new Date(as_of_time).toISOString();
+
+						// Construct request parameters
+						const qs = {
+							as_of_time: formattedas_of_time,
+							currency_code: currency_code,
+						};
+
+						// Make the API request
+						responseData = await payPalApiRequest.call(this, '/reporting/balances', 'GET', {}, qs);
 					}
 				}
 
