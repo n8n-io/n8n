@@ -204,7 +204,7 @@ Cypress.Commands.add('draganddrop', (draggableSelector, droppableSelector, optio
 
 			if (draggableSelector) {
 				// We can't use realMouseDown here because it hangs headless run
-				cy.get(draggableSelector).realMouseDown()
+				cy.get(draggableSelector).trigger('mousedown');
 			}
 			// We don't chain these commands to make sure cy.get is re-trying correctly
 			cy.get(droppableSelector).realMouseMove(0, 0);
