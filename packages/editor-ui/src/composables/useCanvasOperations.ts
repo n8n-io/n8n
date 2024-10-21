@@ -1784,9 +1784,6 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		}, []);
 
 		workflowsStore.addWorkflowTagIds(tagIds);
-		setTimeout(() => {
-			nodeHelpers.addPinDataConnections(workflowsStore.pinnedWorkflowData);
-		});
 	}
 
 	async function fetchWorkflowDataFromUrl(url: string): Promise<IWorkflowDataUpdate | undefined> {

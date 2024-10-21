@@ -256,11 +256,19 @@ export default defineComponent({
 			return this.nodeTypesStore.isTriggerNode(this.node.type);
 		},
 		showPinButton(): boolean {
-			return Boolean(
-				(this.canPinData || this.pinnedData.hasData.value || !!this.binaryData?.length) &&
-					(this.rawInputData.length || this.pinnedData.hasData.value) &&
-					!this.editMode.enabled,
-			);
+			if (!this.rawInputData.length && !this.pinnedData.hasData.value) {
+				return false;
+			}
+
+			if (this.editMode.enabled) {
+				return false;
+			}
+
+			if (this.binaryData?.length) {
+				return this.isPaneTypeOutput;
+			}
+
+			return this.canPinData;
 		},
 		pinButtonDisabled(): boolean {
 			return (
