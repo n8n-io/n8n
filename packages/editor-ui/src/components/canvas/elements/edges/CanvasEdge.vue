@@ -117,8 +117,8 @@ function onDelete() {
 	<EdgeLabelRenderer>
 		<div
 			data-test-id="edge-label-wrapper"
-			:data-source-node-name="sourceNode.label"
-			:data-target-node-name="targetNode.label"
+			:data-source-node-name="sourceNode?.label"
+			:data-target-node-name="targetNode?.label"
 			:data-edge-status="status"
 			:style="edgeToolbarStyle"
 			:class="$style.edgeLabelWrapper"
