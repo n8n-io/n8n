@@ -1215,6 +1215,7 @@ export default defineComponent({
 					size="small"
 					underline
 					bold
+					data-test-id="ndv-unpin-data"
 					@click.stop="onTogglePinData({ source: 'banner-link' })"
 				>
 					{{ $locale.baseText('runData.pindata.unpin') }}
