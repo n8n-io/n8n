@@ -137,7 +137,7 @@ describe('RunData', () => {
 		expect(getByTestId('ndv-binary-data_0')).toBeInTheDocument();
 	});
 
-  it('should not render pin data button when there is no output data', async () => {
+	it('should not render pin data button when there is no output data', async () => {
 		const { queryByTestId } = render([], 'table');
 		expect(queryByTestId('ndv-pin-data')).not.toBeInTheDocument();
 	});
