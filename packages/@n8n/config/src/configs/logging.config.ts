@@ -1,14 +1,16 @@
 import { Config, Env, Nested } from '../decorators';
 import { StringArray } from '../utils';
 
-/**
- * Scopes (areas of functionality) to filter logs by.
- *
- * `executions` -> execution lifecycle
- * `license` -> license SDK
- * `scaling` -> scaling mode
- */
-export const LOG_SCOPES = ['executions', 'license', 'scaling'] as const;
+/** Scopes (areas of functionality) to filter logs by. */
+export const LOG_SCOPES = [
+	'concurrency',
+	'license',
+	'multi-main-setup',
+	'pubsub',
+	'redis',
+	'scaling',
+	'waiting-executions',
+] as const;
 
 export type LogScope = (typeof LOG_SCOPES)[number];
 
@@ -59,14 +61,19 @@ export class LoggingConfig {
 	/**
 	 * Scopes to filter logs by. Nothing is filtered by default.
 	 *
-	 * Currently supported log scopes:
-	 * - `executions`
+	 * Supported log scopes:
+	 *
+	 * - `concurrency`
 	 * - `license`
+	 * - `multi-main-setup`
+	 * - `pubsub`
+	 * - `redis`
 	 * - `scaling`
+	 * - `waiting-executions`
 	 *
 	 * @example
 	 * `N8N_LOG_SCOPES=license`
-	 * `N8N_LOG_SCOPES=license,executions`
+	 * `N8N_LOG_SCOPES=license,waiting-executions`
 	 */
 	@Env('N8N_LOG_SCOPES')
 	scopes: StringArray<LogScope> = [];

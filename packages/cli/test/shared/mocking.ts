@@ -25,5 +25,4 @@ export const mockEntityManager = (entityClass: Class) => {
 	return entityManager;
 };
 
-export const mockLogger = () =>
-	mock<Logger>({ withScope: jest.fn().mockReturnValue(mock<Logger>()) });
+export const mockLogger = () => mock<Logger>({ scoped: jest.fn().mockReturnValue(mock<Logger>()) });

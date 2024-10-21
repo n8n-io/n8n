@@ -36,7 +36,7 @@ export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 		private readonly globalConfig: GlobalConfig,
 	) {
 		super();
-		this.logger = this.logger.withScope('scaling');
+		this.logger = this.logger.scoped(['scaling', 'multi-main-setup']);
 	}
 
 	private leaderKey: string;
