@@ -20,7 +20,8 @@ export class NDV extends BasePage {
 		outputDataContainer: () => this.getters.outputPanel().findChildByTestId('ndv-data-container'),
 		outputDisplayMode: () =>
 			this.getters.outputPanel().findChildByTestId('ndv-run-data-display-mode').first(),
-		pinDataButton: () => cy.getByTestId('ndv-pin-data'),
+		pinDataButton: () => this.getters.outputPanel().findChildByTestId('ndv-pin-data'),
+		unpinDataLink: () => this.getters.outputPanel().findChildByTestId('ndv-unpin-data'),
 		editPinnedDataButton: () => cy.getByTestId('ndv-edit-pinned-data'),
 		pinnedDataEditor: () => this.getters.outputPanel().find('.cm-editor .cm-scroller .cm-content'),
 		runDataPaneHeader: () => cy.getByTestId('run-data-pane-header'),
@@ -146,6 +147,9 @@ export class NDV extends BasePage {
 	actions = {
 		pinData: () => {
 			this.getters.pinDataButton().click({ force: true });
+		},
+		unPinData: () => {
+			this.getters.unpinDataLink().click({ force: true });
 		},
 		editPinnedData: () => {
 			this.getters.editPinnedDataButton().click();
