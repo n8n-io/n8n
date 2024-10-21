@@ -2,7 +2,7 @@ import { BasePage } from './base';
 import { NodeCreator } from './features/node-creator';
 import { META_KEY } from '../constants';
 import { getVisibleSelect } from '../utils';
-import { getUniqueWorkflowName } from '../utils/workflowUtils';
+import { getUniqueWorkflowName, isCanvasV2 } from '../utils/workflowUtils';
 
 const nodeCreator = new NodeCreator();
 export class WorkflowPage extends BasePage {
@@ -27,7 +27,10 @@ export class WorkflowPage extends BasePage {
 		nodeCreatorSearchBar: () => cy.getByTestId('node-creator-search-bar'),
 		nodeCreatorPlusButton: () => cy.getByTestId('node-creator-plus-button'),
 		canvasPlusButton: () => cy.getByTestId('canvas-plus-button'),
-		canvasNodes: () => cy.getByTestId('canvas-node').not('[data-node-type="n8n-nodes-internal.addNodes"]'),
+		canvasNodes: () => cy.ifCanvasVersion(
+			() => cy.getByTestId('canvas-node'),
+			() => cy.getByTestId('canvas-node').not('[data-node-type="n8n-nodes-internal.addNodes"]')
+		),
 		canvasNodeByName: (nodeName: string) =>
 			this.getters.canvasNodes().filter(`:contains(${nodeName})`),
 		nodeIssuesByName: (nodeName: string) =>
@@ -37,7 +40,7 @@ export class WorkflowPage extends BasePage {
 				.should('have.length.greaterThan', 0)
 				.findChildByTestId('node-issues'),
 		getEndpointSelector: (type: 'input' | 'output' | 'plus', nodeName: string, index = 0) => {
-			if (cy.isCanvasV2()) {
+			if (isCanvasV2()) {
 				if (type === 'input') {
 					return `[data-test-id="canvas-node-input-handle"][data-node-name="${nodeName}"][data-handle-index="${index}"]`;
 				}
@@ -61,7 +64,6 @@ export class WorkflowPage extends BasePage {
 				() => cy.get(this.getters.getEndpointSelector('plus', nodeName, index)),
 				() => cy.get(`[data-test-id="canvas-node-output-handle"][data-node-name="${nodeName}"] [data-test-id="canvas-handle-plus"] .clickable`).eq(index)
 			)
-			// return cy.get(this.getters.getEndpointSelector('plus', nodeName, index));
 		},
 		activatorSwitch: () => cy.getByTestId('workflow-activate-switch'),
 		workflowMenu: () => cy.getByTestId('workflow-menu'),
@@ -170,13 +172,13 @@ export class WorkflowPage extends BasePage {
 		colors: () => cy.getByTestId('color'),
 		contextMenuAction: (action: string) => cy.getByTestId(`context-menu-item-${action}`),
 		getNodeLeftPosition: (element: JQuery<HTMLElement>) => {
-			if (cy.isCanvasV2()) {
+			if (isCanvasV2()) {
 				return parseFloat(element.parent().css('transform').split(',')[4]);
 			}
 			return parseFloat(element.css('left'));
 		},
 		getNodeTopPosition: (element: JQuery<HTMLElement>) => {
-			if (cy.isCanvasV2()) {
+			if (isCanvasV2()) {
 				return parseFloat(element.parent().css('transform').split(',')[5]);
 			}
 			return parseFloat(element.css('top'));
@@ -444,11 +446,11 @@ export class WorkflowPage extends BasePage {
 			action?: string,
 		) => {
 			this.getters.getConnectionBetweenNodes(sourceNodeName, targetNodeName).first().realHover();
-			this.getters
-				.getConnectionActionsBetweenNodes(sourceNodeName, targetNodeName)
+			const connectionsBetweenNodes = () => this.getters.getConnectionActionsBetweenNodes(sourceNodeName, targetNodeName);
+			cy
 				.ifCanvasVersion(
-					() => cy.find('.add'),
-					() => cy.get('[data-test-id="add-connection-button"]')
+					() => connectionsBetweenNodes().find('.add'),
+					() => connectionsBetweenNodes().get('[data-test-id="add-connection-button"]')
 				)
 				.first()
 				.click({ force: true });
@@ -457,11 +459,11 @@ export class WorkflowPage extends BasePage {
 		},
 		deleteNodeBetweenNodes: (sourceNodeName: string, targetNodeName: string) => {
 			this.getters.getConnectionBetweenNodes(sourceNodeName, targetNodeName).first().realHover();
-			this.getters
-				.getConnectionActionsBetweenNodes(sourceNodeName, targetNodeName)
+			const connectionsBetweenNodes = () => this.getters.getConnectionActionsBetweenNodes(sourceNodeName, targetNodeName);
+			cy
 				.ifCanvasVersion(
-					() => cy.find('.delete'),
-					() => cy.get('[data-test-id="delete-connection-button"]')
+					() => connectionsBetweenNodes().find('.delete'),
+					() => connectionsBetweenNodes().get('[data-test-id="delete-connection-button"]')
 				)
 				.first()
 				.click({ force: true });

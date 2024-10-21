@@ -28,7 +28,6 @@ declare global {
 				selector: string,
 				...args: Array<Partial<Loggable & Timeoutable & Withinable & Shadow> | undefined>
 			): Chainable<JQuery<HTMLElement>>;
-			isCanvasV2(): boolean;
 			ifCanvasVersion(
 				getterV1: () => Chainable<JQuery<HTMLElement>>,
 				getterV2: () => Chainable<JQuery<HTMLElement>>,

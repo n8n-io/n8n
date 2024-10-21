@@ -9,6 +9,7 @@ import {
 } from './../constants';
 import { NDV, WorkflowExecutionsTab } from '../pages';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
+import { isCanvasV2 } from '../utils/workflowUtils';
 
 const WorkflowPage = new WorkflowPageClass();
 const ExecutionsTab = new WorkflowExecutionsTab();
@@ -229,7 +230,7 @@ describe('Canvas Node Manipulation and Navigation', () => {
 			.then(($node) => {
 				const { left, top } = $node.position();
 
-				if (cy.isCanvasV2()) {
+				if (isCanvasV2()) {
 					cy.drag('.vue-flow__node', [300, 300], {
 						realMouse: true,
 					});
