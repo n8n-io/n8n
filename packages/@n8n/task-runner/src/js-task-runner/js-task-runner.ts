@@ -7,7 +7,6 @@ import {
 import type {
 	CodeExecutionMode,
 	INode,
-	INodeType,
 	ITaskDataConnections,
 	IWorkflowExecuteAdditionalData,
 	WorkflowParameters,
@@ -18,7 +17,6 @@ import type {
 	IRunExecutionData,
 	WorkflowExecuteMode,
 	EnvProviderState,
-	INodeTypes,
 } from 'n8n-workflow';
 import * as a from 'node:assert';
 import { runInNewContext, type Context } from 'node:vm';
