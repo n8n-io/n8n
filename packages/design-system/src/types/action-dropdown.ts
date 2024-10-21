@@ -3,6 +3,7 @@ import type { KeyboardShortcut } from 'n8n-design-system/types/keyboardshortcut'
 export interface ActionDropdownItem {
 	id: string;
 	label: string;
+	badge?: string;
 	icon?: string;
 	divided?: boolean;
 	disabled?: boolean;
