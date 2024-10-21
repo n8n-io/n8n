@@ -1,3 +1,5 @@
+import { InstanceSettings } from 'n8n-core';
+
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { Get, RestController } from '@/decorators';
@@ -9,6 +11,7 @@ export class DebugController {
 		private readonly orchestrationService: OrchestrationService,
 		private readonly activeWorkflowManager: ActiveWorkflowManager,
 		private readonly workflowRepository: WorkflowRepository,
+		private readonly instanceSettings: InstanceSettings,
 	) {}
 
 	@Get('/multi-main-setup', { skipAuth: true })
@@ -24,9 +27,9 @@ export class DebugController {
 		const activationErrors = await this.activeWorkflowManager.getAllWorkflowActivationErrors();
 
 		return {
-			instanceId: this.orchestrationService.instanceId,
+			instanceId: this.instanceSettings.instanceId,
 			leaderKey,
-			isLeader: this.orchestrationService.isLeader,
+			isLeader: this.instanceSettings.isLeader,
 			activeWorkflows: {
 				webhooks, // webhook-based active workflows
 				triggersAndPollers, // poller- and trigger-based active workflows

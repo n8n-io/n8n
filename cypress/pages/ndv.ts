@@ -20,7 +20,8 @@ export class NDV extends BasePage {
 		outputDataContainer: () => this.getters.outputPanel().findChildByTestId('ndv-data-container'),
 		outputDisplayMode: () =>
 			this.getters.outputPanel().findChildByTestId('ndv-run-data-display-mode').first(),
-		pinDataButton: () => cy.getByTestId('ndv-pin-data'),
+		pinDataButton: () => this.getters.outputPanel().findChildByTestId('ndv-pin-data'),
+		unpinDataLink: () => this.getters.outputPanel().findChildByTestId('ndv-unpin-data'),
 		editPinnedDataButton: () => cy.getByTestId('ndv-edit-pinned-data'),
 		pinnedDataEditor: () => this.getters.outputPanel().find('.cm-editor .cm-scroller .cm-content'),
 		runDataPaneHeader: () => cy.getByTestId('run-data-pane-header'),
@@ -63,6 +64,7 @@ export class NDV extends BasePage {
 		nodeRenameInput: () => cy.getByTestId('node-rename-input'),
 		executePrevious: () => cy.getByTestId('execute-previous-node'),
 		httpRequestNotice: () => cy.getByTestId('node-parameters-http-notice'),
+		nodeCredentialsLabel: () => cy.getByTestId('credentials-label'),
 		nthParam: (n: number) => cy.getByTestId('node-parameters').find('.parameter-item').eq(n),
 		inputRunSelector: () => this.getters.inputPanel().findChildByTestId('run-selector'),
 		inputLinkRun: () => this.getters.inputPanel().findChildByTestId('link-run'),
@@ -130,8 +132,9 @@ export class NDV extends BasePage {
 		codeEditorFullscreenButton: () => cy.getByTestId('code-editor-fullscreen-button'),
 		codeEditorDialog: () => cy.getByTestId('code-editor-fullscreen'),
 		codeEditorFullscreen: () => this.getters.codeEditorDialog().find('.cm-content'),
-		nodeRunSuccessIndicator: () => cy.getByTestId('node-run-info-success'),
-		nodeRunErrorIndicator: () => cy.getByTestId('node-run-info-danger'),
+		nodeRunTooltipIndicator: () => cy.getByTestId('node-run-info'),
+		nodeRunSuccessIndicator: () => cy.getByTestId('node-run-status-success'),
+		nodeRunErrorIndicator: () => cy.getByTestId('node-run-status-danger'),
 		nodeRunErrorMessage: () => cy.getByTestId('node-error-message'),
 		nodeRunErrorDescription: () => cy.getByTestId('node-error-description'),
 		fixedCollectionParameter: (paramName: string) =>
@@ -146,6 +149,9 @@ export class NDV extends BasePage {
 		pinData: () => {
 			this.getters.pinDataButton().click({ force: true });
 		},
+		unPinData: () => {
+			this.getters.unpinDataLink().click({ force: true });
+		},
 		editPinnedData: () => {
 			this.getters.editPinnedDataButton().click();
 		},
@@ -156,7 +162,7 @@ export class NDV extends BasePage {
 			this.getters.nodeExecuteButton().first().click();
 		},
 		close: () => {
-			this.getters.backToCanvas().click();
+			this.getters.backToCanvas().click({ force: true });
 		},
 		openInlineExpressionEditor: () => {
 			cy.contains('Expression').invoke('show').click();

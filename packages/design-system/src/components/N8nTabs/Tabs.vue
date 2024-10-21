@@ -200,7 +200,7 @@ const scrollRight = () => scroll(50);
 
 .button {
 	position: absolute;
-	background-color: var(--color-background-base);
+	background-color: var(--color-tabs-arrow-buttons, var(--color-background-base));
 	z-index: 1;
 	height: 24px;
 	width: 10px;

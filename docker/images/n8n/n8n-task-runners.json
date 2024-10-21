@@ -1,0 +1,19 @@
+{
+	"task-runners": [
+		{
+			"runner-type": "javascript",
+			"workdir": "/home/task-runner",
+			"command": "/usr/local/bin/node",
+			"args": ["/usr/local/lib/node_modules/n8n/node_modules/@n8n/task-runner/dist/start.js"],
+			"allowed-env": [
+				"PATH",
+				"N8N_RUNNERS_GRANT_TOKEN",
+				"N8N_RUNNERS_N8N_URI",
+				"NODE_FUNCTION_ALLOW_BUILTIN",
+				"NODE_FUNCTION_ALLOW_EXTERNAL"
+			],
+			"uid": 2000,
+			"gid": 2000
+		}
+	]
+}

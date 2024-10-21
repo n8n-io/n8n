@@ -384,7 +384,12 @@ function extractResponseMessage(responseData?: IDataObject) {
 
 	if (!matchedPath) return JSON.stringify(responseData, null, 2);
 
-	return get(responseData, matchedPath) as string;
+	const matchedOutput = get(responseData, matchedPath);
+	if (typeof matchedOutput === 'object') {
+		return '```json\n' + JSON.stringify(matchedOutput, null, 2) + '\n```';
+	}
+
+	return matchedOutput?.toString() ?? '';
 }
 
 async function sendMessage(message: string, files?: File[]) {

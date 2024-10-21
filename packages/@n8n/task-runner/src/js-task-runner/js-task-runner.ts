@@ -25,6 +25,9 @@ import { runInNewContext, type Context } from 'node:vm';
 import type { TaskResultData } from '@/runner-types';
 import { type Task, TaskRunner } from '@/task-runner';
 
+import { isErrorLike } from './errors/error-like';
+import { ExecutionError } from './errors/execution-error';
+import { makeSerializable } from './errors/serializable-error';
 import type { RequireResolver } from './require-resolver';
 import { createRequireResolver } from './require-resolver';
 import { validateRunForAllItemsOutput, validateRunForEachItemOutput } from './result-validation';
@@ -179,6 +182,17 @@ export class JsTaskRunner extends TaskRunner {
 			module: {},
 			console: customConsole,
 
+			// Exposed Node.js globals in vm2
+			Buffer,
+			Function,
+			eval,
+			setTimeout,
+			setInterval,
+			setImmediate,
+			clearTimeout,
+			clearInterval,
+			clearImmediate,
+
 			items: inputItems,
 			...dataProxy,
 			...this.buildRpcCallObject(taskId),
@@ -186,7 +200,7 @@ export class JsTaskRunner extends TaskRunner {
 
 		try {
 			const result = (await runInNewContext(
-				`module.exports = async function() {${settings.code}\n}()`,
+				`globalThis.global = globalThis; module.exports = async function VmCodeWrapper() {${settings.code}\n}()`,
 				context,
 			)) as TaskResultData['result'];
 
@@ -195,12 +209,14 @@ export class JsTaskRunner extends TaskRunner {
 			}
 
 			return validateRunForAllItemsOutput(result);
-		} catch (error) {
+		} catch (e) {
+			// Errors thrown by the VM are not instances of Error, so map them to an ExecutionError
+			const error = this.toExecutionErrorIfNeeded(e);
+
 			if (settings.continueOnFail) {
-				return [{ json: { error: this.getErrorMessageFromVmError(error) } }];
+				return [{ json: { error: error.message } }];
 			}
 
-			(error as Record<string, unknown>).node = allData.node;
 			throw error;
 		}
 	}
@@ -233,7 +249,7 @@ export class JsTaskRunner extends TaskRunner {
 
 			try {
 				let result = (await runInNewContext(
-					`module.exports = async function() {${settings.code}\n}()`,
+					`module.exports = async function VmCodeWrapper() {${settings.code}\n}()`,
 					context,
 				)) as INodeExecutionData | undefined;
 
@@ -257,14 +273,16 @@ export class JsTaskRunner extends TaskRunner {
 								},
 					);
 				}
-			} catch (error) {
+			} catch (e) {
+				// Errors thrown by the VM are not instances of Error, so map them to an ExecutionError
+				const error = this.toExecutionErrorIfNeeded(e);
+
 				if (!settings.continueOnFail) {
-					(error as Record<string, unknown>).node = allData.node;
 					throw error;
 				}
 
 				returnData.push({
-					json: { error: this.getErrorMessageFromVmError(error) },
+					json: { error: error.message },
 					pairedItem: {
 						item: index,
 					},
@@ -304,11 +322,15 @@ export class JsTaskRunner extends TaskRunner {
 		).getDataProxy();
 	}
 
-	private getErrorMessageFromVmError(error: unknown): string {
-		if (typeof error === 'object' && !!error && 'message' in error) {
-			return error.message as string;
+	private toExecutionErrorIfNeeded(error: unknown): Error {
+		if (error instanceof Error) {
+			return makeSerializable(error);
 		}
 
-		return JSON.stringify(error);
+		if (isErrorLike(error)) {
+			return new ExecutionError(error);
+		}
+
+		return new ExecutionError({ message: JSON.stringify(error) });
 	}
 }

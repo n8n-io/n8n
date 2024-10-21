@@ -100,6 +100,7 @@ describe('WorkflowCanvas', () => {
 				workflow,
 				workflowObject,
 				fallbackNodes,
+				showFallbackNodes: true,
 			},
 		});
 
@@ -109,9 +110,8 @@ describe('WorkflowCanvas', () => {
 		expect(container.querySelector(`[data-id="${fallbackNodes[0].id}"]`)).toBeInTheDocument();
 	});
 
-	it('should not render fallback nodes when non-sticky nodes are present', async () => {
-		const nonStickyNodes = [createTestNode({ id: '1', name: 'Non-Sticky Node 1' })];
-		const stickyNodes = [createTestNode({ id: '2', name: 'Sticky Node', type: STICKY_NODE_TYPE })];
+	it('should not render fallback nodes when showFallbackNodes is false', async () => {
+		const nodes = [createTestNode({ id: '1', name: 'Non-Sticky Node 1' })];
 		const fallbackNodes = [
 			createTestNode({
 				id: CanvasNodeRenderType.AddNodes,
@@ -123,7 +123,7 @@ describe('WorkflowCanvas', () => {
 		const workflow = createTestWorkflow({
 			id: '1',
 			name: 'Test Workflow',
-			nodes: [...nonStickyNodes, ...stickyNodes],
+			nodes,
 			connections: {},
 		});
 
@@ -134,13 +134,13 @@ describe('WorkflowCanvas', () => {
 				workflow,
 				workflowObject,
 				fallbackNodes,
+				showFallbackNodes: false,
 			},
 		});
 
-		await waitFor(() => expect(container.querySelectorAll('.vue-flow__node')).toHaveLength(2));
+		await waitFor(() => expect(container.querySelectorAll('.vue-flow__node')).toHaveLength(1));
 
-		expect(container.querySelector(`[data-id="${nonStickyNodes[0].id}"]`)).toBeInTheDocument();
-		expect(container.querySelector(`[data-id="${stickyNodes[0].id}"]`)).toBeInTheDocument();
+		expect(container.querySelector(`[data-id="${nodes[0].id}"]`)).toBeInTheDocument();
 		expect(container.querySelector(`[data-id="${fallbackNodes[0].id}"]`)).not.toBeInTheDocument();
 	});
 });
