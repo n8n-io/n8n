@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/unbound-method */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import type { MockProxy } from 'jest-mock-extended';
@@ -6,21 +7,16 @@ import { normalizeItems } from 'n8n-core';
 import type { IExecuteFunctions, IWorkflowDataProxyData } from 'n8n-workflow';
 import { ApplicationError, NodeConnectionType } from 'n8n-workflow';
 
-import type {
-	N8nOutputFixingParser,
-	N8nStructuredOutputParser,
-} from '../../../../utils/output_parsers/N8nOutputParser';
+import { N8nOutputFixingParser } from '../../../../utils/output_parsers/N8nOutputParser';
+import type { N8nStructuredOutputParser } from '../../../../utils/output_parsers/N8nOutputParser';
 import { OutputParserAutofixing } from '../OutputParserAutofixing.node';
-
-// Mock the entire module
-jest.mock('../../../../utils/output_parsers/N8nOutputParser');
 
 describe('OutputParserAutofixing', () => {
 	let outputParser: OutputParserAutofixing;
 	let thisArg: MockProxy<IExecuteFunctions>;
 	let mockModel: MockProxy<BaseLanguageModel>;
 	let mockStructuredOutputParser: MockProxy<N8nStructuredOutputParser>;
-	let mockN8nOutputFixingParser: jest.SpyInstance;
+	let realN8nOutputFixingParser: N8nOutputFixingParser;
 
 	beforeEach(() => {
 		outputParser = new OutputParserAutofixing();
@@ -40,58 +36,92 @@ describe('OutputParserAutofixing', () => {
 			throw new ApplicationError('Unexpected connection type');
 		});
 
-		// Create a mock for N8nOutputFixingParser
-		mockN8nOutputFixingParser = jest.spyOn(
-			// eslint-disable-next-line @typescript-eslint/no-var-requires
-			require('../../../../utils/output_parsers/N8nOutputParser'),
-			'N8nOutputFixingParser',
+		realN8nOutputFixingParser = new N8nOutputFixingParser(
+			thisArg,
+			mockModel,
+			mockStructuredOutputParser,
 		);
-		mockN8nOutputFixingParser.mockImplementation(() => ({
-			parse: jest.fn(),
-		}));
 	});
 
 	afterEach(() => {
 		jest.clearAllMocks();
 	});
 
-	let mockFixingParser: { parse: jest.Mock };
+	function getMockedRetryChain(output: string) {
+		return jest.fn().mockReturnValue({
+			invoke: jest.fn().mockResolvedValue({
+				content: output,
+			}),
+		});
+	}
 
-	beforeEach(() => {
-		mockFixingParser = { parse: jest.fn() };
-		mockN8nOutputFixingParser.mockReturnValue(mockFixingParser);
+	it('should successfully parse valid output without needing to fix it', async () => {
+		const validOutput = { name: 'Alice', age: 25 };
+
+		mockStructuredOutputParser.parse.mockResolvedValueOnce(validOutput);
+
+		const { response } = (await outputParser.supplyData.call(thisArg, 0)) as {
+			response: N8nOutputFixingParser;
+		};
+
+		// Ensure the response contains the output-fixing parser
+		expect(response).toBeDefined();
+		expect(response).toBeInstanceOf(N8nOutputFixingParser);
+
+		const result = await response.parse('{"name": "Alice", "age": 25}');
+
+		// Validate that the parser succeeds without retry
+		expect(result).toEqual(validOutput);
+		expect(mockStructuredOutputParser.parse).toHaveBeenCalledTimes(1); // Only one call to parse
 	});
 
-	it('should successfully parse valid output', async () => {
-		const validOutput = { name: 'John', age: 30 };
-		mockFixingParser.parse.mockResolvedValue(validOutput);
+	it('should throw an error when both structured parser and fixing parser fail', async () => {
+		mockStructuredOutputParser.parse
+			.mockRejectedValueOnce(new Error('Invalid JSON')) // First attempt fails
+			.mockRejectedValueOnce(new Error('Fixing attempt failed')); // Second attempt fails
 
-		const { response } = await outputParser.supplyData.call(thisArg, 0);
-		const result = await (response as N8nOutputFixingParser).parse('{"name": "John", "age": 30}');
+		const { response } = (await outputParser.supplyData.call(thisArg, 0)) as {
+			response: N8nOutputFixingParser;
+		};
+
+		response.getRetryChain = getMockedRetryChain('{}');
+
+		await expect(response.parse('Invalid JSON string')).rejects.toThrow('Fixing attempt failed');
+		expect(mockStructuredOutputParser.parse).toHaveBeenCalledTimes(2);
+	});
+
+	it('should reject on the first attempt and succeed on retry with the parsed content', async () => {
+		const validOutput = { name: 'Bob', age: 28 };
+
+		mockStructuredOutputParser.parse.mockRejectedValueOnce(new Error('Invalid JSON'));
+
+		const { response } = (await outputParser.supplyData.call(thisArg, 0)) as {
+			response: N8nOutputFixingParser;
+		};
+
+		response.getRetryChain = getMockedRetryChain(JSON.stringify(validOutput));
+
+		mockStructuredOutputParser.parse.mockResolvedValueOnce(validOutput);
+
+		const result = await response.parse('Invalid JSON string');
 
 		expect(result).toEqual(validOutput);
-		expect(mockFixingParser.parse).toHaveBeenCalledTimes(1);
+		expect(mockStructuredOutputParser.parse).toHaveBeenCalledTimes(2); // First fails, second succeeds
 	});
 
-	it('should attempt to fix and parse invalid output', async () => {
-		const validOutput = { name: 'John', age: 30 };
-		mockFixingParser.parse.mockResolvedValue(validOutput);
+	it('should handle non-JSON formatted response from fixing parser', async () => {
+		mockStructuredOutputParser.parse.mockRejectedValueOnce(new Error('Invalid JSON'));
 
-		const { response } = await outputParser.supplyData.call(thisArg, 0);
-		const result = await (response as N8nOutputFixingParser).parse('Invalid JSON string');
+		const { response } = (await outputParser.supplyData.call(thisArg, 0)) as {
+			response: N8nOutputFixingParser;
+		};
 
-		expect(result).toEqual(validOutput);
-		expect(mockFixingParser.parse).toHaveBeenCalledTimes(1);
-	});
+		response.getRetryChain = getMockedRetryChain('This is not JSON');
 
-	it('should throw an error if fixing fails', async () => {
-		mockFixingParser.parse.mockRejectedValue(new Error('Invalid JSON'));
+		mockStructuredOutputParser.parse.mockRejectedValueOnce(new Error('Unexpected token'));
 
-		const { response } = await outputParser.supplyData.call(thisArg, 0);
-
-		await expect((response as N8nOutputFixingParser).parse('Invalid JSON string')).rejects.toThrow(
-			'Invalid JSON',
-		);
-		expect(mockFixingParser.parse).toHaveBeenCalledTimes(1);
+		// Expect the structured parser to throw an error on invalid JSON from retry
+		await expect(response.parse('Invalid JSON string')).rejects.toThrow('Unexpected token');
+		expect(mockStructuredOutputParser.parse).toHaveBeenCalledTimes(2); // First fails, second tries and fails
 	});
 });

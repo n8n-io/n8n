@@ -141,7 +141,11 @@ export class OutputParserStructured implements INodeType {
 		const zodSchema = convertJsonSchemaToZod<z.ZodSchema<object>>(jsonSchema);
 		const nodeVersion = this.getNode().typeVersion;
 		try {
-			const parser = N8nStructuredOutputParser.fromZedJsonSchema(zodSchema, nodeVersion, this);
+			const parser = await N8nStructuredOutputParser.fromZedJsonSchema(
+				zodSchema,
+				nodeVersion,
+				this,
+			);
 			return {
 				response: parser,
 			};
