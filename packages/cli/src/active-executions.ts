@@ -215,6 +215,8 @@ export class ActiveExecutions {
 			executionIds.forEach((executionId) => this.stopExecution(executionId));
 		}
 
+		if (config.getEnv('executions.mode') === 'queue') return;
+
 		let count = 0;
 		while (executionIds.length !== 0) {
 			if (count++ % 4 === 0) {
