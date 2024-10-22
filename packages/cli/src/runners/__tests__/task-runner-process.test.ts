@@ -1,4 +1,4 @@
-import { GlobalConfig } from '@n8n/config';
+import { TaskRunnersConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
 import type { ChildProcess, SpawnOptions } from 'node:child_process';
 
@@ -19,12 +19,24 @@ const spawnMock = jest.fn(() =>
 require('child_process').spawn = spawnMock;
 
 describe('TaskRunnerProcess', () => {
-	const globalConfig = mockInstance(GlobalConfig);
+	const runnerConfig = mockInstance(TaskRunnersConfig);
+	runnerConfig.disabled = false;
+	runnerConfig.mode = 'internal_childprocess';
 	const authService = mock<TaskRunnerAuthService>();
-	const taskRunnerProcess = new TaskRunnerProcess(globalConfig, authService);
+	const taskRunnerProcess = new TaskRunnerProcess(runnerConfig, authService);
 
 	afterEach(async () => {
 		spawnMock.mockClear();
+	});
+
+	describe('constructor', () => {
+		it('should throw if runner mode is external', () => {
+			runnerConfig.mode = 'external';
+
+			expect(() => new TaskRunnerProcess(runnerConfig, authService)).toThrow();
+
+			runnerConfig.mode = 'internal_childprocess';
+		});
 	});
 
 	describe('start', () => {
