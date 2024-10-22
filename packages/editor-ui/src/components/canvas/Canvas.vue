@@ -18,7 +18,17 @@ import { Background } from '@vue-flow/background';
 import { MiniMap } from '@vue-flow/minimap';
 import Node from './elements/nodes/CanvasNode.vue';
 import Edge from './elements/edges/CanvasEdge.vue';
-import { computed, onMounted, onUnmounted, provide, ref, toRef, useCssModule, watch } from 'vue';
+import {
+	computed,
+	nextTick,
+	onMounted,
+	onUnmounted,
+	provide,
+	ref,
+	toRef,
+	useCssModule,
+	watch,
+} from 'vue';
 import type { EventBus } from 'n8n-design-system';
 import { createEventBus } from 'n8n-design-system';
 import { useContextMenu, type ContextMenuAction } from '@/composables/useContextMenu';
@@ -132,15 +142,19 @@ const disableKeyBindings = computed(() => !props.keyBindings);
 /**
  * @see https://developer.mozilla.org/en-US/docs/Web/API/UI_Events/Keyboard_event_key_values#whitespace_keys
  */
-const panningKeyCode = ' ';
+
 const isPanningEnabled = ref(false);
+const panningKeyCode = ' ';
+const selectionKeyCode = ref(true);
 
 onKeyDown(panningKeyCode, () => {
 	isPanningEnabled.value = true;
+	selectionKeyCode.value = false;
 });
 
 onKeyUp(panningKeyCode, () => {
 	isPanningEnabled.value = false;
+	selectionKeyCode.value = true;
 });
 
 const keyMap = computed(() => ({
@@ -173,10 +187,22 @@ const keyMap = computed(() => ({
 useKeybindings(keyMap, { disabled: disableKeyBindings });
 
 /**
+ * When the window is focused, the selection key code is lost.
+ * We trigger a value refresh to ensure that the selection key code is set correctly again.
+ *
+ * @issue https://linear.app/n8n/issue/N8N-7843/selection-keycode-gets-unset-when-changing-tabs
+ */
+function resetSelectionKeyCode() {
+	selectionKeyCode.value = false;
+	void nextTick(() => {
+		selectionKeyCode.value = true;
+	});
+}
+
+/**
  * Nodes
  */
 
-const selectionKeyCode = computed(() => (isPanningEnabled.value ? null : true));
 const lastSelectedNode = computed(() => selectedNodes.value[selectedNodes.value.length - 1]);
 const hasSelection = computed(() => selectedNodes.value.length > 0);
 const selectedNodeIds = computed(() => selectedNodes.value.map((node) => node.id));
@@ -472,11 +498,13 @@ function onMinimapMouseLeave() {
 onMounted(() => {
 	props.eventBus.on('fitView', onFitView);
 	props.eventBus.on('nodes:select', onSelectNodes);
+	window.addEventListener('focus', resetSelectionKeyCode);
 });
 
 onUnmounted(() => {
 	props.eventBus.off('fitView', onFitView);
 	props.eventBus.off('nodes:select', onSelectNodes);
+	window.removeEventListener('focus', resetSelectionKeyCode);
 });
 
 onPaneReady(async () => {
