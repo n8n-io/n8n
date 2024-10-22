@@ -318,7 +318,6 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 		nodeData?: ITaskData;
 		source?: string;
 	}): Promise<IExecutionPushResponse | undefined> {
-		const previousExecutionId = workflowsStore.activeExecutionId;
 		let runWorkflowApiResponse = await runWorkflow(options);
 		let { executionId } = runWorkflowApiResponse || {};
 
@@ -385,10 +384,10 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 
 					if (
 						execution.finished ||
-						(previousExecutionId && execution.id === previousExecutionId) ||
 						['error', 'canceled', 'crashed', 'success'].includes(execution.status)
 					) {
 						workflowsStore.setWorkflowExecutionData(execution);
+						workflowsStore.activeExecutionId = null;
 						if (timeoutId) clearTimeout(timeoutId);
 						resolve();
 						return;
