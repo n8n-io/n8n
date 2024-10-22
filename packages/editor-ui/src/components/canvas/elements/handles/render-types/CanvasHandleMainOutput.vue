@@ -31,7 +31,7 @@ const renderOptions = computed(() => render.value.options as CanvasNodeDefaultRe
 const runDataTotal = computed(() => runData.value?.total ?? 0);
 
 const runDataLabel = computed(() =>
-	runData.value
+	!isConnected.value && runData.value && runData.value.total > 0
 		? i18n.baseText('ndv.output.items', {
 				adjustToNumber: runData.value.total,
 				interpolate: { count: String(runData.value.total) },
