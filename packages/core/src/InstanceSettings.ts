@@ -44,7 +44,7 @@ export class InstanceSettings {
 
 	private readonly settingsFile = path.join(this.n8nFolder, 'config');
 
-	readonly enforceSettingsFilePermissions = this.loadEnforeSettingsFilePermissionsFlag();
+	readonly enforceSettingsFilePermissions = this.loadEnforceSettingsFilePermissionsFlag();
 
 	private settings = this.loadOrCreate();
 
@@ -181,7 +181,7 @@ export class InstanceSettings {
 		});
 	}
 
-	private loadEnforeSettingsFilePermissionsFlag(): {
+	private loadEnforceSettingsFilePermissionsFlag(): {
 		isSet: boolean;
 		enforce: boolean;
 	} {
