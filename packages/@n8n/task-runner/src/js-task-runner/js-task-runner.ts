@@ -7,7 +7,6 @@ import {
 import type {
 	CodeExecutionMode,
 	INode,
-	INodeType,
 	ITaskDataConnections,
 	IWorkflowExecuteAdditionalData,
 	WorkflowParameters,
@@ -129,17 +128,7 @@ export class JsTaskRunner extends TaskRunner {
 		const workflowParams = allData.workflow;
 		const workflow = new Workflow({
 			...workflowParams,
-			nodeTypes: {
-				getByNameAndVersion() {
-					return undefined as unknown as INodeType;
-				},
-				getByName() {
-					return undefined as unknown as INodeType;
-				},
-				getKnownTypes() {
-					return {};
-				},
-			},
+			nodeTypes: this.nodeTypes,
 		});
 
 		const customConsole = {

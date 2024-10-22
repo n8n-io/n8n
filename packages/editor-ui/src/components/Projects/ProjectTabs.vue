@@ -6,6 +6,7 @@ import { VIEWS } from '@/constants';
 import { useI18n } from '@/composables/useI18n';
 import { useProjectsStore } from '@/stores/projects.store';
 import { getResourcePermissions } from '@/permissions';
+import { ProjectTypes } from '@/types/projects.types';
 
 const locale = useI18n();
 const route = useRoute();
@@ -50,7 +51,11 @@ const options = computed(() => {
 		},
 	];
 
-	if (projectId && projectPermissions.value.update) {
+	if (
+		projectId &&
+		projectPermissions.value.update &&
+		projectsStore.currentProject?.type === ProjectTypes.Team
+	) {
 		tabs.push({
 			label: locale.baseText('projects.settings'),
 			value: VIEWS.PROJECT_SETTINGS,

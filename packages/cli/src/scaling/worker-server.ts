@@ -58,7 +58,7 @@ export class WorkerServer {
 	) {
 		assert(this.instanceSettings.instanceType === 'worker');
 
-		this.logger = this.logger.withScope('scaling');
+		this.logger = this.logger.scoped('scaling');
 
 		this.app = express();
 

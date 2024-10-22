@@ -223,11 +223,11 @@ describe('GlobalConfig', () => {
 		},
 		taskRunners: {
 			disabled: true,
+			mode: 'internal_childprocess',
 			path: '/runners',
 			authToken: '',
-			listen_address: '127.0.0.1',
+			listenAddress: '127.0.0.1',
 			port: 5679,
-			useLauncher: false,
 			launcherPath: '',
 			launcherRunner: 'javascript',
 		},
@@ -249,6 +249,11 @@ describe('GlobalConfig', () => {
 			enabled: false,
 			ttl: 10,
 			interval: 3,
+		},
+		generic: {
+			timezone: 'America/New_York',
+			releaseChannel: 'dev',
+			gracefulShutdownTimeout: 30,
 		},
 		security: {
 			enforceSettingsFilePermissions: false,

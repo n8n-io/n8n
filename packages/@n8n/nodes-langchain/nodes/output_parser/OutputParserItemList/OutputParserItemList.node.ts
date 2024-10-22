@@ -6,9 +6,9 @@ import {
 	type INodeTypeDescription,
 	type SupplyData,
 } from 'n8n-workflow';
-import { logWrapper } from '../../../utils/logWrapper';
+
+import { N8nItemListOutputParser } from '../../../utils/output_parsers/N8nItemListOutputParser';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
-import { ItemListOutputParser } from './ItemListOutputParser';
 
 export class OutputParserItemList implements INodeType {
 	description: INodeTypeDescription = {
@@ -86,10 +86,10 @@ export class OutputParserItemList implements INodeType {
 			separator?: string;
 		};
 
-		const parser = new ItemListOutputParser(options);
+		const parser = new N8nItemListOutputParser(options);
 
 		return {
-			response: logWrapper(parser, this),
+			response: parser,
 		};
 	}
 }
