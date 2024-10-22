@@ -70,7 +70,7 @@ describe('users.store', () => {
 
 			inviteUsers.mockResolvedValueOnce([
 				{
-					user: { role: 'global:member', email: 'test@n8n.io', emailSent: true },
+					user: { id: 'random-id', email: 'test@n8n.io', emailSent: true },
 				},
 			]);
 
