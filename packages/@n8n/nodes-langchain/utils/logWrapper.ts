@@ -1,24 +1,21 @@
-import { NodeOperationError, NodeConnectionType } from 'n8n-workflow';
-import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
-
-import type { Tool } from '@langchain/core/tools';
-import type { BaseMessage } from '@langchain/core/messages';
-import type { InputValues, MemoryVariables, OutputValues } from '@langchain/core/memory';
-import type { BaseChatMessageHistory } from '@langchain/core/chat_history';
-import type { BaseCallbackConfig, Callbacks } from '@langchain/core/callbacks/manager';
-
-import { Embeddings } from '@langchain/core/embeddings';
-import { VectorStore } from '@langchain/core/vectorstores';
-import type { Document } from '@langchain/core/documents';
-import { TextSplitter } from '@langchain/textsplitters';
 import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
+import type { BaseCallbackConfig, Callbacks } from '@langchain/core/callbacks/manager';
+import type { BaseChatMessageHistory } from '@langchain/core/chat_history';
+import type { Document } from '@langchain/core/documents';
+import { Embeddings } from '@langchain/core/embeddings';
+import type { InputValues, MemoryVariables, OutputValues } from '@langchain/core/memory';
+import type { BaseMessage } from '@langchain/core/messages';
 import { BaseRetriever } from '@langchain/core/retrievers';
-import { BaseOutputParser, OutputParserException } from '@langchain/core/output_parsers';
-import { isObject } from 'lodash';
+import type { Tool } from '@langchain/core/tools';
+import { VectorStore } from '@langchain/core/vectorstores';
+import { TextSplitter } from '@langchain/textsplitters';
 import type { BaseDocumentLoader } from 'langchain/dist/document_loaders/base';
-import { N8nJsonLoader } from './N8nJsonLoader';
-import { N8nBinaryLoader } from './N8nBinaryLoader';
+import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import { NodeOperationError, NodeConnectionType } from 'n8n-workflow';
+
 import { logAiEvent, isToolsInstance, isBaseChatMemory, isBaseChatMessageHistory } from './helpers';
+import { N8nBinaryLoader } from './N8nBinaryLoader';
+import { N8nJsonLoader } from './N8nJsonLoader';
 
 const errorsMap: { [key: string]: { message: string; description: string } } = {
 	'You exceeded your current quota, please check your plan and billing details.': {
@@ -40,10 +37,6 @@ export async function callMethodAsync<T>(
 	try {
 		return await parameters.method.call(this, ...parameters.arguments);
 	} catch (e) {
-		// Langchain checks for OutputParserException to run retry chain
-		// for auto-fixing the output so skip wrapping in this case
-		if (e instanceof OutputParserException) throw e;
-
 		// Propagate errors from sub-nodes
 		if (e.functionality === 'configuration-node') throw e;
 		const connectedNode = parameters.executeFunctions.getNode();
@@ -63,7 +56,9 @@ export async function callMethodAsync<T>(
 			error,
 		);
 		if (error.message) {
-			error.description = error.message;
+			if (!error.description) {
+				error.description = error.message;
+			}
 			throw error;
 		}
 		throw new NodeOperationError(
@@ -109,7 +104,6 @@ export function logWrapper(
 		| Tool
 		| BaseChatMemory
 		| BaseChatMessageHistory
-		| BaseOutputParser
 		| BaseRetriever
 		| Embeddings
 		| Document[]
@@ -215,44 +209,6 @@ export function logWrapper(
 
 						void logAiEvent(executeFunctions, 'ai-message-added-to-memory', { message });
 						executeFunctions.addOutputData(connectionType, index, [[{ json: payload }]]);
-					};
-				}
-			}
-
-			// ========== BaseOutputParser ==========
-			if (originalInstance instanceof BaseOutputParser) {
-				if (prop === 'parse' && 'parse' in target) {
-					return async (text: string | Record<string, unknown>): Promise<unknown> => {
-						connectionType = NodeConnectionType.AiOutputParser;
-						const stringifiedText = isObject(text) ? JSON.stringify(text) : text;
-						const { index } = executeFunctions.addInputData(connectionType, [
-							[{ json: { action: 'parse', text: stringifiedText } }],
-						]);
-
-						try {
-							const response = (await callMethodAsync.call(target, {
-								executeFunctions,
-								connectionType,
-								currentNodeRunIndex: index,
-								method: target[prop],
-								arguments: [stringifiedText],
-							})) as object;
-
-							void logAiEvent(executeFunctions, 'ai-output-parsed', { text, response });
-							executeFunctions.addOutputData(connectionType, index, [
-								[{ json: { action: 'parse', response } }],
-							]);
-							return response;
-						} catch (error) {
-							void logAiEvent(executeFunctions, 'ai-output-parsed', {
-								text,
-								response: error.message ?? error,
-							});
-							executeFunctions.addOutputData(connectionType, index, [
-								[{ json: { action: 'parse', response: error.message ?? error } }],
-							]);
-							throw error;
-						}
 					};
 				}
 			}
