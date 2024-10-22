@@ -373,6 +373,11 @@ export class NextCloud implements INodeType {
 						description: 'Retrieve all Notes',
 					},
 					{
+						name: 'Get a Note',
+						value: 'getNote',
+						description: 'Retrieve a single Note',
+					},
+					{
 						name: 'Update Note',
 						value: 'updateNote',
 						description: 'Update an existing Note',
@@ -416,6 +421,36 @@ export class NextCloud implements INodeType {
 				},
 				placeholder: 'Meeting notes...',
 				description: 'Content of the Note',
+			},
+			{
+				displayName: 'Title',
+				name: 'noteTitle',
+				type: 'string',
+				default: 'New note',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: ['notes'],
+						operation: ['createNote'],
+					},
+				},
+				placeholder: 'New note...',
+				description: 'Title of the Note',
+			},
+			{
+				displayName: 'Category',
+				name: 'noteCategory',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: ['notes'],
+						operation: ['createNote'],
+					},
+				},
+				placeholder: 'Category of note...',
+				description: 'Category of the Note',
 			},
 			// Tables Operations
 			{
@@ -1485,7 +1520,9 @@ export class NextCloud implements INodeType {
 					switch (operation) {
 						case 'createNote': {
 							const content = this.getNodeParameter('content', i) as string;
-							const notesBody = { content };
+							const category = this.getNodeParameter('noteCategory', i) as string;
+							const title = this.getNodeParameter('noteTitle', i) as string;
+							const notesBody = { content, category, title };
 							const notesHeaders = {
 								'OCS-APIRequest': 'true',
 								'Content-Type': 'application/json',
@@ -1508,6 +1545,21 @@ export class NextCloud implements INodeType {
 								this,
 								'GET',
 								'ocs/v1.php/apps/notes/api/v1/notes',
+								'',
+								notesHeaders,
+							);
+							returnData.push(JSON.parse(responseData));
+							break;
+						}
+						case 'getNote': {
+							const noteId = this.getNodeParameter('noteId', i) as string;
+							const notesHeaders = {
+								'OCS-APIRequest': 'true',
+							};
+							responseData = await nextCloudApiRequest.call(
+								this,
+								'GET',
+								`ocs/v1.php/apps/notes/api/v1/notes/${encodeURIComponent(noteId)}`,
 								'',
 								notesHeaders,
 							);
