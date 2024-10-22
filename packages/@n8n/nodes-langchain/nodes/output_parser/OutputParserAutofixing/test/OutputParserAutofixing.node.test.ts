@@ -16,7 +16,6 @@ describe('OutputParserAutofixing', () => {
 	let thisArg: MockProxy<IExecuteFunctions>;
 	let mockModel: MockProxy<BaseLanguageModel>;
 	let mockStructuredOutputParser: MockProxy<N8nStructuredOutputParser>;
-	let realN8nOutputFixingParser: N8nOutputFixingParser;
 
 	beforeEach(() => {
 		outputParser = new OutputParserAutofixing();
@@ -35,12 +34,6 @@ describe('OutputParserAutofixing', () => {
 
 			throw new ApplicationError('Unexpected connection type');
 		});
-
-		realN8nOutputFixingParser = new N8nOutputFixingParser(
-			thisArg,
-			mockModel,
-			mockStructuredOutputParser,
-		);
 	});
 
 	afterEach(() => {
