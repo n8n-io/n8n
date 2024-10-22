@@ -119,9 +119,9 @@ export class SamlController {
 			// if RelayState is set to the test connection Url, this is a test connection
 			if (isConnectionTestRequest(req)) {
 				if (loginResult.authenticatedUser) {
-					return res.render('saml-connection-test-success', loginResult.attributes);
+					return res.render('sso/saml-connection-test-success', loginResult.attributes);
 				} else {
-					return res.render('saml-connection-test-failed', {
+					return res.render('sso/saml-connection-test-failed', {
 						message: '',
 						attributes: loginResult.attributes,
 					});
@@ -154,7 +154,7 @@ export class SamlController {
 			return sendErrorResponse(res, new AuthError('SAML Authentication failed'));
 		} catch (error) {
 			if (isConnectionTestRequest(req)) {
-				return res.render('saml-connection-test-failed', { message: (error as Error).message });
+				return res.render('sso/saml-connection-test-failed', { message: (error as Error).message });
 			}
 			this.eventService.emit('user-login-failed', {
 				userEmail: 'unknown',
