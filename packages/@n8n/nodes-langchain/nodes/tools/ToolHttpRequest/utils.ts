@@ -109,12 +109,11 @@ const predefinedCredentialRequest = async (ctx: IExecuteFunctions, itemIndex: nu
 	const additionalOptions = getOAuth2AdditionalParameters(predefinedType);
 
 	return async (options: IHttpRequestOptions) => {
-		return await ctx.helpers.requestWithAuthentication.call(
+		return await ctx.helpers.httpRequestWithAuthentication.call(
 			ctx,
 			predefinedType,
 			options,
 			additionalOptions && { oauth2: additionalOptions },
-			itemIndex,
 		);
 	};
 };
