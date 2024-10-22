@@ -25,6 +25,7 @@ import NodeExecuteButton from './NodeExecuteButton.vue';
 import RunData from './RunData.vue';
 import WireMeUp from './WireMeUp.vue';
 import { waitingNodeTooltip } from '@/utils/executionUtils';
+import { uniqBy } from 'lodash-es';
 
 type MappingMode = 'debugging' | 'mapping';
 
@@ -169,7 +170,7 @@ export default defineComponent({
 			return false;
 		},
 		workflowRunning(): boolean {
-			return this.uiStore.isActionActive['workflowRunning'];
+			return this.uiStore.isActionActive.workflowRunning;
 		},
 
 		activeNode(): INodeUi | null {
@@ -183,12 +184,7 @@ export default defineComponent({
 			return rootNodes[0];
 		},
 		rootNodesParents() {
-			const workflow = this.workflow;
-			const parentNodes = [...workflow.getParentNodes(this.rootNode, NodeConnectionType.Main)]
-				.reverse()
-				.map((parent, index): IConnectedNode => ({ name: parent, depth: index + 1, indicies: [] }));
-
-			return parentNodes;
+			return this.workflow.getParentNodesByDepth(this.rootNode);
 		},
 		currentNode(): INodeUi | null {
 			if (this.isActiveNodeConfig) {
@@ -212,17 +208,16 @@ export default defineComponent({
 			return undefined;
 		},
 		parentNodes(): IConnectedNode[] {
-			if (!this.activeNode) {
+			const { activeNode, workflow } = this;
+
+			if (!activeNode) {
 				return [];
 			}
-			const nodes = this.workflow.getParentNodesByDepth(this.activeNode.name);
 
-			return nodes.filter(
-				({ name }, i) =>
-					this.activeNode &&
-					name !== this.activeNode.name &&
-					nodes.findIndex((node) => node.name === name) === i,
-			);
+			const parents = workflow
+				.getParentNodesByDepth(activeNode.name)
+				.filter((parent) => parent.name !== activeNode.name);
+			return uniqBy(parents, (parent) => parent.name);
 		},
 		currentNodeDepth(): number {
 			const node = this.parentNodes.find(
