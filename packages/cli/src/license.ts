@@ -40,7 +40,7 @@ export class License {
 		private readonly licenseMetricsService: LicenseMetricsService,
 		private readonly globalConfig: GlobalConfig,
 	) {
-		this.logger = this.logger.withScope('license');
+		this.logger = this.logger.scoped('license');
 	}
 
 	/**
