@@ -87,8 +87,6 @@ export class TaskRunnerService {
 						this.sendMessage.bind(this, id) as MessageCallback,
 					);
 
-					this.sendMessage(id, { type: 'broker:runnerregistered' });
-
 					this.logger.info(`Runner "${message.name}"(${id}) has been registered`);
 					return;
 				}
