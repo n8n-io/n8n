@@ -1,4 +1,5 @@
 import { mock } from 'jest-mock-extended';
+import type { InstanceSettings } from 'n8n-core';
 import { NodeApiError, NodeOperationError, Workflow } from 'n8n-workflow';
 import type { IWebhookData, WorkflowActivateMode } from 'n8n-workflow';
 import { Container } from 'typedi';
@@ -276,5 +277,74 @@ describe('addWebhooks()', () => {
 		await activeWorkflowManager.addWebhooks(workflow, additionalData, 'trigger', 'init');
 
 		expect(webhookService.storeWebhook).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe('shouldAddWebhooks', () => {
+	describe('if leader', () => {
+		const activeWorkflowManager = new ActiveWorkflowManager(
+			mock(),
+			mock(),
+			mock(),
+			mock(),
+			mock(),
+			mock(),
+			mock(),
+			mock(),
+			mock(),
+			mock(),
+			mock(),
+			mock(),
+			mock(),
+			mock<InstanceSettings>({ isLeader: true, isFollower: false }),
+			mock(),
+		);
+
+		test('should return `true` for `init`', () => {
+			// ensure webhooks are populated on init: https://github.com/n8n-io/n8n/pull/8830
+			const result = activeWorkflowManager.shouldAddWebhooks('init');
+			expect(result).toBe(true);
+		});
+
+		test('should return `false` for `leadershipChange`', () => {
+			const result = activeWorkflowManager.shouldAddWebhooks('leadershipChange');
+			expect(result).toBe(false);
+		});
+
+		test('should return `true` for `update` or `activate`', () => {
+			const modes = ['update', 'activate'] as WorkflowActivateMode[];
+			for (const mode of modes) {
+				const result = activeWorkflowManager.shouldAddWebhooks(mode);
+				expect(result).toBe(true);
+			}
+		});
+	});
+
+	describe('if follower', () => {
+		const activeWorkflowManager = new ActiveWorkflowManager(
+			mock(),
+			mock(),
+			mock(),
+			mock(),
+			mock(),
+			mock(),
+			mock(),
+			mock(),
+			mock(),
+			mock(),
+			mock(),
+			mock(),
+			mock(),
+			mock<InstanceSettings>({ isLeader: false, isFollower: true }),
+			mock(),
+		);
+
+		test('should return `false` for `update` or `activate`', () => {
+			const modes = ['update', 'activate'] as WorkflowActivateMode[];
+			for (const mode of modes) {
+				const result = activeWorkflowManager.shouldAddWebhooks(mode);
+				expect(result).toBe(false);
+			}
+		});
 	});
 });

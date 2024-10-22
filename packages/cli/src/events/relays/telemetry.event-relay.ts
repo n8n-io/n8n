@@ -780,7 +780,7 @@ export class TelemetryEventRelay extends EventRelay {
 			license_plan_name: this.license.getPlanName(),
 			license_tenant_id: config.getEnv('license.tenantId'),
 			binary_data_s3: isS3Available && isS3Selected && isS3Licensed,
-			multi_main_setup_enabled: config.getEnv('multiMainSetup.enabled'),
+			multi_main_setup_enabled: this.globalConfig.multiMainSetup.enabled,
 			metrics: {
 				metrics_enabled: this.globalConfig.endpoints.metrics.enable,
 				metrics_category_default: this.globalConfig.endpoints.metrics.includeDefaultMetrics,

@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
+import { GlobalConfig } from '@n8n/config';
 import { Flags } from '@oclif/core';
 import glob from 'fast-glob';
 import { createReadStream, createWriteStream, existsSync } from 'fs';
@@ -240,7 +241,7 @@ export class Start extends BaseCommand {
 		}
 
 		if (
-			config.getEnv('multiMainSetup.enabled') &&
+			Container.get(GlobalConfig).multiMainSetup.enabled &&
 			!Container.get(License).isMultipleMainInstancesLicensed()
 		) {
 			throw new FeatureNotLicensedError(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES);

@@ -1,3 +1,10 @@
+import type { CallbackManagerForToolRun } from '@langchain/core/callbacks/manager';
+import { DynamicStructuredTool, DynamicTool } from '@langchain/core/tools';
+import type { JSONSchema7 } from 'json-schema';
+import get from 'lodash/get';
+import isObject from 'lodash/isObject';
+import type { SetField, SetNodeOptions } from 'n8n-nodes-base/dist/nodes/Set/v2/helpers/interfaces';
+import * as manual from 'n8n-nodes-base/dist/nodes/Set/v2/manual.mode';
 import type {
 	IExecuteFunctions,
 	IExecuteWorkflowInfo,
@@ -11,22 +18,16 @@ import type {
 	INodeParameterResourceLocator,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError, jsonParse } from 'n8n-workflow';
-import type { SetField, SetNodeOptions } from 'n8n-nodes-base/dist/nodes/Set/v2/helpers/interfaces';
-import * as manual from 'n8n-nodes-base/dist/nodes/Set/v2/manual.mode';
 
-import { DynamicStructuredTool, DynamicTool } from '@langchain/core/tools';
-import get from 'lodash/get';
-import isObject from 'lodash/isObject';
-import type { CallbackManagerForToolRun } from '@langchain/core/callbacks/manager';
-import type { JSONSchema7 } from 'json-schema';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 import type { DynamicZodObject } from '../../../types/zod.types';
-import { generateSchema, getSandboxWithZod } from '../../../utils/schemaParsing';
 import {
 	jsonSchemaExampleField,
 	schemaTypeField,
 	inputSchemaField,
 } from '../../../utils/descriptions';
+import { convertJsonSchemaToZod, generateSchema } from '../../../utils/schemaParsing';
+import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+
 export class ToolWorkflow implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Call n8n Workflow Tool',
@@ -529,10 +530,9 @@ export class ToolWorkflow implements INodeType {
 						? generateSchema(jsonExample)
 						: jsonParse<JSONSchema7>(inputSchema);
 
-				const zodSchemaSandbox = getSandboxWithZod(this, jsonSchema, 0);
-				const zodSchema = await zodSchemaSandbox.runCode<DynamicZodObject>();
+				const zodSchema = convertJsonSchemaToZod<DynamicZodObject>(jsonSchema);
 
-				tool = new DynamicStructuredTool<typeof zodSchema>({
+				tool = new DynamicStructuredTool({
 					schema: zodSchema,
 					...functionBase,
 				});

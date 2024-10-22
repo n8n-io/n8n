@@ -333,6 +333,7 @@ describe('useRunWorkflow({ router })', () => {
 			vi.mocked(workflowsStore).allNodes = [];
 			vi.mocked(workflowsStore).getExecution.mockResolvedValue({
 				finished: true,
+				workflowData: { nodes: [] },
 			} as unknown as IExecutionResponse);
 			vi.mocked(workflowsStore).workflowExecutionData = {
 				id: '123',

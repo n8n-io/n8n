@@ -91,6 +91,7 @@ import {
 	faInfoCircle,
 	faKey,
 	faLanguage,
+	faLayerGroup,
 	faLink,
 	faList,
 	faLightbulb,
@@ -260,6 +261,7 @@ export const FontAwesomePlugin: Plugin = {
 		addIcon(faInfoCircle);
 		addIcon(faKey);
 		addIcon(faLanguage);
+		addIcon(faLayerGroup);
 		addIcon(faLink);
 		addIcon(faList);
 		addIcon(faLightbulb);

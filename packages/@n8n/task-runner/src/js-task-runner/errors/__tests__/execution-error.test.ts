@@ -42,6 +42,7 @@ describe('ExecutionError', () => {
 
 		expect(JSON.stringify(executionError)).toBe(
 			JSON.stringify({
+				stack: defaultStack,
 				message: 'a.unknown is not a function [line 2, for item 1]',
 				description: 'TypeError',
 				itemIndex: 1,

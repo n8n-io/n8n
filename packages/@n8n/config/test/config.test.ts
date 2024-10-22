@@ -211,7 +211,6 @@ describe('GlobalConfig', () => {
 					clusterNodes: '',
 					tls: false,
 				},
-				queueRecoveryInterval: 60,
 				gracefulShutdownTimeout: 30,
 				prefix: 'bull',
 				settings: {
@@ -245,6 +244,16 @@ describe('GlobalConfig', () => {
 				location: 'logs/n8n.log',
 			},
 			scopes: [],
+		},
+		multiMainSetup: {
+			enabled: false,
+			ttl: 10,
+			interval: 3,
+		},
+		generic: {
+			timezone: 'America/New_York',
+			releaseChannel: 'dev',
+			gracefulShutdownTimeout: 30,
 		},
 	};
 
