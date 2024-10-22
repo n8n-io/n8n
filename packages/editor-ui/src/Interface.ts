@@ -1189,6 +1189,7 @@ export interface IInviteResponse {
 		email: string;
 		emailSent: boolean;
 		inviteAcceptUrl: string;
+		role: IRole;
 	};
 	error?: string;
 }
