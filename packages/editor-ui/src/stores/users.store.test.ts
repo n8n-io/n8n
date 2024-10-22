@@ -70,14 +70,16 @@ describe('users.store', () => {
 
 			inviteUsers.mockResolvedValueOnce([
 				{
-					user: { id: 'random-id', email: 'test@n8n.io', emailSent: true },
+					user: { id: 'random-id', email: 'test@n8n.io', emailSent: true, role: 'global:member' },
 				},
 			]);
 
-			await usersStore.inviteUsers([{ email: 'test@n8n.io', role: 'global:admin' }]);
+			await usersStore.inviteUsers([{ email: 'test@n8n.io', role: 'global:member' }]);
 
 			expect(usersStore.allUsers[0]).toMatchObject(
 				expect.objectContaining({
+					id: 'random-id',
+					email: 'test@n8n.io',
 					role: 'global:member',
 					isPending: true,
 					isDefaultUser: false,
