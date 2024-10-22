@@ -56,7 +56,7 @@ defineOptions({
 const lastPopupCountUpdate = ref(0);
 
 const router = useRouter();
-const { runWorkflow, runWorkflowResolvePending, stopCurrentExecution } = useRunWorkflow({ router });
+const { runWorkflowResolvePending, stopCurrentExecution } = useRunWorkflow({ router });
 
 const workflowsStore = useWorkflowsStore();
 const externalHooks = useExternalHooks();
@@ -264,17 +264,22 @@ async function onClick() {
 			telemetry.track('User clicked execute node button', telemetryPayload);
 			await externalHooks.run('nodeExecuteButton.onClick', telemetryPayload);
 
-			if (workflowsStore.isWaitingExecution) {
-				await runWorkflowResolvePending({
-					destinationNode: props.nodeName,
-					source: 'RunData.ExecuteNodeButton',
-				});
-			} else {
-				await runWorkflow({
-					destinationNode: props.nodeName,
-					source: 'RunData.ExecuteNodeButton',
-				});
-			}
+			// if (workflowsStore.isWaitingExecution) {
+			// 	await runWorkflowResolvePending({
+			// 		destinationNode: props.nodeName,
+			// 		source: 'RunData.ExecuteNodeButton',
+			// 	});
+			// } else {
+			// 	await runWorkflow({
+			// 		destinationNode: props.nodeName,
+			// 		source: 'RunData.ExecuteNodeButton',
+			// 	});
+			// }
+
+			await runWorkflowResolvePending({
+				destinationNode: props.nodeName,
+				source: 'RunData.ExecuteNodeButton',
+			});
 
 			emit('execute');
 		}

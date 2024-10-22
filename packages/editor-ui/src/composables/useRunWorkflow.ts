@@ -320,6 +320,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 	}): Promise<IExecutionPushResponse | undefined> {
 		let runWorkflowApiResponse = await runWorkflow(options);
 		let { executionId } = runWorkflowApiResponse || {};
+		console.log(executionId, workflowsStore.activeExecutionId);
 
 		const MAX_DELAY = 3000;
 
@@ -367,6 +368,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 						source: options.source,
 					});
 					const execution = await workflowsStore.getExecution((executionId as string) || '');
+					console.log(execution);
 
 					localStorage.removeItem(FORM_RELOAD);
 
@@ -387,7 +389,8 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 						['error', 'canceled', 'crashed', 'success'].includes(execution.status)
 					) {
 						workflowsStore.setWorkflowExecutionData(execution);
-						workflowsStore.activeExecutionId = null;
+						uiStore.removeActiveAction('workflowRunning');
+						// workflowsStore.activeExecutionId = null;
 						if (timeoutId) clearTimeout(timeoutId);
 						resolve();
 						return;
