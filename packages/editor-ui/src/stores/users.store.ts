@@ -280,7 +280,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		addUsers(
 			invitedUsers.map(({ user }, index) => ({
 				isPending: true,
-				globalRole: { name: params[index].role },
+				role: params[index].role,
 				...user,
 			})),
 		);
