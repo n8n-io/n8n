@@ -145,11 +145,11 @@ const disableKeyBindings = computed(() => !props.keyBindings);
 
 const isPanningEnabled = ref(false);
 const panningKeyCode = ' ';
-const selectionKeyCode = ref(true);
+const selectionKeyCode = ref<true | null>(true);
 
 onKeyDown(panningKeyCode, () => {
 	isPanningEnabled.value = true;
-	selectionKeyCode.value = false;
+	selectionKeyCode.value = null;
 });
 
 onKeyUp(panningKeyCode, () => {
@@ -193,7 +193,7 @@ useKeybindings(keyMap, { disabled: disableKeyBindings });
  * @issue https://linear.app/n8n/issue/N8N-7843/selection-keycode-gets-unset-when-changing-tabs
  */
 function resetSelectionKeyCode() {
-	selectionKeyCode.value = false;
+	selectionKeyCode.value = null;
 	void nextTick(() => {
 		selectionKeyCode.value = true;
 	});
