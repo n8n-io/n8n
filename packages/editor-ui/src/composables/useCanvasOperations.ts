@@ -1154,14 +1154,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			connection,
 		);
 
-		if (
-			!isConnectionAllowed(
-				sourceNode,
-				targetNode,
-				mappedConnection[0].type,
-				mappedConnection[1].type,
-			)
-		) {
+		if (!isConnectionAllowed(sourceNode, targetNode, mappedConnection[0], mappedConnection[1])) {
 			return;
 		}
 
@@ -1298,12 +1291,12 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 	function isConnectionAllowed(
 		sourceNode: INodeUi,
 		targetNode: INodeUi,
-		sourceConnectionType: NodeConnectionType,
-		targetConnectionType: NodeConnectionType,
+		sourceConnection: IConnection,
+		targetConnection: IConnection,
 	): boolean {
 		const blocklist = [STICKY_NODE_TYPE];
 
-		if (sourceConnectionType !== targetConnectionType) {
+		if (sourceConnection.type !== targetConnection.type) {
 			return false;
 		}
 
@@ -1329,10 +1322,13 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 		const sourceNodeHasOutputConnectionOfType = !!sourceNodeOutputs.find((output) => {
 			const outputType = typeof output === 'string' ? output : output.type;
-			return outputType === sourceConnectionType;
+			return outputType === sourceConnection.type;
 		});
 
-		if (!sourceNodeHasOutputConnectionOfType) {
+		const sourceNodeHasOutputConnectionPortOfType =
+			sourceConnection.index < sourceNodeOutputs.length;
+
+		if (!sourceNodeHasOutputConnectionOfType || !sourceNodeHasOutputConnectionPortOfType) {
 			return false;
 		}
 
@@ -1354,7 +1350,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 		const targetNodeHasInputConnectionOfType = !!targetNodeInputs.find((input) => {
 			const inputType = typeof input === 'string' ? input : input.type;
-			if (inputType !== targetConnectionType) return false;
+			if (inputType !== targetConnection.type) return false;
 
 			const filter = typeof input === 'object' && 'filter' in input ? input.filter : undefined;
 			if (filter?.nodes.length && !filter.nodes.includes(sourceNode.type)) {
@@ -1373,7 +1369,9 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			return true;
 		});
 
-		return targetNodeHasInputConnectionOfType;
+		const targetNodeHasInputConnectionPortOfType = targetConnection.index < targetNodeInputs.length;
+
+		return targetNodeHasInputConnectionOfType && targetNodeHasInputConnectionPortOfType;
 	}
 
 	function addConnections(
