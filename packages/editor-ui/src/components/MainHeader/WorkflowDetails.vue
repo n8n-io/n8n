@@ -189,7 +189,7 @@ const workflowMenuItems = computed<ActionDropdownItem[]>(() => {
 
 	actions.push({
 		id: WORKFLOW_MENU_ACTIONS.SWITCH_NODE_VIEW_VERSION,
-		...(nodeViewSwitcherDiscovered.value
+		...(nodeViewSwitcherDiscovered.value || nodeViewVersion.value === '2'
 			? {}
 			: { badge: locale.baseText('menuActions.badge.new') }),
 		label:
@@ -398,8 +398,8 @@ async function handleFileImport(): Promise<void> {
 	}
 }
 
-function onWorkflowMenuOpen() {
-	setNodeViewSwitcherDropdownOpened();
+function onWorkflowMenuOpen(visible: boolean) {
+	setNodeViewSwitcherDropdownOpened(visible);
 }
 
 async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void> {
@@ -735,7 +735,7 @@ function showCreateWorkflowSuccessToast(id?: string) {
 					data-test-id="workflow-import-input"
 					@change="handleFileImport()"
 				/>
-				<N8nTooltip :visible="isNodeViewDiscoveryTooltipVisible">
+				<N8nTooltip dismissible :visible="isNodeViewDiscoveryTooltipVisible">
 					<N8nActionDropdown
 						:items="workflowMenuItems"
 						data-test-id="workflow-menu"
@@ -744,6 +744,11 @@ function showCreateWorkflowSuccessToast(id?: string) {
 					/>
 					<template #content>
 						{{ $locale.baseText('menuActions.nodeViewDiscovery.tooltip') }}
+						<N8nIcon
+							:class="$style.closeNodeViewDiscovery"
+							icon="times-circle"
+							@click="setNodeViewSwitcherDiscovered"
+						/>
 					</template>
 				</N8nTooltip>
 			</div>
@@ -833,5 +838,12 @@ $--header-spacing: 20px;
 
 .disabledShareButton {
 	cursor: not-allowed;
+}
+
+.closeNodeViewDiscovery {
+	position: absolute;
+	right: var(--spacing-xs);
+	top: var(--spacing-xs);
+	cursor: pointer;
 }
 </style>
