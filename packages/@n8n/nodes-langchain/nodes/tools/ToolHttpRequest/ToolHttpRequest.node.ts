@@ -282,9 +282,7 @@ export class ToolHttpRequest implements INodeType {
 			},
 			body: {},
 			// We will need a full response object later to extract the headers and check the response's content type.
-			// As we may use different underlying implementations for HTTP request, we specify two options.
 			returnFullResponse: true,
-			resolveWithFullResponse: true,
 		};
 
 		const authentication = this.getNodeParameter('authentication', itemIndex, 'none') as
