@@ -18,7 +18,17 @@ import { Background } from '@vue-flow/background';
 import { MiniMap } from '@vue-flow/minimap';
 import Node from './elements/nodes/CanvasNode.vue';
 import Edge from './elements/edges/CanvasEdge.vue';
-import { computed, onMounted, onUnmounted, provide, ref, toRef, useCssModule, watch } from 'vue';
+import {
+	computed,
+	onBeforeUnmount,
+	onMounted,
+	onUnmounted,
+	provide,
+	ref,
+	toRef,
+	useCssModule,
+	watch,
+} from 'vue';
 import type { EventBus } from 'n8n-design-system';
 import { createEventBus } from 'n8n-design-system';
 import { useContextMenu, type ContextMenuAction } from '@/composables/useContextMenu';
@@ -33,6 +43,7 @@ import { onKeyDown, onKeyUp, useDebounceFn } from '@vueuse/core';
 import CanvasArrowHeadMarker from './elements/edges/CanvasArrowHeadMarker.vue';
 import { CanvasNodeRenderType } from '@/types';
 import CanvasBackgroundStripedPattern from './elements/CanvasBackgroundStripedPattern.vue';
+import { useTouchEventsInVueFlow } from '@/composables/useTouchEventsInVueFlow';
 
 const $style = useCssModule();
 
@@ -95,6 +106,7 @@ const props = withDefaults(
 	},
 );
 
+const vueFlowStore = useVueFlow({ id: props.id, deleteKeyCode: null });
 const {
 	getSelectedNodes: selectedNodes,
 	addSelectedNodes,
@@ -112,9 +124,11 @@ const {
 	findNode,
 	onNodesInitialized,
 	viewport,
-} = useVueFlow({ id: props.id, deleteKeyCode: null });
+	onInit,
+} = vueFlowStore;
 
 const isPaneReady = ref(false);
+const { addTouchListeners, removeTouchListeners } = useTouchEventsInVueFlow(vueFlowStore);
 
 const classes = computed(() => ({
 	[$style.canvas]: true,
@@ -486,6 +500,14 @@ onPaneReady(async () => {
 onNodesInitialized((nodes) => {
 	if (nodes.length !== 1 || nodes[0].data?.render.type !== CanvasNodeRenderType.AddNodes) return;
 	void onFitView();
+});
+
+onInit(() => {
+	addTouchListeners();
+});
+
+onBeforeUnmount(() => {
+	removeTouchListeners();
 });
 
 watch(() => props.readOnly, setReadonly, {
