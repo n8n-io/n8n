@@ -651,7 +651,9 @@ export class TelemetryEventRelay extends EventRelay {
 				}
 
 				if (telemetryProperties.is_manual) {
-					nodeGraphResult = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
+					nodeGraphResult = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes, {
+						runData: runData.data.resultData?.runData,
+					});
 					telemetryProperties.node_graph = nodeGraphResult.nodeGraph;
 					telemetryProperties.node_graph_string = JSON.stringify(nodeGraphResult.nodeGraph);
 
@@ -663,7 +665,9 @@ export class TelemetryEventRelay extends EventRelay {
 
 			if (telemetryProperties.is_manual) {
 				if (!nodeGraphResult) {
-					nodeGraphResult = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
+					nodeGraphResult = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes, {
+						runData: runData.data.resultData?.runData,
+					});
 				}
 
 				let userRole: 'owner' | 'sharee' | undefined = undefined;
@@ -688,7 +692,9 @@ export class TelemetryEventRelay extends EventRelay {
 				};
 
 				if (!manualExecEventProperties.node_graph_string) {
-					nodeGraphResult = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
+					nodeGraphResult = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes, {
+						runData: runData.data.resultData?.runData,
+					});
 					manualExecEventProperties.node_graph_string = JSON.stringify(nodeGraphResult.nodeGraph);
 				}
 
@@ -774,7 +780,7 @@ export class TelemetryEventRelay extends EventRelay {
 			license_plan_name: this.license.getPlanName(),
 			license_tenant_id: config.getEnv('license.tenantId'),
 			binary_data_s3: isS3Available && isS3Selected && isS3Licensed,
-			multi_main_setup_enabled: config.getEnv('multiMainSetup.enabled'),
+			multi_main_setup_enabled: this.globalConfig.multiMainSetup.enabled,
 			metrics: {
 				metrics_enabled: this.globalConfig.endpoints.metrics.enable,
 				metrics_category_default: this.globalConfig.endpoints.metrics.includeDefaultMetrics,

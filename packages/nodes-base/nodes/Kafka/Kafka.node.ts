@@ -229,7 +229,6 @@ export class Kafka implements INodeType {
 					};
 					if (credentials.authentication === true) {
 						if (!(credentials.username && credentials.password)) {
-							// eslint-disable-next-line n8n-nodes-base/node-execute-block-wrong-error-thrown
 							throw new ApplicationError('Username and password are required for authentication', {
 								level: 'warning',
 							});

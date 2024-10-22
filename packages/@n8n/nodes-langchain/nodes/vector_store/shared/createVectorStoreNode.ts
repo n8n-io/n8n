@@ -1,5 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import type { Document } from '@langchain/core/documents';
+import type { Embeddings } from '@langchain/core/embeddings';
 import type { VectorStore } from '@langchain/core/vectorstores';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type {
@@ -15,14 +17,13 @@ import type {
 	Icon,
 	INodePropertyOptions,
 } from 'n8n-workflow';
-import type { Embeddings } from '@langchain/core/embeddings';
-import type { Document } from '@langchain/core/documents';
-import { logWrapper } from '../../../utils/logWrapper';
-import { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
-import type { N8nBinaryLoader } from '../../../utils/N8nBinaryLoader';
-import { getMetadataFiltersValues, logAiEvent } from '../../../utils/helpers';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+
 import { processDocument } from './processDocuments';
+import { getMetadataFiltersValues, logAiEvent } from '../../../utils/helpers';
+import { logWrapper } from '../../../utils/logWrapper';
+import type { N8nBinaryLoader } from '../../../utils/N8nBinaryLoader';
+import { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
+import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
 type NodeOperationMode = 'insert' | 'load' | 'retrieve' | 'update';
 
@@ -296,6 +297,9 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 
 				const resultData = [];
 				for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+					if (this.getExecutionCancelSignal()?.aborted) {
+						break;
+					}
 					const itemData = items[itemIndex];
 					const { processedDocuments, serializedDocuments } = await processDocument(
 						documentInput,

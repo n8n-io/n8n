@@ -7,10 +7,10 @@ import type {
 	FilterOptionsValue,
 	FilterValue,
 	INodeProperties,
-	Result,
 	ValidationResult,
 } from '../Interfaces';
 import * as LoggerProxy from '../LoggerProxy';
+import type { Result } from '../result';
 import { validateFieldType } from '../TypeValidation';
 
 type FilterConditionMetadata = {
