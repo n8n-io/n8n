@@ -59,7 +59,7 @@ const userMenuItems = ref([
 	},
 ]);
 
-const mainMenuItems = ref([
+const mainMenuItems = computed(() => [
 	{
 		id: 'cloud-admin',
 		position: 'bottom',
