@@ -26,7 +26,6 @@ import {
 } from '../service-provider.ee';
 import type { SamlLoginBinding } from '../types';
 import { SamlConfiguration } from '../types/requests';
-import { getInitSSOFormView } from '../views/init-sso-post';
 
 @RestController('/sso/saml')
 export class SamlController {
@@ -207,7 +206,7 @@ export class SamlController {
 		if (result?.binding === 'redirect') {
 			return result.context.context;
 		} else if (result?.binding === 'post') {
-			return res.send(getInitSSOFormView(result.context as PostBindingContext));
+			return res.render('sso/saml-init-form', result.context);
 		} else {
 			throw new AuthError('SAML redirect failed, please check your SAML configuration.');
 		}
