@@ -6,7 +6,12 @@ import { BufferMemory, BufferWindowMemory } from 'langchain/memory';
 import { BaseClient } from '@xata.io/client';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
-import { sessionIdOption, sessionKeyProperty, contextWindowLengthProperty } from '../descriptions';
+import {
+	sessionIdOption,
+	sessionKeyProperty,
+	contextWindowLengthProperty,
+	expressionSessionKeyProperty,
+} from '../descriptions';
 import { getSessionId } from '../../../utils/helpers';
 
 export class MemoryXata implements INodeType {
@@ -15,7 +20,7 @@ export class MemoryXata implements INodeType {
 		name: 'memoryXata',
 		icon: 'file:xata.svg',
 		group: ['transform'],
-		version: [1, 1.1, 1.2, 1.3],
+		version: [1, 1.1, 1.2, 1.3, 1.4],
 		description: 'Use Xata Memory',
 		defaults: {
 			name: 'Xata',
@@ -81,6 +86,7 @@ export class MemoryXata implements INodeType {
 				},
 			},
 			sessionKeyProperty,
+			expressionSessionKeyProperty(1.4),
 			{
 				...contextWindowLengthProperty,
 				displayOptions: { hide: { '@version': [{ _cnd: { lt: 1.3 } }] } },

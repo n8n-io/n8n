@@ -46,6 +46,23 @@ const properties: INodeProperties[] = [
 		default: 'auto',
 	},
 	{
+		displayName: 'Text From Previous Node',
+		name: 'text',
+		type: 'string',
+		required: true,
+		default: '={{ $json.chatInput }}',
+		typeOptions: {
+			rows: 2,
+		},
+		disabledOptions: { show: { prompt: ['auto'] } },
+		displayOptions: {
+			show: {
+				prompt: ['auto'],
+				'@version': [{ _cnd: { gte: 1.7 } }],
+			},
+		},
+	},
+	{
 		displayName: 'Text',
 		name: 'text',
 		type: 'string',

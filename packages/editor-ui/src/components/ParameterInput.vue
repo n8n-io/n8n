@@ -982,7 +982,7 @@ watch(remoteParameterOptionsLoading, () => {
 
 // Focus input field when changing from fixed value to expression
 watch(isModelValueExpression, async (isExpression, wasExpression) => {
-	if (isExpression && !wasExpression) {
+	if (!props.isReadOnly && isExpression && !wasExpression) {
 		await nextTick();
 		inputField.value?.focus();
 	}
@@ -1493,7 +1493,7 @@ onUpdated(async () => {
 				:disabled="isReadOnly"
 				@update:model-value="valueChanged"
 			/>
-			<div v-if="showDragnDropTip" :class="$style.tip">
+			<div v-if="!isReadOnly && showDragnDropTip" :class="$style.tip">
 				<InlineExpressionTip />
 			</div>
 		</div>

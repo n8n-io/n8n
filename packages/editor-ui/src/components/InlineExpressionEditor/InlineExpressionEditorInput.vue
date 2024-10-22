@@ -115,6 +115,7 @@ defineExpose({
 <template>
 	<div
 		ref="root"
+		:key="`${path}_${isReadOnly}`"
 		title=""
 		:class="$style.editor"
 		data-test-id="inline-expression-editor-input"
@@ -134,5 +135,12 @@ defineExpose({
 }
 :deep(.cm-content) {
 	padding-left: var(--spacing-2xs);
+
+	&[aria-readonly='true'] {
+		background-color: var(--disabled-fill, var(--color-background-light));
+		border-color: var(--disabled-border, var(--border-color-base));
+		color: var(--disabled-color, var(--color-text-base));
+		cursor: not-allowed;
+	}
 }
 </style>

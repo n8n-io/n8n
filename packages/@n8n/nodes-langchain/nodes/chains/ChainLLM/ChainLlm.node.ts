@@ -1,9 +1,18 @@
+import type { BaseLanguageModel } from '@langchain/core/language_models/base';
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import { HumanMessage } from '@langchain/core/messages';
+import type { BaseOutputParser } from '@langchain/core/output_parsers';
 import {
-	ApplicationError,
-	NodeApiError,
-	NodeConnectionType,
-	NodeOperationError,
-} from 'n8n-workflow';
+	AIMessagePromptTemplate,
+	PromptTemplate,
+	SystemMessagePromptTemplate,
+	HumanMessagePromptTemplate,
+	ChatPromptTemplate,
+} from '@langchain/core/prompts';
+import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
+import { ChatOllama } from '@langchain/ollama';
+import { LLMChain } from 'langchain/chains';
+import { CombiningOutputParser } from 'langchain/output_parsers';
 import type {
 	IBinaryData,
 	IDataObject,
@@ -12,28 +21,19 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-
-import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import {
-	AIMessagePromptTemplate,
-	PromptTemplate,
-	SystemMessagePromptTemplate,
-	HumanMessagePromptTemplate,
-	ChatPromptTemplate,
-} from '@langchain/core/prompts';
-import type { BaseOutputParser } from '@langchain/core/output_parsers';
-import { CombiningOutputParser } from 'langchain/output_parsers';
-import { LLMChain } from 'langchain/chains';
-import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { HumanMessage } from '@langchain/core/messages';
-import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
-import { ChatOllama } from '@langchain/ollama';
-import { getTemplateNoticeField } from '../../../utils/sharedFields';
+	ApplicationError,
+	NodeApiError,
+	NodeConnectionType,
+	NodeOperationError,
+} from 'n8n-workflow';
+
 import {
 	getOptionalOutputParsers,
 	getPromptInputByType,
 	isChatInstance,
 } from '../../../utils/helpers';
+import { getTemplateNoticeField } from '../../../utils/sharedFields';
 import { getTracingConfig } from '../../../utils/tracing';
 import {
 	getCustomErrorMessage as getCustomOpenAiErrorMessage,
@@ -256,7 +256,7 @@ export class ChainLlm implements INodeType {
 		name: 'chainLlm',
 		icon: 'fa:link',
 		group: ['transform'],
-		version: [1, 1.1, 1.2, 1.3, 1.4],
+		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5],
 		description: 'A simple chain to prompt a large language model',
 		defaults: {
 			name: 'Basic LLM Chain',
@@ -344,17 +344,13 @@ export class ChainLlm implements INodeType {
 				default: 'auto',
 			},
 			{
-				displayName: 'Text',
+				displayName: 'Text From Previous Node',
 				name: 'text',
 				type: 'string',
 				required: true,
 				default: '={{ $json.chatInput }}',
-				placeholder: 'e.g. Hello, how can you help me?',
-				typeOptions: {
-					rows: 2,
-				},
 				disabledOptions: { show: { promptType: ['auto'] } },
-				displayOptions: { show: { promptType: ['auto'] } },
+				displayOptions: { show: { promptType: ['auto'], '@version': [{ _cnd: { gte: 1.5 } }] } },
 			},
 			{
 				displayName: 'Text',

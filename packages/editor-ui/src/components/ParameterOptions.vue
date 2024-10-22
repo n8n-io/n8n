@@ -59,7 +59,9 @@ export default defineComponent({
 			return this.getArgument('editor') === 'htmlEditor';
 		},
 		shouldShowExpressionSelector(): boolean {
-			return this.parameter.noDataExpression !== true && this.showExpressionSelector;
+			return (
+				this.parameter.noDataExpression !== true && this.showExpressionSelector && !this.isReadOnly
+			);
 		},
 		shouldShowOptions(): boolean {
 			if (this.isReadOnly) {
@@ -188,7 +190,7 @@ export default defineComponent({
 				/>
 			</div>
 			<n8n-radio-buttons
-				v-if="shouldShowExpressionSelector"
+				v-if="!isReadOnly && shouldShowExpressionSelector"
 				size="small"
 				:model-value="selectedView"
 				:disabled="isReadOnly"

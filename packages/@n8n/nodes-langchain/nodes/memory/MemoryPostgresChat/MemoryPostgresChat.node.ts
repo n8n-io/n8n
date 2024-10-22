@@ -1,16 +1,22 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
-import { BufferMemory, BufferWindowMemory } from 'langchain/memory';
 import { PostgresChatMessageHistory } from '@langchain/community/stores/message/postgres';
-import type pg from 'pg';
-import { configurePostgres } from 'n8n-nodes-base/dist/nodes/Postgres/v2/transport';
+import { BufferMemory, BufferWindowMemory } from 'langchain/memory';
 import type { PostgresNodeCredentials } from 'n8n-nodes-base/dist/nodes/Postgres/v2/helpers/interfaces';
 import { postgresConnectionTest } from 'n8n-nodes-base/dist/nodes/Postgres/v2/methods/credentialTest';
+import { configurePostgres } from 'n8n-nodes-base/dist/nodes/Postgres/v2/transport';
+import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
+import type pg from 'pg';
+
+import { getSessionId } from '../../../utils/helpers';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
-import { sessionIdOption, sessionKeyProperty, contextWindowLengthProperty } from '../descriptions';
-import { getSessionId } from '../../../utils/helpers';
+import {
+	sessionIdOption,
+	sessionKeyProperty,
+	contextWindowLengthProperty,
+	expressionSessionKeyProperty,
+} from '../descriptions';
 
 export class MemoryPostgresChat implements INodeType {
 	description: INodeTypeDescription = {
@@ -18,7 +24,7 @@ export class MemoryPostgresChat implements INodeType {
 		name: 'memoryPostgresChat',
 		icon: 'file:postgres.svg',
 		group: ['transform'],
-		version: [1, 1.1],
+		version: [1, 1.1, 1.2, 1.3],
 		description: 'Stores the chat history in Postgres table.',
 		defaults: {
 			name: 'Postgres Chat Memory',
@@ -51,6 +57,7 @@ export class MemoryPostgresChat implements INodeType {
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionType.AiAgent]),
 			sessionIdOption,
+			expressionSessionKeyProperty(1.2),
 			sessionKeyProperty,
 			{
 				displayName: 'Table Name',

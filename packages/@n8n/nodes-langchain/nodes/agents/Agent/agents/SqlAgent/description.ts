@@ -115,6 +115,20 @@ export const sqlAgentAgentProperties: INodeProperties[] = [
 		},
 	},
 	{
+		displayName: 'Text From Previous Node',
+		name: 'text',
+		type: 'string',
+		required: true,
+		default: '={{ $json.chatInput }}',
+		typeOptions: {
+			rows: 2,
+		},
+		disabledOptions: { show: { promptType: ['auto'] } },
+		displayOptions: {
+			show: { promptType: ['auto'], '@version': [{ _cnd: { gte: 1.7 } }], agent: ['sqlAgent'] },
+		},
+	},
+	{
 		...textInput,
 		displayOptions: {
 			show: {

@@ -10,7 +10,12 @@ import type { BufferWindowMemoryInput } from 'langchain/memory';
 import { BufferWindowMemory } from 'langchain/memory';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
-import { sessionIdOption, sessionKeyProperty, contextWindowLengthProperty } from '../descriptions';
+import {
+	sessionIdOption,
+	sessionKeyProperty,
+	contextWindowLengthProperty,
+	expressionSessionKeyProperty,
+} from '../descriptions';
 import { getSessionId } from '../../../utils/helpers';
 
 class MemoryChatBufferSingleton {
@@ -72,7 +77,7 @@ export class MemoryBufferWindow implements INodeType {
 		name: 'memoryBufferWindow',
 		icon: 'fa:database',
 		group: ['transform'],
-		version: [1, 1.1, 1.2],
+		version: [1, 1.1, 1.2, 1.3],
 		description: 'Stores in n8n memory, so no credentials required',
 		defaults: {
 			name: 'Window Buffer Memory',
@@ -129,6 +134,7 @@ export class MemoryBufferWindow implements INodeType {
 					},
 				},
 			},
+			expressionSessionKeyProperty(1.3),
 			sessionKeyProperty,
 			contextWindowLengthProperty,
 		],

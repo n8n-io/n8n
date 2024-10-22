@@ -690,9 +690,6 @@ export function displayParameterPath(
 	node: Pick<INode, 'typeVersion'> | null,
 	displayKey: 'displayOptions' | 'disabledOptions' = 'displayOptions',
 ) {
-	if (displayKey === 'disabledOptions') {
-		console.log('Computing disabled');
-	}
 	let resolvedNodeValues = nodeValues;
 	if (path !== '') {
 		resolvedNodeValues = get(nodeValues, path) as INodeParameters;
