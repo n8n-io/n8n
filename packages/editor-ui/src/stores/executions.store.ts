@@ -242,7 +242,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 		if (sendData.deleteBefore) {
 			const deleteBefore = new Date(sendData.deleteBefore);
 			allExecutions.value.forEach((execution) => {
-				if (new Date(execution.startedAt) < deleteBefore) {
+				if (new Date(execution.startedAt) <= deleteBefore) {
 					removeExecution(execution.id);
 				}
 			});
