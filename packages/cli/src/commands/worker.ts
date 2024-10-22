@@ -69,7 +69,7 @@ export class Worker extends BaseCommand {
 
 		super(argv, cmdConfig);
 
-		this.logger = Container.get(Logger).withScope('scaling');
+		this.logger = Container.get(Logger).scoped('scaling');
 	}
 
 	async init() {
@@ -151,7 +151,7 @@ export class Worker extends BaseCommand {
 		Container.get(PubSubHandler).init();
 		await Container.get(Subscriber).subscribe('n8n.commands');
 
-		this.logger.withScope('scaling').debug('Pubsub setup ready');
+		this.logger.scoped(['scaling', 'pubsub']).debug('Pubsub setup completed');
 	}
 
 	async setConcurrency() {

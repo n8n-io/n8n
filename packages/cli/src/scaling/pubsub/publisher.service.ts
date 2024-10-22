@@ -26,7 +26,7 @@ export class Publisher {
 		// @TODO: Once this class is only ever initialized in scaling mode, throw in the next line instead.
 		if (config.getEnv('executions.mode') !== 'queue') return;
 
-		this.logger = this.logger.withScope('scaling');
+		this.logger = this.logger.scoped(['scaling', 'pubsub']);
 
 		this.client = this.redisClientService.createClient({ type: 'publisher(n8n)' });
 	}
