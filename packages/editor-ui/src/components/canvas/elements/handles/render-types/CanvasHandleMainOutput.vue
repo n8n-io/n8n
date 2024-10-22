@@ -77,7 +77,7 @@ function onClickAdd() {
 <template>
 	<div :class="classes">
 		<div v-if="label" :class="outputLabelClasses">{{ label }}</div>
-		<div v-else-if="runData" :class="runDataLabelClasses">{{ runDataLabel }}</div>
+		<div v-if="runData" :class="runDataLabelClasses">{{ runDataLabel }}</div>
 		<CanvasHandleDot :handle-classes="handleClasses" />
 		<Transition name="canvas-node-handle-main-output">
 			<CanvasHandlePlus
