@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "1.63.0",
+  "version": "1.64.0",
   "description": "n8n Workflow Automation Tool",
   "main": "dist/index",
   "types": "dist/index.d.ts",
@@ -42,7 +42,7 @@
     "workflow"
   ],
   "engines": {
-    "node": ">=18.10"
+    "node": ">=18.17 <= 22"
   },
   "files": [
     "bin",
@@ -163,7 +163,6 @@
     "simple-git": "3.17.0",
     "source-map-support": "0.5.21",
     "sqlite3": "5.1.7",
-    "sse-channel": "4.0.0",
     "sshpk": "1.17.0",
     "swagger-ui-express": "5.0.1",
     "syslog-client": "1.1.1",

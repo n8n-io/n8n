@@ -55,7 +55,7 @@ import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import type { BaseTextKey } from '@/plugins/i18n';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
-import { useLocalStorage } from '@vueuse/core';
+import { useNodeViewVersionSwitcher } from '@/composables/useNodeViewVersionSwitcher';
 
 const props = defineProps<{
 	readOnly?: boolean;
@@ -99,16 +99,14 @@ const importFileRef = ref<HTMLInputElement | undefined>();
 const tagsEventBus = createEventBus();
 const sourceControlModalEventBus = createEventBus();
 
-const nodeViewSwitcher = useLocalStorage('NodeView.switcher', '');
-const nodeViewVersion = useLocalStorage('NodeView.version', '1');
-
-const isNodeViewSwitcherEnabled = computed(() => {
-	return (
-		import.meta.env.DEV ||
-		nodeViewSwitcher.value === 'true' ||
-		settingsStore.deploymentType === 'n8n-internal'
-	);
-});
+const {
+	nodeViewVersion,
+	nodeViewSwitcherDiscovered,
+	isNodeViewDiscoveryTooltipVisible,
+	switchNodeViewVersion,
+	setNodeViewSwitcherDropdownOpened,
+	setNodeViewSwitcherDiscovered,
+} = useNodeViewVersionSwitcher();
 
 const hasChanged = (prev: string[], curr: string[]) => {
 	if (prev.length !== curr.length) {
@@ -189,16 +187,17 @@ const workflowMenuItems = computed<ActionDropdownItem[]>(() => {
 		disabled: !onWorkflowPage.value || isNewWorkflow.value,
 	});
 
-	if (isNodeViewSwitcherEnabled.value) {
-		actions.push({
-			id: WORKFLOW_MENU_ACTIONS.SWITCH_NODE_VIEW_VERSION,
-			label:
-				nodeViewVersion.value === '2'
-					? locale.baseText('menuActions.switchToOldNodeViewVersion')
-					: locale.baseText('menuActions.switchToNewNodeViewVersion'),
-			disabled: !onWorkflowPage.value,
-		});
-	}
+	actions.push({
+		id: WORKFLOW_MENU_ACTIONS.SWITCH_NODE_VIEW_VERSION,
+		...(nodeViewSwitcherDiscovered.value
+			? {}
+			: { badge: locale.baseText('menuActions.badge.new') }),
+		label:
+			nodeViewVersion.value === '2'
+				? locale.baseText('menuActions.switchToOldNodeViewVersion')
+				: locale.baseText('menuActions.switchToNewNodeViewVersion'),
+		disabled: !onWorkflowPage.value,
+	});
 
 	if ((workflowPermissions.value.delete && !props.readOnly) || isNewWorkflow.value) {
 		actions.push({
@@ -399,6 +398,10 @@ async function handleFileImport(): Promise<void> {
 	}
 }
 
+function onWorkflowMenuOpen() {
+	setNodeViewSwitcherDropdownOpened();
+}
+
 async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void> {
 	switch (action) {
 		case WORKFLOW_MENU_ACTIONS.DUPLICATE: {
@@ -499,6 +502,8 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.SWITCH_NODE_VIEW_VERSION: {
+			setNodeViewSwitcherDiscovered();
+
 			if (uiStore.stateIsDirty) {
 				const confirmModal = await message.confirm(
 					locale.baseText('generic.unsavedWork.confirmMessage.message'),
@@ -522,11 +527,7 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 				}
 			}
 
-			if (nodeViewVersion.value === '1') {
-				nodeViewVersion.value = '2';
-			} else {
-				nodeViewVersion.value = '1';
-			}
+			switchNodeViewVersion();
 
 			break;
 		}
@@ -734,11 +735,17 @@ function showCreateWorkflowSuccessToast(id?: string) {
 					data-test-id="workflow-import-input"
 					@change="handleFileImport()"
 				/>
-				<N8nActionDropdown
-					:items="workflowMenuItems"
-					data-test-id="workflow-menu"
-					@select="onWorkflowMenuSelect"
-				/>
+				<N8nTooltip :visible="isNodeViewDiscoveryTooltipVisible">
+					<N8nActionDropdown
+						:items="workflowMenuItems"
+						data-test-id="workflow-menu"
+						@select="onWorkflowMenuSelect"
+						@visible-change="onWorkflowMenuOpen"
+					/>
+					<template #content>
+						{{ $locale.baseText('menuActions.nodeViewDiscovery.tooltip') }}
+					</template>
+				</N8nTooltip>
 			</div>
 		</PushConnectionTracker>
 	</div>

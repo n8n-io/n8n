@@ -1,7 +1,12 @@
 import 'reflect-metadata';
 import { GlobalConfig } from '@n8n/config';
 import { Command, Errors } from '@oclif/core';
-import { BinaryDataService, InstanceSettings, ObjectStoreService } from 'n8n-core';
+import {
+	BinaryDataService,
+	InstanceSettings,
+	ObjectStoreService,
+	DataDeduplicationService,
+} from 'n8n-core';
 import {
 	ApplicationError,
 	ensureError,
@@ -14,8 +19,8 @@ import type { AbstractServer } from '@/abstract-server';
 import config from '@/config';
 import { LICENSE_FEATURES, inDevelopment, inTest } from '@/constants';
 import * as CrashJournal from '@/crash-journal';
-import { generateHostInstanceId } from '@/databases/utils/generators';
 import * as Db from '@/db';
+import { getDataDeduplicationService } from '@/deduplication';
 import { initErrorHandling } from '@/error-reporting';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
@@ -39,8 +44,6 @@ export abstract class BaseCommand extends Command {
 
 	protected instanceSettings: InstanceSettings = Container.get(InstanceSettings);
 
-	queueModeId: string;
-
 	protected server?: AbstractServer;
 
 	protected shutdownService: ShutdownService = Container.get(ShutdownService);
@@ -52,7 +55,8 @@ export abstract class BaseCommand extends Command {
 	/**
 	 * How long to wait for graceful shutdown before force killing the process.
 	 */
-	protected gracefulShutdownTimeoutInS = config.getEnv('generic.gracefulShutdownTimeout');
+	protected gracefulShutdownTimeoutInS =
+		Container.get(GlobalConfig).generic.gracefulShutdownTimeout;
 
 	/** Whether to init community packages (if enabled) */
 	protected needsCommunityPackages = false;
@@ -125,16 +129,6 @@ export abstract class BaseCommand extends Command {
 
 		await Container.get(PostHogClient).init();
 		await Container.get(TelemetryEventRelay).init();
-	}
-
-	protected setInstanceQueueModeId() {
-		if (config.get('redis.queueModeId')) {
-			this.queueModeId = config.get('redis.queueModeId');
-			return;
-		}
-		// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-		this.queueModeId = generateHostInstanceId(this.instanceSettings.instanceType!);
-		config.set('redis.queueModeId', this.queueModeId);
 	}
 
 	protected async stopProcess() {
@@ -264,6 +258,11 @@ export abstract class BaseCommand extends Command {
 
 		const binaryDataConfig = config.getEnv('binaryDataManager');
 		await Container.get(BinaryDataService).init(binaryDataConfig);
+	}
+
+	protected async initDataDeduplicationService() {
+		const dataDeduplicationService = getDataDeduplicationService();
+		await DataDeduplicationService.init(dataDeduplicationService);
 	}
 
 	async initExternalHooks() {

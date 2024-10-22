@@ -394,6 +394,18 @@ importers:
         specifier: ^0.0.3
         version: 0.0.3(patch_hash=3i7wecddkama6vhpu5o37g24u4)
 
+  packages/@n8n/json-schema-to-zod:
+    devDependencies:
+      '@types/json-schema':
+        specifier: ^7.0.15
+        version: 7.0.15
+      '@types/node':
+        specifier: ^18.16.16
+        version: 18.16.16
+      zod:
+        specifier: 'catalog:'
+        version: 3.23.8
+
   packages/@n8n/nodes-langchain:
     dependencies:
       '@aws-sdk/client-sso-oidc':
@@ -465,6 +477,9 @@ importers:
       '@mozilla/readability':
         specifier: 0.5.0
         version: 0.5.0
+      '@n8n/json-schema-to-zod':
+        specifier: workspace:*
+        version: link:../json-schema-to-zod
       '@n8n/typeorm':
         specifier: 0.3.20-12
         version: 0.3.20-12(@sentry/node@7.87.0)(ioredis@5.3.2)(mssql@10.0.2)(mysql2@3.11.0)(pg@8.12.0)(redis@4.6.12)(sqlite3@5.1.7)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.6.2))
@@ -510,9 +525,6 @@ importers:
       jsdom:
         specifier: 23.0.1
         version: 23.0.1
-      json-schema-to-zod:
-        specifier: 2.1.0
-        version: 2.1.0
       langchain:
         specifier: 0.3.2
         version: 0.3.2(u4cmnaniapk3e37ytin75vjstm)
@@ -522,6 +534,9 @@ importers:
       mammoth:
         specifier: 1.7.2
         version: 1.7.2
+      mime-types:
+        specifier: 2.1.35
+        version: 2.1.35
       n8n-nodes-base:
         specifier: workspace:*
         version: link:../../nodes-base
@@ -568,6 +583,9 @@ importers:
       '@types/json-schema':
         specifier: ^7.0.15
         version: 7.0.15
+      '@types/mime-types':
+        specifier: ^2.1.0
+        version: 2.1.1
       '@types/pg':
         specifier: ^8.11.6
         version: 8.11.6
@@ -937,9 +955,6 @@ importers:
       sqlite3:
         specifier: 5.1.7
         version: 5.1.7
-      sse-channel:
-        specifier: 4.0.0
-        version: 4.0.0
       sshpk:
         specifier: 1.17.0
         version: 1.17.0
@@ -1109,6 +1124,9 @@ importers:
       n8n-workflow:
         specifier: workspace:*
         version: link:../workflow
+      nanoid:
+        specifier: 'catalog:'
+        version: 3.3.6
       oauth-1.0a:
         specifier: 2.2.6
         version: 2.2.6
@@ -1832,8 +1850,8 @@ importers:
         specifier: 'catalog:'
         version: 0.4.14
       eslint-plugin-n8n-nodes-base:
-        specifier: ^1.16.2
-        version: 1.16.2(eslint@8.57.0)(typescript@5.6.2)
+        specifier: ^1.16.3
+        version: 1.16.3(eslint@8.57.0)(typescript@5.6.2)
       n8n-core:
         specifier: workspace:*
         version: link:../core
@@ -2203,7 +2221,7 @@ packages:
   '@azure/core-http@3.0.4':
     resolution: {integrity: sha512-Fok9VVhMdxAFOtqiiAtg74fL0UJkt0z3D+ouUUxcRLzZNBioPRAMJFVxiWoJljYpXsRi4GDQHzQHDc9AiYaIUQ==}
     engines: {node: '>=14.0.0'}
-    deprecated: This package is no longer supported. Please migrate to use @azure/core-rest-pipeline
+    deprecated: deprecating as we migrated to core v2
 
   '@azure/core-lro@2.4.0':
     resolution: {integrity: sha512-F65+rYkll1dpw3RGm8/SSiSj+/QkMeYDanzS/QKlM1dmuneVyXbO46C88V1MRHluLGdMP6qfD3vDRYALn0z0tQ==}
@@ -5766,6 +5784,9 @@ packages:
   axios-retry@3.7.0:
     resolution: {integrity: sha512-ZTnCkJbRtfScvwiRnoVskFAfvU0UG3xNcsjwTR0mawSbIJoothxn67gKsMaNAFHRXJ1RmuLhmZBzvyXi3+9WyQ==}
 
+  axios@1.7.3:
+    resolution: {integrity: sha512-Ar7ND9pU99eJ9GpoGQKhKf58GpUOgnzuaB7ueNQ5BMi0p+LZ5oaEnfF999fAArcTIBwXTCHAmGcHOZJaWPq9Nw==}
+
   axios@1.7.4:
     resolution: {integrity: sha512-DukmaFRnY6AzAALSH4J2M3k6PkaC+MfaAGdEERRWcC9q3/TWQwLpHR8ZRLKTdQ3aBDL64EdluRDjJqKw+BPZEw==}
 
@@ -7124,8 +7145,8 @@ packages:
   eslint-plugin-n8n-local-rules@1.0.0:
     resolution: {integrity: sha512-qe6sVFDP1Vj5eXlqZxYZpIjwYvhuqXlI0P8OfPyhiPOhMkFtr0TpFphD8/6WCzkm7LJCvG1eJEzURCtMIsFTAg==}
 
-  eslint-plugin-n8n-nodes-base@1.16.2:
-    resolution: {integrity: sha512-Qj8S+YgymYkt/5Fr1buwOTjl0jAERJBp3MA5V8M6NR1HYfErKazVjpOPEy5+04c0vAQZO1mPLGAzanxqqNUIng==}
+  eslint-plugin-n8n-nodes-base@1.16.3:
+    resolution: {integrity: sha512-edLX42Vg4B+y0kzkitTVDmHZQrG5/wUZO874N5Z9leBuxt5TG1pqMY4zdr35RlpM4p4REr/T9x+6DpsQSL63WA==}
     engines: {node: '>=20.15', pnpm: '>=9.6'}
 
   eslint-plugin-unicorn@51.0.1:
@@ -8580,10 +8601,6 @@ packages:
 
   json-pointer@0.6.2:
     resolution: {integrity: sha512-vLWcKbOaXlO+jvRy4qNd+TI1QUPZzfJj1tpJ3vAXDych5XJf93ftpUKe5pKCrzyIIwgBJcOcCVRUfqQP25afBw==}
-
-  json-schema-to-zod@2.1.0:
-    resolution: {integrity: sha512-7ishNgYY+AbIKeeHcp5xCOdJbdVwSfDx/4V2ktc16LUusCJJbz2fEKdWUmAxhKIiYzhZ9Fp4E8OsAoM/h9cOLA==}
-    hasBin: true
 
   json-schema-traverse@0.4.1:
     resolution: {integrity: sha512-xbbCH5dCYU5T8LcEhhuh7HJ88HXuW3qsI3Y0zOZFKfZEHcpWiHU/Jxzk629Brsab/mMiHQti9wMP+845RPe3Vg==}
@@ -11080,9 +11097,6 @@ packages:
   sqlstring@2.3.3:
     resolution: {integrity: sha512-qC9iz2FlN7DQl3+wjwn3802RTyjCx7sDvfQEXchwa6CWOx07/WVfh91gBmQ9fahw8snwGEWU3xGzOt4tFyHLxg==}
     engines: {node: '>= 0.6'}
-
-  sse-channel@4.0.0:
-    resolution: {integrity: sha512-I539Tc0gyDTQ2QCSg4v78Flxo/UbqR9x7JoyPcqaPtwo+qzeOw/fF+aPSbk0xTvBQAAAZk7Dlkc8K1bum5GUnw==}
 
   ssh2-sftp-client@7.2.3:
     resolution: {integrity: sha512-Bmq4Uewu3e0XOwu5bnPbiS5KRQYv+dff5H6+85V4GZrPrt0Fkt1nUH+uXanyAkoNxUpzjnAPEEoLdOaBO9c3xw==}
@@ -14925,7 +14939,7 @@ snapshots:
 
   '@n8n/localtunnel@3.0.0':
     dependencies:
-      axios: 1.7.7(debug@4.3.6)
+      axios: 1.7.3(debug@4.3.6)
       debug: 4.3.6(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
@@ -17630,6 +17644,14 @@ snapshots:
       '@babel/runtime': 7.24.7
       is-retry-allowed: 2.2.0
 
+  axios@1.7.3(debug@4.3.6):
+    dependencies:
+      follow-redirects: 1.15.6(debug@4.3.6)
+      form-data: 4.0.0
+      proxy-from-env: 1.1.0
+    transitivePeerDependencies:
+      - debug
+
   axios@1.7.4:
     dependencies:
       follow-redirects: 1.15.6(debug@4.3.6)
@@ -17639,14 +17661,6 @@ snapshots:
       - debug
 
   axios@1.7.7:
-    dependencies:
-      follow-redirects: 1.15.6(debug@4.3.6)
-      form-data: 4.0.0
-      proxy-from-env: 1.1.0
-    transitivePeerDependencies:
-      - debug
-
-  axios@1.7.7(debug@4.3.6):
     dependencies:
       follow-redirects: 1.15.6(debug@4.3.6)
       form-data: 4.0.0
@@ -19368,7 +19382,7 @@ snapshots:
 
   eslint-plugin-n8n-local-rules@1.0.0: {}
 
-  eslint-plugin-n8n-nodes-base@1.16.2(eslint@8.57.0)(typescript@5.6.2):
+  eslint-plugin-n8n-nodes-base@1.16.3(eslint@8.57.0)(typescript@5.6.2):
     dependencies:
       '@typescript-eslint/utils': 6.21.0(eslint@8.57.0)(typescript@5.6.2)
       camel-case: 4.1.2
@@ -21321,8 +21335,6 @@ snapshots:
   json-pointer@0.6.2:
     dependencies:
       foreach: 2.0.6
-
-  json-schema-to-zod@2.1.0: {}
 
   json-schema-traverse@0.4.1: {}
 
@@ -24355,8 +24367,6 @@ snapshots:
       - supports-color
 
   sqlstring@2.3.3: {}
-
-  sse-channel@4.0.0: {}
 
   ssh2-sftp-client@7.2.3:
     dependencies:

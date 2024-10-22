@@ -1,7 +1,10 @@
 import { DateTime } from 'luxon';
 import type { CodeExecutionMode, IDataObject } from 'n8n-workflow';
+import fs from 'node:fs';
+import { builtinModules } from 'node:module';
 
 import { ValidationError } from '@/js-task-runner/errors/validation-error';
+import type { JsTaskRunnerOpts } from '@/js-task-runner/js-task-runner';
 import {
 	JsTaskRunner,
 	type AllCodeTaskData,
@@ -10,21 +13,32 @@ import {
 import type { Task } from '@/task-runner';
 
 import { newAllCodeTaskData, newTaskWithSettings, withPairedItem, wrapIntoJson } from './test-data';
+import { ExecutionError } from '../errors/execution-error';
 
 jest.mock('ws');
 
 describe('JsTaskRunner', () => {
-	const jsTaskRunner = new JsTaskRunner('taskType', 'ws://localhost', 'grantToken', 1);
+	const createRunnerWithOpts = (opts: Partial<JsTaskRunnerOpts> = {}) =>
+		new JsTaskRunner({
+			wsUrl: 'ws://localhost',
+			grantToken: 'grantToken',
+			maxConcurrency: 1,
+			...opts,
+		});
+
+	const defaultTaskRunner = createRunnerWithOpts();
 
 	const execTaskWithParams = async ({
 		task,
 		taskData,
+		runner = defaultTaskRunner,
 	}: {
 		task: Task<JSExecSettings>;
 		taskData: AllCodeTaskData;
+		runner?: JsTaskRunner;
 	}) => {
-		jest.spyOn(jsTaskRunner, 'requestData').mockResolvedValue(taskData);
-		return await jsTaskRunner.executeTask(task);
+		jest.spyOn(runner, 'requestData').mockResolvedValue(taskData);
+		return await runner.executeTask(task);
 	};
 
 	afterEach(() => {
@@ -35,7 +49,13 @@ describe('JsTaskRunner', () => {
 		code,
 		inputItems,
 		settings,
-	}: { code: string; inputItems: IDataObject[]; settings?: Partial<JSExecSettings> }) => {
+		runner,
+	}: {
+		code: string;
+		inputItems: IDataObject[];
+		settings?: Partial<JSExecSettings>;
+		runner?: JsTaskRunner;
+	}) => {
 		return await execTaskWithParams({
 			task: newTaskWithSettings({
 				code,
@@ -43,6 +63,7 @@ describe('JsTaskRunner', () => {
 				...settings,
 			}),
 			taskData: newAllCodeTaskData(inputItems.map(wrapIntoJson)),
+			runner,
 		});
 	};
 
@@ -50,7 +71,14 @@ describe('JsTaskRunner', () => {
 		code,
 		inputItems,
 		settings,
-	}: { code: string; inputItems: IDataObject[]; settings?: Partial<JSExecSettings> }) => {
+		runner,
+	}: {
+		code: string;
+		inputItems: IDataObject[];
+		settings?: Partial<JSExecSettings>;
+
+		runner?: JsTaskRunner;
+	}) => {
 		return await execTaskWithParams({
 			task: newTaskWithSettings({
 				code,
@@ -58,6 +86,7 @@ describe('JsTaskRunner', () => {
 				...settings,
 			}),
 			taskData: newAllCodeTaskData(inputItems.map(wrapIntoJson)),
+			runner,
 		});
 	};
 
@@ -65,7 +94,7 @@ describe('JsTaskRunner', () => {
 		test.each<[CodeExecutionMode]>([['runOnceForAllItems'], ['runOnceForEachItem']])(
 			'should make an rpc call for console log in %s mode',
 			async (nodeMode) => {
-				jest.spyOn(jsTaskRunner, 'makeRpcCall').mockResolvedValue(undefined);
+				jest.spyOn(defaultTaskRunner, 'makeRpcCall').mockResolvedValue(undefined);
 				const task = newTaskWithSettings({
 					code: "console.log('Hello', 'world!'); return {}",
 					nodeMode,
@@ -76,7 +105,7 @@ describe('JsTaskRunner', () => {
 					taskData: newAllCodeTaskData([wrapIntoJson({})]),
 				});
 
-				expect(jsTaskRunner.makeRpcCall).toHaveBeenCalledWith(task.taskId, 'logNodeOutput', [
+				expect(defaultTaskRunner.makeRpcCall).toHaveBeenCalledWith(task.taskId, 'logNodeOutput', [
 					'Hello world!',
 				]);
 			},
@@ -252,6 +281,20 @@ describe('JsTaskRunner', () => {
 				expect(outcome.result).toEqual([wrapIntoJson({ val: undefined })]);
 			});
 		});
+
+		it('should allow access to Node.js Buffers', async () => {
+			const outcome = await execTaskWithParams({
+				task: newTaskWithSettings({
+					code: 'return { val: Buffer.from("test-buffer").toString() }',
+					nodeMode: 'runOnceForAllItems',
+				}),
+				taskData: newAllCodeTaskData(inputItems.map(wrapIntoJson), {
+					envProviderState: undefined,
+				}),
+			});
+
+			expect(outcome.result).toEqual([wrapIntoJson({ val: 'test-buffer' })]);
+		});
 	});
 
 	describe('runOnceForAllItems', () => {
@@ -264,7 +307,7 @@ describe('JsTaskRunner', () => {
 				});
 
 				expect(outcome).toEqual({
-					result: [wrapIntoJson({ error: 'Error message' })],
+					result: [wrapIntoJson({ error: 'Error message [line 1]' })],
 					customData: undefined,
 				});
 			});
@@ -378,8 +421,8 @@ describe('JsTaskRunner', () => {
 
 				expect(outcome).toEqual({
 					result: [
-						withPairedItem(0, wrapIntoJson({ error: 'Error message' })),
-						withPairedItem(1, wrapIntoJson({ error: 'Error message' })),
+						withPairedItem(0, wrapIntoJson({ error: 'Error message [line 1]' })),
+						withPairedItem(1, wrapIntoJson({ error: 'Error message [line 1]' })),
 					],
 					customData: undefined,
 				});
@@ -451,5 +494,284 @@ describe('JsTaskRunner', () => {
 				});
 			},
 		);
+	});
+
+	describe('require', () => {
+		const inputItems = [{ a: 1 }];
+		const packageJson = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+
+		describe('blocked by default', () => {
+			const testCases = [...builtinModules, ...Object.keys(packageJson.dependencies)];
+
+			test.each(testCases)(
+				'should throw an error when requiring %s in runOnceForAllItems mode',
+				async (module) => {
+					await expect(
+						executeForAllItems({
+							code: `return require('${module}')`,
+							inputItems,
+						}),
+					).rejects.toThrow(`Cannot find module '${module}'`);
+				},
+			);
+
+			test.each(testCases)(
+				'should throw an error when requiring %s in runOnceForEachItem mode',
+				async (module) => {
+					await expect(
+						executeForEachItem({
+							code: `return require('${module}')`,
+							inputItems,
+						}),
+					).rejects.toThrow(`Cannot find module '${module}'`);
+				},
+			);
+		});
+
+		describe('all built-ins allowed with *', () => {
+			const testCases = builtinModules;
+			const runner = createRunnerWithOpts({
+				allowedBuiltInModules: '*',
+			});
+
+			test.each(testCases)(
+				'should be able to require %s in runOnceForAllItems mode',
+				async (module) => {
+					await expect(
+						executeForAllItems({
+							code: `return { val: require('${module}') }`,
+							inputItems,
+							runner,
+						}),
+					).resolves.toBeDefined();
+				},
+			);
+
+			test.each(testCases)(
+				'should be able to require %s in runOnceForEachItem mode',
+				async (module) => {
+					await expect(
+						executeForEachItem({
+							code: `return { val: require('${module}') }`,
+							inputItems,
+							runner,
+						}),
+					).resolves.toBeDefined();
+				},
+			);
+		});
+
+		describe('all external modules allowed with *', () => {
+			const testCases = Object.keys(packageJson.dependencies);
+			const runner = createRunnerWithOpts({
+				allowedExternalModules: '*',
+			});
+
+			test.each(testCases)(
+				'should be able to require %s in runOnceForAllItems mode',
+				async (module) => {
+					await expect(
+						executeForAllItems({
+							code: `return { val: require('${module}') }`,
+							inputItems,
+							runner,
+						}),
+					).resolves.toBeDefined();
+				},
+			);
+
+			test.each(testCases)(
+				'should be able to require %s in runOnceForEachItem mode',
+				async (module) => {
+					await expect(
+						executeForEachItem({
+							code: `return { val: require('${module}') }`,
+							inputItems,
+							runner,
+						}),
+					).resolves.toBeDefined();
+				},
+			);
+		});
+
+		describe('specifically allowed built-in modules', () => {
+			const runner = createRunnerWithOpts({
+				allowedBuiltInModules: 'crypto,path',
+			});
+
+			const allowedCases = [
+				['crypto', 'require("crypto").randomBytes(16).toString("hex")', expect.any(String)],
+				['path', 'require("path").normalize("/root/./dir")', '/root/dir'],
+			];
+
+			const blockedCases = [['http'], ['process']];
+
+			test.each(allowedCases)(
+				'should allow requiring %s in runOnceForAllItems mode',
+				async (_moduleName, expression, expected) => {
+					const outcome = await executeForAllItems({
+						code: `return { val: ${expression} }`,
+						inputItems,
+						runner,
+					});
+
+					expect(outcome.result).toEqual([wrapIntoJson({ val: expected })]);
+				},
+			);
+
+			test.each(allowedCases)(
+				'should allow requiring %s in runOnceForEachItem mode',
+				async (_moduleName, expression, expected) => {
+					const outcome = await executeForEachItem({
+						code: `return { val: ${expression} }`,
+						inputItems,
+						runner,
+					});
+
+					expect(outcome.result).toEqual([withPairedItem(0, wrapIntoJson({ val: expected }))]);
+				},
+			);
+
+			test.each(blockedCases)(
+				'should throw when trying to require %s in runOnceForAllItems mode',
+				async (moduleName) => {
+					await expect(
+						executeForAllItems({
+							code: `require("${moduleName}")`,
+							inputItems,
+							runner,
+						}),
+					).rejects.toThrow(`Cannot find module '${moduleName}'`);
+				},
+			);
+
+			test.each(blockedCases)(
+				'should throw when trying to require %s in runOnceForEachItem mode',
+				async (moduleName) => {
+					await expect(
+						executeForEachItem({
+							code: `require("${moduleName}")`,
+							inputItems,
+							runner,
+						}),
+					).rejects.toThrow(`Cannot find module '${moduleName}'`);
+				},
+			);
+		});
+
+		describe('specifically allowed external modules', () => {
+			const runner = createRunnerWithOpts({
+				allowedExternalModules: 'nanoid',
+			});
+
+			const allowedCases = [['nanoid', 'require("nanoid").nanoid()', expect.any(String)]];
+
+			const blockedCases = [['n8n-core']];
+
+			test.each(allowedCases)(
+				'should allow requiring %s in runOnceForAllItems mode',
+				async (_moduleName, expression, expected) => {
+					const outcome = await executeForAllItems({
+						code: `return { val: ${expression} }`,
+						inputItems,
+						runner,
+					});
+
+					expect(outcome.result).toEqual([wrapIntoJson({ val: expected })]);
+				},
+			);
+
+			test.each(allowedCases)(
+				'should allow requiring %s in runOnceForEachItem mode',
+				async (_moduleName, expression, expected) => {
+					const outcome = await executeForEachItem({
+						code: `return { val: ${expression} }`,
+						inputItems,
+						runner,
+					});
+
+					expect(outcome.result).toEqual([withPairedItem(0, wrapIntoJson({ val: expected }))]);
+				},
+			);
+
+			test.each(blockedCases)(
+				'should throw when trying to require %s in runOnceForAllItems mode',
+				async (moduleName) => {
+					await expect(
+						executeForAllItems({
+							code: `require("${moduleName}")`,
+							inputItems,
+							runner,
+						}),
+					).rejects.toThrow(`Cannot find module '${moduleName}'`);
+				},
+			);
+
+			test.each(blockedCases)(
+				'should throw when trying to require %s in runOnceForEachItem mode',
+				async (moduleName) => {
+					await expect(
+						executeForEachItem({
+							code: `require("${moduleName}")`,
+							inputItems,
+							runner,
+						}),
+					).rejects.toThrow(`Cannot find module '${moduleName}'`);
+				},
+			);
+		});
+	});
+
+	describe('errors', () => {
+		test.each<[CodeExecutionMode]>([['runOnceForAllItems'], ['runOnceForEachItem']])(
+			'should throw an ExecutionError if the code is invalid in %s mode',
+			async (nodeMode) => {
+				await expect(
+					execTaskWithParams({
+						task: newTaskWithSettings({
+							code: 'unknown',
+							nodeMode,
+						}),
+						taskData: newAllCodeTaskData([wrapIntoJson({ a: 1 })]),
+					}),
+				).rejects.toThrow(ExecutionError);
+			},
+		);
+
+		it('sends serializes an error correctly', async () => {
+			const runner = createRunnerWithOpts({});
+			const taskId = '1';
+			const task = newTaskWithSettings({
+				code: 'unknown; return []',
+				nodeMode: 'runOnceForAllItems',
+				continueOnFail: false,
+				mode: 'manual',
+				workflowMode: 'manual',
+			});
+			runner.runningTasks.set(taskId, task);
+
+			const sendSpy = jest.spyOn(runner.ws, 'send').mockImplementation(() => {});
+			jest.spyOn(runner, 'sendOffers').mockImplementation(() => {});
+			jest
+				.spyOn(runner, 'requestData')
+				.mockResolvedValue(newAllCodeTaskData([wrapIntoJson({ a: 1 })]));
+
+			await runner.receivedSettings(taskId, task.settings);
+
+			expect(sendSpy).toHaveBeenCalled();
+			const calledWith = sendSpy.mock.calls[0][0] as string;
+			expect(typeof calledWith).toBe('string');
+			const calledObject = JSON.parse(calledWith);
+			expect(calledObject).toEqual({
+				type: 'runner:taskerror',
+				taskId,
+				error: {
+					stack: expect.any(String),
+					message: 'unknown is not defined [line 1]',
+					description: 'ReferenceError',
+					lineNumber: 1,
+				},
+			});
+		});
 	});
 });

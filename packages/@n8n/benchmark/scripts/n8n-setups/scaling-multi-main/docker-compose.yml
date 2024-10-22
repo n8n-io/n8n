@@ -176,7 +176,7 @@ services:
 
   # Load balancer that acts as an entry point for n8n
   n8n:
-    image: nginx:latest
+    image: nginx:1.27.2
     ports:
       - '5678:80'
     volumes:

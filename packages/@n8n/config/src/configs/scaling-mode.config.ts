@@ -82,10 +82,6 @@ class BullConfig {
 	@Nested
 	redis: RedisConfig;
 
-	/** How often (in seconds) to poll the Bull queue to identify executions finished during a Redis crash. `0` to disable. May increase Redis traffic significantly. */
-	@Env('QUEUE_RECOVERY_INTERVAL')
-	queueRecoveryInterval: number = 60; // watchdog interval
-
 	/** @deprecated How long (in seconds) a worker must wait for active executions to finish before exiting. Use `N8N_GRACEFUL_SHUTDOWN_TIMEOUT` instead */
 	@Env('QUEUE_WORKER_TIMEOUT')
 	gracefulShutdownTimeout: number = 30;

@@ -1,4 +1,10 @@
-import type { IDataObject, NodeApiError, NodeError, NodeOperationError } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IRunExecutionData,
+	NodeApiError,
+	NodeError,
+	NodeOperationError,
+} from 'n8n-workflow';
 import { deepCopy, type INode } from 'n8n-workflow';
 import { useWorkflowHelpers } from './useWorkflowHelpers';
 import { useRouter } from 'vue-router';
@@ -203,6 +209,39 @@ export const useAIAssistantHelpers = () => {
 				return undefined;
 		}
 	}
+	/**
+	 * Prepare workflow execution result data for the AI assistant
+	 * by removing data from nodes
+	 **/
+	function simplifyResultData(
+		data: IRunExecutionData['resultData'],
+	): ChatRequest.ExecutionResultData {
+		const simplifiedResultData: ChatRequest.ExecutionResultData = {
+			runData: {},
+		};
+
+		// Handle optional error
+		if (data.error) {
+			simplifiedResultData.error = data.error;
+		}
+		// Map runData, excluding the `data` field from ITaskData
+		Object.keys(data.runData).forEach((key) => {
+			const taskDataArray = data.runData[key];
+			simplifiedResultData.runData[key] = taskDataArray.map((taskData) => {
+				const { data: taskDataContent, ...taskDataWithoutData } = taskData;
+				return taskDataWithoutData;
+			});
+		});
+		// Handle lastNodeExecuted if it exists
+		if (data.lastNodeExecuted) {
+			simplifiedResultData.lastNodeExecuted = data.lastNodeExecuted;
+		}
+		// Handle metadata if it exists
+		if (data.metadata) {
+			simplifiedResultData.metadata = data.metadata;
+		}
+		return simplifiedResultData;
+	}
 
 	return {
 		processNodeForAssistant,
@@ -212,5 +251,6 @@ export const useAIAssistantHelpers = () => {
 		getNodesSchemas,
 		getCurrentViewDescription,
 		getReferencedNodes,
+		simplifyResultData,
 	};
 };

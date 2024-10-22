@@ -4,7 +4,6 @@ import { NodeOperationError, type INode } from 'n8n-workflow';
 import { testVersionedWebhookTriggerNode } from '@test/nodes/TriggerHelpers';
 
 import { FormTrigger } from '../FormTrigger.node';
-import type { FormField } from '../interfaces';
 
 describe('FormTrigger', () => {
 	beforeEach(() => {
@@ -12,7 +11,7 @@ describe('FormTrigger', () => {
 	});
 
 	it('should render a form template with correct fields', async () => {
-		const formFields: FormField[] = [
+		const formFields = [
 			{ fieldLabel: 'Name', fieldType: 'text', requiredField: true },
 			{ fieldLabel: 'Age', fieldType: 'number', requiredField: false },
 			{ fieldLabel: 'Notes', fieldType: 'textarea', requiredField: false },
@@ -49,6 +48,7 @@ describe('FormTrigger', () => {
 
 		expect(response.render).toHaveBeenCalledWith('form-trigger', {
 			appendAttribution: false,
+			buttonLabel: 'Submit',
 			formDescription: 'Test Description',
 			formFields: [
 				{
@@ -115,7 +115,7 @@ describe('FormTrigger', () => {
 	});
 
 	it('should return workflowData on POST request', async () => {
-		const formFields: FormField[] = [
+		const formFields = [
 			{ fieldLabel: 'Name', fieldType: 'text', requiredField: true },
 			{ fieldLabel: 'Age', fieldType: 'number', requiredField: false },
 			{ fieldLabel: 'Date', fieldType: 'date', formatDate: 'dd MMM', requiredField: false },
@@ -205,13 +205,13 @@ describe('FormTrigger', () => {
 					],
 				}),
 			).rejects.toEqual(
-				new NodeOperationError(mock<INode>(), 'n8n Form Trigger node not correctly configured'),
+				new NodeOperationError(mock<INode>(), 'On form submission node not correctly configured'),
 			);
 		});
 	});
 
 	it('should throw on invalid webhook authentication', async () => {
-		const formFields: FormField[] = [
+		const formFields = [
 			{ fieldLabel: 'Name', fieldType: 'text', requiredField: true },
 			{ fieldLabel: 'Age', fieldType: 'number', requiredField: false },
 		];
@@ -239,7 +239,7 @@ describe('FormTrigger', () => {
 	});
 
 	it('should handle files', async () => {
-		const formFields: FormField[] = [
+		const formFields = [
 			{
 				fieldLabel: 'Resume',
 				fieldType: 'file',

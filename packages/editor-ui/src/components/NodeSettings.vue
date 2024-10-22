@@ -713,7 +713,8 @@ const populateSettings = () => {
 						},
 					],
 					default: 'stopWorkflow',
-					noDataExpression: i18n.baseText('nodeSettings.onError.description'),
+					description: i18n.baseText('nodeSettings.onError.description'),
+					noDataExpression: true,
 				},
 			] as INodeProperties[]),
 		);

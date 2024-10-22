@@ -104,7 +104,7 @@ const isItemActive = (item: IMenuItem): boolean => {
 		<N8nTooltip
 			v-else
 			placement="right"
-			:content="item.label"
+			:content="compact ? item.label : ''"
 			:disabled="!compact"
 			:show-after="tooltipDelay"
 		>
