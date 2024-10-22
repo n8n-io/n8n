@@ -70,7 +70,7 @@ export class N8nStructuredOutputParser extends StructuredOutputParser<
 		}
 	}
 
-	static async fromZedJsonSchema(
+	static async fromZodJsonSchema(
 		zodSchema: z.ZodSchema<object>,
 		nodeVersion: number,
 		context: IExecuteFunctions,
