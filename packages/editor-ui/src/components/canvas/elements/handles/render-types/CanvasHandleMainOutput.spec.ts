@@ -64,7 +64,7 @@ describe('CanvasHandleMainOutput', () => {
 		expect(getByText('1 item')).toBeInTheDocument();
 	});
 
-	it('should not render run data label if output label is available', async () => {
+	it('should render run data label even if output label is available', async () => {
 		const runData = {
 			total: 1,
 			iterations: 1,
@@ -77,7 +77,22 @@ describe('CanvasHandleMainOutput', () => {
 			},
 		});
 
-		expect(() => getByText('1 item')).toThrow();
+		expect(getByText('1 item')).toBeInTheDocument();
 		expect(getByText('Output')).toBeInTheDocument();
+	});
+
+	it('should not render run data label if handle is connected', async () => {
+		const runData = {
+			total: 1,
+			iterations: 1,
+		};
+		const { queryByText } = renderComponent({
+			global: {
+				provide: {
+					...createCanvasHandleProvide({ label: '', runData, isConnected: true }),
+				},
+			},
+		});
+		expect(queryByText('1 item')).not.toBeInTheDocument();
 	});
 });
