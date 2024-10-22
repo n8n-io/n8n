@@ -154,6 +154,46 @@ describe('RunData', () => {
 		expect(pinDataButton).toBeEnabled();
 	});
 
+	it('should not render pagination on binary tab', async () => {
+		const { queryByTestId } = render(
+			Array.from({ length: 11 }).map((_, i) => ({
+				json: {
+					data: {
+						id: i,
+						name: `Test ${i}`,
+					},
+				},
+				binary: {
+					data: {
+						a: 'b',
+					},
+				},
+			})),
+			'binary',
+		);
+		expect(queryByTestId('ndv-data-pagination')).not.toBeInTheDocument();
+	});
+
+	it('should render pagination with binary data on non-binary tab', async () => {
+		const { getByTestId } = render(
+			Array.from({ length: 11 }).map((_, i) => ({
+				json: {
+					data: {
+						id: i,
+						name: `Test ${i}`,
+					},
+				},
+				binary: {
+					data: {
+						a: 'b',
+					},
+				},
+			})),
+			'json',
+		);
+		expect(getByTestId('ndv-data-pagination')).toBeInTheDocument();
+	});
+
 	const render = (
 		outputData: unknown[],
 		displayMode: IRunDataDisplayMode,
