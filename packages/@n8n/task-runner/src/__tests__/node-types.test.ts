@@ -4,7 +4,7 @@ import { TaskRunnerNodeTypes } from '../node-types';
 
 const SINGLE_VERSIONED = { name: 'single-versioned', version: 1 };
 
-const SINGLE_UNVERISONED = { name: 'single-unversioned' };
+const SINGLE_UNVERSIONED = { name: 'single-unversioned' };
 
 const MULTI_VERSIONED = { name: 'multi-versioned', version: [1, 2] };
 
@@ -15,7 +15,7 @@ const SPLIT_VERSIONED = [
 
 const TYPES: INodeTypeDescription[] = [
 	SINGLE_VERSIONED,
-	SINGLE_UNVERISONED,
+	SINGLE_UNVERSIONED,
 	MULTI_VERSIONED,
 	...SPLIT_VERSIONED,
 ] as INodeTypeDescription[];
@@ -59,7 +59,7 @@ describe('TaskRunnerNodeTypes', () => {
 
 		it('should default to DEFAULT_NODETYPE_VERSION if no version specified', () => {
 			expect(nodeTypes.getByNameAndVersion('single-unversioned', 1)).toEqual({
-				description: SINGLE_UNVERISONED,
+				description: SINGLE_UNVERSIONED,
 			});
 		});
 	});

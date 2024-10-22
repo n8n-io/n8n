@@ -1,9 +1,10 @@
-import type {
-	IDataObject,
-	INodeType,
-	INodeTypeDescription,
-	INodeTypes,
-	IVersionedNodeType,
+import {
+	ApplicationError,
+	type IDataObject,
+	type INodeType,
+	type INodeTypeDescription,
+	type INodeTypes,
+	type IVersionedNodeType,
 } from 'n8n-workflow';
 
 type VersionedTypes = Map<number, INodeTypeDescription>;
@@ -11,10 +12,10 @@ type VersionedTypes = Map<number, INodeTypeDescription>;
 export const DEFAULT_NODETYPE_VERSION = 1;
 
 export class TaskRunnerNodeTypes implements INodeTypes {
-	private versionedNodeTypes: Map<string, VersionedTypes>;
+	private nodeTypesByVersion: Map<string, VersionedTypes>;
 
 	constructor(nodeTypes: INodeTypeDescription[]) {
-		this.versionedNodeTypes = this.parseNodeTypes(nodeTypes);
+		this.nodeTypesByVersion = this.parseNodeTypes(nodeTypes);
 	}
 
 	private parseNodeTypes(nodeTypes: INodeTypeDescription[]): Map<string, VersionedTypes> {
@@ -39,11 +40,11 @@ export class TaskRunnerNodeTypes implements INodeTypes {
 
 	// This isn't used in Workflow from what I can see
 	getByName(_nodeType: string): INodeType | IVersionedNodeType {
-		return undefined as unknown as INodeType | IVersionedNodeType;
+		throw new ApplicationError('Unimplemented `getByName`', { level: 'error' });
 	}
 
 	getByNameAndVersion(nodeType: string, version?: number): INodeType {
-		const versions = this.versionedNodeTypes.get(nodeType);
+		const versions = this.nodeTypesByVersion.get(nodeType);
 		if (!versions) {
 			return undefined as unknown as INodeType;
 		}
@@ -58,6 +59,6 @@ export class TaskRunnerNodeTypes implements INodeTypes {
 
 	// This isn't used in Workflow from what I can see
 	getKnownTypes(): IDataObject {
-		return {};
+		throw new ApplicationError('Unimplemented `getKnownTypes`', { level: 'error' });
 	}
 }
