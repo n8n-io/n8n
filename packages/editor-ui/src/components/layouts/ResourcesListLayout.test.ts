@@ -6,7 +6,7 @@ import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
 import type router from 'vue-router';
 import { mockedStore } from '@/__tests__/utils';
 import { useProjectsStore } from '@/stores/projects.store';
-import type { Project } from '@/types/projects.types';
+import { type Project, ProjectTypes } from '@/types/projects.types';
 
 vi.mock('vue-router', async (importOriginal) => {
 	const { RouterLink } = await importOriginal<typeof router>();
@@ -44,7 +44,7 @@ describe('ResourcesListLayout', () => {
 
 			expect(getByTestId('list-layout-header').querySelector('.fa-home')).toBeVisible();
 
-			projects.currentProject = { type: 'personal' } as Project;
+			projects.currentProject = { type: ProjectTypes.Personal } as Project;
 
 			await waitFor(() =>
 				expect(getByTestId('list-layout-header').querySelector('.fa-user')).toBeVisible(),
@@ -64,7 +64,7 @@ describe('ResourcesListLayout', () => {
 
 			expect(within(getByTestId('list-layout-header')).getByText('Home')).toBeVisible();
 
-			projects.currentProject = { type: 'personal' } as Project;
+			projects.currentProject = { type: ProjectTypes.Personal } as Project;
 
 			await waitFor(() =>
 				expect(within(getByTestId('list-layout-header')).getByText('Personal')).toBeVisible(),

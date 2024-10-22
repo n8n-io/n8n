@@ -2,7 +2,7 @@
 import { computed, defineComponent, nextTick, ref, onMounted, watch } from 'vue';
 import type { PropType } from 'vue';
 
-import type { ProjectSharingData } from '@/types/projects.types';
+import { type ProjectSharingData, ProjectTypes } from '@/types/projects.types';
 import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
 import PageViewLayoutList from '@/components/layouts/PageViewLayoutList.vue';
 import ResourceFiltersDropdown from '@/components/forms/ResourceFiltersDropdown.vue';
@@ -344,7 +344,7 @@ export default defineComponent({
 		});
 
 		const headerIcon = computed(() => {
-			if (projectsStore.currentProject?.type === 'personal') {
+			if (projectsStore.currentProject?.type === ProjectTypes.Personal) {
 				return 'user';
 			} else if (projectsStore.currentProject?.name) {
 				return 'layer-group';
@@ -356,7 +356,7 @@ export default defineComponent({
 		const projectName = computed(() => {
 			if (!projectsStore.currentProject) {
 				return i18n.baseText('projects.menu.home');
-			} else if (projectsStore.currentProject.type === 'personal') {
+			} else if (projectsStore.currentProject.type === ProjectTypes.Personal) {
 				return i18n.baseText('projects.menu.personal');
 			} else {
 				return projectsStore.currentProject.name;
