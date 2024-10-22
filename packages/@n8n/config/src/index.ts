@@ -12,6 +12,8 @@ import { PublicApiConfig } from './configs/public-api.config';
 import { TaskRunnersConfig } from './configs/runners.config';
 export { TaskRunnersConfig } from './configs/runners.config';
 import { ScalingModeConfig } from './configs/scaling-mode.config';
+import { SecurityConfig } from './configs/security.config';
+export { SecurityConfig } from './configs/security.config';
 import { SentryConfig } from './configs/sentry.config';
 import { TemplatesConfig } from './configs/templates.config';
 import { UserManagementConfig } from './configs/user-management.config';
@@ -97,4 +99,7 @@ export class GlobalConfig {
 
 	@Nested
 	multiMainSetup: MultiMainSetupConfig;
+
+	@Nested
+	security: SecurityConfig;
 }

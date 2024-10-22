@@ -250,6 +250,9 @@ describe('GlobalConfig', () => {
 			ttl: 10,
 			interval: 3,
 		},
+		security: {
+			enforceSettingsFilePermissions: false,
+		},
 	};
 
 	it('should use all default values when no env variables are defined', () => {

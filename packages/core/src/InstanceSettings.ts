@@ -1,9 +1,10 @@
+import { SecurityConfig } from '@n8n/config';
 import { createHash, randomBytes } from 'crypto';
 import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'fs';
 import { ApplicationError, jsonParse, ALPHABET, toResult } from 'n8n-workflow';
 import { customAlphabet } from 'nanoid';
 import path from 'path';
-import { Service } from 'typedi';
+import Container, { Service } from 'typedi';
 
 const nanoid = customAlphabet(ALPHABET, 16);
 
@@ -22,9 +23,6 @@ type InstanceRole = 'unset' | 'leader' | 'follower';
 export type InstanceType = 'main' | 'webhook' | 'worker';
 
 const inTest = process.env.NODE_ENV === 'test';
-
-// This should be turned on in v2
-const enforceSettingsFilePermissionsByDefault = false;
 
 @Service()
 export class InstanceSettings {
@@ -185,8 +183,8 @@ export class InstanceSettings {
 		isSet: boolean;
 		enforce: boolean;
 	} {
-		const envVar = process.env.N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS?.toLowerCase();
-		const isEnvVarSet = !!envVar;
+		const { enforceSettingsFilePermissions } = Container.get(SecurityConfig);
+		const isEnvVarSet = !!process.env.N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS;
 		if (this.isWindows()) {
 			if (isEnvVarSet) {
 				console.warn(
@@ -202,7 +200,7 @@ export class InstanceSettings {
 
 		return {
 			isSet: isEnvVarSet,
-			enforce: isEnvVarSet ? envVar === 'true' : enforceSettingsFilePermissionsByDefault,
+			enforce: enforceSettingsFilePermissions,
 		};
 	}
 
@@ -239,7 +237,7 @@ export class InstanceSettings {
 		// If the permissions are incorrect and the flag is not set, log a warning
 		if (!this.enforceSettingsFilePermissions.isSet) {
 			console.warn(
-				`Permissions 0${permissionsResult.result.toString(8)} for n8n settings file ${this.settingsFile} are too wide. This is ignored for now, but in the future n8n will attempt to change the permissions automatically. To automatically enforce correct permissions now set N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true, or turn this check off set N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=false.`,
+				`Permissions 0${permissionsResult.result.toString(8)} for n8n settings file ${this.settingsFile} are too wide. This is ignored for now, but in the future n8n will attempt to change the permissions automatically. To automatically enforce correct permissions now set N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true (recommended), or turn this check off set N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=false.`,
 			);
 			// The default is false so we skip the enforcement for now
 			return;

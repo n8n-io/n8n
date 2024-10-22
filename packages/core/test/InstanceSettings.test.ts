@@ -1,4 +1,6 @@
+import { SecurityConfig } from '@n8n/config';
 import fs from 'fs';
+import Container from 'typedi';
 
 import { InstanceSettings } from '@/InstanceSettings';
 
@@ -17,7 +19,7 @@ describe('InstanceSettings', () => {
 	describe('If the settings file exists', () => {
 		const readSpy = jest.spyOn(fs, 'readFileSync');
 		beforeEach(() => {
-			delete process.env.N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS;
+			Container.get(SecurityConfig).enforceSettingsFilePermissions = false;
 			existSpy.mockReturnValue(true);
 		});
 
@@ -70,7 +72,7 @@ describe('InstanceSettings', () => {
 		});
 
 		it("should fix the permissions of the settings file if 'N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS' is true", () => {
-			process.env.N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS = 'true';
+			Container.get(SecurityConfig).enforceSettingsFilePermissions = true;
 			readSpy.mockReturnValueOnce(JSON.stringify({ encryptionKey: 'test_key' }));
 			statSpy.mockReturnValueOnce({ mode: 0o644 } as fs.Stats);
 			new InstanceSettings();
@@ -86,7 +88,7 @@ describe('InstanceSettings', () => {
 			existSpy.mockReturnValue(false);
 			mkdirSpy.mockReturnValue('');
 			writeFileSpy.mockReturnValue();
-			delete process.env.N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS;
+			Container.get(SecurityConfig).enforceSettingsFilePermissions = false;
 		});
 
 		it('should create a new settings file without explicit permissions if N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS is not set', () => {
@@ -121,7 +123,7 @@ describe('InstanceSettings', () => {
 		});
 
 		it('should create a new settings file with explicit permissions if N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true', () => {
-			process.env.N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS = 'true';
+			Container.get(SecurityConfig).enforceSettingsFilePermissions = true;
 			process.env.N8N_ENCRYPTION_KEY = 'key_2';
 			const settings = new InstanceSettings();
 			expect(settings.encryptionKey).not.toEqual('test_key');
