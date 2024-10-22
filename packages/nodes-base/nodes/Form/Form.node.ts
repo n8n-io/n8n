@@ -33,7 +33,6 @@ const pageProperties = updateDisplayOptions(
 			name: 'defineForm',
 			type: 'options',
 			noDataExpression: true,
-			description: 'Choose how to create the form by using UI or JSON',
 			options: [
 				{
 					name: 'Using Fields Below',

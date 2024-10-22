@@ -956,14 +956,7 @@ const projectPermissions = computed(() => {
 
 const isStoppingExecution = ref(false);
 
-const isWorkflowRunning = computed(() => {
-	if (uiStore.isActionActive.workflowRunning) return true;
-	if (workflowsStore.activeExecutionId) {
-		const execution = workflowsStore.getWorkflowExecution;
-		if (execution && execution.status === 'waiting' && !execution.finished) return true;
-	}
-	return false;
-});
+const isWorkflowRunning = computed(() => workflowsStore.isWorkflowRunning);
 const isExecutionWaitingForWebhook = computed(() => workflowsStore.executionWaitingForWebhook);
 
 const isExecutionDisabled = computed(() => {
