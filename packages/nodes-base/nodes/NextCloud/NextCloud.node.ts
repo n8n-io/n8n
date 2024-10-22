@@ -308,7 +308,7 @@ export class NextCloud implements INodeType {
 				description: 'The ID of the Deck board',
 			},
 			{
-				displayName: 'Board Name',
+				displayName: 'Board Title',
 				name: 'boardName',
 				type: 'string',
 				default: '',
@@ -321,6 +321,34 @@ export class NextCloud implements INodeType {
 				},
 				placeholder: 'Project Management',
 				description: 'Name of the Deck board',
+			},
+			{
+				displayName: 'Board Color',
+				name: 'boardColor',
+				type: 'color', // Use this if n8n supports color types
+				default: '#FFFFFF', // Default color in hexadecimal
+				required: false, // Optional color field
+				displayOptions: {
+					show: {
+						resource: ['deck'],
+						operation: ['createBoard', 'updateBoard'],
+					},
+				},
+				description: 'Select a color for the board',
+			},
+			{
+				displayName: 'Archived',
+				name: 'archivedBoard',
+				type: 'boolean',
+				default: false,
+				required: false,
+				displayOptions: {
+					show: {
+						resource: ['deck'],
+						operation: ['updateBoard'],
+					},
+				},
+				description: 'Archive the board or not',
 			},
 			// Notes Operations
 			{
@@ -1359,10 +1387,13 @@ export class NextCloud implements INodeType {
 						endpoint = `ocs/v1.php/cloud/users/${encodeURIComponent(userid)}`;
 
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-						const updateParams = (updateFields.field as IDataObject);
+						const updateParams = updateFields.field as IDataObject;
 
 						body = Object.entries(updateParams)
-							.map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value as string)}`)
+							.map(
+								([key, value]) =>
+									`${encodeURIComponent(key)}=${encodeURIComponent(value as string)}`,
+							)
 							.join('&');
 
 						headers['OCS-APIRequest'] = 'true';
@@ -1372,7 +1403,11 @@ export class NextCloud implements INodeType {
 					switch (operation) {
 						case 'createBoard': {
 							const boardName = this.getNodeParameter('boardName', i) as string;
-							const deckBody = { name: boardName };
+							const boardColor = this.getNodeParameter('boardColor', i) as string;
+							const deckBody = {
+								title: boardName,
+								color: boardColor.replace('#', ''),
+							};
 							const deckHeaders = {
 								'OCS-APIRequest': 'true',
 								'Content-Type': 'application/json',
@@ -1404,7 +1439,13 @@ export class NextCloud implements INodeType {
 						case 'updateBoard': {
 							const boardId = this.getNodeParameter('boardId', i) as string;
 							const boardName = this.getNodeParameter('boardName', i) as string;
-							const deckBody = { name: boardName };
+							const boardColor = this.getNodeParameter('boardColor', i) as string;
+							const archivedBoard = this.getNodeParameter('archivedBoard', i) as boolean;
+							const deckBody = {
+								title: boardName,
+								color: boardColor.replace('#', ''),
+								archived: archivedBoard,
+							};
 							const deckHeaders = {
 								'OCS-APIRequest': 'true',
 								'Content-Type': 'application/json',
@@ -1435,7 +1476,10 @@ export class NextCloud implements INodeType {
 							break;
 						}
 						default:
-							throw new NodeOperationError(this.getNode(), `Operation "${operation}" not implemented for resource "deck"`);
+							throw new NodeOperationError(
+								this.getNode(),
+								`Operation "${operation}" not implemented for resource "deck"`,
+							);
 					}
 				} else if (resource === 'notes') {
 					switch (operation) {
@@ -1504,7 +1548,10 @@ export class NextCloud implements INodeType {
 							break;
 						}
 						default:
-							throw new NodeOperationError(this.getNode(), `Operation "${operation}" not implemented for resource "notes"`);
+							throw new NodeOperationError(
+								this.getNode(),
+								`Operation "${operation}" not implemented for resource "notes"`,
+							);
 					}
 				} else if (resource === 'tables') {
 					switch (operation) {
@@ -1573,7 +1620,10 @@ export class NextCloud implements INodeType {
 							break;
 						}
 						default:
-							throw new NodeOperationError(this.getNode(), `Operation "${operation}" not implemented for resource "tables"`);
+							throw new NodeOperationError(
+								this.getNode(),
+								`Operation "${operation}" not implemented for resource "tables"`,
+							);
 					}
 				} else if (resource === 'talk') {
 					switch (operation) {
@@ -1642,7 +1692,10 @@ export class NextCloud implements INodeType {
 							break;
 						}
 						default:
-							throw new NodeOperationError(this.getNode(), `Operation "${operation}" not implemented for resource "talk"`);
+							throw new NodeOperationError(
+								this.getNode(),
+								`Operation "${operation}" not implemented for resource "talk"`,
+							);
 					}
 				} else {
 					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, {
@@ -1693,7 +1746,6 @@ export class NextCloud implements INodeType {
 					};
 
 					if (items[i].binary !== undefined) {
-
 						Object.assign(newItem.binary as IBinaryKeyData, items[i].binary);
 					}
 
@@ -1706,7 +1758,6 @@ export class NextCloud implements INodeType {
 						endpoint,
 					);
 				} else if (['file', 'folder'].includes(resource) && operation === 'share') {
-
 					const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
 						parseString(responseData as string, { explicitArray: false }, (err, data) => {
 							if (err) {
@@ -1734,7 +1785,6 @@ export class NextCloud implements INodeType {
 					returnData.push(...executionData);
 				} else if (resource === 'user') {
 					if (operation !== 'getAll') {
-
 						const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
 							parseString(responseData as string, { explicitArray: false }, (err, data) => {
 								if (err) {
@@ -1765,7 +1815,6 @@ export class NextCloud implements INodeType {
 
 						returnData.push(...executionData);
 					} else {
-
 						const jsonResponseData: IDataObject[] = await new Promise((resolve, reject) => {
 							parseString(responseData as string, { explicitArray: false }, (err, data) => {
 								if (err) {
@@ -1791,7 +1840,6 @@ export class NextCloud implements INodeType {
 						});
 					}
 				} else if (resource === 'folder' && operation === 'list') {
-
 					const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
 						parseString(responseData as string, { explicitArray: false }, (err, data) => {
 							if (err) {
