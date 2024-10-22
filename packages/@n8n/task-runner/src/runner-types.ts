@@ -1,4 +1,4 @@
-import type { INodeExecutionData } from 'n8n-workflow';
+import type { INodeExecutionData, INodeTypeBaseDescription } from 'n8n-workflow';
 
 export type DataRequestType = 'input' | 'node' | 'all';
 
@@ -50,6 +50,11 @@ export namespace N8nMessage {
 			data: unknown;
 		}
 
+		export interface NodeTypes {
+			type: 'broker:nodetypes';
+			nodeTypes: INodeTypeBaseDescription[];
+		}
+
 		export type All =
 			| InfoRequest
 			| TaskOfferAccept
@@ -57,7 +62,8 @@ export namespace N8nMessage {
 			| TaskSettings
 			| RunnerRegistered
 			| RPCResponse
-			| TaskDataResponse;
+			| TaskDataResponse
+			| NodeTypes;
 	}
 
 	export namespace ToRequester {
