@@ -2,6 +2,7 @@ import vue from '@vitejs/plugin-vue';
 import { resolve } from 'path';
 import { defineConfig, mergeConfig } from 'vite';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
+import { viteStaticCopy } from 'vite-plugin-static-copy';
 
 import { vitestConfig } from '../design-system/vite.config.mts';
 import icons from 'unplugin-icons/vite';
@@ -54,6 +55,12 @@ const plugins = [
 			}),
 		],
 	}),
+	viteStaticCopy({
+		targets: [
+			{ src: resolve('node_modules/web-tree-sitter/tree-sitter.wasm'), dest: '' },
+			{ src: resolve('node_modules/curlconverter/dist/tree-sitter-bash.wasm'), dest: '' },
+		],
+	}),
 	vue(),
 ];
 
@@ -96,6 +103,12 @@ export default mergeConfig(
 		build: {
 			minify: !!release,
 			sourcemap: !!release,
+			target: 'es2022',
+		},
+		optimizeDeps: {
+			esbuildOptions: {
+				target: 'es2022',
+			},
 		},
 	}),
 	vitestConfig,

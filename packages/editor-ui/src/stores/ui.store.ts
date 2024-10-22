@@ -55,7 +55,6 @@ import type {
 } from '@/Interface';
 import { defineStore } from 'pinia';
 import { useRootStore } from '@/stores/root.store';
-import * as curlParserApi from '@/api/curlHelper';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -544,19 +543,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		sidebarMenuCollapsed.value = !sidebarMenuCollapsed.value;
 	};
 
-	const getCurlToJson = async (curlCommand: string) => {
-		const parameters = await curlParserApi.getCurlToJson(rootStore.restApiContext, curlCommand);
-
-		// Normalize placeholder values
-		if (parameters['parameters.url']) {
-			parameters['parameters.url'] = parameters['parameters.url']
-				.replaceAll('%7B', '{')
-				.replaceAll('%7D', '}');
-		}
-
-		return parameters;
-	};
-
 	const goToUpgrade = async (
 		source: CloudUpdateLinkSourceType,
 		utm_campaign: UTMCampaign,
@@ -694,7 +680,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		resetSelectedNodes,
 		setCurlCommand,
 		toggleSidebarMenuCollapse,
-		getCurlToJson,
 		goToUpgrade,
 		removeBannerFromStack,
 		dismissBanner,
