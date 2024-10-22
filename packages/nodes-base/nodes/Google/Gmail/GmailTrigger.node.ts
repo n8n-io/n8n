@@ -107,6 +107,13 @@ export class GmailTrigger implements INodeType {
 						description: 'Whether to include messages from SPAM and TRASH in the results',
 					},
 					{
+						displayName: 'Include Drafts',
+						name: 'includeDrafts',
+						type: 'boolean',
+						default: false,
+						description: 'Whether to include email drafts in the results',
+					},
+					{
 						displayName: 'Label Names or IDs',
 						name: 'labelIds',
 						type: 'multiOptions',
@@ -284,6 +291,9 @@ export class GmailTrigger implements INodeType {
 				qs.format = 'raw';
 			}
 
+			const includeDrafts = (qs.includeDrafts as boolean) || false;
+			delete qs.includeDrafts;
+
 			for (let i = 0; i < responseData.length; i++) {
 				responseData[i] = await googleApiRequest.call(
 					this,
@@ -292,8 +302,14 @@ export class GmailTrigger implements INodeType {
 					{},
 					qs,
 				);
-
-				if (!simple) {
+				if (!includeDrafts) {
+					if (responseData[i].labelIds.includes('DRAFT')) {
+						responseData.splice(i, 1);
+						i--;
+						continue;
+					}
+				}
+				if (!simple && responseData?.length) {
 					const dataPropertyNameDownload =
 						(options.dataPropertyAttachmentsPrefixName as string) || 'attachment_';
 
@@ -305,7 +321,7 @@ export class GmailTrigger implements INodeType {
 				}
 			}
 
-			if (simple) {
+			if (simple && responseData?.length) {
 				responseData = this.helpers.returnJsonArray(
 					await simplifyOutput.call(this, responseData as IDataObject[]),
 				);
@@ -324,17 +340,14 @@ export class GmailTrigger implements INodeType {
 				},
 			);
 		}
-
 		if (!responseData?.length) {
 			nodeStaticData.lastTimeChecked = endDate;
 			return null;
 		}
 
 		const emailsWithInvalidDate = new Set<string>();
-
 		const getEmailDateAsSeconds = (email: IDataObject): number => {
 			let date;
-
 			if (email.internalDate) {
 				date = +(email.internalDate as string) / 1000;
 			} else if (email.date) {
