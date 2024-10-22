@@ -15,7 +15,7 @@ import {
 	samlLicensedAndEnabledMiddleware,
 	samlLicensedMiddleware,
 } from '../middleware/saml-enabled-middleware';
-import { isConnectionTestRequest, isSamlLicensedAndEnabled } from '../saml-helpers';
+import { isSamlLicensedAndEnabled } from '../saml-helpers';
 import { SamlService } from '../saml.service.ee';
 import {
 	getServiceProviderConfigTestReturnUrl,
@@ -111,10 +111,11 @@ export class SamlController {
 		res: express.Response,
 		binding: SamlLoginBinding,
 	) {
+		const isConnectionTestRequest = req.body.RelayState === getServiceProviderConfigTestReturnUrl();
 		try {
 			const loginResult = await this.samlService.handleSamlLogin(req, binding);
 			// if RelayState is set to the test connection Url, this is a test connection
-			if (isConnectionTestRequest(req)) {
+			if (isConnectionTestRequest) {
 				if (loginResult.authenticatedUser) {
 					return res.render('sso/saml-connection-test-success', loginResult.attributes);
 				} else {
@@ -149,7 +150,7 @@ export class SamlController {
 			});
 			throw new AuthError('SAML Authentication failed');
 		} catch (error) {
-			if (isConnectionTestRequest(req)) {
+			if (isConnectionTestRequest) {
 				return res.render('sso/saml-connection-test-failed', { message: (error as Error).message });
 			}
 			this.eventService.emit('user-login-failed', {

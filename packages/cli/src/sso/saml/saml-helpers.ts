@@ -13,8 +13,6 @@ import { License } from '@/license';
 import { PasswordUtility } from '@/services/password.utility';
 
 import { SAML_LOGIN_ENABLED, SAML_LOGIN_LABEL } from './constants';
-import { getServiceProviderConfigTestReturnUrl } from './service-provider.ee';
-import type { SamlConfiguration } from './types/requests';
 import type { SamlAttributeMapping } from './types/saml-attribute-mapping';
 import type { SamlPreferences } from './types/saml-preferences';
 import type { SamlUserAttributes } from './types/saml-user-attributes';
@@ -163,8 +161,4 @@ export function getMappedSamlAttributesFromFlowResult(
 		if (!lastName) result.missingAttributes.push(attributeMapping.lastName);
 	}
 	return result;
-}
-
-export function isConnectionTestRequest(req: SamlConfiguration.AcsRequest): boolean {
-	return req.body.RelayState === getServiceProviderConfigTestReturnUrl();
 }
