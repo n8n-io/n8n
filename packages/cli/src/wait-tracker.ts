@@ -1,3 +1,4 @@
+import { InstanceSettings } from 'n8n-core';
 import {
 	ApplicationError,
 	ErrorReporterProxy as ErrorReporter,
@@ -28,6 +29,7 @@ export class WaitTracker {
 		private readonly ownershipService: OwnershipService,
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly orchestrationService: OrchestrationService,
+		private readonly instanceSettings: InstanceSettings,
 	) {
 		this.logger = this.logger.withScope('executions');
 	}
@@ -40,7 +42,8 @@ export class WaitTracker {
 	 * @important Requires `OrchestrationService` to be initialized.
 	 */
 	init() {
-		const { isLeader, isMultiMainSetupEnabled } = this.orchestrationService;
+		const { isLeader } = this.instanceSettings;
+		const { isMultiMainSetupEnabled } = this.orchestrationService;
 
 		if (isLeader) this.startTracking();
 

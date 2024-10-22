@@ -1,7 +1,7 @@
-import CanvasHandlePlus from './CanvasHandlePlus.vue';
+import CanvasHandleDiamond from './CanvasHandleDiamond.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 
-const renderComponent = createComponentRenderer(CanvasHandlePlus, {});
+const renderComponent = createComponentRenderer(CanvasHandleDiamond, {});
 
 describe('CanvasHandleDiamond', () => {
 	it('should render with default props', () => {

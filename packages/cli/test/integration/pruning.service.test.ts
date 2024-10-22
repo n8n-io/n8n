@@ -38,6 +38,7 @@ describe('softDeleteOnPruningCycle()', () => {
 			Container.get(ExecutionRepository),
 			mockInstance(BinaryDataService),
 			mock(),
+			mock(),
 		);
 
 		workflow = await createWorkflow();

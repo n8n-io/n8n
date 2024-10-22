@@ -75,15 +75,11 @@ export class TaskBroker {
 
 	expireTasks() {
 		const now = process.hrtime.bigint();
-		const invalidOffers: number[] = [];
-		for (let i = 0; i < this.pendingTaskOffers.length; i++) {
+		for (let i = this.pendingTaskOffers.length - 1; i >= 0; i--) {
 			if (this.pendingTaskOffers[i].validUntil < now) {
-				invalidOffers.push(i);
+				this.pendingTaskOffers.splice(i, 1);
 			}
 		}
-
-		// We reverse the list so the later indexes are valid after deleting earlier ones
-		invalidOffers.reverse().forEach((i) => this.pendingTaskOffers.splice(i, 1));
 	}
 
 	registerRunner(runner: TaskRunner, messageCallback: MessageCallback) {
@@ -92,6 +88,21 @@ export class TaskBroker {
 
 	deregisterRunner(runnerId: string) {
 		this.knownRunners.delete(runnerId);
+
+		// Remove any pending offers
+		for (let i = this.pendingTaskOffers.length - 1; i >= 0; i--) {
+			if (this.pendingTaskOffers[i].runnerId === runnerId) {
+				this.pendingTaskOffers.splice(i, 1);
+			}
+		}
+
+		// Fail any tasks
+		for (const task of this.tasks.values()) {
+			if (task.runnerId === runnerId) {
+				void this.failTask(task.id, `The Task Runner (${runnerId}) has disconnected`);
+				this.handleRunnerReject(task.id, `The Task Runner (${runnerId}) has disconnected`);
+			}
+		}
 	}
 
 	registerRequester(requesterId: string, messageCallback: RequesterMessageCallback) {

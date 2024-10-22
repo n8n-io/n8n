@@ -22,6 +22,7 @@ export * from './WorkflowDataProxyEnvProvider';
 export * from './WorkflowHooks';
 export * from './VersionedNodeType';
 export * from './TypeValidation';
+export * from './result';
 export { LoggerProxy, NodeHelpers, ObservableObject, TelemetryHelpers };
 export {
 	isObjectEmpty,

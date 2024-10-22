@@ -13,6 +13,7 @@ import {
 import type { Task } from '@/task-runner';
 
 import { newAllCodeTaskData, newTaskWithSettings, withPairedItem, wrapIntoJson } from './test-data';
+import { ExecutionError } from '../errors/execution-error';
 
 jest.mock('ws');
 
@@ -280,6 +281,20 @@ describe('JsTaskRunner', () => {
 				expect(outcome.result).toEqual([wrapIntoJson({ val: undefined })]);
 			});
 		});
+
+		it('should allow access to Node.js Buffers', async () => {
+			const outcome = await execTaskWithParams({
+				task: newTaskWithSettings({
+					code: 'return { val: Buffer.from("test-buffer").toString() }',
+					nodeMode: 'runOnceForAllItems',
+				}),
+				taskData: newAllCodeTaskData(inputItems.map(wrapIntoJson), {
+					envProviderState: undefined,
+				}),
+			});
+
+			expect(outcome.result).toEqual([wrapIntoJson({ val: 'test-buffer' })]);
+		});
 	});
 
 	describe('runOnceForAllItems', () => {
@@ -292,7 +307,7 @@ describe('JsTaskRunner', () => {
 				});
 
 				expect(outcome).toEqual({
-					result: [wrapIntoJson({ error: 'Error message' })],
+					result: [wrapIntoJson({ error: 'Error message [line 1]' })],
 					customData: undefined,
 				});
 			});
@@ -406,8 +421,8 @@ describe('JsTaskRunner', () => {
 
 				expect(outcome).toEqual({
 					result: [
-						withPairedItem(0, wrapIntoJson({ error: 'Error message' })),
-						withPairedItem(1, wrapIntoJson({ error: 'Error message' })),
+						withPairedItem(0, wrapIntoJson({ error: 'Error message [line 1]' })),
+						withPairedItem(1, wrapIntoJson({ error: 'Error message [line 1]' })),
 					],
 					customData: undefined,
 				});
@@ -704,6 +719,59 @@ describe('JsTaskRunner', () => {
 					).rejects.toThrow(`Cannot find module '${moduleName}'`);
 				},
 			);
+		});
+	});
+
+	describe('errors', () => {
+		test.each<[CodeExecutionMode]>([['runOnceForAllItems'], ['runOnceForEachItem']])(
+			'should throw an ExecutionError if the code is invalid in %s mode',
+			async (nodeMode) => {
+				await expect(
+					execTaskWithParams({
+						task: newTaskWithSettings({
+							code: 'unknown',
+							nodeMode,
+						}),
+						taskData: newAllCodeTaskData([wrapIntoJson({ a: 1 })]),
+					}),
+				).rejects.toThrow(ExecutionError);
+			},
+		);
+
+		it('sends serializes an error correctly', async () => {
+			const runner = createRunnerWithOpts({});
+			const taskId = '1';
+			const task = newTaskWithSettings({
+				code: 'unknown; return []',
+				nodeMode: 'runOnceForAllItems',
+				continueOnFail: false,
+				mode: 'manual',
+				workflowMode: 'manual',
+			});
+			runner.runningTasks.set(taskId, task);
+
+			const sendSpy = jest.spyOn(runner.ws, 'send').mockImplementation(() => {});
+			jest.spyOn(runner, 'sendOffers').mockImplementation(() => {});
+			jest
+				.spyOn(runner, 'requestData')
+				.mockResolvedValue(newAllCodeTaskData([wrapIntoJson({ a: 1 })]));
+
+			await runner.receivedSettings(taskId, task.settings);
+
+			expect(sendSpy).toHaveBeenCalled();
+			const calledWith = sendSpy.mock.calls[0][0] as string;
+			expect(typeof calledWith).toBe('string');
+			const calledObject = JSON.parse(calledWith);
+			expect(calledObject).toEqual({
+				type: 'runner:taskerror',
+				taskId,
+				error: {
+					stack: expect.any(String),
+					message: 'unknown is not defined [line 1]',
+					description: 'ReferenceError',
+					lineNumber: 1,
+				},
+			});
 		});
 	});
 });

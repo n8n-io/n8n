@@ -1,6 +1,9 @@
-import { ApplicationError } from 'n8n-workflow';
+import type { ErrorLike } from './error-like';
+import { SerializableError } from './serializable-error';
 
-export class ExecutionError extends ApplicationError {
+const VM_WRAPPER_FN_NAME = 'VmCodeWrapper';
+
+export class ExecutionError extends SerializableError {
 	description: string | null = null;
 
 	itemIndex: number | undefined = undefined;
@@ -11,7 +14,7 @@ export class ExecutionError extends ApplicationError {
 
 	lineNumber: number | undefined = undefined;
 
-	constructor(error: Error & { stack?: string }, itemIndex?: number) {
+	constructor(error: ErrorLike, itemIndex?: number) {
 		super(error.message);
 		this.itemIndex = itemIndex;
 
@@ -32,10 +35,11 @@ export class ExecutionError extends ApplicationError {
 
 		if (stackRows.length === 0) {
 			this.message = 'Unknown error';
+			return;
 		}
 
 		const messageRow = stackRows.find((line) => line.includes('Error:'));
-		const lineNumberRow = stackRows.find((line) => line.includes('Code:'));
+		const lineNumberRow = stackRows.find((line) => line.includes(`at ${VM_WRAPPER_FN_NAME} `));
 		const lineNumberDisplay = this.toLineNumberDisplay(lineNumberRow);
 
 		if (!messageRow) {
@@ -56,15 +60,21 @@ export class ExecutionError extends ApplicationError {
 	}
 
 	private toLineNumberDisplay(lineNumberRow?: string) {
-		const errorLineNumberMatch = lineNumberRow?.match(/Code:(?<lineNumber>\d+)/);
+		if (!lineNumberRow) return '';
 
+		// TODO: This doesn't work if there is a function definition in the code
+		// and the error is thrown from that function.
+
+		const regex = new RegExp(
+			`at ${VM_WRAPPER_FN_NAME} \\(evalmachine\\.<anonymous>:(?<lineNumber>\\d+):`,
+		);
+		const errorLineNumberMatch = lineNumberRow.match(regex);
 		if (!errorLineNumberMatch?.groups?.lineNumber) return null;
 
 		const lineNumber = errorLineNumberMatch.groups.lineNumber;
+		if (!lineNumber) return '';
 
 		this.lineNumber = Number(lineNumber);
-
-		if (!lineNumber) return '';
 
 		return this.itemIndex === undefined
 			? `[line ${lineNumber}]`
