@@ -215,9 +215,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const isWorkflowRunning = computed(() => {
 		if (uiStore.isActionActive.workflowRunning) return true;
 
-		const execution = getWorkflowExecution;
-		if (execution.value && execution.value.status === 'waiting' && !execution.value.finished) {
-			return true;
+		if (activeExecutionId.value) {
+			const execution = getWorkflowExecution;
+			if (execution.value && execution.value.status === 'waiting' && !execution.value.finished) {
+				return true;
+			}
 		}
 
 		return false;

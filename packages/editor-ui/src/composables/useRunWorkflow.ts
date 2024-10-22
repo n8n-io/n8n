@@ -318,6 +318,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 		nodeData?: ITaskData;
 		source?: string;
 	}): Promise<IExecutionPushResponse | undefined> {
+		console.log('runWorkflowResolvePending ===>', workflowsStore.activeExecutionId, options);
 		let runWorkflowApiResponse = await runWorkflow(options);
 		let { executionId } = runWorkflowApiResponse || {};
 
@@ -367,6 +368,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 						source: options.source,
 					});
 					const execution = await workflowsStore.getExecution((executionId as string) || '');
+					console.log('resolveWaitingNodesData ===>', execution);
 
 					localStorage.removeItem(FORM_RELOAD);
 
@@ -443,6 +445,8 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 		};
 
 		await resolveWaitingNodesData();
+
+		uiStore.removeActiveAction('workflowRunning');
 
 		return runWorkflowApiResponse;
 	}
