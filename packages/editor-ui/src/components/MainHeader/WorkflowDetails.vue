@@ -56,7 +56,6 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import type { BaseTextKey } from '@/plugins/i18n';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { useNodeViewVersionSwitcher } from '@/composables/useNodeViewVersionSwitcher';
-import N8nIconButton from 'n8n-design-system/components/N8nIconButton/IconButton.vue';
 
 const props = defineProps<{
 	readOnly?: boolean;
