@@ -1,7 +1,6 @@
 import { validate } from 'class-validator';
 import express from 'express';
 import querystring from 'querystring';
-import type { PostBindingContext } from 'samlify/types/src/entity';
 import url from 'url';
 
 import { AuthService } from '@/auth/auth.service';
@@ -10,7 +9,6 @@ import { AuthError } from '@/errors/response-errors/auth.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
 import { AuthenticatedRequest } from '@/requests';
-import { sendErrorResponse } from '@/response-helper';
 import { UrlService } from '@/services/url.service';
 
 import {
@@ -149,8 +147,7 @@ export class SamlController {
 				userEmail: loginResult.attributes.email ?? 'unknown',
 				authenticationMethod: 'saml',
 			});
-			// Need to manually send the error response since we're using templates
-			return sendErrorResponse(res, new AuthError('SAML Authentication failed'));
+			throw new AuthError('SAML Authentication failed');
 		} catch (error) {
 			if (isConnectionTestRequest(req)) {
 				return res.render('sso/saml-connection-test-failed', { message: (error as Error).message });
@@ -159,11 +156,7 @@ export class SamlController {
 				userEmail: 'unknown',
 				authenticationMethod: 'saml',
 			});
-			// Need to manually send the error response since we're using templates
-			return sendErrorResponse(
-				res,
-				new AuthError('SAML Authentication failed: ' + (error as Error).message),
-			);
+			throw new AuthError('SAML Authentication failed: ' + (error as Error).message);
 		}
 	}
 

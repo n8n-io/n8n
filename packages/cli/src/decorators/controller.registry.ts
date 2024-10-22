@@ -8,6 +8,7 @@ import type { ZodClass } from 'zod-class';
 
 import { AuthService } from '@/auth/auth.service';
 import { inProduction, RESPONSE_ERROR_MESSAGES } from '@/constants';
+import { ResponseError } from '@/errors/response-errors/abstract/response.error';
 import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
 import type { BooleanLicenseFeature } from '@/interfaces';
 import { License } from '@/license';
@@ -102,7 +103,15 @@ export class ControllerRegistry {
 						}
 					} else throw new ApplicationError('Unknown arg type: ' + arg.type);
 				}
-				return await controller[handlerName](...args);
+				try {
+					return await controller[handlerName](...args);
+				} catch (error) {
+					if (route.usesTemplates && error instanceof ResponseError) {
+						res.writeHead(error.httpStatusCode, { 'Content-Type': 'text/plain' });
+						return res.end(error.message);
+					}
+					throw error;
+				}
 			};
 
 			router[route.method](
