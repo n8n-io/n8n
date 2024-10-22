@@ -151,7 +151,9 @@ export class SamlController {
 			throw new AuthError('SAML Authentication failed');
 		} catch (error) {
 			if (isConnectionTestRequest) {
-				return res.render('sso/saml-connection-test-failed', { message: (error as Error).message });
+				return res.render('sso/saml-connection-test-failed', {
+					message: (error as Error).message,
+				});
 			}
 			this.eventService.emit('user-login-failed', {
 				userEmail: 'unknown',
@@ -165,7 +167,11 @@ export class SamlController {
 	 * Access URL for implementing SP-init SSO
 	 * This endpoint is available if SAML is licensed and enabled
 	 */
-	@Get('/initsso', { middlewares: [samlLicensedAndEnabledMiddleware], skipAuth: true })
+	@Get('/initsso', {
+		middlewares: [samlLicensedAndEnabledMiddleware],
+		skipAuth: true,
+		usesTemplates: true,
+	})
 	async initSsoGet(req: express.Request, res: express.Response) {
 		let redirectUrl = '';
 		try {
@@ -189,7 +195,7 @@ export class SamlController {
 	 * Test SAML config
 	 * This endpoint is available if SAML is licensed and the requestor is an instance owner
 	 */
-	@Get('/config/test', { middlewares: [samlLicensedMiddleware] })
+	@Get('/config/test', { middlewares: [samlLicensedMiddleware], usesTemplates: true })
 	@GlobalScope('saml:manage')
 	async configTestGet(_: AuthenticatedRequest, res: express.Response) {
 		return await this.handleInitSSO(res, getServiceProviderConfigTestReturnUrl());

@@ -106,9 +106,16 @@ export class ControllerRegistry {
 				try {
 					return await controller[handlerName](...args);
 				} catch (error) {
-					if (route.usesTemplates && error instanceof ResponseError) {
-						res.writeHead(error.httpStatusCode, { 'Content-Type': 'text/plain' });
-						return res.end(error.message);
+					if (route.usesTemplates) {
+						if (error instanceof ResponseError) {
+							return res
+								.writeHead(error.httpStatusCode, { 'Content-Type': 'text/plain' })
+								.send(error.message);
+						} else {
+							return res
+								.writeHead(500, { 'Content-Type': 'text/plain' })
+								.send('Internal Server Error');
+						}
 					}
 					throw error;
 				}
