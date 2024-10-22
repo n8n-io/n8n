@@ -1745,7 +1745,7 @@ export default defineComponent({
 			v-if="
 				hasNodeRun &&
 				!hasRunError &&
-				binaryData.length === 0 &&
+				displayMode !== 'binary' &&
 				dataCount > pageSize &&
 				!isSchemaView &&
 				!isArtificialRecoveredEventItem
