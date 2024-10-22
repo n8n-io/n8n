@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from 'crypto';
 import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'fs';
-import { ApplicationError, jsonParse, ALPHABET, ensureError } from 'n8n-workflow';
+import { ApplicationError, jsonParse, ALPHABET, toResult } from 'n8n-workflow';
 import { customAlphabet } from 'nanoid';
 import path from 'path';
 import { Service } from 'typedi';
@@ -23,6 +23,9 @@ export type InstanceType = 'main' | 'webhook' | 'worker';
 
 const inTest = process.env.NODE_ENV === 'test';
 
+// This should be turned on in v2
+const enforceSettingsFilePermissionsByDefault = false;
+
 @Service()
 export class InstanceSettings {
 	private readonly userHome = this.getUserHome();
@@ -40,6 +43,8 @@ export class InstanceSettings {
 	readonly nodesDownloadDir = path.join(this.n8nFolder, 'nodes');
 
 	private readonly settingsFile = path.join(this.n8nFolder, 'config');
+
+	readonly enforceSettingsFilePermissions = this.loadEnforeSettingsFilePermissionsFlag();
 
 	private settings = this.loadOrCreate();
 
@@ -170,33 +175,93 @@ export class InstanceSettings {
 
 	private save(settings: Settings) {
 		this.settings = settings;
-		writeFileSync(this.settingsFile, JSON.stringify(settings, null, '\t'), 'utf-8');
+		writeFileSync(this.settingsFile, JSON.stringify(this.settings, null, '\t'), {
+			mode: this.enforceSettingsFilePermissions.enforce ? 0o600 : undefined,
+			encoding: 'utf-8',
+		});
+	}
+
+	private loadEnforeSettingsFilePermissionsFlag(): {
+		isSet: boolean;
+		enforce: boolean;
+	} {
+		const envVar = process.env.N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS?.toLowerCase();
+		const isEnvVarSet = !!envVar;
+		if (this.isWindows()) {
+			if (isEnvVarSet) {
+				console.warn(
+					'Ignoring N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS as it is not supported on Windows.',
+				);
+			}
+
+			return {
+				isSet: isEnvVarSet,
+				enforce: false,
+			};
+		}
+
+		return {
+			isSet: isEnvVarSet,
+			enforce: isEnvVarSet ? envVar === 'true' : enforceSettingsFilePermissionsByDefault,
+		};
 	}
 
 	/**
 	 * Ensures that the settings file has the r/w permissions only for the owner.
 	 */
 	private ensureSettingsFilePermissions() {
-		try {
+		// If the flag is explicitly set to false, skip the check
+		if (this.enforceSettingsFilePermissions.isSet && !this.enforceSettingsFilePermissions.enforce) {
+			return;
+		}
+		if (this.isWindows()) {
+			// Ignore windows as it does not support chmod. We have already logged a warning
+			return;
+		}
+
+		const permissionsResult = toResult(() => {
 			const stats = statSync(this.settingsFile);
-			const permissions = stats.mode & 0o777;
-			// 0o600 = r/w for owner, nothing for others
-			if (permissions !== 0o600) {
-				if (!inTest) {
-					console.warn(
-						`Settings file permissions are too wide (0o${permissions.toString(8)}). Changing it to 0o600...`,
-					);
-				}
-				chmodSync(this.settingsFile, 0o600);
-			}
-		} catch (e) {
-			// Some filesystems don't support permissions. In this case we log the
-			// error and ignore it. We might want to prevent the app startup in the
-			// future in this case.
-			if (!inTest) {
-				const error = ensureError(e);
-				console.warn(`Could not ensure settings file permissions: ${error.message}`);
+			return stats.mode & 0o777;
+		});
+		// If we can't determine the permissions, log a warning and skip the check
+		if (!permissionsResult.ok) {
+			console.warn(
+				`Could not ensure settings file permissions: ${permissionsResult.error.message}. To skip this check, set N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=false.`,
+			);
+			return;
+		}
+
+		const arePermissionsCorrect = permissionsResult.result === 0o600;
+		if (arePermissionsCorrect) {
+			return;
+		}
+
+		// If the permissions are incorrect and the flag is not set, log a warning
+		if (!this.enforceSettingsFilePermissions.isSet) {
+			console.warn(
+				`Permissions 0${permissionsResult.result.toString(8)} for n8n settings file ${this.settingsFile} are too wide. This is ignored for now, but in the future n8n will attempt to change the permissions automatically. To automatically enforce correct permissions now set N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true, or turn this check off set N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=false.`,
+			);
+			// The default is false so we skip the enforcement for now
+			return;
+		}
+
+		if (this.enforceSettingsFilePermissions.enforce) {
+			console.warn(
+				`Permissions 0${permissionsResult.result.toString(8)} for n8n settings file ${this.settingsFile} are too wide. Changing permissions to 0600..`,
+			);
+			const chmodResult = toResult(() => chmodSync(this.settingsFile, 0o600));
+			if (!chmodResult.ok) {
+				// Some filesystems don't support permissions. In this case we log the
+				// error and ignore it. We might want to prevent the app startup in the
+				// future in this case.
+				console.warn(
+					`Could not enforce settings file permissions: ${chmodResult.error.message}. To skip this check, set N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=false.`,
+				);
 			}
 		}
+	}
+
+	private isWindows() {
+		return process.platform === 'win32';
 	}
 }

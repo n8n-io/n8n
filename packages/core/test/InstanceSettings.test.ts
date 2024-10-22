@@ -16,7 +16,10 @@ describe('InstanceSettings', () => {
 
 	describe('If the settings file exists', () => {
 		const readSpy = jest.spyOn(fs, 'readFileSync');
-		beforeEach(() => existSpy.mockReturnValue(true));
+		beforeEach(() => {
+			delete process.env.N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS;
+			existSpy.mockReturnValue(true);
+		});
 
 		it('should load settings from the file', () => {
 			readSpy.mockReturnValue(JSON.stringify({ encryptionKey: 'test_key' }));
@@ -50,7 +53,24 @@ describe('InstanceSettings', () => {
 			expect(statSpy).toHaveBeenCalledWith('/test/.n8n/config');
 		});
 
-		it('should fix the permissions if settings file has incorrect permissions', () => {
+		it('should check the permissions but not fix them if settings file has incorrect permissions by default', () => {
+			readSpy.mockReturnValueOnce(JSON.stringify({ encryptionKey: 'test_key' }));
+			statSpy.mockReturnValueOnce({ mode: 0o644 } as fs.Stats);
+			new InstanceSettings();
+			expect(statSpy).toHaveBeenCalledWith('/test/.n8n/config');
+			expect(chmodSpy).not.toHaveBeenCalled();
+		});
+
+		it("should not check the permissions if 'N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS' is false", () => {
+			process.env.N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS = 'false';
+			readSpy.mockReturnValueOnce(JSON.stringify({ encryptionKey: 'test_key' }));
+			new InstanceSettings();
+			expect(statSpy).not.toHaveBeenCalled();
+			expect(chmodSpy).not.toHaveBeenCalled();
+		});
+
+		it("should fix the permissions of the settings file if 'N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS' is true", () => {
+			process.env.N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS = 'true';
 			readSpy.mockReturnValueOnce(JSON.stringify({ encryptionKey: 'test_key' }));
 			statSpy.mockReturnValueOnce({ mode: 0o644 } as fs.Stats);
 			new InstanceSettings();
@@ -66,9 +86,10 @@ describe('InstanceSettings', () => {
 			existSpy.mockReturnValue(false);
 			mkdirSpy.mockReturnValue('');
 			writeFileSpy.mockReturnValue();
+			delete process.env.N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS;
 		});
 
-		it('should create a new settings file', () => {
+		it('should create a new settings file without explicit permissions if N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS is not set', () => {
 			process.env.N8N_ENCRYPTION_KEY = 'key_2';
 			const settings = new InstanceSettings();
 			expect(settings.encryptionKey).not.toEqual('test_key');
@@ -76,7 +97,42 @@ describe('InstanceSettings', () => {
 			expect(writeFileSpy).toHaveBeenCalledWith(
 				'/test/.n8n/config',
 				expect.stringContaining('"encryptionKey":'),
-				'utf-8',
+				{
+					encoding: 'utf-8',
+					mode: undefined,
+				},
+			);
+		});
+
+		it('should create a new settings file without explicit permissions if N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=false', () => {
+			process.env.N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS = 'false';
+			process.env.N8N_ENCRYPTION_KEY = 'key_2';
+			const settings = new InstanceSettings();
+			expect(settings.encryptionKey).not.toEqual('test_key');
+			expect(mkdirSpy).toHaveBeenCalledWith('/test/.n8n', { recursive: true });
+			expect(writeFileSpy).toHaveBeenCalledWith(
+				'/test/.n8n/config',
+				expect.stringContaining('"encryptionKey":'),
+				{
+					encoding: 'utf-8',
+					mode: undefined,
+				},
+			);
+		});
+
+		it('should create a new settings file with explicit permissions if N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true', () => {
+			process.env.N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS = 'true';
+			process.env.N8N_ENCRYPTION_KEY = 'key_2';
+			const settings = new InstanceSettings();
+			expect(settings.encryptionKey).not.toEqual('test_key');
+			expect(mkdirSpy).toHaveBeenCalledWith('/test/.n8n', { recursive: true });
+			expect(writeFileSpy).toHaveBeenCalledWith(
+				'/test/.n8n/config',
+				expect.stringContaining('"encryptionKey":'),
+				{
+					encoding: 'utf-8',
+					mode: 0o600,
+				},
 			);
 		});
 
@@ -92,15 +148,27 @@ describe('InstanceSettings', () => {
 			expect(writeFileSpy).toHaveBeenCalledWith(
 				'/test/.n8n/config',
 				expect.stringContaining('"encryptionKey":'),
-				'utf-8',
+				{
+					encoding: 'utf-8',
+					mode: undefined,
+				},
 			);
 		});
 
-		it('should set the permissions of the settings file', () => {
-			statSpy.mockReturnValueOnce({ mode: 0o644 } as fs.Stats);
-			new InstanceSettings();
-			expect(statSpy).toHaveBeenCalledWith('/test/.n8n/config');
-			expect(chmodSpy).toHaveBeenCalledWith('/test/.n8n/config', 0o600);
+		it("should not set the permissions of the settings file if 'N8N_IGNORE_SETTINGS_FILE_PERMISSIONS' is true", () => {
+			process.env.N8N_ENCRYPTION_KEY = 'key_2';
+			process.env.N8N_IGNORE_SETTINGS_FILE_PERMISSIONS = 'true';
+			const settings = new InstanceSettings();
+			expect(settings.encryptionKey).not.toEqual('test_key');
+			expect(mkdirSpy).toHaveBeenCalledWith('/test/.n8n', { recursive: true });
+			expect(writeFileSpy).toHaveBeenCalledWith(
+				'/test/.n8n/config',
+				expect.stringContaining('"encryptionKey":'),
+				{
+					encoding: 'utf-8',
+					mode: undefined,
+				},
+			);
 		});
 	});
 
