@@ -318,8 +318,6 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 		nodeData?: ITaskData;
 		source?: string;
 	}): Promise<IExecutionPushResponse | undefined> {
-		console.log('runWorkflowResolvePending ===>', workflowsStore.activeExecutionId, options);
-		const previousExecutionId = workflowsStore.activeExecutionId;
 		let runWorkflowApiResponse = await runWorkflow(options);
 		let { executionId } = runWorkflowApiResponse || {};
 
@@ -369,7 +367,6 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 						source: options.source,
 					});
 					const execution = await workflowsStore.getExecution((executionId as string) || '');
-					console.log('resolveWaitingNodesData ===>', execution);
 
 					localStorage.removeItem(FORM_RELOAD);
 
@@ -377,12 +374,6 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 						uiStore.removeActiveAction('workflowRunning');
 						if (timeoutId) clearTimeout(timeoutId);
 						resolve();
-						return;
-					}
-
-					if (previousExecutionId && execution.id === previousExecutionId) {
-						delay = Math.min(delay * 1.1, MAX_DELAY);
-						timeoutId = setTimeout(processExecution, delay);
 						return;
 					}
 
@@ -396,7 +387,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 						['error', 'canceled', 'crashed', 'success'].includes(execution.status)
 					) {
 						workflowsStore.setWorkflowExecutionData(execution);
-						// workflowsStore.activeExecutionId = null;
+						workflowsStore.activeExecutionId = null;
 						if (timeoutId) clearTimeout(timeoutId);
 						resolve();
 						return;
@@ -452,8 +443,6 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 		};
 
 		await resolveWaitingNodesData();
-
-		uiStore.removeActiveAction('workflowRunning');
 
 		return runWorkflowApiResponse;
 	}
