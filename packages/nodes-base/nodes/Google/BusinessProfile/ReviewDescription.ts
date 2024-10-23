@@ -36,7 +36,7 @@ export const reviewOperations: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				action: 'Get review',
-				description: 'Retrieve details of a specific review on Google My Business',
+				description: 'Retrieve details of a specific review on Google Business Profile',
 				routing: {
 					request: {
 						method: 'GET',
@@ -97,7 +97,7 @@ export const reviewFields: INodeProperties[] = [
 		required: true,
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
-		description: 'The Google My Business account',
+		description: 'The Google Business Profile account',
 		displayOptions: { show: { resource: ['review'], operation: ['get'] } },
 		modes: [
 			{
@@ -223,7 +223,7 @@ export const reviewFields: INodeProperties[] = [
 		required: true,
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
-		description: 'The Google My Business account',
+		description: 'The Google Business Profile account',
 		displayOptions: { show: { resource: ['review'], operation: ['delete'] } },
 		modes: [
 			{
@@ -349,7 +349,7 @@ export const reviewFields: INodeProperties[] = [
 		required: true,
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
-		description: 'The Google My Business account',
+		description: 'The Google Business Profile account',
 		displayOptions: { show: { resource: ['review'], operation: ['getAll'] } },
 		modes: [
 			{
@@ -445,7 +445,7 @@ export const reviewFields: INodeProperties[] = [
 		required: true,
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
-		description: 'The Google My Business account',
+		description: 'The Google Business Profile account',
 		displayOptions: { show: { resource: ['review'], operation: ['reply'] } },
 		modes: [
 			{
