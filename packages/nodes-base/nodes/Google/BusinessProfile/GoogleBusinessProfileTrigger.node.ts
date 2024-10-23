@@ -10,22 +10,22 @@ import {
 
 import { googleApiRequest, searchAccounts, searchLocations } from './GenericFunctions';
 
-export class GoogleMyBusinessTrigger implements INodeType {
+export class GoogleBusinessProfileTrigger implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Google My Business Trigger',
-		name: 'googleMyBusinessTrigger',
-		icon: 'file:googleMyBusines.svg',
+		displayName: 'Google Business Profile Trigger',
+		name: 'googleBusinessProfileTrigger',
+		icon: 'file:googleBusinessProfile.svg',
 		group: ['trigger'],
 		version: 1,
 		description:
-			'Fetches reviews from Google My Business and starts the workflow on specified polling intervals.',
-		subtitle: '={{"Google My Business Trigger"}}',
+			'Fetches reviews from Google Business Profile and starts the workflow on specified polling intervals.',
+		subtitle: '={{"Google Business Profile Trigger"}}',
 		defaults: {
-			name: 'Google My Business Trigger',
+			name: 'Google Business Profile Trigger',
 		},
 		credentials: [
 			{
-				name: 'googleMyBusinessOAuth2Api',
+				name: 'googleBusinessProfileOAuth2Api',
 				required: true,
 			},
 		],
@@ -53,7 +53,7 @@ export class GoogleMyBusinessTrigger implements INodeType {
 				required: true,
 				type: 'resourceLocator',
 				default: { mode: 'list', value: '' },
-				description: 'The Google My Business account',
+				description: 'The Google Business Profile account',
 				displayOptions: { show: { event: ['reviewAdded'] } },
 				modes: [
 					{
