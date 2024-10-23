@@ -23,7 +23,7 @@ describe('cleanRunData', () => {
 		};
 
 		// ACT
-		const newRunData = cleanRunData(runData, graph, [node1]);
+		const newRunData = cleanRunData(runData, graph, new Set([node1]));
 
 		// ASSERT
 		expect(newRunData).toEqual({});
@@ -47,7 +47,7 @@ describe('cleanRunData', () => {
 		};
 
 		// ACT
-		const newRunData = cleanRunData(runData, graph, [node2]);
+		const newRunData = cleanRunData(runData, graph, new Set([node2]));
 
 		// ASSERT
 		expect(newRunData).toEqual({ [node1.name]: runData[node1.name] });
@@ -78,7 +78,7 @@ describe('cleanRunData', () => {
 		};
 
 		// ACT
-		const newRunData = cleanRunData(runData, graph, [node2]);
+		const newRunData = cleanRunData(runData, graph, new Set([node2]));
 
 		// ASSERT
 		// TODO: Find out if this is a desirable result in milestone 2

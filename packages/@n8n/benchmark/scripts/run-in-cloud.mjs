@@ -78,12 +78,6 @@ async function runBenchmarksOnVm(config, benchmarkEnv) {
 	const bootstrapScriptPath = path.join(scriptsDir, 'bootstrap.sh');
 	await sshClient.ssh(`chmod a+x ${bootstrapScriptPath} && ${bootstrapScriptPath}`);
 
-	// Benchmarking the VM
-	const vmBenchmarkScriptPath = path.join(scriptsDir, 'vm-benchmark.sh');
-	await sshClient.ssh(`chmod a+x ${vmBenchmarkScriptPath} && ${vmBenchmarkScriptPath}`, {
-		verbose: true,
-	});
-
 	// Give some time for the VM to be ready
 	await sleep(1000);
 

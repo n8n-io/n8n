@@ -677,7 +677,6 @@ export class EmailReadImapV2 implements INodeType {
 				if (connection.closeBox) await connection.closeBox(false);
 				connection.end();
 			} catch (error) {
-				// eslint-disable-next-line n8n-nodes-base/node-execute-block-wrong-error-thrown
 				throw new TriggerCloseError(this.getNode(), { cause: error as Error, level: 'warning' });
 			}
 		};

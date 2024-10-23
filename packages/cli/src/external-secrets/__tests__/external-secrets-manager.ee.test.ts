@@ -55,6 +55,7 @@ describe('External Secrets Manager', () => {
 			providersMock,
 			cipher,
 			mock(),
+			mock(),
 		);
 	});
 

@@ -40,10 +40,6 @@ const searchPlaceholder = computed(() =>
 const nodeCreatorView = computed(() => useNodeCreatorStore().selectedView);
 
 function getDefaultActiveIndex(search: string = ''): number {
-	if (activeViewStack.value.activeIndex) {
-		return activeViewStack.value.activeIndex;
-	}
-
 	if (activeViewStack.value.mode === 'actions') {
 		// For actions, set the active focus to the first action, not category
 		return 1;

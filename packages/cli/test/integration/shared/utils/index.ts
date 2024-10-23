@@ -32,7 +32,6 @@ export { setupTestServer } from './test-server';
 export async function initActiveWorkflowManager() {
 	mockInstance(OrchestrationService, {
 		isMultiMainSetupEnabled: false,
-		shouldAddWebhooks: jest.fn().mockReturnValue(true),
 	});
 
 	mockInstance(Push);

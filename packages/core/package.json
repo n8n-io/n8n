@@ -1,6 +1,6 @@
 {
   "name": "n8n-core",
-  "version": "1.63.0",
+  "version": "1.64.0",
   "description": "Core functionality of n8n",
   "main": "dist/index",
   "types": "dist/index.d.ts",
@@ -38,6 +38,7 @@
   "dependencies": {
     "@langchain/core": "catalog:",
     "@n8n/client-oauth2": "workspace:*",
+    "@n8n/config": "workspace:*",
     "aws4": "1.11.0",
     "axios": "catalog:",
     "concat-stream": "2.0.0",
