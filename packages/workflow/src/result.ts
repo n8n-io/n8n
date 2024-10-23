@@ -20,7 +20,7 @@ export const createResultError = <E = unknown>(error: E): ResultError<E> => ({
  * @example
  * const result = toResult(() => fs.writeFileSync('file.txt', 'Hello, World!'));
  */
-export const toResult = <T, E = Error>(fn: () => T): Result<T, E> => {
+export const toResult = <T, E extends Error = Error>(fn: () => T): Result<T, E> => {
 	try {
 		return createResultOk<T>(fn());
 	} catch (e) {
