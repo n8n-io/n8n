@@ -255,9 +255,6 @@ describe('GlobalConfig', () => {
 			releaseChannel: 'dev',
 			gracefulShutdownTimeout: 30,
 		},
-		security: {
-			enforceSettingsFilePermissions: false,
-		},
 	};
 
 	it('should use all default values when no env variables are defined', () => {

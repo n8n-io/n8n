@@ -1,10 +1,11 @@
-import { SecurityConfig } from '@n8n/config';
 import { createHash, randomBytes } from 'crypto';
 import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'fs';
 import { ApplicationError, jsonParse, ALPHABET, toResult } from 'n8n-workflow';
 import { customAlphabet } from 'nanoid';
 import path from 'path';
-import Container, { Service } from 'typedi';
+import { Service } from 'typedi';
+
+import { InstanceSettingsConfig } from './InstanceSettingsConfig';
 
 const nanoid = customAlphabet(ALPHABET, 16);
 
@@ -56,7 +57,7 @@ export class InstanceSettings {
 
 	readonly instanceType: InstanceType;
 
-	constructor() {
+	constructor(private readonly config: InstanceSettingsConfig) {
 		const command = process.argv[2];
 		this.instanceType = ['webhook', 'worker'].includes(command)
 			? (command as InstanceType)
@@ -183,7 +184,7 @@ export class InstanceSettings {
 		isSet: boolean;
 		enforce: boolean;
 	} {
-		const { enforceSettingsFilePermissions } = Container.get(SecurityConfig);
+		const { enforceSettingsFilePermissions } = this.config;
 		const isEnvVarSet = !!process.env.N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS;
 		if (this.isWindows()) {
 			if (isEnvVarSet) {
