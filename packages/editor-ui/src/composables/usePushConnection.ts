@@ -148,7 +148,6 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 			return false;
 		}
 
-		console.log('Received push message:', receivedData, workflowsStore.activeExecutionId);
 		if (receivedData.type === 'nodeExecuteAfter' || receivedData.type === 'nodeExecuteBefore') {
 			if (!uiStore.isActionActive['workflowRunning']) {
 				// No workflow is running so ignore the messages
