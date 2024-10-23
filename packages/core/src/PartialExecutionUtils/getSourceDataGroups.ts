@@ -70,9 +70,11 @@ function newGroup() {
  *
  * Since `source1` has no run data and no pinned data it's skipped in favor of
  * `source2` for the for input.
+ * It will become it's own group that is marked as `complete: false`
  *
- * So this will return 1 group:
- * 1. source2 and source3
+ * So this will return 2 group:
+ * 1. source2 and source3, `complete: true`
+ * 2. source1, `complete: false`
  */
 export function getSourceDataGroups(
 	graph: DirectedGraph,
