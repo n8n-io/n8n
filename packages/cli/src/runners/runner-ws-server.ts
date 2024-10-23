@@ -87,8 +87,6 @@ export class TaskRunnerService {
 						this.sendMessage.bind(this, id) as MessageCallback,
 					);
 
-					this.sendMessage(id, { type: 'broker:runnerregistered' });
-
 					this.logger.info(`Runner "${message.name}"(${id}) has been registered`);
 					return;
 				}
@@ -143,7 +141,10 @@ export const setupRunnerServer = (restEndpoint: string, server: Server, app: App
 	}
 
 	const endpoint = getWsEndpoint(restEndpoint);
-	const wsServer = new WSServer({ noServer: true });
+	const wsServer = new WSServer({
+		noServer: true,
+		maxPayload: globalConfig.taskRunners.maxPayload,
+	});
 	server.on('upgrade', (request: TaskRunnerServerInitRequest, socket: Socket, head) => {
 		if (parseUrl(request.url).pathname !== endpoint) {
 			// We can't close the connection here since the Push connections

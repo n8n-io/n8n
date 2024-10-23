@@ -58,9 +58,11 @@ export class Logger {
 		this.internalLogger = internalLogger;
 	}
 
-	withScope(scope: LogScope) {
+	/** Create a logger that injects the given scopes into its log metadata. */
+	scoped(scopes: LogScope | LogScope[]) {
+		scopes = Array.isArray(scopes) ? scopes : [scopes];
 		const scopedLogger = new Logger(this.globalConfig, this.instanceSettings);
-		const childLogger = this.internalLogger.child({ scope });
+		const childLogger = this.internalLogger.child({ scopes });
 
 		scopedLogger.setInternalLogger(childLogger);
 
@@ -106,11 +108,14 @@ export class Logger {
 
 	private scopeFilter() {
 		return winston.format((info: TransformableInfo & { metadata: LogMetadata }) => {
-			const shouldIncludeScope = info.metadata.scope && this.scopes.has(info.metadata.scope);
+			if (!this.isScopingEnabled) return info;
 
-			if (this.isScopingEnabled && !shouldIncludeScope) return false;
+			const { scopes } = info.metadata;
 
-			return info;
+			const shouldIncludeScope =
+				scopes && scopes?.length > 0 && scopes.some((s) => this.scopes.has(s));
+
+			return shouldIncludeScope ? info : false;
 		})();
 	}
 

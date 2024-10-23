@@ -66,8 +66,6 @@ export class JsTaskRunnerSandbox {
 			throw new WrappedExecutionError(error);
 		}
 
-		throw new ApplicationError('Unknown error', {
-			cause: error,
-		});
+		throw new ApplicationError(`Unknown error: ${JSON.stringify(error)}`);
 	}
 }

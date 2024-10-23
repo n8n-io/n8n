@@ -16,6 +16,7 @@ import { WorkflowMissingIdError } from '@/errors/workflow-missing-id.error';
 import type { IWorkflowDb } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { removeTrailingSlash } from '@/utils';
 import type { TestWebhookRegistration } from '@/webhooks/test-webhook-registrations.service';
@@ -41,6 +42,7 @@ export class TestWebhooks implements IWebhookManager {
 		private readonly nodeTypes: NodeTypes,
 		private readonly registrations: TestWebhookRegistrationsService,
 		private readonly orchestrationService: OrchestrationService,
+		private readonly publisher: Publisher,
 	) {}
 
 	private timeouts: { [webhookKey: string]: NodeJS.Timeout } = {};
@@ -156,8 +158,10 @@ export class TestWebhooks implements IWebhookManager {
 				pushRef &&
 				!this.push.getBackend().hasPushRef(pushRef)
 			) {
-				const payload = { webhookKey: key, workflowEntity, pushRef };
-				void this.orchestrationService.publish('clear-test-webhooks', payload);
+				void this.publisher.publishCommand({
+					command: 'clear-test-webhooks',
+					payload: { webhookKey: key, workflowEntity, pushRef },
+				});
 				return;
 			}
 

@@ -278,9 +278,8 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 	const inviteUsers = async (params: Array<{ email: string; role: InvitableRoleName }>) => {
 		const invitedUsers = await invitationsApi.inviteUsers(rootStore.restApiContext, params);
 		addUsers(
-			invitedUsers.map(({ user }, index) => ({
+			invitedUsers.map(({ user }) => ({
 				isPending: true,
-				globalRole: { name: params[index].role },
 				...user,
 			})),
 		);
@@ -320,6 +319,10 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		return await mfaApi.verifyMfaToken(rootStore.restApiContext, data);
 	};
 
+	const canEnableMFA = async () => {
+		return await mfaApi.canEnableMFA(rootStore.restApiContext);
+	};
+
 	const enableMfa = async (data: { token: string }) => {
 		await mfaApi.enableMfa(rootStore.restApiContext, data);
 		if (currentUser.value) {
@@ -347,8 +350,8 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		}
 	};
 
-	const confirmEmail = async () => {
-		await cloudApi.confirmEmail(rootStore.restApiContext);
+	const sendConfirmationEmail = async () => {
+		await cloudApi.sendConfirmationEmail(rootStore.restApiContext);
 	};
 
 	const updateGlobalRole = async ({ id, newRoleName }: UpdateGlobalRolePayload) => {
@@ -403,8 +406,9 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		verifyMfaToken,
 		enableMfa,
 		disableMfa,
+		canEnableMFA,
 		fetchUserCloudAccount,
-		confirmEmail,
+		sendConfirmationEmail,
 		updateGlobalRole,
 		reset,
 	};

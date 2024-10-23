@@ -1,8 +1,9 @@
-import { ApplicationError } from 'n8n-workflow';
+import { ApplicationError, type INodeTypeDescription } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { URL } from 'node:url';
 import { type MessageEvent, WebSocket } from 'ws';
 
+import { TaskRunnerNodeTypes } from './node-types';
 import {
 	RPC_ALLOW_LIST,
 	type RunnerMessage,
@@ -41,6 +42,8 @@ export interface RPCCallObject {
 const VALID_TIME_MS = 1000;
 const VALID_EXTRA_MS = 100;
 
+const DEFAULT_MAX_PAYLOAD_SIZE = 1024 * 1024 * 1024;
+
 export abstract class TaskRunner {
 	id: string = nanoid();
 
@@ -58,6 +61,8 @@ export abstract class TaskRunner {
 
 	rpcCalls: Map<RPCCall['callId'], RPCCall> = new Map();
 
+	nodeTypes: TaskRunnerNodeTypes = new TaskRunnerNodeTypes([]);
+
 	constructor(
 		public taskType: string,
 		wsUrl: string,
@@ -71,6 +76,9 @@ export abstract class TaskRunner {
 			headers: {
 				authorization: `Bearer ${grantToken}`,
 			},
+			maxPayload: process.env.N8N_RUNNERS_MAX_PAYLOAD
+				? parseInt(process.env.N8N_RUNNERS_MAX_PAYLOAD)
+				: DEFAULT_MAX_PAYLOAD_SIZE,
 		});
 		this.ws.addEventListener('message', this.receiveMessage);
 		this.ws.addEventListener('close', this.stopTaskOffers);
@@ -158,7 +166,15 @@ export abstract class TaskRunner {
 				break;
 			case 'broker:rpcresponse':
 				this.handleRpcResponse(message.callId, message.status, message.data);
+				break;
+			case 'broker:nodetypes':
+				this.setNodeTypes(message.nodeTypes as unknown as INodeTypeDescription[]);
+				break;
 		}
+	}
+
+	setNodeTypes(nodeTypes: INodeTypeDescription[]) {
+		this.nodeTypes = new TaskRunnerNodeTypes(nodeTypes);
 	}
 
 	processDataResponse(requestId: string, data: unknown) {

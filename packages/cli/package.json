@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "1.63.0",
+  "version": "1.64.0",
   "description": "n8n Workflow Automation Tool",
   "main": "dist/index",
   "types": "dist/index.d.ts",
@@ -42,7 +42,7 @@
     "workflow"
   ],
   "engines": {
-    "node": ">=18.10"
+    "node": ">=18.17 <= 22"
   },
   "files": [
     "bin",

@@ -3,16 +3,13 @@ import type { Router } from 'express';
 import express from 'express';
 import type { HttpError } from 'express-openapi-validator/dist/framework/types';
 import fs from 'fs/promises';
-import type { OpenAPIV3 } from 'openapi-types';
 import path from 'path';
 import type { JsonObject } from 'swagger-ui-express';
 import { Container } from 'typedi';
 import validator from 'validator';
 import YAML from 'yamljs';
 
-import { EventService } from '@/events/event.service';
 import { License } from '@/license';
-import type { AuthenticatedRequest } from '@/requests';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
 import { UrlService } from '@/services/url.service';
 
@@ -85,28 +82,7 @@ async function createApiRouter(
 			},
 			validateSecurity: {
 				handlers: {
-					ApiKeyAuth: async (
-						req: AuthenticatedRequest,
-						_scopes: unknown,
-						schema: OpenAPIV3.ApiKeySecurityScheme,
-					): Promise<boolean> => {
-						const providedApiKey = req.headers[schema.name.toLowerCase()] as string;
-
-						const user = await Container.get(PublicApiKeyService).getUserForApiKey(providedApiKey);
-
-						if (!user) return false;
-
-						Container.get(EventService).emit('public-api-invoked', {
-							userId: user.id,
-							path: req.path,
-							method: req.method,
-							apiVersion: version,
-						});
-
-						req.user = user;
-
-						return true;
-					},
+					ApiKeyAuth: Container.get(PublicApiKeyService).getAuthMiddleware(version),
 				},
 			},
 		}),

@@ -32,7 +32,7 @@ import { getSourceDataGroups } from './getSourceDataGroups';
  */
 export function recreateNodeExecutionStack(
 	graph: DirectedGraph,
-	startNodes: INode[],
+	startNodes: Set<INode>,
 	destinationNode: INode,
 	runData: IRunData,
 	pinData: IPinData,

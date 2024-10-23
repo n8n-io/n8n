@@ -1,3 +1,42 @@
+# [1.64.0](https://github.com/n8n-io/n8n/compare/n8n@1.63.0...n8n@1.64.0) (2024-10-16)
+
+
+### Bug Fixes
+
+* Adjust arrow button colors in dark mode ([#11248](https://github.com/n8n-io/n8n/issues/11248)) ([439132c](https://github.com/n8n-io/n8n/commit/439132c291a812d57702c94eaa12878394ac4c69))
+* **core:** Ensure error reporter does not promote `info` to `error` messages ([#11245](https://github.com/n8n-io/n8n/issues/11245)) ([a7fc7fc](https://github.com/n8n-io/n8n/commit/a7fc7fc22997acec86dc94386c95349fd018f4ae))
+* **core:** Override executions mode if `regular` during worker startup ([#11250](https://github.com/n8n-io/n8n/issues/11250)) ([c0aa28c](https://github.com/n8n-io/n8n/commit/c0aa28c6cf3f77b04e04663217c9df8e3803ed3f))
+* **core:** Wrap nodes for tool use at a suitable time ([#11238](https://github.com/n8n-io/n8n/issues/11238)) ([c2fb881](https://github.com/n8n-io/n8n/commit/c2fb881d61291209802438d95892d052f5c82d43))
+* Don't show pinned data tooltip for pinned nodes ([#11249](https://github.com/n8n-io/n8n/issues/11249)) ([c2ad156](https://github.com/n8n-io/n8n/commit/c2ad15646d326a8f71e314d54efe202a5bcdd296))
+* **editor:** Bring back the "Forgot password" link on SigninView ([#11216](https://github.com/n8n-io/n8n/issues/11216)) ([4e78c46](https://github.com/n8n-io/n8n/commit/4e78c46a7450c7fc0694369944d4fb446cef2348))
+* **editor:** Fix chat crashing when rendering output-parsed content ([#11210](https://github.com/n8n-io/n8n/issues/11210)) ([4aaebfd](https://github.com/n8n-io/n8n/commit/4aaebfd4358f590e98c453ad4e65cc2c9d0f76f8))
+* **editor:** Make submit in ChangePasswordView work again ([#11227](https://github.com/n8n-io/n8n/issues/11227)) ([4f27b39](https://github.com/n8n-io/n8n/commit/4f27b39b45b58779d363980241e6e5e11b58f5da))
+* Expressions display actual result of evaluating expression inside string ([#11257](https://github.com/n8n-io/n8n/issues/11257)) ([7f5f0a9](https://github.com/n8n-io/n8n/commit/7f5f0a9df3b3fae6e2f9787443ac1cf9415d5932))
+* **Google Ads Node:** Update to use v17 api ([#11243](https://github.com/n8n-io/n8n/issues/11243)) ([3d97f02](https://github.com/n8n-io/n8n/commit/3d97f02a8d2b6e5bc7c97c5271bed97417ecacd2))
+* **Google Calendar Node:** Fix issue with conference data types not loading ([#11185](https://github.com/n8n-io/n8n/issues/11185)) ([4012758](https://github.com/n8n-io/n8n/commit/401275884e5db0287e4eeffb3c7497dd5e024880))
+* **Google Calendar Node:** Mode to add or replace attendees in event update ([#11132](https://github.com/n8n-io/n8n/issues/11132)) ([6c6a8ef](https://github.com/n8n-io/n8n/commit/6c6a8efdea83cf7194304ce089d7b72d8f6c1a9d))
+* **HTTP Request Tool Node:** Respond with an error when receive binary response ([#11219](https://github.com/n8n-io/n8n/issues/11219)) ([0d23a7f](https://github.com/n8n-io/n8n/commit/0d23a7fb5ba41545f70c4848d30b90af91b1e7e6))
+* **MySQL Node:** Fix "Maximum call stack size exceeded" error when handling a large number of rows ([#11242](https://github.com/n8n-io/n8n/issues/11242)) ([b7ee0c4](https://github.com/n8n-io/n8n/commit/b7ee0c4087eae346bc7e5360130d6c812dbe99db))
+* **n8n Trigger Node:** Merge with Workflow Trigger node ([#11174](https://github.com/n8n-io/n8n/issues/11174)) ([6ec6b51](https://github.com/n8n-io/n8n/commit/6ec6b5197ae97eb86496effd458fcc0b9b223ef3))
+* **OpenAI Node:** Fix tool parameter parsing issue ([#11201](https://github.com/n8n-io/n8n/issues/11201)) ([5a1d81a](https://github.com/n8n-io/n8n/commit/5a1d81ad917fde5cd6a387fe2d4ec6aab6b71349))
+* **Set Node:** Fix issue with UI properties not being hidden ([#11263](https://github.com/n8n-io/n8n/issues/11263)) ([1affc27](https://github.com/n8n-io/n8n/commit/1affc27b6bf9a559061a06f92bebe8167d938665))
+* **Strava Trigger Node:** Fix issue with webhook not being deleted ([#11226](https://github.com/n8n-io/n8n/issues/11226)) ([566529c](https://github.com/n8n-io/n8n/commit/566529ca1149988a54a58b3c34bbe4d9f1add6db))
+
+
+### Features
+
+* Add tracking for node errors and update node graph ([#11060](https://github.com/n8n-io/n8n/issues/11060)) ([d3b05f1](https://github.com/n8n-io/n8n/commit/d3b05f1c54e62440666297d8e484ccd22168da48))
+* **core:** Dedupe ([#10101](https://github.com/n8n-io/n8n/issues/10101)) ([52dd2c7](https://github.com/n8n-io/n8n/commit/52dd2c76196c6895b47145c2b85a6895ce2874d4))
+* **editor:** Send workflow context to assistant store ([#11135](https://github.com/n8n-io/n8n/issues/11135)) ([fade9e4](https://github.com/n8n-io/n8n/commit/fade9e43c84a0ae1fbc80f3ee546a418970e2380))
+* **Gong Node:** New node ([#10777](https://github.com/n8n-io/n8n/issues/10777)) ([785b47f](https://github.com/n8n-io/n8n/commit/785b47feb3b83cf36aaed57123f8baca2bbab307))
+
+
+### Performance Improvements
+
+* **Google Sheets Node:** Don't load whole spreadsheet dataset to determine columns when appending data ([#11235](https://github.com/n8n-io/n8n/issues/11235)) ([26ad091](https://github.com/n8n-io/n8n/commit/26ad091f473bca4e5d3bdc257e0818be02e52db5))
+
+
+
 # [1.63.0](https://github.com/n8n-io/n8n/compare/n8n@1.62.1...n8n@1.63.0) (2024-10-09)
 
 
