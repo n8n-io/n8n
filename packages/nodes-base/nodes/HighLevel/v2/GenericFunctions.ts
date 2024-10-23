@@ -199,7 +199,6 @@ export const addNotePostReceiveAction = async function (
 ): Promise<INodeExecutionData[]> {
 	const note = this.getNodeParameter('additionalFields.notes', 0) as string;
 
-	// If no note is provided, do nothing and return the items as they are
 	if (!note) {
 		return items;
 	}
@@ -219,16 +218,14 @@ export const addNotePostReceiveAction = async function (
 		body: note,
 	};
 
-	// Add note to contact using highLevelApiRequest
 	const responseData = await highLevelApiRequest.call(
 		this,
 		'POST',
 		`/contacts/${contactId}/notes`,
 		requestBody,
-		{}, // No query string (qs) parameters needed
+		{},
 	);
 
-	// Return the original items after adding the note
 	return items;
 };
 
