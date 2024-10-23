@@ -189,6 +189,25 @@ describe('JsTaskRunner', () => {
 				['{ wf: $workflow }', { wf: { active: true, id: '1', name: 'Test Workflow' } }],
 				['$vars', { var: 'value' }],
 			],
+			'Node.js internal functions': [
+				['typeof Function', 'function'],
+				['typeof eval', 'function'],
+				['typeof setTimeout', 'function'],
+				['typeof setInterval', 'function'],
+				['typeof setImmediate', 'function'],
+				['typeof clearTimeout', 'function'],
+				['typeof clearInterval', 'function'],
+				['typeof clearImmediate', 'function'],
+			],
+			'JS built-ins': [
+				['typeof btoa', 'function'],
+				['typeof atob', 'function'],
+				['typeof TextDecoder', 'function'],
+				['typeof TextDecoderStream', 'function'],
+				['typeof TextEncoder', 'function'],
+				['typeof TextEncoderStream', 'function'],
+				['typeof FormData', 'function'],
+			],
 		};
 
 		for (const [groupName, tests] of Object.entries(testGroups)) {
