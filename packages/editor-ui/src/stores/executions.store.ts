@@ -290,6 +290,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 		stopCurrentExecution,
 		retryExecution,
 		deleteExecutions,
+		addExecution,
 		resetData,
 		reset,
 	};
