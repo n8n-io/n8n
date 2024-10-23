@@ -114,7 +114,10 @@ export class TaskRunnerServer {
 		a.ok(authToken);
 		a.ok(this.server);
 
-		this.wsServer = new WSServer({ noServer: true });
+		this.wsServer = new WSServer({
+			noServer: true,
+			maxPayload: this.globalConfig.taskRunners.maxPayload,
+		});
 		this.server.on('upgrade', this.handleUpgradeRequest);
 	}
 

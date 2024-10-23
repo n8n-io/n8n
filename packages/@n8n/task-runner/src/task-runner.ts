@@ -42,6 +42,8 @@ export interface RPCCallObject {
 const VALID_TIME_MS = 1000;
 const VALID_EXTRA_MS = 100;
 
+const DEFAULT_MAX_PAYLOAD_SIZE = 1024 * 1024 * 1024;
+
 export abstract class TaskRunner {
 	id: string = nanoid();
 
@@ -74,6 +76,9 @@ export abstract class TaskRunner {
 			headers: {
 				authorization: `Bearer ${grantToken}`,
 			},
+			maxPayload: process.env.N8N_RUNNERS_MAX_PAYLOAD
+				? parseInt(process.env.N8N_RUNNERS_MAX_PAYLOAD)
+				: DEFAULT_MAX_PAYLOAD_SIZE,
 		});
 		this.ws.addEventListener('message', this.receiveMessage);
 		this.ws.addEventListener('close', this.stopTaskOffers);
