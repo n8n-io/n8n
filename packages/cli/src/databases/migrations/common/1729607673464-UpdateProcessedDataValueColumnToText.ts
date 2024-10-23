@@ -1,45 +1,42 @@
 import type { MigrationContext, ReversibleMigration } from '@/databases/types';
 
 const processedDataTableName = 'processed_data';
-
 export class UpdateProcessedDataValueColumnToText1729607673464 implements ReversibleMigration {
-	async up({ schemaBuilder: { addColumns, dropColumns, column }, runQuery }: MigrationContext) {
-		await addColumns(processedDataTableName, [column('value_temp').text.notNull]);
+	async up({
+		schemaBuilder: { addNotNull, addColumns, dropColumns, column },
+		runQuery,
+		tablePrefix,
+	}: MigrationContext) {
+		const prefixedTableName = `${tablePrefix}${processedDataTableName}`;
+
+		await addColumns(processedDataTableName, [column('value_temp').text]);
 
 		await runQuery(`
-		UPDATE ${processedDataTableName}
+		UPDATE ${prefixedTableName}
 		SET value_temp = value;
 	`);
 
 		await dropColumns(processedDataTableName, ['value']);
-
-		await addColumns(processedDataTableName, [column('value').text.notNull]);
-
-		await runQuery(`
-		UPDATE ${processedDataTableName}
-		SET value = value_temp;
-	`);
-
-		await dropColumns(processedDataTableName, ['value_temp']);
+		await runQuery(`ALTER TABLE ${prefixedTableName} RENAME COLUMN value_temp TO value`);
+		await addNotNull(processedDataTableName, 'value');
 	}
 
-	async down({ schemaBuilder: { addColumns, dropColumns, column }, runQuery }: MigrationContext) {
-		await addColumns(processedDataTableName, [column('value_temp').varchar(255).notNull]);
+	async down({
+		schemaBuilder: { addNotNull, addColumns, dropColumns, column },
+		runQuery,
+		tablePrefix,
+	}: MigrationContext) {
+		const prefixedTableName = `${tablePrefix}${processedDataTableName}`;
+
+		await addColumns(processedDataTableName, [column('value_temp').varchar(255)]);
 
 		await runQuery(`
-		UPDATE ${processedDataTableName}
+		UPDATE ${prefixedTableName}
 		SET value_temp = value;
 	`);
 
 		await dropColumns(processedDataTableName, ['value']);
-
-		await addColumns(processedDataTableName, [column('value').varchar(255).notNull]);
-
-		await runQuery(`
-		UPDATE ${processedDataTableName}
-		SET value = value_temp;
-	`);
-
-		await dropColumns(processedDataTableName, ['value_temp']);
+		await runQuery(`ALTER TABLE ${prefixedTableName} RENAME COLUMN value_temp TO value`);
+		await addNotNull(processedDataTableName, 'value');
 	}
 }
