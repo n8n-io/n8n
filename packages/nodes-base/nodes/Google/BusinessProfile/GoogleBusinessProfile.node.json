@@ -14,5 +14,6 @@
 				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googlebusinessprofile/"
 			}
 		]
-	}
+	},
+	"alias": ["Google My Business", "GMB", "My Business"]
 }
