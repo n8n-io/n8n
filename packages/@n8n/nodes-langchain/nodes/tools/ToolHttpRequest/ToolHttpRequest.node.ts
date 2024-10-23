@@ -281,6 +281,7 @@ export class ToolHttpRequest implements INodeType {
 				'User-Agent': undefined,
 			},
 			body: {},
+			// We will need a full response object later to extract the headers and check the response's content type.
 			returnFullResponse: true,
 		};
 

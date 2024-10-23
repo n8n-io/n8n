@@ -11,7 +11,7 @@ describe('TaskBroker', () => {
 	let taskBroker: TaskBroker;
 
 	beforeEach(() => {
-		taskBroker = new TaskBroker(mock());
+		taskBroker = new TaskBroker(mock(), mock());
 		jest.restoreAllMocks();
 	});
 
@@ -68,6 +68,21 @@ describe('TaskBroker', () => {
 
 			expect(knownRunners.get(runnerId)?.runner).toEqual(runner);
 			expect(knownRunners.get(runnerId)?.messageCallback).toEqual(messageCallback);
+		});
+
+		it('should send node types to runner', () => {
+			const runnerId = 'runner1';
+			const runner = mock<TaskRunner>({ id: runnerId });
+			const messageCallback = jest.fn();
+
+			taskBroker.registerRunner(runner, messageCallback);
+
+			expect(messageCallback).toBeCalledWith({
+				type: 'broker:nodetypes',
+				// We're mocking the node types service, so this will
+				// be undefined.
+				nodeType: undefined,
+			});
 		});
 	});
 

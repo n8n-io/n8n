@@ -1,8 +1,9 @@
-import { ApplicationError } from 'n8n-workflow';
+import { ApplicationError, type INodeTypeDescription } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { URL } from 'node:url';
 import { type MessageEvent, WebSocket } from 'ws';
 
+import { TaskRunnerNodeTypes } from './node-types';
 import {
 	RPC_ALLOW_LIST,
 	type RunnerMessage,
@@ -57,6 +58,8 @@ export abstract class TaskRunner {
 	dataRequests: Map<DataRequest['requestId'], DataRequest> = new Map();
 
 	rpcCalls: Map<RPCCall['callId'], RPCCall> = new Map();
+
+	nodeTypes: TaskRunnerNodeTypes = new TaskRunnerNodeTypes([]);
 
 	constructor(
 		public taskType: string,
@@ -158,7 +161,15 @@ export abstract class TaskRunner {
 				break;
 			case 'broker:rpcresponse':
 				this.handleRpcResponse(message.callId, message.status, message.data);
+				break;
+			case 'broker:nodetypes':
+				this.setNodeTypes(message.nodeTypes as unknown as INodeTypeDescription[]);
+				break;
 		}
+	}
+
+	setNodeTypes(nodeTypes: INodeTypeDescription[]) {
+		this.nodeTypes = new TaskRunnerNodeTypes(nodeTypes);
 	}
 
 	processDataResponse(requestId: string, data: unknown) {
