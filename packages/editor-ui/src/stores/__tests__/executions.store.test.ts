@@ -54,14 +54,14 @@ describe('executions.store', () => {
 			expect(executionsStore.executions).toEqual([mockExecutions[1]]);
 		});
 
-		it('should delete executions from date (inclusive)', async () => {
+		it('should delete executions started before given date', async () => {
 			await executionsStore.deleteExecutions({ deleteBefore: mockExecutions[1].startedAt });
 
-			expect(executionsStore.executions).toEqual([mockExecutions[0]]);
+			expect(executionsStore.executions).toEqual([mockExecutions[0], mockExecutions[1]]);
 		});
 
-		it('should delete all existing executions (we do it by getting the first execution`s "startedAt" prop)', async () => {
-			await executionsStore.deleteExecutions({ deleteBefore: mockExecutions[0].startedAt });
+		it('should delete all executions if given date is now', async () => {
+			await executionsStore.deleteExecutions({ deleteBefore: new Date() });
 
 			expect(executionsStore.executions).toEqual([]);
 		});

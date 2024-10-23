@@ -143,7 +143,7 @@ async function handleDeleteSelected() {
 		await executionsStore.deleteExecutions({
 			filters: executionsStore.executionsFilters,
 			...(allExistingSelected.value
-				? { deleteBefore: props.executions[0].startedAt }
+				? { deleteBefore: new Date() }
 				: {
 						ids: Object.keys(selectedItems.value),
 					}),
