@@ -1,3 +1,9 @@
+import type { BaseLanguageModel } from '@langchain/core/language_models/base';
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import type { BaseOutputParser } from '@langchain/core/output_parsers';
+import { PromptTemplate } from '@langchain/core/prompts';
+import { AgentExecutor, ChatAgent, ZeroShotAgent } from 'langchain/agents';
+import { CombiningOutputParser } from 'langchain/output_parsers';
 import {
 	type IExecuteFunctions,
 	type INodeExecutionData,
@@ -5,20 +11,14 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import { AgentExecutor, ChatAgent, ZeroShotAgent } from 'langchain/agents';
-import type { BaseLanguageModel } from '@langchain/core/language_models/base';
-import type { BaseOutputParser } from '@langchain/core/output_parsers';
-import { PromptTemplate } from '@langchain/core/prompts';
-import { CombiningOutputParser } from 'langchain/output_parsers';
-import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import {
 	getConnectedTools,
-	getOptionalOutputParsers,
 	getPromptInputByType,
 	isChatInstance,
 } from '../../../../../utils/helpers';
-import { getTracingConfig } from '../../../../../utils/tracing';
+import { getOptionalOutputParsers } from '../../../../../utils/output_parsers/N8nOutputParser';
 import { throwIfToolSchema } from '../../../../../utils/schemaParsing';
+import { getTracingConfig } from '../../../../../utils/tracing';
 
 export async function reActAgentAgentExecute(
 	this: IExecuteFunctions,

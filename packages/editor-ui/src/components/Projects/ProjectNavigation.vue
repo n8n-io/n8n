@@ -8,6 +8,7 @@ import { useProjectsStore } from '@/stores/projects.store';
 import type { ProjectListItem } from '@/types/projects.types';
 import { useToast } from '@/composables/useToast';
 import { useUIStore } from '@/stores/ui.store';
+import { sortByProperty } from '@/utils/sortUtils';
 
 type Props = {
 	collapsed: boolean;
@@ -44,7 +45,7 @@ const addProject = computed<IMenuItem>(() => ({
 const getProjectMenuItem = (project: ProjectListItem) => ({
 	id: project.id,
 	label: project.name,
-	icon: 'layer-group',
+	icon: props.collapsed ? undefined : 'layer-group',
 	route: {
 		to: {
 			name: VIEWS.PROJECTS_WORKFLOWS,
@@ -56,7 +57,7 @@ const getProjectMenuItem = (project: ProjectListItem) => ({
 const personalProject = computed<IMenuItem>(() => ({
 	id: projectsStore.personalProject?.id ?? '',
 	label: locale.baseText('projects.menu.personal'),
-	icon: 'user',
+	icon: props.collapsed ? undefined : 'user',
 	route: {
 		to: {
 			name: VIEWS.PROJECTS_WORKFLOWS,
@@ -86,21 +87,16 @@ const addProjectClicked = async () => {
 	}
 };
 
-const displayProjects = computed(() => {
-	return projectsStore.myProjects
-		.filter((p) => p.type === 'team')
-		.toSorted((a, b) => {
-			if (!a.name || !b.name) {
-				return 0;
-			}
-			if (a.name > b.name) {
-				return 1;
-			} else if (a.name < b.name) {
-				return -1;
-			}
-			return 0;
-		});
-});
+const displayProjects = computed(() =>
+	sortByProperty(
+		'name',
+		projectsStore.myProjects.filter((p) => p.type === 'team'),
+	),
+);
+
+const canCreateProjects = computed(
+	() => projectsStore.hasPermissionToCreateProjects && projectsStore.isTeamProjectFeatureEnabled,
+);
 
 const goToUpgrade = async () => {
 	await uiStore.goToUpgrade('rbac', 'upgrade-rbac');
@@ -123,17 +119,20 @@ onMounted(async () => {
 				data-test-id="project-home-menu-item"
 			/>
 		</ElMenu>
-		<hr
-			v-if="
-				displayProjects.length ||
-				(projectsStore.hasPermissionToCreateProjects && projectsStore.isTeamProjectFeatureEnabled)
-			"
-			class="mt-m mb-m"
-		/>
-		<N8nText v-if="!props.collapsed" :class="$style.projectsLabel" tag="h3" bold>
+		<hr v-if="projectsStore.isTeamProjectFeatureEnabled" class="mt-m mb-m" />
+		<N8nText
+			v-if="!props.collapsed && projectsStore.isTeamProjectFeatureEnabled"
+			:class="$style.projectsLabel"
+			tag="h3"
+			bold
+		>
 			<span>{{ locale.baseText('projects.menu.title') }}</span>
 		</N8nText>
-		<ElMenu v-if="displayProjects.length" :collapse="props.collapsed" :class="$style.projectItems">
+		<ElMenu
+			v-if="projectsStore.isTeamProjectFeatureEnabled"
+			:collapse="props.collapsed"
+			:class="$style.projectItems"
+		>
 			<N8nMenuItem
 				:item="personalProject"
 				:compact="props.collapsed"
@@ -155,13 +154,11 @@ onMounted(async () => {
 			/>
 		</ElMenu>
 		<N8nTooltip
-			v-if="
-				projectsStore.hasPermissionToCreateProjects && projectsStore.isTeamProjectFeatureEnabled
-			"
+			v-if="canCreateProjects"
 			placement="right"
 			:disabled="projectsStore.canCreateProjects"
 		>
-			<ElMenu :collapse="props.collapsed" class="pl-xs pr-xs">
+			<ElMenu :collapse="props.collapsed" class="pl-xs pr-xs mb-m">
 				<N8nMenuItem
 					:item="addProject"
 					:compact="props.collapsed"
@@ -189,13 +186,7 @@ onMounted(async () => {
 				</i18n-t>
 			</template>
 		</N8nTooltip>
-		<hr
-			v-if="
-				displayProjects.length ||
-				(projectsStore.hasPermissionToCreateProjects && projectsStore.isTeamProjectFeatureEnabled)
-			"
-			class="mt-m mb-m"
-		/>
+		<hr v-if="projectsStore.isTeamProjectFeatureEnabled" class="mb-m" />
 	</div>
 </template>
 

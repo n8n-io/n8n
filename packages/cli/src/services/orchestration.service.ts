@@ -1,3 +1,4 @@
+import { GlobalConfig } from '@n8n/config';
 import { InstanceSettings } from 'n8n-core';
 import Container, { Service } from 'typedi';
 
@@ -5,13 +6,14 @@ import config from '@/config';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { Subscriber } from '@/scaling/pubsub/subscriber.service';
 
-import { MultiMainSetup } from './orchestration/main/multi-main-setup.ee';
+import { MultiMainSetup } from '../scaling/multi-main-setup.ee';
 
 @Service()
 export class OrchestrationService {
 	constructor(
 		readonly instanceSettings: InstanceSettings,
 		readonly multiMainSetup: MultiMainSetup,
+		readonly globalConfig: GlobalConfig,
 	) {}
 
 	private publisher: Publisher;
@@ -29,7 +31,7 @@ export class OrchestrationService {
 	get isMultiMainSetupEnabled() {
 		return (
 			config.getEnv('executions.mode') === 'queue' &&
-			config.getEnv('multiMainSetup.enabled') &&
+			this.globalConfig.multiMainSetup.enabled &&
 			this.instanceSettings.instanceType === 'main' &&
 			this.isMultiMainSetupLicensed
 		);

@@ -1,4 +1,4 @@
-import { GlobalConfig } from '@n8n/config';
+import { TaskRunnersConfig } from '@n8n/config';
 import * as a from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import * as process from 'node:process';
@@ -23,25 +23,38 @@ export class TaskRunnerProcess {
 		return this.process?.pid;
 	}
 
+	/** Promise that resolves when the process has exited */
+	public get runPromise() {
+		return this._runPromise;
+	}
+
+	private get useLauncher() {
+		return this.runnerConfig.mode === 'internal_launcher';
+	}
+
 	private process: ChildProcess | null = null;
 
-	/** Promise that resolves after the process has exited */
-	private runPromise: Promise<void> | null = null;
+	private _runPromise: Promise<void> | null = null;
 
 	private isShuttingDown = false;
 
 	constructor(
-		private readonly globalConfig: GlobalConfig,
+		private readonly runnerConfig: TaskRunnersConfig,
 		private readonly authService: TaskRunnerAuthService,
-	) {}
+	) {
+		a.ok(
+			this.runnerConfig.mode === 'internal_childprocess' ||
+				this.runnerConfig.mode === 'internal_launcher',
+		);
+	}
 
 	async start() {
 		a.ok(!this.process, 'Task Runner Process already running');
 
 		const grantToken = await this.authService.createGrantToken();
 
-		const n8nUri = `127.0.0.1:${this.globalConfig.taskRunners.port}`;
-		this.process = this.globalConfig.taskRunners.useLauncher
+		const n8nUri = `127.0.0.1:${this.runnerConfig.port}`;
+		this.process = this.useLauncher
 			? this.startLauncher(grantToken, n8nUri)
 			: this.startNode(grantToken, n8nUri);
 
@@ -59,6 +72,7 @@ export class TaskRunnerProcess {
 				PATH: process.env.PATH,
 				N8N_RUNNERS_GRANT_TOKEN: grantToken,
 				N8N_RUNNERS_N8N_URI: n8nUri,
+				N8N_RUNNERS_MAX_PAYLOAD: this.runnerConfig.maxPayload.toString(),
 				NODE_FUNCTION_ALLOW_BUILTIN: process.env.NODE_FUNCTION_ALLOW_BUILTIN,
 				NODE_FUNCTION_ALLOW_EXTERNAL: process.env.NODE_FUNCTION_ALLOW_EXTERNAL,
 			},
@@ -66,21 +80,18 @@ export class TaskRunnerProcess {
 	}
 
 	startLauncher(grantToken: string, n8nUri: string) {
-		return spawn(
-			this.globalConfig.taskRunners.launcherPath,
-			['launch', this.globalConfig.taskRunners.launcherRunner],
-			{
-				env: {
-					PATH: process.env.PATH,
-					N8N_RUNNERS_GRANT_TOKEN: grantToken,
-					N8N_RUNNERS_N8N_URI: n8nUri,
-					NODE_FUNCTION_ALLOW_BUILTIN: process.env.NODE_FUNCTION_ALLOW_BUILTIN,
-					NODE_FUNCTION_ALLOW_EXTERNAL: process.env.NODE_FUNCTION_ALLOW_EXTERNAL,
-					// For debug logging if enabled
-					RUST_LOG: process.env.RUST_LOG,
-				},
+		return spawn(this.runnerConfig.launcherPath, ['launch', this.runnerConfig.launcherRunner], {
+			env: {
+				PATH: process.env.PATH,
+				N8N_RUNNERS_GRANT_TOKEN: grantToken,
+				N8N_RUNNERS_N8N_URI: n8nUri,
+				N8N_RUNNERS_MAX_PAYLOAD: this.runnerConfig.maxPayload.toString(),
+				NODE_FUNCTION_ALLOW_BUILTIN: process.env.NODE_FUNCTION_ALLOW_BUILTIN,
+				NODE_FUNCTION_ALLOW_EXTERNAL: process.env.NODE_FUNCTION_ALLOW_EXTERNAL,
+				// For debug logging if enabled
+				RUST_LOG: process.env.RUST_LOG,
 			},
-		);
+		});
 	}
 
 	@OnShutdown()
@@ -92,12 +103,12 @@ export class TaskRunnerProcess {
 		this.isShuttingDown = true;
 
 		// TODO: Timeout & force kill
-		if (this.globalConfig.taskRunners.useLauncher) {
+		if (this.useLauncher) {
 			await this.killLauncher();
 		} else {
 			this.killNode();
 		}
-		await this.runPromise;
+		await this._runPromise;
 
 		this.isShuttingDown = false;
 	}
@@ -114,9 +125,9 @@ export class TaskRunnerProcess {
 			return;
 		}
 
-		const killProcess = spawn(this.globalConfig.taskRunners.launcherPath, [
+		const killProcess = spawn(this.runnerConfig.launcherPath, [
 			'kill',
-			this.globalConfig.taskRunners.launcherRunner,
+			this.runnerConfig.launcherRunner,
 			this.process.pid.toString(),
 		]);
 
@@ -128,7 +139,7 @@ export class TaskRunnerProcess {
 	}
 
 	private monitorProcess(taskRunnerProcess: ChildProcess) {
-		this.runPromise = new Promise((resolve) => {
+		this._runPromise = new Promise((resolve) => {
 			taskRunnerProcess.on('exit', (code) => {
 				this.onProcessExit(code, resolve);
 			});
