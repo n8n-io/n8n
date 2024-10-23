@@ -156,52 +156,6 @@ export async function addLocationIdPreSendAction(
 	return requestOptions;
 }
 
-export const addNotePostReceiveAction = async function (
-	this: IExecuteSingleFunctions,
-	items: INodeExecutionData[],
-	response: IN8nHttpFullResponse,
-): Promise<INodeExecutionData[]> {
-	const note = this.getNodeParameter('additionalFields.notes', 0) as string;
-
-	// If no note is provided, do nothing and return the items as they are
-	if (!note) {
-		return items;
-	}
-	const contact: IDataObject = (response.body as IDataObject).contact as IDataObject;
-
-	// Ensure there is a valid response and extract contactId and userId
-	if (!response || !response.body || !contact) {
-		throw new ApplicationError('No response data available to extract contact ID and user ID.');
-	}
-
-	const contactId = contact.id;
-	const userId = contact.locationId;
-	const requestBody = {
-		userId,
-		body: note,
-	};
-
-	// Add note to contact
-	const responseData = (await this.helpers.httpRequestWithAuthentication.call(
-		this,
-		'highLevelOAuth2Api',
-		{
-			method: 'POST',
-			url: `https://services.leadconnectorhq.com/contacts/${contactId}/notes`,
-			body: requestBody,
-			headers: {
-				Accept: 'application/json',
-				'Content-Type': 'application/json',
-				Version: '2021-07-28',
-			},
-			json: true,
-		},
-	)) as IDataObject;
-
-	// Return the original items after adding the note
-	return items;
-};
-
 export async function highLevelApiRequest(
 	this:
 		| IExecuteFunctions
@@ -237,6 +191,46 @@ export async function highLevelApiRequest(
 	options = Object.assign({}, options, option);
 	return await this.helpers.httpRequestWithAuthentication.call(this, 'highLevelOAuth2Api', options);
 }
+
+export const addNotePostReceiveAction = async function (
+	this: IExecuteSingleFunctions,
+	items: INodeExecutionData[],
+	response: IN8nHttpFullResponse,
+): Promise<INodeExecutionData[]> {
+	const note = this.getNodeParameter('additionalFields.notes', 0) as string;
+
+	// If no note is provided, do nothing and return the items as they are
+	if (!note) {
+		return items;
+	}
+
+	const contact: IDataObject = (response.body as IDataObject).contact as IDataObject;
+
+	// Ensure there is a valid response and extract contactId and userId
+	if (!response || !response.body || !contact) {
+		throw new ApplicationError('No response data available to extract contact ID and user ID.');
+	}
+
+	const contactId = contact.id;
+	const userId = contact.locationId;
+
+	const requestBody = {
+		userId,
+		body: note,
+	};
+
+	// Add note to contact using highLevelApiRequest
+	const responseData = await highLevelApiRequest.call(
+		this,
+		'POST',
+		`/contacts/${contactId}/notes`,
+		requestBody,
+		{}, // No query string (qs) parameters needed
+	);
+
+	// Return the original items after adding the note
+	return items;
+};
 
 export async function taskUpdatePreSendAction(
 	this: IExecuteSingleFunctions,
