@@ -72,6 +72,7 @@ export class TaskRunnerProcess {
 				PATH: process.env.PATH,
 				N8N_RUNNERS_GRANT_TOKEN: grantToken,
 				N8N_RUNNERS_N8N_URI: n8nUri,
+				N8N_RUNNERS_MAX_PAYLOAD: this.runnerConfig.maxPayload.toString(),
 				NODE_FUNCTION_ALLOW_BUILTIN: process.env.NODE_FUNCTION_ALLOW_BUILTIN,
 				NODE_FUNCTION_ALLOW_EXTERNAL: process.env.NODE_FUNCTION_ALLOW_EXTERNAL,
 			},
@@ -84,6 +85,7 @@ export class TaskRunnerProcess {
 				PATH: process.env.PATH,
 				N8N_RUNNERS_GRANT_TOKEN: grantToken,
 				N8N_RUNNERS_N8N_URI: n8nUri,
+				N8N_RUNNERS_MAX_PAYLOAD: this.runnerConfig.maxPayload.toString(),
 				NODE_FUNCTION_ALLOW_BUILTIN: process.env.NODE_FUNCTION_ALLOW_BUILTIN,
 				NODE_FUNCTION_ALLOW_EXTERNAL: process.env.NODE_FUNCTION_ALLOW_EXTERNAL,
 				// For debug logging if enabled
