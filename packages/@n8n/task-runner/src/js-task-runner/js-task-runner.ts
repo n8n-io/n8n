@@ -169,6 +169,11 @@ export class JsTaskRunner extends TaskRunner {
 			// Missing JS natives
 			btoa,
 			atob,
+			TextDecoder,
+			TextDecoderStream,
+			TextEncoder,
+			TextEncoderStream,
+			FormData,
 		};
 	}
 
