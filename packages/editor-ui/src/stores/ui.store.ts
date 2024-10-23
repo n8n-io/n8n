@@ -73,6 +73,7 @@ import {
 import { computed, ref } from 'vue';
 import type { Connection } from '@vue-flow/core';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { useVersionsStore } from './versions.store';
 
 let savedTheme: ThemeOption = 'system';
 try {
@@ -208,6 +209,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const telemetry = useTelemetry();
 	const cloudPlanStore = useCloudPlanStore();
 	const userStore = useUsersStore();
+	const versionsStore = useVersionsStore();
 
 	const appliedTheme = computed(() => {
 		return theme.value === 'system' ? getPreferredTheme() : theme.value;
@@ -575,13 +577,34 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			workflowsLeft,
 		});
 
-		const upgradeLink = await generateUpgradeLinkUrl(source, utm_campaign, deploymentType);
+		let upgradeLink = N8N_PRICING_PAGE_URL;
+
+		if (deploymentType === 'cloud' && hasPermission(['instanceOwner'])) {
+			upgradeLink = await generateCloudDashboardAutoLoginLink({
+				source,
+				utm_campaign,
+				redirectionPath: '/account/change-plan',
+			});
+		}
 
 		if (mode === 'open') {
 			window.open(upgradeLink, '_blank');
 		} else {
 			location.href = upgradeLink;
 		}
+	};
+
+	const goToVersions = async () => {
+		const deploymentType = settingsStore.deploymentType;
+		let versionsLink = versionsStore.infoUrl;
+
+		if (deploymentType === 'cloud' && hasPermission(['instanceOwner'])) {
+			versionsLink = await generateCloudDashboardAutoLoginLink({
+				redirectionPath: '/manage',
+			});
+		}
+
+		location.href = versionsLink;
 	};
 
 	const removeBannerFromStack = (name: BannerName) => {
@@ -669,6 +692,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		isAnyModalOpen,
 		fakeDoorsById,
 		pendingNotificationsForViews,
+		activeModals,
 		setTheme,
 		setMode,
 		setActiveId,
@@ -696,6 +720,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		toggleSidebarMenuCollapse,
 		getCurlToJson,
 		goToUpgrade,
+		goToVersions,
 		removeBannerFromStack,
 		dismissBanner,
 		updateBannersHeight,
@@ -704,7 +729,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		setNotificationsForView,
 		deleteNotificationsForView,
 		resetLastInteractedWith,
-		activeModals,
 	};
 });
 
@@ -749,33 +773,29 @@ export const listenForModalChanges = (opts: {
 	});
 };
 
-export const generateUpgradeLinkUrl = async (
-	source: string,
-	utm_campaign: string,
-	deploymentType: string,
-) => {
+const generateCloudDashboardAutoLoginLink = async (data: {
+	source?: string;
+	utm_campaign?: string;
+	redirectionPath: string;
+}) => {
 	let linkUrl = '';
 
 	const searchParams = new URLSearchParams();
 
 	const cloudPlanStore = useCloudPlanStore();
 
-	if (deploymentType === 'cloud' && hasPermission(['instanceOwner'])) {
-		const adminPanelHost = new URL(window.location.href).host.split('.').slice(1).join('.');
-		const { code } = await cloudPlanStore.getAutoLoginCode();
-		linkUrl = `https://${adminPanelHost}/login`;
-		searchParams.set('code', code);
-		searchParams.set('returnPath', '/account/change-plan');
-	} else {
-		linkUrl = N8N_PRICING_PAGE_URL;
+	const adminPanelHost = new URL(window.location.href).host.split('.').slice(1).join('.');
+	const { code } = await cloudPlanStore.getAutoLoginCode();
+	linkUrl = `https://${adminPanelHost}/login`;
+	searchParams.set('code', code);
+	searchParams.set('returnPath', data.redirectionPath);
+
+	if (data?.utm_campaign) {
+		searchParams.set('utm_campaign', data.utm_campaign);
 	}
 
-	if (utm_campaign) {
-		searchParams.set('utm_campaign', utm_campaign);
-	}
-
-	if (source) {
-		searchParams.set('source', source);
+	if (data?.source) {
+		searchParams.set('source', data.source);
 	}
 	return `${linkUrl}?${searchParams.toString()}`;
 };
