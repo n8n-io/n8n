@@ -505,7 +505,7 @@ export class NextCloud implements INodeType {
 				description: 'The ID of the Table',
 			},
 			{
-				displayName: 'Table Name',
+				displayName: 'Table Title',
 				name: 'tableName',
 				type: 'string',
 				default: '',
@@ -518,6 +518,20 @@ export class NextCloud implements INodeType {
 				},
 				placeholder: 'Project Tasks',
 				description: 'Name of the Table',
+			},
+			{
+				displayName: 'Archived',
+				name: 'archivedTable',
+				type: 'boolean',
+				default: false,
+				required: false,
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['updateTable'],
+					},
+				},
+				description: 'Archive the note or not',
 			},
 			// Talk Operations
 			{
@@ -1609,7 +1623,7 @@ export class NextCloud implements INodeType {
 					switch (operation) {
 						case 'createTable': {
 							const tableName = this.getNodeParameter('tableName', i) as string;
-							const tablesBody = { name: tableName };
+							const tablesBody = { title: tableName };
 							const tablesHeaders = {
 								'OCS-APIRequest': 'true',
 								'Content-Type': 'application/json',
@@ -1617,7 +1631,7 @@ export class NextCloud implements INodeType {
 							responseData = await nextCloudApiRequest.call(
 								this,
 								'POST',
-								'ocs/v1.php/apps/tables/api/v1/tables',
+								'ocs/v1.php/apps/tables/api/1/tables',
 								JSON.stringify(tablesBody),
 								tablesHeaders,
 							);
@@ -1631,7 +1645,7 @@ export class NextCloud implements INodeType {
 							responseData = await nextCloudApiRequest.call(
 								this,
 								'GET',
-								'ocs/v1.php/apps/tables/api/v1/tables',
+								'ocs/v1.php/apps/tables/api/1/tables',
 								'',
 								tablesHeaders,
 							);
@@ -1641,7 +1655,9 @@ export class NextCloud implements INodeType {
 						case 'updateTable': {
 							const tableId = this.getNodeParameter('tableId', i) as string;
 							const tableName = this.getNodeParameter('tableName', i) as string;
-							const tablesBody = { name: tableName };
+							const archivedTable = this.getNodeParameter('archivedTable', i) as boolean;
+
+							const tablesBody = { title: tableName, archived: archivedTable };
 							const tablesHeaders = {
 								'OCS-APIRequest': 'true',
 								'Content-Type': 'application/json',
@@ -1649,7 +1665,7 @@ export class NextCloud implements INodeType {
 							responseData = await nextCloudApiRequest.call(
 								this,
 								'PUT',
-								`ocs/v1.php/apps/tables/api/v1/tables/${encodeURIComponent(tableId)}`,
+								`ocs/v1.php/apps/tables/api/1/tables/${encodeURIComponent(tableId)}`,
 								JSON.stringify(tablesBody),
 								tablesHeaders,
 							);
@@ -1664,7 +1680,7 @@ export class NextCloud implements INodeType {
 							responseData = await nextCloudApiRequest.call(
 								this,
 								'DELETE',
-								`ocs/v1.php/apps/tables/api/v1/tables/${encodeURIComponent(tableId)}`,
+								`ocs/v1.php/apps/tables/api/1/tables/${encodeURIComponent(tableId)}`,
 								'',
 								tablesHeaders,
 							);
