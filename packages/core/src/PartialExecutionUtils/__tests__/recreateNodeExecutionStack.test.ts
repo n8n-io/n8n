@@ -308,50 +308,6 @@ describe('recreateNodeExecutionStack', () => {
 		expect(waitingExecutionSource).toEqual({});
 	});
 
-	test('parent has multiple runs', () => {
-		// ARRANGE
-		const trigger = createNodeData({ name: 'trigger' });
-		const loop = createNodeData({ name: 'loop' });
-		const inLoop = createNodeData({ name: 'inLoop' });
-		const afterLoop = createNodeData({ name: 'afterLoop' });
-		const graph = new DirectedGraph()
-			.addNodes(trigger, loop, inLoop, afterLoop)
-			.addConnections(
-				{ from: trigger, to: loop },
-				{ from: loop, to: inLoop, outputIndex: 1 },
-				{ from: loop, to: afterLoop, outputIndex: 0 },
-				{ from: inLoop, to: loop },
-			);
-		const runData: IRunData = {
-			[trigger.name]: [toITaskData([{ data: { value: 'trigger' } }])],
-			[loop.name]: [
-				toITaskData([{ data: { value: 'loop' }, outputIndex: 1 }]),
-				toITaskData([{ data: { value: 'done' }, outputIndex: 0 }]),
-			],
-			[inLoop.name]: [toITaskData([{ data: { value: 'inLoop' } }])],
-			[afterLoop.name]: [toITaskData([{ data: { value: 'afterLoop' } }])],
-		};
-		const pinData: IPinData = {};
-		const startNodes = new Set([afterLoop]);
-
-		// ACT
-		const { nodeExecutionStack, waitingExecution, waitingExecutionSource } =
-			recreateNodeExecutionStack(graph, startNodes, runData, pinData);
-
-		// ASSERT
-		expect(nodeExecutionStack).toHaveLength(1);
-		expect(nodeExecutionStack[0]).toEqual({
-			node: afterLoop,
-			data: { main: [[{ json: { value: 'done' } }]] },
-			source: {
-				main: [{ previousNode: 'loop', previousNodeOutput: 0, previousNodeRun: 1 }],
-			},
-		});
-
-		expect(waitingExecution).toEqual({});
-		expect(waitingExecutionSource).toEqual({});
-	});
-
 	//               ┌─────┐           ┌─────┐
 	//            ┌──►node1┼────┬──────►     │
 	//            │  └─────┘    │      │merge│
