@@ -137,6 +137,15 @@ export interface IExpenseDocument {
 	];
 }
 
+export interface IQueriesConfig {
+	addedQueries: [
+		{
+			Alias: string;
+			Text: string;
+		},
+	];
+}
+
 export async function validateCredentials(
 	this: ICredentialTestFunctions,
 	decryptedCredentials: ICredentialDataDecryptedObject,
