@@ -9,9 +9,7 @@ export class UpdateProcessedDataValueColumnToText1729607673464 implements Revers
 		await runQuery(`ALTER TABLE ${prefixedTableName} DROP COLUMN value;`);
 
 		if (isMysql) {
-			await runQuery(
-				`ALTER TABLE ${processedDataTableName} CHANGE value_temp value TEXT NOT NULL;`,
-			);
+			await runQuery(`ALTER TABLE ${prefixedTableName} CHANGE value_temp value TEXT NOT NULL;`);
 		} else {
 			await runQuery(`ALTER TABLE ${prefixedTableName} RENAME COLUMN value_temp TO value`);
 			await addNotNull(processedDataTableName, 'value');
@@ -26,7 +24,7 @@ export class UpdateProcessedDataValueColumnToText1729607673464 implements Revers
 
 		if (isMysql) {
 			await runQuery(
-				`ALTER TABLE ${processedDataTableName} CHANGE value_temp value VARCHAR(255) NOT NULL;`,
+				`ALTER TABLE ${prefixedTableName} CHANGE value_temp value VARCHAR(255) NOT NULL;`,
 			);
 		} else {
 			await runQuery(`ALTER TABLE ${prefixedTableName} RENAME COLUMN value_temp TO value`);
