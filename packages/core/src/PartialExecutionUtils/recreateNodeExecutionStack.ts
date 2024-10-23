@@ -54,8 +54,6 @@ export function addWaitingExecutionSource(
 	waitingExecutionSource[nodeName] = waitingExecutionSourceObject;
 }
 
-// TODO: What about paired items?
-// TODO: clean up this function. It's too complex.
 /**
  * Recreates the node execution stack, waiting executions and waiting
  * execution sources from a directed graph, start nodes, the destination node,
