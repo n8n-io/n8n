@@ -479,12 +479,12 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			workflowsPage.getters.newWorkflowButtonCard().click();
 			projects.createWorkflow('Test_workflow_1.json', 'Workflow in Project 2');
 
-			// Move the workflow owned by me from Home to Project 1
+			// Move the workflow (You) from Home to Project 1
 			projects.getHomeButton().click();
 			workflowsPage.getters
 				.workflowCards()
 				.should('have.length', 3)
-				.filter(':contains("Owned by me")')
+				.filter(':contains("(You)")')
 				.should('exist');
 			workflowsPage.getters.workflowCardActions('Workflow in Home project').click();
 			workflowsPage.getters.workflowMoveButton().click();
@@ -505,7 +505,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			workflowsPage.getters
 				.workflowCards()
 				.should('have.length', 3)
-				.filter(':contains("Owned by me")')
+				.filter(':contains("(You)")')
 				.should('not.exist');
 
 			// Move the workflow from Project 1 to Project 2
@@ -574,7 +574,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			workflowsPage.getters
 				.workflowCards()
 				.should('have.length', 3)
-				.filter(':contains("Owned by me")')
+				.filter(':contains("(You)")')
 				.should('have.length', 1);
 
 			// Move the credential from Project 1 to Project 2
@@ -657,7 +657,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			credentialsPage.getters
 				.credentialCards()
 				.should('have.length', 3)
-				.filter(':contains("Owned by me")')
+				.filter(':contains("(You)")')
 				.should('have.length', 2);
 
 			// Move the credential from admin user back to its original project (Project 1)
@@ -716,7 +716,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			workflowsPage.getters
 				.workflowCards()
 				.should('have.length', 1)
-				.filter(':contains("Owned by me")')
+				.filter(':contains("(You)")')
 				.should('exist');
 			workflowsPage.getters.workflowCardActions('My workflow').click();
 			workflowsPage.getters.workflowMoveButton().click();
@@ -737,7 +737,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			workflowsPage.getters
 				.workflowCards()
 				.should('have.length', 1)
-				.filter(':contains("Owned by me")')
+				.filter(':contains("(You)")')
 				.should('not.exist');
 
 			//Log out with instance owner and log in with the member user
