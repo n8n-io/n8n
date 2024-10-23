@@ -157,8 +157,9 @@ const getTriggerNodeTooltip = computed(() => {
 });
 
 const isPollingTypeNode = computed(() => !!nodeType.value?.polling);
+
 const isExecuting = computed(() => {
-	if (!node.value) return false;
+	if (!node.value || !workflowRunning.value) return false;
 	return workflowsStore.isNodeExecuting(node.value.name);
 });
 
