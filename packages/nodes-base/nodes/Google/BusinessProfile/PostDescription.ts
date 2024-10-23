@@ -22,7 +22,7 @@ export const postOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				action: 'Create post',
-				description: 'Create a new post on Google My Business',
+				description: 'Create a new post on Google Business Profile',
 				routing: {
 					send: { preSend: [handleDatesPresend] },
 					request: {
@@ -114,7 +114,7 @@ export const postFields: INodeProperties[] = [
 		required: true,
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
-		description: 'The Google My Business account',
+		description: 'The Google Business Profile account',
 		displayOptions: { show: { resource: ['post'], operation: ['create'] } },
 		modes: [
 			{
@@ -417,7 +417,7 @@ export const postFields: INodeProperties[] = [
 		required: true,
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
-		description: 'The Google My Business account',
+		description: 'The Google Business Profile account',
 		displayOptions: { show: { resource: ['post'], operation: ['delete'] } },
 		modes: [
 			{
@@ -528,7 +528,7 @@ export const postFields: INodeProperties[] = [
 		required: true,
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
-		description: 'The Google My Business account',
+		description: 'The Google Business Profile account',
 		displayOptions: { show: { resource: ['post'], operation: ['get'] } },
 		modes: [
 			{
@@ -639,7 +639,7 @@ export const postFields: INodeProperties[] = [
 		required: true,
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
-		description: 'The Google My Business account',
+		description: 'The Google Business Profile account',
 		displayOptions: { show: { resource: ['post'], operation: ['getAll'] } },
 		modes: [
 			{
@@ -734,7 +734,7 @@ export const postFields: INodeProperties[] = [
 		required: true,
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
-		description: 'The Google My Business account',
+		description: 'The Google Business Profile account',
 		displayOptions: { show: { resource: ['post'], operation: ['update'] } },
 		modes: [
 			{
