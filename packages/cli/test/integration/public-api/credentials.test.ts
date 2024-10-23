@@ -6,7 +6,11 @@ import { CredentialsRepository } from '@/databases/repositories/credentials.repo
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { createTeamProject } from '@test-integration/db/projects';
 
-import { affixRoleToSaveCredential, createCredentials } from '../shared/db/credentials';
+import {
+	affixRoleToSaveCredential,
+	createCredentials,
+	getCredentialSharings,
+} from '../shared/db/credentials';
 import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
 import { randomName } from '../shared/random';
 import * as testDb from '../shared/test-db';
@@ -280,6 +284,41 @@ describe('PUT /credentials/:id/transfer', () => {
 		 * Assert
 		 */
 		expect(response.statusCode).toBe(204);
+	});
+
+	test('should transfer the right credential, not the first one it finds', async () => {
+		// ARRANGE
+		const [firstProject, secondProject] = await Promise.all([
+			createTeamProject('first-project', owner),
+			createTeamProject('second-project', owner),
+		]);
+
+		const [firstCredential, secondCredential] = await Promise.all([
+			createCredentials({ name: 'Test', type: 'test', data: '' }, firstProject),
+			createCredentials({ name: 'Test', type: 'test', data: '' }, firstProject),
+		]);
+
+		// ACT
+		const response = await authOwnerAgent.put(`/credentials/${secondCredential.id}/transfer`).send({
+			destinationProjectId: secondProject.id,
+		});
+
+		// ASSERT
+		expect(response.statusCode).toBe(204);
+
+		{
+			// second credential was moved
+			const sharings = await getCredentialSharings(secondCredential);
+			expect(sharings).toHaveLength(1);
+			expect(sharings[0]).toMatchObject({ projectId: secondProject.id });
+		}
+
+		{
+			// first credential was untouched
+			const sharings = await getCredentialSharings(firstCredential);
+			expect(sharings).toHaveLength(1);
+			expect(sharings[0]).toMatchObject({ projectId: firstProject.id });
+		}
 	});
 
 	test('if no destination project, should reject', async () => {
