@@ -141,6 +141,9 @@ importers:
       '@types/jest':
         specifier: ^29.5.3
         version: 29.5.3
+      '@types/node':
+        specifier: ^18.16.16
+        version: 18.16.16
       '@types/supertest':
         specifier: ^6.0.2
         version: 6.0.2
@@ -393,9 +396,6 @@ importers:
       '@types/json-schema':
         specifier: ^7.0.15
         version: 7.0.15
-      '@types/node':
-        specifier: ^18.16.16
-        version: 18.16.16
       zod:
         specifier: 'catalog:'
         version: 3.23.8
