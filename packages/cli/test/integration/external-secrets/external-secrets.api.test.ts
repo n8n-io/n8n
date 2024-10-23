@@ -119,6 +119,7 @@ beforeAll(async () => {
 			mockProvidersInstance,
 			Container.get(Cipher),
 			eventService,
+			mock(),
 		),
 	);
 });
