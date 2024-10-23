@@ -237,7 +237,7 @@ export class VaultProvider extends SecretsProvider {
 
 	constructor(readonly logger = Container.get(Logger)) {
 		super();
-		this.logger = this.logger.withScope('external-secrets');
+		this.logger = this.logger.scoped('external-secrets');
 	}
 
 	async init(settings: SecretsProviderSettings): Promise<void> {

@@ -79,7 +79,7 @@ export class AwsSecretsManager implements SecretsProvider {
 	private client: AwsSecretsClient;
 
 	constructor(private readonly logger = Container.get(Logger)) {
-		this.logger = this.logger.withScope('external-secrets');
+		this.logger = this.logger.scoped('external-secrets');
 	}
 
 	async init(context: AwsSecretsManagerContext) {

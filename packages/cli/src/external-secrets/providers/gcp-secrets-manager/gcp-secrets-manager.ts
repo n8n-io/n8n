@@ -41,7 +41,7 @@ export class GcpSecretsManager implements SecretsProvider {
 	private settings: GcpSecretAccountKey;
 
 	constructor(private readonly logger = Container.get(Logger)) {
-		this.logger = this.logger.withScope('external-secrets');
+		this.logger = this.logger.scoped('external-secrets');
 	}
 
 	async init(context: GcpSecretsManagerContext) {
