@@ -320,7 +320,7 @@ export class EmailReadImapV2 implements INodeType {
 
 			try {
 				const partData = await connection.getPartData(message, part);
-				return partData.toString();
+				return partData.toString(part.params?.charset);
 			} catch {
 				return '';
 			}
