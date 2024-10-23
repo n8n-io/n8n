@@ -8,7 +8,7 @@ import type {
 	ITriggerResponse,
 	IRun,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError, TriggerCloseError } from 'n8n-workflow';
 
 import { createClient, type MqttCredential } from './GenericFunctions';
 
@@ -149,9 +149,14 @@ export class MqttTrigger implements INodeType {
 			await client.subscribeAsync(topicsQoS);
 		}
 
-		async function closeFunction() {
-			await client.endAsync();
-		}
+		const closeFunction = async () => {
+			try {
+				await client.endAsync();
+			} catch (error) {
+				// eslint-disable-next-line n8n-nodes-base/node-execute-block-wrong-error-thrown
+				throw new TriggerCloseError(this.getNode(), { cause: error as Error, level: 'warning' });
+			}
+		};
 
 		return {
 			closeFunction,
