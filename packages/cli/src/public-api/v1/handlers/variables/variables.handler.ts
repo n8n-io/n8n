@@ -3,6 +3,10 @@ import Container from 'typedi';
 
 import { VariablesRepository } from '@/databases/repositories/variables.repository';
 import { VariablesController } from '@/environments/variables/variables.controller.ee';
+import { VariablesService } from '@/environments/variables/variables.service.ee';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-reached.error';
+import { VariableValidationError } from '@/errors/variable-validation.error';
 import type { PaginatedRequest } from '@/public-api/types';
 import type { VariablesRequest } from '@/requests';
 
@@ -18,7 +22,18 @@ export = {
 		isLicensed('feat:variables'),
 		globalScope('variable:create'),
 		async (req: Create, res: Response) => {
-			await Container.get(VariablesController).createVariable(req);
+			delete req.body.id;
+			try {
+				Container.get(VariablesService).validateVariable(req.body);
+				await Container.get(VariablesService).create(req.body, req.user);
+			} catch (error) {
+				if (error instanceof VariableCountLimitReachedError) {
+					throw new BadRequestError(error.message);
+				} else if (error instanceof VariableValidationError) {
+					throw new BadRequestError(error.message);
+				}
+				throw error;
+			}
 
 			res.status(201).send();
 		},

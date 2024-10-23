@@ -1,9 +1,20 @@
-import { Delete, Get, GlobalScope, Licensed, Patch, Post, RestController } from '@/decorators';
+import { CreateVariableRequestDto } from '@n8n/api-types';
+
+import {
+	Body,
+	Delete,
+	Get,
+	GlobalScope,
+	Licensed,
+	Patch,
+	Post,
+	RestController,
+} from '@/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-reached.error';
 import { VariableValidationError } from '@/errors/variable-validation.error';
-import { VariablesRequest } from '@/requests';
+import { AuthenticatedRequest, VariablesRequest } from '@/requests';
 
 import { VariablesService } from './variables.service.ee';
 
@@ -20,11 +31,13 @@ export class VariablesController {
 	@Post('/')
 	@Licensed('feat:variables')
 	@GlobalScope('variable:create')
-	async createVariable(req: VariablesRequest.Create) {
-		const variable = req.body;
-		delete variable.id;
+	async createVariable(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body variable: CreateVariableRequestDto,
+	) {
 		try {
-			return await this.variablesService.create(variable);
+			return await this.variablesService.create(variable, req.user);
 		} catch (error) {
 			if (error instanceof VariableCountLimitReachedError) {
 				throw new BadRequestError(error.message);

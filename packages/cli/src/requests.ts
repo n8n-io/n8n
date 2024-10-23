@@ -453,7 +453,7 @@ export type BinaryDataRequest = AuthenticatedRequest<
 // ----------------------------------
 //
 export declare namespace VariablesRequest {
-	type CreateUpdatePayload = Omit<Variables, 'id'> & { id?: unknown };
+	type CreateUpdatePayload = Omit<Variables, 'id' | 'type'> & { id?: unknown; type: 'string' };
 
 	type GetAll = AuthenticatedRequest;
 	type Get = AuthenticatedRequest<{ id: string }, {}, {}, {}>;

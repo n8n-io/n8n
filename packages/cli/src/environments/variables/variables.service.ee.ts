@@ -1,3 +1,4 @@
+import type { CreateVariableRequestDto } from '@n8n/api-types';
 import { Container, Service } from 'typedi';
 
 import type { Variables } from '@/databases/entities/variables';
@@ -9,6 +10,7 @@ import { EventService } from '@/events/event.service';
 import { CacheService } from '@/services/cache/cache.service';
 
 import { canCreateNewVariable } from './environment-helpers';
+import { User } from '@/databases/entities/user';
 
 @Service()
 export class VariablesService {
@@ -67,11 +69,10 @@ export class VariablesService {
 		}
 	}
 
-	async create(variable: Omit<Variables, 'id'>): Promise<Variables> {
+	async create(variable: CreateVariableRequestDto, user: User): Promise<Variables> {
 		if (!canCreateNewVariable(await this.getCount())) {
 			throw new VariableCountLimitReachedError('Variables limit reached');
 		}
-		this.validateVariable(variable);
 
 		this.eventService.emit('variable-created');
 		const saveResult = await this.variablesRepository.save(

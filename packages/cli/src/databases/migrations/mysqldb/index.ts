@@ -68,6 +68,7 @@ import { CreateProcessedDataTable1726606152711 } from '../common/1726606152711-C
 import { SeparateExecutionCreationFromStart1727427440136 } from '../common/1727427440136-SeparateExecutionCreationFromStart';
 import { AddMissingPrimaryKeyOnAnnotationTagMapping1728659839644 } from '../common/1728659839644-AddMissingPrimaryKeyOnAnnotationTagMapping';
 import { UpdateProcessedDataValueColumnToText1729607673464 } from '../common/1729607673464-UpdateProcessedDataValueColumnToText';
+import { AddProjectToVariables1729695079000 } from '../common/1729695079000-AddProjectToVariables';
 
 export const mysqlMigrations: Migration[] = [
 	InitialMigration1588157391238,
@@ -138,4 +139,5 @@ export const mysqlMigrations: Migration[] = [
 	CreateProcessedDataTable1726606152711,
 	AddMissingPrimaryKeyOnAnnotationTagMapping1728659839644,
 	UpdateProcessedDataValueColumnToText1729607673464,
+	AddProjectToVariables1729695079000,
 ];
