@@ -37,7 +37,7 @@ export class LicenseService {
 
 		return {
 			usage: {
-				executions: {
+				activeWorkflowTriggers: {
 					value: triggerCount,
 					limit: this.license.getTriggerLimit(),
 					warningThreshold: 0.8,
