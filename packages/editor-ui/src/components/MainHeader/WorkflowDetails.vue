@@ -189,9 +189,18 @@ const workflowMenuItems = computed<ActionDropdownItem[]>(() => {
 
 	actions.push({
 		id: WORKFLOW_MENU_ACTIONS.SWITCH_NODE_VIEW_VERSION,
-		...(nodeViewSwitcherDiscovered.value || nodeViewVersion.value === '2'
+		...(nodeViewVersion.value === '2'
 			? {}
-			: { badge: locale.baseText('menuActions.badge.new') }),
+			: nodeViewSwitcherDiscovered.value
+				? {
+						badge: locale.baseText('menuActions.badge.alpha'),
+						badgeProps: {
+							theme: 'tertiary',
+						},
+					}
+				: {
+						badge: locale.baseText('menuActions.badge.new'),
+					}),
 		label:
 			nodeViewVersion.value === '2'
 				? locale.baseText('menuActions.switchToOldNodeViewVersion')
@@ -735,7 +744,7 @@ function showCreateWorkflowSuccessToast(id?: string) {
 					data-test-id="workflow-import-input"
 					@change="handleFileImport()"
 				/>
-				<N8nTooltip dismissible :visible="isNodeViewDiscoveryTooltipVisible">
+				<N8nTooltip :visible="isNodeViewDiscoveryTooltipVisible">
 					<N8nActionDropdown
 						:items="workflowMenuItems"
 						data-test-id="workflow-menu"
@@ -743,6 +752,9 @@ function showCreateWorkflowSuccessToast(id?: string) {
 						@visible-change="onWorkflowMenuOpen"
 					/>
 					<template #content>
+						<div class="mb-4xs">
+							<N8nBadge>{{ $locale.baseText('menuActions.badge.alpha') }}</N8nBadge>
+						</div>
 						{{ $locale.baseText('menuActions.nodeViewDiscovery.tooltip') }}
 						<N8nIcon
 							:class="$style.closeNodeViewDiscovery"
