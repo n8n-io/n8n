@@ -227,6 +227,7 @@ describe('GlobalConfig', () => {
 			path: '/runners',
 			authToken: '',
 			listenAddress: '127.0.0.1',
+			maxPayload: 1024 * 1024 * 1024,
 			port: 5679,
 			launcherPath: '',
 			launcherRunner: 'javascript',

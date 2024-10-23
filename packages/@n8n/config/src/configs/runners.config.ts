@@ -32,6 +32,10 @@ export class TaskRunnersConfig {
 	@Env('N8N_RUNNERS_SERVER_LISTEN_ADDRESS')
 	listenAddress: string = '127.0.0.1';
 
+	/** Maximum size of a payload sent to the runner in bytes, Default 1G */
+	@Env('N8N_RUNNERS_MAX_PAYLOAD')
+	maxPayload: number = 1024 * 1024 * 1024;
+
 	@Env('N8N_RUNNERS_LAUNCHER_PATH')
 	launcherPath: string = '';
 
