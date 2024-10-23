@@ -1,6 +1,7 @@
 import { stringify } from 'flatted';
 import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
+import { InstanceSettingsConfig } from 'n8n-core/src/InstanceSettingsConfig';
 import { randomInt } from 'n8n-workflow';
 import Container from 'typedi';
 
@@ -22,7 +23,7 @@ import { setupMessages } from './utils';
 
 describe('ExecutionRecoveryService', () => {
 	const push = mockInstance(Push);
-	const instanceSettings = new InstanceSettings();
+	const instanceSettings = new InstanceSettings(new InstanceSettingsConfig());
 
 	let executionRecoveryService: ExecutionRecoveryService;
 	let executionRepository: ExecutionRepository;

@@ -1,12 +1,13 @@
 import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
+import { InstanceSettingsConfig } from 'n8n-core/src/InstanceSettingsConfig';
 
 import { SourceControlPreferencesService } from '@/environments/source-control/source-control-preferences.service.ee';
 import { SourceControlService } from '@/environments/source-control/source-control.service.ee';
 
 describe('SourceControlService', () => {
 	const preferencesService = new SourceControlPreferencesService(
-		new InstanceSettings(),
+		new InstanceSettings(new InstanceSettingsConfig()),
 		mock(),
 		mock(),
 	);

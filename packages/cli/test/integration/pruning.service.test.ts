@@ -1,5 +1,6 @@
 import { mock } from 'jest-mock-extended';
 import { BinaryDataService, InstanceSettings } from 'n8n-core';
+import { InstanceSettingsConfig } from 'n8n-core/src/InstanceSettingsConfig';
 import type { ExecutionStatus } from 'n8n-workflow';
 import Container from 'typedi';
 
@@ -22,7 +23,7 @@ import { mockInstance } from '../shared/mocking';
 
 describe('softDeleteOnPruningCycle()', () => {
 	let pruningService: PruningService;
-	const instanceSettings = new InstanceSettings();
+	const instanceSettings = new InstanceSettings(new InstanceSettingsConfig());
 	instanceSettings.markAsLeader();
 
 	const now = new Date();
