@@ -475,6 +475,11 @@ export class NextCloud implements INodeType {
 						description: 'Retrieve all Tables',
 					},
 					{
+						name: 'Get a Table',
+						value: 'getTable',
+						description: 'Retrieve a single Table',
+					},
+					{
 						name: 'Update Table',
 						value: 'updateTable',
 						description: 'Update an existing Table',
@@ -498,7 +503,7 @@ export class NextCloud implements INodeType {
 				displayOptions: {
 					show: {
 						resource: ['tables'],
-						operation: ['updateTable', 'deleteTable'],
+						operation: ['updateTable', 'deleteTable', 'getTable'],
 					},
 				},
 				placeholder: 'ABCDE',
@@ -1646,6 +1651,22 @@ export class NextCloud implements INodeType {
 								this,
 								'GET',
 								'ocs/v1.php/apps/tables/api/1/tables',
+								'',
+								tablesHeaders,
+							);
+							returnData.push(JSON.parse(responseData));
+							break;
+						}
+						case 'getTable': {
+							const tableId = this.getNodeParameter('tableId', i) as string;
+							const tablesHeaders = {
+								'OCS-APIRequest': 'true',
+								'Content-Type': 'application/json',
+							};
+							responseData = await nextCloudApiRequest.call(
+								this,
+								'GET',
+								`ocs/v1.php/apps/tables/api/1/tables/${encodeURIComponent(tableId)}`,
 								'',
 								tablesHeaders,
 							);
