@@ -57,8 +57,8 @@
     "run-script-os": "^1.0.7",
     "supertest": "^7.0.0",
     "ts-jest": "^29.1.1",
-    "tsc-alias": "^1.8.7",
-    "tsc-watch": "^6.0.4",
+    "tsc-alias": "^1.8.10",
+    "tsc-watch": "^6.2.0",
     "turbo": "2.1.2",
     "typescript": "*",
     "zx": "^8.1.4"
