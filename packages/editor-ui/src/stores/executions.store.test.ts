@@ -2,7 +2,7 @@ import { vi } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 
 import type { ExecutionSummaryWithScopes } from '@/Interface';
-import { useExecutionsStore } from '../executions.store';
+import { useExecutionsStore } from '@/stores/executions.store';
 
 vi.mock('@/utils/apiUtils', () => ({
 	makeRestApiRequest: vi.fn(),
