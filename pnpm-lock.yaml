@@ -1094,6 +1094,9 @@ importers:
       '@n8n/client-oauth2':
         specifier: workspace:*
         version: link:../@n8n/client-oauth2
+      '@n8n/config':
+        specifier: workspace:*
+        version: link:../@n8n/config
       aws4:
         specifier: 1.11.0
         version: 1.11.0
