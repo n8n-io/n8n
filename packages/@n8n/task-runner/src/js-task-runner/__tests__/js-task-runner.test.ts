@@ -283,7 +283,7 @@ describe('JsTaskRunner', () => {
 		});
 
 		it('should allow access to Node.js Buffers', async () => {
-			const outcome = await execTaskWithParams({
+			const outcomeAll = await execTaskWithParams({
 				task: newTaskWithSettings({
 					code: 'return { val: Buffer.from("test-buffer").toString() }',
 					nodeMode: 'runOnceForAllItems',
@@ -293,7 +293,21 @@ describe('JsTaskRunner', () => {
 				}),
 			});
 
-			expect(outcome.result).toEqual([wrapIntoJson({ val: 'test-buffer' })]);
+			expect(outcomeAll.result).toEqual([wrapIntoJson({ val: 'test-buffer' })]);
+
+			const outcomePer = await execTaskWithParams({
+				task: newTaskWithSettings({
+					code: 'return { val: Buffer.from("test-buffer").toString() }',
+					nodeMode: 'runOnceForEachItem',
+				}),
+				taskData: newAllCodeTaskData(inputItems.map(wrapIntoJson), {
+					envProviderState: undefined,
+				}),
+			});
+
+			expect(outcomePer.result).toEqual([
+				{ ...wrapIntoJson({ val: 'test-buffer' }), pairedItem: { item: 0 } },
+			]);
 		});
 	});
 
