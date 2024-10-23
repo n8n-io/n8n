@@ -10,7 +10,7 @@ import { CredentialsRepository } from '@/databases/repositories/credentials.repo
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { TagRepository } from '@/databases/repositories/tag.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import { ImportService } from '@/services/import.service';
+import { WorkflowImportService } from '@/services/workflow-import.service';
 
 import { getPersonalProject } from './shared/db/projects';
 import { createMember, createOwner } from './shared/db/users';
@@ -24,7 +24,7 @@ import * as testDb from './shared/test-db';
 import { mockInstance } from '../shared/mocking';
 
 describe('ImportService', () => {
-	let importService: ImportService;
+	let importService: WorkflowImportService;
 	let tagRepository: TagRepository;
 	let owner: User;
 	let ownerPersonalProject: Project;
@@ -41,7 +41,7 @@ describe('ImportService', () => {
 
 		credentialsRepository.find.mockResolvedValue([]);
 
-		importService = new ImportService(mock(), credentialsRepository, tagRepository);
+		importService = new WorkflowImportService(mock(), credentialsRepository, tagRepository);
 	});
 
 	afterEach(async () => {

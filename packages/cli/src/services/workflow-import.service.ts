@@ -15,7 +15,7 @@ import { Logger } from '@/logging/logger.service';
 import { replaceInvalidCredentials } from '@/workflow-helpers';
 
 @Service()
-export class ImportService {
+export class WorkflowImportService {
 	private dbCredentials: ICredentialsDb[] = [];
 
 	private dbTags: TagEntity[] = [];
