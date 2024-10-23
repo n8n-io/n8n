@@ -170,7 +170,7 @@ export class Start extends BaseCommand {
 
 		this.logger.info('Initializing n8n process');
 		if (config.getEnv('executions.mode') === 'queue') {
-			const scopedLogger = this.logger.withScope('scaling');
+			const scopedLogger = this.logger.scoped('scaling');
 			scopedLogger.debug('Starting main instance in scaling mode');
 			scopedLogger.debug(`Host ID: ${this.instanceSettings.hostId}`);
 		}
@@ -222,15 +222,21 @@ export class Start extends BaseCommand {
 			await this.generateStaticAssets();
 		}
 
-		if (!this.globalConfig.taskRunners.disabled) {
+		const { taskRunners: taskRunnerConfig } = this.globalConfig;
+		if (!taskRunnerConfig.disabled) {
 			Container.set(TaskManager, new LocalTaskManager());
 			const { TaskRunnerServer } = await import('@/runners/task-runner-server');
 			const taskRunnerServer = Container.get(TaskRunnerServer);
 			await taskRunnerServer.start();
 
-			const { TaskRunnerProcess } = await import('@/runners/task-runner-process');
-			const runnerProcess = Container.get(TaskRunnerProcess);
-			await runnerProcess.start();
+			if (
+				taskRunnerConfig.mode === 'internal_childprocess' ||
+				taskRunnerConfig.mode === 'internal_launcher'
+			) {
+				const { TaskRunnerProcess } = await import('@/runners/task-runner-process');
+				const runnerProcess = Container.get(TaskRunnerProcess);
+				await runnerProcess.start();
+			}
 		}
 	}
 
@@ -257,7 +263,7 @@ export class Start extends BaseCommand {
 		await subscriber.subscribe('n8n.commands');
 		await subscriber.subscribe('n8n.worker-response');
 
-		this.logger.withScope('scaling').debug('Pubsub setup completed');
+		this.logger.scoped(['scaling', 'pubsub']).debug('Pubsub setup completed');
 
 		if (!orchestrationService.isMultiMainSetupEnabled) return;
 

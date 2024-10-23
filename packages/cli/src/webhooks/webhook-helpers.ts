@@ -35,6 +35,7 @@ import {
 	createDeferredPromise,
 	ErrorReporterProxy as ErrorReporter,
 	ErrorReporterProxy,
+	ExecutionCancelledError,
 	FORM_NODE_TYPE,
 	NodeHelpers,
 	NodeOperationError,
@@ -756,7 +757,9 @@ export async function executeWebhook(
 						);
 					}
 
-					throw new InternalServerError(e.message);
+					const internalServerError = new InternalServerError(e.message);
+					if (e instanceof ExecutionCancelledError) internalServerError.level = 'warning';
+					throw internalServerError;
 				});
 		}
 		return executionId;

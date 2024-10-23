@@ -64,6 +64,7 @@ export class NDV extends BasePage {
 		nodeRenameInput: () => cy.getByTestId('node-rename-input'),
 		executePrevious: () => cy.getByTestId('execute-previous-node'),
 		httpRequestNotice: () => cy.getByTestId('node-parameters-http-notice'),
+		nodeCredentialsLabel: () => cy.getByTestId('credentials-label'),
 		nthParam: (n: number) => cy.getByTestId('node-parameters').find('.parameter-item').eq(n),
 		inputRunSelector: () => this.getters.inputPanel().findChildByTestId('run-selector'),
 		inputLinkRun: () => this.getters.inputPanel().findChildByTestId('link-run'),

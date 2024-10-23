@@ -278,9 +278,8 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 	const inviteUsers = async (params: Array<{ email: string; role: InvitableRoleName }>) => {
 		const invitedUsers = await invitationsApi.inviteUsers(rootStore.restApiContext, params);
 		addUsers(
-			invitedUsers.map(({ user }, index) => ({
+			invitedUsers.map(({ user }) => ({
 				isPending: true,
-				globalRole: { name: params[index].role },
 				...user,
 			})),
 		);

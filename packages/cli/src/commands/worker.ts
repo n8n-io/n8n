@@ -69,7 +69,7 @@ export class Worker extends BaseCommand {
 
 		super(argv, cmdConfig);
 
-		this.logger = Container.get(Logger).withScope('scaling');
+		this.logger = Container.get(Logger).scoped('scaling');
 	}
 
 	async init() {
@@ -114,15 +114,21 @@ export class Worker extends BaseCommand {
 			}),
 		);
 
-		if (!this.globalConfig.taskRunners.disabled) {
+		const { taskRunners: taskRunnerConfig } = this.globalConfig;
+		if (!taskRunnerConfig.disabled) {
 			Container.set(TaskManager, new LocalTaskManager());
 			const { TaskRunnerServer } = await import('@/runners/task-runner-server');
 			const taskRunnerServer = Container.get(TaskRunnerServer);
 			await taskRunnerServer.start();
 
-			const { TaskRunnerProcess } = await import('@/runners/task-runner-process');
-			const runnerProcess = Container.get(TaskRunnerProcess);
-			await runnerProcess.start();
+			if (
+				taskRunnerConfig.mode === 'internal_childprocess' ||
+				taskRunnerConfig.mode === 'internal_launcher'
+			) {
+				const { TaskRunnerProcess } = await import('@/runners/task-runner-process');
+				const runnerProcess = Container.get(TaskRunnerProcess);
+				await runnerProcess.start();
+			}
 		}
 	}
 
@@ -145,7 +151,7 @@ export class Worker extends BaseCommand {
 		Container.get(PubSubHandler).init();
 		await Container.get(Subscriber).subscribe('n8n.commands');
 
-		this.logger.withScope('scaling').debug('Pubsub setup ready');
+		this.logger.scoped(['scaling', 'pubsub']).debug('Pubsub setup completed');
 	}
 
 	async setConcurrency() {

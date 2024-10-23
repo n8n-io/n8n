@@ -51,7 +51,7 @@ export class ScalingService {
 		private readonly orchestrationService: OrchestrationService,
 		private readonly eventService: EventService,
 	) {
-		this.logger = this.logger.withScope('scaling');
+		this.logger = this.logger.scoped('scaling');
 	}
 
 	// #region Lifecycle
@@ -126,13 +126,23 @@ export class ScalingService {
 
 	@OnShutdown(HIGHEST_SHUTDOWN_PRIORITY)
 	async stop() {
-		await this.queue.pause(true, true); // no more jobs will be picked up
+		const { instanceType } = this.instanceSettings;
 
-		this.logger.debug('Queue paused');
+		if (instanceType === 'main') await this.stopMain();
+		else if (instanceType === 'worker') await this.stopWorker();
+	}
 
-		this.stopQueueRecovery();
-		this.stopQueueMetrics();
+	private async stopMain() {
+		if (this.orchestrationService.isSingleMainSetup) {
+			await this.queue.pause(true, true); // no more jobs will be picked up
+			this.logger.debug('Queue paused');
+		}
 
+		if (this.queueRecoveryContext.timeout) this.stopQueueRecovery();
+		if (this.isQueueMetricsEnabled) this.stopQueueMetrics();
+	}
+
+	private async stopWorker() {
 		let count = 0;
 
 		while (this.getRunningJobsCount() !== 0) {

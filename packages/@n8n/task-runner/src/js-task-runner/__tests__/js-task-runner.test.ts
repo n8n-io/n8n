@@ -189,6 +189,25 @@ describe('JsTaskRunner', () => {
 				['{ wf: $workflow }', { wf: { active: true, id: '1', name: 'Test Workflow' } }],
 				['$vars', { var: 'value' }],
 			],
+			'Node.js internal functions': [
+				['typeof Function', 'function'],
+				['typeof eval', 'function'],
+				['typeof setTimeout', 'function'],
+				['typeof setInterval', 'function'],
+				['typeof setImmediate', 'function'],
+				['typeof clearTimeout', 'function'],
+				['typeof clearInterval', 'function'],
+				['typeof clearImmediate', 'function'],
+			],
+			'JS built-ins': [
+				['typeof btoa', 'function'],
+				['typeof atob', 'function'],
+				['typeof TextDecoder', 'function'],
+				['typeof TextDecoderStream', 'function'],
+				['typeof TextEncoder', 'function'],
+				['typeof TextEncoderStream', 'function'],
+				['typeof FormData', 'function'],
+			],
 		};
 
 		for (const [groupName, tests] of Object.entries(testGroups)) {
@@ -283,7 +302,7 @@ describe('JsTaskRunner', () => {
 		});
 
 		it('should allow access to Node.js Buffers', async () => {
-			const outcome = await execTaskWithParams({
+			const outcomeAll = await execTaskWithParams({
 				task: newTaskWithSettings({
 					code: 'return { val: Buffer.from("test-buffer").toString() }',
 					nodeMode: 'runOnceForAllItems',
@@ -293,7 +312,21 @@ describe('JsTaskRunner', () => {
 				}),
 			});
 
-			expect(outcome.result).toEqual([wrapIntoJson({ val: 'test-buffer' })]);
+			expect(outcomeAll.result).toEqual([wrapIntoJson({ val: 'test-buffer' })]);
+
+			const outcomePer = await execTaskWithParams({
+				task: newTaskWithSettings({
+					code: 'return { val: Buffer.from("test-buffer").toString() }',
+					nodeMode: 'runOnceForEachItem',
+				}),
+				taskData: newAllCodeTaskData(inputItems.map(wrapIntoJson), {
+					envProviderState: undefined,
+				}),
+			});
+
+			expect(outcomePer.result).toEqual([
+				{ ...wrapIntoJson({ val: 'test-buffer' }), pairedItem: { item: 0 } },
+			]);
 		});
 	});
 
