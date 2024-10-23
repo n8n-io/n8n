@@ -489,6 +489,31 @@ export class NextCloud implements INodeType {
 						value: 'deleteTable',
 						description: 'Delete a Table',
 					},
+					{
+						name: 'Get Columns',
+						value: 'getColumns',
+						description: 'Retrieve all Columns of a Table',
+					},
+					{
+						name: 'Get a Column',
+						value: 'getColumn',
+						description: 'Retrieve a single Column By Id',
+					},
+					{
+						name: 'Create Column',
+						value: 'createColumn',
+						description: 'Create a Column for a Table',
+					},
+					{
+						name: 'Update Column',
+						value: 'updateColumn',
+						description: 'Update a Column By columnId',
+					},
+					{
+						name: 'Delete Column',
+						value: 'deleteColumn',
+						description: 'Delete a Column',
+					},
 				],
 				default: 'getTables',
 				description: 'The operation to perform.',
@@ -503,7 +528,22 @@ export class NextCloud implements INodeType {
 				displayOptions: {
 					show: {
 						resource: ['tables'],
-						operation: ['updateTable', 'deleteTable', 'getTable'],
+						operation: ['updateTable', 'deleteTable', 'getTable', 'getColumns', 'createColumn'],
+					},
+				},
+				placeholder: 'ABCDE',
+				description: 'The ID of the Table',
+			},
+			{
+				displayName: 'Column ID',
+				name: 'columnId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['updateColumn', 'getColumn', 'deleteColumn'],
 					},
 				},
 				placeholder: 'ABCDE',
@@ -536,8 +576,441 @@ export class NextCloud implements INodeType {
 						operation: ['updateTable'],
 					},
 				},
-				description: 'Archive the note or not',
+				description: 'Archive the table or not',
 			},
+			{
+				displayName: 'Column Title',
+				name: 'columnTitle',
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['createColumn', 'updateColumn'],
+					},
+				},
+				type: 'string',
+				default: '',
+				required: true,
+				placeholder: 'Column 1',
+				description: 'Title of the Column',
+			},
+			{
+				displayName: 'Column Description',
+				name: 'columnDescription',
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['createColumn', 'updateColumn'],
+					},
+				},
+				type: 'string',
+				default: '',
+				required: true,
+				placeholder: 'Column 1 Description',
+				description: 'Description of the Column',
+			},
+			{
+				displayName: 'Mandatory',
+				name: 'mandatoryColumn',
+				type: 'boolean',
+				default: true,
+				required: true,
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['createColumn', 'updateColumn'],
+					},
+				},
+				description: 'Make the column Mandatory or not',
+			},
+			{
+				displayName: 'Column Type',
+				name: 'columnType',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['createColumn'],
+					},
+				},
+				options: [
+					{ name: 'Text', value: 'text' },
+					{ name: 'Number', value: 'number' },
+					{ name: 'Date/Time', value: 'datetime' },
+					{ name: 'Selection', value: 'selection' },
+					{ name: 'User Group', value: 'usergroup' },
+					{ name: 'Boolean', value: 'boolean' },
+				],
+				default: 'text',
+				description: 'The type of the column.',
+			},
+			{
+				displayName: 'Column Type',
+				name: 'columnType',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['updateColumn'],
+					},
+				},
+				typeOptions: {
+					noDataExpression: true, // Prevents it from being editable or used in data expressions
+				},
+				default: 'text',
+				description: 'The type of the column. (Uneditable)',
+			},
+
+			// Subtypes
+			{
+				displayName: 'Column SubType',
+				name: 'columnSubType',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['createColumn', 'updateColumn'],
+						columnType: ['text'],
+					},
+				},
+				options: [
+					{ name: 'Line', value: 'line' },
+					{ name: 'None', value: '' },
+				],
+				default: 'line',
+				description: 'The subtype of the column.',
+			},
+			{
+				displayName: 'Column SubType',
+				name: 'columnSubType',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['createColumn', 'updateColumn'],
+						columnType: ['number'],
+					},
+				},
+				options: [{ name: 'None', value: '' }],
+				default: '',
+				description: 'The subtype of the column.',
+			},
+
+			{
+				displayName: 'Column SubType',
+				name: 'columnSubType',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['createColumn', 'updateColumn'],
+						columnType: ['datetime'],
+					},
+				},
+				options: [{ name: 'None', value: '' }],
+				default: '',
+				description: 'The subtype of the column.',
+			},
+
+			{
+				displayName: 'Column SubType',
+				name: 'columnSubType',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['createColumn', 'updateColumn'],
+						columnType: ['selection'],
+					},
+				},
+				options: [
+					{ name: 'Check', value: 'check' },
+					{ name: 'None', value: '' },
+				],
+				default: 'check',
+				description: 'The subtype of the column.',
+			},
+
+			{
+				displayName: 'Column SubType',
+				name: 'columnSubType',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['createColumn', 'updateColumn'],
+						columnType: ['usergroup'],
+					},
+				},
+				options: [{ name: 'None', value: '' }],
+				default: '',
+				description: 'The subtype of the column.',
+			},
+
+			{
+				displayName: 'Column SubType',
+				name: 'columnSubType',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['createColumn', 'updateColumn'],
+						columnType: ['boolean'],
+					},
+				},
+				options: [{ name: 'None', value: '' }],
+				default: '',
+				description: 'The subtype of the column.',
+			},
+
+			// Table fields depending on column type text
+			{
+				displayName: 'Text Default',
+				name: 'textDefault',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['createColumn', 'updateColumn'],
+						columnType: ['text'],
+					},
+				},
+				default: '',
+				description: 'The default value for the text column.',
+			},
+			{
+				displayName: 'Text Allowed Pattern',
+				name: 'textAllowedPattern',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['createColumn', 'updateColumn'],
+						columnType: ['text'],
+					},
+				},
+				default: '',
+				description: 'The allowed pattern for the text column.',
+			},
+			{
+				displayName: 'Text Max Length',
+				name: 'textMaxLength',
+				type: 'number',
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['createColumn', 'updateColumn'],
+						columnType: ['text'],
+					},
+				},
+				default: 0,
+				description: 'The maximum length of the text column.',
+			},
+
+			// Table fields depending on column type number
+
+			{
+				displayName: 'Number Default',
+				name: 'numberDefault',
+				type: 'number',
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['createColumn', 'updateColumn'],
+						columnType: ['number'],
+					},
+				},
+				default: 0,
+				description: 'The default value for the number column.',
+			},
+			{
+				displayName: 'Number Min',
+				name: 'numberMin',
+				type: 'number',
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['createColumn', 'updateColumn'],
+						columnType: ['number'],
+					},
+				},
+				default: 0,
+				description: 'The minimum value for the number column.',
+			},
+			{
+				displayName: 'Number Max',
+				name: 'numberMax',
+				type: 'number',
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['createColumn', 'updateColumn'],
+						columnType: ['number'],
+					},
+				},
+				default: 0,
+				description: 'The maximum value for the number column.',
+			},
+			{
+				displayName: 'Number Decimals',
+				name: 'numberDecimals',
+				type: 'number',
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['createColumn', 'updateColumn'],
+						columnType: ['number'],
+					},
+				},
+				default: 0,
+				description: 'The number of decimals for the number column.',
+			},
+			{
+				displayName: 'Number Prefix',
+				name: 'numberPrefix',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['createColumn', 'updateColumn'],
+						columnType: ['number'],
+					},
+				},
+				default: '',
+				description: 'The prefix for the number column.',
+			},
+			{
+				displayName: 'Number Suffix',
+				name: 'numberSuffix',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['createColumn', 'updateColumn'],
+						columnType: ['number'],
+					},
+				},
+				default: '',
+				description: 'The suffix for the number column.',
+			},
+
+			// Table fields depending on column type datetime
+			{
+				displayName: 'Datetime Default',
+				name: 'datetimeDefault',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['createColumn', 'updateColumn'],
+						columnType: ['datetime'],
+					},
+				},
+				default: '',
+				description: 'The default value for the datetime column.',
+			},
+
+			// Table fields depending on column type selection
+			{
+				displayName: 'Selection Options',
+				name: 'selectionOptions',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['createColumn', 'updateColumn'],
+						columnType: ['selection'],
+					},
+				},
+				default: '',
+				description: 'The options for the selection column.',
+			},
+			{
+				displayName: 'Selection Default',
+				name: 'selectionDefault',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['createColumn', 'updateColumn'],
+						columnType: ['selection'],
+					},
+				},
+				default: '',
+				description: 'The default value for the selection column.',
+			},
+
+			// Table fields depending on column type usergroup
+			{
+				displayName: 'Usergroup Default',
+				name: 'usergroupDefault',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['createColumn', 'updateColumn'],
+						columnType: ['usergroup'],
+					},
+				},
+				default: '',
+				description: 'The default value for the usergroup column.',
+			},
+			{
+				displayName: 'Usergroup Multiple Items',
+				name: 'usergroupMultipleItems',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['createColumn', 'updateColumn'],
+						columnType: ['usergroup'],
+					},
+				},
+				default: true,
+				description: 'Whether multiple items are allowed in the usergroup column.',
+			},
+			{
+				displayName: 'Usergroup Select Users',
+				name: 'usergroupSelectUsers',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['createColumn', 'updateColumn'],
+						columnType: ['usergroup'],
+					},
+				},
+				default: true,
+				description: 'Whether users can be selected in the usergroup column.',
+			},
+			{
+				displayName: 'Usergroup Select Groups',
+				name: 'usergroupSelectGroups',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['createColumn', 'updateColumn'],
+						columnType: ['usergroup'],
+					},
+				},
+				default: true,
+				description: 'Whether groups can be selected in the usergroup column.',
+			},
+			{
+				displayName: 'Usergroup Show User Status',
+				name: 'usergroupShowUserStatus',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['createColumn', 'updateColumn'],
+						columnType: ['usergroup'],
+					},
+				},
+				default: true,
+				description: 'Whether to show user status in the usergroup column.',
+			},
+
 			// Talk Operations
 			{
 				displayName: 'Operation',
@@ -1706,6 +2179,196 @@ export class NextCloud implements INodeType {
 								tablesHeaders,
 							);
 							returnData.push({ json: { success: responseData === '' } });
+							break;
+						}
+						case 'getColumns': {
+							const tableId = this.getNodeParameter('tableId', i) as string;
+							const tablesHeaders = {
+								'OCS-APIRequest': 'true',
+								'Content-Type': 'application/json',
+							};
+							responseData = await nextCloudApiRequest.call(
+								this,
+								'GET',
+								`ocs/v1.php/apps/tables/api/1/tables/${encodeURIComponent(tableId)}/columns`,
+								'',
+								tablesHeaders,
+							);
+							returnData.push(JSON.parse(responseData));
+							break;
+						}
+						case 'getColumn': {
+							const columnId = this.getNodeParameter('columnId', i) as string;
+							const tablesHeaders = {
+								'OCS-APIRequest': 'true',
+								'Content-Type': 'application/json',
+							};
+							responseData = await nextCloudApiRequest.call(
+								this,
+								'GET',
+								`ocs/v1.php/apps/tables/api/1/columns/${encodeURIComponent(columnId)}`,
+								'',
+								tablesHeaders,
+							);
+							returnData.push(JSON.parse(responseData));
+							break;
+						}
+						case 'deleteColumn': {
+							const columnId = this.getNodeParameter('columnId', i) as string;
+							const tablesHeaders = {
+								'OCS-APIRequest': 'true',
+							};
+							responseData = await nextCloudApiRequest.call(
+								this,
+								'DELETE',
+								`ocs/v1.php/apps/tables/api/1/columns/${encodeURIComponent(columnId)}`,
+								'',
+								tablesHeaders,
+							);
+							returnData.push({ json: { success: responseData === '' } });
+							break;
+						}
+						case 'createColumn': {
+							const tableId = this.getNodeParameter('tableId', i) as string;
+							const columnTitle = this.getNodeParameter('columnTitle', i) as string;
+							const columnDescription = this.getNodeParameter('columnDescription', i) as string;
+							const mandatoryColumn = this.getNodeParameter('mandatoryColumn', i) as boolean;
+							const columnType = this.getNodeParameter('columnType', i) as string;
+
+							const additionalFields: Record<string, any> = {};
+							if (columnType === 'text') {
+								additionalFields.textDefault = this.getNodeParameter('textDefault', i);
+								additionalFields.textAllowedPattern = this.getNodeParameter(
+									'textAllowedPattern',
+									i,
+								);
+								additionalFields.textMaxLength = this.getNodeParameter('textMaxLength', i);
+								additionalFields.columnSubType = this.getNodeParameter('columnSubType', i);
+							} else if (columnType === 'number') {
+								additionalFields.numberDefault = this.getNodeParameter('numberDefault', i);
+								additionalFields.numberMin = this.getNodeParameter('numberMin', i);
+								additionalFields.numberMax = this.getNodeParameter('numberMax', i);
+								additionalFields.numberDecimals = this.getNodeParameter('numberDecimals', i);
+								additionalFields.numberPrefix = this.getNodeParameter('numberPrefix', i);
+								additionalFields.numberSuffix = this.getNodeParameter('numberSuffix', i);
+								additionalFields.columnSubType = this.getNodeParameter('columnSubType', i);
+							} else if (columnType === 'datetime') {
+								additionalFields.datetimeDefault = this.getNodeParameter('datetimeDefault', i);
+								additionalFields.columnSubType = this.getNodeParameter('columnSubType', i);
+							} else if (columnType === 'selection') {
+								additionalFields.selectionOptions = this.getNodeParameter('selectionOptions', i);
+								additionalFields.selectionDefault = this.getNodeParameter('selectionDefault', i);
+								additionalFields.columnSubType = this.getNodeParameter('columnSubType', i);
+							} else if (columnType === 'usergroup') {
+								additionalFields.usergroupDefault = this.getNodeParameter('usergroupDefault', i);
+								additionalFields.usergroupMultipleItems = this.getNodeParameter(
+									'usergroupMultipleItems',
+									i,
+								);
+								additionalFields.usergroupSelectUsers = this.getNodeParameter(
+									'usergroupSelectUsers',
+									i,
+								);
+								additionalFields.usergroupSelectGroups = this.getNodeParameter(
+									'usergroupSelectGroups',
+									i,
+								);
+								additionalFields.usergroupShowUserStatus = this.getNodeParameter(
+									'usergroupShowUserStatus',
+									i,
+								);
+								additionalFields.columnSubType = this.getNodeParameter('columnSubType', i);
+							}
+							const columnBody = {
+								title: columnTitle,
+								description: columnDescription,
+								mandatory: mandatoryColumn,
+								type: columnType,
+								...additionalFields,
+							};
+							const tablesHeaders = {
+								'OCS-APIRequest': 'true',
+								'Content-Type': 'application/json',
+							};
+							responseData = await nextCloudApiRequest.call(
+								this,
+								'POST',
+								`ocs/v1.php/apps/tables/api/1/tables/${encodeURIComponent(tableId)}/columns`,
+								JSON.stringify(columnBody),
+								tablesHeaders,
+							);
+							returnData.push(JSON.parse(responseData));
+							break;
+						}
+						case 'updateColumn': {
+							const columnId = this.getNodeParameter('columnId', i) as string;
+							const columnTitle = this.getNodeParameter('columnTitle', i) as string;
+							const columnDescription = this.getNodeParameter('columnDescription', i) as string;
+							const mandatoryColumn = this.getNodeParameter('mandatoryColumn', i) as boolean;
+							const columnType = this.getNodeParameter('columnType', i) as string;
+
+							const additionalFields: Record<string, any> = {};
+							if (columnType === 'text') {
+								additionalFields.textDefault = this.getNodeParameter('textDefault', i);
+								additionalFields.textAllowedPattern = this.getNodeParameter(
+									'textAllowedPattern',
+									i,
+								);
+								additionalFields.textMaxLength = this.getNodeParameter('textMaxLength', i);
+								additionalFields.columnSubType = this.getNodeParameter('columnSubType', i);
+							} else if (columnType === 'number') {
+								additionalFields.numberDefault = this.getNodeParameter('numberDefault', i);
+								additionalFields.numberMin = this.getNodeParameter('numberMin', i);
+								additionalFields.numberMax = this.getNodeParameter('numberMax', i);
+								additionalFields.numberDecimals = this.getNodeParameter('numberDecimals', i);
+								additionalFields.numberPrefix = this.getNodeParameter('numberPrefix', i);
+								additionalFields.numberSuffix = this.getNodeParameter('numberSuffix', i);
+								additionalFields.columnSubType = this.getNodeParameter('columnSubType', i);
+							} else if (columnType === 'datetime') {
+								additionalFields.datetimeDefault = this.getNodeParameter('datetimeDefault', i);
+								additionalFields.columnSubType = this.getNodeParameter('columnSubType', i);
+							} else if (columnType === 'selection') {
+								additionalFields.selectionOptions = this.getNodeParameter('selectionOptions', i);
+								additionalFields.selectionDefault = this.getNodeParameter('selectionDefault', i);
+								additionalFields.columnSubType = this.getNodeParameter('columnSubType', i);
+							} else if (columnType === 'usergroup') {
+								additionalFields.usergroupDefault = this.getNodeParameter('usergroupDefault', i);
+								additionalFields.usergroupMultipleItems = this.getNodeParameter(
+									'usergroupMultipleItems',
+									i,
+								);
+								additionalFields.usergroupSelectUsers = this.getNodeParameter(
+									'usergroupSelectUsers',
+									i,
+								);
+								additionalFields.usergroupSelectGroups = this.getNodeParameter(
+									'usergroupSelectGroups',
+									i,
+								);
+								additionalFields.usergroupShowUserStatus = this.getNodeParameter(
+									'usergroupShowUserStatus',
+									i,
+								);
+								additionalFields.columnSubType = this.getNodeParameter('columnSubType', i);
+							}
+							const columnBody = {
+								title: columnTitle,
+								description: columnDescription,
+								mandatory: mandatoryColumn,
+								...additionalFields,
+							};
+							const tablesHeaders = {
+								'OCS-APIRequest': 'true',
+								'Content-Type': 'application/json',
+							};
+							responseData = await nextCloudApiRequest.call(
+								this,
+								'PUT',
+								`ocs/v1.php/apps/tables/api/1/columns/${encodeURIComponent(columnId)}`,
+								JSON.stringify(columnBody),
+								tablesHeaders,
+							);
+							returnData.push(JSON.parse(responseData));
 							break;
 						}
 						default:
