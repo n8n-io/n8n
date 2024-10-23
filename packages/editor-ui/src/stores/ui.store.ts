@@ -577,15 +577,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			workflowsLeft,
 		});
 
-		let upgradeLink = N8N_PRICING_PAGE_URL;
-
-		if (deploymentType === 'cloud' && hasPermission(['instanceOwner'])) {
-			upgradeLink = await generateCloudDashboardAutoLoginLink({
-				source,
-				utm_campaign,
-				redirectionPath: '/account/change-plan',
-			});
-		}
+		const upgradeLink = await generateUpgradeLink(source, utm_campaign, deploymentType);
 
 		if (mode === 'open') {
 			window.open(upgradeLink, '_blank');
@@ -773,29 +765,43 @@ export const listenForModalChanges = (opts: {
 	});
 };
 
+export const generateUpgradeLink = async (
+	source: string,
+	utm_campaign: string,
+	deploymentType: string,
+) => {
+	let upgradeLink = N8N_PRICING_PAGE_URL;
+	if (deploymentType === 'cloud' && hasPermission(['instanceOwner'])) {
+		upgradeLink = await generateCloudDashboardAutoLoginLink({
+			redirectionPath: '/account/change-plan',
+		});
+	}
+
+	const url = new URL(upgradeLink);
+
+	if (utm_campaign) {
+		url.searchParams.set('utm_campaign', utm_campaign);
+	}
+
+	if (source) {
+		url.searchParams.set('source', source);
+	}
+
+	return url.toString();
+};
+
 const generateCloudDashboardAutoLoginLink = async (data: {
-	source?: string;
-	utm_campaign?: string;
 	redirectionPath: string;
 }) => {
-	let linkUrl = '';
-
 	const searchParams = new URLSearchParams();
 
 	const cloudPlanStore = useCloudPlanStore();
 
 	const adminPanelHost = new URL(window.location.href).host.split('.').slice(1).join('.');
 	const { code } = await cloudPlanStore.getAutoLoginCode();
-	linkUrl = `https://${adminPanelHost}/login`;
+	const linkUrl = `https://${adminPanelHost}/login`;
 	searchParams.set('code', code);
 	searchParams.set('returnPath', data.redirectionPath);
 
-	if (data?.utm_campaign) {
-		searchParams.set('utm_campaign', data.utm_campaign);
-	}
-
-	if (data?.source) {
-		searchParams.set('source', data.source);
-	}
 	return `${linkUrl}?${searchParams.toString()}`;
 };
