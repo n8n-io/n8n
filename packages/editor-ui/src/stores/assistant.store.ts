@@ -251,7 +251,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		streaming.value = false;
 	}
 
-	function addAssistantError(content: string, id: string, retry?: () => void) {
+	function addAssistantError(content: string, id: string, retry?: () => Promise<void>) {
 		chatMessages.value.push({
 			id,
 			role: 'assistant',
@@ -276,7 +276,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		});
 	}
 
-	function handleServiceError(e: unknown, id: string, retry?: () => void) {
+	function handleServiceError(e: unknown, id: string, retry?: () => Promise<void>) {
 		assert(e instanceof Error);
 		stopStreaming();
 		assistantThinkingMessage.value = undefined;
@@ -601,15 +601,19 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				(msg) => onEachStreamingMessage(msg, id),
 				() => onDoneStreaming(id),
 				(e) =>
-					handleServiceError(e, id, () =>
-						retryPreviousMessage(async () => await sendMessage(chatMessage)),
+					handleServiceError(
+						e,
+						id,
+						async () => await withoutFailedMessages(async () => await sendMessage(chatMessage)),
 					),
 			);
 			trackUserMessage(chatMessage.text, !!chatMessage.quickReplyType);
 		} catch (e: unknown) {
 			// in case of assert
-			handleServiceError(e, id, () =>
-				retryPreviousMessage(async () => await sendMessage(chatMessage)),
+			handleServiceError(
+				e,
+				id,
+				async () => await withoutFailedMessages(async () => await sendMessage(chatMessage)),
 			);
 		}
 	}
@@ -764,7 +768,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		codeDiffMessage.replacing = false;
 	}
 
-	function retryPreviousMessage(retry: () => void) {
+	async function withoutFailedMessages(retry: () => Promise<void>) {
 		// pop non-user messages to clear previous errors
 		while (
 			chatMessages.value.length > 0 &&
@@ -773,7 +777,12 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			chatMessages.value.pop();
 		}
 
-		retry();
+		// Pop potential user message as it's about to be repeated by the retry if it exists.
+		if (chatMessages.value.length > 0) {
+			chatMessages.value.pop();
+		}
+
+		await retry();
 	}
 
 	function showCodeUpdateToastIfNeeded(errorNodeName: string) {
@@ -842,10 +851,12 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		resetAssistantChat,
 		chatWindowOpen,
 		addAssistantMessages,
+		addUserMessage,
 		assistantThinkingMessage,
 		chatSessionError,
 		chatSessionTask,
 		initCredHelp,
 		isCredTypeActive,
+		handleServiceError,
 	};
 });

@@ -40,7 +40,7 @@ export namespace ChatUI {
 		role: 'assistant';
 		type: 'error';
 		content: string;
-		retry?: () => void;
+		retry?: () => Promise<void>;
 	}
 
 	export interface AgentSuggestionMessage {
