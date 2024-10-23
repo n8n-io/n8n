@@ -401,7 +401,7 @@ export class NextCloud implements INodeType {
 				displayOptions: {
 					show: {
 						resource: ['notes'],
-						operation: ['updateNote', 'deleteNote'],
+						operation: ['updateNote', 'deleteNote', 'getNote'],
 					},
 				},
 				placeholder: '67890',
