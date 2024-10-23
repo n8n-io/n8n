@@ -22,48 +22,43 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	let responseData: IDataObject | IDataObject[] = [];
 
-	const observableId = this.getNodeParameter('id', i);
+	const observableId = this.getNodeParameter('id', i, '', {
+		extractValue: true,
+	}) as string;
 	const responderId = this.getNodeParameter('responder', i) as string;
 	let body: IDataObject;
-	let response;
+
 	responseData = [];
 	body = {
 		responderId,
 		objectId: observableId,
 		objectType: 'case_artifact',
 	};
-	response = await theHiveApiRequest.call(this, 'POST', '/connector/cortex/action' as string, body);
-	body = {
-		query: [
-			{
-				_name: 'listAction',
-			},
-			{
-				_name: 'filter',
-				_and: [
-					{
-						_field: 'cortexId',
-						_value: response.cortexId,
-					},
-					{
-						_field: 'objectId',
-						_value: response.objectId,
-					},
-					{
-						_field: 'startDate',
-						_value: response.startDate,
-					},
-				],
-			},
-		],
-	};
+	const response = await theHiveApiRequest.call(
+		this,
+		'POST',
+		'/connector/cortex/action' as string,
+		body,
+	);
+	body = {};
 	const qs: IDataObject = {};
 	qs.name = 'log-actions';
+	let observableAction;
 	do {
-		response = await theHiveApiRequest.call(this, 'POST', '/v1/query', body, qs);
-	} while (response.status === 'Waiting' || response.status === 'InProgress');
+		observableAction = await theHiveApiRequest.call(
+			this,
+			'GET',
+			`/connector/cortex/action/case_artifact/${observableId}`,
+			body,
+			qs,
+		);
 
-	responseData = response;
+		observableAction = observableAction.find(
+			(action: any) => action._createdAt == response._createdAt,
+		);
+	} while (observableAction.status === 'Waiting' || observableAction.status === 'InProgress');
+
+	responseData = observableAction;
 
 	const executionData = this.helpers.constructExecutionMetaData(wrapData(responseData), {
 		itemData: { item: i },
