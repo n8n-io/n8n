@@ -1,9 +1,5 @@
 import { createPinia, setActivePinia } from 'pinia';
-import {
-	generateCloudDashboardAutoLoginLink,
-	generateUpgradeLink,
-	useUIStore,
-} from '@/stores/ui.store';
+import { generateUpgradeLink, useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { merge } from 'lodash-es';
