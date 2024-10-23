@@ -4,17 +4,17 @@ import { searchAccounts, searchLocations, searchPosts, searchReviews } from './G
 import { postFields, postOperations } from './PostDescription';
 import { reviewFields, reviewOperations } from './ReviewDescription';
 
-export class GoogleMyBusiness implements INodeType {
+export class GoogleBusinessProfile implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Google My Business',
-		name: 'googleMyBusiness',
-		icon: 'file:googleMyBusines.svg',
+		displayName: 'Google Business Profile',
+		name: 'googleBusinessProfile',
+		icon: 'file:googleBusinessProfile.svg',
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume Google My Business API',
+		description: 'Consume Google Business Profile API',
 		defaults: {
-			name: 'Google My Business',
+			name: 'Google Business Profile',
 		},
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
@@ -30,7 +30,7 @@ export class GoogleMyBusiness implements INodeType {
 		],
 		credentials: [
 			{
-				name: 'googleMyBusinessOAuth2Api',
+				name: 'googleBusinessProfileOAuth2Api',
 				required: true,
 			},
 		],

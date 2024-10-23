@@ -1,5 +1,5 @@
 {
-	"node": "n8n-nodes-base.googleMyBusinessTrigger",
+	"node": "n8n-nodes-base.googleBusinessProfileTrigger",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
 	"categories": ["Communication"],
@@ -11,8 +11,9 @@
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.googlemybusinesstrigger/"
+				"url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.googlebusinessprofiletrigger/"
 			}
 		]
-	}
+	},
+	"alias": ["Google My Business", "GMB", "My Business"]
 }
