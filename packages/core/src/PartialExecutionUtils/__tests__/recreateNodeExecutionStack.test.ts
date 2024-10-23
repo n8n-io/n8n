@@ -352,6 +352,15 @@ describe('recreateNodeExecutionStack', () => {
 		expect(waitingExecutionSource).toEqual({});
 	});
 
+	//               ┌─────┐           ┌─────┐
+	//            ┌──►node1┼────┬──────►     │
+	//            │  └─────┘    │      │merge│
+	//            │             │  ┌───►     │
+	//            ├─────────────┘  │   └─────┘
+	//            │                │
+	//┌───────┐   │    ┌─────┐     │
+	//│trigger├───┴────►node2├─────┘
+	//└───────┘        └─────┘
 	describe('multiple inputs', () => {
 		// ARRANGE
 		const trigger = createNodeData({ name: 'trigger' });
