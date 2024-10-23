@@ -108,6 +108,15 @@ describe('ActiveExecutions', () => {
 		expect(activeExecutions.getActiveExecutions().length).toBe(0);
 	});
 
+	test('Should not try to resolve a post-execute promise for an inactive execution', async () => {
+		// @ts-expect-error Private method
+		const getExecutionSpy = jest.spyOn(activeExecutions, 'getExecution');
+
+		activeExecutions.finalizeExecution('inactive-execution-id', mockFullRunData());
+
+		expect(getExecutionSpy).not.toHaveBeenCalled();
+	});
+
 	test('Should resolve post execute promise on removal', async () => {
 		const newExecution = mockExecutionData();
 		const executionId = await activeExecutions.add(newExecution);
