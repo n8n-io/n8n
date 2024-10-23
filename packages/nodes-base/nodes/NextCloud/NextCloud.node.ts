@@ -497,7 +497,7 @@ export class NextCloud implements INodeType {
 					{
 						name: 'Get a Column',
 						value: 'getColumn',
-						description: 'Retrieve a single Column By Id',
+						description: 'Retrieve a single Column By columnId',
 					},
 					{
 						name: 'Create Column',
@@ -512,7 +512,32 @@ export class NextCloud implements INodeType {
 					{
 						name: 'Delete Column',
 						value: 'deleteColumn',
-						description: 'Delete a Column',
+						description: 'Delete a Column by columnId',
+					},
+					{
+						name: 'Get Rows',
+						value: 'getRows',
+						description: 'Retrieve all Rows of a Table',
+					},
+					{
+						name: 'Get a Row',
+						value: 'getRow',
+						description: 'Retrieve a single Row By rowId',
+					},
+					{
+						name: 'Create Row',
+						value: 'createRow',
+						description: 'Create a Row within a Table',
+					},
+					{
+						name: 'Update Row',
+						value: 'updateRow',
+						description: 'Update a Row By rowId',
+					},
+					{
+						name: 'Delete Row',
+						value: 'deleteRow',
+						description: 'Delete a Row by rowId',
 					},
 				],
 				default: 'getTables',
@@ -528,7 +553,15 @@ export class NextCloud implements INodeType {
 				displayOptions: {
 					show: {
 						resource: ['tables'],
-						operation: ['updateTable', 'deleteTable', 'getTable', 'getColumns', 'createColumn'],
+						operation: [
+							'updateTable',
+							'deleteTable',
+							'getTable',
+							'getColumns',
+							'createColumn',
+							'getRows',
+							'createRow',
+						],
 					},
 				},
 				placeholder: 'ABCDE',
@@ -547,7 +580,22 @@ export class NextCloud implements INodeType {
 					},
 				},
 				placeholder: 'ABCDE',
-				description: 'The ID of the Table',
+				description: 'The ID of the Column',
+			},
+			{
+				displayName: 'Row ID',
+				name: 'rowId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['updateRow', 'getRow', 'deleteRow'],
+					},
+				},
+				placeholder: 'ABCDE',
+				description: 'The ID of the Row',
 			},
 			{
 				displayName: 'Table Title',
@@ -1010,7 +1058,22 @@ export class NextCloud implements INodeType {
 				default: true,
 				description: 'Whether to show user status in the usergroup column.',
 			},
-
+			// Row field
+			{
+				displayName: 'Row Data',
+				name: 'rowData',
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['createRow', 'updateRow'],
+					},
+				},
+				type: 'string',
+				default: '',
+				required: true,
+				placeholder: 'Row Data',
+				description: 'Data of the Row',
+			},
 			// Talk Operations
 			{
 				displayName: 'Operation',
@@ -2366,6 +2429,90 @@ export class NextCloud implements INodeType {
 								'PUT',
 								`ocs/v1.php/apps/tables/api/1/columns/${encodeURIComponent(columnId)}`,
 								JSON.stringify(columnBody),
+								tablesHeaders,
+							);
+							returnData.push(JSON.parse(responseData));
+							break;
+						}
+
+						case 'getRows': {
+							const tableId = this.getNodeParameter('tableId', i) as string;
+							const tablesHeaders = {
+								'OCS-APIRequest': 'true',
+								'Content-Type': 'application/json',
+							};
+							responseData = await nextCloudApiRequest.call(
+								this,
+								'GET',
+								`ocs/v1.php/apps/tables/api/1/tables/${encodeURIComponent(tableId)}/rows`,
+								'',
+								tablesHeaders,
+							);
+							returnData.push(JSON.parse(responseData));
+							break;
+						}
+						case 'getRow': {
+							const rowId = this.getNodeParameter('rowId', i) as string;
+							const tablesHeaders = {
+								'OCS-APIRequest': 'true',
+								'Content-Type': 'application/json',
+							};
+							responseData = await nextCloudApiRequest.call(
+								this,
+								'GET',
+								`ocs/v1.php/apps/tables/api/1/rows/${encodeURIComponent(rowId)}`,
+								'',
+								tablesHeaders,
+							);
+							returnData.push(JSON.parse(responseData));
+							break;
+						}
+						case 'deleteRow': {
+							const rowId = this.getNodeParameter('rowId', i) as string;
+							const tablesHeaders = {
+								'OCS-APIRequest': 'true',
+							};
+							responseData = await nextCloudApiRequest.call(
+								this,
+								'DELETE',
+								`ocs/v1.php/apps/tables/api/1/rows/${encodeURIComponent(rowId)}`,
+								'',
+								tablesHeaders,
+							);
+							returnData.push({ json: { success: responseData === '' } });
+							break;
+						}
+						case 'createRow': {
+							const tableId = this.getNodeParameter('tableId', i) as string;
+							const rowData = this.getNodeParameter('rowData', i) as string;
+							const rowBody = { data: rowData };
+							const tablesHeaders = {
+								'OCS-APIRequest': 'true',
+								'Content-Type': 'application/json',
+							};
+							responseData = await nextCloudApiRequest.call(
+								this,
+								'POST',
+								`ocs/v1.php/apps/tables/api/1/tables/${encodeURIComponent(tableId)}/rows`,
+								JSON.stringify(rowBody),
+								tablesHeaders,
+							);
+							returnData.push(JSON.parse(responseData));
+							break;
+						}
+						case 'updateRow': {
+							const rowId = this.getNodeParameter('rowId', i) as string;
+							const rowData = this.getNodeParameter('rowData', i) as string;
+							const rowBody = { data: rowData };
+							const tablesHeaders = {
+								'OCS-APIRequest': 'true',
+								'Content-Type': 'application/json',
+							};
+							responseData = await nextCloudApiRequest.call(
+								this,
+								'PUT',
+								`ocs/v1.php/apps/tables/api/1/rows/${encodeURIComponent(rowId)}`,
+								JSON.stringify(rowBody),
 								tablesHeaders,
 							);
 							returnData.push(JSON.parse(responseData));
