@@ -24,14 +24,12 @@ export class VariablesController {
 	constructor(private readonly variablesService: VariablesService) {}
 
 	@Get('/')
-	@GlobalScope('variable:list')
-	async getVariables() {
-		return await this.variablesService.getAllCached();
+	async getVariables(req: AuthenticatedRequest) {
+		return await this.variablesService.getAllForUser(req.user);
 	}
 
 	@Post('/')
 	@Licensed('feat:variables')
-	@GlobalScope('variable:create')
 	async createVariable(
 		req: AuthenticatedRequest,
 		_res: Response,
@@ -56,7 +54,7 @@ export class VariablesController {
 		_res: Response,
 		@Param('variableId') variableId: string,
 	) {
-		const variable = await this.variablesService.getCached(variableId);
+		const variable = await this.variablesService.getForUser(variableId, req.user);
 		if (variable === null) {
 			throw new NotFoundError(`Variable with id ${variableId} not found`);
 		}
@@ -65,7 +63,6 @@ export class VariablesController {
 
 	@Patch('/:variableId')
 	@Licensed('feat:variables')
-	@GlobalScope('variable:update')
 	async updateVariable(
 		req: AuthenticatedRequest,
 		_res: Response,
@@ -88,7 +85,7 @@ export class VariablesController {
 	@GlobalScope('variable:delete')
 	async deleteVariable(req: VariablesRequest.Delete) {
 		const id = req.params.id;
-		await this.variablesService.delete(id);
+		await this.variablesService.delete(id, req.user);
 
 		return true;
 	}

@@ -33,7 +33,7 @@ export class VariablesService {
 		return (variables as Array<Partial<Variables>>).map((v) => this.variablesRepository.create(v));
 	}
 
-	async getAllForUser(id: string, user: User): Promise<Variables[]> {
+	async getAllForUser(user: User): Promise<Variables[]> {
 		const projects = await this.projectService.getAccessibleProjects(user);
 		const projectIds = projects.map((p) => p.id);
 
@@ -41,9 +41,7 @@ export class VariablesService {
 		const canReadGlobalVariables = user.hasGlobalScope('globalVariable:read');
 
 		const foundVariables = unfilteredVariables.filter((variable) => {
-			if (variable.id !== id) {
-				return false;
-			} else if (!variable.projectId && canReadGlobalVariables) {
+			if (!variable.projectId && canReadGlobalVariables) {
 				return true;
 			} else if (variable.projectId && projectIds.includes(variable.projectId)) {
 				return true;
@@ -93,7 +91,28 @@ export class VariablesService {
 		return this.variablesRepository.create(foundVariable as Partial<Variables>);
 	}
 
-	async delete(id: string): Promise<void> {
+	async delete(id: string, user: User): Promise<void> {
+		const originalVariable = await this.variablesRepository.findOneOrFail({
+			where: {
+				id,
+			},
+		});
+
+		// Updating a global variable
+		if (!originalVariable.projectId && !user.hasGlobalScope('globalVariable:delete')) {
+			throw new MissingScopeError();
+		}
+
+		// Updating a project variable
+		if (
+			originalVariable.projectId &&
+			!(await this.projectService.getProjectWithScope(user, originalVariable.projectId, [
+				'variable:delete',
+			]))
+		) {
+			throw new MissingScopeError();
+		}
+
 		await this.variablesRepository.delete(id);
 		await this.updateCache();
 	}
