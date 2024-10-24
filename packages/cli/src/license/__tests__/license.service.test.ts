@@ -41,7 +41,7 @@ describe('LicenseService', () => {
 			const data = await licenseService.getLicenseData();
 			expect(data).toEqual({
 				usage: {
-					executions: {
+					activeWorkflowTriggers: {
 						limit: 400,
 						value: 7,
 						warningThreshold: 0.8,

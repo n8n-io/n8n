@@ -18,7 +18,7 @@ const DEFAULT_STATE: UsageState = {
 	loading: true,
 	data: {
 		usage: {
-			executions: {
+			activeWorkflowTriggers: {
 				limit: -1,
 				value: 0,
 				warningThreshold: 0.8,
@@ -39,9 +39,11 @@ export const useUsageStore = defineStore('usage', () => {
 
 	const planName = computed(() => state.data.license.planName || DEFAULT_PLAN_NAME);
 	const planId = computed(() => state.data.license.planId);
-	const executionLimit = computed(() => state.data.usage.executions.limit);
-	const executionCount = computed(() => state.data.usage.executions.value);
-	const executionPercentage = computed(() => (executionCount.value / executionLimit.value) * 100);
+	const activeWorkflowTriggersLimit = computed(() => state.data.usage.activeWorkflowTriggers.limit);
+	const activeWorkflowTriggersCount = computed(() => state.data.usage.activeWorkflowTriggers.value);
+	const executionPercentage = computed(
+		() => (activeWorkflowTriggersCount.value / activeWorkflowTriggersLimit.value) * 100,
+	);
 	const instanceId = computed(() => settingsStore.settings.instanceId);
 	const managementToken = computed(() => state.data.managementToken);
 	const appVersion = computed(() => settingsStore.settings.versionCli);
@@ -99,17 +101,17 @@ export const useUsageStore = defineStore('usage', () => {
 		registerCommunityEdition,
 		planName,
 		planId,
-		executionLimit,
-		executionCount,
+		activeWorkflowTriggersLimit,
+		activeWorkflowTriggersCount,
 		executionPercentage,
 		instanceId,
 		managementToken,
 		appVersion,
 		isCloseToLimit: computed(() =>
-			state.data.usage.executions.limit < 0
+			state.data.usage.activeWorkflowTriggers.limit < 0
 				? false
-				: executionCount.value / executionLimit.value >=
-					state.data.usage.executions.warningThreshold,
+				: activeWorkflowTriggersCount.value / activeWorkflowTriggersLimit.value >=
+					state.data.usage.activeWorkflowTriggers.warningThreshold,
 		),
 		viewPlansUrl: computed(
 			() => `${subscriptionAppUrl.value}?${commonSubscriptionAppUrlQueryParams.value}`,
@@ -123,8 +125,8 @@ export const useUsageStore = defineStore('usage', () => {
 			instance_id: instanceId.value,
 			action: 'view_plans',
 			plan_name_current: planName.value,
-			usage: executionCount.value,
-			quota: executionLimit.value,
+			usage: activeWorkflowTriggersCount.value,
+			quota: activeWorkflowTriggersLimit.value,
 		})),
 	};
 });
