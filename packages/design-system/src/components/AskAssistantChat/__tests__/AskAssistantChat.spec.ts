@@ -211,7 +211,7 @@ describe('AskAssistantChat', () => {
 	});
 
 	it('does not render retry button if no error is present', () => {
-		const x = render(AskAssistantChat, {
+		const wrapper = render(AskAssistantChat, {
 			global: {
 				directives: {
 					n8nHtml,
@@ -233,7 +233,7 @@ describe('AskAssistantChat', () => {
 			},
 		});
 
-		expect(x.container).toMatchSnapshot();
-		expect(x.queryByTestId('error-retry-button')).not.toBeInTheDocument();
+		expect(wrapper.container).toMatchSnapshot();
+		expect(wrapper.queryByTestId('error-retry-button')).not.toBeInTheDocument();
 	});
 });
