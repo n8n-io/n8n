@@ -1,3 +1,13 @@
+## [1.64.2](https://github.com/n8n-io/n8n/compare/n8n@1.64.1...n8n@1.64.2) (2024-10-24)
+
+
+### Bug Fixes
+
+* **core:** Change dedupe value column type from varchar(255) to text ([#11357](https://github.com/n8n-io/n8n/issues/11357)) ([6b272b0](https://github.com/n8n-io/n8n/commit/6b272b088adc7fabc5f06258cede2f2f0fc081cb))
+* **editor:** Record sessionStarted telemetry event in Setting Store ([#11334](https://github.com/n8n-io/n8n/issues/11334)) ([8b393aa](https://github.com/n8n-io/n8n/commit/8b393aaa80c469ea743491a2638e4ae0f618b8bc))
+
+
+
 ## [1.64.1](https://github.com/n8n-io/n8n/compare/n8n@1.64.0...n8n@1.64.1) (2024-10-21)
 
 
