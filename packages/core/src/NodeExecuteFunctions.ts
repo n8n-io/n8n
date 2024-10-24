@@ -3758,14 +3758,14 @@ export function getExecuteFunctions(
 			continueOnFail: () => {
 				return continueOnFail(node);
 			},
-			evaluateExpression: (expression: string, itemIndex: number) => {
+			evaluateExpression(expression: string, itemIndex: number) {
 				return workflow.expression.resolveSimpleParameterValue(
 					`=${expression}`,
 					{},
 					runExecutionData,
 					runIndex,
 					itemIndex,
-					node.name,
+					this.getNode().name,
 					connectionInputData,
 					mode,
 					getAdditionalKeys(additionalData, mode, runExecutionData),
