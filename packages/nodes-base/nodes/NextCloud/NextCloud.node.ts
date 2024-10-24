@@ -85,6 +85,22 @@ export class NextCloud implements INodeType {
 						name: 'User',
 						value: 'user',
 					},
+					{
+						name: 'Deck',
+						value: 'deck',
+					},
+					{
+						name: 'Notes',
+						value: 'notes',
+					},
+					{
+						name: 'Tables',
+						value: 'tables',
+					},
+					{
+						name: 'Talk',
+						value: 'talk',
+					},
 				],
 				default: 'file',
 			},
@@ -92,6 +108,7 @@ export class NextCloud implements INodeType {
 			// ----------------------------------
 			//         operations
 			// ----------------------------------
+			// Existing File Operations
 			{
 				displayName: 'Operation',
 				name: 'operation',
@@ -142,7 +159,7 @@ export class NextCloud implements INodeType {
 				],
 				default: 'upload',
 			},
-
+			// Existing Folder Operations
 			{
 				displayName: 'Operation',
 				name: 'operation',
@@ -193,7 +210,7 @@ export class NextCloud implements INodeType {
 				],
 				default: 'create',
 			},
-
+			// Existing User Operations
 			{
 				displayName: 'Operation',
 				name: 'operation',
@@ -237,6 +254,844 @@ export class NextCloud implements INodeType {
 					},
 				],
 				default: 'create',
+			},
+			// Deck Operations
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				displayOptions: {
+					show: {
+						resource: ['deck'],
+					},
+				},
+				options: [
+					{
+						name: 'Create Board',
+						value: 'createBoard',
+						description: 'Create a new Deck board',
+					},
+					{
+						name: 'Get Boards',
+						value: 'getBoards',
+						description: 'Retrieve all Deck boards',
+					},
+					{
+						name: 'Update Board',
+						value: 'updateBoard',
+						description: 'Update an existing Deck board',
+					},
+					{
+						name: 'Delete Board',
+						value: 'deleteBoard',
+						description: 'Delete a Deck board',
+					},
+				],
+				default: 'getBoards',
+				description: 'The operation to perform.',
+			},
+			// Deck Fields
+			{
+				displayName: 'Board ID',
+				name: 'boardId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: ['deck'],
+						operation: ['updateBoard', 'deleteBoard'],
+					},
+				},
+				placeholder: '12345',
+				description: 'The ID of the Deck board',
+			},
+			{
+				displayName: 'Board Title',
+				name: 'boardName',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: ['deck'],
+						operation: ['createBoard', 'updateBoard'],
+					},
+				},
+				placeholder: 'Project Management',
+				description: 'Name of the Deck board',
+			},
+			{
+				displayName: 'Board Color',
+				name: 'boardColor',
+				type: 'color', // Use this if n8n supports color types
+				default: '#FFFFFF', // Default color in hexadecimal
+				required: false, // Optional color field
+				displayOptions: {
+					show: {
+						resource: ['deck'],
+						operation: ['createBoard', 'updateBoard'],
+					},
+				},
+				description: 'Select a color for the board',
+			},
+			{
+				displayName: 'Archived',
+				name: 'archivedBoard',
+				type: 'boolean',
+				default: false,
+				required: false,
+				displayOptions: {
+					show: {
+						resource: ['deck'],
+						operation: ['updateBoard'],
+					},
+				},
+				description: 'Archive the board or not',
+			},
+			// Notes Operations
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				displayOptions: {
+					show: {
+						resource: ['notes'],
+					},
+				},
+				options: [
+					{
+						name: 'Create Note',
+						value: 'createNote',
+						description: 'Create a new Note',
+					},
+					{
+						name: 'Get Notes',
+						value: 'getNotes',
+						description: 'Retrieve all Notes',
+					},
+					{
+						name: 'Get a Note',
+						value: 'getNote',
+						description: 'Retrieve a single Note',
+					},
+					{
+						name: 'Update Note',
+						value: 'updateNote',
+						description: 'Update an existing Note',
+					},
+					{
+						name: 'Delete Note',
+						value: 'deleteNote',
+						description: 'Delete a Note',
+					},
+				],
+				default: 'getNotes',
+				description: 'The operation to perform.',
+			},
+			// Notes Fields
+			{
+				displayName: 'Note ID',
+				name: 'noteId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: ['notes'],
+						operation: ['updateNote', 'deleteNote', 'getNote'],
+					},
+				},
+				placeholder: '67890',
+				description: 'The ID of the Note',
+			},
+			{
+				displayName: 'Content',
+				name: 'content',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: ['notes'],
+						operation: ['createNote', 'updateNote'],
+					},
+				},
+				placeholder: 'Meeting notes...',
+				description: 'Content of the Note',
+			},
+			{
+				displayName: 'Title',
+				name: 'noteTitle',
+				type: 'string',
+				default: 'New note',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: ['notes'],
+						operation: ['createNote'],
+					},
+				},
+				placeholder: 'New note...',
+				description: 'Title of the Note',
+			},
+			{
+				displayName: 'Category',
+				name: 'noteCategory',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: ['notes'],
+						operation: ['createNote'],
+					},
+				},
+				placeholder: 'Category of note...',
+				description: 'Category of the Note',
+			},
+			// Tables Operations
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+					},
+				},
+				options: [
+					{
+						name: 'Create Table',
+						value: 'createTable',
+						description: 'Create a new Table',
+					},
+					{
+						name: 'Get Tables',
+						value: 'getTables',
+						description: 'Retrieve all Tables',
+					},
+					{
+						name: 'Get a Table',
+						value: 'getTable',
+						description: 'Retrieve a single Table',
+					},
+					{
+						name: 'Update Table',
+						value: 'updateTable',
+						description: 'Update an existing Table',
+					},
+					{
+						name: 'Delete Table',
+						value: 'deleteTable',
+						description: 'Delete a Table',
+					},
+					{
+						name: 'Get Columns',
+						value: 'getColumns',
+						description: 'Retrieve all Columns of a Table',
+					},
+					{
+						name: 'Get a Column',
+						value: 'getColumn',
+						description: 'Retrieve a single Column By Id',
+					},
+					{
+						name: 'Create Column',
+						value: 'createColumn',
+						description: 'Create a Column for a Table',
+					},
+					{
+						name: 'Update Column',
+						value: 'updateColumn',
+						description: 'Update a Column By columnId',
+					},
+					{
+						name: 'Delete Column',
+						value: 'deleteColumn',
+						description: 'Delete a Column',
+					},
+				],
+				default: 'getTables',
+				description: 'The operation to perform.',
+			},
+			// Tables Fields
+			{
+				displayName: 'Table ID',
+				name: 'tableId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['updateTable', 'deleteTable', 'getTable', 'getColumns', 'createColumn'],
+					},
+				},
+				placeholder: 'ABCDE',
+				description: 'The ID of the Table',
+			},
+			{
+				displayName: 'Column ID',
+				name: 'columnId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['updateColumn', 'getColumn', 'deleteColumn'],
+					},
+				},
+				placeholder: 'ABCDE',
+				description: 'The ID of the Table',
+			},
+			{
+				displayName: 'Table Title',
+				name: 'tableName',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['createTable', 'updateTable'],
+					},
+				},
+				placeholder: 'Project Tasks',
+				description: 'Name of the Table',
+			},
+			{
+				displayName: 'Archived',
+				name: 'archivedTable',
+				type: 'boolean',
+				default: false,
+				required: false,
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['updateTable'],
+					},
+				},
+				description: 'Archive the table or not',
+			},
+			{
+				displayName: 'Column Title',
+				name: 'columnTitle',
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['createColumn', 'updateColumn'],
+					},
+				},
+				type: 'string',
+				default: '',
+				required: true,
+				placeholder: 'Column 1',
+				description: 'Title of the Column',
+			},
+			{
+				displayName: 'Column Description',
+				name: 'columnDescription',
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['createColumn', 'updateColumn'],
+					},
+				},
+				type: 'string',
+				default: '',
+				required: true,
+				placeholder: 'Column 1 Description',
+				description: 'Description of the Column',
+			},
+			{
+				displayName: 'Mandatory',
+				name: 'mandatoryColumn',
+				type: 'boolean',
+				default: true,
+				required: true,
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['createColumn', 'updateColumn'],
+					},
+				},
+				description: 'Make the column Mandatory or not',
+			},
+			{
+				displayName: 'Column Type',
+				name: 'columnType',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['createColumn'],
+					},
+				},
+				options: [
+					{ name: 'Text', value: 'text' },
+					{ name: 'Number', value: 'number' },
+					{ name: 'Date/Time', value: 'datetime' },
+					{ name: 'Selection', value: 'selection' },
+					{ name: 'User Group', value: 'usergroup' },
+					{ name: 'Boolean', value: 'boolean' },
+				],
+				default: 'text',
+				description: 'The type of the column.',
+			},
+			{
+				displayName: 'Column Type',
+				name: 'columnType',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['updateColumn'],
+					},
+				},
+				typeOptions: {
+					noDataExpression: true, // Prevents it from being editable or used in data expressions
+				},
+				default: 'text',
+				description: 'The type of the column. (Uneditable)',
+			},
+
+			// Subtypes
+			{
+				displayName: 'Column SubType',
+				name: 'columnSubType',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['createColumn', 'updateColumn'],
+						columnType: ['text'],
+					},
+				},
+				options: [
+					{ name: 'Line', value: 'line' },
+					{ name: 'None', value: '' },
+				],
+				default: 'line',
+				description: 'The subtype of the column.',
+			},
+			{
+				displayName: 'Column SubType',
+				name: 'columnSubType',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['createColumn', 'updateColumn'],
+						columnType: ['number'],
+					},
+				},
+				options: [{ name: 'None', value: '' }],
+				default: '',
+				description: 'The subtype of the column.',
+			},
+
+			{
+				displayName: 'Column SubType',
+				name: 'columnSubType',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['createColumn', 'updateColumn'],
+						columnType: ['datetime'],
+					},
+				},
+				options: [{ name: 'None', value: '' }],
+				default: '',
+				description: 'The subtype of the column.',
+			},
+
+			{
+				displayName: 'Column SubType',
+				name: 'columnSubType',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['createColumn', 'updateColumn'],
+						columnType: ['selection'],
+					},
+				},
+				options: [
+					{ name: 'Check', value: 'check' },
+					{ name: 'None', value: '' },
+				],
+				default: 'check',
+				description: 'The subtype of the column.',
+			},
+
+			{
+				displayName: 'Column SubType',
+				name: 'columnSubType',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['createColumn', 'updateColumn'],
+						columnType: ['usergroup'],
+					},
+				},
+				options: [{ name: 'None', value: '' }],
+				default: '',
+				description: 'The subtype of the column.',
+			},
+
+			{
+				displayName: 'Column SubType',
+				name: 'columnSubType',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['createColumn', 'updateColumn'],
+						columnType: ['boolean'],
+					},
+				},
+				options: [{ name: 'None', value: '' }],
+				default: '',
+				description: 'The subtype of the column.',
+			},
+
+			// Table fields depending on column type text
+			{
+				displayName: 'Text Default',
+				name: 'textDefault',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['createColumn', 'updateColumn'],
+						columnType: ['text'],
+					},
+				},
+				default: '',
+				description: 'The default value for the text column.',
+			},
+			{
+				displayName: 'Text Allowed Pattern',
+				name: 'textAllowedPattern',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['createColumn', 'updateColumn'],
+						columnType: ['text'],
+					},
+				},
+				default: '',
+				description: 'The allowed pattern for the text column.',
+			},
+			{
+				displayName: 'Text Max Length',
+				name: 'textMaxLength',
+				type: 'number',
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['createColumn', 'updateColumn'],
+						columnType: ['text'],
+					},
+				},
+				default: 0,
+				description: 'The maximum length of the text column.',
+			},
+
+			// Table fields depending on column type number
+
+			{
+				displayName: 'Number Default',
+				name: 'numberDefault',
+				type: 'number',
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['createColumn', 'updateColumn'],
+						columnType: ['number'],
+					},
+				},
+				default: 0,
+				description: 'The default value for the number column.',
+			},
+			{
+				displayName: 'Number Min',
+				name: 'numberMin',
+				type: 'number',
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['createColumn', 'updateColumn'],
+						columnType: ['number'],
+					},
+				},
+				default: 0,
+				description: 'The minimum value for the number column.',
+			},
+			{
+				displayName: 'Number Max',
+				name: 'numberMax',
+				type: 'number',
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['createColumn', 'updateColumn'],
+						columnType: ['number'],
+					},
+				},
+				default: 0,
+				description: 'The maximum value for the number column.',
+			},
+			{
+				displayName: 'Number Decimals',
+				name: 'numberDecimals',
+				type: 'number',
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['createColumn', 'updateColumn'],
+						columnType: ['number'],
+					},
+				},
+				default: 0,
+				description: 'The number of decimals for the number column.',
+			},
+			{
+				displayName: 'Number Prefix',
+				name: 'numberPrefix',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['createColumn', 'updateColumn'],
+						columnType: ['number'],
+					},
+				},
+				default: '',
+				description: 'The prefix for the number column.',
+			},
+			{
+				displayName: 'Number Suffix',
+				name: 'numberSuffix',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['createColumn', 'updateColumn'],
+						columnType: ['number'],
+					},
+				},
+				default: '',
+				description: 'The suffix for the number column.',
+			},
+
+			// Table fields depending on column type datetime
+			{
+				displayName: 'Datetime Default',
+				name: 'datetimeDefault',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['createColumn', 'updateColumn'],
+						columnType: ['datetime'],
+					},
+				},
+				default: '',
+				description: 'The default value for the datetime column.',
+			},
+
+			// Table fields depending on column type selection
+			{
+				displayName: 'Selection Options',
+				name: 'selectionOptions',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['createColumn', 'updateColumn'],
+						columnType: ['selection'],
+					},
+				},
+				default: '',
+				description: 'The options for the selection column.',
+			},
+			{
+				displayName: 'Selection Default',
+				name: 'selectionDefault',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['createColumn', 'updateColumn'],
+						columnType: ['selection'],
+					},
+				},
+				default: '',
+				description: 'The default value for the selection column.',
+			},
+
+			// Table fields depending on column type usergroup
+			{
+				displayName: 'Usergroup Default',
+				name: 'usergroupDefault',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['createColumn', 'updateColumn'],
+						columnType: ['usergroup'],
+					},
+				},
+				default: '',
+				description: 'The default value for the usergroup column.',
+			},
+			{
+				displayName: 'Usergroup Multiple Items',
+				name: 'usergroupMultipleItems',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['createColumn', 'updateColumn'],
+						columnType: ['usergroup'],
+					},
+				},
+				default: true,
+				description: 'Whether multiple items are allowed in the usergroup column.',
+			},
+			{
+				displayName: 'Usergroup Select Users',
+				name: 'usergroupSelectUsers',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['createColumn', 'updateColumn'],
+						columnType: ['usergroup'],
+					},
+				},
+				default: true,
+				description: 'Whether users can be selected in the usergroup column.',
+			},
+			{
+				displayName: 'Usergroup Select Groups',
+				name: 'usergroupSelectGroups',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['createColumn', 'updateColumn'],
+						columnType: ['usergroup'],
+					},
+				},
+				default: true,
+				description: 'Whether groups can be selected in the usergroup column.',
+			},
+			{
+				displayName: 'Usergroup Show User Status',
+				name: 'usergroupShowUserStatus',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['createColumn', 'updateColumn'],
+						columnType: ['usergroup'],
+					},
+				},
+				default: true,
+				description: 'Whether to show user status in the usergroup column.',
+			},
+
+			// Talk Operations
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				displayOptions: {
+					show: {
+						resource: ['talk'],
+					},
+				},
+				options: [
+					{
+						name: 'Send Message',
+						value: 'sendMessage',
+						description: 'Send a message in a conversation',
+					},
+					{
+						name: 'Get Conversations',
+						value: 'getConversations',
+						description: 'Retrieve all Conversations',
+					},
+					{
+						name: 'Create Conversation',
+						value: 'createConversation',
+						description: 'Create a new Conversation',
+					},
+					{
+						name: 'Delete Conversation',
+						value: 'deleteConversation',
+						description: 'Delete a Conversation',
+					},
+				],
+				default: 'getConversations',
+				description: 'The operation to perform.',
+			},
+			// Talk Fields
+			{
+				displayName: 'Conversation ID',
+				name: 'conversationId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: ['talk'],
+						operation: ['sendMessage', 'deleteConversation'],
+					},
+				},
+				placeholder: 'FGHIJ',
+				description: 'The ID of the Conversation',
+			},
+			{
+				displayName: 'Message',
+				name: 'message',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: ['talk'],
+						operation: ['sendMessage'],
+					},
+				},
+				placeholder: 'Hello team!',
+				description: 'Message to send',
+			},
+			{
+				displayName: 'Conversation Name',
+				name: 'conversationName',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: ['talk'],
+						operation: ['createConversation'],
+					},
+				},
+				placeholder: 'Team Chat',
+				description: 'Name of the Conversation',
 			},
 
 			// ----------------------------------
@@ -566,7 +1421,7 @@ export class NextCloud implements INodeType {
 							},
 						},
 						default: '',
-						description: 'Optional search string',
+						description: 'Optional password for public link',
 					},
 					{
 						displayName: 'Permissions',
@@ -962,10 +1817,10 @@ export class NextCloud implements INodeType {
 
 						endpoint = 'ocs/v2.php/apps/files_sharing/api/v1/shares';
 
-						headers['OCS-APIRequest'] = true;
+						headers['OCS-APIRequest'] = 'true';
 						headers['Content-Type'] = 'application/x-www-form-urlencoded';
 
-						const bodyParameters = this.getNodeParameter('options', i);
+						const bodyParameters = this.getNodeParameter('options', i) as IDataObject;
 
 						bodyParameters.path = this.getNodeParameter('path', i) as string;
 						bodyParameters.shareType = this.getNodeParameter('shareType', i) as number;
@@ -973,15 +1828,14 @@ export class NextCloud implements INodeType {
 						if (bodyParameters.shareType === 0) {
 							bodyParameters.shareWith = this.getNodeParameter('user', i) as string;
 						} else if (bodyParameters.shareType === 7) {
-							bodyParameters.shareWith = this.getNodeParameter('circleId', i) as number;
+							bodyParameters.shareWith = this.getNodeParameter('circleId', i) as string;
 						} else if (bodyParameters.shareType === 4) {
 							bodyParameters.shareWith = this.getNodeParameter('email', i) as string;
 						} else if (bodyParameters.shareType === 1) {
-							bodyParameters.shareWith = this.getNodeParameter('groupId', i) as number;
+							bodyParameters.shareWith = this.getNodeParameter('groupId', i) as string;
 						}
 
-						// @ts-ignore
-						body = new URLSearchParams(bodyParameters).toString();
+						body = new URLSearchParams(bodyParameters as any).toString();
 					}
 				} else if (resource === 'user') {
 					if (operation === 'create') {
@@ -993,18 +1847,18 @@ export class NextCloud implements INodeType {
 
 						endpoint = 'ocs/v1.php/cloud/users';
 
-						headers['OCS-APIRequest'] = true;
+						headers['OCS-APIRequest'] = 'true';
 						headers['Content-Type'] = 'application/x-www-form-urlencoded';
 
 						const userid = this.getNodeParameter('userId', i) as string;
 						const email = this.getNodeParameter('email', i) as string;
 
-						body = `userid=${userid}&email=${email}`;
+						body = `userid=${encodeURIComponent(userid)}&email=${encodeURIComponent(email)}`;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i);
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 						if (additionalFields.displayName) {
-							body += `&displayName=${additionalFields.displayName}`;
+							body += `&displayName=${encodeURIComponent(additionalFields.displayName as string)}`;
 						}
 					}
 					if (operation === 'delete') {
@@ -1015,9 +1869,9 @@ export class NextCloud implements INodeType {
 						requestMethod = 'DELETE';
 
 						const userid = this.getNodeParameter('userId', i) as string;
-						endpoint = `ocs/v1.php/cloud/users/${userid}`;
+						endpoint = `ocs/v1.php/cloud/users/${encodeURIComponent(userid)}`;
 
-						headers['OCS-APIRequest'] = true;
+						headers['OCS-APIRequest'] = 'true';
 						headers['Content-Type'] = 'application/x-www-form-urlencoded';
 					}
 					if (operation === 'get') {
@@ -1028,9 +1882,9 @@ export class NextCloud implements INodeType {
 						requestMethod = 'GET';
 
 						const userid = this.getNodeParameter('userId', i) as string;
-						endpoint = `ocs/v1.php/cloud/users/${userid}`;
+						endpoint = `ocs/v1.php/cloud/users/${encodeURIComponent(userid)}`;
 
-						headers['OCS-APIRequest'] = true;
+						headers['OCS-APIRequest'] = 'true';
 						headers['Content-Type'] = 'application/x-www-form-urlencoded';
 					}
 					if (operation === 'getAll') {
@@ -1039,14 +1893,14 @@ export class NextCloud implements INodeType {
 						// ----------------------------------
 
 						requestMethod = 'GET';
-						const returnAll = this.getNodeParameter('returnAll', i);
-						qs = this.getNodeParameter('options', i);
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						qs = this.getNodeParameter('options', i) as IDataObject;
 						if (!returnAll) {
-							qs.limit = this.getNodeParameter('limit', i);
+							qs.limit = this.getNodeParameter('limit', i) as number;
 						}
 						endpoint = 'ocs/v1.php/cloud/users';
 
-						headers['OCS-APIRequest'] = true;
+						headers['OCS-APIRequest'] = 'true';
 						headers['Content-Type'] = 'application/x-www-form-urlencoded';
 					}
 					if (operation === 'update') {
@@ -1057,17 +1911,543 @@ export class NextCloud implements INodeType {
 						requestMethod = 'PUT';
 
 						const userid = this.getNodeParameter('userId', i) as string;
-						endpoint = `ocs/v1.php/cloud/users/${userid}`;
+						endpoint = `ocs/v1.php/cloud/users/${encodeURIComponent(userid)}`;
 
-						body = Object.entries(this.getNodeParameter('updateFields', i).field as IDataObject)
-							.map((entry) => {
-								const [key, value] = entry;
-								return `${key}=${value}`;
-							})
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateParams = updateFields.field as IDataObject;
+
+						body = Object.entries(updateParams)
+							.map(
+								([key, value]) =>
+									`${encodeURIComponent(key)}=${encodeURIComponent(value as string)}`,
+							)
 							.join('&');
 
-						headers['OCS-APIRequest'] = true;
+						headers['OCS-APIRequest'] = 'true';
 						headers['Content-Type'] = 'application/x-www-form-urlencoded';
+					}
+				} else if (resource === 'deck') {
+					switch (operation) {
+						case 'createBoard': {
+							const boardName = this.getNodeParameter('boardName', i) as string;
+							const boardColor = this.getNodeParameter('boardColor', i) as string;
+							const deckBody = {
+								title: boardName,
+								color: boardColor.replace('#', ''),
+							};
+							const deckHeaders = {
+								'OCS-APIRequest': 'true',
+								'Content-Type': 'application/json',
+							};
+							responseData = await nextCloudApiRequest.call(
+								this,
+								'POST',
+								'ocs/v2.php/apps/deck/api/v1.0/boards',
+								JSON.stringify(deckBody),
+								deckHeaders,
+							);
+							returnData.push(JSON.parse(responseData));
+							break;
+						}
+						case 'getBoards': {
+							const deckHeaders = {
+								'OCS-APIRequest': 'true',
+							};
+							responseData = await nextCloudApiRequest.call(
+								this,
+								'GET',
+								'ocs/v2.php/apps/deck/api/v1.0/boards',
+								'',
+								deckHeaders,
+							);
+							returnData.push(JSON.parse(responseData));
+							break;
+						}
+						case 'updateBoard': {
+							const boardId = this.getNodeParameter('boardId', i) as string;
+							const boardName = this.getNodeParameter('boardName', i) as string;
+							const boardColor = this.getNodeParameter('boardColor', i) as string;
+							const archivedBoard = this.getNodeParameter('archivedBoard', i) as boolean;
+							const deckBody = {
+								title: boardName,
+								color: boardColor.replace('#', ''),
+								archived: archivedBoard,
+							};
+							const deckHeaders = {
+								'OCS-APIRequest': 'true',
+								'Content-Type': 'application/json',
+							};
+							responseData = await nextCloudApiRequest.call(
+								this,
+								'PUT',
+								`ocs/v2.php/apps/deck/api/v1.0/boards/${encodeURIComponent(boardId)}`,
+								JSON.stringify(deckBody),
+								deckHeaders,
+							);
+							returnData.push(JSON.parse(responseData));
+							break;
+						}
+						case 'deleteBoard': {
+							const boardId = this.getNodeParameter('boardId', i) as string;
+							const deckHeaders = {
+								'OCS-APIRequest': 'true',
+							};
+							responseData = await nextCloudApiRequest.call(
+								this,
+								'DELETE',
+								`ocs/v2.php/apps/deck/api/v1.0/boards/${encodeURIComponent(boardId)}`,
+								'',
+								deckHeaders,
+							);
+							returnData.push({ json: { success: responseData === '' } });
+							break;
+						}
+						default:
+							throw new NodeOperationError(
+								this.getNode(),
+								`Operation "${operation}" not implemented for resource "deck"`,
+							);
+					}
+				} else if (resource === 'notes') {
+					switch (operation) {
+						case 'createNote': {
+							const content = this.getNodeParameter('content', i) as string;
+							const category = this.getNodeParameter('noteCategory', i) as string;
+							const title = this.getNodeParameter('noteTitle', i) as string;
+							const notesBody = { content, category, title };
+							const notesHeaders = {
+								'OCS-APIRequest': 'true',
+								'Content-Type': 'application/json',
+							};
+							responseData = await nextCloudApiRequest.call(
+								this,
+								'POST',
+								'ocs/v1.php/apps/notes/api/v1/notes',
+								JSON.stringify(notesBody),
+								notesHeaders,
+							);
+							returnData.push(JSON.parse(responseData));
+							break;
+						}
+						case 'getNotes': {
+							const notesHeaders = {
+								'OCS-APIRequest': 'true',
+							};
+							responseData = await nextCloudApiRequest.call(
+								this,
+								'GET',
+								'ocs/v1.php/apps/notes/api/v1/notes',
+								'',
+								notesHeaders,
+							);
+							returnData.push(JSON.parse(responseData));
+							break;
+						}
+						case 'getNote': {
+							const noteId = this.getNodeParameter('noteId', i) as string;
+							const notesHeaders = {
+								'OCS-APIRequest': 'true',
+							};
+							responseData = await nextCloudApiRequest.call(
+								this,
+								'GET',
+								`ocs/v1.php/apps/notes/api/v1/notes/${encodeURIComponent(noteId)}`,
+								'',
+								notesHeaders,
+							);
+							returnData.push(JSON.parse(responseData));
+							break;
+						}
+						case 'updateNote': {
+							const noteId = this.getNodeParameter('noteId', i) as string;
+							const content = this.getNodeParameter('content', i) as string;
+							const notesBody = { content };
+							const notesHeaders = {
+								'OCS-APIRequest': 'true',
+								'Content-Type': 'application/json',
+							};
+							responseData = await nextCloudApiRequest.call(
+								this,
+								'PUT',
+								`ocs/v1.php/apps/notes/api/v1/notes/${encodeURIComponent(noteId)}`,
+								JSON.stringify(notesBody),
+								notesHeaders,
+							);
+							returnData.push(JSON.parse(responseData));
+							break;
+						}
+						case 'deleteNote': {
+							const noteId = this.getNodeParameter('noteId', i) as string;
+							const notesHeaders = {
+								'OCS-APIRequest': 'true',
+							};
+							responseData = await nextCloudApiRequest.call(
+								this,
+								'DELETE',
+								`ocs/v1.php/apps/notes/api/v1/notes/${encodeURIComponent(noteId)}`,
+								'',
+								notesHeaders,
+							);
+							returnData.push({ json: { success: responseData === '' } });
+							break;
+						}
+						default:
+							throw new NodeOperationError(
+								this.getNode(),
+								`Operation "${operation}" not implemented for resource "notes"`,
+							);
+					}
+				} else if (resource === 'tables') {
+					switch (operation) {
+						case 'createTable': {
+							const tableName = this.getNodeParameter('tableName', i) as string;
+							const tablesBody = { title: tableName };
+							const tablesHeaders = {
+								'OCS-APIRequest': 'true',
+								'Content-Type': 'application/json',
+							};
+							responseData = await nextCloudApiRequest.call(
+								this,
+								'POST',
+								'ocs/v1.php/apps/tables/api/1/tables',
+								JSON.stringify(tablesBody),
+								tablesHeaders,
+							);
+							returnData.push(JSON.parse(responseData));
+							break;
+						}
+						case 'getTables': {
+							const tablesHeaders = {
+								'OCS-APIRequest': 'true',
+							};
+							responseData = await nextCloudApiRequest.call(
+								this,
+								'GET',
+								'ocs/v1.php/apps/tables/api/1/tables',
+								'',
+								tablesHeaders,
+							);
+							returnData.push(JSON.parse(responseData));
+							break;
+						}
+						case 'getTable': {
+							const tableId = this.getNodeParameter('tableId', i) as string;
+							const tablesHeaders = {
+								'OCS-APIRequest': 'true',
+								'Content-Type': 'application/json',
+							};
+							responseData = await nextCloudApiRequest.call(
+								this,
+								'GET',
+								`ocs/v1.php/apps/tables/api/1/tables/${encodeURIComponent(tableId)}`,
+								'',
+								tablesHeaders,
+							);
+							returnData.push(JSON.parse(responseData));
+							break;
+						}
+						case 'updateTable': {
+							const tableId = this.getNodeParameter('tableId', i) as string;
+							const tableName = this.getNodeParameter('tableName', i) as string;
+							const archivedTable = this.getNodeParameter('archivedTable', i) as boolean;
+
+							const tablesBody = { title: tableName, archived: archivedTable };
+							const tablesHeaders = {
+								'OCS-APIRequest': 'true',
+								'Content-Type': 'application/json',
+							};
+							responseData = await nextCloudApiRequest.call(
+								this,
+								'PUT',
+								`ocs/v1.php/apps/tables/api/1/tables/${encodeURIComponent(tableId)}`,
+								JSON.stringify(tablesBody),
+								tablesHeaders,
+							);
+							returnData.push(JSON.parse(responseData));
+							break;
+						}
+						case 'deleteTable': {
+							const tableId = this.getNodeParameter('tableId', i) as string;
+							const tablesHeaders = {
+								'OCS-APIRequest': 'true',
+							};
+							responseData = await nextCloudApiRequest.call(
+								this,
+								'DELETE',
+								`ocs/v1.php/apps/tables/api/1/tables/${encodeURIComponent(tableId)}`,
+								'',
+								tablesHeaders,
+							);
+							returnData.push({ json: { success: responseData === '' } });
+							break;
+						}
+						case 'getColumns': {
+							const tableId = this.getNodeParameter('tableId', i) as string;
+							const tablesHeaders = {
+								'OCS-APIRequest': 'true',
+								'Content-Type': 'application/json',
+							};
+							responseData = await nextCloudApiRequest.call(
+								this,
+								'GET',
+								`ocs/v1.php/apps/tables/api/1/tables/${encodeURIComponent(tableId)}/columns`,
+								'',
+								tablesHeaders,
+							);
+							returnData.push(JSON.parse(responseData));
+							break;
+						}
+						case 'getColumn': {
+							const columnId = this.getNodeParameter('columnId', i) as string;
+							const tablesHeaders = {
+								'OCS-APIRequest': 'true',
+								'Content-Type': 'application/json',
+							};
+							responseData = await nextCloudApiRequest.call(
+								this,
+								'GET',
+								`ocs/v1.php/apps/tables/api/1/columns/${encodeURIComponent(columnId)}`,
+								'',
+								tablesHeaders,
+							);
+							returnData.push(JSON.parse(responseData));
+							break;
+						}
+						case 'deleteColumn': {
+							const columnId = this.getNodeParameter('columnId', i) as string;
+							const tablesHeaders = {
+								'OCS-APIRequest': 'true',
+							};
+							responseData = await nextCloudApiRequest.call(
+								this,
+								'DELETE',
+								`ocs/v1.php/apps/tables/api/1/columns/${encodeURIComponent(columnId)}`,
+								'',
+								tablesHeaders,
+							);
+							returnData.push({ json: { success: responseData === '' } });
+							break;
+						}
+						case 'createColumn': {
+							const tableId = this.getNodeParameter('tableId', i) as string;
+							const columnTitle = this.getNodeParameter('columnTitle', i) as string;
+							const columnDescription = this.getNodeParameter('columnDescription', i) as string;
+							const mandatoryColumn = this.getNodeParameter('mandatoryColumn', i) as boolean;
+							const columnType = this.getNodeParameter('columnType', i) as string;
+
+							const additionalFields: Record<string, any> = {};
+							if (columnType === 'text') {
+								additionalFields.textDefault = this.getNodeParameter('textDefault', i);
+								additionalFields.textAllowedPattern = this.getNodeParameter(
+									'textAllowedPattern',
+									i,
+								);
+								additionalFields.textMaxLength = this.getNodeParameter('textMaxLength', i);
+								additionalFields.columnSubType = this.getNodeParameter('columnSubType', i);
+							} else if (columnType === 'number') {
+								additionalFields.numberDefault = this.getNodeParameter('numberDefault', i);
+								additionalFields.numberMin = this.getNodeParameter('numberMin', i);
+								additionalFields.numberMax = this.getNodeParameter('numberMax', i);
+								additionalFields.numberDecimals = this.getNodeParameter('numberDecimals', i);
+								additionalFields.numberPrefix = this.getNodeParameter('numberPrefix', i);
+								additionalFields.numberSuffix = this.getNodeParameter('numberSuffix', i);
+								additionalFields.columnSubType = this.getNodeParameter('columnSubType', i);
+							} else if (columnType === 'datetime') {
+								additionalFields.datetimeDefault = this.getNodeParameter('datetimeDefault', i);
+								additionalFields.columnSubType = this.getNodeParameter('columnSubType', i);
+							} else if (columnType === 'selection') {
+								additionalFields.selectionOptions = this.getNodeParameter('selectionOptions', i);
+								additionalFields.selectionDefault = this.getNodeParameter('selectionDefault', i);
+								additionalFields.columnSubType = this.getNodeParameter('columnSubType', i);
+							} else if (columnType === 'usergroup') {
+								additionalFields.usergroupDefault = this.getNodeParameter('usergroupDefault', i);
+								additionalFields.usergroupMultipleItems = this.getNodeParameter(
+									'usergroupMultipleItems',
+									i,
+								);
+								additionalFields.usergroupSelectUsers = this.getNodeParameter(
+									'usergroupSelectUsers',
+									i,
+								);
+								additionalFields.usergroupSelectGroups = this.getNodeParameter(
+									'usergroupSelectGroups',
+									i,
+								);
+								additionalFields.usergroupShowUserStatus = this.getNodeParameter(
+									'usergroupShowUserStatus',
+									i,
+								);
+								additionalFields.columnSubType = this.getNodeParameter('columnSubType', i);
+							}
+							const columnBody = {
+								title: columnTitle,
+								description: columnDescription,
+								mandatory: mandatoryColumn,
+								type: columnType,
+								...additionalFields,
+							};
+							const tablesHeaders = {
+								'OCS-APIRequest': 'true',
+								'Content-Type': 'application/json',
+							};
+							responseData = await nextCloudApiRequest.call(
+								this,
+								'POST',
+								`ocs/v1.php/apps/tables/api/1/tables/${encodeURIComponent(tableId)}/columns`,
+								JSON.stringify(columnBody),
+								tablesHeaders,
+							);
+							returnData.push(JSON.parse(responseData));
+							break;
+						}
+						case 'updateColumn': {
+							const columnId = this.getNodeParameter('columnId', i) as string;
+							const columnTitle = this.getNodeParameter('columnTitle', i) as string;
+							const columnDescription = this.getNodeParameter('columnDescription', i) as string;
+							const mandatoryColumn = this.getNodeParameter('mandatoryColumn', i) as boolean;
+							const columnType = this.getNodeParameter('columnType', i) as string;
+
+							const additionalFields: Record<string, any> = {};
+							if (columnType === 'text') {
+								additionalFields.textDefault = this.getNodeParameter('textDefault', i);
+								additionalFields.textAllowedPattern = this.getNodeParameter(
+									'textAllowedPattern',
+									i,
+								);
+								additionalFields.textMaxLength = this.getNodeParameter('textMaxLength', i);
+								additionalFields.columnSubType = this.getNodeParameter('columnSubType', i);
+							} else if (columnType === 'number') {
+								additionalFields.numberDefault = this.getNodeParameter('numberDefault', i);
+								additionalFields.numberMin = this.getNodeParameter('numberMin', i);
+								additionalFields.numberMax = this.getNodeParameter('numberMax', i);
+								additionalFields.numberDecimals = this.getNodeParameter('numberDecimals', i);
+								additionalFields.numberPrefix = this.getNodeParameter('numberPrefix', i);
+								additionalFields.numberSuffix = this.getNodeParameter('numberSuffix', i);
+								additionalFields.columnSubType = this.getNodeParameter('columnSubType', i);
+							} else if (columnType === 'datetime') {
+								additionalFields.datetimeDefault = this.getNodeParameter('datetimeDefault', i);
+								additionalFields.columnSubType = this.getNodeParameter('columnSubType', i);
+							} else if (columnType === 'selection') {
+								additionalFields.selectionOptions = this.getNodeParameter('selectionOptions', i);
+								additionalFields.selectionDefault = this.getNodeParameter('selectionDefault', i);
+								additionalFields.columnSubType = this.getNodeParameter('columnSubType', i);
+							} else if (columnType === 'usergroup') {
+								additionalFields.usergroupDefault = this.getNodeParameter('usergroupDefault', i);
+								additionalFields.usergroupMultipleItems = this.getNodeParameter(
+									'usergroupMultipleItems',
+									i,
+								);
+								additionalFields.usergroupSelectUsers = this.getNodeParameter(
+									'usergroupSelectUsers',
+									i,
+								);
+								additionalFields.usergroupSelectGroups = this.getNodeParameter(
+									'usergroupSelectGroups',
+									i,
+								);
+								additionalFields.usergroupShowUserStatus = this.getNodeParameter(
+									'usergroupShowUserStatus',
+									i,
+								);
+								additionalFields.columnSubType = this.getNodeParameter('columnSubType', i);
+							}
+							const columnBody = {
+								title: columnTitle,
+								description: columnDescription,
+								mandatory: mandatoryColumn,
+								...additionalFields,
+							};
+							const tablesHeaders = {
+								'OCS-APIRequest': 'true',
+								'Content-Type': 'application/json',
+							};
+							responseData = await nextCloudApiRequest.call(
+								this,
+								'PUT',
+								`ocs/v1.php/apps/tables/api/1/columns/${encodeURIComponent(columnId)}`,
+								JSON.stringify(columnBody),
+								tablesHeaders,
+							);
+							returnData.push(JSON.parse(responseData));
+							break;
+						}
+						default:
+							throw new NodeOperationError(
+								this.getNode(),
+								`Operation "${operation}" not implemented for resource "tables"`,
+							);
+					}
+				} else if (resource === 'talk') {
+					switch (operation) {
+						case 'sendMessage': {
+							const conversationId = this.getNodeParameter('conversationId', i) as string;
+							const message = this.getNodeParameter('message', i) as string;
+							const talkBody = { message };
+							const talkHeaders = {
+								'OCS-APIRequest': 'true',
+								'Content-Type': 'application/json',
+							};
+							responseData = await nextCloudApiRequest.call(
+								this,
+								'POST',
+								`ocs/v1.php/apps/talk/api/v1/messages/${encodeURIComponent(conversationId)}`,
+								JSON.stringify(talkBody),
+								talkHeaders,
+							);
+							returnData.push(JSON.parse(responseData));
+							break;
+						}
+						case 'getConversations': {
+							const talkHeaders = {
+								'OCS-APIRequest': 'true',
+							};
+							responseData = await nextCloudApiRequest.call(
+								this,
+								'GET',
+								'ocs/v1.php/apps/talk/api/v1/conversations',
+								'',
+								talkHeaders,
+							);
+							returnData.push(JSON.parse(responseData));
+							break;
+						}
+						case 'createConversation': {
+							const conversationName = this.getNodeParameter('conversationName', i) as string;
+							const talkBody = { name: conversationName };
+							const talkHeaders = {
+								'OCS-APIRequest': 'true',
+								'Content-Type': 'application/json',
+							};
+							responseData = await nextCloudApiRequest.call(
+								this,
+								'POST',
+								'ocs/v1.php/apps/talk/api/v1/conversations',
+								JSON.stringify(talkBody),
+								talkHeaders,
+							);
+							returnData.push(JSON.parse(responseData));
+							break;
+						}
+						case 'deleteConversation': {
+							const conversationId = this.getNodeParameter('conversationId', i) as string;
+							const talkHeaders = {
+								'OCS-APIRequest': 'true',
+							};
+							responseData = await nextCloudApiRequest.call(
+								this,
+								'DELETE',
+								`ocs/v1.php/apps/talk/api/v1/conversations/${encodeURIComponent(conversationId)}`,
+								'',
+								talkHeaders,
+							);
+							returnData.push({ json: { success: responseData === '' } });
+							break;
+						}
+						default:
+							throw new NodeOperationError(
+								this.getNode(),
+								`Operation "${operation}" not implemented for resource "talk"`,
+							);
 					}
 				} else {
 					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, {
@@ -1084,7 +2464,6 @@ export class NextCloud implements INodeType {
 
 				let encoding = undefined;
 				if (resource === 'file' && operation === 'download') {
-					// Return the data as a buffer
 					encoding = null;
 				}
 
@@ -1119,9 +2498,6 @@ export class NextCloud implements INodeType {
 					};
 
 					if (items[i].binary !== undefined) {
-						// Create a shallow copy of the binary data so that the old
-						// data references which do not get changed still stay behind
-						// but the incoming data does not get changed.
 						Object.assign(newItem.binary as IBinaryKeyData, items[i].binary);
 					}
 
@@ -1134,7 +2510,6 @@ export class NextCloud implements INodeType {
 						endpoint,
 					);
 				} else if (['file', 'folder'].includes(resource) && operation === 'share') {
-					// eslint-disable-next-line @typescript-eslint/no-loop-func
 					const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
 						parseString(responseData as string, { explicitArray: false }, (err, data) => {
 							if (err) {
@@ -1162,7 +2537,6 @@ export class NextCloud implements INodeType {
 					returnData.push(...executionData);
 				} else if (resource === 'user') {
 					if (operation !== 'getAll') {
-						// eslint-disable-next-line @typescript-eslint/no-loop-func
 						const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
 							parseString(responseData as string, { explicitArray: false }, (err, data) => {
 								if (err) {
@@ -1193,7 +2567,6 @@ export class NextCloud implements INodeType {
 
 						returnData.push(...executionData);
 					} else {
-						// eslint-disable-next-line @typescript-eslint/no-loop-func
 						const jsonResponseData: IDataObject[] = await new Promise((resolve, reject) => {
 							parseString(responseData as string, { explicitArray: false }, (err, data) => {
 								if (err) {
@@ -1219,7 +2592,6 @@ export class NextCloud implements INodeType {
 						});
 					}
 				} else if (resource === 'folder' && operation === 'list') {
-					// eslint-disable-next-line @typescript-eslint/no-loop-func
 					const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
 						parseString(responseData as string, { explicitArray: false }, (err, data) => {
 							if (err) {
@@ -1252,7 +2624,7 @@ export class NextCloud implements INodeType {
 								}
 								const newItem: IDataObject = {};
 
-								newItem.path = item['d:href'].slice(19);
+								newItem.path = decodeURIComponent(item['d:href']).replace(/^\//, '');
 
 								let props: IDataObject = {};
 								if (Array.isArray(item['d:propstat'])) {
@@ -1261,7 +2633,6 @@ export class NextCloud implements INodeType {
 									props = item['d:propstat']['d:prop'] as IDataObject;
 								}
 
-								// Get the props and save them under a proper name
 								for (const propName of Object.keys(propNames)) {
 									if (props[propName] !== undefined) {
 										newItem[propNames[propName]] = props[propName];
@@ -1301,10 +2672,8 @@ export class NextCloud implements INodeType {
 		}
 
 		if (resource === 'file' && operation === 'download') {
-			// For file downloads the files get attached to the existing items
 			return [items];
 		} else {
-			// For all other ones does the output get replaced
 			return [returnData];
 		}
 	}
