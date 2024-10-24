@@ -124,7 +124,7 @@ const currentWorkflow = computed(() =>
 );
 const hasForeignCredential = computed(() => props.foreignCredentials.length > 0);
 const isHomeProjectTeam = computed(
-	() => currentWorkflow.value.homeProject?.type === ProjectTypes.Team,
+	() => currentWorkflow.value?.homeProject?.type === ProjectTypes.Team,
 );
 const isReadOnly = computed(
 	() => props.readOnly || (hasForeignCredential.value && !isHomeProjectTeam.value),
