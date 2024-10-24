@@ -226,6 +226,7 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 			.should('have.length', 1)
 			.click();
 		credentialsModal.getters.saveButton().click();
+		credentialsModal.getters.saveButton().should('have.text', 'Saved');
 		credentialsModal.actions.close();
 
 		projects.getProjectTabWorkflows().click();
@@ -252,6 +253,7 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 		credentialsModal.getters.usersSelect().click();
 		getVisibleSelect().find('li').should('have.length', 4).first().click();
 		credentialsModal.getters.saveButton().click();
+		credentialsModal.getters.saveButton().should('have.text', 'Saved');
 		credentialsModal.actions.close();
 
 		credentialsPage.getters

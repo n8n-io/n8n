@@ -147,7 +147,8 @@ describe('ProjectsNavigation', () => {
 		expect(uiStore.goToUpgrade).toHaveBeenCalledWith('rbac', 'upgrade-rbac');
 	});
 
-	it('should show "Projects" title and projects if the user has access to any team project', async () => {
+	it('should show "Projects" title and Personal project when the feature is enabled', async () => {
+		projectsStore.isTeamProjectFeatureEnabled = true;
 		projectsStore.myProjects = [...personalProjects, ...teamProjects];
 
 		const { getByRole, getAllByTestId, getByTestId } = renderComponent({
@@ -158,11 +159,12 @@ describe('ProjectsNavigation', () => {
 
 		expect(getByRole('heading', { level: 3, name: 'Projects' })).toBeVisible();
 		expect(getByTestId('project-personal-menu-item')).toBeVisible();
+		expect(getByTestId('project-personal-menu-item').querySelector('svg')).toBeVisible();
 		expect(getAllByTestId('project-menu-item')).toHaveLength(teamProjects.length);
 	});
 
 	it('should not show "Projects" title when the menu is collapsed', async () => {
-		projectsStore.myProjects = [...personalProjects, ...teamProjects];
+		projectsStore.isTeamProjectFeatureEnabled = true;
 
 		const { queryByRole } = renderComponent({
 			props: {
@@ -173,8 +175,8 @@ describe('ProjectsNavigation', () => {
 		expect(queryByRole('heading', { level: 3, name: 'Projects' })).not.toBeInTheDocument();
 	});
 
-	it('should not show "Projects" title when there are no available projects', async () => {
-		projectsStore.myProjects = [];
+	it('should not show "Projects" title when the feature is not enabled', async () => {
+		projectsStore.isTeamProjectFeatureEnabled = false;
 
 		const { queryByRole } = renderComponent({
 			props: {
@@ -183,5 +185,18 @@ describe('ProjectsNavigation', () => {
 		});
 
 		expect(queryByRole('heading', { level: 3, name: 'Projects' })).not.toBeInTheDocument();
+	});
+
+	it('should not show project icons when the menu is collapsed', async () => {
+		projectsStore.isTeamProjectFeatureEnabled = true;
+
+		const { getByTestId } = renderComponent({
+			props: {
+				collapsed: true,
+			},
+		});
+
+		expect(getByTestId('project-personal-menu-item')).toBeVisible();
+		expect(getByTestId('project-personal-menu-item').querySelector('svg')).not.toBeInTheDocument();
 	});
 });

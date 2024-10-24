@@ -5,6 +5,7 @@ import { EndpointsConfig } from './configs/endpoints.config';
 import { EventBusConfig } from './configs/event-bus.config';
 import { ExternalSecretsConfig } from './configs/external-secrets.config';
 import { ExternalStorageConfig } from './configs/external-storage.config';
+import { GenericConfig } from './configs/generic.config';
 import { LoggingConfig } from './configs/logging.config';
 import { MultiMainSetupConfig } from './configs/multi-main-setup.config';
 import { NodesConfig } from './configs/nodes.config';
@@ -18,6 +19,7 @@ import { UserManagementConfig } from './configs/user-management.config';
 import { VersionNotificationsConfig } from './configs/version-notifications.config';
 import { WorkflowsConfig } from './configs/workflows.config';
 import { Config, Env, Nested } from './decorators';
+export { Config, Env, Nested } from './decorators';
 
 export { LOG_SCOPES } from './configs/logging.config';
 export type { LogScope } from './configs/logging.config';
@@ -97,4 +99,7 @@ export class GlobalConfig {
 
 	@Nested
 	multiMainSetup: MultiMainSetupConfig;
+
+	@Nested
+	generic: GenericConfig;
 }
