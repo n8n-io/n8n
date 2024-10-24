@@ -1,4 +1,7 @@
 import { render } from '@testing-library/vue';
+import { configure } from '@testing-library/vue';
+
+configure({ testIdAttribute: 'data-test-id' });
 
 import { n8nHtml } from 'n8n-design-system/directives';
 
