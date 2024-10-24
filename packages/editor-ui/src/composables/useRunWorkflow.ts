@@ -64,6 +64,12 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			throw new Error(i18n.baseText('workflowRun.noActiveConnectionToTheServer'));
 		}
 
+		const isListeningForWebhook = runData.startNodes?.some((node) => node.name.endsWith('webhook'));
+
+		if (isListeningForWebhook && useWorkflowsStore().nodesIssuesExist) {
+			throw new Error(i18n.baseText('workflowRun.showError.resolveOutstandingIssues'));
+		}
+
 		workflowsStore.subWorkflowExecutionError = null;
 
 		uiStore.addActiveAction('workflowRunning');
