@@ -83,10 +83,6 @@
 		cursor: grabbing;
 	}
 
-	&.selected {
-		z-index: 1 !important;
-	}
-
 	&:has(.sticky--active) {
 		z-index: 1 !important;
 	}
