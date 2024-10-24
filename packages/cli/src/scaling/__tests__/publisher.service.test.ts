@@ -44,6 +44,16 @@ describe('Publisher', () => {
 	});
 
 	describe('publishCommand', () => {
+		it('should do nothing if not in scaling mode', async () => {
+			config.set('executions.mode', 'regular');
+			const publisher = new Publisher(logger, redisClientService, instanceSettings);
+			const msg = mock<PubSub.Command>({ command: 'reload-license' });
+
+			await publisher.publishCommand(msg);
+
+			expect(client.publish).not.toHaveBeenCalled();
+		});
+
 		it('should publish command into `n8n.commands` pubsub channel', async () => {
 			const publisher = new Publisher(logger, redisClientService, instanceSettings);
 			const msg = mock<PubSub.Command>({ command: 'reload-license' });
