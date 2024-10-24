@@ -1,3 +1,12 @@
+## [1.64.2](https://github.com/n8n-io/n8n/compare/n8n@1.64.1...n8n@1.64.2) (2024-10-24)
+
+
+### Bug Fixes
+
+* **editor:** Record sessionStarted telemetry event in Setting Store ([#11334](https://github.com/n8n-io/n8n/issues/11334)) ([f52a771](https://github.com/n8n-io/n8n/commit/f52a77173567f0e70fb0e4e4032a31b94ddf0585))
+
+
+
 ## [1.64.1](https://github.com/n8n-io/n8n/compare/n8n@1.64.0...n8n@1.64.1) (2024-10-21)
 
 
