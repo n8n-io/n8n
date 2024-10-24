@@ -2477,7 +2477,7 @@ export class NextCloud implements INodeType {
 									i,
 								);
 								additionalFields.textMaxLength = this.getNodeParameter('textMaxLength', i);
-								additionalFields.columnSubType = this.getNodeParameter('columnSubType', i);
+								additionalFields.subtype = this.getNodeParameter('columnSubType', i);
 							} else if (columnType === 'number') {
 								additionalFields.numberDefault = this.getNodeParameter('numberDefault', i);
 								additionalFields.numberMin = this.getNodeParameter('numberMin', i);
@@ -2485,14 +2485,14 @@ export class NextCloud implements INodeType {
 								additionalFields.numberDecimals = this.getNodeParameter('numberDecimals', i);
 								additionalFields.numberPrefix = this.getNodeParameter('numberPrefix', i);
 								additionalFields.numberSuffix = this.getNodeParameter('numberSuffix', i);
-								additionalFields.columnSubType = this.getNodeParameter('columnSubType', i);
+								additionalFields.subtype = this.getNodeParameter('columnSubType', i);
 							} else if (columnType === 'datetime') {
 								additionalFields.datetimeDefault = this.getNodeParameter('datetimeDefault', i);
-								additionalFields.columnSubType = this.getNodeParameter('columnSubType', i);
+								additionalFields.subtype = this.getNodeParameter('columnSubType', i);
 							} else if (columnType === 'selection') {
 								additionalFields.selectionOptions = this.getNodeParameter('selectionOptions', i);
 								additionalFields.selectionDefault = this.getNodeParameter('selectionDefault', i);
-								additionalFields.columnSubType = this.getNodeParameter('columnSubType', i);
+								additionalFields.subtype = this.getNodeParameter('columnSubType', i);
 							} else if (columnType === 'usergroup') {
 								additionalFields.usergroupDefault = this.getNodeParameter('usergroupDefault', i);
 								additionalFields.usergroupMultipleItems = this.getNodeParameter(
@@ -2511,7 +2511,7 @@ export class NextCloud implements INodeType {
 									'usergroupShowUserStatus',
 									i,
 								);
-								additionalFields.columnSubType = this.getNodeParameter('columnSubType', i);
+								additionalFields.subtype = this.getNodeParameter('columnSubType', i);
 							}
 							const columnBody = {
 								title: columnTitle,
@@ -2549,7 +2549,7 @@ export class NextCloud implements INodeType {
 									i,
 								);
 								additionalFields.textMaxLength = this.getNodeParameter('textMaxLength', i);
-								additionalFields.columnSubType = this.getNodeParameter('columnSubType', i);
+								additionalFields.subtype = this.getNodeParameter('columnSubType', i);
 							} else if (columnType === 'number') {
 								additionalFields.numberDefault = this.getNodeParameter('numberDefault', i);
 								additionalFields.numberMin = this.getNodeParameter('numberMin', i);
@@ -2557,14 +2557,14 @@ export class NextCloud implements INodeType {
 								additionalFields.numberDecimals = this.getNodeParameter('numberDecimals', i);
 								additionalFields.numberPrefix = this.getNodeParameter('numberPrefix', i);
 								additionalFields.numberSuffix = this.getNodeParameter('numberSuffix', i);
-								additionalFields.columnSubType = this.getNodeParameter('columnSubType', i);
+								additionalFields.subtype = this.getNodeParameter('columnSubType', i);
 							} else if (columnType === 'datetime') {
 								additionalFields.datetimeDefault = this.getNodeParameter('datetimeDefault', i);
-								additionalFields.columnSubType = this.getNodeParameter('columnSubType', i);
+								additionalFields.subtype = this.getNodeParameter('columnSubType', i);
 							} else if (columnType === 'selection') {
 								additionalFields.selectionOptions = this.getNodeParameter('selectionOptions', i);
 								additionalFields.selectionDefault = this.getNodeParameter('selectionDefault', i);
-								additionalFields.columnSubType = this.getNodeParameter('columnSubType', i);
+								additionalFields.subtype = this.getNodeParameter('columnSubType', i);
 							} else if (columnType === 'usergroup') {
 								additionalFields.usergroupDefault = this.getNodeParameter('usergroupDefault', i);
 								additionalFields.usergroupMultipleItems = this.getNodeParameter(
@@ -2583,7 +2583,7 @@ export class NextCloud implements INodeType {
 									'usergroupShowUserStatus',
 									i,
 								);
-								additionalFields.columnSubType = this.getNodeParameter('columnSubType', i);
+								additionalFields.subtype = this.getNodeParameter('columnSubType', i);
 							}
 							const columnBody = {
 								title: columnTitle,
