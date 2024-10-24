@@ -284,7 +284,9 @@ export class LmChatOpenAi implements INodeType {
 					if (errorCode) {
 						const customErrorMessage = getCustomErrorMessage(errorCode);
 
-						const apiError = new NodeApiError(this.getNode(), error as unknown as JsonObject);
+						const apiError = new NodeApiError(this.getNode(), error as unknown as JsonObject, {
+							functionality: 'configuration-node',
+						});
 						if (customErrorMessage) {
 							apiError.message = customErrorMessage;
 						}

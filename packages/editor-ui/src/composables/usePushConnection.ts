@@ -1,6 +1,7 @@
 import { parse } from 'flatted';
 import { h, ref } from 'vue';
 import type { useRouter } from 'vue-router';
+import { TelemetryHelpers } from 'n8n-workflow';
 import type {
 	ExpressionError,
 	IDataObject,
@@ -12,8 +13,8 @@ import type {
 	IExecuteContextData,
 	NodeOperationError,
 	INodeTypeDescription,
+	NodeError,
 } from 'n8n-workflow';
-import { TelemetryHelpers } from 'n8n-workflow';
 import type { PushMessage, PushPayload } from '@n8n/api-types';
 
 import type { IExecutionResponse, IExecutionsCurrentSummaryExtended } from '@/Interface';
@@ -377,8 +378,9 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 						duration: 0,
 					});
 				} else if (
-					runDataExecuted.data.resultData.error?.name === 'NodeOperationError' &&
-					(runDataExecuted.data.resultData.error as NodeOperationError).functionality ===
+					(runDataExecuted.data.resultData.error?.name === 'NodeOperationError' ||
+						runDataExecuted.data.resultData.error?.name === 'NodeApiError') &&
+					(runDataExecuted.data.resultData.error as NodeError).functionality ===
 						'configuration-node'
 				) {
 					// If the error is a configuration error of the node itself doesn't get executed so we can't use lastNodeExecuted for the title
