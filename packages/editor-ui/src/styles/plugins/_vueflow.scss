@@ -98,3 +98,18 @@
 	margin-left: calc(-1 * var(--spacing-2xs));
 	padding: var(--spacing-2xs);
 }
+
+/**
+ * Edges
+ */
+
+.vue-flow__edges:has(.selected),
+.vue-flow__edges:has(.hovered),
+.vue-flow__edge-label.selected {
+	z-index: 1 !important;
+}
+
+//.vue-flow__edges:hover,
+//.vue-flow__edges:has(:hover) {
+//		z-index: 1 !important;
+//}
