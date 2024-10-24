@@ -220,4 +220,20 @@ describe('Canvas', () => {
 			expect(container.querySelector('#diagonalHatch')).toBeInTheDocument();
 		});
 	});
+
+	describe('pane', () => {
+		describe('onPaneMouseDown', () => {
+			it('should enable panning when middle mouse button is pressed', async () => {
+				const { getByTestId } = renderComponent();
+				const canvas = getByTestId('canvas');
+				const pane = canvas.querySelector('.vue-flow__pane');
+
+				if (!pane) throw new Error('VueFlow pane not in the document');
+
+				await fireEvent.mouseDown(canvas, { button: 1, view: window });
+
+				expect(canvas).toHaveClass('draggable');
+			});
+		});
+	});
 });
