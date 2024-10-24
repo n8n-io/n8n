@@ -1,5 +1,6 @@
 import '@testing-library/jest-dom';
-import { configure, config } from '@vue/test-utils';
+import { config } from '@vue/test-utils';
+import { configure } from '@testing-library/vue';
 
 import { N8nPlugin } from 'n8n-design-system/plugin';
 
