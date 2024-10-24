@@ -271,7 +271,7 @@ const nodeClass = computed(() => {
 const nodeExecutionStatus = computed(() => {
 	const nodeExecutionRunData = workflowsStore.getWorkflowRunData?.[props.name];
 	if (nodeExecutionRunData) {
-		return nodeExecutionRunData.filter(Boolean)[0]?.executionStatus ?? '';
+		return nodeExecutionRunData.filter(Boolean)?.[0]?.executionStatus ?? '';
 	}
 	return '';
 });
