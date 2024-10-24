@@ -2856,6 +2856,8 @@ async function getInputConnectionData(
 				connectedNode.typeVersion,
 			);
 
+			// TODO: create a new context object here based on the type of `connectedNode`, and avoid using `Object.assign` on context objects
+			// https://linear.app/n8n/issue/CAT-269
 			const context = Object.assign({}, this);
 
 			context.getNodeParameter = (
@@ -3758,14 +3760,16 @@ export function getExecuteFunctions(
 			continueOnFail: () => {
 				return continueOnFail(node);
 			},
-			evaluateExpression: (expression: string, itemIndex: number) => {
+			evaluateExpression(expression: string, itemIndex: number) {
 				return workflow.expression.resolveSimpleParameterValue(
 					`=${expression}`,
 					{},
 					runExecutionData,
 					runIndex,
 					itemIndex,
-					node.name,
+					// TODO: revert this back to `node.name` when we stop using `IExecuteFunctions` as the context object in AI nodes.
+					// https://linear.app/n8n/issue/CAT-269
+					this.getNode().name,
 					connectionInputData,
 					mode,
 					getAdditionalKeys(additionalData, mode, runExecutionData),
