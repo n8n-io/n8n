@@ -211,7 +211,6 @@ export class PrometheusMetricsService {
 				help: `Total number of ${eventName} events.`,
 				labelNames: Object.keys(labels),
 			});
-			counter.labels(labels).inc(0);
 			this.counters[eventName] = counter;
 		}
 
@@ -224,7 +223,9 @@ export class PrometheusMetricsService {
 		this.eventBus.on('metrics.eventBus.event', (event: EventMessageTypes) => {
 			const counter = this.toCounter(event);
 			if (!counter) return;
-			counter.inc(1);
+
+			const labels = this.toLabels(event);
+			counter.inc(labels, 1);
 		});
 	}
 
