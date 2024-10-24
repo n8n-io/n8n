@@ -172,7 +172,6 @@ export function recreateNodeExecutionStack(
 
 					for (const incomingConnection of sourceData.connections) {
 						const sourceNode = incomingConnection.from;
-						debugger;
 						const maybeNodeIncomingData = getIncomingDataFromAnyRun(
 							runData,
 							sourceNode.name,
