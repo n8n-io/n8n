@@ -10,9 +10,19 @@
 // PD denotes that the node has pinned data
 
 import { AssertionError } from 'assert';
-import { type IPinData, type IRunData } from 'n8n-workflow';
+import type {
+	INodeExecutionData,
+	ISourceData,
+	IWaitingForExecution,
+	IWaitingForExecutionSource,
+} from 'n8n-workflow';
+import { NodeConnectionType, type IPinData, type IRunData } from 'n8n-workflow';
 
-import { recreateNodeExecutionStack } from '@/PartialExecutionUtils/recreateNodeExecutionStack';
+import {
+	addWaitingExecution,
+	addWaitingExecutionSource,
+	recreateNodeExecutionStack,
+} from '@/PartialExecutionUtils/recreateNodeExecutionStack';
 
 import { createNodeData, toITaskData } from './helpers';
 import { DirectedGraph } from '../DirectedGraph';
@@ -41,7 +51,7 @@ describe('recreateNodeExecutionStack', () => {
 
 		// ACT
 		const { nodeExecutionStack, waitingExecution, waitingExecutionSource } =
-			recreateNodeExecutionStack(workflow, startNodes, node, runData, pinData);
+			recreateNodeExecutionStack(workflow, startNodes, runData, pinData);
 
 		// ASSERT
 		expect(nodeExecutionStack).toHaveLength(1);
@@ -62,17 +72,8 @@ describe('recreateNodeExecutionStack', () => {
 				},
 			},
 		]);
-
-		expect(waitingExecution).toEqual({ node: { '0': { main: [[{ json: { value: 1 } }]] } } });
-		expect(waitingExecutionSource).toEqual({
-			node: {
-				'0': {
-					main: [
-						{ previousNode: 'trigger', previousNodeOutput: undefined, previousNodeRun: undefined },
-					],
-				},
-			},
-		});
+		expect(waitingExecution).toEqual({});
+		expect(waitingExecutionSource).toEqual({});
 	});
 
 	//                   ►►
@@ -93,7 +94,7 @@ describe('recreateNodeExecutionStack', () => {
 
 		// ACT
 		const { nodeExecutionStack, waitingExecution, waitingExecutionSource } =
-			recreateNodeExecutionStack(workflow, startNodes, node, runData, pinData);
+			recreateNodeExecutionStack(workflow, startNodes, runData, pinData);
 
 		// ASSERT
 		expect(nodeExecutionStack).toHaveLength(1);
@@ -105,8 +106,8 @@ describe('recreateNodeExecutionStack', () => {
 			},
 		]);
 
-		expect(waitingExecution).toEqual({ node: { '0': { main: [null] } } });
-		expect(waitingExecutionSource).toEqual({ node: { '0': { main: [null] } } });
+		expect(waitingExecution).toEqual({});
+		expect(waitingExecutionSource).toEqual({});
 	});
 
 	//  PinData          ►►
@@ -129,7 +130,7 @@ describe('recreateNodeExecutionStack', () => {
 
 		// ACT
 		const { nodeExecutionStack, waitingExecution, waitingExecutionSource } =
-			recreateNodeExecutionStack(workflow, startNodes, node, runData, pinData);
+			recreateNodeExecutionStack(workflow, startNodes, runData, pinData);
 
 		// ASSERT
 		expect(nodeExecutionStack).toHaveLength(1);
@@ -151,8 +152,8 @@ describe('recreateNodeExecutionStack', () => {
 			},
 		]);
 
-		expect(waitingExecution).toEqual({ node: { '0': { main: [null] } } });
-		expect(waitingExecutionSource).toEqual({ node: { '0': { main: [null] } } });
+		expect(waitingExecution).toEqual({});
+		expect(waitingExecutionSource).toEqual({});
 	});
 
 	//                  XX            ►►
@@ -176,9 +177,9 @@ describe('recreateNodeExecutionStack', () => {
 		const pinData = {};
 
 		// ACT & ASSERT
-		expect(() =>
-			recreateNodeExecutionStack(graph, startNodes, node2, runData, pinData),
-		).toThrowError(AssertionError);
+		expect(() => recreateNodeExecutionStack(graph, startNodes, runData, pinData)).toThrowError(
+			AssertionError,
+		);
 	});
 
 	//                                ►►
@@ -214,10 +215,9 @@ describe('recreateNodeExecutionStack', () => {
 
 		// ACT
 		const { nodeExecutionStack, waitingExecution, waitingExecutionSource } =
-			recreateNodeExecutionStack(graph, startNodes, node3, runData, pinData);
+			recreateNodeExecutionStack(graph, startNodes, runData, pinData);
 
 		// ASSERT
-
 		expect(nodeExecutionStack).toEqual([
 			{
 				data: { main: [[{ json: { value: 1 } }]] },
@@ -251,19 +251,8 @@ describe('recreateNodeExecutionStack', () => {
 			},
 		]);
 
-		expect(waitingExecution).toEqual({
-			node3: { '0': { main: [[{ json: { value: 1 } }], [{ json: { value: 1 } }]] } },
-		});
-		expect(waitingExecutionSource).toEqual({
-			node3: {
-				'0': {
-					main: [
-						{ previousNode: 'node1', previousNodeOutput: undefined, previousNodeRun: undefined },
-						{ previousNode: 'node2', previousNodeOutput: undefined, previousNodeRun: undefined },
-					],
-				},
-			},
-		});
+		expect(waitingExecution).toEqual({});
+		expect(waitingExecutionSource).toEqual({});
 	});
 
 	//                ┌─────┐1       ►►
@@ -299,7 +288,7 @@ describe('recreateNodeExecutionStack', () => {
 
 		// ACT
 		const { nodeExecutionStack, waitingExecution, waitingExecutionSource } =
-			recreateNodeExecutionStack(graph, startNodes, node3, runData, pinData);
+			recreateNodeExecutionStack(graph, startNodes, runData, pinData);
 
 		// ASSERT
 		expect(nodeExecutionStack).toHaveLength(1);
@@ -314,22 +303,515 @@ describe('recreateNodeExecutionStack', () => {
 			},
 		});
 
-		expect(waitingExecution).toEqual({
-			node3: {
-				'0': {
-					main: [[{ json: { value: 1 } }]],
+		expect(waitingExecution).toEqual({});
+		expect(waitingExecutionSource).toEqual({});
+	});
+
+	//               ┌─────┐           ┌─────┐
+	//            ┌──►node1┼────┬──────►     │
+	//            │  └─────┘    │      │merge│
+	//            │             │  ┌───►     │
+	//            ├─────────────┘  │   └─────┘
+	//            │                │
+	//┌───────┐   │    ┌─────┐     │
+	//│trigger├───┴────►node2├─────┘
+	//└───────┘        └─────┘
+	describe('multiple inputs', () => {
+		// ARRANGE
+		const trigger = createNodeData({ name: 'trigger' });
+		const node1 = createNodeData({ name: 'node1' });
+		const node2 = createNodeData({ name: 'node2' });
+		const merge = createNodeData({ name: 'merge' });
+		const graph = new DirectedGraph()
+			.addNodes(trigger, node1, node2, merge)
+			.addConnections(
+				{ from: trigger, to: node1 },
+				{ from: trigger, to: node2 },
+				{ from: trigger, to: merge, inputIndex: 0 },
+				{ from: node1, to: merge, inputIndex: 0 },
+				{ from: node2, to: merge, inputIndex: 1 },
+			);
+
+		test('only the trigger has run data', () => {
+			// ARRANGE
+			const runData: IRunData = {
+				[trigger.name]: [toITaskData([{ data: { node: 'trigger' } }])],
+			};
+			const pinData: IPinData = {};
+			const startNodes = new Set([node1, node2, merge]);
+
+			// ACT
+			const { nodeExecutionStack, waitingExecution, waitingExecutionSource } =
+				recreateNodeExecutionStack(graph, startNodes, runData, pinData);
+
+			// ASSERT
+			expect(nodeExecutionStack).toHaveLength(2);
+			expect(nodeExecutionStack[0]).toEqual({
+				node: node1,
+				data: { main: [[{ json: { node: 'trigger' } }]] },
+				source: { main: [{ previousNode: 'trigger', previousNodeOutput: 0, previousNodeRun: 0 }] },
+			});
+			expect(nodeExecutionStack[1]).toEqual({
+				node: node2,
+				data: { main: [[{ json: { node: 'trigger' } }]] },
+				source: { main: [{ previousNode: 'trigger', previousNodeOutput: 0, previousNodeRun: 0 }] },
+			});
+
+			expect(waitingExecution).toEqual({
+				[merge.name]: {
+					'0': {
+						main: [[{ json: { node: 'trigger' } }]],
+					},
 				},
-			},
+			});
+			expect(waitingExecutionSource).toEqual({
+				[merge.name]: {
+					'0': {
+						main: [
+							{
+								previousNode: 'trigger',
+								previousNodeOutput: 0,
+								previousNodeRun: 0,
+							},
+						],
+					},
+				},
+			});
 		});
-		expect(waitingExecutionSource).toEqual({
-			node3: {
-				'0': {
+
+		test('the trigger and node1 have run data', () => {
+			// ARRANGE
+			const runData: IRunData = {
+				[trigger.name]: [toITaskData([{ data: { node: 'trigger' } }])],
+				[node1.name]: [toITaskData([{ data: { node: 'node1' } }])],
+			};
+			const pinData: IPinData = {};
+			const startNodes = new Set([node2, merge]);
+
+			// ACT
+			const { nodeExecutionStack, waitingExecution, waitingExecutionSource } =
+				recreateNodeExecutionStack(graph, startNodes, runData, pinData);
+
+			// ASSERT
+			expect(nodeExecutionStack).toHaveLength(2);
+			expect(nodeExecutionStack[0]).toEqual({
+				node: node2,
+				data: { main: [[{ json: { node: 'trigger' } }]] },
+				source: { main: [{ previousNode: 'trigger', previousNodeOutput: 0, previousNodeRun: 0 }] },
+			});
+			expect(nodeExecutionStack[1]).toEqual({
+				node: merge,
+				data: { main: [[{ json: { node: 'trigger' } }]] },
+				source: {
+					main: [{ previousNode: 'trigger', previousNodeOutput: 0, previousNodeRun: 0 }],
+				},
+			});
+
+			expect(waitingExecution).toEqual({
+				[merge.name]: {
+					'0': {
+						main: [[{ json: { node: 'node1' } }]],
+					},
+				},
+			});
+			expect(waitingExecutionSource).toEqual({
+				[merge.name]: {
+					'0': {
+						main: [
+							{
+								previousNode: 'node1',
+								previousNodeOutput: 0,
+								previousNodeRun: 0,
+							},
+						],
+					},
+				},
+			});
+		});
+
+		test('the trigger and node2 have run data', () => {
+			// ARRANGE
+			const runData: IRunData = {
+				[trigger.name]: [toITaskData([{ data: { node: 'trigger' } }])],
+				[node2.name]: [toITaskData([{ data: { node: 'node2' } }])],
+			};
+			const pinData: IPinData = {};
+			const startNodes = new Set([node1, merge]);
+
+			// ACT
+			const { nodeExecutionStack, waitingExecution, waitingExecutionSource } =
+				recreateNodeExecutionStack(graph, startNodes, runData, pinData);
+
+			// ASSERT
+			expect(nodeExecutionStack).toHaveLength(2);
+			expect(nodeExecutionStack[0]).toEqual({
+				node: node1,
+				data: { main: [[{ json: { node: 'trigger' } }]] },
+				source: { main: [{ previousNode: 'trigger', previousNodeOutput: 0, previousNodeRun: 0 }] },
+			});
+			expect(nodeExecutionStack[1]).toEqual({
+				node: merge,
+				data: { main: [[{ json: { node: 'trigger' } }], [{ json: { node: 'node2' } }]] },
+				source: {
 					main: [
-						{ previousNode: 'node1', previousNodeOutput: undefined, previousNodeRun: undefined },
-						{ previousNode: 'node2', previousNodeOutput: 1, previousNodeRun: undefined },
+						{ previousNode: 'trigger', previousNodeOutput: 0, previousNodeRun: 0 },
+						{ previousNode: 'node2', previousNodeOutput: 0, previousNodeRun: 0 },
 					],
 				},
-			},
+			});
+
+			expect(waitingExecution).toEqual({});
+			expect(waitingExecutionSource).toEqual({});
 		});
+
+		test('the trigger, node1 and node2 have run data', () => {
+			// ARRANGE
+			const runData: IRunData = {
+				[trigger.name]: [toITaskData([{ data: { node: 'trigger' } }])],
+				[node1.name]: [toITaskData([{ data: { node: 'node1' } }])],
+				[node2.name]: [toITaskData([{ data: { node: 'node2' } }])],
+			};
+			const pinData: IPinData = {};
+			const startNodes = new Set([merge]);
+
+			// ACT
+			const { nodeExecutionStack, waitingExecution, waitingExecutionSource } =
+				recreateNodeExecutionStack(graph, startNodes, runData, pinData);
+
+			// ASSERT
+			expect(nodeExecutionStack).toHaveLength(2);
+			expect(nodeExecutionStack[0]).toEqual({
+				node: merge,
+				data: { main: [[{ json: { node: 'node1' } }], [{ json: { node: 'node2' } }]] },
+				source: {
+					main: [
+						{ previousNode: 'node1', previousNodeOutput: 0, previousNodeRun: 0 },
+						{ previousNode: 'node2', previousNodeOutput: 0, previousNodeRun: 0 },
+					],
+				},
+			});
+			expect(nodeExecutionStack[1]).toEqual({
+				node: merge,
+				data: { main: [[{ json: { node: 'trigger' } }]] },
+				source: {
+					main: [{ previousNode: 'trigger', previousNodeOutput: 0, previousNodeRun: 0 }],
+				},
+			});
+
+			expect(waitingExecution).toEqual({});
+			expect(waitingExecutionSource).toEqual({});
+		});
+	});
+});
+
+describe('addWaitingExecution', () => {
+	test('allow adding data partially', () => {
+		const waitingExecution: IWaitingForExecution = {};
+		const nodeName1 = 'node 1';
+		const nodeName2 = 'node 2';
+		const executionData: INodeExecutionData[] = [{ json: { item: 1 } }, { json: { item: 2 } }];
+
+		// adding the data for the second input index first
+		{
+			addWaitingExecution(
+				waitingExecution,
+				nodeName1,
+				1, // runIndex
+				NodeConnectionType.Main,
+				1, // inputIndex
+				executionData,
+			);
+			expect(waitingExecution).toEqual({
+				[nodeName1]: {
+					// runIndex
+					1: {
+						[NodeConnectionType.Main]: [undefined, executionData],
+					},
+				},
+			});
+		}
+
+		// adding the data for the first input
+		{
+			addWaitingExecution(
+				waitingExecution,
+				nodeName1,
+				1, // runIndex
+				NodeConnectionType.Main,
+				0, // inputIndex
+				executionData,
+			);
+			expect(waitingExecution).toEqual({
+				[nodeName1]: {
+					// runIndex
+					1: {
+						[NodeConnectionType.Main]: [executionData, executionData],
+					},
+				},
+			});
+		}
+
+		// adding data for another node connection type
+		{
+			addWaitingExecution(
+				waitingExecution,
+				nodeName1,
+				1, // runIndex
+				NodeConnectionType.AiMemory,
+				0, // inputIndex
+				executionData,
+			);
+			expect(waitingExecution).toEqual({
+				[nodeName1]: {
+					// runIndex
+					1: {
+						[NodeConnectionType.Main]: [executionData, executionData],
+						[NodeConnectionType.AiMemory]: [executionData],
+					},
+				},
+			});
+		}
+
+		// adding data for another run
+		{
+			addWaitingExecution(
+				waitingExecution,
+				nodeName1,
+				0, // runIndex
+				NodeConnectionType.AiChain,
+				0, // inputIndex
+				executionData,
+			);
+			expect(waitingExecution).toEqual({
+				[nodeName1]: {
+					// runIndex
+					0: {
+						[NodeConnectionType.AiChain]: [executionData],
+					},
+					1: {
+						[NodeConnectionType.Main]: [executionData, executionData],
+						[NodeConnectionType.AiMemory]: [executionData],
+					},
+				},
+			});
+		}
+
+		// adding data for another node
+		{
+			addWaitingExecution(
+				waitingExecution,
+				nodeName2,
+				0, // runIndex
+				NodeConnectionType.Main,
+				2, // inputIndex
+				executionData,
+			);
+			expect(waitingExecution).toEqual({
+				[nodeName1]: {
+					// runIndex
+					0: {
+						[NodeConnectionType.AiChain]: [executionData],
+					},
+					1: {
+						[NodeConnectionType.Main]: [executionData, executionData],
+						[NodeConnectionType.AiMemory]: [executionData],
+					},
+				},
+				[nodeName2]: {
+					// runIndex
+					0: {
+						[NodeConnectionType.Main]: [undefined, undefined, executionData],
+					},
+				},
+			});
+		}
+
+		// allow adding null
+		{
+			addWaitingExecution(
+				waitingExecution,
+				nodeName2,
+				0, // runIndex
+				NodeConnectionType.Main,
+				0, // inputIndex
+				null,
+			);
+			expect(waitingExecution).toEqual({
+				[nodeName2]: {
+					// runIndex
+					0: {
+						[NodeConnectionType.Main]: [null, undefined, executionData],
+					},
+				},
+				[nodeName1]: {
+					// runIndex
+					0: {
+						[NodeConnectionType.AiChain]: [executionData],
+					},
+					1: {
+						[NodeConnectionType.Main]: [executionData, executionData],
+						[NodeConnectionType.AiMemory]: [executionData],
+					},
+				},
+			});
+		}
+	});
+});
+
+describe('addWaitingExecutionSource', () => {
+	test('allow adding data partially', () => {
+		const waitingExecutionSource: IWaitingForExecutionSource = {};
+		const nodeName1 = 'node 1';
+		const nodeName2 = 'node 2';
+		const sourceData: ISourceData = {
+			previousNode: 'node 0',
+			previousNodeRun: 0,
+			previousNodeOutput: 0,
+		};
+
+		// adding the data for the second input index first
+		{
+			addWaitingExecutionSource(
+				waitingExecutionSource,
+				nodeName1,
+				1, // runIndex
+				NodeConnectionType.Main,
+				1, // inputIndex
+				sourceData,
+			);
+			expect(waitingExecutionSource).toEqual({
+				[nodeName1]: {
+					// runIndex
+					1: {
+						[NodeConnectionType.Main]: [undefined, sourceData],
+					},
+				},
+			});
+		}
+
+		// adding the data for the first input
+		{
+			addWaitingExecutionSource(
+				waitingExecutionSource,
+				nodeName1,
+				1, // runIndex
+				NodeConnectionType.Main,
+				0, // inputIndex
+				sourceData,
+			);
+			expect(waitingExecutionSource).toEqual({
+				[nodeName1]: {
+					// runIndex
+					1: {
+						[NodeConnectionType.Main]: [sourceData, sourceData],
+					},
+				},
+			});
+		}
+
+		// adding data for another node connection type
+		{
+			addWaitingExecutionSource(
+				waitingExecutionSource,
+				nodeName1,
+				1, // runIndex
+				NodeConnectionType.AiMemory,
+				0, // inputIndex
+				sourceData,
+			);
+			expect(waitingExecutionSource).toEqual({
+				[nodeName1]: {
+					// runIndex
+					1: {
+						[NodeConnectionType.Main]: [sourceData, sourceData],
+						[NodeConnectionType.AiMemory]: [sourceData],
+					},
+				},
+			});
+		}
+
+		// adding data for another run
+		{
+			addWaitingExecutionSource(
+				waitingExecutionSource,
+				nodeName1,
+				0, // runIndex
+				NodeConnectionType.AiChain,
+				0, // inputIndex
+				sourceData,
+			);
+			expect(waitingExecutionSource).toEqual({
+				[nodeName1]: {
+					// runIndex
+					0: {
+						[NodeConnectionType.AiChain]: [sourceData],
+					},
+					1: {
+						[NodeConnectionType.Main]: [sourceData, sourceData],
+						[NodeConnectionType.AiMemory]: [sourceData],
+					},
+				},
+			});
+		}
+
+		// adding data for another node
+		{
+			addWaitingExecutionSource(
+				waitingExecutionSource,
+				nodeName2,
+				0, // runIndex
+				NodeConnectionType.Main,
+				2, // inputIndex
+				sourceData,
+			);
+			expect(waitingExecutionSource).toEqual({
+				[nodeName1]: {
+					// runIndex
+					0: {
+						[NodeConnectionType.AiChain]: [sourceData],
+					},
+					1: {
+						[NodeConnectionType.Main]: [sourceData, sourceData],
+						[NodeConnectionType.AiMemory]: [sourceData],
+					},
+				},
+				[nodeName2]: {
+					// runIndex
+					0: {
+						[NodeConnectionType.Main]: [undefined, undefined, sourceData],
+					},
+				},
+			});
+		}
+
+		// allow adding null
+		{
+			addWaitingExecutionSource(
+				waitingExecutionSource,
+				nodeName2,
+				0, // runIndex
+				NodeConnectionType.Main,
+				0, // inputIndex
+				null,
+			);
+			expect(waitingExecutionSource).toEqual({
+				[nodeName1]: {
+					// runIndex
+					0: {
+						[NodeConnectionType.AiChain]: [sourceData],
+					},
+					1: {
+						[NodeConnectionType.Main]: [sourceData, sourceData],
+						[NodeConnectionType.AiMemory]: [sourceData],
+					},
+				},
+				[nodeName2]: {
+					// runIndex
+					0: {
+						[NodeConnectionType.Main]: [null, undefined, sourceData],
+					},
+				},
+			});
+		}
 	});
 });

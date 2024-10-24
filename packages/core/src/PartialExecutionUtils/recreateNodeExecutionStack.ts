@@ -13,8 +13,46 @@ import {
 } from 'n8n-workflow';
 
 import type { DirectedGraph } from './DirectedGraph';
-import { getIncomingData } from './getIncomingData';
+import { getIncomingDataFromAnyRun } from './getIncomingData';
 import { getSourceDataGroups } from './getSourceDataGroups';
+
+export function addWaitingExecution(
+	waitingExecution: IWaitingForExecution,
+	nodeName: string,
+	runIndex: number,
+	inputType: NodeConnectionType,
+	inputIndex: number,
+	executionData: INodeExecutionData[] | null,
+) {
+	const waitingExecutionObject = waitingExecution[nodeName] ?? {};
+	const taskDataConnections = waitingExecutionObject[runIndex] ?? {};
+	const executionDataList = taskDataConnections[inputType] ?? [];
+
+	executionDataList[inputIndex] = executionData;
+
+	taskDataConnections[inputType] = executionDataList;
+	waitingExecutionObject[runIndex] = taskDataConnections;
+	waitingExecution[nodeName] = waitingExecutionObject;
+}
+
+export function addWaitingExecutionSource(
+	waitingExecutionSource: IWaitingForExecutionSource,
+	nodeName: string,
+	runIndex: number,
+	inputType: NodeConnectionType,
+	inputIndex: number,
+	sourceData: ISourceData | null,
+) {
+	const waitingExecutionSourceObject = waitingExecutionSource[nodeName] ?? {};
+	const taskDataConnectionsSource = waitingExecutionSourceObject[runIndex] ?? {};
+	const sourceDataList = taskDataConnectionsSource[inputType] ?? [];
+
+	sourceDataList[inputIndex] = sourceData;
+
+	taskDataConnectionsSource[inputType] = sourceDataList;
+	waitingExecutionSourceObject[runIndex] = taskDataConnectionsSource;
+	waitingExecutionSource[nodeName] = waitingExecutionSourceObject;
+}
 
 /**
  * Recreates the node execution stack, waiting executions and waiting
@@ -33,7 +71,6 @@ import { getSourceDataGroups } from './getSourceDataGroups';
 export function recreateNodeExecutionStack(
 	graph: DirectedGraph,
 	startNodes: Set<INode>,
-	destinationNode: INode,
 	runData: IRunData,
 	pinData: IPinData,
 ): {
@@ -59,9 +96,6 @@ export function recreateNodeExecutionStack(
 	const waitingExecution: IWaitingForExecution = {};
 	const waitingExecutionSource: IWaitingForExecutionSource = {};
 
-	// TODO: Don't hard code this!
-	const runIndex = 0;
-
 	for (const startNode of startNodes) {
 		const incomingStartNodeConnections = graph
 			.getDirectParentConnections(startNode)
@@ -84,88 +118,93 @@ export function recreateNodeExecutionStack(
 			const sourceDataSets = getSourceDataGroups(graph, startNode, runData, pinData);
 
 			for (const sourceData of sourceDataSets) {
-				incomingData = [];
+				if (sourceData.complete) {
+					// All incoming connections have data, so let's put the node on the
+					// stack!
+					incomingData = [];
 
-				incomingSourceData = { main: [] };
+					incomingSourceData = { main: [] };
 
-				for (const incomingConnection of sourceData) {
-					const node = incomingConnection.from;
+					for (const incomingConnection of sourceData.connections) {
+						let runIndex = 0;
+						const sourceNode = incomingConnection.from;
 
-					if (pinData[node.name]) {
-						incomingData.push(pinData[node.name]);
-					} else {
-						a.ok(
-							runData[node.name],
-							`Start node(${incomingConnection.to.name}) has an incoming connection with no run or pinned data. This is not supported. The connection in question is "${node.name}->${startNode.name}". Are you sure the start nodes come from the "findStartNodes" function?`,
-						);
+						if (pinData[sourceNode.name]) {
+							incomingData.push(pinData[sourceNode.name]);
+						} else {
+							a.ok(
+								runData[sourceNode.name],
+								`Start node(${incomingConnection.to.name}) has an incoming connection with no run or pinned data. This is not supported. The connection in question is "${sourceNode.name}->${startNode.name}". Are you sure the start nodes come from the "findStartNodes" function?`,
+							);
 
-						const nodeIncomingData = getIncomingData(
+							const nodeIncomingData = getIncomingDataFromAnyRun(
+								runData,
+								sourceNode.name,
+								incomingConnection.type,
+								incomingConnection.outputIndex,
+							);
+
+							if (nodeIncomingData) {
+								runIndex = nodeIncomingData.runIndex;
+								incomingData.push(nodeIncomingData.data);
+							}
+						}
+
+						incomingSourceData.main.push({
+							previousNode: incomingConnection.from.name,
+							previousNodeOutput: incomingConnection.outputIndex,
+							previousNodeRun: runIndex,
+						});
+					}
+
+					const executeData: IExecuteData = {
+						node: startNode,
+						data: { main: incomingData },
+						source: incomingSourceData,
+					};
+
+					nodeExecutionStack.push(executeData);
+				} else {
+					const nodeName = startNode.name;
+					const nextRunIndex = waitingExecution[nodeName]
+						? Object.keys(waitingExecution[nodeName]).length
+						: 0;
+
+					for (const incomingConnection of sourceData.connections) {
+						const sourceNode = incomingConnection.from;
+						const maybeNodeIncomingData = getIncomingDataFromAnyRun(
 							runData,
-							node.name,
-							runIndex,
+							sourceNode.name,
 							incomingConnection.type,
 							incomingConnection.outputIndex,
 						);
+						const nodeIncomingData = maybeNodeIncomingData?.data ?? null;
 
 						if (nodeIncomingData) {
-							incomingData.push(nodeIncomingData);
+							addWaitingExecution(
+								waitingExecution,
+								nodeName,
+								nextRunIndex,
+								incomingConnection.type,
+								incomingConnection.inputIndex,
+								nodeIncomingData,
+							);
+
+							addWaitingExecutionSource(
+								waitingExecutionSource,
+								nodeName,
+								nextRunIndex,
+								incomingConnection.type,
+								incomingConnection.inputIndex,
+								nodeIncomingData
+									? {
+											previousNode: incomingConnection.from.name,
+											previousNodeRun: nextRunIndex,
+											previousNodeOutput: incomingConnection.outputIndex,
+										}
+									: null,
+							);
 						}
-					}
-
-					incomingSourceData.main.push({
-						previousNode: incomingConnection.from.name,
-						previousNodeOutput: incomingConnection.outputIndex,
-						previousNodeRun: 0,
-					});
-				}
-
-				const executeData: IExecuteData = {
-					node: startNode,
-					data: { main: incomingData },
-					source: incomingSourceData,
-				};
-
-				nodeExecutionStack.push(executeData);
-			}
-		}
-
-		// TODO: Do we need this?
-		if (destinationNode) {
-			const destinationNodeName = destinationNode.name;
-			// Check if the destinationNode has to be added as waiting
-			// because some input data is already fully available
-			const incomingDestinationNodeConnections = graph
-				.getDirectParentConnections(destinationNode)
-				.filter((c) => c.type === NodeConnectionType.Main);
-			if (incomingDestinationNodeConnections !== undefined) {
-				for (const connection of incomingDestinationNodeConnections) {
-					if (waitingExecution[destinationNodeName] === undefined) {
-						waitingExecution[destinationNodeName] = {};
-						waitingExecutionSource[destinationNodeName] = {};
-					}
-					if (waitingExecution[destinationNodeName][runIndex] === undefined) {
-						waitingExecution[destinationNodeName][runIndex] = {};
-						waitingExecutionSource[destinationNodeName][runIndex] = {};
-					}
-					if (waitingExecution[destinationNodeName][runIndex][connection.type] === undefined) {
-						waitingExecution[destinationNodeName][runIndex][connection.type] = [];
-						waitingExecutionSource[destinationNodeName][runIndex][connection.type] = [];
-					}
-
-					if (runData[connection.from.name] !== undefined) {
-						// Input data exists so add as waiting
-						// incomingDataDestination.push(runData[connection.node!][runIndex].data![connection.type][connection.index]);
-						waitingExecution[destinationNodeName][runIndex][connection.type].push(
-							runData[connection.from.name][runIndex].data![connection.type][connection.inputIndex],
-						);
-						waitingExecutionSource[destinationNodeName][runIndex][connection.type].push({
-							previousNode: connection.from.name,
-							previousNodeOutput: connection.inputIndex || undefined,
-							previousNodeRun: runIndex || undefined,
-						} as ISourceData);
-					} else {
-						waitingExecution[destinationNodeName][runIndex][connection.type].push(null);
-						waitingExecutionSource[destinationNodeName][runIndex][connection.type].push(null);
 					}
 				}
 			}
