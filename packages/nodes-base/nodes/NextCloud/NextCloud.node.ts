@@ -2748,14 +2748,15 @@ export class NextCloud implements INodeType {
 							if (referenceId) {
 								talkBody.referenceId = referenceId;
 							}
-							if (silent) {
-								talkBody.silent = silent;
-							}
+
+							talkBody.silent = silent;
+
 							const talkHeaders = {
 								'OCS-APIRequest': 'true',
 								'Content-Type': 'application/json',
 								Accept: 'application/json',
 							};
+
 							responseData = await nextCloudApiRequest.call(
 								this,
 								'POST',
