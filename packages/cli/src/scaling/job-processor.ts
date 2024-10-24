@@ -13,7 +13,8 @@ import { Service } from 'typedi';
 import config from '@/config';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import { Logger } from '@/logging/logger.service';
+import type { Logger } from '@/logging/logger.service';
+import { ScopedLogger } from '@/logging/scoped-logger.service';
 import { NodeTypes } from '@/node-types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
@@ -33,14 +34,16 @@ import type {
 export class JobProcessor {
 	private readonly runningJobs: Record<JobId, RunningJob> = {};
 
+	private readonly logger: Logger;
+
 	constructor(
-		private readonly logger: Logger,
+		private readonly scopedLogger: ScopedLogger,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly nodeTypes: NodeTypes,
 		private readonly instanceSettings: InstanceSettings,
 	) {
-		this.logger = this.logger.scoped('scaling');
+		this.logger = this.scopedLogger.from('scaling');
 	}
 
 	async processJob(job: Job): Promise<JobResult> {

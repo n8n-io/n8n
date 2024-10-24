@@ -13,7 +13,8 @@ import { CredentialsOverwritesAlreadySetError } from '@/errors/credentials-overw
 import { NonJsonBodyError } from '@/errors/non-json-body.error';
 import { ExternalHooks } from '@/external-hooks';
 import type { ICredentialsOverwrite } from '@/interfaces';
-import { Logger } from '@/logging/logger.service';
+import type { Logger } from '@/logging/logger.service';
+import { ScopedLogger } from '@/logging/scoped-logger.service';
 import { PrometheusMetricsService } from '@/metrics/prometheus-metrics.service';
 import { rawBodyReader, bodyParser } from '@/middlewares';
 import * as ResponseHelper from '@/response-helper';
@@ -47,9 +48,11 @@ export class WorkerServer {
 
 	private overwritesLoaded = false;
 
+	private readonly logger: Logger;
+
 	constructor(
 		private readonly globalConfig: GlobalConfig,
-		private readonly logger: Logger,
+		private readonly scopedLogger: ScopedLogger,
 		private readonly credentialsOverwrites: CredentialsOverwrites,
 		private readonly externalHooks: ExternalHooks,
 		private readonly instanceSettings: InstanceSettings,
@@ -58,7 +61,7 @@ export class WorkerServer {
 	) {
 		assert(this.instanceSettings.instanceType === 'worker');
 
-		this.logger = this.logger.scoped('scaling');
+		this.logger = this.scopedLogger.from('scaling');
 
 		this.app = express();
 

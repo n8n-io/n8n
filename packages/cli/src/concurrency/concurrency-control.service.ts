@@ -7,7 +7,8 @@ import { InvalidConcurrencyLimitError } from '@/errors/invalid-concurrency-limit
 import { UnknownExecutionModeError } from '@/errors/unknown-execution-mode.error';
 import { EventService } from '@/events/event.service';
 import type { IExecutingWorkflowData } from '@/interfaces';
-import { Logger } from '@/logging/logger.service';
+import type { Logger } from '@/logging/logger.service';
+import { ScopedLogger } from '@/logging/scoped-logger.service';
 import { Telemetry } from '@/telemetry';
 
 import { ConcurrencyQueue } from './concurrency-queue';
@@ -27,13 +28,15 @@ export class ConcurrencyControlService {
 		(t) => CLOUD_TEMP_PRODUCTION_LIMIT - t,
 	);
 
+	private readonly logger: Logger;
+
 	constructor(
-		private readonly logger: Logger,
+		private readonly scopedLogger: ScopedLogger,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly telemetry: Telemetry,
 		private readonly eventService: EventService,
 	) {
-		this.logger = this.logger.scoped('concurrency');
+		this.logger = this.scopedLogger.from('concurrency');
 
 		this.productionLimit = config.getEnv('executions.concurrency.productionLimit');
 

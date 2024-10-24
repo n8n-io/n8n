@@ -7,10 +7,12 @@ import {
 import { Service } from 'typedi';
 
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { Logger } from '@/logging/logger.service';
+import type { Logger } from '@/logging/logger.service';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowRunner } from '@/workflow-runner';
+
+import { ScopedLogger } from './logging/scoped-logger.service';
 
 @Service()
 export class WaitTracker {
@@ -23,15 +25,17 @@ export class WaitTracker {
 
 	mainTimer: NodeJS.Timeout;
 
+	private readonly logger: Logger;
+
 	constructor(
-		private readonly logger: Logger,
+		private readonly scopedLogger: ScopedLogger,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly ownershipService: OwnershipService,
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly orchestrationService: OrchestrationService,
 		private readonly instanceSettings: InstanceSettings,
 	) {
-		this.logger = this.logger.scoped('waiting-executions');
+		this.logger = this.scopedLogger.from('waiting-executions');
 	}
 
 	has(executionId: string) {

@@ -22,6 +22,7 @@ import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus'
 import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { License } from '@/license';
+import { ScopedLogger } from '@/logging/scoped-logger.service';
 import { LocalTaskManager } from '@/runners/task-managers/local-task-manager';
 import { TaskManager } from '@/runners/task-managers/task-manager';
 import { PubSubHandler } from '@/scaling/pubsub/pubsub-handler';
@@ -170,7 +171,7 @@ export class Start extends BaseCommand {
 
 		this.logger.info('Initializing n8n process');
 		if (config.getEnv('executions.mode') === 'queue') {
-			const scopedLogger = this.logger.scoped('scaling');
+			const scopedLogger = Container.get(ScopedLogger).from('scaling');
 			scopedLogger.debug('Starting main instance in scaling mode');
 			scopedLogger.debug(`Host ID: ${this.instanceSettings.hostId}`);
 		}
@@ -263,7 +264,7 @@ export class Start extends BaseCommand {
 		await subscriber.subscribe('n8n.commands');
 		await subscriber.subscribe('n8n.worker-response');
 
-		this.logger.scoped(['scaling', 'pubsub']).debug('Pubsub setup completed');
+		Container.get(ScopedLogger).from(['scaling', 'pubsub']).debug('Pubsub setup completed');
 
 		if (!orchestrationService.isMultiMainSetupEnabled) return;
 

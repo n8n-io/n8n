@@ -4,7 +4,8 @@ import type { Cluster, RedisOptions } from 'ioredis';
 import { Service } from 'typedi';
 
 import { Debounce } from '@/decorators/debounce';
-import { Logger } from '@/logging/logger.service';
+import type { Logger } from '@/logging/logger.service';
+import { ScopedLogger } from '@/logging/scoped-logger.service';
 import { TypedEmitter } from '@/typed-emitter';
 
 import type { RedisClientType } from '../scaling/redis/redis.types';
@@ -32,13 +33,15 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 	/** Whether any client has lost connection to Redis. */
 	private lostConnection = false;
 
+	private readonly logger: Logger;
+
 	constructor(
-		private readonly logger: Logger,
+		private readonly scopedLogger: ScopedLogger,
 		private readonly globalConfig: GlobalConfig,
 	) {
 		super();
 
-		this.logger = this.logger.scoped(['redis', 'scaling']);
+		this.logger = this.scopedLogger.from(['redis', 'scaling']);
 
 		this.registerListeners();
 	}

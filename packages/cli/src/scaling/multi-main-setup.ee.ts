@@ -4,7 +4,8 @@ import { Service } from 'typedi';
 
 import config from '@/config';
 import { TIME } from '@/constants';
-import { Logger } from '@/logging/logger.service';
+import type { Logger } from '@/logging/logger.service';
+import { ScopedLogger } from '@/logging/scoped-logger.service';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { RedisClientService } from '@/services/redis-client.service';
 import { TypedEmitter } from '@/typed-emitter';
@@ -29,15 +30,17 @@ type MultiMainEvents = {
 @Service()
 export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 	constructor(
-		private readonly logger: Logger,
+		private readonly scopedLogger: ScopedLogger,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly publisher: Publisher,
 		private readonly redisClientService: RedisClientService,
 		private readonly globalConfig: GlobalConfig,
 	) {
 		super();
-		this.logger = this.logger.scoped(['scaling', 'multi-main-setup']);
+		this.logger = this.scopedLogger.from(['scaling', 'multi-main-setup']);
 	}
+
+	private readonly logger: Logger;
 
 	private leaderKey: string;
 

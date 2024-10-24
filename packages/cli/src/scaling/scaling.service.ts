@@ -19,7 +19,8 @@ import { ExecutionRepository } from '@/databases/repositories/execution.reposito
 import { OnShutdown } from '@/decorators/on-shutdown';
 import { MaxStalledCountError } from '@/errors/max-stalled-count.error';
 import { EventService } from '@/events/event.service';
-import { Logger } from '@/logging/logger.service';
+import type { Logger } from '@/logging/logger.service';
+import { ScopedLogger } from '@/logging/scoped-logger.service';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { assertNever } from '@/utils';
 
@@ -41,8 +42,10 @@ import type {
 export class ScalingService {
 	private queue: JobQueue;
 
+	private readonly logger: Logger;
+
 	constructor(
-		private readonly logger: Logger,
+		private readonly scopedLogger: ScopedLogger,
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly jobProcessor: JobProcessor,
 		private readonly globalConfig: GlobalConfig,
@@ -51,7 +54,7 @@ export class ScalingService {
 		private readonly orchestrationService: OrchestrationService,
 		private readonly eventService: EventService,
 	) {
-		this.logger = this.logger.scoped('scaling');
+		this.logger = this.scopedLogger.from('scaling');
 	}
 
 	// #region Lifecycle

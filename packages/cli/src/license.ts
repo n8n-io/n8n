@@ -7,7 +7,7 @@ import Container, { Service } from 'typedi';
 import config from '@/config';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import { OnShutdown } from '@/decorators/on-shutdown';
-import { Logger } from '@/logging/logger.service';
+import type { Logger } from '@/logging/logger.service';
 import { LicenseMetricsService } from '@/metrics/license-metrics.service';
 import { OrchestrationService } from '@/services/orchestration.service';
 
@@ -19,6 +19,7 @@ import {
 	UNLIMITED_LICENSE_QUOTA,
 } from './constants';
 import type { BooleanLicenseFeature, NumericLicenseFeature } from './interfaces';
+import { ScopedLogger } from './logging/scoped-logger.service';
 
 export type FeatureReturnType = Partial<
 	{
@@ -32,15 +33,17 @@ export class License {
 
 	private isShuttingDown = false;
 
+	private readonly logger: Logger;
+
 	constructor(
-		private readonly logger: Logger,
+		private readonly scopedLogger: ScopedLogger,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly orchestrationService: OrchestrationService,
 		private readonly settingsRepository: SettingsRepository,
 		private readonly licenseMetricsService: LicenseMetricsService,
 		private readonly globalConfig: GlobalConfig,
 	) {
-		this.logger = this.logger.scoped('license');
+		this.logger = this.scopedLogger.from('license');
 	}
 
 	/**

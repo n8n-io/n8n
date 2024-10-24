@@ -3,7 +3,8 @@ import { InstanceSettings } from 'n8n-core';
 import { Service } from 'typedi';
 
 import config from '@/config';
-import { Logger } from '@/logging/logger.service';
+import type { Logger } from '@/logging/logger.service';
+import { ScopedLogger } from '@/logging/scoped-logger.service';
 import { RedisClientService } from '@/services/redis-client.service';
 
 import type { PubSub } from './pubsub.types';
@@ -16,17 +17,19 @@ import { IMMEDIATE_COMMANDS, SELF_SEND_COMMANDS } from '../constants';
 export class Publisher {
 	private readonly client: SingleNodeClient | MultiNodeClient;
 
+	private readonly logger: Logger;
+
 	// #region Lifecycle
 
 	constructor(
-		private readonly logger: Logger,
+		private readonly scopedLogger: ScopedLogger,
 		private readonly redisClientService: RedisClientService,
 		private readonly instanceSettings: InstanceSettings,
 	) {
 		// @TODO: Once this class is only ever initialized in scaling mode, throw in the next line instead.
 		if (config.getEnv('executions.mode') !== 'queue') return;
 
-		this.logger = this.logger.scoped(['scaling', 'pubsub']);
+		this.logger = this.scopedLogger.from(['scaling', 'pubsub']);
 
 		this.client = this.redisClientService.createClient({ type: 'publisher(n8n)' });
 	}

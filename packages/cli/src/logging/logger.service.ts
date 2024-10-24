@@ -17,20 +17,20 @@ import type { LogLocationMetadata, LogLevel, LogMetadata } from './types';
 
 @Service()
 export class Logger {
-	private internalLogger: winston.Logger;
+	protected internalLogger: winston.Logger;
 
 	private readonly level: LogLevel;
 
 	private readonly scopes: Set<LogScope>;
 
+	// TODO: needs extracting
 	private get isScopingEnabled() {
 		return this.scopes.size > 0;
 	}
 
 	constructor(
-		private readonly globalConfig: GlobalConfig,
-		private readonly instanceSettings: InstanceSettings,
-		{ isRoot }: { isRoot?: boolean } = { isRoot: true },
+		protected readonly globalConfig: GlobalConfig,
+		protected readonly instanceSettings: InstanceSettings,
 	) {
 		this.level = this.globalConfig.logging.level;
 
@@ -49,25 +49,11 @@ export class Logger {
 			if (outputs.includes('console')) this.setConsoleTransport();
 			if (outputs.includes('file')) this.setFileTransport();
 
+			// TODO: needs extracting
 			this.scopes = new Set(scopes);
 		}
 
-		if (isRoot) LoggerProxy.init(this);
-	}
-
-	private setInternalLogger(internalLogger: winston.Logger) {
-		this.internalLogger = internalLogger;
-	}
-
-	/** Create a logger that injects the given scopes into its log metadata. */
-	scoped(scopes: LogScope | LogScope[]) {
-		scopes = Array.isArray(scopes) ? scopes : [scopes];
-		const scopedLogger = new Logger(this.globalConfig, this.instanceSettings, { isRoot: false });
-		const childLogger = this.internalLogger.child({ scopes });
-
-		scopedLogger.setInternalLogger(childLogger);
-
-		return scopedLogger;
+		LoggerProxy.init(this);
 	}
 
 	private log(level: LogLevel, message: string, metadata: LogMetadata) {
@@ -107,6 +93,7 @@ export class Logger {
 		this.internalLogger.add(new winston.transports.Console({ format }));
 	}
 
+	// TODO: needs extracting
 	private scopeFilter() {
 		return winston.format((info: TransformableInfo & { metadata: LogMetadata }) => {
 			if (!this.isScopingEnabled) return info;
@@ -125,7 +112,7 @@ export class Logger {
 			winston.format.metadata(),
 			winston.format.timestamp({ format: () => this.devTsFormat() }),
 			winston.format.colorize({ all: true }),
-			this.scopeFilter(),
+			this.scopeFilter(), // TODO: needs extracting
 			winston.format.printf(({ level: _level, message, timestamp, metadata: _metadata }) => {
 				const SEPARATOR = ' '.repeat(3);
 				const LOG_LEVEL_COLUMN_WIDTH = 15; // 5 columns + ANSI color codes
@@ -140,7 +127,7 @@ export class Logger {
 		return winston.format.combine(
 			winston.format.metadata(),
 			winston.format.timestamp(),
-			this.scopeFilter(),
+			this.scopeFilter(), // TODO: needs extracting
 			winston.format.printf(({ level, message, timestamp, metadata }) => {
 				const _metadata = this.toPrintable(metadata);
 				return `${timestamp} | ${level.padEnd(5)} | ${message}${_metadata ? ' ' + _metadata : ''}`;

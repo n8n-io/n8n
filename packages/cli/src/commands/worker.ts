@@ -7,7 +7,7 @@ import { WorkerMissingEncryptionKey } from '@/errors/worker-missing-encryption-k
 import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
-import { Logger } from '@/logging/logger.service';
+import { ScopedLogger } from '@/logging/scoped-logger.service';
 import { LocalTaskManager } from '@/runners/task-managers/local-task-manager';
 import { TaskManager } from '@/runners/task-managers/task-manager';
 import { PubSubHandler } from '@/scaling/pubsub/pubsub-handler';
@@ -69,7 +69,7 @@ export class Worker extends BaseCommand {
 
 		super(argv, cmdConfig);
 
-		this.logger = Container.get(Logger).scoped('scaling');
+		this.logger = Container.get(ScopedLogger).from('scaling');
 	}
 
 	async init() {
@@ -151,7 +151,7 @@ export class Worker extends BaseCommand {
 		Container.get(PubSubHandler).init();
 		await Container.get(Subscriber).subscribe('n8n.commands');
 
-		this.logger.scoped(['scaling', 'pubsub']).debug('Pubsub setup completed');
+		Container.get(ScopedLogger).from(['scaling', 'pubsub']).debug('Pubsub setup completed');
 	}
 
 	async setConcurrency() {
