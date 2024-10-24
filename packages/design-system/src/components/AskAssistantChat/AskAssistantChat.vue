@@ -231,6 +231,7 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 							type="secondary"
 							size="mini"
 							:class="$style.retryButton"
+							data-test-id="error-retry-button"
 							@click="() => message.retry?.()"
 						>
 							{{ t('generic.retry') }}

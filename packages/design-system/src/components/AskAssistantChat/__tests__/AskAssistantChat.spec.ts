@@ -182,4 +182,58 @@ describe('AskAssistantChat', () => {
 		});
 		expect(container).toMatchSnapshot();
 	});
+
+	it('renders error message correctly with retry button', () => {
+		const wrapper = render(AskAssistantChat, {
+			global: {
+				directives: {
+					n8nHtml,
+				},
+				stubs,
+			},
+			props: {
+				user: { firstName: 'Kobi', lastName: 'Dog' },
+				messages: [
+					{
+						id: '1',
+						role: 'assistant',
+						type: 'error',
+						content: 'This is an error message.',
+						read: false,
+						// Button is not shown without a retry function
+						retry: async () => {},
+					},
+				],
+			},
+		});
+		expect(wrapper.container).toMatchSnapshot();
+		expect(wrapper.getByTestId('error-retry-button')).toBeInTheDocument();
+	});
+
+	it('does not render retry button if no error is present', () => {
+		const x = render(AskAssistantChat, {
+			global: {
+				directives: {
+					n8nHtml,
+				},
+				stubs,
+			},
+			props: {
+				user: { firstName: 'Kobi', lastName: 'Dog' },
+				messages: [
+					{
+						id: '1',
+						type: 'text',
+						role: 'assistant',
+						content:
+							'Hi Max! Here is my top solution to fix the error in your **Transform data** node👇',
+						read: false,
+					},
+				],
+			},
+		});
+
+		expect(x.container).toMatchSnapshot();
+		expect(x.queryByTestId('error-retry-button')).not.toBeInTheDocument();
+	});
 });

@@ -601,20 +601,18 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				(msg) => onEachStreamingMessage(msg, id),
 				() => onDoneStreaming(id),
 				(e) =>
-					handleServiceError(
-						e,
-						id,
-						async () => await withoutFailedMessages(async () => await sendMessage(chatMessage)),
-					),
+					handleServiceError(e, id, async () => {
+						chatMessages.value = chatMessages.value.filter((msg) => msg.id !== id);
+						await sendMessage(chatMessage);
+					}),
 			);
 			trackUserMessage(chatMessage.text, !!chatMessage.quickReplyType);
 		} catch (e: unknown) {
 			// in case of assert
-			handleServiceError(
-				e,
-				id,
-				async () => await withoutFailedMessages(async () => await sendMessage(chatMessage)),
-			);
+			handleServiceError(e, id, async () => {
+				chatMessages.value = chatMessages.value.filter((msg) => msg.id !== id);
+				await sendMessage(chatMessage);
+			});
 		}
 	}
 
@@ -766,23 +764,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			codeDiffMessage.error = true;
 		}
 		codeDiffMessage.replacing = false;
-	}
-
-	async function withoutFailedMessages(retry: () => Promise<void>) {
-		// pop non-user messages to clear previous errors
-		while (
-			chatMessages.value.length > 0 &&
-			chatMessages.value[chatMessages.value.length - 1]?.role !== 'user'
-		) {
-			chatMessages.value.pop();
-		}
-
-		// Pop potential user message as it's about to be repeated by the retry if it exists.
-		if (chatMessages.value.length > 0) {
-			chatMessages.value.pop();
-		}
-
-		await retry();
 	}
 
 	function showCodeUpdateToastIfNeeded(errorNodeName: string) {
