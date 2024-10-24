@@ -2,6 +2,7 @@ import { ApplicationError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { Service } from 'typedi';
 
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Logger } from '@/logging/logger.service';
 
 import { TaskRejectError } from './errors';
@@ -71,7 +72,19 @@ export class TaskBroker {
 
 	private pendingTaskRequests: TaskRequest[] = [];
 
-	constructor(private readonly logger: Logger) {}
+	constructor(
+		private readonly logger: Logger,
+		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
+	) {
+		this.loadNodesAndCredentials.addPostProcessor(this.updateNodeTypes);
+	}
+
+	updateNodeTypes = async () => {
+		await this.messageAllRunners({
+			type: 'broker:nodetypes',
+			nodeTypes: this.loadNodesAndCredentials.types.nodes,
+		});
+	};
 
 	expireTasks() {
 		const now = process.hrtime.bigint();
@@ -84,6 +97,11 @@ export class TaskBroker {
 
 	registerRunner(runner: TaskRunner, messageCallback: MessageCallback) {
 		this.knownRunners.set(runner.id, { runner, messageCallback });
+		void this.knownRunners.get(runner.id)!.messageCallback({ type: 'broker:runnerregistered' });
+		void this.knownRunners.get(runner.id)!.messageCallback({
+			type: 'broker:nodetypes',
+			nodeTypes: this.loadNodesAndCredentials.types.nodes,
+		});
 	}
 
 	deregisterRunner(runnerId: string) {
@@ -115,6 +133,14 @@ export class TaskBroker {
 
 	private async messageRunner(runnerId: TaskRunner['id'], message: N8nMessage.ToRunner.All) {
 		await this.knownRunners.get(runnerId)?.messageCallback(message);
+	}
+
+	private async messageAllRunners(message: N8nMessage.ToRunner.All) {
+		await Promise.allSettled(
+			[...this.knownRunners.values()].map(async (runner) => {
+				await runner.messageCallback(message);
+			}),
+		);
 	}
 
 	private async messageRequester(requesterId: string, message: N8nMessage.ToRequester.All) {

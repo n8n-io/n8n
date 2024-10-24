@@ -337,7 +337,7 @@ export async function googleApiRequest(
 
 		return (await this.helpers.httpRequestWithAuthentication.call(
 			this,
-			'googleMyBusinessOAuth2Api',
+			'googleBusinessProfileOAuth2Api',
 			options,
 		)) as IDataObject;
 	} catch (error) {

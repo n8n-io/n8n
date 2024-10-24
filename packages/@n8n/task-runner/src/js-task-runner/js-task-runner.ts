@@ -7,7 +7,6 @@ import {
 import type {
 	CodeExecutionMode,
 	INode,
-	INodeType,
 	ITaskDataConnections,
 	IWorkflowExecuteAdditionalData,
 	WorkflowParameters,
@@ -129,17 +128,7 @@ export class JsTaskRunner extends TaskRunner {
 		const workflowParams = allData.workflow;
 		const workflow = new Workflow({
 			...workflowParams,
-			nodeTypes: {
-				getByNameAndVersion() {
-					return undefined as unknown as INodeType;
-				},
-				getByName() {
-					return undefined as unknown as INodeType;
-				},
-				getKnownTypes() {
-					return {};
-				},
-			},
+			nodeTypes: this.nodeTypes,
 		});
 
 		const customConsole = {
@@ -164,6 +153,30 @@ export class JsTaskRunner extends TaskRunner {
 		};
 	}
 
+	private getNativeVariables() {
+		return {
+			// Exposed Node.js globals in vm2
+			Buffer,
+			Function,
+			eval,
+			setTimeout,
+			setInterval,
+			setImmediate,
+			clearTimeout,
+			clearInterval,
+			clearImmediate,
+
+			// Missing JS natives
+			btoa,
+			atob,
+			TextDecoder,
+			TextDecoderStream,
+			TextEncoder,
+			TextEncoderStream,
+			FormData,
+		};
+	}
+
 	/**
 	 * Executes the requested code for all items in a single run
 	 */
@@ -181,19 +194,9 @@ export class JsTaskRunner extends TaskRunner {
 			require: this.requireResolver,
 			module: {},
 			console: customConsole,
-
-			// Exposed Node.js globals in vm2
-			Buffer,
-			Function,
-			eval,
-			setTimeout,
-			setInterval,
-			setImmediate,
-			clearTimeout,
-			clearInterval,
-			clearImmediate,
-
 			items: inputItems,
+
+			...this.getNativeVariables(),
 			...dataProxy,
 			...this.buildRpcCallObject(taskId),
 		};
@@ -243,6 +246,7 @@ export class JsTaskRunner extends TaskRunner {
 				console: customConsole,
 				item,
 
+				...this.getNativeVariables(),
 				...dataProxy,
 				...this.buildRpcCallObject(taskId),
 			};
