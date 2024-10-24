@@ -109,8 +109,6 @@ const props = withDefaults(
 
 const {
 	vueFlowRef,
-	paneDragging,
-	panOnDrag,
 	getSelectedNodes: selectedNodes,
 	addSelectedNodes,
 	removeSelectedNodes,
@@ -189,7 +187,6 @@ const keyMap = computed(() => ({
 useKeybindings(keyMap, { disabled: disableKeyBindings });
 
 function setPanningEnabled(value: boolean) {
-	console.log('setPanningEnabled', value);
 	if (value) {
 		isPanningEnabled.value = true;
 		selectionKeyCode.value = null;
