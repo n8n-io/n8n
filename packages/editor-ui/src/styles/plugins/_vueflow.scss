@@ -72,10 +72,6 @@
 		cursor: grabbing;
 	}
 
-	&.selected {
-		z-index: 1 !important;
-	}
-
 	&:has(.sticky--active) {
 		z-index: 1 !important;
 	}
@@ -96,7 +92,8 @@
  * Edges
  */
 
-.vue-flow__edges,
-.vue-flow__edge-labels {
+.vue-flow__edges:has(.selected),
+.vue-flow__edges:has(.hovered),
+.vue-flow__edge-label.selected {
 	z-index: 1 !important;
 }
