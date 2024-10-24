@@ -15,7 +15,12 @@ import {
 	NDV,
 	MainSidebar,
 } from '../pages';
-import { getVisibleDropdown, getVisibleModalOverlay, getVisibleSelect } from '../utils';
+import {
+	getVisibleDropdown,
+	getVisibleModalOverlay,
+	getVisibleSelect,
+	getVisiblePopper,
+} from '../utils';
 
 const workflowsPage = new WorkflowsPage();
 const workflowPage = new WorkflowPage();
@@ -579,6 +584,9 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			credentialsPage.getters.credentialCardActions('Credential in Project 1').click();
 			credentialsPage.getters.credentialMoveButton().click();
 
+			// wait for all poppers to be gone
+			getVisiblePopper().should('have.length', 0);
+
 			projects
 				.getResourceMoveModal()
 				.should('be.visible')
@@ -602,6 +610,9 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			credentialsPage.getters.credentialCardActions('Credential in Project 1').click();
 			credentialsPage.getters.credentialMoveButton().click();
 
+			// wait for all poppers to be gone
+			getVisiblePopper().should('have.length', 0);
+
 			projects
 				.getResourceMoveModal()
 				.should('be.visible')
@@ -624,6 +635,9 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			credentialsPage.getters.credentialCardActions('Credential in Project 1').click();
 			credentialsPage.getters.credentialMoveButton().click();
 
+			// wait for all poppers to be gone
+			getVisiblePopper().should('have.length', 0);
+
 			projects
 				.getResourceMoveModal()
 				.should('be.visible')
@@ -636,6 +650,9 @@ describe('Projects', { disableAutoLogin: true }, () => {
 				.filter(`:contains("${INSTANCE_OWNER.email}")`)
 				.click();
 			projects.getResourceMoveModal().find('button:contains("Move credential")').click();
+
+			// wait for all poppers to be gone
+			getVisiblePopper().should('have.length', 0);
 
 			credentialsPage.getters
 				.credentialCards()

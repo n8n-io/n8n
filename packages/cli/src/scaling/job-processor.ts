@@ -40,7 +40,7 @@ export class JobProcessor {
 		private readonly nodeTypes: NodeTypes,
 		private readonly instanceSettings: InstanceSettings,
 	) {
-		this.logger = this.logger.withScope('scaling');
+		this.logger = this.logger.scoped('scaling');
 	}
 
 	async processJob(job: Job): Promise<JobResult> {

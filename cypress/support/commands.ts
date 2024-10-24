@@ -10,7 +10,7 @@ import {
 	N8N_AUTH_COOKIE,
 } from '../constants';
 import { WorkflowPage } from '../pages';
-import { getUniqueWorkflowName } from '../utils/workflowUtils';
+import { getUniqueWorkflowName, isCanvasV2 } from '../utils/workflowUtils';
 
 Cypress.Commands.add('setAppDate', (targetDate: number | Date) => {
 	cy.window().then((win) => {
@@ -24,6 +24,10 @@ Cypress.Commands.add('setAppDate', (targetDate: number | Date) => {
 
 Cypress.Commands.add('getByTestId', (selector, ...args) => {
 	return cy.get(`[data-test-id="${selector}"]`, ...args);
+});
+
+Cypress.Commands.add('ifCanvasVersion', (getterV1, getterV2) => {
+	return isCanvasV2() ? getterV2() : getterV1();
 });
 
 Cypress.Commands.add(

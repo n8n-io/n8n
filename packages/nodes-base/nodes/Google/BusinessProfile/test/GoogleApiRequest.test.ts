@@ -22,7 +22,7 @@ describe('googleApiRequest', () => {
 		const result = await googleApiRequest.call(mockContext, 'GET', '/test-resource');
 
 		expect(mockHttpRequestWithAuthentication).toHaveBeenCalledWith(
-			'googleMyBusinessOAuth2Api',
+			'googleBusinessProfileOAuth2Api',
 			expect.objectContaining({
 				method: 'GET',
 				url: 'https://mybusiness.googleapis.com/v4/test-resource',
@@ -42,7 +42,7 @@ describe('googleApiRequest', () => {
 		const result = await googleApiRequest.call(mockContext, 'POST', '/test-resource', requestBody);
 
 		expect(mockHttpRequestWithAuthentication).toHaveBeenCalledWith(
-			'googleMyBusinessOAuth2Api',
+			'googleBusinessProfileOAuth2Api',
 			expect.objectContaining({
 				method: 'POST',
 				body: requestBody,
@@ -62,7 +62,7 @@ describe('googleApiRequest', () => {
 		const result = await googleApiRequest.call(mockContext, 'GET', '/test-resource', {});
 
 		expect(mockHttpRequestWithAuthentication).toHaveBeenCalledWith(
-			'googleMyBusinessOAuth2Api',
+			'googleBusinessProfileOAuth2Api',
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			expect.not.objectContaining({ body: expect.anything() }),
 		);

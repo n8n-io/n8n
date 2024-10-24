@@ -65,7 +65,7 @@ const lastPopupCountUpdate = ref(0);
 const codeGenerationInProgress = ref(false);
 
 const router = useRouter();
-const { runWorkflowResolvePending, stopCurrentExecution } = useRunWorkflow({ router });
+const { runWorkflow, runWorkflowResolvePending, stopCurrentExecution } = useRunWorkflow({ router });
 
 const workflowsStore = useWorkflowsStore();
 const externalHooks = useExternalHooks();
@@ -85,12 +85,10 @@ const nodeType = computed((): INodeTypeDescription | null => {
 });
 
 const isNodeRunning = computed(() => {
-	if (codeGenerationInProgress.value) return true;
-
+	if (!uiStore.isActionActive['workflowRunning'] || codeGenerationInProgress.value) return false;
 	const triggeredNode = workflowsStore.executedNode;
 	return (
-		uiStore.isActionActive.workflowRunning &&
-		(workflowsStore.isNodeExecuting(node.value?.name ?? '') || triggeredNode === node.value?.name)
+		workflowsStore.isNodeExecuting(node.value?.name ?? '') || triggeredNode === node.value?.name
 	);
 });
 
@@ -312,10 +310,18 @@ async function onClick() {
 			telemetry.track('User clicked execute node button', telemetryPayload);
 			await externalHooks.run('nodeExecuteButton.onClick', telemetryPayload);
 
-			await runWorkflowResolvePending({
-				destinationNode: props.nodeName,
-				source: 'RunData.ExecuteNodeButton',
-			});
+			if (workflowsStore.isWaitingExecution) {
+				await runWorkflowResolvePending({
+					destinationNode: props.nodeName,
+					source: 'RunData.ExecuteNodeButton',
+				});
+			} else {
+				await runWorkflow({
+					destinationNode: props.nodeName,
+					source: 'RunData.ExecuteNodeButton',
+				});
+			}
+
 			emit('execute');
 		}
 	}
