@@ -189,6 +189,7 @@ const keyMap = computed(() => ({
 useKeybindings(keyMap, { disabled: disableKeyBindings });
 
 function setPanningEnabled(value: boolean) {
+	console.log('setPanningEnabled', value);
 	if (value) {
 		isPanningEnabled.value = true;
 		selectionKeyCode.value = null;
@@ -674,6 +675,10 @@ provide(CanvasKey, {
 
 	&.draggable :global(.vue-flow__pane) {
 		cursor: grab;
+	}
+
+	:global(.vue-flow__pane) {
+		cursor: default;
 	}
 
 	:global(.vue-flow__pane.dragging) {
