@@ -44,7 +44,7 @@ const retrieveFields: INodeProperties[] = [
 	},
 ];
 
-export const VectorStoreZep = createVectorStoreNode({
+export class VectorStoreZep extends createVectorStoreNode({
 	meta: {
 		displayName: 'Zep Vector Store',
 		name: 'vectorStoreZep',
@@ -130,4 +130,4 @@ export const VectorStoreZep = createVectorStoreNode({
 			throw new NodeOperationError(context.getNode(), error as Error, { itemIndex });
 		}
 	},
-});
+}) {}

@@ -33,7 +33,7 @@ function findReferencedMethods(obj, refs = {}, latestName = '') {
 	const loaderNodeTypes = Object.values(loader.nodeTypes);
 
 	const definedMethods = loaderNodeTypes.reduce((acc, cur) => {
-		NodeHelpers.getVersionedNodeTypeAll(cur.type).forEach((type) => {
+		loader.getVersionedNodeTypeAll(cur.type).forEach((type) => {
 			const methods = type.description?.__loadOptionsMethods;
 
 			if (!methods) return;
@@ -58,7 +58,7 @@ function findReferencedMethods(obj, refs = {}, latestName = '') {
 			return data.type;
 		})
 		.flatMap((nodeType) =>
-			NodeHelpers.getVersionedNodeTypeAll(nodeType).map((item) => {
+			loader.getVersionedNodeTypeAll(nodeType).map((item) => {
 				const { __loadOptionsMethods, ...rest } = item.description;
 				return rest;
 			}),
@@ -97,6 +97,8 @@ function findReferencedMethods(obj, refs = {}, latestName = '') {
 	const referencedMethods = findReferencedMethods(nodeTypes);
 
 	await Promise.all([
+		writeJSON('known/nodes.json', loader.known.nodes),
+		writeJSON('known/credentials.json', loader.known.credentials),
 		writeJSON('types/credentials.json', credentialTypes),
 		writeJSON('types/nodes.json', nodeTypes),
 		writeJSON('methods/defined.json', definedMethods),

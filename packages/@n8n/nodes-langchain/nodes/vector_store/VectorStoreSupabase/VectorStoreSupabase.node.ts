@@ -39,7 +39,7 @@ const retrieveFields: INodeProperties[] = [
 
 const updateFields: INodeProperties[] = [...insertFields];
 
-export const VectorStoreSupabase = createVectorStoreNode({
+export class VectorStoreSupabase extends createVectorStoreNode({
 	meta: {
 		description: 'Work with your data in Supabase Vector Store',
 		icon: 'file:supabase.svg',
@@ -109,4 +109,4 @@ export const VectorStoreSupabase = createVectorStoreNode({
 			}
 		}
 	},
-});
+}) {}

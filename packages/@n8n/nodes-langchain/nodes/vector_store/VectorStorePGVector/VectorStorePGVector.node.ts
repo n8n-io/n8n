@@ -212,7 +212,7 @@ class ExtendedPGVectorStore extends PGVectorStore {
 	}
 }
 
-export const VectorStorePGVector = createVectorStoreNode({
+export class VectorStorePGVector extends createVectorStoreNode({
 	meta: {
 		description: 'Work with your data in Postgresql with the PGVector extension',
 		icon: 'file:postgres.svg',
@@ -308,4 +308,4 @@ export const VectorStorePGVector = createVectorStoreNode({
 
 		await PGVectorStore.fromDocuments(documents, embeddings, config);
 	},
-});
+}) {}
