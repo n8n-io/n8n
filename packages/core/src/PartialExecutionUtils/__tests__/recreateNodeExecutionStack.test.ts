@@ -12,7 +12,6 @@
 import { AssertionError } from 'assert';
 import type {
 	INodeExecutionData,
-	IRun,
 	ISourceData,
 	IWaitingForExecution,
 	IWaitingForExecutionSource,
