@@ -98,6 +98,9 @@ const updateGridWidth = async () => {
 					</keep-alive>
 					<component :is="Component" v-else />
 				</router-view>
+				<div :class="$style.contentFooter">
+					<router-view name="footer" />
+				</div>
 			</div>
 			<div :id="APP_MODALS_ELEMENT_ID" :class="$style.modals">
 				<Modals />
@@ -145,10 +148,18 @@ const updateGridWidth = async () => {
 	height: 100%;
 	width: 100%;
 	justify-content: center;
+	flex-direction: column;
 
 	main {
 		width: 100%;
 		height: 100%;
+	}
+
+	.contentFooter {
+		height: auto;
+		z-index: 1000000;
+		background: white;
+		border: 1px solid red;
 	}
 }
 
