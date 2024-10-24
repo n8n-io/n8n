@@ -309,27 +309,32 @@ async function initializeRoute() {
 	} else if (route.name === VIEWS.TEMPLATE_IMPORT) {
 		const templateId = route.params.id;
 		await openWorkflowTemplate(templateId.toString());
-	} else if (isWorkflowRoute.value && !isAlreadyInitialized) {
-		historyStore.reset();
+	} else if (isWorkflowRoute.value) {
+		if (!isAlreadyInitialized) {
+			historyStore.reset();
 
-		// If there is no workflow id, treat it as a new workflow
-		if (isNewWorkflowRoute.value || !workflowId.value) {
-			if (route.meta?.nodeView === true) {
-				await initializeWorkspaceForNewWorkflow();
+			// If there is no workflow id, treat it as a new workflow
+			if (isNewWorkflowRoute.value || !workflowId.value) {
+				if (route.meta?.nodeView === true) {
+					await initializeWorkspaceForNewWorkflow();
+				}
+				return;
 			}
-			return;
+
+			await initializeWorkspaceForExistingWorkflow(workflowId.value);
+
+			await loadCredentials();
+
+			void nextTick(() => {
+				nodeHelpers.updateNodesInputIssues();
+				nodeHelpers.updateNodesCredentialsIssues();
+				nodeHelpers.updateNodesParameterIssues();
+			});
 		}
 
-		await initializeWorkspaceForExistingWorkflow(workflowId.value);
-
-		await loadCredentials();
-		await initializeDebugMode();
-
-		void nextTick(() => {
-			nodeHelpers.updateNodesInputIssues();
-			nodeHelpers.updateNodesCredentialsIssues();
-			nodeHelpers.updateNodesParameterIssues();
-		});
+		if (route.name === VIEWS.EXECUTION_DEBUG) {
+			await initializeDebugMode();
+		}
 	}
 }
 
@@ -956,14 +961,7 @@ const projectPermissions = computed(() => {
 
 const isStoppingExecution = ref(false);
 
-const isWorkflowRunning = computed(() => {
-	if (uiStore.isActionActive.workflowRunning) return true;
-	if (workflowsStore.activeExecutionId) {
-		const execution = workflowsStore.getWorkflowExecution;
-		if (execution && execution.status === 'waiting' && !execution.finished) return true;
-	}
-	return false;
-});
+const isWorkflowRunning = computed(() => workflowsStore.isWorkflowRunning);
 const isExecutionWaitingForWebhook = computed(() => workflowsStore.executionWaitingForWebhook);
 
 const isExecutionDisabled = computed(() => {
@@ -1396,16 +1394,14 @@ function checkIfRouteIsAllowed() {
  */
 
 async function initializeDebugMode() {
-	if (route.name === VIEWS.EXECUTION_DEBUG) {
-		workflowHelpers.setDocumentTitle(workflowsStore.workflowName, 'DEBUG');
+	workflowHelpers.setDocumentTitle(workflowsStore.workflowName, 'DEBUG');
 
-		if (!workflowsStore.isInDebugMode) {
-			await applyExecutionData(route.params.executionId as string);
-			workflowsStore.isInDebugMode = true;
-		}
-
-		canvasEventBus.on('saved:workflow', onSaveFromWithinExecutionDebug);
+	if (!workflowsStore.isInDebugMode) {
+		await applyExecutionData(route.params.executionId as string);
+		workflowsStore.isInDebugMode = true;
 	}
+
+	canvasEventBus.on('saved:workflow', onSaveFromWithinExecutionDebug);
 }
 
 async function onSaveFromWithinExecutionDebug() {

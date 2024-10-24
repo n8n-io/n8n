@@ -14,5 +14,8 @@ process.env.N8N_USER_FOLDER = testDir;
 writeFileSync(
 	join(testDir, '.n8n/config'),
 	JSON.stringify({ encryptionKey: 'test_key', instanceId: '123' }),
-	'utf-8',
+	{
+		encoding: 'utf-8',
+		mode: 0o600,
+	},
 );

@@ -426,12 +426,7 @@ export default defineComponent({
 			return this.workflowsStore.getWorkflowExecution;
 		},
 		workflowRunning(): boolean {
-			if (this.uiStore.isActionActive.workflowRunning) return true;
-			if (this.workflowsStore.activeExecutionId) {
-				const execution = this.workflowsStore.getWorkflowExecution;
-				if (execution && execution.status === 'waiting' && !execution.finished) return true;
-			}
-			return false;
+			return this.workflowsStore.isWorkflowRunning;
 		},
 		currentWorkflow(): string {
 			return this.$route.params.name?.toString() || this.workflowsStore.workflowId;

@@ -31,6 +31,7 @@ onEdgeMouseEnter(({ edge }) => {
 	if (edge.id !== props.id) return;
 	isHovered.value = true;
 });
+
 onEdgeMouseLeave(({ edge }) => {
 	if (edge.id !== props.id) return;
 	isHovered.value = false;
