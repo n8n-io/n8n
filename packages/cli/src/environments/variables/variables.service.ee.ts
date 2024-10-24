@@ -1,16 +1,19 @@
-import type { CreateVariableRequestDto } from '@n8n/api-types';
+import type { CreateVariableRequestDto, UpdateVariableRequestDto } from '@n8n/api-types';
 import { Container, Service } from 'typedi';
 
+import type { User } from '@/databases/entities/user';
 import type { Variables } from '@/databases/entities/variables';
 import { VariablesRepository } from '@/databases/repositories/variables.repository';
 import { generateNanoId } from '@/databases/utils/generators';
+import { MissingScopeError } from '@/errors/response-errors/missing-scope.error';
 import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-reached.error';
 import { VariableValidationError } from '@/errors/variable-validation.error';
 import { EventService } from '@/events/event.service';
 import { CacheService } from '@/services/cache/cache.service';
+// TODO: figure out how to avoid this cycle
+import { ProjectService } from '@/services/project.service';
 
 import { canCreateNewVariable } from './environment-helpers';
-import { User } from '@/databases/entities/user';
 
 @Service()
 export class VariablesService {
@@ -18,6 +21,7 @@ export class VariablesService {
 		protected cacheService: CacheService,
 		protected variablesRepository: VariablesRepository,
 		private readonly eventService: EventService,
+		private readonly projectService: ProjectService,
 	) {}
 
 	async getAllCached(): Promise<Variables[]> {
@@ -29,6 +33,29 @@ export class VariablesService {
 		return (variables as Array<Partial<Variables>>).map((v) => this.variablesRepository.create(v));
 	}
 
+	async getAllForUser(id: string, user: User): Promise<Variables[]> {
+		const projects = await this.projectService.getAccessibleProjects(user);
+		const projectIds = projects.map((p) => p.id);
+
+		const unfilteredVariables = await this.getAllCached();
+		const canReadGlobalVariables = user.hasGlobalScope('globalVariable:read');
+
+		const foundVariables = unfilteredVariables.filter((variable) => {
+			if (variable.id !== id) {
+				return false;
+			} else if (!variable.projectId && canReadGlobalVariables) {
+				return true;
+			} else if (variable.projectId && projectIds.includes(variable.projectId)) {
+				return true;
+			}
+			return false;
+		});
+
+		return (foundVariables as Array<Partial<Variables>>).map((v) =>
+			this.variablesRepository.create(v),
+		);
+	}
+
 	async getCount(): Promise<number> {
 		return (await this.getAllCached()).length;
 	}
@@ -36,6 +63,30 @@ export class VariablesService {
 	async getCached(id: string): Promise<Variables | null> {
 		const variables = await this.getAllCached();
 		const foundVariable = variables.find((variable) => variable.id === id);
+		if (!foundVariable) {
+			return null;
+		}
+		return this.variablesRepository.create(foundVariable as Partial<Variables>);
+	}
+
+	async getForUser(id: string, user: User): Promise<Variables | null> {
+		const projects = await this.projectService.getAccessibleProjects(user);
+		const projectIds = projects.map((p) => p.id);
+
+		const variables = await this.getAllCached();
+		const canReadGlobalVariables = user.hasGlobalScope('globalVariable:read');
+
+		const foundVariable = variables.find((variable) => {
+			if (variable.id !== id) {
+				return false;
+			} else if (!variable.projectId && canReadGlobalVariables) {
+				return true;
+			} else if (variable.projectId && projectIds.includes(variable.projectId)) {
+				return true;
+			}
+			return false;
+		});
+
 		if (!foundVariable) {
 			return null;
 		}
@@ -74,6 +125,21 @@ export class VariablesService {
 			throw new VariableCountLimitReachedError('Variables limit reached');
 		}
 
+		// Creating a global variable
+		if (!variable.projectId && !user.hasGlobalScope('globalVariable:create')) {
+			throw new MissingScopeError();
+		}
+
+		// Creating a project variable
+		if (
+			variable.projectId &&
+			!(await this.projectService.getProjectWithScope(user, variable.projectId, [
+				'variable:create',
+			]))
+		) {
+			throw new MissingScopeError();
+		}
+
 		this.eventService.emit('variable-created');
 		const saveResult = await this.variablesRepository.save(
 			{
@@ -86,8 +152,28 @@ export class VariablesService {
 		return saveResult;
 	}
 
-	async update(id: string, variable: Omit<Variables, 'id'>): Promise<Variables> {
-		this.validateVariable(variable);
+	async update(id: string, variable: UpdateVariableRequestDto, user: User): Promise<Variables> {
+		const originalVariable = await this.variablesRepository.findOneOrFail({
+			where: {
+				id,
+			},
+		});
+
+		// Updating a global variable
+		if (!originalVariable.projectId && !user.hasGlobalScope('globalVariable:create')) {
+			throw new MissingScopeError();
+		}
+
+		// Updating a project variable
+		if (
+			originalVariable.projectId &&
+			!(await this.projectService.getProjectWithScope(user, originalVariable.projectId, [
+				'variable:create',
+			]))
+		) {
+			throw new MissingScopeError();
+		}
+
 		await this.variablesRepository.update(id, variable);
 		await this.updateCache();
 		return (await this.getCached(id))!;

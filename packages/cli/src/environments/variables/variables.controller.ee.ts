@@ -1,4 +1,4 @@
-import { CreateVariableRequestDto } from '@n8n/api-types';
+import { CreateVariableRequestDto, UpdateVariableRequestDto } from '@n8n/api-types';
 
 import {
 	Body,
@@ -10,6 +10,7 @@ import {
 	Post,
 	RestController,
 } from '@/decorators';
+import { Param } from '@/decorators/args';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-reached.error';
@@ -50,24 +51,29 @@ export class VariablesController {
 
 	@Get('/:id')
 	@GlobalScope('variable:read')
-	async getVariable(req: VariablesRequest.Get) {
-		const id = req.params.id;
-		const variable = await this.variablesService.getCached(id);
+	async getVariable(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('variableId') variableId: string,
+	) {
+		const variable = await this.variablesService.getCached(variableId);
 		if (variable === null) {
-			throw new NotFoundError(`Variable with id ${req.params.id} not found`);
+			throw new NotFoundError(`Variable with id ${variableId} not found`);
 		}
 		return variable;
 	}
 
-	@Patch('/:id')
+	@Patch('/:variableId')
 	@Licensed('feat:variables')
 	@GlobalScope('variable:update')
-	async updateVariable(req: VariablesRequest.Update) {
-		const id = req.params.id;
-		const variable = req.body;
-		delete variable.id;
+	async updateVariable(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('variableId') variableId: string,
+		@Body variable: UpdateVariableRequestDto,
+	) {
 		try {
-			return await this.variablesService.update(id, variable);
+			return await this.variablesService.update(variableId, variable, req.user);
 		} catch (error) {
 			if (error instanceof VariableCountLimitReachedError) {
 				throw new BadRequestError(error.message);
@@ -78,7 +84,7 @@ export class VariablesController {
 		}
 	}
 
-	@Delete('/:id(\\w+)')
+	@Delete('/:id')
 	@GlobalScope('variable:delete')
 	async deleteVariable(req: VariablesRequest.Delete) {
 		const id = req.params.id;

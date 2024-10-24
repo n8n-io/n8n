@@ -9,6 +9,7 @@ export const RESOURCES = {
 	externalSecretsProvider: ['sync', ...DEFAULT_OPERATIONS] as const,
 	externalSecret: ['list', 'use'] as const,
 	eventBusDestination: ['test', ...DEFAULT_OPERATIONS] as const,
+	globalVariable: [...DEFAULT_OPERATIONS] as const,
 	ldap: ['sync', 'manage'] as const,
 	license: ['manage'] as const,
 	logStreaming: ['manage'] as const,

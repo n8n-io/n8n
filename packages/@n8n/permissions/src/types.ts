@@ -1,6 +1,5 @@
-import type { DEFAULT_OPERATIONS, RESOURCES } from './constants';
+import type { RESOURCES } from './constants';
 
-export type DefaultOperations = (typeof DEFAULT_OPERATIONS)[number];
 export type Resource = keyof typeof RESOURCES;
 
 export type ResourceScope<
@@ -10,52 +9,11 @@ export type ResourceScope<
 
 export type WildcardScope = `${Resource}:*` | '*';
 
-export type AnnotationTagScope = ResourceScope<'annotationTag'>;
-export type AuditLogsScope = ResourceScope<'auditLogs'>;
-export type BannerScope = ResourceScope<'banner'>;
-export type CommunityScope = ResourceScope<'community'>;
-export type CommunityPackageScope = ResourceScope<'communityPackage'>;
-export type CredentialScope = ResourceScope<'credential'>;
-export type ExternalSecretScope = ResourceScope<'externalSecret'>;
-export type ExternalSecretProviderScope = ResourceScope<'externalSecretsProvider'>;
-export type EventBusDestinationScope = ResourceScope<'eventBusDestination'>;
-export type LdapScope = ResourceScope<'ldap'>;
-export type LicenseScope = ResourceScope<'license'>;
-export type LogStreamingScope = ResourceScope<'logStreaming'>;
-export type OrchestrationScope = ResourceScope<'orchestration'>;
-export type ProjectScope = ResourceScope<'project'>;
-export type SamlScope = ResourceScope<'saml'>;
-export type SecurityAuditScope = ResourceScope<'securityAudit'>;
-export type SourceControlScope = ResourceScope<'sourceControl'>;
-export type TagScope = ResourceScope<'tag'>;
-export type UserScope = ResourceScope<'user'>;
-export type VariableScope = ResourceScope<'variable'>;
-export type WorkersViewScope = ResourceScope<'workersView'>;
-export type WorkflowScope = ResourceScope<'workflow'>;
+type AllScopesObject = {
+	[R in Resource]: ResourceScope<R>;
+};
 
-export type Scope =
-	| AnnotationTagScope
-	| AuditLogsScope
-	| BannerScope
-	| CommunityScope
-	| CommunityPackageScope
-	| CredentialScope
-	| ExternalSecretProviderScope
-	| ExternalSecretScope
-	| EventBusDestinationScope
-	| LdapScope
-	| LicenseScope
-	| LogStreamingScope
-	| OrchestrationScope
-	| ProjectScope
-	| SamlScope
-	| SecurityAuditScope
-	| SourceControlScope
-	| TagScope
-	| UserScope
-	| VariableScope
-	| WorkersViewScope
-	| WorkflowScope;
+export type Scope<K extends keyof AllScopesObject = keyof AllScopesObject> = AllScopesObject[K];
 
 export type ScopeLevel = 'global' | 'project' | 'resource';
 export type GetScopeLevel<T extends ScopeLevel> = Record<T, Scope[]>;
