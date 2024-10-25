@@ -16,6 +16,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useHistoryHelper } from '@/composables/useHistoryHelper';
+import { useStyles } from './composables/useStyles';
 
 const route = useRoute();
 const rootStore = useRootStore();
@@ -23,6 +24,8 @@ const assistantStore = useAssistantStore();
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
+
+const { setAppZIndexes } = useStyles();
 
 // Initialize undo/redo
 useHistoryHelper(route);
@@ -41,6 +44,7 @@ watch(defaultLocale, (newLocale) => {
 });
 
 onMounted(async () => {
+	setAppZIndexes();
 	logHiringBanner();
 	void useExternalHooks().run('app.mount');
 	loading.value = false;
@@ -134,7 +138,7 @@ const updateGridWidth = async () => {
 
 .banners {
 	grid-area: banners;
-	z-index: 999;
+	z-index: var(--z-index-top-banners);
 }
 
 .content {
@@ -154,13 +158,13 @@ const updateGridWidth = async () => {
 
 .header {
 	grid-area: header;
-	z-index: 99;
+	z-index: var(--z-index-app-header);
 }
 
 .sidebar {
 	grid-area: sidebar;
 	height: 100%;
-	z-index: 999;
+	z-index: var(--z-index-app-sidebar);
 }
 
 .modals {
