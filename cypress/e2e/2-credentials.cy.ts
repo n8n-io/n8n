@@ -280,7 +280,7 @@ describe('Credentials', () => {
 		nodeDetailsView.getters.copyInput().should('not.exist');
 	});
 
-	it.only('ADO-2583 should show notifications above credential modal overlay', () => {
+	it('ADO-2583 should show notifications above credential modal overlay', () => {
 		// check error notifications because they are sticky
 		cy.intercept('POST', '/rest/credentials', { forceNetworkError: true });
 		credentialsPage.getters.emptyListCreateCredentialButton().click();
