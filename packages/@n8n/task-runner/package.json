@@ -37,6 +37,8 @@
     "@n8n/config": "workspace:*",
     "acorn": "8.14.0",
     "acorn-walk": "8.3.4",
+    "@sentry/integrations": "catalog:",
+    "@sentry/node": "catalog:",
     "n8n-core": "workspace:*",
     "n8n-workflow": "workspace:*",
     "nanoid": "^3.3.6",

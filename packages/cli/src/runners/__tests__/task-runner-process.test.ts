@@ -46,23 +46,28 @@ describe('TaskRunnerProcess', () => {
 			taskRunnerProcess = new TaskRunnerProcess(logger, runnerConfig, authService);
 		});
 
-		test.each(['PATH', 'NODE_FUNCTION_ALLOW_BUILTIN', 'NODE_FUNCTION_ALLOW_EXTERNAL'])(
-			'should propagate %s from env as is',
-			async (envVar) => {
-				jest.spyOn(authService, 'createGrantToken').mockResolvedValue('grantToken');
-				process.env[envVar] = 'custom value';
+		test.each([
+			'PATH',
+			'NODE_FUNCTION_ALLOW_BUILTIN',
+			'NODE_FUNCTION_ALLOW_EXTERNAL',
+			'N8N_SENTRY_DSN',
+			'N8N_VERSION',
+			'ENVIRONMENT',
+			'DEPLOYMENT_NAME',
+		])('should propagate %s from env as is', async (envVar) => {
+			jest.spyOn(authService, 'createGrantToken').mockResolvedValue('grantToken');
+			process.env[envVar] = 'custom value';
 
-				await taskRunnerProcess.start();
+			await taskRunnerProcess.start();
 
-				// @ts-expect-error The type is not correct
-				const options = spawnMock.mock.calls[0][2] as SpawnOptions;
-				expect(options.env).toEqual(
-					expect.objectContaining({
-						[envVar]: 'custom value',
-					}),
-				);
-			},
-		);
+			// @ts-expect-error The type is not correct
+			const options = spawnMock.mock.calls[0][2] as SpawnOptions;
+			expect(options.env).toEqual(
+				expect.objectContaining({
+					[envVar]: 'custom value',
+				}),
+			);
+		});
 
 		it('should pass NODE_OPTIONS env if maxOldSpaceSize is configured', async () => {
 			jest.spyOn(authService, 'createGrantToken').mockResolvedValue('grantToken');
