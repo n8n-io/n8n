@@ -102,7 +102,9 @@ export class WaitingWebhooks implements IWebhookManager {
 		}
 
 		if (execution.data?.resultData?.error) {
-			throw new ConflictError(`The execution "${executionId} has finished already.`);
+			const message = `The execution "${executionId}" has finished with error.`;
+			this.logger.debug(message, { error: execution.data.resultData.error });
+			throw new ConflictError(message);
 		}
 
 		if (execution.finished) {
@@ -182,23 +184,25 @@ export class WaitingWebhooks implements IWebhookManager {
 			if (this.isSendAndWaitRequest(workflow.nodes, suffix)) {
 				res.render('send-and-wait-no-action-required', { isTestWebhook: false });
 				return { noWebhookResponse: true };
-			} else if (!execution.data.resultData.error && execution.status === 'waiting') {
+			}
+
+			if (!execution.data.resultData.error && execution.status === 'waiting') {
 				const childNodes = workflow.getChildNodes(
 					execution.data.resultData.lastNodeExecuted as string,
 				);
+
 				const hasChildForms = childNodes.some(
 					(node) =>
 						workflow.nodes[node].type === FORM_NODE_TYPE ||
 						workflow.nodes[node].type === WAIT_NODE_TYPE,
 				);
+
 				if (hasChildForms) {
 					return { noWebhookResponse: true };
-				} else {
-					throw new NotFoundError(errorMessage);
 				}
-			} else {
-				throw new NotFoundError(errorMessage);
 			}
+
+			throw new NotFoundError(errorMessage);
 		}
 
 		const runExecutionData = execution.data;
