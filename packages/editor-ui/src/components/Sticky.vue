@@ -20,6 +20,7 @@ import { assert } from '@/utils/assert';
 import type { BrowserJsPlumbInstance } from '@jsplumb/browser-ui';
 import { useNodeBase } from '@/composables/useNodeBase';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { useStyles } from '@/composables/useStyles';
 
 const props = withDefaults(
 	defineProps<{
