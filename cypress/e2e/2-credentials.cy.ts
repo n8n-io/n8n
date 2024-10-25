@@ -282,7 +282,7 @@ describe('Credentials', () => {
 	it('ADO-2583 should show notifications above credential modal overlay', () => {
 		// check error notifications because they are sticky
 		cy.intercept('POST', '/rest/credentials', { forceNetworkError: true });
-		credentialsPage.getters.emptyListCreateCredentialButton().click();
+		credentialsPage.getters.createCredentialButton().click();
 
 		credentialsModal.getters.newCredentialModal().should('be.visible');
 		credentialsModal.getters.newCredentialTypeSelect().should('be.visible');
