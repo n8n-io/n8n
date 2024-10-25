@@ -5,7 +5,9 @@ import * as process from 'node:process';
 import { Service } from 'typedi';
 
 import { TaskRunnerAuthService } from './auth/task-runner-auth.service';
+import { forwardToLogger } from './forward-to-logger';
 import { OnShutdown } from '../decorators/on-shutdown';
+import { Logger } from '../logging/logger.service';
 
 type ChildProcess = ReturnType<typeof spawn>;
 
@@ -38,7 +40,10 @@ export class TaskRunnerProcess {
 
 	private isShuttingDown = false;
 
+	private logger: Logger;
+
 	constructor(
+		logger: Logger,
 		private readonly runnerConfig: TaskRunnersConfig,
 		private readonly authService: TaskRunnerAuthService,
 	) {
@@ -46,6 +51,8 @@ export class TaskRunnerProcess {
 			this.runnerConfig.mode === 'internal_childprocess' ||
 				this.runnerConfig.mode === 'internal_launcher',
 		);
+
+		this.logger = logger.scoped('task-runner');
 	}
 
 	async start() {
@@ -58,8 +65,7 @@ export class TaskRunnerProcess {
 			? this.startLauncher(grantToken, n8nUri)
 			: this.startNode(grantToken, n8nUri);
 
-		this.process.stdout?.pipe(process.stdout);
-		this.process.stderr?.pipe(process.stderr);
+		forwardToLogger(this.logger, this.process, '[Task Runner]: ');
 
 		this.monitorProcess(this.process);
 	}
