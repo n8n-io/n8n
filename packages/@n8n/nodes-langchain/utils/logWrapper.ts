@@ -30,8 +30,6 @@ export async function callMethodAsync<T>(
 	try {
 		return await parameters.method.call(this, ...parameters.arguments);
 	} catch (e) {
-		// Propagate errors from sub-nodes
-		if (e.functionality === 'configuration-node') throw e;
 		const connectedNode = parameters.executeFunctions.getNode();
 
 		const error = new NodeOperationError(connectedNode, e, {
@@ -43,12 +41,14 @@ export async function callMethodAsync<T>(
 			parameters.currentNodeRunIndex,
 			error,
 		);
+
 		if (error.message) {
 			if (!error.description) {
 				error.description = error.message;
 			}
 			throw error;
 		}
+
 		throw new NodeOperationError(
 			connectedNode,
 			`Error on node "${connectedNode.name}" which is connected via input "${parameters.connectionType}"`,
@@ -70,8 +70,6 @@ export function callMethodSync<T>(
 	try {
 		return parameters.method.call(this, ...parameters.arguments);
 	} catch (e) {
-		// Propagate errors from sub-nodes
-		if (e.functionality === 'configuration-node') throw e;
 		const connectedNode = parameters.executeFunctions.getNode();
 		const error = new NodeOperationError(connectedNode, e);
 		parameters.executeFunctions.addOutputData(
@@ -79,6 +77,7 @@ export function callMethodSync<T>(
 			parameters.currentNodeRunIndex,
 			error,
 		);
+
 		throw new NodeOperationError(
 			connectedNode,
 			`Error on node "${connectedNode.name}" which is connected via input "${parameters.connectionType}"`,
