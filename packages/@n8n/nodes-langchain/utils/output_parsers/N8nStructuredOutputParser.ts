@@ -39,7 +39,7 @@ export class N8nStructuredOutputParser extends StructuredOutputParser<
 				get(parsed, STRUCTURED_OUTPUT_KEY) ??
 				parsed) as Record<string, unknown>;
 
-			void logAiEvent(this.context, 'ai-output-parsed', { text, response: result });
+			logAiEvent(this.context, 'ai-output-parsed', { text, response: result });
 
 			this.context.addOutputData(NodeConnectionType.AiOutputParser, index, [
 				[{ json: { action: 'parse', response: result } }],
@@ -56,7 +56,7 @@ export class N8nStructuredOutputParser extends StructuredOutputParser<
 				},
 			);
 
-			void logAiEvent(this.context, 'ai-output-parsed', {
+			logAiEvent(this.context, 'ai-output-parsed', {
 				text,
 				response: e.message ?? e,
 			});

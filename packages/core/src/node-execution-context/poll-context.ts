@@ -48,7 +48,7 @@ export class PollContext extends BaseContext implements IPollFunctions {
 
 		const binaryHelpers = new BinaryHelpers(workflow, additionalData);
 		const requestHelpers = new RequestHelpers(this, workflow, node, additionalData);
-		const schedulingHelepers = new SchedulingHelpers(workflow);
+		const schedulingHelpers = new SchedulingHelpers(workflow);
 
 		this.helpers = {
 			createDeferredPromise: () => createDeferredPromise(),
@@ -73,7 +73,7 @@ export class PollContext extends BaseContext implements IPollFunctions {
 			requestOAuth1: requestHelpers.requestOAuth1.bind(requestHelpers),
 			requestOAuth2: requestHelpers.requestOAuth2.bind(requestHelpers),
 
-			registerCron: schedulingHelepers.registerCron.bind(schedulingHelepers),
+			registerCron: schedulingHelpers.registerCron.bind(schedulingHelpers),
 		};
 	}
 

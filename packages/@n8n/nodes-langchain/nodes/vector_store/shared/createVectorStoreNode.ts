@@ -281,7 +281,7 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 					});
 
 					resultData.push(...serializedDocs);
-					void logAiEvent(this, 'ai-vector-store-searched', { query: prompt });
+					logAiEvent(this, 'ai-vector-store-searched', { query: prompt });
 				}
 
 				return [resultData];
@@ -311,7 +311,7 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 					try {
 						await args.populateVectorStore(this, embeddings, processedDocuments, itemIndex);
 
-						void logAiEvent(this, 'ai-vector-store-populated');
+						logAiEvent(this, 'ai-vector-store-populated');
 					} catch (error) {
 						throw error;
 					}
@@ -365,7 +365,7 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 							ids: [documentId],
 						});
 
-						void logAiEvent(this, 'ai-vector-store-updated');
+						logAiEvent(this, 'ai-vector-store-updated');
 					} catch (error) {
 						throw error;
 					}

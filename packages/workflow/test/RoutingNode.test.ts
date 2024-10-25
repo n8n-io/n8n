@@ -2128,13 +2128,13 @@ describe('RoutingNode', () => {
 
 					const routingNodeExecutionContext = nodeExecuteFunctions.getExecuteSingleFunctions(
 						routingNode.workflow,
+						routingNode.node,
+						routingNode.additionalData,
 						routingNode.runExecutionData,
 						runIndex,
 						routingNode.connectionInputData,
 						inputData,
-						routingNode.node,
 						iteration,
-						routingNode.additionalData,
 						executeData,
 						routingNode.mode,
 					);

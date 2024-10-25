@@ -170,13 +170,13 @@ export class RoutingNode {
 			itemContext.push({
 				thisArgs: nodeExecuteFunctions.getExecuteSingleFunctions(
 					this.workflow,
+					this.node,
+					this.additionalData,
 					this.runExecutionData,
 					runIndex,
 					this.connectionInputData,
 					inputData,
-					this.node,
 					itemIndex,
-					this.additionalData,
 					executeData,
 					this.mode,
 					abortSignal,

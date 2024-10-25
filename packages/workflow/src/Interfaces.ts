@@ -438,13 +438,13 @@ export interface IGetExecuteFunctions {
 export interface IGetExecuteSingleFunctions {
 	(
 		workflow: Workflow,
+		node: INode,
+		additionalData: IWorkflowExecuteAdditionalData,
 		runExecutionData: IRunExecutionData,
 		runIndex: number,
 		connectionInputData: INodeExecutionData[],
 		inputData: ITaskDataConnections,
-		node: INode,
 		itemIndex: number,
-		additionalData: IWorkflowExecuteAdditionalData,
 		executeData: IExecuteData,
 		mode: WorkflowExecuteMode,
 		abortSignal?: AbortSignal,
@@ -938,7 +938,7 @@ type BaseExecutionFunctions = FunctionsBaseWithRequiredKeys<'getMode'> & {
 	getInputSourceData(inputIndex?: number, inputName?: string): ISourceData;
 	getExecutionCancelSignal(): AbortSignal | undefined;
 	onExecutionCancellation(handler: () => unknown): void;
-	logAiEvent(eventName: AiEvent, msg?: string | undefined): Promise<void>;
+	logAiEvent(eventName: AiEvent, msg?: string | undefined): void;
 };
 
 // TODO: Create later own type only for Config-Nodes

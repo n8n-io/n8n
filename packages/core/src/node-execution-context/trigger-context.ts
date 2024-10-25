@@ -49,7 +49,7 @@ export class TriggerContext extends BaseContext implements ITriggerFunctions {
 
 		const binaryHelpers = new BinaryHelpers(workflow, additionalData);
 		const requestHelpers = new RequestHelpers(this, workflow, node, additionalData);
-		const schedulingHelepers = new SchedulingHelpers(workflow);
+		const schedulingHelpers = new SchedulingHelpers(workflow);
 		const sshTunnelHelpers = new SSHTunnelHelpers();
 
 		// TODO: This is almost identical to the helpers in PollContext.
@@ -76,7 +76,7 @@ export class TriggerContext extends BaseContext implements ITriggerFunctions {
 			requestOAuth1: requestHelpers.requestOAuth1.bind(requestHelpers),
 			requestOAuth2: requestHelpers.requestOAuth2.bind(requestHelpers),
 
-			registerCron: schedulingHelepers.registerCron.bind(schedulingHelepers),
+			registerCron: schedulingHelpers.registerCron.bind(schedulingHelpers),
 
 			getSSHClient: sshTunnelHelpers.getSSHClient.bind(sshTunnelHelpers),
 		};
