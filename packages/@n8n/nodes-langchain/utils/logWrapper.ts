@@ -10,7 +10,7 @@ import type { Tool } from '@langchain/core/tools';
 import { VectorStore } from '@langchain/core/vectorstores';
 import { TextSplitter } from '@langchain/textsplitters';
 import type { BaseDocumentLoader } from 'langchain/dist/document_loaders/base';
-import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import type { IExecuteFunctions, INodeExecutionData, ISupplyDataFunctions } from 'n8n-workflow';
 import { NodeOperationError, NodeConnectionType } from 'n8n-workflow';
 
 import { logAiEvent, isToolsInstance, isBaseChatMemory, isBaseChatMessageHistory } from './helpers';
@@ -27,7 +27,7 @@ const errorsMap: { [key: string]: { message: string; description: string } } = {
 export async function callMethodAsync<T>(
 	this: T,
 	parameters: {
-		executeFunctions: IExecuteFunctions;
+		executeFunctions: IExecuteFunctions | ISupplyDataFunctions;
 		connectionType: NodeConnectionType;
 		currentNodeRunIndex: number;
 		method: (...args: any[]) => Promise<unknown>;
@@ -113,7 +113,7 @@ export function logWrapper(
 		| VectorStore
 		| N8nBinaryLoader
 		| N8nJsonLoader,
-	executeFunctions: IExecuteFunctions,
+	executeFunctions: IExecuteFunctions | ISupplyDataFunctions,
 ) {
 	return new Proxy(originalInstance, {
 		get: (target, prop) => {

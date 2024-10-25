@@ -1,9 +1,9 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import {
 	NodeConnectionType,
-	type IExecuteFunctions,
 	type INodeType,
 	type INodeTypeDescription,
+	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
 
@@ -79,7 +79,7 @@ export class DocumentJsonInputLoader implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions): Promise<SupplyData> {
 		this.logger.debug('Supply Data for JSON Input Loader');
 		const textSplitter = (await this.getInputConnectionData(
 			NodeConnectionType.AiTextSplitter,

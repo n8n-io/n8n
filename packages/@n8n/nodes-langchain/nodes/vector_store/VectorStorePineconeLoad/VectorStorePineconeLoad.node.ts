@@ -1,8 +1,8 @@
 import {
 	NodeConnectionType,
-	type IExecuteFunctions,
 	type INodeType,
 	type INodeTypeDescription,
+	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
 import type { PineconeStoreParams } from '@langchain/pinecone';
@@ -84,7 +84,7 @@ export class VectorStorePineconeLoad implements INodeType {
 		},
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		this.logger.debug('Supplying data for Pinecone Load Vector Store');
 
 		const namespace = this.getNodeParameter('pineconeNamespace', itemIndex) as string;
