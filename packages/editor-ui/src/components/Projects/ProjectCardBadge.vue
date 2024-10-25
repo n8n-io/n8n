@@ -58,19 +58,21 @@ const numberOfMembersInHomeTeamProject = computed(
 );
 
 const badgeText = computed(() => {
-	const { name, email } = splitName(props.resource.homeProject?.name ?? '');
-	const display = name ?? email ?? '';
 	if (
 		projectState.value === ProjectState.Owned ||
 		projectState.value === ProjectState.SharedOwned
 	) {
-		return [display, i18n.baseText('generic.ownedByMe')].filter(Boolean).join(' ');
+		return i18n.baseText('projects.menu.personal');
 	} else {
-		return display;
+		const { name, email } = splitName(props.resource.homeProject?.name ?? '');
+		return name ?? email ?? '';
 	}
 });
 const badgeIcon = computed(() => {
 	switch (projectState.value) {
+		case ProjectState.Owned:
+		case ProjectState.SharedOwned:
+			return 'user';
 		case ProjectState.Team:
 		case ProjectState.SharedTeam:
 			return 'layer-group';
@@ -158,6 +160,7 @@ const badgeTooltip = computed(() => {
 
 	z-index: 1;
 	position: relative;
+	height: 23px;
 	:global(.n8n-text) {
 		color: var(--color-text-base);
 	}
@@ -167,6 +170,7 @@ const badgeTooltip = computed(() => {
 	margin-left: -5px;
 	z-index: 0;
 	position: relative;
+	height: 23px;
 	:global(.n8n-text) {
 		color: var(--color-text-light);
 	}

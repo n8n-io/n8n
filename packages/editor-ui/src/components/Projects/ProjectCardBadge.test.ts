@@ -5,7 +5,7 @@ import { truncate } from 'n8n-design-system';
 const renderComponent = createComponentRenderer(ProjectCardBadge);
 
 describe('ProjectCardBadge', () => {
-	it('should show "Owned by me" badge if there is no homeProject', () => {
+	it('should show "Personal" badge if there is no homeProject', () => {
 		const { getByText } = renderComponent({
 			props: {
 				resource: {},
@@ -13,10 +13,10 @@ describe('ProjectCardBadge', () => {
 			},
 		});
 
-		expect(getByText('(You)')).toBeVisible();
+		expect(getByText('Personal')).toBeVisible();
 	});
 
-	it('should show "Owned by me" badge if homeProject ID equals personalProject ID', () => {
+	it('should show "Personal" badge if homeProject ID equals personalProject ID', () => {
 		const { getByText } = renderComponent({
 			props: {
 				resource: {
@@ -32,7 +32,7 @@ describe('ProjectCardBadge', () => {
 			},
 		});
 
-		expect(getByText('John (You)')).toBeVisible();
+		expect(getByText('Personal')).toBeVisible();
 	});
 
 	it('should show shared with count', () => {
