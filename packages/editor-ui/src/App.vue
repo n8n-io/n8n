@@ -8,7 +8,6 @@ import Modals from '@/components/Modals.vue';
 import Telemetry from '@/components/Telemetry.vue';
 import AskAssistantFloatingButton from '@/components/AskAssistant/AskAssistantFloatingButton.vue';
 import { loadLanguage } from '@/plugins/i18n';
-import { useExternalHooks } from '@/composables/useExternalHooks';
 import { APP_MODALS_ELEMENT_ID, HIRING_BANNER, VIEWS } from '@/constants';
 import { useRootStore } from '@/stores/root.store';
 import { useAssistantStore } from '@/stores/assistant.store';
@@ -46,7 +45,6 @@ watch(defaultLocale, (newLocale) => {
 onMounted(async () => {
 	setAppZIndexes();
 	logHiringBanner();
-	void useExternalHooks().run('app.mount');
 	loading.value = false;
 	window.addEventListener('resize', updateGridWidth);
 	await updateGridWidth();
