@@ -4,10 +4,11 @@ import { spawn } from 'node:child_process';
 import * as process from 'node:process';
 import { Service } from 'typedi';
 
+import { OnShutdown } from '@/decorators/on-shutdown';
+import { Logger } from '@/logging/logger.service';
+
 import { TaskRunnerAuthService } from './auth/task-runner-auth.service';
 import { forwardToLogger } from './forward-to-logger';
-import { OnShutdown } from '../decorators/on-shutdown';
-import { Logger } from '../logging/logger.service';
 
 type ChildProcess = ReturnType<typeof spawn>;
 
