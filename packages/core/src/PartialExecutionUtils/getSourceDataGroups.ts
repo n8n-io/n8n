@@ -13,12 +13,19 @@ function sortByInputIndexThenByName(
 	}
 }
 
-type Group = {
+type SourceConnectionGroup = {
+	/**
+	 * This is true if all connections have data. If any connection does not have
+	 * data it false.
+	 *
+	 * This is interesting to decide if a node should be put on the execution
+	 * stack of the waiting stack in the execution engine.
+	 */
 	complete: boolean;
 	connections: GraphConnection[];
 };
 
-function newGroup() {
+function newGroup(): SourceConnectionGroup {
 	return {
 		complete: true,
 		connections: [],
@@ -81,7 +88,7 @@ export function getSourceDataGroups(
 	node: INode,
 	runData: IRunData,
 	pinnedData: IPinData,
-): Group[] {
+): SourceConnectionGroup[] {
 	const connections = graph.getConnections({ to: node });
 
 	const sortedConnectionsWithData = [];
@@ -100,8 +107,8 @@ export function getSourceDataGroups(
 	sortedConnectionsWithData.sort(sortByInputIndexThenByName);
 	sortedConnectionsWithoutData.sort(sortByInputIndexThenByName);
 
-	const groups: Group[] = [];
-	let currentGroup: Group = newGroup();
+	const groups: SourceConnectionGroup[] = [];
+	let currentGroup = newGroup();
 	let currentInputIndex = -1;
 
 	while (sortedConnectionsWithData.length > 0 || sortedConnectionsWithoutData.length > 0) {

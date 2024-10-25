@@ -41,5 +41,5 @@ export function getIncomingDataFromAnyRun(
 		}
 	}
 
-	return;
+	return undefined;
 }
