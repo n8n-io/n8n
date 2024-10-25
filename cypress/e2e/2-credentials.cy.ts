@@ -43,7 +43,6 @@ describe('Credentials', () => {
 
 		credentialsModal.actions.setName('My awesome Notion account');
 		credentialsModal.actions.save();
-
 		credentialsModal.actions.close();
 
 		credentialsPage.getters.credentialCards().should('have.length', 1);
