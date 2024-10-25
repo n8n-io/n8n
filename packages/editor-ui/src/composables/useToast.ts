@@ -20,7 +20,7 @@ export interface NotificationErrorWithNodeAndDescription extends ApplicationErro
 const messageDefaults: Partial<Omit<NotificationOptions, 'message'>> = {
 	dangerouslyUseHTMLString: false,
 	position: 'bottom-right',
-	zIndex: 1900, // above NDV and below the modals
+	zIndex: 2100, // above NDV and modal overlays
 	offset: 64,
 	appendTo: '#app-grid',
 	customClass: 'content-toast',
