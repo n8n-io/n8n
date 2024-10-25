@@ -18,6 +18,7 @@ import { reactive } from 'vue';
 import * as chatAPI from '@/api/ai';
 import * as telemetryModule from '@/composables/useTelemetry';
 import type { Telemetry } from '@/plugins/telemetry';
+import type { ChatUI } from 'n8n-design-system/types/assistant';
 
 let settingsStore: ReturnType<typeof useSettingsStore>;
 let posthogStore: ReturnType<typeof usePostHog>;
@@ -428,8 +429,7 @@ describe('AI Assistant store', () => {
 		const message = assistantStore.chatMessages[0];
 		expect(message.type).toBe('error');
 
-		// @REVIEW How to best get the type from design-system in here?
-		const errorMessage = message as { retry?: () => Promise<void> };
+		const errorMessage = message as ChatUI.ErrorMessage;
 		expect(errorMessage.retry).toBeDefined();
 
 		// This simulates the button click from the UI
@@ -480,7 +480,7 @@ describe('AI Assistant store', () => {
 
 		expect(assistantStore.chatMessages[3]).toHaveProperty('retry');
 		// This simulates the functionality triggered from the consumer (e.g. UI Button)
-		await (assistantStore.chatMessages[3] as { retry: () => Promise<void> }).retry?.();
+		await (assistantStore.chatMessages[3] as ChatUI.ErrorMessage).retry?.();
 
 		expect(assistantStore.chatMessages.length).toBe(4);
 		expect(assistantStore.chatMessages[0].type).toBe('text');

@@ -832,7 +832,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		resetAssistantChat,
 		chatWindowOpen,
 		addAssistantMessages,
-		addUserMessage,
 		assistantThinkingMessage,
 		chatSessionError,
 		chatSessionTask,
