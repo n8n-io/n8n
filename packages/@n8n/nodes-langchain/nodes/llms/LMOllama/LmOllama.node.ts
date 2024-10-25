@@ -11,6 +11,7 @@ import { Ollama } from '@langchain/community/llms/ollama';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 import { N8nLlmTracing } from '../N8nLlmTracing';
 import { ollamaDescription, ollamaModel, ollamaOptions } from './description';
+import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 
 export class LmOllama implements INodeType {
 	description: INodeTypeDescription = {
@@ -62,6 +63,7 @@ export class LmOllama implements INodeType {
 			model: modelName,
 			...options,
 			callbacks: [new N8nLlmTracing(this)],
+			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 		});
 
 		return {

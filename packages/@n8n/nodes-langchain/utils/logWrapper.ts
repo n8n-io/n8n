@@ -17,13 +17,6 @@ import { logAiEvent, isToolsInstance, isBaseChatMemory, isBaseChatMessageHistory
 import { N8nBinaryLoader } from './N8nBinaryLoader';
 import { N8nJsonLoader } from './N8nJsonLoader';
 
-const errorsMap: { [key: string]: { message: string; description: string } } = {
-	'You exceeded your current quota, please check your plan and billing details.': {
-		message: 'OpenAI quota exceeded',
-		description: 'You exceeded your current quota, please check your plan and billing details.',
-	},
-};
-
 export async function callMethodAsync<T>(
 	this: T,
 	parameters: {
@@ -44,11 +37,6 @@ export async function callMethodAsync<T>(
 		const error = new NodeOperationError(connectedNode, e, {
 			functionality: 'configuration-node',
 		});
-
-		if (errorsMap[error.message]) {
-			error.description = errorsMap[error.message].description;
-			error.message = errorsMap[error.message].message;
-		}
 
 		parameters.executeFunctions.addOutputData(
 			parameters.connectionType,

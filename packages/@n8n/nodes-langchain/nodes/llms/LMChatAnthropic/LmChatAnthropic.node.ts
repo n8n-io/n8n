@@ -13,6 +13,7 @@ import { ChatAnthropic } from '@langchain/anthropic';
 import type { LLMResult } from '@langchain/core/outputs';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 import { N8nLlmTracing } from '../N8nLlmTracing';
+import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 
 const modelField: INodeProperties = {
 	displayName: 'Model',
@@ -205,6 +206,7 @@ export class LmChatAnthropic implements INodeType {
 			topK: options.topK,
 			topP: options.topP,
 			callbacks: [new N8nLlmTracing(this, { tokensUsageParser })],
+			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 		});
 
 		return {
