@@ -70,8 +70,8 @@ function sendTelemetry(
 	});
 }
 
-async function onImport() {
-	await importCurlCommand(curlCommand);
+function onImport() {
+	importCurlCommand(curlCommand);
 }
 </script>
 

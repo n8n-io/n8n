@@ -1081,7 +1081,7 @@ importers:
     dependencies:
       '@langchain/core':
         specifier: 'catalog:'
-        version: 0.3.3(patch_hash=ekay3bw7hexufl733lypqvmx2e)(openai@4.63.0(zod@3.23.8))
+        version: 0.3.3(patch_hash=ekay3bw7hexufl733lypqvmx2e)(openai@4.63.0(encoding@0.1.13)(zod@3.23.8))
       '@n8n/client-oauth2':
         specifier: workspace:*
         version: link:../@n8n/client-oauth2
@@ -1396,6 +1396,9 @@ importers:
       codemirror-lang-html-n8n:
         specifier: ^1.0.0
         version: 1.0.0
+      curlconverter:
+        specifier: ^4.11.0
+        version: 4.11.0
       dateformat:
         specifier: ^3.0.3
         version: 3.0.3
@@ -1912,7 +1915,7 @@ importers:
     devDependencies:
       '@langchain/core':
         specifier: 'catalog:'
-        version: 0.3.3(patch_hash=ekay3bw7hexufl733lypqvmx2e)(openai@4.63.0)
+        version: 0.3.3(patch_hash=ekay3bw7hexufl733lypqvmx2e)(openai@4.63.0(encoding@0.1.13)(zod@3.23.8))
       '@types/deep-equal':
         specifier: ^1.0.1
         version: 1.0.1
@@ -6486,6 +6489,10 @@ packages:
     resolution: {integrity: sha512-DXCnp1A/Xa69FujksUfdvWQFAnIn/C+4Wuv8t+UVdZkF/lY5bzj98GGKOGme7V/ckSHDLxE29Xp76sJ5Cpsp5A==}
     hasBin: true
 
+  curlconverter@4.11.0:
+    resolution: {integrity: sha512-jBSvfDN10L6rGWVlkAYgtkIG8lYprDvtBgos7mafxtv15keYeQWsxUgnzns3JmqEcGJMeaGlDNdRUszURPCUaw==}
+    hasBin: true
+
   currency-codes@2.1.0:
     resolution: {integrity: sha512-aASwFNP8VjZ0y0PWlSW7c9N/isYTLxK6OCbm7aVuQMk7dWO2zgup9KGiFQgeL9OGL5P/ulvCHcjQizmuEeZXtw==}
 
@@ -8980,6 +8987,9 @@ packages:
   lossless-json@1.0.5:
     resolution: {integrity: sha512-RicKUuLwZVNZ6ZdJHgIZnSeA05p8qWc5NW0uR96mpPIjN9WDLUg9+kj1esQU1GkPn9iLZVKatSQK5gyiaFHgJA==}
 
+  lossless-json@4.0.2:
+    resolution: {integrity: sha512-+z0EaLi2UcWi8MZRxA5iTb6m4Ys4E80uftGY+yG5KNFJb5EceQXOhdW/pWJZ8m97s26u7yZZAYMcKWNztSZssA==}
+
   loupe@3.1.1:
     resolution: {integrity: sha512-edNu/8D5MKVfGVFRhFf8aAxiTM6Wumfz5XsaatSxlD3w4R1d/WEKUTydCdPGbl9K7QG/Ca3GnDV2sIKIpXRQcw==}
 
@@ -9571,6 +9581,10 @@ packages:
     resolution: {integrity: sha512-mNcltoe1R8o7STTegSOHdnJNN7s5EUvhoS7ShnTHDyOSd+8H+UdWODq6qSv67PjC8Zc5JRT8+oLAMCr0SIXw7g==}
     engines: {node: ^16 || ^18 || >= 20}
 
+  node-addon-api@8.2.1:
+    resolution: {integrity: sha512-vmEOvxwiH8tlOcv4SyE8RH34rI5/nWVaigUeAUPawC6f0+HoDthwI0vkMu4tbtsZrXq6QXFfrkhjofzKEs5tpA==}
+    engines: {node: ^18 || ^20 || >= 21}
+
   node-cleanup@2.1.2:
     resolution: {integrity: sha512-qN8v/s2PAJwGUtr1/hYTpNKlD6Y9rc4p8KSmJXyGdYGZsDGKXrGThikLFP9OCHFeLeEpQzPwiAtdIvBLqm//Hw==}
 
@@ -9609,6 +9623,10 @@ packages:
 
   node-gyp-build-optional-packages@5.0.7:
     resolution: {integrity: sha512-YlCCc6Wffkx0kHkmam79GKvDQ6x+QZkMjFGrIMxgFNILFvGSbCp2fCBC55pGTT9gVaz8Na5CLmxt/urtzRv36w==}
+    hasBin: true
+
+  node-gyp-build@4.8.2:
+    resolution: {integrity: sha512-IRUxE4BVsHWXkV/SFOut4qTlagw2aM8T5/vnTsmrHJvVoKueJHRc/JaFND7QDDc61kLYUJ6qlZM3sqTSyx2dTw==}
     hasBin: true
 
   node-gyp@8.4.1:
@@ -11527,6 +11545,18 @@ packages:
     resolution: {integrity: sha512-L0Orpi8qGpRG//Nd+H90vFB+3iHnue1zSSGmNOOCh1GLJ7rUKVwV2HvijphGQS2UmhUZewS9VgvxYIdgr+fG1A==}
     hasBin: true
 
+  tree-sitter-bash@0.23.1:
+    resolution: {integrity: sha512-9rOVcfrTQsnNapHPsacaNATEurBdNqozcbyHJNVvI85PMNilcWnD9FM4HaA/L4IDfgvS7F9OStON4I7tY+ANEQ==}
+    peerDependencies:
+      tree-sitter: ^0.21.1
+      tree_sitter: '*'
+    peerDependenciesMeta:
+      tree_sitter:
+        optional: true
+
+  tree-sitter@0.21.1:
+    resolution: {integrity: sha512-7dxoA6kYvtgWw80265MyqJlkRl4yawIjO7S5MigytjELkX43fV2WsAXzsNfO7sBpPPCF5Gp0+XzHk0DwLCq3xQ==}
+
   triple-beam@1.3.0:
     resolution: {integrity: sha512-XrHUvV5HpdLmIj4uVMxHggLbFSZYIn7HEWsqePZcI50pco+MPqJ50wMGY794X7AOOhxOBAjbkqfAbEe/QMp2Lw==}
 
@@ -12200,6 +12230,9 @@ packages:
   web-streams-polyfill@4.0.0-beta.3:
     resolution: {integrity: sha512-QW95TCTaHmsYfHDybGMwO5IJIM93I/6vTRk+daHTWFPhwh+C8Cg7j7XyKrwrj8Ib6vYXe0ocYNrmzY4xAAN6ug==}
     engines: {node: '>= 14'}
+
+  web-tree-sitter@0.24.3:
+    resolution: {integrity: sha512-uR9YNewr1S2EzPKE+y39nAwaTyobBaZRG/IsfkB/OT4v0lXtNj5WjtHKgn2h7eOYUWIZh5rK9Px7tI6S9CRKdA==}
 
   webidl-conversions@3.0.1:
     resolution: {integrity: sha512-2JAn3z8AR6rjK8Sm8orRC0h/bcl/DqL7tRPdGZ4I1CjdF+EaMLmYxBHyXuKL849eucPFhvBoxMsflfOb8kxaeQ==}
@@ -14668,38 +14701,6 @@ snapshots:
       decamelize: 1.2.0
       js-tiktoken: 1.0.12
       langsmith: 0.1.59(openai@4.63.0(encoding@0.1.13)(zod@3.23.8))
-      mustache: 4.2.0
-      p-queue: 6.6.2
-      p-retry: 4.6.2
-      uuid: 10.0.0
-      zod: 3.23.8
-      zod-to-json-schema: 3.23.3(zod@3.23.8)
-    transitivePeerDependencies:
-      - openai
-
-  '@langchain/core@0.3.3(patch_hash=ekay3bw7hexufl733lypqvmx2e)(openai@4.63.0(zod@3.23.8))':
-    dependencies:
-      ansi-styles: 5.2.0
-      camelcase: 6.3.0
-      decamelize: 1.2.0
-      js-tiktoken: 1.0.12
-      langsmith: 0.1.59(openai@4.63.0(zod@3.23.8))
-      mustache: 4.2.0
-      p-queue: 6.6.2
-      p-retry: 4.6.2
-      uuid: 10.0.0
-      zod: 3.23.8
-      zod-to-json-schema: 3.23.3(zod@3.23.8)
-    transitivePeerDependencies:
-      - openai
-
-  '@langchain/core@0.3.3(patch_hash=ekay3bw7hexufl733lypqvmx2e)(openai@4.63.0)':
-    dependencies:
-      ansi-styles: 5.2.0
-      camelcase: 6.3.0
-      decamelize: 1.2.0
-      js-tiktoken: 1.0.12
-      langsmith: 0.1.59(openai@4.63.0)
       mustache: 4.2.0
       p-queue: 6.6.2
       p-retry: 4.6.2
@@ -18487,6 +18488,17 @@ snapshots:
     transitivePeerDependencies:
       - chokidar
 
+  curlconverter@4.11.0:
+    dependencies:
+      jsesc: 3.0.2
+      lossless-json: 4.0.2
+      tree-sitter: 0.21.1
+      tree-sitter-bash: 0.23.1(tree-sitter@0.21.1)
+      web-tree-sitter: 0.24.3
+      yamljs: 0.3.0
+    transitivePeerDependencies:
+      - tree_sitter
+
   currency-codes@2.1.0:
     dependencies:
       first-match: 0.0.1
@@ -21486,28 +21498,6 @@ snapshots:
     optionalDependencies:
       openai: 4.63.0(encoding@0.1.13)(zod@3.23.8)
 
-  langsmith@0.1.59(openai@4.63.0(zod@3.23.8)):
-    dependencies:
-      '@types/uuid': 10.0.0
-      commander: 10.0.1
-      p-queue: 6.6.2
-      p-retry: 4.6.2
-      semver: 7.6.0
-      uuid: 10.0.0
-    optionalDependencies:
-      openai: 4.63.0(zod@3.23.8)
-
-  langsmith@0.1.59(openai@4.63.0):
-    dependencies:
-      '@types/uuid': 10.0.0
-      commander: 10.0.1
-      p-queue: 6.6.2
-      p-retry: 4.6.2
-      semver: 7.6.0
-      uuid: 10.0.0
-    optionalDependencies:
-      openai: 4.63.0(zod@3.23.8)
-
   lazy-ass@1.6.0: {}
 
   ldapts@4.2.6:
@@ -21735,6 +21725,8 @@ snapshots:
       underscore: 1.13.6
 
   lossless-json@1.0.5: {}
+
+  lossless-json@4.0.2: {}
 
   loupe@3.1.1:
     dependencies:
@@ -22549,6 +22541,8 @@ snapshots:
 
   node-addon-api@7.1.0: {}
 
+  node-addon-api@8.2.1: {}
+
   node-cleanup@2.1.2: {}
 
   node-domexception@1.0.0: {}
@@ -22575,6 +22569,8 @@ snapshots:
 
   node-gyp-build-optional-packages@5.0.7:
     optional: true
+
+  node-gyp-build@4.8.2: {}
 
   node-gyp@8.4.1:
     dependencies:
@@ -22851,22 +22847,6 @@ snapshots:
     transitivePeerDependencies:
       - encoding
       - supports-color
-
-  openai@4.63.0(zod@3.23.8):
-    dependencies:
-      '@types/node': 18.16.16
-      '@types/node-fetch': 2.6.4
-      abort-controller: 3.0.0
-      agentkeepalive: 4.2.1
-      form-data-encoder: 1.7.2
-      formdata-node: 4.4.1
-      node-fetch: 2.7.0(encoding@0.1.13)
-    optionalDependencies:
-      zod: 3.23.8
-    transitivePeerDependencies:
-      - encoding
-      - supports-color
-    optional: true
 
   openapi-sampler@1.5.1:
     dependencies:
@@ -24895,6 +24875,17 @@ snapshots:
 
   tree-kill@1.2.2: {}
 
+  tree-sitter-bash@0.23.1(tree-sitter@0.21.1):
+    dependencies:
+      node-addon-api: 8.2.1
+      node-gyp-build: 4.8.2
+      tree-sitter: 0.21.1
+
+  tree-sitter@0.21.1:
+    dependencies:
+      node-addon-api: 8.2.1
+      node-gyp-build: 4.8.2
+
   triple-beam@1.3.0: {}
 
   ts-api-utils@1.0.1(typescript@5.6.2):
@@ -25581,6 +25572,8 @@ snapshots:
   web-streams-polyfill@3.2.1: {}
 
   web-streams-polyfill@4.0.0-beta.3: {}
+
+  web-tree-sitter@0.24.3: {}
 
   webidl-conversions@3.0.1: {}
 

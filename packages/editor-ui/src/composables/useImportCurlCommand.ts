@@ -2,10 +2,10 @@ import type { MaybeRef } from 'vue';
 import { unref } from 'vue';
 import { CURL_IMPORT_NODES_PROTOCOLS, CURL_IMPORT_NOT_SUPPORTED_PROTOCOLS } from '@/constants';
 import { useToast } from '@/composables/useToast';
-import { useUIStore } from '@/stores/ui.store';
 import { useI18n } from '@/composables/useI18n';
 import { importCurlEventBus } from '@/event-bus';
 import type { BaseTextKey } from '@/plugins/i18n';
+import { flattenObject, toHttpNodeParameters } from '@/utils/nodes/curlToHttpNodeParams';
 
 export function useImportCurlCommand(options?: {
 	onImportSuccess?: () => void;
@@ -18,7 +18,6 @@ export function useImportCurlCommand(options?: {
 		};
 	};
 }) {
-	const uiStore = useUIStore();
 	const toast = useToast();
 	const i18n = useI18n();
 
@@ -30,12 +29,13 @@ export function useImportCurlCommand(options?: {
 		...options?.i18n,
 	};
 
-	async function importCurlCommand(curlCommandRef: MaybeRef<string>): Promise<void> {
+	function importCurlCommand(curlCommandRef: MaybeRef<string>): void {
 		const curlCommand = unref(curlCommandRef);
 		if (curlCommand === '') return;
 
 		try {
-			const parameters = await uiStore.getCurlToJson(curlCommand);
+			const curlObject = toHttpNodeParameters(curlCommand);
+			const parameters = flattenObject(curlObject, 'parameters');
 			const url = parameters['parameters.url'];
 
 			const invalidProtocol = CURL_IMPORT_NOT_SUPPORTED_PROTOCOLS.find((p) =>
@@ -43,6 +43,12 @@ export function useImportCurlCommand(options?: {
 			);
 
 			if (!invalidProtocol) {
+				if (parameters['parameters.url']) {
+					parameters['parameters.url'] = parameters['parameters.url']
+						.replaceAll('%7B', '{')
+						.replaceAll('%7D', '}');
+				}
+
 				importCurlEventBus.emit('setHttpNodeParameters', parameters);
 
 				options?.onImportSuccess?.();
