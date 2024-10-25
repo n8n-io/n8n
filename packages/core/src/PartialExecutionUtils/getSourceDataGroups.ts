@@ -1,4 +1,3 @@
-import * as a from 'assert/strict';
 import { type INode, type IPinData, type IRunData } from 'n8n-workflow';
 
 import type { GraphConnection, DirectedGraph } from './DirectedGraph';
