@@ -1,3 +1,13 @@
+## [1.65.1](https://github.com/n8n-io/n8n/compare/n8n@1.65.0...n8n@1.65.1) (2024-10-25)
+
+
+### Bug Fixes
+
+* **core:** Make execution and its data creation atomic ([#11392](https://github.com/n8n-io/n8n/issues/11392)) ([480987e](https://github.com/n8n-io/n8n/commit/480987e4abb62c5534c9f2dfb392c3640c85fa47))
+* **core:** On unhandled rejections, extract the original exception correctly ([#11389](https://github.com/n8n-io/n8n/issues/11389)) ([343eb53](https://github.com/n8n-io/n8n/commit/343eb531169d48d1d245ab00da50a643d097fd7a))
+
+
+
 # [1.65.0](https://github.com/n8n-io/n8n/compare/n8n@1.64.0...n8n@1.65.0) (2024-10-24)
 
 
