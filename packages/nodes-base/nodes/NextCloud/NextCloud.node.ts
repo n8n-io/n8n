@@ -497,7 +497,7 @@ export class NextCloud implements INodeType {
 					{
 						name: 'Get a Column',
 						value: 'getColumn',
-						description: 'Retrieve a single Column By Id',
+						description: 'Retrieve a single Column By columnId',
 					},
 					{
 						name: 'Create Column',
@@ -512,7 +512,32 @@ export class NextCloud implements INodeType {
 					{
 						name: 'Delete Column',
 						value: 'deleteColumn',
-						description: 'Delete a Column',
+						description: 'Delete a Column by columnId',
+					},
+					{
+						name: 'Get Rows',
+						value: 'getRows',
+						description: 'Retrieve all Rows of a Table',
+					},
+					{
+						name: 'Get a Row',
+						value: 'getRow',
+						description: 'Retrieve a single Row By rowId',
+					},
+					{
+						name: 'Create Row',
+						value: 'createRow',
+						description: 'Create a Row within a Table',
+					},
+					{
+						name: 'Update Row',
+						value: 'updateRow',
+						description: 'Update a Row By rowId',
+					},
+					{
+						name: 'Delete Row',
+						value: 'deleteRow',
+						description: 'Delete a Row by rowId',
 					},
 				],
 				default: 'getTables',
@@ -528,7 +553,15 @@ export class NextCloud implements INodeType {
 				displayOptions: {
 					show: {
 						resource: ['tables'],
-						operation: ['updateTable', 'deleteTable', 'getTable', 'getColumns', 'createColumn'],
+						operation: [
+							'updateTable',
+							'deleteTable',
+							'getTable',
+							'getColumns',
+							'createColumn',
+							'getRows',
+							'createRow',
+						],
 					},
 				},
 				placeholder: 'ABCDE',
@@ -547,7 +580,22 @@ export class NextCloud implements INodeType {
 					},
 				},
 				placeholder: 'ABCDE',
-				description: 'The ID of the Table',
+				description: 'The ID of the Column',
+			},
+			{
+				displayName: 'Row ID',
+				name: 'rowId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['updateRow', 'getRow', 'deleteRow'],
+					},
+				},
+				placeholder: 'ABCDE',
+				description: 'The ID of the Row',
 			},
 			{
 				displayName: 'Table Title',
@@ -1010,7 +1058,22 @@ export class NextCloud implements INodeType {
 				default: true,
 				description: 'Whether to show user status in the usergroup column.',
 			},
-
+			// Row field
+			{
+				displayName: 'Row Data',
+				name: 'rowData',
+				displayOptions: {
+					show: {
+						resource: ['tables'],
+						operation: ['createRow', 'updateRow'],
+					},
+				},
+				type: 'string',
+				default: '',
+				required: true,
+				placeholder: 'Row Data',
+				description: 'Data of the Row',
+			},
 			// Talk Operations
 			{
 				displayName: 'Operation',
@@ -1024,19 +1087,60 @@ export class NextCloud implements INodeType {
 				},
 				options: [
 					{
+						name: 'Get Messages',
+						value: 'getMessages',
+						description: 'Retrieve all messages in a conversation',
+					},
+					{
+						name: 'Get a Message Context',
+						value: 'getMessageContext',
+						description: 'Retrieve the context of a message in a conversation',
+					},
+					{
 						name: 'Send Message',
 						value: 'sendMessage',
 						description: 'Send a message in a conversation',
 					},
+					{
+						name: 'Update Message',
+						value: 'updateMessage',
+						description: 'Update a Message',
+					},
+					{
+						name: 'Delete Message',
+						value: 'deleteMessage',
+						description: 'Delete a Message',
+					},
+					{
+						name: 'Mark as Read',
+						value: 'markRead',
+						description: 'Mark a chat as Read',
+					},
+					{
+						name: 'Mark as Unread',
+						value: 'markUnread',
+						description: 'Mark a chat as Unead',
+					},
+
 					{
 						name: 'Get Conversations',
 						value: 'getConversations',
 						description: 'Retrieve all Conversations',
 					},
 					{
+						name: 'Get a Conversation',
+						value: 'getConversation',
+						description: 'Retrieve a single Conversations',
+					},
+					{
 						name: 'Create Conversation',
 						value: 'createConversation',
 						description: 'Create a new Conversation',
+					},
+					{
+						name: 'Update Conversation',
+						value: 'updateConversation',
+						description: 'Update a Conversation',
 					},
 					{
 						name: 'Delete Conversation',
@@ -1057,11 +1161,37 @@ export class NextCloud implements INodeType {
 				displayOptions: {
 					show: {
 						resource: ['talk'],
-						operation: ['sendMessage', 'deleteConversation'],
+						operation: [
+							'sendMessage',
+							'getMessages',
+							'getMessageContext',
+							'updateMessage',
+							'deleteMessage',
+							'markRead',
+							'markUnread',
+							'getConversation',
+							'updateConversation',
+							'deleteConversation',
+						],
 					},
 				},
 				placeholder: 'FGHIJ',
 				description: 'The ID of the Conversation',
+			},
+			{
+				displayName: 'Message ID',
+				name: 'messageId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: ['talk'],
+						operation: ['getMessageContext', 'updateMessage', 'deleteMessage', 'markRead'],
+					},
+				},
+				placeholder: 'FGHIJ',
+				description: 'The ID of the Message',
 			},
 			{
 				displayName: 'Message',
@@ -1079,6 +1209,58 @@ export class NextCloud implements INodeType {
 				description: 'Message to send',
 			},
 			{
+				displayName: 'Actor Display Name (Guests)',
+				name: 'actorDisplayName',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						resource: ['talk'],
+						operation: ['sendMessage'],
+					},
+				},
+				description: 'Guest display name (ignored for logged-in users)',
+			},
+			{
+				displayName: 'Reply To Message ID',
+				name: 'replyTo',
+				type: 'number',
+				default: null,
+				displayOptions: {
+					show: {
+						resource: ['talk'],
+						operation: ['sendMessage'],
+					},
+				},
+				description: 'The message ID this message is a reply to',
+			},
+			{
+				displayName: 'Reference ID',
+				name: 'referenceId',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						resource: ['talk'],
+						operation: ['sendMessage'],
+					},
+				},
+				description: 'A random sha256 string for identifying the message',
+			},
+			{
+				displayName: 'Silent Message',
+				name: 'silent',
+				type: 'boolean',
+				default: false,
+				displayOptions: {
+					show: {
+						resource: ['talk'],
+						operation: ['sendMessage'],
+					},
+				},
+				description: 'Send message silently without chat notifications',
+			},
+			{
 				displayName: 'Conversation Name',
 				name: 'conversationName',
 				type: 'string',
@@ -1087,13 +1269,65 @@ export class NextCloud implements INodeType {
 				displayOptions: {
 					show: {
 						resource: ['talk'],
-						operation: ['createConversation'],
+						operation: ['createConversation', 'updateConversation'],
 					},
 				},
 				placeholder: 'Team Chat',
 				description: 'Name of the Conversation',
 			},
+			{
+				displayName: 'Conversation Type',
+				name: 'conversationType',
+				type: 'options',
+				default: 2,
+				required: true,
+				displayOptions: {
+					show: {
+						resource: ['talk'],
+						operation: ['createConversation'],
+					},
+				},
+				options: [
+					{ name: 'One to One', value: 1 },
+					{ name: 'Group', value: 2 },
+					{ name: 'Public', value: 3 },
+					{ name: 'Changelog', value: 4 },
+					{ name: 'Former One to One', value: 5 },
+					{ name: 'Note to Self', value: 6 },
+				],
+				description: 'Type of the Conversation',
+			},
+			// Invite Field (depends on roomType = 1 or 2)
+			{
+				displayName: 'Invite',
+				name: 'invite',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: ['talk'],
+						operation: ['createConversation'],
+						conversationType: [1, 2], // For roomType = 1 (One to One) or 2 (Group)
+					},
+				},
+				default: '',
+				description: 'User ID for roomType = 1, Group ID or Circle ID for roomType = 2',
+			},
 
+			// Source Field (depends on roomType = 2 and supports circles)
+			{
+				displayName: 'Source',
+				name: 'source',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: ['talk'],
+						operation: ['createConversation'],
+						conversationType: [2], // For roomType = 2 (Group or Circle)
+					},
+				},
+				default: '',
+				description: 'Source for the invite, only supported for circles (roomType = 2)',
+			},
 			// ----------------------------------
 			//         file
 			// ----------------------------------
@@ -2243,7 +2477,7 @@ export class NextCloud implements INodeType {
 									i,
 								);
 								additionalFields.textMaxLength = this.getNodeParameter('textMaxLength', i);
-								additionalFields.columnSubType = this.getNodeParameter('columnSubType', i);
+								additionalFields.subtype = this.getNodeParameter('columnSubType', i);
 							} else if (columnType === 'number') {
 								additionalFields.numberDefault = this.getNodeParameter('numberDefault', i);
 								additionalFields.numberMin = this.getNodeParameter('numberMin', i);
@@ -2251,14 +2485,14 @@ export class NextCloud implements INodeType {
 								additionalFields.numberDecimals = this.getNodeParameter('numberDecimals', i);
 								additionalFields.numberPrefix = this.getNodeParameter('numberPrefix', i);
 								additionalFields.numberSuffix = this.getNodeParameter('numberSuffix', i);
-								additionalFields.columnSubType = this.getNodeParameter('columnSubType', i);
+								additionalFields.subtype = this.getNodeParameter('columnSubType', i);
 							} else if (columnType === 'datetime') {
 								additionalFields.datetimeDefault = this.getNodeParameter('datetimeDefault', i);
-								additionalFields.columnSubType = this.getNodeParameter('columnSubType', i);
+								additionalFields.subtype = this.getNodeParameter('columnSubType', i);
 							} else if (columnType === 'selection') {
 								additionalFields.selectionOptions = this.getNodeParameter('selectionOptions', i);
 								additionalFields.selectionDefault = this.getNodeParameter('selectionDefault', i);
-								additionalFields.columnSubType = this.getNodeParameter('columnSubType', i);
+								additionalFields.subtype = this.getNodeParameter('columnSubType', i);
 							} else if (columnType === 'usergroup') {
 								additionalFields.usergroupDefault = this.getNodeParameter('usergroupDefault', i);
 								additionalFields.usergroupMultipleItems = this.getNodeParameter(
@@ -2277,7 +2511,7 @@ export class NextCloud implements INodeType {
 									'usergroupShowUserStatus',
 									i,
 								);
-								additionalFields.columnSubType = this.getNodeParameter('columnSubType', i);
+								additionalFields.subtype = this.getNodeParameter('columnSubType', i);
 							}
 							const columnBody = {
 								title: columnTitle,
@@ -2315,7 +2549,7 @@ export class NextCloud implements INodeType {
 									i,
 								);
 								additionalFields.textMaxLength = this.getNodeParameter('textMaxLength', i);
-								additionalFields.columnSubType = this.getNodeParameter('columnSubType', i);
+								additionalFields.subtype = this.getNodeParameter('columnSubType', i);
 							} else if (columnType === 'number') {
 								additionalFields.numberDefault = this.getNodeParameter('numberDefault', i);
 								additionalFields.numberMin = this.getNodeParameter('numberMin', i);
@@ -2323,14 +2557,14 @@ export class NextCloud implements INodeType {
 								additionalFields.numberDecimals = this.getNodeParameter('numberDecimals', i);
 								additionalFields.numberPrefix = this.getNodeParameter('numberPrefix', i);
 								additionalFields.numberSuffix = this.getNodeParameter('numberSuffix', i);
-								additionalFields.columnSubType = this.getNodeParameter('columnSubType', i);
+								additionalFields.subtype = this.getNodeParameter('columnSubType', i);
 							} else if (columnType === 'datetime') {
 								additionalFields.datetimeDefault = this.getNodeParameter('datetimeDefault', i);
-								additionalFields.columnSubType = this.getNodeParameter('columnSubType', i);
+								additionalFields.subtype = this.getNodeParameter('columnSubType', i);
 							} else if (columnType === 'selection') {
 								additionalFields.selectionOptions = this.getNodeParameter('selectionOptions', i);
 								additionalFields.selectionDefault = this.getNodeParameter('selectionDefault', i);
-								additionalFields.columnSubType = this.getNodeParameter('columnSubType', i);
+								additionalFields.subtype = this.getNodeParameter('columnSubType', i);
 							} else if (columnType === 'usergroup') {
 								additionalFields.usergroupDefault = this.getNodeParameter('usergroupDefault', i);
 								additionalFields.usergroupMultipleItems = this.getNodeParameter(
@@ -2349,7 +2583,7 @@ export class NextCloud implements INodeType {
 									'usergroupShowUserStatus',
 									i,
 								);
-								additionalFields.columnSubType = this.getNodeParameter('columnSubType', i);
+								additionalFields.subtype = this.getNodeParameter('columnSubType', i);
 							}
 							const columnBody = {
 								title: columnTitle,
@@ -2371,6 +2605,90 @@ export class NextCloud implements INodeType {
 							returnData.push(JSON.parse(responseData));
 							break;
 						}
+
+						case 'getRows': {
+							const tableId = this.getNodeParameter('tableId', i) as string;
+							const tablesHeaders = {
+								'OCS-APIRequest': 'true',
+								'Content-Type': 'application/json',
+							};
+							responseData = await nextCloudApiRequest.call(
+								this,
+								'GET',
+								`ocs/v1.php/apps/tables/api/1/tables/${encodeURIComponent(tableId)}/rows`,
+								'',
+								tablesHeaders,
+							);
+							returnData.push(JSON.parse(responseData));
+							break;
+						}
+						case 'getRow': {
+							const rowId = this.getNodeParameter('rowId', i) as string;
+							const tablesHeaders = {
+								'OCS-APIRequest': 'true',
+								'Content-Type': 'application/json',
+							};
+							responseData = await nextCloudApiRequest.call(
+								this,
+								'GET',
+								`ocs/v1.php/apps/tables/api/1/rows/${encodeURIComponent(rowId)}`,
+								'',
+								tablesHeaders,
+							);
+							returnData.push(JSON.parse(responseData));
+							break;
+						}
+						case 'deleteRow': {
+							const rowId = this.getNodeParameter('rowId', i) as string;
+							const tablesHeaders = {
+								'OCS-APIRequest': 'true',
+							};
+							responseData = await nextCloudApiRequest.call(
+								this,
+								'DELETE',
+								`ocs/v1.php/apps/tables/api/1/rows/${encodeURIComponent(rowId)}`,
+								'',
+								tablesHeaders,
+							);
+							returnData.push({ json: { success: responseData === '' } });
+							break;
+						}
+						case 'createRow': {
+							const tableId = this.getNodeParameter('tableId', i) as string;
+							const rowData = this.getNodeParameter('rowData', i) as string;
+							const rowBody = { data: rowData };
+							const tablesHeaders = {
+								'OCS-APIRequest': 'true',
+								'Content-Type': 'application/json',
+							};
+							responseData = await nextCloudApiRequest.call(
+								this,
+								'POST',
+								`ocs/v1.php/apps/tables/api/1/tables/${encodeURIComponent(tableId)}/rows`,
+								JSON.stringify(rowBody),
+								tablesHeaders,
+							);
+							returnData.push(JSON.parse(responseData));
+							break;
+						}
+						case 'updateRow': {
+							const rowId = this.getNodeParameter('rowId', i) as string;
+							const rowData = this.getNodeParameter('rowData', i) as string;
+							const rowBody = { data: rowData };
+							const tablesHeaders = {
+								'OCS-APIRequest': 'true',
+								'Content-Type': 'application/json',
+							};
+							responseData = await nextCloudApiRequest.call(
+								this,
+								'PUT',
+								`ocs/v1.php/apps/tables/api/1/rows/${encodeURIComponent(rowId)}`,
+								JSON.stringify(rowBody),
+								tablesHeaders,
+							);
+							returnData.push(JSON.parse(responseData));
+							break;
+						}
 						default:
 							throw new NodeOperationError(
 								this.getNode(),
@@ -2379,19 +2697,150 @@ export class NextCloud implements INodeType {
 					}
 				} else if (resource === 'talk') {
 					switch (operation) {
+						case 'getMessages': {
+							const conversationId = this.getNodeParameter('conversationId', i) as string;
+							const talkHeaders = {
+								'OCS-APIRequest': 'true',
+								Accept: 'application/json',
+							};
+							responseData = await nextCloudApiRequest.call(
+								this,
+								'GET',
+								`ocs/v2.php/apps/spreed/api/v1/chat/${encodeURIComponent(conversationId)}`,
+								'',
+								talkHeaders,
+							);
+							returnData.push(JSON.parse(responseData));
+							break;
+						}
+						case 'getMessageContext': {
+							const conversationId = this.getNodeParameter('conversationId', i) as string;
+							const messageId = this.getNodeParameter('messageId', i) as string;
+							const talkHeaders = {
+								'OCS-APIRequest': 'true',
+								Accept: 'application/json',
+							};
+							responseData = await nextCloudApiRequest.call(
+								this,
+								'GET',
+								`ocs/v2.php/apps/spreed/api/v1/chat/${encodeURIComponent(conversationId)}/${encodeURIComponent(messageId)}/context`,
+								'',
+								talkHeaders,
+							);
+							returnData.push(JSON.parse(responseData));
+							break;
+						}
 						case 'sendMessage': {
 							const conversationId = this.getNodeParameter('conversationId', i) as string;
 							const message = this.getNodeParameter('message', i) as string;
+							const actorDisplayName = this.getNodeParameter('actorDisplayName', i) as string;
+							const replyTo = this.getNodeParameter('replyTo', i) as number;
+							const referenceId = this.getNodeParameter('referenceId', i) as string;
+							const silent = this.getNodeParameter('silent', i) as boolean;
+
+							const talkBody: any = { message };
+							if (actorDisplayName) {
+								talkBody.actorDisplayName = actorDisplayName;
+							}
+							if (replyTo) {
+								talkBody.replyTo = replyTo;
+							}
+							if (referenceId) {
+								talkBody.referenceId = referenceId;
+							}
+
+							talkBody.silent = silent;
+
+							const talkHeaders = {
+								'OCS-APIRequest': 'true',
+								'Content-Type': 'application/json',
+								Accept: 'application/json',
+							};
+
+							responseData = await nextCloudApiRequest.call(
+								this,
+								'POST',
+								`ocs/v2.php/apps/spreed/api/v1/chat/${encodeURIComponent(conversationId)}`,
+								JSON.stringify(talkBody),
+								talkHeaders,
+							);
+							returnData.push(JSON.parse(responseData));
+							break;
+						}
+
+						case 'updateMessage': {
+							const conversationId = this.getNodeParameter('conversationId', i) as string;
+							const messageId = this.getNodeParameter('messageId', i) as string;
+							const message = this.getNodeParameter('message', i) as string;
+
 							const talkBody = { message };
 							const talkHeaders = {
 								'OCS-APIRequest': 'true',
 								'Content-Type': 'application/json',
+								Accept: 'application/json',
+							};
+							responseData = await nextCloudApiRequest.call(
+								this,
+								'PUT',
+								`ocs/v2.php/apps/spreed/api/v1/chat/${encodeURIComponent(conversationId)}/${encodeURIComponent(messageId)}`,
+								JSON.stringify(talkBody),
+								talkHeaders,
+							);
+							returnData.push(JSON.parse(responseData));
+							break;
+						}
+						case 'deleteMessage': {
+							const conversationId = this.getNodeParameter('conversationId', i) as string;
+							const messageId = this.getNodeParameter('messageId', i) as string;
+							const talkHeaders = {
+								'OCS-APIRequest': 'true',
+								Accept: 'application/json',
+							};
+							responseData = await nextCloudApiRequest.call(
+								this,
+								'DELETE',
+								`ocs/v2.php/apps/spreed/api/v1/chat/${encodeURIComponent(conversationId)}/${encodeURIComponent(messageId)}`,
+								'',
+								talkHeaders,
+							);
+							returnData.push({ json: { success: responseData === '' } });
+							break;
+						}
+						case 'markRead': {
+							const conversationId = this.getNodeParameter('conversationId', i) as string;
+							const messageId = this.getNodeParameter('messageId', i) as string;
+							const talkBody: { lastReadMessage: string | null } = { lastReadMessage: null };
+							if (messageId) {
+								talkBody.lastReadMessage = messageId;
+							}
+							const talkHeaders = {
+								'OCS-APIRequest': 'true',
+								'Content-Type': 'application/json',
+								Accept: 'application/json',
 							};
 							responseData = await nextCloudApiRequest.call(
 								this,
 								'POST',
-								`ocs/v1.php/apps/talk/api/v1/messages/${encodeURIComponent(conversationId)}`,
-								JSON.stringify(talkBody),
+								`ocs/v2.php/apps/spreed/api/v1/chat/${encodeURIComponent(conversationId)}/read`,
+								talkBody,
+								talkHeaders,
+							);
+							returnData.push(JSON.parse(responseData));
+							break;
+						}
+						case 'markUnread': {
+							const conversationId = this.getNodeParameter('conversationId', i) as string;
+
+							const talkHeaders = {
+								'OCS-APIRequest': 'true',
+								'Content-Type': 'application/json',
+								Accept: 'application/json',
+							};
+							responseData = await nextCloudApiRequest.call(
+								this,
+								'DELETE',
+								`ocs/v2.php/apps/spreed/api/v1/chat/${encodeURIComponent(conversationId)}/read`,
+								'',
 								talkHeaders,
 							);
 							returnData.push(JSON.parse(responseData));
@@ -2400,11 +2849,28 @@ export class NextCloud implements INodeType {
 						case 'getConversations': {
 							const talkHeaders = {
 								'OCS-APIRequest': 'true',
+								Accept: 'application/json',
 							};
 							responseData = await nextCloudApiRequest.call(
 								this,
 								'GET',
-								'ocs/v1.php/apps/talk/api/v1/conversations',
+								'ocs/v2.php/apps/spreed/api/v4/room',
+								'',
+								talkHeaders,
+							);
+							returnData.push(JSON.parse(responseData));
+							break;
+						}
+						case 'getConversation': {
+							const conversationId = this.getNodeParameter('conversationId', i) as string;
+							const talkHeaders = {
+								'OCS-APIRequest': 'true',
+								Accept: 'application/json',
+							};
+							responseData = await nextCloudApiRequest.call(
+								this,
+								'GET',
+								`ocs/v2.php/apps/spreed/api/v4/room/${encodeURIComponent(conversationId)}`,
 								'',
 								talkHeaders,
 							);
@@ -2413,15 +2879,51 @@ export class NextCloud implements INodeType {
 						}
 						case 'createConversation': {
 							const conversationName = this.getNodeParameter('conversationName', i) as string;
-							const talkBody = { name: conversationName };
+							const roomType = this.getNodeParameter('conversationType', i) as number; // Assuming conversationType maps to roomType
+							const invite = this.getNodeParameter('invite', i) as string;
+							const source = this.getNodeParameter('source', i) as string;
+
+							const talkBody: any = {
+								roomName: conversationName,
+								roomType,
+							};
+							// Conditionally add invite if it's provided and relevant to roomType 1 or 2
+							if (invite && (roomType === 1 || roomType === 2)) {
+								talkBody.invite = invite; // Use bracket notation
+							}
+
+							// Add source if roomType is 2 and source is provided (for groups and circles)
+							if (roomType === 2 && source) {
+								talkBody.source = source; // Use bracket notation
+							}
 							const talkHeaders = {
 								'OCS-APIRequest': 'true',
 								'Content-Type': 'application/json',
+								Accept: 'application/json',
 							};
 							responseData = await nextCloudApiRequest.call(
 								this,
 								'POST',
-								'ocs/v1.php/apps/talk/api/v1/conversations',
+								'ocs/v2.php/apps/spreed/api/v4/room',
+								JSON.stringify(talkBody),
+								talkHeaders,
+							);
+							returnData.push(JSON.parse(responseData));
+							break;
+						}
+						case 'updateConversation': {
+							const conversationId = this.getNodeParameter('conversationId', i) as string;
+							const conversationName = this.getNodeParameter('conversationName', i) as string;
+							const talkBody = { roomName: conversationName };
+							const talkHeaders = {
+								'OCS-APIRequest': 'true',
+								'Content-Type': 'application/json',
+								Accept: 'application/json',
+							};
+							responseData = await nextCloudApiRequest.call(
+								this,
+								'PUT',
+								`ocs/v2.php/apps/spreed/api/v4/room/${encodeURIComponent(conversationId)}`,
 								JSON.stringify(talkBody),
 								talkHeaders,
 							);
@@ -2432,11 +2934,12 @@ export class NextCloud implements INodeType {
 							const conversationId = this.getNodeParameter('conversationId', i) as string;
 							const talkHeaders = {
 								'OCS-APIRequest': 'true',
+								Accept: 'application/json',
 							};
 							responseData = await nextCloudApiRequest.call(
 								this,
 								'DELETE',
-								`ocs/v1.php/apps/talk/api/v1/conversations/${encodeURIComponent(conversationId)}`,
+								`ocs/v2.php/apps/spreed/api/v4/room/${encodeURIComponent(conversationId)}`,
 								'',
 								talkHeaders,
 							);
