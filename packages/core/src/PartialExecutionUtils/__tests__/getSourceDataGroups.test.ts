@@ -437,4 +437,80 @@ describe('getSourceDataGroups', () => {
 		expect(group1.connections).toHaveLength(2);
 		expect(group1.complete).toEqual(false);
 	});
+
+	it('terminates with negative input indexes', () => {
+		// ARRANGE
+		const source1 = createNodeData({ name: 'source1' });
+		const node = createNodeData({ name: 'node' });
+
+		const graph = new DirectedGraph()
+			.addNodes(source1, node)
+			.addConnections({ from: source1, to: node, inputIndex: -1 });
+		const runData: IRunData = {
+			[source1.name]: [toITaskData([{ data: { node: source1.name } }])],
+		};
+		const pinnedData: IPinData = {};
+
+		// ACT
+		const groups = getSourceDataGroups(graph, node, runData, pinnedData);
+
+		// ASSERT
+		expect(groups).toHaveLength(1);
+		const group1 = groups[0];
+		expect(group1.connections).toHaveLength(1);
+		expect(group1.connections[0]).toEqual({
+			from: source1,
+			outputIndex: 0,
+			type: NodeConnectionType.Main,
+			inputIndex: -1,
+			to: node,
+		});
+	});
+
+	it('terminates inputs with missing connections', () => {
+		// ARRANGE
+		const source1 = createNodeData({ name: 'source1' });
+		const node = createNodeData({ name: 'node' });
+
+		const graph = new DirectedGraph()
+			.addNodes(source1, node)
+			.addConnections({ from: source1, to: node, inputIndex: 1 });
+		const runData: IRunData = {
+			[source1.name]: [toITaskData([{ data: { node: source1.name } }])],
+		};
+		const pinnedData: IPinData = {};
+
+		// ACT
+		const groups = getSourceDataGroups(graph, node, runData, pinnedData);
+
+		// ASSERT
+		expect(groups).toHaveLength(1);
+		const group1 = groups[0];
+		expect(group1.connections).toHaveLength(1);
+		expect(group1.connections[0]).toEqual({
+			from: source1,
+			outputIndex: 0,
+			type: NodeConnectionType.Main,
+			inputIndex: 1,
+			to: node,
+		});
+	});
+
+	it('terminates if the graph has no connections', () => {
+		// ARRANGE
+		const source1 = createNodeData({ name: 'source1' });
+		const node = createNodeData({ name: 'node' });
+
+		const graph = new DirectedGraph().addNodes(source1, node);
+		const runData: IRunData = {
+			[source1.name]: [toITaskData([{ data: { node: source1.name } }])],
+		};
+		const pinnedData: IPinData = {};
+
+		// ACT
+		const groups = getSourceDataGroups(graph, node, runData, pinnedData);
+
+		// ASSERT
+		expect(groups).toHaveLength(0);
+	});
 });

@@ -1,3 +1,4 @@
+import * as a from 'assert/strict';
 import { type INode, type IPinData, type IRunData } from 'n8n-workflow';
 
 import type { GraphConnection, DirectedGraph } from './DirectedGraph';
@@ -104,52 +105,60 @@ export function getSourceDataGroups(
 		}
 	}
 
+	if (sortedConnectionsWithData.length === 0 && sortedConnectionsWithoutData.length === 0) {
+		return [];
+	}
+
 	sortedConnectionsWithData.sort(sortByInputIndexThenByName);
 	sortedConnectionsWithoutData.sort(sortByInputIndexThenByName);
 
 	const groups: SourceConnectionGroup[] = [];
 	let currentGroup = newGroup();
-	let currentInputIndex = -1;
+	let currentInputIndex =
+		Math.min(
+			...sortedConnectionsWithData.map((c) => c.inputIndex),
+			...sortedConnectionsWithoutData.map((c) => c.inputIndex),
+		) - 1;
 
 	while (sortedConnectionsWithData.length > 0 || sortedConnectionsWithoutData.length > 0) {
 		currentInputIndex++;
 
-		{
-			const connectionWithDataIndex = sortedConnectionsWithData.findIndex(
-				// eslint-disable-next-line @typescript-eslint/no-loop-func
-				(c) => c.inputIndex === currentInputIndex,
-			);
+		const connectionWithDataIndex = sortedConnectionsWithData.findIndex(
+			// eslint-disable-next-line @typescript-eslint/no-loop-func
+			(c) => c.inputIndex === currentInputIndex,
+		);
 
-			if (connectionWithDataIndex >= 0) {
-				const connection = sortedConnectionsWithData[connectionWithDataIndex];
+		if (connectionWithDataIndex >= 0) {
+			const connection = sortedConnectionsWithData[connectionWithDataIndex];
 
-				currentGroup.connections.push(connection);
+			currentGroup.connections.push(connection);
 
-				sortedConnectionsWithData.splice(connectionWithDataIndex, 1);
-				continue;
-			}
+			sortedConnectionsWithData.splice(connectionWithDataIndex, 1);
+			continue;
 		}
 
-		{
-			const connectionWithoutDataIndex = sortedConnectionsWithoutData.findIndex(
-				// eslint-disable-next-line @typescript-eslint/no-loop-func
-				(c) => c.inputIndex === currentInputIndex,
-			);
+		const connectionWithoutDataIndex = sortedConnectionsWithoutData.findIndex(
+			// eslint-disable-next-line @typescript-eslint/no-loop-func
+			(c) => c.inputIndex === currentInputIndex,
+		);
 
-			if (connectionWithoutDataIndex >= 0) {
-				const connection = sortedConnectionsWithoutData[connectionWithoutDataIndex];
+		if (connectionWithoutDataIndex >= 0) {
+			const connection = sortedConnectionsWithoutData[connectionWithoutDataIndex];
 
-				currentGroup.connections.push(connection);
-				currentGroup.complete = false;
+			currentGroup.connections.push(connection);
+			currentGroup.complete = false;
 
-				sortedConnectionsWithoutData.splice(connectionWithoutDataIndex, 1);
-				continue;
-			}
+			sortedConnectionsWithoutData.splice(connectionWithoutDataIndex, 1);
+			continue;
 		}
 
 		groups.push(currentGroup);
 		currentGroup = newGroup();
-		currentInputIndex = -1;
+		currentInputIndex =
+			Math.min(
+				...sortedConnectionsWithData.map((c) => c.inputIndex),
+				...sortedConnectionsWithoutData.map((c) => c.inputIndex),
+			) - 1;
 	}
 
 	groups.push(currentGroup);
