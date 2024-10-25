@@ -52,6 +52,7 @@ import type {
 	NodeParameterValueType,
 	CloseFunction,
 	INodeOutputConfiguration,
+	IGetExecuteHookFunctions,
 } from './Interfaces';
 import { Node, NodeConnectionType } from './Interfaces';
 import * as NodeHelpers from './NodeHelpers';
@@ -1056,7 +1057,7 @@ export class Workflow {
 
 	async createWebhookIfNotExists(
 		webhookData: IWebhookData,
-		nodeExecuteFunctions: INodeExecuteFunctions,
+		nodeExecuteFunctions: { getExecuteHookFunctions: IGetExecuteHookFunctions },
 		mode: WorkflowExecuteMode,
 		activation: WorkflowActivateMode,
 	): Promise<void> {
@@ -1075,7 +1076,7 @@ export class Workflow {
 
 	async deleteWebhook(
 		webhookData: IWebhookData,
-		nodeExecuteFunctions: INodeExecuteFunctions,
+		nodeExecuteFunctions: { getExecuteHookFunctions: IGetExecuteHookFunctions },
 		mode: WorkflowExecuteMode,
 		activation: WorkflowActivateMode,
 	) {
@@ -1085,7 +1086,7 @@ export class Workflow {
 	private async runWebhookMethod(
 		method: WebhookSetupMethodNames,
 		webhookData: IWebhookData,
-		nodeExecuteFunctions: INodeExecuteFunctions,
+		nodeExecuteFunctions: { getExecuteHookFunctions: IGetExecuteHookFunctions },
 		mode: WorkflowExecuteMode,
 		activation: WorkflowActivateMode,
 	): Promise<boolean | undefined> {
@@ -1122,8 +1123,6 @@ export class Workflow {
 		mode: WorkflowExecuteMode,
 		activation: WorkflowActivateMode,
 	): Promise<ITriggerResponse | undefined> {
-		const triggerFunctions = getTriggerFunctions(this, node, additionalData, mode, activation);
-
 		const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
 		if (nodeType === undefined) {
@@ -1140,14 +1139,19 @@ export class Workflow {
 			});
 		}
 
+		const context = getTriggerFunctions(this, node, additionalData, mode, activation);
+
 		if (mode === 'manual') {
 			// In manual mode we do not just start the trigger function we also
 			// want to be able to get informed as soon as the first data got emitted
-			const triggerResponse = await nodeType.trigger.call(triggerFunctions);
+			const triggerResponse =
+				nodeType instanceof Node
+					? await nodeType.trigger(context)
+					: await nodeType.trigger.call(context);
 
 			// Add the manual trigger response which resolves when the first time data got emitted
 			triggerResponse!.manualTriggerResponse = new Promise((resolve, reject) => {
-				triggerFunctions.emit = (
+				context.emit = (
 					(resolveEmit) =>
 					(
 						data: INodeExecutionData[][],
@@ -1173,7 +1177,7 @@ export class Workflow {
 						resolveEmit(data);
 					}
 				)(resolve);
-				triggerFunctions.emitError = (
+				context.emitError = (
 					(rejectEmit) =>
 					(error: Error, responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>) => {
 						additionalData.hooks!.hookFunctions.sendResponse = [
@@ -1191,8 +1195,11 @@ export class Workflow {
 
 			return triggerResponse;
 		}
+
 		// In all other modes simply start the trigger
-		return await nodeType.trigger.call(triggerFunctions);
+		return nodeType instanceof Node
+			? await nodeType.trigger(context)
+			: await nodeType.trigger.call(context);
 	}
 
 	/**
@@ -1402,14 +1409,18 @@ export class Workflow {
 		} else if (nodeType.poll) {
 			if (mode === 'manual') {
 				// In manual mode run the poll function
-				const thisArgs = nodeExecuteFunctions.getExecutePollFunctions(
+				const context = nodeExecuteFunctions.getExecutePollFunctions(
 					this,
 					node,
 					additionalData,
 					mode,
 					'manual',
 				);
-				return { data: await nodeType.poll.call(thisArgs) };
+				const data =
+					nodeType instanceof Node
+						? await nodeType.poll(context)
+						: await nodeType.poll.call(context);
+				return { data };
 			}
 			// In any other mode pass data through as it already contains the result of the poll
 			return { data: inputData.main as INodeExecutionData[][] };

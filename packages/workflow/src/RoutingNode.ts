@@ -591,8 +591,7 @@ export class RoutingNode {
 		let responseData: IN8nHttpFullResponse;
 		requestData.options.returnFullResponse = true;
 		if (credentialType) {
-			responseData = (await executeSingleFunctions.helpers.httpRequestWithAuthentication.call(
-				executeSingleFunctions,
+			responseData = (await executeSingleFunctions.helpers.httpRequestWithAuthentication(
 				credentialType,
 				requestData.options as IHttpRequestOptions,
 				{ credentialsDecrypted },

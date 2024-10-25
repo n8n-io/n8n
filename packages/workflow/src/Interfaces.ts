@@ -730,11 +730,10 @@ export interface ICredentialTestFunctions {
 	};
 }
 
-interface BaseHelperFunctions {
+export interface BaseHelperFunctions {
 	createDeferredPromise: <T = void>() => IDeferredPromise<T>;
-}
 
-interface JsonHelperFunctions {
+	/** Takes generic input data and brings it into the json format n8n uses. */
 	returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExecutionData[];
 }
 
@@ -755,6 +754,7 @@ export interface BinaryHelperFunctions {
 		mimeType?: string,
 	): Promise<IBinaryData>;
 	setBinaryDataBuffer(data: IBinaryData, binaryData: Buffer): Promise<IBinaryData>;
+	/** @deprecated */
 	copyBinaryFile(): Promise<never>;
 	binaryToBuffer(body: Buffer | Readable): Promise<Buffer>;
 	binaryToString(body: Buffer | Readable, encoding?: BufferEncoding): Promise<string>;
@@ -816,13 +816,11 @@ export interface NodeHelperFunctions {
 export interface RequestHelperFunctions {
 	httpRequest(requestOptions: IHttpRequestOptions): Promise<any>;
 	httpRequestWithAuthentication(
-		this: IAllExecuteFunctions,
 		credentialsType: string,
 		requestOptions: IHttpRequestOptions,
 		additionalCredentialOptions?: IAdditionalCredentialOptions,
 	): Promise<any>;
 	requestWithAuthenticationPaginated(
-		this: IAllExecuteFunctions,
 		requestOptions: IRequestOptions,
 		itemIndex: number,
 		paginationOptions: PaginationOptions,
@@ -835,32 +833,29 @@ export interface RequestHelperFunctions {
 	 * @see RequestHelperFunctions.httpRequest
 	 */
 	request(uriOrObject: string | IRequestOptions, options?: IRequestOptions): Promise<any>;
+
 	/**
 	 * @deprecated Use .httpRequestWithAuthentication instead
 	 * @see RequestHelperFunctions.requestWithAuthentication
 	 */
 	requestWithAuthentication(
-		this: IAllExecuteFunctions,
 		credentialsType: string,
 		requestOptions: IRequestOptions,
 		additionalCredentialOptions?: IAdditionalCredentialOptions,
 		itemIndex?: number,
 	): Promise<any>;
+
 	/**
 	 * @deprecated Use .httpRequestWithAuthentication instead
 	 * @see RequestHelperFunctions.requestWithAuthentication
 	 */
-	requestOAuth1(
-		this: IAllExecuteFunctions,
-		credentialsType: string,
-		requestOptions: IRequestOptions,
-	): Promise<any>;
+	requestOAuth1(credentialsType: string, requestOptions: IRequestOptions): Promise<any>;
+
 	/**
 	 * @deprecated Use .httpRequestWithAuthentication instead
 	 * @see RequestHelperFunctions.requestWithAuthentication
 	 */
 	requestOAuth2(
-		this: IAllExecuteFunctions,
 		credentialsType: string,
 		requestOptions: IRequestOptions,
 		oAuth2Options?: IOAuth2Options,
@@ -984,8 +979,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			BinaryHelperFunctions &
 			DeduplicationHelperFunctions &
 			FileSystemHelperFunctions &
-			SSHTunnelFunctions &
-			JsonHelperFunctions & {
+			SSHTunnelFunctions & {
 				normalizeItems(items: INodeExecutionData | INodeExecutionData[]): INodeExecutionData[];
 				constructExecutionMetaData(
 					inputData: INodeExecutionData[],
@@ -1059,8 +1053,7 @@ export interface IPollFunctions
 	helpers: RequestHelperFunctions &
 		BaseHelperFunctions &
 		BinaryHelperFunctions &
-		SchedulingFunctions &
-		JsonHelperFunctions;
+		SchedulingFunctions;
 }
 
 export interface ITriggerFunctions
@@ -1080,8 +1073,7 @@ export interface ITriggerFunctions
 		BaseHelperFunctions &
 		BinaryHelperFunctions &
 		SSHTunnelFunctions &
-		SchedulingFunctions &
-		JsonHelperFunctions;
+		SchedulingFunctions;
 }
 
 export interface IHookFunctions
@@ -1118,10 +1110,7 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	getResponseObject(): express.Response;
 	getWebhookName(): string;
 	nodeHelpers: NodeHelperFunctions;
-	helpers: RequestHelperFunctions &
-		BaseHelperFunctions &
-		BinaryHelperFunctions &
-		JsonHelperFunctions;
+	helpers: RequestHelperFunctions & BaseHelperFunctions & BinaryHelperFunctions;
 }
 
 export interface INodeCredentialsDetails {
@@ -1619,6 +1608,8 @@ export abstract class Node {
 	abstract description: INodeTypeDescription;
 	execute?(context: IExecuteFunctions): Promise<INodeExecutionData[][]>;
 	webhook?(context: IWebhookFunctions): Promise<IWebhookResponseData>;
+	poll?(context: IPollFunctions): Promise<INodeExecutionData[][] | null>;
+	trigger?(context: ITriggerFunctions): Promise<ITriggerResponse | undefined>;
 }
 
 export interface IVersionedNodeType {

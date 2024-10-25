@@ -3,7 +3,7 @@ import { mock } from 'jest-mock-extended';
 import get from 'lodash/get';
 import merge from 'lodash/merge';
 import set from 'lodash/set';
-import { getExecutePollFunctions, returnJsonArray, type InstanceSettings } from 'n8n-core';
+import { PollContext, returnJsonArray, type InstanceSettings } from 'n8n-core';
 import { ScheduledTaskManager } from 'n8n-core/dist/ScheduledTaskManager';
 import type {
 	IBinaryData,
@@ -200,7 +200,7 @@ export async function testPollingTriggerNode(
 	});
 	const mode = options.mode ?? 'trigger';
 
-	const originalPollingFunctions = getExecutePollFunctions(
+	const originalPollingFunctions = new PollContext(
 		workflow,
 		node,
 		mock<IWorkflowExecuteAdditionalData>({

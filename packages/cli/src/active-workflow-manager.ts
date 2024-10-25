@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 
-import { ActiveWorkflows, InstanceSettings, NodeExecuteFunctions } from 'n8n-core';
+import { ActiveWorkflows, InstanceSettings, NodeExecuteFunctions, PollContext } from 'n8n-core';
 import type {
 	ExecutionError,
 	IDeferredPromise,
@@ -274,18 +274,11 @@ export class ActiveWorkflowManager {
 		activation: WorkflowActivateMode,
 	): IGetExecutePollFunctions {
 		return (workflow: Workflow, node: INode) => {
-			const returnFunctions = NodeExecuteFunctions.getExecutePollFunctions(
-				workflow,
-				node,
-				additionalData,
-				mode,
-				activation,
-			);
-			returnFunctions.__emit = (
+			const __emit = (
 				data: INodeExecutionData[][],
 				responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 				donePromise?: IDeferredPromise<IRun | undefined>,
-			): void => {
+			) => {
 				this.logger.debug(`Received event to trigger execution for workflow "${workflow.name}"`);
 				void this.workflowStaticDataService.saveStaticData(workflow);
 				const executePromise = this.workflowExecutionService.runWorkflow(
@@ -309,14 +302,15 @@ export class ActiveWorkflowManager {
 				}
 			};
 
-			returnFunctions.__emitError = (error: ExecutionError): void => {
+			const __emitError = (error: ExecutionError) => {
 				void this.executionService
 					.createErrorExecution(error, node, workflowData, workflow, mode)
 					.then(() => {
 						this.executeErrorWorkflow(error, workflowData, mode);
 					});
 			};
-			return returnFunctions;
+
+			return new PollContext(workflow, node, additionalData, mode, activation, __emit, __emitError);
 		};
 	}
 
