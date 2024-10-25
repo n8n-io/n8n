@@ -908,6 +908,7 @@
 	"menuActions.switchToNewNodeViewVersion": "Switch to new canvas",
 	"menuActions.switchToOldNodeViewVersion": "Switch to old canvas",
 	"menuActions.badge.new": "NEW",
+	"menuActions.badge.alpha": "ALPHA",
 	"menuActions.nodeViewDiscovery.tooltip": "Try our new, more performant canvas",
 	"multipleParameter.addItem": "Add item",
 	"multipleParameter.currentlyNoItemsExist": "Currently no items exist",
