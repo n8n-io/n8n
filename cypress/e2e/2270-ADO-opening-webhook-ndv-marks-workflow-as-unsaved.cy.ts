@@ -8,13 +8,14 @@ describe('ADO-2270 Save button resets on webhook node open', () => {
 		// setup, load workflow with debughelper node with random seed
 		workflowPage.actions.visit();
 		workflowPage.actions.addInitialNodeToCanvas('Webhook');
+		workflowPage.getters.saveButton().click();
 		workflowPage.actions.openNode('Webhook');
 
 		ndv.actions.close();
 
 		cy.ifCanvasVersion(
-			() => workflowPage.getters.saveButton().should('not.have.attr', 'disabled'),
-			() => workflowPage.getters.saveButton().should('have.attr', 'disabled'),
+			() => workflowPage.getters.saveButton().should('not.contain', 'Saved'),
+			() => workflowPage.getters.saveButton().should('contain', 'Saved'),
 		);
 	});
 });
