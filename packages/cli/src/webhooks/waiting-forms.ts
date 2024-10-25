@@ -1,6 +1,5 @@
-import axios from 'axios';
 import type express from 'express';
-import { FORM_NODE_TYPE, sleep, Workflow } from 'n8n-workflow';
+import { FORM_NODE_TYPE, Workflow } from 'n8n-workflow';
 import { Service } from 'typedi';
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
@@ -38,25 +37,6 @@ export class WaitingForms extends WaitingWebhooks {
 		});
 	}
 
-	private async reloadForm(req: WaitingWebhookRequest, res: express.Response) {
-		try {
-			await sleep(1000);
-
-			const url = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
-			const page = await axios({ url });
-
-			if (page) {
-				res.send(`
-				<script>
-					setTimeout(function() {
-						window.location.reload();
-					}, 1);
-				</script>
-			`);
-			}
-		} catch (error) {}
-	}
-
 	async executeWebhook(
 		req: WaitingWebhookRequest,
 		res: express.Response,
@@ -82,7 +62,7 @@ export class WaitingForms extends WaitingWebhooks {
 
 		if (execution.status === 'running') {
 			if (this.includeForms && req.method === 'GET') {
-				await this.reloadForm(req, res);
+				await this.reloadForm(executionId, res);
 				return { noWebhookResponse: true };
 			}
 
