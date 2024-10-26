@@ -4,6 +4,7 @@ import type {
 	JsonObject,
 	IRequestOptions,
 	IHttpRequestMethods,
+	IDataObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
@@ -13,8 +14,9 @@ export async function craftMyPdfApiRequest(
 	endpoint: string,
 	qs = {},
 	body = {},
+	option: IDataObject = {},
 ) {
-	const options: IRequestOptions = {
+	let options: IRequestOptions = {
 		headers: {
 			'user-agent': 'n8n',
 			Accept: 'application/json',
@@ -27,6 +29,10 @@ export async function craftMyPdfApiRequest(
 		followAllRedirects: true,
 		json: true,
 	};
+
+	if (Object.keys(option).length !== 0) {
+		options = Object.assign({}, options, option);
+	}
 
 	if (!Object.keys(body).length) {
 		delete options.body;
@@ -51,37 +57,12 @@ export async function craftMyPdfApiRequest(
 	}
 }
 
-export async function loadResource(this: ILoadOptionsFunctions, resource: 'image' | 'pdf') {
-	const target = resource === 'image' ? ['JPEG', 'PNG'] : ['PDF'];
-	const templates = await craftMyPdfApiRequest.call(this, 'GET', '/list-templates');
-	const filtered = templates.filter(({ format }: { format: 'PDF' | 'JPEG' | 'PNG' }) =>
-		target.includes(format),
-	);
-
-	return filtered.map(({ format, name, id }: { format: string; name: string; id: string }) => ({
-		name: `${name} (${format})`,
-		value: id,
-	}));
-}
-
-export function validateJSON(json: string | object | undefined): any {
+export function validateJSON(json: string | undefined): any {
 	let result;
-	if (typeof json === 'object') {
-		return json;
-	}
 	try {
 		result = JSON.parse(json!);
 	} catch (exception) {
 		result = undefined;
 	}
 	return result;
-}
-
-export async function downloadImage(this: IExecuteFunctions, url: string) {
-	return await this.helpers.request({
-		uri: url,
-		method: 'GET',
-		json: false,
-		encoding: null,
-	});
 }

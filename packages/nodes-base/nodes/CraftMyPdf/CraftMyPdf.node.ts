@@ -4,11 +4,12 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import { accountOperations } from './descriptions/AccountDescription';
+import { imageFields, imageOperations } from './descriptions/ImageDescription';
 import { transactionFields, transactionOperations } from './descriptions/TransactionDescription';
-import { craftMyPdfApiRequest } from './GenericFunctions';
+import { craftMyPdfApiRequest, validateJSON } from './GenericFunctions';
 
 export class CraftMyPdf implements INodeType {
 	description: INodeTypeDescription = {
@@ -42,6 +43,10 @@ export class CraftMyPdf implements INodeType {
 						value: 'account',
 					},
 					{
+						name: 'Image',
+						value: 'image',
+					},
+					{
 						name: 'Transaction',
 						value: 'transaction',
 					},
@@ -50,6 +55,9 @@ export class CraftMyPdf implements INodeType {
 			},
 
 			...accountOperations,
+
+			...imageOperations,
+			...imageFields,
 
 			...transactionOperations,
 			...transactionFields,
@@ -74,6 +82,68 @@ export class CraftMyPdf implements INodeType {
 						responseData = await craftMyPdfApiRequest.call(this, 'GET', '/get-account-info');
 
 						returnData.push(responseData as INodeExecutionData);
+					}
+				}
+				if (resource === 'image') {
+					if (operation === 'create') {
+						// Image Generation API: Create an image
+						// https://craftmypdf.com/docs/index.html#tag/Image-Generation-API/operation/create-image
+						const data = validateJSON(this.getNodeParameter('data', i) as string);
+						if (data === undefined) {
+							throw new NodeOperationError(this.getNode(), 'Data: Invalid JSON', {
+								itemIndex: i,
+							});
+						}
+						const export_type = this.getNodeParameter('export_type', i) as string;
+						const output_file = this.getNodeParameter('output_file', i) as string;
+
+						const body = {
+							template_id: this.getNodeParameter('templateId', i) as string,
+							data,
+							load_data_from: this.getNodeParameter('load_data_from', i) as string,
+							version: this.getNodeParameter('version', i) as string,
+							export_type,
+							expiration: this.getNodeParameter('expiration', i) as string,
+							output_file,
+							output_type: this.getNodeParameter('output_type', i) as string,
+						};
+
+						if (export_type === 'json') {
+							responseData = await craftMyPdfApiRequest.call(
+								this,
+								'POST',
+								'/create-image',
+								{},
+								body,
+							);
+							returnData.push(responseData as INodeExecutionData);
+						}
+						if (export_type === 'file') {
+							responseData = await craftMyPdfApiRequest.call(
+								this,
+								'POST',
+								'/create-image',
+								{},
+								body,
+								{
+									useStream: true,
+									resolveWithFullResponse: true,
+									encoding: null,
+									json: false,
+								},
+							);
+
+							const binaryData = await this.helpers.prepareBinaryData(
+								responseData.body as Buffer,
+								output_file,
+							);
+							returnData.push({
+								json: {},
+								binary: {
+									[output_file]: binaryData,
+								},
+							});
+						}
 					}
 				}
 				if (resource === 'transaction') {
