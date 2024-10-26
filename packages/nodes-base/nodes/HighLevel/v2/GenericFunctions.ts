@@ -218,13 +218,7 @@ export const addNotePostReceiveAction = async function (
 		body: note,
 	};
 
-	const responseData = await highLevelApiRequest.call(
-		this,
-		'POST',
-		`/contacts/${contactId}/notes`,
-		requestBody,
-		{},
-	);
+	await highLevelApiRequest.call(this, 'POST', `/contacts/${contactId}/notes`, requestBody, {});
 
 	return items;
 };
