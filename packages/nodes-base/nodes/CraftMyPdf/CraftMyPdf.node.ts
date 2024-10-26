@@ -7,6 +7,7 @@ import type {
 import { NodeConnectionType } from 'n8n-workflow';
 
 import { accountOperations } from './descriptions/AccountDescription';
+import { transactionFields, transactionOperations } from './descriptions/TransactionDescription';
 import { craftMyPdfApiRequest } from './GenericFunctions';
 
 export class CraftMyPdf implements INodeType {
@@ -49,6 +50,9 @@ export class CraftMyPdf implements INodeType {
 			},
 
 			...accountOperations,
+
+			...transactionOperations,
+			...transactionFields,
 		],
 	};
 
@@ -68,6 +72,15 @@ export class CraftMyPdf implements INodeType {
 						// Account Management API: Get account info
 						// https://craftmypdf.com/docs/index.html#tag/Account-Management-API/operation/get-account-info
 						responseData = await craftMyPdfApiRequest.call(this, 'GET', '/get-account-info');
+
+						returnData.push(responseData as INodeExecutionData);
+					}
+				}
+				if (resource === 'transaction') {
+					if (operation === 'list') {
+						// Account Management API: List transactions
+						// https://craftmypdf.com/docs/index.html#tag/Account-Management-API/operation/list-transactions
+						responseData = await craftMyPdfApiRequest.call(this, 'GET', '/list-transactions');
 
 						returnData.push(responseData as INodeExecutionData);
 					}
