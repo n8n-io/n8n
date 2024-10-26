@@ -1,4 +1,3 @@
-import axios from 'axios';
 import type express from 'express';
 import {
 	FORM_NODE_TYPE,
@@ -6,7 +5,6 @@ import {
 	type IWorkflowBase,
 	NodeHelpers,
 	SEND_AND_WAIT_OPERATION,
-	sleep,
 	WAIT_NODE_TYPE,
 	Workflow,
 } from 'n8n-workflow';
@@ -19,7 +17,6 @@ import type { IExecutionResponse, IWorkflowDb } from '@/interfaces';
 import { Logger } from '@/logging/logger.service';
 import { NodeTypes } from '@/node-types';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
-import { getBase } from '@/workflow-execute-additional-data';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
 import type {
@@ -81,26 +78,6 @@ export class WaitingWebhooks implements IWebhookManager {
 			includeData: true,
 			unflattenData: true,
 		});
-	}
-
-	protected async reloadForm(executionId: string, res: express.Response) {
-		try {
-			await sleep(1000);
-
-			const { formWaitingBaseUrl } = await getBase();
-			const url = `${formWaitingBaseUrl}/${executionId}`;
-			const page = await axios({ url });
-
-			if (page) {
-				res.send(`
-				<script>
-					setTimeout(function() {
-						window.location.reload();
-					}, 1);
-				</script>
-			`);
-			}
-		} catch (error) {}
 	}
 
 	async executeWebhook(
@@ -221,7 +198,6 @@ export class WaitingWebhooks implements IWebhookManager {
 				);
 
 				if (hasChildForms) {
-					await this.reloadForm(executionId, res);
 					return { noWebhookResponse: true };
 				}
 			}
