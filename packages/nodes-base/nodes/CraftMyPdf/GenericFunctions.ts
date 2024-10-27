@@ -5,6 +5,7 @@ import type {
 	IRequestOptions,
 	IHttpRequestMethods,
 	IDataObject,
+	INodeExecutionData,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
@@ -65,4 +66,28 @@ export function validateJSON(json: string | undefined): any {
 		result = undefined;
 	}
 	return result;
+}
+
+export async function returnFileExportType(
+	this: IExecuteFunctions,
+	method: IHttpRequestMethods,
+	endpoint: string,
+	outputFile: string,
+	body = {},
+): Promise<INodeExecutionData> {
+	const responseData = await craftMyPdfApiRequest.call(this, method, endpoint, {}, body, {
+		useStream: true,
+		resolveWithFullResponse: true,
+		encoding: null,
+		json: false,
+	});
+
+	const binaryData = await this.helpers.prepareBinaryData(responseData.body as Buffer, outputFile);
+
+	return {
+		json: {},
+		binary: {
+			[outputFile]: binaryData,
+		},
+	};
 }

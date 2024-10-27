@@ -1,4 +1,5 @@
 import type {
+	IDataObject,
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
@@ -8,8 +9,9 @@ import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import { accountOperations } from './descriptions/AccountDescription';
 import { imageFields, imageOperations } from './descriptions/ImageDescription';
+import { pdfFields, pdfOperations } from './descriptions/PdfDescription';
 import { transactionFields, transactionOperations } from './descriptions/TransactionDescription';
-import { craftMyPdfApiRequest, validateJSON } from './GenericFunctions';
+import { craftMyPdfApiRequest, returnFileExportType, validateJSON } from './GenericFunctions';
 
 export class CraftMyPdf implements INodeType {
 	description: INodeTypeDescription = {
@@ -47,6 +49,10 @@ export class CraftMyPdf implements INodeType {
 						value: 'image',
 					},
 					{
+						name: 'PDF',
+						value: 'pdf',
+					},
+					{
 						name: 'Transaction',
 						value: 'transaction',
 					},
@@ -58,6 +64,9 @@ export class CraftMyPdf implements INodeType {
 
 			...imageOperations,
 			...imageFields,
+
+			...pdfOperations,
+			...pdfFields,
 
 			...transactionOperations,
 			...transactionFields,
@@ -119,30 +128,66 @@ export class CraftMyPdf implements INodeType {
 							returnData.push(responseData as INodeExecutionData);
 						}
 						if (export_type === 'file') {
-							responseData = await craftMyPdfApiRequest.call(
+							const binaryData = await returnFileExportType.call(
 								this,
 								'POST',
 								'/create-image',
-								{},
-								body,
-								{
-									useStream: true,
-									resolveWithFullResponse: true,
-									encoding: null,
-									json: false,
-								},
-							);
-
-							const binaryData = await this.helpers.prepareBinaryData(
-								responseData.body as Buffer,
 								output_file,
+								body,
 							);
-							returnData.push({
-								json: {},
-								binary: {
-									[output_file]: binaryData,
-								},
+							returnData.push(binaryData);
+						}
+					}
+				}
+				if (resource === 'pdf') {
+					if (operation === 'create') {
+						// PDF Generation API: Create a PDF
+						// https://craftmypdf.com/docs/index.html#tag/PDF-Generation-API/operation/create
+						const data = validateJSON(this.getNodeParameter('data', i) as string);
+						if (data === undefined) {
+							throw new NodeOperationError(this.getNode(), 'Data: Invalid JSON', {
+								itemIndex: i,
 							});
+						}
+						const export_type = this.getNodeParameter('export_type', i) as string;
+						const output_file = this.getNodeParameter('output_file', i) as string;
+						const password_protected = this.getNodeParameter('password_protected', i) as boolean;
+						const resize_images = this.getNodeParameter('resize_images', i) as boolean;
+
+						const body: IDataObject = {
+							template_id: this.getNodeParameter('templateId', i) as string,
+							data,
+							load_data_from: this.getNodeParameter('load_data_from', i) as string,
+							version: this.getNodeParameter('version', i) as string,
+							export_type,
+							expiration: this.getNodeParameter('expiration', i) as string,
+							output_file,
+							password_protected,
+							image_resample_res: this.getNodeParameter('image_resample_res', i) as string,
+							resize_images,
+						};
+						if (password_protected) {
+							body.password = this.getNodeParameter('password', i) as string;
+						}
+						if (resize_images) {
+							body.resize_max_width = this.getNodeParameter('resize_max_width', i) as string;
+							body.resize_max_height = this.getNodeParameter('resize_max_height', i) as string;
+							body.resize_format = this.getNodeParameter('resize_format', i) as string;
+						}
+
+						if (export_type === 'json') {
+							responseData = await craftMyPdfApiRequest.call(this, 'POST', '/create', {}, body);
+							returnData.push(responseData as INodeExecutionData);
+						}
+						if (export_type === 'file') {
+							const binaryData = await returnFileExportType.call(
+								this,
+								'POST',
+								'/create',
+								output_file,
+								body,
+							);
+							returnData.push(binaryData);
 						}
 					}
 				}
