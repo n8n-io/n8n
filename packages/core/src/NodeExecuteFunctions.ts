@@ -1050,24 +1050,22 @@ export async function httpRequest(
 	return result.data;
 }
 
+// TODO: DELETE THIS
 export function getBinaryPath(binaryDataId: string): string {
 	throw new Error('Not implemented');
 }
 
-/**
- * Returns binary file metadata
- */
+// TODO: DELETE THIS
 export async function getBinaryMetadata(binaryDataId: string): Promise<BinaryData.Metadata> {
 	throw new Error('Not implemented');
 }
 
-/**
- * Returns binary file stream for piping
- */
+// TODO: DELETE THIS
 export async function getBinaryStream(binaryDataId: string, chunkSize?: number): Promise<Readable> {
 	throw new Error('Not implemented');
 }
 
+// TODO: Move to BinaryHelpers
 export function assertBinaryData(
 	inputData: ITaskDataConnections,
 	node: INode,
@@ -1103,9 +1101,7 @@ export function assertBinaryData(
 	return binaryPropertyData;
 }
 
-/**
- * Returns binary data buffer for given item index and property name.
- */
+// TODO: Move to BinaryHelpers
 export async function getBinaryDataBuffer(
 	inputData: ITaskDataConnections,
 	itemIndex: number,
@@ -1116,14 +1112,7 @@ export async function getBinaryDataBuffer(
 	return await Container.get(BinaryDataService).getAsBuffer(binaryData);
 }
 
-/**
- * Store an incoming IBinaryData & related buffer using the configured binary data manager.
- *
- * @export
- * @param {IBinaryData} binaryData
- * @param {Buffer | Readable} bufferOrStream
- * @returns {Promise<IBinaryData>}
- */
+// TODO: Move to BinaryHelpers
 export async function setBinaryDataBuffer(
 	binaryData: IBinaryData,
 	bufferOrStream: Buffer | Readable,
@@ -1133,6 +1122,7 @@ export async function setBinaryDataBuffer(
 	throw new Error('Not implemented');
 }
 
+// TODO: Move to BinaryHelpers
 export async function copyBinaryFile(
 	workflowId: string,
 	executionId: string,
@@ -1192,11 +1182,7 @@ export async function copyBinaryFile(
 	);
 }
 
-/**
- * Takes a buffer and converts it into the format n8n uses. It encodes the binary data as
- * base64 and adds metadata.
- */
-// eslint-disable-next-line complexity
+// TODO: Move to BinaryHelpers
 export async function prepareBinaryData(
 	binaryData: Buffer | Readable,
 	executionId: string,
@@ -1295,12 +1281,7 @@ export function applyPaginationRequestData(
 	return merge({}, requestData, preparedPaginationData);
 }
 
-/**
- * Makes a request using OAuth data for authentication
- *
- * @param {(IHttpRequestOptions | IRequestOptions)} requestOptions
- *
- */
+// TODO: Move to RequestHelpers
 export async function requestOAuth2(
 	context: IAllExecuteFunctions,
 	credentialsType: string,
@@ -1540,9 +1521,7 @@ export async function requestOAuth2(
 		});
 }
 
-/**
- * Makes a request using OAuth1 data for authentication
- */
+// TODO: Move to RequestHelpers
 export async function requestOAuth1(
 	context: IAllExecuteFunctions,
 	credentialsType: string,
@@ -1615,6 +1594,7 @@ export async function requestOAuth1(
 		});
 }
 
+// TODO: Move to RequestHelpers
 export async function httpRequestWithAuthentication(
 	context: IAllExecuteFunctions,
 	credentialsType: string,
@@ -1725,6 +1705,7 @@ export async function httpRequestWithAuthentication(
 	}
 }
 
+// TODO: Move to BaseHelpers
 export function returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExecutionData[] {
 	const returnData: INodeExecutionData[] = [];
 
@@ -1766,6 +1747,7 @@ export function constructExecutionMetaData(
  *
  * @param {INodeExecutionData | INodeExecutionData[]} executionData
  */
+// TODO: Create a new CodeExecutionContext that extends ExecutionContext, and move there
 export function normalizeItems(
 	executionData: INodeExecutionData | INodeExecutionData[],
 ): INodeExecutionData[] {
@@ -1805,7 +1787,7 @@ export function normalizeItems(
 	});
 }
 
-// TODO: Move up later
+// TODO: Move to RequestHelpers
 export async function requestWithAuthentication(
 	context: IAllExecuteFunctions,
 	credentialsType: string,
@@ -1966,8 +1948,9 @@ export function getAdditionalKeys(
 		$vars: additionalData.variables,
 		$secrets: options?.secretsEnabled ? getSecretsProxy(additionalData) : undefined,
 
-		// deprecated
+		/** @deprecated */
 		$executionId: executionId,
+		/** @deprecated */
 		$resumeWebhookUrl: resumeUrl,
 	};
 }
@@ -1979,6 +1962,8 @@ export function getAdditionalKeys(
  * @param {INode} node Node which request the data
  * @param {string} type The credential type to return
  */
+
+// TODO: Move to BaseContext
 export async function getCredentials<T extends object = ICredentialDataDecryptedObject>(
 	workflow: Workflow,
 	node: INode,
@@ -2115,6 +2100,7 @@ export async function getCredentials<T extends object = ICredentialDataDecrypted
  * Clean up parameter data to make sure that only valid data gets returned
  * INFO: Currently only converts Luxon Dates as we know for sure it will not be breaking
  */
+// TODO: Move to BaseContext
 export function cleanupParameterData(inputData: NodeParameterValueType): void {
 	if (typeof inputData !== 'object' || inputData === null) {
 		return;
@@ -2140,6 +2126,7 @@ export function cleanupParameterData(inputData: NodeParameterValueType): void {
 	}
 }
 
+// TODO: Move to BaseContext
 const validateResourceMapperValue = (
 	parameterName: string,
 	paramValues: { [key: string]: unknown },
@@ -2191,6 +2178,7 @@ const validateResourceMapperValue = (
 	return result;
 };
 
+// TODO: Move to BaseContext
 const validateCollection = (
 	node: INode,
 	runIndex: number,
@@ -2264,6 +2252,7 @@ const validateCollection = (
 	return validationResult;
 };
 
+// TODO: Move to BaseContext
 export const validateValueAgainstSchema = (
 	node: INode,
 	nodeType: INodeType,
@@ -2335,6 +2324,7 @@ export const validateValueAgainstSchema = (
 	return validationResult.newValue;
 };
 
+// TODO: Move to BaseContext
 export function ensureType(
 	toType: EnsureTypeOptions,
 	parameterValue: any,
@@ -2433,6 +2423,7 @@ export function ensureType(
  *
  * @param {(IRunExecutionData | null)} runExecutionData
  */
+// TODO: Move to BaseContext
 export function getNodeParameter(
 	workflow: Workflow,
 	runExecutionData: IRunExecutionData | null,
@@ -2524,6 +2515,7 @@ export function getNodeParameter(
  * Returns if execution should be continued even if there was an error.
  *
  */
+// TODO: Move to BaseContext
 export function continueOnFail(node: INode): boolean {
 	const onError = get(node, 'onError', undefined);
 
@@ -2538,6 +2530,7 @@ export function continueOnFail(node: INode): boolean {
  * Returns the webhook URL of the webhook with the given name
  *
  */
+// TODO: Move to BaseContext
 export function getNodeWebhookUrl(
 	name: string,
 	workflow: Workflow,
@@ -2583,6 +2576,7 @@ export function getNodeWebhookUrl(
  * Returns the full webhook description of the webhook with the given name
  *
  */
+// TODO: Move to BaseContext
 export function getWebhookDescription(
 	name: string,
 	workflow: Workflow,
@@ -2709,6 +2703,7 @@ const addExecutionDataFunctions = async (
 	}
 };
 
+// TODO: Move to BaseContext
 export async function getInputConnectionData(
 	context: IAllExecuteFunctions,
 	workflow: Workflow,
