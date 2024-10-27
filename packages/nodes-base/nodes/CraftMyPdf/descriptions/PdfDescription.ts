@@ -28,6 +28,14 @@ export const pdfOperations: INodeProperties[] = [
 					'Creates a PDF file asynchronously with JSON data and your template. The API returns immediately and once the PDF document is generated, it will make a HTTP/HTTPS GET to your URL (will retry for 3 times before giving up).',
 				action: 'Create a PDF asynchronously',
 			},
+
+			// https://craftmypdf.com/docs/index.html#tag/PDF-Manipulation-API/operation/merge-pdfs
+			{
+				name: 'Merge',
+				value: 'merge',
+				description: 'Merges multiple PDF URLs',
+				action: 'Merge PDFs',
+			},
 		],
 		default: 'create',
 	},
@@ -147,7 +155,7 @@ export const pdfFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['pdf'],
-				operation: ['create', 'createAsync'],
+				operation: ['create', 'createAsync', 'merge'],
 			},
 		},
 	},
@@ -160,7 +168,7 @@ export const pdfFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['pdf'],
-				operation: ['create'],
+				operation: ['create', 'merge'],
 			},
 		},
 	},
@@ -275,5 +283,32 @@ export const pdfFields: INodeProperties[] = [
 				resize_images: [true],
 			},
 		},
+	},
+
+	{
+		displayName: 'URL Array',
+		name: 'urls',
+		type: 'collection',
+		typeOptions: {
+			multipleValues: true,
+			multipleValueButtonText: 'Add URL',
+		},
+		default: { url: '' },
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['pdf'],
+				operation: ['merge'],
+			},
+		},
+		options: [
+			{
+				displayName: 'URL',
+				name: 'url',
+				type: 'string',
+				default: '',
+				description: 'URL of a PDF to be merged',
+			},
+		],
 	},
 ];

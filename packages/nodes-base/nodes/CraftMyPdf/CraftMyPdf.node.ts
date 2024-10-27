@@ -219,6 +219,20 @@ export class CraftMyPdf implements INodeType {
 						responseData = await craftMyPdfApiRequest.call(this, 'POST', '/create-async', {}, body);
 						returnData.push(responseData as INodeExecutionData);
 					}
+					if (operation === 'merge') {
+						// PDF Manipulation API: Merge PDF URLs
+						// https://craftmypdf.com/docs/index.html#tag/PDF-Manipulation-API/operation/merge-pdfs
+						const urls = this.getNodeParameter('urls', i) as IDataObject[];
+
+						const body: IDataObject = {
+							urls: urls.map((data) => data.url),
+							expiration: this.getNodeParameter('expiration', i) as string,
+							output_file: this.getNodeParameter('output_file', i) as string,
+						};
+
+						responseData = await craftMyPdfApiRequest.call(this, 'POST', '/merge-pdfs', {}, body);
+						returnData.push(responseData as INodeExecutionData);
+					}
 				}
 				if (resource === 'transaction') {
 					if (operation === 'list') {
