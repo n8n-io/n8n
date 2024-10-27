@@ -23,12 +23,11 @@ import type {
 } from 'axios';
 import axios from 'axios';
 import crypto, { createHmac } from 'crypto';
-import type { Request, Response } from 'express';
 import FileType from 'file-type';
 import FormData from 'form-data';
 import { createReadStream } from 'fs';
 import { access as fsAccess, writeFile as fsWriteFile } from 'fs/promises';
-import { IncomingMessage, type IncomingHttpHeaders } from 'http';
+import { IncomingMessage } from 'http';
 import { Agent, type AgentOptions } from 'https';
 import get from 'lodash/get';
 import isEmpty from 'lodash/isEmpty';
@@ -60,7 +59,6 @@ import type {
 	IGetNodeParameterOptions,
 	IHookFunctions,
 	IHttpRequestOptions,
-	ILoadOptionsFunctions,
 	IN8nHttpFullResponse,
 	IN8nHttpResponse,
 	INode,
@@ -100,7 +98,6 @@ import type {
 	INodeParameters,
 	EnsureTypeOptions,
 	SSHTunnelFunctions,
-	SchedulingFunctions,
 	DeduplicationHelperFunctions,
 	IDeduplicationOutput,
 	IDeduplicationOutputItems,
@@ -163,7 +160,6 @@ import {
 import { extractValue } from './ExtractValue';
 import { InstanceSettings } from './InstanceSettings';
 import type { ExtendedValidationResult, IResponseError } from './Interfaces';
-import { ScheduledTaskManager } from './ScheduledTaskManager';
 import { getSecretsProxy } from './Secrets';
 import { SSHClientsManager } from './SSHClientsManager';
 import { HookContext, PollContext } from './node-execution-context';
@@ -3589,85 +3585,6 @@ export function getCredentialTestFunctions(): ICredentialTestFunctions {
 			},
 		},
 	};
-}
-
-/**
- * Returns the execute functions regular nodes have access to in load-options-function.
- */
-export function getLoadOptionsFunctions(
-	workflow: Workflow,
-	node: INode,
-	path: string,
-	additionalData: IWorkflowExecuteAdditionalData,
-): ILoadOptionsFunctions {
-	return ((workflow: Workflow, node: INode, path: string) => {
-		return {
-			...getCommonWorkflowFunctions(workflow, node, additionalData),
-			getCredentials: async (type) =>
-				await getCredentials(workflow, node, type, additionalData, 'internal'),
-			getCurrentNodeParameter: (
-				parameterPath: string,
-				options?: IGetNodeParameterOptions,
-			): NodeParameterValueType | object | undefined => {
-				const nodeParameters = additionalData.currentNodeParameters;
-
-				if (parameterPath.charAt(0) === '&') {
-					parameterPath = `${path.split('.').slice(1, -1).join('.')}.${parameterPath.slice(1)}`;
-				}
-
-				let returnData = get(nodeParameters, parameterPath);
-
-				// This is outside the try/catch because it throws errors with proper messages
-				if (options?.extractValue) {
-					const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-					if (nodeType === undefined) {
-						throw new ApplicationError('Node type is not known so cannot return parameter value', {
-							tags: { nodeType: node.type },
-						});
-					}
-					returnData = extractValue(
-						returnData,
-						parameterPath,
-						node,
-						nodeType,
-					) as NodeParameterValueType;
-				}
-
-				return returnData;
-			},
-			getCurrentNodeParameters: () => additionalData.currentNodeParameters,
-			getNodeParameter: (
-				parameterName: string,
-				fallbackValue?: any,
-				options?: IGetNodeParameterOptions,
-			): NodeParameterValueType | object => {
-				const runExecutionData: IRunExecutionData | null = null;
-				const itemIndex = 0;
-				const runIndex = 0;
-				const mode = 'internal' as WorkflowExecuteMode;
-				const connectionInputData: INodeExecutionData[] = [];
-
-				return getNodeParameter(
-					workflow,
-					runExecutionData,
-					runIndex,
-					connectionInputData,
-					node,
-					parameterName,
-					itemIndex,
-					mode,
-					getAdditionalKeys(additionalData, mode, runExecutionData),
-					undefined,
-					fallbackValue,
-					options,
-				);
-			},
-			helpers: {
-				...getSSHTunnelFunctions(),
-				...getRequestHelperFunctions(workflow, node, additionalData),
-			},
-		};
-	})(workflow, node, path);
 }
 
 /** @deprecated */
