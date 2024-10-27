@@ -190,6 +190,35 @@ export class CraftMyPdf implements INodeType {
 							returnData.push(binaryData);
 						}
 					}
+					if (operation === 'createAsync') {
+						// PDF Generation API: Create a PDF asynchronously
+						// https://craftmypdf.com/docs/index.html#tag/PDF-Generation-API/operation/create-async
+						const data = validateJSON(this.getNodeParameter('data', i) as string);
+						if (data === undefined) {
+							throw new NodeOperationError(this.getNode(), 'Data: Invalid JSON', {
+								itemIndex: i,
+							});
+						}
+						const resize_images = this.getNodeParameter('resize_images', i) as boolean;
+
+						const body: IDataObject = {
+							template_id: this.getNodeParameter('templateId', i) as string,
+							data,
+							version: this.getNodeParameter('version', i) as string,
+							expiration: this.getNodeParameter('expiration', i) as string,
+							webhook_url: this.getNodeParameter('webhook_url', i) as string,
+							image_resample_res: this.getNodeParameter('image_resample_res', i) as string,
+							resize_images,
+						};
+						if (resize_images) {
+							body.resize_max_width = this.getNodeParameter('resize_max_width', i) as string;
+							body.resize_max_height = this.getNodeParameter('resize_max_height', i) as string;
+							body.resize_format = this.getNodeParameter('resize_format', i) as string;
+						}
+
+						responseData = await craftMyPdfApiRequest.call(this, 'POST', '/create-async', {}, body);
+						returnData.push(responseData as INodeExecutionData);
+					}
 				}
 				if (resource === 'transaction') {
 					if (operation === 'list') {

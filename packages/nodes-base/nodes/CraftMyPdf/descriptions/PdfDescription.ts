@@ -19,16 +19,21 @@ export const pdfOperations: INodeProperties[] = [
 				description: 'Creates a PDF file with JSON data and your template',
 				action: 'Create a PDF',
 			},
+
+			// https://craftmypdf.com/docs/index.html#tag/PDF-Generation-API/operation/create-async
+			{
+				name: 'Create Async',
+				value: 'createAsync',
+				description:
+					'Creates a PDF file asynchronously with JSON data and your template. The API returns immediately and once the PDF document is generated, it will make a HTTP/HTTPS GET to your URL (will retry for 3 times before giving up).',
+				action: 'Create a PDF asynchronously',
+			},
 		],
 		default: 'create',
 	},
 ];
 
 export const pdfFields: INodeProperties[] = [
-	// ----------------------------------
-	// pdf:create
-	// https://craftmypdf.com/docs/index.html#tag/PDF-Generation-API/operation/create
-	// ----------------------------------
 	{
 		displayName: 'Template ID',
 		name: 'templateId',
@@ -38,7 +43,7 @@ export const pdfFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['pdf'],
-				operation: ['create'],
+				operation: ['create', 'createAsync'],
 			},
 		},
 	},
@@ -52,7 +57,7 @@ export const pdfFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['pdf'],
-				operation: ['create'],
+				operation: ['create', 'createAsync'],
 			},
 		},
 	},
@@ -80,7 +85,7 @@ export const pdfFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['pdf'],
-				operation: ['create'],
+				operation: ['create', 'createAsync'],
 			},
 		},
 	},
@@ -113,6 +118,22 @@ export const pdfFields: INodeProperties[] = [
 		},
 	},
 	{
+		displayName: 'Webhook URL',
+		name: 'webhook_url',
+		type: 'string',
+		default: '',
+		description:
+			'Callback URL to your server. It starts with http:// or https:// and has to be urlencoded.',
+		placeholder: 'https://myserver.com/pdfhandler',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['pdf'],
+				operation: ['createAsync'],
+			},
+		},
+	},
+	{
 		displayName: 'Expiration',
 		name: 'expiration',
 		type: 'number',
@@ -126,7 +147,7 @@ export const pdfFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['pdf'],
-				operation: ['create'],
+				operation: ['create', 'createAsync'],
 			},
 		},
 	},
@@ -185,7 +206,7 @@ export const pdfFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['pdf'],
-				operation: ['create'],
+				operation: ['create', 'createAsync'],
 			},
 		},
 	},
@@ -199,7 +220,7 @@ export const pdfFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['pdf'],
-				operation: ['create'],
+				operation: ['create', 'createAsync'],
 			},
 		},
 	},
@@ -212,7 +233,7 @@ export const pdfFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['pdf'],
-				operation: ['create'],
+				operation: ['create', 'createAsync'],
 				resize_images: [true],
 			},
 		},
@@ -226,7 +247,7 @@ export const pdfFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['pdf'],
-				operation: ['create'],
+				operation: ['create', 'createAsync'],
 				resize_images: [true],
 			},
 		},
@@ -250,7 +271,7 @@ export const pdfFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['pdf'],
-				operation: ['create'],
+				operation: ['create', 'createAsync'],
 				resize_images: [true],
 			},
 		},
