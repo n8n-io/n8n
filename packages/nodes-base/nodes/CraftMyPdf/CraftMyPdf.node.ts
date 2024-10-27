@@ -233,6 +233,30 @@ export class CraftMyPdf implements INodeType {
 						responseData = await craftMyPdfApiRequest.call(this, 'POST', '/merge-pdfs', {}, body);
 						returnData.push(responseData as INodeExecutionData);
 					}
+					if (operation === 'addWatermark') {
+						// PDF Manipulation API: Add watermark to a PDF
+						// https://craftmypdf.com/docs/index.html#tag/PDF-Manipulation-API/operation/add-watermark
+						const body: IDataObject = {
+							url: this.getNodeParameter('url', i) as string,
+							text: this.getNodeParameter('text', i) as string,
+							font_size: this.getNodeParameter('font_size', i) as string,
+							opacity: this.getNodeParameter('opacity', i) as string,
+							rotation: this.getNodeParameter('rotation', i) as string,
+							hex_color: this.getNodeParameter('hex_color', i) as string,
+							font_family: this.getNodeParameter('font_family', i) as string,
+							expiration: this.getNodeParameter('expiration', i) as string,
+							output_file: this.getNodeParameter('output_file', i) as string,
+						};
+
+						responseData = await craftMyPdfApiRequest.call(
+							this,
+							'POST',
+							'/add-watermark',
+							{},
+							body,
+						);
+						returnData.push(responseData as INodeExecutionData);
+					}
 				}
 				if (resource === 'transaction') {
 					if (operation === 'list') {

@@ -36,6 +36,14 @@ export const pdfOperations: INodeProperties[] = [
 				description: 'Merges multiple PDF URLs',
 				action: 'Merge PDFs',
 			},
+
+			// https://craftmypdf.com/docs/index.html#tag/PDF-Manipulation-API/operation/add-watermark
+			{
+				name: 'Add Watermark',
+				value: 'addWatermark',
+				description: 'Add watermark to a PDF',
+				action: 'Add Watermark',
+			},
 		],
 		default: 'create',
 	},
@@ -155,7 +163,7 @@ export const pdfFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['pdf'],
-				operation: ['create', 'createAsync', 'merge'],
+				operation: ['create', 'createAsync', 'merge', 'addWatermark'],
 			},
 		},
 	},
@@ -168,7 +176,7 @@ export const pdfFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['pdf'],
-				operation: ['create', 'merge'],
+				operation: ['create', 'merge', 'addWatermark'],
 			},
 		},
 	},
@@ -310,5 +318,114 @@ export const pdfFields: INodeProperties[] = [
 				description: 'URL of a PDF to be merged',
 			},
 		],
+	},
+
+	{
+		displayName: 'URL',
+		name: 'url',
+		type: 'string',
+		default: '',
+		description: 'URL of the source PDF',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['pdf'],
+				operation: ['addWatermark'],
+			},
+		},
+	},
+	{
+		displayName: 'Watermark Text',
+		name: 'text',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['pdf'],
+				operation: ['addWatermark'],
+			},
+		},
+	},
+	{
+		displayName: 'Font Size',
+		name: 'font_size',
+		type: 'number',
+		default: 40,
+		description: 'Font size of the watermark',
+		displayOptions: {
+			show: {
+				resource: ['pdf'],
+				operation: ['addWatermark'],
+			},
+		},
+	},
+	{
+		displayName: 'Opacity',
+		name: 'opacity',
+		type: 'number',
+		default: 0.5,
+		description: 'Opacity of the watermark',
+		displayOptions: {
+			show: {
+				resource: ['pdf'],
+				operation: ['addWatermark'],
+			},
+		},
+	},
+	{
+		displayName: 'Rotation',
+		name: 'rotation',
+		type: 'number',
+		default: 45,
+		description: 'Rotation of the watermark',
+		displayOptions: {
+			show: {
+				resource: ['pdf'],
+				operation: ['addWatermark'],
+			},
+		},
+	},
+	{
+		displayName: 'Hex Color',
+		name: 'hex_color',
+		type: 'color',
+		default: '#c7c7c7',
+		description: 'Color of the watermark',
+		displayOptions: {
+			show: {
+				resource: ['pdf'],
+				operation: ['addWatermark'],
+			},
+		},
+	},
+	{
+		displayName: 'Font Family',
+		name: 'font_family',
+		type: 'options',
+		default: 'Helvetica',
+		description: 'Font family of the watermark',
+		options: [
+			{ name: 'Courier', value: 'Courier' },
+			{ name: 'Courier-Bold', value: 'Courier-Bold' },
+			{ name: 'Courier-BoldOblique', value: 'Courier-BoldOblique' },
+			{ name: 'Courier-Oblique', value: 'Courier-Oblique' },
+			{ name: 'Helvetica', value: 'Helvetica' },
+			{ name: 'Helvetica-Bold', value: 'Helvetica-Bold' },
+			{ name: 'Helvetica-BoldOblique', value: 'Helvetica-BoldOblique' },
+			{ name: 'Helvetica-Oblique', value: 'Helvetica-Oblique' },
+			{ name: 'Symbol', value: 'Symbol' },
+			{ name: 'Times-Bold', value: 'Times-Bold' },
+			{ name: 'Times-BoldItalic', value: 'Times-BoldItalic' },
+			{ name: 'Times-Italic', value: 'Times-Italic' },
+			{ name: 'Times-Roman', value: 'Times-Roman' },
+			{ name: 'ZapfDingbats', value: 'ZapfDingbats' },
+		],
+		displayOptions: {
+			show: {
+				resource: ['pdf'],
+				operation: ['addWatermark'],
+			},
+		},
 	},
 ];
