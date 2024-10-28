@@ -15,6 +15,21 @@ import { parseString } from 'xml2js';
 
 import { wrapData } from '../../utils/utilities';
 import { nextCloudApiRequest } from './GenericFunctions';
+function parseResponseData(responseData: string | object | any[]): object | any[] | string {
+	// Check if the responseData is a string
+	if (typeof responseData === 'string') {
+		try {
+			// Attempt to parse the string as JSON
+			return JSON.parse(responseData);
+		} catch (error) {
+			// If parsing fails, log the error and return the original string
+			console.error('Failed to parse response data:', error);
+			return responseData; // or handle the error as needed
+		}
+	}
+	// If it's not a string, return the data as is (it should be an object or array)
+	return responseData;
+}
 
 export class NextCloud implements INodeType {
 	description: INodeTypeDescription = {
@@ -738,7 +753,11 @@ export class NextCloud implements INodeType {
 						columnType: ['number'],
 					},
 				},
-				options: [{ name: 'None', value: '' }],
+				options: [
+					{ name: 'None', value: '' },
+					{ name: 'Progress', value: 'progress' },
+					{ name: 'Stars', value: 'stars' },
+				],
 				default: '',
 				description: 'The subtype of the column.',
 			},
@@ -754,7 +773,11 @@ export class NextCloud implements INodeType {
 						columnType: ['datetime'],
 					},
 				},
-				options: [{ name: 'None', value: '' }],
+				options: [
+					{ name: 'None', value: '' },
+					{ name: 'Progress', value: 'progress' },
+					{ name: 'Stars', value: 'stars' },
+				],
 				default: '',
 				description: 'The subtype of the column.',
 			},
@@ -771,25 +794,10 @@ export class NextCloud implements INodeType {
 					},
 				},
 				options: [
-					{ name: 'Check', value: 'check' },
 					{ name: 'None', value: '' },
+					{ name: 'Progress', value: 'progress' },
+					{ name: 'Stars', value: 'stars' },
 				],
-				default: 'check',
-				description: 'The subtype of the column.',
-			},
-
-			{
-				displayName: 'Column SubType',
-				name: 'columnSubType',
-				type: 'options',
-				displayOptions: {
-					show: {
-						resource: ['tables'],
-						operation: ['createColumn', 'updateColumn'],
-						columnType: ['usergroup'],
-					},
-				},
-				options: [{ name: 'None', value: '' }],
 				default: '',
 				description: 'The subtype of the column.',
 			},
@@ -805,7 +813,11 @@ export class NextCloud implements INodeType {
 						columnType: ['boolean'],
 					},
 				},
-				options: [{ name: 'None', value: '' }],
+				options: [
+					{ name: 'None', value: '' },
+					{ name: 'Progress', value: 'progress' },
+					{ name: 'Stars', value: 'stars' },
+				],
 				default: '',
 				description: 'The subtype of the column.',
 			},
@@ -1086,11 +1098,11 @@ export class NextCloud implements INodeType {
 					},
 				},
 				options: [
-					{
-						name: 'Get Messages',
-						value: 'getMessages',
-						description: 'Retrieve all messages in a conversation',
-					},
+					// {
+					// 	name: 'Get Messages',
+					// 	value: 'getMessages',
+					// 	description: 'Retrieve all messages in a conversation',
+					// },
 					{
 						name: 'Get a Message Context',
 						value: 'getMessageContext',
@@ -1163,7 +1175,7 @@ export class NextCloud implements INodeType {
 						resource: ['talk'],
 						operation: [
 							'sendMessage',
-							'getMessages',
+							// 'getMessages',
 							'getMessageContext',
 							'updateMessage',
 							'deleteMessage',
@@ -1202,7 +1214,7 @@ export class NextCloud implements INodeType {
 				displayOptions: {
 					show: {
 						resource: ['talk'],
-						operation: ['sendMessage'],
+						operation: ['sendMessage', 'updateMessage'],
 					},
 				},
 				placeholder: 'Hello team!',
@@ -2172,29 +2184,42 @@ export class NextCloud implements INodeType {
 							const deckHeaders = {
 								'OCS-APIRequest': 'true',
 								'Content-Type': 'application/json',
+								Accept: 'application/json',
 							};
 							responseData = await nextCloudApiRequest.call(
 								this,
 								'POST',
-								'ocs/v2.php/apps/deck/api/v1.0/boards',
+								'/index.php/apps/deck/api/v1.0/boards',
 								JSON.stringify(deckBody),
 								deckHeaders,
 							);
-							returnData.push(JSON.parse(responseData));
+
+							const executionData = this.helpers.constructExecutionMetaData(
+								wrapData({ json: parseResponseData(responseData) } as INodeExecutionData),
+								{ itemData: { item: i } },
+							);
+
+							returnData.push(...executionData);
 							break;
 						}
 						case 'getBoards': {
 							const deckHeaders = {
 								'OCS-APIRequest': 'true',
+								Accept: 'application/json',
 							};
 							responseData = await nextCloudApiRequest.call(
 								this,
 								'GET',
-								'ocs/v2.php/apps/deck/api/v1.0/boards',
+								'/index.php/apps/deck/api/v1.0/boards',
 								'',
 								deckHeaders,
 							);
-							returnData.push(JSON.parse(responseData));
+							const executionData = this.helpers.constructExecutionMetaData(
+								wrapData({ json: parseResponseData(responseData) } as INodeExecutionData),
+								{ itemData: { item: i } },
+							);
+
+							returnData.push(...executionData);
 							break;
 						}
 						case 'updateBoard': {
@@ -2210,30 +2235,42 @@ export class NextCloud implements INodeType {
 							const deckHeaders = {
 								'OCS-APIRequest': 'true',
 								'Content-Type': 'application/json',
+								Accept: 'application/json',
 							};
 							responseData = await nextCloudApiRequest.call(
 								this,
 								'PUT',
-								`ocs/v2.php/apps/deck/api/v1.0/boards/${encodeURIComponent(boardId)}`,
+								`/index.php/apps/deck/api/v1.0/boards/${encodeURIComponent(boardId)}`,
 								JSON.stringify(deckBody),
 								deckHeaders,
 							);
-							returnData.push(JSON.parse(responseData));
+							const executionData = this.helpers.constructExecutionMetaData(
+								wrapData({ json: parseResponseData(responseData) } as INodeExecutionData),
+								{ itemData: { item: i } },
+							);
+
+							returnData.push(...executionData);
 							break;
 						}
 						case 'deleteBoard': {
 							const boardId = this.getNodeParameter('boardId', i) as string;
 							const deckHeaders = {
 								'OCS-APIRequest': 'true',
+								Accept: 'application/json',
 							};
 							responseData = await nextCloudApiRequest.call(
 								this,
 								'DELETE',
-								`ocs/v2.php/apps/deck/api/v1.0/boards/${encodeURIComponent(boardId)}`,
+								`/index.php/apps/deck/api/v1.0/boards/${encodeURIComponent(boardId)}`,
 								'',
 								deckHeaders,
 							);
-							returnData.push({ json: { success: responseData === '' } });
+							const executionData = this.helpers.constructExecutionMetaData(
+								wrapData({ json: parseResponseData(responseData) } as INodeExecutionData),
+								{ itemData: { item: i } },
+							);
+
+							returnData.push(...executionData);
 							break;
 						}
 						default:
@@ -2252,44 +2289,62 @@ export class NextCloud implements INodeType {
 							const notesHeaders = {
 								'OCS-APIRequest': 'true',
 								'Content-Type': 'application/json',
+								Accept: 'application/json',
 							};
 							responseData = await nextCloudApiRequest.call(
 								this,
 								'POST',
-								'ocs/v1.php/apps/notes/api/v1/notes',
+								'index.php/apps/notes/api/v1/notes',
 								JSON.stringify(notesBody),
 								notesHeaders,
 							);
-							returnData.push(JSON.parse(responseData));
+							const executionData = this.helpers.constructExecutionMetaData(
+								wrapData({ json: parseResponseData(responseData) } as INodeExecutionData),
+								{ itemData: { item: i } },
+							);
+
+							returnData.push(...executionData);
 							break;
 						}
 						case 'getNotes': {
 							const notesHeaders = {
 								'OCS-APIRequest': 'true',
+								Accept: 'application/json',
 							};
 							responseData = await nextCloudApiRequest.call(
 								this,
 								'GET',
-								'ocs/v1.php/apps/notes/api/v1/notes',
+								'index.php/apps/notes/api/v1/notes',
 								'',
 								notesHeaders,
 							);
-							returnData.push(JSON.parse(responseData));
+							const executionData = this.helpers.constructExecutionMetaData(
+								wrapData({ json: parseResponseData(responseData) } as INodeExecutionData),
+								{ itemData: { item: i } },
+							);
+
+							returnData.push(...executionData);
 							break;
 						}
 						case 'getNote': {
 							const noteId = this.getNodeParameter('noteId', i) as string;
 							const notesHeaders = {
 								'OCS-APIRequest': 'true',
+								Accept: 'application/json',
 							};
 							responseData = await nextCloudApiRequest.call(
 								this,
 								'GET',
-								`ocs/v1.php/apps/notes/api/v1/notes/${encodeURIComponent(noteId)}`,
+								`index.php/apps/notes/api/v1/notes/${encodeURIComponent(noteId)}`,
 								'',
 								notesHeaders,
 							);
-							returnData.push(JSON.parse(responseData));
+							const executionData = this.helpers.constructExecutionMetaData(
+								wrapData({ json: parseResponseData(responseData) } as INodeExecutionData),
+								{ itemData: { item: i } },
+							);
+
+							returnData.push(...executionData);
 							break;
 						}
 						case 'updateNote': {
@@ -2299,30 +2354,42 @@ export class NextCloud implements INodeType {
 							const notesHeaders = {
 								'OCS-APIRequest': 'true',
 								'Content-Type': 'application/json',
+								Accept: 'application/json',
 							};
 							responseData = await nextCloudApiRequest.call(
 								this,
 								'PUT',
-								`ocs/v1.php/apps/notes/api/v1/notes/${encodeURIComponent(noteId)}`,
+								`index.php/apps/notes/api/v1/notes/${encodeURIComponent(noteId)}`,
 								JSON.stringify(notesBody),
 								notesHeaders,
 							);
-							returnData.push(JSON.parse(responseData));
+							const executionData = this.helpers.constructExecutionMetaData(
+								wrapData({ json: parseResponseData(responseData) } as INodeExecutionData),
+								{ itemData: { item: i } },
+							);
+
+							returnData.push(...executionData);
 							break;
 						}
 						case 'deleteNote': {
 							const noteId = this.getNodeParameter('noteId', i) as string;
 							const notesHeaders = {
 								'OCS-APIRequest': 'true',
+								Accept: 'application/json',
 							};
 							responseData = await nextCloudApiRequest.call(
 								this,
 								'DELETE',
-								`ocs/v1.php/apps/notes/api/v1/notes/${encodeURIComponent(noteId)}`,
+								`index.php/apps/notes/api/v1/notes/${encodeURIComponent(noteId)}`,
 								'',
 								notesHeaders,
 							);
-							returnData.push({ json: { success: responseData === '' } });
+							const executionData = this.helpers.constructExecutionMetaData(
+								wrapData({ json: parseResponseData(responseData) } as INodeExecutionData),
+								{ itemData: { item: i } },
+							);
+
+							returnData.push(...executionData);
 							break;
 						}
 						default:
@@ -2339,29 +2406,81 @@ export class NextCloud implements INodeType {
 							const tablesHeaders = {
 								'OCS-APIRequest': 'true',
 								'Content-Type': 'application/json',
+								Accept: 'application/xml',
 							};
 							responseData = await nextCloudApiRequest.call(
 								this,
 								'POST',
-								'ocs/v1.php/apps/tables/api/1/tables',
+								'/ocs/v2.php/apps/tables/api/2/tables',
 								JSON.stringify(tablesBody),
 								tablesHeaders,
 							);
-							returnData.push(JSON.parse(responseData));
+							const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
+								parseString(responseData as string, { explicitArray: false }, (err, data) => {
+									if (err) {
+										return reject(err);
+									}
+
+									// Optional: Check for expected response structure and status
+									if (data.ocs.meta.status !== 'ok') {
+										return reject(
+											new NodeApiError(
+												this.getNode(),
+												(data.ocs.meta.message as JsonObject) ||
+													(data.ocs.meta.status as JsonObject),
+											),
+										);
+									}
+
+									resolve(data.ocs.data as IDataObject);
+								});
+							});
+							const executionData = this.helpers.constructExecutionMetaData(
+								wrapData({ json: jsonResponseData } as INodeExecutionData),
+								{ itemData: { item: i } },
+							);
+
+							returnData.push(...executionData);
 							break;
 						}
 						case 'getTables': {
 							const tablesHeaders = {
 								'OCS-APIRequest': 'true',
+								Accept: 'application/xml',
 							};
 							responseData = await nextCloudApiRequest.call(
 								this,
 								'GET',
-								'ocs/v1.php/apps/tables/api/1/tables',
+								'/ocs/v2.php/apps/tables/api/2/tables',
 								'',
 								tablesHeaders,
 							);
-							returnData.push(JSON.parse(responseData));
+							const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
+								parseString(responseData as string, { explicitArray: false }, (err, data) => {
+									if (err) {
+										return reject(err);
+									}
+
+									// Optional: Check for expected response structure and status
+									if (data.ocs.meta.status !== 'ok') {
+										return reject(
+											new NodeApiError(
+												this.getNode(),
+												(data.ocs.meta.message as JsonObject) ||
+													(data.ocs.meta.status as JsonObject),
+											),
+										);
+									}
+
+									resolve(data.ocs.data as IDataObject);
+								});
+							});
+							const executionData = this.helpers.constructExecutionMetaData(
+								wrapData({ json: jsonResponseData } as INodeExecutionData),
+								{ itemData: { item: i } },
+							);
+
+							returnData.push(...executionData);
 							break;
 						}
 						case 'getTable': {
@@ -2369,15 +2488,41 @@ export class NextCloud implements INodeType {
 							const tablesHeaders = {
 								'OCS-APIRequest': 'true',
 								'Content-Type': 'application/json',
+								Accept: 'application/xml',
 							};
 							responseData = await nextCloudApiRequest.call(
 								this,
 								'GET',
-								`ocs/v1.php/apps/tables/api/1/tables/${encodeURIComponent(tableId)}`,
+								`/ocs/v2.php/apps/tables/api/2/tables/${encodeURIComponent(tableId)}`,
 								'',
 								tablesHeaders,
 							);
-							returnData.push(JSON.parse(responseData));
+							const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
+								parseString(responseData as string, { explicitArray: false }, (err, data) => {
+									if (err) {
+										return reject(err);
+									}
+
+									// Optional: Check for expected response structure and status
+									if (data.ocs.meta.status !== 'ok') {
+										return reject(
+											new NodeApiError(
+												this.getNode(),
+												(data.ocs.meta.message as JsonObject) ||
+													(data.ocs.meta.status as JsonObject),
+											),
+										);
+									}
+
+									resolve(data.ocs.data as IDataObject);
+								});
+							});
+							const executionData = this.helpers.constructExecutionMetaData(
+								wrapData({ json: jsonResponseData } as INodeExecutionData),
+								{ itemData: { item: i } },
+							);
+
+							returnData.push(...executionData);
 							break;
 						}
 						case 'updateTable': {
@@ -2389,30 +2534,82 @@ export class NextCloud implements INodeType {
 							const tablesHeaders = {
 								'OCS-APIRequest': 'true',
 								'Content-Type': 'application/json',
+								Accept: 'application/xml',
 							};
 							responseData = await nextCloudApiRequest.call(
 								this,
 								'PUT',
-								`ocs/v1.php/apps/tables/api/1/tables/${encodeURIComponent(tableId)}`,
+								`/ocs/v2.php/apps/tables/api/2/tables/${encodeURIComponent(tableId)}`,
 								JSON.stringify(tablesBody),
 								tablesHeaders,
 							);
-							returnData.push(JSON.parse(responseData));
+							const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
+								parseString(responseData as string, { explicitArray: false }, (err, data) => {
+									if (err) {
+										return reject(err);
+									}
+
+									// Optional: Check for expected response structure and status
+									if (data.ocs.meta.status !== 'ok') {
+										return reject(
+											new NodeApiError(
+												this.getNode(),
+												(data.ocs.meta.message as JsonObject) ||
+													(data.ocs.meta.status as JsonObject),
+											),
+										);
+									}
+
+									resolve(data.ocs.data as IDataObject);
+								});
+							});
+							const executionData = this.helpers.constructExecutionMetaData(
+								wrapData({ json: jsonResponseData } as INodeExecutionData),
+								{ itemData: { item: i } },
+							);
+
+							returnData.push(...executionData);
 							break;
 						}
 						case 'deleteTable': {
 							const tableId = this.getNodeParameter('tableId', i) as string;
 							const tablesHeaders = {
 								'OCS-APIRequest': 'true',
+								Accept: 'application/xml',
 							};
 							responseData = await nextCloudApiRequest.call(
 								this,
 								'DELETE',
-								`ocs/v1.php/apps/tables/api/1/tables/${encodeURIComponent(tableId)}`,
+								`/ocs/v2.php/apps/tables/api/2/tables/${encodeURIComponent(tableId)}`,
 								'',
 								tablesHeaders,
 							);
-							returnData.push({ json: { success: responseData === '' } });
+							const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
+								parseString(responseData as string, { explicitArray: false }, (err, data) => {
+									if (err) {
+										return reject(err);
+									}
+
+									// Optional: Check for expected response structure and status
+									if (data.ocs.meta.status !== 'ok') {
+										return reject(
+											new NodeApiError(
+												this.getNode(),
+												(data.ocs.meta.message as JsonObject) ||
+													(data.ocs.meta.status as JsonObject),
+											),
+										);
+									}
+
+									resolve(data.ocs.data as IDataObject);
+								});
+							});
+							const executionData = this.helpers.constructExecutionMetaData(
+								wrapData({ json: jsonResponseData } as INodeExecutionData),
+								{ itemData: { item: i } },
+							);
+
+							returnData.push(...executionData);
 							break;
 						}
 						case 'getColumns': {
@@ -2420,15 +2617,22 @@ export class NextCloud implements INodeType {
 							const tablesHeaders = {
 								'OCS-APIRequest': 'true',
 								'Content-Type': 'application/json',
+								Accept: 'application/json',
 							};
 							responseData = await nextCloudApiRequest.call(
 								this,
 								'GET',
-								`ocs/v1.php/apps/tables/api/1/tables/${encodeURIComponent(tableId)}/columns`,
+								`/index.php/apps/tables/api/1/tables/${encodeURIComponent(tableId)}/columns`,
 								'',
 								tablesHeaders,
 							);
-							returnData.push(JSON.parse(responseData));
+
+							const executionData = this.helpers.constructExecutionMetaData(
+								wrapData({ json: parseResponseData(responseData) } as INodeExecutionData),
+								{ itemData: { item: i } },
+							);
+
+							returnData.push(...executionData);
 							break;
 						}
 						case 'getColumn': {
@@ -2436,30 +2640,44 @@ export class NextCloud implements INodeType {
 							const tablesHeaders = {
 								'OCS-APIRequest': 'true',
 								'Content-Type': 'application/json',
+								Accept: 'application/json',
 							};
 							responseData = await nextCloudApiRequest.call(
 								this,
 								'GET',
-								`ocs/v1.php/apps/tables/api/1/columns/${encodeURIComponent(columnId)}`,
+								`/ocs/v2.php/apps/tables/api/2/columns/${encodeURIComponent(columnId)}`,
 								'',
 								tablesHeaders,
 							);
-							returnData.push(JSON.parse(responseData));
+
+							const executionData = this.helpers.constructExecutionMetaData(
+								wrapData({ json: parseResponseData(responseData) } as INodeExecutionData),
+								{ itemData: { item: i } },
+							);
+
+							returnData.push(...executionData);
 							break;
 						}
 						case 'deleteColumn': {
 							const columnId = this.getNodeParameter('columnId', i) as string;
 							const tablesHeaders = {
 								'OCS-APIRequest': 'true',
+								Accept: 'application/json',
 							};
 							responseData = await nextCloudApiRequest.call(
 								this,
 								'DELETE',
-								`ocs/v1.php/apps/tables/api/1/columns/${encodeURIComponent(columnId)}`,
+								`/index.php/apps/tables/api/1/columns/${encodeURIComponent(columnId)}`,
 								'',
 								tablesHeaders,
 							);
-							returnData.push({ json: { success: responseData === '' } });
+
+							const executionData = this.helpers.constructExecutionMetaData(
+								wrapData({ json: parseResponseData(responseData) } as INodeExecutionData),
+								{ itemData: { item: i } },
+							);
+
+							returnData.push(...executionData);
 							break;
 						}
 						case 'createColumn': {
@@ -2511,9 +2729,9 @@ export class NextCloud implements INodeType {
 									'usergroupShowUserStatus',
 									i,
 								);
-								additionalFields.subtype = this.getNodeParameter('columnSubType', i);
 							}
 							const columnBody = {
+								tableId,
 								title: columnTitle,
 								description: columnDescription,
 								mandatory: mandatoryColumn,
@@ -2523,15 +2741,22 @@ export class NextCloud implements INodeType {
 							const tablesHeaders = {
 								'OCS-APIRequest': 'true',
 								'Content-Type': 'application/json',
+								Accept: 'application/json',
 							};
 							responseData = await nextCloudApiRequest.call(
 								this,
 								'POST',
-								`ocs/v1.php/apps/tables/api/1/tables/${encodeURIComponent(tableId)}/columns`,
+								'/index.php/apps/tables/api/1/columns',
 								JSON.stringify(columnBody),
 								tablesHeaders,
 							);
-							returnData.push(JSON.parse(responseData));
+
+							const executionData = this.helpers.constructExecutionMetaData(
+								wrapData({ json: parseResponseData(responseData) } as INodeExecutionData),
+								{ itemData: { item: i } },
+							);
+
+							returnData.push(...executionData);
 							break;
 						}
 						case 'updateColumn': {
@@ -2583,7 +2808,6 @@ export class NextCloud implements INodeType {
 									'usergroupShowUserStatus',
 									i,
 								);
-								additionalFields.subtype = this.getNodeParameter('columnSubType', i);
 							}
 							const columnBody = {
 								title: columnTitle,
@@ -2594,15 +2818,22 @@ export class NextCloud implements INodeType {
 							const tablesHeaders = {
 								'OCS-APIRequest': 'true',
 								'Content-Type': 'application/json',
+								Accept: 'application/json',
 							};
 							responseData = await nextCloudApiRequest.call(
 								this,
 								'PUT',
-								`ocs/v1.php/apps/tables/api/1/columns/${encodeURIComponent(columnId)}`,
+								`/index.php/apps/tables/api/1/columns/${encodeURIComponent(columnId)}`,
 								JSON.stringify(columnBody),
 								tablesHeaders,
 							);
-							returnData.push(JSON.parse(responseData));
+
+							const executionData = this.helpers.constructExecutionMetaData(
+								wrapData({ json: parseResponseData(responseData) } as INodeExecutionData),
+								{ itemData: { item: i } },
+							);
+
+							returnData.push(...executionData);
 							break;
 						}
 
@@ -2611,15 +2842,22 @@ export class NextCloud implements INodeType {
 							const tablesHeaders = {
 								'OCS-APIRequest': 'true',
 								'Content-Type': 'application/json',
+								Accept: 'application/json',
 							};
 							responseData = await nextCloudApiRequest.call(
 								this,
 								'GET',
-								`ocs/v1.php/apps/tables/api/1/tables/${encodeURIComponent(tableId)}/rows`,
+								`/index.php/apps/tables/api/1/tables/${encodeURIComponent(tableId)}/rows`,
 								'',
 								tablesHeaders,
 							);
-							returnData.push(JSON.parse(responseData));
+
+							const executionData = this.helpers.constructExecutionMetaData(
+								wrapData({ json: parseResponseData(responseData) } as INodeExecutionData),
+								{ itemData: { item: i } },
+							);
+
+							returnData.push(...executionData);
 							break;
 						}
 						case 'getRow': {
@@ -2627,30 +2865,44 @@ export class NextCloud implements INodeType {
 							const tablesHeaders = {
 								'OCS-APIRequest': 'true',
 								'Content-Type': 'application/json',
+								Accept: 'application/json',
 							};
 							responseData = await nextCloudApiRequest.call(
 								this,
 								'GET',
-								`ocs/v1.php/apps/tables/api/1/rows/${encodeURIComponent(rowId)}`,
+								`/index.php/apps/tables/api/1/rows/${encodeURIComponent(rowId)}`,
 								'',
 								tablesHeaders,
 							);
-							returnData.push(JSON.parse(responseData));
+
+							const executionData = this.helpers.constructExecutionMetaData(
+								wrapData({ json: parseResponseData(responseData) } as INodeExecutionData),
+								{ itemData: { item: i } },
+							);
+
+							returnData.push(...executionData);
 							break;
 						}
 						case 'deleteRow': {
 							const rowId = this.getNodeParameter('rowId', i) as string;
 							const tablesHeaders = {
 								'OCS-APIRequest': 'true',
+								Accept: 'application/json',
 							};
 							responseData = await nextCloudApiRequest.call(
 								this,
 								'DELETE',
-								`ocs/v1.php/apps/tables/api/1/rows/${encodeURIComponent(rowId)}`,
+								`/index.php/apps/tables/api/1/rows/${encodeURIComponent(rowId)}`,
 								'',
 								tablesHeaders,
 							);
-							returnData.push({ json: { success: responseData === '' } });
+
+							const executionData = this.helpers.constructExecutionMetaData(
+								wrapData({ json: parseResponseData(responseData) } as INodeExecutionData),
+								{ itemData: { item: i } },
+							);
+
+							returnData.push(...executionData);
 							break;
 						}
 						case 'createRow': {
@@ -2660,15 +2912,22 @@ export class NextCloud implements INodeType {
 							const tablesHeaders = {
 								'OCS-APIRequest': 'true',
 								'Content-Type': 'application/json',
+								Accept: 'application/json',
 							};
 							responseData = await nextCloudApiRequest.call(
 								this,
 								'POST',
-								`ocs/v1.php/apps/tables/api/1/tables/${encodeURIComponent(tableId)}/rows`,
+								`/index.php/apps/tables/api/1/tables/${encodeURIComponent(tableId)}/rows`,
 								JSON.stringify(rowBody),
 								tablesHeaders,
 							);
-							returnData.push(JSON.parse(responseData));
+
+							const executionData = this.helpers.constructExecutionMetaData(
+								wrapData({ json: parseResponseData(responseData) } as INodeExecutionData),
+								{ itemData: { item: i } },
+							);
+
+							returnData.push(...executionData);
 							break;
 						}
 						case 'updateRow': {
@@ -2678,15 +2937,22 @@ export class NextCloud implements INodeType {
 							const tablesHeaders = {
 								'OCS-APIRequest': 'true',
 								'Content-Type': 'application/json',
+								Accept: 'application/json',
 							};
 							responseData = await nextCloudApiRequest.call(
 								this,
 								'PUT',
-								`ocs/v1.php/apps/tables/api/1/rows/${encodeURIComponent(rowId)}`,
+								`/index.php/apps/tables/api/1/rows/${encodeURIComponent(rowId)}`,
 								JSON.stringify(rowBody),
 								tablesHeaders,
 							);
-							returnData.push(JSON.parse(responseData));
+
+							const executionData = this.helpers.constructExecutionMetaData(
+								wrapData({ json: parseResponseData(responseData) } as INodeExecutionData),
+								{ itemData: { item: i } },
+							);
+
+							returnData.push(...executionData);
 							break;
 						}
 						default:
@@ -2697,37 +2963,67 @@ export class NextCloud implements INodeType {
 					}
 				} else if (resource === 'talk') {
 					switch (operation) {
-						case 'getMessages': {
-							const conversationId = this.getNodeParameter('conversationId', i) as string;
-							const talkHeaders = {
-								'OCS-APIRequest': 'true',
-								Accept: 'application/json',
-							};
-							responseData = await nextCloudApiRequest.call(
-								this,
-								'GET',
-								`ocs/v2.php/apps/spreed/api/v1/chat/${encodeURIComponent(conversationId)}`,
-								'',
-								talkHeaders,
-							);
-							returnData.push(JSON.parse(responseData));
-							break;
-						}
+						// case 'getMessages': {
+						// 	const conversationId = this.getNodeParameter('conversationId', i) as string;
+						// 	const talkHeaders = {
+						// 		'OCS-APIRequest': 'true',
+						// 		Accept: 'application/json',
+						// 	};
+						// 	responseData = await nextCloudApiRequest.call(
+						// 		this,
+						// 		'GET',
+						// 		`/ocs/v2.php/apps/spreed/api/v1/chat/${encodeURIComponent(conversationId)}?format=json`,
+						// 		'',
+						// 		talkHeaders,
+						// 	);
+						// 	const executionData = this.helpers.constructExecutionMetaData(
+						// 		wrapData({ json: responseData } as INodeExecutionData),
+						// 		{ itemData: { item: i } },
+						// 	);
+
+						// 	returnData.push(...executionData);
+						// 	break;
+						// }
 						case 'getMessageContext': {
 							const conversationId = this.getNodeParameter('conversationId', i) as string;
 							const messageId = this.getNodeParameter('messageId', i) as string;
 							const talkHeaders = {
 								'OCS-APIRequest': 'true',
-								Accept: 'application/json',
+								Accept: 'application/xml',
 							};
 							responseData = await nextCloudApiRequest.call(
 								this,
 								'GET',
-								`ocs/v2.php/apps/spreed/api/v1/chat/${encodeURIComponent(conversationId)}/${encodeURIComponent(messageId)}/context`,
+								`/ocs/v2.php/apps/spreed/api/v1/chat/${encodeURIComponent(conversationId)}/${encodeURIComponent(messageId)}/context`,
 								'',
 								talkHeaders,
 							);
-							returnData.push(JSON.parse(responseData));
+							const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
+								parseString(responseData as string, { explicitArray: false }, (err, data) => {
+									if (err) {
+										return reject(err);
+									}
+
+									// Optional: Check for expected response structure and status
+									if (data.ocs.meta.status !== 'ok') {
+										return reject(
+											new NodeApiError(
+												this.getNode(),
+												(data.ocs.meta.message as JsonObject) ||
+													(data.ocs.meta.status as JsonObject),
+											),
+										);
+									}
+
+									resolve(data.ocs.data as IDataObject);
+								});
+							});
+							const executionData = this.helpers.constructExecutionMetaData(
+								wrapData({ json: jsonResponseData } as INodeExecutionData),
+								{ itemData: { item: i } },
+							);
+
+							returnData.push(...executionData);
 							break;
 						}
 						case 'sendMessage': {
@@ -2754,17 +3050,42 @@ export class NextCloud implements INodeType {
 							const talkHeaders = {
 								'OCS-APIRequest': 'true',
 								'Content-Type': 'application/json',
-								Accept: 'application/json',
+								Accept: 'application/xml',
 							};
 
 							responseData = await nextCloudApiRequest.call(
 								this,
 								'POST',
-								`ocs/v2.php/apps/spreed/api/v1/chat/${encodeURIComponent(conversationId)}`,
+								`/ocs/v2.php/apps/spreed/api/v1/chat/${encodeURIComponent(conversationId)}`,
 								JSON.stringify(talkBody),
 								talkHeaders,
 							);
-							returnData.push(JSON.parse(responseData));
+							const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
+								parseString(responseData as string, { explicitArray: false }, (err, data) => {
+									if (err) {
+										return reject(err);
+									}
+
+									// Optional: Check for expected response structure and status
+									if (data.ocs.meta.status !== 'ok') {
+										return reject(
+											new NodeApiError(
+												this.getNode(),
+												(data.ocs.meta.message as JsonObject) ||
+													(data.ocs.meta.status as JsonObject),
+											),
+										);
+									}
+
+									resolve(data.ocs.data as IDataObject);
+								});
+							});
+							const executionData = this.helpers.constructExecutionMetaData(
+								wrapData({ json: jsonResponseData } as INodeExecutionData),
+								{ itemData: { item: i } },
+							);
+
+							returnData.push(...executionData);
 							break;
 						}
 
@@ -2777,16 +3098,41 @@ export class NextCloud implements INodeType {
 							const talkHeaders = {
 								'OCS-APIRequest': 'true',
 								'Content-Type': 'application/json',
-								Accept: 'application/json',
+								Accept: 'application/xml',
 							};
 							responseData = await nextCloudApiRequest.call(
 								this,
 								'PUT',
-								`ocs/v2.php/apps/spreed/api/v1/chat/${encodeURIComponent(conversationId)}/${encodeURIComponent(messageId)}`,
+								`/ocs/v2.php/apps/spreed/api/v1/chat/${encodeURIComponent(conversationId)}/${encodeURIComponent(messageId)}`,
 								JSON.stringify(talkBody),
 								talkHeaders,
 							);
-							returnData.push(JSON.parse(responseData));
+							const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
+								parseString(responseData as string, { explicitArray: false }, (err, data) => {
+									if (err) {
+										return reject(err);
+									}
+
+									// Optional: Check for expected response structure and status
+									if (data.ocs.meta.status !== 'ok') {
+										return reject(
+											new NodeApiError(
+												this.getNode(),
+												(data.ocs.meta.message as JsonObject) ||
+													(data.ocs.meta.status as JsonObject),
+											),
+										);
+									}
+
+									resolve(data.ocs.data as IDataObject);
+								});
+							});
+							const executionData = this.helpers.constructExecutionMetaData(
+								wrapData({ json: jsonResponseData } as INodeExecutionData),
+								{ itemData: { item: i } },
+							);
+
+							returnData.push(...executionData);
 							break;
 						}
 						case 'deleteMessage': {
@@ -2794,16 +3140,41 @@ export class NextCloud implements INodeType {
 							const messageId = this.getNodeParameter('messageId', i) as string;
 							const talkHeaders = {
 								'OCS-APIRequest': 'true',
-								Accept: 'application/json',
+								Accept: 'application/xml',
 							};
 							responseData = await nextCloudApiRequest.call(
 								this,
 								'DELETE',
-								`ocs/v2.php/apps/spreed/api/v1/chat/${encodeURIComponent(conversationId)}/${encodeURIComponent(messageId)}`,
+								`/ocs/v2.php/apps/spreed/api/v1/chat/${encodeURIComponent(conversationId)}/${encodeURIComponent(messageId)}`,
 								'',
 								talkHeaders,
 							);
-							returnData.push({ json: { success: responseData === '' } });
+							const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
+								parseString(responseData as string, { explicitArray: false }, (err, data) => {
+									if (err) {
+										return reject(err);
+									}
+
+									// Optional: Check for expected response structure and status
+									if (data.ocs.meta.status !== 'ok') {
+										return reject(
+											new NodeApiError(
+												this.getNode(),
+												(data.ocs.meta.message as JsonObject) ||
+													(data.ocs.meta.status as JsonObject),
+											),
+										);
+									}
+
+									resolve(data.ocs.data as IDataObject);
+								});
+							});
+							const executionData = this.helpers.constructExecutionMetaData(
+								wrapData({ json: jsonResponseData } as INodeExecutionData),
+								{ itemData: { item: i } },
+							);
+
+							returnData.push(...executionData);
 							break;
 						}
 						case 'markRead': {
@@ -2816,16 +3187,41 @@ export class NextCloud implements INodeType {
 							const talkHeaders = {
 								'OCS-APIRequest': 'true',
 								'Content-Type': 'application/json',
-								Accept: 'application/json',
+								Accept: 'application/xml',
 							};
 							responseData = await nextCloudApiRequest.call(
 								this,
 								'POST',
-								`ocs/v2.php/apps/spreed/api/v1/chat/${encodeURIComponent(conversationId)}/read`,
+								`/ocs/v2.php/apps/spreed/api/v1/chat/${encodeURIComponent(conversationId)}/read`,
 								talkBody,
 								talkHeaders,
 							);
-							returnData.push(JSON.parse(responseData));
+							const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
+								parseString(responseData as string, { explicitArray: false }, (err, data) => {
+									if (err) {
+										return reject(err);
+									}
+
+									// Optional: Check for expected response structure and status
+									if (data.ocs.meta.status !== 'ok') {
+										return reject(
+											new NodeApiError(
+												this.getNode(),
+												(data.ocs.meta.message as JsonObject) ||
+													(data.ocs.meta.status as JsonObject),
+											),
+										);
+									}
+
+									resolve(data.ocs.data as IDataObject);
+								});
+							});
+							const executionData = this.helpers.constructExecutionMetaData(
+								wrapData({ json: jsonResponseData } as INodeExecutionData),
+								{ itemData: { item: i } },
+							);
+
+							returnData.push(...executionData);
 							break;
 						}
 						case 'markUnread': {
@@ -2834,7 +3230,7 @@ export class NextCloud implements INodeType {
 							const talkHeaders = {
 								'OCS-APIRequest': 'true',
 								'Content-Type': 'application/json',
-								Accept: 'application/json',
+								Accept: 'application/xml',
 							};
 							responseData = await nextCloudApiRequest.call(
 								this,
@@ -2843,13 +3239,38 @@ export class NextCloud implements INodeType {
 								'',
 								talkHeaders,
 							);
-							returnData.push(JSON.parse(responseData));
+							const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
+								parseString(responseData as string, { explicitArray: false }, (err, data) => {
+									if (err) {
+										return reject(err);
+									}
+
+									// Optional: Check for expected response structure and status
+									if (data.ocs.meta.status !== 'ok') {
+										return reject(
+											new NodeApiError(
+												this.getNode(),
+												(data.ocs.meta.message as JsonObject) ||
+													(data.ocs.meta.status as JsonObject),
+											),
+										);
+									}
+
+									resolve(data.ocs.data as IDataObject);
+								});
+							});
+							const executionData = this.helpers.constructExecutionMetaData(
+								wrapData({ json: jsonResponseData } as INodeExecutionData),
+								{ itemData: { item: i } },
+							);
+
+							returnData.push(...executionData);
 							break;
 						}
 						case 'getConversations': {
 							const talkHeaders = {
 								'OCS-APIRequest': 'true',
-								Accept: 'application/json',
+								Accept: 'application/xml',
 							};
 							responseData = await nextCloudApiRequest.call(
 								this,
@@ -2858,14 +3279,39 @@ export class NextCloud implements INodeType {
 								'',
 								talkHeaders,
 							);
-							returnData.push(JSON.parse(responseData));
+							const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
+								parseString(responseData as string, { explicitArray: false }, (err, data) => {
+									if (err) {
+										return reject(err);
+									}
+
+									// Optional: Check for expected response structure and status
+									if (data.ocs.meta.status !== 'ok') {
+										return reject(
+											new NodeApiError(
+												this.getNode(),
+												(data.ocs.meta.message as JsonObject) ||
+													(data.ocs.meta.status as JsonObject),
+											),
+										);
+									}
+
+									resolve(data.ocs.data as IDataObject);
+								});
+							});
+							const executionData = this.helpers.constructExecutionMetaData(
+								wrapData({ json: jsonResponseData } as INodeExecutionData),
+								{ itemData: { item: i } },
+							);
+
+							returnData.push(...executionData);
 							break;
 						}
 						case 'getConversation': {
 							const conversationId = this.getNodeParameter('conversationId', i) as string;
 							const talkHeaders = {
 								'OCS-APIRequest': 'true',
-								Accept: 'application/json',
+								Accept: 'application/xml',
 							};
 							responseData = await nextCloudApiRequest.call(
 								this,
@@ -2874,7 +3320,32 @@ export class NextCloud implements INodeType {
 								'',
 								talkHeaders,
 							);
-							returnData.push(JSON.parse(responseData));
+							const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
+								parseString(responseData as string, { explicitArray: false }, (err, data) => {
+									if (err) {
+										return reject(err);
+									}
+
+									// Optional: Check for expected response structure and status
+									if (data.ocs.meta.status !== 'ok') {
+										return reject(
+											new NodeApiError(
+												this.getNode(),
+												(data.ocs.meta.message as JsonObject) ||
+													(data.ocs.meta.status as JsonObject),
+											),
+										);
+									}
+
+									resolve(data.ocs.data as IDataObject);
+								});
+							});
+							const executionData = this.helpers.constructExecutionMetaData(
+								wrapData({ json: jsonResponseData } as INodeExecutionData),
+								{ itemData: { item: i } },
+							);
+
+							returnData.push(...executionData);
 							break;
 						}
 						case 'createConversation': {
@@ -2899,7 +3370,7 @@ export class NextCloud implements INodeType {
 							const talkHeaders = {
 								'OCS-APIRequest': 'true',
 								'Content-Type': 'application/json',
-								Accept: 'application/json',
+								Accept: 'application/xml',
 							};
 							responseData = await nextCloudApiRequest.call(
 								this,
@@ -2908,7 +3379,32 @@ export class NextCloud implements INodeType {
 								JSON.stringify(talkBody),
 								talkHeaders,
 							);
-							returnData.push(JSON.parse(responseData));
+							const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
+								parseString(responseData as string, { explicitArray: false }, (err, data) => {
+									if (err) {
+										return reject(err);
+									}
+
+									// Optional: Check for expected response structure and status
+									if (data.ocs.meta.status !== 'ok') {
+										return reject(
+											new NodeApiError(
+												this.getNode(),
+												(data.ocs.meta.message as JsonObject) ||
+													(data.ocs.meta.status as JsonObject),
+											),
+										);
+									}
+
+									resolve(data.ocs.data as IDataObject);
+								});
+							});
+							const executionData = this.helpers.constructExecutionMetaData(
+								wrapData({ json: jsonResponseData } as INodeExecutionData),
+								{ itemData: { item: i } },
+							);
+
+							returnData.push(...executionData);
 							break;
 						}
 						case 'updateConversation': {
@@ -2918,7 +3414,7 @@ export class NextCloud implements INodeType {
 							const talkHeaders = {
 								'OCS-APIRequest': 'true',
 								'Content-Type': 'application/json',
-								Accept: 'application/json',
+								Accept: 'application/xml',
 							};
 							responseData = await nextCloudApiRequest.call(
 								this,
@@ -2927,14 +3423,39 @@ export class NextCloud implements INodeType {
 								JSON.stringify(talkBody),
 								talkHeaders,
 							);
-							returnData.push(JSON.parse(responseData));
+							const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
+								parseString(responseData as string, { explicitArray: false }, (err, data) => {
+									if (err) {
+										return reject(err);
+									}
+
+									// Optional: Check for expected response structure and status
+									if (data.ocs.meta.status !== 'ok') {
+										return reject(
+											new NodeApiError(
+												this.getNode(),
+												(data.ocs.meta.message as JsonObject) ||
+													(data.ocs.meta.status as JsonObject),
+											),
+										);
+									}
+
+									resolve(data.ocs.data as IDataObject);
+								});
+							});
+							const executionData = this.helpers.constructExecutionMetaData(
+								wrapData({ json: jsonResponseData } as INodeExecutionData),
+								{ itemData: { item: i } },
+							);
+
+							returnData.push(...executionData);
 							break;
 						}
 						case 'deleteConversation': {
 							const conversationId = this.getNodeParameter('conversationId', i) as string;
 							const talkHeaders = {
 								'OCS-APIRequest': 'true',
-								Accept: 'application/json',
+								Accept: 'application/xml',
 							};
 							responseData = await nextCloudApiRequest.call(
 								this,
@@ -2943,7 +3464,32 @@ export class NextCloud implements INodeType {
 								'',
 								talkHeaders,
 							);
-							returnData.push({ json: { success: responseData === '' } });
+							const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
+								parseString(responseData as string, { explicitArray: false }, (err, data) => {
+									if (err) {
+										return reject(err);
+									}
+
+									// Optional: Check for expected response structure and status
+									if (data.ocs.meta.status !== 'ok') {
+										return reject(
+											new NodeApiError(
+												this.getNode(),
+												(data.ocs.meta.message as JsonObject) ||
+													(data.ocs.meta.status as JsonObject),
+											),
+										);
+									}
+
+									resolve(data.ocs.data as IDataObject);
+								});
+							});
+							const executionData = this.helpers.constructExecutionMetaData(
+								wrapData({ json: jsonResponseData } as INodeExecutionData),
+								{ itemData: { item: i } },
+							);
+
+							returnData.push(...executionData);
 							break;
 						}
 						default:
