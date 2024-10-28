@@ -181,25 +181,30 @@ export class WaitingWebhooks implements IWebhookManager {
 			// Return 404 because we do not want to give any data if the execution exists or not.
 			const errorMessage = `The workflow for execution "${executionId}" does not contain a waiting webhook with a matching path/method.`;
 
-			if (this.isSendAndWaitRequest(workflow.nodes, suffix)) {
-				res.render('send-and-wait-no-action-required', { isTestWebhook: false });
-				return { noWebhookResponse: true };
-			}
-
-			if (!execution.data.resultData.error && execution.status === 'waiting') {
-				const childNodes = workflow.getChildNodes(
-					execution.data.resultData.lastNodeExecuted as string,
-				);
-
-				const hasChildForms = childNodes.some(
-					(node) =>
-						workflow.nodes[node].type === FORM_NODE_TYPE ||
-						workflow.nodes[node].type === WAIT_NODE_TYPE,
-				);
-
-				if (hasChildForms) {
+			try {
+				if (this.isSendAndWaitRequest(workflow.nodes, suffix)) {
+					res.render('send-and-wait-no-action-required', { isTestWebhook: false });
 					return { noWebhookResponse: true };
 				}
+
+				if (!execution.data.resultData.error && execution.status === 'waiting') {
+					const childNodes = workflow.getChildNodes(
+						execution.data.resultData.lastNodeExecuted as string,
+					);
+
+					const hasChildForms = childNodes.some(
+						(node) =>
+							workflow.nodes[node].type === FORM_NODE_TYPE ||
+							workflow.nodes[node].type === WAIT_NODE_TYPE,
+					);
+
+					if (hasChildForms) {
+						return { noWebhookResponse: true };
+					}
+				}
+			} catch (error) {
+				this.logger.debug('WAITING isSendAndWaitRequest check error');
+				this.logger.debug(JSON.stringify(error));
 			}
 
 			throw new NotFoundError(errorMessage);

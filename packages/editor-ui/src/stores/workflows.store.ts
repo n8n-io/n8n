@@ -1519,6 +1519,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function deleteExecution(execution: ExecutionSummary): void {
+		console.log('workflow.store - deleteExecution', execution);
 		currentWorkflowExecutions.value.splice(currentWorkflowExecutions.value.indexOf(execution), 1);
 	}
 

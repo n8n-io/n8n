@@ -228,6 +228,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 	}
 
 	async function deleteExecutions(sendData: IExecutionDeleteFilter): Promise<void> {
+		console.log('executions.store - deleteExecutions', sendData);
 		await makeRestApiRequest(
 			rootStore.restApiContext,
 			'POST',
