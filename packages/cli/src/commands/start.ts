@@ -199,7 +199,7 @@ export class Start extends BaseCommand {
 		await this.initOrchestration();
 		this.logger.debug('Orchestration init complete');
 
-		if (!config.getEnv('license.autoRenewEnabled') && this.instanceSettings.isLeader) {
+		if (!this.globalConfig.license.autoRenewalEnabled && this.instanceSettings.isLeader) {
 			this.logger.warn(
 				'Automatic license renewal is disabled. The license will not renew automatically, and access to licensed features may be lost!',
 			);

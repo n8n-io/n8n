@@ -201,7 +201,7 @@ export class FrontendService {
 			hideUsagePage: config.getEnv('hideUsagePage'),
 			license: {
 				consumerId: 'unknown',
-				environment: config.getEnv('license.tenantId') === 1 ? 'production' : 'staging',
+				environment: this.globalConfig.license.tenantId === 1 ? 'production' : 'staging',
 			},
 			variables: {
 				limit: 0,
