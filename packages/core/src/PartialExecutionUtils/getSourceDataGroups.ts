@@ -13,6 +13,25 @@ function sortByInputIndexThenByName(
 	}
 }
 
+type SourceConnectionGroup = {
+	/**
+	 * This is true if all connections have data. If any connection does not have
+	 * data it false.
+	 *
+	 * This is interesting to decide if a node should be put on the execution
+	 * stack of the waiting stack in the execution engine.
+	 */
+	complete: boolean;
+	connections: GraphConnection[];
+};
+
+function newGroup(): SourceConnectionGroup {
+	return {
+		complete: true,
+		connections: [],
+	};
+}
+
 /**
  * Groups incoming connections to the node. The groups contain one connection
  * per input, if possible, with run data or pinned data.
@@ -58,55 +77,87 @@ function sortByInputIndexThenByName(
  *
  * Since `source1` has no run data and no pinned data it's skipped in favor of
  * `source2` for the for input.
+ * It will become it's own group that is marked as `complete: false`
  *
- * So this will return 1 group:
- * 1. source2 and source3
+ * So this will return 2 group:
+ * 1. source2 and source3, `complete: true`
+ * 2. source1, `complete: false`
  */
 export function getSourceDataGroups(
 	graph: DirectedGraph,
 	node: INode,
 	runData: IRunData,
 	pinnedData: IPinData,
-): GraphConnection[][] {
+): SourceConnectionGroup[] {
 	const connections = graph.getConnections({ to: node });
 
 	const sortedConnectionsWithData = [];
+	const sortedConnectionsWithoutData = [];
 
 	for (const connection of connections) {
 		const hasData = runData[connection.from.name] || pinnedData[connection.from.name];
 
 		if (hasData) {
 			sortedConnectionsWithData.push(connection);
+		} else {
+			sortedConnectionsWithoutData.push(connection);
 		}
 	}
 
+	if (sortedConnectionsWithData.length === 0 && sortedConnectionsWithoutData.length === 0) {
+		return [];
+	}
+
 	sortedConnectionsWithData.sort(sortByInputIndexThenByName);
+	sortedConnectionsWithoutData.sort(sortByInputIndexThenByName);
 
-	const groups: GraphConnection[][] = [];
-	let currentGroup: GraphConnection[] = [];
-	let currentInputIndex = -1;
+	const groups: SourceConnectionGroup[] = [];
+	let currentGroup = newGroup();
+	let currentInputIndex =
+		Math.min(
+			...sortedConnectionsWithData.map((c) => c.inputIndex),
+			...sortedConnectionsWithoutData.map((c) => c.inputIndex),
+		) - 1;
 
-	while (sortedConnectionsWithData.length > 0) {
+	while (sortedConnectionsWithData.length > 0 || sortedConnectionsWithoutData.length > 0) {
+		currentInputIndex++;
+
 		const connectionWithDataIndex = sortedConnectionsWithData.findIndex(
 			// eslint-disable-next-line @typescript-eslint/no-loop-func
-			(c) => c.inputIndex > currentInputIndex,
+			(c) => c.inputIndex === currentInputIndex,
 		);
-		const connection: GraphConnection | undefined =
-			sortedConnectionsWithData[connectionWithDataIndex];
 
-		if (connection === undefined) {
-			groups.push(currentGroup);
-			currentGroup = [];
-			currentInputIndex = -1;
+		if (connectionWithDataIndex >= 0) {
+			const connection = sortedConnectionsWithData[connectionWithDataIndex];
+
+			currentGroup.connections.push(connection);
+
+			sortedConnectionsWithData.splice(connectionWithDataIndex, 1);
 			continue;
 		}
 
-		currentInputIndex = connection.inputIndex;
-		currentGroup.push(connection);
+		const connectionWithoutDataIndex = sortedConnectionsWithoutData.findIndex(
+			// eslint-disable-next-line @typescript-eslint/no-loop-func
+			(c) => c.inputIndex === currentInputIndex,
+		);
 
-		if (connectionWithDataIndex >= 0) {
-			sortedConnectionsWithData.splice(connectionWithDataIndex, 1);
+		if (connectionWithoutDataIndex >= 0) {
+			const connection = sortedConnectionsWithoutData[connectionWithoutDataIndex];
+
+			currentGroup.connections.push(connection);
+			currentGroup.complete = false;
+
+			sortedConnectionsWithoutData.splice(connectionWithoutDataIndex, 1);
+			continue;
 		}
+
+		groups.push(currentGroup);
+		currentGroup = newGroup();
+		currentInputIndex =
+			Math.min(
+				...sortedConnectionsWithData.map((c) => c.inputIndex),
+				...sortedConnectionsWithoutData.map((c) => c.inputIndex),
+			) - 1;
 	}
 
 	groups.push(currentGroup);
