@@ -5,6 +5,7 @@ import {
 	type IExecuteFunctions,
 	updateDisplayOptions,
 } from 'n8n-workflow';
+
 import {
 	seaTableApiRequest,
 	getTableColumns,
@@ -13,8 +14,8 @@ import {
 	updateAble,
 	splitStringColumnsToArrays,
 } from '../../GenericFunctions';
-import type { IRowObject } from '../Interfaces';
 import type { TColumnsUiValues, TColumnValue } from '../../types';
+import type { IRowObject } from '../Interfaces';
 
 export const properties: INodeProperties[] = [
 	{

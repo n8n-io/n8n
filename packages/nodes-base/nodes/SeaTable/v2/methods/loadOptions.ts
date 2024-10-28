@@ -1,6 +1,7 @@
 import type { ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
-import { getTableColumns, seaTableApiRequest, updateAble } from '../GenericFunctions';
+
 import type { IRow } from '../actions/Interfaces';
+import { getTableColumns, seaTableApiRequest, updateAble } from '../GenericFunctions';
 
 export async function getTableNames(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const returnData: INodePropertyOptions[] = [];

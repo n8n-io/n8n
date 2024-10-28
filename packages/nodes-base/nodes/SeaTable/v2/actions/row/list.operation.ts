@@ -5,6 +5,7 @@ import {
 	type IExecuteFunctions,
 	updateDisplayOptions,
 } from 'n8n-workflow';
+
 import {
 	seaTableApiRequest,
 	enrichColumns,

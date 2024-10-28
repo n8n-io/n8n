@@ -1,5 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import { NodeConnectionType, type INodeTypeDescription } from 'n8n-workflow';
+
 import { rowFields, rowOperations } from './RowDescription';
 
 export const versionDescription: INodeTypeDescription = {

@@ -10,6 +10,7 @@ export type TSeaTableServerEdition = 'enterprise edition';
 // ----------------------------------
 
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
+
 import type { IDtableMetadataColumn, IDtableMetadataTable, TDtableViewColumn } from './Interfaces';
 
 export type TInheritColumnTypeTime = 'ctime' | 'mtime';

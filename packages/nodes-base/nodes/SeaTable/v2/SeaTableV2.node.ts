@@ -5,9 +5,9 @@ import type {
 	INodeTypeBaseDescription,
 } from 'n8n-workflow';
 
+import { router } from './actions/router';
 import { versionDescription } from './actions/SeaTable.node';
 import { loadOptions } from './methods';
-import { router } from './actions/router';
 
 export class SeaTableV2 implements INodeType {
 	description: INodeTypeDescription;

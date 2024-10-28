@@ -21,11 +21,9 @@ import {
 	split,
 	updateAble,
 } from './GenericFunctions';
-
-import type { TColumnsUiValues, TColumnValue } from './types';
-
 import type { ICtx, IRow, IRowObject } from './Interfaces';
 import { versionDescription } from './SeaTable.node';
+import type { TColumnsUiValues, TColumnValue } from './types';
 
 export class SeaTableV1 implements INodeType {
 	description: INodeTypeDescription;

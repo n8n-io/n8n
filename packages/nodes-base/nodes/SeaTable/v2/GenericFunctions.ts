@@ -1,5 +1,4 @@
 import type FormData from 'form-data';
-
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -10,10 +9,6 @@ import type {
 	IRequestOptions,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
-
-import type { TDtableMetadataColumns, TEndpointVariableName } from './types';
-
-import { schema } from './Schema';
 
 import type {
 	ICollaborator,
@@ -28,6 +23,8 @@ import type {
 	IColumnDigitalSignature,
 	IFile,
 } from './actions/Interfaces';
+import { schema } from './Schema';
+import type { TDtableMetadataColumns, TEndpointVariableName } from './types';
 
 // remove last backslash
 const userBaseUri = (uri?: string) => {
@@ -123,9 +120,6 @@ export async function seaTableApiRequest(
 			'Content-Type': 'multipart/form-data',
 		};
 	}
-
-	// DEBUG-MODE OR API-REQUESTS
-	// console.log(options);
 
 	if (Object.keys(body).length === 0) {
 		delete options.body;
@@ -292,32 +286,30 @@ export function enrichColumns(
 	return row;
 }
 
-// using create, I input a string like a5adebe279e04415a28b2c7e256e9e8d@auth.local and it should be transformed to an array.
-// same with multi-select.
 export function splitStringColumnsToArrays(
 	row: IRowObject,
 	columns: TDtableMetadataColumns,
 ): IRowObject {
 	columns.map((column) => {
-		if (column.type == 'collaborator' || column.type == 'multiple-select') {
+		if (column.type === 'collaborator' || column.type === 'multiple-select') {
 			if (typeof row[column.name] === 'string') {
 				const input = row[column.name] as string;
 				row[column.name] = input.split(',').map((item) => item.trim());
 			}
 		}
-		if (column.type == 'number') {
+		if (column.type === 'number') {
 			if (typeof row[column.name] === 'string') {
 				const input = row[column.name] as string;
 				row[column.name] = parseFloat(input);
 			}
 		}
-		if (column.type == 'rate' || column.type == 'duration') {
+		if (column.type === 'rate' || column.type === 'duration') {
 			if (typeof row[column.name] === 'string') {
 				const input = row[column.name] as string;
 				row[column.name] = parseInt(input);
 			}
 		}
-		if (column.type == 'checkbox') {
+		if (column.type === 'checkbox') {
 			if (typeof row[column.name] === 'string') {
 				const input = row[column.name] as string;
 				row[column.name] = false;
