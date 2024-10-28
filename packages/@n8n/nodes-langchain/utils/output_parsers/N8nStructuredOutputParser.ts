@@ -1,7 +1,7 @@
 import type { Callbacks } from '@langchain/core/callbacks/manager';
 import { StructuredOutputParser } from 'langchain/output_parsers';
 import get from 'lodash/get';
-import type { IExecuteFunctions } from 'n8n-workflow';
+import type { ISupplyDataFunctions } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -14,11 +14,11 @@ const STRUCTURED_OUTPUT_ARRAY_KEY = '__structured__output__array';
 export class N8nStructuredOutputParser extends StructuredOutputParser<
 	z.ZodType<object, z.ZodTypeDef, object>
 > {
-	context: IExecuteFunctions;
-
-	constructor(context: IExecuteFunctions, zodSchema: z.ZodSchema<object>) {
+	constructor(
+		private context: ISupplyDataFunctions,
+		zodSchema: z.ZodSchema<object>,
+	) {
 		super(zodSchema);
-		this.context = context;
 	}
 
 	lc_namespace = ['langchain', 'output_parsers', 'structured'];
@@ -73,7 +73,7 @@ export class N8nStructuredOutputParser extends StructuredOutputParser<
 	static async fromZodJsonSchema(
 		zodSchema: z.ZodSchema<object>,
 		nodeVersion: number,
-		context: IExecuteFunctions,
+		context: ISupplyDataFunctions,
 	): Promise<N8nStructuredOutputParser> {
 		let returnSchema: z.ZodType<object, z.ZodTypeDef, object>;
 		if (nodeVersion === 1) {

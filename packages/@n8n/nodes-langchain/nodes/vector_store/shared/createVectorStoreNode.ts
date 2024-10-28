@@ -5,12 +5,13 @@ import type { Embeddings } from '@langchain/core/embeddings';
 import type { VectorStore } from '@langchain/core/vectorstores';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type {
+	IExecuteFunctions,
 	INodeCredentialDescription,
 	INodeProperties,
 	INodeExecutionData,
-	IExecuteFunctions,
 	INodeTypeDescription,
 	SupplyData,
+	ISupplyDataFunctions,
 	INodeType,
 	ILoadOptionsFunctions,
 	INodeListSearchResult,
@@ -57,13 +58,13 @@ interface VectorStoreNodeConstructorArgs {
 	retrieveFields?: INodeProperties[];
 	updateFields?: INodeProperties[];
 	populateVectorStore: (
-		context: IExecuteFunctions,
+		context: ISupplyDataFunctions,
 		embeddings: Embeddings,
 		documents: Array<Document<Record<string, unknown>>>,
 		itemIndex: number,
 	) => Promise<void>;
 	getVectorStoreClient: (
-		context: IExecuteFunctions,
+		context: ISupplyDataFunctions,
 		filter: Record<string, never> | undefined,
 		embeddings: Embeddings,
 		itemIndex: number,
@@ -380,7 +381,7 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 			);
 		}
 
-		async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+		async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 			const mode = this.getNodeParameter('mode', 0) as 'load' | 'insert' | 'retrieve';
 			const filter = getMetadataFiltersValues(this, itemIndex);
 			const embeddings = (await this.getInputConnectionData(

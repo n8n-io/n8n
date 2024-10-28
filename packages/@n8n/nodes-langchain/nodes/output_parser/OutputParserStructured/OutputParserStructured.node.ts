@@ -1,9 +1,9 @@
 import type { JSONSchema7 } from 'json-schema';
 import {
 	jsonParse,
-	type IExecuteFunctions,
 	type INodeType,
 	type INodeTypeDescription,
+	type ISupplyDataFunctions,
 	type SupplyData,
 	NodeOperationError,
 	NodeConnectionType,
@@ -122,7 +122,7 @@ export class OutputParserStructured implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const schemaType = this.getNodeParameter('schemaType', itemIndex, '') as 'fromJson' | 'manual';
 		// We initialize these even though one of them will always be empty
 		// it makes it easer to navigate the ternary operator
