@@ -6,9 +6,9 @@ import { PythonSandbox } from 'n8n-nodes-base/dist/nodes/Code/PythonSandbox';
 import type { Sandbox } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
 import { getSandboxContext } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
 import type {
-	IExecuteFunctions,
 	INodeType,
 	INodeTypeDescription,
+	ISupplyDataFunctions,
 	SupplyData,
 	ExecutionError,
 	IDataObject,
@@ -175,7 +175,7 @@ export class ToolCode implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const node = this.getNode();
 		const workflowMode = this.getMode();
 
