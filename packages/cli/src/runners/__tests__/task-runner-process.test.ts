@@ -25,7 +25,7 @@ describe('TaskRunnerProcess', () => {
 	runnerConfig.disabled = false;
 	runnerConfig.mode = 'internal_childprocess';
 	const authService = mock<TaskRunnerAuthService>();
-	const taskRunnerProcess = new TaskRunnerProcess(logger, runnerConfig, authService);
+	let taskRunnerProcess = new TaskRunnerProcess(logger, runnerConfig, authService);
 
 	afterEach(async () => {
 		spawnMock.mockClear();
@@ -42,10 +42,31 @@ describe('TaskRunnerProcess', () => {
 	});
 
 	describe('start', () => {
-		it('should propagate NODE_FUNCTION_ALLOW_BUILTIN and NODE_FUNCTION_ALLOW_EXTERNAL from env', async () => {
+		beforeEach(() => {
+			taskRunnerProcess = new TaskRunnerProcess(logger, runnerConfig, authService);
+		});
+
+		test.each(['PATH', 'NODE_FUNCTION_ALLOW_BUILTIN', 'NODE_FUNCTION_ALLOW_EXTERNAL'])(
+			'should propagate %s from env as is',
+			async (envVar) => {
+				jest.spyOn(authService, 'createGrantToken').mockResolvedValue('grantToken');
+				process.env[envVar] = 'custom value';
+
+				await taskRunnerProcess.start();
+
+				// @ts-expect-error The type is not correct
+				const options = spawnMock.mock.calls[0][2] as SpawnOptions;
+				expect(options.env).toEqual(
+					expect.objectContaining({
+						[envVar]: 'custom value',
+					}),
+				);
+			},
+		);
+
+		it('should pass NODE_OPTIONS env if maxOldSpaceSize is configured', async () => {
 			jest.spyOn(authService, 'createGrantToken').mockResolvedValue('grantToken');
-			process.env.NODE_FUNCTION_ALLOW_BUILTIN = '*';
-			process.env.NODE_FUNCTION_ALLOW_EXTERNAL = '*';
+			runnerConfig.maxOldSpaceSize = '1024';
 
 			await taskRunnerProcess.start();
 
@@ -53,10 +74,20 @@ describe('TaskRunnerProcess', () => {
 			const options = spawnMock.mock.calls[0][2] as SpawnOptions;
 			expect(options.env).toEqual(
 				expect.objectContaining({
-					NODE_FUNCTION_ALLOW_BUILTIN: '*',
-					NODE_FUNCTION_ALLOW_EXTERNAL: '*',
+					NODE_OPTIONS: '--max-old-space-size=1024',
 				}),
 			);
+		});
+
+		it('should not pass NODE_OPTIONS env if maxOldSpaceSize is not configured', async () => {
+			jest.spyOn(authService, 'createGrantToken').mockResolvedValue('grantToken');
+			runnerConfig.maxOldSpaceSize = '';
+
+			await taskRunnerProcess.start();
+
+			// @ts-expect-error The type is not correct
+			const options = spawnMock.mock.calls[0][2] as SpawnOptions;
+			expect(options.env).not.toHaveProperty('NODE_OPTIONS');
 		});
 	});
 });

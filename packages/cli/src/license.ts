@@ -48,8 +48,7 @@ export class License {
 	 */
 	private renewalEnabled() {
 		if (this.instanceSettings.instanceType !== 'main') return false;
-
-		const autoRenewEnabled = config.getEnv('license.autoRenewEnabled');
+		const autoRenewEnabled = this.globalConfig.license.autoRenewalEnabled;
 
 		/**
 		 * In multi-main setup, all mains start off with `unset` status and so renewal disabled.
@@ -75,9 +74,9 @@ export class License {
 
 		const { instanceType } = this.instanceSettings;
 		const isMainInstance = instanceType === 'main';
-		const server = config.getEnv('license.serverUrl');
+		const server = this.globalConfig.license.serverUrl;
 		const offlineMode = !isMainInstance;
-		const autoRenewOffset = config.getEnv('license.autoRenewOffset');
+		const autoRenewOffset = this.globalConfig.license.autoRenewOffset;
 		const saveCertStr = isMainInstance
 			? async (value: TLicenseBlock) => await this.saveCertStr(value)
 			: async () => {};
@@ -96,7 +95,7 @@ export class License {
 		try {
 			this.manager = new LicenseManager({
 				server,
-				tenantId: config.getEnv('license.tenantId'),
+				tenantId: this.globalConfig.license.tenantId,
 				productIdentifier: `n8n-${N8N_VERSION}`,
 				autoRenewEnabled: renewalEnabled,
 				renewOnInit: renewalEnabled,
@@ -122,7 +121,7 @@ export class License {
 
 	async loadCertStr(): Promise<TLicenseBlock> {
 		// if we have an ephemeral license, we don't want to load it from the database
-		const ephemeralLicense = config.get('license.cert');
+		const ephemeralLicense = this.globalConfig.license.cert;
 		if (ephemeralLicense) {
 			return ephemeralLicense;
 		}
@@ -179,7 +178,7 @@ export class License {
 
 	async saveCertStr(value: TLicenseBlock): Promise<void> {
 		// if we have an ephemeral license, we don't want to save it to the database
-		if (config.get('license.cert')) return;
+		if (this.globalConfig.license.cert) return;
 		await this.settingsRepository.upsert(
 			{
 				key: SETTINGS_LICENSE_CERT_KEY,

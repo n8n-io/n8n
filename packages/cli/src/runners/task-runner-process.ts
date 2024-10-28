@@ -43,6 +43,12 @@ export class TaskRunnerProcess {
 
 	private logger: Logger;
 
+	private readonly passthroughEnvVars = [
+		'PATH',
+		'NODE_FUNCTION_ALLOW_BUILTIN',
+		'NODE_FUNCTION_ALLOW_EXTERNAL',
+	] as const;
+
 	constructor(
 		logger: Logger,
 		private readonly runnerConfig: TaskRunnersConfig,
@@ -75,26 +81,14 @@ export class TaskRunnerProcess {
 		const startScript = require.resolve('@n8n/task-runner');
 
 		return spawn('node', [startScript], {
-			env: {
-				PATH: process.env.PATH,
-				N8N_RUNNERS_GRANT_TOKEN: grantToken,
-				N8N_RUNNERS_N8N_URI: n8nUri,
-				N8N_RUNNERS_MAX_PAYLOAD: this.runnerConfig.maxPayload.toString(),
-				NODE_FUNCTION_ALLOW_BUILTIN: process.env.NODE_FUNCTION_ALLOW_BUILTIN,
-				NODE_FUNCTION_ALLOW_EXTERNAL: process.env.NODE_FUNCTION_ALLOW_EXTERNAL,
-			},
+			env: this.getProcessEnvVars(grantToken, n8nUri),
 		});
 	}
 
 	startLauncher(grantToken: string, n8nUri: string) {
 		return spawn(this.runnerConfig.launcherPath, ['launch', this.runnerConfig.launcherRunner], {
 			env: {
-				PATH: process.env.PATH,
-				N8N_RUNNERS_GRANT_TOKEN: grantToken,
-				N8N_RUNNERS_N8N_URI: n8nUri,
-				N8N_RUNNERS_MAX_PAYLOAD: this.runnerConfig.maxPayload.toString(),
-				NODE_FUNCTION_ALLOW_BUILTIN: process.env.NODE_FUNCTION_ALLOW_BUILTIN,
-				NODE_FUNCTION_ALLOW_EXTERNAL: process.env.NODE_FUNCTION_ALLOW_EXTERNAL,
+				...this.getProcessEnvVars(grantToken, n8nUri),
 				// For debug logging if enabled
 				RUST_LOG: process.env.RUST_LOG,
 			},
@@ -161,5 +155,30 @@ export class TaskRunnerProcess {
 		if (!this.isShuttingDown) {
 			setImmediate(async () => await this.start());
 		}
+	}
+
+	private getProcessEnvVars(grantToken: string, n8nUri: string) {
+		const envVars: Record<string, string> = {
+			N8N_RUNNERS_GRANT_TOKEN: grantToken,
+			N8N_RUNNERS_N8N_URI: n8nUri,
+			N8N_RUNNERS_MAX_PAYLOAD: this.runnerConfig.maxPayload.toString(),
+			...this.getPassthroughEnvVars(),
+		};
+
+		if (this.runnerConfig.maxOldSpaceSize) {
+			envVars.NODE_OPTIONS = `--max-old-space-size=${this.runnerConfig.maxOldSpaceSize}`;
+		}
+
+		return envVars;
+	}
+
+	private getPassthroughEnvVars() {
+		return this.passthroughEnvVars.reduce<Record<string, string>>((env, key) => {
+			if (process.env[key]) {
+				env[key] = process.env[key];
+			}
+
+			return env;
+		}, {});
 	}
 }

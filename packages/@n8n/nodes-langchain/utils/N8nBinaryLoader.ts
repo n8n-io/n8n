@@ -1,6 +1,11 @@
 import { pipeline } from 'stream/promises';
 import { createWriteStream } from 'fs';
-import type { IBinaryData, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import type {
+	IBinaryData,
+	IExecuteFunctions,
+	INodeExecutionData,
+	ISupplyDataFunctions,
+} from 'n8n-workflow';
 import { NodeOperationError, BINARY_ENCODING } from 'n8n-workflow';
 
 import type { TextSplitter } from '@langchain/textsplitters';
@@ -26,25 +31,12 @@ const SUPPORTED_MIME_TYPES = {
 };
 
 export class N8nBinaryLoader {
-	private context: IExecuteFunctions;
-
-	private optionsPrefix: string;
-
-	private binaryDataKey: string;
-
-	private textSplitter?: TextSplitter;
-
 	constructor(
-		context: IExecuteFunctions,
-		optionsPrefix = '',
-		binaryDataKey = '',
-		textSplitter?: TextSplitter,
-	) {
-		this.context = context;
-		this.textSplitter = textSplitter;
-		this.optionsPrefix = optionsPrefix;
-		this.binaryDataKey = binaryDataKey;
-	}
+		private context: IExecuteFunctions | ISupplyDataFunctions,
+		private optionsPrefix = '',
+		private binaryDataKey = '',
+		private textSplitter?: TextSplitter,
+	) {}
 
 	async processAll(items?: INodeExecutionData[]): Promise<Document[]> {
 		const docs: Document[] = [];

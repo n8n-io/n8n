@@ -6,12 +6,12 @@ import isObject from 'lodash/isObject';
 import type { SetField, SetNodeOptions } from 'n8n-nodes-base/dist/nodes/Set/v2/helpers/interfaces';
 import * as manual from 'n8n-nodes-base/dist/nodes/Set/v2/manual.mode';
 import type {
-	IExecuteFunctions,
 	IExecuteWorkflowInfo,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 	IWorkflowBase,
+	ISupplyDataFunctions,
 	SupplyData,
 	ExecutionError,
 	IDataObject,
@@ -357,7 +357,7 @@ export class ToolWorkflow implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const name = this.getNodeParameter('name', itemIndex) as string;
 		const description = this.getNodeParameter('description', itemIndex) as string;
 
