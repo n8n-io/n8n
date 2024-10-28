@@ -17,6 +17,8 @@ describe('ADO-2270 Save button resets on webhook node open', () => {
 		saveWorkflow();
 		openNode(WEBHOOK_NODE_NAME);
 
+		clickGetBackToCanvas();
+
 		cy.ifCanvasVersion(
 			() => cy.getByTestId('workflow-save-button').should('not.contain', 'Saved'),
 			() => cy.getByTestId('workflow-save-button').should('contain', 'Saved'),
