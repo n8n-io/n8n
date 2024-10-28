@@ -35,6 +35,7 @@ export type IAllExecuteFunctions =
 	| IExecuteFunctions
 	| IExecutePaginationFunctions
 	| IExecuteSingleFunctions
+	| ISupplyDataFunctions
 	| IHookFunctions
 	| ILoadOptionsFunctions
 	| IPollFunctions
@@ -943,7 +944,7 @@ type BaseExecutionFunctions = FunctionsBaseWithRequiredKeys<'getMode'> & {
 	getInputSourceData(inputIndex?: number, inputName?: string): ISourceData;
 	getExecutionCancelSignal(): AbortSignal | undefined;
 	onExecutionCancellation(handler: () => unknown): void;
-	logAiEvent(eventName: AiEvent, msg?: string | undefined): Promise<void>;
+	logAiEvent(eventName: AiEvent, msg?: string | undefined): void;
 };
 
 // TODO: Create later own type only for Config-Nodes
@@ -1021,6 +1022,27 @@ export interface IExecuteSingleFunctions extends BaseExecutionFunctions {
 			getBinaryDataBuffer(propertyName: string, inputIndex?: number): Promise<Buffer>;
 		};
 }
+
+export type ISupplyDataFunctions = ExecuteFunctions.GetNodeParameterFn &
+	FunctionsBaseWithRequiredKeys<'getMode'> &
+	Pick<
+		IExecuteFunctions,
+		| 'addInputData'
+		| 'addOutputData'
+		| 'getInputConnectionData'
+		| 'getInputData'
+		| 'getNodeOutputs'
+		| 'executeWorkflow'
+		| 'sendMessageToUI'
+		| 'helpers'
+	> & {
+		continueOnFail(): boolean;
+		evaluateExpression(expression: string, itemIndex: number): NodeParameterValueType;
+		getWorkflowDataProxy(itemIndex: number): IWorkflowDataProxyData;
+		getExecutionCancelSignal(): AbortSignal | undefined;
+		onExecutionCancellation(handler: () => unknown): void;
+		logAiEvent(eventName: AiEvent, msg?: string | undefined): void;
+	};
 
 export interface IExecutePaginationFunctions extends IExecuteSingleFunctions {
 	makeRoutingRequest(
@@ -1572,7 +1594,7 @@ export class NodeExecutionOutput extends Array {
 
 export interface INodeType {
 	description: INodeTypeDescription;
-	supplyData?(this: IAllExecuteFunctions, itemIndex: number): Promise<SupplyData>;
+	supplyData?(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData>;
 	execute?(
 		this: IExecuteFunctions,
 	): Promise<INodeExecutionData[][] | NodeExecutionWithMetadata[][] | null>;
