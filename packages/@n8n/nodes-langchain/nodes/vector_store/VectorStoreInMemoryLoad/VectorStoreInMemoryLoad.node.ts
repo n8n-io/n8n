@@ -1,10 +1,10 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import {
 	NodeConnectionType,
-	type SupplyData,
-	type IExecuteFunctions,
 	type INodeType,
 	type INodeTypeDescription,
+	type ISupplyDataFunctions,
+	type SupplyData,
 } from 'n8n-workflow';
 import type { Embeddings } from '@langchain/core/embeddings';
 import { MemoryVectorStoreManager } from '../shared/MemoryVectorStoreManager';
@@ -59,7 +59,7 @@ export class VectorStoreInMemoryLoad implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const embeddings = (await this.getInputConnectionData(
 			NodeConnectionType.AiEmbedding,
 			itemIndex,
