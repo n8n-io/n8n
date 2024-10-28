@@ -52,6 +52,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 
 	const userNodesPanelSession = ref<{
 		pushRef: string;
+		search: string;
 		data: {
 			nodeFilter: string;
 			resultsNodes: string[];
@@ -59,6 +60,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		};
 	}>({
 		pushRef: '',
+		search: '',
 		data: {
 			nodeFilter: '',
 			resultsNodes: [],
@@ -320,16 +322,21 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		newValue: string;
 		filteredNodes: INodeCreateElement[];
 	}) {
-		const oldValue = userNodesPanelSession.value.data.nodeFilter;
-		if (properties.newValue.length === 0 && oldValue.length > 0) {
+		if (
+			properties.newValue.length === 0 &&
+			userNodesPanelSession.value.data.nodeFilter.length > 0
+		) {
 			telemetry.track('User entered nodes panel search term', generateNodesPanelEvent());
 		}
-		if (properties.newValue.length > (oldValue || '').length) {
+		const oldValue = userNodesPanelSession.value.search;
+		if (properties.newValue.length > oldValue.length) {
 			userNodesPanelSession.value.data.nodeFilter = properties.newValue;
 			userNodesPanelSession.value.data.resultsNodes = (properties.filteredNodes || []).map(
 				(node: INodeCreateElement) => node.key,
 			);
 		}
+
+		userNodesPanelSession.value.search = properties.newValue;
 	}
 
 	function onCategoryExpanded(properties: { category_name: string; workflow_id: string }) {
