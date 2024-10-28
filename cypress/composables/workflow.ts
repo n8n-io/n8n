@@ -163,3 +163,7 @@ export function clickManualChatButton() {
 export function openNode(nodeName: string) {
 	getNodeByName(nodeName).dblclick();
 }
+
+export function saveWorkflow() {
+	cy.getByTestId('workflow-save-button').click();
+}
