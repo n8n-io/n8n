@@ -12,11 +12,12 @@ import type {
 	SimplifiedNodeType,
 	ActionsRecord,
 	ToggleNodeCreatorOptions,
+	INodeCreateElement,
 } from '@/Interface';
 
 import { computed, ref } from 'vue';
 import { transformNodeType } from '@/components/Node/NodeCreator/utils';
-import type { INodeInputConfiguration } from 'n8n-workflow';
+import type { IDataObject, INodeInputConfiguration, NodeParameterValueType } from 'n8n-workflow';
 import { NodeConnectionType, nodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -32,16 +33,15 @@ import type { Connection } from '@vue-flow/core';
 import { CanvasConnectionMode } from '@/types';
 import { isVueFlowConnection } from '@/utils/typeGuards';
 import type { PartialBy } from '@/utils/typeHelpers';
-import { useCreatorTelemetry } from '@/composables/useCreatorTelemetry';
+import { useTelemetry } from '@/composables/useTelemetry';
 
 export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 	const workflowsStore = useWorkflowsStore();
 	const ndvStore = useNDVStore();
 	const uiStore = useUIStore();
 	const nodeTypesStore = useNodeTypesStore();
-
+	const telemetry = useTelemetry();
 	const externalHooks = useExternalHooks();
-	const creatorTelemetry = useCreatorTelemetry();
 
 	const selectedView = ref<NodeFilterType>(TRIGGER_NODE_CREATOR_VIEW);
 	const mergedNodes = ref<SimplifiedNodeType[]>([]);
@@ -49,6 +49,22 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 
 	const showScrim = ref(false);
 	const openSource = ref<NodeCreatorOpenSource>('');
+
+	const userNodesPanelSession = ref<{
+		pushRef: string;
+		data: {
+			nodeFilter: string;
+			resultsNodes: string[];
+			filterMode: string;
+		};
+	}>({
+		pushRef: '',
+		data: {
+			nodeFilter: '',
+			resultsNodes: [],
+			filterMode: 'regular',
+		},
+	});
 
 	const allNodeCreatorNodes = computed(() =>
 		Object.values(mergedNodes.value).map((i) => transformNodeType(i)),
@@ -151,30 +167,11 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 			createNodeActive,
 		});
 
-		trackNodesPanelActiveChanged({
+		onCreatorOpenedOrClosed({
 			source,
 			mode,
 			createNodeActive,
-			workflowId: workflowsStore.workflowId,
-		});
-	}
-
-	function trackNodesPanelActiveChanged({
-		source,
-		mode,
-		createNodeActive,
-		workflowId,
-	}: {
-		source?: string;
-		mode?: string;
-		createNodeActive?: boolean;
-		workflowId?: string;
-	}) {
-		creatorTelemetry.onNodeActiveChanged({
-			source,
-			mode,
-			createNodeActive,
-			workflow_id: workflowId,
+			workflow_id: workflowsStore.workflowId,
 		});
 	}
 
@@ -264,6 +261,121 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		return filter;
 	}
 
+	function resetNodesPanelSession() {
+		userNodesPanelSession.value.pushRef = `nodes_panel_session_${new Date().valueOf()}`;
+		userNodesPanelSession.value.data = {
+			nodeFilter: '',
+			resultsNodes: [],
+			filterMode: 'regular',
+		};
+	}
+
+	function generateNodesPanelEvent() {
+		return {
+			search_string: userNodesPanelSession.value.data.nodeFilter,
+			results_count: userNodesPanelSession.value.data.resultsNodes.length,
+			filter_mode: userNodesPanelSession.value.data.filterMode,
+			nodes_panel_session_id: userNodesPanelSession.value.pushRef,
+		};
+	}
+
+	function trackNodeCreatorEvent(event: string, properties: IDataObject = {}, withPostHog = false) {
+		telemetry.track(
+			event,
+			{
+				...properties,
+				nodes_panel_session_id: userNodesPanelSession.value.pushRef,
+			},
+			{
+				withPostHog,
+			},
+		);
+	}
+
+	function onCreatorClosed() {
+		if (
+			userNodesPanelSession.value.data.nodeFilter.length > 0 &&
+			userNodesPanelSession.value.data.nodeFilter !== ''
+		) {
+			telemetry.track('User entered nodes panel search term', generateNodesPanelEvent());
+		}
+	}
+
+	function onCreatorOpenedOrClosed(properties: {
+		source?: string;
+		mode: string;
+		workflow_id?: string;
+		createNodeActive: boolean;
+	}) {
+		if (properties.createNodeActive) {
+			resetNodesPanelSession();
+			trackNodeCreatorEvent('User opened nodes panel', properties);
+		} else {
+			onCreatorClosed();
+			resetNodesPanelSession();
+		}
+	}
+
+	function onNodeFilterChanged(properties: {
+		newValue: string;
+		filteredNodes: INodeCreateElement[];
+	}) {
+		const oldValue = userNodesPanelSession.value.data.nodeFilter;
+		if (properties.newValue.length === 0 && oldValue.length > 0) {
+			telemetry.track('User entered nodes panel search term', generateNodesPanelEvent());
+		}
+		if (properties.newValue.length > (oldValue || '').length) {
+			userNodesPanelSession.value.data.nodeFilter = properties.newValue;
+			userNodesPanelSession.value.data.resultsNodes = (properties.filteredNodes || []).map(
+				(node: INodeCreateElement) => node.key,
+			);
+		}
+	}
+
+	function onCategoryExpanded(properties: { category_name: string; workflow_id: string }) {
+		trackNodeCreatorEvent('User viewed node category', { ...properties, is_subcategory: false });
+	}
+
+	function onViewActions(properties: {
+		app_identifier: string;
+		actions: string[];
+		regular_action_count: number;
+		trigger_action_count: number;
+	}) {
+		trackNodeCreatorEvent('User viewed node actions', properties);
+	}
+
+	function onActionsCustomAPIClicked(properties: { app_identifier: string }) {
+		trackNodeCreatorEvent('User clicked custom API from node actions', properties);
+	}
+
+	function onAddActions(properties: {
+		node_type?: string;
+		action: string;
+		source_mode: string;
+		resource: NodeParameterValueType;
+	}) {
+		trackNodeCreatorEvent('User added action', properties);
+	}
+
+	function onSubcategorySelected(properties: { subcategory: string }) {
+		trackNodeCreatorEvent('User viewed node category', {
+			category_name: properties.subcategory,
+			is_subcategory: true,
+		});
+	}
+
+	function onNodeAddedToCanvas(properties: {
+		node_type: string;
+		node_version: number;
+		is_auto_add?: boolean;
+		workflow_id: string;
+		drag_and_drop?: boolean;
+		input_node_type?: string;
+	}) {
+		trackNodeCreatorEvent('User added node to workflow canvas', properties, true);
+	}
+
 	return {
 		openSource,
 		selectedView,
@@ -280,5 +392,13 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		openNodeCreatorForConnectingNode,
 		openNodeCreatorForTriggerNodes,
 		allNodeCreatorNodes,
+		onCreatorOpenedOrClosed,
+		onNodeFilterChanged,
+		onCategoryExpanded,
+		onActionsCustomAPIClicked,
+		onViewActions,
+		onAddActions,
+		onSubcategorySelected,
+		onNodeAddedToCanvas,
 	};
 });

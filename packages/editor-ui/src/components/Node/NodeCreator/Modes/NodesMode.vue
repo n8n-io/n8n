@@ -25,7 +25,6 @@ import NoResults from '../Panel/NoResults.vue';
 import { useI18n } from '@/composables/useI18n';
 import { getNodeIcon, getNodeIconColor, getNodeIconUrl } from '@/utils/nodeTypesUtils';
 import { useUIStore } from '@/stores/ui.store';
-import { useCreatorTelemetry } from '@/composables/useCreatorTelemetry';
 
 export interface Props {
 	rootView: 'trigger' | 'action';
@@ -39,7 +38,7 @@ const i18n = useI18n();
 const uiStore = useUIStore();
 const rootStore = useRootStore();
 
-const { mergedNodes, actions } = useNodeCreatorStore();
+const { mergedNodes, actions, onSubcategorySelected } = useNodeCreatorStore();
 const { pushViewStack, popViewStack } = useViewStacks();
 
 const { registerKeyHook } = useKeyboardNavigation();
@@ -82,7 +81,7 @@ function onSelected(item: INodeCreateElement) {
 			sections: item.properties.sections,
 		});
 
-		useCreatorTelemetry().onSubcategorySelected({
+		onSubcategorySelected({
 			subcategory: item.key,
 		});
 	}

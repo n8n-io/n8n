@@ -183,7 +183,6 @@ import { getResourcePermissions } from '@/permissions';
 import { useBeforeUnload } from '@/composables/useBeforeUnload';
 import NodeViewUnfinishedWorkflowMessage from '@/components/NodeViewUnfinishedWorkflowMessage.vue';
 import type { PushPayload } from '@n8n/api-types';
-import { useCreatorTelemetry } from '@/composables/useCreatorTelemetry';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -2403,7 +2402,7 @@ export default defineComponent({
 				});
 			} else {
 				void this.externalHooks.run('nodeView.addNodeButton', { nodeTypeName });
-				useCreatorTelemetry().onNodeAddedToCanvas({
+				this.nodeCreatorStore.onNodeAddedToCanvas({
 					node_type: nodeTypeName,
 					node_version: newNodeData.typeVersion,
 					is_auto_add: isAutoAdd,
@@ -4237,7 +4236,7 @@ export default defineComponent({
 				mode,
 				createNodeActive,
 			});
-			useCreatorTelemetry().onNodeActiveChanged({
+			this.nodeCreatorStore.onCreatorOpenedOrClosed({
 				source,
 				mode,
 				createNodeActive,

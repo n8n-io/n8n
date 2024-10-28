@@ -97,7 +97,6 @@ import type { useRouter } from 'vue-router';
 import { useClipboard } from '@/composables/useClipboard';
 import { useUniqueNodeName } from '@/composables/useUniqueNodeName';
 import { isPresent } from '../utils/typesUtils';
-import { useCreatorTelemetry } from './useCreatorTelemetry';
 
 type AddNodeData = Partial<INodeUi> & {
 	type: string;
@@ -740,7 +739,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 	}
 
 	function trackAddDefaultNode(nodeData: INodeUi, options: AddNodeOptions) {
-		useCreatorTelemetry().onNodeAddedToCanvas({
+		nodeCreatorStore.onNodeAddedToCanvas({
 			node_type: nodeData.type,
 			node_version: nodeData.typeVersion,
 			is_auto_add: options.isAutoAdd,

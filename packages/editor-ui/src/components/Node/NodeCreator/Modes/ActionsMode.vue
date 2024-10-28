@@ -19,7 +19,6 @@ import {
 
 import { useUsersStore } from '@/stores/users.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
-import { useCreatorTelemetry } from '@/composables/useCreatorTelemetry';
 
 import { useActions } from '../composables/useActions';
 import { useKeyboardNavigation } from '../composables/useKeyboardNavigation';
@@ -30,6 +29,7 @@ import CategorizedItemsRenderer from '../Renderers/CategorizedItemsRenderer.vue'
 import type { IDataObject } from 'n8n-workflow';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@/composables/useI18n';
+import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 
 const emit = defineEmits<{
 	nodeTypeSelected: [value: [actionKey: string, nodeName: string] | [nodeName: string]];
@@ -48,7 +48,7 @@ const {
 	actionsCategoryLocales,
 } = useActions();
 
-const creatorTelemetry = useCreatorTelemetry();
+const nodeCreatorStore = useNodeCreatorStore();
 
 // We only inject labels if search is empty
 const parsedTriggerActions = computed(() =>
@@ -185,7 +185,7 @@ function trackActionsView() {
 	};
 
 	void useExternalHooks().run('nodeCreateList.onViewActions', trackingPayload);
-	creatorTelemetry.onViewActions(trackingPayload);
+	nodeCreatorStore.onViewActions(trackingPayload);
 }
 
 function resetSearch() {
@@ -209,7 +209,7 @@ function addHttpNode() {
 	void useExternalHooks().run('nodeCreateList.onActionsCustmAPIClicked', {
 		app_identifier,
 	});
-	creatorTelemetry.onActionsCustomAPIClicked({ app_identifier });
+	nodeCreatorStore.onActionsCustomAPIClicked({ app_identifier });
 }
 
 // Anonymous component to handle triggers and actions rendering order

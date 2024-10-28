@@ -23,6 +23,7 @@ const i18n = useI18n();
 const { mergedNodes } = useNodeCreatorStore();
 const { pushViewStack, popViewStack, updateCurrentViewStack } = useViewStacks();
 const { setActiveItemIndex, attachKeydownEvent, detachKeydownEvent } = useKeyboardNavigation();
+const nodeCreatorStore = useNodeCreatorStore();
 
 const activeViewStack = computed(() => useViewStacks().activeViewStack);
 
@@ -55,6 +56,10 @@ function onSearch(value: string) {
 	if (activeViewStack.value.uuid) {
 		updateCurrentViewStack({ search: value });
 		void setActiveItemIndex(getDefaultActiveIndex(value));
+		nodeCreatorStore.onNodeFilterChanged({
+			newValue: value,
+			filteredNodes: activeViewStack.value.items ?? [],
+		});
 	}
 }
 
@@ -299,6 +304,7 @@ function onBackButton() {
 	margin-top: var(--spacing-4xs);
 	font-size: var(--font-size-s);
 	line-height: 19px;
+
 	color: var(--color-text-base);
 	font-weight: var(--font-weight-regular);
 }

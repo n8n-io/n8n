@@ -44,7 +44,6 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 import { sortNodeCreateElements, transformNodeType } from '../utils';
 import { useI18n } from '@/composables/useI18n';
 import { useCanvasStore } from '@/stores/canvas.store';
-import { useCreatorTelemetry } from '@/composables/useCreatorTelemetry';
 
 export const useActions = () => {
 	const nodeCreatorStore = useNodeCreatorStore();
@@ -345,7 +344,7 @@ export const useActions = () => {
 			resource: (action.value as INodeParameters).resource || '',
 		};
 		void useExternalHooks().run('nodeCreateList.addAction', payload);
-		useCreatorTelemetry().onAddActions(payload);
+		useNodeCreatorStore().onAddActions(payload);
 	}
 
 	return {
