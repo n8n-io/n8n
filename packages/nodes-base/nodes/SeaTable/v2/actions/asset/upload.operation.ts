@@ -45,7 +45,7 @@ const properties: INodeProperties[] = [
 		name: 'rowId',
 		type: 'options',
 		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		required: true,
 		typeOptions: {
 			loadOptionsDependsOn: ['tableName'],
@@ -197,7 +197,9 @@ export async function execute(
 		// Remove duplicates based on "url", keeping the last one
 		const uniqueAssets = Array.from(
 			// @ts-ignore
-			mergedArray.reduce((map, asset) => map.set(asset.url, asset), new Map()).values(),
+			mergedArray
+				.reduce((map, asset) => map.set(asset.url, asset), new Map())
+				.values(),
 		);
 
 		// Update the rowInput with the unique assets and store into body.row.
