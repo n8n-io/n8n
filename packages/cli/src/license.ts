@@ -178,7 +178,7 @@ export class License {
 
 	async saveCertStr(value: TLicenseBlock): Promise<void> {
 		// if we have an ephemeral license, we don't want to save it to the database
-		if (config.get('license.cert')) return;
+		if (this.globalConfig.license.cert) return;
 		await this.settingsRepository.upsert(
 			{
 				key: SETTINGS_LICENSE_CERT_KEY,
