@@ -31,7 +31,7 @@ export class WaitTracker {
 		private readonly orchestrationService: OrchestrationService,
 		private readonly instanceSettings: InstanceSettings,
 	) {
-		this.logger = this.logger.withScope('executions');
+		this.logger = this.logger.scoped('waiting-executions');
 	}
 
 	has(executionId: string) {

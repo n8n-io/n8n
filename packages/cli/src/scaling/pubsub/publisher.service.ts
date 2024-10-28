@@ -23,10 +23,10 @@ export class Publisher {
 		private readonly redisClientService: RedisClientService,
 		private readonly instanceSettings: InstanceSettings,
 	) {
-		// @TODO: Once this class is only ever initialized in scaling mode, throw in the next line instead.
+		// @TODO: Once this class is only ever initialized in scaling mode, assert in the next line.
 		if (config.getEnv('executions.mode') !== 'queue') return;
 
-		this.logger = this.logger.withScope('scaling');
+		this.logger = this.logger.scoped(['scaling', 'pubsub']);
 
 		this.client = this.redisClientService.createClient({ type: 'publisher(n8n)' });
 	}
@@ -46,6 +46,9 @@ export class Publisher {
 
 	/** Publish a command into the `n8n.commands` channel. */
 	async publishCommand(msg: Omit<PubSub.Command, 'senderId'>) {
+		// @TODO: Once this class is only ever used in scaling mode, remove next line.
+		if (config.getEnv('executions.mode') !== 'queue') return;
+
 		await this.client.publish(
 			'n8n.commands',
 			JSON.stringify({

@@ -3,6 +3,7 @@ import {
 	DEFAULT_NEW_WORKFLOW_NAME,
 	DUPLICATE_POSTFFIX,
 	ERROR_TRIGGER_NODE_TYPE,
+	FORM_NODE_TYPE,
 	MAX_WORKFLOW_NAME_LENGTH,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	START_NODE_TYPE,
@@ -46,7 +47,6 @@ import type {
 	INodeParameters,
 	INodeTypes,
 	IPinData,
-	IRun,
 	IRunData,
 	IRunExecutionData,
 	ITaskData,
@@ -182,12 +182,46 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	const allNodes = computed<INodeUi[]>(() => workflow.value.nodes);
 
-	const isWaitingExecution = computed(() => {
-		return allNodes.value.some(
-			(node) =>
-				(node.type === WAIT_NODE_TYPE || node.parameters.operation === SEND_AND_WAIT_OPERATION) &&
-				node.disabled !== true,
+	const willNodeWait = (node: INodeUi): boolean => {
+		return (
+			(node.type === WAIT_NODE_TYPE ||
+				node.type === FORM_NODE_TYPE ||
+				node.parameters?.operation === SEND_AND_WAIT_OPERATION) &&
+			node.disabled !== true
 		);
+	};
+
+	const isWaitingExecution = computed(() => {
+		const activeNode = useNDVStore().activeNode;
+
+		if (activeNode) {
+			if (willNodeWait(activeNode)) return true;
+
+			const workflow = getCurrentWorkflow();
+			const parentNodes = workflow.getParentNodes(activeNode.name);
+
+			for (const parentNode of parentNodes) {
+				if (willNodeWait(workflow.nodes[parentNode])) {
+					return true;
+				}
+			}
+
+			return false;
+		}
+		return allNodes.value.some((node) => willNodeWait(node));
+	});
+
+	const isWorkflowRunning = computed(() => {
+		if (uiStore.isActionActive.workflowRunning) return true;
+
+		if (activeExecutionId.value) {
+			const execution = getWorkflowExecution;
+			if (execution.value && execution.value.status === 'waiting' && !execution.value.finished) {
+				return true;
+			}
+		}
+
+		return false;
 	});
 
 	// Names of all nodes currently on canvas.
@@ -1309,23 +1343,16 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			return;
 		}
 
-		const activeExecution = activeExecutions.value[activeExecutionIndex];
+		Object.assign(activeExecutions.value[activeExecutionIndex], {
+			...(finishedActiveExecution.executionId !== undefined
+				? { id: finishedActiveExecution.executionId }
+				: {}),
+			finished: finishedActiveExecution.data?.finished,
+			stoppedAt: finishedActiveExecution.data?.stoppedAt,
+		});
 
-		activeExecutions.value = [
-			...activeExecutions.value.slice(0, activeExecutionIndex),
-			{
-				...activeExecution,
-				...(finishedActiveExecution.executionId !== undefined
-					? { id: finishedActiveExecution.executionId }
-					: {}),
-				finished: finishedActiveExecution.data.finished,
-				stoppedAt: finishedActiveExecution.data.stoppedAt,
-			},
-			...activeExecutions.value.slice(activeExecutionIndex + 1),
-		];
-
-		if (finishedActiveExecution.data && (finishedActiveExecution.data as IRun).data) {
-			setWorkflowExecutionRunData((finishedActiveExecution.data as IRun).data);
+		if (finishedActiveExecution.data?.data) {
+			setWorkflowExecutionRunData(finishedActiveExecution.data.data);
 		}
 	}
 
@@ -1614,6 +1641,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		allConnections,
 		allNodes,
 		isWaitingExecution,
+		isWorkflowRunning,
 		canvasNames,
 		nodesByName,
 		nodesIssuesExist,

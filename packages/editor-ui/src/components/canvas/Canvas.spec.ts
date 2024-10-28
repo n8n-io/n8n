@@ -207,4 +207,33 @@ describe('Canvas', () => {
 			await waitFor(() => expect(getByTestId('canvas-minimap')).not.toBeVisible());
 		});
 	});
+
+	describe('background', () => {
+		it('should render default background', () => {
+			const { container } = renderComponent();
+			expect(container.querySelector('#pattern-canvas')).toBeInTheDocument();
+		});
+
+		it('should render striped background', () => {
+			const { container } = renderComponent({ props: { readOnly: true } });
+			expect(container.querySelector('#pattern-canvas')).not.toBeInTheDocument();
+			expect(container.querySelector('#diagonalHatch')).toBeInTheDocument();
+		});
+	});
+
+	describe('pane', () => {
+		describe('onPaneMouseDown', () => {
+			it('should enable panning when middle mouse button is pressed', async () => {
+				const { getByTestId } = renderComponent();
+				const canvas = getByTestId('canvas');
+				const pane = canvas.querySelector('.vue-flow__pane');
+
+				if (!pane) throw new Error('VueFlow pane not in the document');
+
+				await fireEvent.mouseDown(canvas, { button: 1, view: window });
+
+				expect(canvas).toHaveClass('draggable');
+			});
+		});
+	});
 });

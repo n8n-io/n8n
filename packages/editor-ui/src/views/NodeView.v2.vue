@@ -241,6 +241,8 @@ const fallbackNodes = computed<INodeUi[]>(() =>
 			],
 );
 
+const showFallbackNodes = computed(() => triggerNodes.value.length === 0);
+
 const keyBindingsEnabled = computed(() => {
 	return !ndvStore.activeNode && uiStore.activeModals.length === 0;
 });
@@ -307,27 +309,32 @@ async function initializeRoute() {
 	} else if (route.name === VIEWS.TEMPLATE_IMPORT) {
 		const templateId = route.params.id;
 		await openWorkflowTemplate(templateId.toString());
-	} else if (isWorkflowRoute.value && !isAlreadyInitialized) {
-		historyStore.reset();
+	} else if (isWorkflowRoute.value) {
+		if (!isAlreadyInitialized) {
+			historyStore.reset();
 
-		// If there is no workflow id, treat it as a new workflow
-		if (isNewWorkflowRoute.value || !workflowId.value) {
-			if (route.meta?.nodeView === true) {
-				await initializeWorkspaceForNewWorkflow();
+			// If there is no workflow id, treat it as a new workflow
+			if (isNewWorkflowRoute.value || !workflowId.value) {
+				if (route.meta?.nodeView === true) {
+					await initializeWorkspaceForNewWorkflow();
+				}
+				return;
 			}
-			return;
+
+			await initializeWorkspaceForExistingWorkflow(workflowId.value);
+
+			await loadCredentials();
+
+			void nextTick(() => {
+				nodeHelpers.updateNodesInputIssues();
+				nodeHelpers.updateNodesCredentialsIssues();
+				nodeHelpers.updateNodesParameterIssues();
+			});
 		}
 
-		await initializeWorkspaceForExistingWorkflow(workflowId.value);
-
-		await loadCredentials();
-		await initializeDebugMode();
-
-		void nextTick(() => {
-			nodeHelpers.updateNodesInputIssues();
-			nodeHelpers.updateNodesCredentialsIssues();
-			nodeHelpers.updateNodesParameterIssues();
-		});
+		if (route.name === VIEWS.EXECUTION_DEBUG) {
+			await initializeDebugMode();
+		}
 	}
 }
 
@@ -857,8 +864,12 @@ async function onAddNodesAndConnections(
 		return;
 	}
 
-	await addNodes(nodes, { dragAndDrop, position, trackHistory: true, telemetry: true });
-	await nextTick();
+	const addedNodes = await addNodes(nodes, {
+		dragAndDrop,
+		position,
+		trackHistory: true,
+		telemetry: true,
+	});
 
 	const offsetIndex = editableWorkflow.value.nodes.length - nodes.length;
 	const mappedConnections: CanvasConnectionCreateData[] = connections.map(({ from, to }) => {
@@ -884,9 +895,8 @@ async function onAddNodesAndConnections(
 
 	addConnections(mappedConnections);
 
-	void nextTick(() => {
-		uiStore.resetLastInteractedWith();
-	});
+	uiStore.resetLastInteractedWith();
+	selectNodes([addedNodes[addedNodes.length - 1].id]);
 }
 
 async function onRevertAddNode({ node }: { node: INodeUi }) {
@@ -951,14 +961,7 @@ const projectPermissions = computed(() => {
 
 const isStoppingExecution = ref(false);
 
-const isWorkflowRunning = computed(() => {
-	if (uiStore.isActionActive.workflowRunning) return true;
-	if (workflowsStore.activeExecutionId) {
-		const execution = workflowsStore.getWorkflowExecution;
-		if (execution && execution.status === 'waiting' && !execution.finished) return true;
-	}
-	return false;
-});
+const isWorkflowRunning = computed(() => workflowsStore.isWorkflowRunning);
 const isExecutionWaitingForWebhook = computed(() => workflowsStore.executionWaitingForWebhook);
 
 const isExecutionDisabled = computed(() => {
@@ -1391,16 +1394,14 @@ function checkIfRouteIsAllowed() {
  */
 
 async function initializeDebugMode() {
-	if (route.name === VIEWS.EXECUTION_DEBUG) {
-		workflowHelpers.setDocumentTitle(workflowsStore.workflowName, 'DEBUG');
+	workflowHelpers.setDocumentTitle(workflowsStore.workflowName, 'DEBUG');
 
-		if (!workflowsStore.isInDebugMode) {
-			await applyExecutionData(route.params.executionId as string);
-			workflowsStore.isInDebugMode = true;
-		}
-
-		canvasEventBus.on('saved:workflow', onSaveFromWithinExecutionDebug);
+	if (!workflowsStore.isInDebugMode) {
+		await applyExecutionData(route.params.executionId as string);
+		workflowsStore.isInDebugMode = true;
 	}
+
+	canvasEventBus.on('saved:workflow', onSaveFromWithinExecutionDebug);
 }
 
 async function onSaveFromWithinExecutionDebug() {
@@ -1438,6 +1439,7 @@ function selectNodes(ids: string[]) {
 function onClickPane(position: CanvasNode['position']) {
 	lastClickPosition.value = [position.x, position.y];
 	uiStore.isCreateNodeActive = false;
+	setNodeSelected();
 }
 
 /**
@@ -1563,12 +1565,15 @@ onBeforeUnmount(() => {
 <template>
 	<WorkflowCanvas
 		v-if="editableWorkflow && editableWorkflowObject && !isLoading"
+		:id="editableWorkflow.id"
 		:workflow="editableWorkflow"
 		:workflow-object="editableWorkflowObject"
 		:fallback-nodes="fallbackNodes"
+		:show-fallback-nodes="showFallbackNodes"
 		:event-bus="canvasEventBus"
 		:read-only="isCanvasReadOnly"
 		:executing="isWorkflowRunning"
+		:show-bug-reporting-button="!isDemoRoute || !!executionsStore.activeExecution"
 		:key-bindings="keyBindingsEnabled"
 		@update:nodes:position="onUpdateNodesPosition"
 		@update:node:position="onUpdateNodePosition"

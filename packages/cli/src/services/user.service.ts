@@ -130,6 +130,7 @@ export class UserService {
 						email,
 						inviteAcceptUrl,
 						emailSent: false,
+						role,
 					},
 					error: '',
 				};

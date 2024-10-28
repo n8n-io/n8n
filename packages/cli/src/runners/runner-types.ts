@@ -1,5 +1,5 @@
 import type { Response } from 'express';
-import type { INodeExecutionData } from 'n8n-workflow';
+import type { INodeExecutionData, INodeTypeBaseDescription } from 'n8n-workflow';
 import type WebSocket from 'ws';
 
 import type { TaskRunner } from './task-broker.service';
@@ -62,6 +62,11 @@ export namespace N8nMessage {
 			data: unknown;
 		}
 
+		export interface NodeTypes {
+			type: 'broker:nodetypes';
+			nodeTypes: INodeTypeBaseDescription[];
+		}
+
 		export type All =
 			| InfoRequest
 			| TaskOfferAccept
@@ -69,7 +74,8 @@ export namespace N8nMessage {
 			| TaskSettings
 			| RunnerRegistered
 			| RPCResponse
-			| TaskDataResponse;
+			| TaskDataResponse
+			| NodeTypes;
 	}
 
 	export namespace ToRequester {

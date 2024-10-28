@@ -226,11 +226,9 @@ export async function execute(
 		keyRowIndex = locationDefine.headerRow as number;
 	}
 
-	const [sheetNameForKeyRow] = range.split('!');
-	const sheetNameWithRangeForKeyRow = `${sheetNameForKeyRow}!1:${keyRowIndex}`;
-	const sheetData = await sheet.getData(sheetNameWithRangeForKeyRow, 'FORMATTED_VALUE');
+	const sheetData = await sheet.getData(range, 'FORMATTED_VALUE');
 
-	if (sheetData === undefined || !sheetData.length) {
+	if (!sheetData?.length) {
 		dataMode = 'autoMapInputData';
 	}
 

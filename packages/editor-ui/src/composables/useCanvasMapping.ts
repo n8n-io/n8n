@@ -40,6 +40,7 @@ import { NodeConnectionType, NodeHelpers, SEND_AND_WAIT_OPERATION } from 'n8n-wo
 import type { INodeUi } from '@/Interface';
 import {
 	CUSTOM_API_CALL_KEY,
+	FORM_NODE_TYPE,
 	STICKY_NODE_TYPE,
 	WAIT_NODE_TYPE,
 	WAIT_TIME_UNLIMITED,
@@ -353,6 +354,11 @@ export function useCanvasMapping({
 						return acc;
 					}
 
+					if (node?.type === FORM_NODE_TYPE) {
+						acc[node.id] = i18n.baseText('node.theNodeIsWaitingFormCall');
+						return acc;
+					}
+
 					const waitDate = new Date(workflowExecution.waitTill);
 
 					if (waitDate.toISOString() === WAIT_TIME_UNLIMITED) {
@@ -549,19 +555,23 @@ export function useCanvasMapping({
 
 		if (nodePinnedDataById.value[fromNode.id]) {
 			const pinnedDataCount = nodePinnedDataById.value[fromNode.id]?.length ?? 0;
-			return i18n.baseText('ndv.output.items', {
-				adjustToNumber: pinnedDataCount,
-				interpolate: { count: String(pinnedDataCount) },
-			});
+			return pinnedDataCount > 0
+				? i18n.baseText('ndv.output.items', {
+						adjustToNumber: pinnedDataCount,
+						interpolate: { count: String(pinnedDataCount) },
+					})
+				: '';
 		} else if (nodeExecutionRunDataById.value[fromNode.id]) {
 			const { type, index } = parseCanvasConnectionHandleString(connection.sourceHandle);
 			const runDataTotal =
 				nodeExecutionRunDataOutputMapById.value[fromNode.id]?.[type]?.[index]?.total ?? 0;
 
-			return i18n.baseText('ndv.output.items', {
-				adjustToNumber: runDataTotal,
-				interpolate: { count: String(runDataTotal) },
-			});
+			return runDataTotal > 0
+				? i18n.baseText('ndv.output.items', {
+						adjustToNumber: runDataTotal,
+						interpolate: { count: String(runDataTotal) },
+					})
+				: '';
 		}
 
 		return '';

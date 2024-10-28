@@ -1,7 +1,6 @@
 import type Redis from 'ioredis';
 import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
-import type { WorkflowActivateMode } from 'n8n-workflow';
 import Container from 'typedi';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -44,36 +43,5 @@ describe('Orchestration Service', () => {
 		await os.init();
 		// @ts-expect-error Private field
 		expect(os.publisher).toBeDefined();
-	});
-
-	describe('shouldAddWebhooks', () => {
-		test('should return true for init', () => {
-			// We want to ensure that webhooks are populated on init
-			// more https://github.com/n8n-io/n8n/pull/8830
-			const result = os.shouldAddWebhooks('init');
-			expect(result).toBe(true);
-		});
-
-		test('should return false for leadershipChange', () => {
-			const result = os.shouldAddWebhooks('leadershipChange');
-			expect(result).toBe(false);
-		});
-
-		test('should return true for update or activate when is leader', () => {
-			const modes = ['update', 'activate'] as WorkflowActivateMode[];
-			for (const mode of modes) {
-				const result = os.shouldAddWebhooks(mode);
-				expect(result).toBe(true);
-			}
-		});
-
-		test('should return false for update or activate when not leader', () => {
-			instanceSettings.markAsFollower();
-			const modes = ['update', 'activate'] as WorkflowActivateMode[];
-			for (const mode of modes) {
-				const result = os.shouldAddWebhooks(mode);
-				expect(result).toBe(false);
-			}
-		});
 	});
 });

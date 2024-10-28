@@ -13,6 +13,7 @@ import config from '@/config';
 import type { User } from '@/databases/entities/user';
 import { OnShutdown } from '@/decorators/on-shutdown';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { TypedEmitter } from '@/typed-emitter';
 
@@ -43,6 +44,7 @@ export class Push extends TypedEmitter<PushEvents> {
 	constructor(
 		private readonly orchestrationService: OrchestrationService,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly publisher: Publisher,
 	) {
 		super();
 
@@ -103,8 +105,10 @@ export class Push extends TypedEmitter<PushEvents> {
 			 * the webhook. If so, the handler process commands the creator process to
 			 * relay the former's execution lifecycle events to the creator's frontend.
 			 */
-			const payload = { type, args: data, pushRef };
-			void this.orchestrationService.publish('relay-execution-lifecycle-event', payload);
+			void this.publisher.publishCommand({
+				command: 'relay-execution-lifecycle-event',
+				payload: { type, args: data, pushRef },
+			});
 			return;
 		}
 

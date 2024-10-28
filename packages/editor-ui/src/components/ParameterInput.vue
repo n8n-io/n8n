@@ -539,7 +539,8 @@ const showDragnDropTip = computed(
 		!isDropDisabled.value &&
 		(!ndvStore.hasInputData || !isInputDataEmpty.value) &&
 		!ndvStore.isMappingOnboarded &&
-		ndvStore.isInputParentOfActiveNode,
+		ndvStore.isInputParentOfActiveNode &&
+		!props.isForCredential,
 );
 
 const shouldCaptureForPosthog = computed(() => {
@@ -1142,7 +1143,7 @@ onUpdated(async () => {
 							:model-value="modelValueString"
 							:is-read-only="isReadOnly"
 							:rows="editorRows"
-							fill-parent
+							fullscreen
 							@update:model-value="valueChangedDebounced"
 						/>
 					</div>

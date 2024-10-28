@@ -7,7 +7,6 @@ import {
 import type {
 	CodeExecutionMode,
 	INode,
-	INodeType,
 	ITaskDataConnections,
 	IWorkflowExecuteAdditionalData,
 	WorkflowParameters,
@@ -27,6 +26,7 @@ import { type Task, TaskRunner } from '@/task-runner';
 
 import { isErrorLike } from './errors/error-like';
 import { ExecutionError } from './errors/execution-error';
+import { makeSerializable } from './errors/serializable-error';
 import type { RequireResolver } from './require-resolver';
 import { createRequireResolver } from './require-resolver';
 import { validateRunForAllItemsOutput, validateRunForEachItemOutput } from './result-validation';
@@ -128,17 +128,7 @@ export class JsTaskRunner extends TaskRunner {
 		const workflowParams = allData.workflow;
 		const workflow = new Workflow({
 			...workflowParams,
-			nodeTypes: {
-				getByNameAndVersion() {
-					return undefined as unknown as INodeType;
-				},
-				getByName() {
-					return undefined as unknown as INodeType;
-				},
-				getKnownTypes() {
-					return {};
-				},
-			},
+			nodeTypes: this.nodeTypes,
 		});
 
 		const customConsole = {
@@ -163,6 +153,30 @@ export class JsTaskRunner extends TaskRunner {
 		};
 	}
 
+	private getNativeVariables() {
+		return {
+			// Exposed Node.js globals in vm2
+			Buffer,
+			Function,
+			eval,
+			setTimeout,
+			setInterval,
+			setImmediate,
+			clearTimeout,
+			clearInterval,
+			clearImmediate,
+
+			// Missing JS natives
+			btoa,
+			atob,
+			TextDecoder,
+			TextDecoderStream,
+			TextEncoder,
+			TextEncoderStream,
+			FormData,
+		};
+	}
+
 	/**
 	 * Executes the requested code for all items in a single run
 	 */
@@ -180,15 +194,16 @@ export class JsTaskRunner extends TaskRunner {
 			require: this.requireResolver,
 			module: {},
 			console: customConsole,
-
 			items: inputItems,
+
+			...this.getNativeVariables(),
 			...dataProxy,
 			...this.buildRpcCallObject(taskId),
 		};
 
 		try {
 			const result = (await runInNewContext(
-				`module.exports = async function VmCodeWrapper() {${settings.code}\n}()`,
+				`globalThis.global = globalThis; module.exports = async function VmCodeWrapper() {${settings.code}\n}()`,
 				context,
 			)) as TaskResultData['result'];
 
@@ -231,6 +246,7 @@ export class JsTaskRunner extends TaskRunner {
 				console: customConsole,
 				item,
 
+				...this.getNativeVariables(),
 				...dataProxy,
 				...this.buildRpcCallObject(taskId),
 			};
@@ -312,7 +328,7 @@ export class JsTaskRunner extends TaskRunner {
 
 	private toExecutionErrorIfNeeded(error: unknown): Error {
 		if (error instanceof Error) {
-			return error;
+			return makeSerializable(error);
 		}
 
 		if (isErrorLike(error)) {

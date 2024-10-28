@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-nodes-langchain",
-  "version": "1.64.0",
+  "version": "1.65.0",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -168,7 +168,7 @@
     "generate-schema": "2.6.0",
     "html-to-text": "9.0.5",
     "jsdom": "23.0.1",
-    "json-schema-to-zod": "2.1.0",
+    "@n8n/json-schema-to-zod": "workspace:*",
     "langchain": "0.3.2",
     "lodash": "catalog:",
     "mammoth": "1.7.2",
