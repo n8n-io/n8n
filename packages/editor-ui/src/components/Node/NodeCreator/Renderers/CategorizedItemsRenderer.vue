@@ -38,9 +38,10 @@ function toggleExpanded() {
 }
 
 function setExpanded(isExpanded: boolean) {
+	const prev = expanded.value;
 	expanded.value = isExpanded;
 
-	if (expanded.value) {
+	if (expanded.value && !prev) {
 		nodeCreatorStore.onCategoryExpanded({
 			category_name: props.category,
 			workflow_id: workflowId,
