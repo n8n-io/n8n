@@ -2,7 +2,6 @@ import type { MaybeRef } from 'vue';
 import { unref } from 'vue';
 import get from 'lodash/get';
 import { toJsonObject as curlToJson, type JSONOutput } from 'curlconverter';
-import { jsonParse } from 'n8n-workflow';
 
 import { CURL_IMPORT_NODES_PROTOCOLS, CURL_IMPORT_NOT_SUPPORTED_PROTOCOLS } from '@/constants';
 import { useToast } from '@/composables/useToast';
@@ -357,7 +356,6 @@ export const toHttpNodeParameters = (curlCommand: string): HttpNodeParameters =>
 	return httpNodeParameters;
 };
 
-// TODO: lazy-load this composable
 export function useImportCurlCommand(options?: {
 	onImportSuccess?: () => void;
 	onImportFailure?: (data: { invalidProtocol: boolean; protocol?: string }) => void;
@@ -380,8 +378,7 @@ export function useImportCurlCommand(options?: {
 		...options?.i18n,
 	};
 
-	// TODO: remove async
-	async function importCurlCommand(curlCommandRef: MaybeRef<string>): Promise<void> {
+	function importCurlCommand(curlCommandRef: MaybeRef<string>): void {
 		const curlCommand = unref(curlCommandRef);
 		if (curlCommand === '') return;
 
