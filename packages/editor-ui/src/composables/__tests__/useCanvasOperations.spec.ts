@@ -3,6 +3,7 @@ import type { IConnection, Workflow } from 'n8n-workflow';
 import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import type { CanvasNode } from '@/types';
+import { CanvasConnectionMode } from '@/types';
 import type { ICredentialsResponse, INodeUi, IWorkflowDb } from '@/Interface';
 import { RemoveNodeCommand } from '@/models/history';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -25,6 +26,7 @@ import { mockedStore } from '@/__tests__/utils';
 import { SET_NODE_TYPE, STICKY_NODE_TYPE, STORES } from '@/constants';
 import type { Connection } from '@vue-flow/core';
 import { useClipboard } from '@/composables/useClipboard';
+import { createCanvasConnectionHandleString } from '@/utils/canvasUtilsV2';
 
 vi.mock('vue-router', async (importOriginal) => {
 	const actual = await importOriginal<{}>();
@@ -966,7 +968,17 @@ describe('useCanvasOperations', () => {
 			const connections = [
 				{
 					source: nodes[0].id,
+					sourceHandle: createCanvasConnectionHandleString({
+						mode: CanvasConnectionMode.Output,
+						index: 0,
+						type: NodeConnectionType.Main,
+					}),
 					target: nodes[1].id,
+					targetHandle: createCanvasConnectionHandleString({
+						mode: CanvasConnectionMode.Input,
+						index: 0,
+						type: NodeConnectionType.Main,
+					}),
 					data: {
 						source: { type: NodeConnectionType.Main, index: 0 },
 						target: { type: NodeConnectionType.Main, index: 0 },
@@ -974,7 +986,17 @@ describe('useCanvasOperations', () => {
 				},
 				{
 					source: nodes[1].id,
+					sourceHandle: createCanvasConnectionHandleString({
+						mode: CanvasConnectionMode.Output,
+						index: 0,
+						type: NodeConnectionType.Main,
+					}),
 					target: nodes[2].id,
+					targetHandle: createCanvasConnectionHandleString({
+						mode: CanvasConnectionMode.Input,
+						index: 0,
+						type: NodeConnectionType.Main,
+					}),
 					data: {
 						source: { type: NodeConnectionType.Main, index: 0 },
 						target: { type: NodeConnectionType.Main, index: 0 },
@@ -993,7 +1015,7 @@ describe('useCanvasOperations', () => {
 			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeType);
 
 			const { addConnections } = useCanvasOperations({ router });
-			addConnections(connections);
+			await addConnections(connections);
 
 			expect(workflowsStore.addConnection).toHaveBeenCalledWith({
 				connection: [
