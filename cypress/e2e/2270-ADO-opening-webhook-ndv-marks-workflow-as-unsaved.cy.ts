@@ -1,23 +1,17 @@
-import { WEBHOOK_NODE_NAME } from './../constants';
-import { clickGetBackToCanvas } from '../composables/ndv';
-import {
-	addNodeToCanvas,
-	navigateToNewWorkflowPage,
-	openNode,
-	saveWorkflow,
-} from '../composables/workflow';
+import { WEBHOOK_NODE_NAME } from '../constants';
+import { NDV, WorkflowPage } from '../pages';
+
+const workflowPage = new WorkflowPage();
+const ndv = new NDV();
 
 describe('ADO-2270 Save button resets on webhook node open', () => {
-	beforeEach(() => {
-		navigateToNewWorkflowPage();
-	});
-
 	it('should not reset the save button if webhook node is opened and closed', () => {
-		addNodeToCanvas(WEBHOOK_NODE_NAME);
-		saveWorkflow();
-		openNode(WEBHOOK_NODE_NAME);
+		workflowPage.actions.visit();
+		workflowPage.actions.addInitialNodeToCanvas(WEBHOOK_NODE_NAME);
+		workflowPage.getters.saveButton().click();
+		workflowPage.actions.openNode(WEBHOOK_NODE_NAME);
 
-		clickGetBackToCanvas();
+		ndv.actions.close();
 
 		cy.ifCanvasVersion(
 			() => cy.getByTestId('workflow-save-button').should('not.contain', 'Saved'),
