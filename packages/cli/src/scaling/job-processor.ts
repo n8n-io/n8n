@@ -123,11 +123,8 @@ export class JobProcessor {
 		);
 
 		if (pushRef) {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unnecessary-type-assertion
-			additionalData.sendDataToUI = WorkflowExecuteAdditionalData.sendDataToUI.bind({
-				sessionId: pushRef,
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			}) as any;
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+			additionalData.sendDataToUI = WorkflowExecuteAdditionalData.sendDataToUI.bind({ pushRef });
 		}
 
 		additionalData.hooks.hookFunctions.sendResponse = [

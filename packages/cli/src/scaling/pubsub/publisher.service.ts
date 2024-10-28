@@ -59,7 +59,10 @@ export class Publisher {
 			}),
 		);
 
-		this.logger.debug(`Published ${msg.command} to command channel`);
+		this.logger.debug(`Published pubsub message: ${msg.command}`, {
+			msg: msg.command,
+			channel: 'n8n.commands',
+		});
 	}
 
 	/** Publish a response to a command into the `n8n.worker-response` channel. */
