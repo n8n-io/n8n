@@ -167,6 +167,8 @@ import {
 import { extractValue } from './ExtractValue';
 import { InstanceSettings } from './InstanceSettings';
 import type { ExtendedValidationResult, IResponseError } from './Interfaces';
+// eslint-disable-next-line import/no-cycle
+import { PollContext } from './node-execution-context';
 import { ScheduledTaskManager } from './ScheduledTaskManager';
 import { getSecretsProxy } from './Secrets';
 import { SSHClientsManager } from './SSHClientsManager';
@@ -215,7 +217,7 @@ const createFormDataObject = (data: Record<string, unknown>) => {
 	return formData;
 };
 
-const validateUrl = (url?: string): boolean => {
+export const validateUrl = (url?: string): boolean => {
 	if (!url) return false;
 
 	try {
@@ -776,7 +778,7 @@ export function parseIncomingMessage(message: IncomingMessage) {
 	}
 }
 
-async function binaryToString(body: Buffer | Readable, encoding?: BufferEncoding) {
+export async function binaryToString(body: Buffer | Readable, encoding?: BufferEncoding) {
 	const buffer = await binaryToBuffer(body);
 	if (!encoding && body instanceof IncomingMessage) {
 		parseIncomingMessage(body);
@@ -1010,7 +1012,7 @@ export const removeEmptyBody = (requestOptions: IHttpRequestOptions | IRequestOp
 	}
 };
 
-async function httpRequest(
+export async function httpRequest(
 	requestOptions: IHttpRequestOptions,
 ): Promise<IN8nHttpFullResponse | IN8nHttpResponse> {
 	removeEmptyBody(requestOptions);
@@ -1205,7 +1207,7 @@ export async function copyBinaryFile(
  * base64 and adds metadata.
  */
 // eslint-disable-next-line complexity
-async function prepareBinaryData(
+export async function prepareBinaryData(
 	binaryData: Buffer | Readable,
 	executionId: string,
 	workflowId: string,
@@ -1348,6 +1350,7 @@ export async function clearAllProcessedItems(
 		options,
 	);
 }
+
 export async function getProcessedDataCount(
 	scope: DeduplicationScope,
 	contextData: ICheckProcessedContextData,
@@ -1359,7 +1362,8 @@ export async function getProcessedDataCount(
 		options,
 	);
 }
-function applyPaginationRequestData(
+
+export function applyPaginationRequestData(
 	requestData: IRequestOptions,
 	paginationRequestData: PaginationOptions['request'],
 ): IRequestOptions {
@@ -3553,57 +3557,7 @@ export function getExecutePollFunctions(
 	mode: WorkflowExecuteMode,
 	activation: WorkflowActivateMode,
 ): IPollFunctions {
-	return ((workflow: Workflow, node: INode) => {
-		return {
-			...getCommonWorkflowFunctions(workflow, node, additionalData),
-			__emit: (): void => {
-				throw new ApplicationError(
-					'Overwrite NodeExecuteFunctions.getExecutePollFunctions.__emit function',
-				);
-			},
-			__emitError() {
-				throw new ApplicationError(
-					'Overwrite NodeExecuteFunctions.getExecutePollFunctions.__emitError function',
-				);
-			},
-			getMode: () => mode,
-			getActivationMode: () => activation,
-			getCredentials: async (type) =>
-				await getCredentials(workflow, node, type, additionalData, mode),
-			getNodeParameter: (
-				parameterName: string,
-				fallbackValue?: any,
-				options?: IGetNodeParameterOptions,
-			): NodeParameterValueType | object => {
-				const runExecutionData: IRunExecutionData | null = null;
-				const itemIndex = 0;
-				const runIndex = 0;
-				const connectionInputData: INodeExecutionData[] = [];
-
-				return getNodeParameter(
-					workflow,
-					runExecutionData,
-					runIndex,
-					connectionInputData,
-					node,
-					parameterName,
-					itemIndex,
-					mode,
-					getAdditionalKeys(additionalData, mode, runExecutionData),
-					undefined,
-					fallbackValue,
-					options,
-				);
-			},
-			helpers: {
-				createDeferredPromise,
-				...getRequestHelperFunctions(workflow, node, additionalData),
-				...getBinaryHelperFunctions(additionalData, workflow.id),
-				...getSchedulingFunctions(workflow),
-				returnJsonArray,
-			},
-		};
-	})(workflow, node);
+	return new PollContext(workflow, node, additionalData, mode, activation);
 }
 
 /**
@@ -4400,6 +4354,7 @@ export function getExecuteSingleFunctions(
 			},
 			helpers: {
 				createDeferredPromise,
+				returnJsonArray,
 				...getRequestHelperFunctions(
 					workflow,
 					node,

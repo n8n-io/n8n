@@ -1402,14 +1402,18 @@ export class Workflow {
 		} else if (nodeType.poll) {
 			if (mode === 'manual') {
 				// In manual mode run the poll function
-				const thisArgs = nodeExecuteFunctions.getExecutePollFunctions(
+				const context = nodeExecuteFunctions.getExecutePollFunctions(
 					this,
 					node,
 					additionalData,
 					mode,
 					'manual',
 				);
-				return { data: await nodeType.poll.call(thisArgs) };
+				const data =
+					nodeType instanceof Node
+						? await nodeType.poll(context)
+						: await nodeType.poll.call(context);
+				return { data };
 			}
 			// In any other mode pass data through as it already contains the result of the poll
 			return { data: inputData.main as INodeExecutionData[][] };
