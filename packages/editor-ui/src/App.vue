@@ -31,14 +31,10 @@ const loading = ref(true);
 const defaultLocale = computed(() => rootStore.defaultLocale);
 const isDemoMode = computed(() => route.name === VIEWS.DEMO);
 const showAssistantButton = computed(() => assistantStore.canShowAssistantButtonsOnCanvas);
-
+const hasContentFooter = ref(false);
 const appGrid = ref<Element | null>(null);
 
 const assistantSidebarWidth = computed(() => assistantStore.chatWidth);
-
-watch(defaultLocale, (newLocale) => {
-	void loadLanguage(newLocale);
-});
 
 onMounted(async () => {
 	logHiringBanner();
@@ -50,11 +46,6 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
 	window.removeEventListener('resize', updateGridWidth);
-});
-
-// As assistant sidebar width changes, recalculate the total width regularly
-watch(assistantSidebarWidth, async () => {
-	await updateGridWidth();
 });
 
 const logHiringBanner = () => {
@@ -69,6 +60,21 @@ const updateGridWidth = async () => {
 		uiStore.appGridWidth = appGrid.value.clientWidth;
 	}
 };
+
+// As assistant sidebar width changes, recalculate the total width regularly
+watch(assistantSidebarWidth, async () => {
+	await updateGridWidth();
+});
+
+watch(route, (r) => {
+	hasContentFooter.value = r.matched.some(
+		(matchedRoute) => matchedRoute.components?.footer !== undefined,
+	);
+});
+
+watch(defaultLocale, (newLocale) => {
+	void loadLanguage(newLocale);
+});
 </script>
 
 <template>
@@ -98,7 +104,7 @@ const updateGridWidth = async () => {
 					</keep-alive>
 					<component :is="Component" v-else />
 				</router-view>
-				<div :class="$style.contentFooter">
+				<div :class="$style.contentFooter" v-if="hasContentFooter">
 					<router-view name="footer" />
 				</div>
 			</div>
@@ -149,6 +155,7 @@ const updateGridWidth = async () => {
 	width: 100%;
 	justify-content: center;
 	flex-direction: column;
+	align-items: center;
 
 	main {
 		width: 100%;
@@ -157,9 +164,9 @@ const updateGridWidth = async () => {
 
 	.contentFooter {
 		height: auto;
-		z-index: 1000000;
+		z-index: 10;
+		width: 100%;
 		background: white;
-		border: 1px solid red;
 	}
 }
 

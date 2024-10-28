@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { IAiDataContent } from '@/Interface';
 import { capitalize } from 'lodash-es';
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, Ref } from 'vue';
 import type { ParsedAiContent } from './useAiContentParsers';
 import { useAiContentParsers } from './useAiContentParsers';
 import VueMarkdown from 'vue-markdown-render';
@@ -24,7 +24,7 @@ const contentParsers = useAiContentParsers();
 
 // eslint-disable-next-line @typescript-eslint/no-use-before-define
 const isExpanded = ref(getInitialExpandedState());
-const isShowRaw = ref(false);
+const renderType = ref<'rendered' | 'json'>('rendered');
 const contentParsed = ref(false);
 const parsedRun = ref(undefined as ParsedAiContent | undefined);
 function getInitialExpandedState() {
@@ -134,6 +134,10 @@ function onCopyToClipboard(content: IDataObject | IDataObject[]) {
 	} catch (err) {}
 }
 
+function onRenderTypeChange(value: 'rendered' | 'json') {
+	renderType.value = value;
+}
+
 onMounted(() => {
 	parsedRun.value = parseAiRunData(props.runData);
 	if (parsedRun.value) {
@@ -149,13 +153,16 @@ onMounted(() => {
 				<font-awesome-icon :icon="isExpanded ? 'angle-down' : 'angle-up'" size="lg" />
 			</button>
 			<p :class="$style.blockTitle">{{ capitalize(runData.inOut) }}</p>
-			<!-- @click.stop to prevent event from bubbling to blockHeader and toggling expanded state when clicking on rawSwitch -->
-			<el-switch
-				v-if="contentParsed && !error"
-				v-model="isShowRaw"
+			<n8n-radio-buttons
+				v-if="contentParsed && !error && isExpanded"
+				size="small"
+				:model-value="renderType"
 				:class="$style.rawSwitch"
-				active-text="RAW JSON"
-				@click.stop
+				:options="[
+					{ label: 'Rendered', value: 'rendered' },
+					{ label: 'JSON', value: 'json' },
+				]"
+				@update:model-value="onRenderTypeChange"
 			/>
 		</header>
 		<main
@@ -172,7 +179,7 @@ onMounted(() => {
 				:class="$style.contentText"
 				:data-content-type="parsedContent?.type"
 			>
-				<template v-if="parsedContent && !isShowRaw">
+				<template v-if="parsedContent && renderType === 'rendered'">
 					<template v-if="parsedContent.type === 'json'">
 						<VueMarkdown
 							:source="jsonToMarkdown(parsedContent.data as JsonMarkdown)"
@@ -252,17 +259,18 @@ onMounted(() => {
 }
 .contentText {
 	padding-top: var(--spacing-s);
-	font-size: var(--font-size-xs);
+	padding-left: var(--spacing-m);
+	font-size: var(--font-size-m);
 	// max-height: 100%;
 }
 .block {
-	border: 1px solid var(--color-foreground-base);
-	background: var(--color-background-xlight);
-	padding: var(--spacing-xs);
-	border-radius: 4px;
-	margin-bottom: var(--spacing-2xs);
+	// border: 1px solid var(--color-foreground-base);
+	// background: var(--color-background-xlight);
+	// padding: var(--spacing-xs);
+	// border-radius: 4px;
+	margin-top: var(--spacing-xl);
 }
-.blockContent {
+:root .blockContent {
 	height: 0;
 	overflow: hidden;
 
@@ -271,15 +279,11 @@ onMounted(() => {
 	}
 }
 .runText {
-	line-height: var(--font-line-height-regular);
+	line-height: var(--font-line-height-xloose);
 	white-space: pre-line;
 }
 .rawSwitch {
-	margin-left: auto;
-
-	& * {
-		font-size: var(--font-size-2xs);
-	}
+	height: fit-content;
 }
 .blockHeader {
 	display: flex;
@@ -287,15 +291,20 @@ onMounted(() => {
 	cursor: pointer;
 	/* This hack is needed to make the whole surface of header clickable  */
 	margin: calc(-1 * var(--spacing-xs));
-	padding: var(--spacing-xs);
+	padding: var(--spacing-4xs) var(--spacing-xs);
+	align-items: center;
 
 	& * {
 		user-select: none;
 	}
 }
 .blockTitle {
-	font-size: var(--font-size-2xs);
+	font-size: var(--font-size-m);
 	color: var(--color-text-dark);
+	font-weight: var(--font-weight-bold);
+	margin: 0;
+	// Visually center the title
+	padding-bottom: var(--spacing-4xs);
 }
 .blockToggle {
 	border: none;

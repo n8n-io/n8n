@@ -132,7 +132,7 @@ onMounted(async () => {
 .chat-message {
 	display: block;
 	position: relative;
-	max-width: 80%;
+	max-width: fit-content;
 	font-size: var(--chat--message--font-size, 1rem);
 	padding: var(--chat--message--padding, var(--chat--spacing));
 	border-radius: var(--chat--message--border-radius, var(--chat--border-radius));
@@ -159,7 +159,7 @@ onMounted(async () => {
 	}
 
 	p {
-		line-height: var(--chat--message-line-height, 1.8);
+		line-height: var(--chat--message-line-height, 1.5);
 		word-wrap: break-word;
 	}
 

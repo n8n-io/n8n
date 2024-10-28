@@ -1,48 +1,115 @@
 <script setup lang="ts">
-import { useAssistantStore } from '@/stores/assistant.store';
-import { useDebounce } from '@/composables/useDebounce';
-import { useUsersStore } from '@/stores/users.store';
-import { computed, ref } from 'vue';
-import SlideTransition from '@/components/transitions/SlideTransition.vue';
-import AskAssistantChat from 'n8n-design-system/components/AskAssistantChat/AskAssistantChat.vue';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { provide, watch, computed, ref } from 'vue';
+import { ChatOptionsSymbol, ChatSymbol } from '@n8n/chat/constants';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { useRouter } from 'vue-router';
+import { chatEventBus } from '@n8n/chat/event-buses';
+import { useCanvasStore } from '@/stores/canvas.store';
+import { VIEWS } from '@/constants';
+import ChatMessagesPanel from './components/ChatMessagesPanel.vue';
+import ChatLogsPanel from './components/ChatLogsPanel.vue';
+import { useChatTrigger } from './composables/useChatTrigger';
+import { useChatMessaging } from './composables/useChatMessaging';
+import { useResize } from './composables/useResize';
+import type { Chat, ChatMessage, ChatOptions } from '@n8n/chat/types';
+import { useUIStore } from '@/stores/ui.store';
+import { useI18n } from '@/composables/useI18n';
 
-const assistantStore = useAssistantStore();
-const usersStore = useUsersStore();
-const telemetry = useTelemetry();
+const router = useRouter();
+const uiStore = useUIStore();
+const locale = useI18n();
+const { getCurrentWorkflow } = useWorkflowHelpers({ router });
 
-const height = ref(0);
+const messages = ref<ChatMessage[]>([]);
+const currentSessionId = ref<string>(String(Date.now()));
+const isDisabled = ref(false);
+const container = ref<HTMLElement>();
+const {
+	chatTrigger,
+	node,
+	allowFileUploads,
+	setChatTriggerNode,
+	setConnectedNode,
+	setLogsSourceNode,
+} = useChatTrigger({ router });
 
-const chatWidth = ref(0);
-const logsWidth = ref(0);
+const {
+	sendMessage,
+	getChatMessages,
+	// extractResponseMessage,
+	// waitForExecution,
+	// onArrowKeyDown,
+} = useChatMessaging({ chatTrigger, messages, router });
 
-const rootStyles = computed(() => {
-	return {
-		'--chat-width': chatWidth.value + 'px',
-		'--logs-width': logsWidth.value + 'px',
-		'--panel-height': height.value + 'px',
-	};
-});
-function onResize(data) {
-	console.log('🚀 ~ onResize ~ direction:', data);
-	height.value = data.height;
-	// assistantStore.updateWindowWidth(data.width);
+const { height, chatWidth, rootStyles, onResizeDebounced, onResizeChat } = useResize(container);
+
+const isLoading = computed(() => uiStore.isActionActive.workflowRunning);
+
+const chatConfig: Chat = {
+	messages,
+	sendMessage,
+	initialMessages: ref([]),
+	currentSessionId,
+	waitingForResponse: isLoading,
+};
+
+const chatOptions: ChatOptions = {
+	i18n: {
+		en: {
+			title: '',
+			footer: '',
+			subtitle: '',
+			inputPlaceholder: locale.baseText('chat.window.chat.placeholder'),
+			getStarted: '',
+			closeButtonTooltip: '',
+		},
+	},
+	webhookUrl: '',
+	mode: 'window',
+	showWindowCloseButton: true,
+	disabled: isDisabled,
+	allowFileUploads: false,
+	allowedFilesMimeTypes: '',
+};
+
+watch(
+	() => allowFileUploads.value,
+	(newValue) => {
+		chatOptions.allowFileUploads = newValue;
+	},
+);
+
+function displayExecution(executionId: string) {
+	const workflow = getCurrentWorkflow();
+	const route = router.resolve({
+		name: VIEWS.EXECUTION_PREVIEW,
+		params: { name: workflow.id, executionId },
+	});
+	window.open(route.href, '_blank');
 }
 
-function onResizeDebounced(data: { direction: string; x: number; width: number }) {
-	void useDebounce().callDebounced(onResize, { debounceTime: 10, trailing: true }, data);
-}
+provide(ChatSymbol, chatConfig);
+provide(ChatOptionsSymbol, chatOptions);
 
-function onResizeHorizontal(
-	component: 'chat' | 'logs',
-	data: { direction: string; x: number; width: number },
-) {
-	if (component === 'chat') {
-		chatWidth.value = data.width;
-	} else {
-		logsWidth.value = data.width;
-	}
-}
+const canvasStore = useCanvasStore();
+watch(
+	() => canvasStore.isLoading,
+	() => {
+		setChatTriggerNode();
+		setConnectedNode();
+		messages.value = getChatMessages();
+
+		setTimeout(() => chatEventBus.emit('focusInput'), 0);
+	},
+);
+
+// Update logs source node when messages change
+watch(
+	() => messages.value.length,
+	() => {
+		setLogsSourceNode();
+	},
+);
 </script>
 
 <template>
@@ -52,20 +119,28 @@ function onResizeHorizontal(
 		:class="$style.container"
 		:height="height"
 		data-test-id="ask-assistant-sidebar"
-		@resize="onResizeDebounced"
 		:style="rootStyles"
+		@resize="onResizeDebounced"
 	>
-		<div :class="$style.content">
+		<div ref="container" :class="$style.content">
 			<n8n-resize-wrapper
 				v-show="true"
 				:supported-directions="['right']"
 				:width="chatWidth"
 				:class="$style.chat"
-				@resize="(data) => onResizeHorizontal('chat', data)"
+				@resize="onResizeChat"
 			>
-				Chat
+				<div :class="$style.inner">
+					<ChatMessagesPanel
+						:messages="messages"
+						@display-execution="displayExecution"
+						@send-message="sendMessage"
+					/>
+				</div>
 			</n8n-resize-wrapper>
-			<div :class="$style.logs" @resize="(data) => onResizeHorizontal('logs', data)">Logs</div>
+			<div :class="$style.logs">
+				<ChatLogsPanel :node="node" :messages-length="messages.length" />
+			</div>
 		</div>
 	</n8n-resize-wrapper>
 </template>
@@ -73,22 +148,36 @@ function onResizeHorizontal(
 <style lang="scss" module>
 .container {
 	height: var(--panel-height);
-	min-height: 3rem;
+	min-height: 4rem;
 	flex-basis: content;
 	z-index: 300;
-	// transform: translateY(-18rem);
+	border-top: 1px solid var(--color-foreground-base);
 }
+
 .content {
 	display: flex;
 	width: 100%;
 	height: 100%;
+	max-width: 100%;
+	overflow: hidden;
 }
+
 .chat {
 	width: var(--chat-width);
-	min-width: 5rem;
-	border-right: 2px solid var(--color-foreground-base);
+	border-right: 1px solid var(--color-foreground-base);
+	flex-shrink: 0;
+	flex-grow: 0;
 }
+
+.inner {
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+	height: 100%;
+	width: 100%;
+}
+
 .logs {
-	width: var(--logs-width);
+	flex-grow: 1;
 }
 </style>

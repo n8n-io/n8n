@@ -238,7 +238,11 @@ watch(() => props.runIndex, selectFirst, { immediate: true });
 								{{ node.label }}
 							</template>
 							<span :class="$style.leafLabel">
-								<NodeIcon :node-type="getNodeType(data.node)!" :size="17" />
+								<NodeIcon
+									:node-type="getNodeType(data.node)!"
+									:size="17"
+									:class="$style.nodeIcon"
+								/>
 								<span v-if="!slim" v-text="node.label" />
 							</span>
 						</n8n-tooltip>
@@ -293,7 +297,7 @@ watch(() => props.runIndex, selectFirst, { immediate: true });
 	flex-shrink: 0;
 	min-width: 12.8rem;
 	height: 100%;
-	border-right: 1px solid var(--color-foreground-base);
+
 	padding-right: var(--spacing-xs);
 	padding-left: var(--spacing-2xs);
 	&.slim {
@@ -332,20 +336,31 @@ watch(() => props.runIndex, selectFirst, { immediate: true });
 		margin-left: var(--spacing-xs);
 	}
 }
+.nodeIcon {
+	padding: var(--spacing-3xs) var(--spacing-3xs);
+	border-radius: var(--border-radius-base);
+	margin-right: var(--spacing-4xs);
+}
 .isSelected {
-	background-color: var(--color-foreground-base);
+	.nodeIcon {
+		background-color: var(--color-foreground-base);
+	}
 }
 .treeNode {
 	display: inline-flex;
 	border-radius: var(--border-radius-base);
 	align-items: center;
-	gap: var(--spacing-3xs);
-	padding: var(--spacing-4xs) var(--spacing-3xs);
-	font-size: var(--font-size-xs);
+	// gap: var(--spacing-3xs);
+	padding-right: var(--spacing-3xs);
+	margin: var(--spacing-4xs) 0;
+	font-size: var(--font-size-2xs);
 	color: var(--color-text-dark);
 	margin-bottom: var(--spacing-3xs);
 	cursor: pointer;
 
+	&.isSelected {
+		font-weight: var(--font-weight-bold);
+	}
 	&:hover {
 		background-color: var(--color-foreground-base);
 	}
@@ -361,6 +376,7 @@ watch(() => props.runIndex, selectFirst, { immediate: true });
 		height: 0.125rem;
 		left: 0.75rem;
 		width: calc(var(--item-depth) * 0.625rem);
+		margin-top: var(--spacing-3xs);
 	}
 }
 </style>
