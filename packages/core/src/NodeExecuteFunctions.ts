@@ -4046,15 +4046,17 @@ export function getSupplyDataFunctions(
 				runExecutionData,
 				runIndex,
 				itemIndex,
-				// TODO: revert this back to `node.name` when we stop using `IExecuteFunctions` as the context object in AI nodes.
-				// https://linear.app/n8n/issue/CAT-269
 				node.name,
 				connectionInputData,
 				mode,
 				getAdditionalKeys(additionalData, mode, runExecutionData),
 				executeData,
 			),
-		executeWorkflow: async (workflowInfo, inputData, parentCallbackManager) =>
+		executeWorkflow: async (
+			workflowInfo: IExecuteWorkflowInfo,
+			inputData?: INodeExecutionData[],
+			parentCallbackManager?: CallbackManager,
+		) =>
 			await additionalData
 				.executeWorkflow(workflowInfo, additionalData, {
 					parentWorkflowId: workflow.id?.toString(),
@@ -4082,7 +4084,10 @@ export function getSupplyDataFunctions(
 				return output;
 			});
 		},
-		async getInputConnectionData(inputName, itemIndex): Promise<unknown> {
+		async getInputConnectionData(
+			inputName: NodeConnectionType,
+			itemIndex: number,
+		): Promise<unknown> {
 			return await getInputConnectionData.call(
 				this,
 				workflow,
@@ -4140,7 +4145,7 @@ export function getSupplyDataFunctions(
 				fallbackValue,
 				options,
 			)) as ISupplyDataFunctions['getNodeParameter'],
-		getWorkflowDataProxy: (itemIndex) =>
+		getWorkflowDataProxy: (itemIndex: number) =>
 			new WorkflowDataProxy(
 				workflow,
 				runExecutionData,
@@ -4179,7 +4184,7 @@ export function getSupplyDataFunctions(
 				Logger.warn(`There was a problem sending message to UI: ${error.message}`);
 			}
 		},
-		logAiEvent: async (eventName, msg: string) =>
+		logAiEvent: async (eventName: AiEvent, msg: string) =>
 			additionalData.logAiEvent(eventName, {
 				executionId: additionalData.executionId ?? 'unsaved-execution',
 				nodeName: node.name,
@@ -4188,7 +4193,10 @@ export function getSupplyDataFunctions(
 				workflowId: workflow.id ?? 'unsaved-workflow',
 				msg,
 			}),
-		addInputData(connectionType, data): { index: number } {
+		addInputData(
+			connectionType: NodeConnectionType,
+			data: INodeExecutionData[][],
+		): { index: number } {
 			const nodeName = this.getNode().name;
 			let currentNodeRunIndex = 0;
 			if (runExecutionData.resultData.runData.hasOwnProperty(nodeName)) {
@@ -4215,7 +4223,11 @@ export function getSupplyDataFunctions(
 
 			return { index: currentNodeRunIndex };
 		},
-		addOutputData(connectionType, currentNodeRunIndex, data): void {
+		addOutputData(
+			connectionType: NodeConnectionType,
+			currentNodeRunIndex: number,
+			data: INodeExecutionData[][],
+		): void {
 			addExecutionDataFunctions(
 				'output',
 				this.getNode().name,
