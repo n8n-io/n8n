@@ -1,4 +1,5 @@
 import { render } from '@testing-library/vue';
+
 import N8nRoute from '../Route.vue';
 
 describe('N8nRoute', () => {

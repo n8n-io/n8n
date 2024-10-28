@@ -8,8 +8,9 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
 
+import { DateTime } from 'luxon';
 import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
 
 import { channelFields, channelOperations } from './ChannelDescription';
@@ -22,7 +23,7 @@ import { videoFields, videoOperations } from './VideoDescription';
 
 import { videoCategoryFields, videoCategoryOperations } from './VideoCategoryDescription';
 
-import { countriesCodes } from './CountryCodes';
+import { isoCountryCodes } from '@utils/ISOCountryCodes';
 
 const UPLOAD_CHUNK_SIZE = 1024 * 1024;
 
@@ -39,8 +40,8 @@ export class YouTube implements INodeType {
 		defaults: {
 			name: 'YouTube',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'youTubeOAuth2Api',
@@ -120,7 +121,7 @@ export class YouTube implements INodeType {
 			// select them easily
 			async getCountriesCodes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				for (const countryCode of countriesCodes) {
+				for (const countryCode of isoCountryCodes) {
 					const countryCodeName = `${countryCode.name} - ${countryCode.alpha2}`;
 					const countryCodeId = countryCode.alpha2;
 					returnData.push({
@@ -762,6 +763,28 @@ export class YouTube implements INodeType {
 						qs.type = 'video';
 
 						qs.forMine = true;
+						if (filters.publishedAfter) {
+							const publishedAfter = DateTime.fromISO(filters.publishedAfter as string);
+							if (publishedAfter.isValid) {
+								filters.publishedAfter = publishedAfter.setZone(this.getTimezone()).toISO();
+							} else {
+								throw new NodeOperationError(
+									this.getNode(),
+									`The value "${filters.publishedAfter as string}" is not a valid DateTime.`,
+								);
+							}
+						}
+						if (filters.publishedBefore) {
+							const publishedBefore = DateTime.fromISO(filters.publishedBefore as string);
+							if (publishedBefore.isValid) {
+								filters.publishedAfter = publishedBefore.setZone(this.getTimezone()).toISO();
+							} else {
+								throw new NodeOperationError(
+									this.getNode(),
+									`The value "${filters.publishedBefore as string}" is not a valid DateTime.`,
+								);
+							}
+						}
 
 						Object.assign(qs, options, filters);
 
@@ -1049,7 +1072,7 @@ export class YouTube implements INodeType {
 					}
 				}
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },

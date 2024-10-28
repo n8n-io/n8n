@@ -1,3 +1,23 @@
+<script lang="ts" setup>
+import { computed, useCssModule } from 'vue';
+
+interface CardProps {
+	hoverable?: boolean;
+}
+
+defineOptions({ name: 'N8nCard' });
+const props = withDefaults(defineProps<CardProps>(), {
+	hoverable: false,
+});
+
+const $style = useCssModule();
+const classes = computed(() => ({
+	card: true,
+	[$style.card]: true,
+	[$style.hoverable]: props.hoverable,
+}));
+</script>
+
 <template>
 	<div :class="classes" v-bind="$attrs">
 		<div v-if="$slots.prepend" :class="$style.icon">
@@ -19,26 +39,6 @@
 		</div>
 	</div>
 </template>
-
-<script lang="ts" setup>
-import { computed, useCssModule } from 'vue';
-
-interface CardProps {
-	hoverable?: boolean;
-}
-
-defineOptions({ name: 'N8nCard' });
-const props = withDefaults(defineProps<CardProps>(), {
-	hoverable: false,
-});
-
-const $style = useCssModule();
-const classes = computed(() => ({
-	card: true,
-	[$style.card]: true,
-	[$style.hoverable]: props.hoverable,
-}));
-</script>
 
 <style lang="scss" module>
 .card {

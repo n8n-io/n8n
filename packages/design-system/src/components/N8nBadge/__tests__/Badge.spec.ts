@@ -1,4 +1,5 @@
 import { render } from '@testing-library/vue';
+
 import N8nBadge from '../Badge.vue';
 
 describe('components', () => {

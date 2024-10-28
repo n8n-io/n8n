@@ -1,34 +1,14 @@
-<template>
-	<div class="n8n-markdown">
-		<div
-			v-if="!loading"
-			ref="editor"
-			:class="$style[theme]"
-			@click="onClick"
-			@mousedown="onMouseDown"
-			@change="onChange"
-			v-html="htmlContent"
-		/>
-		<div v-else :class="$style.markdown">
-			<div v-for="(_, index) in loadingBlocks" :key="index">
-				<N8nLoading :loading="loading" :rows="loadingRows" animated variant="p" />
-				<div :class="$style.spacer" />
-			</div>
-		</div>
-	</div>
-</template>
-
 <script lang="ts" setup>
-import { computed, ref } from 'vue';
 import type { Options as MarkdownOptions } from 'markdown-it';
 import Markdown from 'markdown-it';
-import markdownLink from 'markdown-it-link-attributes';
 import markdownEmoji from 'markdown-it-emoji';
+import markdownLink from 'markdown-it-link-attributes';
 import markdownTaskLists from 'markdown-it-task-lists';
+import { computed, ref } from 'vue';
 import xss, { friendlyAttrValue, whiteList } from 'xss';
 
-import N8nLoading from '../N8nLoading';
 import { escapeMarkdown, toggleCheckbox } from '../../utils/markdown';
+import N8nLoading from '../N8nLoading';
 
 interface IImage {
 	id: string;
@@ -155,7 +135,11 @@ const htmlContent = computed(() => {
 	return safeHtml;
 });
 
-const $emit = defineEmits(['markdown-click', 'update-content']);
+const emit = defineEmits<{
+	'markdown-click': [link: HTMLAnchorElement, e: MouseEvent];
+	'update-content': [content: string];
+}>();
+
 const onClick = (event: MouseEvent) => {
 	let clickedLink: HTMLAnchorElement | null = null;
 
@@ -169,7 +153,9 @@ const onClick = (event: MouseEvent) => {
 			clickedLink = parentLink;
 		}
 	}
-	$emit('markdown-click', clickedLink, event);
+	if (clickedLink) {
+		emit('markdown-click', clickedLink, event);
+	}
 };
 
 // Handle checkbox changes
@@ -203,9 +189,29 @@ const onCheckboxChange = (index: number) => {
 
 	// We are using index to connect the checkbox with the corresponding line in the markdown
 	const newContent = toggleCheckbox(currentContent, index);
-	$emit('update-content', newContent);
+	emit('update-content', newContent);
 };
 </script>
+
+<template>
+	<div class="n8n-markdown">
+		<div
+			v-if="!loading"
+			ref="editor"
+			:class="$style[theme]"
+			@click="onClick"
+			@mousedown="onMouseDown"
+			@change="onChange"
+			v-n8n-html="htmlContent"
+		/>
+		<div v-else :class="$style.markdown">
+			<div v-for="(_, index) in loadingBlocks" :key="index">
+				<N8nLoading :loading="loading" :rows="loadingRows" animated variant="p" />
+				<div :class="$style.spacer" />
+			</div>
+		</div>
+	</div>
+</template>
 
 <style lang="scss" module>
 .markdown {

@@ -51,7 +51,7 @@ export const coorganizerFields: INodeProperties[] = [
 		required: true,
 		default: [],
 		description:
-			'Key of the webinar that the co-organizer is hosting. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'Key of the webinar that the co-organizer is hosting. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: ['coorganizer'],
@@ -130,7 +130,7 @@ export const coorganizerFields: INodeProperties[] = [
 		required: true,
 		default: [],
 		description:
-			'Key of the webinar to delete. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'Key of the webinar to delete. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: ['coorganizer'],
@@ -181,7 +181,7 @@ export const coorganizerFields: INodeProperties[] = [
 		required: true,
 		default: [],
 		description:
-			'Key of the webinar to retrieve all co-organizers from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'Key of the webinar to retrieve all co-organizers from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: ['coorganizer'],

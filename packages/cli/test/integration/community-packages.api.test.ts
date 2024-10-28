@@ -1,15 +1,15 @@
 import path from 'path';
 
-import type { InstalledPackages } from '@db/entities/InstalledPackages';
-import type { InstalledNodes } from '@db/entities/InstalledNodes';
-import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
-import { CommunityPackagesService } from '@/services/communityPackages.service';
+import type { InstalledNodes } from '@/databases/entities/installed-nodes';
+import type { InstalledPackages } from '@/databases/entities/installed-packages';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { CommunityPackagesService } from '@/services/community-packages.service';
 
-import { mockInstance } from '../shared/mocking';
 import { COMMUNITY_PACKAGE_VERSION } from './shared/constants';
-import { setupTestServer, mockPackage, mockNode, mockPackageName } from './shared/utils';
 import { createOwner } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
+import { setupTestServer, mockPackage, mockNode, mockPackageName } from './shared/utils';
+import { mockInstance } from '../shared/mocking';
 
 const communityPackagesService = mockInstance(CommunityPackagesService, {
 	hasMissingPackages: false,
@@ -179,7 +179,7 @@ describe('POST /community-packages', () => {
 		communityPackagesService.hasPackageLoaded.mockReturnValue(false);
 		communityPackagesService.checkNpmPackageStatus.mockResolvedValue({ status: 'OK' });
 		communityPackagesService.parseNpmPackageName.mockReturnValue(parsedNpmPackageName);
-		communityPackagesService.installNpmModule.mockResolvedValue(mockPackage());
+		communityPackagesService.installPackage.mockResolvedValue(mockPackage());
 
 		await authAgent.post('/community-packages').send({ name: mockPackageName() }).expect(200);
 
@@ -219,7 +219,7 @@ describe('DELETE /community-packages', () => {
 
 		await authAgent.delete('/community-packages').query({ name: mockPackageName() }).expect(200);
 
-		expect(communityPackagesService.removeNpmModule).toHaveBeenCalledTimes(1);
+		expect(communityPackagesService.removePackage).toHaveBeenCalledTimes(1);
 	});
 });
 
@@ -242,6 +242,6 @@ describe('PATCH /community-packages', () => {
 
 		await authAgent.patch('/community-packages').send({ name: mockPackageName() });
 
-		expect(communityPackagesService.updateNpmModule).toHaveBeenCalledTimes(1);
+		expect(communityPackagesService.updatePackage).toHaveBeenCalledTimes(1);
 	});
 });

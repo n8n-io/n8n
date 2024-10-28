@@ -1,5 +1,8 @@
-import type { ICredentialType } from 'n8n-workflow';
+import { type ICredentialType } from 'n8n-workflow';
+
 import {
+	AGENT_NODE_NAME,
+	AI_TOOL_HTTP_NODE_NAME,
 	GMAIL_NODE_NAME,
 	HTTP_REQUEST_NODE_NAME,
 	NEW_GOOGLE_ACCOUNT_NAME,
@@ -12,7 +15,7 @@ import {
 	TRELLO_NODE_NAME,
 } from '../constants';
 import { CredentialsModal, CredentialsPage, NDV, WorkflowPage } from '../pages';
-import { successToast } from '../pages/notifications';
+import { errorToast, successToast } from '../pages/notifications';
 import { getVisibleSelect } from '../utils';
 
 const credentialsPage = new CredentialsPage();
@@ -110,13 +113,13 @@ describe('Credentials', () => {
 		workflowPage.getters.nodeCredentialsSelect().should('have.length', 2);
 
 		workflowPage.getters.nodeCredentialsSelect().first().click();
-		getVisibleSelect().find('li').last().click();
+		getVisibleSelect().find('li').contains('Create New Credential').click();
 		// This one should show auth type selector
 		credentialsModal.getters.credentialAuthTypeRadioButtons().should('have.length', 2);
 		cy.get('body').type('{esc}');
 
 		workflowPage.getters.nodeCredentialsSelect().last().click();
-		getVisibleSelect().find('li').last().click();
+		getVisibleSelect().find('li').contains('Create New Credential').click();
 		// This one should not show auth type selector
 		credentialsModal.getters.credentialsAuthTypeSelector().should('not.exist');
 	});
@@ -201,6 +204,31 @@ describe('Credentials', () => {
 			.should('have.value', NEW_CREDENTIAL_NAME2);
 	});
 
+	it('should edit credential for non-standard credential type', () => {
+		workflowPage.actions.visit();
+		workflowPage.actions.addNodeToCanvas(AGENT_NODE_NAME);
+		workflowPage.actions.addNodeToCanvas(AI_TOOL_HTTP_NODE_NAME);
+		workflowPage.getters.canvasNodes().last().click();
+		cy.get('body').type('{enter}');
+		cy.getByTestId('parameter-input-authentication').click();
+		cy.contains('Predefined Credential Type').click();
+		cy.getByTestId('credential-select').click();
+		cy.contains('Adalo API').click();
+		workflowPage.getters.nodeCredentialsSelect().click();
+		getVisibleSelect().find('li').last().click();
+		credentialsModal.actions.fillCredentialsForm();
+		workflowPage.getters.nodeCredentialsEditButton().click();
+		credentialsModal.getters.credentialsEditModal().should('be.visible');
+		credentialsModal.getters.name().click();
+		credentialsModal.actions.renameCredential(NEW_CREDENTIAL_NAME);
+		credentialsModal.getters.saveButton().click();
+		credentialsModal.getters.closeButton().click();
+		workflowPage.getters
+			.nodeCredentialsSelect()
+			.find('input')
+			.should('have.value', NEW_CREDENTIAL_NAME);
+	});
+
 	it('should setup generic authentication for HTTP node', () => {
 		workflowPage.actions.visit();
 		workflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
@@ -249,5 +277,26 @@ describe('Credentials', () => {
 		getVisibleSelect().find('li').last().click();
 		credentialsModal.getters.credentialAuthTypeRadioButtons().first().click();
 		nodeDetailsView.getters.copyInput().should('not.exist');
+	});
+
+	it('ADO-2583 should show notifications above credential modal overlay', () => {
+		// check error notifications because they are sticky
+		cy.intercept('POST', '/rest/credentials', { forceNetworkError: true });
+		credentialsPage.getters.createCredentialButton().click();
+
+		credentialsModal.getters.newCredentialModal().should('be.visible');
+		credentialsModal.getters.newCredentialTypeSelect().should('be.visible');
+		credentialsModal.getters.newCredentialTypeOption('Notion API').click();
+
+		credentialsModal.getters.newCredentialTypeButton().click();
+		credentialsModal.getters.connectionParameter('Internal Integration Secret').type('1234567890');
+
+		credentialsModal.actions.setName('My awesome Notion account');
+		credentialsModal.getters.saveButton().click({ force: true });
+		errorToast().should('have.length', 1);
+		errorToast().should('be.visible');
+
+		errorToast().should('have.css', 'z-index', '2100');
+		cy.get('.el-overlay').should('have.css', 'z-index', '2001');
 	});
 });

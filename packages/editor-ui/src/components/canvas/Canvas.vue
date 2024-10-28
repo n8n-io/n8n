@@ -1,70 +1,262 @@
 <script lang="ts" setup>
-import type { CanvasConnection, CanvasElement } from '@/types';
-import type { EdgeMouseEvent, NodeDragEvent, Connection, XYPosition } from '@vue-flow/core';
-import { useVueFlow, VueFlow, PanelPosition } from '@vue-flow/core';
+import type {
+	CanvasConnection,
+	CanvasNode,
+	CanvasNodeMoveEvent,
+	CanvasEventBusEvents,
+	ConnectStartEvent,
+} from '@/types';
+import type {
+	Connection,
+	XYPosition,
+	ViewportTransform,
+	NodeChange,
+	NodePositionChange,
+} from '@vue-flow/core';
+import { useVueFlow, VueFlow, PanelPosition, MarkerType } from '@vue-flow/core';
 import { Background } from '@vue-flow/background';
-import { Controls } from '@vue-flow/controls';
 import { MiniMap } from '@vue-flow/minimap';
-import CanvasNode from './elements/nodes/CanvasNode.vue';
-import CanvasEdge from './elements/edges/CanvasEdge.vue';
-import { onMounted, onUnmounted, ref, useCssModule } from 'vue';
+import Node from './elements/nodes/CanvasNode.vue';
+import Edge from './elements/edges/CanvasEdge.vue';
+import {
+	computed,
+	nextTick,
+	onMounted,
+	onUnmounted,
+	provide,
+	ref,
+	toRef,
+	useCssModule,
+	watch,
+} from 'vue';
+import type { EventBus } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system';
+import { useContextMenu, type ContextMenuAction } from '@/composables/useContextMenu';
+import { useKeybindings } from '@/composables/useKeybindings';
+import ContextMenu from '@/components/ContextMenu/ContextMenu.vue';
+import type { NodeCreatorOpenSource } from '@/Interface';
+import type { PinDataSource } from '@/composables/usePinnedData';
+import { isPresent } from '@/utils/typesUtils';
+import { GRID_SIZE } from '@/utils/nodeViewUtils';
+import { CanvasKey } from '@/constants';
+import { onKeyDown, onKeyUp, useDebounceFn } from '@vueuse/core';
+import CanvasArrowHeadMarker from './elements/edges/CanvasArrowHeadMarker.vue';
+import { CanvasNodeRenderType } from '@/types';
+import CanvasBackgroundStripedPattern from './elements/CanvasBackgroundStripedPattern.vue';
+import { isMiddleMouseButton } from '@/utils/eventUtils';
 
 const $style = useCssModule();
 
 const emit = defineEmits<{
-	'update:modelValue': [elements: CanvasElement[]];
+	'update:modelValue': [elements: CanvasNode[]];
 	'update:node:position': [id: string, position: XYPosition];
+	'update:nodes:position': [events: CanvasNodeMoveEvent[]];
 	'update:node:active': [id: string];
 	'update:node:enabled': [id: string];
-	'update:node:selected': [id?: string];
+	'update:node:selected': [id: string];
+	'update:node:name': [id: string];
+	'update:node:parameters': [id: string, parameters: Record<string, unknown>];
+	'click:node:add': [id: string, handle: string];
+	'run:node': [id: string];
 	'delete:node': [id: string];
+	'create:node': [source: NodeCreatorOpenSource];
+	'create:sticky': [];
+	'delete:nodes': [ids: string[]];
+	'update:nodes:enabled': [ids: string[]];
+	'copy:nodes': [ids: string[]];
+	'duplicate:nodes': [ids: string[]];
+	'update:nodes:pin': [ids: string[], source: PinDataSource];
+	'cut:nodes': [ids: string[]];
 	'delete:connection': [connection: Connection];
+	'create:connection:start': [handle: ConnectStartEvent];
 	'create:connection': [connection: Connection];
+	'create:connection:end': [connection: Connection, event?: MouseEvent];
+	'create:connection:cancelled': [
+		handle: ConnectStartEvent,
+		position: XYPosition,
+		event?: MouseEvent,
+	];
+	'click:connection:add': [connection: Connection];
 	'click:pane': [position: XYPosition];
+	'run:workflow': [];
+	'save:workflow': [];
+	'create:workflow': [];
 }>();
 
 const props = withDefaults(
 	defineProps<{
 		id?: string;
-		elements: CanvasElement[];
+		nodes: CanvasNode[];
 		connections: CanvasConnection[];
 		controlsPosition?: PanelPosition;
+		eventBus?: EventBus<CanvasEventBusEvents>;
+		readOnly?: boolean;
+		executing?: boolean;
+		keyBindings?: boolean;
+		showBugReportingButton?: boolean;
 	}>(),
 	{
 		id: 'canvas',
-		elements: () => [],
+		nodes: () => [],
 		connections: () => [],
 		controlsPosition: PanelPosition.BottomLeft,
+		eventBus: () => createEventBus(),
+		readOnly: false,
+		executing: false,
+		keyBindings: true,
 	},
 );
 
-const { getSelectedEdges, getSelectedNodes, viewportRef, project } = useVueFlow({
-	id: props.id,
+const {
+	vueFlowRef,
+	getSelectedNodes: selectedNodes,
+	addSelectedNodes,
+	removeSelectedNodes,
+	viewportRef,
+	fitView,
+	zoomIn,
+	zoomOut,
+	zoomTo,
+	setInteractive,
+	elementsSelectable,
+	project,
+	nodes: graphNodes,
+	onPaneReady,
+	findNode,
+	onNodesInitialized,
+	viewport,
+} = useVueFlow({ id: props.id, deleteKeyCode: null });
+
+const isPaneReady = ref(false);
+
+const classes = computed(() => ({
+	[$style.canvas]: true,
+	[$style.ready]: isPaneReady.value,
+	[$style.draggable]: isPanningEnabled.value,
+}));
+
+/**
+ * Key bindings
+ */
+
+const disableKeyBindings = computed(() => !props.keyBindings);
+
+/**
+ * @see https://developer.mozilla.org/en-US/docs/Web/API/UI_Events/Keyboard_event_key_values#whitespace_keys
+ */
+
+const panningKeyCode = ' ';
+const isPanningEnabled = ref(false);
+const selectionKeyCode = ref<true | null>(true);
+
+onKeyDown(panningKeyCode, () => {
+	setPanningEnabled(true);
 });
 
-const hoveredEdges = ref<Record<string, boolean>>({});
-
-onMounted(() => {
-	document.addEventListener('keydown', onKeyDown);
+onKeyUp(panningKeyCode, () => {
+	setPanningEnabled(false);
 });
 
-onUnmounted(() => {
-	document.removeEventListener('keydown', onKeyDown);
-});
+const keyMap = computed(() => ({
+	ctrl_c: emitWithSelectedNodes((ids) => emit('copy:nodes', ids)),
+	enter: emitWithLastSelectedNode((id) => onSetNodeActive(id)),
+	ctrl_a: () => addSelectedNodes(graphNodes.value),
+	'+|=': async () => await onZoomIn(),
+	'-|_': async () => await onZoomOut(),
+	0: async () => await onResetZoom(),
+	1: async () => await onFitView(),
+	// @TODO implement arrow key shortcuts to modify selection
 
-function onNodeDragStop(e: NodeDragEvent) {
-	e.nodes.forEach((node) => {
-		emit('update:node:position', node.id, node.position);
+	...(props.readOnly
+		? {}
+		: {
+				ctrl_x: emitWithSelectedNodes((ids) => emit('cut:nodes', ids)),
+				'delete|backspace': emitWithSelectedNodes((ids) => emit('delete:nodes', ids)),
+				ctrl_d: emitWithSelectedNodes((ids) => emit('duplicate:nodes', ids)),
+				d: emitWithSelectedNodes((ids) => emit('update:nodes:enabled', ids)),
+				p: emitWithSelectedNodes((ids) => emit('update:nodes:pin', ids, 'keyboard-shortcut')),
+				f2: emitWithLastSelectedNode((id) => emit('update:node:name', id)),
+				tab: () => emit('create:node', 'tab'),
+				shift_s: () => emit('create:sticky'),
+				ctrl_alt_n: () => emit('create:workflow'),
+				ctrl_enter: () => emit('run:workflow'),
+				ctrl_s: () => emit('save:workflow'),
+			}),
+}));
+
+useKeybindings(keyMap, { disabled: disableKeyBindings });
+
+function setPanningEnabled(value: boolean) {
+	if (value) {
+		isPanningEnabled.value = true;
+		selectionKeyCode.value = null;
+	} else {
+		isPanningEnabled.value = false;
+		selectionKeyCode.value = true;
+	}
+}
+
+/**
+ * When the window is focused, the selection key code is lost.
+ * We trigger a value refresh to ensure that the selection key code is set correctly again.
+ *
+ * @issue https://linear.app/n8n/issue/N8N-7843/selection-keycode-gets-unset-when-changing-tabs
+ */
+function resetSelectionKeyCode() {
+	selectionKeyCode.value = null;
+	void nextTick(() => {
+		selectionKeyCode.value = true;
 	});
 }
 
+/**
+ * Nodes
+ */
+
+const lastSelectedNode = computed(() => selectedNodes.value[selectedNodes.value.length - 1]);
+const hasSelection = computed(() => selectedNodes.value.length > 0);
+const selectedNodeIds = computed(() => selectedNodes.value.map((node) => node.id));
+
+function onClickNodeAdd(id: string, handle: string) {
+	emit('click:node:add', id, handle);
+}
+
+// Debounced to prevent emitting too many events, necessary for undo/redo
+const onUpdateNodesPosition = useDebounceFn((events: NodePositionChange[]) => {
+	emit('update:nodes:position', events);
+}, 200);
+
+function onUpdateNodePosition(id: string, position: XYPosition) {
+	emit('update:node:position', id, position);
+}
+
+const isPositionChangeEvent = (event: NodeChange): event is NodePositionChange =>
+	event.type === 'position' && 'position' in event;
+
+function onNodesChange(events: NodeChange[]) {
+	const positionChangeEndEvents = events.filter(isPositionChangeEvent);
+	if (positionChangeEndEvents.length > 0) {
+		void onUpdateNodesPosition(positionChangeEndEvents);
+	}
+}
+
 function onSetNodeActive(id: string) {
+	props.eventBus.emit('nodes:action', { ids: [id], action: 'update:node:active' });
 	emit('update:node:active', id);
 }
 
+function clearSelectedNodes() {
+	removeSelectedNodes(selectedNodes.value);
+}
+
 function onSelectNode() {
-	const selectedNodeId = getSelectedNodes.value[getSelectedNodes.value.length - 1]?.id;
-	emit('update:node:selected', selectedNodeId);
+	if (!lastSelectedNode.value) return;
+	emit('update:node:selected', lastSelectedNode.value.id);
+}
+
+function onSelectNodes({ ids }: CanvasEventBusEvents['nodes:select']) {
+	clearSelectedNodes();
+	addSelectedNodes(ids.map(findNode).filter(isPresent));
 }
 
 function onToggleNodeEnabled(id: string) {
@@ -75,122 +267,431 @@ function onDeleteNode(id: string) {
 	emit('delete:node', id);
 }
 
+function onUpdateNodeParameters(id: string, parameters: Record<string, unknown>) {
+	emit('update:node:parameters', id, parameters);
+}
+
+/**
+ * Connections
+ */
+
+const connectionCreated = ref(false);
+const connectingHandle = ref<ConnectStartEvent>();
+const connectedHandle = ref<Connection>();
+
+function onConnectStart(handle: ConnectStartEvent) {
+	emit('create:connection:start', handle);
+
+	connectingHandle.value = handle;
+	connectionCreated.value = false;
+}
+
+function onConnect(connection: Connection) {
+	emit('create:connection', connection);
+
+	connectedHandle.value = connection;
+	connectionCreated.value = true;
+}
+
+function onConnectEnd(event?: MouseEvent) {
+	if (connectedHandle.value) {
+		emit('create:connection:end', connectedHandle.value, event);
+	} else if (connectingHandle.value) {
+		emit('create:connection:cancelled', connectingHandle.value, getProjectedPosition(event), event);
+	}
+
+	connectedHandle.value = undefined;
+	connectingHandle.value = undefined;
+}
+
 function onDeleteConnection(connection: Connection) {
 	emit('delete:connection', connection);
 }
 
-function onConnect(...args: unknown[]) {
-	emit('create:connection', args[0] as Connection);
+function onClickConnectionAdd(connection: Connection) {
+	emit('click:connection:add', connection);
 }
 
-function onKeyDown(e: KeyboardEvent) {
-	if (e.key === 'Delete') {
-		getSelectedEdges.value.forEach(onDeleteConnection);
-		getSelectedNodes.value.forEach(({ id }) => onDeleteNode(id));
-	}
+const arrowHeadMarkerId = ref('custom-arrow-head');
+
+/**
+ * Executions
+ */
+
+function onRunNode(id: string) {
+	emit('run:node', id);
 }
 
-function onMouseEnterEdge(event: EdgeMouseEvent) {
-	hoveredEdges.value[event.edge.id] = true;
+/**
+ * Emit helpers
+ */
+
+function emitWithSelectedNodes(emitFn: (ids: string[]) => void) {
+	return () => {
+		if (hasSelection.value) {
+			emitFn(selectedNodeIds.value);
+		}
+	};
 }
 
-function onMouseLeaveEdge(event: EdgeMouseEvent) {
-	hoveredEdges.value[event.edge.id] = false;
+function emitWithLastSelectedNode(emitFn: (id: string) => void) {
+	return () => {
+		if (lastSelectedNode.value) {
+			emitFn(lastSelectedNode.value.id);
+		}
+	};
+}
+
+/**
+ * View
+ */
+
+const defaultZoom = 1;
+const zoom = ref(defaultZoom);
+const isPaneMoving = ref(false);
+
+function getProjectedPosition(event?: MouseEvent) {
+	const bounds = viewportRef.value?.getBoundingClientRect() ?? { left: 0, top: 0 };
+	const offsetX = event?.clientX ?? 0;
+	const offsetY = event?.clientY ?? 0;
+
+	return project({
+		x: offsetX - bounds.left,
+		y: offsetY - bounds.top,
+	});
 }
 
 function onClickPane(event: MouseEvent) {
-	const bounds = viewportRef.value?.getBoundingClientRect() ?? { left: 0, top: 0 };
-	const position = project({
-		x: event.offsetX - bounds.left,
-		y: event.offsetY - bounds.top,
-	});
-
-	emit('click:pane', position);
+	emit('click:pane', getProjectedPosition(event));
 }
+
+async function onFitView() {
+	await fitView({ maxZoom: defaultZoom, padding: 0.2 });
+}
+
+async function onZoomTo(zoomLevel: number) {
+	await zoomTo(zoomLevel);
+}
+
+async function onZoomIn() {
+	await zoomIn();
+}
+
+async function onZoomOut() {
+	await zoomOut();
+}
+
+async function onResetZoom() {
+	await onZoomTo(defaultZoom);
+}
+
+function onViewportChange(viewport: ViewportTransform) {
+	zoom.value = viewport.zoom;
+}
+
+function setReadonly(value: boolean) {
+	setInteractive(!value);
+	elementsSelectable.value = true;
+}
+
+function onPaneMouseDown(event: MouseEvent) {
+	if (isMiddleMouseButton(event)) {
+		setPanningEnabled(true);
+
+		// Re-emit the event to start panning after setting the panning state to true
+		// This workaround is necessary because the Vue Flow library does not provide a way to
+		// start panning programmatically
+		void nextTick(() =>
+			vueFlowRef.value
+				?.querySelector('.vue-flow__pane')
+				?.dispatchEvent(new MouseEvent('mousedown', event)),
+		);
+	}
+}
+
+function onPaneMoveStart() {
+	isPaneMoving.value = true;
+}
+
+function onPaneMoveEnd() {
+	isPaneMoving.value = false;
+	setPanningEnabled(false);
+}
+
+/**
+ * Context menu
+ */
+
+const contextMenu = useContextMenu();
+
+function onOpenContextMenu(event: MouseEvent) {
+	contextMenu.open(event, {
+		source: 'canvas',
+		nodeIds: selectedNodeIds.value,
+	});
+}
+
+function onOpenNodeContextMenu(
+	id: string,
+	event: MouseEvent,
+	source: 'node-button' | 'node-right-click',
+) {
+	if (selectedNodeIds.value.includes(id)) {
+		onOpenContextMenu(event);
+	}
+
+	contextMenu.open(event, { source, nodeId: id });
+}
+
+function onContextMenuAction(action: ContextMenuAction, nodeIds: string[]) {
+	switch (action) {
+		case 'add_node':
+			return emit('create:node', 'context_menu');
+		case 'add_sticky':
+			return emit('create:sticky');
+		case 'copy':
+			return emit('copy:nodes', nodeIds);
+		case 'delete':
+			return emit('delete:nodes', nodeIds);
+		case 'select_all':
+			return addSelectedNodes(graphNodes.value);
+		case 'deselect_all':
+			return clearSelectedNodes();
+		case 'duplicate':
+			return emit('duplicate:nodes', nodeIds);
+		case 'toggle_pin':
+			return emit('update:nodes:pin', nodeIds, 'context-menu');
+		case 'execute':
+			return emit('run:node', nodeIds[0]);
+		case 'toggle_activation':
+			return emit('update:nodes:enabled', nodeIds);
+		case 'open':
+			return onSetNodeActive(nodeIds[0]);
+		case 'rename':
+			return emit('update:node:name', nodeIds[0]);
+		case 'change_color':
+			return props.eventBus.emit('nodes:action', { ids: nodeIds, action: 'update:sticky:color' });
+	}
+}
+
+/**
+ * Minimap
+ */
+
+const minimapVisibilityDelay = 1000;
+const minimapHideTimeout = ref<NodeJS.Timeout | null>(null);
+const isMinimapVisible = ref(false);
+
+function minimapNodeClassnameFn(node: CanvasNode) {
+	return `minimap-node-${node.data?.render.type.replace(/\./g, '-') ?? 'default'}`;
+}
+
+watch(isPaneMoving, (value) => {
+	if (value) {
+		showMinimap();
+	} else {
+		hideMinimap();
+	}
+});
+
+function showMinimap() {
+	if (minimapHideTimeout.value) {
+		clearTimeout(minimapHideTimeout.value);
+		minimapHideTimeout.value = null;
+	}
+
+	isMinimapVisible.value = true;
+}
+
+function hideMinimap() {
+	minimapHideTimeout.value = setTimeout(() => {
+		isMinimapVisible.value = false;
+	}, minimapVisibilityDelay);
+}
+
+function onMinimapMouseEnter() {
+	showMinimap();
+}
+
+function onMinimapMouseLeave() {
+	hideMinimap();
+}
+
+/**
+ * Lifecycle
+ */
+
+onMounted(() => {
+	props.eventBus.on('fitView', onFitView);
+	props.eventBus.on('nodes:select', onSelectNodes);
+	window.addEventListener('focus', resetSelectionKeyCode);
+});
+
+onUnmounted(() => {
+	props.eventBus.off('fitView', onFitView);
+	props.eventBus.off('nodes:select', onSelectNodes);
+	window.removeEventListener('focus', resetSelectionKeyCode);
+});
+
+onPaneReady(async () => {
+	await onFitView();
+	isPaneReady.value = true;
+});
+
+onNodesInitialized((nodes) => {
+	if (nodes.length !== 1 || nodes[0].data?.render.type !== CanvasNodeRenderType.AddNodes) return;
+	void onFitView();
+});
+
+watch(() => props.readOnly, setReadonly, {
+	immediate: true,
+});
+
+/**
+ * Provide
+ */
+
+const isExecuting = toRef(props, 'executing');
+
+provide(CanvasKey, {
+	connectingHandle,
+	isExecuting,
+});
 </script>
 
 <template>
 	<VueFlow
 		:id="id"
-		:nodes="elements"
+		:nodes="nodes"
 		:edges="connections"
 		:apply-changes="false"
-		fit-view-on-init
+		:connection-line-options="{ markerEnd: MarkerType.ArrowClosed }"
+		:connection-radius="60"
 		pan-on-scroll
-		:min-zoom="0.2"
-		:max-zoom="2"
+		snap-to-grid
+		:snap-grid="[GRID_SIZE, GRID_SIZE]"
+		:min-zoom="0"
+		:max-zoom="4"
+		:class="classes"
+		:selection-key-code="selectionKeyCode"
+		:pan-activation-key-code="panningKeyCode"
 		data-test-id="canvas"
-		@node-drag-stop="onNodeDragStop"
-		@edge-mouse-enter="onMouseEnterEdge"
-		@edge-mouse-leave="onMouseLeaveEdge"
-		@pane-click="onClickPane"
+		@connect-start="onConnectStart"
 		@connect="onConnect"
+		@connect-end="onConnectEnd"
+		@pane-click="onClickPane"
+		@contextmenu="onOpenContextMenu"
+		@viewport-change="onViewportChange"
+		@nodes-change="onNodesChange"
+		@move-start="onPaneMoveStart"
+		@move-end="onPaneMoveEnd"
+		@mousedown="onPaneMouseDown"
 	>
 		<template #node-canvas-node="canvasNodeProps">
-			<CanvasNode
+			<Node
 				v-bind="canvasNodeProps"
+				:read-only="readOnly"
+				:event-bus="eventBus"
 				@delete="onDeleteNode"
+				@run="onRunNode"
 				@select="onSelectNode"
 				@toggle="onToggleNodeEnabled"
 				@activate="onSetNodeActive"
+				@open:contextmenu="onOpenNodeContextMenu"
+				@update="onUpdateNodeParameters"
+				@move="onUpdateNodePosition"
+				@add="onClickNodeAdd"
 			/>
 		</template>
 
 		<template #edge-canvas-edge="canvasEdgeProps">
-			<CanvasEdge
+			<Edge
 				v-bind="canvasEdgeProps"
-				:hovered="hoveredEdges[canvasEdgeProps.id]"
+				:marker-end="`url(#${arrowHeadMarkerId})`"
+				:read-only="readOnly"
+				@add="onClickConnectionAdd"
 				@delete="onDeleteConnection"
 			/>
 		</template>
 
-		<Background data-test-id="canvas-background" pattern-color="#aaa" :gap="16" />
+		<template #connection-line="connectionLineProps">
+			<CanvasConnectionLine v-bind="connectionLineProps" />
+		</template>
 
-		<MiniMap data-test-id="canvas-minimap" pannable />
+		<CanvasArrowHeadMarker :id="arrowHeadMarkerId" />
 
-		<Controls
+		<Background data-test-id="canvas-background" pattern-color="#aaa" :gap="GRID_SIZE">
+			<template v-if="readOnly" #pattern-container>
+				<CanvasBackgroundStripedPattern :x="viewport.x" :y="viewport.y" :zoom="viewport.zoom" />
+			</template>
+		</Background>
+
+		<Transition name="minimap">
+			<MiniMap
+				v-show="isMinimapVisible"
+				data-test-id="canvas-minimap"
+				aria-label="n8n Minimap"
+				:height="120"
+				:width="200"
+				:position="PanelPosition.BottomLeft"
+				pannable
+				zoomable
+				:node-class-name="minimapNodeClassnameFn"
+				:node-border-radius="16"
+				@mouseenter="onMinimapMouseEnter"
+				@mouseleave="onMinimapMouseLeave"
+			/>
+		</Transition>
+
+		<CanvasControlButtons
 			data-test-id="canvas-controls"
 			:class="$style.canvasControls"
 			:position="controlsPosition"
-		></Controls>
+			:show-interactive="false"
+			:show-bug-reporting-button="showBugReportingButton"
+			:zoom="zoom"
+			@zoom-to-fit="onFitView"
+			@zoom-in="onZoomIn"
+			@zoom-out="onZoomOut"
+			@reset-zoom="onResetZoom"
+		/>
+
+		<Suspense>
+			<ContextMenu @action="onContextMenuAction" />
+		</Suspense>
 	</VueFlow>
 </template>
 
-<style lang="scss" module></style>
+<style lang="scss" module>
+.canvas {
+	opacity: 0;
 
-<style lang="scss">
-.vue-flow__controls {
-	display: flex;
-	gap: var(--spacing-2xs);
-	box-shadow: none;
+	&.ready {
+		opacity: 1;
+	}
+
+	&.draggable :global(.vue-flow__pane) {
+		cursor: grab;
+	}
+
+	:global(.vue-flow__pane) {
+		cursor: default;
+	}
+
+	:global(.vue-flow__pane.dragging) {
+		cursor: grabbing;
+	}
+}
+</style>
+
+<style lang="scss" scoped>
+.minimap-enter-active,
+.minimap-leave-active {
+	transition: opacity 0.3s ease;
 }
 
-.vue-flow__controls-button {
-	width: 42px;
-	height: 42px;
-	border: var(--border-base);
-	border-radius: var(--border-radius-base);
-	padding: 0;
-	transition-property: transform, background, border, color;
-	transition-duration: 300ms;
-	transition-timing-function: ease;
-
-	&:hover {
-		border-color: var(--color-button-secondary-hover-active-border);
-		background-color: var(--color-button-secondary-active-background);
-		transform: scale(1.1);
-
-		svg {
-			fill: var(--color-primary);
-		}
-	}
-
-	svg {
-		max-height: 16px;
-		max-width: 16px;
-		transition-property: fill;
-		transition-duration: 300ms;
-		transition-timing-function: ease;
-	}
+.minimap-enter-from,
+.minimap-leave-to {
+	opacity: 0;
 }
 </style>

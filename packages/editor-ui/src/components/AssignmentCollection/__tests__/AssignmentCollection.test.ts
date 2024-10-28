@@ -5,10 +5,16 @@ import userEvent from '@testing-library/user-event';
 import { fireEvent, within } from '@testing-library/vue';
 import * as workflowHelpers from '@/composables/useWorkflowHelpers';
 import AssignmentCollection from '../AssignmentCollection.vue';
-import { createPinia, setActivePinia } from 'pinia';
+import { STORES } from '@/constants';
+import { cleanupAppModals, createAppModals, SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 
 const DEFAULT_SETUP = {
-	pinia: createTestingPinia(),
+	pinia: createTestingPinia({
+		initialState: {
+			[STORES.SETTINGS]: SETTINGS_STORE_DEFAULT_STATE,
+		},
+		stubActions: false,
+	}),
 	props: {
 		path: 'parameters.fields',
 		node: {
@@ -58,8 +64,13 @@ async function dropAssignment({
 }
 
 describe('AssignmentCollection.vue', () => {
+	beforeEach(() => {
+		createAppModals();
+	});
+
 	afterEach(() => {
 		vi.clearAllMocks();
+		cleanupAppModals();
 	});
 
 	it('renders empty state properly', async () => {
@@ -97,11 +108,8 @@ describe('AssignmentCollection.vue', () => {
 	});
 
 	it('can add assignments by drag and drop (and infer type)', async () => {
-		const pinia = createPinia();
-		setActivePinia(pinia);
-
-		const { getByTestId, findAllByTestId } = renderComponent({ pinia });
-		const dropArea = getByTestId('assignment-collection-drop-area');
+		const { getByTestId, findAllByTestId } = renderComponent();
+		const dropArea = getByTestId('drop-area');
 
 		await dropAssignment({ key: 'boolKey', value: true, dropArea });
 		await dropAssignment({ key: 'stringKey', value: 'stringValue', dropArea });

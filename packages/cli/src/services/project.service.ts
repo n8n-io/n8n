@@ -1,26 +1,29 @@
-import { Project, type ProjectType } from '@/databases/entities/Project';
-import { ProjectRelation } from '@/databases/entities/ProjectRelation';
-import type { ProjectRole } from '@/databases/entities/ProjectRelation';
-import type { User } from '@/databases/entities/User';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import type { FindOptionsWhere, EntityManager } from '@n8n/typeorm';
-import Container, { Service } from 'typedi';
 import { type Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
+import type { FindOptionsWhere, EntityManager } from '@n8n/typeorm';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, Not } from '@n8n/typeorm';
-import { RoleService } from './role.service';
+import { ApplicationError } from 'n8n-workflow';
+import Container, { Service } from 'typedi';
+
+import { UNLIMITED_LICENSE_QUOTA } from '@/constants';
+import { Project, type ProjectType } from '@/databases/entities/project';
+import { ProjectRelation } from '@/databases/entities/project-relation';
+import type { ProjectRole } from '@/databases/entities/project-relation';
+import type { User } from '@/databases/entities/user';
+import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
+import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
+import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
-import { SharedCredentialsRepository } from '@/databases/repositories/sharedCredentials.repository';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { CacheService } from './cache/cache.service';
-import { License } from '@/License';
-import { UNLIMITED_LICENSE_QUOTA } from '@/constants';
+import { License } from '@/license';
 
-export class TeamProjectOverQuotaError extends Error {
+import { CacheService } from './cache/cache.service';
+import { RoleService } from './role.service';
+
+export class TeamProjectOverQuotaError extends ApplicationError {
 	constructor(limit: number) {
 		super(
 			`Attempted to create a new project but quota is already exhausted. You may have a maximum of ${limit} team projects.`,
@@ -28,7 +31,7 @@ export class TeamProjectOverQuotaError extends Error {
 	}
 }
 
-export class UnlicensedProjectRoleError extends Error {
+export class UnlicensedProjectRoleError extends ApplicationError {
 	constructor(role: ProjectRole) {
 		super(`Your instance is not licensed to use role "${role}".`);
 	}

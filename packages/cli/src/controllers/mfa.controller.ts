@@ -1,11 +1,21 @@
-import { Delete, Get, Post, RestController } from '@/decorators';
-import { AuthenticatedRequest, MFA } from '@/requests';
-import { MfaService } from '@/Mfa/mfa.service';
+import { Get, Post, RestController } from '@/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ExternalHooks } from '@/external-hooks';
+import { MfaService } from '@/mfa/mfa.service';
+import { AuthenticatedRequest, MFA } from '@/requests';
 
 @RestController('/mfa')
 export class MFAController {
-	constructor(private mfaService: MfaService) {}
+	constructor(
+		private mfaService: MfaService,
+		private externalHooks: ExternalHooks,
+	) {}
+
+	@Post('/can-enable')
+	async canEnableMFA(req: AuthenticatedRequest) {
+		await this.externalHooks.run('mfa.beforeSetup', [req.user]);
+		return;
+	}
 
 	@Get('/qr')
 	async getQRCode(req: AuthenticatedRequest) {
@@ -47,10 +57,12 @@ export class MFAController {
 		};
 	}
 
-	@Post('/enable')
+	@Post('/enable', { rateLimit: true })
 	async activateMFA(req: MFA.Activate) {
 		const { token = null } = req.body;
 		const { id, mfaEnabled } = req.user;
+
+		await this.externalHooks.run('mfa.beforeSetup', [req.user]);
 
 		const { decryptedSecret: secret, decryptedRecoveryCodes: recoveryCodes } =
 			await this.mfaService.getSecretAndRecoveryCodes(id);
@@ -71,14 +83,19 @@ export class MFAController {
 		await this.mfaService.enableMfa(id);
 	}
 
-	@Delete('/disable')
-	async disableMFA(req: AuthenticatedRequest) {
-		const { id } = req.user;
+	@Post('/disable', { rateLimit: true })
+	async disableMFA(req: MFA.Disable) {
+		const { id: userId } = req.user;
+		const { token = null } = req.body;
 
-		await this.mfaService.disableMfa(id);
+		if (typeof token !== 'string' || !token) {
+			throw new BadRequestError('Token is required to disable MFA feature');
+		}
+
+		await this.mfaService.disableMfa(userId, token);
 	}
 
-	@Post('/verify')
+	@Post('/verify', { rateLimit: true })
 	async verifyMFA(req: MFA.Verify) {
 		const { id } = req.user;
 		const { token } = req.body;

@@ -1,11 +1,3 @@
-<template>
-	<button
-		:class="$style.googleAuthBtn"
-		:title="$locale.baseText('credentialEdit.oAuthButton.signInWithGoogle')"
-		:style="googleAuthButtons"
-	/>
-</template>
-
 <script lang="ts" setup>
 import { useUIStore } from '@/stores/ui.store';
 import { useRootStore } from '@/stores/root.store';
@@ -13,12 +5,20 @@ import { useRootStore } from '@/stores/root.store';
 const { baseUrl } = useRootStore();
 const type = useUIStore().appliedTheme === 'dark' ? '.dark.png' : '.png';
 const googleAuthButtons = {
-	'--google-auth-btn-normal': `url(${baseUrl}google-auth/normal${type}`,
-	'--google-auth-btn-focus': `url(${baseUrl}google-auth/focus${type}`,
-	'--google-auth-btn-pressed': `url(${baseUrl}google-auth/pressed${type}`,
-	'--google-auth-btn-disabled': `url(${baseUrl}google-auth/disabled${type}`,
+	'--google-auth-btn-normal': `url(${baseUrl}static/google-auth/normal${type}`,
+	'--google-auth-btn-focus': `url(${baseUrl}static/google-auth/focus${type}`,
+	'--google-auth-btn-pressed': `url(${baseUrl}static/google-auth/pressed${type}`,
+	'--google-auth-btn-disabled': `url(${baseUrl}static/google-auth/disabled${type}`,
 };
 </script>
+
+<template>
+	<button
+		:class="$style.googleAuthBtn"
+		:title="$locale.baseText('credentialEdit.oAuthButton.signInWithGoogle')"
+		:style="googleAuthButtons"
+	/>
+</template>
 
 <style module lang="scss">
 .googleAuthBtn {

@@ -1,18 +1,10 @@
-<template>
-	<N8nRoute :to="to" :new-window="newWindow" v-bind="$attrs" class="n8n-link">
-		<span :class="$style[`${underline ? `${theme}-underline` : theme}`]">
-			<N8nText :size="size" :bold="bold">
-				<slot></slot>
-			</N8nText>
-		</span>
-	</N8nRoute>
-</template>
-
 <script lang="ts" setup>
 import type { RouteLocationRaw } from 'vue-router';
-import N8nText from '../N8nText';
-import N8nRoute from '../N8nRoute';
+
 import type { TextSize } from 'n8n-design-system/types/text';
+
+import N8nRoute from '../N8nRoute';
+import N8nText from '../N8nText';
 
 const THEME = ['primary', 'danger', 'text', 'secondary'] as const;
 
@@ -34,6 +26,16 @@ withDefaults(defineProps<LinkProps>(), {
 	theme: 'primary',
 });
 </script>
+
+<template>
+	<N8nRoute :to="to" :new-window="newWindow" v-bind="$attrs" class="n8n-link">
+		<span :class="$style[`${underline ? `${theme}-underline` : theme}`]">
+			<N8nText :size="size" :bold="bold">
+				<slot></slot>
+			</N8nText>
+		</span>
+	</N8nRoute>
+</template>
 
 <style lang="scss" module>
 @import '../../utils';

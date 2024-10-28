@@ -91,7 +91,7 @@ export const useNDVStore = defineStore(STORES.NDV, {
 		ndvInputDataWithPinnedData(): INodeExecutionData[] {
 			const data = this.ndvInputData;
 			return this.ndvInputNodeName
-				? useWorkflowsStore().pinDataByNodeName(this.ndvInputNodeName) ?? data
+				? (useWorkflowsStore().pinDataByNodeName(this.ndvInputNodeName) ?? data)
 				: data;
 		},
 		hasInputData(): boolean {
@@ -151,9 +151,6 @@ export const useNDVStore = defineStore(STORES.NDV, {
 			const parentNodes = workflow.getParentNodes(this.activeNode.name, NodeConnectionType.Main, 1);
 			return parentNodes.includes(inputNodeName);
 		},
-		hoveringItemNumber(): number {
-			return (this.hoveringItem?.itemIndex ?? 0) + 1;
-		},
 		getHoveringItem(): TargetItem | null {
 			if (this.isInputParentOfActiveNode) {
 				return this.hoveringItem;
@@ -161,8 +158,44 @@ export const useNDVStore = defineStore(STORES.NDV, {
 
 			return null;
 		},
+		expressionTargetItem(): TargetItem | null {
+			if (this.getHoveringItem) {
+				return this.getHoveringItem;
+			}
+
+			if (this.expressionOutputItemIndex && this.ndvInputNodeName) {
+				return {
+					nodeName: this.ndvInputNodeName,
+					runIndex: this.ndvInputRunIndex ?? 0,
+					outputIndex: this.ndvInputBranchIndex ?? 0,
+					itemIndex: this.expressionOutputItemIndex,
+				};
+			}
+
+			return null;
+		},
 		isNDVOpen(): boolean {
 			return this.activeNodeName !== null;
+		},
+		ndvNodeInputNumber() {
+			const returnData: { [nodeName: string]: number[] } = {};
+			const workflow = useWorkflowsStore().getCurrentWorkflow();
+			const activeNodeConections = (
+				workflow.connectionsByDestinationNode[this.activeNode?.name || ''] ?? {}
+			).main;
+
+			if (!activeNodeConections || activeNodeConections.length < 2) return returnData;
+
+			for (const [index, connection] of activeNodeConections.entries()) {
+				for (const node of connection) {
+					if (!returnData[node.node]) {
+						returnData[node.node] = [];
+					}
+					returnData[node.node].push(index + 1);
+				}
+			}
+
+			return returnData;
 		},
 	},
 	actions: {

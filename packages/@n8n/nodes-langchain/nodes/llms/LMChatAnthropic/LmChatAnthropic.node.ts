@@ -3,7 +3,7 @@ import {
 	NodeConnectionType,
 	type INodePropertyOptions,
 	type INodeProperties,
-	type IExecuteFunctions,
+	type ISupplyDataFunctions,
 	type INodeType,
 	type INodeTypeDescription,
 	type SupplyData,
@@ -74,7 +74,8 @@ export class LmChatAnthropic implements INodeType {
 		codex: {
 			categories: ['AI'],
 			subcategories: {
-				AI: ['Language Models'],
+				AI: ['Language Models', 'Root Nodes'],
+				'Language Models': ['Chat Models (Recommended)'],
 			},
 			resources: {
 				primaryDocumentation: [
@@ -174,7 +175,7 @@ export class LmChatAnthropic implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials('anthropicApi');
 
 		const modelName = this.getNodeParameter('model', itemIndex) as string;

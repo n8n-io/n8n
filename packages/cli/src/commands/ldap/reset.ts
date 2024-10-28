@@ -1,21 +1,23 @@
-import Container from 'typedi';
-import { LDAP_DEFAULT_CONFIGURATION, LDAP_FEATURE_NAME } from '@/Ldap/constants';
-import { AuthIdentityRepository } from '@db/repositories/authIdentity.repository';
-import { AuthProviderSyncHistoryRepository } from '@db/repositories/authProviderSyncHistory.repository';
-import { SettingsRepository } from '@db/repositories/settings.repository';
-import { UserRepository } from '@db/repositories/user.repository';
-import { BaseCommand } from '../BaseCommand';
-import { Flags } from '@oclif/core';
-import { ApplicationError } from 'n8n-workflow';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { WorkflowService } from '@/workflows/workflow.service';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
-import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
-import { SharedCredentialsRepository } from '@/databases/repositories/sharedCredentials.repository';
-import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
-import { CredentialsService } from '@/credentials/credentials.service';
+import { Flags } from '@oclif/core';
+import { ApplicationError } from 'n8n-workflow';
+import Container from 'typedi';
+
 import { UM_FIX_INSTRUCTION } from '@/constants';
+import { CredentialsService } from '@/credentials/credentials.service';
+import { AuthIdentityRepository } from '@/databases/repositories/auth-identity.repository';
+import { AuthProviderSyncHistoryRepository } from '@/databases/repositories/auth-provider-sync-history.repository';
+import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
+import { SettingsRepository } from '@/databases/repositories/settings.repository';
+import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
+import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
+import { UserRepository } from '@/databases/repositories/user.repository';
+import { LDAP_DEFAULT_CONFIGURATION, LDAP_FEATURE_NAME } from '@/ldap/constants';
+import { WorkflowService } from '@/workflows/workflow.service';
+
+import { BaseCommand } from '../base-command';
 
 const wrongFlagsError =
 	'You must use exactly one of `--userId`, `--projectId` or `--deleteWorkflowsAndCredentials`.';

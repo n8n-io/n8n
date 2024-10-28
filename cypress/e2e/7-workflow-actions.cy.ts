@@ -5,11 +5,11 @@ import {
 	EDIT_FIELDS_SET_NODE_NAME,
 	NOTION_NODE_NAME,
 } from '../constants';
+import { WorkflowExecutionsTab } from '../pages';
+import { errorToast, successToast } from '../pages/notifications';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 import { WorkflowsPage as WorkflowsPageClass } from '../pages/workflows';
 import { getVisibleSelect } from '../utils';
-import { WorkflowExecutionsTab } from '../pages';
-import { errorToast, successToast } from '../pages/notifications';
 
 const NEW_WORKFLOW_NAME = 'Something else';
 const DUPLICATE_WORKFLOW_NAME = 'Duplicated workflow';

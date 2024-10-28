@@ -1,5 +1,6 @@
 import {
 	NodeOperationError,
+	NodeConnectionType,
 	type IExecuteFunctions,
 	type INodeExecutionData,
 	type INodeType,
@@ -28,8 +29,8 @@ export class Summarize implements INodeType {
 		defaults: {
 			name: 'Summarize',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		properties: [
 			{
 				displayName: 'Fields to Summarize',
@@ -237,7 +238,7 @@ export class Summarize implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				options: [
 					{

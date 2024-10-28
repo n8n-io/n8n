@@ -22,7 +22,7 @@ export interface Props {
 }
 
 const emit = defineEmits<{
-	(event: 'authTypeChanged', value: string): void;
+	authTypeChanged: [value: string];
 }>();
 
 const nodeTypesStore = useNodeTypesStore();

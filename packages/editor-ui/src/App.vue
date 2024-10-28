@@ -1,14 +1,91 @@
+<script setup lang="ts">
+import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue';
+import { useRoute } from 'vue-router';
+import LoadingView from '@/views/LoadingView.vue';
+import BannerStack from '@/components/banners/BannerStack.vue';
+import AskAssistantChat from '@/components/AskAssistant/AskAssistantChat.vue';
+import Modals from '@/components/Modals.vue';
+import Telemetry from '@/components/Telemetry.vue';
+import AskAssistantFloatingButton from '@/components/AskAssistant/AskAssistantFloatingButton.vue';
+import { loadLanguage } from '@/plugins/i18n';
+import { useExternalHooks } from '@/composables/useExternalHooks';
+import { APP_MODALS_ELEMENT_ID, HIRING_BANNER, VIEWS } from '@/constants';
+import { useRootStore } from '@/stores/root.store';
+import { useAssistantStore } from '@/stores/assistant.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useHistoryHelper } from '@/composables/useHistoryHelper';
+import { useStyles } from './composables/useStyles';
+
+const route = useRoute();
+const rootStore = useRootStore();
+const assistantStore = useAssistantStore();
+const uiStore = useUIStore();
+const usersStore = useUsersStore();
+const settingsStore = useSettingsStore();
+
+const { setAppZIndexes } = useStyles();
+
+// Initialize undo/redo
+useHistoryHelper(route);
+
+const loading = ref(true);
+const defaultLocale = computed(() => rootStore.defaultLocale);
+const isDemoMode = computed(() => route.name === VIEWS.DEMO);
+const showAssistantButton = computed(() => assistantStore.canShowAssistantButtonsOnCanvas);
+
+const appGrid = ref<Element | null>(null);
+
+const assistantSidebarWidth = computed(() => assistantStore.chatWidth);
+
+watch(defaultLocale, (newLocale) => {
+	void loadLanguage(newLocale);
+});
+
+onMounted(async () => {
+	setAppZIndexes();
+	logHiringBanner();
+	void useExternalHooks().run('app.mount');
+	loading.value = false;
+	window.addEventListener('resize', updateGridWidth);
+	await updateGridWidth();
+});
+
+onBeforeUnmount(() => {
+	window.removeEventListener('resize', updateGridWidth);
+});
+
+// As assistant sidebar width changes, recalculate the total width regularly
+watch(assistantSidebarWidth, async () => {
+	await updateGridWidth();
+});
+
+const logHiringBanner = () => {
+	if (settingsStore.isHiringBannerEnabled && !isDemoMode.value) {
+		console.log(HIRING_BANNER);
+	}
+};
+
+const updateGridWidth = async () => {
+	await nextTick();
+	if (appGrid.value) {
+		uiStore.appGridWidth = appGrid.value.clientWidth;
+	}
+};
+</script>
+
 <template>
-	<div :class="[$style.app, 'root-container']">
-		<LoadingView v-if="loading" />
-		<div
-			v-else
-			id="app"
-			:class="{
-				[$style.container]: true,
-				[$style.sidebarCollapsed]: uiStore.sidebarMenuCollapsed,
-			}"
-		>
+	<LoadingView v-if="loading" />
+	<div
+		v-else
+		id="n8n-app"
+		:class="{
+			[$style.container]: true,
+			[$style.sidebarCollapsed]: uiStore.sidebarMenuCollapsed,
+		}"
+	>
+		<div id="app-grid" ref="appGrid" :class="$style['app-grid']">
 			<div id="banners" :class="$style.banners">
 				<BannerStack v-if="!isDemoMode" />
 			</div>
@@ -20,136 +97,54 @@
 			</div>
 			<div id="content" :class="$style.content">
 				<router-view v-slot="{ Component }">
-					<keep-alive v-if="$route.meta.keepWorkflowAlive" include="NodeView" :max="1">
+					<keep-alive v-if="$route.meta.keepWorkflowAlive" include="NodeViewSwitcher" :max="1">
 						<component :is="Component" />
 					</keep-alive>
 					<component :is="Component" v-else />
 				</router-view>
 			</div>
-			<div id="chat" :class="{ [$style.chat]: true, [$style.open]: aiStore.assistantChatOpen }">
-				<AIAssistantChat v-if="aiStore.assistantChatOpen" />
+			<div :id="APP_MODALS_ELEMENT_ID" :class="$style.modals">
+				<Modals />
 			</div>
-			<Modals />
 			<Telemetry />
+			<AskAssistantFloatingButton v-if="showAssistantButton" />
 		</div>
+		<AskAssistantChat />
 	</div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
-import { mapStores } from 'pinia';
-
-import BannerStack from '@/components/banners/BannerStack.vue';
-import Modals from '@/components/Modals.vue';
-import LoadingView from '@/views/LoadingView.vue';
-import Telemetry from '@/components/Telemetry.vue';
-import { HIRING_BANNER, VIEWS } from '@/constants';
-
-import { loadLanguage } from '@/plugins/i18n';
-import useGlobalLinkActions from '@/composables/useGlobalLinkActions';
-import { useExternalHooks } from '@/composables/useExternalHooks';
-import { useToast } from '@/composables/useToast';
-import { useCloudPlanStore } from '@/stores/cloudPlan.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useRootStore } from '@/stores/root.store';
-import { useSettingsStore } from '@/stores/settings.store';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
-import { useTemplatesStore } from '@/stores/templates.store';
-import { useUIStore } from '@/stores/ui.store';
-import { useUsageStore } from '@/stores/usage.store';
-import { useUsersStore } from '@/stores/users.store';
-import { useHistoryHelper } from '@/composables/useHistoryHelper';
-import { useRoute } from 'vue-router';
-import { useAIStore } from './stores/ai.store';
-import AIAssistantChat from './components/AIAssistantChat/AIAssistantChat.vue';
-
-export default defineComponent({
-	name: 'App',
-	components: {
-		BannerStack,
-		LoadingView,
-		Telemetry,
-		Modals,
-		AIAssistantChat,
-	},
-	setup() {
-		return {
-			...useGlobalLinkActions(),
-			...useHistoryHelper(useRoute()),
-			...useToast(),
-			externalHooks: useExternalHooks(),
-		};
-	},
-	computed: {
-		...mapStores(
-			useNodeTypesStore,
-			useRootStore,
-			useSettingsStore,
-			useTemplatesStore,
-			useUIStore,
-			useUsersStore,
-			useSourceControlStore,
-			useCloudPlanStore,
-			useUsageStore,
-			useAIStore,
-		),
-		defaultLocale(): string {
-			return this.rootStore.defaultLocale;
-		},
-		isDemoMode(): boolean {
-			return this.$route.name === VIEWS.DEMO;
-		},
-	},
-	data() {
-		return {
-			loading: true,
-		};
-	},
-	watch: {
-		defaultLocale(newLocale) {
-			void loadLanguage(newLocale);
-		},
-	},
-	async mounted() {
-		this.logHiringBanner();
-		void useExternalHooks().run('app.mount');
-		this.loading = false;
-	},
-	methods: {
-		logHiringBanner() {
-			if (this.settingsStore.isHiringBannerEnabled && !this.isDemoMode) {
-				console.log(HIRING_BANNER);
-			}
-		},
-	},
-});
-</script>
-
 <style lang="scss" module>
-.app {
+// On the root level, whole app is a flex container
+// with app grid and assistant sidebar as children
+.container {
 	height: 100vh;
 	overflow: hidden;
+	display: flex;
 }
 
-.container {
+// App grid is the main app layout including modals and other absolute positioned elements
+.app-grid {
+	position: relative;
 	display: grid;
-	grid-template-areas:
-		'banners banners banners'
-		'sidebar header chat'
-		'sidebar content chat';
-	grid-auto-columns: fit-content($sidebar-expanded-width) 1fr fit-content($chat-width);
-	grid-template-rows: auto fit-content($header-height) 1fr;
 	height: 100vh;
+	flex-basis: 100%;
+	grid-template-areas:
+		'banners banners'
+		'sidebar header'
+		'sidebar content';
+	grid-auto-columns: minmax(0, max-content) 1fr;
+	grid-template-rows: auto fit-content($header-height) 1fr;
 }
 
 .banners {
 	grid-area: banners;
-	z-index: 999;
+	z-index: var(--z-index-top-banners);
 }
 
 .content {
 	display: flex;
 	grid-area: content;
+	position: relative;
 	overflow: auto;
 	height: 100%;
 	width: 100%;
@@ -163,23 +158,16 @@ export default defineComponent({
 
 .header {
 	grid-area: header;
-	z-index: 99;
+	z-index: var(--z-index-app-header);
 }
 
 .sidebar {
 	grid-area: sidebar;
 	height: 100%;
-	z-index: 999;
+	z-index: var(--z-index-app-sidebar);
 }
-.chat {
-	grid-area: chat;
-	z-index: 999;
-	height: 100%;
-	width: 0;
-	transition: all 0.2s ease-in-out;
 
-	&.open {
-		width: $chat-width;
-	}
+.modals {
+	width: 100%;
 }
 </style>

@@ -1,10 +1,12 @@
 {
 	"recommendations": [
+		"biomejs.biome",
 		"streetsidesoftware.code-spell-checker",
 		"dangmai.workspace-default-settings",
 		"dbaeumer.vscode-eslint",
 		"EditorConfig.EditorConfig",
 		"esbenp.prettier-vscode",
+		"mjmlio.vscode-mjml",
 		"Vue.volar"
 	]
 }

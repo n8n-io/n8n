@@ -1,44 +1,3 @@
-<template>
-	<div :class="$style.filters" class="template-filters" data-test-id="templates-filter-container">
-		<div :class="$style.title" v-text="$locale.baseText('templates.categoriesHeading')" />
-		<div v-if="loading" :class="$style.list">
-			<n8n-loading :loading="loading" :rows="expandLimit" />
-		</div>
-		<ul v-if="!loading" :class="$style.categories">
-			<li :class="$style.item" data-test-id="template-filter-all-categories">
-				<el-checkbox :model-value="allSelected" @update:model-value="() => resetCategories()">
-					{{ $locale.baseText('templates.allCategories') }}
-				</el-checkbox>
-			</li>
-			<li
-				v-for="(category, index) in collapsed
-					? sortedCategories.slice(0, expandLimit)
-					: sortedCategories"
-				:key="index"
-				:class="$style.item"
-				:data-test-id="`template-filter-${category.name.toLowerCase().replaceAll(' ', '-')}`"
-			>
-				<el-checkbox
-					:model-value="isSelected(category)"
-					@update:model-value="(value: boolean) => handleCheckboxChanged(value, category)"
-				>
-					{{ category.name }}
-				</el-checkbox>
-			</li>
-		</ul>
-		<div
-			v-if="sortedCategories.length > expandLimit && collapsed && !loading"
-			:class="$style.button"
-			data-test-id="expand-categories-button"
-			@click="collapseAction"
-		>
-			<n8n-text size="small" color="primary">
-				+ {{ `${sortedCategories.length - expandLimit} more` }}
-			</n8n-text>
-		</div>
-	</div>
-</template>
-
 <script lang="ts">
 import { defineComponent } from 'vue';
 import type { ITemplatesCategory } from '@/Interface';
@@ -126,6 +85,47 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<div :class="$style.filters" class="template-filters" data-test-id="templates-filter-container">
+		<div :class="$style.title" v-text="$locale.baseText('templates.categoriesHeading')" />
+		<div v-if="loading" :class="$style.list">
+			<n8n-loading :loading="loading" :rows="expandLimit" />
+		</div>
+		<ul v-if="!loading" :class="$style.categories">
+			<li :class="$style.item" data-test-id="template-filter-all-categories">
+				<el-checkbox :model-value="allSelected" @update:model-value="() => resetCategories()">
+					{{ $locale.baseText('templates.allCategories') }}
+				</el-checkbox>
+			</li>
+			<li
+				v-for="(category, index) in collapsed
+					? sortedCategories.slice(0, expandLimit)
+					: sortedCategories"
+				:key="index"
+				:class="$style.item"
+				:data-test-id="`template-filter-${category.name.toLowerCase().replaceAll(' ', '-')}`"
+			>
+				<el-checkbox
+					:model-value="isSelected(category)"
+					@update:model-value="(value: boolean) => handleCheckboxChanged(value, category)"
+				>
+					{{ category.name }}
+				</el-checkbox>
+			</li>
+		</ul>
+		<div
+			v-if="sortedCategories.length > expandLimit && collapsed && !loading"
+			:class="$style.button"
+			data-test-id="expand-categories-button"
+			@click="collapseAction"
+		>
+			<n8n-text size="small" color="primary">
+				+ {{ `${sortedCategories.length - expandLimit} more` }}
+			</n8n-text>
+		</div>
+	</div>
+</template>
 
 <style lang="scss" module>
 .title {

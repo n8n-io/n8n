@@ -1,6 +1,5 @@
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type {
-	ConnectionTypes,
 	INodeInputConfiguration,
 	INodeInputFilter,
 	IExecuteFunctions,
@@ -9,8 +8,7 @@ import type {
 	INodeTypeDescription,
 	INodeProperties,
 } from 'n8n-workflow';
-import { getTemplateNoticeField } from '../../../utils/sharedFields';
-import { promptTypeOptions, textInput } from '../../../utils/descriptions';
+
 import { conversationalAgentProperties } from './agents/ConversationalAgent/description';
 import { conversationalAgentExecute } from './agents/ConversationalAgent/execute';
 import { openAiFunctionsAgentProperties } from './agents/OpenAiFunctionsAgent/description';
@@ -23,22 +21,23 @@ import { sqlAgentAgentProperties } from './agents/SqlAgent/description';
 import { sqlAgentAgentExecute } from './agents/SqlAgent/execute';
 import { toolsAgentProperties } from './agents/ToolsAgent/description';
 import { toolsAgentExecute } from './agents/ToolsAgent/execute';
+import { promptTypeOptions, textInput } from '../../../utils/descriptions';
 
 // Function used in the inputs expression to figure out which inputs to
 // display based on the agent type
 function getInputs(
 	agent: 'toolsAgent' | 'conversationalAgent' | 'openAiFunctionsAgent' | 'reActAgent' | 'sqlAgent',
 	hasOutputParser?: boolean,
-): Array<ConnectionTypes | INodeInputConfiguration> {
+): Array<NodeConnectionType | INodeInputConfiguration> {
 	interface SpecialInput {
-		type: ConnectionTypes;
+		type: NodeConnectionType;
 		filter?: INodeInputFilter;
 		required?: boolean;
 	}
 
 	const getInputData = (
 		inputs: SpecialInput[],
-	): Array<ConnectionTypes | INodeInputConfiguration> => {
+	): Array<NodeConnectionType | INodeInputConfiguration> => {
 		const displayNames: { [key: string]: string } = {
 			[NodeConnectionType.AiLanguageModel]: 'Model',
 			[NodeConnectionType.AiMemory]: 'Memory',
@@ -47,10 +46,18 @@ function getInputs(
 		};
 
 		return inputs.map(({ type, filter }) => {
+			const isModelType = type === NodeConnectionType.AiLanguageModel;
+			let displayName = type in displayNames ? displayNames[type] : undefined;
+			if (
+				isModelType &&
+				['openAiFunctionsAgent', 'toolsAgent', 'conversationalAgent'].includes(agent)
+			) {
+				displayName = 'Chat Model';
+			}
 			const input: INodeInputConfiguration = {
 				type,
-				displayName: type in displayNames ? displayNames[type] : undefined,
-				required: type === NodeConnectionType.AiLanguageModel,
+				displayName,
+				required: isModelType,
 				maxConnections: [NodeConnectionType.AiLanguageModel, NodeConnectionType.AiMemory].includes(
 					type as NodeConnectionType,
 				)
@@ -75,11 +82,12 @@ function getInputs(
 				filter: {
 					nodes: [
 						'@n8n/n8n-nodes-langchain.lmChatAnthropic',
+						'@n8n/n8n-nodes-langchain.lmChatAwsBedrock',
 						'@n8n/n8n-nodes-langchain.lmChatGroq',
 						'@n8n/n8n-nodes-langchain.lmChatOllama',
 						'@n8n/n8n-nodes-langchain.lmChatOpenAi',
-						'@n8n/n8n-nodes-langchain.lmChatGooglePalm',
 						'@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						'@n8n/n8n-nodes-langchain.lmChatGoogleVertex',
 						'@n8n/n8n-nodes-langchain.lmChatMistralCloud',
 						'@n8n/n8n-nodes-langchain.lmChatAzureOpenAi',
 					],
@@ -103,9 +111,13 @@ function getInputs(
 					nodes: [
 						'@n8n/n8n-nodes-langchain.lmChatAnthropic',
 						'@n8n/n8n-nodes-langchain.lmChatAzureOpenAi',
+						'@n8n/n8n-nodes-langchain.lmChatAwsBedrock',
 						'@n8n/n8n-nodes-langchain.lmChatMistralCloud',
+						'@n8n/n8n-nodes-langchain.lmChatOllama',
 						'@n8n/n8n-nodes-langchain.lmChatOpenAi',
 						'@n8n/n8n-nodes-langchain.lmChatGroq',
+						'@n8n/n8n-nodes-langchain.lmChatGoogleVertex',
+						'@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
 					],
 				},
 			},
@@ -196,35 +208,37 @@ const agentTypeProperty: INodeProperties = {
 			name: 'Tools Agent',
 			value: 'toolsAgent',
 			description:
-				'Utilized unified Tool calling interface to select the appropriate tools and argument for execution',
+				'Utilizes structured tool schemas for precise and reliable tool selection and execution. Recommended for complex tasks requiring accurate and consistent tool usage, but only usable with models that support tool calling.',
 		},
 		{
 			name: 'Conversational Agent',
 			value: 'conversationalAgent',
 			description:
-				'Selects tools to accomplish its task and uses memory to recall previous conversations',
+				'Describes tools in the system prompt and parses JSON responses for tool calls. More flexible but potentially less reliable than the Tools Agent. Suitable for simpler interactions or with models not supporting structured schemas.',
 		},
 		{
 			name: 'OpenAI Functions Agent',
 			value: 'openAiFunctionsAgent',
 			description:
-				"Utilizes OpenAI's Function Calling feature to select the appropriate tool and arguments for execution",
+				"Leverages OpenAI's function calling capabilities to precisely select and execute tools. Excellent for tasks requiring structured outputs when working with OpenAI models.",
 		},
 		{
 			name: 'Plan and Execute Agent',
 			value: 'planAndExecuteAgent',
 			description:
-				'Plan and execute agents accomplish an objective by first planning what to do, then executing the sub tasks',
+				'Creates a high-level plan for complex tasks and then executes each step. Suitable for multi-stage problems or when a strategic approach is needed.',
 		},
 		{
 			name: 'ReAct Agent',
 			value: 'reActAgent',
-			description: 'Strategically select tools to accomplish a given task',
+			description:
+				'Combines reasoning and action in an iterative process. Effective for tasks that require careful analysis and step-by-step problem-solving.',
 		},
 		{
 			name: 'SQL Agent',
 			value: 'sqlAgent',
-			description: 'Answers questions about data in an SQL database',
+			description:
+				'Specializes in interacting with SQL databases. Ideal for data analysis tasks, generating queries, or extracting insights from structured data.',
 		},
 	],
 	default: '',
@@ -237,7 +251,7 @@ export class Agent implements INodeType {
 		icon: 'fa:robot',
 		iconColor: 'black',
 		group: ['transform'],
-		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6],
+		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7],
 		description: 'Generates an action plan and executes it. Can use external tools.',
 		subtitle:
 			"={{ {	toolsAgent: 'Tools Agent', conversationalAgent: 'Conversational Agent', openAiFunctionsAgent: 'OpenAI Functions Agent', reActAgent: 'ReAct Agent', sqlAgent: 'SQL Agent', planAndExecuteAgent: 'Plan and Execute Agent' }[$parameter.agent] }}",
@@ -246,7 +260,7 @@ export class Agent implements INodeType {
 			color: '#404040',
 		},
 		codex: {
-			alias: ['LangChain'],
+			alias: ['LangChain', 'Chat', 'Conversational', 'Plan and Execute', 'ReAct', 'Tools'],
 			categories: ['AI'],
 			subcategories: {
 				AI: ['Agents', 'Root Nodes'],
@@ -292,10 +306,14 @@ export class Agent implements INodeType {
 		],
 		properties: [
 			{
-				...getTemplateNoticeField(1954),
+				displayName:
+					'Tip: Get a feel for agents with our quick <a href="https://docs.n8n.io/advanced-ai/intro-tutorial/" target="_blank">tutorial</a> or see an <a href="/templates/1954" target="_blank">example</a> of how this node works',
+				name: 'notice_tip',
+				type: 'notice',
+				default: '',
 				displayOptions: {
 					show: {
-						agent: ['conversationalAgent'],
+						agent: ['conversationalAgent', 'toolsAgent'],
 					},
 				},
 			},
@@ -335,6 +353,23 @@ export class Agent implements INodeType {
 				},
 			},
 			{
+				displayName: 'For more reliable structured output parsing, consider using the Tools agent',
+				name: 'notice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						hasOutputParser: [true],
+						agent: [
+							'conversationalAgent',
+							'reActAgent',
+							'planAndExecuteAgent',
+							'openAiFunctionsAgent',
+						],
+					},
+				},
+			},
+			{
 				displayName: 'Require Specific Output Format',
 				name: 'hasOutputParser',
 				type: 'boolean',
@@ -355,6 +390,7 @@ export class Agent implements INodeType {
 				displayOptions: {
 					show: {
 						hasOutputParser: [true],
+						agent: ['toolsAgent'],
 					},
 				},
 			},

@@ -1,147 +1,7 @@
-<template>
-	<el-dialog
-		:model-value="(!!activeNode || renaming) && !isActiveStickyNode"
-		:before-close="close"
-		:show-close="false"
-		class="data-display-wrapper ndv-wrapper"
-		overlay-class="data-display-overlay"
-		width="auto"
-		append-to-body
-		data-test-id="ndv"
-		:data-has-output-connection="hasOutputConnection"
-	>
-		<n8n-tooltip
-			placement="bottom-start"
-			:visible="showTriggerWaitingWarning"
-			:disabled="!showTriggerWaitingWarning"
-		>
-			<template #content>
-				<div :class="$style.triggerWarning">
-					{{ $locale.baseText('ndv.backToCanvas.waitingForTriggerWarning') }}
-				</div>
-			</template>
-			<div :class="$style.backToCanvas" data-test-id="back-to-canvas" @click="close">
-				<n8n-icon icon="arrow-left" color="text-xlight" size="medium" />
-				<n8n-text color="text-xlight" size="medium" :bold="true">
-					{{ $locale.baseText('ndv.backToCanvas') }}
-				</n8n-text>
-			</div>
-		</n8n-tooltip>
-
-		<div
-			v-if="activeNode"
-			ref="container"
-			class="data-display"
-			tabindex="0"
-			@keydown.capture="onKeyDown"
-		>
-			<div :class="$style.modalBackground" @click="close"></div>
-			<NDVDraggablePanels
-				:key="activeNode.name"
-				:is-trigger-node="isTriggerNode"
-				:hide-input-and-output="activeNodeType === null"
-				:position="isTriggerNode && !showTriggerPanel ? 0 : undefined"
-				:is-draggable="!isTriggerNode"
-				:has-double-width="activeNodeType?.parameterPane === 'wide'"
-				:node-type="activeNodeType"
-				@switch-selected-node="onSwitchSelectedNode"
-				@open-connection-node-creator="onOpenConnectionNodeCreator"
-				@close="close"
-				@init="onPanelsInit"
-				@dragstart="onDragStart"
-				@dragend="onDragEnd"
-			>
-				<template v-if="showTriggerPanel || !isTriggerNode" #input>
-					<TriggerPanel
-						v-if="showTriggerPanel"
-						:node-name="activeNode.name"
-						:push-ref="pushRef"
-						@execute="onNodeExecute"
-						@activate="onWorkflowActivate"
-					/>
-					<InputPanel
-						v-else-if="!isTriggerNode"
-						:workflow="workflow"
-						:can-link-runs="canLinkRuns"
-						:run-index="inputRun"
-						:linked-runs="linked"
-						:current-node-name="inputNodeName"
-						:push-ref="pushRef"
-						:read-only="readOnly || hasForeignCredential"
-						:is-production-execution-preview="isProductionExecutionPreview"
-						:is-pane-active="isInputPaneActive"
-						@activate-pane="activateInputPane"
-						@link-run="onLinkRunToInput"
-						@unlink-run="() => onUnlinkRun('input')"
-						@run-change="onRunInputIndexChange"
-						@open-settings="openSettings"
-						@change-input-node="onInputNodeChange"
-						@execute="onNodeExecute"
-						@table-mounted="onInputTableMounted"
-						@item-hover="onInputItemHover"
-						@search="onSearch"
-					/>
-				</template>
-				<template #output>
-					<OutputPanel
-						data-test-id="output-panel"
-						:workflow="workflow"
-						:can-link-runs="canLinkRuns"
-						:run-index="outputRun"
-						:linked-runs="linked"
-						:push-ref="pushRef"
-						:is-read-only="readOnly || hasForeignCredential"
-						:block-u-i="blockUi && isTriggerNode && !isExecutableTriggerNode"
-						:is-production-execution-preview="isProductionExecutionPreview"
-						:is-pane-active="isOutputPaneActive"
-						@activate-pane="activateOutputPane"
-						@link-run="onLinkRunToOutput"
-						@unlink-run="() => onUnlinkRun('output')"
-						@run-change="onRunOutputIndexChange"
-						@open-settings="openSettings"
-						@table-mounted="onOutputTableMounted"
-						@item-hover="onOutputItemHover"
-						@search="onSearch"
-					/>
-				</template>
-				<template #main>
-					<NodeSettings
-						:event-bus="settingsEventBus"
-						:dragging="isDragging"
-						:push-ref="pushRef"
-						:node-type="activeNodeType"
-						:foreign-credentials="foreignCredentials"
-						:read-only="readOnly"
-						:block-u-i="blockUi && showTriggerPanel"
-						:executable="!readOnly"
-						:input-size="inputSize"
-						@value-changed="valueChanged"
-						@execute="onNodeExecute"
-						@stop-execution="onStopExecution"
-						@redraw-required="redrawRequired = true"
-						@activate="onWorkflowActivate"
-						@switch-selected-node="onSwitchSelectedNode"
-						@open-connection-node-creator="onOpenConnectionNodeCreator"
-					/>
-					<a
-						v-if="featureRequestUrl"
-						:class="$style.featureRequest"
-						target="_blank"
-						@click="onFeatureRequestClick"
-					>
-						<font-awesome-icon icon="lightbulb" />
-						{{ $locale.baseText('ndv.featureRequest') }}
-					</a>
-				</template>
-			</NDVDraggablePanels>
-		</div>
-	</el-dialog>
-</template>
-
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue';
 import { createEventBus } from 'n8n-design-system/utils';
-import type { IRunData, ConnectionTypes } from 'n8n-workflow';
+import type { IRunData, Workflow } from 'n8n-workflow';
 import { jsonParse, NodeHelpers, NodeConnectionType } from 'n8n-workflow';
 import type { IUpdateInformation, TargetItem } from '@/Interface';
 
@@ -152,6 +12,7 @@ import OutputPanel from './OutputPanel.vue';
 import InputPanel from './InputPanel.vue';
 import TriggerPanel from './TriggerPanel.vue';
 import {
+	APP_MODALS_ELEMENT_ID,
 	BASE_NODE_SURVEY_URL,
 	EnterpriseEditionFeature,
 	EXECUTABLE_TRIGGER_NODE_TYPES,
@@ -160,6 +21,7 @@ import {
 	STICKY_NODE_TYPE,
 } from '@/constants';
 import { useWorkflowActivate } from '@/composables/useWorkflowActivate';
+import type { DataPinningDiscoveryEvent } from '@/event-bus';
 import { dataPinningEventBus } from '@/event-bus';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -171,29 +33,30 @@ import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useMessage } from '@/composables/useMessage';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { usePinnedData } from '@/composables/usePinnedData';
-import { useRouter } from 'vue-router';
-import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@/composables/useI18n';
 import { storeToRefs } from 'pinia';
+import { useStyles } from '@/composables/useStyles';
 
-const emit = defineEmits([
-	'saveKeyboardShortcut',
-	'valueChanged',
-	'switchSelectedNode',
-	'openConnectionNodeCreator',
-	'redrawNode',
-	'stopExecution',
-]);
+const emit = defineEmits<{
+	saveKeyboardShortcut: [event: KeyboardEvent];
+	valueChanged: [parameterData: IUpdateInformation];
+	switchSelectedNode: [nodeTypeName: string];
+	openConnectionNodeCreator: [nodeTypeName: string, connectionType: NodeConnectionType];
+	redrawNode: [nodeName: string];
+	stopExecution: [];
+}>();
 
 const props = withDefaults(
 	defineProps<{
+		workflowObject: Workflow;
 		readOnly?: boolean;
 		renaming?: boolean;
 		isProductionExecutionPreview?: boolean;
 	}>(),
 	{
 		isProductionExecutionPreview: false,
+		readOnly: false,
 	},
 );
 
@@ -202,8 +65,6 @@ const externalHooks = useExternalHooks();
 const nodeHelpers = useNodeHelpers();
 const { activeNode } = storeToRefs(ndvStore);
 const pinnedData = usePinnedData(activeNode);
-const router = useRouter();
-const workflowHelpers = useWorkflowHelpers({ router });
 const workflowActivate = useWorkflowActivate();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
@@ -213,6 +74,7 @@ const deviceSupport = useDeviceSupport();
 const telemetry = useTelemetry();
 const i18n = useI18n();
 const message = useMessage();
+const { APP_Z_INDEXES } = useStyles();
 
 const settingsEventBus = createEventBus();
 const redrawRequired = ref(false);
@@ -241,7 +103,7 @@ const activeNodeType = computed(() => {
 	return null;
 });
 
-const workflowRunning = computed(() => uiStore.isActionActive('workflowRunning'));
+const workflowRunning = computed(() => uiStore.isActionActive.workflowRunning);
 
 const showTriggerWaitingWarning = computed(
 	() =>
@@ -266,12 +128,12 @@ const workflowRunData = computed(() => {
 	return null;
 });
 
-const workflow = computed(() => workflowHelpers.getCurrentWorkflow());
-
 const parentNodes = computed(() => {
 	if (activeNode.value) {
 		return (
-			workflow.value.getParentNodesByDepth(activeNode.value.name, 1).map(({ name }) => name) || []
+			props.workflowObject
+				.getParentNodesByDepth(activeNode.value.name, 1)
+				.map(({ name }) => name) || []
 		);
 	} else {
 		return [];
@@ -374,13 +236,17 @@ const maxInputRun = computed(() => {
 		return 0;
 	}
 
-	const workflowNode = workflow.value.getNode(activeNode.value.name);
+	const workflowNode = props.workflowObject.getNode(activeNode.value.name);
 
 	if (!workflowNode || !activeNodeType.value) {
 		return 0;
 	}
 
-	const outputs = NodeHelpers.getNodeOutputs(workflow.value, workflowNode, activeNodeType.value);
+	const outputs = NodeHelpers.getNodeOutputs(
+		props.workflowObject,
+		workflowNode,
+		activeNodeType.value,
+	);
 
 	let node = inputNode.value;
 
@@ -427,7 +293,7 @@ const featureRequestUrl = computed(() => {
 
 const outputPanelEditMode = computed(() => ndvStore.outputPanelEditMode);
 
-const isWorkflowRunning = computed(() => uiStore.isActionActive('workflowRunning'));
+const isWorkflowRunning = computed(() => uiStore.isActionActive.workflowRunning);
 
 const isExecutionWaitingForWebhook = computed(() => workflowsStore.executionWaitingForWebhook);
 
@@ -438,7 +304,7 @@ const foreignCredentials = computed(() => {
 	const usedCredentials = workflowsStore.usedCredentials;
 
 	const foreignCredentialsArray: string[] = [];
-	if (credentials && settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
+	if (credentials && settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing]) {
 		Object.values(credentials).forEach((credential) => {
 			if (
 				credential.id &&
@@ -457,7 +323,7 @@ const hasForeignCredential = computed(() => foreignCredentials.value.length > 0)
 
 //methods
 
-const setIsTooltipVisible = ({ isTooltipVisible }: { isTooltipVisible: boolean }) => {
+const setIsTooltipVisible = ({ isTooltipVisible }: DataPinningDiscoveryEvent) => {
 	pinDataDiscoveryTooltipVisible.value = isTooltipVisible;
 };
 
@@ -596,7 +462,7 @@ const onSwitchSelectedNode = (nodeTypeName: string) => {
 	emit('switchSelectedNode', nodeTypeName);
 };
 
-const onOpenConnectionNodeCreator = (nodeTypeName: string, connectionType: ConnectionTypes) => {
+const onOpenConnectionNodeCreator = (nodeTypeName: string, connectionType: NodeConnectionType) => {
 	emit('openConnectionNodeCreator', nodeTypeName, connectionType);
 };
 
@@ -729,11 +595,7 @@ watch(
 			}
 
 			void externalHooks.run('dataDisplay.nodeTypeChanged', {
-				nodeSubtitle: nodeHelpers.getNodeSubtitle(
-					node,
-					activeNodeType.value,
-					workflowHelpers.getCurrentWorkflow(),
-				),
+				nodeSubtitle: nodeHelpers.getNodeSubtitle(node, activeNodeType.value, props.workflowObject),
 			});
 
 			setTimeout(() => {
@@ -797,6 +659,147 @@ onBeforeUnmount(() => {
 	dataPinningEventBus.off('data-pinning-discovery', setIsTooltipVisible);
 });
 </script>
+
+<template>
+	<el-dialog
+		:model-value="(!!activeNode || renaming) && !isActiveStickyNode"
+		:before-close="close"
+		:show-close="false"
+		class="data-display-wrapper ndv-wrapper"
+		overlay-class="data-display-overlay"
+		width="auto"
+		:append-to="`#${APP_MODALS_ELEMENT_ID}`"
+		data-test-id="ndv"
+		:z-index="APP_Z_INDEXES.NDV"
+		:data-has-output-connection="hasOutputConnection"
+	>
+		<n8n-tooltip
+			placement="bottom-start"
+			:visible="showTriggerWaitingWarning"
+			:disabled="!showTriggerWaitingWarning"
+		>
+			<template #content>
+				<div :class="$style.triggerWarning">
+					{{ $locale.baseText('ndv.backToCanvas.waitingForTriggerWarning') }}
+				</div>
+			</template>
+			<div :class="$style.backToCanvas" data-test-id="back-to-canvas" @click="close">
+				<n8n-icon icon="arrow-left" color="text-xlight" size="medium" />
+				<n8n-text color="text-xlight" size="medium" :bold="true">
+					{{ $locale.baseText('ndv.backToCanvas') }}
+				</n8n-text>
+			</div>
+		</n8n-tooltip>
+
+		<div
+			v-if="activeNode"
+			ref="container"
+			class="data-display"
+			tabindex="0"
+			@keydown.capture="onKeyDown"
+		>
+			<div :class="$style.modalBackground" @click="close"></div>
+			<NDVDraggablePanels
+				:key="activeNode.name"
+				:is-trigger-node="isTriggerNode"
+				:hide-input-and-output="activeNodeType === null"
+				:position="isTriggerNode && !showTriggerPanel ? 0 : undefined"
+				:is-draggable="!isTriggerNode"
+				:has-double-width="activeNodeType?.parameterPane === 'wide'"
+				:node-type="activeNodeType"
+				@switch-selected-node="onSwitchSelectedNode"
+				@open-connection-node-creator="onOpenConnectionNodeCreator"
+				@close="close"
+				@init="onPanelsInit"
+				@dragstart="onDragStart"
+				@dragend="onDragEnd"
+			>
+				<template v-if="showTriggerPanel || !isTriggerNode" #input>
+					<TriggerPanel
+						v-if="showTriggerPanel"
+						:node-name="activeNode.name"
+						:push-ref="pushRef"
+						@execute="onNodeExecute"
+						@activate="onWorkflowActivate"
+					/>
+					<InputPanel
+						v-else-if="!isTriggerNode"
+						:workflow="workflowObject"
+						:can-link-runs="canLinkRuns"
+						:run-index="inputRun"
+						:linked-runs="linked"
+						:current-node-name="inputNodeName"
+						:push-ref="pushRef"
+						:read-only="readOnly || hasForeignCredential"
+						:is-production-execution-preview="isProductionExecutionPreview"
+						:is-pane-active="isInputPaneActive"
+						@activate-pane="activateInputPane"
+						@link-run="onLinkRunToInput"
+						@unlink-run="() => onUnlinkRun('input')"
+						@run-change="onRunInputIndexChange"
+						@open-settings="openSettings"
+						@change-input-node="onInputNodeChange"
+						@execute="onNodeExecute"
+						@table-mounted="onInputTableMounted"
+						@item-hover="onInputItemHover"
+						@search="onSearch"
+					/>
+				</template>
+				<template #output>
+					<OutputPanel
+						data-test-id="output-panel"
+						:workflow="workflowObject"
+						:can-link-runs="canLinkRuns"
+						:run-index="outputRun"
+						:linked-runs="linked"
+						:push-ref="pushRef"
+						:is-read-only="readOnly || hasForeignCredential"
+						:block-u-i="blockUi && isTriggerNode && !isExecutableTriggerNode"
+						:is-production-execution-preview="isProductionExecutionPreview"
+						:is-pane-active="isOutputPaneActive"
+						@activate-pane="activateOutputPane"
+						@link-run="onLinkRunToOutput"
+						@unlink-run="() => onUnlinkRun('output')"
+						@run-change="onRunOutputIndexChange"
+						@open-settings="openSettings"
+						@table-mounted="onOutputTableMounted"
+						@item-hover="onOutputItemHover"
+						@search="onSearch"
+					/>
+				</template>
+				<template #main>
+					<NodeSettings
+						:event-bus="settingsEventBus"
+						:dragging="isDragging"
+						:push-ref="pushRef"
+						:node-type="activeNodeType"
+						:foreign-credentials="foreignCredentials"
+						:read-only="readOnly"
+						:block-u-i="blockUi && showTriggerPanel"
+						:executable="!readOnly"
+						:input-size="inputSize"
+						@value-changed="valueChanged"
+						@execute="onNodeExecute"
+						@stop-execution="onStopExecution"
+						@redraw-required="redrawRequired = true"
+						@activate="onWorkflowActivate"
+						@switch-selected-node="onSwitchSelectedNode"
+						@open-connection-node-creator="onOpenConnectionNodeCreator"
+					/>
+					<a
+						v-if="featureRequestUrl"
+						:class="$style.featureRequest"
+						target="_blank"
+						@click="onFeatureRequestClick"
+					>
+						<font-awesome-icon icon="lightbulb" />
+						{{ $locale.baseText('ndv.featureRequest') }}
+					</a>
+				</template>
+			</NDVDraggablePanels>
+		</div>
+	</el-dialog>
+</template>
 
 <style lang="scss">
 // Hide notice(.ndv-connection-hint-notice) warning when node has output connection

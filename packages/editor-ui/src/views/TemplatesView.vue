@@ -1,19 +1,3 @@
-<template>
-	<div :class="$style.template">
-		<div :class="$style.container">
-			<div :class="$style.header">
-				<div v-if="goBackEnabled" :class="$style.goBack">
-					<GoBackButton />
-				</div>
-				<slot name="header"></slot>
-			</div>
-			<div>
-				<slot name="content"></slot>
-			</div>
-		</div>
-	</div>
-</template>
-
 <script lang="ts">
 import { defineComponent } from 'vue';
 import GoBackButton from '@/components/GoBackButton.vue';
@@ -31,6 +15,22 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<div :class="$style.template">
+		<div :class="$style.container">
+			<div :class="$style.header">
+				<div v-if="goBackEnabled" :class="$style.goBack">
+					<GoBackButton />
+				</div>
+				<slot name="header"></slot>
+			</div>
+			<div>
+				<slot name="content"></slot>
+			</div>
+		</div>
+	</div>
+</template>
 
 <style lang="scss" module>
 .template {

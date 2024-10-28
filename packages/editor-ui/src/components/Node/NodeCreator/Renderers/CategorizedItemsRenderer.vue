@@ -106,7 +106,7 @@ registerKeyHook(`CategoryLeft_${props.category}`, {
 				<n8n-tooltip placement="top" :popper-class="$style.tooltipPopper">
 					<n8n-icon icon="question-circle" size="small" />
 					<template #content>
-						<div v-html="mouseOverTooltip" />
+						<div v-n8n-html="mouseOverTooltip" />
 					</template>
 				</n8n-tooltip>
 			</span>

@@ -1,9 +1,10 @@
 <script lang="ts" setup>
 import { h, inject } from 'vue';
 import CanvasNodeDefault from '@/components/canvas/elements/nodes/render-types/CanvasNodeDefault.vue';
-import CanvasNodeConfiguration from '@/components/canvas/elements/nodes/render-types/CanvasNodeConfiguration.vue';
-import CanvasNodeConfigurable from '@/components/canvas/elements/nodes/render-types/CanvasNodeConfigurable.vue';
+import CanvasNodeStickyNote from '@/components/canvas/elements/nodes/render-types/CanvasNodeStickyNote.vue';
+import CanvasNodeAddNodes from '@/components/canvas/elements/nodes/render-types/CanvasNodeAddNodes.vue';
 import { CanvasNodeKey } from '@/constants';
+import { CanvasNodeRenderType } from '@/types';
 
 const node = inject(CanvasNodeKey);
 
@@ -13,19 +14,13 @@ const slots = defineSlots<{
 
 const Render = () => {
 	let Component;
-	switch (node?.data.value.renderType) {
-		case 'configurable':
-			Component = CanvasNodeConfigurable;
+	switch (node?.data.value.render.type) {
+		case CanvasNodeRenderType.StickyNote:
+			Component = CanvasNodeStickyNote;
 			break;
-
-		case 'configuration':
-			Component = CanvasNodeConfiguration;
+		case CanvasNodeRenderType.AddNodes:
+			Component = CanvasNodeAddNodes;
 			break;
-
-		case 'trigger':
-			Component = CanvasNodeDefault;
-			break;
-
 		default:
 			Component = CanvasNodeDefault;
 	}

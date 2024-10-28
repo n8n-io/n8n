@@ -1,3 +1,46 @@
+<script setup lang="ts">
+import NodeIcon from '@/components/NodeIcon.vue';
+import type { INodeTypeDescription } from 'n8n-workflow';
+import { computed, nextTick, ref } from 'vue';
+
+type Props = {
+	modelValue: string;
+	nodeType?: INodeTypeDescription | null;
+	readOnly?: boolean;
+};
+
+const props = withDefaults(defineProps<Props>(), {
+	modelValue: '',
+	nodeType: undefined,
+	readOnly: false,
+});
+const emit = defineEmits<{
+	'update:model-value': [value: string];
+}>();
+const editName = ref(false);
+const newName = ref('');
+const input = ref<HTMLInputElement>();
+
+const editable = computed(() => !props.readOnly && window === window.parent);
+
+async function onEdit() {
+	newName.value = props.modelValue;
+	editName.value = true;
+	await nextTick();
+	if (input.value) {
+		input.value.focus();
+	}
+}
+
+function onRename() {
+	if (newName.value.trim() !== '') {
+		emit('update:model-value', newName.value.trim());
+	}
+
+	editName.value = false;
+}
+</script>
+
 <template>
 	<span :class="$style.container" data-test-id="node-title-container" @click="onEdit">
 		<span :class="$style.iconWrapper">
@@ -40,49 +83,6 @@
 		</n8n-popover>
 	</span>
 </template>
-
-<script setup lang="ts">
-import NodeIcon from '@/components/NodeIcon.vue';
-import type { INodeTypeDescription } from 'n8n-workflow';
-import { computed, nextTick, ref } from 'vue';
-
-type Props = {
-	modelValue: string;
-	nodeType?: INodeTypeDescription | null;
-	readOnly?: boolean;
-};
-
-const props = withDefaults(defineProps<Props>(), {
-	modelValue: '',
-	nodeType: undefined,
-	readOnly: false,
-});
-const emit = defineEmits<{
-	(event: 'update:model-value', value: string): void;
-}>();
-const editName = ref(false);
-const newName = ref('');
-const input = ref<HTMLInputElement>();
-
-const editable = computed(() => !props.readOnly && window === window.parent);
-
-async function onEdit() {
-	newName.value = props.modelValue;
-	editName.value = true;
-	await nextTick();
-	if (input.value) {
-		input.value.focus();
-	}
-}
-
-function onRename() {
-	if (newName.value.trim() !== '') {
-		emit('update:model-value', newName.value.trim());
-	}
-
-	editName.value = false;
-}
-</script>
 
 <style lang="scss" module>
 .container {

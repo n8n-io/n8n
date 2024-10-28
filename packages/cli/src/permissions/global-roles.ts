@@ -1,6 +1,11 @@
 import type { Scope } from '@n8n/permissions';
 
 export const GLOBAL_OWNER_SCOPES: Scope[] = [
+	'annotationTag:create',
+	'annotationTag:read',
+	'annotationTag:update',
+	'annotationTag:delete',
+	'annotationTag:list',
 	'auditLogs:manage',
 	'banner:dismiss',
 	'credential:create',
@@ -10,6 +15,7 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'credential:list',
 	'credential:share',
 	'credential:move',
+	'community:register',
 	'communityPackage:install',
 	'communityPackage:uninstall',
 	'communityPackage:update',
@@ -33,7 +39,6 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'license:manage',
 	'logStreaming:manage',
 	'orchestration:read',
-	'orchestration:list',
 	'saml:manage',
 	'securityAudit:generate',
 	'sourceControl:pull',
@@ -75,6 +80,11 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 export const GLOBAL_ADMIN_SCOPES = GLOBAL_OWNER_SCOPES.concat();
 
 export const GLOBAL_MEMBER_SCOPES: Scope[] = [
+	'annotationTag:create',
+	'annotationTag:read',
+	'annotationTag:update',
+	'annotationTag:delete',
+	'annotationTag:list',
 	'eventBusDestination:list',
 	'eventBusDestination:test',
 	'tag:create',

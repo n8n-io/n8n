@@ -1,11 +1,12 @@
 import Container from 'typedi';
 
+import type { Project } from '@/databases/entities/project';
+import type { ProjectRelation, ProjectRole } from '@/databases/entities/project-relation';
+import type { User } from '@/databases/entities/user';
+import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
+
 import { randomName } from '../random';
-import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
-import type { User } from '@/databases/entities/User';
-import type { Project } from '@/databases/entities/Project';
-import type { ProjectRelation, ProjectRole } from '@/databases/entities/ProjectRelation';
 
 export const createTeamProject = async (name?: string, adminUser?: User) => {
 	const projectRepository = Container.get(ProjectRepository);
@@ -33,6 +34,10 @@ export const linkUserToProject = async (user: User, project: Project, role: Proj
 		}),
 	);
 };
+
+export async function getProjectByNameOrFail(name: string) {
+	return await Container.get(ProjectRepository).findOneOrFail({ where: { name } });
+}
 
 export const getPersonalProject = async (user: User): Promise<Project> => {
 	return await Container.get(ProjectRepository).findOneOrFail({

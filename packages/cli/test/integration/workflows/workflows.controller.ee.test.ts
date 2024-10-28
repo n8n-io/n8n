@@ -1,30 +1,31 @@
+import { ApplicationError, WorkflowActivationError, type INode } from 'n8n-workflow';
 import Container from 'typedi';
 import { v4 as uuid } from 'uuid';
-import { ApplicationError, WorkflowActivationError, type INode } from 'n8n-workflow';
 
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import config from '@/config';
-import type { Project } from '@db/entities/Project';
-import { ProjectRepository } from '@db/repositories/project.repository';
-import type { User } from '@db/entities/User';
-import { WorkflowHistoryRepository } from '@db/repositories/workflowHistory.repository';
-import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
-import { License } from '@/License';
-import { UserManagementMailer } from '@/UserManagement/email';
+import type { Project } from '@/databases/entities/project';
+import type { ProjectRole } from '@/databases/entities/project-relation';
+import type { User } from '@/databases/entities/user';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
+import { WorkflowHistoryRepository } from '@/databases/repositories/workflow-history.repository';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { License } from '@/license';
+import { UserManagementMailer } from '@/user-management/email';
 import type { WorkflowWithSharingsMetaDataAndCredentials } from '@/workflows/workflows.types';
 
 import { mockInstance } from '../../shared/mocking';
-import * as utils from '../shared/utils/';
-import * as testDb from '../shared/testDb';
-import type { SaveCredentialFunction } from '../shared/types';
-import { makeWorkflow } from '../shared/utils/';
-import { randomCredentialPayload } from '../shared/random';
 import { affixRoleToSaveCredential, shareCredentialWithUsers } from '../shared/db/credentials';
+import { createTeamProject, linkUserToProject } from '../shared/db/projects';
+import { createTag } from '../shared/db/tags';
 import { createAdmin, createOwner, createUser, createUserShell } from '../shared/db/users';
 import { createWorkflow, getWorkflowSharing, shareWorkflowWithUsers } from '../shared/db/workflows';
-import { createTag } from '../shared/db/tags';
+import { randomCredentialPayload } from '../shared/random';
+import * as testDb from '../shared/test-db';
+import type { SaveCredentialFunction } from '../shared/types';
 import type { SuperAgentTest } from '../shared/types';
-import { createTeamProject, linkUserToProject } from '../shared/db/projects';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import * as utils from '../shared/utils/';
+import { makeWorkflow } from '../shared/utils/';
 
 let owner: User;
 let admin: User;
@@ -428,28 +429,38 @@ describe('GET /workflows/:workflowId', () => {
 		expect(responseWorkflow.sharedWithProjects).toHaveLength(0);
 	});
 
-	test('should return workflow with credentials saying owner does not have access when not shared', async () => {
-		const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
+	test.each([
+		['owner', () => owner],
+		['admin', () => admin],
+	])(
+		'should return workflow with credentials saying %s does have access even when not shared',
+		async (_description, getActor) => {
+			const actor = getActor();
+			const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
 
-		const workflowPayload = makeWorkflow({
-			withPinData: false,
-			withCredential: { id: savedCredential.id, name: savedCredential.name },
-		});
-		const workflow = await createWorkflow(workflowPayload, owner);
+			const workflowPayload = makeWorkflow({
+				withPinData: false,
+				withCredential: { id: savedCredential.id, name: savedCredential.name },
+			});
+			const workflow = await createWorkflow(workflowPayload, actor);
 
-		const response = await authOwnerAgent.get(`/workflows/${workflow.id}`).expect(200);
-		const responseWorkflow: WorkflowWithSharingsMetaDataAndCredentials = response.body.data;
+			const response = await testServer
+				.authAgentFor(actor)
+				.get(`/workflows/${workflow.id}`)
+				.expect(200);
+			const responseWorkflow: WorkflowWithSharingsMetaDataAndCredentials = response.body.data;
 
-		expect(responseWorkflow.usedCredentials).toMatchObject([
-			{
-				id: savedCredential.id,
-				name: savedCredential.name,
-				currentUserHasAccess: false, // although owner can see, they do not have access
-			},
-		]);
+			expect(responseWorkflow.usedCredentials).toMatchObject([
+				{
+					id: savedCredential.id,
+					name: savedCredential.name,
+					currentUserHasAccess: true,
+				},
+			]);
 
-		expect(responseWorkflow.sharedWithProjects).toHaveLength(0);
-	});
+			expect(responseWorkflow.sharedWithProjects).toHaveLength(0);
+		},
+	);
 
 	test('should return workflow with credentials for all users with or without access', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
@@ -829,64 +840,104 @@ describe('PATCH /workflows/:workflowId', () => {
 			expect(response.statusCode).toBe(200);
 		});
 
-		it('Should prevent member from adding node containing credential inaccessible to member', async () => {
-			const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
+		it.each([
+			[
+				'the owner and shared with the member',
+				'the owner',
+				async function creteWorkflow() {
+					const workflow = await createWorkflow({}, owner);
+					await shareWorkflowWithUsers(workflow, [member]);
+					return workflow;
+				},
+				async function createCredential() {
+					return await saveCredential(randomCredentialPayload(), { user: owner });
+				},
+			],
+			[
+				'team 1',
+				'the member',
+				async function creteWorkflow() {
+					const team = await createTeamProject('Team 1', member);
+					return await createWorkflow({}, team);
+				},
+				async function createCredential() {
+					return await saveCredential(randomCredentialPayload(), { user: member });
+				},
+			],
+			[
+				'team 1',
+				'team 2',
+				async function creteWorkflow() {
+					const team1 = await createTeamProject('Team 1', member);
+					return await createWorkflow({}, team1);
+				},
+				async function createCredential() {
+					const team2 = await createTeamProject('Team 2', member);
+					return await saveCredential(randomCredentialPayload(), { project: team2 });
+				},
+			],
+			[
+				'the member',
+				'the owner',
+				async function creteWorkflow() {
+					return await createWorkflow({}, member);
+				},
+				async function createCredential() {
+					return await saveCredential(randomCredentialPayload(), { user: owner });
+				},
+			],
+			[
+				'the member',
+				'team 2',
+				async function creteWorkflow() {
+					return await createWorkflow({}, member);
+				},
+				async function createCredential() {
+					const team2 = await createTeamProject('Team 2', member);
+					return await saveCredential(randomCredentialPayload(), { project: team2 });
+				},
+			],
+		])(
+			'Tamper proofing kicks in if the workflow is owned by %s, the credentials is owned by %s, and the member tries to use the credential in the workflow',
+			async (_workflowText, _credentialText, createWorkflow, createCredential) => {
+				//
+				// ARRANGE
+				//
+				const workflow = await createWorkflow();
+				const credential = await createCredential();
 
-			const workflow = {
-				name: 'test',
-				active: false,
-				connections: {},
-				nodes: [
-					{
-						id: 'uuid-1234',
-						name: 'Start',
-						parameters: {},
-						position: [-20, 260],
-						type: 'n8n-nodes-base.start',
-						typeVersion: 1,
-						credentials: {
-							default: {
-								id: savedCredential.id,
-								name: savedCredential.name,
+				//
+				// ACT
+				//
+				const response = await authMemberAgent.patch(`/workflows/${workflow.id}`).send({
+					versionId: workflow.versionId,
+					nodes: [
+						{
+							id: 'uuid-12345',
+							name: 'Start',
+							parameters: {},
+							position: [-20, 260],
+							type: 'n8n-nodes-base.start',
+							typeVersion: 1,
+							credentials: {
+								default: {
+									id: credential.id,
+									name: credential.name,
+								},
 							},
 						},
-					},
-				],
-			};
+					],
+				});
 
-			const createResponse = await authOwnerAgent.post('/workflows').send(workflow);
-			const { id, versionId } = createResponse.body.data;
-
-			const response = await authMemberAgent.patch(`/workflows/${id}`).send({
-				versionId,
-				nodes: [
-					{
-						id: 'uuid-1234',
-						name: 'Start',
-						parameters: {},
-						position: [-20, 260],
-						type: 'n8n-nodes-base.start',
-						typeVersion: 1,
-						credentials: {},
-					},
-					{
-						id: 'uuid-12345',
-						name: 'Start',
-						parameters: {},
-						position: [-20, 260],
-						type: 'n8n-nodes-base.start',
-						typeVersion: 1,
-						credentials: {
-							default: {
-								id: savedCredential.id,
-								name: savedCredential.name,
-							},
-						},
-					},
-				],
-			});
-			expect(response.statusCode).toBe(403);
-		});
+				//
+				// ASSERT
+				//
+				expect(response.statusCode).toBe(400);
+				expect(response.body.message).toBe(
+					"You don't have access to the credentials in the 'Start' node. Ask the owner to share them with you.",
+				);
+			},
+		);
 
 		it('Should succeed but prevent modifying node attributes other than position, name and disabled', async () => {
 			const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
@@ -1335,18 +1386,6 @@ describe('PUT /:workflowId/transfer', () => {
 			.expect(400);
 	});
 
-	test('cannot transfer into a personal project', async () => {
-		const sourceProject = await createTeamProject('Team Project', member);
-
-		const workflow = await createWorkflow({}, sourceProject);
-
-		await testServer
-			.authAgentFor(member)
-			.put(`/workflows/${workflow.id}/transfer`)
-			.send({ destinationProjectId: memberPersonalProject.id })
-			.expect(400);
-	});
-
 	test('cannot transfer somebody elses workflow', async () => {
 		const destinationProject = await createTeamProject('Team Project', member);
 
@@ -1371,180 +1410,133 @@ describe('PUT /:workflowId/transfer', () => {
 			.expect(404);
 	});
 
-	test('project:editors cannot transfer workflows', async () => {
-		//
-		// ARRANGE
-		//
-		const sourceProject = await createTeamProject();
-		await linkUserToProject(member, sourceProject, 'project:editor');
-
-		const workflow = await createWorkflow({}, sourceProject);
-
-		const destinationProject = await createTeamProject();
-		await linkUserToProject(member, destinationProject, 'project:admin');
-
-		//
-		// ACT & ASSERT
-		//
-		await testServer
-			.authAgentFor(member)
-			.put(`/workflows/${workflow.id}/transfer`)
-			.send({ destinationProjectId: destinationProject.id })
-			.expect(403);
-	});
-
-	test('transferring from a personal project to a team project severs all sharings', async () => {
-		//
-		// ARRANGE
-		//
-		const workflow = await createWorkflow({}, member);
-
-		// these sharings should be deleted by the transfer
-		await shareWorkflowWithUsers(workflow, [anotherMember, owner]);
-
-		const destinationProject = await createTeamProject('Team Project', member);
-
-		//
-		// ACT
-		//
-		const response = await testServer
-			.authAgentFor(member)
-			.put(`/workflows/${workflow.id}/transfer`)
-			.send({ destinationProjectId: destinationProject.id })
-			.expect(200);
-
-		//
-		// ASSERT
-		//
-		expect(response.body).toEqual({});
-
-		const allSharings = await getWorkflowSharing(workflow);
-		expect(allSharings).toHaveLength(1);
-		expect(allSharings[0]).toMatchObject({
-			projectId: destinationProject.id,
-			workflowId: workflow.id,
-			role: 'workflow:owner',
-		});
-	});
-
-	test('can transfer from team to another team project', async () => {
-		//
-		// ARRANGE
-		//
-		const sourceProject = await createTeamProject('Team Project 1', member);
-		const workflow = await createWorkflow({}, sourceProject);
-
-		const destinationProject = await createTeamProject('Team Project 2', member);
-
-		//
-		// ACT
-		//
-		const response = await testServer
-			.authAgentFor(member)
-			.put(`/workflows/${workflow.id}/transfer`)
-			.send({ destinationProjectId: destinationProject.id })
-			.expect(200);
-
-		//
-		// ASSERT
-		//
-		expect(response.body).toEqual({});
-
-		const allSharings = await getWorkflowSharing(workflow);
-		expect(allSharings).toHaveLength(1);
-		expect(allSharings[0]).toMatchObject({
-			projectId: destinationProject.id,
-			workflowId: workflow.id,
-			role: 'workflow:owner',
-		});
-	});
-
-	test.each([
-		['owners', () => owner],
-		['admins', () => admin],
-	])(
-		'global %s can always transfer from any personal or team project into any team project',
-		async (_name, actor) => {
+	test.each<ProjectRole>(['project:editor', 'project:viewer'])(
+		'%ss cannot transfer workflows',
+		async (projectRole) => {
 			//
 			// ARRANGE
 			//
-			const sourceProject = await createTeamProject('Source Project', member);
-			const teamWorkflow = await createWorkflow({}, sourceProject);
+			const sourceProject = await createTeamProject();
+			await linkUserToProject(member, sourceProject, projectRole);
 
-			const personalWorkflow = await createWorkflow({}, member);
+			const workflow = await createWorkflow({}, sourceProject);
 
-			const destinationProject = await createTeamProject('Destination Project', member);
+			const destinationProject = await createTeamProject();
+			await linkUserToProject(member, destinationProject, 'project:admin');
 
 			//
-			// ACT
+			// ACT & ASSERT
 			//
-			const response1 = await testServer
-				.authAgentFor(actor())
-				.put(`/workflows/${teamWorkflow.id}/transfer`)
+			await testServer
+				.authAgentFor(member)
+				.put(`/workflows/${workflow.id}/transfer`)
 				.send({ destinationProjectId: destinationProject.id })
-				.expect(200);
-			const response2 = await testServer
-				.authAgentFor(actor())
-				.put(`/workflows/${personalWorkflow.id}/transfer`)
-				.send({ destinationProjectId: destinationProject.id })
-				.expect(200);
-
-			//
-			// ASSERT
-			//
-			expect(response1.body).toEqual({});
-			expect(response2.body).toEqual({});
-
-			{
-				const allSharings = await getWorkflowSharing(teamWorkflow);
-				expect(allSharings).toHaveLength(1);
-				expect(allSharings[0]).toMatchObject({
-					projectId: destinationProject.id,
-					workflowId: teamWorkflow.id,
-					role: 'workflow:owner',
-				});
-			}
-
-			{
-				const allSharings = await getWorkflowSharing(personalWorkflow);
-				expect(allSharings).toHaveLength(1);
-				expect(allSharings[0]).toMatchObject({
-					projectId: destinationProject.id,
-					workflowId: personalWorkflow.id,
-					role: 'workflow:owner',
-				});
-			}
+				.expect(403);
 		},
 	);
 
-	test.each([
-		['owners', () => owner],
-		['admins', () => admin],
-	])('global %s cannot transfer into personal projects', async (_name, actor) => {
-		//
-		// ARRANGE
-		//
-		const sourceProject = await createTeamProject('Source Project', member);
-		const teamWorkflow = await createWorkflow({}, sourceProject);
+	test.each<
+		[
+			// user role
+			'owners' | 'admins',
+			// source project type
+			'team' | 'personal',
+			// destination project type
+			'team' | 'personal',
+			// actor
+			() => User,
+			// source project
+			() => Promise<Project> | Project,
+			// destination project
+			() => Promise<Project> | Project,
+		]
+	>([
+		// owner
+		[
+			'owners',
+			'team',
+			'team',
+			() => owner,
+			async () => await createTeamProject('Source Project'),
+			async () => await createTeamProject('Destination Project'),
+		],
+		[
+			'owners',
+			'team',
+			'personal',
+			() => owner,
+			async () => await createTeamProject('Source Project'),
+			() => memberPersonalProject,
+		],
+		[
+			'owners',
+			'personal',
+			'team',
+			() => owner,
+			() => memberPersonalProject,
+			async () => await createTeamProject('Destination Project'),
+		],
 
-		const personalWorkflow = await createWorkflow({}, member);
+		// admin
+		[
+			'admins',
+			'team',
+			'team',
+			() => admin,
+			async () => await createTeamProject('Source Project'),
+			async () => await createTeamProject('Destination Project'),
+		],
+		[
+			'admins',
+			'team',
+			'personal',
+			() => admin,
+			async () => await createTeamProject('Source Project'),
+			() => memberPersonalProject,
+		],
+		[
+			'admins',
+			'personal',
+			'team',
+			() => admin,
+			() => memberPersonalProject,
+			async () => await createTeamProject('Destination Project'),
+		],
+	])(
+		'global %s can transfer workflows from a %s project to a %s project',
+		async (
+			_roleName,
+			_sourceProjectName,
+			_destinationProjectName,
+			getActor,
+			getSourceProject,
+			getDestinationProject,
+		) => {
+			// ARRANGE
+			const actor = getActor();
+			const sourceProject = await getSourceProject();
+			const destinationProject = await getDestinationProject();
+			const workflow = await createWorkflow({}, sourceProject);
 
-		const destinationProject = anotherMemberPersonalProject;
+			// ACT
+			const response = await testServer
+				.authAgentFor(actor)
+				.put(`/workflows/${workflow.id}/transfer`)
+				.send({ destinationProjectId: destinationProject.id })
+				.expect(200);
 
-		//
-		// ACT & ASSERT
-		//
-		await testServer
-			.authAgentFor(actor())
-			.put(`/workflows/${teamWorkflow.id}/transfer`)
-			.send({ destinationProjectId: destinationProject.id })
-			.expect(400);
-		await testServer
-			.authAgentFor(actor())
-			.put(`/workflows/${personalWorkflow.id}/transfer`)
-			.send({ destinationProjectId: destinationProject.id })
-			.expect(400);
-	});
+			// ASSERT
+			expect(response.body).toEqual({});
+
+			const allSharings = await getWorkflowSharing(workflow);
+			expect(allSharings).toHaveLength(1);
+			expect(allSharings[0]).toMatchObject({
+				projectId: destinationProject.id,
+				workflowId: workflow.id,
+				role: 'workflow:owner',
+			});
+		},
+	);
 
 	test('removes and re-adds the workflow from the active workflow manager during the transfer', async () => {
 		//

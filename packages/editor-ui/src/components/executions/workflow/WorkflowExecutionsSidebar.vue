@@ -1,6 +1,170 @@
+<script setup lang="ts">
+import { ref, computed, watch } from 'vue';
+import type { ComponentPublicInstance } from 'vue';
+import type { RouteLocationNormalizedLoaded } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
+import WorkflowExecutionsCard from '@/components/executions/workflow/WorkflowExecutionsCard.vue';
+import WorkflowExecutionsInfoAccordion from '@/components/executions/workflow/WorkflowExecutionsInfoAccordion.vue';
+import ExecutionsFilter from '@/components/executions/ExecutionsFilter.vue';
+import { VIEWS } from '@/constants';
+import type { ExecutionSummary } from 'n8n-workflow';
+import { useExecutionsStore } from '@/stores/executions.store';
+import type { ExecutionFilterType, IWorkflowDb } from '@/Interface';
+import { isComponentPublicInstance } from '@/utils/typeGuards';
+import { getResourcePermissions } from '@/permissions';
+
+type AutoScrollDeps = { activeExecutionSet: boolean; cardsMounted: boolean; scroll: boolean };
+
+const props = defineProps<{
+	workflow?: IWorkflowDb;
+	executions: ExecutionSummary[];
+	loading: boolean;
+	loadingMore: boolean;
+	temporaryExecution?: ExecutionSummary;
+}>();
+
+const emit = defineEmits<{
+	retryExecution: [payload: { execution: ExecutionSummary; command: string }];
+	loadMore: [amount: number];
+	filterUpdated: [filter: ExecutionFilterType];
+	'update:autoRefresh': [boolean];
+}>();
+
+const route = useRoute();
+const router = useRouter();
+
+const executionsStore = useExecutionsStore();
+
+const mountedItems = ref<string[]>([]);
+const autoScrollDeps = ref<AutoScrollDeps>({
+	activeExecutionSet: false,
+	cardsMounted: false,
+	scroll: true,
+});
+const currentWorkflowExecutionsCardRefs = ref<Record<string, ComponentPublicInstance>>({});
+const sidebarContainerRef = ref<HTMLElement | null>(null);
+const executionListRef = ref<HTMLElement | null>(null);
+
+const workflowPermissions = computed(() => getResourcePermissions(props.workflow?.scopes).workflow);
+
+watch(
+	() => route,
+	(to: RouteLocationNormalizedLoaded, from: RouteLocationNormalizedLoaded) => {
+		if (from.name === VIEWS.EXECUTION_PREVIEW && to.name === VIEWS.EXECUTION_HOME) {
+			// Skip parent route when navigating through executions with back button
+			router.go(-1);
+		}
+	},
+);
+
+watch(
+	() => executionsStore.activeExecution,
+	(newValue: ExecutionSummary | null, oldValue: ExecutionSummary | null) => {
+		if (newValue && newValue.id !== oldValue?.id) {
+			autoScrollDeps.value.activeExecutionSet = true;
+		}
+	},
+);
+
+watch(
+	autoScrollDeps,
+	(updatedDeps: AutoScrollDeps) => {
+		if (Object.values(updatedDeps).every(Boolean)) {
+			scrollToActiveCard();
+		}
+	},
+	{ deep: true },
+);
+
+function addCurrentWorkflowExecutionsCardRef(
+	comp: Element | ComponentPublicInstance | null,
+	id?: string,
+) {
+	if (comp && isComponentPublicInstance(comp) && id) {
+		currentWorkflowExecutionsCardRefs.value[id] = comp;
+	}
+}
+
+function onItemMounted(id: string): void {
+	mountedItems.value.push(id);
+	if (mountedItems.value.length === props.executions.length) {
+		autoScrollDeps.value.cardsMounted = true;
+		checkListSize();
+	}
+
+	if (executionsStore.activeExecution?.id === id) {
+		autoScrollDeps.value.activeExecutionSet = true;
+	}
+}
+
+function loadMore(limit = 20): void {
+	if (!props.loading) {
+		if (executionListRef.value) {
+			const diff =
+				executionListRef.value.offsetHeight -
+				(executionListRef.value.scrollHeight - executionListRef.value.scrollTop);
+			if (diff > -10 && diff < 10) {
+				emit('loadMore', limit);
+			}
+		}
+	}
+}
+
+function onRetryExecution(payload: { execution: ExecutionSummary; command: string }) {
+	emit('retryExecution', payload);
+}
+
+function onFilterChanged(filter: ExecutionFilterType) {
+	autoScrollDeps.value.activeExecutionSet = false;
+	autoScrollDeps.value.scroll = true;
+	mountedItems.value = [];
+	emit('filterUpdated', filter);
+}
+
+function onAutoRefreshChange(enabled: boolean) {
+	emit('update:autoRefresh', enabled);
+}
+
+function checkListSize(): void {
+	// Find out how many execution card can fit into list
+	// and load more if needed
+	const cards = Object.values(currentWorkflowExecutionsCardRefs.value);
+	if (sidebarContainerRef.value && cards.length) {
+		const cardElement = cards[0].$el as HTMLElement;
+		const listCapacity = Math.ceil(
+			sidebarContainerRef.value.clientHeight / cardElement.clientHeight,
+		);
+
+		if (listCapacity > props.executions.length) {
+			emit('loadMore', listCapacity - props.executions.length);
+		}
+	}
+}
+
+function scrollToActiveCard(): void {
+	if (
+		executionListRef.value &&
+		executionsStore.activeExecution &&
+		currentWorkflowExecutionsCardRefs.value[executionsStore.activeExecution.id]
+	) {
+		const cardElement =
+			currentWorkflowExecutionsCardRefs.value[executionsStore.activeExecution.id].$el;
+		const cardRect = cardElement.getBoundingClientRect();
+		const LIST_HEADER_OFFSET = 200;
+		if (cardRect.top > executionListRef.value.offsetHeight) {
+			autoScrollDeps.value.scroll = false;
+			executionListRef.value.scrollTo({
+				top: cardRect.top - LIST_HEADER_OFFSET,
+				behavior: 'smooth',
+			});
+		}
+	}
+}
+</script>
+
 <template>
 	<div
-		ref="container"
+		ref="sidebarContainerRef"
 		:class="['executions-sidebar', $style.container]"
 		data-test-id="executions-sidebar"
 	>
@@ -13,14 +177,14 @@
 			<el-checkbox
 				v-model="executionsStore.autoRefresh"
 				data-test-id="auto-refresh-checkbox"
-				@update:model-value="$emit('update:autoRefresh', $event)"
+				@update:model-value="onAutoRefreshChange"
 			>
 				{{ $locale.baseText('executionsList.autoRefresh') }}
 			</el-checkbox>
 			<ExecutionsFilter popover-placement="left-start" @filter-changed="onFilterChanged" />
 		</div>
 		<div
-			ref="executionList"
+			ref="executionListRef"
 			:class="$style.executionList"
 			data-test-id="current-executions-list"
 			@scroll="loadMore(20)"
@@ -39,18 +203,20 @@
 			</div>
 			<WorkflowExecutionsCard
 				v-else-if="temporaryExecution"
-				:ref="`execution-${temporaryExecution.id}`"
+				:ref="(el) => addCurrentWorkflowExecutionsCardRef(el, temporaryExecution?.id)"
 				:execution="temporaryExecution"
 				:data-test-id="`execution-details-${temporaryExecution.id}`"
 				:show-gap="true"
+				:workflow-permissions="workflowPermissions"
 				@retry-execution="onRetryExecution"
 			/>
 			<TransitionGroup name="executions-list">
 				<WorkflowExecutionsCard
 					v-for="execution in executions"
 					:key="execution.id"
-					:ref="`execution-${execution.id}`"
+					:ref="(el) => addCurrentWorkflowExecutionsCardRef(el, execution.id)"
 					:execution="execution"
+					:workflow-permissions="workflowPermissions"
 					:data-test-id="`execution-details-${execution.id}`"
 					@retry-execution="onRetryExecution"
 					@mounted="onItemMounted"
@@ -65,175 +231,6 @@
 		</div>
 	</div>
 </template>
-
-<script lang="ts">
-import WorkflowExecutionsCard from '@/components/executions/workflow/WorkflowExecutionsCard.vue';
-import WorkflowExecutionsInfoAccordion from '@/components/executions/workflow/WorkflowExecutionsInfoAccordion.vue';
-import ExecutionsFilter from '@/components/executions/ExecutionsFilter.vue';
-import { VIEWS } from '@/constants';
-import type { ExecutionSummary } from 'n8n-workflow';
-import type { RouteRecord } from 'vue-router';
-import { defineComponent } from 'vue';
-import type { PropType } from 'vue';
-import { mapStores } from 'pinia';
-import { useExecutionsStore } from '@/stores/executions.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import type { ExecutionFilterType } from '@/Interface';
-
-type WorkflowExecutionsCardRef = InstanceType<typeof WorkflowExecutionsCard>;
-type AutoScrollDeps = { activeExecutionSet: boolean; cardsMounted: boolean; scroll: boolean };
-
-export default defineComponent({
-	name: 'WorkflowExecutionsSidebar',
-	components: {
-		WorkflowExecutionsCard,
-		WorkflowExecutionsInfoAccordion,
-		ExecutionsFilter,
-	},
-	props: {
-		executions: {
-			type: Array as PropType<ExecutionSummary[]>,
-			required: true,
-		},
-		loading: {
-			type: Boolean,
-			default: true,
-		},
-		loadingMore: {
-			type: Boolean,
-			default: false,
-		},
-		temporaryExecution: {
-			type: Object as PropType<ExecutionSummary>,
-			default: null,
-		},
-	},
-	emits: {
-		retryExecution: null,
-		loadMore: null,
-		refresh: null,
-		filterUpdated: null,
-		reloadExecutions: null,
-		'update:autoRefresh': null,
-	},
-	data() {
-		return {
-			filter: {} as ExecutionFilterType,
-			mountedItems: [] as string[],
-			autoScrollDeps: {
-				activeExecutionSet: false,
-				cardsMounted: false,
-				scroll: true,
-			} as AutoScrollDeps,
-		};
-	},
-	computed: {
-		...mapStores(useExecutionsStore, useWorkflowsStore),
-	},
-	watch: {
-		$route(to: RouteRecord, from: RouteRecord) {
-			if (from.name === VIEWS.EXECUTION_PREVIEW && to.name === VIEWS.EXECUTION_HOME) {
-				// Skip parent route when navigating through executions with back button
-				this.$router.go(-1);
-			}
-		},
-		'executionsStore.activeExecution'(
-			newValue: ExecutionSummary | null,
-			oldValue: ExecutionSummary | null,
-		) {
-			if (newValue && newValue.id !== oldValue?.id) {
-				this.autoScrollDeps.activeExecutionSet = true;
-			}
-		},
-		autoScrollDeps: {
-			handler(updatedDeps: AutoScrollDeps) {
-				if (Object.values(updatedDeps).every(Boolean)) {
-					this.scrollToActiveCard();
-				}
-			},
-			deep: true,
-		},
-	},
-	methods: {
-		onItemMounted(id: string): void {
-			this.mountedItems.push(id);
-			if (this.mountedItems.length === this.executions.length) {
-				this.autoScrollDeps.cardsMounted = true;
-				this.checkListSize();
-			}
-
-			if (this.executionsStore.activeExecution?.id === id) {
-				this.autoScrollDeps.activeExecutionSet = true;
-			}
-		},
-		loadMore(limit = 20): void {
-			if (!this.loading) {
-				const executionsListRef = this.$refs.executionList as HTMLElement | undefined;
-				if (executionsListRef) {
-					const diff =
-						executionsListRef.offsetHeight -
-						(executionsListRef.scrollHeight - executionsListRef.scrollTop);
-					if (diff > -10 && diff < 10) {
-						this.$emit('loadMore', limit);
-					}
-				}
-			}
-		},
-		onRetryExecution(payload: object) {
-			this.$emit('retryExecution', payload);
-		},
-		onRefresh(): void {
-			this.$emit('refresh');
-		},
-		onFilterChanged(filter: ExecutionFilterType) {
-			this.$emit('filterUpdated', filter);
-		},
-		reloadExecutions(): void {
-			this.$emit('reloadExecutions');
-		},
-		checkListSize(): void {
-			const sidebarContainerRef = this.$refs.container as HTMLElement | undefined;
-			const currentWorkflowExecutionsCardRefs = this.$refs[
-				`execution-${this.mountedItems[this.mountedItems.length - 1]}`
-			] as WorkflowExecutionsCardRef[] | undefined;
-
-			// Find out how many execution card can fit into list
-			// and load more if needed
-			if (sidebarContainerRef && currentWorkflowExecutionsCardRefs?.length) {
-				const cardElement = currentWorkflowExecutionsCardRefs[0].$el as HTMLElement;
-				const listCapacity = Math.ceil(sidebarContainerRef.clientHeight / cardElement.clientHeight);
-
-				if (listCapacity > this.executions.length) {
-					this.$emit('loadMore', listCapacity - this.executions.length);
-				}
-			}
-		},
-		scrollToActiveCard(): void {
-			const executionsListRef = this.$refs.executionList as HTMLElement | undefined;
-			const currentWorkflowExecutionsCardRefs = this.$refs[
-				`execution-${this.executionsStore.activeExecution?.id}`
-			] as WorkflowExecutionsCardRef[] | undefined;
-
-			if (
-				executionsListRef &&
-				currentWorkflowExecutionsCardRefs?.length &&
-				this.executionsStore.activeExecution
-			) {
-				const cardElement = currentWorkflowExecutionsCardRefs[0].$el as HTMLElement;
-				const cardRect = cardElement.getBoundingClientRect();
-				const LIST_HEADER_OFFSET = 200;
-				if (cardRect.top > executionsListRef.offsetHeight) {
-					this.autoScrollDeps.scroll = false;
-					executionsListRef.scrollTo({
-						top: cardRect.top - LIST_HEADER_OFFSET,
-						behavior: 'smooth',
-					});
-				}
-			}
-		},
-	},
-});
-</script>
 
 <style module lang="scss">
 .container {

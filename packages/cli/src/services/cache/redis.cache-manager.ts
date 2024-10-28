@@ -2,9 +2,9 @@
  * Based on https://github.com/node-cache-manager/node-cache-manager-ioredis-yet
  */
 
+import type { Cache, Store, Config } from 'cache-manager';
 import Redis from 'ioredis';
 import type { Cluster, ClusterNode, ClusterOptions, RedisOptions } from 'ioredis';
-import type { Cache, Store, Config } from 'cache-manager';
 import { ApplicationError, jsonParse } from 'n8n-workflow';
 
 export class NoCacheableError implements Error {

@@ -1,34 +1,3 @@
-import { createMockNodeExecutionData, runMockWorkflowExecution } from '../utils';
-import {
-	addLanguageModelNodeToParent,
-	addMemoryNodeToParent,
-	addNodeToCanvas,
-	addOutputParserNodeToParent,
-	addToolNodeToParent,
-	clickExecuteWorkflowButton,
-	clickManualChatButton,
-	disableNode,
-	getExecuteWorkflowButton,
-	navigateToNewWorkflowPage,
-	openNode,
-} from '../composables/workflow';
-import {
-	clickCreateNewCredential,
-	clickExecuteNode,
-	clickGetBackToCanvas,
-	toggleParameterCheckboxInputByName,
-} from '../composables/ndv';
-import { setCredentialValues } from '../composables/modals/credential-modal';
-import {
-	closeManualChatModal,
-	getManualChatDialog,
-	getManualChatMessages,
-	getManualChatModal,
-	getManualChatModalLogs,
-	getManualChatModalLogsEntries,
-	getManualChatModalLogsTree,
-	sendManualChatMessage,
-} from '../composables/modals/chat-modal';
 import {
 	AGENT_NODE_NAME,
 	MANUAL_CHAT_TRIGGER_NODE_NAME,
@@ -41,7 +10,41 @@ import {
 	AI_TOOL_WIKIPEDIA_NODE_NAME,
 	BASIC_LLM_CHAIN_NODE_NAME,
 	EDIT_FIELDS_SET_NODE_NAME,
+	CHAT_TRIGGER_NODE_DISPLAY_NAME,
 } from './../constants';
+import {
+	closeManualChatModal,
+	getManualChatDialog,
+	getManualChatMessages,
+	getManualChatModal,
+	getManualChatModalLogs,
+	getManualChatModalLogsEntries,
+	getManualChatModalLogsTree,
+	sendManualChatMessage,
+} from '../composables/modals/chat-modal';
+import { setCredentialValues } from '../composables/modals/credential-modal';
+import {
+	clickCreateNewCredential,
+	clickExecuteNode,
+	clickGetBackToCanvas,
+	toggleParameterCheckboxInputByName,
+} from '../composables/ndv';
+import {
+	addLanguageModelNodeToParent,
+	addMemoryNodeToParent,
+	addNodeToCanvas,
+	addOutputParserNodeToParent,
+	addToolNodeToParent,
+	clickExecuteWorkflowButton,
+	clickManualChatButton,
+	disableNode,
+	getExecuteWorkflowButton,
+	navigateToNewWorkflowPage,
+	getNodes,
+	openNode,
+	getConnectionBySourceAndTarget,
+} from '../composables/workflow';
+import { createMockNodeExecutionData, runMockWorkflowExecution } from '../utils';
 
 describe('Langchain Integration', () => {
 	beforeEach(() => {
@@ -330,5 +333,28 @@ describe('Langchain Integration', () => {
 		getManualChatModalLogsEntries().should('have.length', 1);
 
 		closeManualChatModal();
+	});
+
+	it('should auto-add chat trigger and basic LLM chain when adding LLM node', () => {
+		addNodeToCanvas(AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME, true);
+
+		getConnectionBySourceAndTarget(
+			CHAT_TRIGGER_NODE_DISPLAY_NAME,
+			BASIC_LLM_CHAIN_NODE_NAME,
+		).should('exist');
+
+		getConnectionBySourceAndTarget(
+			AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME,
+			BASIC_LLM_CHAIN_NODE_NAME,
+		).should('exist');
+		getNodes().should('have.length', 3);
+	});
+
+	it('should not auto-add nodes if AI nodes are already present', () => {
+		addNodeToCanvas(AGENT_NODE_NAME, true);
+
+		addNodeToCanvas(AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME, true);
+		getConnectionBySourceAndTarget(CHAT_TRIGGER_NODE_DISPLAY_NAME, AGENT_NODE_NAME).should('exist');
+		getNodes().should('have.length', 3);
 	});
 });

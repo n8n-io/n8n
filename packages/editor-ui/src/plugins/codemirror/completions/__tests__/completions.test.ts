@@ -75,7 +75,7 @@ describe('Top-level completions', () => {
 				section: METADATA_SECTION,
 			}),
 		);
-		expect(result?.[14]).toEqual(
+		expect(result?.[15]).toEqual(
 			expect.objectContaining({ label: '$max()', section: METHODS_SECTION }),
 		);
 	});
@@ -217,6 +217,14 @@ describe('Resolution-based completions', () => {
 				Object.keys(object).length + extensions({ typeName: 'object' }).length,
 			);
 		});
+
+		test('should return case-insensitive completions', () => {
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce('abc');
+
+			const result = completions('{{ "abc".tolowerca| }}');
+			expect(result).toHaveLength(1);
+			expect(result?.at(0)).toEqual(expect.objectContaining({ label: 'toLowerCase()' }));
+		});
 	});
 
 	describe('indexed access completions', () => {
@@ -357,7 +365,7 @@ describe('Resolution-based completions', () => {
 
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue($input);
 
-			uiStore.modals[CREDENTIAL_EDIT_MODAL_KEY].open = true;
+			uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY].open = true;
 			set(settingsStore.settings, ['enterprise', EnterpriseEditionFeature.ExternalSecrets], true);
 			externalSecretsStore.state.secrets = {
 				[provider]: secrets,
@@ -380,7 +388,7 @@ describe('Resolution-based completions', () => {
 
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue($input);
 
-			uiStore.modals[CREDENTIAL_EDIT_MODAL_KEY].open = true;
+			uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY].open = true;
 			set(settingsStore.settings, ['enterprise', EnterpriseEditionFeature.ExternalSecrets], true);
 			externalSecretsStore.state.secrets = {
 				[provider]: secrets,

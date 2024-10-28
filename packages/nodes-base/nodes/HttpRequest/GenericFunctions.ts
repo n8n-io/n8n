@@ -1,11 +1,12 @@
 import type { SecureContextOptions } from 'tls';
-import type {
-	ICredentialDataDecryptedObject,
-	IDataObject,
-	INodeExecutionData,
-	INodeProperties,
-	IOAuth2Options,
-	IRequestOptions,
+import {
+	deepCopy,
+	type ICredentialDataDecryptedObject,
+	type IDataObject,
+	type INodeExecutionData,
+	type INodeProperties,
+	type IOAuth2Options,
+	type IRequestOptions,
 } from 'n8n-workflow';
 
 import set from 'lodash/set';
@@ -60,7 +61,12 @@ export function sanitizeUiMessage(
 	authDataKeys: IAuthDataSanitizeKeys,
 	secrets?: string[],
 ) {
-	let sendRequest = request as unknown as IDataObject;
+	const { body, ...rest } = request as IDataObject;
+
+	let sendRequest: IDataObject = { body };
+	for (const [key, value] of Object.entries(rest)) {
+		sendRequest[key] = deepCopy(value);
+	}
 
 	// Protect browser from sending large binary data
 	if (Buffer.isBuffer(sendRequest.body) && sendRequest.body.length > 250000) {
@@ -88,7 +94,24 @@ export function sanitizeUiMessage(
 			),
 		};
 	}
+	const HEADER_BLOCKLIST = new Set([
+		'authorization',
+		'x-api-key',
+		'x-auth-token',
+		'cookie',
+		'proxy-authorization',
+		'sslclientcert',
+	]);
 
+	const headers = sendRequest.headers as IDataObject;
+
+	if (headers) {
+		for (const headerName of Object.keys(headers)) {
+			if (HEADER_BLOCKLIST.has(headerName.toLowerCase())) {
+				headers[headerName] = REDACTED;
+			}
+		}
+	}
 	if (secrets && secrets.length > 0) {
 		return redact(sendRequest, secrets);
 	}

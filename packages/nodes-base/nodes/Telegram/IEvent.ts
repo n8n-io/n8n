@@ -7,6 +7,9 @@ interface EventBody {
 	document?: {
 		file_id: string;
 	};
+	video?: {
+		file_id: string;
+	};
 }
 
 export interface IEvent {

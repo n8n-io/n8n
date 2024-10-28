@@ -1,7 +1,8 @@
+import concatStream from 'concat-stream';
 import fs from 'node:fs/promises';
 import type { Readable } from 'node:stream';
+
 import type { BinaryData } from './types';
-import concatStream from 'concat-stream';
 
 export const CONFIG_MODES = ['default', 'filesystem', 's3'] as const;
 
@@ -32,7 +33,8 @@ export async function doesNotExist(dir: string) {
 	}
 }
 
-export async function toBuffer(body: Buffer | Readable) {
+/** Converts a buffer or a readable stream to a buffer */
+export async function binaryToBuffer(body: Buffer | Readable) {
 	if (Buffer.isBuffer(body)) return body;
 	return await new Promise<Buffer>((resolve, reject) => {
 		body

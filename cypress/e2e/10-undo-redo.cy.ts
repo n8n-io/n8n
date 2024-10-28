@@ -4,9 +4,9 @@ import {
 	SET_NODE_NAME,
 	EDIT_FIELDS_SET_NODE_NAME,
 } from '../constants';
-import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 import { MessageBox as MessageBoxClass } from '../pages/modals/message-box';
 import { NDV } from '../pages/ndv';
+import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 
 // Suite-specific constants
 const CODE_NODE_NEW_NAME = 'Something else';
@@ -20,24 +20,7 @@ describe('Undo/Redo', () => {
 		WorkflowPage.actions.visit();
 	});
 
-	it('should undo/redo adding nodes', () => {
-		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
-		WorkflowPage.actions.hitUndo();
-		WorkflowPage.getters.canvasNodes().should('have.have.length', 0);
-		WorkflowPage.actions.hitRedo();
-		WorkflowPage.getters.canvasNodes().should('have.have.length', 1);
-	});
-
-	it('should undo/redo adding connected nodes', () => {
-		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
-		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
-		WorkflowPage.actions.hitUndo();
-		WorkflowPage.getters.canvasNodes().should('have.have.length', 1);
-		WorkflowPage.actions.hitRedo();
-		WorkflowPage.getters.canvasNodes().should('have.have.length', 2);
-		WorkflowPage.getters.nodeConnections().should('have.length', 1);
-	});
-
+	// FIXME: Canvas V2: Fix redo connections
 	it('should undo/redo adding node in the middle', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
@@ -132,6 +115,7 @@ describe('Undo/Redo', () => {
 		WorkflowPage.getters.nodeConnections().should('have.length', 0);
 	});
 
+	// FIXME: Canvas V2: Fix moving of nodes via e2e tests
 	it('should undo/redo moving nodes', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
@@ -164,18 +148,14 @@ describe('Undo/Redo', () => {
 	it('should undo/redo deleting a connection using context menu', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
-		WorkflowPage.getters.nodeConnections().realHover();
-		cy.get('.connection-actions .delete')
-			.filter(':visible')
-			.should('be.visible')
-			.click({ force: true });
+		WorkflowPage.actions.deleteNodeBetweenNodes(SCHEDULE_TRIGGER_NODE_NAME, CODE_NODE_NAME);
 		WorkflowPage.getters.nodeConnections().should('have.length', 0);
 		WorkflowPage.actions.hitUndo();
 		WorkflowPage.getters.nodeConnections().should('have.length', 1);
 		WorkflowPage.actions.hitRedo();
 		WorkflowPage.getters.nodeConnections().should('have.length', 0);
 	});
-
+	// FIXME: Canvas V2: Fix disconnecting by moving
 	it('should undo/redo deleting a connection by moving it away', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
@@ -224,21 +204,7 @@ describe('Undo/Redo', () => {
 		WorkflowPage.getters.disabledNodes().should('have.length', 2);
 	});
 
-	it('should undo/redo renaming node using NDV', () => {
-		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
-		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
-		WorkflowPage.getters.canvasNodes().last().click();
-		cy.get('body').type('{enter}');
-		ndv.actions.rename(CODE_NODE_NEW_NAME);
-		cy.get('body').type('{esc}');
-		WorkflowPage.actions.hitUndo();
-		cy.get('body').type('{esc}');
-		WorkflowPage.getters.canvasNodeByName(CODE_NODE_NAME).should('exist');
-		WorkflowPage.actions.hitRedo();
-		cy.get('body').type('{esc}');
-		WorkflowPage.getters.canvasNodeByName(CODE_NODE_NEW_NAME).should('exist');
-	});
-
+	// FIXME: Canvas V2: Fix undo renaming node
 	it('should undo/redo renaming node using keyboard shortcut', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
@@ -277,6 +243,7 @@ describe('Undo/Redo', () => {
 		});
 	});
 
+	// FIXME: Canvas V2: Figure out why moving doesn't work from e2e
 	it('should undo/redo multiple steps', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);

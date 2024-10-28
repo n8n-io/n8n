@@ -89,7 +89,9 @@ export declare namespace Zammad {
 			visibility: 'external' | 'internal';
 			subject: string;
 			body: string;
+			sender: 'Agent' | 'Customer' | 'System';
 			type: 'chat' | 'email' | 'fax' | 'note' | 'phone' | 'sms';
+			reply_to: string;
 		};
 	};
 }

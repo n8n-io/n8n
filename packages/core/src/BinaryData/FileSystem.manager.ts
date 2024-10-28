@@ -1,13 +1,13 @@
+import { jsonParse } from 'n8n-workflow';
 import { createReadStream } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import type { Readable } from 'stream';
 import { v4 as uuid } from 'uuid';
-import { jsonParse } from 'n8n-workflow';
+
+import type { BinaryData } from './types';
 import { assertDir, doesNotExist } from './utils';
 import { DisallowedFilepathError } from '../errors/disallowed-filepath.error';
-
-import type { Readable } from 'stream';
-import type { BinaryData } from './types';
 import { FileNotFoundError } from '../errors/file-not-found.error';
 
 const EXECUTION_ID_EXTRACTOR =

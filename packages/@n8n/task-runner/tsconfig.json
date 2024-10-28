@@ -1,0 +1,12 @@
+{
+	"extends": ["../../../tsconfig.json", "../../../tsconfig.backend.json"],
+	"compilerOptions": {
+		"rootDir": ".",
+		"baseUrl": "src",
+		"paths": {
+			"@/*": ["./*"]
+		},
+		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo"
+	},
+	"include": ["src/**/*.ts"]
+}

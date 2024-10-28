@@ -1,3 +1,6 @@
+import { nanoid } from 'nanoid';
+
+import { simpleWebhookCall, waitForWebhook } from './16-webhook-node.cy';
 import {
 	HTTP_REQUEST_NODE_NAME,
 	MANUAL_TRIGGER_NODE_NAME,
@@ -7,13 +10,19 @@ import {
 } from '../constants';
 import { WorkflowPage, NDV } from '../pages';
 import { errorToast } from '../pages/notifications';
+import { getVisiblePopper } from '../utils';
 
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
 
 describe('Data pinning', () => {
+	const maxPinnedDataSize = 16384;
+
 	beforeEach(() => {
 		workflowPage.actions.visit();
+		cy.window().then((win) => {
+			win.maxPinnedDataSize = maxPinnedDataSize;
+		});
 	});
 
 	it('Should be able to pin node output', () => {
@@ -139,7 +148,7 @@ describe('Data pinning', () => {
 
 		ndv.actions.pastePinnedData([
 			{
-				test: '1'.repeat(Cypress.env('MAX_PINNED_DATA_SIZE') as number),
+				test: '1'.repeat(maxPinnedDataSize),
 			},
 		]);
 		errorToast().should('contain', 'Workflow has reached the maximum allowed pinned data size');
@@ -206,6 +215,42 @@ describe('Data pinning', () => {
 				});
 			},
 		);
+	});
+
+	it('should show pinned data tooltip', () => {
+		const { callEndpoint } = simpleWebhookCall({
+			method: 'GET',
+			webhookPath: nanoid(),
+			executeNow: false,
+		});
+
+		ndv.actions.close();
+		workflowPage.actions.executeWorkflow();
+		cy.wait(waitForWebhook);
+
+		// hide other visible popper on workflow execute button
+		workflowPage.getters.canvasNodes().eq(0).click();
+
+		callEndpoint((response) => {
+			expect(response.status).to.eq(200);
+			getVisiblePopper().should('have.length', 1);
+			getVisiblePopper()
+				.eq(0)
+				.should(
+					'have.text',
+					'You can pin this output instead of waiting for a test event. Open node to do so.',
+				);
+		});
+	});
+
+	it('should not show pinned data tooltip', () => {
+		cy.createFixtureWorkflow('Pinned_webhook_node.json', 'Test');
+		workflowPage.actions.executeWorkflow();
+
+		// hide other visible popper on workflow execute button
+		workflowPage.getters.canvasNodes().eq(0).click();
+
+		getVisiblePopper().should('have.length', 0);
 	});
 });
 

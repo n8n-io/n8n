@@ -1,15 +1,17 @@
 import type { DateTime } from 'luxon';
+
+import { ApplicationError } from '../errors/application.error';
 import type {
 	FilterConditionValue,
 	FilterOperatorType,
 	FilterOptionsValue,
 	FilterValue,
 	INodeProperties,
-	Result,
 	ValidationResult,
 } from '../Interfaces';
-import { validateFieldType } from '../TypeValidation';
 import * as LoggerProxy from '../LoggerProxy';
+import type { Result } from '../result';
+import { validateFieldType } from '../TypeValidation';
 
 type FilterConditionMetadata = {
 	index: number;
@@ -18,12 +20,12 @@ type FilterConditionMetadata = {
 	errorFormat: 'full' | 'inline';
 };
 
-export class FilterError extends Error {
+export class FilterError extends ApplicationError {
 	constructor(
 		message: string,
 		readonly description: string,
 	) {
-		super(message);
+		super(message, { level: 'warning' });
 	}
 }
 
@@ -31,12 +33,18 @@ function parseSingleFilterValue(
 	value: unknown,
 	type: FilterOperatorType,
 	strict = false,
+	version: FilterOptionsValue['version'] = 1,
 ): ValidationResult {
 	if (type === 'any' || value === null || value === undefined) {
 		return { valid: true, newValue: value } as ValidationResult;
 	}
 
 	if (type === 'boolean' && !strict) {
+		if (version >= 2) {
+			const result = validateFieldType('filter', value, type);
+			if (result.valid) return result;
+		}
+
 		return { valid: true, newValue: Boolean(value) };
 	}
 
@@ -52,6 +60,7 @@ const withIndefiniteArticle = (noun: string): string => {
 	return `${article} ${noun}`;
 };
 
+// eslint-disable-next-line complexity
 function parseFilterConditionValues(
 	condition: FilterConditionValue,
 	options: FilterOptionsValue,
@@ -61,10 +70,16 @@ function parseFilterConditionValues(
 	const itemIndex = metadata.itemIndex ?? 0;
 	const errorFormat = metadata.errorFormat ?? 'full';
 	const strict = options.typeValidation === 'strict';
+	const version = options.version ?? 1;
 	const { operator } = condition;
 	const rightType = operator.rightType ?? operator.type;
-	const parsedLeftValue = parseSingleFilterValue(condition.leftValue, operator.type, strict);
-	const parsedRightValue = parseSingleFilterValue(condition.rightValue, rightType, strict);
+	const parsedLeftValue = parseSingleFilterValue(
+		condition.leftValue,
+		operator.type,
+		strict,
+		version,
+	);
+	const parsedRightValue = parseSingleFilterValue(condition.rightValue, rightType, strict, version);
 	const leftValid =
 		parsedLeftValue.valid ||
 		(metadata.unresolvedExpressions &&
@@ -93,14 +108,61 @@ function parseFilterConditionValues(
 		)} ${suffix}`;
 	};
 
-	const invalidTypeDescription = 'Try changing the type of comparison.';
+	const getTypeDescription = (isStrict: boolean) => {
+		if (isStrict)
+			return "Try changing the type of comparison. Alternatively you can enable 'Convert types where required'.";
+		return 'Try changing the type of the comparison.';
+	};
+
+	const composeInvalidTypeDescription = (
+		type: string,
+		fromType: string,
+		valuePosition: 'first' | 'second',
+	) => {
+		fromType = fromType.toLocaleLowerCase();
+		const expectedType = withIndefiniteArticle(type);
+
+		let convertionFunction = '';
+		if (type === 'string') {
+			convertionFunction = '.toString()';
+		} else if (type === 'number') {
+			convertionFunction = '.toNumber()';
+		} else if (type === 'boolean') {
+			convertionFunction = '.toBoolean()';
+		}
+
+		if (strict && convertionFunction) {
+			const suggestFunction = ` by adding <code>${convertionFunction}</code>`;
+			return `
+<p>Try either:</p>
+<ol>
+  <li>Enabling 'Convert types where required'</li>
+  <li>Converting the ${valuePosition} field to ${expectedType}${suggestFunction}</li>
+</ol>
+			`;
+		}
+
+		return getTypeDescription(strict);
+	};
+
+	if (!leftValid && !rightValid && typeof condition.leftValue === typeof condition.rightValue) {
+		return {
+			ok: false,
+			error: new FilterError(
+				`Comparison type expects ${withIndefiniteArticle(operator.type)} but both fields are ${withIndefiniteArticle(
+					typeof condition.leftValue,
+				)}`,
+				getTypeDescription(strict),
+			),
+		};
+	}
 
 	if (!leftValid) {
 		return {
 			ok: false,
 			error: new FilterError(
 				composeInvalidTypeMessage(operator.type, typeof condition.leftValue, leftValueString),
-				invalidTypeDescription,
+				composeInvalidTypeDescription(operator.type, typeof condition.leftValue, 'first'),
 			),
 		};
 	}
@@ -110,7 +172,7 @@ function parseFilterConditionValues(
 			ok: false,
 			error: new FilterError(
 				composeInvalidTypeMessage(rightType, typeof condition.rightValue, rightValueString),
-				invalidTypeDescription,
+				composeInvalidTypeDescription(rightType, typeof condition.rightValue, 'second'),
 			),
 		};
 	}
@@ -135,6 +197,18 @@ function parseRegexPattern(pattern: string): RegExp {
 	}
 
 	return regex;
+}
+
+export function arrayContainsValue(array: unknown[], value: unknown, ignoreCase: boolean): boolean {
+	if (ignoreCase && typeof value === 'string') {
+		return array.some((item) => {
+			if (typeof item !== 'string') {
+				return false;
+			}
+			return item.toString().toLocaleLowerCase() === value.toLocaleLowerCase();
+		});
+	}
+	return array.includes(value);
 }
 
 // eslint-disable-next-line complexity
@@ -284,15 +358,9 @@ export function executeFilterCondition(
 
 			switch (condition.operator.operation) {
 				case 'contains':
-					if (ignoreCase && typeof rightValue === 'string') {
-						rightValue = rightValue.toLocaleLowerCase();
-					}
-					return left.includes(rightValue);
+					return arrayContainsValue(left, rightValue, ignoreCase);
 				case 'notContains':
-					if (ignoreCase && typeof rightValue === 'string') {
-						rightValue = rightValue.toLocaleLowerCase();
-					}
-					return !left.includes(rightValue);
+					return !arrayContainsValue(left, rightValue, ignoreCase);
 				case 'lengthEquals':
 					return left.length === rightNumber;
 				case 'lengthNotEquals':

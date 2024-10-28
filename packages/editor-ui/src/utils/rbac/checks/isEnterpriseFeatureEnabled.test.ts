@@ -1,23 +1,24 @@
 import { useSettingsStore } from '@/stores/settings.store';
 import { isEnterpriseFeatureEnabled } from '@/utils/rbac/checks/isEnterpriseFeatureEnabled';
 import { EnterpriseEditionFeature } from '@/constants';
-
-vi.mock('@/stores/settings.store', () => ({
-	useSettingsStore: vi.fn(),
-}));
+import { createPinia, setActivePinia } from 'pinia';
+import { defaultSettings } from '@/__tests__/defaults';
 
 describe('Checks', () => {
+	beforeEach(() => {
+		setActivePinia(createPinia());
+	});
+
 	describe('isEnterpriseFeatureEnabled()', () => {
 		it('should return true if no feature is provided', () => {
 			expect(isEnterpriseFeatureEnabled({})).toBe(true);
 		});
 
 		it('should return true if feature is enabled', () => {
-			vi.mocked(useSettingsStore).mockReturnValue({
-				isEnterpriseFeatureEnabled: vi
-					.fn()
-					.mockImplementation((feature) => feature !== EnterpriseEditionFeature.Variables),
-			} as unknown as ReturnType<typeof useSettingsStore>);
+			useSettingsStore().settings.enterprise = {
+				...defaultSettings.enterprise,
+				[EnterpriseEditionFeature.Saml]: true,
+			};
 
 			expect(
 				isEnterpriseFeatureEnabled({
@@ -27,11 +28,11 @@ describe('Checks', () => {
 		});
 
 		it('should return true if all features are enabled in allOf mode', () => {
-			vi.mocked(useSettingsStore).mockReturnValue({
-				isEnterpriseFeatureEnabled: vi
-					.fn()
-					.mockImplementation((feature) => feature !== EnterpriseEditionFeature.Variables),
-			} as unknown as ReturnType<typeof useSettingsStore>);
+			useSettingsStore().settings.enterprise = {
+				...defaultSettings.enterprise,
+				[EnterpriseEditionFeature.Ldap]: true,
+				[EnterpriseEditionFeature.Saml]: true,
+			};
 
 			expect(
 				isEnterpriseFeatureEnabled({
@@ -42,11 +43,11 @@ describe('Checks', () => {
 		});
 
 		it('should return false if any feature is not enabled in allOf mode', () => {
-			vi.mocked(useSettingsStore).mockReturnValue({
-				isEnterpriseFeatureEnabled: vi
-					.fn()
-					.mockImplementation((feature) => feature !== EnterpriseEditionFeature.Saml),
-			} as unknown as ReturnType<typeof useSettingsStore>);
+			useSettingsStore().settings.enterprise = {
+				...defaultSettings.enterprise,
+				[EnterpriseEditionFeature.Ldap]: true,
+				[EnterpriseEditionFeature.Saml]: false,
+			};
 
 			expect(
 				isEnterpriseFeatureEnabled({
@@ -57,11 +58,11 @@ describe('Checks', () => {
 		});
 
 		it('should return true if any feature is enabled in oneOf mode', () => {
-			vi.mocked(useSettingsStore).mockReturnValue({
-				isEnterpriseFeatureEnabled: vi
-					.fn()
-					.mockImplementation((feature) => feature === EnterpriseEditionFeature.Ldap),
-			} as unknown as ReturnType<typeof useSettingsStore>);
+			useSettingsStore().settings.enterprise = {
+				...defaultSettings.enterprise,
+				[EnterpriseEditionFeature.Ldap]: true,
+				[EnterpriseEditionFeature.Saml]: false,
+			};
 
 			expect(
 				isEnterpriseFeatureEnabled({
@@ -72,9 +73,11 @@ describe('Checks', () => {
 		});
 
 		it('should return false if no features are enabled in anyOf mode', () => {
-			vi.mocked(useSettingsStore).mockReturnValue({
-				isEnterpriseFeatureEnabled: vi.fn().mockReturnValue(false),
-			} as unknown as ReturnType<typeof useSettingsStore>);
+			useSettingsStore().settings.enterprise = {
+				...defaultSettings.enterprise,
+				[EnterpriseEditionFeature.Ldap]: false,
+				[EnterpriseEditionFeature.Saml]: false,
+			};
 
 			expect(
 				isEnterpriseFeatureEnabled({

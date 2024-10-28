@@ -7,6 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
 import {
@@ -31,8 +32,8 @@ export class GoogleContacts implements INodeType {
 		defaults: {
 			name: 'Google Contacts',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'googleContactsOAuth2Api',
@@ -91,6 +92,19 @@ export class GoogleContacts implements INodeType {
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
+
+		// Warmup cache
+		// https://developers.google.com/people/v1/contacts#protocol_1
+		if (resource === 'contact' && operation === 'getAll') {
+			await googleApiRequest.call(this, 'GET', '/people:searchContacts', undefined, {
+				query: '',
+				readMask: 'names',
+			});
+			await googleApiRequest.call(this, 'GET', '/people/me/connections', undefined, {
+				personFields: 'names',
+			});
+		}
+
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'contact') {
@@ -508,7 +522,7 @@ export class GoogleContacts implements INodeType {
 				);
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },

@@ -1,4 +1,4 @@
-import { getFilterOperator, handleOperatorChange } from '../utils';
+import { getFilterOperator, handleOperatorChange, inferOperatorType } from '../utils';
 
 describe('FilterConditions > utils', () => {
 	describe('handleOperatorChange', () => {
@@ -69,6 +69,19 @@ describe('FilterConditions > utils', () => {
 					type: 'boolean',
 				},
 			});
+		});
+	});
+
+	describe('inferOperatorType', () => {
+		test.each([
+			['hello world', 'string'],
+			[14.2, 'number'],
+			[false, 'boolean'],
+			[[{ a: 1 }], 'array'],
+			[{ a: 1 }, 'object'],
+			['2024-01-01', 'dateTime'],
+		])('should correctly infer %s type', (value, result) => {
+			expect(inferOperatorType(value)).toBe(result);
 		});
 	});
 });

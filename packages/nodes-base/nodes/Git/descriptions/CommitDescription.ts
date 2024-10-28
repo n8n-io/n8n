@@ -22,7 +22,7 @@ export const commitFields: INodeProperties[] = [
 				operation: ['commit'],
 			},
 		},
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			{

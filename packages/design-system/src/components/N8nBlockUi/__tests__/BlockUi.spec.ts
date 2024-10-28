@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/vue';
+
 import N8nBlockUi from '../BlockUi.vue';
 
 describe('components', () => {

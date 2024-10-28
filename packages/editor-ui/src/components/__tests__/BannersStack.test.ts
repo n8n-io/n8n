@@ -23,7 +23,7 @@ const initialState = {
 	},
 	[STORES.USERS]: {
 		currentUserId: 'aaa-bbb',
-		users: {
+		usersById: {
 			'aaa-bbb': {
 				id: 'aaa-bbb',
 				role: ROLE.Owner,
@@ -105,7 +105,7 @@ describe('BannerStack', () => {
 				},
 			}),
 		});
-		const confirmEmailSpy = vi.spyOn(useUsersStore(), 'confirmEmail');
+		const confirmEmailSpy = vi.spyOn(useUsersStore(), 'sendConfirmationEmail');
 		getByTestId('confirm-email-button').click();
 		await waitFor(() => expect(confirmEmailSpy).toHaveBeenCalled());
 		await waitFor(() => {
@@ -125,9 +125,11 @@ describe('BannerStack', () => {
 				},
 			}),
 		});
-		const confirmEmailSpy = vi.spyOn(useUsersStore(), 'confirmEmail').mockImplementation(() => {
-			throw new Error(ERROR_MESSAGE);
-		});
+		const confirmEmailSpy = vi
+			.spyOn(useUsersStore(), 'sendConfirmationEmail')
+			.mockImplementation(() => {
+				throw new Error(ERROR_MESSAGE);
+			});
 		getByTestId('confirm-email-button').click();
 		await waitFor(() => expect(confirmEmailSpy).toHaveBeenCalled());
 		await waitFor(() => {

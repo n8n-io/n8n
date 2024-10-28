@@ -65,7 +65,7 @@ export const dimensionDropdown: INodeProperties[] = [
 		},
 		default: 'date',
 		description:
-			'The name of the dimension. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'The name of the dimension. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
 				listName: ['other'],
@@ -145,7 +145,7 @@ export const metricDropdown: INodeProperties[] = [
 		default: 'totalUsers',
 		hint: 'If expression is specified, name can be any string that you would like',
 		description:
-			'The name of the metric. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'The name of the metric. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
 				listName: ['other'],

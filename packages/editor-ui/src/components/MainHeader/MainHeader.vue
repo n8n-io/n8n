@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onBeforeMount, onMounted } from 'vue';
+import { ref, computed, watch, onBeforeMount, onBeforeUnmount, onMounted } from 'vue';
 import type { RouteLocation, RouteLocationRaw } from 'vue-router';
 import { useRouter, useRoute } from 'vue-router';
 import WorkflowDetails from '@/components/MainHeader/WorkflowDetails.vue';
@@ -55,6 +55,10 @@ watch(route, (to, from) => {
 
 onBeforeMount(() => {
 	pushConnection.initialize();
+});
+
+onBeforeUnmount(() => {
+	pushConnection.terminate();
 });
 
 onMounted(async () => {
@@ -160,7 +164,16 @@ async function navigateToExecutionsView(openInNewTab: boolean) {
 	<div>
 		<div :class="{ 'main-header': true, expanded: !uiStore.sidebarMenuCollapsed }">
 			<div v-show="!hideMenuBar" class="top-menu">
-				<WorkflowDetails v-if="workflow?.name" :workflow="workflow" :read-only="readOnly" />
+				<WorkflowDetails
+					v-if="workflow?.name"
+					:id="workflow.id"
+					:tags="workflow.tags"
+					:name="workflow.name"
+					:meta="workflow.meta"
+					:scopes="workflow.scopes"
+					:active="workflow.active"
+					:read-only="readOnly"
+				/>
 				<TabBar
 					v-if="onWorkflowPage"
 					:items="tabBarItems"

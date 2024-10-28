@@ -193,7 +193,7 @@ export const productFields: INodeProperties[] = [
 				displayName: 'Options',
 				name: 'productOptions',
 				type: 'fixedCollection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -417,7 +417,7 @@ export const productFields: INodeProperties[] = [
 				displayName: 'Options',
 				name: 'productOptions',
 				type: 'fixedCollection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				typeOptions: {
 					multipleValues: true,
 				},

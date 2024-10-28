@@ -1,7 +1,8 @@
 <script lang="ts" setup>
-import { computed, ref } from 'vue';
-import { uid } from '../../utils';
 import { ElColorPicker } from 'element-plus';
+import { computed, ref } from 'vue';
+
+import { uid } from '../../utils';
 import N8nInput from '../N8nInput';
 
 export type ColorPickerProps = {
@@ -36,9 +37,9 @@ const colorPickerProps = computed(() => {
 });
 
 const emit = defineEmits<{
-	(event: 'update:modelValue', value: string | null): void;
-	(event: 'change', value: string | null): void;
-	(event: 'active-change', value: string | null): void;
+	'update:modelValue': [value: string | null];
+	change: [value: string | null];
+	'active-change': [value: string | null];
 }>();
 
 const onChange = (value: string | null) => {

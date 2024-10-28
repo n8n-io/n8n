@@ -1,6 +1,13 @@
-import type { IN8nUISettings } from 'n8n-workflow';
+import type { FrontendSettings } from '@n8n/api-types';
 
-export const defaultSettings: IN8nUISettings = {
+export const defaultSettings: FrontendSettings = {
+	databaseType: 'sqlite',
+	isDocker: false,
+	pruning: {
+		isEnabled: false,
+		maxAge: 0,
+		maxCount: 0,
+	},
 	allowedModules: {},
 	communityNodesEnabled: false,
 	defaultLocale: '',
@@ -9,6 +16,7 @@ export const defaultSettings: IN8nUISettings = {
 	endpointFormWaiting: '',
 	endpointWebhook: '',
 	endpointWebhookTest: '',
+	endpointWebhookWaiting: '',
 	enterprise: {
 		sharing: false,
 		ldap: false,
@@ -16,7 +24,7 @@ export const defaultSettings: IN8nUISettings = {
 		logStreaming: false,
 		debugInEditor: false,
 		advancedExecutionFilters: false,
-		variables: true,
+		variables: false,
 		sourceControl: false,
 		auditLogs: false,
 		showNonProdBanner: false,
@@ -39,12 +47,10 @@ export const defaultSettings: IN8nUISettings = {
 	hideUsagePage: false,
 	hiringBannerEnabled: false,
 	instanceId: '',
-	isNpmAvailable: false,
-	license: { environment: 'development' },
+	license: { environment: 'development', consumerId: 'unknown' },
 	logLevel: 'info',
 	maxExecutionTimeout: 0,
 	oauthCallbackUrls: { oauth1: '', oauth2: '' },
-	onboardingCallPromptEnabled: false,
 	personalizationSurveyEnabled: false,
 	releaseChannel: 'stable',
 	posthog: {
@@ -60,6 +66,7 @@ export const defaultSettings: IN8nUISettings = {
 	saveDataErrorExecution: 'DEFAULT',
 	saveDataSuccessExecution: 'DEFAULT',
 	saveManualExecutions: false,
+	saveExecutionProgress: false,
 	sso: {
 		ldap: { loginEnabled: false, loginLabel: '' },
 		saml: { loginEnabled: false, loginLabel: '' },
@@ -81,6 +88,8 @@ export const defaultSettings: IN8nUISettings = {
 		quota: 10,
 	},
 	versionCli: '',
+	nodeJsVersion: '',
+	concurrency: -1,
 	versionNotifications: {
 		enabled: true,
 		endpoint: '',
@@ -102,15 +111,17 @@ export const defaultSettings: IN8nUISettings = {
 	mfa: {
 		enabled: false,
 	},
-	ai: {
+	askAi: {
 		enabled: false,
-		provider: '',
-		features: {
-			generateCurl: false,
-		},
 	},
 	workflowHistory: {
 		pruneTime: 0,
 		licensePruneTime: 0,
+	},
+	security: {
+		blockFileAccessToN8nFiles: false,
+	},
+	aiAssistant: {
+		enabled: false,
 	},
 };

@@ -2,7 +2,7 @@
  * Actions
  */
 
-export function vistDemoPage(theme?: 'dark' | 'light') {
+export function visitDemoPage(theme?: 'dark' | 'light') {
 	const query = theme ? `?theme=${theme}` : '';
 	cy.visit('/workflows/demo' + query);
 	cy.waitForLoad();

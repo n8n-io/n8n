@@ -1,101 +1,158 @@
 <script lang="ts" setup>
-import { computed, inject, useCssModule } from 'vue';
-import { CanvasNodeHandleKey } from '@/constants';
+import { useCanvasNodeHandle } from '@/composables/useCanvasNodeHandle';
+import { useCanvasNode } from '@/composables/useCanvasNode';
+import { computed, ref, useCssModule } from 'vue';
+import type { CanvasNodeDefaultRender } from '@/types';
+import { useI18n } from '@/composables/useI18n';
 
-const handle = inject(CanvasNodeHandleKey);
-
-// const group = svg.node('g');
-// const containerBorder = svg.node('rect', {
-// 	rx: 3,
-// 	'stroke-width': 2,
-// 	fillOpacity: 0,
-// 	height: ep.params.dimensions - 2,
-// 	width: ep.params.dimensions - 2,
-// 	y: 1,
-// 	x: 1,
-// });
-// const plusPath = svg.node('path', {
-// 	d: 'm16.40655,10.89837l-3.30491,0l0,-3.30491c0,-0.40555 -0.32889,-0.73443 -0.73443,-0.73443l-0.73443,0c-0.40554,0 -0.73442,0.32888 -0.73442,0.73443l0,3.30491l-3.30491,0c-0.40555,0 -0.73443,0.32888 -0.73443,0.73442l0,0.73443c0,0.40554 0.32888,0.73443 0.73443,0.73443l3.30491,0l0,3.30491c0,0.40554 0.32888,0.73442 0.73442,0.73442l0.73443,0c0.40554,0 0.73443,-0.32888 0.73443,-0.73442l0,-3.30491l3.30491,0c0.40554,0 0.73442,-0.32889 0.73442,-0.73443l0,-0.73443c0,-0.40554 -0.32888,-0.73442 -0.73442,-0.73442z',
-// });
-// if (ep.params.size !== 'medium') {
-// 	ep.addClass(ep.params.size);
-// }
-// group.appendChild(containerBorder);
-// group.appendChild(plusPath);
-//
-// ep.setupOverlays();
-// ep.setVisible(false);
-// return group;
+const emit = defineEmits<{
+	add: [];
+}>();
 
 const $style = useCssModule();
 
-const label = computed(() => handle?.label.value ?? '');
+const i18n = useI18n();
+const { render } = useCanvasNode();
+const { label, isConnected, isConnecting, isReadOnly, isRequired, runData } = useCanvasNodeHandle();
+
+const handleClasses = 'source';
+
+const classes = computed(() => ({
+	'canvas-node-handle-main-output': true,
+	[$style.handle]: true,
+	[$style.connected]: isConnected.value,
+	[$style.required]: isRequired.value,
+}));
+
+const isHovered = ref(false);
+
+const renderOptions = computed(() => render.value.options as CanvasNodeDefaultRender['options']);
+
+const runDataTotal = computed(() => runData.value?.total ?? 0);
+
+const runDataLabel = computed(() =>
+	!isConnected.value && runData.value && runData.value.total > 0
+		? i18n.baseText('ndv.output.items', {
+				adjustToNumber: runData.value.total,
+				interpolate: { count: String(runData.value.total) },
+			})
+		: '',
+);
+
+const isHandlePlusVisible = computed(() => !isConnecting.value || isHovered.value);
+
+const plusType = computed(() => (runDataTotal.value > 0 ? 'success' : 'default'));
+
+const plusLineSize = computed(
+	() =>
+		({
+			small: 46,
+			medium: 66,
+			large: 80,
+		})[(runDataTotal.value > 0 ? 'large' : renderOptions.value.outputs?.labelSize) ?? 'small'],
+);
+
+const outputLabelClasses = computed(() => ({
+	[$style.label]: true,
+	[$style.outputLabel]: true,
+}));
+
+const runDataLabelClasses = computed(() => ({
+	[$style.label]: true,
+	[$style.runDataLabel]: true,
+}));
+
+function onMouseEnter() {
+	isHovered.value = true;
+}
+
+function onMouseLeave() {
+	isHovered.value = false;
+}
+
+function onClickAdd() {
+	emit('add');
+}
 </script>
 <template>
-	<div :class="['canvas-node-handle-main-output', $style.handle]">
-		<div :class="$style.label">{{ label }}</div>
-		<div :class="$style.circle" />
-		<!-- @TODO Determine whether handle is connected and find a way to make it work without pointer-events: none -->
-		<!--		<svg :class="$style.plus" viewBox="0 0 70 24">-->
-		<!--			<line x1="0" y1="12" x2="46" y2="12" stroke="var(&#45;&#45;color-foreground-xdark)" />-->
-		<!--			<rect-->
-		<!--				x="46"-->
-		<!--				y="2"-->
-		<!--				width="20"-->
-		<!--				height="20"-->
-		<!--				stroke="var(&#45;&#45;color-foreground-xdark)"-->
-		<!--				stroke-width="2"-->
-		<!--				rx="4"-->
-		<!--				fill="#ffffff"-->
-		<!--			/>-->
-		<!--			<g transform="translate(44, 0)">-->
-		<!--				<path-->
-		<!--					fill="var(&#45;&#45;color-foreground-xdark)"-->
-		<!--					d="m16.40655,10.89837l-3.30491,0l0,-3.30491c0,-0.40555 -0.32889,-0.73443 -0.73443,-0.73443l-0.73443,0c-0.40554,0 -0.73442,0.32888 -0.73442,0.73443l0,3.30491l-3.30491,0c-0.40555,0 -0.73443,0.32888 -0.73443,0.73442l0,0.73443c0,0.40554 0.32888,0.73443 0.73443,0.73443l3.30491,0l0,3.30491c0,0.40554 0.32888,0.73442 0.73442,0.73442l0.73443,0c0.40554,0 0.73443,-0.32888 0.73443,-0.73442l0,-3.30491l3.30491,0c0.40554,0 0.73442,-0.32889 0.73442,-0.73443l0,-0.73443c0,-0.40554 -0.32888,-0.73442 -0.73442,-0.73442z"-->
-		<!--				></path>-->
-		<!--			</g>-->
-		<!--		</svg>-->
+	<div :class="classes">
+		<div v-if="label" :class="outputLabelClasses">{{ label }}</div>
+		<div v-if="runData" :class="runDataLabelClasses">{{ runDataLabel }}</div>
+		<CanvasHandleDot :handle-classes="handleClasses" />
+		<Transition name="canvas-node-handle-main-output">
+			<CanvasHandlePlus
+				v-if="!isConnected && !isReadOnly"
+				v-show="isHandlePlusVisible"
+				data-test-id="canvas-handle-plus"
+				:data-plus-type="plusType"
+				:line-size="plusLineSize"
+				:handle-classes="handleClasses"
+				:type="plusType"
+				@mouseenter="onMouseEnter"
+				@mouseleave="onMouseLeave"
+				@click:plus="onClickAdd"
+			/>
+		</Transition>
 	</div>
 </template>
 
 <style lang="scss" module>
 .handle {
-	width: 16px;
-	height: 16px;
-}
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	justify-content: center;
 
-.circle {
-	width: 16px;
-	height: 16px;
-	border-radius: 100%;
-	background: var(--color-foreground-xdark);
-
-	&:hover {
-		background: var(--color-primary);
-	}
-}
-
-.plus {
-	position: absolute;
-	left: 16px;
-	top: 50%;
-	transform: translate(0, -50%);
-	width: 70px;
-	height: 24px;
-
-	:global(.vue-flow__handle.connecting) & {
-		display: none;
+	&.connected .label {
+		max-width: 96px;
 	}
 }
 
 .label {
 	position: absolute;
+	background: var(--color-canvas-label-background);
+	z-index: 1;
+	max-width: calc(100% - var(--spacing-m) - 24px);
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	overflow: hidden;
+}
+
+.required .label::after {
+	content: '*';
+	color: var(--color-danger);
+}
+
+.outputLabel {
 	top: 50%;
-	left: 20px;
+	left: var(--spacing-m);
 	transform: translate(0, -50%);
 	font-size: var(--font-size-2xs);
 	color: var(--color-foreground-xdark);
-	background: var(--color-background-light);
-	z-index: 1;
+}
+
+.runDataLabel {
+	position: absolute;
+	top: 0;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	font-size: var(--font-size-xs);
+	color: var(--color-success);
+}
+</style>
+
+<style lang="scss">
+.canvas-node-handle-main-output-enter-active,
+.canvas-node-handle-main-output-leave-active {
+	transform-origin: 0 center;
+	transition-property: transform, opacity;
+	transition-duration: 0.2s;
+	transition-timing-function: ease;
+}
+
+.canvas-node-handle-main-output-enter-from,
+.canvas-node-handle-main-output-leave-to {
+	transform: scale(0);
+	opacity: 0;
 }
 </style>

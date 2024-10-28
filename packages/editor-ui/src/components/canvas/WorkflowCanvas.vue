@@ -1,32 +1,69 @@
 <script setup lang="ts">
 import Canvas from '@/components/canvas/Canvas.vue';
-import { toRef, useCssModule } from 'vue';
+import { computed, toRef, useCssModule } from 'vue';
 import type { Workflow } from 'n8n-workflow';
 import type { IWorkflowDb } from '@/Interface';
 import { useCanvasMapping } from '@/composables/useCanvasMapping';
+import type { EventBus } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system';
+import type { CanvasEventBusEvents } from '@/types';
 
 defineOptions({
 	inheritAttrs: false,
 });
 
-const props = defineProps<{
-	id?: string;
-	workflow: IWorkflowDb;
-	workflowObject: Workflow;
-}>();
+const props = withDefaults(
+	defineProps<{
+		id?: string;
+		workflow: IWorkflowDb;
+		workflowObject: Workflow;
+		fallbackNodes?: IWorkflowDb['nodes'];
+		showFallbackNodes?: boolean;
+		eventBus?: EventBus<CanvasEventBusEvents>;
+		readOnly?: boolean;
+		executing?: boolean;
+		showBugReportingButton?: boolean;
+	}>(),
+	{
+		id: 'canvas',
+		eventBus: () => createEventBus<CanvasEventBusEvents>(),
+		fallbackNodes: () => [],
+		showFallbackNodes: true,
+	},
+);
 
 const $style = useCssModule();
 
 const workflow = toRef(props, 'workflow');
 const workflowObject = toRef(props, 'workflowObject');
 
-const { elements, connections } = useCanvasMapping({ workflow, workflowObject });
+const nodes = computed(() => {
+	return props.showFallbackNodes
+		? [...props.workflow.nodes, ...props.fallbackNodes]
+		: props.workflow.nodes;
+});
+const connections = computed(() => props.workflow.connections);
+
+const { nodes: mappedNodes, connections: mappedConnections } = useCanvasMapping({
+	nodes,
+	connections,
+	workflowObject,
+});
 </script>
 
 <template>
-	<div :class="$style.wrapper">
+	<div :class="$style.wrapper" data-test-id="canvas-wrapper">
 		<div :class="$style.canvas">
-			<Canvas v-if="workflow" :elements="elements" :connections="connections" v-bind="$attrs" />
+			<Canvas
+				v-if="workflow"
+				:id="id"
+				:nodes="mappedNodes"
+				:connections="mappedConnections"
+				:show-bug-reporting-button="showBugReportingButton"
+				:event-bus="eventBus"
+				:read-only="readOnly"
+				v-bind="$attrs"
+			/>
 		</div>
 		<slot />
 	</div>
@@ -46,31 +83,5 @@ const { elements, connections } = useCanvasMapping({ workflow, workflowObject })
 	height: 100%;
 	position: relative;
 	display: block;
-}
-
-.executionButtons {
-	position: absolute;
-	display: flex;
-	justify-content: center;
-	align-items: center;
-	left: 50%;
-	transform: translateX(-50%);
-	bottom: var(--spacing-l);
-	width: auto;
-
-	@media (max-width: $breakpoint-2xs) {
-		bottom: 150px;
-	}
-
-	button {
-		display: flex;
-		justify-content: center;
-		align-items: center;
-		margin-left: 0.625rem;
-
-		&:first-child {
-			margin: 0;
-		}
-	}
 }
 </style>

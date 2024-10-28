@@ -1,0 +1,8 @@
+{
+	"$schema": "../../node_modules/@biomejs/biome/configuration_schema.json",
+	"extends": ["../../biome.jsonc"]
+	// Although nothing is extended here, it is required so biome use the
+	// editor-ui gitignore file:
+	// > For now, Biome only takes the ignore file in the working directory into account.
+	// https://biomejs.dev/guides/integrate-in-vcs/#use-the-ignore-file
+}

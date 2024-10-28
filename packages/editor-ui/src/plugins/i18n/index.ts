@@ -76,7 +76,7 @@ export class I18nClass {
 	 * Render a string of dynamic text, i.e. a string with a constructed path to the localized value.
 	 */
 	private dynamicRender({ key, fallback }: { key: string; fallback?: string }) {
-		return this.i18n.te(key) ? this.i18n.t(key).toString() : fallback ?? '';
+		return this.i18n.te(key) ? this.i18n.t(key).toString() : (fallback ?? '');
 	}
 
 	displayTimer(msPassed: number, showMs = false): string {

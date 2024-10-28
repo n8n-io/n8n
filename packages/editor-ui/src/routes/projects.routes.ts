@@ -4,7 +4,7 @@ import { VIEWS } from '@/constants';
 const MainSidebar = async () => await import('@/components/MainSidebar.vue');
 const WorkflowsView = async () => await import('@/views/WorkflowsView.vue');
 const CredentialsView = async () => await import('@/views/CredentialsView.vue');
-const ProjectSettings = async () => await import('@/components/Projects/ProjectSettings.vue');
+const ProjectSettings = async () => await import('@/views/ProjectSettings.vue');
 
 const commonChildRoutes: RouteRecordRaw[] = [
 	{
@@ -18,7 +18,8 @@ const commonChildRoutes: RouteRecordRaw[] = [
 		},
 	},
 	{
-		path: 'credentials',
+		path: 'credentials/:credentialId?',
+		props: true,
 		components: {
 			default: CredentialsView,
 			sidebar: MainSidebar,

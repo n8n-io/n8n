@@ -1,17 +1,19 @@
-import { Container, Service } from 'typedi';
+import { GlobalConfig } from '@n8n/config';
 import { Router } from 'express';
 import type { Application, Request, Response, RequestHandler } from 'express';
 import { rateLimit as expressRateLimit } from 'express-rate-limit';
+import { ApplicationError } from 'n8n-workflow';
+import { Container, Service } from 'typedi';
+import type { ZodClass } from 'zod-class';
 
 import { AuthService } from '@/auth/auth.service';
-import config from '@/config';
-import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
 import { inProduction, RESPONSE_ERROR_MESSAGES } from '@/constants';
-import type { BooleanLicenseFeature } from '@/Interfaces';
-import { License } from '@/License';
+import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
+import type { BooleanLicenseFeature } from '@/interfaces';
+import { License } from '@/license';
+import { userHasScopes } from '@/permissions/check-access';
 import type { AuthenticatedRequest } from '@/requests';
-import { send } from '@/ResponseHelper'; // TODO: move `ResponseHelper.send` to this file
-import { userHasScope } from '@/permissions/checkAccess';
+import { send } from '@/response-helper'; // TODO: move `ResponseHelper.send` to this file
 
 import type {
 	AccessScope,
@@ -42,6 +44,7 @@ export const getRouteMetadata = (controllerClass: Controller, handlerName: Handl
 	let route = metadata.routes.get(handlerName);
 	if (!route) {
 		route = {} as RouteMetadata;
+		route.args = [];
 		metadata.routes.set(handlerName, route);
 	}
 	return route;
@@ -52,6 +55,7 @@ export class ControllerRegistry {
 	constructor(
 		private readonly license: License,
 		private readonly authService: AuthService,
+		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	activate(app: Application) {
@@ -64,7 +68,7 @@ export class ControllerRegistry {
 		const metadata = registry.get(controllerClass)!;
 
 		const router = Router({ mergeParams: true });
-		const prefix = `/${config.getEnv('endpoints.rest')}/${metadata.basePath}`
+		const prefix = `/${this.globalConfig.endpoints.rest}/${metadata.basePath}`
 			.replace(/\/+/g, '/')
 			.replace(/\/$/, '');
 		app.use(prefix, router);
@@ -75,8 +79,31 @@ export class ControllerRegistry {
 		);
 
 		for (const [handlerName, route] of metadata.routes) {
-			const handler = async (req: Request, res: Response) =>
-				await controller[handlerName](req, res);
+			const argTypes = Reflect.getMetadata(
+				'design:paramtypes',
+				controller,
+				handlerName,
+			) as unknown[];
+			// eslint-disable-next-line @typescript-eslint/no-loop-func
+			const handler = async (req: Request, res: Response) => {
+				const args: unknown[] = [req, res];
+				for (let index = 0; index < route.args.length; index++) {
+					const arg = route.args[index];
+					if (!arg) continue; // Skip args without any decorators
+					if (arg.type === 'param') args.push(req.params[arg.key]);
+					else if (['body', 'query'].includes(arg.type)) {
+						const paramType = argTypes[index] as ZodClass;
+						if (paramType && 'parse' in paramType) {
+							const output = paramType.safeParse(req[arg.type]);
+							if (output.success) args.push(output.data);
+							else {
+								return res.status(400).json(output.error.errors[0]);
+							}
+						}
+					} else throw new ApplicationError('Unknown arg type: ' + arg.type);
+				}
+				return await controller[handlerName](...args);
+			};
 
 			router[route.method](
 				route.path,
@@ -124,7 +151,7 @@ export class ControllerRegistry {
 
 			const { scope, globalOnly } = accessScope;
 
-			if (!(await userHasScope(req.user, [scope], globalOnly, req.params))) {
+			if (!(await userHasScopes(req.user, [scope], globalOnly, req.params))) {
 				return res.status(403).json({
 					status: 'error',
 					message: RESPONSE_ERROR_MESSAGES.MISSING_SCOPE,

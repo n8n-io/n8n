@@ -1,3 +1,41 @@
+<script lang="ts">
+import { defineComponent } from 'vue';
+
+import ModalDrawer from './ModalDrawer.vue';
+import TimeAgo from './TimeAgo.vue';
+import VersionCard from './VersionCard.vue';
+import { VERSIONS_MODAL_KEY } from '../constants';
+import { mapStores } from 'pinia';
+import { useVersionsStore } from '@/stores/versions.store';
+import type { IVersion } from '@/Interface';
+
+export default defineComponent({
+	name: 'UpdatesPanel',
+	components: {
+		ModalDrawer,
+		VersionCard,
+		TimeAgo,
+	},
+	computed: {
+		...mapStores(useVersionsStore),
+		nextVersions(): IVersion[] {
+			return this.versionsStore.nextVersions;
+		},
+		currentVersion(): IVersion | undefined {
+			return this.versionsStore.currentVersion;
+		},
+		infoUrl(): string {
+			return this.versionsStore.infoUrl;
+		},
+	},
+	data() {
+		return {
+			VERSIONS_MODAL_KEY,
+		};
+	},
+});
+</script>
+
 <template>
 	<ModalDrawer
 		:name="VERSIONS_MODAL_KEY"
@@ -50,44 +88,6 @@
 		</template>
 	</ModalDrawer>
 </template>
-
-<script lang="ts">
-import { defineComponent } from 'vue';
-
-import ModalDrawer from './ModalDrawer.vue';
-import TimeAgo from './TimeAgo.vue';
-import VersionCard from './VersionCard.vue';
-import { VERSIONS_MODAL_KEY } from '../constants';
-import { mapStores } from 'pinia';
-import { useVersionsStore } from '@/stores/versions.store';
-import type { IVersion } from '@/Interface';
-
-export default defineComponent({
-	name: 'UpdatesPanel',
-	components: {
-		ModalDrawer,
-		VersionCard,
-		TimeAgo,
-	},
-	computed: {
-		...mapStores(useVersionsStore),
-		nextVersions(): IVersion[] {
-			return this.versionsStore.nextVersions;
-		},
-		currentVersion(): IVersion | undefined {
-			return this.versionsStore.currentVersion;
-		},
-		infoUrl(): string {
-			return this.versionsStore.infoUrl;
-		},
-	},
-	data() {
-		return {
-			VERSIONS_MODAL_KEY,
-		};
-	},
-});
-</script>
 
 <style module lang="scss">
 .title {

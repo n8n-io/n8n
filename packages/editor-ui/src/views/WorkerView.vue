@@ -1,3 +1,16 @@
+<script setup lang="ts">
+import WorkerList from '@/components/WorkerList.ee.vue';
+import { useUIStore } from '@/stores/ui.store';
+import { useSettingsStore } from '@/stores/settings.store';
+
+const settingsStore = useSettingsStore();
+const uiStore = useUIStore();
+
+const goToUpgrade = () => {
+	void uiStore.goToUpgrade('worker-view', 'upgrade-worker-view');
+};
+</script>
+
 <template>
 	<WorkerList
 		v-if="settingsStore.isQueueModeEnabled && settingsStore.isWorkerViewAvailable"
@@ -22,19 +35,6 @@
 		</template>
 	</n8n-action-box>
 </template>
-
-<script setup lang="ts">
-import WorkerList from '@/components/WorkerList.ee.vue';
-import { useUIStore } from '@/stores/ui.store';
-import { useSettingsStore } from '@/stores/settings.store';
-
-const settingsStore = useSettingsStore();
-const uiStore = useUIStore();
-
-const goToUpgrade = () => {
-	void uiStore.goToUpgrade('worker-view', 'upgrade-worker-view');
-};
-</script>
 
 <style module lang="scss">
 .actionBox {

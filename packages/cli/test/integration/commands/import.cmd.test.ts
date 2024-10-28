@@ -1,17 +1,15 @@
 import { nanoid } from 'nanoid';
 
-import { InternalHooks } from '@/InternalHooks';
 import { ImportWorkflowsCommand } from '@/commands/import/workflow';
-import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { setupTestCommand } from '@test-integration/utils/test-command';
 
-import { setupTestCommand } from '@test-integration/utils/testCommand';
 import { mockInstance } from '../../shared/mocking';
-import * as testDb from '../shared/testDb';
-import { getAllSharedWorkflows, getAllWorkflows } from '../shared/db/workflows';
-import { createMember, createOwner } from '../shared/db/users';
 import { getPersonalProject } from '../shared/db/projects';
+import { createMember, createOwner } from '../shared/db/users';
+import { getAllSharedWorkflows, getAllWorkflows } from '../shared/db/workflows';
+import * as testDb from '../shared/test-db';
 
-mockInstance(InternalHooks);
 mockInstance(LoadNodesAndCredentials);
 const command = setupTestCommand(ImportWorkflowsCommand);
 
@@ -29,7 +27,10 @@ test('import:workflow should import active workflow and deactivate it', async ()
 	//
 	// ACT
 	//
-	await command.run(['--separate', '--input=./test/integration/commands/importWorkflows/separate']);
+	await command.run([
+		'--separate',
+		'--input=./test/integration/commands/import-workflows/separate',
+	]);
 
 	//
 	// ASSERT
@@ -68,7 +69,9 @@ test('import:workflow should import active workflow from combined file and deact
 	//
 	// ACT
 	//
-	await command.run(['--input=./test/integration/commands/importWorkflows/combined/combined.json']);
+	await command.run([
+		'--input=./test/integration/commands/import-workflows/combined/combined.json',
+	]);
 
 	//
 	// ASSERT
@@ -107,7 +110,7 @@ test('`import:workflow --userId ...` should fail if the workflow exists already 
 
 	// Import workflow the first time, assigning it to a member.
 	await command.run([
-		'--input=./test/integration/commands/importWorkflows/combined-with-update/original.json',
+		'--input=./test/integration/commands/import-workflows/combined-with-update/original.json',
 		`--userId=${owner.id}`,
 	]);
 
@@ -134,7 +137,7 @@ test('`import:workflow --userId ...` should fail if the workflow exists already 
 	// to assign it to the member.
 	await expect(
 		command.run([
-			'--input=./test/integration/commands/importWorkflows/combined-with-update/updated.json',
+			'--input=./test/integration/commands/import-workflows/combined-with-update/updated.json',
 			`--userId=${member.id}`,
 		]),
 	).rejects.toThrowError(
@@ -171,7 +174,7 @@ test("only update the workflow, don't create or update the owner if `--userId` i
 
 	// Import workflow the first time, assigning it to a member.
 	await command.run([
-		'--input=./test/integration/commands/importWorkflows/combined-with-update/original.json',
+		'--input=./test/integration/commands/import-workflows/combined-with-update/original.json',
 		`--userId=${member.id}`,
 	]);
 
@@ -196,7 +199,7 @@ test("only update the workflow, don't create or update the owner if `--userId` i
 	//
 	// Import the same workflow again, with another name but the same ID.
 	await command.run([
-		'--input=./test/integration/commands/importWorkflows/combined-with-update/updated.json',
+		'--input=./test/integration/commands/import-workflows/combined-with-update/updated.json',
 	]);
 
 	//
@@ -230,7 +233,7 @@ test('`import:workflow --projectId ...` should fail if the credential already ex
 
 	// Import workflow the first time, assigning it to a member.
 	await command.run([
-		'--input=./test/integration/commands/importWorkflows/combined-with-update/original.json',
+		'--input=./test/integration/commands/import-workflows/combined-with-update/original.json',
 		`--userId=${owner.id}`,
 	]);
 
@@ -257,7 +260,7 @@ test('`import:workflow --projectId ...` should fail if the credential already ex
 	// to assign it to the member.
 	await expect(
 		command.run([
-			'--input=./test/integration/commands/importWorkflows/combined-with-update/updated.json',
+			'--input=./test/integration/commands/import-workflows/combined-with-update/updated.json',
 			`--projectId=${memberProject.id}`,
 		]),
 	).rejects.toThrowError(
@@ -287,7 +290,7 @@ test('`import:workflow --projectId ...` should fail if the credential already ex
 test('`import:workflow --projectId ... --userId ...` fails explaining that only one of the options can be used at a time', async () => {
 	await expect(
 		command.run([
-			'--input=./test/integration/commands/importWorkflows/combined-with-update/updated.json',
+			'--input=./test/integration/commands/import-workflows/combined-with-update/updated.json',
 			`--userId=${nanoid()}`,
 			`--projectId=${nanoid()}`,
 		]),

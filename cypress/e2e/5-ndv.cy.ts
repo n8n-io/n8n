@@ -1,10 +1,8 @@
-import { getVisibleSelect } from '../utils';
+import { setCredentialValues } from '../composables/modals/credential-modal';
+import { clickCreateNewCredential } from '../composables/ndv';
 import { MANUAL_TRIGGER_NODE_DISPLAY_NAME, NOTION_NODE_NAME } from '../constants';
 import { NDV, WorkflowPage } from '../pages';
 import { NodeCreator } from '../pages/features/node-creator';
-import { clickCreateNewCredential } from '../composables/ndv';
-import { setCredentialValues } from '../composables/modals/credential-modal';
-import { successToast } from '../pages/notifications';
 
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
@@ -134,6 +132,11 @@ describe('NDV', () => {
 				'contains.text',
 				"An expression here won't work because it uses .item and n8n can't figure out the matching item.",
 			);
+		ndv.getters.nodeRunErrorIndicator().should('be.visible');
+		ndv.getters.nodeRunTooltipIndicator().should('be.visible');
+		// The error details should be hidden behind a tooltip
+		ndv.getters.nodeRunTooltipIndicator().should('not.contain', 'Start Time');
+		ndv.getters.nodeRunTooltipIndicator().should('not.contain', 'Execution Time');
 	});
 
 	it('should save workflow using keyboard shortcut from NDV', () => {
@@ -201,7 +204,7 @@ describe('NDV', () => {
 					.contains(key)
 					.should('be.visible');
 			});
-			getObjectValueItem().find('label').click();
+			getObjectValueItem().find('label').click({ force: true });
 			expandedObjectProps.forEach((key) => {
 				ndv.getters
 					.outputPanel()
@@ -337,38 +340,6 @@ describe('NDV', () => {
 			ndv.actions.validateExpressionPreview('value', output ?? input);
 			ndv.getters.parameterInput('value').clear();
 		});
-	});
-
-	it('should not retrieve remote options when required params throw errors', () => {
-		workflowPage.actions.addInitialNodeToCanvas('E2e Test', { action: 'Remote Options' });
-
-		ndv.getters.parameterInput('remoteOptions').click();
-		getVisibleSelect().find('.el-select-dropdown__item').should('have.length', 3);
-
-		ndv.actions.setInvalidExpression({ fieldName: 'fieldId' });
-
-		ndv.getters.inputPanel().click(); // remove focus from input, hide expression preview
-
-		ndv.getters.parameterInput('remoteOptions').click();
-
-		ndv.getters.parameterInputIssues('remoteOptions').realHover({ scrollBehavior: false });
-		// Remote options dropdown should not be visible
-		ndv.getters.parameterInput('remoteOptions').find('.el-select').should('not.exist');
-	});
-
-	it('should retrieve remote options when non-required params throw errors', () => {
-		workflowPage.actions.addInitialNodeToCanvas('E2e Test', { action: 'Remote Options' });
-
-		ndv.getters.parameterInput('remoteOptions').click();
-		getVisibleSelect().find('.el-select-dropdown__item').should('have.length', 3);
-		ndv.getters.parameterInput('remoteOptions').click();
-
-		ndv.actions.setInvalidExpression({ fieldName: 'otherField' });
-
-		ndv.getters.nodeParameters().click(); // remove focus from input, hide expression preview
-
-		ndv.getters.parameterInput('remoteOptions').click();
-		getVisibleSelect().find('.el-select-dropdown__item').should('have.length', 3);
 	});
 
 	it('should flag issues as soon as params are set', () => {
@@ -616,7 +587,13 @@ describe('NDV', () => {
 		ndv.getters.outputTableRow(1).find('mark').should('have.text', '<lib');
 
 		ndv.getters.outputDisplayMode().find('label').eq(1).should('include.text', 'JSON');
-		ndv.getters.outputDisplayMode().find('label').eq(1).click();
+		ndv.getters
+			.outputDisplayMode()
+			.find('label')
+			.eq(1)
+			.scrollIntoView()
+			.should('be.visible')
+			.click();
 
 		ndv.getters.outputDataContainer().find('.json-data').should('exist');
 		ndv.getters
@@ -631,8 +608,7 @@ describe('NDV', () => {
 		ndv.getters.outputDisplayMode().find('label').eq(2).click({ force: true });
 		ndv.getters
 			.outputDataContainer()
-			.findChildByTestId('run-data-schema-item')
-			.find('> span')
+			.findChildByTestId('run-data-schema-item-value')
 			.should('include.text', '<?xml version="1.0" encoding="UTF-8"?>');
 	});
 
@@ -642,8 +618,10 @@ describe('NDV', () => {
 		// Should not show run info before execution
 		ndv.getters.nodeRunSuccessIndicator().should('not.exist');
 		ndv.getters.nodeRunErrorIndicator().should('not.exist');
+		ndv.getters.nodeRunTooltipIndicator().should('not.exist');
 		ndv.getters.nodeExecuteButton().click();
 		ndv.getters.nodeRunSuccessIndicator().should('exist');
+		ndv.getters.nodeRunTooltipIndicator().should('exist');
 	});
 
 	it('should properly show node execution indicator for multiple nodes', () => {
@@ -655,6 +633,7 @@ describe('NDV', () => {
 		// Manual tigger node should show success indicator
 		workflowPage.actions.openNode('When clicking ‘Test workflow’');
 		ndv.getters.nodeRunSuccessIndicator().should('exist');
+		ndv.getters.nodeRunTooltipIndicator().should('exist');
 		// Code node should show error
 		ndv.getters.backToCanvas().click();
 		workflowPage.actions.openNode('Code');
@@ -699,6 +678,23 @@ describe('NDV', () => {
 		ndv.getters.parameterInput('operation').find('input').should('have.value', 'Delete');
 	});
 
+	it('Should show a notice when remote options cannot be fetched because of missing credentials', () => {
+		cy.intercept('POST', '/rest/dynamic-node-parameters/options', { statusCode: 403 }).as(
+			'parameterOptions',
+		);
+
+		workflowPage.actions.addInitialNodeToCanvas(NOTION_NODE_NAME, {
+			keepNdvOpen: true,
+			action: 'Update a database page',
+		});
+
+		ndv.actions.addItemToFixedCollection('propertiesUi');
+		ndv.getters
+			.parameterInput('key')
+			.find('input')
+			.should('have.value', 'Set up credential to see options');
+	});
+
 	it('Should show error state when remote options cannot be fetched', () => {
 		cy.intercept('POST', '/rest/dynamic-node-parameters/options', { statusCode: 500 }).as(
 			'parameterOptions',
@@ -707,6 +703,11 @@ describe('NDV', () => {
 		workflowPage.actions.addInitialNodeToCanvas(NOTION_NODE_NAME, {
 			keepNdvOpen: true,
 			action: 'Update a database page',
+		});
+
+		clickCreateNewCredential();
+		setCredentialValues({
+			apiKey: 'sk_test_123',
 		});
 
 		ndv.actions.addItemToFixedCollection('propertiesUi');
@@ -739,23 +740,6 @@ describe('NDV', () => {
 		});
 	});
 
-	it('Stop listening for trigger event from NDV', () => {
-		cy.intercept('POST', '/rest/workflows/**/run').as('workflowRun');
-		workflowPage.actions.addInitialNodeToCanvas('Local File Trigger', {
-			keepNdvOpen: true,
-			action: 'On Changes To A Specific File',
-			isTrigger: true,
-		});
-		ndv.getters.triggerPanelExecuteButton().should('exist');
-		ndv.getters.triggerPanelExecuteButton().realClick();
-		ndv.getters.triggerPanelExecuteButton().should('contain', 'Stop Listening');
-		ndv.getters.triggerPanelExecuteButton().realClick();
-		cy.wait('@workflowRun').then(() => {
-			ndv.getters.triggerPanelExecuteButton().should('contain', 'Test step');
-			successToast().should('exist');
-		});
-	});
-
 	it('should allow selecting item for expressions', () => {
 		workflowPage.actions.visit();
 
@@ -781,5 +765,34 @@ describe('NDV', () => {
 
 		ndv.actions.expressionSelectItem(1);
 		ndv.getters.inlineExpressionEditorOutput().should('have.text', '1');
+	});
+
+	it('should show data from the correct output in schema view', () => {
+		cy.createFixtureWorkflow('Test_workflow_multiple_outputs.json');
+		workflowPage.actions.zoomToFit();
+
+		workflowPage.actions.executeWorkflow();
+		workflowPage.actions.openNode('Only Item 1');
+		ndv.getters.inputPanel().should('be.visible');
+		ndv.getters
+			.inputPanel()
+			.find('[data-test-id=run-data-schema-item]')
+			.should('contain.text', 'onlyOnItem1');
+		ndv.actions.close();
+
+		workflowPage.actions.openNode('Only Item 2');
+		ndv.getters.inputPanel().should('be.visible');
+		ndv.getters
+			.inputPanel()
+			.find('[data-test-id=run-data-schema-item]')
+			.should('contain.text', 'onlyOnItem2');
+		ndv.actions.close();
+
+		workflowPage.actions.openNode('Only Item 3');
+		ndv.getters.inputPanel().should('be.visible');
+		ndv.getters
+			.inputPanel()
+			.find('[data-test-id=run-data-schema-item]')
+			.should('contain.text', 'onlyOnItem3');
 	});
 });

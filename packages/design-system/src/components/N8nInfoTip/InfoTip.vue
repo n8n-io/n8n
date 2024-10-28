@@ -1,45 +1,24 @@
-<template>
-	<div
-		:class="{
-			'n8n-info-tip': true,
-			[$style.infoTip]: true,
-			[$style[theme]]: true,
-			[$style[type]]: true,
-			[$style.bold]: bold,
-		}"
-	>
-		<N8nTooltip
-			v-if="type === 'tooltip'"
-			:placement="tooltipPlacement"
-			:popper-class="$style.tooltipPopper"
-			:disabled="type !== 'tooltip'"
-		>
-			<span :class="$style.iconText" :style="{ color: iconData.color }">
-				<N8nIcon :icon="iconData.icon" />
-			</span>
-			<template #content>
-				<span>
-					<slot />
-				</span>
-			</template>
-		</N8nTooltip>
-		<span v-else :class="$style.iconText">
-			<N8nIcon :icon="iconData.icon" />
-			<span>
-				<slot />
-			</span>
-		</span>
-	</div>
-</template>
-
 <script lang="ts" setup>
-import { computed } from 'vue';
 import type { Placement } from 'element-plus';
+import { computed } from 'vue';
+
+import type { IconColor } from 'n8n-design-system/types/icon';
+
 import N8nIcon from '../N8nIcon';
 import N8nTooltip from '../N8nTooltip';
 
 const THEME = ['info', 'info-light', 'warning', 'danger', 'success'] as const;
 const TYPE = ['note', 'tooltip'] as const;
+
+const ICON_MAP = {
+	info: 'info-circle',
+	// eslint-disable-next-line @typescript-eslint/naming-convention
+	'info-light': 'info-circle',
+	warning: 'exclamation-triangle',
+	danger: 'exclamation-triangle',
+	success: 'check-circle',
+} as const;
+type IconMap = typeof ICON_MAP;
 
 interface InfoTipProps {
 	theme?: (typeof THEME)[number];
@@ -56,41 +35,49 @@ const props = withDefaults(defineProps<InfoTipProps>(), {
 	tooltipPlacement: 'top',
 });
 
-const iconData = computed((): { icon: string; color: string } => {
-	switch (props.theme) {
-		case 'info':
-			return {
-				icon: 'info-circle',
-				color: '--color-text-light)',
-			};
-		case 'info-light':
-			return {
-				icon: 'info-circle',
-				color: 'var(--color-foreground-dark)',
-			};
-		case 'warning':
-			return {
-				icon: 'exclamation-triangle',
-				color: 'var(--color-warning)',
-			};
-		case 'danger':
-			return {
-				icon: 'exclamation-triangle',
-				color: 'var(--color-danger)',
-			};
-		case 'success':
-			return {
-				icon: 'check-circle',
-				color: 'var(--color-success)',
-			};
-		default:
-			return {
-				icon: 'info-circle',
-				color: '--color-text-light)',
-			};
-	}
+const iconData = computed<{ icon: IconMap[keyof IconMap]; color: IconColor }>(() => {
+	return {
+		icon: ICON_MAP[props.theme],
+		color: props.theme === 'info' || props.theme === 'info-light' ? 'text-base' : props.theme,
+	} as const;
 });
 </script>
+
+<template>
+	<div
+		:class="{
+			'n8n-info-tip': true,
+			[$style.infoTip]: true,
+			[$style[theme]]: true,
+			[$style[type]]: true,
+			[$style.bold]: bold,
+		}"
+	>
+		<!-- Note that the branching is required to support displaying
+		 the slot either in the tooltip of the icon or following it -->
+		<N8nTooltip
+			v-if="type === 'tooltip'"
+			:placement="tooltipPlacement"
+			:popper-class="$style.tooltipPopper"
+			:disabled="type !== 'tooltip'"
+		>
+			<span :class="$style.iconText">
+				<N8nIcon :icon="iconData.icon" :color="iconData.color" />
+			</span>
+			<template #content>
+				<span>
+					<slot />
+				</span>
+			</template>
+		</N8nTooltip>
+		<span v-else :class="$style.iconText">
+			<N8nIcon :icon="iconData.icon" :color="iconData.color" />
+			<span>
+				<slot />
+			</span>
+		</span>
+	</div>
+</template>
 
 <style lang="scss" module>
 .infoTip {

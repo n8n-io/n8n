@@ -53,17 +53,20 @@ describe('CanvasNode', () => {
 					...createCanvasNodeProps({
 						data: {
 							inputs: [
-								{ type: NodeConnectionType.Main },
-								{ type: NodeConnectionType.Main },
-								{ type: NodeConnectionType.Main },
+								{ type: NodeConnectionType.Main, index: 0 },
+								{ type: NodeConnectionType.Main, index: 0 },
+								{ type: NodeConnectionType.Main, index: 0 },
 							],
-							outputs: [{ type: NodeConnectionType.Main }, { type: NodeConnectionType.Main }],
+							outputs: [
+								{ type: NodeConnectionType.Main, index: 0 },
+								{ type: NodeConnectionType.Main, index: 0 },
+							],
 						},
 					}),
 				},
 				global: {
 					stubs: {
-						HandleRenderer: true,
+						CanvasHandleRenderer: true,
 					},
 				},
 			});
@@ -88,6 +91,29 @@ describe('CanvasNode', () => {
 			await fireEvent.mouseOver(node);
 
 			expect(getByTestId('canvas-node-toolbar')).toBeInTheDocument();
+			expect(getByTestId('execute-node-button')).toBeInTheDocument();
+			expect(getByTestId('disable-node-button')).toBeInTheDocument();
+			expect(getByTestId('delete-node-button')).toBeInTheDocument();
+			expect(getByTestId('overflow-node-button')).toBeInTheDocument();
+		});
+
+		it('should contain only context menu when node is disabled', async () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					...createCanvasNodeProps({
+						readOnly: true,
+					}),
+				},
+			});
+
+			const node = getByTestId('canvas-node');
+			await fireEvent.mouseOver(node);
+
+			expect(getByTestId('canvas-node-toolbar')).toBeInTheDocument();
+			expect(() => getByTestId('execute-node-button')).toThrow();
+			expect(() => getByTestId('disable-node-button')).toThrow();
+			expect(() => getByTestId('delete-node-button')).toThrow();
+			expect(getByTestId('overflow-node-button')).toBeInTheDocument();
 		});
 	});
 });

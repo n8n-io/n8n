@@ -1,6 +1,7 @@
+import type { IVersionNotificationSettings } from '@n8n/api-types';
 import * as versionsApi from '@/api/versions';
 import { STORES, VERSIONS_MODAL_KEY } from '@/constants';
-import type { IVersion, IVersionNotificationSettings } from '@/Interface';
+import type { IVersion } from '@/Interface';
 import { defineStore } from 'pinia';
 import { useRootStore } from './root.store';
 import { useToast } from '@/composables/useToast';

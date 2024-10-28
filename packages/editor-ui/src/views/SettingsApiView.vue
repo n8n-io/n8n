@@ -1,3 +1,133 @@
+<script lang="ts">
+import { defineComponent } from 'vue';
+import type { ApiKey, IUser } from '@/Interface';
+import { useToast } from '@/composables/useToast';
+import { useMessage } from '@/composables/useMessage';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
+
+import CopyInput from '@/components/CopyInput.vue';
+import { mapStores } from 'pinia';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useRootStore } from '@/stores/root.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useCloudPlanStore } from '@/stores/cloudPlan.store';
+import { DOCS_DOMAIN, MODAL_CONFIRM } from '@/constants';
+
+export default defineComponent({
+	name: 'SettingsApiView',
+	components: {
+		CopyInput,
+	},
+	setup() {
+		return {
+			...useToast(),
+			...useMessage(),
+			...useUIStore(),
+			documentTitle: useDocumentTitle(),
+		};
+	},
+	data() {
+		return {
+			loading: false,
+			mounted: false,
+			apiKeys: [] as ApiKey[],
+			swaggerUIEnabled: false,
+			apiDocsURL: '',
+		};
+	},
+	mounted() {
+		this.documentTitle.set(this.$locale.baseText('settings.api'));
+		if (!this.isPublicApiEnabled) return;
+
+		void this.getApiKeys();
+		const baseUrl = this.rootStore.baseUrl;
+		const apiPath = this.settingsStore.publicApiPath;
+		const latestVersion = this.settingsStore.publicApiLatestVersion;
+		this.swaggerUIEnabled = this.settingsStore.isSwaggerUIEnabled;
+		this.apiDocsURL = this.swaggerUIEnabled
+			? `${baseUrl}${apiPath}/v${latestVersion}/docs`
+			: `https://${DOCS_DOMAIN}/api/api-reference/`;
+	},
+	computed: {
+		...mapStores(useRootStore, useSettingsStore, useUsersStore, useCloudPlanStore, useUIStore),
+		currentUser(): IUser | null {
+			return this.usersStore.currentUser;
+		},
+		isTrialing(): boolean {
+			return this.cloudPlanStore.userIsTrialing;
+		},
+		isLoadingCloudPlans(): boolean {
+			return this.cloudPlanStore.state.loadingPlan;
+		},
+		isPublicApiEnabled(): boolean {
+			return this.settingsStore.isPublicApiEnabled;
+		},
+		isRedactedApiKey(): boolean {
+			if (!this.apiKeys) return false;
+			return this.apiKeys[0].apiKey.includes('*');
+		},
+	},
+	methods: {
+		onUpgrade() {
+			void this.uiStore.goToUpgrade('settings-n8n-api', 'upgrade-api', 'redirect');
+		},
+		async showDeleteModal() {
+			const confirmed = await this.confirm(
+				this.$locale.baseText('settings.api.delete.description'),
+				this.$locale.baseText('settings.api.delete.title'),
+				{
+					confirmButtonText: this.$locale.baseText('settings.api.delete.button'),
+					cancelButtonText: this.$locale.baseText('generic.cancel'),
+				},
+			);
+			if (confirmed === MODAL_CONFIRM) {
+				await this.deleteApiKey();
+			}
+		},
+		async getApiKeys() {
+			try {
+				this.apiKeys = await this.settingsStore.getApiKeys();
+			} catch (error) {
+				this.showError(error, this.$locale.baseText('settings.api.view.error'));
+			} finally {
+				this.mounted = true;
+			}
+		},
+		async createApiKey() {
+			this.loading = true;
+
+			try {
+				const newApiKey = await this.settingsStore.createApiKey();
+				this.apiKeys.push(newApiKey);
+			} catch (error) {
+				this.showError(error, this.$locale.baseText('settings.api.create.error'));
+			} finally {
+				this.loading = false;
+				this.$telemetry.track('User clicked create API key button');
+			}
+		},
+		async deleteApiKey() {
+			try {
+				await this.settingsStore.deleteApiKey(this.apiKeys[0].id);
+				this.showMessage({
+					title: this.$locale.baseText('settings.api.delete.toast'),
+					type: 'success',
+				});
+				this.apiKeys = [];
+			} catch (error) {
+				this.showError(error, this.$locale.baseText('settings.api.delete.error'));
+			} finally {
+				this.$telemetry.track('User clicked delete API key button');
+			}
+		},
+		onCopy() {
+			this.$telemetry.track('User clicked copy API key button');
+		},
+	},
+});
+</script>
+
 <template>
 	<div :class="$style.container">
 		<div :class="$style.header">
@@ -9,7 +139,7 @@
 			</n8n-heading>
 		</div>
 
-		<div v-if="apiKey">
+		<div v-if="apiKeys.length">
 			<p class="mb-s">
 				<n8n-info-tip :bold="false">
 					<i18n-t keypath="settings.api.view.info" tag="span">
@@ -36,13 +166,16 @@
 						{{ $locale.baseText('generic.delete') }}
 					</n8n-link>
 				</span>
+
 				<div>
 					<CopyInput
-						:label="$locale.baseText('settings.api.view.myKey')"
-						:value="apiKey"
+						:label="apiKeys[0].label"
+						:value="apiKeys[0].apiKey"
 						:copy-button-text="$locale.baseText('generic.clickToCopy')"
 						:toast-title="$locale.baseText('settings.api.view.copy.toast')"
 						:redact-value="true"
+						:disable-copy="isRedactedApiKey"
+						:hint="!isRedactedApiKey ? $locale.baseText('settings.api.view.copy') : ''"
 						@copy="onCopy"
 					/>
 				</div>
@@ -83,128 +216,6 @@
 		/>
 	</div>
 </template>
-
-<script lang="ts">
-import { defineComponent } from 'vue';
-import type { IUser } from '@/Interface';
-import { useToast } from '@/composables/useToast';
-import { useMessage } from '@/composables/useMessage';
-
-import CopyInput from '@/components/CopyInput.vue';
-import { mapStores } from 'pinia';
-import { useSettingsStore } from '@/stores/settings.store';
-import { useRootStore } from '@/stores/root.store';
-import { useUIStore } from '@/stores/ui.store';
-import { useUsersStore } from '@/stores/users.store';
-import { useCloudPlanStore } from '@/stores/cloudPlan.store';
-import { DOCS_DOMAIN, MODAL_CONFIRM } from '@/constants';
-
-export default defineComponent({
-	name: 'SettingsApiView',
-	components: {
-		CopyInput,
-	},
-	setup() {
-		return {
-			...useToast(),
-			...useMessage(),
-			...useUIStore(),
-		};
-	},
-	data() {
-		return {
-			loading: false,
-			mounted: false,
-			apiKey: '',
-			swaggerUIEnabled: false,
-			apiDocsURL: '',
-		};
-	},
-	mounted() {
-		if (!this.isPublicApiEnabled) return;
-
-		void this.getApiKey();
-		const baseUrl = this.rootStore.baseUrl;
-		const apiPath = this.settingsStore.publicApiPath;
-		const latestVersion = this.settingsStore.publicApiLatestVersion;
-		this.swaggerUIEnabled = this.settingsStore.isSwaggerUIEnabled;
-		this.apiDocsURL = this.swaggerUIEnabled
-			? `${baseUrl}${apiPath}/v${latestVersion}/docs`
-			: `https://${DOCS_DOMAIN}/api/api-reference/`;
-	},
-	computed: {
-		...mapStores(useRootStore, useSettingsStore, useUsersStore, useCloudPlanStore, useUIStore),
-		currentUser(): IUser | null {
-			return this.usersStore.currentUser;
-		},
-		isTrialing(): boolean {
-			return this.cloudPlanStore.userIsTrialing;
-		},
-		isLoadingCloudPlans(): boolean {
-			return this.cloudPlanStore.state.loadingPlan;
-		},
-		isPublicApiEnabled(): boolean {
-			return this.settingsStore.isPublicApiEnabled;
-		},
-	},
-	methods: {
-		onUpgrade() {
-			void this.uiStore.goToUpgrade('settings-n8n-api', 'upgrade-api', 'redirect');
-		},
-		async showDeleteModal() {
-			const confirmed = await this.confirm(
-				this.$locale.baseText('settings.api.delete.description'),
-				this.$locale.baseText('settings.api.delete.title'),
-				{
-					confirmButtonText: this.$locale.baseText('settings.api.delete.button'),
-					cancelButtonText: this.$locale.baseText('generic.cancel'),
-				},
-			);
-			if (confirmed === MODAL_CONFIRM) {
-				await this.deleteApiKey();
-			}
-		},
-		async getApiKey() {
-			try {
-				this.apiKey = (await this.settingsStore.getApiKey()) || '';
-			} catch (error) {
-				this.showError(error, this.$locale.baseText('settings.api.view.error'));
-			} finally {
-				this.mounted = true;
-			}
-		},
-		async createApiKey() {
-			this.loading = true;
-
-			try {
-				this.apiKey = (await this.settingsStore.createApiKey()) || '';
-			} catch (error) {
-				this.showError(error, this.$locale.baseText('settings.api.create.error'));
-			} finally {
-				this.loading = false;
-				this.$telemetry.track('User clicked create API key button');
-			}
-		},
-		async deleteApiKey() {
-			try {
-				await this.settingsStore.deleteApiKey();
-				this.showMessage({
-					title: this.$locale.baseText('settings.api.delete.toast'),
-					type: 'success',
-				});
-				this.apiKey = '';
-			} catch (error) {
-				this.showError(error, this.$locale.baseText('settings.api.delete.error'));
-			} finally {
-				this.$telemetry.track('User clicked delete API key button');
-			}
-		},
-		onCopy() {
-			this.$telemetry.track('User clicked copy API key button');
-		},
-	},
-});
-</script>
 
 <style lang="scss" module>
 .container {

@@ -1,5 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import type { INodeTypeDescription } from 'n8n-workflow';
+import { NodeConnectionType, type INodeTypeDescription } from 'n8n-workflow';
 
 import * as database from './database/Database.resource';
 
@@ -8,14 +8,15 @@ export const versionDescription: INodeTypeDescription = {
 	name: 'postgres',
 	icon: 'file:postgres.svg',
 	group: ['input'],
-	version: [2, 2.1, 2.2, 2.3, 2.4],
+	version: [2, 2.1, 2.2, 2.3, 2.4, 2.5],
 	subtitle: '={{ $parameter["operation"] }}',
 	description: 'Get, add and update data in Postgres',
 	defaults: {
 		name: 'Postgres',
 	},
-	inputs: ['main'],
-	outputs: ['main'],
+	inputs: [NodeConnectionType.Main],
+	outputs: [NodeConnectionType.Main],
+	usableAsTool: true,
 	credentials: [
 		{
 			name: 'postgres',

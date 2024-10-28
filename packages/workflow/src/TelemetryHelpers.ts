@@ -1,4 +1,19 @@
-import { getNodeParameters } from './NodeHelpers';
+import {
+	AGENT_LANGCHAIN_NODE_TYPE,
+	AI_TRANSFORM_NODE_TYPE,
+	CHAIN_LLM_LANGCHAIN_NODE_TYPE,
+	CHAIN_SUMMARIZATION_LANGCHAIN_NODE_TYPE,
+	EXECUTE_WORKFLOW_NODE_TYPE,
+	HTTP_REQUEST_NODE_TYPE,
+	HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE,
+	LANGCHAIN_CUSTOM_TOOLS,
+	MERGE_NODE_TYPE,
+	OPENAI_LANGCHAIN_NODE_TYPE,
+	STICKY_NODE_TYPE,
+	WEBHOOK_NODE_TYPE,
+	WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
+} from './Constants';
+import { ApplicationError } from './errors/application.error';
 import type {
 	IConnection,
 	INode,
@@ -9,19 +24,10 @@ import type {
 	IWorkflowBase,
 	INodeTypes,
 	IDataObject,
+	IRunData,
+	ITaskData,
 } from './Interfaces';
-import { ApplicationError } from './errors/application.error';
-import {
-	AGENT_LANGCHAIN_NODE_TYPE,
-	CHAIN_LLM_LANGCHAIN_NODE_TYPE,
-	CHAIN_SUMMARIZATION_LANGCHAIN_NODE_TYPE,
-	HTTP_REQUEST_NODE_TYPE,
-	HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE,
-	LANGCHAIN_CUSTOM_TOOLS,
-	OPENAI_LANGCHAIN_NODE_TYPE,
-	STICKY_NODE_TYPE,
-	WEBHOOK_NODE_TYPE,
-} from './Constants';
+import { getNodeParameters } from './NodeHelpers';
 
 export function getNodeTypeForName(workflow: IWorkflowBase, nodeName: string): INode | undefined {
 	return workflow.nodes.find((node) => node.name === nodeName);
@@ -127,6 +133,21 @@ export function getDomainPath(raw: string, urlParts = URL_PARTS_REGEX): string {
 	}
 }
 
+function getNumberOfItemsInRuns(runs: ITaskData[]): number {
+	return runs.reduce((total, run) => {
+		const data = run.data ?? {};
+		let count = 0;
+		Object.keys(data).forEach((type) => {
+			const conn = data[type] ?? [];
+			conn.forEach((branch) => {
+				count += (branch ?? []).length;
+			});
+		});
+
+		return total + count;
+	}, 0);
+}
+
 export function generateNodesGraph(
 	workflow: Partial<IWorkflowBase>,
 	nodeTypes: INodeTypes,
@@ -134,8 +155,10 @@ export function generateNodesGraph(
 		sourceInstanceId?: string;
 		nodeIdMap?: { [curr: string]: string };
 		isCloudDeployment?: boolean;
+		runData?: IRunData;
 	},
 ): INodesGraphResult {
+	const { runData } = options ?? {};
 	const nodeGraph: INodesGraph = {
 		node_types: [],
 		node_connections: [],
@@ -196,6 +219,13 @@ export function generateNodesGraph(
 			position: node.position,
 		};
 
+		if (runData?.[node.name]) {
+			const runs = runData[node.name] ?? [];
+			nodeItem.runs = runs.length;
+
+			nodeItem.items_total = getNumberOfItemsInRuns(runs);
+		}
+
 		if (options?.sourceInstanceId) {
 			nodeItem.src_instance_id = options.sourceInstanceId;
 		}
@@ -204,8 +234,12 @@ export function generateNodesGraph(
 			nodeItem.src_node_id = options.nodeIdMap[node.id];
 		}
 
-		if (node.type === AGENT_LANGCHAIN_NODE_TYPE) {
+		if (node.type === AI_TRANSFORM_NODE_TYPE && options?.isCloudDeployment) {
+			nodeItem.prompts = { instructions: node.parameters.instructions as string };
+		} else if (node.type === AGENT_LANGCHAIN_NODE_TYPE) {
 			nodeItem.agent = (node.parameters.agent as string) ?? 'conversationalAgent';
+		} else if (node.type === MERGE_NODE_TYPE) {
+			nodeItem.operation = node.parameters.mode as string;
 		} else if (node.type === HTTP_REQUEST_NODE_TYPE && node.typeVersion === 1) {
 			try {
 				nodeItem.domain = new URL(node.parameters.url as string).hostname;
@@ -311,6 +345,13 @@ export function generateNodesGraph(
 			}
 		} else if (node.type === WEBHOOK_NODE_TYPE) {
 			webhookNodeNames.push(node.name);
+		} else if (
+			node.type === EXECUTE_WORKFLOW_NODE_TYPE ||
+			node.type === WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE
+		) {
+			if (node.parameters?.workflowId) {
+				nodeItem.workflow_id = node.parameters?.workflowId as string;
+			}
 		} else {
 			try {
 				const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
@@ -397,6 +438,10 @@ export function generateNodesGraph(
 			if (node.type === CHAIN_LLM_LANGCHAIN_NODE_TYPE) {
 				nodeItem.prompts =
 					(((node.parameters?.messages as IDataObject) ?? {}).messageValues as IDataObject[]) ?? [];
+			}
+
+			if (node.type === MERGE_NODE_TYPE && node.parameters?.operation === 'combineBySql') {
+				nodeItem.sql = node.parameters?.query as string;
 			}
 		}
 

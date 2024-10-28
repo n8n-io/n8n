@@ -14,6 +14,7 @@ import {
 	faArrowDown,
 	faAt,
 	faBan,
+	faBalanceScaleLeft,
 	faBars,
 	faBolt,
 	faBook,
@@ -90,6 +91,7 @@ import {
 	faInfoCircle,
 	faKey,
 	faLanguage,
+	faLayerGroup,
 	faLink,
 	faList,
 	faLightbulb,
@@ -129,6 +131,7 @@ import {
 	faSync,
 	faSyncAlt,
 	faTable,
+	faTags,
 	faTasks,
 	faTerminal,
 	faThLarge,
@@ -157,8 +160,9 @@ import {
 	faProjectDiagram,
 	faStream,
 	faPowerOff,
+	faPaperPlane,
 } from '@fortawesome/free-solid-svg-icons';
-import { faVariable, faXmark, faVault } from './custom';
+import { faVariable, faXmark, faVault, faRefresh } from './custom';
 import { faStickyNote } from '@fortawesome/free-regular-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 
@@ -180,6 +184,7 @@ export const FontAwesomePlugin: Plugin = {
 		addIcon(faArrowDown);
 		addIcon(faAt);
 		addIcon(faBan);
+		addIcon(faBalanceScaleLeft);
 		addIcon(faBars);
 		addIcon(faBolt);
 		addIcon(faBook);
@@ -256,6 +261,7 @@ export const FontAwesomePlugin: Plugin = {
 		addIcon(faInfoCircle);
 		addIcon(faKey);
 		addIcon(faLanguage);
+		addIcon(faLayerGroup);
 		addIcon(faLink);
 		addIcon(faList);
 		addIcon(faLightbulb);
@@ -300,6 +306,7 @@ export const FontAwesomePlugin: Plugin = {
 		addIcon(faSync);
 		addIcon(faSyncAlt);
 		addIcon(faTable);
+		addIcon(faTags);
 		addIcon(faTasks);
 		addIcon(faTerminal);
 		addIcon(faThLarge);
@@ -327,6 +334,8 @@ export const FontAwesomePlugin: Plugin = {
 		addIcon(faXmark);
 		addIcon(faDownload);
 		addIcon(faPowerOff);
+		addIcon(faPaperPlane);
+		addIcon(faRefresh);
 
 		app.component('FontAwesomeIcon', FontAwesomeIcon);
 	},

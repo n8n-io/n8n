@@ -1,5 +1,4 @@
-import { resolveParameter } from '@/composables/useWorkflowHelpers';
-import { prefixMatch, longestCommonPrefix } from './utils';
+import { prefixMatch, longestCommonPrefix, resolveAutocompleteExpression } from './utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import type { Resolved } from './types';
 import { escapeMappingString } from '@/utils/mappingUtils';
@@ -31,7 +30,7 @@ export function bracketAccessCompletions(context: CompletionContext): Completion
 	let resolved: Resolved;
 
 	try {
-		resolved = resolveParameter(`={{ ${base} }}`);
+		resolved = resolveAutocompleteExpression(`={{ ${base} }}`);
 	} catch {
 		return null;
 	}

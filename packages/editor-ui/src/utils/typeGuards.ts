@@ -8,7 +8,11 @@ import { nodeConnectionTypes } from 'n8n-workflow';
 import type { IExecutionResponse, ICredentialsResponse, NewCredentialsModal } from '@/Interface';
 import type { jsPlumbDOMElement } from '@jsplumb/browser-ui';
 import type { Connection } from '@jsplumb/core';
+import type { Connection as VueFlowConnection } from '@vue-flow/core';
 import type { RouteLocationRaw } from 'vue-router';
+import type { CanvasConnectionMode } from '@/types';
+import { canvasConnectionModes } from '@/types';
+import type { ComponentPublicInstance } from 'vue';
 
 /*
 	Type guards used in editor-ui project
@@ -64,9 +68,22 @@ export function isDateObject(date: unknown): date is Date {
 }
 
 export function isValidNodeConnectionType(
-	connectionType: string,
+	connectionType: string | undefined,
 ): connectionType is NodeConnectionType {
 	return nodeConnectionTypes.includes(connectionType as NodeConnectionType);
+}
+
+export function isValidCanvasConnectionMode(mode: string): mode is CanvasConnectionMode {
+	return canvasConnectionModes.includes(mode as CanvasConnectionMode);
+}
+
+export function isVueFlowConnection(connection: object): connection is VueFlowConnection {
+	return (
+		'source' in connection &&
+		'target' in connection &&
+		'sourceHandle' in connection &&
+		'targetHandle' in connection
+	);
 }
 
 export function isTriggerPanelObject(
@@ -86,4 +103,8 @@ export function isRouteLocationRaw(value: unknown): value is RouteLocationRaw {
 		typeof value === 'string' ||
 		(typeof value === 'object' && value !== null && ('name' in value || 'path' in value))
 	);
+}
+
+export function isComponentPublicInstance(value: unknown): value is ComponentPublicInstance {
+	return value !== null && typeof value === 'object' && '$props' in value;
 }

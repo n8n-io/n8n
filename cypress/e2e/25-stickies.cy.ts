@@ -1,7 +1,5 @@
-import type { Interception } from 'cypress/types/net-stubbing';
 import { META_KEY } from '../constants';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
-import { getPopper } from '../utils';
 
 const workflowPage = new WorkflowPageClass();
 
@@ -80,32 +78,6 @@ describe('Canvas Actions', () => {
 		workflowPage.actions.deleteSticky();
 
 		workflowPage.getters.stickies().should('have.length', 0);
-	});
-
-	it('change sticky color', () => {
-		workflowPage.actions.addSticky();
-
-		workflowPage.getters.stickies().should('have.length', 1);
-
-		workflowPage.actions.toggleColorPalette();
-
-		getPopper().should('be.visible');
-
-		workflowPage.actions.pickColor();
-
-		workflowPage.actions.toggleColorPalette();
-
-		getPopper().should('not.be.visible');
-
-		workflowPage.actions.saveWorkflowOnButtonClick();
-
-		cy.wait('@createWorkflow').then((interception: Interception) => {
-			const { request } = interception;
-			const color = request.body?.nodes[0]?.parameters?.color;
-			expect(color).to.equal(2);
-		});
-
-		workflowPage.getters.stickies().should('have.length', 1);
 	});
 
 	it('edits sticky and updates content as markdown', () => {

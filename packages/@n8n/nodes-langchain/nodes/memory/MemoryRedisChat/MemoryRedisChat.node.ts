@@ -1,20 +1,20 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import {
 	NodeOperationError,
-	type IExecuteFunctions,
 	type INodeType,
 	type INodeTypeDescription,
+	type ISupplyDataFunctions,
 	type SupplyData,
 	NodeConnectionType,
 } from 'n8n-workflow';
-import { BufferMemory } from 'langchain/memory';
+import { BufferMemory, BufferWindowMemory } from 'langchain/memory';
 import type { RedisChatMessageHistoryInput } from '@langchain/redis';
 import { RedisChatMessageHistory } from '@langchain/redis';
 import type { RedisClientOptions } from 'redis';
 import { createClient } from 'redis';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
-import { sessionIdOption, sessionKeyProperty } from '../descriptions';
+import { sessionIdOption, sessionKeyProperty, contextWindowLengthProperty } from '../descriptions';
 import { getSessionId } from '../../../utils/helpers';
 
 export class MemoryRedisChat implements INodeType {
@@ -23,7 +23,7 @@ export class MemoryRedisChat implements INodeType {
 		name: 'memoryRedisChat',
 		icon: 'file:redis.svg',
 		group: ['transform'],
-		version: [1, 1.1, 1.2],
+		version: [1, 1.1, 1.2, 1.3],
 		description: 'Stores the chat history in Redis.',
 		defaults: {
 			name: 'Redis Chat Memory',
@@ -95,10 +95,14 @@ export class MemoryRedisChat implements INodeType {
 				description:
 					'For how long the session should be stored in seconds. If set to 0 it will not expire.',
 			},
+			{
+				...contextWindowLengthProperty,
+				displayOptions: { hide: { '@version': [{ _cnd: { lt: 1.3 } }] } },
+			},
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials('redis');
 		const nodeVersion = this.getNode().typeVersion;
 
@@ -143,12 +147,19 @@ export class MemoryRedisChat implements INodeType {
 		}
 		const redisChatHistory = new RedisChatMessageHistory(redisChatConfig);
 
-		const memory = new BufferMemory({
+		const memClass = this.getNode().typeVersion < 1.3 ? BufferMemory : BufferWindowMemory;
+		const kOptions =
+			this.getNode().typeVersion < 1.3
+				? {}
+				: { k: this.getNodeParameter('contextWindowLength', itemIndex) };
+
+		const memory = new memClass({
 			memoryKey: 'chat_history',
 			chatHistory: redisChatHistory,
 			returnMessages: true,
 			inputKey: 'input',
 			outputKey: 'output',
+			...kOptions,
 		});
 
 		async function closeFunction() {

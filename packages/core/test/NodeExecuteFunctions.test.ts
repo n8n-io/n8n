@@ -1,19 +1,9 @@
-import type { SecureContextOptions } from 'tls';
-import {
-	cleanupParameterData,
-	copyInputItems,
-	ensureType,
-	getBinaryDataBuffer,
-	parseIncomingMessage,
-	parseRequestObject,
-	proxyRequestToAxios,
-	removeEmptyBody,
-	setBinaryDataBuffer,
-} from '@/NodeExecuteFunctions';
-import { DateTime } from 'luxon';
 import { mkdtempSync, readFileSync } from 'fs';
 import type { IncomingMessage } from 'http';
+import type { Agent } from 'https';
 import { mock } from 'jest-mock-extended';
+import toPlainObject from 'lodash/toPlainObject';
+import { DateTime } from 'luxon';
 import type {
 	IBinaryData,
 	IHttpRequestMethods,
@@ -27,13 +17,26 @@ import type {
 	WorkflowHooks,
 } from 'n8n-workflow';
 import { ExpressionError } from 'n8n-workflow';
-import { BinaryDataService } from '@/BinaryData/BinaryData.service';
 import nock from 'nock';
 import { tmpdir } from 'os';
 import { join } from 'path';
+import type { SecureContextOptions } from 'tls';
 import Container from 'typedi';
-import type { Agent } from 'https';
-import toPlainObject from 'lodash/toPlainObject';
+
+import { BinaryDataService } from '@/BinaryData/BinaryData.service';
+import { InstanceSettings } from '@/InstanceSettings';
+import {
+	cleanupParameterData,
+	copyInputItems,
+	ensureType,
+	getBinaryDataBuffer,
+	isFilePathBlocked,
+	parseIncomingMessage,
+	parseRequestObject,
+	proxyRequestToAxios,
+	removeEmptyBody,
+	setBinaryDataBuffer,
+} from '@/NodeExecuteFunctions';
 
 const temporaryDir = mkdtempSync(join(tmpdir(), 'n8n'));
 
@@ -661,5 +664,13 @@ describe('NodeExecuteFunctions', () => {
 				new ExpressionError("Parameter 'myParam' must be an array, but we got object"),
 			);
 		});
+	});
+});
+
+describe('isFilePathBlocked', () => {
+	test('should return true for static cache dir', () => {
+		const filePath = Container.get(InstanceSettings).staticCacheDir;
+
+		expect(isFilePathBlocked(filePath)).toBe(true);
 	});
 });

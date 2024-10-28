@@ -1,3 +1,9 @@
+<script lang="ts" setup>
+defineProps<{
+	title: string;
+}>();
+</script>
+
 <template>
 	<div :class="$style.block">
 		<div :class="$style.header">
@@ -8,19 +14,6 @@
 		</div>
 	</div>
 </template>
-
-<script lang="ts">
-import { defineComponent } from 'vue';
-
-export default defineComponent({
-	name: 'TemplateDetailsBlock',
-	props: {
-		title: {
-			type: String,
-		},
-	},
-});
-</script>
 
 <style lang="scss" module>
 .block {

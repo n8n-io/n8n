@@ -1,25 +1,22 @@
 // @vitest-environment jsdom
-
 import { fireEvent, waitFor } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import Canvas from '@/components/canvas/Canvas.vue';
 import { createPinia, setActivePinia } from 'pinia';
-import type { CanvasConnection, CanvasElement } from '@/types';
+import type { CanvasConnection, CanvasNode } from '@/types';
 import { createCanvasConnection, createCanvasNodeElement } from '@/__tests__/data';
 import { NodeConnectionType } from 'n8n-workflow';
+import type { useDeviceSupport } from 'n8n-design-system';
 
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-expect-error
+const matchMedia = global.window.matchMedia;
+// @ts-expect-error Initialize window object
 global.window = jsdom.window as unknown as Window & typeof globalThis;
+global.window.matchMedia = matchMedia;
 
-vi.mock('@/stores/nodeTypes.store', () => ({
-	useNodeTypesStore: vi.fn(() => ({
-		getNodeType: vi.fn(() => ({
-			name: 'test',
-			description: 'Test Node Description',
-		})),
-	})),
-}));
+vi.mock('n8n-design-system', async (importOriginal) => {
+	const actual = await importOriginal<typeof useDeviceSupport>();
+	return { ...actual, useDeviceSupport: vi.fn(() => ({ isCtrlKeyPressed: vi.fn() })) };
+});
 
 let renderComponent: ReturnType<typeof createComponentRenderer>;
 beforeEach(() => {
@@ -31,6 +28,7 @@ beforeEach(() => {
 
 afterEach(() => {
 	vi.clearAllMocks();
+	vi.useRealTimers();
 });
 
 describe('Canvas', () => {
@@ -39,12 +37,12 @@ describe('Canvas', () => {
 
 		expect(getByTestId('canvas')).toBeVisible();
 		expect(getByTestId('canvas-background')).toBeVisible();
-		expect(getByTestId('canvas-minimap')).toBeVisible();
 		expect(getByTestId('canvas-controls')).toBeVisible();
+		expect(getByTestId('canvas-minimap')).toBeInTheDocument();
 	});
 
 	it('should render nodes and edges', async () => {
-		const elements: CanvasElement[] = [
+		const nodes: CanvasNode[] = [
 			createCanvasNodeElement({
 				id: '1',
 				label: 'Node 1',
@@ -72,41 +70,170 @@ describe('Canvas', () => {
 			}),
 		];
 
-		const connections: CanvasConnection[] = [createCanvasConnection(elements[0], elements[1])];
+		const connections: CanvasConnection[] = [createCanvasConnection(nodes[0], nodes[1])];
 
 		const { container } = renderComponent({
 			props: {
-				elements,
+				nodes,
 				connections,
 			},
 		});
 
 		await waitFor(() => expect(container.querySelectorAll('.vue-flow__node')).toHaveLength(2));
 
-		expect(container.querySelector(`[data-id="${elements[0].id}"]`)).toBeInTheDocument();
-		expect(container.querySelector(`[data-id="${elements[1].id}"]`)).toBeInTheDocument();
+		expect(container.querySelector(`[data-id="${nodes[0].id}"]`)).toBeInTheDocument();
+		expect(container.querySelector(`[data-id="${nodes[1].id}"]`)).toBeInTheDocument();
 		expect(container.querySelector(`[data-id="${connections[0].id}"]`)).toBeInTheDocument();
 	});
 
-	it('should handle node drag stop event', async () => {
-		const elements = [createCanvasNodeElement()];
+	it('should handle `update:nodes:position` event', async () => {
+		vi.useFakeTimers();
+
+		const nodes = [createCanvasNodeElement()];
 		const { container, emitted } = renderComponent({
 			props: {
-				elements,
+				nodes,
 			},
 		});
 
 		await waitFor(() => expect(container.querySelectorAll('.vue-flow__node')).toHaveLength(1));
 
-		const node = container.querySelector(`[data-id="${elements[0].id}"]`) as Element;
+		const node = container.querySelector(`[data-id="${nodes[0].id}"]`) as Element;
 		await fireEvent.mouseDown(node, { view: window });
 		await fireEvent.mouseMove(node, {
 			view: window,
-			clientX: 100,
-			clientY: 100,
+			clientX: 20,
+			clientY: 20,
+		});
+		await fireEvent.mouseMove(node, {
+			view: window,
+			clientX: 40,
+			clientY: 40,
 		});
 		await fireEvent.mouseUp(node, { view: window });
 
-		expect(emitted()['update:node:position']).toEqual([['1', { x: 100, y: 100 }]]);
+		vi.advanceTimersByTime(250); // Event debounce time
+
+		expect(emitted()['update:nodes:position']).toEqual([
+			[
+				[
+					{
+						id: '1',
+						type: 'position',
+						dragging: true,
+						from: {
+							x: 100,
+							y: 100,
+							z: 0,
+						},
+						position: { x: 120, y: 120 },
+					},
+				],
+			],
+		]);
+	});
+
+	describe('minimap', () => {
+		const minimapVisibilityDelay = 1000;
+		const minimapTransitionDuration = 300;
+
+		it('should show minimap for 1sec after panning', async () => {
+			vi.useFakeTimers();
+
+			const nodes = [createCanvasNodeElement()];
+			const { getByTestId, container } = renderComponent({
+				props: {
+					nodes,
+				},
+			});
+
+			await waitFor(() => expect(container.querySelectorAll('.vue-flow__node')).toHaveLength(1));
+
+			const canvas = getByTestId('canvas');
+			const pane = canvas.querySelector('.vue-flow__pane');
+			if (!pane) throw new Error('VueFlow pane not found');
+
+			await fireEvent.keyDown(pane, { view: window, key: ' ' });
+			await fireEvent.mouseDown(pane, { view: window });
+			await fireEvent.mouseMove(pane, {
+				view: window,
+				clientX: 100,
+				clientY: 100,
+			});
+			await fireEvent.mouseUp(pane, { view: window });
+			await fireEvent.keyUp(pane, { view: window, key: ' ' });
+
+			vi.advanceTimersByTime(minimapTransitionDuration);
+			await waitFor(() => expect(getByTestId('canvas-minimap')).toBeVisible());
+			vi.advanceTimersByTime(minimapVisibilityDelay + minimapTransitionDuration);
+			await waitFor(() => expect(getByTestId('canvas-minimap')).not.toBeVisible());
+		});
+
+		it('should keep minimap visible when hovered', async () => {
+			vi.useFakeTimers();
+
+			const nodes = [createCanvasNodeElement()];
+			const { getByTestId, container } = renderComponent({
+				props: {
+					nodes,
+				},
+			});
+
+			await waitFor(() => expect(container.querySelectorAll('.vue-flow__node')).toHaveLength(1));
+
+			const canvas = getByTestId('canvas');
+			const pane = canvas.querySelector('.vue-flow__pane');
+			if (!pane) throw new Error('VueFlow pane not found');
+
+			await fireEvent.keyDown(pane, { view: window, key: ' ' });
+			await fireEvent.mouseDown(pane, { view: window });
+			await fireEvent.mouseMove(pane, {
+				view: window,
+				clientX: 100,
+				clientY: 100,
+			});
+			await fireEvent.mouseUp(pane, { view: window });
+			await fireEvent.keyUp(pane, { view: window, key: ' ' });
+
+			vi.advanceTimersByTime(minimapTransitionDuration);
+			await waitFor(() => expect(getByTestId('canvas-minimap')).toBeVisible());
+
+			await fireEvent.mouseEnter(getByTestId('canvas-minimap'));
+			vi.advanceTimersByTime(minimapVisibilityDelay + minimapTransitionDuration);
+			await waitFor(() => expect(getByTestId('canvas-minimap')).toBeVisible());
+
+			await fireEvent.mouseLeave(getByTestId('canvas-minimap'));
+			vi.advanceTimersByTime(minimapVisibilityDelay + minimapTransitionDuration);
+			await waitFor(() => expect(getByTestId('canvas-minimap')).not.toBeVisible());
+		});
+	});
+
+	describe('background', () => {
+		it('should render default background', () => {
+			const { container } = renderComponent();
+			expect(container.querySelector('#pattern-canvas')).toBeInTheDocument();
+		});
+
+		it('should render striped background', () => {
+			const { container } = renderComponent({ props: { readOnly: true } });
+			expect(container.querySelector('#pattern-canvas')).not.toBeInTheDocument();
+			expect(container.querySelector('#diagonalHatch')).toBeInTheDocument();
+		});
+	});
+
+	describe('pane', () => {
+		describe('onPaneMouseDown', () => {
+			it('should enable panning when middle mouse button is pressed', async () => {
+				const { getByTestId } = renderComponent();
+				const canvas = getByTestId('canvas');
+				const pane = canvas.querySelector('.vue-flow__pane');
+
+				if (!pane) throw new Error('VueFlow pane not in the document');
+
+				await fireEvent.mouseDown(canvas, { button: 1, view: window });
+
+				expect(canvas).toHaveClass('draggable');
+			});
+		});
 	});
 });

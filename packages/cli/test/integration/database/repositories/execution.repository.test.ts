@@ -1,8 +1,11 @@
+import { GlobalConfig } from '@n8n/config';
 import Container from 'typedi';
-import { ExecutionRepository } from '@db/repositories/execution.repository';
-import { ExecutionDataRepository } from '@db/repositories/executionData.repository';
-import * as testDb from '../../shared/testDb';
+
+import { ExecutionDataRepository } from '@/databases/repositories/execution-data.repository';
+import { ExecutionRepository } from '@/databases/repositories/execution.repository';
+
 import { createWorkflow } from '../../shared/db/workflows';
+import * as testDb from '../../shared/test-db';
 
 describe('ExecutionRepository', () => {
 	beforeAll(async () => {
@@ -51,6 +54,39 @@ describe('ExecutionRepository', () => {
 				settings: workflow.settings,
 			});
 			expect(executionData?.data).toEqual('[{"resultData":"1"},{}]');
+		});
+
+		it('should not create execution if execution data insert fails', async () => {
+			const { type: dbType, sqlite: sqliteConfig } = Container.get(GlobalConfig).database;
+			// Do not run this test for the legacy sqlite driver
+			if (dbType === 'sqlite' && sqliteConfig.poolSize === 0) return;
+
+			const executionRepo = Container.get(ExecutionRepository);
+			const executionDataRepo = Container.get(ExecutionDataRepository);
+
+			const workflow = await createWorkflow({ settings: { executionOrder: 'v1' } });
+			jest
+				.spyOn(executionDataRepo, 'createExecutionDataForExecution')
+				.mockRejectedValueOnce(new Error());
+
+			await expect(
+				async () =>
+					await executionRepo.createNewExecution({
+						workflowId: workflow.id,
+						data: {
+							//@ts-expect-error This is not needed for tests
+							resultData: {},
+						},
+						workflowData: workflow,
+						mode: 'manual',
+						startedAt: new Date(),
+						status: 'new',
+						finished: false,
+					}),
+			).rejects.toThrow();
+
+			const executionEntities = await executionRepo.find();
+			expect(executionEntities).toBeEmptyArray();
 		});
 	});
 });

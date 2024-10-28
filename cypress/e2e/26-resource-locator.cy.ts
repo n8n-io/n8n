@@ -37,6 +37,16 @@ describe('Resource Locator', () => {
 		ndv.getters.resourceLocatorErrorMessage().should('contain', NO_CREDENTIALS_MESSAGE);
 	});
 
+	it('should show create credentials modal when clicking "add your credential"', () => {
+		workflowPage.actions.addInitialNodeToCanvas('Manual');
+		workflowPage.actions.addNodeToCanvas('Google Sheets', true, true, 'Update row in sheet');
+		ndv.getters.resourceLocator('documentId').should('be.visible');
+		ndv.getters.resourceLocatorInput('documentId').click();
+		ndv.getters.resourceLocatorErrorMessage().should('contain', NO_CREDENTIALS_MESSAGE);
+		ndv.getters.resourceLocatorAddCredentials().click();
+		credentialsModal.getters.credentialsEditModal().should('be.visible');
+	});
+
 	it('should show appropriate error when credentials are not valid', () => {
 		workflowPage.actions.addInitialNodeToCanvas('Manual');
 		workflowPage.actions.addNodeToCanvas('Google Sheets', true, true, 'Update row in sheet');
@@ -55,7 +65,7 @@ describe('Resource Locator', () => {
 	});
 
 	it('should show appropriate errors when search filter is required', () => {
-		workflowPage.actions.addNodeToCanvas('Github', true, true, 'On Pull Request');
+		workflowPage.actions.addNodeToCanvas('Github', true, true, 'On pull request');
 		ndv.getters.resourceLocator('owner').should('be.visible');
 		ndv.getters.resourceLocatorInput('owner').click();
 		ndv.getters.resourceLocatorErrorMessage().should('contain', NO_CREDENTIALS_MESSAGE);

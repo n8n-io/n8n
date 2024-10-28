@@ -1,147 +1,3 @@
-<template>
-	<PageViewLayout>
-		<template #header> <slot name="header" /> </template>
-		<div v-if="loading">
-			<n8n-loading :class="[$style['header-loading'], 'mb-l']" variant="custom" />
-			<n8n-loading :class="[$style['card-loading'], 'mb-2xs']" variant="custom" />
-			<n8n-loading :class="$style['card-loading']" variant="custom" />
-		</div>
-		<template v-else>
-			<div v-if="resources.length === 0">
-				<slot name="empty">
-					<n8n-action-box
-						data-test-id="empty-resources-list"
-						emoji="👋"
-						:heading="
-							i18n.baseText(
-								usersStore.currentUser?.firstName
-									? (`${resourceKey}.empty.heading` as BaseTextKey)
-									: (`${resourceKey}.empty.heading.userNotSetup` as BaseTextKey),
-								{
-									interpolate: { name: usersStore.currentUser?.firstName ?? '' },
-								},
-							)
-						"
-						:description="i18n.baseText(`${resourceKey}.empty.description` as BaseTextKey)"
-						:button-text="i18n.baseText(`${resourceKey}.empty.button` as BaseTextKey)"
-						button-type="secondary"
-						@click:button="onAddButtonClick"
-					/>
-				</slot>
-			</div>
-			<PageViewLayoutList v-else :overflow="type !== 'list'">
-				<template #header>
-					<div :class="$style['filters-row']">
-						<div :class="$style.filters">
-							<n8n-input
-								ref="search"
-								:model-value="filtersModel.search"
-								:class="[$style['search'], 'mr-2xs']"
-								:placeholder="i18n.baseText(`${resourceKey}.search.placeholder` as BaseTextKey)"
-								clearable
-								data-test-id="resources-list-search"
-								@update:model-value="onSearch"
-							>
-								<template #prefix>
-									<n8n-icon icon="search" />
-								</template>
-							</n8n-input>
-							<ResourceFiltersDropdown
-								v-if="showFiltersDropdown"
-								:keys="filterKeys"
-								:reset="resetFilters"
-								:model-value="filtersModel"
-								:shareable="shareable"
-								@update:model-value="onUpdateFilters"
-								@update:filters-length="onUpdateFiltersLength"
-							>
-								<template #default="resourceFiltersSlotProps">
-									<slot name="filters" v-bind="resourceFiltersSlotProps" />
-								</template>
-							</ResourceFiltersDropdown>
-							<div :class="$style['sort-and-filter']">
-								<n8n-select v-model="sortBy" data-test-id="resources-list-sort">
-									<n8n-option
-										v-for="sortOption in sortOptions"
-										:key="sortOption"
-										data-test-id="resources-list-sort-item"
-										:value="sortOption"
-										:label="i18n.baseText(`${resourceKey}.sort.${sortOption}` as BaseTextKey)"
-									/>
-								</n8n-select>
-							</div>
-						</div>
-						<slot name="add-button" :disabled="disabled">
-							<n8n-button
-								size="large"
-								:disabled="disabled"
-								data-test-id="resources-list-add"
-								@click="onAddButtonClick"
-							>
-								{{ i18n.baseText(`${resourceKey}.add` as BaseTextKey) }}
-							</n8n-button>
-						</slot>
-					</div>
-
-					<slot name="callout"></slot>
-
-					<div v-if="showFiltersDropdown" v-show="hasFilters" class="mt-xs">
-						<n8n-info-tip :bold="false">
-							{{ i18n.baseText(`${resourceKey}.filters.active` as BaseTextKey) }}
-							<n8n-link data-test-id="workflows-filter-reset" size="small" @click="resetFilters">
-								{{ i18n.baseText(`${resourceKey}.filters.active.reset` as BaseTextKey) }}
-							</n8n-link>
-						</n8n-info-tip>
-					</div>
-
-					<div class="pb-xs" />
-				</template>
-
-				<slot name="preamble" />
-
-				<div
-					v-if="filteredAndSortedResources.length > 0"
-					ref="listWrapperRef"
-					:class="$style.listWrapper"
-				>
-					<n8n-recycle-scroller
-						v-if="type === 'list'"
-						data-test-id="resources-list"
-						:items="filteredAndSortedResources"
-						:item-size="itemSize()"
-						item-key="id"
-					>
-						<template #default="{ item, updateItemSize }">
-							<slot :data="item" :update-item-size="updateItemSize" />
-						</template>
-					</n8n-recycle-scroller>
-					<n8n-datatable
-						v-if="type === 'datatable'"
-						data-test-id="resources-table"
-						:class="$style.datatable"
-						:columns="getColumns()"
-						:rows="filteredAndSortedResources"
-						:current-page="currentPage"
-						:rows-per-page="rowsPerPage"
-						@update:current-page="setCurrentPage"
-						@update:rows-per-page="setRowsPerPage"
-					>
-						<template #row="{ columns, row }">
-							<slot :data="row" :columns="columns" />
-						</template>
-					</n8n-datatable>
-				</div>
-
-				<n8n-text v-else color="text-base" size="medium" data-test-id="resources-list-empty">
-					{{ i18n.baseText(`${resourceKey}.noResults` as BaseTextKey) }}
-				</n8n-text>
-
-				<slot name="postamble" />
-			</PageViewLayoutList>
-		</template>
-	</PageViewLayout>
-</template>
-
 <script lang="ts">
 import { computed, defineComponent, nextTick, ref, onMounted, watch } from 'vue';
 import type { PropType } from 'vue';
@@ -164,7 +20,8 @@ import type { Scope } from '@n8n/permissions';
 export type IResource = {
 	id: string;
 	name: string;
-	value: string;
+	value?: string;
+	key?: string;
 	updatedAt?: string;
 	createdAt?: string;
 	homeProject?: ProjectSharingData;
@@ -244,6 +101,11 @@ export default defineComponent({
 				itemSize: 80,
 			}),
 		},
+		loading: {
+			type: Boolean,
+			required: false,
+			default: true,
+		},
 	},
 	emits: ['update:filters', 'click:add', 'sort'],
 	setup(props, { emit }) {
@@ -253,7 +115,6 @@ export default defineComponent({
 		const usersStore = useUsersStore();
 		const telemetry = useTelemetry();
 
-		const loading = ref(true);
 		const sortBy = ref(props.sortOptions[0]);
 		const hasFilters = ref(false);
 		const filtersModel = ref(props.filters);
@@ -434,6 +295,20 @@ export default defineComponent({
 		);
 
 		watch(
+			() => filtersModel.value.tags,
+			() => {
+				sendFiltersTelemetry('tags');
+			},
+		);
+
+		watch(
+			() => filtersModel.value.type,
+			() => {
+				sendFiltersTelemetry('type');
+			},
+		);
+
+		watch(
 			() => filtersModel.value.search,
 			() => callDebounced(sendFiltersTelemetry, { debounceTime: 1000, trailing: true }, 'search'),
 		);
@@ -455,7 +330,6 @@ export default defineComponent({
 
 		onMounted(async () => {
 			await props.initialize();
-			loading.value = false;
 			await nextTick();
 
 			focusSearchInput();
@@ -466,7 +340,6 @@ export default defineComponent({
 		});
 
 		return {
-			loading,
 			i18n,
 			search,
 			usersStore,
@@ -493,6 +366,153 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<PageViewLayout>
+		<template #header> <slot name="header" /> </template>
+		<div v-if="loading" class="resource-list-loading">
+			<n8n-loading :rows="25" :shrink-last="false" />
+		</div>
+		<template v-else>
+			<div v-if="resources.length === 0">
+				<slot name="empty">
+					<n8n-action-box
+						data-test-id="empty-resources-list"
+						emoji="👋"
+						:heading="
+							i18n.baseText(
+								usersStore.currentUser?.firstName
+									? (`${resourceKey}.empty.heading` as BaseTextKey)
+									: (`${resourceKey}.empty.heading.userNotSetup` as BaseTextKey),
+								{
+									interpolate: { name: usersStore.currentUser?.firstName ?? '' },
+								},
+							)
+						"
+						:description="i18n.baseText(`${resourceKey}.empty.description` as BaseTextKey)"
+						:button-text="i18n.baseText(`${resourceKey}.empty.button` as BaseTextKey)"
+						button-type="secondary"
+						:button-disabled="disabled"
+						@click:button="onAddButtonClick"
+					>
+						<template #disabledButtonTooltip>
+							{{ i18n.baseText(`${resourceKey}.empty.button.disabled.tooltip` as BaseTextKey) }}
+						</template>
+					</n8n-action-box>
+				</slot>
+			</div>
+			<PageViewLayoutList v-else :overflow="type !== 'list'">
+				<template #header>
+					<div :class="$style['filters-row']">
+						<div :class="$style.filters">
+							<n8n-input
+								ref="search"
+								:model-value="filtersModel.search"
+								:class="[$style['search'], 'mr-2xs']"
+								:placeholder="i18n.baseText(`${resourceKey}.search.placeholder` as BaseTextKey)"
+								clearable
+								data-test-id="resources-list-search"
+								@update:model-value="onSearch"
+							>
+								<template #prefix>
+									<n8n-icon icon="search" />
+								</template>
+							</n8n-input>
+							<ResourceFiltersDropdown
+								v-if="showFiltersDropdown"
+								:keys="filterKeys"
+								:reset="resetFilters"
+								:model-value="filtersModel"
+								:shareable="shareable"
+								@update:model-value="onUpdateFilters"
+								@update:filters-length="onUpdateFiltersLength"
+							>
+								<template #default="resourceFiltersSlotProps">
+									<slot name="filters" v-bind="resourceFiltersSlotProps" />
+								</template>
+							</ResourceFiltersDropdown>
+							<div :class="$style['sort-and-filter']">
+								<n8n-select v-model="sortBy" data-test-id="resources-list-sort">
+									<n8n-option
+										v-for="sortOption in sortOptions"
+										:key="sortOption"
+										data-test-id="resources-list-sort-item"
+										:value="sortOption"
+										:label="i18n.baseText(`${resourceKey}.sort.${sortOption}` as BaseTextKey)"
+									/>
+								</n8n-select>
+							</div>
+						</div>
+						<slot name="add-button" :disabled="disabled">
+							<n8n-button
+								size="large"
+								:disabled="disabled"
+								data-test-id="resources-list-add"
+								@click="onAddButtonClick"
+							>
+								{{ i18n.baseText(`${resourceKey}.add` as BaseTextKey) }}
+							</n8n-button>
+						</slot>
+					</div>
+
+					<slot name="callout"></slot>
+
+					<div v-if="showFiltersDropdown" v-show="hasFilters" class="mt-xs">
+						<n8n-info-tip :bold="false">
+							{{ i18n.baseText(`${resourceKey}.filters.active` as BaseTextKey) }}
+							<n8n-link data-test-id="workflows-filter-reset" size="small" @click="resetFilters">
+								{{ i18n.baseText(`${resourceKey}.filters.active.reset` as BaseTextKey) }}
+							</n8n-link>
+						</n8n-info-tip>
+					</div>
+
+					<div class="pb-xs" />
+				</template>
+
+				<slot name="preamble" />
+
+				<div
+					v-if="filteredAndSortedResources.length > 0"
+					ref="listWrapperRef"
+					:class="$style.listWrapper"
+				>
+					<n8n-recycle-scroller
+						v-if="type === 'list'"
+						data-test-id="resources-list"
+						:items="filteredAndSortedResources"
+						:item-size="itemSize()"
+						item-key="id"
+					>
+						<template #default="{ item, updateItemSize }">
+							<slot :data="item" :update-item-size="updateItemSize" />
+						</template>
+					</n8n-recycle-scroller>
+					<n8n-datatable
+						v-if="type === 'datatable'"
+						data-test-id="resources-table"
+						:class="$style.datatable"
+						:columns="getColumns()"
+						:rows="filteredAndSortedResources"
+						:current-page="currentPage"
+						:rows-per-page="rowsPerPage"
+						@update:current-page="setCurrentPage"
+						@update:rows-per-page="setRowsPerPage"
+					>
+						<template #row="{ columns, row }">
+							<slot :data="row" :columns="columns" />
+						</template>
+					</n8n-datatable>
+				</div>
+
+				<n8n-text v-else color="text-base" size="medium" data-test-id="resources-list-empty">
+					{{ i18n.baseText(`${resourceKey}.noResults` as BaseTextKey) }}
+				</n8n-text>
+
+				<slot name="postamble" />
+			</PageViewLayoutList>
+		</template>
+	</PageViewLayout>
+</template>
 
 <style lang="scss" module>
 .filters-row {
@@ -524,15 +544,48 @@ export default defineComponent({
 	white-space: nowrap;
 }
 
-.header-loading {
-	height: 36px;
-}
-
-.card-loading {
-	height: 69px;
-}
-
 .datatable {
 	padding-bottom: var(--spacing-s);
+}
+</style>
+
+<style lang="scss" scoped>
+.resource-list-loading {
+	position: relative;
+	height: 0;
+	width: 100%;
+	overflow: hidden;
+	/*
+	Show the loading skeleton only if the loading takes longer than 300ms
+	*/
+	animation: 0.01s linear 0.3s forwards changeVisibility;
+	:deep(.el-skeleton) {
+		position: absolute;
+		height: 100%;
+		width: 100%;
+		overflow: hidden;
+
+		> div {
+			> div:first-child {
+				.el-skeleton__item {
+					height: 42px;
+					margin: 0;
+				}
+			}
+		}
+
+		.el-skeleton__item {
+			height: 69px;
+		}
+	}
+}
+
+@keyframes changeVisibility {
+	from {
+		height: 0;
+	}
+	to {
+		height: 100%;
+	}
 }
 </style>

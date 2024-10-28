@@ -6,7 +6,7 @@
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/figma"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/figma/"
 			}
 		],
 		"primaryDocumentation": [

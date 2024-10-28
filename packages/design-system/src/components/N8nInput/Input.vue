@@ -1,41 +1,11 @@
-<template>
-	<ElInput
-		ref="innerInput"
-		:model-value="modelValue"
-		:type="type"
-		:size="resolvedSize"
-		:class="['n8n-input', ...classes]"
-		:autocomplete="autocomplete"
-		:name="name"
-		:placeholder="placeholder"
-		:disabled="disabled"
-		:readonly="readonly"
-		:clearable="clearable"
-		:rows="rows"
-		:title="title"
-		v-bind="$attrs"
-	>
-		<template v-if="$slots.prepend" #prepend>
-			<slot name="prepend" />
-		</template>
-		<template v-if="$slots.append" #append>
-			<slot name="append" />
-		</template>
-		<template v-if="$slots.prefix" #prefix>
-			<slot name="prefix" />
-		</template>
-		<template v-if="$slots.suffix" #suffix>
-			<slot name="suffix" />
-		</template>
-	</ElInput>
-</template>
-
 <script lang="ts" setup>
-import { computed, ref } from 'vue';
 import { ElInput } from 'element-plus';
-import { uid } from '../../utils';
-import type { InputSize, InputType } from 'n8n-design-system/types/input';
+import { computed, ref } from 'vue';
+
 import type { ElementPlusSizePropType, InputAutocompletePropType } from 'n8n-design-system/types';
+import type { InputSize, InputType } from 'n8n-design-system/types/input';
+
+import { uid } from '../../utils';
 
 interface InputProps {
 	modelValue?: string | number;
@@ -69,7 +39,7 @@ const props = withDefaults(defineProps<InputProps>(), {
 });
 
 const resolvedSize = computed(
-	() => (props.size === 'xlarge' ? undefined : props.size) as ElementPlusSizePropType,
+	() => (props.size === 'medium' ? 'default' : props.size) as ElementPlusSizePropType,
 );
 
 const classes = computed(() => {
@@ -95,6 +65,38 @@ const blur = () => inputElement.value?.blur();
 const select = () => inputElement.value?.select();
 defineExpose({ focus, blur, select });
 </script>
+
+<template>
+	<ElInput
+		ref="innerInput"
+		:model-value="modelValue"
+		:type="type"
+		:size="resolvedSize"
+		:class="['n8n-input', ...classes]"
+		:autocomplete="autocomplete"
+		:name="name"
+		:placeholder="placeholder"
+		:disabled="disabled"
+		:readonly="readonly"
+		:clearable="clearable"
+		:rows="rows"
+		:title="title"
+		v-bind="$attrs"
+	>
+		<template v-if="$slots.prepend" #prepend>
+			<slot name="prepend" />
+		</template>
+		<template v-if="$slots.append" #append>
+			<slot name="append" />
+		</template>
+		<template v-if="$slots.prefix" #prefix>
+			<slot name="prefix" />
+		</template>
+		<template v-if="$slots.suffix" #suffix>
+			<slot name="suffix" />
+		</template>
+	</ElInput>
+</template>
 
 <style lang="scss" module>
 .xlarge {

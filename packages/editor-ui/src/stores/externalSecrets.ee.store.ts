@@ -19,8 +19,8 @@ export const useExternalSecretsStore = defineStore('externalSecrets', () => {
 		connectionState: {} as Record<string, ExternalSecretsProvider['state']>,
 	});
 
-	const isEnterpriseExternalSecretsEnabled = computed(() =>
-		settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.ExternalSecrets),
+	const isEnterpriseExternalSecretsEnabled = computed(
+		() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.ExternalSecrets],
 	);
 
 	const secrets = computed(() => state.secrets);

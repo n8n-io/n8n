@@ -8,10 +8,11 @@ import {
 	FORM_TRIGGER_NODE_TYPE,
 	NODE_OUTPUT_DEFAULT_KEY,
 	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+	SPLIT_IN_BATCHES_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
 } from '@/constants';
 
-import { NodeHelpers, NodeConnectionType, ExpressionEvaluatorProxy } from 'n8n-workflow';
+import { NodeHelpers, ExpressionEvaluatorProxy, NodeConnectionType } from 'n8n-workflow';
 import type {
 	INodeProperties,
 	INodeCredentialDescription,
@@ -19,7 +20,6 @@ import type {
 	INodeIssues,
 	ICredentialType,
 	INodeIssueObjectProperty,
-	ConnectionTypes,
 	INodeInputConfiguration,
 	Workflow,
 	INodeExecutionData,
@@ -62,6 +62,7 @@ import { useCanvasStore } from '@/stores/canvas.store';
 import { getEndpointScope } from '@/utils/nodeViewUtils';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { getConnectionInfo } from '@/utils/canvasUtils';
+import type { UnpinNodeDataEvent } from '@/event-bus/data-pinning';
 
 declare namespace HttpRequestNode {
 	namespace V2 {
@@ -97,11 +98,13 @@ export function useNodeHelpers() {
 
 		if (!isObject(parameters)) return false;
 
-		if ('resource' in parameters && 'operation' in parameters) {
+		if ('resource' in parameters || 'operation' in parameters) {
 			const { resource, operation } = parameters;
-			if (!isString(resource) || !isString(operation)) return false;
 
-			return resource.includes(CUSTOM_API_CALL_KEY) || operation.includes(CUSTOM_API_CALL_KEY);
+			return (
+				(isString(resource) && resource.includes(CUSTOM_API_CALL_KEY)) ||
+				(isString(operation) && operation.includes(CUSTOM_API_CALL_KEY))
+			);
 		}
 
 		return false;
@@ -229,22 +232,27 @@ export function useNodeHelpers() {
 		};
 	}
 
+	function updateNodeInputIssues(node: INodeUi): void {
+		const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+		if (!nodeType) {
+			return;
+		}
+
+		const workflow = workflowsStore.getCurrentWorkflow();
+		const nodeInputIssues = getNodeInputIssues(workflow, node, nodeType);
+
+		workflowsStore.setNodeIssue({
+			node: node.name,
+			type: 'input',
+			value: nodeInputIssues?.input ? nodeInputIssues.input : null,
+		});
+	}
+
 	function updateNodesInputIssues() {
 		const nodes = workflowsStore.allNodes;
-		const workflow = workflowsStore.getCurrentWorkflow();
 
 		for (const node of nodes) {
-			const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
-			if (!nodeType) {
-				return;
-			}
-			const nodeInputIssues = getNodeInputIssues(workflow, node, nodeType);
-
-			workflowsStore.setNodeIssue({
-				node: node.name,
-				type: 'input',
-				value: nodeInputIssues?.input ? nodeInputIssues.input : null,
-			});
+			updateNodeInputIssues(node);
 		}
 	}
 
@@ -257,6 +265,14 @@ export function useNodeHelpers() {
 				type: 'execution',
 				value: hasNodeExecutionIssues(node) ? true : null,
 			});
+		}
+	}
+
+	function updateNodesParameterIssues() {
+		const nodes = workflowsStore.allNodes;
+
+		for (const node of nodes) {
+			updateNodeParameterIssues(node);
 		}
 	}
 
@@ -325,7 +341,7 @@ export function useNodeHelpers() {
 		const foundIssues: INodeIssueObjectProperty = {};
 
 		const workflowNode = workflow.getNode(node.name);
-		let inputs: Array<ConnectionTypes | INodeInputConfiguration> = [];
+		let inputs: Array<NodeConnectionType | INodeInputConfiguration> = [];
 		if (nodeType && workflowNode) {
 			inputs = NodeHelpers.getNodeInputs(workflow, workflowNode, nodeType);
 		}
@@ -554,8 +570,18 @@ export function useNodeHelpers() {
 		runIndex = 0,
 		outputIndex = 0,
 		paneType: NodePanelType = 'output',
-		connectionType: ConnectionTypes = NodeConnectionType.Main,
+		connectionType: NodeConnectionType = NodeConnectionType.Main,
 	): INodeExecutionData[] {
+		//TODO: check if this needs to be fixed in different place
+		if (
+			node?.type === SPLIT_IN_BATCHES_NODE_TYPE &&
+			paneType === 'input' &&
+			runIndex !== 0 &&
+			outputIndex !== 0
+		) {
+			runIndex = runIndex - 1;
+		}
+
 		if (node === null) {
 			return [];
 		}
@@ -590,7 +616,7 @@ export function useNodeHelpers() {
 	function getInputData(
 		connectionsData: ITaskDataConnections,
 		outputIndex: number,
-		connectionType: ConnectionTypes = NodeConnectionType.Main,
+		connectionType: NodeConnectionType = NodeConnectionType.Main,
 	): INodeExecutionData[] {
 		return connectionsData?.[connectionType]?.[outputIndex] ?? [];
 	}
@@ -600,7 +626,7 @@ export function useNodeHelpers() {
 		node: string | null,
 		runIndex: number,
 		outputIndex: number,
-		connectionType: ConnectionTypes = NodeConnectionType.Main,
+		connectionType: NodeConnectionType = NodeConnectionType.Main,
 	): IBinaryKeyData[] {
 		if (node === null) {
 			return [];
@@ -626,10 +652,10 @@ export function useNodeHelpers() {
 		return returnData;
 	}
 
-	function disableNodes(nodes: INodeUi[], trackHistory = false) {
+	function disableNodes(nodes: INodeUi[], { trackHistory = false, trackBulk = true } = {}) {
 		const telemetry = useTelemetry();
 
-		if (trackHistory) {
+		if (trackHistory && trackBulk) {
 			historyStore.startRecordingUndo();
 		}
 
@@ -664,7 +690,8 @@ export function useNodeHelpers() {
 				);
 			}
 		}
-		if (trackHistory) {
+
+		if (trackHistory && trackBulk) {
 			historyStore.stopRecordingUndo();
 		}
 	}
@@ -966,8 +993,8 @@ export function useNodeHelpers() {
 		});
 	}
 
-	function removePinDataConnections(pinData: IPinData) {
-		Object.keys(pinData).forEach((nodeName) => {
+	function removePinDataConnections(event: UnpinNodeDataEvent) {
+		for (const nodeName of event.nodeNames) {
 			const node = workflowsStore.getNodeByName(nodeName);
 			if (!node) {
 				return;
@@ -989,7 +1016,7 @@ export function useNodeHelpers() {
 			canvasStore.jsPlumbInstance.setSuspendDrawing(true);
 			connectionsArray.forEach(NodeViewUtils.resetConnection);
 			canvasStore.jsPlumbInstance.setSuspendDrawing(false, true);
-		});
+		}
 	}
 
 	function getOutputEndpointUUID(
@@ -1228,6 +1255,8 @@ export function useNodeHelpers() {
 		getNodeIssues,
 		updateNodesInputIssues,
 		updateNodesExecutionIssues,
+		updateNodesParameterIssues,
+		updateNodeInputIssues,
 		updateNodeCredentialIssuesByName,
 		updateNodeCredentialIssues,
 		updateNodeParameterIssuesByName,
@@ -1238,6 +1267,7 @@ export function useNodeHelpers() {
 		updateNodesCredentialsIssues,
 		getNodeInputData,
 		setSuccessOutput,
+		matchCredentials,
 		isInsertingNodes,
 		credentialsUpdated,
 		isProductionExecutionPreview,
@@ -1245,6 +1275,7 @@ export function useNodeHelpers() {
 		deleteJSPlumbConnection,
 		loadNodesProperties,
 		addNodes,
+		addConnections,
 		addConnection,
 		removeConnection,
 		removeConnectionByConnectionInfo,

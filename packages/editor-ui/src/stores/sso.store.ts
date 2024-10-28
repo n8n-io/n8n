@@ -42,8 +42,8 @@ export const useSSOStore = defineStore('sso', () => {
 			void toggleLoginEnabled(value);
 		},
 	});
-	const isEnterpriseSamlEnabled = computed(() =>
-		settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Saml),
+	const isEnterpriseSamlEnabled = computed(
+		() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Saml],
 	);
 	const isDefaultAuthenticationSaml = computed(() => settingsStore.isDefaultAuthenticationSaml);
 	const showSsoLoginButton = computed(
@@ -70,7 +70,6 @@ export const useSSOStore = defineStore('sso', () => {
 
 	const updateUser = async (params: { firstName: string; lastName: string }) =>
 		await updateCurrentUser(rootStore.restApiContext, {
-			id: usersStore.currentUser!.id,
 			email: usersStore.currentUser!.email!,
 			...params,
 		});

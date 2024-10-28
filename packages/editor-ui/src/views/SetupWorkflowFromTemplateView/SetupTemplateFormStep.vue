@@ -28,11 +28,8 @@ const props = withDefaults(
 );
 
 const emit = defineEmits<{
-	(
-		e: 'credentialSelected',
-		event: { credentialUsageKey: TemplateCredentialKey; credentialId: string },
-	): void;
-	(e: 'credentialDeselected', event: { credentialUsageKey: TemplateCredentialKey }): void;
+	credentialSelected: [event: { credentialUsageKey: TemplateCredentialKey; credentialId: string }];
+	credentialDeselected: [event: { credentialUsageKey: TemplateCredentialKey }];
 }>();
 
 // Stores
@@ -98,7 +95,7 @@ const onCredentialModalOpened = () => {
 				:plural="credentials.usedBy.length"
 				scope="global"
 			>
-				<span v-html="nodeNames" />
+				<span v-n8n-html="nodeNames" />
 			</i18n-t>
 		</p>
 

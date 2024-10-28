@@ -1,40 +1,21 @@
 <script setup lang="ts">
-import { computed, inject, useCssModule } from 'vue';
-import { CanvasNodeKey } from '@/constants';
-import { useNodeConnections } from '@/composables/useNodeConnections';
+import { computed, useCssModule } from 'vue';
+import { useCanvasNode } from '@/composables/useCanvasNode';
 
 const $style = useCssModule();
-const node = inject(CanvasNodeKey);
 
-const inputs = computed(() => node?.data.value.inputs ?? []);
-const outputs = computed(() => node?.data.value.outputs ?? []);
-const connections = computed(() => node?.data.value.connections ?? { input: {}, output: {} });
-const { mainInputConnections, mainOutputConnections } = useNodeConnections({
-	inputs,
-	outputs,
-	connections,
-});
-
-const isVisible = computed(
-	() => mainInputConnections.value.length === 1 && mainOutputConnections.value.length === 1,
-);
-
-const isSuccessStatus = computed(
-	() => false,
-	// @TODO Implement this
-	// () => !['unknown'].includes(node.status) && workflowDataItems > 0,
-);
+const { hasRunData } = useCanvasNode();
 
 const classes = computed(() => {
 	return {
 		[$style.disabledStrikeThrough]: true,
-		[$style.success]: isSuccessStatus.value,
+		[$style.success]: hasRunData.value,
 	};
 });
 </script>
 
 <template>
-	<div v-if="isVisible" :class="classes"></div>
+	<div :class="classes"></div>
 </template>
 
 <style lang="scss" module>

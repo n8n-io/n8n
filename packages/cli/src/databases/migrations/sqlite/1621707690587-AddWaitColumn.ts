@@ -1,4 +1,4 @@
-import type { MigrationContext, ReversibleMigration } from '@db/types';
+import type { MigrationContext, ReversibleMigration } from '@/databases/types';
 
 export class AddWaitColumn1621707690587 implements ReversibleMigration {
 	async up({ queryRunner, tablePrefix }: MigrationContext) {

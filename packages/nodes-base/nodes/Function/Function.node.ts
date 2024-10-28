@@ -8,7 +8,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { deepCopy, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, deepCopy, NodeOperationError } from 'n8n-workflow';
 import { vmResolver } from '../Code/JavaScriptSandbox';
 
 export class Function implements INodeType {
@@ -25,8 +25,8 @@ export class Function implements INodeType {
 			name: 'Function',
 			color: '#FF9922',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		properties: [
 			{
 				displayName: 'A newer version of this node type is available, called the ‘Code’ node',
@@ -78,7 +78,7 @@ return items;`,
 		const cleanupData = (inputData: IDataObject): IDataObject => {
 			Object.keys(inputData).map((key) => {
 				if (inputData[key] !== null && typeof inputData[key] === 'object') {
-					if (inputData[key]!.constructor.name === 'Object') {
+					if (inputData[key].constructor.name === 'Object') {
 						// Is regular node.js object so check its data
 						inputData[key] = cleanupData(inputData[key] as IDataObject);
 					} else {
@@ -204,7 +204,7 @@ return items;`,
 				}
 			}
 		} catch (error) {
-			if (this.continueOnFail(error)) {
+			if (this.continueOnFail()) {
 				items = [{ json: { error: error.message } }];
 			} else {
 				// Try to find the line number which contains the error and attach to error message

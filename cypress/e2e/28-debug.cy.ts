@@ -18,7 +18,7 @@ describe('Debug', () => {
 	it('should be able to debug executions', () => {
 		cy.intercept('GET', '/rest/executions?filter=*').as('getExecutions');
 		cy.intercept('GET', '/rest/executions/*').as('getExecution');
-		cy.intercept('POST', '/rest/workflows/**/run').as('postWorkflowRun');
+		cy.intercept('POST', '/rest/workflows/**/run?**').as('postWorkflowRun');
 
 		cy.signinAsOwner();
 
@@ -117,7 +117,8 @@ describe('Debug', () => {
 		workflowPage.getters.canvasNodes().last().find('.node-info-icon').should('be.empty');
 
 		workflowPage.getters.canvasNodes().first().dblclick();
-		ndv.getters.pinDataButton().click();
+		ndv.actions.unPinData();
+
 		ndv.actions.close();
 
 		workflowPage.actions.saveWorkflowUsingKeyboardShortcut();

@@ -1,10 +1,3 @@
-<template>
-	<div :class="$style.editor">
-		<div ref="jsonEditorRef" class="ph-no-capture json-editor"></div>
-		<slot name="suffix" />
-	</div>
-</template>
-
 <script setup lang="ts">
 import { history } from '@codemirror/commands';
 import { json, jsonParseLinter } from '@codemirror/lang-json';
@@ -31,6 +24,7 @@ import {
 } from '@/plugins/codemirror/keymap';
 import { n8nAutocompletion } from '@/plugins/codemirror/n8nLang';
 import { computed, onMounted, ref, watch } from 'vue';
+import { mappingDropCursor } from '@/plugins/codemirror/dragAndDrop';
 
 type Props = {
 	modelValue: string;
@@ -41,7 +35,7 @@ type Props = {
 
 const props = withDefaults(defineProps<Props>(), { fillParent: false, isReadOnly: false, rows: 4 });
 const emit = defineEmits<{
-	(event: 'update:modelValue', value: string): void;
+	'update:modelValue': [value: string];
 }>();
 
 const jsonEditorRef = ref<HTMLDivElement>();
@@ -76,6 +70,7 @@ const extensions = computed(() => {
 			foldGutter(),
 			dropCursor(),
 			bracketMatching(),
+			mappingDropCursor(),
 			EditorView.updateListener.of((viewUpdate: ViewUpdate) => {
 				if (!viewUpdate.docChanged || !editor.value) return;
 				emit('update:modelValue', editor.value?.state.doc.toString());
@@ -115,12 +110,19 @@ function destroyEditor() {
 }
 </script>
 
-<style lang="scss" module>
-.editor {
-	height: 100%;
+<template>
+	<div :class="[$style['editor-container'], $style.fillHeight]">
+		<div ref="jsonEditorRef" :class="['ph-no-capture', $style.fillHeight]"></div>
+		<slot name="suffix" />
+	</div>
+</template>
 
-	& > div {
-		height: 100%;
-	}
+<style lang="scss" module>
+.editor-container {
+	position: relative;
+}
+
+.fillHeight {
+	height: 100%;
 }
 </style>
