@@ -50,6 +50,8 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 	const showScrim = ref(false);
 	const openSource = ref<NodeCreatorOpenSource>('');
 
+	const isCreateNodeActive = ref<boolean>(false);
+
 	const userNodesPanelSession = ref<{
 		pushRef: string;
 		search: string;
@@ -133,7 +135,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		createNodeActive,
 		nodeCreatorView,
 	}: ToggleNodeCreatorOptions) {
-		if (createNodeActive === uiStore.isCreateNodeActive) {
+		if (createNodeActive === isCreateNodeActive.value) {
 			return;
 		}
 
@@ -158,7 +160,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 				mode = 'regular';
 		}
 
-		uiStore.isCreateNodeActive = createNodeActive;
+		isCreateNodeActive.value = createNodeActive;
 		if (createNodeActive && source) {
 			setOpenSource(source);
 		}
@@ -384,6 +386,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 	}
 
 	return {
+		isCreateNodeActive,
 		openSource,
 		selectedView,
 		showScrim,
