@@ -7,11 +7,8 @@ export class MemoryVectorStoreManager {
 
 	private vectorStoreBuffer: Map<string, MemoryVectorStore>;
 
-	private embeddings: Embeddings;
-
-	private constructor(embeddings: Embeddings) {
+	private constructor(private embeddings: Embeddings) {
 		this.vectorStoreBuffer = new Map();
-		this.embeddings = embeddings;
 	}
 
 	public static getInstance(embeddings: Embeddings): MemoryVectorStoreManager {
