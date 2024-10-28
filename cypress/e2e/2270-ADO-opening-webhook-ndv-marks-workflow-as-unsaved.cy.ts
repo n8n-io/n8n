@@ -1,3 +1,4 @@
+import { WEBHOOK_NODE_NAME } from './../constants';
 import { clickGetBackToCanvas } from '../composables/ndv';
 import {
 	addNodeToCanvas,
@@ -12,11 +13,9 @@ describe('ADO-2270 Save button resets on webhook node open', () => {
 	});
 
 	it('should not reset the save button if webhook node is opened and closed', () => {
-		addNodeToCanvas('Webhook');
+		addNodeToCanvas(WEBHOOK_NODE_NAME);
 		saveWorkflow();
-		openNode('Webhook');
-
-		clickGetBackToCanvas();
+		openNode(WEBHOOK_NODE_NAME);
 
 		cy.ifCanvasVersion(
 			() => cy.getByTestId('workflow-save-button').should('not.contain', 'Saved'),
