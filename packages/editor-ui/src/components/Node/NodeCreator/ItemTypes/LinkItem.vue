@@ -1,13 +1,3 @@
-<script setup lang="ts">
-import type { LinkItemProps } from '@/Interface';
-
-export interface Props {
-	link: LinkItemProps;
-}
-
-defineProps<Props>();
-</script>
-
 <template>
 	<n8n-node-creator-node
 		:class="$style.creatorLink"
@@ -22,6 +12,16 @@ defineProps<Props>();
 		</template>
 	</n8n-node-creator-node>
 </template>
+
+<script setup lang="ts">
+import type { LinkItemProps } from '@/Interface';
+
+export interface Props {
+	link: LinkItemProps;
+}
+
+defineProps<Props>();
+</script>
 
 <style lang="scss" module>
 .creatorLink {

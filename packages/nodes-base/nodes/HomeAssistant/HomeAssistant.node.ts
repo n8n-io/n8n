@@ -1,15 +1,14 @@
-import {
-	type IExecuteFunctions,
-	type ICredentialsDecrypted,
-	type ICredentialTestFunctions,
-	type IDataObject,
-	type ILoadOptionsFunctions,
-	type INodeCredentialTestResult,
-	type INodeExecutionData,
-	type INodePropertyOptions,
-	type INodeType,
-	type INodeTypeDescription,
-	NodeConnectionType,
+import type {
+	IExecuteFunctions,
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
+	IDataObject,
+	ILoadOptionsFunctions,
+	INodeCredentialTestResult,
+	INodeExecutionData,
+	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import { configOperations } from './ConfigDescription';
@@ -46,8 +45,8 @@ export class HomeAssistant implements INodeType {
 		defaults: {
 			name: 'Home Assistant',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: ['main'],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'homeAssistantApi',
@@ -438,7 +437,7 @@ export class HomeAssistant implements INodeType {
 					}
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					if (resource === 'cameraProxy' && operation === 'get') {
 						items[i].json = { error: error.message };
 					} else {

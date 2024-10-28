@@ -1,10 +1,9 @@
-import {
-	type IExecuteFunctions,
-	type IDataObject,
-	type INodeExecutionData,
-	type INodeType,
-	type INodeTypeDescription,
-	NodeConnectionType,
+import type {
+	IExecuteFunctions,
+	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
@@ -31,8 +30,8 @@ export class UnleashedSoftware implements INodeType {
 		defaults: {
 			name: 'Unleashed Software',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: ['main'],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'unleashedSoftwareApi',

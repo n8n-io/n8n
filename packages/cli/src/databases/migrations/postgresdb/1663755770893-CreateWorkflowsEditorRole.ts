@@ -1,4 +1,4 @@
-import type { MigrationContext, ReversibleMigration } from '@/databases/types';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 
 export class CreateWorkflowsEditorRole1663755770893 implements ReversibleMigration {
 	async up({ queryRunner, tablePrefix }: MigrationContext) {

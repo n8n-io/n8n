@@ -1,11 +1,9 @@
-import { ApplicationError, ErrorReporterProxy } from 'n8n-workflow';
-import { Service } from 'typedi';
 import type WebSocket from 'ws';
-
-import type { User } from '@/databases/entities/user';
-import { Logger } from '@/logger';
-
+import { Service } from 'typedi';
+import { Logger } from '@/Logger';
 import { AbstractPush } from './abstract.push';
+import type { User } from '@db/entities/User';
+import { OrchestrationService } from '@/services/orchestration.service';
 
 function heartbeat(this: WebSocket) {
 	this.isAlive = true;
@@ -13,8 +11,8 @@ function heartbeat(this: WebSocket) {
 
 @Service()
 export class WebSocketPush extends AbstractPush<WebSocket> {
-	constructor(logger: Logger) {
-		super(logger);
+	constructor(logger: Logger, orchestrationService: OrchestrationService) {
+		super(logger, orchestrationService);
 
 		// Ping all connected clients every 60 seconds
 		setInterval(() => this.pingAll(), 60 * 1000);
@@ -32,15 +30,6 @@ export class WebSocketPush extends AbstractPush<WebSocket> {
 
 				this.onMessageReceived(pushRef, JSON.parse(buffer.toString('utf8')));
 			} catch (error) {
-				ErrorReporterProxy.error(
-					new ApplicationError('Error parsing push message', {
-						extra: {
-							userId,
-							data,
-						},
-						cause: error,
-					}),
-				);
 				this.logger.error("Couldn't parse message from editor-UI", {
 					error: error as unknown,
 					pushRef,

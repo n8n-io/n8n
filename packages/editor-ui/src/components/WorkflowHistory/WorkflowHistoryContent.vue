@@ -21,13 +21,14 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-	action: [
+	(
+		event: 'action',
 		value: {
 			action: WorkflowHistoryActionTypes[number];
 			id: WorkflowVersionId;
 			data: { formattedCreatedAt: string };
 		},
-	];
+	): void;
 }>();
 
 const workflowVersionPreview = computed<IWorkflowDb | undefined>(() => {

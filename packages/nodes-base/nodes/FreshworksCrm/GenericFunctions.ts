@@ -23,7 +23,7 @@ export async function freshworksCrmApiRequest(
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const { domain } = await this.getCredentials<FreshworksCrmApiCredentials>('freshworksCrmApi');
+	const { domain } = (await this.getCredentials('freshworksCrmApi')) as FreshworksCrmApiCredentials;
 
 	const options: IRequestOptions = {
 		method,

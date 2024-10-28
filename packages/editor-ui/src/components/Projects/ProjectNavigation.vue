@@ -116,7 +116,7 @@ onMounted(async () => {
 		<hr
 			v-if="
 				displayProjects.length ||
-				(projectsStore.hasPermissionToCreateProjects && projectsStore.isTeamProjectFeatureEnabled)
+				(projectsStore.hasPermissionToCreateProjects && projectsStore.teamProjectsAvailable)
 			"
 			class="mt-m mb-m"
 		/>
@@ -124,9 +124,6 @@ onMounted(async () => {
 			<N8nMenuItem
 				v-for="project in displayProjects"
 				:key="project.id"
-				:class="{
-					[$style.collapsed]: props.collapsed,
-				}"
 				:item="getProjectMenuItem(project)"
 				:compact="props.collapsed"
 				:handle-select="projectClicked"
@@ -137,9 +134,7 @@ onMounted(async () => {
 		</ElMenu>
 		<N8nTooltip placement="right" :disabled="projectsStore.canCreateProjects">
 			<ElMenu
-				v-if="
-					projectsStore.hasPermissionToCreateProjects && projectsStore.isTeamProjectFeatureEnabled
-				"
+				v-if="projectsStore.hasPermissionToCreateProjects && projectsStore.teamProjectsAvailable"
 				:collapse="props.collapsed"
 				class="pl-xs pr-xs"
 			>
@@ -173,7 +168,7 @@ onMounted(async () => {
 		<hr
 			v-if="
 				displayProjects.length ||
-				(projectsStore.hasPermissionToCreateProjects && projectsStore.isTeamProjectFeatureEnabled)
+				(projectsStore.hasPermissionToCreateProjects && projectsStore.teamProjectsAvailable)
 			"
 			class="mt-m mb-m"
 		/>
@@ -198,10 +193,6 @@ onMounted(async () => {
 .upgradeLink {
 	color: var(--color-primary);
 	cursor: pointer;
-}
-
-.collapsed {
-	text-transform: uppercase;
 }
 </style>
 

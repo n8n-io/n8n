@@ -22,16 +22,17 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-	action: [
+	(
+		event: 'action',
 		value: {
 			action: WorkflowHistoryActionTypes[number];
 			id: WorkflowVersionId;
 			data: { formattedCreatedAt: string };
 		},
-	];
-	preview: [value: { event: MouseEvent; id: WorkflowVersionId }];
-	loadMore: [value: WorkflowHistoryRequestParams];
-	upgrade: [];
+	): void;
+	(event: 'preview', value: { event: MouseEvent; id: WorkflowVersionId }): void;
+	(event: 'loadMore', value: WorkflowHistoryRequestParams): void;
+	(event: 'upgrade'): void;
 }>();
 
 const i18n = useI18n();

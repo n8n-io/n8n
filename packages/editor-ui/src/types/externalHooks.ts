@@ -1,15 +1,24 @@
 import type { N8nInput } from 'n8n-design-system';
 import type {
-	ExecutionError,
-	GenericValue,
 	IConnections,
 	INodeProperties,
 	INodeTypeDescription,
 	ITelemetryTrackProperties,
-	NodeParameterValue,
 	NodeParameterValueType,
 } from 'n8n-workflow';
 import type { RouteLocation } from 'vue-router';
+import type {
+	AuthenticationModalEventData,
+	ExecutionFinishedEventData,
+	ExecutionStartedEventData,
+	ExpressionEditorEventsData,
+	InsertedItemFromExpEditorEventData,
+	NodeRemovedEventData,
+	NodeTypeChangedEventData,
+	OutputModeChangedEventData,
+	UpdatedWorkflowSettingsEventData,
+	UserSavedCredentialsEventData,
+} from '@/hooks/segment';
 import type {
 	INodeCreateElement,
 	INodeUi,
@@ -29,54 +38,6 @@ export interface ExternalHooksMethod<T = any, R = void> {
 
 export interface ExternalHooksGenericContext {
 	[key: string]: ExternalHooksMethod[];
-}
-
-interface UserSavedCredentialsEventData {
-	credential_type: string;
-	credential_id: string;
-	is_new: boolean;
-}
-
-interface UpdatedWorkflowSettingsEventData {
-	oldSettings: Record<string, unknown>;
-}
-
-interface NodeTypeChangedEventData {
-	nodeSubtitle?: string;
-}
-
-interface ExpressionEditorEventsData {
-	dialogVisible: boolean;
-	value: string;
-	resolvedExpressionValue: string;
-	parameter: INodeProperties;
-}
-interface AuthenticationModalEventData {
-	parameterPath: string;
-	oldNodeParameters: Record<string, GenericValue>;
-	parameters: INodeProperties[];
-	newValue: NodeParameterValue;
-}
-interface OutputModeChangedEventData {
-	oldValue: string;
-	newValue: string;
-}
-interface ExecutionFinishedEventData {
-	runDataExecutedStartData:
-		| { destinationNode?: string | undefined; runNodeFilter?: string[] | undefined }
-		| undefined;
-	nodeName?: string;
-	errorMessage: string;
-	resultDataError: ExecutionError | undefined;
-	itemsCount: number;
-}
-interface NodeRemovedEventData {
-	node: INodeUi;
-}
-
-interface ExecutionStartedEventData {
-	nodeName?: string;
-	source?: string;
 }
 
 export interface ExternalHooks {
@@ -172,6 +133,7 @@ export interface ExternalHooks {
 		>;
 	};
 	expressionEdit: {
+		itemSelected: Array<ExternalHooksMethod<InsertedItemFromExpEditorEventData>>;
 		dialogVisibleChanged: Array<ExternalHooksMethod<ExpressionEditorEventsData>>;
 		closeDialog: Array<ExternalHooksMethod<ITelemetryTrackProperties>>;
 		mounted: Array<
@@ -221,6 +183,9 @@ export interface ExternalHooks {
 	};
 	userInfo: {
 		mounted: Array<ExternalHooksMethod<{ userInfoRef: HTMLElement }>>;
+	};
+	variableSelectorItem: {
+		mounted: Array<ExternalHooksMethod<{ variableSelectorItemRef: HTMLElement }>>;
 	};
 	mainSidebar: {
 		mounted: Array<ExternalHooksMethod<{ userRef: Element }>>;
@@ -302,10 +267,8 @@ export type ExternalHooksKey = {
 	[K in keyof ExternalHooks]: `${K}.${Extract<keyof ExternalHooks[K], string>}`;
 }[keyof ExternalHooks];
 
-type ExtractHookMethodArray<
-	P extends keyof ExternalHooks,
-	S extends keyof ExternalHooks[P],
-> = ExternalHooks[P][S] extends Array<infer U> ? U : never;
+type ExtractHookMethodArray<P extends keyof ExternalHooks, S extends keyof ExternalHooks[P]> =
+	ExternalHooks[P][S] extends Array<infer U> ? U : never;
 
 type ExtractHookMethodFunction<T> = T extends ExternalHooksMethod ? T : never;
 

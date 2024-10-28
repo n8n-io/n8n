@@ -1,6 +1,5 @@
-import type { StoryFn } from '@storybook/vue3';
 import type { ComponentInstance } from 'vue';
-
+import type { StoryFn } from '@storybook/vue3';
 import N8nRecycleScroller from './RecycleScroller.vue';
 
 export default {

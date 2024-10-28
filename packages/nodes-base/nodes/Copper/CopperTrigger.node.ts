@@ -6,7 +6,6 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
 
 import { copperApiRequest, getAutomaticSecret } from './GenericFunctions';
 
@@ -22,7 +21,7 @@ export class CopperTrigger implements INodeType {
 			name: 'Copper Trigger',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'copperApi',

@@ -4,7 +4,6 @@ import type {
 	INodeTypeDescription,
 	ITriggerResponse,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
 
 type eventType = 'Instance started' | undefined;
 
@@ -22,7 +21,7 @@ export class N8nTrigger implements INodeType {
 			name: 'n8n Trigger',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: ['main'],
 		properties: [
 			{
 				displayName: 'Events',

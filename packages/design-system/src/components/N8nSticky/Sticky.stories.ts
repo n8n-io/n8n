@@ -1,6 +1,5 @@
 import { action } from '@storybook/addon-actions';
 import type { StoryFn } from '@storybook/vue3';
-
 import N8nSticky from './Sticky.vue';
 
 export default {
@@ -62,7 +61,9 @@ export const Sticky = Template.bind({});
 Sticky.args = {
 	height: 160,
 	width: 150,
-	modelValue:
+	content:
+		"## I'm a note \n**Double click** to edit me. [Guide](https://docs.n8n.io/workflows/sticky-notes/)",
+	defaultText:
 		"## I'm a note \n**Double click** to edit me. [Guide](https://docs.n8n.io/workflows/sticky-notes/)",
 	minHeight: 80,
 	minWidth: 150,

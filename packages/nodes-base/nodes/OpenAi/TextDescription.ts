@@ -353,7 +353,7 @@ const sharedOperations: INodeProperties[] = [
 	{
 		displayName: 'Options',
 		name: 'options',
-		placeholder: 'Add option',
+		placeholder: 'Add Option',
 		description: 'Additional options to add',
 		type: 'collection',
 		default: {},

@@ -1,14 +1,13 @@
-import {
-	type IExecuteFunctions,
-	type ICredentialDataDecryptedObject,
-	type ICredentialsDecrypted,
-	type ICredentialTestFunctions,
-	type IDataObject,
-	type INodeCredentialTestResult,
-	type INodeExecutionData,
-	type INodeType,
-	type INodeTypeDescription,
-	NodeConnectionType,
+import type {
+	IExecuteFunctions,
+	ICredentialDataDecryptedObject,
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
+	IDataObject,
+	INodeCredentialTestResult,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import { dhlApiRequest, validateCredentials } from './GenericFunctions';
@@ -25,8 +24,8 @@ export class Dhl implements INodeType {
 		defaults: {
 			name: 'DHL',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: ['main'],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'dhlApi',
@@ -78,7 +77,7 @@ export class Dhl implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add option',
+				placeholder: 'Add Option',
 				default: {},
 				options: [
 					{
@@ -146,7 +145,7 @@ export class Dhl implements INodeType {
 					}
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({ error: error.description });
 					continue;
 				}

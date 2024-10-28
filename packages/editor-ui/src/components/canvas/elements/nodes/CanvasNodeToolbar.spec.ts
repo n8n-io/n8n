@@ -2,7 +2,6 @@ import { fireEvent } from '@testing-library/vue';
 import CanvasNodeToolbar from '@/components/canvas/elements/nodes/CanvasNodeToolbar.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createCanvasNodeProvide } from '@/__tests__/data';
-import { CanvasNodeRenderType } from '@/types';
 
 const renderComponent = createComponentRenderer(CanvasNodeToolbar);
 
@@ -25,10 +24,7 @@ describe('CanvasNodeToolbar', () => {
 				provide: {
 					...createCanvasNodeProvide({
 						data: {
-							render: {
-								type: CanvasNodeRenderType.Default,
-								options: { configuration: true },
-							},
+							renderType: 'configuration',
 						},
 					}),
 				},
@@ -38,81 +34,75 @@ describe('CanvasNodeToolbar', () => {
 		expect(queryByTestId('execute-node-button')).not.toBeInTheDocument();
 	});
 
-	it('should emit "run" when execute node button is clicked', async () => {
-		const { getByTestId, emitted } = renderComponent({
+	it('should call executeNode function when execute node button is clicked', async () => {
+		const executeNode = vi.fn();
+		const { getByTestId } = renderComponent({
 			global: {
 				provide: {
 					...createCanvasNodeProvide(),
+				},
+				mocks: {
+					executeNode,
 				},
 			},
 		});
 
 		await fireEvent.click(getByTestId('execute-node-button'));
 
-		expect(emitted('run')[0]).toEqual([]);
+		expect(executeNode).toHaveBeenCalled();
 	});
 
-	it('should emit "toggle" when disable node button is clicked', async () => {
-		const { getByTestId, emitted } = renderComponent({
+	it('should call toggleDisableNode function when disable node button is clicked', async () => {
+		const onToggleNode = vi.fn();
+		const { getByTestId } = renderComponent({
 			global: {
 				provide: {
 					...createCanvasNodeProvide(),
+				},
+				mocks: {
+					onToggleNode,
 				},
 			},
 		});
 
 		await fireEvent.click(getByTestId('disable-node-button'));
 
-		expect(emitted('toggle')[0]).toEqual([]);
+		expect(onToggleNode).toHaveBeenCalled();
 	});
 
-	it('should emit "delete" when delete node button is clicked', async () => {
-		const { getByTestId, emitted } = renderComponent({
+	it('should call deleteNode function when delete node button is clicked', async () => {
+		const onDeleteNode = vi.fn();
+		const { getByTestId } = renderComponent({
 			global: {
 				provide: {
 					...createCanvasNodeProvide(),
+				},
+				mocks: {
+					onDeleteNode,
 				},
 			},
 		});
 
 		await fireEvent.click(getByTestId('delete-node-button'));
 
-		expect(emitted('delete')[0]).toEqual([]);
+		expect(onDeleteNode).toHaveBeenCalled();
 	});
 
-	it('should emit "open:contextmenu" when overflow node button is clicked', async () => {
-		const { getByTestId, emitted } = renderComponent({
+	it('should call openContextMenu function when overflow node button is clicked', async () => {
+		const openContextMenu = vi.fn();
+		const { getByTestId } = renderComponent({
 			global: {
 				provide: {
 					...createCanvasNodeProvide(),
+				},
+				mocks: {
+					openContextMenu,
 				},
 			},
 		});
 
 		await fireEvent.click(getByTestId('overflow-node-button'));
 
-		expect(emitted('open:contextmenu')[0]).toEqual([expect.any(MouseEvent)]);
-	});
-
-	it('should emit "update" when sticky note color is changed', async () => {
-		const { getAllByTestId, getByTestId, emitted } = renderComponent({
-			global: {
-				provide: {
-					...createCanvasNodeProvide({
-						data: {
-							render: {
-								type: CanvasNodeRenderType.StickyNote,
-								options: { color: 3 },
-							},
-						},
-					}),
-				},
-			},
-		});
-
-		await fireEvent.click(getByTestId('change-sticky-color'));
-		await fireEvent.click(getAllByTestId('color')[0]);
-
-		expect(emitted('update')[0]).toEqual([{ color: 1 }]);
+		expect(openContextMenu).toHaveBeenCalled();
 	});
 });

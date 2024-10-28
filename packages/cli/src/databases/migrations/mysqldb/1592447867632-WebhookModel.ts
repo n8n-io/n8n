@@ -1,4 +1,4 @@
-import type { MigrationContext, ReversibleMigration } from '@/databases/types';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 
 export class WebhookModel1592447867632 implements ReversibleMigration {
 	async up({ queryRunner, tablePrefix }: MigrationContext) {

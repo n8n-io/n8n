@@ -1,19 +1,24 @@
 import type { IDataObject, ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
+import { Client } from 'ssh2';
 import { createPool } from '../transport';
-import type { MysqlNodeCredentials } from '../helpers/interfaces';
 
 export async function searchTables(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
-	const credentials = await this.getCredentials<MysqlNodeCredentials>('mySql');
+	const credentials = await this.getCredentials('mySql');
 
 	const nodeOptions = this.getNodeParameter('options', 0) as IDataObject;
 
-	const pool = await createPool.call(this, credentials, nodeOptions);
+	let sshClient: Client | undefined = undefined;
+
+	if (credentials.sshTunnel) {
+		sshClient = new Client();
+	}
+	const pool = await createPool(credentials, nodeOptions, sshClient);
 
 	try {
 		const connection = await pool.getConnection();
 
 		const query = 'SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE table_schema = ?';
-		const values = [credentials.database];
+		const values = [credentials.database as string];
 
 		const formatedQuery = connection.format(query, values);
 
@@ -27,7 +32,12 @@ export async function searchTables(this: ILoadOptionsFunctions): Promise<INodeLi
 		}));
 
 		return { results };
+	} catch (error) {
+		throw error;
 	} finally {
+		if (sshClient) {
+			sshClient.end();
+		}
 		await pool.end();
 	}
 }

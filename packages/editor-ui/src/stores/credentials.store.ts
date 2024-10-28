@@ -1,31 +1,32 @@
 import type {
+	INodeUi,
+	IUsedCredential,
 	ICredentialMap,
 	ICredentialsDecryptedResponse,
 	ICredentialsResponse,
 	ICredentialsState,
 	ICredentialTypeMap,
-	INodeUi,
-	IUsedCredential,
 } from '@/Interface';
 import * as credentialsApi from '@/api/credentials';
 import * as credentialsEeApi from '@/api/credentials.ee';
-import { EnterpriseEditionFeature, STORES } from '@/constants';
-import { i18n } from '@/plugins/i18n';
-import type { ProjectSharingData } from '@/types/projects.types';
 import { makeRestApiRequest } from '@/utils/apiUtils';
 import { getAppNameFromCredType } from '@/utils/nodeTypesUtils';
-import { splitName } from '@/utils/projects.utils';
-import { isEmpty, isPresent } from '@/utils/typesUtils';
+import { EnterpriseEditionFeature, STORES } from '@/constants';
+import { i18n } from '@/plugins/i18n';
 import type {
 	ICredentialsDecrypted,
 	ICredentialType,
 	INodeCredentialTestResult,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 import { defineStore } from 'pinia';
-import { computed, ref } from 'vue';
-import { useNodeTypesStore } from './nodeTypes.store';
 import { useRootStore } from './root.store';
+import { useNodeTypesStore } from './nodeTypes.store';
 import { useSettingsStore } from './settings.store';
+import { isEmpty } from '@/utils/typesUtils';
+import type { ProjectSharingData } from '@/types/projects.types';
+import { splitName } from '@/utils/projects.utils';
+import { computed, ref } from 'vue';
 
 const DEFAULT_CREDENTIAL_NAME = 'Unnamed credential';
 const DEFAULT_CREDENTIAL_POSTFIX = 'account';
@@ -130,15 +131,22 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 
 	const getNodesWithAccess = computed(() => {
 		return (credentialTypeName: string) => {
-			const credentialType = getCredentialTypeByName.value(credentialTypeName);
-			if (!credentialType) {
-				return [];
-			}
 			const nodeTypesStore = useNodeTypesStore();
+			const allNodeTypes: INodeTypeDescription[] = nodeTypesStore.allNodeTypes;
 
-			return (credentialType.supportedNodes ?? [])
-				.map((nodeType) => nodeTypesStore.getNodeType(nodeType))
-				.filter(isPresent);
+			return allNodeTypes.filter((nodeType: INodeTypeDescription) => {
+				if (!nodeType.credentials) {
+					return false;
+				}
+
+				for (const credentialTypeDescription of nodeType.credentials) {
+					if (credentialTypeDescription.name === credentialTypeName) {
+						return true;
+					}
+				}
+
+				return false;
+			});
 		};
 	});
 
@@ -175,13 +183,11 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 
 	const getCredentialOwnerName = computed(() => {
 		return (credential: ICredentialsResponse | IUsedCredential | undefined): string => {
-			const { name, email } = splitName(credential?.homeProject?.name ?? '');
+			const { firstName, lastName, email } = splitName(credential?.homeProject?.name ?? '');
 
-			return name
-				? email
-					? `${name} (${email})`
-					: name
-				: (email ?? i18n.baseText('credentialEdit.credentialSharing.info.sharee.fallback'));
+			return credential?.homeProject?.name
+				? `${firstName} ${lastName} (${email})`
+				: i18n.baseText('credentialEdit.credentialSharing.info.sharee.fallback');
 		};
 	});
 
@@ -194,9 +200,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	});
 
 	const httpOnlyCredentialTypes = computed(() => {
-		return allCredentialTypes.value.filter(
-			(credentialType) => credentialType.httpRequestNode && !credentialType.httpRequestNode.hidden,
-		);
+		return allCredentialTypes.value.filter((credentialType) => credentialType.httpRequestNode);
 	});
 
 	// #endregion
@@ -310,11 +314,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 			projectId,
 		);
 
-		if (data?.homeProject && !credential.homeProject) {
-			credential.homeProject = data.homeProject as ProjectSharingData;
-		}
-
-		if (settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing]) {
+		if (settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
 			upsertCredential(credential);
 			if (data.sharedWithProjects) {
 				await setCredentialSharedWith({
@@ -389,7 +389,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		sharedWithProjects: ProjectSharingData[];
 		credentialId: string;
 	}): Promise<ICredentialsResponse> => {
-		if (useSettingsStore().isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing]) {
+		if (useSettingsStore().isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
 			await credentialsEeApi.setCredentialSharedWith(
 				useRootStore().restApiContext,
 				payload.credentialId,
@@ -416,7 +416,6 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	// #endregion
 
 	return {
-		state,
 		getCredentialOwnerName,
 		getCredentialsByType,
 		getCredentialById,

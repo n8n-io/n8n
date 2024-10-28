@@ -11,11 +11,10 @@ import {
 	DELETE_USER_MODAL_KEY,
 	DUPLICATE_MODAL_KEY,
 	INVITE_USER_MODAL_KEY,
+	ONBOARDING_CALL_SIGNUP_MODAL_KEY,
 	PERSONALIZATION_MODAL_KEY,
 	TAGS_MANAGER_MODAL_KEY,
-	ANNOTATION_TAGS_MANAGER_MODAL_KEY,
 	NPS_SURVEY_MODAL_KEY,
-	NEW_ASSISTANT_SESSION_MODAL,
 	VERSIONS_MODAL_KEY,
 	WORKFLOW_ACTIVE_MODAL_KEY,
 	WORKFLOW_LM_CHAT_MODAL_KEY,
@@ -30,8 +29,9 @@ import {
 	MFA_SETUP_MODAL_KEY,
 	WORKFLOW_HISTORY_VERSION_RESTORE,
 	SETUP_CREDENTIALS_MODAL_KEY,
+	GENERATE_CURL_MODAL_KEY,
 	PROJECT_MOVE_RESOURCE_MODAL,
-	PROMPT_MFA_CODE_MODAL_KEY,
+	PROJECT_MOVE_RESOURCE_CONFIRM_MODAL,
 } from '@/constants';
 
 import AboutModal from '@/components/AboutModal.vue';
@@ -45,16 +45,17 @@ import InviteUsersModal from '@/components/InviteUsersModal.vue';
 import CredentialsSelectModal from '@/components/CredentialsSelectModal.vue';
 import DuplicateWorkflowDialog from '@/components/DuplicateWorkflowDialog.vue';
 import ModalRoot from '@/components/ModalRoot.vue';
+import OnboardingCallSignupModal from '@/components/OnboardingCallSignupModal.vue';
 import PersonalizationModal from '@/components/PersonalizationModal.vue';
-import WorkflowTagsManager from '@/components/TagsManager/WorkflowTagsManager.vue';
-import AnnotationTagsManager from '@/components/TagsManager/AnnotationTagsManager.ee.vue';
+import TagsManager from '@/components/TagsManager/TagsManager.vue';
 import UpdatesPanel from '@/components/UpdatesPanel.vue';
 import NpsSurvey from '@/components/NpsSurvey.vue';
-import WorkflowLMChat from '@/components/WorkflowLMChat/WorkflowLMChat.vue';
+import WorkflowLMChat from '@/components/WorkflowLMChat.vue';
 import WorkflowSettings from '@/components/WorkflowSettings.vue';
 import DeleteUserModal from '@/components/DeleteUserModal.vue';
 import ActivationModal from '@/components/ActivationModal.vue';
 import ImportCurlModal from '@/components/ImportCurlModal.vue';
+import GenerateCurlModal from '@/components/GenerateCurlModal.vue';
 import MfaSetupModal from '@/components/MfaSetupModal.vue';
 import WorkflowShareModal from '@/components/WorkflowShareModal.ee.vue';
 import EventDestinationSettingsModal from '@/components/SettingsLogStreaming/EventDestinationSettingsModal.ee.vue';
@@ -65,8 +66,7 @@ import DebugPaywallModal from '@/components/DebugPaywallModal.vue';
 import WorkflowHistoryVersionRestoreModal from '@/components/WorkflowHistory/WorkflowHistoryVersionRestoreModal.vue';
 import SetupWorkflowCredentialsModal from '@/components/SetupWorkflowCredentialsModal/SetupWorkflowCredentialsModal.vue';
 import ProjectMoveResourceModal from '@/components/Projects/ProjectMoveResourceModal.vue';
-import NewAssistantSessionModal from '@/components/AskAssistant/NewAssistantSessionModal.vue';
-import PromptMfaCodeModal from './PromptMfaCodeModal/PromptMfaCodeModal.vue';
+import ProjectMoveResourceConfirmModal from '@/components/Projects/ProjectMoveResourceConfirmModal.vue';
 </script>
 
 <template>
@@ -105,11 +105,7 @@ import PromptMfaCodeModal from './PromptMfaCodeModal/PromptMfaCodeModal.vue';
 		</ModalRoot>
 
 		<ModalRoot :name="TAGS_MANAGER_MODAL_KEY">
-			<WorkflowTagsManager />
-		</ModalRoot>
-
-		<ModalRoot :name="ANNOTATION_TAGS_MANAGER_MODAL_KEY">
-			<AnnotationTagsManager />
+			<TagsManager />
 		</ModalRoot>
 
 		<ModalRoot :name="VERSIONS_MODAL_KEY" :keep-alive="true">
@@ -152,14 +148,14 @@ import PromptMfaCodeModal from './PromptMfaCodeModal/PromptMfaCodeModal.vue';
 			<MfaSetupModal />
 		</ModalRoot>
 
-		<ModalRoot :name="PROMPT_MFA_CODE_MODAL_KEY">
-			<PromptMfaCodeModal />
-		</ModalRoot>
-
 		<ModalRoot :name="WORKFLOW_SHARE_MODAL_KEY">
 			<template #default="{ modalName, active, data }">
 				<WorkflowShareModal :data="data" :is-active="active" :modal-name="modalName" />
 			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="ONBOARDING_CALL_SIGNUP_MODAL_KEY">
+			<OnboardingCallSignupModal />
 		</ModalRoot>
 
 		<ModalRoot :name="COMMUNITY_PACKAGE_INSTALL_MODAL_KEY">
@@ -168,6 +164,10 @@ import PromptMfaCodeModal from './PromptMfaCodeModal/PromptMfaCodeModal.vue';
 
 		<ModalRoot :name="IMPORT_CURL_MODAL_KEY">
 			<ImportCurlModal />
+		</ModalRoot>
+
+		<ModalRoot :name="GENERATE_CURL_MODAL_KEY">
+			<GenerateCurlModal />
 		</ModalRoot>
 
 		<ModalRoot :name="COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY">
@@ -247,9 +247,13 @@ import PromptMfaCodeModal from './PromptMfaCodeModal/PromptMfaCodeModal.vue';
 				/>
 			</template>
 		</ModalRoot>
-		<ModalRoot :name="NEW_ASSISTANT_SESSION_MODAL">
+		<ModalRoot :name="PROJECT_MOVE_RESOURCE_CONFIRM_MODAL">
 			<template #default="{ modalName, data }">
-				<NewAssistantSessionModal :name="modalName" :data="data" />
+				<ProjectMoveResourceConfirmModal
+					data-test-id="project-move-resource-confirm-modal"
+					:modal-name="modalName"
+					:data="data"
+				/>
 			</template>
 		</ModalRoot>
 	</div>

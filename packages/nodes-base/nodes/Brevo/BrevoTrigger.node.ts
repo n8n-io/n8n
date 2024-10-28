@@ -1,11 +1,10 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import {
-	NodeConnectionType,
-	type IHookFunctions,
-	type INodeType,
-	type INodeTypeDescription,
-	type IWebhookFunctions,
-	type IWebhookResponseData,
+import type {
+	IHookFunctions,
+	INodeType,
+	INodeTypeDescription,
+	IWebhookFunctions,
+	IWebhookResponseData,
 } from 'n8n-workflow';
 import { BrevoWebhookApi } from './GenericFunctions';
 
@@ -30,7 +29,7 @@ export class BrevoTrigger implements INodeType {
 		inputs: [],
 		// keep sendinblue name for backward compatibility
 		name: 'sendInBlueTrigger',
-		outputs: [NodeConnectionType.Main],
+		outputs: ['main'],
 		version: 1,
 		webhooks: [
 			{

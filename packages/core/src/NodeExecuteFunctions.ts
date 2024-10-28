@@ -38,7 +38,9 @@ import { extension, lookup } from 'mime-types';
 import type {
 	BinaryHelperFunctions,
 	CloseFunction,
+	ConnectionTypes,
 	ContextType,
+	EventNamesAiNodesType,
 	FieldType,
 	FileSystemHelperFunctions,
 	FunctionsBase,
@@ -99,12 +101,8 @@ import type {
 	CallbackManager,
 	INodeParameters,
 	EnsureTypeOptions,
-	SSHTunnelFunctions,
-	SchedulingFunctions,
-	AiEvent,
 } from 'n8n-workflow';
 import {
-	NodeConnectionType,
 	ExpressionError,
 	LoggerProxy as Logger,
 	NodeApiError,
@@ -115,6 +113,7 @@ import {
 	createDeferredPromise,
 	deepCopy,
 	fileTypeFromMimeType,
+	getGlobalState,
 	isObjectEmpty,
 	isResourceMapperValue,
 	validateFieldType,
@@ -122,6 +121,7 @@ import {
 	jsonParse,
 	ApplicationError,
 	sleep,
+	OBFUSCATED_ERROR_MESSAGE,
 } from 'n8n-workflow';
 import type { Token } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
@@ -156,10 +156,6 @@ import Container from 'typedi';
 import type { BinaryData } from './BinaryData/types';
 import merge from 'lodash/merge';
 import { InstanceSettings } from './InstanceSettings';
-import { ScheduledTaskManager } from './ScheduledTaskManager';
-import { SSHClientsManager } from './SSHClientsManager';
-import { binaryToBuffer } from './BinaryData/utils';
-import { getNodeAsTool } from './CreateNodeAsTool';
 
 axios.defaults.timeout = 300000;
 // Prevent axios from adding x-form-www-urlencoded headers by default
@@ -766,15 +762,6 @@ export function parseIncomingMessage(message: IncomingMessage) {
 	}
 }
 
-async function binaryToString(body: Buffer | Readable, encoding?: BufferEncoding) {
-	const buffer = await binaryToBuffer(body);
-	if (!encoding && body instanceof IncomingMessage) {
-		parseIncomingMessage(body);
-		encoding = body.encoding;
-	}
-	return buffer.toString(encoding);
-}
-
 export async function proxyRequestToAxios(
 	workflow: Workflow | undefined,
 	additionalData: IWorkflowExecuteAdditionalData | undefined,
@@ -848,7 +835,9 @@ export async function proxyRequestToAxios(
 				let responseData = response.data;
 
 				if (Buffer.isBuffer(responseData) || responseData instanceof Readable) {
-					responseData = await binaryToString(responseData);
+					responseData = await Container.get(BinaryDataService)
+						.toBuffer(responseData)
+						.then((buffer) => buffer.toString('utf-8'));
 				}
 
 				if (configObject.simple === false) {
@@ -1342,9 +1331,7 @@ export async function requestOAuth2(
 	// if it's the first time using the credentials, get the access token and save it into the DB.
 	if (
 		credentials.grantType === 'clientCredentials' &&
-		(oauthTokenData === undefined ||
-			Object.keys(oauthTokenData).length === 0 ||
-			oauthTokenData.access_token === '') // stub
+		(oauthTokenData === undefined || Object.keys(oauthTokenData).length === 0)
 	) {
 		const { data } = await oAuthClient.credentials.getToken();
 		// Find the credentials
@@ -1656,8 +1643,7 @@ export async function httpRequestWithAuthentication(
 		if (additionalCredentialOptions?.credentialsDecrypted) {
 			credentialsDecrypted = additionalCredentialOptions.credentialsDecrypted.data;
 		} else {
-			credentialsDecrypted =
-				await this.getCredentials<ICredentialDataDecryptedObject>(credentialsType);
+			credentialsDecrypted = await this.getCredentials(credentialsType);
 		}
 
 		if (credentialsDecrypted === undefined) {
@@ -1854,10 +1840,7 @@ export async function requestWithAuthentication(
 		if (additionalCredentialOptions?.credentialsDecrypted) {
 			credentialsDecrypted = additionalCredentialOptions.credentialsDecrypted.data;
 		} else {
-			credentialsDecrypted = await this.getCredentials<ICredentialDataDecryptedObject>(
-				credentialsType,
-				itemIndex,
-			);
+			credentialsDecrypted = await this.getCredentials(credentialsType, itemIndex);
 		}
 
 		if (credentialsDecrypted === undefined) {
@@ -1954,7 +1937,7 @@ export function getAdditionalKeys(
 								if (mode === 'manual') {
 									throw e;
 								}
-								Logger.debug(e.message);
+								Logger.verbose(e.message);
 							}
 						},
 						setAll(obj: Record<string, string>): void {
@@ -1964,7 +1947,7 @@ export function getAdditionalKeys(
 								if (mode === 'manual') {
 									throw e;
 								}
-								Logger.debug(e.message);
+								Logger.verbose(e.message);
 							}
 						},
 						get(key: string): string {
@@ -1992,7 +1975,7 @@ export function getAdditionalKeys(
  * @param {INode} node Node which request the data
  * @param {string} type The credential type to return
  */
-export async function getCredentials<T extends object = ICredentialDataDecryptedObject>(
+export async function getCredentials(
 	workflow: Workflow,
 	node: INode,
 	type: string,
@@ -2003,7 +1986,7 @@ export async function getCredentials<T extends object = ICredentialDataDecrypted
 	runIndex?: number,
 	connectionInputData?: INodeExecutionData[],
 	itemIndex?: number,
-): Promise<T> {
+): Promise<ICredentialDataDecryptedObject> {
 	// Get the NodeType as it has the information if the credentials are required
 	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 	if (nodeType === undefined) {
@@ -2121,7 +2104,7 @@ export async function getCredentials<T extends object = ICredentialDataDecrypted
 		expressionResolveValues,
 	);
 
-	return decryptedDataObject as T;
+	return decryptedDataObject;
 }
 
 /**
@@ -2593,6 +2576,13 @@ export function getNodeWebhookUrl(
 }
 
 /**
+ * Returns the timezone for the workflow
+ */
+export function getTimezone(workflow: Workflow): string {
+	return workflow.settings.timezone ?? getGlobalState().defaultTimezone;
+}
+
+/**
  * Returns the full webhook description of the webhook with the given name
  *
  */
@@ -2623,13 +2613,13 @@ const addExecutionDataFunctions = async (
 	nodeName: string,
 	data: INodeExecutionData[][] | ExecutionBaseError,
 	runExecutionData: IRunExecutionData,
-	connectionType: NodeConnectionType,
+	connectionType: ConnectionTypes,
 	additionalData: IWorkflowExecuteAdditionalData,
 	sourceNodeName: string,
 	sourceNodeRunIndex: number,
 	currentNodeRunIndex: number,
 ): Promise<void> => {
-	if (connectionType === NodeConnectionType.Main) {
+	if (connectionType === 'main') {
 		throw new ApplicationError('Setting type is not supported for main connection', {
 			extra: { type },
 		});
@@ -2732,7 +2722,7 @@ async function getInputConnectionData(
 	executeData: IExecuteData | undefined,
 	mode: WorkflowExecuteMode,
 	closeFunctions: CloseFunction[],
-	inputName: NodeConnectionType,
+	inputName: ConnectionTypes,
 	itemIndex: number,
 ): Promise<unknown> {
 	const node = this.getNode();
@@ -2761,12 +2751,6 @@ async function getInputConnectionData(
 
 	const parentNodes = workflow.getParentNodes(node.name, inputName, 1);
 	if (parentNodes.length === 0) {
-		if (inputConfiguration.required) {
-			throw new NodeOperationError(
-				node,
-				`A ${inputConfiguration?.displayName ?? inputName} sub-node must be connected`,
-			);
-		}
 		return inputConfiguration.maxConnections === 1 ? undefined : [];
 	}
 
@@ -2780,6 +2764,12 @@ async function getInputConnectionData(
 				connectedNode.type,
 				connectedNode.typeVersion,
 			);
+
+			if (!nodeType.supplyData) {
+				throw new ApplicationError('Node does not have a `supplyData` method defined', {
+					extra: { nodeName: connectedNode.name },
+				});
+			}
 
 			const context = Object.assign({}, this);
 
@@ -2848,18 +2838,6 @@ async function getInputConnectionData(
 				}
 			};
 
-			if (!nodeType.supplyData) {
-				if (nodeType.description.outputs.includes(NodeConnectionType.AiTool)) {
-					nodeType.supplyData = async function (this: IExecuteFunctions) {
-						return getNodeAsTool(this, nodeType, this.getNode().parameters);
-					};
-				} else {
-					throw new ApplicationError('Node does not have a `supplyData` method defined', {
-						extra: { nodeName: connectedNode.name },
-					});
-				}
-			}
-
 			try {
 				const response = await nodeType.supplyData.call(context, itemIndex);
 				if (response.closeFunction) {
@@ -2906,10 +2884,7 @@ async function getInputConnectionData(
 	const nodes = await Promise.all(constParentNodes);
 
 	if (inputConfiguration.required && nodes.length === 0) {
-		throw new NodeOperationError(
-			node,
-			`A ${inputConfiguration?.displayName ?? inputName} sub-node must be connected`,
-		);
+		throw new NodeOperationError(node, `A ${inputName} processor node must be connected`);
 	}
 	if (
 		inputConfiguration.maxConnections !== undefined &&
@@ -2917,7 +2892,7 @@ async function getInputConnectionData(
 	) {
 		throw new NodeOperationError(
 			node,
-			`Only ${inputConfiguration.maxConnections} ${inputName} sub-nodes are/is allowed to be connected`,
+			`Only ${inputConfiguration.maxConnections} ${inputName} processor nodes are/is allowed to be connected`,
 		);
 	}
 
@@ -2972,7 +2947,7 @@ const getCommonWorkflowFunctions = (
 	getRestApiUrl: () => additionalData.restApiUrl,
 	getInstanceBaseUrl: () => additionalData.instanceBaseUrl,
 	getInstanceId: () => Container.get(InstanceSettings).instanceId,
-	getTimezone: () => workflow.timezone,
+	getTimezone: () => getTimezone(workflow),
 	getCredentialsProperties: (type: string) =>
 		additionalData.credentialsHelper.getCredentialsProperties(type),
 	prepareOutputData: async (outputData) => [outputData],
@@ -2995,8 +2970,6 @@ const getRequestHelperFunctions = (
 	workflow: Workflow,
 	node: INode,
 	additionalData: IWorkflowExecuteAdditionalData,
-	runExecutionData: IRunExecutionData | null = null,
-	connectionInputData: INodeExecutionData[] = [],
 ): RequestHelperFunctions => {
 	const getResolvedValue = (
 		parameterValue: NodeParameterValueType,
@@ -3006,6 +2979,8 @@ const getRequestHelperFunctions = (
 		additionalKeys?: IWorkflowDataProxyAdditionalKeys,
 		returnObjectAsString = false,
 	): NodeParameterValueType => {
+		const runExecutionData: IRunExecutionData | null = null;
+		const connectionInputData: INodeExecutionData[] = [];
 		const mode: WorkflowExecuteMode = 'internal';
 
 		if (
@@ -3114,14 +3089,17 @@ const getRequestHelperFunctions = (
 				let contentBody: Exclude<IN8nHttpResponse, Buffer>;
 
 				if (newResponse.body instanceof Readable && paginationOptions.binaryResult !== true) {
+					const data = await this.helpers
+						.binaryToBuffer(newResponse.body as Buffer | Readable)
+						.then((body) => body.toString());
 					// Keep the original string version that we can use it to hash if needed
-					contentBody = await binaryToString(newResponse.body as Buffer | Readable);
+					contentBody = data;
 
 					const responseContentType = newResponse.headers['content-type']?.toString() ?? '';
 					if (responseContentType.includes('application/json')) {
-						newResponse.body = jsonParse(contentBody, { fallbackValue: {} });
+						newResponse.body = jsonParse(data, { fallbackValue: {} });
 					} else {
-						newResponse.body = contentBody;
+						newResponse.body = data;
 					}
 					tempResponseData.__bodyResolved = true;
 					tempResponseData.body = newResponse.body;
@@ -3180,16 +3158,10 @@ const getRequestHelperFunctions = (
 				additionalKeys.$response = newResponse;
 				additionalKeys.$pageCount = additionalKeys.$pageCount + 1;
 
-				const maxRequests = getResolvedValue(
-					paginationOptions.maxRequests,
-					itemIndex,
-					runIndex,
-					executeData,
-					additionalKeys,
-					false,
-				) as number;
-
-				if (maxRequests && additionalKeys.$pageCount >= maxRequests) {
+				if (
+					paginationOptions.maxRequests &&
+					additionalKeys.$pageCount >= paginationOptions.maxRequests
+				) {
 					break;
 				}
 
@@ -3204,16 +3176,7 @@ const getRequestHelperFunctions = (
 
 				if (makeAdditionalRequest) {
 					if (paginationOptions.requestInterval) {
-						const requestInterval = getResolvedValue(
-							paginationOptions.requestInterval,
-							itemIndex,
-							runIndex,
-							executeData,
-							additionalKeys,
-							false,
-						) as number;
-
-						await sleep(requestInterval);
+						await sleep(paginationOptions.requestInterval);
 					}
 					if (tempResponseData.statusCode < 200 || tempResponseData.statusCode >= 300) {
 						// We have it configured to let all requests pass no matter the response code
@@ -3222,7 +3185,9 @@ const getRequestHelperFunctions = (
 						// now an error manually if the response code is not a success one.
 						let data = tempResponseData.body;
 						if (data instanceof Readable && paginationOptions.binaryResult !== true) {
-							data = await binaryToString(data as Buffer | Readable);
+							data = await this.helpers
+								.binaryToBuffer(tempResponseData.body as Buffer | Readable)
+								.then((body) => body.toString());
 						} else if (typeof data === 'object') {
 							data = JSON.stringify(data);
 						}
@@ -3311,19 +3276,6 @@ const getRequestHelperFunctions = (
 	};
 };
 
-const getSSHTunnelFunctions = (): SSHTunnelFunctions => ({
-	getSSHClient: async (credentials) =>
-		await Container.get(SSHClientsManager).getClient(credentials),
-});
-
-const getSchedulingFunctions = (workflow: Workflow): SchedulingFunctions => {
-	const scheduledTaskManager = Container.get(ScheduledTaskManager);
-	return {
-		registerCron: (cronExpression, onTick) =>
-			scheduledTaskManager.registerCron(workflow, cronExpression, onTick),
-	};
-};
-
 const getAllowedPaths = () => {
 	const restrictFileAccessTo = process.env[RESTRICT_FILE_ACCESS_TO];
 	if (!restrictFileAccessTo) {
@@ -3336,7 +3288,7 @@ const getAllowedPaths = () => {
 	return allowedPaths;
 };
 
-export function isFilePathBlocked(filePath: string): boolean {
+function isFilePathBlocked(filePath: string): boolean {
 	const allowedPaths = getAllowedPaths();
 	const resolvedFilePath = path.resolve(filePath);
 	const blockFileAccessToN8nFiles = process.env[BLOCK_FILE_ACCESS_TO_N8N_FILES] !== 'false';
@@ -3352,10 +3304,10 @@ export function isFilePathBlocked(filePath: string): boolean {
 		return true;
 	}
 
-	//restrict access to .n8n folder, ~/.cache/n8n/public, and other .env config related paths
+	//restrict access to .n8n folder and other .env config related paths
 	if (blockFileAccessToN8nFiles) {
-		const { n8nFolder, staticCacheDir } = Container.get(InstanceSettings);
-		const restrictedPaths = [n8nFolder, staticCacheDir];
+		const { n8nFolder } = Container.get(InstanceSettings);
+		const restrictedPaths = [n8nFolder];
 
 		if (process.env[CONFIG_FILES]) {
 			restrictedPaths.push(...process.env[CONFIG_FILES].split(','));
@@ -3441,8 +3393,8 @@ const getBinaryHelperFunctions = (
 	getBinaryPath,
 	getBinaryStream,
 	getBinaryMetadata,
-	binaryToBuffer,
-	binaryToString,
+	binaryToBuffer: async (body: Buffer | Readable) =>
+		await Container.get(BinaryDataService).toBuffer(body),
 	prepareBinaryData: async (binaryData, filePath, mimeType) =>
 		await prepareBinaryData(binaryData, executionId!, workflowId, filePath, mimeType),
 	setBinaryDataBuffer: async (data, binaryData) =>
@@ -3527,7 +3479,6 @@ export function getExecutePollFunctions(
 				createDeferredPromise,
 				...getRequestHelperFunctions(workflow, node, additionalData),
 				...getBinaryHelperFunctions(additionalData, workflow.id),
-				...getSchedulingFunctions(workflow),
 				returnJsonArray,
 			},
 		};
@@ -3589,10 +3540,8 @@ export function getExecuteTriggerFunctions(
 			},
 			helpers: {
 				createDeferredPromise,
-				...getSSHTunnelFunctions(),
 				...getRequestHelperFunctions(workflow, node, additionalData),
 				...getBinaryHelperFunctions(additionalData, workflow.id),
-				...getSchedulingFunctions(workflow),
 				returnJsonArray,
 			},
 		};
@@ -3634,8 +3583,12 @@ export function getExecuteFunctions(
 					itemIndex,
 				),
 			getExecuteData: () => executeData,
-			continueOnFail: () => {
-				return continueOnFail(node);
+			continueOnFail: (error?: Error) => {
+				const shouldContinue = continueOnFail(node);
+				if (error && shouldContinue && !(error instanceof ApplicationError)) {
+					error.message = OBFUSCATED_ERROR_MESSAGE;
+				}
+				return shouldContinue;
 			},
 			evaluateExpression: (expression: string, itemIndex: number) => {
 				return workflow.expression.resolveSimpleParameterValue(
@@ -3678,7 +3631,7 @@ export function getExecuteFunctions(
 			},
 
 			async getInputConnectionData(
-				inputName: NodeConnectionType,
+				inputName: ConnectionTypes,
 				itemIndex: number,
 			): Promise<unknown> {
 				return await getInputConnectionData.call(
@@ -3696,17 +3649,6 @@ export function getExecuteFunctions(
 				);
 			},
 
-			getNodeInputs(): INodeInputConfiguration[] {
-				const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-				return NodeHelpers.getNodeInputs(workflow, node, nodeType.description).map((output) => {
-					if (typeof output === 'string') {
-						return {
-							type: output,
-						};
-					}
-					return output;
-				});
-			},
 			getNodeOutputs(): INodeOutputConfiguration[] {
 				const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 				return NodeHelpers.getNodeOutputs(workflow, node, nodeType.description).map((output) => {
@@ -3782,6 +3724,8 @@ export function getExecuteFunctions(
 				);
 				return dataProxy.getDataProxy();
 			},
+			binaryToBuffer: async (body: Buffer | Readable) =>
+				await Container.get(BinaryDataService).toBuffer(body),
 			async putExecutionToWait(waitTill: Date): Promise<void> {
 				runExecutionData.waitTill = waitTill;
 				if (additionalData.setExecutionStatus) {
@@ -3819,7 +3763,7 @@ export function getExecuteFunctions(
 			},
 
 			addInputData(
-				connectionType: NodeConnectionType,
+				connectionType: ConnectionTypes,
 				data: INodeExecutionData[][] | ExecutionBaseError,
 			): { index: number } {
 				const nodeName = this.getNode().name;
@@ -3849,7 +3793,7 @@ export function getExecuteFunctions(
 				return { index: currentNodeRunIndex };
 			},
 			addOutputData(
-				connectionType: NodeConnectionType,
+				connectionType: ConnectionTypes,
 				currentNodeRunIndex: number,
 				data: INodeExecutionData[][] | ExecutionBaseError,
 			): void {
@@ -3874,14 +3818,7 @@ export function getExecuteFunctions(
 			helpers: {
 				createDeferredPromise,
 				copyInputItems,
-				...getRequestHelperFunctions(
-					workflow,
-					node,
-					additionalData,
-					runExecutionData,
-					connectionInputData,
-				),
-				...getSSHTunnelFunctions(),
+				...getRequestHelperFunctions(workflow, node, additionalData),
 				...getFileSystemHelperFunctions(node),
 				...getBinaryHelperFunctions(additionalData, workflow.id),
 				assertBinaryData: (itemIndex, propertyName) =>
@@ -3894,8 +3831,8 @@ export function getExecuteFunctions(
 				constructExecutionMetaData,
 			},
 			nodeHelpers: getNodeHelperFunctions(additionalData, workflow.id),
-			logAiEvent: async (eventName: AiEvent, msg: string) => {
-				return additionalData.logAiEvent(eventName, {
+			logAiEvent: async (eventName: EventNamesAiNodesType, msg: string) => {
+				return await additionalData.logAiEvent(eventName, {
 					executionId: additionalData.executionId ?? 'unsaved-execution',
 					nodeName: node.name,
 					workflowName: workflow.name ?? 'Unnamed workflow',
@@ -4037,13 +3974,7 @@ export function getExecuteSingleFunctions(
 			},
 			helpers: {
 				createDeferredPromise,
-				...getRequestHelperFunctions(
-					workflow,
-					node,
-					additionalData,
-					runExecutionData,
-					connectionInputData,
-				),
+				...getRequestHelperFunctions(workflow, node, additionalData),
 				...getBinaryHelperFunctions(additionalData, workflow.id),
 
 				assertBinaryData: (propertyName, inputIndex = 0) =>
@@ -4051,8 +3982,8 @@ export function getExecuteSingleFunctions(
 				getBinaryDataBuffer: async (propertyName, inputIndex = 0) =>
 					await getBinaryDataBuffer(inputData, itemIndex, propertyName, inputIndex),
 			},
-			logAiEvent: async (eventName: AiEvent, msg: string) => {
-				return additionalData.logAiEvent(eventName, {
+			logAiEvent: async (eventName: EventNamesAiNodesType, msg: string) => {
+				return await additionalData.logAiEvent(eventName, {
 					executionId: additionalData.executionId ?? 'unsaved-execution',
 					nodeName: node.name,
 					workflowName: workflow.name ?? 'Unnamed workflow',
@@ -4068,7 +3999,6 @@ export function getExecuteSingleFunctions(
 export function getCredentialTestFunctions(): ICredentialTestFunctions {
 	return {
 		helpers: {
-			...getSSHTunnelFunctions(),
 			request: async (uriOrObject: string | object, options?: object) => {
 				return await proxyRequestToAxios(undefined, undefined, undefined, uriOrObject, options);
 			},
@@ -4147,10 +4077,7 @@ export function getLoadOptionsFunctions(
 					options,
 				);
 			},
-			helpers: {
-				...getSSHTunnelFunctions(),
-				...getRequestHelperFunctions(workflow, node, additionalData),
-			},
+			helpers: getRequestHelperFunctions(workflow, node, additionalData),
 		};
 	})(workflow, node, path);
 }
@@ -4232,9 +4159,8 @@ export function getExecuteWebhookFunctions(
 	mode: WorkflowExecuteMode,
 	webhookData: IWebhookData,
 	closeFunctions: CloseFunction[],
-	runExecutionData: IRunExecutionData | null,
 ): IWebhookFunctions {
-	return ((workflow: Workflow, node: INode, runExecutionData: IRunExecutionData | null) => {
+	return ((workflow: Workflow, node: INode) => {
 		return {
 			...getCommonWorkflowFunctions(workflow, node, additionalData),
 			getBodyData(): IDataObject {
@@ -4252,7 +4178,7 @@ export function getExecuteWebhookFunctions(
 				return additionalData.httpRequest.headers;
 			},
 			async getInputConnectionData(
-				inputName: NodeConnectionType,
+				inputName: ConnectionTypes,
 				itemIndex: number,
 			): Promise<unknown> {
 				// To be able to use expressions like "$json.sessionId" set the
@@ -4295,21 +4221,10 @@ export function getExecuteWebhookFunctions(
 				fallbackValue?: any,
 				options?: IGetNodeParameterOptions,
 			): NodeParameterValueType | object => {
+				const runExecutionData: IRunExecutionData | null = null;
 				const itemIndex = 0;
 				const runIndex = 0;
-
-				let connectionInputData: INodeExecutionData[] = [];
-				let executionData: IExecuteData | undefined;
-
-				if (runExecutionData?.executionData !== undefined) {
-					executionData = runExecutionData.executionData.nodeExecutionStack[0];
-
-					if (executionData !== undefined) {
-						connectionInputData = executionData.data.main[0]!;
-					}
-				}
-
-				const additionalKeys = getAdditionalKeys(additionalData, mode, runExecutionData);
+				const connectionInputData: INodeExecutionData[] = [];
 
 				return getNodeParameter(
 					workflow,
@@ -4320,8 +4235,8 @@ export function getExecuteWebhookFunctions(
 					parameterName,
 					itemIndex,
 					mode,
-					additionalKeys,
-					executionData,
+					getAdditionalKeys(additionalData, mode, null),
+					undefined,
 					fallbackValue,
 					options,
 				);
@@ -4368,5 +4283,5 @@ export function getExecuteWebhookFunctions(
 			},
 			nodeHelpers: getNodeHelperFunctions(additionalData, workflow.id),
 		};
-	})(workflow, node, runExecutionData);
+	})(workflow, node);
 }

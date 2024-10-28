@@ -1,6 +1,5 @@
 import { defineStore } from 'pinia';
-import type { WorkerStatus } from '@n8n/api-types';
-
+import type { IPushDataWorkerStatusPayload } from '../Interface';
 import { useRootStore } from './root.store';
 import { sendGetWorkerStatus } from '../api/orchestration';
 
@@ -9,7 +8,7 @@ const STALE_SECONDS = 120 * 1000;
 
 export interface IOrchestrationStoreState {
 	initialStatusReceived: boolean;
-	workers: { [id: string]: WorkerStatus };
+	workers: { [id: string]: IPushDataWorkerStatusPayload };
 	workersHistory: {
 		[id: string]: IWorkerHistoryItem[];
 	};
@@ -19,7 +18,7 @@ export interface IOrchestrationStoreState {
 
 export interface IWorkerHistoryItem {
 	timestamp: number;
-	data: WorkerStatus;
+	data: IPushDataWorkerStatusPayload;
 }
 
 export const useOrchestrationStore = defineStore('orchestrationManager', {
@@ -31,7 +30,7 @@ export const useOrchestrationStore = defineStore('orchestrationManager', {
 		statusInterval: null,
 	}),
 	actions: {
-		updateWorkerStatus(data: WorkerStatus) {
+		updateWorkerStatus(data: IPushDataWorkerStatusPayload) {
 			this.workers[data.workerId] = data;
 			if (!this.workersHistory[data.workerId]) {
 				this.workersHistory[data.workerId] = [];
@@ -71,7 +70,7 @@ export const useOrchestrationStore = defineStore('orchestrationManager', {
 		getWorkerLastUpdated(workerId: string): number {
 			return this.workersLastUpdated[workerId] ?? 0;
 		},
-		getWorkerStatus(workerId: string): WorkerStatus | undefined {
+		getWorkerStatus(workerId: string): IPushDataWorkerStatusPayload | undefined {
 			return this.workers[workerId];
 		},
 		getWorkerStatusHistory(workerId: string): IWorkerHistoryItem[] {

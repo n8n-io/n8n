@@ -123,7 +123,7 @@ export const industryFields: INodeProperties[] = [
 			},
 		},
 		type: 'collection',
-		placeholder: 'Add option',
+		placeholder: 'Add Option',
 		default: {},
 		options: [
 			{

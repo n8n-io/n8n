@@ -1,19 +1,25 @@
 import type {
+	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	INodeCredentialTestResult,
 } from 'n8n-workflow';
 
+import { Client } from 'ssh2';
 import { createPool } from '../transport';
-import type { MysqlNodeCredentials } from '../helpers/interfaces';
 
 export async function mysqlConnectionTest(
 	this: ICredentialTestFunctions,
 	credential: ICredentialsDecrypted,
 ): Promise<INodeCredentialTestResult> {
-	const credentials = credential.data as MysqlNodeCredentials;
+	const credentials = credential.data as ICredentialDataDecryptedObject;
 
-	const pool = await createPool.call(this, credentials);
+	let sshClient: Client | undefined = undefined;
+
+	if (credentials.sshTunnel) {
+		sshClient = new Client();
+	}
+	const pool = await createPool(credentials, {}, sshClient);
 
 	try {
 		const connection = await pool.getConnection();
@@ -24,6 +30,9 @@ export async function mysqlConnectionTest(
 			message: error.message,
 		};
 	} finally {
+		if (sshClient) {
+			sshClient.end();
+		}
 		await pool.end();
 	}
 

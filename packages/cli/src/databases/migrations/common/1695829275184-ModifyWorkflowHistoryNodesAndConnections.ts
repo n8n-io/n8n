@@ -1,4 +1,4 @@
-import type { MigrationContext, ReversibleMigration } from '@/databases/types';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 
 const tableName = 'workflow_history';
 

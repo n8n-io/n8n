@@ -1,5 +1,5 @@
-import { ExecutionBaseError } from './abstract/execution-base.error';
 import type { INode } from '../Interfaces';
+import { ExecutionBaseError } from './abstract/execution-base.error';
 
 export class CredentialAccessError extends ExecutionBaseError {
 	override readonly description =

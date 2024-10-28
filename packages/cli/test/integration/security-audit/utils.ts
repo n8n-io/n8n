@@ -1,14 +1,13 @@
-import { GlobalConfig } from '@n8n/config';
 import nock from 'nock';
-import Container from 'typedi';
+import config from '@/config';
 import { v4 as uuid } from 'uuid';
-
-import * as constants from '@/constants';
-import type { InstalledNodes } from '@/databases/entities/installed-nodes';
-import type { InstalledPackages } from '@/databases/entities/installed-packages';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import type { Risk } from '@/security-audit/types';
 import { toReportTitle } from '@/security-audit/utils';
+import * as constants from '@/constants';
+import type { Risk } from '@/security-audit/types';
+import type { InstalledNodes } from '@db/entities/InstalledNodes';
+import type { InstalledPackages } from '@db/entities/InstalledPackages';
+import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import Container from 'typedi';
 
 type GetSectionKind<C extends Risk.Category> = C extends 'instance'
 	? Risk.InstanceSection
@@ -105,14 +104,14 @@ export const MOCK_PACKAGE: InstalledPackages[] = [
 			{
 				name: 'My Test Node',
 				type: 'myTestNode',
-				latestVersion: 1,
+				latestVersion: '1',
 			} as InstalledNodes,
 		],
 	},
 ];
 
 export function simulateOutdatedInstanceOnce(versionName = MOCK_01110_N8N_VERSION.name) {
-	const baseUrl = Container.get(GlobalConfig).versionNotifications.endpoint + '/';
+	const baseUrl = config.getEnv('versionNotifications.endpoint') + '/';
 
 	jest
 		.spyOn(constants, 'getN8nPackageJson')
@@ -122,7 +121,7 @@ export function simulateOutdatedInstanceOnce(versionName = MOCK_01110_N8N_VERSIO
 }
 
 export function simulateUpToDateInstance(versionName = MOCK_09990_N8N_VERSION.name) {
-	const baseUrl = Container.get(GlobalConfig).versionNotifications.endpoint + '/';
+	const baseUrl = config.getEnv('versionNotifications.endpoint') + '/';
 
 	jest
 		.spyOn(constants, 'getN8nPackageJson')

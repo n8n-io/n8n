@@ -1,42 +1,3 @@
-<script lang="ts" setup>
-import { ElCheckbox } from 'element-plus';
-import type { CheckboxValueType } from 'element-plus';
-import { ref } from 'vue';
-
-import N8nInputLabel from '../N8nInputLabel';
-
-const LABEL_SIZE = ['small', 'medium'] as const;
-
-interface CheckboxProps {
-	label?: string;
-	disabled?: boolean;
-	tooltipText?: string;
-	indeterminate?: boolean;
-	modelValue?: boolean;
-	labelSize?: (typeof LABEL_SIZE)[number];
-}
-
-defineOptions({ name: 'N8nCheckbox' });
-withDefaults(defineProps<CheckboxProps>(), {
-	disabled: false,
-	indeterminate: false,
-	modelValue: false,
-	labelSize: 'medium',
-});
-
-const emit = defineEmits<{
-	'update:modelValue': [value: CheckboxValueType];
-}>();
-
-const onUpdateModelValue = (value: CheckboxValueType) => emit('update:modelValue', value);
-
-const checkbox = ref<InstanceType<typeof ElCheckbox>>();
-const onLabelClick = () => {
-	if (!checkbox?.value) return;
-	(checkbox.value.$el as HTMLElement).click();
-};
-</script>
-
 <template>
 	<ElCheckbox
 		v-bind="$props"
@@ -58,6 +19,43 @@ const onLabelClick = () => {
 		/>
 	</ElCheckbox>
 </template>
+
+<script lang="ts" setup>
+import { ref } from 'vue';
+import { ElCheckbox } from 'element-plus';
+import type { CheckboxValueType } from 'element-plus';
+import N8nInputLabel from '../N8nInputLabel';
+
+const LABEL_SIZE = ['small', 'medium'] as const;
+
+interface CheckboxProps {
+	label?: string;
+	disabled?: boolean;
+	tooltipText?: string;
+	indeterminate?: boolean;
+	modelValue?: boolean;
+	labelSize?: (typeof LABEL_SIZE)[number];
+}
+
+defineOptions({ name: 'N8nCheckbox' });
+withDefaults(defineProps<CheckboxProps>(), {
+	disabled: false,
+	indeterminate: false,
+	modelValue: false,
+	labelSize: 'medium',
+});
+
+const $emit = defineEmits<{
+	(event: 'update:modelValue', value: CheckboxValueType): void;
+}>();
+const onUpdateModelValue = (value: CheckboxValueType) => $emit('update:modelValue', value);
+
+const checkbox = ref<InstanceType<typeof ElCheckbox>>();
+const onLabelClick = () => {
+	if (!checkbox?.value) return;
+	(checkbox.value.$el as HTMLElement).click();
+};
+</script>
 
 <style lang="scss" module>
 .n8nCheckbox {

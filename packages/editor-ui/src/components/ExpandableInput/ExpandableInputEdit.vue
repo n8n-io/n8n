@@ -1,8 +1,24 @@
+<template>
+	<ExpandableInputBase :model-value="modelValue" :placeholder="placeholder">
+		<input
+			ref="inputRef"
+			v-on-click-outside="onClickOutside"
+			class="el-input__inner"
+			:value="modelValue"
+			:placeholder="placeholder"
+			:maxlength="maxlength"
+			size="4"
+			@input="onInput"
+			@keydown.enter="onEnter"
+			@keydown.esc="onEscape"
+		/>
+	</ExpandableInputBase>
+</template>
+
 <script setup lang="ts">
 import type { EventBus } from 'n8n-design-system';
 import { onBeforeUnmount, onMounted, ref } from 'vue';
 import ExpandableInputBase from './ExpandableInputBase.vue';
-import { onClickOutside } from '@vueuse/core';
 
 type Props = {
 	modelValue: string;
@@ -14,10 +30,10 @@ type Props = {
 
 const props = defineProps<Props>();
 const emit = defineEmits<{
-	'update:model-value': [value: string];
-	enter: [value: string];
-	blur: [value: string];
-	esc: [];
+	(event: 'update:model-value', value: string): void;
+	(event: 'enter', value: string): void;
+	(event: 'blur', value: string): void;
+	(event: 'esc'): void;
 }>();
 
 const inputRef = ref<HTMLInputElement>();
@@ -52,29 +68,13 @@ function onEnter() {
 	}
 }
 
-onClickOutside(inputRef, () => {
-	if (inputRef.value) {
+function onClickOutside(e: Event) {
+	if (e.type === 'click' && inputRef.value) {
 		emit('blur', inputRef.value.value);
 	}
-});
+}
 
 function onEscape() {
 	emit('esc');
 }
 </script>
-
-<template>
-	<ExpandableInputBase :model-value="modelValue" :placeholder="placeholder">
-		<input
-			ref="inputRef"
-			class="el-input__inner"
-			:value="modelValue"
-			:placeholder="placeholder"
-			:maxlength="maxlength"
-			size="4"
-			@input="onInput"
-			@keydown.enter="onEnter"
-			@keydown.esc="onEscape"
-		/>
-	</ExpandableInputBase>
-</template>

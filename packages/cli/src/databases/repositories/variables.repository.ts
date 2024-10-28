@@ -1,7 +1,6 @@
-import { DataSource, Repository } from '@n8n/typeorm';
 import { Service } from 'typedi';
-
-import { Variables } from '../entities/variables';
+import { DataSource, Repository } from '@n8n/typeorm';
+import { Variables } from '../entities/Variables';
 
 @Service()
 export class VariablesRepository extends Repository<Variables> {

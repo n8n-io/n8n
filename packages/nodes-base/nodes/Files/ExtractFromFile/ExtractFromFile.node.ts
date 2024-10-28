@@ -4,7 +4,6 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
 
 import * as spreadsheet from './actions/spreadsheet.operation';
 import * as moveTo from './actions/moveTo.operation';
@@ -22,8 +21,8 @@ export class ExtractFromFile implements INodeType {
 		defaults: {
 			name: 'Extract from File',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: ['main'],
+		outputs: ['main'],
 		properties: [
 			{
 				displayName: 'Operation',

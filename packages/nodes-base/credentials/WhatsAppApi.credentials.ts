@@ -22,7 +22,7 @@ export class WhatsAppApi implements ICredentialType {
 			required: true,
 		},
 		{
-			displayName: 'Business Account ID',
+			displayName: 'Bussiness Account ID',
 			type: 'string',
 			name: 'businessAccountId',
 			default: '',

@@ -1,3 +1,4 @@
+/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -9,7 +10,8 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeApiError } from 'n8n-workflow';
+
+import { NodeApiError } from 'n8n-workflow';
 
 import { v4 as uuid } from 'uuid';
 import { generatePairedItemData } from '../../../../utils/utilities';
@@ -30,8 +32,8 @@ const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'Google BigQuery',
 	},
-	inputs: [NodeConnectionType.Main],
-	outputs: [NodeConnectionType.Main],
+	inputs: ['main'],
+	outputs: ['main'],
 	credentials: [
 		{
 			name: 'googleApi',
@@ -212,7 +214,7 @@ export class GoogleBigQueryV1 implements INodeType {
 					);
 					returnData.push(...executionData);
 				} catch (error) {
-					if (this.continueOnFail()) {
+					if (this.continueOnFail(error)) {
 						const executionErrorData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray({ error: error.message }),
 							{ itemData },
@@ -287,7 +289,7 @@ export class GoogleBigQueryV1 implements INodeType {
 						);
 						returnData.push(...executionData);
 					} catch (error) {
-						if (this.continueOnFail()) {
+						if (this.continueOnFail(error)) {
 							const executionErrorData = this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray({ error: error.message }),
 								{ itemData: { item: i } },

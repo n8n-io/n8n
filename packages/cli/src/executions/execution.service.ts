@@ -1,13 +1,12 @@
-import { GlobalConfig } from '@n8n/config';
+import { Service } from 'typedi';
 import { validate as jsonSchemaValidate } from 'jsonschema';
 import type {
+	IWorkflowBase,
 	ExecutionError,
-	ExecutionStatus,
 	INode,
 	IRunExecutionData,
-	IWorkflowBase,
 	WorkflowExecuteMode,
-	IWorkflowExecutionDataProcess,
+	ExecutionStatus,
 } from 'n8n-workflow';
 import {
 	ApplicationError,
@@ -15,36 +14,31 @@ import {
 	Workflow,
 	WorkflowOperationError,
 } from 'n8n-workflow';
-import { Container, Service } from 'typedi';
-
-import { ActiveExecutions } from '@/active-executions';
-import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
-import config from '@/config';
-import type { User } from '@/databases/entities/user';
-import { AnnotationTagMappingRepository } from '@/databases/repositories/annotation-tag-mapping.repository.ee';
-import { ExecutionAnnotationRepository } from '@/databases/repositories/execution-annotation.repository';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import type { IGetExecutionsQueryFilter } from '@/databases/repositories/execution.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
-import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
-import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ActiveExecutions } from '@/ActiveExecutions';
 import type {
-	CreateExecutionPayload,
+	ExecutionPayload,
 	IExecutionFlattedResponse,
 	IExecutionResponse,
 	IWorkflowDb,
-} from '@/interfaces';
-import { License } from '@/license';
-import { Logger } from '@/logger';
-import { NodeTypes } from '@/node-types';
-import { WaitTracker } from '@/wait-tracker';
-import { WorkflowRunner } from '@/workflow-runner';
-import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
-
-import type { ExecutionRequest, ExecutionSummaries, StopResult } from './execution.types';
+	IWorkflowExecutionDataProcess,
+} from '@/Interfaces';
+import { NodeTypes } from '@/NodeTypes';
+import { Queue } from '@/Queue';
+import type { ExecutionRequest, ExecutionSummaries } from './execution.types';
+import { WorkflowRunner } from '@/WorkflowRunner';
+import type { IGetExecutionsQueryFilter } from '@db/repositories/execution.repository';
+import { ExecutionRepository } from '@db/repositories/execution.repository';
+import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import { Logger } from '@/Logger';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import config from '@/config';
+import { WaitTracker } from '@/WaitTracker';
+import type { ExecutionEntity } from '@/databases/entities/ExecutionEntity';
+import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
+import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
+import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
+import { License } from '@/License';
 
 export const schemaGetExecutionsQueryFilter = {
 	$id: '/IGetExecutionsQueryFilter',
@@ -64,8 +58,6 @@ export const schemaGetExecutionsQueryFilter = {
 		metadata: { type: 'array', items: { $ref: '#/$defs/metadata' } },
 		startedAfter: { type: 'date-time' },
 		startedBefore: { type: 'date-time' },
-		annotationTags: { type: 'array', items: { type: 'string' } },
-		vote: { type: 'string' },
 	},
 	$defs: {
 		metadata: {
@@ -88,11 +80,9 @@ export const allowedExecutionsQueryFilterFields = Object.keys(
 @Service()
 export class ExecutionService {
 	constructor(
-		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
+		private readonly queue: Queue,
 		private readonly activeExecutions: ActiveExecutions,
-		private readonly executionAnnotationRepository: ExecutionAnnotationRepository,
-		private readonly annotationTagMappingRepository: AnnotationTagMappingRepository,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly nodeTypes: NodeTypes,
@@ -100,11 +90,10 @@ export class ExecutionService {
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly concurrencyControl: ConcurrencyControlService,
 		private readonly license: License,
-		private readonly workflowSharingService: WorkflowSharingService,
 	) {}
 
 	async findOne(
-		req: ExecutionRequest.GetOne | ExecutionRequest.Update,
+		req: ExecutionRequest.GetOne,
 		sharedWorkflowIds: string[],
 	): Promise<IExecutionResponse | IExecutionFlattedResponse | undefined> {
 		if (!sharedWorkflowIds.length) return undefined;
@@ -321,10 +310,11 @@ export class ExecutionService {
 			},
 		};
 
-		const fullExecutionData: CreateExecutionPayload = {
+		const fullExecutionData: ExecutionPayload = {
 			data: executionData,
 			mode,
 			finished: false,
+			startedAt: new Date(),
 			workflowData,
 			workflowId: workflow.id,
 			stoppedAt: new Date(),
@@ -338,6 +328,8 @@ export class ExecutionService {
 	//             new API
 	// ----------------------------------
 
+	private readonly isRegularMode = config.getEnv('executions.mode') === 'regular';
+
 	/**
 	 * Find summaries of executions that satisfy a query.
 	 *
@@ -347,7 +339,7 @@ export class ExecutionService {
 	async findRangeWithCount(query: ExecutionSummaries.RangeQuery) {
 		const results = await this.executionRepository.findManyByRangeQuery(query);
 
-		if (this.globalConfig.database.type === 'postgresdb') {
+		if (config.getEnv('database.type') === 'postgresdb') {
 			const liveRows = await this.executionRepository.getLiveExecutionRowsOnPostgres();
 
 			if (liveRows === -1) return { count: -1, estimated: false, results };
@@ -368,7 +360,7 @@ export class ExecutionService {
 	/**
 	 * Return:
 	 *
-	 * - the summaries of latest current and completed executions that satisfy a query,
+	 * - the latest summaries of current and completed executions that satisfy a query,
 	 * - the total count of all completed executions that satisfy the query, and
 	 * - whether the total of completed executions is an estimate.
 	 *
@@ -389,7 +381,7 @@ export class ExecutionService {
 			this.findRangeWithCount({
 				...query,
 				status: completedStatuses,
-				order: { startedAt: 'DESC' },
+				order: { stoppedAt: 'DESC' },
 			}),
 		]);
 
@@ -397,6 +389,59 @@ export class ExecutionService {
 			results: current.results.concat(completed.results),
 			count: completed.count, // exclude current from count for pagination
 			estimated: completed.estimated,
+		};
+	}
+
+	/**
+	 * Stop an active execution.
+	 */
+	async stop(executionId: string) {
+		const execution = await this.executionRepository.findOneBy({ id: executionId });
+
+		if (!execution) throw new NotFoundError('Execution not found');
+
+		if (execution.status === 'new') {
+			this.concurrencyControl.remove({ mode: execution.mode, executionId });
+			await this.executionRepository.cancel(executionId);
+
+			return;
+		}
+
+		const stopResult = await this.activeExecutions.stopExecution(execution.id);
+
+		if (stopResult) return this.toExecutionStopResult(execution);
+
+		if (this.isRegularMode) {
+			return await this.waitTracker.stopExecution(execution.id);
+		}
+
+		// queue mode
+
+		try {
+			return await this.waitTracker.stopExecution(execution.id);
+		} catch {
+			// @TODO: Why are we swallowing this error in queue mode?
+		}
+
+		const activeJobs = await this.queue.getJobs(['active', 'waiting']);
+		const job = activeJobs.find(({ data }) => data.executionId === execution.id);
+
+		if (job) {
+			await this.queue.stopJob(job);
+		} else {
+			this.logger.debug('Job to stop no longer in queue', { jobId: execution.id });
+		}
+
+		return this.toExecutionStopResult(execution);
+	}
+
+	private toExecutionStopResult(execution: ExecutionEntity) {
+		return {
+			mode: execution.mode,
+			startedAt: new Date(execution.startedAt),
+			stoppedAt: execution.stoppedAt ? new Date(execution.stoppedAt) : undefined,
+			finished: execution.finished,
+			status: execution.status,
 		};
 	}
 
@@ -409,135 +454,5 @@ export class ExecutionService {
 			},
 			{ includeData: true, unflattenData: true },
 		);
-	}
-
-	async stop(executionId: string): Promise<StopResult> {
-		const execution = await this.executionRepository.findSingleExecution(executionId, {
-			includeData: true,
-			unflattenData: true,
-		});
-
-		if (!execution) throw new MissingExecutionStopError(executionId);
-
-		this.assertStoppable(execution);
-
-		const { mode, startedAt, stoppedAt, finished, status } =
-			config.getEnv('executions.mode') === 'regular'
-				? await this.stopInRegularMode(execution)
-				: await this.stopInScalingMode(execution);
-
-		return {
-			mode,
-			startedAt: new Date(startedAt),
-			stoppedAt: stoppedAt ? new Date(stoppedAt) : undefined,
-			finished,
-			status,
-		};
-	}
-
-	private assertStoppable(execution: IExecutionResponse) {
-		const STOPPABLE_STATUSES: ExecutionStatus[] = ['new', 'unknown', 'waiting', 'running'];
-
-		if (!STOPPABLE_STATUSES.includes(execution.status)) {
-			throw new WorkflowOperationError(
-				`Only running or waiting executions can be stopped and ${execution.id} is currently ${execution.status}`,
-			);
-		}
-	}
-
-	private async stopInRegularMode(execution: IExecutionResponse) {
-		if (this.concurrencyControl.has(execution.id)) {
-			this.concurrencyControl.remove({ mode: execution.mode, executionId: execution.id });
-			return await this.executionRepository.stopBeforeRun(execution);
-		}
-
-		if (this.activeExecutions.has(execution.id)) {
-			this.activeExecutions.stopExecution(execution.id);
-		}
-
-		if (this.waitTracker.has(execution.id)) {
-			this.waitTracker.stopExecution(execution.id);
-		}
-
-		return await this.executionRepository.stopDuringRun(execution);
-	}
-
-	private async stopInScalingMode(execution: IExecutionResponse) {
-		if (execution.mode === 'manual') {
-			// manual executions in scaling mode are processed by main
-			return await this.stopInRegularMode(execution);
-		}
-
-		if (this.activeExecutions.has(execution.id)) {
-			this.activeExecutions.stopExecution(execution.id);
-		}
-
-		if (this.waitTracker.has(execution.id)) {
-			this.waitTracker.stopExecution(execution.id);
-		}
-
-		const { ScalingService } = await import('@/scaling/scaling.service');
-		const scalingService = Container.get(ScalingService);
-		const jobs = await scalingService.findJobsByStatus(['active', 'waiting']);
-
-		const job = jobs.find(({ data }) => data.executionId === execution.id);
-
-		if (job) {
-			await scalingService.stopJob(job);
-		} else {
-			this.logger.debug('Job to stop not in queue', { executionId: execution.id });
-		}
-
-		return await this.executionRepository.stopDuringRun(execution);
-	}
-
-	async addScopes(user: User, summaries: ExecutionSummaries.ExecutionSummaryWithScopes[]) {
-		const workflowIds = [...new Set(summaries.map((s) => s.workflowId))];
-
-		const scopes = Object.fromEntries(
-			await this.workflowSharingService.getSharedWorkflowScopes(workflowIds, user),
-		);
-
-		for (const s of summaries) {
-			s.scopes = scopes[s.workflowId] ?? [];
-		}
-	}
-
-	public async annotate(
-		executionId: string,
-		updateData: ExecutionRequest.ExecutionUpdatePayload,
-		sharedWorkflowIds: string[],
-	) {
-		// Check if user can access the execution
-		const execution = await this.executionRepository.findIfAccessible(
-			executionId,
-			sharedWorkflowIds,
-		);
-
-		if (!execution) {
-			this.logger.info('Attempt to read execution was blocked due to insufficient permissions', {
-				executionId,
-			});
-
-			throw new NotFoundError('Execution not found');
-		}
-
-		// Create or update execution annotation
-		await this.executionAnnotationRepository.upsert(
-			{ execution: { id: executionId }, vote: updateData.vote },
-			['execution'],
-		);
-
-		// Upsert behavior differs for Postgres, MySQL and sqlite,
-		// so we need to fetch the annotation to get the ID
-		const annotation = await this.executionAnnotationRepository.findOneOrFail({
-			where: {
-				execution: { id: executionId },
-			},
-		});
-
-		if (updateData.tags) {
-			await this.annotationTagMappingRepository.overwriteTags(annotation.id, updateData.tags);
-		}
 	}
 }

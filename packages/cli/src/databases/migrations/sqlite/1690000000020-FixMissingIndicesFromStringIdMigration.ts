@@ -1,4 +1,4 @@
-import type { IrreversibleMigration, MigrationContext } from '@/databases/types';
+import type { IrreversibleMigration, MigrationContext } from '@db/types';
 
 export class FixMissingIndicesFromStringIdMigration1690000000020 implements IrreversibleMigration {
 	async up({ queryRunner, tablePrefix }: MigrationContext): Promise<void> {

@@ -28,7 +28,7 @@ const properties: INodeProperties[] = [
 		type: 'collection',
 		default: {},
 		description: 'Additional options which decide which records should be returned',
-		placeholder: 'Add option',
+		placeholder: 'Add Option',
 		options: [
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
@@ -91,7 +91,7 @@ export async function execute(
 			returnData.push(...executionData);
 		} catch (error) {
 			error = processAirtableError(error as NodeApiError, id, i);
-			if (this.continueOnFail()) {
+			if (this.continueOnFail(error)) {
 				returnData.push({ json: { error: error.message } });
 				continue;
 			}

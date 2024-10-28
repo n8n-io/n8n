@@ -1,3 +1,9 @@
+<template>
+	<div ref="root">
+		<slot></slot>
+	</div>
+</template>
+
 <script lang="ts">
 import type { PropType } from 'vue';
 import { defineComponent } from 'vue';
@@ -64,9 +70,3 @@ export default defineComponent({
 	},
 });
 </script>
-
-<template>
-	<div ref="root">
-		<slot></slot>
-	</div>
-</template>

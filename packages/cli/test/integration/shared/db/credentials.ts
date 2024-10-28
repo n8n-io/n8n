@@ -1,20 +1,18 @@
 import { Container } from 'typedi';
-
-import { CredentialsEntity } from '@/databases/entities/credentials-entity';
-import type { Project } from '@/databases/entities/project';
-import type { CredentialSharingRole } from '@/databases/entities/shared-credentials';
-import type { User } from '@/databases/entities/user';
-import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import type { ICredentialsDb } from '@/interfaces';
-
+import { CredentialsEntity } from '@db/entities/CredentialsEntity';
+import type { User } from '@db/entities/User';
+import { CredentialsRepository } from '@db/repositories/credentials.repository';
+import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
+import type { CredentialSharingRole } from '@db/entities/SharedCredentials';
+import type { ICredentialsDb } from '@/Interfaces';
 import type { CredentialPayload } from '../types';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
+import type { Project } from '@/databases/entities/Project';
 
 export async function encryptCredentialData(
 	credential: CredentialsEntity,
 ): Promise<ICredentialsDb> {
-	const { createCredentialsFromCredentialsEntity } = await import('@/credentials-helper');
+	const { createCredentialsFromCredentialsEntity } = await import('@/CredentialsHelper');
 	const coreCredential = createCredentialsFromCredentialsEntity(credential, true);
 
 	// @ts-ignore
@@ -40,24 +38,11 @@ export async function createManyCredentials(
 	);
 }
 
-export async function createCredentials(
-	attributes: Partial<CredentialsEntity> = emptyAttributes,
-	project?: Project,
-) {
+export async function createCredentials(attributes: Partial<CredentialsEntity> = emptyAttributes) {
 	const credentialsRepository = Container.get(CredentialsRepository);
-	const credentials = await credentialsRepository.save(credentialsRepository.create(attributes));
+	const entity = credentialsRepository.create(attributes);
 
-	if (project) {
-		await Container.get(SharedCredentialsRepository).save(
-			Container.get(SharedCredentialsRepository).create({
-				project,
-				credentials,
-				role: 'credential:owner',
-			}),
-		);
-	}
-
-	return credentials;
+	return await credentialsRepository.save(entity);
 }
 
 /**

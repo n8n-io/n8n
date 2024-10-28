@@ -1,22 +1,3 @@
-<script setup lang="ts">
-import NodeIcon from './NodeIcon.vue';
-import TimeAgo from './TimeAgo.vue';
-import Badge from './Badge.vue';
-import WarningTooltip from './WarningTooltip.vue';
-import type { IVersion, IVersionNode } from '@/Interface';
-import { useI18n } from '@/composables/useI18n';
-
-defineProps<{
-	version: IVersion;
-}>();
-
-const i18n = useI18n();
-
-const nodeName = (node: IVersionNode): string => {
-	return node !== null ? node.displayName : i18n.baseText('versionCard.unknown');
-};
-</script>
-
 <template>
 	<a
 		v-if="version"
@@ -31,7 +12,7 @@ const nodeName = (node: IVersionNode): string => {
 					{{ `${$locale.baseText('versionCard.version')} ${version.name}` }}
 				</div>
 				<WarningTooltip v-if="version.hasSecurityIssue">
-					<span v-n8n-html="$locale.baseText('versionCard.thisVersionHasASecurityIssue')"></span>
+					<span v-html="$locale.baseText('versionCard.thisVersionHasASecurityIssue')"></span>
 				</WarningTooltip>
 				<Badge
 					v-if="version.hasSecurityFix"
@@ -56,7 +37,7 @@ const nodeName = (node: IVersionNode): string => {
 			<div
 				v-if="version.description"
 				:class="$style.description"
-				v-n8n-html="version.description"
+				v-html="version.description"
 			></div>
 			<div v-if="version.nodes && version.nodes.length > 0" :class="$style.nodes">
 				<NodeIcon
@@ -69,6 +50,25 @@ const nodeName = (node: IVersionNode): string => {
 		</div>
 	</a>
 </template>
+
+<script setup lang="ts">
+import NodeIcon from './NodeIcon.vue';
+import TimeAgo from './TimeAgo.vue';
+import Badge from './Badge.vue';
+import WarningTooltip from './WarningTooltip.vue';
+import type { IVersion, IVersionNode } from '@/Interface';
+import { useI18n } from '@/composables/useI18n';
+
+defineProps<{
+	version: IVersion;
+}>();
+
+const i18n = useI18n();
+
+const nodeName = (node: IVersionNode): string => {
+	return node !== null ? node.displayName : i18n.baseText('versionCard.unknown');
+};
+</script>
 
 <style module lang="scss">
 .card {

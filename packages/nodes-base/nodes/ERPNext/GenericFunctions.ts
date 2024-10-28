@@ -24,7 +24,7 @@ export async function erpNextApiRequest(
 	uri?: string,
 	option: IDataObject = {},
 ) {
-	const credentials = await this.getCredentials<ERPNextApiCredentials>('erpNextApi');
+	const credentials = (await this.getCredentials('erpNextApi')) as ERPNextApiCredentials;
 	const baseUrl = getBaseUrl(credentials);
 
 	let options: IRequestOptions = {

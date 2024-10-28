@@ -1,11 +1,10 @@
 import { promisify } from 'util';
-import {
-	NodeConnectionType,
-	type IBinaryKeyData,
-	type IExecuteFunctions,
-	type INodeExecutionData,
-	type INodeType,
-	type INodeTypeDescription,
+import type {
+	IBinaryKeyData,
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import * as fflate from 'fflate';
@@ -58,8 +57,8 @@ export class Compression implements INodeType {
 			name: 'Compression',
 			color: '#408000',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: ['main'],
+		outputs: ['main'],
 		properties: [
 			{
 				displayName: 'Operation',
@@ -438,7 +437,7 @@ export class Compression implements INodeType {
 					}
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({
 						json: {
 							error: error.message,

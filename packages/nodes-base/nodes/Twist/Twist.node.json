@@ -6,7 +6,7 @@
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/integrations/builtin/credentials/twist/"
+				"url": "https://docs.n8n.io/credentials/twist"
 			}
 		],
 		"primaryDocumentation": [

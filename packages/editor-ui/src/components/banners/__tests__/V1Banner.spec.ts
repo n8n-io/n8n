@@ -1,11 +1,9 @@
-import { createComponentRenderer } from '@/__tests__/render';
+import { render } from '@testing-library/vue';
 import V1Banner from '../V1Banner.vue';
 import { createPinia, setActivePinia } from 'pinia';
 import { useUsersStore } from '@/stores/users.store';
 import { ROLE } from '@/constants';
 import type { IUser } from '@/Interface';
-
-const renderComponent = createComponentRenderer(V1Banner);
 
 describe('V1 Banner', () => {
 	let pinia: ReturnType<typeof createPinia>;
@@ -19,16 +17,17 @@ describe('V1 Banner', () => {
 	});
 
 	it('should render banner', () => {
-		const { container } = renderComponent();
+		const { container } = render(V1Banner);
 		expect(container).toMatchSnapshot();
 		expect(container.querySelectorAll('a')).toHaveLength(1);
 	});
 
 	it('should render banner with dismiss call if user is owner', () => {
-		usersStore.usersById = { '1': { role: ROLE.Owner } as IUser };
-		usersStore.currentUserId = '1';
+		vi.spyOn(usersStore, 'currentUser', 'get').mockReturnValue({
+			role: ROLE.Owner,
+		} as IUser);
 
-		const { container } = renderComponent();
+		const { container } = render(V1Banner);
 		expect(container).toMatchSnapshot();
 		expect(container.querySelectorAll('a')).toHaveLength(2);
 	});

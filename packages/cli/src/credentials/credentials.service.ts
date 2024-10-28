@@ -1,11 +1,3 @@
-import type { Scope } from '@n8n/permissions';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import {
-	In,
-	type EntityManager,
-	type FindOptionsRelations,
-	type FindOptionsWhere,
-} from '@n8n/typeorm';
 import { Credentials } from 'n8n-core';
 import type {
 	ICredentialDataDecryptedObject,
@@ -14,32 +6,38 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 import { ApplicationError, CREDENTIAL_EMPTY_VALUE, deepCopy, NodeHelpers } from 'n8n-workflow';
-import { Service } from 'typedi';
-
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
+import {
+	In,
+	type EntityManager,
+	type FindOptionsRelations,
+	type FindOptionsWhere,
+} from '@n8n/typeorm';
+import type { Scope } from '@n8n/permissions';
+import * as Db from '@/Db';
+import type { ICredentialsDb } from '@/Interfaces';
+import { createCredentialsFromCredentialsEntity } from '@/CredentialsHelper';
 import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
-import { CredentialTypes } from '@/credential-types';
-import { createCredentialsFromCredentialsEntity } from '@/credentials-helper';
-import { CredentialsEntity } from '@/databases/entities/credentials-entity';
-import type { ProjectRelation } from '@/databases/entities/project-relation';
-import { SharedCredentials } from '@/databases/entities/shared-credentials';
-import type { User } from '@/databases/entities/user';
-import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
+import { CredentialsEntity } from '@db/entities/CredentialsEntity';
+import { SharedCredentials } from '@db/entities/SharedCredentials';
+import { validateEntity } from '@/GenericHelpers';
+import { ExternalHooks } from '@/ExternalHooks';
+import type { User } from '@db/entities/User';
+import type { CredentialRequest, ListQuery } from '@/requests';
+import { CredentialTypes } from '@/CredentialTypes';
+import { OwnershipService } from '@/services/ownership.service';
+import { Logger } from '@/Logger';
+import { CredentialsRepository } from '@db/repositories/credentials.repository';
+import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
+import { Service } from 'typedi';
+import { CredentialsTester } from '@/services/credentials-tester.service';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import { UserRepository } from '@/databases/repositories/user.repository';
-import * as Db from '@/db';
+import { ProjectService } from '@/services/project.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { ExternalHooks } from '@/external-hooks';
-import { validateEntity } from '@/generic-helpers';
-import type { ICredentialsDb } from '@/interfaces';
-import { Logger } from '@/logger';
-import { userHasScopes } from '@/permissions/check-access';
-import type { CredentialRequest, ListQuery } from '@/requests';
-import { CredentialsTester } from '@/services/credentials-tester.service';
-import { OwnershipService } from '@/services/ownership.service';
-import { ProjectService } from '@/services/project.service';
+import type { ProjectRelation } from '@/databases/entities/ProjectRelation';
 import { RoleService } from '@/services/role.service';
+import { UserRepository } from '@/databases/repositories/user.repository';
 
 export type CredentialsGetSharedOptions =
 	| { allowGlobalScope: true; globalScope: Scope }
@@ -65,10 +63,11 @@ export class CredentialsService {
 		user: User,
 		options: {
 			listQueryOptions?: ListQuery.Options;
+			onlyOwn?: boolean;
 			includeScopes?: string;
 		} = {},
 	) {
-		const returnAll = user.hasGlobalScope('credential:list');
+		const returnAll = user.hasGlobalScope('credential:list') && !options.onlyOwn;
 		const isDefaultSelect = !options.listQueryOptions?.select;
 
 		let projectRelations: ProjectRelation[] | undefined = undefined;
@@ -92,19 +91,6 @@ export class CredentialsService {
 			let credentials = await this.credentialsRepository.findMany(options.listQueryOptions);
 
 			if (isDefaultSelect) {
-				// Since we're filtering using project ID as part of the relation,
-				// we end up filtering out all the other relations, meaning that if
-				// it's shared to a project, it won't be able to find the home project.
-				// To solve this, we have to get all the relation now, even though
-				// we're deleting them later.
-				if ((options.listQueryOptions?.filter?.shared as { projectId?: string })?.projectId) {
-					const relations = await this.sharedCredentialsRepository.getAllRelationsForCredentials(
-						credentials.map((c) => c.id),
-					);
-					credentials.forEach((c) => {
-						c.shared = relations.filter((r) => r.credentialsId === c.id);
-					});
-				}
 				credentials = credentials.map((c) => this.ownershipService.addOwnedByAndSharedWith(c));
 			}
 
@@ -113,6 +99,13 @@ export class CredentialsService {
 					this.roleService.addScopes(c, user, projectRelations!),
 				);
 			}
+
+			credentials.forEach((c) => {
+				// @ts-expect-error: This is to emulate the old behaviour of removing the shared
+				// field as part of `addOwnedByAndSharedWith`. We need this field in `addScopes`
+				// though. So to avoid leaking the information we just delete it.
+				delete c.shared;
+			});
 
 			return credentials;
 		}
@@ -138,26 +131,19 @@ export class CredentialsService {
 		);
 
 		if (isDefaultSelect) {
-			// Since we're filtering using project ID as part of the relation,
-			// we end up filtering out all the other relations, meaning that if
-			// it's shared to a project, it won't be able to find the home project.
-			// To solve this, we have to get all the relation now, even though
-			// we're deleting them later.
-			if ((options.listQueryOptions?.filter?.shared as { projectId?: string })?.projectId) {
-				const relations = await this.sharedCredentialsRepository.getAllRelationsForCredentials(
-					credentials.map((c) => c.id),
-				);
-				credentials.forEach((c) => {
-					c.shared = relations.filter((r) => r.credentialsId === c.id);
-				});
-			}
-
 			credentials = credentials.map((c) => this.ownershipService.addOwnedByAndSharedWith(c));
 		}
 
 		if (options.includeScopes) {
 			credentials = credentials.map((c) => this.roleService.addScopes(c, user, projectRelations!));
 		}
+
+		credentials.forEach((c) => {
+			// @ts-expect-error: This is to emulate the old behaviour of removing the shared
+			// field as part of `addOwnedByAndSharedWith`. We need this field in `addScopes`
+			// though. So to avoid leaking the information we just delete it.
+			delete c.shared;
+		});
 
 		return credentials;
 	}
@@ -375,7 +361,7 @@ export class CredentialsService {
 
 			return savedCredential;
 		});
-		this.logger.debug('New credential created', {
+		this.logger.verbose('New credential created', {
 			credentialId: newCredential.id,
 			ownerId: user.id,
 		});
@@ -422,7 +408,7 @@ export class CredentialsService {
 
 		for (const dataKey of Object.keys(copiedData)) {
 			// The frontend only cares that this value isn't falsy.
-			if (dataKey === 'oauthTokenData' || dataKey === 'csrfSecret') {
+			if (dataKey === 'oauthTokenData') {
 				if (copiedData[dataKey].toString().length > 0) {
 					copiedData[dataKey] = CREDENTIAL_BLANKING_VALUE;
 				} else {
@@ -587,20 +573,28 @@ export class CredentialsService {
 		);
 	}
 
-	async replaceCredentialContentsForSharee(
+	replaceCredentialContentsForSharee(
 		user: User,
 		credential: CredentialsEntity,
 		decryptedData: ICredentialDataDecryptedObject,
 		mergedCredentials: ICredentialsDecrypted,
 	) {
-		// We may want to change this to 'credential:decrypt' if that gets added, but this
-		// works for now. The only time we wouldn't want to do this is if the user
-		// could actually be testing the credential before saving it, so this should cover
-		// the cases we need it for.
-		if (
-			!(await userHasScopes(user, ['credential:update'], false, { credentialId: credential.id }))
-		) {
-			mergedCredentials.data = decryptedData;
-		}
+		credential.shared.forEach((sharedCredentials) => {
+			if (sharedCredentials.role === 'credential:owner') {
+				if (sharedCredentials.project.type === 'personal') {
+					// Find the owner of this personal project
+					sharedCredentials.project.projectRelations.forEach((projectRelation) => {
+						if (
+							projectRelation.role === 'project:personalOwner' &&
+							projectRelation.user.id !== user.id
+						) {
+							// If we realize that the current user does not own this credential
+							// We replace the payload with the stored decrypted data
+							mergedCredentials.data = decryptedData;
+						}
+					});
+				}
+			}
+		});
 	}
 }

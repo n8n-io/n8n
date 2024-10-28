@@ -12,9 +12,9 @@ export async function kitemakerRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
 	body: IDataObject = {},
 ) {
-	const { personalAccessToken } = await this.getCredentials<{
+	const { personalAccessToken } = (await this.getCredentials('kitemakerApi')) as {
 		personalAccessToken: string;
-	}>('kitemakerApi');
+	};
 
 	const options = {
 		headers: {

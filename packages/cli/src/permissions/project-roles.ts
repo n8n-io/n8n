@@ -20,7 +20,6 @@ export const REGULAR_PROJECT_ADMIN_SCOPES: Scope[] = [
 	'credential:delete',
 	'credential:list',
 	'credential:move',
-	'credential:share',
 	'project:list',
 	'project:read',
 	'project:update',

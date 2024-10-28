@@ -1,11 +1,8 @@
-import userEvent from '@testing-library/user-event';
-import { render, waitFor, within } from '@testing-library/vue';
 import { defineComponent, ref } from 'vue';
-
-import { removeDynamicAttributes } from 'n8n-design-system/utils';
-
-import N8nOption from '../../N8nOption/Option.vue';
+import { render, waitFor, within } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
 import N8nSelect from '../Select.vue';
+import N8nOption from '../../N8nOption/Option.vue';
 
 describe('components', () => {
 	describe('N8nSelect', () => {
@@ -24,15 +21,11 @@ describe('components', () => {
 					],
 				},
 			});
-			removeDynamicAttributes(wrapper.container);
 			expect(wrapper.html()).toMatchSnapshot();
 		});
 
 		it('should select an option', async () => {
 			const n8nSelectTestComponent = defineComponent({
-				props: {
-					teleported: Boolean,
-				},
 				setup() {
 					const options = ref(['1', '2', '3']);
 					const selected = ref('');
@@ -43,7 +36,7 @@ describe('components', () => {
 					};
 				},
 				template: `
-					<n8n-select v-model="selected" :teleported="teleported">
+					<n8n-select v-model="selected">
 						<n8n-option v-for="o in options" :key="o" :value="o" :label="o" />
 					</n8n-select>
 				`,

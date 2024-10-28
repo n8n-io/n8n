@@ -14,7 +14,6 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import { setupServer } from '@/__tests__/server';
 import { defaultNodeDescriptions, mockNodes } from '@/__tests__/mocks';
-import { cleanupAppModals, createAppModals } from '@/__tests__/utils';
 
 async function createPiniaWithActiveNode() {
 	const node = mockNodes[0];
@@ -33,14 +32,27 @@ async function createPiniaWithActiveNode() {
 
 	nodeTypesStore.setNodeTypes(defaultNodeDescriptions);
 	workflowsStore.workflow = workflow;
-	workflowsStore.nodeMetadata[node.name] = { pristine: true };
 	ndvStore.activeNodeName = node.name;
 
 	await useSettingsStore().getSettings();
 	await useUsersStore().loginWithCookie();
 
-	return { pinia, currentWorkflow: workflowsStore.getCurrentWorkflow() };
+	return pinia;
 }
+
+const renderComponent = createComponentRenderer(NodeDetailsView, {
+	props: {
+		teleported: false,
+		appendToBody: false,
+	},
+	global: {
+		mocks: {
+			$route: {
+				name: VIEWS.WORKFLOW,
+			},
+		},
+	},
+});
 
 describe('NodeDetailsView', () => {
 	let server: ReturnType<typeof setupServer>;
@@ -49,12 +61,7 @@ describe('NodeDetailsView', () => {
 		server = setupServer();
 	});
 
-	beforeEach(() => {
-		createAppModals();
-	});
-
 	afterEach(() => {
-		cleanupAppModals();
 		vi.clearAllMocks();
 	});
 
@@ -63,27 +70,12 @@ describe('NodeDetailsView', () => {
 	});
 
 	it('should render correctly', async () => {
-		const { pinia, currentWorkflow } = await createPiniaWithActiveNode();
-
-		const renderComponent = createComponentRenderer(NodeDetailsView, {
-			props: {
-				teleported: false,
-				appendToBody: false,
-				workflowObject: currentWorkflow,
-			},
-			global: {
-				mocks: {
-					$route: {
-						name: VIEWS.WORKFLOW,
-					},
-				},
-			},
+		const wrapper = renderComponent({
+			pinia: await createPiniaWithActiveNode(),
 		});
 
-		const { getByTestId } = renderComponent({
-			pinia,
-		});
-
-		await waitFor(() => expect(getByTestId('ndv')).toBeInTheDocument());
+		await waitFor(() =>
+			expect(wrapper.container.querySelector('.ndv-wrapper')).toBeInTheDocument(),
+		);
 	});
 });

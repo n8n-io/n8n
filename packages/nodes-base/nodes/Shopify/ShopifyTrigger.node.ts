@@ -1,12 +1,11 @@
 import { createHmac } from 'crypto';
-import {
-	type IHookFunctions,
-	type IWebhookFunctions,
-	type IDataObject,
-	type INodeType,
-	type INodeTypeDescription,
-	type IWebhookResponseData,
-	NodeConnectionType,
+import type {
+	IHookFunctions,
+	IWebhookFunctions,
+	IDataObject,
+	INodeType,
+	INodeTypeDescription,
+	IWebhookResponseData,
 } from 'n8n-workflow';
 
 import { shopifyApiRequest } from './GenericFunctions';
@@ -24,7 +23,7 @@ export class ShopifyTrigger implements INodeType {
 			name: 'Shopify Trigger',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'shopifyApi',

@@ -35,14 +35,12 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), { readOnly: false });
 
 const emit = defineEmits<{
-	valueChanged: [value: { name: string; node: string; value: FilterValue }];
+	(event: 'valueChanged', value: { name: string; node: string; value: FilterValue }): void;
 }>();
 
 const i18n = useI18n();
 const ndvStore = useNDVStore();
 const { debounce } = useDebounce();
-
-const debouncedEmitChange = debounce(emitChange, { debounceTime: 1000 });
 
 function createCondition(): FilterConditionValue {
 	return { id: uuid(), leftValue: '', rightValue: '', operator: DEFAULT_OPERATOR_VALUE };
@@ -88,7 +86,7 @@ watch(
 		try {
 			newOptions = {
 				...DEFAULT_FILTER_OPTIONS,
-				...resolveParameter(typeOptions as unknown as NodeParameterValue),
+				...resolveParameter(typeOptions as NodeParameterValue),
 			};
 		} catch (error) {}
 
@@ -118,6 +116,8 @@ function emitChange() {
 		node: props.node?.name as string,
 	});
 }
+
+const debouncedEmitChange = debounce(emitChange, { debounceTime: 1000 });
 
 function addCondition(): void {
 	state.paramValue.conditions.push(createCondition());

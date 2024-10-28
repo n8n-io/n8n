@@ -1,11 +1,6 @@
 import type { Readable } from 'stream';
-import type {
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeProperties,
-	JsonObject,
-} from 'n8n-workflow';
-import { BINARY_ENCODING, NodeApiError } from 'n8n-workflow';
+import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import { BINARY_ENCODING } from 'n8n-workflow';
 
 import { errorMapper } from '../helpers/utils';
 import { updateDisplayOptions } from '@utils/utilities';
@@ -34,7 +29,7 @@ export const properties: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add option',
+		placeholder: 'Add Option',
 		default: {},
 		options: [
 			{
@@ -108,7 +103,7 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 				filePath: fileName,
 				operation: 'write',
 			});
-			if (this.continueOnFail()) {
+			if (this.continueOnFail(error)) {
 				returnData.push({
 					json: {
 						error: nodeOperatioinError.message,
@@ -119,7 +114,7 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 				});
 				continue;
 			}
-			throw new NodeApiError(this.getNode(), error as JsonObject, { itemIndex });
+			throw nodeOperatioinError;
 		}
 	}
 

@@ -3,7 +3,6 @@ import { createTestingPinia } from '@pinia/testing';
 import { CHAT_EMBED_MODAL_KEY, STORES, WEBHOOK_NODE_TYPE } from '@/constants';
 import { createComponentRenderer } from '@/__tests__/render';
 import { waitFor } from '@testing-library/vue';
-import { cleanupAppModals, createAppModals } from '@/__tests__/utils';
 
 const renderComponent = createComponentRenderer(ChatEmbedModal, {
 	props: {
@@ -13,7 +12,7 @@ const renderComponent = createComponentRenderer(ChatEmbedModal, {
 	pinia: createTestingPinia({
 		initialState: {
 			[STORES.UI]: {
-				modalsById: {
+				modals: {
 					[CHAT_EMBED_MODAL_KEY]: { open: true },
 				},
 			},
@@ -27,22 +26,16 @@ const renderComponent = createComponentRenderer(ChatEmbedModal, {
 });
 
 describe('ChatEmbedModal', () => {
-	beforeEach(() => {
-		createAppModals();
-	});
-
-	afterEach(() => {
-		cleanupAppModals();
-	});
 	it('should render correctly', async () => {
-		const { getByTestId } = renderComponent();
+		const wrapper = renderComponent();
 
-		await waitFor(() => expect(getByTestId('chatEmbed-modal')).toBeInTheDocument());
+		await waitFor(() =>
+			expect(wrapper.container.querySelector('.modal-content')).toBeInTheDocument(),
+		);
 
-		const modalContainer = getByTestId('chatEmbed-modal');
-		const tabs = modalContainer.querySelectorAll('.n8n-tabs .tab');
-		const activeTab = modalContainer.querySelector('.n8n-tabs .tab.activeTab');
-		const editor = modalContainer.querySelector('.cm-editor');
+		const tabs = wrapper.container.querySelectorAll('.n8n-tabs .tab');
+		const activeTab = wrapper.container.querySelector('.n8n-tabs .tab.activeTab');
+		const editor = wrapper.container.querySelector('.cm-editor');
 
 		expect(tabs).toHaveLength(4);
 		expect(activeTab).toBeVisible();

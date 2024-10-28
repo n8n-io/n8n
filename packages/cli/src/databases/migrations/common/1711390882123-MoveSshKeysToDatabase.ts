@@ -1,10 +1,9 @@
+import path from 'node:path';
+import { readFile, writeFile, rm } from 'node:fs/promises';
+import Container from 'typedi';
 import { Cipher, InstanceSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
-import { readFile, writeFile, rm } from 'node:fs/promises';
-import path from 'node:path';
-import Container from 'typedi';
-
-import type { MigrationContext, ReversibleMigration } from '@/databases/types';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 
 /**
  * Move SSH key pair from file system to database, to enable SSH connections

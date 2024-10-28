@@ -1,15 +1,14 @@
-import {
-	NodeConnectionType,
-	type IDataObject,
-	type IExecuteFunctions,
-	type ILoadOptionsFunctions,
-	type INodeExecutionData,
-	type INodeParameterResourceLocator,
-	type INodePropertyOptions,
-	type INodeType,
-	type INodeTypeBaseDescription,
-	type INodeTypeDescription,
-	type JsonObject,
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
+	INodeExecutionData,
+	INodeParameterResourceLocator,
+	INodePropertyOptions,
+	INodeType,
+	INodeTypeBaseDescription,
+	INodeTypeDescription,
+	JsonObject,
 } from 'n8n-workflow';
 
 import ISO6391 from 'iso-639-1';
@@ -39,8 +38,8 @@ export class TwitterV2 implements INodeType {
 			defaults: {
 				name: 'X',
 			},
-			inputs: [NodeConnectionType.Main],
-			outputs: [NodeConnectionType.Main],
+			inputs: ['main'],
+			outputs: ['main'],
 			credentials: [
 				{
 					name: 'twitterOAuth2Api',
@@ -348,7 +347,7 @@ export class TwitterV2 implements INodeType {
 				);
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					const executionErrorData = {
 						json: {
 							error: (error as JsonObject).message,

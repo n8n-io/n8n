@@ -1,82 +1,94 @@
-import {
-	PasswordUpdateRequestDto,
-	SettingsUpdateRequestDto,
-	UserUpdateRequestDto,
-} from '@n8n/api-types';
+import validator from 'validator';
 import { plainToInstance } from 'class-transformer';
-import { Response } from 'express';
+import { type RequestHandler, Response } from 'express';
+import { randomBytes } from 'crypto';
 
 import { AuthService } from '@/auth/auth.service';
-import type { User } from '@/databases/entities/user';
-import { UserRepository } from '@/databases/repositories/user.repository';
-import { Body, Patch, Post, RestController } from '@/decorators';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
-import { EventService } from '@/events/event.service';
-import { ExternalHooks } from '@/external-hooks';
-import { validateEntity } from '@/generic-helpers';
-import type { PublicUser } from '@/interfaces';
-import { Logger } from '@/logger';
-import { MfaService } from '@/mfa/mfa.service';
-import { AuthenticatedRequest, MeRequest } from '@/requests';
+import { Delete, Get, Patch, Post, RestController } from '@/decorators';
 import { PasswordUtility } from '@/services/password.utility';
+import { validateEntity } from '@/GenericHelpers';
+import type { User } from '@db/entities/User';
+import {
+	AuthenticatedRequest,
+	MeRequest,
+	UserSettingsUpdatePayload,
+	UserUpdatePayload,
+} from '@/requests';
+import type { PublicUser } from '@/Interfaces';
+import { isSamlLicensedAndEnabled } from '@/sso/saml/samlHelpers';
 import { UserService } from '@/services/user.service';
-import { isSamlLicensedAndEnabled } from '@/sso/saml/saml-helpers';
+import { Logger } from '@/Logger';
+import { ExternalHooks } from '@/ExternalHooks';
+import { InternalHooks } from '@/InternalHooks';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { UserRepository } from '@/databases/repositories/user.repository';
+import { isApiEnabled } from '@/PublicApi';
+import { EventRelay } from '@/eventbus/event-relay.service';
 
-import { PersonalizationSurveyAnswersV4 } from './survey-answers.dto';
+export const isApiEnabledMiddleware: RequestHandler = (_, res, next) => {
+	if (isApiEnabled()) {
+		next();
+	} else {
+		res.status(404).end();
+	}
+};
+
 @RestController('/me')
 export class MeController {
 	constructor(
 		private readonly logger: Logger,
 		private readonly externalHooks: ExternalHooks,
+		private readonly internalHooks: InternalHooks,
 		private readonly authService: AuthService,
 		private readonly userService: UserService,
 		private readonly passwordUtility: PasswordUtility,
 		private readonly userRepository: UserRepository,
-		private readonly eventService: EventService,
-		private readonly mfaService: MfaService,
+		private readonly eventRelay: EventRelay,
 	) {}
 
 	/**
 	 * Update the logged-in user's properties, except password.
 	 */
 	@Patch('/')
-	async updateCurrentUser(
-		req: AuthenticatedRequest,
-		res: Response,
-		@Body payload: UserUpdateRequestDto,
-	): Promise<PublicUser> {
-		const { id: userId, email: currentEmail, mfaEnabled } = req.user;
+	async updateCurrentUser(req: MeRequest.UserUpdate, res: Response): Promise<PublicUser> {
+		const { id: userId, email: currentEmail } = req.user;
+		const payload = plainToInstance(UserUpdatePayload, req.body, { excludeExtraneousValues: true });
 
 		const { email } = payload;
-		const isEmailBeingChanged = email !== currentEmail;
-
-		// If SAML is enabled, we don't allow the user to change their email address
-		if (isSamlLicensedAndEnabled() && isEmailBeingChanged) {
-			this.logger.debug(
-				'Request to update user failed because SAML user may not change their email',
-				{
-					userId,
-					payload,
-				},
-			);
-			throw new BadRequestError('SAML user may not change their email');
+		if (!email) {
+			this.logger.debug('Request to update user email failed because of missing email in payload', {
+				userId,
+				payload,
+			});
+			throw new BadRequestError('Email is mandatory');
 		}
 
-		if (mfaEnabled && isEmailBeingChanged) {
-			if (!payload.mfaCode) {
-				throw new BadRequestError('Two-factor code is required to change email');
-			}
+		if (!validator.isEmail(email)) {
+			this.logger.debug('Request to update user email failed because of invalid email in payload', {
+				userId,
+				invalidEmail: email,
+			});
+			throw new BadRequestError('Invalid email address');
+		}
 
-			const isMfaTokenValid = await this.mfaService.validateMfa(userId, payload.mfaCode, undefined);
-			if (!isMfaTokenValid) {
-				throw new InvalidMfaCodeError();
+		await validateEntity(payload);
+
+		// If SAML is enabled, we don't allow the user to change their email address
+		if (isSamlLicensedAndEnabled()) {
+			if (email !== currentEmail) {
+				this.logger.debug(
+					'Request to update user failed because SAML user may not change their email',
+					{
+						userId,
+						payload,
+					},
+				);
+				throw new BadRequestError('SAML user may not change their email');
 			}
 		}
 
 		await this.externalHooks.run('user.profile.beforeUpdate', [userId, currentEmail, payload]);
 
-		const preUpdateUser = await this.userRepository.findOneByOrFail({ id: userId });
 		await this.userService.update(userId, payload);
 		const user = await this.userRepository.findOneOrFail({
 			where: { id: userId },
@@ -86,12 +98,9 @@ export class MeController {
 
 		this.authService.issueCookie(res, user, req.browserId);
 
-		const changeableFields = ['email', 'firstName', 'lastName'] as const;
-		const fieldsChanged = changeableFields.filter(
-			(key) => key in payload && payload[key] !== preUpdateUser[key],
-		);
-
-		this.eventService.emit('user-updated', { user, fieldsChanged });
+		const fieldsChanged = Object.keys(payload);
+		void this.internalHooks.onUserUpdate({ user, fields_changed: fieldsChanged });
+		this.eventRelay.emit('user-updated', { user, fieldsChanged });
 
 		const publicUser = await this.userService.toPublic(user);
 
@@ -103,16 +112,12 @@ export class MeController {
 	/**
 	 * Update the logged-in user's password.
 	 */
-	@Patch('/password', { rateLimit: true })
-	async updatePassword(
-		req: AuthenticatedRequest,
-		res: Response,
-		@Body payload: PasswordUpdateRequestDto,
-	) {
+	@Patch('/password')
+	async updatePassword(req: MeRequest.Password, res: Response) {
 		const { user } = req;
-		const { currentPassword, newPassword, mfaCode } = payload;
+		const { currentPassword, newPassword } = req.body;
 
-		// If SAML is enabled, we don't allow the user to change their password
+		// If SAML is enabled, we don't allow the user to change their email address
 		if (isSamlLicensedAndEnabled()) {
 			this.logger.debug('Attempted to change password for user, while SAML is enabled', {
 				userId: user.id,
@@ -137,17 +142,6 @@ export class MeController {
 
 		const validPassword = this.passwordUtility.validate(newPassword);
 
-		if (user.mfaEnabled) {
-			if (typeof mfaCode !== 'string') {
-				throw new BadRequestError('Two-factor code is required to change password.');
-			}
-
-			const isMfaTokenValid = await this.mfaService.validateMfa(user.id, mfaCode, undefined);
-			if (!isMfaTokenValid) {
-				throw new InvalidMfaCodeError();
-			}
-		}
-
 		user.password = await this.passwordUtility.hash(validPassword);
 
 		const updatedUser = await this.userRepository.save(user, { transaction: false });
@@ -155,7 +149,8 @@ export class MeController {
 
 		this.authService.issueCookie(res, updatedUser, req.browserId);
 
-		this.eventService.emit('user-updated', { user: updatedUser, fieldsChanged: ['password'] });
+		void this.internalHooks.onUserUpdate({ user: updatedUser, fields_changed: ['password'] });
+		this.eventRelay.emit('user-updated', { user: updatedUser, fieldsChanged: ['password'] });
 
 		await this.externalHooks.run('user.password.update', [updatedUser.email, updatedUser.password]);
 
@@ -171,7 +166,7 @@ export class MeController {
 
 		if (!personalizationAnswers) {
 			this.logger.debug(
-				'Request to store user personalization survey failed because of undefined payload',
+				'Request to store user personalization survey failed because of empty payload',
 				{
 					userId: req.user.id,
 				},
@@ -179,28 +174,53 @@ export class MeController {
 			throw new BadRequestError('Personalization answers are mandatory');
 		}
 
-		const validatedAnswers = plainToInstance(
-			PersonalizationSurveyAnswersV4,
-			personalizationAnswers,
-			{ excludeExtraneousValues: true },
-		);
-
-		await validateEntity(validatedAnswers);
-
 		await this.userRepository.save(
 			{
 				id: req.user.id,
-				personalizationAnswers: validatedAnswers,
+				personalizationAnswers,
 			},
 			{ transaction: false },
 		);
 
 		this.logger.info('User survey updated successfully', { userId: req.user.id });
 
-		this.eventService.emit('user-submitted-personalization-survey', {
-			userId: req.user.id,
-			answers: validatedAnswers,
-		});
+		void this.internalHooks.onPersonalizationSurveySubmitted(req.user.id, personalizationAnswers);
+
+		return { success: true };
+	}
+
+	/**
+	 * Creates an API Key
+	 */
+	@Post('/api-key', { middlewares: [isApiEnabledMiddleware] })
+	async createAPIKey(req: AuthenticatedRequest) {
+		const apiKey = `n8n_api_${randomBytes(40).toString('hex')}`;
+
+		await this.userService.update(req.user.id, { apiKey });
+
+		void this.internalHooks.onApiKeyCreated({ user: req.user, public_api: false });
+		this.eventRelay.emit('api-key-created', { user: req.user });
+
+		return { apiKey };
+	}
+
+	/**
+	 * Get an API Key
+	 */
+	@Get('/api-key', { middlewares: [isApiEnabledMiddleware] })
+	async getAPIKey(req: AuthenticatedRequest) {
+		return { apiKey: req.user.apiKey };
+	}
+
+	/**
+	 * Deletes an API Key
+	 */
+	@Delete('/api-key', { middlewares: [isApiEnabledMiddleware] })
+	async deleteAPIKey(req: AuthenticatedRequest) {
+		await this.userService.update(req.user.id, { apiKey: null });
+
+		void this.internalHooks.onApiKeyDeleted({ user: req.user, public_api: false });
+		this.eventRelay.emit('api-key-deleted', { user: req.user });
 
 		return { success: true };
 	}
@@ -209,11 +229,10 @@ export class MeController {
 	 * Update the logged-in user's settings.
 	 */
 	@Patch('/settings')
-	async updateCurrentUserSettings(
-		req: AuthenticatedRequest,
-		_: Response,
-		@Body payload: SettingsUpdateRequestDto,
-	): Promise<User['settings']> {
+	async updateCurrentUserSettings(req: MeRequest.UserSettingsUpdate): Promise<User['settings']> {
+		const payload = plainToInstance(UserSettingsUpdatePayload, req.body, {
+			excludeExtraneousValues: true,
+		});
 		const { id } = req.user;
 
 		await this.userService.updateSettings(id, payload);

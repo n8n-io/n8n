@@ -1,3 +1,65 @@
+<template>
+	<Modal
+		:name="INVITE_USER_MODAL_KEY"
+		:title="
+			$locale.baseText(
+				showInviteUrls ? 'settings.users.copyInviteUrls' : 'settings.users.inviteNewUsers',
+			)
+		"
+		:center="true"
+		width="460px"
+		:event-bus="modalBus"
+		@enter="onSubmit"
+	>
+		<template #content>
+			<n8n-notice v-if="!isAdvancedPermissionsEnabled">
+				<i18n-t keypath="settings.users.advancedPermissions.warning">
+					<template #link>
+						<n8n-link size="small" @click="goToUpgradeAdvancedPermissions">
+							{{ $locale.baseText('settings.users.advancedPermissions.warning.link') }}
+						</n8n-link>
+					</template>
+				</i18n-t>
+			</n8n-notice>
+			<div v-if="showInviteUrls">
+				<n8n-users-list :users="invitedUsers">
+					<template #actions="{ user }">
+						<n8n-tooltip>
+							<template #content>
+								{{ $locale.baseText('settings.users.inviteLink.copy') }}
+							</template>
+							<n8n-icon-button
+								icon="link"
+								type="tertiary"
+								data-test-id="copy-invite-link-button"
+								:data-invite-link="user.inviteAcceptUrl"
+								@click="onCopyInviteLink(user)"
+							></n8n-icon-button>
+						</n8n-tooltip>
+					</template>
+				</n8n-users-list>
+			</div>
+			<n8n-form-inputs
+				v-else
+				:inputs="config"
+				:event-bus="formBus"
+				:column-view="true"
+				@update="onInput"
+				@submit="onSubmit"
+			/>
+		</template>
+		<template v-if="!showInviteUrls" #footer>
+			<n8n-button
+				:loading="loading"
+				:disabled="!enabledButton"
+				:label="buttonLabel"
+				float="right"
+				@click="onSubmitClick"
+			/>
+		</template>
+	</Modal>
+</template>
+
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
@@ -13,7 +75,7 @@ import {
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
-import { createFormEventBus, createEventBus } from 'n8n-design-system/utils';
+import { createEventBus } from 'n8n-design-system/utils';
 import { useClipboard } from '@/composables/useClipboard';
 
 const NAME_EMAIL_FORMAT_REGEX = /^.* <(.*)>$/;
@@ -48,7 +110,7 @@ export default defineComponent({
 	data() {
 		return {
 			config: null as IFormInputs | null,
-			formBus: createFormEventBus(),
+			formBus: createEventBus(),
 			modalBus: createEventBus(),
 			emails: '',
 			role: ROLE.Member as InvitableRoleName,
@@ -128,9 +190,9 @@ export default defineComponent({
 				: [];
 		},
 		isAdvancedPermissionsEnabled(): boolean {
-			return this.settingsStore.isEnterpriseFeatureEnabled[
-				EnterpriseEditionFeature.AdvancedPermissions
-			];
+			return this.settingsStore.isEnterpriseFeatureEnabled(
+				EnterpriseEditionFeature.AdvancedPermissions,
+			);
 		},
 	},
 	methods: {
@@ -282,65 +344,3 @@ export default defineComponent({
 	},
 });
 </script>
-
-<template>
-	<Modal
-		:name="INVITE_USER_MODAL_KEY"
-		:title="
-			$locale.baseText(
-				showInviteUrls ? 'settings.users.copyInviteUrls' : 'settings.users.inviteNewUsers',
-			)
-		"
-		:center="true"
-		width="460px"
-		:event-bus="modalBus"
-		@enter="onSubmit"
-	>
-		<template #content>
-			<n8n-notice v-if="!isAdvancedPermissionsEnabled">
-				<i18n-t keypath="settings.users.advancedPermissions.warning">
-					<template #link>
-						<n8n-link size="small" @click="goToUpgradeAdvancedPermissions">
-							{{ $locale.baseText('settings.users.advancedPermissions.warning.link') }}
-						</n8n-link>
-					</template>
-				</i18n-t>
-			</n8n-notice>
-			<div v-if="showInviteUrls">
-				<n8n-users-list :users="invitedUsers">
-					<template #actions="{ user }">
-						<n8n-tooltip>
-							<template #content>
-								{{ $locale.baseText('settings.users.inviteLink.copy') }}
-							</template>
-							<n8n-icon-button
-								icon="link"
-								type="tertiary"
-								data-test-id="copy-invite-link-button"
-								:data-invite-link="user.inviteAcceptUrl"
-								@click="onCopyInviteLink(user)"
-							></n8n-icon-button>
-						</n8n-tooltip>
-					</template>
-				</n8n-users-list>
-			</div>
-			<n8n-form-inputs
-				v-else
-				:inputs="config"
-				:event-bus="formBus"
-				:column-view="true"
-				@update="onInput"
-				@submit="onSubmit"
-			/>
-		</template>
-		<template v-if="!showInviteUrls" #footer>
-			<n8n-button
-				:loading="loading"
-				:disabled="!enabledButton"
-				:label="buttonLabel"
-				float="right"
-				@click="onSubmitClick"
-			/>
-		</template>
-	</Modal>
-</template>

@@ -72,7 +72,7 @@ export const labelFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add option',
+		placeholder: 'Add Option',
 		displayOptions: {
 			show: {
 				resource: ['label'],

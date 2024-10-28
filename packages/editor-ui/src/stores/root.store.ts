@@ -29,6 +29,7 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		pushRef: randomString(10).toLowerCase(),
 		urlBaseWebhook: 'http://localhost:5678/',
 		urlBaseEditor: 'http://localhost:5678',
+		isNpmAvailable: false,
 		instanceId: '',
 		binaryDataMode: 'default',
 	});
@@ -164,6 +165,10 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		state.value.defaultLocale = locale;
 	};
 
+	const setIsNpmAvailable = (isNpmAvailable: boolean) => {
+		state.value.isNpmAvailable = isNpmAvailable;
+	};
+
 	const setBinaryDataMode = (binaryDataMode: string) => {
 		state.value.binaryDataMode = binaryDataMode;
 	};
@@ -208,6 +213,7 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		setOauthCallbackUrls,
 		setN8nMetadata,
 		setDefaultLocale,
+		setIsNpmAvailable,
 		setBinaryDataMode,
 	};
 });

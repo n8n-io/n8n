@@ -1,5 +1,5 @@
-import { getManualChatModal } from './modals/chat-modal';
 import { ROUTES } from '../constants';
+import { getManualChatModal } from './modals/chat-modal';
 
 /**
  * Types

@@ -1,7 +1,6 @@
-import type { StoryFn } from '@storybook/vue3';
-import { ElMenu } from 'element-plus';
-
 import N8nMenuItem from '.';
+import { ElMenu } from 'element-plus';
+import type { StoryFn } from '@storybook/vue3';
 
 export default {
 	title: 'Atoms/MenuItem',

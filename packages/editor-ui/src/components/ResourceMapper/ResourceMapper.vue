@@ -25,11 +25,10 @@ type Props = {
 	parameter: INodeProperties;
 	node: INode | null;
 	path: string;
-	inputSize: 'small' | 'medium';
-	labelSize: 'small' | 'medium';
-	teleported?: boolean;
+	inputSize: string;
+	labelSize: string;
 	dependentParametersValues?: string | null;
-	isReadOnly?: boolean;
+	teleported: boolean;
 };
 
 const nodeTypesStore = useNodeTypesStore();
@@ -39,11 +38,10 @@ const workflowsStore = useWorkflowsStore();
 const props = withDefaults(defineProps<Props>(), {
 	teleported: true,
 	dependentParametersValues: null,
-	isReadOnly: false,
 });
 
 const emit = defineEmits<{
-	valueChanged: [value: IUpdateInformation];
+	(event: 'valueChanged', value: IUpdateInformation): void;
 }>();
 
 const state = reactive({
@@ -487,7 +485,6 @@ defineExpose({
 			:loading-error="state.loadingError"
 			:fields-to-map="state.paramValue.schema"
 			:teleported="teleported"
-			:is-read-only="isReadOnly"
 			@mode-changed="onModeChanged"
 			@retry-fetch="initFetching"
 		/>
@@ -503,12 +500,11 @@ defineExpose({
 			:service-name="nodeType?.displayName || locale.baseText('generic.service')"
 			:teleported="teleported"
 			:refresh-in-progress="state.refreshInProgress"
-			:is-read-only="isReadOnly"
 			@matching-columns-changed="onMatchingColumnsChanged"
 			@refresh-field-list="initFetching(true)"
 		/>
-		<N8nText v-if="!showMappingModeSelect && state.loading" size="small">
-			<N8nIcon icon="sync-alt" size="xsmall" :spin="true" />
+		<n8n-text v-if="!showMappingModeSelect && state.loading" size="small">
+			<n8n-icon icon="sync-alt" size="xsmall" :spin="true" />
 			{{
 				locale.baseText('resourceMapper.fetchingFields.message', {
 					interpolate: {
@@ -516,7 +512,7 @@ defineExpose({
 					},
 				})
 			}}
-		</N8nText>
+		</n8n-text>
 		<MappingFields
 			v-if="showMappingFields"
 			:parameter="props.parameter"
@@ -530,13 +526,12 @@ defineExpose({
 			:loading="state.loading"
 			:teleported="teleported"
 			:refresh-in-progress="state.refreshInProgress"
-			:is-read-only="isReadOnly"
 			@field-value-changed="fieldValueChanged"
 			@remove-field="removeField"
 			@add-field="addField"
 			@refresh-field-list="initFetching(true)"
 		/>
-		<N8nNotice
+		<n8n-notice
 			v-if="state.paramValue.mappingMode === 'autoMapInputData' && hasAvailableMatchingColumns"
 		>
 			{{
@@ -547,6 +542,6 @@ defineExpose({
 					},
 				})
 			}}
-		</N8nNotice>
+		</n8n-notice>
 	</div>
 </template>

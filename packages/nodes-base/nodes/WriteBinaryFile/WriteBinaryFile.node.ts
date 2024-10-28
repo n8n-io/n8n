@@ -1,6 +1,6 @@
 import type { Readable } from 'stream';
 
-import { BINARY_ENCODING, NodeConnectionType } from 'n8n-workflow';
+import { BINARY_ENCODING } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -21,8 +21,8 @@ export class WriteBinaryFile implements INodeType {
 			name: 'Write Binary File',
 			color: '#CC2233',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: ['main'],
+		outputs: ['main'],
 		properties: [
 			{
 				displayName: 'File Name',
@@ -46,7 +46,7 @@ export class WriteBinaryFile implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add option',
+				placeholder: 'Add Option',
 				default: {},
 				options: [
 					{
@@ -115,7 +115,7 @@ export class WriteBinaryFile implements INodeType {
 
 				returnData.push(newItem);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({
 						json: {
 							error: (error as Error).message,

@@ -5,11 +5,8 @@ import { useI18n } from '@/composables/useI18n';
 export interface IExecutionUIData {
 	name: string;
 	label: string;
-	createdAt: string;
 	startTime: string;
 	runningTime: string;
-	showTimestamp: boolean;
-	tags: Array<{ id: string; name: string }>;
 }
 
 export function useExecutionHelpers() {
@@ -18,25 +15,17 @@ export function useExecutionHelpers() {
 	function getUIDetails(execution: ExecutionSummary): IExecutionUIData {
 		const status = {
 			name: 'unknown',
-			createdAt: execution.createdAt?.toString() ?? '',
 			startTime: formatDate(execution.startedAt),
 			label: 'Status unknown',
 			runningTime: '',
-			showTimestamp: true,
-			tags: execution.annotation?.tags ?? [],
 		};
 
-		if (execution.status === 'new') {
-			status.name = 'new';
-			status.label = i18n.baseText('executionsList.new');
-			status.showTimestamp = false;
-		} else if (execution.status === 'waiting') {
+		if (execution.status === 'waiting') {
 			status.name = 'waiting';
 			status.label = i18n.baseText('executionsList.waiting');
-			status.showTimestamp = false;
 		} else if (execution.status === 'canceled') {
 			status.label = i18n.baseText('executionsList.canceled');
-		} else if (execution.status === 'running') {
+		} else if (execution.status === 'running' || execution.status === 'new') {
 			status.name = 'running';
 			status.label = i18n.baseText('executionsList.running');
 		} else if (execution.status === 'success') {
@@ -66,7 +55,11 @@ export function useExecutionHelpers() {
 	}
 
 	function isExecutionRetriable(execution: ExecutionSummary): boolean {
-		return ['crashed', 'error'].includes(execution.status) && !execution.retrySuccessId;
+		return (
+			['crashed', 'error'].includes(execution.status) &&
+			!execution.retryOf &&
+			!execution.retrySuccessId
+		);
 	}
 
 	return {

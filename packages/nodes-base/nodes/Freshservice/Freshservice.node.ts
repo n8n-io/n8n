@@ -7,7 +7,6 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
 
 import { tz } from 'moment-timezone';
 import {
@@ -71,8 +70,8 @@ export class Freshservice implements INodeType {
 		defaults: {
 			name: 'Freshservice',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: ['main'],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'freshserviceApi',
@@ -1372,7 +1371,7 @@ export class Freshservice implements INodeType {
 					responseData = responseData[special[resource]] ?? responseData[resource];
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },

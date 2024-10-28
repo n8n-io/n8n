@@ -1,15 +1,14 @@
-import type { DeepPartial } from '@n8n/typeorm';
-import { NodeConnectionType } from 'n8n-workflow';
 import Container from 'typedi';
+import type { DeepPartial } from '@n8n/typeorm';
 import { v4 as uuid } from 'uuid';
 
-import { Project } from '@/databases/entities/project';
-import type { SharedWorkflow, WorkflowSharingRole } from '@/databases/entities/shared-workflow';
-import { User } from '@/databases/entities/user';
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
+import { User } from '@db/entities/User';
+import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
+import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import type { SharedWorkflow, WorkflowSharingRole } from '@db/entities/SharedWorkflow';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { Project } from '@/databases/entities/Project';
 
 export async function createManyWorkflows(
 	amount: number,
@@ -158,7 +157,7 @@ export async function createWorkflowWithTrigger(
 					position: [780, 300],
 				},
 			],
-			connections: { Cron: { main: [[{ node: 'Set', type: NodeConnectionType.Main, index: 0 }]] } },
+			connections: { Cron: { main: [[{ node: 'Set', type: 'main', index: 0 }]] } },
 			...attributes,
 		},
 		user,

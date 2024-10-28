@@ -1,11 +1,10 @@
-import {
-	type IDataObject,
-	type IHookFunctions,
-	type IWebhookFunctions,
-	type INodeType,
-	type INodeTypeDescription,
-	type IWebhookResponseData,
-	NodeConnectionType,
+import type {
+	IDataObject,
+	IHookFunctions,
+	IWebhookFunctions,
+	INodeType,
+	INodeTypeDescription,
+	IWebhookResponseData,
 } from 'n8n-workflow';
 
 import {
@@ -27,7 +26,7 @@ export class PostmarkTrigger implements INodeType {
 			name: 'Postmark Trigger',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'postmarkApi',

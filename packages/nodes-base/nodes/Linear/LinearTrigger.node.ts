@@ -1,12 +1,11 @@
-import {
-	type IHookFunctions,
-	type IWebhookFunctions,
-	type ILoadOptionsFunctions,
-	type INodePropertyOptions,
-	type INodeType,
-	type INodeTypeDescription,
-	type IWebhookResponseData,
-	NodeConnectionType,
+import type {
+	IHookFunctions,
+	IWebhookFunctions,
+	ILoadOptionsFunctions,
+	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
+	IWebhookResponseData,
 } from 'n8n-workflow';
 
 import { capitalizeFirstLetter, linearApiRequest } from './GenericFunctions';
@@ -24,7 +23,7 @@ export class LinearTrigger implements INodeType {
 			name: 'Linear Trigger',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'linearApi',
@@ -76,7 +75,7 @@ export class LinearTrigger implements INodeType {
 				name: 'teamId',
 				type: 'options',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getTeams',
 				},

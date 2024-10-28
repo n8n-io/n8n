@@ -2,6 +2,7 @@ import type { Readable } from 'stream';
 import mergeWith from 'lodash/mergeWith';
 
 import type {
+	IBinaryKeyData,
 	IDataObject,
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
@@ -12,7 +13,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { BINARY_ENCODING, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
 
 import {
 	filterSortSearchListItems,
@@ -51,8 +52,8 @@ export class Jira implements INodeType {
 		defaults: {
 			name: 'Jira Software',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: ['main'],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'jiraSoftwareCloudApi',
@@ -1104,11 +1105,12 @@ export class Jira implements INodeType {
 							{ json: false, encoding: null, useStream: true },
 						);
 
-						returnData[index].binary[binaryPropertyName] = await this.helpers.prepareBinaryData(
-							buffer as Buffer,
-							attachment.json.filename as string,
-							attachment.json.mimeType as string,
-						);
+						(returnData[index].binary as IBinaryKeyData)[binaryPropertyName] =
+							await this.helpers.prepareBinaryData(
+								buffer as Buffer,
+								attachment.json.filename as string,
+								attachment.json.mimeType as string,
+							);
 					}
 				}
 			}
@@ -1153,11 +1155,12 @@ export class Jira implements INodeType {
 							attachment.json.content as string,
 							{ json: false, encoding: null, useStream: true },
 						);
-						returnData[index].binary[binaryPropertyName] = await this.helpers.prepareBinaryData(
-							buffer as Buffer,
-							attachment.json.filename as string,
-							attachment.json.mimeType as string,
-						);
+						(returnData[index].binary as IBinaryKeyData)[binaryPropertyName] =
+							await this.helpers.prepareBinaryData(
+								buffer as Buffer,
+								attachment.json.filename as string,
+								attachment.json.mimeType as string,
+							);
 					}
 				}
 			}

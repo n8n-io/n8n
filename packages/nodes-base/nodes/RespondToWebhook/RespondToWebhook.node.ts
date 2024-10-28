@@ -8,16 +8,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import {
-	jsonParse,
-	BINARY_ENCODING,
-	NodeOperationError,
-	NodeConnectionType,
-	WEBHOOK_NODE_TYPE,
-	FORM_TRIGGER_NODE_TYPE,
-	CHAT_TRIGGER_NODE_TYPE,
-	WAIT_NODE_TYPE,
-} from 'n8n-workflow';
+import { jsonParse, BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
 import set from 'lodash/set';
 import jwt from 'jsonwebtoken';
 import { formatPrivateKey, generatePairedItemData } from '../../utils/utilities';
@@ -33,8 +24,8 @@ export class RespondToWebhook implements INodeType {
 		defaults: {
 			name: 'Respond to Webhook',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: ['main'],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'jwtAuth',
@@ -230,7 +221,7 @@ export class RespondToWebhook implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add option',
+				placeholder: 'Add Option',
 				default: {},
 				options: [
 					{
@@ -299,12 +290,7 @@ export class RespondToWebhook implements INodeType {
 		const items = this.getInputData();
 		const nodeVersion = this.getNode().typeVersion;
 
-		const WEBHOOK_NODE_TYPES = [
-			WEBHOOK_NODE_TYPE,
-			FORM_TRIGGER_NODE_TYPE,
-			CHAT_TRIGGER_NODE_TYPE,
-			WAIT_NODE_TYPE,
-		];
+		const WEBHOOK_NODE_TYPES = ['n8n-nodes-base.webhook', 'n8n-nodes-base.formTrigger'];
 
 		try {
 			if (nodeVersion >= 1.1) {
@@ -443,7 +429,7 @@ export class RespondToWebhook implements INodeType {
 
 			this.sendResponse(response);
 		} catch (error) {
-			if (this.continueOnFail()) {
+			if (this.continueOnFail(error)) {
 				const itemData = generatePairedItemData(items.length);
 				const returnData = this.helpers.constructExecutionMetaData(
 					[{ json: { error: error.message } }],

@@ -62,10 +62,9 @@ export async function quickbaseApiRequest(
 	}
 }
 
-export async function getFieldsObject(
-	this: IHookFunctions | ILoadOptionsFunctions | IExecuteFunctions,
-	tableId: string,
-): Promise<any> {
+//@ts-ignore
+// prettier-ignore
+export async function getFieldsObject(this: IHookFunctions | ILoadOptionsFunctions | IExecuteFunctions, tableId: string): any {
 	const fieldsLabelKey: { [key: string]: number } = {};
 	const fieldsIdKey: { [key: number]: string } = {};
 	const data = await quickbaseApiRequest.call(this, 'GET', '/fields', {}, { tableId });

@@ -10,6 +10,7 @@ exports[`components > N8nCheckbox > should render with both child and label 1`] 
       class="el-checkbox__input"
     >
       <input
+        aria-hidden="false"
         class="el-checkbox__original"
         type="checkbox"
         value="Checkbox"
@@ -70,6 +71,7 @@ exports[`components > N8nCheckbox > should render with child 1`] = `
       class="el-checkbox__input"
     >
       <input
+        aria-hidden="false"
         class="el-checkbox__original"
         type="checkbox"
       />
@@ -104,6 +106,7 @@ exports[`components > N8nCheckbox > should render with label 1`] = `
       class="el-checkbox__input"
     >
       <input
+        aria-hidden="false"
         class="el-checkbox__original"
         type="checkbox"
         value="Checkbox"
@@ -161,6 +164,7 @@ exports[`components > N8nCheckbox > should render without label and child conten
       class="el-checkbox__input"
     >
       <input
+        aria-hidden="false"
         class="el-checkbox__original"
         type="checkbox"
       />

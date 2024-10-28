@@ -76,7 +76,7 @@ const properties: INodeProperties[] = [
 						name: 'column',
 						type: 'options',
 						description:
-							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsDependsOn: ['table.value', 'worksheet.value', 'workbook.value'],
 							loadOptionsMethod: 'getTableColumns',
@@ -98,7 +98,7 @@ const properties: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add option',
+		placeholder: 'Add Option',
 		default: {},
 		options: [
 			{
@@ -271,7 +271,7 @@ export async function execute(
 			}),
 		);
 	} catch (error) {
-		if (this.continueOnFail()) {
+		if (this.continueOnFail(error)) {
 			const itemData = generatePairedItemData(this.getInputData().length);
 			const executionErrorData = this.helpers.constructExecutionMetaData(
 				this.helpers.returnJsonArray({ error: error.message }),

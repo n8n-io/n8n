@@ -1,10 +1,9 @@
-import {
-	type IExecuteFunctions,
-	type IDataObject,
-	type INodeExecutionData,
-	type INodeType,
-	type INodeTypeDescription,
-	NodeConnectionType,
+import type {
+	IExecuteFunctions,
+	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import { smsFields, smsOperations } from './SmsDescription';
@@ -27,8 +26,8 @@ export class Plivo implements INodeType {
 		defaults: {
 			name: 'Plivo',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: ['main'],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'plivoApi',

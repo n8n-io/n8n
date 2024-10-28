@@ -1,10 +1,9 @@
-import {
-	type IHookFunctions,
-	type IWebhookFunctions,
-	type INodeType,
-	type INodeTypeDescription,
-	type IWebhookResponseData,
-	NodeConnectionType,
+import type {
+	IHookFunctions,
+	IWebhookFunctions,
+	INodeType,
+	INodeTypeDescription,
+	IWebhookResponseData,
 } from 'n8n-workflow';
 
 import {
@@ -25,7 +24,7 @@ export class InvoiceNinjaTrigger implements INodeType {
 			name: 'Invoice Ninja Trigger',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'invoiceNinjaApi',

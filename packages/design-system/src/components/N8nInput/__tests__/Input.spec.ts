@@ -1,5 +1,4 @@
 import { render } from '@testing-library/vue';
-
 import N8nInput from '../Input.vue';
 
 describe('N8nInput', () => {

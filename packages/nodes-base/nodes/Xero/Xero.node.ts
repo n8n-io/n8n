@@ -1,13 +1,12 @@
-import {
-	type IExecuteFunctions,
-	type IDataObject,
-	type ILoadOptionsFunctions,
-	type INodeExecutionData,
-	type INodePropertyOptions,
-	type INodeType,
-	type INodeTypeDescription,
-	type JsonObject,
-	NodeConnectionType,
+import type {
+	IExecuteFunctions,
+	IDataObject,
+	ILoadOptionsFunctions,
+	INodeExecutionData,
+	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
+	JsonObject,
 } from 'n8n-workflow';
 
 import { xeroApiRequest, xeroApiRequestAllItems } from './GenericFunctions';
@@ -32,8 +31,8 @@ export class Xero implements INodeType {
 		defaults: {
 			name: 'Xero',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: ['main'],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'xeroOAuth2Api',
@@ -724,7 +723,7 @@ export class Xero implements INodeType {
 				);
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({ json: { error: (error as JsonObject).message } });
 					continue;
 				}

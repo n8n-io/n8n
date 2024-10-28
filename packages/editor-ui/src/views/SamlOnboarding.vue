@@ -1,17 +1,14 @@
 <script lang="ts" setup>
 import { reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { ElNotification as Notification } from 'element-plus';
 import type { IFormBoxConfig } from 'n8n-design-system';
 import AuthView from '@/views/AuthView.vue';
-import { VIEWS } from '@/constants';
-import { useI18n } from '@/composables/useI18n';
-import { useToast } from '@/composables/useToast';
+import { i18n as locale } from '@/plugins/i18n';
 import { useSSOStore } from '@/stores/sso.store';
+import { VIEWS } from '@/constants';
 
 const router = useRouter();
-const locale = useI18n();
-const toast = useToast();
-
 const ssoStore = useSSOStore();
 
 const loading = ref(false);
@@ -43,22 +40,18 @@ const FORM_CONFIG: IFormBoxConfig = reactive({
 		},
 	],
 });
-
-const isFormWithFirstAndLastName = (values: {
-	[key: string]: string;
-}): values is { firstName: string; lastName: string } => {
-	return 'firstName' in values && 'lastName' in values;
-};
-
-const onSubmit = async (values: { [key: string]: string }) => {
-	if (!isFormWithFirstAndLastName(values)) return;
+const onSubmit = async (values: { firstName: string; lastName: string }) => {
 	try {
 		loading.value = true;
 		await ssoStore.updateUser(values);
 		await router.push({ name: VIEWS.HOMEPAGE });
 	} catch (error) {
 		loading.value = false;
-		toast.showError(error, 'Error', error.message);
+		Notification.error({
+			title: 'Error',
+			message: error.message,
+			position: 'bottom-right',
+		});
 	}
 };
 </script>

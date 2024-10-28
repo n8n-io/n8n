@@ -14,30 +14,18 @@ describe('createEventBus()', () => {
 
 			expect(handler).toHaveBeenCalled();
 		});
-	});
 
-	describe('once()', () => {
-		it('should register event handler', () => {
+		it('should return unregister fn', () => {
 			const handler = vi.fn();
 			const eventName = 'test';
 
-			eventBus.once(eventName, handler);
+			const unregister = eventBus.on(eventName, handler);
+
+			unregister();
 
 			eventBus.emit(eventName, {});
 
-			expect(handler).toHaveBeenCalled();
-		});
-
-		it('should unregister event handler after first call', () => {
-			const handler = vi.fn();
-			const eventName = 'test';
-
-			eventBus.once(eventName, handler);
-
-			eventBus.emit(eventName, {});
-			eventBus.emit(eventName, {});
-
-			expect(handler).toHaveBeenCalledTimes(1);
+			expect(handler).not.toHaveBeenCalled();
 		});
 	});
 

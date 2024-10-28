@@ -21,7 +21,6 @@ import {
 	parseResourceMapperFieldName,
 } from '@/utils/nodeTypesUtils';
 import { useNodeSpecificationValues } from '@/composables/useNodeSpecificationValues';
-import { N8nIconButton, N8nInputLabel, N8nOption, N8nSelect, N8nTooltip } from 'n8n-design-system';
 
 interface Props {
 	parameter: INodeProperties;
@@ -29,18 +28,16 @@ interface Props {
 	nodeValues: INodeParameters | undefined;
 	fieldsToMap: ResourceMapperField[];
 	paramValue: ResourceMapperValue;
-	labelSize: 'small' | 'medium';
+	labelSize: string;
 	showMatchingColumnsSelector: boolean;
 	showMappingModeSelect: boolean;
 	loading: boolean;
 	refreshInProgress: boolean;
 	teleported?: boolean;
-	isReadOnly?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
 	teleported: true,
-	isReadOnly: false,
 });
 const FORCE_TEXT_INPUT_FOR_TYPES: FieldType[] = ['time', 'object', 'array'];
 
@@ -53,10 +50,10 @@ const {
 } = useNodeSpecificationValues(props.parameter.typeOptions);
 
 const emit = defineEmits<{
-	fieldValueChanged: [value: IUpdateInformation];
-	removeField: [field: string];
-	addField: [field: string];
-	refreshFieldList: [];
+	(event: 'fieldValueChanged', value: IUpdateInformation): void;
+	(event: 'removeField', field: string): void;
+	(event: 'addField', field: string): void;
+	(event: 'refreshFieldList'): void;
 }>();
 
 const ndvStore = useNDVStore();
@@ -288,7 +285,7 @@ defineExpose({
 
 <template>
 	<div class="mt-xs" data-test-id="mapping-fields-container">
-		<N8nInputLabel
+		<n8n-input-label
 			:label="valuesLabel"
 			:underline="true"
 			:size="labelSize"
@@ -303,15 +300,14 @@ defineExpose({
 					:custom-actions="parameterActions"
 					:loading="props.refreshInProgress"
 					:loading-message="fetchingFieldsLabel"
-					:is-read-only="isReadOnly"
 					@update:model-value="onParameterActionSelected"
 				/>
 			</template>
-		</N8nInputLabel>
+		</n8n-input-label>
 		<div v-if="orderedFields.length === 0" class="mt-3xs mb-xs">
-			<N8nText size="small">{{
+			<n8n-text size="small">{{
 				$locale.baseText('fixedCollectionParameter.currentlyNoItemsExist')
-			}}</N8nText>
+			}}</n8n-text>
 		</div>
 		<div
 			v-for="field in orderedFields"
@@ -326,7 +322,7 @@ defineExpose({
 				v-if="resourceMapperMode === 'add' && field.required"
 				:class="['delete-option', 'mt-5xs', $style.parameterTooltipIcon]"
 			>
-				<N8nTooltip placement="top">
+				<n8n-tooltip placement="top">
 					<template #content>
 						<span>{{
 							locale.baseText('resourceMapper.mandatoryField.title', {
@@ -335,7 +331,7 @@ defineExpose({
 						}}</span>
 					</template>
 					<font-awesome-icon icon="question-circle" />
-				</N8nTooltip>
+				</n8n-tooltip>
 			</div>
 			<div
 				v-else-if="
@@ -347,7 +343,7 @@ defineExpose({
 				"
 				:class="['delete-option', 'mt-5xs']"
 			>
-				<N8nIconButton
+				<n8n-icon-button
 					type="tertiary"
 					text
 					size="mini"
@@ -360,9 +356,8 @@ defineExpose({
 							},
 						})
 					"
-					:disabled="isReadOnly"
 					@click="removeField(field.name)"
-				></N8nIconButton>
+				></n8n-icon-button>
 			</div>
 			<div :class="$style.parameterInput">
 				<ParameterInputFull
@@ -370,7 +365,7 @@ defineExpose({
 					:value="getParameterValue(field.name)"
 					:display-options="true"
 					:path="`${props.path}.${field.name}`"
-					:is-read-only="refreshInProgress || field.readOnly || isReadOnly"
+					:is-read-only="refreshInProgress || field.readOnly"
 					:hide-issues="true"
 					:node-values="nodeValues"
 					:class="$style.parameterInputFull"
@@ -384,7 +379,7 @@ defineExpose({
 			/>
 		</div>
 		<div :class="['add-option', $style.addOption]" data-test-id="add-fields-select">
-			<N8nSelect
+			<n8n-select
 				:placeholder="
 					locale.baseText('resourceMapper.addFieldToSend', {
 						interpolate: { fieldWord: singularFieldWordCapitalized },
@@ -392,18 +387,18 @@ defineExpose({
 				"
 				size="small"
 				:teleported="teleported"
-				:disabled="addFieldOptions.length == 0 || isReadOnly"
+				:disabled="addFieldOptions.length == 0"
 				@update:model-value="addField"
 			>
-				<N8nOption
+				<n8n-option
 					v-for="item in addFieldOptions"
 					:key="item.value"
 					:label="item.name"
 					:value="item.value"
 					:disabled="item.disabled"
 				>
-				</N8nOption>
-			</N8nSelect>
+				</n8n-option>
+			</n8n-select>
 		</div>
 	</div>
 </template>

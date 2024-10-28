@@ -1,14 +1,15 @@
+import { Container } from 'typedi';
 import { Flags, type Config } from '@oclif/core';
 import { ApplicationError } from 'n8n-workflow';
-import { Container } from 'typedi';
 
-import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
-import { OrchestrationHandlerWebhookService } from '@/services/orchestration/webhook/orchestration.handler.webhook.service';
-import { OrchestrationWebhookService } from '@/services/orchestration/webhook/orchestration.webhook.service';
-import { WebhookServer } from '@/webhooks/webhook-server';
+import { ActiveExecutions } from '@/ActiveExecutions';
+import { WebhookServer } from '@/WebhookServer';
+import { Queue } from '@/Queue';
+import { BaseCommand } from './BaseCommand';
 
-import { BaseCommand } from './base-command';
+import { OrchestrationWebhookService } from '@/services/orchestration/webhook/orchestration.webhook.service';
+import { OrchestrationHandlerWebhookService } from '@/services/orchestration/webhook/orchestration.handler.webhook.service';
 
 export class Webhook extends BaseCommand {
 	static description = 'Starts n8n webhook process. Intercepts only production URLs.';
@@ -21,10 +22,9 @@ export class Webhook extends BaseCommand {
 
 	protected server = Container.get(WebhookServer);
 
-	override needsCommunityPackages = true;
-
 	constructor(argv: string[], cmdConfig: Config) {
 		super(argv, cmdConfig);
+		this.setInstanceType('webhook');
 		if (this.queueModeId) {
 			this.logger.debug(`Webhook Instance queue mode id: ${this.queueModeId}`);
 		}
@@ -84,7 +84,7 @@ export class Webhook extends BaseCommand {
 		await this.initExternalHooks();
 		this.logger.debug('External hooks init complete');
 		await this.initExternalSecrets();
-		this.logger.debug('External secrets init complete');
+		this.logger.debug('External seecrets init complete');
 	}
 
 	async run() {
@@ -94,8 +94,7 @@ export class Webhook extends BaseCommand {
 			);
 		}
 
-		const { ScalingService } = await import('@/scaling/scaling.service');
-		await Container.get(ScalingService).setupQueue();
+		await Container.get(Queue).init();
 		await this.server.start();
 		this.logger.debug(`Webhook listener ID: ${this.server.uniqueInstanceId}`);
 		this.logger.info('Webhook listener waiting for requests.');

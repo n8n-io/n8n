@@ -1,5 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import type * as amqplib from 'amqplib';
+import * as amqplib from 'amqplib';
 import type {
 	IExecuteFunctions,
 	ICredentialsDecrypted,
@@ -11,15 +11,10 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import {
-	parsePublishArguments,
-	rabbitmqConnect,
-	rabbitmqConnectExchange,
-	rabbitmqConnectQueue,
-} from './GenericFunctions';
-import type { Options, RabbitMQCredentials } from './types';
+import { rabbitmqConnectExchange, rabbitmqConnectQueue } from './GenericFunctions';
+import { formatPrivateKey } from '@utils/utilities';
 
 export class RabbitMQ implements INodeType {
 	description: INodeTypeDescription = {
@@ -32,8 +27,8 @@ export class RabbitMQ implements INodeType {
 		defaults: {
 			name: 'RabbitMQ',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: ['main'],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'rabbitmq',
@@ -251,7 +246,7 @@ export class RabbitMQ implements INodeType {
 						operation: ['sendMessage'],
 					},
 				},
-				placeholder: 'Add option',
+				placeholder: 'Add Option',
 				options: [
 					{
 						displayName: 'Alternate Exchange',
@@ -270,8 +265,7 @@ export class RabbitMQ implements INodeType {
 						displayName: 'Arguments',
 						name: 'arguments',
 						placeholder: 'Add Argument',
-						description:
-							'Arguments to add, See <a href="https://amqp-node.github.io/amqplib/channel_api.html#channel_publish" target="_blank">here</a> for valid options',
+						description: 'Arguments to add',
 						type: 'fixedCollection',
 						typeOptions: {
 							multipleValues: true,
@@ -367,8 +361,38 @@ export class RabbitMQ implements INodeType {
 				this: ICredentialTestFunctions,
 				credential: ICredentialsDecrypted,
 			): Promise<INodeCredentialTestResult> {
+				const credentials = credential.data as IDataObject;
 				try {
-					const connection = await rabbitmqConnect(credential.data as RabbitMQCredentials);
+					const credentialKeys = ['hostname', 'port', 'username', 'password', 'vhost'];
+
+					const credentialData: IDataObject = {};
+					credentialKeys.forEach((key) => {
+						credentialData[key] = credentials[key] === '' ? undefined : credentials[key];
+					});
+
+					const optsData: IDataObject = {};
+					if (credentials.ssl === true) {
+						credentialData.protocol = 'amqps';
+
+						optsData.ca =
+							credentials.ca === ''
+								? undefined
+								: [Buffer.from(formatPrivateKey(credentials.ca as string))];
+						if (credentials.passwordless === true) {
+							optsData.cert =
+								credentials.cert === ''
+									? undefined
+									: Buffer.from(formatPrivateKey(credentials.cert as string));
+							optsData.key =
+								credentials.key === ''
+									? undefined
+									: Buffer.from(formatPrivateKey(credentials.key as string));
+							optsData.passphrase =
+								credentials.passphrase === '' ? undefined : credentials.passphrase;
+							optsData.credentials = amqplib.credentials.external();
+						}
+					}
+					const connection = await amqplib.connect(credentialData, optsData);
 					await connection.close();
 				} catch (error) {
 					return {
@@ -385,7 +409,7 @@ export class RabbitMQ implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		let channel: amqplib.Channel | undefined;
+		let channel, options: IDataObject;
 		try {
 			const items = this.getInputData();
 			const operation = this.getNodeParameter('operation', 0);
@@ -398,7 +422,7 @@ export class RabbitMQ implements INodeType {
 			if (mode === 'queue') {
 				const queue = this.getNodeParameter('queue', 0) as string;
 
-				const options = this.getNodeParameter('options', 0, {}) as Options;
+				options = this.getNodeParameter('options', 0, {});
 
 				channel = await rabbitmqConnectQueue.call(this, queue, options);
 
@@ -427,13 +451,7 @@ export class RabbitMQ implements INodeType {
 						);
 						headers = additionalHeaders;
 					}
-
-					queuePromises.push(
-						channel.sendToQueue(queue, Buffer.from(message), {
-							headers,
-							...parsePublishArguments(options),
-						}),
-					);
+					queuePromises.push(channel.sendToQueue(queue, Buffer.from(message), { headers }));
 				}
 
 				// @ts-ignore
@@ -466,11 +484,12 @@ export class RabbitMQ implements INodeType {
 				await channel.connection.close();
 			} else if (mode === 'exchange') {
 				const exchange = this.getNodeParameter('exchange', 0) as string;
+				const type = this.getNodeParameter('exchangeType', 0) as string;
 				const routingKey = this.getNodeParameter('routingKey', 0) as string;
 
-				const options = this.getNodeParameter('options', 0, {}) as Options;
+				options = this.getNodeParameter('options', 0, {});
 
-				channel = await rabbitmqConnectExchange.call(this, exchange, options);
+				channel = await rabbitmqConnectExchange.call(this, exchange, type, options);
 
 				const sendInputData = this.getNodeParameter('sendInputData', 0) as boolean;
 
@@ -500,10 +519,7 @@ export class RabbitMQ implements INodeType {
 					}
 
 					exchangePromises.push(
-						channel.publish(exchange, routingKey, Buffer.from(message), {
-							headers,
-							...parsePublishArguments(options),
-						}),
+						channel.publish(exchange, routingKey, Buffer.from(message), { headers }),
 					);
 				}
 

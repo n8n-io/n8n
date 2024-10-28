@@ -1,8 +1,6 @@
 import { Service } from 'typedi';
-
-import config from '@/config';
-
 import { OrchestrationService } from '../../orchestration.service';
+import config from '@/config';
 
 @Service()
 export class OrchestrationWorkerService extends OrchestrationService {
@@ -10,7 +8,7 @@ export class OrchestrationWorkerService extends OrchestrationService {
 		return (
 			this.isInitialized &&
 			config.get('executions.mode') === 'queue' &&
-			this.instanceSettings.instanceType === 'worker'
+			config.get('generic.instanceType') === 'worker'
 		);
 	}
 }

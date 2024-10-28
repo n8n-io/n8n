@@ -1,10 +1,8 @@
 <script setup lang="ts">
-import { ElSelect } from 'element-plus';
 import type { PropType } from 'vue';
 import { computed, ref, useAttrs } from 'vue';
-
+import { ElSelect } from 'element-plus';
 import type { SelectSize } from 'n8n-design-system/types';
-
 import { isEventBindingElementAttribute } from '../../utils';
 
 type InnerSelectRef = InstanceType<typeof ElSelect>;
@@ -102,7 +100,6 @@ defineExpose({
 	focus,
 	blur,
 	focusOnInput,
-	innerSelect,
 });
 </script>
 

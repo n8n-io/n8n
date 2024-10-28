@@ -72,7 +72,7 @@ export const incomingWebhookFields: INodeProperties[] = [
 		name: 'messageUi',
 		type: 'collection',
 		required: true,
-		placeholder: 'Add option',
+		placeholder: 'Add Options',
 		displayOptions: {
 			show: {
 				resource: ['incomingWebhook'],

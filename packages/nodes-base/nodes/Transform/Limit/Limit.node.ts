@@ -4,7 +4,6 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
 
 export class Limit implements INodeType {
 	description: INodeTypeDescription = {
@@ -18,8 +17,8 @@ export class Limit implements INodeType {
 		defaults: {
 			name: 'Limit',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: ['main'],
+		outputs: ['main'],
 		properties: [
 			{
 				displayName: 'Max Items',

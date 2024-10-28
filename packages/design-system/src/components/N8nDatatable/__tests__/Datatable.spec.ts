@@ -1,9 +1,6 @@
 import { render } from '@testing-library/vue';
-
-import { removeDynamicAttributes } from 'n8n-design-system/utils';
-
-import { rows, columns } from './data';
 import N8nDatatable from '../Datatable.vue';
+import { rows, columns } from './data';
 
 const stubs = [
 	'n8n-option',
@@ -36,7 +33,6 @@ describe('components', () => {
 			expect(wrapper.container.querySelectorAll('tbody tr td').length).toEqual(
 				columns.length * rowsPerPage,
 			);
-			removeDynamicAttributes(wrapper.container);
 			expect(wrapper.html()).toMatchSnapshot();
 		});
 
@@ -76,27 +72,6 @@ describe('components', () => {
 				columns.length * rowsPerPage,
 			);
 			expect(wrapper.container.querySelector('tbody td')?.textContent).toEqual('Row slot');
-		});
-
-		it('should render all rows when rowsPerPage is set to -1', () => {
-			const wrapper = render(N8nDatatable, {
-				props: { columns, rows, rowsPerPage: -1 },
-				global: { stubs },
-			});
-
-			const pagination = wrapper.container.querySelector('.pagination');
-			expect(pagination?.querySelector('.el-pager')).toBeNull();
-
-			const pageSizeSelector = wrapper.container.querySelector('.pageSizeSelector');
-			expect(pageSizeSelector?.textContent).toContain('Page size');
-
-			const allOption = wrapper.getByText('All');
-			expect(allOption).not.toBeNull();
-
-			expect(wrapper.container.querySelectorAll('tbody tr').length).toEqual(rows.length);
-			expect(wrapper.container.querySelectorAll('tbody tr td').length).toEqual(
-				columns.length * rows.length,
-			);
 		});
 	});
 });

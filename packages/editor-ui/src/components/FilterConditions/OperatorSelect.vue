@@ -4,15 +4,13 @@ import { computed, ref } from 'vue';
 import { OPERATOR_GROUPS } from './constants';
 import type { FilterOperator } from './types';
 import { getFilterOperator } from './utils';
-import type { FilterOperatorType } from 'n8n-workflow';
 
 interface Props {
 	selected: string;
-	suggestedType?: FilterOperatorType;
 	readOnly?: boolean;
 }
 
-const props = withDefaults(defineProps<Props>(), { readOnly: false, suggestedType: 'any' });
+const props = withDefaults(defineProps<Props>(), { readOnly: false });
 
 const selected = ref(props.selected);
 const menuOpen = ref(false);
@@ -20,7 +18,7 @@ const shouldRenderItems = ref(false);
 const submenu = ref('none');
 
 const emit = defineEmits<{
-	operatorChange: [value: string];
+	(event: 'operatorChange', value: string): void;
 }>();
 
 const i18n = useI18n();
@@ -32,8 +30,6 @@ const selectedGroupIcon = computed(
 );
 
 const selectedOperator = computed(() => getFilterOperator(selected.value));
-
-const selectedType = computed(() => selectedOperator.value.type);
 
 const onOperatorChange = (operator: string): void => {
 	selected.value = operator;
@@ -69,7 +65,12 @@ function onGroupSelect(group: string) {
 		@mouseenter="shouldRenderItems = true"
 	>
 		<template v-if="selectedGroupIcon" #prefix>
-			<n8n-icon :class="$style.icon" :icon="selectedGroupIcon" color="text-light" size="small" />
+			<n8n-icon
+				:class="$style.selectedGroupIcon"
+				:icon="selectedGroupIcon"
+				color="text-light"
+				size="small"
+			/>
 		</template>
 		<div v-if="shouldRenderItems" :class="$style.groups">
 			<div v-for="group of groups" :key="group.name">
@@ -83,18 +84,12 @@ function onGroupSelect(group: string) {
 				>
 					<template #reference>
 						<div
-							:class="[
-								$style.group,
-								{
-									[$style.selected]: group.id === selectedType,
-									[$style.suggested]: group.id === suggestedType,
-								},
-							]"
+							:class="$style.group"
 							@mouseenter="() => onGroupSelect(group.id)"
 							@click="() => onGroupSelect(group.id)"
 						>
 							<div :class="$style.groupTitle">
-								<n8n-icon v-if="group.icon" :icon="group.icon" :class="$style.icon" size="small" />
+								<n8n-icon v-if="group.icon" :icon="group.icon" color="text-light" size="small" />
 								<span>{{ i18n.baseText(group.name) }}</span>
 							</div>
 							<n8n-icon icon="chevron-right" color="text-light" size="xsmall" />
@@ -121,7 +116,7 @@ function onGroupSelect(group: string) {
 </template>
 
 <style lang="scss" module>
-.icon {
+.selectedGroupIcon {
 	color: var(--color-text-light);
 }
 
@@ -141,10 +136,6 @@ function onGroupSelect(group: string) {
 	color: var(--color-text-dark);
 	padding: var(--spacing-2xs) var(--spacing-s);
 	cursor: pointer;
-
-	&.suggested {
-		font-weight: 800;
-	}
 
 	&:hover {
 		background: var(--color-background-base);

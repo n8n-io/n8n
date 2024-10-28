@@ -7,7 +7,6 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
 
 import { snakeCase } from 'change-case';
 import { figmaApiRequest } from './GenericFunctions';
@@ -25,7 +24,7 @@ export class FigmaTrigger implements INodeType {
 			name: 'Figma Trigger (Beta)',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'figmaApi',

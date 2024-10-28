@@ -1,9 +1,8 @@
-import { action } from '@storybook/addon-actions';
 import type { StoryFn } from '@storybook/vue3';
-
 import N8nSelect from './Select.vue';
-import N8nIcon from '../N8nIcon';
 import N8nOption from '../N8nOption';
+import N8nIcon from '../N8nIcon';
+import { action } from '@storybook/addon-actions';
 
 export default {
 	title: 'Atoms/Select',

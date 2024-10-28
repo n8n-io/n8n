@@ -44,21 +44,10 @@ import {
 	ApplicationError,
 	NodeExecutionOutput,
 	sleep,
-	ErrorReporterProxy,
+	OBFUSCATED_ERROR_MESSAGE,
 } from 'n8n-workflow';
 import get from 'lodash/get';
 import * as NodeExecuteFunctions from './NodeExecuteFunctions';
-
-import * as assert from 'assert/strict';
-import { recreateNodeExecutionStack } from './PartialExecutionUtils/recreateNodeExecutionStack';
-import {
-	DirectedGraph,
-	findCycles,
-	findStartNodes,
-	findSubgraph,
-	findTriggerForPartialExecution,
-} from './PartialExecutionUtils';
-import { cleanRunData } from './PartialExecutionUtils/cleanRunData';
 
 export class WorkflowExecute {
 	private status: ExecutionStatus = 'new';
@@ -314,83 +303,6 @@ export class WorkflowExecute {
 		};
 
 		return this.processRunExecutionData(workflow);
-	}
-
-	// IMPORTANT: Do not add "async" to this function, it will then convert the
-	//            PCancelable to a regular Promise and does so not allow canceling
-	//            active executions anymore
-	// eslint-disable-next-line @typescript-eslint/promise-function-async
-	runPartialWorkflow2(
-		workflow: Workflow,
-		runData: IRunData,
-		destinationNodeName?: string,
-		pinData?: IPinData,
-	): PCancelable<IRun> {
-		// TODO: Refactor the call-site to make `destinationNodeName` a required
-		// after removing the old partial execution flow.
-		assert.ok(
-			destinationNodeName,
-			'a destinationNodeName is required for the new partial execution flow',
-		);
-
-		const destinationNode = workflow.getNode(destinationNodeName);
-		assert.ok(
-			destinationNode,
-			`Could not find a node with the name ${destinationNodeName} in the workflow.`,
-		);
-
-		// 1. Find the Trigger
-		const trigger = findTriggerForPartialExecution(workflow, destinationNodeName);
-		if (trigger === undefined) {
-			throw new ApplicationError(
-				'The destination node is not connected to any trigger. Partial executions need a trigger.',
-			);
-		}
-
-		// 2. Find the Subgraph
-		const graph = DirectedGraph.fromWorkflow(workflow);
-		const subgraph = findSubgraph(graph, destinationNode, trigger);
-		const filteredNodes = subgraph.getNodes();
-
-		// 3. Find the Start Nodes
-		const startNodes = findStartNodes(subgraph, trigger, destinationNode, runData);
-
-		// 4. Detect Cycles
-		const cycles = findCycles(workflow);
-
-		// 5. Handle Cycles
-		if (cycles.length) {
-			// TODO: handle
-		}
-
-		// 6. Clean Run Data
-		const newRunData: IRunData = cleanRunData(runData, graph, startNodes);
-
-		// 7. Recreate Execution Stack
-		const { nodeExecutionStack, waitingExecution, waitingExecutionSource } =
-			recreateNodeExecutionStack(subgraph, startNodes, destinationNode, runData, pinData ?? {});
-
-		// 8. Execute
-		this.status = 'running';
-		this.runExecutionData = {
-			startData: {
-				destinationNode: destinationNodeName,
-				runNodeFilter: Array.from(filteredNodes.values()).map((node) => node.name),
-			},
-			resultData: {
-				runData: newRunData,
-				pinData,
-			},
-			executionData: {
-				contextData: {},
-				nodeExecutionStack,
-				metadata: {},
-				waitingExecution,
-				waitingExecutionSource,
-			},
-		};
-
-		return this.processRunExecutionData(subgraph.toWorkflow({ ...workflow }));
 	}
 
 	/**
@@ -711,11 +623,7 @@ export class WorkflowExecute {
 
 						// Check if any of the parent nodes does not have any inputs. That
 						// would mean that it has to get added to the list of nodes to process.
-						const parentNodes = workflow.getParentNodes(
-							inputData.node,
-							NodeConnectionType.Main,
-							-1,
-						);
+						const parentNodes = workflow.getParentNodes(inputData.node, 'main', -1);
 						let nodeToAdd: string | undefined = inputData.node;
 						parentNodes.push(inputData.node);
 						parentNodes.reverse();
@@ -809,23 +717,10 @@ export class WorkflowExecute {
 			}
 		}
 
-		let connectionDataArray: Array<INodeExecutionData[] | null> = get(
-			this.runExecutionData,
-			[
-				'executionData',
-				'waitingExecution',
-				connectionData.node,
-				waitingNodeIndex!,
-				NodeConnectionType.Main,
-			],
-			null,
-		);
-
-		if (connectionDataArray === null) {
-			connectionDataArray = [];
-			for (let i: number = connectionData.index; i >= 0; i--) {
-				connectionDataArray[i] = null;
-			}
+		// Make sure the array has all the values
+		const connectionDataArray: Array<INodeExecutionData[] | null> = [];
+		for (let i: number = connectionData.index; i >= 0; i--) {
+			connectionDataArray[i] = null;
 		}
 
 		// Add the data of the current execution
@@ -886,7 +781,7 @@ export class WorkflowExecute {
 	//            active executions anymore
 	// eslint-disable-next-line @typescript-eslint/promise-function-async
 	processRunExecutionData(workflow: Workflow): PCancelable<IRun> {
-		Logger.debug('Workflow execution started', { workflowId: workflow.id });
+		Logger.verbose('Workflow execution started', { workflowId: workflow.id });
 
 		const startedAt = new Date();
 		const forceInputNodeExecution = this.forceInputNodeExecution(workflow);
@@ -1080,11 +975,7 @@ export class WorkflowExecute {
 								connectionIndex++
 							) {
 								if (
-									workflow.getHighestNode(
-										executionNode.name,
-										NodeConnectionType.Main,
-										connectionIndex,
-									).length === 0
+									workflow.getHighestNode(executionNode.name, 'main', connectionIndex).length === 0
 								) {
 									// If there is no valid incoming node (if all are disabled)
 									// then ignore that it has inputs and simply execute it as it is without
@@ -1221,6 +1112,7 @@ export class WorkflowExecute {
 									);
 
 									const errorItems: INodeExecutionData[] = [];
+									const successItems: INodeExecutionData[] = [];
 									const closeFunctions: CloseFunction[] = [];
 									// Create a WorkflowDataProxy instance that we can get the data of the
 									// item which did error
@@ -1245,10 +1137,8 @@ export class WorkflowExecute {
 										outputIndex < mainOutputTypes.length - 1;
 										outputIndex++
 									) {
-										const successItems: INodeExecutionData[] = [];
-										const items = nodeSuccessData[outputIndex]?.length
-											? nodeSuccessData[outputIndex]
-											: [];
+										successItems.length = 0;
+										const items = nodeSuccessData.length ? nodeSuccessData[0] : [];
 
 										while (items.length) {
 											const item = items.pop();
@@ -1414,28 +1304,12 @@ export class WorkflowExecute {
 						} catch (error) {
 							this.runExecutionData.resultData.lastNodeExecuted = executionData.node.name;
 
-							let toReport: Error | undefined;
-							if (error instanceof ApplicationError) {
-								// Report any unhandled errors that were wrapped in by one of our error classes
-								if (error.cause instanceof Error) toReport = error.cause;
-							} else {
-								// Report any unhandled and non-wrapped errors to Sentry
-								toReport = error;
-							}
-							if (toReport) {
-								ErrorReporterProxy.error(toReport, {
-									extra: {
-										nodeName: executionNode.name,
-										nodeType: executionNode.type,
-										nodeVersion: executionNode.typeVersion,
-										workflowId: workflow.id,
-									},
-								});
-							}
+							const message =
+								error instanceof ApplicationError ? error.message : OBFUSCATED_ERROR_MESSAGE;
 
 							const e = error as unknown as ExecutionBaseError;
 
-							executionError = { ...e, message: e.message, stack: e.stack };
+							executionError = { ...e, message, stack: e.stack };
 
 							Logger.debug(`Running node "${executionNode.name}" finished with error`, {
 								node: executionNode.name,
@@ -1739,9 +1613,9 @@ export class WorkflowExecute {
 							// array as this shows that the parent nodes executed but they did not have any
 							// data to pass on.
 							const inputsWithData = this.runExecutionData
-								.executionData!.waitingExecution[nodeName][firstRunIndex].main.map((data, index) =>
-									data === null ? null : index,
-								)
+								.executionData!.waitingExecution[
+									nodeName
+								][firstRunIndex].main.map((data, index) => (data === null ? null : index))
 								.filter((data) => data !== null);
 
 							if (requiredInputs !== undefined) {
@@ -1898,7 +1772,7 @@ export class WorkflowExecute {
 		const fullRunData = this.getFullRunData(startedAt);
 
 		if (executionError !== undefined) {
-			Logger.debug('Workflow execution finished with error', {
+			Logger.verbose('Workflow execution finished with error', {
 				error: executionError,
 				workflowId: workflow.id,
 			});
@@ -1912,13 +1786,13 @@ export class WorkflowExecute {
 			}
 		} else if (this.runExecutionData.waitTill!) {
 			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-			Logger.debug(`Workflow execution will wait until ${this.runExecutionData.waitTill}`, {
+			Logger.verbose(`Workflow execution will wait until ${this.runExecutionData.waitTill}`, {
 				workflowId: workflow.id,
 			});
 			fullRunData.waitTill = this.runExecutionData.waitTill;
 			fullRunData.status = 'waiting';
 		} else {
-			Logger.debug('Workflow execution finished successfully', { workflowId: workflow.id });
+			Logger.verbose('Workflow execution finished successfully', { workflowId: workflow.id });
 			fullRunData.finished = true;
 			fullRunData.status = 'success';
 		}

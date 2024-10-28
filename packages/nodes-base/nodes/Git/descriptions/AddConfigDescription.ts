@@ -38,7 +38,7 @@ export const addConfigFields: INodeProperties[] = [
 				operation: ['addConfig'],
 			},
 		},
-		placeholder: 'Add option',
+		placeholder: 'Add Option',
 		default: {},
 		options: [
 			{

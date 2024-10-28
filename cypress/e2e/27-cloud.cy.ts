@@ -1,4 +1,3 @@
-import planData from '../fixtures/Plan_data_opt_in_trial.json';
 import {
 	BannerStack,
 	MainSidebar,
@@ -6,6 +5,7 @@ import {
 	visitPublicApiPage,
 	getPublicApiUpgradeCTA,
 } from '../pages';
+import planData from '../fixtures/Plan_data_opt_in_trial.json';
 
 const mainSidebar = new MainSidebar();
 const bannerStack = new BannerStack();

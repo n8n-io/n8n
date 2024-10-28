@@ -1,5 +1,4 @@
 import { type StoryFn } from '@storybook/vue3';
-
 import VariableTable from './VariableTable.vue';
 
 export default {

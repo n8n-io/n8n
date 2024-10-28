@@ -1,5 +1,4 @@
 import type { StoryFn } from '@storybook/vue3';
-
 import N8nAvatar from './Avatar.vue';
 
 export default {

@@ -1,3 +1,9 @@
+<template>
+	<span>
+		<slot :bp="bp" :value="value" />
+	</span>
+</template>
+
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import { BREAKPOINT_SM, BREAKPOINT_MD, BREAKPOINT_LG, BREAKPOINT_XL } from '@/constants';
@@ -84,9 +90,3 @@ onBeforeUnmount(() => {
 	window.removeEventListener('resize', onResize);
 });
 </script>
-
-<template>
-	<span>
-		<slot :bp="bp" :value="value" />
-	</span>
-</template>

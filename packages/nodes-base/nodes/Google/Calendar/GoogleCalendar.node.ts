@@ -8,7 +8,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
 import { v4 as uuid } from 'uuid';
@@ -40,8 +40,8 @@ export class GoogleCalendar implements INodeType {
 		defaults: {
 			name: 'Google Calendar',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: ['main'],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'googleCalendarOAuth2Api',
@@ -436,10 +436,6 @@ export class GoogleCalendar implements INodeType {
 						if (options.updatedMin) {
 							qs.updatedMin = addTimezoneToDate(options.updatedMin as string, tz || timezone);
 						}
-						if (options.fields) {
-							qs.fields = options.fields as string;
-						}
-
 						if (returnAll) {
 							responseData = await googleApiRequestAllItems.call(
 								this,
@@ -616,7 +612,7 @@ export class GoogleCalendar implements INodeType {
 				);
 				returnData.push(...executionData);
 			} catch (error) {
-				if (!this.continueOnFail()) {
+				if (!this.continueOnFail(error)) {
 					throw error;
 				} else {
 					const executionErrorData = this.helpers.constructExecutionMetaData(

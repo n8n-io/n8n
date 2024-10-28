@@ -1,3 +1,12 @@
+<template>
+	<N8nTabs
+		:options="options"
+		:model-value="modelValue"
+		@update:model-value="onTabSelect"
+		@tooltip-click="onTooltipClick"
+	/>
+</template>
+
 <script setup lang="ts">
 import type { ITab } from '@/Interface';
 import {
@@ -29,7 +38,7 @@ const props = withDefaults(defineProps<Props>(), {
 	pushRef: '',
 });
 const emit = defineEmits<{
-	'update:model-value': [tab: Tab];
+	(event: 'update:model-value', tab: Tab): void;
 }>();
 
 const externalHooks = useExternalHooks();
@@ -153,15 +162,6 @@ function onTooltipClick(tab: string, event: MouseEvent) {
 	}
 }
 </script>
-
-<template>
-	<N8nTabs
-		:options="options"
-		:model-value="modelValue"
-		@update:model-value="onTabSelect"
-		@tooltip-click="onTooltipClick"
-	/>
-</template>
 
 <style lang="scss">
 #communityNode > div {

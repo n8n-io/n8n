@@ -5,12 +5,11 @@ import type {
 	ResourceMapperField,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import {
-	ROW_NUMBER,
-	type ISheetUpdateData,
-	type SheetProperties,
-	type ValueInputOption,
-	type ValueRenderOption,
+import type {
+	ISheetUpdateData,
+	SheetProperties,
+	ValueInputOption,
+	ValueRenderOption,
 } from '../../helpers/GoogleSheets.types';
 import type { GoogleSheet } from '../../helpers/GoogleSheet';
 import {
@@ -18,12 +17,7 @@ import {
 	checkForSchemaChanges,
 	untilSheetSelected,
 } from '../../helpers/GoogleSheets.utils';
-import {
-	cellFormat,
-	handlingExtraData,
-	locationDefine,
-	useAppendOption,
-} from './commonDescription';
+import { cellFormat, handlingExtraData, locationDefine } from './commonDescription';
 
 export const description: SheetProperties = [
 	{
@@ -66,7 +60,7 @@ export const description: SheetProperties = [
 		name: 'columnToMatchOn',
 		type: 'options',
 		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsDependsOn: ['sheetName.value'],
 			loadOptionsMethod: 'getSheetHeaderRowAndSkipEmpty',
@@ -132,7 +126,7 @@ export const description: SheetProperties = [
 						name: 'column',
 						type: 'options',
 						description:
-							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsDependsOn: ['sheetName.value', 'columnToMatchOn'],
 							loadOptionsMethod: 'getSheetHeaderRowAndAddColumn',
@@ -198,7 +192,7 @@ export const description: SheetProperties = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add option',
+		placeholder: 'Add Option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -217,7 +211,14 @@ export const description: SheetProperties = [
 				...handlingExtraData,
 				displayOptions: { show: { '/columns.mappingMode': ['autoMapInputData'] } },
 			},
-			useAppendOption,
+			{
+				displayName: 'Use Append',
+				name: 'useAppend',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to use append instead of update(default), this is more efficient but in some cases data might be misaligned',
+			},
 		],
 	},
 ];
@@ -245,19 +246,19 @@ export async function execute(
 
 	const locationDefineOption = (options.locationDefine as IDataObject)?.values as IDataObject;
 
-	let keyRowIndex = 0;
-	let dataStartRowIndex = 1;
+	let headerRow = 0;
+	let firstDataRow = 1;
 
 	if (locationDefineOption) {
 		if (locationDefineOption.headerRow) {
-			keyRowIndex = parseInt(locationDefineOption.headerRow as string, 10) - 1;
+			headerRow = parseInt(locationDefineOption.headerRow as string, 10) - 1;
 		}
 		if (locationDefineOption.firstDataRow) {
-			dataStartRowIndex = parseInt(locationDefineOption.firstDataRow as string, 10) - 1;
+			firstDataRow = parseInt(locationDefineOption.firstDataRow as string, 10) - 1;
 		}
 	}
 
-	let dataMode =
+	const dataMode =
 		nodeVersion < 4
 			? (this.getNodeParameter('dataMode', 0) as string)
 			: (this.getNodeParameter('columns.mappingMode', 0) as string);
@@ -266,18 +267,14 @@ export async function execute(
 
 	const sheetData = (await sheet.getData(sheetName, 'FORMATTED_VALUE')) ?? [];
 
-	if (!sheetData[keyRowIndex] && dataMode !== 'autoMapInputData') {
-		if (!sheetData.length) {
-			dataMode = 'autoMapInputData';
-		} else {
-			throw new NodeOperationError(
-				this.getNode(),
-				`Could not retrieve the column names from row ${keyRowIndex + 1}`,
-			);
-		}
+	if (!sheetData[headerRow] && dataMode !== 'autoMapInputData') {
+		throw new NodeOperationError(
+			this.getNode(),
+			`Could not retrieve the column names from row ${headerRow + 1}`,
+		);
 	}
 
-	columnNames = sheetData[keyRowIndex] ?? [];
+	columnNames = sheetData[headerRow] ?? [];
 
 	if (nodeVersion >= 4.4) {
 		const schema = this.getNodeParameter('columns.schema', 0) as ResourceMapperField[];
@@ -294,13 +291,13 @@ export async function execute(
 	// TODO: Add support for multiple columns to match on in the next overhaul
 	const keyIndex = columnNames.indexOf(columnsToMatchOn[0]);
 
-	const columnValuesList = await sheet.getColumnValues({
+	const columnValues = await sheet.getColumnValues(
 		range,
 		keyIndex,
-		dataStartRowIndex,
+		firstDataRow,
 		valueRenderMode,
 		sheetData,
-	});
+	);
 
 	const updateData: ISheetUpdateData[] = [];
 	const appendData: IDataObject[] = [];
@@ -315,7 +312,7 @@ export async function execute(
 	};
 
 	const addNewColumn = (key: string) => {
-		if (!columnNames.includes(key) && key !== ROW_NUMBER) {
+		if (!columnNames.includes(key)) {
 			newColumns.add(key);
 		}
 	};
@@ -324,36 +321,26 @@ export async function execute(
 	for (let i = 0; i < items.length; i++) {
 		if (dataMode === 'nothing') continue;
 
-		const inputData: IDataObject[] = [];
+		const data: IDataObject[] = [];
 
 		if (dataMode === 'autoMapInputData') {
 			const handlingExtraDataOption = (options.handlingExtraData as string) || 'insertInNewColumn';
 			if (handlingExtraDataOption === 'ignoreIt') {
-				inputData.push(items[i].json);
+				data.push(items[i].json);
 			}
 			if (handlingExtraDataOption === 'error') {
 				Object.keys(items[i].json).forEach((key) => errorOnUnexpectedColumn(key, i));
-				inputData.push(items[i].json);
+				data.push(items[i].json);
 			}
 			if (handlingExtraDataOption === 'insertInNewColumn') {
 				Object.keys(items[i].json).forEach(addNewColumn);
-				inputData.push(items[i].json);
+				data.push(items[i].json);
 			}
 		} else {
 			const valueToMatchOn =
 				nodeVersion < 4
-					? (this.getNodeParameter('valueToMatchOn', i, '') as string)
-					: (this.getNodeParameter(`columns.value[${columnsToMatchOn[0]}]`, i, '') as string);
-
-			if (valueToMatchOn === '') {
-				throw new NodeOperationError(
-					this.getNode(),
-					"The 'Column to Match On' parameter is required",
-					{
-						itemIndex: i,
-					},
-				);
-			}
+					? (this.getNodeParameter('valueToMatchOn', i) as string)
+					: (this.getNodeParameter(`columns.value[${columnsToMatchOn[0]}]`, i) as string);
 
 			if (nodeVersion < 4) {
 				const valuesToSend = this.getNodeParameter('fieldsUi.values', i, []) as IDataObject[];
@@ -377,7 +364,7 @@ export async function execute(
 					return acc;
 				}, {} as IDataObject);
 				fields[columnsToMatchOn[0]] = valueToMatchOn;
-				inputData.push(fields);
+				data.push(fields);
 			} else {
 				const mappingValues = this.getNodeParameter('columns.value', i) as IDataObject;
 				if (Object.keys(mappingValues).length === 0) {
@@ -392,7 +379,7 @@ export async function execute(
 						mappingValues[key] = '';
 					}
 				});
-				inputData.push(mappingValues);
+				data.push(mappingValues);
 				mappedValues.push(mappingValues);
 			}
 		}
@@ -403,60 +390,56 @@ export async function execute(
 				sheetName,
 				[newColumnNames],
 				(options.cellFormat as ValueInputOption) || cellFormatDefault(nodeVersion),
-				keyRowIndex + 1,
+				headerRow + 1,
 			);
 			columnNames = newColumnNames;
-			sheetData[keyRowIndex] = newColumnNames;
+			sheetData[headerRow] = newColumnNames;
 			newColumns.clear();
 		}
 
-		const indexKey = columnsToMatchOn[0];
-
-		const preparedData = await sheet.prepareDataForUpdateOrUpsert({
-			inputData,
-			indexKey,
+		const preparedData = await sheet.prepareDataForUpdateOrUpsert(
+			data,
+			columnsToMatchOn[0],
 			range,
-			keyRowIndex,
-			dataStartRowIndex,
+			headerRow,
+			firstDataRow,
 			valueRenderMode,
-			upsert: true,
-			columnNamesList: [columnNames.concat([...newColumns])],
-			columnValuesList,
-		});
+			true,
+			[columnNames.concat([...newColumns])],
+			columnValues,
+		);
 
 		updateData.push(...preparedData.updateData);
 		appendData.push(...preparedData.appendData);
 	}
-
-	const columnNamesList = [columnNames.concat([...newColumns])];
 
 	if (updateData.length) {
 		await sheet.batchUpdate(updateData, valueInputMode);
 	}
 	if (appendData.length) {
 		const lastRow = sheetData.length + 1;
-		const useAppend = options.useAppend as boolean;
-
 		if (options.useAppend) {
-			await sheet.appendSheetData({
-				inputData: appendData,
+			await sheet.appendSheetData(
+				appendData,
 				range,
-				keyRowIndex: keyRowIndex + 1,
+				headerRow + 1,
 				valueInputMode,
-				columnNamesList,
+				false,
+				[columnNames.concat([...newColumns])],
 				lastRow,
-				useAppend,
-			});
+				options.useAppend as boolean,
+			);
 		} else {
 			await sheet.appendEmptyRowsOrColumns(sheetId, 1, 0);
-			await sheet.appendSheetData({
-				inputData: appendData,
+			await sheet.appendSheetData(
+				appendData,
 				range,
-				keyRowIndex: keyRowIndex + 1,
+				headerRow + 1,
 				valueInputMode,
-				columnNamesList,
+				false,
+				[columnNames.concat([...newColumns])],
 				lastRow,
-			});
+			);
 		}
 	}
 

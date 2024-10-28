@@ -1,6 +1,5 @@
-import type { StoryFn } from '@storybook/vue3';
-
 import N8nActionDropdown from './ActionDropdown.vue';
+import type { StoryFn } from '@storybook/vue3';
 
 export default {
 	title: 'Atoms/ActionDropdown',

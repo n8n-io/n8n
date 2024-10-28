@@ -1,10 +1,36 @@
+<template>
+	<div :class="classes">
+		<div :class="$style.avatarContainer">
+			<N8nAvatar :first-name="firstName" :last-name="lastName" />
+		</div>
+
+		<div v-if="isPendingUser" :class="$style.pendingUser">
+			<N8nText :bold="true">{{ email }}</N8nText>
+			<span :class="$style.pendingBadge"><N8nBadge :bold="true">Pending</N8nBadge></span>
+		</div>
+		<div v-else :class="$style.infoContainer">
+			<div>
+				<N8nText :bold="true" color="text-dark">
+					{{ firstName }} {{ lastName }}
+					{{ isCurrentUser ? t('nds.userInfo.you') : '' }}
+				</N8nText>
+				<span v-if="disabled" :class="$style.pendingBadge">
+					<N8nBadge :bold="true">Disabled</N8nBadge>
+				</span>
+			</div>
+			<div>
+				<N8nText data-test-id="user-email" size="small" color="text-light">{{ email }}</N8nText>
+			</div>
+		</div>
+	</div>
+</template>
+
 <script lang="ts" setup>
 import { computed, useCssModule } from 'vue';
-
-import { useI18n } from '../../composables/useI18n';
+import N8nText from '../N8nText';
 import N8nAvatar from '../N8nAvatar';
 import N8nBadge from '../N8nBadge';
-import N8nText from '../N8nText';
+import { useI18n } from '../../composables/useI18n';
 
 interface UsersInfoProps {
 	firstName?: string;
@@ -32,33 +58,6 @@ const classes = computed(
 	}),
 );
 </script>
-
-<template>
-	<div :class="classes">
-		<div :class="$style.avatarContainer">
-			<N8nAvatar :first-name="firstName" :last-name="lastName" />
-		</div>
-
-		<div v-if="isPendingUser" :class="$style.pendingUser">
-			<N8nText :bold="true">{{ email }}</N8nText>
-			<span :class="$style.pendingBadge"><N8nBadge :bold="true">Pending</N8nBadge></span>
-		</div>
-		<div v-else :class="$style.infoContainer">
-			<div>
-				<N8nText :bold="true" color="text-dark">
-					{{ firstName }} {{ lastName }}
-					{{ isCurrentUser ? t('nds.userInfo.you') : '' }}
-				</N8nText>
-				<span v-if="disabled" :class="$style.pendingBadge">
-					<N8nBadge :bold="true">Disabled</N8nBadge>
-				</span>
-			</div>
-			<div>
-				<N8nText data-test-id="user-email" size="small" color="text-light">{{ email }}</N8nText>
-			</div>
-		</div>
-	</div>
-</template>
 
 <style lang="scss" module>
 .container {

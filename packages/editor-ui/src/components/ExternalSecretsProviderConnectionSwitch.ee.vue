@@ -7,7 +7,7 @@ import { computed, onMounted, ref } from 'vue';
 import type { EventBus } from 'n8n-design-system/utils';
 
 const emit = defineEmits<{
-	change: [value: boolean];
+	(e: 'change', value: boolean): void;
 }>();
 
 const props = withDefaults(

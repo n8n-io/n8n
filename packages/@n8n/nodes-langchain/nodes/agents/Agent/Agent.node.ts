@@ -1,5 +1,6 @@
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type {
+	ConnectionTypes,
 	INodeInputConfiguration,
 	INodeInputFilter,
 	IExecuteFunctions,
@@ -8,6 +9,7 @@ import type {
 	INodeTypeDescription,
 	INodeProperties,
 } from 'n8n-workflow';
+import { getTemplateNoticeField } from '../../../utils/sharedFields';
 import { promptTypeOptions, textInput } from '../../../utils/descriptions';
 import { conversationalAgentProperties } from './agents/ConversationalAgent/description';
 import { conversationalAgentExecute } from './agents/ConversationalAgent/execute';
@@ -27,16 +29,16 @@ import { toolsAgentExecute } from './agents/ToolsAgent/execute';
 function getInputs(
 	agent: 'toolsAgent' | 'conversationalAgent' | 'openAiFunctionsAgent' | 'reActAgent' | 'sqlAgent',
 	hasOutputParser?: boolean,
-): Array<NodeConnectionType | INodeInputConfiguration> {
+): Array<ConnectionTypes | INodeInputConfiguration> {
 	interface SpecialInput {
-		type: NodeConnectionType;
+		type: ConnectionTypes;
 		filter?: INodeInputFilter;
 		required?: boolean;
 	}
 
 	const getInputData = (
 		inputs: SpecialInput[],
-	): Array<NodeConnectionType | INodeInputConfiguration> => {
+	): Array<ConnectionTypes | INodeInputConfiguration> => {
 		const displayNames: { [key: string]: string } = {
 			[NodeConnectionType.AiLanguageModel]: 'Model',
 			[NodeConnectionType.AiMemory]: 'Memory',
@@ -45,18 +47,10 @@ function getInputs(
 		};
 
 		return inputs.map(({ type, filter }) => {
-			const isModelType = type === NodeConnectionType.AiLanguageModel;
-			let displayName = type in displayNames ? displayNames[type] : undefined;
-			if (
-				isModelType &&
-				['openAiFunctionsAgent', 'toolsAgent', 'conversationalAgent'].includes(agent)
-			) {
-				displayName = 'Chat Model';
-			}
 			const input: INodeInputConfiguration = {
 				type,
-				displayName,
-				required: isModelType,
+				displayName: type in displayNames ? displayNames[type] : undefined,
+				required: type === NodeConnectionType.AiLanguageModel,
 				maxConnections: [NodeConnectionType.AiLanguageModel, NodeConnectionType.AiMemory].includes(
 					type as NodeConnectionType,
 				)
@@ -81,12 +75,11 @@ function getInputs(
 				filter: {
 					nodes: [
 						'@n8n/n8n-nodes-langchain.lmChatAnthropic',
-						'@n8n/n8n-nodes-langchain.lmChatAwsBedrock',
 						'@n8n/n8n-nodes-langchain.lmChatGroq',
 						'@n8n/n8n-nodes-langchain.lmChatOllama',
 						'@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						'@n8n/n8n-nodes-langchain.lmChatGooglePalm',
 						'@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-						'@n8n/n8n-nodes-langchain.lmChatGoogleVertex',
 						'@n8n/n8n-nodes-langchain.lmChatMistralCloud',
 						'@n8n/n8n-nodes-langchain.lmChatAzureOpenAi',
 					],
@@ -110,13 +103,9 @@ function getInputs(
 					nodes: [
 						'@n8n/n8n-nodes-langchain.lmChatAnthropic',
 						'@n8n/n8n-nodes-langchain.lmChatAzureOpenAi',
-						'@n8n/n8n-nodes-langchain.lmChatAwsBedrock',
 						'@n8n/n8n-nodes-langchain.lmChatMistralCloud',
-						'@n8n/n8n-nodes-langchain.lmChatOllama',
 						'@n8n/n8n-nodes-langchain.lmChatOpenAi',
 						'@n8n/n8n-nodes-langchain.lmChatGroq',
-						'@n8n/n8n-nodes-langchain.lmChatGoogleVertex',
-						'@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
 					],
 				},
 			},
@@ -207,37 +196,35 @@ const agentTypeProperty: INodeProperties = {
 			name: 'Tools Agent',
 			value: 'toolsAgent',
 			description:
-				'Utilizes structured tool schemas for precise and reliable tool selection and execution. Recommended for complex tasks requiring accurate and consistent tool usage, but only usable with models that support tool calling.',
+				'Utilized unified Tool calling interface to select the appropriate tools and argument for execution',
 		},
 		{
 			name: 'Conversational Agent',
 			value: 'conversationalAgent',
 			description:
-				'Describes tools in the system prompt and parses JSON responses for tool calls. More flexible but potentially less reliable than the Tools Agent. Suitable for simpler interactions or with models not supporting structured schemas.',
+				'Selects tools to accomplish its task and uses memory to recall previous conversations',
 		},
 		{
 			name: 'OpenAI Functions Agent',
 			value: 'openAiFunctionsAgent',
 			description:
-				"Leverages OpenAI's function calling capabilities to precisely select and execute tools. Excellent for tasks requiring structured outputs when working with OpenAI models.",
+				"Utilizes OpenAI's Function Calling feature to select the appropriate tool and arguments for execution",
 		},
 		{
 			name: 'Plan and Execute Agent',
 			value: 'planAndExecuteAgent',
 			description:
-				'Creates a high-level plan for complex tasks and then executes each step. Suitable for multi-stage problems or when a strategic approach is needed.',
+				'Plan and execute agents accomplish an objective by first planning what to do, then executing the sub tasks',
 		},
 		{
 			name: 'ReAct Agent',
 			value: 'reActAgent',
-			description:
-				'Combines reasoning and action in an iterative process. Effective for tasks that require careful analysis and step-by-step problem-solving.',
+			description: 'Strategically select tools to accomplish a given task',
 		},
 		{
 			name: 'SQL Agent',
 			value: 'sqlAgent',
-			description:
-				'Specializes in interacting with SQL databases. Ideal for data analysis tasks, generating queries, or extracting insights from structured data.',
+			description: 'Answers questions about data in an SQL database',
 		},
 	],
 	default: '',
@@ -259,7 +246,7 @@ export class Agent implements INodeType {
 			color: '#404040',
 		},
 		codex: {
-			alias: ['LangChain', 'Chat', 'Conversational', 'Plan and Execute', 'ReAct', 'Tools'],
+			alias: ['LangChain'],
 			categories: ['AI'],
 			subcategories: {
 				AI: ['Agents', 'Root Nodes'],
@@ -305,14 +292,10 @@ export class Agent implements INodeType {
 		],
 		properties: [
 			{
-				displayName:
-					'Tip: Get a feel for agents with our quick <a href="https://docs.n8n.io/advanced-ai/intro-tutorial/" target="_blank">tutorial</a> or see an <a href="/templates/1954" target="_blank">example</a> of how this node works',
-				name: 'notice_tip',
-				type: 'notice',
-				default: '',
+				...getTemplateNoticeField(1954),
 				displayOptions: {
 					show: {
-						agent: ['conversationalAgent', 'toolsAgent'],
+						agent: ['conversationalAgent'],
 					},
 				},
 			},

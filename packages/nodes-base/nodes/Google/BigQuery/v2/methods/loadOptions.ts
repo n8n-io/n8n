@@ -1,12 +1,12 @@
 import type { IDataObject, ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
-import { googleBigQueryApiRequest } from '../transport';
+import { googleApiRequest } from '../transport';
 
 export async function getDatasets(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const projectId = this.getNodeParameter('projectId', undefined, {
 		extractValue: true,
 	});
 	const returnData: INodePropertyOptions[] = [];
-	const { datasets } = await googleBigQueryApiRequest.call(
+	const { datasets } = await googleApiRequest.call(
 		this,
 		'GET',
 		`/v2/projects/${projectId}/datasets`,
@@ -33,7 +33,7 @@ export async function getSchema(this: ILoadOptionsFunctions): Promise<INodePrope
 
 	const returnData: INodePropertyOptions[] = [];
 
-	const { schema } = await googleBigQueryApiRequest.call(
+	const { schema } = await googleApiRequest.call(
 		this,
 		'GET',
 		`/v2/projects/${projectId}/datasets/${datasetId}/tables/${tableId}`,

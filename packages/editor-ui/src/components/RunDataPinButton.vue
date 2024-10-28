@@ -18,7 +18,7 @@ type Props = {
 const props = defineProps<Props>();
 
 const emit = defineEmits<{
-	togglePinData: [];
+	(event: 'togglePinData'): void;
 }>();
 
 const visible = computed(() =>

@@ -1,4 +1,4 @@
-import type { MigrationContext, ReversibleMigration } from '@/databases/types';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 
 export class ChangeDataSize1615306975123 implements ReversibleMigration {
 	async up({ queryRunner, tablePrefix }: MigrationContext) {

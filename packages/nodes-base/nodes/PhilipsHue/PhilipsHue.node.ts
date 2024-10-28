@@ -7,7 +7,6 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
 
 import { getUser, philipsHueApiRequest } from './GenericFunctions';
 
@@ -26,8 +25,8 @@ export class PhilipsHue implements INodeType {
 		defaults: {
 			name: 'Philips Hue',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: ['main'],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'philipsHueOAuth2Api',

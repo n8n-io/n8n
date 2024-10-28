@@ -1,17 +1,16 @@
-import {
-	type IExecuteFunctions,
-	type ICredentialDataDecryptedObject,
-	type ICredentialsDecrypted,
-	type ICredentialTestFunctions,
-	type IDataObject,
-	type ILoadOptionsFunctions,
-	type INodeCredentialTestResult,
-	type INodeExecutionData,
-	type INodePropertyOptions,
-	type INodeType,
-	type INodeTypeDescription,
-	type JsonObject,
-	NodeConnectionType,
+import type {
+	IExecuteFunctions,
+	ICredentialDataDecryptedObject,
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
+	IDataObject,
+	ILoadOptionsFunctions,
+	INodeCredentialTestResult,
+	INodeExecutionData,
+	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
+	JsonObject,
 } from 'n8n-workflow';
 
 import {
@@ -40,8 +39,8 @@ export class Linear implements INodeType {
 		defaults: {
 			name: 'Linear',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: ['main'],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'linearApi',
@@ -299,7 +298,7 @@ export class Linear implements INodeType {
 
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },

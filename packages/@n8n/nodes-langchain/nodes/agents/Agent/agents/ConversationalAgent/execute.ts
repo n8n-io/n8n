@@ -19,7 +19,7 @@ export async function conversationalAgentExecute(
 	this: IExecuteFunctions,
 	nodeVersion: number,
 ): Promise<INodeExecutionData[][]> {
-	this.logger.debug('Executing Conversational Agent');
+	this.logger.verbose('Executing Conversational Agent');
 	const model = await this.getInputConnectionData(NodeConnectionType.AiLanguageModel, 0);
 
 	if (!isChatInstance(model)) {
@@ -114,7 +114,7 @@ export async function conversationalAgentExecute(
 		} catch (error) {
 			throwIfToolSchema(this, error);
 
-			if (this.continueOnFail()) {
+			if (this.continueOnFail(error)) {
 				returnData.push({ json: { error: error.message }, pairedItem: { item: itemIndex } });
 				continue;
 			}

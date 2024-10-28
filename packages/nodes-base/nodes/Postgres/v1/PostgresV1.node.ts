@@ -1,3 +1,4 @@
+/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import type {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
@@ -9,7 +10,7 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import pgPromise from 'pg-promise';
 
@@ -27,8 +28,8 @@ const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'Postgres',
 	},
-	inputs: [NodeConnectionType.Main],
-	outputs: [NodeConnectionType.Main],
+	inputs: ['main'],
+	outputs: ['main'],
 	credentials: [
 		{
 			name: 'postgres',

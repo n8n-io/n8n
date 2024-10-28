@@ -1,8 +1,7 @@
-import type { StoryFn } from '@storybook/vue3';
-
 import N8nCallout from './Callout.vue';
 import N8nLink from '../N8nLink';
 import N8nText from '../N8nText';
+import type { StoryFn } from '@storybook/vue3';
 
 export default {
 	title: 'Atoms/Callout',

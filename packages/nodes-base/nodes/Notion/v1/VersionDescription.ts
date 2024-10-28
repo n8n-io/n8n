@@ -1,5 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { NodeConnectionType, type INodeTypeDescription } from 'n8n-workflow';
+import type { INodeTypeDescription } from 'n8n-workflow';
 import { databaseFields, databaseOperations } from '../shared/descriptions/DatabaseDescription';
 
 import { userFields, userOperations } from '../shared/descriptions/UserDescription';
@@ -24,8 +24,8 @@ export const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'Notion',
 	},
-	inputs: [NodeConnectionType.Main],
-	outputs: [NodeConnectionType.Main],
+	inputs: ['main'],
+	outputs: ['main'],
 	credentials: [
 		{
 			name: 'notionApi',

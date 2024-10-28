@@ -1,7 +1,7 @@
 import { Container } from 'typedi';
 
-import type { User } from '@/databases/entities/user';
-import { EventService } from '@/events/event.service';
+import { InternalHooks } from '@/InternalHooks';
+import { LdapService } from '@/Ldap/ldap.service';
 import {
 	createLdapUserOnLocalDb,
 	getUserByEmail,
@@ -10,8 +10,9 @@ import {
 	mapLdapAttributesToUser,
 	createLdapAuthIdentity,
 	updateLdapUserOnLocalDb,
-} from '@/ldap/helpers.ee';
-import { LdapService } from '@/ldap/ldap.service.ee';
+} from '@/Ldap/helpers';
+import type { User } from '@db/entities/User';
+import { EventRelay } from '@/eventbus/event-relay.service';
 
 export const handleLdapLogin = async (
 	loginId: string,
@@ -50,11 +51,11 @@ export const handleLdapLogin = async (
 			await updateLdapUserOnLocalDb(identity, ldapAttributesValues);
 		} else {
 			const user = await createLdapUserOnLocalDb(ldapAttributesValues, ldapId);
-			Container.get(EventService).emit('user-signed-up', {
-				user,
-				userType: 'ldap',
-				wasDisabledLdapUser: false,
+			void Container.get(InternalHooks).onUserSignup(user, {
+				user_type: 'ldap',
+				was_disabled_ldap_user: false,
 			});
+			Container.get(EventRelay).emit('user-signed-up', { user });
 			return user;
 		}
 	} else {

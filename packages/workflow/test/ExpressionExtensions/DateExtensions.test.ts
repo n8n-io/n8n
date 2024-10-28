@@ -3,9 +3,7 @@
  */
 
 import { DateTime } from 'luxon';
-
 import { getGlobalState } from '@/GlobalState';
-
 import { evaluate, getLocalISOString } from './Helpers';
 import { dateExtensions } from '../../src/Extensions/DateExtensions';
 

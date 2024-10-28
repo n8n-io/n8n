@@ -6,7 +6,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { gitlabApiRequest, gitlabApiRequestAllItems } from './GenericFunctions';
 
@@ -22,8 +22,8 @@ export class Gitlab implements INodeType {
 		defaults: {
 			name: 'GitLab',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: ['main'],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'gitlabApi',
@@ -1337,7 +1337,7 @@ export class Gitlab implements INodeType {
 		// 		_credentials = await this.getCredentials('gitlabOAuth2Api');
 		// 	}
 		// } catch (error) {
-		// 	if (this.continueOnFail()) {
+		// 	if (this.continueOnFail(error)) {
 		// 		return [this.helpers.returnJsonArray([{ error: error.message }])];
 		// 	}
 		// 	throw new NodeOperationError(this.getNode(), error as Error);
@@ -1755,7 +1755,7 @@ export class Gitlab implements INodeType {
 					returnData.push(...executionData);
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					if (
 						overwriteDataOperations.includes(fullOperation) ||
 						overwriteDataOperationsArray.includes(fullOperation)

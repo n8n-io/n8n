@@ -13,7 +13,6 @@ import {
 } from 'n8n-workflow';
 import { OPERATORS_BY_ID, type FilterOperatorId } from './constants';
 import type { ConditionResult, FilterOperator } from './types';
-import { DateTime } from 'luxon';
 
 export const getFilterOperator = (key: string) =>
 	OPERATORS_BY_ID[key as FilterOperatorId] as FilterOperator;
@@ -24,10 +23,7 @@ const getTargetType = (type: FilterOperatorType) => {
 	return 'string';
 };
 
-const convertToType = (
-	value: NodeParameterValue | NodeParameterValue[],
-	type: FilterOperatorType,
-): NodeParameterValue | NodeParameterValue[] => {
+const convertToType = (value: NodeParameterValue, type: FilterOperatorType): NodeParameterValue => {
 	if (type === 'any') return value;
 
 	const fallback = type === 'boolean' ? false : value;
@@ -99,7 +95,7 @@ export const resolveCondition = ({
 				index,
 				errorFormat: 'inline',
 			});
-			return { status: 'success', result, resolved };
+			return { status: 'success', result };
 		} catch (error) {
 			let errorMessage = i18n.baseText('parameterInput.error');
 
@@ -109,7 +105,6 @@ export const resolveCondition = ({
 			return {
 				status: 'validation_error',
 				error: errorMessage,
-				resolved,
 			};
 		}
 	} catch (error) {
@@ -136,21 +131,4 @@ export const operatorTypeToNodeProperty = (
 		default:
 			return { type: operatorType };
 	}
-};
-
-export const inferOperatorType = (value: unknown): FilterOperatorType => {
-	if (typeof value === 'string') {
-		if (validateFieldType('filter', value, 'dateTime').valid) return 'dateTime';
-		return 'string';
-	} else if (typeof value === 'number') {
-		return 'number';
-	} else if (typeof value === 'boolean') {
-		return 'boolean';
-	} else if (DateTime.isDateTime(value)) {
-		return 'dateTime';
-	} else if (value && typeof value === 'object') {
-		return Array.isArray(value) ? 'array' : 'object';
-	}
-
-	return 'any';
 };

@@ -8,7 +8,6 @@ import { useToast } from '@/composables/useToast';
 import { useLoadingService } from '@/composables/useLoadingService';
 import { useI18n } from '@/composables/useI18n';
 import { useMessage } from '@/composables/useMessage';
-import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import CopyInput from '@/components/CopyInput.vue';
 import type { TupleToUnion } from '@/utils/typeHelpers';
 import type { SshKeyTypes } from '@/Interface';
@@ -18,7 +17,6 @@ const sourceControlStore = useSourceControlStore();
 const uiStore = useUIStore();
 const toast = useToast();
 const message = useMessage();
-const documentTitle = useDocumentTitle();
 const loadingService = useLoadingService();
 
 const isConnected = ref(false);
@@ -114,7 +112,6 @@ const initialize = async () => {
 };
 
 onMounted(async () => {
-	documentTitle.set(locale.baseText('settings.sourceControl.title'));
 	if (!sourceControlStore.isEnterpriseSourceControlEnabled) return;
 	await initialize();
 });
@@ -134,7 +131,7 @@ const repoUrlValidationRules: Array<Rule | RuleGroup> = [
 		name: 'MATCH_REGEX',
 		config: {
 			regex:
-				/^(?:git@|ssh:\/\/git@|[\w-]+@)(?:[\w.-]+|\[[0-9a-fA-F:]+])(?::\d+)?[:\/][\w\-~]+(?:\/[\w\-~]+)*(?:\.git)?(?:\/.*)?$/,
+				/^(ssh:\/\/)?git@(?:\[[0-9a-fA-F:]+\]|(?:[a-zA-Z0-9-]+\.)*[a-zA-Z0-9-]+)(?::[0-9]+)*:(?:v[0-9]+\/)?[a-zA-Z0-9_.\-\/]+(\.git)?(?:\/[a-zA-Z0-9_.\-\/]+)*$/,
 			message: locale.baseText('settings.sourceControl.repoUrlInvalid'),
 		},
 	},

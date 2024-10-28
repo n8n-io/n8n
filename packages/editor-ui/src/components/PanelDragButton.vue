@@ -1,34 +1,3 @@
-<script lang="ts">
-import { defineComponent } from 'vue';
-import Draggable from './Draggable.vue';
-import type { XYPosition } from '@/Interface';
-
-export default defineComponent({
-	components: {
-		Draggable,
-	},
-	props: {
-		canMoveRight: {
-			type: Boolean,
-		},
-		canMoveLeft: {
-			type: Boolean,
-		},
-	},
-	methods: {
-		onDrag(e: XYPosition) {
-			this.$emit('drag', e);
-		},
-		onDragStart() {
-			this.$emit('dragstart');
-		},
-		onDragEnd() {
-			this.$emit('dragend');
-		},
-	},
-});
-</script>
-
 <template>
 	<Draggable
 		type="panel-resize"
@@ -71,6 +40,36 @@ export default defineComponent({
 		</template>
 	</Draggable>
 </template>
+
+<script lang="ts">
+import { defineComponent } from 'vue';
+import Draggable from './Draggable.vue';
+
+export default defineComponent({
+	components: {
+		Draggable,
+	},
+	props: {
+		canMoveRight: {
+			type: Boolean,
+		},
+		canMoveLeft: {
+			type: Boolean,
+		},
+	},
+	methods: {
+		onDrag(e: { x: number; y: number }) {
+			this.$emit('drag', e);
+		},
+		onDragStart() {
+			this.$emit('dragstart');
+		},
+		onDragEnd() {
+			this.$emit('dragend');
+		},
+	},
+});
+</script>
 
 <style lang="scss" module>
 .dragContainer {

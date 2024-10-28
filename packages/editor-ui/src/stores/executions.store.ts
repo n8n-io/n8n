@@ -1,10 +1,9 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
-import type { IDataObject, ExecutionSummary, AnnotationVote } from 'n8n-workflow';
+import type { IDataObject, ExecutionSummary } from 'n8n-workflow';
 import type {
 	ExecutionFilterType,
 	ExecutionsQueryFilter,
-	ExecutionSummaryWithScopes,
 	IExecutionDeleteFilter,
 	IExecutionFlattedResponse,
 	IExecutionResponse,
@@ -35,7 +34,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 	const autoRefreshTimeout = ref<NodeJS.Timeout | null>(null);
 	const autoRefreshDelay = ref(4 * 1000); // Refresh data every 4 secs
 
-	const executionsById = ref<Record<string, ExecutionSummaryWithScopes>>({});
+	const executionsById = ref<Record<string, ExecutionSummary>>({});
 	const executionsCount = ref(0);
 	const executionsCountEstimated = ref(false);
 	const executions = computed(() => {
@@ -58,7 +57,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 		}, {}),
 	);
 
-	const currentExecutionsById = ref<Record<string, ExecutionSummaryWithScopes>>({});
+	const currentExecutionsById = ref<Record<string, ExecutionSummary>>({});
 	const currentExecutions = computed(() => {
 		const data = Object.values(currentExecutionsById.value);
 
@@ -81,17 +80,14 @@ export const useExecutionsStore = defineStore('executions', () => {
 
 	const allExecutions = computed(() => [...currentExecutions.value, ...executions.value]);
 
-	function addExecution(execution: ExecutionSummaryWithScopes) {
-		executionsById.value = {
-			...executionsById.value,
-			[execution.id]: {
-				...execution,
-				mode: execution.mode,
-			},
+	function addExecution(execution: ExecutionSummary) {
+		executionsById.value[execution.id] = {
+			...execution,
+			mode: execution.mode,
 		};
 	}
 
-	function addCurrentExecution(execution: ExecutionSummaryWithScopes) {
+	function addCurrentExecution(execution: ExecutionSummary) {
 		currentExecutionsById.value[execution.id] = {
 			...execution,
 			mode: execution.mode,
@@ -188,24 +184,6 @@ export const useExecutionsStore = defineStore('executions', () => {
 		}
 	}
 
-	async function annotateExecution(
-		id: string,
-		data: { tags?: string[]; vote?: AnnotationVote | null },
-	): Promise<void> {
-		const updatedExecution: ExecutionSummaryWithScopes = await makeRestApiRequest(
-			rootStore.restApiContext,
-			'PATCH',
-			`/executions/${id}`,
-			data,
-		);
-
-		addExecution(updatedExecution);
-
-		if (updatedExecution.id === activeExecution.value?.id) {
-			activeExecution.value = updatedExecution;
-		}
-	}
-
 	async function stopCurrentExecution(executionId: string): Promise<IExecutionsStopData> {
 		return await makeRestApiRequest(
 			rootStore.restApiContext,
@@ -266,7 +244,6 @@ export const useExecutionsStore = defineStore('executions', () => {
 
 	return {
 		loading,
-		annotateExecution,
 		executionsById,
 		executions,
 		executionsCount,

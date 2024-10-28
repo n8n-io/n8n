@@ -5,7 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { bubbleApiRequest, bubbleApiRequestAllItems, validateJSON } from './GenericFunctions';
 
@@ -23,8 +23,8 @@ export class Bubble implements INodeType {
 		defaults: {
 			name: 'Bubble',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: ['main'],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'bubbleApi',

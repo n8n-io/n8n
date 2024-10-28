@@ -1,16 +1,16 @@
-import { randomInt, randomString } from 'n8n-workflow';
 import Container from 'typedi';
+import { randomInt, randomString } from 'n8n-workflow';
 
 import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
-import type { User } from '@/databases/entities/user';
-import { AuthUserRepository } from '@/databases/repositories/auth-user.repository';
-import { TOTPService } from '@/mfa/totp.service';
+import type { User } from '@db/entities/User';
+import { AuthUserRepository } from '@db/repositories/authUser.repository';
+import { TOTPService } from '@/Mfa/totp.service';
 
-import { createUser, createUserWithMfaEnabled } from '../shared/db/users';
-import { randomValidPassword, uniqueId } from '../shared/random';
-import * as testDb from '../shared/test-db';
+import * as testDb from '../shared/testDb';
 import * as utils from '../shared/utils';
+import { randomValidPassword, uniqueId } from '../shared/random';
+import { createUser, createUserWithMfaEnabled } from '../shared/db/users';
 
 jest.mock('@/telemetry');
 
@@ -48,8 +48,7 @@ describe('Enable MFA setup', () => {
 				secondCall.body.data.recoveryCodes.join(''),
 			);
 
-			const token = new TOTPService().generateTOTP(firstCall.body.data.secret);
-			await testServer.authAgentFor(owner).post('/mfa/disable').send({ token }).expect(200);
+			await testServer.authAgentFor(owner).delete('/mfa/disable').expect(200);
 
 			const thirdCall = await testServer.authAgentFor(owner).get('/mfa/qr').expect(200);
 
@@ -136,16 +135,9 @@ describe('Enable MFA setup', () => {
 
 describe('Disable MFA setup', () => {
 	test('POST /disable should disable login with MFA', async () => {
-		const { user, rawSecret } = await createUserWithMfaEnabled();
-		const token = new TOTPService().generateTOTP(rawSecret);
+		const { user } = await createUserWithMfaEnabled();
 
-		await testServer
-			.authAgentFor(user)
-			.post('/mfa/disable')
-			.send({
-				token,
-			})
-			.expect(200);
+		await testServer.authAgentFor(user).delete('/mfa/disable').expect(200);
 
 		const dbUser = await Container.get(AuthUserRepository).findOneOrFail({
 			where: { id: user.id },
@@ -154,18 +146,6 @@ describe('Disable MFA setup', () => {
 		expect(dbUser.mfaEnabled).toBe(false);
 		expect(dbUser.mfaSecret).toBe(null);
 		expect(dbUser.mfaRecoveryCodes.length).toBe(0);
-	});
-
-	test('POST /disable should fail if invalid token is given', async () => {
-		const { user } = await createUserWithMfaEnabled();
-
-		await testServer
-			.authAgentFor(user)
-			.post('/mfa/disable')
-			.send({
-				token: 'invalid token',
-			})
-			.expect(403);
 	});
 });
 

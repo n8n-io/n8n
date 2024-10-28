@@ -11,7 +11,7 @@ interface Props {
 defineProps<Props>();
 
 const emit = defineEmits<{
-	combinatorChange: [value: FilterTypeCombinator];
+	(event: 'combinatorChange', value: FilterTypeCombinator): void;
 }>();
 
 const i18n = useI18n();

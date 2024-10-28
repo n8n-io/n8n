@@ -6,7 +6,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import Parser from 'rss-parser';
 import { generatePairedItemData } from '../../utils/utilities';
@@ -35,8 +35,8 @@ export class RssFeedRead implements INodeType {
 			name: 'RSS Read',
 			color: '#b02020',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: ['main'],
+		outputs: ['main'],
 		properties: [
 			{
 				displayName: 'URL',
@@ -50,7 +50,7 @@ export class RssFeedRead implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add option',
+				placeholder: 'Add Option',
 				default: {},
 				options: [
 					{
@@ -137,7 +137,7 @@ export class RssFeedRead implements INodeType {
 					returnData.push(...executionData);
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({
 						json: { error: error.message },
 						pairedItem: fallbackPairedItems || [{ item: i }],

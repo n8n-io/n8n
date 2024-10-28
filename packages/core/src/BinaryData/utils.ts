@@ -32,8 +32,7 @@ export async function doesNotExist(dir: string) {
 	}
 }
 
-/** Converts a buffer or a readable stream to a buffer */
-export async function binaryToBuffer(body: Buffer | Readable) {
+export async function toBuffer(body: Buffer | Readable) {
 	if (Buffer.isBuffer(body)) return body;
 	return await new Promise<Buffer>((resolve, reject) => {
 		body

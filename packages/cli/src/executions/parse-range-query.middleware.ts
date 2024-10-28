@@ -1,16 +1,14 @@
+import * as ResponseHelper from '@/ResponseHelper';
 import type { NextFunction, Response } from 'express';
-import { validate } from 'jsonschema';
+import type { ExecutionRequest } from './execution.types';
 import type { JsonObject } from 'n8n-workflow';
 import { ApplicationError, jsonParse } from 'n8n-workflow';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import * as ResponseHelper from '@/response-helper';
-
 import {
 	allowedExecutionsQueryFilterFields as ALLOWED_FILTER_FIELDS,
 	schemaGetExecutionsQueryFilter as SCHEMA,
 } from './execution.service';
-import type { ExecutionRequest } from './execution.types';
+import { validate } from 'jsonschema';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 const isValid = (arg: JsonObject) => validate(arg, SCHEMA).valid;
 

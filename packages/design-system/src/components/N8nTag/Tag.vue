@@ -1,19 +1,16 @@
-<script lang="ts" setup>
-interface TagProps {
-	text: string;
-	clickable?: boolean;
-}
-defineOptions({ name: 'N8nTag' });
-withDefaults(defineProps<TagProps>(), {
-	clickable: true,
-});
-</script>
-
 <template>
-	<span :class="['n8n-tag', $style.tag, { [$style.clickable]: clickable }]" v-bind="$attrs">
+	<span :class="['n8n-tag', $style.tag]" v-bind="$attrs">
 		{{ text }}
 	</span>
 </template>
+
+<script lang="ts" setup>
+interface TagProps {
+	text: string;
+}
+defineOptions({ name: 'N8nTag' });
+defineProps<TagProps>();
+</script>
 
 <style lang="scss" module>
 .tag {
@@ -23,15 +20,11 @@ withDefaults(defineProps<TagProps>(), {
 	background-color: var(--color-background-base);
 	border-radius: var(--border-radius-base);
 	font-size: var(--font-size-2xs);
-
+	cursor: pointer;
 	transition: background-color 0.3s ease;
 
-	&.clickable {
-		cursor: pointer;
-
-		&:hover {
-			background-color: var(--color-background-medium);
-		}
+	&:hover {
+		background-color: var(--color-background-medium);
 	}
 }
 </style>

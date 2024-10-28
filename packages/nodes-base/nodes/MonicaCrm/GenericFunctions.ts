@@ -17,11 +17,11 @@ export async function monicaCrmApiRequest(
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const credentials = await this.getCredentials<{
+	const credentials = (await this.getCredentials('monicaCrmApi')) as {
 		apiToken: string;
 		environment: string;
 		domain: string;
-	}>('monicaCrmApi');
+	};
 
 	if (credentials === undefined) {
 		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');

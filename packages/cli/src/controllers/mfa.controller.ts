@@ -1,7 +1,7 @@
-import { Get, Post, RestController } from '@/decorators';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { MfaService } from '@/mfa/mfa.service';
+import { Delete, Get, Post, RestController } from '@/decorators';
 import { AuthenticatedRequest, MFA } from '@/requests';
+import { MfaService } from '@/Mfa/mfa.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 @RestController('/mfa')
 export class MFAController {
@@ -47,7 +47,7 @@ export class MFAController {
 		};
 	}
 
-	@Post('/enable', { rateLimit: true })
+	@Post('/enable')
 	async activateMFA(req: MFA.Activate) {
 		const { token = null } = req.body;
 		const { id, mfaEnabled } = req.user;
@@ -71,19 +71,14 @@ export class MFAController {
 		await this.mfaService.enableMfa(id);
 	}
 
-	@Post('/disable', { rateLimit: true })
-	async disableMFA(req: MFA.Disable) {
-		const { id: userId } = req.user;
-		const { token = null } = req.body;
+	@Delete('/disable')
+	async disableMFA(req: AuthenticatedRequest) {
+		const { id } = req.user;
 
-		if (typeof token !== 'string' || !token) {
-			throw new BadRequestError('Token is required to disable MFA feature');
-		}
-
-		await this.mfaService.disableMfa(userId, token);
+		await this.mfaService.disableMfa(id);
 	}
 
-	@Post('/verify', { rateLimit: true })
+	@Post('/verify')
 	async verifyMFA(req: MFA.Verify) {
 		const { id } = req.user;
 		const { token } = req.body;

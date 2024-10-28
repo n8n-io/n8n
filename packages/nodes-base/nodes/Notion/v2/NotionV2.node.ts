@@ -86,7 +86,7 @@ export class NotionV2 implements INodeType {
 						);
 						returnData = returnData.concat(executionData);
 					} catch (error) {
-						if (this.continueOnFail()) {
+						if (this.continueOnFail(error)) {
 							returnData.push({
 								json: { error: error.message },
 								pairedItem: { item: i },
@@ -161,7 +161,7 @@ export class NotionV2 implements INodeType {
 						);
 						returnData = returnData.concat(executionData);
 					} catch (error) {
-						if (this.continueOnFail()) {
+						if (this.continueOnFail(error)) {
 							returnData.push({
 								json: { error: error.message },
 								pairedItem: { item: i },
@@ -193,7 +193,7 @@ export class NotionV2 implements INodeType {
 						);
 						returnData = returnData.concat(executionData);
 					} catch (error) {
-						if (this.continueOnFail()) {
+						if (this.continueOnFail(error)) {
 							returnData.push({
 								json: { error: error.message },
 								pairedItem: { item: i },
@@ -236,7 +236,7 @@ export class NotionV2 implements INodeType {
 						);
 						returnData = returnData.concat(executionData);
 					} catch (error) {
-						if (this.continueOnFail()) {
+						if (this.continueOnFail(error)) {
 							returnData.push({
 								json: { error: error.message },
 								pairedItem: { item: i },
@@ -299,7 +299,7 @@ export class NotionV2 implements INodeType {
 						);
 						returnData = returnData.concat(executionData);
 					} catch (error) {
-						if (this.continueOnFail()) {
+						if (this.continueOnFail(error)) {
 							returnData.push({
 								json: { error: error.message },
 								pairedItem: { item: i },
@@ -386,7 +386,7 @@ export class NotionV2 implements INodeType {
 						);
 						returnData = returnData.concat(executionData);
 					} catch (error) {
-						if (this.continueOnFail()) {
+						if (this.continueOnFail(error)) {
 							returnData.push({
 								json: { error: error.message },
 								pairedItem: { item: i },
@@ -416,7 +416,7 @@ export class NotionV2 implements INodeType {
 						);
 						returnData = returnData.concat(executionData);
 					} catch (error) {
-						if (this.continueOnFail()) {
+						if (this.continueOnFail(error)) {
 							returnData.push({
 								json: { error: error.message },
 								pairedItem: { item: i },
@@ -511,7 +511,7 @@ export class NotionV2 implements INodeType {
 						);
 						returnData = returnData.concat(executionData);
 					} catch (error) {
-						if (this.continueOnFail()) {
+						if (this.continueOnFail(error)) {
 							returnData.push({
 								json: { error: error.message },
 								pairedItem: { item: i },
@@ -563,7 +563,7 @@ export class NotionV2 implements INodeType {
 						);
 						returnData = returnData.concat(executionData);
 					} catch (error) {
-						if (this.continueOnFail()) {
+						if (this.continueOnFail(error)) {
 							returnData.push({
 								json: { error: error.message },
 								pairedItem: { item: i },
@@ -589,7 +589,7 @@ export class NotionV2 implements INodeType {
 						);
 						returnData = returnData.concat(executionData);
 					} catch (error) {
-						if (this.continueOnFail()) {
+						if (this.continueOnFail(error)) {
 							returnData.push({
 								json: { error: error.message },
 								pairedItem: { item: i },
@@ -618,7 +618,7 @@ export class NotionV2 implements INodeType {
 						);
 						returnData = returnData.concat(executionData);
 					} catch (error) {
-						if (this.continueOnFail()) {
+						if (this.continueOnFail(error)) {
 							returnData.push({
 								json: { error: error.message },
 								pairedItem: { item: i },
@@ -652,7 +652,7 @@ export class NotionV2 implements INodeType {
 						);
 						returnData = returnData.concat(executionData);
 					} catch (error) {
-						if (this.continueOnFail()) {
+						if (this.continueOnFail(error)) {
 							returnData.push({
 								json: { error: error.message },
 								pairedItem: { item: i },
@@ -704,7 +704,7 @@ export class NotionV2 implements INodeType {
 						);
 						returnData = returnData.concat(executionData);
 					} catch (error) {
-						if (this.continueOnFail()) {
+						if (this.continueOnFail(error)) {
 							returnData.push({
 								json: { error: error.message },
 								pairedItem: { item: i },
@@ -766,7 +766,7 @@ export class NotionV2 implements INodeType {
 						);
 						returnData = returnData.concat(executionData);
 					} catch (error) {
-						if (this.continueOnFail()) {
+						if (this.continueOnFail(error)) {
 							returnData.push({
 								json: { error: error.message },
 								pairedItem: { item: i },

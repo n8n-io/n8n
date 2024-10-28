@@ -1,4 +1,4 @@
-import type { MigrationContext, ReversibleMigration } from '@/databases/types';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 
 export class WorkflowStatistics1664196174002 implements ReversibleMigration {
 	async up({ queryRunner, tablePrefix }: MigrationContext) {

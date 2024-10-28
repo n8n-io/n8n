@@ -1,17 +1,18 @@
+import { Container, Service } from 'typedi';
 import type { IUserSettings } from 'n8n-workflow';
 import { ApplicationError, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
-import { Service } from 'typedi';
 
-import type { User, AssignableRole } from '@/databases/entities/user';
-import { UserRepository } from '@/databases/repositories/user.repository';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { EventService } from '@/events/event.service';
-import type { Invitation, PublicUser } from '@/interfaces';
-import { Logger } from '@/logger';
+import type { User, AssignableRole } from '@db/entities/User';
+import { UserRepository } from '@db/repositories/user.repository';
+import type { Invitation, PublicUser } from '@/Interfaces';
 import type { PostHogClient } from '@/posthog';
-import type { UserRequest } from '@/requests';
+import { Logger } from '@/Logger';
+import { UserManagementMailer } from '@/UserManagement/email';
+import { InternalHooks } from '@/InternalHooks';
 import { UrlService } from '@/services/url.service';
-import { UserManagementMailer } from '@/user-management/email';
+import type { UserRequest } from '@/requests';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { EventRelay } from '@/eventbus/event-relay.service';
 
 @Service()
 export class UserService {
@@ -20,7 +21,7 @@ export class UserService {
 		private readonly userRepository: UserRepository,
 		private readonly mailer: UserManagementMailer,
 		private readonly urlService: UrlService,
-		private readonly eventService: EventService,
+		private readonly eventRelay: EventRelay,
 	) {}
 
 	async update(userId: string, data: Partial<User>) {
@@ -58,7 +59,7 @@ export class UserService {
 			withScopes?: boolean;
 		},
 	) {
-		const { password, updatedAt, authIdentities, ...rest } = user;
+		const { password, updatedAt, apiKey, authIdentities, ...rest } = user;
 
 		const ldapIdentity = authIdentities?.find((i) => i.providerType === 'ldap');
 
@@ -138,35 +139,41 @@ export class UserService {
 					const result = await this.mailer.invite({
 						email,
 						inviteAcceptUrl,
+						domain,
 					});
 					if (result.emailSent) {
 						invitedUser.user.emailSent = true;
 						delete invitedUser.user?.inviteAcceptUrl;
-
-						this.eventService.emit('user-transactional-email-sent', {
-							userId: id,
-							messageType: 'New user invite',
-							publicApi: false,
+						void Container.get(InternalHooks).onUserTransactionalEmail({
+							user_id: id,
+							message_type: 'New user invite',
+							public_api: false,
 						});
 					}
 
-					this.eventService.emit('user-invited', {
+					void Container.get(InternalHooks).onUserInvite({
+						user: owner,
+						target_user_id: Object.values(toInviteUsers),
+						public_api: false,
+						email_sent: result.emailSent,
+						invitee_role: role, // same role for all invited users
+					});
+					this.eventRelay.emit('user-invited', {
 						user: owner,
 						targetUserId: Object.values(toInviteUsers),
-						publicApi: false,
-						emailSent: result.emailSent,
-						inviteeRole: role, // same role for all invited users
 					});
 				} catch (e) {
 					if (e instanceof Error) {
-						this.eventService.emit('email-failed', {
+						void Container.get(InternalHooks).onEmailFailed({
 							user: owner,
-							messageType: 'New user invite',
-							publicApi: false,
+							message_type: 'New user invite',
+							public_api: false,
 						});
+						this.eventRelay.emit('email-failed', { user: owner, messageType: 'New user invite' });
 						this.logger.error('Failed to send email', {
 							userId: owner.id,
 							inviteAcceptUrl,
+							domain,
 							email,
 						});
 						invitedUser.error = e.message;

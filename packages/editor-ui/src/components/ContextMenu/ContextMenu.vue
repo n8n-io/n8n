@@ -1,14 +1,13 @@
 <script lang="ts" setup>
 import { type ContextMenuAction, useContextMenu } from '@/composables/useContextMenu';
 import { N8nActionDropdown } from 'n8n-design-system';
+import type { INode } from 'n8n-workflow';
 import { watch, ref } from 'vue';
-import { onClickOutside } from '@vueuse/core';
 
 const contextMenu = useContextMenu();
 const { position, isOpen, actions, target } = contextMenu;
 const dropdown = ref<InstanceType<typeof N8nActionDropdown>>();
-const emit = defineEmits<{ action: [action: ContextMenuAction, nodeIds: string[]] }>();
-const container = ref<HTMLDivElement>();
+const emit = defineEmits<{ (event: 'action', action: ContextMenuAction, nodes: INode[]): void }>();
 
 watch(
 	isOpen,
@@ -25,13 +24,7 @@ watch(
 function onActionSelect(item: string) {
 	const action = item as ContextMenuAction;
 	contextMenu._dispatchAction(action);
-	emit('action', action, contextMenu.targetNodeIds.value);
-}
-
-function closeMenu(event: MouseEvent) {
-	event.preventDefault();
-	event.stopPropagation();
-	contextMenu.close();
+	emit('action', action, contextMenu.targetNodes.value);
 }
 
 function onVisibleChange(open: boolean) {
@@ -39,14 +32,11 @@ function onVisibleChange(open: boolean) {
 		contextMenu.close();
 	}
 }
-
-onClickOutside(container, closeMenu);
 </script>
 
 <template>
 	<Teleport v-if="isOpen" to="body">
 		<div
-			ref="container"
 			:class="$style.contextMenu"
 			:style="{
 				left: `${position[0]}px`,
@@ -58,8 +48,7 @@ onClickOutside(container, closeMenu);
 				:items="actions"
 				placement="bottom-start"
 				data-test-id="context-menu"
-				:hide-arrow="target?.source !== 'node-button'"
-				:teleported="false"
+				:hide-arrow="target.source !== 'node-button'"
 				@select="onActionSelect"
 				@visible-change="onVisibleChange"
 			>

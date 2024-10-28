@@ -6,7 +6,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
 
 const nodeFactory = (data: Partial<INodeUi> = {}): INodeUi => ({
 	id: faker.string.uuid(),
@@ -38,7 +38,6 @@ describe('useContextMenu', () => {
 
 		workflowsStore = useWorkflowsStore();
 		workflowsStore.workflow.nodes = nodes;
-		workflowsStore.workflow.scopes = ['workflow:update'];
 		vi.spyOn(workflowsStore, 'getCurrentWorkflow').mockReturnValue({
 			nodes,
 			getNode: (_: string) => {
@@ -57,101 +56,90 @@ describe('useContextMenu', () => {
 	const mockEvent = new MouseEvent('contextmenu', { clientX: 500, clientY: 300 });
 
 	it('should support opening and closing (default = right click on canvas)', () => {
-		const { open, close, isOpen, actions, position, target, targetNodeIds } = useContextMenu();
+		const { open, close, isOpen, actions, position, target, targetNodes } = useContextMenu();
 		expect(isOpen.value).toBe(false);
 		expect(actions.value).toEqual([]);
 		expect(position.value).toEqual([0, 0]);
-		expect(targetNodeIds.value).toEqual([]);
+		expect(targetNodes.value).toEqual([]);
 
-		const nodeIds = selectedNodes.map((n) => n.id);
-		open(mockEvent, { source: 'canvas', nodeIds });
+		open(mockEvent);
 		expect(isOpen.value).toBe(true);
 		expect(useContextMenu().isOpen.value).toEqual(true);
 		expect(actions.value).toMatchSnapshot();
 		expect(position.value).toEqual([500, 300]);
-		expect(target.value).toEqual({ source: 'canvas', nodeIds });
-		expect(targetNodeIds.value).toEqual(nodeIds);
+		expect(target.value).toEqual({ source: 'canvas' });
+		expect(targetNodes.value).toEqual(selectedNodes);
 
 		close();
 		expect(isOpen.value).toBe(false);
 		expect(useContextMenu().isOpen.value).toEqual(false);
 		expect(actions.value).toEqual([]);
 		expect(position.value).toEqual([0, 0]);
-		expect(targetNodeIds.value).toEqual([]);
+		expect(targetNodes.value).toEqual([]);
 	});
 
 	it('should return the correct actions when right clicking a sticky', () => {
-		const { open, isOpen, actions, targetNodeIds } = useContextMenu();
+		const { open, isOpen, actions, targetNodes } = useContextMenu();
 		const sticky = nodeFactory({ type: STICKY_NODE_TYPE });
-		vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(sticky);
-		open(mockEvent, { source: 'node-right-click', nodeId: sticky.id });
+		open(mockEvent, { source: 'node-right-click', node: sticky });
 
 		expect(isOpen.value).toBe(true);
 		expect(actions.value).toMatchSnapshot();
-		expect(targetNodeIds.value).toEqual([sticky.id]);
+		expect(targetNodes.value).toEqual([sticky]);
 	});
 
 	it('should disable pinning for node that has other inputs then "main"', () => {
-		const { open, isOpen, actions, targetNodeIds } = useContextMenu();
+		const { open, isOpen, actions, targetNodes } = useContextMenu();
 		const basicChain = nodeFactory({ type: BASIC_CHAIN_NODE_TYPE });
-		vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(basicChain);
-		vi.spyOn(NodeHelpers, 'getConnectionTypes').mockReturnValue([
-			NodeConnectionType.Main,
-			NodeConnectionType.AiLanguageModel,
-		]);
-		open(mockEvent, { source: 'node-right-click', nodeId: basicChain.id });
+		vi.spyOn(NodeHelpers, 'getConnectionTypes').mockReturnValue(['main', 'ai_languageModel']);
+		open(mockEvent, { source: 'node-right-click', node: basicChain });
 
 		expect(isOpen.value).toBe(true);
 		expect(actions.value.find((action) => action.id === 'toggle_pin')?.disabled).toBe(true);
-		expect(targetNodeIds.value).toEqual([basicChain.id]);
+		expect(targetNodes.value).toEqual([basicChain]);
 	});
 
 	it('should return the correct actions when right clicking a Node', () => {
-		const { open, isOpen, actions, targetNodeIds } = useContextMenu();
+		const { open, isOpen, actions, targetNodes } = useContextMenu();
 		const node = nodeFactory();
-		vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(node);
-		open(mockEvent, { source: 'node-right-click', nodeId: node.id });
+		open(mockEvent, { source: 'node-right-click', node });
 
 		expect(isOpen.value).toBe(true);
 		expect(actions.value).toMatchSnapshot();
-		expect(targetNodeIds.value).toEqual([node.id]);
+		expect(targetNodes.value).toEqual([node]);
 	});
 
 	it('should return the correct actions opening the menu from the button', () => {
-		const { open, isOpen, actions, targetNodeIds } = useContextMenu();
+		const { open, isOpen, actions, targetNodes } = useContextMenu();
 		const node = nodeFactory();
-		vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(node);
-		open(mockEvent, { source: 'node-button', nodeId: node.id });
+		open(mockEvent, { source: 'node-button', node });
 
 		expect(isOpen.value).toBe(true);
 		expect(actions.value).toMatchSnapshot();
-		expect(targetNodeIds.value).toEqual([node.id]);
+		expect(targetNodes.value).toEqual([node]);
 	});
 
 	describe('Read-only mode', () => {
 		it('should return the correct actions when right clicking a sticky', () => {
 			vi.spyOn(uiStore, 'isReadOnlyView', 'get').mockReturnValue(true);
-			workflowsStore.workflow.scopes = ['workflow:read'];
-			const { open, isOpen, actions, targetNodeIds } = useContextMenu();
+			const { open, isOpen, actions, targetNodes } = useContextMenu();
 			const sticky = nodeFactory({ type: STICKY_NODE_TYPE });
-			vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(sticky);
-			open(mockEvent, { source: 'node-right-click', nodeId: sticky.id });
+			open(mockEvent, { source: 'node-right-click', node: sticky });
 
 			expect(isOpen.value).toBe(true);
 			expect(actions.value).toMatchSnapshot();
-			expect(targetNodeIds.value).toEqual([sticky.id]);
+			expect(targetNodes.value).toEqual([sticky]);
 		});
 
 		it('should return the correct actions when right clicking a Node', () => {
 			vi.spyOn(uiStore, 'isReadOnlyView', 'get').mockReturnValue(true);
-			const { open, isOpen, actions, targetNodeIds } = useContextMenu();
+			const { open, isOpen, actions, targetNodes } = useContextMenu();
 			const node = nodeFactory();
-			vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(node);
-			open(mockEvent, { source: 'node-right-click', nodeId: node.id });
+			open(mockEvent, { source: 'node-right-click', node });
 
 			expect(isOpen.value).toBe(true);
 			expect(actions.value).toMatchSnapshot();
-			expect(targetNodeIds.value).toEqual([node.id]);
+			expect(targetNodes.value).toEqual([node]);
 		});
 	});
 });

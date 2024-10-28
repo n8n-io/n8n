@@ -7,6 +7,7 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
+import type { ClientOptions } from '@langchain/openai';
 import { ChatOpenAI } from '@langchain/openai';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 import { N8nLlmTracing } from '../N8nLlmTracing';
@@ -26,8 +27,7 @@ export class LmChatAzureOpenAi implements INodeType {
 		codex: {
 			categories: ['AI'],
 			subcategories: {
-				AI: ['Language Models', 'Root Nodes'],
-				'Language Models': ['Chat Models (Recommended)'],
+				AI: ['Language Models'],
 			},
 			resources: {
 				primaryDocumentation: [
@@ -50,18 +50,6 @@ export class LmChatAzureOpenAi implements INodeType {
 		],
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
-			{
-				displayName:
-					'If using JSON response format, you must include word "json" in the prompt in your chain or agent. Also, make sure to select latest models released post November 2023.',
-				name: 'notice',
-				type: 'notice',
-				default: '',
-				displayOptions: {
-					show: {
-						'/options.responseFormat': ['json_object'],
-					},
-				},
-			},
 			{
 				displayName: 'Model (Deployment) Name',
 				name: 'model',
@@ -96,25 +84,6 @@ export class LmChatAzureOpenAi implements INodeType {
 						typeOptions: {
 							maxValue: 32768,
 						},
-					},
-					{
-						displayName: 'Response Format',
-						name: 'responseFormat',
-						default: 'text',
-						type: 'options',
-						options: [
-							{
-								name: 'Text',
-								value: 'text',
-								description: 'Regular text response',
-							},
-							{
-								name: 'JSON',
-								value: 'json_object',
-								description:
-									'Enables JSON mode, which should guarantee the message the model generates is valid JSON',
-							},
-						],
 					},
 					{
 						displayName: 'Presence Penalty',
@@ -163,11 +132,11 @@ export class LmChatAzureOpenAi implements INodeType {
 	};
 
 	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
-		const credentials = await this.getCredentials<{
+		const credentials = (await this.getCredentials('azureOpenAiApi')) as {
 			apiKey: string;
 			resourceName: string;
 			apiVersion: string;
-		}>('azureOpenAiApi');
+		};
 
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
@@ -178,8 +147,9 @@ export class LmChatAzureOpenAi implements INodeType {
 			presencePenalty?: number;
 			temperature?: number;
 			topP?: number;
-			responseFormat?: 'text' | 'json_object';
 		};
+
+		const configuration: ClientOptions = {};
 
 		const model = new ChatOpenAI({
 			azureOpenAIApiDeploymentName: modelName,
@@ -189,12 +159,8 @@ export class LmChatAzureOpenAi implements INodeType {
 			...options,
 			timeout: options.timeout ?? 60000,
 			maxRetries: options.maxRetries ?? 2,
+			configuration,
 			callbacks: [new N8nLlmTracing(this)],
-			modelKwargs: options.responseFormat
-				? {
-						response_format: { type: options.responseFormat },
-					}
-				: undefined,
 		});
 
 		return {

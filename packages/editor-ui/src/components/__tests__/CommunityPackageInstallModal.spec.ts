@@ -3,7 +3,7 @@ import CommunityPackageInstallModal from '../CommunityPackageInstallModal.vue';
 import { createTestingPinia } from '@pinia/testing';
 import { COMMUNITY_PACKAGE_INSTALL_MODAL_KEY, STORES } from '@/constants';
 import userEvent from '@testing-library/user-event';
-import { cleanupAppModals, createAppModals, retry } from '@/__tests__/utils';
+import { retry } from '@/__tests__/utils';
 
 const renderComponent = createComponentRenderer(CommunityPackageInstallModal, {
 	props: {
@@ -17,7 +17,7 @@ const renderComponent = createComponentRenderer(CommunityPackageInstallModal, {
 	pinia: createTestingPinia({
 		initialState: {
 			[STORES.UI]: {
-				modalsById: {
+				modals: {
 					[COMMUNITY_PACKAGE_INSTALL_MODAL_KEY]: { open: true },
 				},
 			},
@@ -33,30 +33,22 @@ const renderComponent = createComponentRenderer(CommunityPackageInstallModal, {
 });
 
 describe('CommunityPackageInstallModal', () => {
-	beforeEach(() => {
-		createAppModals();
-	});
-
-	afterEach(() => {
-		cleanupAppModals();
-	});
 	it('should disable install button until user agrees', async () => {
-		const { getByTestId } = renderComponent();
+		const wrapper = renderComponent();
 
-		await retry(() => expect(getByTestId('communityPackageInstall-modal')).toBeInTheDocument());
+		await retry(() =>
+			expect(wrapper.container.querySelector('.modal-content')).toBeInTheDocument(),
+		);
 
-		const packageNameInput = getByTestId('package-name-input');
-		const installButton = getByTestId('install-community-package-button');
-
-		await userEvent.type(packageNameInput, 'n8n-nodes-test');
+		const installButton = wrapper.getByTestId('install-community-package-button');
 
 		expect(installButton).toBeDisabled();
 
-		await userEvent.click(getByTestId('user-agreement-checkbox'));
+		await userEvent.click(wrapper.getByTestId('user-agreement-checkbox'));
 
 		expect(installButton).toBeEnabled();
 
-		await userEvent.click(getByTestId('user-agreement-checkbox'));
+		await userEvent.click(wrapper.getByTestId('user-agreement-checkbox'));
 
 		expect(installButton).toBeDisabled();
 	});

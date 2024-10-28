@@ -1,13 +1,11 @@
 import { mock } from 'jest-mock-extended';
-
-import {
-	NodeConnectionType,
-	type IDataObject,
-	type INodeType,
-	type INodeTypeData,
-	type INodeTypes,
-	type IVersionedNodeType,
-	type LoadedClass,
+import type {
+	IDataObject,
+	INodeType,
+	INodeTypeData,
+	INodeTypes,
+	IVersionedNodeType,
+	LoadedClass,
 } from '@/Interfaces';
 import * as NodeHelpers from '@/NodeHelpers';
 
@@ -62,8 +60,8 @@ const googleSheetsNode: LoadedClass<IVersionedNodeType> = {
 					defaults: {
 						name: 'Google Sheets',
 					},
-					inputs: [NodeConnectionType.Main],
-					outputs: [NodeConnectionType.Main],
+					inputs: ['main'],
+					outputs: ['main'],
 					credentials: [
 						{
 							name: 'googleApi',
@@ -288,9 +286,9 @@ const googleSheetsNode: LoadedClass<IVersionedNodeType> = {
 					displayName: 'Google Sheets',
 					group: ['input', 'output'],
 					icon: 'file:googleSheets.svg',
-					inputs: [NodeConnectionType.Main],
+					inputs: ['main'],
 					name: 'googleSheets',
-					outputs: [NodeConnectionType.Main],
+					outputs: ['main'],
 					properties: [
 						{
 							default: 'oAuth2',
@@ -553,8 +551,8 @@ const setNode: LoadedClass<INodeType> = {
 				name: 'Set',
 				color: '#0000FF',
 			},
-			inputs: [NodeConnectionType.Main],
-			outputs: [NodeConnectionType.Main],
+			inputs: ['main'],
+			outputs: ['main'],
 			properties: [
 				{
 					displayName: 'Value1',
@@ -590,7 +588,7 @@ const manualTriggerNode: LoadedClass<INodeType> = {
 				color: '#909298',
 			},
 			inputs: [],
-			outputs: [NodeConnectionType.Main],
+			outputs: ['main'],
 			properties: [
 				{
 					displayName:
@@ -623,8 +621,8 @@ export class NodeTypes implements INodeTypes {
 						name: 'Set Multi',
 						color: '#0000FF',
 					},
-					inputs: [NodeConnectionType.Main],
-					outputs: [NodeConnectionType.Main],
+					inputs: ['main'],
+					outputs: ['main'],
 					properties: [
 						{
 							displayName: 'Values',

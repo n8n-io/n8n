@@ -128,6 +128,11 @@ describe('Editor actions should work', () => {
 		createNewWorkflowAndActivate();
 	});
 
+	it('after saving a new workflow', () => {
+		editWorkflowAndDeactivate();
+		editWorkflowMoreAndActivate();
+	});
+
 	it('after switching between Editor and Executions', () => {
 		cy.intercept('GET', '/rest/executions?filter=*').as('getExecutions');
 
@@ -142,7 +147,7 @@ describe('Editor actions should work', () => {
 	it('after switching between Editor and Debug', () => {
 		cy.intercept('GET', '/rest/executions?filter=*').as('getExecutions');
 		cy.intercept('GET', '/rest/executions/*').as('getExecution');
-		cy.intercept('POST', '/rest/workflows/**/run?**').as('postWorkflowRun');
+		cy.intercept('POST', '/rest/workflows/**/run').as('postWorkflowRun');
 
 		editWorkflowAndDeactivate();
 		workflowPage.actions.executeWorkflow();

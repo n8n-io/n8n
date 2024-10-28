@@ -1,5 +1,5 @@
-import { BasePage } from './base';
 import { getVisibleSelect } from '../utils';
+import { BasePage } from './base';
 
 export class SettingsLogStreamingPage extends BasePage {
 	url = '/settings/log-streaming';

@@ -1,7 +1,6 @@
-import type { StoryFn } from '@storybook/vue3';
-
-import { rows, columns } from './__tests__/data';
 import N8nDatatable from './Datatable.vue';
+import type { StoryFn } from '@storybook/vue3';
+import { rows, columns } from './__tests__/data';
 
 export default {
 	title: 'Atoms/Datatable',

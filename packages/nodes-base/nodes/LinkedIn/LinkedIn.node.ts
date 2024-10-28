@@ -7,7 +7,6 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
 import { linkedInApiRequest } from './GenericFunctions';
 import { postFields, postOperations } from './PostDescription';
 
@@ -23,8 +22,8 @@ export class LinkedIn implements INodeType {
 		defaults: {
 			name: 'LinkedIn',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: ['main'],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'linkedInOAuth2Api',
@@ -87,7 +86,7 @@ export class LinkedIn implements INodeType {
 			// https://docs.microsoft.com/en-us/linkedin/consumer/integrations/self-serve/sign-in-with-linkedin
 			async getPersonUrn(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const authentication = this.getNodeParameter('authentication', 0);
-				let endpoint = '/v2/me';
+				let endpoint = '/me';
 				if (authentication === 'standard') {
 					const { legacy } = await this.getCredentials('linkedInOAuth2Api');
 					if (!legacy) {
@@ -122,13 +121,10 @@ export class LinkedIn implements INodeType {
 			try {
 				if (resource === 'post') {
 					if (operation === 'create') {
-						let text = this.getNodeParameter('text', i) as string;
+						const text = this.getNodeParameter('text', i) as string;
 						const shareMediaCategory = this.getNodeParameter('shareMediaCategory', i) as string;
 						const postAs = this.getNodeParameter('postAs', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
-
-						// LinkedIn uses "little text" https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/little-text-format?view=li-lms-2024-06
-						text = text.replace(/[\(*\)\[\]\{\}<>@|~_]/gm, (char) => '\\' + char);
 
 						let authorUrn = '';
 						let visibility = 'PUBLIC';
@@ -268,9 +264,7 @@ export class LinkedIn implements INodeType {
 								delete body.title;
 							}
 						} else {
-							Object.assign(body, {
-								commentary: text,
-							});
+							Object.assign(body, { commentary: text });
 						}
 						const endpoint = '/posts';
 						responseData = await linkedInApiRequest.call(this, 'POST', endpoint, body);
@@ -282,7 +276,7 @@ export class LinkedIn implements INodeType {
 				);
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },

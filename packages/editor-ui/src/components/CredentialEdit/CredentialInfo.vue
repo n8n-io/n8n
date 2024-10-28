@@ -1,56 +1,61 @@
-<script setup lang="ts">
-import TimeAgo from '../TimeAgo.vue';
-import { useI18n } from '@/composables/useI18n';
-import type { ICredentialsDecryptedResponse, ICredentialsResponse } from '@/Interface';
-import { N8nText } from 'n8n-design-system';
-
-type Props = {
-	currentCredential: ICredentialsResponse | ICredentialsDecryptedResponse | null;
-};
-
-defineProps<Props>();
-
-const i18n = useI18n();
-</script>
-
 <template>
 	<div :class="$style.container">
 		<el-row v-if="currentCredential">
 			<el-col :span="8" :class="$style.label">
-				<N8nText :compact="true" :bold="true">
-					{{ i18n.baseText('credentialEdit.credentialInfo.created') }}
-				</N8nText>
+				<n8n-text :compact="true" :bold="true">
+					{{ $locale.baseText('credentialEdit.credentialInfo.created') }}
+				</n8n-text>
 			</el-col>
 			<el-col :span="16" :class="$style.valueLabel">
-				<N8nText :compact="true"
+				<n8n-text :compact="true"
 					><TimeAgo :date="currentCredential.createdAt" :capitalize="true"
-				/></N8nText>
+				/></n8n-text>
 			</el-col>
 		</el-row>
 		<el-row v-if="currentCredential">
 			<el-col :span="8" :class="$style.label">
-				<N8nText :compact="true" :bold="true">
-					{{ i18n.baseText('credentialEdit.credentialInfo.lastModified') }}
-				</N8nText>
+				<n8n-text :compact="true" :bold="true">
+					{{ $locale.baseText('credentialEdit.credentialInfo.lastModified') }}
+				</n8n-text>
 			</el-col>
 			<el-col :span="16" :class="$style.valueLabel">
-				<N8nText :compact="true"
+				<n8n-text :compact="true"
 					><TimeAgo :date="currentCredential.updatedAt" :capitalize="true"
-				/></N8nText>
+				/></n8n-text>
 			</el-col>
 		</el-row>
 		<el-row v-if="currentCredential">
 			<el-col :span="8" :class="$style.label">
-				<N8nText :compact="true" :bold="true">
-					{{ i18n.baseText('credentialEdit.credentialInfo.id') }}
-				</N8nText>
+				<n8n-text :compact="true" :bold="true">
+					{{ $locale.baseText('credentialEdit.credentialInfo.id') }}
+				</n8n-text>
 			</el-col>
 			<el-col :span="16" :class="$style.valueLabel">
-				<N8nText :compact="true">{{ currentCredential.id }}</N8nText>
+				<n8n-text :compact="true">{{ currentCredential.id }}</n8n-text>
 			</el-col>
 		</el-row>
 	</div>
 </template>
+
+<script lang="ts">
+import { defineComponent } from 'vue';
+
+import TimeAgo from '../TimeAgo.vue';
+import type { INodeTypeDescription } from 'n8n-workflow';
+
+export default defineComponent({
+	name: 'CredentialInfo',
+	components: {
+		TimeAgo,
+	},
+	props: ['currentCredential', 'credentialPermissions'],
+	methods: {
+		shortNodeType(nodeType: INodeTypeDescription) {
+			return this.$locale.shortNodeType(nodeType.name);
+		},
+	},
+});
+</script>
 
 <style lang="scss" module>
 .container {

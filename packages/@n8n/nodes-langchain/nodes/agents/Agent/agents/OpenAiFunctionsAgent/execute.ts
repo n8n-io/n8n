@@ -23,7 +23,7 @@ export async function openAiFunctionsAgentExecute(
 	this: IExecuteFunctions,
 	nodeVersion: number,
 ): Promise<INodeExecutionData[][]> {
-	this.logger.debug('Executing OpenAi Functions Agent');
+	this.logger.verbose('Executing OpenAi Functions Agent');
 	const model = (await this.getInputConnectionData(
 		NodeConnectionType.AiLanguageModel,
 		0,
@@ -38,7 +38,7 @@ export async function openAiFunctionsAgentExecute(
 	const memory = (await this.getInputConnectionData(NodeConnectionType.AiMemory, 0)) as
 		| BaseChatMemory
 		| undefined;
-	const tools = await getConnectedTools(this, nodeVersion >= 1.5, false);
+	const tools = await getConnectedTools(this, nodeVersion >= 1.5);
 	const outputParsers = await getOptionalOutputParsers(this);
 	const options = this.getNodeParameter('options', 0, {}) as {
 		systemMessage?: string;
@@ -116,7 +116,7 @@ export async function openAiFunctionsAgentExecute(
 
 			returnData.push({ json: response });
 		} catch (error) {
-			if (this.continueOnFail()) {
+			if (this.continueOnFail(error)) {
 				returnData.push({ json: { error: error.message }, pairedItem: { item: itemIndex } });
 				continue;
 			}

@@ -4,6 +4,14 @@
 	</transition>
 </template>
 
+<script lang="ts">
+import { defineComponent } from 'vue';
+
+export default defineComponent({
+	name: 'SlideTransition',
+});
+</script>
+
 <style lang="scss" scoped>
 .slide-leave-active,
 .slide-enter-active {

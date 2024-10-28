@@ -1,3 +1,10 @@
+<template>
+	<div>
+		<slot v-if="canAccess" />
+		<slot v-else name="fallback" />
+	</div>
+</template>
+
 <script lang="ts">
 import { type PropType, defineComponent } from 'vue';
 import type { EnterpriseEditionFeatureValue } from '@/Interface';
@@ -16,16 +23,9 @@ export default defineComponent({
 		...mapStores(useSettingsStore),
 		canAccess(): boolean {
 			return this.features.reduce((acc: boolean, feature) => {
-				return acc && !!this.settingsStore.isEnterpriseFeatureEnabled[feature];
+				return acc && !!this.settingsStore.isEnterpriseFeatureEnabled(feature);
 			}, true);
 		},
 	},
 });
 </script>
-
-<template>
-	<div>
-		<slot v-if="canAccess" />
-		<slot v-else name="fallback" />
-	</div>
-</template>

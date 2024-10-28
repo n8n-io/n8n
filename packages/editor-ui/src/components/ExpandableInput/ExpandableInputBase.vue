@@ -1,3 +1,10 @@
+<template>
+	<!-- mock el-input element to apply styles -->
+	<div :class="{ 'el-input': true, 'static-size': staticSize }" :data-value="hiddenValue">
+		<slot></slot>
+	</div>
+</template>
+
 <script setup lang="ts">
 import { computed } from 'vue';
 
@@ -18,13 +25,6 @@ const hiddenValue = computed(() => {
 	return `${value}`; // adjust for padding
 });
 </script>
-
-<template>
-	<!-- mock el-input element to apply styles -->
-	<div :class="{ 'el-input': true, 'static-size': staticSize }" :data-value="hiddenValue">
-		<slot></slot>
-	</div>
-</template>
 
 <style lang="scss" scoped>
 $--horiz-padding: 15px;

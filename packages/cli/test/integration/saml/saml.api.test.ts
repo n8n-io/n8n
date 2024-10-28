@@ -1,12 +1,12 @@
-import type { User } from '@/databases/entities/user';
-import { setSamlLoginEnabled } from '@/sso/saml/saml-helpers';
-import { getCurrentAuthenticationMethod, setCurrentAuthenticationMethod } from '@/sso/sso-helpers';
+import type { User } from '@db/entities/User';
+import { setSamlLoginEnabled } from '@/sso/saml/samlHelpers';
+import { getCurrentAuthenticationMethod, setCurrentAuthenticationMethod } from '@/sso/ssoHelpers';
 
-import { sampleConfig } from './sample-metadata';
-import { createOwner, createUser } from '../shared/db/users';
 import { randomEmail, randomName, randomValidPassword } from '../shared/random';
-import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
+import { sampleConfig } from './sampleMetadata';
+import { createOwner, createUser } from '../shared/db/users';
+import type { SuperAgentTest } from '../shared/types';
 
 let someUser: User;
 let owner: User;
@@ -22,11 +22,9 @@ const testServer = utils.setupTestServer({
 	enabledFeatures: ['feat:saml'],
 });
 
-const memberPassword = randomValidPassword();
-
 beforeAll(async () => {
 	owner = await createOwner();
-	someUser = await createUser({ password: memberPassword });
+	someUser = await createUser();
 	authOwnerAgent = testServer.authAgentFor(owner);
 	authMemberAgent = testServer.authAgentFor(someUser);
 });
@@ -62,11 +60,10 @@ describe('Instance owner', () => {
 	describe('PATCH /password', () => {
 		test('should throw BadRequestError if password is changed when SAML is enabled', async () => {
 			await enableSaml(true);
-			await authMemberAgent
+			await authOwnerAgent
 				.patch('/me/password')
 				.send({
-					currentPassword: memberPassword,
-					newPassword: randomValidPassword(),
+					password: randomValidPassword(),
 				})
 				.expect(400, {
 					code: 400,

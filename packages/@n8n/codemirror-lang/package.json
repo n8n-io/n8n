@@ -24,8 +24,7 @@
     "test": "jest",
     "lint": "eslint . --ext .ts --quiet",
     "lintfix": "eslint . --ext .ts --fix",
-    "format": "biome format --write src test",
-    "format:check": "biome ci src test"
+    "format": "prettier --write --ignore-path ../../.prettierignore src test"
   },
   "peerDependencies": {
     "@codemirror/language": "*",

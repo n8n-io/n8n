@@ -31,9 +31,9 @@ export interface Props {
 	rootView: 'trigger' | 'action';
 }
 
-const emit = defineEmits<{
-	nodeTypeSelected: [nodeTypes: string[]];
-}>();
+const emit = defineEmits({
+	nodeTypeSelected: (_nodeTypes: string[]) => true,
+});
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
@@ -57,16 +57,10 @@ function onSelected(item: INodeCreateElement) {
 		const subcategoryKey = camelCase(item.properties.title);
 		const title = i18n.baseText(`nodeCreator.subcategoryNames.${subcategoryKey}` as BaseTextKey);
 
-		// If the info message exists in locale, add it to the info field of the view
-		const infoKey = `nodeCreator.subcategoryInfos.${subcategoryKey}` as BaseTextKey;
-		const info = i18n.baseText(infoKey);
-		const extendedInfo = info !== infoKey ? { info } : {};
-
 		pushViewStack({
 			subcategory: item.key,
-			mode: 'nodes',
 			title,
-			...extendedInfo,
+			mode: 'nodes',
 			...(item.properties.icon
 				? {
 						nodeIcon: {
@@ -226,12 +220,7 @@ registerKeyHook('MainViewArrowLeft', {
 <template>
 	<span>
 		<!-- Main Node Items -->
-		<ItemsRenderer
-			v-memo="[activeViewStack.search]"
-			:elements="activeViewStack.items"
-			:class="$style.items"
-			@selected="onSelected"
-		>
+		<ItemsRenderer :elements="activeViewStack.items" :class="$style.items" @selected="onSelected">
 			<template
 				v-if="(activeViewStack.items || []).length === 0 && globalSearchItemsDiff.length === 0"
 				#empty

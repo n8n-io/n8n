@@ -18,7 +18,7 @@ export const properties: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add option',
+		placeholder: 'Add Option',
 		default: {},
 		options: [{ ...folderRLC, displayName: 'Parent Folder', required: false }],
 	},

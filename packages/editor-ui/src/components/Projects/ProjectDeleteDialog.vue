@@ -12,7 +12,7 @@ type Props = {
 const props = defineProps<Props>();
 const visible = defineModel<boolean>();
 const emit = defineEmits<{
-	confirmDelete: [value?: string];
+	(e: 'confirmDelete', value?: string): void;
 }>();
 
 const locale = useI18n();

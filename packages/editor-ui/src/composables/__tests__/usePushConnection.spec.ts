@@ -1,9 +1,9 @@
+import { usePushConnection } from '@/composables/usePushConnection';
 import { useRouter } from 'vue-router';
 import { createPinia, setActivePinia } from 'pinia';
-import type { PushMessage, PushPayload } from '@n8n/api-types';
-
-import { usePushConnection } from '@/composables/usePushConnection';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
+import { useCollaborationStore } from '@/stores/collaboration.store';
+import type { IPushData, PushDataWorkerStatusMessage } from '@/Interface';
 import { useOrchestrationStore } from '@/stores/orchestration.store';
 
 vi.mock('vue-router', () => {
@@ -21,6 +21,7 @@ vi.useFakeTimers();
 describe('usePushConnection()', () => {
 	let router: ReturnType<typeof useRouter>;
 	let pushStore: ReturnType<typeof usePushConnectionStore>;
+	let collaborationStore: ReturnType<typeof useCollaborationStore>;
 	let orchestrationStore: ReturnType<typeof useOrchestrationStore>;
 	let pushConnection: ReturnType<typeof usePushConnection>;
 
@@ -29,6 +30,7 @@ describe('usePushConnection()', () => {
 
 		router = vi.mocked(useRouter)();
 		pushStore = usePushConnectionStore();
+		collaborationStore = useCollaborationStore();
 		orchestrationStore = useOrchestrationStore();
 		pushConnection = usePushConnection({ router });
 	});
@@ -39,6 +41,12 @@ describe('usePushConnection()', () => {
 
 			pushConnection.initialize();
 
+			expect(spy).toHaveBeenCalled();
+		});
+
+		it('should initialize collaborationStore', () => {
+			const spy = vi.spyOn(collaborationStore, 'initialize').mockImplementation(() => {});
+			pushConnection.initialize();
 			expect(spy).toHaveBeenCalled();
 		});
 	});
@@ -53,17 +61,23 @@ describe('usePushConnection()', () => {
 
 			expect(returnFn).toHaveBeenCalled();
 		});
+
+		it('should terminate collaborationStore', () => {
+			const spy = vi.spyOn(collaborationStore, 'terminate').mockImplementation(() => {});
+			pushConnection.terminate();
+			expect(spy).toHaveBeenCalled();
+		});
 	});
 
 	describe('queuePushMessage()', () => {
 		it('should add message to the queue and sets timeout if not already set', () => {
-			const event: PushMessage = {
+			const event: IPushData = {
 				type: 'sendWorkerStatusMessage',
 				data: {
 					workerId: '1',
-					status: {} as PushPayload<'sendWorkerStatusMessage'>['status'],
+					status: {},
 				},
-			};
+			} as PushDataWorkerStatusMessage;
 
 			pushConnection.queuePushMessage(event, 5);
 
@@ -75,7 +89,7 @@ describe('usePushConnection()', () => {
 
 	describe('processWaitingPushMessages()', () => {
 		it('should clear the queue and reset the timeout', async () => {
-			const event: PushMessage = { type: 'executionRecovered', data: { executionId: '1' } };
+			const event: IPushData = { type: 'executionRecovered', data: { executionId: '1' } };
 
 			pushConnection.queuePushMessage(event, 0);
 			expect(pushConnection.pushMessageQueue.value).toHaveLength(1);
@@ -92,13 +106,13 @@ describe('usePushConnection()', () => {
 		describe('sendWorkerStatusMessage', () => {
 			it('should handle event type correctly', async () => {
 				const spy = vi.spyOn(orchestrationStore, 'updateWorkerStatus').mockImplementation(() => {});
-				const event: PushMessage = {
+				const event: IPushData = {
 					type: 'sendWorkerStatusMessage',
 					data: {
 						workerId: '1',
-						status: {} as PushPayload<'sendWorkerStatusMessage'>['status'],
+						status: {},
 					},
-				};
+				} as PushDataWorkerStatusMessage;
 
 				const result = await pushConnection.pushMessageReceived(event);
 

@@ -5,7 +5,6 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
 
 import {
 	adjustCompanyFields,
@@ -47,8 +46,8 @@ export class Copper implements INodeType {
 		defaults: {
 			name: 'Copper',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: ['main'],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'copperApi',
@@ -619,7 +618,7 @@ export class Copper implements INodeType {
 					}
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({ error: error.toString(), json: {} });
 					continue;
 				}

@@ -27,7 +27,7 @@ export const quoteOperations: INodeProperties[] = [
 			{
 				name: 'Email',
 				value: 'email',
-				description: 'Email a quote',
+				description: 'Email an quote',
 				action: 'Email a quote',
 			},
 			{
@@ -69,7 +69,7 @@ export const quoteFields: INodeProperties[] = [
 				name: 'client',
 				type: 'options',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getClients',
 				},

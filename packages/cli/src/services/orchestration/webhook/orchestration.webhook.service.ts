@@ -1,8 +1,6 @@
 import { Service } from 'typedi';
-
-import config from '@/config';
-
 import { OrchestrationService } from '../../orchestration.service';
+import config from '@/config';
 
 @Service()
 export class OrchestrationWebhookService extends OrchestrationService {
@@ -10,7 +8,7 @@ export class OrchestrationWebhookService extends OrchestrationService {
 		return (
 			this.isInitialized &&
 			config.get('executions.mode') === 'queue' &&
-			this.instanceSettings.instanceType === 'webhook'
+			config.get('generic.instanceType') === 'webhook'
 		);
 	}
 }

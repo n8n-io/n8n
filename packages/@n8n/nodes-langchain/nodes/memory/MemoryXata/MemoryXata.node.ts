@@ -2,11 +2,11 @@
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
 import { XataChatMessageHistory } from '@langchain/community/stores/message/xata';
-import { BufferMemory, BufferWindowMemory } from 'langchain/memory';
+import { BufferMemory } from 'langchain/memory';
 import { BaseClient } from '@xata.io/client';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
-import { sessionIdOption, sessionKeyProperty, contextWindowLengthProperty } from '../descriptions';
+import { sessionIdOption, sessionKeyProperty } from '../descriptions';
 import { getSessionId } from '../../../utils/helpers';
 
 export class MemoryXata implements INodeType {
@@ -15,7 +15,7 @@ export class MemoryXata implements INodeType {
 		name: 'memoryXata',
 		icon: 'file:xata.svg',
 		group: ['transform'],
-		version: [1, 1.1, 1.2, 1.3],
+		version: [1, 1.1, 1.2],
 		description: 'Use Xata Memory',
 		defaults: {
 			name: 'Xata',
@@ -81,10 +81,6 @@ export class MemoryXata implements INodeType {
 				},
 			},
 			sessionKeyProperty,
-			{
-				...contextWindowLengthProperty,
-				displayOptions: { hide: { '@version': [{ _cnd: { lt: 1.3 } }] } },
-			},
 		],
 	};
 
@@ -124,19 +120,12 @@ export class MemoryXata implements INodeType {
 			apiKey: credentials.apiKey as string,
 		});
 
-		const memClass = this.getNode().typeVersion < 1.3 ? BufferMemory : BufferWindowMemory;
-		const kOptions =
-			this.getNode().typeVersion < 1.3
-				? {}
-				: { k: this.getNodeParameter('contextWindowLength', itemIndex) };
-
-		const memory = new memClass({
+		const memory = new BufferMemory({
 			chatHistory,
 			memoryKey: 'chat_history',
 			returnMessages: true,
 			inputKey: 'input',
 			outputKey: 'output',
-			...kOptions,
 		});
 
 		return {

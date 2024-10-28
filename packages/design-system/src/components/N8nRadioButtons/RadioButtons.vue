@@ -1,3 +1,20 @@
+<template>
+	<div
+		role="radiogroup"
+		:class="{ 'n8n-radio-buttons': true, [$style.radioGroup]: true, [$style.disabled]: disabled }"
+	>
+		<RadioButton
+			v-for="option in options"
+			:key="option.value"
+			v-bind="option"
+			:active="modelValue === option.value"
+			:size="size"
+			:disabled="disabled || option.disabled"
+			@click.prevent.stop="onClick(option, $event)"
+		/>
+	</div>
+</template>
+
 <script lang="ts" setup>
 import RadioButton from './RadioButton.vue';
 
@@ -21,8 +38,8 @@ const props = withDefaults(defineProps<RadioButtonsProps>(), {
 	size: 'medium',
 });
 
-const emit = defineEmits<{
-	'update:modelValue': [value: string, e: MouseEvent];
+const $emit = defineEmits<{
+	(event: 'update:modelValue', value: string, e: MouseEvent): void;
 }>();
 
 const onClick = (
@@ -32,26 +49,9 @@ const onClick = (
 	if (props.disabled || option.disabled) {
 		return;
 	}
-	emit('update:modelValue', option.value, event);
+	$emit('update:modelValue', option.value, event);
 };
 </script>
-
-<template>
-	<div
-		role="radiogroup"
-		:class="{ 'n8n-radio-buttons': true, [$style.radioGroup]: true, [$style.disabled]: disabled }"
-	>
-		<RadioButton
-			v-for="option in options"
-			:key="option.value"
-			v-bind="option"
-			:active="modelValue === option.value"
-			:size="size"
-			:disabled="disabled || option.disabled"
-			@click.prevent.stop="onClick(option, $event)"
-		/>
-	</div>
-</template>
 
 <style lang="scss" module>
 .radioGroup {

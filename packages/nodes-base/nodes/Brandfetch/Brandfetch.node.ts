@@ -5,9 +5,8 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
 
-import { brandfetchApiRequest, fetchAndPrepareBinaryData } from './GenericFunctions';
+import { brandfetchApiRequest } from './GenericFunctions';
 
 export class Brandfetch implements INodeType {
 	description: INodeTypeDescription = {
@@ -23,8 +22,8 @@ export class Brandfetch implements INodeType {
 		defaults: {
 			name: 'Brandfetch',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: ['main'],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'brandfetchApi',
@@ -155,11 +154,15 @@ export class Brandfetch implements INodeType {
 		const responseData: INodeExecutionData[] = [];
 		for (let i = 0; i < length; i++) {
 			try {
-				const domain = this.getNodeParameter('domain', i) as string;
 				if (operation === 'logo') {
+					const domain = this.getNodeParameter('domain', i) as string;
 					const download = this.getNodeParameter('download', i);
 
-					const response = await brandfetchApiRequest.call(this, 'GET', `/brands/${domain}`);
+					const body: IDataObject = {
+						domain,
+					};
+
+					const response = await brandfetchApiRequest.call(this, 'POST', '/logo', body);
 
 					if (download) {
 						const imageTypes = this.getNodeParameter('imageTypes', i) as string[];
@@ -178,30 +181,29 @@ export class Brandfetch implements INodeType {
 							Object.assign(newItem.binary!, items[i].binary);
 						}
 
-						newItem.json = response.logos;
+						newItem.json = response.response;
 
 						for (const imageType of imageTypes) {
 							for (const imageFormat of imageFormats) {
-								const logoUrls = response.logos;
+								const url = response.response[imageType][
+									imageFormat === 'png' ? 'image' : imageFormat
+								] as string;
 
-								for (const logoUrl of logoUrls) {
-									if (logoUrl.type !== imageType) {
-										continue;
-									}
-									for (const logoFormats of logoUrl.formats) {
-										if (logoFormats.format === imageFormat && logoFormats.src !== null) {
-											await fetchAndPrepareBinaryData.call(
-												this,
-												imageType,
-												imageFormat,
-												logoFormats,
-												domain,
-												newItem,
-											);
-											items[i] = newItem;
-										}
-									}
+								if (url !== null) {
+									const data = await brandfetchApiRequest.call(this, 'GET', '', {}, {}, url, {
+										json: false,
+										encoding: null,
+									});
+
+									newItem.binary![`${imageType}_${imageFormat}`] =
+										await this.helpers.prepareBinaryData(
+											data as Buffer,
+											`${imageType}_${domain}.${imageFormat}`,
+										);
+
+									items[i] = newItem;
 								}
+								items[i] = newItem;
 							}
 						}
 						if (Object.keys(items[i].binary!).length === 0) {
@@ -209,38 +211,62 @@ export class Brandfetch implements INodeType {
 						}
 					} else {
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(response.logos as IDataObject),
+							this.helpers.returnJsonArray(response.response as IDataObject),
 							{ itemData: { item: i } },
 						);
 						responseData.push(...executionData);
 					}
 				}
 				if (operation === 'color') {
-					const response = await brandfetchApiRequest.call(this, 'GET', `/brands/${domain}`);
+					const domain = this.getNodeParameter('domain', i) as string;
+
+					const body: IDataObject = {
+						domain,
+					};
+
+					const response = await brandfetchApiRequest.call(this, 'POST', '/color', body);
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(response.colors as IDataObject),
+						this.helpers.returnJsonArray(response as IDataObject),
 						{ itemData: { item: i } },
 					);
 					responseData.push(...executionData);
 				}
 				if (operation === 'font') {
-					const response = await brandfetchApiRequest.call(this, 'GET', `/brands/${domain}`);
+					const domain = this.getNodeParameter('domain', i) as string;
+
+					const body: IDataObject = {
+						domain,
+					};
+
+					const response = await brandfetchApiRequest.call(this, 'POST', '/font', body);
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(response.fonts as IDataObject),
+						this.helpers.returnJsonArray(response as IDataObject),
 						{ itemData: { item: i } },
 					);
 					responseData.push(...executionData);
 				}
 				if (operation === 'company') {
-					const response = await brandfetchApiRequest.call(this, 'GET', `/brands/${domain}`);
+					const domain = this.getNodeParameter('domain', i) as string;
+
+					const body: IDataObject = {
+						domain,
+					};
+
+					const response = await brandfetchApiRequest.call(this, 'POST', '/company', body);
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(response.company as IDataObject),
+						this.helpers.returnJsonArray(response as IDataObject),
 						{ itemData: { item: i } },
 					);
 					responseData.push(...executionData);
 				}
 				if (operation === 'industry') {
-					const response = await brandfetchApiRequest.call(this, 'GET', `/brands/${domain}`);
+					const domain = this.getNodeParameter('domain', i) as string;
+
+					const body: IDataObject = {
+						domain,
+					};
+
+					const response = await brandfetchApiRequest.call(this, 'POST', '/industry', body);
 
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray(response as IDataObject),
@@ -249,7 +275,7 @@ export class Brandfetch implements INodeType {
 					responseData.push(...executionData);
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					responseData.push({ error: error.message, json: {}, itemIndex: i });
 					continue;
 				}

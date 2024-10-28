@@ -4,7 +4,6 @@ import lt from 'lodash/lt';
 import pick from 'lodash/pick';
 import {
 	NodeOperationError,
-	NodeConnectionType,
 	type IExecuteFunctions,
 	type INodeExecutionData,
 	type INodeType,
@@ -26,8 +25,8 @@ export class RemoveDuplicates implements INodeType {
 		defaults: {
 			name: 'Remove Duplicates',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: ['main'],
+		outputs: ['main'],
 		properties: [
 			{
 				displayName: 'Compare',

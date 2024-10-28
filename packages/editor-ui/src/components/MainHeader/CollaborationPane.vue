@@ -1,40 +1,67 @@
 <script setup lang="ts">
-import { onMounted, onBeforeUnmount, computed, watch } from 'vue';
-import { useDocumentVisibility } from '@vueuse/core';
-
 import { useUsersStore } from '@/stores/users.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useCollaborationStore } from '@/stores/collaboration.store';
+import { onBeforeUnmount, onMounted, computed, ref } from 'vue';
+import { TIME } from '@/constants';
+import { isUserGlobalOwner } from '@/utils/userUtils';
 
 const collaborationStore = useCollaborationStore();
 const usersStore = useUsersStore();
+const workflowsStore = useWorkflowsStore();
 
-const visibility = useDocumentVisibility();
-watch(visibility, (visibilityState) => {
-	if (visibilityState === 'hidden') {
-		collaborationStore.stopHeartbeat();
-	} else {
-		collaborationStore.startHeartbeat();
+const HEARTBEAT_INTERVAL = 5 * TIME.MINUTE;
+const heartbeatTimer = ref<number | null>(null);
+
+const activeUsersSorted = computed(() => {
+	const currentWorkflowUsers = (collaborationStore.getUsersForCurrentWorkflow ?? []).map(
+		(userInfo) => userInfo.user,
+	);
+	const owner = currentWorkflowUsers.find(isUserGlobalOwner);
+	return {
+		defaultGroup: owner
+			? [owner, ...currentWorkflowUsers.filter((user) => user.id !== owner.id)]
+			: currentWorkflowUsers,
+	};
+});
+
+const currentUserEmail = computed(() => {
+	return usersStore.currentUser?.email;
+});
+
+const startHeartbeat = () => {
+	if (heartbeatTimer.value !== null) {
+		clearInterval(heartbeatTimer.value);
+		heartbeatTimer.value = null;
 	}
-});
+	heartbeatTimer.value = window.setInterval(() => {
+		collaborationStore.notifyWorkflowOpened(workflowsStore.workflow.id);
+	}, HEARTBEAT_INTERVAL);
+};
 
-const showUserStack = computed(() => collaborationStore.collaborators.length > 1);
+const stopHeartbeat = () => {
+	if (heartbeatTimer.value !== null) {
+		clearInterval(heartbeatTimer.value);
+	}
+};
 
-const collaboratorsSorted = computed(() => {
-	const users = collaborationStore.collaborators.map(({ user }) => user);
-	// Move the current user to the first position, if not already there.
-	const index = users.findIndex((user) => user.id === usersStore.currentUser?.id);
-	if (index < 1) return { defaultGroup: users };
-	const [currentUser] = users.splice(index, 1);
-	return { defaultGroup: [currentUser, ...users] };
-});
-
-const currentUserEmail = computed(() => usersStore.currentUser?.email);
+const onDocumentVisibilityChange = () => {
+	if (document.visibilityState === 'hidden') {
+		stopHeartbeat();
+	} else {
+		startHeartbeat();
+	}
+};
 
 onMounted(() => {
 	collaborationStore.initialize();
+	startHeartbeat();
+	document.addEventListener('visibilitychange', onDocumentVisibilityChange);
 });
 
 onBeforeUnmount(() => {
+	document.removeEventListener('visibilitychange', onDocumentVisibilityChange);
+	stopHeartbeat();
 	collaborationStore.terminate();
 });
 </script>
@@ -44,11 +71,7 @@ onBeforeUnmount(() => {
 		:class="`collaboration-pane-container ${$style.container}`"
 		data-test-id="collaboration-pane"
 	>
-		<n8n-user-stack
-			v-if="showUserStack"
-			:users="collaboratorsSorted"
-			:current-user-email="currentUserEmail"
-		/>
+		<n8n-user-stack :users="activeUsersSorted" :current-user-email="currentUserEmail" />
 	</div>
 </template>
 

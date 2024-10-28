@@ -1,11 +1,10 @@
-import { v4 as uuidv4 } from 'uuid';
 import type { Plugin } from 'vue';
 import { computed, nextTick, ref } from 'vue';
-
+import { v4 as uuidv4 } from 'uuid';
+import type { ChatMessage, ChatOptions } from '@n8n/chat/types';
+import { chatEventBus } from '@n8n/chat/event-buses';
 import * as api from '@n8n/chat/api';
 import { ChatOptionsSymbol, ChatSymbol, localStorageSessionIdKey } from '@n8n/chat/constants';
-import { chatEventBus } from '@n8n/chat/event-buses';
-import type { ChatMessage, ChatOptions } from '@n8n/chat/types';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const ChatPlugin: Plugin<ChatOptions> = {
@@ -25,12 +24,11 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 			})),
 		);
 
-		async function sendMessage(text: string, files: File[] = []) {
+		async function sendMessage(text: string) {
 			const sentMessage: ChatMessage = {
 				id: uuidv4(),
 				text,
 				sender: 'user',
-				files,
 				createdAt: new Date().toISOString(),
 			};
 
@@ -43,7 +41,6 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 
 			const sendMessageResponse = await api.sendMessage(
 				text,
-				files,
 				currentSessionId.value as string,
 				options,
 			);

@@ -1,5 +1,4 @@
 import type { InjectionKey } from 'vue';
-
 import type { Chat, ChatOptions } from '@n8n/chat/types';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention

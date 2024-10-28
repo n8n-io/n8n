@@ -5,7 +5,7 @@ import type { ICredentialsResponse } from '@/Interface';
 import { MODAL_CONFIRM, PROJECT_MOVE_RESOURCE_MODAL } from '@/constants';
 import { useMessage } from '@/composables/useMessage';
 import CredentialIcon from '@/components/CredentialIcon.vue';
-import { getResourcePermissions } from '@/permissions';
+import { getCredentialPermissions } from '@/permissions';
 import { useUIStore } from '@/stores/ui.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import TimeAgo from '@/components/TimeAgo.vue';
@@ -13,7 +13,6 @@ import type { ProjectSharingData } from '@/types/projects.types';
 import { useProjectsStore } from '@/stores/projects.store';
 import ProjectCardBadge from '@/components/Projects/ProjectCardBadge.vue';
 import { useI18n } from '@/composables/useI18n';
-import { ResourceType } from '@/utils/projects.utils';
 
 const CREDENTIAL_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
@@ -46,9 +45,8 @@ const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 const projectsStore = useProjectsStore();
 
-const resourceTypeLabel = computed(() => locale.baseText('generic.credential').toLowerCase());
 const credentialType = computed(() => credentialsStore.getCredentialTypeByName(props.data.type));
-const credentialPermissions = computed(() => getResourcePermissions(props.data.scopes).credential);
+const credentialPermissions = computed(() => getCredentialPermissions(props.data));
 const actions = computed(() => {
 	const items = [
 		{
@@ -64,7 +62,7 @@ const actions = computed(() => {
 		});
 	}
 
-	if (credentialPermissions.value.move && projectsStore.isTeamProjectFeatureEnabled) {
+	if (credentialPermissions.value.move) {
 		items.push({
 			label: locale.baseText('credentials.item.move'),
 			value: CREDENTIAL_LIST_ITEM_ACTIONS.MOVE,
@@ -78,7 +76,7 @@ const formattedCreatedAtDate = computed(() => {
 
 	return dateformat(
 		props.data.createdAt,
-		`d mmmm${String(props.data.createdAt).startsWith(currentYear) ? '' : ', yyyy'}`,
+		`d mmmm${props.data.createdAt.startsWith(currentYear) ? '' : ', yyyy'}`,
 	);
 });
 
@@ -123,8 +121,7 @@ function moveResource() {
 		name: PROJECT_MOVE_RESOURCE_MODAL,
 		data: {
 			resource: props.data,
-			resourceType: ResourceType.Credential,
-			resourceTypeLabel: resourceTypeLabel.value,
+			resourceType: locale.baseText('generic.credential').toLocaleLowerCase(),
 		},
 	});
 }
@@ -138,30 +135,22 @@ function moveResource() {
 		<template #header>
 			<n8n-heading tag="h2" bold :class="$style.cardHeading">
 				{{ data.name }}
-				<N8nBadge v-if="readOnly" class="ml-3xs" theme="tertiary" bold>
-					{{ locale.baseText('credentials.item.readonly') }}
-				</N8nBadge>
 			</n8n-heading>
 		</template>
 		<div :class="$style.cardDescription">
 			<n8n-text color="text-light" size="small">
 				<span v-if="credentialType">{{ credentialType.displayName }} | </span>
 				<span v-show="data"
-					>{{ locale.baseText('credentials.item.updated') }} <TimeAgo :date="data.updatedAt" /> |
+					>{{ $locale.baseText('credentials.item.updated') }} <TimeAgo :date="data.updatedAt" /> |
 				</span>
 				<span v-show="data"
-					>{{ locale.baseText('credentials.item.created') }} {{ formattedCreatedAtDate }}
+					>{{ $locale.baseText('credentials.item.created') }} {{ formattedCreatedAtDate }}
 				</span>
 			</n8n-text>
 		</div>
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
-				<ProjectCardBadge
-					:resource="data"
-					:resource-type="ResourceType.Credential"
-					:resource-type-label="resourceTypeLabel"
-					:personal-project="projectsStore.personalProject"
-				/>
+				<ProjectCardBadge :resource="data" :personal-project="projectsStore.personalProject" />
 				<n8n-action-toggle
 					data-test-id="credential-card-actions"
 					:actions="actions"

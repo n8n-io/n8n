@@ -20,7 +20,7 @@ type TokensUsageParser = (llmOutput: LLMResult['llmOutput']) => {
 	totalTokens: number;
 };
 
-type RunDetail = {
+type LastInput = {
 	index: number;
 	messages: BaseMessage[] | string[] | string;
 	options: SerializedSecret | SerializedNotImplemented | SerializedFields;
@@ -38,13 +38,11 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 
 	completionTokensEstimate = 0;
 
-	/**
-	 * A map to associate LLM run IDs to run details.
-	 * Key: Unique identifier for each LLM run (run ID)
-	 * Value: RunDetails object
-	 *
-	 */
-	runsMap: Record<string, RunDetail> = {};
+	lastInput: LastInput = {
+		index: 0,
+		messages: [],
+		options: {},
+	};
 
 	options = {
 		// Default(OpenAI format) parser
@@ -85,11 +83,7 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 		return encodedListLength.reduce((acc, curr) => acc + curr, 0);
 	}
 
-	async handleLLMEnd(output: LLMResult, runId: string) {
-		// The fallback should never happen since handleLLMStart should always set the run details
-		// but just in case, we set the index to the length of the runsMap
-		const runDetails = this.runsMap[runId] ?? { index: Object.keys(this.runsMap).length };
-
+	async handleLLMEnd(output: LLMResult) {
 		output.generations = output.generations.map((gen) =>
 			gen.map((g) => pick(g, ['text', 'generationInfo'])),
 		);
@@ -126,43 +120,47 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 		}
 
 		const parsedMessages =
-			typeof runDetails.messages === 'string'
-				? runDetails.messages
-				: runDetails.messages.map((message) => {
+			typeof this.lastInput.messages === 'string'
+				? this.lastInput.messages
+				: this.lastInput.messages.map((message) => {
 						if (typeof message === 'string') return message;
 						if (typeof message?.toJSON === 'function') return message.toJSON();
 
 						return message;
 					});
 
-		this.executionFunctions.addOutputData(this.connectionType, runDetails.index, [
+		this.executionFunctions.addOutputData(this.connectionType, this.lastInput.index, [
 			[{ json: { ...response } }],
 		]);
-		void logAiEvent(this.executionFunctions, 'ai-llm-generated-output', {
+		void logAiEvent(this.executionFunctions, 'n8n.ai.llm.generated', {
 			messages: parsedMessages,
-			options: runDetails.options,
+			options: this.lastInput.options,
 			response,
 		});
 	}
 
-	async handleLLMStart(llm: Serialized, prompts: string[], runId: string) {
+	async handleLLMStart(llm: Serialized, prompts: string[]) {
 		const estimatedTokens = await this.estimateTokensFromStringList(prompts);
 
 		const options = llm.type === 'constructor' ? llm.kwargs : llm;
-		const { index } = this.executionFunctions.addInputData(this.connectionType, [
+		const { index } = this.executionFunctions.addInputData(
+			this.connectionType,
 			[
-				{
-					json: {
-						messages: prompts,
-						estimatedTokens,
-						options,
+				[
+					{
+						json: {
+							messages: prompts,
+							estimatedTokens,
+							options,
+						},
 					},
-				},
+				],
 			],
-		]);
+			this.lastInput.index + 1,
+		);
 
-		// Save the run details for later use when processing `handleLLMEnd` event
-		this.runsMap[runId] = {
+		// Save the last input for later use when processing `handleLLMEnd` event
+		this.lastInput = {
 			index,
 			options,
 			messages: prompts,
@@ -186,7 +184,7 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 			});
 		}
 
-		void logAiEvent(this.executionFunctions, 'ai-llm-errored', {
+		void logAiEvent(this.executionFunctions, 'n8n.ai.llm.error', {
 			error: Object.keys(error).length === 0 ? error.toString() : error,
 			runId,
 			parentRunId,

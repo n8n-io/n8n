@@ -1,40 +1,42 @@
-import { Response } from 'express';
-import { ApplicationError } from 'n8n-workflow';
 import validator from 'validator';
 
-import { handleEmailLogin, handleLdapLogin } from '@/auth';
 import { AuthService } from '@/auth/auth.service';
-import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import type { User } from '@/databases/entities/user';
-import { UserRepository } from '@/databases/repositories/user.repository';
 import { Get, Post, RestController } from '@/decorators';
-import { AuthError } from '@/errors/response-errors/auth.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { EventService } from '@/events/event.service';
-import type { PublicUser } from '@/interfaces';
-import { License } from '@/license';
-import { Logger } from '@/logger';
-import { MfaService } from '@/mfa/mfa.service';
-import { PostHogClient } from '@/posthog';
+import { RESPONSE_ERROR_MESSAGES } from '@/constants';
+import { Request, Response } from 'express';
+import type { User } from '@db/entities/User';
 import { AuthenticatedRequest, LoginRequest, UserRequest } from '@/requests';
-import { UserService } from '@/services/user.service';
+import type { PublicUser } from '@/Interfaces';
+import { handleEmailLogin, handleLdapLogin } from '@/auth';
+import { PostHogClient } from '@/posthog';
 import {
 	getCurrentAuthenticationMethod,
 	isLdapCurrentAuthenticationMethod,
 	isSamlCurrentAuthenticationMethod,
-} from '@/sso/sso-helpers';
+} from '@/sso/ssoHelpers';
+import { InternalHooks } from '../InternalHooks';
+import { License } from '@/License';
+import { UserService } from '@/services/user.service';
+import { MfaService } from '@/Mfa/mfa.service';
+import { Logger } from '@/Logger';
+import { AuthError } from '@/errors/response-errors/auth.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ApplicationError } from 'n8n-workflow';
+import { UserRepository } from '@/databases/repositories/user.repository';
+import { EventRelay } from '@/eventbus/event-relay.service';
 
 @RestController()
 export class AuthController {
 	constructor(
 		private readonly logger: Logger,
+		private readonly internalHooks: InternalHooks,
 		private readonly authService: AuthService,
 		private readonly mfaService: MfaService,
 		private readonly userService: UserService,
 		private readonly license: License,
 		private readonly userRepository: UserRepository,
-		private readonly eventService: EventService,
+		private readonly eventRelay: EventRelay,
 		private readonly postHog?: PostHogClient,
 	) {}
 
@@ -91,14 +93,14 @@ export class AuthController {
 
 			this.authService.issueCookie(res, user, req.browserId);
 
-			this.eventService.emit('user-logged-in', {
+			this.eventRelay.emit('user-logged-in', {
 				user,
 				authenticationMethod: usedAuthenticationMethod,
 			});
 
 			return await this.userService.toPublic(user, { posthog: this.postHog, withScopes: true });
 		}
-		this.eventService.emit('user-login-failed', {
+		this.eventRelay.emit('user-login-failed', {
 			authenticationMethod: usedAuthenticationMethod,
 			userEmail: email,
 			reason: 'wrong credentials',
@@ -177,7 +179,8 @@ export class AuthController {
 			throw new BadRequestError('Invalid request');
 		}
 
-		this.eventService.emit('user-invite-email-click', { inviter, invitee });
+		void this.internalHooks.onUserInviteEmailClick({ inviter, invitee });
+		this.eventRelay.emit('user-invite-email-click', { inviter, invitee });
 
 		const { firstName, lastName } = inviter;
 		return { inviter: { firstName, lastName } };
@@ -185,8 +188,7 @@ export class AuthController {
 
 	/** Log out a user */
 	@Post('/logout')
-	async logout(req: AuthenticatedRequest, res: Response) {
-		await this.authService.invalidateToken(req);
+	logout(_: Request, res: Response) {
 		this.authService.clearCookie(res);
 		return { loggedOut: true };
 	}

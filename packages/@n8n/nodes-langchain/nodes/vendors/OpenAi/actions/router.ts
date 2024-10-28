@@ -12,7 +12,6 @@ import * as image from './image';
 import * as text from './text';
 
 import type { OpenAiType } from './node.type';
-import { getCustomErrorMessage } from '../helpers/error-handling';
 
 export async function router(this: IExecuteFunctions) {
 	const returnData: INodeExecutionData[] = [];
@@ -56,21 +55,12 @@ export async function router(this: IExecuteFunctions) {
 
 			returnData.push(...responseData);
 		} catch (error) {
-			if (this.continueOnFail()) {
+			if (this.continueOnFail(error)) {
 				returnData.push({ json: { error: error.message }, pairedItem: { item: i } });
 				continue;
 			}
 
 			if (error instanceof NodeApiError) {
-				// If the error is a rate limit error, we want to handle it differently
-				const errorCode: string | undefined = (error.cause as any).error?.error?.code;
-				if (errorCode) {
-					const customErrorMessage = getCustomErrorMessage(errorCode);
-					if (customErrorMessage) {
-						error.message = customErrorMessage;
-					}
-				}
-
 				error.context = {
 					itemIndex: i,
 				};

@@ -5,7 +5,6 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
 
 import {
 	msGraphSecurityApiRequest,
@@ -32,8 +31,8 @@ export class MicrosoftGraphSecurity implements INodeType {
 		defaults: {
 			name: 'Microsoft Graph Security',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: ['main'],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'microsoftGraphSecurityOAuth2Api',
@@ -216,7 +215,7 @@ export class MicrosoftGraphSecurity implements INodeType {
 					}
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({ error: error.message });
 					continue;
 				}

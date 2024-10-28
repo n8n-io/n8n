@@ -116,8 +116,8 @@ export function simplify(data: IDataObject[]) {
 export async function getCredentials(this: IExecuteFunctions) {
 	const authenticationMethod = this.getNodeParameter('authentication', 0) as string;
 	if (authenticationMethod === 'accessToken') {
-		return await this.getCredentials('dropboxApi');
+		return (await this.getCredentials('dropboxApi')) as IDataObject;
 	} else {
-		return await this.getCredentials('dropboxOAuth2Api');
+		return (await this.getCredentials('dropboxOAuth2Api')) as IDataObject;
 	}
 }

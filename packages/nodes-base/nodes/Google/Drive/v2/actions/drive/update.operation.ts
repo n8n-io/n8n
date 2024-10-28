@@ -18,7 +18,7 @@ const properties: INodeProperties[] = [
 		displayName: 'Update Fields',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add option',
+		placeholder: 'Add Option',
 		default: {},
 		displayOptions: {
 			show: {

@@ -19,7 +19,7 @@ export async function venafiApiRequest(
 	uri?: string,
 	headers: IDataObject = {},
 ): Promise<any> {
-	const credentials = await this.getCredentials('venafiTlsProtectDatacenterApi');
+	const credentials = (await this.getCredentials('venafiTlsProtectDatacenterApi')) as IDataObject;
 
 	const options: IRequestOptions = {
 		headers: {

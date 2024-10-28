@@ -27,7 +27,6 @@ describe('InlineExpressionTip.vue', () => {
 		mockNdvState = {
 			hasInputData: true,
 			isNDVDataEmpty: vi.fn(() => true),
-			setHighlightDraggables: vi.fn(),
 		};
 	});
 
@@ -44,16 +43,11 @@ describe('InlineExpressionTip.vue', () => {
 				hasInputData: true,
 				isNDVDataEmpty: vi.fn(() => false),
 				focusedMappableInput: 'Some Input',
-				setHighlightDraggables: vi.fn(),
 			};
-			const { container, unmount } = renderComponent(InlineExpressionTip, {
+			const { container } = renderComponent(InlineExpressionTip, {
 				pinia: createTestingPinia(),
 			});
-			expect(mockNdvState.setHighlightDraggables).toHaveBeenCalledWith(true);
 			expect(container).toHaveTextContent('Tip: Drag aninput fieldfrom the left to use it here.');
-
-			unmount();
-			expect(mockNdvState.setHighlightDraggables).toHaveBeenCalledWith(false);
 		});
 	});
 
@@ -64,7 +58,6 @@ describe('InlineExpressionTip.vue', () => {
 				isInputParentOfActiveNode: true,
 				isNDVDataEmpty: vi.fn(() => false),
 				focusedMappableInput: 'Some Input',
-				setHighlightDraggables: vi.fn(),
 			};
 			const { container } = renderComponent(InlineExpressionTip, {
 				pinia: createTestingPinia(),

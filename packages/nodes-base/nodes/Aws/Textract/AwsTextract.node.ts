@@ -1,14 +1,13 @@
-import {
-	NodeConnectionType,
-	type ICredentialDataDecryptedObject,
-	type ICredentialsDecrypted,
-	type ICredentialTestFunctions,
-	type IDataObject,
-	type IExecuteFunctions,
-	type INodeCredentialTestResult,
-	type INodeExecutionData,
-	type INodeType,
-	type INodeTypeDescription,
+import type {
+	ICredentialDataDecryptedObject,
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
+	IDataObject,
+	IExecuteFunctions,
+	INodeCredentialTestResult,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import type { IExpenseDocument } from './GenericFunctions';
@@ -26,8 +25,8 @@ export class AwsTextract implements INodeType {
 		defaults: {
 			name: 'AWS Textract',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: ['main'],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'aws',
@@ -144,7 +143,7 @@ export class AwsTextract implements INodeType {
 					returnData.push(responseData as unknown as IDataObject);
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({ error: error.message });
 					continue;
 				}

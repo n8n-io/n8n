@@ -4,7 +4,6 @@ import {
 	type ImapMessageBodyInfo,
 	type ImapMessageAttributes,
 } from 'imap';
-
 import type { Message, MessageBodyPart } from '../types';
 
 /**

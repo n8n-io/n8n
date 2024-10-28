@@ -380,25 +380,16 @@ export class GoogleSheet {
 		return keys;
 	}
 
-	async appendSheetData({
-		inputData,
-		range,
-		keyRowIndex,
-		valueInputMode,
-		usePathForKeyRow,
-		columnNamesList,
-		lastRow,
-		useAppend,
-	}: {
-		inputData: IDataObject[];
-		range: string;
-		keyRowIndex: number;
-		valueInputMode: ValueInputOption;
-		usePathForKeyRow?: boolean;
-		columnNamesList?: string[][];
-		lastRow?: number;
-		useAppend?: boolean;
-	}): Promise<string[][]> {
+	async appendSheetData(
+		inputData: IDataObject[],
+		range: string,
+		keyRowIndex: number,
+		valueInputMode: ValueInputOption,
+		usePathForKeyRow: boolean,
+		columnNamesList?: string[][],
+		lastRow?: number,
+		useAppend?: boolean,
+	): Promise<string[][]> {
 		const data = await this.convertObjectArrayToSheetDataArray(
 			inputData,
 			range,
@@ -415,19 +406,13 @@ export class GoogleSheet {
 		return xlsxUtils.encode_col(columnIndex);
 	}
 
-	async getColumnValues({
-		range,
-		keyIndex,
-		dataStartRowIndex,
-		valueRenderMode,
-		sheetData,
-	}: {
-		range: string;
-		keyIndex: number;
-		dataStartRowIndex: number;
-		valueRenderMode: ValueRenderOption;
-		sheetData?: string[][];
-	}): Promise<string[]> {
+	async getColumnValues(
+		range: string,
+		keyIndex: number,
+		dataStartRowIndex: number,
+		valueRenderMode: ValueRenderOption,
+		sheetData?: string[][],
+	): Promise<string[]> {
 		let columnValuesList;
 		if (sheetData) {
 			columnValuesList = sheetData.slice(dataStartRowIndex - 1).map((row) => row[keyIndex]);
@@ -463,29 +448,20 @@ export class GoogleSheet {
 	 * @returns {Promise<string[][]>}
 	 * @memberof GoogleSheet
 	 */
-	async prepareDataForUpdateOrUpsert({
-		inputData,
-		indexKey,
-		range,
-		keyRowIndex,
-		dataStartRowIndex,
-		valueRenderMode,
+	async prepareDataForUpdateOrUpsert(
+		inputData: IDataObject[],
+		indexKey: string,
+		range: string,
+		keyRowIndex: number,
+		dataStartRowIndex: number,
+		valueRenderMode: ValueRenderOption,
 		upsert = false,
-		columnNamesList,
-		columnValuesList,
-	}: {
-		inputData: IDataObject[];
-		indexKey: string;
-		range: string;
-		keyRowIndex: number;
-		dataStartRowIndex: number;
-		valueRenderMode: ValueRenderOption;
-		upsert?: boolean;
-		columnNamesList?: string[][];
-		columnValuesList?: string[];
-	}) {
+		columnNamesList?: string[][],
+		columnValuesList?: string[],
+	) {
 		const decodedRange = this.getDecodedSheetRange(range);
-		const keyRowRange = `${decodedRange.name}!${decodedRange.start?.column || ''}${keyRowIndex + 1}:${decodedRange.end?.column || ''}${keyRowIndex + 1}`;
+		// prettier-ignore
+		const	keyRowRange = `${decodedRange.name}!${decodedRange.start?.column || ''}${keyRowIndex + 1}:${decodedRange.end?.column || ''}${keyRowIndex + 1}`;
 
 		const sheetDatakeyRow = columnNamesList || (await this.getData(keyRowRange, valueRenderMode));
 
@@ -509,7 +485,7 @@ export class GoogleSheet {
 
 		const columnValues: Array<string | number> =
 			columnValuesList ||
-			(await this.getColumnValues({ range, keyIndex, dataStartRowIndex, valueRenderMode }));
+			(await this.getColumnValues(range, keyIndex, dataStartRowIndex, valueRenderMode));
 
 		const updateData: ISheetUpdateData[] = [];
 		const appendData: IDataObject[] = [];
@@ -644,21 +620,14 @@ export class GoogleSheet {
 	 * @returns {Promise<IDataObject[]>}
 	 * @memberof GoogleSheet
 	 */
-	async lookupValues({
-		inputData,
-		keyRowIndex,
-		dataStartRowIndex,
-		lookupValues,
-		returnAllMatches,
-		combineFilters = 'OR',
-	}: {
-		inputData: string[][];
-		keyRowIndex: number;
-		dataStartRowIndex: number;
-		lookupValues: ILookupValues[];
-		returnAllMatches?: boolean;
-		combineFilters?: 'AND' | 'OR';
-	}): Promise<IDataObject[]> {
+	async lookupValues(
+		inputData: string[][],
+		keyRowIndex: number,
+		dataStartRowIndex: number,
+		lookupValues: ILookupValues[],
+		returnAllMatches?: boolean,
+		combineFilters: 'AND' | 'OR' = 'OR',
+	): Promise<IDataObject[]> {
 		const keys: string[] = [];
 
 		if (keyRowIndex < 0 || dataStartRowIndex < keyRowIndex || keyRowIndex >= inputData.length) {
@@ -771,7 +740,7 @@ export class GoogleSheet {
 		inputData: IDataObject[],
 		range: string,
 		keyRowIndex: number,
-		usePathForKeyRow?: boolean,
+		usePathForKeyRow: boolean,
 		columnNamesList?: string[][],
 		emptyValue: string | null = '',
 	): Promise<string[][]> {

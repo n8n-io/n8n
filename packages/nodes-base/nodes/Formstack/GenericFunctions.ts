@@ -73,7 +73,7 @@ export async function apiRequest(
 
 	try {
 		if (authenticationMethod === 'accessToken') {
-			const credentials = await this.getCredentials<{ accessToken: string }>('formstackApi');
+			const credentials = (await this.getCredentials('formstackApi')) as IDataObject;
 
 			options.headers!.Authorization = `Bearer ${credentials.accessToken}`;
 			return await this.helpers.request(options);

@@ -1,22 +1,22 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import type { ExpressionKind } from 'ast-types/gen/kinds';
-import type { Config as EsprimaConfig } from 'esprima-next';
-import { parse as esprimaParse } from 'esprima-next';
 import { DateTime } from 'luxon';
+import { ExpressionExtensionError } from '../errors/expression-extension.error';
 import { parse, visit, types, print } from 'recast';
 import { getOption } from 'recast/lib/util';
+import type { Config as EsprimaConfig } from 'esprima-next';
+import { parse as esprimaParse } from 'esprima-next';
 
 import { arrayExtensions } from './ArrayExtensions';
-import { booleanExtensions } from './BooleanExtensions';
 import { dateExtensions } from './DateExtensions';
-import { joinExpression, splitExpression } from './ExpressionParser';
-import type { ExpressionChunk, ExpressionCode } from './ExpressionParser';
-import type { ExtensionMap } from './Extensions';
 import { numberExtensions } from './NumberExtensions';
-import { objectExtensions } from './ObjectExtensions';
 import { stringExtensions } from './StringExtensions';
-import { checkIfValueDefinedOrThrow } from './utils';
-import { ExpressionExtensionError } from '../errors/expression-extension.error';
+import { objectExtensions } from './ObjectExtensions';
+import type { ExpressionKind } from 'ast-types/gen/kinds';
+
+import type { ExpressionChunk, ExpressionCode } from './ExpressionParser';
+import { joinExpression, splitExpression } from './ExpressionParser';
+import { booleanExtensions } from './BooleanExtensions';
+import type { ExtensionMap } from './Extensions';
 
 const EXPRESSION_EXTENDER = 'extend';
 const EXPRESSION_EXTENDER_OPTIONAL = 'extendOptional';
@@ -514,7 +514,6 @@ export function extend(input: unknown, functionName: string, args: unknown[]) {
 	// any types have a function with that name. Then throw an error
 	// letting the user know the available types.
 	if (!foundFunction) {
-		checkIfValueDefinedOrThrow(input, functionName);
 		const haveFunction = EXTENSION_OBJECTS.filter((v) => functionName in v.functions);
 		if (!haveFunction.length) {
 			// This shouldn't really be possible but we should cover it anyway

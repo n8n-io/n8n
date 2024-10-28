@@ -1,6 +1,5 @@
 import type { IDataObject } from '@/Interfaces';
 import { Workflow } from '@/Workflow';
-
 import * as Helpers from '../Helpers';
 
 export const nodeTypes = Helpers.NodeTypes();

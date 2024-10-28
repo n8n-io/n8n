@@ -7,7 +7,6 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
 import { collectionFields, collectionOperations } from './CollectionDescription';
 import {
 	createCollectionEntry,
@@ -32,8 +31,8 @@ export class Cockpit implements INodeType {
 		defaults: {
 			name: 'Cockpit',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: ['main'],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'cockpitApi',
@@ -153,7 +152,7 @@ export class Cockpit implements INodeType {
 					returnData.push(responseData as IDataObject);
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({ error: error.message });
 					continue;
 				}

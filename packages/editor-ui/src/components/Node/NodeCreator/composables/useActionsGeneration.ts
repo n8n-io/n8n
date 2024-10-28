@@ -60,7 +60,6 @@ function getNodeTypeBase(nodeTypeDescription: INodeTypeDescription, label?: stri
 			categories: [category],
 		},
 		iconUrl: nodeTypeDescription.iconUrl,
-		iconColor: nodeTypeDescription.iconColor,
 		outputs: nodeTypeDescription.outputs,
 		icon: nodeTypeDescription.icon,
 		defaults: nodeTypeDescription.defaults,
@@ -230,7 +229,6 @@ function resourceCategories(nodeTypeDescription: INodeTypeDescription): ActionTy
 export function useActionsGenerator() {
 	function generateNodeActions(node: INodeTypeDescription | undefined) {
 		if (!node) return [];
-		if (node.codex?.subcategories?.AI?.includes('Tools')) return [];
 		return [...triggersCategory(node), ...operationsCategory(node), ...resourceCategories(node)];
 	}
 	function filterActions(actions: ActionTypeDescription[]) {

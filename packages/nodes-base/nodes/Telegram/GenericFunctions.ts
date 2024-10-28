@@ -158,12 +158,9 @@ export function addAdditionalFields(
 					}
 					sendRows.push(sendButtonData);
 				}
-
 				// @ts-ignore
-				const array = (body.reply_markup as ITelegramInlineReply | ITelegramReplyKeyboard)[
-					setParameterName
-				] as ITelegramKeyboardButton[][];
-				array.push(sendRows);
+				// prettier-ignore
+				((body.reply_markup as ITelegramInlineReply | ITelegramReplyKeyboard)[setParameterName] as ITelegramKeyboardButton[][]).push(sendRows);
 			}
 		}
 	} else if (replyMarkupOption === 'forceReply') {

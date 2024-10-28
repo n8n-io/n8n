@@ -8,7 +8,7 @@ import type {
 	INodeTypeDescription,
 	NodeParameterValue,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 export class IfV1 implements INodeType {
 	description: INodeTypeDescription;
@@ -21,9 +21,9 @@ export class IfV1 implements INodeType {
 				name: 'If',
 				color: '#408000',
 			},
-			inputs: [NodeConnectionType.Main],
+			inputs: ['main'],
 
-			outputs: [NodeConnectionType.Main, NodeConnectionType.Main],
+			outputs: ['main', 'main'],
 			outputNames: ['true', 'false'],
 			properties: [
 				{

@@ -1,7 +1,6 @@
 import get from 'lodash/get';
 import isEmpty from 'lodash/isEmpty';
 import set from 'lodash/set';
-
 import {
 	NodeOperationError,
 	type IDataObject,
@@ -10,9 +9,6 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	type IPairedItemData,
-	NodeConnectionType,
-	type NodeExecutionHint,
-	NodeExecutionOutput,
 } from 'n8n-workflow';
 import { prepareFieldsArray } from '../utils/utils';
 import { addBinariesToItem } from './utils';
@@ -29,8 +25,8 @@ export class Aggregate implements INodeType {
 		defaults: {
 			name: 'Aggregate',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: ['main'],
+		outputs: ['main'],
 		properties: [
 			{
 				displayName: 'Aggregate',
@@ -242,7 +238,6 @@ export class Aggregate implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		let returnData: INodeExecutionData = { json: {}, pairedItem: [] };
 		const items = this.getInputData();
-		const notFoundedFields: { [key: string]: boolean[] } = {};
 
 		const aggregate = this.getNodeParameter('aggregate', 0, '') as string;
 
@@ -303,13 +298,8 @@ export class Aggregate implements INodeType {
 				if (fieldToAggregate !== '') {
 					values[_outputFieldName] = [];
 					for (let i = 0; i < items.length; i++) {
-						if (notFoundedFields[fieldToAggregate] === undefined) {
-							notFoundedFields[fieldToAggregate] = [];
-						}
-
 						if (!disableDotNotation) {
 							let value = get(items[i].json, fieldToAggregate);
-							notFoundedFields[fieldToAggregate].push(value === undefined ? false : true);
 
 							if (!keepMissing) {
 								if (Array.isArray(value)) {
@@ -326,7 +316,6 @@ export class Aggregate implements INodeType {
 							}
 						} else {
 							let value = items[i].json[fieldToAggregate];
-							notFoundedFields[fieldToAggregate].push(value === undefined ? false : true);
 
 							if (!keepMissing) {
 								if (Array.isArray(value)) {
@@ -418,21 +407,6 @@ export class Aggregate implements INodeType {
 			const keepOnlyUnique = this.getNodeParameter('options.keepOnlyUnique', 0, false) as boolean;
 
 			addBinariesToItem(returnData, aggregatedItems, keepOnlyUnique);
-		}
-
-		if (Object.keys(notFoundedFields).length) {
-			const hints: NodeExecutionHint[] = [];
-
-			for (const [field, values] of Object.entries(notFoundedFields)) {
-				if (values.every((value) => !value)) {
-					hints.push({
-						message: `The field '${field}' wasn't found in any input item`,
-						location: 'outputPane',
-					});
-				}
-			}
-
-			if (hints.length) return new NodeExecutionOutput([[returnData]], hints);
 		}
 
 		return [[returnData]];

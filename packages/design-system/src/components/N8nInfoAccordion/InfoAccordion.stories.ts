@@ -1,7 +1,6 @@
-import { action } from '@storybook/addon-actions';
-import type { StoryFn } from '@storybook/vue3';
-
 import N8nInfoAccordion from './InfoAccordion.vue';
+import type { StoryFn } from '@storybook/vue3';
+import { action } from '@storybook/addon-actions';
 
 export default {
 	title: 'Atoms/Info Accordion',

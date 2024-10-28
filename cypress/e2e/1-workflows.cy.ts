@@ -1,5 +1,5 @@
-import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 import { WorkflowsPage as WorkflowsPageClass } from '../pages/workflows';
+import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 import { getUniqueWorkflowName } from '../utils/workflowUtils';
 
 const WorkflowsPage = new WorkflowsPageClass();

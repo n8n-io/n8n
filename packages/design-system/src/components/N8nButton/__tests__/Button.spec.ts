@@ -1,5 +1,4 @@
 import { render } from '@testing-library/vue';
-
 import N8nButton from '../Button.vue';
 
 const slots = {

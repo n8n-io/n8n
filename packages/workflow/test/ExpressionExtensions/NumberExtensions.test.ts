@@ -3,7 +3,6 @@
  */
 
 import { numberExtensions } from '@/Extensions/NumberExtensions';
-
 import { evaluate } from './Helpers';
 
 describe('Data Transformation Functions', () => {

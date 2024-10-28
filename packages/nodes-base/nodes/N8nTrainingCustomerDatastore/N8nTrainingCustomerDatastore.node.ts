@@ -4,7 +4,6 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
 
 const data = [
 	{
@@ -64,8 +63,8 @@ export class N8nTrainingCustomerDatastore implements INodeType {
 		defaults: {
 			name: 'Customer Datastore (n8n training)',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: ['main'],
+		outputs: ['main'],
 		properties: [
 			{
 				displayName: 'Operation',

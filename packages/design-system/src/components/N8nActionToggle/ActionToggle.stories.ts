@@ -1,7 +1,6 @@
+import N8nActionToggle from './ActionToggle.vue';
 import { action } from '@storybook/addon-actions';
 import type { StoryFn } from '@storybook/vue3';
-
-import N8nActionToggle from './ActionToggle.vue';
 
 export default {
 	title: 'Atoms/ActionToggle',

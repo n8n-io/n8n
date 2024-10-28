@@ -9,6 +9,7 @@ import type {
 } from 'n8n-workflow';
 
 import { OpenAI, type ClientOptions } from '@langchain/openai';
+import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 import { N8nLlmTracing } from '../N8nLlmTracing';
 
 type LmOpenAiOptions = {
@@ -27,7 +28,6 @@ export class LmOpenAi implements INodeType {
 		displayName: 'OpenAI Model',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
 		name: 'lmOpenAi',
-		hidden: true,
 		icon: { light: 'file:openAiLight.svg', dark: 'file:openAiLight.dark.svg' },
 		group: ['transform'],
 		version: 1,
@@ -38,8 +38,7 @@ export class LmOpenAi implements INodeType {
 		codex: {
 			categories: ['AI'],
 			subcategories: {
-				AI: ['Language Models', 'Root Nodes'],
-				'Language Models': ['Text Completion Models'],
+				AI: ['Language Models'],
 			},
 			resources: {
 				primaryDocumentation: [
@@ -66,13 +65,7 @@ export class LmOpenAi implements INodeType {
 				'={{ $parameter.options?.baseURL?.split("/").slice(0,-1).join("/") || "https://api.openai.com" }}',
 		},
 		properties: [
-			{
-				displayName:
-					'This node is using OpenAI completions which are now deprecated. Please use the OpenAI Chat Model node instead.',
-				name: 'deprecated',
-				type: 'notice',
-				default: '',
-			},
+			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
 			{
 				displayName: 'Model',
 				name: 'model',
@@ -101,18 +94,6 @@ export class LmOpenAi implements INodeType {
 						type: 'body',
 						property: 'model',
 						value: '={{$parameter.model.value}}',
-					},
-				},
-			},
-			{
-				displayName:
-					'When using non OpenAI models via Base URL override, not all models might be chat-compatible or support other features, like tools calling or JSON response format.',
-				name: 'notice',
-				type: 'notice',
-				default: '',
-				displayOptions: {
-					show: {
-						'/options.baseURL': [{ _cnd: { exists: true } }],
 					},
 				},
 			},
@@ -217,7 +198,7 @@ export class LmOpenAi implements INodeType {
 				})) as { data: Array<{ owned_by: string; id: string }> };
 
 				for (const model of data) {
-					if (!options.baseURL && !model.owned_by?.startsWith('system')) continue;
+					if (!model.owned_by?.startsWith('system')) continue;
 					results.push({
 						name: model.id,
 						value: model.id,

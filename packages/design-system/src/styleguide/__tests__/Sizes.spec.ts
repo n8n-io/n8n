@@ -1,6 +1,5 @@
 import { render } from '@testing-library/vue';
 import { mock, mockClear } from 'vitest-mock-extended';
-
 import Sizes from '../Sizes.vue';
 
 describe('Sizes', () => {

@@ -1,9 +1,4 @@
-import type {
-	IAuthenticateGeneric,
-	ICredentialTestRequest,
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class BrandfetchApi implements ICredentialType {
 	name = 'brandfetchApi';
@@ -21,20 +16,4 @@ export class BrandfetchApi implements ICredentialType {
 			default: '',
 		},
 	];
-
-	authenticate: IAuthenticateGeneric = {
-		type: 'generic',
-		properties: {
-			headers: {
-				Authorization: '=Bearer {{$credentials.apiKey}}',
-			},
-		},
-	};
-
-	test: ICredentialTestRequest = {
-		request: {
-			baseURL: 'https://api.brandfetch.io',
-			url: '/v2/brands/brandfetch.com',
-		},
-	};
 }

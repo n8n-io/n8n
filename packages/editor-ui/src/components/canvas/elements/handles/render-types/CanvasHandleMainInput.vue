@@ -1,49 +1,39 @@
 <script lang="ts" setup>
-import { useCanvasNodeHandle } from '@/composables/useCanvasNodeHandle';
-import { computed, useCssModule } from 'vue';
+import { computed, inject, useCssModule } from 'vue';
+import { CanvasNodeHandleKey } from '@/constants';
+
+const handle = inject(CanvasNodeHandleKey);
 
 const $style = useCssModule();
 
-const { label, isRequired } = useCanvasNodeHandle();
-
-const classes = computed(() => ({
-	'canvas-node-handle-main-input': true,
-	[$style.handle]: true,
-	[$style.required]: isRequired.value,
-}));
-
-const handleClasses = 'target';
+const label = computed(() => handle?.label.value ?? '');
 </script>
 <template>
-	<div :class="classes">
-		<div :class="[$style.label]">{{ label }}</div>
-		<CanvasHandleRectangle :handle-classes="handleClasses" />
+	<div :class="['canvas-node-handle-main-input', $style.handle]">
+		<div :class="$style.label">{{ label }}</div>
 	</div>
 </template>
 
 <style lang="scss" module>
 .handle {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
+	width: 8px;
+	height: 16px;
+	border-radius: 0;
+	background: var(--color-foreground-xdark);
+
+	&:hover {
+		background: var(--color-primary);
+	}
 }
 
 .label {
 	position: absolute;
 	top: 50%;
-	left: calc(var(--spacing-xs) * -1);
-	transform: translate(-100%, -50%);
+	right: 12px;
+	transform: translate(0, -50%);
 	font-size: var(--font-size-2xs);
 	color: var(--color-foreground-xdark);
-	background: var(--color-canvas-label-background);
+	background: var(--color-background-light);
 	z-index: 1;
-	text-align: center;
-	white-space: nowrap;
-}
-
-.required .label::after {
-	content: '*';
-	color: var(--color-danger);
 }
 </style>

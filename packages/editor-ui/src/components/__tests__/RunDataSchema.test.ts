@@ -2,46 +2,24 @@ import { createComponentRenderer } from '@/__tests__/render';
 import RunDataJsonSchema from '@/components/RunDataSchema.vue';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { userEvent } from '@testing-library/user-event';
-import { cleanup, within, waitFor } from '@testing-library/vue';
+import { cleanup, within } from '@testing-library/vue';
 import { createPinia, setActivePinia } from 'pinia';
-import {
-	createTestNode,
-	defaultNodeDescriptions,
-	mockNodeTypeDescription,
-} from '@/__tests__/mocks';
-import { IF_NODE_TYPE, SET_NODE_TYPE } from '@/constants';
+import { createTestNode, defaultNodeDescriptions } from '@/__tests__/mocks';
+import { SET_NODE_TYPE } from '@/constants';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { mock } from 'vitest-mock-extended';
 import type { IWorkflowDb } from '@/Interface';
-import { NodeConnectionType, type IDataObject } from 'n8n-workflow';
-import * as nodeHelpers from '@/composables/useNodeHelpers';
 
 const mockNode1 = createTestNode({
 	name: 'Set1',
 	type: SET_NODE_TYPE,
 	typeVersion: 1,
-	disabled: false,
 });
 
 const mockNode2 = createTestNode({
 	name: 'Set2',
 	type: SET_NODE_TYPE,
 	typeVersion: 1,
-	disabled: false,
-});
-
-const disabledNode = createTestNode({
-	name: 'Disabled Node',
-	type: SET_NODE_TYPE,
-	typeVersion: 1,
-	disabled: true,
-});
-
-const ifNode = createTestNode({
-	name: 'If',
-	type: IF_NODE_TYPE,
-	typeVersion: 1,
-	disabled: false,
 });
 
 async function setupStore() {
@@ -50,7 +28,7 @@ async function setupStore() {
 		name: 'Test Workflow',
 		connections: {},
 		active: true,
-		nodes: [mockNode1, mockNode2, disabledNode, ifNode],
+		nodes: [mockNode1, mockNode2],
 	});
 
 	const pinia = createPinia();
@@ -59,31 +37,10 @@ async function setupStore() {
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
 
-	nodeTypesStore.setNodeTypes([
-		...defaultNodeDescriptions,
-		mockNodeTypeDescription({
-			name: IF_NODE_TYPE,
-			outputs: [NodeConnectionType.Main, NodeConnectionType.Main],
-		}),
-	]);
+	nodeTypesStore.setNodeTypes(defaultNodeDescriptions);
 	workflowsStore.workflow = workflow;
 
 	return pinia;
-}
-
-function mockNodeOutputData(nodeName: string, data: IDataObject[], outputIndex = 0) {
-	const originalNodeHelpers = nodeHelpers.useNodeHelpers();
-	vi.spyOn(nodeHelpers, 'useNodeHelpers').mockImplementation(() => {
-		return {
-			...originalNodeHelpers,
-			getNodeInputData: vi.fn((node, _, output) => {
-				if (node.name === nodeName && output === outputIndex) {
-					return data.map((json) => ({ json }));
-				}
-				return [];
-			}),
-		};
-	});
 }
 
 describe('RunDataSchema.vue', () => {
@@ -156,7 +113,7 @@ describe('RunDataSchema.vue', () => {
 		expect(within(nodes[1]).getByTestId('run-data-schema-node-schema')).toMatchSnapshot();
 	});
 
-	it('renders schema in output pane', async () => {
+	it('renders schema for in output pane', async () => {
 		const { container } = renderComponent({
 			props: {
 				nodes: [],
@@ -203,40 +160,6 @@ describe('RunDataSchema.vue', () => {
 
 		const { getAllByTestId } = renderComponent();
 		expect(getAllByTestId('run-data-schema-empty').length).toBe(1);
-	});
-
-	it('renders disabled nodes correctly', () => {
-		const { getByTestId } = renderComponent({
-			props: {
-				nodes: [{ name: disabledNode.name, indicies: [], depth: 1 }],
-			},
-		});
-		expect(getByTestId('run-data-schema-disabled')).toBeInTheDocument();
-		expect(getByTestId('run-data-schema-node-name')).toHaveTextContent(
-			`${disabledNode.name} (Deactivated)`,
-		);
-	});
-
-	it('renders schema for correct output branch', async () => {
-		mockNodeOutputData(
-			'If',
-			[
-				{ id: 1, name: 'John' },
-				{ id: 2, name: 'Jane' },
-			],
-			1,
-		);
-		const { getByTestId } = renderComponent({
-			props: {
-				nodes: [{ name: 'If', indicies: [1], depth: 2 }],
-			},
-		});
-
-		await waitFor(() => {
-			expect(getByTestId('run-data-schema-node-name')).toHaveTextContent('If');
-			expect(getByTestId('run-data-schema-node-item-count')).toHaveTextContent('2 items');
-			expect(getByTestId('run-data-schema-node-schema')).toMatchSnapshot();
-		});
 	});
 
 	test.each([[[{ tx: false }, { tx: false }]], [[{ tx: '' }, { tx: '' }]], [[{ tx: [] }]]])(

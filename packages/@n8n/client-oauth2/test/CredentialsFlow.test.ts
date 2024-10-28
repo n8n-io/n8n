@@ -1,9 +1,8 @@
 import nock from 'nock';
-
-import * as config from './config';
+import type { Headers } from '../src/types';
 import type { ClientOAuth2Options } from '../src';
 import { ClientOAuth2, ClientOAuth2Token } from '../src';
-import type { Headers } from '../src/types';
+import * as config from './config';
 
 describe('CredentialsFlow', () => {
 	beforeAll(async () => {

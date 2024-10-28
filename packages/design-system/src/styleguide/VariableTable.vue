@@ -1,3 +1,20 @@
+<template>
+	<table :class="$style.table">
+		<tr>
+			<th :class="$style.row">Name</th>
+			<th :class="$style.row">Value</th>
+		</tr>
+		<tr
+			v-for="variable in variables"
+			:key="variable"
+			:style="attr ? { [attr]: `var(${variable})` } : {}"
+		>
+			<td>{{ variable }}</td>
+			<td>{{ values[variable] }}</td>
+		</tr>
+	</table>
+</template>
+
 <script lang="ts" setup>
 import { onMounted, onUnmounted } from 'vue';
 
@@ -46,23 +63,6 @@ onUnmounted(() => {
 	observer?.disconnect();
 });
 </script>
-
-<template>
-	<table :class="$style.table">
-		<tr>
-			<th :class="$style.row">Name</th>
-			<th :class="$style.row">Value</th>
-		</tr>
-		<tr
-			v-for="variable in variables"
-			:key="variable"
-			:style="attr ? { [attr]: `var(${variable})` } : {}"
-		>
-			<td>{{ variable }}</td>
-			<td>{{ values[variable] }}</td>
-		</tr>
-	</table>
-</template>
 
 <style lang="scss" module>
 .table {

@@ -1,5 +1,4 @@
 import type { INodeProperties } from 'n8n-workflow';
-import { appendAttributionOption } from '../../utils/descriptions';
 
 export const webhookPath: INodeProperties = {
 	displayName: 'Form Path',
@@ -29,9 +28,6 @@ export const formDescription: INodeProperties = {
 	placeholder: "e.g. We'll get back to you soon",
 	description:
 		'Shown underneath the Form Title. Can be used to prompt the user on how to complete the form.',
-	typeOptions: {
-		rows: 2,
-	},
 };
 
 export const formFields: INodeProperties = {
@@ -55,7 +51,7 @@ export const formFields: INodeProperties = {
 					type: 'string',
 					default: '',
 					placeholder: 'e.g. What is your name?',
-					description: 'Label that appears above the input field',
+					description: 'Label appears above the input field',
 					required: true,
 				},
 				{
@@ -72,14 +68,6 @@ export const formFields: INodeProperties = {
 						{
 							name: 'Dropdown List',
 							value: 'dropdown',
-						},
-						{
-							name: 'Email',
-							value: 'email',
-						},
-						{
-							name: 'File',
-							value: 'file',
 						},
 						{
 							name: 'Number',
@@ -99,18 +87,6 @@ export const formFields: INodeProperties = {
 						},
 					],
 					required: true,
-				},
-				{
-					displayName: 'Placeholder',
-					name: 'placeholder',
-					description: 'Sample text to display inside the field',
-					type: 'string',
-					default: '',
-					displayOptions: {
-						hide: {
-							fieldType: ['dropdown', 'date', 'file'],
-						},
-					},
 				},
 				{
 					displayName: 'Field Options',
@@ -154,48 +130,6 @@ export const formFields: INodeProperties = {
 					displayOptions: {
 						show: {
 							fieldType: ['dropdown'],
-						},
-					},
-				},
-				{
-					displayName: 'Multiple Files',
-					name: 'multipleFiles',
-					type: 'boolean',
-					default: true,
-					description:
-						'Whether to allow the user to select multiple files from the file input or just one',
-					displayOptions: {
-						show: {
-							fieldType: ['file'],
-						},
-					},
-				},
-				{
-					displayName: 'Accepted File Types',
-					name: 'acceptFileTypes',
-					type: 'string',
-					default: '',
-					description: 'Comma-separated list of allowed file extensions',
-					hint: 'Leave empty to allow all file types',
-					placeholder: 'e.g. .jpg, .png',
-					displayOptions: {
-						show: {
-							fieldType: ['file'],
-						},
-					},
-				},
-				{
-					displayName: 'Format Date As',
-					name: 'formatDate',
-					type: 'string',
-					default: '',
-					description:
-						'How to format the date in the output data. For a table of tokens and their interpretations, see <a href="https://moment.github.io/luxon/#/formatting?ID=table-of-tokens" target="_blank">here</a>.',
-					placeholder: 'e.g. dd/mm/yyyy',
-					hint: 'Leave empty to use the default format',
-					displayOptions: {
-						show: {
-							fieldType: ['date'],
 						},
 					},
 				},
@@ -257,7 +191,7 @@ export const respondWithOptions: INodeProperties = {
 	displayName: 'Form Response',
 	name: 'respondWithOptions',
 	type: 'fixedCollection',
-	placeholder: 'Add option',
+	placeholder: 'Add Option',
 	default: { values: { respondWith: 'text' } },
 	options: [
 		{
@@ -314,9 +248,4 @@ export const respondWithOptions: INodeProperties = {
 			],
 		},
 	],
-};
-
-export const appendAttributionToForm: INodeProperties = {
-	...appendAttributionOption,
-	description: 'Whether to include the link “Form automated with n8n” at the bottom of the form',
 };

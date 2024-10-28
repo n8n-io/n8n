@@ -1,6 +1,4 @@
-import { ApplicationError } from 'n8n-workflow';
-
-export class ChatTriggerAuthorizationError extends ApplicationError {
+export class ChatTriggerAuthorizationError extends Error {
 	constructor(
 		readonly responseCode: number,
 		message?: string,

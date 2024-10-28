@@ -1,8 +1,7 @@
 import { mock } from 'jest-mock-extended';
-
+import type { INode } from '@/Interfaces';
 import { NodeApiError } from '@/errors/node-api.error';
 import { NodeOperationError } from '@/errors/node-operation.error';
-import type { INode } from '@/Interfaces';
 
 describe('NodeError', () => {
 	const node = mock<INode>();

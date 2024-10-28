@@ -10,6 +10,7 @@ import {
 
 import { NodeHelpers, NodeConnectionType } from 'n8n-workflow';
 import type {
+	ConnectionTypes,
 	INodeInputConfiguration,
 	INodeTypeDescription,
 	INodeOutputConfiguration,
@@ -56,8 +57,8 @@ export function useNodeBase({
 
 	const nodeId = computed<string>(() => data.value?.id ?? '');
 
-	const inputs = ref<Array<NodeConnectionType | INodeInputConfiguration>>([]);
-	const outputs = ref<Array<NodeConnectionType | INodeOutputConfiguration>>([]);
+	const inputs = ref<Array<ConnectionTypes | INodeInputConfiguration>>([]);
+	const outputs = ref<Array<ConnectionTypes | INodeOutputConfiguration>>([]);
 
 	const createAddInputEndpointSpec = (
 		connectionName: NodeConnectionType,
@@ -138,7 +139,7 @@ export function useNodeBase({
 				inputConfiguration = value;
 			}
 
-			const inputName: NodeConnectionType = inputConfiguration.type;
+			const inputName: ConnectionTypes = inputConfiguration.type;
 
 			const rootCategoryInputName =
 				inputName === NodeConnectionType.Main ? NodeConnectionType.Main : 'other';
@@ -365,7 +366,7 @@ export function useNodeBase({
 		outputs.value.forEach((_value, i) => {
 			const outputConfiguration = outputConfigurations[i];
 
-			const outputName: NodeConnectionType = outputConfiguration.type;
+			const outputName: ConnectionTypes = outputConfiguration.type;
 
 			const rootCategoryOutputName =
 				outputName === NodeConnectionType.Main ? NodeConnectionType.Main : 'other';
@@ -535,12 +536,12 @@ export function useNodeBase({
 		addOutputEndpoints(node, nodeTypeData);
 	}
 
-	function getEndpointColor(connectionType: NodeConnectionType) {
+	function getEndpointColor(connectionType: ConnectionTypes) {
 		return `--node-type-${connectionType}-color`;
 	}
 
 	function getInputConnectionStyle(
-		connectionType: NodeConnectionType,
+		connectionType: ConnectionTypes,
 		nodeTypeData: INodeTypeDescription,
 	): EndpointOptions {
 		if (connectionType === NodeConnectionType.Main) {
@@ -558,7 +559,7 @@ export function useNodeBase({
 		}
 
 		const createSupplementalConnectionType = (
-			connectionName: NodeConnectionType,
+			connectionName: ConnectionTypes,
 		): EndpointOptions => ({
 			endpoint: createAddInputEndpointSpec(
 				connectionName as NodeConnectionType,
@@ -570,12 +571,12 @@ export function useNodeBase({
 	}
 
 	function getOutputConnectionStyle(
-		connectionType: NodeConnectionType,
+		connectionType: ConnectionTypes,
 		outputConfiguration: INodeOutputConfiguration,
 		nodeTypeData: INodeTypeDescription,
 	): EndpointOptions {
 		const createSupplementalConnectionType = (
-			connectionName: NodeConnectionType,
+			connectionName: ConnectionTypes,
 		): EndpointOptions => ({
 			endpoint: createDiamondOutputEndpointSpec(),
 			paintStyle: NodeViewUtils.getOutputEndpointStyle(
@@ -620,7 +621,7 @@ export function useNodeBase({
 	}
 
 	function touchEnd(_e: MouseEvent) {
-		if (deviceSupport.isTouchDevice && uiStore.isActionActive['dragActive']) {
+		if (deviceSupport.isTouchDevice && uiStore.isActionActive('dragActive')) {
 			uiStore.removeActiveAction('dragActive');
 		}
 	}
@@ -639,14 +640,14 @@ export function useNodeBase({
 		}
 
 		if (!deviceSupport.isTouchDevice) {
-			if (uiStore.isActionActive['dragActive']) {
+			if (uiStore.isActionActive('dragActive')) {
 				uiStore.removeActiveAction('dragActive');
 			} else {
 				if (!deviceSupport.isCtrlKeyPressed(e)) {
 					emit('deselectAllNodes');
 				}
 
-				if (uiStore.isNodeSelected[data.value?.name ?? '']) {
+				if (uiStore.isNodeSelected(data.value?.name ?? '')) {
 					emit('deselectNode', name);
 				} else {
 					emit('nodeSelected', name);

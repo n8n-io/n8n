@@ -1,6 +1,5 @@
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 import { v4 as uuidv4 } from 'uuid';
-
-import type { MigrationContext, ReversibleMigration } from '@/databases/types';
 
 type Workflow = { id: number };
 

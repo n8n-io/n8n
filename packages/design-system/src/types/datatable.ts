@@ -4,7 +4,8 @@ export type DatatableRowDataType = string | number | boolean | null | undefined;
 
 export interface DatatableRow {
 	id: string | number;
-	[key: string]: DatatableRowDataType | Record<string, DatatableRowDataType>;
+
+	[key: string]: DatatableRowDataType;
 }
 
 export interface DatatableColumn {

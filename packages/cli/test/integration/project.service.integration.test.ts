@@ -1,12 +1,10 @@
 import Container from 'typedi';
-
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { ProjectService } from '@/services/project.service';
-
-import { linkUserToProject, createTeamProject } from './shared/db/projects';
+import * as testDb from './shared/testDb';
+import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
 import { createUser } from './shared/db/users';
 import { createWorkflow } from './shared/db/workflows';
-import * as testDb from './shared/test-db';
+import { linkUserToProject, createTeamProject } from './shared/db/projects';
 
 describe('ProjectService', () => {
 	let projectService: ProjectService;
@@ -33,6 +31,7 @@ describe('ProjectService', () => {
 		describe('when user has roles in projects where workflow is accessible', () => {
 			it('should return roles and project IDs', async () => {
 				const user = await createUser();
+				const secondUser = await createUser(); // @TODO: Needed only to satisfy index in legacy column
 
 				const firstProject = await createTeamProject('Project 1');
 				const secondProject = await createTeamProject('Project 2');
@@ -43,15 +42,17 @@ describe('ProjectService', () => {
 				const workflow = await createWorkflow();
 
 				await sharedWorkflowRepository.insert({
+					userId: user.id, // @TODO: Legacy column
 					projectId: firstProject.id,
 					workflowId: workflow.id,
 					role: 'workflow:owner',
 				});
 
 				await sharedWorkflowRepository.insert({
+					userId: secondUser.id, // @TODO: Legacy column
 					projectId: secondProject.id,
 					workflowId: workflow.id,
-					role: 'workflow:owner',
+					role: 'workflow:user',
 				});
 
 				const projectIds = await projectService.findProjectsWorkflowIsIn(workflow.id);
@@ -62,6 +63,9 @@ describe('ProjectService', () => {
 
 		describe('when user has no roles in projects where workflow is accessible', () => {
 			it('should return project IDs but no roles', async () => {
+				const user = await createUser();
+				const secondUser = await createUser(); // @TODO: Needed only to satisfy index in legacy column
+
 				const firstProject = await createTeamProject('Project 1');
 				const secondProject = await createTeamProject('Project 2');
 
@@ -70,15 +74,17 @@ describe('ProjectService', () => {
 				const workflow = await createWorkflow();
 
 				await sharedWorkflowRepository.insert({
+					userId: user.id, // @TODO: Legacy column
 					projectId: firstProject.id,
 					workflowId: workflow.id,
 					role: 'workflow:owner',
 				});
 
 				await sharedWorkflowRepository.insert({
+					userId: secondUser.id, // @TODO: Legacy column
 					projectId: secondProject.id,
 					workflowId: workflow.id,
-					role: 'workflow:owner',
+					role: 'workflow:user',
 				});
 
 				const projectIds = await projectService.findProjectsWorkflowIsIn(workflow.id);

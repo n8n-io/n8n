@@ -19,8 +19,6 @@ import { convert } from 'html-to-text';
 
 import { Readability } from '@mozilla/readability';
 import { JSDOM } from 'jsdom';
-import { z } from 'zod';
-import type { DynamicZodObject } from '../../../types/zod.types';
 import type {
 	ParameterInputType,
 	ParametersValues,
@@ -51,8 +49,7 @@ const genericCredentialRequest = async (ctx: IExecuteFunctions, itemIndex: numbe
 		const headerAuth = await ctx.getCredentials('httpHeaderAuth', itemIndex);
 
 		return async (options: IHttpRequestOptions) => {
-			if (!options.headers) options.headers = {};
-			options.headers[headerAuth.name as string] = headerAuth.value;
+			options.headers![headerAuth.name as string] = headerAuth.value;
 			return await ctx.helpers.httpRequest(options);
 		};
 	}
@@ -61,7 +58,9 @@ const genericCredentialRequest = async (ctx: IExecuteFunctions, itemIndex: numbe
 		const queryAuth = await ctx.getCredentials('httpQueryAuth', itemIndex);
 
 		return async (options: IHttpRequestOptions) => {
-			if (!options.qs) options.qs = {};
+			if (!options.qs) {
+				options.qs = {};
+			}
 			options.qs[queryAuth.name as string] = queryAuth.value;
 			return await ctx.helpers.httpRequest(options);
 		};
@@ -356,7 +355,7 @@ export const configureResponseOptimizer = (ctx: IExecuteFunctions, itemIndex: nu
 };
 
 const extractPlaceholders = (text: string): string[] => {
-	const placeholder = /(\{[a-zA-Z0-9_-]+\})/g;
+	const placeholder = /(\{[a-zA-Z0-9_]+\})/g;
 	const returnData: string[] = [];
 
 	const matches = text.matchAll(placeholder);
@@ -568,13 +567,11 @@ export const configureToolFunction = (
 	httpRequest: (options: IHttpRequestOptions) => Promise<any>,
 	optimizeResponse: (response: string) => string,
 ) => {
-	return async (query: string | IDataObject): Promise<string> => {
+	return async (query: string): Promise<string> => {
 		const { index } = ctx.addInputData(NodeConnectionType.AiTool, [[{ json: { query } }]]);
 
-		// Clone options and rawRequestOptions to avoid mutating the original objects
-		const options: IHttpRequestOptions | null = structuredClone(requestOptions);
-		const clonedRawRequestOptions: { [key: string]: string } = structuredClone(rawRequestOptions);
 		let response: string = '';
+		let options: IHttpRequestOptions | null = null;
 		let executionError: Error | undefined = undefined;
 
 		if (!toolParameters.length) {
@@ -585,22 +582,18 @@ export const configureToolFunction = (
 			if (query) {
 				let dataFromModel;
 
-				if (typeof query === 'string') {
-					try {
-						dataFromModel = jsonParse<IDataObject>(query);
-					} catch (error) {
-						if (toolParameters.length === 1) {
-							dataFromModel = { [toolParameters[0].name]: query };
-						} else {
-							throw new NodeOperationError(
-								ctx.getNode(),
-								`Input is not a valid JSON: ${error.message}`,
-								{ itemIndex },
-							);
-						}
+				try {
+					dataFromModel = jsonParse<IDataObject>(query);
+				} catch (error) {
+					if (toolParameters.length === 1) {
+						dataFromModel = { [toolParameters[0].name]: query };
+					} else {
+						throw new NodeOperationError(
+							ctx.getNode(),
+							`Input is not a valid JSON: ${error.message}`,
+							{ itemIndex },
+						);
 					}
-				} else {
-					dataFromModel = query;
 				}
 
 				for (const parameter of toolParameters) {
@@ -615,6 +608,8 @@ export const configureToolFunction = (
 						);
 					}
 				}
+
+				options = requestOptions;
 
 				for (const parameter of toolParameters) {
 					let argument = dataFromModel[parameter.name];
@@ -659,7 +654,7 @@ export const configureToolFunction = (
 							argument = String(argument);
 							if (
 								!argument.startsWith('"') &&
-								!clonedRawRequestOptions[parameter.sendIn].includes(`"{${parameter.name}}"`)
+								!rawRequestOptions[parameter.sendIn].includes(`"{${parameter.name}}"`)
 							) {
 								argument = `"${argument}"`;
 							}
@@ -669,9 +664,10 @@ export const configureToolFunction = (
 							argument = JSON.stringify(argument);
 						}
 
-						clonedRawRequestOptions[parameter.sendIn] = clonedRawRequestOptions[
-							parameter.sendIn
-						].replace(`{${parameter.name}}`, String(argument));
+						rawRequestOptions[parameter.sendIn] = rawRequestOptions[parameter.sendIn].replace(
+							`{${parameter.name}}`,
+							String(argument),
+						);
 						continue;
 					}
 
@@ -692,7 +688,7 @@ export const configureToolFunction = (
 					set(options, [parameter.sendIn, parameter.name], argument);
 				}
 
-				for (const [key, value] of Object.entries(clonedRawRequestOptions)) {
+				for (const [key, value] of Object.entries(rawRequestOptions)) {
 					if (value) {
 						let parsedValue;
 						try {
@@ -732,8 +728,6 @@ export const configureToolFunction = (
 				}
 			}
 		} catch (error) {
-			console.error(error);
-
 			const errorMessage = 'Input provided by model is not valid';
 
 			if (error instanceof NodeOperationError) {
@@ -772,38 +766,3 @@ export const configureToolFunction = (
 		return response;
 	};
 };
-
-function makeParameterZodSchema(parameter: ToolParameter) {
-	let schema: z.ZodTypeAny;
-
-	if (parameter.type === 'string') {
-		schema = z.string();
-	} else if (parameter.type === 'number') {
-		schema = z.number();
-	} else if (parameter.type === 'boolean') {
-		schema = z.boolean();
-	} else if (parameter.type === 'json') {
-		schema = z.record(z.any());
-	} else {
-		schema = z.string();
-	}
-
-	if (!parameter.required) {
-		schema = schema.optional();
-	}
-
-	if (parameter.description) {
-		schema = schema.describe(parameter.description);
-	}
-
-	return schema;
-}
-
-export function makeToolInputSchema(parameters: ToolParameter[]): DynamicZodObject {
-	const schemaEntries = parameters.map((parameter) => [
-		parameter.name,
-		makeParameterZodSchema(parameter),
-	]);
-
-	return z.object(Object.fromEntries(schemaEntries));
-}

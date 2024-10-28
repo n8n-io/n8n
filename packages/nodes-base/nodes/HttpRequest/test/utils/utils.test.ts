@@ -93,7 +93,7 @@ describe('HTTP Node Utils', () => {
 			);
 		});
 
-		it('should remove keys that contain sensitive data and do not modify requestOptions', async () => {
+		it('should remove keys that contain sensitive data', async () => {
 			const requestOptions: IRequestOptions = {
 				method: 'POST',
 				uri: 'https://example.com',
@@ -115,14 +115,6 @@ describe('HTTP Node Utils', () => {
 				method: 'POST',
 				uri: 'https://example.com',
 			});
-
-			expect(requestOptions).toEqual({
-				method: 'POST',
-				uri: 'https://example.com',
-				body: { sessionToken: 'secret', other: 'foo' },
-				headers: { authorization: 'secret', other: 'foo' },
-				auth: { user: 'user', password: 'secret' },
-			});
 		});
 
 		it('should remove secrets', async () => {
@@ -133,9 +125,7 @@ describe('HTTP Node Utils', () => {
 				headers: { authorization: 'secretAccessToken', other: 'foo' },
 			};
 
-			const sanitizedRequest = sanitizeUiMessage(requestOptions, {}, ['secretAccessToken']);
-
-			expect(sanitizedRequest).toEqual({
+			expect(sanitizeUiMessage(requestOptions, {}, ['secretAccessToken'])).toEqual({
 				body: {
 					nested: {
 						secret: REDACTED,
@@ -145,69 +135,6 @@ describe('HTTP Node Utils', () => {
 				method: 'POST',
 				uri: 'https://example.com',
 			});
-		});
-
-		const headersToTest = [
-			'authorization',
-			'x-api-key',
-			'x-auth-token',
-			'cookie',
-			'proxy-authorization',
-			'sslclientcert',
-		];
-
-		headersToTest.forEach((header) => {
-			it(`should redact the ${header} header when the key is lowercase`, () => {
-				const requestOptions: IRequestOptions = {
-					method: 'POST',
-					uri: 'https://example.com',
-					body: { sessionToken: 'secret', other: 'foo' },
-					headers: { [header]: 'some-sensitive-token', other: 'foo' },
-					auth: { user: 'user', password: 'secret' },
-				};
-
-				const sanitizedRequest = sanitizeUiMessage(requestOptions, {});
-
-				expect(sanitizedRequest.headers).toEqual({ [header]: REDACTED, other: 'foo' });
-			});
-
-			it(`should redact the ${header} header when the key is uppercase`, () => {
-				const requestOptions: IRequestOptions = {
-					method: 'POST',
-					uri: 'https://example.com',
-					body: { sessionToken: 'secret', other: 'foo' },
-					headers: { [header.toUpperCase()]: 'some-sensitive-token', other: 'foo' },
-					auth: { user: 'user', password: 'secret' },
-				};
-
-				const sanitizedRequest = sanitizeUiMessage(requestOptions, {});
-
-				expect(sanitizedRequest.headers).toEqual({
-					[header.toUpperCase()]: REDACTED,
-					other: 'foo',
-				});
-			});
-		});
-
-		it('should leave headers unchanged if Authorization header is not present', () => {
-			const requestOptions: IRequestOptions = {
-				method: 'POST',
-				uri: 'https://example.com',
-				body: { sessionToken: 'secret', other: 'foo' },
-				headers: { other: 'foo' },
-				auth: { user: 'user', password: 'secret' },
-			};
-			const sanitizedRequest = sanitizeUiMessage(requestOptions, {});
-
-			expect(sanitizedRequest.headers).toEqual({ other: 'foo' });
-		});
-
-		it('should handle case when headers are undefined', () => {
-			const requestOptions: IRequestOptions = {};
-
-			const sanitizedRequest = sanitizeUiMessage(requestOptions, {});
-
-			expect(sanitizedRequest.headers).toBeUndefined();
 		});
 	});
 });

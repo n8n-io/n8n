@@ -7,7 +7,6 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
 
 import { cloudflareApiRequest, cloudflareApiRequestAllItems } from './GenericFunctions';
 
@@ -25,8 +24,8 @@ export class Cloudflare implements INodeType {
 		defaults: {
 			name: 'Cloudflare',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: ['main'],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'cloudflareApi',
@@ -168,7 +167,7 @@ export class Cloudflare implements INodeType {
 					),
 				);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({ json: { error: error.message } });
 					continue;
 				}

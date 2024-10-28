@@ -61,7 +61,7 @@ export async function formIoApiRequest(
 	body = {},
 	qs = {},
 ): Promise<any> {
-	const credentials = await this.getCredentials<IFormIoCredentials>('formIoApi');
+	const credentials = (await this.getCredentials('formIoApi')) as unknown as IFormIoCredentials;
 
 	const token = await getToken.call(this, credentials);
 

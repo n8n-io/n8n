@@ -1,22 +1,17 @@
 import { Service } from 'typedi';
-
-import { Subscriber } from '@/scaling/pubsub/subscriber.service';
-
-import { getWorkerCommandReceivedHandler } from './handle-command-message-worker';
-import type { WorkerCommandReceivedHandlerOptions } from './types';
 import { OrchestrationHandlerService } from '../../orchestration.handler.base.service';
+import { getWorkerCommandReceivedHandler } from './handleCommandMessageWorker';
+import type { WorkerCommandReceivedHandlerOptions } from './types';
 
 @Service()
 export class OrchestrationHandlerWorkerService extends OrchestrationHandlerService {
-	constructor(private readonly subscriber: Subscriber) {
-		super();
-	}
-
 	async initSubscriber(options: WorkerCommandReceivedHandlerOptions) {
-		await this.subscriber.subscribe('n8n.commands');
+		this.redisSubscriber = await this.redisService.getPubSubSubscriber();
 
-		this.subscriber.setMessageHandler('n8n.commands', async (message: string) => {
-			await getWorkerCommandReceivedHandler(message, options);
-		});
+		await this.redisSubscriber.subscribeToCommandChannel();
+		this.redisSubscriber.addMessageHandler(
+			'WorkerCommandReceivedHandler',
+			getWorkerCommandReceivedHandler(options),
+		);
 	}
 }

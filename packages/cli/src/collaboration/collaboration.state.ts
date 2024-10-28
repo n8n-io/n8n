@@ -1,111 +1,79 @@
-import type { Iso8601DateTimeString } from '@n8n/api-types';
+import type { User } from '@db/entities/User';
 import type { Workflow } from 'n8n-workflow';
 import { Service } from 'typedi';
 
-import { Time } from '@/constants';
-import type { User } from '@/databases/entities/user';
-import { CacheService } from '@/services/cache/cache.service';
+type ActiveWorkflowUser = {
+	userId: User['id'];
+	lastSeen: Date;
+};
 
-type WorkflowCacheHash = Record<User['id'], Iso8601DateTimeString>;
-interface CacheEntry {
-	userId: string;
-	lastSeen: string;
-}
+type UserStateByUserId = Map<User['id'], ActiveWorkflowUser>;
+
+type State = {
+	activeUsersByWorkflowId: Map<Workflow['id'], UserStateByUserId>;
+};
 
 /**
- * State management for the collaboration service. Workflow active
- * users are stored in a hash in the following format:
- * {
- *   [workflowId] -> {
- *     [userId] -> lastSeenAsIso8601String
- *   }
- * }
+ * State management for the collaboration service
  */
 @Service()
 export class CollaborationState {
-	/**
-	 * After how many minutes of inactivity a user should be removed
-	 * as being an active user of a workflow.
-	 */
-	public readonly inactivityCleanUpTime = 15 * Time.minutes.toMilliseconds;
+	private state: State = {
+		activeUsersByWorkflowId: new Map(),
+	};
 
-	constructor(private readonly cache: CacheService) {}
+	addActiveWorkflowUser(workflowId: Workflow['id'], userId: User['id']) {
+		const { activeUsersByWorkflowId } = this.state;
 
-	/**
-	 * Mark user active for given workflow
-	 */
-	async addCollaborator(workflowId: Workflow['id'], userId: User['id']) {
-		const cacheKey = this.formWorkflowCacheKey(workflowId);
-		const cacheEntry: WorkflowCacheHash = {
-			[userId]: new Date().toISOString(),
-		};
+		let activeUsers = activeUsersByWorkflowId.get(workflowId);
+		if (!activeUsers) {
+			activeUsers = new Map();
+			activeUsersByWorkflowId.set(workflowId, activeUsers);
+		}
 
-		await this.cache.setHash(cacheKey, cacheEntry);
+		activeUsers.set(userId, {
+			userId,
+			lastSeen: new Date(),
+		});
 	}
 
-	/**
-	 * Remove user from workflow's active users
-	 */
-	async removeCollaborator(workflowId: Workflow['id'], userId: User['id']) {
-		const cacheKey = this.formWorkflowCacheKey(workflowId);
+	removeActiveWorkflowUser(workflowId: Workflow['id'], userId: User['id']) {
+		const { activeUsersByWorkflowId } = this.state;
 
-		await this.cache.deleteFromHash(cacheKey, userId);
+		const activeUsers = activeUsersByWorkflowId.get(workflowId);
+		if (!activeUsers) {
+			return;
+		}
+
+		activeUsers.delete(userId);
+		if (activeUsers.size === 0) {
+			activeUsersByWorkflowId.delete(workflowId);
+		}
 	}
 
-	async getCollaborators(workflowId: Workflow['id']): Promise<CacheEntry[]> {
-		const cacheKey = this.formWorkflowCacheKey(workflowId);
-
-		const cacheValue = await this.cache.getHash<Iso8601DateTimeString>(cacheKey);
-		if (!cacheValue) {
+	getActiveWorkflowUsers(workflowId: Workflow['id']): ActiveWorkflowUser[] {
+		const workflowState = this.state.activeUsersByWorkflowId.get(workflowId);
+		if (!workflowState) {
 			return [];
 		}
 
-		const activeCollaborators = this.cacheHashToCollaborators(cacheValue);
-		const [expired, stillActive] = this.splitToExpiredAndStillActive(activeCollaborators);
+		return [...workflowState.values()];
+	}
 
-		if (expired.length > 0) {
-			void this.removeExpiredCollaborators(workflowId, expired);
+	/**
+	 * Removes all users that have not been seen in a given time
+	 */
+	cleanInactiveUsers(workflowId: Workflow['id'], inactivityCleanUpTimeInMs: number) {
+		const activeUsers = this.state.activeUsersByWorkflowId.get(workflowId);
+		if (!activeUsers) {
+			return;
 		}
 
-		return stillActive;
-	}
-
-	private formWorkflowCacheKey(workflowId: Workflow['id']) {
-		return `collaboration:${workflowId}`;
-	}
-
-	private splitToExpiredAndStillActive(collaborators: CacheEntry[]) {
-		const expired: CacheEntry[] = [];
-		const stillActive: CacheEntry[] = [];
-
-		for (const collaborator of collaborators) {
-			if (this.hasSessionExpired(collaborator.lastSeen)) {
-				expired.push(collaborator);
-			} else {
-				stillActive.push(collaborator);
+		const now = Date.now();
+		for (const user of activeUsers.values()) {
+			if (now - user.lastSeen.getTime() > inactivityCleanUpTimeInMs) {
+				activeUsers.delete(user.userId);
 			}
 		}
-
-		return [expired, stillActive];
-	}
-
-	private async removeExpiredCollaborators(workflowId: Workflow['id'], expiredUsers: CacheEntry[]) {
-		const cacheKey = this.formWorkflowCacheKey(workflowId);
-		await Promise.all(
-			expiredUsers.map(async (user) => await this.cache.deleteFromHash(cacheKey, user.userId)),
-		);
-	}
-
-	private cacheHashToCollaborators(workflowCacheEntry: WorkflowCacheHash): CacheEntry[] {
-		return Object.entries(workflowCacheEntry).map(([userId, lastSeen]) => ({
-			userId,
-			lastSeen,
-		}));
-	}
-
-	private hasSessionExpired(lastSeenString: Iso8601DateTimeString) {
-		const expiryTime = new Date(lastSeenString).getTime() + this.inactivityCleanUpTime;
-
-		return Date.now() > expiryTime;
 	}
 }

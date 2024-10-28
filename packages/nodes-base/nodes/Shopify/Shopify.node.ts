@@ -7,7 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { keysToSnakeCase, shopifyApiRequest, shopifyApiRequestAllItems } from './GenericFunctions';
 
@@ -31,8 +31,8 @@ export class Shopify implements INodeType {
 		defaults: {
 			name: 'Shopify',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: ['main'],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'shopifyApi',
@@ -63,13 +63,6 @@ export class Shopify implements INodeType {
 			},
 		],
 		properties: [
-			{
-				displayName: 'Shopify API Version: 2024-07',
-				type: 'notice',
-				name: 'apiVersion',
-				default: '',
-				isNodeSetting: true,
-			},
 			{
 				displayName: 'Authentication',
 				name: 'authentication',
@@ -466,7 +459,7 @@ export class Shopify implements INodeType {
 
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },

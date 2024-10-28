@@ -1,5 +1,5 @@
-import { augmentArray, augmentObject } from '@/AugmentObject';
 import type { IDataObject } from '@/Interfaces';
+import { augmentArray, augmentObject } from '@/AugmentObject';
 import { deepCopy } from '@/utils';
 
 describe('AugmentObject', () => {

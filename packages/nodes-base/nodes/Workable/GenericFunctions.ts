@@ -19,10 +19,10 @@ export async function workableApiRequest(
 	uri?: string,
 	option: IDataObject = {},
 ): Promise<any> {
-	const credentials = await this.getCredentials<{
+	const credentials = (await this.getCredentials('workableApi')) as {
 		accessToken: string;
 		subdomain: string;
-	}>('workableApi');
+	};
 
 	let options: IRequestOptions = {
 		headers: { Authorization: `Bearer ${credentials.accessToken}` },

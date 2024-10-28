@@ -1,10 +1,9 @@
-import {
-	NodeConnectionType,
-	type IDataObject,
-	type IExecuteFunctions,
-	type INodeExecutionData,
-	type INodeType,
-	type INodeTypeDescription,
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import { sms77ApiRequest } from './GenericFunctions';
@@ -21,8 +20,8 @@ export class Sms77 implements INodeType {
 		defaults: {
 			name: 'seven',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: ['main'],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'sms77Api',
@@ -298,7 +297,7 @@ export class Sms77 implements INodeType {
 					returnData.push(responseData as IDataObject);
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({ error: error.message });
 					continue;
 				}

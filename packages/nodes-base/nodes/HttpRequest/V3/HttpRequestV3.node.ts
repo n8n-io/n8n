@@ -18,8 +18,6 @@ import type {
 import {
 	BINARY_ENCODING,
 	NodeApiError,
-	NodeExecutionOutput,
-	NodeConnectionType,
 	NodeOperationError,
 	jsonParse,
 	removeCircularRefs,
@@ -38,8 +36,8 @@ import {
 	sanitizeUiMessage,
 	setAgentOptions,
 } from '../GenericFunctions';
+import type { HttpSslAuthCredentials } from '../interfaces';
 import { keysToLowercase } from '@utils/utilities';
-import { type HttpSslAuthCredentials } from '../interfaces';
 
 function toText<T>(data: T) {
 	if (typeof data === 'object' && data !== null) {
@@ -59,8 +57,8 @@ export class HttpRequestV3 implements INodeType {
 				name: 'HTTP Request',
 				color: '#0004F5',
 			},
-			inputs: [NodeConnectionType.Main],
-			outputs: [NodeConnectionType.Main],
+			inputs: ['main'],
+			outputs: ['main'],
 			credentials: [
 				{
 					name: 'httpSslAuth',
@@ -488,7 +486,7 @@ export class HttpRequestV3 implements INodeType {
 									type: 'string',
 									default: '',
 									description:
-										'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+										'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 								},
 								{
 									displayName: 'Value',
@@ -721,7 +719,7 @@ export class HttpRequestV3 implements INodeType {
 					displayName: 'Options',
 					name: 'options',
 					type: 'collection',
-					placeholder: 'Add option',
+					placeholder: 'Add Option',
 					default: {},
 					options: [
 						{
@@ -807,13 +805,6 @@ export class HttpRequestV3 implements INodeType {
 								},
 							],
 							default: 'brackets',
-						},
-						{
-							displayName: 'Lowercase Headers',
-							name: 'lowercaseHeaders',
-							type: 'boolean',
-							default: true,
-							description: 'Whether to lowercase header names',
 						},
 						{
 							displayName: 'Redirects',
@@ -1397,7 +1388,6 @@ export class HttpRequestV3 implements INodeType {
 				allowUnauthorizedCerts,
 				queryParameterArrays,
 				response,
-				lowercaseHeaders,
 			} = this.getNodeParameter('options', itemIndex, {}) as {
 				batching: { batch: { batchSize: number; batchInterval: number } };
 				proxy: string;
@@ -1408,7 +1398,6 @@ export class HttpRequestV3 implements INodeType {
 					response: { neverError: boolean; responseFormat: string; fullResponse: boolean };
 				};
 				redirect: { redirect: { maxRedirects: number; followRedirects: boolean } };
-				lowercaseHeaders: boolean;
 			};
 
 			const url = this.getNodeParameter('url', itemIndex) as string;
@@ -1622,9 +1611,7 @@ export class HttpRequestV3 implements INodeType {
 				}
 				requestOptions.headers = {
 					...requestOptions.headers,
-					...(lowercaseHeaders === undefined || lowercaseHeaders
-						? keysToLowercase(additionalHeaders)
-						: additionalHeaders),
+					...keysToLowercase(additionalHeaders),
 				};
 			}
 
@@ -1958,7 +1945,9 @@ export class HttpRequestV3 implements INodeType {
 								false,
 							) as boolean;
 
-							const data = await this.helpers.binaryToString(response.body as Buffer | Readable);
+							const data = await this.helpers
+								.binaryToBuffer(response.body as Buffer | Readable)
+								.then((body) => body.toString());
 							response.body = jsonParse(data, {
 								...(neverError
 									? { fallbackValue: {} }
@@ -1970,7 +1959,9 @@ export class HttpRequestV3 implements INodeType {
 					} else {
 						responseFormat = 'text';
 						if (!response.__bodyResolved) {
-							const data = await this.helpers.binaryToString(response.body as Buffer | Readable);
+							const data = await this.helpers
+								.binaryToBuffer(response.body as Buffer | Readable)
+								.then((body) => body.toString());
 							response.body = !data ? undefined : data;
 						}
 					}
@@ -2138,23 +2129,6 @@ export class HttpRequestV3 implements INodeType {
 		}
 
 		returnItems = returnItems.map(replaceNullValues);
-
-		if (
-			returnItems.length === 1 &&
-			returnItems[0].json.data &&
-			Array.isArray(returnItems[0].json.data)
-		) {
-			return new NodeExecutionOutput(
-				[returnItems],
-				[
-					{
-						message:
-							'To split the contents of ‘data’ into separate items for easier processing, add a ‘Spilt Out’ node after this one',
-						location: 'outputPane',
-					},
-				],
-			);
-		}
 
 		return [returnItems];
 	}

@@ -1,24 +1,6 @@
-import type { Scope } from '@n8n/permissions';
-import { EntityNotFoundError } from '@n8n/typeorm';
-import Container from 'typedi';
-
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import type { Project } from '@/databases/entities/project';
-import type { ProjectRole } from '@/databases/entities/project-relation';
-import type { GlobalRole } from '@/databases/entities/user';
-import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { getWorkflowById } from '@/public-api/v1/handlers/workflows/workflows.service';
-import { CacheService } from '@/services/cache/cache.service';
-import { RoleService } from '@/services/role.service';
-
-import {
-	getCredentialById,
-	saveCredential,
-	shareCredentialWithProjects,
-} from './shared/db/credentials';
+import * as testDb from './shared/testDb';
+import * as utils from './shared/utils/';
+import { createMember, createOwner, createUser } from './shared/db/users';
 import {
 	createTeamProject,
 	linkUserToProject,
@@ -26,12 +8,27 @@ import {
 	findProject,
 	getProjectRelations,
 } from './shared/db/projects';
-import { createMember, createOwner, createUser } from './shared/db/users';
+import Container from 'typedi';
+import type { Project } from '@/databases/entities/Project';
+import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
+import type { ProjectRole } from '@/databases/entities/ProjectRelation';
+import { EntityNotFoundError } from '@n8n/typeorm';
 import { createWorkflow, shareWorkflowWithProjects } from './shared/db/workflows';
+import {
+	getCredentialById,
+	saveCredential,
+	shareCredentialWithProjects,
+} from './shared/db/credentials';
 import { randomCredentialPayload } from './shared/random';
-import * as testDb from './shared/test-db';
-import * as utils from './shared/utils/';
+import { getWorkflowById } from '@/PublicApi/v1/handlers/workflows/workflows.service';
+import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
+import { SharedCredentialsRepository } from '@/databases/repositories/sharedCredentials.repository';
+import type { GlobalRole } from '@/databases/entities/User';
+import type { Scope } from '@n8n/permissions';
+import { CacheService } from '@/services/cache/cache.service';
 import { mockInstance } from '../shared/mocking';
+import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['project'],
@@ -397,10 +394,6 @@ describe('POST /projects/', () => {
 		expect(async () => {
 			await findProject(respProject.id);
 		}).not.toThrow();
-		expect(resp.body.data.role).toBe('project:admin');
-		for (const scope of Container.get(RoleService).getRoleScopes('project:admin')) {
-			expect(resp.body.data.scopes).toContain(scope);
-		}
 	});
 
 	test('should allow to create a team projects if below the quota', async () => {
@@ -878,7 +871,7 @@ describe('DELETE /project/:projectId', () => {
 			{ project: otherProject, role: 'workflow:editor' },
 		]);
 		await shareWorkflowWithProjects(sharedWorkflow2, [
-			{ project: otherProject, role: 'workflow:editor' },
+			{ project: otherProject, role: 'workflow:user' },
 		]);
 
 		//
@@ -935,7 +928,7 @@ describe('DELETE /project/:projectId', () => {
 			{ project: otherProject, role: 'workflow:editor' },
 		]);
 		await shareWorkflowWithProjects(ownedWorkflow2, [
-			{ project: otherProject, role: 'workflow:editor' },
+			{ project: otherProject, role: 'workflow:user' },
 		]);
 
 		//

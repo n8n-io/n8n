@@ -31,9 +31,9 @@ Open the **Webhook** node and replace `YOUR_PRODUCTION_WEBHOOK_URL` with your pr
 Add the following code to your HTML page.
 
 ```html
-<link href="https://cdn.jsdelivr.net/npm/@n8n/chat/dist/style.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/@n8n/chat/style.css" rel="stylesheet" />
 <script type="module">
-	import { createChat } from 'https://cdn.jsdelivr.net/npm/@n8n/chat/dist/chat.bundle.es.js';
+	import { createChat } from 'https://cdn.jsdelivr.net/npm/@n8n/chat/chat.bundle.es.js';
 
 	createChat({
 		webhookUrl: 'YOUR_PRODUCTION_WEBHOOK_URL'
@@ -260,5 +260,10 @@ body,
 ```
 
 ## License
+n8n Chat is [fair-code](https://faircode.io) distributed under the
+[**Sustainable Use License**](https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md).
 
-You can find the license information [here](https://github.com/n8n-io/n8n/blob/master/README.md#license)
+Proprietary licenses are available for enterprise customers. [Get in touch](mailto:license@n8n.io)
+
+Additional information about the license model can be found in the
+[docs](https://docs.n8n.io/reference/license/).

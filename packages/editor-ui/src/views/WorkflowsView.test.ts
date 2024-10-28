@@ -61,7 +61,7 @@ describe('WorkflowsView', () => {
 		usersStore = useUsersStore();
 		projectsStore = useProjectsStore();
 
-		vi.spyOn(projectsStore, 'getAvailableProjects').mockImplementation(async () => {});
+		vi.spyOn(projectsStore, 'getAllProjects').mockImplementation(async () => {});
 
 		await settingsStore.getSettings();
 		await usersStore.fetchUsers();
@@ -73,13 +73,15 @@ describe('WorkflowsView', () => {
 	});
 
 	it('should filter workflows by tags', async () => {
-		const { getByTestId, getAllByTestId, queryByTestId } = renderComponent({
+		const { container, getByTestId, getAllByTestId, queryByTestId } = renderComponent({
 			pinia,
 		});
 
+		expect(container.querySelectorAll('.n8n-loading')).toHaveLength(3);
 		expect(queryByTestId('resources-list')).not.toBeInTheDocument();
 
 		await waitFor(() => {
+			expect(container.querySelectorAll('.n8n-loading')).toHaveLength(0);
 			// There are 5 workflows defined in server fixtures
 			expect(getAllByTestId('resources-list-item')).toHaveLength(5);
 		});

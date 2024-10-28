@@ -7,15 +7,6 @@
 
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 
-import {
-	MANUAL_CHAT_TRIGGER_LANGCHAIN_NODE_TYPE,
-	NODES_WITH_RENAMABLE_CONTENT,
-	STARTING_NODE_TYPES,
-} from './Constants';
-import type { IDeferredPromise } from './DeferredPromise';
-import { ApplicationError } from './errors/application.error';
-import { Expression } from './Expression';
-import { getGlobalState } from './GlobalState';
 import type {
 	IConnections,
 	IExecuteResponsePromiseData,
@@ -50,13 +41,23 @@ import type {
 	IRun,
 	IRunNodeResponse,
 	NodeParameterValueType,
+	ConnectionTypes,
 	CloseFunction,
 	INodeOutputConfiguration,
 } from './Interfaces';
 import { Node, NodeConnectionType } from './Interfaces';
+import type { IDeferredPromise } from './DeferredPromise';
+
 import * as NodeHelpers from './NodeHelpers';
 import * as ObservableObject from './ObservableObject';
 import { RoutingNode } from './RoutingNode';
+import { Expression } from './Expression';
+import {
+	MANUAL_CHAT_TRIGGER_LANGCHAIN_NODE_TYPE,
+	NODES_WITH_RENAMABLE_CONTENT,
+	STARTING_NODE_TYPES,
+} from './Constants';
+import { ApplicationError } from './errors/application.error';
 
 function dedupe<T>(arr: T[]): T[] {
 	return [...new Set(arr)];
@@ -92,8 +93,6 @@ export class Workflow {
 	active: boolean;
 
 	settings: IWorkflowSettings;
-
-	readonly timezone: string;
 
 	// To save workflow specific static data like for example
 	// ids of registered webhooks of nodes
@@ -152,7 +151,6 @@ export class Workflow {
 		});
 
 		this.settings = parameters.settings || {};
-		this.timezone = this.settings.timezone ?? getGlobalState().defaultTimezone;
 
 		this.expression = new Expression(this);
 	}
@@ -578,11 +576,11 @@ export class Workflow {
 	/**
 	 * Finds the highest parent nodes of the node with the given name
 	 *
-	 * @param {NodeConnectionType} [type='main']
+	 * @param {ConnectionTypes} [type='main']
 	 */
 	getHighestNode(
 		nodeName: string,
-		type: NodeConnectionType = NodeConnectionType.Main,
+		type: ConnectionTypes = 'main',
 		nodeConnectionIndex?: number,
 		checkedNodes?: string[],
 	): string[] {
@@ -662,7 +660,7 @@ export class Workflow {
 	 */
 	getChildNodes(
 		nodeName: string,
-		type: NodeConnectionType | 'ALL' | 'ALL_NON_MAIN' = NodeConnectionType.Main,
+		type: ConnectionTypes | 'ALL' | 'ALL_NON_MAIN' = 'main',
 		depth = -1,
 	): string[] {
 		return this.getConnectedNodes(this.connectionsBySourceNode, nodeName, type, depth);
@@ -671,12 +669,12 @@ export class Workflow {
 	/**
 	 * Returns all the nodes before the given one
 	 *
-	 * @param {NodeConnectionType} [type='main']
+	 * @param {ConnectionTypes} [type='main']
 	 * @param {*} [depth=-1]
 	 */
 	getParentNodes(
 		nodeName: string,
-		type: NodeConnectionType | 'ALL' | 'ALL_NON_MAIN' = NodeConnectionType.Main,
+		type: ConnectionTypes | 'ALL' | 'ALL_NON_MAIN' = 'main',
 		depth = -1,
 	): string[] {
 		return this.getConnectedNodes(this.connectionsByDestinationNode, nodeName, type, depth);
@@ -686,13 +684,13 @@ export class Workflow {
 	 * Gets all the nodes which are connected nodes starting from
 	 * the given one
 	 *
-	 * @param {NodeConnectionType} [type='main']
+	 * @param {ConnectionTypes} [type='main']
 	 * @param {*} [depth=-1]
 	 */
 	getConnectedNodes(
 		connections: IConnections,
 		nodeName: string,
-		connectionType: NodeConnectionType | 'ALL' | 'ALL_NON_MAIN' = NodeConnectionType.Main,
+		connectionType: ConnectionTypes | 'ALL' | 'ALL_NON_MAIN' = 'main',
 		depth = -1,
 		checkedNodesIncoming?: string[],
 	): string[] {
@@ -708,13 +706,13 @@ export class Workflow {
 			return [];
 		}
 
-		let types: NodeConnectionType[];
+		let types: ConnectionTypes[];
 		if (connectionType === 'ALL') {
-			types = Object.keys(connections[nodeName]) as NodeConnectionType[];
+			types = Object.keys(connections[nodeName]) as ConnectionTypes[];
 		} else if (connectionType === 'ALL_NON_MAIN') {
 			types = Object.keys(connections[nodeName]).filter(
 				(type) => type !== 'main',
-			) as NodeConnectionType[];
+			) as ConnectionTypes[];
 		} else {
 			types = [connectionType];
 		}
@@ -798,7 +796,7 @@ export class Workflow {
 	searchNodesBFS(connections: IConnections, sourceNode: string, maxDepth = -1): IConnectedNode[] {
 		const returnConns: IConnectedNode[] = [];
 
-		const type: NodeConnectionType = NodeConnectionType.Main;
+		const type: ConnectionTypes = 'main';
 		let queue: IConnectedNode[] = [];
 		queue.push({
 			name: sourceNode,
@@ -905,7 +903,7 @@ export class Workflow {
 	getNodeConnectionIndexes(
 		nodeName: string,
 		parentNodeName: string,
-		type: NodeConnectionType = NodeConnectionType.Main,
+		type: ConnectionTypes = 'main',
 		depth = -1,
 		checkedNodes?: string[],
 	): INodeConnection | undefined {
@@ -1235,7 +1233,6 @@ export class Workflow {
 		additionalData: IWorkflowExecuteAdditionalData,
 		nodeExecuteFunctions: INodeExecuteFunctions,
 		mode: WorkflowExecuteMode,
-		runExecutionData: IRunExecutionData | null,
 	): Promise<IWebhookResponseData> {
 		const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 		if (nodeType === undefined) {
@@ -1257,7 +1254,6 @@ export class Workflow {
 			mode,
 			webhookData,
 			closeFunctions,
-			runExecutionData,
 		);
 		return nodeType instanceof Node
 			? await nodeType.webhook(context)
@@ -1428,6 +1424,13 @@ export class Workflow {
 					return { data: null };
 				}
 
+				if (triggerResponse.manualTriggerFunction !== undefined) {
+					// If a manual trigger function is defined call it and wait till it did run
+					await triggerResponse.manualTriggerFunction();
+				}
+
+				const response = await triggerResponse.manualTriggerResponse!;
+
 				let closeFunction;
 				if (triggerResponse.closeFunction) {
 					// In manual mode we return the trigger closeFunction. That allows it to be called directly
@@ -1436,17 +1439,7 @@ export class Workflow {
 					// If we would not be able to wait for it to close would it cause problems with "own" mode as the
 					// process would be killed directly after it and so the acknowledge would not have been finished yet.
 					closeFunction = triggerResponse.closeFunction;
-
-					// Manual testing of Trigger nodes creates an execution. If the execution is cancelled, `closeFunction` should be called to cleanup any open connections/consumers
-					abortSignal?.addEventListener('abort', closeFunction);
 				}
-
-				if (triggerResponse.manualTriggerFunction !== undefined) {
-					// If a manual trigger function is defined call it and wait till it did run
-					await triggerResponse.manualTriggerFunction();
-				}
-
-				const response = await triggerResponse.manualTriggerResponse!;
 
 				if (response.length === 0) {
 					return { data: null, closeFunction };

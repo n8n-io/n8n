@@ -12,6 +12,7 @@ module.exports = {
 		complexity: 'error',
 
 		// TODO: remove these
+		'import/order': 'off',
 		'@typescript-eslint/no-base-to-string': 'warn',
 		'@typescript-eslint/no-explicit-any': 'warn',
 		'@typescript-eslint/no-redundant-type-constituents': 'warn',

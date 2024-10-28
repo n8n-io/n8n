@@ -41,7 +41,7 @@ const properties: INodeProperties[] = [
 		type: 'collection',
 		default: {},
 		description: 'Other options to set',
-		placeholder: 'Add option',
+		placeholder: 'Add options',
 		options: [
 			{
 				displayName: 'Include Link to Workflow',

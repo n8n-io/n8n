@@ -1,21 +1,18 @@
 import type { Application } from 'express';
-import type { Server } from 'http';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import type TestAgent from 'supertest/lib/agent';
+import type { Server } from 'http';
 
-import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
-import type { Project } from '@/databases/entities/project';
-import type { User } from '@/databases/entities/user';
-import type { BooleanLicenseFeature, ICredentialsDb, NumericLicenseFeature } from '@/interfaces';
-
+import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
+import type { User } from '@db/entities/User';
+import type { BooleanLicenseFeature, ICredentialsDb, NumericLicenseFeature } from '@/Interfaces';
 import type { LicenseMocker } from './license';
+import type { Project } from '@/databases/entities/Project';
 
 type EndpointGroup =
-	| 'health'
 	| 'me'
 	| 'users'
 	| 'auth'
-	| 'oauth2'
 	| 'owner'
 	| 'passwordReset'
 	| 'credentials'
@@ -28,7 +25,6 @@ type EndpointGroup =
 	| 'eventBus'
 	| 'license'
 	| 'variables'
-	| 'annotationTags'
 	| 'tags'
 	| 'externalSecrets'
 	| 'mfa'
@@ -40,8 +36,7 @@ type EndpointGroup =
 	| 'debug'
 	| 'project'
 	| 'role'
-	| 'dynamic-node-parameters'
-	| 'apiKeys';
+	| 'dynamic-node-parameters';
 
 export interface SetupProps {
 	endpointGroups?: EndpointGroup[];
@@ -56,10 +51,7 @@ export interface TestServer {
 	httpServer: Server;
 	authAgentFor: (user: User) => TestAgent;
 	publicApiAgentFor: (user: User) => TestAgent;
-	publicApiAgentWithApiKey: (apiKey: string) => TestAgent;
-	publicApiAgentWithoutApiKey: () => TestAgent;
 	authlessAgent: TestAgent;
-	restlessAgent: TestAgent;
 	license: LicenseMocker;
 }
 

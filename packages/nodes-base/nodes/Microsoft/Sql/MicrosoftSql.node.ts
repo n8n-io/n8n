@@ -1,15 +1,14 @@
 import type { IResult } from 'mssql';
-import {
-	type IExecuteFunctions,
-	type ICredentialDataDecryptedObject,
-	type ICredentialsDecrypted,
-	type ICredentialTestFunctions,
-	type IDataObject,
-	type INodeCredentialTestResult,
-	type INodeExecutionData,
-	type INodeType,
-	type INodeTypeDescription,
-	NodeConnectionType,
+import type {
+	IExecuteFunctions,
+	ICredentialDataDecryptedObject,
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
+	IDataObject,
+	INodeCredentialTestResult,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import type { ITables } from './interfaces';
@@ -35,8 +34,8 @@ export class MicrosoftSql implements INodeType {
 		defaults: {
 			name: 'Microsoft SQL',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: ['main'],
+		outputs: ['main'],
 		parameterPane: 'wide',
 		credentials: [
 			{
@@ -279,7 +278,7 @@ export class MicrosoftSql implements INodeType {
 						});
 					}
 				} catch (error) {
-					if (this.continueOnFail()) {
+					if (this.continueOnFail(error)) {
 						returnData.push({
 							json: { error: error.message },
 							pairedItem: [{ item: i }],
@@ -358,7 +357,7 @@ export class MicrosoftSql implements INodeType {
 				{ itemData },
 			);
 		} catch (error) {
-			if (this.continueOnFail()) {
+			if (this.continueOnFail(error)) {
 				responseData = items;
 			} else {
 				await pool.close();

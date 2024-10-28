@@ -1,13 +1,6 @@
-<script lang="ts" setup>
-defineProps<{
-	loading: boolean;
-	title?: string;
-}>();
-</script>
-
 <template>
 	<n8n-card :class="$style.card" v-bind="$attrs">
-		<template v-if="!loading && title" #header>
+		<template v-if="!loading" #header>
 			<span :class="$style.title" v-text="title" />
 		</template>
 		<n8n-loading :loading="loading" :rows="3" variant="p" />
@@ -16,6 +9,22 @@ defineProps<{
 		</template>
 	</n8n-card>
 </template>
+
+<script lang="ts">
+import { defineComponent } from 'vue';
+
+export default defineComponent({
+	name: 'Card',
+	props: {
+		loading: {
+			type: Boolean,
+		},
+		title: {
+			type: String,
+		},
+	},
+});
+</script>
 
 <style lang="scss" module>
 .card {

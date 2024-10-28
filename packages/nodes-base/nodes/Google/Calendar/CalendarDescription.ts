@@ -106,7 +106,7 @@ export const calendarFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add option',
+		placeholder: 'Add Options',
 		displayOptions: {
 			show: {
 				operation: ['availability'],

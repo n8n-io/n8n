@@ -1,13 +1,12 @@
 import { Service } from 'typedi';
-
-import type { Project } from '@/databases/entities/project';
-import type { User } from '@/databases/entities/user';
-import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { UserRepository } from '@/databases/repositories/user.repository';
-import type { ListQuery } from '@/requests';
 import { CacheService } from '@/services/cache/cache.service';
+import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
+import { UserRepository } from '@db/repositories/user.repository';
+import type { ListQuery } from '@/requests';
+import type { Project } from '@/databases/entities/Project';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
+import type { User } from '@/databases/entities/User';
+import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
 
 @Service()
 export class OwnershipService {
@@ -41,10 +40,9 @@ export class OwnershipService {
 	}
 
 	/**
-	 * Retrieve the user who owns the personal project, or `null` if non-personal project.
-	 * Personal project ownership is **immutable**.
+	 * Retrieve the user that owns the project, or null if it's not an ownable project. Note that project ownership is **immutable**.
 	 */
-	async getPersonalProjectOwnerCached(projectId: string): Promise<User | null> {
+	async getProjectOwnerCached(projectId: string): Promise<User | null> {
 		const cachedValue = await this.cacheService.getHashValue<User | null>(
 			'project-owner',
 			projectId,

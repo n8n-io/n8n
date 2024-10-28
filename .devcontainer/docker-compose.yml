@@ -19,6 +19,5 @@ services:
       - ..:/workspaces:cached
     command: sleep infinity
     environment:
-      DB_POSTGRESDB_HOST: postgres
       DB_TYPE: postgresdb
       DB_POSTGRESDB_PASSWORD: password

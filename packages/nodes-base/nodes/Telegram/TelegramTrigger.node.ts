@@ -1,4 +1,3 @@
-import crypto from 'crypto';
 import type {
 	IHookFunctions,
 	IWebhookFunctions,
@@ -7,7 +6,6 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
 
 import { apiRequest, getImageBySize, getSecretToken } from './GenericFunctions';
 
@@ -27,7 +25,7 @@ export class TelegramTrigger implements INodeType {
 			name: 'Telegram Trigger',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'telegramApi',
@@ -234,11 +232,7 @@ export class TelegramTrigger implements INodeType {
 		const nodeVersion = this.getNode().typeVersion;
 		if (nodeVersion > 1) {
 			const secret = getSecretToken.call(this);
-			const secretBuffer = Buffer.from(secret);
-			const headerSecretBuffer = Buffer.from(
-				String(headerData['x-telegram-bot-api-secret-token'] ?? ''),
-			);
-			if (!crypto.timingSafeEqual(secretBuffer, headerSecretBuffer)) {
+			if (secret !== headerData['x-telegram-bot-api-secret-token']) {
 				const res = this.getResponseObject();
 				res.status(403).json({ message: 'Provided secret is not valid' });
 				return {
@@ -260,8 +254,7 @@ export class TelegramTrigger implements INodeType {
 
 			if (
 				(bodyData[key]?.photo && Array.isArray(bodyData[key]?.photo)) ||
-				bodyData[key]?.document ||
-				bodyData[key]?.video
+				bodyData[key]?.document
 			) {
 				if (additionalFields.imageSize) {
 					imageSize = additionalFields.imageSize as string;
@@ -283,8 +276,6 @@ export class TelegramTrigger implements INodeType {
 					}
 
 					fileId = image.file_id;
-				} else if (bodyData[key]?.video) {
-					fileId = bodyData[key]?.video?.file_id;
 				} else {
 					fileId = bodyData[key]?.document?.file_id;
 				}

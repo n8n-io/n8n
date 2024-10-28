@@ -7,7 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { twakeApiRequest } from './GenericFunctions';
 
@@ -24,8 +24,8 @@ export class Twake implements INodeType {
 		defaults: {
 			name: 'Twake',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: ['main'],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'twakeCloudApi',
@@ -115,7 +115,7 @@ export class Twake implements INodeType {
 				},
 				default: '',
 				description:
-					'Channel\'s ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+					'Channel\'s ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Content',

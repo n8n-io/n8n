@@ -1,13 +1,13 @@
+import { Container } from 'typedi';
 import { Flags } from '@oclif/core';
 import { ApplicationError } from 'n8n-workflow';
-import { Container } from 'typedi';
 
-import config from '@/config';
+import { SecurityAuditService } from '@/security-audit/SecurityAudit.service';
 import { RISK_CATEGORIES } from '@/security-audit/constants';
-import { SecurityAuditService } from '@/security-audit/security-audit.service';
+import config from '@/config';
 import type { Risk } from '@/security-audit/types';
-
-import { BaseCommand } from './base-command';
+import { BaseCommand } from './BaseCommand';
+import { InternalHooks } from '@/InternalHooks';
 
 export class SecurityAudit extends BaseCommand {
 	static description = 'Generate a security audit report for this n8n instance';
@@ -61,6 +61,8 @@ export class SecurityAudit extends BaseCommand {
 		} else {
 			process.stdout.write(JSON.stringify(result, null, 2));
 		}
+
+		void Container.get(InternalHooks).onAuditGeneratedViaCli();
 	}
 
 	async catch(error: Error) {

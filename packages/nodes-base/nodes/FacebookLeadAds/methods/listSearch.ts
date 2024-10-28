@@ -18,7 +18,7 @@ export async function pageList(
 				value: page.id,
 				url: `https://facebook.com/${page.id}`,
 			})),
-		paginationToken: paging?.next ? paging?.cursors?.after : undefined,
+		paginationToken: paging?.cursors?.after,
 	};
 }
 
@@ -37,6 +37,6 @@ export async function formList(
 				name: form.name,
 				value: form.id,
 			})),
-		paginationToken: paging?.next ? paging?.cursors?.after : undefined,
+		paginationToken: paging?.cursors?.after,
 	};
 }

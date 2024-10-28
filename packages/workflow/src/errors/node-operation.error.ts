@@ -1,7 +1,8 @@
+import type { INode, JsonObject } from '@/Interfaces';
+import type { NodeOperationErrorOptions } from './node-api.error';
 import { NodeError } from './abstract/node.error';
 import { ApplicationError } from './application.error';
-import type { NodeOperationErrorOptions } from './node-api.error';
-import type { INode, JsonObject } from '../Interfaces';
+import { OBFUSCATED_ERROR_MESSAGE } from '../Constants';
 
 /**
  * Class for instantiating an operational error, e.g. an invalid credentials error.
@@ -18,8 +19,13 @@ export class NodeOperationError extends NodeError {
 			return error;
 		}
 
+		let obfuscateErrorMessage = false;
+
 		if (typeof error === 'string') {
-			error = new ApplicationError(error);
+			error = new Error(error);
+		} else if (!(error instanceof ApplicationError)) {
+			// this error was no processed by n8n, obfuscate error message
+			obfuscateErrorMessage = true;
 		}
 
 		super(node, error);
@@ -28,6 +34,7 @@ export class NodeOperationError extends NodeError {
 			error.messages.forEach((message) => this.addToMessages(message));
 		}
 
+		if (obfuscateErrorMessage) this.message = OBFUSCATED_ERROR_MESSAGE;
 		if (options.message) this.message = options.message;
 		if (options.level) this.level = options.level;
 		if (options.functionality) this.functionality = options.functionality;

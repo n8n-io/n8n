@@ -10,7 +10,7 @@ jest.mock('../../../v2/transport', () => {
 	const originalModule = jest.requireActual('../../../v2/transport');
 	return {
 		...originalModule,
-		googleBigQueryApiRequest: jest.fn(async (method: IHttpRequestMethods, resource: string) => {
+		googleApiRequest: jest.fn(async (method: IHttpRequestMethods, resource: string) => {
 			if (resource === '/v2/projects/test-project/jobs' && method === 'POST') {
 				return {
 					jobReference: {
@@ -25,7 +25,7 @@ jest.mock('../../../v2/transport', () => {
 				return {};
 			}
 		}),
-		googleBigQueryApiRequestAllItems: jest.fn(async () => ({ rows: [], schema: {} })),
+		// googleApiRequestAllItems: jest.fn(async () => {}),
 	};
 });
 
@@ -47,9 +47,8 @@ describe('Test Google BigQuery V2, executeQuery', () => {
 	const testNode = async (testData: WorkflowTestData, types: INodeTypes) => {
 		const { result } = await executeWorkflow(testData, types);
 
-		expect(transport.googleBigQueryApiRequest).toHaveBeenCalledTimes(1);
-		expect(transport.googleBigQueryApiRequestAllItems).toHaveBeenCalledTimes(1);
-		expect(transport.googleBigQueryApiRequest).toHaveBeenCalledWith(
+		expect(transport.googleApiRequest).toHaveBeenCalledTimes(2);
+		expect(transport.googleApiRequest).toHaveBeenCalledWith(
 			'POST',
 			'/v2/projects/test-project/jobs',
 			{
@@ -61,11 +60,11 @@ describe('Test Google BigQuery V2, executeQuery', () => {
 				},
 			},
 		);
-		expect(transport.googleBigQueryApiRequestAllItems).toHaveBeenCalledWith(
+		expect(transport.googleApiRequest).toHaveBeenCalledWith(
 			'GET',
 			'/v2/projects/test-project/queries/job_123',
 			undefined,
-			{ location: undefined, maxResults: 1000, timeoutMs: 10000 },
+			{},
 		);
 
 		expect(result.finished).toEqual(true);

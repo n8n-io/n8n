@@ -1,5 +1,4 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import { BedrockEmbeddings } from '@langchain/aws';
 import {
 	NodeConnectionType,
 	type IExecuteFunctions,
@@ -7,6 +6,7 @@ import {
 	type INodeTypeDescription,
 	type SupplyData,
 } from 'n8n-workflow';
+import { BedrockEmbeddings } from '@langchain/community/embeddings/bedrock';
 
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';

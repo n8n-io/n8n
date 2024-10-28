@@ -11,13 +11,12 @@ export class FormTrigger extends VersionedNodeType {
 			icon: 'file:form.svg',
 			group: ['trigger'],
 			description: 'Runs the flow when an n8n generated webform is submitted',
-			defaultVersion: 2.1,
+			defaultVersion: 2,
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
 			1: new FormTriggerV1(baseDescription),
 			2: new FormTriggerV2(baseDescription),
-			2.1: new FormTriggerV2(baseDescription),
 		};
 
 		super(nodeVersions, baseDescription);

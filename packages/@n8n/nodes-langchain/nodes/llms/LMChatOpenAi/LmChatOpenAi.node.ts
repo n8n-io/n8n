@@ -5,15 +5,11 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	type SupplyData,
-	type JsonObject,
-	NodeApiError,
 } from 'n8n-workflow';
 
 import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 import { N8nLlmTracing } from '../N8nLlmTracing';
-import { RateLimitError } from 'openai';
-import { getCustomErrorMessage } from '../../vendors/OpenAi/helpers/error-handling';
 
 export class LmChatOpenAi implements INodeType {
 	description: INodeTypeDescription = {
@@ -30,8 +26,7 @@ export class LmChatOpenAi implements INodeType {
 		codex: {
 			categories: ['AI'],
 			subcategories: {
-				AI: ['Language Models', 'Root Nodes'],
-				'Language Models': ['Chat Models (Recommended)'],
+				AI: ['Language Models'],
 			},
 			resources: {
 				primaryDocumentation: [
@@ -95,13 +90,7 @@ export class LmChatOpenAi implements INodeType {
 									{
 										type: 'filter',
 										properties: {
-											// If the baseURL is not set or is set to api.openai.com, include only chat models
-											pass: `={{
-												($parameter.options?.baseURL && !$parameter.options?.baseURL?.includes('api.openai.com')) ||
-												$responseItem.id.startsWith('ft:') ||
-												$responseItem.id.startsWith('o1') ||
-												($responseItem.id.startsWith('gpt-') && !$responseItem.id.includes('instruct'))
-											}}`,
+											pass: "={{ $responseItem.id.startsWith('gpt-') && !$responseItem.id.includes('instruct') }}",
 										},
 									},
 									{
@@ -129,18 +118,6 @@ export class LmChatOpenAi implements INodeType {
 					},
 				},
 				default: 'gpt-3.5-turbo',
-			},
-			{
-				displayName:
-					'When using non-OpenAI models via "Base URL" override, not all models might be chat-compatible or support other features, like tools calling or JSON response format',
-				name: 'notice',
-				type: 'notice',
-				default: '',
-				displayOptions: {
-					show: {
-						'/options.baseURL': [{ _cnd: { exists: true } }],
-					},
-				},
 			},
 			{
 				displayName: 'Options',
@@ -276,25 +253,6 @@ export class LmChatOpenAi implements INodeType {
 						response_format: { type: options.responseFormat },
 					}
 				: undefined,
-			onFailedAttempt: (error: any) => {
-				// If the error is a rate limit error, we want to handle it differently
-				// because OpenAI has multiple different rate limit errors
-				if (error instanceof RateLimitError) {
-					const errorCode = error?.code;
-					if (errorCode) {
-						const customErrorMessage = getCustomErrorMessage(errorCode);
-
-						const apiError = new NodeApiError(this.getNode(), error as unknown as JsonObject);
-						if (customErrorMessage) {
-							apiError.message = customErrorMessage;
-						}
-
-						throw apiError;
-					}
-				}
-
-				throw error;
-			},
 		});
 
 		return {

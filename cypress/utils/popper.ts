@@ -3,7 +3,7 @@ export function getPopper() {
 }
 
 export function getVisiblePopper() {
-	return getPopper().filter('[aria-hidden="false"]');
+	return getPopper().filter(':visible');
 }
 
 export function getVisibleSelect() {

@@ -12,6 +12,7 @@ import type {
 	SimplifiedNodeType,
 	ActionsRecord,
 	ToggleNodeCreatorOptions,
+	AIAssistantConnectionInfo,
 } from '@/Interface';
 
 import { computed, ref } from 'vue';
@@ -25,14 +26,7 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useViewStacks } from '@/components/Node/NodeCreator/composables/useViewStacks';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import {
-	createCanvasConnectionHandleString,
-	parseCanvasConnectionHandleString,
-} from '@/utils/canvasUtilsV2';
-import type { Connection } from '@vue-flow/core';
-import { CanvasConnectionMode } from '@/types';
-import { isVueFlowConnection } from '@/utils/typeGuards';
-import type { PartialBy } from '@/utils/typeHelpers';
+import { createCanvasConnectionHandleString } from '@/utils/canvasUtilsV2';
 
 export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 	const workflowsStore = useWorkflowsStore();
@@ -90,27 +84,27 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 
 		setTimeout(() => {
 			if (creatorView) {
-				setNodeCreatorState({
+				openNodeCreator({
 					createNodeActive: true,
 					nodeCreatorView: creatorView,
 				});
 			} else if (connectionType && nodeData) {
 				openNodeCreatorForConnectingNode({
-					connection: {
-						source: nodeData.id,
-						sourceHandle: createCanvasConnectionHandleString({
-							mode: 'inputs',
-							type: connectionType,
-							index: 0,
-						}),
-					},
+					index: 0,
+					endpointUuid: createCanvasConnectionHandleString({
+						mode: 'inputs',
+						type: connectionType,
+						index: 0,
+					}),
 					eventSource: NODE_CREATOR_OPEN_SOURCES.NOTICE_ERROR_MESSAGE,
+					outputType: connectionType,
+					sourceId: nodeData.id,
 				});
 			}
 		});
 	}
 
-	function setNodeCreatorState({
+	function openNodeCreator({
 		source,
 		createNodeActive,
 		nodeCreatorView,
@@ -178,44 +172,35 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		});
 	}
 
-	function openNodeCreatorForConnectingNode({
-		connection,
-		eventSource,
-		nodeCreatorView,
-	}: {
-		connection: PartialBy<Connection, 'target' | 'targetHandle'>;
-		eventSource?: NodeCreatorOpenSource;
-		nodeCreatorView?: NodeFilterType;
-	}) {
+	function openNodeCreatorForConnectingNode(info: AIAssistantConnectionInfo) {
+		const type = info.outputType ?? NodeConnectionType.Main;
 		// Get the node and set it as active that new nodes
 		// which get created get automatically connected
 		// to it.
-		const sourceNode = workflowsStore.getNodeById(connection.source);
+		const sourceNode = workflowsStore.getNodeById(info.sourceId);
 		if (!sourceNode) {
 			return;
 		}
 
-		const { type, index, mode } = parseCanvasConnectionHandleString(connection.sourceHandle);
-
 		uiStore.lastSelectedNode = sourceNode.name;
-		uiStore.lastSelectedNodeEndpointUuid = connection.sourceHandle ?? null;
-		uiStore.lastSelectedNodeOutputIndex = index;
+		uiStore.lastSelectedNodeEndpointUuid = info.endpointUuid ?? null;
+		uiStore.lastSelectedNodeOutputIndex = info.index;
+		// canvasStore.newNodeInsertPosition = null;
 
-		if (isVueFlowConnection(connection)) {
-			uiStore.lastInteractedWithNodeConnection = connection;
-		}
-		uiStore.lastInteractedWithNodeHandle = connection.sourceHandle ?? null;
-		uiStore.lastInteractedWithNodeId = sourceNode.id;
+		// @TODO Add connection to store
+		// if (info.connection) {
+		// 	canvasStore.setLastSelectedConnection(info.connection);
+		// }
 
-		setNodeCreatorState({
-			source: eventSource,
+		openNodeCreator({
+			source: info.eventSource,
 			createNodeActive: true,
-			nodeCreatorView,
+			nodeCreatorView: info.nodeCreatorView,
 		});
 
 		// TODO: The animation is a bit glitchy because we're updating view stack immediately
 		// after the node creator is opened
-		const isOutput = mode === CanvasConnectionMode.Output;
+		const isOutput = info.connection?.endpoints[0].parameters.connection === 'source';
 		const isScopedConnection =
 			type !== NodeConnectionType.Main && nodeConnectionTypes.includes(type);
 
@@ -224,17 +209,6 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 				.gotoCompatibleConnectionView(type, isOutput, getNodeCreatorFilter(sourceNode.name, type))
 				.catch(() => {});
 		}
-	}
-
-	function openNodeCreatorForTriggerNodes(source: NodeCreatorOpenSource) {
-		ndvStore.activeNodeName = null;
-		setSelectedView(TRIGGER_NODE_CREATOR_VIEW);
-		setShowScrim(true);
-		setNodeCreatorState({
-			source,
-			createNodeActive: true,
-			nodeCreatorView: TRIGGER_NODE_CREATOR_VIEW,
-		});
 	}
 
 	function getNodeCreatorFilter(nodeName: string, outputType?: NodeConnectionType) {
@@ -275,10 +249,9 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		setOpenSource,
 		setActions,
 		setMergeNodes,
-		setNodeCreatorState,
+		openNodeCreator,
 		openSelectiveNodeCreator,
 		openNodeCreatorForConnectingNode,
-		openNodeCreatorForTriggerNodes,
 		allNodeCreatorNodes,
 	};
 });

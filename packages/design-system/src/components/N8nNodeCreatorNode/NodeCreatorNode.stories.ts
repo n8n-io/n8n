@@ -1,6 +1,5 @@
-import type { StoryFn } from '@storybook/vue3';
-
 import N8nNodeCreatorNode from './NodeCreatorNode.vue';
+import type { StoryFn } from '@storybook/vue3';
 
 export default {
 	title: 'Modules/Node Creator Node',

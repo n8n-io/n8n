@@ -1,34 +1,37 @@
 {
   "name": "@n8n/chat",
-  "version": "0.26.0",
+  "version": "0.19.0",
   "scripts": {
     "dev": "pnpm run storybook",
-    "build": "pnpm build:vite && pnpm build:bundle",
+    "build": "pnpm build:vite && pnpm run build:individual && npm run build:prepare",
+    "build:full": "pnpm build:vite && pnpm build:vite:full && pnpm run build:individual && npm run build:prepare",
     "build:vite": "vite build",
-    "build:bundle": "INCLUDE_VUE=true vite build",
+    "build:vite:full": "INCLUDE_VUE=true vite build",
+    "build:individual": "unbuild",
+    "build:prepare": "node scripts/postbuild.js",
+    "build:pack": "node scripts/pack.js",
     "preview": "vite preview",
     "test:dev": "vitest",
-    "test": "vitest run",
+    "test": "vitest run --coverage",
     "typecheck": "vue-tsc --noEmit",
     "lint": "eslint . --ext .js,.ts,.vue --quiet",
     "lintfix": "eslint . --ext .js,.ts,.vue --fix",
-    "format": "biome format --write src .storybook && prettier --write src/ --ignore-path ../../.prettierignore",
-    "format:check": "biome ci src .storybook && prettier --check src/ --ignore-path ../../.prettierignore",
+    "format": "prettier --write src/",
     "storybook": "storybook dev -p 6006 --no-open",
-    "build:storybook": "storybook build"
+    "build:storybook": "storybook build",
+    "release": "pnpm run build:full && cd dist && pnpm publish"
   },
-  "main": "./dist/chat.umd.js",
-  "module": "./dist/chat.es.js",
-  "types": "./dist/index.d.ts",
+  "main": "./chat.umd.js",
+  "module": "./chat.es.js",
+  "types": "./types/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/chat.es.js",
-      "require": "./dist/chat.umd.js",
-      "types": "./dist/index.d.ts"
+      "import": "./index.mjs",
+      "require": "./index.js"
     },
     "./style.css": {
-      "import": "./dist/style.css",
-      "require": "./dist/style.css"
+      "import": "./style.css",
+      "require": "./style.css"
     },
     "./*": {
       "import": "./*",
@@ -36,25 +39,25 @@
     }
   },
   "dependencies": {
-    "@vueuse/core": "^10.11.0",
-    "highlight.js": "catalog:frontend",
+    "highlight.js": "^11.8.0",
     "markdown-it-link-attributes": "^4.0.1",
-    "uuid": "catalog:",
-    "vue": "catalog:frontend",
-    "vue-markdown-render": "catalog:frontend"
+    "uuid": "^8.3.2",
+    "vue": "^3.4.21",
+    "vue-markdown-render": "^2.1.1"
   },
   "devDependencies": {
     "@iconify-json/mdi": "^1.1.54",
     "@n8n/storybook": "workspace:*",
-    "@vitest/coverage-v8": "catalog:frontend",
-    "unplugin-icons": "^0.19.0",
-    "vite": "catalog:frontend",
-    "vitest": "catalog:frontend",
-    "vite-plugin-dts": "^3.9.1",
-    "vue-tsc": "catalog:frontend"
+    "@types/markdown-it": "^12.2.3",
+    "shelljs": "^0.8.5",
+    "unbuild": "^2.0.0",
+    "unplugin-icons": "^0.17.0",
+    "vite-plugin-dts": "^3.7.3"
   },
-  "files": [
-    "README.md",
-    "dist"
-  ]
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/n8n-io/n8n.git"
+  },
+  "license": "SEE LICENSE IN LICENSE.md",
+  "homepage": "https://n8n.io"
 }

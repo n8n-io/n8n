@@ -1,13 +1,12 @@
-import {
-	NodeConnectionType,
-	type IDataObject,
-	type IHookFunctions,
-	type ILoadOptionsFunctions,
-	type INodePropertyOptions,
-	type INodeType,
-	type INodeTypeDescription,
-	type IWebhookFunctions,
-	type IWebhookResponseData,
+import type {
+	IDataObject,
+	IHookFunctions,
+	ILoadOptionsFunctions,
+	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
+	IWebhookFunctions,
+	IWebhookResponseData,
 } from 'n8n-workflow';
 
 import { lonescaleApiRequest } from './GenericFunctions';
@@ -24,7 +23,7 @@ export class LoneScaleTrigger implements INodeType {
 			name: 'LoneScale Trigger',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'loneScaleApi',

@@ -7,7 +7,6 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
 
 import { stravaApiRequest } from './GenericFunctions';
 
@@ -23,7 +22,7 @@ export class StravaTrigger implements INodeType {
 			name: 'Strava Trigger',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'stravaOAuth2Api',
@@ -102,7 +101,7 @@ export class StravaTrigger implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add option',
+				placeholder: 'Add Option',
 				default: {},
 				options: [
 					{

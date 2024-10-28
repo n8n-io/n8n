@@ -1,4 +1,4 @@
-import type { MigrationContext, ReversibleMigration } from '@/databases/types';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 
 export class CreateCredentialUsageTable1665484192213 implements ReversibleMigration {
 	async up({ queryRunner, tablePrefix }: MigrationContext) {

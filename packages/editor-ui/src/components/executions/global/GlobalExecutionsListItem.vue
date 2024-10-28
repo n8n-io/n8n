@@ -8,28 +8,17 @@ import { convertToDisplayDate } from '@/utils/formatters/dateFormatter';
 import { i18n as locale } from '@/plugins/i18n';
 import ExecutionsTime from '@/components/executions/ExecutionsTime.vue';
 import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
-import type { PermissionsRecord } from '@/permissions';
 
-type Command = 'retrySaved' | 'retryOriginal' | 'delete';
-
-const emit = defineEmits<{
-	stop: [data: ExecutionSummary];
-	select: [data: ExecutionSummary];
-	retrySaved: [data: ExecutionSummary];
-	retryOriginal: [data: ExecutionSummary];
-	delete: [data: ExecutionSummary];
-}>();
+const emit = defineEmits(['stop', 'select', 'retrySaved', 'retryOriginal', 'delete']);
 
 const props = withDefaults(
 	defineProps<{
 		execution: ExecutionSummary;
 		selected?: boolean;
 		workflowName?: string;
-		workflowPermissions: PermissionsRecord['workflow'];
 	}>(),
 	{
 		selected: false,
-		workflowName: '',
 	},
 );
 
@@ -62,9 +51,7 @@ const classes = computed(() => {
 });
 
 const formattedStartedAtDate = computed(() => {
-	return props.execution.startedAt
-		? formatDate(props.execution.startedAt)
-		: i18n.baseText('executionsList.startingSoon');
+	return props.execution.startedAt ? formatDate(props.execution.startedAt) : '';
 });
 
 const formattedWaitTillDate = computed(() => {
@@ -97,7 +84,7 @@ const statusText = computed(() => {
 		case 'crashed':
 			return i18n.baseText('executionsList.error');
 		case 'new':
-			return i18n.baseText('executionsList.new');
+			return i18n.baseText('executionsList.running');
 		case 'running':
 			return i18n.baseText('executionsList.running');
 		case 'success':
@@ -124,7 +111,7 @@ const statusTextTranslationPath = computed(() => {
 				return 'executionsList.statusText';
 			}
 		case 'new':
-			return 'executionsList.statusTextWithoutTime';
+			return 'executionsList.statusRunning';
 		case 'running':
 			return 'executionsList.statusRunning';
 		default:
@@ -154,8 +141,7 @@ function onSelect() {
 	emit('select', props.execution);
 }
 
-async function handleActionItemClick(commandData: Command) {
-	//@ts-ignore todo: fix this type
+async function handleActionItemClick(commandData: 'retrySaved' | 'retryOriginal' | 'delete') {
 	emit(commandData, props.execution);
 }
 </script>
@@ -197,10 +183,7 @@ async function handleActionItemClick(commandData: Command) {
 						<span v-else-if="!!execution.stoppedAt">
 							{{ formattedStoppedAtDate }}
 						</span>
-						<ExecutionsTime
-							v-else-if="execution.status !== 'new'"
-							:start-time="execution.startedAt"
-						/>
+						<ExecutionsTime v-else :start-time="execution.startedAt" />
 					</template>
 				</i18n-t>
 				<N8nTooltip v-else placement="top">
@@ -271,7 +254,6 @@ async function handleActionItemClick(commandData: Command) {
 							data-test-id="execution-retry-saved-dropdown-item"
 							:class="$style.retryAction"
 							command="retrySaved"
-							:disabled="!workflowPermissions.execute"
 						>
 							{{ i18n.baseText('executionsList.retryWithCurrentlySavedWorkflow') }}
 						</ElDropdownItem>
@@ -280,7 +262,6 @@ async function handleActionItemClick(commandData: Command) {
 							data-test-id="execution-retry-original-dropdown-item"
 							:class="$style.retryAction"
 							command="retryOriginal"
-							:disabled="!workflowPermissions.execute"
 						>
 							{{ i18n.baseText('executionsList.retryWithOriginalWorkflow') }}
 						</ElDropdownItem>
@@ -288,7 +269,6 @@ async function handleActionItemClick(commandData: Command) {
 							data-test-id="execution-delete-dropdown-item"
 							:class="$style.deleteAction"
 							command="delete"
-							:disabled="!workflowPermissions.update"
 						>
 							{{ i18n.baseText('generic.delete') }}
 						</ElDropdownItem>
@@ -345,10 +325,7 @@ async function handleActionItemClick(commandData: Command) {
 		background: var(--execution-card-border-success);
 	}
 
-	&.new td:first-child::before {
-		background: var(--execution-card-border-new);
-	}
-
+	&.new td:first-child::before,
 	&.running td:first-child::before {
 		background: var(--execution-card-border-running);
 	}
@@ -396,10 +373,7 @@ async function handleActionItemClick(commandData: Command) {
 		font-weight: var(--font-weight-normal);
 	}
 
-	.new {
-		color: var(--color-text-dark);
-	}
-
+	.new &,
 	.running & {
 		color: var(--color-warning);
 	}

@@ -1,16 +1,17 @@
-import type { User } from '@/databases/entities/user';
-import { Telemetry } from '@/telemetry';
-import { mockInstance } from '@test/mocking';
+import type { User } from '@db/entities/User';
 
-import { createTeamProject } from '../shared/db/projects';
+import * as utils from '../shared/utils/';
+import * as testDb from '../shared/testDb';
 import { createUser } from '../shared/db/users';
 import { createWorkflowWithTrigger } from '../shared/db/workflows';
-import * as testDb from '../shared/test-db';
-import * as utils from '../shared/utils/';
+import { createTeamProject } from '../shared/db/projects';
+import { mockInstance } from '@test/mocking';
+import { Telemetry } from '@/telemetry';
 
 mockInstance(Telemetry);
 
 let member: User;
+let anotherMember: User;
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['workflows'],
@@ -19,6 +20,7 @@ const testServer = utils.setupTestServer({
 
 beforeAll(async () => {
 	member = await createUser({ role: 'global:member' });
+	anotherMember = await createUser({ role: 'global:member' });
 
 	await utils.initNodeTypes();
 });

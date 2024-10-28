@@ -54,11 +54,6 @@ export interface Service {
 	execute(ctx: Context, operation: OperationType, itemIndex: number): Promise<TodoistResponse>;
 }
 
-export interface TodoistProjectType {
-	id: number;
-	name: string;
-}
-
 export interface TodoistResponse {
 	success?: boolean;
 	data?: IDataObject;

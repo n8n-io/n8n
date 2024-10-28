@@ -1,4 +1,4 @@
-import { NodeConnectionType, type INodeType, type INodeTypeDescription } from 'n8n-workflow';
+import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
 import { auditFields, auditOperations } from './AuditDescription';
 import { credentialFields, credentialOperations } from './CredentialDescription';
 import { executionFields, executionOperations } from './ExecutionDescription';
@@ -22,8 +22,8 @@ export class N8n implements INodeType {
 		defaults: {
 			name: 'n8n',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: ['main'],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'n8nApi',

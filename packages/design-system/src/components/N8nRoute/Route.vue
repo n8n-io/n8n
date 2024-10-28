@@ -1,3 +1,17 @@
+<template>
+	<router-link v-if="useRouterLink && to" :to="to" v-bind="$attrs">
+		<slot></slot>
+	</router-link>
+	<a
+		v-else
+		:href="to ? `${to}` : undefined"
+		:target="openNewWindow ? '_blank' : '_self'"
+		v-bind="$attrs"
+	>
+		<slot></slot>
+	</a>
+</template>
+
 <script lang="ts" setup>
 import { computed } from 'vue';
 import { type RouteLocationRaw } from 'vue-router';
@@ -25,17 +39,3 @@ const useRouterLink = computed(() => {
 
 const openNewWindow = computed(() => !useRouterLink.value);
 </script>
-
-<template>
-	<router-link v-if="useRouterLink && to" :to="to" v-bind="$attrs">
-		<slot></slot>
-	</router-link>
-	<a
-		v-else
-		:href="to ? `${to}` : undefined"
-		:target="openNewWindow ? '_blank' : '_self'"
-		v-bind="$attrs"
-	>
-		<slot></slot>
-	</a>
-</template>

@@ -1,5 +1,4 @@
 import { render } from '@testing-library/vue';
-
 import N8nCard from '../Card.vue';
 
 describe('components', () => {

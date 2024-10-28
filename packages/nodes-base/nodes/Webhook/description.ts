@@ -205,7 +205,7 @@ export const optionsProperty: INodeProperties = {
 	displayName: 'Options',
 	name: 'options',
 	type: 'collection',
-	placeholder: 'Add option',
+	placeholder: 'Add Option',
 	default: {},
 	options: [
 		{
@@ -237,7 +237,7 @@ export const optionsProperty: INodeProperties = {
 				'If the data gets received via "Form-Data Multipart" it will be the prefix and a number starting with 0 will be attached to it',
 		},
 		{
-			displayName: 'Field Name for Binary Data',
+			displayName: 'Binary Property',
 			name: 'binaryPropertyName',
 			type: 'string',
 			default: 'data',
@@ -247,7 +247,7 @@ export const optionsProperty: INodeProperties = {
 				},
 			},
 			description:
-				'The name of the output field to put any binary file data in. Only relevant if binary data is received.',
+				'Name of the binary property to write the data of the received file to, only relevant if binary data is received',
 		},
 		{
 			displayName: 'Ignore Bots',

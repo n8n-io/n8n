@@ -19,7 +19,7 @@ const properties: INodeProperties[] = [
 		name: 'options',
 		type: 'collection',
 		default: {},
-		placeholder: 'Add option',
+		placeholder: 'Add Option',
 		options: [
 			{
 				displayName: 'Description',

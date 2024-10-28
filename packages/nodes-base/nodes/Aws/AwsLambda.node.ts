@@ -8,7 +8,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeApiError } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import { awsApiRequestREST } from './GenericFunctions';
 
@@ -24,8 +24,8 @@ export class AwsLambda implements INodeType {
 		defaults: {
 			name: 'AWS Lambda',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: ['main'],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'aws',
@@ -64,7 +64,7 @@ export class AwsLambda implements INodeType {
 				default: '',
 				required: true,
 				description:
-					'The function you want to invoke. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+					'The function you want to invoke. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Qualifier',
@@ -195,21 +195,13 @@ export class AwsLambda implements INodeType {
 
 					throw new NodeApiError(this.getNode(), responseData as JsonObject);
 				} else {
-					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray({
-							result: responseData,
-						}),
-						{ itemData: { item: i } },
-					);
-					returnData.push(...executionData);
+					returnData.push({
+						result: responseData,
+					} as IDataObject);
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
-					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray({ error: (error as JsonObject).message }),
-						{ itemData: { item: i } },
-					);
-					returnData.push(...executionData);
+				if (this.continueOnFail(error)) {
+					returnData.push({ error: (error as JsonObject).message });
 					continue;
 				}
 				throw error;

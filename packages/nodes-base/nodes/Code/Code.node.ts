@@ -1,11 +1,10 @@
-import {
-	NodeConnectionType,
-	type CodeExecutionMode,
-	type CodeNodeEditorLanguage,
-	type IExecuteFunctions,
-	type INodeExecutionData,
-	type INodeType,
-	type INodeTypeDescription,
+import type {
+	CodeExecutionMode,
+	CodeNodeEditorLanguage,
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 import set from 'lodash/set';
 import { javascriptCodeDescription } from './descriptions/JavascriptCodeDescription';
@@ -29,8 +28,8 @@ export class Code implements INodeType {
 		defaults: {
 			name: 'Code',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: ['main'],
+		outputs: ['main'],
 		parameterPane: 'wide',
 		properties: [
 			{
@@ -135,7 +134,7 @@ export class Code implements INodeType {
 			try {
 				items = (await sandbox.runCodeAllItems()) as INodeExecutionData[];
 			} catch (error) {
-				if (!this.continueOnFail()) {
+				if (!this.continueOnFail(error)) {
 					set(error, 'node', node);
 					throw error;
 				}
@@ -163,7 +162,7 @@ export class Code implements INodeType {
 			try {
 				result = await sandbox.runCodeEachItem();
 			} catch (error) {
-				if (!this.continueOnFail()) {
+				if (!this.continueOnFail(error)) {
 					set(error, 'node', node);
 					throw error;
 				}

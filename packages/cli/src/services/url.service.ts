@@ -1,6 +1,4 @@
-import { GlobalConfig } from '@n8n/config';
 import { Service } from 'typedi';
-
 import config from '@/config';
 
 @Service()
@@ -8,7 +6,7 @@ export class UrlService {
 	/** Returns the base URL n8n is reachable from */
 	readonly baseUrl: string;
 
-	constructor(private readonly globalConfig: GlobalConfig) {
+	constructor() {
 		this.baseUrl = this.generateBaseUrl();
 	}
 
@@ -29,7 +27,10 @@ export class UrlService {
 	}
 
 	private generateBaseUrl(): string {
-		const { path, port, host, protocol } = this.globalConfig;
+		const protocol = config.getEnv('protocol');
+		const host = config.getEnv('host');
+		const port = config.getEnv('port');
+		const path = config.getEnv('path');
 
 		if ((protocol === 'http' && port === 80) || (protocol === 'https' && port === 443)) {
 			return `${protocol}://${host}${path}`;

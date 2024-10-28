@@ -1,9 +1,3 @@
-<script lang="ts">
-export default {
-	name: 'ExpressionFunctionIcon',
-};
-</script>
-
 <template>
 	<svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
 		<path
@@ -12,5 +6,11 @@ export default {
 		/>
 	</svg>
 </template>
+
+<script lang="ts">
+export default {
+	name: 'ExpressionFunctionIcon',
+};
+</script>
 
 <style lang="scss"></style>

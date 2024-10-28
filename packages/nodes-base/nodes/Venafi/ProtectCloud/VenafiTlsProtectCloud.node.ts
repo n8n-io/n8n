@@ -1,12 +1,11 @@
-import {
-	type IExecuteFunctions,
-	type IDataObject,
-	type ILoadOptionsFunctions,
-	type INodeExecutionData,
-	type INodePropertyOptions,
-	type INodeType,
-	type INodeTypeDescription,
-	NodeConnectionType,
+import type {
+	IExecuteFunctions,
+	IDataObject,
+	ILoadOptionsFunctions,
+	INodeExecutionData,
+	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import { encryptPassphrase, venafiApiRequest, venafiApiRequestAllItems } from './GenericFunctions';
@@ -38,8 +37,8 @@ export class VenafiTlsProtectCloud implements INodeType {
 		defaults: {
 			name: 'Venafi TLS Protect Cloud',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: ['main'],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'venafiTlsProtectCloudApi',
@@ -458,7 +457,7 @@ export class VenafiTlsProtectCloud implements INodeType {
 					),
 				);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({ json: { error: error.message } });
 					continue;
 				}

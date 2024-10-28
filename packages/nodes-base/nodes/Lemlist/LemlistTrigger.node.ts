@@ -7,7 +7,6 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
 
 import { getEvents, lemlistApiRequest } from './GenericFunctions';
 
@@ -24,7 +23,7 @@ export class LemlistTrigger implements INodeType {
 			name: 'Lemlist Trigger',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'lemlistApi',
@@ -56,7 +55,7 @@ export class LemlistTrigger implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Campaign Name or ID',
+						displayName: 'Campaing Name or ID',
 						name: 'campaignId',
 						type: 'options',
 						typeOptions: {
@@ -64,7 +63,7 @@ export class LemlistTrigger implements INodeType {
 						},
 						default: '',
 						description:
-							'We\'ll call this hook only for this campaignId. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+							'We\'ll call this hook only for this campaignId. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Is First',

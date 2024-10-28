@@ -6,7 +6,6 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
 
 import { acuitySchedulingApiRequest } from './GenericFunctions';
 
@@ -23,7 +22,7 @@ export class AcuitySchedulingTrigger implements INodeType {
 			name: 'Acuity Scheduling Trigger',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'acuitySchedulingApi',

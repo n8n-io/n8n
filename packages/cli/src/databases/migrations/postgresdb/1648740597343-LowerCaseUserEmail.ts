@@ -1,4 +1,4 @@
-import type { MigrationContext, IrreversibleMigration } from '@/databases/types';
+import type { MigrationContext, IrreversibleMigration } from '@db/types';
 
 export class LowerCaseUserEmail1648740597343 implements IrreversibleMigration {
 	async up({ queryRunner, tablePrefix }: MigrationContext) {

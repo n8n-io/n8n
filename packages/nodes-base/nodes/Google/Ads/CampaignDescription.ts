@@ -187,7 +187,7 @@ export const campaignFields: INodeProperties[] = [
 		},
 		default: {},
 		description: 'Additional options for fetching campaigns',
-		placeholder: 'Add option',
+		placeholder: 'Add Option',
 		options: [
 			{
 				displayName: 'Date Range',

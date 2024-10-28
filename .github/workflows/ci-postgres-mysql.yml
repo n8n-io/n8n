@@ -8,8 +8,6 @@ on:
     paths:
       - packages/cli/src/databases/**
       - .github/workflows/ci-postgres-mysql.yml
-  pull_request_review:
-    types: [submitted]
 
 concurrency:
   group: db-${{ github.event.pull_request.number || github.ref }}
@@ -19,7 +17,6 @@ jobs:
   build:
     name: Install & Build
     runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request_review' || startsWith(github.event.pull_request.base.ref, 'release/')
     steps:
       - uses: actions/checkout@v4.1.1
       - run: corepack enable
@@ -28,9 +25,6 @@ jobs:
           node-version: 20.x
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
-
-      - name: Setup build cache
-        uses: rharkor/caching-for-turbo@v1.5
 
       - name: Build Backend
         run: pnpm build:backend
@@ -58,9 +52,6 @@ jobs:
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
 
-      - name: Setup build cache
-        uses: rharkor/caching-for-turbo@v1.5
-
       - name: Restore cached build artifacts
         uses: actions/cache/restore@v4.0.0
         with:
@@ -69,7 +60,7 @@ jobs:
 
       - name: Test SQLite Pooled
         working-directory: packages/cli
-        run: pnpm jest
+        run: pnpm jest --coverage
 
   mysql:
     name: MySQL
@@ -86,9 +77,6 @@ jobs:
           node-version: 20.x
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
-
-      - name: Setup build cache
-        uses: rharkor/caching-for-turbo@v1.5
 
       - name: Restore cached build artifacts
         uses: actions/cache/restore@v4.0.0
@@ -123,9 +111,6 @@ jobs:
           node-version: 20.x
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
-
-      - name: Setup build cache
-        uses: rharkor/caching-for-turbo@v1.5
 
       - name: Restore cached build artifacts
         uses: actions/cache/restore@v4.0.0

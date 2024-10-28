@@ -1,5 +1,4 @@
 import type { DateTime } from 'luxon';
-
 import type { INodeCredentials } from './Interfaces';
 
 // ===============================
@@ -12,7 +11,6 @@ export const enum EventMessageTypeNames {
 	confirm = '$$EventMessageConfirm',
 	workflow = '$$EventMessageWorkflow',
 	node = '$$EventMessageNode',
-	execution = '$$EventMessageExecution',
 	aiNode = '$$EventMessageAiNode',
 }
 

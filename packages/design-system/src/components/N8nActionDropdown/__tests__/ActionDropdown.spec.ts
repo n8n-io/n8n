@@ -1,5 +1,4 @@
 import { render } from '@testing-library/vue';
-
 import N8nActionDropdown from '../ActionDropdown.vue';
 
 describe('components', () => {
@@ -7,6 +6,7 @@ describe('components', () => {
 		it('should render default styling correctly', () => {
 			const wrapper = render(N8nActionDropdown, {
 				props: {
+					teleported: false,
 					items: [
 						{
 							id: 'item1',

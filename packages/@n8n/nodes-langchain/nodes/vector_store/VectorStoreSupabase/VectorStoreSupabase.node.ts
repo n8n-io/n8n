@@ -6,14 +6,6 @@ import { metadataFilterField } from '../../../utils/sharedFields';
 import { supabaseTableNameRLC } from '../shared/descriptions';
 import { supabaseTableNameSearch } from '../shared/methods/listSearch';
 
-const queryNameField: INodeProperties = {
-	displayName: 'Query Name',
-	name: 'queryName',
-	type: 'string',
-	default: 'match_documents',
-	description: 'Name of the query to use for matching documents',
-};
-
 const sharedFields: INodeProperties[] = [supabaseTableNameRLC];
 const insertFields: INodeProperties[] = [
 	{
@@ -22,10 +14,17 @@ const insertFields: INodeProperties[] = [
 		type: 'collection',
 		placeholder: 'Add Option',
 		default: {},
-		options: [queryNameField],
+		options: [
+			{
+				displayName: 'Query Name',
+				name: 'queryName',
+				type: 'string',
+				default: 'match_documents',
+				description: 'Name of the query to use for matching documents',
+			},
+		],
 	},
 ];
-
 const retrieveFields: INodeProperties[] = [
 	{
 		displayName: 'Options',
@@ -33,12 +32,18 @@ const retrieveFields: INodeProperties[] = [
 		type: 'collection',
 		placeholder: 'Add Option',
 		default: {},
-		options: [queryNameField, metadataFilterField],
+		options: [
+			{
+				displayName: 'Query Name',
+				name: 'queryName',
+				type: 'string',
+				default: 'match_documents',
+				description: 'Name of the query to use for matching documents',
+			},
+			metadataFilterField,
+		],
 	},
 ];
-
-const updateFields: INodeProperties[] = [...insertFields];
-
 export const VectorStoreSupabase = createVectorStoreNode({
 	meta: {
 		description: 'Work with your data in Supabase Vector Store',
@@ -53,7 +58,6 @@ export const VectorStoreSupabase = createVectorStoreNode({
 				required: true,
 			},
 		],
-		operationModes: ['load', 'insert', 'retrieve', 'update'],
 	},
 	methods: {
 		listSearch: { supabaseTableNameSearch },
@@ -62,7 +66,6 @@ export const VectorStoreSupabase = createVectorStoreNode({
 	insertFields,
 	loadFields: retrieveFields,
 	retrieveFields,
-	updateFields,
 	async getVectorStoreClient(context, filter, embeddings, itemIndex) {
 		const tableName = context.getNodeParameter('tableName', itemIndex, '', {
 			extractValue: true,

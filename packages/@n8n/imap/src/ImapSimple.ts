@@ -4,8 +4,8 @@ import type Imap from 'imap';
 import { type ImapMessage } from 'imap';
 
 import { getMessage } from './helpers/getMessage';
-import { PartData } from './PartData';
 import type { Message, MessagePart } from './types';
+import { PartData } from './PartData';
 
 const IMAP_EVENTS = ['alert', 'mail', 'expunge', 'uidvalidity', 'update', 'close', 'end'] as const;
 

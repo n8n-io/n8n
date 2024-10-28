@@ -1,19 +1,18 @@
-import { mock } from 'jest-mock-extended';
 import { v5 as uuidv5, v3 as uuidv3, v4 as uuidv4, v1 as uuidv1 } from 'uuid';
+import { mock } from 'jest-mock-extended';
 
-import { STICKY_NODE_TYPE } from '@/Constants';
-import { ApplicationError } from '@/errors';
-import { NodeConnectionType, type IWorkflowBase } from '@/Interfaces';
-import * as nodeHelpers from '@/NodeHelpers';
 import {
 	ANONYMIZATION_CHARACTER as CHAR,
 	generateNodesGraph,
 	getDomainBase,
 	getDomainPath,
 } from '@/TelemetryHelpers';
-import { randomInt } from '@/utils';
-
 import { nodeTypes } from './ExpressionExtensions/Helpers';
+import * as nodeHelpers from '@/NodeHelpers';
+import type { IWorkflowBase } from '@/Interfaces';
+import { STICKY_NODE_TYPE } from '@/Constants';
+import { ApplicationError } from '@/errors';
+import { randomInt } from '@/utils';
 
 describe('getDomainBase should return protocol plus domain', () => {
 	test('in valid URLs', () => {
@@ -112,7 +111,7 @@ describe('generateNodesGraph', () => {
 			],
 			connections: {
 				'When clicking "Execute Workflow"': {
-					main: [[{ node: 'Google Sheets', type: NodeConnectionType.Main, index: 0 }]],
+					main: [[{ node: 'Google Sheets', type: 'main', index: 0 }]],
 				},
 			},
 			settings: { executionOrder: 'v1' },
@@ -216,7 +215,7 @@ describe('generateNodesGraph', () => {
 			],
 			connections: {
 				'When clicking "Execute Workflow"': {
-					main: [[{ node: 'Google Sheets', type: NodeConnectionType.Main, index: 0 }]],
+					main: [[{ node: 'Google Sheets', type: 'main', index: 0 }]],
 				},
 			},
 			settings: { executionOrder: 'v1' },
@@ -292,7 +291,7 @@ describe('generateNodesGraph', () => {
 			],
 			connections: {
 				'When clicking "Execute Workflow"': {
-					main: [[{ node: 'Google Sheets', type: NodeConnectionType.Main, index: 0 }]],
+					main: [[{ node: 'Google Sheets', type: 'main', index: 0 }]],
 				},
 			},
 			settings: { executionOrder: 'v1' },
@@ -370,7 +369,7 @@ describe('generateNodesGraph', () => {
 			],
 			connections: {
 				'When clicking "Execute Workflow"': {
-					main: [[{ node: 'Google Sheets', type: NodeConnectionType.Main, index: 0 }]],
+					main: [[{ node: 'Google Sheets', type: 'main', index: 0 }]],
 				},
 			},
 			settings: { executionOrder: 'v1' },
@@ -702,7 +701,7 @@ describe('generateNodesGraph', () => {
 						[
 							{
 								node: 'Chain',
-								type: NodeConnectionType.Main,
+								type: 'main',
 								index: 0,
 							},
 						],
@@ -713,7 +712,7 @@ describe('generateNodesGraph', () => {
 						[
 							{
 								node: 'Chain',
-								type: NodeConnectionType.AiLanguageModel,
+								type: 'ai_languageModel',
 								index: 0,
 							},
 						],

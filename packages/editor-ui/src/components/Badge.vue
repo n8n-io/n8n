@@ -1,9 +1,3 @@
-<script lang="ts">
-export default {
-	props: ['text', 'type'],
-};
-</script>
-
 <template>
 	<el-tag
 		v-if="type === 'danger'"
@@ -23,6 +17,12 @@ export default {
 		{{ text }}
 	</el-tag>
 </template>
+
+<script lang="ts">
+export default {
+	props: ['text', 'type'],
+};
+</script>
 
 <style lang="scss" module>
 .badge {

@@ -1,18 +1,10 @@
 import { render, fireEvent } from '@testing-library/vue';
-
-import { n8nHtml } from 'n8n-design-system/directives';
-
 import N8nMarkdown from '../Markdown.vue';
 
 describe('components', () => {
 	describe('N8nMarkdown', () => {
 		it('should render unchecked checkboxes', () => {
 			const wrapper = render(N8nMarkdown, {
-				global: {
-					directives: {
-						n8nHtml,
-					},
-				},
 				props: {
 					content: '__TODO__\n- [ ] Buy milk\n- [ ] Buy socks\n',
 				},
@@ -26,11 +18,6 @@ describe('components', () => {
 
 		it('should render checked checkboxes', () => {
 			const wrapper = render(N8nMarkdown, {
-				global: {
-					directives: {
-						n8nHtml,
-					},
-				},
 				props: {
 					content: '__TODO__\n- [X] Buy milk\n- [X] Buy socks\n',
 				},
@@ -44,11 +31,6 @@ describe('components', () => {
 
 		it('should toggle checkboxes when clicked', async () => {
 			const wrapper = render(N8nMarkdown, {
-				global: {
-					directives: {
-						n8nHtml,
-					},
-				},
 				props: {
 					content: '__TODO__\n- [ ] Buy milk\n- [ ] Buy socks\n',
 				},
@@ -68,11 +50,6 @@ describe('components', () => {
 
 		it('should render inputs as plain text', () => {
 			const wrapper = render(N8nMarkdown, {
-				global: {
-					directives: {
-						n8nHtml,
-					},
-				},
 				props: {
 					content:
 						'__TODO__\n- [X] Buy milk\n- <input type="text" data-testid="text-input" value="Something"/>\n',

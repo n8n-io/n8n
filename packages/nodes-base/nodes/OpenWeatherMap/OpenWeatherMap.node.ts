@@ -7,7 +7,7 @@ import type {
 	JsonObject,
 	IRequestOptions,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 export class OpenWeatherMap implements INodeType {
 	description: INodeTypeDescription = {
@@ -20,8 +20,8 @@ export class OpenWeatherMap implements INodeType {
 		defaults: {
 			name: 'OpenWeatherMap',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: ['main'],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'openWeatherMapApi',
@@ -278,7 +278,7 @@ export class OpenWeatherMap implements INodeType {
 				);
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({ json: { error: error.message } });
 					continue;
 				}

@@ -42,17 +42,6 @@ export class Smtp implements ICredentialType {
 			default: true,
 		},
 		{
-			displayName: 'Disable STARTTLS',
-			name: 'disableStartTls',
-			type: 'boolean',
-			default: false,
-			displayOptions: {
-				show: {
-					secure: [false],
-				},
-			},
-		},
-		{
 			displayName: 'Client Host Name',
 			name: 'hostName',
 			type: 'string',

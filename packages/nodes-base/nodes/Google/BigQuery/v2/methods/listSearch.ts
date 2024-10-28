@@ -1,5 +1,5 @@
 import type { IDataObject, ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
-import { googleBigQueryApiRequest } from '../transport';
+import { googleApiRequest } from '../transport';
 
 export async function searchProjects(
 	this: ILoadOptionsFunctions,
@@ -10,7 +10,7 @@ export async function searchProjects(
 		pageToken: (paginationToken as string) || undefined,
 	};
 
-	const response = await googleBigQueryApiRequest.call(this, 'GET', '/v2/projects', undefined, qs);
+	const response = await googleApiRequest.call(this, 'GET', '/v2/projects', undefined, qs);
 
 	let { projects } = response;
 
@@ -45,7 +45,7 @@ export async function searchDatasets(
 		pageToken: (paginationToken as string) || undefined,
 	};
 
-	const response = await googleBigQueryApiRequest.call(
+	const response = await googleApiRequest.call(
 		this,
 		'GET',
 		`/v2/projects/${projectId}/datasets`,
@@ -87,7 +87,7 @@ export async function searchTables(
 		pageToken: (paginationToken as string) || undefined,
 	};
 
-	const response = await googleBigQueryApiRequest.call(
+	const response = await googleApiRequest.call(
 		this,
 		'GET',
 		`/v2/projects/${projectId}/datasets/${datasetId}/tables`,

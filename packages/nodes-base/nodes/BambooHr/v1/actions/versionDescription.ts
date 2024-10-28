@@ -1,5 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { NodeConnectionType, type INodeTypeDescription } from 'n8n-workflow';
+import type { INodeTypeDescription } from 'n8n-workflow';
 
 import * as file from './file';
 import * as employee from './employee';
@@ -22,9 +22,9 @@ export const versionDescription: INodeTypeDescription = {
 	group: ['transform'],
 	// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 	icon: 'file:bambooHr.png',
-	inputs: [NodeConnectionType.Main],
+	inputs: ['main'],
 	name: 'bambooHr',
-	outputs: [NodeConnectionType.Main],
+	outputs: ['main'],
 	properties: [
 		{
 			displayName: 'Resource',

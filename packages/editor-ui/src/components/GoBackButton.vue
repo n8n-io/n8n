@@ -1,20 +1,32 @@
-<script setup lang="ts">
-import { useRouter } from 'vue-router';
-import { VIEWS } from '@/constants';
-
-const router = useRouter();
-
-const navigateTo = () => {
-	void router.push({ name: VIEWS.TEMPLATES });
-};
-</script>
-
 <template>
 	<div :class="$style.wrapper" @click="navigateTo">
 		<font-awesome-icon :class="$style.icon" icon="arrow-left" />
 		<div :class="$style.text" v-text="$locale.baseText('template.buttons.goBackButton')" />
 	</div>
 </template>
+
+<script lang="ts">
+import { defineComponent } from 'vue';
+import { VIEWS } from '@/constants';
+
+export default defineComponent({
+	name: 'GoBackButton',
+	data() {
+		return {
+			routeHasHistory: false,
+		};
+	},
+	mounted() {
+		window.history.state ? (this.routeHasHistory = true) : (this.routeHasHistory = false);
+	},
+	methods: {
+		navigateTo() {
+			if (this.routeHasHistory) this.$router.go(-1);
+			else void this.$router.push({ name: VIEWS.TEMPLATES });
+		},
+	},
+});
+</script>
 
 <style lang="scss" module>
 .wrapper {

@@ -22,14 +22,18 @@ const model = defineModel<(ProjectSharingData | null) | ProjectSharingData[]>({
 	required: true,
 });
 const emit = defineEmits<{
-	projectAdded: [value: ProjectSharingData];
-	projectRemoved: [value: ProjectSharingData];
+	(event: 'projectAdded', value: ProjectSharingData): void;
+	(event: 'projectRemoved', value: ProjectSharingData): void;
 }>();
 
-const selectedProject = ref(Array.isArray(model.value) ? '' : (model.value?.id ?? ''));
+const selectedProject = ref(Array.isArray(model.value) ? '' : model.value?.id ?? '');
 const filter = ref('');
 const selectPlaceholder = computed(
-	() => props.placeholder ?? locale.baseText('projects.sharing.select.placeholder'),
+	() =>
+		props.placeholder ??
+		(Array.isArray(model.value)
+			? locale.baseText('projects.sharing.placeholder')
+			: locale.baseText('projects.sharing.placeholder.single')),
 );
 const noDataText = computed(
 	() => props.emptyOptionsText ?? locale.baseText('projects.sharing.noMatchingUsers'),

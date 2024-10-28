@@ -1,9 +1,8 @@
 <script lang="ts" setup>
-import hljs from 'highlight.js/lib/core';
-import hljsJavascript from 'highlight.js/lib/languages/javascript';
-import hljsXML from 'highlight.js/lib/languages/xml';
 import { computed, onMounted } from 'vue';
-
+import hljs from 'highlight.js/lib/core';
+import hljsXML from 'highlight.js/lib/languages/xml';
+import hljsJavascript from 'highlight.js/lib/languages/javascript';
 import { Chat, ChatWindow } from '@n8n/chat/components';
 import { useOptions } from '@n8n/chat/composables';
 

@@ -1,4 +1,4 @@
-import { NodeConnectionType, type INodeType, type INodeTypeDescription } from 'n8n-workflow';
+import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
 
 import { campaignFields, campaignOperations } from './CampaignDescription';
 
@@ -14,8 +14,8 @@ export class GoogleAds implements INodeType {
 		defaults: {
 			name: 'Google Ads',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: ['main'],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'googleAdsOAuth2Api',

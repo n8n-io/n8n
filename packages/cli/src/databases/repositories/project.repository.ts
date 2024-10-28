@@ -1,8 +1,7 @@
+import { Service } from 'typedi';
 import type { EntityManager } from '@n8n/typeorm';
 import { DataSource, Repository } from '@n8n/typeorm';
-import { Service } from 'typedi';
-
-import { Project } from '../entities/project';
+import { Project } from '../entities/Project';
 
 @Service()
 export class ProjectRepository extends Repository<Project> {

@@ -9,15 +9,6 @@ import { pineconeIndexSearch } from '../shared/methods/listSearch';
 
 const sharedFields: INodeProperties[] = [pineconeIndexRLC];
 
-const pineconeNamespaceField: INodeProperties = {
-	displayName: 'Pinecone Namespace',
-	name: 'pineconeNamespace',
-	type: 'string',
-	description:
-		'Partition the records in an index into namespaces. Queries and other operations are then limited to one namespace, so different requests can search different subsets of your index.',
-	default: '',
-};
-
 const retrieveFields: INodeProperties[] = [
 	{
 		displayName: 'Options',
@@ -25,7 +16,17 @@ const retrieveFields: INodeProperties[] = [
 		type: 'collection',
 		placeholder: 'Add Option',
 		default: {},
-		options: [pineconeNamespaceField, metadataFilterField],
+		options: [
+			{
+				displayName: 'Pinecone Namespace',
+				name: 'pineconeNamespace',
+				type: 'string',
+				description:
+					'Partition the records in an index into namespaces. Queries and other operations are then limited to one namespace, so different requests can search different subsets of your index.',
+				default: '',
+			},
+			metadataFilterField,
+		],
 	},
 ];
 
@@ -44,11 +45,17 @@ const insertFields: INodeProperties[] = [
 				default: false,
 				description: 'Whether to clear the namespace before inserting new data',
 			},
-			pineconeNamespaceField,
+			{
+				displayName: 'Pinecone Namespace',
+				name: 'pineconeNamespace',
+				type: 'string',
+				description:
+					'Partition the records in an index into namespaces. Queries and other operations are then limited to one namespace, so different requests can search different subsets of your index.',
+				default: '',
+			},
 		],
 	},
 ];
-
 export const VectorStorePinecone = createVectorStoreNode({
 	meta: {
 		displayName: 'Pinecone Vector Store',
@@ -63,7 +70,6 @@ export const VectorStorePinecone = createVectorStoreNode({
 				required: true,
 			},
 		],
-		operationModes: ['load', 'insert', 'retrieve', 'update'],
 	},
 	methods: { listSearch: { pineconeIndexSearch } },
 	retrieveFields,

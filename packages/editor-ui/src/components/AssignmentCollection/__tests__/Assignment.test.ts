@@ -2,15 +2,9 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import Assignment from '../Assignment.vue';
-import { defaultSettings } from '@/__tests__/defaults';
-import { STORES } from '@/constants';
-import { merge } from 'lodash-es';
-import { cleanupAppModals, createAppModals } from '@/__tests__/utils';
 
 const DEFAULT_SETUP = {
-	pinia: createTestingPinia({
-		initialState: { [STORES.SETTINGS]: { settings: merge({}, defaultSettings) } },
-	}),
+	pinia: createTestingPinia(),
 	props: {
 		path: 'parameters.fields.0',
 		modelValue: {
@@ -25,12 +19,7 @@ const DEFAULT_SETUP = {
 const renderComponent = createComponentRenderer(Assignment, DEFAULT_SETUP);
 
 describe('Assignment.vue', () => {
-	beforeEach(() => {
-		createAppModals();
-	});
-
 	afterEach(() => {
-		cleanupAppModals();
 		vi.clearAllMocks();
 	});
 

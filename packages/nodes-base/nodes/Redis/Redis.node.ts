@@ -4,7 +4,6 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
 
 import set from 'lodash/set';
 
@@ -27,8 +26,8 @@ export class Redis implements INodeType {
 		defaults: {
 			name: 'Redis',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: ['main'],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'redis',
@@ -197,7 +196,7 @@ export class Redis implements INodeType {
 						operation: ['get'],
 					},
 				},
-				placeholder: 'Add option',
+				placeholder: 'Add Option',
 				default: {},
 				options: [
 					{
@@ -485,7 +484,7 @@ export class Redis implements INodeType {
 						operation: ['pop'],
 					},
 				},
-				placeholder: 'Add option',
+				placeholder: 'Add Option',
 				default: {},
 				options: [
 					{

@@ -1,25 +1,25 @@
-import { Response } from 'express';
 import validator from 'validator';
+import { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
-import { SettingsRepository } from '@/databases/repositories/settings.repository';
-import { UserRepository } from '@/databases/repositories/user.repository';
+import { validateEntity } from '@/GenericHelpers';
 import { GlobalScope, Post, RestController } from '@/decorators';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { EventService } from '@/events/event.service';
-import { validateEntity } from '@/generic-helpers';
-import { Logger } from '@/logger';
-import { PostHogClient } from '@/posthog';
-import { OwnerRequest } from '@/requests';
 import { PasswordUtility } from '@/services/password.utility';
+import { OwnerRequest } from '@/requests';
+import { SettingsRepository } from '@db/repositories/settings.repository';
+import { UserRepository } from '@db/repositories/user.repository';
+import { PostHogClient } from '@/posthog';
 import { UserService } from '@/services/user.service';
+import { Logger } from '@/Logger';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { InternalHooks } from '@/InternalHooks';
 
 @RestController('/owner')
 export class OwnerController {
 	constructor(
 		private readonly logger: Logger,
-		private readonly eventService: EventService,
+		private readonly internalHooks: InternalHooks,
 		private readonly settingsRepository: SettingsRepository,
 		private readonly authService: AuthService,
 		private readonly userService: UserService,
@@ -85,7 +85,7 @@ export class OwnerController {
 
 		this.authService.issueCookie(res, owner, req.browserId);
 
-		this.eventService.emit('instance-owner-setup', { userId: owner.id });
+		void this.internalHooks.onInstanceOwnerSetup({ user_id: owner.id });
 
 		return await this.userService.toPublic(owner, { posthog: this.postHog, withScopes: true });
 	}

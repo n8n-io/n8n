@@ -1,6 +1,5 @@
 import {
 	HTTP_REQUEST_NODE_TYPE,
-	MODAL_CANCEL,
 	MODAL_CONFIRM,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
@@ -37,7 +36,6 @@ import type {
 	IWorkflowDataUpdate,
 	IWorkflowDb,
 	TargetItem,
-	WorkflowTitleStatus,
 	XYPosition,
 } from '@/Interface';
 
@@ -58,7 +56,6 @@ import { getSourceItems } from '@/utils/pairedItemUtils';
 import { v4 as uuid } from 'uuid';
 import { useSettingsStore } from '@/stores/settings.store';
 import { getCredentialTypeName, isCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
-import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
@@ -68,23 +65,17 @@ import type { useRouter } from 'vue-router';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useTagsStore } from '@/stores/tags.store';
-import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
-import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
-import type { NavigationGuardNext } from 'vue-router';
-
-type ResolveParameterOptions = {
-	targetItem?: TargetItem;
-	inputNodeName?: string;
-	inputRunIndex?: number;
-	inputBranchIndex?: number;
-	additionalKeys?: IWorkflowDataProxyAdditionalKeys;
-	isForCredential?: boolean;
-	contextNodeName?: string;
-};
 
 export function resolveParameter<T = IDataObject>(
 	parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
-	opts: ResolveParameterOptions = {},
+	opts: {
+		targetItem?: TargetItem;
+		inputNodeName?: string;
+		inputRunIndex?: number;
+		inputBranchIndex?: number;
+		additionalKeys?: IWorkflowDataProxyAdditionalKeys;
+		isForCredential?: boolean;
+	} = {},
 ): T | null {
 	let itemIndex = opts?.targetItem?.itemIndex || 0;
 
@@ -125,9 +116,7 @@ export function resolveParameter<T = IDataObject>(
 	}
 
 	const inputName = NodeConnectionType.Main;
-
-	const activeNode =
-		useNDVStore().activeNode ?? useWorkflowsStore().getNodeByName(opts.contextNodeName || '');
+	const activeNode = useNDVStore().activeNode;
 	let contextNode = activeNode;
 
 	if (activeNode) {
@@ -450,7 +439,6 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 	const rootStore = useRootStore();
 	const templatesStore = useTemplatesStore();
 	const workflowsStore = useWorkflowsStore();
-	const workflowsEEStore = useWorkflowsEEStore();
 	const uiStore = useUIStore();
 	const nodeHelpers = useNodeHelpers();
 	const projectsStore = useProjectsStore();
@@ -460,17 +448,6 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 	const message = useMessage();
 	const i18n = useI18n();
 	const telemetry = useTelemetry();
-	const documentTitle = useDocumentTitle();
-
-	const setDocumentTitle = (workflowName: string, status: WorkflowTitleStatus) => {
-		let icon = '⚠️';
-		if (status === 'EXECUTING') {
-			icon = '🔄';
-		} else if (status === 'IDLE') {
-			icon = '▶️';
-		}
-		documentTitle.set(`${icon} ${workflowName}`);
-	};
 
 	function getNodeTypesMaxCount() {
 		const nodes = workflowsStore.allNodes;
@@ -659,7 +636,6 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		webhookData: IWebhookDescription,
 		key: string,
 		stringify = true,
-		nodeName?: string,
 	): string {
 		if (webhookData[key] === undefined) {
 			return 'empty';
@@ -668,7 +644,7 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 			return resolveExpression(
 				webhookData[key] as string,
 				undefined,
-				{ contextNodeName: nodeName },
+				undefined,
 				stringify,
 			) as string;
 		} catch (e) {
@@ -694,58 +670,25 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		}
 
 		const workflowId = workflowsStore.workflowId;
-		const path = getWebhookExpressionValue(webhookData, 'path', true, node.name);
+		const path = getWebhookExpressionValue(webhookData, 'path');
 		const isFullPath =
-			(getWebhookExpressionValue(
-				webhookData,
-				'isFullPath',
-				true,
-				node.name,
-			) as unknown as boolean) || false;
+			(getWebhookExpressionValue(webhookData, 'isFullPath') as unknown as boolean) || false;
 
 		return NodeHelpers.getNodeWebhookUrl(baseUrl, workflowId, node, path, isFullPath);
-	}
-
-	/**
-	 * Returns a copy of provided node parameters with added resolvedExpressionValue
-	 * @param nodeParameters
-	 * @returns
-	 */
-	function getNodeParametersWithResolvedExpressions(
-		nodeParameters: INodeParameters,
-	): INodeParameters {
-		function recurse(currentObj: INodeParameters, currentPath: string): INodeParameters {
-			const newObj: INodeParameters = {};
-			for (const key in currentObj) {
-				const value = currentObj[key as keyof typeof currentObj];
-				const path = currentPath ? `${currentPath}.${key}` : key;
-				if (typeof value === 'object' && value !== null) {
-					newObj[key] = recurse(value as INodeParameters, path);
-				} else if (typeof value === 'string' && String(value).startsWith('=')) {
-					// Resolve the expression if it is one
-					let resolved;
-					try {
-						resolved = resolveExpression(value, undefined, { isForCredential: false });
-					} catch (error) {
-						resolved = `Error in expression: "${error.message}"`;
-					}
-					newObj[key] = {
-						value,
-						resolvedExpressionValue: String(resolved),
-					};
-				} else {
-					newObj[key] = value;
-				}
-			}
-			return newObj;
-		}
-		return recurse(nodeParameters, '');
 	}
 
 	function resolveExpression(
 		expression: string,
 		siblingParameters: INodeParameters = {},
-		opts: ResolveParameterOptions & { c?: number } = {},
+		opts: {
+			targetItem?: TargetItem;
+			inputNodeName?: string;
+			inputRunIndex?: number;
+			inputBranchIndex?: number;
+			c?: number;
+			additionalKeys?: IWorkflowDataProxyAdditionalKeys;
+			isForCredential?: boolean;
+		} = {},
 		stringifyObject = true,
 	) {
 		const parameters = {
@@ -1107,53 +1050,7 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		}
 	}
 
-	async function promptSaveUnsavedWorkflowChanges(
-		next: NavigationGuardNext,
-		{
-			confirm = async () => true,
-			cancel = async () => {},
-		}: {
-			confirm?: () => Promise<boolean>;
-			cancel?: () => Promise<void>;
-		} = {},
-	) {
-		if (uiStore.stateIsDirty) {
-			const npsSurveyStore = useNpsSurveyStore();
-
-			const confirmModal = await message.confirm(
-				i18n.baseText('generic.unsavedWork.confirmMessage.message'),
-				{
-					title: i18n.baseText('generic.unsavedWork.confirmMessage.headline'),
-					type: 'warning',
-					confirmButtonText: i18n.baseText('generic.unsavedWork.confirmMessage.confirmButtonText'),
-					cancelButtonText: i18n.baseText('generic.unsavedWork.confirmMessage.cancelButtonText'),
-					showClose: true,
-				},
-			);
-
-			if (confirmModal === MODAL_CONFIRM) {
-				const saved = await saveCurrentWorkflow({}, false);
-				if (saved) {
-					await npsSurveyStore.fetchPromptsData();
-				}
-				uiStore.stateIsDirty = false;
-
-				const goToNext = await confirm();
-				if (goToNext) {
-					next();
-				}
-			} else if (confirmModal === MODAL_CANCEL) {
-				await cancel();
-
-				uiStore.stateIsDirty = false;
-				next();
-			}
-		} else {
-			next();
-		}
-	}
-
-	function initState(workflowData: IWorkflowDb) {
+	async function initState(workflowData: IWorkflowDb): Promise<void> {
 		workflowsStore.addWorkflow(workflowData);
 		workflowsStore.setActive(workflowData.active || false);
 		workflowsStore.setWorkflowId(workflowData.id);
@@ -1165,18 +1062,6 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		workflowsStore.setWorkflowPinData(workflowData.pinData ?? {});
 		workflowsStore.setWorkflowVersionId(workflowData.versionId);
 		workflowsStore.setWorkflowMetadata(workflowData.meta);
-		workflowsStore.setWorkflowScopes(workflowData.scopes);
-
-		if (workflowData.usedCredentials) {
-			workflowsStore.setUsedCredentials(workflowData.usedCredentials);
-		}
-
-		if (workflowData.sharedWithProjects) {
-			workflowsEEStore.setWorkflowSharedWith({
-				workflowId: workflowData.id,
-				sharedWithProjects: workflowData.sharedWithProjects,
-			});
-		}
 
 		const tags = (workflowData.tags ?? []) as ITag[];
 		const tagIds = tags.map((tag) => tag.id);
@@ -1185,7 +1070,6 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 	}
 
 	return {
-		setDocumentTitle,
 		resolveParameter,
 		resolveRequiredParameters,
 		getCurrentWorkflow,
@@ -1207,8 +1091,6 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		updateNodePositions,
 		removeForeignCredentialsFromWorkflow,
 		getWorkflowProjectRole,
-		promptSaveUnsavedWorkflowChanges,
 		initState,
-		getNodeParametersWithResolvedExpressions,
 	};
 }

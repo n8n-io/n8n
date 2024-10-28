@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, toRaw, watch } from 'vue';
-import { onClickOutside } from '@vueuse/core';
+import { computed, ref, watch } from 'vue';
 
 import ExpressionFunctionIcon from '@/components/ExpressionFunctionIcon.vue';
 import InlineExpressionEditorInput from '@/components/InlineExpressionEditor/InlineExpressionEditorInput.vue';
@@ -10,28 +9,25 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createExpressionTelemetryPayload } from '@/utils/telemetryUtils';
 
 import { useTelemetry } from '@/composables/useTelemetry';
-import { dropInExpressionEditor } from '@/plugins/codemirror/dragAndDrop';
 import type { Segment } from '@/types/expressions';
-import { startCompletion } from '@codemirror/autocomplete';
-import type { EditorState, SelectionRange } from '@codemirror/state';
+import { createEventBus, type EventBus } from 'n8n-design-system/utils';
 import type { IDataObject } from 'n8n-workflow';
-import { createEventBus, type EventBus } from 'n8n-design-system';
+import type { EditorState, SelectionRange } from '@codemirror/state';
 
 const isFocused = ref(false);
 const segments = ref<Segment[]>([]);
 const editorState = ref<EditorState>();
 const selection = ref<SelectionRange>();
 const inlineInput = ref<InstanceType<typeof InlineExpressionEditorInput>>();
-const container = ref<HTMLDivElement>();
 
 type Props = {
 	path: string;
 	modelValue: string;
 	rows?: number;
 	additionalExpressionData?: IDataObject;
+	eventBus?: EventBus;
 	isReadOnly?: boolean;
 	isAssignment?: boolean;
-	eventBus?: EventBus;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -43,10 +39,10 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const emit = defineEmits<{
-	'modal-opener-click': [];
-	'update:model-value': [value: string];
-	focus: [];
-	blur: [];
+	(event: 'modal-opener-click'): void;
+	(event: 'update:model-value', value: string): void;
+	(event: 'focus'): void;
+	(event: 'blur'): void;
 }>();
 
 const telemetry = useTelemetry();
@@ -113,60 +109,21 @@ function onSelectionChange({
 	selection.value = newSelection;
 }
 
-async function onDrop(value: string, event: MouseEvent) {
-	if (!inlineInput.value) return;
-	const { editor, setCursorPosition } = inlineInput.value;
-
-	if (!editor) return;
-
-	const droppedSelection = await dropInExpressionEditor(toRaw(editor), event, value);
-
-	if (!ndvStore.isMappingOnboarded) ndvStore.setMappingOnboarded();
-
-	if (!ndvStore.isAutocompleteOnboarded) {
-		setCursorPosition((droppedSelection.ranges.at(0)?.head ?? 3) - 3);
-		setTimeout(() => {
-			startCompletion(editor);
-		});
-	}
-}
-
-async function onDropOnFixedInput() {
-	await nextTick();
-
-	if (!inlineInput.value) return;
-	const { editor, setCursorPosition } = inlineInput.value;
-
-	if (!editor || ndvStore.isAutocompleteOnboarded) return;
-
-	setCursorPosition('lastExpression');
-	setTimeout(() => {
-		focus();
-		startCompletion(editor);
-	});
-}
-
-onMounted(() => {
-	props.eventBus.on('drop', onDropOnFixedInput);
-});
-
-onBeforeUnmount(() => {
-	props.eventBus.off('drop', onDropOnFixedInput);
-});
-
 watch(isDragging, (newIsDragging) => {
 	if (newIsDragging) {
 		onBlur();
 	}
 });
 
-onClickOutside(container, (event) => onBlur(event));
-
 defineExpose({ focus });
 </script>
 
 <template>
-	<div ref="container" :class="$style['expression-parameter-input']" @keydown.tab="onBlur">
+	<div
+		v-on-click-outside="onBlur"
+		:class="$style['expression-parameter-input']"
+		@keydown.tab="onBlur"
+	>
 		<div
 			:class="[
 				$style['all-sections'],
@@ -177,23 +134,19 @@ defineExpose({ focus });
 				<span v-if="isAssignment">=</span>
 				<ExpressionFunctionIcon v-else />
 			</div>
-			<DraggableTarget type="mapping" :disabled="isReadOnly" @drop="onDrop">
-				<template #default="{ activeDrop, droppable }">
-					<InlineExpressionEditorInput
-						ref="inlineInput"
-						:model-value="modelValue"
-						:path="path"
-						:is-read-only="isReadOnly"
-						:rows="rows"
-						:additional-data="additionalExpressionData"
-						:class="{ [$style.activeDrop]: activeDrop, [$style.droppable]: droppable }"
-						@focus="onFocus"
-						@blur="onBlur"
-						@update:model-value="onValueChange"
-						@update:selection="onSelectionChange"
-					/>
-				</template>
-			</DraggableTarget>
+			<InlineExpressionEditorInput
+				ref="inlineInput"
+				:model-value="modelValue"
+				:path="path"
+				:is-read-only="isReadOnly"
+				:rows="rows"
+				:additional-data="additionalExpressionData"
+				:event-bus="eventBus"
+				@focus="onFocus"
+				@blur="onBlur"
+				@update:model-value="onValueChange"
+				@update:selection="onSelectionChange"
+			/>
 			<n8n-button
 				v-if="!isDragging"
 				square
@@ -286,27 +239,5 @@ defineExpose({ focus });
 	border-color: var(--color-secondary);
 	border-bottom-right-radius: 0;
 	background-color: var(--color-code-background);
-}
-
-.droppable {
-	--input-border-color: var(--color-ndv-droppable-parameter);
-	--input-border-right-color: var(--color-ndv-droppable-parameter);
-	--input-border-style: dashed;
-
-	:global(.cm-editor) {
-		border-width: 1.5px;
-	}
-}
-
-.activeDrop {
-	--input-border-color: var(--color-success);
-	--input-border-right-color: var(--color-success);
-	--input-background-color: var(--color-foreground-xlight);
-	--input-border-style: solid;
-
-	:global(.cm-editor) {
-		cursor: grabbing !important;
-		border-width: 1px;
-	}
 }
 </style>

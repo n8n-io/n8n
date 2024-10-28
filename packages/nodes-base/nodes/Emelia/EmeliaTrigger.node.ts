@@ -1,13 +1,12 @@
-import {
-	NodeConnectionType,
-	type IDataObject,
-	type IHookFunctions,
-	type ILoadOptionsFunctions,
-	type INodePropertyOptions,
-	type INodeType,
-	type INodeTypeDescription,
-	type IWebhookFunctions,
-	type IWebhookResponseData,
+import type {
+	IDataObject,
+	IHookFunctions,
+	ILoadOptionsFunctions,
+	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
+	IWebhookFunctions,
+	IWebhookResponseData,
 } from 'n8n-workflow';
 
 import { emeliaApiRequest, emeliaApiTest, emeliaGraphqlRequest } from './GenericFunctions';
@@ -30,7 +29,7 @@ export class EmeliaTrigger implements INodeType {
 			name: 'Emelia Trigger',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'emeliaApi',
@@ -52,7 +51,7 @@ export class EmeliaTrigger implements INodeType {
 				name: 'campaignId',
 				type: 'options',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getCampaigns',
 				},

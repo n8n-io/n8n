@@ -26,8 +26,7 @@ export class LmChatGroq implements INodeType {
 		codex: {
 			categories: ['AI'],
 			subcategories: {
-				AI: ['Language Models', 'Root Nodes'],
-				'Language Models': ['Chat Models (Recommended)'],
+				AI: ['Language Models'],
 			},
 			resources: {
 				primaryDocumentation: [

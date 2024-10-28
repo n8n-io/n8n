@@ -1,21 +1,18 @@
 import { Container, Service } from 'typedi';
-
-import type { Variables } from '@/databases/entities/variables';
-import { VariablesRepository } from '@/databases/repositories/variables.repository';
-import { generateNanoId } from '@/databases/utils/generators';
+import type { Variables } from '@db/entities/Variables';
+import { InternalHooks } from '@/InternalHooks';
+import { generateNanoId } from '@db/utils/generators';
+import { canCreateNewVariable } from './environmentHelpers';
+import { CacheService } from '@/services/cache/cache.service';
+import { VariablesRepository } from '@db/repositories/variables.repository';
 import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-reached.error';
 import { VariableValidationError } from '@/errors/variable-validation.error';
-import { EventService } from '@/events/event.service';
-import { CacheService } from '@/services/cache/cache.service';
-
-import { canCreateNewVariable } from './environment-helpers';
 
 @Service()
 export class VariablesService {
 	constructor(
 		protected cacheService: CacheService,
 		protected variablesRepository: VariablesRepository,
-		private readonly eventService: EventService,
 	) {}
 
 	async getAllCached(): Promise<Variables[]> {
@@ -73,7 +70,7 @@ export class VariablesService {
 		}
 		this.validateVariable(variable);
 
-		this.eventService.emit('variable-created');
+		void Container.get(InternalHooks).onVariableCreated({ variable_type: variable.type });
 		const saveResult = await this.variablesRepository.save(
 			{
 				...variable,

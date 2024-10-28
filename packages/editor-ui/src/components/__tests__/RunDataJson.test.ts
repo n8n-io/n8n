@@ -2,22 +2,6 @@ import { createTestingPinia } from '@pinia/testing';
 import { screen, cleanup } from '@testing-library/vue';
 import RunDataJson from '@/components/RunDataJson.vue';
 import { createComponentRenderer } from '@/__tests__/render';
-import { useElementSize } from '@vueuse/core'; // Import the composable to mock
-
-vi.mock('@vueuse/core', async () => {
-	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
-	const originalModule = await vi.importActual<typeof import('@vueuse/core')>('@vueuse/core');
-
-	return {
-		...originalModule, // Keep all original exports
-		useElementSize: vi.fn(), // Mock useElementSize
-	};
-});
-
-(useElementSize as jest.Mock).mockReturnValue({
-	height: 500, // Mocked height value
-	width: 300, // Mocked width value
-});
 
 const renderComponent = createComponentRenderer(RunDataJson, {
 	props: {
@@ -48,6 +32,18 @@ const renderComponent = createComponentRenderer(RunDataJson, {
 			typeVersion: 1,
 			position: [380, 1060],
 			disabled: false,
+		},
+	},
+	global: {
+		mocks: {
+			$locale: {
+				baseText() {
+					return '';
+				},
+			},
+			$store: {
+				getters: {},
+			},
 		},
 	},
 });

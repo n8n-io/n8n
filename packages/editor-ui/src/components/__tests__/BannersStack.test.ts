@@ -23,7 +23,7 @@ const initialState = {
 	},
 	[STORES.USERS]: {
 		currentUserId: 'aaa-bbb',
-		usersById: {
+		users: {
 			'aaa-bbb': {
 				id: 'aaa-bbb',
 				role: ROLE.Owner,

@@ -1,4 +1,4 @@
-import type { MigrationContext, ReversibleMigration } from '@/databases/types';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 
 export class CreateTagEntity1617213344594 implements ReversibleMigration {
 	async up({ queryRunner, tablePrefix }: MigrationContext) {

@@ -254,9 +254,9 @@ export async function loadResource(this: ILoadOptionsFunctions, resource: string
 		oauthTokenData: {
 			callbackQueryString: { realmId },
 		},
-	} = await this.getCredentials<{
+	} = (await this.getCredentials('quickBooksOAuth2Api')) as {
 		oauthTokenData: { callbackQueryString: { realmId: string } };
-	}>('quickBooksOAuth2Api');
+	};
 	const endpoint = `/v3/company/${realmId}/query`;
 
 	const resourceItems = await quickBooksApiRequestAllItems.call(

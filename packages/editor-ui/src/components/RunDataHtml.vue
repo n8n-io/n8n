@@ -1,3 +1,7 @@
+<template>
+	<iframe class="__html-display" :srcdoc="sanitizedHtml" />
+</template>
+
 <script lang="ts">
 import sanitizeHtml, { defaults, type IOptions as SanitizeOptions } from 'sanitize-html';
 
@@ -30,10 +34,6 @@ export default {
 	},
 };
 </script>
-
-<template>
-	<iframe class="__html-display" :srcdoc="sanitizedHtml" />
-</template>
 
 <style lang="scss">
 .__html-display {

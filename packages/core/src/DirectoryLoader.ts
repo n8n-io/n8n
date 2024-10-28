@@ -1,6 +1,5 @@
 import glob from 'fast-glob';
-import { readFileSync } from 'node:fs';
-import { readFile } from 'node:fs/promises';
+import { readFile } from 'fs/promises';
 import type {
 	CodexData,
 	DocumentationLink,
@@ -41,20 +40,14 @@ export type Types = {
 export abstract class DirectoryLoader {
 	isLazyLoaded = false;
 
-	// Another way of keeping track of the names and versions of a node. This
-	// seems to only be used by the installedPackages repository
 	loadedNodes: INodeTypeNameVersion[] = [];
 
-	// Stores the loaded descriptions and sourcepaths
 	nodeTypes: INodeTypeData = {};
 
 	credentialTypes: ICredentialTypeData = {};
 
-	// Stores the location and classnames of the nodes and credentials that are
-	// loaded; used to actually load the files in lazy-loading scenario.
 	known: KnownNodesAndCredentials = { nodes: {}, credentials: {} };
 
-	// Stores the different versions with their individual descriptions
 	types: Types = { nodes: [], credentials: [] };
 
 	protected nodesByCredential: Record<string, string[]> = {};
@@ -351,11 +344,18 @@ export class CustomDirectoryLoader extends DirectoryLoader {
  * e.g. /nodes-base or community packages.
  */
 export class PackageDirectoryLoader extends DirectoryLoader {
-	packageJson: n8n.PackageJson = this.readJSONSync('package.json');
+	packageName = '';
 
-	packageName = this.packageJson.name;
+	packageJson!: n8n.PackageJson;
+
+	async readPackageJson() {
+		this.packageJson = await this.readJSON('package.json');
+		this.packageName = this.packageJson.name;
+	}
 
 	override async loadAll() {
+		await this.readPackageJson();
+
 		const { n8n } = this.packageJson;
 		if (!n8n) return;
 
@@ -385,17 +385,6 @@ export class PackageDirectoryLoader extends DirectoryLoader {
 		});
 	}
 
-	protected readJSONSync<T>(file: string): T {
-		const filePath = this.resolvePath(file);
-		const fileString = readFileSync(filePath, 'utf8');
-
-		try {
-			return jsonParse<T>(fileString);
-		} catch (error) {
-			throw new ApplicationError('Failed to parse JSON', { extra: { filePath } });
-		}
-	}
-
 	protected async readJSON<T>(file: string): Promise<T> {
 		const filePath = this.resolvePath(file);
 		const fileString = await readFile(filePath, 'utf8');
@@ -413,6 +402,8 @@ export class PackageDirectoryLoader extends DirectoryLoader {
  */
 export class LazyPackageDirectoryLoader extends PackageDirectoryLoader {
 	override async loadAll() {
+		await this.readPackageJson();
+
 		try {
 			const knownNodes: typeof this.known.nodes = await this.readJSON('dist/known/nodes.json');
 			for (const nodeName in knownNodes) {

@@ -1,17 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 
-import { AxiosError } from 'axios';
 import { parseString } from 'xml2js';
-
-import { NodeError } from './abstract/node.error';
-import type { ReportingOptions } from './application.error';
-import {
-	NO_OP_NODE_TYPE,
-	UNKNOWN_ERROR_DESCRIPTION,
-	UNKNOWN_ERROR_MESSAGE,
-	UNKNOWN_ERROR_MESSAGE_CRED,
-} from '../Constants';
 import type {
 	INode,
 	JsonObject,
@@ -19,7 +9,16 @@ import type {
 	IStatusCodeMessages,
 	Functionality,
 } from '../Interfaces';
+import { NodeError } from './abstract/node.error';
 import { removeCircularRefs } from '../utils';
+import type { ReportingOptions } from './application.error';
+import { AxiosError } from 'axios';
+import {
+	NO_OP_NODE_TYPE,
+	UNKNOWN_ERROR_DESCRIPTION,
+	UNKNOWN_ERROR_MESSAGE,
+	UNKNOWN_ERROR_MESSAGE_CRED,
+} from '../Constants';
 
 export interface NodeOperationErrorOptions {
 	message?: string;

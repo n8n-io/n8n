@@ -293,13 +293,14 @@ export const useExpressionEditor = ({
 				// e.g. credential modal
 				result.resolved = Expression.resolveWithoutWorkflow(resolvable, toValue(additionalData));
 			} else {
-				let opts: Record<string, unknown> = { additionalKeys: toValue(additionalData) };
+				let opts;
 				if (ndvStore.isInputParentOfActiveNode) {
 					opts = {
 						targetItem: target ?? undefined,
 						inputNodeName: ndvStore.ndvInputNodeName,
 						inputRunIndex: ndvStore.ndvInputRunIndex,
 						inputBranchIndex: ndvStore.ndvInputBranchIndex,
+						additionalKeys: toValue(additionalData),
 					};
 				}
 				result.resolved = workflowHelpers.resolveExpression('=' + resolvable, undefined, opts);
@@ -329,7 +330,22 @@ export const useExpressionEditor = ({
 		return result;
 	}
 
-	const targetItem = computed<TargetItem | null>(() => ndvStore.expressionTargetItem);
+	const targetItem = computed<TargetItem | null>(() => {
+		if (ndvStore.hoveringItem) {
+			return ndvStore.hoveringItem;
+		}
+
+		if (ndvStore.expressionOutputItemIndex && ndvStore.ndvInputNodeName) {
+			return {
+				nodeName: ndvStore.ndvInputNodeName,
+				runIndex: ndvStore.ndvInputRunIndex ?? 0,
+				outputIndex: ndvStore.ndvInputBranchIndex ?? 0,
+				itemIndex: ndvStore.expressionOutputItemIndex,
+			};
+		}
+
+		return null;
+	});
 
 	const resolvableSegments = computed<Resolvable[]>(() => {
 		return segments.value.filter((s): s is Resolvable => s.kind === 'resolvable');
@@ -405,8 +421,7 @@ export const useExpressionEditor = ({
 		if (pos === 'lastExpression') {
 			const END_OF_EXPRESSION = ' }}';
 			const endOfLastExpression = readEditorValue().lastIndexOf(END_OF_EXPRESSION);
-			pos =
-				endOfLastExpression !== -1 ? endOfLastExpression : (editor.value?.state.doc.length ?? 0);
+			pos = endOfLastExpression !== -1 ? endOfLastExpression : editor.value?.state.doc.length ?? 0;
 		} else if (pos === 'end') {
 			pos = editor.value?.state.doc.length ?? 0;
 		}
@@ -415,7 +430,7 @@ export const useExpressionEditor = ({
 
 	function select(anchor: number, head: number | 'end' = 'end'): void {
 		editor.value?.dispatch({
-			selection: { anchor, head: head === 'end' ? (editor.value?.state.doc.length ?? 0) : head },
+			selection: { anchor, head: head === 'end' ? editor.value?.state.doc.length ?? 0 : head },
 		});
 	}
 

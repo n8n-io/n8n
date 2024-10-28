@@ -4,7 +4,6 @@ import {
 	copyInputItems,
 	ensureType,
 	getBinaryDataBuffer,
-	isFilePathBlocked,
 	parseIncomingMessage,
 	parseRequestObject,
 	proxyRequestToAxios,
@@ -35,7 +34,6 @@ import { join } from 'path';
 import Container from 'typedi';
 import type { Agent } from 'https';
 import toPlainObject from 'lodash/toPlainObject';
-import { InstanceSettings } from '@/InstanceSettings';
 
 const temporaryDir = mkdtempSync(join(tmpdir(), 'n8n'));
 
@@ -663,13 +661,5 @@ describe('NodeExecuteFunctions', () => {
 				new ExpressionError("Parameter 'myParam' must be an array, but we got object"),
 			);
 		});
-	});
-});
-
-describe('isFilePathBlocked', () => {
-	test('should return true for static cache dir', () => {
-		const filePath = Container.get(InstanceSettings).staticCacheDir;
-
-		expect(isFilePathBlocked(filePath)).toBe(true);
 	});
 });

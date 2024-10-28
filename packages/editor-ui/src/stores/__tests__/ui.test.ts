@@ -1,11 +1,11 @@
 import { createPinia, setActivePinia } from 'pinia';
-import { generateUpgradeLinkUrl, useUIStore } from '@/stores/ui.store';
+import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { merge } from 'lodash-es';
+import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import * as cloudPlanApi from '@/api/cloudPlans';
-import { defaultSettings } from '../../__tests__/defaults';
 import {
 	getTrialExpiredUserResponse,
 	getTrialingUserResponse,
@@ -34,7 +34,7 @@ function setUser(role: IRole) {
 function setupOwnerAndCloudDeployment() {
 	setUser(ROLE.Owner);
 	settingsStore.setSettings(
-		merge({}, defaultSettings, {
+		merge({}, SETTINGS_STORE_DEFAULT_STATE.settings, {
 			n8nMetadata: {
 				userId: '1',
 			},
@@ -98,12 +98,12 @@ describe('UI store', () => {
 			'https://n8n.io/pricing?utm_campaign=utm-test-campaign&source=test_source',
 		],
 	])(
-		'"generateUpgradeLinkUrl" should generate the correct URL for "%s" deployment and "%s" license environment and user role "%s"',
+		'"upgradeLinkUrl" should generate the correct URL for "%s" deployment and "%s" license environment and user role "%s"',
 		async (type, environment, role, expectation) => {
 			setUser(role as IRole);
 
 			settingsStore.setSettings(
-				merge({}, defaultSettings, {
+				merge({}, SETTINGS_STORE_DEFAULT_STATE.settings, {
 					deployment: {
 						type,
 					},
@@ -115,7 +115,7 @@ describe('UI store', () => {
 				}),
 			);
 
-			const updateLinkUrl = await generateUpgradeLinkUrl('test_source', 'utm-test-campaign', type);
+			const updateLinkUrl = await uiStore.upgradeLinkUrl('test_source', 'utm-test-campaign', type);
 
 			expect(updateLinkUrl).toBe(expectation);
 		},
@@ -123,7 +123,7 @@ describe('UI store', () => {
 
 	it('should add non-production license banner to stack based on enterprise settings', () => {
 		settingsStore.setSettings(
-			merge({}, defaultSettings, {
+			merge({}, SETTINGS_STORE_DEFAULT_STATE.settings, {
 				enterprise: {
 					showNonProdBanner: true,
 				},
@@ -134,7 +134,7 @@ describe('UI store', () => {
 
 	it("should add V1 banner to stack if it's not dismissed", () => {
 		settingsStore.setSettings(
-			merge({}, defaultSettings, {
+			merge({}, SETTINGS_STORE_DEFAULT_STATE.settings, {
 				versionCli: '1.0.0',
 			}),
 		);
@@ -143,7 +143,7 @@ describe('UI store', () => {
 
 	it("should not add V1 banner to stack if it's dismissed", () => {
 		settingsStore.setSettings(
-			merge({}, defaultSettings, {
+			merge({}, SETTINGS_STORE_DEFAULT_STATE.settings, {
 				versionCli: '1.0.0',
 				banners: {
 					dismissed: ['V1'],

@@ -1,9 +1,7 @@
-import { Flags } from '@oclif/core';
 import Container from 'typedi';
-
-import { AuthUserRepository } from '@/databases/repositories/auth-user.repository';
-
-import { BaseCommand } from '../base-command';
+import { Flags } from '@oclif/core';
+import { AuthUserRepository } from '@db/repositories/authUser.repository';
+import { BaseCommand } from '../BaseCommand';
 
 export class DisableMFACommand extends BaseCommand {
 	static description = 'Disable MFA authentication for a user';

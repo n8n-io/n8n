@@ -1,6 +1,5 @@
 import type { INode } from 'n8n-workflow';
-
-import { WorkflowEntity } from '@/databases/entities/workflow-entity';
+import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 
 export const FIRST_CREDENTIAL_ID = '1';
 export const SECOND_CREDENTIAL_ID = '2';

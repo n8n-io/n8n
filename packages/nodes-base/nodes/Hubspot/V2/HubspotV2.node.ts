@@ -15,7 +15,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { snakeCase } from 'change-case';
 import set from 'lodash/set';
@@ -60,8 +60,8 @@ export class HubspotV2 implements INodeType {
 			defaults: {
 				name: 'HubSpot',
 			},
-			inputs: [NodeConnectionType.Main],
-			outputs: [NodeConnectionType.Main],
+			inputs: ['main'],
+			outputs: ['main'],
 			credentials: [
 				{
 					name: 'hubspotApi',
@@ -939,11 +939,11 @@ export class HubspotV2 implements INodeType {
 			// select them easily
 			async getOwners(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const endpoint = '/crm/v3/owners';
-				const { results } = await hubspotApiRequest.call(this, 'GET', endpoint);
-				for (const owner of results) {
+				const endpoint = '/owners/v2/owners';
+				const owners = await hubspotApiRequest.call(this, 'GET', endpoint);
+				for (const owner of owners) {
 					const ownerName = owner.email;
-					const ownerId = isNaN(parseInt(owner.id)) ? owner.id : parseInt(owner.id);
+					const ownerId = owner.ownerId;
 					returnData.push({
 						name: ownerName,
 						value: ownerId,
@@ -1130,13 +1130,13 @@ export class HubspotV2 implements INodeType {
 				};
 			},
 			async searchOwners(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
-				const endpoint = '/crm/v3/owners';
-				const { results } = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				const endpoint = '/owners/v2/owners';
+				const owners = await hubspotApiRequest.call(this, 'GET', endpoint, {});
 				return {
 					// tslint:disable-next-line: no-any
-					results: results.map((b: any) => ({
+					results: owners.map((b: any) => ({
 						name: b.email,
-						value: isNaN(parseInt(b.id)) ? b.id : parseInt(b.id),
+						value: b.ownerId,
 					})),
 				};
 			},
@@ -1200,7 +1200,7 @@ export class HubspotV2 implements INodeType {
 				);
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({ json: { error: (error as JsonObject).message } });
 				} else {
 					throw error;
@@ -3071,7 +3071,7 @@ export class HubspotV2 implements INodeType {
 							set(error, 'message', message);
 						}
 					}
-					if (this.continueOnFail()) {
+					if (this.continueOnFail(error)) {
 						returnData.push({
 							json: { error: (error as JsonObject).message },
 							pairedItem: { item: i },

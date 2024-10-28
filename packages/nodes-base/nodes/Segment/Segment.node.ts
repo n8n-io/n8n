@@ -5,7 +5,6 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
 
 import { v4 as uuid } from 'uuid';
 import { segmentApiRequest } from './GenericFunctions';
@@ -32,8 +31,8 @@ export class Segment implements INodeType {
 		defaults: {
 			name: 'Segment',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: ['main'],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'segmentApi',
@@ -617,7 +616,7 @@ export class Segment implements INodeType {
 					}
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({ error: error.message });
 					continue;
 				}

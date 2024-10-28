@@ -1,9 +1,6 @@
 import type {
-	ICredentialsDecrypted,
-	ICredentialTestFunctions,
 	IDataObject,
 	IExecuteFunctions,
-	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeProperties,
 	JsonObject,
@@ -14,7 +11,6 @@ import { createTransport } from 'nodemailer';
 import type SMTPTransport from 'nodemailer/lib/smtp-transport';
 
 import { updateDisplayOptions } from '@utils/utilities';
-import { appendAttributionOption } from '../../../utils/descriptions';
 
 const properties: INodeProperties[] = [
 	// TODO: Add choice for text as text or html  (maybe also from name)
@@ -134,11 +130,15 @@ const properties: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add option',
+		placeholder: 'Add Option',
 		default: {},
 		options: [
 			{
-				...appendAttributionOption,
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+				displayName: 'Append n8n Attribution',
+				name: 'appendAttribution',
+				type: 'boolean',
+				default: true,
 				description:
 					'Whether to include the phrase “This email was sent automatically with n8n” to the end of the email',
 			},
@@ -210,10 +210,6 @@ function configureTransport(credentials: IDataObject, options: EmailSendOptions)
 		secure: credentials.secure as boolean,
 	};
 
-	if (credentials.secure === false) {
-		connectionOptions.ignoreTLS = credentials.disableStartTls as boolean;
-	}
-
 	if (typeof credentials.hostName === 'string' && credentials.hostName) {
 		connectionOptions.name = credentials.hostName;
 	}
@@ -232,28 +228,6 @@ function configureTransport(credentials: IDataObject, options: EmailSendOptions)
 	}
 
 	return createTransport(connectionOptions);
-}
-
-export async function smtpConnectionTest(
-	this: ICredentialTestFunctions,
-	credential: ICredentialsDecrypted,
-): Promise<INodeCredentialTestResult> {
-	const credentials = credential.data!;
-	const transporter = configureTransport(credentials, {});
-	try {
-		await transporter.verify();
-		return {
-			status: 'OK',
-			message: 'Connection successful!',
-		};
-	} catch (error) {
-		return {
-			status: 'Error',
-			message: error.message,
-		};
-	} finally {
-		transporter.close();
-	}
 }
 
 export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -350,7 +324,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				},
 			});
 		} catch (error) {
-			if (this.continueOnFail()) {
+			if (this.continueOnFail(error)) {
 				returnData.push({
 					json: {
 						error: error.message,

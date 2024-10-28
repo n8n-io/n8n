@@ -1,13 +1,11 @@
 import Container from 'typedi';
-
-import type { User } from '@/databases/entities/user';
-import { StatisticsNames } from '@/databases/entities/workflow-statistics';
+import * as testDb from './shared/testDb';
 import { CtaService } from '@/services/cta.service';
-
 import { createUser } from './shared/db/users';
-import { createWorkflowStatisticsItem } from './shared/db/workflow-statistics';
 import { createManyWorkflows } from './shared/db/workflows';
-import * as testDb from './shared/test-db';
+import type { User } from '@/databases/entities/User';
+import { createWorkflowStatisticsItem } from './shared/db/workflowStatistics';
+import { StatisticsNames } from '@/databases/entities/WorkflowStatistics';
 
 describe('CtaService', () => {
 	let ctaService: CtaService;

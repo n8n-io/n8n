@@ -130,7 +130,7 @@ async function onSubmit(values: { [key: string]: string | boolean }) {
 			} catch {}
 		}
 
-		await router.push({ name: VIEWS.HOMEPAGE });
+		await router.push({ name: VIEWS.NEW_WORKFLOW });
 	} catch (error) {
 		toast.showError(error, i18n.baseText('auth.signup.setupYourAccountError'));
 	}

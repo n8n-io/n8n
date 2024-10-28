@@ -7,7 +7,7 @@ import type {
 	IDisplayOptions,
 	IWebhookFunctions,
 } from 'n8n-workflow';
-import { WAIT_TIME_UNLIMITED, NodeOperationError, NodeConnectionType } from 'n8n-workflow';
+import { WAIT_TIME_UNLIMITED } from 'n8n-workflow';
 
 import {
 	authenticationProperty,
@@ -27,7 +27,6 @@ import {
 	respondWithOptions,
 	formRespondMode,
 	formTitle,
-	appendAttributionToForm,
 } from '../Form/common.descriptions';
 import { formWebhook } from '../Form/utils';
 import { updateDisplayOptions } from '../../utils/utilities';
@@ -235,17 +234,9 @@ export class Wait extends Webhook {
 			name: 'Wait',
 			color: '#804050',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: ['main'],
+		outputs: ['main'],
 		credentials: credentialsProperty(this.authPropertyName),
-		hints: [
-			{
-				message:
-					"When testing your workflow using the Editor UI, you can't see the rest of the execution following the Wait node. To inspect the execution results, enable Save Manual Executions in your Workflow settings so you can review the execution results there.",
-				location: 'outputPane',
-				whenToDisplay: 'beforeExecution',
-			},
-		],
 		webhooks: [
 			{
 				...defaultWebhookDescription,
@@ -304,29 +295,6 @@ export class Wait extends Webhook {
 				description: 'Determines the waiting mode to use before the workflow continues',
 			},
 			{
-				displayName: 'Authentication',
-				name: 'incomingAuthentication',
-				type: 'options',
-				options: [
-					{
-						name: 'Basic Auth',
-						value: 'basicAuth',
-					},
-					{
-						name: 'None',
-						value: 'none',
-					},
-				],
-				default: 'none',
-				description:
-					'If and how incoming resume-webhook-requests to $execution.resumeFormUrl should be authenticated for additional security',
-				displayOptions: {
-					show: {
-						resume: ['form'],
-					},
-				},
-			},
-			{
 				...authenticationProperty(this.authPropertyName),
 				description:
 					'If and how incoming resume-webhook-requests to $execution.resumeUrl should be authenticated for additional security',
@@ -347,7 +315,6 @@ export class Wait extends Webhook {
 				},
 				default: '',
 				description: 'The date and time to wait for before continuing',
-				required: true,
 			},
 
 			// ----------------------------------
@@ -427,7 +394,7 @@ export class Wait extends Webhook {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add option',
+				placeholder: 'Add Option',
 				default: {},
 				displayOptions: {
 					show: {
@@ -437,13 +404,13 @@ export class Wait extends Webhook {
 						responseMode: ['responseNode'],
 					},
 				},
-				options: [appendAttributionToForm, respondWithOptions, webhookSuffix],
+				options: [respondWithOptions, webhookSuffix],
 			},
 			{
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add option',
+				placeholder: 'Add Option',
 				default: {},
 				displayOptions: {
 					show: {
@@ -453,14 +420,14 @@ export class Wait extends Webhook {
 						responseMode: ['onReceived', 'lastNode'],
 					},
 				},
-				options: [appendAttributionToForm, webhookSuffix],
+				options: [webhookSuffix],
 			},
 		],
 	};
 
 	async webhook(context: IWebhookFunctions) {
 		const resume = context.getNodeParameter('resume', 0) as string;
-		if (resume === 'form') return await formWebhook(context, this.authPropertyName);
+		if (resume === 'form') return await formWebhook(context);
 		return await super.webhook(context);
 	}
 
@@ -493,13 +460,6 @@ export class Wait extends Webhook {
 			waitTill = new Date(new Date().getTime() + waitAmount);
 		} else {
 			const dateTimeStr = context.getNodeParameter('dateTime', 0) as string;
-
-			if (isNaN(Date.parse(dateTimeStr))) {
-				throw new NodeOperationError(
-					context.getNode(),
-					'[Wait node] Cannot put execution to wait because `dateTime` parameter is not a valid date. Please pick a specific date and time to wait until.',
-				);
-			}
 
 			waitTill = DateTime.fromFormat(dateTimeStr, "yyyy-MM-dd'T'HH:mm:ss", {
 				zone: context.getTimezone(),

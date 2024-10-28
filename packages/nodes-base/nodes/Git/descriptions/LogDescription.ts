@@ -39,7 +39,7 @@ export const logFields: INodeProperties[] = [
 				operation: ['log'],
 			},
 		},
-		placeholder: 'Add option',
+		placeholder: 'Add Option',
 		default: {},
 		options: [
 			{

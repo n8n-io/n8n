@@ -33,7 +33,7 @@ const properties: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add option',
+		placeholder: 'Add Option',
 		default: {},
 		options: [
 			{
@@ -153,7 +153,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 		} catch (error) {
 			const err = parseDiscordError.call(this, error, i);
 
-			if (this.continueOnFail()) {
+			if (this.continueOnFail(error)) {
 				returnData.push(...prepareErrorData.call(this, err, i));
 				continue;
 			}

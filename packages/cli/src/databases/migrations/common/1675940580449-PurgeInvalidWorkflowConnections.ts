@@ -1,5 +1,5 @@
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
-import type { MigrationContext, IrreversibleMigration } from '@/databases/types';
+import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import type { MigrationContext, IrreversibleMigration } from '@db/types';
 
 interface Workflow {
 	id: number;

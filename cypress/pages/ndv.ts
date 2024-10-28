@@ -1,5 +1,5 @@
-import { BasePage } from './base';
 import { getVisiblePopper, getVisibleSelect } from '../utils';
+import { BasePage } from './base';
 
 export class NDV extends BasePage {
 	getters = {
@@ -24,7 +24,6 @@ export class NDV extends BasePage {
 		editPinnedDataButton: () => cy.getByTestId('ndv-edit-pinned-data'),
 		pinnedDataEditor: () => this.getters.outputPanel().find('.cm-editor .cm-scroller .cm-content'),
 		runDataPaneHeader: () => cy.getByTestId('run-data-pane-header'),
-		aiOutputModeToggle: () => cy.getByTestId('ai-output-mode-select'),
 		nodeOutputHint: () => cy.getByTestId('ndv-output-run-node-hint'),
 		savePinnedDataButton: () =>
 			this.getters.runDataPaneHeader().find('button').filter(':visible').contains('Save'),
@@ -78,7 +77,6 @@ export class NDV extends BasePage {
 		resourceLocatorDropdown: (paramName: string) =>
 			this.getters.resourceLocator(paramName).find('[data-test-id="resource-locator-dropdown"]'),
 		resourceLocatorErrorMessage: () => cy.getByTestId('rlc-error-container'),
-		resourceLocatorAddCredentials: () => this.getters.resourceLocatorErrorMessage().find('a'),
 		resourceLocatorModeSelector: (paramName: string) =>
 			this.getters.resourceLocator(paramName).find('[data-test-id="rlc-mode-selector"]'),
 		resourceLocatorSearch: (paramName: string) =>
@@ -138,8 +136,6 @@ export class NDV extends BasePage {
 			cy.getByTestId(`fixed-collection-${paramName}`),
 		schemaViewNode: () => cy.getByTestId('run-data-schema-node'),
 		schemaViewNodeName: () => cy.getByTestId('run-data-schema-node-name'),
-		expressionExpanders: () => cy.getByTestId('expander'),
-		expressionModalOutput: () => cy.getByTestId('expression-modal-output'),
 	};
 
 	actions = {
@@ -177,7 +173,7 @@ export class NDV extends BasePage {
 			this.getters.editPinnedDataButton().click();
 
 			this.getters.pinnedDataEditor().click();
-			this.getters.pinnedDataEditor().invoke('text', '').paste(JSON.stringify(data));
+			this.getters.pinnedDataEditor().type('{selectall}{backspace}').paste(JSON.stringify(data));
 
 			this.actions.savePinnedData();
 		},
@@ -207,9 +203,9 @@ export class NDV extends BasePage {
 			const droppable = `[data-test-id="parameter-input-${parameterName}"]`;
 			cy.draganddrop(draggable, droppable);
 		},
-		mapToParameter: (parameterName: string, position?: 'top' | 'center' | 'bottom') => {
+		mapToParameter: (parameterName: string) => {
 			const droppable = `[data-test-id="parameter-input-${parameterName}"]`;
-			cy.draganddrop('', droppable, { position });
+			cy.draganddrop('', droppable);
 		},
 		switchInputMode: (type: 'Schema' | 'Table' | 'JSON' | 'Binary') => {
 			this.getters.inputDisplayMode().find('label').contains(type).click({ force: true });

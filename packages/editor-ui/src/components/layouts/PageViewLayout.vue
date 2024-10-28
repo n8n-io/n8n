@@ -1,3 +1,12 @@
+<template>
+	<div :class="$style.wrapper">
+		<slot name="header" />
+		<main :class="$style.content">
+			<slot />
+		</main>
+	</div>
+</template>
+
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
@@ -15,15 +24,6 @@ export default defineComponent({
 	},
 });
 </script>
-
-<template>
-	<div :class="$style.wrapper">
-		<slot name="header" />
-		<main :class="$style.content">
-			<slot />
-		</main>
-	</div>
-</template>
 
 <style lang="scss" module>
 .wrapper {

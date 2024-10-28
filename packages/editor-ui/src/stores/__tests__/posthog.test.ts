@@ -3,13 +3,13 @@ import { usePostHog } from '@/stores/posthog.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/root.store';
-import type { FrontendSettings } from '@n8n/api-types';
+import { useTelemetryStore } from '@/stores/telemetry.store';
+import type { IN8nUISettings } from 'n8n-workflow';
 import { LOCAL_STORAGE_EXPERIMENT_OVERRIDES } from '@/constants';
 import { nextTick } from 'vue';
 import { defaultSettings } from '../../__tests__/defaults';
-import { useTelemetry } from '@/composables/useTelemetry';
 
-export const DEFAULT_POSTHOG_SETTINGS: FrontendSettings['posthog'] = {
+const DEFAULT_POSTHOG_SETTINGS: IN8nUISettings['posthog'] = {
 	enabled: true,
 	apiHost: 'host',
 	apiKey: 'key',
@@ -20,13 +20,13 @@ export const DEFAULT_POSTHOG_SETTINGS: FrontendSettings['posthog'] = {
 const CURRENT_USER_ID = '1';
 const CURRENT_INSTANCE_ID = '456';
 
-function setSettings(overrides?: Partial<FrontendSettings>) {
+function setSettings(overrides?: Partial<IN8nUISettings>) {
 	useSettingsStore().setSettings({
 		...defaultSettings,
 		posthog: DEFAULT_POSTHOG_SETTINGS,
 		instanceId: CURRENT_INSTANCE_ID,
 		...overrides,
-	} as FrontendSettings);
+	} as IN8nUISettings);
 
 	useRootStore().setInstanceId(CURRENT_INSTANCE_ID);
 }
@@ -44,8 +44,8 @@ function setCurrentUser() {
 }
 
 function resetStores() {
-	useSettingsStore().reset();
-	useUsersStore().reset();
+	useSettingsStore().$reset();
+	useUsersStore().$reset();
 }
 
 function setup() {
@@ -55,11 +55,11 @@ function setup() {
 		identify: () => {},
 	};
 
-	const telemetry = useTelemetry();
+	const telemetryStore = useTelemetryStore();
 
 	vi.spyOn(window.posthog, 'init');
 	vi.spyOn(window.posthog, 'identify');
-	vi.spyOn(telemetry, 'track');
+	vi.spyOn(telemetryStore, 'track');
 }
 
 describe('Posthog store', () => {

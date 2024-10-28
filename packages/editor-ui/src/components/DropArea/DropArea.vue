@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import DraggableTarget from '@/components/DraggableTarget.vue';
 
-const emit = defineEmits<{ drop: [value: string] }>();
+const emit = defineEmits<{ (event: 'drop', value: string): void }>();
 
 const onDrop = (value: string) => {
 	emit('drop', value);

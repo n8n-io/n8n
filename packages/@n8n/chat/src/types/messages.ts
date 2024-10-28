@@ -16,5 +16,4 @@ interface ChatMessageBase {
 	createdAt: string;
 	transparent?: boolean;
 	sender: 'user' | 'bot';
-	files?: File[];
 }

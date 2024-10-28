@@ -5,7 +5,6 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
 import { upleadApiRequest } from './GenericFunctions';
 import { companyFields, companyOperations } from './CompanyDesciption';
 import { personFields, personOperations } from './PersonDescription';
@@ -23,8 +22,8 @@ export class Uplead implements INodeType {
 		defaults: {
 			name: 'Uplead',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: ['main'],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'upleadApi',
@@ -112,7 +111,7 @@ export class Uplead implements INodeType {
 					}
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({ error: error.message });
 					continue;
 				}

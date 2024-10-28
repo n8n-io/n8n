@@ -1,7 +1,6 @@
-import type { StoryFn } from '@storybook/vue3';
-
 import N8nInputLabel from './InputLabel.vue';
 import N8nInput from '../N8nInput';
+import type { StoryFn } from '@storybook/vue3';
 
 export default {
 	title: 'Atoms/Input Label',

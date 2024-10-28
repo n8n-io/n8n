@@ -7,11 +7,3 @@ packages/nodes-base/nodes/**/test
 packages/cli/templates/form-trigger.handlebars
 cypress/fixtures
 CHANGELOG.md
-.github/pull_request_template.md
-# Ignored for now
-**/*.md
-# Handled by biome
-**/*.ts
-**/*.js
-**/*.json
-**/*.jsonc

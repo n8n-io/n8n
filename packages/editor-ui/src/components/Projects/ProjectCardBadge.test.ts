@@ -1,6 +1,5 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import ProjectCardBadge from '@/components/Projects/ProjectCardBadge.vue';
-import { truncate } from 'n8n-design-system';
 
 const renderComponent = createComponentRenderer(ProjectCardBadge);
 
@@ -24,7 +23,6 @@ describe('ProjectCardBadge', () => {
 						id: '1',
 					},
 				},
-				resourceType: 'workflow',
 				personalProject: {
 					id: '1',
 				},
@@ -51,12 +49,11 @@ describe('ProjectCardBadge', () => {
 						name,
 					},
 				},
-				resourceType: 'workflow',
 				personalProject: {
 					id: '2',
 				},
 			},
 		});
-		expect(getByText(truncate(result, 20))).toBeVisible();
+		expect(getByText(result)).toBeVisible();
 	});
 });

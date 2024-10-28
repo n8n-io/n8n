@@ -1,4 +1,4 @@
-import type { MigrationContext, ReversibleMigration } from '@/databases/types';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 
 export class SeparateExecutionData1690000000010 implements ReversibleMigration {
 	async up(context: MigrationContext): Promise<void> {

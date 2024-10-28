@@ -1,15 +1,14 @@
 /* eslint-disable @typescript-eslint/dot-notation */
-import {
-	NodeConnectionType,
-	type IDataObject,
-	type IExecuteFunctions,
-	type IHttpRequestMethods,
-	type ILoadOptionsFunctions,
-	type INodeExecutionData,
-	type INodeParameters,
-	type INodePropertyOptions,
-	type INodeType,
-	type INodeTypeDescription,
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	IHttpRequestMethods,
+	ILoadOptionsFunctions,
+	INodeExecutionData,
+	INodeParameters,
+	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import set from 'lodash/set';
@@ -49,8 +48,8 @@ export class TheHive implements INodeType {
 		defaults: {
 			name: 'TheHive',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: ['main'],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'theHiveApi',
@@ -1893,7 +1892,7 @@ export class TheHive implements INodeType {
 				);
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },

@@ -1,7 +1,7 @@
 import { readFileSync } from 'fs';
+import { resolve, join, dirname } from 'path';
 import type { n8n } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
-import { resolve, join, dirname } from 'path';
 
 const { NODE_ENV, E2E_TESTS } = process.env;
 export const inProduction = NODE_ENV === 'production';
@@ -90,8 +90,6 @@ export const LICENSE_FEATURES = {
 	PROJECT_ROLE_ADMIN: 'feat:projectRole:admin',
 	PROJECT_ROLE_EDITOR: 'feat:projectRole:editor',
 	PROJECT_ROLE_VIEWER: 'feat:projectRole:viewer',
-	AI_ASSISTANT: 'feat:aiAssistant',
-	COMMUNITY_NODES_CUSTOM_REGISTRY: 'feat:communityNodes:customRegistry',
 } as const;
 
 export const LICENSE_QUOTAS = {
@@ -150,6 +148,8 @@ export const TEST_WEBHOOK_TIMEOUT = 2 * TIME.MINUTE;
 
 export const TEST_WEBHOOK_TIMEOUT_BUFFER = 30 * TIME.SECOND;
 
+export const N8N_DOCS_URL = 'https://docs.n8n.io';
+
 export const GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE = [
 	'oAuth2Api',
 	'googleOAuth2Api',
@@ -167,7 +167,3 @@ export const ARTIFICIAL_TASK_DATA = {
 		],
 	],
 };
-
-export const LOWEST_SHUTDOWN_PRIORITY = 0;
-export const DEFAULT_SHUTDOWN_PRIORITY = 100;
-export const HIGHEST_SHUTDOWN_PRIORITY = 200;

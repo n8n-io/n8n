@@ -1,11 +1,9 @@
 import Container from 'typedi';
-
-import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
-import { UserRepository } from '@/databases/repositories/user.repository';
-
+import { UserRepository } from '@db/repositories/user.repository';
 import { createAdmin, createMember, createOwner } from './shared/db/users';
+import * as testDb from './shared/testDb';
 import { randomEmail } from './shared/random';
-import * as testDb from './shared/test-db';
+import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
 
 describe('UserRepository', () => {
 	let userRepository: UserRepository;

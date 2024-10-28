@@ -1,13 +1,12 @@
-import {
-	type IHookFunctions,
-	type IDataObject,
-	type ILoadOptionsFunctions,
-	type INodePropertyOptions,
-	type INodeType,
-	type INodeTypeDescription,
-	type IWebhookFunctions,
-	type IWebhookResponseData,
-	NodeConnectionType,
+import type {
+	IHookFunctions,
+	IDataObject,
+	ILoadOptionsFunctions,
+	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
+	IWebhookFunctions,
+	IWebhookResponseData,
 } from 'n8n-workflow';
 
 import { getAutomaticSecret, taigaApiRequest } from './GenericFunctions';
@@ -29,7 +28,7 @@ export class TaigaTrigger implements INodeType {
 			name: 'Taiga Trigger',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'taigaApi',
@@ -50,7 +49,7 @@ export class TaigaTrigger implements INodeType {
 				name: 'projectId',
 				type: 'options',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getUserProjects',
 				},

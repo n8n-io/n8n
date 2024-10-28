@@ -32,9 +32,7 @@
 		"Text",
 		"RTF",
 		"XML",
-		"64",
-		"Base64",
-		"Convert"
+		"64"
 	],
 	"subcategories": {
 		"Core Nodes": ["Files", "Data Transformation"]

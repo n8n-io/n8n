@@ -1,3 +1,3 @@
-export * from './body-parser';
+export * from './bodyParser';
 export * from './cors';
-export * from './list-query';
+export * from './listQuery';

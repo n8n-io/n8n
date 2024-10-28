@@ -1,4 +1,6 @@
 import type {
+	ICredentialDataDecryptedObject,
+	ICredentialTestFunctions,
 	IDataObject,
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
@@ -8,22 +10,10 @@ import type {
 	IRequestOptions,
 } from 'n8n-workflow';
 
-function getAuthenticationTypeFromApiKey(data: string): 'accessToken' | 'apiKey' {
+export function getAuthenticationType(data: string): 'accessToken' | 'apiKey' {
 	// The access token is a JWT, so it will always include dots to separate
 	// header, payoload and signature.
 	return data.includes('.') ? 'accessToken' : 'apiKey';
-}
-
-export async function getAuthenticationType(
-	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
-): Promise<'accessToken' | 'apiKey'> {
-	const authentication = this.getNodeParameter('authentication', 0) as string;
-	if (authentication === 'apiKey') {
-		const { apiKey } = await this.getCredentials<{ apiKey: string }>('calendlyApi');
-		return getAuthenticationTypeFromApiKey(apiKey);
-	} else {
-		return 'accessToken';
-	}
 }
 
 export async function calendlyApiRequest(
@@ -36,7 +26,9 @@ export async function calendlyApiRequest(
 	uri?: string,
 	option: IDataObject = {},
 ): Promise<any> {
-	const authenticationType = await getAuthenticationType.call(this);
+	const { apiKey } = (await this.getCredentials('calendlyApi')) as { apiKey: string };
+
+	const authenticationType = getAuthenticationType(apiKey);
 
 	const headers: IDataObject = {
 		'Content-Type': 'application/json',
@@ -65,10 +57,37 @@ export async function calendlyApiRequest(
 		delete options.qs;
 	}
 	options = Object.assign({}, options, option);
+	return await this.helpers.requestWithAuthentication.call(this, 'calendlyApi', options);
+}
 
-	const credentialsType =
-		(this.getNodeParameter('authentication', 0) as string) === 'apiKey'
-			? 'calendlyApi'
-			: 'calendlyOAuth2Api';
-	return await this.helpers.requestWithAuthentication.call(this, credentialsType, options);
+export async function validateCredentials(
+	this: ICredentialTestFunctions,
+	decryptedCredentials: ICredentialDataDecryptedObject,
+): Promise<any> {
+	const credentials = decryptedCredentials;
+
+	const { apiKey } = credentials as {
+		apiKey: string;
+	};
+
+	const authenticationType = getAuthenticationType(apiKey);
+
+	const options: IRequestOptions = {
+		method: 'GET',
+		uri: '',
+		json: true,
+	};
+
+	if (authenticationType === 'accessToken') {
+		Object.assign(options, {
+			headers: { Authorization: `Bearer ${apiKey}` },
+			uri: 'https://api.calendly.com/users/me',
+		});
+	} else {
+		Object.assign(options, {
+			headers: { 'X-TOKEN': apiKey },
+			uri: 'https://calendly.com/api/v1/users/me',
+		});
+	}
+	return await this.helpers.request(options);
 }

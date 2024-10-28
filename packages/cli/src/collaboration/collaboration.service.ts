@@ -1,17 +1,22 @@
-import type { PushPayload } from '@n8n/api-types';
 import type { Workflow } from 'n8n-workflow';
-import { ApplicationError, ErrorReporterProxy } from 'n8n-workflow';
 import { Service } from 'typedi';
-
-import { CollaborationState } from '@/collaboration/collaboration.state';
-import type { User } from '@/databases/entities/user';
-import { UserRepository } from '@/databases/repositories/user.repository';
-import { Push } from '@/push';
-import type { OnPushMessage } from '@/push/types';
-import { AccessService } from '@/services/access.service';
-
+import config from '@/config';
+import { Push } from '../push';
+import { Logger } from '@/Logger';
 import type { WorkflowClosedMessage, WorkflowOpenedMessage } from './collaboration.message';
-import { parseWorkflowMessage } from './collaboration.message';
+import { isWorkflowClosedMessage, isWorkflowOpenedMessage } from './collaboration.message';
+import { UserService } from '../services/user.service';
+import type { IActiveWorkflowUsersChanged } from '../Interfaces';
+import type { OnPushMessageEvent } from '@/push/types';
+import { CollaborationState } from '@/collaboration/collaboration.state';
+import { TIME } from '@/constants';
+import { UserRepository } from '@/databases/repositories/user.repository';
+
+/**
+ * After how many minutes of inactivity a user should be removed
+ * as being an active user of a workflow.
+ */
+const INACTIVITY_CLEAN_UP_TIME_IN_MS = 15 * TIME.MINUTE;
 
 /**
  * Service for managing collaboration feature between users. E.g. keeping
@@ -20,83 +25,85 @@ import { parseWorkflowMessage } from './collaboration.message';
 @Service()
 export class CollaborationService {
 	constructor(
+		private readonly logger: Logger,
 		private readonly push: Push,
 		private readonly state: CollaborationState,
+		private readonly userService: UserService,
 		private readonly userRepository: UserRepository,
-		private readonly accessService: AccessService,
-	) {}
+	) {
+		if (!push.isBidirectional) {
+			logger.warn(
+				'Collaboration features are disabled because push is configured unidirectional. Use N8N_PUSH_BACKEND=websocket environment variable to enable them.',
+			);
+			return;
+		}
 
-	init() {
-		this.push.on('message', async (event: OnPushMessage) => {
+		const isMultiMainSetup = config.get('multiMainSetup.enabled');
+		if (isMultiMainSetup) {
+			// TODO: We should support collaboration in multi-main setup as well
+			// This requires using redis as the state store instead of in-memory
+			logger.warn('Collaboration features are disabled because multi-main setup is enabled.');
+			return;
+		}
+
+		this.push.on('message', async (event: OnPushMessageEvent) => {
 			try {
 				await this.handleUserMessage(event.userId, event.msg);
 			} catch (error) {
-				ErrorReporterProxy.error(
-					new ApplicationError('Error handling CollaborationService push message', {
-						extra: {
-							msg: event.msg,
-							userId: event.userId,
-						},
-						cause: error,
-					}),
-				);
+				this.logger.error('Error handling user message', {
+					error: error as unknown,
+					msg: event.msg,
+					userId: event.userId,
+				});
 			}
 		});
 	}
 
-	async handleUserMessage(userId: User['id'], msg: unknown) {
-		const workflowMessage = await parseWorkflowMessage(msg);
-
-		if (workflowMessage.type === 'workflowOpened') {
-			await this.handleWorkflowOpened(userId, workflowMessage);
-		} else if (workflowMessage.type === 'workflowClosed') {
-			await this.handleWorkflowClosed(userId, workflowMessage);
+	async handleUserMessage(userId: string, msg: unknown) {
+		if (isWorkflowOpenedMessage(msg)) {
+			await this.handleWorkflowOpened(userId, msg);
+		} else if (isWorkflowClosedMessage(msg)) {
+			await this.handleWorkflowClosed(userId, msg);
 		}
 	}
 
-	private async handleWorkflowOpened(userId: User['id'], msg: WorkflowOpenedMessage) {
+	private async handleWorkflowOpened(userId: string, msg: WorkflowOpenedMessage) {
 		const { workflowId } = msg;
 
-		if (!(await this.accessService.hasReadAccess(userId, workflowId))) {
-			return;
-		}
-
-		await this.state.addCollaborator(workflowId, userId);
+		this.state.addActiveWorkflowUser(workflowId, userId);
+		this.state.cleanInactiveUsers(workflowId, INACTIVITY_CLEAN_UP_TIME_IN_MS);
 
 		await this.sendWorkflowUsersChangedMessage(workflowId);
 	}
 
-	private async handleWorkflowClosed(userId: User['id'], msg: WorkflowClosedMessage) {
+	private async handleWorkflowClosed(userId: string, msg: WorkflowClosedMessage) {
 		const { workflowId } = msg;
 
-		if (!(await this.accessService.hasReadAccess(userId, workflowId))) {
-			return;
-		}
-
-		await this.state.removeCollaborator(workflowId, userId);
+		this.state.removeActiveWorkflowUser(workflowId, userId);
 
 		await this.sendWorkflowUsersChangedMessage(workflowId);
 	}
 
 	private async sendWorkflowUsersChangedMessage(workflowId: Workflow['id']) {
-		// We have already validated that all active workflow users
-		// have proper access to the workflow, so we don't need to validate it again
-		const collaborators = await this.state.getCollaborators(workflowId);
-		const userIds = collaborators.map((user) => user.userId);
+		const activeWorkflowUsers = this.state.getActiveWorkflowUsers(workflowId);
+		const workflowUserIds = activeWorkflowUsers.map((user) => user.userId);
 
-		if (userIds.length === 0) {
+		if (workflowUserIds.length === 0) {
 			return;
 		}
-		const users = await this.userRepository.getByIds(this.userRepository.manager, userIds);
-		const activeCollaborators = users.map((user) => ({
-			user: user.toIUser(),
-			lastSeen: collaborators.find(({ userId }) => userId === user.id)!.lastSeen,
-		}));
-		const msgData: PushPayload<'collaboratorsChanged'> = {
+		const users = await this.userRepository.getByIds(
+			this.userService.getManager(),
+			workflowUserIds,
+		);
+
+		const msgData: IActiveWorkflowUsersChanged = {
 			workflowId,
-			collaborators: activeCollaborators,
+			activeUsers: users.map((user) => ({
+				user,
+				lastSeen: activeWorkflowUsers.find((activeUser) => activeUser.userId === user.id)!.lastSeen,
+			})),
 		};
 
-		this.push.sendToUsers('collaboratorsChanged', msgData, userIds);
+		this.push.sendToUsers('activeWorkflowUsersChanged', msgData, workflowUserIds);
 	}
 }

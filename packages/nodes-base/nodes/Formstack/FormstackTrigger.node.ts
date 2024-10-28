@@ -6,7 +6,6 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
 
 import type { IFormstackWebhookResponseBody } from './GenericFunctions';
 import { apiRequest, getForms } from './GenericFunctions';
@@ -24,7 +23,7 @@ export class FormstackTrigger implements INodeType {
 			name: 'Formstack Trigger',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'formstackApi',
@@ -80,7 +79,7 @@ export class FormstackTrigger implements INodeType {
 				default: '',
 				required: true,
 				description:
-					'The Formstack form to monitor for new submissions. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+					'The Formstack form to monitor for new submissions. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Simplify',

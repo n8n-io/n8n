@@ -1,4 +1,5 @@
 import type {
+	IBinaryKeyData,
 	IDataObject,
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -25,7 +26,7 @@ export const properties: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add option',
+		placeholder: 'Add Option',
 		default: {},
 		options: [
 			{
@@ -74,7 +75,7 @@ export async function execute(this: IExecuteFunctions, index: number, items: INo
 		);
 	}
 
-	const binaryData = items[index].binary[binaryPropertyName];
+	const binaryData = (items[index].binary as IBinaryKeyData)[binaryPropertyName];
 	const dataBuffer = await this.helpers.getBinaryDataBuffer(index, binaryPropertyName);
 
 	const fileName = options.fileName === undefined ? binaryData.fileName : options.fileName;

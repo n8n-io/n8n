@@ -1,21 +1,14 @@
-import axios from 'axios';
 import type express from 'express';
-import https from 'https';
+import Container, { Service } from 'typedi';
+import type { User } from '@db/entities/User';
 import { ApplicationError, jsonParse } from 'n8n-workflow';
+import { getServiceProviderInstance } from './serviceProvider.ee';
+import type { SamlUserAttributes } from './types/samlUserAttributes';
+import { isSsoJustInTimeProvisioningEnabled } from '../ssoHelpers';
+import type { SamlPreferences } from './types/samlPreferences';
+import { SAML_PREFERENCES_DB_KEY } from './constants';
 import type { IdentityProviderInstance, ServiceProviderInstance } from 'samlify';
 import type { BindingContext, PostBindingContext } from 'samlify/types/src/entity';
-import Container, { Service } from 'typedi';
-
-import type { Settings } from '@/databases/entities/settings';
-import type { User } from '@/databases/entities/user';
-import { SettingsRepository } from '@/databases/repositories/settings.repository';
-import { UserRepository } from '@/databases/repositories/user.repository';
-import { AuthError } from '@/errors/response-errors/auth.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { Logger } from '@/logger';
-import { UrlService } from '@/services/url.service';
-
-import { SAML_PREFERENCES_DB_KEY } from './constants';
 import {
 	createUserFromSamlAttributes,
 	getMappedSamlAttributesFromFlowResult,
@@ -25,13 +18,18 @@ import {
 	setSamlLoginEnabled,
 	setSamlLoginLabel,
 	updateUserFromSamlAttributes,
-} from './saml-helpers';
-import { validateMetadata, validateResponse } from './saml-validator';
-import { getServiceProviderInstance } from './service-provider.ee';
+} from './samlHelpers';
+import type { Settings } from '@db/entities/Settings';
+import axios from 'axios';
+import https from 'https';
 import type { SamlLoginBinding } from './types';
-import type { SamlPreferences } from './types/saml-preferences';
-import type { SamlUserAttributes } from './types/saml-user-attributes';
-import { isSsoJustInTimeProvisioningEnabled } from '../sso-helpers';
+import { validateMetadata, validateResponse } from './samlValidator';
+import { Logger } from '@/Logger';
+import { UserRepository } from '@db/repositories/user.repository';
+import { SettingsRepository } from '@db/repositories/settings.repository';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { AuthError } from '@/errors/response-errors/auth.error';
+import { UrlService } from '@/services/url.service';
 
 @Service()
 export class SamlService {

@@ -15,7 +15,7 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 
-import { BINARY_ENCODING, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
 import { channelFields, channelOperations } from './ChannelDescription';
@@ -37,8 +37,8 @@ export class SlackV2 implements INodeType {
 			defaults: {
 				name: 'Slack',
 			},
-			inputs: [NodeConnectionType.Main],
-			outputs: [NodeConnectionType.Main],
+			inputs: ['main'],
+			outputs: ['main'],
 			credentials: [
 				{
 					name: 'slackApi',
@@ -1359,7 +1359,7 @@ export class SlackV2 implements INodeType {
 				);
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({ json: { error: (error as JsonObject).message } });
 					continue;
 				}

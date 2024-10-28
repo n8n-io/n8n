@@ -1,7 +1,6 @@
 export type ElasticSecurityApiCredentials = {
-	username?: string;
-	password?: string;
-	apiKey?: string;
+	username: string;
+	password: string;
 	baseUrl: string;
 };
 

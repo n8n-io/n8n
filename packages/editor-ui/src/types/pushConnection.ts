@@ -1,6 +1,6 @@
-import type { PushMessage } from '@n8n/api-types';
+import type { IPushData } from '@/Interface';
 
 export type PushMessageQueueItem = {
-	message: PushMessage;
+	message: IPushData;
 	retriesLeft: number;
 };

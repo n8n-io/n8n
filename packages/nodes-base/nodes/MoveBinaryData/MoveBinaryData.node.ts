@@ -10,13 +10,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import {
-	BINARY_ENCODING,
-	deepCopy,
-	jsonParse,
-	NodeConnectionType,
-	NodeOperationError,
-} from 'n8n-workflow';
+import { BINARY_ENCODING, deepCopy, jsonParse, NodeOperationError } from 'n8n-workflow';
 
 import iconv from 'iconv-lite';
 
@@ -60,8 +54,8 @@ export class MoveBinaryData implements INodeType {
 			name: 'Convert to/from binary data',
 			color: '#7722CC',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: ['main'],
+		outputs: ['main'],
 		properties: [
 			{
 				displayName: 'Mode',
@@ -183,7 +177,7 @@ export class MoveBinaryData implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add option',
+				placeholder: 'Add Option',
 				default: {},
 				options: [
 					{

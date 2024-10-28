@@ -9,7 +9,7 @@ import type {
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import { getGoogleAccessToken } from '../../../GenericFunctions';
 
-export async function googleBigQueryApiRequest(
+export async function googleApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
 	resource: string,
@@ -67,26 +67,25 @@ export async function googleBigQueryApiRequest(
 	}
 }
 
-export async function googleBigQueryApiRequestAllItems(
+export async function googleApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
+	propertyName: string,
 	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	query: IDataObject = {},
 ) {
-	let rows: IDataObject[] = [];
+	const returnData: IDataObject[] = [];
 
 	let responseData;
-	if (query.maxResults === undefined) {
-		query.maxResults = 1000;
-	}
+	query.maxResults = 10000;
 
 	do {
-		responseData = await googleBigQueryApiRequest.call(this, method, endpoint, body, query);
+		responseData = await googleApiRequest.call(this, method, endpoint, body, query);
 
 		query.pageToken = responseData.pageToken;
-		rows = rows.concat((responseData.rows as IDataObject[]) ?? []);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 	} while (responseData.pageToken !== undefined && responseData.pageToken !== '');
 
-	return { ...(responseData || {}), rows };
+	return returnData;
 }

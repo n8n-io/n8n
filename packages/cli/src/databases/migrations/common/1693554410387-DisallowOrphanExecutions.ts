@@ -1,4 +1,4 @@
-import type { MigrationContext, ReversibleMigration } from '@/databases/types';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 
 export class DisallowOrphanExecutions1693554410387 implements ReversibleMigration {
 	/**

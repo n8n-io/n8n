@@ -23,7 +23,7 @@ export async function emeliaApiRequest(
 	body: object = {},
 	qs: IDataObject = {},
 ) {
-	const { apiKey } = await this.getCredentials<{ apiKey: string }>('emeliaApi');
+	const { apiKey } = (await this.getCredentials('emeliaApi')) as { apiKey: string };
 
 	const options: IRequestOptions = {
 		headers: {

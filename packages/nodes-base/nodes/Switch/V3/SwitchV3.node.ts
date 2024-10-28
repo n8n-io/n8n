@@ -9,11 +9,8 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { ApplicationError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import set from 'lodash/set';
-import { ENABLE_LESS_STRICT_TYPE_VALIDATION } from '../../../utils/constants';
-import { looseTypeValidationProperty } from '../../../utils/descriptions';
-import { getTypeValidationParameter, getTypeValidationStrictness } from '../../If/V2/utils';
 import { capitalize } from '@utils/utilities';
 
 const configuredOutputs = (parameters: INodeParameters) => {
@@ -50,12 +47,12 @@ export class SwitchV3 implements INodeType {
 		this.description = {
 			...baseDescription,
 			subtitle: `=mode: {{(${capitalize})($parameter["mode"])}}`,
-			version: [3, 3.1, 3.2],
+			version: [3],
 			defaults: {
 				name: 'Switch',
 				color: '#506000',
 			},
-			inputs: [NodeConnectionType.Main],
+			inputs: ['main'],
 			outputs: `={{(${configuredOutputs})($parameter)}}`,
 			properties: [
 				{
@@ -159,8 +156,8 @@ export class SwitchV3 implements INodeType {
 										multipleValues: false,
 										filter: {
 											caseSensitive: '={{!$parameter.options.ignoreCase}}',
-											typeValidation: getTypeValidationStrictness(3.1),
-											version: '={{ $nodeVersion >= 3.2 ? 2 : 1 }}',
+											typeValidation:
+												'={{$parameter.options.looseTypeValidation ? "loose" : "strict"}}',
 										},
 									},
 								},
@@ -187,19 +184,10 @@ export class SwitchV3 implements INodeType {
 					],
 				},
 				{
-					...looseTypeValidationProperty,
-					default: false,
-					displayOptions: {
-						show: {
-							'@version': [{ _cnd: { gte: 3.1 } }],
-						},
-					},
-				},
-				{
 					displayName: 'Options',
 					name: 'options',
 					type: 'collection',
-					placeholder: 'Add option',
+					placeholder: 'Add Option',
 					default: {},
 					displayOptions: {
 						show: {
@@ -229,12 +217,11 @@ export class SwitchV3 implements INodeType {
 							default: true,
 						},
 						{
-							...looseTypeValidationProperty,
-							displayOptions: {
-								show: {
-									'@version': [{ _cnd: { lt: 3.1 } }],
-								},
-							},
+							displayName: 'Less Strict Type Validation',
+							description: 'Whether to try casting value types based on the selected operator',
+							name: 'looseTypeValidation',
+							type: 'boolean',
+							default: true,
 						},
 						{
 							displayName: 'Rename Fallback Output',
@@ -361,15 +348,9 @@ export class SwitchV3 implements INodeType {
 								},
 							) as boolean;
 						} catch (error) {
-							if (
-								!getTypeValidationParameter(3.1)(
-									this,
-									itemIndex,
-									options.looseTypeValidation as boolean,
-								) &&
-								!error.description
-							) {
-								error.description = ENABLE_LESS_STRICT_TYPE_VALIDATION;
+							if (!options.looseTypeValidation) {
+								error.description =
+									"Try changing the type of comparison. Alternatively you can enable 'Less Strict Type Validation' in the options.";
 							}
 							set(error, 'context.itemIndex', itemIndex);
 							set(error, 'node', this.getNode());
@@ -397,22 +378,11 @@ export class SwitchV3 implements INodeType {
 					}
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData[0].push({ json: { error: error.message } });
 					continue;
 				}
-				if (error instanceof NodeOperationError) {
-					throw error;
-				}
-
-				if (error instanceof ApplicationError) {
-					set(error, 'context.itemIndex', itemIndex);
-					throw error;
-				}
-
-				throw new NodeOperationError(this.getNode(), error, {
-					itemIndex,
-				});
+				throw new NodeOperationError(this.getNode(), error);
 			}
 		}
 

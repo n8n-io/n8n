@@ -22,7 +22,7 @@ export class SwitchV2 implements INodeType {
 				name: 'Switch',
 				color: '#506000',
 			},
-			inputs: [NodeConnectionType.Main],
+			inputs: ['main'],
 
 			outputs: `={{
 					((parameters) => {
@@ -510,7 +510,7 @@ export class SwitchV2 implements INodeType {
 					},
 					default: -1,
 					description:
-						'The output to which to route all items which do not match any of the rules. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+						'The output to which to route all items which do not match any of the rules. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				},
 			],
 		};
@@ -699,7 +699,7 @@ export class SwitchV2 implements INodeType {
 					}
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData[0].push({ json: { error: error.message } });
 					continue;
 				}

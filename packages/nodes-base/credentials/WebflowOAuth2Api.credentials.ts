@@ -17,13 +17,6 @@ export class WebflowOAuth2Api implements ICredentialType {
 			default: 'authorizationCode',
 		},
 		{
-			displayName: 'Legacy',
-			name: 'legacy',
-			type: 'boolean',
-			default: true,
-			description: 'If the legacy API should be used',
-		},
-		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',
 			type: 'hidden',
@@ -41,7 +34,7 @@ export class WebflowOAuth2Api implements ICredentialType {
 			displayName: 'Scope',
 			name: 'scope',
 			type: 'hidden',
-			default: '={{$self["legacy"] ? "" : "cms:read cms:write sites:read forms:read"}}',
+			default: '',
 		},
 		{
 			displayName: 'Auth URI Query Parameters',

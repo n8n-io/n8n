@@ -1,8 +1,7 @@
-import { type ActionOptions, action } from '@storybook/addon-actions';
 import { type StoryFn } from '@storybook/vue3';
-import { ref } from 'vue';
-
+import { type ActionOptions, action } from '@storybook/addon-actions';
 import N8nResizeWrapper from './ResizeWrapper.vue';
+import { ref } from 'vue';
 
 // TODO: remove this after converting ResizeWrapper to composition API
 interface ResizeData extends ActionOptions {

@@ -51,7 +51,7 @@ export const getAdditionalOptions = (fields: INodeProperties[]): INodeProperties
 			},
 		},
 		default: {},
-		placeholder: 'Add option',
+		placeholder: 'Add Option',
 		options: fields,
 	};
 };

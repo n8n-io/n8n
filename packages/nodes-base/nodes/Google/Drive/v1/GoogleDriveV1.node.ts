@@ -1,3 +1,4 @@
+/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import type { Readable } from 'stream';
 import type {
 	IBinaryKeyData,
@@ -8,7 +9,7 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { BINARY_ENCODING, NodeConnectionType } from 'n8n-workflow';
+import { BINARY_ENCODING } from 'n8n-workflow';
 
 import { v4 as uuid } from 'uuid';
 import { GOOGLE_DRIVE_FILE_URL_REGEX, GOOGLE_DRIVE_FOLDER_URL_REGEX } from '../../constants';
@@ -31,8 +32,8 @@ const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'Google Drive',
 	},
-	inputs: [NodeConnectionType.Main],
-	outputs: [NodeConnectionType.Main],
+	inputs: ['main'],
+	outputs: ['main'],
 	credentials: [
 		{
 			name: 'googleApi',
@@ -371,7 +372,7 @@ const versionDescription: INodeTypeDescription = {
 			displayName: 'Options',
 			name: 'options',
 			type: 'collection',
-			placeholder: 'Add option',
+			placeholder: 'Add Option',
 			default: {},
 			displayOptions: {
 				show: {
@@ -883,7 +884,7 @@ const versionDescription: INodeTypeDescription = {
 			displayName: 'Update Fields',
 			name: 'updateFields',
 			type: 'collection',
-			placeholder: 'Add option',
+			placeholder: 'Add Option',
 			default: {},
 			displayOptions: {
 				show: {
@@ -941,7 +942,7 @@ const versionDescription: INodeTypeDescription = {
 			displayName: 'Options',
 			name: 'options',
 			type: 'collection',
-			placeholder: 'Add option',
+			placeholder: 'Add Option',
 			default: {},
 			displayOptions: {
 				show: {
@@ -1107,7 +1108,7 @@ const versionDescription: INodeTypeDescription = {
 			displayName: 'Options',
 			name: 'options',
 			type: 'collection',
-			placeholder: 'Add option',
+			placeholder: 'Add Option',
 			default: {},
 			displayOptions: {
 				show: {
@@ -1542,7 +1543,7 @@ const versionDescription: INodeTypeDescription = {
 			displayName: 'Options',
 			name: 'options',
 			type: 'collection',
-			placeholder: 'Add option',
+			placeholder: 'Add Option',
 			default: {},
 			displayOptions: {
 				show: {
@@ -1773,7 +1774,7 @@ const versionDescription: INodeTypeDescription = {
 			displayName: 'Options',
 			name: 'options',
 			type: 'collection',
-			placeholder: 'Add option',
+			placeholder: 'Add Option',
 			default: {},
 			displayOptions: {
 				show: {
@@ -1830,7 +1831,7 @@ const versionDescription: INodeTypeDescription = {
 			displayName: 'Options',
 			name: 'options',
 			type: 'collection',
-			placeholder: 'Add option',
+			placeholder: 'Add Option',
 			default: {},
 			displayOptions: {
 				show: {
@@ -1864,7 +1865,7 @@ const versionDescription: INodeTypeDescription = {
 			displayName: 'Update Fields',
 			name: 'options',
 			type: 'collection',
-			placeholder: 'Add option',
+			placeholder: 'Add Option',
 			default: {},
 			displayOptions: {
 				show: {
@@ -1934,7 +1935,7 @@ const versionDescription: INodeTypeDescription = {
 			displayName: 'Options',
 			name: 'options',
 			type: 'collection',
-			placeholder: 'Add option',
+			placeholder: 'Add Option',
 			default: {},
 			displayOptions: {
 				show: {
@@ -2721,7 +2722,7 @@ export class GoogleDriveV1 implements INodeType {
 					}
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					if (resource === 'file' && operation === 'download') {
 						items[i].json = { error: error.message };
 					} else {

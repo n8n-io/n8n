@@ -7,7 +7,6 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
 
 import type { IField } from './GenericFunctions';
 import {
@@ -33,8 +32,8 @@ export class MicrosoftDynamicsCrm implements INodeType {
 		defaults: {
 			name: 'Microsoft Dynamics CRM',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: ['main'],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'microsoftDynamicsOAuth2Api',
@@ -282,7 +281,7 @@ export class MicrosoftDynamicsCrm implements INodeType {
 
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },

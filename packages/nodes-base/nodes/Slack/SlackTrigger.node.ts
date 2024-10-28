@@ -1,16 +1,15 @@
-import {
-	type INodeListSearchItems,
-	type ILoadOptionsFunctions,
-	type INodeListSearchResult,
-	type INodePropertyOptions,
-	type IHookFunctions,
-	type IWebhookFunctions,
-	type IDataObject,
-	type INodeType,
-	type INodeTypeDescription,
-	type IWebhookResponseData,
-	type IBinaryKeyData,
-	NodeConnectionType,
+import type {
+	INodeListSearchItems,
+	ILoadOptionsFunctions,
+	INodeListSearchResult,
+	INodePropertyOptions,
+	IHookFunctions,
+	IWebhookFunctions,
+	IDataObject,
+	INodeType,
+	INodeTypeDescription,
+	IWebhookResponseData,
+	IBinaryKeyData,
 } from 'n8n-workflow';
 
 import { slackApiRequestAllItems } from './V2/GenericFunctions';
@@ -29,7 +28,7 @@ export class SlackTrigger implements INodeType {
 			name: 'Slack Trigger',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: ['main'],
 		webhooks: [
 			{
 				name: 'default',
@@ -228,7 +227,7 @@ export class SlackTrigger implements INodeType {
 						},
 						default: [],
 						description:
-							'A comma-separated string of encoded user IDs. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+							'A comma-separated string of encoded user IDs. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 				],
 			},

@@ -1,40 +1,3 @@
-<script setup lang="ts">
-import type {
-	ICredentialDataDecryptedObject,
-	INodeProperties,
-	NodeParameterValueType,
-} from 'n8n-workflow';
-import type { IUpdateInformation } from '@/Interface';
-import ParameterInputExpanded from '../ParameterInputExpanded.vue';
-import { computed } from 'vue';
-
-type Props = {
-	credentialProperties: INodeProperties[];
-	credentialData: ICredentialDataDecryptedObject;
-	documentationUrl: string;
-	showValidationWarnings?: boolean;
-};
-
-const props = defineProps<Props>();
-
-const credentialDataValues = computed(
-	() => props.credentialData as Record<string, NodeParameterValueType>,
-);
-
-const emit = defineEmits<{
-	update: [value: IUpdateInformation];
-}>();
-
-function valueChanged(parameterData: IUpdateInformation) {
-	const name = parameterData.name.split('.').pop() ?? parameterData.name;
-
-	emit('update', {
-		name,
-		value: parameterData.value,
-	});
-}
-</script>
-
 <template>
 	<div v-if="credentialProperties.length" :class="$style.container" @keydown.stop>
 		<form
@@ -59,6 +22,43 @@ function valueChanged(parameterData: IUpdateInformation) {
 		</form>
 	</div>
 </template>
+
+<script setup lang="ts">
+import type {
+	ICredentialDataDecryptedObject,
+	INodeProperties,
+	NodeParameterValueType,
+} from 'n8n-workflow';
+import type { IUpdateInformation } from '@/Interface';
+import ParameterInputExpanded from '../ParameterInputExpanded.vue';
+import { computed } from 'vue';
+
+type Props = {
+	credentialProperties: INodeProperties[];
+	credentialData: ICredentialDataDecryptedObject;
+	documentationUrl: string;
+	showValidationWarnings?: boolean;
+};
+
+const props = defineProps<Props>();
+
+const credentialDataValues = computed(
+	() => props.credentialData as Record<string, NodeParameterValueType>,
+);
+
+const emit = defineEmits<{
+	(event: 'update', value: IUpdateInformation): void;
+}>();
+
+function valueChanged(parameterData: IUpdateInformation) {
+	const name = parameterData.name.split('.').pop() ?? parameterData.name;
+
+	emit('update', {
+		name,
+		value: parameterData.value,
+	});
+}
+</script>
 
 <style lang="scss" module>
 .container {

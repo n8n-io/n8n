@@ -1,9 +1,8 @@
-import { GlobalConfig } from '@n8n/config';
-import Container from 'typedi';
+import config from '@/config';
 
-export const REST_PATH_SEGMENT = Container.get(GlobalConfig).endpoints.rest;
+export const REST_PATH_SEGMENT = config.getEnv('endpoints.rest');
 
-export const PUBLIC_API_REST_PATH_SEGMENT = Container.get(GlobalConfig).publicApi.path;
+export const PUBLIC_API_REST_PATH_SEGMENT = config.getEnv('publicApi.path');
 
 export const SUCCESS_RESPONSE_BODY = {
 	data: {

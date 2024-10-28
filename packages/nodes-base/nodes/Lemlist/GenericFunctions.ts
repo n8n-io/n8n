@@ -59,75 +59,28 @@ export async function lemlistApiRequestAllItems(
 
 	qs.limit = 100;
 	qs.offset = 0;
-	//when using v2, the pagination is different
-	if (qs.version && qs.version === 'v2') {
-		qs.page = 1;
-		do {
-			responseData = await lemlistApiRequest.call(this, method, endpoint, {}, qs);
-			returnData.push(...(responseData as IDataObject[]));
-			qs.page++;
-		} while (responseData.totalPage && qs.page < responseData.totalPage);
-		return returnData;
-	} else {
-		do {
-			responseData = await lemlistApiRequest.call(this, method, endpoint, {}, qs);
-			returnData.push(...(responseData as IDataObject[]));
-			qs.offset += qs.limit;
-		} while (responseData.length !== 0);
-		return returnData;
-	}
+
+	do {
+		responseData = await lemlistApiRequest.call(this, method, endpoint, {}, qs);
+		returnData.push(...(responseData as IDataObject[]));
+		qs.offset += qs.limit;
+	} while (responseData.length !== 0);
+	return returnData;
 }
 
 export function getEvents() {
 	const events = [
 		'*',
-		'contacted',
-		'hooked',
-		'attracted',
-		'warmed',
-		'interested',
-		'skipped',
-		'notInterested',
-		'emailsSent',
-		'emailsOpened',
-		'emailsClicked',
-		'emailsReplied',
 		'emailsBounced',
-		'emailsSendFailed',
+		'emailsClicked',
 		'emailsFailed',
-		'emailsUnsubscribed',
 		'emailsInterested',
 		'emailsNotInterested',
-		'opportunitiesDone',
-		'aircallCreated',
-		'aircallEnded',
-		'aircallDone',
-		'aircallInterested',
-		'aircallNotInterested',
-		'apiDone',
-		'apiInterested',
-		'apiNotInterested',
-		'apiFailed',
-		'linkedinVisitDone',
-		'linkedinVisitFailed',
-		'linkedinInviteDone',
-		'linkedinInviteFailed',
-		'linkedinInviteAccepted',
-		'linkedinReplied',
-		'linkedinSent',
-		'linkedinVoiceNoteDone',
-		'linkedinVoiceNoteFailed',
-		'linkedinInterested',
-		'linkedinNotInterested',
-		'linkedinSendFailed',
-		'manualInterested',
-		'manualNotInterested',
-		'paused',
-		'resumed',
-		'customDomainErrors',
-		'connectionIssue',
-		'sendLimitReached',
-		'lemwarmPaused',
+		'emailsOpened',
+		'emailsReplied',
+		'emailsSendFailed',
+		'emailsSent',
+		'emailsUnsubscribed',
 	];
 
 	return events.map((event: string) => ({

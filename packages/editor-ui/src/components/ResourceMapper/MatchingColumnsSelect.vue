@@ -9,25 +9,22 @@ import { computed, reactive, watch } from 'vue';
 import { i18n as locale } from '@/plugins/i18n';
 import { useNodeSpecificationValues } from '@/composables/useNodeSpecificationValues';
 import ParameterOptions from '@/components/ParameterOptions.vue';
-import { N8nInputLabel, N8nNotice, N8nSelect } from 'n8n-design-system';
 
 interface Props {
 	parameter: INodeProperties;
 	initialValue: string[];
 	fieldsToMap: ResourceMapperFields['fields'];
 	typeOptions: INodePropertyTypeOptions | undefined;
-	labelSize: 'small' | 'medium';
-	inputSize: 'small' | 'medium';
+	labelSize: string;
+	inputSize: string;
 	loading: boolean;
 	serviceName: string;
-	refreshInProgress: boolean;
 	teleported?: boolean;
-	isReadOnly?: boolean;
+	refreshInProgress: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
 	teleported: true,
-	isReadOnly: false,
 });
 const {
 	resourceMapperTypeOptions,
@@ -56,8 +53,8 @@ watch(
 );
 
 const emit = defineEmits<{
-	matchingColumnsChanged: [value: string[]];
-	refreshFieldList: [];
+	(event: 'matchingColumnsChanged', value: string[]): void;
+	(event: 'refreshFieldList'): void;
 }>();
 
 const availableMatchingFields = computed<ResourceMapperField[]>(() => {
@@ -96,7 +93,6 @@ const fieldDescription = computed<string>(() => {
 				resourceMapperTypeOptions.value?.multiKeyMatch === true
 					? `${pluralFieldWord.value}`
 					: `${singularFieldWord.value}`,
-			nodeDisplayName: props.serviceName,
 		},
 	});
 });
@@ -171,7 +167,7 @@ defineExpose({
 
 <template>
 	<div class="mt-2xs" data-test-id="matching-column-select">
-		<N8nInputLabel
+		<n8n-input-label
 			v-if="availableMatchingFields.length > 0"
 			:label="fieldLabel"
 			:tooltip-text="fieldTooltip"
@@ -186,15 +182,14 @@ defineExpose({
 					:custom-actions="parameterActions"
 					:loading="props.refreshInProgress"
 					:loading-message="fetchingFieldsLabel"
-					:is-read-only="isReadOnly"
 					@update:model-value="onParameterActionSelected"
 				/>
 			</template>
-			<N8nSelect
+			<n8n-select
 				:multiple="resourceMapperTypeOptions?.multiKeyMatch === true"
 				:model-value="state.selected"
 				:size="props.inputSize"
-				:disabled="loading || isReadOnly"
+				:disabled="loading"
 				:teleported="teleported"
 				@update:model-value="onSelectionChange"
 			>
@@ -206,17 +201,17 @@ defineExpose({
 				>
 					{{ field.displayName }}
 				</n8n-option>
-			</N8nSelect>
-			<N8nText size="small">
+			</n8n-select>
+			<n8n-text size="small">
 				{{ fieldDescription }}
-			</N8nText>
-		</N8nInputLabel>
-		<N8nNotice v-else>
+			</n8n-text>
+		</n8n-input-label>
+		<n8n-notice v-else>
 			{{
 				locale.baseText('resourceMapper.columnsToMatchOn.noFieldsFound', {
 					interpolate: { fieldWord: singularFieldWord, serviceName: props.serviceName },
 				})
 			}}
-		</N8nNotice>
+		</n8n-notice>
 	</div>
 </template>

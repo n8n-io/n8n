@@ -1,6 +1,7 @@
 import CanvasHandleMainInput from '@/components/canvas/elements/handles/render-types/CanvasHandleMainInput.vue';
 import { createComponentRenderer } from '@/__tests__/render';
-import { createCanvasHandleProvide } from '@/__tests__/data';
+import { CanvasNodeHandleKey } from '@/constants';
+import { ref } from 'vue';
 
 const renderComponent = createComponentRenderer(CanvasHandleMainInput);
 
@@ -10,7 +11,7 @@ describe('CanvasHandleMainInput', () => {
 		const { container, getByText } = renderComponent({
 			global: {
 				provide: {
-					...createCanvasHandleProvide({ label }),
+					[`${CanvasNodeHandleKey}`]: { label: ref(label) },
 				},
 			},
 		});

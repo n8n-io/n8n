@@ -8,7 +8,7 @@ import type {
 	INodeTypeDescription,
 	IHttpRequestMethods,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { apiRequest, apiRequestAllItems } from './GenericFunctions';
 
@@ -47,8 +47,8 @@ export class Trello implements INodeType {
 		defaults: {
 			name: 'Trello',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: ['main'],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'trelloApi',
@@ -224,11 +224,11 @@ export class Trello implements INodeType {
 						requestMethod = 'POST';
 						endpoint = 'boards';
 
-						body.name = this.getNodeParameter('name', i) as string;
-						body.desc = this.getNodeParameter('description', i) as string;
+						qs.name = this.getNodeParameter('name', i) as string;
+						qs.desc = this.getNodeParameter('description', i) as string;
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
-						Object.assign(body, additionalFields);
+						Object.assign(qs, additionalFields);
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//         delete
@@ -350,13 +350,13 @@ export class Trello implements INodeType {
 						requestMethod = 'POST';
 						endpoint = 'cards';
 
-						body.idList = this.getNodeParameter('listId', i) as string;
+						qs.idList = this.getNodeParameter('listId', i) as string;
 
-						body.name = this.getNodeParameter('name', i) as string;
-						body.desc = this.getNodeParameter('description', i) as string;
+						qs.name = this.getNodeParameter('name', i) as string;
+						qs.desc = this.getNodeParameter('description', i) as string;
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
-						Object.assign(body, additionalFields);
+						Object.assign(qs, additionalFields);
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//         delete
@@ -410,7 +410,7 @@ export class Trello implements INodeType {
 							extractValue: true,
 						}) as string;
 
-						body.text = this.getNodeParameter('text', i) as string;
+						qs.text = this.getNodeParameter('text', i) as string;
 
 						requestMethod = 'POST';
 
@@ -472,12 +472,12 @@ export class Trello implements INodeType {
 						requestMethod = 'POST';
 						endpoint = 'lists';
 
-						body.idBoard = this.getNodeParameter('idBoard', i) as string;
+						qs.idBoard = this.getNodeParameter('idBoard', i) as string;
 
-						body.name = this.getNodeParameter('name', i) as string;
+						qs.name = this.getNodeParameter('name', i) as string;
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
-						Object.assign(body, additionalFields);
+						Object.assign(qs, additionalFields);
 					} else if (operation === 'get') {
 						// ----------------------------------
 						//         get
@@ -563,12 +563,12 @@ export class Trello implements INodeType {
 
 						const url = this.getNodeParameter('url', i) as string;
 
-						Object.assign(body, {
+						Object.assign(qs, {
 							url,
 						});
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
-						Object.assign(body, additionalFields);
+						Object.assign(qs, additionalFields);
 
 						endpoint = `cards/${cardId}/attachments`;
 					} else if (operation === 'delete') {
@@ -638,10 +638,10 @@ export class Trello implements INodeType {
 
 						const name = this.getNodeParameter('name', i) as string;
 
-						Object.assign(body, { name });
+						Object.assign(qs, { name });
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
-						Object.assign(body, additionalFields);
+						Object.assign(qs, additionalFields);
 
 						endpoint = `cards/${cardId}/checklists`;
 					} else if (operation === 'delete') {
@@ -716,7 +716,7 @@ export class Trello implements INodeType {
 
 						const name = this.getNodeParameter('name', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
-						Object.assign(body, { name, ...additionalFields });
+						Object.assign(qs, { name, ...additionalFields });
 					} else if (operation === 'deleteCheckItem') {
 						// ----------------------------------
 						//         deleteCheckItem
@@ -785,7 +785,7 @@ export class Trello implements INodeType {
 						const name = this.getNodeParameter('name', i) as string;
 						const color = this.getNodeParameter('color', i) as string;
 
-						Object.assign(body, {
+						Object.assign(qs, {
 							idBoard,
 							name,
 							color,
@@ -857,7 +857,7 @@ export class Trello implements INodeType {
 
 						const id = this.getNodeParameter('id', i) as string;
 
-						body.value = id;
+						qs.value = id;
 
 						endpoint = `/cards/${cardId}/idLabels`;
 					} else if (operation === 'removeLabel') {
@@ -906,7 +906,7 @@ export class Trello implements INodeType {
 				);
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },

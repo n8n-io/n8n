@@ -1,9 +1,8 @@
-import {
-	NodeConnectionType,
-	type IExecuteFunctions,
-	type INodeExecutionData,
-	type INodeType,
-	type INodeTypeDescription,
+import type {
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import type { IData } from './Interface';
@@ -23,8 +22,8 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 		defaults: {
 			name: 'Google Cloud Natural Language',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: ['main'],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'googleCloudNaturalLanguageOAuth2Api',
@@ -131,7 +130,7 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 					},
 				},
 				default: {},
-				placeholder: 'Add option',
+				placeholder: 'Add Option',
 				options: [
 					{
 						displayName: 'Document Type',

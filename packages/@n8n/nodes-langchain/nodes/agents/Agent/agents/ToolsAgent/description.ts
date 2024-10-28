@@ -38,14 +38,6 @@ export const toolsAgentProperties: INodeProperties[] = [
 				default: false,
 				description: 'Whether or not the output should include intermediate steps the agent took',
 			},
-			{
-				displayName: 'Automatically Passthrough Binary Images',
-				name: 'passthroughBinaryImages',
-				type: 'boolean',
-				default: true,
-				description:
-					'Whether or not binary images should be automatically passed through to the agent as image type messages',
-			},
 		],
 	},
 ];

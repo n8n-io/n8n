@@ -1,12 +1,11 @@
-import {
-	NodeConnectionType,
-	type IExecuteFunctions,
-	type INodeExecutionData,
-	type INodeParameters,
-	type INodeType,
-	type INodeTypeBaseDescription,
-	type INodeTypeDescription,
-	type NodeParameterValue,
+import type {
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeParameters,
+	INodeType,
+	INodeTypeBaseDescription,
+	INodeTypeDescription,
+	NodeParameterValue,
 } from 'n8n-workflow';
 
 import { compareOperationFunctions, convertDateTime } from './GenericFunctions';
@@ -22,8 +21,8 @@ export class FilterV1 implements INodeType {
 				name: 'Filter',
 				color: '#229eff',
 			},
-			inputs: [NodeConnectionType.Main],
-			outputs: [NodeConnectionType.Main],
+			inputs: ['main'],
+			outputs: ['main'],
 			outputNames: ['Kept', 'Discarded'],
 			properties: [
 				{

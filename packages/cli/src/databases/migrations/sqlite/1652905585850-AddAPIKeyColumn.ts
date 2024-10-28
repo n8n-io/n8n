@@ -1,4 +1,4 @@
-import type { MigrationContext, ReversibleMigration } from '@/databases/types';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 
 export class AddAPIKeyColumn1652905585850 implements ReversibleMigration {
 	transaction = false as const;

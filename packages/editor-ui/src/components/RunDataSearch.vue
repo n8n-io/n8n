@@ -16,8 +16,8 @@ const OPEN_WIDTH = '204px';
 const OPEN_MIN_WIDTH = '120px';
 
 const emit = defineEmits<{
-	'update:modelValue': [value: Props['modelValue']];
-	focus: [];
+	(event: 'update:modelValue', value: Props['modelValue']): void;
+	(event: 'focus'): void;
 }>();
 
 const props = withDefaults(defineProps<Props>(), {

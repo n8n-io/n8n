@@ -10,7 +10,7 @@ import type { BufferWindowMemoryInput } from 'langchain/memory';
 import { BufferWindowMemory } from 'langchain/memory';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
-import { sessionIdOption, sessionKeyProperty, contextWindowLengthProperty } from '../descriptions';
+import { sessionIdOption, sessionKeyProperty } from '../descriptions';
 import { getSessionId } from '../../../utils/helpers';
 
 class MemoryChatBufferSingleton {
@@ -130,7 +130,13 @@ export class MemoryBufferWindow implements INodeType {
 				},
 			},
 			sessionKeyProperty,
-			contextWindowLengthProperty,
+			{
+				displayName: 'Context Window Length',
+				name: 'contextWindowLength',
+				type: 'number',
+				default: 5,
+				description: 'The number of previous messages to consider for context',
+			},
 		],
 	};
 

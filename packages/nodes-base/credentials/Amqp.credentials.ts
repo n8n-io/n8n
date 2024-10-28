@@ -12,7 +12,6 @@ export class Amqp implements ICredentialType {
 			displayName: 'Hostname',
 			name: 'hostname',
 			type: 'string',
-			placeholder: 'e.g. localhost',
 			default: '',
 		},
 		{
@@ -25,14 +24,12 @@ export class Amqp implements ICredentialType {
 			displayName: 'User',
 			name: 'username',
 			type: 'string',
-			placeholder: 'e.g. guest',
 			default: '',
 		},
 		{
 			displayName: 'Password',
 			name: 'password',
 			type: 'string',
-			placeholder: 'e.g. guest',
 			typeOptions: {
 				password: true,
 			},
@@ -42,9 +39,8 @@ export class Amqp implements ICredentialType {
 			displayName: 'Transport Type',
 			name: 'transportType',
 			type: 'string',
-			placeholder: 'e.g. tcp',
 			default: '',
-			hint: 'Optional transport type to use, either tcp or tls',
+			description: 'Optional Transport Type to use. Either tcp or tls.',
 		},
 	];
 }

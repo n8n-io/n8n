@@ -3,16 +3,15 @@
  * unsafe onclick attribute
  */
 import { reactive, computed, onMounted, onUnmounted } from 'vue';
-import type { LinkActionFn, RegisterCustomActionOpts } from '@/event-bus';
 import { globalLinkActionsEventBus } from '@/event-bus';
 
 const state = reactive({
-	customActions: {} as Record<string, LinkActionFn>,
+	customActions: {} as Record<string, Function>,
 	delegatedClickHandler: null as null | ((e: MouseEvent) => void),
 });
 
-export function useGlobalLinkActions() {
-	function registerCustomAction({ key, action }: RegisterCustomActionOpts) {
+export default () => {
+	function registerCustomAction({ key, action }: { key: string; action: Function }) {
 		state.customActions[key] = action;
 	}
 	function unregisterCustomAction(key: string) {
@@ -52,7 +51,7 @@ export function useGlobalLinkActions() {
 		}
 	}
 
-	const availableActions = computed<{ [key: string]: LinkActionFn }>(() => ({
+	const availableActions = computed<{ [key: string]: Function }>(() => ({
 		reload,
 		...state.customActions,
 	}));
@@ -77,4 +76,4 @@ export function useGlobalLinkActions() {
 		registerCustomAction,
 		unregisterCustomAction,
 	};
-}
+};

@@ -1,14 +1,22 @@
-import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	IDataObject,
+	INodeExecutionData,
+	ResourceMapperField,
+} from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import {
-	ROW_NUMBER,
-	type ISheetUpdateData,
-	type SheetProperties,
-	type ValueInputOption,
-	type ValueRenderOption,
+import type {
+	ISheetUpdateData,
+	SheetProperties,
+	ValueInputOption,
+	ValueRenderOption,
 } from '../../helpers/GoogleSheets.types';
 import type { GoogleSheet } from '../../helpers/GoogleSheet';
-import { cellFormatDefault, untilSheetSelected } from '../../helpers/GoogleSheets.utils';
+import {
+	cellFormatDefault,
+	checkForSchemaChanges,
+	untilSheetSelected,
+} from '../../helpers/GoogleSheets.utils';
 import { cellFormat, handlingExtraData, locationDefine } from './commonDescription';
 
 export const description: SheetProperties = [
@@ -52,7 +60,7 @@ export const description: SheetProperties = [
 		name: 'columnToMatchOn',
 		type: 'options',
 		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsDependsOn: ['sheetName.value'],
 			loadOptionsMethod: 'getSheetHeaderRowAndSkipEmpty',
@@ -118,7 +126,7 @@ export const description: SheetProperties = [
 						name: 'column',
 						type: 'options',
 						description:
-							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsDependsOn: ['sheetName.value', 'columnToMatchOn'],
 							loadOptionsMethod: 'getSheetHeaderRowAndAddColumn',
@@ -184,7 +192,7 @@ export const description: SheetProperties = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add option',
+		placeholder: 'Add Option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -229,15 +237,15 @@ export async function execute(
 
 	const locationDefineOptions = (options.locationDefine as IDataObject)?.values as IDataObject;
 
-	let keyRowIndex = 0;
-	let dataStartRowIndex = 1;
+	let headerRow = 0;
+	let firstDataRow = 1;
 
 	if (locationDefineOptions) {
 		if (locationDefineOptions.headerRow) {
-			keyRowIndex = parseInt(locationDefineOptions.headerRow as string, 10) - 1;
+			headerRow = parseInt(locationDefineOptions.headerRow as string, 10) - 1;
 		}
 		if (locationDefineOptions.firstDataRow) {
-			dataStartRowIndex = parseInt(locationDefineOptions.firstDataRow as string, 10) - 1;
+			firstDataRow = parseInt(locationDefineOptions.firstDataRow as string, 10) - 1;
 		}
 	}
 
@@ -245,14 +253,19 @@ export async function execute(
 
 	const sheetData = await sheet.getData(sheetName, 'FORMATTED_VALUE');
 
-	if (sheetData?.[keyRowIndex] === undefined) {
+	if (sheetData?.[headerRow] === undefined) {
 		throw new NodeOperationError(
 			this.getNode(),
-			`Could not retrieve the column names from row ${keyRowIndex + 1}`,
+			`Could not retrieve the column names from row ${headerRow + 1}`,
 		);
 	}
 
-	columnNames = sheetData[keyRowIndex];
+	columnNames = sheetData[headerRow];
+
+	if (nodeVersion >= 4.4) {
+		const schema = this.getNodeParameter('columns.schema', 0) as ResourceMapperField[];
+		checkForSchemaChanges(this.getNode(), columnNames, schema);
+	}
 
 	const newColumns = new Set<string>();
 
@@ -270,13 +283,13 @@ export async function execute(
 	const keyIndex = columnNames.indexOf(columnsToMatchOn[0]);
 
 	//not used when updating row
-	const columnValuesList = await sheet.getColumnValues({
+	const columnValues = await sheet.getColumnValues(
 		range,
 		keyIndex,
-		dataStartRowIndex,
+		firstDataRow,
 		valueRenderMode,
 		sheetData,
-	});
+	);
 
 	const updateData: ISheetUpdateData[] = [];
 
@@ -292,7 +305,7 @@ export async function execute(
 	};
 
 	const addNewColumn = (key: string) => {
-		if (!columnNames.includes(key) && key !== ROW_NUMBER) {
+		if (!columnNames.includes(key)) {
 			newColumns.add(key);
 		}
 	};
@@ -300,36 +313,26 @@ export async function execute(
 	for (let i = 0; i < items.length; i++) {
 		if (dataMode === 'nothing') continue;
 
-		const inputData: IDataObject[] = [];
+		const data: IDataObject[] = [];
 
 		if (dataMode === 'autoMapInputData') {
 			const handlingExtraDataOption = (options.handlingExtraData as string) || 'insertInNewColumn';
 			if (handlingExtraDataOption === 'ignoreIt') {
-				inputData.push(items[i].json);
+				data.push(items[i].json);
 			}
-			if (handlingExtraDataOption === 'error') {
+			if (handlingExtraDataOption === 'error' && columnsToMatchOn[0] !== 'row_number') {
 				Object.keys(items[i].json).forEach((key) => errorOnUnexpectedColumn(key, i));
-				inputData.push(items[i].json);
+				data.push(items[i].json);
 			}
-			if (handlingExtraDataOption === 'insertInNewColumn') {
+			if (handlingExtraDataOption === 'insertInNewColumn' && columnsToMatchOn[0] !== 'row_number') {
 				Object.keys(items[i].json).forEach(addNewColumn);
-				inputData.push(items[i].json);
+				data.push(items[i].json);
 			}
 		} else {
 			const valueToMatchOn =
 				nodeVersion < 4
-					? (this.getNodeParameter('valueToMatchOn', i, '') as string)
-					: (this.getNodeParameter(`columns.value[${columnsToMatchOn[0]}]`, i, '') as string);
-
-			if (valueToMatchOn === '') {
-				throw new NodeOperationError(
-					this.getNode(),
-					"The 'Column to Match On' parameter is required",
-					{
-						itemIndex: i,
-					},
-				);
-			}
+					? (this.getNodeParameter('valueToMatchOn', i) as string)
+					: (this.getNodeParameter(`columns.value[${columnsToMatchOn[0]}]`, i) as string);
 
 			if (nodeVersion < 4) {
 				const valuesToSend = this.getNodeParameter('fieldsUi.values', i, []) as IDataObject[];
@@ -357,7 +360,7 @@ export async function execute(
 
 				fields[columnsToMatchOn[0]] = valueToMatchOn;
 
-				inputData.push(fields);
+				data.push(fields);
 			} else {
 				const mappingValues = this.getNodeParameter('columns.value', i) as IDataObject;
 				if (Object.keys(mappingValues).length === 0) {
@@ -372,7 +375,7 @@ export async function execute(
 						mappingValues[key] = '';
 					}
 				});
-				inputData.push(mappingValues);
+				data.push(mappingValues);
 				mappedValues.push(mappingValues);
 			}
 		}
@@ -383,30 +386,29 @@ export async function execute(
 				sheetName,
 				[newColumnNames],
 				(options.cellFormat as ValueInputOption) || cellFormatDefault(nodeVersion),
-				keyRowIndex + 1,
+				headerRow + 1,
 			);
 			columnNames = newColumnNames;
 			newColumns.clear();
 		}
 
 		let preparedData;
-		const columnNamesList = [columnNames.concat([...newColumns])];
-
 		if (columnsToMatchOn[0] === 'row_number') {
-			preparedData = sheet.prepareDataForUpdatingByRowNumber(inputData, range, columnNamesList);
+			preparedData = sheet.prepareDataForUpdatingByRowNumber(data, range, [
+				columnNames.concat([...newColumns]),
+			]);
 		} else {
-			const indexKey = columnsToMatchOn[0];
-
-			preparedData = await sheet.prepareDataForUpdateOrUpsert({
-				inputData,
-				indexKey,
+			preparedData = await sheet.prepareDataForUpdateOrUpsert(
+				data,
+				columnsToMatchOn[0],
 				range,
-				keyRowIndex,
-				dataStartRowIndex,
+				headerRow,
+				firstDataRow,
 				valueRenderMode,
-				columnNamesList,
-				columnValuesList,
-			});
+				false,
+				[columnNames.concat([...newColumns])],
+				columnValues,
+			);
 		}
 
 		updateData.push(...preparedData.updateData);

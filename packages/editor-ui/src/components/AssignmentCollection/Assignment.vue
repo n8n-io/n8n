@@ -26,8 +26,8 @@ const props = defineProps<Props>();
 const assignment = ref<AssignmentValue>(props.modelValue);
 
 const emit = defineEmits<{
-	'update:model-value': [value: AssignmentValue];
-	remove: [];
+	(event: 'update:model-value', value: AssignmentValue): void;
+	(event: 'remove'): void;
 }>();
 
 const ndvStore = useNDVStore();
@@ -88,7 +88,7 @@ const hint = computed(() => {
 			undefined,
 			ndvStore.isInputParentOfActiveNode
 				? {
-						targetItem: ndvStore.expressionTargetItem ?? undefined,
+						targetItem: ndvStore.hoveringItem ?? undefined,
 						inputNodeName: ndvStore.ndvInputNodeName,
 						inputRunIndex: ndvStore.ndvInputRunIndex,
 						inputBranchIndex: ndvStore.ndvInputBranchIndex,
@@ -104,7 +104,9 @@ const hint = computed(() => {
 	return stringifyExpressionResult(result);
 });
 
-const highlightHint = computed(() => Boolean(hint.value && ndvStore.getHoveringItem));
+const highlightHint = computed(() =>
+	Boolean(hint.value && ndvStore.hoveringItem && ndvStore.isInputParentOfActiveNode),
+);
 
 const valueIsExpression = computed(() => {
 	const { value } = assignment.value;

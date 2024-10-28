@@ -5,7 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import { RundeckApi } from './RundeckApi';
 
 export class Rundeck implements INodeType {
@@ -21,8 +21,8 @@ export class Rundeck implements INodeType {
 		defaults: {
 			name: 'Rundeck',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: ['main'],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'rundeckApi',

@@ -107,7 +107,7 @@ export const draftFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add option',
+		placeholder: 'Add Option',
 		displayOptions: {
 			show: {
 				resource: ['draft'],
@@ -167,7 +167,7 @@ export const draftFields: INodeProperties[] = [
 				type: 'options',
 				default: '',
 				description:
-					'Select the alias to send the email from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+					'Select the alias to send the email from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getGmailAliases',
 				},
@@ -203,7 +203,7 @@ export const draftFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add option',
+		placeholder: 'Add Option',
 		displayOptions: {
 			show: {
 				resource: ['draft'],
@@ -268,7 +268,7 @@ export const draftFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add option',
+		placeholder: 'Add Option',
 		default: {},
 		displayOptions: {
 			show: {

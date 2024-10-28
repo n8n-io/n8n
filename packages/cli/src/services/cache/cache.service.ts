@@ -1,58 +1,47 @@
-import { GlobalConfig } from '@n8n/config';
+import EventEmitter from 'node:events';
+
+import Container, { Service } from 'typedi';
 import { caching } from 'cache-manager';
 import { ApplicationError, jsonStringify } from 'n8n-workflow';
-import Container, { Service } from 'typedi';
 
 import config from '@/config';
-import { TIME } from '@/constants';
-import { MalformedRefreshValueError } from '@/errors/cache-errors/malformed-refresh-value.error';
 import { UncacheableValueError } from '@/errors/cache-errors/uncacheable-value.error';
+import { MalformedRefreshValueError } from '@/errors/cache-errors/malformed-refresh-value.error';
 import type {
 	TaggedRedisCache,
 	TaggedMemoryCache,
+	CacheEvent,
 	MaybeHash,
 	Hash,
 } from '@/services/cache/cache.types';
-import { TypedEmitter } from '@/typed-emitter';
-
-type CacheEvents = {
-	'metrics.cache.hit': never;
-	'metrics.cache.miss': never;
-	'metrics.cache.update': never;
-};
+import { TIME } from '@/constants';
 
 @Service()
-export class CacheService extends TypedEmitter<CacheEvents> {
-	constructor(private readonly globalConfig: GlobalConfig) {
-		super();
-	}
-
+export class CacheService extends EventEmitter {
 	private cache: TaggedRedisCache | TaggedMemoryCache;
 
 	async init() {
-		const { backend } = this.globalConfig.cache;
+		const backend = config.getEnv('cache.backend');
 		const mode = config.getEnv('executions.mode');
+		const ttl = config.getEnv('cache.redis.ttl');
 
 		const useRedis = backend === 'redis' || (backend === 'auto' && mode === 'queue');
 
 		if (useRedis) {
-			const { RedisClientService } = await import('../redis-client.service');
+			const { RedisClientService } = await import('../redis/redis-client.service');
 			const redisClientService = Container.get(RedisClientService);
 
 			const prefixBase = config.getEnv('redis.prefix');
-			const prefix = redisClientService.toValidPrefix(
-				`${prefixBase}:${this.globalConfig.cache.redis.prefix}:`,
-			);
+			const cachePrefix = config.getEnv('cache.redis.prefix');
+			const prefix = redisClientService.toValidPrefix(`${prefixBase}:${cachePrefix}:`);
 
 			const redisClient = redisClientService.createClient({
-				type: 'cache(n8n)',
+				type: 'client(cache)',
 				extraOptions: { keyPrefix: prefix },
 			});
 
 			const { redisStoreUsingClient } = await import('@/services/cache/redis.cache-manager');
-			const redisStore = redisStoreUsingClient(redisClient, {
-				ttl: this.globalConfig.cache.redis.ttl,
-			});
+			const redisStore = redisStoreUsingClient(redisClient, { ttl });
 
 			const redisCache = await caching(redisStore);
 
@@ -61,7 +50,7 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 			return;
 		}
 
-		const { maxSize, ttl } = this.globalConfig.cache.memory;
+		const maxSize = config.getEnv('cache.memory.maxSize');
 
 		const sizeCalculation = (item: unknown) => {
 			const str = jsonStringify(item, { replaceCircularRefs: true });
@@ -75,6 +64,10 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 
 	async reset() {
 		await this.cache.store.reset();
+	}
+
+	emit(event: CacheEvent, ...args: unknown[]) {
+		return super.emit(event, ...args);
 	}
 
 	isRedis() {

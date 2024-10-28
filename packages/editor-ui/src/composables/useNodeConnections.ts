@@ -1,19 +1,16 @@
-import type { CanvasNodeData } from '@/types';
-import { CanvasConnectionMode } from '@/types';
+import type { CanvasElementData } from '@/types';
 import type { MaybeRef } from 'vue';
 import { computed, unref } from 'vue';
 import { NodeConnectionType } from 'n8n-workflow';
-import type { Connection } from '@vue-flow/core';
-import { parseCanvasConnectionHandleString } from '@/utils/canvasUtilsV2';
 
 export function useNodeConnections({
 	inputs,
 	outputs,
 	connections,
 }: {
-	inputs: MaybeRef<CanvasNodeData['inputs']>;
-	outputs: MaybeRef<CanvasNodeData['outputs']>;
-	connections: MaybeRef<CanvasNodeData['connections']>;
+	inputs: MaybeRef<CanvasElementData['inputs']>;
+	outputs: MaybeRef<CanvasElementData['outputs']>;
+	connections: MaybeRef<CanvasElementData['connections']>;
 }) {
 	/**
 	 * Inputs
@@ -32,7 +29,7 @@ export function useNodeConnections({
 	);
 
 	const mainInputConnections = computed(
-		() => unref(connections)[CanvasConnectionMode.Input][NodeConnectionType.Main] ?? [],
+		() => unref(connections).input[NodeConnectionType.Main] ?? [],
 	);
 
 	/**
@@ -48,27 +45,8 @@ export function useNodeConnections({
 	);
 
 	const mainOutputConnections = computed(
-		() => unref(connections)[CanvasConnectionMode.Output][NodeConnectionType.Main] ?? [],
+		() => unref(connections).output[NodeConnectionType.Main] ?? [],
 	);
-
-	/**
-	 * Connection validation
-	 */
-
-	function isValidConnection(connection: Connection) {
-		const { type: sourceType, mode: sourceMode } = parseCanvasConnectionHandleString(
-			connection.sourceHandle,
-		);
-		const { type: targetType, mode: targetMode } = parseCanvasConnectionHandleString(
-			connection.targetHandle,
-		);
-
-		const isSameNode = connection.source === connection.target;
-		const isSameMode = sourceMode === targetMode;
-		const isSameType = sourceType === targetType;
-
-		return !isSameNode && !isSameMode && isSameType;
-	}
 
 	return {
 		mainInputs,
@@ -78,6 +56,5 @@ export function useNodeConnections({
 		mainOutputs,
 		nonMainOutputs,
 		mainOutputConnections,
-		isValidConnection,
 	};
 }

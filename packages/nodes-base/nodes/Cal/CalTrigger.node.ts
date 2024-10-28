@@ -1,31 +1,30 @@
-import {
-	type IDataObject,
-	type IHookFunctions,
-	type IWebhookFunctions,
-	type ILoadOptionsFunctions,
-	type INodePropertyOptions,
-	type INodeType,
-	type INodeTypeDescription,
-	type IWebhookResponseData,
-	NodeConnectionType,
+import type {
+	IDataObject,
+	IHookFunctions,
+	IWebhookFunctions,
+	ILoadOptionsFunctions,
+	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
+	IWebhookResponseData,
 } from 'n8n-workflow';
 
 import { calApiRequest, sortOptionParameters } from './GenericFunctions';
 
 export class CalTrigger implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Cal.com Trigger',
+		displayName: 'Cal Trigger',
 		name: 'calTrigger',
 		icon: { light: 'file:cal.svg', dark: 'file:cal.dark.svg' },
 		group: ['trigger'],
 		version: [1, 2],
 		subtitle: '=Events: {{$parameter["events"].join(", ")}}',
-		description: 'Handle Cal.com events via webhooks',
+		description: 'Handle Cal events via webhooks',
 		defaults: {
-			name: 'Cal.com Trigger',
+			name: 'Cal Trigger',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'calApi',
@@ -136,7 +135,7 @@ export class CalTrigger implements INodeType {
 							loadOptionsMethod: 'getEventTypes',
 						},
 						description:
-							'The EventType to monitor. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+							'The EventType to monitor. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 						default: '',
 					},
 					{

@@ -17,7 +17,6 @@ import { type FilterOperatorId } from './constants';
 import {
 	getFilterOperator,
 	handleOperatorChange,
-	inferOperatorType,
 	isEmptyInput,
 	operatorTypeToNodeProperty,
 	resolveCondition,
@@ -44,8 +43,8 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const emit = defineEmits<{
-	update: [value: FilterConditionValue];
-	remove: [];
+	(event: 'update', value: FilterConditionValue): void;
+	(event: 'remove'): void;
 }>();
 
 const i18n = useI18n();
@@ -71,14 +70,6 @@ const conditionResult = computed(() =>
 	resolveCondition({ condition: condition.value, options: props.options }),
 );
 
-const suggestedType = computed(() => {
-	if (conditionResult.value.status !== 'resolve_error') {
-		return inferOperatorType(conditionResult.value.resolved.leftValue);
-	}
-
-	return 'any';
-});
-
 const allIssues = computed(() => {
 	if (conditionResult.value.status === 'validation_error' && !isEmpty.value) {
 		return [conditionResult.value.error];
@@ -90,8 +81,8 @@ const allIssues = computed(() => {
 const now = computed(() => DateTime.now().toISO());
 
 const leftParameter = computed<INodeProperties>(() => ({
-	name: 'left',
-	displayName: 'Left',
+	name: '',
+	displayName: '',
 	default: '',
 	placeholder:
 		operator.value.type === 'dateTime'
@@ -103,8 +94,8 @@ const leftParameter = computed<INodeProperties>(() => ({
 const rightParameter = computed<INodeProperties>(() => {
 	const type = operator.value.rightType ?? operator.value.type;
 	return {
-		name: 'right',
-		displayName: 'Right',
+		name: '',
+		displayName: '',
 		default: '',
 		placeholder:
 			type === 'dateTime' ? now.value : i18n.baseText('filter.condition.placeholderRight'),
@@ -185,7 +176,6 @@ const onBlur = (): void => {
 			<template #middle>
 				<OperatorSelect
 					:selected="`${operator.type}:${operator.operation}`"
-					:suggested-type="suggestedType"
 					:read-only="readOnly"
 					@operator-change="onOperatorChange"
 				></OperatorSelect>

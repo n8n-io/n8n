@@ -1,26 +1,3 @@
-<script lang="ts" setup>
-import { MAIN_HEADER_TABS } from '@/constants';
-import type { ITabBarItem } from '@/Interface';
-
-withDefaults(
-	defineProps<{
-		items: ITabBarItem[];
-		modelValue?: string;
-	}>(),
-	{
-		modelValue: MAIN_HEADER_TABS.WORKFLOW,
-	},
-);
-
-const emit = defineEmits<{
-	'update:modelValue': [tab: MAIN_HEADER_TABS, event: MouseEvent];
-}>();
-
-function onUpdateModelValue(tab: MAIN_HEADER_TABS, event: MouseEvent): void {
-	emit('update:modelValue', tab, event);
-}
-</script>
-
 <template>
 	<div
 		v-if="items"
@@ -36,6 +13,27 @@ function onUpdateModelValue(tab: MAIN_HEADER_TABS, event: MouseEvent): void {
 		/>
 	</div>
 </template>
+
+<script lang="ts" setup>
+import { MAIN_HEADER_TABS } from '@/constants';
+import type { ITabBarItem } from '@/Interface';
+
+withDefaults(
+	defineProps<{
+		items: ITabBarItem[];
+		modelValue?: string;
+	}>(),
+	{
+		modelValue: MAIN_HEADER_TABS.WORKFLOW,
+	},
+);
+
+const emit = defineEmits(['update:modelValue']);
+
+function onUpdateModelValue(tab: string, event: MouseEvent): void {
+	emit('update:modelValue', tab, event);
+}
+</script>
 
 <style module lang="scss">
 .container {

@@ -5,7 +5,7 @@ import type {
 	INodeTypeDescription,
 	IPollFunctions,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { GOOGLE_DRIVE_FILE_URL_REGEX } from '../constants';
 import { apiRequest } from './v2/transport';
@@ -35,7 +35,7 @@ export class GoogleSheetsTrigger implements INodeType {
 			name: 'Google Sheets Trigger',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'googleSheetsTriggerOAuth2Api',
@@ -220,7 +220,7 @@ export class GoogleSheetsTrigger implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add option',
+				placeholder: 'Add Option',
 				default: {},
 				options: [
 					{
@@ -228,7 +228,7 @@ export class GoogleSheetsTrigger implements INodeType {
 						name: 'columnsToWatch',
 						type: 'multiOptions',
 						description:
-							'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+							'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsDependsOn: ['sheetName.value'],
 							loadOptionsMethod: 'getSheetHeaderRowAndSkipEmpty',
@@ -561,12 +561,6 @@ export class GoogleSheetsTrigger implements INodeType {
 			}
 
 			if (event === 'anyUpdate' || event === 'rowUpdate') {
-				if (sheetName.length > 31) {
-					throw new NodeOperationError(
-						this.getNode(),
-						'Sheet name is too long choose a name with 31 characters or less',
-					);
-				}
 				const sheetRange = `${sheetName}!${range}`;
 
 				let dataStartIndex = startIndex - 1;

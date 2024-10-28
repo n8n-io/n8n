@@ -1,4 +1,4 @@
-import type { MockInstance } from 'vitest';
+import type { SpyInstance } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
@@ -72,7 +72,7 @@ let router: ReturnType<typeof useRouter>;
 let route: ReturnType<typeof useRoute>;
 let workflowHistoryStore: ReturnType<typeof useWorkflowHistoryStore>;
 let workflowsStore: ReturnType<typeof useWorkflowsStore>;
-let windowOpenSpy: MockInstance;
+let windowOpenSpy: SpyInstance;
 
 describe('WorkflowHistory', () => {
 	beforeEach(() => {

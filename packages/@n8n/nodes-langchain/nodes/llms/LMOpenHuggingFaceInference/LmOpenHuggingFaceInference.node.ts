@@ -26,8 +26,7 @@ export class LmOpenHuggingFaceInference implements INodeType {
 		codex: {
 			categories: ['AI'],
 			subcategories: {
-				AI: ['Language Models', 'Root Nodes'],
-				'Language Models': ['Text Completion Models'],
+				AI: ['Language Models'],
 			},
 			resources: {
 				primaryDocumentation: [

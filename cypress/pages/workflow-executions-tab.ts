@@ -7,7 +7,6 @@ export class WorkflowExecutionsTab extends BasePage {
 	getters = {
 		executionsTabButton: () => cy.getByTestId('radio-button-executions'),
 		executionsSidebar: () => cy.getByTestId('executions-sidebar'),
-		executionsEmptyList: () => cy.getByTestId('execution-list-empty'),
 		autoRefreshCheckBox: () => cy.getByTestId('auto-refresh-checkbox'),
 		executionsList: () => cy.getByTestId('current-executions-list'),
 		executionListItems: () => this.getters.executionsList().find('div.execution-card'),
@@ -35,7 +34,7 @@ export class WorkflowExecutionsTab extends BasePage {
 		},
 		createManualExecutions: (count: number) => {
 			for (let i = 0; i < count; i++) {
-				cy.intercept('POST', '/rest/workflows/**/run?**').as('workflowExecution');
+				cy.intercept('POST', '/rest/workflows/**/run').as('workflowExecution');
 				workflowPage.actions.executeWorkflow();
 				cy.wait('@workflowExecution');
 			}

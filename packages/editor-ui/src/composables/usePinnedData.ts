@@ -140,10 +140,6 @@ export function usePinnedData(
 		}
 	}
 
-	function getMaxPinnedDataSize() {
-		return window.maxPinnedDataSize ?? MAX_PINNED_DATA_SIZE;
-	}
-
 	function isValidSize(data: string | object): boolean {
 		const targetNode = unref(node);
 		if (!targetNode) {
@@ -158,13 +154,13 @@ export function usePinnedData(
 		const newPinData = { ...currentPinData, [targetNode.name]: data };
 		const newPinDataSize = workflowsStore.getPinDataSize(newPinData);
 
-		if (newPinDataSize > getMaxPinnedDataSize()) {
+		if (newPinDataSize > MAX_PINNED_DATA_SIZE) {
 			toast.showError(
 				new Error(
 					i18n.baseText('ndv.pinData.error.tooLarge.description', {
 						interpolate: {
 							size: toMegaBytes(newPinDataSize),
-							limit: toMegaBytes(getMaxPinnedDataSize()),
+							limit: toMegaBytes(MAX_PINNED_DATA_SIZE),
 						},
 					}),
 				),

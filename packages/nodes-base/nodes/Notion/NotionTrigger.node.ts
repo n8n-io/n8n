@@ -1,22 +1,15 @@
-import {
-	type IPollFunctions,
-	type IDataObject,
-	type INodeExecutionData,
-	type INodeType,
-	type INodeTypeDescription,
-	NodeConnectionType,
+import type {
+	IPollFunctions,
+	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
 import { notionApiRequest, simplifyObjects } from './shared/GenericFunctions';
 
 import { listSearch } from './shared/methods';
-import {
-	databaseUrlExtractionRegexp,
-	databaseUrlValidationRegexp,
-	idExtractionRegexp,
-	idValidationRegexp,
-} from './shared/constants';
 
 export class NotionTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -38,7 +31,7 @@ export class NotionTrigger implements INodeType {
 		],
 		polling: true,
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: ['main'],
 		properties: [
 			{
 				displayName: 'Event',
@@ -91,14 +84,16 @@ export class NotionTrigger implements INodeType {
 							{
 								type: 'regex',
 								properties: {
-									regex: databaseUrlValidationRegexp,
+									regex:
+										'(?:https|http)://www.notion.so/(?:[a-z0-9-]{2,}/)?([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12}).*',
 									errorMessage: 'Not a valid Notion Database URL',
 								},
 							},
 						],
 						extractValue: {
 							type: 'regex',
-							regex: databaseUrlExtractionRegexp,
+							regex:
+								'(?:https|http)://www.notion.so/(?:[a-z0-9-]{2,}/)?([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12})',
 						},
 					},
 					{
@@ -110,14 +105,15 @@ export class NotionTrigger implements INodeType {
 							{
 								type: 'regex',
 								properties: {
-									regex: idValidationRegexp,
+									regex:
+										'^(([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12})|([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}))[ \t]*',
 									errorMessage: 'Not a valid Notion Database ID',
 								},
 							},
 						],
 						extractValue: {
 							type: 'regex',
-							regex: idExtractionRegexp,
+							regex: '^([0-9a-f]{8}-?[0-9a-f]{4}-?4[0-9a-f]{3}-?[89ab][0-9a-f]{3}-?[0-9a-f]{12})',
 						},
 						url: '=https://www.notion.so/{{$value.replace(/-/g, "")}}',
 					},

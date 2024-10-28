@@ -151,7 +151,7 @@ export const clientFields: INodeProperties[] = [
 						name: 'countryCode',
 						type: 'options',
 						description:
-							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getCountryCodes',
 						},
@@ -178,7 +178,6 @@ export const clientFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				// TODO: in v2.0, rename to contactsValue
 				name: 'contacstValues',
 				displayName: 'Contact',
 				values: [
@@ -266,7 +265,7 @@ export const clientFields: INodeProperties[] = [
 						name: 'countryCode',
 						type: 'options',
 						description:
-							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getCountryCodes',
 						},

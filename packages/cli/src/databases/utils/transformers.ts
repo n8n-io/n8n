@@ -1,7 +1,6 @@
-import { GlobalConfig } from '@n8n/config';
-import type { ValueTransformer, FindOperator } from '@n8n/typeorm';
 import { jsonParse } from 'n8n-workflow';
-import { Container } from 'typedi';
+import type { ValueTransformer, FindOperator } from '@n8n/typeorm';
+import config from '@/config';
 
 export const idStringifier = {
 	from: (value?: number): string | undefined => value?.toString(),
@@ -30,7 +29,7 @@ export const objectRetriever: ValueTransformer = {
  */
 const jsonColumn: ValueTransformer = {
 	to: (value: object): string | object =>
-		Container.get(GlobalConfig).database.type === 'sqlite' ? JSON.stringify(value) : value,
+		config.getEnv('database.type') === 'sqlite' ? JSON.stringify(value) : value,
 	from: (value: string | object): object => (typeof value === 'string' ? jsonParse(value) : value),
 };
 

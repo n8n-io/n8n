@@ -11,7 +11,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import {
 	buildGetQuery,
@@ -41,8 +41,8 @@ export class Supabase implements INodeType {
 		defaults: {
 			name: 'Supabase',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: ['main'],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'supabaseApi',
@@ -171,7 +171,7 @@ export class Supabase implements INodeType {
 						returnData.push(...executionData);
 					});
 				} catch (error) {
-					if (this.continueOnFail()) {
+					if (this.continueOnFail(error)) {
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray({ error: error.description }),
 							{ itemData: mapPairedItemsFrom(records) },
@@ -186,8 +186,8 @@ export class Supabase implements INodeType {
 			if (operation === 'delete') {
 				const tableId = this.getNodeParameter('tableId', 0) as string;
 				const filterType = this.getNodeParameter('filterType', 0) as string;
+				let endpoint = `/${tableId}`;
 				for (let i = 0; i < length; i++) {
-					let endpoint = `/${tableId}`;
 					if (filterType === 'manual') {
 						const matchType = this.getNodeParameter('matchType', 0) as string;
 						const keys = this.getNodeParameter('filters.conditions', i, []) as IDataObject[];
@@ -220,7 +220,7 @@ export class Supabase implements INodeType {
 					try {
 						rows = await supabaseApiRequest.call(this, 'DELETE', endpoint, {}, qs);
 					} catch (error) {
-						if (this.continueOnFail()) {
+						if (this.continueOnFail(error)) {
 							const executionData = this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray({ error: error.description }),
 								{ itemData: { item: i } },
@@ -260,7 +260,7 @@ export class Supabase implements INodeType {
 					try {
 						rows = await supabaseApiRequest.call(this, 'GET', endpoint, {}, qs);
 					} catch (error) {
-						if (this.continueOnFail()) {
+						if (this.continueOnFail(error)) {
 							const executionData = this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray({ error: error.message }),
 								{ itemData: { item: i } },
@@ -326,7 +326,7 @@ export class Supabase implements INodeType {
 						);
 						returnData.push(...executionData);
 					} catch (error) {
-						if (this.continueOnFail()) {
+						if (this.continueOnFail(error)) {
 							const executionData = this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray({ error: error.description }),
 								{ itemData: { item: i } },
@@ -402,7 +402,7 @@ export class Supabase implements INodeType {
 						);
 						returnData.push(...executionData);
 					} catch (error) {
-						if (this.continueOnFail()) {
+						if (this.continueOnFail(error)) {
 							const executionData = this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray({ error: error.description }),
 								{ itemData: { item: i } },

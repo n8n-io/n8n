@@ -1,15 +1,15 @@
-import {
-	NodeConnectionType,
-	type IBinaryKeyData,
-	type IDataObject,
-	type IExecuteFunctions,
-	type IHttpRequestMethods,
-	type ILoadOptionsFunctions,
-	type INodeExecutionData,
-	type INodePropertyOptions,
-	type INodeType,
-	type INodeTypeBaseDescription,
-	type INodeTypeDescription,
+/* eslint-disable n8n-nodes-base/node-filename-against-convention */
+import type {
+	IBinaryKeyData,
+	IDataObject,
+	IExecuteFunctions,
+	IHttpRequestMethods,
+	ILoadOptionsFunctions,
+	INodeExecutionData,
+	INodePropertyOptions,
+	INodeType,
+	INodeTypeBaseDescription,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import isEmpty from 'lodash/isEmpty';
@@ -43,8 +43,8 @@ const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'Gmail',
 	},
-	inputs: [NodeConnectionType.Main],
-	outputs: [NodeConnectionType.Main],
+	inputs: ['main'],
+	outputs: ['main'],
 	credentials: [
 		{
 			name: 'googleApi',
@@ -827,7 +827,7 @@ export class GmailV1 implements INodeType {
 
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({ json: { error: error.message } });
 					continue;
 				}

@@ -7,7 +7,7 @@ import type {
 	IHookFunctions,
 	IHttpRequestMethods,
 	ILoadOptionsFunctions,
-	IHttpRequestOptions,
+	IRequestOptions,
 	IWebhookFunctions,
 	JsonObject,
 } from 'n8n-workflow';
@@ -35,14 +35,19 @@ export async function copperApiRequest(
 	uri = '',
 	option: IDataObject = {},
 ) {
-	let options: IHttpRequestOptions = {
+	const credentials = (await this.getCredentials('copperApi')) as { apiKey: string; email: string };
+
+	let options: IRequestOptions = {
 		headers: {
+			'X-PW-AccessToken': credentials.apiKey,
+			'X-PW-Application': 'developer_api',
+			'X-PW-UserEmail': credentials.email,
 			'Content-Type': 'application/json',
 		},
 		method,
 		qs,
 		body,
-		url: uri || `https://api.copper.com/developer_api/v1${resource}`,
+		uri: uri || `https://api.prosperworks.com/developer_api/v1${resource}`,
 		json: true,
 	};
 
@@ -57,7 +62,7 @@ export async function copperApiRequest(
 	}
 
 	try {
-		return await this.helpers.requestWithAuthentication.call(this, 'copperApi', options);
+		return await this.helpers.request(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}

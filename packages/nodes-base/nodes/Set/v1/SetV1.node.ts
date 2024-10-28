@@ -1,3 +1,4 @@
+/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -6,7 +7,7 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType, deepCopy } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
 
 import set from 'lodash/set';
 
@@ -21,8 +22,8 @@ const versionDescription: INodeTypeDescription = {
 		name: 'Set',
 		color: '#0000FF',
 	},
-	inputs: [NodeConnectionType.Main],
-	outputs: [NodeConnectionType.Main],
+	inputs: ['main'],
+	outputs: ['main'],
 	properties: [
 		{
 			displayName: 'Keep Only Set',
@@ -117,7 +118,7 @@ const versionDescription: INodeTypeDescription = {
 			displayName: 'Options',
 			name: 'options',
 			type: 'collection',
-			placeholder: 'Add option',
+			placeholder: 'Add Option',
 			default: {},
 			options: [
 				{

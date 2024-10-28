@@ -21,11 +21,11 @@ export async function wiseApiRequest(
 	qs: IDataObject = {},
 	option: IDataObject = {},
 ) {
-	const { apiToken, environment, privateKey } = await this.getCredentials<{
+	const { apiToken, environment, privateKey } = (await this.getCredentials('wiseApi')) as {
 		apiToken: string;
 		environment: 'live' | 'test';
 		privateKey?: string;
-	}>('wiseApi');
+	};
 
 	const rootUrl =
 		environment === 'live'

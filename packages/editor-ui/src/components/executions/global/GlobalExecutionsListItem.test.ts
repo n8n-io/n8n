@@ -55,9 +55,6 @@ describe('GlobalExecutionsListItem', () => {
 					retrySuccessfulId: undefined,
 					waitTill: false,
 				},
-				workflowPermissions: {
-					execute: true,
-				},
 			},
 		});
 
@@ -76,9 +73,6 @@ describe('GlobalExecutionsListItem', () => {
 					id: 123,
 					stoppedAt: undefined,
 				},
-				workflowPermissions: {
-					update: true,
-				},
 			},
 		});
 
@@ -90,10 +84,7 @@ describe('GlobalExecutionsListItem', () => {
 		global.window.open = vi.fn();
 
 		const { getByText } = renderComponent({
-			props: {
-				execution: { status: 'success', id: 123, workflowName: 'TestWorkflow' },
-				workflowPermissions: {},
-			},
+			props: { execution: { status: 'success', id: 123, workflowName: 'TestWorkflow' } },
 		});
 
 		await fireEvent.click(getByText('TestWorkflow'));
@@ -103,10 +94,7 @@ describe('GlobalExecutionsListItem', () => {
 	it('should show formatted start date', () => {
 		const testDate = '2022-01-01T12:00:00Z';
 		const { getByText } = renderComponent({
-			props: {
-				execution: { status: 'success', id: 123, startedAt: testDate },
-				workflowPermissions: {},
-			},
+			props: { execution: { status: 'success', id: 123, startedAt: testDate } },
 		});
 
 		expect(

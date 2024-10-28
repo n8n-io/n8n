@@ -18,17 +18,13 @@ import { hasPermission } from '@/utils/rbac/permissions';
 import type { IWorkflowDb } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
-import { STORES } from '@/constants';
-import { useUsersStore } from '@/stores/users.store';
-import { getResourcePermissions } from '@/permissions';
 
-export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
+export const useProjectsStore = defineStore('projects', () => {
 	const route = useRoute();
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
 	const workflowsStore = useWorkflowsStore();
 	const credentialsStore = useCredentialsStore();
-	const usersStore = useUsersStore();
 
 	const projects = ref<ProjectListItem[]>([]);
 	const myProjects = ref<ProjectListItem[]>([]);
@@ -40,13 +36,6 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		public: 0,
 	});
 	const projectNavActiveIdState = ref<string | string[] | null>(null);
-
-	const globalProjectPermissions = computed(
-		() => getResourcePermissions(usersStore.currentUser?.globalScopes).project,
-	);
-	const availableProjects = computed(() =>
-		globalProjectPermissions.value.list ? projects.value : myProjects.value,
-	);
 
 	const currentProjectId = computed(
 		() =>
@@ -60,19 +49,19 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 	);
 	const teamProjects = computed(() => projects.value.filter((p) => p.type === ProjectTypes.Team));
 	const teamProjectsLimit = computed(() => settingsStore.settings.enterprise.projects.team.limit);
-	const isTeamProjectFeatureEnabled = computed<boolean>(
+	const teamProjectsAvailable = computed<boolean>(
 		() => settingsStore.settings.enterprise.projects.team.limit !== 0,
 	);
 	const hasUnlimitedProjects = computed<boolean>(
 		() => settingsStore.settings.enterprise.projects.team.limit === -1,
 	);
-	const isTeamProjectLimitExceeded = computed<boolean>(
+	const teamProjectLimitExceeded = computed<boolean>(
 		() => projectsCount.value.team >= teamProjectsLimit.value,
 	);
 	const canCreateProjects = computed<boolean>(
 		() =>
 			hasUnlimitedProjects.value ||
-			(isTeamProjectFeatureEnabled.value && !isTeamProjectLimitExceeded.value),
+			(teamProjectsAvailable.value && !teamProjectLimitExceeded.value),
 	);
 	const hasPermissionToCreateProjects = computed(() =>
 		hasPermission(['rbac'], { rbac: { scope: 'project:create' } }),
@@ -99,14 +88,6 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 
 	const getPersonalProject = async () => {
 		personalProject.value = await projectsApi.getPersonalProject(rootStore.restApiContext);
-	};
-
-	const getAvailableProjects = async () => {
-		if (globalProjectPermissions.value.list) {
-			await getAllProjects();
-		} else {
-			await getMyProjects();
-		}
 	};
 
 	const fetchProject = async (id: string) =>
@@ -207,7 +188,6 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 
 	return {
 		projects,
-		availableProjects,
 		myProjects,
 		personalProject,
 		currentProject,
@@ -219,13 +199,12 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		hasUnlimitedProjects,
 		canCreateProjects,
 		hasPermissionToCreateProjects,
-		isTeamProjectFeatureEnabled,
+		teamProjectsAvailable,
 		projectNavActiveId,
 		setCurrentProject,
 		getAllProjects,
 		getMyProjects,
 		getPersonalProject,
-		getAvailableProjects,
 		fetchProject,
 		getProject,
 		createProject,

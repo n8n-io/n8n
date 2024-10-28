@@ -1,12 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 
 import { blocks } from './Blocks';
-import {
-	blockUrlExtractionRegexp,
-	blockUrlValidationRegexp,
-	idExtractionRegexp,
-	idValidationRegexp,
-} from '../constants';
 
 //RLC with fixed regex for blockId
 const blockIdRLC: INodeProperties = {
@@ -26,14 +20,15 @@ const blockIdRLC: INodeProperties = {
 				{
 					type: 'regex',
 					properties: {
-						regex: blockUrlValidationRegexp,
+						regex:
+							'(?:https|http)://www.notion.so/(?:[a-z0-9-]{2,}/)?(?:[a-zA-Z0-9-]{2,}-)?([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12}).*',
 						errorMessage: 'Not a valid Notion Block URL',
 					},
 				},
 			],
 			// extractValue: {
 			// 	type: 'regex',
-			// 	regex: blockUrlExtractionRegexp,
+			// 	regex: 'https:\\/\\/www\\.notion\\.so\\/.+\\?pvs=[0-9]+#([a-f0-9]{2,})',
 			// },
 		},
 		{
@@ -106,14 +101,16 @@ export const blockFields: INodeProperties[] = [
 					{
 						type: 'regex',
 						properties: {
-							regex: blockUrlValidationRegexp,
+							regex:
+								'(?:https|http)://www.notion.so/(?:[a-z0-9-]{2,}/)?(?:[a-zA-Z0-9-]{2,}-)?([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12}).*',
 							errorMessage: 'Not a valid Notion Block URL',
 						},
 					},
 				],
 				extractValue: {
 					type: 'regex',
-					regex: blockUrlExtractionRegexp,
+					regex:
+						'(?:https|http)://www.notion.so/(?:[a-z0-9-]{2,}/)?(?:[a-zA-Z0-9-]{2,}-)?([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12})',
 				},
 			},
 			{
@@ -125,14 +122,15 @@ export const blockFields: INodeProperties[] = [
 					{
 						type: 'regex',
 						properties: {
-							regex: idValidationRegexp,
+							regex:
+								'^(([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12})|([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}))[ \t]*',
 							errorMessage: 'Not a valid Notion Block ID',
 						},
 					},
 				],
 				extractValue: {
 					type: 'regex',
-					regex: idExtractionRegexp,
+					regex: '^([0-9a-f]{8}-?[0-9a-f]{4}-?4[0-9a-f]{3}-?[89ab][0-9a-f]{3}-?[0-9a-f]{12})',
 				},
 				url: '=https://www.notion.so/{{$value.replace(/-/g, "")}}',
 			},
@@ -178,14 +176,16 @@ export const blockFields: INodeProperties[] = [
 					{
 						type: 'regex',
 						properties: {
-							regex: blockUrlValidationRegexp,
+							regex:
+								'(?:https|http)://www.notion.so/(?:[a-z0-9-]{2,}/)?(?:[a-zA-Z0-9-]{2,}-)?([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12}).*',
 							errorMessage: 'Not a valid Notion Block URL',
 						},
 					},
 				],
 				extractValue: {
 					type: 'regex',
-					regex: blockUrlExtractionRegexp,
+					regex:
+						'(?:https|http)://www.notion.so/(?:[a-z0-9-]{2,}/)?(?:[a-zA-Z0-9-]{2,}-)?([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12})',
 				},
 			},
 			{
@@ -197,14 +197,15 @@ export const blockFields: INodeProperties[] = [
 					{
 						type: 'regex',
 						properties: {
-							regex: idValidationRegexp,
+							regex:
+								'^(([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12})|([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}))[ \t]*',
 							errorMessage: 'Not a valid Notion Block ID',
 						},
 					},
 				],
 				extractValue: {
 					type: 'regex',
-					regex: idExtractionRegexp,
+					regex: '^([0-9a-f]{8}-?[0-9a-f]{4}-?4[0-9a-f]{3}-?[89ab][0-9a-f]{3}-?[0-9a-f]{12})',
 				},
 				url: '=https://www.notion.so/{{$value.replace(/-/g, "")}}',
 			},

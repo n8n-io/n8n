@@ -1,9 +1,7 @@
-import { Flags } from '@oclif/core';
 import Container from 'typedi';
-
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-
-import { BaseCommand } from '../base-command';
+import { Flags } from '@oclif/core';
+import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import { BaseCommand } from '../BaseCommand';
 
 export class ListWorkflowCommand extends BaseCommand {
 	static description = '\nList workflows';

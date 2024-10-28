@@ -1,9 +1,4 @@
-import {
-	ApplicationError,
-	NodeApiError,
-	NodeConnectionType,
-	NodeOperationError,
-} from 'n8n-workflow';
+import { ApplicationError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type {
 	IBinaryData,
 	IDataObject,
@@ -27,7 +22,7 @@ import { LLMChain } from 'langchain/chains';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { HumanMessage } from '@langchain/core/messages';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
-import { ChatOllama } from '@langchain/ollama';
+import { ChatOllama } from '@langchain/community/chat_models/ollama';
 import { getTemplateNoticeField } from '../../../utils/sharedFields';
 import {
 	getOptionalOutputParsers,
@@ -35,10 +30,6 @@ import {
 	isChatInstance,
 } from '../../../utils/helpers';
 import { getTracingConfig } from '../../../utils/tracing';
-import {
-	getCustomErrorMessage as getCustomOpenAiErrorMessage,
-	isOpenAiError,
-} from '../../vendors/OpenAi/helpers/error-handling';
 
 interface MessagesTemplate {
 	type: string;
@@ -526,7 +517,7 @@ export class ChainLlm implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		this.logger.debug('Executing LLM Chain');
+		this.logger.verbose('Executing LLM Chain');
 		const items = this.getInputData();
 
 		const returnData: INodeExecutionData[] = [];
@@ -589,19 +580,7 @@ export class ChainLlm implements INodeType {
 					});
 				});
 			} catch (error) {
-				// If the error is an OpenAI's rate limit error, we want to handle it differently
-				// because OpenAI has multiple different rate limit errors
-				if (error instanceof NodeApiError && isOpenAiError(error.cause)) {
-					const openAiErrorCode: string | undefined = (error.cause as any).error?.code;
-					if (openAiErrorCode) {
-						const customMessage = getCustomOpenAiErrorMessage(openAiErrorCode);
-						if (customMessage) {
-							error.message = customMessage;
-						}
-					}
-				}
-
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({ json: { error: error.message }, pairedItem: { item: itemIndex } });
 					continue;
 				}

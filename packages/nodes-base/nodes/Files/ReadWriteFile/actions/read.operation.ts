@@ -1,10 +1,4 @@
-import { NodeApiError } from 'n8n-workflow';
-import type {
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeProperties,
-	JsonObject,
-} from 'n8n-workflow';
+import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 
 import glob from 'fast-glob';
 import { errorMapper } from '../helpers/utils';
@@ -19,14 +13,13 @@ export const properties: INodeProperties[] = [
 		required: true,
 		placeholder: 'e.g. /home/user/Pictures/**/*.png',
 		hint: 'Supports patterns, learn more <a href="https://github.com/micromatch/picomatch#basic-globbing" target="_blank">here</a>',
-		description:
-			"Specify a file's path or path pattern to read multiple files. Always use forward-slashes for path separator even on Windows.",
+		description: "Specify a file's path or path pattern to read multiple files",
 	},
 	{
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add option',
+		placeholder: 'Add Option',
 		default: {},
 		options: [
 			{
@@ -80,12 +73,7 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 
 	for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 		try {
-			fileSelector = String(this.getNodeParameter('fileSelector', itemIndex));
-
-			if (/^[a-zA-Z]:/.test(fileSelector)) {
-				fileSelector = fileSelector.replace(/\\\\/g, '/');
-			}
-
+			fileSelector = this.getNodeParameter('fileSelector', itemIndex) as string;
 			const options = this.getNodeParameter('options', itemIndex, {});
 
 			let dataPropertyName = 'data';
@@ -130,13 +118,14 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 					},
 				});
 			}
+
 			returnData.push(...newItems);
 		} catch (error) {
 			const nodeOperatioinError = errorMapper.call(this, error, itemIndex, {
 				filePath: fileSelector,
 				operation: 'read',
 			});
-			if (this.continueOnFail()) {
+			if (this.continueOnFail(error)) {
 				returnData.push({
 					json: {
 						error: nodeOperatioinError.message,
@@ -147,7 +136,7 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 				});
 				continue;
 			}
-			throw new NodeApiError(this.getNode(), error as JsonObject, { itemIndex });
+			throw nodeOperatioinError;
 		}
 	}
 

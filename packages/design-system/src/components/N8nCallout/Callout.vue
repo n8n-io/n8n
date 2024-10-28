@@ -1,10 +1,25 @@
+<template>
+	<div :class="classes" role="alert">
+		<div :class="$style.messageSection">
+			<div v-if="!iconless" :class="$style.icon">
+				<N8nIcon :icon="getIcon" :size="getIconSize" />
+			</div>
+			<N8nText size="small">
+				<slot />
+			</N8nText>
+			&nbsp;
+			<slot name="actions" />
+		</div>
+
+		<slot name="trailingContent" />
+	</div>
+</template>
+
 <script lang="ts" setup>
 import { computed, useCssModule } from 'vue';
-
-import type { IconSize } from 'n8n-design-system/types/icon';
-
-import N8nIcon from '../N8nIcon';
 import N8nText from '../N8nText';
+import N8nIcon from '../N8nIcon';
+import type { IconSize } from 'n8n-design-system/types/icon';
 
 const THEMES = ['info', 'success', 'secondary', 'warning', 'danger', 'custom'] as const;
 export type CalloutTheme = (typeof THEMES)[number];
@@ -54,23 +69,6 @@ const getIconSize = computed<IconSize>(() => {
 	return 'large';
 });
 </script>
-
-<template>
-	<div :class="classes" role="alert">
-		<div :class="$style.messageSection">
-			<div v-if="!iconless" :class="$style.icon">
-				<N8nIcon :icon="getIcon" :size="getIconSize" />
-			</div>
-			<N8nText size="small">
-				<slot />
-			</N8nText>
-			&nbsp;
-			<slot name="actions" />
-		</div>
-
-		<slot name="trailingContent" />
-	</div>
-</template>
 
 <style lang="scss" module>
 .callout {

@@ -1,5 +1,4 @@
 import type { StoryFn } from '@storybook/vue3';
-
 import N8nTooltip from './Tooltip.vue';
 
 export default {

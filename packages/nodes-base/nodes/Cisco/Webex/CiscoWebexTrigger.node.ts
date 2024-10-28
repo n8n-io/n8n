@@ -7,7 +7,6 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
 
 import {
 	getAutomaticSecret,
@@ -31,7 +30,7 @@ export class CiscoWebexTrigger implements INodeType {
 			name: 'Webex by Cisco Trigger',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'ciscoWebexOAuth2Api',

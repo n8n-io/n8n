@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-
 import { useDeviceSupport } from '../../composables/useDeviceSupport';
 import type { KeyboardShortcut } from '../../types/keyboardshortcut';
 

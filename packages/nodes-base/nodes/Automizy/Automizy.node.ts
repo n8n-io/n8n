@@ -1,13 +1,12 @@
-import {
-	type IExecuteFunctions,
-	type IDataObject,
-	type ILoadOptionsFunctions,
-	type INodeExecutionData,
-	type INodePropertyOptions,
-	type INodeType,
-	type INodeTypeDescription,
-	type NodeExecutionWithMetadata,
-	NodeConnectionType,
+import type {
+	IExecuteFunctions,
+	IDataObject,
+	ILoadOptionsFunctions,
+	INodeExecutionData,
+	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
+	NodeExecutionWithMetadata,
 } from 'n8n-workflow';
 
 import { automizyApiRequest, automizyApiRequestAllItems } from './GenericFunctions';
@@ -29,9 +28,8 @@ export class Automizy implements INodeType {
 		defaults: {
 			name: 'Automizy',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
-		hidden: true,
+		inputs: ['main'],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'automizyApi',
@@ -39,13 +37,6 @@ export class Automizy implements INodeType {
 			},
 		],
 		properties: [
-			{
-				displayName:
-					'This service may no longer exist and will be removed from n8n in a future release.',
-				name: 'deprecated',
-				type: 'notice',
-				default: '',
-			},
 			{
 				displayName: 'Resource',
 				name: 'resource',

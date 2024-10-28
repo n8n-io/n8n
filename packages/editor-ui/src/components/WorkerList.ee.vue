@@ -1,18 +1,37 @@
+<template>
+	<div>
+		<PushConnectionTracker class="actions"></PushConnectionTracker>
+		<div :class="$style.workerListHeader">
+			<n8n-heading tag="h1" size="2xlarge">{{ pageTitle }}</n8n-heading>
+		</div>
+		<div v-if="!initialStatusReceived">
+			<n8n-spinner />
+		</div>
+		<div v-else>
+			<div v-if="workerIds.length === 0">{{ $locale.baseText('workerList.empty') }}</div>
+			<div v-else>
+				<div v-for="workerId in workerIds" :key="workerId" :class="$style.card">
+					<WorkerCard :worker-id="workerId" data-test-id="worker-card" />
+				</div>
+			</div>
+		</div>
+	</div>
+</template>
+
 <script lang="ts">
 import { defineComponent } from 'vue';
-import { useRouter } from 'vue-router';
 import { mapStores } from 'pinia';
-import type { WorkerStatus } from '@n8n/api-types';
-import type { ExecutionStatus } from 'n8n-workflow';
-
 import PushConnectionTracker from '@/components/PushConnectionTracker.vue';
 import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
+import type { IPushDataWorkerStatusPayload } from '@/Interface';
+import type { ExecutionStatus } from 'n8n-workflow';
 import { useUIStore } from '@/stores/ui.store';
 import { useOrchestrationStore } from '@/stores/orchestration.store';
-import { useDocumentTitle } from '@/composables/useDocumentTitle';
+import { setPageTitle } from '@/utils/htmlUtils';
 import WorkerCard from './Workers/WorkerCard.ee.vue';
 import { usePushConnection } from '@/composables/usePushConnection';
+import { useRouter } from 'vue-router';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { useRootStore } from '@/stores/root.store';
 
@@ -36,13 +55,12 @@ export default defineComponent({
 			i18n,
 			pushConnection,
 			...useToast(),
-			documentTitle: useDocumentTitle(),
 		};
 	},
 	computed: {
 		...mapStores(useRootStore, useUIStore, usePushConnectionStore, useOrchestrationStore),
-		combinedWorkers(): WorkerStatus[] {
-			const returnData: WorkerStatus[] = [];
+		combinedWorkers(): IPushDataWorkerStatusPayload[] {
+			const returnData: IPushDataWorkerStatusPayload[] = [];
 			for (const workerId in this.orchestrationManagerStore.workers) {
 				returnData.push(this.orchestrationManagerStore.workers[workerId]);
 			}
@@ -59,7 +77,7 @@ export default defineComponent({
 		},
 	},
 	mounted() {
-		this.documentTitle.set(this.pageTitle);
+		setPageTitle(`n8n - ${this.pageTitle}`);
 
 		this.$telemetry.track('User viewed worker view', {
 			instance_id: this.rootStore.instanceId,
@@ -87,39 +105,19 @@ export default defineComponent({
 		averageLoadAvg(loads: number[]) {
 			return (loads.reduce((prev, curr) => prev + curr, 0) / loads.length).toFixed(2);
 		},
-		getStatus(payload: WorkerStatus): ExecutionStatus {
+		getStatus(payload: IPushDataWorkerStatusPayload): ExecutionStatus {
 			if (payload.runningJobsSummary.length > 0) {
 				return 'running';
 			} else {
 				return 'success';
 			}
 		},
-		getRowClass(payload: WorkerStatus): string {
+		getRowClass(payload: IPushDataWorkerStatusPayload): string {
 			return [this.$style.execRow, this.$style[this.getStatus(payload)]].join(' ');
 		},
 	},
 });
 </script>
-
-<template>
-	<div>
-		<PushConnectionTracker class="actions"></PushConnectionTracker>
-		<div :class="$style.workerListHeader">
-			<n8n-heading tag="h1" size="2xlarge">{{ pageTitle }}</n8n-heading>
-		</div>
-		<div v-if="!initialStatusReceived">
-			<n8n-spinner />
-		</div>
-		<div v-else>
-			<div v-if="workerIds.length === 0">{{ $locale.baseText('workerList.empty') }}</div>
-			<div v-else>
-				<div v-for="workerId in workerIds" :key="workerId" :class="$style.card">
-					<WorkerCard :worker-id="workerId" data-test-id="worker-card" />
-				</div>
-			</div>
-		</div>
-	</div>
-</template>
 
 <style module lang="scss">
 .workerListHeader {

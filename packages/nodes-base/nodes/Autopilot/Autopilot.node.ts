@@ -1,13 +1,12 @@
-import {
-	type IExecuteFunctions,
-	type IDataObject,
-	type ILoadOptionsFunctions,
-	type INodeExecutionData,
-	type INodePropertyOptions,
-	type INodeType,
-	type INodeTypeDescription,
-	type IHttpRequestMethods,
-	NodeConnectionType,
+import type {
+	IExecuteFunctions,
+	IDataObject,
+	ILoadOptionsFunctions,
+	INodeExecutionData,
+	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 
 import { autopilotApiRequest, autopilotApiRequestAllItems } from './GenericFunctions';
@@ -32,8 +31,8 @@ export class Autopilot implements INodeType {
 		defaults: {
 			name: 'Autopilot',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: ['main'],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'autopilotApi',
@@ -306,7 +305,7 @@ export class Autopilot implements INodeType {
 				);
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					const exectionErrorWithMetaData = this.helpers.constructExecutionMetaData(
 						[{ json: { error: error.message } }],
 						{ itemData: { item: i } },
