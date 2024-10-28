@@ -363,7 +363,7 @@ export class WorkflowExecute {
 
 		// 7. Recreate Execution Stack
 		const { nodeExecutionStack, waitingExecution, waitingExecutionSource } =
-			recreateNodeExecutionStack(subgraph, startNodes, destination, runData, pinData ?? {});
+			recreateNodeExecutionStack(subgraph, new Set(startNodes), runData, pinData ?? {});
 
 		// 8. Execute
 		this.status = 'running';
