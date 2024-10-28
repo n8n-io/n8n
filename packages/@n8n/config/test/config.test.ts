@@ -256,6 +256,14 @@ describe('GlobalConfig', () => {
 			releaseChannel: 'dev',
 			gracefulShutdownTimeout: 30,
 		},
+		license: {
+			serverUrl: 'https://license.n8n.io/v1',
+			autoRenewalEnabled: true,
+			autoRenewOffset: 60 * 60 * 72,
+			activationKey: '',
+			tenantId: 1,
+			cert: '',
+		},
 	};
 
 	it('should use all default values when no env variables are defined', () => {
