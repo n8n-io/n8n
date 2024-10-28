@@ -92,6 +92,8 @@ export class WaitingWebhooks implements IWebhookManager {
 		req.params = {} as WaitingWebhookRequest['params'];
 
 		const execution = await this.getExecution(executionId);
+		this.logger.debug('executeWebhook ==> execution');
+		this.logger.debug(JSON.stringify(execution, null, 2));
 
 		if (!execution) {
 			throw new NotFoundError(`The execution "${executionId}" does not exist.`);
