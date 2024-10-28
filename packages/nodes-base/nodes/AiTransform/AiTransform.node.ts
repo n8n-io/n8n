@@ -5,6 +5,8 @@ import {
 	type INodeExecutionData,
 	type INodeType,
 	type INodeTypeDescription,
+	type ILoadOptionsFunctions,
+	type IDataObject,
 } from 'n8n-workflow';
 
 import set from 'lodash/set';
@@ -12,6 +14,7 @@ import set from 'lodash/set';
 import { JavaScriptSandbox } from '../Code/JavaScriptSandbox';
 import { getSandboxContext } from '../Code/Sandbox';
 import { standardizeOutput } from '../Code/utils';
+import { generateMessage, type RequestPayload } from './test-setup';
 
 const { CODE_ENABLE_STDOUT } = process.env;
 
@@ -31,6 +34,16 @@ export class AiTransform implements INodeType {
 		parameterPane: 'wide',
 		properties: [
 			{
+				displayName: 'OpenAI API Key',
+				name: 'openAiApiKey',
+				type: 'string',
+				typeOptions: {
+					password: true,
+				},
+				default: '',
+				isNodeSetting: true,
+			},
+			{
 				displayName: 'Instructions',
 				name: 'instructions',
 				type: 'button',
@@ -47,6 +60,7 @@ export class AiTransform implements INodeType {
 						action: {
 							type: 'askAiCodeGeneration',
 							target: 'jsCode',
+							handler: 'generateCode',
 						},
 					},
 				},
@@ -77,6 +91,22 @@ export class AiTransform implements INodeType {
 				},
 			},
 		],
+	};
+
+	methods = {
+		actionHandler: {
+			async generateCode(this: ILoadOptionsFunctions, payload: IDataObject | string | undefined) {
+				const apiKey = this.getNodeParameter('openAiApiKey', 0) as string;
+
+				const code = await generateMessage.call(
+					this,
+					[{ role: 'user', content: (payload as unknown as RequestPayload)?.question || '' }],
+					apiKey,
+				);
+
+				return code;
+			},
+		},
 	};
 
 	async execute(this: IExecuteFunctions) {
