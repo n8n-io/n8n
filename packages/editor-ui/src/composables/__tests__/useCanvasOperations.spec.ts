@@ -993,7 +993,7 @@ describe('useCanvasOperations', () => {
 			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeType);
 
 			const { addConnections } = useCanvasOperations({ router });
-			addConnections(connections);
+			await addConnections(connections);
 
 			expect(workflowsStore.addConnection).toHaveBeenCalledWith({
 				connection: [
