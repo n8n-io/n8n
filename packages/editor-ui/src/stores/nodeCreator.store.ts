@@ -34,6 +34,7 @@ import { CanvasConnectionMode } from '@/types';
 import { isVueFlowConnection } from '@/utils/typeGuards';
 import type { PartialBy } from '@/utils/typeHelpers';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { useDebounce } from '@/composables/useDebounce';
 
 export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 	const workflowsStore = useWorkflowsStore();
@@ -42,6 +43,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 	const nodeTypesStore = useNodeTypesStore();
 	const telemetry = useTelemetry();
 	const externalHooks = useExternalHooks();
+	const { callDebounced } = useDebounce();
 
 	const selectedView = ref<NodeFilterType>(TRIGGER_NODE_CREATOR_VIEW);
 	const mergedNodes = ref<SimplifiedNodeType[]>([]);
@@ -274,15 +276,6 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		};
 	}
 
-	function generateNodesPanelEvent() {
-		return {
-			search_string: userNodesPanelSession.value.data.nodeFilter,
-			results_count: userNodesPanelSession.value.data.resultsNodes.length,
-			filter_mode: userNodesPanelSession.value.data.filterMode,
-			nodes_panel_session_id: userNodesPanelSession.value.pushRef,
-		};
-	}
-
 	function trackNodeCreatorEvent(event: string, properties: IDataObject = {}, withPostHog = false) {
 		telemetry.track(
 			event,
@@ -296,15 +289,6 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		);
 	}
 
-	function onCreatorClosed() {
-		if (
-			userNodesPanelSession.value.data.nodeFilter.length > 0 &&
-			userNodesPanelSession.value.data.nodeFilter !== ''
-		) {
-			telemetry.track('User entered nodes panel search term', generateNodesPanelEvent());
-		}
-	}
-
 	function onCreatorOpenedOrClosed(properties: {
 		source?: string;
 		mode: string;
@@ -314,31 +298,36 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		if (properties.createNodeActive) {
 			resetNodesPanelSession();
 			trackNodeCreatorEvent('User opened nodes panel', properties);
-		} else {
-			onCreatorClosed();
-			resetNodesPanelSession();
 		}
 	}
 
-	function onNodeFilterChanged(properties: {
+	function trackUserEnteredSearchEvent(data: IDataObject) {
+		trackNodeCreatorEvent('User entered nodes panel search term', data);
+	}
+
+	function onNodeFilterChanged({
+		newValue,
+		filteredNodes,
+		filterMode,
+		subcategory,
+	}: {
 		newValue: string;
 		filteredNodes: INodeCreateElement[];
+		filterMode: NodeFilterType;
+		subcategory?: string;
 	}) {
-		if (
-			properties.newValue.length === 0 &&
-			userNodesPanelSession.value.data.nodeFilter.length > 0
-		) {
-			telemetry.track('User entered nodes panel search term', generateNodesPanelEvent());
-		}
-		const oldValue = userNodesPanelSession.value.search;
-		if (properties.newValue.length > oldValue.length) {
-			userNodesPanelSession.value.data.nodeFilter = properties.newValue;
-			userNodesPanelSession.value.data.resultsNodes = (properties.filteredNodes || []).map(
-				(node: INodeCreateElement) => node.key,
+		if (newValue.length > 0) {
+			void callDebounced(
+				trackUserEnteredSearchEvent,
+				{ debounceTime: 1000, trailing: true },
+				{
+					search_string: newValue,
+					results_count: filteredNodes.length,
+					filter_mode: filterMode,
+					subcategory,
+				},
 			);
 		}
-
-		userNodesPanelSession.value.search = properties.newValue;
 	}
 
 	function onCategoryExpanded(properties: { category_name: string; workflow_id: string }) {

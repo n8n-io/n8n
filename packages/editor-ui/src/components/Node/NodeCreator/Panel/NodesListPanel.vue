@@ -59,6 +59,8 @@ function onSearch(value: string) {
 		nodeCreatorStore.onNodeFilterChanged({
 			newValue: value,
 			filteredNodes: activeViewStack.value.items ?? [],
+			filterMode: activeViewStack.value.rootView ?? 'Regular',
+			subcategory: activeViewStack.value.subcategory,
 		});
 	}
 }
