@@ -1,3 +1,13 @@
+## [1.65.2](https://github.com/n8n-io/n8n/compare/n8n@1.65.1...n8n@1.65.2) (2024-10-28)
+
+
+### Bug Fixes
+
+* **editor:** Support middle click to scroll when using a mouse on new canvas ([#11384](https://github.com/n8n-io/n8n/issues/11384)) ([436b783](https://github.com/n8n-io/n8n/commit/436b783bd2d6200d318ac70dba95ccda9148b261))
+* **n8n Form Node:** Form Trigger does not wait in multi-form mode ([#11404](https://github.com/n8n-io/n8n/issues/11404)) ([d57da55](https://github.com/n8n-io/n8n/commit/d57da557a03d88ba9ee554b869dcacb47ff0b1be))
+
+
+
 ## [1.65.1](https://github.com/n8n-io/n8n/compare/n8n@1.65.0...n8n@1.65.1) (2024-10-25)
 
 
