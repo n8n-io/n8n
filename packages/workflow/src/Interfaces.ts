@@ -944,7 +944,7 @@ type BaseExecutionFunctions = FunctionsBaseWithRequiredKeys<'getMode'> & {
 	getInputSourceData(inputIndex?: number, inputName?: string): ISourceData;
 	getExecutionCancelSignal(): AbortSignal | undefined;
 	onExecutionCancellation(handler: () => unknown): void;
-	logAiEvent(eventName: AiEvent, msg?: string | undefined): Promise<void>;
+	logAiEvent(eventName: AiEvent, msg?: string | undefined): void;
 };
 
 // TODO: Create later own type only for Config-Nodes
@@ -1041,7 +1041,7 @@ export type ISupplyDataFunctions = ExecuteFunctions.GetNodeParameterFn &
 		getWorkflowDataProxy(itemIndex: number): IWorkflowDataProxyData;
 		getExecutionCancelSignal(): AbortSignal | undefined;
 		onExecutionCancellation(handler: () => unknown): void;
-		logAiEvent(eventName: AiEvent, msg?: string | undefined): Promise<void>;
+		logAiEvent(eventName: AiEvent, msg?: string | undefined): void;
 	};
 
 export interface IExecutePaginationFunctions extends IExecuteSingleFunctions {

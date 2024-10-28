@@ -135,7 +135,7 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 		this.executionFunctions.addOutputData(this.connectionType, runDetails.index, [
 			[{ json: { ...response } }],
 		]);
-		void logAiEvent(this.executionFunctions, 'ai-llm-generated-output', {
+		logAiEvent(this.executionFunctions, 'ai-llm-generated-output', {
 			messages: parsedMessages,
 			options: runDetails.options,
 			response,
@@ -183,7 +183,7 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 			});
 		}
 
-		void logAiEvent(this.executionFunctions, 'ai-llm-errored', {
+		logAiEvent(this.executionFunctions, 'ai-llm-errored', {
 			error: Object.keys(error).length === 0 ? error.toString() : error,
 			runId,
 			parentRunId,

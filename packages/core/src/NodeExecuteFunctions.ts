@@ -3980,7 +3980,7 @@ export function getExecuteFunctions(
 				constructExecutionMetaData,
 			},
 			nodeHelpers: getNodeHelperFunctions(additionalData, workflow.id),
-			logAiEvent: async (eventName: AiEvent, msg: string) => {
+			logAiEvent: (eventName: AiEvent, msg: string) => {
 				return additionalData.logAiEvent(eventName, {
 					executionId: additionalData.executionId ?? 'unsaved-execution',
 					nodeName: node.name,
@@ -4184,7 +4184,7 @@ export function getSupplyDataFunctions(
 				Logger.warn(`There was a problem sending message to UI: ${error.message}`);
 			}
 		},
-		logAiEvent: async (eventName: AiEvent, msg: string) =>
+		logAiEvent: (eventName: AiEvent, msg: string) =>
 			additionalData.logAiEvent(eventName, {
 				executionId: additionalData.executionId ?? 'unsaved-execution',
 				nodeName: node.name,
@@ -4414,7 +4414,7 @@ export function getExecuteSingleFunctions(
 				getBinaryDataBuffer: async (propertyName, inputIndex = 0) =>
 					await getBinaryDataBuffer(inputData, itemIndex, propertyName, inputIndex),
 			},
-			logAiEvent: async (eventName: AiEvent, msg: string) => {
+			logAiEvent: (eventName: AiEvent, msg: string) => {
 				return additionalData.logAiEvent(eventName, {
 					executionId: additionalData.executionId ?? 'unsaved-execution',
 					nodeName: node.name,

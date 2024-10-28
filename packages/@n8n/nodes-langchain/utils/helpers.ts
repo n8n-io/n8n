@@ -139,13 +139,13 @@ export function getSessionId(
 	return sessionId;
 }
 
-export async function logAiEvent(
+export function logAiEvent(
 	executeFunctions: IExecuteFunctions | ISupplyDataFunctions,
 	event: AiEvent,
 	data?: IDataObject,
 ) {
 	try {
-		await executeFunctions.logAiEvent(event, data ? jsonStringify(data) : undefined);
+		executeFunctions.logAiEvent(event, data ? jsonStringify(data) : undefined);
 	} catch (error) {
 		executeFunctions.logger.debug(`Error logging AI event: ${event}`);
 	}
