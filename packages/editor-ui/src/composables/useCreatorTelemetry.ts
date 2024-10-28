@@ -8,6 +8,7 @@ interface State {
 	data: {
 		nodeFilter: string;
 		resultsNodes: string[];
+		filterMode: 'Regular' | 'All';
 	};
 }
 
@@ -17,6 +18,7 @@ export function useCreatorTelemetry() {
 		data: {
 			nodeFilter: '',
 			resultsNodes: [],
+			filterMode: 'Regular',
 		},
 	});
 
@@ -27,6 +29,7 @@ export function useCreatorTelemetry() {
 		userNodesPanelSession.value.data = {
 			nodeFilter: '',
 			resultsNodes: [],
+			filterMode: 'All',
 		};
 	}
 
@@ -34,6 +37,7 @@ export function useCreatorTelemetry() {
 		return {
 			search_string: userNodesPanelSession.value.data.nodeFilter,
 			results_count: userNodesPanelSession.value.data.resultsNodes.length,
+			filter_mode: userNodesPanelSession.value.data.filterMode,
 			nodes_panel_session_id: userNodesPanelSession.value.pushRef,
 		};
 	}
@@ -51,6 +55,7 @@ export function useCreatorTelemetry() {
 		);
 	}
 
+	// 			case 'nodeView.createNodeActiveChanged':
 	function onNodeActiveChanged(properties: {
 		source?: string;
 		mode?: string;
@@ -95,10 +100,12 @@ export function useCreatorTelemetry() {
 		}
 	}
 
+	// 			case 'nodeCreateList.onCategoryExpanded':
 	function onCategoryExpanded(properties: { category_name: string; workflow_id: string }) {
 		trackNodeCreatorEvent('User viewed node category', { ...properties, is_subcategory: false });
 	}
 
+	// 			case 'nodeCreateList.onViewActions':
 	function onViewActions(properties: {
 		app_identifier: string;
 		actions: string[];
@@ -108,10 +115,12 @@ export function useCreatorTelemetry() {
 		trackNodeCreatorEvent('User viewed node actions', properties);
 	}
 
+	// 			case 'nodeCreateList.onActionsCustmAPIClicked':
 	function onActionsCustomAPIClicked(properties: { app_identifier: string }) {
 		trackNodeCreatorEvent('User clicked custom API from node actions', properties);
 	}
 
+	// 			case 'nodeCreateList.addAction':
 	function onAddActions(properties: {
 		node_type?: string;
 		action: string;
@@ -121,6 +130,7 @@ export function useCreatorTelemetry() {
 		trackNodeCreatorEvent('User added action', properties);
 	}
 
+	// 			case 'nodeCreateList.onSubcategorySelected':
 	function onSubcategorySelected(properties: { subcategory: string }) {
 		trackNodeCreatorEvent('User viewed node category', {
 			category_name: properties.subcategory,
@@ -128,6 +138,7 @@ export function useCreatorTelemetry() {
 		});
 	}
 
+	// 			case 'nodeView.addNodeButton':
 	function onNodeAddedToCanvas(properties: {
 		node_type: string;
 		node_version: number;
