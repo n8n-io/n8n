@@ -21,7 +21,7 @@ describe('Usage and plan store', () => {
 			const store = useUsageStore();
 			store.setData({
 				usage: {
-					executions: {
+					activeWorkflowTriggers: {
 						limit,
 						value,
 						warningThreshold,
