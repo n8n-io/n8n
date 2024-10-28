@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from '@/composables/useI18n';
+import { useStyles } from '@/composables/useStyles';
 import { useAssistantStore } from '@/stores/assistant.store';
 import AssistantAvatar from 'n8n-design-system/components/AskAssistantAvatar/AssistantAvatar.vue';
 import AskAssistantButton from 'n8n-design-system/components/AskAssistantButton/AskAssistantButton.vue';
@@ -7,6 +8,7 @@ import { computed } from 'vue';
 
 const assistantStore = useAssistantStore();
 const i18n = useI18n();
+const { APP_Z_INDEXES } = useStyles();
 
 const lastUnread = computed(() => {
 	const msg = assistantStore.lastUnread;
@@ -39,7 +41,7 @@ const onClick = () => {
 		data-test-id="ask-assistant-floating-button"
 	>
 		<n8n-tooltip
-			:z-index="4000"
+			:z-index="APP_Z_INDEXES.ASK_ASSISTANT_FLOATING_BUTTON_TOOLTIP"
 			placement="top"
 			:visible="!!lastUnread"
 			:popper-class="$style.tooltip"
@@ -61,7 +63,7 @@ const onClick = () => {
 	position: absolute;
 	bottom: var(--spacing-s);
 	right: var(--spacing-s);
-	z-index: 3000;
+	z-index: var(--z-index-ask-assistant-floating-button);
 }
 
 .tooltip {
