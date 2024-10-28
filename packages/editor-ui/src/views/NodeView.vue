@@ -559,9 +559,8 @@ export default defineComponent({
 			}
 		},
 		activeNode() {
-			this.onToggleNodeCreator({
-				createNodeActive: true,
-			});
+			// When a node gets set as active deactivate the create-menu
+			this.createNodeActive = false;
 		},
 		containsTrigger(containsTrigger) {
 			// Re-center CanvasAddButton if there's no triggers
@@ -1216,9 +1215,8 @@ export default defineComponent({
 			this.mouseDownMouseSelect(e as MouseEvent, this.moveCanvasKeyPressed);
 			this.canvasPanning.onMouseDown(e as MouseEvent, this.moveCanvasKeyPressed);
 
-			this.onToggleNodeCreator({
-				createNodeActive: false,
-			});
+			// Hide the node-creator
+			this.createNodeActive = false;
 		},
 		mouseUp(e: MouseEvent | TouchEvent) {
 			if (e instanceof MouseEvent && e.button === 1) {
@@ -1282,9 +1280,7 @@ export default defineComponent({
 			}
 
 			if (e.key === 'Escape' && noModifierKeys) {
-				this.onToggleNodeCreator({
-					createNodeActive: false,
-				});
+				this.createNodeActive = false;
 				if (this.activeNode) {
 					void this.externalHooks.run('dataDisplay.nodeEditingFinished');
 					this.ndvStore.activeNodeName = null;
@@ -2078,9 +2074,10 @@ export default defineComponent({
 				] as XYPosition;
 
 				await this.onAddNodes(dropData, true, insertNodePosition);
-				this.onToggleNodeCreator({ createNodeActive: false });
+				this.createNodeActive = false;
 			}
 		},
+
 		nodeDeselectedByName(nodeName: string) {
 			const node = this.workflowsStore.getNodeByName(nodeName);
 			if (node) {
