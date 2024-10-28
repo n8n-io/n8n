@@ -7,6 +7,7 @@ export const nodesPanelSession = {
 	},
 };
 
+// todo
 export const hooksGenerateNodesPanelEvent = () => {
 	return {
 		eventName: 'User entered nodes panel search term',
@@ -20,6 +21,7 @@ export const hooksGenerateNodesPanelEvent = () => {
 	};
 };
 
+// todo
 export const hooksResetNodesPanelSession = () => {
 	nodesPanelSession.pushRef = `nodes_panel_session_${new Date().valueOf()}`;
 	nodesPanelSession.data = {
