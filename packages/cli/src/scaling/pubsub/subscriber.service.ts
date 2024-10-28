@@ -7,6 +7,7 @@ import { Service } from 'typedi';
 import config from '@/config';
 import { EventService } from '@/events/event.service';
 import { Logger } from '@/logging/logger.service';
+import type { LogMetadata } from '@/logging/types';
 import { RedisClientService } from '@/services/redis-client.service';
 
 import type { PubSub } from './pubsub.types';
@@ -91,10 +92,13 @@ export class Subscriber {
 
 		const msgName = 'command' in msg ? msg.command : msg.response;
 
-		this.logger.debug(`Received message ${msgName} via channel ${channel}`, {
-			msg,
-			channel,
-		});
+		const logMetadata: LogMetadata = { msg: msgName, channel };
+
+		if ('command' in msg && msg.command === 'relay-execution-lifecycle-event') {
+			logMetadata.type = msg.payload.type;
+		}
+
+		this.logger.debug(`Received message ${msgName} via channel ${channel}`, logMetadata);
 
 		return msg;
 	}
