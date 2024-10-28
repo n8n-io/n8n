@@ -411,45 +411,6 @@ export const schema = {
 		env: 'N8N_DEFAULT_LOCALE',
 	},
 
-	license: {
-		serverUrl: {
-			format: String,
-			default: 'https://license.n8n.io/v1',
-			env: 'N8N_LICENSE_SERVER_URL',
-			doc: 'License server url to retrieve license.',
-		},
-		autoRenewEnabled: {
-			format: Boolean,
-			default: true,
-			env: 'N8N_LICENSE_AUTO_RENEW_ENABLED',
-			doc: 'Whether auto renewal for licenses is enabled.',
-		},
-		autoRenewOffset: {
-			format: Number,
-			default: 60 * 60 * 72, // 72 hours
-			env: 'N8N_LICENSE_AUTO_RENEW_OFFSET',
-			doc: 'How many seconds before expiry a license should get automatically renewed. ',
-		},
-		activationKey: {
-			format: String,
-			default: '',
-			env: 'N8N_LICENSE_ACTIVATION_KEY',
-			doc: 'Activation key to initialize license',
-		},
-		tenantId: {
-			format: Number,
-			default: 1,
-			env: 'N8N_LICENSE_TENANT_ID',
-			doc: 'Tenant id used by the license manager',
-		},
-		cert: {
-			format: String,
-			default: '',
-			env: 'N8N_LICENSE_CERT',
-			doc: 'Ephemeral license certificate',
-		},
-	},
-
 	hideUsagePage: {
 		format: Boolean,
 		default: false,
