@@ -231,6 +231,7 @@ describe('GlobalConfig', () => {
 			port: 5679,
 			launcherPath: '',
 			launcherRunner: 'javascript',
+			maxOldSpaceSize: '',
 		},
 		sentry: {
 			backendDsn: '',
