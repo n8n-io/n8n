@@ -38,6 +38,7 @@ export class VariablesController {
 		try {
 			return await this.variablesService.create(variable, req.user);
 		} catch (error) {
+			console.error(error);
 			if (error instanceof VariableCountLimitReachedError) {
 				throw new BadRequestError(error.message);
 			} else if (error instanceof VariableValidationError) {
@@ -47,8 +48,7 @@ export class VariablesController {
 		}
 	}
 
-	@Get('/:id')
-	@GlobalScope('variable:read')
+	@Get('/:variableId')
 	async getVariable(
 		req: AuthenticatedRequest,
 		_res: Response,
@@ -82,7 +82,6 @@ export class VariablesController {
 	}
 
 	@Delete('/:id')
-	@GlobalScope('variable:delete')
 	async deleteVariable(req: VariablesRequest.Delete) {
 		const id = req.params.id;
 		await this.variablesService.delete(id, req.user);

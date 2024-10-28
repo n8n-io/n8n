@@ -146,6 +146,7 @@ export class VariablesService {
 
 		// Creating a global variable
 		if (!variable.projectId && !user.hasGlobalScope('globalVariable:create')) {
+			console.log(1, variable);
 			throw new MissingScopeError();
 		}
 
@@ -156,6 +157,7 @@ export class VariablesService {
 				'variable:create',
 			]))
 		) {
+			console.log(2, variable);
 			throw new MissingScopeError();
 		}
 
@@ -179,7 +181,7 @@ export class VariablesService {
 		});
 
 		// Updating a global variable
-		if (!originalVariable.projectId && !user.hasGlobalScope('globalVariable:create')) {
+		if (!originalVariable.projectId && !user.hasGlobalScope('globalVariable:update')) {
 			throw new MissingScopeError();
 		}
 
@@ -187,7 +189,7 @@ export class VariablesService {
 		if (
 			originalVariable.projectId &&
 			!(await this.projectService.getProjectWithScope(user, originalVariable.projectId, [
-				'variable:create',
+				'variable:update',
 			]))
 		) {
 			throw new MissingScopeError();

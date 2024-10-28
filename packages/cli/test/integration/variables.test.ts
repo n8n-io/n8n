@@ -9,6 +9,7 @@ import { createOwner, createUser } from './shared/db/users';
 import * as testDb from './shared/test-db';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
+import { createTeamProject, linkUserToProject } from '@test-integration/db/projects';
 
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
@@ -118,9 +119,10 @@ describe('GET /variables/:id', () => {
 // POST /variables - create a new variable
 // ----------------------------------------
 describe('POST /variables', () => {
-	const generatePayload = (i = 1) => ({
+	const generatePayload = (i = 1, projectId?: string) => ({
 		key: `create${i}`,
 		value: `createvalue${i}`,
+		...(projectId ? { projectId } : {}),
 	});
 	const toCreate = generatePayload();
 
@@ -129,6 +131,7 @@ describe('POST /variables', () => {
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data.key).toBe(toCreate.key);
 		expect(response.body.data.value).toBe(toCreate.value);
+		expect(response.body.data.projectId).toBe(null);
 
 		const [byId, byKey] = await Promise.all([
 			getVariableById(response.body.data.id),
@@ -144,6 +147,57 @@ describe('POST /variables', () => {
 		expect(byKey!.value).toBe(toCreate.value);
 	});
 
+	test('should create a new project variable and return it for an owner', async () => {
+		const project = await createTeamProject();
+		const projectPayload = generatePayload(undefined, project.id);
+		const response = await authOwnerAgent.post('/variables').send(projectPayload);
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.key).toBe(projectPayload.key);
+		expect(response.body.data.value).toBe(projectPayload.value);
+		expect(response.body.data.projectId).toBe(projectPayload.projectId);
+
+		const [byId, byKey] = await Promise.all([
+			getVariableById(response.body.data.id),
+			getVariableByKey(projectPayload.key),
+		]);
+
+		expect(byId).not.toBeNull();
+		expect(byId!.key).toBe(projectPayload.key);
+		expect(byId!.value).toBe(projectPayload.value);
+
+		expect(byKey).not.toBeNull();
+		expect(byKey!.id).toBe(response.body.data.id);
+		expect(byKey!.value).toBe(projectPayload.value);
+	});
+
+	test('should create a new project variable and return it for a project admin', async () => {
+		const adminUser = await createUser();
+		const project = await createTeamProject(undefined, adminUser);
+		console.log(project);
+		const projectPayload = generatePayload(10, project.id);
+		const response = await testServer
+			.authAgentFor(adminUser)
+			.post('/variables')
+			.send(projectPayload);
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.key).toBe(projectPayload.key);
+		expect(response.body.data.value).toBe(projectPayload.value);
+		expect(response.body.data.projectId).toBe(projectPayload.projectId);
+
+		const [byId, byKey] = await Promise.all([
+			getVariableById(response.body.data.id),
+			getVariableByKey(projectPayload.key),
+		]);
+
+		expect(byId).not.toBeNull();
+		expect(byId!.key).toBe(projectPayload.key);
+		expect(byId!.value).toBe(projectPayload.value);
+
+		expect(byKey).not.toBeNull();
+		expect(byKey!.id).toBe(response.body.data.id);
+		expect(byKey!.value).toBe(projectPayload.value);
+	});
+
 	test('should not create a new variable and return it for a member', async () => {
 		const response = await authMemberAgent.post('/variables').send(toCreate);
 		expect(response.statusCode).toBe(403);
@@ -151,6 +205,20 @@ describe('POST /variables', () => {
 		expect(response.body.data?.value).not.toBe(toCreate.value);
 
 		const byKey = await getVariableByKey(toCreate.key);
+		expect(byKey).toBeNull();
+	});
+
+	test('should not create a new project variable and return it for a project editor', async () => {
+		const member = await createUser();
+		const project = await createTeamProject();
+		await linkUserToProject(member, project, 'project:editor');
+		const projectPayload = generatePayload(10, project.id);
+		const response = await authMemberAgent.post('/variables').send(projectPayload);
+		expect(response.statusCode).toBe(403);
+		expect(response.body.data?.key).not.toBe(projectPayload.key);
+		expect(response.body.data?.value).not.toBe(projectPayload.value);
+
+		const byKey = await getVariableByKey(projectPayload.key);
 		expect(byKey).toBeNull();
 	});
 
