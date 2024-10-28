@@ -251,13 +251,14 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		streaming.value = false;
 	}
 
-	function addAssistantError(content: string, id: string) {
+	function addAssistantError(content: string, id: string, retry?: () => Promise<void>) {
 		chatMessages.value.push({
 			id,
 			role: 'assistant',
 			type: 'error',
 			content,
 			read: true,
+			retry,
 		});
 	}
 
@@ -275,11 +276,15 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		});
 	}
 
-	function handleServiceError(e: unknown, id: string) {
+	function handleServiceError(e: unknown, id: string, retry?: () => Promise<void>) {
 		assert(e instanceof Error);
 		stopStreaming();
 		assistantThinkingMessage.value = undefined;
-		addAssistantError(`${locale.baseText('aiAssistant.serviceError.message')}: (${e.message})`, id);
+		addAssistantError(
+			`${locale.baseText('aiAssistant.serviceError.message')}: (${e.message})`,
+			id,
+			retry,
+		);
 	}
 
 	function onEachStreamingMessage(response: ChatRequest.ResponsePayload, id: string) {
@@ -447,7 +452,8 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			},
 			(msg) => onEachStreamingMessage(msg, id),
 			() => onDoneStreaming(id),
-			(e) => handleServiceError(e, id),
+			(e) =>
+				handleServiceError(e, id, async () => await initSupportChat(userMessage, credentialType)),
 		);
 	}
 
@@ -498,7 +504,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			},
 			(msg) => onEachStreamingMessage(msg, id),
 			() => onDoneStreaming(id),
-			(e) => handleServiceError(e, id),
+			(e) => handleServiceError(e, id, async () => await initErrorHelper(context)),
 		);
 	}
 
@@ -527,7 +533,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			},
 			(msg) => onEachStreamingMessage(msg, id),
 			() => onDoneStreaming(id),
-			(e) => handleServiceError(e, id),
+			(e) => handleServiceError(e, id, async () => await sendEvent(eventName, error)),
 		);
 	}
 	async function onNodeExecution(pushEvent: PushPayload<'nodeExecuteAfter'>) {
@@ -564,6 +570,12 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		}
 
 		const id = getRandomId();
+
+		const retry = async () => {
+			chatMessages.value = chatMessages.value.filter((msg) => msg.id !== id);
+			await sendMessage(chatMessage);
+		};
+
 		try {
 			addUserMessage(chatMessage.text, id);
 			addLoadingAssistantMessage(locale.baseText('aiAssistant.thinkingSteps.thinking'));
@@ -594,12 +606,12 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				},
 				(msg) => onEachStreamingMessage(msg, id),
 				() => onDoneStreaming(id),
-				(e) => handleServiceError(e, id),
+				(e) => handleServiceError(e, id, retry),
 			);
 			trackUserMessage(chatMessage.text, !!chatMessage.quickReplyType);
 		} catch (e: unknown) {
 			// in case of assert
-			handleServiceError(e, id);
+			handleServiceError(e, id, retry);
 		}
 	}
 
@@ -824,5 +836,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		chatSessionTask,
 		initCredHelp,
 		isCredTypeActive,
+		handleServiceError,
 	};
 });
