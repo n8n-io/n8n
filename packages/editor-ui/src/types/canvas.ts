@@ -124,7 +124,9 @@ export type CanvasConnection = DefaultEdge<CanvasConnectionData>;
 
 export type CanvasConnectionCreateData = {
 	source: string;
+	sourceHandle: string;
 	target: string;
+	targetHandle: string;
 	data: {
 		source: PartialBy<IConnection, 'node'>;
 		target: PartialBy<IConnection, 'node'>;
