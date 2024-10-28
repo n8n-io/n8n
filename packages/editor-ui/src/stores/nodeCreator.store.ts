@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import {
 	AI_NODE_CREATOR_VIEW,
+	AI_OTHERS_NODE_CREATOR_VIEW,
 	NODE_CREATOR_OPEN_SOURCES,
 	REGULAR_NODE_CREATOR_VIEW,
 	STORES,
@@ -54,23 +55,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 
 	const isCreateNodeActive = ref<boolean>(false);
 
-	const userNodesPanelSession = ref<{
-		pushRef: string;
-		search: string;
-		data: {
-			nodeFilter: string;
-			resultsNodes: string[];
-			filterMode: string;
-		};
-	}>({
-		pushRef: '',
-		search: '',
-		data: {
-			nodeFilter: '',
-			resultsNodes: [],
-			filterMode: 'regular',
-		},
-	});
+	const nodePanelSessionId = ref<string>('');
 
 	const allNodeCreatorNodes = computed(() =>
 		Object.values(mergedNodes.value).map((i) => transformNodeType(i)),
@@ -150,18 +135,6 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		// Default to the trigger tab in node creator if there's no trigger node yet
 		setSelectedView(nodeCreatorView);
 
-		let mode;
-		switch (selectedView.value) {
-			case AI_NODE_CREATOR_VIEW:
-				mode = 'ai';
-				break;
-			case REGULAR_NODE_CREATOR_VIEW:
-				mode = 'regular';
-				break;
-			default:
-				mode = 'regular';
-		}
-
 		isCreateNodeActive.value = createNodeActive;
 		if (createNodeActive && source) {
 			setOpenSource(source);
@@ -169,13 +142,13 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 
 		void externalHooks.run('nodeView.createNodeActiveChanged', {
 			source,
-			mode,
+			mode: getMode(nodeCreatorView),
 			createNodeActive,
 		});
 
 		onCreatorOpenedOrClosed({
 			source,
-			mode,
+			mode: getMode(nodeCreatorView),
 			createNodeActive,
 			workflow_id: workflowsStore.workflowId,
 		});
@@ -268,12 +241,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 	}
 
 	function resetNodesPanelSession() {
-		userNodesPanelSession.value.pushRef = `nodes_panel_session_${new Date().valueOf()}`;
-		userNodesPanelSession.value.data = {
-			nodeFilter: '',
-			resultsNodes: [],
-			filterMode: 'regular',
-		};
+		nodePanelSessionId.value = `nodes_panel_session_${new Date().valueOf()}`;
 	}
 
 	function trackNodeCreatorEvent(event: string, properties: IDataObject = {}, withPostHog = false) {
@@ -281,7 +249,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 			event,
 			{
 				...properties,
-				nodes_panel_session_id: userNodesPanelSession.value.pushRef,
+				nodes_panel_session_id: nodePanelSessionId.value,
 			},
 			{
 				withPostHog,
@@ -289,20 +257,25 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		);
 	}
 
-	function onCreatorOpenedOrClosed(properties: {
+	function onCreatorOpenedOrClosed({
+		source,
+		mode,
+		workflow_id,
+		createNodeActive,
+	}: {
 		source?: string;
 		mode: string;
 		workflow_id?: string;
 		createNodeActive: boolean;
 	}) {
-		if (properties.createNodeActive) {
+		if (createNodeActive) {
 			resetNodesPanelSession();
-			trackNodeCreatorEvent('User opened nodes panel', properties);
+			trackNodeCreatorEvent('User opened nodes panel', {
+				source,
+				mode,
+				workflow_id,
+			});
 		}
-	}
-
-	function trackUserEnteredSearchEvent(data: IDataObject) {
-		trackNodeCreatorEvent('User entered nodes panel search term', data);
 	}
 
 	function onNodeFilterChanged({
@@ -318,13 +291,14 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 	}) {
 		if (newValue.length > 0) {
 			void callDebounced(
-				trackUserEnteredSearchEvent,
-				{ debounceTime: 1000, trailing: true },
+				trackNodeCreatorEvent,
+				{ debounceTime: 2000, trailing: true },
+				'User entered nodes panel search term',
 				{
 					search_string: newValue,
 					results_count: filteredNodes.length,
-					filter_mode: filterMode,
-					subcategory,
+					filter_mode: getMode(filterMode),
+					category_name: subcategory,
 				},
 			);
 		}
@@ -372,6 +346,18 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		input_node_type?: string;
 	}) {
 		trackNodeCreatorEvent('User added node to workflow canvas', properties, true);
+	}
+
+	function getMode(mode: NodeFilterType): string {
+		if (mode === AI_NODE_CREATOR_VIEW || mode === AI_OTHERS_NODE_CREATOR_VIEW) {
+			return 'ai';
+		}
+
+		if (mode === TRIGGER_NODE_CREATOR_VIEW) {
+			return 'trigger';
+		}
+
+		return 'regular';
 	}
 
 	return {
