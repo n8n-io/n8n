@@ -41,13 +41,13 @@ export class ExecuteSingleContext extends BaseContext implements IExecuteSingleF
 		workflow: Workflow,
 		node: INode,
 		additionalData: IWorkflowExecuteAdditionalData,
+		private readonly mode: WorkflowExecuteMode,
 		private readonly runExecutionData: IRunExecutionData,
 		private readonly runIndex: number,
 		private readonly connectionInputData: INodeExecutionData[],
 		private readonly inputData: ITaskDataConnections,
 		private readonly itemIndex: number,
 		private readonly executeData: IExecuteData,
-		private readonly mode: WorkflowExecuteMode,
 		private readonly abortSignal?: AbortSignal,
 	) {
 		super(workflow, node, additionalData);
@@ -84,10 +84,12 @@ export class ExecuteSingleContext extends BaseContext implements IExecuteSingleF
 		};
 	}
 
+	// TODO: extract out in a BaseExecutionContext
 	getExecutionCancelSignal() {
 		return this.abortSignal;
 	}
 
+	// TODO: extract out in a BaseExecutionContext
 	onExecutionCancellation(handler: () => unknown) {
 		const fn = () => {
 			this.abortSignal?.removeEventListener('abort', fn);
@@ -96,6 +98,7 @@ export class ExecuteSingleContext extends BaseContext implements IExecuteSingleF
 		this.abortSignal?.addEventListener('abort', fn);
 	}
 
+	// TODO: extract out in a BaseExecutionContext
 	continueOnFail() {
 		return continueOnFail(this.node);
 	}
@@ -171,6 +174,7 @@ export class ExecuteSingleContext extends BaseContext implements IExecuteSingleF
 		);
 	}
 
+	// TODO: extract out in a BaseExecutionContext
 	async getCredentials<T extends object = ICredentialDataDecryptedObject>(type: string) {
 		return await getCredentials<T>(
 			this.workflow,

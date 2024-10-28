@@ -92,14 +92,14 @@ export class RoutingNode {
 		const closeFunctions: CloseFunction[] = [];
 		const executeFunctions = nodeExecuteFunctions.getExecuteFunctions(
 			this.workflow,
+			this.node,
+			this.additionalData,
+			this.mode,
 			this.runExecutionData,
 			runIndex,
 			this.connectionInputData,
 			inputData,
-			this.node,
-			this.additionalData,
 			executeData,
-			this.mode,
 			closeFunctions,
 			abortSignal,
 		);
@@ -172,13 +172,13 @@ export class RoutingNode {
 					this.workflow,
 					this.node,
 					this.additionalData,
+					this.mode,
 					this.runExecutionData,
 					runIndex,
 					this.connectionInputData,
 					inputData,
 					itemIndex,
 					executeData,
-					this.mode,
 					abortSignal,
 				),
 				requestData: {

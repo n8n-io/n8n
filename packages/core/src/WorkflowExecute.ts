@@ -58,6 +58,7 @@ import {
 	recreateNodeExecutionStack,
 	handleCycles,
 } from './PartialExecutionUtils';
+import { ExecutionContext } from './node-execution-context/execute-context';
 
 export class WorkflowExecute {
 	private status: ExecutionStatus = 'new';
@@ -1219,16 +1220,16 @@ export class WorkflowExecute {
 									const closeFunctions: CloseFunction[] = [];
 									// Create a WorkflowDataProxy instance that we can get the data of the
 									// item which did error
-									const executeFunctions = NodeExecuteFunctions.getExecuteFunctions(
+									const executeFunctions = new ExecutionContext(
 										workflow,
+										executionData.node,
+										this.additionalData,
+										this.mode,
 										this.runExecutionData,
 										runIndex,
 										[],
 										executionData.data,
-										executionData.node,
-										this.additionalData,
 										executionData,
-										this.mode,
 										closeFunctions,
 										this.abortController.signal,
 									);

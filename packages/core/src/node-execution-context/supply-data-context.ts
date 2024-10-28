@@ -3,7 +3,7 @@ import type {
 	IGetNodeParameterOptions,
 	INode,
 	INodeExecutionData,
-	IExecuteFunctions,
+	ISupplyDataFunctions,
 	IRunExecutionData,
 	IWorkflowExecuteAdditionalData,
 	Workflow,
@@ -11,16 +11,9 @@ import type {
 	CloseFunction,
 	IExecuteData,
 	ITaskDataConnections,
-	CallbackManager,
 	IExecuteWorkflowInfo,
-	ContextType,
-	IContextObject,
+	CallbackManager,
 	NodeConnectionType,
-	INodeInputConfiguration,
-	INodeOutputConfiguration,
-	IWorkflowDataProxyData,
-	IExecuteResponsePromiseData,
-	ExecutionBaseError,
 	AiEvent,
 	DeduplicationHelperFunctions,
 	FileSystemHelperFunctions,
@@ -34,33 +27,29 @@ import {
 
 import {
 	addExecutionDataFunctions,
-	assertBinaryData,
-	constructExecutionMetaData,
 	continueOnFail,
-	copyBinaryFile,
-	copyInputItems,
 	getAdditionalKeys,
-	getBinaryDataBuffer,
 	getCredentials,
 	getInputConnectionData,
 	getNodeParameter,
+	constructExecutionMetaData,
 	normalizeItems,
 	returnJsonArray,
+	assertBinaryData,
+	getBinaryDataBuffer,
+	copyInputItems,
 } from '@/NodeExecuteFunctions';
 import { BaseContext } from './base-contexts';
-import { RequestHelpers } from './helpers/request-helpers';
-import { BinaryDataService } from '@/BinaryData/BinaryData.service';
-import Container from 'typedi';
 import { BinaryHelpers } from './helpers/binary-helpers';
-import { createAgentStartJob } from '@/Agent';
+import { RequestHelpers } from './helpers/request-helpers';
+import Container from 'typedi';
+import { BinaryDataService } from '@/BinaryData/BinaryData.service';
 import { SSHTunnelHelpers } from './helpers/ssh-tunnel-helpers';
 import { DeduplicationHelpers } from './helpers/deduplication-helpers';
 import { FileSystemHelpers } from './helpers/file-system-helpers';
 
-export class ExecutionContext extends BaseContext implements IExecuteFunctions {
-	readonly helpers: IExecuteFunctions['helpers'];
-	readonly nodeHelpers: IExecuteFunctions['nodeHelpers'];
-	readonly startJob: IExecuteFunctions['startJob'];
+export class SupplyDataContext extends BaseContext implements ISupplyDataFunctions {
+	readonly helpers: ISupplyDataFunctions['helpers'];
 
 	private readonly binaryDataService = Container.get(BinaryDataService);
 
@@ -83,7 +72,7 @@ export class ExecutionContext extends BaseContext implements IExecuteFunctions {
 		const deduplicationHelpers = new DeduplicationHelpers(workflow, node);
 		const fileSystemHelpers = new FileSystemHelpers(node);
 		const requestHelpers = new RequestHelpers(
-			this as IExecuteFunctions,
+			this as ISupplyDataFunctions,
 			workflow,
 			node,
 			additionalData,
@@ -137,33 +126,9 @@ export class ExecutionContext extends BaseContext implements IExecuteFunctions {
 			getStoragePath: fileSystemHelpers.getStoragePath.bind(fileSystemHelpers),
 			writeContentToFile: fileSystemHelpers.writeContentToFile.bind(fileSystemHelpers),
 		};
-
-		this.nodeHelpers = {
-			copyBinaryFile: async (filePath, fileName, mimeType) =>
-				await copyBinaryFile(
-					this.workflow.id,
-					this.additionalData.executionId!,
-					filePath,
-					fileName,
-					mimeType,
-				),
-		};
-
-		this.startJob = createAgentStartJob(
-			additionalData,
-			inputData,
-			node,
-			workflow,
-			runExecutionData,
-			runIndex,
-			node.name,
-			connectionInputData,
-			{},
-			mode,
-			executeData,
-		);
 	}
 
+	// TODO: extract out in a BaseExecutionContext
 	getMode() {
 		return this.mode;
 	}
@@ -182,10 +147,15 @@ export class ExecutionContext extends BaseContext implements IExecuteFunctions {
 		this.abortSignal?.addEventListener('abort', fn);
 	}
 
-	// TODO: This is identical to PollContext
+	// TODO: extract out in a BaseExecutionContext
+	continueOnFail() {
+		return continueOnFail(this.node);
+	}
+
+	// TODO: extract out in a BaseExecutionContext
 	async getCredentials<T extends object = ICredentialDataDecryptedObject>(
 		type: string,
-		itemIndex?: number,
+		itemIndex: number,
 	) {
 		return await getCredentials<T>(
 			this.workflow,
@@ -201,15 +171,7 @@ export class ExecutionContext extends BaseContext implements IExecuteFunctions {
 		);
 	}
 
-	getExecuteData() {
-		return this.executeData;
-	}
-
-	continueOnFail() {
-		return continueOnFail(this.node);
-	}
-
-	// TODO: Move to BaseContext
+	// TODO: extract out in a BaseExecutionContext
 	evaluateExpression(expression: string, itemIndex: number) {
 		return this.workflow.expression.resolveSimpleParameterValue(
 			`=${expression}`,
@@ -217,8 +179,6 @@ export class ExecutionContext extends BaseContext implements IExecuteFunctions {
 			this.runExecutionData,
 			this.runIndex,
 			itemIndex,
-			// TODO: revert this back to `node.name` when we stop using `IExecuteFunctions` as the context object in AI nodes.
-			// https://linear.app/n8n/issue/CAT-269
 			this.node.name,
 			this.connectionInputData,
 			this.mode,
@@ -231,8 +191,8 @@ export class ExecutionContext extends BaseContext implements IExecuteFunctions {
 		workflowInfo: IExecuteWorkflowInfo,
 		inputData?: INodeExecutionData[],
 		parentCallbackManager?: CallbackManager,
-	): Promise<any> {
-		return await this.additionalData
+	) {
+		await this.additionalData
 			.executeWorkflow(workflowInfo, this.additionalData, {
 				parentWorkflowId: this.workflow.id?.toString(),
 				inputData,
@@ -250,48 +210,7 @@ export class ExecutionContext extends BaseContext implements IExecuteFunctions {
 			);
 	}
 
-	// TODO: Move to BaseExecutionContext
-	getContext(type: ContextType): IContextObject {
-		return NodeHelpers.getContext(this.runExecutionData, type, this.node);
-	}
-
-	async getInputConnectionData(inputName: NodeConnectionType, itemIndex: number): Promise<unknown> {
-		// TODO: trim down the function signature
-		return await getInputConnectionData(
-			this as IExecuteFunctions,
-			this.workflow,
-			this.runExecutionData,
-			this.runIndex,
-			this.connectionInputData,
-			this.inputData,
-			this.additionalData,
-			this.executeData,
-			this.mode,
-			this.closeFunctions,
-			inputName,
-			itemIndex,
-		);
-	}
-
-	getNodeInputs(): INodeInputConfiguration[] {
-		const nodeType = this.workflow.nodeTypes.getByNameAndVersion(
-			this.node.type,
-			this.node.typeVersion,
-		);
-		// TODO: move NodeHelpers.getNodeInputs here (if possible)
-		return NodeHelpers.getNodeInputs(this.workflow, this.node, nodeType.description).map(
-			(output) => {
-				if (typeof output === 'string') {
-					return {
-						type: output,
-					};
-				}
-				return output;
-			},
-		);
-	}
-
-	getNodeOutputs(): INodeOutputConfiguration[] {
+	getNodeOutputs() {
 		const nodeType = this.workflow.nodeTypes.getByNameAndVersion(
 			this.node.type,
 			this.node.typeVersion,
@@ -305,6 +224,24 @@ export class ExecutionContext extends BaseContext implements IExecuteFunctions {
 				}
 				return output;
 			},
+		);
+	}
+
+	async getInputConnectionData(inputName: NodeConnectionType, itemIndex: number): Promise<unknown> {
+		return await getInputConnectionData(
+			this as ISupplyDataFunctions,
+			this.workflow,
+			this.runExecutionData,
+			this.runIndex,
+			this.connectionInputData,
+			this.inputData,
+			this.additionalData,
+			this.executeData,
+			this.mode,
+			this.closeFunctions,
+			inputName,
+			itemIndex,
+			this.abortSignal,
 		);
 	}
 
@@ -330,15 +267,6 @@ export class ExecutionContext extends BaseContext implements IExecuteFunctions {
 		return this.inputData[inputName][inputIndex];
 	}
 
-	getInputSourceData(inputIndex = 0, inputName = 'main') {
-		if (this.executeData?.source === null) {
-			// Should never happen as n8n sets it automatically
-			throw new ApplicationError('Source data is missing');
-		}
-		return this.executeData.source[inputName][inputIndex]!;
-	}
-
-	// TODO: Move to BaseContext
 	// @ts-expect-error Not sure how to fix this typing
 	getNodeParameter(
 		parameterName: string,
@@ -359,12 +287,11 @@ export class ExecutionContext extends BaseContext implements IExecuteFunctions {
 			this.executeData,
 			fallbackValue,
 			options,
-		);
+		) as ISupplyDataFunctions['getNodeParameter'];
 	}
 
-	// TODO: Move to BaseExecutionContext
-	getWorkflowDataProxy(itemIndex: number): IWorkflowDataProxyData {
-		const dataProxy = new WorkflowDataProxy(
+	getWorkflowDataProxy(itemIndex: number) {
+		return new WorkflowDataProxy(
 			this.workflow,
 			this.runExecutionData,
 			this.runIndex,
@@ -375,33 +302,13 @@ export class ExecutionContext extends BaseContext implements IExecuteFunctions {
 			this.mode,
 			getAdditionalKeys(this.additionalData, this.mode, this.runExecutionData),
 			this.executeData,
-		);
-		return dataProxy.getDataProxy();
-	}
-
-	async putExecutionToWait(waitTill: Date): Promise<void> {
-		this.runExecutionData.waitTill = waitTill;
-		if (this.additionalData.setExecutionStatus) {
-			this.additionalData.setExecutionStatus('waiting');
-		}
-	}
-
-	logNodeOutput(...args: unknown[]): void {
-		if (this.mode === 'manual') {
-			this.sendMessageToUI(...args);
-			return;
-		}
-
-		if (process.env.CODE_ENABLE_STDOUT === 'true') {
-			console.log(`[Workflow "${this.workflow.id}"][Node "${this.node.name}"]`, ...args);
-		}
+		).getDataProxy();
 	}
 
 	sendMessageToUI(...args: any[]): void {
 		if (this.mode !== 'manual') {
 			return;
 		}
-
 		try {
 			if (this.additionalData.sendDataToUI) {
 				args = args.map((arg) => {
@@ -425,13 +332,20 @@ export class ExecutionContext extends BaseContext implements IExecuteFunctions {
 		}
 	}
 
-	async sendResponse(response: IExecuteResponsePromiseData): Promise<void> {
-		await this.additionalData.hooks?.executeHookFunctions('sendResponse', [response]);
+	logAiEvent(eventName: AiEvent, msg: string) {
+		return this.additionalData.logAiEvent(eventName, {
+			executionId: this.additionalData.executionId ?? 'unsaved-execution',
+			nodeName: this.node.name,
+			workflowName: this.workflow.name ?? 'Unnamed workflow',
+			nodeType: this.node.type,
+			workflowId: this.workflow.id ?? 'unsaved-workflow',
+			msg,
+		});
 	}
 
 	addInputData(
 		connectionType: NodeConnectionType,
-		data: INodeExecutionData[][] | ExecutionBaseError,
+		data: INodeExecutionData[][],
 	): { index: number } {
 		const nodeName = this.node.name;
 		let currentNodeRunIndex = 0;
@@ -461,7 +375,7 @@ export class ExecutionContext extends BaseContext implements IExecuteFunctions {
 	addOutputData(
 		connectionType: NodeConnectionType,
 		currentNodeRunIndex: number,
-		data: INodeExecutionData[][] | ExecutionBaseError,
+		data: INodeExecutionData[][],
 	): void {
 		addExecutionDataFunctions(
 			'output',
@@ -478,20 +392,5 @@ export class ExecutionContext extends BaseContext implements IExecuteFunctions {
 				`There was a problem logging output data of node "${this.node.name}": ${error.message}`,
 			);
 		});
-	}
-
-	logAiEvent(eventName: AiEvent, msg: string) {
-		return this.additionalData.logAiEvent(eventName, {
-			executionId: this.additionalData.executionId ?? 'unsaved-execution',
-			nodeName: this.node.name,
-			workflowName: this.workflow.name ?? 'Unnamed workflow',
-			nodeType: this.node.type,
-			workflowId: this.workflow.id ?? 'unsaved-workflow',
-			msg,
-		});
-	}
-
-	getParentCallbackManager(): CallbackManager | undefined {
-		return this.additionalData.parentCallbackManager;
 	}
 }

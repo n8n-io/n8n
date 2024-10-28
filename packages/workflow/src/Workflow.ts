@@ -1372,14 +1372,14 @@ export class Workflow {
 			const closeFunctions: CloseFunction[] = [];
 			const context = nodeExecuteFunctions.getExecuteFunctions(
 				this,
+				node,
+				additionalData,
+				mode,
 				runExecutionData,
 				runIndex,
 				connectionInputData,
 				inputData,
-				node,
-				additionalData,
 				executionData,
-				mode,
 				closeFunctions,
 				abortSignal,
 			);

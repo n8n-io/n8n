@@ -423,14 +423,14 @@ export interface IRunNodeResponse {
 export interface IGetExecuteFunctions {
 	(
 		workflow: Workflow,
+		node: INode,
+		additionalData: IWorkflowExecuteAdditionalData,
+		mode: WorkflowExecuteMode,
 		runExecutionData: IRunExecutionData,
 		runIndex: number,
 		connectionInputData: INodeExecutionData[],
 		inputData: ITaskDataConnections,
-		node: INode,
-		additionalData: IWorkflowExecuteAdditionalData,
 		executeData: IExecuteData,
-		mode: WorkflowExecuteMode,
 		closeFunctions: CloseFunction[],
 		abortSignal?: AbortSignal,
 	): IExecuteFunctions;
@@ -441,13 +441,13 @@ export interface IGetExecuteSingleFunctions {
 		workflow: Workflow,
 		node: INode,
 		additionalData: IWorkflowExecuteAdditionalData,
+		mode: WorkflowExecuteMode,
 		runExecutionData: IRunExecutionData,
 		runIndex: number,
 		connectionInputData: INodeExecutionData[],
 		inputData: ITaskDataConnections,
 		itemIndex: number,
 		executeData: IExecuteData,
-		mode: WorkflowExecuteMode,
 		abortSignal?: AbortSignal,
 	): IExecuteSingleFunctions;
 }

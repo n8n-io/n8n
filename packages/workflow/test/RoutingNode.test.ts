@@ -2130,13 +2130,13 @@ describe('RoutingNode', () => {
 						routingNode.workflow,
 						routingNode.node,
 						routingNode.additionalData,
+						routingNode.mode,
 						routingNode.runExecutionData,
 						runIndex,
 						routingNode.connectionInputData,
 						inputData,
 						iteration,
 						executeData,
-						routingNode.mode,
 					);
 
 					currentItemIndex = routingNodeExecutionContext.getItemIndex();
