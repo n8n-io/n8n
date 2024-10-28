@@ -73,7 +73,7 @@ export class Subscriber {
 		});
 
 		if (!msg) {
-			this.logger.error(`Received malformed message via channel ${channel}`, {
+			this.logger.error('Received malformed pubsub message', {
 				msg: str,
 				channel,
 			});
@@ -98,7 +98,7 @@ export class Subscriber {
 			logMetadata.type = msg.payload.type;
 		}
 
-		this.logger.debug(`Received message ${msgName} via channel ${channel}`, logMetadata);
+		this.logger.debug(`Received pubsub message: ${msgName}`, logMetadata);
 
 		return msg;
 	}
