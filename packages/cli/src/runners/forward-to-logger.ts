@@ -13,6 +13,10 @@ export function forwardToLogger(
 	},
 	prefix?: string,
 ) {
+	if (prefix) {
+		prefix = prefix.trimEnd();
+	}
+
 	const stringify = (data: Buffer) => {
 		let str = data.toString();
 

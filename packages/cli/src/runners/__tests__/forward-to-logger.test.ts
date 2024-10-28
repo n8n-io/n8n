@@ -93,4 +93,22 @@ describe('forwardToLogger', () => {
 
 		expect(logger.error).toHaveBeenCalledWith('[PREFIX] Error message with prefix');
 	});
+
+	it('should make sure there is no duplicate space after prefix for stdout', async () => {
+		const prefix = '[PREFIX] ';
+		forwardToLogger(logger, { stdout, stderr: null }, prefix);
+
+		await pushToStdout('Message with prefix');
+
+		expect(logger.info).toHaveBeenCalledWith('[PREFIX] Message with prefix');
+	});
+
+	it('should make sure there is no duplicate space after prefix for stderr', async () => {
+		const prefix = '[PREFIX] ';
+		forwardToLogger(logger, { stdout: null, stderr }, prefix);
+
+		await pushToStderr('Error message with prefix');
+
+		expect(logger.error).toHaveBeenCalledWith('[PREFIX] Error message with prefix');
+	});
 });
