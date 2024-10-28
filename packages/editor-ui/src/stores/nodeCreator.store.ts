@@ -22,7 +22,6 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
-import { useTelemetry } from '@/composables/useTelemetry';
 import { useViewStacks } from '@/components/Node/NodeCreator/composables/useViewStacks';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import {
@@ -33,6 +32,7 @@ import type { Connection } from '@vue-flow/core';
 import { CanvasConnectionMode } from '@/types';
 import { isVueFlowConnection } from '@/utils/typeGuards';
 import type { PartialBy } from '@/utils/typeHelpers';
+import { useCreatorTelemetry } from '@/composables/useCreatorTelemetry';
 
 export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 	const workflowsStore = useWorkflowsStore();
@@ -41,7 +41,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 	const nodeTypesStore = useNodeTypesStore();
 
 	const externalHooks = useExternalHooks();
-	const telemetry = useTelemetry();
+	const creatorTelemetry = useCreatorTelemetry();
 
 	const selectedView = ref<NodeFilterType>(TRIGGER_NODE_CREATOR_VIEW);
 	const mergedNodes = ref<SimplifiedNodeType[]>([]);
@@ -170,7 +170,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		createNodeActive?: boolean;
 		workflowId?: string;
 	}) {
-		telemetry.trackNodesPanel('nodeView.createNodeActiveChanged', {
+		creatorTelemetry.onNodeActiveChanged({
 			source,
 			mode,
 			createNodeActive,

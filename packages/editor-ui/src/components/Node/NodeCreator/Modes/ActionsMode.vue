@@ -19,6 +19,7 @@ import {
 
 import { useUsersStore } from '@/stores/users.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useCreatorTelemetry } from '@/composables/useCreatorTelemetry';
 
 import { useActions } from '../composables/useActions';
 import { useKeyboardNavigation } from '../composables/useKeyboardNavigation';
@@ -46,6 +47,8 @@ const {
 	parseCategoryActions,
 	actionsCategoryLocales,
 } = useActions();
+
+const creatorTelemetry = useCreatorTelemetry();
 
 // We only inject labels if search is empty
 const parsedTriggerActions = computed(() =>
@@ -182,7 +185,7 @@ function trackActionsView() {
 	};
 
 	void useExternalHooks().run('nodeCreateList.onViewActions', trackingPayload);
-	telemetry?.trackNodesPanel('nodeCreateList.onViewActions', trackingPayload);
+	creatorTelemetry.onViewActions(trackingPayload);
 }
 
 function resetSearch() {
@@ -206,7 +209,7 @@ function addHttpNode() {
 	void useExternalHooks().run('nodeCreateList.onActionsCustmAPIClicked', {
 		app_identifier,
 	});
-	telemetry?.trackNodesPanel('nodeCreateList.onActionsCustmAPIClicked', { app_identifier });
+	creatorTelemetry.onActionsCustomAPIClicked({ app_identifier });
 }
 
 // Anonymous component to handle triggers and actions rendering order

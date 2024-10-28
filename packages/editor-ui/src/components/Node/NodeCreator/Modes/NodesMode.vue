@@ -23,9 +23,9 @@ import ItemsRenderer from '../Renderers/ItemsRenderer.vue';
 import CategorizedItemsRenderer from '../Renderers/CategorizedItemsRenderer.vue';
 import NoResults from '../Panel/NoResults.vue';
 import { useI18n } from '@/composables/useI18n';
-import { useTelemetry } from '@/composables/useTelemetry';
 import { getNodeIcon, getNodeIconColor, getNodeIconUrl } from '@/utils/nodeTypesUtils';
 import { useUIStore } from '@/stores/ui.store';
+import { useCreatorTelemetry } from '@/composables/useCreatorTelemetry';
 
 export interface Props {
 	rootView: 'trigger' | 'action';
@@ -36,7 +36,6 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const telemetry = useTelemetry();
 const uiStore = useUIStore();
 const rootStore = useRootStore();
 
@@ -83,7 +82,7 @@ function onSelected(item: INodeCreateElement) {
 			sections: item.properties.sections,
 		});
 
-		telemetry.trackNodesPanel('nodeCreateList.onSubcategorySelected', {
+		useCreatorTelemetry().onSubcategorySelected({
 			subcategory: item.key,
 		});
 	}
@@ -153,9 +152,10 @@ function onSelected(item: INodeCreateElement) {
 
 	if (item.type === 'link') {
 		window.open(item.properties.url, '_blank');
-		telemetry.trackNodesPanel('nodeCreateList.onLinkSelected', {
-			link: item.properties.url,
-		});
+		// todo
+		// telemetry.trackNodesPanel('nodeCreateList.onLinkSelected', {
+		// 	link: item.properties.url,
+		// });
 	}
 }
 

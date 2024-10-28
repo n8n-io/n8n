@@ -44,6 +44,7 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 import { sortNodeCreateElements, transformNodeType } from '../utils';
 import { useI18n } from '@/composables/useI18n';
 import { useCanvasStore } from '@/stores/canvas.store';
+import { useCreatorTelemetry } from '@/composables/useCreatorTelemetry';
 
 export const useActions = () => {
 	const nodeCreatorStore = useNodeCreatorStore();
@@ -332,7 +333,11 @@ export const useActions = () => {
 		return storeWatcher;
 	}
 
-	function trackActionSelected(action: IUpdateInformation, telemetry: Telemetry, rootView: string) {
+	function trackActionSelected(
+		action: IUpdateInformation,
+		_telemetry: Telemetry,
+		rootView: string,
+	) {
 		const payload = {
 			node_type: action.key,
 			action: action.name,
@@ -340,7 +345,7 @@ export const useActions = () => {
 			resource: (action.value as INodeParameters).resource || '',
 		};
 		void useExternalHooks().run('nodeCreateList.addAction', payload);
-		telemetry?.trackNodesPanel('nodeCreateList.addAction', payload);
+		useCreatorTelemetry().onAddActions(payload);
 	}
 
 	return {

@@ -8,7 +8,7 @@ import { useKeyboardNavigation } from '../composables/useKeyboardNavigation';
 import { useViewStacks } from '../composables/useViewStacks';
 import ItemsRenderer from './ItemsRenderer.vue';
 import CategoryItem from '../ItemTypes/CategoryItem.vue';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { useCreatorTelemetry } from '@/composables/useCreatorTelemetry';
 
 export interface Props {
 	elements: INodeCreateElement[];
@@ -24,10 +24,10 @@ const props = withDefaults(defineProps<Props>(), {
 	elements: () => [],
 });
 
-const telemetry = useTelemetry();
 const { popViewStack } = useViewStacks();
 const { registerKeyHook } = useKeyboardNavigation();
 const { workflowId } = useWorkflowsStore();
+const creatorTelemetry = useCreatorTelemetry();
 
 const activeItemId = computed(() => useKeyboardNavigation()?.activeItemId);
 const actionCount = computed(() => props.elements.filter(({ type }) => type === 'action').length);
@@ -41,7 +41,7 @@ function setExpanded(isExpanded: boolean) {
 	expanded.value = isExpanded;
 
 	if (expanded.value) {
-		telemetry.trackNodesPanel('nodeCreateList.onCategoryExpanded', {
+		creatorTelemetry.onCategoryExpanded({
 			category_name: props.category,
 			workflow_id: workflowId,
 		});
