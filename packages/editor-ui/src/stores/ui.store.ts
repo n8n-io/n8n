@@ -73,6 +73,7 @@ import {
 import { computed, ref } from 'vue';
 import type { Connection } from '@vue-flow/core';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { useVersionsStore } from '@/stores/versions.store';
 
 let savedTheme: ThemeOption = 'system';
 try {
@@ -208,6 +209,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const telemetry = useTelemetry();
 	const cloudPlanStore = useCloudPlanStore();
 	const userStore = useUsersStore();
+	const versionsStore = useVersionsStore();
 
 	const appliedTheme = computed(() => {
 		return theme.value === 'system' ? getPreferredTheme() : theme.value;
@@ -575,7 +577,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			workflowsLeft,
 		});
 
-		const upgradeLink = await generateUpgradeLinkUrl(source, utm_campaign, deploymentType);
+		const upgradeLink = await generateUpgradeLink(source, utm_campaign, deploymentType);
 
 		if (mode === 'open') {
 			window.open(upgradeLink, '_blank');
@@ -628,6 +630,19 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		lastCancelledConnectionPosition.value = undefined;
 	}
 
+	const goToVersions = async () => {
+		const deploymentType = settingsStore.deploymentType;
+		let versionsLink = versionsStore.infoUrl;
+
+		if (deploymentType === 'cloud' && hasPermission(['instanceOwner'])) {
+			versionsLink = await generateCloudDashboardAutoLoginLink({
+				redirectionPath: '/manage',
+			});
+		}
+
+		location.href = versionsLink;
+	};
+
 	return {
 		appGridWidth,
 		appliedTheme,
@@ -669,6 +684,8 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		isAnyModalOpen,
 		fakeDoorsById,
 		pendingNotificationsForViews,
+		activeModals,
+		goToVersions,
 		setTheme,
 		setMode,
 		setActiveId,
@@ -704,7 +721,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		setNotificationsForView,
 		deleteNotificationsForView,
 		resetLastInteractedWith,
-		activeModals,
 	};
 });
 
@@ -749,33 +765,43 @@ export const listenForModalChanges = (opts: {
 	});
 };
 
-export const generateUpgradeLinkUrl = async (
+export const generateUpgradeLink = async (
 	source: string,
 	utm_campaign: string,
 	deploymentType: string,
 ) => {
-	let linkUrl = '';
+	let upgradeLink = N8N_PRICING_PAGE_URL;
+	if (deploymentType === 'cloud' && hasPermission(['instanceOwner'])) {
+		upgradeLink = await generateCloudDashboardAutoLoginLink({
+			redirectionPath: '/account/change-plan',
+		});
+	}
 
+	const url = new URL(upgradeLink);
+
+	if (utm_campaign) {
+		url.searchParams.set('utm_campaign', utm_campaign);
+	}
+
+	if (source) {
+		url.searchParams.set('source', source);
+	}
+
+	return url.toString();
+};
+
+export const generateCloudDashboardAutoLoginLink = async (data: {
+	redirectionPath: string;
+}) => {
 	const searchParams = new URLSearchParams();
 
 	const cloudPlanStore = useCloudPlanStore();
 
-	if (deploymentType === 'cloud' && hasPermission(['instanceOwner'])) {
-		const adminPanelHost = new URL(window.location.href).host.split('.').slice(1).join('.');
-		const { code } = await cloudPlanStore.getAutoLoginCode();
-		linkUrl = `https://${adminPanelHost}/login`;
-		searchParams.set('code', code);
-		searchParams.set('returnPath', '/account/change-plan');
-	} else {
-		linkUrl = N8N_PRICING_PAGE_URL;
-	}
+	const adminPanelHost = new URL(window.location.href).host.split('.').slice(1).join('.');
+	const { code } = await cloudPlanStore.getAutoLoginCode();
+	const linkUrl = `https://${adminPanelHost}/login`;
+	searchParams.set('code', code);
+	searchParams.set('returnPath', data.redirectionPath);
 
-	if (utm_campaign) {
-		searchParams.set('utm_campaign', utm_campaign);
-	}
-
-	if (source) {
-		searchParams.set('source', source);
-	}
 	return `${linkUrl}?${searchParams.toString()}`;
 };

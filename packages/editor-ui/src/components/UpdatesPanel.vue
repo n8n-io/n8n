@@ -7,21 +7,22 @@ import VersionCard from './VersionCard.vue';
 import { VERSIONS_MODAL_KEY } from '../constants';
 import { useVersionsStore } from '@/stores/versions.store';
 import { useI18n } from '@/composables/useI18n';
+import { useUIStore } from '@/stores/ui.store';
 
 const versionsStore = useVersionsStore();
+const uiStore = useUIStore();
+
 const i18n = useI18n();
 
-const nextVersions = computed(() => {
-	return versionsStore.nextVersions;
-});
+const nextVersions = computed(() => versionsStore.nextVersions);
 
-const currentVersion = computed(() => {
-	return versionsStore.currentVersion;
-});
+const currentVersion = computed(() => versionsStore.currentVersion);
 
-const infoUrl = computed(() => {
-	return versionsStore.infoUrl;
-});
+const infoUrl = computed(() => versionsStore.infoUrl);
+
+const onInfoUrlClick = async () => {
+	await uiStore.goToVersions();
+};
 </script>
 
 <template>
@@ -61,12 +62,20 @@ const infoUrl = computed(() => {
 					{{ i18n.baseText('updatesPanel.behindTheLatest') }}
 				</p>
 
-				<n8n-link v-if="infoUrl" :to="infoUrl" :bold="true">
+				<n8n-button
+					v-if="infoUrl"
+					:text="true"
+					type="primary"
+					size="large"
+					:class="$style['link']"
+					:bold="true"
+					@click="onInfoUrlClick"
+				>
 					<font-awesome-icon icon="info-circle" class="mr-2xs" />
 					<span>
 						{{ i18n.baseText('updatesPanel.howToUpdateYourN8nVersion') }}
 					</span>
-				</n8n-link>
+				</n8n-button>
 			</section>
 			<section :class="$style.versions">
 				<div v-for="version in nextVersions" :key="version.name" :class="$style['versions-card']">
@@ -101,6 +110,15 @@ const infoUrl = computed(() => {
 
 	div {
 		padding-top: 20px;
+	}
+
+	.link {
+		padding-left: 0px;
+	}
+
+	.link:hover {
+		color: var(--prim-color-primary);
+		text-decoration: none;
 	}
 }
 
