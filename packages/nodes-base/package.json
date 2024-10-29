@@ -286,6 +286,7 @@
       "dist/credentials/QuickBooksOAuth2Api.credentials.js",
       "dist/credentials/RabbitMQ.credentials.js",
       "dist/credentials/RaindropOAuth2Api.credentials.js",
+      "dist/credentials/Rapid7InsightVmApi.credentials.js",
       "dist/credentials/RecordedFutureApi.credentials.js",
       "dist/credentials/RedditOAuth2Api.credentials.js",
       "dist/credentials/Redis.credentials.js",
