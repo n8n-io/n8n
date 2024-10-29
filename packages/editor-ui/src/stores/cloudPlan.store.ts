@@ -147,12 +147,6 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 		}
 	};
 
-	const redirectToDashboard = async () => {
-		const adminPanelHost = new URL(window.location.href).host.split('.').slice(1).join('.');
-		const { code } = await getAutoLoginCode();
-		window.location.href = `https://${adminPanelHost}/login?code=${code}`;
-	};
-
 	const initialize = async () => {
 		if (state.initialized) {
 			return;
@@ -189,6 +183,5 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 		checkForCloudPlanData,
 		fetchUserCloudAccount,
 		getAutoLoginCode,
-		redirectToDashboard,
 	};
 });

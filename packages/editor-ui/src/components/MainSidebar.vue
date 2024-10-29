@@ -260,7 +260,7 @@ const handleSelect = (key: string) => {
 			break;
 		}
 		case 'cloud-admin': {
-			void cloudPlanStore.redirectToDashboard();
+			void uiStore.goToDashboard();
 			break;
 		}
 		case 'quickstart':
