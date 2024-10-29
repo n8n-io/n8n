@@ -42,4 +42,8 @@ export class TaskRunnersConfig {
 	/** Which task runner to launch from the config */
 	@Env('N8N_RUNNERS_LAUNCHER_RUNNER')
 	launcherRunner: string = 'javascript';
+
+	/** The --max-old-space-size option to use for the runner (in MB). Default means node.js will determine it based on the available memory. */
+	@Env('N8N_RUNNERS_MAX_OLD_SPACE_SIZE')
+	maxOldSpaceSize: string = '';
 }
