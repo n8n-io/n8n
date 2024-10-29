@@ -9,7 +9,7 @@ export class TaskRunnerOomError extends ApplicationError {
 		super(`Task runner (${runnerId}) ran out of memory.`, { level: 'error' });
 
 		const fixSuggestions = {
-			reduceItems: 'Reduce the number of items being processed by batching the input.',
+			reduceItems: 'Reduce the number of items processed at a time by batching the input.',
 			increaseMemory:
 				"Increase the memory available to the task runner with 'N8N_RUNNERS_MAX_OLD_SPACE_SIZE' environment variable.",
 			upgradePlan: 'Upgrade your cloud plan to increase the available memory.',
