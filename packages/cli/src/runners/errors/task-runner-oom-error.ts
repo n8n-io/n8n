@@ -3,7 +3,11 @@ import { ApplicationError } from 'n8n-workflow';
 import type { TaskRunner } from '../task-broker.service';
 
 export class TaskRunnerOomError extends ApplicationError {
+	public description: string;
+
 	constructor(runnerId: TaskRunner['id'], isCloudDeployment: boolean) {
+		super(`Task runner (${runnerId}) ran out of memory.`, { level: 'error' });
+
 		const fixSuggestions = {
 			reduceItems: 'Reduce the number of items being processed by batching the input.',
 			increaseMemory:
@@ -11,12 +15,17 @@ export class TaskRunnerOomError extends ApplicationError {
 			upgradePlan: 'Upgrade your cloud plan to increase the available memory.',
 		};
 
-		const headline = `The task runner (${runnerId}) executing the code ran out of memory. This usually happens when there are too many items to process. You can try the following:`;
+		const subtitle =
+			'The runner executing the code ran out of memory. This usually happens when there are too many items to process. You can try the following:';
 		const suggestions = isCloudDeployment
 			? [fixSuggestions.reduceItems, fixSuggestions.upgradePlan]
 			: [fixSuggestions.reduceItems, fixSuggestions.increaseMemory];
-		const message = `${headline}\n\n${suggestions.map((suggestion, index) => `${index + 1}. ${suggestion}`).join('\n')}`;
+		const suggestionsText = suggestions
+			.map((suggestion, index) => `${index + 1}. ${suggestion}`)
+			.join('<br/>');
 
-		super(message, { level: 'error' });
+		const description = `${subtitle}<br/><br/>${suggestionsText}`;
+
+		this.description = description;
 	}
 }
