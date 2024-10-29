@@ -22,7 +22,6 @@ import { useUsersStore } from '@/stores/users.store';
 import MessagesList from '@n8n/chat/components/MessagesList.vue';
 import type { ArrowKeyDownPayload } from '@n8n/chat/components/Input.vue';
 import ChatInput from '@n8n/chat/components/Input.vue';
-import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useRouter } from 'vue-router';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import type { Chat, ChatMessage, ChatMessageText, ChatOptions } from '@n8n/chat/types';
@@ -78,7 +77,6 @@ interface MemoryOutput {
 }
 
 const router = useRouter();
-const workflowHelpers = useWorkflowHelpers({ router });
 const { runWorkflow } = useRunWorkflow({ router });
 const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();

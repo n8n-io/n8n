@@ -1,12 +1,7 @@
 <script lang="ts" setup>
 import type { Ref } from 'vue';
 import { computed, ref, watch } from 'vue';
-import type {
-	ITaskSubRunMetadata,
-	ITaskDataConnections,
-	NodeConnectionType,
-	Workflow,
-} from 'n8n-workflow';
+import type { ITaskDataConnections, NodeConnectionType, Workflow, ITaskData } from 'n8n-workflow';
 import type { IAiData, IAiDataContent, INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -43,18 +38,10 @@ function isTreeNodeSelected(node: TreeNode) {
 }
 
 function getReferencedData(
-	reference: ITaskSubRunMetadata,
+	taskData: ITaskData,
 	withInput: boolean,
 	withOutput: boolean,
 ): IAiDataContent[] {
-	const resultData = workflowsStore.getWorkflowResultDataByNodeName(reference.node);
-
-	if (!resultData?.[reference.runIndex]) {
-		return [];
-	}
-
-	const taskData = resultData[reference.runIndex];
-
 	if (!taskData) {
 		return [];
 	}
@@ -102,18 +89,18 @@ function onItemClick(data: TreeNode) {
 
 		return;
 	}
+
+	const selectedNodeRun = workflowsStore.getWorkflowResultDataByNodeName(data.node)?.[
+		data.runIndex
+	];
+	if (!selectedNodeRun) {
+		return;
+	}
 	selectedRun.value = [
 		{
 			node: data.node,
 			runIndex: data.runIndex,
-			data: getReferencedData(
-				{
-					node: data.node,
-					runIndex: data.runIndex,
-				},
-				true,
-				true,
-			),
+			data: getReferencedData(selectedNodeRun, true, true),
 		},
 	];
 }
@@ -180,7 +167,7 @@ const aiData = computed<AIResult[]>(() => {
 
 		nodeRunData.forEach((run, runIndex) => {
 			const referenceData = {
-				data: getReferencedData({ node: nodeName, runIndex }, false, true)[0],
+				data: getReferencedData(run, false, true)[0],
 				node: nodeName,
 				runIndex,
 			};
