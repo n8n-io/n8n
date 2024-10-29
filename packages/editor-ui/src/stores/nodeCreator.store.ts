@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import {
 	AI_NODE_CREATOR_VIEW,
 	AI_OTHERS_NODE_CREATOR_VIEW,
+	CUSTOM_API_CALL_KEY,
 	NODE_CREATOR_OPEN_SOURCES,
 	REGULAR_NODE_CREATOR_VIEW,
 	STORES,
@@ -35,7 +36,6 @@ import { CanvasConnectionMode } from '@/types';
 import { isVueFlowConnection } from '@/utils/typeGuards';
 import type { PartialBy } from '@/utils/typeHelpers';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useDebounce } from '@/composables/useDebounce';
 
 export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 	const workflowsStore = useWorkflowsStore();
@@ -44,7 +44,6 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 	const nodeTypesStore = useNodeTypesStore();
 	const telemetry = useTelemetry();
 	const externalHooks = useExternalHooks();
-	const { callDebounced } = useDebounce();
 
 	const selectedView = ref<NodeFilterType>(TRIGGER_NODE_CREATOR_VIEW);
 	const mergedNodes = ref<SimplifiedNodeType[]>([]);
@@ -289,19 +288,39 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		filterMode: NodeFilterType;
 		subcategory?: string;
 	}) {
-		if (newValue.length > 0) {
-			void callDebounced(
-				trackNodeCreatorEvent,
-				{ debounceTime: 2000, trailing: true },
-				'User entered nodes panel search term',
-				{
-					search_string: newValue,
-					results_count: filteredNodes.length,
-					filter_mode: getMode(filterMode),
-					category_name: subcategory,
-				},
-			);
+		if (!newValue.length) {
+			return;
 		}
+
+		const { results_count, trigger_action_count, regular_action_count } = filteredNodes.reduce(
+			(accu, node) => {
+				if (!('properties' in node)) {
+					return accu;
+				}
+				const isTrigger = 'group' in node.properties && node.properties.group?.includes('trigger');
+				return {
+					results_count:
+						accu.results_count +
+						('key' in node.properties && node.properties.key !== CUSTOM_API_CALL_KEY ? 1 : 0),
+					trigger_action_count: accu.trigger_action_count + (isTrigger ? 1 : 0),
+					regular_action_count: accu.regular_action_count + (isTrigger ? 0 : 1),
+				};
+			},
+			{
+				results_count: 0,
+				trigger_action_count: 0,
+				regular_action_count: 0,
+			},
+		);
+
+		trackNodeCreatorEvent('User entered nodes panel search term', {
+			search_string: newValue,
+			filter_mode: getMode(filterMode),
+			category_name: subcategory,
+			results_count,
+			trigger_action_count,
+			regular_action_count,
+		});
 	}
 
 	function onCategoryExpanded(properties: { category_name: string; workflow_id: string }) {

@@ -17,8 +17,10 @@ import SearchBar from './SearchBar.vue';
 import ActionsRenderer from '../Modes/ActionsMode.vue';
 import NodesRenderer from '../Modes/NodesMode.vue';
 import { useI18n } from '@/composables/useI18n';
+import { useDebounce } from '@/composables/useDebounce';
 
 const i18n = useI18n();
+const { callDebounced } = useDebounce();
 
 const { mergedNodes } = useNodeCreatorStore();
 const { pushViewStack, popViewStack, updateCurrentViewStack } = useViewStacks();
@@ -56,12 +58,16 @@ function onSearch(value: string) {
 	if (activeViewStack.value.uuid) {
 		updateCurrentViewStack({ search: value });
 		void setActiveItemIndex(getDefaultActiveIndex(value));
-		nodeCreatorStore.onNodeFilterChanged({
-			newValue: value,
-			filteredNodes: activeViewStack.value.items ?? [],
-			filterMode: activeViewStack.value.rootView ?? 'Regular',
-			subcategory: activeViewStack.value.subcategory,
-		});
+		callDebounced(
+			nodeCreatorStore.onNodeFilterChanged,
+			{ trailing: true, debounceTime: 2000 },
+			{
+				newValue: value,
+				filteredNodes: activeViewStack.value.items ?? [],
+				filterMode: activeViewStack.value.rootView ?? 'Regular',
+				subcategory: activeViewStack.value.subcategory,
+			},
+		);
 	}
 }
 
