@@ -1,13 +1,6 @@
+import axios from 'axios';
 import type express from 'express';
-import {
-	FORM_NODE_TYPE,
-	type INodes,
-	type IWorkflowBase,
-	NodeHelpers,
-	SEND_AND_WAIT_OPERATION,
-	WAIT_NODE_TYPE,
-	Workflow,
-} from 'n8n-workflow';
+import { FORM_NODE_TYPE, NodeHelpers, sleep, Workflow } from 'n8n-workflow';
 import { Service } from 'typedi';
 
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
@@ -36,7 +29,7 @@ export class WaitingWebhooks implements IWebhookManager {
 
 	constructor(
 		protected readonly logger: Logger,
-		protected readonly nodeTypes: NodeTypes,
+		private readonly nodeTypes: NodeTypes,
 		private readonly executionRepository: ExecutionRepository,
 	) {}
 
@@ -50,34 +43,23 @@ export class WaitingWebhooks implements IWebhookManager {
 		execution.data.executionData!.nodeExecutionStack[0].node.disabled = true;
 	}
 
-	private isSendAndWaitRequest(nodes: INodes, suffix: string | undefined) {
-		return (
-			suffix &&
-			Object.keys(nodes).some(
-				(node) =>
-					nodes[node].id === suffix && nodes[node].parameters.operation === SEND_AND_WAIT_OPERATION,
-			)
-		);
-	}
+	private async reloadForm(req: WaitingWebhookRequest, res: express.Response) {
+		try {
+			await sleep(1000);
 
-	private createWorkflow(workflowData: IWorkflowBase) {
-		return new Workflow({
-			id: workflowData.id,
-			name: workflowData.name,
-			nodes: workflowData.nodes,
-			connections: workflowData.connections,
-			active: workflowData.active,
-			nodeTypes: this.nodeTypes,
-			staticData: workflowData.staticData,
-			settings: workflowData.settings,
-		});
-	}
+			const url = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
+			const page = await axios({ url });
 
-	protected async getExecution(executionId: string) {
-		return await this.executionRepository.findSingleExecution(executionId, {
-			includeData: true,
-			unflattenData: true,
-		});
+			if (page) {
+				res.send(`
+				<script>
+					setTimeout(function() {
+						window.location.reload();
+					}, 1);
+				</script>
+			`);
+			}
+		} catch (error) {}
 	}
 
 	async executeWebhook(
@@ -91,60 +73,96 @@ export class WaitingWebhooks implements IWebhookManager {
 		// Reset request parameters
 		req.params = {} as WaitingWebhookRequest['params'];
 
-		const execution = await this.getExecution(executionId);
+		const execution = await this.executionRepository.findSingleExecution(executionId, {
+			includeData: true,
+			unflattenData: true,
+		});
 
 		if (!execution) {
-			throw new NotFoundError(`The execution "${executionId}" does not exist.`);
+			throw new NotFoundError(`The execution "${executionId} does not exist.`);
 		}
 
 		if (execution.status === 'running') {
-			throw new ConflictError(`The execution "${executionId}" is running already.`);
+			if (this.includeForms && req.method === 'GET') {
+				await this.reloadForm(req, res);
+				return { noWebhookResponse: true };
+			}
+
+			throw new ConflictError(`The execution "${executionId} is running already.`);
 		}
 
-		if (execution.data?.resultData?.error) {
-			const message = `The execution "${executionId}" has finished with error.`;
-			this.logger.debug(message, { error: execution.data.resultData.error });
-			throw new ConflictError(message);
-		}
+		const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
 
 		if (execution.finished) {
-			const { workflowData } = execution;
-			const { nodes } = this.createWorkflow(workflowData);
-			if (this.isSendAndWaitRequest(nodes, suffix)) {
-				res.render('send-and-wait-no-action-required', { isTestWebhook: false });
-				return { noWebhookResponse: true };
+			if (this.includeForms && req.method === 'GET') {
+				const executionWorkflowData = execution.workflowData;
+
+				const hasCompletionPage = executionWorkflowData.nodes.some((node) => {
+					return (
+						!node.disabled &&
+						node.type === FORM_NODE_TYPE &&
+						node.parameters.operation === 'completion'
+					);
+				});
+
+				if (!hasCompletionPage) {
+					res.render('form-trigger-completion', {
+						title: 'Form Submitted',
+						message: 'Your response has been recorded',
+						formTitle: 'Form Submitted',
+					});
+					return {
+						noWebhookResponse: true,
+					};
+				}
+
+				// const workflow = this.getWorkflow(execution);
+
+				// const parentNodes = workflow.getParentNodes(
+				// 	execution.data.resultData.lastNodeExecuted as string,
+				// );
+
+				// const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
+				// const lastNode = workflow.nodes[lastNodeExecuted];
+
+				// if (
+				// 	!lastNode.disabled &&
+				// 	lastNode.type === FORM_NODE_TYPE &&
+				// 	lastNode.parameters.operation === 'completion'
+				// ) {
+				// 	completionPage = lastNodeExecuted;
+				// } else {
+				// 	completionPage = Object.keys(workflow.nodes).find((nodeName) => {
+				// 		const node = workflow.nodes[nodeName];
+				// 		return (
+				// 			parentNodes.includes(nodeName) &&
+				// 			!node.disabled &&
+				// 			node.type === FORM_NODE_TYPE &&
+				// 			node.parameters.operation === 'completion'
+				// 		);
+				// 	});
+				// }
+
+				// if (!completionPage) {
+				// 	res.render('form-trigger-completion', {
+				// 		title: 'Form Submitted',
+				// 		message: 'Your response has been recorded',
+				// 		formTitle: 'Form Submitted',
+				// 	});
+
+				// 	return {
+				// 		noWebhookResponse: true,
+				// 	};
+				// }
 			} else {
 				throw new ConflictError(`The execution "${executionId} has finished already.`);
 			}
 		}
 
-		const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
+		if (execution.data.resultData.error) {
+			throw new ConflictError(`The execution "${executionId} has finished already.`);
+		}
 
-		return await this.getWebhookExecutionData({
-			execution,
-			req,
-			res,
-			lastNodeExecuted,
-			executionId,
-			suffix,
-		});
-	}
-
-	protected async getWebhookExecutionData({
-		execution,
-		req,
-		res,
-		lastNodeExecuted,
-		executionId,
-		suffix,
-	}: {
-		execution: IExecutionResponse;
-		req: WaitingWebhookRequest;
-		res: express.Response;
-		lastNodeExecuted: string;
-		executionId: string;
-		suffix?: string;
-	}): Promise<IWebhookResponseCallbackData> {
 		// Set the node as disabled so that the data does not get executed again as it would result
 		// in starting the wait all over again
 		this.disableNode(execution, req.method);
@@ -156,7 +174,17 @@ export class WaitingWebhooks implements IWebhookManager {
 		execution.data.resultData.runData[lastNodeExecuted].pop();
 
 		const { workflowData } = execution;
-		const workflow = this.createWorkflow(workflowData);
+
+		const workflow = new Workflow({
+			id: workflowData.id,
+			name: workflowData.name,
+			nodes: workflowData.nodes,
+			connections: workflowData.connections,
+			active: workflowData.active,
+			nodeTypes: this.nodeTypes,
+			staticData: workflowData.staticData,
+			settings: workflowData.settings,
+		});
 
 		const workflowStartNode = workflow.getNode(lastNodeExecuted);
 		if (workflowStartNode === null) {
@@ -180,28 +208,6 @@ export class WaitingWebhooks implements IWebhookManager {
 			// If no data got found it means that the execution can not be started via a webhook.
 			// Return 404 because we do not want to give any data if the execution exists or not.
 			const errorMessage = `The workflow for execution "${executionId}" does not contain a waiting webhook with a matching path/method.`;
-
-			if (this.isSendAndWaitRequest(workflow.nodes, suffix)) {
-				res.render('send-and-wait-no-action-required', { isTestWebhook: false });
-				return { noWebhookResponse: true };
-			}
-
-			if (!execution.data.resultData.error && execution.status === 'waiting') {
-				const childNodes = workflow.getChildNodes(
-					execution.data.resultData.lastNodeExecuted as string,
-				);
-
-				const hasChildForms = childNodes.some(
-					(node) =>
-						workflow.nodes[node].type === FORM_NODE_TYPE ||
-						workflow.nodes[node].type === WAIT_NODE_TYPE,
-				);
-
-				if (hasChildForms) {
-					return { noWebhookResponse: true };
-				}
-			}
-
 			throw new NotFoundError(errorMessage);
 		}
 

@@ -34,11 +34,8 @@ import {
 	BINARY_ENCODING,
 	createDeferredPromise,
 	ErrorReporterProxy as ErrorReporter,
-	ErrorReporterProxy,
-	ExecutionCancelledError,
 	FORM_NODE_TYPE,
 	NodeHelpers,
-	NodeOperationError,
 } from 'n8n-workflow';
 import { finished } from 'stream/promises';
 import { Container } from 'typedi';
@@ -124,7 +121,7 @@ export async function executeWebhook(
 	);
 	if (nodeType === undefined) {
 		const errorMessage = `The type of the webhook node "${workflowStartNode.name}" is not known`;
-		responseCallback(new ApplicationError(errorMessage), {});
+		responseCallback(new Error(errorMessage), {});
 		throw new InternalServerError(errorMessage);
 	}
 
@@ -201,7 +198,7 @@ export async function executeWebhook(
 		// the default that people know as early as possible (probably already testing phase)
 		// that something does not resolve properly.
 		const errorMessage = `The response mode '${responseMode}' is not valid!`;
-		responseCallback(new ApplicationError(errorMessage), {});
+		responseCallback(new Error(errorMessage), {});
 		throw new InternalServerError(errorMessage);
 	}
 
@@ -269,26 +266,8 @@ export async function executeWebhook(
 			});
 		} catch (err) {
 			// Send error response to webhook caller
-			const webhookType = ['formTrigger', 'form'].includes(nodeType.description.name)
-				? 'Form'
-				: 'Webhook';
-			let errorMessage = `Workflow ${webhookType} Error: Workflow could not be started!`;
-
-			// if workflow started manually, show an actual error message
-			if (err instanceof NodeOperationError && err.type === 'manual-form-test') {
-				errorMessage = err.message;
-			}
-
-			ErrorReporterProxy.error(err, {
-				extra: {
-					nodeName: workflowStartNode.name,
-					nodeType: workflowStartNode.type,
-					nodeVersion: workflowStartNode.typeVersion,
-					workflowId: workflow.id,
-				},
-			});
-
-			responseCallback(new ApplicationError(errorMessage), {});
+			const errorMessage = 'Workflow Webhook Error: Workflow could not be started!';
+			responseCallback(new Error(errorMessage), {});
 			didSendResponse = true;
 
 			// Add error to execution data that it can be logged and send to Editor-UI
@@ -613,7 +592,7 @@ export async function executeWebhook(
 							// Return the JSON data of the first entry
 
 							if (returnData.data!.main[0]![0] === undefined) {
-								responseCallback(new ApplicationError('No item to return got found'), {});
+								responseCallback(new Error('No item to return got found'), {});
 								didSendResponse = true;
 								return undefined;
 							}
@@ -667,13 +646,13 @@ export async function executeWebhook(
 							data = returnData.data!.main[0]![0];
 
 							if (data === undefined) {
-								responseCallback(new ApplicationError('No item was found to return'), {});
+								responseCallback(new Error('No item was found to return'), {});
 								didSendResponse = true;
 								return undefined;
 							}
 
 							if (data.binary === undefined) {
-								responseCallback(new ApplicationError('No binary data was found to return'), {});
+								responseCallback(new Error('No binary data was found to return'), {});
 								didSendResponse = true;
 								return undefined;
 							}
@@ -688,10 +667,7 @@ export async function executeWebhook(
 							);
 
 							if (responseBinaryPropertyName === undefined && !didSendResponse) {
-								responseCallback(
-									new ApplicationError("No 'responseBinaryPropertyName' is set"),
-									{},
-								);
+								responseCallback(new Error("No 'responseBinaryPropertyName' is set"), {});
 								didSendResponse = true;
 							}
 
@@ -700,7 +676,7 @@ export async function executeWebhook(
 							];
 							if (binaryData === undefined && !didSendResponse) {
 								responseCallback(
-									new ApplicationError(
+									new Error(
 										`The binary property '${responseBinaryPropertyName}' which should be returned does not exist`,
 									),
 									{},
@@ -757,9 +733,7 @@ export async function executeWebhook(
 						);
 					}
 
-					const internalServerError = new InternalServerError(e.message);
-					if (e instanceof ExecutionCancelledError) internalServerError.level = 'warning';
-					throw internalServerError;
+					throw new InternalServerError(e.message);
 				});
 		}
 		return executionId;
