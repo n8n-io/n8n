@@ -267,7 +267,7 @@ export class Wait extends Webhook {
 		],
 		properties: [
 			{
-				displayName: 'Resume',
+				displayName: 'Resume On',
 				name: 'resume',
 				type: 'options',
 				options: [

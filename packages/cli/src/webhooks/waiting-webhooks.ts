@@ -1,6 +1,6 @@
 import axios from 'axios';
 import type express from 'express';
-import { FORM_NODE_TYPE, NodeHelpers, sleep, Workflow } from 'n8n-workflow';
+import { NodeHelpers, sleep, Workflow } from 'n8n-workflow';
 import { Service } from 'typedi';
 
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
@@ -94,69 +94,70 @@ export class WaitingWebhooks implements IWebhookManager {
 		const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
 
 		if (execution.finished) {
-			if (this.includeForms && req.method === 'GET') {
-				const executionWorkflowData = execution.workflowData;
+			// if (this.includeForms && req.method === 'GET') {
+			// 	const executionWorkflowData = execution.workflowData;
 
-				const hasCompletionPage = executionWorkflowData.nodes.some((node) => {
-					return (
-						!node.disabled &&
-						node.type === FORM_NODE_TYPE &&
-						node.parameters.operation === 'completion'
-					);
-				});
+			// 	const hasCompletionPage = executionWorkflowData.nodes.some((node) => {
+			// 		return (
+			// 			!node.disabled &&
+			// 			node.type === FORM_NODE_TYPE &&
+			// 			node.parameters.operation === 'completion'
+			// 		);
+			// 	});
 
-				if (!hasCompletionPage) {
-					res.render('form-trigger-completion', {
-						title: 'Form Submitted',
-						message: 'Your response has been recorded',
-						formTitle: 'Form Submitted',
-					});
-					return {
-						noWebhookResponse: true,
-					};
-				}
+			// 	if (!hasCompletionPage) {
+			// 		res.render('form-trigger-completion', {
+			// 			title: 'Form Submitted',
+			// 			message: 'Your response has been recorded',
+			// 			formTitle: 'Form Submitted',
+			// 		});
+			// 		return {
+			// 			noWebhookResponse: true,
+			// 		};
+			// 	}
 
-				// const workflow = this.getWorkflow(execution);
+			// const workflow = this.getWorkflow(execution);
 
-				// const parentNodes = workflow.getParentNodes(
-				// 	execution.data.resultData.lastNodeExecuted as string,
-				// );
+			// const parentNodes = workflow.getParentNodes(
+			// 	execution.data.resultData.lastNodeExecuted as string,
+			// );
 
-				// const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
-				// const lastNode = workflow.nodes[lastNodeExecuted];
+			// const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
+			// const lastNode = workflow.nodes[lastNodeExecuted];
 
-				// if (
-				// 	!lastNode.disabled &&
-				// 	lastNode.type === FORM_NODE_TYPE &&
-				// 	lastNode.parameters.operation === 'completion'
-				// ) {
-				// 	completionPage = lastNodeExecuted;
-				// } else {
-				// 	completionPage = Object.keys(workflow.nodes).find((nodeName) => {
-				// 		const node = workflow.nodes[nodeName];
-				// 		return (
-				// 			parentNodes.includes(nodeName) &&
-				// 			!node.disabled &&
-				// 			node.type === FORM_NODE_TYPE &&
-				// 			node.parameters.operation === 'completion'
-				// 		);
-				// 	});
-				// }
+			// if (
+			// 	!lastNode.disabled &&
+			// 	lastNode.type === FORM_NODE_TYPE &&
+			// 	lastNode.parameters.operation === 'completion'
+			// ) {
+			// 	completionPage = lastNodeExecuted;
+			// } else {
+			// 	completionPage = Object.keys(workflow.nodes).find((nodeName) => {
+			// 		const node = workflow.nodes[nodeName];
+			// 		return (
+			// 			parentNodes.includes(nodeName) &&
+			// 			!node.disabled &&
+			// 			node.type === FORM_NODE_TYPE &&
+			// 			node.parameters.operation === 'completion'
+			// 		);
+			// 	});
+			// }
 
-				// if (!completionPage) {
-				// 	res.render('form-trigger-completion', {
-				// 		title: 'Form Submitted',
-				// 		message: 'Your response has been recorded',
-				// 		formTitle: 'Form Submitted',
-				// 	});
+			// if (!completionPage) {
+			// 	res.render('form-trigger-completion', {
+			// 		title: 'Form Submitted',
+			// 		message: 'Your response has been recorded',
+			// 		formTitle: 'Form Submitted',
+			// 	});
 
-				// 	return {
-				// 		noWebhookResponse: true,
-				// 	};
-				// }
-			} else {
-				throw new ConflictError(`The execution "${executionId} has finished already.`);
-			}
+			// 	return {
+			// 		noWebhookResponse: true,
+			// 	};
+			// }
+			// } else {
+			// 	throw new ConflictError(`The execution "${executionId} has finished already.`);
+			// }
+			throw new ConflictError(`The execution "${executionId} has finished already.`);
 		}
 
 		if (execution.data.resultData.error) {
