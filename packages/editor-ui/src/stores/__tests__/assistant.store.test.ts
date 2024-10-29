@@ -15,9 +15,10 @@ import { merge } from 'lodash-es';
 import { DEFAULT_POSTHOG_SETTINGS } from './posthog.test';
 import { AI_ASSISTANT_EXPERIMENT, VIEWS } from '@/constants';
 import { reactive } from 'vue';
-import * as chatAPI from '@/api/assistant';
+import * as chatAPI from '@/api/ai';
 import * as telemetryModule from '@/composables/useTelemetry';
 import type { Telemetry } from '@/plugins/telemetry';
+import type { ChatUI } from 'n8n-design-system/types/assistant';
 
 let settingsStore: ReturnType<typeof useSettingsStore>;
 let posthogStore: ReturnType<typeof usePostHog>;
@@ -416,5 +417,75 @@ describe('AI Assistant store', () => {
 			task: 'error',
 			workflow_id: '__EMPTY__',
 		});
+	});
+
+	it('should call the function again if retry is called after handleServiceError', async () => {
+		const mockFn = vi.fn();
+
+		const assistantStore = useAssistantStore();
+
+		assistantStore.handleServiceError(new Error('test error'), '125', mockFn);
+		expect(assistantStore.chatMessages.length).toBe(1);
+		const message = assistantStore.chatMessages[0];
+		expect(message.type).toBe('error');
+
+		const errorMessage = message as ChatUI.ErrorMessage;
+		expect(errorMessage.retry).toBeDefined();
+
+		// This simulates the button click from the UI
+		await errorMessage.retry?.();
+
+		expect(mockFn).toHaveBeenCalled();
+	});
+
+	it('should properly clear messages on retry in a chat session', async () => {
+		const assistantStore = useAssistantStore();
+		const mockSessionId = 'mockSessionId';
+
+		const message: ChatRequest.MessageResponse = {
+			type: 'message',
+			role: 'assistant',
+			text: 'Hello!',
+			quickReplies: [
+				{ text: 'Yes', type: 'text' },
+				{ text: 'No', type: 'text' },
+			],
+		};
+
+		apiSpy.mockImplementationOnce((_ctx, _payload, onMessage, onDone) => {
+			onMessage({ messages: [message], sessionId: mockSessionId });
+			onDone();
+		});
+		apiSpy.mockImplementationOnce((_ctx, _payload, _onMessage, _onDone, onError) =>
+			onError(new Error('test error')),
+		);
+		apiSpy.mockImplementationOnce((_ctx, _payload, onMessage, onDone) => {
+			onMessage({ messages: [message], sessionId: mockSessionId });
+			onDone();
+		});
+
+		await assistantStore.initSupportChat('hello');
+
+		expect(assistantStore.chatMessages.length).toBe(2);
+		expect(assistantStore.chatMessages[0].type).toBe('text');
+		expect(assistantStore.chatMessages[1].type).toBe('text');
+
+		await assistantStore.sendMessage({ text: 'test' });
+
+		expect(assistantStore.chatMessages.length).toBe(4);
+		expect(assistantStore.chatMessages[0].type).toBe('text');
+		expect(assistantStore.chatMessages[1].type).toBe('text');
+		expect(assistantStore.chatMessages[2].type).toBe('text');
+		expect(assistantStore.chatMessages[3].type).toBe('error');
+
+		expect(assistantStore.chatMessages[3]).toHaveProperty('retry');
+		// This simulates the functionality triggered from the consumer (e.g. UI Button)
+		await (assistantStore.chatMessages[3] as ChatUI.ErrorMessage).retry?.();
+
+		expect(assistantStore.chatMessages.length).toBe(4);
+		expect(assistantStore.chatMessages[0].type).toBe('text');
+		expect(assistantStore.chatMessages[1].type).toBe('text');
+		expect(assistantStore.chatMessages[2].type).toBe('text');
+		expect(assistantStore.chatMessages[3].type).toBe('text');
 	});
 });

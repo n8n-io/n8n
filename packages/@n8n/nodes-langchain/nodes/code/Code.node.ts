@@ -1,13 +1,13 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import {
-	NodeOperationError,
-	type IExecuteFunctions,
-	type INodeExecutionData,
-	type INodeType,
-	type INodeTypeDescription,
-	type INodeOutputConfiguration,
-	type SupplyData,
-	NodeConnectionType,
+import { NodeOperationError, NodeConnectionType } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+	INodeOutputConfiguration,
+	SupplyData,
+	ISupplyDataFunctions,
 } from 'n8n-workflow';
 
 // TODO: Add support for execute function. Got already started but got commented out
@@ -72,7 +72,7 @@ export const vmResolver = makeResolverFromLegacyOptions({
 });
 
 function getSandbox(
-	this: IExecuteFunctions,
+	this: IExecuteFunctions | ISupplyDataFunctions,
 	code: string,
 	options?: { addItems?: boolean; itemIndex?: number },
 ) {
@@ -107,7 +107,7 @@ function getSandbox(
 	}
 	// eslint-disable-next-line @typescript-eslint/unbound-method
 
-	const sandbox = new JavaScriptSandbox(context, code, itemIndex, this.helpers, {
+	const sandbox = new JavaScriptSandbox(context, code, this.helpers, {
 		resolver: vmResolver,
 	});
 
@@ -354,7 +354,7 @@ export class Code implements INodeType {
 		}
 	}
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const code = this.getNodeParameter('code', itemIndex) as { supplyData?: { code: string } };
 
 		if (!code.supplyData?.code) {
@@ -368,7 +368,7 @@ export class Code implements INodeType {
 		}
 
 		const sandbox = getSandbox.call(this, code.supplyData.code, { itemIndex });
-		const response = (await sandbox.runCode()) as Tool;
+		const response = await sandbox.runCode<Tool>();
 
 		return {
 			response: logWrapper(response, this),

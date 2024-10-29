@@ -9,7 +9,7 @@ import { ExecutionRepository } from '@/databases/repositories/execution.reposito
 import { saveExecutionProgress } from '@/execution-lifecycle-hooks/save-execution-progress';
 import * as fnModule from '@/execution-lifecycle-hooks/to-save-settings';
 import type { IExecutionResponse } from '@/interfaces';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { mockInstance } from '@test/mocking';
 
 mockInstance(Logger);

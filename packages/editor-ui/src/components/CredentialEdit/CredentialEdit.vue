@@ -420,6 +420,7 @@ async function beforeClose() {
 	}
 
 	if (!keepEditing) {
+		uiStore.activeCredentialType = null;
 		return true;
 	} else if (!requiredPropertiesFilled.value) {
 		showValidationWarning.value = true;
@@ -986,6 +987,7 @@ async function onAuthTypeChanged(type: string): Promise<void> {
 	const credentialsForType = getNodeCredentialForSelectedAuthType(activeNodeType.value, type);
 	if (credentialsForType) {
 		selectedCredential.value = credentialsForType.name;
+		uiStore.activeCredentialType = credentialsForType.name;
 		resetCredentialData();
 		// Update current node auth type so credentials dropdown can be displayed properly
 		updateNodeAuthType(ndvStore.activeNode, type);

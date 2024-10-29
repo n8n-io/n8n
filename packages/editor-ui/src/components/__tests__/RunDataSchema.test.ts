@@ -44,13 +44,20 @@ const ifNode = createTestNode({
 	disabled: false,
 });
 
+const aiTool = createTestNode({
+	name: 'AI Tool',
+	type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+	typeVersion: 1,
+	disabled: false,
+});
+
 async function setupStore() {
 	const workflow = mock<IWorkflowDb>({
 		id: '123',
 		name: 'Test Workflow',
 		connections: {},
 		active: true,
-		nodes: [mockNode1, mockNode2, disabledNode, ifNode],
+		nodes: [mockNode1, mockNode2, disabledNode, ifNode, aiTool],
 	});
 
 	const pinia = createPinia();
@@ -235,6 +242,49 @@ describe('RunDataSchema.vue', () => {
 		await waitFor(() => {
 			expect(getByTestId('run-data-schema-node-name')).toHaveTextContent('If');
 			expect(getByTestId('run-data-schema-node-item-count')).toHaveTextContent('2 items');
+			expect(getByTestId('run-data-schema-node-schema')).toMatchSnapshot();
+		});
+	});
+
+	it('renders previous nodes schema for AI tools', async () => {
+		mockNodeOutputData(
+			'If',
+			[
+				{ id: 1, name: 'John' },
+				{ id: 2, name: 'Jane' },
+			],
+			0,
+		);
+		const { getByTestId } = renderComponent({
+			props: {
+				nodes: [
+					{
+						name: 'If',
+						indicies: [], // indicies are not set for AI tools
+						depth: 2,
+					},
+				],
+				node: aiTool,
+			},
+		});
+
+		await waitFor(() => {
+			expect(getByTestId('run-data-schema-node-name')).toHaveTextContent('If');
+			expect(getByTestId('run-data-schema-node-item-count')).toHaveTextContent('2 items');
+			expect(getByTestId('run-data-schema-node-schema')).toMatchSnapshot();
+		});
+	});
+
+	it('renders its own data for AI tools in debug mode', async () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				nodes: [], // in debug mode nodes are empty
+				node: aiTool,
+				data: [{ output: 'AI tool output' }],
+			},
+		});
+
+		await waitFor(() => {
 			expect(getByTestId('run-data-schema-node-schema')).toMatchSnapshot();
 		});
 	});

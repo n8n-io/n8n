@@ -2,9 +2,9 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
+import * as assert from 'assert/strict';
 import { setMaxListeners } from 'events';
-import PCancelable from 'p-cancelable';
-
+import get from 'lodash/get';
 import type {
 	ExecutionBaseError,
 	ExecutionStatus,
@@ -46,19 +46,18 @@ import {
 	sleep,
 	ErrorReporterProxy,
 } from 'n8n-workflow';
-import get from 'lodash/get';
-import * as NodeExecuteFunctions from './NodeExecuteFunctions';
+import PCancelable from 'p-cancelable';
 
-import * as assert from 'assert/strict';
-import { recreateNodeExecutionStack } from './PartialExecutionUtils/recreateNodeExecutionStack';
+import * as NodeExecuteFunctions from './NodeExecuteFunctions';
 import {
 	DirectedGraph,
-	findCycles,
 	findStartNodes,
 	findSubgraph,
 	findTriggerForPartialExecution,
+	cleanRunData,
+	recreateNodeExecutionStack,
+	handleCycles,
 } from './PartialExecutionUtils';
-import { cleanRunData } from './PartialExecutionUtils/cleanRunData';
 
 export class WorkflowExecute {
 	private status: ExecutionStatus = 'new';
@@ -88,7 +87,7 @@ export class WorkflowExecute {
 	 * Executes the given workflow.
 	 *
 	 * @param {Workflow} workflow The workflow to execute
-	 * @param {INode[]} [startNodes] Node to start execution from
+	 * @param {INode[]} [startNode] Node to start execution from
 	 * @param {string} [destinationNode] Node to stop execution at
 	 */
 	// IMPORTANT: Do not add "async" to this function, it will then convert the
@@ -333,9 +332,9 @@ export class WorkflowExecute {
 			'a destinationNodeName is required for the new partial execution flow',
 		);
 
-		const destinationNode = workflow.getNode(destinationNodeName);
+		const destination = workflow.getNode(destinationNodeName);
 		assert.ok(
-			destinationNode,
+			destination,
 			`Could not find a node with the name ${destinationNodeName} in the workflow.`,
 		);
 
@@ -349,26 +348,22 @@ export class WorkflowExecute {
 
 		// 2. Find the Subgraph
 		const graph = DirectedGraph.fromWorkflow(workflow);
-		const subgraph = findSubgraph(graph, destinationNode, trigger);
+		const subgraph = findSubgraph({ graph, destination, trigger });
 		const filteredNodes = subgraph.getNodes();
 
 		// 3. Find the Start Nodes
-		const startNodes = findStartNodes(subgraph, trigger, destinationNode, runData);
+		let startNodes = findStartNodes({ graph: subgraph, trigger, destination, runData });
 
 		// 4. Detect Cycles
-		const cycles = findCycles(workflow);
-
 		// 5. Handle Cycles
-		if (cycles.length) {
-			// TODO: handle
-		}
+		startNodes = handleCycles(graph, startNodes, trigger);
 
 		// 6. Clean Run Data
 		const newRunData: IRunData = cleanRunData(runData, graph, startNodes);
 
 		// 7. Recreate Execution Stack
 		const { nodeExecutionStack, waitingExecution, waitingExecutionSource } =
-			recreateNodeExecutionStack(subgraph, startNodes, destinationNode, runData, pinData ?? {});
+			recreateNodeExecutionStack(subgraph, new Set(startNodes), runData, pinData ?? {});
 
 		// 8. Execute
 		this.status = 'running';
@@ -1059,7 +1054,7 @@ export class WorkflowExecute {
 						this.runExecutionData.startData!.runNodeFilter.indexOf(executionNode.name) === -1
 					) {
 						// If filter is set and node is not on filter skip it, that avoids the problem that it executes
-						// leafs that are parallel to a selected destinationNode. Normally it would execute them because
+						// leaves that are parallel to a selected destinationNode. Normally it would execute them because
 						// they have the same parent and it executes all child nodes.
 						continue;
 					}
@@ -1760,7 +1755,7 @@ export class WorkflowExecute {
 										continue;
 									}
 								} else {
-									// A certain amout of inputs are required (amount of inputs)
+									// A certain amount of inputs are required (amount of inputs)
 									if (inputsWithData.length < requiredInputs) {
 										continue;
 									}
@@ -1818,7 +1813,7 @@ export class WorkflowExecute {
 								// Node to add did not get found, rather an empty one removed so continue with search
 								waitingNodes = Object.keys(this.runExecutionData.executionData!.waitingExecution);
 								// Set counter to start again from the beginning. Set it to -1 as it auto increments
-								// after run. So only like that will we end up again ot 0.
+								// after run. So only like that will we end up again at 0.
 								i = -1;
 							}
 						}

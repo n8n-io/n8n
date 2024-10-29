@@ -2,16 +2,39 @@ import { setActivePinia, createPinia } from 'pinia';
 import * as workflowsApi from '@/api/workflows';
 import {
 	DUPLICATE_POSTFFIX,
+	FORM_NODE_TYPE,
 	MAX_WORKFLOW_NAME_LENGTH,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
+	WAIT_NODE_TYPE,
 } from '@/constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import type { IExecutionResponse, INodeUi, IWorkflowDb, IWorkflowSettings } from '@/Interface';
+import type {
+	IExecutionResponse,
+	IExecutionsCurrentSummaryExtended,
+	INodeUi,
+	IWorkflowDb,
+	IWorkflowSettings,
+} from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import type { ExecutionSummary, IConnection, INodeExecutionData } from 'n8n-workflow';
+
+import {
+	SEND_AND_WAIT_OPERATION,
+	type ExecutionSummary,
+	type IConnection,
+	type INodeExecutionData,
+} from 'n8n-workflow';
 import { stringSizeInBytes } from '@/utils/typesUtils';
 import { dataPinningEventBus } from '@/event-bus';
 import { useUIStore } from '@/stores/ui.store';
+import type { PushPayload } from '@n8n/api-types';
+import { flushPromises } from '@vue/test-utils';
+import { useNDVStore } from '@/stores/ndv.store';
+
+vi.mock('@/stores/ndv.store', () => ({
+	useNDVStore: vi.fn(() => ({
+		activeNode: null,
+	})),
+}));
 
 vi.mock('@/api/workflows', () => ({
 	getWorkflows: vi.fn(),
@@ -19,10 +42,16 @@ vi.mock('@/api/workflows', () => ({
 	getNewWorkflow: vi.fn(),
 }));
 
+const getNodeType = vi.fn();
 vi.mock('@/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(() => ({
-		getNodeType: vi.fn(),
+		getNodeType,
 	})),
+}));
+
+const track = vi.fn();
+vi.mock('@/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track }),
 }));
 
 describe('useWorkflowsStore', () => {
@@ -33,11 +62,73 @@ describe('useWorkflowsStore', () => {
 		setActivePinia(createPinia());
 		workflowsStore = useWorkflowsStore();
 		uiStore = useUIStore();
+		track.mockReset();
 	});
 
 	it('should initialize with default state', () => {
 		expect(workflowsStore.workflow.name).toBe('');
 		expect(workflowsStore.workflow.id).toBe(PLACEHOLDER_EMPTY_WORKFLOW_ID);
+	});
+
+	describe('isWaitingExecution', () => {
+		it('should return false if no activeNode and no waiting nodes in workflow', () => {
+			workflowsStore.workflow.nodes = [
+				{ type: 'type1' },
+				{ type: 'type2' },
+			] as unknown as IWorkflowDb['nodes'];
+
+			const isWaiting = workflowsStore.isWaitingExecution;
+			expect(isWaiting).toEqual(false);
+		});
+
+		it('should return false if no activeNode and waiting node in workflow and waiting node is disabled', () => {
+			workflowsStore.workflow.nodes = [
+				{ type: FORM_NODE_TYPE, disabled: true },
+				{ type: 'type2' },
+			] as unknown as IWorkflowDb['nodes'];
+
+			const isWaiting = workflowsStore.isWaitingExecution;
+			expect(isWaiting).toEqual(false);
+		});
+
+		it('should return true if no activeNode and wait node in workflow', () => {
+			workflowsStore.workflow.nodes = [
+				{ type: WAIT_NODE_TYPE },
+				{ type: 'type2' },
+			] as unknown as IWorkflowDb['nodes'];
+
+			const isWaiting = workflowsStore.isWaitingExecution;
+			expect(isWaiting).toEqual(true);
+		});
+
+		it('should return true if no activeNode and form node in workflow', () => {
+			workflowsStore.workflow.nodes = [
+				{ type: FORM_NODE_TYPE },
+				{ type: 'type2' },
+			] as unknown as IWorkflowDb['nodes'];
+
+			const isWaiting = workflowsStore.isWaitingExecution;
+			expect(isWaiting).toEqual(true);
+		});
+
+		it('should return true if no activeNode and sendAndWait node in workflow', () => {
+			workflowsStore.workflow.nodes = [
+				{ type: 'type1', parameters: { operation: SEND_AND_WAIT_OPERATION } },
+				{ type: 'type2' },
+			] as unknown as IWorkflowDb['nodes'];
+
+			const isWaiting = workflowsStore.isWaitingExecution;
+			expect(isWaiting).toEqual(true);
+		});
+
+		it('should return true if activeNode is waiting node', () => {
+			vi.mocked(useNDVStore).mockReturnValue({
+				activeNode: { type: WAIT_NODE_TYPE } as unknown as INodeUi,
+			} as unknown as ReturnType<typeof useNDVStore>);
+
+			const isWaiting = workflowsStore.isWaitingExecution;
+			expect(isWaiting).toEqual(true);
+		});
 	});
 
 	describe('allWorkflows', () => {
@@ -441,4 +532,241 @@ describe('useWorkflowsStore', () => {
 			expect(uiStore.stateIsDirty).toBe(true);
 		});
 	});
+
+	describe('addNodeExecutionData', () => {
+		const { successEvent, errorEvent, executionReponse } = generateMockExecutionEvents();
+		it('should throw error if not initalized', () => {
+			expect(() => workflowsStore.addNodeExecutionData(successEvent)).toThrowError();
+		});
+
+		it('should add node success run data', () => {
+			workflowsStore.setWorkflowExecutionData(executionReponse);
+
+			// ACT
+			workflowsStore.addNodeExecutionData(successEvent);
+
+			expect(workflowsStore.workflowExecutionData).toEqual({
+				...executionReponse,
+				data: {
+					resultData: {
+						runData: {
+							[successEvent.nodeName]: [successEvent.data],
+						},
+					},
+				},
+			});
+		});
+
+		it('should add node error event and track errored executions', async () => {
+			workflowsStore.setWorkflowExecutionData(executionReponse);
+			workflowsStore.addNode({
+				parameters: {},
+				id: '554c7ff4-7ee2-407c-8931-e34234c5056a',
+				name: 'Edit Fields',
+				type: 'n8n-nodes-base.set',
+				position: [680, 180],
+				typeVersion: 3.4,
+			});
+
+			getNodeType.mockReturnValue(getMockEditFieldsNode());
+
+			// ACT
+			workflowsStore.addNodeExecutionData(errorEvent);
+			await flushPromises();
+
+			expect(workflowsStore.workflowExecutionData).toEqual({
+				...executionReponse,
+				data: {
+					resultData: {
+						runData: {
+							[errorEvent.nodeName]: [errorEvent.data],
+						},
+					},
+				},
+			});
+			expect(track).toHaveBeenCalledWith(
+				'Manual exec errored',
+				{
+					error_title: 'invalid syntax',
+					node_type: 'n8n-nodes-base.set',
+					node_type_version: 3.4,
+					node_id: '554c7ff4-7ee2-407c-8931-e34234c5056a',
+					node_graph_string:
+						'{"node_types":["n8n-nodes-base.set"],"node_connections":[],"nodes":{"0":{"id":"554c7ff4-7ee2-407c-8931-e34234c5056a","type":"n8n-nodes-base.set","version":3.4,"position":[680,180]}},"notes":{},"is_pinned":false}',
+				},
+				{
+					withPostHog: true,
+				},
+			);
+		});
+	});
+
+	describe('finishActiveExecution', () => {
+		it('should update execution', async () => {
+			const cursor = 1;
+			const ids = ['0', '1', '2'];
+			workflowsStore.setActiveExecutions(
+				ids.map((id) => ({ id })) as IExecutionsCurrentSummaryExtended[],
+			);
+
+			const stoppedAt = new Date();
+
+			workflowsStore.finishActiveExecution({
+				executionId: ids[cursor],
+				data: {
+					finished: true,
+					stoppedAt,
+				},
+			} as PushPayload<'executionFinished'>);
+
+			expect(workflowsStore.activeExecutions[cursor]).toStrictEqual({
+				id: ids[cursor],
+				finished: true,
+				stoppedAt,
+			});
+		});
+
+		it('should handle parameter casting', async () => {
+			const cursor = 1;
+			const ids = ['0', '1', '2'];
+			workflowsStore.setActiveExecutions(
+				ids.map((id) => ({ id })) as IExecutionsCurrentSummaryExtended[],
+			);
+
+			workflowsStore.finishActiveExecution({
+				executionId: ids[cursor],
+			} as PushPayload<'executionFinished'>);
+
+			expect(workflowsStore.activeExecutions[cursor]).toStrictEqual({
+				id: ids[cursor],
+				finished: undefined,
+				stoppedAt: undefined,
+			});
+		});
+	});
 });
+
+function getMockEditFieldsNode() {
+	return {
+		displayName: 'Edit Fields (Set)',
+		name: 'n8n-nodes-base.set',
+		icon: 'fa:pen',
+		group: ['input'],
+		description: 'Modify, add, or remove item fields',
+		defaultVersion: 3.4,
+		iconColor: 'blue',
+		version: [3, 3.1, 3.2, 3.3, 3.4],
+		subtitle: '={{$parameter["mode"]}}',
+		defaults: {
+			name: 'Edit Fields',
+		},
+		inputs: ['main'],
+		outputs: ['main'],
+		properties: [],
+	};
+}
+
+function generateMockExecutionEvents() {
+	const executionReponse: IExecutionResponse = {
+		id: '1',
+		workflowData: {
+			id: '1',
+			name: '',
+			createdAt: '1',
+			updatedAt: '1',
+			nodes: [],
+			connections: {},
+			active: false,
+			versionId: '1',
+		},
+		finished: false,
+		mode: 'cli',
+		startedAt: new Date(),
+		status: 'new',
+		data: {
+			resultData: {
+				runData: {},
+			},
+		},
+	};
+	const successEvent: PushPayload<'nodeExecuteAfter'> = {
+		executionId: '59',
+		nodeName: 'When clicking ‘Test workflow’',
+		data: {
+			hints: [],
+			startTime: 1727867966633,
+			executionTime: 1,
+			source: [],
+			executionStatus: 'success',
+			data: {
+				main: [
+					[
+						{
+							json: {},
+							pairedItem: {
+								item: 0,
+							},
+						},
+					],
+				],
+			},
+		},
+	};
+
+	const errorEvent: PushPayload<'nodeExecuteAfter'> = {
+		executionId: '61',
+		nodeName: 'Edit Fields',
+		data: {
+			hints: [],
+			startTime: 1727869043441,
+			executionTime: 2,
+			source: [
+				{
+					previousNode: 'When clicking ‘Test workflow’',
+				},
+			],
+			executionStatus: 'error',
+			// @ts-expect-error simpler data type, not BE class with methods
+			error: {
+				level: 'error',
+				tags: {
+					packageName: 'workflow',
+				},
+				context: {
+					itemIndex: 0,
+				},
+				functionality: 'regular',
+				name: 'NodeOperationError',
+				timestamp: 1727869043442,
+				node: {
+					parameters: {
+						mode: 'manual',
+						duplicateItem: false,
+						assignments: {
+							assignments: [
+								{
+									id: '87afdb19-4056-4551-93ef-d0126a34eb83',
+									name: "={{ $('Wh }}",
+									value: '',
+									type: 'string',
+								},
+							],
+						},
+						includeOtherFields: false,
+						options: {},
+					},
+					id: '9fb34d2d-7191-48de-8f18-91a6a28d0230',
+					name: 'Edit Fields',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [1120, 180],
+				},
+				messages: [],
+				message: 'invalid syntax',
+				stack: 'NodeOperationError: invalid syntax',
+			},
+		},
+	};
+
+	return { executionReponse, errorEvent, successEvent };
+}

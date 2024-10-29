@@ -652,10 +652,10 @@ export function useNodeHelpers() {
 		return returnData;
 	}
 
-	function disableNodes(nodes: INodeUi[], trackHistory = false) {
+	function disableNodes(nodes: INodeUi[], { trackHistory = false, trackBulk = true } = {}) {
 		const telemetry = useTelemetry();
 
-		if (trackHistory) {
+		if (trackHistory && trackBulk) {
 			historyStore.startRecordingUndo();
 		}
 
@@ -690,7 +690,8 @@ export function useNodeHelpers() {
 				);
 			}
 		}
-		if (trackHistory) {
+
+		if (trackHistory && trackBulk) {
 			historyStore.stopRecordingUndo();
 		}
 	}

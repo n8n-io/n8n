@@ -40,9 +40,9 @@ describe('CanvasHandlePlus', () => {
 		});
 	});
 
-	it('should apply correct classes based on state', () => {
+	it('should apply correct classes based on status', () => {
 		const { container } = renderComponent({
-			props: { state: 'success' },
+			props: { type: 'success' },
 		});
 
 		expect(container.firstChild).toHaveClass('success');

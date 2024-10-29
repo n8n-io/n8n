@@ -7,7 +7,7 @@ import type {
 	SerializedSecret,
 } from '@langchain/core/load/serializable';
 import type { LLMResult } from '@langchain/core/outputs';
-import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
+import type { IDataObject, ISupplyDataFunctions } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 import { pick } from 'lodash';
 import type { BaseMessage } from '@langchain/core/messages';
@@ -26,11 +26,9 @@ type RunDetail = {
 	options: SerializedSecret | SerializedNotImplemented | SerializedFields;
 };
 
-const TIKTOKEN_ESTIMATE_MODEL = 'gpt-3.5-turbo';
+const TIKTOKEN_ESTIMATE_MODEL = 'gpt-4o';
 export class N8nLlmTracing extends BaseCallbackHandler {
 	name = 'N8nLlmTracing';
-
-	executionFunctions: IExecuteFunctions;
 
 	connectionType = NodeConnectionType.AiLanguageModel;
 
@@ -61,11 +59,10 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 	};
 
 	constructor(
-		executionFunctions: IExecuteFunctions,
+		private executionFunctions: ISupplyDataFunctions,
 		options?: { tokensUsageParser: TokensUsageParser },
 	) {
 		super();
-		this.executionFunctions = executionFunctions;
 		this.options = { ...this.options, ...options };
 	}
 
@@ -138,7 +135,7 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 		this.executionFunctions.addOutputData(this.connectionType, runDetails.index, [
 			[{ json: { ...response } }],
 		]);
-		void logAiEvent(this.executionFunctions, 'ai-llm-generated-output', {
+		logAiEvent(this.executionFunctions, 'ai-llm-generated-output', {
 			messages: parsedMessages,
 			options: runDetails.options,
 			response,
@@ -186,7 +183,7 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 			});
 		}
 
-		void logAiEvent(this.executionFunctions, 'ai-llm-errored', {
+		logAiEvent(this.executionFunctions, 'ai-llm-errored', {
 			error: Object.keys(error).length === 0 ? error.toString() : error,
 			runId,
 			parentRunId,

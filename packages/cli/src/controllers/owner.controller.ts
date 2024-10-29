@@ -9,7 +9,7 @@ import { GlobalScope, Post, RestController } from '@/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
 import { validateEntity } from '@/generic-helpers';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { PostHogClient } from '@/posthog';
 import { OwnerRequest } from '@/requests';
 import { PasswordUtility } from '@/services/password.utility';

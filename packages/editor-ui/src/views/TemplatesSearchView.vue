@@ -13,7 +13,6 @@ import type {
 	ITemplatesCategory,
 } from '@/Interface';
 import type { IDataObject } from 'n8n-workflow';
-import { setPageTitle } from '@/utils/htmlUtils';
 import { CREATOR_HUB_URL, VIEWS } from '@/constants';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
@@ -22,6 +21,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useToast } from '@/composables/useToast';
 import { usePostHog } from '@/stores/posthog.store';
 import { useDebounce } from '@/composables/useDebounce';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
 
 interface ISearchEvent {
 	search_string: string;
@@ -55,6 +55,7 @@ export default defineComponent({
 		return {
 			callDebounced,
 			...useToast(),
+			documentTitle: useDocumentTitle(),
 		};
 	},
 	data() {
@@ -116,7 +117,7 @@ export default defineComponent({
 		},
 	},
 	async mounted() {
-		setPageTitle('n8n - Templates');
+		this.documentTitle.set('Templates');
 		await this.loadCategories();
 		void this.loadWorkflowsAndCollections(true);
 		void this.usersStore.showPersonalizationSurvey();

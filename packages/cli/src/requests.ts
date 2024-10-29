@@ -181,12 +181,19 @@ export declare namespace CredentialRequest {
 }
 
 // ----------------------------------
+//               /api-keys
+// ----------------------------------
+
+export declare namespace ApiKeysRequest {
+	export type DeleteAPIKey = AuthenticatedRequest<{ id: string }>;
+}
+
+// ----------------------------------
 //               /me
 // ----------------------------------
 
 export declare namespace MeRequest {
 	export type SurveyAnswers = AuthenticatedRequest<{}, {}, IPersonalizationSurveyAnswersV4>;
-	export type DeleteAPIKey = AuthenticatedRequest<{ id: string }>;
 }
 
 export interface UserSetupPayload {
@@ -237,7 +244,13 @@ export declare namespace UserRequest {
 	>;
 
 	export type InviteResponse = {
-		user: { id: string; email: string; inviteAcceptUrl?: string; emailSent: boolean };
+		user: {
+			id: string;
+			email: string;
+			inviteAcceptUrl?: string;
+			emailSent: boolean;
+			role: AssignableRole;
+		};
 		error?: string;
 	};
 
@@ -472,15 +485,6 @@ export declare namespace ExternalSecretsRequest {
 }
 
 // ----------------------------------
-//           /orchestration
-// ----------------------------------
-//
-export declare namespace OrchestrationRequest {
-	type GetAll = AuthenticatedRequest;
-	type Get = AuthenticatedRequest<{ id: string }, {}, {}, {}>;
-}
-
-// ----------------------------------
 //           /workflow-history
 // ----------------------------------
 
@@ -579,5 +583,6 @@ export declare namespace AiAssistantRequest {
 	type Chat = AuthenticatedRequest<{}, {}, AiAssistantSDK.ChatRequestPayload>;
 
 	type SuggestionPayload = { sessionId: string; suggestionId: string };
-	type ApplySuggestion = AuthenticatedRequest<{}, {}, SuggestionPayload>;
+	type ApplySuggestionPayload = AuthenticatedRequest<{}, {}, SuggestionPayload>;
+	type AskAiPayload = AuthenticatedRequest<{}, {}, AiAssistantSDK.AskAiRequestPayload>;
 }

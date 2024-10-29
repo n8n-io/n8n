@@ -5,6 +5,7 @@ import {
 } from '@/constants';
 import CommunityPackageCard from '@/components/CommunityPackageCard.vue';
 import { useToast } from '@/composables/useToast';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import type { PublicInstalledPackage } from 'n8n-workflow';
 
 import { useCommunityNodesStore } from '@/stores/communityNodes.store';
@@ -31,6 +32,7 @@ const externalHooks = useExternalHooks();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const toast = useToast();
+const documentTitle = useDocumentTitle();
 
 const communityNodesStore = useCommunityNodesStore();
 const uiStore = useUIStore();
@@ -85,6 +87,7 @@ onBeforeMount(() => {
 });
 
 onMounted(async () => {
+	documentTitle.set(i18n.baseText('settings.communityNodes'));
 	try {
 		loading.value = true;
 		await communityNodesStore.fetchInstalledPackages();

@@ -94,7 +94,7 @@ class CredentialType implements ICredentialTypes {
 
 const credentialTypes = new CredentialType();
 
-class CredentialsHelper extends ICredentialsHelper {
+export class CredentialsHelper extends ICredentialsHelper {
 	getCredentialsProperties() {
 		return [];
 	}
@@ -167,6 +167,8 @@ export function WorkflowExecuteAdditionalData(
 	return mock<IWorkflowExecuteAdditionalData>({
 		credentialsHelper: new CredentialsHelper(),
 		hooks: new WorkflowHooks(hookFunctions, 'trigger', '1', mock()),
+		// Get from node.parameters
+		currentNodeParameters: undefined,
 	});
 }
 

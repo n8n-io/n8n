@@ -1,11 +1,12 @@
-import { Flags, type Config } from '@oclif/core';
+import { Flags } from '@oclif/core';
 import { ApplicationError } from 'n8n-workflow';
 import { Container } from 'typedi';
 
 import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
-import { OrchestrationHandlerWebhookService } from '@/services/orchestration/webhook/orchestration.handler.webhook.service';
-import { OrchestrationWebhookService } from '@/services/orchestration/webhook/orchestration.webhook.service';
+import { PubSubHandler } from '@/scaling/pubsub/pubsub-handler';
+import { Subscriber } from '@/scaling/pubsub/subscriber.service';
+import { OrchestrationService } from '@/services/orchestration.service';
 import { WebhookServer } from '@/webhooks/webhook-server';
 
 import { BaseCommand } from './base-command';
@@ -22,14 +23,6 @@ export class Webhook extends BaseCommand {
 	protected server = Container.get(WebhookServer);
 
 	override needsCommunityPackages = true;
-
-	constructor(argv: string[], cmdConfig: Config) {
-		super(argv, cmdConfig);
-		if (this.queueModeId) {
-			this.logger.debug(`Webhook Instance queue mode id: ${this.queueModeId}`);
-		}
-		this.setInstanceQueueModeId();
-	}
 
 	/**
 	 * Stops n8n in a graceful way.
@@ -70,8 +63,8 @@ export class Webhook extends BaseCommand {
 		await this.initCrashJournal();
 		this.logger.debug('Crash journal initialized');
 
-		this.logger.info('Initializing n8n webhook process');
-		this.logger.debug(`Queue mode id: ${this.queueModeId}`);
+		this.logger.info('Starting n8n webhook process...');
+		this.logger.debug(`Host ID: ${this.instanceSettings.hostId}`);
 
 		await super.init();
 
@@ -81,6 +74,8 @@ export class Webhook extends BaseCommand {
 		this.logger.debug('Orchestration init complete');
 		await this.initBinaryDataService();
 		this.logger.debug('Binary data service init complete');
+		await this.initDataDeduplicationService();
+		this.logger.debug('Data deduplication service init complete');
 		await this.initExternalHooks();
 		this.logger.debug('External hooks init complete');
 		await this.initExternalSecrets();
@@ -88,7 +83,7 @@ export class Webhook extends BaseCommand {
 	}
 
 	async run() {
-		if (config.getEnv('multiMainSetup.enabled')) {
+		if (this.globalConfig.multiMainSetup.enabled) {
 			throw new ApplicationError(
 				'Webhook process cannot be started when multi-main setup is enabled.',
 			);
@@ -97,7 +92,6 @@ export class Webhook extends BaseCommand {
 		const { ScalingService } = await import('@/scaling/scaling.service');
 		await Container.get(ScalingService).setupQueue();
 		await this.server.start();
-		this.logger.debug(`Webhook listener ID: ${this.server.uniqueInstanceId}`);
 		this.logger.info('Webhook listener waiting for requests.');
 
 		// Make sure that the process does not close
@@ -109,7 +103,9 @@ export class Webhook extends BaseCommand {
 	}
 
 	async initOrchestration() {
-		await Container.get(OrchestrationWebhookService).init();
-		await Container.get(OrchestrationHandlerWebhookService).init();
+		await Container.get(OrchestrationService).init();
+
+		Container.get(PubSubHandler).init();
+		await Container.get(Subscriber).subscribe('n8n.commands');
 	}
 }

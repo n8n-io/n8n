@@ -37,6 +37,7 @@ import {
 	PROJECT_MOVE_RESOURCE_MODAL,
 	NEW_ASSISTANT_SESSION_MODAL,
 	PROMPT_MFA_CODE_MODAL_KEY,
+	COMMUNITY_PLUS_ENROLLMENT_MODAL,
 } from '@/constants';
 import type {
 	CloudUpdateLinkSourceType,
@@ -126,6 +127,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				SETUP_CREDENTIALS_MODAL_KEY,
 				PROJECT_MOVE_RESOURCE_MODAL,
 				NEW_ASSISTANT_SESSION_MODAL,
+				COMMUNITY_PLUS_ENROLLMENT_MODAL,
 			].map((modalKey) => [modalKey, { open: false }]),
 		),
 		[DELETE_USER_MODAL_KEY]: {
@@ -195,10 +197,10 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const appGridWidth = ref<number>(0);
 
 	// Last interacted with - Canvas v2 specific
-	const lastInteractedWithNodeConnection = ref<Connection | null>(null);
+	const lastInteractedWithNodeConnection = ref<Connection | undefined>();
 	const lastInteractedWithNodeHandle = ref<string | null>(null);
-	const lastInteractedWithNodeId = ref<string | null>(null);
-	const lastCancelledConnectionPosition = ref<XYPosition | null>(null);
+	const lastInteractedWithNodeId = ref<string | undefined>();
+	const lastCancelledConnectionPosition = ref<XYPosition | undefined>();
 
 	const settingsStore = useSettingsStore();
 	const workflowsStore = useWorkflowsStore();
@@ -302,6 +304,8 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			return acc;
 		}, {}),
 	);
+
+	const activeModals = computed(() => modalStack.value.map((modalName) => modalName));
 
 	const fakeDoorsByLocation = computed(() =>
 		fakeDoorFeatures.value.reduce((acc: { [uiLocation: string]: IFakeDoor }, fakeDoor) => {
@@ -618,10 +622,10 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	};
 
 	function resetLastInteractedWith() {
-		lastInteractedWithNodeConnection.value = null;
+		lastInteractedWithNodeConnection.value = undefined;
 		lastInteractedWithNodeHandle.value = null;
-		lastInteractedWithNodeId.value = null;
-		lastCancelledConnectionPosition.value = null;
+		lastInteractedWithNodeId.value = undefined;
+		lastCancelledConnectionPosition.value = undefined;
 	}
 
 	return {
@@ -700,6 +704,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		setNotificationsForView,
 		deleteNotificationsForView,
 		resetLastInteractedWith,
+		activeModals,
 	};
 });
 

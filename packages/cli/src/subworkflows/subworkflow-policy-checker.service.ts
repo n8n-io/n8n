@@ -5,7 +5,7 @@ import { Service } from 'typedi';
 
 import type { Project } from '@/databases/entities/project';
 import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { AccessService } from '@/services/access.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { UrlService } from '@/services/url.service';

@@ -122,7 +122,7 @@ if (executionProcess === 'own') {
 }
 
 setGlobalState({
-	defaultTimezone: config.getEnv('generic.timezone'),
+	defaultTimezone: Container.get(GlobalConfig).generic.timezone,
 });
 
 // eslint-disable-next-line import/no-default-export

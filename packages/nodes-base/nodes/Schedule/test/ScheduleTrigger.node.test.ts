@@ -1,6 +1,6 @@
 import * as n8nWorkflow from 'n8n-workflow';
 
-import { createTestTriggerNode } from '@test/nodes/TriggerHelpers';
+import { testTriggerNode } from '@test/nodes/TriggerHelpers';
 
 import { ScheduleTrigger } from '../ScheduleTrigger.node';
 
@@ -21,7 +21,7 @@ describe('ScheduleTrigger', () => {
 
 	describe('trigger', () => {
 		it('should emit on defined schedule', async () => {
-			const { emit } = await createTestTriggerNode(ScheduleTrigger).trigger({
+			const { emit } = await testTriggerNode(ScheduleTrigger, {
 				timezone,
 				node: { parameters: { rule: { interval: [{ field: 'hours', hoursInterval: 3 }] } } },
 				workflowStaticData: { recurrenceRules: [] },
@@ -60,7 +60,7 @@ describe('ScheduleTrigger', () => {
 		});
 
 		it('should emit on schedule defined as a cron expression', async () => {
-			const { emit } = await createTestTriggerNode(ScheduleTrigger).trigger({
+			const { emit } = await testTriggerNode(ScheduleTrigger, {
 				timezone,
 				node: {
 					parameters: {
@@ -88,7 +88,7 @@ describe('ScheduleTrigger', () => {
 
 		it('should throw on invalid cron expressions', async () => {
 			await expect(
-				createTestTriggerNode(ScheduleTrigger).trigger({
+				testTriggerNode(ScheduleTrigger, {
 					timezone,
 					node: {
 						parameters: {
@@ -108,7 +108,8 @@ describe('ScheduleTrigger', () => {
 		});
 
 		it('should emit when manually executed', async () => {
-			const { emit } = await createTestTriggerNode(ScheduleTrigger).triggerManual({
+			const { emit } = await testTriggerNode(ScheduleTrigger, {
+				mode: 'manual',
 				timezone,
 				node: { parameters: { rule: { interval: [{ field: 'hours', hoursInterval: 3 }] } } },
 				workflowStaticData: { recurrenceRules: [] },
@@ -134,7 +135,8 @@ describe('ScheduleTrigger', () => {
 
 		it('should throw on invalid cron expressions in manual mode', async () => {
 			await expect(
-				createTestTriggerNode(ScheduleTrigger).triggerManual({
+				testTriggerNode(ScheduleTrigger, {
+					mode: 'manual',
 					timezone,
 					node: {
 						parameters: {

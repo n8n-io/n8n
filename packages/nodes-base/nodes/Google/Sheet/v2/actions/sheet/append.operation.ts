@@ -228,7 +228,7 @@ export async function execute(
 
 	const sheetData = await sheet.getData(range, 'FORMATTED_VALUE');
 
-	if (sheetData === undefined || !sheetData.length) {
+	if (!sheetData?.length) {
 		dataMode = 'autoMapInputData';
 	}
 

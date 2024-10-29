@@ -34,16 +34,18 @@ const hideNodeIssues = computed(() => false); // @TODO Implement this
 			<FontAwesomeIcon icon="exclamation-triangle" />
 		</N8nTooltip>
 	</div>
-	<div
-		v-else-if="executionWaiting || executionStatus === 'waiting'"
-		:class="[$style.status, $style.waiting]"
-	>
-		<N8nTooltip placement="bottom">
-			<template #content>
-				<div v-text="executionWaiting"></div>
-			</template>
-			<FontAwesomeIcon icon="clock" />
-		</N8nTooltip>
+	<div v-else-if="executionWaiting || executionStatus === 'waiting'">
+		<div :class="[$style.status, $style.waiting]">
+			<N8nTooltip placement="bottom">
+				<template #content>
+					<div v-text="executionWaiting"></div>
+				</template>
+				<FontAwesomeIcon icon="clock" />
+			</N8nTooltip>
+		</div>
+		<div :class="[$style.status, $style['node-waiting-spinner']]">
+			<FontAwesomeIcon icon="sync-alt" spin />
+		</div>
 	</div>
 	<div
 		v-else-if="hasPinnedData && !nodeHelpers.isProductionExecutionPreview.value && !isDisabled"
@@ -84,6 +86,10 @@ const hideNodeIssues = computed(() => false); // @TODO Implement this
 	color: var(--color-success);
 }
 
+.waiting {
+	color: var(--color-secondary);
+}
+
 .pinnedData {
 	color: var(--color-secondary);
 }
@@ -96,6 +102,18 @@ const hideNodeIssues = computed(() => false); // @TODO Implement this
 	justify-content: center;
 	font-size: 3.75em;
 	color: hsla(var(--color-primary-h), var(--color-primary-s), var(--color-primary-l), 0.7);
+}
+.node-waiting-spinner {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 3.75em;
+	color: hsla(var(--color-primary-h), var(--color-primary-s), var(--color-primary-l), 0.7);
+	width: 100%;
+	height: 100%;
+	position: absolute;
+	left: -34px;
+	top: -34px;
 }
 
 .issues {

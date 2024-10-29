@@ -270,16 +270,14 @@ exports[`CodeDiff > renders code diff correctly 1`] = `
     <div
       class="actions"
     >
-      <n8n-button
+      <n8n-button-stub
         data-test-id="replace-code-button"
         disabled="false"
         icon="refresh"
         loading="false"
         size="mini"
         type="primary"
-      >
-        Replace my code
-      </n8n-button>
+      />
     </div>
   </div>
 </div>
@@ -535,7 +533,7 @@ exports[`CodeDiff > renders error state correctly 1`] = `
       class="actions"
     >
       <div>
-        <n8n-icon
+        <n8n-icon-stub
           class="mr-5xs"
           color="danger"
           icon="exclamation-triangle"
@@ -801,15 +799,13 @@ exports[`CodeDiff > renders replaced code diff correctly 1`] = `
       class="actions"
     >
       <div>
-        <n8n-button
+        <n8n-button-stub
           data-test-id="undo-replace-button"
           icon="undo"
           size="mini"
           type="secondary"
-        >
-          Undo
-        </n8n-button>
-        <n8n-icon
+        />
+        <n8n-icon-stub
           class="ml-xs"
           color="success"
           icon="check"
@@ -1075,16 +1071,14 @@ exports[`CodeDiff > renders replacing code diff correctly 1`] = `
     <div
       class="actions"
     >
-      <n8n-button
+      <n8n-button-stub
         data-test-id="replace-code-button"
         disabled="false"
         icon="refresh"
         loading="true"
         size="mini"
         type="secondary"
-      >
-        Replacing...
-      </n8n-button>
+      />
     </div>
   </div>
 </div>

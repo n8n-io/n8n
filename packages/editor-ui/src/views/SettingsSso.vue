@@ -7,6 +7,7 @@ import { useI18n } from '@/composables/useI18n';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useRootStore } from '@/stores/root.store';
 
 const IdentityProviderSettingsType = {
@@ -21,6 +22,7 @@ const ssoStore = useSSOStore();
 const uiStore = useUIStore();
 const message = useMessage();
 const toast = useToast();
+const documentTitle = useDocumentTitle();
 
 const ssoActivatedLabel = computed(() =>
 	ssoStore.isSamlLoginEnabled
@@ -144,6 +146,7 @@ const isToggleSsoDisabled = computed(() => {
 });
 
 onMounted(async () => {
+	documentTitle.set(i18n.baseText('settings.sso.title'));
 	if (!ssoStore.isEnterpriseSamlEnabled) {
 		return;
 	}

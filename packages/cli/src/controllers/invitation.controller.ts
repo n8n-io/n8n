@@ -12,7 +12,7 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { License } from '@/license';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { PostHogClient } from '@/posthog';
 import { UserRequest } from '@/requests';
 import { PasswordUtility } from '@/services/password.utility';

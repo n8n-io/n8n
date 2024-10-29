@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "1.61.0",
+  "version": "1.65.0",
   "private": true,
   "engines": {
     "node": ">=20.15",
@@ -15,7 +15,7 @@
     "build:frontend": "turbo run build:frontend",
     "build:nodes": "turbo run build:nodes",
     "typecheck": "turbo typecheck",
-    "dev": "turbo run dev --parallel --env-mode=loose --filter=!n8n-design-system --filter=!@n8n/chat",
+    "dev": "turbo run dev --parallel --env-mode=loose --filter=!n8n-design-system --filter=!@n8n/chat --filter=!@n8n/task-runner",
     "dev:ai": "turbo run dev --parallel --env-mode=loose --filter=@n8n/nodes-langchain --filter=n8n --filter=n8n-core",
     "clean": "turbo run clean --parallel",
     "reset": "node scripts/ensure-zx.mjs && zx scripts/reset.mjs",
@@ -43,6 +43,7 @@
     "@biomejs/biome": "^1.9.0",
     "@n8n_io/eslint-config": "workspace:*",
     "@types/jest": "^29.5.3",
+    "@types/node": "*",
     "@types/supertest": "^6.0.2",
     "jest": "^29.6.2",
     "jest-environment-jsdom": "^29.6.2",
@@ -57,9 +58,9 @@
     "run-script-os": "^1.0.7",
     "supertest": "^7.0.0",
     "ts-jest": "^29.1.1",
-    "tsc-alias": "^1.8.7",
-    "tsc-watch": "^6.0.4",
-    "turbo": "2.0.6",
+    "tsc-alias": "^1.8.10",
+    "tsc-watch": "^6.2.0",
+    "turbo": "2.1.2",
     "typescript": "*",
     "zx": "^8.1.4"
   },
@@ -69,14 +70,15 @@
     ],
     "overrides": {
       "@types/node": "^18.16.16",
-      "chokidar": "3.5.2",
-      "esbuild": "^0.20.2",
+      "chokidar": "^4.0.1",
+      "esbuild": "^0.24.0",
       "formidable": "3.5.1",
       "pug": "^3.0.3",
       "semver": "^7.5.4",
       "tslib": "^2.6.2",
       "tsconfig-paths": "^4.2.0",
       "typescript": "^5.6.2",
+      "vue-tsc": "^2.1.6",
       "ws": ">=8.17.1"
     },
     "patchedDependencies": {
@@ -86,7 +88,8 @@
       "pyodide@0.23.4": "patches/pyodide@0.23.4.patch",
       "@types/express-serve-static-core@4.17.43": "patches/@types__express-serve-static-core@4.17.43.patch",
       "@types/ws@8.5.4": "patches/@types__ws@8.5.4.patch",
-      "@types/uuencode@0.0.3": "patches/@types__uuencode@0.0.3.patch"
+      "@types/uuencode@0.0.3": "patches/@types__uuencode@0.0.3.patch",
+      "@langchain/core@0.3.3": "patches/@langchain__core@0.3.3.patch"
     }
   }
 }

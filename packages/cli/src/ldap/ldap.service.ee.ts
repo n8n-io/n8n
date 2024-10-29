@@ -14,7 +14,7 @@ import { SettingsRepository } from '@/databases/repositories/settings.repository
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { EventService } from '@/events/event.service';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import {
 	getCurrentAuthenticationMethod,
 	isEmailCurrentAuthenticationMethod,

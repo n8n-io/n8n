@@ -3,7 +3,7 @@ import { ApplicationError, ErrorReporterProxy, assert } from 'n8n-workflow';
 import { Container, Service } from 'typedi';
 
 import { LOWEST_SHUTDOWN_PRIORITY, HIGHEST_SHUTDOWN_PRIORITY } from '@/constants';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 
 type HandlerFn = () => Promise<void> | void;
 export type ServiceClass = Class<Record<string, HandlerFn>>;

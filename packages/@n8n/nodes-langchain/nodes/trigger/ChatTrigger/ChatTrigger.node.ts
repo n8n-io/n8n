@@ -1,4 +1,6 @@
-import { Node, NodeConnectionType } from 'n8n-workflow';
+import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
+import { pick } from 'lodash';
+import { Node, NodeConnectionType, commonCORSParameters } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IWebhookFunctions,
@@ -10,10 +12,8 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-import { pick } from 'lodash';
-import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
-import { createPage } from './templates';
 import { validateAuth } from './GenericFunctions';
+import { createPage } from './templates';
 import type { LoadPreviousSessionChatOption } from './types';
 
 const CHAT_TRIGGER_PATH_IDENTIFIER = 'chat';
@@ -56,7 +56,6 @@ export class ChatTrigger extends Node {
 				],
 			},
 		},
-		supportsCORS: true,
 		maxNodes: 1,
 		inputs: `={{ (() => {
 			if (!['hostedChat', 'webhook'].includes($parameter.mode)) {
@@ -241,6 +240,15 @@ export class ChatTrigger extends Node {
 				placeholder: 'Add Field',
 				default: {},
 				options: [
+					// CORS parameters are only valid for when chat is used in hosted or webhook mode
+					...commonCORSParameters.map((p) => ({
+						...p,
+						displayOptions: {
+							show: {
+								'/mode': ['hostedChat', 'webhook'],
+							},
+						},
+					})),
 					{
 						...allowFileUploadsOption,
 						displayOptions: {

@@ -1,14 +1,21 @@
+import { CommunityRegisteredRequestDto } from '@n8n/api-types';
 import type { AxiosError } from 'axios';
+import { InstanceSettings } from 'n8n-core';
 
-import { Get, Post, RestController, GlobalScope } from '@/decorators';
+import { Get, Post, RestController, GlobalScope, Body } from '@/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { AuthenticatedRequest, LicenseRequest } from '@/requests';
+import { AuthenticatedRequest, AuthlessRequest, LicenseRequest } from '@/requests';
+import { UrlService } from '@/services/url.service';
 
 import { LicenseService } from './license.service';
 
 @RestController('/license')
 export class LicenseController {
-	constructor(private readonly licenseService: LicenseService) {}
+	constructor(
+		private readonly licenseService: LicenseService,
+		private readonly instanceSettings: InstanceSettings,
+		private readonly urlService: UrlService,
+	) {}
 
 	@Get('/')
 	async getLicenseData() {
@@ -30,6 +37,20 @@ export class LicenseController {
 				throw new BadRequestError('Failed to request trial');
 			}
 		}
+	}
+
+	@Post('/enterprise/community-registered')
+	async registerCommunityEdition(
+		_req: AuthlessRequest,
+		_res: Response,
+		@Body payload: CommunityRegisteredRequestDto,
+	) {
+		return await this.licenseService.registerCommunityEdition({
+			email: payload.email,
+			instanceId: this.instanceSettings.instanceId,
+			instanceUrl: this.urlService.getInstanceBaseUrl(),
+			licenseType: 'community-registered',
+		});
 	}
 
 	@Post('/activate')

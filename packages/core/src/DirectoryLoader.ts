@@ -1,6 +1,4 @@
 import glob from 'fast-glob';
-import { readFileSync } from 'node:fs';
-import { readFile } from 'node:fs/promises';
 import type {
 	CodexData,
 	DocumentationLink,
@@ -21,7 +19,10 @@ import {
 	getVersionedNodeTypeAll,
 	jsonParse,
 } from 'n8n-workflow';
+import { readFileSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
 import * as path from 'path';
+
 import { loadClassInIsolation } from './ClassLoader';
 import { CUSTOM_NODES_CATEGORY } from './Constants';
 import type { n8n } from './Interfaces';
@@ -447,9 +448,9 @@ export class LazyPackageDirectoryLoader extends PackageDirectoryLoader {
 				);
 			}
 
-			Logger.debug(`Lazy Loading credentials and nodes from ${this.packageJson.name}`, {
-				credentials: this.types.credentials?.length ?? 0,
+			Logger.debug(`Lazy-loading nodes and credentials from ${this.packageJson.name}`, {
 				nodes: this.types.nodes?.length ?? 0,
+				credentials: this.types.credentials?.length ?? 0,
 			});
 
 			this.isLazyLoaded = true;

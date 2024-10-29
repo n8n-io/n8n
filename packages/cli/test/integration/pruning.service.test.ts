@@ -8,7 +8,7 @@ import { TIME } from '@/constants';
 import type { ExecutionEntity } from '@/databases/entities/execution-entity';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { PruningService } from '@/services/pruning.service';
 
 import {
@@ -22,7 +22,7 @@ import { mockInstance } from '../shared/mocking';
 
 describe('softDeleteOnPruningCycle()', () => {
 	let pruningService: PruningService;
-	const instanceSettings = new InstanceSettings();
+	const instanceSettings = new InstanceSettings(mock());
 	instanceSettings.markAsLeader();
 
 	const now = new Date();
@@ -37,6 +37,7 @@ describe('softDeleteOnPruningCycle()', () => {
 			instanceSettings,
 			Container.get(ExecutionRepository),
 			mockInstance(BinaryDataService),
+			mock(),
 			mock(),
 		);
 

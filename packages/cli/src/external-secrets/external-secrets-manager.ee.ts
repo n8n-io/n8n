@@ -1,6 +1,6 @@
 import { Cipher } from 'n8n-core';
-import { jsonParse, type IDataObject, ApplicationError } from 'n8n-workflow';
-import Container, { Service } from 'typedi';
+import { jsonParse, type IDataObject, ApplicationError, ensureError } from 'n8n-workflow';
+import { Service } from 'typedi';
 
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import { EventService } from '@/events/event.service';
@@ -10,8 +10,8 @@ import type {
 	SecretsProviderSettings,
 } from '@/interfaces';
 import { License } from '@/license';
-import { Logger } from '@/logger';
-import { OrchestrationService } from '@/services/orchestration.service';
+import { Logger } from '@/logging/logger.service';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { EXTERNAL_SECRETS_INITIAL_BACKOFF, EXTERNAL_SECRETS_MAX_BACKOFF } from './constants';
 import { updateIntervalTime } from './external-secrets-helper.ee';
@@ -38,7 +38,10 @@ export class ExternalSecretsManager {
 		private readonly secretsProviders: ExternalSecretsProviders,
 		private readonly cipher: Cipher,
 		private readonly eventService: EventService,
-	) {}
+		private readonly publisher: Publisher,
+	) {
+		this.logger = this.logger.scoped('external-secrets');
+	}
 
 	async init(): Promise<void> {
 		if (!this.initialized) {
@@ -56,6 +59,8 @@ export class ExternalSecretsManager {
 			}
 			return await this.initializingPromise;
 		}
+
+		this.logger.debug('External secrets manager initialized');
 	}
 
 	shutdown() {
@@ -65,6 +70,8 @@ export class ExternalSecretsManager {
 			void p.disconnect().catch(() => {});
 		});
 		Object.values(this.initRetryTimeouts).forEach((v) => clearTimeout(v));
+
+		this.logger.debug('External secrets manager shut down');
 	}
 
 	async reloadAllProviders(backoff?: number) {
@@ -76,10 +83,12 @@ export class ExternalSecretsManager {
 		for (const provider of providers) {
 			await this.reloadProvider(provider, backoff);
 		}
+
+		this.logger.debug('External secrets managed reloaded all providers');
 	}
 
-	async broadcastReloadExternalSecretsProviders() {
-		await Container.get(OrchestrationService).publish('reload-external-secrets-providers');
+	broadcastReloadExternalSecretsProviders() {
+		void this.publisher.publishCommand({ command: 'reload-external-secrets-providers' });
 	}
 
 	private decryptSecretsSettings(value: string): ExternalSecretsSettings {
@@ -190,6 +199,8 @@ export class ExternalSecretsManager {
 				}
 			}),
 		);
+
+		this.logger.debug('External secrets manager updated secrets');
 	}
 
 	getProvider(provider: string): SecretsProvider | undefined {
@@ -260,6 +271,8 @@ export class ExternalSecretsManager {
 		if (newProvider) {
 			this.providers[provider] = newProvider;
 		}
+
+		this.logger.debug(`External secrets manager reloaded provider ${provider}`);
 	}
 
 	async setProviderSettings(provider: string, data: IDataObject, userId?: string) {
@@ -280,7 +293,7 @@ export class ExternalSecretsManager {
 		await this.saveAndSetSettings(settings, this.settingsRepo);
 		this.cachedSettings = settings;
 		await this.reloadProvider(provider);
-		await this.broadcastReloadExternalSecretsProviders();
+		this.broadcastReloadExternalSecretsProviders();
 
 		void this.trackProviderSave(provider, isNewProvider, userId);
 	}
@@ -300,7 +313,7 @@ export class ExternalSecretsManager {
 		this.cachedSettings = settings;
 		await this.reloadProvider(provider);
 		await this.updateSecrets();
-		await this.broadcastReloadExternalSecretsProviders();
+		this.broadcastReloadExternalSecretsProviders();
 	}
 
 	private async trackProviderSave(vaultType: string, isNew: boolean, userId?: string) {
@@ -380,9 +393,13 @@ export class ExternalSecretsManager {
 		}
 		try {
 			await this.providers[provider].update();
-			await this.broadcastReloadExternalSecretsProviders();
+			this.broadcastReloadExternalSecretsProviders();
+			this.logger.debug(`External secrets manager updated provider ${provider}`);
 			return true;
-		} catch {
+		} catch (error) {
+			this.logger.debug(`External secrets manager failed to update provider ${provider}`, {
+				error: ensureError(error),
+			});
 			return false;
 		}
 	}

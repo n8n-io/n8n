@@ -47,7 +47,7 @@ import type {
 	IExecutionFlattedDb,
 	IExecutionResponse,
 } from '@/interfaces';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { separate } from '@/utils';
 
 import { ExecutionDataRepository } from './execution-data.repository';
@@ -304,16 +304,34 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	 * Insert a new execution and its execution data using a transaction.
 	 */
 	async createNewExecution(execution: CreateExecutionPayload): Promise<string> {
-		const { data, workflowData, ...rest } = execution;
-		const { identifiers: inserted } = await this.insert({ ...rest, createdAt: new Date() });
-		const { id: executionId } = inserted[0] as { id: string };
-		const { connections, nodes, name, settings } = workflowData ?? {};
-		await this.executionDataRepository.insert({
-			executionId,
-			workflowData: { connections, nodes, name, settings, id: workflowData.id },
-			data: stringify(data),
-		});
-		return String(executionId);
+		const { data: dataObj, workflowData: currentWorkflow, ...rest } = execution;
+		const { connections, nodes, name, settings } = currentWorkflow ?? {};
+		const workflowData = { connections, nodes, name, settings, id: currentWorkflow.id };
+		const data = stringify(dataObj);
+
+		const { type: dbType, sqlite: sqliteConfig } = this.globalConfig.database;
+		if (dbType === 'sqlite' && sqliteConfig.poolSize === 0) {
+			// TODO: Delete this block of code once the sqlite legacy (non-pooling) driver is dropped.
+			// In the non-pooling sqlite driver we can't use transactions, because that creates nested transactions under highly concurrent loads, leading to errors in the database
+			const { identifiers: inserted } = await this.insert({ ...rest, createdAt: new Date() });
+			const { id: executionId } = inserted[0] as { id: string };
+			await this.executionDataRepository.insert({ executionId, workflowData, data });
+			return String(executionId);
+		} else {
+			// All other database drivers should create executions and execution-data atomically
+			return await this.manager.transaction(async (transactionManager) => {
+				const { identifiers: inserted } = await transactionManager.insert(ExecutionEntity, {
+					...rest,
+					createdAt: new Date(),
+				});
+				const { id: executionId } = inserted[0] as { id: string };
+				await this.executionDataRepository.createExecutionDataForExecution(
+					{ executionId, workflowData, data },
+					transactionManager,
+				);
+				return String(executionId);
+			});
+		}
 	}
 
 	async markAsCrashed(executionIds: string | string[]) {
@@ -338,10 +356,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			this.delete(ids.executionId),
 			this.binaryDataService.deleteMany([ids]),
 		]);
-	}
-
-	async updateStatus(executionId: string, status: ExecutionStatus) {
-		await this.update({ id: executionId }, { status });
 	}
 
 	async setRunning(executionId: string) {

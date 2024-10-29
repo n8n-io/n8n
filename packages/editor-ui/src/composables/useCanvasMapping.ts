@@ -9,6 +9,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { Ref } from 'vue';
 import { computed } from 'vue';
 import type {
+	BoundingBox,
 	CanvasConnection,
 	CanvasConnectionData,
 	CanvasConnectionPort,
@@ -22,6 +23,7 @@ import type {
 } from '@/types';
 import { CanvasConnectionMode, CanvasNodeRenderType } from '@/types';
 import {
+	checkOverlap,
 	mapLegacyConnectionsToCanvasConnections,
 	mapLegacyEndpointsToCanvasConnectionPort,
 	parseCanvasConnectionHandleString,
@@ -34,9 +36,15 @@ import type {
 	ITaskData,
 	Workflow,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
+import { NodeConnectionType, NodeHelpers, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
-import { CUSTOM_API_CALL_KEY, STICKY_NODE_TYPE, WAIT_TIME_UNLIMITED } from '@/constants';
+import {
+	CUSTOM_API_CALL_KEY,
+	FORM_NODE_TYPE,
+	STICKY_NODE_TYPE,
+	WAIT_NODE_TYPE,
+	WAIT_TIME_UNLIMITED,
+} from '@/constants';
 import { sanitizeHtml } from '@/utils/htmlUtils';
 import { MarkerType } from '@vue-flow/core';
 import { useNodeHelpers } from './useNodeHelpers';
@@ -231,7 +239,8 @@ export function useCanvasMapping({
 	const nodeExecutionStatusById = computed(() =>
 		nodes.value.reduce<Record<string, ExecutionStatus>>((acc, node) => {
 			acc[node.id] =
-				workflowsStore.getWorkflowRunData?.[node.name]?.filter(Boolean)[0].executionStatus ?? 'new';
+				workflowsStore.getWorkflowRunData?.[node.name]?.filter(Boolean)[0]?.executionStatus ??
+				'new';
 			return acc;
 		}, {}),
 	);
@@ -325,8 +334,31 @@ export function useCanvasMapping({
 			if (workflowExecution && lastNodeExecuted && isExecutionSummary(workflowExecution)) {
 				if (
 					node.name === workflowExecution.data?.resultData?.lastNodeExecuted &&
-					workflowExecution.waitTill
+					workflowExecution?.waitTill &&
+					!workflowExecution?.finished
 				) {
+					if (
+						node &&
+						node.type === WAIT_NODE_TYPE &&
+						['webhook', 'form'].includes(node.parameters.resume as string)
+					) {
+						acc[node.id] =
+							node.parameters.resume === 'webhook'
+								? i18n.baseText('node.theNodeIsWaitingWebhookCall')
+								: i18n.baseText('node.theNodeIsWaitingFormCall');
+						return acc;
+					}
+
+					if (node?.parameters.operation === SEND_AND_WAIT_OPERATION) {
+						acc[node.id] = i18n.baseText('node.theNodeIsWaitingUserInput');
+						return acc;
+					}
+
+					if (node?.type === FORM_NODE_TYPE) {
+						acc[node.id] = i18n.baseText('node.theNodeIsWaitingFormCall');
+						return acc;
+					}
+
 					const waitDate = new Date(workflowExecution.waitTill);
 
 					if (waitDate.toISOString() === WAIT_TIME_UNLIMITED) {
@@ -349,17 +381,68 @@ export function useCanvasMapping({
 	);
 
 	const additionalNodePropertiesById = computed(() => {
-		return nodes.value.reduce<Record<string, Partial<CanvasNode>>>((acc, node) => {
+		type StickyNoteBoundingBox = BoundingBox & {
+			id: string;
+			area: number;
+			zIndex: number;
+		};
+
+		const stickyNodeBaseZIndex = -100;
+
+		const stickyNodeBoundingBoxes = nodes.value.reduce<StickyNoteBoundingBox[]>((acc, node) => {
 			if (node.type === STICKY_NODE_TYPE) {
-				acc[node.id] = {
-					style: {
-						zIndex: -1,
-					},
-				};
+				const x = node.position[0];
+				const y = node.position[1];
+				const width = node.parameters.width as number;
+				const height = node.parameters.height as number;
+
+				acc.push({
+					id: node.id,
+					x,
+					y,
+					width,
+					height,
+					area: width * height,
+					zIndex: stickyNodeBaseZIndex,
+				});
 			}
 
 			return acc;
-		}, {});
+		}, []);
+
+		const sortedStickyNodeBoundingBoxes = stickyNodeBoundingBoxes.sort((a, b) => b.area - a.area);
+		sortedStickyNodeBoundingBoxes.forEach((node, index) => {
+			node.zIndex = stickyNodeBaseZIndex + index;
+		});
+
+		for (let i = 0; i < sortedStickyNodeBoundingBoxes.length; i++) {
+			const node1 = sortedStickyNodeBoundingBoxes[i];
+			for (let j = i + 1; j < sortedStickyNodeBoundingBoxes.length; j++) {
+				const node2 = sortedStickyNodeBoundingBoxes[j];
+				if (checkOverlap(node1, node2)) {
+					if (node1.area < node2.area && node1.zIndex <= node2.zIndex) {
+						// Ensure node1 (smaller area) has a higher zIndex than node2 (larger area)
+						node1.zIndex = node2.zIndex + 1;
+					} else if (node2.area < node1.area && node2.zIndex <= node1.zIndex) {
+						// Ensure node2 (smaller area) has a higher zIndex than node1 (larger area)
+						node2.zIndex = node1.zIndex + 1;
+					}
+				}
+			}
+		}
+
+		return sortedStickyNodeBoundingBoxes.reduce<Record<string, Partial<CanvasNode>>>(
+			(acc, node) => {
+				acc[node.id] = {
+					style: {
+						zIndex: node.zIndex,
+					},
+				};
+
+				return acc;
+			},
+			{},
+		);
 	});
 
 	const mappedNodes = computed<CanvasNode[]>(() => [
@@ -472,25 +555,30 @@ export function useCanvasMapping({
 
 		if (nodePinnedDataById.value[fromNode.id]) {
 			const pinnedDataCount = nodePinnedDataById.value[fromNode.id]?.length ?? 0;
-			return i18n.baseText('ndv.output.items', {
-				adjustToNumber: pinnedDataCount,
-				interpolate: { count: String(pinnedDataCount) },
-			});
+			return pinnedDataCount > 0
+				? i18n.baseText('ndv.output.items', {
+						adjustToNumber: pinnedDataCount,
+						interpolate: { count: String(pinnedDataCount) },
+					})
+				: '';
 		} else if (nodeExecutionRunDataById.value[fromNode.id]) {
 			const { type, index } = parseCanvasConnectionHandleString(connection.sourceHandle);
 			const runDataTotal =
 				nodeExecutionRunDataOutputMapById.value[fromNode.id]?.[type]?.[index]?.total ?? 0;
 
-			return i18n.baseText('ndv.output.items', {
-				adjustToNumber: runDataTotal,
-				interpolate: { count: String(runDataTotal) },
-			});
+			return runDataTotal > 0
+				? i18n.baseText('ndv.output.items', {
+						adjustToNumber: runDataTotal,
+						interpolate: { count: String(runDataTotal) },
+					})
+				: '';
 		}
 
 		return '';
 	}
 
 	return {
+		additionalNodePropertiesById,
 		nodeExecutionRunDataOutputMapById,
 		connections: mappedConnections,
 		nodes: mappedNodes,

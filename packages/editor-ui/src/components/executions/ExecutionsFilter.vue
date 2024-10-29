@@ -8,10 +8,9 @@ import type {
 } from '@/Interface';
 import { i18n as locale } from '@/plugins/i18n';
 import { getObjectKeys, isEmpty } from '@/utils/typesUtils';
-import { EnterpriseEditionFeature, EXECUTION_ANNOTATION_EXPERIMENT } from '@/constants';
+import { EnterpriseEditionFeature } from '@/constants';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
-import { usePostHog } from '@/stores/posthog.store';
 import { useTelemetry } from '@/composables/useTelemetry';
 import type { Placement } from '@floating-ui/core';
 import { useDebounce } from '@/composables/useDebounce';
@@ -27,7 +26,6 @@ const DATE_TIME_MASK = 'YYYY-MM-DD HH:mm';
 
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
-const posthogStore = usePostHog();
 const { debounce } = useDebounce();
 
 const telemetry = useTelemetry();
@@ -48,11 +46,7 @@ const isCustomDataFilterTracked = ref(false);
 const isAdvancedExecutionFilterEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedExecutionFilters],
 );
-const isAnnotationFiltersEnabled = computed(
-	() =>
-		isAdvancedExecutionFilterEnabled.value &&
-		posthogStore.isFeatureEnabled(EXECUTION_ANNOTATION_EXPERIMENT),
-);
+const isAnnotationFiltersEnabled = computed(() => isAdvancedExecutionFilterEnabled.value);
 const showTags = computed(() => false);
 
 const getDefaultFilter = (): ExecutionFilterType => ({

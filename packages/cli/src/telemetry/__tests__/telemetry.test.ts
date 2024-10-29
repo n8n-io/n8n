@@ -1,3 +1,4 @@
+import type { GlobalConfig } from '@n8n/config';
 import type RudderStack from '@rudderstack/rudder-sdk-node';
 import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
@@ -41,10 +42,17 @@ describe('Telemetry', () => {
 	beforeEach(async () => {
 		spyTrack.mockClear();
 
-		const postHog = new PostHogClient(instanceSettings);
+		const postHog = new PostHogClient(instanceSettings, mock());
 		await postHog.init();
 
-		telemetry = new Telemetry(mock(), postHog, mock(), instanceSettings, mock());
+		telemetry = new Telemetry(
+			mock(),
+			postHog,
+			mock(),
+			instanceSettings,
+			mock(),
+			mock<GlobalConfig>({ logging: { level: 'info', outputs: ['console'] } }),
+		);
 		// @ts-expect-error Assigning to private property
 		telemetry.rudderStack = mockRudderStack;
 	});
@@ -257,6 +265,44 @@ describe('Telemetry', () => {
 			expect(execBuffer['1'].prod_error?.first).toEqual(execTime2);
 			expect(execBuffer['1'].prod_success?.first).toEqual(execTime1);
 			expect(execBuffer['2'].prod_success?.first).toEqual(execTime1);
+		});
+	});
+
+	describe('Rudderstack', () => {
+		test("should call rudderStack.identify() with a fake IP address to instruct Rudderstack to not use the user's IP address", () => {
+			const traits = {
+				name: 'Test User',
+				age: 30,
+				isActive: true,
+			};
+
+			telemetry.identify(traits);
+
+			const expectedArgs = {
+				userId: instanceId,
+				traits: { ...traits, instanceId },
+				context: {
+					ip: '0.0.0.0', // RudderStack anonymized IP
+				},
+			};
+
+			expect(mockRudderStack.identify).toHaveBeenCalledWith(expectedArgs);
+		});
+
+		test("should call rudderStack.track() with a fake IP address to instruct Rudderstack to not use the user's IP address", () => {
+			const eventName = 'Test Event';
+			const properties = { user_id: '1234' };
+
+			telemetry.track(eventName, properties);
+
+			expect(mockRudderStack.track).toHaveBeenCalledWith(
+				expect.objectContaining({
+					event: eventName,
+					context: {
+						ip: '0.0.0.0', // RudderStack anonymized IP
+					},
+				}),
+			);
 		});
 	});
 });

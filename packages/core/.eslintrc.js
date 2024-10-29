@@ -18,7 +18,6 @@ module.exports = {
 		complexity: 'error',
 
 		// TODO: Remove this
-		'import/order': 'off',
 		'@typescript-eslint/ban-ts-comment': ['error', { 'ts-ignore': true }],
 	},
 };

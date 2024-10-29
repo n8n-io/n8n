@@ -91,7 +91,7 @@ export const enrichmentFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Linkedin Enrichment',
+		displayName: 'LinkedIn Enrichment',
 		name: 'linkedinEnrichment',
 		type: 'boolean',
 		default: false,
@@ -150,7 +150,7 @@ export const enrichmentFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Linkedin Url',
+				displayName: 'LinkedIn Url',
 				name: 'linkedinUrl',
 				type: 'string',
 				default: '',

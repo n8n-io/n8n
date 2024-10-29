@@ -14,6 +14,7 @@ import { useNodeType } from '@/composables/useNodeType';
 import { usePinnedData } from '@/composables/usePinnedData';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@/composables/useI18n';
+import { waitingNodeTooltip } from '@/utils/executionUtils';
 
 // Types
 
@@ -122,7 +123,7 @@ const defaultOutputMode = computed<OutputType>(() => {
 });
 
 const isNodeRunning = computed(() => {
-	return !!node.value && workflowsStore.isNodeExecuting(node.value.name);
+	return workflowRunning.value && !!node.value && workflowsStore.isNodeExecuting(node.value.name);
 });
 
 const workflowRunning = computed(() => {
@@ -346,6 +347,11 @@ const activatePane = () => {
 					</span>
 				</template>
 			</n8n-text>
+		</template>
+
+		<template #node-waiting>
+			<n8n-text :bold="true" color="text-dark" size="large">Waiting for input</n8n-text>
+			<n8n-text v-n8n-html="waitingNodeTooltip()"></n8n-text>
 		</template>
 
 		<template #no-output-data>

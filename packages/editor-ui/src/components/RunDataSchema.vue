@@ -95,7 +95,7 @@ const nodes = computed(() => {
 
 			return {
 				node: fullNode,
-				connectedOutputIndexes: node.indicies,
+				connectedOutputIndexes: node.indicies.length > 0 ? node.indicies : [0],
 				depth: node.depth,
 				itemsCount,
 				nodeType,
@@ -264,7 +264,10 @@ watch(
 </script>
 
 <template>
-	<div v-if="paneType === 'input'" :class="[$style.schemaWrapper, { highlightSchema: highlight }]">
+	<div
+		v-if="paneType === 'input' && nodes.length > 0"
+		:class="[$style.schemaWrapper, { highlightSchema: highlight }]"
+	>
 		<div v-if="search && nodes.length > 0 && filteredNodes.length === 0" :class="$style.noMatch">
 			<n8n-text tag="h3" size="large">{{
 				$locale.baseText('ndv.search.noNodeMatch.title')

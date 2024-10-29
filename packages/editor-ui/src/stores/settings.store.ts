@@ -3,6 +3,7 @@ import Bowser from 'bowser';
 import type { IUserManagementSettings, FrontendSettings } from '@n8n/api-types';
 
 import * as publicApiApi from '@/api/api-keys';
+import * as eventsApi from '@/api/events';
 import * as ldapApi from '@/api/ldap';
 import * as settingsApi from '@/api/settings';
 import { testHealthEndpoint } from '@/api/templates';
@@ -17,7 +18,6 @@ import { useUIStore } from './ui.store';
 import { useUsersStore } from './users.store';
 import { useVersionsStore } from './versions.store';
 import { makeRestApiRequest } from '@/utils/apiUtils';
-import { useTitleChange } from '@/composables/useTitleChange';
 import { useToast } from '@/composables/useToast';
 import { i18n } from '@/plugins/i18n';
 
@@ -87,6 +87,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	const isSamlLoginEnabled = computed(() => saml.value.loginEnabled);
 
 	const isAiAssistantEnabled = computed(() => settings.value.aiAssistant?.enabled);
+
+	const isAskAiEnabled = computed(() => settings.value.askAi?.enabled);
 
 	const showSetupPage = computed(() => userManagement.value.showSetupOnFirstLoad);
 
@@ -236,6 +238,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		rootStore.setEndpointFormWaiting(fetchedSettings.endpointFormWaiting);
 		rootStore.setEndpointWebhook(fetchedSettings.endpointWebhook);
 		rootStore.setEndpointWebhookTest(fetchedSettings.endpointWebhookTest);
+		rootStore.setEndpointWebhookWaiting(fetchedSettings.endpointWebhookWaiting);
 		rootStore.setTimezone(fetchedSettings.timezone);
 		rootStore.setExecutionTimeout(fetchedSettings.executionTimeout);
 		rootStore.setMaxExecutionTimeout(fetchedSettings.maxExecutionTimeout);
@@ -245,6 +248,10 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		rootStore.setDefaultLocale(fetchedSettings.defaultLocale);
 		rootStore.setBinaryDataMode(fetchedSettings.binaryDataMode);
 		useVersionsStore().setVersionNotificationSettings(fetchedSettings.versionNotifications);
+
+		if (fetchedSettings.telemetry.enabled) {
+			void eventsApi.sessionStarted(rootStore.restApiContext);
+		}
 	};
 
 	const initialize = async () => {
@@ -257,9 +264,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 			await getSettings();
 
 			ExpressionEvaluatorProxy.setEvaluator(settings.value.expressions.evaluator);
-
-			// Re-compute title since settings are now available
-			useTitleChange().titleReset();
 
 			initialized.value = true;
 		} catch (e) {
@@ -413,6 +417,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		saveManualExecutions,
 		saveDataProgressExecution,
 		isCommunityPlan,
+		isAskAiEnabled,
 		reset,
 		testLdapConnection,
 		getLdapConfig,
