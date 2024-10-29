@@ -24,7 +24,7 @@ export class GmailTrigger implements INodeType {
 		name: 'gmailTrigger',
 		icon: 'file:gmail.svg',
 		group: ['trigger'],
-		version: [1, 1.1],
+		version: [1, 1.1, 1.2],
 		description:
 			'Fetches emails from Gmail and starts the workflow on specified polling intervals.',
 		subtitle: '={{"Gmail Trigger"}}',
@@ -291,7 +291,12 @@ export class GmailTrigger implements INodeType {
 				qs.format = 'raw';
 			}
 
-			const includeDrafts = (qs.includeDrafts as boolean) || false;
+			let includeDrafts;
+			if (node.typeVersion > 1.1) {
+				includeDrafts = (qs.includeDrafts as boolean) || false;
+			} else {
+				includeDrafts = (qs.includeDrafts as boolean) || true;
+			}
 			delete qs.includeDrafts;
 
 			for (let i = 0; i < responseData.length; i++) {
