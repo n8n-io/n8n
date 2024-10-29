@@ -639,6 +639,9 @@ importers:
 
   packages/@n8n/task-runner:
     dependencies:
+      '@n8n/config':
+        specifier: workspace:*
+        version: link:../config
       n8n-core:
         specifier: workspace:*
         version: link:../../core
@@ -648,6 +651,9 @@ importers:
       nanoid:
         specifier: ^3.3.6
         version: 3.3.7
+      typedi:
+        specifier: 'catalog:'
+        version: 0.10.0(patch_hash=sk6omkefrosihg7lmqbzh7vfxe)
       ws:
         specifier: '>=8.17.1'
         version: 8.17.1
@@ -12104,6 +12110,9 @@ packages:
   vue-component-type-helpers@2.1.6:
     resolution: {integrity: sha512-ng11B8B/ZADUMMOsRbqv0arc442q7lifSubD0v8oDXIFoMg/mXwAPUunrroIDkY+mcD0dHKccdaznSVp8EoX3w==}
 
+  vue-component-type-helpers@2.1.8:
+    resolution: {integrity: sha512-ii36gDzrYAfOQIkOlo44yceDdT5269gKmNGxf07Qx6seH2U50+tQ2ol02XLhYPmxrh6YabAsOdte8WDrpaO6Tw==}
+
   vue-demi@0.14.10:
     resolution: {integrity: sha512-nMZBOwuzabUO0nLgIcc6rycZEebF6eeUfaiQx9+WSk8e29IbLvPU9feI6tqW4kTo3hvoYAJkMh8n8D0fuISphg==}
     engines: {node: '>=12'}
@@ -16272,7 +16281,7 @@ snapshots:
       ts-dedent: 2.2.0
       type-fest: 2.19.0
       vue: 3.5.11(typescript@5.6.2)
-      vue-component-type-helpers: 2.1.6
+      vue-component-type-helpers: 2.1.8
 
   '@supabase/auth-js@2.65.0':
     dependencies:
@@ -25464,6 +25473,8 @@ snapshots:
       typescript: 5.6.2
 
   vue-component-type-helpers@2.1.6: {}
+
+  vue-component-type-helpers@2.1.8: {}
 
   vue-demi@0.14.10(vue@3.5.11(typescript@5.6.2)):
     dependencies:

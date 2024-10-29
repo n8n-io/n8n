@@ -47,6 +47,7 @@ export class TaskRunnerProcess {
 		'PATH',
 		'NODE_FUNCTION_ALLOW_BUILTIN',
 		'NODE_FUNCTION_ALLOW_EXTERNAL',
+		'N8N_RUNNERS_MAX_CONCURRENCY',
 	] as const;
 
 	constructor(
