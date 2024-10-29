@@ -373,10 +373,6 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 					});
 					const execution = await workflowsStore.getExecution((executionId as string) || '');
 
-					console.log('isFormShown', isFormShown);
-					console.log('processExecution', execution);
-					console.log('local-storage form url', localStorage.getItem(FORM_RELOAD));
-
 					localStorage.removeItem(FORM_RELOAD);
 
 					if (!execution || workflowsStore.workflowExecutionData === null) {
@@ -387,7 +383,6 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 					}
 
 					const { lastNodeExecuted } = execution.data?.resultData || {};
-					console.log('lastNodeExecuted', lastNodeExecuted);
 					const lastNode = execution.workflowData.nodes.find((node) => {
 						return node.name === lastNodeExecuted;
 					});

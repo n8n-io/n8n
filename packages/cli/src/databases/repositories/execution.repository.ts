@@ -402,11 +402,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			ids?: string[];
 		},
 	) {
-		this.logger.error('deleteExecutionsByFilter called', {
-			filters,
-			accessibleWorkflowIds,
-			deleteConditions,
-		});
 		if (!deleteConditions?.deleteBefore && !deleteConditions?.ids) {
 			throw new ApplicationError(
 				'Either "deleteBefore" or "ids" must be present in the request body',

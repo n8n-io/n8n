@@ -204,7 +204,6 @@ async function onExecutionStop(id?: string) {
 }
 
 async function onExecutionDelete(id?: string) {
-	console.log('On execution delete', id);
 	if (!id) {
 		return;
 	}
