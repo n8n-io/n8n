@@ -642,6 +642,9 @@ importers:
 
   packages/@n8n/task-runner:
     dependencies:
+      '@n8n/config':
+        specifier: workspace:*
+        version: link:../config
       n8n-core:
         specifier: workspace:*
         version: link:../../core
@@ -651,6 +654,9 @@ importers:
       nanoid:
         specifier: ^3.3.6
         version: 3.3.7
+      typedi:
+        specifier: 'catalog:'
+        version: 0.10.0(patch_hash=sk6omkefrosihg7lmqbzh7vfxe)
       ws:
         specifier: '>=8.17.1'
         version: 8.17.1
