@@ -292,24 +292,28 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 			return;
 		}
 
-		const { results_count, trigger_action_count, regular_action_count } = filteredNodes.reduce(
+		console.log(filteredNodes);
+		const { results_count, trigger_count, regular_count } = filteredNodes.reduce(
 			(accu, node) => {
 				if (!('properties' in node)) {
 					return accu;
 				}
-				const isTrigger = 'group' in node.properties && node.properties.group?.includes('trigger');
+				const isCustomAction =
+					'actionKey' in node.properties && node.properties.actionKey === CUSTOM_API_CALL_KEY;
+				if (isCustomAction) {
+					return accu;
+				}
+				const isTrigger = node.key.includes('Trigger');
 				return {
-					results_count:
-						accu.results_count +
-						('key' in node.properties && node.properties.key !== CUSTOM_API_CALL_KEY ? 1 : 0),
-					trigger_action_count: accu.trigger_action_count + (isTrigger ? 1 : 0),
-					regular_action_count: accu.regular_action_count + (isTrigger ? 0 : 1),
+					results_count: accu.results_count + 1,
+					trigger_count: accu.trigger_count + (isTrigger ? 1 : 0),
+					regular_count: accu.regular_count + (isTrigger ? 0 : 1),
 				};
 			},
 			{
 				results_count: 0,
-				trigger_action_count: 0,
-				regular_action_count: 0,
+				trigger_count: 0,
+				regular_count: 0,
 			},
 		);
 
@@ -318,8 +322,8 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 			filter_mode: getMode(filterMode),
 			category_name: subcategory,
 			results_count,
-			trigger_action_count,
-			regular_action_count,
+			trigger_count,
+			regular_count,
 		});
 	}
 

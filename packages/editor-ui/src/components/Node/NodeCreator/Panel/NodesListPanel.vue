@@ -58,16 +58,18 @@ function onSearch(value: string) {
 	if (activeViewStack.value.uuid) {
 		updateCurrentViewStack({ search: value });
 		void setActiveItemIndex(getDefaultActiveIndex(value));
-		callDebounced(
-			nodeCreatorStore.onNodeFilterChanged,
-			{ trailing: true, debounceTime: 2000 },
-			{
-				newValue: value,
-				filteredNodes: activeViewStack.value.items ?? [],
-				filterMode: activeViewStack.value.rootView ?? 'Regular',
-				subcategory: activeViewStack.value.subcategory,
-			},
-		);
+		if (value.length) {
+			callDebounced(
+				nodeCreatorStore.onNodeFilterChanged,
+				{ trailing: true, debounceTime: 2000 },
+				{
+					newValue: value,
+					filteredNodes: activeViewStack.value.items ?? [],
+					filterMode: activeViewStack.value.rootView ?? 'Regular',
+					subcategory: activeViewStack.value.subcategory,
+				},
+			);
+		}
 	}
 }
 
