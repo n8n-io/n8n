@@ -110,7 +110,7 @@ describe('TaskBroker', () => {
 			const messageCallback = jest.fn();
 
 			taskBroker.registerRunner(runner, messageCallback);
-			taskBroker.deregisterRunner(runnerId);
+			taskBroker.deregisterRunner(runnerId, new Error());
 
 			const knownRunners = taskBroker.getKnownRunners();
 			const runnerIds = Object.keys(knownRunners);
@@ -138,7 +138,7 @@ describe('TaskBroker', () => {
 				validFor: 1000,
 				validUntil: createValidUntil(1000),
 			});
-			taskBroker.deregisterRunner(runnerId);
+			taskBroker.deregisterRunner(runnerId, new Error());
 
 			const offers = taskBroker.getPendingTaskOffers();
 			expect(offers).toHaveLength(1);
@@ -161,10 +161,14 @@ describe('TaskBroker', () => {
 				[taskId]: { id: taskId, requesterId: 'requester1', runnerId, taskType: 'mock' },
 				task2: { id: 'task2', requesterId: 'requester1', runnerId: 'runner2', taskType: 'mock' },
 			});
-			taskBroker.deregisterRunner(runnerId);
+			const error = new Error('error');
+			taskBroker.deregisterRunner(runnerId, error);
 
-			expect(failSpy).toBeCalledWith(taskId, `The Task Runner (${runnerId}) has disconnected`);
-			expect(rejectSpy).toBeCalledWith(taskId, `The Task Runner (${runnerId}) has disconnected`);
+			expect(failSpy).toBeCalledWith(taskId, error);
+			expect(rejectSpy).toBeCalledWith(
+				taskId,
+				`The Task Runner (${runnerId}) has disconnected: error`,
+			);
 		});
 	});
 
