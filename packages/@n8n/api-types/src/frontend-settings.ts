@@ -1,3 +1,4 @@
+import type { FrontendBetaFeatures } from '@n8n/config';
 import type { ExpressionEvaluatorType, LogLevel, WorkflowSettings } from 'n8n-workflow';
 
 export interface IVersionNotificationSettings {
@@ -169,4 +170,5 @@ export interface FrontendSettings {
 	security: {
 		blockFileAccessToN8nFiles: boolean;
 	};
+	betaFeatures: FrontendBetaFeatures[];
 }

@@ -124,4 +124,5 @@ export const defaultSettings: FrontendSettings = {
 	aiAssistant: {
 		enabled: false,
 	},
+	betaFeatures: [],
 };
