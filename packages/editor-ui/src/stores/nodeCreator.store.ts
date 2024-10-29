@@ -292,7 +292,6 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 			return;
 		}
 
-		console.log(filteredNodes);
 		const { results_count, trigger_count, regular_count } = filteredNodes.reduce(
 			(accu, node) => {
 				if (!('properties' in node)) {
