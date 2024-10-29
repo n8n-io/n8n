@@ -538,11 +538,6 @@ onPaneReady(async () => {
 	isPaneReady.value = true;
 });
 
-onNodesInitialized((nodes) => {
-	if (nodes.length !== 1 || nodes[0].data?.render.type !== CanvasNodeRenderType.AddNodes) return;
-	void onFitView();
-});
-
 watch(() => props.readOnly, setReadonly, {
 	immediate: true,
 });
