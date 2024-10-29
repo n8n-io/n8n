@@ -151,10 +151,6 @@ function onSelected(item: INodeCreateElement) {
 
 	if (item.type === 'link') {
 		window.open(item.properties.url, '_blank');
-		// todo
-		// telemetry.trackNodesPanel('nodeCreateList.onLinkSelected', {
-		// 	link: item.properties.url,
-		// });
 	}
 }
 
