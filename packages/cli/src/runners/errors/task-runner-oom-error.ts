@@ -15,7 +15,7 @@ export class TaskRunnerOomError extends ApplicationError {
 		const suggestions = isCloudDeployment
 			? [fixSuggestions.reduceItems, fixSuggestions.upgradePlan]
 			: [fixSuggestions.reduceItems, fixSuggestions.increaseMemory];
-		const message = `${headline} ${suggestions.map((suggestion, index) => `${index + 1}. ${suggestion}`).join(' ')}`;
+		const message = `${headline}\n\n${suggestions.map((suggestion, index) => `${index + 1}. ${suggestion}`).join('\n')}`;
 
 		super(message, { level: 'error' });
 	}
