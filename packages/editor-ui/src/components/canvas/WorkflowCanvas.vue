@@ -53,11 +53,11 @@ const { nodes: mappedNodes, connections: mappedConnections } = useCanvasMapping(
 	workflowObject,
 });
 
-const initialFitView = ref(false); // Workaround for https://github.com/bcakmakoglu/vue-flow/issues/1636
+const initialFitViewDone = ref(false); // Workaround for https://github.com/bcakmakoglu/vue-flow/issues/1636
 onNodesInitialized(() => {
-	if (!initialFitView.value || props.showFallbackNodes) {
+	if (!initialFitViewDone.value || props.showFallbackNodes) {
 		props.eventBus.emit('fitView');
-		initialFitView.value = true;
+		initialFitViewDone.value = true;
 	}
 });
 </script>
