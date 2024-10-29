@@ -200,7 +200,7 @@ export default defineComponent({
 			MAX_DISPLAY_ITEMS_AUTO_ALL,
 			currentPage: 1,
 			pageSize: 10,
-			pageSizes: [10, 25, 50, 100],
+			pageSizes: [1, 10, 25, 50, 100],
 
 			pinDataDiscoveryTooltipVisible: false,
 			isControlledPinDataTooltip: false,
@@ -217,6 +217,13 @@ export default defineComponent({
 		),
 		isReadOnlyRoute() {
 			return this.$route?.meta?.readOnlyCanvas === true;
+		},
+		isWaitNodeWaiting() {
+			return (
+				this.workflowExecution?.status === 'waiting' &&
+				this.workflowExecution.data?.waitTill &&
+				this.workflowExecution?.data?.resultData?.lastNodeExecuted === this.node?.name
+			);
 		},
 		activeNode(): INodeUi | null {
 			return this.ndvStore.activeNode;
@@ -239,14 +246,38 @@ export default defineComponent({
 		isSchemaView(): boolean {
 			return this.displayMode === 'schema';
 		},
-		isInputSchemaView(): boolean {
-			return this.isSchemaView && this.paneType === 'input';
+		displaysMultipleNodes(): boolean {
+			return this.isSchemaView && this.paneType === 'input' && this.nodes.length > 0;
 		},
 		isTriggerNode(): boolean {
 			if (this.node === null) {
 				return false;
 			}
 			return this.nodeTypesStore.isTriggerNode(this.node.type);
+		},
+		showPinButton(): boolean {
+			if (!this.rawInputData.length && !this.pinnedData.hasData.value) {
+				return false;
+			}
+
+			if (this.editMode.enabled) {
+				return false;
+			}
+
+			if (this.binaryData?.length) {
+				return this.isPaneTypeOutput;
+			}
+
+			return this.canPinData;
+		},
+		pinButtonDisabled(): boolean {
+			return (
+				this.pinnedData.hasData.value ||
+				!this.rawInputData.length ||
+				!!this.binaryData?.length ||
+				this.isReadOnlyRoute ||
+				this.readOnlyEnv
+			);
 		},
 		canPinData(): boolean {
 			if (this.node === null) {
@@ -1192,6 +1223,7 @@ export default defineComponent({
 					size="small"
 					underline
 					bold
+					data-test-id="ndv-unpin-data"
 					@click.stop="onTogglePinData({ source: 'banner-link' })"
 				>
 					{{ $locale.baseText('runData.pindata.unpin') }}
@@ -1262,13 +1294,8 @@ export default defineComponent({
 				/>
 
 				<RunDataPinButton
-					v-if="(canPinData || !!binaryData?.length) && rawInputData.length && !editMode.enabled"
-					:disabled="
-						(!rawInputData.length && !pinnedData.hasData.value) ||
-						isReadOnlyRoute ||
-						readOnlyEnv ||
-						!!binaryData?.length
-					"
+					v-if="showPinButton"
+					:disabled="pinButtonDisabled"
 					:tooltip-contents-visibility="{
 						binaryDataTooltipContent: !!binaryData?.length,
 						pinDataDiscoveryTooltipContent:
@@ -1300,7 +1327,7 @@ export default defineComponent({
 		</div>
 
 		<div
-			v-if="maxRunIndex > 0 && !isInputSchemaView"
+			v-if="maxRunIndex > 0 && !displaysMultipleNodes"
 			v-show="!editMode.enabled"
 			:class="$style.runSelector"
 		>
@@ -1342,7 +1369,7 @@ export default defineComponent({
 			<slot name="run-info"></slot>
 		</div>
 
-		<slot v-if="!isInputSchemaView" name="before-data" />
+		<slot v-if="!displaysMultipleNodes" name="before-data" />
 
 		<n8n-callout
 			v-for="hint in getNodeHints()"
@@ -1354,7 +1381,7 @@ export default defineComponent({
 		</n8n-callout>
 
 		<div
-			v-if="maxOutputIndex > 0 && branches.length > 1 && !isInputSchemaView"
+			v-if="maxOutputIndex > 0 && branches.length > 1 && !displaysMultipleNodes"
 			:class="$style.outputs"
 			data-test-id="branches"
 		>
@@ -1375,7 +1402,7 @@ export default defineComponent({
 				hasNodeRun &&
 				((dataCount > 0 && maxRunIndex === 0) || search) &&
 				!isArtificialRecoveredEventItem &&
-				!isInputSchemaView
+				!displaysMultipleNodes
 			"
 			v-show="!editMode.enabled && !hasRunError"
 			:class="[$style.itemsCount, { [$style.muted]: paneType === 'input' && maxRunIndex === 0 }]"
@@ -1432,12 +1459,19 @@ export default defineComponent({
 				<NodeErrorView :error="subworkflowExecutionError" :class="$style.errorDisplay" />
 			</div>
 
-			<div v-else-if="!hasNodeRun && !(isInputSchemaView && node?.disabled)" :class="$style.center">
+			<div v-else-if="isWaitNodeWaiting" :class="$style.center">
+				<slot name="node-waiting">xxx</slot>
+			</div>
+
+			<div
+				v-else-if="!hasNodeRun && !(displaysMultipleNodes && node?.disabled)"
+				:class="$style.center"
+			>
 				<slot name="node-not-run"></slot>
 			</div>
 
 			<div
-				v-else-if="paneType === 'input' && !isInputSchemaView && node?.disabled"
+				v-else-if="paneType === 'input' && !displaysMultipleNodes && node?.disabled"
 				:class="$style.center"
 			>
 				<n8n-text>
@@ -1711,7 +1745,7 @@ export default defineComponent({
 			v-if="
 				hasNodeRun &&
 				!hasRunError &&
-				binaryData.length === 0 &&
+				displayMode !== 'binary' &&
 				dataCount > pageSize &&
 				!isSchemaView &&
 				!isArtificialRecoveredEventItem
@@ -1847,6 +1881,7 @@ export default defineComponent({
 	justify-content: space-between;
 	align-items: center;
 	min-height: 30px;
+	--color-tabs-arrow-buttons: var(--color-run-data-background);
 }
 
 .itemsCount {

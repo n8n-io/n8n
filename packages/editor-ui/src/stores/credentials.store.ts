@@ -1,32 +1,31 @@
 import type {
-	INodeUi,
-	IUsedCredential,
 	ICredentialMap,
 	ICredentialsDecryptedResponse,
 	ICredentialsResponse,
 	ICredentialsState,
 	ICredentialTypeMap,
+	INodeUi,
+	IUsedCredential,
 } from '@/Interface';
 import * as credentialsApi from '@/api/credentials';
 import * as credentialsEeApi from '@/api/credentials.ee';
-import { makeRestApiRequest } from '@/utils/apiUtils';
-import { getAppNameFromCredType } from '@/utils/nodeTypesUtils';
 import { EnterpriseEditionFeature, STORES } from '@/constants';
 import { i18n } from '@/plugins/i18n';
+import type { ProjectSharingData } from '@/types/projects.types';
+import { makeRestApiRequest } from '@/utils/apiUtils';
+import { getAppNameFromCredType } from '@/utils/nodeTypesUtils';
+import { splitName } from '@/utils/projects.utils';
+import { isEmpty, isPresent } from '@/utils/typesUtils';
 import type {
 	ICredentialsDecrypted,
 	ICredentialType,
 	INodeCredentialTestResult,
-	INodeTypeDescription,
 } from 'n8n-workflow';
 import { defineStore } from 'pinia';
-import { useRootStore } from './root.store';
-import { useNodeTypesStore } from './nodeTypes.store';
-import { useSettingsStore } from './settings.store';
-import { isEmpty } from '@/utils/typesUtils';
-import type { ProjectSharingData } from '@/types/projects.types';
-import { splitName } from '@/utils/projects.utils';
 import { computed, ref } from 'vue';
+import { useNodeTypesStore } from './nodeTypes.store';
+import { useRootStore } from './root.store';
+import { useSettingsStore } from './settings.store';
 
 const DEFAULT_CREDENTIAL_NAME = 'Unnamed credential';
 const DEFAULT_CREDENTIAL_POSTFIX = 'account';
@@ -131,22 +130,15 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 
 	const getNodesWithAccess = computed(() => {
 		return (credentialTypeName: string) => {
+			const credentialType = getCredentialTypeByName.value(credentialTypeName);
+			if (!credentialType) {
+				return [];
+			}
 			const nodeTypesStore = useNodeTypesStore();
-			const allNodeTypes: INodeTypeDescription[] = nodeTypesStore.allNodeTypes;
 
-			return allNodeTypes.filter((nodeType: INodeTypeDescription) => {
-				if (!nodeType.credentials) {
-					return false;
-				}
-
-				for (const credentialTypeDescription of nodeType.credentials) {
-					if (credentialTypeDescription.name === credentialTypeName) {
-						return true;
-					}
-				}
-
-				return false;
-			});
+			return (credentialType.supportedNodes ?? [])
+				.map((nodeType) => nodeTypesStore.getNodeType(nodeType))
+				.filter(isPresent);
 		};
 	});
 

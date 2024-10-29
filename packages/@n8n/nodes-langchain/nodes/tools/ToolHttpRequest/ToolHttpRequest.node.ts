@@ -1,8 +1,8 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type {
-	IExecuteFunctions,
 	INodeType,
 	INodeTypeDescription,
+	ISupplyDataFunctions,
 	SupplyData,
 	IHttpRequestMethods,
 	IHttpRequestOptions,
@@ -250,7 +250,7 @@ export class ToolHttpRequest implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const name = this.getNode().name.replace(/ /g, '_');
 		try {
 			tryToParseAlphanumericString(name);
@@ -275,8 +275,14 @@ export class ToolHttpRequest implements INodeType {
 			method: this.getNodeParameter('method', itemIndex, 'GET') as IHttpRequestMethods,
 			url: this.getNodeParameter('url', itemIndex) as string,
 			qs: {},
-			headers: {},
+			headers: {
+				// FIXME: This is a workaround to prevent the node from sending a default User-Agent (`n8n`) when the header is not set.
+				//  Needs to be replaced with a proper fix after NODE-1777 is resolved
+				'User-Agent': undefined,
+			},
 			body: {},
+			// We will need a full response object later to extract the headers and check the response's content type.
+			returnFullResponse: true,
 		};
 
 		const authentication = this.getNodeParameter('authentication', itemIndex, 'none') as

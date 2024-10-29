@@ -5,24 +5,20 @@ import type {
 	ExecutionStatus,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
-import {
-	ApplicationError,
-	createDeferredPromise,
-	ExecutionCancelledError,
-	sleep,
-} from 'n8n-workflow';
+import { createDeferredPromise, ExecutionCancelledError, sleep } from 'n8n-workflow';
 import { strict as assert } from 'node:assert';
 import type PCancelable from 'p-cancelable';
 import { Service } from 'typedi';
 
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import type {
-	ExecutionPayload,
+	CreateExecutionPayload,
 	IExecutingWorkflowData,
 	IExecutionDb,
 	IExecutionsCurrentSummary,
 } from '@/interfaces';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { isWorkflowIdValid } from '@/utils';
 
 import { ConcurrencyControlService } from './concurrency/concurrency-control.service';
@@ -56,11 +52,10 @@ export class ActiveExecutions {
 		if (executionId === undefined) {
 			// Is a new execution so save in DB
 
-			const fullExecutionData: ExecutionPayload = {
+			const fullExecutionData: CreateExecutionPayload = {
 				data: executionData.executionData!,
 				mode,
 				finished: false,
-				startedAt: new Date(),
 				workflowData: executionData.workflowData,
 				status: executionStatus,
 				workflowId: executionData.workflowData.id,
@@ -78,7 +73,10 @@ export class ActiveExecutions {
 			executionId = await this.executionRepository.createNewExecution(fullExecutionData);
 			assert(executionId);
 
-			await this.concurrencyControl.throttle({ mode, executionId });
+			if (config.getEnv('executions.mode') === 'regular') {
+				await this.concurrencyControl.throttle({ mode, executionId });
+				await this.executionRepository.setRunning(executionId);
+			}
 			executionStatus = 'running';
 		} else {
 			// Is an existing execution we want to finish so update in DB
@@ -90,17 +88,34 @@ export class ActiveExecutions {
 				data: executionData.executionData!,
 				waitTill: null,
 				status: executionStatus,
+				// this is resuming, so keep `startedAt` as it was
 			};
 
 			await this.executionRepository.updateExistingExecution(executionId, execution);
 		}
 
+		const postExecutePromise = createDeferredPromise<IRun | undefined>();
+
 		this.activeExecutions[executionId] = {
 			executionData,
 			startedAt: new Date(),
-			postExecutePromises: [],
+			postExecutePromise,
 			status: executionStatus,
 		};
+
+		// Automatically remove execution once the postExecutePromise settles
+		void postExecutePromise.promise
+			.catch((error) => {
+				if (error instanceof ExecutionCancelledError) return;
+				throw error;
+			})
+			.finally(() => {
+				this.concurrencyControl.release({ mode: executionData.executionMode });
+				delete this.activeExecutions[executionId];
+				this.logger.debug('Execution removed', { executionId });
+			});
+
+		this.logger.debug('Execution added', { executionId });
 
 		return executionId;
 	}
@@ -125,68 +140,31 @@ export class ActiveExecutions {
 		execution?.responsePromise?.resolve(response);
 	}
 
-	getPostExecutePromiseCount(executionId: string): number {
-		return this.activeExecutions[executionId]?.postExecutePromises.length ?? 0;
-	}
-
-	/**
-	 * Remove an active execution
-	 */
-	remove(executionId: string, fullRunData?: IRun): void {
-		const execution = this.activeExecutions[executionId];
-		if (execution === undefined) {
-			return;
-		}
-
-		// Resolve all the waiting promises
-		for (const promise of execution.postExecutePromises) {
-			promise.resolve(fullRunData);
-		}
-
-		this.postExecuteCleanup(executionId);
-	}
-
-	/**
-	 * Forces an execution to stop
-	 */
+	/** Cancel the execution promise and reject its post-execution promise. */
 	stopExecution(executionId: string): void {
 		const execution = this.activeExecutions[executionId];
 		if (execution === undefined) {
 			// There is no execution running with that id
 			return;
 		}
-
-		execution.workflowExecution!.cancel();
-
-		// Reject all the waiting promises
-		const reason = new ExecutionCancelledError(executionId);
-		for (const promise of execution.postExecutePromises) {
-			promise.reject(reason);
-		}
-
-		this.postExecuteCleanup(executionId);
+		execution.workflowExecution?.cancel();
+		execution.postExecutePromise.reject(new ExecutionCancelledError(executionId));
+		this.logger.debug('Execution cancelled', { executionId });
 	}
 
-	private postExecuteCleanup(executionId: string) {
-		const execution = this.activeExecutions[executionId];
-		if (execution === undefined) {
-			return;
-		}
-
-		// Remove from the list of active executions
-		delete this.activeExecutions[executionId];
-
-		this.concurrencyControl.release({ mode: execution.executionData.executionMode });
+	/** Resolve the post-execution promise in an execution. */
+	finalizeExecution(executionId: string, fullRunData?: IRun) {
+		if (!this.has(executionId)) return;
+		const execution = this.getExecution(executionId);
+		execution.postExecutePromise.resolve(fullRunData);
+		this.logger.debug('Execution finalized', { executionId });
 	}
 
 	/**
 	 * Returns a promise which will resolve with the data of the execution with the given id
 	 */
 	async getPostExecutePromise(executionId: string): Promise<IRun | undefined> {
-		// Create the promise which will be resolved when the execution finished
-		const waitPromise = createDeferredPromise<IRun | undefined>();
-		this.getExecution(executionId).postExecutePromises.push(waitPromise);
-		return await waitPromise.promise;
+		return await this.getExecution(executionId).postExecutePromise.promise;
 	}
 
 	/**
@@ -252,7 +230,7 @@ export class ActiveExecutions {
 	private getExecution(executionId: string): IExecutingWorkflowData {
 		const execution = this.activeExecutions[executionId];
 		if (!execution) {
-			throw new ApplicationError('No active execution found', { extra: { executionId } });
+			throw new ExecutionNotFoundError(executionId);
 		}
 		return execution;
 	}

@@ -1,66 +1,111 @@
-import { createTestingPinia } from '@pinia/testing';
+import { createTestingPinia, type TestingPinia } from '@pinia/testing';
+import type { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
-import type { INodeTypeDescription } from 'n8n-workflow';
 
 import CredentialIcon from '@/components/CredentialIcon.vue';
-import { STORES } from '@/constants';
-import { groupNodeTypesByNameAndType } from '@/utils/nodeTypes/nodeTypeTransforms';
 
 import { createComponentRenderer } from '@/__tests__/render';
-
-const twitterV1 = mock<INodeTypeDescription>({
-	version: 1,
-	credentials: [{ name: 'twitterOAuth1Api', required: true }],
-	iconUrl: 'icons/n8n-nodes-base/dist/nodes/Twitter/x.svg',
-});
-
-const twitterV2 = mock<INodeTypeDescription>({
-	version: 2,
-	credentials: [{ name: 'twitterOAuth2Api', required: true }],
-	iconUrl: 'icons/n8n-nodes-base/dist/nodes/Twitter/x.svg',
-});
-
-const nodeTypes = groupNodeTypesByNameAndType([twitterV1, twitterV2]);
-const initialState = {
-	[STORES.CREDENTIALS]: {},
-	[STORES.NODE_TYPES]: { nodeTypes },
-};
-
-const renderComponent = createComponentRenderer(CredentialIcon, {
-	pinia: createTestingPinia({ initialState }),
-	global: {
-		stubs: ['n8n-tooltip'],
-	},
-});
+import { useCredentialsStore } from '@/stores/credentials.store';
+import { useRootStore } from '@/stores/root.store';
+import { useNodeTypesStore } from '../../stores/nodeTypes.store';
 
 describe('CredentialIcon', () => {
-	const findIcon = (baseElement: Element) => baseElement.querySelector('img');
+	const renderComponent = createComponentRenderer(CredentialIcon, {
+		pinia: createTestingPinia(),
+		global: {
+			stubs: ['n8n-tooltip'],
+		},
+	});
+	let pinia: TestingPinia;
 
-	it('shows correct icon for credential type that is for the latest node type version', () => {
-		const { baseElement } = renderComponent({
-			pinia: createTestingPinia({ initialState }),
-			props: {
-				credentialTypeName: 'twitterOAuth2Api',
-			},
-		});
-
-		expect(findIcon(baseElement)).toHaveAttribute(
-			'src',
-			'/icons/n8n-nodes-base/dist/nodes/Twitter/x.svg',
-		);
+	beforeEach(() => {
+		pinia = createTestingPinia({ stubActions: false });
 	});
 
-	it('shows correct icon for credential type that is for an older node type version', () => {
-		const { baseElement } = renderComponent({
-			pinia: createTestingPinia({ initialState }),
+	it('shows correct icon when iconUrl is set on credential', () => {
+		const testIconUrl = 'icons/n8n-nodes-base/dist/nodes/Test/test.svg';
+		useCredentialsStore().setCredentialTypes([
+			mock<ICredentialType>({
+				name: 'test',
+				iconUrl: testIconUrl,
+			}),
+		]);
+
+		const { getByRole } = renderComponent({
+			pinia,
 			props: {
-				credentialTypeName: 'twitterOAuth1Api',
+				credentialTypeName: 'test',
 			},
 		});
 
-		expect(findIcon(baseElement)).toHaveAttribute(
-			'src',
-			'/icons/n8n-nodes-base/dist/nodes/Twitter/x.svg',
-		);
+		expect(getByRole('img')).toHaveAttribute('src', useRootStore().baseUrl + testIconUrl);
+	});
+
+	it('shows correct icon when icon is set on credential', () => {
+		useCredentialsStore().setCredentialTypes([
+			mock<ICredentialType>({
+				name: 'test',
+				icon: 'fa:clock',
+				iconColor: 'azure',
+			}),
+		]);
+
+		const { getByRole } = renderComponent({
+			pinia,
+			props: {
+				credentialTypeName: 'test',
+			},
+		});
+
+		const icon = getByRole('img', { hidden: true });
+		expect(icon.tagName).toBe('svg');
+		expect(icon).toHaveClass('fa-clock');
+	});
+
+	it('shows correct icon when credential has an icon with node: prefix', () => {
+		const testIconUrl = 'icons/n8n-nodes-base/dist/nodes/Test/test.svg';
+		useCredentialsStore().setCredentialTypes([
+			mock<ICredentialType>({
+				name: 'test',
+				icon: 'node:n8n-nodes-base.test',
+				iconColor: 'azure',
+			}),
+		]);
+
+		useNodeTypesStore().setNodeTypes([
+			mock<INodeTypeDescription>({
+				version: 1,
+				name: 'n8n-nodes-base.test',
+				iconUrl: testIconUrl,
+			}),
+		]);
+
+		const { getByRole } = renderComponent({
+			pinia,
+			props: {
+				credentialTypeName: 'test',
+			},
+		});
+
+		expect(getByRole('img')).toHaveAttribute('src', useRootStore().baseUrl + testIconUrl);
+	});
+
+	it('shows fallback icon when icon is not found', () => {
+		useCredentialsStore().setCredentialTypes([
+			mock<ICredentialType>({
+				name: 'test',
+				icon: 'node:n8n-nodes-base.test',
+				iconColor: 'azure',
+			}),
+		]);
+
+		const { baseElement } = renderComponent({
+			pinia,
+			props: {
+				credentialTypeName: 'test',
+			},
+		});
+
+		expect(baseElement.querySelector('.nodeIconPlaceholder')).toBeInTheDocument();
 	});
 });

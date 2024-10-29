@@ -1,7 +1,7 @@
 import { Container } from 'typedi';
 import type { XMLFileInfo } from 'xmllint-wasm';
 
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 
 let xml: XMLFileInfo;
 let xmldsigCore: XMLFileInfo;

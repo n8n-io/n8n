@@ -17,9 +17,8 @@ import { createTeamProject } from '@test-integration/db/projects';
 
 import { mockInstance } from '../../shared/mocking';
 import { createTag } from '../shared/db/tags';
-import { createUser } from '../shared/db/users';
+import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
 import { createWorkflow, createWorkflowWithTrigger } from '../shared/db/workflows';
-import { randomApiKey } from '../shared/random';
 import * as testDb from '../shared/test-db';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
@@ -40,18 +39,13 @@ const license = testServer.license;
 mockInstance(ExecutionService);
 
 beforeAll(async () => {
-	owner = await createUser({
-		role: 'global:owner',
-		apiKey: randomApiKey(),
-	});
+	owner = await createOwnerWithApiKey();
 	ownerPersonalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
 		owner.id,
 	);
 
-	member = await createUser({
-		role: 'global:member',
-		apiKey: randomApiKey(),
-	});
+	member = await createMemberWithApiKey();
+
 	memberPersonalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
 		member.id,
 	);
@@ -1518,6 +1512,10 @@ describe('PUT /workflows/:id/transfer', () => {
 		const secondProject = await createTeamProject('second-project', member);
 		const workflow = await createWorkflow({}, firstProject);
 
+		// Make data more similar to real world scenario by injecting additional records into the database
+		await createTeamProject('third-project', member);
+		await createWorkflow({}, firstProject);
+
 		/**
 		 * Act
 		 */
@@ -1529,6 +1527,13 @@ describe('PUT /workflows/:id/transfer', () => {
 		 * Assert
 		 */
 		expect(response.statusCode).toBe(204);
+
+		const workflowsInProjectResponse = await authMemberAgent
+			.get(`/workflows?projectId=${secondProject.id}`)
+			.send();
+
+		expect(workflowsInProjectResponse.statusCode).toBe(200);
+		expect(workflowsInProjectResponse.body.data[0].id).toBe(workflow.id);
 	});
 
 	test('if no destination project, should reject', async () => {

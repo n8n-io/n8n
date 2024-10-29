@@ -113,7 +113,7 @@ function onDocumentVisibilityChange() {
 async function initializeRoute() {
 	if (route.name === VIEWS.EXECUTION_HOME && executions.value.length > 0 && workflow.value) {
 		await router
-			.push({
+			.replace({
 				name: VIEWS.EXECUTION_PREVIEW,
 				params: { name: workflow.value.id, executionId: executions.value[0].id },
 			})

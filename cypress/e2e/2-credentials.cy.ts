@@ -15,7 +15,7 @@ import {
 	TRELLO_NODE_NAME,
 } from '../constants';
 import { CredentialsModal, CredentialsPage, NDV, WorkflowPage } from '../pages';
-import { successToast } from '../pages/notifications';
+import { errorToast, successToast } from '../pages/notifications';
 import { getVisibleSelect } from '../utils';
 
 const credentialsPage = new CredentialsPage();
@@ -277,5 +277,26 @@ describe('Credentials', () => {
 		getVisibleSelect().find('li').last().click();
 		credentialsModal.getters.credentialAuthTypeRadioButtons().first().click();
 		nodeDetailsView.getters.copyInput().should('not.exist');
+	});
+
+	it('ADO-2583 should show notifications above credential modal overlay', () => {
+		// check error notifications because they are sticky
+		cy.intercept('POST', '/rest/credentials', { forceNetworkError: true });
+		credentialsPage.getters.createCredentialButton().click();
+
+		credentialsModal.getters.newCredentialModal().should('be.visible');
+		credentialsModal.getters.newCredentialTypeSelect().should('be.visible');
+		credentialsModal.getters.newCredentialTypeOption('Notion API').click();
+
+		credentialsModal.getters.newCredentialTypeButton().click();
+		credentialsModal.getters.connectionParameter('Internal Integration Secret').type('1234567890');
+
+		credentialsModal.actions.setName('My awesome Notion account');
+		credentialsModal.getters.saveButton().click({ force: true });
+		errorToast().should('have.length', 1);
+		errorToast().should('be.visible');
+
+		errorToast().should('have.css', 'z-index', '2100');
+		cy.get('.el-overlay').should('have.css', 'z-index', '2001');
 	});
 });

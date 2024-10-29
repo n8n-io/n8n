@@ -1,4 +1,20 @@
-@import 'highlight.js/styles/github.css';
+@use 'sass:meta';
+
+@include meta.load-css('highlight.js/styles/github.css');
+
+@mixin hljs-dark-theme {
+	@include meta.load-css('highlight.js/styles/github-dark-dimmed.css');
+}
+
+body {
+	&[data-theme='dark'] {
+		@include hljs-dark-theme;
+	}
+
+	@media (prefers-color-scheme: dark) {
+		@include hljs-dark-theme;
+	}
+}
 
 // https://github.com/pxlrbt/markdown-css
 .chat-message-markdown {
@@ -561,7 +577,6 @@
 
 	kbd, /* different style for kbd? */
 	code {
-		background: #eee;
 		padding: 0.1em 0.25em;
 		border-radius: 0.2rem;
 		-webkit-box-decoration-break: clone;

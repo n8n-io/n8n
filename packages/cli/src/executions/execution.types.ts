@@ -80,6 +80,7 @@ export namespace ExecutionSummaries {
 		startedBefore: string;
 		annotationTags: string[]; // tag IDs
 		vote: AnnotationVote;
+		projectId: string;
 	}>;
 
 	type AccessFields = {

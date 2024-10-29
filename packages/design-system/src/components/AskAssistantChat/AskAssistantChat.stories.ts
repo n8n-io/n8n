@@ -268,3 +268,107 @@ WithCodeSnippet.args = {
 		},
 	]),
 };
+
+export const RichTextMessage = Template.bind({});
+RichTextMessage.args = {
+	user: {
+		firstName: 'Kobi',
+		lastName: 'Dog',
+	},
+	messages: getMessages([
+		{
+			id: '29083188',
+			role: 'user',
+			type: 'text',
+			content: 'Hey',
+			read: true,
+		},
+		{
+			id: '29083188',
+			type: 'text',
+			role: 'assistant',
+			content: 'Hello Kobi! How can I assist you with n8n today?',
+			read: true,
+		},
+		{
+			id: '21514129',
+			role: 'user',
+			type: 'text',
+			content: 'Can you show me a message example with paragraphs, lists and links?',
+			read: true,
+		},
+		{
+			id: '21514129',
+			type: 'text',
+			role: 'assistant',
+			content:
+				"Sure: \n\nTo connect your Slack account to n8n, follow these steps:\n\n1. Open your [Slack API Apps](https://api.slack.com/apps) page.\n2. Select **Create New App > From scratch**.\n3. Enter an **App Name**.\n4. Select the **Workspace** where you'll be developing your app.\n5. Select **Create App**.\n6. In **Basic Information**, open the **App Credentials** section.\n7. Copy the **Client ID** and **Client Secret**. Paste these into the corresponding fields in n8n.\n8. In **Basic Information > Building Apps for Slack**, select **Add features and functionality**.\n9. Select **Permissions**.\n10. In the **Redirect URLs** section, select **Add New Redirect URL**.\n\nFor more details, you can refer to the [Slack API Quickstart](https://api.slack.com/quickstart) and the [Installing with OAuth](https://api.slack.com/authentication/oauth-v2) documentation.",
+			codeSnippet: '',
+			read: true,
+		},
+		{
+			id: '86572001',
+			role: 'user',
+			type: 'text',
+			content: 'Can you show me an example of a table?',
+			read: true,
+		},
+		{
+			id: '86572001',
+			type: 'text',
+			role: 'assistant',
+			content:
+				'Sure, here it is:\n\n| **Scope name** | **Notes** |\n| --- | --- |\n| `channels:read` | |\n| `channels:write` | Not available as a bot token scope |\n| `stars:read`| Not available as a bot token scope |\n| `stars:write` | Not available as a bot token scope |\n| `users.profile:write` | Not available as a bot token scope |\n| `users:read` | |',
+			read: true,
+		},
+		{
+			id: '86572001',
+			role: 'user',
+			type: 'text',
+			content: 'Thanks, can you send me another one with more columns?',
+			read: true,
+		},
+		{
+			id: '86572001',
+			type: 'text',
+			role: 'assistant',
+			content:
+				'Yup:\n\n| **Scope name** | **Notes** | **One More Column** |\n| --- | --- | --- |\n| `channels:read` | | Something else |\n| `channels:write` | Not available as a bot token scope | Something else |\n| `stars:read`| Not available as a bot token scope |\n| `stars:write` | Not available as a bot token scope |\n| `users.profile:write` | Not available as a bot token scope |\n| `users:read` | |',
+			read: true,
+		},
+		{
+			id: '2556642',
+			role: 'user',
+			type: 'text',
+			content: 'Great',
+			read: true,
+		},
+		{
+			id: '2556642',
+			type: 'text',
+			role: 'assistant',
+			content:
+				"I'm glad you found the information helpful! If you have any more questions about n8n or need further assistance, feel free to ask.",
+			read: true,
+		},
+		{
+			id: '2556642',
+			type: 'text',
+			role: 'assistant',
+			content: 'Did this answer solve your question?',
+			quickReplies: [
+				{
+					text: 'Yes, thanks',
+					type: 'all-good',
+					isFeedback: true,
+				},
+				{
+					text: 'No, I am still stuck',
+					type: 'still-stuck',
+					isFeedback: true,
+				},
+			],
+			read: true,
+		},
+	]),
+};

@@ -39,7 +39,7 @@ const props = withDefaults(defineProps<InputProps>(), {
 });
 
 const resolvedSize = computed(
-	() => (props.size === 'xlarge' ? undefined : props.size) as ElementPlusSizePropType,
+	() => (props.size === 'medium' ? 'default' : props.size) as ElementPlusSizePropType,
 );
 
 const classes = computed(() => {

@@ -1,3 +1,5 @@
+import { TaskRunnersConfig } from '@n8n/config';
+import set from 'lodash/set';
 import {
 	NodeConnectionType,
 	type CodeExecutionMode,
@@ -7,10 +9,12 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 } from 'n8n-workflow';
-import set from 'lodash/set';
+import Container from 'typedi';
+
 import { javascriptCodeDescription } from './descriptions/JavascriptCodeDescription';
 import { pythonCodeDescription } from './descriptions/PythonCodeDescription';
 import { JavaScriptSandbox } from './JavaScriptSandbox';
+import { JsTaskRunnerSandbox } from './JsTaskRunnerSandbox';
 import { PythonSandbox } from './PythonSandbox';
 import { getSandboxContext } from './Sandbox';
 import { standardizeOutput } from './utils';
@@ -92,6 +96,8 @@ export class Code implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions) {
+		const runnersConfig = Container.get(TaskRunnersConfig);
+
 		const nodeMode = this.getNodeParameter('mode', 0) as CodeExecutionMode;
 		const workflowMode = this.getMode();
 
@@ -102,8 +108,18 @@ export class Code implements INodeType {
 				: 'javaScript';
 		const codeParameterName = language === 'python' ? 'pythonCode' : 'jsCode';
 
+		if (!runnersConfig.disabled && language === 'javaScript') {
+			const code = this.getNodeParameter(codeParameterName, 0) as string;
+			const sandbox = new JsTaskRunnerSandbox(code, nodeMode, workflowMode, this);
+
+			return nodeMode === 'runOnceForAllItems'
+				? [await sandbox.runCodeAllItems()]
+				: [await sandbox.runCodeForEachItem()];
+		}
+
 		const getSandbox = (index = 0) => {
 			const code = this.getNodeParameter(codeParameterName, index) as string;
+
 			const context = getSandboxContext.call(this, index);
 			if (nodeMode === 'runOnceForAllItems') {
 				context.items = context.$input.all();
@@ -112,7 +128,7 @@ export class Code implements INodeType {
 			}
 
 			const Sandbox = language === 'python' ? PythonSandbox : JavaScriptSandbox;
-			const sandbox = new Sandbox(context, code, index, this.helpers);
+			const sandbox = new Sandbox(context, code, this.helpers);
 			sandbox.on(
 				'output',
 				workflowMode === 'manual'
@@ -161,7 +177,7 @@ export class Code implements INodeType {
 			const sandbox = getSandbox(index);
 			let result: INodeExecutionData | undefined;
 			try {
-				result = await sandbox.runCodeEachItem();
+				result = await sandbox.runCodeEachItem(index);
 			} catch (error) {
 				if (!this.continueOnFail()) {
 					set(error, 'node', node);

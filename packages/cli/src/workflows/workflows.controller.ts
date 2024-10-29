@@ -27,7 +27,7 @@ import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
 import type { IWorkflowResponse } from '@/interfaces';
 import { License } from '@/license';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { listQueryMiddleware } from '@/middlewares';
 import * as ResponseHelper from '@/response-helper';
 import { NamingService } from '@/services/naming.service';
@@ -404,7 +404,7 @@ export class WorkflowsController {
 		return await this.workflowExecutionService.executeManually(
 			req.body,
 			req.user,
-			req.headers['push-ref'] as string,
+			req.headers['push-ref'],
 			req.query.partialExecutionVersion === '-1'
 				? config.getEnv('featureFlags.partialExecutionVersionDefault')
 				: req.query.partialExecutionVersion,

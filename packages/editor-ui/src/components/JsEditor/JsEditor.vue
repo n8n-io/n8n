@@ -25,6 +25,7 @@ type Props = {
 	isReadOnly?: boolean;
 	fillParent?: boolean;
 	rows?: number;
+	posthogCapture?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), { fillParent: false, isReadOnly: false, rows: 4 });
@@ -69,6 +70,10 @@ const jsEditorRef = ref<HTMLDivElement>();
 const editor = ref<EditorView | null>(null);
 const editorState = ref<EditorState | null>(null);
 
+const generatedCodeCapture = computed(() => {
+	return props.posthogCapture ? '' : 'ph-no-capture ';
+});
+
 const extensions = computed(() => {
 	const extensionsToApply: Extension[] = [
 		javascript(),
@@ -106,7 +111,7 @@ const extensions = computed(() => {
 
 <template>
 	<div :class="$style.editor" :style="isReadOnly ? 'opacity: 0.7' : ''">
-		<div ref="jsEditorRef" class="ph-no-capture js-editor"></div>
+		<div ref="jsEditorRef" :class="generatedCodeCapture + 'js-editor'"></div>
 		<slot name="suffix" />
 	</div>
 </template>

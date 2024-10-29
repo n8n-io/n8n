@@ -1,15 +1,16 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import {
-	NodeConnectionType,
-	type IExecuteFunctions,
-	type INodeType,
-	type INodeTypeDescription,
-	type SupplyData,
-} from 'n8n-workflow';
-import { OutputFixingParser } from 'langchain/output_parsers';
-import type { BaseOutputParser } from '@langchain/core/output_parsers';
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
-import { logWrapper } from '../../../utils/logWrapper';
+import { NodeConnectionType } from 'n8n-workflow';
+import type {
+	ISupplyDataFunctions,
+	INodeType,
+	INodeTypeDescription,
+	SupplyData,
+} from 'n8n-workflow';
+
+import {
+	N8nOutputFixingParser,
+	type N8nStructuredOutputParser,
+} from '../../../utils/output_parsers/N8nOutputParser';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
 export class OutputParserAutofixing implements INodeType {
@@ -67,7 +68,7 @@ export class OutputParserAutofixing implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const model = (await this.getInputConnectionData(
 			NodeConnectionType.AiLanguageModel,
 			itemIndex,
@@ -75,12 +76,12 @@ export class OutputParserAutofixing implements INodeType {
 		const outputParser = (await this.getInputConnectionData(
 			NodeConnectionType.AiOutputParser,
 			itemIndex,
-		)) as BaseOutputParser;
+		)) as N8nStructuredOutputParser;
 
-		const parser = OutputFixingParser.fromLLM(model, outputParser);
+		const parser = new N8nOutputFixingParser(this, model, outputParser);
 
 		return {
-			response: logWrapper(parser, this),
+			response: parser,
 		};
 	}
 }

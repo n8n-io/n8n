@@ -62,6 +62,7 @@ const extensions = computed(() => {
 			foldGutter(),
 			dropCursor(),
 			bracketMatching(),
+			mappingDropCursor(),
 			EditorView.updateListener.of((viewUpdate: ViewUpdate) => {
 				if (!viewUpdate.docChanged || !editor.value) return;
 				emit('update:modelValue', editor.value?.state.doc.toString());
@@ -102,18 +103,18 @@ function destroyEditor() {
 </script>
 
 <template>
-	<div :class="$style.editor">
-		<div ref="jsonEditorRef" class="ph-no-capture json-editor"></div>
+	<div :class="[$style['editor-container'], $style.fillHeight]">
+		<div ref="jsonEditorRef" :class="['ph-no-capture', $style.fillHeight]"></div>
 		<slot name="suffix" />
 	</div>
 </template>
 
 <style lang="scss" module>
-.editor {
-	height: 100%;
+.editor-container {
+	position: relative;
+}
 
-	& > div {
-		height: 100%;
-	}
+.fillHeight {
+	height: 100%;
 }
 </style>

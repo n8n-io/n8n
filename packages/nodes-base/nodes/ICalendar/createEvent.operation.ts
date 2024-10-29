@@ -28,7 +28,6 @@ export const description: INodeProperties[] = [
 		required: true,
 		description:
 			'Date and time at which the event begins. (For all-day events, the time will be ignored.).',
-		validateType: 'dateTime',
 	},
 	{
 		displayName: 'End',

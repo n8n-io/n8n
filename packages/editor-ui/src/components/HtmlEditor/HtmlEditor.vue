@@ -20,7 +20,7 @@ import jsParser from 'prettier/plugins/babel';
 import * as estree from 'prettier/plugins/estree';
 import htmlParser from 'prettier/plugins/html';
 import cssParser from 'prettier/plugins/postcss';
-import { computed, onBeforeUnmount, onMounted, ref, toValue, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, toRaw, toValue, watch } from 'vue';
 
 import { useExpressionEditor } from '@/composables/useExpressionEditor';
 import { htmlEditorEventBus } from '@/event-bus';
@@ -32,6 +32,7 @@ import { autoCloseTags, htmlLanguage } from 'codemirror-lang-html-n8n';
 import { codeEditorTheme } from '../CodeNodeEditor/theme';
 import type { Range, Section } from './types';
 import { nonTakenRanges } from './utils';
+import { dropInExpressionEditor, mappingDropCursor } from '@/plugins/codemirror/dragAndDrop';
 
 type Props = {
 	modelValue: string;
@@ -76,6 +77,7 @@ const extensions = computed(() => [
 	dropCursor(),
 	indentOnInput(),
 	highlightActiveLine(),
+	mappingDropCursor(),
 ]);
 const {
 	editor: editorRef,
@@ -230,11 +232,25 @@ onMounted(() => {
 onBeforeUnmount(() => {
 	htmlEditorEventBus.off('format-html', formatHtml);
 });
+
+async function onDrop(value: string, event: MouseEvent) {
+	if (!editorRef.value) return;
+
+	await dropInExpressionEditor(toRaw(editorRef.value), event, value);
+}
 </script>
 
 <template>
 	<div :class="$style.editor">
-		<div ref="htmlEditor" data-test-id="html-editor-container"></div>
+		<DraggableTarget type="mapping" :disabled="isReadOnly" @drop="onDrop">
+			<template #default="{ activeDrop, droppable }">
+				<div
+					ref="htmlEditor"
+					:class="{ [$style.activeDrop]: activeDrop, [$style.droppable]: droppable }"
+					data-test-id="html-editor-container"
+				></div
+			></template>
+		</DraggableTarget>
 		<slot name="suffix" />
 	</div>
 </template>
@@ -245,6 +261,23 @@ onBeforeUnmount(() => {
 
 	& > div {
 		height: 100%;
+	}
+}
+
+.droppable {
+	:global(.cm-editor) {
+		border-color: var(--color-ndv-droppable-parameter);
+		border-style: dashed;
+		border-width: 1.5px;
+	}
+}
+
+.activeDrop {
+	:global(.cm-editor) {
+		border-color: var(--color-success);
+		border-style: solid;
+		cursor: grabbing;
+		border-width: 1px;
 	}
 }
 </style>

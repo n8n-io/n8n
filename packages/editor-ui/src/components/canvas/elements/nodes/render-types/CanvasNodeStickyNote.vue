@@ -27,6 +27,7 @@ const renderOptions = computed(() => render.value.options as CanvasNodeStickyNot
 const classes = computed(() => ({
 	[$style.sticky]: true,
 	[$style.selected]: isSelected.value,
+	['sticky--active']: isActive.value, // Used to increase the z-index of the sticky note when editing
 }));
 
 /**

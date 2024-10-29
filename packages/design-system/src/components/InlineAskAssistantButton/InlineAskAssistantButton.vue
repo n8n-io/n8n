@@ -8,9 +8,9 @@ import AssistantText from '../AskAssistantText/AssistantText.vue';
 const { t } = useI18n();
 
 interface Props {
-	size: 'small' | 'medium';
-	static: boolean;
-	asked: boolean;
+	size?: 'small' | 'medium';
+	static?: boolean;
+	asked?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -50,6 +50,7 @@ const onClick = () => {
 		:style="{ height: sizes[size].height }"
 		:disabled="asked"
 		:tabindex="static ? '-1' : ''"
+		data-test-id="ask-assistant-button"
 		@click="onClick"
 	>
 		<div>

@@ -12,6 +12,11 @@ export type GraphConnection = {
 // fromName-outputType-outputIndex-inputIndex-toName
 type DirectedGraphKey = `${string}-${NodeConnectionType}-${number}-${number}-${string}`;
 
+type RemoveNodeBaseOptions = {
+	reconnectConnections: boolean;
+	skipConnectionFn?: (connection: GraphConnection) => boolean;
+};
+
 /**
  * Represents a directed graph as an adjacency list, e.g. one list for the
  * vertices and one list for the edges.
@@ -67,6 +72,80 @@ export class DirectedGraph {
 		return this;
 	}
 
+	/**
+	 * Removes a node from the graph.
+	 *
+	 * By default it will also remove all connections that use that node and
+	 * return nothing.
+	 *
+	 * If you pass `{ reconnectConnections: true }` it will rewire all
+	 * connections making sure all parent nodes are connected to all child nodes
+	 * and return the new connections.
+	 */
+	removeNode(
+		node: INode,
+		options?: { reconnectConnections: true } & RemoveNodeBaseOptions,
+	): GraphConnection[];
+	removeNode(
+		node: INode,
+		options?: { reconnectConnections: false } & RemoveNodeBaseOptions,
+	): undefined;
+	removeNode(
+		node: INode,
+		options: RemoveNodeBaseOptions = { reconnectConnections: false },
+	): undefined | GraphConnection[] {
+		if (options.reconnectConnections) {
+			const incomingConnections = this.getDirectParentConnections(node);
+			const outgoingConnections = this.getDirectChildConnections(node);
+
+			const newConnections: GraphConnection[] = [];
+
+			for (const incomingConnection of incomingConnections) {
+				if (options.skipConnectionFn && options.skipConnectionFn(incomingConnection)) {
+					continue;
+				}
+
+				for (const outgoingConnection of outgoingConnections) {
+					if (options.skipConnectionFn && options.skipConnectionFn(outgoingConnection)) {
+						continue;
+					}
+
+					const newConnection = {
+						...incomingConnection,
+						to: outgoingConnection.to,
+						inputIndex: outgoingConnection.inputIndex,
+					};
+
+					newConnections.push(newConnection);
+				}
+			}
+
+			for (const [key, connection] of this.connections.entries()) {
+				if (connection.to === node || connection.from === node) {
+					this.connections.delete(key);
+				}
+			}
+
+			for (const newConnection of newConnections) {
+				this.connections.set(this.makeKey(newConnection), newConnection);
+			}
+
+			this.nodes.delete(node.name);
+
+			return newConnections;
+		} else {
+			for (const [key, connection] of this.connections.entries()) {
+				if (connection.to === node || connection.from === node) {
+					this.connections.delete(key);
+				}
+			}
+
+			this.nodes.delete(node.name);
+
+			return;
+		}
+	}
+
 	addConnection(connectionInput: {
 		from: INode;
 		to: INode;
@@ -108,7 +187,7 @@ export class DirectedGraph {
 		return this;
 	}
 
-	getDirectChildren(node: INode) {
+	getDirectChildConnections(node: INode) {
 		const nodeExists = this.nodes.get(node.name) === node;
 		a.ok(nodeExists);
 
@@ -125,7 +204,33 @@ export class DirectedGraph {
 		return directChildren;
 	}
 
-	getDirectParents(node: INode) {
+	private getChildrenRecursive(node: INode, children: Set<INode>) {
+		const directChildren = this.getDirectChildConnections(node);
+
+		for (const directChild of directChildren) {
+			// Break out if we found a cycle.
+			if (children.has(directChild.to)) {
+				continue;
+			}
+			children.add(directChild.to);
+			this.getChildrenRecursive(directChild.to, children);
+		}
+
+		return children;
+	}
+
+	/**
+	 * Returns all nodes that are children of the node that is passed as an
+	 * argument.
+	 *
+	 * If the node being passed in is a child of itself (e.g. is part of a
+	 * cycle), the return set will contain it as well.
+	 */
+	getChildren(node: INode) {
+		return this.getChildrenRecursive(node, new Set());
+	}
+
+	getDirectParentConnections(node: INode) {
 		const nodeExists = this.nodes.get(node.name) === node;
 		a.ok(nodeExists);
 
@@ -140,6 +245,27 @@ export class DirectedGraph {
 		}
 
 		return directParents;
+	}
+
+	private getParentConnectionsRecursive(node: INode, connections: Set<GraphConnection>) {
+		const parentConnections = this.getDirectParentConnections(node);
+
+		for (const connection of parentConnections) {
+			// break out of cycles
+			if (connections.has(connection)) {
+				continue;
+			}
+
+			connections.add(connection);
+
+			this.getParentConnectionsRecursive(connection.from, connections);
+		}
+
+		return connections;
+	}
+
+	getParentConnections(node: INode) {
+		return this.getParentConnectionsRecursive(node, new Set());
 	}
 
 	getConnection(
@@ -158,6 +284,149 @@ export class DirectedGraph {
 				to,
 			}),
 		);
+	}
+
+	/**
+	 * Returns all strongly connected components.
+	 *
+	 * Strongly connected components are a set of nodes where it's possible to
+	 * reach every node from every node.
+	 *
+	 * Strongly connected components are mutually exclusive in directed graphs,
+	 * e.g. they cannot overlap.
+	 *
+	 * The smallest strongly connected component is a single node, since it can
+	 * reach itself from itself by not following any edges.
+	 *
+	 * The algorithm implement here is Tarjan's algorithm.
+	 *
+	 * Example:
+	 * ┌─────┐    ┌─────┐    ┌─────┐    ┌─────┐
+	 * │node1├────►node2◄────┤node3├────►node5│
+	 * └─────┘    └──┬──┘    └──▲──┘    └▲───┬┘
+	 *               │          │        │   │
+	 *            ┌──▼──┐       │       ┌┴───▼┐
+	 *            │node4├───────┘       │node6│
+	 *            └─────┘               └─────┘
+	 *
+	 * The strongly connected components are
+	 * 1. node1
+	 * 2. node2, node4, node3
+	 * 3. node5, node6
+	 *
+	 * Further reading:
+	 * https://en.wikipedia.org/wiki/Strongly_connected_component
+	 * https://www.youtube.com/watch?v=wUgWX0nc4NY
+	 */
+	getStronglyConnectedComponents(): Array<Set<INode>> {
+		let id = 0;
+		const visited = new Set<INode>();
+		const ids = new Map<INode, number>();
+		const lowLinkValues = new Map<INode, number>();
+		const stack: INode[] = [];
+		const stronglyConnectedComponents: Array<Set<INode>> = [];
+
+		const followNode = (node: INode) => {
+			if (visited.has(node)) {
+				return;
+			}
+
+			visited.add(node);
+			lowLinkValues.set(node, id);
+			ids.set(node, id);
+			id++;
+			stack.push(node);
+
+			const directChildren = this.getDirectChildConnections(node).map((c) => c.to);
+			for (const child of directChildren) {
+				followNode(child);
+
+				// if node is on stack min the low id
+				if (stack.includes(child)) {
+					const childLowLinkValue = lowLinkValues.get(child);
+					const ownLowLinkValue = lowLinkValues.get(node);
+					a.ok(childLowLinkValue !== undefined);
+					a.ok(ownLowLinkValue !== undefined);
+					const lowestLowLinkValue = Math.min(childLowLinkValue, ownLowLinkValue);
+
+					lowLinkValues.set(node, lowestLowLinkValue);
+				}
+			}
+
+			// after we visited all children, check if the low id is the same as the
+			// nodes id, which means we found a strongly connected component
+			const ownId = ids.get(node);
+			const ownLowLinkValue = lowLinkValues.get(node);
+			a.ok(ownId !== undefined);
+			a.ok(ownLowLinkValue !== undefined);
+
+			if (ownId === ownLowLinkValue) {
+				// pop from the stack until the stack is empty or we find a node that
+				// has a different low id
+				const scc: Set<INode> = new Set();
+				let next = stack.at(-1);
+
+				while (next && lowLinkValues.get(next) === ownId) {
+					stack.pop();
+					scc.add(next);
+					next = stack.at(-1);
+				}
+
+				if (scc.size > 0) {
+					stronglyConnectedComponents.push(scc);
+				}
+			}
+		};
+
+		for (const node of this.nodes.values()) {
+			followNode(node);
+		}
+
+		return stronglyConnectedComponents;
+	}
+
+	private depthFirstSearchRecursive(
+		from: INode,
+		fn: (node: INode) => boolean,
+		seen: Set<INode>,
+	): INode | undefined {
+		if (seen.has(from)) {
+			return undefined;
+		}
+		seen.add(from);
+
+		if (fn(from)) {
+			return from;
+		}
+
+		for (const childConnection of this.getDirectChildConnections(from)) {
+			const found = this.depthFirstSearchRecursive(childConnection.to, fn, seen);
+
+			if (found) {
+				return found;
+			}
+		}
+
+		return undefined;
+	}
+
+	/**
+	 * Like `Array.prototype.find` but for directed graphs.
+	 *
+	 * Starting from, and including, the `from` node this calls the provided
+	 * predicate function with every child node until the predicate function
+	 * returns true.
+	 *
+	 * The search is depth first, meaning every branch is exhausted before the
+	 * next branch is tried.
+	 *
+	 * The first node for which the predicate function returns true is returned.
+	 *
+	 * If the graph is exhausted and the predicate function never returned true,
+	 * undefined is returned instead.
+	 */
+	depthFirstSearch({ from, fn }: { from: INode; fn: (node: INode) => boolean }): INode | undefined {
+		return this.depthFirstSearchRecursive(from, fn, new Set());
 	}
 
 	toWorkflow(parameters: Omit<WorkflowParameters, 'nodes' | 'connections'>): Workflow {

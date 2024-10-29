@@ -49,9 +49,9 @@ const codeNodeEditorContainerRef = ref<HTMLDivElement>();
 const hasManualChanges = ref(false);
 
 const rootStore = useRootStore();
-const posthog = usePostHog();
 const i18n = useI18n();
 const telemetry = useTelemetry();
+const settingsStore = useSettingsStore();
 
 const linter = useLinter(
 	() => props.mode,
@@ -85,8 +85,8 @@ onBeforeUnmount(() => {
 	if (!props.isReadOnly) codeNodeEditorEventBus.off('highlightLine', highlightLine);
 });
 
-const aiEnabled = computed(() => {
-	return posthog.isAiEnabled() && props.language === 'javaScript';
+const askAiEnabled = computed(() => {
+	return settingsStore.isAskAiEnabled && props.language === 'javaScript';
 });
 
 watch([() => props.language, () => props.mode], (_, [prevLanguage, prevMode]) => {
@@ -177,6 +177,12 @@ function onAiLoadStart() {
 function onAiLoadEnd() {
 	isLoadingAIResponse.value = false;
 }
+
+async function onDrop(value: string, event: MouseEvent) {
+	if (!editor.value) return;
+
+	await dropInCodeEditor(toRaw(editor.value), event, value);
+}
 </script>
 
 <template>
@@ -185,21 +191,33 @@ function onAiLoadEnd() {
 		:class="['code-node-editor', $style['code-node-editor-container']]"
 	>
 		<el-tabs
-			v-if="aiEnabled"
+			v-if="askAiEnabled"
 			ref="tabs"
 			v-model="activeTab"
 			type="card"
 			:before-leave="onBeforeTabLeave"
+			:class="$style.tabs"
 		>
 			<el-tab-pane
 				:label="$locale.baseText('codeNodeEditor.tabs.code')"
 				name="code"
 				data-test-id="code-node-tab-code"
+				:class="$style.fillHeight"
 			>
-				<div
-					ref="codeNodeEditorRef"
-					:class="['ph-no-capture', 'code-editor-tabs', $style.editorInput]"
-				/>
+				<DraggableTarget type="mapping" :disabled="!dragAndDropEnabled" @drop="onDrop">
+					<template #default="{ activeDrop, droppable }">
+						<div
+							ref="codeNodeEditorRef"
+							:class="[
+								'ph-no-capture',
+								'code-editor-tabs',
+								$style.editorInput,
+								$style.fillHeight,
+								{ [$style.activeDrop]: activeDrop, [$style.droppable]: droppable },
+							]"
+						/>
+					</template>
+				</DraggableTarget>
 				<slot name="suffix" />
 			</el-tab-pane>
 			<el-tab-pane
@@ -219,7 +237,19 @@ function onAiLoadEnd() {
 		</el-tabs>
 		<!-- If AskAi not enabled, there's no point in rendering tabs -->
 		<div v-else :class="$style.fillHeight">
-			<div ref="codeNodeEditorRef" :class="['ph-no-capture', $style.fillHeight]" />
+			<DraggableTarget type="mapping" :disabled="!dragAndDropEnabled" @drop="onDrop">
+				<template #default="{ activeDrop, droppable }">
+					<div
+						ref="codeNodeEditorRef"
+						:class="[
+							'ph-no-capture',
+							$style.fillHeight,
+							$style.editorInput,
+							{ [$style.activeDrop]: activeDrop, [$style.droppable]: droppable },
+						]"
+					/>
+				</template>
+			</DraggableTarget>
 			<slot name="suffix" />
 		</div>
 	</div>
@@ -227,7 +257,7 @@ function onAiLoadEnd() {
 
 <style scoped lang="scss">
 :deep(.el-tabs) {
-	.code-editor-tabs .cm-editor {
+	.cm-editor {
 		border: 0;
 	}
 }
@@ -253,11 +283,34 @@ function onAiLoadEnd() {
 </style>
 
 <style lang="scss" module>
+.tabs {
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+}
+
 .code-node-editor-container {
 	position: relative;
 }
 
 .fillHeight {
 	height: 100%;
+}
+
+.editorInput.droppable {
+	:global(.cm-editor) {
+		border-color: var(--color-ndv-droppable-parameter);
+		border-style: dashed;
+		border-width: 1.5px;
+	}
+}
+
+.editorInput.activeDrop {
+	:global(.cm-editor) {
+		border-color: var(--color-success);
+		border-style: solid;
+		cursor: grabbing;
+		border-width: 1px;
+	}
 }
 </style>

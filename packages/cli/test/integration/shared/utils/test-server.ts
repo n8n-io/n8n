@@ -11,7 +11,7 @@ import { AUTH_COOKIE_NAME } from '@/constants';
 import type { User } from '@/databases/entities/user';
 import { ControllerRegistry } from '@/decorators';
 import { License } from '@/license';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { rawBodyReader, bodyParser } from '@/middlewares';
 import { PostHogClient } from '@/posthog';
 import { Push } from '@/push';
@@ -62,17 +62,30 @@ function createAgent(
 	return agent;
 }
 
-function publicApiAgent(
+const userDoesNotHaveApiKey = (user: User) => {
+	return !user.apiKeys || !Array.from(user.apiKeys) || user.apiKeys.length === 0;
+};
+
+const publicApiAgent = (
 	app: express.Application,
-	{ user, version = 1 }: { user: User; version?: number },
-) {
+	{ user, apiKey, version = 1 }: { user?: User; apiKey?: string; version?: number },
+) => {
+	if (user && apiKey) {
+		throw new Error('Cannot provide both user and API key');
+	}
+
+	if (user && userDoesNotHaveApiKey(user)) {
+		throw new Error('User does not have an API key');
+	}
+
+	const agentApiKey = apiKey ?? user?.apiKeys[0].apiKey;
+
 	const agent = request.agent(app);
 	void agent.use(prefix(`${PUBLIC_API_REST_PATH_SEGMENT}/v${version}`));
-	if (user.apiKey) {
-		void agent.set({ 'X-N8N-API-KEY': user.apiKey });
-	}
+	if (!user && !apiKey) return agent;
+	void agent.set({ 'X-N8N-API-KEY': agentApiKey });
 	return agent;
-}
+};
 
 export const setupTestServer = ({
 	endpointGroups,
@@ -100,6 +113,8 @@ export const setupTestServer = ({
 		authlessAgent: createAgent(app),
 		restlessAgent: createAgent(app, { auth: false, noRest: true }),
 		publicApiAgentFor: (user) => publicApiAgent(app, { user }),
+		publicApiAgentWithApiKey: (apiKey) => publicApiAgent(app, { apiKey }),
+		publicApiAgentWithoutApiKey: () => publicApiAgent(app, {}),
 		license: new LicenseMocker(),
 	};
 
@@ -140,7 +155,7 @@ export const setupTestServer = ({
 			for (const group of endpointGroups) {
 				switch (group) {
 					case 'annotationTags':
-						await import('@/controllers/annotation-tags.controller');
+						await import('@/controllers/annotation-tags.controller.ee');
 						break;
 
 					case 'credentials':
@@ -257,6 +272,10 @@ export const setupTestServer = ({
 
 					case 'dynamic-node-parameters':
 						await import('@/controllers/dynamic-node-parameters.controller');
+						break;
+
+					case 'apiKeys':
+						await import('@/controllers/api-keys.controller');
 						break;
 				}
 			}

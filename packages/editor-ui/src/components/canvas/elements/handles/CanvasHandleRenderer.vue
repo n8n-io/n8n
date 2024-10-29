@@ -11,21 +11,25 @@ import CanvasHandleMainOutput from '@/components/canvas/elements/handles/render-
 import CanvasHandleNonMainInput from '@/components/canvas/elements/handles/render-types/CanvasHandleNonMainInput.vue';
 import CanvasHandleNonMainOutput from '@/components/canvas/elements/handles/render-types/CanvasHandleNonMainOutput.vue';
 import { CanvasNodeHandleKey } from '@/constants';
-import { createCanvasConnectionHandleString } from '@/utils/canvasUtilsV2';
 import { useCanvasNode } from '@/composables/useCanvasNode';
 
-const props = defineProps<{
-	mode: CanvasConnectionMode;
-	isConnected?: boolean;
-	isConnecting?: boolean;
-	isReadOnly?: boolean;
-	label?: string;
-	type: CanvasConnectionPort['type'];
-	index: CanvasConnectionPort['index'];
-	position: CanvasElementPortWithRenderData['position'];
-	offset: CanvasElementPortWithRenderData['offset'];
-	isValidConnection: ValidConnectionFunc;
-}>();
+const props = defineProps<
+	CanvasElementPortWithRenderData & {
+		type: CanvasConnectionPort['type'];
+		required?: CanvasConnectionPort['required'];
+		maxConnections?: CanvasConnectionPort['maxConnections'];
+		index: CanvasConnectionPort['index'];
+		label?: CanvasConnectionPort['label'];
+		handleId: CanvasElementPortWithRenderData['handleId'];
+		connectionsCount: CanvasElementPortWithRenderData['connectionsCount'];
+		isConnecting: CanvasElementPortWithRenderData['isConnecting'];
+		position: CanvasElementPortWithRenderData['position'];
+		offset?: CanvasElementPortWithRenderData['offset'];
+		mode: CanvasConnectionMode;
+		isReadOnly?: boolean;
+		isValidConnection: ValidConnectionFunc;
+	}
+>();
 
 const emit = defineEmits<{
 	add: [handle: string];
@@ -41,23 +45,29 @@ const handleType = computed(() =>
 	props.mode === CanvasConnectionMode.Input ? 'target' : 'source',
 );
 
-const handleString = computed(() =>
-	createCanvasConnectionHandleString({
-		mode: props.mode,
-		type: props.type,
-		index: props.index,
-	}),
-);
+const handleClasses = computed(() => [style.handle, style[props.type], style[props.mode]]);
+
+/**
+ * Connectable
+ */
+
+const connectionsLimitReached = computed(() => {
+	return props.maxConnections && props.connectionsCount >= props.maxConnections;
+});
 
 const isConnectableStart = computed(() => {
+	if (connectionsLimitReached.value) return false;
+
 	return props.mode === CanvasConnectionMode.Output || props.type !== NodeConnectionType.Main;
 });
 
 const isConnectableEnd = computed(() => {
+	if (connectionsLimitReached.value) return false;
+
 	return props.mode === CanvasConnectionMode.Input || props.type !== NodeConnectionType.Main;
 });
 
-const handleClasses = computed(() => [style.handle, style[props.type], style[props.mode]]);
+const isConnected = computed(() => props.connectionsCount > 0);
 
 /**
  * Run data
@@ -102,7 +112,7 @@ const RenderType = () => {
  */
 
 function onAdd() {
-	emit('add', handleString.value);
+	emit('add', props.handleId);
 }
 
 /**
@@ -110,12 +120,12 @@ function onAdd() {
  */
 
 const label = toRef(props, 'label');
-const isConnected = toRef(props, 'isConnected');
 const isConnecting = toRef(props, 'isConnecting');
 const isReadOnly = toRef(props, 'isReadOnly');
 const mode = toRef(props, 'mode');
 const type = toRef(props, 'type');
 const index = toRef(props, 'index');
+const isRequired = toRef(props, 'required');
 
 provide(CanvasNodeHandleKey, {
 	label,
@@ -123,6 +133,7 @@ provide(CanvasNodeHandleKey, {
 	type,
 	index,
 	runData,
+	isRequired,
 	isConnected,
 	isConnecting,
 	isReadOnly,
@@ -132,7 +143,7 @@ provide(CanvasNodeHandleKey, {
 <template>
 	<Handle
 		v-bind="$attrs"
-		:id="handleString"
+		:id="handleId"
 		:class="handleClasses"
 		:type="handleType"
 		:position="position"

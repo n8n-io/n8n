@@ -6,6 +6,7 @@ import { ExecutionRepository } from '@/databases/repositories/execution.reposito
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { ExecutionService } from '@/executions/execution.service';
 import type { ExecutionSummaries } from '@/executions/execution.types';
+import { createTeamProject } from '@test-integration/db/projects';
 
 import { annotateExecution, createAnnotationTags, createExecution } from './shared/db/executions';
 import { createWorkflow } from './shared/db/workflows';
@@ -69,6 +70,7 @@ describe('ExecutionService', () => {
 				mode: expect.any(String),
 				retryOf: null,
 				status: expect.any(String),
+				createdAt: expect.any(String),
 				startedAt: expect.any(String),
 				stoppedAt: expect.any(String),
 				waitTill: null,
@@ -294,6 +296,37 @@ describe('ExecutionService', () => {
 			});
 		});
 
+		test('should filter executions by `projectId`', async () => {
+			const firstProject = await createTeamProject();
+			const secondProject = await createTeamProject();
+
+			const firstWorkflow = await createWorkflow(undefined, firstProject);
+			const secondWorkflow = await createWorkflow(undefined, secondProject);
+
+			await createExecution({ status: 'success' }, firstWorkflow);
+			await createExecution({ status: 'success' }, firstWorkflow);
+			await createExecution({ status: 'success' }, secondWorkflow); // to filter out
+
+			const query: ExecutionSummaries.RangeQuery = {
+				kind: 'range',
+				range: { limit: 20 },
+				accessibleWorkflowIds: [firstWorkflow.id],
+				projectId: firstProject.id,
+			};
+
+			const output = await executionService.findRangeWithCount(query);
+
+			expect(output).toEqual({
+				count: 2,
+				estimated: false,
+				results: expect.arrayContaining([
+					expect.objectContaining({ workflowId: firstWorkflow.id }),
+					expect.objectContaining({ workflowId: firstWorkflow.id }),
+					// execution for workflow in second project was filtered out
+				]),
+			});
+		});
+
 		test('should exclude executions by inaccessible `workflowId`', async () => {
 			const accessibleWorkflow = await createWorkflow();
 			const inaccessibleWorkflow = await createWorkflow();
@@ -478,6 +511,7 @@ describe('ExecutionService', () => {
 			mode: expect.any(String),
 			retryOf: null,
 			status: expect.any(String),
+			createdAt: expect.any(String),
 			startedAt: expect.any(String),
 			stoppedAt: expect.any(String),
 			waitTill: null,
@@ -529,10 +563,10 @@ describe('ExecutionService', () => {
 					{
 						...summaryShape,
 						annotation: {
-							tags: [
+							tags: expect.arrayContaining([
 								expect.objectContaining({ name: 'tag1' }),
 								expect.objectContaining({ name: 'tag2' }),
-							],
+							]),
 							vote: 'up',
 						},
 					},
@@ -612,10 +646,10 @@ describe('ExecutionService', () => {
 				{
 					...summaryShape,
 					annotation: {
-						tags: [
+						tags: expect.arrayContaining([
 							expect.objectContaining({ name: 'tag1' }),
 							expect.objectContaining({ name: 'tag2' }),
-						],
+						]),
 						vote: 'up',
 					},
 				},
@@ -657,10 +691,10 @@ describe('ExecutionService', () => {
 				{
 					...summaryShape,
 					annotation: {
-						tags: [
+						tags: expect.arrayContaining([
 							expect.objectContaining({ name: 'tag1' }),
 							expect.objectContaining({ name: 'tag2' }),
-						],
+						]),
 						vote: 'up',
 					},
 				},

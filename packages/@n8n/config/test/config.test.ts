@@ -198,6 +198,7 @@ describe('GlobalConfig', () => {
 			health: {
 				active: false,
 				port: 5678,
+				address: '0.0.0.0',
 			},
 			bull: {
 				redis: {
@@ -210,7 +211,6 @@ describe('GlobalConfig', () => {
 					clusterNodes: '',
 					tls: false,
 				},
-				queueRecoveryInterval: 60,
 				gracefulShutdownTimeout: 30,
 				prefix: 'bull',
 				settings: {
@@ -221,12 +221,54 @@ describe('GlobalConfig', () => {
 				},
 			},
 		},
+		taskRunners: {
+			disabled: true,
+			mode: 'internal_childprocess',
+			path: '/runners',
+			authToken: '',
+			listenAddress: '127.0.0.1',
+			maxPayload: 1024 * 1024 * 1024,
+			port: 5679,
+			launcherPath: '',
+			launcherRunner: 'javascript',
+		},
+		sentry: {
+			backendDsn: '',
+			frontendDsn: '',
+		},
+		logging: {
+			level: 'info',
+			outputs: ['console'],
+			file: {
+				fileCountMax: 100,
+				fileSizeMax: 16,
+				location: 'logs/n8n.log',
+			},
+			scopes: [],
+		},
+		multiMainSetup: {
+			enabled: false,
+			ttl: 10,
+			interval: 3,
+		},
+		generic: {
+			timezone: 'America/New_York',
+			releaseChannel: 'dev',
+			gracefulShutdownTimeout: 30,
+		},
+		license: {
+			serverUrl: 'https://license.n8n.io/v1',
+			autoRenewalEnabled: true,
+			autoRenewOffset: 60 * 60 * 72,
+			activationKey: '',
+			tenantId: 1,
+			cert: '',
+		},
 	};
 
 	it('should use all default values when no env variables are defined', () => {
 		process.env = {};
 		const config = Container.get(GlobalConfig);
-
 		expect(deepCopy(config)).toEqual(defaultConfig);
 		expect(mockFs.readFileSync).not.toHaveBeenCalled();
 	});

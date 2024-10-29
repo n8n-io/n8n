@@ -8,7 +8,7 @@ pre-commit:
         - merge
         - rebase
     prettier_check:
-      glob: 'packages/**/*.{vue,yml,md}'
+      glob: 'packages/**/*.{vue,yml,md,css,scss}'
       run: ./node_modules/.bin/prettier --write --ignore-unknown --no-error-on-unmatched-pattern {staged_files}
       stage_fixed: true
       skip:

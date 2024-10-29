@@ -13,6 +13,7 @@ import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 import { deepCopy, defaultMessageEventBusDestinationOptions } from 'n8n-workflow';
 import EventDestinationCard from '@/components/SettingsLogStreaming/EventDestinationCard.ee.vue';
 import { createEventBus } from 'n8n-design-system/utils';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
 
 export default defineComponent({
 	name: 'SettingsLogStreamingView',
@@ -26,9 +27,11 @@ export default defineComponent({
 			destinations: Array<MessageEventBusDestinationOptions>,
 			disableLicense: false,
 			allDestinations: [] as MessageEventBusDestinationOptions[],
+			documentTitle: useDocumentTitle(),
 		};
 	},
 	async mounted() {
+		this.documentTitle.set(this.$locale.baseText('settings.log-streaming.heading'));
 		if (!this.isLicensed) return;
 
 		// Prepare credentialsStore so modals can pick up credentials

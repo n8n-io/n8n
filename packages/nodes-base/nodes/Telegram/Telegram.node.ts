@@ -10,8 +10,8 @@ import type {
 } from 'n8n-workflow';
 import { BINARY_ENCODING, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
-import { addAdditionalFields, apiRequest, getPropertyName } from './GenericFunctions';
 import { appendAttributionOption } from '../../utils/descriptions';
+import { addAdditionalFields, apiRequest, getPropertyName } from './GenericFunctions';
 
 export class Telegram implements INodeType {
 	description: INodeTypeDescription = {
@@ -25,6 +25,7 @@ export class Telegram implements INodeType {
 		defaults: {
 			name: 'Telegram',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

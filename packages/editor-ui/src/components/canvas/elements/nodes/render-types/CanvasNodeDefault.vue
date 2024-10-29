@@ -25,12 +25,21 @@ const {
 	isDisabled,
 	isSelected,
 	hasPinnedData,
+	executionStatus,
+	executionWaiting,
 	executionRunning,
 	hasRunData,
 	hasIssues,
 	render,
 } = useCanvasNode();
-const { mainOutputs, mainInputs, nonMainInputs, requiredNonMainInputs } = useNodeConnections({
+const {
+	mainOutputs,
+	mainOutputConnections,
+	mainInputs,
+	mainInputConnections,
+	nonMainInputs,
+	requiredNonMainInputs,
+} = useNodeConnections({
 	inputs,
 	outputs,
 	connections,
@@ -46,6 +55,7 @@ const classes = computed(() => {
 		[$style.success]: hasRunData.value,
 		[$style.error]: hasIssues.value,
 		[$style.pinned]: hasPinnedData.value,
+		[$style.waiting]: executionWaiting.value ?? executionStatus.value === 'waiting',
 		[$style.running]: executionRunning.value,
 		[$style.configurable]: renderOptions.value.configurable,
 		[$style.configuration]: renderOptions.value.configuration,
@@ -86,6 +96,15 @@ const dataTestId = computed(() => {
 	return `canvas-${type}-node`;
 });
 
+const isStrikethroughVisible = computed(() => {
+	const isSingleMainInputNode =
+		mainInputs.value.length === 1 && mainInputConnections.value.length <= 1;
+	const isSingleMainOutputNode =
+		mainOutputs.value.length === 1 && mainOutputConnections.value.length <= 1;
+
+	return isDisabled.value && isSingleMainInputNode && isSingleMainOutputNode;
+});
+
 function openContextMenu(event: MouseEvent) {
 	emit('open:contextmenu', event);
 }
@@ -102,12 +121,14 @@ function openContextMenu(event: MouseEvent) {
 				<FontAwesomeIcon icon="bolt" size="lg" />
 			</div>
 		</N8nTooltip>
-		<CanvasNodeStatusIcons :class="$style.statusIcons" />
-		<CanvasNodeDisabledStrikeThrough v-if="isDisabled" />
+		<CanvasNodeStatusIcons v-if="!isDisabled" :class="$style.statusIcons" />
+		<CanvasNodeDisabledStrikeThrough v-if="isStrikethroughVisible" />
 		<div :class="$style.description">
 			<div v-if="label" :class="$style.label">
 				{{ label }}
-				<div v-if="isDisabled">({{ i18n.baseText('node.disabled') }})</div>
+			</div>
+			<div v-if="isDisabled" :class="$style.disabledLabel">
+				({{ i18n.baseText('node.disabled') }})
 			</div>
 			<div v-if="subtitle" :class="$style.subtitle">{{ subtitle }}</div>
 		</div>
@@ -174,6 +195,7 @@ function openContextMenu(event: MouseEvent) {
 		.description {
 			top: unset;
 			position: relative;
+			margin-top: 0;
 			margin-left: var(--spacing-s);
 			width: auto;
 			min-width: unset;
@@ -182,6 +204,19 @@ function openContextMenu(event: MouseEvent) {
 						--configurable-node--icon-size
 					) - 2 * var(--spacing-s)
 			);
+		}
+
+		.label {
+			text-align: left;
+		}
+
+		&.configuration {
+			--canvas-node--height: 75px;
+
+			.statusIcons {
+				right: calc(-1 * var(--spacing-2xs));
+				bottom: 0;
+			}
 		}
 	}
 
@@ -214,6 +249,10 @@ function openContextMenu(event: MouseEvent) {
 		background-color: var(--color-node-executing-background);
 		border-color: var(--color-canvas-node-running-border-color, var(--color-node-running-border));
 	}
+
+	&.waiting {
+		border-color: var(--color-canvas-node-waiting-border-color, var(--color-secondary));
+	}
 }
 
 .description {
@@ -228,7 +267,8 @@ function openContextMenu(event: MouseEvent) {
 	align-items: center;
 }
 
-.label {
+.label,
+.disabledLabel {
 	font-size: var(--font-size-m);
 	text-align: center;
 	text-overflow: ellipsis;

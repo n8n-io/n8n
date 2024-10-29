@@ -54,7 +54,7 @@ export const description: INodeProperties[] = [
 				action: 'Update record',
 			},
 		],
-		default: 'read',
+		default: 'get',
 		displayOptions: {
 			show: {
 				resource: ['record'],

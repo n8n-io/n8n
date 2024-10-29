@@ -3,8 +3,8 @@ import { onMounted, reactive, toRefs, onBeforeUnmount } from 'vue';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 
 export interface Props {
-	placeholder: string;
-	modelValue: string;
+	placeholder?: string;
+	modelValue?: string;
 }
 
 withDefaults(defineProps<Props>(), {

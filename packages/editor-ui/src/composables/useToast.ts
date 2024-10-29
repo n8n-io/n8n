@@ -9,6 +9,7 @@ import { useI18n } from './useI18n';
 import { useExternalHooks } from './useExternalHooks';
 import { VIEWS } from '@/constants';
 import type { ApplicationError } from 'n8n-workflow';
+import { useStyles } from './useStyles';
 
 export interface NotificationErrorWithNodeAndDescription extends ApplicationError {
 	node: {
@@ -16,15 +17,6 @@ export interface NotificationErrorWithNodeAndDescription extends ApplicationErro
 	};
 	description: string;
 }
-
-const messageDefaults: Partial<Omit<NotificationOptions, 'message'>> = {
-	dangerouslyUseHTMLString: false,
-	position: 'bottom-right',
-	zIndex: 1900, // above NDV and below the modals
-	offset: 64,
-	appendTo: '#app-grid',
-	customClass: 'content-toast',
-};
 
 const stickyNotificationQueue: NotificationHandle[] = [];
 
@@ -34,6 +26,16 @@ export function useToast() {
 	const uiStore = useUIStore();
 	const externalHooks = useExternalHooks();
 	const i18n = useI18n();
+	const { APP_Z_INDEXES } = useStyles();
+
+	const messageDefaults: Partial<Omit<NotificationOptions, 'message'>> = {
+		dangerouslyUseHTMLString: false,
+		position: 'bottom-right',
+		zIndex: APP_Z_INDEXES.TOASTS, // above NDV and modal overlays
+		offset: 64,
+		appendTo: '#app-grid',
+		customClass: 'content-toast',
+	};
 
 	function showMessage(messageData: Partial<NotificationOptions>, track = true) {
 		const { message, title } = messageData;
@@ -164,7 +166,7 @@ export function useToast() {
 	}
 
 	function causedByCredential(message: string | undefined) {
-		if (!message) return false;
+		if (!message || typeof message !== 'string') return false;
 
 		return message.includes('Credentials for') && message.includes('are not set');
 	}

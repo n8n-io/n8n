@@ -2,15 +2,15 @@
 import { computed, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import type { IExecutionUIData } from '@/composables/useExecutionHelpers';
-import { EnterpriseEditionFeature, EXECUTION_ANNOTATION_EXPERIMENT, VIEWS } from '@/constants';
+import { EnterpriseEditionFeature, VIEWS } from '@/constants';
 import ExecutionsTime from '@/components/executions/ExecutionsTime.vue';
 import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useI18n } from '@/composables/useI18n';
 import type { PermissionsRecord } from '@/permissions';
-import { usePostHog } from '@/stores/posthog.store';
 import { useSettingsStore } from '@/stores/settings.store';
+import { toDayMonth, toTime } from '@/utils/formatters/dateFormatter';
 
 const props = defineProps<{
 	execution: ExecutionSummary;
@@ -29,17 +29,12 @@ const locale = useI18n();
 
 const executionHelpers = useExecutionHelpers();
 const workflowsStore = useWorkflowsStore();
-const posthogStore = usePostHog();
 const settingsStore = useSettingsStore();
 
 const isAdvancedExecutionFilterEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedExecutionFilters],
 );
-const isAnnotationEnabled = computed(
-	() =>
-		isAdvancedExecutionFilterEnabled.value &&
-		posthogStore.isFeatureEnabled(EXECUTION_ANNOTATION_EXPERIMENT),
-);
+const isAnnotationEnabled = computed(() => isAdvancedExecutionFilterEnabled.value);
 
 const currentWorkflow = computed(() => (route.params.name as string) || workflowsStore.workflowId);
 const retryExecutionActions = computed(() => [
@@ -87,7 +82,17 @@ function onRetryMenuItemSelect(action: string): void {
 			:data-test-execution-status="executionUIDetails.name"
 		>
 			<div :class="$style.description">
-				<N8nText color="text-dark" :bold="true" size="medium" data-test-id="execution-time">
+				<N8nText
+					v-if="executionUIDetails.name === 'new'"
+					color="text-dark"
+					:bold="true"
+					size="medium"
+					data-test-id="execution-time"
+				>
+					{{ toDayMonth(executionUIDetails.createdAt) }} -
+					{{ locale.baseText('executionDetails.startingSoon') }}
+				</N8nText>
+				<N8nText v-else color="text-dark" :bold="true" size="medium" data-test-id="execution-time">
 					{{ executionUIDetails.startTime }}
 				</N8nText>
 				<div :class="$style.executionStatus">
@@ -105,6 +110,15 @@ function onRetryMenuItemSelect(action: string): void {
 					>
 						{{ locale.baseText('executionDetails.runningTimeRunning') }}
 						<ExecutionsTime :start-time="execution.startedAt" />
+					</N8nText>
+					<N8nText
+						v-if="executionUIDetails.name === 'new' && execution.createdAt"
+						:color="isActive ? 'text-dark' : 'text-base'"
+						size="small"
+					>
+						<span
+							>{{ locale.baseText('executionDetails.at') }} {{ toTime(execution.createdAt) }}</span
+						>
 					</N8nText>
 					<N8nText
 						v-else-if="executionUIDetails.runningTime !== ''"
@@ -216,10 +230,10 @@ function onRetryMenuItemSelect(action: string): void {
 	&.new {
 		&,
 		& .executionLink {
-			border-left: var(--spacing-4xs) var(--border-style-base) var(--execution-card-border-new);
+			border-left: var(--spacing-4xs) var(--border-style-base) var(--execution-card-border-waiting);
 		}
 		.statusLabel {
-			color: var(--color-text-dark);
+			color: var(--execution-card-text-waiting);
 		}
 	}
 

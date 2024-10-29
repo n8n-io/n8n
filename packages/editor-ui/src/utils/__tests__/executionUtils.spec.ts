@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { displayForm, openPopUpWindow } from '../executionUtils';
+import { displayForm, openPopUpWindow, executionFilterToQueryFilter } from '../executionUtils';
 import type { INode, IRunData, IPinData } from 'n8n-workflow';
 
 const FORM_TRIGGER_NODE_TYPE = 'formTrigger';
@@ -15,7 +15,6 @@ vi.mock('../executionUtils', async () => {
 
 describe('displayForm', () => {
 	const getTestUrlMock = vi.fn();
-	const shouldShowFormMock = vi.fn();
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -50,11 +49,8 @@ describe('displayForm', () => {
 			pinData,
 			destinationNode: undefined,
 			directParentNodes: [],
-			formWaitingUrl: 'http://example.com',
-			executionId: undefined,
 			source: undefined,
 			getTestUrl: getTestUrlMock,
-			shouldShowForm: shouldShowFormMock,
 		});
 
 		expect(openPopUpWindow).not.toHaveBeenCalled();
@@ -86,11 +82,8 @@ describe('displayForm', () => {
 			pinData: {},
 			destinationNode: 'Node3',
 			directParentNodes: ['Node4'],
-			formWaitingUrl: 'http://example.com',
-			executionId: '12345',
 			source: undefined,
 			getTestUrl: getTestUrlMock,
-			shouldShowForm: shouldShowFormMock,
 		});
 
 		expect(openPopUpWindow).not.toHaveBeenCalled();
@@ -116,13 +109,18 @@ describe('displayForm', () => {
 			pinData: {},
 			destinationNode: undefined,
 			directParentNodes: [],
-			formWaitingUrl: 'http://example.com',
-			executionId: undefined,
 			source: 'RunData.ManualChatMessage',
 			getTestUrl: getTestUrlMock,
-			shouldShowForm: shouldShowFormMock,
 		});
 
 		expect(openPopUpWindow).not.toHaveBeenCalled();
+	});
+
+	describe('executionFilterToQueryFilter()', () => {
+		it('adds "new" to the filter', () => {
+			expect(executionFilterToQueryFilter({ status: 'new' }).status).toStrictEqual(
+				expect.arrayContaining(['new']),
+			);
+		});
 	});
 });

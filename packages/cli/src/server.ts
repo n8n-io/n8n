@@ -1,4 +1,3 @@
-import type { FrontendSettings } from '@n8n/api-types';
 import cookieParser from 'cookie-parser';
 import express from 'express';
 import { access as fsAccess } from 'fs/promises';
@@ -21,7 +20,8 @@ import {
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { ControllerRegistry } from '@/decorators';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import { LogStreamingEventRelay } from '@/events/log-streaming-event-relay';
+import { EventService } from '@/events/event.service';
+import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
 import type { ICredentialsOverwrite } from '@/interfaces';
 import { isLdapEnabled } from '@/ldap/helpers.ee';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
@@ -35,11 +35,11 @@ import type { FrontendService } from '@/services/frontend.service';
 import { OrchestrationService } from '@/services/orchestration.service';
 
 import '@/controllers/active-workflows.controller';
-import '@/controllers/annotation-tags.controller';
+import '@/controllers/annotation-tags.controller.ee';
 import '@/controllers/auth.controller';
 import '@/controllers/binary-data.controller';
 import '@/controllers/curl.controller';
-import '@/controllers/ai-assistant.controller';
+import '@/controllers/ai.controller';
 import '@/controllers/dynamic-node-parameters.controller';
 import '@/controllers/invitation.controller';
 import '@/controllers/me.controller';
@@ -56,14 +56,15 @@ import '@/controllers/translation.controller';
 import '@/controllers/users.controller';
 import '@/controllers/user-settings.controller';
 import '@/controllers/workflow-statistics.controller';
+import '@/controllers/api-keys.controller';
 import '@/credentials/credentials.controller';
 import '@/eventbus/event-bus.controller';
+import '@/events/events.controller';
 import '@/executions/executions.controller';
 import '@/external-secrets/external-secrets.controller.ee';
 import '@/license/license.controller';
 import '@/workflows/workflow-history/workflow-history.controller.ee';
 import '@/workflows/workflows.controller';
-import { EventService } from './events/event.service';
 
 @Service()
 export class Server extends AbstractServer {
@@ -78,8 +79,9 @@ export class Server extends AbstractServer {
 		private readonly orchestrationService: OrchestrationService,
 		private readonly postHogClient: PostHogClient,
 		private readonly eventService: EventService,
+		private readonly instanceSettings: InstanceSettings,
 	) {
-		super('main');
+		super();
 
 		this.testWebhooksEnabled = true;
 		this.webhooksEnabled = !this.globalConfig.endpoints.disableProductionWebhooksOnMainProcess;
@@ -96,7 +98,7 @@ export class Server extends AbstractServer {
 		this.endpointPresetCredentials = this.globalConfig.credentials.overwrite.endpoint;
 
 		await super.start();
-		this.logger.debug(`Server ID: ${this.uniqueInstanceId}`);
+		this.logger.debug(`Server ID: ${this.instanceSettings.hostId}`);
 
 		if (inDevelopment && process.env.N8N_DEV_RELOAD === 'true') {
 			void this.loadNodesAndCredentials.setupHotReload();
@@ -169,10 +171,6 @@ export class Server extends AbstractServer {
 
 		const { frontendService } = this;
 		if (frontendService) {
-			frontendService.addToSettings({
-				versionCli: N8N_VERSION,
-			});
-
 			await this.externalHooks.run('frontend.settings', [frontendService.getSettings()]);
 		}
 
@@ -244,11 +242,23 @@ export class Server extends AbstractServer {
 			// Returns the current settings for the UI
 			this.app.get(
 				`/${this.restEndpoint}/settings`,
-				ResponseHelper.send(
-					async (req: express.Request): Promise<FrontendSettings> =>
-						frontendService.getSettings(req.headers['push-ref'] as string),
-				),
+				ResponseHelper.send(async () => frontendService.getSettings()),
 			);
+
+			// Return Sentry config as a static file
+			this.app.get(`/${this.restEndpoint}/sentry.js`, (_, res) => {
+				res.type('js');
+				res.write('window.sentry=');
+				res.write(
+					JSON.stringify({
+						dsn: this.globalConfig.sentry.frontendDsn,
+						environment: process.env.ENVIRONMENT || 'development',
+						serverName: process.env.DEPLOYMENT_NAME,
+						release: N8N_VERSION,
+					}),
+				);
+				res.end();
+			});
 		}
 
 		// ----------------------------------------

@@ -27,7 +27,7 @@ type Props = {
 	path: string;
 	inputSize: 'small' | 'medium';
 	labelSize: 'small' | 'medium';
-	teleported: boolean;
+	teleported?: boolean;
 	dependentParametersValues?: string | null;
 	isReadOnly?: boolean;
 };

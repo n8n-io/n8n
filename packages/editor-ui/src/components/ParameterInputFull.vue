@@ -13,7 +13,6 @@ import { hasExpressionMapping, hasOnlyListMode, isValueExpression } from '@/util
 import { isResourceLocatorValue } from '@/utils/typeGuards';
 import { createEventBus } from 'n8n-design-system/utils';
 import type { INodeProperties, IParameterLabel, NodeParameterValueType } from 'n8n-workflow';
-import InlineExpressionTip from './InlineExpressionEditor/InlineExpressionTip.vue';
 
 type Props = {
 	parameter: INodeProperties;
@@ -57,8 +56,7 @@ const ndvStore = useNDVStore();
 
 const node = computed(() => ndvStore.activeNode);
 const hint = computed(() => i18n.nodeText().hint(props.parameter, props.path));
-const isInputTypeString = computed(() => props.parameter.type === 'string');
-const isInputTypeNumber = computed(() => props.parameter.type === 'number');
+
 const isResourceLocator = computed(
 	() => props.parameter.type === 'resourceLocator' || props.parameter.type === 'workflowSelector',
 );
@@ -72,17 +70,6 @@ const isDropDisabled = computed(
 const isExpression = computed(() => isValueExpression(props.parameter, props.value));
 const showExpressionSelector = computed(() =>
 	isResourceLocator.value ? !hasOnlyListMode(props.parameter) : true,
-);
-const isInputDataEmpty = computed(() => ndvStore.isNDVDataEmpty('input'));
-const showDragnDropTip = computed(
-	() =>
-		focused.value &&
-		(isInputTypeString.value || isInputTypeNumber.value) &&
-		!isExpression.value &&
-		!isDropDisabled.value &&
-		(!ndvStore.hasInputData || !isInputDataEmpty.value) &&
-		!ndvStore.isMappingOnboarded &&
-		ndvStore.isInputParentOfActiveNode,
 );
 
 function onFocus() {
@@ -205,7 +192,7 @@ function onDrop(newParamValue: string) {
 
 <template>
 	<n8n-input-label
-		:class="[$style.wrapper, { [$style.tipVisible]: showDragnDropTip }]"
+		:class="[$style.wrapper]"
 		:label="hideLabel ? '' : i18n.nodeText().inputLabelDisplayName(parameter, path)"
 		:tooltip-text="hideLabel ? '' : i18n.nodeText().inputLabelDescription(parameter, path)"
 		:show-tooltip="focused"
@@ -258,9 +245,6 @@ function onDrop(newParamValue: string) {
 				/>
 			</template>
 		</DraggableTarget>
-		<div v-if="showDragnDropTip" :class="$style.tip">
-			<InlineExpressionTip />
-		</div>
 		<div
 			:class="{
 				[$style.options]: true,
@@ -290,24 +274,6 @@ function onDrop(newParamValue: string) {
 			opacity: 1;
 		}
 	}
-}
-
-.tipVisible {
-	--input-border-bottom-left-radius: 0;
-	--input-border-bottom-right-radius: 0;
-}
-
-.tip {
-	position: absolute;
-	z-index: 2;
-	top: 100%;
-	background: var(--color-code-background);
-	border: var(--border-base);
-	border-top: none;
-	width: 100%;
-	box-shadow: 0 2px 6px 0 rgba(#441c17, 0.1);
-	border-bottom-left-radius: 4px;
-	border-bottom-right-radius: 4px;
 }
 
 .options {

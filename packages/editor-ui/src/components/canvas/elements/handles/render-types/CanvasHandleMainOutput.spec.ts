@@ -32,6 +32,23 @@ describe('CanvasHandleMainOutput', () => {
 		expect(queryByTestId('canvas-handle-plus')).not.toBeInTheDocument();
 	});
 
+	it('should render CanvasHandlePlus with success state when runData.total > 1', () => {
+		const { queryByTestId } = renderComponent({
+			global: {
+				provide: {
+					...createCanvasHandleProvide({
+						runData: {
+							total: 2,
+							iterations: 1,
+						},
+					}),
+				},
+			},
+		});
+
+		expect(queryByTestId('canvas-handle-plus')).toHaveClass('success');
+	});
+
 	it('should render run data label', async () => {
 		const runData = {
 			total: 1,
@@ -47,7 +64,7 @@ describe('CanvasHandleMainOutput', () => {
 		expect(getByText('1 item')).toBeInTheDocument();
 	});
 
-	it('should not render run data label if output label is available', async () => {
+	it('should render run data label even if output label is available', async () => {
 		const runData = {
 			total: 1,
 			iterations: 1,
@@ -60,7 +77,22 @@ describe('CanvasHandleMainOutput', () => {
 			},
 		});
 
-		expect(() => getByText('1 item')).toThrow();
+		expect(getByText('1 item')).toBeInTheDocument();
 		expect(getByText('Output')).toBeInTheDocument();
+	});
+
+	it('should not render run data label if handle is connected', async () => {
+		const runData = {
+			total: 1,
+			iterations: 1,
+		};
+		const { queryByText } = renderComponent({
+			global: {
+				provide: {
+					...createCanvasHandleProvide({ label: '', runData, isConnected: true }),
+				},
+			},
+		});
+		expect(queryByText('1 item')).not.toBeInTheDocument();
 	});
 });

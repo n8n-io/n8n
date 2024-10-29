@@ -94,11 +94,27 @@ describe('ActiveExecutions', () => {
 	});
 
 	test('Should remove an existing execution', async () => {
+		// ARRANGE
 		const newExecution = mockExecutionData();
 		const executionId = await activeExecutions.add(newExecution);
-		activeExecutions.remove(executionId);
 
+		// ACT
+		activeExecutions.finalizeExecution(executionId);
+
+		// Wait until the next tick to ensure that the post-execution promise has settled
+		await new Promise(setImmediate);
+
+		// ASSERT
 		expect(activeExecutions.getActiveExecutions().length).toBe(0);
+	});
+
+	test('Should not try to resolve a post-execute promise for an inactive execution', async () => {
+		// @ts-expect-error Private method
+		const getExecutionSpy = jest.spyOn(activeExecutions, 'getExecution');
+
+		activeExecutions.finalizeExecution('inactive-execution-id', mockFullRunData());
+
+		expect(getExecutionSpy).not.toHaveBeenCalled();
 	});
 
 	test('Should resolve post execute promise on removal', async () => {
@@ -110,7 +126,7 @@ describe('ActiveExecutions', () => {
 			setTimeout(res, 100);
 		});
 		const fakeOutput = mockFullRunData();
-		activeExecutions.remove(executionId, fakeOutput);
+		activeExecutions.finalizeExecution(executionId, fakeOutput);
 
 		await expect(postExecutePromise).resolves.toEqual(fakeOutput);
 	});
@@ -126,7 +142,7 @@ describe('ActiveExecutions', () => {
 		const cancellablePromise = mockCancelablePromise();
 		cancellablePromise.cancel = cancelExecution;
 		activeExecutions.attachWorkflowExecution(executionId, cancellablePromise);
-		void activeExecutions.stopExecution(executionId);
+		activeExecutions.stopExecution(executionId);
 
 		expect(cancelExecution).toHaveBeenCalledTimes(1);
 	});

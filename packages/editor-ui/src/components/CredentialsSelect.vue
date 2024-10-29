@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ICredentialType, INodeProperties, NodeParameterValue } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 import { computed, ref } from 'vue';
 import ScopesNotice from '@/components/ScopesNotice.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
@@ -12,7 +12,7 @@ type Props = {
 	parameter: INodeProperties;
 	node?: INodeUi;
 	inputSize?: 'small' | 'large' | 'mini' | 'medium' | 'xlarge';
-	displayValue: NodeParameterValue;
+	displayValue: string;
 	isReadOnly: boolean;
 	displayTitle: string;
 };

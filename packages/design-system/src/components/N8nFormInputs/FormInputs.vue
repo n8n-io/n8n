@@ -13,7 +13,6 @@ export type FormInputsProps = {
 	columnView?: boolean;
 	verticalSpacing?: '' | 'xs' | 's' | 'm' | 'l' | 'xl';
 	teleported?: boolean;
-	tagSize?: 'small' | 'medium';
 };
 
 type Value = string | number | boolean | null | undefined;
@@ -24,7 +23,6 @@ const props = withDefaults(defineProps<FormInputsProps>(), {
 	columnView: false,
 	verticalSpacing: '',
 	teleported: true,
-	tagSize: 'small',
 });
 
 const emit = defineEmits<{
@@ -129,7 +127,6 @@ onMounted(() => {
 						:data-test-id="input.name"
 						:show-validation-warnings="showValidationWarnings"
 						:teleported="teleported"
-						:tag-size="tagSize"
 						@update:model-value="(value: Value) => onUpdateModelValue(input.name, value)"
 						@validate="(value: boolean) => onValidate(input.name, value)"
 						@enter="onSubmit"

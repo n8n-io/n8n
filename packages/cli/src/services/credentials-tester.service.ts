@@ -35,7 +35,7 @@ import { Service } from 'typedi';
 
 import { CredentialTypes } from '@/credential-types';
 import type { User } from '@/databases/entities/user';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { NodeTypes } from '@/node-types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 

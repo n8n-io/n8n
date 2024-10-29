@@ -24,6 +24,7 @@ import InputNodeSelect from './InputNodeSelect.vue';
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import RunData from './RunData.vue';
 import WireMeUp from './WireMeUp.vue';
+import { waitingNodeTooltip } from '@/utils/executionUtils';
 
 type MappingMode = 'debugging' | 'mapping';
 
@@ -237,6 +238,9 @@ export default defineComponent({
 		isMultiInputNode(): boolean {
 			return this.activeNodeType !== null && this.activeNodeType.inputs.length > 1;
 		},
+		waitingMessage(): string {
+			return waitingNodeTooltip();
+		},
 	},
 	watch: {
 		inputMode: {
@@ -446,6 +450,11 @@ export default defineComponent({
 					</a>
 				</n8n-text>
 			</div>
+		</template>
+
+		<template #node-waiting>
+			<n8n-text :bold="true" color="text-dark" size="large">Waiting for input</n8n-text>
+			<n8n-text v-n8n-html="waitingMessage"></n8n-text>
 		</template>
 
 		<template #no-output-data>

@@ -8,8 +8,9 @@ import { AuthUserRepository } from '@/databases/repositories/auth-user.repositor
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { MfaService } from '@/mfa/mfa.service';
 import { TOTPService } from '@/mfa/totp.service';
+import { PublicApiKeyService } from '@/services/public-api-key.service';
 
-import { randomApiKey, randomEmail, randomName, randomValidPassword } from '../random';
+import { randomEmail, randomName, randomValidPassword } from '../random';
 
 // pre-computed bcrypt hash for the string 'password', using `await hash('password', 10)`
 const passwordHash = '$2a$10$njedH7S6V5898mj6p0Jr..IGY9Ms.qNwR7RbSzzX9yubJocKfvGGK';
@@ -79,19 +80,29 @@ export async function createUserWithMfaEnabled(
 	};
 }
 
-export async function createOwner({ withApiKey } = { withApiKey: false }) {
-	if (withApiKey) {
-		return await addApiKey(await createUser({ role: 'global:owner' }));
-	}
+export const addApiKey = async (user: User) => {
+	return await Container.get(PublicApiKeyService).createPublicApiKeyForUser(user);
+};
 
+export async function createOwnerWithApiKey() {
+	const owner = await createOwner();
+	const apiKey = await addApiKey(owner);
+	owner.apiKeys = [apiKey];
+	return owner;
+}
+
+export async function createMemberWithApiKey() {
+	const member = await createMember();
+	const apiKey = await addApiKey(member);
+	member.apiKeys = [apiKey];
+	return member;
+}
+
+export async function createOwner() {
 	return await createUser({ role: 'global:owner' });
 }
 
-export async function createMember({ withApiKey } = { withApiKey: false }) {
-	if (withApiKey) {
-		return await addApiKey(await createUser({ role: 'global:member' }));
-	}
-
+export async function createMember() {
 	return await createUser({ role: 'global:member' });
 }
 
@@ -126,11 +137,6 @@ export async function createManyUsers(
 			}),
 	);
 	return result.map((result) => result.user);
-}
-
-export async function addApiKey(user: User): Promise<User> {
-	user.apiKey = randomApiKey();
-	return await Container.get(UserRepository).save(user);
 }
 
 export const getAllUsers = async () =>

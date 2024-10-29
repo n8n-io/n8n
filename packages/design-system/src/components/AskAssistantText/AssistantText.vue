@@ -1,5 +1,5 @@
 <script setup lang="ts">
-withDefaults(defineProps<{ text: string; size: 'small' | 'medium' | 'large' | 'xlarge' }>(), {
+withDefaults(defineProps<{ text: string; size?: 'small' | 'medium' | 'large' | 'xlarge' }>(), {
 	text: '',
 	size: 'medium',
 });
