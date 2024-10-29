@@ -6,7 +6,7 @@ import type { IWorkflowDb } from '@/Interface';
 import { useCanvasMapping } from '@/composables/useCanvasMapping';
 import type { EventBus } from 'n8n-design-system';
 import { createEventBus } from 'n8n-design-system';
-import { CanvasEventBusEvents, CanvasNodeRenderType } from '@/types';
+import type { CanvasEventBusEvents } from '@/types';
 import { useVueFlow } from '@vue-flow/core';
 
 defineOptions({
