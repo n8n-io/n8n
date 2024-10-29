@@ -145,7 +145,7 @@ const disableKeyBindings = computed(() => !props.keyBindings);
  * @see https://developer.mozilla.org/en-US/docs/Web/API/UI_Events/Keyboard_event_key_values#whitespace_keys
  */
 
-const panningKeyCode = ' ';
+const panningKeyCode = [' ', 'Meta'];
 const isPanningEnabled = ref(false);
 const selectionKeyCode = ref<true | null>(true);
 
