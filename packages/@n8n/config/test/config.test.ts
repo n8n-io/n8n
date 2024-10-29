@@ -265,6 +265,11 @@ describe('GlobalConfig', () => {
 			tenantId: 1,
 			cert: '',
 		},
+		security: {
+			restrictFileAccessTo: '',
+			blockFileAccessToN8nFiles: true,
+			daysAbandonedWorkflow: 90,
+		},
 	};
 
 	it('should use all default values when no env variables are defined', () => {
