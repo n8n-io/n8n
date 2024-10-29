@@ -1,9 +1,8 @@
 import type {
+	IAuthenticateGeneric,
 	Icon,
-	ICredentialDataDecryptedObject,
 	ICredentialTestRequest,
 	ICredentialType,
-	IHttpRequestOptions,
 	INodeProperties,
 } from 'n8n-workflow';
 
@@ -18,61 +17,51 @@ export class ZabbixApi implements ICredentialType {
 
 	httpRequestNode = {
 		name: 'Zabbix',
-		docsUrl: 'zabbix',
-		apiBaseUrlPlaceholder: 'https://zabbix.digital-boss.dev/',
+		docsUrl: 'https://www.zabbix.com/documentation/current/en/manual/api',
+		apiBaseUrl: '',
 	};
 
 	properties: INodeProperties[] = [
 		{
+			displayName: 'API Token',
+			name: 'apiToken',
+			type: 'string',
+			typeOptions: { password: true },
+			default: '',
+		},
+		{
 			displayName: 'URL',
 			name: 'url',
 			type: 'string',
+			required: true,
 			default: '',
-			description: 'The base url',
-		},
-		{
-			displayName: 'Username',
-			name: 'username',
-			type: 'string',
-			default: '',
-		},
-		{
-			displayName: 'Password',
-			name: 'password',
-			type: 'string',
-			typeOptions: {
-				password: true,
-			},
-			default: '',
-		},
-		{
-			displayName: 'Testing Mode',
-			name: 'testingMode',
-			type: 'boolean',
-			default: false,
 		},
 	];
 
-	async authenticate(
-		credentials: ICredentialDataDecryptedObject,
-		requestOptions: IHttpRequestOptions,
-	): Promise<IHttpRequestOptions> {
-		requestOptions.headers = {
-			'Api-Username': credentials.username,
-			'Api-Password': credentials.password,
-		};
-		if (requestOptions.method === 'GET') {
-			delete requestOptions.body;
-		}
-
-		return requestOptions;
-	}
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
+		properties: {
+			headers: {
+				Authorization: '=Bearer {{$credentials.apiToken}}',
+			},
+		},
+	};
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: '={{$credentials.url}}',
-			url: '/',
-			method: 'GET',
+			url: 'https://zabbix.digital-boss.dev/zabbix/api_jsonrpc.php',
+			method: 'POST',
+			body: {
+				jsonrpc: '2.0',
+				method: 'apiinfo.version',
+				params: {},
+				id: 1,
+			},
+			headers: {
+				Authorization: 'Bearer {{$credentials.apiToken}}',
+				'Content-Type': 'application/json-rpc',
+			},
+			json: true,
 		},
 	};
 }
