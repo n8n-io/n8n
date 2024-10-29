@@ -231,6 +231,7 @@ describe('GlobalConfig', () => {
 			port: 5679,
 			launcherPath: '',
 			launcherRunner: 'javascript',
+			maxOldSpaceSize: '',
 		},
 		sentry: {
 			backendDsn: '',
@@ -263,6 +264,11 @@ describe('GlobalConfig', () => {
 			activationKey: '',
 			tenantId: 1,
 			cert: '',
+		},
+		security: {
+			restrictFileAccessTo: '',
+			blockFileAccessToN8nFiles: true,
+			daysAbandonedWorkflow: 90,
 		},
 	};
 
