@@ -236,10 +236,12 @@ export class TelemetryEventRelay extends EventRelay {
 	}
 
 	private licenseCommunityPlusRegistered({
+		userId,
 		email,
 		licenseKey,
 	}: RelayEventMap['license-community-plus-registered']) {
 		this.telemetry.track('User registered for license community plus', {
+			user_id: userId,
 			email,
 			licenseKey,
 		});
