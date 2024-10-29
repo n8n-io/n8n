@@ -24,6 +24,7 @@ import InlineAskAssistantButton from 'n8n-design-system/components/InlineAskAssi
 import { useUIStore } from '@/stores/ui.store';
 import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
 import { useAIAssistantHelpers } from '@/composables/useAIAssistantHelpers';
+import MultiLineText from '../MultiLineText/MultiLineText.vue';
 
 type Props = {
 	// TODO: .node can be undefined
@@ -423,9 +424,7 @@ async function onAskAssistantClick() {
 	<div class="node-error-view">
 		<div class="node-error-view__header">
 			<div class="node-error-view__header-message" data-test-id="node-error-message">
-				<div>
-					{{ getErrorMessage() }}
-				</div>
+				<MultiLineText :text="getErrorMessage()" />
 			</div>
 			<div
 				v-if="error.description || error.context?.descriptionKey"

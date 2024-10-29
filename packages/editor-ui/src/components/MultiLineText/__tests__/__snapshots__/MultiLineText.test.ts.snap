@@ -1,0 +1,18 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`MultiLineText > renders multiline text correctly 1`] = `
+<div>
+  <div>
+    
+    <span>
+      The quick brown fox
+      <br />
+    </span>
+    <span>
+      jumps over the lazy dog
+      <!--v-if-->
+    </span>
+    
+  </div>
+</div>
+`;
