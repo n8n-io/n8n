@@ -9,14 +9,24 @@ import { Logger } from '@/logging/logger.service';
 
 import { TaskRunnerAuthService } from './auth/task-runner-auth.service';
 import { forwardToLogger } from './forward-to-logger';
+import { NodeProcessOomDetector } from './node-process-oom-detector';
+import { TypedEmitter } from '../typed-emitter';
 
 type ChildProcess = ReturnType<typeof spawn>;
+
+export type ExitReason = 'unknown' | 'oom';
+
+export type TaskRunnerProcessEventMap = {
+	exit: {
+		reason: ExitReason;
+	};
+};
 
 /**
  * Manages the JS task runner process as a child process
  */
 @Service()
-export class TaskRunnerProcess {
+export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 	public get isRunning() {
 		return this.process !== null;
 	}
@@ -39,6 +49,8 @@ export class TaskRunnerProcess {
 
 	private _runPromise: Promise<void> | null = null;
 
+	private oomDetector: NodeProcessOomDetector | null = null;
+
 	private isShuttingDown = false;
 
 	private logger: Logger;
@@ -54,6 +66,8 @@ export class TaskRunnerProcess {
 		private readonly runnerConfig: TaskRunnersConfig,
 		private readonly authService: TaskRunnerAuthService,
 	) {
+		super();
+
 		a.ok(
 			this.runnerConfig.mode === 'internal_childprocess' ||
 				this.runnerConfig.mode === 'internal_launcher',
@@ -141,6 +155,8 @@ export class TaskRunnerProcess {
 
 	private monitorProcess(taskRunnerProcess: ChildProcess) {
 		this._runPromise = new Promise((resolve) => {
+			this.oomDetector = new NodeProcessOomDetector(taskRunnerProcess);
+
 			taskRunnerProcess.on('exit', (code) => {
 				this.onProcessExit(code, resolve);
 			});
@@ -149,6 +165,7 @@ export class TaskRunnerProcess {
 
 	private onProcessExit(_code: number | null, resolveFn: () => void) {
 		this.process = null;
+		this.emit('exit', { reason: this.oomDetector?.didProcessOom ? 'oom' : 'unknown' });
 		resolveFn();
 
 		// If we are not shutting down, restart the process

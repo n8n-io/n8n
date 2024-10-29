@@ -254,6 +254,9 @@ importers:
         specifier: 0.0.15
         version: 0.0.15(zod@3.23.8)
     devDependencies:
+      '@n8n/config':
+        specifier: workspace:*
+        version: link:../config
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow

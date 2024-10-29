@@ -104,7 +104,7 @@ export class TaskBroker {
 		});
 	}
 
-	deregisterRunner(runnerId: string) {
+	deregisterRunner(runnerId: string, error: Error) {
 		this.knownRunners.delete(runnerId);
 
 		// Remove any pending offers
@@ -117,8 +117,11 @@ export class TaskBroker {
 		// Fail any tasks
 		for (const task of this.tasks.values()) {
 			if (task.runnerId === runnerId) {
-				void this.failTask(task.id, `The Task Runner (${runnerId}) has disconnected`);
-				this.handleRunnerReject(task.id, `The Task Runner (${runnerId}) has disconnected`);
+				void this.failTask(task.id, error);
+				this.handleRunnerReject(
+					task.id,
+					`The Task Runner (${runnerId}) has disconnected: ${error.message}`,
+				);
 			}
 		}
 	}
@@ -352,7 +355,7 @@ export class TaskBroker {
 		});
 	}
 
-	private async failTask(taskId: Task['id'], reason: string) {
+	private async failTask(taskId: Task['id'], error: Error) {
 		const task = this.tasks.get(taskId);
 		if (!task) {
 			return;
@@ -362,7 +365,7 @@ export class TaskBroker {
 		await this.messageRequester(task.requesterId, {
 			type: 'broker:taskerror',
 			taskId,
-			error: reason,
+			error,
 		});
 	}
 
@@ -375,11 +378,14 @@ export class TaskBroker {
 		}
 		const runner = this.knownRunners.get(task.runnerId);
 		if (!runner) {
-			const reason = `Cannot find runner, failed to find runner (${task.runnerId})`;
-			await this.failTask(taskId, reason);
-			throw new ApplicationError(reason, {
-				level: 'error',
-			});
+			const error = new ApplicationError(
+				`Cannot find runner, failed to find runner (${task.runnerId})`,
+				{
+					level: 'error',
+				},
+			);
+			await this.failTask(taskId, error);
+			throw error;
 		}
 		return runner.runner;
 	}
