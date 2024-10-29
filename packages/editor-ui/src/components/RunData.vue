@@ -1,5 +1,5 @@
 <script lang="ts">
-import { defineAsyncComponent, defineComponent, toRef } from 'vue';
+import { defineAsyncComponent, defineComponent, h, toRef } from 'vue';
 import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
 import { useStorage } from '@/composables/useStorage';
@@ -159,6 +159,10 @@ export default defineComponent({
 			default: false,
 		},
 		isPaneActive: {
+			type: Boolean,
+			default: false,
+		},
+		hidePagination: {
 			type: Boolean,
 			default: false,
 		},
@@ -1743,6 +1747,7 @@ export default defineComponent({
 		</div>
 		<div
 			v-if="
+				hidePagination === false &&
 				hasNodeRun &&
 				!hasRunError &&
 				displayMode !== 'binary' &&
