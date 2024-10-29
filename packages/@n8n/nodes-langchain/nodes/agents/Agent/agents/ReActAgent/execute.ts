@@ -19,6 +19,7 @@ import {
 import { getOptionalOutputParsers } from '../../../../../utils/output_parsers/N8nOutputParser';
 import { throwIfToolSchema } from '../../../../../utils/schemaParsing';
 import { getTracingConfig } from '../../../../../utils/tracing';
+import { extractParsedOutput } from '../utils';
 
 export async function reActAgentAgentExecute(
 	this: IExecuteFunctions,
@@ -103,12 +104,12 @@ export async function reActAgentAgentExecute(
 				input = (await prompt.invoke({ input })).value;
 			}
 
-			let response = await agentExecutor
+			const response = await agentExecutor
 				.withConfig(getTracingConfig(this))
 				.invoke({ input, outputParsers });
 
 			if (outputParser) {
-				response = { output: await outputParser.parse(response.output as string) };
+				response.output = await extractParsedOutput(this, outputParser, response.output as string);
 			}
 
 			returnData.push({ json: response });

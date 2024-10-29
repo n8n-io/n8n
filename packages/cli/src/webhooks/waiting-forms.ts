@@ -38,6 +38,25 @@ export class WaitingForms extends WaitingWebhooks {
 		});
 	}
 
+	private async reloadForm(req: WaitingWebhookRequest, res: express.Response) {
+		try {
+			await sleep(1000);
+
+			const url = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
+			const page = await axios({ url });
+
+			if (page) {
+				res.send(`
+				<script>
+					setTimeout(function() {
+						window.location.reload();
+					}, 1);
+				</script>
+			`);
+			}
+		} catch (error) {}
+	}
+
 	async executeWebhook(
 		req: WaitingWebhookRequest,
 		res: express.Response,
@@ -56,30 +75,17 @@ export class WaitingForms extends WaitingWebhooks {
 		}
 
 		if (execution.data.resultData.error) {
-			throw new ConflictError(`The execution "${executionId}" has finished with error.`);
+			const message = `The execution "${executionId}" has finished with error.`;
+			this.logger.debug(message, { error: execution.data.resultData.error });
+			throw new ConflictError(message);
 		}
 
 		if (execution.status === 'running') {
 			if (this.includeForms && req.method === 'GET') {
-				await sleep(1000);
-
-				const url = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
-				const page = await axios({ url });
-
-				if (page) {
-					res.send(`
-					<script>
-						setTimeout(function() {
-							window.location.reload();
-						}, 1);
-					</script>
-				`);
-				}
-
-				return {
-					noWebhookResponse: true,
-				};
+				await this.reloadForm(req, res);
+				return { noWebhookResponse: true };
 			}
+
 			throw new ConflictError(`The execution "${executionId}" is running already.`);
 		}
 

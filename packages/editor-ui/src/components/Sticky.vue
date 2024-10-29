@@ -20,6 +20,7 @@ import { assert } from '@/utils/assert';
 import type { BrowserJsPlumbInstance } from '@jsplumb/browser-ui';
 import { useNodeBase } from '@/composables/useNodeBase';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { useStyles } from '@/composables/useStyles';
 
 const props = withDefaults(
 	defineProps<{
@@ -54,6 +55,7 @@ const ndvStore = useNDVStore();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
+const { APP_Z_INDEXES } = useStyles();
 
 const isResizing = ref<boolean>(false);
 const isTouchActive = ref<boolean>(false);
@@ -136,7 +138,9 @@ const stickySize = computed<StyleValue>(() => ({
 const stickyPosition = computed<StyleValue>(() => ({
 	left: position.value[0] + 'px',
 	top: position.value[1] + 'px',
-	zIndex: props.isActive ? 9999999 : -1 * Math.floor((height.value * width.value) / 1000),
+	zIndex: props.isActive
+		? APP_Z_INDEXES.ACTIVE_STICKY
+		: -1 * Math.floor((height.value * width.value) / 1000),
 }));
 
 const workflowRunning = computed(() => uiStore.isActionActive.workflowRunning);
