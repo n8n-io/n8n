@@ -4,6 +4,7 @@ import { useRootStore } from '@/stores/root.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUsersStore } from '@/stores/users.store';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 import { initializeCloudHooks } from '@/hooks/register';
 import { useVersionsStore } from '@/stores/versions.store';
 import { useProjectsStore } from '@/stores/projects.store';
@@ -26,6 +27,9 @@ export async function initializeCore() {
 	const versionsStore = useVersionsStore();
 
 	await settingsStore.initialize();
+
+	void useExternalHooks().run('app.mount');
+
 	if (!settingsStore.isPreviewMode) {
 		await usersStore.initialize();
 
