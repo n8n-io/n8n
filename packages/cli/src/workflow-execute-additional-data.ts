@@ -468,7 +468,7 @@ function hookFunctionsSave(): IWorkflowExecuteHooks {
 						(executionStatus === 'success' && !saveSettings.success) ||
 						(executionStatus !== 'success' && !saveSettings.error);
 
-					if (shouldNotSave) {
+					if (shouldNotSave && !fullRunData.waitTill) {
 						if (!fullRunData.waitTill && !isManualMode) {
 							executeErrorWorkflow(
 								this.workflowData,
