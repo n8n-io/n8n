@@ -23,12 +23,11 @@ import type {
 } from 'axios';
 import axios from 'axios';
 import crypto, { createHmac } from 'crypto';
-import type { Request, Response } from 'express';
 import FileType from 'file-type';
 import FormData from 'form-data';
 import { createReadStream } from 'fs';
 import { access as fsAccess, writeFile as fsWriteFile } from 'fs/promises';
-import { IncomingMessage, type IncomingHttpHeaders } from 'http';
+import { IncomingMessage } from 'http';
 import { Agent, type AgentOptions } from 'https';
 import get from 'lodash/get';
 import isEmpty from 'lodash/isEmpty';
@@ -167,7 +166,7 @@ import { extractValue } from './ExtractValue';
 import { InstanceSettings } from './InstanceSettings';
 import type { ExtendedValidationResult, IResponseError } from './Interfaces';
 // eslint-disable-next-line import/no-cycle
-import { PollContext, TriggerContext } from './node-execution-context';
+import { PollContext, TriggerContext, WebhookContext } from './node-execution-context';
 import { getSecretsProxy } from './Secrets';
 import { SSHClientsManager } from './SSHClientsManager';
 
@@ -2800,7 +2799,7 @@ const addExecutionDataFunctions = async (
 	}
 };
 
-async function getInputConnectionData(
+export async function getInputConnectionData(
 	this: IAllExecuteFunctions,
 	workflow: Workflow,
 	runExecutionData: IRunExecutionData,
@@ -4491,170 +4490,13 @@ export function getExecuteWebhookFunctions(
 	closeFunctions: CloseFunction[],
 	runExecutionData: IRunExecutionData | null,
 ): IWebhookFunctions {
-	return ((workflow: Workflow, node: INode, runExecutionData: IRunExecutionData | null) => {
-		return {
-			...getCommonWorkflowFunctions(workflow, node, additionalData),
-			getBodyData(): IDataObject {
-				if (additionalData.httpRequest === undefined) {
-					throw new ApplicationError('Request is missing');
-				}
-				return additionalData.httpRequest.body;
-			},
-			getCredentials: async (type) =>
-				await getCredentials(workflow, node, type, additionalData, mode),
-			getHeaderData(): IncomingHttpHeaders {
-				if (additionalData.httpRequest === undefined) {
-					throw new ApplicationError('Request is missing');
-				}
-				return additionalData.httpRequest.headers;
-			},
-			async getInputConnectionData(
-				inputName: NodeConnectionType,
-				itemIndex: number,
-			): Promise<unknown> {
-				// To be able to use expressions like "$json.sessionId" set the
-				// body data the webhook received to what is normally used for
-				// incoming node data.
-				const connectionInputData: INodeExecutionData[] = [
-					{ json: additionalData.httpRequest?.body || {} },
-				];
-				const runExecutionData: IRunExecutionData = {
-					resultData: {
-						runData: {},
-					},
-				};
-				const executeData: IExecuteData = {
-					data: {
-						main: [connectionInputData],
-					},
-					node,
-					source: null,
-				};
-				const runIndex = 0;
-
-				return await getInputConnectionData.call(
-					this,
-					workflow,
-					runExecutionData,
-					runIndex,
-					connectionInputData,
-					{} as ITaskDataConnections,
-					additionalData,
-					executeData,
-					mode,
-					closeFunctions,
-					inputName,
-					itemIndex,
-				);
-			},
-			getMode: () => mode,
-			evaluateExpression: (expression: string, evaluateItemIndex?: number) => {
-				const itemIndex = evaluateItemIndex === undefined ? 0 : evaluateItemIndex;
-				const runIndex = 0;
-
-				let connectionInputData: INodeExecutionData[] = [];
-				let executionData: IExecuteData | undefined;
-
-				if (runExecutionData?.executionData !== undefined) {
-					executionData = runExecutionData.executionData.nodeExecutionStack[0];
-
-					if (executionData !== undefined) {
-						connectionInputData = executionData.data.main[0]!;
-					}
-				}
-
-				const additionalKeys = getAdditionalKeys(additionalData, mode, runExecutionData);
-
-				return workflow.expression.resolveSimpleParameterValue(
-					`=${expression}`,
-					{},
-					runExecutionData,
-					runIndex,
-					itemIndex,
-					node.name,
-					connectionInputData,
-					mode,
-					additionalKeys,
-					executionData,
-				);
-			},
-			getNodeParameter: (
-				parameterName: string,
-				fallbackValue?: any,
-				options?: IGetNodeParameterOptions,
-			): NodeParameterValueType | object => {
-				const itemIndex = 0;
-				const runIndex = 0;
-
-				let connectionInputData: INodeExecutionData[] = [];
-				let executionData: IExecuteData | undefined;
-
-				if (runExecutionData?.executionData !== undefined) {
-					executionData = runExecutionData.executionData.nodeExecutionStack[0];
-
-					if (executionData !== undefined) {
-						connectionInputData = executionData.data.main[0]!;
-					}
-				}
-
-				const additionalKeys = getAdditionalKeys(additionalData, mode, runExecutionData);
-
-				return getNodeParameter(
-					workflow,
-					runExecutionData,
-					runIndex,
-					connectionInputData,
-					node,
-					parameterName,
-					itemIndex,
-					mode,
-					additionalKeys,
-					executionData,
-					fallbackValue,
-					options,
-				);
-			},
-			getParamsData(): object {
-				if (additionalData.httpRequest === undefined) {
-					throw new ApplicationError('Request is missing');
-				}
-				return additionalData.httpRequest.params;
-			},
-			getQueryData(): object {
-				if (additionalData.httpRequest === undefined) {
-					throw new ApplicationError('Request is missing');
-				}
-				return additionalData.httpRequest.query;
-			},
-			getRequestObject(): Request {
-				if (additionalData.httpRequest === undefined) {
-					throw new ApplicationError('Request is missing');
-				}
-				return additionalData.httpRequest;
-			},
-			getResponseObject(): Response {
-				if (additionalData.httpResponse === undefined) {
-					throw new ApplicationError('Response is missing');
-				}
-				return additionalData.httpResponse;
-			},
-			getNodeWebhookUrl: (name: string): string | undefined =>
-				getNodeWebhookUrl(
-					name,
-					workflow,
-					node,
-					additionalData,
-					mode,
-					getAdditionalKeys(additionalData, mode, null),
-				),
-			getWebhookName: () => webhookData.webhookDescription.name,
-			helpers: {
-				createDeferredPromise,
-				...getRequestHelperFunctions(workflow, node, additionalData),
-				...getBinaryHelperFunctions(additionalData, workflow.id),
-				returnJsonArray,
-			},
-			nodeHelpers: getNodeHelperFunctions(additionalData, workflow.id),
-		};
-	})(workflow, node, runExecutionData);
+	return new WebhookContext(
+		workflow,
+		node,
+		additionalData,
+		mode,
+		webhookData,
+		closeFunctions,
+		runExecutionData,
+	);
 }
