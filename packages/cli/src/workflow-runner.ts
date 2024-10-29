@@ -14,7 +14,6 @@ import type {
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
 import {
-	ApplicationError,
 	ErrorReporterProxy as ErrorReporter,
 	ExecutionCancelledError,
 	Workflow,
@@ -381,17 +380,6 @@ export class WorkflowRunner {
 		let job: Job;
 		let hooks: WorkflowHooks;
 		try {
-			// check to help diagnose PAY-2100
-			if (
-				data.executionData?.executionData?.nodeExecutionStack?.length === 0 &&
-				config.getEnv('deployment.type') === 'internal'
-			) {
-				await this.executionRepository.setRunning(executionId); // set `startedAt` so we display it correctly in UI
-				throw new ApplicationError('Execution to enqueue has empty node execution stack', {
-					extra: { executionData: data.executionData },
-				});
-			}
-
 			job = await this.scalingService.addJob(jobData, { priority: realtime ? 50 : 100 });
 
 			hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerMain(
