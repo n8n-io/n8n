@@ -85,14 +85,16 @@ export function usePinnedData(
 		if (!nodeType || (checkDataEmpty && dataToPin.length === 0)) return false;
 
 		const workflow = workflowsStore.getCurrentWorkflow();
-		const outputs = NodeHelpers.getNodeOutputs(workflow, targetNode, nodeType);
-		const mainOutputs = outputs.filter((output) =>
-			typeof output === 'string'
-				? output === NodeConnectionType.Main
-				: output.type === NodeConnectionType.Main,
-		);
+		const mainOutputs = NodeHelpers.getNodeOutputs(workflow, targetNode, nodeType)
+			.map((output) => (typeof output === 'string' ? { type: output } : output))
+			.filter((output) => output.type === NodeConnectionType.Main);
 
-		return mainOutputs.length === 1 && !PIN_DATA_NODE_TYPES_DENYLIST.includes(targetNode.type);
+		// Outputs are pinnable if there is exactly one main output and optionally one error output
+		const pinnableMainOutputs =
+			mainOutputs.length === 1 ||
+			(mainOutputs.length === 2 && mainOutputs[1]?.category === 'error');
+
+		return pinnableMainOutputs && !PIN_DATA_NODE_TYPES_DENYLIST.includes(targetNode.type);
 	}
 
 	function isValidJSON(data: string): boolean {

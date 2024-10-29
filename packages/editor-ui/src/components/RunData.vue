@@ -284,6 +284,11 @@ export default defineComponent({
 				return false;
 			}
 
+			if (this.outputIndex !== 0) {
+				// Only allow pinning of the main output
+				return false;
+			}
+
 			const canPinNode = usePinnedData(this.node).canPinNode(false);
 
 			return (
@@ -1209,9 +1214,7 @@ export default defineComponent({
 <template>
 	<div :class="['run-data', $style.container]" @mouseover="activatePane">
 		<n8n-callout
-			v-if="
-				canPinData && pinnedData.hasData.value && !editMode.enabled && !isProductionExecutionPreview
-			"
+			v-if="pinnedData.hasData.value && !editMode.enabled && !isProductionExecutionPreview"
 			theme="secondary"
 			icon="thumbtack"
 			:class="$style.pinnedDataCallout"
