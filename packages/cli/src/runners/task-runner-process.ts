@@ -47,7 +47,6 @@ export class TaskRunnerProcess {
 		'PATH',
 		'NODE_FUNCTION_ALLOW_BUILTIN',
 		'NODE_FUNCTION_ALLOW_EXTERNAL',
-		'N8N_RUNNERS_MAX_CONCURRENCY',
 	] as const;
 
 	constructor(
@@ -163,6 +162,7 @@ export class TaskRunnerProcess {
 			N8N_RUNNERS_GRANT_TOKEN: grantToken,
 			N8N_RUNNERS_N8N_URI: n8nUri,
 			N8N_RUNNERS_MAX_PAYLOAD: this.runnerConfig.maxPayload.toString(),
+			N8N_RUNNERS_MAX_CONCURRENCY: this.runnerConfig.maxConcurrency.toString(),
 			...this.getPassthroughEnvVars(),
 		};
 
