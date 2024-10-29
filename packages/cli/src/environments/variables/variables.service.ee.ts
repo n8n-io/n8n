@@ -14,6 +14,7 @@ import { CacheService } from '@/services/cache/cache.service';
 import { ProjectService } from '@/services/project.service';
 
 import { canCreateNewVariable } from './environment-helpers';
+import { Project } from '@/databases/entities/project';
 
 @Service()
 export class VariablesService {
@@ -139,6 +140,20 @@ export class VariablesService {
 		}
 	}
 
+	async throwOnExistingKey(key: Variables['key'], projectId?: Project['id']) {
+		const variable = await this.variablesRepository.findOne({
+			where: {
+				key,
+				projectId,
+			},
+		});
+		if (variable) {
+			throw new VariableValidationError(
+				`Variable with this key already exists ${projectId ? 'in this project' : 'globally'}`,
+			);
+		}
+	}
+
 	async create(variable: CreateVariableRequestDto, user: User): Promise<Variables> {
 		if (!canCreateNewVariable(await this.getCount())) {
 			throw new VariableCountLimitReachedError('Variables limit reached');
@@ -146,7 +161,6 @@ export class VariablesService {
 
 		// Creating a global variable
 		if (!variable.projectId && !user.hasGlobalScope('globalVariable:create')) {
-			console.log(1, variable);
 			throw new MissingScopeError();
 		}
 
@@ -157,9 +171,10 @@ export class VariablesService {
 				'variable:create',
 			]))
 		) {
-			console.log(2, variable);
 			throw new MissingScopeError();
 		}
+
+		await this.throwOnExistingKey(variable.key, variable.projectId ?? undefined);
 
 		this.eventService.emit('variable-created');
 		const saveResult = await this.variablesRepository.save(
@@ -193,6 +208,10 @@ export class VariablesService {
 			]))
 		) {
 			throw new MissingScopeError();
+		}
+
+		if (variable.key !== originalVariable.key) {
+			await this.throwOnExistingKey(variable.key, originalVariable.projectId ?? undefined);
 		}
 
 		await this.variablesRepository.update(id, variable);

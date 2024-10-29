@@ -1,15 +1,6 @@
 import { CreateVariableRequestDto, UpdateVariableRequestDto } from '@n8n/api-types';
 
-import {
-	Body,
-	Delete,
-	Get,
-	GlobalScope,
-	Licensed,
-	Patch,
-	Post,
-	RestController,
-} from '@/decorators';
+import { Body, Delete, Get, Licensed, Patch, Post, RestController } from '@/decorators';
 import { Param } from '@/decorators/args';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -38,7 +29,6 @@ export class VariablesController {
 		try {
 			return await this.variablesService.create(variable, req.user);
 		} catch (error) {
-			console.error(error);
 			if (error instanceof VariableCountLimitReachedError) {
 				throw new BadRequestError(error.message);
 			} else if (error instanceof VariableValidationError) {
