@@ -10,9 +10,9 @@ import { Container } from 'typedi';
 
 import { InstanceSettings } from '@/InstanceSettings';
 
-import { BaseContext } from '../base-contexts';
+import { NodeExecutionContext } from '../node-execution-context';
 
-class TestContext extends BaseContext {}
+class TestContext extends NodeExecutionContext {}
 
 describe('BaseContext', () => {
 	const instanceSettings = mock<InstanceSettings>({ instanceId: 'abc123' });

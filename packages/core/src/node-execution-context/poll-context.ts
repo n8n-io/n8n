@@ -21,10 +21,10 @@ import {
 	returnJsonArray,
 } from '@/NodeExecuteFunctions';
 
-import { BaseContext } from './base-contexts';
 import { BinaryHelpers } from './helpers/binary-helpers';
 import { RequestHelpers } from './helpers/request-helpers';
 import { SchedulingHelpers } from './helpers/scheduling-helpers';
+import { NodeExecutionContext } from './node-execution-context';
 
 const throwOnEmit = () => {
 	throw new ApplicationError('Overwrite PollContext.__emit function');
@@ -34,7 +34,7 @@ const throwOnEmitError = () => {
 	throw new ApplicationError('Overwrite PollContext.__emitError function');
 };
 
-export class PollContext extends BaseContext implements IPollFunctions {
+export class PollContext extends NodeExecutionContext implements IPollFunctions {
 	readonly helpers: IPollFunctions['helpers'];
 
 	constructor(

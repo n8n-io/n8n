@@ -12,7 +12,7 @@ import { Container } from 'typedi';
 
 import { InstanceSettings } from '@/InstanceSettings';
 
-export abstract class BaseContext implements Omit<FunctionsBase, 'getCredentials'> {
+export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCredentials'> {
 	protected readonly instanceSettings = Container.get(InstanceSettings);
 
 	constructor(
