@@ -282,11 +282,13 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		filteredNodes,
 		filterMode,
 		subcategory,
+		title,
 	}: {
 		newValue: string;
 		filteredNodes: INodeCreateElement[];
 		filterMode: NodeFilterType;
 		subcategory?: string;
+		title?: string;
 	}) {
 		if (!newValue.length) {
 			return;
@@ -323,6 +325,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 			results_count,
 			trigger_count,
 			regular_count,
+			title,
 		});
 	}
 

@@ -67,6 +67,7 @@ function onSearch(value: string) {
 					filteredNodes: activeViewStack.value.items ?? [],
 					filterMode: activeViewStack.value.rootView ?? 'Regular',
 					subcategory: activeViewStack.value.subcategory,
+					title: activeViewStack.value.title,
 				},
 			);
 		}
