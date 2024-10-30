@@ -7,7 +7,6 @@ import { Get, Middleware, RestController } from '@/decorators';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { IWorkflowStatisticsDataLoaded, WorkflowStatisticsData } from '@/interfaces';
 import { Logger } from '@/logging/logger.service';
-
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 
 import { StatisticsRequest } from './workflow-statistics.types';
