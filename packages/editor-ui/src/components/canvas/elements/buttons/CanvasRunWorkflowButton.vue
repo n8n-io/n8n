@@ -54,7 +54,7 @@ const onActionSelect = (item: string) => {
 			<KeyboardShortcutTooltip :label="label" :shortcut="{ metaKey: true, keys: ['↵'] }">
 				<N8nButton
 					:class="{
-						[$style.firstButton]: triggerNodes.length > 1,
+						[$style.firstButton]: triggerNodes?.length > 1,
 					}"
 					:loading="executing"
 					:disabled="disabled"
@@ -66,12 +66,13 @@ const onActionSelect = (item: string) => {
 					@mouseleave="$emit('mouseleave', $event)"
 					@click.stop="$emit('click', $event, selectedTrigger)"
 					>{{
-						label + (selectedTrigger && triggerNodes.length > 1 ? ` from "${selectedTrigger}"` : '')
+						label +
+						(selectedTrigger && triggerNodes?.length > 1 ? ` from "${selectedTrigger}"` : '')
 					}}</N8nButton
 				>
 			</KeyboardShortcutTooltip>
 			<div :class="$style.line"></div>
-			<N8nActionDropdown v-if="triggerNodes.length > 1" :items="actions" @select="onActionSelect">
+			<N8nActionDropdown v-if="triggerNodes?.length > 1" :items="actions" @select="onActionSelect">
 				<template #activator>
 					<N8nIconButton :class="$style.lastButton" size="large" icon="chevron-down" />
 				</template>
