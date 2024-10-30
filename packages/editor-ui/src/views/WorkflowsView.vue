@@ -206,11 +206,13 @@ const fetchWorkflowsWithFilters = async () => {
 
 	const projectId =
 		typeof route.params?.projectId === 'string' ? route.params.projectId : homeProject;
+	const tagNames = tags.map((tagId) => tagsStore.tagsById[tagId]?.name);
+	// todo move to fetchAllWorkflows function
 	const options: WorkflowsFetchOptions = {
 		filter: {
-			projectId,
+			projectId: projectId?.length ? projectId : undefined,
 			active: status === StatusFilter.ACTIVE ? true : undefined,
-			tags: tags.map((tagId) => tagsStore.tagsById[tagId]?.name),
+			tags: tagNames.length ? tagNames : undefined,
 		},
 		credentialIds: credentials.length ? credentials : undefined,
 		nodeTypes: nodeTypes.length ? nodeTypes : undefined,
