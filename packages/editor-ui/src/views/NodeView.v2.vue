@@ -107,6 +107,7 @@ import { getResourcePermissions } from '@/permissions';
 import NodeViewUnfinishedWorkflowMessage from '@/components/NodeViewUnfinishedWorkflowMessage.vue';
 import { createCanvasConnectionHandleString } from '@/utils/canvasUtilsV2';
 import { isValidNodeConnectionType } from '@/utils/typeGuards';
+import 'ninja-keys';
 
 const LazyNodeCreation = defineAsyncComponent(
 	async () => await import('@/components/Node/NodeCreation.vue'),
@@ -1572,6 +1573,45 @@ onBeforeUnmount(() => {
 		pushConnectionStore.pushDisconnect();
 	}
 });
+
+const hotkeys = computed(() => [
+	{
+		id: 'Home',
+		title: 'Open Home',
+		hotkey: 'cmd+h',
+		handler: () => {
+			console.log('navigation to home');
+		},
+	},
+	{
+		id: 'Open Projects',
+		title: 'Open Projects',
+		hotkey: 'cmd+p',
+		handler: () => {
+			console.log('navigation to projects');
+		},
+	},
+	{
+		id: 'Theme',
+		title: 'Change theme...',
+		children: [
+			{
+				id: 'nodeId',
+				title: 'Change theme to Light',
+				handler: () => {
+					console.log('theme light');
+				},
+			},
+			{
+				id: 'Dark Theme',
+				title: 'Change theme to Dark',
+				handler: () => {
+					console.log('theme dark');
+				},
+			},
+		],
+	},
+]);
 </script>
 
 <template>
@@ -1665,6 +1705,9 @@ onBeforeUnmount(() => {
 				:renaming="renamingActive"
 			-->
 		</Suspense>
+		<Teleport to="body">
+			<ninja-keys :class="uiStore.appliedTheme" :data="hotkeys"></ninja-keys>
+		</Teleport>
 	</WorkflowCanvas>
 </template>
 
@@ -1693,5 +1736,14 @@ onBeforeUnmount(() => {
 			margin: 0;
 		}
 	}
+}
+
+ninja-keys {
+	--ninja-z-index: 1000;
+	--ninja-accent-color: var(--color-primary);
+}
+
+ninja-keys::part(ninja-action) {
+	line-height: var(--font-line-height-loose);
 }
 </style>

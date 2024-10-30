@@ -64,6 +64,7 @@
     "luxon": "catalog:",
     "n8n-design-system": "workspace:*",
     "n8n-workflow": "workspace:*",
+    "ninja-keys": "^1.2.2",
     "pinia": "^2.2.4",
     "prettier": "^3.3.3",
     "qrcode.vue": "^3.3.4",
