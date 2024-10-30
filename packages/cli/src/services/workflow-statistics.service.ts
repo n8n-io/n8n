@@ -7,6 +7,7 @@ import { WorkflowStatisticsRepository } from '@/databases/repositories/workflow-
 import { EventService } from '@/events/event.service';
 import type { WorkflowStatisticsData } from '@/interfaces';
 import { Logger } from '@/logging/logger.service';
+import type { ListQuery } from '@/requests';
 import { UserService } from '@/services/user.service';
 import { TypedEmitter } from '@/typed-emitter';
 
@@ -168,5 +169,22 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 		});
 
 		return data;
+	}
+
+	addExecutionStatistics(
+		entity: ListQuery.Workflow.Plain,
+	): ListQuery.Workflow.Plain | ListQuery.Workflow.WithExecutionStatistics {
+		const workflowStatistics = entity.statistics;
+		Object.assign(entity, {
+			executionStatistics: {
+				errors:
+					workflowStatistics?.find((s) => s.name === StatisticsNames.productionError)?.count ?? 0,
+				successes:
+					workflowStatistics?.find((s) => s.name === StatisticsNames.productionSuccess)?.count ?? 0,
+			},
+		});
+
+		delete entity.statistics;
+		return entity;
 	}
 }

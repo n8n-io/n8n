@@ -95,7 +95,11 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			.execute();
 	}
 
-	async getMany(sharedWorkflowIds: string[], options?: ListQuery.Options) {
+	async getMany(
+		sharedWorkflowIds: string[],
+		options?: ListQuery.Options,
+		includeExecutionStatistics?: boolean,
+	) {
 		if (sharedWorkflowIds.length === 0) return { workflows: [], count: 0 };
 
 		if (typeof options?.filter?.projectId === 'string' && options.filter.projectId !== '') {
@@ -142,6 +146,10 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		}
 
 		if (isOwnedByIncluded) relations.push('shared', 'shared.project');
+
+		if (includeExecutionStatistics === true) {
+			relations.push('statistics');
+		}
 
 		if (typeof where.name === 'string' && where.name !== '') {
 			where.name = Like(`%${where.name}%`);

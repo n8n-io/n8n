@@ -70,7 +70,11 @@ export class WorkflowService {
 		});
 
 		// eslint-disable-next-line prefer-const
-		let { workflows, count } = await this.workflowRepository.getMany(sharedWorkflowIds, options);
+		let { workflows, count } = await this.workflowRepository.getMany(
+			sharedWorkflowIds,
+			options,
+			includeExecutionStatistics,
+		);
 
 		if (hasSharing(workflows)) {
 			workflows = workflows.map((w) => this.ownershipService.addOwnedByAndSharedWith(w));
@@ -82,21 +86,11 @@ export class WorkflowService {
 		}
 
 		if (includeExecutionStatistics) {
-			workflows = await Promise.all(
-				workflows.map(async (w) => {
-					const stats = await this.workflowStatisticsService.getData(w.id, 'count', 0);
-					return {
-						...w,
-						executionStatistics: {
-							errors: stats.productionError,
-							successes: stats.productionSuccess,
-						},
-					};
-				}),
-			);
+			workflows = workflows.map((w) => this.workflowStatisticsService.addExecutionStatistics(w));
 		}
 
 		workflows.forEach((w) => {
+			// @ts-expect-error: This is to emulate the old behaviour of removing the shared
 			// field as part of `addOwnedByAndSharedWith`. We need this field in `addScopes`
 			// though. So to avoid leaking the information we just delete it.
 			delete w.shared;

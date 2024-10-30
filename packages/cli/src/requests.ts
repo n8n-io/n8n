@@ -81,7 +81,14 @@ export namespace ListQuery {
 	 * Slim workflow returned from a list query operation.
 	 */
 	export namespace Workflow {
-		type OptionalBaseFields = 'name' | 'active' | 'versionId' | 'createdAt' | 'updatedAt' | 'tags';
+		type OptionalBaseFields =
+			| 'name'
+			| 'active'
+			| 'versionId'
+			| 'createdAt'
+			| 'updatedAt'
+			| 'tags'
+			| 'statistics';
 
 		type BaseFields = Pick<WorkflowEntity, 'id'> &
 			Partial<Pick<WorkflowEntity, OptionalBaseFields>>;
@@ -89,10 +96,12 @@ export namespace ListQuery {
 		type SharedField = Partial<Pick<WorkflowEntity, 'shared'>>;
 
 		type OwnedByField = { ownedBy: SlimUser | null; homeProject: SlimProject | null };
+		type ExecutionStatisticsField = { executionStatistics: { errors: number; successes: number } };
 
 		export type Plain = BaseFields;
 
 		export type WithSharing = BaseFields & SharedField;
+		export type WithExecutionStatistics = BaseFields & ExecutionStatisticsField;
 
 		export type WithOwnership = BaseFields & OwnedByField;
 
