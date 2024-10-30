@@ -87,11 +87,22 @@ const filters = ref<Filters>({
 	httpNodeUrl: '',
 });
 
+const nodeTypesFilter = ref<string>('');
+
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
 const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
 const allWorkflows = computed(() => workflowsStore.allWorkflows as IResource[]);
 const isShareable = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],
+);
+
+const nodeTypesFiltered = computed(() =>
+	nodeTypesStore.allLatestNodeTypes.filter((nodeType) => {
+		return (
+			nodeType.displayName.toLowerCase().includes(nodeTypesFilter.value) ||
+			nodeType.name.toLowerCase().includes(nodeTypesFilter.value)
+		);
+	}),
 );
 
 const statusFilterOptions = computed(() => [
@@ -193,12 +204,13 @@ const trackCategoryLinkClick = (category: string) => {
 };
 
 const fetchWorkflowsWithFilters = async () => {
-	const { homeProject, status, credentials, nodeTypes, nodeName, webhookUrl, httpNodeUrl } =
+	const { homeProject, status, credentials, nodeTypes, nodeName, webhookUrl, httpNodeUrl, tags } =
 		filters.value;
 	const options: WorkflowsFetchOptions = {
 		filter: {
 			projectId: homeProject ? homeProject : undefined,
 			active: status === StatusFilter.ACTIVE ? true : undefined,
+			tags: tags.map((tagId) => tagsStore.tagsById[tagId]?.name),
 		},
 		credentialIds: credentials.length ? credentials : undefined,
 		nodeTypes: nodeTypes.length ? nodeTypes : undefined,
@@ -345,6 +357,10 @@ const setFiltersFromQueryString = async () => {
 
 	void router.replace({ query: pickBy(route.query) });
 };
+
+function updateNodeTypesFilter(filter: string) {
+	nodeTypesFilter.value = filter;
+}
 
 sourceControlStore.$onAction(({ name, after }) => {
 	if (name !== 'pullWorkfolder') return;
@@ -510,7 +526,6 @@ onMounted(async () => {
 					<N8nSelect
 						data-test-id="status-dropdown"
 						:model-value="filters.status"
-						:filterable="true"
 						@update:model-value="setKeyValue('status', $event)"
 					>
 						<N8nOption
@@ -569,11 +584,12 @@ onMounted(async () => {
 						:multiple="true"
 						:placeholder="i18n.baseText('workflows.filters.nodeTypes.placeholder')"
 						:filterable="true"
+						:filter-method="updateNodeTypesFilter"
 						class="tags-container"
 						@update:model-value="setKeyValue('nodeTypes', $event)"
 					>
 						<N8nOption
-							v-for="nodeType in nodeTypesStore.allLatestNodeTypes"
+							v-for="nodeType in nodeTypesFiltered"
 							:key="nodeType.name"
 							:label="nodeType.displayName"
 							:value="nodeType.name"
