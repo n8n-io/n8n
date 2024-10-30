@@ -38,7 +38,12 @@ import { UserManagementMailer } from '@/user-management/email';
 import * as utils from '@/utils';
 import * as WorkflowHelpers from '@/workflow-helpers';
 
-import { getEncodedCredentialIds, getEncodedNodeTypes, getEscapedNodeNames } from './utils';
+import {
+	getEncodedCredentialIds,
+	getEncodedNodeTypes,
+	getEscapedNodeNames,
+	getEscapedWebhookURLs,
+} from './utils';
 import { WorkflowExecutionService } from './workflow-execution.service';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service.ee';
 import { WorkflowRequest } from './workflow.request';
@@ -119,6 +124,7 @@ export class WorkflowsController {
 		newWorkflow.credentialIds = getEncodedCredentialIds(newWorkflow);
 		newWorkflow.nodeTypes = getEncodedNodeTypes(newWorkflow);
 		newWorkflow.nodeNames = getEscapedNodeNames(newWorkflow);
+		newWorkflow.webhookURLs = getEscapedWebhookURLs(newWorkflow);
 
 		let project: Project | null;
 		const savedWorkflow = await Db.transaction(async (transactionManager) => {
@@ -206,6 +212,7 @@ export class WorkflowsController {
 				req.query.credentialIds?.split(','),
 				req.query.nodeTypes?.split(','),
 				req.query.nodeName,
+				req.query.webhookURL,
 			);
 
 			res.json({ count, data });

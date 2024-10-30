@@ -127,6 +127,23 @@ describe('POST /workflows', () => {
 		expect(savedWorkflow.nodeNames[0]).toEqual(escapeCommas(workflow.nodes[0].name));
 	});
 
+	test('should populate `nodeTypes`', async () => {
+		// ARRANGE
+		const workflow = makeWorkflow();
+		workflow.nodes[0].type = 'n8n-nodes-base.webhook';
+		workflow.nodes[0].parameters.path = 'foobar';
+
+		// ACT
+		await authOwnerAgent.post('/workflows').send(workflow).expect(200);
+
+		// ASSERT
+		const savedWorkflow = await getWorkflowById(workflow.id);
+		a.ok(savedWorkflow);
+
+		expect(savedWorkflow.webhookURLs).toHaveLength(1);
+		expect(savedWorkflow.webhookURLs[0]).toEqual(escapeCommas(workflow.nodes[0].parameters.path));
+	});
+
 	test('should return scopes on created workflow', async () => {
 		const payload = {
 			name: 'testing',
@@ -666,7 +683,7 @@ describe('GET /workflows', () => {
 		expect(found.usedCredentials).toBeUndefined();
 	});
 
-	test('should return workflows filtered by used node types', async () => {
+	test('should return workflows filtered by node name', async () => {
 		// ARRANGE
 		const node1: INode = {
 			id: uuid(),
@@ -697,6 +714,70 @@ describe('GET /workflows', () => {
 		const response = await authOwnerAgent
 			.get('/workflows')
 			.query(`nodeName=${node1.name}`)
+			.expect(200);
+
+		// ASSERT
+		const ownerPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
+		expect(response.body.count).toBe(1);
+		expect(response.body.data).toHaveLength(1);
+		expect(response.body.data[0]).toEqual(
+			objectContaining({
+				id: workflow1.id,
+				name: 'First',
+				active: workflow1.active,
+				tags: [],
+				createdAt: workflow1.createdAt.toISOString(),
+				updatedAt: workflow1.updatedAt.toISOString(),
+				versionId: workflow1.versionId,
+				homeProject: {
+					id: ownerPersonalProject.id,
+					name: owner.createPersonalProjectName(),
+					type: ownerPersonalProject.type,
+				},
+				sharedWithProjects: [],
+			}),
+		);
+
+		const found = response.body.data.find(
+			(w: ListQuery.Workflow.WithOwnership) => w.name === 'First',
+		);
+
+		expect(found.nodes).toBeUndefined();
+		expect(found.sharedWithProjects).toHaveLength(0);
+		expect(found.usedCredentials).toBeUndefined();
+	});
+
+	test('should return workflows filtered by node name', async () => {
+		// ARRANGE
+		const node1 = {
+			id: uuid(),
+			name: 'Action Network',
+			type: 'n8n-nodes-base.webhook',
+			parameters: { path: 'foobar' },
+			typeVersion: 1,
+			position: [0, 0],
+		} satisfies INode;
+		const workflow1 = await createWorkflow(
+			{ name: 'First', nodes: [node1], webhookURLs: [escapeCommas(node1.parameters.path)] },
+			owner,
+		);
+
+		const node2: INode = {
+			id: uuid(),
+			name: 'Action Network',
+			type: 'n8n-nodes-base.webhook',
+			parameters: { path: 'bar foo' },
+			typeVersion: 1,
+			position: [0, 0],
+		};
+		await createWorkflow({ name: 'Second', nodes: [node2] }, owner);
+
+		await createWorkflow({ name: 'Third' }, owner);
+
+		// ACT
+		const response = await authOwnerAgent
+			.get('/workflows')
+			.query(`webhookURL=${node1.parameters.path}`)
 			.expect(200);
 
 		// ASSERT

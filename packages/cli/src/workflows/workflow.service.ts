@@ -33,7 +33,12 @@ import { RoleService } from '@/services/role.service';
 import { TagService } from '@/services/tag.service';
 import * as WorkflowHelpers from '@/workflow-helpers';
 
-import { getEncodedCredentialIds, getEncodedNodeTypes, getEscapedNodeNames } from './utils';
+import {
+	getEncodedCredentialIds,
+	getEncodedNodeTypes,
+	getEscapedNodeNames,
+	getEscapedWebhookURLs,
+} from './utils';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service.ee';
 import { WorkflowSharingService } from './workflow-sharing.service';
 
@@ -65,6 +70,7 @@ export class WorkflowService {
 		credentialIds: string[] = [],
 		nodeTypes: string[] = [],
 		nodeName = '',
+		webhookURL = '',
 	) {
 		const sharedWorkflowIds = await this.workflowSharingService.getSharedWorkflowIds(user, {
 			scopes: ['workflow:read'],
@@ -77,6 +83,7 @@ export class WorkflowService {
 			credentialIds,
 			nodeTypes,
 			nodeName,
+			webhookURL,
 		);
 
 		if (hasSharing(workflows)) {
@@ -204,6 +211,7 @@ export class WorkflowService {
 			credentialIds: getEncodedCredentialIds(workflow),
 			nodeTypes: getEncodedNodeTypes(workflow),
 			nodeNames: getEscapedNodeNames(workflow),
+			webhookURLs: getEscapedWebhookURLs(workflow),
 		});
 
 		if (tagIds && !config.getEnv('workflowTagsDisabled')) {
