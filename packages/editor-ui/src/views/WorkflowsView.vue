@@ -34,7 +34,7 @@ import {
 import { pickBy } from 'lodash-es';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { ProjectSharingData } from 'n8n-workflow';
+import type { ProjectSharingData } from 'n8n-workflow';
 
 const i18n = useI18n();
 const route = useRoute();
@@ -242,6 +242,26 @@ const saveFiltersOnQueryString = () => {
 		query.homeProject = filters.value.homeProject;
 	}
 
+	if (filters.value.credentials) {
+		query.credentials = filters.value.credentials.join(',');
+	}
+
+	if (filters.value.nodeTypes) {
+		query.nodeTypes = filters.value.nodeTypes.join(',');
+	}
+
+	if (filters.value.nodeName) {
+		query.nodeName = filters.value.nodeName;
+	}
+
+	if (filters.value.httpRequestUrl) {
+		query.httpRequestUrl = filters.value.httpRequestUrl;
+	}
+
+	if (filters.value.webhookUrl) {
+		query.webhookUrl = filters.value.webhookUrl;
+	}
+
 	void router.replace({
 		query: Object.keys(query).length ? query : undefined,
 	});
@@ -252,17 +272,46 @@ function isValidProjectId(availableProjects: ProjectSharingData[], projectId: st
 }
 
 const setFiltersFromQueryString = async () => {
-	const { tags, status, search, homeProject } = route.query ?? {};
+	const {
+		tags,
+		status,
+		search,
+		homeProject,
+		credentials,
+		nodeTypes,
+		nodeName,
+		httpRequestUrl,
+		webhookUrl,
+	} = route.query ?? {};
 
 	const filtersToApply: { [key: string]: string | string[] | boolean } = {};
 
 	if (homeProject && typeof homeProject === 'string') {
 		const available = await projectsStore.getAvailableProjects();
-		console.log('setting home project', homeProject);
 		if (isValidProjectId(available, homeProject)) {
-			console.log('valid home project', homeProject);
 			filtersToApply.homeProject = homeProject;
 		}
+	}
+
+	if (credentials && typeof credentials === 'string') {
+		// todo validation?
+		filters.value.credentials = credentials.split(',');
+	}
+
+	if (nodeTypes && typeof nodeTypes === 'string') {
+		filters.value.nodeTypes = nodeTypes.split(',');
+	}
+
+	if (nodeName && typeof nodeName === 'string') {
+		filters.value.nodeName = nodeName;
+	}
+
+	if (httpRequestUrl && typeof httpRequestUrl === 'string') {
+		filters.value.httpRequestUrl = httpRequestUrl;
+	}
+
+	if (webhookUrl && typeof webhookUrl === 'string') {
+		filters.value.webhookUrl = webhookUrl;
 	}
 
 	if (search && typeof search === 'string') {
