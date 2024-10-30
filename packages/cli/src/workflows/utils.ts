@@ -31,3 +31,17 @@ export function getEncodedNodeTypes(workflow: WorkflowEntity): string[] {
 
 	return nodeTypes;
 }
+
+export function escapeCommas(value: string): string {
+	return value.replaceAll(',', '_');
+}
+
+export function getEscapedNodeNames(workflow: WorkflowEntity): string[] {
+	const nodeNames: string[] = [];
+
+	for (const node of workflow.nodes) {
+		nodeNames.push(escapeCommas(node.name));
+	}
+
+	return nodeNames;
+}

@@ -16,7 +16,7 @@ import { Service } from 'typedi';
 import config from '@/config';
 import type { ListQuery } from '@/requests';
 import { isStringArray } from '@/utils';
-import { toBase64 } from '@/workflows/utils';
+import { escapeCommas, toBase64 } from '@/workflows/utils';
 
 import { WebhookEntity } from '../entities/webhook-entity';
 import { WorkflowEntity } from '../entities/workflow-entity';
@@ -102,6 +102,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		options: ListQuery.Options = {},
 		credentialIds: string[] = [],
 		nodeTypes: string[] = [],
+		nodeName = '',
 	) {
 		if (sharedWorkflowIds.length === 0) return { workflows: [], count: 0 };
 
@@ -160,6 +161,10 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 
 		if (nodeTypes.length) {
 			where.nodeTypes = Or(...nodeTypes.map((id) => Like(`%${toBase64(id)}%`)));
+		}
+
+		if (nodeName) {
+			where.nodeNames = Like(`%${escapeCommas(nodeName)}%`);
 		}
 
 		const findManyOptions: FindManyOptions<WorkflowEntity> = {
