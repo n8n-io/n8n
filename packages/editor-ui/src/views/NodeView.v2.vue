@@ -1010,7 +1010,9 @@ async function onRunWorkflow(triggerNode?: string) {
 	trackRunWorkflow();
 
 	if (!isExecutionPreview.value && workflowsStore.isWaitingExecution) {
-		void runWorkflowResolvePending({ triggerNode });
+		void runWorkflowResolvePending({
+			triggerNode,
+		});
 	} else {
 		void runWorkflow({ triggerNode });
 	}

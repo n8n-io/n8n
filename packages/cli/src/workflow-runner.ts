@@ -141,8 +141,10 @@ export class WorkflowRunner {
 		if (this.executionsMode === 'queue' && data.executionMode !== 'manual') {
 			// Do not run "manual" executions in bull because sending events to the
 			// frontend would not be possible
+			console.log('X');
 			await this.enqueueExecution(executionId, data, loadStaticData, realtime);
 		} else {
+			console.log('Y');
 			await this.runMainProcess(executionId, data, loadStaticData, restartExecutionId);
 			this.eventService.emit('workflow-pre-execute', { executionId, data });
 		}
@@ -262,7 +264,7 @@ export class WorkflowRunner {
 			additionalData.sendDataToUI = WorkflowExecuteAdditionalData.sendDataToUI.bind({
 				pushRef: data.pushRef,
 			});
-
+			console.log('startNodes', data.startNodes);
 			if (data.executionData !== undefined) {
 				this.logger.debug(`Execution ID ${executionId} had Execution data. Running with payload.`, {
 					executionId,
@@ -285,7 +287,7 @@ export class WorkflowRunner {
 				// Execute all nodes
 
 				const startNode = WorkflowHelpers.getExecutionStartNode(data, workflow);
-
+				console.log('startNode', startNode);
 				// Can execute without webhook so go on
 				const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
 				workflowExecution = workflowExecute.run(

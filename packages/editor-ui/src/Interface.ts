@@ -198,6 +198,7 @@ export interface IStartRunData {
 	startNodes?: StartNodeData[];
 	destinationNode?: string;
 	runData?: IRunData;
+	preferredTrigger?: string;
 }
 
 export interface ITableData {

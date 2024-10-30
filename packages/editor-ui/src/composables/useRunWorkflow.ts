@@ -71,6 +71,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 		let response: IExecutionPushResponse;
 
 		try {
+			console.log('runData', runData);
 			response = await workflowsStore.runWorkflow(runData);
 		} catch (error) {
 			uiStore.removeActiveAction('workflowRunning');
@@ -149,13 +150,18 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			) {
 				executedNode = options.destinationNode;
 				startNodeNames.push(options.destinationNode);
-			} else if ('triggerNode' in options) {
+			} else if ('triggerNode' in options && 'nodeData' in options) {
 				startNodeNames.push(
 					...workflow.getChildNodes(options.triggerNode as string, NodeConnectionType.Main, 1),
 				);
 				newRunData = {
-					[options.triggerNode as string]: options.nodeData ? [options.nodeData] : [],
+					[options.triggerNode as string]: [options.nodeData],
 				} as IRunData;
+				executedNode = options.triggerNode;
+			} else if (options.triggerNode) {
+				startNodeNames.push(
+					...workflow.getChildNodes(options.triggerNode, NodeConnectionType.Main, 1),
+				);
 				executedNode = options.triggerNode;
 			}
 
@@ -226,6 +232,8 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				};
 			});
 
+			console.log('startNodes', startNodes);
+
 			// -1 means the backend chooses the default
 			// 0 is the old flow
 			// 1 is the new flow
@@ -239,6 +247,9 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			};
 			if ('destinationNode' in options) {
 				startRunData.destinationNode = options.destinationNode;
+			}
+			if ('triggerNode' in options) {
+				startRunData.preferredTrigger = options.triggerNode;
 			}
 
 			// Init the execution data to represent the start of the execution
