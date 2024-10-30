@@ -32,6 +32,8 @@ import {
 	N8nTooltip,
 } from 'n8n-design-system';
 import { pickBy } from 'lodash-es';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 const i18n = useI18n();
 const route = useRoute();
@@ -48,12 +50,19 @@ const telemetry = useTelemetry();
 const uiStore = useUIStore();
 const tagsStore = useTagsStore();
 const documentTitle = useDocumentTitle();
+const credentialsStore = useCredentialsStore();
+const nodeTypesStore = useNodeTypesStore();
 
 interface Filters {
 	search: string;
 	homeProject: string;
 	status: string | boolean;
 	tags: string[];
+	credentials: string[];
+	nodeTypes: string[];
+	nodeName: string;
+	webhookUrl: string;
+	httpRequestUrl: string;
 }
 
 const StatusFilter = {
@@ -68,6 +77,11 @@ const filters = ref<Filters>({
 	homeProject: '',
 	status: StatusFilter.ALL,
 	tags: [],
+	credentials: [],
+	nodeTypes: [],
+	nodeName: '',
+	webhookUrl: '',
+	httpRequestUrl: '',
 });
 
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
@@ -200,6 +214,9 @@ const trackCategoryLinkClick = (category: string) => {
 const initialize = async () => {
 	loading.value = true;
 	await Promise.all([
+		nodeTypesStore.loadNodeTypesIfNotLoaded(),
+		credentialsStore.fetchAllCredentials(route?.params?.projectId as string | undefined),
+		// credentialsStore.fetchCredentialTypes(false),
 		usersStore.fetchUsers(),
 		workflowsStore.fetchAllWorkflows(route.params?.projectId as string | undefined),
 		workflowsStore.fetchActiveWorkflows(),
@@ -423,13 +440,14 @@ onMounted(async () => {
 					size="small"
 					color="text-base"
 					class="mb-3xs"
-				/>
-				<WorkflowTagsDropdown
-					:placeholder="i18n.baseText('workflowOpen.filterWorkflows')"
-					:model-value="filters.tags"
-					:create-enabled="false"
-					@update:model-value="setKeyValue('tags', $event)"
-				/>
+				>
+					<WorkflowTagsDropdown
+						:placeholder="i18n.baseText('workflowOpen.filterWorkflows')"
+						:model-value="filters.tags"
+						:create-enabled="false"
+						@update:model-value="setKeyValue('tags', $event)"
+					/>
+				</N8nInputLabel>
 			</div>
 			<div class="mb-s">
 				<N8nInputLabel
@@ -438,21 +456,123 @@ onMounted(async () => {
 					size="small"
 					color="text-base"
 					class="mb-3xs"
-				/>
-				<N8nSelect
-					data-test-id="status-dropdown"
-					:model-value="filters.status"
-					@update:model-value="setKeyValue('status', $event)"
 				>
-					<N8nOption
-						v-for="option in statusFilterOptions"
-						:key="option.label"
-						:label="option.label"
-						:value="option.value"
-						data-test-id="status"
+					<N8nSelect
+						data-test-id="status-dropdown"
+						:model-value="filters.status"
+						@update:model-value="setKeyValue('status', $event)"
 					>
-					</N8nOption>
-				</N8nSelect>
+						<N8nOption
+							v-for="option in statusFilterOptions"
+							:key="option.label"
+							:label="option.label"
+							:value="option.value"
+							data-test-id="status"
+						>
+						</N8nOption>
+					</N8nSelect>
+				</N8nInputLabel>
+			</div>
+			<div :class="['mb-xs', $style.sectionTitle]">
+				{{ i18n.baseText('workflows.filter.credentialsAndNodes.sectionTitle') }}
+			</div>
+			<div class="mb-s">
+				<N8nInputLabel
+					:label="i18n.baseText('workflows.filters.credentials')"
+					:bold="false"
+					size="small"
+					color="text-base"
+					class="mb-3xs"
+				>
+					<N8nSelect
+						data-test-id="credentials-filter"
+						:model-value="filters.credentials"
+						:multiple="true"
+						:placeholder="i18n.baseText('workflows.filters.credentials.placeholder')"
+						@update:model-value="setKeyValue('credentials', $event)"
+					>
+						<N8nOption
+							v-for="cred in credentialsStore.allCredentials"
+							:key="cred.id"
+							:label="cred.name"
+							:value="cred.id"
+						>
+						</N8nOption>
+					</N8nSelect>
+				</N8nInputLabel>
+			</div>
+			<div class="mb-s">
+				<N8nInputLabel
+					:label="i18n.baseText('workflows.filters.nodeTypes')"
+					:bold="false"
+					size="small"
+					color="text-base"
+					class="mb-3xs"
+				>
+					<N8nSelect
+						data-test-id="node-types-filter"
+						:model-value="filters.nodeTypes"
+						:multiple="true"
+						:placeholder="i18n.baseText('workflows.filters.nodeTypes.placeholder')"
+						@update:model-value="setKeyValue('nodeTypes', $event)"
+					>
+						<N8nOption
+							v-for="nodeType in nodeTypesStore.allLatestNodeTypes"
+							:key="nodeType.name"
+							:label="nodeType.displayName"
+							:value="nodeType.name"
+						>
+						</N8nOption>
+					</N8nSelect>
+				</N8nInputLabel>
+			</div>
+			<div class="mb-s">
+				<N8nInputLabel
+					:label="i18n.baseText('workflows.filters.nodeName')"
+					:bold="false"
+					size="small"
+					color="text-base"
+					class="mb-3xs"
+				>
+					<N8nInput
+						data-test-id="node-name-filter"
+						:model-value="filters.nodeName"
+						@update:model-value="setKeyValue('nodeName', $event)"
+					/>
+				</N8nInputLabel>
+			</div>
+			<div :class="['mb-xs', $style.sectionTitle]">
+				{{ i18n.baseText('workflows.filter.urls.sectionTitle') }}
+			</div>
+			<div class="mb-s">
+				<N8nInputLabel
+					:label="i18n.baseText('workflows.filters.urlWebhook')"
+					:bold="false"
+					size="small"
+					color="text-base"
+					class="mb-3xs"
+				>
+					<N8nInput
+						data-test-id="url-webhook-filter"
+						:model-value="filters.webhookUrl"
+						@update:model-value="setKeyValue('webhookUrl', $event)"
+					/>
+				</N8nInputLabel>
+			</div>
+			<div class="mb-s">
+				<N8nInputLabel
+					:label="i18n.baseText('workflows.filters.urlHTTPRequest')"
+					:bold="false"
+					size="small"
+					color="text-base"
+					class="mb-3xs"
+				>
+					<N8nInput
+						data-test-id="url-webhook-filter"
+						:model-value="filters.httpRequestUrl"
+						@update:model-value="setKeyValue('httpRequestUrl', $event)"
+					/>
+				</N8nInputLabel>
 			</div>
 		</template>
 	</ResourcesListLayout>
@@ -479,6 +599,15 @@ onMounted(async () => {
 			color: var(--color-primary);
 		}
 	}
+}
+
+.sectionTitle {
+	text-transform: uppercase;
+	color: var(--color-text-dark);
+	font-size: var(--font-size-3xs);
+	font-weight: var(--font-weight-bold);
+	border-bottom: var(--border-base);
+	line-height: 2;
 }
 
 .emptyStateCardIcon {
