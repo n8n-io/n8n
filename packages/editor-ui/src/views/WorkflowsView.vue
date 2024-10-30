@@ -97,12 +97,9 @@ const isShareable = computed(
 );
 
 const nodeTypesFiltered = computed(() =>
-	nodeTypesStore.allLatestNodeTypes.filter((nodeType) => {
-		return (
-			nodeType.displayName.toLowerCase().includes(nodeTypesFilter.value) ||
-			nodeType.name.toLowerCase().includes(nodeTypesFilter.value)
-		);
-	}),
+	nodeTypesStore.allLatestNodeTypes.filter((nodeType) =>
+		nodeType.displayName.toLowerCase().includes(nodeTypesFilter.value),
+	),
 );
 
 const statusFilterOptions = computed(() => [
