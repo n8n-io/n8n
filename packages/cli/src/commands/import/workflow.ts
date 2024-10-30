@@ -40,6 +40,7 @@ export class ImportWorkflowsCommand extends BaseCommand {
 	static examples = [
 		'$ n8n import:workflow --input=file.json',
 		'$ n8n import:workflow --separate --input=backups/latest/',
+		'$ n8n import:workflow --input=file.json --keepDbActiveState',
 		'$ n8n import:workflow --input=file.json --userId=1d64c3d2-85fe-4a83-a649-e446b07b3aae',
 		'$ n8n import:workflow --input=file.json --projectId=Ox8O54VQrmBrb4qL',
 		'$ n8n import:workflow --separate --input=backups/latest/ --userId=1d64c3d2-85fe-4a83-a649-e446b07b3aae',
@@ -59,6 +60,10 @@ export class ImportWorkflowsCommand extends BaseCommand {
 		}),
 		projectId: Flags.string({
 			description: 'The ID of the project to assign the imported workflows to',
+		}),
+		keepDbActiveState: Flags.boolean({
+			description: 'Keep the active state of the workflows as they are in the database',
+			default: false,
 		}),
 	};
 
@@ -97,7 +102,11 @@ export class ImportWorkflowsCommand extends BaseCommand {
 
 		this.logger.info(`Importing ${workflows.length} workflows...`);
 
-		await Container.get(ImportService).importWorkflows(workflows, project.id);
+		await Container.get(ImportService).importWorkflows(
+			workflows,
+			project.id,
+			flags.keepDbActiveState,
+		);
 
 		this.reportSuccess(workflows.length);
 	}
