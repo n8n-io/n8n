@@ -38,7 +38,8 @@ export async function getWorkflows(context: IRestApiContext, options: WorkflowsF
 	return await makeRestApiRequest<IWorkflowDb[]>(context, 'GET', '/workflows', {
 		includeScopes: true,
 		...options,
-		credentialIds: options.credentialIds ? options.credentialIds.join(',') : undefined,
+		credentialIds: options.credentialIds?.length ? options.credentialIds.join(',') : undefined,
+		nodeTypes: options.nodeTypes?.length ? options.nodeTypes.join(',') : undefined,
 	});
 }
 
