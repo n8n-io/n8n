@@ -286,6 +286,8 @@ export class WorkflowRunner {
 
 				const startNode = WorkflowHelpers.getExecutionStartNode(data, workflow);
 
+				console.log('startNode from workflow-runner', startNode);
+
 				// Can execute without webhook so go on
 				const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
 				workflowExecution = workflowExecute.run(

@@ -102,8 +102,17 @@ export class WorkflowExecute {
 	): PCancelable<IRun> {
 		this.status = 'running';
 
+		let isAiSubNode = false;
+		// @ts-ignore
+		const aiParentNodes = workflow.getChildNodes(destinationNode, NodeConnectionType.AiTool);
 		// Get the nodes to start workflow execution from
 		startNode = startNode || workflow.getStartNode(destinationNode);
+		if (startNode?.name === destinationNode) {
+			if (aiParentNodes.length !== 0) {
+				isAiSubNode = true;
+				//startNode = workflow.getStartNode(aiParentNodes[0]);
+			}
+		}
 
 		if (startNode === undefined) {
 			throw new ApplicationError('No node to start the workflow from could be found');
@@ -1059,6 +1068,11 @@ export class WorkflowExecute {
 						continue;
 					}
 
+					const isAiTool = {};
+					if (workflow.connectionsBySourceNode[executionNode.name]?.hasOwnProperty('ai_tool')) {
+						isAiTool[executionNode.name] = true;
+					}
+
 					// Check if all the data which is needed to run the node is available
 					if (workflow.connectionsByDestinationNode.hasOwnProperty(executionNode.name)) {
 						// Check if the node has incoming connections
@@ -1159,6 +1173,22 @@ export class WorkflowExecute {
 									node: executionNode.name,
 									workflowId: workflow.id,
 								});
+
+								if (isAiTool[executionNode.name]) {
+									executionData.data.inputOverride = {};
+									executionData.data.inputOverride['ai_tool'] = [
+										[{ json: { filter: "employeeName = 'Mario'" } }],
+									];
+									this.runExecutionData.resultData.runData[executionNode.name] = [
+										{
+											inputOverride: {
+												[NodeConnectionType.AiTool]: [
+													[{ json: { filter: "employeeName = 'Mario'" } }],
+												],
+											},
+										},
+									];
+								}
 
 								let runNodeData = await workflow.runNode(
 									executionData,
@@ -1521,6 +1551,10 @@ export class WorkflowExecute {
 					taskData.data = {
 						main: nodeSuccessData,
 					} as ITaskDataConnections;
+
+					if (isAiTool[executionNode.name]) {
+						taskData.data = { ai_tool: nodeSuccessData } as ITaskDataConnections;
+					}
 
 					this.runExecutionData.resultData.runData[executionNode.name].push(taskData);
 

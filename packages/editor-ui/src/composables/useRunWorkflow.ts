@@ -109,6 +109,8 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 
 		toast.clearAllStickyNotifications();
 
+		let isSubNode = false;
+
 		try {
 			// Get the direct parents of the node
 			let directParentNodes: string[] = [];
@@ -118,7 +120,20 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 					NodeConnectionType.Main,
 					-1,
 				);
+
+				// Confusingly, this is called "getChildNodes", but it gets the connected root-nodes through AiTool
+				const aiParentNodes = workflow.getChildNodes(
+					options.destinationNode,
+					NodeConnectionType.AiTool,
+				);
+				if (aiParentNodes.length !== 0) isSubNode = true;
+				aiParentNodes.forEach((nodeName) => {
+					directParentNodes = directParentNodes.concat(
+						workflow.getParentNodes(nodeName, NodeConnectionType.Main, -1),
+					);
+				});
 			}
+			console.log('directParentNodes', directParentNodes);
 
 			const runData = workflowsStore.getWorkflowRunData;
 
@@ -159,7 +174,6 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				executedNode = options.triggerNode;
 			}
 
-			// If the destination node is specified, check if it is a chat node or has a chat parent
 			if (
 				options.destinationNode &&
 				(workflowsStore.checkIfNodeHasChatParent(options.destinationNode) ||
@@ -207,6 +221,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				}
 			}
 
+			console.log('startNodeNames', startNodeNames);
 			const startNodes: StartNodeData[] = startNodeNames.map((name) => {
 				// Find for each start node the source data
 				let sourceData = get(runData, [name, 0, 'source', 0], null);
@@ -226,6 +241,8 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				};
 			});
 
+			console.log('startNodes', startNodes);
+
 			// -1 means the backend chooses the default
 			// 0 is the old flow
 			// 1 is the new flow
@@ -240,6 +257,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			if ('destinationNode' in options) {
 				startRunData.destinationNode = options.destinationNode;
 			}
+			console.log('startRunData', startRunData);
 
 			// Init the execution data to represent the start of the execution
 			// that data which gets reused is already set and data of newly executed
