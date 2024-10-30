@@ -2202,6 +2202,7 @@
 	"workflowHistory.item.actions.clone": "Clone to new workflow",
 	"workflowHistory.item.actions.open": "Open version in new tab",
 	"workflowHistory.item.actions.download": "Download",
+	"workflowHistory.item.actions.diff": "Show workflow diff",
 	"workflowHistory.item.unsaved.title": "Unsaved version",
 	"workflowHistory.item.latest": "Latest saved",
 	"workflowHistory.empty": "No versions yet.",

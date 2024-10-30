@@ -5,7 +5,7 @@ import { useI18n } from '@/composables/useI18n';
 import type {
 	WorkflowHistory,
 	WorkflowVersionId,
-	WorkflowHistoryActionTypes,
+	WorkflowHistoryActionType,
 	WorkflowHistoryRequestParams,
 } from '@/types/workflowHistory';
 import WorkflowHistoryListItem from '@/components/WorkflowHistory/WorkflowHistoryListItem.vue';
@@ -24,7 +24,7 @@ const props = defineProps<{
 const emit = defineEmits<{
 	action: [
 		value: {
-			action: WorkflowHistoryActionTypes[number];
+			action: WorkflowHistoryActionType;
 			id: WorkflowVersionId;
 			data: { formattedCreatedAt: string };
 		},
@@ -67,7 +67,7 @@ const onAction = ({
 	id,
 	data,
 }: {
-	action: WorkflowHistoryActionTypes[number];
+	action: WorkflowHistoryActionType;
 	id: WorkflowVersionId;
 	data: { formattedCreatedAt: string };
 }) => {

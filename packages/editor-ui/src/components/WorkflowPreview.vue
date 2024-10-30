@@ -7,6 +7,7 @@ import { useExecutionsStore } from '@/stores/executions.store';
 
 const props = withDefaults(
 	defineProps<{
+		id?: string;
 		loading?: boolean;
 		mode?: 'workflow' | 'execution';
 		workflow?: IWorkflowDb | IWorkflowTemplate['workflow'];
@@ -64,6 +65,7 @@ const loadWorkflow = () => {
 		if (!props.workflow.nodes || !Array.isArray(props.workflow.nodes)) {
 			throw new Error(i18n.baseText('workflowPreview.showError.arrayEmpty'));
 		}
+
 		iframeRef.value?.contentWindow?.postMessage?.(
 			JSON.stringify({
 				command: 'openWorkflow',
@@ -161,8 +163,8 @@ onBeforeUnmount(() => {
 
 watch(
 	() => showPreview.value,
-	() => {
-		if (showPreview.value) {
+	(value) => {
+		if (value) {
 			if (props.mode === 'workflow') {
 				loadWorkflow();
 			} else if (props.mode === 'execution') {

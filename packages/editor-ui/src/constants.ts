@@ -491,6 +491,7 @@ export const enum VIEWS {
 	SOURCE_CONTROL = 'SourceControl',
 	MFA_VIEW = 'MfaView',
 	WORKFLOW_HISTORY = 'WorkflowHistory',
+	WORKFLOW_HISTORY_DIFF = 'WorkflowHistoryDiff',
 	WORKER_VIEW = 'WorkerView',
 	PROJECTS = 'Projects',
 	PROJECTS_WORKFLOWS = 'ProjectsWorkflows',

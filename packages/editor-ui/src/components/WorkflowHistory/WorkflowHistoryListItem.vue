@@ -5,7 +5,7 @@ import type { UserAction } from 'n8n-design-system';
 import type {
 	WorkflowHistory,
 	WorkflowVersionId,
-	WorkflowHistoryActionTypes,
+	WorkflowHistoryActionType,
 } from '@/types/workflowHistory';
 import { useI18n } from '@/composables/useI18n';
 
@@ -18,7 +18,7 @@ const props = defineProps<{
 const emit = defineEmits<{
 	action: [
 		value: {
-			action: WorkflowHistoryActionTypes[number];
+			action: WorkflowHistoryActionType;
 			id: WorkflowVersionId;
 			data: { formattedCreatedAt: string };
 		},
@@ -62,7 +62,7 @@ const idLabel = computed<string>(() =>
 	i18n.baseText('workflowHistory.item.id', { interpolate: { id: props.item.versionId } }),
 );
 
-const onAction = (action: WorkflowHistoryActionTypes[number]) => {
+const onAction = (action: WorkflowHistoryActionType) => {
 	emit('action', {
 		action,
 		id: props.item.versionId,

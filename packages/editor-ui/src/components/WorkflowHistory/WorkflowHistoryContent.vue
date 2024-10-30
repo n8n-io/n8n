@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import type { IWorkflowDb, UserAction } from '@/Interface';
 import type {
 	WorkflowVersion,
-	WorkflowHistoryActionTypes,
+	WorkflowHistoryActionType,
 	WorkflowVersionId,
 } from '@/types/workflowHistory';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
@@ -15,6 +15,7 @@ const i18n = useI18n();
 const props = defineProps<{
 	workflow: IWorkflowDb | null;
 	workflowVersion: WorkflowVersion | null;
+	workflowDiff?: WorkflowVersion | null;
 	actions: UserAction[];
 	isListLoading?: boolean;
 	isFirstItemShown?: boolean;
@@ -23,7 +24,7 @@ const props = defineProps<{
 const emit = defineEmits<{
 	action: [
 		value: {
-			action: WorkflowHistoryActionTypes[number];
+			action: WorkflowHistoryActionType;
 			id: WorkflowVersionId;
 			data: { formattedCreatedAt: string };
 		},
@@ -34,11 +35,25 @@ const workflowVersionPreview = computed<IWorkflowDb | undefined>(() => {
 	if (!props.workflowVersion || !props.workflow) {
 		return;
 	}
+
 	const { pinData, ...workflow } = props.workflow;
 	return {
 		...workflow,
 		nodes: props.workflowVersion.nodes,
 		connections: props.workflowVersion.connections,
+	};
+});
+
+const workflowDiffPreview = computed<IWorkflowDb | undefined>(() => {
+	if (!props.workflowDiff || !props.workflow) {
+		return;
+	}
+
+	const { pinData, ...workflow } = props.workflow;
+	return {
+		...workflow,
+		nodes: props.workflowDiff.nodes,
+		connections: props.workflowDiff.connections,
 	};
 });
 
@@ -53,7 +68,7 @@ const onAction = ({
 	id,
 	data,
 }: {
-	action: WorkflowHistoryActionTypes[number];
+	action: WorkflowHistoryActionType;
 	id: WorkflowVersionId;
 	data: { formattedCreatedAt: string };
 }) => {
@@ -63,12 +78,20 @@ const onAction = ({
 
 <template>
 	<div :class="$style.content">
-		<WorkflowPreview
-			v-if="props.workflowVersion"
-			:workflow="workflowVersionPreview"
-			:loading="props.isListLoading"
-			loader-type="spinner"
-		/>
+		<div :class="$style.splitView">
+			<WorkflowPreview
+				v-if="props.workflowVersion"
+				:workflow="workflowVersionPreview"
+				:loading="props.isListLoading"
+				loader-type="spinner"
+			/>
+			<WorkflowPreview
+				v-if="props.workflowDiff"
+				:workflow="workflowDiffPreview"
+				:loading="props.isListLoading"
+				loader-type="spinner"
+			/>
+		</div>
 		<ul :class="$style.info">
 			<WorkflowHistoryListItem
 				v-if="props.workflowVersion"
@@ -123,6 +146,17 @@ const onAction = ({
 	width: 100%;
 	height: 100%;
 	overflow: auto;
+}
+
+.splitView {
+	display: flex;
+	flex-direction: row;
+	width: 100%;
+	height: 100%;
+
+	> *:first-child {
+		border-right: 1px double var(--color-foreground-base);
+	}
 }
 
 .info {

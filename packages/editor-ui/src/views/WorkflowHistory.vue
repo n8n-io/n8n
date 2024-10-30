@@ -6,7 +6,7 @@ import { VIEWS, WORKFLOW_HISTORY_VERSION_RESTORE } from '@/constants';
 import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
 import type {
-	WorkflowHistoryActionTypes,
+	WorkflowHistoryActionType,
 	WorkflowVersionId,
 	WorkflowHistoryRequestParams,
 	WorkflowHistory,
@@ -22,7 +22,7 @@ import { useRootStore } from '@/stores/root.store';
 import { getResourcePermissions } from '@/permissions';
 
 type WorkflowHistoryActionRecord = {
-	[K in Uppercase<WorkflowHistoryActionTypes[number]>]: Lowercase<K>;
+	[K in Uppercase<WorkflowHistoryActionType>]: Lowercase<K>;
 };
 
 const enum WorkflowHistoryVersionRestoreModalActions {
@@ -31,7 +31,8 @@ const enum WorkflowHistoryVersionRestoreModalActions {
 	cancel = 'cancel',
 }
 
-const workflowHistoryActionTypes: WorkflowHistoryActionTypes = [
+const workflowHistoryActionTypes: WorkflowHistoryActionType[] = [
+	'diff',
 	'restore',
 	'clone',
 	'open',
@@ -56,19 +57,30 @@ const requestNumberOfItems = ref(20);
 const lastReceivedItemsLength = ref(0);
 const activeWorkflow = ref<IWorkflowDb | null>(null);
 const workflowHistory = ref<WorkflowHistory[]>([]);
-const activeWorkflowVersion = ref<WorkflowVersion | null>(null);
 
 const workflowId = computed(() => normalizeSingleRouteParam('workflowId'));
-const versionId = computed(() => normalizeSingleRouteParam('versionId'));
+
+const selectedWorkflowVersion = ref<WorkflowVersion | null>(null);
+const selectedVersionId = computed(() => normalizeSingleRouteParam('versionId'));
+
+const selectedDiffWorkflowVersion = ref<WorkflowVersion | null>(null);
+const selectedDiffVersionId = computed(() =>
+	route.name === VIEWS.WORKFLOW_HISTORY_DIFF ? normalizeSingleRouteParam('diffId') : null,
+);
+
+const activeVersionId = computed(() => workflowHistory.value[0]?.versionId);
+
 const editorRoute = computed(() => ({
 	name: VIEWS.WORKFLOW,
 	params: {
 		name: workflowId.value,
 	},
 }));
+
 const workflowPermissions = computed(
 	() => getResourcePermissions(workflowsStore.getWorkflowById(workflowId.value)?.scopes).workflow,
 );
+
 const actions = computed<UserAction[]>(() =>
 	workflowHistoryActionTypes.map((value) => ({
 		label: i18n.baseText(`workflowHistory.item.actions.${value}`),
@@ -79,7 +91,9 @@ const actions = computed<UserAction[]>(() =>
 	})),
 );
 
-const isFirstItemShown = computed(() => workflowHistory.value[0]?.versionId === versionId.value);
+const isFirstItemShown = computed(
+	() => workflowHistory.value[0]?.versionId === selectedVersionId.value,
+);
 const evaluatedPruneTime = computed(() => Math.floor(workflowHistoryStore.evaluatedPruneTime / 24));
 
 const sendTelemetry = (event: string) => {
@@ -105,7 +119,7 @@ onBeforeMount(async () => {
 		activeWorkflow.value = workflow;
 		isListLoading.value = false;
 
-		if (!versionId.value && workflowHistory.value.length) {
+		if (!selectedVersionId.value && workflowHistory.value.length) {
 			await router.replace({
 				name: VIEWS.WORKFLOW_HISTORY,
 				params: {
@@ -245,7 +259,7 @@ const onAction = async ({
 	id,
 	data,
 }: {
-	action: WorkflowHistoryActionTypes[number];
+	action: WorkflowHistoryActionType;
 	id: WorkflowVersionId;
 	data: { formattedCreatedAt: string };
 }) => {
@@ -266,6 +280,17 @@ const onAction = async ({
 			case WORKFLOW_HISTORY_ACTIONS.RESTORE:
 				await restoreWorkflowVersion(id, data);
 				sendTelemetry('User restored version');
+				break;
+			case WORKFLOW_HISTORY_ACTIONS.DIFF:
+				sendTelemetry('User viewed workflow diff');
+				await router.push({
+					name: VIEWS.WORKFLOW_HISTORY_DIFF,
+					params: {
+						workflowId: workflowId.value,
+						versionId: id,
+						diffId: activeVersionId.value,
+					},
+				});
 				break;
 		}
 	} catch (error) {
@@ -300,20 +325,37 @@ const onUpgrade = () => {
 };
 
 watchEffect(async () => {
-	if (!versionId.value) {
+	if (!selectedVersionId.value) {
 		return;
 	}
+
 	try {
-		activeWorkflowVersion.value = await workflowHistoryStore.getWorkflowVersion(
+		selectedWorkflowVersion.value = await workflowHistoryStore.getWorkflowVersion(
 			workflowId.value,
-			versionId.value,
+			selectedVersionId.value,
 		);
 		sendTelemetry('User selected version');
 	} catch (error) {
 		toast.showError(
-			new Error(`${error.message} "${versionId.value}"&nbsp;`),
+			new Error(`${error.message} "${selectedVersionId.value}"&nbsp;`),
 			i18n.baseText('workflowHistory.title'),
 		);
+	}
+
+	if (selectedDiffVersionId.value) {
+		try {
+			selectedDiffWorkflowVersion.value = await workflowHistoryStore.getWorkflowVersion(
+				workflowId.value,
+				selectedDiffVersionId.value,
+			);
+		} catch (error) {
+			toast.showError(
+				new Error(`${error.message} "${selectedVersionId.value}"&nbsp;`),
+				i18n.baseText('workflowHistory.title'),
+			);
+		}
+	} else {
+		selectedDiffWorkflowVersion.value = null;
 	}
 
 	try {
@@ -342,7 +384,7 @@ watchEffect(async () => {
 				v-if="canRender"
 				:items="workflowHistory"
 				:last-received-items-length="lastReceivedItemsLength"
-				:active-item="activeWorkflowVersion"
+				:active-item="selectedWorkflowVersion"
 				:actions="actions"
 				:request-number-of-items="requestNumberOfItems"
 				:should-upgrade="workflowHistoryStore.shouldUpgrade"
@@ -358,7 +400,8 @@ watchEffect(async () => {
 			<WorkflowHistoryContent
 				v-if="canRender"
 				:workflow="activeWorkflow"
-				:workflow-version="activeWorkflowVersion"
+				:workflow-version="selectedWorkflowVersion"
+				:workflow-diff="selectedDiffWorkflowVersion"
 				:actions="actions"
 				:is-list-loading="isListLoading"
 				:is-first-item-shown="isFirstItemShown"
