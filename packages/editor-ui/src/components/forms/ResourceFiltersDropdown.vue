@@ -113,26 +113,29 @@ export default defineComponent({
 			</n8n-button>
 		</template>
 		<div :class="$style['filters-dropdown']" data-test-id="resources-list-filters-dropdown">
+			<div class="mb-s">
+				<enterprise-edition
+					v-if="shareable && projectsStore.isProjectHome"
+					:features="[EnterpriseEditionFeature.Sharing]"
+				>
+					<n8n-input-label
+						:label="$locale.baseText('forms.resourceFiltersDropdown.owner')"
+						:bold="false"
+						size="small"
+						color="text-base"
+						class="mb-3xs"
+					/>
+					<ProjectSharing
+						v-model="selectedProject"
+						:projects="projectsStore.availableProjects"
+						:placeholder="$locale.baseText('forms.resourceFiltersDropdown.owner.placeholder')"
+						:empty-options-text="$locale.baseText('projects.sharing.noMatchingProjects')"
+						@update:model-value="setKeyValue('homeProject', ($event as ProjectSharingData).id)"
+					/>
+				</enterprise-edition>
+			</div>
 			<slot :filters="modelValue" :set-key-value="setKeyValue" />
-			<enterprise-edition
-				v-if="shareable && projectsStore.isProjectHome"
-				:features="[EnterpriseEditionFeature.Sharing]"
-			>
-				<n8n-input-label
-					:label="$locale.baseText('forms.resourceFiltersDropdown.owner')"
-					:bold="false"
-					size="small"
-					color="text-base"
-					class="mb-3xs"
-				/>
-				<ProjectSharing
-					v-model="selectedProject"
-					:projects="projectsStore.availableProjects"
-					:placeholder="$locale.baseText('forms.resourceFiltersDropdown.owner.placeholder')"
-					:empty-options-text="$locale.baseText('projects.sharing.noMatchingProjects')"
-					@update:model-value="setKeyValue('homeProject', ($event as ProjectSharingData).id)"
-				/>
-			</enterprise-edition>
+
 			<div v-if="hasFilters" :class="[$style['filters-dropdown-footer'], 'mt-s']">
 				<n8n-link @click="resetFilters">
 					{{ $locale.baseText('forms.resourceFiltersDropdown.reset') }}
