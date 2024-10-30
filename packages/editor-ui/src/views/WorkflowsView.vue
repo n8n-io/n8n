@@ -216,7 +216,6 @@ const initialize = async () => {
 	await Promise.all([
 		nodeTypesStore.loadNodeTypesIfNotLoaded(),
 		credentialsStore.fetchAllCredentials(route?.params?.projectId as string | undefined),
-		// credentialsStore.fetchCredentialTypes(false),
 		usersStore.fetchUsers(),
 		workflowsStore.fetchAllWorkflows(route.params?.projectId as string | undefined),
 		workflowsStore.fetchActiveWorkflows(),
