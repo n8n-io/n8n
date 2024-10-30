@@ -30,6 +30,7 @@ import type {
 	IWorkflowDataUpdate,
 	IWorkflowDb,
 	IWorkflowTemplate,
+	IWorkflowToShare,
 	NodeCreatorOpenSource,
 	SimplifiedNodeType,
 	ToggleNodeCreatorOptions,
@@ -50,6 +51,7 @@ import type {
 import { CanvasNodeRenderType, CanvasConnectionMode } from '@/types';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
+	DUPLICATE_MODAL_KEY,
 	EnterpriseEditionFeature,
 	EXECUTE_WORKFLOW_NODE_TYPE,
 	MAIN_HEADER_TABS,
@@ -111,8 +113,9 @@ import { createCanvasConnectionHandleString } from '@/utils/canvasUtilsV2';
 import { isResourceLocatorValue, isValidNodeConnectionType } from '@/utils/typeGuards';
 import 'ninja-keys';
 import { useActionsGenerator } from '@/components/Node/NodeCreator/composables/useActionsGeneration';
-import { get } from 'lodash-es';
+import { get, uniqBy } from 'lodash-es';
 import { getNodeIcon, getNodeIconUrl } from '@/utils/nodeTypesUtils';
+import saveAs from 'file-saver';
 
 const LazyNodeCreation = defineAsyncComponent(
 	async () => await import('@/components/Node/NodeCreation.vue'),
@@ -1610,10 +1613,72 @@ const hotkeys = computed<NinjaKeysCommand[]>(() => {
 			section: 'Nodes',
 		},
 		{
-			id: 'Add template',
-			title: 'Add template',
+			id: 'Import template',
+			title: 'Import template',
 			children: allTemplateCommands.map((cmd) => cmd.id),
 			section: 'Templates',
+		},
+		{
+			id: 'Test workflow',
+			title: 'Test workflow',
+			section: 'Workflow',
+			handler: () => {
+				void onRunWorkflow();
+			},
+		},
+		{
+			id: 'Save workflow',
+			title: 'Save workflow',
+			section: 'Workflow',
+			handler: () => {
+				void onSaveWorkflow();
+			},
+		},
+		{
+			id: 'Duplicate workflow',
+			title: 'Duplicate workflow',
+			section: 'Workflow',
+			handler: () => {
+				uiStore.openModalWithData({
+					name: DUPLICATE_MODAL_KEY,
+					data: {
+						id: workflowId.value,
+						name: editableWorkflow.value.name,
+						tags: editableWorkflow.value.tags,
+					},
+				});
+			},
+		},
+		{
+			id: 'Download workflow',
+			title: 'Download workflow',
+			section: 'Workflow',
+			handler: async () => {
+				const workflowData = await workflowHelpers.getWorkflowDataToSave();
+				const { tags, ...data } = workflowData;
+				const exportData: IWorkflowToShare = {
+					...data,
+					meta: {
+						...workflowData.meta,
+						instanceId: rootStore.instanceId,
+					},
+					tags: (tags ?? []).map((tagId) => {
+						const { usageCount, ...tag } = tagsStore.tagsById[tagId];
+
+						return tag;
+					}),
+				};
+
+				const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+					type: 'application/json;charset=utf-8',
+				});
+
+				let name = editableWorkflow.value.name || 'unsaved_workflow';
+				name = name.replace(/[^a-z0-9]/gi, '_');
+
+				telemetry.track('User exported workflow', { workflow_id: workflowData.id });
+				saveAs(blob, name + '.json');
+			},
 		},
 	];
 
@@ -1621,7 +1686,8 @@ const hotkeys = computed<NinjaKeysCommand[]>(() => {
 		.concat(allOpenNodeCommands)
 		.concat(addNodeCommand.value)
 		.concat(allTemplateCommand.value)
-		.concat(subworkflowCommands.value);
+		.concat(subworkflowCommands.value)
+		.concat(credentialCommands.value);
 });
 
 const getAllNodesCommands = computed<NinjaKeysCommand[]>(() => {
@@ -1702,8 +1768,8 @@ const allTemplateCommand = computed<NinjaKeysCommand[]>(() => {
 		const { id, name } = template;
 		return {
 			id: id.toString(),
-			title: `Add ${name} Template`,
-			parent: 'Add template',
+			title: `Import ${name} Template`,
+			parent: 'Import template',
 			handler: async () => {
 				await openWorkflowTemplate(id.toString());
 			},
@@ -1743,6 +1809,34 @@ const subworkflowCommands = computed<NinjaKeysCommand[]>(() => {
 					params: { name: workflow.id },
 				});
 				window.open(href, '_blank', 'noreferrer');
+			},
+		})),
+	];
+});
+
+const credentialCommands = computed<NinjaKeysCommand[]>(() => {
+	const credentials = uniqBy(
+		editableWorkflow.value.nodes.map((node) => Object.values(node.credentials ?? {})).flat(),
+		(cred) => cred.id,
+	);
+
+	if (credentials.length === 0) {
+		return [];
+	}
+
+	return [
+		{
+			id: 'Open credential',
+			title: 'Open credential',
+			section: 'Credentials',
+			children: credentials.map((credential) => credential.id as string),
+		},
+		...credentials.map((credential) => ({
+			id: credential.id as string,
+			title: credential.name,
+			parent: 'Open credential',
+			handler: () => {
+				uiStore.openExistingCredential(credential.id as string);
 			},
 		})),
 	];
