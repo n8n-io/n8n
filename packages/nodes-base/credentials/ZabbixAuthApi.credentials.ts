@@ -60,11 +60,7 @@ export class ZabbixAuthApi implements ICredentialType {
 
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
-		properties: {
-			headers: {
-				Authorization: '=Bearer {{$credentials.sessionToken}}',
-			},
-		},
+		properties: {},
 	};
 
 	async preAuthentication(this: IHttpRequestHelper, credentials: ICredentialDataDecryptedObject) {
@@ -117,8 +113,11 @@ export class ZabbixAuthApi implements ICredentialType {
 			url: 'https://zabbix.digital-boss.dev/zabbix/api_jsonrpc.php',
 			body: {
 				jsonrpc: '2.0',
-				method: 'apiinfo.version',
-				params: {},
+				method: 'host.get',
+				params: {
+					output: ['hostid'],
+				},
+				auth: '={{$credentials.sessionToken}}',
 				id: 1,
 			},
 			headers: {

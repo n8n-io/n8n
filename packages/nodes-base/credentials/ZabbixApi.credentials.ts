@@ -53,9 +53,12 @@ export class ZabbixApi implements ICredentialType {
 			method: 'POST',
 			body: {
 				jsonrpc: '2.0',
-				method: 'apiinfo.version',
-				params: {},
-				id: 1,
+				method: 'host.get',
+				params: {
+					output: ['hostid', 'host'],
+					selectInterfaces: ['interfaceid', 'ip'],
+				},
+				id: 2,
 			},
 			headers: {
 				Authorization: 'Bearer {{$credentials.apiToken}}',
