@@ -37,6 +37,7 @@ export declare namespace WorkflowRequest {
 			nodeTypes?: string;
 			nodeName?: string;
 			webhookURL?: string;
+			httpNodeURL?: string;
 		}
 	> & {
 		listQueryOptions: ListQuery.Options;

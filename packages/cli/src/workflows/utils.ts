@@ -61,3 +61,19 @@ export function getEscapedWebhookURLs(workflow: WorkflowEntity): string[] {
 
 	return webhookURLs;
 }
+
+export function getEscapedHttpNodeURLs(workflow: WorkflowEntity): string[] {
+	const webhookURLs: string[] = [];
+
+	for (const node of workflow.nodes) {
+		if (
+			node.type === 'n8n-nodes-base.httpRequest' &&
+			typeof node.parameters.url === 'string' &&
+			node.parameters.url.length > 0
+		) {
+			webhookURLs.push(escapeCommas(node.parameters.url));
+		}
+	}
+
+	return webhookURLs;
+}

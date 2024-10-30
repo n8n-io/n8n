@@ -111,7 +111,7 @@ describe('POST /workflows', () => {
 		expect(fromBase64(savedWorkflow.credentialIds[0])).toEqual(credential.id);
 	});
 
-	test('should populate `nodeTypes`', async () => {
+	test('should populate `nodeNames`', async () => {
 		// ARRANGE
 		const workflow = makeWorkflow();
 		workflow.nodes[0].name = 'Cron,with,commas';
@@ -127,7 +127,7 @@ describe('POST /workflows', () => {
 		expect(savedWorkflow.nodeNames[0]).toEqual(escapeCommas(workflow.nodes[0].name));
 	});
 
-	test('should populate `nodeTypes`', async () => {
+	test('should populate `webhookURLs`', async () => {
 		// ARRANGE
 		const workflow = makeWorkflow();
 		workflow.nodes[0].type = 'n8n-nodes-base.webhook';
@@ -142,6 +142,23 @@ describe('POST /workflows', () => {
 
 		expect(savedWorkflow.webhookURLs).toHaveLength(1);
 		expect(savedWorkflow.webhookURLs[0]).toEqual(escapeCommas(workflow.nodes[0].parameters.path));
+	});
+
+	test('should populate `httpNodeURLs`', async () => {
+		// ARRANGE
+		const workflow = makeWorkflow();
+		workflow.nodes[0].type = 'n8n-nodes-base.httpRequest';
+		workflow.nodes[0].parameters.url = 'foobar';
+
+		// ACT
+		await authOwnerAgent.post('/workflows').send(workflow).expect(200);
+
+		// ASSERT
+		const savedWorkflow = await getWorkflowById(workflow.id);
+		a.ok(savedWorkflow);
+
+		expect(savedWorkflow.httpNodeURLs).toHaveLength(1);
+		expect(savedWorkflow.httpNodeURLs[0]).toEqual(escapeCommas(workflow.nodes[0].parameters.url));
 	});
 
 	test('should return scopes on created workflow', async () => {
@@ -747,7 +764,7 @@ describe('GET /workflows', () => {
 		expect(found.usedCredentials).toBeUndefined();
 	});
 
-	test('should return workflows filtered by node name', async () => {
+	test('should return workflows filtered by webhook url', async () => {
 		// ARRANGE
 		const node1 = {
 			id: uuid(),
@@ -762,15 +779,18 @@ describe('GET /workflows', () => {
 			owner,
 		);
 
-		const node2: INode = {
+		const node2 = {
 			id: uuid(),
 			name: 'Action Network',
 			type: 'n8n-nodes-base.webhook',
 			parameters: { path: 'bar foo' },
 			typeVersion: 1,
 			position: [0, 0],
-		};
-		await createWorkflow({ name: 'Second', nodes: [node2] }, owner);
+		} satisfies INode;
+		await createWorkflow(
+			{ name: 'Second', nodes: [node2], webhookURLs: [escapeCommas(node2.parameters.path)] },
+			owner,
+		);
 
 		await createWorkflow({ name: 'Third' }, owner);
 
@@ -778,6 +798,73 @@ describe('GET /workflows', () => {
 		const response = await authOwnerAgent
 			.get('/workflows')
 			.query(`webhookURL=${node1.parameters.path}`)
+			.expect(200);
+
+		// ASSERT
+		const ownerPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
+		expect(response.body.count).toBe(1);
+		expect(response.body.data).toHaveLength(1);
+		expect(response.body.data[0]).toEqual(
+			objectContaining({
+				id: workflow1.id,
+				name: 'First',
+				active: workflow1.active,
+				tags: [],
+				createdAt: workflow1.createdAt.toISOString(),
+				updatedAt: workflow1.updatedAt.toISOString(),
+				versionId: workflow1.versionId,
+				homeProject: {
+					id: ownerPersonalProject.id,
+					name: owner.createPersonalProjectName(),
+					type: ownerPersonalProject.type,
+				},
+				sharedWithProjects: [],
+			}),
+		);
+
+		const found = response.body.data.find(
+			(w: ListQuery.Workflow.WithOwnership) => w.name === 'First',
+		);
+
+		expect(found.nodes).toBeUndefined();
+		expect(found.sharedWithProjects).toHaveLength(0);
+		expect(found.usedCredentials).toBeUndefined();
+	});
+
+	test('should return workflows filtered by http node url', async () => {
+		// ARRANGE
+		const node1 = {
+			id: uuid(),
+			name: 'Action Network',
+			type: 'n8n-nodes-base.httpRequest',
+			parameters: { url: 'foobar' },
+			typeVersion: 1,
+			position: [0, 0],
+		} satisfies INode;
+		const workflow1 = await createWorkflow(
+			{ name: 'First', nodes: [node1], httpNodeURLs: [escapeCommas(node1.parameters.url)] },
+			owner,
+		);
+
+		const node2 = {
+			id: uuid(),
+			name: 'Action Network',
+			type: 'n8n-nodes-base.httpRequest',
+			parameters: { url: 'bar foo' },
+			typeVersion: 1,
+			position: [0, 0],
+		} satisfies INode;
+		await createWorkflow(
+			{ name: 'Second', nodes: [node2], httpNodeURLs: [escapeCommas(node2.parameters.url)] },
+			owner,
+		);
+
+		await createWorkflow({ name: 'Third' }, owner);
+
+		// ACT
+		const response = await authOwnerAgent
+			.get('/workflows')
+			.query(`httpNodeURL=${node1.parameters.url}`)
 			.expect(200);
 
 		// ASSERT

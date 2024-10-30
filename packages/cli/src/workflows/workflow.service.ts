@@ -36,6 +36,7 @@ import * as WorkflowHelpers from '@/workflow-helpers';
 import {
 	getEncodedCredentialIds,
 	getEncodedNodeTypes,
+	getEscapedHttpNodeURLs,
 	getEscapedNodeNames,
 	getEscapedWebhookURLs,
 } from './utils';
@@ -71,6 +72,7 @@ export class WorkflowService {
 		nodeTypes: string[] = [],
 		nodeName = '',
 		webhookURL = '',
+		httpNodeURL = '',
 	) {
 		const sharedWorkflowIds = await this.workflowSharingService.getSharedWorkflowIds(user, {
 			scopes: ['workflow:read'],
@@ -84,6 +86,7 @@ export class WorkflowService {
 			nodeTypes,
 			nodeName,
 			webhookURL,
+			httpNodeURL,
 		);
 
 		if (hasSharing(workflows)) {
@@ -212,6 +215,7 @@ export class WorkflowService {
 			nodeTypes: getEncodedNodeTypes(workflow),
 			nodeNames: getEscapedNodeNames(workflow),
 			webhookURLs: getEscapedWebhookURLs(workflow),
+			httpNodeURLs: getEscapedHttpNodeURLs(workflow),
 		});
 
 		if (tagIds && !config.getEnv('workflowTagsDisabled')) {

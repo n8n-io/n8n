@@ -41,6 +41,7 @@ import * as WorkflowHelpers from '@/workflow-helpers';
 import {
 	getEncodedCredentialIds,
 	getEncodedNodeTypes,
+	getEscapedHttpNodeURLs,
 	getEscapedNodeNames,
 	getEscapedWebhookURLs,
 } from './utils';
@@ -125,6 +126,7 @@ export class WorkflowsController {
 		newWorkflow.nodeTypes = getEncodedNodeTypes(newWorkflow);
 		newWorkflow.nodeNames = getEscapedNodeNames(newWorkflow);
 		newWorkflow.webhookURLs = getEscapedWebhookURLs(newWorkflow);
+		newWorkflow.httpNodeURLs = getEscapedHttpNodeURLs(newWorkflow);
 
 		let project: Project | null;
 		const savedWorkflow = await Db.transaction(async (transactionManager) => {
@@ -213,6 +215,7 @@ export class WorkflowsController {
 				req.query.nodeTypes?.split(','),
 				req.query.nodeName,
 				req.query.webhookURL,
+				req.query.httpNodeURL,
 			);
 
 			res.json({ count, data });

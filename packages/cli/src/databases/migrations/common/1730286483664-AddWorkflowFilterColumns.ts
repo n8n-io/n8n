@@ -7,6 +7,7 @@ export class AddWorkflowFilterColumns1730286483664 implements ReversibleMigratio
 			column('nodeTypes').text,
 			column('nodeNames').text,
 			column('webhookURLs').text,
+			column('httpNodeURLs').text,
 		]);
 	}
 
@@ -16,6 +17,7 @@ export class AddWorkflowFilterColumns1730286483664 implements ReversibleMigratio
 			'nodeTypes',
 			'nodeNames',
 			'webhookURLs',
+			'httpNodeURLs',
 		]);
 	}
 }

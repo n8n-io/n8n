@@ -105,6 +105,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		nodeTypes: string[] = [],
 		nodeName = '',
 		webhookURL = '',
+		httpNodeURL = '',
 	) {
 		if (sharedWorkflowIds.length === 0) return { workflows: [], count: 0 };
 
@@ -171,6 +172,10 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 
 		if (webhookURL) {
 			where.webhookURLs = Like(`%${escapeCommas(webhookURL)}%`);
+		}
+
+		if (httpNodeURL) {
+			where.httpNodeURLs = Like(`%${escapeCommas(httpNodeURL)}%`);
 		}
 
 		const findManyOptions: FindManyOptions<WorkflowEntity> = {
