@@ -1628,10 +1628,16 @@ const getAllNodesCommands = computed<NinjaKeysCommand[]>(() => {
 	return editableWorkflow.value.nodes.map((node) => {
 		const { id, name } = node;
 
+		const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+
+		const src = getIconSource(nodeType);
 		return {
 			id,
 			title: `Open "${name}" Node`,
 			parent: 'Open node',
+			icon: src?.path
+				? `<img src="${src.path}" style="width: 24px;object-fit: contain;height: 24px;" />`
+				: '',
 			handler: () => {
 				setNodeActive(id);
 			},
@@ -1639,7 +1645,9 @@ const getAllNodesCommands = computed<NinjaKeysCommand[]>(() => {
 	});
 });
 
-function getIconSource(nodeType: SimplifiedNodeType) {
+function getIconSource(nodeType: SimplifiedNodeType | null) {
+	if (!nodeType) return {};
+
 	const baseUrl = rootStore.baseUrl;
 
 	const iconUrl = getNodeIconUrl(nodeType, uiStore.appliedTheme);
@@ -1676,7 +1684,9 @@ const addNodeCommand = computed<NinjaKeysCommand[]>(() => {
 		return {
 			id: name,
 			title: `Add ${displayName} Node`,
-			icon: `<img src="${src?.path}" style="width: 24px;object-fit: contain;height: 24px;" />`,
+			icon: src?.path
+				? `<img src="${src.path}" style="width: 24px;object-fit: contain;height: 24px;" />`
+				: '',
 			parent: 'Add node',
 			handler: async () => {
 				await addNodes([{ type: name }]);
