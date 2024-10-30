@@ -1576,32 +1576,41 @@ onBeforeUnmount(() => {
 	}
 });
 
-const hotkeys = computed(() => [
-	{
-		id: 'Add node',
-		title: 'Add node',
-		section: 'Nodes',
-		parent: null,
-		children: addNodeCommand.value,
-	},
-	{
-		id: 'Open node',
-		title: 'Open node',
-		section: 'Nodes',
-		parent: null,
-		children: getAllNodesCommands.value,
-	},
-]);
+type NinjaKeysCommand = {
+	id: string;
+	title: string;
+	section?: string;
+	children?: string[];
+	handler?: () => void;
+};
+const hotkeys = computed<NinjaKeysCommand[]>(() => {
+	const allOpenNodeCommands = getAllNodesCommands.value;
+	const allAddNodeCommands = addNodeCommand.value;
+	const rootCommands: NinjaKeysCommand[] = [
+		{
+			id: 'Add node',
+			title: 'Add node',
+			section: 'Nodes',
+			children: allAddNodeCommands.map((cmd) => cmd.id),
+		},
+		{
+			id: 'Open node',
+			title: 'Open node',
+			children: allOpenNodeCommands.map((cmd) => cmd.id),
+			section: 'Nodes',
+		},
+	];
 
-const getAllNodesCommands = computed(() => {
+	return rootCommands.concat(allOpenNodeCommands).concat(addNodeCommand.value);
+});
+
+const getAllNodesCommands = computed<NinjaKeysCommand[]>(() => {
 	return editableWorkflow.value.nodes.map((node) => {
 		const { id, name } = node;
 
-		console.log({ id, name });
-
 		return {
 			id,
-			title: name,
+			title: `Open "${name}" Node`,
 			parent: 'Open node',
 			handler: () => {
 				setNodeActive(id);
@@ -1610,7 +1619,7 @@ const getAllNodesCommands = computed(() => {
 	});
 });
 
-const addNodeCommand = computed(() => {
+const addNodeCommand = computed<NinjaKeysCommand[]>(() => {
 	const httpOnlyCredentials = useCredentialsStore().httpOnlyCredentialTypes;
 	const nodeTypes = useNodeTypesStore().visibleNodeTypes;
 
@@ -1620,7 +1629,7 @@ const addNodeCommand = computed(() => {
 		const { name, displayName } = node;
 		return {
 			id: name,
-			title: displayName,
+			title: `Add ${displayName} Node`,
 			parent: 'Add node',
 			handler: async () => {
 				await addNodes([{ type: name }]);
@@ -1722,7 +1731,11 @@ const addNodeCommand = computed(() => {
 			-->
 		</Suspense>
 		<Teleport to="body">
-			<ninja-keys :class="uiStore.appliedTheme" :data="hotkeys"></ninja-keys>
+			<ninja-keys
+				:class="uiStore.appliedTheme"
+				:data="hotkeys"
+				:no-auto-load-md-icons="true"
+			></ninja-keys>
 		</Teleport>
 	</WorkflowCanvas>
 </template>
