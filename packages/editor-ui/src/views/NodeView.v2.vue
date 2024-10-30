@@ -108,6 +108,7 @@ import NodeViewUnfinishedWorkflowMessage from '@/components/NodeViewUnfinishedWo
 import { createCanvasConnectionHandleString } from '@/utils/canvasUtilsV2';
 import { isValidNodeConnectionType } from '@/utils/typeGuards';
 import 'ninja-keys';
+import { useActionsGenerator } from '@/components/Node/NodeCreator/composables/useActionsGeneration';
 
 const LazyNodeCreation = defineAsyncComponent(
 	async () => await import('@/components/Node/NodeCreation.vue'),
@@ -149,6 +150,7 @@ const tagsStore = useTagsStore();
 const pushConnectionStore = usePushConnectionStore();
 const ndvStore = useNDVStore();
 const templatesStore = useTemplatesStore();
+const { generateMergedNodesAndActions } = useActionsGenerator();
 
 const canvasEventBus = createEventBus<CanvasEventBusEvents>();
 
@@ -1576,42 +1578,56 @@ onBeforeUnmount(() => {
 
 const hotkeys = computed(() => [
 	{
-		id: 'Home',
-		title: 'Open Home',
-		hotkey: 'cmd+h',
-		handler: () => {
-			console.log('navigation to home');
-		},
+		id: 'Add node',
+		title: 'Add node',
+		section: 'Nodes',
+		parent: null,
+		children: addNodeCommand.value,
 	},
 	{
-		id: 'Open Projects',
-		title: 'Open Projects',
-		hotkey: 'cmd+p',
-		handler: () => {
-			console.log('navigation to projects');
-		},
-	},
-	{
-		id: 'Theme',
-		title: 'Change theme...',
-		children: [
-			{
-				id: 'nodeId',
-				title: 'Change theme to Light',
-				handler: () => {
-					console.log('theme light');
-				},
-			},
-			{
-				id: 'Dark Theme',
-				title: 'Change theme to Dark',
-				handler: () => {
-					console.log('theme dark');
-				},
-			},
-		],
+		id: 'Open node',
+		title: 'Open node',
+		section: 'Nodes',
+		parent: null,
+		children: getAllNodesCommands.value,
 	},
 ]);
+
+const getAllNodesCommands = computed(() => {
+	return editableWorkflow.value.nodes.map((node) => {
+		const { id, name } = node;
+
+		console.log({ id, name });
+
+		return {
+			id,
+			title: name,
+			parent: 'Open node',
+			handler: () => {
+				setNodeActive(id);
+			},
+		};
+	});
+});
+
+const addNodeCommand = computed(() => {
+	const httpOnlyCredentials = useCredentialsStore().httpOnlyCredentialTypes;
+	const nodeTypes = useNodeTypesStore().visibleNodeTypes;
+
+	const { mergedNodes } = generateMergedNodesAndActions(nodeTypes, httpOnlyCredentials);
+
+	return mergedNodes.map((node) => {
+		const { name, displayName } = node;
+		return {
+			id: name,
+			title: displayName,
+			parent: 'Add node',
+			handler: async () => {
+				await addNodes([{ type: name }]);
+			},
+		};
+	});
+});
 </script>
 
 <template>
@@ -1741,6 +1757,7 @@ const hotkeys = computed(() => [
 ninja-keys {
 	--ninja-z-index: 1000;
 	--ninja-accent-color: var(--color-primary);
+	--ninja-actions-height: 400px;
 }
 
 ninja-keys::part(ninja-action) {
