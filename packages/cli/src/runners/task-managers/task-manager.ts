@@ -18,6 +18,7 @@ import {
 } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
+import { DataRequestResponseBuilder } from './data-request-response-builder';
 import {
 	RPC_ALLOW_LIST,
 	type TaskResultData,
@@ -67,7 +68,7 @@ export interface PartialAdditionalData {
 	variables: IDataObject;
 }
 
-export interface AllCodeTaskData {
+export interface DataRequestResponse {
 	workflow: Omit<WorkflowParameters, 'nodeTypes'>;
 	inputData: ITaskDataConnections;
 	node: INode;
@@ -103,19 +104,6 @@ export interface Task {
 interface ExecuteFunctionObject {
 	[name: string]: ((...args: unknown[]) => unknown) | ExecuteFunctionObject;
 }
-
-const workflowToParameters = (workflow: Workflow): Omit<WorkflowParameters, 'nodeTypes'> => {
-	return {
-		id: workflow.id,
-		name: workflow.name,
-		active: workflow.active,
-		connections: workflow.connectionsBySourceNode,
-		nodes: Object.values(workflow.nodes),
-		pinData: workflow.pinData,
-		settings: workflow.settings,
-		staticData: workflow.staticData,
-	};
-};
 
 export class TaskManager {
 	requestAcceptRejects: Map<string, { accept: RequestAccept; reject: RequestReject }> = new Map();
@@ -245,7 +233,7 @@ export class TaskManager {
 				this.taskError(message.taskId, message.error);
 				break;
 			case 'broker:taskdatarequest':
-				this.sendTaskData(message.taskId, message.requestId, message.requestType);
+				this.sendTaskData(message.taskId, message.requestId, message.requestParams);
 				break;
 			case 'broker:rpc':
 				void this.handleRpc(message.taskId, message.callId, message.name, message.params);
@@ -294,54 +282,23 @@ export class TaskManager {
 	sendTaskData(
 		taskId: string,
 		requestId: string,
-		requestType: N8nMessage.ToRequester.TaskDataRequest['requestType'],
+		requestParams: N8nMessage.ToRequester.TaskDataRequest['requestParams'],
 	) {
 		const job = this.tasks.get(taskId);
 		if (!job) {
 			// TODO: logging
 			return;
 		}
-		if (requestType === 'all') {
-			const jd = job.data;
-			const ad = jd.additionalData;
-			const data: AllCodeTaskData = {
-				workflow: workflowToParameters(jd.workflow),
-				connectionInputData: jd.connectionInputData,
-				inputData: jd.inputData,
-				itemIndex: jd.itemIndex,
-				activeNodeName: jd.activeNodeName,
-				contextNodeName: jd.contextNodeName,
-				defaultReturnRunIndex: jd.defaultReturnRunIndex,
-				mode: jd.mode,
-				envProviderState: jd.envProviderState,
-				node: jd.node,
-				runExecutionData: jd.runExecutionData,
-				runIndex: jd.runIndex,
-				selfData: jd.selfData,
-				siblingParameters: jd.siblingParameters,
-				executeData: jd.executeData,
-				additionalData: {
-					formWaitingBaseUrl: ad.formWaitingBaseUrl,
-					instanceBaseUrl: ad.instanceBaseUrl,
-					restApiUrl: ad.restApiUrl,
-					variables: ad.variables,
-					webhookBaseUrl: ad.webhookBaseUrl,
-					webhookTestBaseUrl: ad.webhookTestBaseUrl,
-					webhookWaitingBaseUrl: ad.webhookWaitingBaseUrl,
-					currentNodeParameters: ad.currentNodeParameters,
-					executionId: ad.executionId,
-					executionTimeoutTimestamp: ad.executionTimeoutTimestamp,
-					restartExecutionId: ad.restartExecutionId,
-					userId: ad.userId,
-				},
-			};
-			this.sendMessage({
-				type: 'requester:taskdataresponse',
-				taskId,
-				requestId,
-				data,
-			});
-		}
+
+		const dataRequestResponseBuilder = new DataRequestResponseBuilder(job.data, requestParams);
+		const requestedData = dataRequestResponseBuilder.build();
+
+		this.sendMessage({
+			type: 'requester:taskdataresponse',
+			taskId,
+			requestId,
+			data: requestedData,
+		});
 	}
 
 	async handleRpc(

@@ -68,15 +68,14 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 	) {
 		super();
 
-		a.ok(
-			this.runnerConfig.mode === 'internal_childprocess' ||
-				this.runnerConfig.mode === 'internal_launcher',
-		);
-
 		this.logger = logger.scoped('task-runner');
 	}
 
 	async start() {
+		a.ok(
+			this.runnerConfig.mode === 'internal_childprocess' ||
+				this.runnerConfig.mode === 'internal_launcher',
+		);
 		a.ok(!this.process, 'Task Runner Process already running');
 
 		const grantToken = await this.authService.createGrantToken();
