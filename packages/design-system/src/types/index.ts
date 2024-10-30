@@ -1,4 +1,5 @@
 export * from './action-dropdown';
+export * from './split-dropdown-button';
 export * from './button';
 export * from './datatable';
 export * from './form';
