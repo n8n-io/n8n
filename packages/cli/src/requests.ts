@@ -81,14 +81,7 @@ export namespace ListQuery {
 	 * Slim workflow returned from a list query operation.
 	 */
 	export namespace Workflow {
-		type OptionalBaseFields =
-			| 'name'
-			| 'active'
-			| 'versionId'
-			| 'createdAt'
-			| 'updatedAt'
-			| 'tags'
-			| 'nodes';
+		type OptionalBaseFields = 'name' | 'active' | 'versionId' | 'createdAt' | 'updatedAt' | 'tags';
 
 		type BaseFields = Pick<WorkflowEntity, 'id'> &
 			Partial<Pick<WorkflowEntity, OptionalBaseFields>>;

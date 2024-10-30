@@ -13,11 +13,10 @@ import {
 } from '@n8n/typeorm';
 import { Service } from 'typedi';
 
-import * as a from 'assert/strict';
-
 import config from '@/config';
 import type { ListQuery } from '@/requests';
 import { isStringArray } from '@/utils';
+import { toBase64 } from '@/workflows/utils';
 
 import { WebhookEntity } from '../entities/webhook-entity';
 import { WorkflowEntity } from '../entities/workflow-entity';
@@ -155,11 +154,11 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		}
 
 		if (credentialIds.length) {
-			where.nodes = Or(...credentialIds.map((id) => Like(`%{"id":"${id}"%`)));
+			where.credentialIds = Or(...credentialIds.map((id) => Like(`%${toBase64(id)}%`)));
 		}
 
 		const findManyOptions: FindManyOptions<WorkflowEntity> = {
-			select: { ...select, id: true, nodes: true },
+			select: { ...select, id: true },
 			where,
 		};
 
@@ -176,42 +175,10 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			findManyOptions.take = options.take;
 		}
 
-		let [workflows, count] = (await this.findAndCount(findManyOptions)) as [
+		const [workflows, count] = (await this.findAndCount(findManyOptions)) as [
 			ListQuery.Workflow.Plain[] | ListQuery.Workflow.WithSharing[],
 			number,
 		];
-
-		function workflowUsesCredential(
-			workflow: ListQuery.Workflow.Plain,
-			credentialIds: string[],
-		): boolean {
-			a.ok(workflow.nodes);
-
-			return (
-				workflow.nodes.findIndex((node) => {
-					if (node.credentials) {
-						return (
-							Object.values(node.credentials).findIndex((credential) => {
-								a.ok(credential.id);
-								return credentialIds.includes(credential.id);
-							}) !== -1
-						);
-					} else {
-						return false;
-					}
-				}) !== -1
-			);
-		}
-
-		if (credentialIds.length) {
-			workflows = workflows.filter((wf) => workflowUsesCredential(wf, credentialIds));
-
-			count = workflows.length;
-		}
-
-		for (const wf of workflows) {
-			delete wf.nodes;
-		}
 
 		return { workflows, count };
 	}

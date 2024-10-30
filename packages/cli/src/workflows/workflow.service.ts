@@ -33,6 +33,7 @@ import { RoleService } from '@/services/role.service';
 import { TagService } from '@/services/tag.service';
 import * as WorkflowHelpers from '@/workflow-helpers';
 
+import { getEncodedCredentialIds } from './utils';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service.ee';
 import { WorkflowSharingService } from './workflow-sharing.service';
 
@@ -84,9 +85,10 @@ export class WorkflowService {
 		}
 
 		workflows.forEach((w) => {
-			// This is to emulate the old behavior of removing the shared field as
-			// part of `addOwnedByAndSharedWith`. We need this field in `addScopes`
-			// though. So to avoid leaking the information we just delete it.
+			// @ts-expect-error: This is to emulate the old behavior of removing the
+			// shared field as part of `addOwnedByAndSharedWith`. We need this field
+			// in `addScopes` though. So to avoid leaking the information we just
+			// delete it.
 			delete w.shared;
 		});
 
@@ -183,9 +185,8 @@ export class WorkflowService {
 			await validateEntity(workflowUpdateData);
 		}
 
-		await this.workflowRepository.update(
-			workflowId,
-			pick(workflowUpdateData, [
+		await this.workflowRepository.update(workflowId, {
+			...pick(workflowUpdateData, [
 				'name',
 				'active',
 				'nodes',
@@ -196,7 +197,8 @@ export class WorkflowService {
 				'pinData',
 				'versionId',
 			]),
-		);
+			credentialIds: getEncodedCredentialIds(workflow),
+		});
 
 		if (tagIds && !config.getEnv('workflowTagsDisabled')) {
 			await this.workflowTagMappingRepository.overwriteTaggings(workflowId, tagIds);
