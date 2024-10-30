@@ -13,6 +13,7 @@ import { WorkflowRepository } from '@/databases/repositories/workflow.repository
 import { License } from '@/license';
 import type { ListQuery } from '@/requests';
 import { ProjectService } from '@/services/project.service';
+import { toBase64 } from '@/workflows/utils';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 import { mockInstance } from '../../shared/mocking';
@@ -488,7 +489,10 @@ describe('GET /workflows', () => {
 				},
 			},
 		};
-		const workflow1 = await createWorkflow({ name: 'First', nodes: [node1] }, owner);
+		const workflow1 = await createWorkflow(
+			{ name: 'First', nodes: [node1], credentialIds: [toBase64(credential1.id)] },
+			owner,
+		);
 
 		const credential2 = await saveCredential(randomCredentialPayload(), {
 			user: owner,

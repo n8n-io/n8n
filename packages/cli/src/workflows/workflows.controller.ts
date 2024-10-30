@@ -3,7 +3,7 @@ import { GlobalConfig } from '@n8n/config';
 import { In, type FindOptionsRelations } from '@n8n/typeorm';
 import axios from 'axios';
 import express from 'express';
-import { ApplicationError } from 'n8n-workflow';
+import { ApplicationError, createEnvProvider } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
 
@@ -44,6 +44,7 @@ import { WorkflowRequest } from './workflow.request';
 import { WorkflowService } from './workflow.service';
 import { EnterpriseWorkflowService } from './workflow.service.ee';
 import { CredentialsService } from '../credentials/credentials.service';
+import { getEncodedCredentialIds } from './utils';
 
 @RestController('/workflows')
 export class WorkflowsController {
@@ -114,6 +115,8 @@ export class WorkflowsController {
 				);
 			}
 		}
+
+		newWorkflow.credentialIds = getEncodedCredentialIds(newWorkflow);
 
 		let project: Project | null;
 		const savedWorkflow = await Db.transaction(async (transactionManager) => {
