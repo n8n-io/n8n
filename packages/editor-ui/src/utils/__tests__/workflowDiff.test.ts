@@ -209,6 +209,19 @@ describe('workflowDiff', () => {
 			'f8279104-a3e6-4663-b9bc-77fdbc615742': NodeDiffStatus.DELETED,
 		});
 	});
+
+	it('should compare workflows in reverse', () => {
+		const diff = compareWorkflows(targetWf, baseWf);
+
+		expect(diff).toEqual({
+			'180ad8e0-c891-4b37-bab3-0a5b306ca48d': NodeDiffStatus.EQ,
+			'1cd4ee3f-5692-469c-a658-82483f1ef921': NodeDiffStatus.MODIFIED,
+			'9eedaa9f-7735-4fef-af11-deba888005ac': NodeDiffStatus.MODIFIED,
+			'22593885-07ce-49ea-8a6c-ad17d983cada': NodeDiffStatus.DELETED,
+			'bcf43c50-007f-4d04-a236-a3a1ef628fe2': NodeDiffStatus.DELETED,
+			'f8279104-a3e6-4663-b9bc-77fdbc615742': NodeDiffStatus.ADDED,
+		});
+	});
 });
 
 describe('compareNodes', () => {
