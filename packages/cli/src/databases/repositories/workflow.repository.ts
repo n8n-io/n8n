@@ -101,6 +101,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		sharedWorkflowIds: string[],
 		options: ListQuery.Options = {},
 		credentialIds: string[] = [],
+		nodeTypes: string[] = [],
 	) {
 		if (sharedWorkflowIds.length === 0) return { workflows: [], count: 0 };
 
@@ -155,6 +156,10 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 
 		if (credentialIds.length) {
 			where.credentialIds = Or(...credentialIds.map((id) => Like(`%${toBase64(id)}%`)));
+		}
+
+		if (nodeTypes.length) {
+			where.nodeTypes = Or(...nodeTypes.map((id) => Like(`%${toBase64(id)}%`)));
 		}
 
 		const findManyOptions: FindManyOptions<WorkflowEntity> = {

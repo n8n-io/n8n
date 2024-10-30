@@ -13,7 +13,7 @@ import { WorkflowRepository } from '@/databases/repositories/workflow.repository
 import { License } from '@/license';
 import type { ListQuery } from '@/requests';
 import { ProjectService } from '@/services/project.service';
-import { toBase64 } from '@/workflows/utils';
+import { fromBase64, toBase64 } from '@/workflows/utils';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 import { mockInstance } from '../../shared/mocking';
@@ -21,12 +21,16 @@ import { saveCredential } from '../shared/db/credentials';
 import { createTeamProject, linkUserToProject } from '../shared/db/projects';
 import { createTag } from '../shared/db/tags';
 import { createManyUsers, createMember, createOwner } from '../shared/db/users';
-import { createWorkflow, shareWorkflowWithProjects } from '../shared/db/workflows';
+import { createWorkflow, getAllWorkflows, shareWorkflowWithProjects } from '../shared/db/workflows';
 import { randomCredentialPayload } from '../shared/random';
 import * as testDb from '../shared/test-db';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 import { makeWorkflow, MOCK_PINDATA } from '../shared/utils/';
+import { getWorkflow } from '@test-integration/workflow';
+import { getWorkflowById } from '@/public-api/v1/handlers/workflows/workflows.service';
+
+import * as a from 'assert/strict';
 
 let owner: User;
 let member: User;
@@ -76,6 +80,37 @@ describe('POST /workflows', () => {
 	test('should set pin data to null if no pin data', async () => {
 		const pinData = await testWithPinData(false);
 		expect(pinData).toBeNull();
+	});
+
+	test('should populate `nodeTypes`', async () => {
+		// ARRANGE
+		const workflow = makeWorkflow();
+
+		// ACT
+		await authOwnerAgent.post('/workflows').send(workflow).expect(200);
+
+		// ASSERT
+		const savedWorkflow = await getWorkflowById(workflow.id);
+		a.ok(savedWorkflow);
+
+		expect(savedWorkflow.nodeTypes).toHaveLength(1);
+		expect(fromBase64(savedWorkflow?.nodeTypes[0])).toEqual(workflow.nodes[0].type);
+	});
+
+	test('should populate `credentialIds`', async () => {
+		// ARRANGE
+		const credential = { id: '1', name: 'cred1' };
+		const workflow = makeWorkflow({ withPinData: false, withCredential: credential });
+
+		// ACT
+		await authOwnerAgent.post('/workflows').send(workflow).expect(200);
+
+		// ASSERT
+		const savedWorkflow = await getWorkflowById(workflow.id);
+		a.ok(savedWorkflow);
+
+		expect(savedWorkflow.credentialIds).toHaveLength(1);
+		expect(fromBase64(savedWorkflow?.credentialIds[0])).toEqual(credential.id);
 	});
 
 	test('should return scopes on created workflow', async () => {
@@ -520,6 +555,70 @@ describe('GET /workflows', () => {
 		const response = await authOwnerAgent
 			.get('/workflows')
 			.query(`credentialIds=${credential1.id}`)
+			.expect(200);
+
+		// ASSERT
+		const ownerPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
+		expect(response.body.count).toBe(1);
+		expect(response.body.data).toHaveLength(1);
+		expect(response.body.data[0]).toEqual(
+			objectContaining({
+				id: workflow1.id,
+				name: 'First',
+				active: workflow1.active,
+				tags: [],
+				createdAt: workflow1.createdAt.toISOString(),
+				updatedAt: workflow1.updatedAt.toISOString(),
+				versionId: workflow1.versionId,
+				homeProject: {
+					id: ownerPersonalProject.id,
+					name: owner.createPersonalProjectName(),
+					type: ownerPersonalProject.type,
+				},
+				sharedWithProjects: [],
+			}),
+		);
+
+		const found = response.body.data.find(
+			(w: ListQuery.Workflow.WithOwnership) => w.name === 'First',
+		);
+
+		expect(found.nodes).toBeUndefined();
+		expect(found.sharedWithProjects).toHaveLength(0);
+		expect(found.usedCredentials).toBeUndefined();
+	});
+
+	test('should return workflows filtered by used node types', async () => {
+		// ARRANGE
+		const node1: INode = {
+			id: uuid(),
+			name: 'Action Network',
+			type: 'n8n-nodes-base.actionNetwork',
+			parameters: {},
+			typeVersion: 1,
+			position: [0, 0],
+		};
+		const workflow1 = await createWorkflow(
+			{ name: 'First', nodes: [node1], nodeTypes: [toBase64(node1.type)] },
+			owner,
+		);
+
+		const node2: INode = {
+			id: uuid(),
+			name: 'Action Network',
+			type: 'n8n-nodes-base.airTable',
+			parameters: {},
+			typeVersion: 1,
+			position: [0, 0],
+		};
+		await createWorkflow({ name: 'Second', nodes: [node2] }, owner);
+
+		await createWorkflow({ name: 'Third' }, owner);
+
+		// ACT
+		const response = await authOwnerAgent
+			.get('/workflows')
+			.query(`nodeTypes=${node1.type}`)
 			.expect(200);
 
 		// ASSERT

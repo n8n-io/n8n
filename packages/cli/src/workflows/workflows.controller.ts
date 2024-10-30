@@ -3,7 +3,7 @@ import { GlobalConfig } from '@n8n/config';
 import { In, type FindOptionsRelations } from '@n8n/typeorm';
 import axios from 'axios';
 import express from 'express';
-import { ApplicationError, createEnvProvider } from 'n8n-workflow';
+import { ApplicationError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
 
@@ -38,13 +38,13 @@ import { UserManagementMailer } from '@/user-management/email';
 import * as utils from '@/utils';
 import * as WorkflowHelpers from '@/workflow-helpers';
 
+import { getEncodedCredentialIds, getEncodedNodeTypes } from './utils';
 import { WorkflowExecutionService } from './workflow-execution.service';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service.ee';
 import { WorkflowRequest } from './workflow.request';
 import { WorkflowService } from './workflow.service';
 import { EnterpriseWorkflowService } from './workflow.service.ee';
 import { CredentialsService } from '../credentials/credentials.service';
-import { getEncodedCredentialIds } from './utils';
 
 @RestController('/workflows')
 export class WorkflowsController {
@@ -117,6 +117,7 @@ export class WorkflowsController {
 		}
 
 		newWorkflow.credentialIds = getEncodedCredentialIds(newWorkflow);
+		newWorkflow.nodeTypes = getEncodedNodeTypes(newWorkflow);
 
 		let project: Project | null;
 		const savedWorkflow = await Db.transaction(async (transactionManager) => {
@@ -202,6 +203,7 @@ export class WorkflowsController {
 				req.listQueryOptions,
 				!!req.query.includeScopes,
 				req.query.credentialIds?.split(','),
+				req.query.nodeTypes?.split(','),
 			);
 
 			res.json({ count, data });

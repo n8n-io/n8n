@@ -21,3 +21,13 @@ export function getEncodedCredentialIds(workflow: WorkflowEntity): string[] {
 
 	return credentialIds;
 }
+
+export function getEncodedNodeTypes(workflow: WorkflowEntity): string[] {
+	const nodeTypes: string[] = [];
+
+	for (const node of workflow.nodes) {
+		nodeTypes.push(toBase64(node.type));
+	}
+
+	return nodeTypes;
+}
