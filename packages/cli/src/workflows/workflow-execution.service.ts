@@ -101,13 +101,14 @@ export class WorkflowExecutionService {
 		partialExecutionVersion?: string,
 	) {
 		const pinData = workflowData.pinData;
+
+		// Webhook is broken with this hacked setup
 		const pinnedTrigger = preferredTrigger
 			? workflowData.nodes.find((n) => n.name === preferredTrigger)
 			: this.selectPinnedActivatorStarter(
 					workflowData,
 					startNodes?.map((nodeData) => nodeData.name),
 					pinData,
-					preferredTrigger,
 				);
 		console.log('pinnedTrigger', pinnedTrigger);
 		// If webhooks nodes exist and are active we have to wait for till we receive a call
@@ -153,8 +154,6 @@ export class WorkflowExecutionService {
 		if (pinnedTrigger && !hasRunData(pinnedTrigger)) {
 			data.startNodes = [{ name: pinnedTrigger.name, sourceData: null }];
 		}
-		// eslint-disable-next-line n8n-local-rules/no-plain-errors
-		// throw new Error(`${pinnedTrigger?.name}`);
 
 		const executionId = await this.workflowRunner.run(data);
 
@@ -314,35 +313,21 @@ export class WorkflowExecutionService {
 	 * prioritizing `n8n-nodes-base.webhook` over other activators. If the executed node
 	 * has no upstream nodes and is itself is a pinned activator, select it.
 	 */
-	selectPinnedActivatorStarter(
-		workflow: IWorkflowDb,
-		startNodes?: string[],
-		pinData?: IPinData,
-		preferredTrigger?: string,
-	) {
+	selectPinnedActivatorStarter(workflow: IWorkflowDb, startNodes?: string[], pinData?: IPinData) {
 		if (!pinData || !startNodes) return null;
 
 		const allPinnedActivators = this.findAllPinnedActivators(workflow, pinData);
-		console.log('A', preferredTrigger);
-		console.log('all', JSON.stringify(allPinnedActivators));
 
 		if (allPinnedActivators.length === 0) return null;
-		if (allPinnedActivators.find((pa) => pa.name === preferredTrigger)) {
-			return allPinnedActivators.find((pa) => pa.name === preferredTrigger);
-		}
-		console.log('B');
 
-		let [firstPinnedActivator] = allPinnedActivators;
+		const [firstPinnedActivator] = allPinnedActivators;
 
 		// full manual execution
 
 		if (startNodes?.length === 0) return firstPinnedActivator ?? null;
 
 		// partial manual execution
-		const dbg = [];
-		const [preferredActivator] = allPinnedActivators.filter((pa) => pa.name === preferredTrigger);
-		firstPinnedActivator = preferredActivator ?? firstPinnedActivator;
-		dbg.push(firstPinnedActivator.name);
+
 		/**
 		 * If the partial manual execution has 2+ start nodes, we search only the zeroth
 		 * start node's parents for a pinned activator. If we had 2+ start nodes without
@@ -359,14 +344,10 @@ export class WorkflowExecutionService {
 		}).getParentNodes(firstStartNodeName);
 
 		if (parentNodeNames.length > 0) {
-			const parentNodeName =
-				parentNodeNames.find((p) => p === preferredTrigger) ??
-				parentNodeNames.find((p) => p === firstPinnedActivator.name);
-			dbg.push('A');
+			const parentNodeName = parentNodeNames.find((p) => p === firstPinnedActivator.name);
 
 			return allPinnedActivators.find((pa) => pa.name === parentNodeName) ?? null;
 		}
-		dbg.push('B');
 
 		return allPinnedActivators.find((pa) => pa.name === firstStartNodeName) ?? null;
 	}
