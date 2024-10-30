@@ -63,7 +63,7 @@ interface Filters {
 	nodeTypes: string[];
 	nodeName: string;
 	webhookUrl: string;
-	httpRequestUrl: string;
+	httpNodeUrl: string;
 }
 
 const StatusFilter = {
@@ -82,7 +82,7 @@ const filters = ref<Filters>({
 	nodeTypes: [],
 	nodeName: '',
 	webhookUrl: '',
-	httpRequestUrl: '',
+	httpNodeUrl: '',
 });
 
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
@@ -191,16 +191,20 @@ const trackCategoryLinkClick = (category: string) => {
 };
 
 const fetchWorkflowsWithFilters = async () => {
-	const { homeProject, status, credentials } = filters.value;
+	const { homeProject, status, credentials, nodeTypes, nodeName, webhookUrl, httpNodeUrl } =
+		filters.value;
 	const options: WorkflowsFetchOptions = {
 		filter: {
 			projectId: homeProject ? homeProject : undefined,
 			active: status === StatusFilter.ACTIVE ? true : undefined,
 		},
 		credentialIds: credentials.length ? credentials : undefined,
+		nodeTypes: nodeTypes.length ? nodeTypes : undefined,
+		nodeName: nodeName.length ? nodeName : undefined,
+		httpNodeURL: httpNodeUrl.length ? httpNodeUrl : undefined,
+		webhookURL: webhookUrl.length ? webhookUrl : undefined,
 	};
 
-	console.log('fetching', options);
 	await workflowsStore.fetchAllWorkflows(options);
 };
 
@@ -254,8 +258,8 @@ const saveFiltersOnQueryString = () => {
 		query.nodeName = filters.value.nodeName;
 	}
 
-	if (filters.value.httpRequestUrl) {
-		query.httpRequestUrl = filters.value.httpRequestUrl;
+	if (filters.value.httpNodeUrl) {
+		query.httpNodeUrl = filters.value.httpNodeUrl;
 	}
 
 	if (filters.value.webhookUrl) {
@@ -280,7 +284,7 @@ const setFiltersFromQueryString = async () => {
 		credentials,
 		nodeTypes,
 		nodeName,
-		httpRequestUrl,
+		httpNodeUrl,
 		webhookUrl,
 	} = route.query ?? {};
 
@@ -306,8 +310,8 @@ const setFiltersFromQueryString = async () => {
 		filters.value.nodeName = nodeName;
 	}
 
-	if (httpRequestUrl && typeof httpRequestUrl === 'string') {
-		filters.value.httpRequestUrl = httpRequestUrl;
+	if (httpNodeUrl && typeof httpNodeUrl === 'string') {
+		filters.value.httpNodeUrl = httpNodeUrl;
 	}
 
 	if (webhookUrl && typeof webhookUrl === 'string') {
@@ -562,6 +566,7 @@ onMounted(async () => {
 						:model-value="filters.nodeTypes"
 						:multiple="true"
 						:placeholder="i18n.baseText('workflows.filters.nodeTypes.placeholder')"
+						:filterable="true"
 						class="tags-container"
 						@update:model-value="setKeyValue('nodeTypes', $event)"
 					>
@@ -618,8 +623,8 @@ onMounted(async () => {
 				>
 					<N8nInput
 						data-test-id="url-webhook-filter"
-						:model-value="filters.httpRequestUrl"
-						@update:model-value="setKeyValue('httpRequestUrl', $event)"
+						:model-value="filters.httpNodeUrl"
+						@update:model-value="setKeyValue('httpNodeUrl', $event)"
 					/>
 				</N8nInputLabel>
 			</div>
