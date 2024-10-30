@@ -100,7 +100,7 @@ import { nodeViewEventBus } from '@/event-bus';
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { useTemplatesStore } from '@/stores/templates.store';
-import { createEventBus } from 'n8n-design-system';
+import { createEventBus, N8nCommandBar } from 'n8n-design-system';
 import type { PinDataSource } from '@/composables/usePinnedData';
 import { useClipboard } from '@/composables/useClipboard';
 import { useBeforeUnload } from '@/composables/useBeforeUnload';
@@ -1802,11 +1802,7 @@ const subworkflowCommands = computed<NinjaKeysCommand[]>(() => {
 			-->
 		</Suspense>
 		<Teleport to="body">
-			<ninja-keys
-				:class="uiStore.appliedTheme"
-				:data="hotkeys"
-				:no-auto-load-md-icons="true"
-			></ninja-keys>
+			<N8nCommandBar :hotkeys="hotkeys" />
 		</Teleport>
 	</WorkflowCanvas>
 </template>
@@ -1836,15 +1832,5 @@ const subworkflowCommands = computed<NinjaKeysCommand[]>(() => {
 			margin: 0;
 		}
 	}
-}
-
-ninja-keys {
-	--ninja-z-index: 1000;
-	--ninja-accent-color: var(--color-primary);
-	--ninja-actions-height: 400px;
-}
-
-ninja-keys::part(ninja-action) {
-	line-height: var(--font-line-height-loose);
 }
 </style>
