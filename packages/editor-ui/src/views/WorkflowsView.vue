@@ -4,7 +4,7 @@ import ResourcesListLayout, { type IResource } from '@/components/layouts/Resour
 import WorkflowCard from '@/components/WorkflowCard.vue';
 import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
 import { EnterpriseEditionFeature, MORE_ONBOARDING_OPTIONS_EXPERIMENT, VIEWS } from '@/constants';
-import type { ITag, IUser, IWorkflowDb, WorkflowsFetchOptions } from '@/Interface';
+import type { IUser, WorkflowsFetchOptions } from '@/Interface';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';

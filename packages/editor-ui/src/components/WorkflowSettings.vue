@@ -407,9 +407,11 @@ export default defineComponent({
 			}
 		},
 		async loadWorkflows() {
-			const workflows = (await this.workflowsStore.fetchAllWorkflows(
-				this.workflow.homeProject?.id,
-			)) as IWorkflowShortResponse[];
+			const workflows = (await this.workflowsStore.fetchAllWorkflows({
+				filter: {
+					projectId: this.workflow.homeProject?.id,
+				},
+			})) as IWorkflowShortResponse[];
 			workflows.sort((a, b) => {
 				if (a.name.toLowerCase() < b.name.toLowerCase()) {
 					return -1;

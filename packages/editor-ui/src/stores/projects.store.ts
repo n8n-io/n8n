@@ -165,7 +165,7 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 	) => {
 		if (resourceType === 'workflow') {
 			await workflowsEEApi.moveWorkflowToProject(rootStore.restApiContext, resourceId, projectId);
-			await workflowsStore.fetchAllWorkflows(currentProjectId.value);
+			await workflowsStore.fetchAllWorkflows({ filter: { projectId: currentProjectId.value } });
 		} else {
 			await credentialsEEApi.moveCredentialToProject(
 				rootStore.restApiContext,

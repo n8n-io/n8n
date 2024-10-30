@@ -34,12 +34,12 @@ export async function getWorkflow(context: IRestApiContext, id: string, filter?:
 	return await makeRestApiRequest<IWorkflowDb>(context, 'GET', `/workflows/${id}`, sendData);
 }
 
-export async function getWorkflows(context: IRestApiContext, options: WorkflowsFetchOptions) {
+export async function getWorkflows(context: IRestApiContext, options?: WorkflowsFetchOptions) {
 	return await makeRestApiRequest<IWorkflowDb[]>(context, 'GET', '/workflows', {
 		includeScopes: true,
-		...options,
-		credentialIds: options.credentialIds?.length ? options.credentialIds.join(',') : undefined,
-		nodeTypes: options.nodeTypes?.length ? options.nodeTypes.join(',') : undefined,
+		...(options ?? {}),
+		credentialIds: options?.credentialIds?.length ? options.credentialIds.join(',') : undefined,
+		nodeTypes: options?.nodeTypes?.length ? options.nodeTypes.join(',') : undefined,
 	});
 }
 
