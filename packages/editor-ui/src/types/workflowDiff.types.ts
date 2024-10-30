@@ -1,8 +1,8 @@
 export const enum NodeDiffStatus {
-	EQ,
-	MODIFIED,
-	ADDED,
-	DELETED,
+	Eq = 'equal',
+	Modified = 'modified',
+	Added = 'added',
+	Deleted = 'deleted',
 }
 
 export type WorkflowDiff = Record<string, NodeDiffStatus>;

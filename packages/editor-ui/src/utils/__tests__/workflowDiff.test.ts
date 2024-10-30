@@ -201,12 +201,12 @@ describe('workflowDiff', () => {
 		const diff = compareWorkflows(baseWf, targetWf);
 
 		expect(diff).toEqual({
-			'180ad8e0-c891-4b37-bab3-0a5b306ca48d': NodeDiffStatus.EQ,
-			'1cd4ee3f-5692-469c-a658-82483f1ef921': NodeDiffStatus.MODIFIED,
-			'9eedaa9f-7735-4fef-af11-deba888005ac': NodeDiffStatus.MODIFIED,
-			'22593885-07ce-49ea-8a6c-ad17d983cada': NodeDiffStatus.ADDED,
-			'bcf43c50-007f-4d04-a236-a3a1ef628fe2': NodeDiffStatus.ADDED,
-			'f8279104-a3e6-4663-b9bc-77fdbc615742': NodeDiffStatus.DELETED,
+			'180ad8e0-c891-4b37-bab3-0a5b306ca48d': NodeDiffStatus.Eq,
+			'1cd4ee3f-5692-469c-a658-82483f1ef921': NodeDiffStatus.Modified,
+			'9eedaa9f-7735-4fef-af11-deba888005ac': NodeDiffStatus.Modified,
+			'22593885-07ce-49ea-8a6c-ad17d983cada': NodeDiffStatus.Added,
+			'bcf43c50-007f-4d04-a236-a3a1ef628fe2': NodeDiffStatus.Added,
+			'f8279104-a3e6-4663-b9bc-77fdbc615742': NodeDiffStatus.Deleted,
 		});
 	});
 
@@ -214,12 +214,12 @@ describe('workflowDiff', () => {
 		const diff = compareWorkflows(targetWf, baseWf);
 
 		expect(diff).toEqual({
-			'180ad8e0-c891-4b37-bab3-0a5b306ca48d': NodeDiffStatus.EQ,
-			'1cd4ee3f-5692-469c-a658-82483f1ef921': NodeDiffStatus.MODIFIED,
-			'9eedaa9f-7735-4fef-af11-deba888005ac': NodeDiffStatus.MODIFIED,
-			'22593885-07ce-49ea-8a6c-ad17d983cada': NodeDiffStatus.DELETED,
-			'bcf43c50-007f-4d04-a236-a3a1ef628fe2': NodeDiffStatus.DELETED,
-			'f8279104-a3e6-4663-b9bc-77fdbc615742': NodeDiffStatus.ADDED,
+			'180ad8e0-c891-4b37-bab3-0a5b306ca48d': NodeDiffStatus.Eq,
+			'1cd4ee3f-5692-469c-a658-82483f1ef921': NodeDiffStatus.Modified,
+			'9eedaa9f-7735-4fef-af11-deba888005ac': NodeDiffStatus.Modified,
+			'22593885-07ce-49ea-8a6c-ad17d983cada': NodeDiffStatus.Deleted,
+			'bcf43c50-007f-4d04-a236-a3a1ef628fe2': NodeDiffStatus.Deleted,
+			'f8279104-a3e6-4663-b9bc-77fdbc615742': NodeDiffStatus.Added,
 		});
 	});
 });

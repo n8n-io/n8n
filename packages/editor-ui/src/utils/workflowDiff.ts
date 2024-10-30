@@ -38,17 +38,17 @@ export function compareWorkflows(
 
 	Object.keys(baseNodes).forEach((id) => {
 		if (!targetNodes[id]) {
-			diff[id] = NodeDiffStatus.DELETED;
+			diff[id] = NodeDiffStatus.Deleted;
 		} else if (!nodesEqual(baseNodes[id], targetNodes[id])) {
-			diff[id] = NodeDiffStatus.MODIFIED;
+			diff[id] = NodeDiffStatus.Modified;
 		} else {
-			diff[id] = NodeDiffStatus.EQ;
+			diff[id] = NodeDiffStatus.Eq;
 		}
 	});
 
 	Object.keys(targetNodes).forEach((id) => {
 		if (!baseNodes[id]) {
-			diff[id] = NodeDiffStatus.ADDED;
+			diff[id] = NodeDiffStatus.Added;
 		}
 	});
 

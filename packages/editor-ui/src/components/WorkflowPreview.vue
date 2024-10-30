@@ -4,13 +4,14 @@ import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
 import type { IWorkflowDb, IWorkflowTemplate } from '@/Interface';
 import { useExecutionsStore } from '@/stores/executions.store';
+import type { WorkflowDiff } from '@/types/workflowDiff.types';
 
 const props = withDefaults(
 	defineProps<{
-		id?: string;
 		loading?: boolean;
 		mode?: 'workflow' | 'execution';
 		workflow?: IWorkflowDb | IWorkflowTemplate['workflow'];
+		diff?: WorkflowDiff;
 		executionId?: string;
 		executionMode?: string;
 		loaderType?: 'image' | 'spinner';
@@ -21,6 +22,7 @@ const props = withDefaults(
 		loading: false,
 		mode: 'workflow',
 		workflow: undefined,
+		diff: undefined,
 		executionId: undefined,
 		executionMode: undefined,
 		loaderType: 'image',
@@ -75,6 +77,16 @@ const loadWorkflow = () => {
 			}),
 			'*',
 		);
+
+		if (props.diff) {
+			iframeRef.value?.contentWindow?.postMessage?.(
+				JSON.stringify({
+					command: 'setDiff',
+					diff: props.diff,
+				}),
+				'*',
+			);
+		}
 	} catch (error) {
 		toast.showError(
 			error,

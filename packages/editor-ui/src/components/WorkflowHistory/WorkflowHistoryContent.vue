@@ -9,6 +9,7 @@ import type {
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
 import WorkflowHistoryListItem from '@/components/WorkflowHistory/WorkflowHistoryListItem.vue';
 import { useI18n } from '@/composables/useI18n';
+import { compareWorkflows } from '@/utils/workflowDiff';
 
 const i18n = useI18n();
 
@@ -57,6 +58,14 @@ const workflowDiffPreview = computed<IWorkflowDb | undefined>(() => {
 	};
 });
 
+const workflowComparison = computed(() => {
+	if (!workflowVersionPreview.value || !workflowDiffPreview.value) {
+		return;
+	}
+
+	return compareWorkflows(workflowVersionPreview.value, workflowDiffPreview.value);
+});
+
 const actions = computed(() =>
 	props.isFirstItemShown
 		? props.actions.filter((action) => action.value !== 'restore')
@@ -82,6 +91,7 @@ const onAction = ({
 			<WorkflowPreview
 				v-if="props.workflowVersion"
 				:workflow="workflowVersionPreview"
+				:diff="workflowComparison"
 				:loading="props.isListLoading"
 				loader-type="spinner"
 			/>

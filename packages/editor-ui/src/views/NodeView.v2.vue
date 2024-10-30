@@ -1349,6 +1349,8 @@ async function onPostMessageReceived(messageEvent: MessageEvent) {
 			executionsStore.activeExecution = (await executionsStore.fetchExecution(
 				json.executionId,
 			)) as ExecutionSummary;
+		} else if (json?.command === 'setDiff') {
+			workflowsStore.workflowDiff = json.diff;
 		}
 	} catch (e) {}
 }
