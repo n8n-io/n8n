@@ -13,7 +13,7 @@ import {
 	h,
 	onBeforeUnmount,
 } from 'vue';
-import { RouteLocationRaw, useRoute, useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import WorkflowCanvas from '@/components/canvas/WorkflowCanvas.vue';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -67,14 +67,7 @@ import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { TelemetryHelpers, NodeConnectionType, jsonParse } from 'n8n-workflow';
-import type {
-	IDataObject,
-	ExecutionSummary,
-	IConnection,
-	IWorkflowBase,
-	IResourceLocatorResult,
-	INodeParameterResourceLocator,
-} from 'n8n-workflow';
+import type { IDataObject, ExecutionSummary, IConnection, IWorkflowBase } from 'n8n-workflow';
 import { useToast } from '@/composables/useToast';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
@@ -114,7 +107,7 @@ import { useBeforeUnload } from '@/composables/useBeforeUnload';
 import { getResourcePermissions } from '@/permissions';
 import NodeViewUnfinishedWorkflowMessage from '@/components/NodeViewUnfinishedWorkflowMessage.vue';
 import { createCanvasConnectionHandleString } from '@/utils/canvasUtilsV2';
-import { isValidNodeConnectionType } from '@/utils/typeGuards';
+import { isResourceLocatorValue, isValidNodeConnectionType } from '@/utils/typeGuards';
 import 'ninja-keys';
 import { useActionsGenerator } from '@/components/Node/NodeCreator/composables/useActionsGeneration';
 import { get } from 'lodash-es';
@@ -1682,7 +1675,14 @@ const allTemplateCommand = computed<NinjaKeysCommand[]>(() => {
 const subworkflowCommands = computed<NinjaKeysCommand[]>(() => {
 	const subworkflows = editableWorkflow.value.nodes
 		.filter((node) => node.type === EXECUTE_WORKFLOW_NODE_TYPE)
-		.map((node) => get(node, 'parameters.workflowId') as INodeParameterResourceLocator);
+		.map((node) => get(node, 'parameters.workflowId'))
+		.filter(
+			(rlValue): rlValue is { value: string; cachedResultName: string } =>
+				isResourceLocatorValue(rlValue) &&
+				typeof rlValue.value === 'string' &&
+				typeof rlValue.cachedResultName === 'string',
+		)
+		.map(({ value, cachedResultName }) => ({ id: value, name: cachedResultName }));
 
 	if (subworkflows.length === 0) {
 		return [];
@@ -1692,16 +1692,16 @@ const subworkflowCommands = computed<NinjaKeysCommand[]>(() => {
 		{
 			id: 'Open subworkflow',
 			title: 'Open subworkflow',
-			children: subworkflows.map((workflow) => workflow.value as string),
+			children: subworkflows.map((workflow) => workflow.id),
 		},
 		...subworkflows.map((workflow) => ({
-			id: workflow.value as string,
-			title: workflow.cachedResultName as string,
+			id: workflow.id,
+			title: workflow.name,
 			parent: 'Open subworkflow',
 			handler: () => {
 				const { href } = router.resolve({
 					name: VIEWS.WORKFLOW,
-					params: { name: workflow.value as string },
+					params: { name: workflow.id },
 				});
 				window.open(href, '_blank', 'noreferrer');
 			},
