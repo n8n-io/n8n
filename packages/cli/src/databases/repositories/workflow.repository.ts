@@ -4,6 +4,7 @@ import {
 	Repository,
 	In,
 	Like,
+	Or,
 	type UpdateResult,
 	type FindOptionsWhere,
 	type FindOptionsSelect,
@@ -11,6 +12,8 @@ import {
 	type FindOptionsRelations,
 } from '@n8n/typeorm';
 import { Service } from 'typedi';
+
+import * as a from 'assert/strict';
 
 import config from '@/config';
 import type { ListQuery } from '@/requests';
@@ -95,7 +98,11 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			.execute();
 	}
 
-	async getMany(sharedWorkflowIds: string[], options?: ListQuery.Options) {
+	async getMany(
+		sharedWorkflowIds: string[],
+		options: ListQuery.Options = {},
+		credentialIds: string[] = [],
+	) {
 		if (sharedWorkflowIds.length === 0) return { workflows: [], count: 0 };
 
 		if (typeof options?.filter?.projectId === 'string' && options.filter.projectId !== '') {
@@ -147,8 +154,12 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			where.name = Like(`%${where.name}%`);
 		}
 
+		if (credentialIds.length) {
+			where.nodes = Or(...credentialIds.map((id) => Like(`%{"id":"${id}"%`)));
+		}
+
 		const findManyOptions: FindManyOptions<WorkflowEntity> = {
-			select: { ...select, id: true },
+			select: { ...select, id: true, nodes: true },
 			where,
 		};
 
@@ -165,10 +176,42 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			findManyOptions.take = options.take;
 		}
 
-		const [workflows, count] = (await this.findAndCount(findManyOptions)) as [
+		let [workflows, count] = (await this.findAndCount(findManyOptions)) as [
 			ListQuery.Workflow.Plain[] | ListQuery.Workflow.WithSharing[],
 			number,
 		];
+
+		function workflowUsesCredential(
+			workflow: ListQuery.Workflow.Plain,
+			credentialIds: string[],
+		): boolean {
+			a.ok(workflow.nodes);
+
+			return (
+				workflow.nodes.findIndex((node) => {
+					if (node.credentials) {
+						return (
+							Object.values(node.credentials).findIndex((credential) => {
+								a.ok(credential.id);
+								return credentialIds.includes(credential.id);
+							}) !== -1
+						);
+					} else {
+						return false;
+					}
+				}) !== -1
+			);
+		}
+
+		if (credentialIds.length) {
+			workflows = workflows.filter((wf) => workflowUsesCredential(wf, credentialIds));
+
+			count = workflows.length;
+		}
+
+		for (const wf of workflows) {
+			delete wf.nodes;
+		}
 
 		return { workflows, count };
 	}

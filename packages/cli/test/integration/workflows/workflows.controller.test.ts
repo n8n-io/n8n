@@ -468,6 +468,87 @@ describe('GET /workflows', () => {
 		expect(found.usedCredentials).toBeUndefined();
 	});
 
+	test('should return workflows filtered by used credentials', async () => {
+		// ARRANGE
+		const credential1 = await saveCredential(randomCredentialPayload(), {
+			user: owner,
+			role: 'credential:owner',
+		});
+		const node1: INode = {
+			id: uuid(),
+			name: 'Action Network',
+			type: 'n8n-nodes-base.actionNetwork',
+			parameters: {},
+			typeVersion: 1,
+			position: [0, 0],
+			credentials: {
+				actionNetworkApi: {
+					id: credential1.id,
+					name: credential1.name,
+				},
+			},
+		};
+		const workflow1 = await createWorkflow({ name: 'First', nodes: [node1] }, owner);
+
+		const credential2 = await saveCredential(randomCredentialPayload(), {
+			user: owner,
+			role: 'credential:owner',
+		});
+		const node2: INode = {
+			id: uuid(),
+			name: 'Action Network',
+			type: 'n8n-nodes-base.actionNetwork',
+			parameters: {},
+			typeVersion: 1,
+			position: [0, 0],
+			credentials: {
+				actionNetworkApi: {
+					id: credential2.id,
+					name: credential2.name,
+				},
+			},
+		};
+		await createWorkflow({ name: 'Second', nodes: [node2] }, owner);
+
+		await createWorkflow({ name: 'Third' }, owner);
+
+		// ACT
+		const response = await authOwnerAgent
+			.get('/workflows')
+			.query(`credentialIds=${credential1.id}`)
+			.expect(200);
+
+		// ASSERT
+		const ownerPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
+		expect(response.body.count).toBe(1);
+		expect(response.body.data).toHaveLength(1);
+		expect(response.body.data[0]).toEqual(
+			objectContaining({
+				id: workflow1.id,
+				name: 'First',
+				active: workflow1.active,
+				tags: [],
+				createdAt: workflow1.createdAt.toISOString(),
+				updatedAt: workflow1.updatedAt.toISOString(),
+				versionId: workflow1.versionId,
+				homeProject: {
+					id: ownerPersonalProject.id,
+					name: owner.createPersonalProjectName(),
+					type: ownerPersonalProject.type,
+				},
+				sharedWithProjects: [],
+			}),
+		);
+
+		const found = response.body.data.find(
+			(w: ListQuery.Workflow.WithOwnership) => w.name === 'First',
+		);
+
+		expect(found.nodes).toBeUndefined();
+		expect(found.sharedWithProjects).toHaveLength(0);
+		expect(found.usedCredentials).toBeUndefined();
+	});
+
 	test('should return workflows with scopes when ?includeScopes=true', async () => {
 		const [member1, member2] = await createManyUsers(2, {
 			role: 'global:member',
