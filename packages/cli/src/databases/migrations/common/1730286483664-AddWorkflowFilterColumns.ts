@@ -6,10 +6,16 @@ export class AddWorkflowFilterColumns1730286483664 implements ReversibleMigratio
 			column('credentialIds').text,
 			column('nodeTypes').text,
 			column('nodeNames').text,
+			column('webhookURLs').text,
 		]);
 	}
 
 	async down({ schemaBuilder: { dropColumns } }: MigrationContext) {
-		await dropColumns('workflow_entity', ['credentialIds', 'nodeTypes', 'nodeNames']);
+		await dropColumns('workflow_entity', [
+			'credentialIds',
+			'nodeTypes',
+			'nodeNames',
+			'webhookURLs',
+		]);
 	}
 }

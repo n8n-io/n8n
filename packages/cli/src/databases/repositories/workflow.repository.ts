@@ -97,12 +97,14 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			.execute();
 	}
 
+	// eslint-disable-next-line complexity
 	async getMany(
 		sharedWorkflowIds: string[],
 		options: ListQuery.Options = {},
 		credentialIds: string[] = [],
 		nodeTypes: string[] = [],
 		nodeName = '',
+		webhookURL = '',
 	) {
 		if (sharedWorkflowIds.length === 0) return { workflows: [], count: 0 };
 
@@ -165,6 +167,10 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 
 		if (nodeName) {
 			where.nodeNames = Like(`%${escapeCommas(nodeName)}%`);
+		}
+
+		if (webhookURL) {
+			where.webhookURLs = Like(`%${escapeCommas(webhookURL)}%`);
 		}
 
 		const findManyOptions: FindManyOptions<WorkflowEntity> = {
