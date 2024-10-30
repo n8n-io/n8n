@@ -100,6 +100,7 @@ export class FrontendService {
 			workflowCallerPolicyDefaultOption: this.globalConfig.workflows.callerPolicyDefaultOption,
 			timezone: this.globalConfig.generic.timezone,
 			urlBaseWebhook: this.urlService.getWebhookBaseUrl(),
+			domain: this.urlService.getDomain(),
 			urlBaseEditor: instanceBaseUrl,
 			binaryDataMode: config.getEnv('binaryDataManager.mode'),
 			nodeJsVersion: process.version.replace(/^v/, ''),
@@ -250,6 +251,7 @@ export class FrontendService {
 		// Update all urls, in case `WEBHOOK_URL` was updated by `--tunnel`
 		const instanceBaseUrl = this.urlService.getInstanceBaseUrl();
 		this.settings.urlBaseWebhook = this.urlService.getWebhookBaseUrl();
+		this.settings.domain = this.urlService.getDomain();
 		this.settings.urlBaseEditor = instanceBaseUrl;
 		this.settings.oauthCallbackUrls = {
 			oauth1: `${instanceBaseUrl}/${restEndpoint}/oauth1-credential/callback`,

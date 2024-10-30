@@ -196,6 +196,7 @@ export const SIMULATE_NODE_TYPE = 'n8n-nodes-base.simulate';
 export const SIMULATE_TRIGGER_NODE_TYPE = 'n8n-nodes-base.simulateTrigger';
 export const AI_TRANSFORM_NODE_TYPE = 'n8n-nodes-base.aiTransform';
 export const FORM_NODE_TYPE = 'n8n-nodes-base.form';
+export const MAILHOOK_TRIGGER_NODE_TYPE = 'n8n-nodes-base.mailhook';
 
 export const CREDENTIAL_ONLY_NODE_PREFIX = 'n8n-creds-base';
 export const CREDENTIAL_ONLY_HTTP_NODE_VERSION = 4.1;
@@ -227,11 +228,15 @@ export const OPEN_URL_PANEL_TRIGGER_NODE_TYPES = [
 	WEBHOOK_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
+	MAILHOOK_TRIGGER_NODE_TYPE,
 ];
 
 export const LIST_LIKE_NODE_OPERATIONS = ['getAll', 'getMany', 'read', 'search'];
 
-export const PRODUCTION_ONLY_TRIGGER_NODE_TYPES = [CHAT_TRIGGER_NODE_TYPE];
+export const PRODUCTION_ONLY_TRIGGER_NODE_TYPES = [
+	CHAT_TRIGGER_NODE_TYPE,
+	MAILHOOK_TRIGGER_NODE_TYPE,
+];
 
 // Node creator
 export const NODE_CREATOR_OPEN_SOURCES: Record<

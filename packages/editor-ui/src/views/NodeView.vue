@@ -1923,7 +1923,7 @@ export default defineComponent({
 								this.workflowHelpers.getCurrentWorkflow().nodes,
 							).some((n) => n.webhookId === node.webhookId);
 							if (isDuplicate) {
-								node.webhookId = uuid();
+								this.nodeHelpers.assignWebhookId(node);
 
 								if (node.parameters.path) {
 									node.parameters.path = node.webhookId as string;
@@ -2389,7 +2389,7 @@ export default defineComponent({
 			newNodeData.name = this.uniqueNodeName(localizedName);
 
 			if (nodeTypeData.webhooks?.length) {
-				newNodeData.webhookId = uuid();
+				this.nodeHelpers.assignWebhookId(newNodeData);
 			}
 
 			await this.nodeHelpers.addNodes([newNodeData], undefined, trackHistory);

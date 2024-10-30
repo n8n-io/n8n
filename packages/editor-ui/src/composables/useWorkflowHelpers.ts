@@ -706,6 +706,10 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		return NodeHelpers.getNodeWebhookUrl(baseUrl, workflowId, node, path, isFullPath);
 	}
 
+	function getMailhookEmailId(node: INodeUi) {
+		return `${node.webhookId}@${rootStore.domain}`;
+	}
+
 	/**
 	 * Returns a copy of provided node parameters with added resolvedExpressionValue
 	 * @param nodeParameters
@@ -1200,6 +1204,7 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		getNodeDataToSave,
 		getWebhookExpressionValue,
 		getWebhookUrl,
+		getMailhookEmailId,
 		resolveExpression,
 		updateWorkflow,
 		saveCurrentWorkflow,

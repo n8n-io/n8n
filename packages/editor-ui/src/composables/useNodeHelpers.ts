@@ -1,11 +1,13 @@
 import { ref, nextTick } from 'vue';
 import { useRoute } from 'vue-router';
+import { nanoid } from 'nanoid';
 import { v4 as uuid } from 'uuid';
 import type { Connection, ConnectionDetachedParams } from '@jsplumb/core';
 import { useHistoryStore } from '@/stores/history.store';
 import {
 	CUSTOM_API_CALL_KEY,
 	FORM_TRIGGER_NODE_TYPE,
+	MAILHOOK_TRIGGER_NODE_TYPE,
 	NODE_OUTPUT_DEFAULT_KEY,
 	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 	SPLIT_IN_BATCHES_NODE_TYPE,
@@ -1247,6 +1249,10 @@ export function useNodeHelpers() {
 		canvasStore.jsPlumbInstance?.setSuspendDrawing(false, true);
 	}
 
+	function assignWebhookId(node: INodeUi) {
+		node.webhookId = node.type === MAILHOOK_TRIGGER_NODE_TYPE ? nanoid(16).toLowerCase() : uuid();
+	}
+
 	return {
 		hasProxyAuth,
 		isCustomApiCallSelected,
@@ -1281,5 +1287,6 @@ export function useNodeHelpers() {
 		removeConnectionByConnectionInfo,
 		addPinDataConnections,
 		removePinDataConnections,
+		assignWebhookId,
 	};
 }

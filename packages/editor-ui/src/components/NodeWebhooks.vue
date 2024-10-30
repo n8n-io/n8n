@@ -4,6 +4,7 @@ import { useToast } from '@/composables/useToast';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
+	MAILHOOK_TRIGGER_NODE_TYPE,
 	OPEN_URL_PANEL_TRIGGER_NODE_TYPES,
 	PRODUCTION_ONLY_TRIGGER_NODE_TYPES,
 } from '@/constants';
@@ -95,6 +96,18 @@ const baseText = computed(() => {
 				copyMessage: i18n.baseText('nodeWebhooks.showMessage.message.formTrigger'),
 			};
 
+		case MAILHOOK_TRIGGER_NODE_TYPE:
+			return {
+				toggleTitle: i18n.baseText('nodeWebhooks.webhookUrls.mailhookTrigger'),
+				clickToDisplay: i18n.baseText('nodeWebhooks.clickToDisplayWebhookUrls.mailhookTrigger'),
+				clickToHide: i18n.baseText('nodeWebhooks.clickToHideWebhookUrls.mailhookTrigger'),
+				clickToCopy: i18n.baseText('nodeWebhooks.clickToCopyWebhookUrls.mailhookTrigger'),
+				testUrl: i18n.baseText('nodeWebhooks.mailhook.testEmailId'),
+				productionUrl: i18n.baseText('nodeWebhooks.mailhook.productionEmailId'),
+				copyTitle: i18n.baseText('nodeWebhooks.showMessage.title.mailhookTrigger'),
+				copyMessage: i18n.baseText('nodeWebhooks.showMessage.message.mailhookTrigger'),
+			};
+
 		default:
 			return {
 				toggleTitle: i18n.baseText('nodeWebhooks.webhookUrls'),
@@ -127,6 +140,9 @@ function copyWebhookUrl(webhookData: IWebhookDescription): void {
 
 function getWebhookUrlDisplay(webhookData: IWebhookDescription): string {
 	if (props.node) {
+		if (props.node.type === MAILHOOK_TRIGGER_NODE_TYPE) {
+			return workflowHelpers.getMailhookEmailId(props.node);
+		}
 		return workflowHelpers.getWebhookUrl(
 			webhookData,
 			props.node,

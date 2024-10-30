@@ -202,7 +202,7 @@ export class UserManagementMailer {
 
 	private get basePayload() {
 		const baseUrl = this.urlService.getInstanceBaseUrl();
-		const domain = new URL(baseUrl).hostname;
+		const domain = this.urlService.getDomain();
 		return { baseUrl, domain };
 	}
 }

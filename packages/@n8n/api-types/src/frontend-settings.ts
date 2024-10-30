@@ -48,6 +48,7 @@ export interface FrontendSettings {
 	};
 	timezone: string;
 	urlBaseWebhook: string;
+	domain: string;
 	urlBaseEditor: string;
 	versionCli: string;
 	nodeJsVersion: string;

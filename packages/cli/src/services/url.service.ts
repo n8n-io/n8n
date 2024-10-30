@@ -21,6 +21,10 @@ export class UrlService {
 		return urlBaseWebhook;
 	}
 
+	getDomain() {
+		return process.env.DOMAIN ?? new URL(this.getInstanceBaseUrl()).hostname;
+	}
+
 	/** Return the n8n instance base URL without trailing slash */
 	getInstanceBaseUrl(): string {
 		const n8nBaseUrl = config.getEnv('editorBaseUrl') || this.getWebhookBaseUrl();

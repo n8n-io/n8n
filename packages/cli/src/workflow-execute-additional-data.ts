@@ -971,7 +971,8 @@ export async function getBase(
 	currentNodeParameters?: INodeParameters,
 	executionTimeoutTimestamp?: number,
 ): Promise<IWorkflowExecuteAdditionalData> {
-	const urlBaseWebhook = Container.get(UrlService).getWebhookBaseUrl();
+	const urlService = Container.get(UrlService);
+	const urlBaseWebhook = urlService.getWebhookBaseUrl();
 
 	const globalConfig = Container.get(GlobalConfig);
 
@@ -988,6 +989,7 @@ export async function getBase(
 		webhookBaseUrl: urlBaseWebhook + globalConfig.endpoints.webhook,
 		webhookWaitingBaseUrl: urlBaseWebhook + globalConfig.endpoints.webhookWaiting,
 		webhookTestBaseUrl: urlBaseWebhook + globalConfig.endpoints.webhookTest,
+		domain: urlService.getDomain(),
 		currentNodeParameters,
 		executionTimeoutTimestamp,
 		userId,

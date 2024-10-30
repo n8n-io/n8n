@@ -604,6 +604,7 @@
       "dist/nodes/Mailcheck/Mailcheck.node.js",
       "dist/nodes/Mailchimp/Mailchimp.node.js",
       "dist/nodes/Mailchimp/MailchimpTrigger.node.js",
+      "dist/nodes/Mailhook/Mailhook.node.js",
       "dist/nodes/MailerLite/MailerLite.node.js",
       "dist/nodes/MailerLite/MailerLiteTrigger.node.js",
       "dist/nodes/Mailgun/Mailgun.node.js",

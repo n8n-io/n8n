@@ -30,6 +30,7 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		pushRef: randomString(10).toLowerCase(),
 		urlBaseWebhook: 'http://localhost:5678/',
 		urlBaseEditor: 'http://localhost:5678',
+		domain: 'localhost',
 		instanceId: '',
 		binaryDataMode: 'default',
 	});
@@ -53,6 +54,8 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 	const webhookWaitingUrl = computed(
 		() => `${state.value.urlBaseEditor}${state.value.endpointWebhookWaiting}`,
 	);
+
+	const domain = computed(() => state.value.domain);
 
 	const pushRef = computed(() => state.value.pushRef);
 
@@ -142,6 +145,10 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		state.value.endpointWebhookWaiting = endpointWebhookWaiting;
 	};
 
+	const setDomain = (domain: string) => {
+		state.value.domain = domain;
+	};
+
 	const setTimezone = (timezone: string) => {
 		state.value.timezone = timezone;
 		setGlobalState({ defaultTimezone: timezone });
@@ -189,6 +196,7 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		webhookUrl,
 		webhookTestUrl,
 		webhookWaitingUrl,
+		domain,
 		restUrl,
 		restCloudApiContext,
 		restApiContext,
@@ -213,6 +221,7 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		setEndpointWebhook,
 		setEndpointWebhookTest,
 		setEndpointWebhookWaiting,
+		setDomain,
 		setTimezone,
 		setExecutionTimeout,
 		setMaxExecutionTimeout,

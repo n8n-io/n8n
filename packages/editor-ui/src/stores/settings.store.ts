@@ -243,6 +243,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		rootStore.setEndpointWebhook(fetchedSettings.endpointWebhook);
 		rootStore.setEndpointWebhookTest(fetchedSettings.endpointWebhookTest);
 		rootStore.setEndpointWebhookWaiting(fetchedSettings.endpointWebhookWaiting);
+		rootStore.setDomain(fetchedSettings.domain);
 		rootStore.setTimezone(fetchedSettings.timezone);
 		rootStore.setExecutionTimeout(fetchedSettings.executionTimeout);
 		rootStore.setMaxExecutionTimeout(fetchedSettings.maxExecutionTimeout);
