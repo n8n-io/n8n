@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
-import { computed, ref } from 'vue';
+import { computed, ref, unref } from 'vue';
 import { useI18n } from '@/composables/useI18n';
 import type { INodeUi } from '@/Interface';
 import { N8nActionDropdown } from 'n8n-design-system';
@@ -36,7 +36,7 @@ const label = computed(() => {
 const actions = computed(() => {
 	return props.triggerNodes.map((triggerNode) => {
 		return {
-			id: triggerNode.name,
+			id: triggerNode.id,
 			label: triggerNode.name,
 			disabled: triggerNode.disabled,
 		};
@@ -44,7 +44,7 @@ const actions = computed(() => {
 });
 
 const onActionSelect = (item: string) => {
-	selectedTrigger.value = item;
+	selectedTrigger.value = actions.value.find((x) => x.id === item)?.label;
 };
 </script>
 
@@ -53,9 +53,10 @@ const onActionSelect = (item: string) => {
 		<div :class="$style.actionWrapper">
 			<KeyboardShortcutTooltip :label="label" :shortcut="{ metaKey: true, keys: ['↵'] }">
 				<N8nButton
-					:class="$style.firstButton"
+					:class="{
+						[$style.firstButton]: triggerNodes.length > 1,
+					}"
 					:loading="executing"
-					:label="label"
 					:disabled="disabled"
 					size="large"
 					icon="flask"
@@ -64,7 +65,10 @@ const onActionSelect = (item: string) => {
 					@mouseenter="$emit('mouseenter', $event)"
 					@mouseleave="$emit('mouseleave', $event)"
 					@click.stop="$emit('click', $event, selectedTrigger)"
-				/>
+					>{{
+						label + (selectedTrigger && triggerNodes.length > 1 ? ` from "${selectedTrigger}"` : '')
+					}}</N8nButton
+				>
 			</KeyboardShortcutTooltip>
 			<div :class="$style.line"></div>
 			<N8nActionDropdown v-if="triggerNodes.length > 1" :items="actions" @select="onActionSelect">
@@ -85,12 +89,12 @@ const onActionSelect = (item: string) => {
 
 .firstButton {
 	border-right: none;
-	border-radius: 8px 0 0 8px;
+	border-radius: 4px 0 0 4px; // hardcoded
 }
 
 .lastButton {
 	border-left: none;
-	border-radius: 0 8px 8px 0;
+	border-radius: 0 4px 4px 0; // hardcoded
 }
 
 .line {

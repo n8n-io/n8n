@@ -69,7 +69,6 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 		uiStore.addActiveAction('workflowRunning');
 
 		let response: IExecutionPushResponse;
-
 		try {
 			response = await workflowsStore.runWorkflow(runData);
 		} catch (error) {
@@ -149,16 +148,15 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			) {
 				executedNode = options.destinationNode;
 				startNodeNames.push(options.destinationNode);
-			} else if ('triggerNode' in options && 'nodeData' in options) {
+			} else if ('triggerNode' in options) {
 				startNodeNames.push(
 					...workflow.getChildNodes(options.triggerNode as string, NodeConnectionType.Main, 1),
 				);
 				newRunData = {
-					[options.triggerNode as string]: [options.nodeData],
+					[options.triggerNode as string]: options.nodeData ? [options.nodeData] : [],
 				} as IRunData;
 				executedNode = options.triggerNode;
 			}
-
 			// If the destination node is specified, check if it is a chat node or has a chat parent
 			if (
 				options.destinationNode &&
@@ -301,7 +299,6 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				nodeName: options.destinationNode,
 				source: options.source,
 			});
-
 			return runWorkflowApiResponse;
 		} catch (error) {
 			workflowHelpers.setDocumentTitle(workflow.name as string, 'ERROR');

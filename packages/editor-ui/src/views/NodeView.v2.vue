@@ -1008,7 +1008,7 @@ const workflowExecutionData = computed(() => workflowsStore.workflowExecutionDat
 
 async function onRunWorkflow(triggerNode?: string) {
 	trackRunWorkflow();
-
+	console.log('triggerNode 1', triggerNode);
 	if (!isExecutionPreview.value && workflowsStore.isWaitingExecution) {
 		void runWorkflowResolvePending({ triggerNode });
 	} else {
@@ -1624,7 +1624,7 @@ onBeforeUnmount(() => {
 				:trigger-nodes="triggerNodes"
 				@mouseenter="onRunWorkflowButtonMouseEnter"
 				@mouseleave="onRunWorkflowButtonMouseLeave"
-				@click="($event, selectedTrigger) => onRunWorkflow(selectedTrigger)"
+				@click="(_e, selectedTrigger) => onRunWorkflow(selectedTrigger)"
 			/>
 			<CanvasChatButton v-if="containsChatTriggerNodes" @click="onOpenChat" />
 			<CanvasStopCurrentExecutionButton
