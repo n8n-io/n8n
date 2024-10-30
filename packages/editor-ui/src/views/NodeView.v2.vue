@@ -13,7 +13,7 @@ import {
 	h,
 	onBeforeUnmount,
 } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { RouteLocationRaw, useRoute, useRouter } from 'vue-router';
 import WorkflowCanvas from '@/components/canvas/WorkflowCanvas.vue';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -50,6 +50,7 @@ import { CanvasNodeRenderType, CanvasConnectionMode } from '@/types';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	EnterpriseEditionFeature,
+	EXECUTE_WORKFLOW_NODE_TYPE,
 	MAIN_HEADER_TABS,
 	MANUAL_CHAT_TRIGGER_NODE_TYPE,
 	MODAL_CONFIRM,
@@ -66,7 +67,14 @@ import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { TelemetryHelpers, NodeConnectionType, jsonParse } from 'n8n-workflow';
-import type { IDataObject, ExecutionSummary, IConnection, IWorkflowBase } from 'n8n-workflow';
+import type {
+	IDataObject,
+	ExecutionSummary,
+	IConnection,
+	IWorkflowBase,
+	IResourceLocatorResult,
+	INodeParameterResourceLocator,
+} from 'n8n-workflow';
 import { useToast } from '@/composables/useToast';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
@@ -109,6 +117,7 @@ import { createCanvasConnectionHandleString } from '@/utils/canvasUtilsV2';
 import { isValidNodeConnectionType } from '@/utils/typeGuards';
 import 'ninja-keys';
 import { useActionsGenerator } from '@/components/Node/NodeCreator/composables/useActionsGeneration';
+import { get } from 'lodash-es';
 
 const LazyNodeCreation = defineAsyncComponent(
 	async () => await import('@/components/Node/NodeCreation.vue'),
@@ -1616,7 +1625,8 @@ const hotkeys = computed<NinjaKeysCommand[]>(() => {
 	return rootCommands
 		.concat(allOpenNodeCommands)
 		.concat(addNodeCommand.value)
-		.concat(allTemplateCommand.value);
+		.concat(allTemplateCommand.value)
+		.concat(subworkflowCommands.value);
 });
 
 const getAllNodesCommands = computed<NinjaKeysCommand[]>(() => {
@@ -1667,6 +1677,36 @@ const allTemplateCommand = computed<NinjaKeysCommand[]>(() => {
 			},
 		};
 	});
+});
+
+const subworkflowCommands = computed<NinjaKeysCommand[]>(() => {
+	const subworkflows = editableWorkflow.value.nodes
+		.filter((node) => node.type === EXECUTE_WORKFLOW_NODE_TYPE)
+		.map((node) => get(node, 'parameters.workflowId') as INodeParameterResourceLocator);
+
+	if (subworkflows.length === 0) {
+		return [];
+	}
+
+	return [
+		{
+			id: 'Open subworkflow',
+			title: 'Open subworkflow',
+			children: subworkflows.map((workflow) => workflow.value as string),
+		},
+		...subworkflows.map((workflow) => ({
+			id: workflow.value as string,
+			title: workflow.cachedResultName as string,
+			parent: 'Open subworkflow',
+			handler: () => {
+				const { href } = router.resolve({
+					name: VIEWS.WORKFLOW,
+					params: { name: workflow.value as string },
+				});
+				window.open(href, '_blank', 'noreferrer');
+			},
+		})),
+	];
 });
 </script>
 
