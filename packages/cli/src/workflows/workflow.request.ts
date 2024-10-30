@@ -32,7 +32,7 @@ export declare namespace WorkflowRequest {
 		{},
 		{},
 		{},
-		ListQuery.Params & { includeScopes?: string } & { credentialIds?: string }
+		ListQuery.Params & { includeScopes?: string } & { credentialIds?: string; nodeTypes?: string }
 	> & {
 		listQueryOptions: ListQuery.Options;
 	};

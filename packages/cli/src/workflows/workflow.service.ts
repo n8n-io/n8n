@@ -33,7 +33,7 @@ import { RoleService } from '@/services/role.service';
 import { TagService } from '@/services/tag.service';
 import * as WorkflowHelpers from '@/workflow-helpers';
 
-import { getEncodedCredentialIds } from './utils';
+import { getEncodedCredentialIds, getEncodedNodeTypes } from './utils';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service.ee';
 import { WorkflowSharingService } from './workflow-sharing.service';
 
@@ -63,6 +63,7 @@ export class WorkflowService {
 		options?: ListQuery.Options,
 		includeScopes = false,
 		credentialIds: string[] = [],
+		nodeTypes: string[] = [],
 	) {
 		const sharedWorkflowIds = await this.workflowSharingService.getSharedWorkflowIds(user, {
 			scopes: ['workflow:read'],
@@ -73,6 +74,7 @@ export class WorkflowService {
 			sharedWorkflowIds,
 			options,
 			credentialIds,
+			nodeTypes,
 		);
 
 		if (hasSharing(workflows)) {
@@ -198,6 +200,7 @@ export class WorkflowService {
 				'versionId',
 			]),
 			credentialIds: getEncodedCredentialIds(workflow),
+			nodeTypes: getEncodedNodeTypes(workflow),
 		});
 
 		if (tagIds && !config.getEnv('workflowTagsDisabled')) {

@@ -94,6 +94,9 @@ export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkfl
 
 	@Column({ type: 'simple-array', default: '' })
 	credentialIds: string[];
+
+	@Column({ type: 'simple-array', default: '' })
+	nodeTypes: string[];
 }
 
 /**
