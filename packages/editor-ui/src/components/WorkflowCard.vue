@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { IWorkflowDb, IUser } from '@/Interface';
+import type { IWorkflowDb, IUser, ExecutionStatistics } from '@/Interface';
 import {
 	DUPLICATE_MODAL_KEY,
 	MODAL_CONFIRM,
@@ -51,6 +51,7 @@ const props = withDefaults(
 			sharedWithProjects: [],
 			homeProject: {} as ProjectSharingData,
 			versionId: '',
+			executionStatistics: {} as unknown as ExecutionStatistics,
 		}),
 		readOnly: false,
 	},
@@ -267,7 +268,7 @@ function moveResource() {
 		</div>
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
-				<WorkflowStatistic />
+				<WorkflowStatistic :statistic="data.executionStatistics" />
 				<ProjectCardBadge
 					:resource="data"
 					:resource-type="ResourceType.Workflow"
