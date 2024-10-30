@@ -267,6 +267,7 @@ function moveResource() {
 		</div>
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
+				<WorkflowStatistic />
 				<ProjectCardBadge
 					:resource="data"
 					:resource-type="ResourceType.Workflow"
