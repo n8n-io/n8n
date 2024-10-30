@@ -100,7 +100,7 @@ export class ZabbixAuthApi implements ICredentialType {
 				id: 1,
 			},
 			headers: {
-				'Content-Type': 'application/json-rpc',
+				Accept: 'application/json-rpc',
 				Authorization: `Bearer ${token}`,
 			},
 			json: true,
@@ -110,7 +110,8 @@ export class ZabbixAuthApi implements ICredentialType {
 	test: ICredentialTestRequest = {
 		request: {
 			method: 'POST',
-			url: 'https://zabbix.digital-boss.dev/zabbix/api_jsonrpc.php',
+			baseURL: '={{$credentials.url}}'.replace(/\/$/, ''),
+			url: '/zabbix/api_jsonrpc.php',
 			body: {
 				jsonrpc: '2.0',
 				method: 'host.get',

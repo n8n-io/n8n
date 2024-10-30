@@ -49,7 +49,8 @@ export class ZabbixApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			url: 'https://zabbix.digital-boss.dev/zabbix/api_jsonrpc.php',
+			baseURL: '={{$credentials.url}}'.replace(/\/$/, ''),
+			url: '/zabbix/api_jsonrpc.php',
 			method: 'POST',
 			body: {
 				jsonrpc: '2.0',
