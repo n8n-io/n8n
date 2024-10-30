@@ -57,13 +57,22 @@ export class WorkflowService {
 		private readonly eventService: EventService,
 	) {}
 
-	async getMany(user: User, options?: ListQuery.Options, includeScopes?: boolean) {
+	async getMany(
+		user: User,
+		options?: ListQuery.Options,
+		includeScopes = false,
+		credentialIds: string[] = [],
+	) {
 		const sharedWorkflowIds = await this.workflowSharingService.getSharedWorkflowIds(user, {
 			scopes: ['workflow:read'],
 		});
 
 		// eslint-disable-next-line prefer-const
-		let { workflows, count } = await this.workflowRepository.getMany(sharedWorkflowIds, options);
+		let { workflows, count } = await this.workflowRepository.getMany(
+			sharedWorkflowIds,
+			options,
+			credentialIds,
+		);
 
 		if (hasSharing(workflows)) {
 			workflows = workflows.map((w) => this.ownershipService.addOwnedByAndSharedWith(w));
@@ -75,8 +84,8 @@ export class WorkflowService {
 		}
 
 		workflows.forEach((w) => {
-			// @ts-expect-error: This is to emulate the old behaviour of removing the shared
-			// field as part of `addOwnedByAndSharedWith`. We need this field in `addScopes`
+			// This is to emulate the old behavior of removing the shared field as
+			// part of `addOwnedByAndSharedWith`. We need this field in `addScopes`
 			// though. So to avoid leaking the information we just delete it.
 			delete w.shared;
 		});

@@ -198,6 +198,7 @@ export class WorkflowsController {
 				req.user,
 				req.listQueryOptions,
 				!!req.query.includeScopes,
+				req.query.credentialIds?.split(','),
 			);
 
 			res.json({ count, data });
