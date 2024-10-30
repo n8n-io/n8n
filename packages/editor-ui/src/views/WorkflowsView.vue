@@ -35,6 +35,7 @@ import { pickBy } from 'lodash-es';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import type { ProjectSharingData } from 'n8n-workflow';
+import { useDebounce } from '@/composables/useDebounce';
 
 const i18n = useI18n();
 const route = useRoute();
@@ -53,6 +54,7 @@ const tagsStore = useTagsStore();
 const documentTitle = useDocumentTitle();
 const credentialsStore = useCredentialsStore();
 const nodeTypesStore = useNodeTypesStore();
+const { callDebounced } = useDebounce();
 
 interface Filters {
 	search: string;
@@ -156,7 +158,7 @@ const emptyListDescription = computed(() => {
 const onFiltersUpdated = async (newFilters: Filters) => {
 	Object.assign(filters.value, newFilters);
 
-	await fetchWorkflowsWithFilters();
+	void callDebounced(fetchWorkflowsWithFilters, { debounceTime: 1000, trailing: true });
 };
 
 const addWorkflow = () => {
