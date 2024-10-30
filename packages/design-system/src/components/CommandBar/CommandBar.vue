@@ -32,5 +32,6 @@ ninja-keys {
 
 ninja-keys::part(ninja-action) {
 	line-height: var(--font-line-height-loose);
+	gap: 16px;
 }
 </style>
