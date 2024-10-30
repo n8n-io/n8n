@@ -31,6 +31,7 @@ import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service';
 import { RoleService } from '@/services/role.service';
 import { TagService } from '@/services/tag.service';
+import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import * as WorkflowHelpers from '@/workflow-helpers';
 
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service.ee';
@@ -55,9 +56,15 @@ export class WorkflowService {
 		private readonly projectService: ProjectService,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly eventService: EventService,
+		private readonly workflowStatisticsService: WorkflowStatisticsService,
 	) {}
 
-	async getMany(user: User, options?: ListQuery.Options, includeScopes?: boolean) {
+	async getMany(
+		user: User,
+		options?: ListQuery.Options,
+		includeScopes?: boolean,
+		includeExecutionStatistics?: boolean,
+	) {
 		const sharedWorkflowIds = await this.workflowSharingService.getSharedWorkflowIds(user, {
 			scopes: ['workflow:read'],
 		});
@@ -74,8 +81,22 @@ export class WorkflowService {
 			workflows = workflows.map((w) => this.roleService.addScopes(w, user, projectRelations));
 		}
 
+		if (includeExecutionStatistics) {
+			workflows = await Promise.all(
+				workflows.map(async (w) => {
+					const stats = await this.workflowStatisticsService.getData(w.id, 'count', 0);
+					return {
+						...w,
+						executionStatistics: {
+							errors: stats.productionError,
+							successes: stats.productionSuccess,
+						},
+					};
+				}),
+			);
+		}
+
 		workflows.forEach((w) => {
-			// @ts-expect-error: This is to emulate the old behaviour of removing the shared
 			// field as part of `addOwnedByAndSharedWith`. We need this field in `addScopes`
 			// though. So to avoid leaking the information we just delete it.
 			delete w.shared;

@@ -276,6 +276,11 @@ export interface WorkflowMetadata {
 	templateCredsSetupCompleted?: boolean;
 }
 
+export interface ExecutionStatistics {
+	errors: number;
+	successes: number;
+}
+
 // Almost identical to cli.Interfaces.ts
 export interface IWorkflowDb {
 	id: string;
@@ -294,6 +299,7 @@ export interface IWorkflowDb {
 	versionId: string;
 	usedCredentials?: IUsedCredential[];
 	meta?: WorkflowMetadata;
+	executionStatistics?: ExecutionStatistics;
 }
 
 // Identical to cli.Interfaces.ts

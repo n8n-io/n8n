@@ -306,6 +306,13 @@ export interface IWorkflowStatisticsDataLoaded {
 	dataLoaded: boolean;
 }
 
+export interface WorkflowStatisticsData<T> {
+	productionSuccess: T;
+	productionError: T;
+	manualSuccess: T;
+	manualError: T;
+}
+
 // ----------------------------------
 //          community nodes
 // ----------------------------------

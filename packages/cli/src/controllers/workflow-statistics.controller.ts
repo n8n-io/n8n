@@ -1,28 +1,23 @@
 import { Response, NextFunction } from 'express';
 
-import type { WorkflowStatistics } from '@/databases/entities/workflow-statistics';
 import { StatisticsNames } from '@/databases/entities/workflow-statistics';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { WorkflowStatisticsRepository } from '@/databases/repositories/workflow-statistics.repository';
 import { Get, Middleware, RestController } from '@/decorators';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { IWorkflowStatisticsDataLoaded } from '@/interfaces';
+import type { IWorkflowStatisticsDataLoaded, WorkflowStatisticsData } from '@/interfaces';
 import { Logger } from '@/logging/logger.service';
 
-import { StatisticsRequest } from './workflow-statistics.types';
+import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 
-interface WorkflowStatisticsData<T> {
-	productionSuccess: T;
-	productionError: T;
-	manualSuccess: T;
-	manualError: T;
-}
+import { StatisticsRequest } from './workflow-statistics.types';
 
 @RestController('/workflow-stats')
 export class WorkflowStatisticsController {
 	constructor(
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly workflowStatisticsRepository: WorkflowStatisticsRepository,
+		private readonly workflowStatisticsService: WorkflowStatisticsService,
 		private readonly logger: Logger,
 	) {}
 
@@ -53,12 +48,12 @@ export class WorkflowStatisticsController {
 
 	@Get('/:id/counts/')
 	async getCounts(req: StatisticsRequest.GetOne): Promise<WorkflowStatisticsData<number>> {
-		return await this.getData(req.params.id, 'count', 0);
+		return await this.workflowStatisticsService.getData(req.params.id, 'count', 0);
 	}
 
 	@Get('/:id/times/')
 	async getTimes(req: StatisticsRequest.GetOne): Promise<WorkflowStatisticsData<Date | null>> {
-		return await this.getData(req.params.id, 'latestEvent', null);
+		return await this.workflowStatisticsService.getData(req.params.id, 'latestEvent', null);
 	}
 
 	@Get('/:id/data-loaded/')
@@ -78,43 +73,5 @@ export class WorkflowStatisticsController {
 		return {
 			dataLoaded: stats ? true : false,
 		};
-	}
-
-	private async getData<
-		C extends 'count' | 'latestEvent',
-		D = WorkflowStatistics[C] extends number ? 0 : null,
-	>(workflowId: string, columnName: C, defaultValue: WorkflowStatistics[C] | D) {
-		const stats = await this.workflowStatisticsRepository.find({
-			select: [columnName, 'name'],
-			where: { workflowId },
-		});
-
-		const data: WorkflowStatisticsData<WorkflowStatistics[C] | D> = {
-			productionSuccess: defaultValue,
-			productionError: defaultValue,
-			manualSuccess: defaultValue,
-			manualError: defaultValue,
-		};
-
-		stats.forEach(({ name, [columnName]: value }) => {
-			switch (name) {
-				case StatisticsNames.manualError:
-					data.manualError = value;
-					break;
-
-				case StatisticsNames.manualSuccess:
-					data.manualSuccess = value;
-					break;
-
-				case StatisticsNames.productionError:
-					data.productionError = value;
-					break;
-
-				case StatisticsNames.productionSuccess:
-					data.productionSuccess = value;
-			}
-		});
-
-		return data;
 	}
 }

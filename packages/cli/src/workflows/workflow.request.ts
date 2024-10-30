@@ -28,7 +28,12 @@ export declare namespace WorkflowRequest {
 
 	type Get = AuthenticatedRequest<{ workflowId: string }>;
 
-	type GetMany = AuthenticatedRequest<{}, {}, {}, ListQuery.Params & { includeScopes?: string }> & {
+	type GetMany = AuthenticatedRequest<
+		{},
+		{},
+		{},
+		ListQuery.Params & { includeScopes?: string; includeExecutionStatistics?: string }
+	> & {
 		listQueryOptions: ListQuery.Options;
 	};
 
