@@ -1006,13 +1006,13 @@ const isClearExecutionButtonVisible = computed(
 
 const workflowExecutionData = computed(() => workflowsStore.workflowExecutionData);
 
-async function onRunWorkflow() {
+async function onRunWorkflow(triggerNode?: string) {
 	trackRunWorkflow();
 
 	if (!isExecutionPreview.value && workflowsStore.isWaitingExecution) {
-		void runWorkflowResolvePending({});
+		void runWorkflowResolvePending({ triggerNode });
 	} else {
-		void runWorkflow({});
+		void runWorkflow({ triggerNode });
 	}
 }
 
@@ -1621,9 +1621,10 @@ onBeforeUnmount(() => {
 				:waiting-for-webhook="isExecutionWaitingForWebhook"
 				:disabled="isExecutionDisabled"
 				:executing="isWorkflowRunning"
+				:trigger-nodes="triggerNodes"
 				@mouseenter="onRunWorkflowButtonMouseEnter"
 				@mouseleave="onRunWorkflowButtonMouseLeave"
-				@click="onRunWorkflow"
+				@click="($event, selectedTrigger) => onRunWorkflow(selectedTrigger)"
 			/>
 			<CanvasChatButton v-if="containsChatTriggerNodes" @click="onOpenChat" />
 			<CanvasStopCurrentExecutionButton
