@@ -153,10 +153,10 @@ const emptyListDescription = computed(() => {
 });
 
 // Methods
-const onFiltersUpdated = (newFilters: Filters) => {
+const onFiltersUpdated = async (newFilters: Filters) => {
 	Object.assign(filters.value, newFilters);
 
-	fetchWorkflowsWithFilters();
+	await fetchWorkflowsWithFilters();
 };
 
 const addWorkflow = () => {
@@ -455,6 +455,7 @@ onMounted(async () => {
 					<N8nSelect
 						data-test-id="status-dropdown"
 						:model-value="filters.status"
+						:filterable="true"
 						@update:model-value="setKeyValue('status', $event)"
 					>
 						<N8nOption
@@ -483,7 +484,9 @@ onMounted(async () => {
 						data-test-id="credentials-filter"
 						:model-value="filters.credentials"
 						:multiple="true"
+						:filterable="true"
 						:placeholder="i18n.baseText('workflows.filters.credentials.placeholder')"
+						class="tags-container"
 						@update:model-value="setKeyValue('credentials', $event)"
 					>
 						<N8nOption
@@ -491,6 +494,7 @@ onMounted(async () => {
 							:key="cred.id"
 							:label="cred.name"
 							:value="cred.id"
+							size="mini"
 						>
 						</N8nOption>
 					</N8nSelect>
@@ -509,6 +513,7 @@ onMounted(async () => {
 						:model-value="filters.nodeTypes"
 						:multiple="true"
 						:placeholder="i18n.baseText('workflows.filters.nodeTypes.placeholder')"
+						class="tags-container"
 						@update:model-value="setKeyValue('nodeTypes', $event)"
 					>
 						<N8nOption

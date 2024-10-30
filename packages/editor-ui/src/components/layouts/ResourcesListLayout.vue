@@ -374,7 +374,7 @@ export default defineComponent({
 			<n8n-loading :rows="25" :shrink-last="false" />
 		</div>
 		<template v-else>
-			<div v-if="resources.length === 0">
+			<div v-if="resources.length === 0 && !hasFilters">
 				<slot name="empty">
 					<n8n-action-box
 						data-test-id="empty-resources-list"
