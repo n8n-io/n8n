@@ -87,10 +87,12 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 
 	const getAllProjects = async () => {
 		projects.value = await projectsApi.getAllProjects(rootStore.restApiContext);
+		return projects.value;
 	};
 
 	const getMyProjects = async () => {
 		myProjects.value = await projectsApi.getMyProjects(rootStore.restApiContext);
+		return myProjects.value;
 	};
 
 	const getPersonalProject = async () => {
@@ -99,9 +101,9 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 
 	const getAvailableProjects = async () => {
 		if (globalProjectPermissions.value.list) {
-			await getAllProjects();
+			return await getAllProjects();
 		} else {
-			await getMyProjects();
+			return await getMyProjects();
 		}
 	};
 

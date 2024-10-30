@@ -1,10 +1,10 @@
 <script lang="ts" setup>
-import { computed, onMounted, watch, ref } from 'vue';
+import { computed, onMounted, watch, ref, onBeforeMount } from 'vue';
 import ResourcesListLayout, { type IResource } from '@/components/layouts/ResourcesListLayout.vue';
 import WorkflowCard from '@/components/WorkflowCard.vue';
 import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
 import { EnterpriseEditionFeature, MORE_ONBOARDING_OPTIONS_EXPERIMENT, VIEWS } from '@/constants';
-import type { ITag, IUser, IWorkflowDb } from '@/Interface';
+import type { ITag, IUser, IWorkflowDb, WorkflowsFetchOptions } from '@/Interface';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
@@ -34,6 +34,7 @@ import {
 import { pickBy } from 'lodash-es';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { ProjectSharingData } from 'n8n-workflow';
 
 const i18n = useI18n();
 const route = useRoute();
@@ -151,33 +152,11 @@ const emptyListDescription = computed(() => {
 	}
 });
 
-const onFilter = (
-	resource: IWorkflowDb,
-	newFilters: { tags: string[]; search: string; status: string | boolean },
-	matches: boolean,
-): boolean => {
-	if (settingsStore.areTagsEnabled && newFilters.tags.length > 0) {
-		matches =
-			matches &&
-			newFilters.tags.every((tag) =>
-				(resource.tags as ITag[])?.find((resourceTag) =>
-					typeof resourceTag === 'object'
-						? `${resourceTag.id}` === `${tag}`
-						: `${resourceTag}` === `${tag}`,
-				),
-			);
-	}
-
-	if (newFilters.status !== '') {
-		matches = matches && resource.active === newFilters.status;
-	}
-
-	return matches;
-};
-
 // Methods
 const onFiltersUpdated = (newFilters: Filters) => {
 	Object.assign(filters.value, newFilters);
+
+	fetchWorkflowsWithFilters();
 };
 
 const addWorkflow = () => {
@@ -211,13 +190,28 @@ const trackCategoryLinkClick = (category: string) => {
 	});
 };
 
+const fetchWorkflowsWithFilters = async () => {
+	const { homeProject, status, credentials } = filters.value;
+	const options: WorkflowsFetchOptions = {
+		filter: {
+			projectId: homeProject ? homeProject : undefined,
+			active: status === StatusFilter.ACTIVE ? true : undefined,
+		},
+		credentialIds: credentials.length ? credentials : undefined,
+	};
+
+	console.log('fetching', options);
+	await workflowsStore.fetchAllWorkflows(options);
+};
+
 const initialize = async () => {
 	loading.value = true;
+	await setFiltersFromQueryString();
 	await Promise.all([
 		nodeTypesStore.loadNodeTypesIfNotLoaded(),
 		credentialsStore.fetchAllCredentials(route?.params?.projectId as string | undefined),
 		usersStore.fetchUsers(),
-		workflowsStore.fetchAllWorkflows(route.params?.projectId as string | undefined),
+		fetchWorkflowsWithFilters(),
 		workflowsStore.fetchActiveWorkflows(),
 	]);
 	loading.value = false;
@@ -253,8 +247,8 @@ const saveFiltersOnQueryString = () => {
 	});
 };
 
-function isValidProjectId(projectId: string) {
-	return projectsStore.availableProjects.some((project) => project.id === projectId);
+function isValidProjectId(availableProjects: ProjectSharingData[], projectId: string) {
+	return availableProjects.some((project) => project.id === projectId);
 }
 
 const setFiltersFromQueryString = async () => {
@@ -263,8 +257,10 @@ const setFiltersFromQueryString = async () => {
 	const filtersToApply: { [key: string]: string | string[] | boolean } = {};
 
 	if (homeProject && typeof homeProject === 'string') {
-		await projectsStore.getAvailableProjects();
-		if (isValidProjectId(homeProject)) {
+		const available = await projectsStore.getAvailableProjects();
+		console.log('setting home project', homeProject);
+		if (isValidProjectId(available, homeProject)) {
+			console.log('valid home project', homeProject);
 			filtersToApply.homeProject = homeProject;
 		}
 	}
@@ -307,9 +303,10 @@ watch(
 	async () => await initialize(),
 );
 
+onBeforeMount(async () => {});
+
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('workflows.heading'));
-	await setFiltersFromQueryString();
 	void usersStore.showPersonalizationSurvey();
 });
 </script>
@@ -319,7 +316,6 @@ onMounted(async () => {
 		resource-key="workflows"
 		:resources="allWorkflows"
 		:filters="filters"
-		:additional-filters-handler="onFilter"
 		:type-props="{ itemSize: 80 }"
 		:shareable="isShareable"
 		:initialize="initialize"

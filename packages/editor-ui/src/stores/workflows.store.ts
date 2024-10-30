@@ -30,6 +30,7 @@ import type {
 	WorkflowMetadata,
 	IExecutionFlattedResponse,
 	IWorkflowTemplateNode,
+	WorkflowsFetchOptions,
 } from '@/Interface';
 import { defineStore } from 'pinia';
 import type {
@@ -472,17 +473,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		);
 	}
 
-	async function fetchAllWorkflows(projectId?: string): Promise<IWorkflowDb[]> {
+	async function fetchAllWorkflows(filters: WorkflowsFetchOptions): Promise<IWorkflowDb[]> {
 		const rootStore = useRootStore();
 
-		const filter = {
-			projectId,
-		};
-
-		const workflows = await workflowsApi.getWorkflows(
-			rootStore.restApiContext,
-			isEmpty(filter) ? undefined : filter,
-		);
+		const workflows = await workflowsApi.getWorkflows(rootStore.restApiContext, filters);
 		setWorkflows(workflows);
 		return workflows;
 	}

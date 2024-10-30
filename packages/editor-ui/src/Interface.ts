@@ -637,6 +637,22 @@ export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
 	executionOrder: NonNullable<IWorkflowSettingsWorkflow['executionOrder']>;
 }
 
+export interface WorkflowsFetchOptions {
+	filter?: {
+		tags?: string[];
+		active?: boolean;
+		projectId?: string;
+	};
+	sort?: 'lastUpdated' | 'lastCreated' | 'nameDesc' | 'nameAsc';
+	webhookURL?: string;
+	httpNodeURL?: string;
+	nodeName?: string;
+	nodeTypes?: string[];
+	credentialIds?: string[];
+	skip?: number;
+	take?: number;
+}
+
 export interface ITimeoutHMS {
 	hours: number;
 	minutes: number;

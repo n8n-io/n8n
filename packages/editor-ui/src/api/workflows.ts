@@ -4,6 +4,7 @@ import type {
 	IRestApiContext,
 	IWorkflowDb,
 	NewWorkflowResponse,
+	WorkflowsFetchOptions,
 } from '@/Interface';
 import type {
 	ExecutionFilters,
@@ -33,10 +34,11 @@ export async function getWorkflow(context: IRestApiContext, id: string, filter?:
 	return await makeRestApiRequest<IWorkflowDb>(context, 'GET', `/workflows/${id}`, sendData);
 }
 
-export async function getWorkflows(context: IRestApiContext, filter?: object) {
+export async function getWorkflows(context: IRestApiContext, options: WorkflowsFetchOptions) {
 	return await makeRestApiRequest<IWorkflowDb[]>(context, 'GET', '/workflows', {
 		includeScopes: true,
-		...(filter ? { filter } : {}),
+		...options,
+		credentialIds: options.credentialIds ? options.credentialIds.join(',') : undefined,
 	});
 }
 
