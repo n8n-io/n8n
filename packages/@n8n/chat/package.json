@@ -5,7 +5,7 @@
     "dev": "pnpm run storybook",
     "build": "pnpm build:vite && pnpm build:bundle",
     "build:vite": "vite build",
-    "build:bundle": "INCLUDE_VUE=true vite build",
+    "build:bundle": "set INCLUDE_VUE=true && vite build",
     "preview": "vite preview",
     "test:dev": "vitest",
     "test": "vitest run",

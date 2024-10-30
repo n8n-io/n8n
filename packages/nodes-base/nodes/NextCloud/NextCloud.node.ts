@@ -2195,7 +2195,7 @@ export class NextCloud implements INodeType {
 							);
 
 							const executionData = this.helpers.constructExecutionMetaData(
-								wrapData({ json: parseResponseData(responseData) } as INodeExecutionData),
+								wrapData(parseResponseData(responseData) as INodeExecutionData),
 								{ itemData: { item: i } },
 							);
 
@@ -2215,7 +2215,7 @@ export class NextCloud implements INodeType {
 								deckHeaders,
 							);
 							const executionData = this.helpers.constructExecutionMetaData(
-								wrapData({ json: parseResponseData(responseData) } as INodeExecutionData),
+								wrapData(parseResponseData(responseData) as INodeExecutionData),
 								{ itemData: { item: i } },
 							);
 
@@ -2245,7 +2245,7 @@ export class NextCloud implements INodeType {
 								deckHeaders,
 							);
 							const executionData = this.helpers.constructExecutionMetaData(
-								wrapData({ json: parseResponseData(responseData) } as INodeExecutionData),
+								wrapData(parseResponseData(responseData) as INodeExecutionData),
 								{ itemData: { item: i } },
 							);
 
@@ -2266,7 +2266,7 @@ export class NextCloud implements INodeType {
 								deckHeaders,
 							);
 							const executionData = this.helpers.constructExecutionMetaData(
-								wrapData({ json: parseResponseData(responseData) } as INodeExecutionData),
+								wrapData(parseResponseData(responseData) as INodeExecutionData),
 								{ itemData: { item: i } },
 							);
 
@@ -2299,7 +2299,7 @@ export class NextCloud implements INodeType {
 								notesHeaders,
 							);
 							const executionData = this.helpers.constructExecutionMetaData(
-								wrapData({ json: parseResponseData(responseData) } as INodeExecutionData),
+								wrapData(parseResponseData(responseData) as INodeExecutionData),
 								{ itemData: { item: i } },
 							);
 
@@ -2319,10 +2319,9 @@ export class NextCloud implements INodeType {
 								notesHeaders,
 							);
 							const executionData = this.helpers.constructExecutionMetaData(
-								wrapData({ json: parseResponseData(responseData) } as INodeExecutionData),
+								wrapData(parseResponseData(responseData) as INodeExecutionData),
 								{ itemData: { item: i } },
 							);
-
 							returnData.push(...executionData);
 							break;
 						}
@@ -2340,7 +2339,7 @@ export class NextCloud implements INodeType {
 								notesHeaders,
 							);
 							const executionData = this.helpers.constructExecutionMetaData(
-								wrapData({ json: parseResponseData(responseData) } as INodeExecutionData),
+								wrapData(parseResponseData(responseData) as INodeExecutionData),
 								{ itemData: { item: i } },
 							);
 
@@ -2364,7 +2363,7 @@ export class NextCloud implements INodeType {
 								notesHeaders,
 							);
 							const executionData = this.helpers.constructExecutionMetaData(
-								wrapData({ json: parseResponseData(responseData) } as INodeExecutionData),
+								wrapData(parseResponseData(responseData) as INodeExecutionData),
 								{ itemData: { item: i } },
 							);
 
@@ -2385,7 +2384,7 @@ export class NextCloud implements INodeType {
 								notesHeaders,
 							);
 							const executionData = this.helpers.constructExecutionMetaData(
-								wrapData({ json: parseResponseData(responseData) } as INodeExecutionData),
+								wrapData(parseResponseData(responseData) as INodeExecutionData),
 								{ itemData: { item: i } },
 							);
 
@@ -2436,7 +2435,7 @@ export class NextCloud implements INodeType {
 								});
 							});
 							const executionData = this.helpers.constructExecutionMetaData(
-								wrapData({ json: jsonResponseData } as INodeExecutionData),
+								wrapData(jsonResponseData as INodeExecutionData),
 								{ itemData: { item: i } },
 							);
 
@@ -2476,7 +2475,7 @@ export class NextCloud implements INodeType {
 								});
 							});
 							const executionData = this.helpers.constructExecutionMetaData(
-								wrapData({ json: jsonResponseData } as INodeExecutionData),
+								wrapData(jsonResponseData as INodeExecutionData),
 								{ itemData: { item: i } },
 							);
 
@@ -2518,7 +2517,7 @@ export class NextCloud implements INodeType {
 								});
 							});
 							const executionData = this.helpers.constructExecutionMetaData(
-								wrapData({ json: jsonResponseData } as INodeExecutionData),
+								wrapData(jsonResponseData as INodeExecutionData),
 								{ itemData: { item: i } },
 							);
 
@@ -2564,7 +2563,7 @@ export class NextCloud implements INodeType {
 								});
 							});
 							const executionData = this.helpers.constructExecutionMetaData(
-								wrapData({ json: jsonResponseData } as INodeExecutionData),
+								wrapData(jsonResponseData as INodeExecutionData),
 								{ itemData: { item: i } },
 							);
 
@@ -2605,7 +2604,7 @@ export class NextCloud implements INodeType {
 								});
 							});
 							const executionData = this.helpers.constructExecutionMetaData(
-								wrapData({ json: jsonResponseData } as INodeExecutionData),
+								wrapData(jsonResponseData as INodeExecutionData),
 								{ itemData: { item: i } },
 							);
 
@@ -2628,7 +2627,7 @@ export class NextCloud implements INodeType {
 							);
 
 							const executionData = this.helpers.constructExecutionMetaData(
-								wrapData({ json: parseResponseData(responseData) } as INodeExecutionData),
+								wrapData(parseResponseData(responseData) as INodeExecutionData),
 								{ itemData: { item: i } },
 							);
 
@@ -2651,7 +2650,7 @@ export class NextCloud implements INodeType {
 							);
 
 							const executionData = this.helpers.constructExecutionMetaData(
-								wrapData({ json: parseResponseData(responseData) } as INodeExecutionData),
+								wrapData(parseResponseData(responseData) as INodeExecutionData),
 								{ itemData: { item: i } },
 							);
 
@@ -2673,7 +2672,7 @@ export class NextCloud implements INodeType {
 							);
 
 							const executionData = this.helpers.constructExecutionMetaData(
-								wrapData({ json: parseResponseData(responseData) } as INodeExecutionData),
+								wrapData(parseResponseData(responseData) as INodeExecutionData),
 								{ itemData: { item: i } },
 							);
 
@@ -2752,7 +2751,7 @@ export class NextCloud implements INodeType {
 							);
 
 							const executionData = this.helpers.constructExecutionMetaData(
-								wrapData({ json: parseResponseData(responseData) } as INodeExecutionData),
+								wrapData(parseResponseData(responseData) as INodeExecutionData),
 								{ itemData: { item: i } },
 							);
 
@@ -2829,7 +2828,7 @@ export class NextCloud implements INodeType {
 							);
 
 							const executionData = this.helpers.constructExecutionMetaData(
-								wrapData({ json: parseResponseData(responseData) } as INodeExecutionData),
+								wrapData(parseResponseData(responseData) as INodeExecutionData),
 								{ itemData: { item: i } },
 							);
 
@@ -2853,7 +2852,7 @@ export class NextCloud implements INodeType {
 							);
 
 							const executionData = this.helpers.constructExecutionMetaData(
-								wrapData({ json: parseResponseData(responseData) } as INodeExecutionData),
+								wrapData(parseResponseData(responseData) as INodeExecutionData),
 								{ itemData: { item: i } },
 							);
 
@@ -2876,7 +2875,7 @@ export class NextCloud implements INodeType {
 							);
 
 							const executionData = this.helpers.constructExecutionMetaData(
-								wrapData({ json: parseResponseData(responseData) } as INodeExecutionData),
+								wrapData(parseResponseData(responseData) as INodeExecutionData),
 								{ itemData: { item: i } },
 							);
 
@@ -2898,7 +2897,7 @@ export class NextCloud implements INodeType {
 							);
 
 							const executionData = this.helpers.constructExecutionMetaData(
-								wrapData({ json: parseResponseData(responseData) } as INodeExecutionData),
+								wrapData(parseResponseData(responseData) as INodeExecutionData),
 								{ itemData: { item: i } },
 							);
 
@@ -2923,7 +2922,7 @@ export class NextCloud implements INodeType {
 							);
 
 							const executionData = this.helpers.constructExecutionMetaData(
-								wrapData({ json: parseResponseData(responseData) } as INodeExecutionData),
+								wrapData(parseResponseData(responseData) as INodeExecutionData),
 								{ itemData: { item: i } },
 							);
 
@@ -2948,7 +2947,7 @@ export class NextCloud implements INodeType {
 							);
 
 							const executionData = this.helpers.constructExecutionMetaData(
-								wrapData({ json: parseResponseData(responseData) } as INodeExecutionData),
+								wrapData(parseResponseData(responseData) as INodeExecutionData),
 								{ itemData: { item: i } },
 							);
 
@@ -3019,7 +3018,7 @@ export class NextCloud implements INodeType {
 								});
 							});
 							const executionData = this.helpers.constructExecutionMetaData(
-								wrapData({ json: jsonResponseData } as INodeExecutionData),
+								wrapData(jsonResponseData as INodeExecutionData),
 								{ itemData: { item: i } },
 							);
 
@@ -3081,7 +3080,7 @@ export class NextCloud implements INodeType {
 								});
 							});
 							const executionData = this.helpers.constructExecutionMetaData(
-								wrapData({ json: jsonResponseData } as INodeExecutionData),
+								wrapData(jsonResponseData as INodeExecutionData),
 								{ itemData: { item: i } },
 							);
 
@@ -3128,7 +3127,7 @@ export class NextCloud implements INodeType {
 								});
 							});
 							const executionData = this.helpers.constructExecutionMetaData(
-								wrapData({ json: jsonResponseData } as INodeExecutionData),
+								wrapData(jsonResponseData as INodeExecutionData),
 								{ itemData: { item: i } },
 							);
 
@@ -3170,7 +3169,7 @@ export class NextCloud implements INodeType {
 								});
 							});
 							const executionData = this.helpers.constructExecutionMetaData(
-								wrapData({ json: jsonResponseData } as INodeExecutionData),
+								wrapData(jsonResponseData as INodeExecutionData),
 								{ itemData: { item: i } },
 							);
 
@@ -3217,7 +3216,7 @@ export class NextCloud implements INodeType {
 								});
 							});
 							const executionData = this.helpers.constructExecutionMetaData(
-								wrapData({ json: jsonResponseData } as INodeExecutionData),
+								wrapData(jsonResponseData as INodeExecutionData),
 								{ itemData: { item: i } },
 							);
 
@@ -3260,7 +3259,7 @@ export class NextCloud implements INodeType {
 								});
 							});
 							const executionData = this.helpers.constructExecutionMetaData(
-								wrapData({ json: jsonResponseData } as INodeExecutionData),
+								wrapData(jsonResponseData as INodeExecutionData),
 								{ itemData: { item: i } },
 							);
 
@@ -3300,7 +3299,7 @@ export class NextCloud implements INodeType {
 								});
 							});
 							const executionData = this.helpers.constructExecutionMetaData(
-								wrapData({ json: jsonResponseData } as INodeExecutionData),
+								wrapData(jsonResponseData as INodeExecutionData),
 								{ itemData: { item: i } },
 							);
 
@@ -3341,7 +3340,7 @@ export class NextCloud implements INodeType {
 								});
 							});
 							const executionData = this.helpers.constructExecutionMetaData(
-								wrapData({ json: jsonResponseData } as INodeExecutionData),
+								wrapData(jsonResponseData as INodeExecutionData),
 								{ itemData: { item: i } },
 							);
 
@@ -3400,7 +3399,7 @@ export class NextCloud implements INodeType {
 								});
 							});
 							const executionData = this.helpers.constructExecutionMetaData(
-								wrapData({ json: jsonResponseData } as INodeExecutionData),
+								wrapData(jsonResponseData as INodeExecutionData),
 								{ itemData: { item: i } },
 							);
 
@@ -3444,7 +3443,7 @@ export class NextCloud implements INodeType {
 								});
 							});
 							const executionData = this.helpers.constructExecutionMetaData(
-								wrapData({ json: jsonResponseData } as INodeExecutionData),
+								wrapData(jsonResponseData as INodeExecutionData),
 								{ itemData: { item: i } },
 							);
 
@@ -3485,7 +3484,7 @@ export class NextCloud implements INodeType {
 								});
 							});
 							const executionData = this.helpers.constructExecutionMetaData(
-								wrapData({ json: jsonResponseData } as INodeExecutionData),
+								wrapData(jsonResponseData as INodeExecutionData),
 								{ itemData: { item: i } },
 							);
 
@@ -3704,8 +3703,7 @@ export class NextCloud implements INodeType {
 					const executionData = this.helpers.constructExecutionMetaData(wrapData(responseData), {
 						itemData: { item: i },
 					});
-
-					returnData.push(...executionData);
+					// returnData.push(...executionData);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
