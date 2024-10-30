@@ -1521,7 +1521,7 @@ onBeforeMount(() => {
 	}
 });
 
-onMounted(() => {
+onMounted(async () => {
 	canvasStore.startLoading();
 
 	documentTitle.reset();
@@ -1553,6 +1553,11 @@ onMounted(() => {
 	addImportEventBindings();
 	addExecutionOpenedEventBindings();
 	registerCustomActions();
+
+	await templatesStore.getWorkflows({
+		categories: ['AI'],
+		search: '',
+	});
 });
 
 onActivated(async () => {
@@ -1586,6 +1591,7 @@ type NinjaKeysCommand = {
 const hotkeys = computed<NinjaKeysCommand[]>(() => {
 	const allOpenNodeCommands = getAllNodesCommands.value;
 	const allAddNodeCommands = addNodeCommand.value;
+	const allTemplateCommands = allTemplateCommand.value;
 	const rootCommands: NinjaKeysCommand[] = [
 		{
 			id: 'Add node',
@@ -1599,9 +1605,18 @@ const hotkeys = computed<NinjaKeysCommand[]>(() => {
 			children: allOpenNodeCommands.map((cmd) => cmd.id),
 			section: 'Nodes',
 		},
+		{
+			id: 'Add template',
+			title: 'Add template',
+			children: allTemplateCommands.map((cmd) => cmd.id),
+			section: 'Templates',
+		},
 	];
 
-	return rootCommands.concat(allOpenNodeCommands).concat(addNodeCommand.value);
+	return rootCommands
+		.concat(allOpenNodeCommands)
+		.concat(addNodeCommand.value)
+		.concat(allTemplateCommand.value);
 });
 
 const getAllNodesCommands = computed<NinjaKeysCommand[]>(() => {
@@ -1633,6 +1648,22 @@ const addNodeCommand = computed<NinjaKeysCommand[]>(() => {
 			parent: 'Add node',
 			handler: async () => {
 				await addNodes([{ type: name }]);
+			},
+		};
+	});
+});
+
+const allTemplateCommand = computed<NinjaKeysCommand[]>(() => {
+	const templateWorkflows = Object.values(templatesStore.workflows);
+
+	return templateWorkflows.map((template) => {
+		const { id, name } = template;
+		return {
+			id: id.toString(),
+			title: `Add ${name} Template`,
+			parent: 'Add template',
+			handler: async () => {
+				await openWorkflowTemplate(id.toString());
 			},
 		};
 	});
