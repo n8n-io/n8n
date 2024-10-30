@@ -1,38 +1,26 @@
-<script lang="ts">
-import { defineComponent } from 'vue';
+<script setup lang="ts">
+import { computed } from 'vue';
 
 import ModalDrawer from './ModalDrawer.vue';
 import TimeAgo from './TimeAgo.vue';
 import VersionCard from './VersionCard.vue';
 import { VERSIONS_MODAL_KEY } from '../constants';
-import { mapStores } from 'pinia';
 import { useVersionsStore } from '@/stores/versions.store';
-import type { IVersion } from '@/Interface';
+import { useI18n } from '@/composables/useI18n';
 
-export default defineComponent({
-	name: 'UpdatesPanel',
-	components: {
-		ModalDrawer,
-		VersionCard,
-		TimeAgo,
-	},
-	computed: {
-		...mapStores(useVersionsStore),
-		nextVersions(): IVersion[] {
-			return this.versionsStore.nextVersions;
-		},
-		currentVersion(): IVersion | undefined {
-			return this.versionsStore.currentVersion;
-		},
-		infoUrl(): string {
-			return this.versionsStore.infoUrl;
-		},
-	},
-	data() {
-		return {
-			VERSIONS_MODAL_KEY,
-		};
-	},
+const versionsStore = useVersionsStore();
+const i18n = useI18n();
+
+const nextVersions = computed(() => {
+	return versionsStore.nextVersions;
+});
+
+const currentVersion = computed(() => {
+	return versionsStore.currentVersion;
+});
+
+const infoUrl = computed(() => {
+	return versionsStore.infoUrl;
 });
 </script>
 
@@ -45,24 +33,24 @@ export default defineComponent({
 	>
 		<template #header>
 			<span :class="$style.title">
-				{{ $locale.baseText('updatesPanel.weVeBeenBusy') }}
+				{{ i18n.baseText('updatesPanel.weVeBeenBusy') }}
 			</span>
 		</template>
 		<template #content>
 			<section :class="$style['description']">
 				<p v-if="currentVersion">
 					{{
-						$locale.baseText('updatesPanel.youReOnVersion', {
+						i18n.baseText('updatesPanel.youReOnVersion', {
 							interpolate: { currentVersionName: currentVersion.name },
 						})
 					}}
 					<strong>
 						<TimeAgo :date="currentVersion.createdAt" />
 					</strong>
-					{{ $locale.baseText('updatesPanel.andIs') }}
+					{{ i18n.baseText('updatesPanel.andIs') }}
 					<strong>
 						{{
-							$locale.baseText('updatesPanel.version', {
+							i18n.baseText('updatesPanel.version', {
 								interpolate: {
 									numberOfVersions: nextVersions.length,
 									howManySuffix: nextVersions.length > 1 ? 's' : '',
@@ -70,13 +58,13 @@ export default defineComponent({
 							})
 						}}
 					</strong>
-					{{ $locale.baseText('updatesPanel.behindTheLatest') }}
+					{{ i18n.baseText('updatesPanel.behindTheLatest') }}
 				</p>
 
 				<n8n-link v-if="infoUrl" :to="infoUrl" :bold="true">
 					<font-awesome-icon icon="info-circle" class="mr-2xs" />
 					<span>
-						{{ $locale.baseText('updatesPanel.howToUpdateYourN8nVersion') }}
+						{{ i18n.baseText('updatesPanel.howToUpdateYourN8nVersion') }}
 					</span>
 				</n8n-link>
 			</section>
