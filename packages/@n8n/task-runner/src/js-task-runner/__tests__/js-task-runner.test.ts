@@ -4,7 +4,6 @@ import fs from 'node:fs';
 import { builtinModules } from 'node:module';
 
 import { ValidationError } from '@/js-task-runner/errors/validation-error';
-import type { JsTaskRunnerOpts } from '@/js-task-runner/js-task-runner';
 import {
 	JsTaskRunner,
 	type AllCodeTaskData,
@@ -13,17 +12,27 @@ import {
 import type { Task } from '@/task-runner';
 
 import { newAllCodeTaskData, newTaskWithSettings, withPairedItem, wrapIntoJson } from './test-data';
+import type { JsRunnerConfig } from '../../config/js-runner-config';
+import { MainConfig } from '../../config/main-config';
 import { ExecutionError } from '../errors/execution-error';
 
 jest.mock('ws');
 
+const defaultConfig = new MainConfig();
+
 describe('JsTaskRunner', () => {
-	const createRunnerWithOpts = (opts: Partial<JsTaskRunnerOpts> = {}) =>
+	const createRunnerWithOpts = (opts: Partial<JsRunnerConfig> = {}) =>
 		new JsTaskRunner({
-			wsUrl: 'ws://localhost',
-			grantToken: 'grantToken',
-			maxConcurrency: 1,
-			...opts,
+			baseRunnerConfig: {
+				...defaultConfig.baseRunnerConfig,
+				grantToken: 'grantToken',
+				maxConcurrency: 1,
+				n8nUri: 'localhost',
+			},
+			jsRunnerConfig: {
+				...defaultConfig.jsRunnerConfig,
+				...opts,
+			},
 		});
 
 	const defaultTaskRunner = createRunnerWithOpts();

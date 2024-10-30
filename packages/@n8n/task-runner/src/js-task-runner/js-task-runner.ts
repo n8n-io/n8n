@@ -30,6 +30,7 @@ import { makeSerializable } from './errors/serializable-error';
 import type { RequireResolver } from './require-resolver';
 import { createRequireResolver } from './require-resolver';
 import { validateRunForAllItemsOutput, validateRunForEachItemOutput } from './result-validation';
+import type { MainConfig } from '../config/main-config';
 
 export interface JSExecSettings {
 	code: string;
@@ -76,23 +77,6 @@ export interface AllCodeTaskData {
 	additionalData: PartialAdditionalData;
 }
 
-export interface JsTaskRunnerOpts {
-	wsUrl: string;
-	grantToken: string;
-	maxConcurrency: number;
-	name?: string;
-	/**
-	 * List of built-in nodejs modules that are allowed to be required in the
-	 * execution sandbox. Asterisk (*) can be used to allow all.
-	 */
-	allowedBuiltInModules?: string;
-	/**
-	 * List of npm modules that are allowed to be required in the execution
-	 * sandbox. Asterisk (*) can be used to allow all.
-	 */
-	allowedExternalModules?: string;
-}
-
 type CustomConsole = {
 	log: (...args: unknown[]) => void;
 };
@@ -100,22 +84,20 @@ type CustomConsole = {
 export class JsTaskRunner extends TaskRunner {
 	private readonly requireResolver: RequireResolver;
 
-	constructor({
-		grantToken,
-		maxConcurrency,
-		wsUrl,
-		name = 'JS Task Runner',
-		allowedBuiltInModules,
-		allowedExternalModules,
-	}: JsTaskRunnerOpts) {
-		super('javascript', wsUrl, grantToken, maxConcurrency, name);
+	constructor(config: MainConfig, name = 'JS Task Runner') {
+		super({
+			taskType: 'javascript',
+			name,
+			...config.baseRunnerConfig,
+		});
+		const { jsRunnerConfig } = config;
 
 		const parseModuleAllowList = (moduleList: string) =>
 			moduleList === '*' ? null : new Set(moduleList.split(',').map((x) => x.trim()));
 
 		this.requireResolver = createRequireResolver({
-			allowedBuiltInModules: parseModuleAllowList(allowedBuiltInModules ?? ''),
-			allowedExternalModules: parseModuleAllowList(allowedExternalModules ?? ''),
+			allowedBuiltInModules: parseModuleAllowList(jsRunnerConfig.allowedBuiltInModules ?? ''),
+			allowedExternalModules: parseModuleAllowList(jsRunnerConfig.allowedExternalModules ?? ''),
 		});
 	}
 

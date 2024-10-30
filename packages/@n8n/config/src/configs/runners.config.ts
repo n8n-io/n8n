@@ -46,4 +46,8 @@ export class TaskRunnersConfig {
 	/** The --max-old-space-size option to use for the runner (in MB). Default means node.js will determine it based on the available memory. */
 	@Env('N8N_RUNNERS_MAX_OLD_SPACE_SIZE')
 	maxOldSpaceSize: string = '';
+
+	/** How many concurrent tasks can a runner execute at a time */
+	@Env('N8N_RUNNERS_MAX_CONCURRENCY')
+	maxConcurrency: number = 5;
 }

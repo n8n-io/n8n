@@ -743,7 +743,6 @@ describe('useCanvasMapping', () => {
 					target,
 					targetHandle,
 					type: 'canvas-edge',
-					animated: false,
 				},
 			]);
 		});
@@ -832,7 +831,6 @@ describe('useCanvasMapping', () => {
 					target: targetA,
 					targetHandle: targetHandleA,
 					type: 'canvas-edge',
-					animated: false,
 				},
 				{
 					data: {
@@ -855,7 +853,6 @@ describe('useCanvasMapping', () => {
 					targetHandle: targetHandleB,
 					type: 'canvas-edge',
 					markerEnd: MarkerType.ArrowClosed,
-					animated: false,
 				},
 			]);
 		});
