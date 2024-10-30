@@ -35,6 +35,7 @@ export type IAllExecuteFunctions =
 	| IExecuteFunctions
 	| IExecutePaginationFunctions
 	| IExecuteSingleFunctions
+	| ISupplyDataFunctions
 	| IHookFunctions
 	| ILoadOptionsFunctions
 	| IPollFunctions
@@ -943,7 +944,7 @@ type BaseExecutionFunctions = FunctionsBaseWithRequiredKeys<'getMode'> & {
 	getInputSourceData(inputIndex?: number, inputName?: string): ISourceData;
 	getExecutionCancelSignal(): AbortSignal | undefined;
 	onExecutionCancellation(handler: () => unknown): void;
-	logAiEvent(eventName: AiEvent, msg?: string | undefined): Promise<void>;
+	logAiEvent(eventName: AiEvent, msg?: string | undefined): void;
 };
 
 // TODO: Create later own type only for Config-Nodes
@@ -1021,6 +1022,27 @@ export interface IExecuteSingleFunctions extends BaseExecutionFunctions {
 			getBinaryDataBuffer(propertyName: string, inputIndex?: number): Promise<Buffer>;
 		};
 }
+
+export type ISupplyDataFunctions = ExecuteFunctions.GetNodeParameterFn &
+	FunctionsBaseWithRequiredKeys<'getMode'> &
+	Pick<
+		IExecuteFunctions,
+		| 'addInputData'
+		| 'addOutputData'
+		| 'getInputConnectionData'
+		| 'getInputData'
+		| 'getNodeOutputs'
+		| 'executeWorkflow'
+		| 'sendMessageToUI'
+		| 'helpers'
+	> & {
+		continueOnFail(): boolean;
+		evaluateExpression(expression: string, itemIndex: number): NodeParameterValueType;
+		getWorkflowDataProxy(itemIndex: number): IWorkflowDataProxyData;
+		getExecutionCancelSignal(): AbortSignal | undefined;
+		onExecutionCancellation(handler: () => unknown): void;
+		logAiEvent(eventName: AiEvent, msg?: string | undefined): void;
+	};
 
 export interface IExecutePaginationFunctions extends IExecuteSingleFunctions {
 	makeRoutingRequest(
@@ -1111,6 +1133,7 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 		options?: IGetNodeParameterOptions,
 	): NodeParameterValueType | object;
 	getNodeWebhookUrl: (name: string) => string | undefined;
+	evaluateExpression(expression: string, itemIndex?: number): NodeParameterValueType;
 	getParamsData(): object;
 	getQueryData(): object;
 	getRequestObject(): express.Request;
@@ -1571,7 +1594,7 @@ export class NodeExecutionOutput extends Array {
 
 export interface INodeType {
 	description: INodeTypeDescription;
-	supplyData?(this: IAllExecuteFunctions, itemIndex: number): Promise<SupplyData>;
+	supplyData?(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData>;
 	execute?(
 		this: IExecuteFunctions,
 	): Promise<INodeExecutionData[][] | NodeExecutionWithMetadata[][] | null>;
@@ -2026,7 +2049,7 @@ export interface IWebhookResponseData {
 }
 
 export type WebhookResponseData = 'allEntries' | 'firstEntryJson' | 'firstEntryBinary' | 'noData';
-export type WebhookResponseMode = 'onReceived' | 'lastNode' | 'responseNode';
+export type WebhookResponseMode = 'onReceived' | 'lastNode' | 'responseNode' | 'formPage';
 
 export interface INodeTypes {
 	getByName(nodeType: string): INodeType | IVersionedNodeType;
@@ -2377,7 +2400,7 @@ export interface WorkflowTestData {
 	nock?: {
 		baseUrl: string;
 		mocks: Array<{
-			method: 'get' | 'post';
+			method: 'delete' | 'get' | 'post' | 'put';
 			path: string;
 			requestBody?: RequestBodyMatcher;
 			statusCode: number;
@@ -2482,6 +2505,8 @@ export interface INodeGraphItem {
 	toolSettings?: IDataObject; //various langchain tool's settings
 	sql?: string; //merge node combineBySql, cloud only
 	workflow_id?: string; //@n8n/n8n-nodes-langchain.toolWorkflow and n8n-nodes-base.executeWorkflow
+	runs?: number;
+	items_total?: number;
 }
 
 export interface INodeNameIndex {
@@ -2582,6 +2607,18 @@ export interface ResourceMapperField {
 	readOnly?: boolean;
 }
 
+export type FormFieldsParameter = Array<{
+	fieldLabel: string;
+	fieldType?: string;
+	requiredField?: boolean;
+	fieldOptions?: { values: Array<{ option: string }> };
+	multiselect?: boolean;
+	multipleFiles?: boolean;
+	acceptFileTypes?: string;
+	formatDate?: string;
+	placeholder?: string;
+}>;
+
 export type FieldTypeMap = {
 	// eslint-disable-next-line id-denylist
 	boolean: boolean;
@@ -2597,6 +2634,7 @@ export type FieldTypeMap = {
 	options: any;
 	url: string;
 	jwt: string;
+	'form-fields': FormFieldsParameter;
 };
 
 export type FieldType = keyof FieldTypeMap;

@@ -162,33 +162,6 @@ export const schema = {
 		},
 	},
 
-	generic: {
-		// The timezone to use. Is important for nodes like "Cron" which start the
-		// workflow automatically at a specified time. This setting can also be
-		// overwritten on a per workflow basis in the workflow settings in the
-		// editor.
-		timezone: {
-			doc: 'The timezone to use',
-			format: '*',
-			default: 'America/New_York',
-			env: 'GENERIC_TIMEZONE',
-		},
-
-		releaseChannel: {
-			doc: 'N8N release channel',
-			format: ['stable', 'beta', 'nightly', 'dev'] as const,
-			default: 'dev',
-			env: 'N8N_RELEASE_TYPE',
-		},
-
-		gracefulShutdownTimeout: {
-			doc: 'How long should n8n process wait for components to shut down before exiting the process (seconds)',
-			format: Number,
-			default: 30,
-			env: 'N8N_GRACEFUL_SHUTDOWN_TIMEOUT',
-		},
-	},
-
 	secure_cookie: {
 		doc: 'This sets the `Secure` flag on n8n auth cookie',
 		format: Boolean,
@@ -212,29 +185,6 @@ export const schema = {
 		default: '',
 		env: 'N8N_EDITOR_BASE_URL',
 		doc: 'Public URL where the editor is accessible. Also used for emails sent from n8n.',
-	},
-
-	security: {
-		restrictFileAccessTo: {
-			doc: 'If set only files in that directories can be accessed. Multiple directories can be separated by semicolon (";").',
-			format: String,
-			default: '',
-			env: 'N8N_RESTRICT_FILE_ACCESS_TO',
-		},
-		blockFileAccessToN8nFiles: {
-			doc: 'If set to true it will block access to all files in the ".n8n" directory, the static cache dir at ~/.cache/n8n/public, and user defined config files.',
-			format: Boolean,
-			default: true,
-			env: 'N8N_BLOCK_FILE_ACCESS_TO_N8N_FILES',
-		},
-		audit: {
-			daysAbandonedWorkflow: {
-				doc: 'Days for a workflow to be considered abandoned if not executed',
-				format: Number,
-				default: 90,
-				env: 'N8N_SECURITY_AUDIT_DAYS_ABANDONED_WORKFLOW',
-			},
-		},
 	},
 
 	workflowTagsDisabled: {
@@ -438,45 +388,6 @@ export const schema = {
 		env: 'N8N_DEFAULT_LOCALE',
 	},
 
-	license: {
-		serverUrl: {
-			format: String,
-			default: 'https://license.n8n.io/v1',
-			env: 'N8N_LICENSE_SERVER_URL',
-			doc: 'License server url to retrieve license.',
-		},
-		autoRenewEnabled: {
-			format: Boolean,
-			default: true,
-			env: 'N8N_LICENSE_AUTO_RENEW_ENABLED',
-			doc: 'Whether auto renewal for licenses is enabled.',
-		},
-		autoRenewOffset: {
-			format: Number,
-			default: 60 * 60 * 72, // 72 hours
-			env: 'N8N_LICENSE_AUTO_RENEW_OFFSET',
-			doc: 'How many seconds before expiry a license should get automatically renewed. ',
-		},
-		activationKey: {
-			format: String,
-			default: '',
-			env: 'N8N_LICENSE_ACTIVATION_KEY',
-			doc: 'Activation key to initialize license',
-		},
-		tenantId: {
-			format: Number,
-			default: 1,
-			env: 'N8N_LICENSE_TENANT_ID',
-			doc: 'Tenant id used by the license manager',
-		},
-		cert: {
-			format: String,
-			default: '',
-			env: 'N8N_LICENSE_CERT',
-			doc: 'Ephemeral license certificate',
-		},
-	},
-
 	hideUsagePage: {
 		format: Boolean,
 		default: false,
@@ -490,11 +401,6 @@ export const schema = {
 			format: String,
 			default: 'n8n',
 			env: 'N8N_REDIS_KEY_PREFIX',
-		},
-		queueModeId: {
-			doc: 'Unique ID for this n8n instance, is usually set automatically by n8n during startup',
-			format: String,
-			default: '',
 		},
 	},
 
@@ -566,27 +472,6 @@ export const schema = {
 			format: Number,
 			default: -1,
 			env: 'N8N_WORKFLOW_HISTORY_PRUNE_TIME',
-		},
-	},
-
-	multiMainSetup: {
-		enabled: {
-			doc: 'Whether to enable multi-main setup for queue mode (license required)',
-			format: Boolean,
-			default: false,
-			env: 'N8N_MULTI_MAIN_SETUP_ENABLED',
-		},
-		ttl: {
-			doc: 'Time to live (in seconds) for leader key in multi-main setup',
-			format: Number,
-			default: 10,
-			env: 'N8N_MULTI_MAIN_SETUP_KEY_TTL',
-		},
-		interval: {
-			doc: 'Interval (in seconds) for leader check in multi-main setup',
-			format: Number,
-			default: 3,
-			env: 'N8N_MULTI_MAIN_SETUP_CHECK_INTERVAL',
 		},
 	},
 

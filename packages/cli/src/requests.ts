@@ -244,7 +244,13 @@ export declare namespace UserRequest {
 	>;
 
 	export type InviteResponse = {
-		user: { id: string; email: string; inviteAcceptUrl?: string; emailSent: boolean };
+		user: {
+			id: string;
+			email: string;
+			inviteAcceptUrl?: string;
+			emailSent: boolean;
+			role: AssignableRole;
+		};
 		error?: string;
 	};
 
@@ -476,15 +482,6 @@ export declare namespace ExternalSecretsRequest {
 	>;
 
 	type UpdateProvider = AuthenticatedRequest<{ provider: string }>;
-}
-
-// ----------------------------------
-//           /orchestration
-// ----------------------------------
-//
-export declare namespace OrchestrationRequest {
-	type GetAll = AuthenticatedRequest;
-	type Get = AuthenticatedRequest<{ id: string }, {}, {}, {}>;
 }
 
 // ----------------------------------

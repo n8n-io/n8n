@@ -123,7 +123,7 @@ const defaultOutputMode = computed<OutputType>(() => {
 });
 
 const isNodeRunning = computed(() => {
-	return !!node.value && workflowsStore.isNodeExecuting(node.value.name);
+	return workflowRunning.value && !!node.value && workflowsStore.isNodeExecuting(node.value.name);
 });
 
 const workflowRunning = computed(() => {

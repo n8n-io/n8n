@@ -426,12 +426,7 @@ export default defineComponent({
 			return this.workflowsStore.getWorkflowExecution;
 		},
 		workflowRunning(): boolean {
-			if (this.uiStore.isActionActive.workflowRunning) return true;
-			if (this.workflowsStore.activeExecutionId) {
-				const execution = this.workflowsStore.getWorkflowExecution;
-				if (execution && execution.status === 'waiting' && !execution.finished) return true;
-			}
-			return false;
+			return this.workflowsStore.isWorkflowRunning;
 		},
 		currentWorkflow(): string {
 			return this.$route.params.name?.toString() || this.workflowsStore.workflowId;
@@ -1704,7 +1699,7 @@ export default defineComponent({
 				if (data.nodes.length > 0) {
 					if (!isCut) {
 						this.showMessage({
-							title: 'Copied!',
+							title: this.$locale.baseText('generic.copiedToClipboard'),
 							message: '',
 							type: 'success',
 						});
@@ -1929,6 +1924,12 @@ export default defineComponent({
 							).some((n) => n.webhookId === node.webhookId);
 							if (isDuplicate) {
 								node.webhookId = uuid();
+
+								if (node.parameters.path) {
+									node.parameters.path = node.webhookId as string;
+								} else if ((node.parameters.options as IDataObject).path) {
+									(node.parameters.options as IDataObject).path = node.webhookId as string;
+								}
 							}
 						}
 

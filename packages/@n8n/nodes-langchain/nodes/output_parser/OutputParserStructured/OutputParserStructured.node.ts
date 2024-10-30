@@ -1,90 +1,24 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import type { JSONSchema7 } from 'json-schema';
 import {
 	jsonParse,
-	type IExecuteFunctions,
 	type INodeType,
 	type INodeTypeDescription,
+	type ISupplyDataFunctions,
 	type SupplyData,
 	NodeOperationError,
 	NodeConnectionType,
 } from 'n8n-workflow';
-import { z } from 'zod';
-import type { JSONSchema7 } from 'json-schema';
-import { StructuredOutputParser } from 'langchain/output_parsers';
-import { OutputParserException } from '@langchain/core/output_parsers';
-import get from 'lodash/get';
-import type { JavaScriptSandbox } from 'n8n-nodes-base/dist/nodes/Code/JavaScriptSandbox';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
-import { logWrapper } from '../../../utils/logWrapper';
-import { generateSchema, getSandboxWithZod } from '../../../utils/schemaParsing';
+import type { z } from 'zod';
+
 import {
 	inputSchemaField,
 	jsonSchemaExampleField,
 	schemaTypeField,
 } from '../../../utils/descriptions';
+import { N8nStructuredOutputParser } from '../../../utils/output_parsers/N8nOutputParser';
+import { convertJsonSchemaToZod, generateSchema } from '../../../utils/schemaParsing';
+import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
-const STRUCTURED_OUTPUT_KEY = '__structured__output';
-const STRUCTURED_OUTPUT_OBJECT_KEY = '__structured__output__object';
-const STRUCTURED_OUTPUT_ARRAY_KEY = '__structured__output__array';
-
-export class N8nStructuredOutputParser<T extends z.ZodTypeAny> extends StructuredOutputParser<T> {
-	async parse(text: string): Promise<z.infer<T>> {
-		try {
-			const parsed = (await super.parse(text)) as object;
-
-			return (
-				get(parsed, [STRUCTURED_OUTPUT_KEY, STRUCTURED_OUTPUT_OBJECT_KEY]) ??
-				get(parsed, [STRUCTURED_OUTPUT_KEY, STRUCTURED_OUTPUT_ARRAY_KEY]) ??
-				get(parsed, STRUCTURED_OUTPUT_KEY) ??
-				parsed
-			);
-		} catch (e) {
-			// eslint-disable-next-line n8n-nodes-base/node-execute-block-wrong-error-thrown
-			throw new OutputParserException(`Failed to parse. Text: "${text}". Error: ${e}`, text);
-		}
-	}
-
-	static async fromZedJsonSchema(
-		sandboxedSchema: JavaScriptSandbox,
-		nodeVersion: number,
-	): Promise<StructuredOutputParser<z.ZodType<object, z.ZodTypeDef, object>>> {
-		const zodSchema = await sandboxedSchema.runCode<z.ZodSchema<object>>();
-
-		let returnSchema: z.ZodSchema<object>;
-		if (nodeVersion === 1) {
-			returnSchema = z.object({
-				[STRUCTURED_OUTPUT_KEY]: z
-					.object({
-						[STRUCTURED_OUTPUT_OBJECT_KEY]: zodSchema.optional(),
-						[STRUCTURED_OUTPUT_ARRAY_KEY]: z.array(zodSchema).optional(),
-					})
-					.describe(
-						`Wrapper around the output data. It can only contain ${STRUCTURED_OUTPUT_OBJECT_KEY} or ${STRUCTURED_OUTPUT_ARRAY_KEY} but never both.`,
-					)
-					.refine(
-						(data) => {
-							// Validate that one and only one of the properties exists
-							return (
-								Boolean(data[STRUCTURED_OUTPUT_OBJECT_KEY]) !==
-								Boolean(data[STRUCTURED_OUTPUT_ARRAY_KEY])
-							);
-						},
-						{
-							message:
-								'One and only one of __structured__output__object and __structured__output__array should be present.',
-							path: [STRUCTURED_OUTPUT_KEY],
-						},
-					),
-			});
-		} else {
-			returnSchema = z.object({
-				output: zodSchema.optional(),
-			});
-		}
-
-		return N8nStructuredOutputParser.fromZodSchema(returnSchema);
-	}
-}
 export class OutputParserStructured implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Structured Output Parser',
@@ -188,7 +122,7 @@ export class OutputParserStructured implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const schemaType = this.getNodeParameter('schemaType', itemIndex, '') as 'fromJson' | 'manual';
 		// We initialize these even though one of them will always be empty
 		// it makes it easer to navigate the ternary operator
@@ -204,15 +138,16 @@ export class OutputParserStructured implements INodeType {
 		const jsonSchema =
 			schemaType === 'fromJson' ? generateSchema(jsonExample) : jsonParse<JSONSchema7>(inputSchema);
 
-		const zodSchemaSandbox = getSandboxWithZod(this, jsonSchema, 0);
+		const zodSchema = convertJsonSchemaToZod<z.ZodSchema<object>>(jsonSchema);
 		const nodeVersion = this.getNode().typeVersion;
 		try {
-			const parser = await N8nStructuredOutputParser.fromZedJsonSchema(
-				zodSchemaSandbox,
+			const parser = await N8nStructuredOutputParser.fromZodJsonSchema(
+				zodSchema,
 				nodeVersion,
+				this,
 			);
 			return {
-				response: logWrapper(parser, this),
+				response: parser,
 			};
 		} catch (error) {
 			throw new NodeOperationError(this.getNode(), 'Error during parsing of JSON Schema.');

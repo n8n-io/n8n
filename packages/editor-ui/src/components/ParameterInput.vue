@@ -40,6 +40,7 @@ import { hasExpressionMapping, isValueExpression } from '@/utils/nodeTypesUtils'
 import { isResourceLocatorValue } from '@/utils/typeGuards';
 
 import {
+	AI_TRANSFORM_NODE_TYPE,
 	APP_MODALS_ELEMENT_ID,
 	CORE_NODES_CATEGORY,
 	CUSTOM_API_CALL_KEY,
@@ -538,8 +539,16 @@ const showDragnDropTip = computed(
 		!isDropDisabled.value &&
 		(!ndvStore.hasInputData || !isInputDataEmpty.value) &&
 		!ndvStore.isMappingOnboarded &&
-		ndvStore.isInputParentOfActiveNode,
+		ndvStore.isInputParentOfActiveNode &&
+		!props.isForCredential,
 );
+
+const shouldCaptureForPosthog = computed(() => {
+	if (node.value?.type) {
+		return [AI_TRANSFORM_NODE_TYPE].includes(node.value?.type);
+	}
+	return false;
+});
 
 function isRemoteParameterOption(option: INodePropertyOptions) {
 	return remoteParameterOptionsKeys.value.includes(option.name);
@@ -1124,6 +1133,7 @@ onUpdated(async () => {
 							:model-value="modelValueString"
 							:is-read-only="isReadOnly"
 							:rows="editorRows"
+							:posthog-capture="shouldCaptureForPosthog"
 							fill-parent
 							@update:model-value="valueChangedDebounced"
 						/>
@@ -1133,7 +1143,7 @@ onUpdated(async () => {
 							:model-value="modelValueString"
 							:is-read-only="isReadOnly"
 							:rows="editorRows"
-							fill-parent
+							fullscreen
 							@update:model-value="valueChangedDebounced"
 						/>
 					</div>
@@ -1223,6 +1233,7 @@ onUpdated(async () => {
 					:model-value="modelValueString"
 					:is-read-only="isReadOnly || editorIsReadOnly"
 					:rows="editorRows"
+					:posthog-capture="shouldCaptureForPosthog"
 					@update:model-value="valueChangedDebounced"
 				>
 					<template #suffix>

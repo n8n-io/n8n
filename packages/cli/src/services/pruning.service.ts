@@ -1,3 +1,4 @@
+import { GlobalConfig } from '@n8n/config';
 import { BinaryDataService, InstanceSettings } from 'n8n-core';
 import { jsonStringify } from 'n8n-workflow';
 import { Service } from 'typedi';
@@ -31,13 +32,15 @@ export class PruningService {
 		private readonly executionRepository: ExecutionRepository,
 		private readonly binaryDataService: BinaryDataService,
 		private readonly orchestrationService: OrchestrationService,
+		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	/**
 	 * @important Requires `OrchestrationService` to be initialized.
 	 */
 	init() {
-		const { isLeader, isMultiMainSetupEnabled } = this.orchestrationService;
+		const { isLeader } = this.instanceSettings;
+		const { isMultiMainSetupEnabled } = this.orchestrationService;
 
 		if (isLeader) this.startPruning();
 
@@ -53,7 +56,7 @@ export class PruningService {
 			return false;
 		}
 
-		if (config.getEnv('multiMainSetup.enabled') && instanceType === 'main' && isFollower) {
+		if (this.globalConfig.multiMainSetup.enabled && instanceType === 'main' && isFollower) {
 			return false;
 		}
 

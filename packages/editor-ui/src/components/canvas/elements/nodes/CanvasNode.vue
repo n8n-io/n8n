@@ -259,6 +259,7 @@ onBeforeUnmount(() => {
 	<div
 		:class="[$style.canvasNode, { [$style.showToolbar]: showToolbar }]"
 		data-test-id="canvas-node"
+		:data-node-type="data.type"
 	>
 		<template
 			v-for="source in mappedOutputs"
@@ -269,7 +270,9 @@ onBeforeUnmount(() => {
 				:mode="CanvasConnectionMode.Output"
 				:is-read-only="readOnly"
 				:is-valid-connection="isValidConnection"
+				:data-node-name="label"
 				data-test-id="canvas-node-output-handle"
+				:data-handle-index="source.index"
 				@add="onAdd"
 			/>
 		</template>
@@ -284,6 +287,8 @@ onBeforeUnmount(() => {
 				:is-read-only="readOnly"
 				:is-valid-connection="isValidConnection"
 				data-test-id="canvas-node-input-handle"
+				:data-handle-index="target.index"
+				:data-node-name="label"
 				@add="onAdd"
 			/>
 		</template>

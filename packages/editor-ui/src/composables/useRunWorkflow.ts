@@ -17,7 +17,7 @@ import type {
 	IDataObject,
 } from 'n8n-workflow';
 
-import { NodeConnectionType } from 'n8n-workflow';
+import { FORM_NODE_TYPE, NodeConnectionType } from 'n8n-workflow';
 
 import { useToast } from '@/composables/useToast';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
@@ -79,6 +79,11 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 
 		if (response.executionId !== undefined) {
 			workflowsStore.activeExecutionId = response.executionId;
+		}
+
+		if (response.waitingForWebhook === true && useWorkflowsStore().nodesIssuesExist) {
+			uiStore.removeActiveAction('workflowRunning');
+			throw new Error(i18n.baseText('workflowRun.showError.resolveOutstandingIssues'));
 		}
 
 		if (response.waitingForWebhook === true) {
@@ -272,7 +277,11 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 
 			const getTestUrl = (() => {
 				return (node: INode) => {
-					return `${rootStore.formTestUrl}/${node.parameters.path}`;
+					const path =
+						node.parameters.path ||
+						(node.parameters.options as IDataObject)?.path ||
+						node.webhookId;
+					return `${rootStore.formTestUrl}/${path as string}`;
 				};
 			})();
 
@@ -373,11 +382,17 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 						return;
 					}
 
+					const { lastNodeExecuted } = execution.data?.resultData || {};
+					const lastNode = execution.workflowData.nodes.find((node) => {
+						return node.name === lastNodeExecuted;
+					});
+
 					if (
 						execution.finished ||
 						['error', 'canceled', 'crashed', 'success'].includes(execution.status)
 					) {
 						workflowsStore.setWorkflowExecutionData(execution);
+						uiStore.removeActiveAction('workflowRunning');
 						workflowsStore.activeExecutionId = null;
 						if (timeoutId) clearTimeout(timeoutId);
 						resolve();
@@ -390,24 +405,38 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 						];
 						workflowsStore.setWorkflowExecutionRunData(execution.data);
 
-						const { lastNodeExecuted } = execution.data?.resultData || {};
-
-						const waitingNode = execution.workflowData.nodes.find((node) => {
-							return node.name === lastNodeExecuted;
-						});
-
 						if (
-							waitingNode &&
-							waitingNode.type === WAIT_NODE_TYPE &&
-							waitingNode.parameters.resume === 'form'
+							lastNode &&
+							(lastNode.type === FORM_NODE_TYPE ||
+								(lastNode.type === WAIT_NODE_TYPE && lastNode.parameters.resume === 'form'))
 						) {
-							const testUrl = getFormResumeUrl(waitingNode, executionId as string);
+							let testUrl = getFormResumeUrl(lastNode, executionId as string);
 
 							if (isFormShown) {
 								localStorage.setItem(FORM_RELOAD, testUrl);
 							} else {
-								isFormShown = true;
-								openPopUpWindow(testUrl);
+								if (options.destinationNode) {
+									// Check if the form trigger has starting data
+									// if not do not show next form as trigger would redirect to page
+									// otherwise there would be duplicate popup
+									const formTrigger = execution?.workflowData.nodes.find((node) => {
+										return node.type === FORM_TRIGGER_NODE_TYPE;
+									});
+									const runNodeFilter = execution?.data?.startData?.runNodeFilter || [];
+									if (formTrigger && !runNodeFilter.includes(formTrigger.name)) {
+										isFormShown = true;
+									}
+								}
+								if (!isFormShown) {
+									if (lastNode.type === FORM_NODE_TYPE) {
+										testUrl = `${rootStore.formWaitingUrl}/${executionId}`;
+									} else {
+										testUrl = getFormResumeUrl(lastNode, executionId as string);
+									}
+
+									isFormShown = true;
+									if (testUrl) openPopUpWindow(testUrl);
+								}
 							}
 						}
 					}

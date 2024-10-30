@@ -52,12 +52,17 @@ const projectState = computed(() => {
 	}
 	return ProjectState.Unknown;
 });
+
+const numberOfMembersInHomeTeamProject = computed(
+	() => props.resource.sharedWithProjects?.length ?? 0,
+);
+
 const badgeText = computed(() => {
 	if (
 		projectState.value === ProjectState.Owned ||
 		projectState.value === ProjectState.SharedOwned
 	) {
-		return i18n.baseText('generic.ownedByMe');
+		return i18n.baseText('projects.menu.personal');
 	} else {
 		const { name, email } = splitName(props.resource.homeProject?.name ?? '');
 		return name ?? email ?? '';
@@ -65,12 +70,12 @@ const badgeText = computed(() => {
 });
 const badgeIcon = computed(() => {
 	switch (projectState.value) {
-		case ProjectState.SharedPersonal:
+		case ProjectState.Owned:
 		case ProjectState.SharedOwned:
-			return 'user-friends';
+			return 'user';
 		case ProjectState.Team:
 		case ProjectState.SharedTeam:
-			return 'archive';
+			return 'layer-group';
 		default:
 			return '';
 	}
@@ -81,6 +86,7 @@ const badgeTooltip = computed(() => {
 			return i18n.baseText('projects.badge.tooltip.sharedOwned', {
 				interpolate: {
 					resourceTypeLabel: props.resourceTypeLabel,
+					count: numberOfMembersInHomeTeamProject.value,
 				},
 			});
 		case ProjectState.SharedPersonal:
@@ -88,6 +94,7 @@ const badgeTooltip = computed(() => {
 				interpolate: {
 					resourceTypeLabel: props.resourceTypeLabel,
 					name: badgeText.value,
+					count: numberOfMembersInHomeTeamProject.value,
 				},
 			});
 		case ProjectState.Personal:
@@ -109,6 +116,7 @@ const badgeTooltip = computed(() => {
 				interpolate: {
 					resourceTypeLabel: props.resourceTypeLabel,
 					name: badgeText.value,
+					count: numberOfMembersInHomeTeamProject.value,
 				},
 			});
 		default:
@@ -118,14 +126,53 @@ const badgeTooltip = computed(() => {
 </script>
 <template>
 	<N8nTooltip :disabled="!badgeTooltip" placement="top">
-		<N8nBadge v-if="badgeText" class="mr-xs" theme="tertiary" bold data-test-id="card-badge">
-			<span v-n8n-truncate:20>{{ badgeText }}</span>
-			<N8nIcon v-if="badgeIcon" :icon="badgeIcon" size="small" class="ml-5xs" />
-		</N8nBadge>
+		<div class="mr-xs">
+			<N8nBadge
+				v-if="badgeText"
+				:class="$style.badge"
+				theme="tertiary"
+				bold
+				data-test-id="card-badge"
+			>
+				<N8nIcon v-if="badgeIcon" :icon="badgeIcon" size="small" class="mr-3xs" />
+				<span v-n8n-truncate:20>{{ badgeText }}</span>
+			</N8nBadge>
+			<N8nBadge
+				v-if="numberOfMembersInHomeTeamProject"
+				:class="[$style.badge, $style.countBadge]"
+				theme="tertiary"
+				bold
+			>
+				+ {{ numberOfMembersInHomeTeamProject }}
+			</N8nBadge>
+		</div>
 		<template #content>
 			{{ badgeTooltip }}
 		</template>
 	</N8nTooltip>
 </template>
 
-<style lang="scss" module></style>
+<style lang="scss" module>
+.badge {
+	padding: var(--spacing-4xs) var(--spacing-2xs);
+	background-color: var(--color-background-xlight);
+	border-color: var(--color-foreground-base);
+
+	z-index: 1;
+	position: relative;
+	height: 23px;
+	:global(.n8n-text) {
+		color: var(--color-text-base);
+	}
+}
+
+.countBadge {
+	margin-left: -5px;
+	z-index: 0;
+	position: relative;
+	height: 23px;
+	:global(.n8n-text) {
+		color: var(--color-text-light);
+	}
+}
+</style>
