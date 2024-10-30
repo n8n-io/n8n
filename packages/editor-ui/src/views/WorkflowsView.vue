@@ -203,9 +203,12 @@ const trackCategoryLinkClick = (category: string) => {
 const fetchWorkflowsWithFilters = async () => {
 	const { homeProject, status, credentials, nodeTypes, nodeName, webhookUrl, httpNodeUrl, tags } =
 		filters.value;
+
+	const projectId =
+		typeof route.params?.projectId === 'string' ? route.params.projectId : homeProject;
 	const options: WorkflowsFetchOptions = {
 		filter: {
-			projectId: homeProject ? homeProject : undefined,
+			projectId,
 			active: status === StatusFilter.ACTIVE ? true : undefined,
 			tags: tags.map((tagId) => tagsStore.tagsById[tagId]?.name),
 		},
