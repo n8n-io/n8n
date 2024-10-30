@@ -3,6 +3,7 @@ import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
 import { computed, ref } from 'vue';
 import { useI18n } from '@/composables/useI18n';
 import type { INodeUi } from '@/Interface';
+import { N8nActionDropdown } from 'n8n-design-system';
 
 defineEmits<{
 	mouseenter: [event: MouseEvent];
@@ -35,7 +36,7 @@ const label = computed(() => {
 const actions = computed(() => {
 	return props.triggerNodes.map((triggerNode) => {
 		return {
-			id: triggerNode.id,
+			id: triggerNode.name,
 			label: triggerNode.name,
 			disabled: triggerNode.disabled,
 		};
@@ -52,6 +53,7 @@ const onActionSelect = (item: string) => {
 		<div :class="$style.actionWrapper">
 			<KeyboardShortcutTooltip :label="label" :shortcut="{ metaKey: true, keys: ['↵'] }">
 				<N8nButton
+					:class="$style.firstButton"
 					:loading="executing"
 					:label="label"
 					:disabled="disabled"
@@ -64,7 +66,12 @@ const onActionSelect = (item: string) => {
 					@click.stop="$emit('click', $event, selectedTrigger)"
 				/>
 			</KeyboardShortcutTooltip>
-			<N8nActionDropdown v-if="triggerNodes.length > 1" :items="actions" @select="onActionSelect" />
+			<div :class="$style.line"></div>
+			<N8nActionDropdown v-if="triggerNodes.length > 1" :items="actions" @select="onActionSelect">
+				<template #activator>
+					<N8nIconButton :class="$style.lastButton" size="large" icon="chevron-down" />
+				</template>
+			</N8nActionDropdown>
 		</div>
 	</div>
 </template>
@@ -74,6 +81,22 @@ const onActionSelect = (item: string) => {
 	display: flex;
 	justify-content: center;
 	align-items: center;
+}
+
+.firstButton {
+	border-right: none;
+	border-radius: 8px 0 0 8px;
+}
+
+.lastButton {
+	border-left: none;
+	border-radius: 0 8px 8px 0;
+}
+
+.line {
+	background-color: var(--color-background-light);
+	height: 42px; // hardcoded for now
+	width: 1px;
 }
 
 .actionWrapper {
