@@ -4,11 +4,10 @@ import type { CodeExecutionMode, CodeNodeEditorLanguage } from 'n8n-workflow';
 import { format } from 'prettier';
 import jsParser from 'prettier/plugins/babel';
 import * as estree from 'prettier/plugins/estree';
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, toRaw, watch } from 'vue';
 
 import { CODE_NODE_TYPE } from '@/constants';
 import { codeNodeEditorEventBus } from '@/event-bus';
-import { usePostHog } from '@/stores/posthog.store';
 import { useRootStore } from '@/stores/root.store';
 
 import { useCodeEditor } from '@/composables/useCodeEditor';
@@ -18,6 +17,8 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import AskAI from './AskAI/AskAI.vue';
 import { CODE_PLACEHOLDERS } from './constants';
 import { useLinter } from './linter';
+import { useSettingsStore } from '@/stores/settings.store';
+import { dropInCodeEditor } from '@/plugins/codemirror/dragAndDrop';
 
 type Props = {
 	mode: CodeExecutionMode;
@@ -59,8 +60,11 @@ const linter = useLinter(
 );
 const extensions = computed(() => [linter.value]);
 const placeholder = computed(() => CODE_PLACEHOLDERS[props.language]?.[props.mode] ?? '');
+const dragAndDropEnabled = computed(() => {
+	return !props.isReadOnly && props.mode === 'runOnceForEachItem';
+});
 
-const { highlightLine, readEditorValue } = useCodeEditor({
+const { highlightLine, readEditorValue, editor } = useCodeEditor({
 	editorRef: codeNodeEditorRef,
 	language: () => props.language,
 	editorValue: () => props.modelValue,

@@ -11,6 +11,9 @@ import {
 	cmPosToTs,
 } from './utils';
 import type { Completion } from '@codemirror/autocomplete';
+import types from './types.d.ts?raw';
+
+const TS_COMPLETE_BLOCKLIST: ts.ScriptElementKind[] = [ts.ScriptElementKind.warning];
 
 const worker = (): LanguageServiceWorker => {
 	let env: tsvfs.VirtualTypeScriptEnvironment;
@@ -21,12 +24,11 @@ const worker = (): LanguageServiceWorker => {
 				allowJs: true,
 				checkJs: true,
 				target: ts.ScriptTarget.ESNext,
-				lib: ['ESNext'],
+				noLib: true,
 				module: ts.ModuleKind.ESNext,
 				strict: true,
-				typeRoots: [],
-				types: [],
 				importHelpers: false,
+				skipDefaultLibCheck: true,
 				noEmit: true,
 			};
 
@@ -40,15 +42,8 @@ const worker = (): LanguageServiceWorker => {
 				await indexedDbCache('typescript-cache', 'fs-map'),
 			);
 
+			fsMap.set('types.d.ts', types);
 			fsMap.set(FILE_NAME, wrapInFunction(content));
-			fsMap.set(
-				'types.d.ts',
-				`export {};
-
-declare global {
-	const $input: { json: Record<string,any>, all: () => [] }
-}`,
-			);
 
 			const system = tsvfs.createSystem(fsMap);
 			env = tsvfs.createVirtualTypeScriptEnvironment(
@@ -76,13 +71,19 @@ declare global {
 
 			if (!completionInfo) return null;
 
-			const options = completionInfo.entries.map((entry): Completion => {
-				const boost = -Number(entry.sortText) || 0;
-				return {
-					label: entry.name,
-					boost,
-				};
-			});
+			const options = completionInfo.entries
+				.filter(
+					(entry) =>
+						!TS_COMPLETE_BLOCKLIST.includes(entry.kind) &&
+						(entry.sortText < '15' || completionInfo.optionalReplacementSpan?.length),
+				)
+				.map((entry): Completion => {
+					const boost = -Number(entry.sortText) || 0;
+					return {
+						label: entry.name,
+						boost,
+					};
+				});
 
 			return {
 				from: pos,

@@ -2,7 +2,7 @@ import { codeEditorTheme } from '@/components/CodeNodeEditor/theme';
 import { editorKeymap } from '@/plugins/codemirror/keymap';
 import { typescript } from '@/plugins/codemirror/lsp/typescript';
 import { closeCursorInfoBox } from '@/plugins/codemirror/tooltips/InfoBoxTooltip';
-import { closeCompletion, completionStatus } from '@codemirror/autocomplete';
+import { closeBrackets, closeCompletion, completionStatus } from '@codemirror/autocomplete';
 import { history } from '@codemirror/commands';
 import { javascript } from '@codemirror/lang-javascript';
 import { json } from '@codemirror/lang-json';
@@ -40,6 +40,7 @@ import {
 	type MaybeRefOrGetter,
 	type Ref,
 } from 'vue';
+import { mappingDropCursor } from '../plugins/codemirror/dragAndDrop';
 
 export type CodeEditorLanguage = 'json' | 'html' | 'javaScript' | 'python';
 
@@ -232,7 +233,9 @@ export const useCodeEditor = ({
 				dropCursor(),
 				indentOnInput(),
 				bracketMatching(),
+				closeBrackets(),
 				highlightActiveLineGutter(),
+				mappingDropCursor(),
 				indentationMarkers({
 					highlightActiveBlock: true,
 					markerType: 'fullScope',

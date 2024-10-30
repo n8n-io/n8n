@@ -1,4 +1,4 @@
-import { autocompletion, completeFromList, type CompletionSource } from '@codemirror/autocomplete';
+import { autocompletion, type CompletionSource } from '@codemirror/autocomplete';
 import { javascriptLanguage } from '@codemirror/lang-javascript';
 import { linter, type LintSource } from '@codemirror/lint';
 import { combineConfig, Facet, type Extension } from '@codemirror/state';
@@ -17,13 +17,23 @@ export const tsFacet = Facet.define<
 
 const tsCompletions: CompletionSource = async (context) => {
 	const { worker } = context.state.facet(tsFacet);
-	console.log('complete', context);
+	const { pos, explicit } = context;
+
+	let word = context.matchBefore(/\w*/);
+	if (!word?.text) {
+		word = context.matchBefore(/\./);
+	}
+
+	if (!word?.text && !explicit) return null;
 
 	const result = await worker.getCompletionsAtPos(context.pos);
 
 	if (!result) return result;
 
-	return await completeFromList(result.options)(context);
+	return {
+		from: word ? (word.text === '.' ? word.to : word.from) : pos,
+		options: result.options,
+	};
 };
 
 const tsLint: LintSource = async (view) => {

@@ -1,7 +1,7 @@
 import type { Diagnostic } from '@codemirror/lint';
 import ts from 'typescript';
 
-export const FILE_NAME = 'index.ts';
+export const FILE_NAME = 'index.js';
 const FN_PREFIX = '(() => {\n';
 
 export function wrapInFunction(script: string): string {
@@ -9,7 +9,7 @@ export function wrapInFunction(script: string): string {
 }
 
 export function cmPosToTs(pos: number) {
-	return pos + FN_PREFIX.length - 1;
+	return pos + FN_PREFIX.length;
 }
 
 export function tsPosToCm(pos: number) {

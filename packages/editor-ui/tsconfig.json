@@ -26,5 +26,6 @@
 		// TODO: remove all options below this line
 		"useUnknownInCatchVariables": false
 	},
-	"include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.vue"]
+	"include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.vue"],
+	"exclude": ["src/plugins/codemirror/lsp/worker/**/*.d.ts"]
 }

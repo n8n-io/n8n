@@ -19,6 +19,7 @@ import { editorKeymap } from '@/plugins/codemirror/keymap';
 import { n8nAutocompletion } from '@/plugins/codemirror/n8nLang';
 import { computed, onMounted, ref, watch } from 'vue';
 import { codeEditorTheme } from '../CodeNodeEditor/theme';
+import { mappingDropCursor } from '@/plugins/codemirror/dragAndDrop';
 
 type Props = {
 	modelValue: string;
