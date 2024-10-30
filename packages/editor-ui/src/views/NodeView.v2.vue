@@ -31,6 +31,7 @@ import type {
 	IWorkflowDb,
 	IWorkflowTemplate,
 	NodeCreatorOpenSource,
+	SimplifiedNodeType,
 	ToggleNodeCreatorOptions,
 	XYPosition,
 } from '@/Interface';
@@ -111,6 +112,7 @@ import { isResourceLocatorValue, isValidNodeConnectionType } from '@/utils/typeG
 import 'ninja-keys';
 import { useActionsGenerator } from '@/components/Node/NodeCreator/composables/useActionsGeneration';
 import { get } from 'lodash-es';
+import { getNodeIcon, getNodeIconUrl } from '@/utils/nodeTypesUtils';
 
 const LazyNodeCreation = defineAsyncComponent(
 	async () => await import('@/components/Node/NodeCreation.vue'),
@@ -1637,6 +1639,30 @@ const getAllNodesCommands = computed<NinjaKeysCommand[]>(() => {
 	});
 });
 
+function getIconSource(nodeType: SimplifiedNodeType) {
+	const baseUrl = rootStore.baseUrl;
+
+	const iconUrl = getNodeIconUrl(nodeType, uiStore.appliedTheme);
+	if (iconUrl) {
+		return { path: baseUrl + iconUrl };
+	}
+	// Otherwise, extract it from icon prop
+	if (nodeType.icon) {
+		const icon = getNodeIcon(nodeType, uiStore.appliedTheme);
+
+		if (icon) {
+			const [type, path] = icon.split(':');
+			if (type === 'file') {
+				throw new Error(`Unexpected icon: ${icon}`);
+			}
+
+			return { icon: path };
+		}
+	}
+
+	return {};
+}
+
 const addNodeCommand = computed<NinjaKeysCommand[]>(() => {
 	const httpOnlyCredentials = useCredentialsStore().httpOnlyCredentialTypes;
 	const nodeTypes = useNodeTypesStore().visibleNodeTypes;
@@ -1645,9 +1671,12 @@ const addNodeCommand = computed<NinjaKeysCommand[]>(() => {
 
 	return mergedNodes.map((node) => {
 		const { name, displayName } = node;
+		const src = getIconSource(node);
+
 		return {
 			id: name,
 			title: `Add ${displayName} Node`,
+			icon: `<img src="${src?.path}" style="width: 24px;object-fit: contain;height: 24px;" />`,
 			parent: 'Add node',
 			handler: async () => {
 				await addNodes([{ type: name }]);
