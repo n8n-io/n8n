@@ -1602,7 +1602,7 @@
 	"runData.startTime": "Start Time",
 	"runData.table": "Table",
 	"runData.pindata.learnMore": "Learn more",
-	"runData.pindata.thisDataIsPinned": "This data is pinned.",
+	"runData.pindata.thisDataIsPinned": "This node is pinned, and will always output the data below.",
 	"runData.pindata.unpin": "Unpin",
 	"runData.editor.save": "Save",
 	"runData.editor.cancel": "Cancel",

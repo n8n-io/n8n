@@ -3,6 +3,8 @@ import { computed } from 'vue';
 import TitledList from '@/components/TitledList.vue';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useCanvasNode } from '@/composables/useCanvasNode';
+import { useRouter } from 'vue-router';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 
 const nodeHelpers = useNodeHelpers();
 
@@ -16,9 +18,13 @@ const {
 	hasRunData,
 	runDataIterations,
 	isDisabled,
+	name,
 } = useCanvasNode();
 
 const hideNodeIssues = computed(() => false); // @TODO Implement this
+const router = useRouter();
+const workflowHelpers = useWorkflowHelpers({ router });
+const workflow = workflowHelpers.getCurrentWorkflow();
 </script>
 
 <template>

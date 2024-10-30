@@ -4,10 +4,12 @@ import { useNodeConnections } from '@/composables/useNodeConnections';
 import { useI18n } from '@/composables/useI18n';
 import CanvasNodeDisabledStrikeThrough from './parts/CanvasNodeDisabledStrikeThrough.vue';
 import CanvasNodeStatusIcons from '@/components/canvas/elements/nodes/render-types/parts/CanvasNodeStatusIcons.vue';
+import CanvasNodeSettingsIcons from '@/components/canvas/elements/nodes/render-types/parts/CanvasNodeSettingsIcons.vue';
 import { useCanvasNode } from '@/composables/useCanvasNode';
 import { NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS } from '@/constants';
 import { N8nTooltip } from 'n8n-design-system';
 import type { CanvasNodeDefaultRender } from '@/types';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
 
 const $style = useCssModule();
 const i18n = useI18n();
@@ -44,6 +46,8 @@ const {
 	outputs,
 	connections,
 });
+
+const nodeHelpers = useNodeHelpers();
 
 const renderOptions = computed(() => render.value.options as CanvasNodeDefaultRender['options']);
 
@@ -122,6 +126,10 @@ function openContextMenu(event: MouseEvent) {
 			</div>
 		</N8nTooltip>
 		<CanvasNodeStatusIcons v-if="!isDisabled" :class="$style.statusIcons" />
+		<CanvasNodeSettingsIcons
+			v-if="!isDisabled && !(hasPinnedData && !nodeHelpers.isProductionExecutionPreview.value)"
+			:class="$style.settingsIcons"
+		/>
 		<CanvasNodeDisabledStrikeThrough v-if="isStrikethroughVisible" />
 		<div :class="$style.description">
 			<div v-if="label" :class="$style.label">
@@ -217,6 +225,10 @@ function openContextMenu(event: MouseEvent) {
 				right: calc(-1 * var(--spacing-2xs));
 				bottom: 0;
 			}
+			.settingsIcons {
+				right: calc(-1 * var(--spacing-2xs));
+				top: 0;
+			}
 		}
 	}
 
@@ -296,6 +308,14 @@ function openContextMenu(event: MouseEvent) {
 .statusIcons {
 	position: absolute;
 	bottom: var(--canvas-node--status-icons-offset);
+	right: var(--canvas-node--status-icons-offset);
+}
+
+.settingsIcons {
+	display: flex;
+	gap: 3px;
+	position: absolute;
+	top: var(--canvas-node--status-icons-offset);
 	right: var(--canvas-node--status-icons-offset);
 }
 

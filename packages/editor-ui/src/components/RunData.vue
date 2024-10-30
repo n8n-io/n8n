@@ -64,6 +64,8 @@ import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useRootStore } from '@/stores/root.store';
 import RunDataPinButton from '@/components/RunDataPinButton.vue';
 import { getGenericHints } from '@/utils/nodeViewUtils';
+import { retry } from '../__tests__/utils';
+import { continueOnFail } from '../../../core/src/NodeExecuteFunctions';
 
 const LazyRunDataTable = defineAsyncComponent(
 	async () => await import('@/components/RunDataTable.vue'),
@@ -727,6 +729,69 @@ export default defineComponent({
 
 			return [];
 		},
+		getNodeSettingsHints(): NodeHint[] {
+			const hints: NodeHint[] = [];
+			if (this.node?.disabled) {
+				return [
+					{
+						message: 'This node is disabled, and will simply pass the input through.',
+						type: 'info',
+						whenToDisplay: 'beforeExecution',
+						location: 'outputPane',
+						icon: 'ban',
+					},
+				];
+			}
+			if (
+				this.canPinData &&
+				this.pinnedData.hasData.value &&
+				!this.editMode.enabled &&
+				!this.isProductionExecutionPreview
+			) {
+				return [];
+			}
+			if (this.node && this.node.alwaysOutputData) {
+				hints.push({
+					message: 'This node will output an empty item if nothing would normally be returned.',
+					type: 'info',
+					whenToDisplay: 'beforeExecution',
+					location: 'outputPane',
+					icon: 'circle',
+				});
+			}
+			if (this.node && this.node.executeOnce) {
+				hints.push({
+					message: 'This node will execute only once, no matter how many input items there are.',
+					type: 'info',
+					whenToDisplay: 'beforeExecution',
+					location: 'outputPane',
+					icon: 'dice-one',
+				});
+			}
+			if (this.node && this.node.retryOnFail) {
+				hints.push({
+					message: 'This node will automatically retry if it fails.',
+					type: 'info',
+					whenToDisplay: 'beforeExecution',
+					location: 'outputPane',
+					icon: 'retweet',
+				});
+			}
+			if (
+				this.node &&
+				(this.node.onError === 'continueRegularOutput' ||
+					this.node.onError === 'continueErrorOutput')
+			) {
+				hints.push({
+					message: 'The workflow will continue executing even if the node fails.',
+					type: 'info',
+					whenToDisplay: 'beforeExecution',
+					location: 'outputPane',
+					icon: 'arrow-right',
+				});
+			}
+			return hints;
+		},
 		onItemHover(itemIndex: number | null) {
 			if (itemIndex === null) {
 				this.$emit('itemHover', null);
@@ -1208,41 +1273,6 @@ export default defineComponent({
 
 <template>
 	<div :class="['run-data', $style.container]" @mouseover="activatePane">
-		<n8n-callout
-			v-if="
-				canPinData && pinnedData.hasData.value && !editMode.enabled && !isProductionExecutionPreview
-			"
-			theme="secondary"
-			icon="thumbtack"
-			:class="$style.pinnedDataCallout"
-		>
-			{{ $locale.baseText('runData.pindata.thisDataIsPinned') }}
-			<span v-if="!isReadOnlyRoute && !readOnlyEnv" class="ml-4xs">
-				<n8n-link
-					theme="secondary"
-					size="small"
-					underline
-					bold
-					data-test-id="ndv-unpin-data"
-					@click.stop="onTogglePinData({ source: 'banner-link' })"
-				>
-					{{ $locale.baseText('runData.pindata.unpin') }}
-				</n8n-link>
-			</span>
-			<template #trailingContent>
-				<n8n-link
-					:to="dataPinningDocsUrl"
-					size="small"
-					theme="secondary"
-					bold
-					underline
-					@click="onClickDataPinningDocsLink"
-				>
-					{{ $locale.baseText('runData.pindata.learnMore') }}
-				</n8n-link>
-			</template>
-		</n8n-callout>
-
 		<BinaryDataDisplay
 			v-if="binaryDataDisplayData"
 			:window-visible="binaryDataDisplayVisible"
@@ -1370,7 +1400,49 @@ export default defineComponent({
 		</div>
 
 		<slot v-if="!displaysMultipleNodes" name="before-data" />
-
+		<n8n-callout
+			v-if="
+				canPinData && pinnedData.hasData.value && !editMode.enabled && !isProductionExecutionPreview
+			"
+			:class="$style.hintCallout"
+			theme="info"
+			icon="thumbtack"
+		>
+			{{ $locale.baseText('runData.pindata.thisDataIsPinned') }}
+			<span v-if="!isReadOnlyRoute && !readOnlyEnv" class="ml-4xs">
+				<n8n-link
+					theme="secondary"
+					size="small"
+					underline
+					bold
+					data-test-id="ndv-unpin-data"
+					@click.stop="onTogglePinData({ source: 'banner-link' })"
+				>
+					{{ $locale.baseText('runData.pindata.unpin') }}
+				</n8n-link>
+			</span>
+			<template #trailingContent>
+				<n8n-link
+					:to="dataPinningDocsUrl"
+					size="small"
+					theme="secondary"
+					bold
+					underline
+					@click="onClickDataPinningDocsLink"
+				>
+					{{ $locale.baseText('runData.pindata.learnMore') }}
+				</n8n-link>
+			</template>
+		</n8n-callout>
+		<n8n-callout
+			v-for="hint in getNodeSettingsHints()"
+			:key="hint.message"
+			:class="$style.hintCallout"
+			:theme="hint.type || 'info'"
+			:icon="hint.icon"
+		>
+			<n8n-text size="small" v-n8n-html="hint.message"></n8n-text>
+		</n8n-callout>
 		<n8n-callout
 			v-for="hint in getNodeHints()"
 			:key="hint.message"
