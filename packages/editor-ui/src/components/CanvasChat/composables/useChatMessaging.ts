@@ -4,7 +4,6 @@ import { v4 as uuid } from 'uuid';
 import type { ChatMessage, ChatMessageText } from '@n8n/chat/types';
 import { NodeConnectionType, CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import type {
-	IUser,
 	ITaskData,
 	type INode,
 	type INodeExecutionData,
@@ -18,7 +17,6 @@ import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { useToast } from '@/composables/useToast';
 import { useMessage } from '@/composables/useMessage';
 import { usePinnedData } from '@/composables/usePinnedData';
-import { useUsersStore } from '@/stores/users.store';
 import { get, isEmpty, last } from 'lodash-es';
 import { MANUAL_CHAT_TRIGGER_NODE_TYPE, MODAL_CONFIRM } from '@/constants';
 import { useI18n } from '@/composables/useI18n';
@@ -26,15 +24,18 @@ import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import type { useRouter } from 'vue-router';
 import type { MemoryOutput } from '../types/chat';
 import { useUIStore } from '@/stores/ui.store';
+import { INodeUi } from '@/Interface';
 
 export function useChatMessaging({
 	router,
 	chatTrigger,
 	messages,
+	sessionId,
 }: {
 	router: ReturnType<typeof useRouter>;
-	chatTrigger: Ref<INode | null>;
+	chatTrigger: Ref<INodeUi | null>;
 	messages: Ref<ChatMessage[]>;
+	sessionId: Ref<string>;
 }) {
 	const previousMessageIndex = ref(0);
 	const workflowsStore = useWorkflowsStore();
@@ -96,6 +97,7 @@ export function useChatMessaging({
 
 	/** Starts workflow execution with the message */
 	async function startWorkflowWithMessage(message: string, files?: File[]): Promise<void> {
+		console.log('🚀 ~ startWorkflowWithMessage ~ message:', message);
 		const triggerNode = chatTrigger.value;
 
 		if (!triggerNode) {
@@ -111,12 +113,9 @@ export function useChatMessaging({
 			inputKey = 'chatInput';
 		}
 
-		const usersStore = useUsersStore();
-		const currentUser = usersStore.currentUser ?? ({} as IUser);
-
 		const inputPayload: INodeExecutionData = {
 			json: {
-				sessionId: `test-${currentUser.id || 'unknown'}`,
+				sessionId: sessionId.value,
 				action: 'sendMessage',
 				[inputKey]: message,
 			},
@@ -241,10 +240,11 @@ export function useChatMessaging({
 			pinnedChatData.unsetData('unpin-and-send-chat-message-modal');
 		}
 
-		const newMessage: ChatMessage = {
+		const newMessage: ChatMessage & { sessionId: string } = {
 			text: message,
 			sender: 'user',
 			createdAt: new Date().toISOString(),
+			sessionId: sessionId.value,
 			id: uuid(),
 			files,
 		};

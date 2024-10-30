@@ -14,34 +14,41 @@ import { useResize } from './composables/useResize';
 import type { Chat, ChatMessage, ChatOptions } from '@n8n/chat/types';
 import { useUIStore } from '@/stores/ui.store';
 import { useI18n } from '@/composables/useI18n';
+import { v4 as uuid } from 'uuid';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { ResizeData } from 'n8n-design-system/components/N8nResizeWrapper/ResizeWrapper.vue';
 
 const router = useRouter();
 const uiStore = useUIStore();
 const locale = useI18n();
 const { getCurrentWorkflow } = useWorkflowHelpers({ router });
+const nodeHelpers = useNodeHelpers();
+const workflowsStore = useWorkflowsStore();
 
 const messages = ref<ChatMessage[]>([]);
-const currentSessionId = ref<string>(String(Date.now()));
+const currentSessionId = ref<string>(uuid());
 const isDisabled = ref(false);
 const container = ref<HTMLElement>();
 const {
-	chatTrigger,
+	chatTriggerNode,
 	node,
 	allowFileUploads,
 	setChatTriggerNode,
 	setConnectedNode,
 	setLogsSourceNode,
 } = useChatTrigger({ router });
+console.log('🚀 ~ allowFileUploads:', allowFileUploads);
 
-const {
-	sendMessage,
-	getChatMessages,
-	// extractResponseMessage,
-	// waitForExecution,
-	// onArrowKeyDown,
-} = useChatMessaging({ chatTrigger, messages, router });
+const { sendMessage, getChatMessages } = useChatMessaging({
+	chatTrigger: chatTriggerNode,
+	messages,
+	router,
+	sessionId: currentSessionId,
+});
 
-const { height, chatWidth, rootStyles, onResizeDebounced, onResizeChat } = useResize(container);
+const { height, chatWidth, rootStyles, onResizeDebounced, onResizeChatDebounced } =
+	useResize(container);
 
 const isLoading = computed(() => uiStore.isActionActive.workflowRunning);
 
@@ -68,16 +75,9 @@ const chatOptions: ChatOptions = {
 	mode: 'window',
 	showWindowCloseButton: true,
 	disabled: isDisabled,
-	allowFileUploads: false,
+	allowFileUploads,
 	allowedFilesMimeTypes: '',
 };
-
-watch(
-	() => allowFileUploads.value,
-	(newValue) => {
-		chatOptions.allowFileUploads = newValue;
-	},
-);
 
 function displayExecution(executionId: string) {
 	const workflow = getCurrentWorkflow();
@@ -110,6 +110,13 @@ watch(
 		setLogsSourceNode();
 	},
 );
+
+function refreshSession() {
+	workflowsStore.setWorkflowExecutionData(null);
+	nodeHelpers.updateNodesExecutionIssues();
+	messages.value = [];
+	currentSessionId.value = uuid();
+}
 </script>
 
 <template>
@@ -128,11 +135,13 @@ watch(
 				:supported-directions="['right']"
 				:width="chatWidth"
 				:class="$style.chat"
-				@resize="onResizeChat"
+				@resize="onResizeChatDebounced"
 			>
 				<div :class="$style.inner">
 					<ChatMessagesPanel
 						:messages="messages"
+						:session-id="currentSessionId"
+						@refresh-session="refreshSession"
 						@display-execution="displayExecution"
 						@send-message="sendMessage"
 					/>
@@ -149,6 +158,7 @@ watch(
 .container {
 	height: var(--panel-height);
 	min-height: 4rem;
+	max-height: 90vh;
 	flex-basis: content;
 	z-index: 300;
 	border-top: 1px solid var(--color-foreground-base);
@@ -167,6 +177,7 @@ watch(
 	border-right: 1px solid var(--color-foreground-base);
 	flex-shrink: 0;
 	flex-grow: 0;
+	max-width: 100%;
 }
 
 .inner {

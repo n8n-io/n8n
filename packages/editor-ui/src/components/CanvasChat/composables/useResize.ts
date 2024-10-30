@@ -3,90 +3,122 @@ import { ref, computed, onMounted, onBeforeUnmount, watchEffect } from 'vue';
 import type { ResizeData } from 'n8n-design-system/components/N8nResizeWrapper/ResizeWrapper.vue';
 import { useDebounce } from '@/composables/useDebounce';
 import type { IChatResizeStyles } from '../types/chat';
-import { watch } from 'fs';
+import { useStorage } from '@/composables/useStorage';
+
+const LOCAL_STORAGE_PANEL_HEIGHT = 'N8N_CANVAS_CHAT_HEIGHT';
+const LOCAL_STORAGE_PANEL_WIDTH = 'N8N_CANVAS_CHAT_WIDTH';
+
+// Percentage of container width for chat panel constraints
+const MAX_WIDTH_PERCENTAGE = 0.8;
+const MIN_WIDTH_PERCENTAGE = 0.3;
+
+// Percentage of window height for panel constraints
+const MIN_HEIGHT_PERCENTAGE = 0.3;
+const MAX_HEIGHT_PERCENTAGE = 0.75;
 
 export function useResize(container: Ref<HTMLElement | undefined>) {
-	console.log('🚀 ~ useResize ~ container:', container);
-	const chatWidth = ref(0);
-	const maxWidth = ref(0);
-	const minHeight = ref(0);
-	const maxHeight = ref(0);
-	const height = ref(0);
+	const storage = {
+		height: useStorage(LOCAL_STORAGE_PANEL_HEIGHT),
+		width: useStorage(LOCAL_STORAGE_PANEL_WIDTH),
+	};
 
+	const dimensions = {
+		container: ref(0), // Container width
+		minHeight: ref(0),
+		maxHeight: ref(0),
+		chat: ref(0), // Chat panel width
+		height: ref(0),
+	};
+
+	/** Computed styles for root element based on current dimensions */
 	const rootStyles = computed<IChatResizeStyles>(() => ({
-		'--panel-height': `${height.value}px`,
-		'--chat-width': `${chatWidth.value}px`,
+		'--panel-height': `${dimensions.height.value}px`,
+		'--chat-width': `${dimensions.chat.value}px`,
 	}));
 
-	function onResize(data: ResizeData) {
-		if (data.height < minHeight.value) {
-			data.height = minHeight.value;
-			return;
-		}
-
-		if (data.height > maxHeight.value) {
-			data.height = maxHeight.value;
-			return;
-		}
-		height.value = data.height;
+	/**
+	 * Constrains height to min/max bounds and updates panel height
+	 */
+	function onResize(newHeight: number) {
+		const { minHeight, maxHeight } = dimensions;
+		dimensions.height.value = Math.min(Math.max(newHeight, minHeight.value), maxHeight.value);
 	}
 
 	function onResizeDebounced(data: ResizeData) {
-		void useDebounce().callDebounced(onResize, { debounceTime: 10, trailing: true }, data);
+		void useDebounce().callDebounced(onResize, { debounceTime: 10, trailing: true }, data.height);
 	}
 
-	function onResizeChat(data: ResizeData) {
-		// Maximum width is 90% of the container width
-		if (data.width > maxWidth.value * 0.9) {
-			data.width = maxWidth.value;
-			return;
-		}
+	/**
+	 * Constrains chat width to min/max percentage of container width
+	 */
+	function onResizeChat(width: number) {
+		const containerWidth = dimensions.container.value;
+		const maxWidth = containerWidth * MAX_WIDTH_PERCENTAGE;
+		const minWidth = containerWidth * MIN_WIDTH_PERCENTAGE;
 
-		// Minimum width is 30% of the container width
-		if (data.width < maxWidth.value * 0.3) {
-			data.width = maxWidth.value * 0.2;
-			return;
-		}
-
-		chatWidth.value = data.width;
+		dimensions.chat.value = Math.min(Math.max(width, minWidth), maxWidth);
 	}
 
+	function onResizeChatDebounced(data: ResizeData) {
+		void useDebounce().callDebounced(
+			onResizeChat,
+			{ debounceTime: 10, trailing: true },
+			data.width,
+		);
+	}
+	/**
+	 * Initializes dimensions from localStorage if available
+	 */
+	function restorePersistedDimensions() {
+		const persistedHeight = parseInt(storage.height.value ?? '0', 10);
+		const persistedWidth = parseInt(storage.width.value ?? '0', 10);
+
+		if (persistedHeight) onResize(persistedHeight);
+		if (persistedWidth) onResizeChat(persistedWidth);
+	}
+
+	/**
+	 * Updates container width and height constraints on window resize
+	 */
 	function onWindowResize() {
-		if (container.value) {
-			const { width } = container.value.getBoundingClientRect();
-			maxWidth.value = width;
+		if (!container.value) return;
 
-			if (chatWidth.value === 0) {
-				onResizeChat({ width: maxWidth.value * 0.5 });
-			}
-		}
+		// Update container width and adjust chat panel if needed
+		dimensions.container.value = container.value.getBoundingClientRect().width;
+		onResizeChat(dimensions.chat.value);
 
-		// Min height is 30% of the window height
-		minHeight.value = window.innerHeight * 0.2;
-		maxHeight.value = window.innerHeight * 0.75;
-		if (height.value === 0) {
-			onResize({ height: minHeight.value });
-		}
+		// Update height constraints and adjust panel height if needed
+		dimensions.minHeight.value = window.innerHeight * MIN_HEIGHT_PERCENTAGE;
+		dimensions.maxHeight.value = window.innerHeight * MAX_HEIGHT_PERCENTAGE;
+		onResize(dimensions.height.value);
 	}
+
+	// Persist dimensions to localStorage when they change
+	watchEffect(() => {
+		const { chat, height } = dimensions;
+		if (chat.value > 0) storage.width.value = chat.value.toString();
+		if (height.value > 0) storage.height.value = height.value.toString();
+	});
+
+	// Initialize dimensions when container is available
 	watchEffect(() => {
 		if (container.value) {
 			onWindowResize();
+			restorePersistedDimensions();
 		}
 	});
-	onMounted(() => {
-		window.addEventListener('resize', onWindowResize);
-	});
 
-	onBeforeUnmount(() => {
-		window.removeEventListener('resize', onWindowResize);
-	});
+	// Window resize handling
+	onMounted(() => window.addEventListener('resize', onWindowResize));
+	onBeforeUnmount(() => window.removeEventListener('resize', onWindowResize));
 
 	return {
-		height,
-		chatWidth,
+		height: dimensions.height,
+		chatWidth: dimensions.chat,
 		rootStyles,
-		onResize,
+		// onResize,
 		onResizeDebounced,
-		onResizeChat,
+		onResizeChatDebounced,
+		// onResizeChat,
 	};
 }

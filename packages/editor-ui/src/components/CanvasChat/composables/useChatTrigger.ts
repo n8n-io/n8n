@@ -24,22 +24,29 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 export function useChatTrigger({ router }: { router: ReturnType<typeof useRouter> }) {
-	const chatTrigger = ref<INode | null>(null);
+	const chatTriggerName = ref<string | null>(null);
 	const connectedNode = ref<INode | null>(null);
 	const node = ref<INode | null>(null);
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const workflowHelpers = useWorkflowHelpers({ router });
-	const { showError } = useToast();
+	// const { showError } = useToast();
+
+	const chatTriggerNode = computed(() =>
+		chatTriggerName.value ? workflowsStore.getNodeByName(chatTriggerName.value) : undefined,
+	);
 
 	const allowFileUploads = computed(() => {
-		return (chatTrigger.value?.parameters?.options as INodeParameters)?.allowFileUploads === true;
+		console.log('🚀 ~ allowFileUploads ~ chatTrigger.value:', chatTriggerNode.value);
+		return (
+			(chatTriggerNode.value?.parameters?.options as INodeParameters)?.allowFileUploads === true
+		);
 	});
 
 	const allowedFilesMimeTypes = computed(() => {
 		return (
 			(
-				chatTrigger.value?.parameters?.options as INodeParameters
+				chatTriggerNode.value?.parameters?.options as INodeParameters
 			)?.allowedFilesMimeTypes?.toString() ?? ''
 		);
 	});
@@ -52,14 +59,17 @@ export function useChatTrigger({ router }: { router: ReturnType<typeof useRouter
 				[CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE].includes(nodeType.description.name),
 			);
 
-		chatTrigger.value = triggerNode[0] || null;
+		if (!triggerNode.length) {
+			return;
+		}
+		chatTriggerName.value = triggerNode[0].name;
 	}
 
 	/** Sets the connected node after finding the trigger */
 	function setConnectedNode() {
 		const workflow = workflowHelpers.getCurrentWorkflow();
 		console.log('Set connected node');
-		const triggerNode = chatTrigger.value;
+		const triggerNode = chatTriggerNode.value;
 
 		if (!triggerNode) {
 			// showError(new Error('Chat Trigger Node could not be found!'), 'Trigger Node not found');
@@ -109,7 +119,7 @@ export function useChatTrigger({ router }: { router: ReturnType<typeof useRouter
 
 	/** Sets the node that contains metadata */
 	function setLogsSourceNode() {
-		const triggerNode = chatTrigger.value;
+		const triggerNode = chatTriggerNode.value;
 		if (!triggerNode) {
 			return;
 		}
@@ -134,11 +144,11 @@ export function useChatTrigger({ router }: { router: ReturnType<typeof useRouter
 	}
 
 	return {
-		chatTrigger,
 		connectedNode,
 		node,
 		allowFileUploads,
 		allowedFilesMimeTypes,
+		chatTriggerNode,
 		setChatTriggerNode,
 		setConnectedNode,
 		setLogsSourceNode,

@@ -6,15 +6,21 @@ import MessageOptionTooltip from './MessageOptionTooltip.vue';
 import MessageOptionAction from './MessageOptionAction.vue';
 import { chatEventBus } from '@n8n/chat/event-buses';
 import ChatInput from '@n8n/chat/components/Input.vue';
+import { useMessage } from '@/composables/useMessage';
+import { MODAL_CONFIRM } from '@/constants';
 
 interface Props {
 	messages: ChatMessage[];
+	sessionId: string;
 }
 
-defineProps<Props>();
+const props = defineProps<Props>();
+
+const messageComposable = useMessage();
 const emit = defineEmits<{
 	displayExecution: [id: string];
 	sendMessage: [message: string];
+	refreshSession: [];
 }>();
 
 const locale = useI18n();
@@ -37,11 +43,52 @@ function reuseMessage(message: ChatMessageText) {
 function sendMessage(message: string) {
 	emit('sendMessage', message);
 }
+
+async function onRefreshSession() {
+	// If there are no messages, refresh the session without asking
+	if (props.messages.length === 0) {
+		emit('refreshSession');
+		return;
+	}
+
+	const confirmResult = await messageComposable.confirm(
+		'Are you sure you want to refresh the session? This will clear all messages and current execution data.',
+		{
+			title: 'Confirm to refresh the session',
+			type: 'warning',
+			confirmButtonText: 'Refresh Session',
+			showClose: true,
+		},
+	);
+	if (confirmResult === MODAL_CONFIRM) {
+		emit('refreshSession');
+	}
+}
 </script>
 
 <template>
 	<div :class="$style.chat" data-test-id="workflow-lm-chat-dialog">
-		<header :class="$style.chatHeader">Chat</header>
+		<header :class="$style.chatHeader">
+			<span>Chat</span>
+			<div :class="$style.session">
+				<span>Session</span>
+				<n8n-tooltip placement="left">
+					<template #content>
+						{{ sessionId }}
+					</template>
+					<span :class="$style.sessionId">{{ sessionId }}</span>
+				</n8n-tooltip>
+				<n8n-icon-button
+					:class="$style.refreshSession"
+					type="tertiary"
+					text
+					size="mini"
+					icon="redo"
+					title="Refresh session"
+					@click="onRefreshSession"
+				/>
+			</div>
+		</header>
 		<main :class="$style.chatBody">
 			<MessagesList :messages="messages" :class="[$style.messages, 'ignore-key-press']">
 				<template #beforeMessage="{ message }">
@@ -73,7 +120,18 @@ function sendMessage(message: string) {
 				</template>
 			</MessagesList>
 		</main>
-		<ChatInput :class="$style.messagesInput" data-test-id="lm-chat-inputs" />
+		<div :class="$style.messagesInput">
+			<!-- Files: -->
+			<div :class="$style.messagesHistory">
+				<n8n-tooltip content="Navigate to previous message" placement="left">
+					<n8n-button title="Up" icon="chevron-up" type="tertiary" text size="mini" />
+				</n8n-tooltip>
+				<n8n-tooltip content="Navigate to next message" placement="right">
+					<n8n-button title="Down" icon="chevron-down" type="tertiary" text size="mini" />
+				</n8n-tooltip>
+			</div>
+			<ChatInput data-test-id="lm-chat-inputs" />
+		</div>
 	</div>
 </template>
 
@@ -104,6 +162,25 @@ function sendMessage(message: string) {
 	border-bottom: 1px solid var(--color-foreground-base);
 	padding: var(--chat--spacing);
 	background-color: var(--color-foreground-xlight);
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+.session {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-2xs);
+	color: var(--color-text-base);
+}
+.sessionId {
+	display: inline-block;
+	max-width: 5rem;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	overflow: hidden;
+}
+.refreshSession {
+	max-height: 1.1rem;
 }
 .chatBody {
 	display: flex;
@@ -139,17 +216,15 @@ function sendMessage(message: string) {
 
 .messagesInput {
 	--input-border-color: #4538a3;
-	--chat--input--border: var(--input-border-color, var(--border-color-base))
-		var(--input-border-style, var(--border-style-base))
-		var(--input-border-width, var(--border-width-base));
+	--chat--input--border: none;
 
-	--chat--input--border-radius: 1.5rem;
+	--chat--input--border-radius: 3rem;
 	--chat--input--send--button--background: transparent;
 	--chat--input--send--button--color: var(--color-button-secondary-font);
 	--chat--input--send--button--color-hover: var(--color-primary);
 	--chat--input--border-active: var(--input-focus-border-color, var(--color-secondary));
 	--chat--files-spacing: var(--spacing-2xs) 0;
-	--chat--input--background: var(--color-lm-chat-bot-background);
+	--chat--input--background: transparent; //var(--color-lm-chat-bot-background);
 
 	[data-theme='dark'] & {
 		--chat--input--text-color: var(--input-font-color, var(--color-text-dark));
@@ -157,10 +232,22 @@ function sendMessage(message: string) {
 	@media (prefers-color-scheme: dark) {
 		--chat--input--text-color: var(--input-font-color, var(--color-text-dark));
 	}
-	border-radius: 5rem;
-	padding: var(--chat--spacing);
-	margin-bottom: var(--spacing-4xs);
+	// border-radius: 5rem;
+	padding: var(--spacing-2xs) 0 var(--spacing-2xs) var(--spacing-xs);
+	margin: var(--chat--spacing);
 	overflow: hidden;
 	flex-grow: 1;
+	display: flex;
+	background: var(--color-lm-chat-bot-background);
+	border-radius: var(--chat--input--border-radius);
+	border: var(--input-border-color, var(--border-color-base))
+		var(--input-border-style, var(--border-style-base))
+		var(--input-border-width, var(--border-width-base));
+}
+
+.messagesHistory {
+	display: flex;
+	// align-items: center;
+	flex-direction: column;
 }
 </style>
