@@ -748,10 +748,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			return accu;
 		}, {} as IPinData);
 
-		workflow.value = {
-			...workflow.value,
-			pinData: validPinData,
-		};
+		workflow.value.pinData = validPinData;
 		updateCachedWorkflow();
 
 		dataPinningEventBus.emit('pin-data', validPinData);

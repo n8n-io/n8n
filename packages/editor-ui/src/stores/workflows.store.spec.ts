@@ -18,6 +18,7 @@ import type {
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 import {
+	IPinData,
 	SEND_AND_WAIT_OPERATION,
 	type ExecutionSummary,
 	type IConnection,
@@ -598,6 +599,29 @@ describe('useWorkflowsStore', () => {
 					withPostHog: true,
 				},
 			);
+		});
+
+		it('sets workflow pin data', () => {
+			workflowsStore.workflow.pinData = undefined;
+			const data: IPinData = {
+				TestNode: [{ json: { test: true } }],
+				TestNode1: [{ json: { test: false } }],
+			};
+			workflowsStore.setWorkflowPinData(data);
+			expect(workflowsStore.workflow.pinData).toEqual(data);
+		});
+
+		it('sets workflow pin data, adding json keys', () => {
+			workflowsStore.workflow.pinData = undefined;
+			const data = {
+				TestNode: [{ test: true }],
+				TestNode1: [{ test: false }],
+			};
+			workflowsStore.setWorkflowPinData(data as unknown as IPinData);
+			expect(workflowsStore.workflow.pinData).toEqual({
+				TestNode: [{ json: { test: true } }],
+				TestNode1: [{ json: { test: false } }],
+			});
 		});
 	});
 
