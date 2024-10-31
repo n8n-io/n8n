@@ -61,6 +61,7 @@ export namespace ChatRequest {
 		context?: UserContext;
 		workflowContext?: WorkflowContext;
 		question: string;
+		isNewImplementation?: boolean;
 	}
 
 	export interface InitCredHelp {
@@ -74,6 +75,7 @@ export namespace ChatRequest {
 			name: string;
 			displayName: string;
 		};
+		isNewImplementation?: boolean;
 	}
 
 	export type InteractionEventName = 'node-execution-succeeded' | 'node-execution-errored';
@@ -92,6 +94,7 @@ export namespace ChatRequest {
 		quickReplyType?: string;
 		context?: UserContext;
 		workflowContext?: WorkflowContext;
+		isNewImplementation?: boolean;
 	}
 
 	export interface UserContext {

@@ -6,6 +6,7 @@ import {
 	AI_ASSISTANT_EXPERIMENT,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	CREDENTIAL_EDIT_MODAL_KEY,
+	AI_ASSISTANT_AS_WORKFLOW_EXPERIMENT,
 } from '@/constants';
 import type { ChatRequest } from '@/types/assistant.types';
 import type { ChatUI } from 'n8n-design-system/types/assistant';
@@ -89,6 +90,12 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 
 	const isExperimentEnabled = computed(
 		() => getVariant(AI_ASSISTANT_EXPERIMENT.name) === AI_ASSISTANT_EXPERIMENT.variant,
+	);
+
+	const isNewImplementationAvailable = computed(
+		() =>
+			getVariant(AI_ASSISTANT_AS_WORKFLOW_EXPERIMENT.name) ===
+			AI_ASSISTANT_AS_WORKFLOW_EXPERIMENT.variant,
 	);
 
 	const assistantMessages = computed(() =>
@@ -433,6 +440,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			},
 			context: visualContext,
 			question: userMessage,
+			isNewImplementation: isNewImplementationAvailable.value,
 		};
 		if (credentialType) {
 			payload = {
@@ -601,6 +609,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 						text: chatMessage.text,
 						quickReplyType: chatMessage.quickReplyType,
 						context: userContext,
+						isNewImplementation: isNewImplementationAvailable.value,
 					},
 					sessionId: currentSessionId.value,
 				},
@@ -837,5 +846,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		initCredHelp,
 		isCredTypeActive,
 		handleServiceError,
+		isNewImplementationAvailable,
 	};
 });
