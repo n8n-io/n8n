@@ -13,7 +13,7 @@ import type {
 	NodeChange,
 	NodePositionChange,
 } from '@vue-flow/core';
-import { useVueFlow, VueFlow, PanelPosition, MarkerType } from '@vue-flow/core';
+import { useVueFlow, VueFlow, Panel, PanelPosition, MarkerType } from '@vue-flow/core';
 import { Background } from '@vue-flow/background';
 import { MiniMap } from '@vue-flow/minimap';
 import Node from './elements/nodes/CanvasNode.vue';
@@ -44,6 +44,7 @@ import CanvasArrowHeadMarker from './elements/edges/CanvasArrowHeadMarker.vue';
 import { CanvasNodeRenderType } from '@/types';
 import CanvasBackgroundStripedPattern from './elements/CanvasBackgroundStripedPattern.vue';
 import { isMiddleMouseButton } from '@/utils/eventUtils';
+import { useAutoLayout } from './autoLayout';
 
 const $style = useCssModule();
 
@@ -547,6 +548,8 @@ watch(() => props.readOnly, setReadonly, {
 	immediate: true,
 });
 
+const { autoLayout } = useAutoLayout(props.id);
+const setAutoLayout = (type: 'cluster' | 'tree') => onNodesChange(autoLayout(type));
 /**
  * Provide
  */
@@ -587,6 +590,16 @@ provide(CanvasKey, {
 		@move-end="onPaneMoveEnd"
 		@mousedown="onPaneMouseDown"
 	>
+		<Panel position="top-left">
+			<N8nButton
+				type="tertiary"
+				size="large"
+				@click="setAutoLayout('tree')"
+				style="margin-right: var(--spacing-xs)"
+				>tree</N8nButton
+			>
+			<N8nButton type="tertiary" size="large" @click="setAutoLayout('cluster')">cluster</N8nButton>
+		</Panel>
 		<template #node-canvas-node="canvasNodeProps">
 			<Node
 				v-bind="canvasNodeProps"
