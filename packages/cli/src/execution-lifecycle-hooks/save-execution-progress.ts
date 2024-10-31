@@ -14,7 +14,7 @@ export async function saveExecutionProgress(
 	executionData: IRunExecutionData,
 	pushRef?: string,
 ) {
-	const saveSettings = toSaveSettings(workflowData.settings);
+	const saveSettings = toSaveSettings(workflowData.settings, executionData.waitTill);
 
 	if (!saveSettings.progress) return;
 
