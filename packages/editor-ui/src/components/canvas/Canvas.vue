@@ -41,7 +41,6 @@ import { GRID_SIZE } from '@/utils/nodeViewUtils';
 import { CanvasKey } from '@/constants';
 import { onKeyDown, onKeyUp, useDebounceFn } from '@vueuse/core';
 import CanvasArrowHeadMarker from './elements/edges/CanvasArrowHeadMarker.vue';
-import { CanvasNodeRenderType } from '@/types';
 import CanvasBackgroundStripedPattern from './elements/CanvasBackgroundStripedPattern.vue';
 import { isMiddleMouseButton } from '@/utils/eventUtils';
 
@@ -123,7 +122,6 @@ const {
 	nodes: graphNodes,
 	onPaneReady,
 	findNode,
-	onNodesInitialized,
 	viewport,
 } = useVueFlow({ id: props.id, deleteKeyCode: null });
 
@@ -536,11 +534,6 @@ onUnmounted(() => {
 onPaneReady(async () => {
 	await onFitView();
 	isPaneReady.value = true;
-});
-
-onNodesInitialized((nodes) => {
-	if (nodes.length !== 1 || nodes[0].data?.render.type !== CanvasNodeRenderType.AddNodes) return;
-	void onFitView();
 });
 
 watch(() => props.readOnly, setReadonly, {

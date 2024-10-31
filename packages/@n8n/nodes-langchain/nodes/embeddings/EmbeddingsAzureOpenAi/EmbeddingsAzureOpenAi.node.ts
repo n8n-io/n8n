@@ -1,9 +1,9 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import {
 	NodeConnectionType,
-	type IExecuteFunctions,
 	type INodeType,
 	type INodeTypeDescription,
+	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
 
@@ -92,7 +92,7 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		this.logger.debug('Supply data for embeddings');
 		const credentials = await this.getCredentials<{
 			apiKey: string;
