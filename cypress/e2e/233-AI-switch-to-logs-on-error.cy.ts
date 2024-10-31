@@ -90,6 +90,14 @@ function createRunDataWithError(inputMessage: string) {
 					routine: 'InitPostgres',
 				} as unknown as Error,
 			} as ExecutionError,
+			metadata: {
+				subRun: [
+					{
+						node: 'Postgres Chat Memory',
+						runIndex: 0,
+					},
+				],
+			},
 		}),
 		createMockNodeExecutionData(AGENT_NODE_NAME, {
 			executionStatus: 'error',
@@ -124,14 +132,6 @@ function createRunDataWithError(inputMessage: string) {
 				description: 'Internal error',
 				message: 'Internal error',
 			} as unknown as ExecutionError,
-			metadata: {
-				subRun: [
-					{
-						node: 'Postgres Chat Memory',
-						runIndex: 0,
-					},
-				],
-			},
 		}),
 	];
 }
