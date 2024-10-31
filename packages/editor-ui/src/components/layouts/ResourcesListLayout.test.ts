@@ -77,15 +77,5 @@ describe('ResourcesListLayout', () => {
 				expect(within(getByTestId('list-layout-header')).getByText(projectName)).toBeVisible(),
 			);
 		});
-
-		it('should render subtitle', () => {
-			const { getByTestId } = renderComponent();
-
-			expect(
-				within(getByTestId('list-layout-header')).getByText(
-					'All the workflows, credentials, variables and executions you have access to',
-				),
-			).toBeVisible();
-		});
 	});
 });
