@@ -15,7 +15,7 @@ export function usePageRedirectionHelper() {
 
 	/**
 	 * If the user is an instance owner in the cloud, it generates an auto-login link to the
-	 * cloud dashboard that redirects the user to the manage page where they can upgrade to a new n8n version.
+	 * cloud dashboard that redirects the user to the /manage page where they can upgrade to a new n8n version.
 	 * Otherwise, it redirect them to our docs.
 	 */
 	const goToVersions = async () => {
@@ -41,6 +41,12 @@ export function usePageRedirectionHelper() {
 
 		return;
 	};
+
+	/**
+	 * If the user is an instance owner in the cloud, it generates an auto-login link to the
+	 * cloud dashboard that redirects the user to the /account/change-plan page where they upgrade/downgrade the current plan.
+	 * Otherwise, it redirect them our website.
+	 */
 
 	const goToUpgrade = async (
 		source: CloudUpdateLinkSourceType,
