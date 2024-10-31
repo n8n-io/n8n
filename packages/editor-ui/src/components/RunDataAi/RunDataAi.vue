@@ -142,9 +142,14 @@ function getTreeNodeData(nodeName: string, currentDepth: number): TreeNode[] {
 	if (!connections) {
 		return resultData.map((d) => createNode(nodeName, currentDepth, d));
 	}
+
 	// Get the first level of children
 	const connectedSubNodes = props.workflow.getParentNodes(nodeName, 'ALL_NON_MAIN', 1);
-	const children = connectedSubNodes.flatMap((name) => getTreeNodeData(name, currentDepth + 1));
+
+	const children = connectedSubNodes
+		// Only include sub-nodes which have data
+		.filter((name) => aiData.value?.find((data) => data.node === name))
+		.flatMap((name) => getTreeNodeData(name, currentDepth + 1));
 
 	children.sort((a, b) => a.startTime - b.startTime);
 
