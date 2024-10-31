@@ -6,7 +6,7 @@ import { N8nButton, N8nInput, N8nTooltip } from 'n8n-design-system/components';
 import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
 import { useNDVStore } from '@/stores/ndv.store';
-import { getParentNodes, generaCodeForAiTransform } from './utils';
+import { getParentNodes, generateCodeForAiTransform } from './utils';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useUIStore } from '@/stores/ui.store';
 
@@ -93,7 +93,7 @@ async function onSubmit() {
 	try {
 		switch (type) {
 			case 'askAiCodeGeneration':
-				const updateInformation = await generaCodeForAiTransform(
+				const updateInformation = await generateCodeForAiTransform(
 					prompt.value,
 					getPath(target as string),
 				);

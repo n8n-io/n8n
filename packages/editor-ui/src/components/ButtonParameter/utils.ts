@@ -52,7 +52,7 @@ export function getSchemas() {
 	};
 }
 
-export async function generaCodeForAiTransform(prompt: string, path: string) {
+export async function generateCodeForAiTransform(prompt: string, path: string) {
 	const schemas = getSchemas();
 
 	const payload: AskAiRequest.RequestPayload = {

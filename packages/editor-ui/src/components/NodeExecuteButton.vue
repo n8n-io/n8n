@@ -27,7 +27,7 @@ import { useRouter } from 'vue-router';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { type IUpdateInformation } from '../Interface';
-import { generaCodeForAiTransform } from '@/components/ButtonParameter/utils';
+import { generateCodeForAiTransform } from '@/components/ButtonParameter/utils';
 
 const NODE_TEST_STEP_POPUP_COUNT_KEY = 'N8N_NODE_TEST_STEP_POPUP_COUNT';
 const MAX_POPUP_COUNT = 10;
@@ -250,7 +250,7 @@ async function onClick() {
 		codeGenerationInProgress.value = true;
 		try {
 			const prompt = node.value?.parameters?.instructions as string;
-			const updateInformation = await generaCodeForAiTransform(
+			const updateInformation = await generateCodeForAiTransform(
 				prompt,
 				`parameters.${AI_TRANSFORM_JS_CODE}`,
 			);
