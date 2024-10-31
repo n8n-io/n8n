@@ -215,6 +215,26 @@ const isLoading = computed(
 	() => isNodeRunning.value && !isListeningForEvents.value && !isListeningForWorkflowEvents.value,
 );
 
+const shouldGenerateCode = computed(() => {
+	if (node.value?.type !== AI_TRANSFORM_NODE_TYPE) {
+		return false;
+	}
+	if (!node.value?.parameters?.instructions) {
+		return false;
+	}
+	if (!node.value?.parameters?.jsCode) {
+		return true;
+	}
+	if (
+		node.value?.parameters[AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT] &&
+		node.value?.parameters?.instructions !==
+			node.value?.parameters[AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT]
+	) {
+		return true;
+	}
+	return false;
+});
+
 async function stopWaitingForWebhook() {
 	try {
 		await workflowsStore.removeTestWebhook(workflowsStore.workflowId);
@@ -240,14 +260,7 @@ function onMouseOver() {
 }
 
 async function onClick() {
-	if (
-		(node.value?.type === AI_TRANSFORM_NODE_TYPE &&
-			node.value?.parameters?.instructions &&
-			!node.value?.parameters?.jsCode) ||
-		(node.value?.parameters[AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT] &&
-			node.value?.parameters?.instructions !==
-				node.value?.parameters[AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT])
-	) {
+	if (shouldGenerateCode.value) {
 		// Generate code if user hasn't clicked 'Generate Code' button
 		// and update parameters
 		codeGenerationInProgress.value = true;

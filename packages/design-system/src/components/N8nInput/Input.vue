@@ -32,7 +32,7 @@ const props = withDefaults(defineProps<InputProps>(), {
 	readonly: false,
 	clearable: false,
 	rows: 2,
-	maxlength: Infinity,
+	maxlength: undefined,
 	title: '',
 	name: () => uid('input'),
 	autocomplete: 'off',

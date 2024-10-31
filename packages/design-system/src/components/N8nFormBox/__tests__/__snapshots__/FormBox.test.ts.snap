@@ -78,7 +78,6 @@ exports[`FormBox > should render the component 1`] = `
                     <input
                       autocomplete="email"
                       class="el-input__inner"
-											maxlength="Infinity"
                       name="name"
                       placeholder=""
                       rows="2"

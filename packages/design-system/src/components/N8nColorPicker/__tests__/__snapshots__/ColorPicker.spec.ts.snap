@@ -80,7 +80,6 @@ exports[`components > N8nColorPicker > should render with input 1`] = `
         <input
           autocomplete="off"
           class="el-input__inner"
-					maxlength="Infinity"
           name="color-picker"
           placeholder=""
           rows="2"
