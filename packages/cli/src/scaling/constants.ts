@@ -20,7 +20,4 @@ export const SELF_SEND_COMMANDS = new Set([
  * Commands that should not be debounced when received, e.g. during webhook handling in
  * multi-main setup.
  */
-export const IMMEDIATE_COMMANDS = new Set([
-	'add-webhooks-triggers-and-pollers',
-	'relay-execution-lifecycle-event',
-]);
+export const IMMEDIATE_COMMANDS = new Set(['relay-execution-lifecycle-event']);
