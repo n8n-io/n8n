@@ -4,12 +4,14 @@ import { StringArray } from '../utils';
 /** Scopes (areas of functionality) to filter logs by. */
 export const LOG_SCOPES = [
 	'concurrency',
+	'external-secrets',
 	'license',
 	'multi-main-setup',
 	'pubsub',
 	'redis',
 	'scaling',
 	'waiting-executions',
+	'task-runner',
 ] as const;
 
 export type LogScope = (typeof LOG_SCOPES)[number];
@@ -64,6 +66,7 @@ export class LoggingConfig {
 	 * Supported log scopes:
 	 *
 	 * - `concurrency`
+	 * - `external-secrets`
 	 * - `license`
 	 * - `multi-main-setup`
 	 * - `pubsub`

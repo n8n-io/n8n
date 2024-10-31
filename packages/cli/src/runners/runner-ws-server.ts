@@ -10,6 +10,7 @@ import type {
 	TaskRunnerServerInitResponse,
 } from './runner-types';
 import { TaskBroker, type MessageCallback, type TaskRunner } from './task-broker.service';
+import { TaskRunnerDisconnectAnalyzer } from './task-runner-disconnect-analyzer';
 
 function heartbeat(this: WebSocket) {
 	this.isAlive = true;
@@ -22,6 +23,7 @@ export class TaskRunnerService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly taskBroker: TaskBroker,
+		private readonly disconnectAnalyzer: TaskRunnerDisconnectAnalyzer,
 	) {}
 
 	sendMessage(id: TaskRunner['id'], message: N8nMessage.ToRunner.All) {
@@ -34,7 +36,7 @@ export class TaskRunnerService {
 
 		let isConnected = false;
 
-		const onMessage = (data: WebSocket.RawData) => {
+		const onMessage = async (data: WebSocket.RawData) => {
 			try {
 				const buffer = Array.isArray(data) ? Buffer.concat(data) : Buffer.from(data);
 
@@ -45,7 +47,7 @@ export class TaskRunnerService {
 				if (!isConnected && message.type !== 'runner:info') {
 					return;
 				} else if (!isConnected && message.type === 'runner:info') {
-					this.removeConnection(id);
+					await this.removeConnection(id);
 					isConnected = true;
 
 					this.runnerConnections.set(id, connection);
@@ -75,10 +77,10 @@ export class TaskRunnerService {
 		};
 
 		// Makes sure to remove the session if the connection is closed
-		connection.once('close', () => {
+		connection.once('close', async () => {
 			connection.off('pong', heartbeat);
 			connection.off('message', onMessage);
-			this.removeConnection(id);
+			await this.removeConnection(id);
 		});
 
 		connection.on('message', onMessage);
@@ -87,10 +89,11 @@ export class TaskRunnerService {
 		);
 	}
 
-	removeConnection(id: TaskRunner['id']) {
+	async removeConnection(id: TaskRunner['id']) {
 		const connection = this.runnerConnections.get(id);
 		if (connection) {
-			this.taskBroker.deregisterRunner(id);
+			const disconnectReason = await this.disconnectAnalyzer.determineDisconnectReason(id);
+			this.taskBroker.deregisterRunner(id, disconnectReason);
 			connection.close();
 			this.runnerConnections.delete(id);
 		}

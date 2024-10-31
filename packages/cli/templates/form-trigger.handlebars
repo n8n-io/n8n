@@ -752,6 +752,8 @@
 							console.error('Error:', error);
 						});
 
+					const isWaitingForm = window.location.href.includes('form-waiting');
+					if(isWaitingForm) {
 						const interval = setInterval(function() {
 							const isSubmited = document.querySelector('#submitted-form').style.display;
 							if(isSubmited === 'block') {
@@ -760,6 +762,7 @@
 							}
 							window.location.reload();
 						}, 2000);
+					}
 				}
 			});
 		</script>

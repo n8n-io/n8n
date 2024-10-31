@@ -47,7 +47,6 @@ import type {
 	INodeParameters,
 	INodeTypes,
 	IPinData,
-	IRun,
 	IRunData,
 	IRunExecutionData,
 	ITaskData,
@@ -1344,23 +1343,16 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			return;
 		}
 
-		const activeExecution = activeExecutions.value[activeExecutionIndex];
+		Object.assign(activeExecutions.value[activeExecutionIndex], {
+			...(finishedActiveExecution.executionId !== undefined
+				? { id: finishedActiveExecution.executionId }
+				: {}),
+			finished: finishedActiveExecution.data?.finished,
+			stoppedAt: finishedActiveExecution.data?.stoppedAt,
+		});
 
-		activeExecutions.value = [
-			...activeExecutions.value.slice(0, activeExecutionIndex),
-			{
-				...activeExecution,
-				...(finishedActiveExecution.executionId !== undefined
-					? { id: finishedActiveExecution.executionId }
-					: {}),
-				finished: finishedActiveExecution.data.finished,
-				stoppedAt: finishedActiveExecution.data.stoppedAt,
-			},
-			...activeExecutions.value.slice(activeExecutionIndex + 1),
-		];
-
-		if (finishedActiveExecution.data && (finishedActiveExecution.data as IRun).data) {
-			setWorkflowExecutionRunData((finishedActiveExecution.data as IRun).data);
+		if (finishedActiveExecution.data?.data) {
+			setWorkflowExecutionRunData(finishedActiveExecution.data.data);
 		}
 	}
 

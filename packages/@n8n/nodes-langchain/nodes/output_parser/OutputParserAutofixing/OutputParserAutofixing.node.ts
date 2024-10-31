@@ -1,6 +1,11 @@
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import { NodeConnectionType } from 'n8n-workflow';
-import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
+import type {
+	ISupplyDataFunctions,
+	INodeType,
+	INodeTypeDescription,
+	SupplyData,
+} from 'n8n-workflow';
 
 import {
 	N8nOutputFixingParser,
@@ -63,7 +68,7 @@ export class OutputParserAutofixing implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const model = (await this.getInputConnectionData(
 			NodeConnectionType.AiLanguageModel,
 			itemIndex,
