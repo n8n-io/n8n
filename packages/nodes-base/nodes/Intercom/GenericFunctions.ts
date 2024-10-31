@@ -4,7 +4,7 @@ import type {
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	JsonObject,
-	IRequestOptions,
+	IHttpRequestOptions,
 	IHttpRequestMethods,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
@@ -18,24 +18,16 @@ export async function intercomApiRequest(
 	query?: IDataObject,
 	uri?: string,
 ): Promise<any> {
-	const credentials = await this.getCredentials('intercomApi');
-
-	const headerWithAuthentication = Object.assign(
-		{},
-		{ Authorization: `Bearer ${credentials.apiKey}`, Accept: 'application/json' },
-	);
-
-	const options: IRequestOptions = {
-		headers: headerWithAuthentication,
+	const options: IHttpRequestOptions = {
 		method,
 		qs: query,
-		uri: uri || `https://api.intercom.io${endpoint}`,
+		url: uri ?? `https://api.intercom.io${endpoint}`,
 		body,
 		json: true,
 	};
 
 	try {
-		return await this.helpers.request(options);
+		return await this.helpers.httpRequestWithAuthentication.call(this, 'intercomApi', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
