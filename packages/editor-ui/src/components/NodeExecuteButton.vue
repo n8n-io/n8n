@@ -238,8 +238,8 @@ const shouldGenerateCode = computed(() => {
 	}
 	if (
 		node.value?.parameters[AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT] &&
-		node.value?.parameters?.instructions !==
-			node.value?.parameters[AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT]
+		(node.value?.parameters?.instructions as string).trim() !==
+			(node.value?.parameters?.[AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT] as string).trim()
 	) {
 		return true;
 	}
