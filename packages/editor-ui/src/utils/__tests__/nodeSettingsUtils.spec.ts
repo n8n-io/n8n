@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterAll } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import type { IConnections, NodeParameterValueType } from 'n8n-workflow';
 import { updateDynamicConnections } from '../nodeSettingsUtils';
@@ -6,6 +6,9 @@ import { SWITCH_NODE_TYPE } from '@/constants';
 import type { INodeUi, IUpdateInformation } from '@/Interface';
 
 describe('updateDynamicConnections', () => {
+	afterAll(() => {
+		vi.clearAllMocks();
+	});
 	it('should remove extra outputs when the number of outputs decreases', () => {
 		const node = mock<INodeUi>({
 			name: 'TestNode',
