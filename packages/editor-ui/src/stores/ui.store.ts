@@ -31,7 +31,6 @@ import {
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
 	SOURCE_CONTROL_PULL_MODAL_KEY,
 	DEBUG_PAYWALL_MODAL_KEY,
-	N8N_PRICING_PAGE_URL,
 	WORKFLOW_HISTORY_VERSION_RESTORE,
 	SETUP_CREDENTIALS_MODAL_KEY,
 	PROJECT_MOVE_RESOURCE_MODAL,
@@ -40,10 +39,8 @@ import {
 	COMMUNITY_PLUS_ENROLLMENT_MODAL,
 } from '@/constants';
 import type {
-	CloudUpdateLinkSourceType,
 	IFakeDoorLocation,
 	INodeUi,
-	UTMCampaign,
 	XYPosition,
 	Modals,
 	NewCredentialsModal,
@@ -56,10 +53,8 @@ import type {
 import { defineStore } from 'pinia';
 import { useRootStore } from '@/stores/root.store';
 import * as curlParserApi from '@/api/curlHelper';
-import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { hasPermission } from '@/utils/rbac/permissions';
 import { useUsersStore } from '@/stores/users.store';
 import { dismissBannerPermanently } from '@/api/ui';
 import type { BannerName } from 'n8n-workflow';
@@ -72,10 +67,9 @@ import {
 } from './ui.utils';
 import { computed, ref } from 'vue';
 import type { Connection } from '@vue-flow/core';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { useVersionsStore } from '@/stores/versions.store';
 
 let savedTheme: ThemeOption = 'system';
+
 try {
 	const value = getThemeOverride();
 	if (isValidTheme(value)) {
@@ -206,11 +200,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const settingsStore = useSettingsStore();
 	const workflowsStore = useWorkflowsStore();
 	const rootStore = useRootStore();
-	const telemetry = useTelemetry();
-	const cloudPlanStore = useCloudPlanStore();
 	const userStore = useUsersStore();
-	const versionsStore = useVersionsStore();
-	const usersStore = useUsersStore();
 
 	const appliedTheme = computed(() => {
 		return theme.value === 'system' ? getPreferredTheme() : theme.value;
