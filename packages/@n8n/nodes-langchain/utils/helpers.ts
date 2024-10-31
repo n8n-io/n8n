@@ -1,12 +1,18 @@
-import { NodeConnectionType, NodeOperationError, jsonStringify } from 'n8n-workflow';
-import type { AiEvent, IDataObject, IExecuteFunctions, IWebhookFunctions } from 'n8n-workflow';
+import type { BaseChatMessageHistory } from '@langchain/core/chat_history';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import type { BaseOutputParser } from '@langchain/core/output_parsers';
+import type { BaseLLM } from '@langchain/core/language_models/llms';
 import type { BaseMessage } from '@langchain/core/messages';
 import type { Tool } from '@langchain/core/tools';
-import type { BaseLLM } from '@langchain/core/language_models/llms';
 import type { BaseChatMemory } from 'langchain/memory';
-import type { BaseChatMessageHistory } from '@langchain/core/chat_history';
+import { NodeConnectionType, NodeOperationError, jsonStringify } from 'n8n-workflow';
+import type {
+	AiEvent,
+	IDataObject,
+	IExecuteFunctions,
+	ISupplyDataFunctions,
+	IWebhookFunctions,
+} from 'n8n-workflow';
+
 import { N8nTool } from './N8nTool';
 
 function hasMethods<T>(obj: unknown, ...methodNames: Array<string | symbol>): obj is T {
@@ -20,7 +26,7 @@ function hasMethods<T>(obj: unknown, ...methodNames: Array<string | symbol>): ob
 }
 
 export function getMetadataFiltersValues(
-	ctx: IExecuteFunctions,
+	ctx: IExecuteFunctions | ISupplyDataFunctions,
 	itemIndex: number,
 ): Record<string, never> | undefined {
 	const options = ctx.getNodeParameter('options', itemIndex, {});
@@ -66,21 +72,6 @@ export function isToolsInstance(model: unknown): model is Tool {
 	return namespace.includes('tools');
 }
 
-export async function getOptionalOutputParsers(
-	ctx: IExecuteFunctions,
-): Promise<Array<BaseOutputParser<unknown>>> {
-	let outputParsers: BaseOutputParser[] = [];
-
-	if (ctx.getNodeParameter('hasOutputParser', 0, true) === true) {
-		outputParsers = (await ctx.getInputConnectionData(
-			NodeConnectionType.AiOutputParser,
-			0,
-		)) as BaseOutputParser[];
-	}
-
-	return outputParsers;
-}
-
 export function getPromptInputByType(options: {
 	ctx: IExecuteFunctions;
 	i: number;
@@ -108,7 +99,7 @@ export function getPromptInputByType(options: {
 }
 
 export function getSessionId(
-	ctx: IExecuteFunctions | IWebhookFunctions,
+	ctx: ISupplyDataFunctions | IWebhookFunctions,
 	itemIndex: number,
 	selectorKey = 'sessionIdType',
 	autoSelect = 'fromInput',
@@ -148,13 +139,13 @@ export function getSessionId(
 	return sessionId;
 }
 
-export async function logAiEvent(
-	executeFunctions: IExecuteFunctions,
+export function logAiEvent(
+	executeFunctions: IExecuteFunctions | ISupplyDataFunctions,
 	event: AiEvent,
 	data?: IDataObject,
 ) {
 	try {
-		await executeFunctions.logAiEvent(event, data ? jsonStringify(data) : undefined);
+		executeFunctions.logAiEvent(event, data ? jsonStringify(data) : undefined);
 	} catch (error) {
 		executeFunctions.logger.debug(`Error logging AI event: ${event}`);
 	}

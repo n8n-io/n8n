@@ -3,7 +3,7 @@ import {
 	NodeConnectionType,
 	type INodePropertyOptions,
 	type INodeProperties,
-	type IExecuteFunctions,
+	type ISupplyDataFunctions,
 	type INodeType,
 	type INodeTypeDescription,
 	type SupplyData,
@@ -20,6 +20,10 @@ const modelField: INodeProperties = {
 	type: 'options',
 	// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 	options: [
+		{
+			name: 'Claude 3.5 Sonnet(20241022)',
+			value: 'claude-3-5-sonnet-20241022',
+		},
 		{
 			name: 'Claude 3 Opus(20240229)',
 			value: 'claude-3-opus-20240229',
@@ -175,7 +179,7 @@ export class LmChatAnthropic implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials('anthropicApi');
 
 		const modelName = this.getNodeParameter('model', itemIndex) as string;

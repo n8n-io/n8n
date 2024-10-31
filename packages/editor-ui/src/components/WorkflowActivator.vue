@@ -7,7 +7,7 @@ import type { VNode } from 'vue';
 import { computed, h } from 'vue';
 import { useI18n } from '@/composables/useI18n';
 import type { PermissionsRecord } from '@/permissions';
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
+import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 import WorkflowActivationErrorMessage from './WorkflowActivationErrorMessage.vue';
 
 const props = defineProps<{
@@ -41,6 +41,17 @@ const isCurrentWorkflow = computed((): boolean => {
 const containsTrigger = computed((): boolean => {
 	const foundTriggers = getActivatableTriggerNodes(workflowsStore.workflowTriggerNodes);
 	return foundTriggers.length > 0;
+});
+
+const containsOnlyExecuteWorkflowTrigger = computed((): boolean => {
+	const foundActiveTriggers = workflowsStore.workflowTriggerNodes.filter(
+		(trigger) => !trigger.disabled,
+	);
+	const foundTriggers = foundActiveTriggers.filter(
+		(trigger) => trigger.type === EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+	);
+
+	return foundTriggers.length > 0 && foundTriggers.length === foundActiveTriggers.length;
 });
 
 const isNewWorkflow = computed(
@@ -109,7 +120,13 @@ async function displayActivationError() {
 		<n8n-tooltip :disabled="!disabled" placement="bottom">
 			<template #content>
 				<div>
-					{{ i18n.baseText('workflowActivator.thisWorkflowHasNoTriggerNodes') }}
+					{{
+						i18n.baseText(
+							containsOnlyExecuteWorkflowTrigger
+								? 'workflowActivator.thisWorkflowHasOnlyOneExecuteWorkflowTriggerNode'
+								: 'workflowActivator.thisWorkflowHasNoTriggerNodes',
+						)
+					}}
 				</div>
 			</template>
 			<el-switch

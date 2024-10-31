@@ -1,33 +1,11 @@
-import { ApplicationError, ensureError } from 'n8n-workflow';
-import * as a from 'node:assert/strict';
+import { ensureError } from 'n8n-workflow';
+import Container from 'typedi';
 
-import { authenticate } from './authenticator';
+import { MainConfig } from './config/main-config';
 import { JsTaskRunner } from './js-task-runner/js-task-runner';
 
 let runner: JsTaskRunner | undefined;
 let isShuttingDown = false;
-
-type Config = {
-	n8nUri: string;
-	authToken?: string;
-	grantToken?: string;
-};
-
-function readAndParseConfig(): Config {
-	const authToken = process.env.N8N_RUNNERS_AUTH_TOKEN;
-	const grantToken = process.env.N8N_RUNNERS_GRANT_TOKEN;
-	if (!authToken && !grantToken) {
-		throw new ApplicationError(
-			'Missing task runner authentication. Use either N8N_RUNNERS_AUTH_TOKEN or N8N_RUNNERS_GRANT_TOKEN to configure it',
-		);
-	}
-
-	return {
-		n8nUri: process.env.N8N_RUNNERS_N8N_URI ?? '127.0.0.1:5679',
-		authToken,
-		grantToken,
-	};
-}
 
 function createSignalHandler(signal: string) {
 	return async function onSignal() {
@@ -53,26 +31,9 @@ function createSignalHandler(signal: string) {
 }
 
 void (async function start() {
-	const config = readAndParseConfig();
+	const config = Container.get(MainConfig);
 
-	let grantToken = config.grantToken;
-	if (!grantToken) {
-		a.ok(config.authToken);
-
-		grantToken = await authenticate({
-			authToken: config.authToken,
-			n8nUri: config.n8nUri,
-		});
-	}
-
-	const wsUrl = `ws://${config.n8nUri}/runners/_ws`;
-	runner = new JsTaskRunner({
-		wsUrl,
-		grantToken,
-		maxConcurrency: 5,
-		allowedBuiltInModules: process.env.NODE_FUNCTION_ALLOW_BUILTIN,
-		allowedExternalModules: process.env.NODE_FUNCTION_ALLOW_EXTERNAL,
-	});
+	runner = new JsTaskRunner(config);
 
 	process.on('SIGINT', createSignalHandler('SIGINT'));
 	process.on('SIGTERM', createSignalHandler('SIGTERM'));

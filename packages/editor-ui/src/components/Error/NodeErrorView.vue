@@ -121,7 +121,8 @@ const isAskAssistantAvailable = computed(() => {
 		return false;
 	}
 	const isCustomNode = node.value.type === undefined || isCommunityPackageName(node.value.type);
-	return assistantStore.canShowAssistantButtonsOnCanvas && !isCustomNode;
+
+	return assistantStore.canShowAssistantButtonsOnCanvas && !isCustomNode && !nodeIsHidden();
 });
 
 const assistantAlreadyAsked = computed(() => {
@@ -382,6 +383,11 @@ function copySuccess() {
 		title: i18n.baseText('nodeErrorView.showMessage.title'),
 		type: 'info',
 	});
+}
+
+function nodeIsHidden() {
+	const nodeType = nodeTypesStore.getNodeType(node?.value.type);
+	return nodeType?.hidden ?? false;
 }
 
 async function onAskAssistantClick() {

@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import { Flags, type Config } from '@oclif/core';
+import { GlobalConfig } from '@n8n/config';
+import { Flags } from '@oclif/core';
 import glob from 'fast-glob';
 import { createReadStream, createWriteStream, existsSync } from 'fs';
 import { mkdir } from 'fs/promises';
@@ -21,7 +22,7 @@ import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus'
 import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { License } from '@/license';
-import { SingleMainTaskManager } from '@/runners/task-managers/single-main-task-manager';
+import { LocalTaskManager } from '@/runners/task-managers/local-task-manager';
 import { TaskManager } from '@/runners/task-managers/task-manager';
 import { PubSubHandler } from '@/scaling/pubsub/pubsub-handler';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
@@ -69,11 +70,6 @@ export class Start extends BaseCommand {
 	protected server = Container.get(Server);
 
 	override needsCommunityPackages = true;
-
-	constructor(argv: string[], cmdConfig: Config) {
-		super(argv, cmdConfig);
-		this.setInstanceQueueModeId();
-	}
 
 	/**
 	 * Opens the UI in browser
@@ -174,8 +170,9 @@ export class Start extends BaseCommand {
 
 		this.logger.info('Initializing n8n process');
 		if (config.getEnv('executions.mode') === 'queue') {
-			this.logger.debug('Main Instance running in queue mode');
-			this.logger.debug(`Queue mode id: ${this.queueModeId}`);
+			const scopedLogger = this.logger.scoped('scaling');
+			scopedLogger.debug('Starting main instance in scaling mode');
+			scopedLogger.debug(`Host ID: ${this.instanceSettings.hostId}`);
 		}
 
 		const { flags } = await this.parse(Start);
@@ -202,7 +199,7 @@ export class Start extends BaseCommand {
 		await this.initOrchestration();
 		this.logger.debug('Orchestration init complete');
 
-		if (!config.getEnv('license.autoRenewEnabled') && this.instanceSettings.isLeader) {
+		if (!this.globalConfig.license.autoRenewalEnabled && this.instanceSettings.isLeader) {
 			this.logger.warn(
 				'Automatic license renewal is disabled. The license will not renew automatically, and access to licensed features may be lost!',
 			);
@@ -225,15 +222,21 @@ export class Start extends BaseCommand {
 			await this.generateStaticAssets();
 		}
 
-		if (!this.globalConfig.taskRunners.disabled) {
-			Container.set(TaskManager, new SingleMainTaskManager());
+		const { taskRunners: taskRunnerConfig } = this.globalConfig;
+		if (!taskRunnerConfig.disabled) {
+			Container.set(TaskManager, new LocalTaskManager());
 			const { TaskRunnerServer } = await import('@/runners/task-runner-server');
 			const taskRunnerServer = Container.get(TaskRunnerServer);
 			await taskRunnerServer.start();
 
-			const { TaskRunnerProcess } = await import('@/runners/task-runner-process');
-			const runnerProcess = Container.get(TaskRunnerProcess);
-			await runnerProcess.start();
+			if (
+				taskRunnerConfig.mode === 'internal_childprocess' ||
+				taskRunnerConfig.mode === 'internal_launcher'
+			) {
+				const { TaskRunnerProcess } = await import('@/runners/task-runner-process');
+				const runnerProcess = Container.get(TaskRunnerProcess);
+				await runnerProcess.start();
+			}
 		}
 	}
 
@@ -244,7 +247,7 @@ export class Start extends BaseCommand {
 		}
 
 		if (
-			config.getEnv('multiMainSetup.enabled') &&
+			Container.get(GlobalConfig).multiMainSetup.enabled &&
 			!Container.get(License).isMultipleMainInstancesLicensed()
 		) {
 			throw new FeatureNotLicensedError(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES);
@@ -259,6 +262,8 @@ export class Start extends BaseCommand {
 		const subscriber = Container.get(Subscriber);
 		await subscriber.subscribe('n8n.commands');
 		await subscriber.subscribe('n8n.worker-response');
+
+		this.logger.scoped(['scaling', 'pubsub']).debug('Pubsub setup completed');
 
 		if (!orchestrationService.isMultiMainSetupEnabled) return;
 

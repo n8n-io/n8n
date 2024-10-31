@@ -211,7 +211,6 @@ describe('GlobalConfig', () => {
 					clusterNodes: '',
 					tls: false,
 				},
-				queueRecoveryInterval: 60,
 				gracefulShutdownTimeout: 30,
 				prefix: 'bull',
 				settings: {
@@ -224,10 +223,16 @@ describe('GlobalConfig', () => {
 		},
 		taskRunners: {
 			disabled: true,
+			mode: 'internal_childprocess',
 			path: '/runners',
 			authToken: '',
-			listen_address: '127.0.0.1',
+			listenAddress: '127.0.0.1',
+			maxPayload: 1024 * 1024 * 1024,
 			port: 5679,
+			launcherPath: '',
+			launcherRunner: 'javascript',
+			maxOldSpaceSize: '',
+			maxConcurrency: 5,
 		},
 		sentry: {
 			backendDsn: '',
@@ -242,6 +247,29 @@ describe('GlobalConfig', () => {
 				location: 'logs/n8n.log',
 			},
 			scopes: [],
+		},
+		multiMainSetup: {
+			enabled: false,
+			ttl: 10,
+			interval: 3,
+		},
+		generic: {
+			timezone: 'America/New_York',
+			releaseChannel: 'dev',
+			gracefulShutdownTimeout: 30,
+		},
+		license: {
+			serverUrl: 'https://license.n8n.io/v1',
+			autoRenewalEnabled: true,
+			autoRenewOffset: 60 * 60 * 72,
+			activationKey: '',
+			tenantId: 1,
+			cert: '',
+		},
+		security: {
+			restrictFileAccessTo: '',
+			blockFileAccessToN8nFiles: true,
+			daysAbandonedWorkflow: 90,
 		},
 	};
 

@@ -1,6 +1,10 @@
 import type { IRestApiContext } from '@/Interface';
 import { makeRestApiRequest } from '@/utils/apiUtils';
 
+export async function canEnableMFA(context: IRestApiContext) {
+	return await makeRestApiRequest(context, 'POST', '/mfa/can-enable');
+}
+
 export async function getMfaQR(
 	context: IRestApiContext,
 ): Promise<{ qrCode: string; secret: string; recoveryCodes: string[] }> {

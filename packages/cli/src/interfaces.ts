@@ -355,7 +355,7 @@ export type NumericLicenseFeature = ValuesOf<typeof LICENSE_QUOTAS>;
 
 export interface ILicenseReadResponse {
 	usage: {
-		executions: {
+		activeWorkflowTriggers: {
 			limit: number;
 			value: number;
 			warningThreshold: number;

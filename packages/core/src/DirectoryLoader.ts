@@ -448,9 +448,9 @@ export class LazyPackageDirectoryLoader extends PackageDirectoryLoader {
 				);
 			}
 
-			Logger.debug(`Lazy Loading credentials and nodes from ${this.packageJson.name}`, {
-				credentials: this.types.credentials?.length ?? 0,
+			Logger.debug(`Lazy-loading nodes and credentials from ${this.packageJson.name}`, {
 				nodes: this.types.nodes?.length ?? 0,
+				credentials: this.types.credentials?.length ?? 0,
 			});
 
 			this.isLazyLoaded = true;

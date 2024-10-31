@@ -2,6 +2,7 @@ import { ApplicationError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { Service } from 'typedi';
 
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Logger } from '@/logging/logger.service';
 
 import { TaskRejectError } from './errors';
@@ -71,27 +72,58 @@ export class TaskBroker {
 
 	private pendingTaskRequests: TaskRequest[] = [];
 
-	constructor(private readonly logger: Logger) {}
+	constructor(
+		private readonly logger: Logger,
+		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
+	) {
+		this.loadNodesAndCredentials.addPostProcessor(this.updateNodeTypes);
+	}
+
+	updateNodeTypes = async () => {
+		await this.messageAllRunners({
+			type: 'broker:nodetypes',
+			nodeTypes: this.loadNodesAndCredentials.types.nodes,
+		});
+	};
 
 	expireTasks() {
 		const now = process.hrtime.bigint();
-		const invalidOffers: number[] = [];
-		for (let i = 0; i < this.pendingTaskOffers.length; i++) {
+		for (let i = this.pendingTaskOffers.length - 1; i >= 0; i--) {
 			if (this.pendingTaskOffers[i].validUntil < now) {
-				invalidOffers.push(i);
+				this.pendingTaskOffers.splice(i, 1);
 			}
 		}
-
-		// We reverse the list so the later indexes are valid after deleting earlier ones
-		invalidOffers.reverse().forEach((i) => this.pendingTaskOffers.splice(i, 1));
 	}
 
 	registerRunner(runner: TaskRunner, messageCallback: MessageCallback) {
 		this.knownRunners.set(runner.id, { runner, messageCallback });
+		void this.knownRunners.get(runner.id)!.messageCallback({ type: 'broker:runnerregistered' });
+		void this.knownRunners.get(runner.id)!.messageCallback({
+			type: 'broker:nodetypes',
+			nodeTypes: this.loadNodesAndCredentials.types.nodes,
+		});
 	}
 
-	deregisterRunner(runnerId: string) {
+	deregisterRunner(runnerId: string, error: Error) {
 		this.knownRunners.delete(runnerId);
+
+		// Remove any pending offers
+		for (let i = this.pendingTaskOffers.length - 1; i >= 0; i--) {
+			if (this.pendingTaskOffers[i].runnerId === runnerId) {
+				this.pendingTaskOffers.splice(i, 1);
+			}
+		}
+
+		// Fail any tasks
+		for (const task of this.tasks.values()) {
+			if (task.runnerId === runnerId) {
+				void this.failTask(task.id, error);
+				this.handleRunnerReject(
+					task.id,
+					`The Task Runner (${runnerId}) has disconnected: ${error.message}`,
+				);
+			}
+		}
 	}
 
 	registerRequester(requesterId: string, messageCallback: RequesterMessageCallback) {
@@ -104,6 +136,14 @@ export class TaskBroker {
 
 	private async messageRunner(runnerId: TaskRunner['id'], message: N8nMessage.ToRunner.All) {
 		await this.knownRunners.get(runnerId)?.messageCallback(message);
+	}
+
+	private async messageAllRunners(message: N8nMessage.ToRunner.All) {
+		await Promise.allSettled(
+			[...this.knownRunners.values()].map(async (runner) => {
+				await runner.messageCallback(message);
+			}),
+		);
 	}
 
 	private async messageRequester(requesterId: string, message: N8nMessage.ToRequester.All) {
@@ -315,7 +355,7 @@ export class TaskBroker {
 		});
 	}
 
-	private async failTask(taskId: Task['id'], reason: string) {
+	private async failTask(taskId: Task['id'], error: Error) {
 		const task = this.tasks.get(taskId);
 		if (!task) {
 			return;
@@ -325,7 +365,7 @@ export class TaskBroker {
 		await this.messageRequester(task.requesterId, {
 			type: 'broker:taskerror',
 			taskId,
-			error: reason,
+			error,
 		});
 	}
 
@@ -338,11 +378,14 @@ export class TaskBroker {
 		}
 		const runner = this.knownRunners.get(task.runnerId);
 		if (!runner) {
-			const reason = `Cannot find runner, failed to find runner (${task.runnerId})`;
-			await this.failTask(taskId, reason);
-			throw new ApplicationError(reason, {
-				level: 'error',
-			});
+			const error = new ApplicationError(
+				`Cannot find runner, failed to find runner (${task.runnerId})`,
+				{
+					level: 'error',
+				},
+			);
+			await this.failTask(taskId, error);
+			throw error;
 		}
 		return runner.runner;
 	}

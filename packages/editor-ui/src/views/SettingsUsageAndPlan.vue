@@ -11,11 +11,14 @@ import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { hasPermission } from '@/utils/rbac/permissions';
 import N8nInfoTip from 'n8n-design-system/components/N8nInfoTip';
 import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '@/constants';
+import { useUsersStore } from '@/stores/users.store';
+import { getResourcePermissions } from '@/permissions';
 
 const usageStore = useUsageStore();
 const route = useRoute();
 const router = useRouter();
 const uiStore = useUIStore();
+const usersStore = useUsersStore();
 const toast = useToast();
 const documentTitle = useDocumentTitle();
 
@@ -46,6 +49,10 @@ const isCommunity = computed(() => usageStore.planName.toLowerCase() === 'commun
 
 const isCommunityEditionRegistered = computed(
 	() => usageStore.planName.toLowerCase() === 'registered community',
+);
+
+const canUserRegisterCommunityPlus = computed(
+	() => getResourcePermissions(usersStore.currentUser?.globalScopes).community.register,
 );
 
 const showActivationSuccess = () => {
@@ -173,7 +180,7 @@ const openCommunityRegisterModal = () => {
 				</span>
 			</n8n-heading>
 
-			<N8nNotice v-if="isCommunity" class="mt-0" theme="warning">
+			<N8nNotice v-if="isCommunity && canUserRegisterCommunityPlus" class="mt-0" theme="warning">
 				<i18n-t keypath="settings.usageAndPlan.callOut">
 					<template #link>
 						<N8nButton
@@ -191,7 +198,7 @@ const openCommunityRegisterModal = () => {
 					{{ locale.baseText('settings.usageAndPlan.activeWorkflows') }}
 				</n8n-text>
 				<div :class="$style.chart">
-					<span v-if="usageStore.executionLimit > 0" :class="$style.chartLine">
+					<span v-if="usageStore.activeWorkflowTriggersLimit > 0" :class="$style.chartLine">
 						<span
 							:class="$style.chartBar"
 							:style="{ width: `${usageStore.executionPercentage}%` }"
@@ -202,12 +209,12 @@ const openCommunityRegisterModal = () => {
 						:class="$style.count"
 						keypath="settings.usageAndPlan.activeWorkflows.count"
 					>
-						<template #count>{{ usageStore.executionCount }}</template>
+						<template #count>{{ usageStore.activeWorkflowTriggersCount }}</template>
 						<template #limit>
-							<span v-if="usageStore.executionLimit < 0">{{
+							<span v-if="usageStore.activeWorkflowTriggersLimit < 0">{{
 								locale.baseText('settings.usageAndPlan.activeWorkflows.unlimited')
 							}}</span>
-							<span v-else>{{ usageStore.executionLimit }}</span>
+							<span v-else>{{ usageStore.activeWorkflowTriggersLimit }}</span>
 						</template>
 					</i18n-t>
 				</div>

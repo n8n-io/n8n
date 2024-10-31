@@ -22,7 +22,7 @@ import { mockInstance } from '../shared/mocking';
 
 describe('softDeleteOnPruningCycle()', () => {
 	let pruningService: PruningService;
-	const instanceSettings = new InstanceSettings();
+	const instanceSettings = new InstanceSettings(mock());
 	instanceSettings.markAsLeader();
 
 	const now = new Date();
@@ -37,6 +37,7 @@ describe('softDeleteOnPruningCycle()', () => {
 			instanceSettings,
 			Container.get(ExecutionRepository),
 			mockInstance(BinaryDataService),
+			mock(),
 			mock(),
 		);
 

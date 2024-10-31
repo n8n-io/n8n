@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import { NodeConnectionType } from 'n8n-workflow';
 import type {
 	INodeTypeBaseDescription,

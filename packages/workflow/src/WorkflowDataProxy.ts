@@ -1365,6 +1365,7 @@ export class WorkflowDataProxy {
 			$thisRunIndex: this.runIndex,
 			$nodeVersion: that.workflow.getNode(that.activeNodeName)?.typeVersion,
 			$nodeId: that.workflow.getNode(that.activeNodeName)?.id,
+			$webhookId: that.workflow.getNode(that.activeNodeName)?.webhookId,
 		};
 
 		return new Proxy(base, {
