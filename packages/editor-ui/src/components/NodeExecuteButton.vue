@@ -245,7 +245,7 @@ async function onClick() {
 		!node.value?.parameters?.jsCode &&
 		node.value?.parameters?.instructions
 	) {
-		// Generate code if user didn't clicked 'Generate Code' button
+		// Generate code if user hasn't clicked 'Generate Code' button
 		// and update parameters
 		codeGenerationInProgress.value = true;
 		try {
