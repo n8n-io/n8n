@@ -150,7 +150,6 @@ exports[`FormBox > should render the component 1`] = `
                     <input
                       autocomplete="email"
                       class="el-input__inner"
-											maxlength="Infinity"
                       name="email"
                       placeholder=""
                       rows="2"
@@ -223,7 +222,6 @@ exports[`FormBox > should render the component 1`] = `
                     <input
                       autocomplete="current-password"
                       class="el-input__inner"
-											maxlength="Infinity"
                       name="password"
                       placeholder=""
                       rows="2"
