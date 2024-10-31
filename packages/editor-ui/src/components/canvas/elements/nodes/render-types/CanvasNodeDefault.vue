@@ -8,6 +8,7 @@ import { useCanvasNode } from '@/composables/useCanvasNode';
 import { NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS } from '@/constants';
 import { N8nTooltip } from 'n8n-design-system';
 import type { CanvasNodeDefaultRender } from '@/types';
+import { capitalize } from 'lodash-es';
 
 const $style = useCssModule();
 const i18n = useI18n();
@@ -30,6 +31,7 @@ const {
 	executionRunning,
 	hasRunData,
 	hasIssues,
+	diff,
 	render,
 } = useCanvasNode();
 const {
@@ -60,6 +62,7 @@ const classes = computed(() => {
 		[$style.configurable]: renderOptions.value.configurable,
 		[$style.configuration]: renderOptions.value.configuration,
 		[$style.trigger]: renderOptions.value.trigger,
+		...(diff.value ? { [$style[`diff${capitalize(diff.value.status)}`]]: true } : {}),
 	};
 });
 
@@ -121,6 +124,7 @@ function openContextMenu(event: MouseEvent) {
 				<FontAwesomeIcon icon="bolt" size="lg" />
 			</div>
 		</N8nTooltip>
+		<CanvasNodeDiffStatus v-if="diff" :class="$style.diffStatus" />
 		<CanvasNodeStatusIcons v-if="!isDisabled" :class="$style.statusIcons" />
 		<CanvasNodeDisabledStrikeThrough v-if="isStrikethroughVisible" />
 		<div :class="$style.description">
@@ -221,6 +225,28 @@ function openContextMenu(event: MouseEvent) {
 	}
 
 	/**
+	 * Diff classes
+	 */
+
+	&.diffAdded {
+		border-color: green;
+		border-style: dashed;
+		box-shadow: 0 0 var(--spacing-xs) 0 rgba(0, 255, 0, 0.25);
+	}
+
+	&.diffDeleted {
+		border-color: red;
+		border-style: dashed;
+		box-shadow: 0 0 var(--spacing-xs) 0 rgba(255, 0, 0, 0.25);
+	}
+
+	&.diffModified {
+		border-color: orange;
+		border-style: dashed;
+		box-shadow: 0 0 var(--spacing-xs) 0 rgba(255, 153, 0, 0.25);
+	}
+
+	/**
 	 * State classes
 	 * The reverse order defines the priority in case multiple states are active
 	 */
@@ -291,6 +317,13 @@ function openContextMenu(event: MouseEvent) {
 	text-overflow: ellipsis;
 	line-height: var(--font-line-height-compact);
 	font-weight: 400;
+}
+
+.diffStatus {
+	position: absolute;
+	top: 0;
+	left: 50%;
+	transform: translate(-50%, -50%);
 }
 
 .statusIcons {

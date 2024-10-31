@@ -78,15 +78,7 @@ const loadWorkflow = () => {
 			'*',
 		);
 
-		if (props.diff) {
-			iframeRef.value?.contentWindow?.postMessage?.(
-				JSON.stringify({
-					command: 'setDiff',
-					diff: props.diff,
-				}),
-				'*',
-			);
-		}
+		loadDiff();
 	} catch (error) {
 		toast.showError(
 			error,
@@ -94,6 +86,45 @@ const loadWorkflow = () => {
 			i18n.baseText('workflowPreview.showError.previewError.message'),
 		);
 	}
+};
+
+const loadDiff = () => {
+	if (props.diff) {
+		iframeRef.value?.contentWindow?.postMessage?.(
+			JSON.stringify({
+				command: 'setDiff',
+				diff: props.diff,
+			}),
+			'*',
+		);
+
+		fitView();
+	}
+};
+
+const unloadDiff = () => {
+	iframeRef.value?.contentWindow?.postMessage?.(
+		JSON.stringify({
+			command: 'setDiff',
+			diff: {},
+		}),
+		'*',
+	);
+
+	fitView();
+};
+
+const fitView = () => {
+	if (!ready.value) {
+		return;
+	}
+
+	iframeRef.value?.contentWindow?.postMessage?.(
+		JSON.stringify({
+			command: 'fitView',
+		}),
+		'*',
+	);
 };
 
 const loadExecution = () => {
@@ -200,6 +231,17 @@ watch(
 	() => {
 		if (props.mode === 'workflow' && props.workflow) {
 			loadWorkflow();
+		}
+	},
+);
+
+watch(
+	() => props.diff,
+	(value) => {
+		if (value) {
+			loadDiff();
+		} else {
+			unloadDiff();
 		}
 	},
 );

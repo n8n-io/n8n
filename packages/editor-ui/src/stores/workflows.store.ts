@@ -554,6 +554,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		activeExecutionId.value = null;
 		executingNode.value.length = 0;
 		executionWaitingForWebhook.value = false;
+
+		workflowDiff.value = undefined;
 	}
 
 	function addExecutingNode(nodeName: string) {

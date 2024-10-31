@@ -5,4 +5,8 @@ export const enum NodeDiffStatus {
 	Deleted = 'deleted',
 }
 
-export type WorkflowDiff = Record<string, NodeDiffStatus>;
+export type NodeDiff = {
+	status: NodeDiffStatus;
+};
+
+export type WorkflowDiff = Record<string, NodeDiff>;

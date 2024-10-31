@@ -10,6 +10,7 @@ import type {
 	CanvasNodeInjectionData,
 } from '@/types';
 import type { InjectionKey } from 'vue';
+import type { WorkflowHistoryActionType } from '@/types/workflowHistory';
 
 export const MAX_WORKFLOW_SIZE = 1024 * 1024 * 16; // Workflow size limit in bytes
 export const MAX_EXPECTED_REQUEST_SIZE = 2048; // Expected maximum workflow request metadata (i.e. headers) size in bytes
@@ -878,3 +879,23 @@ export const CanvasNodeHandleKey =
 export const BROWSER_ID_STORAGE_KEY = 'n8n-browserId';
 
 export const APP_MODALS_ELEMENT_ID = 'app-modals';
+
+/**
+ * Workflow History
+ */
+
+export const workflowHistoryActionTypes: WorkflowHistoryActionType[] = [
+	'showdiff',
+	'closediff',
+	'restore',
+	'clone',
+	'open',
+	'download',
+];
+
+export const WORKFLOW_HISTORY_ACTIONS = workflowHistoryActionTypes.reduce(
+	(record, key) => ({ ...record, [key.toUpperCase()]: key }),
+	{} as {
+		[K in Uppercase<WorkflowHistoryActionType>]: Lowercase<K>;
+	},
+);

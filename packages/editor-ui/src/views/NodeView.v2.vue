@@ -1351,6 +1351,8 @@ async function onPostMessageReceived(messageEvent: MessageEvent) {
 			)) as ExecutionSummary;
 		} else if (json?.command === 'setDiff') {
 			workflowsStore.workflowDiff = json.diff;
+		} else if (json?.command === 'fitView') {
+			fitView();
 		}
 	} catch (e) {}
 }

@@ -1,8 +1,7 @@
 import type { WorkflowDiff } from '@/types/workflowDiff.types';
-import type { INodeUi, IWorkflowDb } from '@/Interface';
 import { NodeDiffStatus } from '@/types/workflowDiff.types';
-import _pick from 'lodash/pick';
-import _isEqual from 'lodash/isEqual';
+import type { INodeUi, IWorkflowDb } from '@/Interface';
+import { pick as _pick, isEqual as _isEqual } from 'lodash-es';
 
 export function compareNodes(base: INodeUi, target: INodeUi): boolean {
 	const propsToCompare = ['name', 'type', 'typeVersion', 'webhookId', 'credentials', 'parameters'];
@@ -38,17 +37,17 @@ export function compareWorkflows(
 
 	Object.keys(baseNodes).forEach((id) => {
 		if (!targetNodes[id]) {
-			diff[id] = NodeDiffStatus.Deleted;
+			diff[id] = { status: NodeDiffStatus.Deleted };
 		} else if (!nodesEqual(baseNodes[id], targetNodes[id])) {
-			diff[id] = NodeDiffStatus.Modified;
+			diff[id] = { status: NodeDiffStatus.Modified };
 		} else {
-			diff[id] = NodeDiffStatus.Eq;
+			diff[id] = { status: NodeDiffStatus.Eq };
 		}
 	});
 
 	Object.keys(targetNodes).forEach((id) => {
 		if (!baseNodes[id]) {
-			diff[id] = NodeDiffStatus.Added;
+			diff[id] = { status: NodeDiffStatus.Added };
 		}
 	});
 

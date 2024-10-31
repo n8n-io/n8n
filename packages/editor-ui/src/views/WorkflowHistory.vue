@@ -1,8 +1,13 @@
 <script setup lang="ts">
-import { onBeforeMount, ref, watchEffect, computed, h } from 'vue';
+import { onBeforeMount, ref, watchEffect, computed, h, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import type { IWorkflowDb, UserAction } from '@/Interface';
-import { VIEWS, WORKFLOW_HISTORY_VERSION_RESTORE } from '@/constants';
+import {
+	VIEWS,
+	WORKFLOW_HISTORY_ACTIONS,
+	WORKFLOW_HISTORY_VERSION_RESTORE,
+	workflowHistoryActionTypes,
+} from '@/constants';
 import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
 import type {
@@ -21,27 +26,11 @@ import { telemetry } from '@/plugins/telemetry';
 import { useRootStore } from '@/stores/root.store';
 import { getResourcePermissions } from '@/permissions';
 
-type WorkflowHistoryActionRecord = {
-	[K in Uppercase<WorkflowHistoryActionType>]: Lowercase<K>;
-};
-
 const enum WorkflowHistoryVersionRestoreModalActions {
 	restore = 'restore',
 	deactivateAndRestore = 'deactivateAndRestore',
 	cancel = 'cancel',
 }
-
-const workflowHistoryActionTypes: WorkflowHistoryActionType[] = [
-	'diff',
-	'restore',
-	'clone',
-	'open',
-	'download',
-];
-const WORKFLOW_HISTORY_ACTIONS = workflowHistoryActionTypes.reduce(
-	(record, key) => ({ ...record, [key.toUpperCase()]: key }),
-	{} as WorkflowHistoryActionRecord,
-);
 
 const route = useRoute();
 const router = useRouter();
@@ -64,9 +53,7 @@ const selectedWorkflowVersion = ref<WorkflowVersion | null>(null);
 const selectedVersionId = computed(() => normalizeSingleRouteParam('versionId'));
 
 const selectedDiffWorkflowVersion = ref<WorkflowVersion | null>(null);
-const selectedDiffVersionId = computed(() =>
-	route.name === VIEWS.WORKFLOW_HISTORY_DIFF ? normalizeSingleRouteParam('diffId') : null,
-);
+const selectedDiffVersionId = computed(() => normalizeSingleRouteParam('diffId'));
 
 const activeVersionId = computed(() => workflowHistory.value[0]?.versionId);
 
@@ -82,13 +69,21 @@ const workflowPermissions = computed(
 );
 
 const actions = computed<UserAction[]>(() =>
-	workflowHistoryActionTypes.map((value) => ({
-		label: i18n.baseText(`workflowHistory.item.actions.${value}`),
-		disabled:
-			(value === 'clone' && !workflowPermissions.value.create) ||
-			(value === 'restore' && !workflowPermissions.value.update),
-		value,
-	})),
+	workflowHistoryActionTypes
+		.filter((value) => {
+			if (value === WORKFLOW_HISTORY_ACTIONS.SHOWDIFF && selectedDiffVersionId.value) {
+				return false;
+			}
+
+			return value !== WORKFLOW_HISTORY_ACTIONS.CLOSEDIFF;
+		})
+		.map((value) => ({
+			label: i18n.baseText(`workflowHistory.item.actions.${value}`),
+			disabled:
+				(value === 'clone' && !workflowPermissions.value.create) ||
+				(value === 'restore' && !workflowPermissions.value.update),
+			value,
+		})),
 );
 
 const isFirstItemShown = computed(
@@ -281,7 +276,7 @@ const onAction = async ({
 				await restoreWorkflowVersion(id, data);
 				sendTelemetry('User restored version');
 				break;
-			case WORKFLOW_HISTORY_ACTIONS.DIFF:
+			case WORKFLOW_HISTORY_ACTIONS.SHOWDIFF:
 				sendTelemetry('User viewed workflow diff');
 				await router.push({
 					name: VIEWS.WORKFLOW_HISTORY_DIFF,
@@ -289,6 +284,16 @@ const onAction = async ({
 						workflowId: workflowId.value,
 						versionId: id,
 						diffId: activeVersionId.value,
+					},
+				});
+				break;
+			case WORKFLOW_HISTORY_ACTIONS.CLOSEDIFF:
+				sendTelemetry('User closed workflow diff');
+				await router.push({
+					name: VIEWS.WORKFLOW_HISTORY,
+					params: {
+						workflowId: workflowId.value,
+						versionId: id,
 					},
 				});
 				break;
@@ -309,6 +314,15 @@ const onPreview = async ({ event, id }: { event: MouseEvent; id: WorkflowVersion
 	if (event.metaKey || event.ctrlKey) {
 		openInNewTab(id);
 		sendTelemetry('User opened version in new tab');
+	} else if (selectedDiffVersionId.value) {
+		await router.push({
+			name: VIEWS.WORKFLOW_HISTORY_DIFF,
+			params: {
+				workflowId: workflowId.value,
+				versionId: id,
+				diffId: selectedDiffVersionId.value,
+			},
+		});
 	} else {
 		await router.push({
 			name: VIEWS.WORKFLOW_HISTORY,
@@ -342,22 +356,6 @@ watchEffect(async () => {
 		);
 	}
 
-	if (selectedDiffVersionId.value) {
-		try {
-			selectedDiffWorkflowVersion.value = await workflowHistoryStore.getWorkflowVersion(
-				workflowId.value,
-				selectedDiffVersionId.value,
-			);
-		} catch (error) {
-			toast.showError(
-				new Error(`${error.message} "${selectedVersionId.value}"&nbsp;`),
-				i18n.baseText('workflowHistory.title'),
-			);
-		}
-	} else {
-		selectedDiffWorkflowVersion.value = null;
-	}
-
 	try {
 		activeWorkflow.value = await workflowsStore.fetchWorkflow(workflowId.value);
 	} catch (error) {
@@ -365,6 +363,28 @@ watchEffect(async () => {
 		toast.showError(error, i18n.baseText('workflowHistory.title'));
 	}
 });
+
+watch(
+	selectedDiffVersionId,
+	async (diffVersionId) => {
+		if (diffVersionId) {
+			try {
+				selectedDiffWorkflowVersion.value = await workflowHistoryStore.getWorkflowVersion(
+					workflowId.value,
+					diffVersionId,
+				);
+			} catch (error) {
+				toast.showError(
+					new Error(`${error.message} "${selectedVersionId.value}"&nbsp;`),
+					i18n.baseText('workflowHistory.title'),
+				);
+			}
+		} else {
+			selectedDiffWorkflowVersion.value = null;
+		}
+	},
+	{ immediate: true },
+);
 </script>
 <template>
 	<div :class="$style.view">
