@@ -88,7 +88,7 @@ export const sqlAgentAgentProperties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Prompt',
+		displayName: 'Prompt Source',
 		name: 'input',
 		type: 'string',
 		displayOptions: {

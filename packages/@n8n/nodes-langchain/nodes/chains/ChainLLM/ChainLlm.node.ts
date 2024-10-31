@@ -315,7 +315,7 @@ export class ChainLlm implements INodeType {
 				},
 			},
 			{
-				displayName: 'Prompt',
+				displayName: 'Prompt Source',
 				name: 'promptType',
 				type: 'options',
 				options: [

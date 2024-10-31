@@ -26,7 +26,7 @@ import { assistantRLC } from '../descriptions';
 const properties: INodeProperties[] = [
 	assistantRLC,
 	{
-		displayName: 'Prompt',
+		displayName: 'Prompt Source',
 		name: 'prompt',
 		type: 'options',
 		options: [

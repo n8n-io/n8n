@@ -108,7 +108,7 @@ export class ChainRetrievalQa implements INodeType {
 				},
 			},
 			{
-				displayName: 'Prompt',
+				displayName: 'Prompt Source',
 				name: 'promptType',
 				type: 'options',
 				options: [
