@@ -50,6 +50,7 @@ export namespace ChatRequest {
 			firstName: string;
 		};
 		authType?: { name: string; value: string };
+		isNewImplementation?: boolean;
 	}
 
 	export interface InitSupportChat {

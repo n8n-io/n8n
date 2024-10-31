@@ -508,6 +508,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 					nodeInputData,
 					executionSchema: schemas,
 					authType,
+					isNewImplementation: isNewImplementationAvailable.value,
 				},
 			},
 			(msg) => onEachStreamingMessage(msg, id),
