@@ -363,11 +363,6 @@ export default defineComponent({
 			}
 		});
 
-		const projectDescription = computed(() => {
-			if (projectsStore.currentProject) return;
-			return i18n.baseText('projects.home.description');
-		});
-
 		return {
 			i18n,
 			search,
@@ -394,7 +389,6 @@ export default defineComponent({
 			onSearch,
 			headerIcon,
 			projectName,
-			projectDescription,
 		};
 	},
 });
@@ -406,9 +400,6 @@ export default defineComponent({
 			<ResourceListHeader :icon="headerIcon" data-test-id="list-layout-header">
 				<template #title>
 					{{ projectName }}
-				</template>
-				<template v-if="projectDescription" #subtitle>
-					{{ projectDescription }}
 				</template>
 			</ResourceListHeader>
 			<slot name="header" />

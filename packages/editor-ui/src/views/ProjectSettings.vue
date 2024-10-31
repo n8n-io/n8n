@@ -268,11 +268,6 @@ const projectName = computed(() => {
 	}
 });
 
-const projectDescription = computed(() => {
-	if (projectsStore.currentProject) return;
-	return locale.baseText('projects.home.description');
-});
-
 onBeforeMount(async () => {
 	await usersStore.fetchUsers();
 });
@@ -289,9 +284,6 @@ onMounted(() => {
 			<ResourceListHeader :icon="headerIcon" data-test-id="list-layout-header">
 				<template #title>
 					{{ projectName }}
-				</template>
-				<template v-if="projectDescription" #subtitle>
-					{{ projectDescription }}
 				</template>
 			</ResourceListHeader>
 			<ProjectTabs />

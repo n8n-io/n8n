@@ -2487,7 +2487,6 @@
 	"settings.mfa.title": "Multi-factor Authentication",
 	"settings.mfa.updateConfiguration": "MFA configuration updated",
 	"settings.mfa.invalidAuthenticatorCode": "Invalid authenticator code",
-	"projects.home.description": "All the workflows, credentials, variables and executions you have access to",
 	"projects.menu.home": "Home",
 	"projects.menu.title": "Projects",
 	"projects.menu.personal": "Personal",
