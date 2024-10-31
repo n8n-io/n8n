@@ -71,18 +71,6 @@ export class AiTransform implements INodeType {
 				hint: 'Read-only. To edit this code, adjust the prompt or copy and paste it into a Code node.',
 				noDataExpression: true,
 			},
-			{
-				displayName:
-					"Click on 'Test step' to run the transformation code. Further executions will use the generated code (and not invoke AI again).",
-				name: 'hint',
-				type: 'notice',
-				default: '',
-				displayOptions: {
-					show: {
-						jsCode: [{ _cnd: { exists: true } }],
-					},
-				},
-			},
 		],
 	};
 

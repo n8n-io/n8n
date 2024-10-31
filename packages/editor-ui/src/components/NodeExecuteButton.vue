@@ -241,9 +241,12 @@ function onMouseOver() {
 
 async function onClick() {
 	if (
-		node.value?.type === AI_TRANSFORM_NODE_TYPE &&
-		!node.value?.parameters?.jsCode &&
-		node.value?.parameters?.instructions
+		(node.value?.type === AI_TRANSFORM_NODE_TYPE &&
+			node.value?.parameters?.instructions &&
+			!node.value?.parameters?.jsCode) ||
+		(node.value?.parameters[AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT] &&
+			node.value?.parameters?.instructions !==
+				node.value?.parameters[AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT])
 	) {
 		// Generate code if user hasn't clicked 'Generate Code' button
 		// and update parameters
