@@ -167,18 +167,6 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 		state.initialized = true;
 	};
 
-	const goToDashboardPage = async () => {
-		if (usersStore.userIsOwnerInCloudDeployment) {
-			const dashboardLink = await generateCloudDashboardAutoLoginLink({
-				redirectionPath: '/dashboard',
-			});
-
-			location.href = dashboardLink;
-		}
-
-		return;
-	};
-
 	const generateCloudDashboardAutoLoginLink = async (data: {
 		redirectionPath: string;
 	}) => {
@@ -202,7 +190,6 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 		currentUsageData,
 		trialExpired,
 		allExecutionsUsed,
-		goToDashboardPage,
 		generateCloudDashboardAutoLoginLink,
 		initialize,
 		getOwnerCurrentPlan,

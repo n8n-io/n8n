@@ -5,10 +5,13 @@ import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { computed } from 'vue';
 import { useUIStore } from '@/stores/ui.store';
 import type { CloudPlanAndUsageData } from '@/Interface';
+import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 const PROGRESS_BAR_MINIMUM_THRESHOLD = 8;
 
 const cloudPlanStore = useCloudPlanStore();
+
+const pageRedirectionHelper = usePageRedirectionHelper();
 
 const trialDaysLeft = computed(() => -1 * cloudPlanStore.trialDaysLeft);
 const messageText = computed(() => {
@@ -49,7 +52,7 @@ const currentExecutions = computed(() => {
 });
 
 function onUpdatePlanClick() {
-	void useUIStore().goToUpgrade('canvas-nav', 'upgrade-canvas-nav', 'redirect');
+	void pageRedirectionHelper.goToUpgrade('canvas-nav', 'upgrade-canvas-nav', 'redirect');
 }
 </script>
 

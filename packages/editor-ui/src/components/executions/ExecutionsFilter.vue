@@ -15,6 +15,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import type { Placement } from '@floating-ui/core';
 import { useDebounce } from '@/composables/useDebounce';
 import AnnotationTagsDropdown from '@/components/AnnotationTagsDropdown.ee.vue';
+import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 export type ExecutionFilterProps = {
 	workflows?: Array<IWorkflowDb | IWorkflowShortResponse>;
@@ -29,6 +30,7 @@ const uiStore = useUIStore();
 const { debounce } = useDebounce();
 
 const telemetry = useTelemetry();
+const pageRedirectionHelper = usePageRedirectionHelper();
 
 const props = withDefaults(defineProps<ExecutionFilterProps>(), {
 	workflows: () => [] as Array<IWorkflowDb | IWorkflowShortResponse>,
@@ -149,7 +151,7 @@ const onFilterReset = () => {
 };
 
 const goToUpgrade = () => {
-	void uiStore.goToUpgrade('custom-data-filter', 'upgrade-custom-data-filter');
+	void pageRedirectionHelper.goToUpgrade('custom-data-filter', 'upgrade-custom-data-filter');
 };
 
 onBeforeMount(() => {

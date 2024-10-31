@@ -560,33 +560,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		return parameters;
 	};
 
-	const goToUpgrade = async (
-		source: CloudUpdateLinkSourceType,
-		utm_campaign: UTMCampaign,
-		mode: 'open' | 'redirect' = 'open',
-	) => {
-		const { usageLeft, trialDaysLeft, userIsTrialing } = cloudPlanStore;
-		const { executionsLeft, workflowsLeft } = usageLeft;
-		const deploymentType = settingsStore.deploymentType;
-
-		telemetry.track('User clicked upgrade CTA', {
-			source,
-			isTrial: userIsTrialing,
-			deploymentType,
-			trialDaysLeft,
-			executionsLeft,
-			workflowsLeft,
-		});
-
-		const upgradeLink = await generateUpgradeLink(source, utm_campaign, deploymentType);
-
-		if (mode === 'open') {
-			window.open(upgradeLink, '_blank');
-		} else {
-			location.href = upgradeLink;
-		}
-	};
-
 	const removeBannerFromStack = (name: BannerName) => {
 		bannerStack.value = bannerStack.value.filter((bannerName) => bannerName !== name);
 	};
@@ -699,7 +672,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		setCurlCommand,
 		toggleSidebarMenuCollapse,
 		getCurlToJson,
-		goToUpgrade,
 		removeBannerFromStack,
 		dismissBanner,
 		updateBannersHeight,
@@ -750,29 +722,4 @@ export const listenForModalChanges = (opts: {
 			}
 		});
 	});
-};
-
-export const generateUpgradeLink = async (
-	source: string,
-	utm_campaign: string,
-	deploymentType: string,
-) => {
-	let upgradeLink = N8N_PRICING_PAGE_URL;
-	if (deploymentType === 'cloud' && hasPermission(['instanceOwner'])) {
-		upgradeLink = await generateCloudDashboardAutoLoginLink({
-			redirectionPath: '/account/change-plan',
-		});
-	}
-
-	const url = new URL(upgradeLink);
-
-	if (utm_campaign) {
-		url.searchParams.set('utm_campaign', utm_campaign);
-	}
-
-	if (source) {
-		url.searchParams.set('source', source);
-	}
-
-	return url.toString();
 };

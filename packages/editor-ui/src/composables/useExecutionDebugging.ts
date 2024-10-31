@@ -17,6 +17,7 @@ import { useTelemetry } from './useTelemetry';
 import { useRootStore } from '@/stores/root.store';
 import { isFullExecutionResponse } from '@/utils/typeGuards';
 import { sanitizeHtml } from '@/utils/htmlUtils';
+import { usePageRedirectionHelper } from './usePageRedirectionHelper';
 
 export const useExecutionDebugging = () => {
 	const telemetry = useTelemetry();
@@ -28,6 +29,8 @@ export const useExecutionDebugging = () => {
 	const workflowsStore = useWorkflowsStore();
 	const settingsStore = useSettingsStore();
 	const uiStore = useUIStore();
+
+	const pageRedirectionHelper = usePageRedirectionHelper();
 
 	const isDebugEnabled = computed(
 		() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.DebugInEditor],
@@ -147,7 +150,7 @@ export const useExecutionDebugging = () => {
 					title: i18n.baseText(uiStore.contextBasedTranslationKeys.feature.unavailable.title),
 					footerButtonAction: () => {
 						uiStore.closeModal(DEBUG_PAYWALL_MODAL_KEY);
-						void uiStore.goToUpgrade('debug', 'upgrade-debug');
+						void pageRedirectionHelper.goToUpgrade('debug', 'upgrade-debug');
 					},
 				},
 			});
