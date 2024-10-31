@@ -317,7 +317,7 @@ export class JsTaskRunner extends TaskRunner {
 				isEnvAccessBlocked: false,
 				isProcessAvailable: true,
 			},
-		).getDataProxy(true);
+		).getDataProxy({ throwOnMissingExecutionData: false });
 	}
 
 	private toExecutionErrorIfNeeded(error: unknown): Error {
