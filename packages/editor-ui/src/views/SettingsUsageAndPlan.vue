@@ -198,7 +198,7 @@ const openCommunityRegisterModal = () => {
 					{{ locale.baseText('settings.usageAndPlan.activeWorkflows') }}
 				</n8n-text>
 				<div :class="$style.chart">
-					<span v-if="usageStore.executionLimit > 0" :class="$style.chartLine">
+					<span v-if="usageStore.activeWorkflowTriggersLimit > 0" :class="$style.chartLine">
 						<span
 							:class="$style.chartBar"
 							:style="{ width: `${usageStore.executionPercentage}%` }"
@@ -209,12 +209,12 @@ const openCommunityRegisterModal = () => {
 						:class="$style.count"
 						keypath="settings.usageAndPlan.activeWorkflows.count"
 					>
-						<template #count>{{ usageStore.executionCount }}</template>
+						<template #count>{{ usageStore.activeWorkflowTriggersCount }}</template>
 						<template #limit>
-							<span v-if="usageStore.executionLimit < 0">{{
+							<span v-if="usageStore.activeWorkflowTriggersLimit < 0">{{
 								locale.baseText('settings.usageAndPlan.activeWorkflows.unlimited')
 							}}</span>
-							<span v-else>{{ usageStore.executionLimit }}</span>
+							<span v-else>{{ usageStore.activeWorkflowTriggersLimit }}</span>
 						</template>
 					</i18n-t>
 				</div>

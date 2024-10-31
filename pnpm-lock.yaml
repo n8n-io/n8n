@@ -141,6 +141,9 @@ importers:
       '@types/jest':
         specifier: ^29.5.3
         version: 29.5.3
+      '@types/node':
+        specifier: ^18.16.16
+        version: 18.16.16
       '@types/supertest':
         specifier: ^6.0.2
         version: 6.0.2
@@ -184,11 +187,11 @@ importers:
         specifier: ^29.1.1
         version: 29.1.1(@babel/core@7.24.0)(@jest/types@29.6.1)(babel-jest@29.6.2(@babel/core@7.24.0))(jest@29.6.2(@types/node@18.16.16)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.6.2)))(typescript@5.6.2)
       tsc-alias:
-        specifier: ^1.8.7
-        version: 1.8.7
+        specifier: ^1.8.10
+        version: 1.8.10
       tsc-watch:
-        specifier: ^6.0.4
-        version: 6.0.4(typescript@5.6.2)
+        specifier: ^6.2.0
+        version: 6.2.0(typescript@5.6.2)
       turbo:
         specifier: 2.1.2
         version: 2.1.2
@@ -251,6 +254,9 @@ importers:
         specifier: 0.0.15
         version: 0.0.15(zod@3.23.8)
     devDependencies:
+      '@n8n/config':
+        specifier: workspace:*
+        version: link:../config
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
@@ -279,15 +285,6 @@ importers:
       '@types/k6':
         specifier: ^0.52.0
         version: 0.52.0
-      '@types/node':
-        specifier: ^18.16.16
-        version: 18.16.16
-      tsc-alias:
-        specifier: ^1.8.7
-        version: 1.8.7
-      typescript:
-        specifier: ^5.6.2
-        version: 5.6.2
 
   packages/@n8n/chat:
     dependencies:
@@ -402,9 +399,6 @@ importers:
       '@types/json-schema':
         specifier: ^7.0.15
         version: 7.0.15
-      '@types/node':
-        specifier: ^18.16.16
-        version: 18.16.16
       zod:
         specifier: 'catalog:'
         version: 3.23.8
@@ -648,6 +642,9 @@ importers:
 
   packages/@n8n/task-runner:
     dependencies:
+      '@n8n/config':
+        specifier: workspace:*
+        version: link:../config
       n8n-core:
         specifier: workspace:*
         version: link:../../core
@@ -657,6 +654,9 @@ importers:
       nanoid:
         specifier: ^3.3.6
         version: 3.3.7
+      typedi:
+        specifier: 'catalog:'
+        version: 0.10.0(patch_hash=sk6omkefrosihg7lmqbzh7vfxe)
       ws:
         specifier: '>=8.17.1'
         version: 8.17.1
@@ -11618,12 +11618,12 @@ packages:
     peerDependencies:
       ts-toolbelt: ^9.6.0
 
-  tsc-alias@1.8.7:
-    resolution: {integrity: sha512-59Q/zUQa3miTf99mLbSqaW0hi1jt4WoG8Uhe5hSZJHQpSoFW9eEwvW7jlKMHXWvT+zrzy3SN9PE/YBhQ+WVydA==}
+  tsc-alias@1.8.10:
+    resolution: {integrity: sha512-Ibv4KAWfFkFdKJxnWfVtdOmB0Zi1RJVxcbPGiCDsFpCQSsmpWyuzHG3rQyI5YkobWwxFPEyQfu1hdo4qLG2zPw==}
     hasBin: true
 
-  tsc-watch@6.0.4:
-    resolution: {integrity: sha512-cHvbvhjO86w2aGlaHgSCeQRl+Aqw6X6XN4sQMPZKF88GoP30O+oTuh5lRIJr5pgFWrRpF1AgXnJJ2DoFEIPHyg==}
+  tsc-watch@6.2.0:
+    resolution: {integrity: sha512-2LBhf9kjKXnz7KQ/puLHlozMzzUNHAdYBNMkg3eksQJ9GBAgMg8czznM83T5PmsoUvDnXzfIeQn2lNcIYDr8LA==}
     engines: {node: '>=12.12.0'}
     hasBin: true
     peerDependencies:
@@ -12112,6 +12112,9 @@ packages:
 
   vue-component-type-helpers@2.1.6:
     resolution: {integrity: sha512-ng11B8B/ZADUMMOsRbqv0arc442q7lifSubD0v8oDXIFoMg/mXwAPUunrroIDkY+mcD0dHKccdaznSVp8EoX3w==}
+
+  vue-component-type-helpers@2.1.8:
+    resolution: {integrity: sha512-ii36gDzrYAfOQIkOlo44yceDdT5269gKmNGxf07Qx6seH2U50+tQ2ol02XLhYPmxrh6YabAsOdte8WDrpaO6Tw==}
 
   vue-demi@0.14.10:
     resolution: {integrity: sha512-nMZBOwuzabUO0nLgIcc6rycZEebF6eeUfaiQx9+WSk8e29IbLvPU9feI6tqW4kTo3hvoYAJkMh8n8D0fuISphg==}
@@ -16281,7 +16284,7 @@ snapshots:
       ts-dedent: 2.2.0
       type-fest: 2.19.0
       vue: 3.5.11(typescript@5.6.2)
-      vue-component-type-helpers: 2.1.6
+      vue-component-type-helpers: 2.1.8
 
   '@supabase/auth-js@2.65.0':
     dependencies:
@@ -24976,7 +24979,7 @@ snapshots:
       tslib: 2.6.2
       typedarray-dts: 1.0.0
 
-  tsc-alias@1.8.7:
+  tsc-alias@1.8.10:
     dependencies:
       chokidar: 4.0.1
       commander: 9.4.1
@@ -24985,7 +24988,7 @@ snapshots:
       normalize-path: 3.0.0
       plimit-lit: 1.4.1
 
-  tsc-watch@6.0.4(typescript@5.6.2):
+  tsc-watch@6.2.0(typescript@5.6.2):
     dependencies:
       cross-spawn: 7.0.3
       node-cleanup: 2.1.2
@@ -25473,6 +25476,8 @@ snapshots:
       typescript: 5.6.2
 
   vue-component-type-helpers@2.1.6: {}
+
+  vue-component-type-helpers@2.1.8: {}
 
   vue-demi@0.14.10(vue@3.5.11(typescript@5.6.2)):
     dependencies:

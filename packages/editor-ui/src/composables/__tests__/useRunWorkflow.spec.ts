@@ -23,6 +23,7 @@ vi.mock('@/stores/workflows.store', () => ({
 		getCurrentWorkflow: vi.fn().mockReturnValue({ id: '123' }),
 		getNodeByName: vi.fn(),
 		getExecution: vi.fn(),
+		nodeIssuesExit: vi.fn(),
 	}),
 }));
 
@@ -122,6 +123,21 @@ describe('useRunWorkflow({ router })', () => {
 			expect(workflowsStore.activeExecutionId).toBe('123');
 			expect(workflowsStore.executionWaitingForWebhook).toBe(false);
 			expect(uiStore.addActiveAction).toHaveBeenCalledWith('workflowRunning');
+		});
+
+		it('should prevent running a webhook-based workflow that has issues', async () => {
+			const { runWorkflowApi } = useRunWorkflow({ router });
+			vi.mocked(workflowsStore).nodesIssuesExist = true;
+			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue({
+				executionId: '123',
+				waitingForWebhook: true,
+			});
+
+			await expect(runWorkflowApi({} as IStartRunData)).rejects.toThrow(
+				'workflowRun.showError.resolveOutstandingIssues',
+			);
+
+			vi.mocked(workflowsStore).nodesIssuesExist = false;
 		});
 
 		it('should handle workflow run failure', async () => {

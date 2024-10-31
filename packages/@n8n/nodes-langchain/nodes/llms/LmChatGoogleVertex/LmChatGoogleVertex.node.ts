@@ -1,9 +1,9 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import {
 	NodeConnectionType,
-	type IExecuteFunctions,
 	type INodeType,
 	type INodeTypeDescription,
+	type ISupplyDataFunctions,
 	type SupplyData,
 	type ILoadOptionsFunctions,
 	type JsonObject,
@@ -124,7 +124,7 @@ export class LmChatGoogleVertex implements INodeType {
 		},
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials('googleApi');
 		const privateKey = formatPrivateKey(credentials.privateKey as string);
 		const email = (credentials.email as string).trim();

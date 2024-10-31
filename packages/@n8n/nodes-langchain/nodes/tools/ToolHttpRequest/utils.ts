@@ -1,5 +1,5 @@
 import { Readability } from '@mozilla/readability';
-import cheerio from 'cheerio';
+import * as cheerio from 'cheerio';
 import { convert } from 'html-to-text';
 import { JSDOM } from 'jsdom';
 import get from 'lodash/get';
@@ -8,12 +8,12 @@ import unset from 'lodash/unset';
 import * as mime from 'mime-types';
 import { getOAuth2AdditionalParameters } from 'n8n-nodes-base/dist/nodes/HttpRequest/GenericFunctions';
 import type {
-	IExecuteFunctions,
 	IDataObject,
 	IHttpRequestOptions,
 	IRequestOptionsSimplified,
 	ExecutionError,
 	NodeApiError,
+	ISupplyDataFunctions,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError, jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
@@ -28,7 +28,7 @@ import type {
 } from './interfaces';
 import type { DynamicZodObject } from '../../../types/zod.types';
 
-const genericCredentialRequest = async (ctx: IExecuteFunctions, itemIndex: number) => {
+const genericCredentialRequest = async (ctx: ISupplyDataFunctions, itemIndex: number) => {
 	const genericType = ctx.getNodeParameter('genericAuthType', itemIndex) as string;
 
 	if (genericType === 'httpBasicAuth' || genericType === 'httpDigestAuth') {
@@ -104,7 +104,7 @@ const genericCredentialRequest = async (ctx: IExecuteFunctions, itemIndex: numbe
 	});
 };
 
-const predefinedCredentialRequest = async (ctx: IExecuteFunctions, itemIndex: number) => {
+const predefinedCredentialRequest = async (ctx: ISupplyDataFunctions, itemIndex: number) => {
 	const predefinedType = ctx.getNodeParameter('nodeCredentialType', itemIndex) as string;
 	const additionalOptions = getOAuth2AdditionalParameters(predefinedType);
 
@@ -119,7 +119,7 @@ const predefinedCredentialRequest = async (ctx: IExecuteFunctions, itemIndex: nu
 };
 
 export const configureHttpRequestFunction = async (
-	ctx: IExecuteFunctions,
+	ctx: ISupplyDataFunctions,
 	credentialsType: 'predefinedCredentialType' | 'genericCredentialType' | 'none',
 	itemIndex: number,
 ) => {
@@ -146,7 +146,7 @@ const defaultOptimizer = <T>(response: T) => {
 	return String(response);
 };
 
-const htmlOptimizer = (ctx: IExecuteFunctions, itemIndex: number, maxLength: number) => {
+const htmlOptimizer = (ctx: ISupplyDataFunctions, itemIndex: number, maxLength: number) => {
 	const cssSelector = ctx.getNodeParameter('cssSelector', itemIndex, '') as string;
 	const onlyContent = ctx.getNodeParameter('onlyContent', itemIndex, false) as boolean;
 	let elementsToOmit: string[] = [];
@@ -214,7 +214,7 @@ const htmlOptimizer = (ctx: IExecuteFunctions, itemIndex: number, maxLength: num
 	};
 };
 
-const textOptimizer = (ctx: IExecuteFunctions, itemIndex: number, maxLength: number) => {
+const textOptimizer = (ctx: ISupplyDataFunctions, itemIndex: number, maxLength: number) => {
 	return (response: string | IDataObject) => {
 		if (typeof response === 'object') {
 			try {
@@ -245,7 +245,7 @@ const textOptimizer = (ctx: IExecuteFunctions, itemIndex: number, maxLength: num
 	};
 };
 
-const jsonOptimizer = (ctx: IExecuteFunctions, itemIndex: number) => {
+const jsonOptimizer = (ctx: ISupplyDataFunctions, itemIndex: number) => {
 	return (response: string): string => {
 		let responseData: IDataObject | IDataObject[] | string = response;
 
@@ -324,7 +324,7 @@ const jsonOptimizer = (ctx: IExecuteFunctions, itemIndex: number) => {
 	};
 };
 
-export const configureResponseOptimizer = (ctx: IExecuteFunctions, itemIndex: number) => {
+export const configureResponseOptimizer = (ctx: ISupplyDataFunctions, itemIndex: number) => {
 	const optimizeResponse = ctx.getNodeParameter('optimizeResponse', itemIndex, false) as boolean;
 
 	if (optimizeResponse) {
@@ -469,7 +469,7 @@ const MODEL_INPUT_DESCRIPTION = {
 };
 
 export const updateParametersAndOptions = (options: {
-	ctx: IExecuteFunctions;
+	ctx: ISupplyDataFunctions;
 	itemIndex: number;
 	toolParameters: ToolParameter[];
 	placeholdersDefinitions: PlaceholderDefinition[];
@@ -558,7 +558,7 @@ export const prepareToolDescription = (
 };
 
 export const configureToolFunction = (
-	ctx: IExecuteFunctions,
+	ctx: ISupplyDataFunctions,
 	itemIndex: number,
 	toolParameters: ToolParameter[],
 	requestOptions: IHttpRequestOptions,

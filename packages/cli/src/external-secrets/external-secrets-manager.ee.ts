@@ -1,5 +1,5 @@
 import { Cipher } from 'n8n-core';
-import { jsonParse, type IDataObject, ApplicationError } from 'n8n-workflow';
+import { jsonParse, type IDataObject, ApplicationError, ensureError } from 'n8n-workflow';
 import { Service } from 'typedi';
 
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
@@ -39,7 +39,9 @@ export class ExternalSecretsManager {
 		private readonly cipher: Cipher,
 		private readonly eventService: EventService,
 		private readonly publisher: Publisher,
-	) {}
+	) {
+		this.logger = this.logger.scoped('external-secrets');
+	}
 
 	async init(): Promise<void> {
 		if (!this.initialized) {
@@ -57,6 +59,8 @@ export class ExternalSecretsManager {
 			}
 			return await this.initializingPromise;
 		}
+
+		this.logger.debug('External secrets manager initialized');
 	}
 
 	shutdown() {
@@ -66,6 +70,8 @@ export class ExternalSecretsManager {
 			void p.disconnect().catch(() => {});
 		});
 		Object.values(this.initRetryTimeouts).forEach((v) => clearTimeout(v));
+
+		this.logger.debug('External secrets manager shut down');
 	}
 
 	async reloadAllProviders(backoff?: number) {
@@ -77,6 +83,8 @@ export class ExternalSecretsManager {
 		for (const provider of providers) {
 			await this.reloadProvider(provider, backoff);
 		}
+
+		this.logger.debug('External secrets managed reloaded all providers');
 	}
 
 	broadcastReloadExternalSecretsProviders() {
@@ -191,6 +199,8 @@ export class ExternalSecretsManager {
 				}
 			}),
 		);
+
+		this.logger.debug('External secrets manager updated secrets');
 	}
 
 	getProvider(provider: string): SecretsProvider | undefined {
@@ -261,6 +271,8 @@ export class ExternalSecretsManager {
 		if (newProvider) {
 			this.providers[provider] = newProvider;
 		}
+
+		this.logger.debug(`External secrets manager reloaded provider ${provider}`);
 	}
 
 	async setProviderSettings(provider: string, data: IDataObject, userId?: string) {
@@ -382,8 +394,12 @@ export class ExternalSecretsManager {
 		try {
 			await this.providers[provider].update();
 			this.broadcastReloadExternalSecretsProviders();
+			this.logger.debug(`External secrets manager updated provider ${provider}`);
 			return true;
-		} catch {
+		} catch (error) {
+			this.logger.debug(`External secrets manager failed to update provider ${provider}`, {
+				error: ensureError(error),
+			});
 			return false;
 		}
 	}

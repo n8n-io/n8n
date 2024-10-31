@@ -1,8 +1,10 @@
 import type { INodeProperties } from 'n8n-workflow';
+import Container from 'typedi';
 
 import { UnknownAuthTypeError } from '@/errors/unknown-auth-type.error';
 import { DOCS_HELP_NOTICE, EXTERNAL_SECRETS_NAME_REGEX } from '@/external-secrets/constants';
 import type { SecretsProvider, SecretsProviderState } from '@/interfaces';
+import { Logger } from '@/logging/logger.service';
 
 import { AwsSecretsClient } from './aws-secrets-client';
 import type { AwsSecretsManagerContext } from './types';
@@ -76,10 +78,16 @@ export class AwsSecretsManager implements SecretsProvider {
 
 	private client: AwsSecretsClient;
 
+	constructor(private readonly logger = Container.get(Logger)) {
+		this.logger = this.logger.scoped('external-secrets');
+	}
+
 	async init(context: AwsSecretsManagerContext) {
 		this.assertAuthType(context);
 
 		this.client = new AwsSecretsClient(context.settings);
+
+		this.logger.debug('AWS Secrets Manager provider initialized');
 	}
 
 	async test() {
@@ -87,9 +95,15 @@ export class AwsSecretsManager implements SecretsProvider {
 	}
 
 	async connect() {
-		const [wasSuccessful] = await this.test();
+		const [wasSuccessful, errorMsg] = await this.test();
 
 		this.state = wasSuccessful ? 'connected' : 'error';
+
+		if (wasSuccessful) {
+			this.logger.debug('AWS Secrets Manager provider connected');
+		} else {
+			this.logger.error('AWS Secrets Manager provider failed to connect', { errorMsg });
+		}
 	}
 
 	async disconnect() {
@@ -104,6 +118,8 @@ export class AwsSecretsManager implements SecretsProvider {
 		this.cachedSecrets = Object.fromEntries(
 			supportedSecrets.map((s) => [s.secretName, s.secretValue]),
 		);
+
+		this.logger.debug('AWS Secrets Manager provider secrets updated');
 	}
 
 	getSecret(name: string) {

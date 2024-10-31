@@ -1,8 +1,11 @@
 import type { SecretClient } from '@azure/keyvault-secrets';
+import { ensureError } from 'n8n-workflow';
 import type { INodeProperties } from 'n8n-workflow';
+import Container from 'typedi';
 
 import { DOCS_HELP_NOTICE, EXTERNAL_SECRETS_NAME_REGEX } from '@/external-secrets/constants';
 import type { SecretsProvider, SecretsProviderState } from '@/interfaces';
+import { Logger } from '@/logging/logger.service';
 
 import type { AzureKeyVaultContext } from './types';
 
@@ -64,8 +67,14 @@ export class AzureKeyVault implements SecretsProvider {
 
 	private settings: AzureKeyVaultContext['settings'];
 
+	constructor(private readonly logger = Container.get(Logger)) {
+		this.logger = this.logger.scoped('external-secrets');
+	}
+
 	async init(context: AzureKeyVaultContext) {
 		this.settings = context.settings;
+
+		this.logger.debug('Azure Key Vault provider initialized');
 	}
 
 	async connect() {
@@ -78,8 +87,12 @@ export class AzureKeyVault implements SecretsProvider {
 			const credential = new ClientSecretCredential(tenantId, clientId, clientSecret);
 			this.client = new SecretClient(`https://${vaultName}.vault.azure.net/`, credential);
 			this.state = 'connected';
-		} catch {
+			this.logger.debug('Azure Key Vault provider connected');
+		} catch (error) {
 			this.state = 'error';
+			this.logger.error('Azure Key Vault provider failed to connect', {
+				error: ensureError(error),
+			});
 		}
 	}
 
@@ -119,6 +132,8 @@ export class AzureKeyVault implements SecretsProvider {
 			acc[cur.name] = cur.value;
 			return acc;
 		}, {});
+
+		this.logger.debug('Azure Key Vault provider secrets updated');
 	}
 
 	getSecret(name: string) {
