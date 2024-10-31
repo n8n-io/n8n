@@ -17,13 +17,8 @@ import type {
 } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
-import {
-	IPinData,
-	SEND_AND_WAIT_OPERATION,
-	type ExecutionSummary,
-	type IConnection,
-	type INodeExecutionData,
-} from 'n8n-workflow';
+import { SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
+import type { IPinData, ExecutionSummary, IConnection, INodeExecutionData } from 'n8n-workflow';
 import { stringSizeInBytes } from '@/utils/typesUtils';
 import { dataPinningEventBus } from '@/event-bus';
 import { useUIStore } from '@/stores/ui.store';
