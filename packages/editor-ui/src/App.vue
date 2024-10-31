@@ -8,7 +8,6 @@ import Modals from '@/components/Modals.vue';
 import Telemetry from '@/components/Telemetry.vue';
 import AskAssistantFloatingButton from '@/components/AskAssistant/AskAssistantFloatingButton.vue';
 import { loadLanguage } from '@/plugins/i18n';
-import { useExternalHooks } from '@/composables/useExternalHooks';
 import { APP_MODALS_ELEMENT_ID, HIRING_BANNER, VIEWS } from '@/constants';
 import { useRootStore } from '@/stores/root.store';
 import { useAssistantStore } from '@/stores/assistant.store';
@@ -16,6 +15,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useHistoryHelper } from '@/composables/useHistoryHelper';
+import { useStyles } from './composables/useStyles';
 
 const route = useRoute();
 const rootStore = useRootStore();
@@ -23,6 +23,8 @@ const assistantStore = useAssistantStore();
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
+
+const { setAppZIndexes } = useStyles();
 
 // Initialize undo/redo
 useHistoryHelper(route);
@@ -37,8 +39,8 @@ const appGrid = ref<Element | null>(null);
 const assistantSidebarWidth = computed(() => assistantStore.chatWidth);
 
 onMounted(async () => {
+	setAppZIndexes();
 	logHiringBanner();
-	void useExternalHooks().run('app.mount');
 	loading.value = false;
 	window.addEventListener('resize', updateGridWidth);
 	await updateGridWidth();
@@ -143,7 +145,7 @@ watch(defaultLocale, (newLocale) => {
 
 .banners {
 	grid-area: banners;
-	z-index: 999;
+	z-index: var(--z-index-top-banners);
 }
 
 .content {
@@ -172,13 +174,13 @@ watch(defaultLocale, (newLocale) => {
 
 .header {
 	grid-area: header;
-	z-index: 99;
+	z-index: var(--z-index-app-header);
 }
 
 .sidebar {
 	grid-area: sidebar;
 	height: 100%;
-	z-index: 999;
+	z-index: var(--z-index-app-sidebar);
 }
 
 .modals {

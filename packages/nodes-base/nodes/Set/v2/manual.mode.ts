@@ -6,6 +6,7 @@ import type {
 	INode,
 	INodeExecutionData,
 	INodeProperties,
+	ISupplyDataFunctions,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
@@ -185,7 +186,7 @@ const displayOptions = {
 export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
-	this: IExecuteFunctions,
+	this: IExecuteFunctions | ISupplyDataFunctions,
 	item: INodeExecutionData,
 	i: number,
 	options: SetNodeOptions,

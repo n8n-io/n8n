@@ -53,17 +53,17 @@ describe('WorkflowsView', () => {
 
 	describe('should show empty state', () => {
 		it('for non setup user', () => {
-			const { getByRole } = renderComponent({ pinia: createTestingPinia({ initialState }) });
-			expect(getByRole('heading').textContent).toBe('👋 Welcome!');
+			const { getByText } = renderComponent({ pinia: createTestingPinia({ initialState }) });
+			expect(getByText('👋 Welcome!')).toBeVisible();
 		});
 
 		it('for currentUser user', () => {
 			const pinia = createTestingPinia({ initialState });
 			const userStore = mockedStore(useUsersStore);
 			userStore.currentUser = { firstName: 'John' } as IUser;
-			const { getByRole } = renderComponent({ pinia });
+			const { getByText } = renderComponent({ pinia });
 
-			expect(getByRole('heading').textContent).toBe('👋 Welcome John!');
+			expect(getByText('👋 Welcome John!')).toBeVisible();
 		});
 
 		describe('when onboardingExperiment -> False', () => {
