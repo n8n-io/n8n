@@ -66,7 +66,7 @@ describe('Publisher', () => {
 			);
 		});
 
-		it('should debounce `add-webhooks-triggers-and-pollers`', async () => {
+		it('should not debounce `add-webhooks-triggers-and-pollers`', async () => {
 			const publisher = new Publisher(logger, redisClientService, instanceSettings);
 			const msg = mock<PubSub.Command>({ command: 'add-webhooks-triggers-and-pollers' });
 
@@ -79,7 +79,25 @@ describe('Publisher', () => {
 					_isMockObject: true,
 					senderId: hostId,
 					selfSend: true,
-					debounce: true,
+					debounce: false,
+				}),
+			);
+		});
+
+		it('should not debounce `remove-triggers-and-pollers`', async () => {
+			const publisher = new Publisher(logger, redisClientService, instanceSettings);
+			const msg = mock<PubSub.Command>({ command: 'remove-triggers-and-pollers' });
+
+			await publisher.publishCommand(msg);
+
+			expect(client.publish).toHaveBeenCalledWith(
+				'n8n.commands',
+				JSON.stringify({
+					...msg,
+					_isMockObject: true,
+					senderId: hostId,
+					selfSend: true,
+					debounce: false,
 				}),
 			);
 		});
