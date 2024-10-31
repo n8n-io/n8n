@@ -8,7 +8,6 @@ import { errorToast } from '../pages/notifications';
 describe('Demo', () => {
 	beforeEach(() => {
 		cy.overrideSettings({ previewMode: true });
-		cy.signout();
 	});
 
 	it('can import template', () => {
