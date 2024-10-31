@@ -175,7 +175,7 @@
     "mime-types": "2.1.35",
     "n8n-nodes-base": "workspace:*",
     "n8n-workflow": "workspace:*",
-    "openai": "4.63.0",
+    "openai": "4.69.0",
     "pdf-parse": "1.1.1",
     "pg": "8.12.0",
     "redis": "4.6.12",
