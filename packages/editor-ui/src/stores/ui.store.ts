@@ -631,35 +631,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		lastCancelledConnectionPosition.value = undefined;
 	}
 
-	/**
-	 * If the user is an instance owner in the cloud, it generates an auto-login link to the
-	 * cloud dashboard that redirects the user to the manage page where they can upgrade to a new n8n version.
-	 * Otherwise, it redirect them to our docs.
-	 */
-	const goToVersions = async () => {
-		let versionsLink = versionsStore.infoUrl;
-
-		if (usersStore.userIsOwnerInCloudDeployment) {
-			versionsLink = await generateCloudDashboardAutoLoginLink({
-				redirectionPath: '/manage',
-			});
-		}
-
-		location.href = versionsLink;
-	};
-
-	const goToDashboard = async () => {
-		if (usersStore.userIsOwnerInCloudDeployment) {
-			const dashboardLink = await generateCloudDashboardAutoLoginLink({
-				redirectionPath: '/dashboard',
-			});
-
-			location.href = dashboardLink;
-		}
-
-		return;
-	};
-
 	return {
 		appGridWidth,
 		appliedTheme,
@@ -702,8 +673,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		fakeDoorsById,
 		pendingNotificationsForViews,
 		activeModals,
-		goToVersions,
-		goToDashboard,
 		setTheme,
 		setMode,
 		setActiveId,
@@ -806,20 +775,4 @@ export const generateUpgradeLink = async (
 	}
 
 	return url.toString();
-};
-
-export const generateCloudDashboardAutoLoginLink = async (data: {
-	redirectionPath: string;
-}) => {
-	const searchParams = new URLSearchParams();
-
-	const cloudPlanStore = useCloudPlanStore();
-
-	const adminPanelHost = new URL(window.location.href).host.split('.').slice(1).join('.');
-	const { code } = await cloudPlanStore.getAutoLoginCode();
-	const linkUrl = `https://${adminPanelHost}/login`;
-	searchParams.set('code', code);
-	searchParams.set('returnPath', data.redirectionPath);
-
-	return `${linkUrl}?${searchParams.toString()}`;
 };

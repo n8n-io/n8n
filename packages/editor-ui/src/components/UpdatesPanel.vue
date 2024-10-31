@@ -5,10 +5,8 @@ import VersionCard from './VersionCard.vue';
 import { VERSIONS_MODAL_KEY } from '../constants';
 import { useVersionsStore } from '@/stores/versions.store';
 import { useI18n } from '@/composables/useI18n';
-import { useUIStore } from '@/stores/ui.store';
 
 const versionsStore = useVersionsStore();
-const uiStore = useUIStore();
 
 const i18n = useI18n();
 </script>
@@ -57,7 +55,7 @@ const i18n = useI18n();
 					size="large"
 					:class="$style['link']"
 					:bold="true"
-					@click="uiStore.goToVersions()"
+					@click="versionsStore.goToVersionsPage()"
 				>
 					<font-awesome-icon icon="info-circle" class="mr-2xs" />
 					<span>

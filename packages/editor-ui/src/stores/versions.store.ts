@@ -7,6 +7,8 @@ import { useRootStore } from './root.store';
 import { useToast } from '@/composables/useToast';
 import { useUIStore } from '@/stores/ui.store';
 import { computed, ref } from 'vue';
+import { useCloudPlanStore } from '@/stores/cloudPlan.store';
+import { useUsersStore } from './users.store';
 
 type SetVersionParams = { versions: IVersion[]; currentVersion: string };
 
@@ -17,6 +19,8 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 
 	const { showToast } = useToast();
 	const uiStore = useUIStore();
+	const usersStore = useUsersStore();
+	const cloudPlanStore = useCloudPlanStore();
 
 	// ---------------------------------------------------------------------------
 	// #region Computed
@@ -96,6 +100,23 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 		}
 	};
 
+	/**
+	 * If the user is an instance owner in the cloud, it generates an auto-login link to the
+	 * cloud dashboard that redirects the user to the manage page where they can upgrade to a new n8n version.
+	 * Otherwise, it redirect them to our docs.
+	 */
+	const goToVersionsPage = async () => {
+		let versionsLink = infoUrl.value;
+
+		if (usersStore.userIsOwnerInCloudDeployment) {
+			versionsLink = await cloudPlanStore.generateCloudDashboardAutoLoginLink({
+				redirectionPath: '/manage',
+			});
+		}
+
+		location.href = versionsLink;
+	};
+
 	// #endregion
 
 	return {
@@ -104,6 +125,7 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 		hasVersionUpdates,
 		areNotificationsEnabled,
 		infoUrl,
+		goToVersionsPage,
 		fetchVersions,
 		setVersions,
 		setVersionNotificationSettings,
