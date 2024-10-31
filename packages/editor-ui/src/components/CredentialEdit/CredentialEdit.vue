@@ -318,7 +318,7 @@ const defaultCredentialTypeName = computed(() => {
 
 const showSaveButton = computed(() => {
 	return (
-		(hasUnsavedChanges.value || !!credentialId.value) &&
+		(hasUnsavedChanges.value || !credentialId.value) &&
 		(credentialPermissions.value.create || credentialPermissions.value.update)
 	);
 });
@@ -1064,7 +1064,7 @@ function resetCredentialData(): void {
 					/>
 					<SaveButton
 						v-if="showSaveButton"
-						:saved="!hasUnsavedChanges && !isTesting"
+						:saved="!hasUnsavedChanges && !isTesting && !!credentialId"
 						:is-saving="isSaving || isTesting"
 						:saving-label="
 							isTesting
