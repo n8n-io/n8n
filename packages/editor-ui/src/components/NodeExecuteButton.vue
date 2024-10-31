@@ -176,6 +176,9 @@ const disabledHint = computed(() => {
 });
 
 const tooltipText = computed(() => {
+	if (shouldGenerateCode.value) {
+		return i18n.baseText('ndv.execute.generateCodeAndTestNode.description');
+	}
 	if (disabledHint.value) return disabledHint.value;
 	if (props.tooltip && !isLoading.value && testStepButtonPopupCount() < MAX_POPUP_COUNT) {
 		return props.tooltip;
@@ -212,8 +215,16 @@ const buttonLabel = computed(() => {
 });
 
 const isLoading = computed(
-	() => isNodeRunning.value && !isListeningForEvents.value && !isListeningForWorkflowEvents.value,
+	() =>
+		codeGenerationInProgress.value ||
+		(isNodeRunning.value && !isListeningForEvents.value && !isListeningForWorkflowEvents.value),
 );
+
+const buttonIcon = computed(() => {
+	if (shouldGenerateCode.value) return 'terminal';
+	if (!isListeningForEvents.value && !props.hideIcon) return 'flask';
+	return undefined;
+});
 
 const shouldGenerateCode = computed(() => {
 	if (node.value?.type !== AI_TRANSFORM_NODE_TYPE) {
@@ -358,7 +369,7 @@ async function onClick() {
 					:label="buttonLabel"
 					:type="type"
 					:size="size"
-					:icon="!isListeningForEvents && !hideIcon ? 'flask' : undefined"
+					:icon="buttonIcon"
 					:transparent-background="transparent"
 					:title="
 						!isTriggerNode && !tooltipText ? i18n.baseText('ndv.execute.testNode.description') : ''
