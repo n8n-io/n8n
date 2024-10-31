@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { computed } from 'vue';
-
 import ModalDrawer from './ModalDrawer.vue';
 import TimeAgo from './TimeAgo.vue';
 import VersionCard from './VersionCard.vue';
@@ -13,16 +11,6 @@ const versionsStore = useVersionsStore();
 const uiStore = useUIStore();
 
 const i18n = useI18n();
-
-const nextVersions = computed(() => versionsStore.nextVersions);
-
-const currentVersion = computed(() => versionsStore.currentVersion);
-
-const infoUrl = computed(() => versionsStore.infoUrl);
-
-const onInfoUrlClick = async () => {
-	await uiStore.goToVersions();
-};
 </script>
 
 <template>
@@ -39,22 +27,22 @@ const onInfoUrlClick = async () => {
 		</template>
 		<template #content>
 			<section :class="$style['description']">
-				<p v-if="currentVersion">
+				<p v-if="versionsStore.currentVersion">
 					{{
 						i18n.baseText('updatesPanel.youReOnVersion', {
-							interpolate: { currentVersionName: currentVersion.name },
+							interpolate: { currentVersionName: versionsStore.currentVersion.name },
 						})
 					}}
 					<strong>
-						<TimeAgo :date="currentVersion.createdAt" />
+						<TimeAgo :date="versionsStore.currentVersion.createdAt" />
 					</strong>
 					{{ i18n.baseText('updatesPanel.andIs') }}
 					<strong>
 						{{
 							i18n.baseText('updatesPanel.version', {
 								interpolate: {
-									numberOfVersions: nextVersions.length,
-									howManySuffix: nextVersions.length > 1 ? 's' : '',
+									numberOfVersions: versionsStore.nextVersions.length,
+									howManySuffix: versionsStore.nextVersions.length > 1 ? 's' : '',
 								},
 							})
 						}}
@@ -63,13 +51,13 @@ const onInfoUrlClick = async () => {
 				</p>
 
 				<n8n-button
-					v-if="infoUrl"
+					v-if="versionsStore.infoUrl"
 					:text="true"
 					type="primary"
 					size="large"
 					:class="$style['link']"
 					:bold="true"
-					@click="onInfoUrlClick"
+					@click="uiStore.goToVersions()"
 				>
 					<font-awesome-icon icon="info-circle" class="mr-2xs" />
 					<span>
@@ -78,7 +66,11 @@ const onInfoUrlClick = async () => {
 				</n8n-button>
 			</section>
 			<section :class="$style.versions">
-				<div v-for="version in nextVersions" :key="version.name" :class="$style['versions-card']">
+				<div
+					v-for="version in versionsStore.nextVersions"
+					:key="version.name"
+					:class="$style['versions-card']"
+				>
 					<VersionCard :version="version" />
 				</div>
 			</section>
