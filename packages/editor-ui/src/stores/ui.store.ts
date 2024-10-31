@@ -210,6 +210,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const cloudPlanStore = useCloudPlanStore();
 	const userStore = useUsersStore();
 	const versionsStore = useVersionsStore();
+	const usersStore = useUsersStore();
 
 	const appliedTheme = computed(() => {
 		return theme.value === 'system' ? getPreferredTheme() : theme.value;
@@ -630,11 +631,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		lastCancelledConnectionPosition.value = undefined;
 	}
 
-	const isInstanceOwnerInCloud = () => {
-		const deploymentType = settingsStore.deploymentType;
-		return hasPermission(['instanceOwner']) && deploymentType === 'cloud';
-	};
-
 	/**
 	 * If the user is an instance owner in the cloud, it generates an auto-login link to the
 	 * cloud dashboard that redirects the user to the manage page where they can upgrade to a new n8n version.
@@ -643,7 +639,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const goToVersions = async () => {
 		let versionsLink = versionsStore.infoUrl;
 
-		if (isInstanceOwnerInCloud()) {
+		if (usersStore.userIsOwnerInCloudDeployment) {
 			versionsLink = await generateCloudDashboardAutoLoginLink({
 				redirectionPath: '/manage',
 			});
@@ -653,7 +649,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	};
 
 	const goToDashboard = async () => {
-		if (isInstanceOwnerInCloud()) {
+		if (usersStore.userIsOwnerInCloudDeployment) {
 			const dashboardLink = await generateCloudDashboardAutoLoginLink({
 				redirectionPath: '/dashboard',
 			});

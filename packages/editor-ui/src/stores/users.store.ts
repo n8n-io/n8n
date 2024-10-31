@@ -29,6 +29,7 @@ import * as invitationsApi from '@/api/invitation';
 import { useNpsSurveyStore } from './npsSurvey.store';
 import { computed, ref } from 'vue';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { hasPermission } from '@/utils/rbac/permissions';
 
 const _isPendingUser = (user: IUserResponse | null) => !!user?.isPending;
 const _isInstanceOwner = (user: IUserResponse | null) => user?.role === ROLE.Owner;
@@ -72,6 +73,10 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 	const mfaEnabled = computed(() => currentUser.value?.mfaEnabled ?? false);
 
 	const globalRoleName = computed(() => currentUser.value?.role ?? 'default');
+
+	const userIsOwnerInCloudDeployment = computed(
+		() => hasPermission(['instanceOwner']) && settingsStore.isCloudDeployment,
+	);
 
 	const personalizedNodeTypes = computed(() => {
 		const user = currentUser.value;
@@ -379,6 +384,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		mfaEnabled,
 		globalRoleName,
 		personalizedNodeTypes,
+		userIsOwnerInCloudDeployment,
 		addUsers,
 		loginWithCookie,
 		initialize,
