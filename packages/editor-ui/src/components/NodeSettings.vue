@@ -43,7 +43,6 @@ import { useCredentialsStore } from '@/stores/credentials.store';
 import type { EventBus } from 'n8n-design-system';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
-// import { useToast } from '@/composables/useToast';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { importCurlEventBus, ndvEventBus } from '@/event-bus';
@@ -548,11 +547,9 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 			value: nodeParameters,
 		};
 
-		const updatedConnections = updateDynamicConnections(
-			_node,
-			currentWorkflow.value.connections,
-			parameterData,
-		);
+		const connections = workflowsStore.allConnections;
+
+		const updatedConnections = updateDynamicConnections(_node, connections, parameterData);
 
 		if (updatedConnections) {
 			workflowsStore.setConnections(updatedConnections, true);
