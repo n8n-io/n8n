@@ -3,9 +3,10 @@ import { setActivePinia, createPinia } from 'pinia';
 import { ref } from 'vue';
 import { usePinnedData } from '@/composables/usePinnedData';
 import type { INodeUi } from '@/Interface';
-import { MAX_PINNED_DATA_SIZE } from '@/constants';
+import { HTTP_REQUEST_NODE_TYPE, IF_NODE_TYPE, MAX_PINNED_DATA_SIZE } from '@/constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { NodeConnectionType, type INodeTypeDescription } from 'n8n-workflow';
 
 vi.mock('@/composables/useToast', () => ({ useToast: vi.fn(() => ({ showError: vi.fn() })) }));
 vi.mock('@/composables/useI18n', () => ({
@@ -14,6 +15,13 @@ vi.mock('@/composables/useI18n', () => ({
 vi.mock('@/composables/useExternalHooks', () => ({
 	useExternalHooks: vi.fn(() => ({
 		run: vi.fn(),
+	})),
+}));
+
+const getNodeType = vi.fn();
+vi.mock('@/stores/nodeTypes.store', () => ({
+	useNodeTypesStore: vi.fn(() => ({
+		getNodeType,
 	})),
 }));
 
@@ -133,4 +141,71 @@ describe('usePinnedData', () => {
 			expect(spy).toHaveBeenCalled();
 		});
 	});
+
+	describe('canPinData()', () => {
+		afterEach(() => {
+			vi.clearAllMocks();
+		});
+
+		it('allows pin on single output', async () => {
+			const node = ref({
+				name: 'single output node',
+				typeVersion: 1,
+				type: HTTP_REQUEST_NODE_TYPE,
+
+				parameters: {},
+				onError: 'stopWorkflow',
+			} as INodeUi);
+			getNodeType.mockReturnValue(makeNodeType([NodeConnectionType.Main], HTTP_REQUEST_NODE_TYPE));
+
+			const { canPinNode } = usePinnedData(node);
+
+			expect(canPinNode()).toBe(true);
+		});
+
+		it('allows pin on one main and one error output', async () => {
+			const node = ref({
+				name: 'single output node',
+				typeVersion: 1,
+				type: HTTP_REQUEST_NODE_TYPE,
+				parameters: {},
+				onError: 'continueErrorOutput',
+			} as INodeUi);
+			getNodeType.mockReturnValue(makeNodeType([NodeConnectionType.Main], HTTP_REQUEST_NODE_TYPE));
+
+			const { canPinNode } = usePinnedData(node);
+
+			expect(canPinNode()).toBe(true);
+		});
+
+		it('does not allow pin on two main outputs', async () => {
+			const node = ref({
+				name: 'single output node',
+				typeVersion: 1,
+				type: IF_NODE_TYPE,
+				parameters: {},
+				onError: 'stopWorkflow',
+			} as INodeUi);
+			getNodeType.mockReturnValue(
+				makeNodeType([NodeConnectionType.Main, NodeConnectionType.Main], IF_NODE_TYPE),
+			);
+
+			const { canPinNode } = usePinnedData(node);
+
+			expect(canPinNode()).toBe(false);
+		});
+	});
 });
+
+const makeNodeType = (outputs: NodeConnectionType[], name: string) =>
+	({
+		displayName: name,
+		name,
+		version: [1],
+		inputs: [],
+		outputs,
+		properties: [],
+		defaults: { color: '', name: '' },
+		group: [],
+		description: '',
+	}) as INodeTypeDescription;
