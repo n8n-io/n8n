@@ -11,20 +11,20 @@ exports[`FormBox > should render the component 1`] = `
       <span
         class="n8n-heading size-xlarge regular"
       >
-        
+
         Title
-        
+
       </span>
     </div>
     <div
       class="inputsContainer"
     >
       <div>
-        
+
         <div
           class="grid"
         >
-          
+
           <div
             class=""
           >
@@ -43,23 +43,23 @@ exports[`FormBox > should render the component 1`] = `
                   <span
                     class="n8n-text size-small bold"
                   >
-                    
-                    Name 
+
+                    Name
                     <span
                       class="n8n-text primary size-small bold"
                     >
-                      
+
                       *
-                      
+
                     </span>
-                    
+
                   </span>
                 </div>
                 <!--v-if-->
                 <!--v-if-->
                 <!--v-if-->
               </label>
-              
+
               <div
                 class=""
               >
@@ -67,7 +67,7 @@ exports[`FormBox > should render the component 1`] = `
                   class="el-input el-input--small n8n-input"
                 >
                   <!-- input -->
-                  
+
                   <!-- prepend slot -->
                   <!--v-if-->
                   <div
@@ -78,6 +78,7 @@ exports[`FormBox > should render the component 1`] = `
                     <input
                       autocomplete="email"
                       class="el-input__inner"
+											maxlength="Infinity"
                       name="name"
                       placeholder=""
                       rows="2"
@@ -90,11 +91,11 @@ exports[`FormBox > should render the component 1`] = `
                   </div>
                   <!-- append slot -->
                   <!--v-if-->
-                  
+
                 </div>
               </div>
               <!--v-if-->
-              
+
             </div>
           </div>
           <div
@@ -115,23 +116,23 @@ exports[`FormBox > should render the component 1`] = `
                   <span
                     class="n8n-text size-medium bold"
                   >
-                    
-                    Email 
+
+                    Email
                     <span
                       class="n8n-text primary size-medium bold"
                     >
-                      
+
                       *
-                      
+
                     </span>
-                    
+
                   </span>
                 </div>
                 <!--v-if-->
                 <!--v-if-->
                 <!--v-if-->
               </label>
-              
+
               <div
                 class=""
               >
@@ -139,7 +140,7 @@ exports[`FormBox > should render the component 1`] = `
                   class="el-input el-input--default n8n-input"
                 >
                   <!-- input -->
-                  
+
                   <!-- prepend slot -->
                   <!--v-if-->
                   <div
@@ -150,6 +151,7 @@ exports[`FormBox > should render the component 1`] = `
                     <input
                       autocomplete="email"
                       class="el-input__inner"
+											maxlength="Infinity"
                       name="email"
                       placeholder=""
                       rows="2"
@@ -162,11 +164,11 @@ exports[`FormBox > should render the component 1`] = `
                   </div>
                   <!-- append slot -->
                   <!--v-if-->
-                  
+
                 </div>
               </div>
               <!--v-if-->
-              
+
             </div>
           </div>
           <div
@@ -187,23 +189,23 @@ exports[`FormBox > should render the component 1`] = `
                   <span
                     class="n8n-text size-medium bold"
                   >
-                    
-                    Password 
+
+                    Password
                     <span
                       class="n8n-text primary size-medium bold"
                     >
-                      
+
                       *
-                      
+
                     </span>
-                    
+
                   </span>
                 </div>
                 <!--v-if-->
                 <!--v-if-->
                 <!--v-if-->
               </label>
-              
+
               <div
                 class=""
               >
@@ -211,7 +213,7 @@ exports[`FormBox > should render the component 1`] = `
                   class="el-input el-input--large n8n-input ph-no-capture"
                 >
                   <!-- input -->
-                  
+
                   <!-- prepend slot -->
                   <!--v-if-->
                   <div
@@ -222,6 +224,7 @@ exports[`FormBox > should render the component 1`] = `
                     <input
                       autocomplete="current-password"
                       class="el-input__inner"
+											maxlength="Infinity"
                       name="password"
                       placeholder=""
                       rows="2"
@@ -234,16 +237,16 @@ exports[`FormBox > should render the component 1`] = `
                   </div>
                   <!-- append slot -->
                   <!--v-if-->
-                  
+
                 </div>
               </div>
               <!--v-if-->
-              
+
             </div>
           </div>
-          
+
         </div>
-        
+
       </div>
     </div>
     <!--v-if-->
@@ -252,8 +255,8 @@ exports[`FormBox > should render the component 1`] = `
     >
       <!--v-if-->
     </div>
-    
-    
+
+
   </div>
 </div>
 `;
