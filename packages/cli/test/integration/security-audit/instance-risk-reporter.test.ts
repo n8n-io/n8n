@@ -1,3 +1,4 @@
+import { mock } from 'jest-mock-extended';
 import { NodeConnectionType } from 'n8n-workflow';
 import Container from 'typedi';
 import { v4 as uuid } from 'uuid';
@@ -23,7 +24,7 @@ let securityAuditService: SecurityAuditService;
 beforeAll(async () => {
 	await testDb.init();
 
-	securityAuditService = new SecurityAuditService(Container.get(WorkflowRepository));
+	securityAuditService = new SecurityAuditService(Container.get(WorkflowRepository), mock());
 
 	simulateUpToDateInstance();
 });

@@ -274,7 +274,7 @@ export abstract class BaseCommand extends Command {
 		this.license = Container.get(License);
 		await this.license.init();
 
-		const activationKey = config.getEnv('license.activationKey');
+		const { activationKey } = this.globalConfig.license;
 
 		if (activationKey) {
 			const hasCert = (await this.license.loadCertStr()).length > 0;

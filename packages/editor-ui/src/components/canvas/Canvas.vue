@@ -41,8 +41,8 @@ import { GRID_SIZE } from '@/utils/nodeViewUtils';
 import { CanvasKey } from '@/constants';
 import { onKeyDown, onKeyUp, useDebounceFn } from '@vueuse/core';
 import CanvasArrowHeadMarker from './elements/edges/CanvasArrowHeadMarker.vue';
-import { CanvasNodeRenderType } from '@/types';
 import CanvasBackgroundStripedPattern from './elements/CanvasBackgroundStripedPattern.vue';
+import { isMiddleMouseButton } from '@/utils/eventUtils';
 
 const $style = useCssModule();
 
@@ -107,6 +107,7 @@ const props = withDefaults(
 );
 
 const {
+	vueFlowRef,
 	getSelectedNodes: selectedNodes,
 	addSelectedNodes,
 	removeSelectedNodes,
@@ -121,7 +122,6 @@ const {
 	nodes: graphNodes,
 	onPaneReady,
 	findNode,
-	onNodesInitialized,
 	viewport,
 } = useVueFlow({ id: props.id, deleteKeyCode: null });
 
@@ -143,18 +143,16 @@ const disableKeyBindings = computed(() => !props.keyBindings);
  * @see https://developer.mozilla.org/en-US/docs/Web/API/UI_Events/Keyboard_event_key_values#whitespace_keys
  */
 
-const isPanningEnabled = ref(false);
 const panningKeyCode = ' ';
+const isPanningEnabled = ref(false);
 const selectionKeyCode = ref<true | null>(true);
 
 onKeyDown(panningKeyCode, () => {
-	isPanningEnabled.value = true;
-	selectionKeyCode.value = null;
+	setPanningEnabled(true);
 });
 
 onKeyUp(panningKeyCode, () => {
-	isPanningEnabled.value = false;
-	selectionKeyCode.value = true;
+	setPanningEnabled(false);
 });
 
 const keyMap = computed(() => ({
@@ -185,6 +183,16 @@ const keyMap = computed(() => ({
 }));
 
 useKeybindings(keyMap, { disabled: disableKeyBindings });
+
+function setPanningEnabled(value: boolean) {
+	if (value) {
+		isPanningEnabled.value = true;
+		selectionKeyCode.value = null;
+	} else {
+		isPanningEnabled.value = false;
+		selectionKeyCode.value = true;
+	}
+}
 
 /**
  * When the window is focused, the selection key code is lost.
@@ -384,12 +392,28 @@ function setReadonly(value: boolean) {
 	elementsSelectable.value = true;
 }
 
+function onPaneMouseDown(event: MouseEvent) {
+	if (isMiddleMouseButton(event)) {
+		setPanningEnabled(true);
+
+		// Re-emit the event to start panning after setting the panning state to true
+		// This workaround is necessary because the Vue Flow library does not provide a way to
+		// start panning programmatically
+		void nextTick(() =>
+			vueFlowRef.value
+				?.querySelector('.vue-flow__pane')
+				?.dispatchEvent(new MouseEvent('mousedown', event)),
+		);
+	}
+}
+
 function onPaneMoveStart() {
 	isPaneMoving.value = true;
 }
 
 function onPaneMoveEnd() {
 	isPaneMoving.value = false;
+	setPanningEnabled(false);
 }
 
 /**
@@ -512,11 +536,6 @@ onPaneReady(async () => {
 	isPaneReady.value = true;
 });
 
-onNodesInitialized((nodes) => {
-	if (nodes.length !== 1 || nodes[0].data?.render.type !== CanvasNodeRenderType.AddNodes) return;
-	void onFitView();
-});
-
 watch(() => props.readOnly, setReadonly, {
 	immediate: true,
 });
@@ -559,6 +578,7 @@ provide(CanvasKey, {
 		@nodes-change="onNodesChange"
 		@move-start="onPaneMoveStart"
 		@move-end="onPaneMoveEnd"
+		@mousedown="onPaneMouseDown"
 	>
 		<template #node-canvas-node="canvasNodeProps">
 			<Node
@@ -645,6 +665,10 @@ provide(CanvasKey, {
 
 	&.draggable :global(.vue-flow__pane) {
 		cursor: grab;
+	}
+
+	:global(.vue-flow__pane) {
+		cursor: default;
 	}
 
 	:global(.vue-flow__pane.dragging) {

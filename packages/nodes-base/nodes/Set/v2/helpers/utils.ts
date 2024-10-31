@@ -4,6 +4,7 @@ import type {
 	IExecuteFunctions,
 	INode,
 	INodeExecutionData,
+	ISupplyDataFunctions,
 } from 'n8n-workflow';
 import {
 	ApplicationError,
@@ -51,7 +52,7 @@ const configureFieldHelper = (dotNotation?: boolean) => {
 };
 
 export function composeReturnItem(
-	this: IExecuteFunctions,
+	this: IExecuteFunctions | ISupplyDataFunctions,
 	itemIndex: number,
 	inputItem: INodeExecutionData,
 	newFields: IDataObject,
@@ -220,7 +221,11 @@ export const validateEntry = (
 	};
 };
 
-export function resolveRawData(this: IExecuteFunctions, rawData: string, i: number) {
+export function resolveRawData(
+	this: IExecuteFunctions | ISupplyDataFunctions,
+	rawData: string,
+	i: number,
+) {
 	const resolvables = getResolvables(rawData);
 	let returnData: string = rawData;
 

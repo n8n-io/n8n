@@ -2,7 +2,7 @@ import type { Callbacks } from '@langchain/core/callbacks/manager';
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import type { AIMessage } from '@langchain/core/messages';
 import { BaseOutputParser } from '@langchain/core/output_parsers';
-import type { IExecuteFunctions } from 'n8n-workflow';
+import type { ISupplyDataFunctions } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 
 import type { N8nStructuredOutputParser } from './N8nStructuredOutputParser';
@@ -10,23 +10,14 @@ import { NAIVE_FIX_PROMPT } from './prompt';
 import { logAiEvent } from '../helpers';
 
 export class N8nOutputFixingParser extends BaseOutputParser {
-	private context: IExecuteFunctions;
-
-	private model: BaseLanguageModel;
-
-	private outputParser: N8nStructuredOutputParser;
-
 	lc_namespace = ['langchain', 'output_parsers', 'fix'];
 
 	constructor(
-		context: IExecuteFunctions,
-		model: BaseLanguageModel,
-		outputParser: N8nStructuredOutputParser,
+		private context: ISupplyDataFunctions,
+		private model: BaseLanguageModel,
+		private outputParser: N8nStructuredOutputParser,
 	) {
 		super();
-		this.context = context;
-		this.model = model;
-		this.outputParser = outputParser;
 	}
 
 	getRetryChain() {
@@ -48,7 +39,7 @@ export class N8nOutputFixingParser extends BaseOutputParser {
 		try {
 			// First attempt to parse the completion
 			const response = await this.outputParser.parse(completion, callbacks, (e) => e);
-			void logAiEvent(this.context, 'ai-output-parsed', { text: completion, response });
+			logAiEvent(this.context, 'ai-output-parsed', { text: completion, response });
 
 			this.context.addOutputData(NodeConnectionType.AiOutputParser, index, [
 				[{ json: { action: 'parse', response } }],

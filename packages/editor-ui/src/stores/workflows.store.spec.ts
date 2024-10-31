@@ -8,7 +8,13 @@ import {
 	WAIT_NODE_TYPE,
 } from '@/constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import type { IExecutionResponse, INodeUi, IWorkflowDb, IWorkflowSettings } from '@/Interface';
+import type {
+	IExecutionResponse,
+	IExecutionsCurrentSummaryExtended,
+	INodeUi,
+	IWorkflowDb,
+	IWorkflowSettings,
+} from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 import {
@@ -592,6 +598,50 @@ describe('useWorkflowsStore', () => {
 					withPostHog: true,
 				},
 			);
+		});
+	});
+
+	describe('finishActiveExecution', () => {
+		it('should update execution', async () => {
+			const cursor = 1;
+			const ids = ['0', '1', '2'];
+			workflowsStore.setActiveExecutions(
+				ids.map((id) => ({ id })) as IExecutionsCurrentSummaryExtended[],
+			);
+
+			const stoppedAt = new Date();
+
+			workflowsStore.finishActiveExecution({
+				executionId: ids[cursor],
+				data: {
+					finished: true,
+					stoppedAt,
+				},
+			} as PushPayload<'executionFinished'>);
+
+			expect(workflowsStore.activeExecutions[cursor]).toStrictEqual({
+				id: ids[cursor],
+				finished: true,
+				stoppedAt,
+			});
+		});
+
+		it('should handle parameter casting', async () => {
+			const cursor = 1;
+			const ids = ['0', '1', '2'];
+			workflowsStore.setActiveExecutions(
+				ids.map((id) => ({ id })) as IExecutionsCurrentSummaryExtended[],
+			);
+
+			workflowsStore.finishActiveExecution({
+				executionId: ids[cursor],
+			} as PushPayload<'executionFinished'>);
+
+			expect(workflowsStore.activeExecutions[cursor]).toStrictEqual({
+				id: ids[cursor],
+				finished: undefined,
+				stoppedAt: undefined,
+			});
 		});
 	});
 });
