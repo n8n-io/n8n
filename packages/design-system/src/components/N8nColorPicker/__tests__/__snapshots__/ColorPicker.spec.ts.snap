@@ -6,7 +6,7 @@ exports[`components > N8nColorPicker > should render with input 1`] = `
     class="n8n-color-picker component"
     data-v-dab78bb8=""
   >
-
+    
     <div
       aria-description="current color is . press enter to select a new color."
       aria-disabled="false"
@@ -30,7 +30,7 @@ exports[`components > N8nColorPicker > should render with input 1`] = `
               class="el-icon el-color-picker__icon is-icon-arrow-down"
               style="display: none;"
             >
-
+              
               <svg
                 viewBox="0 0 1024 1024"
                 xmlns="http://www.w3.org/2000/svg"
@@ -40,12 +40,12 @@ exports[`components > N8nColorPicker > should render with input 1`] = `
                   fill="currentColor"
                 />
               </svg>
-
+              
             </i>
             <i
               class="el-icon el-color-picker__empty is-icon-close"
             >
-
+              
               <svg
                 viewBox="0 0 1024 1024"
                 xmlns="http://www.w3.org/2000/svg"
@@ -55,7 +55,7 @@ exports[`components > N8nColorPicker > should render with input 1`] = `
                   fill="currentColor"
                 />
               </svg>
-
+              
             </i>
           </span>
         </span>
@@ -63,13 +63,13 @@ exports[`components > N8nColorPicker > should render with input 1`] = `
     </div>
     <!--teleport start-->
     <!--teleport end-->
-
+    
     <div
       class="el-input el-input--large n8n-input input input"
       data-v-dab78bb8=""
     >
       <!-- input -->
-
+      
       <!-- prepend slot -->
       <!--v-if-->
       <div
@@ -92,7 +92,7 @@ exports[`components > N8nColorPicker > should render with input 1`] = `
       </div>
       <!-- append slot -->
       <!--v-if-->
-
+      
     </div>
   </span>
 </div>
@@ -104,7 +104,7 @@ exports[`components > N8nColorPicker > should render without input 1`] = `
     class="n8n-color-picker component"
     data-v-dab78bb8=""
   >
-
+    
     <div
       aria-description="current color is . press enter to select a new color."
       aria-disabled="false"
@@ -128,7 +128,7 @@ exports[`components > N8nColorPicker > should render without input 1`] = `
               class="el-icon el-color-picker__icon is-icon-arrow-down"
               style="display: none;"
             >
-
+              
               <svg
                 viewBox="0 0 1024 1024"
                 xmlns="http://www.w3.org/2000/svg"
@@ -138,12 +138,12 @@ exports[`components > N8nColorPicker > should render without input 1`] = `
                   fill="currentColor"
                 />
               </svg>
-
+              
             </i>
             <i
               class="el-icon el-color-picker__empty is-icon-close"
             >
-
+              
               <svg
                 viewBox="0 0 1024 1024"
                 xmlns="http://www.w3.org/2000/svg"
@@ -153,7 +153,7 @@ exports[`components > N8nColorPicker > should render without input 1`] = `
                   fill="currentColor"
                 />
               </svg>
-
+              
             </i>
           </span>
         </span>
@@ -161,7 +161,7 @@ exports[`components > N8nColorPicker > should render without input 1`] = `
     </div>
     <!--teleport start-->
     <!--teleport end-->
-
+    
     <!--v-if-->
   </span>
 </div>
