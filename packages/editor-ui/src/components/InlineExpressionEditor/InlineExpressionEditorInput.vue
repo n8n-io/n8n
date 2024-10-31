@@ -56,6 +56,7 @@ const extensions = computed(() => [
 	infoBoxTooltips(),
 ]);
 const editorValue = ref<string>(removeExpressionPrefix(props.modelValue));
+
 const {
 	editor: editorRef,
 	segments,
@@ -68,7 +69,7 @@ const {
 	editorRef: root,
 	editorValue,
 	extensions,
-	isReadOnly: props.isReadOnly,
+	isReadOnly: computed(() => props.isReadOnly),
 	autocompleteTelemetry: { enabled: true, parameterPath: props.path },
 	additionalData: props.additionalData,
 });
@@ -115,7 +116,6 @@ defineExpose({
 <template>
 	<div
 		ref="root"
-		:key="`${path}_${isReadOnly}`"
 		title=""
 		:class="$style.editor"
 		data-test-id="inline-expression-editor-input"
@@ -134,6 +134,7 @@ defineExpose({
 	padding-left: 0;
 }
 :deep(.cm-content) {
+	--disabled-fill: var(--color-background-medium);
 	padding-left: var(--spacing-2xs);
 
 	&[aria-readonly='true'] {
@@ -141,6 +142,9 @@ defineExpose({
 		border-color: var(--disabled-border, var(--border-color-base));
 		color: var(--disabled-color, var(--color-text-base));
 		cursor: not-allowed;
+
+		border-top-left-radius: 0;
+		border-bottom-left-radius: 0;
 	}
 }
 </style>

@@ -10,7 +10,7 @@ import {
 import { MotorheadMemory } from '@langchain/community/memory/motorhead_memory';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
-import { sessionIdOption, sessionKeyProperty } from '../descriptions';
+import { expressionSessionKeyProperty, sessionIdOption, sessionKeyProperty } from '../descriptions';
 import { getSessionId } from '../../../utils/helpers';
 
 export class MemoryMotorhead implements INodeType {
@@ -19,7 +19,7 @@ export class MemoryMotorhead implements INodeType {
 		name: 'memoryMotorhead',
 		icon: 'fa:file-export',
 		group: ['transform'],
-		version: [1, 1.1, 1.2],
+		version: [1, 1.1, 1.2, 1.3],
 		description: 'Use Motorhead Memory',
 		defaults: {
 			name: 'Motorhead',
@@ -82,6 +82,7 @@ export class MemoryMotorhead implements INodeType {
 					},
 				},
 			},
+			expressionSessionKeyProperty(1.3),
 			sessionKeyProperty,
 		],
 	};
