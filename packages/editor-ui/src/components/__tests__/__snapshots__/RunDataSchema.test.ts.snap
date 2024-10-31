@@ -1,5 +1,479 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
+exports[`RunDataSchema.vue > renders its own data for AI tools in debug mode 1`] = `
+<div
+  class="schema"
+  data-test-id="run-data-schema-node-schema"
+  data-v-46dade00=""
+>
+  <div
+    class="item"
+    data-test-id="run-data-schema-item"
+    data-v-46dade00=""
+  >
+    <div
+      class="itemContent"
+    >
+      <!--v-if-->
+      <!--v-if-->
+    </div>
+    <!--v-if-->
+    <!--v-if-->
+    <div
+      class="sub"
+    >
+      <div
+        class="innerSub"
+      >
+        
+        <div
+          class="item"
+          data-test-id="run-data-schema-item"
+        >
+          <div
+            class="itemContent"
+          >
+            <div
+              class="pill mappable"
+              title="string"
+            >
+              <span
+                class="label"
+                data-depth="1"
+                data-name="output"
+                data-path=".output"
+                data-target="mappable"
+                data-value="{{ $json.output }}"
+              >
+                <svg
+                  aria-hidden="true"
+                  class="svg-inline--fa fa-font fa-w-14 fa-sm"
+                  data-icon="font"
+                  data-prefix="fas"
+                  focusable="false"
+                  role="img"
+                  viewBox="0 0 448 512"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    class=""
+                    d="M432 416h-23.41L277.88 53.69A32 32 0 0 0 247.58 32h-47.16a32 32 0 0 0-30.3 21.69L39.41 416H16a16 16 0 0 0-16 16v32a16 16 0 0 0 16 16h128a16 16 0 0 0 16-16v-32a16 16 0 0 0-16-16h-19.58l23.3-64h152.56l23.3 64H304a16 16 0 0 0-16 16v32a16 16 0 0 0 16 16h128a16 16 0 0 0 16-16v-32a16 16 0 0 0-16-16zM176.85 272L224 142.51 271.15 272z"
+                    fill="currentColor"
+                  />
+                </svg>
+                <!--v-if-->
+                <span
+                  class="content"
+                >
+                  
+                  <span>
+                    <!--v-if-->
+                    output
+                  </span>
+                  
+                </span>
+              </span>
+            </div>
+            <span
+              class="text"
+              data-test-id="run-data-schema-item-value"
+            >
+              
+              
+              <!--v-if-->
+              <span
+                class="content"
+              >
+                
+                <span>
+                  <!--v-if-->
+                  AI tool output
+                </span>
+                
+              </span>
+              
+              
+            </span>
+          </div>
+          <!--v-if-->
+          <!--v-if-->
+          <!--v-if-->
+        </div>
+        
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`RunDataSchema.vue > renders previous nodes schema for AI tools 1`] = `
+<div
+  class="schema animated"
+  data-test-id="run-data-schema-node-schema"
+  data-v-46dade00=""
+>
+  <div
+    class="innerSchema"
+    data-v-46dade00=""
+  >
+    <div
+      class="item"
+      data-test-id="run-data-schema-item"
+      data-v-46dade00=""
+    >
+      <div
+        class="itemContent"
+      >
+        <!--v-if-->
+        <!--v-if-->
+      </div>
+      <!--v-if-->
+      <!--v-if-->
+      <div
+        class="sub"
+      >
+        <div
+          class="innerSub"
+        >
+          
+          <div
+            class="item"
+            data-test-id="run-data-schema-item"
+          >
+            <div
+              class="itemContent"
+            >
+              <div
+                class="pill mappable"
+                title="number"
+              >
+                <span
+                  class="label"
+                  data-depth="1"
+                  data-name="id"
+                  data-path=".id"
+                  data-target="mappable"
+                  data-value="{{ $('If').item.json.id }}"
+                >
+                  <svg
+                    aria-hidden="true"
+                    class="svg-inline--fa fa-hashtag fa-w-14 fa-sm"
+                    data-icon="hashtag"
+                    data-prefix="fas"
+                    focusable="false"
+                    role="img"
+                    viewBox="0 0 448 512"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      class=""
+                      d="M440.667 182.109l7.143-40c1.313-7.355-4.342-14.109-11.813-14.109h-74.81l14.623-81.891C377.123 38.754 371.468 32 363.997 32h-40.632a12 12 0 0 0-11.813 9.891L296.175 128H197.54l14.623-81.891C213.477 38.754 207.822 32 200.35 32h-40.632a12 12 0 0 0-11.813 9.891L132.528 128H53.432a12 12 0 0 0-11.813 9.891l-7.143 40C33.163 185.246 38.818 192 46.289 192h74.81L98.242 320H19.146a12 12 0 0 0-11.813 9.891l-7.143 40C-1.123 377.246 4.532 384 12.003 384h74.81L72.19 465.891C70.877 473.246 76.532 480 84.003 480h40.632a12 12 0 0 0 11.813-9.891L151.826 384h98.634l-14.623 81.891C234.523 473.246 240.178 480 247.65 480h40.632a12 12 0 0 0 11.813-9.891L315.472 384h79.096a12 12 0 0 0 11.813-9.891l7.143-40c1.313-7.355-4.342-14.109-11.813-14.109h-74.81l22.857-128h79.096a12 12 0 0 0 11.813-9.891zM261.889 320h-98.634l22.857-128h98.634l-22.857 128z"
+                      fill="currentColor"
+                    />
+                  </svg>
+                  <!--v-if-->
+                  <span
+                    class="content"
+                  >
+                    
+                    <span>
+                      <!--v-if-->
+                      id
+                    </span>
+                    
+                  </span>
+                </span>
+              </div>
+              <span
+                class="text"
+                data-test-id="run-data-schema-item-value"
+              >
+                
+                
+                <!--v-if-->
+                <span
+                  class="content"
+                >
+                  
+                  <span>
+                    <!--v-if-->
+                    1
+                  </span>
+                  
+                </span>
+                
+                
+              </span>
+            </div>
+            <!--v-if-->
+            <!--v-if-->
+            <!--v-if-->
+          </div>
+          <div
+            class="item"
+            data-test-id="run-data-schema-item"
+          >
+            <div
+              class="itemContent"
+            >
+              <div
+                class="pill mappable"
+                title="string"
+              >
+                <span
+                  class="label"
+                  data-depth="1"
+                  data-name="name"
+                  data-path=".name"
+                  data-target="mappable"
+                  data-value="{{ $('If').item.json.name }}"
+                >
+                  <svg
+                    aria-hidden="true"
+                    class="svg-inline--fa fa-font fa-w-14 fa-sm"
+                    data-icon="font"
+                    data-prefix="fas"
+                    focusable="false"
+                    role="img"
+                    viewBox="0 0 448 512"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      class=""
+                      d="M432 416h-23.41L277.88 53.69A32 32 0 0 0 247.58 32h-47.16a32 32 0 0 0-30.3 21.69L39.41 416H16a16 16 0 0 0-16 16v32a16 16 0 0 0 16 16h128a16 16 0 0 0 16-16v-32a16 16 0 0 0-16-16h-19.58l23.3-64h152.56l23.3 64H304a16 16 0 0 0-16 16v32a16 16 0 0 0 16 16h128a16 16 0 0 0 16-16v-32a16 16 0 0 0-16-16zM176.85 272L224 142.51 271.15 272z"
+                      fill="currentColor"
+                    />
+                  </svg>
+                  <!--v-if-->
+                  <span
+                    class="content"
+                  >
+                    
+                    <span>
+                      <!--v-if-->
+                      name
+                    </span>
+                    
+                  </span>
+                </span>
+              </div>
+              <span
+                class="text"
+                data-test-id="run-data-schema-item-value"
+              >
+                
+                
+                <!--v-if-->
+                <span
+                  class="content"
+                >
+                  
+                  <span>
+                    <!--v-if-->
+                    John
+                  </span>
+                  
+                </span>
+                
+                
+              </span>
+            </div>
+            <!--v-if-->
+            <!--v-if-->
+            <!--v-if-->
+          </div>
+          
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`RunDataSchema.vue > renders schema for correct output branch 1`] = `
+<div
+  class="schema animated"
+  data-test-id="run-data-schema-node-schema"
+  data-v-46dade00=""
+>
+  <div
+    class="innerSchema"
+    data-v-46dade00=""
+  >
+    <div
+      class="item"
+      data-test-id="run-data-schema-item"
+      data-v-46dade00=""
+    >
+      <div
+        class="itemContent"
+      >
+        <!--v-if-->
+        <!--v-if-->
+      </div>
+      <!--v-if-->
+      <!--v-if-->
+      <div
+        class="sub"
+      >
+        <div
+          class="innerSub"
+        >
+          
+          <div
+            class="item"
+            data-test-id="run-data-schema-item"
+          >
+            <div
+              class="itemContent"
+            >
+              <div
+                class="pill mappable"
+                title="number"
+              >
+                <span
+                  class="label"
+                  data-depth="1"
+                  data-name="id"
+                  data-path=".id"
+                  data-target="mappable"
+                  data-value="{{ $('If').item.json.id }}"
+                >
+                  <svg
+                    aria-hidden="true"
+                    class="svg-inline--fa fa-hashtag fa-w-14 fa-sm"
+                    data-icon="hashtag"
+                    data-prefix="fas"
+                    focusable="false"
+                    role="img"
+                    viewBox="0 0 448 512"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      class=""
+                      d="M440.667 182.109l7.143-40c1.313-7.355-4.342-14.109-11.813-14.109h-74.81l14.623-81.891C377.123 38.754 371.468 32 363.997 32h-40.632a12 12 0 0 0-11.813 9.891L296.175 128H197.54l14.623-81.891C213.477 38.754 207.822 32 200.35 32h-40.632a12 12 0 0 0-11.813 9.891L132.528 128H53.432a12 12 0 0 0-11.813 9.891l-7.143 40C33.163 185.246 38.818 192 46.289 192h74.81L98.242 320H19.146a12 12 0 0 0-11.813 9.891l-7.143 40C-1.123 377.246 4.532 384 12.003 384h74.81L72.19 465.891C70.877 473.246 76.532 480 84.003 480h40.632a12 12 0 0 0 11.813-9.891L151.826 384h98.634l-14.623 81.891C234.523 473.246 240.178 480 247.65 480h40.632a12 12 0 0 0 11.813-9.891L315.472 384h79.096a12 12 0 0 0 11.813-9.891l7.143-40c1.313-7.355-4.342-14.109-11.813-14.109h-74.81l22.857-128h79.096a12 12 0 0 0 11.813-9.891zM261.889 320h-98.634l22.857-128h98.634l-22.857 128z"
+                      fill="currentColor"
+                    />
+                  </svg>
+                  <!--v-if-->
+                  <span
+                    class="content"
+                  >
+                    
+                    <span>
+                      <!--v-if-->
+                      id
+                    </span>
+                    
+                  </span>
+                </span>
+              </div>
+              <span
+                class="text"
+                data-test-id="run-data-schema-item-value"
+              >
+                
+                
+                <!--v-if-->
+                <span
+                  class="content"
+                >
+                  
+                  <span>
+                    <!--v-if-->
+                    1
+                  </span>
+                  
+                </span>
+                
+                
+              </span>
+            </div>
+            <!--v-if-->
+            <!--v-if-->
+            <!--v-if-->
+          </div>
+          <div
+            class="item"
+            data-test-id="run-data-schema-item"
+          >
+            <div
+              class="itemContent"
+            >
+              <div
+                class="pill mappable"
+                title="string"
+              >
+                <span
+                  class="label"
+                  data-depth="1"
+                  data-name="name"
+                  data-path=".name"
+                  data-target="mappable"
+                  data-value="{{ $('If').item.json.name }}"
+                >
+                  <svg
+                    aria-hidden="true"
+                    class="svg-inline--fa fa-font fa-w-14 fa-sm"
+                    data-icon="font"
+                    data-prefix="fas"
+                    focusable="false"
+                    role="img"
+                    viewBox="0 0 448 512"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      class=""
+                      d="M432 416h-23.41L277.88 53.69A32 32 0 0 0 247.58 32h-47.16a32 32 0 0 0-30.3 21.69L39.41 416H16a16 16 0 0 0-16 16v32a16 16 0 0 0 16 16h128a16 16 0 0 0 16-16v-32a16 16 0 0 0-16-16h-19.58l23.3-64h152.56l23.3 64H304a16 16 0 0 0-16 16v32a16 16 0 0 0 16 16h128a16 16 0 0 0 16-16v-32a16 16 0 0 0-16-16zM176.85 272L224 142.51 271.15 272z"
+                      fill="currentColor"
+                    />
+                  </svg>
+                  <!--v-if-->
+                  <span
+                    class="content"
+                  >
+                    
+                    <span>
+                      <!--v-if-->
+                      name
+                    </span>
+                    
+                  </span>
+                </span>
+              </div>
+              <span
+                class="text"
+                data-test-id="run-data-schema-item-value"
+              >
+                
+                
+                <!--v-if-->
+                <span
+                  class="content"
+                >
+                  
+                  <span>
+                    <!--v-if-->
+                    John
+                  </span>
+                  
+                </span>
+                
+                
+              </span>
+            </div>
+            <!--v-if-->
+            <!--v-if-->
+            <!--v-if-->
+          </div>
+          
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
 exports[`RunDataSchema.vue > renders schema for data 1`] = `
 <div
   class="schema animated"
@@ -227,6 +701,7 @@ exports[`RunDataSchema.vue > renders schema for data 1`] = `
               <!--v-if-->
             </div>
             <input
+              checked=""
               id="set_1-hobbies"
               inert=""
               type="checkbox"
@@ -662,6 +1137,7 @@ exports[`RunDataSchema.vue > renders schema for data 2`] = `
               <!--v-if-->
             </div>
             <input
+              checked=""
               id="set_2-hobbies"
               inert=""
               type="checkbox"
@@ -870,7 +1346,7 @@ exports[`RunDataSchema.vue > renders schema for data 2`] = `
 </div>
 `;
 
-exports[`RunDataSchema.vue > renders schema for in output pane 1`] = `
+exports[`RunDataSchema.vue > renders schema in output pane 1`] = `
 <div>
   <div
     class="schemaWrapper"
@@ -1098,6 +1574,7 @@ exports[`RunDataSchema.vue > renders schema for in output pane 1`] = `
                 <!--v-if-->
               </div>
               <input
+                checked=""
                 id="output_object-0-0-hobbies"
                 inert=""
                 type="checkbox"
@@ -1489,6 +1966,7 @@ exports[`RunDataSchema.vue > renders schema with spaces and dots 1`] = `
                         <!--v-if-->
                       </div>
                       <input
+                        checked=""
                         id="set_1-hello world"
                         inert=""
                         type="checkbox"
@@ -1581,6 +2059,7 @@ exports[`RunDataSchema.vue > renders schema with spaces and dots 1`] = `
                               <!--v-if-->
                             </div>
                             <input
+                              checked=""
                               id="set_1-hello world-0"
                               inert=""
                               type="checkbox"
@@ -1664,6 +2143,7 @@ exports[`RunDataSchema.vue > renders schema with spaces and dots 1`] = `
                                     <!--v-if-->
                                   </div>
                                   <input
+                                    checked=""
                                     id="set_1-hello world-0-test"
                                     inert=""
                                     type="checkbox"

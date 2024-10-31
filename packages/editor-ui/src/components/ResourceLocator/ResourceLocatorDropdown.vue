@@ -1,3 +1,192 @@
+<script setup lang="ts">
+import type { IResourceLocatorResultExpanded } from '@/Interface';
+import { N8nLoading } from 'n8n-design-system';
+import type { EventBus } from 'n8n-design-system/utils';
+import { createEventBus } from 'n8n-design-system/utils';
+import type { NodeParameterValue } from 'n8n-workflow';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+
+const SEARCH_BAR_HEIGHT_PX = 40;
+const SCROLL_MARGIN_PX = 10;
+
+type Props = {
+	modelValue?: NodeParameterValue;
+	resources?: IResourceLocatorResultExpanded[];
+	show?: boolean;
+	filterable?: boolean;
+	loading?: boolean;
+	filter?: string;
+	hasMore?: boolean;
+	errorView?: boolean;
+	filterRequired?: boolean;
+	width?: number;
+	eventBus?: EventBus;
+};
+
+const props = withDefaults(defineProps<Props>(), {
+	modelValue: undefined,
+	resources: () => [],
+	show: false,
+	filterable: false,
+	loading: false,
+	filter: '',
+	hasMore: false,
+	errorView: false,
+	filterRequired: false,
+	width: undefined,
+	eventBus: () => createEventBus(),
+});
+
+const emit = defineEmits<{
+	'update:modelValue': [value: NodeParameterValue];
+	loadMore: [];
+	filter: [filter: string];
+}>();
+
+const hoverIndex = ref(0);
+const showHoverUrl = ref(false);
+const searchRef = ref<HTMLInputElement>();
+const resultsContainerRef = ref<HTMLDivElement>();
+const itemsRef = ref<HTMLDivElement[]>([]);
+
+const sortedResources = computed<IResourceLocatorResultExpanded[]>(() => {
+	const seen = new Set();
+	const { selected, notSelected } = props.resources.reduce(
+		(acc, item: IResourceLocatorResultExpanded) => {
+			if (seen.has(item.value)) {
+				return acc;
+			}
+			seen.add(item.value);
+
+			if (props.modelValue && item.value === props.modelValue) {
+				acc.selected = item;
+			} else {
+				acc.notSelected.push(item);
+			}
+
+			return acc;
+		},
+		{
+			selected: null as IResourceLocatorResultExpanded | null,
+			notSelected: [] as IResourceLocatorResultExpanded[],
+		},
+	);
+
+	if (selected) {
+		return [selected, ...notSelected];
+	}
+
+	return notSelected;
+});
+
+watch(
+	() => props.show,
+	(value) => {
+		if (value) {
+			hoverIndex.value = 0;
+			showHoverUrl.value = false;
+
+			setTimeout(() => {
+				if (value && props.filterable && searchRef.value) {
+					searchRef.value.focus();
+				}
+			}, 0);
+		}
+	},
+);
+
+watch(
+	() => props.loading,
+	() => {
+		setTimeout(() => onResultsEnd(), 0); // in case of filtering
+	},
+);
+onMounted(() => {
+	props.eventBus.on('keyDown', onKeyDown);
+});
+
+onBeforeUnmount(() => {
+	props.eventBus.off('keyDown', onKeyDown);
+});
+
+function openUrl(event: MouseEvent, url: string) {
+	event.preventDefault();
+	event.stopPropagation();
+
+	window.open(url, '_blank');
+}
+
+function onKeyDown(e: KeyboardEvent) {
+	if (e.key === 'ArrowDown') {
+		if (hoverIndex.value < sortedResources.value.length - 1) {
+			hoverIndex.value++;
+
+			if (resultsContainerRef.value && itemsRef.value.length === 1) {
+				const item = itemsRef.value[0];
+				if (
+					item.offsetTop + item.clientHeight >
+					resultsContainerRef.value.scrollTop + resultsContainerRef.value.offsetHeight
+				) {
+					const top = item.offsetTop - resultsContainerRef.value.offsetHeight + item.clientHeight;
+					resultsContainerRef.value.scrollTo({ top });
+				}
+			}
+		}
+	} else if (e.key === 'ArrowUp') {
+		if (hoverIndex.value > 0) {
+			hoverIndex.value--;
+
+			const searchOffset = props.filterable ? SEARCH_BAR_HEIGHT_PX : 0;
+			if (resultsContainerRef.value && itemsRef.value.length === 1) {
+				const item = itemsRef.value[0];
+				if (item.offsetTop <= resultsContainerRef.value.scrollTop + searchOffset) {
+					resultsContainerRef.value.scrollTo({ top: item.offsetTop - searchOffset });
+				}
+			}
+		}
+	} else if (e.key === 'Enter') {
+		emit('update:modelValue', sortedResources.value[hoverIndex.value].value);
+	}
+}
+
+function onFilterInput(value: string) {
+	emit('filter', value);
+}
+
+function onItemClick(selected: string | number | boolean) {
+	emit('update:modelValue', selected);
+}
+
+function onItemHover(index: number) {
+	hoverIndex.value = index;
+
+	setTimeout(() => {
+		if (hoverIndex.value === index) {
+			showHoverUrl.value = true;
+		}
+	}, 250);
+}
+
+function onItemHoverLeave() {
+	showHoverUrl.value = false;
+}
+
+function onResultsEnd() {
+	if (props.loading || !props.loading) {
+		return;
+	}
+
+	if (resultsContainerRef.value) {
+		const diff =
+			resultsContainerRef.value.offsetHeight -
+			(resultsContainerRef.value.scrollHeight - resultsContainerRef.value.scrollTop);
+		if (diff > -SCROLL_MARGIN_PX && diff < SCROLL_MARGIN_PX) {
+			emit('loadMore');
+		}
+	}
+}
+</script>
+
 <template>
 	<n8n-popover
 		placement="bottom"
@@ -11,8 +200,8 @@
 			<slot name="error"></slot>
 		</div>
 		<div v-if="filterable && !errorView" :class="$style.searchInput" @keydown="onKeyDown">
-			<n8n-input
-				ref="search"
+			<N8nInput
+				ref="searchRef"
 				:model-value="filter"
 				:clearable="true"
 				:placeholder="$locale.baseText('resourceLocator.search.placeholder')"
@@ -22,7 +211,7 @@
 				<template #prefix>
 					<font-awesome-icon :class="$style.searchIcon" icon="search" />
 				</template>
-			</n8n-input>
+			</N8nInput>
 		</div>
 		<div v-if="filterRequired && !filter && !errorView && !loading" :class="$style.searchRequired">
 			{{ $locale.baseText('resourceLocator.mode.list.searchRequired') }}
@@ -35,14 +224,14 @@
 		</div>
 		<div
 			v-else-if="!errorView"
-			ref="resultsContainer"
+			ref="resultsContainerRef"
 			:class="$style.container"
 			@scroll="onResultsEnd"
 		>
 			<div
 				v-for="(result, i) in sortedResources"
 				:key="result.value.toString()"
-				:ref="`item-${i}`"
+				ref="itemsRef"
 				:class="{
 					[$style.resourceItem]: true,
 					[$style.selected]: result.value === modelValue,
@@ -67,7 +256,7 @@
 			</div>
 			<div v-if="loading && !errorView">
 				<div v-for="i in 3" :key="i" :class="$style.loadingItem">
-					<n8n-loading :class="$style.loader" variant="p" :rows="1" />
+					<N8nLoading :class="$style.loader" variant="p" :rows="1" />
 				</div>
 			</div>
 		</div>
@@ -76,196 +265,6 @@
 		</template>
 	</n8n-popover>
 </template>
-
-<script lang="ts">
-import type { IResourceLocatorResultExpanded } from '@/Interface';
-import { defineComponent } from 'vue';
-import type { PropType } from 'vue';
-import type { EventBus } from 'n8n-design-system/utils';
-import { createEventBus } from 'n8n-design-system/utils';
-import type { NodeParameterValue } from 'n8n-workflow';
-
-const SEARCH_BAR_HEIGHT_PX = 40;
-const SCROLL_MARGIN_PX = 10;
-
-export default defineComponent({
-	name: 'ResourceLocatorDropdown',
-	props: {
-		modelValue: {
-			type: [String, Number] as PropType<NodeParameterValue>,
-		},
-		show: {
-			type: Boolean,
-			default: false,
-		},
-		resources: {
-			type: Array as PropType<IResourceLocatorResultExpanded[]>,
-		},
-		filterable: {
-			type: Boolean,
-		},
-		loading: {
-			type: Boolean,
-		},
-		filter: {
-			type: String,
-		},
-		hasMore: {
-			type: Boolean,
-		},
-		errorView: {
-			type: Boolean,
-		},
-		filterRequired: {
-			type: Boolean,
-		},
-		width: {
-			type: Number,
-		},
-		eventBus: {
-			type: Object as PropType<EventBus>,
-			default: () => createEventBus(),
-		},
-	},
-	emits: ['update:modelValue', 'loadMore', 'filter'],
-	data() {
-		return {
-			hoverIndex: 0,
-			showHoverUrl: false,
-		};
-	},
-	computed: {
-		sortedResources(): IResourceLocatorResultExpanded[] {
-			const seen = new Set();
-			const { selected, notSelected } = (this.resources ?? []).reduce(
-				(acc, item: IResourceLocatorResultExpanded) => {
-					if (seen.has(item.value)) {
-						return acc;
-					}
-					seen.add(item.value);
-
-					if (this.modelValue && item.value === this.modelValue) {
-						acc.selected = item;
-					} else {
-						acc.notSelected.push(item);
-					}
-
-					return acc;
-				},
-				{
-					selected: null as IResourceLocatorResultExpanded | null,
-					notSelected: [] as IResourceLocatorResultExpanded[],
-				},
-			);
-
-			if (selected) {
-				return [selected, ...notSelected];
-			}
-
-			return notSelected;
-		},
-	},
-	watch: {
-		show(value) {
-			if (value) {
-				this.hoverIndex = 0;
-				this.showHoverUrl = false;
-
-				setTimeout(() => {
-					if (value && this.filterable && this.$refs.search) {
-						(this.$refs.search as HTMLElement).focus();
-					}
-				}, 0);
-			}
-		},
-		loading() {
-			setTimeout(() => this.onResultsEnd(), 0); // in case of filtering
-		},
-	},
-	mounted() {
-		this.eventBus.on('keyDown', this.onKeyDown);
-	},
-	beforeUnmount() {
-		this.eventBus.off('keyDown', this.onKeyDown);
-	},
-	methods: {
-		openUrl(event: MouseEvent, url: string) {
-			event.preventDefault();
-			event.stopPropagation();
-
-			window.open(url, '_blank');
-		},
-		onKeyDown(e: KeyboardEvent) {
-			const containerRef = this.$refs.resultsContainer as HTMLElement | undefined;
-
-			if (e.key === 'ArrowDown') {
-				if (this.hoverIndex < this.sortedResources.length - 1) {
-					this.hoverIndex++;
-
-					const itemRefs = this.$refs[`item-${this.hoverIndex}`] as HTMLElement[] | undefined;
-					if (containerRef && Array.isArray(itemRefs) && itemRefs.length === 1) {
-						const item = itemRefs[0];
-						if (
-							item.offsetTop + item.clientHeight >
-							containerRef.scrollTop + containerRef.offsetHeight
-						) {
-							const top = item.offsetTop - containerRef.offsetHeight + item.clientHeight;
-							containerRef.scrollTo({ top });
-						}
-					}
-				}
-			} else if (e.key === 'ArrowUp') {
-				if (this.hoverIndex > 0) {
-					this.hoverIndex--;
-
-					const searchOffset = this.filterable ? SEARCH_BAR_HEIGHT_PX : 0;
-					const itemRefs = this.$refs[`item-${this.hoverIndex}`] as HTMLElement[] | undefined;
-					if (containerRef && Array.isArray(itemRefs) && itemRefs.length === 1) {
-						const item = itemRefs[0];
-						if (item.offsetTop <= containerRef.scrollTop + searchOffset) {
-							containerRef.scrollTo({ top: item.offsetTop - searchOffset });
-						}
-					}
-				}
-			} else if (e.key === 'Enter') {
-				this.$emit('update:modelValue', this.sortedResources[this.hoverIndex].value);
-			}
-		},
-		onFilterInput(value: string) {
-			this.$emit('filter', value);
-		},
-		onItemClick(selected: string | number | boolean) {
-			this.$emit('update:modelValue', selected);
-		},
-		onItemHover(index: number) {
-			this.hoverIndex = index;
-
-			setTimeout(() => {
-				if (this.hoverIndex === index) {
-					this.showHoverUrl = true;
-				}
-			}, 250);
-		},
-		onItemHoverLeave() {
-			this.showHoverUrl = false;
-		},
-		onResultsEnd() {
-			if (this.loading || !this.hasMore) {
-				return;
-			}
-
-			const containerRef = this.$refs.resultsContainer as HTMLElement | undefined;
-			if (containerRef) {
-				const diff =
-					containerRef.offsetHeight - (containerRef.scrollHeight - containerRef.scrollTop);
-				if (diff > -SCROLL_MARGIN_PX && diff < SCROLL_MARGIN_PX) {
-					this.$emit('loadMore');
-				}
-			}
-		},
-	},
-});
-</script>
 
 <style lang="scss" module>
 :root .popover {

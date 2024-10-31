@@ -1,4 +1,4 @@
-import type { WorkflowEntity as Workflow } from '@db/entities/WorkflowEntity';
+import type { WorkflowEntity as Workflow } from '@/databases/entities/workflow-entity';
 
 export namespace Risk {
 	export type Category = 'database' | 'credentials' | 'nodes' | 'instance' | 'filesystem';

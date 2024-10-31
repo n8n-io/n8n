@@ -1,9 +1,3 @@
-<template>
-	<div ref="targetRef" @mouseenter="onMouseEnter" @mouseleave="onMouseLeave" @mouseup="onMouseUp">
-		<slot :droppable="droppable" :active-drop="activeDrop"></slot>
-	</div>
-</template>
-
 <script setup lang="ts">
 import type { XYPosition } from '@/Interface';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -26,7 +20,7 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const emit = defineEmits<{
-	drop: [value: string];
+	drop: [value: string, event: MouseEvent];
 }>();
 
 const hovering = ref(false);
@@ -60,10 +54,10 @@ function onMouseLeave() {
 	hovering.value = false;
 }
 
-function onMouseUp() {
+function onMouseUp(event: MouseEvent) {
 	if (activeDrop.value) {
 		const data = ndvStore.draggableData;
-		emit('drop', data);
+		emit('drop', data, event);
 	}
 }
 
@@ -84,3 +78,9 @@ function getStickyPosition(): XYPosition | null {
 	return [left + props.stickyOffset[0], top + props.stickyOffset[1]];
 }
 </script>
+
+<template>
+	<div ref="targetRef" @mouseenter="onMouseEnter" @mouseleave="onMouseLeave" @mouseup="onMouseUp">
+		<slot :droppable="droppable" :active-drop="activeDrop"></slot>
+	</div>
+</template>

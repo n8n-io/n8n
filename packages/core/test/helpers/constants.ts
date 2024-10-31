@@ -5,6 +5,7 @@ import type {
 	WorkflowTestData,
 } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
+
 import { If } from '../../../nodes-base/dist/nodes/If/If.node';
 import { Merge } from '../../../nodes-base/dist/nodes/Merge/Merge.node';
 import { NoOp } from '../../../nodes-base/dist/nodes/NoOp/NoOp.node';
@@ -45,8 +46,8 @@ export const predefinedNodesTypes: INodeTypeData = {
 					name: 'Version Test',
 					color: '#0000FF',
 				},
-				inputs: ['main'],
-				outputs: ['main'],
+				inputs: [NodeConnectionType.Main],
+				outputs: [NodeConnectionType.Main],
 				properties: [
 					{
 						displayName: 'Display V1',

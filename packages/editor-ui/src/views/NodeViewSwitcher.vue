@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import { useLocalStorage } from '@vueuse/core';
 import { computed, watch } from 'vue';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import NodeViewV1 from '@/views/NodeView.vue';
@@ -8,8 +7,8 @@ import { getNodeViewTab } from '@/utils/canvasUtils';
 import { MAIN_HEADER_TABS, PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS } from '@/constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useNodeViewVersionSwitcher } from '@/composables/useNodeViewVersionSwitcher';
 
 const workflowsStore = useWorkflowsStore();
 const sourceControlStore = useSourceControlStore();
@@ -18,9 +17,7 @@ const router = useRouter();
 const route = useRoute();
 const workflowHelpers = useWorkflowHelpers({ router });
 
-const { resetWorkspace } = useCanvasOperations({ router });
-
-const nodeViewVersion = useLocalStorage('NodeView.version', '1');
+const { nodeViewVersion } = useNodeViewVersionSwitcher();
 
 const workflowId = computed<string>(() => route.params.name as string);
 
@@ -51,9 +48,6 @@ onBeforeRouteLeave(async (to, from, next) => {
 
 	await workflowHelpers.promptSaveUnsavedWorkflowChanges(next, {
 		async confirm() {
-			// Make sure workflow id is empty when leaving the editor
-			workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
-
 			if (from.name === VIEWS.NEW_WORKFLOW) {
 				// Replace the current route with the new workflow route
 				// before navigating to the new route when saving new workflow.
@@ -67,11 +61,10 @@ onBeforeRouteLeave(async (to, from, next) => {
 				return false;
 			}
 
-			return true;
-		},
-		async cancel() {
+			// Make sure workflow id is empty when leaving the editor
 			workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
-			resetWorkspace();
+
+			return true;
 		},
 	});
 });

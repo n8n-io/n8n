@@ -5,13 +5,12 @@ import type {
 	IPairedItemData,
 } from 'n8n-workflow';
 
-import { updateDisplayOptions } from '@utils/utilities';
-
+import merge from 'lodash/merge';
 import type { ClashResolveOptions } from '../../helpers/interfaces';
+
 import { clashHandlingProperties, fuzzyCompareProperty } from '../../helpers/descriptions';
 import { addSuffixToEntriesKeys, selectMergeMethod } from '../../helpers/utils';
-
-import merge from 'lodash/merge';
+import { updateDisplayOptions } from '@utils/utilities';
 
 export const properties: INodeProperties[] = [
 	{

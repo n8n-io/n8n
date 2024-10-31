@@ -1,5 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import type { INodeTypeDescription } from 'n8n-workflow';
+import { NodeConnectionType, type INodeTypeDescription } from 'n8n-workflow';
 
 import * as sheet from './sheet/Sheet.resource';
 import * as spreadsheet from './spreadsheet/SpreadSheet.resource';
@@ -9,20 +9,28 @@ export const versionDescription: INodeTypeDescription = {
 	name: 'googleSheets',
 	icon: 'file:googleSheets.svg',
 	group: ['input', 'output'],
-	version: [3, 4, 4.1, 4.2, 4.3, 4.4],
+	version: [3, 4, 4.1, 4.2, 4.3, 4.4, 4.5],
 	subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 	description: 'Read, update and write data to Google Sheets',
 	defaults: {
 		name: 'Google Sheets',
 	},
-	inputs: ['main'],
-	outputs: ['main'],
+	inputs: [NodeConnectionType.Main],
+	outputs: [NodeConnectionType.Main],
+	usableAsTool: true,
 	hints: [
 		{
 			message:
-				"Use the 'Use Append' option for greater efficiency if your sheet is uniformly formatted without gaps between columns or rows",
+				"Use the 'Minimise API Calls' option for greater efficiency if your sheet is uniformly formatted without gaps between columns or rows",
 			displayCondition:
 				'={{$parameter["operation"] === "append" && !$parameter["options"]["useAppend"]}}',
+			whenToDisplay: 'beforeExecution',
+			location: 'outputPane',
+		},
+		{
+			message: 'No columns found in Google Sheet. All rows will be appended',
+			displayCondition:
+				'={{ ["appendOrUpdate", "append"].includes($parameter["operation"]) && $parameter?.columns?.mappingMode === "defineBelow" && !$parameter?.columns?.schema?.length }}',
 			whenToDisplay: 'beforeExecution',
 			location: 'outputPane',
 		},

@@ -1,30 +1,22 @@
 import WorkflowDetails from '@/components/MainHeader/WorkflowDetails.vue';
 import { createComponentRenderer } from '@/__tests__/render';
-import { STORES, WORKFLOW_SHARE_MODAL_KEY } from '@/constants';
+import { EnterpriseEditionFeature, STORES, WORKFLOW_SHARE_MODAL_KEY } from '@/constants';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { useUIStore } from '@/stores/ui.store';
 
-vi.mock('vue-router', async () => {
-	const actual = await import('vue-router');
-
-	return {
-		...actual,
-		useRoute: () => ({
-			value: {
-				params: {
-					id: '1',
-				},
-			},
-		}),
-	};
-});
+vi.mock('vue-router', () => ({
+	useRoute: () => vi.fn(),
+	useRouter: () => vi.fn(),
+	RouterLink: vi.fn(),
+}));
 
 const initialState = {
 	[STORES.SETTINGS]: {
 		settings: {
 			enterprise: {
-				sharing: true,
+				[EnterpriseEditionFeature.Sharing]: true,
+				[EnterpriseEditionFeature.WorkflowHistory]: true,
 			},
 		},
 		areTagsEnabled: true,
@@ -45,24 +37,29 @@ const initialState = {
 
 const renderComponent = createComponentRenderer(WorkflowDetails, {
 	pinia: createTestingPinia({ initialState }),
+	global: {
+		stubs: {
+			RouterLink: true,
+		},
+	},
 });
 
 let uiStore: ReturnType<typeof useUIStore>;
+const workflow = {
+	id: '1',
+	name: 'Test Workflow',
+	tags: ['1', '2'],
+	active: false,
+};
 
 describe('WorkflowDetails', () => {
 	beforeEach(() => {
 		uiStore = useUIStore();
 	});
 	it('renders workflow name and tags', async () => {
-		const workflow = {
-			id: '1',
-			name: 'Test Workflow',
-			tags: ['1', '2'],
-		};
-
 		const { getByTestId, getByText } = renderComponent({
 			props: {
-				workflow,
+				...workflow,
 				readOnly: false,
 			},
 		});
@@ -79,11 +76,7 @@ describe('WorkflowDetails', () => {
 		const onSaveButtonClick = vi.fn();
 		const { getByTestId } = renderComponent({
 			props: {
-				workflow: {
-					id: '1',
-					name: 'Test Workflow',
-					tags: [],
-				},
+				...workflow,
 				readOnly: false,
 			},
 			global: {
@@ -102,11 +95,7 @@ describe('WorkflowDetails', () => {
 
 		const { getByTestId } = renderComponent({
 			props: {
-				workflow: {
-					id: '1',
-					name: 'Test Workflow',
-					tags: [],
-				},
+				...workflow,
 				readOnly: false,
 			},
 		});

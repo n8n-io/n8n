@@ -1,8 +1,11 @@
-import { defineComponent, ref } from 'vue';
-import { render, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
-import N8nSelect from '../Select.vue';
+import { render, waitFor, within } from '@testing-library/vue';
+import { defineComponent, ref } from 'vue';
+
+import { removeDynamicAttributes } from 'n8n-design-system/utils';
+
 import N8nOption from '../../N8nOption/Option.vue';
+import N8nSelect from '../Select.vue';
 
 describe('components', () => {
 	describe('N8nSelect', () => {
@@ -21,6 +24,7 @@ describe('components', () => {
 					],
 				},
 			});
+			removeDynamicAttributes(wrapper.container);
 			expect(wrapper.html()).toMatchSnapshot();
 		});
 

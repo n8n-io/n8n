@@ -1,11 +1,13 @@
-import { Service } from 'typedi';
+import type { Scope } from '@n8n/permissions';
 import { DataSource, In, Repository, Like } from '@n8n/typeorm';
 import type { FindManyOptions, FindOptionsWhere } from '@n8n/typeorm';
-import { CredentialsEntity } from '../entities/CredentialsEntity';
+import { Service } from 'typedi';
+
 import type { ListQuery } from '@/requests';
-import type { User } from '../entities/User';
-import type { Scope } from '@n8n/permissions';
 import { RoleService } from '@/services/role.service';
+
+import { CredentialsEntity } from '../entities/credentials-entity';
+import type { User } from '../entities/user';
 
 @Service()
 export class CredentialsRepository extends Repository<CredentialsEntity> {

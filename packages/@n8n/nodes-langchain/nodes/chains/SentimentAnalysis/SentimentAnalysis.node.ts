@@ -129,7 +129,8 @@ export class SentimentAnalysis implements INodeType {
 						name: 'enableAutoFixing',
 						type: 'boolean',
 						default: true,
-						description: 'Whether to enable auto-fixing for the output parser',
+						description:
+							'Whether to enable auto-fixing (may trigger an additional LLM call if output is broken)',
 					},
 				],
 			},
@@ -241,7 +242,7 @@ export class SentimentAnalysis implements INodeType {
 					);
 				}
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },

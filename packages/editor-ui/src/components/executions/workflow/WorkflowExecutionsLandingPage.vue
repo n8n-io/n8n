@@ -1,66 +1,61 @@
+<script setup lang="ts">
+import { computed } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS } from '@/constants';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import WorkflowExecutionsInfoAccordion from './WorkflowExecutionsInfoAccordion.vue';
+import { useI18n } from '@/composables/useI18n';
+
+const router = useRouter();
+const route = useRoute();
+const locale = useI18n();
+
+const uiStore = useUIStore();
+const workflowsStore = useWorkflowsStore();
+
+const executionCount = computed(() => workflowsStore.currentWorkflowExecutions.length);
+const containsTrigger = computed(() => workflowsStore.workflowTriggerNodes.length > 0);
+
+function onSetupFirstStep(): void {
+	uiStore.addFirstStepOnLoad = true;
+	const workflowRoute = getWorkflowRoute();
+	void router.push(workflowRoute);
+}
+
+function getWorkflowRoute(): { name: string; params: {} } {
+	const workflowId = workflowsStore.workflowId || route.params.name;
+	if (workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+		return { name: VIEWS.NEW_WORKFLOW, params: {} };
+	} else {
+		return { name: VIEWS.WORKFLOW, params: { name: workflowId } };
+	}
+}
+</script>
+
 <template>
 	<div :class="['workflow-executions-container', $style.container]">
 		<div v-if="executionCount === 0" :class="[$style.messageContainer, $style.noExecutionsMessage]">
-			<div v-if="!containsTrigger">
-				<n8n-heading tag="h2" size="xlarge" color="text-dark" class="mb-2xs">
-					{{ $locale.baseText('executionsLandingPage.emptyState.noTrigger.heading') }}
-				</n8n-heading>
-				<n8n-text size="medium">
-					{{ $locale.baseText('executionsLandingPage.emptyState.message') }}
-				</n8n-text>
-				<n8n-button class="mt-l" type="tertiary" size="large" @click="onSetupFirstStep">
-					{{ $locale.baseText('executionsLandingPage.emptyState.noTrigger.buttonText') }}
-				</n8n-button>
+			<div v-if="!containsTrigger" data-test-id="workflow-execution-no-trigger-content">
+				<N8nHeading tag="h2" size="xlarge" color="text-dark" class="mb-2xs">
+					{{ locale.baseText('executionsLandingPage.emptyState.noTrigger.heading') }}
+				</N8nHeading>
+				<N8nText size="medium">
+					{{ locale.baseText('executionsLandingPage.emptyState.message') }}
+				</N8nText>
+				<N8nButton class="mt-l" type="tertiary" size="large" @click="onSetupFirstStep">
+					{{ locale.baseText('executionsLandingPage.emptyState.noTrigger.buttonText') }}
+				</N8nButton>
 			</div>
-			<div v-else>
-				<n8n-heading tag="h2" size="xlarge" color="text-dark" class="mb-2xs">
-					{{ $locale.baseText('executionsLandingPage.emptyState.heading') }}
-				</n8n-heading>
+			<div v-else data-test-id="workflow-execution-no-content">
+				<N8nHeading tag="h2" size="xlarge" color="text-dark" class="mb-2xs">
+					{{ locale.baseText('executionsLandingPage.emptyState.heading') }}
+				</N8nHeading>
 				<WorkflowExecutionsInfoAccordion />
 			</div>
 		</div>
 	</div>
 </template>
-
-<script lang="ts">
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS } from '@/constants';
-import { useUIStore } from '@/stores/ui.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { mapStores } from 'pinia';
-import { defineComponent } from 'vue';
-import WorkflowExecutionsInfoAccordion from './WorkflowExecutionsInfoAccordion.vue';
-
-export default defineComponent({
-	name: 'ExecutionsLandingPage',
-	components: {
-		WorkflowExecutionsInfoAccordion,
-	},
-	computed: {
-		...mapStores(useUIStore, useWorkflowsStore),
-		executionCount(): number {
-			return this.workflowsStore.currentWorkflowExecutions.length;
-		},
-		containsTrigger(): boolean {
-			return this.workflowsStore.workflowTriggerNodes.length > 0;
-		},
-	},
-	methods: {
-		onSetupFirstStep(): void {
-			this.uiStore.addFirstStepOnLoad = true;
-			const workflowRoute = this.getWorkflowRoute();
-			void this.$router.push(workflowRoute);
-		},
-		getWorkflowRoute(): { name: string; params: {} } {
-			const workflowId = this.workflowsStore.workflowId || this.$route.params.name;
-			if (workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
-				return { name: VIEWS.NEW_WORKFLOW, params: {} };
-			} else {
-				return { name: VIEWS.WORKFLOW, params: { name: workflowId } };
-			}
-		},
-	},
-});
-</script>
 
 <style module lang="scss">
 .container {

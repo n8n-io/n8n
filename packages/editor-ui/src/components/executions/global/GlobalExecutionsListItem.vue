@@ -8,6 +8,7 @@ import { convertToDisplayDate } from '@/utils/formatters/dateFormatter';
 import { i18n as locale } from '@/plugins/i18n';
 import ExecutionsTime from '@/components/executions/ExecutionsTime.vue';
 import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
+import type { PermissionsRecord } from '@/permissions';
 
 type Command = 'retrySaved' | 'retryOriginal' | 'delete';
 
@@ -24,9 +25,11 @@ const props = withDefaults(
 		execution: ExecutionSummary;
 		selected?: boolean;
 		workflowName?: string;
+		workflowPermissions: PermissionsRecord['workflow'];
 	}>(),
 	{
 		selected: false,
+		workflowName: '',
 	},
 );
 
@@ -59,7 +62,9 @@ const classes = computed(() => {
 });
 
 const formattedStartedAtDate = computed(() => {
-	return props.execution.startedAt ? formatDate(props.execution.startedAt) : '';
+	return props.execution.startedAt
+		? formatDate(props.execution.startedAt)
+		: i18n.baseText('executionsList.startingSoon');
 });
 
 const formattedWaitTillDate = computed(() => {
@@ -266,6 +271,7 @@ async function handleActionItemClick(commandData: Command) {
 							data-test-id="execution-retry-saved-dropdown-item"
 							:class="$style.retryAction"
 							command="retrySaved"
+							:disabled="!workflowPermissions.execute"
 						>
 							{{ i18n.baseText('executionsList.retryWithCurrentlySavedWorkflow') }}
 						</ElDropdownItem>
@@ -274,6 +280,7 @@ async function handleActionItemClick(commandData: Command) {
 							data-test-id="execution-retry-original-dropdown-item"
 							:class="$style.retryAction"
 							command="retryOriginal"
+							:disabled="!workflowPermissions.execute"
 						>
 							{{ i18n.baseText('executionsList.retryWithOriginalWorkflow') }}
 						</ElDropdownItem>
@@ -281,6 +288,7 @@ async function handleActionItemClick(commandData: Command) {
 							data-test-id="execution-delete-dropdown-item"
 							:class="$style.deleteAction"
 							command="delete"
+							:disabled="!workflowPermissions.update"
 						>
 							{{ i18n.baseText('generic.delete') }}
 						</ElDropdownItem>

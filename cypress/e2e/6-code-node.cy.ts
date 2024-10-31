@@ -1,7 +1,8 @@
 import { nanoid } from 'nanoid';
-import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
+
 import { NDV } from '../pages/ndv';
 import { successToast } from '../pages/notifications';
+import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 
 const WorkflowPage = new WorkflowPageClass();
 const ndv = new NDV();
@@ -38,31 +39,64 @@ describe('Code node', () => {
 
 			successToast().contains('Node executed successfully');
 		});
+
+		it('should show lint errors in `runOnceForAllItems` mode', () => {
+			const getParameter = () => ndv.getters.parameterInput('jsCode').should('be.visible');
+			const getEditor = () => getParameter().find('.cm-content').should('exist');
+
+			getEditor()
+				.type('{selectall}')
+				.paste(`$input.itemMatching()
+$input.item
+$('When clicking ‘Test workflow’').item
+$input.first(1)
+
+for (const item of $input.all()) {
+  item.foo
+}
+
+return
+`);
+			getParameter().get('.cm-lint-marker-error').should('have.length', 6);
+			getParameter().contains('itemMatching').realHover();
+			cy.get('.cm-tooltip-lint').should(
+				'have.text',
+				'`.itemMatching()` expects an item index to be passed in as its argument.',
+			);
+		});
+
+		it('should show lint errors in `runOnceForEachItem` mode', () => {
+			const getParameter = () => ndv.getters.parameterInput('jsCode').should('be.visible');
+			const getEditor = () => getParameter().find('.cm-content').should('exist');
+
+			ndv.getters.parameterInput('mode').click();
+			ndv.actions.selectOptionInParameterDropdown('mode', 'Run Once for Each Item');
+			getEditor()
+				.type('{selectall}')
+				.paste(`$input.itemMatching()
+$input.all()
+$input.first()
+$input.item()
+
+return []
+`);
+
+			getParameter().get('.cm-lint-marker-error').should('have.length', 5);
+			getParameter().contains('all').realHover();
+			cy.get('.cm-tooltip-lint').should(
+				'have.text',
+				"Method `$input.all()` is only available in the 'Run Once for All Items' mode.",
+			);
+		});
 	});
 
 	describe('Ask AI', () => {
-		it('tab should display based on experiment', () => {
-			WorkflowPage.actions.visit();
-			cy.window().then((win) => {
-				win.featureFlags.override('011_ask_AI', 'control');
-				WorkflowPage.actions.addInitialNodeToCanvas('Manual');
-				WorkflowPage.actions.addNodeToCanvas('Code');
-				WorkflowPage.actions.openNode('Code');
-
-				cy.getByTestId('code-node-tab-ai').should('not.exist');
-
-				ndv.actions.close();
-				win.featureFlags.override('011_ask_AI', undefined);
-				WorkflowPage.actions.openNode('Code');
-				cy.getByTestId('code-node-tab-ai').should('not.exist');
-			});
-		});
-
 		describe('Enabled', () => {
 			beforeEach(() => {
+				cy.enableFeature('askAi');
 				WorkflowPage.actions.visit();
-				cy.window().then((win) => {
-					win.featureFlags.override('011_ask_AI', 'gpt3');
+
+				cy.window().then(() => {
 					WorkflowPage.actions.addInitialNodeToCanvas('Manual');
 					WorkflowPage.actions.addNodeToCanvas('Code', true, true);
 				});
@@ -107,7 +141,7 @@ describe('Code node', () => {
 
 				cy.getByTestId('ask-ai-prompt-input').type(prompt);
 
-				cy.intercept('POST', '/rest/ask-ai', {
+				cy.intercept('POST', '/rest/ai/ask-ai', {
 					statusCode: 200,
 					body: {
 						data: {
@@ -119,9 +153,7 @@ describe('Code node', () => {
 				cy.getByTestId('ask-ai-cta').click();
 				const askAiReq = cy.wait('@ask-ai');
 
-				askAiReq
-					.its('request.body')
-					.should('have.keys', ['question', 'model', 'context', 'n8nVersion']);
+				askAiReq.its('request.body').should('have.keys', ['question', 'context', 'forNode']);
 
 				askAiReq.its('context').should('have.keys', ['schema', 'ndvPushRef', 'pushRef']);
 
@@ -130,22 +162,22 @@ describe('Code node', () => {
 				cy.get('#tab-code').should('have.class', 'is-active');
 			});
 
-			it('should show error based on status code', () => {
-				const prompt = nanoid(20);
-				cy.get('#tab-ask-ai').click();
-				ndv.actions.executePrevious();
+			const handledCodes = [
+				{ code: 400, message: 'Code generation failed due to an unknown reason' },
+				{ code: 413, message: 'Your workflow data is too large for AI to process' },
+				{ code: 429, message: "We've hit our rate limit with our AI partner" },
+				{ code: 500, message: 'Code generation failed due to an unknown reason' },
+			];
 
-				cy.getByTestId('ask-ai-prompt-input').type(prompt);
+			handledCodes.forEach(({ code, message }) => {
+				it(`should show error based on status code ${code}`, () => {
+					const prompt = nanoid(20);
+					cy.get('#tab-ask-ai').click();
+					ndv.actions.executePrevious();
 
-				const handledCodes = [
-					{ code: 400, message: 'Code generation failed due to an unknown reason' },
-					{ code: 413, message: 'Your workflow data is too large for AI to process' },
-					{ code: 429, message: "We've hit our rate limit with our AI partner" },
-					{ code: 500, message: 'Code generation failed due to an unknown reason' },
-				];
+					cy.getByTestId('ask-ai-prompt-input').type(prompt);
 
-				handledCodes.forEach(({ code, message }) => {
-					cy.intercept('POST', '/rest/ask-ai', {
+					cy.intercept('POST', '/rest/ai/ask-ai', {
 						statusCode: code,
 						status: code,
 					}).as('ask-ai');

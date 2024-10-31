@@ -1,5 +1,5 @@
 import { createPinia, setActivePinia } from 'pinia';
-import type { IN8nUISettings } from 'n8n-workflow';
+import type { FrontendSettings } from '@n8n/api-types';
 import { useWorkflowHistoryStore } from '@/stores/workflowHistory.store';
 import { useSettingsStore } from '@/stores/settings.store';
 
@@ -26,7 +26,7 @@ describe('Workflow history store', () => {
 					pruneTime,
 					licensePruneTime,
 				},
-			} as IN8nUISettings;
+			} as FrontendSettings;
 
 			expect(workflowHistoryStore.shouldUpgrade).toBe(shouldUpgrade);
 		},

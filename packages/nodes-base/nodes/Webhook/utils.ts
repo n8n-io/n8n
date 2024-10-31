@@ -5,13 +5,13 @@ import type {
 	IDataObject,
 	ICredentialDataDecryptedObject,
 } from 'n8n-workflow';
-import { WebhookAuthorizationError } from './error';
 import basicAuth from 'basic-auth';
 import jwt from 'jsonwebtoken';
 import { formatPrivateKey } from '../../utils/utilities';
+import { WebhookAuthorizationError } from './error';
 
-type WebhookParameters = {
-	httpMethod: string;
+export type WebhookParameters = {
+	httpMethod: string | string[];
 	responseMode: string;
 	responseData: string;
 	responseCode?: number; //typeVersion <= 1.1
@@ -191,7 +191,7 @@ export async function validateWebhookAuthentication(
 		// Basic authorization is needed to call webhook
 		let expectedAuth: ICredentialDataDecryptedObject | undefined;
 		try {
-			expectedAuth = await ctx.getCredentials('httpBasicAuth');
+			expectedAuth = await ctx.getCredentials<ICredentialDataDecryptedObject>('httpBasicAuth');
 		} catch {}
 
 		if (expectedAuth === undefined || !expectedAuth.user || !expectedAuth.password) {
@@ -211,7 +211,7 @@ export async function validateWebhookAuthentication(
 		// Special header with value is needed to call webhook
 		let expectedAuth: ICredentialDataDecryptedObject | undefined;
 		try {
-			expectedAuth = await ctx.getCredentials('httpHeaderAuth');
+			expectedAuth = await ctx.getCredentials<ICredentialDataDecryptedObject>('httpHeaderAuth');
 		} catch {}
 
 		if (expectedAuth === undefined || !expectedAuth.name || !expectedAuth.value) {
@@ -232,12 +232,12 @@ export async function validateWebhookAuthentication(
 		let expectedAuth;
 
 		try {
-			expectedAuth = (await ctx.getCredentials('jwtAuth')) as {
+			expectedAuth = await ctx.getCredentials<{
 				keyType: 'passphrase' | 'pemKey';
 				publicKey: string;
 				secret: string;
 				algorithm: jwt.Algorithm;
-			};
+			}>('jwtAuth');
 		} catch {}
 
 		if (expectedAuth === undefined) {

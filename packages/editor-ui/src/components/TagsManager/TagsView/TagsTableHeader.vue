@@ -1,32 +1,3 @@
-<template>
-	<el-row class="tags-header">
-		<el-col :span="10">
-			<n8n-input
-				:placeholder="$locale.baseText('tagsTableHeader.searchTags')"
-				:model-value="search"
-				:disabled="disabled"
-				:maxlength="maxLength"
-				clearable
-				@update:model-value="onSearchChange"
-			>
-				<template #prefix>
-					<font-awesome-icon icon="search" />
-				</template>
-			</n8n-input>
-		</el-col>
-		<el-col :span="14">
-			<n8n-button
-				:disabled="disabled"
-				icon="plus"
-				:label="$locale.baseText('tagsTableHeader.addNew')"
-				size="large"
-				float="right"
-				@click="onAddNew"
-			/>
-		</el-col>
-	</el-row>
-</template>
-
 <script setup lang="ts">
 import { ref } from 'vue';
 import { MAX_TAG_NAME_LENGTH } from '@/constants';
@@ -57,6 +28,35 @@ const onSearchChange = (search: string) => {
 	emit('searchChange', search);
 };
 </script>
+
+<template>
+	<el-row class="tags-header">
+		<el-col :span="10">
+			<n8n-input
+				:placeholder="$locale.baseText('tagsTableHeader.searchTags')"
+				:model-value="search"
+				:disabled="disabled"
+				:maxlength="maxLength"
+				clearable
+				@update:model-value="onSearchChange"
+			>
+				<template #prefix>
+					<font-awesome-icon icon="search" />
+				</template>
+			</n8n-input>
+		</el-col>
+		<el-col :span="14">
+			<n8n-button
+				:disabled="disabled"
+				icon="plus"
+				:label="$locale.baseText('tagsTableHeader.addNew')"
+				size="large"
+				float="right"
+				@click="onAddNew"
+			/>
+		</el-col>
+	</el-row>
+</template>
 
 <style lang="scss" scoped>
 .tags-header {

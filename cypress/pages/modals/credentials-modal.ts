@@ -1,5 +1,5 @@
-import { BasePage } from '../base';
 import { getVisibleSelect } from '../../utils';
+import { BasePage } from '../base';
 
 export class CredentialsModal extends BasePage {
 	getters = {

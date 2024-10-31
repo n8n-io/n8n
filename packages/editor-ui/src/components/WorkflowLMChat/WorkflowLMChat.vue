@@ -1,80 +1,3 @@
-<template>
-	<Modal
-		:name="WORKFLOW_LM_CHAT_MODAL_KEY"
-		width="80%"
-		max-height="80%"
-		:title="
-			locale.baseText('chat.window.title', {
-				interpolate: {
-					nodeName: connectedNode?.name || locale.baseText('chat.window.noChatNode'),
-				},
-			})
-		"
-		:event-bus="modalBus"
-		:scrollable="false"
-		@keydown.stop
-	>
-		<template #content>
-			<div
-				:class="$style.workflowLmChat"
-				data-test-id="workflow-lm-chat-dialog"
-				:style="messageVars"
-			>
-				<MessagesList :messages="messages" :class="[$style.messages, 'ignore-key-press']">
-					<template #beforeMessage="{ message }">
-						<MessageOptionTooltip
-							v-if="message.sender === 'bot' && !message.id.includes('preload')"
-							placement="right"
-						>
-							{{ locale.baseText('chat.window.chat.chatMessageOptions.executionId') }}:
-							<a href="#" @click="displayExecution(message.id)">{{ message.id }}</a>
-						</MessageOptionTooltip>
-
-						<MessageOptionAction
-							v-if="isTextMessage(message) && message.sender === 'user'"
-							data-test-id="repost-message-button"
-							icon="redo"
-							:label="locale.baseText('chat.window.chat.chatMessageOptions.repostMessage')"
-							placement="left"
-							@click="repostMessage(message)"
-						/>
-
-						<MessageOptionAction
-							v-if="isTextMessage(message) && message.sender === 'user'"
-							data-test-id="reuse-message-button"
-							icon="copy"
-							:label="locale.baseText('chat.window.chat.chatMessageOptions.reuseMessage')"
-							placement="left"
-							@click="reuseMessage(message)"
-						/>
-					</template>
-				</MessagesList>
-				<div v-if="node" :class="$style.logsWrapper" data-test-id="lm-chat-logs">
-					<n8n-text :class="$style.logsTitle" tag="p" size="large">{{
-						locale.baseText('chat.window.logs')
-					}}</n8n-text>
-					<div :class="$style.logs">
-						<LazyRunDataAi :key="messages.length" :node="node" hide-title slim />
-					</div>
-				</div>
-			</div>
-		</template>
-		<template #footer>
-			<ChatInput
-				:class="$style.messagesInput"
-				data-test-id="lm-chat-inputs"
-				@arrow-key-down="onArrowKeyDown"
-			/>
-			<n8n-info-tip class="mt-s">
-				{{ locale.baseText('chatEmbed.infoTip.description') }}
-				<a @click="uiStore.openModal(CHAT_EMBED_MODAL_KEY)">
-					{{ locale.baseText('chatEmbed.infoTip.link') }}
-				</a>
-			</n8n-info-tip>
-		</template>
-	</Modal>
-</template>
-
 <script setup lang="ts">
 import type { Ref } from 'vue';
 import { defineAsyncComponent, provide, ref, computed, onMounted, nextTick } from 'vue';
@@ -99,7 +22,6 @@ import { useUsersStore } from '@/stores/users.store';
 import MessagesList from '@n8n/chat/components/MessagesList.vue';
 import type { ArrowKeyDownPayload } from '@n8n/chat/components/Input.vue';
 import ChatInput from '@n8n/chat/components/Input.vue';
-import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useRouter } from 'vue-router';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import type { Chat, ChatMessage, ChatMessageText, ChatOptions } from '@n8n/chat/types';
@@ -155,7 +77,6 @@ interface MemoryOutput {
 }
 
 const router = useRouter();
-const workflowHelpers = useWorkflowHelpers({ router });
 const { runWorkflow } = useRunWorkflow({ router });
 const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
@@ -222,9 +143,9 @@ const messageVars = {
 	'--chat--color-typing': 'var(--color-text-dark)',
 };
 
+const workflow = computed(() => workflowsStore.getCurrentWorkflow());
 function getTriggerNode() {
-	const workflow = workflowHelpers.getCurrentWorkflow();
-	const triggerNode = workflow.queryNodes((nodeType: INodeType) =>
+	const triggerNode = workflow.value.queryNodes((nodeType: INodeType) =>
 		[CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE].includes(nodeType.description.name),
 	);
 
@@ -241,19 +162,19 @@ function setNode() {
 		return;
 	}
 
-	const workflow = workflowHelpers.getCurrentWorkflow();
-	const childNodes = workflow.getChildNodes(triggerNode.name);
+	const childNodes = workflow.value.getChildNodes(triggerNode.name);
 
 	for (const childNode of childNodes) {
 		// Look for the first connected node with metadata
 		// TODO: Allow later users to change that in the UI
-		const resultData = workflowsStore.getWorkflowResultDataByNodeName(childNode);
+		const connectedSubNodes = workflow.value.getParentNodes(childNode, 'ALL_NON_MAIN');
+		const resultData = connectedSubNodes.map(workflowsStore.getWorkflowResultDataByNodeName);
 
 		if (!resultData && !Array.isArray(resultData)) {
 			continue;
 		}
 
-		if (resultData[resultData.length - 1].metadata) {
+		if (resultData.some((data) => data?.[0].metadata)) {
 			node.value = workflowsStore.getNodeByName(childNode);
 			break;
 		}
@@ -267,7 +188,6 @@ function setConnectedNode() {
 		showError(new Error('Chat Trigger Node could not be found!'), 'Trigger Node not found');
 		return;
 	}
-	const workflow = workflowHelpers.getCurrentWorkflow();
 
 	const chatNode = workflowsStore.getNodes().find((storeNode: INodeUi): boolean => {
 		if (storeNode.type === CHAIN_SUMMARIZATION_LANGCHAIN_NODE_TYPE) return false;
@@ -279,10 +199,10 @@ function setConnectedNode() {
 
 		let isCustomChainOrAgent = false;
 		if (nodeType.name === AI_CODE_NODE_TYPE) {
-			const inputs = NodeHelpers.getNodeInputs(workflow, storeNode, nodeType);
+			const inputs = NodeHelpers.getNodeInputs(workflow.value, storeNode, nodeType);
 			const inputTypes = NodeHelpers.getConnectionTypes(inputs);
 
-			const outputs = NodeHelpers.getNodeOutputs(workflow, storeNode, nodeType);
+			const outputs = NodeHelpers.getNodeOutputs(workflow.value, storeNode, nodeType);
 			const outputTypes = NodeHelpers.getConnectionTypes(outputs);
 
 			if (
@@ -296,7 +216,7 @@ function setConnectedNode() {
 
 		if (!isAgent && !isChain && !isCustomChainOrAgent) return false;
 
-		const parentNodes = workflow.getParentNodes(storeNode.name);
+		const parentNodes = workflow.value.getParentNodes(storeNode.name);
 		const isChatChild = parentNodes.some((parentNodeName) => parentNodeName === triggerNode.name);
 
 		return Boolean(isChatChild && (isAgent || isChain || isCustomChainOrAgent));
@@ -461,7 +381,12 @@ function extractResponseMessage(responseData?: IDataObject) {
 
 	if (!matchedPath) return JSON.stringify(responseData, null, 2);
 
-	return get(responseData, matchedPath) as string;
+	const matchedOutput = get(responseData, matchedPath);
+	if (typeof matchedOutput === 'object') {
+		return '```json\n' + JSON.stringify(matchedOutput, null, 2) + '\n```';
+	}
+
+	return matchedOutput?.toString() ?? '';
 }
 
 async function sendMessage(message: string, files?: File[]) {
@@ -503,10 +428,9 @@ async function sendMessage(message: string, files?: File[]) {
 }
 
 function displayExecution(executionId: string) {
-	const workflow = workflowHelpers.getCurrentWorkflow();
 	const route = router.resolve({
 		name: VIEWS.EXECUTION_PREVIEW,
-		params: { name: workflow.id, executionId },
+		params: { name: workflow.value.id, executionId },
 	});
 	window.open(route.href, '_blank');
 }
@@ -524,9 +448,10 @@ function reuseMessage(message: ChatMessageText) {
 function getChatMessages(): ChatMessageText[] {
 	if (!connectedNode.value) return [];
 
-	const workflow = workflowHelpers.getCurrentWorkflow();
 	const connectedMemoryInputs =
-		workflow.connectionsByDestinationNode[connectedNode.value.name][NodeConnectionType.AiMemory];
+		workflow.value.connectionsByDestinationNode[connectedNode.value.name][
+			NodeConnectionType.AiMemory
+		];
 	if (!connectedMemoryInputs) return [];
 
 	const memoryConnection = (connectedMemoryInputs ?? []).find((i) => i.length > 0)?.[0];
@@ -588,6 +513,89 @@ onMounted(() => {
 	setTimeout(() => chatEventBus.emit('focusInput'), 0);
 });
 </script>
+
+<template>
+	<Modal
+		:name="WORKFLOW_LM_CHAT_MODAL_KEY"
+		width="80%"
+		max-height="80%"
+		:title="
+			locale.baseText('chat.window.title', {
+				interpolate: {
+					nodeName: connectedNode?.name || locale.baseText('chat.window.noChatNode'),
+				},
+			})
+		"
+		:event-bus="modalBus"
+		:scrollable="false"
+		@keydown.stop
+	>
+		<template #content>
+			<div
+				:class="$style.workflowLmChat"
+				data-test-id="workflow-lm-chat-dialog"
+				:style="messageVars"
+			>
+				<MessagesList :messages="messages" :class="[$style.messages, 'ignore-key-press']">
+					<template #beforeMessage="{ message }">
+						<MessageOptionTooltip
+							v-if="message.sender === 'bot' && !message.id.includes('preload')"
+							placement="right"
+						>
+							{{ locale.baseText('chat.window.chat.chatMessageOptions.executionId') }}:
+							<a href="#" @click="displayExecution(message.id)">{{ message.id }}</a>
+						</MessageOptionTooltip>
+
+						<MessageOptionAction
+							v-if="isTextMessage(message) && message.sender === 'user'"
+							data-test-id="repost-message-button"
+							icon="redo"
+							:label="locale.baseText('chat.window.chat.chatMessageOptions.repostMessage')"
+							placement="left"
+							@click="repostMessage(message)"
+						/>
+
+						<MessageOptionAction
+							v-if="isTextMessage(message) && message.sender === 'user'"
+							data-test-id="reuse-message-button"
+							icon="copy"
+							:label="locale.baseText('chat.window.chat.chatMessageOptions.reuseMessage')"
+							placement="left"
+							@click="reuseMessage(message)"
+						/>
+					</template>
+				</MessagesList>
+				<div v-if="node" :class="$style.logsWrapper" data-test-id="lm-chat-logs">
+					<n8n-text :class="$style.logsTitle" tag="p" size="large">{{
+						locale.baseText('chat.window.logs')
+					}}</n8n-text>
+					<div :class="$style.logs">
+						<LazyRunDataAi
+							:key="messages.length"
+							:node="node"
+							hide-title
+							slim
+							:workflow="workflow"
+						/>
+					</div>
+				</div>
+			</div>
+		</template>
+		<template #footer>
+			<ChatInput
+				:class="$style.messagesInput"
+				data-test-id="lm-chat-inputs"
+				@arrow-key-down="onArrowKeyDown"
+			/>
+			<n8n-info-tip class="mt-s">
+				{{ locale.baseText('chatEmbed.infoTip.description') }}
+				<a @click="uiStore.openModal(CHAT_EMBED_MODAL_KEY)">
+					{{ locale.baseText('chatEmbed.infoTip.link') }}
+				</a>
+			</n8n-info-tip>
+		</template>
+	</Modal>
+</template>
 
 <style lang="scss">
 .chat-message-markdown ul,
@@ -678,6 +686,9 @@ onMounted(() => {
 	--chat--input--background: var(--color-lm-chat-bot-background);
 
 	[data-theme='dark'] & {
+		--chat--input--text-color: var(--input-font-color, var(--color-text-dark));
+	}
+	@media (prefers-color-scheme: dark) {
 		--chat--input--text-color: var(--input-font-color, var(--color-text-dark));
 	}
 

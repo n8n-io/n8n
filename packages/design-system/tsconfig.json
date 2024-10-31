@@ -11,7 +11,12 @@
 		"allowSyntheticDefaultImports": true,
 		"baseUrl": ".",
 		"types": ["vitest/globals"],
-		"typeRoots": ["./node_modules/@testing-library", "./node_modules/@types", "../../node_modules", "../../node_modules/@types"],
+		"typeRoots": [
+			"./node_modules/@testing-library",
+			"./node_modules/@types",
+			"../../node_modules",
+			"../../node_modules/@types"
+		],
 		"paths": {
 			"n8n-design-system/*": ["./src/*"]
 		},

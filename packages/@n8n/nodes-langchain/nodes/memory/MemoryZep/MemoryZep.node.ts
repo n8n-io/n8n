@@ -1,7 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import {
 	NodeConnectionType,
-	type IExecuteFunctions,
+	type ISupplyDataFunctions,
 	type INodeType,
 	type INodeTypeDescription,
 	type SupplyData,
@@ -103,12 +103,12 @@ export class MemoryZep implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
-		const credentials = (await this.getCredentials('zepApi')) as {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
+		const credentials = await this.getCredentials<{
 			apiKey?: string;
 			apiUrl?: string;
 			cloud?: boolean;
-		};
+		}>('zepApi');
 
 		const nodeVersion = this.getNode().typeVersion;
 

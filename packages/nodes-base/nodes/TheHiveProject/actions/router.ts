@@ -65,7 +65,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 			}
 			returnData.push(...executionData);
 		} catch (error) {
-			if (this.continueOnFail(error)) {
+			if (this.continueOnFail()) {
 				executionData = this.helpers.constructExecutionMetaData(
 					this.helpers.returnJsonArray({ error: error.message }),
 					{ itemData: { item: i } },

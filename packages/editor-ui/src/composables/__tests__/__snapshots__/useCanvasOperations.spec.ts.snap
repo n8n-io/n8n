@@ -9,7 +9,7 @@ exports[`useCanvasOperations > copyNodes > should copy nodes 1`] = `
       "parameters": {},
       "id": "1",
       "name": "Node 1",
-      "type": "type",
+      "type": "n8n-nodes-base.set",
       "position": [
         40,
         40
@@ -20,7 +20,7 @@ exports[`useCanvasOperations > copyNodes > should copy nodes 1`] = `
       "parameters": {},
       "id": "2",
       "name": "Node 2",
-      "type": "type",
+      "type": "n8n-nodes-base.set",
       "position": [
         40,
         40
@@ -44,7 +44,7 @@ exports[`useCanvasOperations > cutNodes > should copy and delete nodes 1`] = `
       "parameters": {},
       "id": "1",
       "name": "Node 1",
-      "type": "type",
+      "type": "n8n-nodes-base.set",
       "position": [
         40,
         40
@@ -55,7 +55,7 @@ exports[`useCanvasOperations > cutNodes > should copy and delete nodes 1`] = `
       "parameters": {},
       "id": "2",
       "name": "Node 2",
-      "type": "type",
+      "type": "n8n-nodes-base.set",
       "position": [
         40,
         40

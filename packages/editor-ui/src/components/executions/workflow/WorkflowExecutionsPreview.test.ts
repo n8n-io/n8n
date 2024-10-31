@@ -1,16 +1,15 @@
 import { describe, expect } from 'vitest';
-import { render } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { faker } from '@faker-js/faker';
-import { createRouter, createWebHistory } from 'vue-router';
-import { createPinia, PiniaVuePlugin, setActivePinia } from 'pinia';
+import { createRouter, createWebHistory, RouterLink } from 'vue-router';
+import { createPinia, setActivePinia } from 'pinia';
 import { randomInt, type ExecutionSummary } from 'n8n-workflow';
 import { useSettingsStore } from '@/stores/settings.store';
 import WorkflowExecutionsPreview from '@/components/executions/workflow/WorkflowExecutionsPreview.vue';
 import { EnterpriseEditionFeature, VIEWS } from '@/constants';
-import { i18nInstance, I18nPlugin } from '@/plugins/i18n';
-import { FontAwesomePlugin } from '@/plugins/icons';
-import { GlobalComponentsPlugin } from '@/plugins/components';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import type { ExecutionSummaryWithScopes, IWorkflowDb } from '@/Interface';
+import { createComponentRenderer } from '@/__tests__/render';
 
 let pinia: ReturnType<typeof createPinia>;
 
@@ -47,7 +46,7 @@ const generateUndefinedNullOrString = () => {
 	}
 };
 
-const executionDataFactory = (): ExecutionSummary => ({
+const executionDataFactory = (): ExecutionSummaryWithScopes => ({
 	id: faker.string.uuid(),
 	finished: faker.datatype.boolean(),
 	mode: faker.helpers.arrayElement(['manual', 'trigger']),
@@ -59,10 +58,25 @@ const executionDataFactory = (): ExecutionSummary => ({
 	nodeExecutionStatus: {},
 	retryOf: generateUndefinedNullOrString(),
 	retrySuccessId: generateUndefinedNullOrString(),
+	scopes: ['workflow:update'],
+});
+
+const renderComponent = createComponentRenderer(WorkflowExecutionsPreview, {
+	global: {
+		stubs: {
+			// UN STUB router-link
+			'router-link': RouterLink,
+		},
+		plugins: [router],
+		mocks: {
+			$route,
+		},
+	},
 });
 
 describe('WorkflowExecutionsPreview.vue', () => {
 	let settingsStore: ReturnType<typeof useSettingsStore>;
+	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	const executionData: ExecutionSummary = executionDataFactory();
 
 	beforeEach(() => {
@@ -70,43 +84,45 @@ describe('WorkflowExecutionsPreview.vue', () => {
 		setActivePinia(pinia);
 
 		settingsStore = useSettingsStore();
+		workflowsStore = useWorkflowsStore();
 	});
 
 	test.each([
-		[false, '/'],
-		[true, `/workflow/${executionData.workflowId}/debug/${executionData.id}`],
+		[false, [], '/'],
+		[false, ['workflow:update'], '/'],
+		[true, [], '/'],
+		[true, ['workflow:read'], '/'],
+		[true, ['workflow:update'], `/workflow/${executionData.workflowId}/debug/${executionData.id}`],
 	])(
-		'when debug enterprise feature is %s it should handle debug link click accordingly',
-		async (availability, path) => {
+		'when debug enterprise feature is %s with workflow scopes %s it should handle debug link click accordingly',
+		async (availability, scopes, path) => {
 			settingsStore.settings.enterprise = {
 				...(settingsStore.settings.enterprise ?? {}),
 				[EnterpriseEditionFeature.DebugInEditor]: availability,
 			};
 
-			// Not using createComponentRenderer helper here because this component should not stub `router-link`
-			const { getByTestId } = render(WorkflowExecutionsPreview, {
-				props: {
-					execution: executionData,
-				},
-				global: {
-					plugins: [
-						I18nPlugin,
-						i18nInstance,
-						PiniaVuePlugin,
-						FontAwesomePlugin,
-						GlobalComponentsPlugin,
-						pinia,
-						router,
-					],
-					mocks: {
-						$route,
-					},
-				},
-			});
+			vi.spyOn(workflowsStore, 'getWorkflowById').mockReturnValue({ scopes } as IWorkflowDb);
+
+			const { getByTestId } = renderComponent({ props: { execution: executionData } });
 
 			await userEvent.click(getByTestId('execution-debug-button'));
 
 			expect(router.currentRoute.value.path).toBe(path);
 		},
 	);
+
+	it('disables the stop execution button when the user cannot update', () => {
+		settingsStore.settings.enterprise = {
+			...(settingsStore.settings.enterprise ?? {}),
+		};
+		vi.spyOn(workflowsStore, 'getWorkflowById').mockReturnValue({
+			scopes: undefined,
+		} as IWorkflowDb);
+
+		const { getByTestId } = renderComponent({
+			props: { execution: { ...executionData, status: 'running' } },
+		});
+
+		expect(getByTestId('stop-execution')).toBeDisabled();
+	});
 });

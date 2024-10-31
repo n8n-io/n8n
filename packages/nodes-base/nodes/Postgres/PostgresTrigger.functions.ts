@@ -87,7 +87,7 @@ export async function pgTriggerFunction(
 }
 
 export async function initDB(this: ITriggerFunctions | ILoadOptionsFunctions) {
-	const credentials = (await this.getCredentials('postgres')) as PostgresNodeCredentials;
+	const credentials = await this.getCredentials<PostgresNodeCredentials>('postgres');
 	const options = this.getNodeParameter('options', {}) as {
 		connectionTimeout?: number;
 		delayClosingIdleConnection?: number;

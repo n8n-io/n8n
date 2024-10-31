@@ -15,7 +15,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import { snakeCase } from 'change-case';
 import set from 'lodash/set';
@@ -60,8 +60,8 @@ export class HubspotV2 implements INodeType {
 			defaults: {
 				name: 'HubSpot',
 			},
-			inputs: ['main'],
-			outputs: ['main'],
+			inputs: [NodeConnectionType.Main],
+			outputs: [NodeConnectionType.Main],
 			credentials: [
 				{
 					name: 'hubspotApi',
@@ -1200,7 +1200,7 @@ export class HubspotV2 implements INodeType {
 				);
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					returnData.push({ json: { error: (error as JsonObject).message } });
 				} else {
 					throw error;
@@ -3071,7 +3071,7 @@ export class HubspotV2 implements INodeType {
 							set(error, 'message', message);
 						}
 					}
-					if (this.continueOnFail(error)) {
+					if (this.continueOnFail()) {
 						returnData.push({
 							json: { error: (error as JsonObject).message },
 							pairedItem: { item: i },

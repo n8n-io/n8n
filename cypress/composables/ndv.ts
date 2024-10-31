@@ -59,7 +59,7 @@ export function setCredentialByName(name: string) {
 
 export function clickCreateNewCredential() {
 	openCredentialSelect();
-	getCreateNewCredentialOption().click();
+	getCreateNewCredentialOption().click({ force: true });
 }
 
 export function clickGetBackToCanvas() {

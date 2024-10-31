@@ -85,4 +85,10 @@ describe('CredentialCard', () => {
 		}
 		expect(actions).toHaveTextContent('Move');
 	});
+
+	it('should set readOnly variant based on prop', () => {
+		const { getByRole } = renderComponent({ props: { readOnly: true } });
+		const heading = getByRole('heading');
+		expect(heading).toHaveTextContent('Read only');
+	});
 });

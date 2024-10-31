@@ -1,8 +1,14 @@
-import { NodeCreator } from '../pages/features/node-creator';
-import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
-import { NDV } from '../pages/ndv';
-import { getVisibleSelect } from '../utils';
+import {
+	addNodeToCanvas,
+	addRetrieverNodeToParent,
+	addVectorStoreNodeToParent,
+	getNodeCreatorItems,
+} from '../composables/workflow';
 import { IF_NODE_NAME } from '../constants';
+import { NodeCreator } from '../pages/features/node-creator';
+import { NDV } from '../pages/ndv';
+import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
+import { getVisibleSelect } from '../utils';
 
 const nodeCreatorFeature = new NodeCreator();
 const WorkflowPage = new WorkflowPageClass();
@@ -503,5 +509,39 @@ describe('Node Creator', () => {
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('gith');
 		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'GitHub');
+	});
+
+	it('should show vector stores actions', () => {
+		const actions = [
+			'Get ranked documents from vector store',
+			'Add documents to vector store',
+			'Retrieve documents for AI processing',
+		];
+
+		nodeCreatorFeature.actions.openNodeCreator();
+
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('Vector Store');
+
+		getNodeCreatorItems().then((items) => {
+			const vectorStores = items.map((_i, el) => el.innerText);
+
+			// Loop over all vector stores and check if they have the three actions
+			vectorStores.each((_i, vectorStore) => {
+				nodeCreatorFeature.getters.getCreatorItem(vectorStore).click();
+				actions.forEach((action) => {
+					nodeCreatorFeature.getters.getCreatorItem(action).should('be.visible');
+				});
+				cy.realPress('ArrowLeft');
+			});
+		});
+	});
+
+	it('should add node directly for sub-connection', () => {
+		addNodeToCanvas('Question and Answer Chain', true);
+		addRetrieverNodeToParent('Vector Store Retriever', 'Question and Answer Chain');
+		cy.realPress('Escape');
+		addVectorStoreNodeToParent('In-Memory Vector Store', 'Vector Store Retriever');
+		cy.realPress('Escape');
+		WorkflowPage.getters.canvasNodes().should('have.length', 4);
 	});
 });

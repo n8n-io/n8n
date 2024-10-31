@@ -19,10 +19,10 @@ export async function plivoApiRequest(
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const credentials = (await this.getCredentials('plivoApi')) as {
+	const credentials = await this.getCredentials<{
 		authId: string;
 		authToken: string;
-	};
+	}>('plivoApi');
 
 	const options: IRequestOptions = {
 		headers: {

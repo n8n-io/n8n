@@ -5,7 +5,7 @@ import type {
 	ITriggerResponse,
 	TriggerTime,
 } from 'n8n-workflow';
-import { NodeHelpers, toCronExpression } from 'n8n-workflow';
+import { NodeConnectionType, NodeHelpers, toCronExpression } from 'n8n-workflow';
 
 export class Cron implements INodeType {
 	description: INodeTypeDescription = {
@@ -23,9 +23,9 @@ export class Cron implements INodeType {
 			name: 'Cron',
 			color: '#29a568',
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		properties: [
 			{
 				displayName:

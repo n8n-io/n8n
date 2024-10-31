@@ -11,6 +11,9 @@ import * as transport from '../transport';
 const createExecuteFunctionsMock = (parameters: IDataObject) => {
 	const nodeParameters = parameters;
 	return {
+		getExecutionCancelSignal() {
+			return new AbortController().signal;
+		},
 		getNodeParameter(parameter: string) {
 			return get(nodeParameters, parameter);
 		},

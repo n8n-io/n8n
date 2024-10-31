@@ -1,14 +1,15 @@
 import { nanoid } from 'nanoid';
+
+import { BACKEND_BASE_URL, EDIT_FIELDS_SET_NODE_NAME } from '../constants';
 import { WorkflowPage, NDV, CredentialsModal } from '../pages';
 import { cowBase64 } from '../support/binaryTestFiles';
-import { BACKEND_BASE_URL, EDIT_FIELDS_SET_NODE_NAME } from '../constants';
 import { getVisibleSelect } from '../utils';
 
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
 const credentialsModal = new CredentialsModal();
 
-const waitForWebhook = 500;
+export const waitForWebhook = 500;
 
 interface SimpleWebhookCallOptions {
 	method: string;
@@ -20,7 +21,7 @@ interface SimpleWebhookCallOptions {
 	authentication?: string;
 }
 
-const simpleWebhookCall = (options: SimpleWebhookCallOptions) => {
+export const simpleWebhookCall = (options: SimpleWebhookCallOptions) => {
 	const {
 		authentication,
 		method,
@@ -64,15 +65,23 @@ const simpleWebhookCall = (options: SimpleWebhookCallOptions) => {
 		getVisibleSelect().find('.option-headline').contains(responseData).click();
 	}
 
+	const callEndpoint = (cb: (response: Cypress.Response<unknown>) => void) => {
+		cy.request(method, `${BACKEND_BASE_URL}/webhook-test/${webhookPath}`).then(cb);
+	};
+
 	if (executeNow) {
 		ndv.actions.execute();
 		cy.wait(waitForWebhook);
 
-		cy.request(method, `${BACKEND_BASE_URL}/webhook-test/${webhookPath}`).then((response) => {
+		callEndpoint((response) => {
 			expect(response.status).to.eq(200);
 			ndv.getters.outputPanel().contains('headers');
 		});
 	}
+
+	return {
+		callEndpoint,
+	};
 };
 
 describe('Webhook Trigger node', () => {

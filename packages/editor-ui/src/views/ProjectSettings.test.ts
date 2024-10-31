@@ -10,7 +10,8 @@ import { VIEWS } from '@/constants';
 import { useUsersStore } from '@/stores/users.store';
 import { createProjectListItem } from '@/__tests__/data/projects';
 import { useSettingsStore } from '@/stores/settings.store';
-import type { IN8nUISettings } from 'n8n-workflow';
+import type { FrontendSettings } from '@n8n/api-types';
+import { ProjectTypes } from '@/types/projects.types';
 
 vi.mock('vue-router', () => {
 	const params = {};
@@ -28,7 +29,12 @@ vi.mock('vue-router', () => {
 
 const renderComponent = createComponentRenderer(ProjectSettings);
 
-const teamProjects = Array.from({ length: 3 }, () => createProjectListItem('team'));
+const projects = [
+	ProjectTypes.Personal,
+	ProjectTypes.Personal,
+	ProjectTypes.Team,
+	ProjectTypes.Team,
+].map(createProjectListItem);
 
 let router: ReturnType<typeof useRouter>;
 let projectsStore: ReturnType<typeof useProjectsStore>;
@@ -45,10 +51,8 @@ describe('ProjectSettings', () => {
 		settingsStore = useSettingsStore();
 
 		vi.spyOn(usersStore, 'fetchUsers').mockImplementation(async () => await Promise.resolve());
-		vi.spyOn(projectsStore, 'getAllProjects').mockImplementation(
-			async () => await Promise.resolve(),
-		);
-		vi.spyOn(projectsStore, 'teamProjects', 'get').mockReturnValue(teamProjects);
+		vi.spyOn(projectsStore, 'getAvailableProjects').mockImplementation(async () => {});
+		vi.spyOn(projectsStore, 'availableProjects', 'get').mockReturnValue(projects);
 		vi.spyOn(settingsStore, 'settings', 'get').mockReturnValue({
 			enterprise: {
 				projects: {
@@ -57,7 +61,7 @@ describe('ProjectSettings', () => {
 					},
 				},
 			},
-		} as IN8nUISettings);
+		} as FrontendSettings);
 		projectsStore.setCurrentProject({
 			id: '123',
 			type: 'team',

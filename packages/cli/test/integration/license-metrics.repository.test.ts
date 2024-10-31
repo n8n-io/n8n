@@ -1,11 +1,13 @@
-import { LicenseMetricsRepository } from '@/databases/repositories/license-metrics.repository';
-import { createAdmin, createMember, createOwner, createUser } from './shared/db/users';
-import * as testDb from './shared/testDb';
 import Container from 'typedi';
-import { createManyWorkflows } from './shared/db/workflows';
+
+import { StatisticsNames } from '@/databases/entities/workflow-statistics';
+import { LicenseMetricsRepository } from '@/databases/repositories/license-metrics.repository';
+import { WorkflowStatisticsRepository } from '@/databases/repositories/workflow-statistics.repository';
+
 import { createManyCredentials } from './shared/db/credentials';
-import { WorkflowStatisticsRepository } from '@/databases/repositories/workflowStatistics.repository';
-import { StatisticsNames } from '@/databases/entities/WorkflowStatistics';
+import { createAdmin, createMember, createOwner, createUser } from './shared/db/users';
+import { createManyWorkflows } from './shared/db/workflows';
+import * as testDb from './shared/test-db';
 
 describe('LicenseMetricsRepository', () => {
 	let licenseMetricsRepository: LicenseMetricsRepository;

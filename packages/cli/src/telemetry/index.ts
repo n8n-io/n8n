@@ -1,20 +1,23 @@
-import axios from 'axios';
+import { GlobalConfig } from '@n8n/config';
 import type RudderStack from '@rudderstack/rudder-sdk-node';
-import { PostHogClient } from '@/posthog';
-import { Container, Service } from 'typedi';
-import type { ITelemetryTrackProperties } from 'n8n-workflow';
+import axios from 'axios';
 import { InstanceSettings } from 'n8n-core';
+import type { ITelemetryTrackProperties } from 'n8n-workflow';
+import { Container, Service } from 'typedi';
 
 import config from '@/config';
-import type { IExecutionTrackProperties } from '@/Interfaces';
-import { Logger } from '@/Logger';
-import { License } from '@/License';
-import { N8N_VERSION } from '@/constants';
-import { WorkflowRepository } from '@db/repositories/workflow.repository';
-import { SourceControlPreferencesService } from '../environments/sourceControl/sourceControlPreferences.service.ee';
-import { UserRepository } from '@db/repositories/user.repository';
+import { LOWEST_SHUTDOWN_PRIORITY, N8N_VERSION } from '@/constants';
+import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
+import { UserRepository } from '@/databases/repositories/user.repository';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { OnShutdown } from '@/decorators/on-shutdown';
+import type { IExecutionTrackProperties } from '@/interfaces';
+import { License } from '@/license';
+import { Logger } from '@/logging/logger.service';
+import { PostHogClient } from '@/posthog';
+
+import { SourceControlPreferencesService } from '../environments/source-control/source-control-preferences.service.ee';
 
 type ExecutionTrackDataKey = 'manual_error' | 'manual_success' | 'prod_error' | 'prod_success';
 
@@ -47,6 +50,7 @@ export class Telemetry {
 		private readonly license: License,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly workflowRepository: WorkflowRepository,
+		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	async init() {
@@ -60,7 +64,7 @@ export class Telemetry {
 				return;
 			}
 
-			const logLevel = config.getEnv('logs.level');
+			const logLevel = this.globalConfig.logging.level;
 
 			const { default: RudderStack } = await import('@rudderstack/rudder-sdk-node');
 			const axiosInstance = axios.create();
@@ -167,10 +171,9 @@ export class Telemetry {
 		}
 	}
 
-	async trackN8nStop(): Promise<void> {
+	@OnShutdown(LOWEST_SHUTDOWN_PRIORITY)
+	async stopTracking(): Promise<void> {
 		clearInterval(this.pulseIntervalReference);
-
-		this.track('User instance stopped');
 
 		await Promise.all([this.postHog.stop(), this.rudderStack?.flush()]);
 	}
@@ -185,6 +188,10 @@ export class Telemetry {
 		this.rudderStack.identify({
 			userId: instanceId,
 			traits: { ...traits, instanceId },
+			context: {
+				// provide a fake IP address to instruct RudderStack to not use the user's IP address
+				ip: '0.0.0.0',
+			},
 		});
 	}
 
@@ -209,13 +216,18 @@ export class Telemetry {
 			userId: `${instanceId}${user_id ? `#${user_id}` : ''}`,
 			event: eventName,
 			properties: updatedProperties,
+			context: {},
 		};
 
 		if (withPostHog) {
 			this.postHog?.track(payload);
 		}
 
-		return this.rudderStack.track(payload);
+		return this.rudderStack.track({
+			...payload,
+			// provide a fake IP address to instruct RudderStack to not use the user's IP address
+			context: { ...payload.context, ip: '0.0.0.0' },
+		});
 	}
 
 	// test helpers

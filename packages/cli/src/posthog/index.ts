@@ -1,15 +1,20 @@
-import { Service } from 'typedi';
-import type { PostHog } from 'posthog-node';
-import type { FeatureFlags, ITelemetryTrackProperties } from 'n8n-workflow';
+import { GlobalConfig } from '@n8n/config';
 import { InstanceSettings } from 'n8n-core';
+import type { FeatureFlags, ITelemetryTrackProperties } from 'n8n-workflow';
+import type { PostHog } from 'posthog-node';
+import { Service } from 'typedi';
+
 import config from '@/config';
-import type { PublicUser } from '@/Interfaces';
+import type { PublicUser } from '@/interfaces';
 
 @Service()
 export class PostHogClient {
 	private postHog?: PostHog;
 
-	constructor(private readonly instanceSettings: InstanceSettings) {}
+	constructor(
+		private readonly instanceSettings: InstanceSettings,
+		private readonly globalConfig: GlobalConfig,
+	) {}
 
 	async init() {
 		const enabled = config.getEnv('diagnostics.enabled');
@@ -22,7 +27,7 @@ export class PostHogClient {
 			host: config.getEnv('diagnostics.config.posthog.apiHost'),
 		});
 
-		const logLevel = config.getEnv('logs.level');
+		const logLevel = this.globalConfig.logging.level;
 		if (logLevel === 'debug') {
 			this.postHog.debug(true);
 		}

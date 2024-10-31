@@ -1,7 +1,6 @@
 {
 	"extends": ["../../tsconfig.json", "../../tsconfig.backend.json"],
 	"compilerOptions": {
-		"lib": ["dom", "es2020", "es2022.error"],
 		"paths": {
 			"@test/*": ["./test/*"],
 			"@utils/*": ["./utils/*"]
@@ -16,12 +15,5 @@
 		{ "path": "../@n8n/imap/tsconfig.build.json" },
 		{ "path": "../workflow/tsconfig.build.json" },
 		{ "path": "../core/tsconfig.build.json" }
-	],
-	"tsc-alias": {
-		"replacers": {
-			"base-url": {
-				"enabled": false
-			}
-		}
-	}
+	]
 }

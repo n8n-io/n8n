@@ -1,4 +1,6 @@
-import { Node, NodeConnectionType } from 'n8n-workflow';
+import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
+import { pick } from 'lodash';
+import { Node, NodeConnectionType, commonCORSParameters } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IWebhookFunctions,
@@ -10,10 +12,8 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-import { pick } from 'lodash';
-import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
-import { createPage } from './templates';
 import { validateAuth } from './GenericFunctions';
+import { createPage } from './templates';
 import type { LoadPreviousSessionChatOption } from './types';
 
 const CHAT_TRIGGER_PATH_IDENTIFIER = 'chat';
@@ -56,7 +56,6 @@ export class ChatTrigger extends Node {
 				],
 			},
 		},
-		supportsCORS: true,
 		maxNodes: 1,
 		inputs: `={{ (() => {
 			if (!['hostedChat', 'webhook'].includes($parameter.mode)) {
@@ -75,7 +74,7 @@ export class ChatTrigger extends Node {
 				}
 			];
 		 })() }}`,
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-class-description-credentials-name-unsuffixed
@@ -241,6 +240,15 @@ export class ChatTrigger extends Node {
 				placeholder: 'Add Field',
 				default: {},
 				options: [
+					// CORS parameters are only valid for when chat is used in hosted or webhook mode
+					...commonCORSParameters.map((p) => ({
+						...p,
+						displayOptions: {
+							show: {
+								'/mode': ['hostedChat', 'webhook'],
+							},
+						},
+					})),
 					{
 						...allowFileUploadsOption,
 						displayOptions: {
@@ -460,20 +468,19 @@ export class ChatTrigger extends Node {
 		const mode = ctx.getMode() === 'manual' ? 'test' : 'production';
 		const bodyData = ctx.getBodyData() ?? {};
 
-		if (nodeMode === 'hostedChat') {
-			try {
-				await validateAuth(ctx);
-			} catch (error) {
-				if (error) {
-					res.writeHead((error as IDataObject).responseCode as number, {
-						'www-authenticate': 'Basic realm="Webhook"',
-					});
-					res.end((error as IDataObject).message as string);
-					return { noWebhookResponse: true };
-				}
-				throw error;
+		try {
+			await validateAuth(ctx);
+		} catch (error) {
+			if (error) {
+				res.writeHead((error as IDataObject).responseCode as number, {
+					'www-authenticate': 'Basic realm="Webhook"',
+				});
+				res.end((error as IDataObject).message as string);
+				return { noWebhookResponse: true };
 			}
-
+			throw error;
+		}
+		if (nodeMode === 'hostedChat') {
 			// Show the chat on GET request
 			if (webhookName === 'setup') {
 				const webhookUrlRaw = ctx.getNodeWebhookUrl('default') as string;

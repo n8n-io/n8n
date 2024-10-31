@@ -1,33 +1,27 @@
-<script lang="ts">
+<script setup lang="ts">
 import { VIEWS } from '@/constants';
-import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users.store';
-import { defineComponent } from 'vue';
 import { useToast } from '@/composables/useToast';
+import { useRouter } from 'vue-router';
+import { useI18n } from '@/composables/useI18n';
+import { onMounted } from 'vue';
 
-export default defineComponent({
-	name: 'SignoutView',
-	setup() {
-		return {
-			...useToast(),
-		};
-	},
-	computed: {
-		...mapStores(useUsersStore),
-	},
-	mounted() {
-		void this.logout();
-	},
-	methods: {
-		async logout() {
-			try {
-				await this.usersStore.logout();
-				window.location.href = this.$router.resolve({ name: VIEWS.SIGNIN }).href;
-			} catch (e) {
-				this.showError(e, this.$locale.baseText('auth.signout.error'));
-			}
-		},
-	},
+const usersStore = useUsersStore();
+const toast = useToast();
+const router = useRouter();
+const i18n = useI18n();
+
+const logout = async () => {
+	try {
+		await usersStore.logout();
+		window.location.href = router.resolve({ name: VIEWS.SIGNIN }).href;
+	} catch (e) {
+		toast.showError(e, i18n.baseText('auth.signout.error'));
+	}
+};
+
+onMounted(() => {
+	void logout();
 });
 </script>
 

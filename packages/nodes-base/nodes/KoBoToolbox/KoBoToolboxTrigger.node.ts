@@ -1,10 +1,11 @@
-import type {
-	IDataObject,
-	IHookFunctions,
-	INodeType,
-	INodeTypeDescription,
-	IWebhookFunctions,
-	IWebhookResponseData,
+import {
+	NodeConnectionType,
+	type IDataObject,
+	type IHookFunctions,
+	type INodeType,
+	type INodeTypeDescription,
+	type IWebhookFunctions,
+	type IWebhookResponseData,
 } from 'n8n-workflow';
 
 import {
@@ -29,7 +30,7 @@ export class KoBoToolboxTrigger implements INodeType {
 			name: 'KoBoToolbox Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'koBoToolboxApi',
@@ -55,7 +56,7 @@ export class KoBoToolboxTrigger implements INodeType {
 				required: true,
 				default: '',
 				description:
-					'Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Trigger On',
@@ -143,9 +144,12 @@ export class KoBoToolboxTrigger implements INodeType {
 		const req = this.getRequestObject();
 		const formatOptions = this.getNodeParameter('formatOptions') as IDataObject;
 
-		// prettier-ignore
 		const responseData = formatOptions.reformat
-			? formatSubmission(req.body as IDataObject, parseStringList(formatOptions.selectMask as string), parseStringList(formatOptions.numberMask as string))
+			? formatSubmission(
+					req.body as IDataObject,
+					parseStringList(formatOptions.selectMask as string),
+					parseStringList(formatOptions.numberMask as string),
+				)
 			: req.body;
 
 		if (formatOptions.download) {

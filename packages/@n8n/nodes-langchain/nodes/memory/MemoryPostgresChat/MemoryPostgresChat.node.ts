@@ -1,7 +1,12 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
+import type {
+	ISupplyDataFunctions,
+	INodeType,
+	INodeTypeDescription,
+	SupplyData,
+} from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
-import { BufferMemory } from 'langchain/memory';
+import { BufferMemory, BufferWindowMemory } from 'langchain/memory';
 import { PostgresChatMessageHistory } from '@langchain/community/stores/message/postgres';
 import type pg from 'pg';
 import { configurePostgres } from 'n8n-nodes-base/dist/nodes/Postgres/v2/transport';
@@ -9,7 +14,7 @@ import type { PostgresNodeCredentials } from 'n8n-nodes-base/dist/nodes/Postgres
 import { postgresConnectionTest } from 'n8n-nodes-base/dist/nodes/Postgres/v2/methods/credentialTest';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
-import { sessionIdOption, sessionKeyProperty } from '../descriptions';
+import { sessionIdOption, sessionKeyProperty, contextWindowLengthProperty } from '../descriptions';
 import { getSessionId } from '../../../utils/helpers';
 
 export class MemoryPostgresChat implements INodeType {
@@ -18,7 +23,7 @@ export class MemoryPostgresChat implements INodeType {
 		name: 'memoryPostgresChat',
 		icon: 'file:postgres.svg',
 		group: ['transform'],
-		version: [1],
+		version: [1, 1.1],
 		description: 'Stores the chat history in Postgres table.',
 		defaults: {
 			name: 'Postgres Chat Memory',
@@ -60,6 +65,10 @@ export class MemoryPostgresChat implements INodeType {
 				description:
 					'The table name to store the chat history in. If table does not exist, it will be created.',
 			},
+			{
+				...contextWindowLengthProperty,
+				displayOptions: { hide: { '@version': [{ _cnd: { lt: 1.1 } }] } },
+			},
 		],
 	};
 
@@ -69,8 +78,8 @@ export class MemoryPostgresChat implements INodeType {
 		},
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
-		const credentials = (await this.getCredentials('postgres')) as PostgresNodeCredentials;
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
+		const credentials = await this.getCredentials<PostgresNodeCredentials>('postgres');
 		const tableName = this.getNodeParameter('tableName', itemIndex, 'n8n_chat_histories') as string;
 		const sessionId = getSessionId(this, itemIndex);
 
@@ -83,12 +92,19 @@ export class MemoryPostgresChat implements INodeType {
 			tableName,
 		});
 
-		const memory = new BufferMemory({
+		const memClass = this.getNode().typeVersion < 1.1 ? BufferMemory : BufferWindowMemory;
+		const kOptions =
+			this.getNode().typeVersion < 1.1
+				? {}
+				: { k: this.getNodeParameter('contextWindowLength', itemIndex) };
+
+		const memory = new memClass({
 			memoryKey: 'chat_history',
 			chatHistory: pgChatHistory,
 			returnMessages: true,
 			inputKey: 'input',
 			outputKey: 'output',
+			...kOptions,
 		});
 
 		async function closeFunction() {

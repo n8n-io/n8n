@@ -1,20 +1,20 @@
-import path from 'path';
-import { Container } from 'typedi';
-import type { TlsOptions } from 'tls';
+import { GlobalConfig } from '@n8n/config';
 import type { DataSourceOptions, LoggerOptions } from '@n8n/typeorm';
+import type { MysqlConnectionOptions } from '@n8n/typeorm/driver/mysql/MysqlConnectionOptions';
+import type { PostgresConnectionOptions } from '@n8n/typeorm/driver/postgres/PostgresConnectionOptions';
 import type { SqliteConnectionOptions } from '@n8n/typeorm/driver/sqlite/SqliteConnectionOptions';
 import type { SqlitePooledConnectionOptions } from '@n8n/typeorm/driver/sqlite-pooled/SqlitePooledConnectionOptions';
-import type { PostgresConnectionOptions } from '@n8n/typeorm/driver/postgres/PostgresConnectionOptions';
-import type { MysqlConnectionOptions } from '@n8n/typeorm/driver/mysql/MysqlConnectionOptions';
 import { InstanceSettings } from 'n8n-core';
 import { ApplicationError } from 'n8n-workflow';
-import { GlobalConfig } from '@n8n/config';
+import path from 'path';
+import type { TlsOptions } from 'tls';
+import { Container } from 'typedi';
 
 import { entities } from './entities';
-import { subscribers } from './subscribers';
 import { mysqlMigrations } from './migrations/mysqldb';
 import { postgresMigrations } from './migrations/postgresdb';
 import { sqliteMigrations } from './migrations/sqlite';
+import { subscribers } from './subscribers';
 
 const getCommonOptions = () => {
 	const { tablePrefix: entityPrefix, logging: loggingConfig } =
@@ -62,6 +62,7 @@ const getSqliteConnectionOptions = (): SqliteConnectionOptions | SqlitePooledCon
 		database: path.resolve(Container.get(InstanceSettings).n8nFolder, sqliteConfig.database),
 		migrations: sqliteMigrations,
 	};
+
 	if (sqliteConfig.poolSize > 0) {
 		return {
 			type: 'sqlite-pooled',
@@ -103,6 +104,7 @@ const getPostgresConnectionOptions = (): PostgresConnectionOptions => {
 		schema: postgresConfig.schema,
 		poolSize: postgresConfig.poolSize,
 		migrations: postgresMigrations,
+		connectTimeoutMS: postgresConfig.connectionTimeoutMs,
 		ssl,
 	};
 };
@@ -129,4 +131,10 @@ export function getConnectionOptions(): DataSourceOptions {
 		default:
 			throw new ApplicationError('Database type currently not supported', { extra: { dbType } });
 	}
+}
+
+export function arePostgresOptions(
+	options: DataSourceOptions,
+): options is PostgresConnectionOptions {
+	return options.type === 'postgres';
 }

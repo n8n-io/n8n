@@ -1,5 +1,7 @@
 import validator from 'validator';
-import type { User } from '@/databases/entities/User';
+
+import type { User } from '@/databases/entities/user';
+
 import type { UserInvitationResult } from '../../shared/utils/users';
 
 export function assertReturnedUserProps(user: User) {
@@ -8,7 +10,6 @@ export function assertReturnedUserProps(user: User) {
 	expect(user.personalizationAnswers).toBeNull();
 	expect(user.password).toBeUndefined();
 	expect(user.isPending).toBe(false);
-	expect(user.apiKey).not.toBeDefined();
 	expect(user.globalScopes).toBeDefined();
 	expect(user.globalScopes).not.toHaveLength(0);
 }

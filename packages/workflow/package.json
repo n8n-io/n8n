@@ -1,6 +1,6 @@
 {
   "name": "n8n-workflow",
-  "version": "1.52.0",
+  "version": "1.64.0",
   "description": "Workflow base code of n8n",
   "main": "dist/index.js",
   "module": "src/index.ts",
@@ -18,7 +18,8 @@
     "dev": "pnpm watch",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
-    "format": "prettier --write . --ignore-path ../../.prettierignore",
+    "format": "biome format --write .",
+    "format:check": "biome ci .",
     "lint": "eslint . --quiet",
     "lintfix": "eslint . --fix",
     "watch": "tsc -p tsconfig.build.json --watch",
@@ -29,7 +30,7 @@
     "dist/**/*"
   ],
   "devDependencies": {
-    "@langchain/core": "^0.2.18",
+    "@langchain/core": "catalog:",
     "@types/deep-equal": "^1.0.1",
     "@types/express": "catalog:",
     "@types/jmespath": "^0.15.0",
@@ -39,7 +40,7 @@
     "@types/xml2js": "catalog:"
   },
   "dependencies": {
-    "@n8n/tournament": "1.0.3",
+    "@n8n/tournament": "1.0.5",
     "@n8n_io/riot-tmpl": "4.0.0",
     "ast-types": "0.15.2",
     "axios": "catalog:",

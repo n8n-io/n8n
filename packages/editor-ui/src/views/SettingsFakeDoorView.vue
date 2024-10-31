@@ -1,7 +1,3 @@
-<template>
-	<FeatureComingSoon :feature-id="featureId" show-title />
-</template>
-
 <script lang="ts">
 import type { IFakeDoor } from '@/Interface';
 import { defineComponent } from 'vue';
@@ -35,6 +31,10 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<FeatureComingSoon :feature-id="featureId" show-title />
+</template>
 
 <style lang="scss" module>
 .header {

@@ -1,171 +1,3 @@
-<template>
-	<Modal
-		:name="modalName"
-		:event-bus="modalBus"
-		:before-close="onModalClose"
-		:scrollable="true"
-		:center="true"
-		:loading="loading"
-		:min-width="isTypeAbstract ? '460px' : '70%'"
-		:max-width="isTypeAbstract ? '460px' : '70%'"
-		:min-height="isTypeAbstract ? '160px' : '650px'"
-		:max-height="isTypeAbstract ? '300px' : '650px'"
-		data-test-id="destination-modal"
-	>
-		<template #header>
-			<template v-if="isTypeAbstract">
-				<div :class="$style.headerCreate">
-					<span>Add new destination</span>
-				</div>
-			</template>
-			<template v-else>
-				<div :class="$style.header">
-					<div :class="$style.destinationInfo">
-						<InlineNameEdit
-							:model-value="headerLabel"
-							:subtitle="!isTypeAbstract ? $locale.baseText(typeLabelName) : 'Select type'"
-							:readonly="isTypeAbstract"
-							type="Credential"
-							data-test-id="subtitle-showing-type"
-							@update:model-value="onLabelChange"
-						/>
-					</div>
-					<div :class="$style.destinationActions">
-						<n8n-button
-							v-if="nodeParameters && hasOnceBeenSaved && unchanged"
-							:icon="testMessageSent ? (testMessageResult ? 'check' : 'exclamation-triangle') : ''"
-							:title="
-								testMessageSent && testMessageResult
-									? 'Event sent and returned OK'
-									: 'Event returned with error'
-							"
-							type="tertiary"
-							label="Send Test-Event"
-							:disabled="!hasOnceBeenSaved || !unchanged"
-							data-test-id="destination-test-button"
-							@click="sendTestEvent"
-						/>
-						<template v-if="canManageLogStreaming">
-							<n8n-icon-button
-								v-if="nodeParameters && hasOnceBeenSaved"
-								:title="$locale.baseText('settings.log-streaming.delete')"
-								icon="trash"
-								type="tertiary"
-								:disabled="isSaving"
-								:loading="isDeleting"
-								data-test-id="destination-delete-button"
-								@click="removeThis"
-							/>
-							<SaveButton
-								:saved="unchanged && hasOnceBeenSaved"
-								:disabled="isTypeAbstract || unchanged"
-								:saving-label="$locale.baseText('settings.log-streaming.saving')"
-								data-test-id="destination-save-button"
-								@click="saveDestination"
-							/>
-						</template>
-					</div>
-				</div>
-				<hr />
-			</template>
-		</template>
-		<template #content>
-			<div :class="$style.container">
-				<template v-if="isTypeAbstract">
-					<n8n-input-label
-						:class="$style.typeSelector"
-						:label="$locale.baseText('settings.log-streaming.selecttype')"
-						:tooltip-text="$locale.baseText('settings.log-streaming.selecttypehint')"
-						:bold="false"
-						size="medium"
-						:underline="false"
-					>
-						<n8n-select
-							ref="typeSelectRef"
-							:model-value="typeSelectValue"
-							:placeholder="typeSelectPlaceholder"
-							data-test-id="select-destination-type"
-							name="name"
-							@update:model-value="onTypeSelectInput"
-						>
-							<n8n-option
-								v-for="option in typeSelectOptions || []"
-								:key="option.value"
-								:value="option.value"
-								:label="$locale.baseText(option.label)"
-							/>
-						</n8n-select>
-						<div class="mt-m text-right">
-							<n8n-button
-								size="large"
-								data-test-id="select-destination-button"
-								:disabled="!typeSelectValue"
-								@click="onContinueAddClicked"
-							>
-								{{ $locale.baseText(`settings.log-streaming.continue`) }}
-							</n8n-button>
-						</div>
-					</n8n-input-label>
-				</template>
-				<template v-else>
-					<div :class="$style.sidebar">
-						<n8n-menu mode="tabs" :items="sidebarItems" @select="onTabSelect"></n8n-menu>
-					</div>
-					<div v-if="activeTab === 'settings'" ref="content" :class="$style.mainContent">
-						<template v-if="isTypeWebhook">
-							<ParameterInputList
-								:parameters="webhookDescription"
-								:hide-delete="true"
-								:node-values="nodeParameters"
-								:is-read-only="!canManageLogStreaming"
-								path=""
-								@value-changed="valueChanged"
-							/>
-						</template>
-						<template v-else-if="isTypeSyslog">
-							<ParameterInputList
-								:parameters="syslogDescription"
-								:hide-delete="true"
-								:node-values="nodeParameters"
-								:is-read-only="!canManageLogStreaming"
-								path=""
-								@value-changed="valueChanged"
-							/>
-						</template>
-						<template v-else-if="isTypeSentry">
-							<ParameterInputList
-								:parameters="sentryDescription"
-								:hide-delete="true"
-								:node-values="nodeParameters"
-								:is-read-only="!canManageLogStreaming"
-								path=""
-								@value-changed="valueChanged"
-							/>
-						</template>
-					</div>
-					<div v-if="activeTab === 'events'" :class="$style.mainContent">
-						<div class="">
-							<n8n-input-label
-								class="mb-m mt-m"
-								:label="$locale.baseText('settings.log-streaming.tab.events.title')"
-								:bold="true"
-								size="medium"
-								:underline="false"
-							/>
-							<EventSelection
-								:destination-id="destination.id"
-								:readonly="!canManageLogStreaming"
-								@input="onInput"
-								@change="valueChanged"
-							/>
-						</div>
-					</div>
-				</template>
-			</div>
-		</template>
-	</Modal>
-</template>
-
 <script lang="ts">
 import { get, set, unset } from 'lodash-es';
 import { mapStores } from 'pinia';
@@ -173,7 +5,7 @@ import { useLogStreamingStore } from '@/stores/logStreaming.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import ParameterInputList from '@/components/ParameterInputList.vue';
-import type { IMenuItem, INodeUi, IUpdateInformation } from '@/Interface';
+import type { IMenuItem, INodeUi, IUpdateInformation, ModalKey } from '@/Interface';
 import type {
 	IDataObject,
 	NodeParameterValue,
@@ -222,7 +54,10 @@ export default defineComponent({
 		EventSelection,
 	},
 	props: {
-		modalName: String,
+		modalName: {
+			type: String as PropType<ModalKey>,
+			required: true,
+		},
 		destination: {
 			type: Object,
 			default: () => deepCopy(defaultMessageEventBusDestinationOptions),
@@ -520,6 +355,174 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<Modal
+		:name="modalName"
+		:event-bus="modalBus"
+		:before-close="onModalClose"
+		:scrollable="true"
+		:center="true"
+		:loading="loading"
+		:min-width="isTypeAbstract ? '460px' : '70%'"
+		:max-width="isTypeAbstract ? '460px' : '70%'"
+		:min-height="isTypeAbstract ? '160px' : '650px'"
+		:max-height="isTypeAbstract ? '300px' : '650px'"
+		data-test-id="destination-modal"
+	>
+		<template #header>
+			<template v-if="isTypeAbstract">
+				<div :class="$style.headerCreate">
+					<span>Add new destination</span>
+				</div>
+			</template>
+			<template v-else>
+				<div :class="$style.header">
+					<div :class="$style.destinationInfo">
+						<InlineNameEdit
+							:model-value="headerLabel"
+							:subtitle="!isTypeAbstract ? $locale.baseText(typeLabelName) : 'Select type'"
+							:readonly="isTypeAbstract"
+							type="Credential"
+							data-test-id="subtitle-showing-type"
+							@update:model-value="onLabelChange"
+						/>
+					</div>
+					<div :class="$style.destinationActions">
+						<n8n-button
+							v-if="nodeParameters && hasOnceBeenSaved && unchanged"
+							:icon="testMessageSent ? (testMessageResult ? 'check' : 'exclamation-triangle') : ''"
+							:title="
+								testMessageSent && testMessageResult
+									? 'Event sent and returned OK'
+									: 'Event returned with error'
+							"
+							type="tertiary"
+							label="Send Test-Event"
+							:disabled="!hasOnceBeenSaved || !unchanged"
+							data-test-id="destination-test-button"
+							@click="sendTestEvent"
+						/>
+						<template v-if="canManageLogStreaming">
+							<n8n-icon-button
+								v-if="nodeParameters && hasOnceBeenSaved"
+								:title="$locale.baseText('settings.log-streaming.delete')"
+								icon="trash"
+								type="tertiary"
+								:disabled="isSaving"
+								:loading="isDeleting"
+								data-test-id="destination-delete-button"
+								@click="removeThis"
+							/>
+							<SaveButton
+								:saved="unchanged && hasOnceBeenSaved"
+								:disabled="isTypeAbstract || unchanged"
+								:saving-label="$locale.baseText('settings.log-streaming.saving')"
+								data-test-id="destination-save-button"
+								@click="saveDestination"
+							/>
+						</template>
+					</div>
+				</div>
+				<hr />
+			</template>
+		</template>
+		<template #content>
+			<div :class="$style.container">
+				<template v-if="isTypeAbstract">
+					<n8n-input-label
+						:class="$style.typeSelector"
+						:label="$locale.baseText('settings.log-streaming.selecttype')"
+						:tooltip-text="$locale.baseText('settings.log-streaming.selecttypehint')"
+						:bold="false"
+						size="medium"
+						:underline="false"
+					>
+						<n8n-select
+							ref="typeSelectRef"
+							:model-value="typeSelectValue"
+							:placeholder="typeSelectPlaceholder"
+							data-test-id="select-destination-type"
+							name="name"
+							@update:model-value="onTypeSelectInput"
+						>
+							<n8n-option
+								v-for="option in typeSelectOptions || []"
+								:key="option.value"
+								:value="option.value"
+								:label="$locale.baseText(option.label)"
+							/>
+						</n8n-select>
+						<div class="mt-m text-right">
+							<n8n-button
+								size="large"
+								data-test-id="select-destination-button"
+								:disabled="!typeSelectValue"
+								@click="onContinueAddClicked"
+							>
+								{{ $locale.baseText(`settings.log-streaming.continue`) }}
+							</n8n-button>
+						</div>
+					</n8n-input-label>
+				</template>
+				<template v-else>
+					<div :class="$style.sidebar">
+						<n8n-menu mode="tabs" :items="sidebarItems" @select="onTabSelect"></n8n-menu>
+					</div>
+					<div v-if="activeTab === 'settings'" ref="content" :class="$style.mainContent">
+						<template v-if="isTypeWebhook">
+							<ParameterInputList
+								:parameters="webhookDescription"
+								:hide-delete="true"
+								:node-values="nodeParameters"
+								:is-read-only="!canManageLogStreaming"
+								path=""
+								@value-changed="valueChanged"
+							/>
+						</template>
+						<template v-else-if="isTypeSyslog">
+							<ParameterInputList
+								:parameters="syslogDescription"
+								:hide-delete="true"
+								:node-values="nodeParameters"
+								:is-read-only="!canManageLogStreaming"
+								path=""
+								@value-changed="valueChanged"
+							/>
+						</template>
+						<template v-else-if="isTypeSentry">
+							<ParameterInputList
+								:parameters="sentryDescription"
+								:hide-delete="true"
+								:node-values="nodeParameters"
+								:is-read-only="!canManageLogStreaming"
+								path=""
+								@value-changed="valueChanged"
+							/>
+						</template>
+					</div>
+					<div v-if="activeTab === 'events'" :class="$style.mainContent">
+						<div class="">
+							<n8n-input-label
+								class="mb-m mt-m"
+								:label="$locale.baseText('settings.log-streaming.tab.events.title')"
+								:bold="true"
+								size="medium"
+								:underline="false"
+							/>
+							<EventSelection
+								:destination-id="destination.id"
+								:readonly="!canManageLogStreaming"
+								@input="onInput"
+								@change="valueChanged"
+							/>
+						</div>
+					</div>
+				</template>
+			</div>
+		</template>
+	</Modal>
+</template>
 
 <style lang="scss" module>
 .labelMargins {

@@ -1,28 +1,30 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import type { Document } from '@langchain/core/documents';
+import type { Embeddings } from '@langchain/core/embeddings';
 import type { VectorStore } from '@langchain/core/vectorstores';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type {
+	IExecuteFunctions,
 	INodeCredentialDescription,
 	INodeProperties,
 	INodeExecutionData,
-	IExecuteFunctions,
 	INodeTypeDescription,
 	SupplyData,
+	ISupplyDataFunctions,
 	INodeType,
 	ILoadOptionsFunctions,
 	INodeListSearchResult,
 	Icon,
 	INodePropertyOptions,
 } from 'n8n-workflow';
-import type { Embeddings } from '@langchain/core/embeddings';
-import type { Document } from '@langchain/core/documents';
-import { logWrapper } from '../../../utils/logWrapper';
-import { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
-import type { N8nBinaryLoader } from '../../../utils/N8nBinaryLoader';
-import { getMetadataFiltersValues, logAiEvent } from '../../../utils/helpers';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+
 import { processDocument } from './processDocuments';
+import { getMetadataFiltersValues, logAiEvent } from '../../../utils/helpers';
+import { logWrapper } from '../../../utils/logWrapper';
+import type { N8nBinaryLoader } from '../../../utils/N8nBinaryLoader';
+import { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
+import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
 type NodeOperationMode = 'insert' | 'load' | 'retrieve' | 'update';
 
@@ -56,13 +58,13 @@ interface VectorStoreNodeConstructorArgs {
 	retrieveFields?: INodeProperties[];
 	updateFields?: INodeProperties[];
 	populateVectorStore: (
-		context: IExecuteFunctions,
+		context: ISupplyDataFunctions,
 		embeddings: Embeddings,
 		documents: Array<Document<Record<string, unknown>>>,
 		itemIndex: number,
 	) => Promise<void>;
 	getVectorStoreClient: (
-		context: IExecuteFunctions,
+		context: ISupplyDataFunctions,
 		filter: Record<string, never> | undefined,
 		embeddings: Embeddings,
 		itemIndex: number,
@@ -88,25 +90,25 @@ function getOperationModeOptions(args: VectorStoreNodeConstructorArgs): INodePro
 			name: 'Get Many',
 			value: 'load',
 			description: 'Get many ranked documents from vector store for query',
-			action: 'Get many ranked documents from vector store for query',
+			action: 'Get ranked documents from vector store',
 		},
 		{
 			name: 'Insert Documents',
 			value: 'insert',
 			description: 'Insert documents into vector store',
-			action: 'Insert documents into vector store',
+			action: 'Add documents to vector store',
 		},
 		{
 			name: 'Retrieve Documents (For Agent/Chain)',
 			value: 'retrieve',
 			description: 'Retrieve documents from vector store to be used with AI nodes',
-			action: 'Retrieve documents from vector store to be used with AI nodes',
+			action: 'Retrieve documents for AI processing',
 		},
 		{
 			name: 'Update Documents',
 			value: 'update',
 			description: 'Update documents in vector store by ID',
-			action: 'Update documents in vector store by ID',
+			action: 'Update vector store documents',
 		},
 	];
 
@@ -280,7 +282,7 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 					});
 
 					resultData.push(...serializedDocs);
-					void logAiEvent(this, 'n8n.ai.vector.store.searched', { query: prompt });
+					logAiEvent(this, 'ai-vector-store-searched', { query: prompt });
 				}
 
 				return [resultData];
@@ -296,6 +298,9 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 
 				const resultData = [];
 				for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+					if (this.getExecutionCancelSignal()?.aborted) {
+						break;
+					}
 					const itemData = items[itemIndex];
 					const { processedDocuments, serializedDocuments } = await processDocument(
 						documentInput,
@@ -307,7 +312,7 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 					try {
 						await args.populateVectorStore(this, embeddings, processedDocuments, itemIndex);
 
-						void logAiEvent(this, 'n8n.ai.vector.store.populated');
+						logAiEvent(this, 'ai-vector-store-populated');
 					} catch (error) {
 						throw error;
 					}
@@ -361,7 +366,7 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 							ids: [documentId],
 						});
 
-						void logAiEvent(this, 'n8n.ai.vector.store.updated');
+						logAiEvent(this, 'ai-vector-store-updated');
 					} catch (error) {
 						throw error;
 					}
@@ -376,7 +381,7 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 			);
 		}
 
-		async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+		async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 			const mode = this.getNodeParameter('mode', 0) as 'load' | 'insert' | 'retrieve';
 			const filter = getMetadataFiltersValues(this, itemIndex);
 			const embeddings = (await this.getInputConnectionData(

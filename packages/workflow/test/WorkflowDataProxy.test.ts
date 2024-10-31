@@ -1,3 +1,4 @@
+import { ExpressionError } from '@/errors/expression.error';
 import type {
 	IExecuteData,
 	INode,
@@ -8,7 +9,7 @@ import type {
 } from '@/Interfaces';
 import { Workflow } from '@/Workflow';
 import { WorkflowDataProxy } from '@/WorkflowDataProxy';
-import { ExpressionError } from '@/errors/expression.error';
+
 import * as Helpers from './Helpers';
 
 const loadFixture = (fixture: string) => {

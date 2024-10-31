@@ -1,16 +1,20 @@
-import { N8N_VERSION } from '@/constants';
+import { GlobalConfig } from '@n8n/config';
 import type express from 'express';
 import promBundle from 'express-prom-bundle';
-import promClient, { type Counter } from 'prom-client';
+import { InstanceSettings } from 'n8n-core';
+import { EventMessageTypeNames } from 'n8n-workflow';
+import promClient, { type Counter, type Gauge } from 'prom-client';
 import semverParse from 'semver/functions/parse';
 import { Service } from 'typedi';
 
-import { CacheService } from '@/services/cache/cache.service';
-import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
-import { EventMessageTypeNames } from 'n8n-workflow';
+import config from '@/config';
+import { N8N_VERSION } from '@/constants';
 import type { EventMessageTypes } from '@/eventbus';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { EventService } from '@/events/event.service';
+import { CacheService } from '@/services/cache/cache.service';
+
 import type { Includes, MetricCategory, MetricLabel } from './types';
-import { GlobalConfig } from '@n8n/config';
 
 @Service()
 export class PrometheusMetricsService {
@@ -18,9 +22,13 @@ export class PrometheusMetricsService {
 		private readonly cacheService: CacheService,
 		private readonly eventBus: MessageEventBus,
 		private readonly globalConfig: GlobalConfig,
+		private readonly eventService: EventService,
+		private readonly instanceSettings: InstanceSettings,
 	) {}
 
 	private readonly counters: { [key: string]: Counter<string> | null } = {};
+
+	private readonly gauges: Record<string, Gauge<string>> = {};
 
 	private readonly prefix = this.globalConfig.endpoints.metrics.prefix;
 
@@ -30,6 +38,7 @@ export class PrometheusMetricsService {
 			routes: this.globalConfig.endpoints.metrics.includeApiEndpoints,
 			cache: this.globalConfig.endpoints.metrics.includeCacheMetrics,
 			logs: this.globalConfig.endpoints.metrics.includeMessageEventBusMetrics,
+			queue: this.globalConfig.endpoints.metrics.includeQueueMetrics,
 		},
 		labels: {
 			credentialsType: this.globalConfig.endpoints.metrics.includeCredentialTypeLabel,
@@ -48,6 +57,7 @@ export class PrometheusMetricsService {
 		this.initCacheMetrics();
 		this.initEventBusMetrics();
 		this.initRouteMetrics(app);
+		this.initQueueMetrics();
 		this.mountMetricsEndpoint(app);
 	}
 
@@ -201,7 +211,6 @@ export class PrometheusMetricsService {
 				help: `Total number of ${eventName} events.`,
 				labelNames: Object.keys(labels),
 			});
-			counter.labels(labels).inc(0);
 			this.counters[eventName] = counter;
 		}
 
@@ -214,7 +223,51 @@ export class PrometheusMetricsService {
 		this.eventBus.on('metrics.eventBus.event', (event: EventMessageTypes) => {
 			const counter = this.toCounter(event);
 			if (!counter) return;
-			counter.inc(1);
+
+			const labels = this.toLabels(event);
+			counter.inc(labels, 1);
+		});
+	}
+
+	private initQueueMetrics() {
+		if (
+			!this.includes.metrics.queue ||
+			config.getEnv('executions.mode') !== 'queue' ||
+			this.instanceSettings.instanceType !== 'main'
+		) {
+			return;
+		}
+
+		this.gauges.waiting = new promClient.Gauge({
+			name: this.prefix + 'scaling_mode_queue_jobs_waiting',
+			help: 'Current number of enqueued jobs waiting for pickup in scaling mode.',
+		});
+
+		this.gauges.active = new promClient.Gauge({
+			name: this.prefix + 'scaling_mode_queue_jobs_active',
+			help: 'Current number of jobs being processed across all workers in scaling mode.',
+		});
+
+		this.counters.completed = new promClient.Counter({
+			name: this.prefix + 'scaling_mode_queue_jobs_completed',
+			help: 'Total number of jobs completed across all workers in scaling mode since instance start.',
+		});
+
+		this.counters.failed = new promClient.Counter({
+			name: this.prefix + 'scaling_mode_queue_jobs_failed',
+			help: 'Total number of jobs failed across all workers in scaling mode since instance start.',
+		});
+
+		this.gauges.waiting.set(0);
+		this.gauges.active.set(0);
+		this.counters.completed.inc(0);
+		this.counters.failed.inc(0);
+
+		this.eventService.on('job-counts-updated', (jobCounts) => {
+			this.gauges.waiting.set(jobCounts.waiting);
+			this.gauges.active.set(jobCounts.active);
+			this.counters.completed?.inc(jobCounts.completed);
+			this.counters.failed?.inc(jobCounts.failed);
 		});
 	}
 

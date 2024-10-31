@@ -88,7 +88,7 @@ describe('CanvasHandleRenderer', () => {
 			},
 			global: {
 				provide: {
-					[`${CanvasNodeHandleKey}`]: { label: ref(label) },
+					[String(CanvasNodeHandleKey)]: { label: ref(label) },
 				},
 				stubs: {
 					Handle,

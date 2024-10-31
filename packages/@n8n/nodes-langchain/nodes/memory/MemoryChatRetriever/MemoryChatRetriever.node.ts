@@ -88,7 +88,7 @@ export class MemoryChatRetriever implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		this.logger.verbose('Executing Chat Memory Retriever');
+		this.logger.debug('Executing Chat Memory Retriever');
 
 		const memory = (await this.getInputConnectionData(NodeConnectionType.AiMemory, 0)) as
 			| BaseChatMemory

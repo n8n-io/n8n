@@ -151,6 +151,18 @@ export const nodeProperties: INodeProperties[] = [
 				placeholder: '{ "field": -1 }',
 				description: 'A JSON that defines the sort order of the result set',
 			},
+			{
+				displayName: 'Projection (JSON Format)',
+				name: 'projection',
+				type: 'json',
+				typeOptions: {
+					rows: 4,
+				},
+				default: '{}',
+				placeholder: '{ "_id": 0, "field": 1 }',
+				description:
+					'A JSON that defines a selection of fields to retrieve or exclude from the result set',
+			},
 		],
 	},
 	{
@@ -248,7 +260,7 @@ export const nodeProperties: INodeProperties[] = [
 				name: 'dateFields',
 				type: 'string',
 				default: '',
-				description: 'Comma separeted list of fields that will be parsed as Mongo Date type',
+				description: 'Comma-separated list of fields that will be parsed as Mongo Date type',
 			},
 			{
 				displayName: 'Use Dot Notation',

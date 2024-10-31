@@ -1,112 +1,3 @@
-<template>
-	<div :class="$style.container">
-		<transition name="fade" mode="out-in">
-			<div v-if="hasIssues || hideContent" key="empty"></div>
-			<div v-else-if="isListeningForEvents" key="listening">
-				<n8n-pulse>
-					<NodeIcon :node-type="nodeType" :size="40"></NodeIcon>
-				</n8n-pulse>
-				<div v-if="isWebhookNode">
-					<n8n-text tag="div" size="large" color="text-dark" class="mb-2xs" bold>{{
-						$locale.baseText('ndv.trigger.webhookNode.listening')
-					}}</n8n-text>
-					<div :class="[$style.shake, 'mb-xs']">
-						<n8n-text>
-							{{
-								$locale.baseText('ndv.trigger.webhookNode.requestHint', {
-									interpolate: { type: webhookHttpMethod ?? '' },
-								})
-							}}
-						</n8n-text>
-					</div>
-					<CopyInput
-						:value="webhookTestUrl"
-						:toast-title="$locale.baseText('ndv.trigger.copiedTestUrl')"
-						class="mb-2xl"
-						size="medium"
-						:collapse="true"
-						:copy-button-text="$locale.baseText('generic.clickToCopy')"
-						@copy="onTestLinkCopied"
-					></CopyInput>
-					<NodeExecuteButton
-						data-test-id="trigger-execute-button"
-						:node-name="nodeName"
-						size="medium"
-						telemetry-source="inputs"
-						@execute="onNodeExecute"
-					/>
-				</div>
-				<div v-else>
-					<n8n-text tag="div" size="large" color="text-dark" class="mb-2xs" bold>{{
-						listeningTitle
-					}}</n8n-text>
-					<div :class="[$style.shake, 'mb-xs']">
-						<n8n-text tag="div">
-							{{ listeningHint }}
-						</n8n-text>
-					</div>
-					<div v-if="displayChatButton">
-						<n8n-button class="mb-xl" @click="openWebhookUrl()">
-							{{ $locale.baseText('ndv.trigger.chatTrigger.openChat') }}
-						</n8n-button>
-					</div>
-
-					<NodeExecuteButton
-						data-test-id="trigger-execute-button"
-						:node-name="nodeName"
-						size="medium"
-						telemetry-source="inputs"
-						@execute="onNodeExecute"
-					/>
-				</div>
-			</div>
-			<div v-else key="default">
-				<div v-if="isActivelyPolling" class="mb-xl">
-					<n8n-spinner type="ring" />
-				</div>
-
-				<div :class="$style.action">
-					<div :class="$style.header">
-						<n8n-heading v-if="header" tag="h1" bold>
-							{{ header }}
-						</n8n-heading>
-						<n8n-text v-if="subheader">
-							<span v-text="subheader" />
-						</n8n-text>
-					</div>
-
-					<NodeExecuteButton
-						data-test-id="trigger-execute-button"
-						:node-name="nodeName"
-						size="medium"
-						telemetry-source="inputs"
-						@execute="onNodeExecute"
-					/>
-				</div>
-
-				<n8n-text v-if="activationHint" size="small" @click="onLinkClick">
-					<span v-html="activationHint"></span>&nbsp;
-				</n8n-text>
-				<n8n-link
-					v-if="activationHint && executionsHelp"
-					size="small"
-					@click="expandExecutionHelp"
-					>{{ $locale.baseText('ndv.trigger.moreInfo') }}</n8n-link
-				>
-				<n8n-info-accordion
-					v-if="executionsHelp"
-					ref="help"
-					:class="$style.accordion"
-					:title="$locale.baseText('ndv.trigger.executionsHint.question')"
-					:description="executionsHelp"
-					:event-bus="executionsHelpEventBus"
-					@click:body="onLinkClick"
-				></n8n-info-accordion>
-			</div>
-		</transition>
-	</div>
-</template>
-
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
@@ -462,6 +353,115 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<div :class="$style.container">
+		<transition name="fade" mode="out-in">
+			<div v-if="hasIssues || hideContent" key="empty"></div>
+			<div v-else-if="isListeningForEvents" key="listening">
+				<n8n-pulse>
+					<NodeIcon :node-type="nodeType" :size="40"></NodeIcon>
+				</n8n-pulse>
+				<div v-if="isWebhookNode">
+					<n8n-text tag="div" size="large" color="text-dark" class="mb-2xs" bold>{{
+						$locale.baseText('ndv.trigger.webhookNode.listening')
+					}}</n8n-text>
+					<div :class="[$style.shake, 'mb-xs']">
+						<n8n-text>
+							{{
+								$locale.baseText('ndv.trigger.webhookNode.requestHint', {
+									interpolate: { type: webhookHttpMethod ?? '' },
+								})
+							}}
+						</n8n-text>
+					</div>
+					<CopyInput
+						:value="webhookTestUrl"
+						:toast-title="$locale.baseText('ndv.trigger.copiedTestUrl')"
+						class="mb-2xl"
+						size="medium"
+						:collapse="true"
+						:copy-button-text="$locale.baseText('generic.clickToCopy')"
+						@copy="onTestLinkCopied"
+					></CopyInput>
+					<NodeExecuteButton
+						data-test-id="trigger-execute-button"
+						:node-name="nodeName"
+						size="medium"
+						telemetry-source="inputs"
+						@execute="onNodeExecute"
+					/>
+				</div>
+				<div v-else>
+					<n8n-text tag="div" size="large" color="text-dark" class="mb-2xs" bold>{{
+						listeningTitle
+					}}</n8n-text>
+					<div :class="[$style.shake, 'mb-xs']">
+						<n8n-text tag="div">
+							{{ listeningHint }}
+						</n8n-text>
+					</div>
+					<div v-if="displayChatButton">
+						<n8n-button class="mb-xl" @click="openWebhookUrl()">
+							{{ $locale.baseText('ndv.trigger.chatTrigger.openChat') }}
+						</n8n-button>
+					</div>
+
+					<NodeExecuteButton
+						data-test-id="trigger-execute-button"
+						:node-name="nodeName"
+						size="medium"
+						telemetry-source="inputs"
+						@execute="onNodeExecute"
+					/>
+				</div>
+			</div>
+			<div v-else key="default">
+				<div v-if="isActivelyPolling" class="mb-xl">
+					<n8n-spinner type="ring" />
+				</div>
+
+				<div :class="$style.action">
+					<div :class="$style.header">
+						<n8n-heading v-if="header" tag="h1" bold>
+							{{ header }}
+						</n8n-heading>
+						<n8n-text v-if="subheader">
+							<span v-text="subheader" />
+						</n8n-text>
+					</div>
+
+					<NodeExecuteButton
+						data-test-id="trigger-execute-button"
+						:node-name="nodeName"
+						size="medium"
+						telemetry-source="inputs"
+						@execute="onNodeExecute"
+					/>
+				</div>
+
+				<n8n-text v-if="activationHint" size="small" @click="onLinkClick">
+					<span v-n8n-html="activationHint"></span>&nbsp;
+				</n8n-text>
+				<n8n-link
+					v-if="activationHint && executionsHelp"
+					size="small"
+					@click="expandExecutionHelp"
+					>{{ $locale.baseText('ndv.trigger.moreInfo') }}</n8n-link
+				>
+				<n8n-info-accordion
+					v-if="executionsHelp"
+					ref="help"
+					:class="$style.accordion"
+					:title="$locale.baseText('ndv.trigger.executionsHint.question')"
+					:description="executionsHelp"
+					:event-bus="executionsHelpEventBus"
+					@click:body="onLinkClick"
+				></n8n-info-accordion>
+			</div>
+		</transition>
+	</div>
+</template>
 
 <style lang="scss" module>
 .container {

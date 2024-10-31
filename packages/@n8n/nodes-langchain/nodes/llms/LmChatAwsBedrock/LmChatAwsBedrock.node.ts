@@ -1,17 +1,14 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import { ChatBedrockConverse } from '@langchain/aws';
 import {
 	NodeConnectionType,
-	type IExecuteFunctions,
 	type INodeType,
 	type INodeTypeDescription,
+	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
-import { BedrockChat } from '@langchain/community/chat_models/bedrock';
+
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
-// Dependencies needed underneath the hood. We add them
-// here only to track where what dependency is used
-import '@aws-sdk/credential-provider-node';
-import '@aws-sdk/client-bedrock-runtime';
 import { N8nLlmTracing } from '../N8nLlmTracing';
 
 export class LmChatAwsBedrock implements INodeType {
@@ -29,7 +26,7 @@ export class LmChatAwsBedrock implements INodeType {
 		codex: {
 			categories: ['AI'],
 			subcategories: {
-				AI: ['Language Models'],
+				AI: ['Language Models', 'Root Nodes'],
 				'Language Models': ['Chat Models (Recommended)'],
 			},
 			resources: {
@@ -135,7 +132,7 @@ export class LmChatAwsBedrock implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials('aws');
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
@@ -143,7 +140,7 @@ export class LmChatAwsBedrock implements INodeType {
 			maxTokensToSample: number;
 		};
 
-		const model = new BedrockChat({
+		const model = new ChatBedrockConverse({
 			region: credentials.region as string,
 			model: modelName,
 			temperature: options.temperature,

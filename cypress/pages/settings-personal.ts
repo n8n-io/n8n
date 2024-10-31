@@ -1,7 +1,8 @@
 import generateOTPToken from 'cypress-otp';
+
+import { BasePage } from './base';
 import { ChangePasswordModal } from './modals/change-password-modal';
 import { MfaSetupModal } from './modals/mfa-setup-modal';
-import { BasePage } from './base';
 
 const changePasswordModal = new ChangePasswordModal();
 const mfaSetupModal = new MfaSetupModal();

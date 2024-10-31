@@ -1,54 +1,67 @@
+process.argv[2] = 'worker';
+
+import { TaskRunnersConfig } from '@n8n/config';
 import { BinaryDataService } from 'n8n-core';
-import { mock } from 'jest-mock-extended';
+import Container from 'typedi';
 
 import { Worker } from '@/commands/worker';
 import config from '@/config';
-import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
-import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
-import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
-import { InternalHooks } from '@/InternalHooks';
-import { OrchestrationHandlerWorkerService } from '@/services/orchestration/worker/orchestration.handler.worker.service';
-import { OrchestrationWorkerService } from '@/services/orchestration/worker/orchestration.worker.service';
-import { License } from '@/License';
-import { ExternalHooks } from '@/ExternalHooks';
-import { type JobQueue, Queue } from '@/Queue';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
+import { ExternalHooks } from '@/external-hooks';
+import { ExternalSecretsManager } from '@/external-secrets/external-secrets-manager.ee';
+import { License } from '@/license';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { Push } from '@/push';
+import { TaskRunnerProcess } from '@/runners/task-runner-process';
+import { TaskRunnerServer } from '@/runners/task-runner-server';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { Subscriber } from '@/scaling/pubsub/subscriber.service';
+import { ScalingService } from '@/scaling/scaling.service';
+import { OrchestrationService } from '@/services/orchestration.service';
+import { Telemetry } from '@/telemetry';
+import { setupTestCommand } from '@test-integration/utils/test-command';
 
-import { setupTestCommand } from '@test-integration/utils/testCommand';
 import { mockInstance } from '../../shared/mocking';
-import { AuditEventRelay } from '@/eventbus/audit-event-relay.service';
 
 config.set('executions.mode', 'queue');
 config.set('binaryDataManager.availableModes', 'filesystem');
-mockInstance(InternalHooks);
+Container.get(TaskRunnersConfig).disabled = false;
 mockInstance(LoadNodesAndCredentials);
 const binaryDataService = mockInstance(BinaryDataService);
 const externalHooks = mockInstance(ExternalHooks);
 const externalSecretsManager = mockInstance(ExternalSecretsManager);
-const license = mockInstance(License);
+const license = mockInstance(License, { loadCertStr: async () => '' });
 const messageEventBus = mockInstance(MessageEventBus);
-const auditEventRelay = mockInstance(AuditEventRelay);
-const orchestrationHandlerWorkerService = mockInstance(OrchestrationHandlerWorkerService);
-const queue = mockInstance(Queue);
-const orchestrationWorkerService = mockInstance(OrchestrationWorkerService);
+const logStreamingEventRelay = mockInstance(LogStreamingEventRelay);
+const scalingService = mockInstance(ScalingService);
+const orchestrationService = mockInstance(OrchestrationService);
+const taskRunnerServer = mockInstance(TaskRunnerServer);
+const taskRunnerProcess = mockInstance(TaskRunnerProcess);
+mockInstance(Publisher);
+mockInstance(Subscriber);
+mockInstance(Telemetry);
+mockInstance(Push);
+
 const command = setupTestCommand(Worker);
 
-queue.getBullObjectInstance.mockReturnValue(mock<JobQueue>({ on: jest.fn() }));
-
 test('worker initializes all its components', async () => {
-	const worker = await command.run();
+	config.set('executions.mode', 'regular'); // should be overridden
 
-	expect(worker.queueModeId).toBeDefined();
-	expect(worker.queueModeId).toContain('worker');
-	expect(worker.queueModeId.length).toBeGreaterThan(15);
+	await command.run();
+
 	expect(license.init).toHaveBeenCalledTimes(1);
 	expect(binaryDataService.init).toHaveBeenCalledTimes(1);
 	expect(externalHooks.init).toHaveBeenCalledTimes(1);
 	expect(externalSecretsManager.init).toHaveBeenCalledTimes(1);
 	expect(messageEventBus.initialize).toHaveBeenCalledTimes(1);
-	expect(auditEventRelay.init).toHaveBeenCalledTimes(1);
-	expect(queue.init).toHaveBeenCalledTimes(1);
-	expect(queue.process).toHaveBeenCalledTimes(1);
-	expect(orchestrationWorkerService.init).toHaveBeenCalledTimes(1);
-	expect(orchestrationHandlerWorkerService.initWithOptions).toHaveBeenCalledTimes(1);
+	expect(scalingService.setupQueue).toHaveBeenCalledTimes(1);
+	expect(scalingService.setupWorker).toHaveBeenCalledTimes(1);
+	expect(logStreamingEventRelay.init).toHaveBeenCalledTimes(1);
+	expect(orchestrationService.init).toHaveBeenCalledTimes(1);
 	expect(messageEventBus.send).toHaveBeenCalledTimes(1);
+	expect(taskRunnerServer.start).toHaveBeenCalledTimes(1);
+	expect(taskRunnerProcess.start).toHaveBeenCalledTimes(1);
+
+	expect(config.getEnv('executions.mode')).toBe('queue');
 });

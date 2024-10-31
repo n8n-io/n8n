@@ -5,7 +5,7 @@ import type { ICredentialsResponse } from '@/Interface';
 import { MODAL_CONFIRM, PROJECT_MOVE_RESOURCE_MODAL } from '@/constants';
 import { useMessage } from '@/composables/useMessage';
 import CredentialIcon from '@/components/CredentialIcon.vue';
-import { getCredentialPermissions } from '@/permissions';
+import { getResourcePermissions } from '@/permissions';
 import { useUIStore } from '@/stores/ui.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import TimeAgo from '@/components/TimeAgo.vue';
@@ -20,6 +20,10 @@ const CREDENTIAL_LIST_ITEM_ACTIONS = {
 	DELETE: 'delete',
 	MOVE: 'move',
 };
+
+const emit = defineEmits<{
+	click: [credentialId: string];
+}>();
 
 const props = withDefaults(
 	defineProps<{
@@ -48,7 +52,7 @@ const projectsStore = useProjectsStore();
 
 const resourceTypeLabel = computed(() => locale.baseText('generic.credential').toLowerCase());
 const credentialType = computed(() => credentialsStore.getCredentialTypeByName(props.data.type));
-const credentialPermissions = computed(() => getCredentialPermissions(props.data));
+const credentialPermissions = computed(() => getResourcePermissions(props.data.scopes).credential);
 const actions = computed(() => {
 	const items = [
 		{
@@ -83,7 +87,7 @@ const formattedCreatedAtDate = computed(() => {
 });
 
 function onClick() {
-	uiStore.openExistingCredential(props.data.id);
+	emit('click', props.data.id);
 }
 
 async function onAction(action: string) {
@@ -131,23 +135,26 @@ function moveResource() {
 </script>
 
 <template>
-	<n8n-card :class="$style.cardLink" @click="onClick">
+	<n8n-card :class="$style.cardLink" @click.stop="onClick">
 		<template #prepend>
 			<CredentialIcon :credential-type-name="credentialType?.name ?? ''" />
 		</template>
 		<template #header>
 			<n8n-heading tag="h2" bold :class="$style.cardHeading">
 				{{ data.name }}
+				<N8nBadge v-if="readOnly" class="ml-3xs" theme="tertiary" bold>
+					{{ locale.baseText('credentials.item.readonly') }}
+				</N8nBadge>
 			</n8n-heading>
 		</template>
 		<div :class="$style.cardDescription">
 			<n8n-text color="text-light" size="small">
 				<span v-if="credentialType">{{ credentialType.displayName }} | </span>
 				<span v-show="data"
-					>{{ $locale.baseText('credentials.item.updated') }} <TimeAgo :date="data.updatedAt" /> |
+					>{{ locale.baseText('credentials.item.updated') }} <TimeAgo :date="data.updatedAt" /> |
 				</span>
 				<span v-show="data"
-					>{{ $locale.baseText('credentials.item.created') }} {{ formattedCreatedAtDate }}
+					>{{ locale.baseText('credentials.item.created') }} {{ formattedCreatedAtDate }}
 				</span>
 			</n8n-text>
 		</div>

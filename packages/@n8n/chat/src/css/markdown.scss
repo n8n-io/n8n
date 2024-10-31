@@ -1,8 +1,24 @@
-@import 'highlight.js/styles/github.css';
+@use 'sass:meta';
+
+@include meta.load-css('highlight.js/styles/github.css');
+
+@mixin hljs-dark-theme {
+	@include meta.load-css('highlight.js/styles/github-dark-dimmed.css');
+}
+
+body {
+	&[data-theme='dark'] {
+		@include hljs-dark-theme;
+	}
+
+	@media (prefers-color-scheme: dark) {
+		@include hljs-dark-theme;
+	}
+}
 
 // https://github.com/pxlrbt/markdown-css
 .chat-message-markdown {
-		/*
+	/*
 		universalize.css (v1.0.2) — by Alexander Sandberg (https://alexandersandberg.com)
 		------------------------------------------------------------------------------
 
@@ -45,8 +61,6 @@
 		vertical-align: inherit; /* 2 */
 	}
 
-
-
 	/*
 		Remove inconsistent and unnecessary margins
 	*/
@@ -63,7 +77,8 @@
 	button, /* (Safari) 3 lines */
 	input,
 	select,
-	textarea { /* (Firefox, Safari) */
+	textarea {
+		/* (Firefox, Safari) */
 		margin: 0;
 	}
 
@@ -80,11 +95,13 @@
 		Add correct display
 	*/
 	main, /* (IE11) */
-	details { /* (Edge 18-, IE) */
+	details {
+		/* (Edge 18-, IE) */
 		display: block;
 	}
 
-	summary { /* (all) */
+	summary {
+		/* (all) */
 		display: list-item;
 	}
 
@@ -106,18 +123,19 @@
 	kbd,
 	samp {
 		font-family:
-			/* macOS 10.10+ */ "Menlo",
-			/* Windows 6+ */ "Consolas",
-			/* Android 4+ */ "Roboto Mono",
-			/* Ubuntu 10.10+ */ "Ubuntu Monospace",
-			/* KDE Plasma 5+ */ "Noto Mono",
-			/* KDE Plasma 4+ */ "Oxygen Mono",
-			/* Linux/OpenOffice fallback */ "Liberation Mono",
+			/* macOS 10.10+ */
+			'Menlo',
+			/* Windows 6+ */ 'Consolas',
+			/* Android 4+ */ 'Roboto Mono',
+			/* Ubuntu 10.10+ */ 'Ubuntu Monospace',
+			/* KDE Plasma 5+ */ 'Noto Mono',
+			/* KDE Plasma 4+ */ 'Oxygen Mono',
+			/* Linux/OpenOffice fallback */ 'Liberation Mono',
 			/* fallback */ monospace,
-			/* macOS emoji */ "Apple Color Emoji",
-			/* Windows emoji */ "Segoe UI Emoji",
-			/* Windows emoji */ "Segoe UI Symbol",
-			/* Linux emoji */ "Noto Color Emoji"; /* 1 */
+			/* macOS emoji */ 'Apple Color Emoji',
+			/* Windows emoji */ 'Segoe UI Emoji',
+			/* Windows emoji */ 'Segoe UI Symbol',
+			/* Linux emoji */ 'Noto Color Emoji'; /* 1 */
 
 		font-size: 1em; /* 2 */
 	}
@@ -130,7 +148,7 @@
 		cursor: help; /* 1 */
 		text-decoration: underline; /* 2 */
 		-webkit-text-decoration: underline dotted;
-						text-decoration: underline dotted; /* 2 */
+		text-decoration: underline dotted; /* 2 */
 	}
 
 	/*
@@ -201,9 +219,9 @@
 		Correct inability to style buttons (iOS, Safari)
 	*/
 	button,
-	[type="button"],
-	[type="reset"],
-	[type="submit"] {
+	[type='button'],
+	[type='reset'],
+	[type='submit'] {
 		-webkit-appearance: button;
 	}
 
@@ -249,7 +267,7 @@
 		1. Correct outline style (Safari)
 		2. Correct odd appearance (Chrome, Edge, Safari)
 	*/
-	[type="search"] {
+	[type='search'] {
 		outline-offset: -2px; /* 1 */
 		-webkit-appearance: textfield; /* 2 */
 	}
@@ -311,7 +329,7 @@
 	/*
 		Change cursor on busy elements (all)
 	*/
-	[aria-busy="true"] {
+	[aria-busy='true'] {
 		cursor: progress;
 	}
 
@@ -325,7 +343,7 @@
 	/*
 		Change cursor on disabled, non-editable, or inoperable elements (all)
 	*/
-	[aria-disabled="true"],
+	[aria-disabled='true'],
 	[disabled] {
 		cursor: not-allowed;
 	}
@@ -333,12 +351,12 @@
 	/*
 		Change display on visually hidden accessible elements (all)
 	*/
-	[aria-hidden="false"][hidden] {
+	[aria-hidden='false'][hidden] {
 		display: inline;
 		display: initial;
 	}
 
-	[aria-hidden="false"][hidden]:not(:focus) {
+	[aria-hidden='false'][hidden]:not(:focus) {
 		clip: rect(0, 0, 0, 0);
 		position: absolute;
 	}
@@ -347,8 +365,8 @@
 		Print out URLs after links (all)
 	*/
 	@media print {
-		a[href^="http"]::after {
-			content: " (" attr(href) ")";
+		a[href^='http']::after {
+			content: ' (' attr(href) ')';
 		}
 	}
 	/* ----- Variables ----- */
@@ -484,8 +502,8 @@
 	*/
 	pre {
 		-moz-tab-size: 4;
-			-o-tab-size: 4;
-				tab-size: 4;
+		-o-tab-size: 4;
+		tab-size: 4;
 	}
 
 	/*
@@ -559,11 +577,10 @@
 
 	kbd, /* different style for kbd? */
 	code {
-		background: #eee;
 		padding: 0.1em 0.25em;
 		border-radius: 0.2rem;
 		-webkit-box-decoration-break: clone;
-						box-decoration-break: clone;
+		box-decoration-break: clone;
 	}
 
 	kbd > kbd {
@@ -573,8 +590,8 @@
 
 	pre {
 		-moz-tab-size: 4;
-			-o-tab-size: 4;
-				tab-size: 4;
+		-o-tab-size: 4;
+		tab-size: 4;
 	}
 
 	pre code {
@@ -586,7 +603,7 @@
 	/* ----- Forms ----- */
 	/* ----- Misc ----- */
 
-	[tabindex="-1"]:focus {
+	[tabindex='-1']:focus {
 		outline: none;
 	}
 

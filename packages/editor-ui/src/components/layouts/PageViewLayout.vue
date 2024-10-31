@@ -1,12 +1,3 @@
-<template>
-	<div :class="$style.wrapper">
-		<slot name="header" />
-		<main :class="$style.content">
-			<slot />
-		</main>
-	</div>
-</template>
-
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
@@ -25,13 +16,22 @@ export default defineComponent({
 });
 </script>
 
+<template>
+	<div :class="$style.wrapper">
+		<slot name="header" />
+		<main :class="$style.content">
+			<slot />
+		</main>
+	</div>
+</template>
+
 <style lang="scss" module>
 .wrapper {
-	display: grid;
+	display: flex;
+	flex-direction: column;
 	height: 100%;
 	width: 100%;
 	max-width: 1280px;
-	grid-template-rows: auto 1fr;
 	box-sizing: border-box;
 	align-content: start;
 	padding: var(--spacing-l) var(--spacing-2xl) 0;

@@ -1,12 +1,8 @@
-<template>
-	<div ref="root" :class="$style.editor" @keydown.stop></div>
-</template>
-
 <script setup lang="ts">
 import { history } from '@codemirror/commands';
 import { Prec } from '@codemirror/state';
-import { EditorView, keymap } from '@codemirror/view';
-import { computed, onMounted, ref, toValue, watch } from 'vue';
+import { dropCursor, EditorView, keymap } from '@codemirror/view';
+import { computed, onMounted, ref, watch } from 'vue';
 
 import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expression.inputHandler';
 import { n8nAutocompletion, n8nLang } from '@/plugins/codemirror/n8nLang';
@@ -14,7 +10,6 @@ import { forceParse } from '@/utils/forceParse';
 import { completionStatus } from '@codemirror/autocomplete';
 import { inputTheme } from './theme';
 
-import type { IVariableItemSelected } from '@/Interface';
 import { useExpressionEditor } from '@/composables/useExpressionEditor';
 import {
 	autocompleteKeyMap,
@@ -22,9 +17,10 @@ import {
 	historyKeyMap,
 	tabKeyMap,
 } from '@/plugins/codemirror/keymap';
+import { infoBoxTooltips } from '@/plugins/codemirror/tooltips/InfoBoxTooltip';
 import type { Segment } from '@/types/expressions';
 import { removeExpressionPrefix } from '@/utils/expressions';
-import { infoBoxTooltips } from '@/plugins/codemirror/tooltips/InfoBoxTooltip';
+import { mappingDropCursor } from '@/plugins/codemirror/dragAndDrop';
 
 type Props = {
 	modelValue: string;
@@ -44,7 +40,7 @@ const emit = defineEmits<{
 
 const root = ref<HTMLElement>();
 const extensions = computed(() => [
-	inputTheme(),
+	inputTheme(props.isReadOnly),
 	Prec.highest(
 		keymap.of([
 			...tabKeyMap(),
@@ -65,6 +61,8 @@ const extensions = computed(() => [
 	),
 	n8nLang(),
 	n8nAutocompletion(),
+	mappingDropCursor(),
+	dropCursor(),
 	history(),
 	expressionInputHandler(),
 	EditorView.lineWrapping,
@@ -72,14 +70,7 @@ const extensions = computed(() => [
 	infoBoxTooltips(),
 ]);
 const editorValue = ref<string>(removeExpressionPrefix(props.modelValue));
-const {
-	editor: editorRef,
-	segments,
-	readEditorValue,
-	setCursorPosition,
-	hasFocus,
-	focus,
-} = useExpressionEditor({
+const { segments, readEditorValue, editor, hasFocus, focus } = useExpressionEditor({
 	editorRef: root,
 	editorValue,
 	extensions,
@@ -111,45 +102,15 @@ onMounted(() => {
 	focus();
 });
 
-function itemSelected({ variable }: IVariableItemSelected) {
-	const editor = toValue(editorRef);
-
-	if (!editor || props.isReadOnly) return;
-
-	const OPEN_MARKER = '{{';
-	const CLOSE_MARKER = '}}';
-
-	const { selection, doc } = editor.state;
-	const { head } = selection.main;
-
-	const isInsideResolvable =
-		editor.state.sliceDoc(0, head).includes(OPEN_MARKER) &&
-		editor.state.sliceDoc(head, doc.length).includes(CLOSE_MARKER);
-
-	const insert = isInsideResolvable ? variable : [OPEN_MARKER, variable, CLOSE_MARKER].join(' ');
-
-	editor.dispatch({
-		changes: {
-			from: head,
-			insert,
-		},
-	});
-
-	focus();
-	setCursorPosition(head + insert.length);
-}
-
-defineExpose({ itemSelected });
+defineExpose({ editor });
 </script>
 
+<template>
+	<div ref="root" :class="$style.editor" @keydown.stop></div>
+</template>
+
 <style lang="scss" module>
-.editor div[contenteditable='false'] {
-	background-color: var(--disabled-fill, var(--color-background-light));
-	cursor: not-allowed;
-}
-</style>
-<style lang="scss" scoped>
-:deep(.cm-content) {
+:global(.cm-content) {
 	border-radius: var(--border-radius-base);
 }
 </style>

@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref, onBeforeMount, onBeforeUnmount } from 'vue';
+import { computed, ref, onBeforeMount, onBeforeUnmount, onMounted } from 'vue';
 import { useEnvironmentsStore } from '@/stores/environments.ee.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
@@ -9,6 +9,7 @@ import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { useMessage } from '@/composables/useMessage';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
 
 import type { IResource } from '@/components/layouts/ResourcesListLayout.vue';
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
@@ -17,7 +18,7 @@ import VariablesRow from '@/components/VariablesRow.vue';
 import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/constants';
 import type { DatatableColumn, EnvironmentVariable } from '@/Interface';
 import { uid } from 'n8n-design-system/utils';
-import { getVariablesPermissions } from '@/permissions';
+import { getResourcePermissions } from '@/permissions';
 import type { BaseTextKey } from '@/plugins/i18n';
 
 const settingsStore = useSettingsStore();
@@ -28,6 +29,7 @@ const telemetry = useTelemetry();
 const i18n = useI18n();
 const message = useMessage();
 const sourceControlStore = useSourceControlStore();
+const documentTitle = useDocumentTitle();
 let sourceControlStoreUnsubscribe = () => {};
 
 const layoutRef = ref<InstanceType<typeof ResourcesListLayout> | null>(null);
@@ -39,7 +41,10 @@ const TEMPORARY_VARIABLE_UID_BASE = '@tmpvar';
 const allVariables = ref<EnvironmentVariable[]>([]);
 const editMode = ref<Record<string, boolean>>({});
 const loading = ref(false);
-const permissions = getVariablesPermissions(usersStore.currentUser);
+
+const permissions = computed(
+	() => getResourcePermissions(usersStore.currentUser?.globalScopes).variable,
+);
 
 const isFeatureEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables],
@@ -49,7 +54,7 @@ const variablesToResources = computed((): IResource[] =>
 	allVariables.value.map((v) => ({ id: v.id, name: v.key, value: v.value })),
 );
 
-const canCreateVariables = computed(() => isFeatureEnabled.value && permissions.create);
+const canCreateVariables = computed(() => isFeatureEnabled.value && permissions.value.create);
 
 const datatableColumns = computed<DatatableColumn[]>(() => [
 	{
@@ -121,7 +126,7 @@ function resetNewVariablesList() {
 const resourceToEnvironmentVariable = (data: IResource): EnvironmentVariable => ({
 	id: data.id,
 	key: data.name,
-	value: 'value' in data ? data.value ?? '' : '',
+	value: 'value' in data ? (data.value ?? '') : '',
 });
 
 const environmentVariableToResource = (data: EnvironmentVariable): IResource => ({
@@ -244,6 +249,10 @@ onBeforeMount(() => {
 
 onBeforeUnmount(() => {
 	sourceControlStoreUnsubscribe();
+});
+
+onMounted(() => {
+	documentTitle.set(i18n.baseText('variables.heading'));
 });
 </script>
 

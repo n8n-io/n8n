@@ -1,8 +1,8 @@
 <script lang="ts" setup>
+import type { ITelemetrySettings } from '@n8n/api-types';
 import { useRootStore } from '@/stores/root.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
-import type { ITelemetrySettings } from 'n8n-workflow';
 import { useProjectsStore } from '@/stores/projects.store';
 import { computed, onMounted, watch, ref } from 'vue';
 import { useTelemetry } from '@/composables/useTelemetry';
@@ -34,14 +34,12 @@ const isTelemetryEnabled = computed((): boolean => {
 	return !!telemetry.value?.enabled;
 });
 
-watch(telemetry, () => {
-	init();
+const selfInstallSrc = computed((): string => {
+	return `https://n8n.io/self-install?instanceId=${rootStore.instanceId}&userId=${currentUserId.value}`;
 });
 
-watch(currentUserId, (userId) => {
-	if (isTelemetryEnabled.value) {
-		telemetryPlugin.identify(rootStore.instanceId, userId);
-	}
+watch(telemetry, () => {
+	init();
 });
 
 watch(isTelemetryEnabledOnRoute, (enabled) => {
@@ -70,5 +68,6 @@ function init() {
 </script>
 
 <template>
-	<span v-show="false" />
+	<iframe v-if="isTelemetryEnabled && currentUserId" v-show="false" :src="selfInstallSrc" />
+	<span v-else v-show="false" />
 </template>

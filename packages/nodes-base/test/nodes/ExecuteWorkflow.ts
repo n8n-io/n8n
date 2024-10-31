@@ -22,7 +22,7 @@ export async function executeWorkflow(testData: WorkflowTestData, nodeTypes: INo
 		nodeTypes,
 		settings: testData.input.workflowData.settings,
 	});
-	const waitPromise = await createDeferredPromise<IRun>();
+	const waitPromise = createDeferredPromise<IRun>();
 	const nodeExecutionOrder: string[] = [];
 	const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise, nodeExecutionOrder);
 
@@ -50,6 +50,6 @@ export async function executeWorkflow(testData: WorkflowTestData, nodeTypes: INo
 	const workflowExecute = new WorkflowExecute(additionalData, executionMode, runExecutionData);
 	executionData = await workflowExecute.processRunExecutionData(workflowInstance);
 
-	const result = await waitPromise.promise();
+	const result = await waitPromise.promise;
 	return { executionData, result, nodeExecutionOrder };
 }

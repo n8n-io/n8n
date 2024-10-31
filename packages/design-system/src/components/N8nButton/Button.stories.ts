@@ -1,6 +1,7 @@
-import N8nButton from './Button.vue';
 import { action } from '@storybook/addon-actions';
 import type { StoryFn } from '@storybook/vue3';
+
+import N8nButton from './Button.vue';
 
 export default {
 	title: 'Atoms/Button',

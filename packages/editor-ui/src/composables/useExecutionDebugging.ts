@@ -16,6 +16,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useTelemetry } from './useTelemetry';
 import { useRootStore } from '@/stores/root.store';
 import { isFullExecutionResponse } from '@/utils/typeGuards';
+import { sanitizeHtml } from '@/utils/htmlUtils';
 
 export const useExecutionDebugging = () => {
 	const telemetry = useTelemetry();
@@ -61,7 +62,7 @@ export const useExecutionDebugging = () => {
 				h(
 					'ul',
 					{ class: 'mt-l ml-l' },
-					matchingPinnedNodeNames.map((name) => h('li', name)),
+					matchingPinnedNodeNames.map((name) => h('li', sanitizeHtml(name))),
 				),
 			]);
 
@@ -104,7 +105,7 @@ export const useExecutionDebugging = () => {
 		let pinnings = 0;
 
 		pinnableNodes.forEach((node: INodeUi) => {
-			const nodeData = runData[node.name]?.[0].data?.main[0];
+			const nodeData = runData[node.name]?.[0].data?.main?.[0];
 			if (nodeData) {
 				pinnings++;
 				workflowsStore.pinData({

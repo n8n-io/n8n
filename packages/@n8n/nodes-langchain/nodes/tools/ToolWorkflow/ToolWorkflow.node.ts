@@ -1,38 +1,40 @@
+import type { CallbackManagerForToolRun } from '@langchain/core/callbacks/manager';
+import { DynamicStructuredTool, DynamicTool } from '@langchain/core/tools';
+import type { JSONSchema7 } from 'json-schema';
+import get from 'lodash/get';
+import isObject from 'lodash/isObject';
+import type { SetField, SetNodeOptions } from 'n8n-nodes-base/dist/nodes/Set/v2/helpers/interfaces';
+import * as manual from 'n8n-nodes-base/dist/nodes/Set/v2/manual.mode';
 import type {
-	IExecuteFunctions,
 	IExecuteWorkflowInfo,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 	IWorkflowBase,
+	ISupplyDataFunctions,
 	SupplyData,
 	ExecutionError,
 	IDataObject,
+	INodeParameterResourceLocator,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError, jsonParse } from 'n8n-workflow';
-import type { SetField, SetNodeOptions } from 'n8n-nodes-base/dist/nodes/Set/v2/helpers/interfaces';
-import * as manual from 'n8n-nodes-base/dist/nodes/Set/v2/manual.mode';
 
-import { DynamicStructuredTool, DynamicTool } from '@langchain/core/tools';
-import get from 'lodash/get';
-import isObject from 'lodash/isObject';
-import type { CallbackManagerForToolRun } from '@langchain/core/callbacks/manager';
-import type { JSONSchema7 } from 'json-schema';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 import type { DynamicZodObject } from '../../../types/zod.types';
-import { generateSchema, getSandboxWithZod } from '../../../utils/schemaParsing';
 import {
 	jsonSchemaExampleField,
 	schemaTypeField,
 	inputSchemaField,
 } from '../../../utils/descriptions';
+import { convertJsonSchemaToZod, generateSchema } from '../../../utils/schemaParsing';
+import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+
 export class ToolWorkflow implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Call n8n Workflow Tool',
 		name: 'toolWorkflow',
 		icon: 'fa:network-wired',
 		group: ['transform'],
-		version: [1, 1.1],
+		version: [1, 1.1, 1.2],
 		description: 'Uses another n8n workflow as a tool. Allows packaging any n8n node(s) as a tool.',
 		defaults: {
 			name: 'Call n8n Workflow Tool',
@@ -142,12 +144,27 @@ export class ToolWorkflow implements INodeType {
 				displayOptions: {
 					show: {
 						source: ['database'],
+						'@version': [{ _cnd: { lte: 1.1 } }],
 					},
 				},
 				default: '',
 				required: true,
 				description: 'The workflow to execute',
 				hint: 'Can be found in the URL of the workflow',
+			},
+
+			{
+				displayName: 'Workflow',
+				name: 'workflowId',
+				type: 'workflowSelector',
+				displayOptions: {
+					show: {
+						source: ['database'],
+						'@version': [{ _cnd: { gte: 1.2 } }],
+					},
+				},
+				default: '',
+				required: true,
 			},
 
 			// ----------------------------------
@@ -340,7 +357,7 @@ export class ToolWorkflow implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const name = this.getNodeParameter('name', itemIndex) as string;
 		const description = this.getNodeParameter('description', itemIndex) as string;
 
@@ -368,7 +385,17 @@ export class ToolWorkflow implements INodeType {
 			const workflowInfo: IExecuteWorkflowInfo = {};
 			if (source === 'database') {
 				// Read workflow from database
-				workflowInfo.id = this.getNodeParameter('workflowId', itemIndex) as string;
+				const nodeVersion = this.getNode().typeVersion;
+				if (nodeVersion <= 1.1) {
+					workflowInfo.id = this.getNodeParameter('workflowId', itemIndex) as string;
+				} else {
+					const { value } = this.getNodeParameter(
+						'workflowId',
+						itemIndex,
+						{},
+					) as INodeParameterResourceLocator;
+					workflowInfo.id = value as string;
+				}
 			} else if (source === 'parameter') {
 				// Read workflow from parameter
 				const workflowJson = this.getNodeParameter('workflowJson', itemIndex) as string;
@@ -493,7 +520,7 @@ export class ToolWorkflow implements INodeType {
 		if (useSchema) {
 			try {
 				// We initialize these even though one of them will always be empty
-				// it makes it easer to navigate the ternary operator
+				// it makes it easier to navigate the ternary operator
 				const jsonExample = this.getNodeParameter('jsonSchemaExample', itemIndex, '') as string;
 				const inputSchema = this.getNodeParameter('inputSchema', itemIndex, '') as string;
 
@@ -503,10 +530,9 @@ export class ToolWorkflow implements INodeType {
 						? generateSchema(jsonExample)
 						: jsonParse<JSONSchema7>(inputSchema);
 
-				const zodSchemaSandbox = getSandboxWithZod(this, jsonSchema, 0);
-				const zodSchema = (await zodSchemaSandbox.runCode()) as DynamicZodObject;
+				const zodSchema = convertJsonSchemaToZod<DynamicZodObject>(jsonSchema);
 
-				tool = new DynamicStructuredTool<typeof zodSchema>({
+				tool = new DynamicStructuredTool({
 					schema: zodSchema,
 					...functionBase,
 				});

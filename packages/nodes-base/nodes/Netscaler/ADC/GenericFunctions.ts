@@ -19,7 +19,7 @@ export async function netscalerADCApiRequest(
 	uri?: string,
 	option: IDataObject = {},
 ): Promise<any> {
-	const { url } = (await this.getCredentials('citrixAdcApi')) as { url: string };
+	const { url } = await this.getCredentials<{ url: string }>('citrixAdcApi');
 
 	let options: IRequestOptions = {
 		headers: {

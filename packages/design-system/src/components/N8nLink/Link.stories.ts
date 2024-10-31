@@ -1,6 +1,7 @@
-import N8nLink from './Link.vue';
 import { action } from '@storybook/addon-actions';
 import type { StoryFn } from '@storybook/vue3';
+
+import N8nLink from './Link.vue';
 
 export default {
 	title: 'Atoms/Link',

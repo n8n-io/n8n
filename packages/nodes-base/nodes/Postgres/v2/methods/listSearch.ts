@@ -4,7 +4,7 @@ import { configurePostgres } from '../transport';
 import type { PostgresNodeCredentials } from '../helpers/interfaces';
 
 export async function schemaSearch(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
-	const credentials = (await this.getCredentials('postgres')) as PostgresNodeCredentials;
+	const credentials = await this.getCredentials<PostgresNodeCredentials>('postgres');
 	const options = { nodeVersion: this.getNode().typeVersion };
 
 	const { db } = await configurePostgres.call(this, credentials, options);
@@ -23,7 +23,7 @@ export async function schemaSearch(this: ILoadOptionsFunctions): Promise<INodeLi
 	}
 }
 export async function tableSearch(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
-	const credentials = (await this.getCredentials('postgres')) as PostgresNodeCredentials;
+	const credentials = await this.getCredentials<PostgresNodeCredentials>('postgres');
 	const options = { nodeVersion: this.getNode().typeVersion };
 
 	const { db } = await configurePostgres.call(this, credentials, options);

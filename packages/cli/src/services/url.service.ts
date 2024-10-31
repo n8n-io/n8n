@@ -1,6 +1,7 @@
-import { Service } from 'typedi';
-import config from '@/config';
 import { GlobalConfig } from '@n8n/config';
+import { Service } from 'typedi';
+
+import config from '@/config';
 
 @Service()
 export class UrlService {

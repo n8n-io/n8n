@@ -1,66 +1,3 @@
-<template>
-	<div :class="$style.cardContainer" data-test-id="community-package-card">
-		<div v-if="loading" :class="$style.cardSkeleton">
-			<n8n-loading :class="$style.loader" variant="p" :rows="1" />
-			<n8n-loading :class="$style.loader" variant="p" :rows="1" />
-		</div>
-		<div v-else-if="communityPackage" :class="$style.packageCard">
-			<div :class="$style.cardInfoContainer">
-				<div :class="$style.cardTitle">
-					<n8n-text :bold="true" size="large">{{ communityPackage.packageName }}</n8n-text>
-				</div>
-				<div :class="$style.cardSubtitle">
-					<n8n-text :bold="true" size="small" color="text-light">
-						{{
-							$locale.baseText('settings.communityNodes.packageNodes.label', {
-								adjustToNumber: communityPackage.installedNodes.length,
-							})
-						}}:&nbsp;
-					</n8n-text>
-					<n8n-text size="small" color="text-light">
-						<span v-for="(node, index) in communityPackage.installedNodes" :key="node.name">
-							{{ node.name
-							}}<span v-if="index != communityPackage.installedNodes.length - 1">,</span>
-						</span>
-					</n8n-text>
-				</div>
-			</div>
-			<div :class="$style.cardControlsContainer">
-				<n8n-text :bold="true" size="large" color="text-light">
-					v{{ communityPackage.installedVersion }}
-				</n8n-text>
-				<n8n-tooltip v-if="communityPackage.failedLoading === true" placement="top">
-					<template #content>
-						<div>
-							{{ $locale.baseText('settings.communityNodes.failedToLoad.tooltip') }}
-						</div>
-					</template>
-					<n8n-icon icon="exclamation-triangle" color="danger" size="large" />
-				</n8n-tooltip>
-				<n8n-tooltip v-else-if="communityPackage.updateAvailable" placement="top">
-					<template #content>
-						<div>
-							{{ $locale.baseText('settings.communityNodes.updateAvailable.tooltip') }}
-						</div>
-					</template>
-					<n8n-button outline label="Update" @click="onUpdateClick" />
-				</n8n-tooltip>
-				<n8n-tooltip v-else placement="top">
-					<template #content>
-						<div>
-							{{ $locale.baseText('settings.communityNodes.upToDate.tooltip') }}
-						</div>
-					</template>
-					<n8n-icon icon="check-circle" color="text-light" size="large" />
-				</n8n-tooltip>
-				<div :class="$style.cardActions">
-					<n8n-action-toggle :actions="packageActions" @action="onAction"></n8n-action-toggle>
-				</div>
-			</div>
-		</div>
-	</div>
-</template>
-
 <script lang="ts">
 import { useUIStore } from '@/stores/ui.store';
 import type { PublicInstalledPackage } from 'n8n-workflow';
@@ -124,6 +61,69 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<div :class="$style.cardContainer" data-test-id="community-package-card">
+		<div v-if="loading" :class="$style.cardSkeleton">
+			<n8n-loading :class="$style.loader" variant="p" :rows="1" />
+			<n8n-loading :class="$style.loader" variant="p" :rows="1" />
+		</div>
+		<div v-else-if="communityPackage" :class="$style.packageCard">
+			<div :class="$style.cardInfoContainer">
+				<div :class="$style.cardTitle">
+					<n8n-text :bold="true" size="large">{{ communityPackage.packageName }}</n8n-text>
+				</div>
+				<div :class="$style.cardSubtitle">
+					<n8n-text :bold="true" size="small" color="text-light">
+						{{
+							$locale.baseText('settings.communityNodes.packageNodes.label', {
+								adjustToNumber: communityPackage.installedNodes.length,
+							})
+						}}:&nbsp;
+					</n8n-text>
+					<n8n-text size="small" color="text-light">
+						<span v-for="(node, index) in communityPackage.installedNodes" :key="node.name">
+							{{ node.name
+							}}<span v-if="index != communityPackage.installedNodes.length - 1">,</span>
+						</span>
+					</n8n-text>
+				</div>
+			</div>
+			<div :class="$style.cardControlsContainer">
+				<n8n-text :bold="true" size="large" color="text-light">
+					v{{ communityPackage.installedVersion }}
+				</n8n-text>
+				<n8n-tooltip v-if="communityPackage.failedLoading === true" placement="top">
+					<template #content>
+						<div>
+							{{ $locale.baseText('settings.communityNodes.failedToLoad.tooltip') }}
+						</div>
+					</template>
+					<n8n-icon icon="exclamation-triangle" color="danger" size="large" />
+				</n8n-tooltip>
+				<n8n-tooltip v-else-if="communityPackage.updateAvailable" placement="top">
+					<template #content>
+						<div>
+							{{ $locale.baseText('settings.communityNodes.updateAvailable.tooltip') }}
+						</div>
+					</template>
+					<n8n-button outline label="Update" @click="onUpdateClick" />
+				</n8n-tooltip>
+				<n8n-tooltip v-else placement="top">
+					<template #content>
+						<div>
+							{{ $locale.baseText('settings.communityNodes.upToDate.tooltip') }}
+						</div>
+					</template>
+					<n8n-icon icon="check-circle" color="text-light" size="large" />
+				</n8n-tooltip>
+				<div :class="$style.cardActions">
+					<n8n-action-toggle :actions="packageActions" @action="onAction"></n8n-action-toggle>
+				</div>
+			</div>
+		</div>
+	</div>
+</template>
 
 <style lang="scss" module>
 .cardContainer {

@@ -1,5 +1,5 @@
-import type { SharedWorkflow } from '@db/entities/SharedWorkflow';
-import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import type { SharedWorkflow } from '@/databases/entities/shared-workflow';
+import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import type { SlimProject } from '@/requests';
 
 export interface WorkflowWithSharingsAndCredentials extends Omit<WorkflowEntity, 'shared'> {

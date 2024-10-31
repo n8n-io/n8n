@@ -1,5 +1,6 @@
 import { Service } from 'typedi';
-import { TypedEmitter } from '@/TypedEmitter';
+
+import { TypedEmitter } from '@/typed-emitter';
 
 type ConcurrencyEvents = {
 	'execution-throttled': { executionId: string };

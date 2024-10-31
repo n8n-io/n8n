@@ -29,11 +29,13 @@ import { FontAwesomePlugin } from './plugins/icons';
 import { createPinia, PiniaVuePlugin } from 'pinia';
 import { JsPlumbPlugin } from '@/plugins/jsplumb';
 import { ChartJSPlugin } from '@/plugins/chartjs';
+import { SentryPlugin } from '@/plugins/sentry';
 
 const pinia = createPinia();
 
 const app = createApp(App);
 
+app.use(SentryPlugin);
 app.use(TelemetryPlugin);
 app.use(PiniaVuePlugin);
 app.use(I18nPlugin);

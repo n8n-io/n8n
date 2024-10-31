@@ -1,3 +1,22 @@
+<script setup lang="ts">
+import {
+	REQUEST_NODE_FORM_URL,
+	REGULAR_NODE_CREATOR_VIEW,
+	TRIGGER_NODE_CREATOR_VIEW,
+} from '@/constants';
+import type { NodeFilterType } from '@/Interface';
+
+import NoResultsIcon from './NoResultsIcon.vue';
+
+export interface Props {
+	showIcon?: boolean;
+	showRequest?: boolean;
+	rootView?: NodeFilterType;
+}
+
+defineProps<Props>();
+</script>
+
 <template>
 	<div
 		:class="{ [$style.noResults]: true, [$style.iconless]: !showIcon }"
@@ -43,25 +62,6 @@
 		</div>
 	</div>
 </template>
-
-<script setup lang="ts">
-import {
-	REQUEST_NODE_FORM_URL,
-	REGULAR_NODE_CREATOR_VIEW,
-	TRIGGER_NODE_CREATOR_VIEW,
-} from '@/constants';
-import type { NodeFilterType } from '@/Interface';
-
-import NoResultsIcon from './NoResultsIcon.vue';
-
-export interface Props {
-	showIcon?: boolean;
-	showRequest?: boolean;
-	rootView?: NodeFilterType;
-}
-
-defineProps<Props>();
-</script>
 
 <style lang="scss" module>
 .noResults {

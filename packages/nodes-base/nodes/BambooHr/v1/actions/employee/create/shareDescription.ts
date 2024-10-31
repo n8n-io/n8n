@@ -65,7 +65,7 @@ export const createEmployeeSharedDescription = (sync = false): INodeProperties[]
 			name: 'department',
 			type: 'options',
 			description:
-				'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 			typeOptions: {
 				loadOptionsMethod: 'getDepartments',
 			},
@@ -76,7 +76,7 @@ export const createEmployeeSharedDescription = (sync = false): INodeProperties[]
 			name: 'division',
 			type: 'options',
 			description:
-				'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 			typeOptions: {
 				loadOptionsMethod: 'getDivisions',
 			},
@@ -131,7 +131,7 @@ export const createEmployeeSharedDescription = (sync = false): INodeProperties[]
 			name: 'location',
 			type: 'options',
 			description:
-				'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 			typeOptions: {
 				loadOptionsMethod: 'getEmployeeLocations',
 			},

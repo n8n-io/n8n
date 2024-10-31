@@ -1,7 +1,7 @@
 import workflow from '../fixtures/Manual_wait_set.json';
 import { importWorkflow, visitDemoPage } from '../pages/demo';
-import { WorkflowPage } from '../pages/workflow';
 import { errorToast } from '../pages/notifications';
+import { WorkflowPage } from '../pages/workflow';
 
 const workflowPage = new WorkflowPage();
 

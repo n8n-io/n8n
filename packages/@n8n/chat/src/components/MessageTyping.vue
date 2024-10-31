@@ -1,7 +1,9 @@
 <script lang="ts" setup>
 import { computed, onMounted, ref } from 'vue';
-import { Message } from './index';
+
 import type { ChatMessage } from '@n8n/chat/types';
+
+import { Message } from './index';
 
 const props = withDefaults(
 	defineProps<{

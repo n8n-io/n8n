@@ -1,5 +1,216 @@
+<script lang="ts" setup>
+import type { Ref } from 'vue';
+import { computed, ref, watch } from 'vue';
+import type { ITaskDataConnections, NodeConnectionType, Workflow, ITaskData } from 'n8n-workflow';
+import type { IAiData, IAiDataContent, INodeUi } from '@/Interface';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import NodeIcon from '@/components/NodeIcon.vue';
+import RunDataAiContent from './RunDataAiContent.vue';
+import { ElTree } from 'element-plus';
+
+interface AIResult {
+	node: string;
+	runIndex: number;
+	data: IAiDataContent | undefined;
+}
+interface TreeNode {
+	node: string;
+	id: string;
+	children: TreeNode[];
+	depth: number;
+	startTime: number;
+	runIndex: number;
+}
+export interface Props {
+	node: INodeUi;
+	runIndex?: number;
+	hideTitle?: boolean;
+	slim?: boolean;
+	workflow: Workflow;
+}
+const props = withDefaults(defineProps<Props>(), { runIndex: 0 });
+const workflowsStore = useWorkflowsStore();
+const nodeTypesStore = useNodeTypesStore();
+const selectedRun: Ref<IAiData[]> = ref([]);
+function isTreeNodeSelected(node: TreeNode) {
+	return selectedRun.value.some((run) => run.node === node.node && run.runIndex === node.runIndex);
+}
+
+function getReferencedData(
+	taskData: ITaskData,
+	withInput: boolean,
+	withOutput: boolean,
+): IAiDataContent[] {
+	if (!taskData) {
+		return [];
+	}
+
+	const returnData: IAiDataContent[] = [];
+
+	function addFunction(data: ITaskDataConnections | undefined, inOut: 'input' | 'output') {
+		if (!data) {
+			return;
+		}
+
+		Object.keys(data).map((type) => {
+			returnData.push({
+				data: data[type][0],
+				inOut,
+				type: type as NodeConnectionType,
+				metadata: {
+					executionTime: taskData.executionTime,
+					startTime: taskData.startTime,
+				},
+			});
+		});
+	}
+
+	if (withInput) {
+		addFunction(taskData.inputOverride, 'input');
+	}
+	if (withOutput) {
+		addFunction(taskData.data, 'output');
+	}
+
+	return returnData;
+}
+
+function toggleTreeItem(node: { expanded: boolean }) {
+	node.expanded = !node.expanded;
+}
+
+function onItemClick(data: TreeNode) {
+	const matchingRun = aiData.value?.find(
+		(run) => run.node === data.node && run.runIndex === data.runIndex,
+	);
+	if (!matchingRun) {
+		selectedRun.value = [];
+
+		return;
+	}
+
+	const selectedNodeRun = workflowsStore.getWorkflowResultDataByNodeName(data.node)?.[
+		data.runIndex
+	];
+	if (!selectedNodeRun) {
+		return;
+	}
+	selectedRun.value = [
+		{
+			node: data.node,
+			runIndex: data.runIndex,
+			data: getReferencedData(selectedNodeRun, true, true),
+		},
+	];
+}
+
+function getNodeType(nodeName: string) {
+	const node = workflowsStore.getNodeByName(nodeName);
+	if (!node) {
+		return null;
+	}
+	const nodeType = nodeTypesStore.getNodeType(node?.type);
+
+	return nodeType;
+}
+
+function selectFirst() {
+	if (executionTree.value.length && executionTree.value[0].children.length) {
+		onItemClick(executionTree.value[0].children[0]);
+	}
+}
+
+const createNode = (
+	nodeName: string,
+	currentDepth: number,
+	r?: AIResult,
+	children: TreeNode[] = [],
+): TreeNode => ({
+	node: nodeName,
+	id: nodeName,
+	depth: currentDepth,
+	startTime: r?.data?.metadata?.startTime ?? 0,
+	runIndex: r?.runIndex ?? 0,
+	children,
+});
+
+function getTreeNodeData(nodeName: string, currentDepth: number): TreeNode[] {
+	const connections = props.workflow.connectionsByDestinationNode[nodeName];
+	const resultData = aiData.value?.filter((data) => data.node === nodeName) ?? [];
+
+	if (!connections) {
+		return resultData.map((d) => createNode(nodeName, currentDepth, d));
+	}
+
+	// Get the first level of children
+	const connectedSubNodes = props.workflow.getParentNodes(nodeName, 'ALL_NON_MAIN', 1);
+
+	const children = connectedSubNodes
+		// Only include sub-nodes which have data
+		.filter((name) => aiData.value?.find((data) => data.node === name))
+		.flatMap((name) => getTreeNodeData(name, currentDepth + 1));
+
+	children.sort((a, b) => a.startTime - b.startTime);
+
+	if (resultData.length) {
+		return resultData.map((r) => createNode(nodeName, currentDepth, r, children));
+	}
+
+	return [createNode(nodeName, currentDepth, undefined, children)];
+}
+
+const aiData = computed<AIResult[]>(() => {
+	const result: AIResult[] = [];
+	const connectedSubNodes = props.workflow.getParentNodes(props.node.name, 'ALL_NON_MAIN');
+	const rootNodeResult = workflowsStore.getWorkflowResultDataByNodeName(props.node.name);
+	const rootNodeStartTime = rootNodeResult?.[0]?.startTime ?? 0;
+	const rootNodeEndTime = rootNodeStartTime + (rootNodeResult?.[0]?.executionTime ?? 0);
+
+	connectedSubNodes.forEach((nodeName) => {
+		const nodeRunData = workflowsStore.getWorkflowResultDataByNodeName(nodeName) ?? [];
+
+		nodeRunData.forEach((run, runIndex) => {
+			const referenceData = {
+				data: getReferencedData(run, false, true)[0],
+				node: nodeName,
+				runIndex,
+			};
+
+			result.push(referenceData);
+		});
+	});
+
+	// Sort the data by start time
+	result.sort((a, b) => {
+		const aTime = a.data?.metadata?.startTime ?? 0;
+		const bTime = b.data?.metadata?.startTime ?? 0;
+		return aTime - bTime;
+	});
+
+	// Only show data that is within the root node's execution time
+	// This is because sub-node could be connected to multiple root nodes
+	const currentNodeResult = result.filter((r) => {
+		const startTime = r.data?.metadata?.startTime ?? 0;
+
+		return startTime >= rootNodeStartTime && startTime <= rootNodeEndTime;
+	});
+
+	return currentNodeResult;
+});
+
+const executionTree = computed<TreeNode[]>(() => {
+	const rootNode = props.node;
+
+	const tree = getTreeNodeData(rootNode.name, 1);
+	return tree || [];
+});
+
+watch(() => props.runIndex, selectFirst, { immediate: true });
+</script>
+
 <template>
-	<div v-if="aiData" :class="$style.container">
+	<div v-if="aiData.length > 0" :class="$style.container">
 		<div :class="{ [$style.tree]: true, [$style.slim]: slim }">
 			<ElTree
 				:data="executionTree"
@@ -61,213 +272,6 @@
 		</div>
 	</div>
 </template>
-
-<script lang="ts" setup>
-import type { Ref } from 'vue';
-import { computed, ref, watch } from 'vue';
-import type { ITaskSubRunMetadata, ITaskDataConnections } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
-import type { IAiData, IAiDataContent, INodeUi } from '@/Interface';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import NodeIcon from '@/components/NodeIcon.vue';
-import RunDataAiContent from './RunDataAiContent.vue';
-import { ElTree } from 'element-plus';
-
-interface AIResult {
-	node: string;
-	runIndex: number;
-	data: IAiDataContent | undefined;
-}
-interface TreeNode {
-	node: string;
-	id: string;
-	children: TreeNode[];
-	depth: number;
-	startTime: number;
-	runIndex: number;
-}
-export interface Props {
-	node: INodeUi;
-	runIndex: number;
-	hideTitle?: boolean;
-	slim?: boolean;
-}
-const props = withDefaults(defineProps<Props>(), { runIndex: 0 });
-const workflowsStore = useWorkflowsStore();
-const nodeTypesStore = useNodeTypesStore();
-const selectedRun: Ref<IAiData[]> = ref([]);
-
-function isTreeNodeSelected(node: TreeNode) {
-	return selectedRun.value.some((run) => run.node === node.node && run.runIndex === node.runIndex);
-}
-
-function getReferencedData(
-	reference: ITaskSubRunMetadata,
-	withInput: boolean,
-	withOutput: boolean,
-): IAiDataContent[] {
-	const resultData = workflowsStore.getWorkflowResultDataByNodeName(reference.node);
-
-	if (!resultData?.[reference.runIndex]) {
-		return [];
-	}
-
-	const taskData = resultData[reference.runIndex];
-
-	if (!taskData) {
-		return [];
-	}
-
-	const returnData: IAiDataContent[] = [];
-
-	function addFunction(data: ITaskDataConnections | undefined, inOut: 'input' | 'output') {
-		if (!data) {
-			return;
-		}
-
-		Object.keys(data).map((type) => {
-			returnData.push({
-				data: data[type][0],
-				inOut,
-				type: type as NodeConnectionType,
-				metadata: {
-					executionTime: taskData.executionTime,
-					startTime: taskData.startTime,
-				},
-			});
-		});
-	}
-
-	if (withInput) {
-		addFunction(taskData.inputOverride, 'input');
-	}
-	if (withOutput) {
-		addFunction(taskData.data, 'output');
-	}
-
-	return returnData;
-}
-
-function toggleTreeItem(node: { expanded: boolean }) {
-	node.expanded = !node.expanded;
-}
-
-function onItemClick(data: TreeNode) {
-	const matchingRun = aiData.value?.find(
-		(run) => run.node === data.node && run.runIndex === data.runIndex,
-	);
-	if (!matchingRun) {
-		selectedRun.value = [];
-
-		return;
-	}
-	selectedRun.value = [
-		{
-			node: data.node,
-			runIndex: data.runIndex,
-			data: getReferencedData(
-				{
-					node: data.node,
-					runIndex: data.runIndex,
-				},
-				true,
-				true,
-			),
-		},
-	];
-}
-
-function getNodeType(nodeName: string) {
-	const node = workflowsStore.getNodeByName(nodeName);
-	if (!node) {
-		return null;
-	}
-	const nodeType = nodeTypesStore.getNodeType(node?.type);
-
-	return nodeType;
-}
-
-function selectFirst() {
-	if (executionTree.value.length && executionTree.value[0].children.length) {
-		onItemClick(executionTree.value[0].children[0]);
-	}
-}
-
-const createNode = (
-	nodeName: string,
-	currentDepth: number,
-	r?: AIResult,
-	children: TreeNode[] = [],
-): TreeNode => ({
-	node: nodeName,
-	id: nodeName,
-	depth: currentDepth,
-	startTime: r?.data?.metadata?.startTime ?? 0,
-	runIndex: r?.runIndex ?? 0,
-	children,
-});
-
-function getTreeNodeData(nodeName: string, currentDepth: number): TreeNode[] {
-	const { connectionsByDestinationNode } = workflowsStore.getCurrentWorkflow();
-	const connections = connectionsByDestinationNode[nodeName];
-	// eslint-disable-next-line @typescript-eslint/no-use-before-define
-	const resultData = aiData.value?.filter((data) => data.node === nodeName) ?? [];
-
-	if (!connections) {
-		return resultData.map((d) => createNode(nodeName, currentDepth, d));
-	}
-
-	const nonMainConnectionsKeys = Object.keys(connections).filter(
-		(key) => key !== NodeConnectionType.Main,
-	);
-	const children = nonMainConnectionsKeys.flatMap((key) =>
-		connections[key][0].flatMap((node) => getTreeNodeData(node.node, currentDepth + 1)),
-	);
-
-	if (resultData.length) {
-		return resultData.map((r) => createNode(nodeName, currentDepth, r, children));
-	}
-
-	children.sort((a, b) => a.startTime - b.startTime);
-
-	return [createNode(nodeName, currentDepth, undefined, children)];
-}
-
-const aiData = computed<AIResult[] | undefined>(() => {
-	const resultData = workflowsStore.getWorkflowResultDataByNodeName(props.node.name);
-
-	if (!resultData || !Array.isArray(resultData)) {
-		return;
-	}
-
-	const subRun = resultData[props.runIndex].metadata?.subRun;
-	if (!Array.isArray(subRun)) {
-		return;
-	}
-	// Extend the subRun with the data and sort by adding execution time + startTime and comparing them
-	const subRunWithData = subRun.flatMap((run) =>
-		getReferencedData(run, false, true).map((data) => ({ ...run, data })),
-	);
-
-	subRunWithData.sort((a, b) => {
-		const aTime = a.data?.metadata?.startTime || 0;
-		const bTime = b.data?.metadata?.startTime || 0;
-		return aTime - bTime;
-	});
-
-	return subRunWithData;
-});
-
-const executionTree = computed<TreeNode[]>(() => {
-	const rootNode = props.node;
-
-	const tree = getTreeNodeData(rootNode.name, 0);
-	return tree || [];
-});
-
-watch(() => props.runIndex, selectFirst, { immediate: true });
-</script>
 
 <style lang="scss" module>
 .treeToggle {

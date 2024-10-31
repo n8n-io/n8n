@@ -1,23 +1,3 @@
-<template>
-	<n8n-text v-if="hint" size="small" color="text-base" tag="div">
-		<div
-			v-if="!renderHTML"
-			:class="{
-				[$style.singleline]: singleLine,
-				[$style.highlight]: highlight,
-			}"
-		>
-			<span data-test-id="parameter-input-hint" v-html="simplyText"></span>
-		</div>
-		<div
-			v-else
-			ref="hintTextRef"
-			:class="{ [$style.singleline]: singleLine, [$style.highlight]: highlight }"
-			v-html="sanitizeHtml(hint)"
-		></div>
-	</n8n-text>
-</template>
-
 <script setup lang="ts">
 import { sanitizeHtml } from '@/utils/htmlUtils';
 import { computed, onMounted, ref } from 'vue';
@@ -56,6 +36,26 @@ const simplyText = computed(() => {
 	return '';
 });
 </script>
+
+<template>
+	<n8n-text v-if="hint" size="small" color="text-base" tag="div">
+		<div
+			v-if="!renderHTML"
+			:class="{
+				[$style.singleline]: singleLine,
+				[$style.highlight]: highlight,
+			}"
+		>
+			<span data-test-id="parameter-input-hint" v-n8n-html="simplyText"></span>
+		</div>
+		<div
+			v-else
+			ref="hintTextRef"
+			:class="{ [$style.singleline]: singleLine, [$style.highlight]: highlight }"
+			v-n8n-html="sanitizeHtml(hint)"
+		></div>
+	</n8n-text>
+</template>
 
 <style lang="scss" module>
 .singleline {

@@ -7,6 +7,7 @@ import { faker } from '@faker-js/faker';
 import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import type { useNodeTypesStore } from '../../stores/nodeTypes.store';
+import { cleanupAppModals, createAppModals } from '@/__tests__/utils';
 
 let mockNdvState: Partial<ReturnType<typeof useNDVStore>>;
 let mockNodeTypesState: Partial<ReturnType<typeof useNodeTypesStore>>;
@@ -53,10 +54,16 @@ describe('ParameterInput.vue', () => {
 				type: 'test',
 				typeVersion: 1,
 			},
+			isNDVDataEmpty: vi.fn(() => false),
 		};
 		mockNodeTypesState = {
 			allNodeTypes: [],
 		};
+		createAppModals();
+	});
+
+	afterEach(() => {
+		cleanupAppModals();
 	});
 
 	test('should render an options parameter (select)', async () => {
@@ -159,6 +166,49 @@ describe('ParameterInput.vue', () => {
 		expect(input).toBeInTheDocument();
 
 		// Nothing should be emitted
+		expect(emitted('update')).toBeUndefined();
+	});
+
+	test('should show message when can not load options without credentials', async () => {
+		mockNodeTypesState.getNodeParameterOptions = vi.fn(async () => {
+			throw new Error('Node does not have any credentials set');
+		});
+
+		// @ts-expect-error Readonly property
+		mockNodeTypesState.getNodeType = vi.fn().mockReturnValue({
+			displayName: 'Test',
+			credentials: [
+				{
+					name: 'openAiApi',
+					required: true,
+				},
+			],
+		});
+
+		const { emitted, container, getByTestId } = renderComponent(ParameterInput, {
+			pinia: createTestingPinia(),
+			props: {
+				path: 'columns',
+				parameter: {
+					displayName: 'Columns',
+					name: 'columns',
+					type: 'options',
+					typeOptions: { loadOptionsMethod: 'getColumnsMultiOptions' },
+				},
+				modelValue: 'id',
+			},
+		});
+
+		await waitFor(() => expect(getByTestId('parameter-input-field')).toBeInTheDocument());
+
+		const input = container.querySelector('input') as HTMLInputElement;
+		expect(input).toBeInTheDocument();
+
+		expect(mockNodeTypesState.getNodeParameterOptions).toHaveBeenCalled();
+
+		expect(input.value.toLowerCase()).not.toContain('error');
+		expect(input).toHaveValue('Set up credential to see options');
+
 		expect(emitted('update')).toBeUndefined();
 	});
 });

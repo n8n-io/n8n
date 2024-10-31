@@ -1,9 +1,9 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import {
 	NodeConnectionType,
-	type IExecuteFunctions,
 	type INodeType,
 	type INodeTypeDescription,
+	type ISupplyDataFunctions,
 	type SupplyData,
 	type ILoadOptionsFunctions,
 	type JsonObject,
@@ -12,6 +12,7 @@ import {
 import { ChatVertexAI } from '@langchain/google-vertexai';
 import type { SafetySetting } from '@google/generative-ai';
 import { ProjectsClient } from '@google-cloud/resource-manager';
+import { formatPrivateKey } from 'n8n-nodes-base/dist/utils/utilities';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 import { N8nLlmTracing } from '../N8nLlmTracing';
 import { additionalOptions } from '../gemini-common/additional-options';
@@ -32,7 +33,7 @@ export class LmChatGoogleVertex implements INodeType {
 		codex: {
 			categories: ['AI'],
 			subcategories: {
-				AI: ['Language Models'],
+				AI: ['Language Models', 'Root Nodes'],
 				'Language Models': ['Chat Models (Recommended)'],
 			},
 			resources: {
@@ -97,11 +98,13 @@ export class LmChatGoogleVertex implements INodeType {
 				const results: Array<{ name: string; value: string }> = [];
 
 				const credentials = await this.getCredentials('googleApi');
+				const privateKey = formatPrivateKey(credentials.privateKey as string);
+				const email = (credentials.email as string).trim();
 
 				const client = new ProjectsClient({
 					credentials: {
-						client_email: credentials.email as string,
-						private_key: credentials.privateKey as string,
+						client_email: email,
+						private_key: privateKey,
 					},
 				});
 
@@ -121,8 +124,10 @@ export class LmChatGoogleVertex implements INodeType {
 		},
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials('googleApi');
+		const privateKey = formatPrivateKey(credentials.privateKey as string);
+		const email = (credentials.email as string).trim();
 
 		const modelName = this.getNodeParameter('modelName', itemIndex) as string;
 
@@ -153,8 +158,8 @@ export class LmChatGoogleVertex implements INodeType {
 				authOptions: {
 					projectId,
 					credentials: {
-						client_email: credentials.email as string,
-						private_key: credentials.privateKey as string,
+						client_email: email,
+						private_key: privateKey,
 					},
 				},
 				model: modelName,

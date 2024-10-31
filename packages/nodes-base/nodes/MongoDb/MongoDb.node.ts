@@ -9,7 +9,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { ApplicationError } from 'n8n-workflow';
+import { ApplicationError, NodeConnectionType } from 'n8n-workflow';
 
 import type {
 	FindOneAndReplaceOptions,
@@ -43,8 +43,9 @@ export class MongoDb implements INodeType {
 		defaults: {
 			name: 'MongoDB',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
 		credentials: [
 			{
 				name: 'mongoDb',
@@ -80,7 +81,6 @@ export class MongoDb implements INodeType {
 					const { databases } = await client.db().admin().listDatabases();
 
 					if (!(databases as IDataObject[]).map((db) => db.name).includes(database)) {
-						// eslint-disable-next-line n8n-nodes-base/node-execute-block-wrong-error-thrown
 						throw new ApplicationError(`Database "${database}" does not exist`, {
 							level: 'warning',
 						});
@@ -142,7 +142,7 @@ export class MongoDb implements INodeType {
 						returnData.push({ json: entry, pairedItem: fallbackPairedItems ?? [{ item: i }] });
 					}
 				} catch (error) {
-					if (this.continueOnFail(error)) {
+					if (this.continueOnFail()) {
 						returnData.push({
 							json: { error: (error as JsonObject).message },
 							pairedItem: fallbackPairedItems ?? [{ item: i }],
@@ -166,7 +166,7 @@ export class MongoDb implements INodeType {
 						pairedItem: fallbackPairedItems ?? [{ item: i }],
 					});
 				} catch (error) {
-					if (this.continueOnFail(error)) {
+					if (this.continueOnFail()) {
 						returnData.push({
 							json: { error: (error as JsonObject).message },
 							pairedItem: fallbackPairedItems ?? [{ item: i }],
@@ -196,6 +196,8 @@ export class MongoDb implements INodeType {
 					const options = this.getNodeParameter('options', i);
 					const limit = options.limit as number;
 					const skip = options.skip as number;
+					const projection =
+						options.projection && (JSON.parse(options.projection as string) as Document);
 					const sort = options.sort && (JSON.parse(options.sort as string) as Sort);
 
 					if (skip > 0) {
@@ -208,13 +210,17 @@ export class MongoDb implements INodeType {
 						query = query.sort(sort);
 					}
 
+					if (projection && projection instanceof Document) {
+						query = query.project(projection);
+					}
+
 					const queryResult = await query.toArray();
 
 					for (const entry of queryResult) {
 						returnData.push({ json: entry, pairedItem: fallbackPairedItems ?? [{ item: i }] });
 					}
 				} catch (error) {
-					if (this.continueOnFail(error)) {
+					if (this.continueOnFail()) {
 						returnData.push({
 							json: { error: (error as JsonObject).message },
 							pairedItem: fallbackPairedItems ?? [{ item: i }],
@@ -254,7 +260,7 @@ export class MongoDb implements INodeType {
 						.collection(this.getNodeParameter('collection', 0) as string)
 						.findOneAndReplace(filter, item, updateOptions as FindOneAndReplaceOptions);
 				} catch (error) {
-					if (this.continueOnFail(error)) {
+					if (this.continueOnFail()) {
 						item.json = { error: (error as JsonObject).message };
 						continue;
 					}
@@ -296,7 +302,7 @@ export class MongoDb implements INodeType {
 						.collection(this.getNodeParameter('collection', 0) as string)
 						.findOneAndUpdate(filter, { $set: item }, updateOptions as FindOneAndUpdateOptions);
 				} catch (error) {
-					if (this.continueOnFail(error)) {
+					if (this.continueOnFail()) {
 						item.json = { error: (error as JsonObject).message };
 						continue;
 					}
@@ -335,7 +341,7 @@ export class MongoDb implements INodeType {
 					});
 				}
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					responseData = [{ error: (error as JsonObject).message }];
 				} else {
 					throw error;
@@ -376,7 +382,7 @@ export class MongoDb implements INodeType {
 						.collection(this.getNodeParameter('collection', 0) as string)
 						.updateOne(filter, { $set: item }, updateOptions as UpdateOptions);
 				} catch (error) {
-					if (this.continueOnFail(error)) {
+					if (this.continueOnFail()) {
 						item.json = { error: (error as JsonObject).message };
 						continue;
 					}

@@ -1,6 +1,6 @@
-import { N8N_AUTH_COOKIE } from '../constants';
 import { BasePage } from './base';
 import { WorkflowsPage } from './workflows';
+import { N8N_AUTH_COOKIE } from '../constants';
 
 export class SigninPage extends BasePage {
 	url = '/signin';

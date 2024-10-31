@@ -22,6 +22,10 @@
 	background-color: var(--color-dialog-overlay-background-dark);
 }
 
+#app-modals .el-overlay {
+	position: absolute;
+}
+
 .el-dialog {
 	border: var(--border-base);
 	box-shadow: 0px 6px 16px rgb(68 28 23 / 6%);

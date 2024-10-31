@@ -44,15 +44,7 @@ interface UpdatedWorkflowSettingsEventData {
 interface NodeTypeChangedEventData {
 	nodeSubtitle?: string;
 }
-interface InsertedItemFromExpEditorEventData {
-	parameter: {
-		displayName: string;
-	};
-	value: string;
-	selectedItem: {
-		variable: string;
-	};
-}
+
 interface ExpressionEditorEventsData {
 	dialogVisible: boolean;
 	value: string;
@@ -180,7 +172,6 @@ export interface ExternalHooks {
 		>;
 	};
 	expressionEdit: {
-		itemSelected: Array<ExternalHooksMethod<InsertedItemFromExpEditorEventData>>;
 		dialogVisibleChanged: Array<ExternalHooksMethod<ExpressionEditorEventsData>>;
 		closeDialog: Array<ExternalHooksMethod<ITelemetryTrackProperties>>;
 		mounted: Array<
@@ -230,9 +221,6 @@ export interface ExternalHooks {
 	};
 	userInfo: {
 		mounted: Array<ExternalHooksMethod<{ userInfoRef: HTMLElement }>>;
-	};
-	variableSelectorItem: {
-		mounted: Array<ExternalHooksMethod<{ variableSelectorItemRef: HTMLElement }>>;
 	};
 	mainSidebar: {
 		mounted: Array<ExternalHooksMethod<{ userRef: Element }>>;
@@ -314,8 +302,10 @@ export type ExternalHooksKey = {
 	[K in keyof ExternalHooks]: `${K}.${Extract<keyof ExternalHooks[K], string>}`;
 }[keyof ExternalHooks];
 
-type ExtractHookMethodArray<P extends keyof ExternalHooks, S extends keyof ExternalHooks[P]> =
-	ExternalHooks[P][S] extends Array<infer U> ? U : never;
+type ExtractHookMethodArray<
+	P extends keyof ExternalHooks,
+	S extends keyof ExternalHooks[P],
+> = ExternalHooks[P][S] extends Array<infer U> ? U : never;
 
 type ExtractHookMethodFunction<T> = T extends ExternalHooksMethod ? T : never;
 

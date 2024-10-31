@@ -1,23 +1,3 @@
-<template>
-	<div v-if="windowVisible" :class="['binary-data-window', binaryData?.fileType]">
-		<n8n-button
-			size="small"
-			class="binary-data-window-back"
-			:title="$locale.baseText('binaryDataDisplay.backToOverviewPage')"
-			icon="arrow-left"
-			:label="$locale.baseText('binaryDataDisplay.backToList')"
-			@click.stop="closeWindow"
-		/>
-
-		<div class="binary-data-window-wrapper">
-			<div v-if="!binaryData">
-				{{ $locale.baseText('binaryDataDisplay.noDataFoundToDisplay') }}
-			</div>
-			<BinaryDataDisplayEmbed v-else :binary-data="binaryData" />
-		</div>
-	</div>
-</template>
-
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { IBinaryData, IRunData } from 'n8n-workflow';
@@ -88,6 +68,26 @@ function closeWindow() {
 	return false;
 }
 </script>
+
+<template>
+	<div v-if="windowVisible" :class="['binary-data-window', binaryData?.fileType]">
+		<n8n-button
+			size="small"
+			class="binary-data-window-back"
+			:title="$locale.baseText('binaryDataDisplay.backToOverviewPage')"
+			icon="arrow-left"
+			:label="$locale.baseText('binaryDataDisplay.backToList')"
+			@click.stop="closeWindow"
+		/>
+
+		<div class="binary-data-window-wrapper">
+			<div v-if="!binaryData">
+				{{ $locale.baseText('binaryDataDisplay.noDataFoundToDisplay') }}
+			</div>
+			<BinaryDataDisplayEmbed v-else :binary-data="binaryData" />
+		</div>
+	</div>
+</template>
 
 <style lang="scss">
 .binary-data-window {

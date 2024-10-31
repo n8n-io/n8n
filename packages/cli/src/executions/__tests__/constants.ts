@@ -1,5 +1,6 @@
-import type { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
 import { NodeConnectionType } from 'n8n-workflow';
+
+import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 
 /**
  * Workflow producing an execution whose data will be truncated by an instance crash.

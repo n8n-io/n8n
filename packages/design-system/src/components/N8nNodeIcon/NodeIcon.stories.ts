@@ -1,5 +1,6 @@
-import N8nNodeIcon from './NodeIcon.vue';
 import type { StoryFn } from '@storybook/vue3';
+
+import N8nNodeIcon from './NodeIcon.vue';
 
 export default {
 	title: 'Atoms/NodeIcon',

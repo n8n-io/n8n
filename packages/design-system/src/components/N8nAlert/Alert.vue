@@ -1,30 +1,6 @@
-<template>
-	<div :class="alertBoxClassNames" role="alert">
-		<div :class="$style.content">
-			<span v-if="showIcon || $slots.icon" :class="$style.icon">
-				<N8nIcon v-if="showIcon" :icon="icon" />
-				<slot v-else-if="$slots.icon" name="icon" />
-			</span>
-			<div :class="$style.text">
-				<div v-if="$slots.title || title" :class="$style.title">
-					<slot name="title">{{ title }}</slot>
-				</div>
-				<div
-					v-if="$slots.default || description"
-					:class="{ [$style.description]: true, [$style.hasTitle]: $slots.title || title }"
-				>
-					<slot>{{ description }}</slot>
-				</div>
-			</div>
-		</div>
-		<div v-if="$slots.aside" :class="$style.aside">
-			<slot name="aside" />
-		</div>
-	</div>
-</template>
-
 <script lang="ts" setup>
 import { computed, useCssModule } from 'vue';
+
 import N8nIcon from '../N8nIcon';
 
 type AlertProps = {
@@ -75,6 +51,31 @@ const alertBoxClassNames = computed(() => {
 	return classNames;
 });
 </script>
+
+<template>
+	<div :class="alertBoxClassNames" role="alert">
+		<div :class="$style.content">
+			<span v-if="showIcon || $slots.icon" :class="$style.icon">
+				<N8nIcon v-if="showIcon" :icon="icon" />
+				<slot v-else-if="$slots.icon" name="icon" />
+			</span>
+			<div :class="$style.text">
+				<div v-if="$slots.title || title" :class="$style.title">
+					<slot name="title">{{ title }}</slot>
+				</div>
+				<div
+					v-if="$slots.default || description"
+					:class="{ [$style.description]: true, [$style.hasTitle]: $slots.title || title }"
+				>
+					<slot>{{ description }}</slot>
+				</div>
+			</div>
+		</div>
+		<div v-if="$slots.aside" :class="$style.aside">
+			<slot name="aside" />
+		</div>
+	</div>
+</template>
 
 <style lang="scss" module>
 @import '../../css/common/var.scss';

@@ -8,6 +8,7 @@ export const DEFAULT_FILTER_OPTIONS: FilterOptionsValue = {
 	caseSensitive: true,
 	leftValue: '',
 	typeValidation: 'strict',
+	version: 1,
 };
 
 export const OPERATORS_BY_ID = {

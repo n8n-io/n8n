@@ -1,17 +1,18 @@
-import Container from 'typedi';
 import { mock } from 'jest-mock-extended';
-import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
-import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
-import { WorkflowRepository } from '@db/repositories/workflow.repository';
-import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
-import { Telemetry } from '@/telemetry';
+import Container from 'typedi';
+
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { OrchestrationService } from '@/services/orchestration.service';
+import { Telemetry } from '@/telemetry';
 import { WorkflowService } from '@/workflows/workflow.service';
 
-import * as testDb from '../shared/testDb';
 import { mockInstance } from '../../shared/mocking';
 import { createOwner } from '../shared/db/users';
 import { createWorkflow } from '../shared/db/workflows';
+import * as testDb from '../shared/test-db';
 
 let workflowService: WorkflowService;
 const activeWorkflowManager = mockInstance(ActiveWorkflowManager);

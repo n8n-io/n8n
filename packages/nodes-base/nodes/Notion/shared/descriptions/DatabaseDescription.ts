@@ -1,4 +1,10 @@
 import type { INodeProperties } from 'n8n-workflow';
+import {
+	databaseUrlExtractionRegexp,
+	databaseUrlValidationRegexp,
+	idExtractionRegexp,
+	idValidationRegexp,
+} from '../constants';
 
 export const databaseOperations: INodeProperties[] = [
 	{
@@ -97,8 +103,7 @@ export const databaseFields: INodeProperties[] = [
 					{
 						type: 'regex',
 						properties: {
-							regex:
-								'(?:https|http)://www.notion.so/(?:[a-z0-9-]{2,}/)?([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12}).*',
+							regex: databaseUrlValidationRegexp,
 							errorMessage:
 								'Not a valid Notion Database URL. Hint: use the URL of the database itself, not a page containing it.',
 						},
@@ -106,8 +111,7 @@ export const databaseFields: INodeProperties[] = [
 				],
 				extractValue: {
 					type: 'regex',
-					regex:
-						'(?:https|http)://www.notion.so/(?:[a-z0-9-]{2,}/)?([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12})',
+					regex: databaseUrlExtractionRegexp,
 				},
 			},
 			{
@@ -119,15 +123,14 @@ export const databaseFields: INodeProperties[] = [
 					{
 						type: 'regex',
 						properties: {
-							regex:
-								'^(([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12})|([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}))[ \t]*',
+							regex: idValidationRegexp,
 							errorMessage: 'Not a valid Notion Database ID',
 						},
 					},
 				],
 				extractValue: {
 					type: 'regex',
-					regex: '^([0-9a-f]{8}-?[0-9a-f]{4}-?4[0-9a-f]{3}-?[89ab][0-9a-f]{3}-?[0-9a-f]{12})',
+					regex: idExtractionRegexp,
 				},
 				url: '=https://www.notion.so/{{$value.replace(/-/g, "")}}',
 			},

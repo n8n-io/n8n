@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -8,8 +7,10 @@ import type {
 	INodeTypeDescription,
 	INodeTypeBaseDescription,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
+import set from 'lodash/set';
+import { oldVersionNotice } from '../../../utils/descriptions';
 import {
 	formatFeed,
 	formatResults,
@@ -34,8 +35,6 @@ import {
 } from './descriptions';
 
 import type { SplunkFeedResponse } from './types';
-import set from 'lodash/set';
-import { oldVersionNotice } from '../../../utils/descriptions';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Splunk',
@@ -48,8 +47,8 @@ const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'Splunk',
 	},
-	inputs: ['main'],
-	outputs: ['main'],
+	inputs: [NodeConnectionType.Main],
+	outputs: [NodeConnectionType.Main],
 	credentials: [
 		{
 			name: 'splunkApi',

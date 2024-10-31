@@ -576,12 +576,8 @@ export const routes: RouteRecordRaw[] = [
 					settingsView: SettingsSso,
 				},
 				meta: {
-					middleware: ['authenticated', 'rbac', 'custom'],
+					middleware: ['authenticated', 'rbac'],
 					middlewareOptions: {
-						custom: () => {
-							const settingsStore = useSettingsStore();
-							return !settingsStore.isDesktopDeployment;
-						},
 						rbac: {
 							scope: 'saml:manage',
 						},
@@ -693,11 +689,7 @@ export const routes: RouteRecordRaw[] = [
 				custom: () => {
 					const settingsStore = useSettingsStore();
 					const ssoStore = useSSOStore();
-					return (
-						ssoStore.isEnterpriseSamlEnabled &&
-						!settingsStore.isCloudDeployment &&
-						!settingsStore.isDesktopDeployment
-					);
+					return ssoStore.isEnterpriseSamlEnabled && !settingsStore.isCloudDeployment;
 				},
 			},
 			telemetry: {
@@ -739,7 +731,7 @@ function withCanvasReadOnlyMeta(route: RouteRecordRaw) {
 }
 
 const router = createRouter({
-	history: createWebHistory(import.meta.env.DEV ? '/' : window.BASE_PATH ?? '/'),
+	history: createWebHistory(import.meta.env.DEV ? '/' : (window.BASE_PATH ?? '/')),
 	scrollBehavior(to: RouteLocationNormalized, _, savedPosition) {
 		// saved position == null means the page is NOT visited from history (back button)
 		if (savedPosition === null && to.name === VIEWS.TEMPLATES && to.meta?.setScrollPosition) {

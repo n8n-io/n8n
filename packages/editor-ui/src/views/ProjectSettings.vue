@@ -8,7 +8,7 @@ import type { IUser } from '@/Interface';
 import { useI18n } from '@/composables/useI18n';
 import { useProjectsStore } from '@/stores/projects.store';
 import ProjectTabs from '@/components/Projects/ProjectTabs.vue';
-import type { Project, ProjectRelation } from '@/types/projects.types';
+import { type Project, type ProjectRelation, ProjectTypes } from '@/types/projects.types';
 import { useToast } from '@/composables/useToast';
 import { VIEWS } from '@/constants';
 import ProjectDeleteDialog from '@/components/Projects/ProjectDeleteDialog.vue';
@@ -17,6 +17,8 @@ import { useRolesStore } from '@/stores/roles.store';
 import type { ProjectRole } from '@/types/roles.types';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
+import ResourceListHeader from '@/components/layouts/ResourceListHeader.vue';
 
 type FormDataDiff = {
 	name?: string;
@@ -33,6 +35,7 @@ const cloudPlanStore = useCloudPlanStore();
 const toast = useToast();
 const router = useRouter();
 const telemetry = useTelemetry();
+const documentTitle = useDocumentTitle();
 const dialogVisible = ref(false);
 const upgradeDialogVisible = ref(false);
 
@@ -43,6 +46,7 @@ const formData = ref<Pick<Project, 'name' | 'relations'>>({
 	relations: [],
 });
 const projectRoleTranslations = ref<{ [key: string]: string }>({
+	'project:viewer': locale.baseText('projects.settings.role.viewer'),
 	'project:editor': locale.baseText('projects.settings.role.editor'),
 	'project:admin': locale.baseText('projects.settings.role.admin'),
 });
@@ -59,7 +63,9 @@ const usersList = computed(() =>
 );
 
 const projects = computed(() =>
-	projectsStore.teamProjects.filter((project) => project.id !== projectsStore.currentProjectId),
+	projectsStore.availableProjects.filter(
+		(project) => project.id !== projectsStore.currentProjectId,
+	),
 );
 const projectRoles = computed(() =>
 	rolesStore.processedProjectRoles.map((role) => ({
@@ -199,7 +205,7 @@ const onSubmit = async () => {
 };
 
 const onDelete = async () => {
-	await projectsStore.getAllProjects();
+	await projectsStore.getAvailableProjects();
 	dialogVisible.value = true;
 };
 
@@ -242,11 +248,32 @@ watch(
 	{ immediate: true },
 );
 
+const headerIcon = computed(() => {
+	if (projectsStore.currentProject?.type === ProjectTypes.Personal) {
+		return 'user';
+	} else if (projectsStore.currentProject?.name) {
+		return 'layer-group';
+	} else {
+		return 'home';
+	}
+});
+
+const projectName = computed(() => {
+	if (!projectsStore.currentProject) {
+		return locale.baseText('projects.menu.home');
+	} else if (projectsStore.currentProject.type === ProjectTypes.Personal) {
+		return locale.baseText('projects.menu.personal');
+	} else {
+		return projectsStore.currentProject.name;
+	}
+});
+
 onBeforeMount(async () => {
 	await usersStore.fetchUsers();
 });
 
 onMounted(() => {
+	documentTitle.set(locale.baseText('projects.settings'));
 	selectProjectNameIfMatchesDefault();
 });
 </script>
@@ -254,6 +281,11 @@ onMounted(() => {
 <template>
 	<div :class="$style.projectSettings">
 		<div :class="$style.header">
+			<ResourceListHeader :icon="headerIcon" data-test-id="list-layout-header">
+				<template #title>
+					{{ projectName }}
+				</template>
+			</ResourceListHeader>
 			<ProjectTabs />
 		</div>
 		<form @submit.prevent="onSubmit">
@@ -302,6 +334,7 @@ onMounted(() => {
 								class="mr-2xs"
 								:model-value="user?.role || projectRoles[0].role"
 								size="small"
+								data-test-id="projects-settings-user-role-select"
 								@update:model-value="onRoleAction(user, $event)"
 							>
 								<N8nOption

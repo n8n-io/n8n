@@ -6,6 +6,7 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import { mailerliteApiRequest } from './GenericFunctions';
 
@@ -22,7 +23,7 @@ export class MailerLiteTrigger implements INodeType {
 			name: 'MailerLite Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'mailerLiteApi',

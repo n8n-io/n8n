@@ -28,11 +28,14 @@ import ItemsRenderer from '../Renderers/ItemsRenderer.vue';
 import CategorizedItemsRenderer from '../Renderers/CategorizedItemsRenderer.vue';
 import type { IDataObject } from 'n8n-workflow';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { useI18n } from '@/composables/useI18n';
+import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 
 const emit = defineEmits<{
 	nodeTypeSelected: [value: [actionKey: string, nodeName: string] | [nodeName: string]];
 }>();
 const telemetry = useTelemetry();
+const i18n = useI18n();
 
 const { userActivated } = useUsersStore();
 const { popViewStack, updateCurrentViewStack } = useViewStacks();
@@ -44,6 +47,8 @@ const {
 	parseCategoryActions,
 	actionsCategoryLocales,
 } = useActions();
+
+const nodeCreatorStore = useNodeCreatorStore();
 
 // We only inject labels if search is empty
 const parsedTriggerActions = computed(() =>
@@ -180,7 +185,7 @@ function trackActionsView() {
 	};
 
 	void useExternalHooks().run('nodeCreateList.onViewActions', trackingPayload);
-	telemetry?.trackNodesPanel('nodeCreateList.onViewActions', trackingPayload);
+	nodeCreatorStore.onViewActions(trackingPayload);
 }
 
 function resetSearch() {
@@ -204,7 +209,7 @@ function addHttpNode() {
 	void useExternalHooks().run('nodeCreateList.onActionsCustmAPIClicked', {
 		app_identifier,
 	});
-	telemetry?.trackNodesPanel('nodeCreateList.onActionsCustmAPIClicked', { app_identifier });
+	nodeCreatorStore.onActionsCustomAPIClicked({ app_identifier });
 }
 
 // Anonymous component to handle triggers and actions rendering order
@@ -238,9 +243,10 @@ onMounted(() => {
 			<template v-if="isTriggerRootView || parsedTriggerActionsBaseline.length !== 0" #triggers>
 				<!-- Triggers Category -->
 				<CategorizedItemsRenderer
+					v-memo="[search]"
 					:elements="parsedTriggerActions"
 					:category="triggerCategoryName"
-					:mouse-over-tooltip="$locale.baseText('nodeCreator.actionsTooltip.triggersStartWorkflow')"
+					:mouse-over-tooltip="i18n.baseText('nodeCreator.actionsTooltip.triggersStartWorkflow')"
 					is-trigger-category
 					:expanded="isTriggerRootView || parsedActionActions.length === 0"
 					@selected="onSelected"
@@ -255,8 +261,8 @@ onMounted(() => {
 							data-test-id="actions-panel-no-triggers-callout"
 						>
 							<span
-								v-html="
-									$locale.baseText('nodeCreator.actionsCallout.noTriggerItems', {
+								v-n8n-html="
+									i18n.baseText('nodeCreator.actionsCallout.noTriggerItems', {
 										interpolate: { nodeName: subcategory ?? '' },
 									})
 								"
@@ -268,7 +274,7 @@ onMounted(() => {
 						<p
 							:class="$style.resetSearch"
 							@click="resetSearch"
-							v-html="$locale.baseText('nodeCreator.actionsCategory.noMatchingTriggers')"
+							v-n8n-html="i18n.baseText('nodeCreator.actionsCategory.noMatchingTriggers')"
 						/>
 					</template>
 				</CategorizedItemsRenderer>
@@ -276,9 +282,10 @@ onMounted(() => {
 			<template v-if="!isTriggerRootView || parsedActionActionsBaseline.length !== 0" #actions>
 				<!-- Actions Category -->
 				<CategorizedItemsRenderer
+					v-memo="[search]"
 					:elements="parsedActionActions"
 					:category="actionsCategoryLocales.actions"
-					:mouse-over-tooltip="$locale.baseText('nodeCreator.actionsTooltip.actionsPerformStep')"
+					:mouse-over-tooltip="i18n.baseText('nodeCreator.actionsTooltip.actionsPerformStep')"
 					:expanded="!isTriggerRootView || parsedTriggerActions.length === 0"
 					@selected="onSelected"
 				>
@@ -289,14 +296,14 @@ onMounted(() => {
 						slim
 						data-test-id="actions-panel-activation-callout"
 					>
-						<span v-html="$locale.baseText('nodeCreator.actionsCallout.triggersStartWorkflow')" />
+						<span v-n8n-html="i18n.baseText('nodeCreator.actionsCallout.triggersStartWorkflow')" />
 					</n8n-callout>
 					<!-- Empty state -->
 					<template #empty>
 						<n8n-info-tip v-if="!search" theme="info" type="note" :class="$style.actionsEmpty">
 							<span
-								v-html="
-									$locale.baseText('nodeCreator.actionsCallout.noActionItems', {
+								v-n8n-html="
+									i18n.baseText('nodeCreator.actionsCallout.noActionItems', {
 										interpolate: { nodeName: subcategory ?? '' },
 									})
 								"
@@ -307,7 +314,7 @@ onMounted(() => {
 							:class="$style.resetSearch"
 							data-test-id="actions-panel-no-matching-actions"
 							@click="resetSearch"
-							v-html="$locale.baseText('nodeCreator.actionsCategory.noMatchingActions')"
+							v-n8n-html="i18n.baseText('nodeCreator.actionsCategory.noMatchingActions')"
 						/>
 					</template>
 				</CategorizedItemsRenderer>
@@ -316,8 +323,8 @@ onMounted(() => {
 		<div v-if="containsAPIAction" :class="$style.apiHint">
 			<span
 				@click.prevent="addHttpNode"
-				v-html="
-					$locale.baseText('nodeCreator.actionsList.apiCall', {
+				v-n8n-html="
+					i18n.baseText('nodeCreator.actionsList.apiCall', {
 						interpolate: { node: subcategory ?? '' },
 					})
 				"

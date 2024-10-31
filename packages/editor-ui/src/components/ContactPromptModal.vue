@@ -1,37 +1,3 @@
-<template>
-	<Modal
-		:name="modalName"
-		:event-bus="modalBus"
-		:center="true"
-		:close-on-press-escape="false"
-		:before-close="closeDialog"
-		custom-class="contact-prompt-modal"
-		width="460px"
-	>
-		<template #header>
-			<n8n-heading tag="h2" size="xlarge" color="text-dark">{{ title }}</n8n-heading>
-		</template>
-		<template #content>
-			<div :class="$style.description">
-				<n8n-text size="medium" color="text-base">{{ description }}</n8n-text>
-			</div>
-			<div @keyup.enter="send">
-				<n8n-input v-model="email" placeholder="Your email address" />
-			</div>
-			<div :class="$style.disclaimer">
-				<n8n-text size="small" color="text-base"
-					>David from our product team will get in touch personally</n8n-text
-				>
-			</div>
-		</template>
-		<template #footer>
-			<div :class="$style.footer">
-				<n8n-button label="Send" float="right" :disabled="!isEmailValid" @click="send" />
-			</div>
-		</template>
-	</Modal>
-</template>
-
 <script lang="ts">
 import type { PropType } from 'vue';
 import { defineComponent } from 'vue';
@@ -117,6 +83,40 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<Modal
+		:name="modalName"
+		:event-bus="modalBus"
+		:center="true"
+		:close-on-press-escape="false"
+		:before-close="closeDialog"
+		custom-class="contact-prompt-modal"
+		width="460px"
+	>
+		<template #header>
+			<n8n-heading tag="h2" size="xlarge" color="text-dark">{{ title }}</n8n-heading>
+		</template>
+		<template #content>
+			<div :class="$style.description">
+				<n8n-text size="medium" color="text-base">{{ description }}</n8n-text>
+			</div>
+			<div @keyup.enter="send">
+				<n8n-input v-model="email" placeholder="Your email address" />
+			</div>
+			<div :class="$style.disclaimer">
+				<n8n-text size="small" color="text-base"
+					>David from our product team will get in touch personally</n8n-text
+				>
+			</div>
+		</template>
+		<template #footer>
+			<div :class="$style.footer">
+				<n8n-button label="Send" float="right" :disabled="!isEmailValid" @click="send" />
+			</div>
+		</template>
+	</Modal>
+</template>
 
 <style lang="scss" module>
 .description {

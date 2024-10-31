@@ -1,9 +1,11 @@
-import { render } from '@testing-library/vue';
+import { createComponentRenderer } from '@/__tests__/render';
 import V1Banner from '../V1Banner.vue';
 import { createPinia, setActivePinia } from 'pinia';
 import { useUsersStore } from '@/stores/users.store';
 import { ROLE } from '@/constants';
 import type { IUser } from '@/Interface';
+
+const renderComponent = createComponentRenderer(V1Banner);
 
 describe('V1 Banner', () => {
 	let pinia: ReturnType<typeof createPinia>;
@@ -17,7 +19,7 @@ describe('V1 Banner', () => {
 	});
 
 	it('should render banner', () => {
-		const { container } = render(V1Banner);
+		const { container } = renderComponent();
 		expect(container).toMatchSnapshot();
 		expect(container.querySelectorAll('a')).toHaveLength(1);
 	});
@@ -26,7 +28,7 @@ describe('V1 Banner', () => {
 		usersStore.usersById = { '1': { role: ROLE.Owner } as IUser };
 		usersStore.currentUserId = '1';
 
-		const { container } = render(V1Banner);
+		const { container } = renderComponent();
 		expect(container).toMatchSnapshot();
 		expect(container.querySelectorAll('a')).toHaveLength(2);
 	});

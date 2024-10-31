@@ -1,31 +1,3 @@
-<template>
-	<div v-if="featureInfo" :class="[$style.container]">
-		<div v-if="showTitle" class="mb-2xl">
-			<n8n-heading size="2xlarge">
-				{{ $locale.baseText(featureInfo.featureName) }}
-			</n8n-heading>
-		</div>
-		<div v-if="featureInfo.infoText" class="mb-l">
-			<n8n-info-tip theme="info" type="note">
-				<span v-html="$locale.baseText(featureInfo.infoText)"></span>
-			</n8n-info-tip>
-		</div>
-		<div :class="$style.actionBoxContainer">
-			<n8n-action-box
-				:description="$locale.baseText(featureInfo.actionBoxDescription)"
-				:button-text="
-					$locale.baseText(featureInfo.actionBoxButtonLabel || 'fakeDoor.actionBox.button.label')
-				"
-				@click:button="openLinkPage"
-			>
-				<template #heading>
-					<span v-html="$locale.baseText(featureInfo.actionBoxTitle)" />
-				</template>
-			</n8n-action-box>
-		</div>
-	</div>
-</template>
-
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
@@ -74,6 +46,34 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<div v-if="featureInfo" :class="[$style.container]">
+		<div v-if="showTitle" class="mb-2xl">
+			<n8n-heading size="2xlarge">
+				{{ $locale.baseText(featureInfo.featureName) }}
+			</n8n-heading>
+		</div>
+		<div v-if="featureInfo.infoText" class="mb-l">
+			<n8n-info-tip theme="info" type="note">
+				<span v-n8n-html="$locale.baseText(featureInfo.infoText)"></span>
+			</n8n-info-tip>
+		</div>
+		<div :class="$style.actionBoxContainer">
+			<n8n-action-box
+				:description="$locale.baseText(featureInfo.actionBoxDescription)"
+				:button-text="
+					$locale.baseText(featureInfo.actionBoxButtonLabel || 'fakeDoor.actionBox.button.label')
+				"
+				@click:button="openLinkPage"
+			>
+				<template #heading>
+					<span v-n8n-html="$locale.baseText(featureInfo.actionBoxTitle)" />
+				</template>
+			</n8n-action-box>
+		</div>
+	</div>
+</template>
 
 <style lang="scss" module>
 .actionBoxContainer {

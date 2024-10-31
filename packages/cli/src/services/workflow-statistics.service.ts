@@ -1,11 +1,14 @@
-import { Service } from 'typedi';
 import type { INode, IRun, IWorkflowBase } from 'n8n-workflow';
-import { StatisticsNames } from '@db/entities/WorkflowStatistics';
-import { WorkflowStatisticsRepository } from '@db/repositories/workflowStatistics.repository';
+import { Service } from 'typedi';
+
+import { StatisticsNames } from '@/databases/entities/workflow-statistics';
+import { WorkflowStatisticsRepository } from '@/databases/repositories/workflow-statistics.repository';
+import { EventService } from '@/events/event.service';
+import { Logger } from '@/logging/logger.service';
 import { UserService } from '@/services/user.service';
-import { Logger } from '@/Logger';
+import { TypedEmitter } from '@/typed-emitter';
+
 import { OwnershipService } from './ownership.service';
-import { TypedEmitter } from '@/TypedEmitter';
 
 type WorkflowStatisticsEvents = {
 	nodeFetchedData: { workflowId: string; node: INode };
@@ -31,6 +34,7 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 		private readonly repository: WorkflowStatisticsRepository,
 		private readonly ownershipService: OwnershipService,
 		private readonly userService: UserService,
+		private readonly eventService: EventService,
 	) {
 		super({ captureRejections: true });
 		if ('SKIP_STATISTICS_EVENTS' in process.env) return;
@@ -70,13 +74,7 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 			if (name === StatisticsNames.productionSuccess && upsertResult === 'insert') {
 				const project = await this.ownershipService.getWorkflowProjectCached(workflowId);
 				if (project.type === 'personal') {
-					const owner = await this.ownershipService.getProjectOwnerCached(project.id);
-
-					const metrics = {
-						project_id: project.id,
-						workflow_id: workflowId,
-						user_id: owner!.id,
-					};
+					const owner = await this.ownershipService.getPersonalProjectOwnerCached(project.id);
 
 					if (owner && !owner.settings?.userActivated) {
 						await this.userService.updateSettings(owner.id, {
@@ -86,12 +84,15 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 						});
 					}
 
-					// Send the metrics
-					this.emit('telemetry.onFirstProductionWorkflowSuccess', metrics);
+					this.eventService.emit('first-production-workflow-succeeded', {
+						projectId: project.id,
+						workflowId,
+						userId: owner!.id,
+					});
 				}
 			}
 		} catch (error) {
-			this.logger.verbose('Unable to fire first workflow success telemetry event');
+			this.logger.debug('Unable to fire first workflow success telemetry event');
 		}
 	}
 
@@ -106,27 +107,26 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 
 		// Compile the metrics since this was a new data loaded event
 		const project = await this.ownershipService.getWorkflowProjectCached(workflowId);
-		const owner = await this.ownershipService.getProjectOwnerCached(project.id);
+		const owner = await this.ownershipService.getPersonalProjectOwnerCached(project.id);
 
 		let metrics = {
-			user_id: owner!.id,
-			project_id: project.id,
-			workflow_id: workflowId,
-			node_type: node.type,
-			node_id: node.id,
+			userId: owner?.id ?? '', // team projects have no owner
+			project: project.id,
+			workflowId,
+			nodeType: node.type,
+			nodeId: node.id,
 		};
 
 		// This is probably naive but I can't see a way for a node to have multiple credentials attached so..
 		if (node.credentials) {
 			Object.entries(node.credentials).forEach(([credName, credDetails]) => {
 				metrics = Object.assign(metrics, {
-					credential_type: credName,
-					credential_id: credDetails.id,
+					credentialType: credName,
+					credentialId: credDetails.id,
 				});
 			});
 		}
 
-		// Send metrics to posthog
-		this.emit('telemetry.onFirstWorkflowDataLoad', metrics);
+		this.eventService.emit('first-workflow-data-loaded', metrics);
 	}
 }

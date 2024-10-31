@@ -1,22 +1,25 @@
-import { Container } from 'typedi';
 import type { ICredentialDataDecryptedObject, ICredentialsEncrypted } from 'n8n-workflow';
 import { ApplicationError, ICredentials, jsonParse } from 'n8n-workflow';
+import { Container } from 'typedi';
+
 import { Cipher } from './Cipher';
 
-export class Credentials extends ICredentials {
+export class Credentials<
+	T extends object = ICredentialDataDecryptedObject,
+> extends ICredentials<T> {
 	private readonly cipher = Container.get(Cipher);
 
 	/**
 	 * Sets new credential object
 	 */
-	setData(data: ICredentialDataDecryptedObject): void {
+	setData(data: T): void {
 		this.data = this.cipher.encrypt(data);
 	}
 
 	/**
 	 * Returns the decrypted credential object
 	 */
-	getData(): ICredentialDataDecryptedObject {
+	getData(): T {
 		if (this.data === undefined) {
 			throw new ApplicationError('No data is set so nothing can be returned.');
 		}

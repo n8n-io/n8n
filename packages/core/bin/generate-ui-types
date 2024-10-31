@@ -30,15 +30,6 @@ function findReferencedMethods(obj, refs = {}, latestName = '') {
 	const loader = new PackageDirectoryLoader(packageDir);
 	await loader.loadAll();
 
-	const knownCredentials = loader.known.credentials;
-	const credentialTypes = Object.values(loader.credentialTypes).map((data) => {
-		const credentialType = data.type;
-		if (knownCredentials[credentialType.name].supportedNodes?.length > 0) {
-			delete credentialType.httpRequestNode;
-		}
-		return credentialType;
-	});
-
 	const loaderNodeTypes = Object.values(loader.nodeTypes);
 
 	const definedMethods = loaderNodeTypes.reduce((acc, cur) => {
@@ -72,6 +63,36 @@ function findReferencedMethods(obj, refs = {}, latestName = '') {
 				return rest;
 			}),
 		);
+
+	const knownCredentials = loader.known.credentials;
+	const credentialTypes = Object.values(loader.credentialTypes).map((data) => {
+		const credentialType = data.type;
+		const supportedNodes = knownCredentials[credentialType.name].supportedNodes ?? [];
+		if (supportedNodes.length > 0 && credentialType.httpRequestNode) {
+			credentialType.httpRequestNode.hidden = true;
+		}
+
+		credentialType.supportedNodes = supportedNodes;
+
+		if (!credentialType.iconUrl && !credentialType.icon) {
+			for (const supportedNode of supportedNodes) {
+				const nodeType = loader.nodeTypes[supportedNode]?.type.description;
+
+				if (!nodeType) continue;
+				if (nodeType.icon) {
+					credentialType.icon = nodeType.icon;
+					credentialType.iconColor = nodeType.iconColor;
+					break;
+				}
+				if (nodeType.iconUrl) {
+					credentialType.iconUrl = nodeType.iconUrl;
+					break;
+				}
+			}
+		}
+
+		return credentialType;
+	});
 
 	const referencedMethods = findReferencedMethods(nodeTypes);
 

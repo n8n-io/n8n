@@ -8,9 +8,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
-
-import { isoCountryCodes } from '@utils/ISOCountryCodes';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import { conversationFields, conversationOperations } from './ConversationDescription';
 
@@ -27,6 +25,7 @@ import { mailboxFields, mailboxOperations } from './MailboxDescription';
 import { threadFields, threadOperations } from './ThreadDescription';
 
 import type { IAttachment, IThread } from './ThreadInterface';
+import { isoCountryCodes } from '@utils/ISOCountryCodes';
 
 export class HelpScout implements INodeType {
 	description: INodeTypeDescription = {
@@ -40,8 +39,8 @@ export class HelpScout implements INodeType {
 		defaults: {
 			name: 'HelpScout',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'helpScoutOAuth2Api',
@@ -565,7 +564,7 @@ export class HelpScout implements INodeType {
 					}
 				}
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },

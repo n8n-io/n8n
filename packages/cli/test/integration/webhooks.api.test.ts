@@ -1,27 +1,32 @@
 import { readFileSync } from 'fs';
+import {
+	NodeConnectionType,
+	type INodeType,
+	type INodeTypeDescription,
+	type IWebhookFunctions,
+} from 'n8n-workflow';
 import { agent as testAgent } from 'supertest';
-import type { INodeType, INodeTypeDescription, IWebhookFunctions } from 'n8n-workflow';
 
-import { AbstractServer } from '@/AbstractServer';
-import { ExternalHooks } from '@/ExternalHooks';
-import { InternalHooks } from '@/InternalHooks';
-import { NodeTypes } from '@/NodeTypes';
+import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
+import { ExternalHooks } from '@/external-hooks';
+import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
-import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import { Telemetry } from '@/telemetry';
+import { WebhookServer } from '@/webhooks/webhook-server';
 
-import { mockInstance } from '../shared/mocking';
-import { initActiveWorkflowManager } from './shared/utils';
-import * as testDb from './shared/testDb';
 import { createUser } from './shared/db/users';
 import { createWorkflow } from './shared/db/workflows';
+import * as testDb from './shared/test-db';
 import type { SuperAgentTest } from './shared/types';
-import { Telemetry } from '@/telemetry';
+import { initActiveWorkflowManager } from './shared/utils';
+import { mockInstance } from '../shared/mocking';
+
+jest.unmock('node:fs');
 
 mockInstance(Telemetry);
 
 describe('Webhook API', () => {
 	mockInstance(ExternalHooks);
-	mockInstance(InternalHooks);
 	mockInstance(Push);
 
 	let agent: SuperAgentTest;
@@ -46,7 +51,7 @@ describe('Webhook API', () => {
 
 			await initActiveWorkflowManager();
 
-			const server = new (class extends AbstractServer {})();
+			const server = new WebhookServer();
 			await server.start();
 			agent = testAgent(server.app);
 		});
@@ -149,7 +154,7 @@ describe('Webhook API', () => {
 
 			await initActiveWorkflowManager();
 
-			const server = new (class extends AbstractServer {})();
+			const server = new WebhookServer();
 			await server.start();
 			agent = testAgent(server.app);
 		});
@@ -184,7 +189,7 @@ describe('Webhook API', () => {
 			description: '',
 			defaults: {},
 			inputs: [],
-			outputs: ['main'],
+			outputs: [NodeConnectionType.Main],
 			webhooks: [
 				{
 					name: 'default',

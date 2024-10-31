@@ -28,7 +28,6 @@ export const description: INodeProperties[] = [
 		required: true,
 		description:
 			'Date and time at which the event begins. (For all-day events, the time will be ignored.).',
-		validateType: 'dateTime',
 	},
 	{
 		displayName: 'End',
@@ -354,7 +353,7 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 			});
 		} catch (error) {
 			const errorDescription = error.description;
-			if (this.continueOnFail(error)) {
+			if (this.continueOnFail()) {
 				returnData.push({
 					json: {
 						error: error.message,

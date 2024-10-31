@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import IconFileText from 'virtual:icons/mdi/fileText';
-import IconFileMusic from 'virtual:icons/mdi/fileMusic';
-import IconFileImage from 'virtual:icons/mdi/fileImage';
-import IconFileVideo from 'virtual:icons/mdi/fileVideo';
 import IconDelete from 'virtual:icons/mdi/closeThick';
+import IconFileImage from 'virtual:icons/mdi/fileImage';
+import IconFileMusic from 'virtual:icons/mdi/fileMusic';
+import IconFileText from 'virtual:icons/mdi/fileText';
+import IconFileVideo from 'virtual:icons/mdi/fileVideo';
 import IconPreview from 'virtual:icons/mdi/openInNew';
-
 import { computed, type FunctionalComponent } from 'vue';
 
 const props = defineProps<{

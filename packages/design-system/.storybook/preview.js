@@ -8,7 +8,7 @@ import { library } from '@fortawesome/fontawesome-svg-core';
 import { fas } from '@fortawesome/free-solid-svg-icons';
 
 import ElementPlus from 'element-plus';
-import lang from 'element-plus/lib/locale/lang/en';
+import lang from 'element-plus/dist/locale/en.mjs';
 
 import { N8nPlugin } from '../src/plugin';
 

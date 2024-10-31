@@ -1,28 +1,3 @@
-<template>
-	<span>
-		<div v-if="isLoading">Loading binary data...</div>
-		<div v-else-if="error">Error loading binary data</div>
-		<span v-else>
-			<video v-if="binaryData.fileType === 'video'" controls autoplay>
-				<source :src="embedSource" :type="binaryData.mimeType" />
-				{{ $locale.baseText('binaryDataDisplay.yourBrowserDoesNotSupport') }}
-			</video>
-			<audio v-else-if="binaryData.fileType === 'audio'" controls autoplay>
-				<source :src="embedSource" :type="binaryData.mimeType" />
-				{{ $locale.baseText('binaryDataDisplay.yourBrowserDoesNotSupport') }}
-			</audio>
-			<VueJsonPretty
-				v-else-if="binaryData.fileType === 'json'"
-				:data="data"
-				:deep="3"
-				:show-length="true"
-			/>
-			<RunDataHtml v-else-if="binaryData.fileType === 'html'" :input-html="data" />
-			<embed v-else :src="embedSource" class="binary-data" :class="embedClass" />
-		</span>
-	</span>
-</template>
-
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -75,19 +50,43 @@ onMounted(async () => {
 });
 </script>
 
+<template>
+	<span>
+		<div v-if="isLoading">Loading binary data...</div>
+		<div v-else-if="error">Error loading binary data</div>
+		<span v-else>
+			<video v-if="binaryData.fileType === 'video'" controls autoplay>
+				<source :src="embedSource" :type="binaryData.mimeType" />
+				{{ $locale.baseText('binaryDataDisplay.yourBrowserDoesNotSupport') }}
+			</video>
+			<audio v-else-if="binaryData.fileType === 'audio'" controls autoplay>
+				<source :src="embedSource" :type="binaryData.mimeType" />
+				{{ $locale.baseText('binaryDataDisplay.yourBrowserDoesNotSupport') }}
+			</audio>
+			<img v-else-if="binaryData.fileType === 'image'" :src="embedSource" />
+			<VueJsonPretty
+				v-else-if="binaryData.fileType === 'json'"
+				:data="data"
+				:deep="3"
+				:show-length="true"
+			/>
+			<RunDataHtml v-else-if="binaryData.fileType === 'html'" :input-html="data" />
+			<embed v-else :src="embedSource" class="binary-data" :class="embedClass" />
+		</span>
+	</span>
+</template>
+
 <style lang="scss">
+img,
+video {
+	max-height: 100%;
+	max-width: 100%;
+}
 .binary-data {
-	background-color: var(--color-foreground-xlight);
-
-	&.image {
-		max-height: calc(100% - 1em);
-		max-width: calc(100% - 1em);
-	}
-
 	&.other,
 	&.pdf {
-		height: calc(100% - 1em);
-		width: calc(100% - 1em);
+		height: 100%;
+		width: 100%;
 	}
 }
 </style>

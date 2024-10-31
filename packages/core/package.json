@@ -1,6 +1,6 @@
 {
   "name": "n8n-core",
-  "version": "1.53.0",
+  "version": "1.65.0",
   "description": "Core functionality of n8n",
   "main": "dist/index",
   "types": "dist/index.d.ts",
@@ -15,7 +15,8 @@
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
     "dev": "pnpm watch",
-    "format": "prettier --write . --ignore-path ../../.prettierignore",
+    "format": "biome format --write .",
+    "format:check": "biome ci .",
     "lint": "eslint . --quiet",
     "lintfix": "eslint . --fix",
     "watch": "tsc -p tsconfig.build.json --watch",
@@ -35,7 +36,9 @@
     "@types/xml2js": "catalog:"
   },
   "dependencies": {
+    "@langchain/core": "catalog:",
     "@n8n/client-oauth2": "workspace:*",
+    "@n8n/config": "workspace:*",
     "aws4": "1.11.0",
     "axios": "catalog:",
     "concat-stream": "2.0.0",
@@ -47,6 +50,7 @@
     "luxon": "catalog:",
     "mime-types": "2.1.35",
     "n8n-workflow": "workspace:*",
+    "nanoid": "catalog:",
     "oauth-1.0a": "2.2.6",
     "p-cancelable": "2.1.1",
     "pretty-bytes": "5.6.0",
@@ -54,6 +58,7 @@
     "ssh2": "1.15.0",
     "typedi": "catalog:",
     "uuid": "catalog:",
-    "xml2js": "catalog:"
+    "xml2js": "catalog:",
+    "zod": "catalog:"
   }
 }

@@ -30,12 +30,13 @@ export class OktaApi implements ICredentialType {
 			placeholder: 'https://dev-123456.okta.com',
 		},
 		{
-			displayName: 'SSWS Access Token',
+			displayName: 'Access Token',
 			name: 'accessToken',
 			type: 'string',
 			typeOptions: { password: true },
 			required: true,
 			default: '',
+			description: 'Secure Session Web Service Access Token',
 		},
 	];
 

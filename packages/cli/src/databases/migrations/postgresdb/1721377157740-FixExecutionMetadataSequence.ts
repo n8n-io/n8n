@@ -1,4 +1,4 @@
-import type { IrreversibleMigration, MigrationContext } from '@db/types';
+import type { IrreversibleMigration, MigrationContext } from '@/databases/types';
 
 export class FixExecutionMetadataSequence1721377157740 implements IrreversibleMigration {
 	async up({ queryRunner, escape }: MigrationContext) {

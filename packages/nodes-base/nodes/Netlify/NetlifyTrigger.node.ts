@@ -8,6 +8,7 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import { snakeCase } from 'change-case';
 import { netlifyApiRequest } from './GenericFunctions';
@@ -25,7 +26,7 @@ export class NetlifyTrigger implements INodeType {
 			name: 'Netlify Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'netlifyApi',
@@ -51,7 +52,7 @@ export class NetlifyTrigger implements INodeType {
 					loadOptionsMethod: 'getSites',
 				},
 				description:
-					'Select the Site ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'Select the Site ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Event',
@@ -93,7 +94,7 @@ export class NetlifyTrigger implements INodeType {
 					loadOptionsMethod: 'getForms',
 				},
 				description:
-					'Select a form. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'Select a form. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Simplify',

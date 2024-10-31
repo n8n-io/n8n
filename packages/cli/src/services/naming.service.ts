@@ -1,6 +1,7 @@
 import { Service } from 'typedi';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 
 @Service()
 export class NamingService {

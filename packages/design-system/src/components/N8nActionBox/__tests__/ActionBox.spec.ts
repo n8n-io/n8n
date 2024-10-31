@@ -1,4 +1,5 @@
 import { render } from '@testing-library/vue';
+
 import N8NActionBox from '../ActionBox.vue';
 
 describe('N8NActionBox', () => {
