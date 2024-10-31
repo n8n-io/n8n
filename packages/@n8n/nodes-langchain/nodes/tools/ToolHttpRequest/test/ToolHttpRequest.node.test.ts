@@ -10,19 +10,19 @@ describe('ToolHttpRequest', () => {
 	const helpers = mock<IExecuteFunctions['helpers']>();
 	const executeFunctions = mock<IExecuteFunctions>({ helpers });
 
-	describe('Binary response', () => {
-		beforeEach(() => {
-			jest.resetAllMocks();
-			executeFunctions.getNode.mockReturnValue(
-				mock<INode>({
-					type: 'n8n-nodes-base.httpRequest',
-					name: 'HTTP Request',
-					typeVersion: 1.1,
-				}),
-			);
-			executeFunctions.addInputData.mockReturnValue({ index: 0 });
-		});
+	beforeEach(() => {
+		jest.resetAllMocks();
+		executeFunctions.getNode.mockReturnValue(
+			mock<INode>({
+				type: 'n8n-nodes-base.httpRequest',
+				name: 'HTTP Request',
+				typeVersion: 1.1,
+			}),
+		);
+		executeFunctions.addInputData.mockReturnValue({ index: 0 });
+	});
 
+	describe('Binary response', () => {
 		it('should return the error when receiving a binary response', async () => {
 			helpers.httpRequest.mockResolvedValue({
 				body: Buffer.from(''),
@@ -234,6 +234,64 @@ describe('ToolHttpRequest', () => {
 						password: 'password',
 					}),
 				}),
+			);
+		});
+	});
+
+	describe('Optimize response', () => {
+		it('should extract body from the response HTML', async () => {
+			helpers.httpRequest.mockResolvedValue({
+				body: `<!DOCTYPE html>
+<html>
+  <head>
+  </head>
+  <body>
+      <h1>Test</h1>
+
+      <div>
+        <p>
+          Test content
+        </p>
+      </div>
+  </body>
+</html>`,
+				headers: {
+					'content-type': 'text/html',
+				},
+			});
+
+			executeFunctions.getNodeParameter.mockImplementation(
+				(paramName: string, _: any, fallback: any) => {
+					switch (paramName) {
+						case 'method':
+							return 'GET';
+						case 'url':
+							return '{url}';
+						case 'options':
+							return {};
+						case 'placeholderDefinitions.values':
+							return [];
+						case 'optimizeResponse':
+							return true;
+						case 'responseType':
+							return 'html';
+						case 'cssSelector':
+							return 'body';
+						default:
+							return fallback;
+					}
+				},
+			);
+
+			const { response } = await httpTool.supplyData.call(executeFunctions, 0);
+
+			const res = await (response as N8nTool).invoke({
+				url: 'https://httpbin.org/html',
+			});
+
+			expect(helpers.httpRequest).toHaveBeenCalled();
+			expect(res).toEqual(
+				JSON.stringify(['<h1>Test</h1> <div> <p> Test content </p> </div>'], null, 2),
 			);
 		});
 	});
