@@ -2,7 +2,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { useNodeCreatorStore } from './nodeCreator.store';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { CUSTOM_API_CALL_KEY, REGULAR_NODE_CREATOR_VIEW } from '@/constants';
-import { INodeCreateElement } from '@/Interface';
+import type { INodeCreateElement } from '@/Interface';
 
 const workflow_id = 'workflow-id';
 const category_name = 'category-name';
@@ -41,11 +41,10 @@ describe('useNodeCreatorStore', () => {
 	});
 
 	it('tracks when node creator is opened', () => {
-		nodeCreatorStore.onCreatorOpenedOrClosed({
+		nodeCreatorStore.onCreatorOpened({
 			source,
 			mode,
 			workflow_id,
-			createNodeActive: true,
 		});
 
 		expect(useTelemetry().track).toHaveBeenCalledWith(
@@ -63,11 +62,10 @@ describe('useNodeCreatorStore', () => {
 	});
 
 	it('resets session id every time node creator is opened', () => {
-		nodeCreatorStore.onCreatorOpenedOrClosed({
+		nodeCreatorStore.onCreatorOpened({
 			source,
 			mode,
 			workflow_id,
-			createNodeActive: true,
 		});
 
 		expect(useTelemetry().track).toHaveBeenCalledWith(
@@ -85,11 +83,10 @@ describe('useNodeCreatorStore', () => {
 
 		vi.setSystemTime(now1);
 
-		nodeCreatorStore.onCreatorOpenedOrClosed({
+		nodeCreatorStore.onCreatorOpened({
 			source,
 			mode,
 			workflow_id,
-			createNodeActive: true,
 		});
 
 		expect(useTelemetry().track).toHaveBeenCalledWith(
@@ -107,11 +104,10 @@ describe('useNodeCreatorStore', () => {
 	});
 
 	it('tracks event on category expanded', () => {
-		nodeCreatorStore.onCreatorOpenedOrClosed({
+		nodeCreatorStore.onCreatorOpened({
 			source,
 			mode,
 			workflow_id,
-			createNodeActive: true,
 		});
 		nodeCreatorStore.onCategoryExpanded({ workflow_id, category_name });
 
@@ -130,11 +126,10 @@ describe('useNodeCreatorStore', () => {
 	});
 
 	it('tracks event when node is added to canvas', () => {
-		nodeCreatorStore.onCreatorOpenedOrClosed({
+		nodeCreatorStore.onCreatorOpened({
 			source,
 			mode,
 			workflow_id,
-			createNodeActive: true,
 		});
 		nodeCreatorStore.onNodeAddedToCanvas({
 			node_type,
@@ -163,11 +158,10 @@ describe('useNodeCreatorStore', () => {
 	});
 
 	it('tracks event when action is added', () => {
-		nodeCreatorStore.onCreatorOpenedOrClosed({
+		nodeCreatorStore.onCreatorOpened({
 			source,
 			mode,
 			workflow_id,
-			createNodeActive: true,
 		});
 		nodeCreatorStore.onAddActions({
 			node_type,
@@ -192,11 +186,10 @@ describe('useNodeCreatorStore', () => {
 	});
 
 	it('tracks when custom api action is clicked', () => {
-		nodeCreatorStore.onCreatorOpenedOrClosed({
+		nodeCreatorStore.onCreatorOpened({
 			source,
 			mode,
 			workflow_id,
-			createNodeActive: true,
 		});
 		nodeCreatorStore.onActionsCustomAPIClicked({
 			app_identifier: node_type,
@@ -215,11 +208,10 @@ describe('useNodeCreatorStore', () => {
 	});
 
 	it('tracks when action is viewed', () => {
-		nodeCreatorStore.onCreatorOpenedOrClosed({
+		nodeCreatorStore.onCreatorOpened({
 			source,
 			mode,
 			workflow_id,
-			createNodeActive: true,
 		});
 		nodeCreatorStore.onViewActions({
 			app_identifier: node_type,
@@ -268,11 +260,10 @@ describe('useNodeCreatorStore', () => {
 			properties: {},
 		} as INodeCreateElement;
 
-		nodeCreatorStore.onCreatorOpenedOrClosed({
+		nodeCreatorStore.onCreatorOpened({
 			source,
 			mode,
 			workflow_id,
-			createNodeActive: true,
 		});
 		nodeCreatorStore.onNodeFilterChanged({
 			newValue,

@@ -145,12 +145,13 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 			createNodeActive,
 		});
 
-		onCreatorOpenedOrClosed({
-			source,
-			mode: getMode(nodeCreatorView),
-			createNodeActive,
-			workflow_id: workflowsStore.workflowId,
-		});
+		if (createNodeActive) {
+			onCreatorOpened({
+				source,
+				mode: getMode(nodeCreatorView),
+				workflow_id: workflowsStore.workflowId,
+			});
+		}
 	}
 
 	function openNodeCreatorForConnectingNode({
@@ -256,25 +257,21 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		);
 	}
 
-	function onCreatorOpenedOrClosed({
+	function onCreatorOpened({
 		source,
 		mode,
 		workflow_id,
-		createNodeActive,
 	}: {
 		source?: string;
 		mode: string;
 		workflow_id?: string;
-		createNodeActive: boolean;
 	}) {
-		if (createNodeActive) {
-			resetNodesPanelSession();
-			trackNodeCreatorEvent('User opened nodes panel', {
-				source,
-				mode,
-				workflow_id,
-			});
-		}
+		resetNodesPanelSession();
+		trackNodeCreatorEvent('User opened nodes panel', {
+			source,
+			mode,
+			workflow_id,
+		});
 	}
 
 	function onNodeFilterChanged({
@@ -402,7 +399,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		openNodeCreatorForConnectingNode,
 		openNodeCreatorForTriggerNodes,
 		allNodeCreatorNodes,
-		onCreatorOpenedOrClosed,
+		onCreatorOpened,
 		onNodeFilterChanged,
 		onCategoryExpanded,
 		onActionsCustomAPIClicked,

@@ -4236,12 +4236,13 @@ export default defineComponent({
 				mode,
 				createNodeActive,
 			});
-			this.nodeCreatorStore.onCreatorOpenedOrClosed({
-				source,
-				mode,
-				createNodeActive,
-				workflow_id: this.workflowsStore.workflowId,
-			});
+			if (createNodeActive) {
+				this.nodeCreatorStore.onCreatorOpened({
+					source,
+					mode,
+					workflow_id: this.workflowsStore.workflowId,
+				});
+			}
 		},
 		async onAddNodes(
 			{ nodes, connections }: AddedNodesAndConnections,
