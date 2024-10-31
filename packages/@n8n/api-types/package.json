@@ -21,6 +21,7 @@
     "dist/**/*"
   ],
   "devDependencies": {
+    "@n8n/config": "workspace:*",
     "n8n-workflow": "workspace:*"
   },
   "dependencies": {

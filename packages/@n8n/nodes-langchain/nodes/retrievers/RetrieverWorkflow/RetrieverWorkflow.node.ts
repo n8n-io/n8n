@@ -5,7 +5,7 @@ import type {
 	IExecuteWorkflowInfo,
 	INodeExecutionData,
 	IWorkflowBase,
-	IExecuteFunctions,
+	ISupplyDataFunctions,
 	INodeType,
 	INodeTypeDescription,
 	SupplyData,
@@ -292,15 +292,15 @@ export class RetrieverWorkflow implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		class WorkflowRetriever extends BaseRetriever {
 			lc_namespace = ['n8n-nodes-langchain', 'retrievers', 'workflow'];
 
-			executeFunctions: IExecuteFunctions;
-
-			constructor(executeFunctions: IExecuteFunctions, fields: BaseRetrieverInput) {
+			constructor(
+				private executeFunctions: ISupplyDataFunctions,
+				fields: BaseRetrieverInput,
+			) {
 				super(fields);
-				this.executeFunctions = executeFunctions;
 			}
 
 			async _getRelevantDocuments(
