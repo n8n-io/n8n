@@ -1,7 +1,6 @@
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { HumanMessage } from '@langchain/core/messages';
-import type { BaseOutputParser } from '@langchain/core/output_parsers';
 import {
 	AIMessagePromptTemplate,
 	PromptTemplate,
@@ -28,11 +27,9 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	getOptionalOutputParsers,
-	getPromptInputByType,
-	isChatInstance,
-} from '../../../utils/helpers';
+import { getPromptInputByType, isChatInstance } from '../../../utils/helpers';
+import type { N8nOutputParser } from '../../../utils/output_parsers/N8nOutputParser';
+import { getOptionalOutputParsers } from '../../../utils/output_parsers/N8nOutputParser';
 import { getTemplateNoticeField } from '../../../utils/sharedFields';
 import { getTracingConfig } from '../../../utils/tracing';
 import {
@@ -189,7 +186,7 @@ async function getChain(
 	itemIndex: number,
 	query: string,
 	llm: BaseLanguageModel,
-	outputParsers: BaseOutputParser[],
+	outputParsers: N8nOutputParser[],
 	messages?: MessagesTemplate[],
 ): Promise<unknown[]> {
 	const chatTemplate: ChatPromptTemplate | PromptTemplate = await getChainPromptTemplate(

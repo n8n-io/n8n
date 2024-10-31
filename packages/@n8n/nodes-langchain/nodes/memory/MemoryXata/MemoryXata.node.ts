@@ -1,6 +1,11 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
-import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
+import type {
+	ISupplyDataFunctions,
+	INodeType,
+	INodeTypeDescription,
+	SupplyData,
+} from 'n8n-workflow';
 import { XataChatMessageHistory } from '@langchain/community/stores/message/xata';
 import { BufferMemory, BufferWindowMemory } from 'langchain/memory';
 import { BaseClient } from '@xata.io/client';
@@ -94,7 +99,7 @@ export class MemoryXata implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials('xataApi');
 		const nodeVersion = this.getNode().typeVersion;
 

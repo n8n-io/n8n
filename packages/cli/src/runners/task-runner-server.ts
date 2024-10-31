@@ -88,7 +88,7 @@ export class TaskRunnerServer {
 		this.server = createHttpServer(app);
 
 		const {
-			taskRunners: { port, listen_address: address },
+			taskRunners: { port, listenAddress: address },
 		} = this.globalConfig;
 
 		this.server.on('error', (error: Error & { code: string }) => {
@@ -114,7 +114,10 @@ export class TaskRunnerServer {
 		a.ok(authToken);
 		a.ok(this.server);
 
-		this.wsServer = new WSServer({ noServer: true });
+		this.wsServer = new WSServer({
+			noServer: true,
+			maxPayload: this.globalConfig.taskRunners.maxPayload,
+		});
 		this.server.on('upgrade', this.handleUpgradeRequest);
 	}
 
@@ -122,11 +125,13 @@ export class TaskRunnerServer {
 		const { app } = this;
 
 		// Augment errors sent to Sentry
-		const {
-			Handlers: { requestHandler, errorHandler },
-		} = await import('@sentry/node');
-		app.use(requestHandler());
-		app.use(errorHandler());
+		if (this.globalConfig.sentry.backendDsn) {
+			const {
+				Handlers: { requestHandler, errorHandler },
+			} = await import('@sentry/node');
+			app.use(requestHandler());
+			app.use(errorHandler());
+		}
 	}
 
 	private setupCommonMiddlewares() {

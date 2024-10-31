@@ -1,8 +1,9 @@
-import { ApplicationError } from 'n8n-workflow';
+import { ApplicationError, type INodeTypeDescription } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
-import { URL } from 'node:url';
 import { type MessageEvent, WebSocket } from 'ws';
 
+import type { BaseRunnerConfig } from './config/base-runner-config';
+import { TaskRunnerNodeTypes } from './node-types';
 import {
 	RPC_ALLOW_LIST,
 	type RunnerMessage,
@@ -41,6 +42,11 @@ export interface RPCCallObject {
 const VALID_TIME_MS = 1000;
 const VALID_EXTRA_MS = 100;
 
+export interface TaskRunnerOpts extends BaseRunnerConfig {
+	taskType: string;
+	name?: string;
+}
+
 export abstract class TaskRunner {
 	id: string = nanoid();
 
@@ -58,19 +64,25 @@ export abstract class TaskRunner {
 
 	rpcCalls: Map<RPCCall['callId'], RPCCall> = new Map();
 
-	constructor(
-		public taskType: string,
-		wsUrl: string,
-		grantToken: string,
-		private maxConcurrency: number,
-		public name?: string,
-	) {
-		const url = new URL(wsUrl);
-		url.searchParams.append('id', this.id);
-		this.ws = new WebSocket(url.toString(), {
+	nodeTypes: TaskRunnerNodeTypes = new TaskRunnerNodeTypes([]);
+
+	taskType: string;
+
+	maxConcurrency: number;
+
+	name: string;
+
+	constructor(opts: TaskRunnerOpts) {
+		this.taskType = opts.taskType;
+		this.name = opts.name ?? 'Node.js Task Runner SDK';
+		this.maxConcurrency = opts.maxConcurrency;
+
+		const wsUrl = `ws://${opts.n8nUri}/runners/_ws?id=${this.id}`;
+		this.ws = new WebSocket(wsUrl, {
 			headers: {
-				authorization: `Bearer ${grantToken}`,
+				authorization: `Bearer ${opts.grantToken}`,
 			},
+			maxPayload: opts.maxPayloadSize,
 		});
 		this.ws.addEventListener('message', this.receiveMessage);
 		this.ws.addEventListener('close', this.stopTaskOffers);
@@ -137,7 +149,7 @@ export abstract class TaskRunner {
 			case 'broker:inforequest':
 				this.send({
 					type: 'runner:info',
-					name: this.name ?? 'Node.js Task Runner SDK',
+					name: this.name,
 					types: [this.taskType],
 				});
 				break;
@@ -158,7 +170,15 @@ export abstract class TaskRunner {
 				break;
 			case 'broker:rpcresponse':
 				this.handleRpcResponse(message.callId, message.status, message.data);
+				break;
+			case 'broker:nodetypes':
+				this.setNodeTypes(message.nodeTypes as unknown as INodeTypeDescription[]);
+				break;
 		}
+	}
+
+	setNodeTypes(nodeTypes: INodeTypeDescription[]) {
+		this.nodeTypes = new TaskRunnerNodeTypes(nodeTypes);
 	}
 
 	processDataResponse(requestId: string, data: unknown) {

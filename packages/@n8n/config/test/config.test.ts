@@ -223,13 +223,16 @@ describe('GlobalConfig', () => {
 		},
 		taskRunners: {
 			disabled: true,
+			mode: 'internal_childprocess',
 			path: '/runners',
 			authToken: '',
-			listen_address: '127.0.0.1',
+			listenAddress: '127.0.0.1',
+			maxPayload: 1024 * 1024 * 1024,
 			port: 5679,
-			useLauncher: false,
 			launcherPath: '',
 			launcherRunner: 'javascript',
+			maxOldSpaceSize: '',
+			maxConcurrency: 5,
 		},
 		sentry: {
 			backendDsn: '',
@@ -254,6 +257,19 @@ describe('GlobalConfig', () => {
 			timezone: 'America/New_York',
 			releaseChannel: 'dev',
 			gracefulShutdownTimeout: 30,
+		},
+		license: {
+			serverUrl: 'https://license.n8n.io/v1',
+			autoRenewalEnabled: true,
+			autoRenewOffset: 60 * 60 * 72,
+			activationKey: '',
+			tenantId: 1,
+			cert: '',
+		},
+		security: {
+			restrictFileAccessTo: '',
+			blockFileAccessToN8nFiles: true,
+			daysAbandonedWorkflow: 90,
 		},
 	};
 

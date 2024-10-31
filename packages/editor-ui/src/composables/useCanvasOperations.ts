@@ -71,7 +71,6 @@ import {
 	generateOffsets,
 	PUSH_NODES_OFFSET,
 } from '@/utils/nodeViewUtils';
-import { isValidNodeConnectionType } from '@/utils/typeGuards';
 import type { Connection } from '@vue-flow/core';
 import type {
 	IConnection,
@@ -1154,14 +1153,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			connection,
 		);
 
-		if (
-			!isConnectionAllowed(
-				sourceNode,
-				targetNode,
-				mappedConnection[0].type,
-				mappedConnection[1].type,
-			)
-		) {
+		if (!isConnectionAllowed(sourceNode, targetNode, mappedConnection[0], mappedConnection[1])) {
 			return;
 		}
 
@@ -1298,12 +1290,12 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 	function isConnectionAllowed(
 		sourceNode: INodeUi,
 		targetNode: INodeUi,
-		sourceConnectionType: NodeConnectionType,
-		targetConnectionType: NodeConnectionType,
+		sourceConnection: IConnection,
+		targetConnection: IConnection,
 	): boolean {
 		const blocklist = [STICKY_NODE_TYPE];
 
-		if (sourceConnectionType !== targetConnectionType) {
+		if (sourceConnection.type !== targetConnection.type) {
 			return false;
 		}
 
@@ -1329,10 +1321,13 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 		const sourceNodeHasOutputConnectionOfType = !!sourceNodeOutputs.find((output) => {
 			const outputType = typeof output === 'string' ? output : output.type;
-			return outputType === sourceConnectionType;
+			return outputType === sourceConnection.type;
 		});
 
-		if (!sourceNodeHasOutputConnectionOfType) {
+		const sourceNodeHasOutputConnectionPortOfType =
+			sourceConnection.index < sourceNodeOutputs.length;
+
+		if (!sourceNodeHasOutputConnectionOfType || !sourceNodeHasOutputConnectionPortOfType) {
 			return false;
 		}
 
@@ -1354,7 +1349,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 		const targetNodeHasInputConnectionOfType = !!targetNodeInputs.find((input) => {
 			const inputType = typeof input === 'string' ? input : input.type;
-			if (inputType !== targetConnectionType) return false;
+			if (inputType !== targetConnection.type) return false;
 
 			const filter = typeof input === 'object' && 'filter' in input ? input.filter : undefined;
 			if (filter?.nodes.length && !filter.nodes.includes(sourceNode.type)) {
@@ -1373,39 +1368,23 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			return true;
 		});
 
-		return targetNodeHasInputConnectionOfType;
+		const targetNodeHasInputConnectionPortOfType = targetConnection.index < targetNodeInputs.length;
+
+		return targetNodeHasInputConnectionOfType && targetNodeHasInputConnectionPortOfType;
 	}
 
-	function addConnections(
+	async function addConnections(
 		connections: CanvasConnectionCreateData[] | CanvasConnection[],
 		{ trackBulk = true, trackHistory = false } = {},
 	) {
+		await nextTick(); // Connection creation relies on the nodes being already added to the store
+
 		if (trackBulk && trackHistory) {
 			historyStore.startRecordingUndo();
 		}
 
-		for (const { source, target, data } of connections) {
-			createConnection(
-				{
-					source,
-					sourceHandle: createCanvasConnectionHandleString({
-						mode: CanvasConnectionMode.Output,
-						type: isValidNodeConnectionType(data?.source.type)
-							? data?.source.type
-							: NodeConnectionType.Main,
-						index: data?.source.index ?? 0,
-					}),
-					target,
-					targetHandle: createCanvasConnectionHandleString({
-						mode: CanvasConnectionMode.Input,
-						type: isValidNodeConnectionType(data?.target.type)
-							? data?.target.type
-							: NodeConnectionType.Main,
-						index: data?.target.index ?? 0,
-					}),
-				},
-				{ trackHistory },
-			);
+		for (const connection of connections) {
+			createConnection(connection, { trackHistory });
 		}
 
 		if (trackBulk && trackHistory) {
@@ -1452,7 +1431,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 		// Add nodes and connections
 		await addNodes(data.nodes, { keepPristine: true });
-		workflowsStore.setConnections(data.connections);
+		await addConnections(mapLegacyConnectionsToCanvasConnections(data.connections, data.nodes));
 	}
 
 	/**
@@ -1623,7 +1602,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		}
 
 		await addNodes(Object.values(tempWorkflow.nodes), { trackBulk: false, trackHistory });
-		addConnections(
+		await addConnections(
 			mapLegacyConnectionsToCanvasConnections(
 				tempWorkflow.connectionsBySourceNode,
 				Object.values(tempWorkflow.nodes),

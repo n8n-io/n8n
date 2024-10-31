@@ -25,7 +25,7 @@ export class FilterError extends ApplicationError {
 		message: string,
 		readonly description: string,
 	) {
-		super(message);
+		super(message, { level: 'warning' });
 	}
 }
 

@@ -66,8 +66,12 @@ export const initErrorHandling = async () => {
 				},
 			}),
 		],
-		beforeSend(event, { originalException }) {
+		async beforeSend(event, { originalException }) {
 			if (!originalException) return null;
+
+			if (originalException instanceof Promise) {
+				originalException = await originalException.catch((error) => error as Error);
+			}
 
 			if (originalException instanceof AxiosError) return null;
 
