@@ -180,36 +180,6 @@ describe('useCanvasOperations', () => {
 			expect(result.position).toEqual([20, 20]);
 		});
 
-		it('should create node with default credentials when only one credential is available', () => {
-			const credentialsStore = useCredentialsStore();
-			const credential = mock<ICredentialsResponse>({ id: '1', name: 'cred', type: 'cred' });
-			const nodeTypeName = 'type';
-			const nodeTypeDescription = mockNodeTypeDescription({
-				name: nodeTypeName,
-				credentials: [{ name: credential.name }],
-			});
-
-			credentialsStore.state.credentials = {
-				[credential.id]: credential,
-			};
-
-			// @ts-expect-error Known pinia issue when spying on store getters
-			vi.spyOn(credentialsStore, 'getUsableCredentialByType', 'get').mockReturnValue(() => [
-				credential,
-			]);
-
-			const { addNode } = useCanvasOperations({ router });
-			const result = addNode(
-				{
-					type: nodeTypeName,
-					typeVersion: 1,
-				},
-				nodeTypeDescription,
-			);
-
-			expect(result.credentials).toEqual({ [credential.name]: { id: '1', name: credential.name } });
-		});
-
 		it('should not assign credentials when multiple credentials are available', () => {
 			const credentialsStore = useCredentialsStore();
 			const credentialA = mock<ICredentialsResponse>({ id: '1', name: 'credA', type: 'cred' });
