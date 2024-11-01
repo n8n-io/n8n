@@ -2,7 +2,7 @@ import { BuiltInsParserState } from '../built-ins-parser-state';
 
 describe('BuiltInsParserState', () => {
 	describe('toDataRequestSpecification', () => {
-		it('should return empty object when no properties are marked as needed', () => {
+		it('should return empty array when no properties are marked as needed', () => {
 			const state = new BuiltInsParserState();
 
 			expect(state.toDataRequestParams()).toEqual({
