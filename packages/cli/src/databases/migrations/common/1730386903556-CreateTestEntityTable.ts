@@ -8,8 +8,8 @@ export class CreateTestEntityTable1730386903556 implements ReversibleMigration {
 			.withColumns(
 				column('id').int.notNull.primary.autoGenerate,
 				column('name').varchar(255).notNull,
-				column('workflowId').int.notNull,
-				column('evaluationWorkflowId').int,
+				column('workflowId').varchar(36).notNull,
+				column('evaluationWorkflowId').varchar(36),
 				column('annotationTagId').varchar(16),
 			)
 			.withIndexOn('workflowId')
