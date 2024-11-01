@@ -26,14 +26,14 @@ describe('UrlService', () => {
 			expect(urlService.getInstanceBaseUrl()).toBe('https://example.com');
 		});
 
-		it('should sanitize quotes when setting URL from N8N_EDITOR_BASE_URL', () => {
+		it('should trim quotes when setting URL from N8N_EDITOR_BASE_URL', () => {
 			config.set('editorBaseUrl', '"https://example.com"');
 			process.env.WEBHOOK_URL = undefined;
 			const urlService = new UrlService(mock<GlobalConfig>());
 			expect(urlService.getInstanceBaseUrl()).toBe('https://example.com');
 		});
 
-		it('should sanitize quotes when setting URL from WEBHOOK_URL', () => {
+		it('should trim quotes when setting URL from WEBHOOK_URL', () => {
 			config.set('editorBaseUrl', '');
 			process.env.WEBHOOK_URL = '"https://example.com/"';
 			const urlService = new UrlService(mock<GlobalConfig>());

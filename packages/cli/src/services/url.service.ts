@@ -14,7 +14,7 @@ export class UrlService {
 
 	/** Returns the base URL of the webhooks */
 	getWebhookBaseUrl() {
-		let urlBaseWebhook = this.sanitizeQuotes(process.env.WEBHOOK_URL) || this.baseUrl;
+		let urlBaseWebhook = this.trimQuotes(process.env.WEBHOOK_URL) || this.baseUrl;
 		if (!urlBaseWebhook.endsWith('/')) {
 			urlBaseWebhook += '/';
 		}
@@ -23,8 +23,7 @@ export class UrlService {
 
 	/** Return the n8n instance base URL without trailing slash */
 	getInstanceBaseUrl(): string {
-		const n8nBaseUrl =
-			this.sanitizeQuotes(config.getEnv('editorBaseUrl')) || this.getWebhookBaseUrl();
+		const n8nBaseUrl = this.trimQuotes(config.getEnv('editorBaseUrl')) || this.getWebhookBaseUrl();
 
 		return n8nBaseUrl.endsWith('/') ? n8nBaseUrl.slice(0, n8nBaseUrl.length - 1) : n8nBaseUrl;
 	}
@@ -39,7 +38,7 @@ export class UrlService {
 	}
 
 	/** Remove leading and trailing double quotes from a URL. */
-	private sanitizeQuotes(url?: string) {
+	private trimQuotes(url?: string) {
 		return url?.replace(/^["]+|["]+$/g, '') ?? '';
 	}
 }
