@@ -1,3 +1,8 @@
+import { getAdditionalKeys } from 'n8n-core';
+import type { IDataObject, INodeType, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
+import { Workflow, WorkflowDataProxy } from 'n8n-workflow';
+
+import { newCodeTaskData } from '../../__tests__/test-data';
 import { BuiltInsParser } from '../built-ins-parser';
 import { BuiltInsParserState } from '../built-ins-parser-state';
 
@@ -149,6 +154,98 @@ describe('BuiltInsParser', () => {
 					return a;
 				`);
 			});
+		});
+	});
+
+	describe('WorkflowDataProxy built-ins', () => {
+		it('should have a known list of built-ins', () => {
+			const data = newCodeTaskData([]);
+			const dataProxy = new WorkflowDataProxy(
+				new Workflow({
+					...data.workflow,
+					nodeTypes: {
+						getByName() {
+							return undefined as unknown as INodeType;
+						},
+						getByNameAndVersion() {
+							return undefined as unknown as INodeType;
+						},
+						getKnownTypes() {
+							return undefined as unknown as IDataObject;
+						},
+					},
+				}),
+				data.runExecutionData,
+				data.runIndex,
+				0,
+				data.activeNodeName,
+				data.connectionInputData,
+				data.siblingParameters,
+				data.mode,
+				getAdditionalKeys(
+					data.additionalData as IWorkflowExecuteAdditionalData,
+					data.mode,
+					data.runExecutionData,
+				),
+				data.executeData,
+				data.defaultReturnRunIndex,
+				data.selfData,
+				data.contextNodeName,
+				// Make sure that even if we don't receive the envProviderState for
+				// whatever reason, we don't expose the task runner's env to the code
+				data.envProviderState ?? {
+					env: {},
+					isEnvAccessBlocked: false,
+					isProcessAvailable: true,
+				},
+			).getDataProxy({ throwOnMissingExecutionData: false });
+
+			/**
+			 * NOTE! If you are adding new built-ins to the WorkflowDataProxy class
+			 * make sure the built-ins parser and Task Runner handle them properly.
+			 */
+			expect(Object.keys(dataProxy)).toStrictEqual([
+				'$',
+				'$input',
+				'$binary',
+				'$data',
+				'$env',
+				'$evaluateExpression',
+				'$item',
+				'$fromAI',
+				'$fromai',
+				'$fromAi',
+				'$items',
+				'$json',
+				'$node',
+				'$self',
+				'$parameter',
+				'$prevNode',
+				'$runIndex',
+				'$mode',
+				'$workflow',
+				'$itemIndex',
+				'$now',
+				'$today',
+				'$jmesPath',
+				'DateTime',
+				'Interval',
+				'Duration',
+				'$execution',
+				'$vars',
+				'$secrets',
+				'$executionId',
+				'$resumeWebhookUrl',
+				'$getPairedItem',
+				'$jmespath',
+				'$position',
+				'$thisItem',
+				'$thisItemIndex',
+				'$thisRunIndex',
+				'$nodeVersion',
+				'$nodeId',
+				'$webhookId',
+			]);
 		});
 	});
 });
