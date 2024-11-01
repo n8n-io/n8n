@@ -153,8 +153,6 @@ describe('ProjectsNavigation', () => {
 		expect(getByText(/You have reached the Free plan limit of 3/)).toBeVisible();
 		await userEvent.click(getByText('View plans'));
 
-		console.log(pageRedirectionHelper);
-
 		expect(pageRedirectionHelper.goToUpgrade).toHaveBeenCalledWith('rbac', 'upgrade-rbac');
 	});
 
