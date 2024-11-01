@@ -20,8 +20,12 @@ export class BuiltInsParserState {
 		Object.assign(this, opts);
 	}
 
+	/**
+	 * Marks that all nodes are needed, including input data
+	 */
 	markNeedsAllNodes() {
 		this.needsAllNodes = true;
+		this.needs$input = true;
 		this.neededNodeNames = new Set();
 	}
 

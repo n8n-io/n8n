@@ -13,14 +13,14 @@ describe('BuiltInsParserState', () => {
 			});
 		});
 
-		it('should return all nodes when markNeedsAllNodes is called', () => {
+		it('should return all nodes and input when markNeedsAllNodes is called', () => {
 			const state = new BuiltInsParserState();
 			state.markNeedsAllNodes();
 
 			expect(state.toDataRequestParams()).toEqual({
 				dataOfNodes: 'all',
 				env: false,
-				input: false,
+				input: true,
 				prevNode: false,
 			});
 		});
@@ -47,7 +47,7 @@ describe('BuiltInsParserState', () => {
 			expect(state.toDataRequestParams()).toEqual({
 				dataOfNodes: 'all',
 				env: false,
-				input: false,
+				input: true,
 				prevNode: false,
 			});
 		});

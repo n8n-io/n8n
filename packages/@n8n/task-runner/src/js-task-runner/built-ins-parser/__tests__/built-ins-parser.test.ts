@@ -73,7 +73,7 @@ describe('BuiltInsParser', () => {
 
 		it('should need all nodes when $() is called with a variable', () => {
 			const state = parseAndExpectOk('var n = "name"; $(n)');
-			expect(state).toEqual(new BuiltInsParserState({ needsAllNodes: true }));
+			expect(state).toEqual(new BuiltInsParserState({ needsAllNodes: true, needs$input: true }));
 		});
 
 		it('should require all nodes when there are multiple usages of $() and one is with a variable', () => {
@@ -83,7 +83,7 @@ describe('BuiltInsParser', () => {
 				var n = "name";
 				$(n)
 			`);
-			expect(state).toEqual(new BuiltInsParserState({ needsAllNodes: true }));
+			expect(state).toEqual(new BuiltInsParserState({ needsAllNodes: true, needs$input: true }));
 		});
 
 		test.each([
@@ -104,7 +104,7 @@ describe('BuiltInsParser', () => {
 			'a = $("node")',
 		])('should require all nodes if %s is used', (code) => {
 			const state = parseAndExpectOk(code);
-			expect(state).toEqual(new BuiltInsParserState({ needsAllNodes: true }));
+			expect(state).toEqual(new BuiltInsParserState({ needsAllNodes: true, needs$input: true }));
 		});
 
 		test.each(['$("node").first()', '$("node").last()', '$("node").all()', '$("node").params'])(
@@ -112,7 +112,10 @@ describe('BuiltInsParser', () => {
 			(code) => {
 				const state = parseAndExpectOk(code);
 				expect(state).toEqual(
-					new BuiltInsParserState({ needsAllNodes: false, neededNodeNames: new Set(['node']) }),
+					new BuiltInsParserState({
+						needsAllNodes: false,
+						neededNodeNames: new Set(['node']),
+					}),
 				);
 			},
 		);
