@@ -30,6 +30,7 @@ export class BuiltInsParser {
 		});
 	}
 
+	/** Traverse the AST of the script and mark any data needed for it to run. */
 	private identifyBuiltInsByWalkingAst(ast: Program) {
 		const accessedBuiltIns = new BuiltInsParserState();
 

@@ -125,6 +125,8 @@ export class DataRequestResponseBuilder {
 
 	buildEnvProviderState(envProviderState: EnvProviderState): EnvProviderState {
 		if (this.requestParams.env) {
+			// In case `isEnvAccessBlocked` = true, the provider state has already sanitized
+			// the environment variables and we can return it as is.
 			return envProviderState;
 		}
 
