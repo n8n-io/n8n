@@ -5,25 +5,33 @@ import MessagesList from '@n8n/chat/components/MessagesList.vue';
 import MessageOptionTooltip from './MessageOptionTooltip.vue';
 import MessageOptionAction from './MessageOptionAction.vue';
 import { chatEventBus } from '@n8n/chat/event-buses';
+import type { ArrowKeyDownPayload } from '@n8n/chat/components/Input.vue';
 import ChatInput from '@n8n/chat/components/Input.vue';
 import { useMessage } from '@/composables/useMessage';
 import { MODAL_CONFIRM } from '@/constants';
+import { ref } from 'vue';
+import { useClipboard } from '@/composables/useClipboard';
+import { useToast } from '@/composables/useToast';
 
 interface Props {
+	pastChatMessages: string[];
 	messages: ChatMessage[];
 	sessionId: string;
 }
 
 const props = defineProps<Props>();
-
-const messageComposable = useMessage();
 const emit = defineEmits<{
 	displayExecution: [id: string];
 	sendMessage: [message: string];
 	refreshSession: [];
 }>();
 
+const messageComposable = useMessage();
+const clipboard = useClipboard();
 const locale = useI18n();
+const toast = useToast();
+
+const previousMessageIndex = ref(0);
 
 /** Checks if message is a text message */
 function isTextMessage(message: ChatMessage): message is ChatMessageText {
@@ -41,6 +49,7 @@ function reuseMessage(message: ChatMessageText) {
 }
 
 function sendMessage(message: string) {
+	previousMessageIndex.value = 0;
 	emit('sendMessage', message);
 }
 
@@ -64,6 +73,43 @@ async function onRefreshSession() {
 		emit('refreshSession');
 	}
 }
+
+function onArrowKeyDown({ currentInputValue, key }: ArrowKeyDownPayload) {
+	const pastMessages = props.pastChatMessages;
+	const isCurrentInputEmptyOrMatch =
+		currentInputValue.length === 0 || pastMessages.includes(currentInputValue);
+
+	if (isCurrentInputEmptyOrMatch && (key === 'ArrowUp' || key === 'ArrowDown')) {
+		// Blur the input when the user presses the up or down arrow key
+		chatEventBus.emit('blurInput');
+
+		if (pastMessages.length === 1) {
+			previousMessageIndex.value = 0;
+		} else if (key === 'ArrowUp') {
+			previousMessageIndex.value = (previousMessageIndex.value + 1) % pastMessages.length;
+		} else if (key === 'ArrowDown') {
+			previousMessageIndex.value =
+				(previousMessageIndex.value - 1 + pastMessages.length) % pastMessages.length;
+		}
+
+		chatEventBus.emit(
+			'setInputValue',
+			pastMessages[pastMessages.length - 1 - previousMessageIndex.value] ?? '',
+		);
+
+		// Refocus to move the cursor to the end of the input
+		chatEventBus.emit('focusInput');
+	}
+}
+
+function copySessionId() {
+	void clipboard.copy(props.sessionId);
+	toast.showMessage({
+		title: locale.baseText('generic.copiedToClipboard'),
+		message: '',
+		type: 'success',
+	});
+}
 </script>
 
 <template>
@@ -76,7 +122,7 @@ async function onRefreshSession() {
 					<template #content>
 						{{ sessionId }}
 					</template>
-					<span :class="$style.sessionId">{{ sessionId }}</span>
+					<span :class="$style.sessionId" @click="copySessionId">{{ sessionId }}</span>
 				</n8n-tooltip>
 				<n8n-icon-button
 					:class="$style.refreshSession"
@@ -120,17 +166,27 @@ async function onRefreshSession() {
 				</template>
 			</MessagesList>
 		</main>
+
 		<div :class="$style.messagesInput">
-			<!-- Files: -->
 			<div :class="$style.messagesHistory">
-				<n8n-tooltip content="Navigate to previous message" placement="left">
-					<n8n-button title="Up" icon="chevron-up" type="tertiary" text size="mini" />
-				</n8n-tooltip>
-				<n8n-tooltip content="Navigate to next message" placement="right">
-					<n8n-button title="Down" icon="chevron-down" type="tertiary" text size="mini" />
-				</n8n-tooltip>
+				<n8n-button
+					title="Navigate to previous message"
+					icon="chevron-up"
+					type="tertiary"
+					text
+					size="mini"
+					@click="onArrowKeyDown({ currentInputValue: '', key: 'ArrowUp' })"
+				/>
+				<n8n-button
+					title="Navigate to next message"
+					icon="chevron-down"
+					type="tertiary"
+					text
+					size="mini"
+					@click="onArrowKeyDown({ currentInputValue: '', key: 'ArrowDown' })"
+				/>
 			</div>
-			<ChatInput data-test-id="lm-chat-inputs" />
+			<ChatInput data-test-id="lm-chat-inputs" @arrow-key-down="onArrowKeyDown" />
 		</div>
 	</div>
 </template>
@@ -147,6 +203,7 @@ async function onRefreshSession() {
 	--chat--message--bot--border: none;
 	--chat--message--user--border: none;
 	--chat--color-typing: var(--color-text-dark);
+	--chat--textarea--max-height: calc(var(--panel-height) * 0.5);
 
 	height: 100%;
 	display: flex;
@@ -178,6 +235,8 @@ async function onRefreshSession() {
 	white-space: nowrap;
 	text-overflow: ellipsis;
 	overflow: hidden;
+
+	cursor: pointer;
 }
 .refreshSession {
 	max-height: 1.1rem;
@@ -186,20 +245,6 @@ async function onRefreshSession() {
 	display: flex;
 	height: 100%;
 	overflow: auto;
-
-	& ::-webkit-scrollbar {
-		width: 4px;
-	}
-
-	& ::-webkit-scrollbar-thumb {
-		border-radius: var(--border-radius-base);
-		background: var(--color-foreground-dark);
-		border: 1px solid white;
-	}
-
-	& ::-webkit-scrollbar-thumb:hover {
-		background: var(--color-foreground-xdark);
-	}
 }
 
 .messages {
@@ -218,13 +263,13 @@ async function onRefreshSession() {
 	--input-border-color: #4538a3;
 	--chat--input--border: none;
 
-	--chat--input--border-radius: 3rem;
+	--chat--input--border-radius: 1rem;
 	--chat--input--send--button--background: transparent;
 	--chat--input--send--button--color: var(--color-button-secondary-font);
 	--chat--input--send--button--color-hover: var(--color-primary);
 	--chat--input--border-active: var(--input-focus-border-color, var(--color-secondary));
 	--chat--files-spacing: var(--spacing-2xs) 0;
-	--chat--input--background: transparent; //var(--color-lm-chat-bot-background);
+	--chat--input--background: transparent;
 
 	[data-theme='dark'] & {
 		--chat--input--text-color: var(--input-font-color, var(--color-text-dark));
@@ -232,10 +277,9 @@ async function onRefreshSession() {
 	@media (prefers-color-scheme: dark) {
 		--chat--input--text-color: var(--input-font-color, var(--color-text-dark));
 	}
-	// border-radius: 5rem;
-	padding: var(--spacing-2xs) 0 var(--spacing-2xs) var(--spacing-xs);
+
+	padding: 0 0 0 var(--spacing-xs);
 	margin: var(--chat--spacing);
-	overflow: hidden;
 	flex-grow: 1;
 	display: flex;
 	background: var(--color-lm-chat-bot-background);
@@ -247,7 +291,7 @@ async function onRefreshSession() {
 
 .messagesHistory {
 	display: flex;
-	// align-items: center;
 	flex-direction: column;
+	margin-top: var(--spacing-3xs);
 }
 </style>

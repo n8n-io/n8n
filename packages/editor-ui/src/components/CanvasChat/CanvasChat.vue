@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { provide, watch, computed, ref } from 'vue';
+import { provide, watch, computed, ref, watchEffect } from 'vue';
 import { ChatOptionsSymbol, ChatSymbol } from '@n8n/chat/constants';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useRouter } from 'vue-router';
@@ -17,7 +17,6 @@ import { useI18n } from '@/composables/useI18n';
 import { v4 as uuid } from 'uuid';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { ResizeData } from 'n8n-design-system/components/N8nResizeWrapper/ResizeWrapper.vue';
 
 const router = useRouter();
 const uiStore = useUIStore();
@@ -25,20 +24,15 @@ const locale = useI18n();
 const { getCurrentWorkflow } = useWorkflowHelpers({ router });
 const nodeHelpers = useNodeHelpers();
 const workflowsStore = useWorkflowsStore();
+const canvasStore = useCanvasStore();
 
 const messages = ref<ChatMessage[]>([]);
 const currentSessionId = ref<string>(uuid());
 const isDisabled = ref(false);
 const container = ref<HTMLElement>();
-const {
-	chatTriggerNode,
-	node,
-	allowFileUploads,
-	setChatTriggerNode,
-	setConnectedNode,
-	setLogsSourceNode,
-} = useChatTrigger({ router });
-console.log('🚀 ~ allowFileUploads:', allowFileUploads);
+
+const { chatTriggerNode, connectedNode, allowFileUploads, setChatTriggerNode, setConnectedNode } =
+	useChatTrigger({ router });
 
 const { sendMessage, getChatMessages } = useChatMessaging({
 	chatTrigger: chatTriggerNode,
@@ -51,6 +45,10 @@ const { height, chatWidth, rootStyles, onResizeDebounced, onResizeChatDebounced 
 	useResize(container);
 
 const isLoading = computed(() => uiStore.isActionActive.workflowRunning);
+const allConnections = computed(() => workflowsStore.allConnections);
+const isChatOpen = computed(() => canvasStore.isChatPanelOpen);
+const isLogsOpen = computed(() => canvasStore.isLogsPanelOpen);
+const previousChatMessages = computed(() => workflowsStore.getPastChatMessages);
 
 const chatConfig: Chat = {
 	messages,
@@ -88,88 +86,166 @@ function displayExecution(executionId: string) {
 	window.open(route.href, '_blank');
 }
 
-provide(ChatSymbol, chatConfig);
-provide(ChatOptionsSymbol, chatOptions);
-
-const canvasStore = useCanvasStore();
-watch(
-	() => canvasStore.isLoading,
-	() => {
-		setChatTriggerNode();
-		setConnectedNode();
-		messages.value = getChatMessages();
-
-		setTimeout(() => chatEventBus.emit('focusInput'), 0);
-	},
-);
-
-// Update logs source node when messages change
-watch(
-	() => messages.value.length,
-	() => {
-		setLogsSourceNode();
-	},
-);
-
 function refreshSession() {
 	workflowsStore.setWorkflowExecutionData(null);
 	nodeHelpers.updateNodesExecutionIssues();
 	messages.value = [];
 	currentSessionId.value = uuid();
 }
+
+function toggleChat() {
+	canvasStore.setPanelOpen('chat', !isChatOpen.value);
+}
+
+function toggleLogs() {
+	canvasStore.setPanelOpen('logs', !isLogsOpen.value);
+}
+provide(ChatSymbol, chatConfig);
+provide(ChatOptionsSymbol, chatOptions);
+
+watch(
+	() => isChatOpen.value,
+	(isOpen) => {
+		if (isOpen) {
+			setChatTriggerNode();
+			setConnectedNode();
+			messages.value = getChatMessages();
+
+			setTimeout(() => chatEventBus.emit('focusInput'), 0);
+		}
+	},
+);
+
+watch(
+	() => allConnections.value,
+	() => {
+		if (canvasStore.isLoading) return;
+
+		setConnectedNode();
+	},
+	{ deep: true },
+);
+
+watchEffect(() => {
+	canvasStore.setPanelHeight(isChatOpen.value || isLogsOpen.value ? height.value : 40);
+});
 </script>
 
 <template>
 	<n8n-resize-wrapper
-		v-show="true"
+		:is-resizing-enabled="isChatOpen || isLogsOpen"
 		:supported-directions="['top']"
-		:class="$style.container"
+		:class="[$style.resizeWrapper, !isChatOpen && !isLogsOpen && $style.empty]"
 		:height="height"
 		data-test-id="ask-assistant-sidebar"
 		:style="rootStyles"
 		@resize="onResizeDebounced"
 	>
-		<div ref="container" :class="$style.content">
-			<n8n-resize-wrapper
-				v-show="true"
-				:supported-directions="['right']"
-				:width="chatWidth"
-				:class="$style.chat"
-				@resize="onResizeChatDebounced"
-			>
-				<div :class="$style.inner">
-					<ChatMessagesPanel
-						:messages="messages"
-						:session-id="currentSessionId"
-						@refresh-session="refreshSession"
-						@display-execution="displayExecution"
-						@send-message="sendMessage"
-					/>
+		<div ref="container" :class="$style.container">
+			<div v-if="isChatOpen || isLogsOpen" :class="$style.chatResizer">
+				<n8n-resize-wrapper
+					v-if="isChatOpen"
+					:supported-directions="['right']"
+					:width="chatWidth"
+					:class="$style.chat"
+					@resize="onResizeChatDebounced"
+				>
+					<div :class="$style.inner">
+						<ChatMessagesPanel
+							:messages="messages"
+							:session-id="currentSessionId"
+							:past-chat-messages="previousChatMessages"
+							@refresh-session="refreshSession"
+							@display-execution="displayExecution"
+							@send-message="sendMessage"
+						/>
+					</div>
+				</n8n-resize-wrapper>
+				<div v-if="isLogsOpen && connectedNode" :class="$style.logs">
+					<ChatLogsPanel :key="messages.length" :node="connectedNode" />
 				</div>
-			</n8n-resize-wrapper>
-			<div :class="$style.logs">
-				<ChatLogsPanel :node="node" :messages-length="messages.length" />
+			</div>
+
+			<div :class="$style.footer">
+				<n8n-button
+					type="secondary"
+					:active="isChatOpen"
+					outline
+					size="mini"
+					icon="comment"
+					@click="toggleChat"
+				>
+					Chat
+				</n8n-button>
+				<n8n-button
+					v-if="connectedNode"
+					type="tertiary"
+					:active="isLogsOpen"
+					outline
+					size="mini"
+					icon="tasks"
+					@click="toggleLogs"
+				>
+					Execution Logs
+				</n8n-button>
 			</div>
 		</div>
 	</n8n-resize-wrapper>
 </template>
 
 <style lang="scss" module>
-.container {
+.resizeWrapper {
 	height: var(--panel-height);
 	min-height: 4rem;
 	max-height: 90vh;
 	flex-basis: content;
 	z-index: 300;
 	border-top: 1px solid var(--color-foreground-base);
-}
 
-.content {
+	&.empty {
+		height: auto;
+		min-height: 0;
+		flex-basis: 0;
+	}
+
+	* {
+		& ::-webkit-scrollbar {
+			width: 4px;
+		}
+
+		& ::-webkit-scrollbar-thumb {
+			border-radius: var(--border-radius-base);
+			background: var(--color-foreground-dark);
+			border: 1px solid white;
+		}
+
+		& ::-webkit-scrollbar-thumb:hover {
+			background: var(--color-foreground-xdark);
+		}
+	}
+}
+.container {
+	width: 100%;
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+	width: 100%;
+}
+.chatResizer {
 	display: flex;
 	width: 100%;
 	height: 100%;
 	max-width: 100%;
 	overflow: hidden;
+}
+.footer {
+	border-top: 1px solid var(--color-foreground-base);
+	width: 100%;
+	background-color: var(--color-background-light);
+	display: flex;
+	padding: var(--spacing-2xs);
+	gap: var(--spacing-2xs);
 }
 
 .chat {
@@ -178,6 +254,10 @@ function refreshSession() {
 	flex-shrink: 0;
 	flex-grow: 0;
 	max-width: 100%;
+
+	&:only-child {
+		width: 100%;
+	}
 }
 
 .inner {
@@ -190,5 +270,6 @@ function refreshSession() {
 
 .logs {
 	flex-grow: 1;
+	background-color: var(--color-background-light);
 }
 </style>

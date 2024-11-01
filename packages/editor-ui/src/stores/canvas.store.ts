@@ -54,8 +54,10 @@ export const useCanvasStore = defineStore('canvas', () => {
 	const jsPlumbInstanceRef = ref<BrowserJsPlumbInstance>();
 	const isDragging = ref<boolean>(false);
 	const lastSelectedConnection = ref<Connection>();
-
 	const newNodeInsertPosition = ref<XYPosition | null>(null);
+	const isChatPanelOpen = ref(false);
+	const isLogsPanelOpen = ref(false);
+	const panelHeight = ref(0);
 
 	const nodes = computed<INodeUi[]>(() => workflowStore.allNodes);
 	const triggerNodes = computed<INodeUi[]>(() =>
@@ -109,9 +111,9 @@ export const useCanvasStore = defineStore('canvas', () => {
 		const manualTriggerNode = nodeTypesStore.getNodeType(MANUAL_TRIGGER_NODE_TYPE);
 
 		if (!manualTriggerNode) {
-			console.error('Could not find the manual trigger node');
 			return null;
 		}
+
 		return {
 			id: uuid(),
 			name: manualTriggerNode.defaults.name?.toString() ?? manualTriggerNode.displayName,
@@ -324,6 +326,19 @@ export const useCanvasStore = defineStore('canvas', () => {
 
 	watch(readOnlyEnv, setReadOnly);
 
+	function setPanelOpen(panel: 'chat' | 'logs', isOpen: boolean) {
+		if (panel === 'chat') {
+			isChatPanelOpen.value = isOpen;
+		}
+		if (panel === 'logs') {
+			isLogsPanelOpen.value = isOpen;
+		}
+	}
+
+	function setPanelHeight(height: number) {
+		panelHeight.value = height;
+	}
+
 	return {
 		isDemo,
 		nodeViewScale,
@@ -333,6 +348,11 @@ export const useCanvasStore = defineStore('canvas', () => {
 		isLoading: loadingService.isLoading,
 		aiNodes,
 		lastSelectedConnection: lastSelectedConnectionComputed,
+		isChatPanelOpen: computed(() => isChatPanelOpen.value),
+		isLogsPanelOpen: computed(() => isLogsPanelOpen.value),
+		panelHeight: computed(() => panelHeight.value),
+		setPanelHeight,
+		setPanelOpen,
 		setReadOnly,
 		setLastSelectedConnection,
 		startLoading: loadingService.startLoading,

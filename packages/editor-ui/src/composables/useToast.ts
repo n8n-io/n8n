@@ -10,6 +10,7 @@ import { useExternalHooks } from './useExternalHooks';
 import { VIEWS } from '@/constants';
 import type { ApplicationError } from 'n8n-workflow';
 import { useStyles } from './useStyles';
+import { useCanvasStore } from '@/stores/canvas.store';
 
 export interface NotificationErrorWithNodeAndDescription extends ApplicationError {
 	node: {
@@ -27,6 +28,7 @@ export function useToast() {
 	const externalHooks = useExternalHooks();
 	const i18n = useI18n();
 	const { APP_Z_INDEXES } = useStyles();
+	const canvasStore = useCanvasStore();
 
 	const messageDefaults: Partial<Omit<NotificationOptions, 'message'>> = {
 		dangerouslyUseHTMLString: false,
@@ -40,6 +42,8 @@ export function useToast() {
 	function showMessage(messageData: Partial<NotificationOptions>, track = true) {
 		const { message, title } = messageData;
 		const params = { ...messageDefaults, ...messageData };
+
+		params.offset = +canvasStore.panelHeight;
 
 		if (typeof message === 'string') {
 			params.message = sanitizeHtml(message);

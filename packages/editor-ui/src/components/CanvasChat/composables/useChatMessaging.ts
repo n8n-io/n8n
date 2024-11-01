@@ -5,10 +5,9 @@ import type { ChatMessage, ChatMessageText } from '@n8n/chat/types';
 import { NodeConnectionType, CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import type {
 	ITaskData,
-	type INode,
-	type INodeExecutionData,
-	type IBinaryKeyData,
-	type IDataObject,
+	INodeExecutionData,
+	IBinaryKeyData,
+	IDataObject,
 	IBinaryData,
 	BinaryFileType,
 } from 'n8n-workflow';
@@ -24,7 +23,7 @@ import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import type { useRouter } from 'vue-router';
 import type { MemoryOutput } from '../types/chat';
 import { useUIStore } from '@/stores/ui.store';
-import { INodeUi } from '@/Interface';
+import type { INodeUi } from '@/Interface';
 
 export function useChatMessaging({
 	router,
@@ -97,7 +96,6 @@ export function useChatMessaging({
 
 	/** Starts workflow execution with the message */
 	async function startWorkflowWithMessage(message: string, files?: File[]): Promise<void> {
-		console.log('🚀 ~ startWorkflowWithMessage ~ message:', message);
 		const triggerNode = chatTrigger.value;
 
 		if (!triggerNode) {
@@ -153,7 +151,6 @@ export function useChatMessaging({
 			return;
 		}
 
-		console.log('DEBUG: Wait for execution');
 		waitForExecution(response.executionId);
 	}
 

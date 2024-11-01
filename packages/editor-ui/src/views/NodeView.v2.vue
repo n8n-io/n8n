@@ -60,7 +60,6 @@ import {
 	STICKY_NODE_TYPE,
 	VALID_WORKFLOW_IMPORT_URL_REGEX,
 	VIEWS,
-	WORKFLOW_LM_CHAT_MODAL_KEY,
 } from '@/constants';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
@@ -1204,7 +1203,7 @@ const chatTriggerNodePinnedData = computed(() => {
 });
 
 async function onOpenChat() {
-	uiStore.openModal(WORKFLOW_LM_CHAT_MODAL_KEY);
+	canvasStore.setPanelOpen('chat', true);
 
 	const payload = {
 		workflow_id: workflowId.value,

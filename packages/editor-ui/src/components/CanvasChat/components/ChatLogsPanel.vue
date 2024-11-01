@@ -1,15 +1,14 @@
 <script setup lang="ts">
 import type { INode } from 'n8n-workflow';
-import { useI18n } from '@/composables/useI18n';
-import { defineAsyncComponent } from 'vue';
+import { computed } from 'vue';
+import RunDataAi from '@/components/RunDataAi/RunDataAi.vue';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
-const LazyRunDataAi = defineAsyncComponent(
-	async () => await import('@/components/RunDataAi/RunDataAi.vue'),
-);
+const workflowsStore = useWorkflowsStore();
 
+const workflow = computed(() => workflowsStore.getCurrentWorkflow());
 defineProps<{
 	node: INode | null;
-	messagesLength: number;
 }>();
 </script>
 
@@ -19,12 +18,12 @@ defineProps<{
 			Latest Logs <span v-if="node">from {{ node?.name }} node</span>
 		</header>
 		<div :class="$style.logs">
-			<LazyRunDataAi
+			<RunDataAi
 				v-if="node"
 				:class="$style.runData"
-				:key="messagesLength"
 				:node="node"
 				hide-title
+				:workflow="workflow"
 				slim
 			/>
 		</div>
@@ -63,19 +62,5 @@ defineProps<{
 	padding: var(--spacing-s) 0;
 	flex-grow: 1;
 	overflow: auto;
-
-	& ::-webkit-scrollbar {
-		width: 4px;
-	}
-
-	& ::-webkit-scrollbar-thumb {
-		border-radius: var(--border-radius-base);
-		background: var(--color-foreground-dark);
-		border: 1px solid white;
-	}
-
-	& ::-webkit-scrollbar-thumb:hover {
-		background: var(--color-foreground-xdark);
-	}
 }
 </style>

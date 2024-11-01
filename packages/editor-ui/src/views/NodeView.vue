@@ -34,7 +34,6 @@ import {
 	NODE_CREATOR_OPEN_SOURCES,
 	CHAT_TRIGGER_NODE_TYPE,
 	MANUAL_CHAT_TRIGGER_NODE_TYPE,
-	WORKFLOW_LM_CHAT_MODAL_KEY,
 	AI_NODE_CREATOR_VIEW,
 	DRAG_EVENT_DATA_KEY,
 	UPDATE_WEBHOOK_ID_NODE_TYPES,
@@ -863,7 +862,7 @@ export default defineComponent({
 			};
 			this.$telemetry.track('User clicked chat open button', telemetryPayload);
 			void this.externalHooks.run('nodeView.onOpenChat', telemetryPayload);
-			this.uiStore.openModal(WORKFLOW_LM_CHAT_MODAL_KEY);
+			this.canvasStore.setPanelOpen('chat', this.canvasStore.isChatPanelOpen);
 		},
 
 		async onRunWorkflow() {

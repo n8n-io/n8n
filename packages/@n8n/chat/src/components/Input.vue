@@ -74,6 +74,10 @@ onMounted(() => {
 	chatEventBus.on('focusInput', focusChatInput);
 	chatEventBus.on('blurInput', blurChatInput);
 	chatEventBus.on('setInputValue', setInputValue);
+
+	if (chatTextArea.value) {
+		adjustHeight({ target: chatTextArea.value } as unknown as Event);
+	}
 });
 
 onUnmounted(() => {
@@ -121,6 +125,7 @@ async function onSubmitKeydown(event: KeyboardEvent) {
 	}
 
 	await onSubmit(event);
+	adjustHeight({ target: chatTextArea.value } as unknown as Event);
 }
 
 function onFileRemove(file: File) {
@@ -151,6 +156,15 @@ function onOpenFileDialog() {
 	if (isFileUploadDisabled.value) return;
 	openFileDialog({ accept: unref(allowedFileTypes) });
 }
+
+function adjustHeight(event: Event) {
+	const textarea = event.target as HTMLTextAreaElement;
+	// Set to content minimum to get the right scrollHeight
+	textarea.style.height = 'var(--chat--textarea--height)';
+	// Get the new height, with a small buffer for padding
+	const newHeight = Math.min(textarea.scrollHeight, 480); // 30rem
+	textarea.style.height = `${newHeight}px`;
+}
 </script>
 
 <template>
@@ -162,6 +176,9 @@ function onOpenFileDialog() {
 				:disabled="isInputDisabled"
 				:placeholder="t('inputPlaceholder')"
 				@keydown.enter="onSubmitKeydown"
+				@input="adjustHeight"
+				@mousedown="adjustHeight"
+				@focus="adjustHeight"
 			/>
 
 			<div class="chat-inputs-controls">
@@ -217,11 +234,12 @@ function onOpenFileDialog() {
 		border-radius: var(--chat--input--border-radius, 0);
 		padding: 0.8rem;
 		padding-right: calc(0.8rem + (var(--controls-count, 1) * var(--chat--textarea--height)));
-		min-height: var(--chat--textarea--height);
-		max-height: var(--chat--textarea--max-height, var(--chat--textarea--height));
-		height: 100%;
+		min-height: var(--chat--textarea--height, 2.5rem); // Set a smaller initial height
+		max-height: var(--chat--textarea--max-height, 30rem);
+		height: var(--chat--textarea--height, 2.5rem); // Set initial height same as min-height
+		resize: none;
+		overflow-y: auto;
 		background: var(--chat--input--background, white);
-		resize: var(--chat--textarea--resize, none);
 		color: var(--chat--input--text-color, initial);
 		outline: none;
 
@@ -235,6 +253,7 @@ function onOpenFileDialog() {
 	display: flex;
 	position: absolute;
 	right: 0.5rem;
+	top: 0;
 }
 .chat-input-send-button {
 	height: var(--chat--textarea--height);
@@ -275,7 +294,7 @@ function onOpenFileDialog() {
 	width: 100%;
 	flex-direction: row;
 	flex-wrap: wrap;
-	gap: 0.25rem;
+	gap: 0.5rem;
 	padding: var(--chat--files-spacing, 0.25rem);
 }
 </style>

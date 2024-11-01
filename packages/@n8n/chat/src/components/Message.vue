@@ -60,7 +60,7 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 const scrollToView = () => {
 	if (messageContainer.value?.scrollIntoView) {
 		messageContainer.value.scrollIntoView({
-			block: 'center',
+			block: 'start',
 		});
 	}
 };
@@ -136,7 +136,7 @@ onMounted(async () => {
 	font-size: var(--chat--message--font-size, 1rem);
 	padding: var(--chat--message--padding, var(--chat--spacing));
 	border-radius: var(--chat--message--border-radius, var(--chat--border-radius));
-
+	scroll-margin: 100px;
 	.chat-message-actions {
 		position: absolute;
 		bottom: 100%;

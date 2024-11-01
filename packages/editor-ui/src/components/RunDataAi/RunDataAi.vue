@@ -202,7 +202,7 @@ const aiData = computed<AIResult[]>(() => {
 const executionTree = computed<TreeNode[]>(() => {
 	const rootNode = props.node;
 
-	const tree = getTreeNodeData(rootNode.name, 1);
+	const tree = getTreeNodeData(rootNode.name, 0);
 	return tree || [];
 });
 
@@ -210,70 +210,73 @@ watch(() => props.runIndex, selectFirst, { immediate: true });
 </script>
 
 <template>
-	<div v-if="aiData.length > 0" :class="$style.container">
-		<div :class="{ [$style.tree]: true, [$style.slim]: slim }">
-			<ElTree
-				:data="executionTree"
-				:props="{ label: 'node' }"
-				default-expand-all
-				:indent="12"
-				:expand-on-click-node="false"
-				data-test-id="lm-chat-logs-tree"
-				@node-click="onItemClick"
-			>
-				<template #default="{ node, data }">
-					<div
-						:class="{
-							[$style.treeNode]: true,
-							[$style.isSelected]: isTreeNodeSelected(data),
-						}"
-						:data-tree-depth="data.depth"
-						:style="{ '--item-depth': data.depth }"
-					>
-						<button
-							v-if="data.children.length"
-							:class="$style.treeToggle"
-							@click="toggleTreeItem(node)"
+	<div :class="$style.container">
+		<template v-if="aiData.length > 0">
+			<div :class="{ [$style.tree]: true, [$style.slim]: slim }">
+				<ElTree
+					:data="executionTree"
+					:props="{ label: 'node' }"
+					default-expand-all
+					:indent="12"
+					:expand-on-click-node="false"
+					data-test-id="lm-chat-logs-tree"
+					@node-click="onItemClick"
+				>
+					<template #default="{ node, data }">
+						<div
+							:class="{
+								[$style.treeNode]: true,
+								[$style.isSelected]: isTreeNodeSelected(data),
+							}"
+							:data-tree-depth="data.depth"
+							:style="{ '--item-depth': data.depth }"
 						>
-							<font-awesome-icon :icon="node.expanded ? 'angle-down' : 'angle-up'" />
-						</button>
-						<n8n-tooltip :disabled="!slim" placement="right">
-							<template #content>
-								{{ node.label }}
-							</template>
-							<span :class="$style.leafLabel">
-								<NodeIcon
-									:node-type="getNodeType(data.node)!"
-									:size="17"
-									:class="$style.nodeIcon"
-								/>
-								<span v-if="!slim" v-text="node.label" />
-							</span>
-						</n8n-tooltip>
-					</div>
-				</template>
-			</ElTree>
-		</div>
-		<div :class="$style.runData">
-			<div v-if="selectedRun.length === 0" :class="$style.empty">
-				<n8n-text size="large">
-					{{
-						$locale.baseText('ndv.output.ai.empty', {
-							interpolate: {
-								node: props.node.name,
-							},
-						})
-					}}
-				</n8n-text>
+							<button
+								v-if="data.children.length"
+								:class="$style.treeToggle"
+								@click="toggleTreeItem(node)"
+							>
+								<font-awesome-icon :icon="node.expanded ? 'angle-down' : 'angle-up'" />
+							</button>
+							<n8n-tooltip :disabled="!slim" placement="right">
+								<template #content>
+									{{ node.label }}
+								</template>
+								<span :class="$style.leafLabel">
+									<NodeIcon
+										:node-type="getNodeType(data.node)!"
+										:size="17"
+										:class="$style.nodeIcon"
+									/>
+									<span v-if="!slim" v-text="node.label" />
+								</span>
+							</n8n-tooltip>
+						</div>
+					</template>
+				</ElTree>
 			</div>
-			<div
-				v-for="(data, index) in selectedRun"
-				:key="`${data.node}__${data.runIndex}__index`"
-				data-test-id="lm-chat-logs-entry"
-			>
-				<RunDataAiContent :input-data="data" :content-index="index" />
+			<div :class="$style.runData">
+				<div v-if="selectedRun.length === 0" :class="$style.empty">
+					<n8n-text size="large">
+						{{
+							$locale.baseText('ndv.output.ai.empty', {
+								interpolate: {
+									node: props.node.name,
+								},
+							})
+						}}
+					</n8n-text>
+				</div>
+				<div
+					v-for="(data, index) in selectedRun"
+					:key="`${data.node}__${data.runIndex}__index`"
+					data-test-id="lm-chat-logs-entry"
+				>
+					<RunDataAiContent :input-data="data" :content-index="index" />
+				</div>
 			</div>
-		</div>
+		</template>
+		<div v-else :class="$style.noData">Waiting for input…</div>
 	</div>
 </template>
 
@@ -289,6 +292,12 @@ watch(() => props.runIndex, selectFirst, { immediate: true });
 	display: flex;
 	align-items: center;
 	gap: var(--spacing-3xs);
+}
+.noData {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
 }
 .empty {
 	padding: var(--spacing-l);
