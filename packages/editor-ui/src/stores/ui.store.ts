@@ -38,8 +38,6 @@ import {
 	COMMUNITY_PLUS_ENROLLMENT_MODAL,
 } from '@/constants';
 import type {
-	IFakeDoorLocation,
-	CloudUpdateLinkSourceType,
 	INodeUi,
 	XYPosition,
 	Modals,
