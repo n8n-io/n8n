@@ -1,89 +1,85 @@
-<script lang="ts">
-import { defineComponent } from 'vue';
+<script lang="ts" setup>
+import { computed, ref, watch } from 'vue';
 import type { ITemplatesCategory } from '@/Interface';
-import type { PropType } from 'vue';
-import { useTemplatesStore } from '@/stores/templates.store';
-import { mapStores } from 'pinia';
 
-export default defineComponent({
-	name: 'TemplateFilters',
-	props: {
-		categories: {
-			type: Array as PropType<ITemplatesCategory[]>,
-			default: () => [],
-		},
-		sortOnPopulate: {
-			type: Boolean,
-			default: false,
-		},
-		expandLimit: {
-			type: Number,
-			default: 12,
-		},
-		loading: {
-			type: Boolean,
-		},
-		selected: {
-			type: Array as PropType<ITemplatesCategory[]>,
-			default: () => [],
-		},
-	},
-	emits: ['clearAll', 'select', 'clear'],
-	data() {
-		return {
-			collapsed: true,
-			sortedCategories: [] as ITemplatesCategory[],
-		};
-	},
-	computed: {
-		...mapStores(useTemplatesStore),
-		allSelected(): boolean {
-			return this.selected.length === 0;
-		},
-	},
-	watch: {
-		sortOnPopulate: {
-			handler(value: boolean) {
-				if (value) {
-					this.sortCategories();
-				}
-			},
-			immediate: true,
-		},
-		categories: {
-			handler(categories: ITemplatesCategory[]) {
-				if (categories.length > 0) {
-					this.sortCategories();
-				}
-			},
-			immediate: true,
-		},
-	},
-	methods: {
-		sortCategories() {
-			if (!this.sortOnPopulate) {
-				this.sortedCategories = this.categories;
-			} else {
-				const selected = this.selected || [];
-				const selectedCategories = this.categories.filter((cat) => selected.includes(cat));
-				const notSelectedCategories = this.categories.filter((cat) => !selected.includes(cat));
-				this.sortedCategories = selectedCategories.concat(notSelectedCategories);
-			}
-		},
-		collapseAction() {
-			this.collapsed = false;
-		},
-		handleCheckboxChanged(value: boolean, selectedCategory: ITemplatesCategory) {
-			this.$emit(value ? 'select' : 'clear', selectedCategory);
-		},
-		isSelected(category: ITemplatesCategory) {
-			return this.selected.includes(category);
-		},
-		resetCategories() {
-			this.$emit('clearAll');
-		},
-	},
+interface Props {
+	categories?: ITemplatesCategory[];
+	sortOnPopulate?: boolean;
+	expandLimit?: number;
+	loading?: boolean;
+	selected?: ITemplatesCategory[];
+}
+
+const props = withDefaults(defineProps<Props>(), {
+	categories: () => [],
+	sortOnPopulate: false,
+	expandLimit: 12,
+	loading: false,
+	selected: () => [],
 });
+
+const emit = defineEmits<{
+	clearAll: [];
+	select: [category: ITemplatesCategory];
+	clear: [category: ITemplatesCategory];
+}>();
+
+const collapsed = ref(true);
+const sortedCategories = ref<ITemplatesCategory[]>([]);
+
+const allSelected = computed((): boolean => {
+	return props.selected.length === 0;
+});
+
+function sortCategories() {
+	if (!props.sortOnPopulate) {
+		sortedCategories.value = props.categories;
+	} else {
+		const selected = props.selected || [];
+		const selectedCategories = props.categories.filter((cat) => selected.includes(cat));
+		const notSelectedCategories = props.categories.filter((cat) => !selected.includes(cat));
+		sortedCategories.value = selectedCategories.concat(notSelectedCategories);
+	}
+}
+function collapseAction() {
+	collapsed.value = false;
+}
+function handleCheckboxChanged(value: boolean, selectedCategory: ITemplatesCategory) {
+	if (value) {
+		emit('select', selectedCategory);
+	} else {
+		emit('clear', selectedCategory);
+	}
+}
+function isSelected(category: ITemplatesCategory) {
+	return props.selected.includes(category);
+}
+function resetCategories() {
+	emit('clearAll');
+}
+
+watch(
+	() => props.sortOnPopulate,
+	(value: boolean) => {
+		if (value) {
+			sortCategories();
+		}
+	},
+	{
+		immediate: true,
+	},
+);
+watch(
+	() => props.categories,
+	(categories: ITemplatesCategory[]) => {
+		if (categories.length > 0) {
+			sortCategories();
+		}
+	},
+	{
+		immediate: true,
+	},
+);
 </script>
 
 <template>
