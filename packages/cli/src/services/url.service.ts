@@ -14,7 +14,7 @@ export class UrlService {
 
 	/** Returns the base URL of the webhooks */
 	getWebhookBaseUrl() {
-		let urlBaseWebhook = this.sanitizeQuotes(process.env.WEBHOOK_URL) ?? this.baseUrl;
+		let urlBaseWebhook = this.sanitizeQuotes(process.env.WEBHOOK_URL) || this.baseUrl;
 		if (!urlBaseWebhook.endsWith('/')) {
 			urlBaseWebhook += '/';
 		}
