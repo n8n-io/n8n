@@ -777,7 +777,6 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		};
 
 		resolveNodeParameters(nodeData);
-		resolveNodeCredentials(nodeData, nodeTypeDescription);
 		resolveNodeName(nodeData);
 		resolveNodeWebhook(nodeData, nodeTypeDescription);
 
@@ -838,60 +837,6 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		);
 
 		node.parameters = nodeParameters ?? {};
-	}
-
-	function resolveNodeCredentials(node: INodeUi, nodeTypeDescription: INodeTypeDescription) {
-		const credentialPerType = nodeTypeDescription.credentials
-			?.map((type) => credentialsStore.getUsableCredentialByType(type.name))
-			.flat();
-
-		if (credentialPerType?.length === 1) {
-			const defaultCredential = credentialPerType[0];
-
-			const selectedCredentials = credentialsStore.getCredentialById(defaultCredential.id);
-			const selected = { id: selectedCredentials.id, name: selectedCredentials.name };
-			const credentials = {
-				[defaultCredential.type]: selected,
-			};
-
-			if (nodeTypeDescription.credentials) {
-				const authentication = nodeTypeDescription.credentials.find(
-					(type) => type.name === defaultCredential.type,
-				);
-
-				const authDisplayOptionsHide = authentication?.displayOptions?.hide;
-				const authDisplayOptionsShow = authentication?.displayOptions?.show;
-
-				if (!authDisplayOptionsHide) {
-					if (!authDisplayOptionsShow) {
-						node.credentials = credentials;
-					} else if (
-						Object.keys(authDisplayOptionsShow).length === 1 &&
-						authDisplayOptionsShow.authentication
-					) {
-						// ignore complex case when there's multiple dependencies
-						node.credentials = credentials;
-
-						let parameters: { [key: string]: string } = {};
-						for (const displayOption of Object.keys(authDisplayOptionsShow)) {
-							if (node.parameters && !node.parameters[displayOption]) {
-								parameters = {};
-								node.credentials = undefined;
-								break;
-							}
-							const optionValue = authDisplayOptionsShow[displayOption]?.[0];
-							if (optionValue && typeof optionValue === 'string') {
-								parameters[displayOption] = optionValue;
-							}
-							node.parameters = {
-								...node.parameters,
-								...parameters,
-							};
-						}
-					}
-				}
-			}
-		}
 	}
 
 	function resolveNodePosition(
