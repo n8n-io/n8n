@@ -1,21 +1,3 @@
-<script lang="ts">
-import { defineComponent } from 'vue';
-import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui.store';
-
-export default defineComponent({
-	name: 'PageViewLayout',
-	data() {
-		return {
-			loading: false,
-		};
-	},
-	computed: {
-		...mapStores(useUIStore),
-	},
-});
-</script>
-
 <template>
 	<div :class="$style.wrapper">
 		<slot name="header" />
