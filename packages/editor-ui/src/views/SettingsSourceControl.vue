@@ -3,7 +3,6 @@ import { computed, reactive, ref, onMounted } from 'vue';
 import type { Rule, RuleGroup } from 'n8n-design-system/types';
 import { MODAL_CONFIRM } from '@/constants';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
-import { useUIStore } from '@/stores/ui.store';
 import { useToast } from '@/composables/useToast';
 import { useLoadingService } from '@/composables/useLoadingService';
 import { useI18n } from '@/composables/useI18n';
@@ -12,10 +11,11 @@ import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import CopyInput from '@/components/CopyInput.vue';
 import type { TupleToUnion } from '@/utils/typeHelpers';
 import type { SshKeyTypes } from '@/Interface';
+import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 const locale = useI18n();
 const sourceControlStore = useSourceControlStore();
-const uiStore = useUIStore();
+const pageRedirectionHelper = usePageRedirectionHelper();
 const toast = useToast();
 const message = useMessage();
 const documentTitle = useDocumentTitle();
@@ -102,7 +102,7 @@ const onSelect = async (b: string) => {
 };
 
 const goToUpgrade = () => {
-	void uiStore.goToUpgrade('source-control', 'upgrade-source-control');
+	void pageRedirectionHelper.goToUpgrade('source-control', 'upgrade-source-control');
 };
 
 const initialize = async () => {
