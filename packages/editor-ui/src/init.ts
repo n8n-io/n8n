@@ -5,7 +5,6 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
-import { initializeCloudHooks } from '@/hooks/register';
 import { useVersionsStore } from '@/stores/versions.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useRolesStore } from './stores/roles.store';
@@ -34,14 +33,6 @@ export async function initializeCore() {
 		await usersStore.initialize();
 
 		void versionsStore.checkForNewVersions();
-
-		if (settingsStore.isCloudDeployment) {
-			try {
-				await initializeCloudHooks();
-			} catch (e) {
-				console.error('Failed to initialize cloud hooks:', e);
-			}
-		}
 	}
 
 	coreInitialized = true;

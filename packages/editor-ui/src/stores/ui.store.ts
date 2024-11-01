@@ -11,7 +11,6 @@ import {
 	CREDENTIAL_SELECT_MODAL_KEY,
 	DELETE_USER_MODAL_KEY,
 	DUPLICATE_MODAL_KEY,
-	FAKE_DOOR_FEATURES,
 	IMPORT_CURL_MODAL_KEY,
 	INVITE_USER_MODAL_KEY,
 	LOG_STREAM_MODAL_KEY,
@@ -41,7 +40,6 @@ import {
 } from '@/constants';
 import type {
 	CloudUpdateLinkSourceType,
-	IFakeDoorLocation,
 	INodeUi,
 	UTMCampaign,
 	XYPosition,
@@ -51,7 +49,6 @@ import type {
 	NotificationOptions,
 	ModalState,
 	ModalKey,
-	IFakeDoor,
 } from '@/Interface';
 import { defineStore } from 'pinia';
 import { useRootStore } from '@/stores/root.store';
@@ -160,18 +157,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const modalStack = ref<string[]>([]);
 	const sidebarMenuCollapsed = ref<boolean>(true);
 	const currentView = ref<string>('');
-	const fakeDoorFeatures = ref<IFakeDoor[]>([
-		{
-			id: FAKE_DOOR_FEATURES.SSO,
-			featureName: 'fakeDoor.settings.sso.name',
-			icon: 'key',
-			actionBoxTitle: 'fakeDoor.settings.sso.actionBox.title',
-			actionBoxDescription: 'fakeDoor.settings.sso.actionBox.description',
-			linkURL: 'https://n8n-community.typeform.com/to/l7QOrERN#f=sso',
-			uiLocations: ['settings/users'],
-		},
-	]);
-
 	const draggable = ref<Draggable>({
 		isDragging: false,
 		type: '',
@@ -305,22 +290,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	);
 
 	const activeModals = computed(() => modalStack.value.map((modalName) => modalName));
-
-	const fakeDoorsByLocation = computed(() =>
-		fakeDoorFeatures.value.reduce((acc: { [uiLocation: string]: IFakeDoor }, fakeDoor) => {
-			fakeDoor.uiLocations.forEach((uiLocation: IFakeDoorLocation) => {
-				acc[uiLocation] = fakeDoor;
-			});
-			return acc;
-		}, {}),
-	);
-
-	const fakeDoorsById = computed(() =>
-		fakeDoorFeatures.value.reduce((acc: { [id: string]: IFakeDoor }, fakeDoor) => {
-			acc[fakeDoor.id.toString()] = fakeDoor;
-			return acc;
-		}, {}),
-	);
 
 	const isReadOnlyView = computed(() => {
 		return ![
@@ -635,7 +604,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		getLastSelectedNode,
 		isVersionsOpen,
 		isModalActiveById,
-		fakeDoorsByLocation,
 		isReadOnlyView,
 		isActionActive,
 		activeActions,
@@ -659,13 +627,11 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		nodeViewInitialized,
 		addFirstStepOnLoad,
 		sidebarMenuCollapsed,
-		fakeDoorFeatures,
 		bannerStack,
 		theme,
 		modalsById,
 		currentView,
 		isAnyModalOpen,
-		fakeDoorsById,
 		pendingNotificationsForViews,
 		setTheme,
 		setMode,
