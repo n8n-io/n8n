@@ -1997,6 +1997,7 @@
 	"template.details.details": "Details",
 	"template.details.times": "times",
 	"template.details.viewed": "Viewed",
+	"template.byAuthor": "By {name}",
 	"templates.allCategories": "All Categories",
 	"templates.categoriesHeading": "Categories",
 	"templates.collection": "Collection",
