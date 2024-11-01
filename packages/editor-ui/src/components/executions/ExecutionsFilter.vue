@@ -10,11 +10,11 @@ import { i18n as locale } from '@/plugins/i18n';
 import { getObjectKeys, isEmpty } from '@/utils/typesUtils';
 import { EnterpriseEditionFeature } from '@/constants';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useUIStore } from '@/stores/ui.store';
 import { useTelemetry } from '@/composables/useTelemetry';
 import type { Placement } from '@floating-ui/core';
 import { useDebounce } from '@/composables/useDebounce';
 import AnnotationTagsDropdown from '@/components/AnnotationTagsDropdown.ee.vue';
+import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 export type ExecutionFilterProps = {
 	workflows?: Array<IWorkflowDb | IWorkflowShortResponse>;
@@ -25,10 +25,10 @@ export type ExecutionFilterProps = {
 const DATE_TIME_MASK = 'YYYY-MM-DD HH:mm';
 
 const settingsStore = useSettingsStore();
-const uiStore = useUIStore();
 const { debounce } = useDebounce();
 
 const telemetry = useTelemetry();
+const pageRedirectionHelper = usePageRedirectionHelper();
 
 const props = withDefaults(defineProps<ExecutionFilterProps>(), {
 	workflows: () => [] as Array<IWorkflowDb | IWorkflowShortResponse>,
@@ -149,7 +149,7 @@ const onFilterReset = () => {
 };
 
 const goToUpgrade = () => {
-	void uiStore.goToUpgrade('custom-data-filter', 'upgrade-custom-data-filter');
+	void pageRedirectionHelper.goToUpgrade('custom-data-filter', 'upgrade-custom-data-filter');
 };
 
 onBeforeMount(() => {
