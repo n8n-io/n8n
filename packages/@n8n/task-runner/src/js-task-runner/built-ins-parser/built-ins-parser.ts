@@ -1,9 +1,16 @@
-import type { Program } from 'acorn';
+import type { CallExpression, Identifier, Node, Program } from 'acorn';
 import { parse } from 'acorn';
-import { simple } from 'acorn-walk';
+import { ancestor } from 'acorn-walk';
 import type { Result } from 'n8n-workflow';
 import { toResult } from 'n8n-workflow';
 
+import {
+	isAssignmentExpression,
+	isIdentifier,
+	isLiteral,
+	isMemberExpression,
+	isVariableDeclarator,
+} from './acorn-helpers';
 import { BuiltInsParserState } from './built-ins-parser-state';
 
 /**
@@ -26,47 +33,103 @@ export class BuiltInsParser {
 	private identifyBuiltInsByWalkingAst(ast: Program) {
 		const accessedBuiltIns = new BuiltInsParserState();
 
-		simple(ast, {
-			CallExpression(node) {
-				// $(...)
-				const isDollar = node.callee.type === 'Identifier' && node.callee.name === '$';
-				if (!isDollar) return;
-
-				// $(): This is not valid, ignore
-				if (node.arguments.length === 0) {
-					return;
-				}
-
-				const firstArg = node.arguments[0];
-				if (firstArg.type === 'Literal') {
-					if (typeof firstArg.value === 'string') {
-						// $("nodeName"): Static value, mark 'nodeName' as needed
-						accessedBuiltIns.markNodeAsNeeded(firstArg.value);
-					} else {
-						// $(123): Static value, but not a string --> invalid code --> ignore
-					}
-				} else {
-					// $(variable): Can't determine statically, mark all nodes as needed
-					accessedBuiltIns.markNeedsAllNodes();
-				}
-
-				// TODO: We could determine if $('node') is followed by a function call (e.g.
-				// first()) or a property (e.g. isExecuted) and only get the one accessed
+		ancestor(
+			ast,
+			{
+				CallExpression: this.visitCallExpression,
+				Identifier: this.visitIdentifier,
 			},
-
-			Identifier(node) {
-				if (node.name === '$env') {
-					accessedBuiltIns.markEnvAsNeeded();
-				} else if (node.name === '$input' || node.name === '$json') {
-					accessedBuiltIns.markInputAsNeeded();
-				} else if (node.name === '$execution') {
-					accessedBuiltIns.markExecutionAsNeeded();
-				} else if (node.name === '$prevNode') {
-					accessedBuiltIns.markPrevNodeAsNeeded();
-				}
-			},
-		});
+			undefined,
+			accessedBuiltIns,
+		);
 
 		return accessedBuiltIns;
 	}
+
+	private visitCallExpression = (
+		node: CallExpression,
+		state: BuiltInsParserState,
+		ancestors: Node[],
+	) => {
+		// $(...)
+		const isDollar = node.callee.type === 'Identifier' && node.callee.name === '$';
+		if (!isDollar) return;
+
+		// $(): This is not valid, ignore
+		if (node.arguments.length === 0) {
+			return;
+		}
+
+		const firstArg = node.arguments[0];
+		if (!isLiteral(firstArg)) {
+			// $(variable): Can't easily determine statically, mark all nodes as needed
+			state.markNeedsAllNodes();
+			return;
+		}
+
+		if (typeof firstArg.value !== 'string') {
+			// $(123): Static value, but not a string --> invalid code --> ignore
+			return;
+		}
+
+		// $("node"): Static value, mark 'nodeName' as needed
+		state.markNodeAsNeeded(firstArg.value);
+
+		// Determine how $("node") is used
+		this.handlePrevNodeCall(node, state, ancestors);
+	};
+
+	private handlePrevNodeCall(_node: CallExpression, state: BuiltInsParserState, ancestors: Node[]) {
+		// $("node").item: In a case like this, the execution
+		// engine will traverse back from current node (i.e. the Code Node) to
+		// the "node" node and use `pairedItem`s to find which item is linked
+		// to the current item. So, we need to mark all nodes as needed.
+		// TODO: We could also mark all the nodes between the current node and
+		// the "node" node as needed, but that would require more complex logic.
+		const directParent = ancestors[ancestors.length - 2];
+		if (isMemberExpression(directParent)) {
+			const accessedProperty = directParent.property;
+
+			if (directParent.computed) {
+				// $("node")["item"]
+				if (isLiteral(accessedProperty)) {
+					if (accessedProperty.value === 'item') {
+						state.markNeedsAllNodes();
+					}
+					// Else: $("node")[123]: Static value, but not 'item' --> ignore
+				}
+				// $("node")[variable]
+				else if (isIdentifier(accessedProperty)) {
+					state.markNeedsAllNodes();
+				}
+			}
+			// $("node").item
+			else if (isIdentifier(accessedProperty) && accessedProperty.name === 'item') {
+				state.markNeedsAllNodes();
+			}
+		} else if (isVariableDeclarator(directParent) || isAssignmentExpression(directParent)) {
+			// const variable = $("node") or variable = $("node"):
+			// In this case we would need to track down all the possible use sites
+			// of 'variable' and determine if `.item` is accessed on it. This is
+			// more complex and skipped for now.
+			// TODO: Optimize for this case
+			state.markNeedsAllNodes();
+		} else {
+			// Something else than the cases above. Mark all nodes as needed as it
+			// could be a dynamic access.
+			state.markNeedsAllNodes();
+		}
+	}
+
+	private visitIdentifier = (node: Identifier, state: BuiltInsParserState) => {
+		if (node.name === '$env') {
+			state.markEnvAsNeeded();
+		} else if (node.name === '$input' || node.name === '$json') {
+			state.markInputAsNeeded();
+		} else if (node.name === '$execution') {
+			state.markExecutionAsNeeded();
+		} else if (node.name === '$prevNode') {
+			state.markPrevNodeAsNeeded();
+		}
+	};
 }

@@ -56,9 +56,12 @@ describe('BuiltInsParser', () => {
 
 	describe('$(...)', () => {
 		const cases: Array<[string, BuiltInsParserState]> = [
-			['$("nodeName")', new BuiltInsParserState({ neededNodeNames: new Set(['nodeName']) })],
 			[
-				'$("nodeName"); $("secondNode")',
+				'$("nodeName").first()',
+				new BuiltInsParserState({ neededNodeNames: new Set(['nodeName']) }),
+			],
+			[
+				'$("nodeName").all(); $("secondNode").matchingItem()',
 				new BuiltInsParserState({ neededNodeNames: new Set(['nodeName', 'secondNode']) }),
 			],
 		];
@@ -90,6 +93,29 @@ describe('BuiltInsParser', () => {
 			const state = parseAndExpectOk(code);
 			expect(state).toEqual(new BuiltInsParserState());
 		});
+
+		test.each([
+			'$("node").item',
+			'$("node")["item"]',
+			'$("node")[variable]',
+			'var a = $("node")',
+			'let a = $("node")',
+			'const a = $("node")',
+			'a = $("node")',
+		])('should require all nodes if %s is used', (code) => {
+			const state = parseAndExpectOk(code);
+			expect(state).toEqual(new BuiltInsParserState({ needsAllNodes: true }));
+		});
+
+		test.each(['$("node").first()', '$("node").last()', '$("node").all()', '$("node").params'])(
+			'should require only accessed node if %s is used',
+			(code) => {
+				const state = parseAndExpectOk(code);
+				expect(state).toEqual(
+					new BuiltInsParserState({ needsAllNodes: false, neededNodeNames: new Set(['node']) }),
+				);
+			},
+		);
 	});
 
 	describe('ECMAScript syntax', () => {
