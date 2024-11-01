@@ -3,6 +3,7 @@ import { validate } from 'class-validator';
 import type { AnnotationTagEntity } from '@/databases/entities/annotation-tag-entity.ee';
 import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
 import type { TagEntity } from '@/databases/entities/tag-entity';
+import type { TestEntity } from '@/databases/entities/test-entity';
 import type { User } from '@/databases/entities/user';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 
@@ -12,6 +13,7 @@ import { BadRequestError } from './errors/response-errors/bad-request.error';
 export async function validateEntity(
 	entity:
 		| WorkflowEntity
+		| TestEntity
 		| CredentialsEntity
 		| TagEntity
 		| AnnotationTagEntity
