@@ -274,7 +274,7 @@ describe('GlobalConfig', () => {
 		pruning: {
 			isEnabled: true,
 			maxAge: 336,
-			maxCount: 10000,
+			maxCount: 10_000,
 			hardDeleteBuffer: 1,
 			hardDeleteInterval: 15,
 			softDeleteInterval: 60,
