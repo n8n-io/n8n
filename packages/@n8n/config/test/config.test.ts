@@ -271,6 +271,14 @@ describe('GlobalConfig', () => {
 			blockFileAccessToN8nFiles: true,
 			daysAbandonedWorkflow: 90,
 		},
+		pruning: {
+			isEnabled: true,
+			maxAge: 336,
+			maxCount: 10000,
+			hardDeleteBuffer: 1,
+			hardDeleteInterval: 15,
+			softDeleteInterval: 60,
+		},
 	};
 
 	it('should use all default values when no env variables are defined', () => {

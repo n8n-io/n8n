@@ -1,4 +1,4 @@
-import { GlobalConfig } from '@n8n/config';
+import { GlobalConfig, PruningConfig } from '@n8n/config';
 import type {
 	FindManyOptions,
 	FindOneOptions,
@@ -35,7 +35,6 @@ import type {
 } from 'n8n-workflow';
 import { Service } from 'typedi';
 
-import config from '@/config';
 import { AnnotationTagEntity } from '@/databases/entities/annotation-tag-entity.ee';
 import { AnnotationTagMapping } from '@/databases/entities/annotation-tag-mapping.ee';
 import { ExecutionAnnotation } from '@/databases/entities/execution-annotation.ee';
@@ -128,6 +127,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		private readonly logger: Logger,
 		private readonly executionDataRepository: ExecutionDataRepository,
 		private readonly binaryDataService: BinaryDataService,
+		private readonly pruningConfig: PruningConfig,
 	) {
 		super(ExecutionEntity, dataSource.manager);
 	}
@@ -460,8 +460,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	}
 
 	async softDeletePrunableExecutions() {
-		const maxAge = config.getEnv('executions.pruneDataMaxAge'); // in h
-		const maxCount = config.getEnv('executions.pruneDataMaxCount');
+		const maxAge = this.pruningConfig.maxAge; // in h
+		const maxCount = this.pruningConfig.maxCount;
 
 		// Sub-query to exclude executions having annotations
 		const annotatedExecutionsSubQuery = this.manager
@@ -517,7 +517,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 	async hardDeleteSoftDeletedExecutions() {
 		const date = new Date();
-		date.setHours(date.getHours() - config.getEnv('executions.pruneDataHardDeleteBuffer'));
+		date.setHours(date.getHours() - this.pruningConfig.hardDeleteBuffer);
 
 		const workflowIdsAndExecutionIds = (
 			await this.find({
