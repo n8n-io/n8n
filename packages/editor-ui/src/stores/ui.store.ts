@@ -187,7 +187,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const bannersHeight = ref<number>(0);
 	const bannerStack = ref<BannerName[]>([]);
 	const pendingNotificationsForViews = ref<{ [key in VIEWS]?: NotificationOptions[] }>({});
-	const isCreateNodeActive = ref<boolean>(false);
 
 	const appGridWidth = ref<number>(0);
 
@@ -625,7 +624,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		nodeViewMoveInProgress,
 		nodeViewInitialized,
 		addFirstStepOnLoad,
-		isCreateNodeActive,
 		sidebarMenuCollapsed,
 		fakeDoorFeatures,
 		bannerStack,
