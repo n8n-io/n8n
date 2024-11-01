@@ -36,29 +36,31 @@ export class DataRequestResponseBuilder {
 	 * Builds a response to the data request
 	 */
 	build(): DataRequestResponse {
-		const taskData = this.taskData;
+		const { taskData: td } = this;
 
 		return {
-			workflow: this.buildWorkflow(taskData.workflow),
-			connectionInputData: this.buildConnectionInputData(taskData.connectionInputData),
-			inputData: this.buildInputData(taskData.inputData),
-			itemIndex: taskData.itemIndex,
-			activeNodeName: taskData.activeNodeName,
-			contextNodeName: taskData.contextNodeName,
-			defaultReturnRunIndex: taskData.defaultReturnRunIndex,
-			mode: taskData.mode,
-			envProviderState: this.buildEnvProviderState(taskData.envProviderState),
-			node: taskData.node, // The current node being executed
-			runExecutionData: this.buildRunExecutionData(taskData.runExecutionData),
-			runIndex: taskData.runIndex,
-			selfData: taskData.selfData,
-			siblingParameters: taskData.siblingParameters,
-			executeData: this.buildExecuteData(taskData.executeData),
-			additionalData: this.buildAdditionalData(taskData.additionalData),
+			workflow: this.buildWorkflow(td.workflow),
+			connectionInputData: this.buildConnectionInputData(td.connectionInputData),
+			inputData: this.buildInputData(td.inputData),
+			itemIndex: td.itemIndex,
+			activeNodeName: td.activeNodeName,
+			contextNodeName: td.contextNodeName,
+			defaultReturnRunIndex: td.defaultReturnRunIndex,
+			mode: td.mode,
+			envProviderState: this.buildEnvProviderState(td.envProviderState),
+			node: td.node, // The current node being executed
+			runExecutionData: this.buildRunExecutionData(td.runExecutionData),
+			runIndex: td.runIndex,
+			selfData: td.selfData,
+			siblingParameters: td.siblingParameters,
+			executeData: this.buildExecuteData(td.executeData),
+			additionalData: this.buildAdditionalData(td.additionalData),
 		};
 	}
 
-	buildAdditionalData(additionalData: IWorkflowExecuteAdditionalData): PartialAdditionalData {
+	private buildAdditionalData(
+		additionalData: IWorkflowExecuteAdditionalData,
+	): PartialAdditionalData {
 		return {
 			formWaitingBaseUrl: additionalData.formWaitingBaseUrl,
 			instanceBaseUrl: additionalData.instanceBaseUrl,
@@ -75,7 +77,7 @@ export class DataRequestResponseBuilder {
 		};
 	}
 
-	buildExecuteData(executeData: IExecuteData | undefined): IExecuteData | undefined {
+	private buildExecuteData(executeData: IExecuteData | undefined): IExecuteData | undefined {
 		if (executeData === undefined) {
 			return undefined;
 		}
@@ -87,7 +89,7 @@ export class DataRequestResponseBuilder {
 		};
 	}
 
-	buildRunExecutionData(runExecutionData: IRunExecutionData): IRunExecutionData {
+	private buildRunExecutionData(runExecutionData: IRunExecutionData): IRunExecutionData {
 		if (this.requestParams.dataOfNodes === 'all') {
 			return runExecutionData;
 		}
@@ -115,15 +117,15 @@ export class DataRequestResponseBuilder {
 		};
 	}
 
-	buildRunData(runData: IRunData): IRunData {
+	private buildRunData(runData: IRunData): IRunData {
 		return this.filterObjectByNodeNames(runData);
 	}
 
-	buildPinData(pinData: IPinData | undefined): IPinData | undefined {
+	private buildPinData(pinData: IPinData | undefined): IPinData | undefined {
 		return pinData ? this.filterObjectByNodeNames(pinData) : undefined;
 	}
 
-	buildEnvProviderState(envProviderState: EnvProviderState): EnvProviderState {
+	private buildEnvProviderState(envProviderState: EnvProviderState): EnvProviderState {
 		if (this.requestParams.env) {
 			// In case `isEnvAccessBlocked` = true, the provider state has already sanitized
 			// the environment variables and we can return it as is.
@@ -137,7 +139,7 @@ export class DataRequestResponseBuilder {
 		};
 	}
 
-	buildInputData(inputData: ITaskDataConnections): ITaskDataConnections {
+	private buildInputData(inputData: ITaskDataConnections): ITaskDataConnections {
 		if (this.requestParams.input) {
 			return inputData;
 		}
@@ -145,7 +147,9 @@ export class DataRequestResponseBuilder {
 		return {};
 	}
 
-	buildConnectionInputData(connectionInputData: INodeExecutionData[]): INodeExecutionData[] {
+	private buildConnectionInputData(
+		connectionInputData: INodeExecutionData[],
+	): INodeExecutionData[] {
 		if (this.requestParams.input) {
 			return connectionInputData;
 		}
