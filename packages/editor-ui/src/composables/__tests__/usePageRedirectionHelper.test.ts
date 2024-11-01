@@ -10,10 +10,11 @@ import * as cloudPlanApi from '@/api/cloudPlans';
 import { useVersionsStore } from '@/stores/versions.store';
 import { useTelemetry } from '../useTelemetry';
 
-let settingsStore: ReturnType<typeof settingsStore>;
-let cloudPlanStore: ReturnType<typeof cloudPlanStore>;
-let usersStore: ReturnType<typeof usersStore>;
-let versionStore: ReturnType<typeof versionStore>;
+let settingsStore: ReturnType<typeof useSettingsStore>;
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+let cloudPlanStore: ReturnType<typeof useCloudPlanStore>;
+let usersStore: ReturnType<typeof useUsersStore>;
+let versionStore: ReturnType<typeof useVersionsStore>;
 let pageRedirectionHelper: ReturnType<typeof usePageRedirectionHelper>;
 
 vi.mock('@/composables/useTelemetry', () => {
