@@ -4,13 +4,13 @@ import TemplateCard from './TemplateCard.vue';
 import type { ITemplatesWorkflow } from '@/Interface';
 
 interface Props {
-	workflows: ITemplatesWorkflow[];
-	infiniteScrollEnabled: boolean;
-	loading: boolean;
-	useWorkflowButton: boolean;
-	totalWorkflows: 0;
-	simpleView: boolean;
-	totalCount: 0;
+	workflows?: ITemplatesWorkflow[];
+	infiniteScrollEnabled?: boolean;
+	loading?: boolean;
+	useWorkflowButton?: boolean;
+	totalWorkflows?: number;
+	simpleView?: boolean;
+	totalCount?: number;
 }
 
 const emit = defineEmits<{

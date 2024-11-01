@@ -2,7 +2,7 @@
 import GoBackButton from '@/components/GoBackButton.vue';
 
 interface Props {
-	goBackEnabled: boolean;
+	goBackEnabled?: boolean;
 }
 
 withDefaults(defineProps<Props>(), {
