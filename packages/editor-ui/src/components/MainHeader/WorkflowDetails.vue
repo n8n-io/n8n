@@ -56,6 +56,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import type { BaseTextKey } from '@/plugins/i18n';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { useNodeViewVersionSwitcher } from '@/composables/useNodeViewVersionSwitcher';
+import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 const props = defineProps<{
 	readOnly?: boolean;
@@ -89,6 +90,7 @@ const message = useMessage();
 const toast = useToast();
 const documentTitle = useDocumentTitle();
 const workflowHelpers = useWorkflowHelpers({ router });
+const pageRedirectionHelper = usePageRedirectionHelper();
 
 const isTagsEditEnabled = ref(false);
 const isNameEditEnabled = ref(false);
@@ -584,11 +586,11 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 }
 
 function goToUpgrade() {
-	void uiStore.goToUpgrade('workflow_sharing', 'upgrade-workflow-sharing');
+	void pageRedirectionHelper.goToUpgrade('workflow_sharing', 'upgrade-workflow-sharing');
 }
 
 function goToWorkflowHistoryUpgrade() {
-	void uiStore.goToUpgrade('workflow-history', 'upgrade-workflow-history');
+	void pageRedirectionHelper.goToUpgrade('workflow-history', 'upgrade-workflow-history');
 }
 
 function showCreateWorkflowSuccessToast(id?: string) {

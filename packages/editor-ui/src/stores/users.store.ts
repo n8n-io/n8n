@@ -18,7 +18,6 @@ import { getPersonalizedNodeTypes } from '@/utils/userUtils';
 import { defineStore } from 'pinia';
 import { useRootStore } from '@/stores/root.store';
 import { usePostHog } from './posthog.store';
-import { useSettingsStore } from './settings.store';
 import { useUIStore } from './ui.store';
 import { useCloudPlanStore } from './cloudPlan.store';
 import * as mfaApi from '@/api/mfa';
@@ -29,6 +28,7 @@ import * as invitationsApi from '@/api/invitation';
 import { useNpsSurveyStore } from './npsSurvey.store';
 import { computed, ref } from 'vue';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { useSettingsStore } from '@/stores/settings.store';
 
 const _isPendingUser = (user: IUserResponse | null) => !!user?.isPending;
 const _isInstanceOwner = (user: IUserResponse | null) => user?.role === ROLE.Owner;
@@ -49,6 +49,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
 	const cloudPlanStore = useCloudPlanStore();
+
 	const telemetry = useTelemetry();
 
 	// Composables

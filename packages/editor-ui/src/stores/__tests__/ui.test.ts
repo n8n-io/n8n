@@ -1,5 +1,5 @@
 import { createPinia, setActivePinia } from 'pinia';
-import { generateUpgradeLinkUrl, useUIStore } from '@/stores/ui.store';
+import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { merge } from 'lodash-es';
@@ -69,57 +69,6 @@ describe('UI store', () => {
 			writable: true,
 		});
 	});
-
-	test.each([
-		[
-			'default',
-			'production',
-			ROLE.Owner,
-			'https://n8n.io/pricing?utm_campaign=utm-test-campaign&source=test_source',
-		],
-		[
-			'default',
-			'development',
-			ROLE.Owner,
-			'https://n8n.io/pricing?utm_campaign=utm-test-campaign&source=test_source',
-		],
-		[
-			'cloud',
-			'production',
-			ROLE.Owner,
-			`https://app.n8n.cloud/login?code=123&returnPath=${encodeURIComponent(
-				'/account/change-plan',
-			)}&utm_campaign=utm-test-campaign&source=test_source`,
-		],
-		[
-			'cloud',
-			'production',
-			ROLE.Member,
-			'https://n8n.io/pricing?utm_campaign=utm-test-campaign&source=test_source',
-		],
-	])(
-		'"generateUpgradeLinkUrl" should generate the correct URL for "%s" deployment and "%s" license environment and user role "%s"',
-		async (type, environment, role, expectation) => {
-			setUser(role as IRole);
-
-			settingsStore.setSettings(
-				merge({}, defaultSettings, {
-					deployment: {
-						type,
-					},
-					license: {
-						environment,
-					},
-					instanceId: '123abc',
-					versionCli: '0.223.0',
-				}),
-			);
-
-			const updateLinkUrl = await generateUpgradeLinkUrl('test_source', 'utm-test-campaign', type);
-
-			expect(updateLinkUrl).toBe(expectation);
-		},
-	);
 
 	it('should add non-production license banner to stack based on enterprise settings', () => {
 		settingsStore.setSettings(

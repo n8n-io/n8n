@@ -2,10 +2,10 @@ import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
 import SettingsSso from './SettingsSso.vue';
 import { useSSOStore } from '@/stores/sso.store';
-import { useUIStore } from '@/stores/ui.store';
 import { within, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { mockedStore } from '@/__tests__/utils';
+import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 const renderView = createComponentRenderer(SettingsSso);
 
@@ -38,6 +38,15 @@ vi.mock('@/composables/useMessage', () => ({
 	}),
 }));
 
+vi.mock('@/composables/usePageRedirectionHelper', () => {
+	const goToUpgrade = vi.fn();
+	return {
+		usePageRedirectionHelper: () => ({
+			goToUpgrade,
+		}),
+	};
+});
+
 describe('SettingsSso View', () => {
 	beforeEach(() => {
 		telemetryTrack.mockReset();
@@ -50,7 +59,7 @@ describe('SettingsSso View', () => {
 		const ssoStore = mockedStore(useSSOStore);
 		ssoStore.isEnterpriseSamlEnabled = false;
 
-		const uiStore = useUIStore();
+		const pageRedirectionHelper = usePageRedirectionHelper();
 
 		const { getByTestId } = renderView({ pinia });
 
@@ -58,7 +67,7 @@ describe('SettingsSso View', () => {
 		expect(actionBox).toBeInTheDocument();
 
 		await userEvent.click(await within(actionBox).findByText('See plans'));
-		expect(uiStore.goToUpgrade).toHaveBeenCalledWith('sso', 'upgrade-sso');
+		expect(pageRedirectionHelper.goToUpgrade).toHaveBeenCalledWith('sso', 'upgrade-sso');
 	});
 
 	it('should show user SSO config', async () => {
