@@ -6,7 +6,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { faker } from '@faker-js/faker';
 import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
-import type { useNodeTypesStore } from '../../stores/nodeTypes.store';
+import type { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { cleanupAppModals, createAppModals } from '@/__tests__/utils';
 
 let mockNdvState: Partial<ReturnType<typeof useNDVStore>>;
