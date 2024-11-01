@@ -66,9 +66,6 @@ describe('Init', () => {
 			vi.mocked(useRootStore).mockReturnValue({ defaultLocale: 'es' } as ReturnType<
 				typeof useRootStore
 			>);
-			vi.mock('@/hooks/register', () => ({
-				initializeCloudHooks: vi.fn(),
-			}));
 		});
 
 		afterEach(() => {

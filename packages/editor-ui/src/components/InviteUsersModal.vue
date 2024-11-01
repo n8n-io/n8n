@@ -11,19 +11,19 @@ import {
 } from '@/constants';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useUIStore } from '@/stores/ui.store';
 import { createFormEventBus, createEventBus } from 'n8n-design-system/utils';
 import { useClipboard } from '@/composables/useClipboard';
 import { useI18n } from '@/composables/useI18n';
+import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 const NAME_EMAIL_FORMAT_REGEX = /^.* <(.*)>$/;
 
 const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
-const uiStore = useUIStore();
 const clipboard = useClipboard();
 const { showMessage, showError } = useToast();
 const i18n = useI18n();
+const { goToUpgrade } = usePageRedirectionHelper();
 
 const formBus = createFormEventBus();
 const modalBus = createEventBus();
@@ -254,7 +254,7 @@ function onCopyInviteLink(user: IUser) {
 }
 
 function goToUpgradeAdvancedPermissions() {
-	void uiStore.goToUpgrade('advanced-permissions', 'upgrade-advanced-permissions');
+	void goToUpgrade('advanced-permissions', 'upgrade-advanced-permissions');
 }
 
 function getEmail(email: string): string {

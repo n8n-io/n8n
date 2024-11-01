@@ -8,20 +8,20 @@ import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import CopyInput from '@/components/CopyInput.vue';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/root.store';
-import { useUIStore } from '@/stores/ui.store';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { DOCS_DOMAIN, MODAL_CONFIRM } from '@/constants';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 const { showError, showMessage } = useToast();
 const { confirm } = useMessage();
 const { baseUrl } = useRootStore();
 const settingsStore = useSettingsStore();
 const cloudPlanStore = useCloudPlanStore();
-const uiStore = useUIStore();
 const documentTitle = useDocumentTitle();
 const i18n = useI18n();
+const { goToUpgrade } = usePageRedirectionHelper();
 
 const loading = ref(false);
 const mounted = ref(false);
@@ -55,7 +55,7 @@ onMounted(() => {
 });
 
 function onUpgrade() {
-	void uiStore.goToUpgrade('settings-n8n-api', 'upgrade-api', 'redirect');
+	void goToUpgrade('settings-n8n-api', 'upgrade-api', 'redirect');
 }
 
 async function showDeleteModal() {

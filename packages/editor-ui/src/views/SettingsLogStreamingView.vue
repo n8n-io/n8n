@@ -15,6 +15,7 @@ import { createEventBus } from 'n8n-design-system/utils';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { ref, getCurrentInstance } from 'vue';
 import { useI18n } from '@/composables/useI18n';
+import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 const environment = process.env.NODE_ENV;
 
@@ -29,6 +30,8 @@ const i18n = useI18n();
 const eventBus = createEventBus();
 const disableLicense = ref(false);
 const allDestinations = ref<MessageEventBusDestinationOptions[]>([]);
+
+const pageRedirectHelper = usePageRedirectionHelper();
 
 const sortedItemKeysByLabel = computed(() => {
 	const sortedKeys: Array<{ label: string; key: string }> = [];
@@ -117,7 +120,7 @@ async function getDestinationDataFromBackend(): Promise<void> {
 }
 
 function goToUpgrade() {
-	void uiStore.goToUpgrade('log-streaming', 'upgrade-log-streaming');
+	void pageRedirectHelper.goToUpgrade('log-streaming', 'upgrade-log-streaming');
 }
 
 function storeHasItems(): boolean {

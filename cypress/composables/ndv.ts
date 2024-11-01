@@ -40,6 +40,14 @@ export function getOutputPanelDataContainer() {
 	return getOutputPanel().getByTestId('ndv-data-container');
 }
 
+export function getOutputTableRows() {
+	return getOutputPanelDataContainer().find('table tr');
+}
+
+export function getOutputTableRow(row: number) {
+	return getOutputTableRows().eq(row);
+}
+
 export function getOutputPanelTable() {
 	return getOutputPanelDataContainer().get('table');
 }
