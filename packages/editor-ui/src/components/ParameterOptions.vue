@@ -127,8 +127,8 @@ const getArgument = (argumentName: string) => {
 </script>
 
 <template>
-	<div :class="$style.container">
-		<div v-if="loading" :class="$style.loader">
+	<div :class="$style.container" data-test-id="parameter-options-container">
+		<div v-if="loading" :class="$style.loader" data-test-id="parameter-options-loader">
 			<n8n-text v-if="loading" size="small">
 				<n8n-icon icon="sync-alt" size="xsmall" :spin="true" />
 				{{ loadingMessage }}
