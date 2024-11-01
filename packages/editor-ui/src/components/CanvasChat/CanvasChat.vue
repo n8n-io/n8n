@@ -120,8 +120,12 @@ watch(
 	() => allConnections.value,
 	() => {
 		if (canvasStore.isLoading) return;
-
-		setConnectedNode();
+		setTimeout(() => {
+			if (!chatTriggerNode.value) {
+				setChatTriggerNode();
+			}
+			setConnectedNode();
+		}, 0);
 	},
 	{ deep: true },
 );
@@ -133,6 +137,7 @@ watchEffect(() => {
 
 <template>
 	<n8n-resize-wrapper
+		v-show="chatTriggerNode"
 		:is-resizing-enabled="isChatOpen || isLogsOpen"
 		:supported-directions="['top']"
 		:class="[$style.resizeWrapper, !isChatOpen && !isLogsOpen && $style.empty]"
