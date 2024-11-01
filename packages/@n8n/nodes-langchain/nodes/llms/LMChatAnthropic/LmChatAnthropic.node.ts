@@ -21,6 +21,10 @@ const modelField: INodeProperties = {
 	// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 	options: [
 		{
+			name: 'Claude 3.5 Sonnet(20241022)',
+			value: 'claude-3-5-sonnet-20241022',
+		},
+		{
 			name: 'Claude 3 Opus(20240229)',
 			value: 'claude-3-opus-20240229',
 		},
