@@ -1,4 +1,4 @@
-<script lang="ts">
+<script lang="ts" setup>
 interface Props {
 	overflow: boolean;
 }
