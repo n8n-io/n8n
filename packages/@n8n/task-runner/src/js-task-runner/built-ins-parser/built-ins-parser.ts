@@ -80,7 +80,7 @@ export class BuiltInsParser {
 	};
 
 	private handlePrevNodeCall(_node: CallExpression, state: BuiltInsParserState, ancestors: Node[]) {
-		// $("node").item: In a case like this, the execution
+		// $("node").item, .pairedItem or .itemMatching: In a case like this, the execution
 		// engine will traverse back from current node (i.e. the Code Node) to
 		// the "node" node and use `pairedItem`s to find which item is linked
 		// to the current item. So, we need to mark all nodes as needed.
@@ -91,20 +91,20 @@ export class BuiltInsParser {
 			const accessedProperty = directParent.property;
 
 			if (directParent.computed) {
-				// $("node")["item"]
+				// $("node")["item"], ["pairedItem"] or ["itemMatching"]
 				if (isLiteral(accessedProperty)) {
-					if (accessedProperty.value === 'item') {
+					if (this.isPairedItemProperty(accessedProperty.value)) {
 						state.markNeedsAllNodes();
 					}
-					// Else: $("node")[123]: Static value, but not 'item' --> ignore
+					// Else: $("node")[123]: Static value, but not any of the ones above --> ignore
 				}
 				// $("node")[variable]
 				else if (isIdentifier(accessedProperty)) {
 					state.markNeedsAllNodes();
 				}
 			}
-			// $("node").item
-			else if (isIdentifier(accessedProperty) && accessedProperty.name === 'item') {
+			// $("node").item, .pairedItem or .itemMatching
+			else if (isIdentifier(accessedProperty) && this.isPairedItemProperty(accessedProperty.name)) {
 				state.markNeedsAllNodes();
 			}
 		} else if (isVariableDeclarator(directParent) || isAssignmentExpression(directParent)) {
@@ -132,4 +132,10 @@ export class BuiltInsParser {
 			state.markPrevNodeAsNeeded();
 		}
 	};
+
+	private isPairedItemProperty(
+		property?: string | boolean | null | number | RegExp | bigint,
+	): boolean {
+		return property === 'item' || property === 'pairedItem' || property === 'itemMatching';
+	}
 }

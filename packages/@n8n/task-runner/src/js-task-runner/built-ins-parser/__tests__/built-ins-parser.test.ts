@@ -97,6 +97,10 @@ describe('BuiltInsParser', () => {
 		test.each([
 			'$("node").item',
 			'$("node")["item"]',
+			'$("node").pairedItem()',
+			'$("node")["pairedItem"]()',
+			'$("node").itemMatching(0)',
+			'$("node")["itemMatching"](0)',
 			'$("node")[variable]',
 			'var a = $("node")',
 			'let a = $("node")',
