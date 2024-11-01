@@ -154,8 +154,12 @@ export class WorkflowExecute {
 		return this.processRunExecutionData(workflow);
 	}
 
-	static isAbortError(e?: ExecutionBaseError) {
-		return e?.message === 'AbortError';
+	static isAbortError(e?: Error) {
+		return (
+			e?.name === 'AbortError' ||
+			(e instanceof WorkflowOperationError &&
+				e.message === 'Workflow has been canceled or timed out')
+		);
 	}
 
 	forceInputNodeExecution(workflow: Workflow): boolean {
