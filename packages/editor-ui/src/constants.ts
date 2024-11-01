@@ -479,7 +479,6 @@ export const enum VIEWS {
 	PERSONAL_SETTINGS = 'PersonalSettings',
 	API_SETTINGS = 'APISettings',
 	NOT_FOUND = 'NotFoundView',
-	FAKE_DOOR = 'ComingSoon',
 	COMMUNITY_NODES = 'CommunityNodes',
 	WORKFLOWS = 'WorkflowsView',
 	WORKFLOW_EXECUTIONS = 'WorkflowExecutions',
@@ -499,12 +498,6 @@ export const enum VIEWS {
 }
 
 export const EDITABLE_CANVAS_VIEWS = [VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.EXECUTION_DEBUG];
-
-export const enum FAKE_DOOR_FEATURES {
-	ENVIRONMENTS = 'environments',
-	LOGGING = 'logging',
-	SSO = 'sso',
-}
 
 export const TEST_PIN_DATA = [
 	{
