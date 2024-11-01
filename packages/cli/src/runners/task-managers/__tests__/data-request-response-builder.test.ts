@@ -174,9 +174,9 @@ describe('DataRequestResponseBuilder', () => {
 		it('should build the runExecutionData as is when everything is requested', () => {
 			const dataRequestResponseBuilder = new DataRequestResponseBuilder(taskData, allDataParam);
 
-			const result = dataRequestResponseBuilder.buildRunExecutionData(taskData.runExecutionData);
+			const { runExecutionData } = dataRequestResponseBuilder.build();
 
-			expect(result).toStrictEqual(taskData.runExecutionData);
+			expect(runExecutionData).toStrictEqual(taskData.runExecutionData);
 		});
 	});
 
