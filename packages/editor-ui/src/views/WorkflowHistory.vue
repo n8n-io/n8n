@@ -1,12 +1,17 @@
 <script setup lang="ts">
-import { onBeforeMount, ref, watchEffect, computed, h } from 'vue';
+import { onBeforeMount, ref, watchEffect, computed, h, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import type { IWorkflowDb, UserAction } from '@/Interface';
-import { VIEWS, WORKFLOW_HISTORY_VERSION_RESTORE } from '@/constants';
+import {
+	VIEWS,
+	WORKFLOW_HISTORY_ACTIONS,
+	WORKFLOW_HISTORY_VERSION_RESTORE,
+	workflowHistoryActionTypes,
+} from '@/constants';
 import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
 import type {
-	WorkflowHistoryActionTypes,
+	WorkflowHistoryActionType,
 	WorkflowVersionId,
 	WorkflowHistoryRequestParams,
 	WorkflowHistory,
@@ -22,26 +27,11 @@ import { useRootStore } from '@/stores/root.store';
 import { getResourcePermissions } from '@/permissions';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
-type WorkflowHistoryActionRecord = {
-	[K in Uppercase<WorkflowHistoryActionTypes[number]>]: Lowercase<K>;
-};
-
 const enum WorkflowHistoryVersionRestoreModalActions {
 	restore = 'restore',
 	deactivateAndRestore = 'deactivateAndRestore',
 	cancel = 'cancel',
 }
-
-const workflowHistoryActionTypes: WorkflowHistoryActionTypes = [
-	'restore',
-	'clone',
-	'open',
-	'download',
-];
-const WORKFLOW_HISTORY_ACTIONS = workflowHistoryActionTypes.reduce(
-	(record, key) => ({ ...record, [key.toUpperCase()]: key }),
-	{} as WorkflowHistoryActionRecord,
-);
 
 const route = useRoute();
 const router = useRouter();
@@ -59,30 +49,49 @@ const requestNumberOfItems = ref(20);
 const lastReceivedItemsLength = ref(0);
 const activeWorkflow = ref<IWorkflowDb | null>(null);
 const workflowHistory = ref<WorkflowHistory[]>([]);
-const activeWorkflowVersion = ref<WorkflowVersion | null>(null);
 
 const workflowId = computed(() => normalizeSingleRouteParam('workflowId'));
-const versionId = computed(() => normalizeSingleRouteParam('versionId'));
+
+const selectedWorkflowVersion = ref<WorkflowVersion | null>(null);
+const selectedVersionId = computed(() => normalizeSingleRouteParam('versionId'));
+
+const selectedDiffWorkflowVersion = ref<WorkflowVersion | null>(null);
+const selectedDiffVersionId = computed(() => normalizeSingleRouteParam('diffId'));
+
+const activeVersionId = computed(() => workflowHistory.value[0]?.versionId);
+
 const editorRoute = computed(() => ({
 	name: VIEWS.WORKFLOW,
 	params: {
 		name: workflowId.value,
 	},
 }));
+
 const workflowPermissions = computed(
 	() => getResourcePermissions(workflowsStore.getWorkflowById(workflowId.value)?.scopes).workflow,
 );
+
 const actions = computed<UserAction[]>(() =>
-	workflowHistoryActionTypes.map((value) => ({
-		label: i18n.baseText(`workflowHistory.item.actions.${value}`),
-		disabled:
-			(value === 'clone' && !workflowPermissions.value.create) ||
-			(value === 'restore' && !workflowPermissions.value.update),
-		value,
-	})),
+	workflowHistoryActionTypes
+		.filter((value) => {
+			if (value === WORKFLOW_HISTORY_ACTIONS.SHOWDIFF && selectedDiffVersionId.value) {
+				return false;
+			}
+
+			return value !== WORKFLOW_HISTORY_ACTIONS.CLOSEDIFF;
+		})
+		.map((value) => ({
+			label: i18n.baseText(`workflowHistory.item.actions.${value}`),
+			disabled:
+				(value === 'clone' && !workflowPermissions.value.create) ||
+				(value === 'restore' && !workflowPermissions.value.update),
+			value,
+		})),
 );
 
-const isFirstItemShown = computed(() => workflowHistory.value[0]?.versionId === versionId.value);
+const isFirstItemShown = computed(
+	() => workflowHistory.value[0]?.versionId === selectedVersionId.value,
+);
 const evaluatedPruneTime = computed(() => Math.floor(workflowHistoryStore.evaluatedPruneTime / 24));
 
 const sendTelemetry = (event: string) => {
@@ -108,7 +117,7 @@ onBeforeMount(async () => {
 		activeWorkflow.value = workflow;
 		isListLoading.value = false;
 
-		if (!versionId.value && workflowHistory.value.length) {
+		if (!selectedVersionId.value && workflowHistory.value.length) {
 			await router.replace({
 				name: VIEWS.WORKFLOW_HISTORY,
 				params: {
@@ -248,7 +257,7 @@ const onAction = async ({
 	id,
 	data,
 }: {
-	action: WorkflowHistoryActionTypes[number];
+	action: WorkflowHistoryActionType;
 	id: WorkflowVersionId;
 	data: { formattedCreatedAt: string };
 }) => {
@@ -270,6 +279,27 @@ const onAction = async ({
 				await restoreWorkflowVersion(id, data);
 				sendTelemetry('User restored version');
 				break;
+			case WORKFLOW_HISTORY_ACTIONS.SHOWDIFF:
+				sendTelemetry('User viewed workflow diff');
+				await router.push({
+					name: VIEWS.WORKFLOW_HISTORY_DIFF,
+					params: {
+						workflowId: workflowId.value,
+						versionId: id,
+						diffId: activeVersionId.value,
+					},
+				});
+				break;
+			case WORKFLOW_HISTORY_ACTIONS.CLOSEDIFF:
+				sendTelemetry('User closed workflow diff');
+				await router.push({
+					name: VIEWS.WORKFLOW_HISTORY,
+					params: {
+						workflowId: workflowId.value,
+						versionId: id,
+					},
+				});
+				break;
 		}
 	} catch (error) {
 		toast.showError(
@@ -287,6 +317,15 @@ const onPreview = async ({ event, id }: { event: MouseEvent; id: WorkflowVersion
 	if (event.metaKey || event.ctrlKey) {
 		openInNewTab(id);
 		sendTelemetry('User opened version in new tab');
+	} else if (selectedDiffVersionId.value) {
+		await router.push({
+			name: VIEWS.WORKFLOW_HISTORY_DIFF,
+			params: {
+				workflowId: workflowId.value,
+				versionId: id,
+				diffId: selectedDiffVersionId.value,
+			},
+		});
 	} else {
 		await router.push({
 			name: VIEWS.WORKFLOW_HISTORY,
@@ -303,18 +342,19 @@ const onUpgrade = () => {
 };
 
 watchEffect(async () => {
-	if (!versionId.value) {
+	if (!selectedVersionId.value) {
 		return;
 	}
+
 	try {
-		activeWorkflowVersion.value = await workflowHistoryStore.getWorkflowVersion(
+		selectedWorkflowVersion.value = await workflowHistoryStore.getWorkflowVersion(
 			workflowId.value,
-			versionId.value,
+			selectedVersionId.value,
 		);
 		sendTelemetry('User selected version');
 	} catch (error) {
 		toast.showError(
-			new Error(`${error.message} "${versionId.value}"&nbsp;`),
+			new Error(`${error.message} "${selectedVersionId.value}"&nbsp;`),
 			i18n.baseText('workflowHistory.title'),
 		);
 	}
@@ -326,6 +366,28 @@ watchEffect(async () => {
 		toast.showError(error, i18n.baseText('workflowHistory.title'));
 	}
 });
+
+watch(
+	selectedDiffVersionId,
+	async (diffVersionId) => {
+		if (diffVersionId) {
+			try {
+				selectedDiffWorkflowVersion.value = await workflowHistoryStore.getWorkflowVersion(
+					workflowId.value,
+					diffVersionId,
+				);
+			} catch (error) {
+				toast.showError(
+					new Error(`${error.message} "${selectedVersionId.value}"&nbsp;`),
+					i18n.baseText('workflowHistory.title'),
+				);
+			}
+		} else {
+			selectedDiffWorkflowVersion.value = null;
+		}
+	},
+	{ immediate: true },
+);
 </script>
 <template>
 	<div :class="$style.view">
@@ -345,7 +407,7 @@ watchEffect(async () => {
 				v-if="canRender"
 				:items="workflowHistory"
 				:last-received-items-length="lastReceivedItemsLength"
-				:active-item="activeWorkflowVersion"
+				:active-item="selectedWorkflowVersion"
 				:actions="actions"
 				:request-number-of-items="requestNumberOfItems"
 				:should-upgrade="workflowHistoryStore.shouldUpgrade"
@@ -361,7 +423,8 @@ watchEffect(async () => {
 			<WorkflowHistoryContent
 				v-if="canRender"
 				:workflow="activeWorkflow"
-				:workflow-version="activeWorkflowVersion"
+				:workflow-version="selectedWorkflowVersion"
+				:workflow-diff="selectedDiffWorkflowVersion"
 				:actions="actions"
 				:is-list-loading="isListLoading"
 				:is-first-item-shown="isFirstItemShown"

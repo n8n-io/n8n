@@ -22,6 +22,7 @@ export function useCanvasNode() {
 				disabled: false,
 				inputs: [],
 				outputs: [],
+				diff: undefined,
 				connections: { [CanvasConnectionMode.Input]: {}, [CanvasConnectionMode.Output]: {} },
 				issues: { items: [], visible: false },
 				pinnedData: { count: 0, visible: false },
@@ -63,6 +64,8 @@ export function useCanvasNode() {
 	const runDataIterations = computed(() => data.value.runData.iterations);
 	const hasRunData = computed(() => data.value.runData.visible);
 
+	const diff = computed(() => data.value.diff);
+
 	const render = computed(() => data.value.render);
 
 	const eventBus = computed(() => node?.eventBus.value);
@@ -89,6 +92,7 @@ export function useCanvasNode() {
 		executionStatus,
 		executionWaiting,
 		executionRunning,
+		diff,
 		render,
 		eventBus,
 	};

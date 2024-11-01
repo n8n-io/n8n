@@ -5,20 +5,20 @@ import type { UserAction } from 'n8n-design-system';
 import type {
 	WorkflowHistory,
 	WorkflowVersionId,
-	WorkflowHistoryActionTypes,
+	WorkflowHistoryActionType,
 } from '@/types/workflowHistory';
 import { useI18n } from '@/composables/useI18n';
 
 const props = defineProps<{
 	item: WorkflowHistory;
 	index: number;
-	actions: UserAction[];
+	actions?: UserAction[];
 	isActive: boolean;
 }>();
 const emit = defineEmits<{
 	action: [
 		value: {
-			action: WorkflowHistoryActionTypes[number];
+			action: WorkflowHistoryActionType;
 			id: WorkflowVersionId;
 			data: { formattedCreatedAt: string };
 		},
@@ -62,7 +62,7 @@ const idLabel = computed<string>(() =>
 	i18n.baseText('workflowHistory.item.id', { interpolate: { id: props.item.versionId } }),
 );
 
-const onAction = (action: WorkflowHistoryActionTypes[number]) => {
+const onAction = (action: WorkflowHistoryActionType) => {
 	emit('action', {
 		action,
 		id: props.item.versionId,
@@ -116,6 +116,7 @@ onMounted(() => {
 				{{ i18n.baseText('workflowHistory.item.latest') }}
 			</n8n-badge>
 			<n8n-action-toggle
+				v-if="props.actions"
 				theme="dark"
 				:class="$style.actions"
 				:actions="props.actions"
@@ -126,6 +127,7 @@ onMounted(() => {
 			>
 				<slot name="action-toggle-button" />
 			</n8n-action-toggle>
+			<slot name="button" />
 		</div>
 	</li>
 </template>

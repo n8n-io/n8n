@@ -16,6 +16,12 @@ export type WorkflowVersion = WorkflowHistory & {
 	connections: IConnections;
 };
 
-export type WorkflowHistoryActionTypes = ['restore', 'clone', 'open', 'download'];
+export type WorkflowHistoryActionType =
+	| 'restore'
+	| 'clone'
+	| 'open'
+	| 'download'
+	| 'showdiff'
+	| 'closediff';
 
 export type WorkflowHistoryRequestParams = { take: number; skip?: number };

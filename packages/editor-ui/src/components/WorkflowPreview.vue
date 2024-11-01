@@ -4,12 +4,14 @@ import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
 import type { IWorkflowDb, IWorkflowTemplate } from '@/Interface';
 import { useExecutionsStore } from '@/stores/executions.store';
+import type { WorkflowDiff } from '@/types/workflowDiff.types';
 
 const props = withDefaults(
 	defineProps<{
 		loading?: boolean;
 		mode?: 'workflow' | 'execution';
 		workflow?: IWorkflowDb | IWorkflowTemplate['workflow'];
+		diff?: WorkflowDiff;
 		executionId?: string;
 		executionMode?: string;
 		loaderType?: 'image' | 'spinner';
@@ -20,6 +22,7 @@ const props = withDefaults(
 		loading: false,
 		mode: 'workflow',
 		workflow: undefined,
+		diff: undefined,
 		executionId: undefined,
 		executionMode: undefined,
 		loaderType: 'image',
@@ -64,6 +67,7 @@ const loadWorkflow = () => {
 		if (!props.workflow.nodes || !Array.isArray(props.workflow.nodes)) {
 			throw new Error(i18n.baseText('workflowPreview.showError.arrayEmpty'));
 		}
+
 		iframeRef.value?.contentWindow?.postMessage?.(
 			JSON.stringify({
 				command: 'openWorkflow',
@@ -73,6 +77,8 @@ const loadWorkflow = () => {
 			}),
 			'*',
 		);
+
+		loadDiff();
 	} catch (error) {
 		toast.showError(
 			error,
@@ -80,6 +86,45 @@ const loadWorkflow = () => {
 			i18n.baseText('workflowPreview.showError.previewError.message'),
 		);
 	}
+};
+
+const loadDiff = () => {
+	if (props.diff) {
+		iframeRef.value?.contentWindow?.postMessage?.(
+			JSON.stringify({
+				command: 'setDiff',
+				diff: props.diff,
+			}),
+			'*',
+		);
+
+		fitView();
+	}
+};
+
+const unloadDiff = () => {
+	iframeRef.value?.contentWindow?.postMessage?.(
+		JSON.stringify({
+			command: 'setDiff',
+			diff: {},
+		}),
+		'*',
+	);
+
+	fitView();
+};
+
+const fitView = () => {
+	if (!ready.value) {
+		return;
+	}
+
+	iframeRef.value?.contentWindow?.postMessage?.(
+		JSON.stringify({
+			command: 'fitView',
+		}),
+		'*',
+	);
 };
 
 const loadExecution = () => {
@@ -161,8 +206,8 @@ onBeforeUnmount(() => {
 
 watch(
 	() => showPreview.value,
-	() => {
-		if (showPreview.value) {
+	(value) => {
+		if (value) {
 			if (props.mode === 'workflow') {
 				loadWorkflow();
 			} else if (props.mode === 'execution') {
@@ -186,6 +231,17 @@ watch(
 	() => {
 		if (props.mode === 'workflow' && props.workflow) {
 			loadWorkflow();
+		}
+	},
+);
+
+watch(
+	() => props.diff,
+	(value) => {
+		if (value) {
+			loadDiff();
+		} else {
+			unloadDiff();
 		}
 	},
 );

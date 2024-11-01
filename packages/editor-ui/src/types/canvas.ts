@@ -10,6 +10,7 @@ import type { IExecutionResponse, INodeUi } from '@/Interface';
 import type { ComputedRef, Ref } from 'vue';
 import type { PartialBy } from '@/utils/typeHelpers';
 import type { EventBus } from 'n8n-design-system';
+import { NodeDiff } from '@/types/workflowDiff.types';
 
 export type CanvasConnectionPortType = NodeConnectionType;
 
@@ -86,6 +87,7 @@ export interface CanvasNodeData {
 	disabled: INodeUi['disabled'];
 	inputs: CanvasConnectionPort[];
 	outputs: CanvasConnectionPort[];
+	diff?: NodeDiff;
 	connections: {
 		[CanvasConnectionMode.Input]: INodeConnections;
 		[CanvasConnectionMode.Output]: INodeConnections;

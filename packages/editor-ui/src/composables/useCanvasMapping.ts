@@ -380,6 +380,8 @@ export function useCanvasMapping({
 		}, {}),
 	);
 
+	const nodeDiffById = computed(() => workflowsStore.workflowDiff || {});
+
 	const additionalNodePropertiesById = computed(() => {
 		type StickyNoteBoundingBox = BoundingBox & {
 			id: string;
@@ -459,6 +461,7 @@ export function useCanvasMapping({
 				disabled: node.disabled,
 				inputs: nodeInputsById.value[node.id] ?? [],
 				outputs: nodeOutputsById.value[node.id] ?? [],
+				diff: nodeDiffById.value[node.id],
 				connections: {
 					[CanvasConnectionMode.Input]: inputConnections,
 					[CanvasConnectionMode.Output]: outputConnections,

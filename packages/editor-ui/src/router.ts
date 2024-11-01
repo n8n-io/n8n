@@ -261,6 +261,22 @@ export const routes: RouteRecordRaw[] = [
 		],
 	},
 	{
+		path: '/workflow/:workflowId/history/:versionId/diff/:diffId?',
+		name: VIEWS.WORKFLOW_HISTORY_DIFF,
+		components: {
+			default: WorkflowHistory,
+			sidebar: MainSidebar,
+		},
+		meta: {
+			middleware: ['authenticated', 'enterprise'],
+			middlewareOptions: {
+				enterprise: {
+					feature: [EnterpriseEditionFeature.WorkflowHistory],
+				},
+			},
+		},
+	},
+	{
 		path: '/workflow/:workflowId/history/:versionId?',
 		name: VIEWS.WORKFLOW_HISTORY,
 		components: {
