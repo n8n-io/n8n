@@ -317,6 +317,10 @@ export class JsTaskRunner extends TaskRunner {
 				isEnvAccessBlocked: false,
 				isProcessAvailable: true,
 			},
+			// Because we optimize the needed data, it can be partially available.
+			// We assign the available built-ins to the execution context, which
+			// means we run the getter for '$json', and by default $json throws
+			// if there is no data available.
 		).getDataProxy({ throwOnMissingExecutionData: false });
 	}
 
