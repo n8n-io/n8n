@@ -116,7 +116,7 @@ export function useResize(container: Ref<HTMLElement | undefined>) {
 		height: dimensions.height,
 		chatWidth: dimensions.chat,
 		rootStyles,
-		// onResize,
+		onWindowResize,
 		onResizeDebounced,
 		onResizeChatDebounced,
 		// onResizeChat,

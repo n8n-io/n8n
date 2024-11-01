@@ -41,7 +41,7 @@ const { sendMessage, getChatMessages } = useChatMessaging({
 	sessionId: currentSessionId,
 });
 
-const { height, chatWidth, rootStyles, onResizeDebounced, onResizeChatDebounced } =
+const { height, chatWidth, rootStyles, onResizeDebounced, onResizeChatDebounced, onWindowResize } =
 	useResize(container);
 
 const isLoading = computed(() => uiStore.isActionActive.workflowRunning);
@@ -111,7 +111,10 @@ watch(
 			setConnectedNode();
 			messages.value = getChatMessages();
 
-			setTimeout(() => chatEventBus.emit('focusInput'), 0);
+			setTimeout(() => {
+				onWindowResize();
+				chatEventBus.emit('focusInput');
+			}, 0);
 		}
 	},
 );
@@ -235,7 +238,6 @@ watchEffect(() => {
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
-	width: 100%;
 }
 .chatResizer {
 	display: flex;
@@ -255,9 +257,8 @@ watchEffect(() => {
 
 .chat {
 	width: var(--chat-width);
-	border-right: 1px solid var(--color-foreground-base);
 	flex-shrink: 0;
-	flex-grow: 0;
+	border-right: 1px solid var(--color-foreground-base);
 	max-width: 100%;
 
 	&:only-child {
@@ -275,6 +276,7 @@ watchEffect(() => {
 
 .logs {
 	flex-grow: 1;
+	flex-shrink: 1;
 	background-color: var(--color-background-light);
 }
 </style>
