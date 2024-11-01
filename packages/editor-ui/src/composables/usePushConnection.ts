@@ -252,7 +252,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 				if (activeRunData) {
 					for (const key of Object.keys(activeRunData)) {
 						if (
-							pushData.data.data.resultData.runData[key]?.[0]?.data?.main?.[0]?.[0]?.json
+							pushData.data?.data?.resultData?.runData?.[key]?.[0]?.data?.main?.[0]?.[0]?.json
 								?.isArtificialRecoveredEventItem === true &&
 							activeRunData[key].length > 0
 						)
