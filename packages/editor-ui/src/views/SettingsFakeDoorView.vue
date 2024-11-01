@@ -1,35 +1,9 @@
-<script lang="ts">
-import type { IFakeDoor } from '@/Interface';
-import { defineComponent } from 'vue';
-import FeatureComingSoon from '@/components/FeatureComingSoon.vue';
-import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui.store';
+<script lang="ts" setup>
+interface Props {
+	featureId: string;
+}
 
-export default defineComponent({
-	name: 'SettingsFakeDoorView',
-	components: {
-		FeatureComingSoon,
-	},
-	props: {
-		featureId: {
-			type: String,
-			required: true,
-		},
-	},
-	computed: {
-		...mapStores(useUIStore),
-		featureInfo(): IFakeDoor | undefined {
-			return this.uiStore.fakeDoorsById[this.featureId];
-		},
-	},
-	methods: {
-		openLinkPage() {
-			if (this.featureInfo) {
-				window.open(this.featureInfo.linkURL, '_blank');
-			}
-		},
-	},
-});
+defineProps<Props>();
 </script>
 
 <template>
