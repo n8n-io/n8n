@@ -25,7 +25,7 @@ export default defineComponent({
 			...useToast(),
 			...useMessage(),
 			...useUIStore(),
-			...usePageRedirectionHelper(),
+			pageRedirectionHelper: usePageRedirectionHelper(),
 			documentTitle: useDocumentTitle(),
 		};
 	},
@@ -72,7 +72,7 @@ export default defineComponent({
 	},
 	methods: {
 		onUpgrade() {
-			void this.goToUpgrade('settings-n8n-api', 'upgrade-api', 'redirect');
+			void this.pageRedirectionHelper.goToUpgrade('settings-n8n-api', 'upgrade-api', 'redirect');
 		},
 		async showDeleteModal() {
 			const confirmed = await this.confirm(

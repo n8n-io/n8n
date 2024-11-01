@@ -11,8 +11,6 @@ import { useVersionsStore } from '@/stores/versions.store';
 import { useTelemetry } from '../useTelemetry';
 
 let settingsStore: ReturnType<typeof useSettingsStore>;
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-let cloudPlanStore: ReturnType<typeof useCloudPlanStore>;
 let usersStore: ReturnType<typeof useUsersStore>;
 let versionStore: ReturnType<typeof useVersionsStore>;
 let pageRedirectionHelper: ReturnType<typeof usePageRedirectionHelper>;
@@ -36,7 +34,6 @@ describe('usePageRedirectionHelper', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
 		settingsStore = useSettingsStore();
-		cloudPlanStore = useCloudPlanStore();
 		usersStore = useUsersStore();
 		versionStore = useVersionsStore();
 
