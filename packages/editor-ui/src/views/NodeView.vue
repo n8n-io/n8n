@@ -862,7 +862,7 @@ export default defineComponent({
 			};
 			this.$telemetry.track('User clicked chat open button', telemetryPayload);
 			void this.externalHooks.run('nodeView.onOpenChat', telemetryPayload);
-			this.canvasStore.setPanelOpen('chat', this.canvasStore.isChatPanelOpen);
+			this.canvasStore.setPanelOpen('chat', !this.canvasStore.isChatPanelOpen);
 		},
 
 		async onRunWorkflow() {
