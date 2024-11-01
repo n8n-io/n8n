@@ -18,7 +18,6 @@ import { getPersonalizedNodeTypes } from '@/utils/userUtils';
 import { defineStore } from 'pinia';
 import { useRootStore } from '@/stores/root.store';
 import { usePostHog } from './posthog.store';
-import { useSettingsStore } from './settings.store';
 import { useUIStore } from './ui.store';
 import { useCloudPlanStore } from './cloudPlan.store';
 import * as mfaApi from '@/api/mfa';
@@ -29,7 +28,7 @@ import * as invitationsApi from '@/api/invitation';
 import { useNpsSurveyStore } from './npsSurvey.store';
 import { computed, ref } from 'vue';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { hasPermission } from '@/utils/rbac/permissions';
+import { useSettingsStore } from '@/stores/settings.store';
 
 const _isPendingUser = (user: IUserResponse | null) => !!user?.isPending;
 const _isInstanceOwner = (user: IUserResponse | null) => user?.role === ROLE.Owner;
@@ -50,6 +49,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
 	const cloudPlanStore = useCloudPlanStore();
+
 	const telemetry = useTelemetry();
 
 	// Composables
@@ -73,10 +73,6 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 	const mfaEnabled = computed(() => currentUser.value?.mfaEnabled ?? false);
 
 	const globalRoleName = computed(() => currentUser.value?.role ?? 'default');
-
-	const userIsOwnerInCloudDeployment = computed(
-		() => hasPermission(['instanceOwner']) && settingsStore.isCloudDeployment,
-	);
 
 	const personalizedNodeTypes = computed(() => {
 		const user = currentUser.value;
@@ -384,7 +380,6 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		mfaEnabled,
 		globalRoleName,
 		personalizedNodeTypes,
-		userIsOwnerInCloudDeployment,
 		addUsers,
 		loginWithCookie,
 		initialize,

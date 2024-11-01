@@ -21,7 +21,7 @@ export function usePageRedirectionHelper() {
 	const goToVersions = async () => {
 		let versionsLink = versionsStore.infoUrl;
 
-		if (usersStore.userIsOwnerInCloudDeployment) {
+		if (usersStore.isInstanceOwner && settingsStore.isCloudDeployment) {
 			versionsLink = await cloudPlanStore.generateCloudDashboardAutoLoginLink({
 				redirectionPath: '/manage',
 			});
@@ -31,7 +31,7 @@ export function usePageRedirectionHelper() {
 	};
 
 	const goToDashboard = async () => {
-		if (usersStore.userIsOwnerInCloudDeployment) {
+		if (usersStore.isInstanceOwner && settingsStore.isCloudDeployment) {
 			const dashboardLink = await cloudPlanStore.generateCloudDashboardAutoLoginLink({
 				redirectionPath: '/dashboard',
 			});
@@ -78,7 +78,7 @@ export function usePageRedirectionHelper() {
 	const generateUpgradeLink = async (source: string, utm_campaign: string) => {
 		let upgradeLink = N8N_PRICING_PAGE_URL;
 
-		if (usersStore.userIsOwnerInCloudDeployment) {
+		if (usersStore.isInstanceOwner && settingsStore.isCloudDeployment) {
 			upgradeLink = await cloudPlanStore.generateCloudDashboardAutoLoginLink({
 				redirectionPath: '/account/change-plan',
 			});
