@@ -19,7 +19,7 @@ const emit = defineEmits<{
 	useWorkflow: [{ event: MouseEvent; id: number }];
 }>();
 
-const { infiniteScrollEnabled, loading } = withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<Props>(), {
 	infiniteScrollEnabled: false,
 	loading: false,
 	useWorkflowButton: false,
@@ -32,7 +32,7 @@ const { infiniteScrollEnabled, loading } = withDefaults(defineProps<Props>(), {
 const loader = ref<HTMLElement | null>(null);
 
 onMounted(() => {
-	if (infiniteScrollEnabled) {
+	if (props.infiniteScrollEnabled) {
 		const content = document.getElementById('content');
 		if (content) {
 			content.addEventListener('scroll', onScroll);
@@ -49,7 +49,7 @@ onBeforeUnmount(() => {
 
 function onScroll() {
 	const loaderRef = loader.value as HTMLElement | undefined;
-	if (!loaderRef || loading) {
+	if (!loaderRef || props.loading) {
 		return;
 	}
 
