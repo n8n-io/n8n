@@ -89,7 +89,7 @@ describe('AssignmentCollection.vue', () => {
 		await userEvent.click(getByTestId('assignment-collection-drop-area'));
 		await userEvent.click(getByTestId('assignment-collection-drop-area'));
 
-		const assignments = await findAllByTestId('assignment');
+		let assignments = await findAllByTestId('assignment');
 
 		expect(assignments.length).toEqual(2);
 
@@ -117,7 +117,7 @@ describe('AssignmentCollection.vue', () => {
 		await dropAssignment({ key: 'objectKey', value: {}, dropArea });
 		await dropAssignment({ key: 'arrayKey', value: [], dropArea });
 
-		let assignments = await findAllByTestId('assignment');
+		const assignments = await findAllByTestId('assignment');
 
 		expect(assignments.length).toBe(5);
 		expect(getAssignmentType(assignments[0])).toEqual('Boolean');
