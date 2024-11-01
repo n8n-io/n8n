@@ -89,7 +89,7 @@ describe('AssignmentCollection.vue', () => {
 		await userEvent.click(getByTestId('assignment-collection-drop-area'));
 		await userEvent.click(getByTestId('assignment-collection-drop-area'));
 
-		let assignments = await findAllByTestId('assignment');
+		const assignments = await findAllByTestId('assignment');
 
 		expect(assignments.length).toEqual(2);
 
