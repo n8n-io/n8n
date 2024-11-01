@@ -1,4 +1,4 @@
-import { GlobalConfig, PruningConfig } from '@n8n/config';
+import { GlobalConfig } from '@n8n/config';
 import { BinaryDataService, InstanceSettings } from 'n8n-core';
 import { jsonStringify } from 'n8n-workflow';
 import { Service } from 'typedi';
@@ -15,8 +15,8 @@ export class PruningService {
 	private hardDeletionBatchSize = 100;
 
 	private rates: Record<string, number> = {
-		softDeletion: this.pruningConfig.softDeleteInterval * TIME.MINUTE,
-		hardDeletion: this.pruningConfig.hardDeleteInterval * TIME.MINUTE,
+		softDeletion: this.globalConfig.pruning.softDeleteInterval * TIME.MINUTE,
+		hardDeletion: this.globalConfig.pruning.hardDeleteInterval * TIME.MINUTE,
 	};
 
 	public softDeletionInterval: NodeJS.Timer | undefined;
@@ -32,7 +32,6 @@ export class PruningService {
 		private readonly binaryDataService: BinaryDataService,
 		private readonly orchestrationService: OrchestrationService,
 		private readonly globalConfig: GlobalConfig,
-		private readonly pruningConfig: PruningConfig,
 	) {}
 
 	/**
@@ -52,7 +51,7 @@ export class PruningService {
 
 	private isPruningEnabled() {
 		const { instanceType, isFollower } = this.instanceSettings;
-		if (!this.pruningConfig.isEnabled || inTest || instanceType !== 'main') {
+		if (!this.globalConfig.pruning.isEnabled || inTest || instanceType !== 'main') {
 			return false;
 		}
 

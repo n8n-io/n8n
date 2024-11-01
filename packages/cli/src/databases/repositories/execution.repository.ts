@@ -1,4 +1,4 @@
-import { GlobalConfig, PruningConfig } from '@n8n/config';
+import { GlobalConfig } from '@n8n/config';
 import type {
 	FindManyOptions,
 	FindOneOptions,
@@ -127,7 +127,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		private readonly logger: Logger,
 		private readonly executionDataRepository: ExecutionDataRepository,
 		private readonly binaryDataService: BinaryDataService,
-		private readonly pruningConfig: PruningConfig,
 	) {
 		super(ExecutionEntity, dataSource.manager);
 	}
@@ -460,8 +459,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	}
 
 	async softDeletePrunableExecutions() {
-		const maxAge = this.pruningConfig.maxAge; // in h
-		const maxCount = this.pruningConfig.maxCount;
+		const { maxAge, maxCount } = this.globalConfig.pruning;
 
 		// Sub-query to exclude executions having annotations
 		const annotatedExecutionsSubQuery = this.manager
@@ -517,7 +515,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 	async hardDeleteSoftDeletedExecutions() {
 		const date = new Date();
-		date.setHours(date.getHours() - this.pruningConfig.hardDeleteBuffer);
+		date.setHours(date.getHours() - this.globalConfig.pruning.hardDeleteBuffer);
 
 		const workflowIdsAndExecutionIds = (
 			await this.find({

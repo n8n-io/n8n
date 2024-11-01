@@ -1,9 +1,9 @@
+import { GlobalConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
 import { BinaryDataService, InstanceSettings } from 'n8n-core';
 import type { ExecutionStatus } from 'n8n-workflow';
 import Container from 'typedi';
 
-import config from '@/config';
 import { TIME } from '@/constants';
 import type { ExecutionEntity } from '@/databases/entities/execution-entity';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
@@ -28,18 +28,19 @@ describe('softDeleteOnPruningCycle()', () => {
 	const now = new Date();
 	const yesterday = new Date(Date.now() - TIME.DAY);
 	let workflow: WorkflowEntity;
+	let globalConfig: GlobalConfig;
 
 	beforeAll(async () => {
 		await testDb.init();
 
+		globalConfig = Container.get(GlobalConfig);
 		pruningService = new PruningService(
 			mockInstance(Logger),
 			instanceSettings,
 			Container.get(ExecutionRepository),
 			mockInstance(BinaryDataService),
 			mock(),
-			mock(),
-			mock(),
+			globalConfig,
 		);
 
 		workflow = await createWorkflow();
@@ -53,10 +54,6 @@ describe('softDeleteOnPruningCycle()', () => {
 		await testDb.terminate();
 	});
 
-	afterEach(() => {
-		config.load(config.default);
-	});
-
 	async function findAllExecutions() {
 		return await Container.get(ExecutionRepository).find({
 			order: { id: 'asc' },
@@ -64,11 +61,10 @@ describe('softDeleteOnPruningCycle()', () => {
 		});
 	}
 
-	// @TODO
-	describe.skip('when EXECUTIONS_DATA_PRUNE_MAX_COUNT is set', () => {
-		beforeEach(() => {
-			config.set('executions.pruneDataMaxCount', 1);
-			config.set('executions.pruneDataMaxAge', 336);
+	describe('when EXECUTIONS_DATA_PRUNE_MAX_COUNT is set', () => {
+		beforeAll(() => {
+			globalConfig.pruning.maxAge = 336;
+			globalConfig.pruning.maxCount = 1;
 		});
 
 		test('should mark as deleted based on EXECUTIONS_DATA_PRUNE_MAX_COUNT', async () => {
@@ -166,11 +162,10 @@ describe('softDeleteOnPruningCycle()', () => {
 		});
 	});
 
-	// @TODO
-	describe.skip('when EXECUTIONS_DATA_MAX_AGE is set', () => {
-		beforeEach(() => {
-			config.set('executions.pruneDataMaxAge', 1); // 1h
-			config.set('executions.pruneDataMaxCount', 0);
+	describe('when EXECUTIONS_DATA_MAX_AGE is set', () => {
+		beforeAll(() => {
+			globalConfig.pruning.maxAge = 1;
+			globalConfig.pruning.maxCount = 0;
 		});
 
 		test('should mark as deleted based on EXECUTIONS_DATA_MAX_AGE', async () => {
