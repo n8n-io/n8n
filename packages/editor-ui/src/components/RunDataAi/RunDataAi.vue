@@ -1,8 +1,7 @@
 <script lang="ts" setup>
 import type { Ref } from 'vue';
 import { computed, ref, watch } from 'vue';
-import type { ITaskSubRunMetadata, ITaskDataConnections } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import type { ITaskDataConnections, NodeConnectionType, Workflow, ITaskData } from 'n8n-workflow';
 import type { IAiData, IAiDataContent, INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -28,29 +27,21 @@ export interface Props {
 	runIndex?: number;
 	hideTitle?: boolean;
 	slim?: boolean;
+	workflow: Workflow;
 }
 const props = withDefaults(defineProps<Props>(), { runIndex: 0 });
 const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
 const selectedRun: Ref<IAiData[]> = ref([]);
-
 function isTreeNodeSelected(node: TreeNode) {
 	return selectedRun.value.some((run) => run.node === node.node && run.runIndex === node.runIndex);
 }
 
 function getReferencedData(
-	reference: ITaskSubRunMetadata,
+	taskData: ITaskData,
 	withInput: boolean,
 	withOutput: boolean,
 ): IAiDataContent[] {
-	const resultData = workflowsStore.getWorkflowResultDataByNodeName(reference.node);
-
-	if (!resultData?.[reference.runIndex]) {
-		return [];
-	}
-
-	const taskData = resultData[reference.runIndex];
-
 	if (!taskData) {
 		return [];
 	}
@@ -98,18 +89,18 @@ function onItemClick(data: TreeNode) {
 
 		return;
 	}
+
+	const selectedNodeRun = workflowsStore.getWorkflowResultDataByNodeName(data.node)?.[
+		data.runIndex
+	];
+	if (!selectedNodeRun) {
+		return;
+	}
 	selectedRun.value = [
 		{
 			node: data.node,
 			runIndex: data.runIndex,
-			data: getReferencedData(
-				{
-					node: data.node,
-					runIndex: data.runIndex,
-				},
-				true,
-				true,
-			),
+			data: getReferencedData(selectedNodeRun, true, true),
 		},
 	];
 }
@@ -145,21 +136,20 @@ const createNode = (
 });
 
 function getTreeNodeData(nodeName: string, currentDepth: number): TreeNode[] {
-	const { connectionsByDestinationNode } = workflowsStore.getCurrentWorkflow();
-	const connections = connectionsByDestinationNode[nodeName];
-	// eslint-disable-next-line @typescript-eslint/no-use-before-define
+	const connections = props.workflow.connectionsByDestinationNode[nodeName];
 	const resultData = aiData.value?.filter((data) => data.node === nodeName) ?? [];
 
 	if (!connections) {
 		return resultData.map((d) => createNode(nodeName, currentDepth, d));
 	}
 
-	const nonMainConnectionsKeys = Object.keys(connections).filter(
-		(key) => key !== NodeConnectionType.Main,
-	);
-	const children = nonMainConnectionsKeys.flatMap((key) =>
-		connections[key][0].flatMap((node) => getTreeNodeData(node.node, currentDepth + 1)),
-	);
+	// Get the first level of children
+	const connectedSubNodes = props.workflow.getParentNodes(nodeName, 'ALL_NON_MAIN', 1);
+
+	const children = connectedSubNodes
+		// Only include sub-nodes which have data
+		.filter((name) => aiData.value?.find((data) => data.node === name))
+		.flatMap((name) => getTreeNodeData(name, currentDepth + 1));
 
 	children.sort((a, b) => a.startTime - b.startTime);
 
@@ -170,35 +160,49 @@ function getTreeNodeData(nodeName: string, currentDepth: number): TreeNode[] {
 	return [createNode(nodeName, currentDepth, undefined, children)];
 }
 
-const aiData = computed<AIResult[] | undefined>(() => {
-	const resultData = workflowsStore.getWorkflowResultDataByNodeName(props.node.name);
+const aiData = computed<AIResult[]>(() => {
+	const result: AIResult[] = [];
+	const connectedSubNodes = props.workflow.getParentNodes(props.node.name, 'ALL_NON_MAIN');
+	const rootNodeResult = workflowsStore.getWorkflowResultDataByNodeName(props.node.name);
+	const rootNodeStartTime = rootNodeResult?.[0]?.startTime ?? 0;
+	const rootNodeEndTime = rootNodeStartTime + (rootNodeResult?.[0]?.executionTime ?? 0);
 
-	if (!resultData || !Array.isArray(resultData)) {
-		return;
-	}
+	connectedSubNodes.forEach((nodeName) => {
+		const nodeRunData = workflowsStore.getWorkflowResultDataByNodeName(nodeName) ?? [];
 
-	const subRun = resultData[props.runIndex].metadata?.subRun;
-	if (!Array.isArray(subRun)) {
-		return;
-	}
-	// Extend the subRun with the data and sort by adding execution time + startTime and comparing them
-	const subRunWithData = subRun.flatMap((run) =>
-		getReferencedData(run, false, true).map((data) => ({ ...run, data })),
-	);
+		nodeRunData.forEach((run, runIndex) => {
+			const referenceData = {
+				data: getReferencedData(run, false, true)[0],
+				node: nodeName,
+				runIndex,
+			};
 
-	subRunWithData.sort((a, b) => {
-		const aTime = a.data?.metadata?.startTime || 0;
-		const bTime = b.data?.metadata?.startTime || 0;
+			result.push(referenceData);
+		});
+	});
+
+	// Sort the data by start time
+	result.sort((a, b) => {
+		const aTime = a.data?.metadata?.startTime ?? 0;
+		const bTime = b.data?.metadata?.startTime ?? 0;
 		return aTime - bTime;
 	});
 
-	return subRunWithData;
+	// Only show data that is within the root node's execution time
+	// This is because sub-node could be connected to multiple root nodes
+	const currentNodeResult = result.filter((r) => {
+		const startTime = r.data?.metadata?.startTime ?? 0;
+
+		return startTime >= rootNodeStartTime && startTime <= rootNodeEndTime;
+	});
+
+	return currentNodeResult;
 });
 
 const executionTree = computed<TreeNode[]>(() => {
 	const rootNode = props.node;
 
-	const tree = getTreeNodeData(rootNode.name, 0);
+	const tree = getTreeNodeData(rootNode.name, 1);
 	return tree || [];
 });
 
@@ -206,7 +210,7 @@ watch(() => props.runIndex, selectFirst, { immediate: true });
 </script>
 
 <template>
-	<div v-if="aiData" :class="$style.container">
+	<div v-if="aiData.length > 0" :class="$style.container">
 		<div :class="{ [$style.tree]: true, [$style.slim]: slim }">
 			<ElTree
 				:data="executionTree"
