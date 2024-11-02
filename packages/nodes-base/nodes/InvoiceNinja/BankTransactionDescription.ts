@@ -98,7 +98,7 @@ export const bankTransactionFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Currency',
+				displayName: 'Currency Name or ID',
 				name: 'currencyId',
 				type: 'options',
 				description:
