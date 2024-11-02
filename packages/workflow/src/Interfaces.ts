@@ -2076,6 +2076,7 @@ export interface IRun {
 // The RunData, ExecuteData and WaitForExecution contain often the same data.
 export interface IRunExecutionData {
 	startData?: {
+		startNodes?: StartNodeData[];
 		destinationNode?: string;
 		runNodeFilter?: string[];
 	};

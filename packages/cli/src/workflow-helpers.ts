@@ -223,7 +223,10 @@ export async function replaceInvalidCredentials(workflow: WorkflowEntity): Promi
 	return workflow;
 }
 
-export function getExecutionStartNode(data: IWorkflowExecutionDataProcess, workflow: Workflow) {
+export function getExecutionStartNode(
+	data: Pick<IWorkflowExecutionDataProcess, 'startNodes' | 'pinData'>,
+	workflow: Workflow,
+) {
 	let startNode;
 	if (
 		data.startNodes?.length === 1 &&

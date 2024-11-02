@@ -139,9 +139,13 @@ export class WorkflowRunner {
 			this.activeExecutions.attachResponsePromise(executionId, responsePromise);
 		}
 
-		if (this.executionsMode === 'queue') {
-			// Do not run "manual" executions in bull because sending events to the
-			// frontend would not be possible
+		// @TODO: Reduce to true branch once feature is stable
+		const shouldEnqueue =
+			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true'
+				? this.executionsMode === 'queue'
+				: this.executionsMode === 'queue' && data.executionMode !== 'manual';
+
+		if (shouldEnqueue) {
 			await this.enqueueExecution(executionId, data, loadStaticData, realtime);
 		} else {
 			await this.runMainProcess(executionId, data, loadStaticData, restartExecutionId);

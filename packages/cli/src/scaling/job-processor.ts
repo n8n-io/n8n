@@ -16,6 +16,7 @@ import { WorkflowRepository } from '@/databases/repositories/workflow.repository
 import { Logger } from '@/logging/logger.service';
 import { NodeTypes } from '@/node-types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import * as WorkflowHelpers from '@/workflow-helpers';
 
 import type {
 	Job,
@@ -151,7 +152,37 @@ export class JobProcessor {
 
 		let workflowExecute: WorkflowExecute;
 		let workflowRun: PCancelable<IRun>;
-		if (execution.data !== undefined) {
+
+		if (execution.mode === 'manual') {
+			const { resultData, startData } = execution.data;
+
+			workflowExecute = new WorkflowExecute(additionalData, execution.mode, execution.data);
+
+			const isFull =
+				resultData.runData === undefined ||
+				startData?.startNodes === undefined ||
+				startData?.startNodes.length === 0;
+
+			if (isFull) {
+				const startNode = WorkflowHelpers.getExecutionStartNode(
+					{ startNodes: startData?.startNodes, pinData: resultData.pinData },
+					workflow,
+				);
+				workflowRun = workflowExecute.run(
+					workflow,
+					startNode,
+					startData?.destinationNode,
+					resultData.pinData,
+				);
+			} else {
+				workflowRun = workflowExecute.runPartialWorkflow2(
+					workflow,
+					resultData.runData,
+					startData?.destinationNode,
+					resultData.pinData,
+				);
+			}
+		} else if (execution.data !== undefined) {
 			workflowExecute = new WorkflowExecute(additionalData, execution.mode, execution.data);
 			workflowRun = workflowExecute.processRunExecutionData(workflow);
 		} else {

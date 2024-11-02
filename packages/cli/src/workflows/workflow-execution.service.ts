@@ -18,6 +18,7 @@ import {
 } from 'n8n-workflow';
 import { Service } from 'typedi';
 
+import config from '@/config';
 import type { Project } from '@/databases/entities/project';
 import type { User } from '@/databases/entities/user';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
@@ -138,6 +139,25 @@ export class WorkflowExecutionService {
 			userId: user.id,
 			partialExecutionVersion: partialExecutionVersion ?? '0',
 		};
+
+		/**
+		 * In the past, manual executions in queue mode were executed in the main process,
+		 * so there was no need to persist the parts of execution data that are relevant
+		 * to manual executions. However, now that manual executions are executed in the
+		 * worker process, we must persist these parts of execution data.
+		 */
+		if (config.getEnv('executions.mode') === 'queue') {
+			data.executionData = {
+				startData: {
+					startNodes,
+					destinationNode,
+				},
+				resultData: {
+					pinData,
+					runData,
+				},
+			};
+		}
 
 		const hasRunData = (node: INode) => runData !== undefined && !!runData[node.name];
 
