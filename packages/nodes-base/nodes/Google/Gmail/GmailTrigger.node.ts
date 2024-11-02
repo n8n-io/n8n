@@ -298,6 +298,7 @@ export class GmailTrigger implements INodeType {
 				includeDrafts = (qs.includeDrafts as boolean) || true;
 			}
 			delete qs.includeDrafts;
+			const withoutDrafts = [];
 
 			for (let i = 0; i < responseData.length; i++) {
 				responseData[i] = await googleApiRequest.call(
@@ -309,8 +310,6 @@ export class GmailTrigger implements INodeType {
 				);
 				if (!includeDrafts) {
 					if (responseData[i].labelIds.includes('DRAFT')) {
-						responseData.splice(i, 1);
-						i--;
 						continue;
 					}
 				}
@@ -324,6 +323,11 @@ export class GmailTrigger implements INodeType {
 						dataPropertyNameDownload,
 					);
 				}
+				withoutDrafts.push(responseData[i]);
+			}
+
+			if (!includeDrafts) {
+				responseData = withoutDrafts;
 			}
 
 			if (simple && responseData?.length) {
