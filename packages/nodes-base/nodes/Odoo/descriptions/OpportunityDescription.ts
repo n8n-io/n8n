@@ -223,7 +223,7 @@ export const opportunityDescription: INodeProperties[] = [
 		name: 'options',
 		type: 'collection',
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add option',
 		displayOptions: {
 			show: {
 				operation: ['getAll', 'get'],

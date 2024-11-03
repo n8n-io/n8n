@@ -381,7 +381,7 @@ export async function odooDelete(
 					mapOdooResources[resource] || resource,
 					mapOperationToJSONRPC[operation],
 					itemsID ? [+itemsID] : [],
-					{ context: context || {} }
+					{ context: context || {} },
 				],
 			},
 			id: randomInt(100),
