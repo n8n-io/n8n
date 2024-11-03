@@ -130,7 +130,6 @@ export const customResourceDescription: INodeProperties[] = [
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getSupportedLanguages',
-					loadOptionsDependsOn: ['customResource'],
 				},
 			},
 		],
@@ -220,7 +219,6 @@ export const customResourceDescription: INodeProperties[] = [
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getSupportedLanguages',
-					loadOptionsDependsOn: ['customResource'],
 				},
 			},
 		],
@@ -400,7 +398,6 @@ export const customResourceDescription: INodeProperties[] = [
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getSupportedLanguages',
-					loadOptionsDependsOn: ['customResource'],
 				},
 			},
 		],
