@@ -69,7 +69,6 @@ import ProjectMoveResourceModal from '@/components/Projects/ProjectMoveResourceM
 import NewAssistantSessionModal from '@/components/AskAssistant/NewAssistantSessionModal.vue';
 import PromptMfaCodeModal from './PromptMfaCodeModal/PromptMfaCodeModal.vue';
 import CommunityPlusEnrollmentModal from '@/components/CommunityPlusEnrollmentModal.vue';
-import { EventBus } from 'n8n-design-system';
 </script>
 
 <template>
