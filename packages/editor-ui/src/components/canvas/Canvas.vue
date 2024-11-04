@@ -120,7 +120,6 @@ const isPaneReady = ref(false);
 const classes = computed(() => ({
 	[$style.canvas]: true,
 	[$style.ready]: isPaneReady.value,
-	[$style.draggable]: isPanning.value,
 }));
 
 /**
@@ -133,17 +132,16 @@ const disableKeyBindings = computed(() => !props.keyBindings);
  * @see https://developer.mozilla.org/en-US/docs/Web/API/UI_Events/Keyboard_event_key_values#whitespace_keys
  */
 
-const isPanning = ref(false);
 const panningKeyCode = ref<string[]>([' ', controlKeyCode]);
 const panningMouseButton = ref<number[]>([1]);
 const selectionKeyCode = ref<true | null>(true);
 
 onKeyDown(panningKeyCode.value, () => {
-	setPanningEnabled(true);
+	selectionKeyCode.value = null;
 });
 
 onKeyUp(panningKeyCode.value, () => {
-	setPanningEnabled(false);
+	selectionKeyCode.value = true;
 });
 
 const keyMap = computed(() => ({
@@ -174,16 +172,6 @@ const keyMap = computed(() => ({
 }));
 
 useKeybindings(keyMap, { disabled: disableKeyBindings });
-
-function setPanningEnabled(value: boolean) {
-	if (value) {
-		isPanning.value = true;
-		selectionKeyCode.value = null;
-	} else {
-		isPanning.value = false;
-		selectionKeyCode.value = true;
-	}
-}
 
 /**
  * Nodes
@@ -623,16 +611,16 @@ provide(CanvasKey, {
 		opacity: 1;
 	}
 
-	&.draggable :global(.vue-flow__pane) {
-		cursor: grab;
-	}
-
 	:global(.vue-flow__pane) {
-		cursor: default;
-	}
+		cursor: grab;
 
-	:global(.vue-flow__pane.dragging) {
-		cursor: grabbing;
+		&:global(.selection) {
+			cursor: default;
+		}
+
+		&:global(.dragging) {
+			cursor: grabbing;
+		}
 	}
 }
 </style>
