@@ -10,7 +10,7 @@ import config from '@/config';
  * - `manual`: Whether to save successful or failed manual executions.
  * - `progress`: Whether to save execution progress, i.e. after each node's execution.
  */
-export function toSaveSettings(workflowSettings: IWorkflowSettings = {}, waitTill?: Date) {
+export function toSaveSettings(workflowSettings: IWorkflowSettings = {}) {
 	const DEFAULTS = {
 		ERROR: config.getEnv('executions.saveDataOnError'),
 		SUCCESS: config.getEnv('executions.saveDataOnSuccess'),
@@ -22,10 +22,9 @@ export function toSaveSettings(workflowSettings: IWorkflowSettings = {}, waitTil
 		error: workflowSettings.saveDataErrorExecution
 			? workflowSettings.saveDataErrorExecution !== 'none'
 			: DEFAULTS.ERROR !== 'none',
-		success:
-			!waitTill || workflowSettings.saveDataSuccessExecution
-				? workflowSettings.saveDataSuccessExecution !== 'none'
-				: DEFAULTS.SUCCESS !== 'none',
+		success: workflowSettings.saveDataSuccessExecution
+			? workflowSettings.saveDataSuccessExecution !== 'none'
+			: DEFAULTS.SUCCESS !== 'none',
 		manual:
 			workflowSettings === undefined || workflowSettings.saveManualExecutions === 'DEFAULT'
 				? DEFAULTS.MANUAL
