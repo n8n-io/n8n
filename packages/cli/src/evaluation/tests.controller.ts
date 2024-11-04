@@ -1,7 +1,5 @@
-// import type { Scope } from '@n8n/permissions';
-
-// import type { User } from '@/databases/entities/user';
 import { Get, /*Patch, Post,*/ RestController } from '@/decorators';
+import { listQueryMiddleware } from '@/middlewares';
 
 import { TestsService } from './tests.service';
 import { TestsRequest } from './tests.types';
@@ -21,13 +19,9 @@ export class TestsController {
 	// 	}
 	// }
 
-	@Get('/')
-	async getMany(_req: TestsRequest.GetMany) {
-		return await this.testsService.getMany(
-			/*req.user, {
-			listQueryOptions: req.listQueryOptions,
-		}*/
-		);
+	@Get('/', { middlewares: listQueryMiddleware })
+	async getMany(req: TestsRequest.GetMany) {
+		return await this.testsService.getMany(req.user, req.listQueryOptions);
 	}
 
 	// @Get('/:id')
