@@ -60,6 +60,7 @@ const formConfig: IFormBoxConfig = reactive({
 				validateOnBlur: false,
 				autocomplete: 'email',
 				capitalize: true,
+				focusInitially: true,
 			},
 		},
 		{

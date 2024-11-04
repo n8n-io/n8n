@@ -84,7 +84,6 @@ import type {
 	INodeTypeDescription,
 	INodeTypeNameVersion,
 	IPinData,
-	ITelemetryTrackProperties,
 	IWorkflowBase,
 	NodeInputConnections,
 	NodeParameterValueType,
@@ -733,25 +732,22 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 	}
 
 	function trackAddStickyNoteNode() {
-		telemetry.trackNodesPanel('nodeView.addSticky', {
+		telemetry.track('User inserted workflow note', {
 			workflow_id: workflowsStore.workflowId,
 		});
 	}
 
 	function trackAddDefaultNode(nodeData: INodeUi, options: AddNodeOptions) {
-		const trackProperties: ITelemetryTrackProperties = {
+		nodeCreatorStore.onNodeAddedToCanvas({
 			node_type: nodeData.type,
 			node_version: nodeData.typeVersion,
 			is_auto_add: options.isAutoAdd,
 			workflow_id: workflowsStore.workflowId,
 			drag_and_drop: options.dragAndDrop,
-		};
-
-		if (uiStore.lastInteractedWithNode) {
-			trackProperties.input_node_type = uiStore.lastInteractedWithNode.type;
-		}
-
-		telemetry.trackNodesPanel('nodeView.addNodeButton', trackProperties);
+			input_node_type: uiStore.lastInteractedWithNode
+				? uiStore.lastInteractedWithNode.type
+				: undefined,
+		});
 	}
 
 	/**
