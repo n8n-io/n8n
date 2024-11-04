@@ -23,7 +23,7 @@ catalog:
   xml2js: 0.6.2
   xss: 1.0.15
   zod: 3.23.8
-  '@langchain/core': 0.3.3
+  '@langchain/core': 0.3.15
 
 catalogs:
   frontend:
