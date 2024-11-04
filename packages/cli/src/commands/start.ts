@@ -22,8 +22,6 @@ import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus'
 import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { License } from '@/license';
-import { LocalTaskManager } from '@/runners/task-managers/local-task-manager';
-import { TaskManager } from '@/runners/task-managers/task-manager';
 import { PubSubHandler } from '@/scaling/pubsub/pubsub-handler';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { Server } from '@/server';
@@ -224,19 +222,9 @@ export class Start extends BaseCommand {
 
 		const { taskRunners: taskRunnerConfig } = this.globalConfig;
 		if (!taskRunnerConfig.disabled) {
-			Container.set(TaskManager, new LocalTaskManager());
-			const { TaskRunnerServer } = await import('@/runners/task-runner-server');
-			const taskRunnerServer = Container.get(TaskRunnerServer);
-			await taskRunnerServer.start();
-
-			if (
-				taskRunnerConfig.mode === 'internal_childprocess' ||
-				taskRunnerConfig.mode === 'internal_launcher'
-			) {
-				const { TaskRunnerProcess } = await import('@/runners/task-runner-process');
-				const runnerProcess = Container.get(TaskRunnerProcess);
-				await runnerProcess.start();
-			}
+			const { TaskRunnerModule } = await import('@/runners/task-runner-module');
+			const taskRunnerModule = Container.get(TaskRunnerModule);
+			await taskRunnerModule.start();
 		}
 	}
 

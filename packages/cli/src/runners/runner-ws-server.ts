@@ -3,14 +3,15 @@ import type WebSocket from 'ws';
 
 import { Logger } from '@/logging/logger.service';
 
+import { DefaultTaskRunnerDisconnectAnalyzer } from './default-task-runner-disconnect-analyzer';
 import type {
 	RunnerMessage,
 	N8nMessage,
 	TaskRunnerServerInitRequest,
 	TaskRunnerServerInitResponse,
+	DisconnectAnalyzer,
 } from './runner-types';
 import { TaskBroker, type MessageCallback, type TaskRunner } from './task-broker.service';
-import { TaskRunnerDisconnectAnalyzer } from './task-runner-disconnect-analyzer';
 
 function heartbeat(this: WebSocket) {
 	this.isAlive = true;
@@ -23,8 +24,16 @@ export class TaskRunnerWsServer {
 	constructor(
 		private readonly logger: Logger,
 		private readonly taskBroker: TaskBroker,
-		private readonly disconnectAnalyzer: TaskRunnerDisconnectAnalyzer,
+		private disconnectAnalyzer: DefaultTaskRunnerDisconnectAnalyzer,
 	) {}
+
+	setDisconnectAnalyzer(disconnectAnalyzer: DisconnectAnalyzer) {
+		this.disconnectAnalyzer = disconnectAnalyzer;
+	}
+
+	getDisconnectAnalyzer() {
+		return this.disconnectAnalyzer;
+	}
 
 	sendMessage(id: TaskRunner['id'], message: N8nMessage.ToRunner.All) {
 		this.runnerConnections.get(id)?.send(JSON.stringify(message));
