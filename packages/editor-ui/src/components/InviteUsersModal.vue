@@ -15,6 +15,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { createFormEventBus, createEventBus } from 'n8n-design-system/utils';
 import { useClipboard } from '@/composables/useClipboard';
+import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 const NAME_EMAIL_FORMAT_REGEX = /^.* <(.*)>$/;
 
@@ -43,6 +44,7 @@ export default defineComponent({
 		return {
 			clipboard,
 			...useToast(),
+			...usePageRedirectionHelper(),
 		};
 	},
 	data() {
@@ -277,7 +279,7 @@ export default defineComponent({
 			}
 		},
 		goToUpgradeAdvancedPermissions() {
-			void this.uiStore.goToUpgrade('advanced-permissions', 'upgrade-advanced-permissions');
+			void this.goToUpgrade('advanced-permissions', 'upgrade-advanced-permissions');
 		},
 	},
 });

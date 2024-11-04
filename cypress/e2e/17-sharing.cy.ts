@@ -259,7 +259,7 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 		credentialsPage.getters
 			.credentialCards()
 			.should('have.length', 2)
-			.filter(':contains("Owned by me")')
+			.filter(':contains("Personal")')
 			.should('have.length', 1);
 	});
 });

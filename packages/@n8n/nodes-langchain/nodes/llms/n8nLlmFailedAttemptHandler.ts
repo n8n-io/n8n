@@ -1,5 +1,5 @@
 import type { FailedAttemptHandler } from '@langchain/core/dist/utils/async_caller';
-import type { IExecuteFunctions, JsonObject } from 'n8n-workflow';
+import type { ISupplyDataFunctions, JsonObject } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 import { n8nDefaultFailedAttemptHandler } from './n8nDefaultFailedAttemptHandler';
@@ -11,7 +11,7 @@ import { n8nDefaultFailedAttemptHandler } from './n8nDefaultFailedAttemptHandler
  * It throws an error ONLY if there are no retries left.
  */
 export const makeN8nLlmFailedAttemptHandler = (
-	ctx: IExecuteFunctions,
+	ctx: ISupplyDataFunctions,
 	handler?: FailedAttemptHandler,
 ): FailedAttemptHandler => {
 	return (error: any) => {

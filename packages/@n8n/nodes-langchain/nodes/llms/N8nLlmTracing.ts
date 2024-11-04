@@ -9,9 +9,9 @@ import type {
 import type { BaseMessage } from '@langchain/core/messages';
 import type { LLMResult } from '@langchain/core/outputs';
 import { encodingForModel } from '@langchain/core/utils/tiktoken';
+import type { IDataObject, ISupplyDataFunctions, JsonObject } from 'n8n-workflow';
 import { pick } from 'lodash';
 import { NodeConnectionType, NodeError, NodeOperationError } from 'n8n-workflow';
-import type { IDataObject, IExecuteFunctions, JsonObject } from 'n8n-workflow';
 
 import { logAiEvent } from '../../utils/helpers';
 
@@ -34,8 +34,6 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 	// This flag makes sure that LangChain will wait for the handlers to finish before continuing
 	// This is crucial for the handleLLMError handler to work correctly (it should be called before the error is propagated to the root node)
 	awaitHandlers = true;
-
-	executionFunctions: IExecuteFunctions;
 
 	connectionType = NodeConnectionType.AiLanguageModel;
 
@@ -66,11 +64,10 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 	};
 
 	constructor(
-		executionFunctions: IExecuteFunctions,
+		private executionFunctions: ISupplyDataFunctions,
 		options?: { tokensUsageParser: TokensUsageParser },
 	) {
 		super();
-		this.executionFunctions = executionFunctions;
 		this.options = { ...this.options, ...options };
 	}
 
@@ -144,7 +141,7 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 			[{ json: { ...response } }],
 		]);
 
-		void logAiEvent(this.executionFunctions, 'ai-llm-generated-output', {
+		logAiEvent(this.executionFunctions, 'ai-llm-generated-output', {
 			messages: parsedMessages,
 			options: runDetails.options,
 			response,
@@ -207,7 +204,7 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 			);
 		}
 
-		void logAiEvent(this.executionFunctions, 'ai-llm-errored', {
+		logAiEvent(this.executionFunctions, 'ai-llm-errored', {
 			error: Object.keys(error).length === 0 ? error.toString() : error,
 			runId,
 			parentRunId,

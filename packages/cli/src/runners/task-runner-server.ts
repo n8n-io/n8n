@@ -19,7 +19,7 @@ import type {
 	TaskRunnerServerInitRequest,
 	TaskRunnerServerInitResponse,
 } from '@/runners/runner-types';
-import { TaskRunnerService } from '@/runners/runner-ws-server';
+import { TaskRunnerWsServer } from '@/runners/runner-ws-server';
 
 /**
  * Task Runner HTTP & WS server
@@ -44,7 +44,7 @@ export class TaskRunnerServer {
 		private readonly logger: Logger,
 		private readonly globalConfig: GlobalConfig,
 		private readonly taskRunnerAuthController: TaskRunnerAuthController,
-		private readonly taskRunnerService: TaskRunnerService,
+		private readonly taskRunnerService: TaskRunnerWsServer,
 	) {
 		this.app = express();
 		this.app.disable('x-powered-by');
@@ -125,11 +125,13 @@ export class TaskRunnerServer {
 		const { app } = this;
 
 		// Augment errors sent to Sentry
-		const {
-			Handlers: { requestHandler, errorHandler },
-		} = await import('@sentry/node');
-		app.use(requestHandler());
-		app.use(errorHandler());
+		if (this.globalConfig.sentry.backendDsn) {
+			const {
+				Handlers: { requestHandler, errorHandler },
+			} = await import('@sentry/node');
+			app.use(requestHandler());
+			app.use(errorHandler());
+		}
 	}
 
 	private setupCommonMiddlewares() {

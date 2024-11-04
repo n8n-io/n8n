@@ -18,19 +18,9 @@ import { Background } from '@vue-flow/background';
 import { MiniMap } from '@vue-flow/minimap';
 import Node from './elements/nodes/CanvasNode.vue';
 import Edge from './elements/edges/CanvasEdge.vue';
-import {
-	computed,
-	nextTick,
-	onMounted,
-	onUnmounted,
-	provide,
-	ref,
-	toRef,
-	useCssModule,
-	watch,
-} from 'vue';
+import { computed, onMounted, onUnmounted, provide, ref, toRef, useCssModule, watch } from 'vue';
 import type { EventBus } from 'n8n-design-system';
-import { createEventBus } from 'n8n-design-system';
+import { createEventBus, useDeviceSupport } from 'n8n-design-system';
 import { useContextMenu, type ContextMenuAction } from '@/composables/useContextMenu';
 import { useKeybindings } from '@/composables/useKeybindings';
 import ContextMenu from '@/components/ContextMenu/ContextMenu.vue';
@@ -41,9 +31,7 @@ import { GRID_SIZE } from '@/utils/nodeViewUtils';
 import { CanvasKey } from '@/constants';
 import { onKeyDown, onKeyUp, useDebounceFn } from '@vueuse/core';
 import CanvasArrowHeadMarker from './elements/edges/CanvasArrowHeadMarker.vue';
-import { CanvasNodeRenderType } from '@/types';
 import CanvasBackgroundStripedPattern from './elements/CanvasBackgroundStripedPattern.vue';
-import { isMiddleMouseButton } from '@/utils/eventUtils';
 
 const $style = useCssModule();
 
@@ -107,8 +95,9 @@ const props = withDefaults(
 	},
 );
 
+const { controlKeyCode } = useDeviceSupport();
+
 const {
-	vueFlowRef,
 	getSelectedNodes: selectedNodes,
 	addSelectedNodes,
 	removeSelectedNodes,
@@ -123,7 +112,6 @@ const {
 	nodes: graphNodes,
 	onPaneReady,
 	findNode,
-	onNodesInitialized,
 	viewport,
 } = useVueFlow({ id: props.id, deleteKeyCode: null });
 
@@ -132,7 +120,6 @@ const isPaneReady = ref(false);
 const classes = computed(() => ({
 	[$style.canvas]: true,
 	[$style.ready]: isPaneReady.value,
-	[$style.draggable]: isPanningEnabled.value,
 }));
 
 /**
@@ -145,16 +132,16 @@ const disableKeyBindings = computed(() => !props.keyBindings);
  * @see https://developer.mozilla.org/en-US/docs/Web/API/UI_Events/Keyboard_event_key_values#whitespace_keys
  */
 
-const panningKeyCode = ' ';
-const isPanningEnabled = ref(false);
+const panningKeyCode = ref<string[]>([' ', controlKeyCode]);
+const panningMouseButton = ref<number[]>([1]);
 const selectionKeyCode = ref<true | null>(true);
 
-onKeyDown(panningKeyCode, () => {
-	setPanningEnabled(true);
+onKeyDown(panningKeyCode.value, () => {
+	selectionKeyCode.value = null;
 });
 
-onKeyUp(panningKeyCode, () => {
-	setPanningEnabled(false);
+onKeyUp(panningKeyCode.value, () => {
+	selectionKeyCode.value = true;
 });
 
 const keyMap = computed(() => ({
@@ -185,29 +172,6 @@ const keyMap = computed(() => ({
 }));
 
 useKeybindings(keyMap, { disabled: disableKeyBindings });
-
-function setPanningEnabled(value: boolean) {
-	if (value) {
-		isPanningEnabled.value = true;
-		selectionKeyCode.value = null;
-	} else {
-		isPanningEnabled.value = false;
-		selectionKeyCode.value = true;
-	}
-}
-
-/**
- * When the window is focused, the selection key code is lost.
- * We trigger a value refresh to ensure that the selection key code is set correctly again.
- *
- * @issue https://linear.app/n8n/issue/N8N-7843/selection-keycode-gets-unset-when-changing-tabs
- */
-function resetSelectionKeyCode() {
-	selectionKeyCode.value = null;
-	void nextTick(() => {
-		selectionKeyCode.value = true;
-	});
-}
 
 /**
  * Nodes
@@ -394,28 +358,12 @@ function setReadonly(value: boolean) {
 	elementsSelectable.value = true;
 }
 
-function onPaneMouseDown(event: MouseEvent) {
-	if (isMiddleMouseButton(event)) {
-		setPanningEnabled(true);
-
-		// Re-emit the event to start panning after setting the panning state to true
-		// This workaround is necessary because the Vue Flow library does not provide a way to
-		// start panning programmatically
-		void nextTick(() =>
-			vueFlowRef.value
-				?.querySelector('.vue-flow__pane')
-				?.dispatchEvent(new MouseEvent('mousedown', event)),
-		);
-	}
-}
-
 function onPaneMoveStart() {
 	isPaneMoving.value = true;
 }
 
 function onPaneMoveEnd() {
 	isPaneMoving.value = false;
-	setPanningEnabled(false);
 }
 
 /**
@@ -524,23 +472,16 @@ function onMinimapMouseLeave() {
 onMounted(() => {
 	props.eventBus.on('fitView', onFitView);
 	props.eventBus.on('nodes:select', onSelectNodes);
-	window.addEventListener('focus', resetSelectionKeyCode);
 });
 
 onUnmounted(() => {
 	props.eventBus.off('fitView', onFitView);
 	props.eventBus.off('nodes:select', onSelectNodes);
-	window.removeEventListener('focus', resetSelectionKeyCode);
 });
 
 onPaneReady(async () => {
 	await onFitView();
 	isPaneReady.value = true;
-});
-
-onNodesInitialized((nodes) => {
-	if (nodes.length !== 1 || nodes[0].data?.render.type !== CanvasNodeRenderType.AddNodes) return;
-	void onFitView();
 });
 
 watch(() => props.readOnly, setReadonly, {
@@ -567,6 +508,7 @@ provide(CanvasKey, {
 		:apply-changes="false"
 		:connection-line-options="{ markerEnd: MarkerType.ArrowClosed }"
 		:connection-radius="60"
+		:pan-on-drag="panningMouseButton"
 		pan-on-scroll
 		snap-to-grid
 		:snap-grid="[GRID_SIZE, GRID_SIZE]"
@@ -585,7 +527,6 @@ provide(CanvasKey, {
 		@nodes-change="onNodesChange"
 		@move-start="onPaneMoveStart"
 		@move-end="onPaneMoveEnd"
-		@mousedown="onPaneMouseDown"
 	>
 		<template #node-canvas-node="canvasNodeProps">
 			<Node
@@ -670,16 +611,16 @@ provide(CanvasKey, {
 		opacity: 1;
 	}
 
-	&.draggable :global(.vue-flow__pane) {
-		cursor: grab;
-	}
-
 	:global(.vue-flow__pane) {
-		cursor: default;
-	}
+		cursor: grab;
 
-	:global(.vue-flow__pane.dragging) {
-		cursor: grabbing;
+		&:global(.selection) {
+			cursor: default;
+		}
+
+		&:global(.dragging) {
+			cursor: grabbing;
+		}
 	}
 }
 </style>

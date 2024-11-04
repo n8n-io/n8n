@@ -304,6 +304,7 @@ defineExpose({
 					:loading="props.refreshInProgress"
 					:loading-message="fetchingFieldsLabel"
 					:is-read-only="isReadOnly"
+					:value="props.paramValue"
 					@update:model-value="onParameterActionSelected"
 				/>
 			</template>

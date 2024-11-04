@@ -5,11 +5,11 @@ import { createRouter, createMemoryHistory, useRouter } from 'vue-router';
 import { createProjectListItem } from '@/__tests__/data/projects';
 import ProjectsNavigation from '@/components/Projects//ProjectNavigation.vue';
 import { useProjectsStore } from '@/stores/projects.store';
-import { useUIStore } from '@/stores/ui.store';
 import { mockedStore } from '@/__tests__/utils';
 import type { Project } from '@/types/projects.types';
 import { VIEWS } from '@/constants';
 import { useToast } from '@/composables/useToast';
+import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 vi.mock('vue-router', async () => {
 	const actual = await vi.importActual('vue-router');
@@ -36,6 +36,15 @@ vi.mock('@/composables/useToast', () => {
 	};
 });
 
+vi.mock('@/composables/usePageRedirectionHelper', () => {
+	const goToUpgrade = vi.fn();
+	return {
+		usePageRedirectionHelper: () => ({
+			goToUpgrade,
+		}),
+	};
+});
+
 const renderComponent = createComponentRenderer(ProjectsNavigation, {
 	global: {
 		plugins: [
@@ -56,7 +65,7 @@ const renderComponent = createComponentRenderer(ProjectsNavigation, {
 let router: ReturnType<typeof useRouter>;
 let toast: ReturnType<typeof useToast>;
 let projectsStore: ReturnType<typeof mockedStore<typeof useProjectsStore>>;
-let uiStore: ReturnType<typeof mockedStore<typeof useUIStore>>;
+let pageRedirectionHelper: ReturnType<typeof usePageRedirectionHelper>;
 
 const personalProjects = Array.from({ length: 3 }, createProjectListItem);
 const teamProjects = Array.from({ length: 3 }, () => createProjectListItem('team'));
@@ -67,9 +76,9 @@ describe('ProjectsNavigation', () => {
 
 		router = useRouter();
 		toast = useToast();
+		pageRedirectionHelper = usePageRedirectionHelper();
 
 		projectsStore = mockedStore(useProjectsStore);
-		uiStore = mockedStore(useUIStore);
 	});
 
 	it('should not throw an error', () => {
@@ -144,7 +153,7 @@ describe('ProjectsNavigation', () => {
 		expect(getByText(/You have reached the Free plan limit of 3/)).toBeVisible();
 		await userEvent.click(getByText('View plans'));
 
-		expect(uiStore.goToUpgrade).toHaveBeenCalledWith('rbac', 'upgrade-rbac');
+		expect(pageRedirectionHelper.goToUpgrade).toHaveBeenCalledWith('rbac', 'upgrade-rbac');
 	});
 
 	it('should show "Projects" title and Personal project when the feature is enabled', async () => {

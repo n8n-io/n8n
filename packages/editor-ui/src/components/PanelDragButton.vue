@@ -1,32 +1,29 @@
-<script lang="ts">
-import { defineComponent } from 'vue';
+<script setup lang="ts">
 import Draggable from './Draggable.vue';
 import type { XYPosition } from '@/Interface';
 
-export default defineComponent({
-	components: {
-		Draggable,
-	},
-	props: {
-		canMoveRight: {
-			type: Boolean,
-		},
-		canMoveLeft: {
-			type: Boolean,
-		},
-	},
-	methods: {
-		onDrag(e: XYPosition) {
-			this.$emit('drag', e);
-		},
-		onDragStart() {
-			this.$emit('dragstart');
-		},
-		onDragEnd() {
-			this.$emit('dragend');
-		},
-	},
-});
+defineProps<{
+	canMoveRight: boolean;
+	canMoveLeft: boolean;
+}>();
+
+const emit = defineEmits<{
+	drag: [e: XYPosition];
+	dragstart: [];
+	dragend: [];
+}>();
+
+const onDrag = (e: XYPosition) => {
+	emit('drag', e);
+};
+
+const onDragEnd = () => {
+	emit('dragend');
+};
+
+const onDragStart = () => {
+	emit('dragstart');
+};
 </script>
 
 <template>

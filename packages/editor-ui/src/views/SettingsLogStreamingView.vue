@@ -14,6 +14,7 @@ import { deepCopy, defaultMessageEventBusDestinationOptions } from 'n8n-workflow
 import EventDestinationCard from '@/components/SettingsLogStreaming/EventDestinationCard.ee.vue';
 import { createEventBus } from 'n8n-design-system/utils';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
+import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 export default defineComponent({
 	name: 'SettingsLogStreamingView',
@@ -28,6 +29,7 @@ export default defineComponent({
 			disableLicense: false,
 			allDestinations: [] as MessageEventBusDestinationOptions[],
 			documentTitle: useDocumentTitle(),
+			pageRedirectionHelper: usePageRedirectionHelper(),
 		};
 	},
 	async mounted() {
@@ -117,7 +119,7 @@ export default defineComponent({
 			this.$forceUpdate();
 		},
 		goToUpgrade() {
-			void this.uiStore.goToUpgrade('log-streaming', 'upgrade-log-streaming');
+			void this.pageRedirectionHelper.goToUpgrade('log-streaming', 'upgrade-log-streaming');
 		},
 		storeHasItems(): boolean {
 			return this.logStreamingStore.items && Object.keys(this.logStreamingStore.items).length > 0;

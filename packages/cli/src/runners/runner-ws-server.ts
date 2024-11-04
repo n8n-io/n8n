@@ -3,11 +3,13 @@ import type WebSocket from 'ws';
 
 import { Logger } from '@/logging/logger.service';
 
+import { DefaultTaskRunnerDisconnectAnalyzer } from './default-task-runner-disconnect-analyzer';
 import type {
 	RunnerMessage,
 	N8nMessage,
 	TaskRunnerServerInitRequest,
 	TaskRunnerServerInitResponse,
+	DisconnectAnalyzer,
 } from './runner-types';
 import { TaskBroker, type MessageCallback, type TaskRunner } from './task-broker.service';
 
@@ -16,13 +18,22 @@ function heartbeat(this: WebSocket) {
 }
 
 @Service()
-export class TaskRunnerService {
+export class TaskRunnerWsServer {
 	runnerConnections: Map<TaskRunner['id'], WebSocket> = new Map();
 
 	constructor(
 		private readonly logger: Logger,
 		private readonly taskBroker: TaskBroker,
+		private disconnectAnalyzer: DefaultTaskRunnerDisconnectAnalyzer,
 	) {}
+
+	setDisconnectAnalyzer(disconnectAnalyzer: DisconnectAnalyzer) {
+		this.disconnectAnalyzer = disconnectAnalyzer;
+	}
+
+	getDisconnectAnalyzer() {
+		return this.disconnectAnalyzer;
+	}
 
 	sendMessage(id: TaskRunner['id'], message: N8nMessage.ToRunner.All) {
 		this.runnerConnections.get(id)?.send(JSON.stringify(message));
@@ -34,7 +45,7 @@ export class TaskRunnerService {
 
 		let isConnected = false;
 
-		const onMessage = (data: WebSocket.RawData) => {
+		const onMessage = async (data: WebSocket.RawData) => {
 			try {
 				const buffer = Array.isArray(data) ? Buffer.concat(data) : Buffer.from(data);
 
@@ -45,7 +56,7 @@ export class TaskRunnerService {
 				if (!isConnected && message.type !== 'runner:info') {
 					return;
 				} else if (!isConnected && message.type === 'runner:info') {
-					this.removeConnection(id);
+					await this.removeConnection(id);
 					isConnected = true;
 
 					this.runnerConnections.set(id, connection);
@@ -75,10 +86,10 @@ export class TaskRunnerService {
 		};
 
 		// Makes sure to remove the session if the connection is closed
-		connection.once('close', () => {
+		connection.once('close', async () => {
 			connection.off('pong', heartbeat);
 			connection.off('message', onMessage);
-			this.removeConnection(id);
+			await this.removeConnection(id);
 		});
 
 		connection.on('message', onMessage);
@@ -87,10 +98,11 @@ export class TaskRunnerService {
 		);
 	}
 
-	removeConnection(id: TaskRunner['id']) {
+	async removeConnection(id: TaskRunner['id']) {
 		const connection = this.runnerConnections.get(id);
 		if (connection) {
-			this.taskBroker.deregisterRunner(id);
+			const disconnectReason = await this.disconnectAnalyzer.determineDisconnectReason(id);
+			this.taskBroker.deregisterRunner(id, disconnectReason);
 			connection.close();
 			this.runnerConnections.delete(id);
 		}

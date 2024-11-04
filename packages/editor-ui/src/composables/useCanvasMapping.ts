@@ -507,7 +507,6 @@ export function useCanvasMapping({
 					data,
 					type,
 					label,
-					animated: data.status === 'running',
 					markerEnd: MarkerType.ArrowClosed,
 				};
 			},
