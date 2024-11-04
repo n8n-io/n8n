@@ -14,30 +14,24 @@ import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
-const { showError, showMessage } = useToast();
-const { confirm } = useMessage();
-const { baseUrl } = useRootStore();
 const settingsStore = useSettingsStore();
 const cloudPlanStore = useCloudPlanStore();
+const { baseUrl } = useRootStore();
+
+const { showError, showMessage } = useToast();
+const { confirm } = useMessage();
 const documentTitle = useDocumentTitle();
 const i18n = useI18n();
 const { goToUpgrade } = usePageRedirectionHelper();
+const telemetry = useTelemetry();
 
 const loading = ref(false);
 const mounted = ref(false);
 const apiKeys = ref<ApiKey[]>([]);
 const apiDocsURL = ref('');
-const telemetry = useTelemetry();
 
 const { isPublicApiEnabled, isSwaggerUIEnabled, publicApiPath, publicApiLatestVersion } =
 	settingsStore;
-
-const isTrialing = computed((): boolean => {
-	return cloudPlanStore.userIsTrialing;
-});
-const isLoadingCloudPlans = computed((): boolean => {
-	return cloudPlanStore.state.loadingPlan;
-});
 
 const isRedactedApiKey = computed((): boolean => {
 	if (!apiKeys.value) return false;
@@ -46,7 +40,7 @@ const isRedactedApiKey = computed((): boolean => {
 
 onMounted(() => {
 	documentTitle.set(i18n.baseText('settings.api'));
-	if (!isPublicApiEnabled.valueOf) return;
+	if (!isPublicApiEnabled) return;
 
 	void getApiKeys();
 	apiDocsURL.value = isSwaggerUIEnabled
@@ -120,9 +114,9 @@ function onCopy() {
 	<div :class="$style.container">
 		<div :class="$style.header">
 			<n8n-heading size="2xlarge">
-				{{ $locale.baseText('settings.api') }}
+				{{ i18n.baseText('settings.api') }}
 				<span :style="{ fontSize: 'var(--font-size-s)', color: 'var(--color-text-light)' }">
-					({{ $locale.baseText('generic.beta') }})
+					({{ i18n.baseText('generic.beta') }})
 				</span>
 			</n8n-heading>
 		</div>
@@ -135,14 +129,14 @@ function onCopy() {
 							<a
 								href="https://docs.n8n.io/api"
 								target="_blank"
-								v-text="$locale.baseText('settings.api.view.info.api')"
+								v-text="i18n.baseText('settings.api.view.info.api')"
 							/>
 						</template>
 						<template #webhookAction>
 							<a
 								href="https://docs.n8n.io/integrations/core-nodes/n8n-nodes-base.webhook/"
 								target="_blank"
-								v-text="$locale.baseText('settings.api.view.info.webhook')"
+								v-text="i18n.baseText('settings.api.view.info.webhook')"
 							/>
 						</template>
 					</i18n-t>
@@ -151,7 +145,7 @@ function onCopy() {
 			<n8n-card class="mb-4xs" :class="$style.card">
 				<span :class="$style.delete">
 					<n8n-link :bold="true" @click="showDeleteModal">
-						{{ $locale.baseText('generic.delete') }}
+						{{ i18n.baseText('generic.delete') }}
 					</n8n-link>
 				</span>
 
@@ -159,25 +153,23 @@ function onCopy() {
 					<CopyInput
 						:label="apiKeys[0].label"
 						:value="apiKeys[0].apiKey"
-						:copy-button-text="$locale.baseText('generic.clickToCopy')"
-						:toast-title="$locale.baseText('settings.api.view.copy.toast')"
+						:copy-button-text="i18n.baseText('generic.clickToCopy')"
+						:toast-title="i18n.baseText('settings.api.view.copy.toast')"
 						:redact-value="true"
 						:disable-copy="isRedactedApiKey"
-						:hint="!isRedactedApiKey ? $locale.baseText('settings.api.view.copy') : ''"
+						:hint="!isRedactedApiKey ? i18n.baseText('settings.api.view.copy') : ''"
 						@copy="onCopy"
 					/>
 				</div>
 			</n8n-card>
 			<div :class="$style.hint">
 				<n8n-text size="small">
-					{{
-						$locale.baseText(`settings.api.view.${isSwaggerUIEnabled ? 'tryapi' : 'more-details'}`)
-					}}
+					{{ i18n.baseText(`settings.api.view.${isSwaggerUIEnabled ? 'tryapi' : 'more-details'}`) }}
 				</n8n-text>
 				{{ ' ' }}
 				<n8n-link :to="apiDocsURL" :new-window="true" size="small">
 					{{
-						$locale.baseText(
+						i18n.baseText(
 							`settings.api.view.${isSwaggerUIEnabled ? 'apiPlayground' : 'external-docs'}`,
 						)
 					}}
@@ -185,21 +177,19 @@ function onCopy() {
 			</div>
 		</div>
 		<n8n-action-box
-			v-else-if="!isPublicApiEnabled && isTrialing"
+			v-else-if="!isPublicApiEnabled && cloudPlanStore.userIsTrialing"
 			data-test-id="public-api-upgrade-cta"
-			:heading="$locale.baseText('settings.api.trial.upgradePlan.title')"
-			:description="$locale.baseText('settings.api.trial.upgradePlan.description')"
-			:button-text="$locale.baseText('settings.api.trial.upgradePlan.cta')"
+			:heading="i18n.baseText('settings.api.trial.upgradePlan.title')"
+			:description="i18n.baseText('settings.api.trial.upgradePlan.description')"
+			:button-text="i18n.baseText('settings.api.trial.upgradePlan.cta')"
 			@click:button="onUpgrade"
 		/>
 		<n8n-action-box
-			v-else-if="mounted && !isLoadingCloudPlans"
+			v-else-if="mounted && !cloudPlanStore.state.loadingPlan"
 			:button-text="
-				$locale.baseText(
-					loading ? 'settings.api.create.button.loading' : 'settings.api.create.button',
-				)
+				i18n.baseText(loading ? 'settings.api.create.button.loading' : 'settings.api.create.button')
 			"
-			:description="$locale.baseText('settings.api.create.description')"
+			:description="i18n.baseText('settings.api.create.description')"
 			@click:button="createApiKey"
 		/>
 	</div>

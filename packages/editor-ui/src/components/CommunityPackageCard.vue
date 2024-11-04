@@ -70,7 +70,7 @@ function onUpdateClick() {
 				<div :class="$style.cardSubtitle">
 					<n8n-text :bold="true" size="small" color="text-light">
 						{{
-							$locale.baseText('settings.communityNodes.packageNodes.label', {
+							i18n.baseText('settings.communityNodes.packageNodes.label', {
 								adjustToNumber: communityPackage.installedNodes.length,
 							})
 						}}:&nbsp;
@@ -90,7 +90,7 @@ function onUpdateClick() {
 				<n8n-tooltip v-if="communityPackage.failedLoading === true" placement="top">
 					<template #content>
 						<div>
-							{{ $locale.baseText('settings.communityNodes.failedToLoad.tooltip') }}
+							{{ i18n.baseText('settings.communityNodes.failedToLoad.tooltip') }}
 						</div>
 					</template>
 					<n8n-icon icon="exclamation-triangle" color="danger" size="large" />
@@ -98,7 +98,7 @@ function onUpdateClick() {
 				<n8n-tooltip v-else-if="communityPackage.updateAvailable" placement="top">
 					<template #content>
 						<div>
-							{{ $locale.baseText('settings.communityNodes.updateAvailable.tooltip') }}
+							{{ i18n.baseText('settings.communityNodes.updateAvailable.tooltip') }}
 						</div>
 					</template>
 					<n8n-button outline label="Update" @click="onUpdateClick" />
@@ -106,7 +106,7 @@ function onUpdateClick() {
 				<n8n-tooltip v-else placement="top">
 					<template #content>
 						<div>
-							{{ $locale.baseText('settings.communityNodes.upToDate.tooltip') }}
+							{{ i18n.baseText('settings.communityNodes.upToDate.tooltip') }}
 						</div>
 					</template>
 					<n8n-icon icon="check-circle" color="text-light" size="large" />

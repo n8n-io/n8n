@@ -51,20 +51,21 @@ onBeforeMount(() => {
 });
 
 const actions = computed((): Array<{ label: string; value: string }> => {
-	const actions = [
+	const actionList = [
 		{
 			label: i18n.baseText('workflows.item.open'),
 			value: DESTINATION_LIST_ITEM_ACTIONS.OPEN,
 		},
 	];
 	if (!props.readonly) {
-		actions.push({
+		actionList.push({
 			label: i18n.baseText('workflows.item.delete'),
 			value: DESTINATION_LIST_ITEM_ACTIONS.DELETE,
 		});
 	}
-	return actions;
+	return actionList;
 });
+
 const typeLabelName = computed((): BaseTextKey => {
 	return `settings.log-streaming.${props.destination.__type}` as BaseTextKey;
 });
@@ -79,6 +80,7 @@ function onDestinationWasSaved() {
 		);
 	}
 }
+
 async function onClick(event: Event) {
 	const target = event.target as HTMLDivElement | null;
 	if (
@@ -91,6 +93,7 @@ async function onClick(event: Event) {
 
 	emit('edit', props.destination.id);
 }
+
 function onEnabledSwitched(state: boolean) {
 	nodeParameters.value.enabled = state;
 	void saveDestination();

@@ -27,11 +27,11 @@ const credentialsStore = useCredentialsStore();
 const documentTitle = useDocumentTitle();
 const i18n = useI18n();
 
+const pageRedirectHelper = usePageRedirectionHelper();
+
 const eventBus = createEventBus();
 const disableLicense = ref(false);
 const allDestinations = ref<MessageEventBusDestinationOptions[]>([]);
-
-const pageRedirectHelper = usePageRedirectionHelper();
 
 const sortedItemKeysByLabel = computed(() => {
 	const sortedKeys: Array<{ label: string; key: string }> = [];
@@ -172,7 +172,7 @@ async function onEdit(destinationId?: string) {
 		<div :class="$style.header">
 			<div class="mb-2xl">
 				<n8n-heading size="2xlarge">
-					{{ $locale.baseText(`settings.log-streaming.heading`) }}
+					{{ i18n.baseText(`settings.log-streaming.heading`) }}
 				</n8n-heading>
 				<template v-if="environment !== 'production'">
 					<strong class="ml-m">Disable License ({{ environment }})&nbsp;</strong>
@@ -183,7 +183,7 @@ async function onEdit(destinationId?: string) {
 		<template v-if="isLicensed">
 			<div class="mb-l">
 				<n8n-info-tip theme="info" type="note">
-					<span v-n8n-html="$locale.baseText('settings.log-streaming.infoText')"></span>
+					<span v-n8n-html="i18n.baseText('settings.log-streaming.infoText')"></span>
 				</n8n-info-tip>
 			</div>
 			<template v-if="storeHasItems()">
@@ -205,35 +205,35 @@ async function onEdit(destinationId?: string) {
 				</el-row>
 				<div class="mt-m text-right">
 					<n8n-button v-if="canManageLogStreaming" size="large" @click="addDestination">
-						{{ $locale.baseText(`settings.log-streaming.add`) }}
+						{{ i18n.baseText(`settings.log-streaming.add`) }}
 					</n8n-button>
 				</div>
 			</template>
 			<div v-else data-test-id="action-box-licensed">
 				<n8n-action-box
-					:button-text="$locale.baseText(`settings.log-streaming.add`)"
+					:button-text="i18n.baseText(`settings.log-streaming.add`)"
 					@click:button="addDestination"
 				>
 					<template #heading>
-						<span v-n8n-html="$locale.baseText(`settings.log-streaming.addFirstTitle`)" />
+						<span v-n8n-html="i18n.baseText(`settings.log-streaming.addFirstTitle`)" />
 					</template>
 				</n8n-action-box>
 			</div>
 		</template>
 		<template v-else>
-			<div v-if="$locale.baseText('settings.log-streaming.infoText')" class="mb-l">
+			<div v-if="i18n.baseText('settings.log-streaming.infoText')" class="mb-l">
 				<n8n-info-tip theme="info" type="note">
-					<span v-n8n-html="$locale.baseText('settings.log-streaming.infoText')"></span>
+					<span v-n8n-html="i18n.baseText('settings.log-streaming.infoText')"></span>
 				</n8n-info-tip>
 			</div>
 			<div data-test-id="action-box-unlicensed">
 				<n8n-action-box
-					:description="$locale.baseText('settings.log-streaming.actionBox.description')"
-					:button-text="$locale.baseText('settings.log-streaming.actionBox.button')"
+					:description="i18n.baseText('settings.log-streaming.actionBox.description')"
+					:button-text="i18n.baseText('settings.log-streaming.actionBox.button')"
 					@click:button="goToUpgrade"
 				>
 					<template #heading>
-						<span v-n8n-html="$locale.baseText('settings.log-streaming.actionBox.title')" />
+						<span v-n8n-html="i18n.baseText('settings.log-streaming.actionBox.title')" />
 					</template>
 				</n8n-action-box>
 			</div>

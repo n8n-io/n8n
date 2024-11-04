@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import Card from '@/components/CollectionWorkflowCard.vue';
 import NodeList from '@/components/NodeList.vue';
+import { useI18n } from '@/composables/useI18n';
 import type { ITemplatesCollection } from '@/Interface';
 
 withDefaults(
@@ -15,6 +16,8 @@ withDefaults(
 		showItemCount: true,
 	},
 );
+
+const i18n = useI18n();
 </script>
 
 <template>
@@ -23,7 +26,7 @@ withDefaults(
 			<span>
 				<n8n-text v-show="showItemCount" size="small" color="text-light">
 					{{ collection.workflows.length }}
-					{{ $locale.baseText('templates.workflows') }}
+					{{ i18n.baseText('templates.workflows') }}
 				</n8n-text>
 			</span>
 			<NodeList :nodes="collection.nodes" :show-more="false" />

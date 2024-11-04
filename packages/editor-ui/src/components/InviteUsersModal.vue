@@ -20,6 +20,7 @@ const NAME_EMAIL_FORMAT_REGEX = /^.* <(.*)>$/;
 
 const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
+
 const clipboard = useClipboard();
 const { showMessage, showError } = useToast();
 const i18n = useI18n();
@@ -91,9 +92,11 @@ const buttonLabel = computed((): string => {
 
 	return i18n.baseText(`settings.users.inviteUser${settingsStore.isSmtpSetup ? '' : '.inviteUrl'}`);
 });
+
 const enabledButton = computed((): boolean => {
 	return emailsCount.value >= 1;
 });
+
 const invitedUsers = computed((): IUser[] => {
 	return showInviteUrls.value
 		? usersStore.allUsers.filter((user) =>
@@ -101,11 +104,12 @@ const invitedUsers = computed((): IUser[] => {
 			)
 		: [];
 });
+
 const isAdvancedPermissionsEnabled = computed((): boolean => {
 	return settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedPermissions];
 });
 
-function validateEmails(value: string | number | boolean | null | undefined) {
+const validateEmails = (value: string | number | boolean | null | undefined) => {
 	if (typeof value !== 'string') {
 		return false;
 	}
@@ -124,7 +128,7 @@ function validateEmails(value: string | number | boolean | null | undefined) {
 	}
 
 	return false;
-}
+};
 
 function onInput(e: { name: string; value: InvitableRoleName }) {
 	if (e.name === 'emails') {
@@ -273,7 +277,7 @@ function getEmail(email: string): string {
 	<Modal
 		:name="INVITE_USER_MODAL_KEY"
 		:title="
-			$locale.baseText(
+			i18n.baseText(
 				showInviteUrls ? 'settings.users.copyInviteUrls' : 'settings.users.inviteNewUsers',
 			)
 		"
@@ -287,7 +291,7 @@ function getEmail(email: string): string {
 				<i18n-t keypath="settings.users.advancedPermissions.warning">
 					<template #link>
 						<n8n-link size="small" @click="goToUpgradeAdvancedPermissions">
-							{{ $locale.baseText('settings.users.advancedPermissions.warning.link') }}
+							{{ i18n.baseText('settings.users.advancedPermissions.warning.link') }}
 						</n8n-link>
 					</template>
 				</i18n-t>
@@ -297,7 +301,7 @@ function getEmail(email: string): string {
 					<template #actions="{ user }">
 						<n8n-tooltip>
 							<template #content>
-								{{ $locale.baseText('settings.users.inviteLink.copy') }}
+								{{ i18n.baseText('settings.users.inviteLink.copy') }}
 							</template>
 							<n8n-icon-button
 								icon="link"

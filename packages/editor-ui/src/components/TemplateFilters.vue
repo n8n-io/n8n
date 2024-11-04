@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { computed, ref, watch } from 'vue';
 import type { ITemplatesCategory } from '@/Interface';
+import { useI18n } from '@/composables/useI18n';
 
 interface Props {
 	categories?: ITemplatesCategory[];
@@ -24,6 +25,8 @@ const emit = defineEmits<{
 	clear: [category: ITemplatesCategory];
 }>();
 
+const i18n = useI18n();
+
 const collapsed = ref(true);
 const sortedCategories = ref<ITemplatesCategory[]>([]);
 
@@ -44,6 +47,7 @@ function sortCategories() {
 function collapseAction() {
 	collapsed.value = false;
 }
+
 function handleCheckboxChanged(value: boolean, selectedCategory: ITemplatesCategory) {
 	if (value) {
 		emit('select', selectedCategory);
@@ -51,9 +55,11 @@ function handleCheckboxChanged(value: boolean, selectedCategory: ITemplatesCateg
 		emit('clear', selectedCategory);
 	}
 }
+
 function isSelected(category: ITemplatesCategory) {
 	return props.selected.includes(category);
 }
+
 function resetCategories() {
 	emit('clearAll');
 }
@@ -69,6 +75,7 @@ watch(
 		immediate: true,
 	},
 );
+
 watch(
 	() => props.categories,
 	(categories: ITemplatesCategory[]) => {
@@ -84,14 +91,14 @@ watch(
 
 <template>
 	<div :class="$style.filters" class="template-filters" data-test-id="templates-filter-container">
-		<div :class="$style.title" v-text="$locale.baseText('templates.categoriesHeading')" />
+		<div :class="$style.title" v-text="i18n.baseText('templates.categoriesHeading')" />
 		<div v-if="loading" :class="$style.list">
 			<n8n-loading :loading="loading" :rows="expandLimit" />
 		</div>
 		<ul v-if="!loading" :class="$style.categories">
 			<li :class="$style.item" data-test-id="template-filter-all-categories">
 				<el-checkbox :model-value="allSelected" @update:model-value="() => resetCategories()">
-					{{ $locale.baseText('templates.allCategories') }}
+					{{ i18n.baseText('templates.allCategories') }}
 				</el-checkbox>
 			</li>
 			<li
