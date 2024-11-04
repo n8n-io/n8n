@@ -1,6 +1,12 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 
-import { ActiveWorkflows, InstanceSettings, NodeExecuteFunctions, PollContext } from 'n8n-core';
+import {
+	ActiveWorkflows,
+	InstanceSettings,
+	NodeExecuteFunctions,
+	PollContext,
+	TriggerContext,
+} from 'n8n-core';
 import type {
 	ExecutionError,
 	IDeferredPromise,
@@ -325,18 +331,11 @@ export class ActiveWorkflowManager {
 		activation: WorkflowActivateMode,
 	): IGetExecuteTriggerFunctions {
 		return (workflow: Workflow, node: INode) => {
-			const returnFunctions = NodeExecuteFunctions.getExecuteTriggerFunctions(
-				workflow,
-				node,
-				additionalData,
-				mode,
-				activation,
-			);
-			returnFunctions.emit = (
+			const emit = (
 				data: INodeExecutionData[][],
 				responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 				donePromise?: IDeferredPromise<IRun | undefined>,
-			): void => {
+			) => {
 				this.logger.debug(`Received trigger for workflow "${workflow.name}"`);
 				void this.workflowStaticDataService.saveStaticData(workflow);
 
@@ -360,7 +359,7 @@ export class ActiveWorkflowManager {
 					executePromise.catch((error: Error) => this.logger.error(error.message, { error }));
 				}
 			};
-			returnFunctions.emitError = (error: Error): void => {
+			const emitError = (error: Error): void => {
 				this.logger.info(
 					`The trigger node "${node.name}" of workflow "${workflowData.name}" failed with the error: "${error.message}". Will try to reactivate.`,
 					{
@@ -385,7 +384,7 @@ export class ActiveWorkflowManager {
 
 				this.addQueuedWorkflowActivation(activation, workflowData as WorkflowEntity);
 			};
-			return returnFunctions;
+			return new TriggerContext(workflow, node, additionalData, mode, activation, emit, emitError);
 		};
 	}
 
