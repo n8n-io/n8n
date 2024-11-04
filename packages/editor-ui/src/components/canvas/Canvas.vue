@@ -135,6 +135,7 @@ const disableKeyBindings = computed(() => !props.keyBindings);
 
 const isPanning = ref(false);
 const panningKeyCode = ref<string[]>([' ', controlKeyCode]);
+const panningMouseButton = ref<number[]>([1]);
 const selectionKeyCode = ref<true | null>(true);
 
 onKeyDown(panningKeyCode.value, () => {
@@ -519,8 +520,8 @@ provide(CanvasKey, {
 		:apply-changes="false"
 		:connection-line-options="{ markerEnd: MarkerType.ArrowClosed }"
 		:connection-radius="60"
-		:pan-on-scroll="true"
-		:pan-on-drag="[1]"
+		:pan-on-drag="panningMouseButton"
+		pan-on-scroll
 		snap-to-grid
 		:snap-grid="[GRID_SIZE, GRID_SIZE]"
 		:min-zoom="0"
