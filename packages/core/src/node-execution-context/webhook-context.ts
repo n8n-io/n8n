@@ -74,38 +74,23 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 	}
 
 	getBodyData() {
-		if (this.additionalData.httpRequest === undefined) {
-			throw new ApplicationError('Request is missing');
-		}
-		return this.additionalData.httpRequest.body as IDataObject;
+		return this.assertHttpRequest().body as IDataObject;
 	}
 
 	getHeaderData() {
-		if (this.additionalData.httpRequest === undefined) {
-			throw new ApplicationError('Request is missing');
-		}
-		return this.additionalData.httpRequest.headers;
+		return this.assertHttpRequest().headers;
 	}
 
 	getParamsData(): object {
-		if (this.additionalData.httpRequest === undefined) {
-			throw new ApplicationError('Request is missing');
-		}
-		return this.additionalData.httpRequest.params;
+		return this.assertHttpRequest().params;
 	}
 
 	getQueryData(): object {
-		if (this.additionalData.httpRequest === undefined) {
-			throw new ApplicationError('Request is missing');
-		}
-		return this.additionalData.httpRequest.query;
+		return this.assertHttpRequest().query;
 	}
 
 	getRequestObject(): Request {
-		if (this.additionalData.httpRequest === undefined) {
-			throw new ApplicationError('Request is missing');
-		}
-		return this.additionalData.httpRequest;
+		return this.assertHttpRequest();
 	}
 
 	getResponseObject(): Response {
@@ -113,6 +98,14 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 			throw new ApplicationError('Response is missing');
 		}
 		return this.additionalData.httpResponse;
+	}
+
+	private assertHttpRequest() {
+		const { httpRequest } = this.additionalData;
+		if (httpRequest === undefined) {
+			throw new ApplicationError('Request is missing');
+		}
+		return httpRequest;
 	}
 
 	getNodeWebhookUrl(name: string): string | undefined {
