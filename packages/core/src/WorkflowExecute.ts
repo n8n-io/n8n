@@ -45,6 +45,7 @@ import {
 	NodeExecutionOutput,
 	sleep,
 	ErrorReporterProxy,
+	ExecutionCancelledError,
 } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
 
@@ -155,11 +156,7 @@ export class WorkflowExecute {
 	}
 
 	static isAbortError(e?: Error) {
-		return (
-			e?.name === 'AbortError' ||
-			(e instanceof WorkflowOperationError &&
-				e.message === 'Workflow has been canceled or timed out')
-		);
+		return e?.name === 'AbortError' || e instanceof ExecutionCancelledError;
 	}
 
 	forceInputNodeExecution(workflow: Workflow): boolean {
@@ -1831,7 +1828,7 @@ export class WorkflowExecute {
 						return await this.processSuccessExecution(
 							startedAt,
 							workflow,
-							new WorkflowOperationError('Workflow has been canceled or timed out'),
+							new ExecutionCancelledError(this.additionalData.executionId ?? 'unknown'),
 							closeFunction,
 						);
 					}

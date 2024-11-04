@@ -2,6 +2,7 @@ import type { IRun, WorkflowTestData } from 'n8n-workflow';
 import {
 	ApplicationError,
 	createDeferredPromise,
+	ExecutionCancelledError,
 	NodeExecutionOutput,
 	Workflow,
 	WorkflowOperationError,
@@ -218,17 +219,14 @@ describe('WorkflowExecute', () => {
 	describe('isAbortError', () => {
 		test.each([
 			['AbortError', new DOMException('', 'AbortError')],
-			[
-				'WorkflowOperationError',
-				new WorkflowOperationError('Workflow has been canceled or timed out'),
-			],
+			['WorkflowOperationError', new ExecutionCancelledError('1234')],
 		])('returns true when passed a %s', (_name, error) => {
 			expect(WorkflowExecute.isAbortError(error)).toBe(true);
 		});
 
 		test.each([
 			['TypeError', new TypeError()],
-			['WorkflowOperationError', new WorkflowOperationError('other message')],
+			['WorkflowOperationError', new WorkflowOperationError('test')],
 		])('returns false when passed a %s', (_name, error) => {
 			expect(WorkflowExecute.isAbortError(error)).toBe(false);
 		});
