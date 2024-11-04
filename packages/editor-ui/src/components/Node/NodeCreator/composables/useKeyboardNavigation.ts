@@ -62,6 +62,12 @@ export const useKeyboardNavigation = defineStore('nodeCreatorKeyboardNavigation'
 	}
 
 	async function onKeyDown(e: KeyboardEvent) {
+		// We generally want a global listener across the app
+		// But the chat input should take precedent
+		if (e.target && 'name' in e.target && e.target.name === 'ask-assistant-chat-input') {
+			return;
+		}
+
 		const pressedKey = e.key;
 		if (!WATCHED_KEYS.includes(pressedKey)) return;
 		e.preventDefault();
