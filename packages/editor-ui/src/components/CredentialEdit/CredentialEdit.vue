@@ -749,7 +749,7 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 
 const createToastMessagingForNewCredentials = (
 	credentialDetails: ICredentialsDecrypted,
-	project?: Project,
+	project?: Project | null,
 ) => {
 	let toastTitle = i18n.baseText('credentials.create.personal.toast.title');
 	let toastText = '';
@@ -776,7 +776,7 @@ const createToastMessagingForNewCredentials = (
 
 async function createCredential(
 	credentialDetails: ICredentialsDecrypted,
-	project?: Project,
+	project?: Project | null,
 ): Promise<ICredentialsResponse | null> {
 	let credential;
 
