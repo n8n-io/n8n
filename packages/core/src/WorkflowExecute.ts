@@ -155,10 +155,6 @@ export class WorkflowExecute {
 		return this.processRunExecutionData(workflow);
 	}
 
-	static isAbortError(e?: Error) {
-		return e?.name === 'AbortError' || e instanceof ExecutionCancelledError;
-	}
-
 	forceInputNodeExecution(workflow: Workflow): boolean {
 		return workflow.settings.executionOrder !== 'v1';
 	}
@@ -1480,7 +1476,7 @@ export class WorkflowExecute {
 							// Add the execution data again so that it can get restarted
 							this.runExecutionData.executionData!.nodeExecutionStack.unshift(executionData);
 							// Only execute the nodeExecuteAfter hook if the node did not get aborted
-							if (!WorkflowExecute.isAbortError(executionError)) {
+							if (!this.isCancelled) {
 								await this.executeHook('nodeExecuteAfter', [
 									executionNode.name,
 									taskData,
@@ -1929,7 +1925,7 @@ export class WorkflowExecute {
 
 		this.moveNodeMetadata();
 		// Prevent from running the hook if the error is an abort error as it was already handled
-		if (!WorkflowExecute.isAbortError(executionError)) {
+		if (!this.isCancelled) {
 			await this.executeHook('workflowExecuteAfter', [fullRunData, newStaticData]);
 		}
 
@@ -1959,5 +1955,9 @@ export class WorkflowExecute {
 		};
 
 		return fullRunData;
+	}
+
+	private get isCancelled() {
+		return this.abortController.signal.aborted;
 	}
 }

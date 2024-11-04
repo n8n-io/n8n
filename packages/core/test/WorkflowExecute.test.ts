@@ -2,10 +2,8 @@ import type { IRun, WorkflowTestData } from 'n8n-workflow';
 import {
 	ApplicationError,
 	createDeferredPromise,
-	ExecutionCancelledError,
 	NodeExecutionOutput,
 	Workflow,
-	WorkflowOperationError,
 } from 'n8n-workflow';
 
 import { WorkflowExecute } from '@/WorkflowExecute';
@@ -214,21 +212,5 @@ describe('WorkflowExecute', () => {
 		expect(nodeExecutionOutput).toBeInstanceOf(NodeExecutionOutput);
 		expect(nodeExecutionOutput[0][0].json.data).toEqual(123);
 		expect(nodeExecutionOutput.getHints()[0].message).toEqual('TEXT HINT');
-	});
-
-	describe('isAbortError', () => {
-		test.each([
-			['AbortError', new DOMException('', 'AbortError')],
-			['WorkflowOperationError', new ExecutionCancelledError('1234')],
-		])('returns true when passed a %s', (_name, error) => {
-			expect(WorkflowExecute.isAbortError(error)).toBe(true);
-		});
-
-		test.each([
-			['TypeError', new TypeError()],
-			['WorkflowOperationError', new WorkflowOperationError('test')],
-		])('returns false when passed a %s', (_name, error) => {
-			expect(WorkflowExecute.isAbortError(error)).toBe(false);
-		});
 	});
 });
