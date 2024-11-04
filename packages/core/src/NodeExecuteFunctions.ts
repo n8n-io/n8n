@@ -101,7 +101,6 @@ import type {
 	INodeParameters,
 	EnsureTypeOptions,
 	SSHTunnelFunctions,
-	SchedulingFunctions,
 	DeduplicationHelperFunctions,
 	IDeduplicationOutput,
 	IDeduplicationOutputItems,
@@ -168,8 +167,7 @@ import { extractValue } from './ExtractValue';
 import { InstanceSettings } from './InstanceSettings';
 import type { ExtendedValidationResult, IResponseError } from './Interfaces';
 // eslint-disable-next-line import/no-cycle
-import { PollContext } from './node-execution-context';
-import { ScheduledTaskManager } from './ScheduledTaskManager';
+import { PollContext, TriggerContext } from './node-execution-context';
 import { getSecretsProxy } from './Secrets';
 import { SSHClientsManager } from './SSHClientsManager';
 
@@ -3346,14 +3344,6 @@ const getSSHTunnelFunctions = (): SSHTunnelFunctions => ({
 		await Container.get(SSHClientsManager).getClient(credentials),
 });
 
-const getSchedulingFunctions = (workflow: Workflow): SchedulingFunctions => {
-	const scheduledTaskManager = Container.get(ScheduledTaskManager);
-	return {
-		registerCron: (cronExpression, onTick) =>
-			scheduledTaskManager.registerCron(workflow, cronExpression, onTick),
-	};
-};
-
 const getAllowedPaths = () => {
 	const restrictFileAccessTo = process.env[RESTRICT_FILE_ACCESS_TO];
 	if (!restrictFileAccessTo) {
@@ -3571,58 +3561,7 @@ export function getExecuteTriggerFunctions(
 	mode: WorkflowExecuteMode,
 	activation: WorkflowActivateMode,
 ): ITriggerFunctions {
-	return ((workflow: Workflow, node: INode) => {
-		return {
-			...getCommonWorkflowFunctions(workflow, node, additionalData),
-			emit: (): void => {
-				throw new ApplicationError(
-					'Overwrite NodeExecuteFunctions.getExecuteTriggerFunctions.emit function',
-				);
-			},
-			emitError: (): void => {
-				throw new ApplicationError(
-					'Overwrite NodeExecuteFunctions.getExecuteTriggerFunctions.emit function',
-				);
-			},
-			getMode: () => mode,
-			getActivationMode: () => activation,
-			getCredentials: async (type) =>
-				await getCredentials(workflow, node, type, additionalData, mode),
-			getNodeParameter: (
-				parameterName: string,
-				fallbackValue?: any,
-				options?: IGetNodeParameterOptions,
-			): NodeParameterValueType | object => {
-				const runExecutionData: IRunExecutionData | null = null;
-				const itemIndex = 0;
-				const runIndex = 0;
-				const connectionInputData: INodeExecutionData[] = [];
-
-				return getNodeParameter(
-					workflow,
-					runExecutionData,
-					runIndex,
-					connectionInputData,
-					node,
-					parameterName,
-					itemIndex,
-					mode,
-					getAdditionalKeys(additionalData, mode, runExecutionData),
-					undefined,
-					fallbackValue,
-					options,
-				);
-			},
-			helpers: {
-				createDeferredPromise,
-				...getSSHTunnelFunctions(),
-				...getRequestHelperFunctions(workflow, node, additionalData),
-				...getBinaryHelperFunctions(additionalData, workflow.id),
-				...getSchedulingFunctions(workflow),
-				returnJsonArray,
-			},
-		};
-	})(workflow, node);
+	return new TriggerContext(workflow, node, additionalData, mode, activation);
 }
 
 /**
