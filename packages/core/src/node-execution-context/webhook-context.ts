@@ -14,6 +14,7 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	NodeConnectionType,
 	NodeParameterValueType,
+	WebhookType,
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
@@ -108,7 +109,7 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 		return httpRequest;
 	}
 
-	getNodeWebhookUrl(name: string): string | undefined {
+	getNodeWebhookUrl(name: WebhookType): string | undefined {
 		return getNodeWebhookUrl(
 			name,
 			this.workflow,

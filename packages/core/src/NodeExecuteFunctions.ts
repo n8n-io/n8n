@@ -108,6 +108,7 @@ import type {
 	ICheckProcessedContextData,
 	AiEvent,
 	ISupplyDataFunctions,
+	WebhookType,
 } from 'n8n-workflow';
 import {
 	NodeConnectionType,
@@ -165,7 +166,7 @@ import { extractValue } from './ExtractValue';
 import { InstanceSettings } from './InstanceSettings';
 import type { ExtendedValidationResult, IResponseError } from './Interfaces';
 // eslint-disable-next-line import/no-cycle
-import { PollContext, TriggerContext, WebhookContext } from './node-execution-context';
+import { HookContext, PollContext, TriggerContext, WebhookContext } from './node-execution-context';
 import { getSecretsProxy } from './Secrets';
 import { SSHClientsManager } from './SSHClientsManager';
 
@@ -2628,7 +2629,7 @@ export function continueOnFail(node: INode): boolean {
  *
  */
 export function getNodeWebhookUrl(
-	name: string,
+	name: WebhookType,
 	workflow: Workflow,
 	node: INode,
 	additionalData: IWorkflowExecuteAdditionalData,
@@ -2673,7 +2674,7 @@ export function getNodeWebhookUrl(
  *
  */
 export function getWebhookDescription(
-	name: string,
+	name: WebhookType,
 	workflow: Workflow,
 	node: INode,
 ): IWebhookDescription | undefined {
@@ -4342,59 +4343,7 @@ export function getExecuteHookFunctions(
 	activation: WorkflowActivateMode,
 	webhookData?: IWebhookData,
 ): IHookFunctions {
-	return ((workflow: Workflow, node: INode) => {
-		return {
-			...getCommonWorkflowFunctions(workflow, node, additionalData),
-			getCredentials: async (type) =>
-				await getCredentials(workflow, node, type, additionalData, mode),
-			getMode: () => mode,
-			getActivationMode: () => activation,
-			getNodeParameter: (
-				parameterName: string,
-				fallbackValue?: any,
-				options?: IGetNodeParameterOptions,
-			): NodeParameterValueType | object => {
-				const runExecutionData: IRunExecutionData | null = null;
-				const itemIndex = 0;
-				const runIndex = 0;
-				const connectionInputData: INodeExecutionData[] = [];
-
-				return getNodeParameter(
-					workflow,
-					runExecutionData,
-					runIndex,
-					connectionInputData,
-					node,
-					parameterName,
-					itemIndex,
-					mode,
-					getAdditionalKeys(additionalData, mode, runExecutionData),
-					undefined,
-					fallbackValue,
-					options,
-				);
-			},
-			getNodeWebhookUrl: (name: string): string | undefined => {
-				return getNodeWebhookUrl(
-					name,
-					workflow,
-					node,
-					additionalData,
-					mode,
-					getAdditionalKeys(additionalData, mode, null),
-					webhookData?.isTest,
-				);
-			},
-			getWebhookName(): string {
-				if (webhookData === undefined) {
-					throw new ApplicationError('Only supported in webhook functions');
-				}
-				return webhookData.webhookDescription.name;
-			},
-			getWebhookDescription: (name) => getWebhookDescription(name, workflow, node),
-			helpers: getRequestHelperFunctions(workflow, node, additionalData),
-		};
-	})(workflow, node);
+	return new HookContext(workflow, node, additionalData, mode, activation, webhookData);
 }
 
 /**
