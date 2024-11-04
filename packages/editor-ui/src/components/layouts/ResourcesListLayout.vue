@@ -80,6 +80,21 @@ const emit = defineEmits<{
 	sort: [value: string];
 }>();
 
+defineSlots<{
+	header(): unknown;
+	empty(): unknown;
+	preamble(): unknown;
+	postamble(): unknown;
+	'add-button'(props: { disabled: boolean }): unknown;
+	callout(): unknown;
+	filters(props: {
+		filters: Record<string, boolean | string | string[]>;
+		setKeyValue: (key: string, value: unknown) => void;
+	}): unknown;
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	default(props: { data: any; updateItemSize: (data: any) => void }): unknown;
+}>();
+
 const route = useRoute();
 const i18n = useI18n();
 const { callDebounced } = useDebounce();
