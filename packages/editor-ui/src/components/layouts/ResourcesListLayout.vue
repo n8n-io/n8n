@@ -1,6 +1,5 @@
-<script lang="ts">
-import { computed, defineComponent, nextTick, ref, onMounted, watch } from 'vue';
-import type { PropType } from 'vue';
+<script lang="ts" setup>
+import { computed, nextTick, ref, onMounted, watch } from 'vue';
 
 import { type ProjectSharingData, ProjectTypes } from '@/types/projects.types';
 import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
@@ -15,7 +14,6 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useRoute } from 'vue-router';
 import { useProjectsStore } from '@/stores/projects.store';
 
-// eslint-disable-next-line unused-imports/no-unused-imports, @typescript-eslint/no-unused-vars
 import type { BaseTextKey } from '@/plugins/i18n';
 import type { Scope } from '@n8n/permissions';
 
@@ -32,365 +30,305 @@ export type IResource = {
 	sharedWithProjects?: ProjectSharingData[];
 };
 
-interface IFilters {
+export interface IFilters {
 	search: string;
 	homeProject: string;
 	[key: string]: boolean | string | string[];
 }
 
-type IResourceKeyType = 'credentials' | 'workflows';
+type IResourceKeyType = 'credentials' | 'workflows' | 'variables';
 
-export default defineComponent({
-	name: 'ResourcesListLayout',
-	components: {
-		PageViewLayout,
-		PageViewLayoutList,
-		ResourceFiltersDropdown,
-		ResourceListHeader,
+const props = withDefaults(
+	defineProps<{
+		resourceKey: IResourceKeyType;
+		displayName?: (resource: IResource) => string;
+		resources: IResource[];
+		disabled: boolean;
+		initialize: () => Promise<void>;
+		filters?: IFilters;
+		additionalFiltersHandler?: (
+			resource: IResource,
+			filters: IFilters,
+			matches: boolean,
+		) => boolean;
+		shareable?: boolean;
+		showFiltersDropdown?: boolean;
+		sortFns?: Record<string, (a: IResource, b: IResource) => number>;
+		sortOptions?: string[];
+		type?: 'datatable' | 'list';
+		typeProps: { itemSize: number } | { columns: DatatableColumn[] };
+		loading: boolean;
+	}>(),
+	{
+		displayName: (resource: IResource) => resource.name,
+		initialize: async () => {},
+		filters: () => ({ search: '', homeProject: '' }),
+		sortFns: () => ({}),
+		sortOptions: () => ['lastUpdated', 'lastCreated', 'nameAsc', 'nameDesc'],
+		type: 'list',
+		typeProps: () => ({ itemSize: 80 }),
+		loading: true,
+		additionalFiltersHandler: undefined,
+		showFiltersDropdown: true,
+		shareable: true,
 	},
-	props: {
-		resourceKey: {
-			type: String,
-			default: '' as IResourceKeyType,
-		},
-		displayName: {
-			type: Function as PropType<(resource: IResource) => string>,
-			default: (resource: IResource) => resource.name,
-		},
-		resources: {
-			type: Array as PropType<IResource[]>,
-			default: (): IResource[] => [],
-		},
-		disabled: {
-			type: Boolean,
-			default: false,
-		},
-		initialize: {
-			type: Function as PropType<() => Promise<void>>,
-			default: () => async () => {},
-		},
-		filters: {
-			type: Object,
-			default: (): IFilters => ({ search: '', homeProject: '' }),
-		},
-		additionalFiltersHandler: {
-			type: Function,
-			required: false,
-			default: undefined,
-		},
-		shareable: {
-			type: Boolean,
-			default: true,
-		},
-		showFiltersDropdown: {
-			type: Boolean,
-			default: true,
-		},
-		sortFns: {
-			type: Object as PropType<Record<string, (a: IResource, b: IResource) => number>>,
-			default: (): Record<string, (a: IResource, b: IResource) => number> => ({}),
-		},
-		sortOptions: {
-			type: Array as PropType<string[]>,
-			default: () => ['lastUpdated', 'lastCreated', 'nameAsc', 'nameDesc'],
-		},
-		type: {
-			type: String as PropType<'datatable' | 'list'>,
-			default: 'list',
-		},
-		typeProps: {
-			type: Object as PropType<{ itemSize: number } | { columns: DatatableColumn[] }>,
-			default: () => ({
-				itemSize: 80,
-			}),
-		},
-		loading: {
-			type: Boolean,
-			required: false,
-			default: true,
-		},
+);
+
+const emit = defineEmits<{
+	'update:filters': [value: IFilters];
+	'click:add': [event: Event];
+	sort: [value: string];
+}>();
+
+const route = useRoute();
+const i18n = useI18n();
+const { callDebounced } = useDebounce();
+const usersStore = useUsersStore();
+const projectsStore = useProjectsStore();
+const telemetry = useTelemetry();
+
+const sortBy = ref(props.sortOptions[0]);
+const hasFilters = ref(false);
+const filtersModel = ref(props.filters);
+const currentPage = ref(1);
+const rowsPerPage = ref<number>(10);
+const resettingFilters = ref(false);
+const search = ref<HTMLElement | null>(null);
+
+//computed
+
+const filterKeys = computed(() => {
+	return Object.keys(filtersModel.value);
+});
+
+const filteredAndSortedResources = computed(() => {
+	const filtered = props.resources.filter((resource) => {
+		let matches = true;
+
+		if (filtersModel.value.homeProject) {
+			matches =
+				matches &&
+				!!(resource.homeProject && resource.homeProject.id === filtersModel.value.homeProject);
+		}
+
+		if (filtersModel.value.search) {
+			const searchString = filtersModel.value.search.toLowerCase();
+			matches = matches && props.displayName(resource).toLowerCase().includes(searchString);
+		}
+
+		if (props.additionalFiltersHandler) {
+			matches = props.additionalFiltersHandler(resource, filtersModel.value, matches);
+		}
+
+		return matches;
+	});
+
+	return filtered.sort((a, b) => {
+		switch (sortBy.value) {
+			case 'lastUpdated':
+				return props.sortFns.lastUpdated
+					? props.sortFns.lastUpdated(a, b)
+					: new Date(b.updatedAt ?? '').valueOf() - new Date(a.updatedAt ?? '').valueOf();
+			case 'lastCreated':
+				return props.sortFns.lastCreated
+					? props.sortFns.lastCreated(a, b)
+					: new Date(b.createdAt ?? '').valueOf() - new Date(a.createdAt ?? '').valueOf();
+			case 'nameAsc':
+				return props.sortFns.nameAsc
+					? props.sortFns.nameAsc(a, b)
+					: props.displayName(a).trim().localeCompare(props.displayName(b).trim());
+			case 'nameDesc':
+				return props.sortFns.nameDesc
+					? props.sortFns.nameDesc(a, b)
+					: props.displayName(b).trim().localeCompare(props.displayName(a).trim());
+			default:
+				return props.sortFns[sortBy.value] ? props.sortFns[sortBy.value](a, b) : 0;
+		}
+	});
+});
+
+//methods
+
+const focusSearchInput = () => {
+	if (search.value) {
+		search.value.focus();
+	}
+};
+
+const hasAppliedFilters = (): boolean => {
+	return !!filterKeys.value.find(
+		(key) =>
+			key !== 'search' &&
+			(Array.isArray(props.filters[key])
+				? props.filters[key].length > 0
+				: props.filters[key] !== ''),
+	);
+};
+
+const setRowsPerPage = (numberOfRowsPerPage: number) => {
+	rowsPerPage.value = numberOfRowsPerPage;
+};
+
+const setCurrentPage = (page: number) => {
+	currentPage.value = page;
+};
+
+const sendFiltersTelemetry = (source: string) => {
+	// Prevent sending multiple telemetry events when resetting filters
+	// Timeout is required to wait for search debounce to be over
+	if (resettingFilters.value) {
+		if (source !== 'reset') {
+			return;
+		}
+
+		setTimeout(() => (resettingFilters.value = false), 1500);
+	}
+
+	const filters = filtersModel.value as Record<string, string[] | string | boolean>;
+	const filtersSet: string[] = [];
+	const filterValues: Array<string[] | string | boolean | null> = [];
+
+	Object.keys(filters).forEach((key) => {
+		if (filters[key]) {
+			filtersSet.push(key);
+			filterValues.push(key === 'search' ? null : filters[key]);
+		}
+	});
+
+	telemetry.track(`User set filters in ${props.resourceKey} list`, {
+		filters_set: filtersSet,
+		filter_values: filterValues,
+		[`${props.resourceKey}_total_in_view`]: props.resources.length,
+		[`${props.resourceKey}_after_filtering`]: filteredAndSortedResources.value.length,
+	});
+};
+
+const onAddButtonClick = (e: Event) => {
+	emit('click:add', e);
+};
+
+const onUpdateFilters = (e: IFilters) => {
+	emit('update:filters', e);
+};
+
+const resetFilters = () => {
+	Object.keys(filtersModel.value).forEach((key) => {
+		filtersModel.value[key] = Array.isArray(filtersModel.value[key]) ? [] : '';
+	});
+
+	resettingFilters.value = true;
+	sendFiltersTelemetry('reset');
+	emit('update:filters', filtersModel.value);
+};
+
+const itemSize = () => {
+	if ('itemSize' in props.typeProps) {
+		return props.typeProps.itemSize;
+	}
+	return 0;
+};
+
+const getColumns = () => {
+	if ('columns' in props.typeProps) {
+		return props.typeProps.columns;
+	}
+	return {};
+};
+
+const sendSortingTelemetry = () => {
+	telemetry.track(`User changed sorting in ${props.resourceKey} list`, {
+		sorting: sortBy.value,
+	});
+};
+
+const onUpdateFiltersLength = (length: number) => {
+	hasFilters.value = length > 0;
+};
+
+const onSearch = (s: string) => {
+	filtersModel.value.search = s;
+	emit('update:filters', filtersModel.value);
+};
+
+//watchers
+
+watch(
+	() => props.filters,
+	(value) => {
+		filtersModel.value = value;
 	},
-	emits: ['update:filters', 'click:add', 'sort'],
-	setup(props, { emit }) {
-		const route = useRoute();
-		const i18n = useI18n();
-		const { callDebounced } = useDebounce();
-		const usersStore = useUsersStore();
-		const projectsStore = useProjectsStore();
-		const telemetry = useTelemetry();
+);
 
-		const sortBy = ref(props.sortOptions[0]);
-		const hasFilters = ref(false);
-		const filtersModel = ref(props.filters);
-		const currentPage = ref(1);
-		const rowsPerPage = ref<number>(10);
-		const resettingFilters = ref(false);
-		const search = ref<HTMLElement | null>(null);
-
-		//computed
-
-		const filterKeys = computed(() => {
-			return Object.keys(filtersModel.value);
-		});
-
-		const filteredAndSortedResources = computed(() => {
-			const filtered = props.resources.filter((resource) => {
-				let matches = true;
-
-				if (filtersModel.value.homeProject) {
-					matches =
-						matches &&
-						!!(resource.homeProject && resource.homeProject.id === filtersModel.value.homeProject);
-				}
-
-				if (filtersModel.value.search) {
-					const searchString = filtersModel.value.search.toLowerCase();
-					matches = matches && props.displayName(resource).toLowerCase().includes(searchString);
-				}
-
-				if (props.additionalFiltersHandler) {
-					matches = props.additionalFiltersHandler(resource, filtersModel.value, matches);
-				}
-
-				return matches;
-			});
-
-			return filtered.sort((a, b) => {
-				switch (sortBy.value) {
-					case 'lastUpdated':
-						return props.sortFns.lastUpdated
-							? props.sortFns.lastUpdated(a, b)
-							: new Date(b.updatedAt ?? '').valueOf() - new Date(a.updatedAt ?? '').valueOf();
-					case 'lastCreated':
-						return props.sortFns.lastCreated
-							? props.sortFns.lastCreated(a, b)
-							: new Date(b.createdAt ?? '').valueOf() - new Date(a.createdAt ?? '').valueOf();
-					case 'nameAsc':
-						return props.sortFns.nameAsc
-							? props.sortFns.nameAsc(a, b)
-							: props.displayName(a).trim().localeCompare(props.displayName(b).trim());
-					case 'nameDesc':
-						return props.sortFns.nameDesc
-							? props.sortFns.nameDesc(a, b)
-							: props.displayName(b).trim().localeCompare(props.displayName(a).trim());
-					default:
-						return props.sortFns[sortBy.value] ? props.sortFns[sortBy.value](a, b) : 0;
-				}
-			});
-		});
-
-		//methods
-
-		const focusSearchInput = () => {
-			if (search.value) {
-				search.value.focus();
-			}
-		};
-
-		const hasAppliedFilters = (): boolean => {
-			return !!filterKeys.value.find(
-				(key) =>
-					key !== 'search' &&
-					(Array.isArray(props.filters[key])
-						? props.filters[key].length > 0
-						: props.filters[key] !== ''),
-			);
-		};
-
-		const setRowsPerPage = (numberOfRowsPerPage: number) => {
-			rowsPerPage.value = numberOfRowsPerPage;
-		};
-
-		const setCurrentPage = (page: number) => {
-			currentPage.value = page;
-		};
-
-		const sendFiltersTelemetry = (source: string) => {
-			// Prevent sending multiple telemetry events when resetting filters
-			// Timeout is required to wait for search debounce to be over
-			if (resettingFilters.value) {
-				if (source !== 'reset') {
-					return;
-				}
-
-				setTimeout(() => (resettingFilters.value = false), 1500);
-			}
-
-			const filters = filtersModel.value as Record<string, string[] | string | boolean>;
-			const filtersSet: string[] = [];
-			const filterValues: Array<string[] | string | boolean | null> = [];
-
-			Object.keys(filters).forEach((key) => {
-				if (filters[key]) {
-					filtersSet.push(key);
-					filterValues.push(key === 'search' ? null : filters[key]);
-				}
-			});
-
-			telemetry.track(`User set filters in ${props.resourceKey} list`, {
-				filters_set: filtersSet,
-				filter_values: filterValues,
-				[`${props.resourceKey}_total_in_view`]: props.resources.length,
-				[`${props.resourceKey}_after_filtering`]: filteredAndSortedResources.value.length,
-			});
-		};
-
-		const onAddButtonClick = (e: Event) => {
-			emit('click:add', e);
-		};
-
-		const onUpdateFilters = (e: Event) => {
-			emit('update:filters', e);
-		};
-
-		const resetFilters = () => {
-			Object.keys(filtersModel.value).forEach((key) => {
-				filtersModel.value[key] = Array.isArray(filtersModel.value[key]) ? [] : '';
-			});
-
-			resettingFilters.value = true;
-			sendFiltersTelemetry('reset');
-			emit('update:filters', filtersModel.value);
-		};
-
-		const itemSize = () => {
-			if ('itemSize' in props.typeProps) {
-				return props.typeProps.itemSize;
-			}
-			return 0;
-		};
-
-		const getColumns = () => {
-			if ('columns' in props.typeProps) {
-				return props.typeProps.columns;
-			}
-			return {};
-		};
-
-		const sendSortingTelemetry = () => {
-			telemetry.track(`User changed sorting in ${props.resourceKey} list`, {
-				sorting: sortBy.value,
-			});
-		};
-
-		const onUpdateFiltersLength = (length: number) => {
-			hasFilters.value = length > 0;
-		};
-
-		const onSearch = (s: string) => {
-			filtersModel.value.search = s;
-			emit('update:filters', filtersModel.value);
-		};
-
-		//watchers
-
-		watch(
-			() => props.filters,
-			(value) => {
-				filtersModel.value = value;
-			},
-		);
-
-		watch(
-			() => filtersModel.value.homeProject,
-			() => {
-				sendFiltersTelemetry('homeProject');
-			},
-		);
-
-		watch(
-			() => filtersModel.value.tags,
-			() => {
-				sendFiltersTelemetry('tags');
-			},
-		);
-
-		watch(
-			() => filtersModel.value.type,
-			() => {
-				sendFiltersTelemetry('type');
-			},
-		);
-
-		watch(
-			() => filtersModel.value.search,
-			() => callDebounced(sendFiltersTelemetry, { debounceTime: 1000, trailing: true }, 'search'),
-		);
-
-		watch(
-			() => sortBy.value,
-			(newValue) => {
-				emit('sort', newValue);
-				sendSortingTelemetry();
-			},
-		);
-
-		watch(
-			() => route?.params?.projectId,
-			() => {
-				resetFilters();
-			},
-		);
-
-		onMounted(async () => {
-			await props.initialize();
-			await nextTick();
-
-			focusSearchInput();
-
-			if (hasAppliedFilters()) {
-				hasFilters.value = true;
-			}
-		});
-
-		const headerIcon = computed(() => {
-			if (projectsStore.currentProject?.type === ProjectTypes.Personal) {
-				return 'user';
-			} else if (projectsStore.currentProject?.name) {
-				return 'layer-group';
-			} else {
-				return 'home';
-			}
-		});
-
-		const projectName = computed(() => {
-			if (!projectsStore.currentProject) {
-				return i18n.baseText('projects.menu.home');
-			} else if (projectsStore.currentProject.type === ProjectTypes.Personal) {
-				return i18n.baseText('projects.menu.personal');
-			} else {
-				return projectsStore.currentProject.name;
-			}
-		});
-
-		return {
-			i18n,
-			search,
-			usersStore,
-			projectsStore,
-			filterKeys,
-			currentPage,
-			rowsPerPage,
-			filteredAndSortedResources,
-			hasFilters,
-			sortBy,
-			resettingFilters,
-			filtersModel,
-			sendFiltersTelemetry,
-			getColumns,
-			itemSize,
-			onAddButtonClick,
-			onUpdateFiltersLength,
-			onUpdateFilters,
-			resetFilters,
-			callDebounced,
-			setCurrentPage,
-			setRowsPerPage,
-			onSearch,
-			headerIcon,
-			projectName,
-		};
+watch(
+	() => filtersModel.value.homeProject,
+	() => {
+		sendFiltersTelemetry('homeProject');
 	},
+);
+
+watch(
+	() => filtersModel.value.tags,
+	() => {
+		sendFiltersTelemetry('tags');
+	},
+);
+
+watch(
+	() => filtersModel.value.type,
+	() => {
+		sendFiltersTelemetry('type');
+	},
+);
+
+watch(
+	() => filtersModel.value.search,
+	() => callDebounced(sendFiltersTelemetry, { debounceTime: 1000, trailing: true }, 'search'),
+);
+
+watch(
+	() => sortBy.value,
+	(newValue) => {
+		emit('sort', newValue);
+		sendSortingTelemetry();
+	},
+);
+
+watch(
+	() => route?.params?.projectId,
+	() => {
+		resetFilters();
+	},
+);
+
+onMounted(async () => {
+	await props.initialize();
+	await nextTick();
+
+	focusSearchInput();
+
+	if (hasAppliedFilters()) {
+		hasFilters.value = true;
+	}
+});
+
+const headerIcon = computed(() => {
+	if (projectsStore.currentProject?.type === ProjectTypes.Personal) {
+		return 'user';
+	} else if (projectsStore.currentProject?.name) {
+		return 'layer-group';
+	} else {
+		return 'home';
+	}
+});
+
+const projectName = computed(() => {
+	if (!projectsStore.currentProject) {
+		return i18n.baseText('projects.menu.home');
+	} else if (projectsStore.currentProject.type === ProjectTypes.Personal) {
+		return i18n.baseText('projects.menu.personal');
+	} else {
+		return projectsStore.currentProject.name;
+	}
 });
 </script>
 
