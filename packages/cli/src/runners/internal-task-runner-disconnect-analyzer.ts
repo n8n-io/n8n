@@ -3,7 +3,7 @@ import { Service } from 'typedi';
 
 import config from '@/config';
 
-import { TaskRunnerDisconnectedError } from './errors/task-runner-disconnected-error';
+import { DefaultTaskRunnerDisconnectAnalyzer } from './default-task-runner-disconnect-analyzer';
 import { TaskRunnerOomError } from './errors/task-runner-oom-error';
 import { SlidingWindowSignal } from './sliding-window-signal';
 import type { TaskRunner } from './task-broker.service';
@@ -15,13 +15,19 @@ import { TaskRunnerProcess } from './task-runner-process';
  * meaningful error message to the user.
  */
 @Service()
-export class TaskRunnerDisconnectAnalyzer {
+export class InternalTaskRunnerDisconnectAnalyzer extends DefaultTaskRunnerDisconnectAnalyzer {
+	private get isCloudDeployment() {
+		return config.get('deployment.type') === 'cloud';
+	}
+
 	private readonly exitReasonSignal: SlidingWindowSignal<TaskRunnerProcessEventMap, 'exit'>;
 
 	constructor(
 		private readonly runnerConfig: TaskRunnersConfig,
 		private readonly taskRunnerProcess: TaskRunnerProcess,
 	) {
+		super();
+
 		// When the task runner process is running as a child process, there's
 		// no determinate time when it exits compared to when the runner disconnects
 		// (i.e. it's a race condition). Hence we use a sliding window to determine
@@ -32,17 +38,13 @@ export class TaskRunnerDisconnectAnalyzer {
 		});
 	}
 
-	private get isCloudDeployment() {
-		return config.get('deployment.type') === 'cloud';
-	}
-
 	async determineDisconnectReason(runnerId: TaskRunner['id']): Promise<Error> {
 		const exitCode = await this.awaitExitSignal();
 		if (exitCode === 'oom') {
 			return new TaskRunnerOomError(runnerId, this.isCloudDeployment);
 		}
 
-		return new TaskRunnerDisconnectedError(runnerId);
+		return await super.determineDisconnectReason(runnerId);
 	}
 
 	private async awaitExitSignal(): Promise<ExitReason> {
