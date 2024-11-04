@@ -32,10 +32,10 @@ describe('TaskRunnerProcess', () => {
 	});
 
 	describe('constructor', () => {
-		it('should throw if runner mode is external', () => {
+		it('should not throw if runner mode is external', () => {
 			runnerConfig.mode = 'external';
 
-			expect(() => new TaskRunnerProcess(logger, runnerConfig, authService)).toThrow();
+			expect(() => new TaskRunnerProcess(logger, runnerConfig, authService)).not.toThrow();
 
 			runnerConfig.mode = 'internal_childprocess';
 		});
