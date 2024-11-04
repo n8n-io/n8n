@@ -2,8 +2,10 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import type { ICredentialsResponse, ICredentialTypeMap } from '@/Interface';
-import type { IResource } from '@/components/layouts/ResourcesListLayout.vue';
-import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
+import ResourcesListLayout, {
+	type IResource,
+	type IFilters,
+} from '@/components/layouts/ResourcesListLayout.vue';
 import CredentialCard from '@/components/CredentialCard.vue';
 import type { ICredentialType } from 'n8n-workflow';
 import {
@@ -42,10 +44,10 @@ const router = useRouter();
 const telemetry = useTelemetry();
 const i18n = useI18n();
 
-const filters = ref({
+const filters = ref<IFilters>({
 	search: '',
 	homeProject: '',
-	type: '',
+	type: [],
 });
 
 const loading = ref(false);
@@ -122,13 +124,11 @@ watch(
 	},
 );
 
-const onFilter = (
-	resource: ICredentialsResponse,
-	filtersToApply: { type: string[]; search: string },
-	matches: boolean,
-): boolean => {
+const onFilter = (resource: IResource, newFilters: IFilters, matches: boolean): boolean => {
+	const iResource = resource as ICredentialsResponse;
+	const filtersToApply = newFilters as IFilters & { type: string[] };
 	if (filtersToApply.type.length > 0) {
-		matches = matches && filtersToApply.type.includes(resource.type);
+		matches = matches && filtersToApply.type.includes(iResource.type);
 	}
 
 	if (filtersToApply.search) {
@@ -136,8 +136,8 @@ const onFilter = (
 
 		matches =
 			matches ||
-			(credentialTypesById.value[resource.type] &&
-				credentialTypesById.value[resource.type].displayName.toLowerCase().includes(searchString));
+			(credentialTypesById.value[iResource.type] &&
+				credentialTypesById.value[iResource.type].displayName.toLowerCase().includes(searchString));
 	}
 
 	return matches;

@@ -1,14 +1,9 @@
-<script lang="ts">
-import { defineComponent } from 'vue';
+<script setup lang="ts">
 import TitledList from '@/components/TitledList.vue';
 
-export default defineComponent({
-	name: 'ParameterIssues',
-	components: {
-		TitledList,
-	},
-	props: ['issues'],
-});
+defineProps<{
+	issues: string[];
+}>();
 </script>
 
 <template>

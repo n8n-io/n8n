@@ -1,10 +1,13 @@
 <script lang="ts" setup>
 import { computed, onMounted, watch, ref } from 'vue';
-import ResourcesListLayout, { type IResource } from '@/components/layouts/ResourcesListLayout.vue';
+import ResourcesListLayout, {
+	type IResource,
+	type IFilters,
+} from '@/components/layouts/ResourcesListLayout.vue';
 import WorkflowCard from '@/components/WorkflowCard.vue';
 import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
 import { EnterpriseEditionFeature, MORE_ONBOARDING_OPTIONS_EXPERIMENT, VIEWS } from '@/constants';
-import type { ITag, IUser, IWorkflowDb } from '@/Interface';
+import type { IUser, IWorkflowDb } from '@/Interface';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
@@ -48,9 +51,7 @@ const uiStore = useUIStore();
 const tagsStore = useTagsStore();
 const documentTitle = useDocumentTitle();
 
-interface Filters {
-	search: string;
-	homeProject: string;
+interface Filters extends IFilters {
 	status: string | boolean;
 	tags: string[];
 }
@@ -136,16 +137,13 @@ const emptyListDescription = computed(() => {
 	}
 });
 
-const onFilter = (
-	resource: IWorkflowDb,
-	newFilters: { tags: string[]; search: string; status: string | boolean },
-	matches: boolean,
-): boolean => {
-	if (settingsStore.areTagsEnabled && newFilters.tags.length > 0) {
+const onFilter = (resource: IResource, newFilters: IFilters, matches: boolean): boolean => {
+	const iFilters = newFilters as Filters;
+	if (settingsStore.areTagsEnabled && iFilters.tags.length > 0) {
 		matches =
 			matches &&
-			newFilters.tags.every((tag) =>
-				(resource.tags as ITag[])?.find((resourceTag) =>
+			iFilters.tags.every((tag) =>
+				(resource as IWorkflowDb).tags?.find((resourceTag) =>
 					typeof resourceTag === 'object'
 						? `${resourceTag.id}` === `${tag}`
 						: `${resourceTag}` === `${tag}`,
@@ -154,14 +152,14 @@ const onFilter = (
 	}
 
 	if (newFilters.status !== '') {
-		matches = matches && resource.active === newFilters.status;
+		matches = matches && (resource as IWorkflowDb).active === newFilters.status;
 	}
 
 	return matches;
 };
 
 // Methods
-const onFiltersUpdated = (newFilters: Filters) => {
+const onFiltersUpdated = (newFilters: IFilters) => {
 	Object.assign(filters.value, newFilters);
 };
 

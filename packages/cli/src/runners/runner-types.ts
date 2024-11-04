@@ -17,6 +17,12 @@ export interface TaskDataRequestParams {
 	env: boolean;
 }
 
+export interface DisconnectAnalyzer {
+	determineDisconnectReason(runnerId: TaskRunner['id']): Promise<Error>;
+}
+
+export type DataRequestType = 'input' | 'node' | 'all';
+
 export interface TaskResultData {
 	result: INodeExecutionData[];
 	customData?: Record<string, string>;

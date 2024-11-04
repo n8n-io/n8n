@@ -1104,8 +1104,8 @@ export interface ITriggerFunctions
 export interface IHookFunctions
 	extends FunctionsBaseWithRequiredKeys<'getMode' | 'getActivationMode'> {
 	getWebhookName(): string;
-	getWebhookDescription(name: string): IWebhookDescription | undefined;
-	getNodeWebhookUrl: (name: string) => string | undefined;
+	getWebhookDescription(name: WebhookType): IWebhookDescription | undefined;
+	getNodeWebhookUrl: (name: WebhookType) => string | undefined;
 	getNodeParameter(
 		parameterName: string,
 		fallbackValue?: any,
@@ -1127,7 +1127,7 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 		fallbackValue?: any,
 		options?: IGetNodeParameterOptions,
 	): NodeParameterValueType | object;
-	getNodeWebhookUrl: (name: string) => string | undefined;
+	getNodeWebhookUrl: (name: WebhookType) => string | undefined;
 	evaluateExpression(expression: string, itemIndex?: number): NodeParameterValueType;
 	getParamsData(): object;
 	getQueryData(): object;
@@ -1619,7 +1619,7 @@ export interface INodeType {
 		};
 	};
 	webhookMethods?: {
-		[name in IWebhookDescription['name']]?: {
+		[name in WebhookType]?: {
 			[method in WebhookSetupMethodNames]: (this: IHookFunctions) => Promise<boolean>;
 		};
 	};
@@ -1972,11 +1972,13 @@ export interface IWebhookData {
 	staticData?: Workflow['staticData'];
 }
 
+export type WebhookType = 'default' | 'setup';
+
 export interface IWebhookDescription {
 	[key: string]: IHttpRequestMethods | WebhookResponseMode | boolean | string | undefined;
 	httpMethod: IHttpRequestMethods | string;
 	isFullPath?: boolean;
-	name: 'default' | 'setup';
+	name: WebhookType;
 	path: string;
 	responseBinaryPropertyName?: string;
 	responseContentType?: string;
