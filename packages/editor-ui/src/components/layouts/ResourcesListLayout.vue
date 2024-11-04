@@ -331,26 +331,6 @@ onMounted(async () => {
 		hasFilters.value = true;
 	}
 });
-
-const headerIcon = computed(() => {
-	if (projectsStore.currentProject?.type === ProjectTypes.Personal) {
-		return 'user';
-	} else if (projectsStore.currentProject?.name) {
-		return 'layer-group';
-	} else {
-		return 'home';
-	}
-});
-
-const projectName = computed(() => {
-	if (!projectsStore.currentProject) {
-		return i18n.baseText('projects.menu.home');
-	} else if (projectsStore.currentProject.type === ProjectTypes.Personal) {
-		return i18n.baseText('projects.menu.personal');
-	} else {
-		return projectsStore.currentProject.name;
-	}
-});
 </script>
 
 <template>
