@@ -4,7 +4,6 @@ const workflowPage = new WorkflowPage();
 const workflowsPage = new WorkflowsPage();
 const ndv = new NDV();
 
-
 it('should render runItems for sub-nodes and allow switching between them', () => {
 	cy.visit(workflowPage.url);
 	cy.createFixtureWorkflow('In_memory_vector_store_fake_embeddings.json');
@@ -16,7 +15,7 @@ it('should render runItems for sub-nodes and allow switching between them', () =
 	const assertInputOutputText = (text: string, assertion: 'exist' | 'not.exist') => {
 		ndv.getters.outputPanel().contains(text).should(assertion);
 		ndv.getters.inputPanel().contains(text).should(assertion);
-	}
+	};
 
 	workflowPage.actions.openNode('Character Text Splitter');
 	ndv.getters.outputRunSelector().should('exist');
