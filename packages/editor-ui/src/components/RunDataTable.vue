@@ -1,389 +1,379 @@
-<script lang="ts">
-import { defineComponent } from 'vue';
-import type { PropType } from 'vue';
-import { mapStores } from 'pinia';
-import type { INodeUi, ITableData, NDVState } from '@/Interface';
-import { shorten } from '@/utils/typesUtils';
-import { getPairedItemId } from '@/utils/pairedItemUtils';
-import type { GenericValue, IDataObject, INodeExecutionData } from 'n8n-workflow';
-import Draggable from './Draggable.vue';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useNDVStore } from '@/stores/ndv.store';
-import MappingPill from './MappingPill.vue';
-import { getMappedExpression } from '@/utils/mappingUtils';
+<script setup lang="ts">
 import { useExternalHooks } from '@/composables/useExternalHooks';
+import type { INodeUi, IRunDataDisplayMode, ITableData } from '@/Interface';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { getMappedExpression } from '@/utils/mappingUtils';
+import { getPairedItemId } from '@/utils/pairedItemUtils';
+import { shorten } from '@/utils/typesUtils';
+import type { GenericValue, IDataObject, INodeExecutionData } from 'n8n-workflow';
+import { computed, onMounted, ref, watch } from 'vue';
+import Draggable from './Draggable.vue';
+import MappingPill from './MappingPill.vue';
 import TextWithHighlights from './TextWithHighlights.vue';
+import { useI18n } from '@/composables/useI18n';
+import { useTelemetry } from '@/composables/useTelemetry';
 
 const MAX_COLUMNS_LIMIT = 40;
 
 type DraggableRef = InstanceType<typeof Draggable>;
 
-export default defineComponent({
-	name: 'RunDataTable',
-	components: { Draggable, MappingPill, TextWithHighlights },
-	props: {
-		node: {
-			type: Object as PropType<INodeUi>,
-			required: true,
-		},
-		inputData: {
-			type: Array as PropType<INodeExecutionData[]>,
-			required: true,
-		},
-		mappingEnabled: {
-			type: Boolean,
-		},
-		distanceFromActive: {
-			type: Number,
-			required: true,
-		},
-		runIndex: {
-			type: Number,
-		},
-		outputIndex: {
-			type: Number,
-		},
-		totalRuns: {
-			type: Number,
-		},
-		pageOffset: {
-			type: Number,
-			required: true,
-		},
-		hasDefaultHoverState: {
-			type: Boolean,
-		},
-		search: {
-			type: String,
-		},
-	},
-	setup() {
-		const externalHooks = useExternalHooks();
-		return {
-			externalHooks,
-		};
-	},
-	data() {
-		return {
-			activeColumn: -1,
-			forceShowGrip: false,
-			draggedColumn: false,
-			draggingPath: null as null | string,
-			hoveringPath: null as null | string,
-			mappingHintVisible: false,
-			activeRow: null as number | null,
-			columnLimit: MAX_COLUMNS_LIMIT,
-			columnLimitExceeded: false,
-		};
-	},
-	mounted() {
-		if (this.tableData && this.tableData.columns && this.$refs.draggable) {
-			const tbody = (this.$refs.draggable as DraggableRef).$refs.wrapper as HTMLElement;
-			if (tbody) {
-				this.$emit('mounted', {
-					avgRowHeight: tbody.offsetHeight / this.tableData.data.length,
-				});
-			}
+type Props = {
+	node: INodeUi;
+	inputData: INodeExecutionData[];
+	distanceFromActive: number;
+	pageOffset: number;
+	runIndex?: number;
+	outputIndex?: number;
+	totalRuns?: number;
+	mappingEnabled?: boolean;
+	hasDefaultHoverState?: boolean;
+	search?: string;
+};
+
+const props = withDefaults(defineProps<Props>(), {
+	runIndex: 0,
+	outputIndex: 0,
+	totalRuns: 0,
+	mappingEnabled: false,
+	hasDefaultHoverState: false,
+	search: '',
+});
+const emit = defineEmits<{
+	activeRowChanged: [row: number | null];
+	displayModeChange: [mode: IRunDataDisplayMode];
+	mounted: [data: { avgRowHeight: number }];
+}>();
+
+const externalHooks = useExternalHooks();
+const activeColumn = ref(-1);
+const forceShowGrip = ref(false);
+const draggedColumn = ref(false);
+const draggingPath = ref<string | null>(null);
+const hoveringPath = ref<string | null>(null);
+const activeRow = ref<number | null>(null);
+const columnLimit = ref(MAX_COLUMNS_LIMIT);
+const columnLimitExceeded = ref(false);
+const draggableRef = ref<DraggableRef>();
+
+const ndvStore = useNDVStore();
+const workflowsStore = useWorkflowsStore();
+
+const i18n = useI18n();
+const telemetry = useTelemetry();
+
+const hoveringItem = computed(() => ndvStore.hoveringItem);
+const pairedItemMappings = computed(() => workflowsStore.workflowExecutionPairedItemMappings);
+const tableData = computed(() => convertToTable(props.inputData));
+const focusedMappableInput = computed(() => ndvStore.focusedMappableInput);
+const highlight = computed(() => ndvStore.highlightDraggables);
+
+onMounted(() => {
+	if (tableData.value?.columns && draggableRef.value) {
+		const tbody = draggableRef.value.$refs.wrapper as HTMLElement;
+		if (tbody) {
+			emit('mounted', {
+				avgRowHeight: tbody.offsetHeight / tableData.value.data.length,
+			});
 		}
-	},
-	computed: {
-		...mapStores(useNDVStore, useWorkflowsStore),
-		hoveringItem(): NDVState['hoveringItem'] {
-			return this.ndvStore.hoveringItem;
-		},
-		pairedItemMappings(): { [itemId: string]: Set<string> } {
-			return this.workflowsStore.workflowExecutionPairedItemMappings;
-		},
-		tableData(): ITableData {
-			return this.convertToTable(this.inputData);
-		},
-		focusedMappableInput(): string {
-			return this.ndvStore.focusedMappableInput;
-		},
-		highlight(): boolean {
-			return this.ndvStore.highlightDraggables;
-		},
-	},
-	methods: {
-		shorten,
-		isHoveringRow(row: number): boolean {
-			if (row === this.activeRow) {
-				return true;
-			}
+	}
+});
 
-			const itemIndex = this.pageOffset + row;
-			if (
-				itemIndex === 0 &&
-				!this.hoveringItem &&
-				this.hasDefaultHoverState &&
-				this.distanceFromActive === 1
-			) {
-				return true;
-			}
-			const itemNodeId = getPairedItemId(
-				this.node?.name ?? '',
-				this.runIndex || 0,
-				this.outputIndex || 0,
-				itemIndex,
-			);
-			if (!this.hoveringItem || !this.pairedItemMappings[itemNodeId]) {
-				return false;
-			}
+function isHoveringRow(row: number): boolean {
+	if (row === activeRow.value) {
+		return true;
+	}
 
-			const hoveringItemId = getPairedItemId(
-				this.hoveringItem.nodeName,
-				this.hoveringItem.runIndex,
-				this.hoveringItem.outputIndex,
-				this.hoveringItem.itemIndex,
-			);
-			return this.pairedItemMappings[itemNodeId].has(hoveringItemId);
-		},
-		onMouseEnterCell(e: MouseEvent) {
-			const target = e.target;
-			if (target && this.mappingEnabled) {
-				const col = (target as HTMLElement).dataset.col;
-				if (col && !isNaN(parseInt(col, 10))) {
-					this.activeColumn = parseInt(col, 10);
-				}
+	const itemIndex = props.pageOffset + row;
+	if (
+		itemIndex === 0 &&
+		!hoveringItem.value &&
+		props.hasDefaultHoverState &&
+		props.distanceFromActive === 1
+	) {
+		return true;
+	}
+	const itemNodeId = getPairedItemId(
+		props.node?.name ?? '',
+		props.runIndex || 0,
+		props.outputIndex || 0,
+		itemIndex,
+	);
+	if (!hoveringItem.value || !pairedItemMappings.value[itemNodeId]) {
+		return false;
+	}
+
+	const hoveringItemId = getPairedItemId(
+		hoveringItem.value.nodeName,
+		hoveringItem.value.runIndex,
+		hoveringItem.value.outputIndex,
+		hoveringItem.value.itemIndex,
+	);
+	return pairedItemMappings.value[itemNodeId].has(hoveringItemId);
+}
+
+function onMouseEnterCell(e: MouseEvent) {
+	const target = e.target;
+	if (target && props.mappingEnabled) {
+		const col = (target as HTMLElement).dataset.col;
+		if (col && !isNaN(parseInt(col, 10))) {
+			activeColumn.value = parseInt(col, 10);
+		}
+	}
+
+	if (target) {
+		const row = (target as HTMLElement).dataset.row;
+		if (row && !isNaN(parseInt(row, 10))) {
+			activeRow.value = parseInt(row, 10);
+			emit('activeRowChanged', props.pageOffset + activeRow.value);
+		}
+	}
+}
+
+function onMouseLeaveCell() {
+	activeColumn.value = -1;
+	activeRow.value = null;
+	emit('activeRowChanged', null);
+}
+
+function onMouseEnterKey(path: string[], colIndex: number) {
+	hoveringPath.value = getCellExpression(path, colIndex);
+}
+
+function onMouseLeaveKey() {
+	hoveringPath.value = null;
+}
+
+function isHovering(path: string[], colIndex: number) {
+	const expr = getCellExpression(path, colIndex);
+
+	return hoveringPath.value === expr;
+}
+
+function getExpression(column: string) {
+	if (!props.node) {
+		return '';
+	}
+
+	return getMappedExpression({
+		nodeName: props.node.name,
+		distanceFromActive: props.distanceFromActive,
+		path: [column],
+	});
+}
+
+function getPathNameFromTarget(el?: HTMLElement) {
+	if (!el) {
+		return '';
+	}
+	return el.dataset.name;
+}
+
+function getCellPathName(path: Array<string | number>, colIndex: number) {
+	const lastKey = path[path.length - 1];
+	if (typeof lastKey === 'string') {
+		return lastKey;
+	}
+	if (path.length > 1) {
+		const prevKey = path[path.length - 2];
+		return `${prevKey}[${lastKey}]`;
+	}
+	const column = tableData.value.columns[colIndex];
+	return `${column}[${lastKey}]`;
+}
+
+function getCellExpression(path: Array<string | number>, colIndex: number) {
+	if (!props.node) {
+		return '';
+	}
+	const column = tableData.value.columns[colIndex];
+	return getMappedExpression({
+		nodeName: props.node.name,
+		distanceFromActive: props.distanceFromActive,
+		path: [column, ...path],
+	});
+}
+
+function isEmpty(value: unknown): boolean {
+	return (
+		value === '' ||
+		(Array.isArray(value) && value.length === 0) ||
+		(typeof value === 'object' && value !== null && Object.keys(value).length === 0) ||
+		value === null ||
+		value === undefined
+	);
+}
+
+function getValueToRender(value: unknown): string {
+	if (value === '') {
+		return i18n.baseText('runData.emptyString');
+	}
+	if (typeof value === 'string') {
+		return value;
+	}
+	if (Array.isArray(value) && value.length === 0) {
+		return i18n.baseText('runData.emptyArray');
+	}
+	if (typeof value === 'object' && value !== null && Object.keys(value).length === 0) {
+		return i18n.baseText('runData.emptyObject');
+	}
+	if (value === null || value === undefined) {
+		return `[${value}]`;
+	}
+	if (value === true || value === false || typeof value === 'number') {
+		return value.toString();
+	}
+	return JSON.stringify(value);
+}
+
+function onDragStart() {
+	draggedColumn.value = true;
+	ndvStore.resetMappingTelemetry();
+}
+
+function onCellDragStart(el: HTMLElement) {
+	if (el?.dataset.value) {
+		draggingPath.value = el.dataset.value;
+	}
+
+	onDragStart();
+}
+
+function onCellDragEnd(el: HTMLElement) {
+	draggingPath.value = null;
+
+	onDragEnd(el.dataset.name ?? '', 'tree', el.dataset.depth ?? '0');
+}
+
+function isDraggingKey(path: Array<string | number>, colIndex: number) {
+	if (!draggingPath.value) {
+		return;
+	}
+
+	return draggingPath.value === getCellExpression(path, colIndex);
+}
+
+function onDragEnd(column: string, src: string, depth = '0') {
+	setTimeout(() => {
+		const mappingTelemetry = ndvStore.mappingTelemetry;
+		const telemetryPayload = {
+			src_node_type: props.node.type,
+			src_field_name: column,
+			src_nodes_back: props.distanceFromActive,
+			src_run_index: props.runIndex,
+			src_runs_total: props.totalRuns,
+			src_field_nest_level: parseInt(depth, 10),
+			src_view: 'table',
+			src_element: src,
+			success: false,
+			...mappingTelemetry,
+		};
+
+		void externalHooks.run('runDataTable.onDragEnd', telemetryPayload);
+
+		telemetry.track('User dragged data for mapping', telemetryPayload, {
+			withPostHog: true,
+		});
+	}, 1000); // ensure dest data gets set if drop
+}
+
+function isSimple(data: unknown): boolean {
+	return (
+		typeof data !== 'object' ||
+		data === null ||
+		(Array.isArray(data) && data.length === 0) ||
+		(typeof data === 'object' && Object.keys(data).length === 0)
+	);
+}
+
+function hasJsonInColumn(colIndex: number): boolean {
+	return tableData.value.hasJson[tableData.value.columns[colIndex]];
+}
+
+function convertToTable(inputData: INodeExecutionData[]): ITableData {
+	const resultTableData: GenericValue[][] = [];
+	const tableColumns: string[] = [];
+	let leftEntryColumns: string[], entryRows: GenericValue[];
+	// Go over all entries
+	let entry: IDataObject;
+	const hasJson: { [key: string]: boolean } = {};
+	inputData.forEach((data) => {
+		if (!data.hasOwnProperty('json')) {
+			return;
+		}
+		entry = data.json;
+
+		// Go over all keys of entry
+		entryRows = [];
+		const entryColumns = Object.keys(entry || {});
+
+		if (entryColumns.length > MAX_COLUMNS_LIMIT) {
+			columnLimitExceeded.value = true;
+			leftEntryColumns = entryColumns.slice(0, MAX_COLUMNS_LIMIT);
+		} else {
+			leftEntryColumns = entryColumns;
+		}
+
+		// Go over all the already existing column-keys
+		tableColumns.forEach((key) => {
+			if (entry.hasOwnProperty(key)) {
+				// Entry does have key so add its value
+				entryRows.push(entry[key]);
+				// Remove key so that we know that it got added
+				leftEntryColumns.splice(leftEntryColumns.indexOf(key), 1);
+
+				hasJson[key] =
+					hasJson[key] ||
+					(typeof entry[key] === 'object' && Object.keys(entry[key] ?? {}).length > 0) ||
+					false;
+			} else {
+				// Entry does not have key so add undefined
+				entryRows.push(undefined);
 			}
+		});
 
-			if (target) {
-				const row = (target as HTMLElement).dataset.row;
-				if (row && !isNaN(parseInt(row, 10))) {
-					this.activeRow = parseInt(row, 10);
-					this.$emit('activeRowChanged', this.pageOffset + this.activeRow);
-				}
-			}
-		},
-		onMouseLeaveCell() {
-			this.activeColumn = -1;
-			this.activeRow = null;
-			this.$emit('activeRowChanged', null);
-		},
-		onMouseEnterKey(path: string[], colIndex: number) {
-			this.hoveringPath = this.getCellExpression(path, colIndex);
-		},
-		onMouseLeaveKey() {
-			this.hoveringPath = null;
-		},
-		isHovering(path: string[], colIndex: number) {
-			const expr = this.getCellExpression(path, colIndex);
+		// Go over all the columns the entry has but did not exist yet
+		leftEntryColumns.forEach((key) => {
+			// Add the key for all runs in the future
+			tableColumns.push(key);
+			// Add the value
+			entryRows.push(entry[key]);
+			hasJson[key] =
+				hasJson[key] ||
+				(typeof entry[key] === 'object' && Object.keys(entry[key] ?? {}).length > 0) ||
+				false;
+		});
 
-			return this.hoveringPath === expr;
-		},
-		getExpression(column: string) {
-			if (!this.node) {
-				return '';
-			}
+		// Add the data of the entry
+		resultTableData.push(entryRows);
+	});
 
-			return getMappedExpression({
-				nodeName: this.node.name,
-				distanceFromActive: this.distanceFromActive,
-				path: [column],
-			});
-		},
-		getPathNameFromTarget(el?: HTMLElement) {
-			if (!el) {
-				return '';
-			}
-			return el.dataset.name;
-		},
-		getCellPathName(path: Array<string | number>, colIndex: number) {
-			const lastKey = path[path.length - 1];
-			if (typeof lastKey === 'string') {
-				return lastKey;
-			}
-			if (path.length > 1) {
-				const prevKey = path[path.length - 2];
-				return `${prevKey}[${lastKey}]`;
-			}
-			const column = this.tableData.columns[colIndex];
-			return `${column}[${lastKey}]`;
-		},
-		getCellExpression(path: Array<string | number>, colIndex: number) {
-			if (!this.node) {
-				return '';
-			}
-			const column = this.tableData.columns[colIndex];
-			return getMappedExpression({
-				nodeName: this.node.name,
-				distanceFromActive: this.distanceFromActive,
-				path: [column, ...path],
-			});
-		},
-		isEmpty(value: unknown): boolean {
-			return (
-				value === '' ||
-				(Array.isArray(value) && value.length === 0) ||
-				(typeof value === 'object' && value !== null && Object.keys(value).length === 0) ||
-				value === null ||
-				value === undefined
-			);
-		},
-		getValueToRender(value: unknown): string {
-			if (value === '') {
-				return this.$locale.baseText('runData.emptyString');
-			}
-			if (typeof value === 'string') {
-				return value;
-			}
-			if (Array.isArray(value) && value.length === 0) {
-				return this.$locale.baseText('runData.emptyArray');
-			}
-			if (typeof value === 'object' && value !== null && Object.keys(value).length === 0) {
-				return this.$locale.baseText('runData.emptyObject');
-			}
-			if (value === null || value === undefined) {
-				return `[${value}]`;
-			}
-			if (value === true || value === false || typeof value === 'number') {
-				return value.toString();
-			}
-			return JSON.stringify(value);
-		},
-		onDragStart() {
-			this.draggedColumn = true;
-			this.ndvStore.resetMappingTelemetry();
-		},
-		onCellDragStart(el: HTMLElement) {
-			if (el?.dataset.value) {
-				this.draggingPath = el.dataset.value;
-			}
+	// Make sure that all entry-rows have the same length
+	resultTableData.forEach((rows) => {
+		if (tableColumns.length > rows.length) {
+			// Has fewer entries so add the missing ones
+			rows.push(...new Array(tableColumns.length - rows.length));
+		}
+	});
 
-			this.onDragStart();
+	return {
+		hasJson,
+		columns: tableColumns,
+		data: resultTableData,
+	};
+}
+
+function switchToJsonView() {
+	emit('displayModeChange', 'json');
+}
+
+watch(focusedMappableInput, (curr) => {
+	setTimeout(
+		() => {
+			forceShowGrip.value = !!focusedMappableInput.value;
 		},
-		onCellDragEnd(el: HTMLElement) {
-			this.draggingPath = null;
-
-			this.onDragEnd(el.dataset.name || '', 'tree', el.dataset.depth || '0');
-		},
-		isDraggingKey(path: Array<string | number>, colIndex: number) {
-			if (!this.draggingPath) {
-				return;
-			}
-
-			return this.draggingPath === this.getCellExpression(path, colIndex);
-		},
-		onDragEnd(column: string, src: string, depth = '0') {
-			setTimeout(() => {
-				const mappingTelemetry = this.ndvStore.mappingTelemetry;
-				const telemetryPayload = {
-					src_node_type: this.node.type,
-					src_field_name: column,
-					src_nodes_back: this.distanceFromActive,
-					src_run_index: this.runIndex,
-					src_runs_total: this.totalRuns,
-					src_field_nest_level: parseInt(depth, 10),
-					src_view: 'table',
-					src_element: src,
-					success: false,
-					...mappingTelemetry,
-				};
-
-				void this.externalHooks.run('runDataTable.onDragEnd', telemetryPayload);
-
-				this.$telemetry.track('User dragged data for mapping', telemetryPayload, {
-					withPostHog: true,
-				});
-			}, 1000); // ensure dest data gets set if drop
-		},
-		isSimple(data: unknown): boolean {
-			return (
-				typeof data !== 'object' ||
-				data === null ||
-				(Array.isArray(data) && data.length === 0) ||
-				(typeof data === 'object' && Object.keys(data).length === 0)
-			);
-		},
-		hasJsonInColumn(colIndex: number): boolean {
-			return this.tableData.hasJson[this.tableData.columns[colIndex]];
-		},
-		convertToTable(inputData: INodeExecutionData[]): ITableData {
-			const tableData: GenericValue[][] = [];
-			const tableColumns: string[] = [];
-			let leftEntryColumns: string[], entryRows: GenericValue[];
-			// Go over all entries
-			let entry: IDataObject;
-			const hasJson: { [key: string]: boolean } = {};
-			inputData.forEach((data) => {
-				if (!data.hasOwnProperty('json')) {
-					return;
-				}
-				entry = data.json;
-
-				// Go over all keys of entry
-				entryRows = [];
-				const entryColumns = Object.keys(entry || {});
-
-				if (entryColumns.length > MAX_COLUMNS_LIMIT) {
-					this.columnLimitExceeded = true;
-					leftEntryColumns = entryColumns.slice(0, MAX_COLUMNS_LIMIT);
-				} else {
-					leftEntryColumns = entryColumns;
-				}
-
-				// Go over all the already existing column-keys
-				tableColumns.forEach((key) => {
-					if (entry.hasOwnProperty(key)) {
-						// Entry does have key so add its value
-						entryRows.push(entry[key]);
-						// Remove key so that we know that it got added
-						leftEntryColumns.splice(leftEntryColumns.indexOf(key), 1);
-
-						hasJson[key] =
-							hasJson[key] ||
-							(typeof entry[key] === 'object' && Object.keys(entry[key] || {}).length > 0) ||
-							false;
-					} else {
-						// Entry does not have key so add undefined
-						entryRows.push(undefined);
-					}
-				});
-
-				// Go over all the columns the entry has but did not exist yet
-				leftEntryColumns.forEach((key) => {
-					// Add the key for all runs in the future
-					tableColumns.push(key);
-					// Add the value
-					entryRows.push(entry[key]);
-					hasJson[key] =
-						hasJson[key] ||
-						(typeof entry[key] === 'object' && Object.keys(entry[key] || {}).length > 0) ||
-						false;
-				});
-
-				// Add the data of the entry
-				tableData.push(entryRows);
-			});
-
-			// Make sure that all entry-rows have the same length
-			tableData.forEach((entryRows) => {
-				if (tableColumns.length > entryRows.length) {
-					// Has fewer entries so add the missing ones
-					entryRows.push(...new Array(tableColumns.length - entryRows.length));
-				}
-			});
-
-			return {
-				hasJson,
-				columns: tableColumns,
-				data: tableData,
-			};
-		},
-		switchToJsonView() {
-			this.$emit('displayModeChange', 'json');
-		},
-	},
-	watch: {
-		focusedMappableInput(curr: boolean) {
-			setTimeout(
-				() => {
-					this.forceShowGrip = !!this.focusedMappableInput;
-				},
-				curr ? 300 : 150,
-			);
-		},
-	},
+		curr ? 300 : 150,
+	);
 });
 </script>
 
@@ -484,7 +474,7 @@ export default defineComponent({
 				</tr>
 			</thead>
 			<Draggable
-				ref="draggable"
+				ref="draggableRef"
 				tag="tbody"
 				type="mapping"
 				target-data-key="mappable"
