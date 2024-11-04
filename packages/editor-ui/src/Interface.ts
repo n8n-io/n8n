@@ -52,7 +52,6 @@ import type {
 	AI_NODE_CREATOR_VIEW,
 	CREDENTIAL_EDIT_MODAL_KEY,
 	SignInType,
-	FAKE_DOOR_FEATURES,
 	TRIGGER_NODE_CREATOR_VIEW,
 	REGULAR_NODE_CREATOR_VIEW,
 	AI_OTHERS_NODE_CREATOR_VIEW,
@@ -62,7 +61,6 @@ import type { BulkCommand, Undoable } from '@/models/history';
 import type { PartialBy, TupleToUnion } from '@/utils/typeHelpers';
 
 import type { ProjectSharingData } from '@/types/projects.types';
-import type { BaseTextKey } from './plugins/i18n';
 
 export * from 'n8n-design-system/types';
 
@@ -1035,24 +1033,6 @@ export interface NDVState {
 export interface NotificationOptions extends Partial<ElementNotificationOptions> {
 	message: string | ElementNotificationOptions['message'];
 }
-
-export type IFakeDoor = {
-	id: FAKE_DOOR_FEATURES;
-	featureName: BaseTextKey;
-	icon?: string;
-	infoText?: BaseTextKey;
-	actionBoxTitle: BaseTextKey;
-	actionBoxDescription: BaseTextKey;
-	actionBoxButtonLabel?: BaseTextKey;
-	linkURL: string;
-	uiLocations: IFakeDoorLocation[];
-};
-
-export type IFakeDoorLocation =
-	| 'settings'
-	| 'settings/users'
-	| 'credentialsModal'
-	| 'workflowShareModal';
 
 export type NodeFilterType =
 	| typeof REGULAR_NODE_CREATOR_VIEW

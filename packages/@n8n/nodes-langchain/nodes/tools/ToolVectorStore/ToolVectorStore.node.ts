@@ -63,7 +63,7 @@ export class ToolVectorStore implements INodeType {
 				name: 'name',
 				type: 'string',
 				default: '',
-				placeholder: 'e.g. state_of_union_address',
+				placeholder: 'e.g. company_knowledge_base',
 				validateType: 'string-alphanumeric',
 				description: 'Name of the vector store',
 			},
@@ -72,7 +72,7 @@ export class ToolVectorStore implements INodeType {
 				name: 'description',
 				type: 'string',
 				default: '',
-				placeholder: 'The most recent state of the Union address',
+				placeholder: 'Retrieves data about [insert information about your data here]...',
 				typeOptions: {
 					rows: 3,
 				},
