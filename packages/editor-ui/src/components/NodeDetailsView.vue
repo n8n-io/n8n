@@ -154,6 +154,23 @@ const parentNode = computed(() => {
 });
 
 const inputNodeName = computed<string | undefined>(() => {
+	const nodeOutputs = activeNodeType.value?.outputs;
+	const nonMainOutputs = Array.isArray(nodeOutputs)
+		? nodeOutputs.filter((output) => output !== NodeConnectionType.Main)
+		: [];
+
+	const isSubNode = nonMainOutputs.length > 0;
+
+	if (isSubNode && activeNode.value) {
+		// For sub-nodes, we need to get their connected output node to determine the input
+		// because sub-nodes use specialized outputs (e.g. NodeConnectionType.AiTool)
+		// instead of the standard Main output type
+		const connectedOutputNode = props.workflowObject.getChildNodes(
+			activeNode.value.name,
+			'ALL_NON_MAIN',
+		)?.[0];
+		return connectedOutputNode;
+	}
 	return selectedInput.value || parentNode.value;
 });
 
