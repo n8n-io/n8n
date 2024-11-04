@@ -1,7 +1,6 @@
-import { NDV, WorkflowPage, WorkflowsPage } from '../pages';
+import { NDV, WorkflowPage } from '../pages';
 
 const workflowPage = new WorkflowPage();
-const workflowsPage = new WorkflowsPage();
 const ndv = new NDV();
 
 it('should render runItems for sub-nodes and allow switching between them', () => {
