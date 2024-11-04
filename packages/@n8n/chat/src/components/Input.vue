@@ -2,7 +2,7 @@
 import { useFileDialog } from '@vueuse/core';
 import IconFilePlus from 'virtual:icons/mdi/filePlus';
 import IconSend from 'virtual:icons/mdi/send';
-import { computed, onMounted, onUnmounted, ref, unref } from 'vue';
+import { computed, onMounted, onUnmounted, ref, unref, watch } from 'vue';
 
 import { useI18n, useChat, useOptions } from '@n8n/chat/composables';
 import { chatEventBus } from '@n8n/chat/event-buses';
@@ -26,6 +26,7 @@ const files = ref<FileList | null>(null);
 const chatTextArea = ref<HTMLTextAreaElement | null>(null);
 const input = ref('');
 const isSubmitting = ref(false);
+const resizeObserver = ref<ResizeObserver | null>(null);
 
 const isSubmitDisabled = computed(() => {
 	return input.value === '' || waitingForResponse.value || options.disabled?.value === true;
@@ -76,7 +77,16 @@ onMounted(() => {
 	chatEventBus.on('setInputValue', setInputValue);
 
 	if (chatTextArea.value) {
-		adjustHeight({ target: chatTextArea.value } as unknown as Event);
+		resizeObserver.value = new ResizeObserver((entries) => {
+			for (const entry of entries) {
+				if (entry.target === chatTextArea.value) {
+					adjustHeight({ target: chatTextArea.value } as unknown as Event);
+				}
+			}
+		});
+
+		// Start observing the textarea
+		resizeObserver.value.observe(chatTextArea.value);
 	}
 });
 
@@ -84,6 +94,11 @@ onUnmounted(() => {
 	chatEventBus.off('focusInput', focusChatInput);
 	chatEventBus.off('blurInput', blurChatInput);
 	chatEventBus.off('setInputValue', setInputValue);
+
+	if (resizeObserver.value) {
+		resizeObserver.value.disconnect();
+		resizeObserver.value = null;
+	}
 });
 
 function blurChatInput() {
@@ -253,7 +268,7 @@ function adjustHeight(event: Event) {
 	display: flex;
 	position: absolute;
 	right: 0.5rem;
-	top: 0;
+	bottom: 0;
 }
 .chat-input-send-button {
 	height: var(--chat--textarea--height);

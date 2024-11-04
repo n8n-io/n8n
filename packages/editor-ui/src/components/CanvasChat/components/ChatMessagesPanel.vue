@@ -168,7 +168,7 @@ function copySessionId() {
 		</main>
 
 		<div :class="$style.messagesInput">
-			<div :class="$style.messagesHistory">
+			<div :class="$style.messagesHistory" v-if="pastChatMessages.length > 0">
 				<n8n-button
 					title="Navigate to previous message"
 					icon="chevron-up"
@@ -260,13 +260,14 @@ function copySessionId() {
 }
 
 .messagesInput {
-	--input-border-color: #4538a3;
+	--input-border-color: transparent;
 	--chat--input--border: none;
 
-	--chat--input--border-radius: 1rem;
+	--chat--input--border-radius: 2rem;
 	--chat--input--send--button--background: transparent;
 	--chat--input--send--button--color: var(--color-button-secondary-font);
-	--chat--input--send--button--color-hover: var(--color-primary);
+	// --chat--input--send--button--color-hover: var(--color-primary);
+	--chat--input--send--button--color: var(--color-primary);
 	--chat--input--border-active: var(--input-focus-border-color, var(--color-secondary));
 	--chat--files-spacing: var(--spacing-2xs) 0;
 	--chat--input--background: transparent;
@@ -284,14 +285,25 @@ function copySessionId() {
 	display: flex;
 	background: var(--color-lm-chat-bot-background);
 	border-radius: var(--chat--input--border-radius);
+	transition: border-color 200ms ease-in-out;
 	border: var(--input-border-color, var(--border-color-base))
 		var(--input-border-style, var(--border-style-base))
 		var(--input-border-width, var(--border-width-base));
+
+	&:focus-within {
+		--input-border-color: #4538a3;
+	}
 }
 
 .messagesHistory {
 	display: flex;
 	flex-direction: column;
-	margin-top: var(--spacing-3xs);
+	justify-content: flex-end;
+	margin-bottom: var(--spacing-3xs);
+
+	button:first-child {
+		margin-top: var(--spacing-4xs);
+		margin-bottom: calc(-1 * var(--spacing-4xs));
+	}
 }
 </style>

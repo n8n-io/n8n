@@ -329,7 +329,9 @@ export const useCanvasStore = defineStore('canvas', () => {
 	function setPanelOpen(panel: 'chat' | 'logs', isOpen: boolean) {
 		if (panel === 'chat') {
 			isChatPanelOpen.value = isOpen;
+			isLogsPanelOpen.value = isOpen;
 		}
+
 		if (panel === 'logs') {
 			isLogsPanelOpen.value = isOpen;
 		}

@@ -100,6 +100,11 @@ function toggleChat() {
 function toggleLogs() {
 	canvasStore.setPanelOpen('logs', !isLogsOpen.value);
 }
+
+function closeLogs() {
+	canvasStore.setPanelOpen('logs', false);
+}
+
 provide(ChatSymbol, chatConfig);
 provide(ChatOptionsSymbol, chatOptions);
 
@@ -170,32 +175,8 @@ watchEffect(() => {
 					</div>
 				</n8n-resize-wrapper>
 				<div v-if="isLogsOpen && connectedNode" :class="$style.logs">
-					<ChatLogsPanel :key="messages.length" :node="connectedNode" />
+					<ChatLogsPanel :key="messages.length" :node="connectedNode" @close="closeLogs" />
 				</div>
-			</div>
-
-			<div :class="$style.footer">
-				<n8n-button
-					type="secondary"
-					:active="isChatOpen"
-					outline
-					size="mini"
-					icon="comment"
-					@click="toggleChat"
-				>
-					Chat
-				</n8n-button>
-				<n8n-button
-					v-if="connectedNode"
-					type="tertiary"
-					:active="isLogsOpen"
-					outline
-					size="mini"
-					icon="tasks"
-					@click="toggleLogs"
-				>
-					Execution Logs
-				</n8n-button>
 			</div>
 		</div>
 	</n8n-resize-wrapper>

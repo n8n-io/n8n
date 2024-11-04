@@ -512,6 +512,9 @@ export default defineComponent({
 				: (this.projectsStore.currentProject ?? this.projectsStore.personalProject);
 			return getResourcePermissions(project?.scopes);
 		},
+		isChatOpen() {
+			return this.canvasStore.isChatPanelOpen;
+		},
 	},
 	watch: {
 		// Listen to route changes and load the workflow accordingly
@@ -4650,6 +4653,7 @@ export default defineComponent({
 					size="large"
 					icon="comment"
 					type="primary"
+					:outline="isChatOpen === false"
 					data-test-id="workflow-chat-button"
 					@click.stop="onOpenChat"
 				/>
