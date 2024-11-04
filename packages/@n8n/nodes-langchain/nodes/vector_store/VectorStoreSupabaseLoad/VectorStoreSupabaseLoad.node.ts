@@ -1,7 +1,7 @@
 import {
-	type IExecuteFunctions,
 	type INodeType,
 	type INodeTypeDescription,
+	type ISupplyDataFunctions,
 	type SupplyData,
 	NodeConnectionType,
 } from 'n8n-workflow';
@@ -81,7 +81,7 @@ export class VectorStoreSupabaseLoad implements INodeType {
 
 	methods = { listSearch: { supabaseTableNameSearch } };
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		this.logger.debug('Supply Supabase Load Vector Store');
 
 		const tableName = this.getNodeParameter('tableName', itemIndex, '', {

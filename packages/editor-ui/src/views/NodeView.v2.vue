@@ -46,7 +46,7 @@ import type {
 	CanvasNodeMoveEvent,
 	ConnectStartEvent,
 } from '@/types';
-import { CanvasNodeRenderType } from '@/types';
+import { CanvasNodeRenderType, CanvasConnectionMode } from '@/types';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	EnterpriseEditionFeature,
@@ -105,6 +105,8 @@ import { useClipboard } from '@/composables/useClipboard';
 import { useBeforeUnload } from '@/composables/useBeforeUnload';
 import { getResourcePermissions } from '@/permissions';
 import NodeViewUnfinishedWorkflowMessage from '@/components/NodeViewUnfinishedWorkflowMessage.vue';
+import { createCanvasConnectionHandleString } from '@/utils/canvasUtilsV2';
+import { isValidNodeConnectionType } from '@/utils/typeGuards';
 
 const LazyNodeCreation = defineAsyncComponent(
 	async () => await import('@/components/Node/NodeCreation.vue'),
@@ -879,7 +881,17 @@ async function onAddNodesAndConnections(
 
 		return {
 			source: fromNode.id,
+			sourceHandle: createCanvasConnectionHandleString({
+				mode: CanvasConnectionMode.Output,
+				type: isValidNodeConnectionType(type) ? type : NodeConnectionType.Main,
+				index: from.outputIndex ?? 0,
+			}),
 			target: toNode.id,
+			targetHandle: createCanvasConnectionHandleString({
+				mode: CanvasConnectionMode.Input,
+				type: isValidNodeConnectionType(type) ? type : NodeConnectionType.Main,
+				index: to.inputIndex ?? 0,
+			}),
 			data: {
 				source: {
 					index: from.outputIndex ?? 0,
@@ -893,7 +905,7 @@ async function onAddNodesAndConnections(
 		};
 	});
 
-	addConnections(mappedConnections);
+	await addConnections(mappedConnections);
 
 	uiStore.resetLastInteractedWith();
 	selectNodes([addedNodes[addedNodes.length - 1].id]);
@@ -1438,7 +1450,7 @@ function selectNodes(ids: string[]) {
 
 function onClickPane(position: CanvasNode['position']) {
 	lastClickPosition.value = [position.x, position.y];
-	uiStore.isCreateNodeActive = false;
+	nodeCreatorStore.isCreateNodeActive = false;
 	setNodeSelected();
 }
 
@@ -1631,7 +1643,7 @@ onBeforeUnmount(() => {
 		<Suspense>
 			<LazyNodeCreation
 				v-if="!isCanvasReadOnly"
-				:create-node-active="uiStore.isCreateNodeActive"
+				:create-node-active="nodeCreatorStore.isCreateNodeActive"
 				:node-view-scale="viewportTransform.zoom"
 				@toggle-node-creator="onToggleNodeCreator"
 				@add-nodes="onAddNodesAndConnections"

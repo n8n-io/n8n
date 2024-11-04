@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import WorkerList from '@/components/WorkerList.ee.vue';
-import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
+import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 const settingsStore = useSettingsStore();
-const uiStore = useUIStore();
+const pageRedirectionHelper = usePageRedirectionHelper();
 
 const goToUpgrade = () => {
-	void uiStore.goToUpgrade('worker-view', 'upgrade-worker-view');
+	void pageRedirectionHelper.goToUpgrade('worker-view', 'upgrade-worker-view');
 };
 </script>
 

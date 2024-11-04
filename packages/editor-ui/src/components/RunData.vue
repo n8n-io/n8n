@@ -162,6 +162,10 @@ export default defineComponent({
 			type: Boolean,
 			default: false,
 		},
+		hidePagination: {
+			type: Boolean,
+			default: false,
+		},
 	},
 	setup(props) {
 		const ndvStore = useNDVStore();
@@ -1746,6 +1750,7 @@ export default defineComponent({
 		</div>
 		<div
 			v-if="
+				hidePagination === false &&
 				hasNodeRun &&
 				!hasRunError &&
 				displayMode !== 'binary' &&
