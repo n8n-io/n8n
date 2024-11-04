@@ -1,19 +1,16 @@
-<script lang="ts">
-import { defineComponent } from 'vue';
-import { mapStores } from 'pinia';
+<script setup lang="ts">
+import { computed } from 'vue';
 import { useRootStore } from '@/stores/root.store';
 
-export default defineComponent({
-	name: 'PushConnectionTracker',
-	computed: {
-		...mapStores(useRootStore),
-	},
-});
+defineOptions({ name: 'PushConnectionTracker' });
+
+const rootStore = useRootStore();
+const pushConnectionActive = computed(() => rootStore.pushConnectionActive);
 </script>
 
 <template>
 	<span>
-		<div v-if="!rootStore.pushConnectionActive" class="push-connection-lost primary-color">
+		<div v-if="!pushConnectionActive" class="push-connection-lost primary-color">
 			<n8n-tooltip placement="bottom-end">
 				<template #content>
 					<div v-n8n-html="$locale.baseText('pushConnectionTracker.cannotConnectToServer')"></div>

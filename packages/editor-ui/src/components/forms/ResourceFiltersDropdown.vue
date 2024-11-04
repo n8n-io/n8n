@@ -1,99 +1,84 @@
-<script lang="ts">
-import { defineComponent } from 'vue';
+<script setup lang="ts">
+import { ref, computed, watch, onBeforeMount } from 'vue';
 import { EnterpriseEditionFeature } from '@/constants';
-import { mapStores } from 'pinia';
 import { useProjectsStore } from '@/stores/projects.store';
-import type { PropType } from 'vue';
 import type { ProjectSharingData } from '@/types/projects.types';
 import ProjectSharing from '@/components/Projects/ProjectSharing.vue';
+import { IFilters } from '../layouts/ResourcesListLayout.vue';
 
-export type IResourceFiltersType = Record<string, boolean | string | string[]>;
+type IResourceFiltersType = Record<string, boolean | string | string[]>;
 
-export default defineComponent({
-	components: {
-		ProjectSharing,
-	},
-	props: {
-		modelValue: {
-			type: Object as PropType<IResourceFiltersType>,
-			default: () => ({}),
-		},
-		keys: {
-			type: Array as PropType<string[]>,
-			default: () => [],
-		},
-		shareable: {
-			type: Boolean,
-			default: true,
-		},
-		reset: {
-			type: Function as PropType<() => void>,
-			default: () => {},
-		},
-	},
-	data() {
-		return {
-			EnterpriseEditionFeature,
-			selectedProject: null as ProjectSharingData | null,
-		};
-	},
-	computed: {
-		...mapStores(useProjectsStore),
-		filtersLength(): number {
-			let length = 0;
+const {
+	modelValue = {},
+	keys = [],
+	shareable = true,
+	reset = () => {},
+} = defineProps<{
+	modelValue?: IResourceFiltersType;
+	keys?: string[];
+	shareable?: boolean;
+	reset?: () => void;
+}>();
 
-			this.keys.forEach((key) => {
-				if (key === 'search') {
-					return;
-				}
+const emit = defineEmits<{
+	'update:modelValue': [value: IFilters];
+	'update:filtersLength': [value: number];
+}>();
 
-				const value = this.modelValue[key];
-				length += (Array.isArray(value) ? value.length > 0 : value !== '') ? 1 : 0;
-			});
+const selectedProject = ref<ProjectSharingData | null>(null);
+const projectsStore = useProjectsStore();
 
-			return length;
-		},
-		hasFilters(): boolean {
-			return this.filtersLength > 0;
-		},
-	},
-	watch: {
-		filtersLength(value: number) {
-			this.$emit('update:filtersLength', value);
-		},
-	},
-	async beforeMount() {
-		await this.projectsStore.getAvailableProjects();
-		this.selectedProject =
-			this.projectsStore.availableProjects.find(
-				(project) => project.id === this.modelValue.homeProject,
-			) ?? null;
-	},
-	methods: {
-		setKeyValue(key: string, value: unknown) {
-			const filters = {
-				...this.modelValue,
-				[key]: value,
-			};
+const filtersLength = computed(() => {
+	let length = 0;
 
-			this.$emit('update:modelValue', filters);
-		},
-		resetFilters() {
-			if (this.reset) {
-				this.reset();
-			} else {
-				const filters = { ...this.modelValue };
+	keys.forEach((key) => {
+		if (key === 'search') {
+			return;
+		}
 
-				this.keys.forEach((key) => {
-					filters[key] = Array.isArray(this.modelValue[key]) ? [] : '';
-				});
+		const value = modelValue[key];
+		length += (Array.isArray(value) ? value.length > 0 : value !== '') ? 1 : 0;
+	});
 
-				this.$emit('update:modelValue', filters);
-			}
-			this.selectedProject = null;
-		},
-	},
+	return length;
 });
+
+const hasFilters = computed(() => filtersLength.value > 0);
+
+watch(filtersLength, (value) => {
+	emit('update:filtersLength', value);
+});
+
+onBeforeMount(async () => {
+	await projectsStore.getAvailableProjects();
+	selectedProject.value =
+		projectsStore.availableProjects.find((project) => project.id === modelValue.homeProject) ??
+		null;
+});
+
+const setKeyValue = (key: string, value: unknown) => {
+	const filters = {
+		...modelValue,
+		[key]: value,
+	} as IFilters;
+
+	emit('update:modelValue', filters);
+};
+
+const resetFilters = () => {
+	if (reset) {
+		reset();
+	} else {
+		const filters = { ...modelValue } as IFilters;
+
+		keys.forEach((key) => {
+			filters[key] = Array.isArray(modelValue[key]) ? [] : '';
+		});
+
+		emit('update:modelValue', filters);
+	}
+	selectedProject.value = null;
+};
 </script>
 
 <template>
