@@ -87,7 +87,7 @@ export function usePinnedData(
 		const workflow = workflowsStore.getCurrentWorkflow();
 		const mainOutputs = NodeHelpers.getNodeOutputs(workflow, targetNode, nodeType)
 			.map((output) => (typeof output === 'string' ? { type: output } : output))
-			.filter((output) => output.type === NodeConnectionType.Main);
+			.filter((output) => output.type === NodeConnectionType.Main && output.category !== 'error');
 
 		// Outputs are pinnable if there is exactly one main output and optionally one error output
 		const pinnableMainOutputs =
