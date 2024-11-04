@@ -232,6 +232,7 @@ describe('GlobalConfig', () => {
 			launcherPath: '',
 			launcherRunner: 'javascript',
 			maxOldSpaceSize: '',
+			maxConcurrency: 5,
 		},
 		sentry: {
 			backendDsn: '',
@@ -269,6 +270,14 @@ describe('GlobalConfig', () => {
 			restrictFileAccessTo: '',
 			blockFileAccessToN8nFiles: true,
 			daysAbandonedWorkflow: 90,
+		},
+		pruning: {
+			isEnabled: true,
+			maxAge: 336,
+			maxCount: 10_000,
+			hardDeleteBuffer: 1,
+			hardDeleteInterval: 15,
+			softDeleteInterval: 60,
 		},
 	};
 

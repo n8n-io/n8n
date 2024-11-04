@@ -13,6 +13,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { DOCS_DOMAIN, MODAL_CONFIRM } from '@/constants';
+import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 export default defineComponent({
 	name: 'SettingsApiView',
@@ -24,6 +25,7 @@ export default defineComponent({
 			...useToast(),
 			...useMessage(),
 			...useUIStore(),
+			pageRedirectionHelper: usePageRedirectionHelper(),
 			documentTitle: useDocumentTitle(),
 		};
 	},
@@ -70,7 +72,7 @@ export default defineComponent({
 	},
 	methods: {
 		onUpgrade() {
-			void this.uiStore.goToUpgrade('settings-n8n-api', 'upgrade-api', 'redirect');
+			void this.pageRedirectionHelper.goToUpgrade('settings-n8n-api', 'upgrade-api', 'redirect');
 		},
 		async showDeleteModal() {
 			const confirmed = await this.confirm(

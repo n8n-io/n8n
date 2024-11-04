@@ -278,6 +278,9 @@ describe('Langchain Integration', () => {
 							},
 						},
 					},
+					metadata: {
+						subRun: [{ node: AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME, runIndex: 0 }],
+					},
 					inputOverride: {
 						ai_languageModel: [
 							[
@@ -315,9 +318,6 @@ describe('Langchain Integration', () => {
 				createMockNodeExecutionData(AGENT_NODE_NAME, {
 					jsonData: {
 						main: { output: 'Hi there! How can I assist you today?' },
-					},
-					metadata: {
-						subRun: [{ node: AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME, runIndex: 0 }],
 					},
 				}),
 			],

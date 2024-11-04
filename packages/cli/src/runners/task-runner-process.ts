@@ -68,15 +68,14 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 	) {
 		super();
 
-		a.ok(
-			this.runnerConfig.mode === 'internal_childprocess' ||
-				this.runnerConfig.mode === 'internal_launcher',
-		);
-
 		this.logger = logger.scoped('task-runner');
 	}
 
 	async start() {
+		a.ok(
+			this.runnerConfig.mode === 'internal_childprocess' ||
+				this.runnerConfig.mode === 'internal_launcher',
+		);
 		a.ok(!this.process, 'Task Runner Process already running');
 
 		const grantToken = await this.authService.createGrantToken();
@@ -179,6 +178,7 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 			N8N_RUNNERS_GRANT_TOKEN: grantToken,
 			N8N_RUNNERS_N8N_URI: n8nUri,
 			N8N_RUNNERS_MAX_PAYLOAD: this.runnerConfig.maxPayload.toString(),
+			N8N_RUNNERS_MAX_CONCURRENCY: this.runnerConfig.maxConcurrency.toString(),
 			...this.getPassthroughEnvVars(),
 		};
 
