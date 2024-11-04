@@ -173,6 +173,11 @@ const setCurrentPage = (page: number) => {
 	currentPage.value = page;
 };
 
+defineExpose({
+	currentPage,
+	setCurrentPage,
+});
+
 const sendFiltersTelemetry = (source: string) => {
 	// Prevent sending multiple telemetry events when resetting filters
 	// Timeout is required to wait for search debounce to be over
