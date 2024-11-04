@@ -15,6 +15,13 @@ import { WorkflowEntity } from '@/databases/entities/workflow-entity';
 
 import { WithTimestamps } from './abstract-entity';
 
+/**
+ * Entity representing a Test
+ * It combines:
+ * - the workflow under test
+ * - the workflow used to evaluate the results of test execution
+ * - the filter used to select test cases from previous executions of the workflow under test - annotation tag
+ */
 @Entity()
 @Index(['workflow'])
 @Index(['evaluationWorkflow'])
@@ -28,17 +35,27 @@ export class TestEntity extends WithTimestamps {
 	name: string;
 
 	@RelationId((test: TestEntity) => test.workflow)
-	workflowId: number;
+	workflowId: string;
 
+	/**
+	 * Relation to the workflow under test
+	 */
 	@ManyToOne('WorkflowEntity', 'tests')
 	workflow: WorkflowEntity;
 
 	@RelationId((test: TestEntity) => test.evaluationWorkflow)
-	evaluationWorkflowId: number;
+	evaluationWorkflowId: string;
 
+	/**
+	 * Relation to the workflow used to evaluate the results of test execution
+	 */
 	@ManyToOne('WorkflowEntity', 'evaluationTests')
 	evaluationWorkflow: WorkflowEntity;
 
+	/**
+	 * Relation to the annotation tag associated with the test
+	 * This tag will be used to select the test cases to run from previous executions
+	 */
 	@OneToOne('AnnotationTagEntity', 'test')
 	annotationTag: AnnotationTagEntity;
 }
