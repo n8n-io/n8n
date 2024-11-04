@@ -50,8 +50,7 @@ export class OwnershipService {
 			projectId,
 		);
 
-		if (cachedValue) this.userRepository.create(cachedValue);
-		if (cachedValue === null) return null;
+		if (cachedValue) return this.userRepository.create(cachedValue);
 
 		const ownerRel = await this.projectRelationRepository.getPersonalProjectOwners([projectId]);
 		const owner = ownerRel[0]?.user ?? null;
