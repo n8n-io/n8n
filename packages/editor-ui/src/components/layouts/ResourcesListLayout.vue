@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed, nextTick, ref, onMounted, watch } from 'vue';
 
-import { type ProjectSharingData, ProjectTypes } from '@/types/projects.types';
+import { type ProjectSharingData } from '@/types/projects.types';
 import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
 import PageViewLayoutList from '@/components/layouts/PageViewLayoutList.vue';
 import ResourceFiltersDropdown from '@/components/forms/ResourceFiltersDropdown.vue';
@@ -13,7 +13,6 @@ import { useI18n } from '@/composables/useI18n';
 import { useDebounce } from '@/composables/useDebounce';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useRoute } from 'vue-router';
-import { useProjectsStore } from '@/stores/projects.store';
 
 import type { BaseTextKey } from '@/plugins/i18n';
 import type { Scope } from '@n8n/permissions';
@@ -100,7 +99,6 @@ const route = useRoute();
 const i18n = useI18n();
 const { callDebounced } = useDebounce();
 const usersStore = useUsersStore();
-const projectsStore = useProjectsStore();
 const telemetry = useTelemetry();
 
 const sortBy = ref(props.sortOptions[0]);
