@@ -19,8 +19,8 @@ import { MiniMap } from '@vue-flow/minimap';
 import Node from './elements/nodes/CanvasNode.vue';
 import Edge from './elements/edges/CanvasEdge.vue';
 import { computed, onMounted, onUnmounted, provide, ref, toRef, useCssModule, watch } from 'vue';
-import { EventBus, useDeviceSupport } from 'n8n-design-system';
-import { createEventBus } from 'n8n-design-system';
+import type { EventBus } from 'n8n-design-system';
+import { createEventBus, useDeviceSupport } from 'n8n-design-system';
 import { useContextMenu, type ContextMenuAction } from '@/composables/useContextMenu';
 import { useKeybindings } from '@/composables/useKeybindings';
 import ContextMenu from '@/components/ContextMenu/ContextMenu.vue';
@@ -32,7 +32,6 @@ import { CanvasKey } from '@/constants';
 import { onKeyDown, onKeyUp, useDebounceFn } from '@vueuse/core';
 import CanvasArrowHeadMarker from './elements/edges/CanvasArrowHeadMarker.vue';
 import CanvasBackgroundStripedPattern from './elements/CanvasBackgroundStripedPattern.vue';
-import { useBrowserMetadata } from '@/composables/useBrowserMetadata';
 
 const $style = useCssModule();
 
