@@ -317,9 +317,7 @@ async function onAutoRefreshToggle(value: boolean) {
 
 <template>
 	<div :class="$style.execListWrapper">
-		<ProjectResourceListHeader :icon="'home'" data-test-id="list-layout-header">
-			<template #title> Home </template>
-		</ProjectResourceListHeader>
+		<ProjectResourceListHeader />
 		<ProjectTabs />
 		<div :class="$style.execList">
 			<div :class="$style.execListHeader">
