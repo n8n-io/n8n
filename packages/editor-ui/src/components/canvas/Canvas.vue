@@ -19,7 +19,7 @@ import { MiniMap } from '@vue-flow/minimap';
 import Node from './elements/nodes/CanvasNode.vue';
 import Edge from './elements/edges/CanvasEdge.vue';
 import { computed, onMounted, onUnmounted, provide, ref, toRef, useCssModule, watch } from 'vue';
-import type { EventBus } from 'n8n-design-system';
+import { EventBus, useDeviceSupport } from 'n8n-design-system';
 import { createEventBus } from 'n8n-design-system';
 import { useContextMenu, type ContextMenuAction } from '@/composables/useContextMenu';
 import { useKeybindings } from '@/composables/useKeybindings';
@@ -96,7 +96,7 @@ const props = withDefaults(
 	},
 );
 
-const { isMacOs } = useBrowserMetadata();
+const { controlKeyCode } = useDeviceSupport();
 
 const {
 	getSelectedNodes: selectedNodes,
@@ -135,7 +135,7 @@ const disableKeyBindings = computed(() => !props.keyBindings);
  */
 
 const isPanning = ref(false);
-const panningKeyCode = ref<string[]>([' ', isMacOs ? 'Meta' : 'Control']);
+const panningKeyCode = ref<string[]>([' ', controlKeyCode]);
 const selectionKeyCode = ref<true | null>(true);
 
 onKeyDown(panningKeyCode.value, () => {
