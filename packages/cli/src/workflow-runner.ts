@@ -35,6 +35,7 @@ import * as WorkflowHelpers from '@/workflow-helpers';
 import { generateFailedExecutionFromError } from '@/workflow-helpers';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
+import { ExecutionNotFoundError } from './errors/execution-not-found-error';
 import { EventService } from './events/event.service';
 
 @Service()
@@ -57,12 +58,21 @@ export class WorkflowRunner {
 
 	/** The process did error */
 	async processError(
-		error: ExecutionError,
+		error: ExecutionError | ExecutionNotFoundError,
 		startedAt: Date,
 		executionMode: WorkflowExecuteMode,
 		executionId: string,
 		hooks?: WorkflowHooks,
 	) {
+		// This means the execution was probably cancelled and has already
+		// been cleaned up.
+		//
+		// FIXME: This is a quick fix. The proper fix would be to not remove
+		// the execution from the active executions while it's still running.
+		if (error instanceof ExecutionNotFoundError) {
+			return;
+		}
+
 		ErrorReporter.error(error, { executionId });
 
 		const isQueueMode = config.getEnv('executions.mode') === 'queue';
