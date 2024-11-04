@@ -178,12 +178,7 @@ export class TaskBroker {
 				await this.taskErrorHandler(message.taskId, message.error);
 				break;
 			case 'runner:taskdatarequest':
-				await this.handleDataRequest(
-					message.taskId,
-					message.requestId,
-					message.requestType,
-					message.param,
-				);
+				await this.handleDataRequest(message.taskId, message.requestId, message.requestParams);
 				break;
 
 			case 'runner:rpc':
@@ -233,8 +228,7 @@ export class TaskBroker {
 	async handleDataRequest(
 		taskId: Task['id'],
 		requestId: RunnerMessage.ToN8n.TaskDataRequest['requestId'],
-		requestType: RunnerMessage.ToN8n.TaskDataRequest['requestType'],
-		param?: string,
+		requestParams: RunnerMessage.ToN8n.TaskDataRequest['requestParams'],
 	) {
 		const task = this.tasks.get(taskId);
 		if (!task) {
@@ -244,8 +238,7 @@ export class TaskBroker {
 			type: 'broker:taskdatarequest',
 			taskId,
 			requestId,
-			requestType,
-			param,
+			requestParams,
 		});
 	}
 
