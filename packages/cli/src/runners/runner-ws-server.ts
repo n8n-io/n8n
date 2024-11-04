@@ -17,7 +17,7 @@ function heartbeat(this: WebSocket) {
 }
 
 @Service()
-export class TaskRunnerService {
+export class TaskRunnerWsServer {
 	runnerConnections: Map<TaskRunner['id'], WebSocket> = new Map();
 
 	constructor(
