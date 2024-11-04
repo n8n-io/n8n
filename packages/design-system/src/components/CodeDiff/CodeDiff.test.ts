@@ -1,6 +1,6 @@
 import { render } from '@testing-library/vue';
 
-import CodeDiff from '../CodeDiff.vue';
+import CodeDiff from './CodeDiff.vue';
 
 const stubs = ['n8n-button', 'n8n-icon'];
 

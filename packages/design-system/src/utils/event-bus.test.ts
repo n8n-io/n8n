@@ -1,4 +1,4 @@
-import { createEventBus } from '../event-bus';
+import { createEventBus } from './event-bus';
 
 describe('createEventBus()', () => {
 	const eventBus = createEventBus();

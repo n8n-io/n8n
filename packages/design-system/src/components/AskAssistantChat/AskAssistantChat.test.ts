@@ -2,7 +2,7 @@ import { render } from '@testing-library/vue';
 
 import { n8nHtml } from 'n8n-design-system/directives';
 
-import AskAssistantChat from '../AskAssistantChat.vue';
+import AskAssistantChat from './AskAssistantChat.vue';
 
 const stubs = ['n8n-avatar', 'n8n-button', 'n8n-icon', 'n8n-icon-button'];
 

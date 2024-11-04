@@ -1,6 +1,6 @@
 import { render } from '@testing-library/vue';
 
-import AssistantText from '../AssistantText.vue';
+import AssistantText from './AssistantText.vue';
 
 describe('AssistantText', () => {
 	it('renders default text correctly', () => {

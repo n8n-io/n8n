@@ -1,7 +1,7 @@
 import { render } from '@testing-library/vue';
 import { mock, mockClear } from 'vitest-mock-extended';
 
-import ColorCircles from '../ColorCircles.vue';
+import ColorCircles from './ColorCircles.vue';
 
 describe('ColorCircles', () => {
 	const mockCssDeclaration = mock<CSSStyleDeclaration>();

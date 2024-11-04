@@ -1,6 +1,6 @@
 import { render } from '@testing-library/vue';
 
-import N8NCircleLoader from '../CircleLoader.vue';
+import N8NCircleLoader from './CircleLoader.vue';
 
 describe('N8NCircleLoader', () => {
 	it('should render correctly', () => {

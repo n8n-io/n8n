@@ -1,6 +1,6 @@
 import { render } from '@testing-library/vue';
 
-import N8nActionDropdown from '../ActionDropdown.vue';
+import N8nActionDropdown from './ActionDropdown.vue';
 
 describe('components', () => {
 	describe('N8nActionDropdown', () => {

@@ -1,6 +1,6 @@
 import { render } from '@testing-library/vue';
 
-import AskAssistantButton from '../AskAssistantButton.vue';
+import AskAssistantButton from './AskAssistantButton.vue';
 
 describe('AskAssistantButton', () => {
 	it('renders default button correctly', () => {

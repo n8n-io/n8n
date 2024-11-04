@@ -1,6 +1,6 @@
 import { render } from '@testing-library/vue';
 
-import N8nRecycleScroller from '../RecycleScroller.vue';
+import N8nRecycleScroller from './RecycleScroller.vue';
 
 const itemSize = 100;
 const itemKey = 'id';

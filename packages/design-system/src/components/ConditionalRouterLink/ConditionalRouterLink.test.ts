@@ -2,7 +2,7 @@ import { render } from '@testing-library/vue';
 import { beforeAll, describe } from 'vitest';
 import { createRouter, createWebHistory } from 'vue-router';
 
-import CondtionalRouterLink from '../CondtionalRouterLink.vue';
+import CondtionalRouterLink from './CondtionalRouterLink.vue';
 
 const slots = {
 	default: 'Button',

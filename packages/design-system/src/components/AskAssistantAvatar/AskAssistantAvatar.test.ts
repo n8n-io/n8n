@@ -1,6 +1,6 @@
 import { render } from '@testing-library/vue';
 
-import AssistantAvatar from '../AssistantAvatar.vue';
+import AssistantAvatar from './AssistantAvatar.vue';
 
 describe('AskAssistantAvatar', () => {
 	it('renders small avatar correctly', () => {

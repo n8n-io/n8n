@@ -1,7 +1,7 @@
 import userEvent from '@testing-library/user-event';
 import { render } from '@testing-library/vue';
 
-import N8nTooltip from '../Tooltip.vue';
+import N8nTooltip from './Tooltip.vue';
 
 describe('components', () => {
 	describe('N8nTooltip', () => {

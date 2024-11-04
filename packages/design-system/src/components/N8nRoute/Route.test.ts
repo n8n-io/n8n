@@ -1,6 +1,6 @@
 import { render } from '@testing-library/vue';
 
-import N8nRoute from '../Route.vue';
+import N8nRoute from './Route.vue';
 
 describe('N8nRoute', () => {
 	it('should render internal router links', () => {

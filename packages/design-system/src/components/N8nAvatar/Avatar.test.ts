@@ -1,6 +1,6 @@
 import { render } from '@testing-library/vue';
 
-import N8nAvatar from '../Avatar.vue';
+import N8nAvatar from './Avatar.vue';
 
 describe('components', () => {
 	describe('N8nAlert', () => {

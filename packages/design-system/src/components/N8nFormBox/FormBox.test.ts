@@ -1,5 +1,5 @@
-import { createComponentRenderer } from '../../../__tests__/render';
-import FormBox from '../FormBox.vue';
+import { createComponentRenderer } from '../../__tests__/render';
+import FormBox from './FormBox.vue';
 
 const render = createComponentRenderer(FormBox);
 

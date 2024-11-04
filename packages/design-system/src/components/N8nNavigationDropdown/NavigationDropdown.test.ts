@@ -3,7 +3,7 @@ import { configure, render, waitFor } from '@testing-library/vue';
 import { h } from 'vue';
 import { createRouter, createWebHistory } from 'vue-router';
 
-import NavigationDropdown from '../NavigationDropdown.vue';
+import NavigationDropdown from './NavigationDropdown.vue';
 
 configure({ testIdAttribute: 'data-test-id' });
 

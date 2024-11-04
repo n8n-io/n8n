@@ -1,6 +1,6 @@
 import { render } from '@testing-library/vue';
 
-import N8nCheckbox from '../Checkbox.vue';
+import N8nCheckbox from './Checkbox.vue';
 
 describe('components', () => {
 	describe('N8nCheckbox', () => {

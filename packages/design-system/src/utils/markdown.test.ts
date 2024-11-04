@@ -1,4 +1,4 @@
-import { toggleCheckbox } from '../markdown';
+import { toggleCheckbox } from './markdown';
 
 describe('toggleCheckbox', () => {
 	it('should do nothing when there are no checkboxes', () => {

@@ -1,6 +1,6 @@
 import { render } from '@testing-library/vue';
 
-import InputLabel from '../InputLabel.vue';
+import InputLabel from './InputLabel.vue';
 
 describe('component', () => {
 	describe('Text overflow behavior', () => {

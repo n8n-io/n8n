@@ -1,6 +1,6 @@
 import { render } from '@testing-library/vue';
 
-import N8nCallout from '../Callout.vue';
+import N8nCallout from './Callout.vue';
 
 describe('components', () => {
 	describe('N8nCallout', () => {
