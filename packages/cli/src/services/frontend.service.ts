@@ -222,9 +222,9 @@ export class FrontendService {
 				licensePruneTime: -1,
 			},
 			pruning: {
-				isEnabled: config.getEnv('executions.pruneData'),
-				maxAge: config.getEnv('executions.pruneDataMaxAge'),
-				maxCount: config.getEnv('executions.pruneDataMaxCount'),
+				isEnabled: this.globalConfig.pruning.isEnabled,
+				maxAge: this.globalConfig.pruning.maxAge,
+				maxCount: this.globalConfig.pruning.maxCount,
 			},
 			security: {
 				blockFileAccessToN8nFiles: this.securityConfig.blockFileAccessToN8nFiles,
