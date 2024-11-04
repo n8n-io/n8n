@@ -36,7 +36,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import type { ProjectSharingData } from '@/types/projects.types';
+import type { Project, ProjectSharingData } from '@/types/projects.types';
 import { assert } from '@/utils/assert';
 import type { IMenuItem } from 'n8n-design-system';
 import { createEventBus } from 'n8n-design-system/utils';
@@ -680,30 +680,7 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 	const isNewCredential = props.mode === 'new' && !credentialId.value;
 
 	if (isNewCredential) {
-		credential = await createCredential(credentialDetails, projectsStore.currentProjectId);
-
-		let toastTitle = i18n.baseText('credentials.create.personal.toast.title');
-		let toastText = '';
-
-		if (!credentialDetails.sharedWithProjects) {
-			toastText = i18n.baseText('credentials.create.personal.toast.text');
-		}
-
-		if (projectsStore.currentProject) {
-			toastTitle = i18n.baseText('credentials.create.project.toast.title', {
-				interpolate: { projectName: projectsStore.currentProject.name ?? '' },
-			});
-
-			toastText = i18n.baseText('credentials.create.project.toast.text', {
-				interpolate: { projectName: projectsStore.currentProject.name ?? '' },
-			});
-		}
-
-		toast.showMessage({
-			title: toastTitle,
-			message: toastText,
-			type: 'success',
-		});
+		credential = await createCredential(credentialDetails, projectsStore.currentProject);
 	} else {
 		if (settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing]) {
 			credentialDetails.sharedWithProjects = credentialData.value
@@ -770,15 +747,50 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 	return credential;
 }
 
+const createToastMessagingForNewCredentials = (
+	credentialDetails: ICredentialsDecrypted,
+	project?: Project,
+) => {
+	let toastTitle = i18n.baseText('credentials.create.personal.toast.title');
+	let toastText = '';
+
+	if (!credentialDetails.sharedWithProjects) {
+		toastText = i18n.baseText('credentials.create.personal.toast.text');
+	}
+
+	if (projectsStore.currentProject) {
+		toastTitle = i18n.baseText('credentials.create.project.toast.title', {
+			interpolate: { projectName: project?.name ?? '' },
+		});
+
+		toastText = i18n.baseText('credentials.create.project.toast.text', {
+			interpolate: { projectName: project?.name ?? '' },
+		});
+	}
+
+	return {
+		title: toastTitle,
+		message: toastText,
+	};
+};
+
 async function createCredential(
 	credentialDetails: ICredentialsDecrypted,
-	projectId?: string,
+	project?: Project,
 ): Promise<ICredentialsResponse | null> {
 	let credential;
 
 	try {
-		credential = await credentialsStore.createNewCredential(credentialDetails, projectId);
+		credential = await credentialsStore.createNewCredential(credentialDetails, project?.id);
 		hasUnsavedChanges.value = false;
+
+		const { title, message } = createToastMessagingForNewCredentials(credentialDetails, project);
+
+		toast.showMessage({
+			title,
+			message,
+			type: 'success',
+		});
 	} catch (error) {
 		toast.showError(
 			error,
