@@ -31,7 +31,10 @@ export class TaskRunnerModule {
 		await this.loadTaskManager();
 		await this.loadTaskRunnerServer();
 
-		if (this.runnerConfig.mode !== 'external') {
+		if (
+			this.runnerConfig.mode === 'internal_childprocess' ||
+			this.runnerConfig.mode === 'internal_launcher'
+		) {
 			await this.startInternalTaskRunner();
 		}
 	}
@@ -39,10 +42,12 @@ export class TaskRunnerModule {
 	async stop() {
 		if (this.taskRunnerProcess) {
 			await this.taskRunnerProcess.stop();
+			this.taskRunnerProcess = undefined;
 		}
 
 		if (this.taskRunnerHttpServer) {
 			await this.taskRunnerHttpServer.stop();
+			this.taskRunnerHttpServer = undefined;
 		}
 	}
 
