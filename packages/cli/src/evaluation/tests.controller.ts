@@ -6,7 +6,7 @@ import { Get, /*Patch, Post,*/ RestController } from '@/decorators';
 import { TestsService } from './tests.service';
 import { TestsRequest } from './tests.types';
 
-@RestController('/tests')
+@RestController('/evaluation/tests')
 export class TestsController {
 	constructor(private readonly testsService: TestsService) {}
 
