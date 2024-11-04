@@ -6,7 +6,8 @@ import { type ProjectSharingData, ProjectTypes } from '@/types/projects.types';
 import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
 import PageViewLayoutList from '@/components/layouts/PageViewLayoutList.vue';
 import ResourceFiltersDropdown from '@/components/forms/ResourceFiltersDropdown.vue';
-import ResourceListHeader from '@/components/layouts/ResourceListHeader.vue';
+import ProjectResourceListHeader from '@/components/Projects/ProjectResourceListHeader.vue';
+import ProjectTabs from '@/components/Projects/ProjectTabs.vue';
 import { useUsersStore } from '@/stores/users.store';
 import type { DatatableColumn } from 'n8n-design-system';
 import { useI18n } from '@/composables/useI18n';
@@ -43,10 +44,11 @@ type IResourceKeyType = 'credentials' | 'workflows';
 export default defineComponent({
 	name: 'ResourcesListLayout',
 	components: {
+		ProjectTabs,
 		PageViewLayout,
 		PageViewLayoutList,
 		ResourceFiltersDropdown,
-		ResourceListHeader,
+		ProjectResourceListHeader,
 	},
 	props: {
 		resourceKey: {
@@ -397,11 +399,8 @@ export default defineComponent({
 <template>
 	<PageViewLayout>
 		<template #header>
-			<ResourceListHeader :icon="headerIcon" data-test-id="list-layout-header">
-				<template #title>
-					{{ projectName }}
-				</template>
-			</ResourceListHeader>
+			<ProjectResourceListHeader />
+			<ProjectTabs />
 			<slot name="header" />
 		</template>
 		<div v-if="loading" class="resource-list-loading">

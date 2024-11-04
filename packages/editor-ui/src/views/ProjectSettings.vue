@@ -18,7 +18,7 @@ import type { ProjectRole } from '@/types/roles.types';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
-import ResourceListHeader from '@/components/layouts/ResourceListHeader.vue';
+import ProjectResourceListHeader from '@/components/Projects/ProjectResourceListHeader.vue';
 
 type FormDataDiff = {
 	name?: string;
@@ -281,11 +281,7 @@ onMounted(() => {
 <template>
 	<div :class="$style.projectSettings">
 		<div :class="$style.header">
-			<ResourceListHeader :icon="headerIcon" data-test-id="list-layout-header">
-				<template #title>
-					{{ projectName }}
-				</template>
-			</ResourceListHeader>
+			<ProjectResourceListHeader />
 			<ProjectTabs />
 		</div>
 		<form @submit.prevent="onSubmit">

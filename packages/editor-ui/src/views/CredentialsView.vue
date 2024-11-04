@@ -19,7 +19,6 @@ import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import useEnvironmentsStore from '@/stores/environments.ee.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import ProjectTabs from '@/components/Projects/ProjectTabs.vue';
 import { getResourcePermissions } from '@/permissions';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useTelemetry } from '@/composables/useTelemetry';
@@ -189,9 +188,6 @@ onMounted(() => {
 		@click:add="addCredential"
 		@update:filters="filters = $event"
 	>
-		<template #header>
-			<ProjectTabs />
-		</template>
 		<template #add-button="{ disabled }">
 			<div>
 				<N8nButton
