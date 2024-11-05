@@ -36,10 +36,14 @@ function createNotionCredential() {
 	workflowPage.actions.deleteNode(NOTION_NODE_NAME);
 }
 
+function deleteSelectedCredential() {
+	workflowPage.getters.nodeCredentialsEditButton().click();
+	credentialsModal.getters.deleteButton().click();
+	cy.get('.el-message-box').find('button').contains('Yes').click();
+}
+
 describe('Credentials', () => {
 	beforeEach(() => {
-		cy.resetDatabase();
-		cy.signinAsOwner();
 		cy.visit(credentialsPage.url);
 	});
 
@@ -251,6 +255,8 @@ describe('Credentials', () => {
 			.nodeCredentialsSelect()
 			.find('input')
 			.should('have.value', NEW_NOTION_ACCOUNT_NAME);
+
+		deleteSelectedCredential();
 	});
 
 	it('should set a default credential when editing a node', () => {
@@ -269,6 +275,8 @@ describe('Credentials', () => {
 			.nodeCredentialsSelect()
 			.find('input')
 			.should('have.value', NEW_NOTION_ACCOUNT_NAME);
+
+		deleteSelectedCredential();
 	});
 
 	it('should setup generic authentication for HTTP node', () => {
