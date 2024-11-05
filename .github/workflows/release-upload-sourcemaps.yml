@@ -19,7 +19,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4.1.1
-        ref: tags/n8n@${{ env.RELEASE }}
+        with:
+          ref: tags/n8n@${{ env.RELEASE }}
 
       - run: corepack enable
       - uses: actions/setup-node@v4.0.2
