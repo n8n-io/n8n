@@ -26,7 +26,7 @@ import { getResourcePermissions } from '@/permissions';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@/composables/useI18n';
-import { N8nButton, N8nInputLabel, N8nSelect, N8nOption } from 'n8n-design-system';
+import { N8nInputLabel, N8nSelect, N8nOption } from 'n8n-design-system';
 
 const props = defineProps<{
 	credentialId?: string;
@@ -191,19 +191,6 @@ onMounted(() => {
 	>
 		<template #header>
 			<ProjectTabs />
-		</template>
-		<template #add-button="{ disabled }">
-			<div>
-				<N8nButton
-					size="large"
-					block
-					:disabled="disabled"
-					data-test-id="resources-list-add"
-					@click="addCredential"
-				>
-					{{ addCredentialButtonText }}
-				</N8nButton>
-			</div>
 		</template>
 		<template #default="{ data }">
 			<CredentialCard
