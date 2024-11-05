@@ -8,7 +8,6 @@ import { TIME } from '@/constants';
 import type { ExecutionEntity } from '@/databases/entities/execution-entity';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { Logger } from '@/logging/logger.service';
 import { PruningService } from '@/services/pruning/pruning.service';
 
 import {
@@ -18,7 +17,7 @@ import {
 } from './shared/db/executions';
 import { createWorkflow } from './shared/db/workflows';
 import * as testDb from './shared/test-db';
-import { mockInstance } from '../shared/mocking';
+import { mockInstance, mockLogger } from '../shared/mocking';
 
 describe('softDeleteOnPruningCycle()', () => {
 	let pruningService: PruningService;
@@ -35,7 +34,7 @@ describe('softDeleteOnPruningCycle()', () => {
 
 		globalConfig = Container.get(GlobalConfig);
 		pruningService = new PruningService(
-			mockInstance(Logger),
+			mockLogger(),
 			instanceSettings,
 			Container.get(ExecutionRepository),
 			mockInstance(BinaryDataService),
