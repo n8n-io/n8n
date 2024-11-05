@@ -14,11 +14,38 @@ export class TestsService {
 		private readonly workflowSharingService: WorkflowSharingService,
 	) {}
 
-	// toEntity(attrs: { name: string; id?: string }) {
-	// 	attrs.name = attrs.name.trim();
-	//
-	// 	return this.testRepository.create(attrs);
-	// }
+	toEntity(attrs: {
+		name?: string;
+		workflowId?: string;
+		evaluationWorkflowId?: string;
+		id?: number;
+	}) {
+		const entity = {
+			name: attrs.name?.trim(),
+		};
+
+		if (attrs.id) {
+			entity.id = attrs.id;
+		}
+
+		if (attrs.workflowId) {
+			entity.workflow = {
+				id: attrs.workflowId,
+			};
+		}
+
+		if (attrs.evaluationWorkflowId) {
+			entity.evaluationWorkflow = {
+				id: attrs.evaluationWorkflowId,
+			};
+		}
+
+		return this.testRepository.create(entity);
+	}
+
+	async findOne(id: number, accessibleWorkflowIds: string[]) {
+		return await this.testRepository.getOne(id, accessibleWorkflowIds);
+	}
 
 	async save(test: TestEntity) {
 		await validateEntity(test);
@@ -26,15 +53,11 @@ export class TestsService {
 		return await this.testRepository.save(test);
 	}
 
-	async delete(id: string) {
-		return await this.testRepository.delete(id);
+	async delete(id: number, accessibleWorkflowIds: string[]) {
+		return await this.testRepository.deleteById(id, accessibleWorkflowIds);
 	}
 
-	async getMany(user: User, options: ListQuery.Options) {
-		const sharedWorkflowIds = await this.workflowSharingService.getSharedWorkflowIds(user, {
-			scopes: ['workflow:read'],
-		});
-
-		return await this.testRepository.getMany(sharedWorkflowIds, options);
+	async getMany(user: User, options: ListQuery.Options, accessibleWorkflowIds: string[] = []) {
+		return await this.testRepository.getMany(accessibleWorkflowIds, options);
 	}
 }
