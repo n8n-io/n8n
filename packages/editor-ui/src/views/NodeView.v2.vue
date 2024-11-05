@@ -1276,17 +1276,19 @@ function removeSourceControlEventBindings() {
 
 function addPostMessageEventBindings() {
 	window.addEventListener('message', onPostMessageReceived);
+}
 
+function removePostMessageEventBindings() {
+	window.removeEventListener('message', onPostMessageReceived);
+}
+
+function emitPostMessageReady() {
 	if (window.parent) {
 		window.parent.postMessage(
 			JSON.stringify({ command: 'n8nReady', version: rootStore.versionCli }),
 			'*',
 		);
 	}
-}
-
-function removePostMessageEventBindings() {
-	window.removeEventListener('message', onPostMessageReceived);
 }
 
 async function onPostMessageReceived(messageEvent: MessageEvent) {
@@ -1516,6 +1518,8 @@ onBeforeMount(() => {
 	if (!isDemoRoute.value) {
 		pushConnectionStore.pushConnect();
 	}
+
+	addPostMessageEventBindings();
 });
 
 onMounted(() => {
@@ -1536,6 +1540,8 @@ onMounted(() => {
 				canvasStore.stopLoading();
 
 				void externalHooks.run('nodeView.mount').catch(() => {});
+
+				emitPostMessageReady();
 			});
 
 		void usersStore.showPersonalizationSurvey();
@@ -1544,7 +1550,6 @@ onMounted(() => {
 	});
 
 	addSourceControlEventBindings();
-	addPostMessageEventBindings();
 	addWorkflowSavedEventBindings();
 	addBeforeUnloadEventBindings();
 	addImportEventBindings();
