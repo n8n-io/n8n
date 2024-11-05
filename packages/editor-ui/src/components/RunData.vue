@@ -289,6 +289,7 @@ export default defineComponent({
 			}
 
 			const canPinNode = usePinnedData(this.node).canPinNode(false, this.currentOutputIndex);
+
 			return (
 				canPinNode &&
 				!this.isPaneTypeInput &&

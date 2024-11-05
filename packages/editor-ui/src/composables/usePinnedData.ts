@@ -94,13 +94,14 @@ export function usePinnedData(
 		);
 
 		let indexAcceptable = true;
+
 		if (outputIndex !== undefined) {
 			const output = outputs[outputIndex];
-			if (output === undefined)
+
+			if (outputs[outputIndex] === undefined)
 				throw new Error(`Out of bounds index ${outputIndex} provided to canPinNode`);
 
-			indexAcceptable =
-				output && output.type === NodeConnectionType.Main && output.category !== 'error';
+			indexAcceptable = output.type === NodeConnectionType.Main && output.category !== 'error';
 		}
 
 		return mainOutputs.length === 1 && indexAcceptable;
