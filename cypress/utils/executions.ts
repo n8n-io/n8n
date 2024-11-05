@@ -16,7 +16,7 @@ export function createMockNodeExecutionData(
 	return {
 		[name]: {
 			startTime: new Date().getTime(),
-			executionTime: 0,
+			executionTime: 1,
 			executionStatus,
 			data: jsonData
 				? Object.keys(jsonData).reduce((acc, key) => {
@@ -33,6 +33,7 @@ export function createMockNodeExecutionData(
 					}, {} as ITaskDataConnections)
 				: data,
 			source: [null],
+			inputOverride,
 			...rest,
 		},
 	};

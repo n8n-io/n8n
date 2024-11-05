@@ -7,8 +7,8 @@ import { VIEWS } from '@/constants';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { ProjectListItem } from '@/types/projects.types';
 import { useToast } from '@/composables/useToast';
-import { useUIStore } from '@/stores/ui.store';
 import { sortByProperty } from '@/utils/sortUtils';
+import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 type Props = {
 	collapsed: boolean;
@@ -21,7 +21,7 @@ const router = useRouter();
 const locale = useI18n();
 const toast = useToast();
 const projectsStore = useProjectsStore();
-const uiStore = useUIStore();
+const pageRedirectionHelper = usePageRedirectionHelper();
 
 const isCreatingProject = ref(false);
 const isComponentMounted = ref(false);
@@ -45,7 +45,7 @@ const addProject = computed<IMenuItem>(() => ({
 const getProjectMenuItem = (project: ProjectListItem) => ({
 	id: project.id,
 	label: project.name,
-	icon: 'layer-group',
+	icon: props.collapsed ? undefined : 'layer-group',
 	route: {
 		to: {
 			name: VIEWS.PROJECTS_WORKFLOWS,
@@ -57,7 +57,7 @@ const getProjectMenuItem = (project: ProjectListItem) => ({
 const personalProject = computed<IMenuItem>(() => ({
 	id: projectsStore.personalProject?.id ?? '',
 	label: locale.baseText('projects.menu.personal'),
-	icon: 'user',
+	icon: props.collapsed ? undefined : 'user',
 	route: {
 		to: {
 			name: VIEWS.PROJECTS_WORKFLOWS,
@@ -99,7 +99,7 @@ const canCreateProjects = computed(
 );
 
 const goToUpgrade = async () => {
-	await uiStore.goToUpgrade('rbac', 'upgrade-rbac');
+	await pageRedirectionHelper.goToUpgrade('rbac', 'upgrade-rbac');
 };
 
 onMounted(async () => {
@@ -119,16 +119,20 @@ onMounted(async () => {
 				data-test-id="project-home-menu-item"
 			/>
 		</ElMenu>
-		<hr v-if="displayProjects.length || canCreateProjects" class="mt-m mb-m" />
+		<hr v-if="projectsStore.isTeamProjectFeatureEnabled" class="mt-m mb-m" />
 		<N8nText
-			v-if="!props.collapsed && displayProjects.length"
+			v-if="!props.collapsed && projectsStore.isTeamProjectFeatureEnabled"
 			:class="$style.projectsLabel"
 			tag="h3"
 			bold
 		>
 			<span>{{ locale.baseText('projects.menu.title') }}</span>
 		</N8nText>
-		<ElMenu v-if="displayProjects.length" :collapse="props.collapsed" :class="$style.projectItems">
+		<ElMenu
+			v-if="projectsStore.isTeamProjectFeatureEnabled"
+			:collapse="props.collapsed"
+			:class="$style.projectItems"
+		>
 			<N8nMenuItem
 				:item="personalProject"
 				:compact="props.collapsed"
@@ -154,7 +158,7 @@ onMounted(async () => {
 			placement="right"
 			:disabled="projectsStore.canCreateProjects"
 		>
-			<ElMenu :collapse="props.collapsed" class="pl-xs pr-xs">
+			<ElMenu :collapse="props.collapsed" class="pl-xs pr-xs mb-m">
 				<N8nMenuItem
 					:item="addProject"
 					:compact="props.collapsed"
@@ -182,7 +186,7 @@ onMounted(async () => {
 				</i18n-t>
 			</template>
 		</N8nTooltip>
-		<hr v-if="displayProjects.length || canCreateProjects" class="mt-m mb-m" />
+		<hr v-if="projectsStore.isTeamProjectFeatureEnabled" class="mb-m" />
 	</div>
 </template>
 

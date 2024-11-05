@@ -8,8 +8,6 @@ import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-mess
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
 import { Logger } from '@/logging/logger.service';
-import { LocalTaskManager } from '@/runners/task-managers/local-task-manager';
-import { TaskManager } from '@/runners/task-managers/task-manager';
 import { PubSubHandler } from '@/scaling/pubsub/pubsub-handler';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import type { ScalingService } from '@/scaling/scaling.service';
@@ -69,7 +67,7 @@ export class Worker extends BaseCommand {
 
 		super(argv, cmdConfig);
 
-		this.logger = Container.get(Logger).withScope('scaling');
+		this.logger = Container.get(Logger).scoped('scaling');
 	}
 
 	async init() {
@@ -114,15 +112,11 @@ export class Worker extends BaseCommand {
 			}),
 		);
 
-		if (!this.globalConfig.taskRunners.disabled) {
-			Container.set(TaskManager, new LocalTaskManager());
-			const { TaskRunnerServer } = await import('@/runners/task-runner-server');
-			const taskRunnerServer = Container.get(TaskRunnerServer);
-			await taskRunnerServer.start();
-
-			const { TaskRunnerProcess } = await import('@/runners/task-runner-process');
-			const runnerProcess = Container.get(TaskRunnerProcess);
-			await runnerProcess.start();
+		const { taskRunners: taskRunnerConfig } = this.globalConfig;
+		if (!taskRunnerConfig.disabled) {
+			const { TaskRunnerModule } = await import('@/runners/task-runner-module');
+			const taskRunnerModule = Container.get(TaskRunnerModule);
+			await taskRunnerModule.start();
 		}
 	}
 
@@ -145,7 +139,7 @@ export class Worker extends BaseCommand {
 		Container.get(PubSubHandler).init();
 		await Container.get(Subscriber).subscribe('n8n.commands');
 
-		this.logger.withScope('scaling').debug('Pubsub setup ready');
+		this.logger.scoped(['scaling', 'pubsub']).debug('Pubsub setup completed');
 	}
 
 	async setConcurrency() {

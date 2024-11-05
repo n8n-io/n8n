@@ -1,14 +1,11 @@
-import { ApplicationError } from 'n8n-workflow';
+import { ApplicationError, type INodeTypeDescription } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
-import { URL } from 'node:url';
 import { type MessageEvent, WebSocket } from 'ws';
 
-import {
-	RPC_ALLOW_LIST,
-	type RunnerMessage,
-	type N8nMessage,
-	type TaskResultData,
-} from './runner-types';
+import type { BaseRunnerConfig } from '@/config/base-runner-config';
+import type { BrokerMessage, RunnerMessage } from '@/message-types';
+import { TaskRunnerNodeTypes } from '@/node-types';
+import { RPC_ALLOW_LIST, type TaskResultData } from '@/runner-types';
 
 export interface Task<T = unknown> {
 	taskId: string;
@@ -41,6 +38,11 @@ export interface RPCCallObject {
 const VALID_TIME_MS = 1000;
 const VALID_EXTRA_MS = 100;
 
+export interface TaskRunnerOpts extends BaseRunnerConfig {
+	taskType: string;
+	name?: string;
+}
+
 export abstract class TaskRunner {
 	id: string = nanoid();
 
@@ -58,19 +60,25 @@ export abstract class TaskRunner {
 
 	rpcCalls: Map<RPCCall['callId'], RPCCall> = new Map();
 
-	constructor(
-		public taskType: string,
-		wsUrl: string,
-		grantToken: string,
-		private maxConcurrency: number,
-		public name?: string,
-	) {
-		const url = new URL(wsUrl);
-		url.searchParams.append('id', this.id);
-		this.ws = new WebSocket(url.toString(), {
+	nodeTypes: TaskRunnerNodeTypes = new TaskRunnerNodeTypes([]);
+
+	taskType: string;
+
+	maxConcurrency: number;
+
+	name: string;
+
+	constructor(opts: TaskRunnerOpts) {
+		this.taskType = opts.taskType;
+		this.name = opts.name ?? 'Node.js Task Runner SDK';
+		this.maxConcurrency = opts.maxConcurrency;
+
+		const wsUrl = `ws://${opts.n8nUri}/runners/_ws?id=${this.id}`;
+		this.ws = new WebSocket(wsUrl, {
 			headers: {
-				authorization: `Bearer ${grantToken}`,
+				authorization: `Bearer ${opts.grantToken}`,
 			},
+			maxPayload: opts.maxPayloadSize,
 		});
 		this.ws.addEventListener('message', this.receiveMessage);
 		this.ws.addEventListener('close', this.stopTaskOffers);
@@ -78,7 +86,7 @@ export abstract class TaskRunner {
 
 	private receiveMessage = (message: MessageEvent) => {
 		// eslint-disable-next-line n8n-local-rules/no-uncaught-json-parse
-		const data = JSON.parse(message.data as string) as N8nMessage.ToRunner.All;
+		const data = JSON.parse(message.data as string) as BrokerMessage.ToRunner.All;
 		void this.onMessage(data);
 	};
 
@@ -128,16 +136,16 @@ export abstract class TaskRunner {
 		}
 	}
 
-	send(message: RunnerMessage.ToN8n.All) {
+	send(message: RunnerMessage.ToBroker.All) {
 		this.ws.send(JSON.stringify(message));
 	}
 
-	onMessage(message: N8nMessage.ToRunner.All) {
+	onMessage(message: BrokerMessage.ToRunner.All) {
 		switch (message.type) {
 			case 'broker:inforequest':
 				this.send({
 					type: 'runner:info',
-					name: this.name ?? 'Node.js Task Runner SDK',
+					name: this.name,
 					types: [this.taskType],
 				});
 				break;
@@ -158,7 +166,15 @@ export abstract class TaskRunner {
 				break;
 			case 'broker:rpcresponse':
 				this.handleRpcResponse(message.callId, message.status, message.data);
+				break;
+			case 'broker:nodetypes':
+				this.setNodeTypes(message.nodeTypes as unknown as INodeTypeDescription[]);
+				break;
 		}
+	}
+
+	setNodeTypes(nodeTypes: INodeTypeDescription[]) {
+		this.nodeTypes = new TaskRunnerNodeTypes(nodeTypes);
 	}
 
 	processDataResponse(requestId: string, data: unknown) {
@@ -232,7 +248,7 @@ export abstract class TaskRunner {
 		this.sendOffers();
 	}
 
-	taskDone(taskId: string, data: RunnerMessage.ToN8n.TaskDone['data']) {
+	taskDone(taskId: string, data: RunnerMessage.ToBroker.TaskDone['data']) {
 		this.send({
 			type: 'runner:taskdone',
 			taskId,
@@ -268,8 +284,7 @@ export abstract class TaskRunner {
 
 	async requestData<T = unknown>(
 		taskId: Task['taskId'],
-		type: RunnerMessage.ToN8n.TaskDataRequest['requestType'],
-		param?: string,
+		requestParams: RunnerMessage.ToBroker.TaskDataRequest['requestParams'],
 	): Promise<T> {
 		const requestId = nanoid();
 
@@ -285,8 +300,7 @@ export abstract class TaskRunner {
 			type: 'runner:taskdatarequest',
 			taskId,
 			requestId,
-			requestType: type,
-			param,
+			requestParams,
 		});
 
 		try {
@@ -296,7 +310,7 @@ export abstract class TaskRunner {
 		}
 	}
 
-	async makeRpcCall(taskId: string, name: RunnerMessage.ToN8n.RPC['name'], params: unknown[]) {
+	async makeRpcCall(taskId: string, name: RunnerMessage.ToBroker.RPC['name'], params: unknown[]) {
 		const callId = nanoid();
 
 		const dataPromise = new Promise((resolve, reject) => {
@@ -324,7 +338,7 @@ export abstract class TaskRunner {
 
 	handleRpcResponse(
 		callId: string,
-		status: N8nMessage.ToRunner.RPCResponse['status'],
+		status: BrokerMessage.ToRunner.RPCResponse['status'],
 		data: unknown,
 	) {
 		const call = this.rpcCalls.get(callId);

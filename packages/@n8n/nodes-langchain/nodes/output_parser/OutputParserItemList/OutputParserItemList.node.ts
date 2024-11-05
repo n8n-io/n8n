@@ -1,14 +1,14 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import {
 	NodeConnectionType,
-	type IExecuteFunctions,
 	type INodeType,
 	type INodeTypeDescription,
+	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
-import { logWrapper } from '../../../utils/logWrapper';
+
+import { N8nItemListOutputParser } from '../../../utils/output_parsers/N8nItemListOutputParser';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
-import { ItemListOutputParser } from './ItemListOutputParser';
 
 export class OutputParserItemList implements INodeType {
 	description: INodeTypeDescription = {
@@ -80,16 +80,16 @@ export class OutputParserItemList implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
 			numberOfItems?: number;
 			separator?: string;
 		};
 
-		const parser = new ItemListOutputParser(options);
+		const parser = new N8nItemListOutputParser(options);
 
 		return {
-			response: logWrapper(parser, this),
+			response: parser,
 		};
 	}
 }

@@ -135,6 +135,7 @@ export default defineComponent({
 		},
 		pushRef: {
 			type: String,
+			required: true,
 		},
 		paneType: {
 			type: String as PropType<NodePanelType>,
@@ -159,6 +160,10 @@ export default defineComponent({
 			default: false,
 		},
 		isPaneActive: {
+			type: Boolean,
+			default: false,
+		},
+		hidePagination: {
 			type: Boolean,
 			default: false,
 		},
@@ -1743,9 +1748,10 @@ export default defineComponent({
 		</div>
 		<div
 			v-if="
+				hidePagination === false &&
 				hasNodeRun &&
 				!hasRunError &&
-				binaryData.length === 0 &&
+				displayMode !== 'binary' &&
 				dataCount > pageSize &&
 				!isSchemaView &&
 				!isArtificialRecoveredEventItem

@@ -507,7 +507,6 @@ export function useCanvasMapping({
 					data,
 					type,
 					label,
-					animated: data.status === 'running',
 					markerEnd: MarkerType.ArrowClosed,
 				};
 			},
@@ -555,19 +554,23 @@ export function useCanvasMapping({
 
 		if (nodePinnedDataById.value[fromNode.id]) {
 			const pinnedDataCount = nodePinnedDataById.value[fromNode.id]?.length ?? 0;
-			return i18n.baseText('ndv.output.items', {
-				adjustToNumber: pinnedDataCount,
-				interpolate: { count: String(pinnedDataCount) },
-			});
+			return pinnedDataCount > 0
+				? i18n.baseText('ndv.output.items', {
+						adjustToNumber: pinnedDataCount,
+						interpolate: { count: String(pinnedDataCount) },
+					})
+				: '';
 		} else if (nodeExecutionRunDataById.value[fromNode.id]) {
 			const { type, index } = parseCanvasConnectionHandleString(connection.sourceHandle);
 			const runDataTotal =
 				nodeExecutionRunDataOutputMapById.value[fromNode.id]?.[type]?.[index]?.total ?? 0;
 
-			return i18n.baseText('ndv.output.items', {
-				adjustToNumber: runDataTotal,
-				interpolate: { count: String(runDataTotal) },
-			});
+			return runDataTotal > 0
+				? i18n.baseText('ndv.output.items', {
+						adjustToNumber: runDataTotal,
+						interpolate: { count: String(runDataTotal) },
+					})
+				: '';
 		}
 
 		return '';

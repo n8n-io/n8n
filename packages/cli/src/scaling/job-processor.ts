@@ -40,7 +40,7 @@ export class JobProcessor {
 		private readonly nodeTypes: NodeTypes,
 		private readonly instanceSettings: InstanceSettings,
 	) {
-		this.logger = this.logger.withScope('scaling');
+		this.logger = this.logger.scoped('scaling');
 	}
 
 	async processJob(job: Job): Promise<JobResult> {
@@ -57,6 +57,13 @@ export class JobProcessor {
 				{ level: 'warning' },
 			);
 		}
+
+		/**
+		 * Bull's implicit retry mechanism and n8n's execution recovery mechanism may
+		 * cause a crashed execution to be enqueued. We refrain from processing it,
+		 * until we have reworked both mechanisms to prevent this scenario.
+		 */
+		if (execution.status === 'crashed') return { success: false };
 
 		const workflowId = execution.workflowData.id;
 

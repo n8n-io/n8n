@@ -1,11 +1,17 @@
+import type {
+	BrokerMessage,
+	RequesterMessage,
+	RunnerMessage,
+	TaskResultData,
+} from '@n8n/task-runner';
 import { ApplicationError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { Service } from 'typedi';
 
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Logger } from '@/logging/logger.service';
 
 import { TaskRejectError } from './errors';
-import type { N8nMessage, RunnerMessage, RequesterMessage, TaskResultData } from './runner-types';
 
 export interface TaskRunner {
 	id: string;
@@ -37,13 +43,15 @@ export interface TaskRequest {
 	acceptInProgress?: boolean;
 }
 
-export type MessageCallback = (message: N8nMessage.ToRunner.All) => Promise<void> | void;
+export type MessageCallback = (message: BrokerMessage.ToRunner.All) => Promise<void> | void;
 export type RequesterMessageCallback = (
-	message: N8nMessage.ToRequester.All,
+	message: BrokerMessage.ToRequester.All,
 ) => Promise<void> | void;
 
 type RunnerAcceptCallback = () => void;
-type RequesterAcceptCallback = (settings: RequesterMessage.ToN8n.TaskSettings['settings']) => void;
+type RequesterAcceptCallback = (
+	settings: RequesterMessage.ToBroker.TaskSettings['settings'],
+) => void;
 type TaskRejectCallback = (reason: TaskRejectError) => void;
 
 @Service()
@@ -71,7 +79,19 @@ export class TaskBroker {
 
 	private pendingTaskRequests: TaskRequest[] = [];
 
-	constructor(private readonly logger: Logger) {}
+	constructor(
+		private readonly logger: Logger,
+		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
+	) {
+		this.loadNodesAndCredentials.addPostProcessor(this.updateNodeTypes);
+	}
+
+	updateNodeTypes = async () => {
+		await this.messageAllRunners({
+			type: 'broker:nodetypes',
+			nodeTypes: this.loadNodesAndCredentials.types.nodes,
+		});
+	};
 
 	expireTasks() {
 		const now = process.hrtime.bigint();
@@ -84,9 +104,14 @@ export class TaskBroker {
 
 	registerRunner(runner: TaskRunner, messageCallback: MessageCallback) {
 		this.knownRunners.set(runner.id, { runner, messageCallback });
+		void this.knownRunners.get(runner.id)!.messageCallback({ type: 'broker:runnerregistered' });
+		void this.knownRunners.get(runner.id)!.messageCallback({
+			type: 'broker:nodetypes',
+			nodeTypes: this.loadNodesAndCredentials.types.nodes,
+		});
 	}
 
-	deregisterRunner(runnerId: string) {
+	deregisterRunner(runnerId: string, error: Error) {
 		this.knownRunners.delete(runnerId);
 
 		// Remove any pending offers
@@ -99,8 +124,11 @@ export class TaskBroker {
 		// Fail any tasks
 		for (const task of this.tasks.values()) {
 			if (task.runnerId === runnerId) {
-				void this.failTask(task.id, `The Task Runner (${runnerId}) has disconnected`);
-				this.handleRunnerReject(task.id, `The Task Runner (${runnerId}) has disconnected`);
+				void this.failTask(task.id, error);
+				this.handleRunnerReject(
+					task.id,
+					`The Task Runner (${runnerId}) has disconnected: ${error.message}`,
+				);
 			}
 		}
 	}
@@ -113,15 +141,23 @@ export class TaskBroker {
 		this.requesters.delete(requesterId);
 	}
 
-	private async messageRunner(runnerId: TaskRunner['id'], message: N8nMessage.ToRunner.All) {
+	private async messageRunner(runnerId: TaskRunner['id'], message: BrokerMessage.ToRunner.All) {
 		await this.knownRunners.get(runnerId)?.messageCallback(message);
 	}
 
-	private async messageRequester(requesterId: string, message: N8nMessage.ToRequester.All) {
+	private async messageAllRunners(message: BrokerMessage.ToRunner.All) {
+		await Promise.allSettled(
+			[...this.knownRunners.values()].map(async (runner) => {
+				await runner.messageCallback(message);
+			}),
+		);
+	}
+
+	private async messageRequester(requesterId: string, message: BrokerMessage.ToRequester.All) {
 		await this.requesters.get(requesterId)?.(message);
 	}
 
-	async onRunnerMessage(runnerId: TaskRunner['id'], message: RunnerMessage.ToN8n.All) {
+	async onRunnerMessage(runnerId: TaskRunner['id'], message: RunnerMessage.ToBroker.All) {
 		const runner = this.knownRunners.get(runnerId);
 		if (!runner) {
 			return;
@@ -149,12 +185,7 @@ export class TaskBroker {
 				await this.taskErrorHandler(message.taskId, message.error);
 				break;
 			case 'runner:taskdatarequest':
-				await this.handleDataRequest(
-					message.taskId,
-					message.requestId,
-					message.requestType,
-					message.param,
-				);
+				await this.handleDataRequest(message.taskId, message.requestId, message.requestParams);
 				break;
 
 			case 'runner:rpc':
@@ -169,7 +200,7 @@ export class TaskBroker {
 	async handleRpcRequest(
 		taskId: Task['id'],
 		callId: string,
-		name: RunnerMessage.ToN8n.RPC['name'],
+		name: RunnerMessage.ToBroker.RPC['name'],
 		params: unknown[],
 	) {
 		const task = this.tasks.get(taskId);
@@ -203,9 +234,8 @@ export class TaskBroker {
 
 	async handleDataRequest(
 		taskId: Task['id'],
-		requestId: RunnerMessage.ToN8n.TaskDataRequest['requestId'],
-		requestType: RunnerMessage.ToN8n.TaskDataRequest['requestType'],
-		param?: string,
+		requestId: RunnerMessage.ToBroker.TaskDataRequest['requestId'],
+		requestParams: RunnerMessage.ToBroker.TaskDataRequest['requestParams'],
 	) {
 		const task = this.tasks.get(taskId);
 		if (!task) {
@@ -215,14 +245,13 @@ export class TaskBroker {
 			type: 'broker:taskdatarequest',
 			taskId,
 			requestId,
-			requestType,
-			param,
+			requestParams,
 		});
 	}
 
 	async handleResponse(
 		taskId: Task['id'],
-		requestId: RunnerMessage.ToN8n.TaskDataRequest['requestId'],
+		requestId: RunnerMessage.ToBroker.TaskDataRequest['requestId'],
 		data: unknown,
 	) {
 		const task = this.tasks.get(taskId);
@@ -237,7 +266,7 @@ export class TaskBroker {
 		});
 	}
 
-	async onRequesterMessage(requesterId: string, message: RequesterMessage.ToN8n.All) {
+	async onRequesterMessage(requesterId: string, message: RequesterMessage.ToBroker.All) {
 		switch (message.type) {
 			case 'requester:tasksettings':
 				this.handleRequesterAccept(message.taskId, message.settings);
@@ -269,7 +298,7 @@ export class TaskBroker {
 	async handleRequesterRpcResponse(
 		taskId: string,
 		callId: string,
-		status: RequesterMessage.ToN8n.RPCResponse['status'],
+		status: RequesterMessage.ToBroker.RPCResponse['status'],
 		data: unknown,
 	) {
 		const runner = await this.getRunnerOrFailTask(taskId);
@@ -295,7 +324,7 @@ export class TaskBroker {
 
 	handleRequesterAccept(
 		taskId: Task['id'],
-		settings: RequesterMessage.ToN8n.TaskSettings['settings'],
+		settings: RequesterMessage.ToBroker.TaskSettings['settings'],
 	) {
 		const acceptReject = this.requesterAcceptRejects.get(taskId);
 		if (acceptReject) {
@@ -326,7 +355,7 @@ export class TaskBroker {
 		});
 	}
 
-	private async failTask(taskId: Task['id'], reason: string) {
+	private async failTask(taskId: Task['id'], error: Error) {
 		const task = this.tasks.get(taskId);
 		if (!task) {
 			return;
@@ -336,7 +365,7 @@ export class TaskBroker {
 		await this.messageRequester(task.requesterId, {
 			type: 'broker:taskerror',
 			taskId,
-			error: reason,
+			error,
 		});
 	}
 
@@ -349,11 +378,14 @@ export class TaskBroker {
 		}
 		const runner = this.knownRunners.get(task.runnerId);
 		if (!runner) {
-			const reason = `Cannot find runner, failed to find runner (${task.runnerId})`;
-			await this.failTask(taskId, reason);
-			throw new ApplicationError(reason, {
-				level: 'error',
-			});
+			const error = new ApplicationError(
+				`Cannot find runner, failed to find runner (${task.runnerId})`,
+				{
+					level: 'error',
+				},
+			);
+			await this.failTask(taskId, error);
+			throw error;
 		}
 		return runner.runner;
 	}
@@ -442,10 +474,12 @@ export class TaskBroker {
 		this.pendingTaskRequests.splice(requestIndex, 1);
 
 		try {
-			const acceptPromise = new Promise<RequesterMessage.ToN8n.TaskSettings['settings']>(
+			const acceptPromise = new Promise<RequesterMessage.ToBroker.TaskSettings['settings']>(
 				(resolve, reject) => {
 					this.requesterAcceptRejects.set(taskId, {
-						accept: resolve as (settings: RequesterMessage.ToN8n.TaskSettings['settings']) => void,
+						accept: resolve as (
+							settings: RequesterMessage.ToBroker.TaskSettings['settings'],
+						) => void,
 						reject,
 					});
 

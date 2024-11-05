@@ -1,7 +1,7 @@
-import { GlobalConfig } from '@n8n/config';
+import { TaskRunnersConfig } from '@n8n/config';
 import Container from 'typedi';
 
-import { TaskRunnerService } from '@/runners/runner-ws-server';
+import { TaskRunnerWsServer } from '@/runners/runner-ws-server';
 import { TaskBroker } from '@/runners/task-broker.service';
 import { TaskRunnerProcess } from '@/runners/task-runner-process';
 import { TaskRunnerServer } from '@/runners/task-runner-server';
@@ -9,14 +9,16 @@ import { retryUntil } from '@test-integration/retry-until';
 
 describe('TaskRunnerProcess', () => {
 	const authToken = 'token';
-	const globalConfig = Container.get(GlobalConfig);
-	globalConfig.taskRunners.authToken = authToken;
-	globalConfig.taskRunners.port = 0; // Use any port
+	const runnerConfig = Container.get(TaskRunnersConfig);
+	runnerConfig.disabled = false;
+	runnerConfig.mode = 'internal_childprocess';
+	runnerConfig.authToken = authToken;
+	runnerConfig.port = 0; // Use any port
 	const taskRunnerServer = Container.get(TaskRunnerServer);
 
 	const runnerProcess = Container.get(TaskRunnerProcess);
 	const taskBroker = Container.get(TaskBroker);
-	const taskRunnerService = Container.get(TaskRunnerService);
+	const taskRunnerService = Container.get(TaskRunnerWsServer);
 
 	const startLauncherSpy = jest.spyOn(runnerProcess, 'startLauncher');
 	const startNodeSpy = jest.spyOn(runnerProcess, 'startNode');
@@ -26,7 +28,7 @@ describe('TaskRunnerProcess', () => {
 	beforeAll(async () => {
 		await taskRunnerServer.start();
 		// Set the port to the actually used port
-		globalConfig.taskRunners.port = taskRunnerServer.port;
+		runnerConfig.port = taskRunnerServer.port;
 	});
 
 	afterAll(async () => {
@@ -100,7 +102,7 @@ describe('TaskRunnerProcess', () => {
 	});
 
 	it('should launch runner directly if not using a launcher', async () => {
-		globalConfig.taskRunners.useLauncher = false;
+		runnerConfig.mode = 'internal_childprocess';
 
 		await runnerProcess.start();
 
@@ -109,18 +111,18 @@ describe('TaskRunnerProcess', () => {
 	});
 
 	it('should use a launcher if configured', async () => {
-		globalConfig.taskRunners.useLauncher = true;
-		globalConfig.taskRunners.launcherPath = 'node';
+		runnerConfig.mode = 'internal_launcher';
+		runnerConfig.launcherPath = 'node';
 
 		await runnerProcess.start();
 
 		expect(startLauncherSpy).toBeCalledTimes(1);
 		expect(startNodeSpy).toBeCalledTimes(0);
-		globalConfig.taskRunners.useLauncher = false;
+		runnerConfig.mode = 'internal_childprocess';
 	});
 
 	it('should kill the process directly if not using a launcher', async () => {
-		globalConfig.taskRunners.useLauncher = false;
+		runnerConfig.mode = 'internal_childprocess';
 
 		await runnerProcess.start();
 		await runnerProcess.stop();
@@ -130,14 +132,14 @@ describe('TaskRunnerProcess', () => {
 	});
 
 	it('should kill the process using a launcher if configured', async () => {
-		globalConfig.taskRunners.useLauncher = true;
-		globalConfig.taskRunners.launcherPath = 'node';
+		runnerConfig.mode = 'internal_launcher';
+		runnerConfig.launcherPath = 'node';
 
 		await runnerProcess.start();
 		await runnerProcess.stop();
 
 		expect(killLauncherSpy).toBeCalledTimes(1);
 		expect(killNodeSpy).toBeCalledTimes(0);
-		globalConfig.taskRunners.useLauncher = false;
+		runnerConfig.mode = 'internal_childprocess';
 	});
 });

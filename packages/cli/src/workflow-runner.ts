@@ -14,7 +14,6 @@ import type {
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
 import {
-	ApplicationError,
 	ErrorReporterProxy as ErrorReporter,
 	ExecutionCancelledError,
 	Workflow,
@@ -36,6 +35,7 @@ import * as WorkflowHelpers from '@/workflow-helpers';
 import { generateFailedExecutionFromError } from '@/workflow-helpers';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
+import { ExecutionNotFoundError } from './errors/execution-not-found-error';
 import { EventService } from './events/event.service';
 
 @Service()
@@ -58,12 +58,21 @@ export class WorkflowRunner {
 
 	/** The process did error */
 	async processError(
-		error: ExecutionError,
+		error: ExecutionError | ExecutionNotFoundError,
 		startedAt: Date,
 		executionMode: WorkflowExecuteMode,
 		executionId: string,
 		hooks?: WorkflowHooks,
 	) {
+		// This means the execution was probably cancelled and has already
+		// been cleaned up.
+		//
+		// FIXME: This is a quick fix. The proper fix would be to not remove
+		// the execution from the active executions while it's still running.
+		if (error instanceof ExecutionNotFoundError) {
+			return;
+		}
+
 		ErrorReporter.error(error, { executionId });
 
 		const isQueueMode = config.getEnv('executions.mode') === 'queue';
@@ -381,17 +390,6 @@ export class WorkflowRunner {
 		let job: Job;
 		let hooks: WorkflowHooks;
 		try {
-			// check to help diagnose PAY-2100
-			if (
-				data.executionData?.executionData?.nodeExecutionStack?.length === 0 &&
-				config.getEnv('deployment.type') === 'internal'
-			) {
-				await this.executionRepository.setRunning(executionId); // set `startedAt` so we display it correctly in UI
-				throw new ApplicationError('Execution to enqueue has empty node execution stack', {
-					extra: { executionData: data.executionData },
-				});
-			}
-
 			job = await this.scalingService.addJob(jobData, { priority: realtime ? 50 : 100 });
 
 			hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerMain(

@@ -2,7 +2,7 @@ import type { IDataObject, INode, INodeExecutionData, ITaskData } from 'n8n-work
 import { NodeConnectionType } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
-import type { AllCodeTaskData, JSExecSettings } from '@/js-task-runner/js-task-runner';
+import type { DataRequestResponse, JSExecSettings } from '@/js-task-runner/js-task-runner';
 import type { Task } from '@/task-runner';
 
 /**
@@ -48,10 +48,10 @@ export const newTaskData = (opts: Partial<ITaskData> & Pick<ITaskData, 'source'>
 /**
  * Creates a new all code task data with the given options
  */
-export const newAllCodeTaskData = (
+export const newCodeTaskData = (
 	codeNodeInputData: INodeExecutionData[],
-	opts: Partial<AllCodeTaskData> = {},
-): AllCodeTaskData => {
+	opts: Partial<DataRequestResponse> = {},
+): DataRequestResponse => {
 	const codeNode = newNode({
 		name: 'JsCode',
 		parameters: {

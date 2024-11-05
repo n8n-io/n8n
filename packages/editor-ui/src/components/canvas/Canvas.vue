@@ -20,7 +20,7 @@ import Node from './elements/nodes/CanvasNode.vue';
 import Edge from './elements/edges/CanvasEdge.vue';
 import { computed, onMounted, onUnmounted, provide, ref, toRef, useCssModule, watch } from 'vue';
 import type { EventBus } from 'n8n-design-system';
-import { createEventBus } from 'n8n-design-system';
+import { createEventBus, useDeviceSupport } from 'n8n-design-system';
 import { useContextMenu, type ContextMenuAction } from '@/composables/useContextMenu';
 import { useKeybindings } from '@/composables/useKeybindings';
 import ContextMenu from '@/components/ContextMenu/ContextMenu.vue';
@@ -31,7 +31,6 @@ import { GRID_SIZE } from '@/utils/nodeViewUtils';
 import { CanvasKey } from '@/constants';
 import { onKeyDown, onKeyUp, useDebounceFn } from '@vueuse/core';
 import CanvasArrowHeadMarker from './elements/edges/CanvasArrowHeadMarker.vue';
-import { CanvasNodeRenderType } from '@/types';
 import CanvasBackgroundStripedPattern from './elements/CanvasBackgroundStripedPattern.vue';
 
 const $style = useCssModule();
@@ -96,6 +95,8 @@ const props = withDefaults(
 	},
 );
 
+const { controlKeyCode } = useDeviceSupport();
+
 const {
 	getSelectedNodes: selectedNodes,
 	addSelectedNodes,
@@ -111,7 +112,6 @@ const {
 	nodes: graphNodes,
 	onPaneReady,
 	findNode,
-	onNodesInitialized,
 	viewport,
 } = useVueFlow({ id: props.id, deleteKeyCode: null });
 
@@ -120,7 +120,6 @@ const isPaneReady = ref(false);
 const classes = computed(() => ({
 	[$style.canvas]: true,
 	[$style.ready]: isPaneReady.value,
-	[$style.draggable]: isPanningEnabled.value,
 }));
 
 /**
@@ -132,15 +131,17 @@ const disableKeyBindings = computed(() => !props.keyBindings);
 /**
  * @see https://developer.mozilla.org/en-US/docs/Web/API/UI_Events/Keyboard_event_key_values#whitespace_keys
  */
-const panningKeyCode = ' ';
-const isPanningEnabled = ref(false);
 
-onKeyDown(panningKeyCode, () => {
-	isPanningEnabled.value = true;
+const panningKeyCode = ref<string[]>([' ', controlKeyCode]);
+const panningMouseButton = ref<number[]>([1]);
+const selectionKeyCode = ref<true | null>(true);
+
+onKeyDown(panningKeyCode.value, () => {
+	selectionKeyCode.value = null;
 });
 
-onKeyUp(panningKeyCode, () => {
-	isPanningEnabled.value = false;
+onKeyUp(panningKeyCode.value, () => {
+	selectionKeyCode.value = true;
 });
 
 const keyMap = computed(() => ({
@@ -176,7 +177,6 @@ useKeybindings(keyMap, { disabled: disableKeyBindings });
  * Nodes
  */
 
-const selectionKeyCode = computed(() => (isPanningEnabled.value ? null : true));
 const lastSelectedNode = computed(() => selectedNodes.value[selectedNodes.value.length - 1]);
 const hasSelection = computed(() => selectedNodes.value.length > 0);
 const selectedNodeIds = computed(() => selectedNodes.value.map((node) => node.id));
@@ -484,11 +484,6 @@ onPaneReady(async () => {
 	isPaneReady.value = true;
 });
 
-onNodesInitialized((nodes) => {
-	if (nodes.length !== 1 || nodes[0].data?.render.type !== CanvasNodeRenderType.AddNodes) return;
-	void onFitView();
-});
-
 watch(() => props.readOnly, setReadonly, {
 	immediate: true,
 });
@@ -513,6 +508,7 @@ provide(CanvasKey, {
 		:apply-changes="false"
 		:connection-line-options="{ markerEnd: MarkerType.ArrowClosed }"
 		:connection-radius="60"
+		:pan-on-drag="panningMouseButton"
 		pan-on-scroll
 		snap-to-grid
 		:snap-grid="[GRID_SIZE, GRID_SIZE]"
@@ -615,12 +611,16 @@ provide(CanvasKey, {
 		opacity: 1;
 	}
 
-	&.draggable :global(.vue-flow__pane) {
+	:global(.vue-flow__pane) {
 		cursor: grab;
-	}
 
-	:global(.vue-flow__pane.dragging) {
-		cursor: grabbing;
+		&:global(.selection) {
+			cursor: default;
+		}
+
+		&:global(.dragging) {
+			cursor: grabbing;
+		}
 	}
 }
 </style>

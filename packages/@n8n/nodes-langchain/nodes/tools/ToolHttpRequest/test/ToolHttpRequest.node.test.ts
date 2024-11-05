@@ -1,165 +1,298 @@
-import get from 'lodash/get';
-import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
+import { mock } from 'jest-mock-extended';
+import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
 
 import type { N8nTool } from '../../../../utils/N8nTool';
 import { ToolHttpRequest } from '../ToolHttpRequest.node';
 
-const createExecuteFunctionsMock = (parameters: IDataObject, requestMock: any) => {
-	const nodeParameters = parameters;
-
-	return {
-		getNodeParameter(parameter: string) {
-			return get(nodeParameters, parameter);
-		},
-		getNode() {
-			return {
-				name: 'HTTP Request',
-			};
-		},
-		getInputData() {
-			return [{ json: {} }];
-		},
-		getWorkflow() {
-			return {
-				name: 'Test Workflow',
-			};
-		},
-		continueOnFail() {
-			return false;
-		},
-		addInputData() {
-			return { index: 0 };
-		},
-		addOutputData() {
-			return;
-		},
-		helpers: {
-			httpRequest: requestMock,
-		},
-	} as unknown as IExecuteFunctions;
-};
-
 describe('ToolHttpRequest', () => {
-	let httpTool: ToolHttpRequest;
-	let mockRequest: jest.Mock;
+	const httpTool = new ToolHttpRequest();
+	const helpers = mock<IExecuteFunctions['helpers']>();
+	const executeFunctions = mock<IExecuteFunctions>({ helpers });
+
+	beforeEach(() => {
+		jest.resetAllMocks();
+		executeFunctions.getNode.mockReturnValue(
+			mock<INode>({
+				type: 'n8n-nodes-base.httpRequest',
+				name: 'HTTP Request',
+				typeVersion: 1.1,
+			}),
+		);
+		executeFunctions.addInputData.mockReturnValue({ index: 0 });
+	});
 
 	describe('Binary response', () => {
-		beforeEach(() => {
-			httpTool = new ToolHttpRequest();
-			mockRequest = jest.fn();
-		});
-
 		it('should return the error when receiving a binary response', async () => {
-			mockRequest.mockResolvedValue({
+			helpers.httpRequest.mockResolvedValue({
 				body: Buffer.from(''),
 				headers: {
 					'content-type': 'image/jpeg',
 				},
 			});
 
-			const { response } = await httpTool.supplyData.call(
-				createExecuteFunctionsMock(
-					{
-						method: 'GET',
-						url: 'https://httpbin.org/image/jpeg',
-						options: {},
-						placeholderDefinitions: {
-							values: [],
-						},
-					},
-					mockRequest,
-				),
-				0,
-			);
+			executeFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return 'https://httpbin.org/image/jpeg';
+					case 'options':
+						return {};
+					case 'placeholderDefinitions.values':
+						return [];
+					default:
+						return undefined;
+				}
+			});
 
-			const res = await (response as N8nTool).invoke('');
+			const { response } = await httpTool.supplyData.call(executeFunctions, 0);
 
+			const res = await (response as N8nTool).invoke({});
+			expect(helpers.httpRequest).toHaveBeenCalled();
 			expect(res).toContain('error');
 			expect(res).toContain('Binary data is not supported');
 		});
 
 		it('should return the response text when receiving a text response', async () => {
-			mockRequest.mockResolvedValue({
+			helpers.httpRequest.mockResolvedValue({
 				body: 'Hello World',
 				headers: {
 					'content-type': 'text/plain',
 				},
 			});
 
-			const { response } = await httpTool.supplyData.call(
-				createExecuteFunctionsMock(
-					{
-						method: 'GET',
-						url: 'https://httpbin.org/text/plain',
-						options: {},
-						placeholderDefinitions: {
-							values: [],
-						},
-					},
-					mockRequest,
-				),
-				0,
-			);
+			executeFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return 'https://httpbin.org/text/plain';
+					case 'options':
+						return {};
+					case 'placeholderDefinitions.values':
+						return [];
+					default:
+						return undefined;
+				}
+			});
 
-			const res = await (response as N8nTool).invoke('');
+			const { response } = await httpTool.supplyData.call(executeFunctions, 0);
+
+			const res = await (response as N8nTool).invoke({});
+			expect(helpers.httpRequest).toHaveBeenCalled();
 			expect(res).toEqual('Hello World');
 		});
 
 		it('should return the response text when receiving a text response with a charset', async () => {
-			mockRequest.mockResolvedValue({
+			helpers.httpRequest.mockResolvedValue({
 				body: 'こんにちは世界',
 				headers: {
 					'content-type': 'text/plain; charset=iso-2022-jp',
 				},
 			});
 
-			const { response } = await httpTool.supplyData.call(
-				createExecuteFunctionsMock(
-					{
-						method: 'GET',
-						url: 'https://httpbin.org/text/plain',
-						options: {},
-						placeholderDefinitions: {
-							values: [],
-						},
-					},
-					mockRequest,
-				),
-				0,
-			);
+			executeFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return 'https://httpbin.org/text/plain';
+					case 'options':
+						return {};
+					case 'placeholderDefinitions.values':
+						return [];
+					default:
+						return undefined;
+				}
+			});
 
-			const res = await (response as N8nTool).invoke('');
+			const { response } = await httpTool.supplyData.call(executeFunctions, 0);
+
+			const res = await (response as N8nTool).invoke({});
+			expect(helpers.httpRequest).toHaveBeenCalled();
 			expect(res).toEqual('こんにちは世界');
 		});
 
 		it('should return the response object when receiving a JSON response', async () => {
 			const mockJson = { hello: 'world' };
 
-			mockRequest.mockResolvedValue({
-				body: mockJson,
+			helpers.httpRequest.mockResolvedValue({
+				body: JSON.stringify(mockJson),
 				headers: {
 					'content-type': 'application/json',
 				},
 			});
 
-			const { response } = await httpTool.supplyData.call(
-				createExecuteFunctionsMock(
-					{
-						method: 'GET',
-						url: 'https://httpbin.org/json',
-						options: {},
-						placeholderDefinitions: {
-							values: [],
-						},
-					},
-					mockRequest,
-				),
-				0,
+			executeFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return 'https://httpbin.org/json';
+					case 'options':
+						return {};
+					case 'placeholderDefinitions.values':
+						return [];
+					default:
+						return undefined;
+				}
+			});
+
+			const { response } = await httpTool.supplyData.call(executeFunctions, 0);
+
+			const res = await (response as N8nTool).invoke({});
+			expect(helpers.httpRequest).toHaveBeenCalled();
+			expect(jsonParse(res)).toEqual(mockJson);
+		});
+
+		it('should handle authentication with predefined credentials', async () => {
+			helpers.httpRequestWithAuthentication.mockResolvedValue({
+				body: 'Hello World',
+				headers: {
+					'content-type': 'text/plain',
+				},
+			});
+
+			executeFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return 'https://httpbin.org/text/plain';
+					case 'authentication':
+						return 'predefinedCredentialType';
+					case 'nodeCredentialType':
+						return 'linearApi';
+					case 'options':
+						return {};
+					case 'placeholderDefinitions.values':
+						return [];
+					default:
+						return undefined;
+				}
+			});
+
+			const { response } = await httpTool.supplyData.call(executeFunctions, 0);
+
+			const res = await (response as N8nTool).invoke({});
+
+			expect(res).toEqual('Hello World');
+
+			expect(helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
+				'linearApi',
+				expect.objectContaining({
+					returnFullResponse: true,
+				}),
+				undefined,
+			);
+		});
+
+		it('should handle authentication with generic credentials', async () => {
+			helpers.httpRequest.mockResolvedValue({
+				body: 'Hello World',
+				headers: {
+					'content-type': 'text/plain',
+				},
+			});
+
+			executeFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return 'https://httpbin.org/text/plain';
+					case 'authentication':
+						return 'genericCredentialType';
+					case 'genericAuthType':
+						return 'httpBasicAuth';
+					case 'options':
+						return {};
+					case 'placeholderDefinitions.values':
+						return [];
+					default:
+						return undefined;
+				}
+			});
+
+			executeFunctions.getCredentials.mockResolvedValue({
+				user: 'username',
+				password: 'password',
+			});
+
+			const { response } = await httpTool.supplyData.call(executeFunctions, 0);
+
+			const res = await (response as N8nTool).invoke({});
+
+			expect(res).toEqual('Hello World');
+
+			expect(helpers.httpRequest).toHaveBeenCalledWith(
+				expect.objectContaining({
+					returnFullResponse: true,
+					auth: expect.objectContaining({
+						username: 'username',
+						password: 'password',
+					}),
+				}),
+			);
+		});
+	});
+
+	describe('Optimize response', () => {
+		it('should extract body from the response HTML', async () => {
+			helpers.httpRequest.mockResolvedValue({
+				body: `<!DOCTYPE html>
+<html>
+  <head>
+  </head>
+  <body>
+      <h1>Test</h1>
+
+      <div>
+        <p>
+          Test content
+        </p>
+      </div>
+  </body>
+</html>`,
+				headers: {
+					'content-type': 'text/html',
+				},
+			});
+
+			executeFunctions.getNodeParameter.mockImplementation(
+				(paramName: string, _: any, fallback: any) => {
+					switch (paramName) {
+						case 'method':
+							return 'GET';
+						case 'url':
+							return '{url}';
+						case 'options':
+							return {};
+						case 'placeholderDefinitions.values':
+							return [];
+						case 'optimizeResponse':
+							return true;
+						case 'responseType':
+							return 'html';
+						case 'cssSelector':
+							return 'body';
+						default:
+							return fallback;
+					}
+				},
 			);
 
-			const res = await (response as N8nTool).invoke('');
-			expect(jsonParse(res)).toEqual(mockJson);
+			const { response } = await httpTool.supplyData.call(executeFunctions, 0);
+
+			const res = await (response as N8nTool).invoke({
+				url: 'https://httpbin.org/html',
+			});
+
+			expect(helpers.httpRequest).toHaveBeenCalled();
+			expect(res).toEqual(
+				JSON.stringify(['<h1>Test</h1> <div> <p> Test content </p> </div>'], null, 2),
+			);
 		});
 	});
 });

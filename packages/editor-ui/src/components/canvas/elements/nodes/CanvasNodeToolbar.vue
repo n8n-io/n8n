@@ -126,7 +126,7 @@ function onOpenContextMenu(event: MouseEvent) {
 
 <style lang="scss" module>
 .canvasNodeToolbar {
-	padding-bottom: var(--spacing-2xs);
+	padding-bottom: var(--spacing-xs);
 	display: flex;
 	justify-content: flex-end;
 	width: 100%;
@@ -137,6 +137,7 @@ function onOpenContextMenu(event: MouseEvent) {
 	align-items: center;
 	justify-content: center;
 	background-color: var(--color-canvas-background);
+	border-radius: var(--border-radius-base);
 
 	:global(.button) {
 		--button-font-color: var(--color-text-light);

@@ -56,6 +56,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import type { BaseTextKey } from '@/plugins/i18n';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { useNodeViewVersionSwitcher } from '@/composables/useNodeViewVersionSwitcher';
+import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 const props = defineProps<{
 	readOnly?: boolean;
@@ -89,6 +90,7 @@ const message = useMessage();
 const toast = useToast();
 const documentTitle = useDocumentTitle();
 const workflowHelpers = useWorkflowHelpers({ router });
+const pageRedirectionHelper = usePageRedirectionHelper();
 
 const isTagsEditEnabled = ref(false);
 const isNameEditEnabled = ref(false);
@@ -189,9 +191,18 @@ const workflowMenuItems = computed<ActionDropdownItem[]>(() => {
 
 	actions.push({
 		id: WORKFLOW_MENU_ACTIONS.SWITCH_NODE_VIEW_VERSION,
-		...(nodeViewSwitcherDiscovered.value
+		...(nodeViewVersion.value === '2'
 			? {}
-			: { badge: locale.baseText('menuActions.badge.new') }),
+			: nodeViewSwitcherDiscovered.value
+				? {
+						badge: locale.baseText('menuActions.badge.alpha'),
+						badgeProps: {
+							theme: 'tertiary',
+						},
+					}
+				: {
+						badge: locale.baseText('menuActions.badge.new'),
+					}),
 		label:
 			nodeViewVersion.value === '2'
 				? locale.baseText('menuActions.switchToOldNodeViewVersion')
@@ -398,8 +409,8 @@ async function handleFileImport(): Promise<void> {
 	}
 }
 
-function onWorkflowMenuOpen() {
-	setNodeViewSwitcherDropdownOpened();
+function onWorkflowMenuOpen(visible: boolean) {
+	setNodeViewSwitcherDropdownOpened(visible);
 }
 
 async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void> {
@@ -575,11 +586,11 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 }
 
 function goToUpgrade() {
-	void uiStore.goToUpgrade('workflow_sharing', 'upgrade-workflow-sharing');
+	void pageRedirectionHelper.goToUpgrade('workflow_sharing', 'upgrade-workflow-sharing');
 }
 
 function goToWorkflowHistoryUpgrade() {
-	void uiStore.goToUpgrade('workflow-history', 'upgrade-workflow-history');
+	void pageRedirectionHelper.goToUpgrade('workflow-history', 'upgrade-workflow-history');
 }
 
 function showCreateWorkflowSuccessToast(id?: string) {
@@ -743,7 +754,15 @@ function showCreateWorkflowSuccessToast(id?: string) {
 						@visible-change="onWorkflowMenuOpen"
 					/>
 					<template #content>
+						<div class="mb-4xs">
+							<N8nBadge>{{ $locale.baseText('menuActions.badge.alpha') }}</N8nBadge>
+						</div>
 						{{ $locale.baseText('menuActions.nodeViewDiscovery.tooltip') }}
+						<N8nIcon
+							:class="$style.closeNodeViewDiscovery"
+							icon="times-circle"
+							@click="setNodeViewSwitcherDiscovered"
+						/>
 					</template>
 				</N8nTooltip>
 			</div>
@@ -833,5 +852,12 @@ $--header-spacing: 20px;
 
 .disabledShareButton {
 	cursor: not-allowed;
+}
+
+.closeNodeViewDiscovery {
+	position: absolute;
+	right: var(--spacing-xs);
+	top: var(--spacing-xs);
+	cursor: pointer;
 }
 </style>

@@ -65,7 +65,13 @@ export async function configurePostgres(
 		// Always return dates as ISO strings
 		[pgp.pg.types.builtins.TIMESTAMP, pgp.pg.types.builtins.TIMESTAMPTZ].forEach((type) => {
 			pgp.pg.types.setTypeParser(type, (value: string) => {
-				return new Date(value).toISOString();
+				const parsedDate = new Date(value);
+
+				if (isNaN(parsedDate.getTime())) {
+					return value;
+				}
+
+				return parsedDate.toISOString();
 			});
 		});
 	}

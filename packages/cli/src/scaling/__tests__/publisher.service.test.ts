@@ -44,6 +44,16 @@ describe('Publisher', () => {
 	});
 
 	describe('publishCommand', () => {
+		it('should do nothing if not in scaling mode', async () => {
+			config.set('executions.mode', 'regular');
+			const publisher = new Publisher(logger, redisClientService, instanceSettings);
+			const msg = mock<PubSub.Command>({ command: 'reload-license' });
+
+			await publisher.publishCommand(msg);
+
+			expect(client.publish).not.toHaveBeenCalled();
+		});
+
 		it('should publish command into `n8n.commands` pubsub channel', async () => {
 			const publisher = new Publisher(logger, redisClientService, instanceSettings);
 			const msg = mock<PubSub.Command>({ command: 'reload-license' });
@@ -53,6 +63,42 @@ describe('Publisher', () => {
 			expect(client.publish).toHaveBeenCalledWith(
 				'n8n.commands',
 				JSON.stringify({ ...msg, senderId: hostId, selfSend: false, debounce: true }),
+			);
+		});
+
+		it('should not debounce `add-webhooks-triggers-and-pollers`', async () => {
+			const publisher = new Publisher(logger, redisClientService, instanceSettings);
+			const msg = mock<PubSub.Command>({ command: 'add-webhooks-triggers-and-pollers' });
+
+			await publisher.publishCommand(msg);
+
+			expect(client.publish).toHaveBeenCalledWith(
+				'n8n.commands',
+				JSON.stringify({
+					...msg,
+					_isMockObject: true,
+					senderId: hostId,
+					selfSend: true,
+					debounce: false,
+				}),
+			);
+		});
+
+		it('should not debounce `remove-triggers-and-pollers`', async () => {
+			const publisher = new Publisher(logger, redisClientService, instanceSettings);
+			const msg = mock<PubSub.Command>({ command: 'remove-triggers-and-pollers' });
+
+			await publisher.publishCommand(msg);
+
+			expect(client.publish).toHaveBeenCalledWith(
+				'n8n.commands',
+				JSON.stringify({
+					...msg,
+					_isMockObject: true,
+					senderId: hostId,
+					selfSend: true,
+					debounce: false,
+				}),
 			);
 		});
 	});

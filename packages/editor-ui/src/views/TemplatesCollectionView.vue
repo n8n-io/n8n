@@ -58,15 +58,15 @@ const scrollToTop = () => {
 	}, 50);
 };
 
-const onOpenTemplate = ({ event, id }: { event: MouseEvent; id: string }) => {
-	navigateTo(event, VIEWS.TEMPLATE, id);
+const onOpenTemplate = ({ event, id }: { event: MouseEvent; id: number }) => {
+	navigateTo(event, VIEWS.TEMPLATE, `${id}`);
 };
 
-const onUseWorkflow = async ({ event, id }: { event: MouseEvent; id: string }) => {
+const onUseWorkflow = async ({ event, id }: { event: MouseEvent; id: number }) => {
 	await useTemplateWorkflow({
 		posthogStore,
 		router,
-		templateId: id,
+		templateId: `${id}`,
 		inNewBrowserTab: event.metaKey || event.ctrlKey,
 		templatesStore,
 		externalHooks,
