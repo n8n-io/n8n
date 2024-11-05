@@ -183,7 +183,7 @@ onMounted(() => {
 				<span
 					v-if="promptUpdated"
 					:class="$style['warning-text']"
-					v-text="'Instructions changed. Click \'Generate code\' before running this node again'"
+					v-text="'Instructions changed'"
 				/>
 			</div>
 			<N8nInput

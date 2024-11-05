@@ -68,7 +68,7 @@ export class AiTransform implements INodeType {
 					editorIsReadOnly: true,
 				},
 				default: '',
-				hint: 'Read-only. To edit this code, adjust the prompt or copy and paste it into a Code node.',
+				hint: 'Read-only. To edit this code, adjust the instructions or copy and paste it into a Code node.',
 				noDataExpression: true,
 			},
 		],

@@ -276,6 +276,13 @@ async function onClick() {
 		// and update parameters
 		codeGenerationInProgress.value = true;
 		try {
+			toast.showMessage({
+				title: i18n.baseText('ndv.execute.generateCode.title'),
+				message: i18n.baseText('ndv.execute.generateCode.message', {
+					interpolate: { nodeName: node.value?.name as string },
+				}),
+				type: 'success',
+			});
 			const prompt = node.value?.parameters?.instructions as string;
 			const updateInformation = await generateCodeForAiTransform(
 				prompt,
@@ -295,7 +302,16 @@ async function onClick() {
 				code: updateInformation.value,
 			});
 		} catch (error) {
-			// throw error defined in the node about code missing
+			useTelemetry().trackAiTransform('generationFinished', {
+				prompt,
+				code: '',
+				hasError: true,
+			});
+			toast.showMessage({
+				type: 'error',
+				title: i18n.baseText('codeNodeEditor.askAi.generationFailed'),
+				message: error.message,
+			});
 		}
 		codeGenerationInProgress.value = false;
 	}
