@@ -1,7 +1,12 @@
 <script lang="ts" setup>
 import type { IUpdateInformation } from '@/Interface';
 
-import type { INodeParameters, INodeProperties, INodePropertyCollection } from 'n8n-workflow';
+import type {
+	INodeParameters,
+	INodeProperties,
+	INodePropertyCollection,
+	NodeParameterValueType,
+} from 'n8n-workflow';
 import { deepCopy, isINodePropertyCollectionList } from 'n8n-workflow';
 
 import { get } from 'lodash-es';
@@ -11,16 +16,26 @@ import { useI18n } from '@/composables/useI18n';
 
 const locale = useI18n();
 
-const props = defineProps<{
-	nodeValues: INodeParameters;
-	parameter: INodeProperties;
+const props = withDefaults(
+	defineProps<{
+		nodeValues: INodeParameters;
+		parameter: INodeProperties;
+		path: string;
+		values?: Record<string, INodeParameters[]>;
+		isReadOnly?: boolean;
+	}>(),
+	{
+		values: () => ({}),
+		isReadOnly: false,
+	},
+);
+type ValueChangedEvent = {
 	path: string;
-	values: Record<string, INodeParameters[]>;
-	isReadOnly: boolean | undefined;
-}>();
-
+	value: NodeParameterValueType;
+	type?: 'optionsOrderChanged';
+};
 const emit = defineEmits<{
-	valueChanged: [value?: any];
+	valueChanged: [value?: ValueChangedEvent];
 }>();
 
 const getPlaceholderText = computed(() => {
@@ -47,11 +62,11 @@ const multipleValues = computed(() => {
 	return !!props.parameter.typeOptions?.multipleValues;
 });
 const parameterOptions = computed(() => {
-	if (multipleValues && isINodePropertyCollectionList(props.parameter.options)) {
+	if (multipleValues.value && isINodePropertyCollectionList(props.parameter.options)) {
 		return props.parameter.options;
 	}
 
-	return (props.parameter.options as INodePropertyCollection[]).filter((option) => {
+	return (props.parameter.options ?? []).filter((option) => {
 		return !propertyNames.value.includes(option.name);
 	});
 });
@@ -169,8 +184,8 @@ const optionSelected = (optionName: string) => {
 		}
 	}
 
-	let newValue;
-	if (multipleValues) {
+	let newValue: NodeParameterValueType;
+	if (multipleValues.value) {
 		newValue = get(props.nodeValues, name, []) as INodeParameters[];
 
 		newValue.push(newParameterValue);
