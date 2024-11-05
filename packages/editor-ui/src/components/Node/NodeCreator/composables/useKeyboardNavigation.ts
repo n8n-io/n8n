@@ -63,8 +63,14 @@ export const useKeyboardNavigation = defineStore('nodeCreatorKeyboardNavigation'
 
 	async function onKeyDown(e: KeyboardEvent) {
 		// We generally want a global listener across the app
-		// But the chat input should take precedent
-		if (e.target && 'name' in e.target && e.target.name === 'ask-assistant-chat-input') {
+		// But specific components may overrule this by adopting
+		// the 'overrule-global-key-listener' class
+		if (
+			e.target &&
+			'class' in e.target &&
+			typeof e.target.class === 'string' &&
+			e.target.class.includes('overrule-global-key-listener')
+		) {
 			return;
 		}
 
