@@ -1,4 +1,10 @@
 import type {
+	DataRequestResponse,
+	BrokerMessage,
+	PartialAdditionalData,
+	TaskData,
+} from '@n8n/task-runner';
+import type {
 	EnvProviderState,
 	IExecuteData,
 	INodeExecutionData,
@@ -11,9 +17,6 @@ import type {
 	WorkflowParameters,
 } from 'n8n-workflow';
 
-import type { DataRequestResponse, PartialAdditionalData, TaskData } from './task-manager';
-import type { N8nMessage } from '../runner-types';
-
 /**
  * Builds the response to a data request coming from a Task Runner. Tries to minimize
  * the amount of data that is sent to the runner by only providing what is requested.
@@ -23,7 +26,7 @@ export class DataRequestResponseBuilder {
 
 	constructor(
 		private readonly taskData: TaskData,
-		private readonly requestParams: N8nMessage.ToRequester.TaskDataRequest['requestParams'],
+		private readonly requestParams: BrokerMessage.ToRequester.TaskDataRequest['requestParams'],
 	) {
 		this.requestedNodeNames = new Set(requestParams.dataOfNodes);
 
