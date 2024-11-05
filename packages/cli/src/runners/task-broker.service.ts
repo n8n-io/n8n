@@ -128,14 +128,6 @@ export class TaskBroker {
 		await this.knownRunners.get(runnerId)?.messageCallback(message);
 	}
 
-	private async messageAllRunners(message: BrokerMessage.ToRunner.All) {
-		await Promise.allSettled(
-			[...this.knownRunners.values()].map(async (runner) => {
-				await runner.messageCallback(message);
-			}),
-		);
-	}
-
 	private async messageRequester(requesterId: string, message: BrokerMessage.ToRequester.All) {
 		await this.requesters.get(requesterId)?.(message);
 	}

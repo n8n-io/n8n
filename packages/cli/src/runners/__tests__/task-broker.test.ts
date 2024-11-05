@@ -11,7 +11,7 @@ describe('TaskBroker', () => {
 	let taskBroker: TaskBroker;
 
 	beforeEach(() => {
-		taskBroker = new TaskBroker(mock(), mock());
+		taskBroker = new TaskBroker(mock());
 		jest.restoreAllMocks();
 	});
 
