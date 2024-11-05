@@ -173,9 +173,15 @@ export default defineComponent({
 		const nodeHelpers = useNodeHelpers();
 		const externalHooks = useExternalHooks();
 		const node = toRef(props, 'node');
+
+		console.log(props.paneType);
+
+		const displayMode =
+			props.paneType === 'input' ? ndvStore.inputPanelDisplayMode : ndvStore.outputPanelDisplayMode;
+
 		const pinnedData = usePinnedData(node, {
 			runIndex: props.runIndex,
-			displayMode: ndvStore.getPanelDisplayMode(props.paneType),
+			displayMode,
 		});
 		const { isSubNodeType } = useNodeType({
 			node,
@@ -240,7 +246,9 @@ export default defineComponent({
 			return DATA_EDITING_DOCS_URL;
 		},
 		displayMode(): IRunDataDisplayMode {
-			return this.ndvStore.getPanelDisplayMode(this.paneType);
+			return this.paneType === 'input'
+				? this.ndvStore.inputPanelDisplayMode
+				: this.ndvStore.outputPanelDisplayMode;
 		},
 		nodeType(): INodeTypeDescription | null {
 			if (this.node) {

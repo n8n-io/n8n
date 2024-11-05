@@ -77,7 +77,7 @@ const { isSubNodeType } = useNodeType({
 });
 const pinnedData = usePinnedData(activeNode, {
 	runIndex: props.runIndex,
-	displayMode: ndvStore.getPanelDisplayMode('output'),
+	displayMode: ndvStore.outputPanelDisplayMode,
 });
 
 // Data

@@ -227,7 +227,7 @@ function onMouseOver() {
 }
 
 async function onClick() {
-	if (isChatNode.value || (isChatChild.value && ndvStore.isNDVDataEmpty('input'))) {
+	if (isChatNode.value || (isChatChild.value && ndvStore.isInputPanelEmpty)) {
 		ndvStore.setActiveNodeName(null);
 		nodeViewEventBus.emit('openChat');
 	} else if (isListeningForEvents.value) {
