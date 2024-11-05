@@ -13,6 +13,8 @@ import { useDebounce } from '@/composables/useDebounce';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useRoute } from 'vue-router';
 import { useProjectsStore } from '@/stores/projects.store';
+import { N8nIconButton, N8nNavigationDropdown } from 'n8n-design-system';
+import { useGlobalEntityCreation } from '@/composables/useGlobalEntityCreation';
 
 import type { BaseTextKey } from '@/plugins/i18n';
 import type { Scope } from '@n8n/permissions';
@@ -350,6 +352,20 @@ const projectName = computed(() => {
 		return projectsStore.currentProject.name;
 	}
 });
+
+const { menu, handleSelect } = useGlobalEntityCreation(
+	computed(() => !Boolean(projectsStore.currentProject)),
+);
+
+const createLabel = computed(() => {
+	if (!projectsStore.currentProject) {
+		return 'Create';
+	} else if (projectsStore.currentProject.type === ProjectTypes.Personal) {
+		return 'Create personal';
+	} else {
+		return 'Create in project';
+	}
+});
 </script>
 
 <template>
@@ -358,6 +374,11 @@ const projectName = computed(() => {
 			<ResourceListHeader :icon="headerIcon" data-test-id="list-layout-header">
 				<template #title>
 					{{ projectName }}
+				</template>
+				<template #actions>
+					<N8nNavigationDropdown :menu @select="handleSelect">
+						<N8nIconButton :label="createLabel" icon="plus" style="width: auto" />
+					</N8nNavigationDropdown>
 				</template>
 			</ResourceListHeader>
 			<slot name="header" />
@@ -435,16 +456,6 @@ const projectName = computed(() => {
 								</n8n-select>
 							</div>
 						</div>
-						<slot name="add-button" :disabled="disabled">
-							<n8n-button
-								size="large"
-								:disabled="disabled"
-								data-test-id="resources-list-add"
-								@click="onAddButtonClick"
-							>
-								{{ i18n.baseText(`${resourceKey}.add` as BaseTextKey) }}
-							</n8n-button>
-						</slot>
 					</div>
 
 					<slot name="callout"></slot>
