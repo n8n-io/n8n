@@ -174,8 +174,6 @@ export default defineComponent({
 		const externalHooks = useExternalHooks();
 		const node = toRef(props, 'node');
 
-		console.log(props.paneType);
-
 		const displayMode =
 			props.paneType === 'input' ? ndvStore.inputPanelDisplayMode : ndvStore.outputPanelDisplayMode;
 
