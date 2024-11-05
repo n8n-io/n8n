@@ -1932,5 +1932,6 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		fetchWorkflowDataFromUrl,
 		resetWorkspace,
 		initializeWorkspace,
+		resolveNodeWebhook,
 	};
 }

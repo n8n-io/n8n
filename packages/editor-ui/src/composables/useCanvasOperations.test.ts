@@ -1,5 +1,10 @@
 import { setActivePinia } from 'pinia';
-import type { IConnection, Workflow } from 'n8n-workflow';
+import type {
+	IConnection,
+	INodeTypeDescription,
+	IWebhookDescription,
+	Workflow,
+} from 'n8n-workflow';
 import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import type { CanvasNode } from '@/types';
@@ -23,7 +28,13 @@ import { useCredentialsStore } from '@/stores/credentials.store';
 import { waitFor } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
-import { SET_NODE_TYPE, STICKY_NODE_TYPE, STORES } from '@/constants';
+import {
+	FORM_TRIGGER_NODE_TYPE,
+	SET_NODE_TYPE,
+	STICKY_NODE_TYPE,
+	STORES,
+	WEBHOOK_NODE_TYPE,
+} from '@/constants';
 import type { Connection } from '@vue-flow/core';
 import { useClipboard } from '@/composables/useClipboard';
 import { createCanvasConnectionHandleString } from '@/utils/canvasUtilsV2';
@@ -1888,6 +1899,56 @@ describe('useCanvasOperations', () => {
 			expect(useClipboard().copy).toHaveBeenCalledTimes(1);
 			expect(vi.mocked(useClipboard().copy).mock.calls).toMatchSnapshot();
 		});
+	});
+
+	describe('resolveNodeWebhook', () => {
+		const nodeTypeDescription = mock<INodeTypeDescription>({
+			webhooks: [mock<IWebhookDescription>()],
+		});
+
+		it("should set webhookId if it doesn't already exist", () => {
+			const node = mock<INodeUi>({ webhookId: undefined });
+
+			const { resolveNodeWebhook } = useCanvasOperations({ router });
+			resolveNodeWebhook(node, nodeTypeDescription);
+
+			expect(node.webhookId).toBeDefined();
+		});
+
+		it('should not set webhookId if it already exists', () => {
+			const node = mock<INodeUi>({ webhookId: 'random-id' });
+
+			const { resolveNodeWebhook } = useCanvasOperations({ router });
+			resolveNodeWebhook(node, nodeTypeDescription);
+
+			expect(node.webhookId).toBe('random-id');
+		});
+
+		it("should not set webhookId if node description doesn't define any webhooks", () => {
+			const node = mock<INodeUi>({ webhookId: undefined });
+
+			const { resolveNodeWebhook } = useCanvasOperations({ router });
+			resolveNodeWebhook(node, mock<INodeTypeDescription>({ webhooks: [] }));
+
+			expect(node.webhookId).toBeUndefined();
+		});
+
+		test.each([WEBHOOK_NODE_TYPE, FORM_TRIGGER_NODE_TYPE])(
+			'should update the webhook path, if the node type is %s, and the path parameter is empty',
+			(nodeType) => {
+				const node = mock<INodeUi>({
+					webhookId: 'random-id',
+					type: nodeType,
+					parameters: { path: '' },
+				});
+
+				const { resolveNodeWebhook } = useCanvasOperations({ router });
+				resolveNodeWebhook(node, nodeTypeDescription);
+
+				expect(node.webhookId).toBe('random-id');
+				expect(node.parameters.path).toBe('random-id');
+			},
+		);
 	});
 });
 
