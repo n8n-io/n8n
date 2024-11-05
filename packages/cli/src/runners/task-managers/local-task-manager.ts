@@ -1,7 +1,7 @@
+import type { RequesterMessage } from '@n8n/task-runner';
 import Container from 'typedi';
 
 import { TaskManager } from './task-manager';
-import type { RequesterMessage } from '../runner-types';
 import type { RequesterMessageCallback } from '../task-broker.service';
 import { TaskBroker } from '../task-broker.service';
 

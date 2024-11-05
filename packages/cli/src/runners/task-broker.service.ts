@@ -1,3 +1,4 @@
+import type { N8nMessage, RequesterMessage, RunnerMessage, TaskResultData } from '@n8n/task-runner';
 import { ApplicationError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { Service } from 'typedi';
@@ -6,7 +7,6 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Logger } from '@/logging/logger.service';
 
 import { TaskRejectError } from './errors';
-import type { N8nMessage, RunnerMessage, RequesterMessage, TaskResultData } from './runner-types';
 
 export interface TaskRunner {
 	id: string;

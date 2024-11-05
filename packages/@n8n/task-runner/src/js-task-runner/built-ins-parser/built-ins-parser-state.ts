@@ -1,4 +1,4 @@
-import type { N8nMessage } from '../../runner-types';
+import type { N8nMessage } from '@/runner-messages';
 
 /**
  * Class to keep track of which built-in variables are accessed in the code

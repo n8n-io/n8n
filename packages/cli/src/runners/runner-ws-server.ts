@@ -1,3 +1,4 @@
+import type { N8nMessage, RunnerMessage } from '@n8n/task-runner';
 import { Service } from 'typedi';
 import type WebSocket from 'ws';
 
@@ -5,11 +6,9 @@ import { Logger } from '@/logging/logger.service';
 
 import { DefaultTaskRunnerDisconnectAnalyzer } from './default-task-runner-disconnect-analyzer';
 import type {
-	RunnerMessage,
-	N8nMessage,
+	DisconnectAnalyzer,
 	TaskRunnerServerInitRequest,
 	TaskRunnerServerInitResponse,
-	DisconnectAnalyzer,
 } from './runner-types';
 import { TaskBroker, type MessageCallback, type TaskRunner } from './task-broker.service';
 

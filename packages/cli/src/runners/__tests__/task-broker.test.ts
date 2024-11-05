@@ -1,7 +1,7 @@
+import type { RunnerMessage, TaskResultData } from '@n8n/task-runner';
 import { mock } from 'jest-mock-extended';
 
 import { TaskRejectError } from '../errors';
-import type { RunnerMessage, TaskResultData } from '../runner-types';
 import { TaskBroker } from '../task-broker.service';
 import type { TaskOffer, TaskRequest, TaskRunner } from '../task-broker.service';
 

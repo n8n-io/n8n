@@ -1,4 +1,10 @@
 import type {
+	DataRequestResponse,
+	N8nMessage,
+	PartialAdditionalData,
+	TaskData,
+} from '@n8n/task-runner';
+import type {
 	EnvProviderState,
 	IExecuteData,
 	INodeExecutionData,
@@ -10,9 +16,6 @@ import type {
 	Workflow,
 	WorkflowParameters,
 } from 'n8n-workflow';
-
-import type { DataRequestResponse, PartialAdditionalData, TaskData } from './task-manager';
-import type { N8nMessage } from '../runner-types';
 
 /**
  * Builds the response to a data request coming from a Task Runner. Tries to minimize

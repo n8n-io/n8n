@@ -2,14 +2,10 @@ import { ApplicationError, type INodeTypeDescription } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { type MessageEvent, WebSocket } from 'ws';
 
-import type { BaseRunnerConfig } from './config/base-runner-config';
-import { TaskRunnerNodeTypes } from './node-types';
-import {
-	RPC_ALLOW_LIST,
-	type RunnerMessage,
-	type N8nMessage,
-	type TaskResultData,
-} from './runner-types';
+import type { BaseRunnerConfig } from '@/config/base-runner-config';
+import { TaskRunnerNodeTypes } from '@/node-types';
+import type { N8nMessage, RunnerMessage } from '@/runner-messages';
+import { RPC_ALLOW_LIST, type TaskResultData } from '@/runner-types';
 
 export interface Task<T = unknown> {
 	taskId: string;

@@ -1,9 +1,9 @@
+import type { TaskData } from '@n8n/task-runner';
 import { mock } from 'jest-mock-extended';
 import type { IExecuteFunctions, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { type INode, type INodeExecutionData, type Workflow } from 'n8n-workflow';
 
 import { DataRequestResponseBuilder } from '../data-request-response-builder';
-import type { TaskData } from '../task-manager';
 
 const triggerNode: INode = mock<INode>({
 	name: 'Trigger',
