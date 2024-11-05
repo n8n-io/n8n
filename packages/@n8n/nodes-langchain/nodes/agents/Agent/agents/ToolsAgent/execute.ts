@@ -211,11 +211,16 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 			if (finalResponse instanceof Object) {
 				if ('output' in finalResponse) {
 					try {
+						// If the output is an object, we will try to parse it as JSON
+						// this is because parser expects stringified JSON object like { "output": { .... } }
+						// so we try to parse the output before wrapping it and then stringify it
 						parserInput = JSON.stringify({ output: jsonParse(finalResponse.output) });
 					} catch (error) {
+						// If parsing of the output fails, we will use the raw output
 						parserInput = finalResponse.output;
 					}
 				} else {
+					// If the output is not an object, we will stringify it as it is
 					parserInput = JSON.stringify(finalResponse);
 				}
 			} else {
