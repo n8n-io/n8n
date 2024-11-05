@@ -29,6 +29,14 @@ export class AiTransform implements INodeType {
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		parameterPane: 'wide',
+		hints: [
+			{
+				message:
+					"This node doesn't have access to the contents of binary files. To use those contents here, use the 'Extract from File' node first.",
+				displayCondition: '={{ $input.all().some(i => i.binary) }}',
+				location: 'outputPane',
+			},
+		],
 		properties: [
 			{
 				displayName: 'Instructions',
