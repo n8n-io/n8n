@@ -1,17 +1,12 @@
-import { createPinia, setActivePinia } from 'pinia';
+import { setActivePinia } from 'pinia';
 import InputPanel from '@/components/InputPanel.vue';
 import { mountComponent } from '@/__tests__/render';
 import { createTestNode, createTestWorkflowObject } from '@/__tests__/mocks';
 import { IConnections, NodeConnectionType } from 'n8n-workflow';
+import { createTestingPinia } from '@pinia/testing';
+import { STORES } from '@/constants';
 
 describe('InputPanel.vue', () => {
-	let pinia: ReturnType<typeof createPinia>;
-
-	beforeEach(() => {
-		pinia = createPinia();
-		setActivePinia(pinia);
-	});
-
 	it('should compute rootNodesParents correctly', () => {
 		const nodes = [
 			createTestNode({ name: 'Normal Node' }),
@@ -34,6 +29,20 @@ describe('InputPanel.vue', () => {
 			nodes,
 			connections,
 		});
+
+		const pinia = createTestingPinia({
+			initialState: {
+				[STORES.NDV]: {
+					// TODO: this does not work, ned to fix
+					activeNode: { name: 'Agent' },
+				},
+				[STORES.WORKFLOWS]: {
+					workflow: workflowObject,
+				},
+			},
+		});
+
+		setActivePinia(pinia);
 
 		// Mount the component
 		const wrapper = mountComponent(InputPanel, {
