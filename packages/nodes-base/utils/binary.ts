@@ -17,6 +17,7 @@ export type JsonToSpreadsheetBinaryOptions = {
 	compression?: boolean;
 	fileName?: string;
 	sheetName?: string;
+	delimiter?: string;
 };
 
 export type JsonToBinaryOptions = {
@@ -58,6 +59,10 @@ export async function convertJsonToSpreadsheetBinary(
 		bookSST: false,
 		type: 'buffer',
 	};
+
+	if (fileFormat === 'csv' && options.delimiter?.length) {
+		writingOptions.FS = options.delimiter ?? ',';
+	}
 
 	if (['xlsx', 'ods'].includes(fileFormat) && options.compression) {
 		writingOptions.compression = true;
