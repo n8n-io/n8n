@@ -79,8 +79,8 @@ export class TaskRunnerNodeTypes implements INodeTypes {
 		}
 	}
 
-	/** Remove node type versions that are already registered. */
-	filterOutKnown(nodeTypes: NeededNodeType[]) {
+	/** Filter out node type versions that are already registered. */
+	onlyUnknown(nodeTypes: NeededNodeType[]) {
 		return nodeTypes.filter(({ name, version }) => {
 			const existingVersions = this.nodeTypesByVersion.get(name);
 

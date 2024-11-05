@@ -129,7 +129,7 @@ export class JsTaskRunner extends TaskRunner {
 			version: node.typeVersion,
 		}));
 
-		const unknownNodeTypes = this.nodeTypes.filterOutKnown(nodeTypesInWorkflow);
+		const unknownNodeTypes = this.nodeTypes.onlyUnknown(nodeTypesInWorkflow);
 
 		const nodeTypes = await this.requestNodeTypes<INodeTypeDescription[]>(
 			task.taskId,
