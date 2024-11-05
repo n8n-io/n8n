@@ -67,7 +67,7 @@ export const useKeyboardNavigation = defineStore('nodeCreatorKeyboardNavigation'
 		// the 'overrule-global-key-listener' class
 		if (
 			e.target instanceof Element &&
-			e.target.className.includes('overrule-global-key-listener')
+			e.target.classList.contains('overrule-global-key-listener')
 		) {
 			return;
 		}
