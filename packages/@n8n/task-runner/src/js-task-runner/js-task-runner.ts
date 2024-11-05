@@ -131,7 +131,12 @@ export class JsTaskRunner extends TaskRunner {
 
 		const unknownNodeTypes = this.nodeTypes.filterOutKnown(nodeTypesInWorkflow);
 
-		await this.requestNodeTypes(task.taskId, unknownNodeTypes);
+		const nodeTypes = await this.requestNodeTypes<INodeTypeDescription[]>(
+			task.taskId,
+			unknownNodeTypes,
+		);
+
+		this.nodeTypes.addNodeTypeDescriptions(nodeTypes);
 
 		const workflowParams = data.workflow;
 		const workflow = new Workflow({

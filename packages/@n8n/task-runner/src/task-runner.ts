@@ -1,4 +1,3 @@
-import type { INodeTypeDescription } from 'n8n-workflow';
 import { ApplicationError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { type MessageEvent, WebSocket } from 'ws';
@@ -177,13 +176,9 @@ export abstract class TaskRunner {
 				this.handleRpcResponse(message.callId, message.status, message.data);
 				break;
 			case 'broker:nodetypes':
-				this.setNodeTypes(message.nodeTypes as unknown as INodeTypeDescription[]);
+				this.processNodeTypesResponse(message.requestId, message.nodeTypes);
 				break;
 		}
-	}
-
-	setNodeTypes(nodeTypeDescriptions: INodeTypeDescription[]) {
-		this.nodeTypes.addNodeTypeDescriptions(nodeTypeDescriptions);
 	}
 
 	processDataResponse(requestId: string, data: unknown) {
@@ -194,6 +189,16 @@ export abstract class TaskRunner {
 		// Deleting of the request is handled in `requestData`, using a
 		// `finally` wrapped around the return
 		request.resolve(data);
+	}
+
+	processNodeTypesResponse(requestId: string, nodeTypes: unknown) {
+		const request = this.nodeTypesRequests.get(requestId);
+
+		if (!request) return;
+
+		// Deleting of the request is handled in `requestNodeTypes`, using a
+		// `finally` wrapped around the return
+		request.resolve(nodeTypes);
 	}
 
 	hasOpenTasks() {
