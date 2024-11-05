@@ -85,15 +85,15 @@ export type EnterEditModeArgs = {
 type Props = {
 	workflow: Workflow;
 	runIndex: number;
-	node?: INodeUi | null;
-	nodes?: IConnectedNode[];
-	linkedRuns?: boolean;
-	canLinkRuns?: boolean;
 	tooMuchDataTitle: string;
 	executingMessage: string;
 	pushRef: string;
 	paneType: NodePanelType;
 	noDataInBranchMessage: string;
+	node?: INodeUi | null;
+	nodes?: IConnectedNode[];
+	linkedRuns?: boolean;
+	canLinkRuns?: boolean;
 	isExecuting?: boolean;
 	overrideOutputs?: number[];
 	mappingEnabled?: boolean;

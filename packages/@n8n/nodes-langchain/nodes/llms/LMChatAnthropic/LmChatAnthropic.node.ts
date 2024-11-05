@@ -1,4 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+
+import { ChatAnthropic } from '@langchain/anthropic';
+import type { LLMResult } from '@langchain/core/outputs';
 import {
 	NodeConnectionType,
 	type INodePropertyOptions,
@@ -9,8 +12,6 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { ChatAnthropic } from '@langchain/anthropic';
-import type { LLMResult } from '@langchain/core/outputs';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 import { N8nLlmTracing } from '../N8nLlmTracing';
 
@@ -35,6 +36,10 @@ const modelField: INodeProperties = {
 		{
 			name: 'Claude 3 Sonnet(20240229)',
 			value: 'claude-3-sonnet-20240229',
+		},
+		{
+			name: 'Claude 3.5 Haiku(20241022)',
+			value: 'claude-3-5-haiku-20241022',
 		},
 		{
 			name: 'Claude 3 Haiku(20240307)',

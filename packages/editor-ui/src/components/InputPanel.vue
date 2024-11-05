@@ -27,8 +27,8 @@ type MappingMode = 'debugging' | 'mapping';
 type Props = {
 	runIndex: number;
 	workflow: Workflow;
+	pushRef: string;
 	currentNodeName?: string;
-	pushRef?: string;
 	canLinkRuns?: boolean;
 	linkedRuns?: boolean;
 	readOnly?: boolean;
@@ -161,7 +161,7 @@ const activeNode = computed(() => ndvStore.activeNode);
 const rootNode = computed(() => {
 	if (!activeNode.value) return null;
 
-	return props.workflow.getChildNodes(activeNode.value.name, 'ALL_NON_MAIN').at(0) ?? null;
+	return props.workflow.getChildNodes(activeNode.value.name, 'ALL').at(0) ?? null;
 });
 
 const rootNodesParents = computed(() => {
@@ -319,7 +319,7 @@ function activatePane() {
 		:node="currentNode"
 		:nodes="isMappingMode ? rootNodesParents : parentNodes"
 		:workflow="workflow"
-		:run-index="runIndex"
+		:run-index="isMappingMode ? 0 : runIndex"
 		:linked-runs="linkedRuns"
 		:can-link-runs="!mappedNode && canLinkRuns"
 		:too-much-data-title="$locale.baseText('ndv.input.tooMuchData.title')"

@@ -7,6 +7,7 @@ export const LOG_SCOPES = [
 	'external-secrets',
 	'license',
 	'multi-main-setup',
+	'pruning',
 	'pubsub',
 	'redis',
 	'scaling',
