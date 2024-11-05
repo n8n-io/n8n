@@ -150,36 +150,6 @@ describe('Credentials', () => {
 			.should('have.value', NEW_TRELLO_ACCOUNT_NAME);
 	});
 
-	it('should set a default credential when adding nodes', () => {
-		workflowPage.actions.visit();
-
-		createNotionCredential();
-
-		workflowPage.actions.addNodeToCanvas(NOTION_NODE_NAME, true, true);
-		workflowPage.getters
-			.nodeCredentialsSelect()
-			.find('input')
-			.should('have.value', NEW_NOTION_ACCOUNT_NAME);
-	});
-
-	it('should set a default credential when editing a node', () => {
-		workflowPage.actions.visit();
-
-		createNotionCredential();
-
-		workflowPage.actions.addNodeToCanvas(HTTP_REQUEST_NODE_NAME, true, true);
-		nodeDetailsView.getters.parameterInput('authentication').click();
-		getVisibleSelect().find('li').contains('Predefined').click();
-
-		nodeDetailsView.getters.parameterInput('nodeCredentialType').click();
-		getVisibleSelect().find('li').contains('Notion API').click();
-
-		workflowPage.getters
-			.nodeCredentialsSelect()
-			.find('input')
-			.should('have.value', NEW_NOTION_ACCOUNT_NAME);
-	});
-
 	it('should delete credentials from NDV', () => {
 		workflowPage.actions.visit();
 		workflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
@@ -267,6 +237,36 @@ describe('Credentials', () => {
 			.nodeCredentialsSelect()
 			.find('input')
 			.should('have.value', NEW_CREDENTIAL_NAME);
+	});
+
+	it('should set a default credential when adding nodes', () => {
+		workflowPage.actions.visit();
+
+		createNotionCredential();
+
+		workflowPage.actions.addNodeToCanvas(NOTION_NODE_NAME, true, true);
+		workflowPage.getters
+			.nodeCredentialsSelect()
+			.find('input')
+			.should('have.value', NEW_NOTION_ACCOUNT_NAME);
+	});
+
+	it('should set a default credential when editing a node', () => {
+		workflowPage.actions.visit();
+
+		createNotionCredential();
+
+		workflowPage.actions.addNodeToCanvas(HTTP_REQUEST_NODE_NAME, true, true);
+		nodeDetailsView.getters.parameterInput('authentication').click();
+		getVisibleSelect().find('li').contains('Predefined').click();
+
+		nodeDetailsView.getters.parameterInput('nodeCredentialType').click();
+		getVisibleSelect().find('li').contains('Notion API').click();
+
+		workflowPage.getters
+			.nodeCredentialsSelect()
+			.find('input')
+			.should('have.value', NEW_NOTION_ACCOUNT_NAME);
 	});
 
 	it('should setup generic authentication for HTTP node', () => {
