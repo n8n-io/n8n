@@ -75,9 +75,9 @@ export function usePinnedData(
 		);
 	});
 
-	function canPinNode(checkDataEmpty = false) {
+	function canPinNode(checkDataEmpty = false, outputIndex?: number) {
 		const targetNode = unref(node);
-		if (targetNode === null) return false;
+		if (targetNode === null || PIN_DATA_NODE_TYPES_DENYLIST.includes(targetNode.type)) return false;
 
 		const nodeType = useNodeTypesStore().getNodeType(targetNode.type, targetNode.typeVersion);
 		const dataToPin = getInputDataWithPinned(targetNode);
@@ -85,16 +85,24 @@ export function usePinnedData(
 		if (!nodeType || (checkDataEmpty && dataToPin.length === 0)) return false;
 
 		const workflow = workflowsStore.getCurrentWorkflow();
-		const mainOutputs = NodeHelpers.getNodeOutputs(workflow, targetNode, nodeType)
-			.map((output) => (typeof output === 'string' ? { type: output } : output))
-			.filter((output) => output.type === NodeConnectionType.Main && output.category !== 'error');
+		const outputs = NodeHelpers.getNodeOutputs(workflow, targetNode, nodeType).map((output) =>
+			typeof output === 'string' ? { type: output } : output,
+		);
 
-		// Outputs are pinnable if there is exactly one main output and optionally one error output
-		const pinnableMainOutputs =
-			mainOutputs.length === 1 ||
-			(mainOutputs.length === 2 && mainOutputs[1]?.category === 'error');
+		const mainOutputs = outputs.filter(
+			(output) => output.type === NodeConnectionType.Main && output.category !== 'error',
+		);
 
-		return pinnableMainOutputs && !PIN_DATA_NODE_TYPES_DENYLIST.includes(targetNode.type);
+		let indexAcceptable = true;
+		if (outputIndex !== undefined) {
+			const output = outputs[outputIndex];
+			if (output === undefined) return false;
+
+			indexAcceptable =
+				output && output.type === NodeConnectionType.Main && output.category !== 'error';
+		}
+
+		return mainOutputs.length === 1 && indexAcceptable;
 	}
 
 	function isValidJSON(data: string): boolean {

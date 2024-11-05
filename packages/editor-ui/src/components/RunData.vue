@@ -288,13 +288,7 @@ export default defineComponent({
 				return false;
 			}
 
-			if (this.outputIndex !== 0) {
-				// Only allow pinning of the main output
-				return false;
-			}
-
-			const canPinNode = usePinnedData(this.node).canPinNode(false);
-
+			const canPinNode = usePinnedData(this.node).canPinNode(false, this.currentOutputIndex);
 			return (
 				canPinNode &&
 				!this.isPaneTypeInput &&
