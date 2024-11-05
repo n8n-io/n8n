@@ -594,7 +594,8 @@ async function onAutoRefreshToggle(value: boolean) {
 }
 
 :deep(.el-checkbox) {
-	display: flex;
+	display: inline-flex;
 	align-items: center;
+	vertical-align: middle;
 }
 </style>
