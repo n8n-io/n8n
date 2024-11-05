@@ -1,13 +1,10 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
-import userEvent from '@testing-library/user-event';
 import { createRouter, createMemoryHistory, useRouter } from 'vue-router';
 import { createProjectListItem } from '@/__tests__/data/projects';
 import ProjectsNavigation from '@/components/Projects//ProjectNavigation.vue';
 import { useProjectsStore } from '@/stores/projects.store';
 import { mockedStore } from '@/__tests__/utils';
-import type { Project } from '@/types/projects.types';
-import { VIEWS } from '@/constants';
 import { useToast } from '@/composables/useToast';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
