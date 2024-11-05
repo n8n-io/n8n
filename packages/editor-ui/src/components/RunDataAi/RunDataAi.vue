@@ -164,8 +164,9 @@ const aiData = computed<AIResult[]>(() => {
 	const result: AIResult[] = [];
 	const connectedSubNodes = props.workflow.getParentNodes(props.node.name, 'ALL_NON_MAIN');
 	const rootNodeResult = workflowsStore.getWorkflowResultDataByNodeName(props.node.name);
-	const rootNodeStartTime = rootNodeResult?.[0]?.startTime ?? 0;
-	const rootNodeEndTime = rootNodeStartTime + (rootNodeResult?.[0]?.executionTime ?? 0);
+	const rootNodeStartTime = rootNodeResult?.[props.runIndex ?? 0]?.startTime ?? 0;
+	const rootNodeEndTime =
+		rootNodeStartTime + (rootNodeResult?.[props.runIndex ?? 0]?.executionTime ?? 0);
 
 	connectedSubNodes.forEach((nodeName) => {
 		const nodeRunData = workflowsStore.getWorkflowResultDataByNodeName(nodeName) ?? [];
@@ -193,7 +194,7 @@ const aiData = computed<AIResult[]>(() => {
 	const currentNodeResult = result.filter((r) => {
 		const startTime = r.data?.metadata?.startTime ?? 0;
 
-		return startTime >= rootNodeStartTime && startTime <= rootNodeEndTime;
+		return startTime >= rootNodeStartTime && startTime < rootNodeEndTime;
 	});
 
 	return currentNodeResult;
