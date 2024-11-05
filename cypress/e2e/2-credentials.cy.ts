@@ -39,6 +39,7 @@ function createNotionCredential() {
 describe('Credentials', () => {
 	beforeEach(() => {
 		cy.resetDatabase();
+		cy.signinAsOwner();
 		cy.visit(credentialsPage.url);
 	});
 
