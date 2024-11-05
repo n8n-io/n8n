@@ -98,10 +98,10 @@ function getIssues(index: number): string[] {
 	return issues.value[`${props.parameter.name}.${index}`] ?? [];
 }
 
-function optionSelected(action: 'clearAll' | 'addAll') {
+function optionSelected(action: string) {
 	if (action === 'clearAll') {
 		state.paramValue.assignments = [];
-	} else {
+	} else if (action === 'addAll' && inputData.value) {
 		const newAssignments = inputDataToAssignments(inputData.value);
 		state.paramValue.assignments = state.paramValue.assignments.concat(newAssignments);
 	}

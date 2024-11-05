@@ -5,6 +5,22 @@ import type WebSocket from 'ws';
 import type { TaskRunner } from './task-broker.service';
 import type { AuthlessRequest } from '../requests';
 
+/**
+ * Specifies what data should be included for a task data request.
+ */
+export interface TaskDataRequestParams {
+	dataOfNodes: string[] | 'all';
+	prevNode: boolean;
+	/** Whether input data for the node should be included */
+	input: boolean;
+	/** Whether env provider's state should be included */
+	env: boolean;
+}
+
+export interface DisconnectAnalyzer {
+	determineDisconnectReason(runnerId: TaskRunner['id']): Promise<Error>;
+}
+
 export type DataRequestType = 'input' | 'node' | 'all';
 
 export interface TaskResultData {
@@ -101,8 +117,7 @@ export namespace N8nMessage {
 			type: 'broker:taskdatarequest';
 			taskId: string;
 			requestId: string;
-			requestType: DataRequestType;
-			param?: string;
+			requestParams: TaskDataRequestParams;
 		}
 
 		export interface RPC {
@@ -198,8 +213,7 @@ export namespace RunnerMessage {
 			type: 'runner:taskdatarequest';
 			taskId: string;
 			requestId: string;
-			requestType: DataRequestType;
-			param?: string;
+			requestParams: TaskDataRequestParams;
 		}
 
 		export interface RPC {

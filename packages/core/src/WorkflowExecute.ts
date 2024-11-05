@@ -45,6 +45,7 @@ import {
 	NodeExecutionOutput,
 	sleep,
 	ErrorReporterProxy,
+	ExecutionCancelledError,
 } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
 
@@ -152,10 +153,6 @@ export class WorkflowExecute {
 		};
 
 		return this.processRunExecutionData(workflow);
-	}
-
-	static isAbortError(e?: ExecutionBaseError) {
-		return e?.message === 'AbortError';
 	}
 
 	forceInputNodeExecution(workflow: Workflow): boolean {
@@ -1479,7 +1476,7 @@ export class WorkflowExecute {
 							// Add the execution data again so that it can get restarted
 							this.runExecutionData.executionData!.nodeExecutionStack.unshift(executionData);
 							// Only execute the nodeExecuteAfter hook if the node did not get aborted
-							if (!WorkflowExecute.isAbortError(executionError)) {
+							if (!this.isCancelled) {
 								await this.executeHook('nodeExecuteAfter', [
 									executionNode.name,
 									taskData,
@@ -1827,7 +1824,7 @@ export class WorkflowExecute {
 						return await this.processSuccessExecution(
 							startedAt,
 							workflow,
-							new WorkflowOperationError('Workflow has been canceled or timed out'),
+							new ExecutionCancelledError(this.additionalData.executionId ?? 'unknown'),
 							closeFunction,
 						);
 					}
@@ -1928,7 +1925,7 @@ export class WorkflowExecute {
 
 		this.moveNodeMetadata();
 		// Prevent from running the hook if the error is an abort error as it was already handled
-		if (!WorkflowExecute.isAbortError(executionError)) {
+		if (!this.isCancelled) {
 			await this.executeHook('workflowExecuteAfter', [fullRunData, newStaticData]);
 		}
 
@@ -1958,5 +1955,9 @@ export class WorkflowExecute {
 		};
 
 		return fullRunData;
+	}
+
+	private get isCancelled() {
+		return this.abortController.signal.aborted;
 	}
 }

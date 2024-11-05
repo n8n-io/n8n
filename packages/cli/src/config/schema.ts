@@ -98,54 +98,6 @@ export const schema = {
 			env: 'EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS',
 		},
 
-		// To not exceed the database's capacity and keep its size moderate
-		// the execution data gets pruned regularly (default: 15 minute interval).
-		// All saved execution data older than the max age will be deleted.
-		// Pruning is currently not activated by default, which will change in
-		// a future version.
-		pruneData: {
-			doc: 'Delete data of past executions on a rolling basis',
-			format: Boolean,
-			default: true,
-			env: 'EXECUTIONS_DATA_PRUNE',
-		},
-		pruneDataMaxAge: {
-			doc: 'How old (hours) the finished execution data has to be to get soft-deleted',
-			format: Number,
-			default: 336,
-			env: 'EXECUTIONS_DATA_MAX_AGE',
-		},
-		pruneDataHardDeleteBuffer: {
-			doc: 'How old (hours) the finished execution data has to be to get hard-deleted. By default, this buffer excludes recent executions as the user may need them while building a workflow.',
-			format: Number,
-			default: 1,
-			env: 'EXECUTIONS_DATA_HARD_DELETE_BUFFER',
-		},
-		pruneDataIntervals: {
-			hardDelete: {
-				doc: 'How often (minutes) execution data should be hard-deleted',
-				format: Number,
-				default: 15,
-				env: 'EXECUTIONS_DATA_PRUNE_HARD_DELETE_INTERVAL',
-			},
-			softDelete: {
-				doc: 'How often (minutes) execution data should be soft-deleted',
-				format: Number,
-				default: 60,
-				env: 'EXECUTIONS_DATA_PRUNE_SOFT_DELETE_INTERVAL',
-			},
-		},
-
-		// Additional pruning option to delete executions if total count exceeds the configured max.
-		// Deletes the oldest entries first
-		// Set to 0 for No limit
-		pruneDataMaxCount: {
-			doc: "Maximum number of finished executions to keep in DB. Doesn't necessarily prune exactly to max number. 0 = no limit",
-			format: Number,
-			default: 10000,
-			env: 'EXECUTIONS_DATA_PRUNE_MAX_COUNT',
-		},
-
 		queueRecovery: {
 			interval: {
 				doc: 'How often (minutes) to check for queue recovery',

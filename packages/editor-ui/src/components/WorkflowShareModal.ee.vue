@@ -30,6 +30,7 @@ import type { ProjectListItem, ProjectSharingData, Project } from '@/types/proje
 import { ProjectTypes } from '@/types/projects.types';
 import { useRolesStore } from '@/stores/roles.store';
 import type { RoleMap } from '@/types/roles.types';
+import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 export default defineComponent({
 	name: 'WorkflowShareModal',
@@ -47,6 +48,7 @@ export default defineComponent({
 		return {
 			...useToast(),
 			...useMessage(),
+			...usePageRedirectionHelper(),
 		};
 	},
 	data() {
@@ -235,7 +237,7 @@ export default defineComponent({
 			});
 		},
 		goToUpgrade() {
-			void this.uiStore.goToUpgrade('workflow_sharing', 'upgrade-workflow-sharing');
+			void this.goToUpgrade('workflow_sharing', 'upgrade-workflow-sharing');
 		},
 		async initialize() {
 			if (this.isSharingEnabled) {
