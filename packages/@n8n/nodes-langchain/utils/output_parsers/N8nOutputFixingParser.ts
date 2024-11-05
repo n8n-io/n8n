@@ -1,7 +1,7 @@
 import type { Callbacks } from '@langchain/core/callbacks/manager';
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import type { AIMessage } from '@langchain/core/messages';
-import { BaseOutputParser } from '@langchain/core/output_parsers';
+import { BaseOutputParser, OutputParserException } from '@langchain/core/output_parsers';
 import type { ISupplyDataFunctions } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 
@@ -47,6 +47,10 @@ export class N8nOutputFixingParser extends BaseOutputParser {
 
 			return response;
 		} catch (error) {
+			if (error instanceof OutputParserException) {
+				console.log('Is output parser exception!');
+			}
+			console.log('Got error while parsing', error);
 			try {
 				// Second attempt: use retry chain to fix the output
 				const result = (await this.getRetryChain().invoke({
@@ -65,6 +69,7 @@ export class N8nOutputFixingParser extends BaseOutputParser {
 
 				return parsed;
 			} catch (autoParseError) {
+				console.log('Got final error while parsing', autoParseError);
 				// If both attempts fail, add the error to the output and throw
 				this.context.addOutputData(NodeConnectionType.AiOutputParser, index, autoParseError);
 				throw autoParseError;

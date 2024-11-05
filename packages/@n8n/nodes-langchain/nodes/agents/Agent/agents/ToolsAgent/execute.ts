@@ -206,10 +206,19 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 		// If the steps are an AgentFinish and the outputParser is defined it must mean that the LLM didn't use `format_final_response` tool so we will try to parse the output manually
 		if (outputParser && typeof steps === 'object' && (steps as AgentFinish).returnValues) {
 			const finalResponse = (steps as AgentFinish).returnValues;
-			const returnValues = (await outputParser.parse(finalResponse as unknown as string)) as Record<
-				string,
-				unknown
-			>;
+			let parserInput: string;
+
+			if (finalResponse instanceof Object) {
+				if ('output' in finalResponse) {
+					parserInput = JSON.stringify({ output: jsonParse(finalResponse.output) });
+				} else {
+					parserInput = JSON.stringify(finalResponse);
+				}
+			} else {
+				parserInput = finalResponse;
+			}
+
+			const returnValues = (await outputParser.parse(parserInput)) as Record<string, unknown>;
 			return handleParsedStepOutput(returnValues);
 		}
 		return handleAgentFinishOutput(steps);
