@@ -92,6 +92,7 @@ export async function execute(
 				const parser = createCSVParser({
 					delimiter: options.delimiter as string,
 					fromLine: options.fromLine as number,
+					encoding: options.encoding as BufferEncoding,
 					bom: options.enableBOM as boolean,
 					to: maxRowCount > -1 ? maxRowCount : undefined,
 					columns: options.headerRow !== false,

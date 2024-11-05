@@ -17,9 +17,9 @@ export class StickyNote implements INodeType {
 			name: 'Sticky Note',
 			color: '#FFD233',
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
+
 		outputs: [],
 		properties: [
 			{
@@ -46,7 +46,7 @@ export class StickyNote implements INodeType {
 			{
 				displayName: 'Color',
 				name: 'color',
-				// eslint-disable-next-line n8n-nodes-base/node-param-color-type-unused
+
 				type: 'number',
 				required: true,
 				default: 1,

@@ -1,6 +1,7 @@
-import N8nFormInput from './FormInput.vue';
 import { action } from '@storybook/addon-actions';
 import type { StoryFn } from '@storybook/vue3';
+
+import N8nFormInput from './FormInput.vue';
 
 export default {
 	title: 'Modules/FormInput',

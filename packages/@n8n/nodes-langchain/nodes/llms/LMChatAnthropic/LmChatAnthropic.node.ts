@@ -1,16 +1,19 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+
+import { ChatAnthropic } from '@langchain/anthropic';
+import type { LLMResult } from '@langchain/core/outputs';
 import {
 	NodeConnectionType,
+	type INodePropertyOptions,
 	type INodeProperties,
-	type IExecuteFunctions,
+	type ISupplyDataFunctions,
 	type INodeType,
 	type INodeTypeDescription,
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { ChatAnthropic } from '@langchain/anthropic';
-import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { N8nLlmTracing } from '../N8nLlmTracing';
 
 const modelField: INodeProperties = {
 	displayName: 'Model',
@@ -19,12 +22,24 @@ const modelField: INodeProperties = {
 	// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 	options: [
 		{
+			name: 'Claude 3.5 Sonnet(20241022)',
+			value: 'claude-3-5-sonnet-20241022',
+		},
+		{
 			name: 'Claude 3 Opus(20240229)',
 			value: 'claude-3-opus-20240229',
 		},
 		{
+			name: 'Claude 3.5 Sonnet(20240620)',
+			value: 'claude-3-5-sonnet-20240620',
+		},
+		{
 			name: 'Claude 3 Sonnet(20240229)',
 			value: 'claude-3-sonnet-20240229',
+		},
+		{
+			name: 'Claude 3.5 Haiku(20241022)',
+			value: 'claude-3-5-haiku-20241022',
 		},
 		{
 			name: 'Claude 3 Haiku(20240307)',
@@ -59,7 +74,8 @@ export class LmChatAnthropic implements INodeType {
 		name: 'lmChatAnthropic',
 		icon: 'file:anthropic.svg',
 		group: ['transform'],
-		version: [1, 1.1],
+		version: [1, 1.1, 1.2],
+		defaultVersion: 1.2,
 		description: 'Language Model Anthropic',
 		defaults: {
 			name: 'Anthropic Chat Model',
@@ -67,7 +83,8 @@ export class LmChatAnthropic implements INodeType {
 		codex: {
 			categories: ['AI'],
 			subcategories: {
-				AI: ['Language Models'],
+				AI: ['Language Models', 'Root Nodes'],
+				'Language Models': ['Chat Models (Recommended)'],
 			},
 			resources: {
 				primaryDocumentation: [
@@ -103,8 +120,20 @@ export class LmChatAnthropic implements INodeType {
 				...modelField,
 				default: 'claude-3-sonnet-20240229',
 				displayOptions: {
-					hide: {
-						'@version': [1],
+					show: {
+						'@version': [1.1],
+					},
+				},
+			},
+			{
+				...modelField,
+				default: 'claude-3-5-sonnet-20240620',
+				options: (modelField.options ?? []).filter(
+					(o): o is INodePropertyOptions => 'name' in o && !o.name.toString().startsWith('LEGACY'),
+				),
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.2 } }],
 					},
 				},
 			},
@@ -155,7 +184,7 @@ export class LmChatAnthropic implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials('anthropicApi');
 
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
@@ -166,6 +195,17 @@ export class LmChatAnthropic implements INodeType {
 			topP: number;
 		};
 
+		const tokensUsageParser = (llmOutput: LLMResult['llmOutput']) => {
+			const usage = (llmOutput?.usage as { input_tokens: number; output_tokens: number }) ?? {
+				input_tokens: 0,
+				output_tokens: 0,
+			};
+			return {
+				completionTokens: usage.output_tokens,
+				promptTokens: usage.input_tokens,
+				totalTokens: usage.input_tokens + usage.output_tokens,
+			};
+		};
 		const model = new ChatAnthropic({
 			anthropicApiKey: credentials.apiKey as string,
 			modelName,
@@ -173,10 +213,11 @@ export class LmChatAnthropic implements INodeType {
 			temperature: options.temperature,
 			topK: options.topK,
 			topP: options.topP,
+			callbacks: [new N8nLlmTracing(this, { tokensUsageParser })],
 		});
 
 		return {
-			response: logWrapper(model, this),
+			response: model,
 		};
 	}
 }

@@ -4,12 +4,13 @@ import type {
 	IExecuteFunctions,
 	INode,
 	INodeExecutionData,
-	ValidationResult,
+	ISupplyDataFunctions,
 } from 'n8n-workflow';
 import {
 	ApplicationError,
 	NodeOperationError,
 	deepCopy,
+	getValueDescription,
 	jsonParse,
 	validateFieldType,
 } from 'n8n-workflow';
@@ -18,7 +19,7 @@ import get from 'lodash/get';
 import set from 'lodash/set';
 import unset from 'lodash/unset';
 
-import { getResolvables, sanitazeDataPathKey } from '../../../../utils/utilities';
+import { getResolvables, sanitizeDataPathKey } from '../../../../utils/utilities';
 import type { SetNodeOptions } from './interfaces';
 import { INCLUDE } from './interfaces';
 
@@ -38,31 +39,35 @@ const configureFieldHelper = (dotNotation?: boolean) => {
 	} else {
 		return {
 			set: (item: IDataObject, key: string, value: IDataObject) => {
-				item[sanitazeDataPathKey(item, key)] = value;
+				item[sanitizeDataPathKey(item, key)] = value;
 			},
 			get: (item: IDataObject, key: string) => {
-				return item[sanitazeDataPathKey(item, key)];
+				return item[sanitizeDataPathKey(item, key)];
 			},
 			unset: (item: IDataObject, key: string) => {
-				delete item[sanitazeDataPathKey(item, key)];
+				delete item[sanitizeDataPathKey(item, key)];
 			},
 		};
 	}
 };
 
 export function composeReturnItem(
-	this: IExecuteFunctions,
+	this: IExecuteFunctions | ISupplyDataFunctions,
 	itemIndex: number,
 	inputItem: INodeExecutionData,
 	newFields: IDataObject,
 	options: SetNodeOptions,
+	nodeVersion: number,
 ) {
 	const newItem: INodeExecutionData = {
 		json: {},
 		pairedItem: { item: itemIndex },
 	};
 
-	if (options.includeBinary && inputItem.binary !== undefined) {
+	const includeBinary =
+		(nodeVersion >= 3.4 && !options.stripBinary && options.include !== 'none') ||
+		(nodeVersion < 3.4 && !!options.includeBinary);
+	if (includeBinary && inputItem.binary !== undefined) {
 		// Create a shallow copy of the binary data so that the old
 		// data references which do not get changed still stay behind
 		// but the incoming data does not get changed.
@@ -185,7 +190,7 @@ export const validateEntry = (
 			} else {
 				throw new NodeOperationError(
 					node,
-					`'${name}' expects a ${type} but we got '${String(value)}' [item ${itemIndex}]`,
+					`'${name}' expects a ${type} but we got ${getValueDescription(value)} [item ${itemIndex}]`,
 					{ description },
 				);
 			}
@@ -200,7 +205,7 @@ export const validateEntry = (
 
 	if (!validationResult.valid) {
 		if (ignoreErrors) {
-			validationResult.newValue = value as ValidationResult['newValue'];
+			return { name, value: value ?? null };
 		} else {
 			const message = `${validationResult.errorMessage} [item ${itemIndex}]`;
 			throw new NodeOperationError(node, message, {
@@ -212,11 +217,15 @@ export const validateEntry = (
 
 	return {
 		name,
-		value: validationResult.newValue === undefined ? null : validationResult.newValue,
+		value: validationResult.newValue ?? null,
 	};
 };
 
-export function resolveRawData(this: IExecuteFunctions, rawData: string, i: number) {
+export function resolveRawData(
+	this: IExecuteFunctions | ISupplyDataFunctions,
+	rawData: string,
+	i: number,
+) {
 	const resolvables = getResolvables(rawData);
 	let returnData: string = rawData;
 

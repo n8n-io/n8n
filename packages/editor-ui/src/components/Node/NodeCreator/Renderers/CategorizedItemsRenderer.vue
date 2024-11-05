@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watch, ref, getCurrentInstance } from 'vue';
+import { computed, watch, ref } from 'vue';
 import type { INodeCreateElement } from '@/Interface';
 
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -8,6 +8,7 @@ import { useKeyboardNavigation } from '../composables/useKeyboardNavigation';
 import { useViewStacks } from '../composables/useViewStacks';
 import ItemsRenderer from './ItemsRenderer.vue';
 import CategoryItem from '../ItemTypes/CategoryItem.vue';
+import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 
 export interface Props {
 	elements: INodeCreateElement[];
@@ -23,11 +24,10 @@ const props = withDefaults(defineProps<Props>(), {
 	elements: () => [],
 });
 
-const instance = getCurrentInstance();
-
 const { popViewStack } = useViewStacks();
 const { registerKeyHook } = useKeyboardNavigation();
 const { workflowId } = useWorkflowsStore();
+const nodeCreatorStore = useNodeCreatorStore();
 
 const activeItemId = computed(() => useKeyboardNavigation()?.activeItemId);
 const actionCount = computed(() => props.elements.filter(({ type }) => type === 'action').length);
@@ -38,10 +38,11 @@ function toggleExpanded() {
 }
 
 function setExpanded(isExpanded: boolean) {
+	const prev = expanded.value;
 	expanded.value = isExpanded;
 
-	if (expanded.value) {
-		instance?.proxy.$telemetry.trackNodesPanel('nodeCreateList.onCategoryExpanded', {
+	if (expanded.value && !prev) {
+		nodeCreatorStore.onCategoryExpanded({
 			category_name: props.category,
 			workflow_id: workflowId,
 		});
@@ -106,7 +107,7 @@ registerKeyHook(`CategoryLeft_${props.category}`, {
 				<n8n-tooltip placement="top" :popper-class="$style.tooltipPopper">
 					<n8n-icon icon="question-circle" size="small" />
 					<template #content>
-						<div v-html="mouseOverTooltip" />
+						<div v-n8n-html="mouseOverTooltip" />
 					</template>
 				</n8n-tooltip>
 			</span>

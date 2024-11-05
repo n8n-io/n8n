@@ -1,12 +1,13 @@
-import type {
-	IDataObject,
-	IHookFunctions,
-	IWebhookFunctions,
-	ILoadOptionsFunctions,
-	INodePropertyOptions,
-	INodeType,
-	INodeTypeDescription,
-	IWebhookResponseData,
+import {
+	type IDataObject,
+	type IHookFunctions,
+	type IWebhookFunctions,
+	type ILoadOptionsFunctions,
+	type INodePropertyOptions,
+	type INodeType,
+	type INodeTypeDescription,
+	type IWebhookResponseData,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
 import { formIoApiRequest } from './GenericFunctions';
@@ -24,7 +25,7 @@ export class FormIoTrigger implements INodeType {
 			name: 'Form.io Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'formIoApi',
@@ -50,7 +51,7 @@ export class FormIoTrigger implements INodeType {
 				required: true,
 				default: '',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 			},
 			{
 				displayName: 'Form Name or ID',
@@ -63,7 +64,7 @@ export class FormIoTrigger implements INodeType {
 				required: true,
 				default: '',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 			},
 			{
 				displayName: 'Trigger Events',

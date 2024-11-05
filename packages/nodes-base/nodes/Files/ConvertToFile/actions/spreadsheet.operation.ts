@@ -26,7 +26,7 @@ export const properties: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			{
@@ -40,6 +40,18 @@ export const properties: INodeProperties[] = [
 				},
 				default: false,
 				description: 'Whether to reduce the output file size',
+			},
+			{
+				displayName: 'Delimiter',
+				name: 'delimiter',
+				type: 'string',
+				displayOptions: {
+					show: {
+						'/operation': ['csv'],
+					},
+				},
+				default: ',',
+				description: 'The character to use to separate fields',
 			},
 			{
 				displayName: 'File Name',

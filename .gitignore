@@ -18,9 +18,6 @@ nodelinter.config.json
 packages/**/.turbo
 .turbo
 *.tsbuildinfo
-cypress/videos/*
-cypress/screenshots/*
-cypress/downloads/*
 *.swp
 CHANGELOG-*.md
 *.mdx

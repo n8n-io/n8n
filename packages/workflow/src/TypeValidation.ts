@@ -1,7 +1,14 @@
-import { DateTime } from 'luxon';
-import type { FieldType, INodePropertyOptions, ValidationResult } from './Interfaces';
 import isObject from 'lodash/isObject';
+import { DateTime } from 'luxon';
+
 import { ApplicationError } from './errors';
+import type {
+	FieldType,
+	FormFieldsParameter,
+	INodePropertyOptions,
+	ValidationResult,
+} from './Interfaces';
+import { jsonParse } from './utils';
 
 export const tryToParseNumber = (value: unknown): number => {
 	const isValidNumber = !isNaN(Number(value));
@@ -135,7 +142,8 @@ export const tryToParseObject = (value: unknown): object => {
 		return value;
 	}
 	try {
-		const o = JSON.parse(String(value)) as object;
+		const o = jsonParse<object>(String(value), { acceptJSObject: true });
+
 		if (typeof o !== 'object' || Array.isArray(o)) {
 			throw new ApplicationError('Value is not a valid object', { extra: { value } });
 		}
@@ -143,6 +151,106 @@ export const tryToParseObject = (value: unknown): object => {
 	} catch (e) {
 		throw new ApplicationError('Value is not a valid object', { extra: { value } });
 	}
+};
+
+const ALLOWED_FORM_FIELDS_KEYS = [
+	'fieldLabel',
+	'fieldType',
+	'placeholder',
+	'fieldOptions',
+	'multiselect',
+	'multipleFiles',
+	'acceptFileTypes',
+	'formatDate',
+	'requiredField',
+];
+
+const ALLOWED_FIELD_TYPES = [
+	'date',
+	'dropdown',
+	'email',
+	'file',
+	'number',
+	'password',
+	'text',
+	'textarea',
+];
+
+export const tryToParseJsonToFormFields = (value: unknown): FormFieldsParameter => {
+	const fields: FormFieldsParameter = [];
+
+	try {
+		const rawFields = jsonParse<Array<{ [key: string]: unknown }>>(value as string, {
+			acceptJSObject: true,
+		});
+
+		for (const [index, field] of rawFields.entries()) {
+			for (const key of Object.keys(field)) {
+				if (!ALLOWED_FORM_FIELDS_KEYS.includes(key)) {
+					throw new ApplicationError(`Key '${key}' in field ${index} is not valid for form fields`);
+				}
+				if (
+					key !== 'fieldOptions' &&
+					!['string', 'number', 'boolean'].includes(typeof field[key])
+				) {
+					field[key] = String(field[key]);
+				} else if (typeof field[key] === 'string') {
+					field[key] = field[key].replace(/</g, '&lt;').replace(/>/g, '&gt;');
+				}
+
+				if (key === 'fieldType' && !ALLOWED_FIELD_TYPES.includes(field[key] as string)) {
+					throw new ApplicationError(
+						`Field type '${field[key] as string}' in field ${index} is not valid for form fields`,
+					);
+				}
+
+				if (key === 'fieldOptions') {
+					if (Array.isArray(field[key])) {
+						field[key] = { values: field[key] };
+					}
+
+					if (
+						typeof field[key] !== 'object' ||
+						!(field[key] as { [key: string]: unknown }).values
+					) {
+						throw new ApplicationError(
+							`Field dropdown in field ${index} does has no 'values' property that contain an array of options`,
+						);
+					}
+
+					for (const [optionIndex, option] of (
+						(field[key] as { [key: string]: unknown }).values as Array<{
+							[key: string]: { option: string };
+						}>
+					).entries()) {
+						if (Object.keys(option).length !== 1 || typeof option.option !== 'string') {
+							throw new ApplicationError(
+								`Field dropdown in field ${index} has an invalid option ${optionIndex}`,
+							);
+						}
+					}
+				}
+			}
+
+			fields.push(field as FormFieldsParameter[number]);
+		}
+	} catch (error) {
+		if (error instanceof ApplicationError) throw error;
+
+		throw new ApplicationError('Value is not valid JSON');
+	}
+
+	return fields;
+};
+
+export const getValueDescription = <T>(value: T): string => {
+	if (typeof value === 'object') {
+		if (value === null) return "'null'";
+		if (Array.isArray(value)) return 'array';
+		return 'object';
+	}
+
+	return `'${String(value)}'`;
 };
 
 export const tryToParseUrl = (value: unknown): string => {
@@ -177,19 +285,27 @@ type ValidateFieldTypeOptions = Partial<{
 	strict: boolean;
 	parseStrings: boolean;
 }>;
+
 // Validates field against the schema and tries to parse it to the correct type
+export function validateFieldType<K extends FieldType>(
+	fieldName: string,
+	value: unknown,
+	type: K,
+	options?: ValidateFieldTypeOptions,
+): ValidationResult<K>;
 // eslint-disable-next-line complexity
-export const validateFieldType = (
+export function validateFieldType(
 	fieldName: string,
 	value: unknown,
 	type: FieldType,
 	options: ValidateFieldTypeOptions = {},
-): ValidationResult => {
+): ValidationResult {
 	if (value === null || value === undefined) return { valid: true };
 	const strict = options.strict ?? false;
 	const valueOptions = options.valueOptions ?? [];
 	const parseStrings = options.parseStrings ?? false;
-	const defaultErrorMessage = `'${fieldName}' expects a ${type} but we got '${String(value)}'`;
+
+	const defaultErrorMessage = `'${fieldName}' expects a ${type} but we got ${getValueDescription(value)}`;
 	switch (type.toLowerCase()) {
 		case 'string': {
 			if (!parseStrings) return { valid: true, newValue: value };
@@ -249,7 +365,7 @@ export const validateFieldType = (
 			} catch (e) {
 				return {
 					valid: false,
-					errorMessage: `'${fieldName}' expects time (hh:mm:(:ss)) but we got '${String(value)}'.`,
+					errorMessage: `'${fieldName}' expects time (hh:mm:(:ss)) but we got ${getValueDescription(value)}.`,
 				};
 			}
 		}
@@ -280,9 +396,9 @@ export const validateFieldType = (
 			if (!isValidOption) {
 				return {
 					valid: false,
-					errorMessage: `'${fieldName}' expects one of the following values: [${validOptions}] but we got '${String(
+					errorMessage: `'${fieldName}' expects one of the following values: [${validOptions}] but we got ${getValueDescription(
 						value,
-					)}'`,
+					)}`,
 				};
 			}
 			return { valid: true, newValue: value };
@@ -304,8 +420,18 @@ export const validateFieldType = (
 				};
 			}
 		}
+		case 'form-fields': {
+			try {
+				return { valid: true, newValue: tryToParseJsonToFormFields(value) };
+			} catch (e) {
+				return {
+					valid: false,
+					errorMessage: (e as Error).message,
+				};
+			}
+		}
 		default: {
 			return { valid: true, newValue: value };
 		}
 	}
-};
+}

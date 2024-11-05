@@ -1,3 +1,128 @@
+<script lang="ts">
+import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
+import type { IUpdateInformation } from '@/Interface';
+import type { INodeParameters, INodeProperties } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
+import CollectionParameter from '@/components/CollectionParameter.vue';
+import ParameterInputFull from '@/components/ParameterInputFull.vue';
+
+import { get } from 'lodash-es';
+
+export default defineComponent({
+	name: 'MultipleParameter',
+	components: {
+		CollectionParameter,
+		ParameterInputFull,
+	},
+	props: {
+		nodeValues: {
+			type: Object as PropType<INodeParameters>,
+			required: true,
+		},
+		parameter: {
+			type: Object as PropType<INodeProperties>,
+			required: true,
+		},
+		path: {
+			type: String,
+			required: true,
+		},
+		values: {
+			type: Array as PropType<INodeParameters[]>,
+			default: () => [],
+		},
+		isReadOnly: {
+			type: Boolean,
+			default: false,
+		},
+	},
+	data() {
+		return {
+			mutableValues: [] as INodeParameters[],
+		};
+	},
+	computed: {
+		addButtonText(): string {
+			if (
+				!this.parameter.typeOptions ||
+				(this.parameter.typeOptions && !this.parameter.typeOptions.multipleValueButtonText)
+			) {
+				return this.$locale.baseText('multipleParameter.addItem');
+			}
+
+			return this.$locale.nodeText().multipleValueButtonText(this.parameter);
+		},
+		hideDelete(): boolean {
+			return this.parameter.options?.length === 1;
+		},
+		sortable(): boolean {
+			return !!this.parameter.typeOptions?.sortable;
+		},
+	},
+	watch: {
+		values: {
+			handler(newValues: INodeParameters[]) {
+				this.mutableValues = deepCopy(newValues);
+			},
+			deep: true,
+		},
+	},
+	created() {
+		this.mutableValues = deepCopy(this.values);
+	},
+	methods: {
+		addItem() {
+			const name = this.getPath();
+			const currentValue = get(this.nodeValues, name, []) as INodeParameters[];
+
+			currentValue.push(deepCopy(this.parameter.default as INodeParameters));
+
+			const parameterData = {
+				name,
+				value: currentValue,
+			};
+
+			this.$emit('valueChanged', parameterData);
+		},
+		deleteItem(index: number) {
+			const parameterData = {
+				name: this.getPath(index),
+				value: undefined,
+			};
+
+			this.$emit('valueChanged', parameterData);
+		},
+		getPath(index?: number): string {
+			return this.path + (index !== undefined ? `[${index}]` : '');
+		},
+		moveOptionDown(index: number) {
+			this.mutableValues.splice(index + 1, 0, this.mutableValues.splice(index, 1)[0]);
+
+			const parameterData = {
+				name: this.path,
+				value: this.mutableValues,
+			};
+
+			this.$emit('valueChanged', parameterData);
+		},
+		moveOptionUp(index: number) {
+			this.mutableValues.splice(index - 1, 0, this.mutableValues.splice(index, 1)[0]);
+
+			const parameterData = {
+				name: this.path,
+				value: this.mutableValues,
+			};
+
+			this.$emit('valueChanged', parameterData);
+		},
+		valueChanged(parameterData: IUpdateInformation) {
+			this.$emit('valueChanged', parameterData);
+		},
+	},
+});
+</script>
+
 <template>
 	<div class="duplicate-parameter" @keydown.stop>
 		<n8n-input-label
@@ -82,131 +207,6 @@
 		</div>
 	</div>
 </template>
-
-<script lang="ts">
-import { defineComponent } from 'vue';
-import type { PropType } from 'vue';
-import type { IUpdateInformation } from '@/Interface';
-import type { INodeParameters, INodeProperties } from 'n8n-workflow';
-import { deepCopy } from 'n8n-workflow';
-import CollectionParameter from '@/components/CollectionParameter.vue';
-import ParameterInputFull from '@/components/ParameterInputFull.vue';
-
-import { get } from 'lodash-es';
-
-export default defineComponent({
-	name: 'MultipleParameter',
-	components: {
-		CollectionParameter,
-		ParameterInputFull,
-	},
-	props: {
-		nodeValues: {
-			type: Object as PropType<Record<string, INodeParameters[]>>,
-			required: true,
-		},
-		parameter: {
-			type: Object as PropType<INodeProperties>,
-			required: true,
-		},
-		path: {
-			type: String,
-			required: true,
-		},
-		values: {
-			type: Array as PropType<INodeParameters[]>,
-			default: () => [],
-		},
-		isReadOnly: {
-			type: Boolean,
-			default: false,
-		},
-	},
-	data() {
-		return {
-			mutableValues: [] as INodeParameters[],
-		};
-	},
-	computed: {
-		addButtonText(): string {
-			if (
-				!this.parameter.typeOptions ||
-				(this.parameter.typeOptions && !this.parameter.typeOptions.multipleValueButtonText)
-			) {
-				return this.$locale.baseText('multipleParameter.addItem');
-			}
-
-			return this.$locale.nodeText().multipleValueButtonText(this.parameter);
-		},
-		hideDelete(): boolean {
-			return this.parameter.options?.length === 1;
-		},
-		sortable(): boolean {
-			return !!this.parameter.typeOptions?.sortable;
-		},
-	},
-	watch: {
-		values: {
-			handler(newValues: INodeParameters[]) {
-				this.mutableValues = deepCopy(newValues);
-			},
-			deep: true,
-		},
-	},
-	created() {
-		this.mutableValues = deepCopy(this.values);
-	},
-	methods: {
-		addItem() {
-			const name = this.getPath();
-			const currentValue = get(this.nodeValues, name, [] as INodeParameters[]);
-
-			currentValue.push(deepCopy(this.parameter.default as INodeParameters));
-
-			const parameterData = {
-				name,
-				value: currentValue,
-			};
-
-			this.$emit('valueChanged', parameterData);
-		},
-		deleteItem(index: number) {
-			const parameterData = {
-				name: this.getPath(index),
-				value: undefined,
-			};
-
-			this.$emit('valueChanged', parameterData);
-		},
-		getPath(index?: number): string {
-			return this.path + (index !== undefined ? `[${index}]` : '');
-		},
-		moveOptionDown(index: number) {
-			this.mutableValues.splice(index + 1, 0, this.mutableValues.splice(index, 1)[0]);
-
-			const parameterData = {
-				name: this.path,
-				value: this.mutableValues,
-			};
-
-			this.$emit('valueChanged', parameterData);
-		},
-		moveOptionUp(index: number) {
-			this.mutableValues.splice(index - 1, 0, this.mutableValues.splice(index, 1)[0]);
-
-			const parameterData = {
-				name: this.path,
-				value: this.mutableValues,
-			};
-
-			this.$emit('valueChanged', parameterData);
-		},
-		valueChanged(parameterData: IUpdateInformation) {
-			this.$emit('valueChanged', parameterData);
-		},
-	},
-});
-</script>
 
 <style scoped lang="scss">
 .duplicate-parameter {

@@ -1,69 +1,62 @@
 name: Build, unit test and lint branch
 
-on: [pull_request]
+on:
+  pull_request:
+    branches:
+      - '**'
+      - '!release/*'
 
 jobs:
-  install:
+  install-and-build:
     name: Install & Build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4.1.1
         with:
-          repository: n8n-io/n8n
           ref: refs/pull/${{ github.event.pull_request.number }}/merge
 
       - run: corepack enable
-      - name: Use Node.js 18
-        uses: actions/setup-node@v4.0.1
+      - uses: actions/setup-node@v4.0.2
         with:
-          node-version: 18.x
+          node-version: 20.x
           cache: pnpm
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Setup build cache
+        uses: rharkor/caching-for-turbo@v1.5
+
       - name: Build
         run: pnpm build
+
+      - name: Run formatcheck
+        run: pnpm format:check
+
+      - name: Run typecheck
+        run: pnpm typecheck
 
       - name: Cache build artifacts
         uses: actions/cache/save@v4.0.0
         with:
           path: ./packages/**/dist
-          key: ${{ github.sha }}-base:18-test-lint
+          key: ${{ github.sha }}-base:build
 
   unit-test:
     name: Unit tests
     uses: ./.github/workflows/units-tests-reusable.yml
-    needs: install
+    needs: install-and-build
     with:
       ref: refs/pull/${{ github.event.pull_request.number }}/merge
-      cacheKey: ${{ github.sha }}-base:18-test-lint
+      cacheKey: ${{ github.sha }}-base:build
+      collectCoverage: true
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   lint:
-    name: Lint changes
-    runs-on: ubuntu-latest
-    needs: install
-    steps:
-      - uses: actions/checkout@v4.1.1
-        with:
-          repository: n8n-io/n8n
-          ref: refs/pull/${{ github.event.pull_request.number }}/merge
-
-      - run: corepack enable
-      - name: Use Node.js 18
-        uses: actions/setup-node@v4.0.1
-        with:
-          node-version: 18.x
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Restore cached build artifacts
-        uses: actions/cache/restore@v4.0.0
-        with:
-          path: ./packages/**/dist
-          key: ${{ github.sha }}-base:18-test-lint
-
-      - name: Lint
-        run: pnpm lint
+    name: Lint
+    uses: ./.github/workflows/linting-reusable.yml
+    needs: install-and-build
+    with:
+      ref: refs/pull/${{ github.event.pull_request.number }}/merge
+      cacheKey: ${{ github.sha }}-base:build

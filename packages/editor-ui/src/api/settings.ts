@@ -1,14 +1,9 @@
-import type {
-	IRestApiContext,
-	IN8nPrompts,
-	IN8nValueSurveyData,
-	IN8nPromptResponse,
-} from '../Interface';
+import type { IRestApiContext, IN8nPrompts, IN8nPromptResponse } from '../Interface';
 import { makeRestApiRequest, get, post } from '@/utils/apiUtils';
 import { N8N_IO_BASE_URL, NPM_COMMUNITY_NODE_SEARCH_API_URL } from '@/constants';
-import type { IN8nUISettings } from 'n8n-workflow';
+import type { FrontendSettings } from '@n8n/api-types';
 
-export async function getSettings(context: IRestApiContext): Promise<IN8nUISettings> {
+export async function getSettings(context: IRestApiContext): Promise<FrontendSettings> {
 	return await makeRestApiRequest(context, 'GET', '/settings');
 }
 
@@ -32,17 +27,6 @@ export async function submitContactInfo(
 		{ email },
 		{ 'n8n-instance-id': instanceId, 'n8n-user-id': userId },
 	);
-}
-
-export async function submitValueSurvey(
-	instanceId: string,
-	userId: string,
-	params: IN8nValueSurveyData,
-): Promise<IN8nPromptResponse> {
-	return await post(N8N_IO_BASE_URL, '/value-survey', params, {
-		'n8n-instance-id': instanceId,
-		'n8n-user-id': userId,
-	});
 }
 
 export async function getAvailableCommunityPackageCount(): Promise<number> {

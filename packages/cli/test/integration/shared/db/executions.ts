@@ -1,9 +1,18 @@
+import type { AnnotationVote } from 'n8n-workflow';
 import Container from 'typedi';
-import type { ExecutionData } from '@db/entities/ExecutionData';
-import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
-import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import { ExecutionRepository } from '@db/repositories/execution.repository';
-import { ExecutionDataRepository } from '@db/repositories/executionData.repository';
+
+import type { ExecutionData } from '@/databases/entities/execution-data';
+import type { ExecutionEntity } from '@/databases/entities/execution-entity';
+import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
+import { AnnotationTagRepository } from '@/databases/repositories/annotation-tag.repository.ee';
+import { ExecutionDataRepository } from '@/databases/repositories/execution-data.repository';
+import { ExecutionMetadataRepository } from '@/databases/repositories/execution-metadata.repository';
+import { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import { ExecutionService } from '@/executions/execution.service';
+import { Telemetry } from '@/telemetry';
+import { mockInstance } from '@test/mocking';
+
+mockInstance(Telemetry);
 
 export async function createManyExecutions(
 	amount: number,
@@ -18,21 +27,36 @@ export async function createManyExecutions(
  * Store a execution in the DB and assign it to a workflow.
  */
 export async function createExecution(
-	attributes: Partial<ExecutionEntity & ExecutionData>,
+	attributes: Partial<
+		Omit<ExecutionEntity, 'metadata'> &
+			ExecutionData & { metadata: Array<{ key: string; value: string }> }
+	>,
 	workflow: WorkflowEntity,
 ) {
-	const { data, finished, mode, startedAt, stoppedAt, waitTill, status, deletedAt } = attributes;
+	const { data, finished, mode, startedAt, stoppedAt, waitTill, status, deletedAt, metadata } =
+		attributes;
 
 	const execution = await Container.get(ExecutionRepository).save({
 		finished: finished ?? true,
 		mode: mode ?? 'manual',
+		createdAt: new Date(),
 		startedAt: startedAt ?? new Date(),
 		...(workflow !== undefined && { workflowId: workflow.id }),
 		stoppedAt: stoppedAt ?? new Date(),
 		waitTill: waitTill ?? null,
-		status,
+		status: status ?? 'success',
 		deletedAt,
 	});
+
+	if (metadata?.length) {
+		const metadataToSave = metadata.map(({ key, value }) => ({
+			key,
+			value,
+			execution: { id: execution.id },
+		}));
+
+		await Container.get(ExecutionMetadataRepository).save(metadataToSave);
+	}
 
 	await Container.get(ExecutionDataRepository).save({
 		data: data ?? '[]',
@@ -70,6 +94,19 @@ export async function createWaitingExecution(workflow: WorkflowEntity) {
 	);
 }
 
+export async function annotateExecution(
+	executionId: string,
+	annotation: { vote?: AnnotationVote | null; tags?: string[] },
+	sharedWorkflowIds: string[],
+) {
+	await Container.get(ExecutionService).annotate(executionId, annotation, sharedWorkflowIds);
+}
+
 export async function getAllExecutions() {
 	return await Container.get(ExecutionRepository).find();
+}
+
+export async function createAnnotationTags(annotationTags: string[]) {
+	const tagRepository = Container.get(AnnotationTagRepository);
+	return await tagRepository.save(annotationTags.map((name) => tagRepository.create({ name })));
 }

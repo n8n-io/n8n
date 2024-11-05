@@ -65,11 +65,11 @@ import type {
 	IPersonalizationSurveyAnswersV1,
 	IPersonalizationSurveyAnswersV2,
 	IPersonalizationSurveyAnswersV3,
-	IPersonalizationSurveyAnswersV4,
 	IPersonalizationSurveyVersions,
 	IUser,
 	ILogInStatus,
 } from '@/Interface';
+import type { IPersonalizationSurveyAnswersV4 } from 'n8n-workflow';
 
 /*
 	Utility functions used to handle users in n8n
@@ -110,16 +110,6 @@ export function getPersonalizedNodeTypes(
 	return getPersonalizationSurveyV1(answers);
 }
 
-export function getAccountAge(currentUser: IUser): number {
-	if (currentUser.createdAt) {
-		const accountCreatedAt = new Date(currentUser.createdAt);
-		const today = new Date();
-
-		return Math.ceil((today.getTime() - accountCreatedAt.getTime()) / (1000 * 3600 * 24));
-	}
-	return -1;
-}
-
 function getPersonalizationSurveyV2OrLater(
 	answers:
 		| IPersonalizationSurveyAnswersV2
@@ -135,7 +125,7 @@ function getPersonalizationSurveyV2OrLater(
 
 	const companySize = answers[COMPANY_SIZE_KEY];
 	const companyType = answers[COMPANY_TYPE_KEY];
-	const automationGoal = answers[AUTOMATION_GOAL_KEY];
+	const automationGoal = AUTOMATION_GOAL_KEY in answers ? answers[AUTOMATION_GOAL_KEY] : undefined;
 
 	let codingSkill = null;
 	if (CODING_SKILL_KEY in answers && answers[CODING_SKILL_KEY]) {

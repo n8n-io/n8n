@@ -1,6 +1,6 @@
 /* eslint-disable n8n-nodes-base/cred-class-name-unsuffixed */
 /* eslint-disable n8n-nodes-base/cred-class-field-name-unsuffixed */
-import type { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties, Icon } from 'n8n-workflow';
 
 export class HttpSslAuth implements ICredentialType {
 	name = 'httpSslAuth';
@@ -9,7 +9,7 @@ export class HttpSslAuth implements ICredentialType {
 
 	documentationUrl = 'httpRequest';
 
-	icon = 'node:n8n-nodes-base.httpRequest';
+	icon: Icon = 'node:n8n-nodes-base.httpRequest';
 
 	properties: INodeProperties[] = [
 		{

@@ -1,0 +1,7 @@
+{
+	"$schema": "../scenario.schema.json",
+	"name": "HttpNode",
+	"description": "Webhook -> 3x HTTP request to a mock API -> Merge -> Respond to Webhook. Requires a mock API running at http://mockapi:8080",
+	"scenarioData": { "workflowFiles": ["http-node.json"] },
+	"scriptPath": "http-node.script.js"
+}

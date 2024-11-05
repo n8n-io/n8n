@@ -8,7 +8,7 @@ import type {
 	INodeTypeDescription,
 	IHttpRequestMethods,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import type { IProduct } from './GenericFunctions';
 import { activeCampaignApiRequest, activeCampaignApiRequestAllItems } from './GenericFunctions';
@@ -81,8 +81,7 @@ export class ActiveCampaign implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'ActiveCampaign',
 		name: 'activeCampaign',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
-		icon: 'file:activeCampaign.png',
+		icon: { light: 'file:activeCampaign.svg', dark: 'file:activeCampaign.dark.svg' },
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -90,8 +89,8 @@ export class ActiveCampaign implements INodeType {
 		defaults: {
 			name: 'ActiveCampaign',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'activeCampaignApi',

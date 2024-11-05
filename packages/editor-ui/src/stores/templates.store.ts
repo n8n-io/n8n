@@ -21,7 +21,7 @@ import {
 	getWorkflowTemplate,
 } from '@/api/templates';
 import { getFixedNodesList } from '@/utils/nodeViewUtils';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useUsersStore } from './users.store';
 import { useWorkflowsStore } from './workflows.store';
 
@@ -63,7 +63,7 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 			return (id: string): null | ITemplatesCollection => this.collections[id];
 		},
 		getCategoryById() {
-			return (id: string): null | ITemplatesCategory => this.categories[id];
+			return (id: string): null | ITemplatesCategory => this.categories[id as unknown as number];
 		},
 		getSearchedCollections() {
 			return (query: ITemplatesQuery) => {
@@ -121,7 +121,7 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 		 * Constructs URLSearchParams object based on the default parameters for the template repository
 		 * and provided additional parameters
 		 */
-		websiteTemplateRepositoryParameters() {
+		websiteTemplateRepositoryParameters(_roleOverride?: string) {
 			const rootStore = useRootStore();
 			const userStore = useUsersStore();
 			const workflowsStore = useWorkflowsStore();
@@ -131,8 +131,13 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 				utm_n8n_version: rootStore.versionCli,
 				utm_awc: String(workflowsStore.activeWorkflows.length),
 			};
-			const userRole: string | undefined =
-				userStore.currentUserCloudInfo?.role ?? userStore.currentUser?.personalizationAnswers?.role;
+			const userRole: string | null | undefined =
+				userStore.currentUserCloudInfo?.role ??
+				(userStore.currentUser?.personalizationAnswers &&
+				'role' in userStore.currentUser.personalizationAnswers
+					? userStore.currentUser.personalizationAnswers.role
+					: undefined);
+
 			if (userRole) {
 				defaultParameters.utm_user_role = userRole;
 			}
@@ -156,10 +161,15 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 		 * Construct the URL for the template category page on the website for a given category id
 		 */
 		getWebsiteCategoryURL() {
-			return (id: string) => {
-				return `${TEMPLATES_URLS.BASE_WEBSITE_URL}/?${this.websiteTemplateRepositoryParameters({
-					categories: id,
-				}).toString()}`;
+			return (id?: string, roleOverride?: string) => {
+				const payload: Record<string, string> = {};
+				if (id) {
+					payload.categories = id;
+				}
+				if (roleOverride) {
+					payload.utm_user_role = roleOverride;
+				}
+				return `${TEMPLATES_URLS.BASE_WEBSITE_URL}/?${this.websiteTemplateRepositoryParameters(payload).toString()}`;
 			};
 		},
 	},
@@ -279,8 +289,9 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 		},
 		async fetchTemplateById(templateId: string): Promise<ITemplatesWorkflowFull> {
 			const settingsStore = useSettingsStore();
+			const rootStore = useRootStore();
 			const apiEndpoint: string = settingsStore.templatesHost;
-			const versionCli: string = settingsStore.versionCli;
+			const versionCli: string = rootStore.versionCli;
 			const response = await getTemplateById(apiEndpoint, templateId, {
 				'n8n-version': versionCli,
 			});
@@ -295,8 +306,9 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 		},
 		async fetchCollectionById(collectionId: string): Promise<ITemplatesCollection | null> {
 			const settingsStore = useSettingsStore();
+			const rootStore = useRootStore();
 			const apiEndpoint: string = settingsStore.templatesHost;
-			const versionCli: string = settingsStore.versionCli;
+			const versionCli: string = rootStore.versionCli;
 			const response = await getCollectionById(apiEndpoint, collectionId, {
 				'n8n-version': versionCli,
 			});
@@ -315,8 +327,9 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 				return cachedCategories;
 			}
 			const settingsStore = useSettingsStore();
+			const rootStore = useRootStore();
 			const apiEndpoint: string = settingsStore.templatesHost;
-			const versionCli: string = settingsStore.versionCli;
+			const versionCli: string = rootStore.versionCli;
 			const response = await getCategories(apiEndpoint, { 'n8n-version': versionCli });
 			const categories = response.categories;
 
@@ -330,8 +343,9 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 			}
 
 			const settingsStore = useSettingsStore();
+			const rootStore = useRootStore();
 			const apiEndpoint: string = settingsStore.templatesHost;
-			const versionCli: string = settingsStore.versionCli;
+			const versionCli: string = rootStore.versionCli;
 			const response = await getCollections(apiEndpoint, query, { 'n8n-version': versionCli });
 			const collections = response.collections;
 
@@ -351,8 +365,9 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 			}
 
 			const settingsStore = useSettingsStore();
+			const rootStore = useRootStore();
 			const apiEndpoint: string = settingsStore.templatesHost;
-			const versionCli: string = settingsStore.versionCli;
+			const versionCli: string = rootStore.versionCli;
 
 			const payload = await getWorkflows(
 				apiEndpoint,
@@ -392,8 +407,9 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 		},
 		async getWorkflowTemplate(templateId: string): Promise<IWorkflowTemplate> {
 			const settingsStore = useSettingsStore();
+			const rootStore = useRootStore();
 			const apiEndpoint: string = settingsStore.templatesHost;
-			const versionCli: string = settingsStore.versionCli;
+			const versionCli: string = rootStore.versionCli;
 			return await getWorkflowTemplate(apiEndpoint, templateId, { 'n8n-version': versionCli });
 		},
 

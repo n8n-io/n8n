@@ -1,9 +1,6 @@
 {
-	"extends": ["./tsconfig.json"],
+	"extends": ["./tsconfig.json", "../../../tsconfig.build.json"],
 	"compilerOptions": {
-		"types": ["node"],
-		"noEmit": false,
-		"declaration": true,
 		"outDir": "dist",
 		"tsBuildInfoFile": "dist/build.tsbuildinfo"
 	},
@@ -11,7 +8,8 @@
 		"credentials/**/*.ts",
 		"nodes/**/*.ts",
 		"nodes/**/*.json",
-		"credentials/translations/**/*.json"
+		"credentials/translations/**/*.json",
+		"types/*.ts"
 	],
 	"exclude": ["nodes/**/*.test.ts", "test/**"]
 }

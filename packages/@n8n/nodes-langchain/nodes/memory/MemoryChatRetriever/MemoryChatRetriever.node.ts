@@ -88,7 +88,7 @@ export class MemoryChatRetriever implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		this.logger.verbose('Executing Chat Memory Retriever');
+		this.logger.debug('Executing Chat Memory Retriever');
 
 		const memory = (await this.getInputConnectionData(NodeConnectionType.AiMemory, 0)) as
 			| BaseChatMemory
@@ -98,7 +98,7 @@ export class MemoryChatRetriever implements INodeType {
 		const messages = await memory?.chatHistory.getMessages();
 
 		if (simplifyOutput && messages) {
-			return await this.prepareOutputData(simplifyMessages(messages));
+			return [simplifyMessages(messages)];
 		}
 
 		const serializedMessages =
@@ -107,6 +107,6 @@ export class MemoryChatRetriever implements INodeType {
 				return { json: serializedMessage as unknown as IDataObject };
 			}) ?? [];
 
-		return await this.prepareOutputData(serializedMessages);
+		return [serializedMessages];
 	}
 }

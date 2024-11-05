@@ -1,105 +1,19 @@
-<template>
-	<div
-		:class="{
-			'n8n-sticky': true,
-			[$style.sticky]: true,
-			[$style.clickable]: !isResizing,
-			[$style[`color-${backgroundColor}`]]: true,
-		}"
-		:style="styles"
-		@keydown.prevent
-	>
-		<N8nResizeWrapper
-			:is-resizing-enabled="!readOnly"
-			:height="height"
-			:width="width"
-			:min-height="minHeight"
-			:min-width="minWidth"
-			:scale="scale"
-			:grid-size="gridSize"
-			@resizeend="onResizeEnd"
-			@resize="onResize"
-			@resizestart="onResizeStart"
-		>
-			<div v-show="!editMode" :class="$style.wrapper" @dblclick.stop="onDoubleClick">
-				<N8nMarkdown
-					theme="sticky"
-					:content="modelValue"
-					:with-multi-breaks="true"
-					@markdown-click="onMarkdownClick"
-				/>
-			</div>
-			<div
-				v-show="editMode"
-				:class="{ 'full-height': !shouldShowFooter, 'sticky-textarea': true }"
-				@click.stop
-				@mousedown.stop
-				@mouseup.stop
-				@keydown.esc="onInputBlur"
-				@keydown.stop
-			>
-				<N8nInput
-					ref="input"
-					:model-value="modelValue"
-					type="textarea"
-					:rows="5"
-					@blur="onInputBlur"
-					@update:model-value="onUpdateModelValue"
-					@wheel="onInputScroll"
-				/>
-			</div>
-			<div v-if="editMode && shouldShowFooter" :class="$style.footer">
-				<N8nText size="xsmall" align="right">
-					<span v-html="t('sticky.markdownHint')"></span>
-				</N8nText>
-			</div>
-		</N8nResizeWrapper>
-	</div>
-</template>
-
 <script lang="ts" setup>
 import { computed, ref, watch } from 'vue';
+
+import { defaultStickyProps } from './constants';
+import type { StickyProps } from './types';
+import { useI18n } from '../../composables/useI18n';
 import N8nInput from '../N8nInput';
 import N8nMarkdown from '../N8nMarkdown';
-import N8nResizeWrapper, { type ResizeData } from '../N8nResizeWrapper/ResizeWrapper.vue';
 import N8nText from '../N8nText';
-import { useI18n } from '../../composables/useI18n';
 
-interface StickyProps {
-	modelValue?: string;
-	height?: number;
-	width?: number;
-	minHeight?: number;
-	minWidth?: number;
-	scale?: number;
-	gridSize?: number;
-	id?: string;
-	defaultText?: string;
-	editMode?: boolean;
-	readOnly?: boolean;
-	backgroundColor?: number | string;
-}
+const props = withDefaults(defineProps<StickyProps>(), defaultStickyProps);
 
-const props = withDefaults(defineProps<StickyProps>(), {
-	height: 180,
-	width: 240,
-	minHeight: 80,
-	minWidth: 150,
-	scale: 1,
-	gridSize: 20,
-	id: '0',
-	editMode: false,
-	readOnly: false,
-	backgroundColor: 1,
-});
-
-const $emit = defineEmits<{
-	(event: 'edit', editing: boolean);
-	(event: 'update:modelValue', value: string);
-	(event: 'markdown-click', link: string, e: Event);
-	(event: 'resize', values: ResizeData);
-	(event: 'resizestart');
-	(event: 'resizeend', value: unknown);
+const emit = defineEmits<{
+	edit: [editing: boolean];
+	'update:modelValue': [value: string];
+	'markdown-click': [link: HTMLAnchorElement, e: MouseEvent];
 }>();
 
 const { t } = useI18n();
@@ -113,6 +27,8 @@ const resHeight = computed((): number => {
 const resWidth = computed((): number => {
 	return props.width < props.minWidth ? props.minWidth : props.width;
 });
+
+const inputName = computed(() => (props.id ? `${props.id}-input` : undefined));
 
 const styles = computed((): { height: string; width: string } => ({
 	height: `${resHeight.value}px`,
@@ -136,33 +52,19 @@ watch(
 );
 
 const onDoubleClick = () => {
-	if (!props.readOnly) $emit('edit', true);
+	if (!props.readOnly) emit('edit', true);
 };
 
 const onInputBlur = () => {
-	if (!isResizing.value) $emit('edit', false);
+	if (!isResizing.value) emit('edit', false);
 };
 
 const onUpdateModelValue = (value: string) => {
-	$emit('update:modelValue', value);
+	emit('update:modelValue', value);
 };
 
-const onMarkdownClick = (link: string, event: Event) => {
-	$emit('markdown-click', link, event);
-};
-
-const onResize = (values: ResizeData) => {
-	$emit('resize', values);
-};
-
-const onResizeStart = () => {
-	isResizing.value = true;
-	$emit('resizestart');
-};
-
-const onResizeEnd = (resizeEnd: unknown) => {
-	isResizing.value = false;
-	$emit('resizeend', resizeEnd);
+const onMarkdownClick = (link: HTMLAnchorElement, event: MouseEvent) => {
+	emit('markdown-click', link, event);
 };
 
 const onInputScroll = (event: WheelEvent) => {
@@ -172,6 +74,54 @@ const onInputScroll = (event: WheelEvent) => {
 	}
 };
 </script>
+
+<template>
+	<div
+		:class="{
+			'n8n-sticky': true,
+			[$style.sticky]: true,
+			[$style.clickable]: !isResizing,
+			[$style[`color-${backgroundColor}`]]: true,
+		}"
+		:style="styles"
+		@keydown.prevent
+	>
+		<div v-show="!editMode" :class="$style.wrapper" @dblclick.stop="onDoubleClick">
+			<N8nMarkdown
+				theme="sticky"
+				:content="modelValue"
+				:with-multi-breaks="true"
+				@markdown-click="onMarkdownClick"
+				@update-content="onUpdateModelValue"
+			/>
+		</div>
+		<div
+			v-show="editMode"
+			:class="{ 'full-height': !shouldShowFooter, 'sticky-textarea': true }"
+			@click.stop
+			@mousedown.stop
+			@mouseup.stop
+			@keydown.esc="onInputBlur"
+			@keydown.stop
+		>
+			<N8nInput
+				ref="input"
+				:model-value="modelValue"
+				:name="inputName"
+				type="textarea"
+				:rows="5"
+				@blur="onInputBlur"
+				@update:model-value="onUpdateModelValue"
+				@wheel="onInputScroll"
+			/>
+		</div>
+		<div v-if="editMode && shouldShowFooter" :class="$style.footer">
+			<N8nText size="xsmall" align="right">
+				<span v-n8n-html="t('sticky.markdownHint')"></span>
+			</N8nText>
+		</div>
+	</div>
+</template>
 
 <style lang="scss" module>
 .sticky {

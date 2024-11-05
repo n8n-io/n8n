@@ -1,16 +1,21 @@
 import { pipeline } from 'stream/promises';
 import { createWriteStream } from 'fs';
-import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import type {
+	IBinaryData,
+	IExecuteFunctions,
+	INodeExecutionData,
+	ISupplyDataFunctions,
+} from 'n8n-workflow';
 import { NodeOperationError, BINARY_ENCODING } from 'n8n-workflow';
 
-import type { TextSplitter } from 'langchain/text_splitter';
+import type { TextSplitter } from '@langchain/textsplitters';
 import type { Document } from '@langchain/core/documents';
-import { CSVLoader } from 'langchain/document_loaders/fs/csv';
-import { DocxLoader } from 'langchain/document_loaders/fs/docx';
+import { CSVLoader } from '@langchain/community/document_loaders/fs/csv';
+import { DocxLoader } from '@langchain/community/document_loaders/fs/docx';
 import { JSONLoader } from 'langchain/document_loaders/fs/json';
-import { PDFLoader } from 'langchain/document_loaders/fs/pdf';
+import { PDFLoader } from '@langchain/community/document_loaders/fs/pdf';
 import { TextLoader } from 'langchain/document_loaders/fs/text';
-import { EPubLoader } from 'langchain/document_loaders/fs/epub';
+import { EPubLoader } from '@langchain/community/document_loaders/fs/epub';
 import { file as tmpFile, type DirectoryResult } from 'tmp-promise';
 
 import { getMetadataFiltersValues } from './helpers';
@@ -26,25 +31,12 @@ const SUPPORTED_MIME_TYPES = {
 };
 
 export class N8nBinaryLoader {
-	private context: IExecuteFunctions;
-
-	private optionsPrefix: string;
-
-	private binaryDataKey: string;
-
-	private textSplitter?: TextSplitter;
-
 	constructor(
-		context: IExecuteFunctions,
-		optionsPrefix = '',
-		binaryDataKey = '',
-		textSplitter?: TextSplitter,
-	) {
-		this.context = context;
-		this.textSplitter = textSplitter;
-		this.optionsPrefix = optionsPrefix;
-		this.binaryDataKey = binaryDataKey;
-	}
+		private context: IExecuteFunctions | ISupplyDataFunctions,
+		private optionsPrefix = '',
+		private binaryDataKey = '',
+		private textSplitter?: TextSplitter,
+	) {}
 
 	async processAll(items?: INodeExecutionData[]): Promise<Document[]> {
 		const docs: Document[] = [];
@@ -60,21 +52,10 @@ export class N8nBinaryLoader {
 		return docs;
 	}
 
-	async processItem(item: INodeExecutionData, itemIndex: number): Promise<Document[]> {
-		const selectedLoader: keyof typeof SUPPORTED_MIME_TYPES = this.context.getNodeParameter(
-			'loader',
-			itemIndex,
-			'auto',
-		) as keyof typeof SUPPORTED_MIME_TYPES;
-
-		const docs: Document[] = [];
-		const metadata = getMetadataFiltersValues(this.context, itemIndex);
-
-		if (!item) return [];
-
-		const binaryData = this.context.helpers.assertBinaryData(itemIndex, this.binaryDataKey);
-		const { mimeType } = binaryData;
-
+	private async validateMimeType(
+		mimeType: string,
+		selectedLoader: keyof typeof SUPPORTED_MIME_TYPES,
+	): Promise<void> {
 		// Check if loader matches the mime-type of the data
 		if (selectedLoader !== 'auto' && !SUPPORTED_MIME_TYPES[selectedLoader].includes(mimeType)) {
 			const neededLoader = Object.keys(SUPPORTED_MIME_TYPES).find((loader) =>
@@ -90,6 +71,7 @@ export class N8nBinaryLoader {
 		if (!Object.values(SUPPORTED_MIME_TYPES).flat().includes(mimeType)) {
 			throw new NodeOperationError(this.context.getNode(), `Unsupported mime type: ${mimeType}`);
 		}
+
 		if (
 			!SUPPORTED_MIME_TYPES[selectedLoader].includes(mimeType) &&
 			selectedLoader !== 'textLoader' &&
@@ -100,24 +82,31 @@ export class N8nBinaryLoader {
 				`Unsupported mime type: ${mimeType} for selected loader: ${selectedLoader}`,
 			);
 		}
+	}
 
-		let filePathOrBlob: string | Blob;
+	private async getFilePathOrBlob(
+		binaryData: IBinaryData,
+		mimeType: string,
+	): Promise<string | Blob> {
 		if (binaryData.id) {
 			const binaryBuffer = await this.context.helpers.binaryToBuffer(
 				await this.context.helpers.getBinaryStream(binaryData.id),
 			);
-			filePathOrBlob = new Blob([binaryBuffer], {
+			return new Blob([binaryBuffer], {
 				type: mimeType,
 			});
 		} else {
-			filePathOrBlob = new Blob([Buffer.from(binaryData.data, BINARY_ENCODING)], {
+			return new Blob([Buffer.from(binaryData.data, BINARY_ENCODING)], {
 				type: mimeType,
 			});
 		}
+	}
 
-		let loader: PDFLoader | CSVLoader | EPubLoader | DocxLoader | TextLoader | JSONLoader;
-		let cleanupTmpFile: DirectoryResult['cleanup'] | undefined = undefined;
-
+	private async getLoader(
+		mimeType: string,
+		filePathOrBlob: string | Blob,
+		itemIndex: number,
+	): Promise<PDFLoader | CSVLoader | EPubLoader | DocxLoader | TextLoader | JSONLoader> {
 		switch (mimeType) {
 			case 'application/pdf':
 				const splitPages = this.context.getNodeParameter(
@@ -125,10 +114,7 @@ export class N8nBinaryLoader {
 					itemIndex,
 					false,
 				) as boolean;
-				loader = new PDFLoader(filePathOrBlob, {
-					splitPages,
-				});
-				break;
+				return new PDFLoader(filePathOrBlob, { splitPages });
 			case 'text/csv':
 				const column = this.context.getNodeParameter(
 					`${this.optionsPrefix}column`,
@@ -140,38 +126,23 @@ export class N8nBinaryLoader {
 					itemIndex,
 					',',
 				) as string;
-
-				loader = new CSVLoader(filePathOrBlob, {
-					column: column ?? undefined,
-					separator,
-				});
-				break;
+				return new CSVLoader(filePathOrBlob, { column: column ?? undefined, separator });
 			case 'application/epub+zip':
 				// EPubLoader currently does not accept Blobs https://github.com/langchain-ai/langchainjs/issues/1623
 				let filePath: string;
 				if (filePathOrBlob instanceof Blob) {
 					const tmpFileData = await tmpFile({ prefix: 'epub-loader-' });
-					cleanupTmpFile = tmpFileData.cleanup;
-					try {
-						const bufferData = await filePathOrBlob.arrayBuffer();
-						await pipeline([new Uint8Array(bufferData)], createWriteStream(tmpFileData.path));
-						loader = new EPubLoader(tmpFileData.path);
-						break;
-					} catch (error) {
-						await cleanupTmpFile();
-						throw new NodeOperationError(this.context.getNode(), error as Error);
-					}
+					const bufferData = await filePathOrBlob.arrayBuffer();
+					await pipeline([new Uint8Array(bufferData)], createWriteStream(tmpFileData.path));
+					return new EPubLoader(tmpFileData.path);
 				} else {
 					filePath = filePathOrBlob;
 				}
-				loader = new EPubLoader(filePath);
-				break;
+				return new EPubLoader(filePath);
 			case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
-				loader = new DocxLoader(filePathOrBlob);
-				break;
+				return new DocxLoader(filePathOrBlob);
 			case 'text/plain':
-				loader = new TextLoader(filePathOrBlob);
-				break;
+				return new TextLoader(filePathOrBlob);
 			case 'application/json':
 				const pointers = this.context.getNodeParameter(
 					`${this.optionsPrefix}pointers`,
@@ -179,15 +150,77 @@ export class N8nBinaryLoader {
 					'',
 				) as string;
 				const pointersArray = pointers.split(',').map((pointer) => pointer.trim());
-				loader = new JSONLoader(filePathOrBlob, pointersArray);
-				break;
+				return new JSONLoader(filePathOrBlob, pointersArray);
 			default:
-				loader = new TextLoader(filePathOrBlob);
+				return new TextLoader(filePathOrBlob);
+		}
+	}
+
+	private async loadDocuments(
+		loader: PDFLoader | CSVLoader | EPubLoader | DocxLoader | TextLoader | JSONLoader,
+	): Promise<Document[]> {
+		return this.textSplitter
+			? await this.textSplitter.splitDocuments(await loader.load())
+			: await loader.load();
+	}
+
+	private async cleanupTmpFileIfNeeded(
+		cleanupTmpFile: DirectoryResult['cleanup'] | undefined,
+	): Promise<void> {
+		if (cleanupTmpFile) {
+			await cleanupTmpFile();
+		}
+	}
+
+	async processItem(item: INodeExecutionData, itemIndex: number): Promise<Document[]> {
+		const docs: Document[] = [];
+		const binaryMode = this.context.getNodeParameter('binaryMode', itemIndex, 'allInputData');
+		if (binaryMode === 'allInputData') {
+			const binaryData = this.context.getInputData();
+
+			for (const data of binaryData) {
+				if (data.binary) {
+					const binaryDataKeys = Object.keys(data.binary);
+
+					for (const fileKey of binaryDataKeys) {
+						const processedDocuments = await this.processItemByKey(item, itemIndex, fileKey);
+						docs.push(...processedDocuments);
+					}
+				}
+			}
+		} else {
+			const processedDocuments = await this.processItemByKey(item, itemIndex, this.binaryDataKey);
+			docs.push(...processedDocuments);
 		}
 
-		const loadedDoc = this.textSplitter
-			? await loader.loadAndSplit(this.textSplitter)
-			: await loader.load();
+		return docs;
+	}
+
+	async processItemByKey(
+		item: INodeExecutionData,
+		itemIndex: number,
+		binaryKey: string,
+	): Promise<Document[]> {
+		const selectedLoader: keyof typeof SUPPORTED_MIME_TYPES = this.context.getNodeParameter(
+			'loader',
+			itemIndex,
+			'auto',
+		) as keyof typeof SUPPORTED_MIME_TYPES;
+
+		const docs: Document[] = [];
+		const metadata = getMetadataFiltersValues(this.context, itemIndex);
+
+		if (!item) return [];
+
+		const binaryData = this.context.helpers.assertBinaryData(itemIndex, binaryKey);
+		const { mimeType } = binaryData;
+
+		await this.validateMimeType(mimeType, selectedLoader);
+
+		const filePathOrBlob = await this.getFilePathOrBlob(binaryData, mimeType);
+		const cleanupTmpFile: DirectoryResult['cleanup'] | undefined = undefined;
+		const loader = await this.getLoader(mimeType, filePathOrBlob, itemIndex);
+		const loadedDoc = await this.loadDocuments(loader);
 
 		docs.push(...loadedDoc);
 
@@ -200,9 +233,8 @@ export class N8nBinaryLoader {
 			});
 		}
 
-		if (cleanupTmpFile) {
-			await cleanupTmpFile();
-		}
+		await this.cleanupTmpFileIfNeeded(cleanupTmpFile);
+
 		return docs;
 	}
 }

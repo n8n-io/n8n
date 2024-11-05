@@ -1,12 +1,13 @@
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	IHttpRequestMethods,
-	ILoadOptionsFunctions,
-	INodeExecutionData,
-	INodePropertyOptions,
-	INodeType,
-	INodeTypeDescription,
+import {
+	NodeConnectionType,
+	type IDataObject,
+	type IExecuteFunctions,
+	type IHttpRequestMethods,
+	type ILoadOptionsFunctions,
+	type INodeExecutionData,
+	type INodePropertyOptions,
+	type INodeType,
+	type INodeTypeDescription,
 } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
@@ -31,8 +32,8 @@ export class SendGrid implements INodeType {
 		defaults: {
 			name: 'SendGrid',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'sendGridApi',

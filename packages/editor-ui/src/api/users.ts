@@ -1,11 +1,16 @@
 import type {
+	PasswordUpdateRequestDto,
+	SettingsUpdateRequestDto,
+	UserUpdateRequestDto,
+} from '@n8n/api-types';
+import type {
 	CurrentUserResponse,
 	IPersonalizationLatestVersion,
 	IRestApiContext,
 	IUserResponse,
 	InvitableRoleName,
 } from '@/Interface';
-import type { IDataObject } from 'n8n-workflow';
+import type { IDataObject, IUserSettings } from 'n8n-workflow';
 import { makeRestApiRequest } from '@/utils/apiUtils';
 
 export async function loginCurrentUser(
@@ -86,39 +91,29 @@ export async function changePassword(
 
 export async function updateCurrentUser(
 	context: IRestApiContext,
-	params: {
-		id?: string;
-		firstName?: string;
-		lastName?: string;
-		email: string;
-	},
+	params: UserUpdateRequestDto,
 ): Promise<IUserResponse> {
-	return await makeRestApiRequest(context, 'PATCH', '/me', params as unknown as IDataObject);
+	return await makeRestApiRequest(context, 'PATCH', '/me', params);
 }
 
 export async function updateCurrentUserSettings(
 	context: IRestApiContext,
-	settings: IUserResponse['settings'],
-): Promise<IUserResponse['settings']> {
-	return await makeRestApiRequest(context, 'PATCH', '/me/settings', settings as IDataObject);
+	settings: SettingsUpdateRequestDto,
+): Promise<IUserSettings> {
+	return await makeRestApiRequest(context, 'PATCH', '/me/settings', settings);
 }
 
 export async function updateOtherUserSettings(
 	context: IRestApiContext,
 	userId: string,
-	settings: IUserResponse['settings'],
-): Promise<IUserResponse['settings']> {
-	return await makeRestApiRequest(
-		context,
-		'PATCH',
-		`/users/${userId}/settings`,
-		settings as IDataObject,
-	);
+	settings: SettingsUpdateRequestDto,
+): Promise<IUserSettings> {
+	return await makeRestApiRequest(context, 'PATCH', `/users/${userId}/settings`, settings);
 }
 
 export async function updateCurrentUserPassword(
 	context: IRestApiContext,
-	params: { newPassword: string; currentPassword: string },
+	params: PasswordUpdateRequestDto,
 ): Promise<void> {
 	return await makeRestApiRequest(context, 'PATCH', '/me/password', params);
 }

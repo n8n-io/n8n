@@ -3,6 +3,7 @@ import type {
 	ICredentialType,
 	IHttpRequestOptions,
 	INodeProperties,
+	Icon,
 } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
@@ -20,7 +21,7 @@ export class GoogleApi implements ICredentialType {
 
 	documentationUrl = 'google/service-account';
 
-	icon = 'file:icons/Google.svg';
+	icon: Icon = 'file:icons/Google.svg';
 
 	properties: INodeProperties[] = [
 		{

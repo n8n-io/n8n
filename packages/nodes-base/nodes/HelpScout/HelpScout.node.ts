@@ -8,9 +8,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
-
-import { countriesCodes } from './CountriesCodes';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import { conversationFields, conversationOperations } from './ConversationDescription';
 
@@ -27,6 +25,7 @@ import { mailboxFields, mailboxOperations } from './MailboxDescription';
 import { threadFields, threadOperations } from './ThreadDescription';
 
 import type { IAttachment, IThread } from './ThreadInterface';
+import { isoCountryCodes } from '@utils/ISOCountryCodes';
 
 export class HelpScout implements INodeType {
 	description: INodeTypeDescription = {
@@ -40,8 +39,8 @@ export class HelpScout implements INodeType {
 		defaults: {
 			name: 'HelpScout',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'helpScoutOAuth2Api',
@@ -91,7 +90,7 @@ export class HelpScout implements INodeType {
 			// select them easily
 			async getCountriesCodes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				for (const countryCode of countriesCodes) {
+				for (const countryCode of isoCountryCodes) {
 					const countryCodeName = `${countryCode.name} - ${countryCode.alpha2}`;
 					const countryCodeId = countryCode.alpha2;
 					returnData.push({
@@ -459,6 +458,13 @@ export class HelpScout implements INodeType {
 						const text = this.getNodeParameter('text', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const attachments = this.getNodeParameter('attachmentsUi', i) as IDataObject;
+						let threadType = this.getNodeParameter('type', i) as string;
+
+						// We need to update the types to match the API - Avoids a breaking change
+						const singular = ['reply', 'customer'];
+						if (!singular.includes(threadType)) {
+							threadType = `${threadType}s`;
+						}
 						const body: IThread = {
 							text,
 							attachments: [],
@@ -527,7 +533,7 @@ export class HelpScout implements INodeType {
 						responseData = await helpscoutApiRequest.call(
 							this,
 							'POST',
-							`/v2/conversations/${conversationId}/chats`,
+							`/v2/conversations/${conversationId}/${threadType}`,
 							body,
 						);
 						responseData = { success: true };

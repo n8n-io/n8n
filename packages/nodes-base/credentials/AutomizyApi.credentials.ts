@@ -9,6 +9,13 @@ export class AutomizyApi implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
+			displayName:
+				'This service may no longer exist and will be removed from n8n in a future release.',
+			name: 'deprecated',
+			type: 'notice',
+			default: '',
+		},
+		{
 			displayName: 'API Token',
 			name: 'apiToken',
 			type: 'string',

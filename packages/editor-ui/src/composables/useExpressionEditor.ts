@@ -1,12 +1,13 @@
 import {
 	computed,
-	type MaybeRefOrGetter,
 	onBeforeUnmount,
+	onMounted,
 	ref,
-	watchEffect,
-	type Ref,
 	toValue,
 	watch,
+	watchEffect,
+	type MaybeRefOrGetter,
+	type Ref,
 } from 'vue';
 
 import { ensureSyntaxTree } from '@codemirror/language';
@@ -18,25 +19,26 @@ import { useNDVStore } from '@/stores/ndv.store';
 
 import type { TargetItem } from '@/Interface';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
+import { closeCursorInfoBox } from '@/plugins/codemirror/tooltips/InfoBoxTooltip';
 import type { Html, Plaintext, RawSegment, Resolvable, Segment } from '@/types/expressions';
 import {
 	getExpressionErrorMessage,
 	getResolvableState,
 	isEmptyExpression,
 } from '@/utils/expressions';
-import { completionStatus } from '@codemirror/autocomplete';
+import { closeCompletion, completionStatus } from '@codemirror/autocomplete';
 import {
 	Compartment,
-	EditorState,
-	type SelectionRange,
-	type Extension,
 	EditorSelection,
+	EditorState,
+	type Extension,
+	type SelectionRange,
 } from '@codemirror/state';
 import { EditorView, type ViewUpdate } from '@codemirror/view';
 import { debounce, isEqual } from 'lodash-es';
 import { useRouter } from 'vue-router';
 import { useI18n } from '../composables/useI18n';
-import { highlighter } from '../plugins/codemirror/resolvableHighlighter';
 import { useWorkflowsStore } from '../stores/workflows.store';
 import { useAutocompleteTelemetry } from './useAutocompleteTelemetry';
 
@@ -70,6 +72,7 @@ export const useExpressionEditor = ({
 	const readOnlyExtensions = ref<Compartment>(new Compartment());
 	const telemetryExtensions = ref<Compartment>(new Compartment());
 	const autocompleteStatus = ref<'pending' | 'active' | null>(null);
+	const dragging = ref(false);
 
 	const updateSegments = (): void => {
 		const state = editor.value?.state;
@@ -105,7 +108,7 @@ export const useExpressionEditor = ({
 			const { from, to, text, token } = segment;
 
 			if (token === 'Resolvable') {
-				const { resolved, error, fullError } = resolve(text, hoveringItem.value);
+				const { resolved, error, fullError } = resolve(text, targetItem.value);
 				acc.push({
 					kind: 'resolvable',
 					from,
@@ -158,6 +161,21 @@ export const useExpressionEditor = ({
 		debouncedUpdateSegments();
 	}
 
+	function blur() {
+		if (editor.value) {
+			editor.value.contentDOM.blur();
+			closeCompletion(editor.value);
+			closeCursorInfoBox(editor.value);
+		}
+	}
+
+	function blurOnClickOutside(event: MouseEvent) {
+		if (event.target && !dragging.value && !editor.value?.dom.contains(event.target as Node)) {
+			blur();
+		}
+		dragging.value = false;
+	}
+
 	watch(editorRef, () => {
 		const parent = toValue(editorRef);
 
@@ -167,25 +185,31 @@ export const useExpressionEditor = ({
 			doc: toValue(editorValue),
 			extensions: [
 				customExtensions.value.of(toValue(extensions)),
-				readOnlyExtensions.value.of([
-					EditorState.readOnly.of(toValue(isReadOnly)),
-					EditorView.editable.of(!toValue(isReadOnly)),
-				]),
+				readOnlyExtensions.value.of([EditorState.readOnly.of(toValue(isReadOnly))]),
 				telemetryExtensions.value.of([]),
 				EditorView.updateListener.of(onEditorUpdate),
 				EditorView.focusChangeEffect.of((_, newHasFocus) => {
 					hasFocus.value = newHasFocus;
 					selection.value = state.selection.ranges[0];
+					if (!newHasFocus) {
+						autocompleteStatus.value = null;
+						debouncedUpdateSegments();
+					}
 					return null;
 				}),
 				EditorView.contentAttributes.of({ 'data-gramm': 'false' }), // disable grammarly
+				EditorView.domEventHandlers({
+					mousedown: () => {
+						dragging.value = true;
+					},
+				}),
 			],
 		});
 
 		if (editor.value) {
 			editor.value.destroy();
 		}
-		editor.value = new EditorView({ parent, state, scrollTo: EditorView.scrollIntoView(0) });
+		editor.value = new EditorView({ parent, state });
 		debouncedUpdateSegments();
 	});
 
@@ -202,7 +226,6 @@ export const useExpressionEditor = ({
 			editor.value.dispatch({
 				effects: readOnlyExtensions.value.reconfigure([
 					EditorState.readOnly.of(toValue(isReadOnly)),
-					EditorView.editable.of(!toValue(isReadOnly)),
 				]),
 			});
 		}
@@ -231,7 +254,12 @@ export const useExpressionEditor = ({
 		});
 	});
 
+	onMounted(() => {
+		document.addEventListener('click', blurOnClickOutside);
+	});
+
 	onBeforeUnmount(() => {
+		document.removeEventListener('click', blurOnClickOutside);
 		editor.value?.destroy();
 	});
 
@@ -253,7 +281,7 @@ export const useExpressionEditor = ({
 		return end !== undefined && expressionExtensionNames.value.has(end);
 	}
 
-	function resolve(resolvable: string, hoverItem: TargetItem | null) {
+	function resolve(resolvable: string, target: TargetItem | null) {
 		const result: { resolved: unknown; error: boolean; fullError: Error | null } = {
 			resolved: undefined,
 			error: false,
@@ -265,14 +293,13 @@ export const useExpressionEditor = ({
 				// e.g. credential modal
 				result.resolved = Expression.resolveWithoutWorkflow(resolvable, toValue(additionalData));
 			} else {
-				let opts;
+				let opts: Record<string, unknown> = { additionalKeys: toValue(additionalData) };
 				if (ndvStore.isInputParentOfActiveNode) {
 					opts = {
-						targetItem: hoverItem ?? undefined,
+						targetItem: target ?? undefined,
 						inputNodeName: ndvStore.ndvInputNodeName,
 						inputRunIndex: ndvStore.ndvInputRunIndex,
 						inputBranchIndex: ndvStore.ndvInputBranchIndex,
-						additionalKeys: toValue(additionalData),
 					};
 				}
 				result.resolved = workflowHelpers.resolveExpression('=' + resolvable, undefined, opts);
@@ -299,16 +326,10 @@ export const useExpressionEditor = ({
 			result.error = true;
 		}
 
-		if (typeof result.resolved === 'number' && isNaN(result.resolved)) {
-			result.resolved = i18n.baseText('expressionModalInput.null');
-		}
-
 		return result;
 	}
 
-	const hoveringItem = computed(() => {
-		return ndvStore.hoveringItem;
-	});
+	const targetItem = computed<TargetItem | null>(() => ndvStore.expressionTargetItem);
 
 	const resolvableSegments = computed<Resolvable[]>(() => {
 		return segments.value.filter((s): s is Resolvable => s.kind === 'resolvable');
@@ -331,6 +352,12 @@ export const useExpressionEditor = ({
 	 * - `This is a {{ [] }} test` displays as `This is a test`.
 	 * - `{{ [] }}` displays as `[Array: []]`.
 	 *
+	 * - `This is a {{ {} }} test` displays as `This is a [object Object] test`.
+	 * - `{{ {} }}` displays as `[Object: {}]`.
+	 *
+	 * - `This is a {{ [{}] }} test` displays as `This is a [object Object] test`.
+	 * - `{{ [] }}` displays as `[Array: []]`.
+	 *
 	 * Some segments display differently based on context:
 	 *
 	 * Date displays as
@@ -345,13 +372,29 @@ export const useExpressionEditor = ({
 			.map((s) => {
 				if (cachedSegments.length <= 1 || s.kind !== 'resolvable') return s;
 
-				if (typeof s.resolved === 'string' && /\[Object: "\d{4}-\d{2}-\d{2}T/.test(s.resolved)) {
-					const utcDateString = s.resolved.replace(/(\[Object: "|\"\])/g, '');
-					s.resolved = new Date(utcDateString).toString();
-				}
+				if (typeof s.resolved === 'string') {
+					let resolved = s.resolved;
 
-				if (typeof s.resolved === 'string' && /\[Array:\s\[.+\]\]/.test(s.resolved)) {
-					s.resolved = s.resolved.replace(/(\[Array: \[|\])/g, '');
+					if (/\[Object: "\d{4}-\d{2}-\d{2}T/.test(resolved)) {
+						const utcDateString = resolved.replace(/(\[Object: "|\"\])/g, '');
+						resolved = new Date(utcDateString).toString();
+					}
+
+					if (/\[Object:\s(\{.+\}|\{\})\]/.test(resolved)) {
+						resolved = resolved.replace(/(\[Object: |\]$)/g, '');
+						try {
+							resolved = String(JSON.parse(resolved));
+						} catch (error) {}
+					}
+
+					if (/\[Array:\s\[.+\]\]/.test(resolved)) {
+						resolved = resolved.replace(/(\[Array: |\]$)/g, '');
+						try {
+							resolved = String(JSON.parse(resolved));
+						} catch (error) {}
+					}
+
+					s.resolved = resolved;
 				}
 
 				return s;
@@ -372,13 +415,11 @@ export const useExpressionEditor = ({
 	});
 
 	watch(
-		[
-			() => workflowsStore.getWorkflowExecution,
-			() => workflowsStore.getWorkflowRunData,
-			() => ndvStore.hoveringItemNumber,
-		],
+		[() => workflowsStore.getWorkflowExecution, () => workflowsStore.getWorkflowRunData],
 		debouncedUpdateSegments,
 	);
+
+	watch(targetItem, updateSegments);
 
 	watch(resolvableSegments, updateHighlighting);
 
@@ -386,7 +427,8 @@ export const useExpressionEditor = ({
 		if (pos === 'lastExpression') {
 			const END_OF_EXPRESSION = ' }}';
 			const endOfLastExpression = readEditorValue().lastIndexOf(END_OF_EXPRESSION);
-			pos = endOfLastExpression !== -1 ? endOfLastExpression : editor.value?.state.doc.length ?? 0;
+			pos =
+				endOfLastExpression !== -1 ? endOfLastExpression : (editor.value?.state.doc.length ?? 0);
 		} else if (pos === 'end') {
 			pos = editor.value?.state.doc.length ?? 0;
 		}
@@ -395,7 +437,7 @@ export const useExpressionEditor = ({
 
 	function select(anchor: number, head: number | 'end' = 'end'): void {
 		editor.value?.dispatch({
-			selection: { anchor, head: head === 'end' ? editor.value?.state.doc.length ?? 0 : head },
+			selection: { anchor, head: head === 'end' ? (editor.value?.state.doc.length ?? 0) : head },
 		});
 	}
 

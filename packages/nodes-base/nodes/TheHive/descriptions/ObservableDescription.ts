@@ -8,7 +8,7 @@ export const observableOperations: INodeProperties[] = [
 		name: 'operation',
 		type: 'options',
 		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 		noDataExpression: true,
 		required: true,
 		default: 'getAll',
@@ -101,7 +101,7 @@ export const observableFields: INodeProperties[] = [
 			},
 		},
 		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 	},
 	{
 		displayName: 'Data',
@@ -252,7 +252,7 @@ export const observableFields: INodeProperties[] = [
 		name: 'analyzers',
 		type: 'multiOptions',
 		description:
-			'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+			'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 		required: true,
 		default: [],
 		typeOptions: {
@@ -276,7 +276,7 @@ export const observableFields: INodeProperties[] = [
 		name: 'responder',
 		type: 'options',
 		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 		required: true,
 		default: '',
 		typeOptions: {
@@ -298,7 +298,7 @@ export const observableFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -412,7 +412,7 @@ export const observableFields: INodeProperties[] = [
 			},
 		},
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			{
@@ -448,7 +448,7 @@ export const observableFields: INodeProperties[] = [
 					loadOptionsMethod: 'loadObservableTypes',
 				},
 				description:
-					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 			},
 			{
 				displayName: 'Date Range',

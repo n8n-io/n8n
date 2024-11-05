@@ -1,17 +1,27 @@
+import type { BaseMessage } from '@langchain/core/messages';
 import { AgentExecutor } from 'langchain/agents';
-
-import { OpenAIAssistantRunnable } from 'langchain/experimental/openai_assistant';
 import type { OpenAIToolType } from 'langchain/dist/experimental/openai_assistant/schema';
+import { OpenAIAssistantRunnable } from 'langchain/experimental/openai_assistant';
+import type { BufferWindowMemory } from 'langchain/memory';
+import omit from 'lodash/omit';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeProperties,
+} from 'n8n-workflow';
+import {
+	ApplicationError,
+	NodeConnectionType,
+	NodeOperationError,
+	updateDisplayOptions,
+} from 'n8n-workflow';
 import { OpenAI as OpenAIClient } from 'openai';
-
-import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
-import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
-
-import { formatToOpenAIAssistantTool } from '../../helpers/utils';
-import { assistantRLC } from '../descriptions';
 
 import { getConnectedTools } from '../../../../../utils/helpers';
 import { getTracingConfig } from '../../../../../utils/tracing';
+import { formatToOpenAIAssistantTool } from '../../helpers/utils';
+import { assistantRLC } from '../descriptions';
 
 const properties: INodeProperties[] = [
 	assistantRLC,
@@ -47,6 +57,46 @@ const properties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				prompt: ['define'],
+			},
+		},
+	},
+	{
+		displayName: 'Memory',
+		name: 'memory',
+		type: 'options',
+		options: [
+			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+				name: 'Use memory connector',
+				value: 'connector',
+				description: 'Connect one of the supported memory nodes',
+			},
+			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+				name: 'Use thread ID',
+				value: 'threadId',
+				description: 'Specify the ID of the thread to continue',
+			},
+		],
+		displayOptions: {
+			show: {
+				'@version': [{ _cnd: { gte: 1.6 } }],
+			},
+		},
+		default: 'connector',
+	},
+	{
+		displayName: 'Thread ID',
+		name: 'threadId',
+		type: 'string',
+		default: '',
+		placeholder: '',
+		description: 'The ID of the thread to continue, a new thread will be created if not specified',
+		hint: 'If the thread ID is empty or undefined a new thread will be created and included in the response',
+		displayOptions: {
+			show: {
+				'@version': [{ _cnd: { gte: 1.6 } }],
+				memory: ['threadId'],
 			},
 		},
 	},
@@ -110,6 +160,12 @@ const displayOptions = {
 };
 
 export const description = updateDisplayOptions(displayOptions, properties);
+const mapChatMessageToThreadMessage = (
+	message: BaseMessage,
+): OpenAIClient.Beta.Threads.ThreadCreateParams.Message => ({
+	role: message._getType() === 'ai' ? 'assistant' : 'user',
+	content: message.content.toString(),
+});
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const credentials = await this.getCredentials('openAiApi');
@@ -149,7 +205,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	const agent = new OpenAIAssistantRunnable({ assistantId, client, asAgent: true });
 
-	const tools = await getConnectedTools(this, nodeVersion > 1);
+	const tools = await getConnectedTools(this, nodeVersion > 1, false);
 	let assistantTools;
 
 	if (tools.length) {
@@ -182,21 +238,81 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		tools: tools ?? [],
 	});
 
-	const response = await agentExecutor.withConfig(getTracingConfig(this)).invoke({
+	const useMemoryConnector =
+		nodeVersion >= 1.6 && this.getNodeParameter('memory', i) === 'connector';
+	const memory =
+		useMemoryConnector || nodeVersion < 1.6
+			? ((await this.getInputConnectionData(NodeConnectionType.AiMemory, 0)) as
+					| BufferWindowMemory
+					| undefined)
+			: undefined;
+
+	const threadId =
+		nodeVersion >= 1.6 && !useMemoryConnector
+			? (this.getNodeParameter('threadId', i) as string)
+			: undefined;
+
+	const chainValues: IDataObject = {
 		content: input,
 		signal: this.getExecutionCancelSignal(),
 		timeout: options.timeout ?? 10000,
-	});
+	};
+	let thread: OpenAIClient.Beta.Threads.Thread;
+	if (memory) {
+		const chatMessages = await memory.chatHistory.getMessages();
 
-	if (
-		options.preserveOriginalTools !== false &&
-		nodeVersion >= 1.3 &&
-		(assistantTools ?? [])?.length
-	) {
-		await client.beta.assistants.update(assistantId, {
-			tools: assistantTools,
-		});
+		// Construct a new thread from the chat history to map the memory
+		if (chatMessages.length) {
+			const first32Messages = chatMessages.slice(0, 32);
+			// There is a undocumented limit of 32 messages per thread when creating a thread with messages
+			const mappedMessages: OpenAIClient.Beta.Threads.ThreadCreateParams.Message[] =
+				first32Messages.map(mapChatMessageToThreadMessage);
+
+			thread = await client.beta.threads.create({ messages: mappedMessages });
+			const overLimitMessages = chatMessages.slice(32).map(mapChatMessageToThreadMessage);
+
+			// Send the remaining messages that exceed the limit of 32 sequentially
+			for (const message of overLimitMessages) {
+				await client.beta.threads.messages.create(thread.id, message);
+			}
+
+			chainValues.threadId = thread.id;
+		}
+	} else if (threadId) {
+		chainValues.threadId = threadId;
 	}
 
-	return [{ json: response, pairedItem: { item: i } }];
+	let filteredResponse: IDataObject = {};
+	try {
+		const response = await agentExecutor.withConfig(getTracingConfig(this)).invoke(chainValues);
+		if (memory) {
+			await memory.saveContext({ input }, { output: response.output });
+
+			if (response.threadId && response.runId) {
+				const threadRun = await client.beta.threads.runs.retrieve(
+					response.threadId,
+					response.runId,
+				);
+				response.usage = threadRun.usage;
+			}
+		}
+
+		if (
+			options.preserveOriginalTools !== false &&
+			nodeVersion >= 1.3 &&
+			(assistantTools ?? [])?.length
+		) {
+			await client.beta.assistants.update(assistantId, {
+				tools: assistantTools,
+			});
+		}
+		// Remove configuration properties and runId added by Langchain that are not relevant to the user
+		filteredResponse = omit(response, ['signal', 'timeout', 'content', 'runId']) as IDataObject;
+	} catch (error) {
+		if (!(error instanceof ApplicationError)) {
+			throw new NodeOperationError(this.getNode(), error.message, { itemIndex: i });
+		}
+	}
+
+	return [{ json: filteredResponse, pairedItem: { item: i } }];
 }

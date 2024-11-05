@@ -28,7 +28,6 @@ export const description: INodeProperties[] = [
 		required: true,
 		description:
 			'Date and time at which the event begins. (For all-day events, the time will be ignored.).',
-		validateType: 'dateTime',
 	},
 	{
 		displayName: 'End',
@@ -60,7 +59,7 @@ export const description: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			{

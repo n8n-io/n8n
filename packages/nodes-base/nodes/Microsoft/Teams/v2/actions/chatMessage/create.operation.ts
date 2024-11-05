@@ -41,7 +41,7 @@ const properties: INodeProperties[] = [
 		type: 'collection',
 		default: {},
 		description: 'Other options to set',
-		placeholder: 'Add options',
+		placeholder: 'Add option',
 		options: [
 			{
 				displayName: 'Include Link to Workflow',
@@ -64,12 +64,7 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-export async function execute(
-	this: IExecuteFunctions,
-	i: number,
-	nodeVersion: number,
-	instanceId: string,
-) {
+export async function execute(this: IExecuteFunctions, i: number, instanceId: string) {
 	// https://docs.microsoft.com/en-us/graph/api/channel-post-messages?view=graph-rest-1.0&tabs=http
 
 	const chatId = this.getNodeParameter('chatId', i, '', { extractValue: true }) as string;

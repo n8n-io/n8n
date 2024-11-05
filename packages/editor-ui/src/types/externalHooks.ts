@@ -1,33 +1,22 @@
 import type { N8nInput } from 'n8n-design-system';
 import type {
+	ExecutionError,
+	GenericValue,
 	IConnections,
-	INodeParameters,
 	INodeProperties,
 	INodeTypeDescription,
 	ITelemetryTrackProperties,
-	INodeParameterResourceLocator,
 	NodeParameterValue,
-	ResourceMapperValue,
+	NodeParameterValueType,
 } from 'n8n-workflow';
 import type { RouteLocation } from 'vue-router';
-import type {
-	AuthenticationModalEventData,
-	ExecutionFinishedEventData,
-	ExecutionStartedEventData,
-	ExpressionEditorEventsData,
-	InsertedItemFromExpEditorEventData,
-	NodeRemovedEventData,
-	NodeTypeChangedEventData,
-	OutputModeChangedEventData,
-	UpdatedWorkflowSettingsEventData,
-	UserSavedCredentialsEventData,
-} from '@/hooks/segment';
 import type {
 	INodeCreateElement,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
 	IPersonalizationLatestVersion,
 	IWorkflowDb,
+	IWorkflowTemplateNode,
 	NodeFilterType,
 } from '@/Interface';
 import type { ComponentPublicInstance } from 'vue/dist/vue';
@@ -40,6 +29,54 @@ export interface ExternalHooksMethod<T = any, R = void> {
 
 export interface ExternalHooksGenericContext {
 	[key: string]: ExternalHooksMethod[];
+}
+
+interface UserSavedCredentialsEventData {
+	credential_type: string;
+	credential_id: string;
+	is_new: boolean;
+}
+
+interface UpdatedWorkflowSettingsEventData {
+	oldSettings: Record<string, unknown>;
+}
+
+interface NodeTypeChangedEventData {
+	nodeSubtitle?: string;
+}
+
+interface ExpressionEditorEventsData {
+	dialogVisible: boolean;
+	value: string;
+	resolvedExpressionValue: string;
+	parameter: INodeProperties;
+}
+interface AuthenticationModalEventData {
+	parameterPath: string;
+	oldNodeParameters: Record<string, GenericValue>;
+	parameters: INodeProperties[];
+	newValue: NodeParameterValue;
+}
+interface OutputModeChangedEventData {
+	oldValue: string;
+	newValue: string;
+}
+interface ExecutionFinishedEventData {
+	runDataExecutedStartData:
+		| { destinationNode?: string | undefined; runNodeFilter?: string[] | undefined }
+		| undefined;
+	nodeName?: string;
+	errorMessage: string;
+	resultDataError: ExecutionError | undefined;
+	itemsCount: number;
+}
+interface NodeRemovedEventData {
+	node: INodeUi;
+}
+
+interface ExecutionStartedEventData {
+	nodeName?: string;
+	source?: string;
 }
 
 export interface ExternalHooks {
@@ -71,6 +108,7 @@ export interface ExternalHooks {
 		addNodeButton: Array<ExternalHooksMethod<{ nodeTypeName: string }>>;
 		onRunNode: Array<ExternalHooksMethod<ITelemetryTrackProperties>>;
 		onRunWorkflow: Array<ExternalHooksMethod<ITelemetryTrackProperties>>;
+		onOpenChat: Array<ExternalHooksMethod<ITelemetryTrackProperties>>;
 	};
 	main: {
 		routeChange: Array<ExternalHooksMethod<{ to: RouteLocation; from: RouteLocation }>>;
@@ -134,7 +172,6 @@ export interface ExternalHooks {
 		>;
 	};
 	expressionEdit: {
-		itemSelected: Array<ExternalHooksMethod<InsertedItemFromExpEditorEventData>>;
 		dialogVisibleChanged: Array<ExternalHooksMethod<ExpressionEditorEventsData>>;
 		closeDialog: Array<ExternalHooksMethod<ITelemetryTrackProperties>>;
 		mounted: Array<
@@ -185,9 +222,6 @@ export interface ExternalHooks {
 	userInfo: {
 		mounted: Array<ExternalHooksMethod<{ userInfoRef: HTMLElement }>>;
 	};
-	variableSelectorItem: {
-		mounted: Array<ExternalHooksMethod<{ variableSelectorItemRef: HTMLElement }>>;
-	};
 	mainSidebar: {
 		mounted: Array<ExternalHooksMethod<{ userRef: Element }>>;
 	};
@@ -197,16 +231,7 @@ export interface ExternalHooks {
 			ExternalHooksMethod<{
 				node_type?: string;
 				action: string;
-				resource:
-					| string
-					| number
-					| true
-					| INodeParameters
-					| INodeParameterResourceLocator
-					| NodeParameterValue[]
-					| INodeParameters[]
-					| INodeParameterResourceLocator[]
-					| ResourceMapperValue[];
+				resource: NodeParameterValueType;
 			}>
 		>;
 		selectedTypeChanged: Array<ExternalHooksMethod<{ oldValue: string; newValue: string }>>;
@@ -267,7 +292,7 @@ export interface ExternalHooks {
 			ExternalHooksMethod<{
 				templateId: string;
 				templateName: string;
-				workflow: { nodes: INodeUi[]; connections: IConnections };
+				workflow: { nodes: INodeUi[] | IWorkflowTemplateNode[]; connections: IConnections };
 			}>
 		>;
 	};
@@ -277,8 +302,10 @@ export type ExternalHooksKey = {
 	[K in keyof ExternalHooks]: `${K}.${Extract<keyof ExternalHooks[K], string>}`;
 }[keyof ExternalHooks];
 
-type ExtractHookMethodArray<P extends keyof ExternalHooks, S extends keyof ExternalHooks[P]> =
-	ExternalHooks[P][S] extends Array<infer U> ? U : never;
+type ExtractHookMethodArray<
+	P extends keyof ExternalHooks,
+	S extends keyof ExternalHooks[P],
+> = ExternalHooks[P][S] extends Array<infer U> ? U : never;
 
 type ExtractHookMethodFunction<T> = T extends ExternalHooksMethod ? T : never;
 

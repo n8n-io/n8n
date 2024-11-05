@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { startCompletion } from '@codemirror/autocomplete';
 import { history } from '@codemirror/commands';
 import { type EditorState, Prec, type SelectionRange } from '@codemirror/state';
-import { EditorView, keymap } from '@codemirror/view';
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, toValue, watch } from 'vue';
+import { dropCursor, EditorView, keymap } from '@codemirror/view';
+import { computed, ref, watch } from 'vue';
 
 import { useExpressionEditor } from '@/composables/useExpressionEditor';
+import { mappingDropCursor } from '@/plugins/codemirror/dragAndDrop';
 import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expression.inputHandler';
 import {
 	autocompleteKeyMap,
@@ -14,10 +14,9 @@ import {
 	tabKeyMap,
 } from '@/plugins/codemirror/keymap';
 import { n8nAutocompletion, n8nLang } from '@/plugins/codemirror/n8nLang';
-import { useNDVStore } from '@/stores/ndv.store';
+import { infoBoxTooltips } from '@/plugins/codemirror/tooltips/InfoBoxTooltip';
 import type { Segment } from '@/types/expressions';
 import { removeExpressionPrefix } from '@/utils/expressions';
-import { createEventBus, type EventBus } from 'n8n-design-system/utils';
 import type { IDataObject } from 'n8n-workflow';
 import { inputTheme } from './theme';
 
@@ -27,35 +26,34 @@ type Props = {
 	rows?: number;
 	isReadOnly?: boolean;
 	additionalData?: IDataObject;
-	eventBus?: EventBus;
 };
 
 const props = withDefaults(defineProps<Props>(), {
 	rows: 5,
 	isReadOnly: false,
 	additionalData: () => ({}),
-	eventBus: () => createEventBus(),
 });
 
 const emit = defineEmits<{
-	(event: 'update:model-value', value: { value: string; segments: Segment[] }): void;
-	(event: 'update:selection', value: { state: EditorState; selection: SelectionRange }): void;
-	(event: 'focus'): void;
+	'update:model-value': [value: { value: string; segments: Segment[] }];
+	'update:selection': [value: { state: EditorState; selection: SelectionRange }];
+	focus: [];
 }>();
-
-const ndvStore = useNDVStore();
 
 const root = ref<HTMLElement>();
 const extensions = computed(() => [
 	Prec.highest(
-		keymap.of([...tabKeyMap(true), ...enterKeyMap, ...autocompleteKeyMap, ...historyKeyMap]),
+		keymap.of([...tabKeyMap(false), ...enterKeyMap, ...autocompleteKeyMap, ...historyKeyMap]),
 	),
 	n8nLang(),
 	n8nAutocompletion(),
-	inputTheme({ rows: props.rows }),
+	inputTheme({ isReadOnly: props.isReadOnly, rows: props.rows }),
 	history(),
+	mappingDropCursor(),
+	dropCursor(),
 	expressionInputHandler(),
 	EditorView.lineWrapping,
+	infoBoxTooltips(),
 ]);
 const editorValue = ref<string>(removeExpressionPrefix(props.modelValue));
 const {
@@ -74,32 +72,6 @@ const {
 	autocompleteTelemetry: { enabled: true, parameterPath: props.path },
 	additionalData: props.additionalData,
 });
-
-defineExpose({
-	focus: () => {
-		if (!hasFocus.value) {
-			setCursorPosition('lastExpression');
-			focus();
-		}
-	},
-});
-
-async function onDrop() {
-	await nextTick();
-
-	const editor = toValue(editorRef);
-	if (!editor) return;
-
-	focus();
-
-	setCursorPosition('lastExpression');
-
-	if (!ndvStore.isAutocompleteOnboarded) {
-		setTimeout(() => {
-			startCompletion(editor);
-		});
-	}
-}
 
 watch(
 	() => props.modelValue,
@@ -128,17 +100,25 @@ watch(hasFocus, (focused) => {
 	if (focused) emit('focus');
 });
 
-onMounted(() => {
-	props.eventBus.on('drop', onDrop);
-});
-
-onBeforeUnmount(() => {
-	props.eventBus.off('drop', onDrop);
+defineExpose({
+	editor: editorRef,
+	setCursorPosition,
+	focus: () => {
+		if (!hasFocus.value) {
+			setCursorPosition('lastExpression');
+			focus();
+		}
+	},
 });
 </script>
 
 <template>
-	<div ref="root" :class="$style.editor" data-test-id="inline-expression-editor-input"></div>
+	<div
+		ref="root"
+		title=""
+		:class="$style.editor"
+		data-test-id="inline-expression-editor-input"
+	></div>
 </template>
 
 <style lang="scss" module>

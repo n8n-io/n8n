@@ -158,9 +158,12 @@ export function addAdditionalFields(
 					}
 					sendRows.push(sendButtonData);
 				}
+
 				// @ts-ignore
-				// prettier-ignore
-				((body.reply_markup as ITelegramInlineReply | ITelegramReplyKeyboard)[setParameterName] as ITelegramKeyboardButton[][]).push(sendRows);
+				const array = (body.reply_markup as ITelegramInlineReply | ITelegramReplyKeyboard)[
+					setParameterName
+				] as ITelegramKeyboardButton[][];
+				array.push(sendRows);
 			}
 		}
 	} else if (replyMarkupOption === 'forceReply') {
@@ -202,7 +205,7 @@ export async function apiRequest(
 	const options: IRequestOptions = {
 		headers: {},
 		method,
-		uri: `https://api.telegram.org/bot${credentials.accessToken}/${endpoint}`,
+		uri: `${credentials.baseUrl}/bot${credentials.accessToken}/${endpoint}`,
 		body,
 		qs: query,
 		json: true,

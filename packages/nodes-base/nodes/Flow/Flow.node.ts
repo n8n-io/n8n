@@ -6,7 +6,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeConnectionType, NodeApiError } from 'n8n-workflow';
 import { flowApiRequest, FlowApiRequestAllItems } from './GenericFunctions';
 import { taskFields, taskOperations } from './TaskDescription';
 import type { ITask, TaskInfo } from './TaskInterface';
@@ -15,8 +15,7 @@ export class Flow implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Flow',
 		name: 'flow',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
-		icon: 'file:flow.png',
+		icon: 'file:flow.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -24,8 +23,8 @@ export class Flow implements INodeType {
 		defaults: {
 			name: 'Flow',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'flowApi',

@@ -7,6 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import { mailerliteApiRequest, mailerliteApiRequestAllItems } from './GenericFunctions';
 
@@ -25,8 +26,8 @@ export class MailerLite implements INodeType {
 		defaults: {
 			name: 'MailerLite',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'mailerLiteApi',

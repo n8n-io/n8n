@@ -1,10 +1,11 @@
-import { N8N_AUTH_COOKIE } from '../constants';
 import { BasePage } from './base';
 import { SigninPage } from './signin';
 import { WorkflowsPage } from './workflows';
+import { N8N_AUTH_COOKIE } from '../constants';
 
 export class MfaLoginPage extends BasePage {
 	url = '/mfa';
+
 	getters = {
 		form: () => cy.getByTestId('mfa-login-form'),
 		token: () => cy.getByTestId('token'),

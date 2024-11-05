@@ -1,3 +1,47 @@
+<script lang="ts" setup>
+import { abbreviateNumber } from '@/utils/typesUtils';
+import NodeList from './NodeList.vue';
+import TimeAgo from '@/components/TimeAgo.vue';
+import type { ITemplatesWorkflow } from '@/Interface';
+import { useI18n } from '@/composables/useI18n';
+import type { BaseTextKey } from '@/plugins/i18n';
+
+const i18n = useI18n();
+
+const nodesToBeShown = 5;
+
+withDefaults(
+	defineProps<{
+		workflow?: ITemplatesWorkflow;
+		lastItem?: boolean;
+		firstItem?: boolean;
+		useWorkflowButton?: boolean;
+		loading?: boolean;
+		simpleView?: boolean;
+	}>(),
+	{
+		lastItem: false,
+		firstItem: false,
+		useWorkflowButton: false,
+		loading: false,
+		simpleView: false,
+	},
+);
+
+const emit = defineEmits<{
+	useWorkflow: [e: MouseEvent];
+	click: [e: MouseEvent];
+}>();
+
+function onUseWorkflowClick(e: MouseEvent) {
+	emit('useWorkflow', e);
+}
+
+function onCardClick(e: MouseEvent) {
+	emit('click', e);
+}
+</script>
+
 <template>
 	<div
 		:class="[
@@ -12,7 +56,7 @@
 		<div v-if="loading" :class="$style.loading">
 			<n8n-loading :rows="2" :shrink-last="false" :loading="loading" />
 		</div>
-		<div v-else>
+		<div v-else-if="workflow">
 			<n8n-heading :bold="true" size="small">{{ workflow.name }}</n8n-heading>
 			<div v-if="!simpleView" :class="$style.content">
 				<span v-if="workflow.totalViews">
@@ -26,12 +70,19 @@
 					<TimeAgo :date="workflow.createdAt" />
 				</n8n-text>
 				<div v-if="workflow.user" :class="$style.line" v-text="'|'" />
-				<n8n-text v-if="workflow.user" size="small" color="text-light"
-					>By {{ workflow.user.username }}</n8n-text
+				<n8n-text v-if="workflow.user" size="small" color="text-light">
+					{{
+						i18n.baseText('template.byAuthor' as BaseTextKey, {
+							interpolate: { name: workflow.user.username },
+						})
+					}}</n8n-text
 				>
 			</div>
 		</div>
-		<div v-if="!loading" :class="[$style.nodesContainer, useWorkflowButton && $style.hideOnHover]">
+		<div
+			v-if="!loading && workflow"
+			:class="[$style.nodesContainer, useWorkflowButton && $style.hideOnHover]"
+		>
 			<NodeList v-if="workflow.nodes" :nodes="workflow.nodes" :limit="nodesToBeShown" size="md" />
 		</div>
 		<div v-if="useWorkflowButton" :class="$style.buttonContainer">
@@ -45,67 +96,6 @@
 		</div>
 	</div>
 </template>
-
-<script lang="ts">
-import { defineComponent } from 'vue';
-import { filterTemplateNodes } from '@/utils/nodeTypesUtils';
-import { abbreviateNumber } from '@/utils/typesUtils';
-import NodeList from './NodeList.vue';
-import TimeAgo from '@/components/TimeAgo.vue';
-
-export default defineComponent({
-	name: 'TemplateCard',
-	components: {
-		TimeAgo,
-		NodeList,
-	},
-	props: {
-		lastItem: {
-			type: Boolean,
-			default: false,
-		},
-		firstItem: {
-			type: Boolean,
-			default: false,
-		},
-		workflow: {
-			type: Object,
-		},
-		useWorkflowButton: {
-			type: Boolean,
-		},
-		loading: {
-			type: Boolean,
-		},
-		simpleView: {
-			type: Boolean,
-			default: false,
-		},
-	},
-	data() {
-		return {
-			nodesToBeShown: 5,
-		};
-	},
-	methods: {
-		filterTemplateNodes,
-		abbreviateNumber,
-		countNodesToBeSliced(nodes: []): number {
-			if (nodes.length > this.nodesToBeShown) {
-				return this.nodesToBeShown - 1;
-			} else {
-				return this.nodesToBeShown;
-			}
-		},
-		onUseWorkflowClick(e: MouseEvent) {
-			this.$emit('useWorkflow', e);
-		},
-		onCardClick(e: MouseEvent) {
-			this.$emit('click', e);
-		},
-	},
-});
-</script>
 
 <style lang="scss" module>
 .nodes {

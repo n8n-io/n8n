@@ -1,10 +1,11 @@
-import type {
-	IHookFunctions,
-	IWebhookFunctions,
-	INodeType,
-	INodeTypeDescription,
-	IWebhookResponseData,
-	IHttpRequestOptions,
+import {
+	type IHookFunctions,
+	type IWebhookFunctions,
+	type INodeType,
+	type INodeTypeDescription,
+	type IWebhookResponseData,
+	type IHttpRequestOptions,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
 interface ICrowdDevCreds {
@@ -36,7 +37,7 @@ export class CrowdDevTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'crowd.dev Trigger',
 		name: 'crowdDevTrigger',
-		icon: 'file:crowdDev.svg',
+		icon: { light: 'file:crowdDev.svg', dark: 'file:crowdDev.dark.svg' },
 		group: ['trigger'],
 		version: 1,
 		description: 'Starts the workflow when crowd.dev events occur.',
@@ -44,7 +45,7 @@ export class CrowdDevTrigger implements INodeType {
 			name: 'crowd.dev Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'crowdDevApi',

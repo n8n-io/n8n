@@ -1,36 +1,3 @@
-<template>
-	<WorkerAccordion icon="tasks" icon-color="black" :initial-expanded="false">
-		<template #title>
-			{{ $locale.baseText('workerList.item.chartsTitle') }}
-		</template>
-		<template #content>
-			<div :class="$style.charts">
-				<Chart
-					ref="chartRefJobs"
-					type="line"
-					:data="dataJobs"
-					:options="optionsJobs"
-					:class="$style.chart"
-				/>
-				<Chart
-					ref="chartRefCPU"
-					type="line"
-					:data="dataCPU"
-					:options="optionsCPU"
-					:class="$style.chart"
-				/>
-				<Chart
-					ref="chartRefMemory"
-					type="line"
-					:data="dataMemory"
-					:options="optionsMemory"
-					:class="$style.chart"
-				/>
-			</div>
-		</template>
-	</WorkerAccordion>
-</template>
-
 <script setup lang="ts">
 import WorkerAccordion from './WorkerAccordion.ee.vue';
 import { WORKER_HISTORY_LENGTH, useOrchestrationStore } from '@/stores/orchestration.store';
@@ -123,6 +90,39 @@ orchestrationStore.$onAction(({ name, store }) => {
 	}
 });
 </script>
+
+<template>
+	<WorkerAccordion icon="tasks" icon-color="black" :initial-expanded="false">
+		<template #title>
+			{{ $locale.baseText('workerList.item.chartsTitle') }}
+		</template>
+		<template #content>
+			<div :class="$style.charts">
+				<Chart
+					ref="chartRefJobs"
+					type="line"
+					:data="dataJobs"
+					:options="optionsJobs"
+					:class="$style.chart"
+				/>
+				<Chart
+					ref="chartRefCPU"
+					type="line"
+					:data="dataCPU"
+					:options="optionsCPU"
+					:class="$style.chart"
+				/>
+				<Chart
+					ref="chartRefMemory"
+					type="line"
+					:data="dataMemory"
+					:options="optionsMemory"
+					:class="$style.chart"
+				/>
+			</div>
+		</template>
+	</WorkerAccordion>
+</template>
 
 <style lang="scss" module>
 .accordionItems {

@@ -1,11 +1,10 @@
-import type { VNode } from 'vue';
+import type { Component, VNode } from 'vue';
 
 export type DatatableRowDataType = string | number | boolean | null | undefined;
 
 export interface DatatableRow {
 	id: string | number;
-
-	[key: string]: DatatableRowDataType;
+	[key: string]: DatatableRowDataType | Record<string, DatatableRowDataType>;
 }
 
 export interface DatatableColumn {
@@ -14,5 +13,5 @@ export interface DatatableColumn {
 	label: string;
 	classes?: string[];
 	width?: string;
-	render?: (row: DatatableRow) => (() => VNode | VNode[]) | DatatableRowDataType;
+	render?: Component | ((row: DatatableRow) => (() => VNode | VNode[]) | DatatableRowDataType);
 }

@@ -1,6 +1,51 @@
+<script setup lang="ts">
+import NodeIcon from '@/components/NodeIcon.vue';
+import type { INodeTypeDescription } from 'n8n-workflow';
+import { computed, nextTick, ref } from 'vue';
+
+type Props = {
+	modelValue: string;
+	nodeType?: INodeTypeDescription | null;
+	readOnly?: boolean;
+};
+
+const props = withDefaults(defineProps<Props>(), {
+	modelValue: '',
+	nodeType: undefined,
+	readOnly: false,
+});
+const emit = defineEmits<{
+	'update:model-value': [value: string];
+}>();
+const editName = ref(false);
+const newName = ref('');
+const input = ref<HTMLInputElement>();
+
+const editable = computed(() => !props.readOnly && window === window.parent);
+
+async function onEdit() {
+	newName.value = props.modelValue;
+	editName.value = true;
+	await nextTick();
+	if (input.value) {
+		input.value.focus();
+	}
+}
+
+function onRename() {
+	if (newName.value.trim() !== '') {
+		emit('update:model-value', newName.value.trim());
+	}
+
+	editName.value = false;
+}
+</script>
+
 <template>
 	<span :class="$style.container" data-test-id="node-title-container" @click="onEdit">
-		<span :class="$style.iconWrapper"><NodeIcon :node-type="nodeType" :size="18" /></span>
+		<span :class="$style.iconWrapper">
+			<NodeIcon :node-type="nodeType" :size="18" />
+		</span>
 		<n8n-popover placement="right" width="200" :visible="editName" :disabled="!editable">
 			<div
 				:class="$style.editContainer"
@@ -38,58 +83,6 @@
 		</n8n-popover>
 	</span>
 </template>
-
-<script lang="ts">
-import NodeIcon from '@/components/NodeIcon.vue';
-import { defineComponent } from 'vue';
-
-export default defineComponent({
-	name: 'NodeTitle',
-	components: {
-		NodeIcon,
-	},
-	props: {
-		modelValue: {
-			type: String,
-			default: '',
-		},
-		nodeType: {},
-		readOnly: {
-			type: Boolean,
-			default: false,
-		},
-	},
-	data() {
-		return {
-			editName: false,
-			newName: '',
-		};
-	},
-	computed: {
-		editable(): boolean {
-			return !this.readOnly && window === window.parent;
-		},
-	},
-	methods: {
-		async onEdit() {
-			this.newName = this.modelValue;
-			this.editName = true;
-			await this.$nextTick();
-			const inputRef = this.$refs.input as HTMLInputElement | undefined;
-			if (inputRef) {
-				inputRef.focus();
-			}
-		},
-		onRename() {
-			if (this.newName.trim() !== '') {
-				this.$emit('update:modelValue', this.newName.trim());
-			}
-
-			this.editName = false;
-		},
-	},
-});
-</script>
 
 <style lang="scss" module>
 .container {

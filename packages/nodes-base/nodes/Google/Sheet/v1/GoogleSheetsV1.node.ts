@@ -226,7 +226,7 @@ export class GoogleSheetsV1 implements INodeType {
 
 					for (const propertyName of Object.keys(deletePropertyToDimensions)) {
 						if (toDelete[propertyName] !== undefined) {
-							toDelete[propertyName]!.forEach((entry) => {
+							toDelete[propertyName].forEach((entry) => {
 								requests.push({
 									deleteDimension: {
 										range: {

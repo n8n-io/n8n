@@ -1,5 +1,5 @@
-import type { INode } from '..';
 import { ExecutionBaseError } from './abstract/execution-base.error';
+import type { INode } from '../Interfaces';
 
 /**
  * Class for instantiating an operational error, e.g. a timeout error.
@@ -8,10 +8,6 @@ export class WorkflowOperationError extends ExecutionBaseError {
 	node: INode | undefined;
 
 	timestamp: number;
-
-	lineNumber: number | undefined;
-
-	description: string | undefined;
 
 	constructor(message: string, node?: INode, description?: string) {
 		super(message, { cause: undefined });

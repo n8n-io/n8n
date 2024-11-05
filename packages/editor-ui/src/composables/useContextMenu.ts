@@ -1,5 +1,5 @@
 import type { ActionDropdownItem, XYPosition } from '@/Interface';
-import { NOT_DUPLICATABE_NODE_TYPES, STICKY_NODE_TYPE } from '@/constants';
+import { NOT_DUPLICATABLE_NODE_TYPES, STICKY_NODE_TYPE } from '@/constants';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -9,12 +9,15 @@ import { computed, ref, watch } from 'vue';
 import { getMousePosition } from '../utils/nodeViewUtils';
 import { useI18n } from './useI18n';
 import { usePinnedData } from './usePinnedData';
+import { isPresent } from '../utils/typesUtils';
+import { getResourcePermissions } from '@/permissions';
 
 export type ContextMenuTarget =
-	| { source: 'canvas' }
-	| { source: 'node-right-click'; node: INode }
-	| { source: 'node-button'; node: INode };
-export type ContextMenuActionCallback = (action: ContextMenuAction, targets: INode[]) => void;
+	| { source: 'canvas'; nodeIds: string[] }
+	| { source: 'node-right-click'; nodeId: string }
+	| { source: 'node-button'; nodeId: string };
+export type ContextMenuActionCallback = (action: ContextMenuAction, nodeIds: string[]) => void;
+
 export type ContextMenuAction =
 	| 'open'
 	| 'copy'
@@ -32,7 +35,7 @@ export type ContextMenuAction =
 
 const position = ref<XYPosition>([0, 0]);
 const isOpen = ref(false);
-const target = ref<ContextMenuTarget>({ source: 'canvas' });
+const target = ref<ContextMenuTarget>();
 const actions = ref<ActionDropdownItem[]>([]);
 const actionCallback = ref<ContextMenuActionCallback>(() => {});
 
@@ -44,25 +47,27 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 
 	const i18n = useI18n();
 
-	const isReadOnly = computed(
-		() => sourceControlStore.preferences.branchReadOnly || uiStore.isReadOnlyView,
+	const workflowPermissions = computed(
+		() => getResourcePermissions(workflowsStore.workflow.scopes).workflow,
 	);
 
-	const targetNodes = computed(() => {
-		if (!isOpen.value) return [];
-		const selectedNodes = uiStore.selectedNodes.map((node) =>
-			workflowsStore.getNodeByName(node.name),
-		) as INode[];
-		const currentTarget = target.value;
-		if (currentTarget.source === 'canvas') {
-			return selectedNodes;
-		} else if (currentTarget.source === 'node-right-click') {
-			const isNodeInSelection = selectedNodes.some((node) => node.name === currentTarget.node.name);
-			return isNodeInSelection ? selectedNodes : [currentTarget.node];
-		}
+	const isReadOnly = computed(
+		() =>
+			sourceControlStore.preferences.branchReadOnly ||
+			uiStore.isReadOnlyView ||
+			!workflowPermissions.value.update,
+	);
 
-		return [currentTarget.node];
+	const targetNodeIds = computed(() => {
+		if (!isOpen.value || !target.value) return [];
+
+		const currentTarget = target.value;
+		return currentTarget.source === 'canvas' ? currentTarget.nodeIds : [currentTarget.nodeId];
 	});
+
+	const targetNodes = computed(() =>
+		targetNodeIds.value.map((nodeId) => workflowsStore.getNodeById(nodeId)).filter(isPresent),
+	);
 
 	const canAddNodeOfType = (nodeType: INodeTypeDescription) => {
 		const sameTypeNodes = workflowsStore.allNodes.filter((n) => n.type === nodeType.name);
@@ -72,7 +77,7 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 	const canDuplicateNode = (node: INode): boolean => {
 		const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
 		if (!nodeType) return false;
-		if (NOT_DUPLICATABE_NODE_TYPES.includes(nodeType.name)) return false;
+		if (NOT_DUPLICATABLE_NODE_TYPES.includes(nodeType.name)) return false;
 
 		return canAddNodeOfType(nodeType);
 	};
@@ -80,17 +85,18 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 	const hasPinData = (node: INode): boolean => {
 		return !!workflowsStore.pinDataByNodeName(node.name);
 	};
+
 	const close = () => {
-		target.value = { source: 'canvas' };
+		target.value = undefined;
 		isOpen.value = false;
 		actions.value = [];
 		position.value = [0, 0];
 	};
 
-	const open = (event: MouseEvent, menuTarget: ContextMenuTarget = { source: 'canvas' }) => {
+	const open = (event: MouseEvent, menuTarget: ContextMenuTarget) => {
 		event.stopPropagation();
 
-		if (isOpen.value && menuTarget.source === target.value.source) {
+		if (isOpen.value && menuTarget.source === target.value?.source) {
 			// Close context menu, let browser open native context menu
 			close();
 			return;
@@ -225,8 +231,8 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 		}
 	};
 
-	const _dispatchAction = (action: ContextMenuAction) => {
-		actionCallback.value(action, targetNodes.value);
+	const _dispatchAction = (a: ContextMenuAction) => {
+		actionCallback.value(a, targetNodeIds.value);
 	};
 
 	watch(
@@ -241,7 +247,7 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 		position,
 		target,
 		actions,
-		targetNodes,
+		targetNodeIds,
 		open,
 		close,
 		_dispatchAction,

@@ -1,4 +1,4 @@
-import type { INodeTypes } from 'n8n-workflow';
+import type { IHttpRequestMethods, INodeTypes } from 'n8n-workflow';
 
 import nock from 'nock';
 import * as transport from '../../../../v2/transport';

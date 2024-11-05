@@ -24,7 +24,7 @@ export function useCanvasPanning(
 	/**
 	 * Updates the canvas offset position based on the mouse movement
 	 */
-	function panCanvas(e: MouseEvent) {
+	function panCanvas(e: MouseEvent | TouchEvent) {
 		const offsetPosition = uiStore.nodeViewOffsetPosition;
 
 		const [x, y] = getMousePosition(e);
@@ -49,7 +49,7 @@ export function useCanvasPanning(
 			return;
 		}
 
-		if (uiStore.isActionActive('dragActive')) {
+		if (uiStore.isActionActive['dragActive']) {
 			// If a node does currently get dragged we do not activate the selection
 			return;
 		}
@@ -70,7 +70,7 @@ export function useCanvasPanning(
 	/**
 	 * Ends the panning process and removes the mousemove event listener
 	 */
-	function onMouseUp(_: MouseEvent) {
+	function onMouseUp() {
 		if (!uiStore.nodeViewMoveInProgress) {
 			// If it is not active return directly.
 			// Else normal node dragging will not work.
@@ -89,22 +89,22 @@ export function useCanvasPanning(
 	 * Handles the actual movement of the canvas during a mouse drag,
 	 * updating the position based on the current mouse position
 	 */
-	function onMouseMove(e: MouseEvent) {
+	function onMouseMove(e: MouseEvent | TouchEvent) {
 		const element = unref(elementRef);
 		if (e.target && !(element === e.target || element?.contains(e.target as Node))) {
 			return;
 		}
 
-		if (uiStore.isActionActive('dragActive')) {
+		if (uiStore.isActionActive['dragActive']) {
 			return;
 		}
 
 		// Signal that moving canvas is active if middle button is pressed and mouse is moved
-		if (e.buttons === MOUSE_EVENT_BUTTONS.MIDDLE) {
+		if (e instanceof MouseEvent && e.buttons === MOUSE_EVENT_BUTTONS.MIDDLE) {
 			uiStore.nodeViewMoveInProgress = true;
 		}
 
-		if (e.buttons === MOUSE_EVENT_BUTTONS.NONE) {
+		if (e instanceof MouseEvent && e.buttons === MOUSE_EVENT_BUTTONS.NONE) {
 			// Mouse button is not pressed anymore so stop selection mode
 			// Happens normally when mouse leave the view pressed and then
 			// comes back unpressed.

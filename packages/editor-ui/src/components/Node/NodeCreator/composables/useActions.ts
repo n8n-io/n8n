@@ -1,5 +1,10 @@
-import { getCurrentInstance, computed } from 'vue';
-import type { IDataObject, INodeParameters } from 'n8n-workflow';
+import { computed } from 'vue';
+import {
+	CHAIN_LLM_LANGCHAIN_NODE_TYPE,
+	NodeConnectionType,
+	type IDataObject,
+	type INodeParameters,
+} from 'n8n-workflow';
 import type {
 	ActionTypeDescription,
 	AddedNode,
@@ -11,6 +16,7 @@ import type {
 } from '@/Interface';
 import {
 	AGENT_NODE_TYPE,
+	AI_CATEGORY_LANGUAGE_MODELS,
 	BASIC_CHAIN_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
 	MANUAL_CHAT_TRIGGER_NODE_TYPE,
@@ -27,7 +33,6 @@ import {
 	TRIGGER_NODE_CREATOR_VIEW,
 	WEBHOOK_NODE_TYPE,
 } from '@/constants';
-import { i18n } from '@/plugins/i18n';
 
 import type { BaseTextKey } from '@/plugins/i18n';
 import type { Telemetry } from '@/plugins/telemetry';
@@ -37,11 +42,13 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 
 import { sortNodeCreateElements, transformNodeType } from '../utils';
+import { useI18n } from '@/composables/useI18n';
+import { useCanvasStore } from '@/stores/canvas.store';
 
 export const useActions = () => {
 	const nodeCreatorStore = useNodeCreatorStore();
-	const instance = getCurrentInstance();
-
+	const nodeTypesStore = useNodeTypesStore();
+	const i18n = useI18n();
 	const singleNodeOpenSources = [
 		NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT,
 		NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_ACTION,
@@ -50,8 +57,8 @@ export const useActions = () => {
 
 	const actionsCategoryLocales = computed(() => {
 		return {
-			actions: instance?.proxy.$locale.baseText('nodeCreator.actionsCategory.actions') ?? '',
-			triggers: instance?.proxy.$locale.baseText('nodeCreator.actionsCategory.triggers') ?? '',
+			actions: i18n.baseText('nodeCreator.actionsCategory.actions') ?? '',
+			triggers: i18n.baseText('nodeCreator.actionsCategory.triggers') ?? '',
 		};
 	});
 
@@ -66,7 +73,7 @@ export const useActions = () => {
 				if (transformed.type === 'action') {
 					const nameBase = node.name.replace('n8n-nodes-base.', '');
 					const localeKey = `nodeCreator.actionsPlaceholderNode.${nameBase}` as BaseTextKey;
-					const overwriteLocale = instance?.proxy.$locale.baseText(localeKey) as string;
+					const overwriteLocale = i18n.baseText(localeKey);
 
 					// If the locale key is not the same as the node name, it means it contain a translation
 					// and we should use it
@@ -127,9 +134,11 @@ export const useActions = () => {
 				},
 			};
 
-			const insertIndex = firstIndexMap.get(label)! + insertedLabels;
-			extendedActions.splice(insertIndex, 0, newLabel);
-			insertedLabels++;
+			const insertIndex = firstIndexMap.get(label);
+			if (insertIndex !== undefined) {
+				extendedActions.splice(insertIndex + insertedLabels, 0, newLabel);
+				insertedLabels++;
+			}
 		}
 
 		return extendedActions;
@@ -148,7 +157,7 @@ export const useActions = () => {
 	function getActionData(actionItem: ActionTypeDescription): IUpdateInformation {
 		const displayOptions = actionItem.displayOptions;
 
-		const displayConditions = Object.keys(displayOptions?.show || {}).reduce(
+		const displayConditions = Object.keys(displayOptions?.show ?? {}).reduce(
 			(acc: IDataObject, showCondition: string) => {
 				acc[showCondition] = displayOptions?.show?.[showCondition]?.[0];
 				return acc;
@@ -214,6 +223,19 @@ export const useActions = () => {
 		return isCompatibleNode && isChatTriggerMissing;
 	}
 
+	// AI-226: Prepend LLM Chain node when adding a language model
+	function shouldPrependLLMChain(addedNodes: AddedNode[]): boolean {
+		const canvasHasAINodes = useCanvasStore().aiNodes.length > 0;
+		if (canvasHasAINodes) return false;
+
+		return addedNodes.some((node) => {
+			const nodeType = nodeTypesStore.getNodeType(node.type);
+			return Object.keys(nodeType?.codex?.subcategories ?? {}).includes(
+				AI_CATEGORY_LANGUAGE_MODELS,
+			);
+		});
+	}
+
 	function getAddedNodesAndConnections(addedNodes: AddedNode[]): AddedNodesAndConnections {
 		if (addedNodes.length === 0) {
 			return { nodes: [], connections: [] };
@@ -228,7 +250,14 @@ export const useActions = () => {
 			nodeToAutoOpen.openDetail = true;
 		}
 
-		if (shouldPrependChatTrigger(addedNodes)) {
+		if (shouldPrependLLMChain(addedNodes) || shouldPrependChatTrigger(addedNodes)) {
+			if (shouldPrependLLMChain(addedNodes)) {
+				addedNodes.unshift({ type: CHAIN_LLM_LANGCHAIN_NODE_TYPE, isAutoAdd: true });
+				connections.push({
+					from: { nodeIndex: 2, type: NodeConnectionType.AiLanguageModel },
+					to: { nodeIndex: 1 },
+				});
+			}
 			addedNodes.unshift({ type: CHAT_TRIGGER_NODE_TYPE, isAutoAdd: true });
 			connections.push({
 				from: { nodeIndex: 0 },
@@ -303,7 +332,11 @@ export const useActions = () => {
 		return storeWatcher;
 	}
 
-	function trackActionSelected(action: IUpdateInformation, telemetry: Telemetry, rootView: string) {
+	function trackActionSelected(
+		action: IUpdateInformation,
+		_telemetry: Telemetry,
+		rootView: string,
+	) {
 		const payload = {
 			node_type: action.key,
 			action: action.name,
@@ -311,7 +344,7 @@ export const useActions = () => {
 			resource: (action.value as INodeParameters).resource || '',
 		};
 		void useExternalHooks().run('nodeCreateList.addAction', payload);
-		telemetry?.trackNodesPanel('nodeCreateList.addAction', payload);
+		useNodeCreatorStore().onAddActions(payload);
 	}
 
 	return {

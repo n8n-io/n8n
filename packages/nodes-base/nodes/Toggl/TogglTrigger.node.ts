@@ -6,9 +6,10 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
+import { DateTime } from 'luxon';
 import { togglApiRequest } from './GenericFunctions';
 
 export class TogglTrigger implements INodeType {
@@ -31,7 +32,7 @@ export class TogglTrigger implements INodeType {
 		],
 		polling: true,
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		properties: [
 			{
 				displayName: 'Event',
@@ -62,7 +63,7 @@ export class TogglTrigger implements INodeType {
 
 		const qs: IDataObject = {};
 		let timeEntries = [];
-		qs.start_date = webhookData.lastTimeChecked;
+		qs.start_date = webhookData.lastTimeChecked ?? DateTime.now().toISODate();
 		qs.end_date = moment().format();
 
 		try {

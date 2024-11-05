@@ -12,7 +12,7 @@ withDefaults(defineProps<Props>(), {
 <template>
 	<div
 		:class="[$style.dragPill, canDrop ? $style.droppablePill : $style.defaultPill]"
-		v-html="html"
+		v-n8n-html="html"
 	/>
 </template>
 

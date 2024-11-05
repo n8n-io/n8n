@@ -28,9 +28,8 @@ const parseTablesString = (tablesString: string) =>
 
 export async function sqlAgentAgentExecute(
 	this: IExecuteFunctions,
-	nodeVersion: number,
 ): Promise<INodeExecutionData[][]> {
-	this.logger.verbose('Executing SQL Agent');
+	this.logger.debug('Executing SQL Agent');
 
 	const model = (await this.getInputConnectionData(
 		NodeConnectionType.AiLanguageModel,
@@ -152,5 +151,5 @@ export async function sqlAgentAgentExecute(
 		}
 	}
 
-	return await this.prepareOutputData(returnData);
+	return [returnData];
 }

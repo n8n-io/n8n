@@ -1,9 +1,124 @@
+<script lang="ts" setup>
+import { ref, computed, onBeforeMount } from 'vue';
+import { useToast } from '@/composables/useToast';
+import Modal from '@/components/Modal.vue';
+import ProjectSharing from '@/components/Projects/ProjectSharing.vue';
+import { useUsersStore } from '@/stores/users.store';
+import { useProjectsStore } from '@/stores/projects.store';
+import { createEventBus } from 'n8n-design-system/utils';
+import type { ProjectSharingData } from '@/types/projects.types';
+import { useI18n } from '@/composables/useI18n';
+
+const props = defineProps<{
+	modalName: string;
+	activeId: string;
+}>();
+
+const modalBus = createEventBus();
+const loading = ref(false);
+const operation = ref('');
+const deleteConfirmText = ref('');
+const selectedProject = ref<ProjectSharingData | null>(null);
+
+const i18n = useI18n();
+const usersStore = useUsersStore();
+const projectsStore = useProjectsStore();
+
+const userToDelete = computed(() => {
+	if (!props.activeId) return null;
+
+	return usersStore.usersById[props.activeId];
+});
+
+const isPending = computed(() => {
+	return userToDelete.value ? !userToDelete.value.firstName : false;
+});
+
+const title = computed(() => {
+	const user = userToDelete.value?.fullName ?? userToDelete.value?.email ?? '';
+
+	return i18n.baseText('settings.users.deleteUser', { interpolate: { user } });
+});
+
+const enabled = computed(() => {
+	if (isPending.value) {
+		return true;
+	}
+
+	if (
+		operation.value === 'delete' &&
+		deleteConfirmText.value === i18n.baseText('settings.users.deleteConfirmationText')
+	) {
+		return true;
+	}
+
+	if (operation.value === 'transfer' && selectedProject.value) {
+		return true;
+	}
+
+	return false;
+});
+
+const projects = computed(() => {
+	return projectsStore.projects.filter(
+		(project) =>
+			project.name !==
+			`${userToDelete.value?.firstName} ${userToDelete.value?.lastName} <${userToDelete.value?.email}>`,
+	);
+});
+
+onBeforeMount(async () => {
+	await projectsStore.getAllProjects();
+});
+
+const { showMessage, showError } = useToast();
+
+async function onSubmit() {
+	if (!enabled.value) {
+		return;
+	}
+
+	try {
+		loading.value = true;
+
+		const params = { id: props.activeId } as { id: string; transferId?: string };
+		if (operation.value === 'transfer' && selectedProject.value) {
+			params.transferId = selectedProject.value.id;
+		}
+
+		await usersStore.deleteUser(params);
+
+		let message = '';
+		if (params.transferId) {
+			const transferProject = projects.value.find((project) => project.id === params.transferId);
+			if (transferProject) {
+				message = i18n.baseText('settings.users.transferredToUser', {
+					interpolate: { projectName: transferProject.name ?? '' },
+				});
+			}
+		}
+
+		showMessage({
+			type: 'success',
+			title: i18n.baseText('settings.users.userDeleted'),
+			message,
+		});
+
+		modalBus.emit('close');
+	} catch (error) {
+		showError(error, i18n.baseText('settings.users.userDeletedError'));
+	} finally {
+		loading.value = false;
+	}
+}
+</script>
+
 <template>
 	<Modal
 		:name="modalName"
 		:title="title"
 		:center="true"
-		width="460px"
+		width="520"
 		:event-bus="modalBus"
 		@enter="onSubmit"
 	>
@@ -11,42 +126,40 @@
 			<div>
 				<div v-if="isPending">
 					<n8n-text color="text-base">{{
-						$locale.baseText('settings.users.confirmUserDeletion')
+						i18n.baseText('settings.users.confirmUserDeletion')
 					}}</n8n-text>
 				</div>
 				<div v-else :class="$style.content">
 					<div>
 						<n8n-text color="text-base">{{
-							$locale.baseText('settings.users.confirmDataHandlingAfterDeletion')
+							i18n.baseText('settings.users.confirmDataHandlingAfterDeletion')
 						}}</n8n-text>
 					</div>
 					<el-radio
-						:model-value="operation"
+						v-model="operation"
 						label="transfer"
-						@update:model-value="() => setOperation('transfer')"
+						@update:model-value="operation = 'transfer'"
 					>
 						<n8n-text color="text-dark">{{
-							$locale.baseText('settings.users.transferWorkflowsAndCredentials')
+							i18n.baseText('settings.users.transferWorkflowsAndCredentials')
 						}}</n8n-text>
 					</el-radio>
 					<div v-if="operation === 'transfer'" :class="$style.optionInput">
-						<n8n-input-label :label="$locale.baseText('settings.users.userToTransferTo')">
-							<n8n-user-select
-								:users="usersStore.allUsers"
-								:model-value="transferId"
-								:ignore-ids="ignoreIds"
-								:current-user-id="usersStore.currentUserId"
-								@update:model-value="setTransferId"
-							/>
-						</n8n-input-label>
-					</div>
-					<el-radio
-						:model-value="operation"
-						label="delete"
-						@update:model-value="() => setOperation('delete')"
-					>
 						<n8n-text color="text-dark">{{
-							$locale.baseText('settings.users.deleteWorkflowsAndCredentials')
+							i18n.baseText('settings.users.transferWorkflowsAndCredentials.user')
+						}}</n8n-text>
+						<ProjectSharing
+							v-model="selectedProject"
+							class="pt-2xs"
+							:projects="projects"
+							:placeholder="
+								i18n.baseText('settings.users.transferWorkflowsAndCredentials.placeholder')
+							"
+						/>
+					</div>
+					<el-radio v-model="operation" label="delete" @update:model-value="operation = 'delete'">
+						<n8n-text color="text-dark">{{
+							i18n.baseText('settings.users.deleteWorkflowsAndCredentials')
 						}}</n8n-text>
 					</el-radio>
 					<div
@@ -54,11 +167,10 @@
 						:class="$style.optionInput"
 						data-test-id="delete-data-input"
 					>
-						<n8n-input-label :label="$locale.baseText('settings.users.deleteConfirmationMessage')">
+						<n8n-input-label :label="i18n.baseText('settings.users.deleteConfirmationMessage')">
 							<n8n-input
-								:model-value="deleteConfirmText"
-								:placeholder="$locale.baseText('settings.users.deleteConfirmationText')"
-								@update:model-value="setConfirmText"
+								v-model="deleteConfirmText"
+								:placeholder="i18n.baseText('settings.users.deleteConfirmationText')"
 							/>
 						</n8n-input-label>
 					</div>
@@ -69,133 +181,14 @@
 			<n8n-button
 				:loading="loading"
 				:disabled="!enabled"
-				:label="$locale.baseText('settings.users.delete')"
+				:label="i18n.baseText('settings.users.delete')"
 				float="right"
+				data-test-id="confirm-delete-user-button"
 				@click="onSubmit"
 			/>
 		</template>
 	</Modal>
 </template>
-
-<script lang="ts">
-import { defineComponent } from 'vue';
-import { useToast } from '@/composables/useToast';
-import Modal from '@/components/Modal.vue';
-import type { IUser } from '@/Interface';
-import { mapStores } from 'pinia';
-import { useUsersStore } from '@/stores/users.store';
-import { createEventBus } from 'n8n-design-system/utils';
-
-export default defineComponent({
-	name: 'DeleteUserModal',
-	components: {
-		Modal,
-	},
-	props: {
-		modalName: {
-			type: String,
-		},
-		activeId: {
-			type: String,
-		},
-	},
-	setup() {
-		return {
-			...useToast(),
-		};
-	},
-	data() {
-		return {
-			modalBus: createEventBus(),
-			loading: false,
-			operation: '',
-			deleteConfirmText: '',
-			transferId: '',
-			ignoreIds: [this.activeId],
-		};
-	},
-	computed: {
-		...mapStores(useUsersStore),
-		userToDelete(): IUser | null {
-			return this.usersStore.getUserById(this.activeId);
-		},
-		isPending(): boolean {
-			return this.userToDelete ? this.userToDelete && !this.userToDelete.firstName : false;
-		},
-		title(): string {
-			const user =
-				(this.userToDelete && (this.userToDelete.fullName || this.userToDelete.email)) || '';
-			return this.$locale.baseText('settings.users.deleteUser', { interpolate: { user } });
-		},
-		enabled(): boolean {
-			if (this.isPending) {
-				return true;
-			}
-			if (
-				this.operation === 'delete' &&
-				this.deleteConfirmText === this.$locale.baseText('settings.users.deleteConfirmationText')
-			) {
-				return true;
-			}
-
-			if (this.operation === 'transfer' && this.transferId) {
-				return true;
-			}
-
-			return false;
-		},
-	},
-	methods: {
-		setOperation(operation: string) {
-			this.operation = operation;
-			this.transferId = '';
-		},
-		setConfirmText(text: string) {
-			this.deleteConfirmText = text;
-		},
-		setTransferId(id: string) {
-			this.transferId = id;
-		},
-		async onSubmit() {
-			try {
-				if (!this.enabled) {
-					return;
-				}
-
-				this.loading = true;
-
-				const params = { id: this.activeId } as { id: string; transferId?: string };
-				if (this.operation === 'transfer') {
-					params.transferId = this.transferId;
-				}
-
-				await this.usersStore.deleteUser(params);
-
-				let message = '';
-				if (this.transferId) {
-					const transferUser: IUser | null = this.usersStore.getUserById(this.transferId);
-					if (transferUser) {
-						message = this.$locale.baseText('settings.users.transferredToUser', {
-							interpolate: { user: transferUser.fullName || '' },
-						});
-					}
-				}
-
-				this.showMessage({
-					type: 'success',
-					title: this.$locale.baseText('settings.users.userDeleted'),
-					message,
-				});
-
-				this.modalBus.emit('close');
-			} catch (error) {
-				this.showError(error, this.$locale.baseText('settings.users.userDeletedError'));
-			}
-			this.loading = false;
-		},
-	},
-});
-</script>
 
 <style lang="scss" module>
 .content {

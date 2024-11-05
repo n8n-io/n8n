@@ -6,7 +6,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { deepCopy } from 'n8n-workflow';
+import { NodeConnectionType, deepCopy } from 'n8n-workflow';
 
 import { Converter } from 'showdown';
 
@@ -19,7 +19,7 @@ export class Markdown implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Markdown',
 		name: 'markdown',
-		icon: 'file:markdown.svg',
+		icon: { light: 'file:markdown.svg', dark: 'file:markdown.dark.svg' },
 		group: ['output'],
 		version: 1,
 		subtitle:
@@ -28,8 +28,8 @@ export class Markdown implements INodeType {
 		defaults: {
 			name: 'Markdown',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [],
 		properties: [
 			{
@@ -97,7 +97,7 @@ export class Markdown implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				displayOptions: {
 					show: {
@@ -299,7 +299,7 @@ export class Markdown implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				displayOptions: {
 					show: {

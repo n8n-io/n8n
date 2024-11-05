@@ -1,19 +1,25 @@
 import type { AxiosRequestConfig, Method, RawAxiosRequestHeaders } from 'axios';
 import axios from 'axios';
-import type { IDataObject } from 'n8n-workflow';
-import type { IExecutionFlattedResponse, IExecutionResponse, IRestApiContext } from '@/Interface';
+import { ApplicationError, jsonParse, type GenericValue, type IDataObject } from 'n8n-workflow';
 import { parse } from 'flatted';
+import { assert } from '@/utils/assert';
 
-const BROWSER_ID_STORAGE_KEY = 'n8n-browserId';
-let browserId = localStorage.getItem(BROWSER_ID_STORAGE_KEY);
-if (!browserId && 'randomUUID' in crypto) {
-	browserId = crypto.randomUUID();
-	localStorage.setItem(BROWSER_ID_STORAGE_KEY, browserId);
-}
+import { BROWSER_ID_STORAGE_KEY } from '@/constants';
+import type { IExecutionFlattedResponse, IExecutionResponse, IRestApiContext } from '@/Interface';
+
+const getBrowserId = () => {
+	let browserId = localStorage.getItem(BROWSER_ID_STORAGE_KEY);
+	if (!browserId && 'randomUUID' in crypto) {
+		browserId = crypto.randomUUID();
+		localStorage.setItem(BROWSER_ID_STORAGE_KEY, browserId);
+	}
+	return browserId!;
+};
 
 export const NO_NETWORK_ERROR_CODE = 999;
+export const STREAM_SEPERATOR = '⧉⇋⇋➽⌑⧉§§\n';
 
-export class ResponseError extends Error {
+export class ResponseError extends ApplicationError {
 	// The HTTP status code of response
 	httpStatusCode?: number;
 
@@ -56,7 +62,7 @@ const legacyParamSerializer = (params: Record<string, any>) =>
 		.filter((key) => params[key] !== undefined)
 		.map((key) => {
 			if (Array.isArray(params[key])) {
-				return params[key].map((v) => `${key}[]=${encodeURIComponent(v)}`).join('&');
+				return params[key].map((v: string) => `${key}[]=${encodeURIComponent(v)}`).join('&');
 			}
 			if (typeof params[key] === 'object') {
 				params[key] = JSON.stringify(params[key]);
@@ -70,7 +76,7 @@ export async function request(config: {
 	baseURL: string;
 	endpoint: string;
 	headers?: RawAxiosRequestHeaders;
-	data?: IDataObject | IDataObject[];
+	data?: GenericValue | GenericValue[];
 	withCredentials?: boolean;
 }) {
 	const { method, baseURL, endpoint, headers, data } = config;
@@ -80,8 +86,8 @@ export async function request(config: {
 		baseURL,
 		headers: headers ?? {},
 	};
-	if (baseURL.startsWith('/') && browserId) {
-		options.headers!['browser-id'] = browserId;
+	if (baseURL.startsWith('/')) {
+		options.headers!['browser-id'] = getBrowserId();
 	}
 	if (
 		import.meta.env.NODE_ENV !== 'production' &&
@@ -107,8 +113,8 @@ export async function request(config: {
 			});
 		}
 
-		const errorResponseData = error.response.data;
-		if (errorResponseData !== undefined && errorResponseData.message !== undefined) {
+		const errorResponseData = error.response?.data;
+		if (errorResponseData?.message !== undefined) {
 			if (errorResponseData.name === 'NodeApiError') {
 				errorResponseData.httpStatusCode = error.response.status;
 				throw errorResponseData;
@@ -129,7 +135,7 @@ export async function makeRestApiRequest<T>(
 	context: IRestApiContext,
 	method: Method,
 	endpoint: string,
-	data?: IDataObject | IDataObject[],
+	data?: GenericValue | GenericValue[],
 ) {
 	const response = await request({
 		method,
@@ -161,14 +167,21 @@ export async function post(
 	return await request({ method: 'POST', baseURL, endpoint, headers, data: params });
 }
 
+export async function patch(
+	baseURL: string,
+	endpoint: string,
+	params?: IDataObject,
+	headers?: RawAxiosRequestHeaders,
+) {
+	return await request({ method: 'PATCH', baseURL, endpoint, headers, data: params });
+}
+
 /**
  * Unflattens the Execution data.
  *
  * @param {IExecutionFlattedResponse} fullExecutionData The data to unflatten
  */
-export function unflattenExecutionData(
-	fullExecutionData: IExecutionFlattedResponse,
-): IExecutionResponse {
+export function unflattenExecutionData(fullExecutionData: IExecutionFlattedResponse) {
 	// Unflatten the data
 	const returnData: IExecutionResponse = {
 		...fullExecutionData,
@@ -183,4 +196,80 @@ export function unflattenExecutionData(
 	}
 
 	return returnData;
+}
+
+export async function streamRequest<T>(
+	context: IRestApiContext,
+	apiEndpoint: string,
+	payload: object,
+	onChunk?: (chunk: T) => void,
+	onDone?: () => void,
+	onError?: (e: Error) => void,
+	separator = STREAM_SEPERATOR,
+): Promise<void> {
+	const headers: Record<string, string> = {
+		'browser-id': getBrowserId(),
+		'Content-Type': 'application/json',
+	};
+	const assistantRequest: RequestInit = {
+		headers,
+		method: 'POST',
+		credentials: 'include',
+		body: JSON.stringify(payload),
+	};
+	try {
+		const response = await fetch(`${context.baseUrl}${apiEndpoint}`, assistantRequest);
+
+		if (response.ok && response.body) {
+			// Handle the streaming response
+			const reader = response.body.getReader();
+			const decoder = new TextDecoder('utf-8');
+
+			let buffer = '';
+
+			async function readStream() {
+				const { done, value } = await reader.read();
+				if (done) {
+					onDone?.();
+					return;
+				}
+				const chunk = decoder.decode(value);
+				buffer += chunk;
+
+				const splitChunks = buffer.split(separator);
+
+				buffer = '';
+				for (const splitChunk of splitChunks) {
+					if (splitChunk) {
+						let data: T;
+						try {
+							data = jsonParse<T>(splitChunk, { errorMessage: 'Invalid json' });
+						} catch (e) {
+							// incomplete json. append to buffer to complete
+							buffer += splitChunk;
+
+							continue;
+						}
+
+						try {
+							onChunk?.(data);
+						} catch (e: unknown) {
+							if (e instanceof Error) {
+								onError?.(e);
+							}
+						}
+					}
+				}
+				await readStream();
+			}
+
+			// Start reading the stream
+			await readStream();
+		} else if (onError) {
+			onError(new Error(response.statusText));
+		}
+	} catch (e: unknown) {
+		assert(e instanceof Error);
+		onError?.(e);
+	}
 }

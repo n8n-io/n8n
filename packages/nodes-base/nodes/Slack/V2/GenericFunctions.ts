@@ -5,14 +5,16 @@ import type {
 	IOAuth2Options,
 	IHttpRequestMethods,
 	IRequestOptions,
+	IWebhookFunctions,
 } from 'n8n-workflow';
 
-import { NodeOperationError, jsonParse } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import get from 'lodash/get';
+import { getSendAndWaitConfig } from '../../../utils/sendAndWait/utils';
 
 export async function slackApiRequest(
-	this: IExecuteFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	method: IHttpRequestMethods,
 	resource: string,
 	body: object = {},
@@ -77,6 +79,16 @@ export async function slackApiRequest(
 					level: 'warning',
 				},
 			);
+		} else if (response.error === 'not_admin') {
+			throw new NodeOperationError(
+				this.getNode(),
+				'Need higher Role Level for this Operation (e.g. Owner or Admin Rights)',
+				{
+					description:
+						'Hint: Check the Role of your Slack App Integration. For more information see the Slack Documentation - https://slack.com/help/articles/360018112273-Types-of-roles-in-Slack',
+					level: 'warning',
+				},
+			);
 		}
 
 		throw new NodeOperationError(
@@ -84,10 +96,12 @@ export async function slackApiRequest(
 			'Slack error response: ' + JSON.stringify(response.error),
 		);
 	}
+
 	if (response.ts !== undefined) {
 		Object.assign(response, { message_timestamp: response.ts });
 		delete response.ts;
 	}
+
 	return response;
 }
 
@@ -160,7 +174,7 @@ export function getMessageContent(
 			};
 			break;
 		case 'block':
-			content = jsonParse(this.getNodeParameter('blocksUi', i) as string);
+			content = this.getNodeParameter('blocksUi', i, {}, { ensureType: 'object' }) as IDataObject;
 
 			if (includeLinkToWorkflow && Array.isArray(content.blocks)) {
 				content.blocks.push({
@@ -216,4 +230,82 @@ export function validateJSON(json: string | undefined): any {
 		result = undefined;
 	}
 	return result;
+}
+
+export function getTarget(
+	context: IExecuteFunctions,
+	itemIndex: number,
+	idType: 'user' | 'channel',
+): string {
+	let target = '';
+
+	if (idType === 'channel') {
+		target = context.getNodeParameter('channelId', itemIndex, undefined, {
+			extractValue: true,
+		}) as string;
+	} else {
+		target = context.getNodeParameter('user', itemIndex, undefined, {
+			extractValue: true,
+		}) as string;
+	}
+
+	if (
+		idType === 'user' &&
+		(context.getNodeParameter('user', itemIndex) as IDataObject).mode === 'username'
+	) {
+		target = target.slice(0, 1) === '@' ? target : `@${target}`;
+	}
+
+	return target;
+}
+
+export function createSendAndWaitMessageBody(context: IExecuteFunctions) {
+	const select = context.getNodeParameter('select', 0) as 'user' | 'channel';
+	const target = getTarget(context, 0, select);
+
+	const config = getSendAndWaitConfig(context);
+
+	const body: IDataObject = {
+		channel: target,
+		blocks: [
+			{
+				type: 'divider',
+			},
+			{
+				type: 'section',
+				text: {
+					type: 'plain_text',
+					text: config.message,
+					emoji: true,
+				},
+			},
+			{
+				type: 'section',
+				text: {
+					type: 'plain_text',
+					text: ' ',
+				},
+			},
+			{
+				type: 'divider',
+			},
+			{
+				type: 'actions',
+				elements: config.options.map((option) => {
+					return {
+						type: 'button',
+						style: option.style === 'primary' ? 'primary' : undefined,
+						text: {
+							type: 'plain_text',
+							text: option.label,
+							emoji: true,
+						},
+						url: `${config.url}?approved=${option.value}`,
+					};
+				}),
+			},
+		],
+	};
+
+	return body;
 }

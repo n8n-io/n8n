@@ -1,16 +1,15 @@
 import {
 	CODE_NODE_NAME,
 	MANUAL_TRIGGER_NODE_NAME,
-	META_KEY,
 	SCHEDULE_TRIGGER_NODE_NAME,
 	EDIT_FIELDS_SET_NODE_NAME,
-	INSTANCE_MEMBERS,
-	INSTANCE_OWNER,
+	NOTION_NODE_NAME,
 } from '../constants';
+import { WorkflowExecutionsTab } from '../pages';
+import { errorToast, successToast } from '../pages/notifications';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 import { WorkflowsPage as WorkflowsPageClass } from '../pages/workflows';
 import { getVisibleSelect } from '../utils';
-import { WorkflowExecutionsTab } from '../pages';
 
 const NEW_WORKFLOW_NAME = 'Something else';
 const DUPLICATE_WORKFLOW_NAME = 'Duplicated workflow';
@@ -35,6 +34,20 @@ describe('Workflow Actions', () => {
 		WorkflowPage.getters.isWorkflowSaved();
 	});
 
+	it('should not save already saved workflow', () => {
+		cy.intercept('PATCH', '/rest/workflows/*').as('saveWorkflow');
+		WorkflowPage.actions.saveWorkflowOnButtonClick();
+		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+		WorkflowPage.actions.saveWorkflowOnButtonClick();
+		cy.wait('@saveWorkflow');
+		WorkflowPage.getters.isWorkflowSaved();
+		// Try to save a few times
+		WorkflowPage.actions.saveWorkflowUsingKeyboardShortcut();
+		WorkflowPage.actions.saveWorkflowUsingKeyboardShortcut();
+		// Should be saved only once
+		cy.get('@saveWorkflow.all').should('have.length', 1);
+	});
+
 	it('should not be able to activate unsaved workflow', () => {
 		WorkflowPage.getters.activatorSwitch().find('input').first().should('be.disabled');
 	});
@@ -49,6 +62,30 @@ describe('Workflow Actions', () => {
 	it('should be able to activate workflow', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.saveWorkflowOnButtonClick();
+		WorkflowPage.actions.activateWorkflow();
+		WorkflowPage.getters.isWorkflowActivated();
+	});
+
+	it('should not be be able to activate workflow when nodes have errors', () => {
+		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
+		WorkflowPage.actions.addNodeToCanvas(NOTION_NODE_NAME);
+		WorkflowPage.actions.saveWorkflowOnButtonClick();
+		successToast().should('exist');
+		WorkflowPage.actions.clickWorkflowActivator();
+		errorToast().should('exist');
+	});
+
+	it('should be be able to activate workflow when nodes with errors are disabled', () => {
+		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
+		WorkflowPage.actions.addNodeToCanvas(NOTION_NODE_NAME);
+		WorkflowPage.actions.saveWorkflowOnButtonClick();
+		successToast().should('exist');
+		// First, try to activate the workflow with errors
+		WorkflowPage.actions.clickWorkflowActivator();
+		errorToast().should('exist');
+		// Now, disable the node with errors
+		WorkflowPage.getters.canvasNodes().last().click();
+		WorkflowPage.actions.hitDisableNodeShortcut();
 		WorkflowPage.actions.activateWorkflow();
 		WorkflowPage.getters.isWorkflowActivated();
 	});
@@ -96,13 +133,13 @@ describe('Workflow Actions', () => {
 		);
 		cy.reload();
 		cy.get('.el-loading-mask').should('exist');
-		cy.get('body').type(META_KEY, { release: false }).type('s');
-		cy.get('body').type(META_KEY, { release: false }).type('s');
-		cy.get('body').type(META_KEY, { release: false }).type('s');
+		WorkflowPage.actions.hitSaveWorkflow();
+		WorkflowPage.actions.hitSaveWorkflow();
+		WorkflowPage.actions.hitSaveWorkflow();
 		cy.wrap(null).then(() => expect(interceptCalledCount).to.eq(0));
 		cy.waitForLoad();
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
-		cy.get('body').type(META_KEY, { release: false }).type('s');
+		WorkflowPage.actions.hitSaveWorkflow();
 		cy.wait('@saveWorkflow');
 		cy.wrap(null).then(() => expect(interceptCalledCount).to.eq(1));
 	});
@@ -132,10 +169,11 @@ describe('Workflow Actions', () => {
 		WorkflowPage.getters.canvasNodes().should('have.have.length', 2);
 
 		cy.get('#node-creator').should('not.exist');
-		cy.get('body').type(META_KEY, { delay: 500, release: false }).type('a');
+
+		WorkflowPage.actions.hitSelectAll();
 		cy.get('.jtk-drag-selected').should('have.length', 2);
-		cy.get('body').type(META_KEY, { delay: 500, release: false }).type('c');
-		WorkflowPage.getters.successToast().should('exist');
+		WorkflowPage.actions.hitCopy();
+		successToast().should('exist');
 	});
 
 	it('should paste nodes (both current and old node versions)', () => {
@@ -147,47 +185,62 @@ describe('Workflow Actions', () => {
 		});
 	});
 
+	it('should allow importing nodes without names', () => {
+		cy.fixture('Test_workflow-actions_import_nodes_empty_name.json').then((data) => {
+			cy.get('body').paste(JSON.stringify(data));
+			WorkflowPage.actions.zoomToFit();
+			WorkflowPage.getters.canvasNodes().should('have.length', 3);
+			WorkflowPage.getters.nodeConnections().should('have.length', 2);
+			// Check if all nodes have names
+			WorkflowPage.getters.canvasNodes().each((node) => {
+				cy.wrap(node).should('have.attr', 'data-name');
+			});
+		});
+	});
+
 	it('should update workflow settings', () => {
 		cy.visit(WorkflowPages.url);
-		WorkflowPages.getters.workflowCards().then((cards) => {
-			const totalWorkflows = cards.length;
+		cy.intercept('GET', '/rest/workflows', (req) => {
+			req.on('response', (res) => {
+				const totalWorkflows = res.body.count ?? 0;
 
-			WorkflowPage.actions.visit();
-			// Open settings dialog
-			WorkflowPage.actions.saveWorkflowOnButtonClick();
-			WorkflowPage.getters.workflowMenu().should('be.visible');
-			WorkflowPage.getters.workflowMenu().click();
-			WorkflowPage.getters.workflowMenuItemSettings().should('be.visible');
-			WorkflowPage.getters.workflowMenuItemSettings().click();
-			// Change all settings
-			// totalWorkflows + 1 (current workflow) + 1 (no workflow option)
-			WorkflowPage.getters.workflowSettingsErrorWorkflowSelect().click();
-			getVisibleSelect()
-				.find('li')
-				.should('have.length', totalWorkflows + 2);
-			getVisibleSelect().find('li').last().click({ force: true });
-			WorkflowPage.getters.workflowSettingsTimezoneSelect().click();
-			getVisibleSelect().find('li').should('exist');
-			getVisibleSelect().find('li').eq(1).click({ force: true });
-			WorkflowPage.getters.workflowSettingsSaveFiledExecutionsSelect().click();
-			getVisibleSelect().find('li').should('have.length', 3);
-			getVisibleSelect().find('li').last().click({ force: true });
-			WorkflowPage.getters.workflowSettingsSaveSuccessExecutionsSelect().click();
-			getVisibleSelect().find('li').should('have.length', 3);
-			getVisibleSelect().find('li').last().click({ force: true });
-			WorkflowPage.getters.workflowSettingsSaveManualExecutionsSelect().click();
-			getVisibleSelect().find('li').should('have.length', 3);
-			getVisibleSelect().find('li').last().click({ force: true });
-			WorkflowPage.getters.workflowSettingsSaveExecutionProgressSelect().click();
-			getVisibleSelect().find('li').should('have.length', 3);
-			getVisibleSelect().find('li').last().click({ force: true });
-			WorkflowPage.getters.workflowSettingsTimeoutWorkflowSwitch().click();
-			WorkflowPage.getters.workflowSettingsTimeoutForm().find('input').first().type('1');
-			// Save settings
-			WorkflowPage.getters.workflowSettingsSaveButton().click();
-			WorkflowPage.getters.workflowSettingsModal().should('not.exist');
-			WorkflowPage.getters.successToast().should('exist');
-		});
+				WorkflowPage.actions.visit();
+				// Open settings dialog
+				WorkflowPage.actions.saveWorkflowOnButtonClick();
+				WorkflowPage.getters.workflowMenu().should('be.visible');
+				WorkflowPage.getters.workflowMenu().click();
+				WorkflowPage.getters.workflowMenuItemSettings().should('be.visible');
+				WorkflowPage.getters.workflowMenuItemSettings().click();
+				// Change all settings
+				// totalWorkflows + 1 (current workflow) + 1 (no workflow option)
+				WorkflowPage.getters.workflowSettingsErrorWorkflowSelect().click();
+				getVisibleSelect()
+					.find('li')
+					.should('have.length', totalWorkflows + 2);
+				getVisibleSelect().find('li').last().click({ force: true });
+				WorkflowPage.getters.workflowSettingsTimezoneSelect().click();
+				getVisibleSelect().find('li').should('exist');
+				getVisibleSelect().find('li').eq(1).click({ force: true });
+				WorkflowPage.getters.workflowSettingsSaveFiledExecutionsSelect().click();
+				getVisibleSelect().find('li').should('have.length', 3);
+				getVisibleSelect().find('li').last().click({ force: true });
+				WorkflowPage.getters.workflowSettingsSaveSuccessExecutionsSelect().click();
+				getVisibleSelect().find('li').should('have.length', 3);
+				getVisibleSelect().find('li').last().click({ force: true });
+				WorkflowPage.getters.workflowSettingsSaveManualExecutionsSelect().click();
+				getVisibleSelect().find('li').should('have.length', 3);
+				getVisibleSelect().find('li').last().click({ force: true });
+				WorkflowPage.getters.workflowSettingsSaveExecutionProgressSelect().click();
+				getVisibleSelect().find('li').should('have.length', 3);
+				getVisibleSelect().find('li').last().click({ force: true });
+				WorkflowPage.getters.workflowSettingsTimeoutWorkflowSwitch().click();
+				WorkflowPage.getters.workflowSettingsTimeoutForm().find('input').first().type('1');
+				// Save settings
+				WorkflowPage.getters.workflowSettingsSaveButton().click();
+				WorkflowPage.getters.workflowSettingsModal().should('not.exist');
+				successToast().should('exist');
+			});
+		}).as('loadWorkflows');
 	});
 
 	it('should not be able to delete unsaved workflow', () => {
@@ -203,8 +256,8 @@ describe('Workflow Actions', () => {
 		WorkflowPage.getters.workflowMenuItemDelete().click();
 		cy.get('div[role=dialog][aria-modal=true]').should('be.visible');
 		cy.get('button.btn--confirm').should('be.visible').click();
-		WorkflowPage.getters.successToast().should('exist');
-		cy.url().should('include', '/workflow/new');
+		successToast().should('exist');
+		cy.url().should('include', WorkflowPages.url);
 	});
 
 	describe('duplicate workflow', () => {
@@ -232,7 +285,7 @@ describe('Workflow Actions', () => {
 				.contains('Duplicate')
 				.should('be.visible');
 			WorkflowPage.getters.duplicateWorkflowModal().find('button').contains('Duplicate').click();
-			WorkflowPage.getters.errorToast().should('not.exist');
+			errorToast().should('not.exist');
 		}
 
 		beforeEach(() => {
@@ -272,18 +325,43 @@ describe('Workflow Actions', () => {
 		WorkflowPage.getters.canvasNodePlusEndpointByName(EDIT_FIELDS_SET_NODE_NAME).click();
 		WorkflowPage.getters.nodeCreatorSearchBar().should('be.visible');
 	});
+
+	it('should run workflow on button click', () => {
+		WorkflowPage.actions.addInitialNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+		WorkflowPage.actions.saveWorkflowOnButtonClick();
+		WorkflowPage.getters.executeWorkflowButton().click();
+		successToast().should('contain.text', 'Workflow executed successfully');
+	});
+
+	it('should run workflow using keyboard shortcut', () => {
+		WorkflowPage.actions.addInitialNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+		WorkflowPage.actions.saveWorkflowOnButtonClick();
+		WorkflowPage.actions.hitExecuteWorkflow();
+		successToast().should('contain.text', 'Workflow executed successfully');
+	});
+
+	it('should not run empty workflows', () => {
+		// Clear the canvas
+		WorkflowPage.actions.hitDeleteAllNodes();
+		WorkflowPage.getters.canvasNodes().should('have.length', 0);
+		// Button should be disabled
+		WorkflowPage.getters.executeWorkflowButton().should('be.disabled');
+		// Keyboard shortcut should not work
+		WorkflowPage.actions.hitExecuteWorkflow();
+		successToast().should('not.exist');
+	});
 });
 
 describe('Menu entry Push To Git', () => {
 	it('should not show up in the menu for members', () => {
-		cy.signin(INSTANCE_MEMBERS[0]);
+		cy.signinAsMember(0);
 		cy.visit(WorkflowPages.url);
 		WorkflowPage.actions.visit();
 		WorkflowPage.getters.workflowMenuItemGitPush().should('not.exist');
 	});
 
 	it('should show up for owners', () => {
-		cy.signin(INSTANCE_OWNER);
+		cy.signinAsOwner();
 		cy.visit(WorkflowPages.url);
 		WorkflowPage.actions.visit();
 		WorkflowPage.getters.workflowMenuItemGitPush().should('exist');

@@ -11,7 +11,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import {
 	buildGetQuery,
@@ -41,8 +41,9 @@ export class Supabase implements INodeType {
 		defaults: {
 			name: 'Supabase',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
 		credentials: [
 			{
 				name: 'supabaseApi',
@@ -186,8 +187,8 @@ export class Supabase implements INodeType {
 			if (operation === 'delete') {
 				const tableId = this.getNodeParameter('tableId', 0) as string;
 				const filterType = this.getNodeParameter('filterType', 0) as string;
-				let endpoint = `/${tableId}`;
 				for (let i = 0; i < length; i++) {
+					let endpoint = `/${tableId}`;
 					if (filterType === 'manual') {
 						const matchType = this.getNodeParameter('matchType', 0) as string;
 						const keys = this.getNodeParameter('filters.conditions', i, []) as IDataObject[];

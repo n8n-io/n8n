@@ -1,9 +1,3 @@
-<template>
-	<component :is="tag" :class="['n8n-heading', ...classes]" v-bind="$attrs">
-		<slot></slot>
-	</component>
-</template>
-
 <script lang="ts" setup>
 import { computed, useCssModule } from 'vue';
 
@@ -49,6 +43,12 @@ const classes = computed(() => {
 	return applied.map((c) => $style[c]);
 });
 </script>
+
+<template>
+	<component :is="tag" :class="['n8n-heading', ...classes]" v-bind="$attrs">
+		<slot></slot>
+	</component>
+</template>
 
 <style lang="scss" module>
 .bold {

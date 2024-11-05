@@ -1,48 +1,10 @@
-<template>
-	<aside :class="$style.floatingNodes">
-		<ul
-			v-for="connectionGroup in connectionGroups"
-			:key="connectionGroup"
-			:class="[$style.nodesList, $style[connectionGroup]]"
-		>
-			<template v-for="{ node, nodeType } in connectedNodes[connectionGroup]">
-				<n8n-tooltip
-					v-if="node && nodeType"
-					:key="node.name"
-					:placement="tooltipPositionMapper[connectionGroup]"
-					:teleported="false"
-					:offset="60"
-				>
-					<template #content>{{ node.name }}</template>
-
-					<li
-						:class="$style.connectedNode"
-						data-test-id="floating-node"
-						:data-node-name="node.name"
-						:data-node-placement="connectionGroup"
-						@click="$emit('switchSelectedNode', node.name)"
-					>
-						<NodeIcon
-							:node-type="nodeType"
-							:node-name="node.name"
-							:tooltip-position="tooltipPositionMapper[connectionGroup]"
-							:size="35"
-							circle
-						/>
-					</li>
-				</n8n-tooltip>
-			</template>
-		</ul>
-	</aside>
-</template>
-
 <script setup lang="ts">
 import type { INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { computed, onMounted, onBeforeUnmount } from 'vue';
 import NodeIcon from '@/components/NodeIcon.vue';
-import type { INodeTypeDescription } from 'n8n-workflow';
+import { NodeConnectionType, type INodeTypeDescription } from 'n8n-workflow';
 
 interface Props {
 	rootNode: INodeUi;
@@ -56,7 +18,9 @@ const props = defineProps<Props>();
 const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
 const workflow = workflowsStore.getCurrentWorkflow();
-const emit = defineEmits(['switchSelectedNode']);
+const emit = defineEmits<{
+	switchSelectedNode: [nodeName: string];
+}>();
 
 interface NodeConfig {
 	node: INodeUi;
@@ -107,8 +71,12 @@ const connectedNodes = computed<
 		[FloatingNodePosition.top]: getINodesFromNames(
 			workflow.getChildNodes(rootName, 'ALL_NON_MAIN'),
 		),
-		[FloatingNodePosition.right]: getINodesFromNames(workflow.getChildNodes(rootName, 'main', 1)),
-		[FloatingNodePosition.left]: getINodesFromNames(workflow.getParentNodes(rootName, 'main', 1)),
+		[FloatingNodePosition.right]: getINodesFromNames(
+			workflow.getChildNodes(rootName, NodeConnectionType.Main, 1),
+		).reverse(),
+		[FloatingNodePosition.left]: getINodesFromNames(
+			workflow.getParentNodes(rootName, NodeConnectionType.Main, 1),
+		),
 	};
 });
 
@@ -121,7 +89,7 @@ const tooltipPositionMapper = {
 	[FloatingNodePosition.top]: 'bottom',
 	[FloatingNodePosition.right]: 'left',
 	[FloatingNodePosition.left]: 'right',
-};
+} as const;
 
 onMounted(() => {
 	document.addEventListener('keydown', onKeyDown, true);
@@ -135,9 +103,47 @@ defineExpose({
 });
 </script>
 
+<template>
+	<aside :class="$style.floatingNodes">
+		<ul
+			v-for="connectionGroup in connectionGroups"
+			:key="connectionGroup"
+			:class="[$style.nodesList, $style[connectionGroup]]"
+		>
+			<template v-for="{ node, nodeType } in connectedNodes[connectionGroup]">
+				<n8n-tooltip
+					v-if="node && nodeType"
+					:key="node.name"
+					:placement="tooltipPositionMapper[connectionGroup]"
+					:teleported="false"
+					:offset="60"
+				>
+					<template #content>{{ node.name }}</template>
+
+					<li
+						:class="$style.connectedNode"
+						data-test-id="floating-node"
+						:data-node-name="node.name"
+						:data-node-placement="connectionGroup"
+						@click="emit('switchSelectedNode', node.name)"
+					>
+						<NodeIcon
+							:node-type="nodeType"
+							:node-name="node.name"
+							:tooltip-position="tooltipPositionMapper[connectionGroup]"
+							:size="35"
+							circle
+						/>
+					</li>
+				</n8n-tooltip>
+			</template>
+		</ul>
+	</aside>
+</template>
+
 <style lang="scss" module>
 .floatingNodes {
-	position: fixed;
+	position: absolute;
 	bottom: 0;
 	top: 0;
 	right: 0;
@@ -202,7 +208,7 @@ defineExpose({
 }
 .connectedNode {
 	border: var(--border-base);
-	background-color: var(--color-canvas-node-background);
+	background-color: var(--color-node-background);
 	border-radius: 100%;
 	padding: var(--spacing-s);
 	cursor: pointer;
@@ -218,9 +224,9 @@ defineExpose({
 		content: '';
 		position: absolute;
 		top: -35%;
-		right: -30%;
+		right: -15%;
 		bottom: -35%;
-		left: -30%;
+		left: -15%;
 		z-index: -1;
 	}
 	.outputMain &,

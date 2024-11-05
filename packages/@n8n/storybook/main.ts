@@ -8,6 +8,7 @@ export const sharedConfig: StorybookConfig = {
 		'@storybook/addon-essentials',
 		'@storybook/addon-interactions',
 		'@storybook/addon-links',
+		'@storybook/addon-themes',
 	],
 	staticDirs: ['../public'],
 	framework: {

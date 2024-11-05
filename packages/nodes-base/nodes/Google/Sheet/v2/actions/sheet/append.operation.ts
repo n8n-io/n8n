@@ -1,13 +1,20 @@
-import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
+import {
+	type IExecuteFunctions,
+	type IDataObject,
+	type INodeExecutionData,
+	NodeOperationError,
+	type ResourceMapperField,
+} from 'n8n-workflow';
 import type { SheetProperties, ValueInputOption } from '../../helpers/GoogleSheets.types';
 import type { GoogleSheet } from '../../helpers/GoogleSheet';
 import {
 	autoMapInputData,
 	cellFormatDefault,
+	checkForSchemaChanges,
 	mapFields,
 	untilSheetSelected,
 } from '../../helpers/GoogleSheets.utils';
-import { cellFormat, handlingExtraData } from './commonDescription';
+import { cellFormat, handlingExtraData, useAppendOption } from './commonDescription';
 
 export const description: SheetProperties = [
 	{
@@ -92,7 +99,7 @@ export const description: SheetProperties = [
 						name: 'fieldId',
 						type: 'options',
 						description:
-							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsDependsOn: ['sheetName.value'],
 							loadOptionsMethod: 'getSheetHeaderRowAndSkipEmpty',
@@ -147,7 +154,7 @@ export const description: SheetProperties = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -191,14 +198,7 @@ export const description: SheetProperties = [
 				...handlingExtraData,
 				displayOptions: { show: { '/columns.mappingMode': ['autoMapInputData'] } },
 			},
-			{
-				displayName: 'Use Append',
-				name: 'useAppend',
-				type: 'boolean',
-				default: false,
-				description:
-					'Whether to use append instead of update(default), this is more efficient but in some cases data might be misaligned',
-			},
+			useAppendOption,
 		],
 	},
 ];
@@ -206,12 +206,12 @@ export const description: SheetProperties = [
 export async function execute(
 	this: IExecuteFunctions,
 	sheet: GoogleSheet,
-	sheetName: string,
+	range: string,
 	sheetId: string,
 ): Promise<INodeExecutionData[]> {
 	const items = this.getInputData();
 	const nodeVersion = this.getNode().typeVersion;
-	const dataMode =
+	let dataMode =
 		nodeVersion < 4
 			? (this.getNodeParameter('dataMode', 0) as string)
 			: (this.getNodeParameter('columns.mappingMode', 0) as string);
@@ -221,49 +221,79 @@ export async function execute(
 	const options = this.getNodeParameter('options', 0, {});
 	const locationDefine = (options.locationDefine as IDataObject)?.values as IDataObject;
 
-	let headerRow = 1;
+	let keyRowIndex = 1;
 	if (locationDefine?.headerRow) {
-		headerRow = locationDefine.headerRow as number;
+		keyRowIndex = locationDefine.headerRow as number;
 	}
 
-	let setData: IDataObject[] = [];
+	const sheetData = await sheet.getData(range, 'FORMATTED_VALUE');
+
+	if (!sheetData?.length) {
+		dataMode = 'autoMapInputData';
+	}
+
+	if (nodeVersion >= 4.4 && dataMode !== 'autoMapInputData') {
+		//not possible to refresh columns when mode is autoMapInputData
+		if (sheetData?.[keyRowIndex - 1] === undefined) {
+			throw new NodeOperationError(
+				this.getNode(),
+				`Could not retrieve the column names from row ${keyRowIndex}`,
+			);
+		}
+
+		const schema = this.getNodeParameter('columns.schema', 0) as ResourceMapperField[];
+		checkForSchemaChanges(this.getNode(), sheetData[keyRowIndex - 1], schema);
+	}
+
+	let inputData: IDataObject[] = [];
 
 	if (dataMode === 'autoMapInputData') {
-		setData = await autoMapInputData.call(this, sheetName, sheet, items, options);
+		inputData = await autoMapInputData.call(this, range, sheet, items, options);
 	} else {
-		setData = mapFields.call(this, items.length);
+		inputData = mapFields.call(this, items.length);
 	}
 
-	if (setData.length === 0) {
+	if (inputData.length === 0) {
 		return [];
-	} else if (options.useAppend) {
-		await sheet.appendSheetData(
-			setData,
-			sheetName,
-			headerRow,
-			(options.cellFormat as ValueInputOption) || cellFormatDefault(nodeVersion),
-			false,
-			undefined,
-			undefined,
-			options.useAppend as boolean,
-		);
+	}
+
+	const valueInputMode = (options.cellFormat as ValueInputOption) || cellFormatDefault(nodeVersion);
+	const useAppend = options.useAppend as boolean;
+
+	if (options.useAppend) {
+		await sheet.appendSheetData({
+			inputData,
+			range,
+			keyRowIndex,
+			valueInputMode,
+			useAppend,
+		});
 	} else {
+		//if no trailing empty row exists in the sheet update operation will fail
 		await sheet.appendEmptyRowsOrColumns(sheetId, 1, 0);
 
-		await sheet.appendSheetData(
-			setData,
-			sheetName,
-			headerRow,
-			(options.cellFormat as ValueInputOption) || cellFormatDefault(nodeVersion),
-			false,
-		);
+		// if sheetData is undefined it means that the sheet was empty
+		// we did add row with column names in the first row (autoMapInputData)
+		// to account for that length has to be 1 and we append data in the next row
+		const lastRow = (sheetData ?? [{}]).length + 1;
+
+		await sheet.appendSheetData({
+			inputData,
+			range,
+			keyRowIndex,
+			valueInputMode,
+			lastRow,
+		});
 	}
 
 	if (nodeVersion < 4 || dataMode === 'autoMapInputData') {
-		return items;
+		return items.map((item, index) => {
+			item.pairedItem = { item: index };
+			return item;
+		});
 	} else {
 		const returnData: INodeExecutionData[] = [];
-		for (const [index, entry] of setData.entries()) {
+		for (const [index, entry] of inputData.entries()) {
 			returnData.push({
 				json: entry,
 				pairedItem: { item: index },

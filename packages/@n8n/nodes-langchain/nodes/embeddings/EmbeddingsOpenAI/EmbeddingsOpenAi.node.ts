@@ -1,10 +1,10 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import {
 	NodeConnectionType,
-	type IExecuteFunctions,
 	type INodeType,
 	type INodeTypeDescription,
 	type SupplyData,
+	type ISupplyDataFunctions,
 	type INodeProperties,
 } from 'n8n-workflow';
 
@@ -71,7 +71,7 @@ export class EmbeddingsOpenAi implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Embeddings OpenAI',
 		name: 'embeddingsOpenAi',
-		icon: 'file:openAi.svg',
+		icon: { light: 'file:openAiLight.svg', dark: 'file:openAiLight.dark.svg' },
 		credentials: [
 			{
 				name: 'openAiApi',
@@ -79,7 +79,7 @@ export class EmbeddingsOpenAi implements INodeType {
 			},
 		],
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1],
 		description: 'Use Embeddings OpenAI',
 		defaults: {
 			name: 'Embeddings OpenAI',
@@ -170,8 +170,8 @@ export class EmbeddingsOpenAi implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
-		this.logger.verbose('Supply data for embeddings');
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
+		this.logger.debug('Supply data for embeddings');
 		const credentials = await this.getCredentials('openAiApi');
 
 		const options = this.getNodeParameter('options', itemIndex, {}) as {

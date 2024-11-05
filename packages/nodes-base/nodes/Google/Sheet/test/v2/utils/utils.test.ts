@@ -1,8 +1,9 @@
-import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import type { IExecuteFunctions, INode, ResourceMapperField } from 'n8n-workflow';
 import { GoogleSheet } from '../../../v2/helpers/GoogleSheet';
 import {
 	addRowNumber,
 	autoMapInputData,
+	checkForSchemaChanges,
 	prepareSheetData,
 	removeEmptyColumns,
 	removeEmptyRows,
@@ -303,11 +304,11 @@ describe('Test Google Sheets, lookupValues', () => {
 
 		const googleSheet = new GoogleSheet('spreadsheetId', fakeExecuteFunction);
 
-		const result = await googleSheet.lookupValues(
+		const result = await googleSheet.lookupValues({
 			inputData,
-			0,
-			1,
-			[
+			keyRowIndex: 0,
+			dataStartRowIndex: 1,
+			lookupValues: [
 				{
 					lookupColumn: 'num',
 					lookupValue: '1',
@@ -317,9 +318,9 @@ describe('Test Google Sheets, lookupValues', () => {
 					lookupValue: 'foo',
 				},
 			],
-			true,
-			'OR',
-		);
+			returnAllMatches: true,
+			combineFilters: 'OR',
+		});
 
 		expect(result).toBeDefined();
 		expect(result).toEqual([
@@ -365,11 +366,11 @@ describe('Test Google Sheets, lookupValues', () => {
 
 		const googleSheet = new GoogleSheet('spreadsheetId', fakeExecuteFunction);
 
-		const result = await googleSheet.lookupValues(
+		const result = await googleSheet.lookupValues({
 			inputData,
-			0,
-			1,
-			[
+			keyRowIndex: 0,
+			dataStartRowIndex: 1,
+			lookupValues: [
 				{
 					lookupColumn: 'num',
 					lookupValue: '1',
@@ -379,9 +380,9 @@ describe('Test Google Sheets, lookupValues', () => {
 					lookupValue: 'baz',
 				},
 			],
-			true,
-			'AND',
-		);
+			returnAllMatches: true,
+			combineFilters: 'AND',
+		});
 
 		expect(result).toBeDefined();
 		expect(result).toEqual([
@@ -398,5 +399,48 @@ describe('Test Google Sheets, lookupValues', () => {
 				text: 'baz',
 			},
 		]);
+	});
+});
+
+describe('Test Google Sheets, checkForSchemaChanges', () => {
+	it('should not to throw error', async () => {
+		const node: INode = {
+			id: '1',
+			name: 'Google Sheets',
+			typeVersion: 4.4,
+			type: 'n8n-nodes-base.googleSheets',
+			position: [60, 760],
+			parameters: {
+				operation: 'append',
+			},
+		};
+
+		expect(() =>
+			checkForSchemaChanges(node, ['id', 'name', 'data'], [
+				{ id: 'id' },
+				{ id: 'name' },
+				{ id: 'data' },
+			] as ResourceMapperField[]),
+		).not.toThrow();
+	});
+	it('should throw error when columns were renamed', async () => {
+		const node: INode = {
+			id: '1',
+			name: 'Google Sheets',
+			typeVersion: 4.4,
+			type: 'n8n-nodes-base.googleSheets',
+			position: [60, 760],
+			parameters: {
+				operation: 'append',
+			},
+		};
+
+		expect(() =>
+			checkForSchemaChanges(node, ['id', 'name', 'data'], [
+				{ id: 'id' },
+				{ id: 'name' },
+				{ id: 'text' },
+			] as ResourceMapperField[]),
+		).toThrow("Column names were updated after the node's setup");
 	});
 });

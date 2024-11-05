@@ -1,44 +1,8 @@
-<template>
-	<div class="n8n-node-icon" v-bind="$attrs">
-		<div
-			:class="{
-				[$style.nodeIconWrapper]: true,
-				[$style.circle]: circle,
-				[$style.disabled]: disabled,
-			}"
-			:style="iconStyleData"
-		>
-			<!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
-			<N8nTooltip v-if="showTooltip" :placement="tooltipPosition" :disabled="!showTooltip">
-				<template #content>{{ nodeTypeName }}</template>
-				<div v-if="type !== 'unknown'" :class="$style.icon">
-					<img v-if="type === 'file'" :src="src" :class="$style.nodeIconImage" />
-					<FontAwesomeIcon v-else :icon="name" :class="$style.iconFa" :style="fontStyleData" />
-				</div>
-				<div v-else :class="$style.nodeIconPlaceholder">
-					{{ nodeTypeName ? nodeTypeName.charAt(0) : '?' }}
-				</div>
-			</N8nTooltip>
-			<template v-else>
-				<div v-if="type !== 'unknown'" :class="$style.icon">
-					<img v-if="type === 'file'" :src="src" :class="$style.nodeIconImage" />
-					<FontAwesomeIcon v-else :icon="name" :style="fontStyleData" />
-					<div v-if="badge" :class="$style.badge" :style="badgeStyleData">
-						<n8n-node-icon :type="badge.type" :src="badge.src" :size="badgeSize"></n8n-node-icon>
-					</div>
-				</div>
-				<div v-else :class="$style.nodeIconPlaceholder">
-					{{ nodeTypeName ? nodeTypeName.charAt(0) : '?' }}
-				</div>
-			</template>
-		</div>
-	</div>
-</template>
-
 <script lang="ts" setup>
-import { computed } from 'vue';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import type { Placement } from 'element-plus';
+import { computed } from 'vue';
+
 import N8nTooltip from '../N8nTooltip';
 
 interface NodeIconProps {
@@ -83,7 +47,7 @@ const badgeSize = computed((): number => {
 			return 10;
 		case 18:
 		default:
-			return 8;
+			return 12;
 	}
 });
 
@@ -106,6 +70,43 @@ const badgeStyleData = computed((): Record<string, string> => {
 	};
 });
 </script>
+
+<template>
+	<div class="n8n-node-icon" v-bind="$attrs">
+		<div
+			:class="{
+				[$style.nodeIconWrapper]: true,
+				[$style.circle]: circle,
+				[$style.disabled]: disabled,
+			}"
+			:style="iconStyleData"
+		>
+			<!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
+			<N8nTooltip v-if="showTooltip" :placement="tooltipPosition" :disabled="!showTooltip">
+				<template #content>{{ nodeTypeName }}</template>
+				<div v-if="type !== 'unknown'" :class="$style.icon">
+					<img v-if="type === 'file'" :src="src" :class="$style.nodeIconImage" />
+					<FontAwesomeIcon v-else :icon="`${name}`" :class="$style.iconFa" :style="fontStyleData" />
+				</div>
+				<div v-else :class="$style.nodeIconPlaceholder">
+					{{ nodeTypeName ? nodeTypeName.charAt(0) : '?' }}
+				</div>
+			</N8nTooltip>
+			<template v-else>
+				<div v-if="type !== 'unknown'" :class="$style.icon">
+					<img v-if="type === 'file'" :src="src" :class="$style.nodeIconImage" />
+					<FontAwesomeIcon v-else :icon="`${name}`" :style="fontStyleData" />
+					<div v-if="badge" :class="$style.badge" :style="badgeStyleData">
+						<n8n-node-icon :type="badge.type" :src="badge.src" :size="badgeSize"></n8n-node-icon>
+					</div>
+				</div>
+				<div v-else :class="$style.nodeIconPlaceholder">
+					{{ nodeTypeName ? nodeTypeName.charAt(0) : '?' }}
+				</div>
+			</template>
+		</div>
+	</div>
+</template>
 
 <style lang="scss" module>
 .nodeIconWrapper {
@@ -142,9 +143,10 @@ const badgeStyleData = computed((): Record<string, string> => {
 	text-align: center;
 }
 .nodeIconImage {
-	width: 100%;
 	max-width: 100%;
 	max-height: 100%;
+	width: auto;
+	height: auto;
 }
 
 .badge {

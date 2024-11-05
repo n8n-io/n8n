@@ -6,6 +6,7 @@ import type {
 	INode,
 	INodeExecutionData,
 	INodeProperties,
+	ISupplyDataFunctions,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
@@ -185,7 +186,7 @@ const displayOptions = {
 export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
-	this: IExecuteFunctions,
+	this: IExecuteFunctions | ISupplyDataFunctions,
 	item: INodeExecutionData,
 	i: number,
 	options: SetNodeOptions,
@@ -225,7 +226,7 @@ export async function execute(
 				newData[name] = value;
 			}
 
-			return composeReturnItem.call(this, i, item, newData, options);
+			return composeReturnItem.call(this, i, item, newData, options, node.typeVersion);
 		}
 
 		const assignmentCollection = this.getNodeParameter(
@@ -247,7 +248,7 @@ export async function execute(
 				return [name, value];
 			}),
 		);
-		return composeReturnItem.call(this, i, item, newData, options);
+		return composeReturnItem.call(this, i, item, newData, options, node.typeVersion);
 	} catch (error) {
 		if (this.continueOnFail()) {
 			return { json: { error: (error as Error).message, pairedItem: { item: i } } };

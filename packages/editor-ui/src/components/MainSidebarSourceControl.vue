@@ -1,18 +1,17 @@
 <script lang="ts" setup>
 import { computed, nextTick, ref } from 'vue';
-import { useRouter } from 'vue-router';
 import { createEventBus } from 'n8n-design-system/utils';
 import { useI18n } from '@/composables/useI18n';
-import { hasPermission } from '@/rbac/permissions';
+import { hasPermission } from '@/utils/rbac/permissions';
 import { useToast } from '@/composables/useToast';
 import { useLoadingService } from '@/composables/useLoadingService';
 import { useUIStore } from '@/stores/ui.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
-import { SOURCE_CONTROL_PULL_MODAL_KEY, SOURCE_CONTROL_PUSH_MODAL_KEY, VIEWS } from '@/constants';
+import { SOURCE_CONTROL_PULL_MODAL_KEY, SOURCE_CONTROL_PUSH_MODAL_KEY } from '@/constants';
 import type { SourceControlAggregatedFile } from '../Interface';
 import { sourceControlEventBus } from '@/event-bus/source-control';
 
-const props = defineProps<{
+defineProps<{
 	isCollapsed: boolean;
 }>();
 
@@ -20,7 +19,6 @@ const responseStatuses = {
 	CONFLICT: 409,
 };
 
-const router = useRouter();
 const loadingService = useLoadingService();
 const uiStore = useUIStore();
 const sourceControlStore = useSourceControlStore();
@@ -117,10 +115,6 @@ async function pullWorkfolder() {
 		loadingService.setLoadingText(i18n.baseText('genericHelpers.loading'));
 	}
 }
-
-const goToSourceControlSetup = async () => {
-	await router.push({ name: VIEWS.SOURCE_CONTROL });
-};
 </script>
 
 <template>

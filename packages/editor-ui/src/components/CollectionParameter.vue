@@ -1,53 +1,3 @@
-<template>
-	<div class="collection-parameter" @keydown.stop>
-		<div class="collection-parameter-wrapper">
-			<div v-if="getProperties.length === 0" class="no-items-exist">
-				<n8n-text size="small">{{ $locale.baseText('collectionParameter.noProperties') }}</n8n-text>
-			</div>
-
-			<Suspense>
-				<ParameterInputList
-					:parameters="getProperties"
-					:node-values="nodeValues"
-					:path="path"
-					:hide-delete="hideDelete"
-					:indent="true"
-					:is-read-only="isReadOnly"
-					@value-changed="valueChanged"
-				/>
-			</Suspense>
-
-			<div v-if="parameterOptions.length > 0 && !isReadOnly" class="param-options">
-				<n8n-button
-					v-if="(parameter.options ?? []).length === 1"
-					type="tertiary"
-					block
-					:label="getPlaceholderText"
-					@click="optionSelected((parameter.options ?? [])[0].name)"
-				/>
-				<div v-else class="add-option">
-					<n8n-select
-						v-model="selectedOption"
-						:placeholder="getPlaceholderText"
-						size="small"
-						filterable
-						@update:model-value="optionSelected"
-					>
-						<n8n-option
-							v-for="item in parameterOptions"
-							:key="item.name"
-							:label="getParameterOptionLabel(item)"
-							:value="item.name"
-							data-test-id="collection-parameter-option"
-						>
-						</n8n-option>
-					</n8n-select>
-				</div>
-			</div>
-		</div>
-	</div>
-</template>
-
 <script lang="ts" setup>
 import { ref, computed } from 'vue';
 import type { IUpdateInformation } from '@/Interface';
@@ -72,12 +22,13 @@ export interface Props {
 	nodeValues: INodeParameters;
 	parameter: INodeProperties;
 	path: string;
-	values: INodeProperties;
+	values: INodeParameters;
 	isReadOnly?: boolean;
 }
 const emit = defineEmits<{
-	(event: 'valueChanged', value: IUpdateInformation): void;
+	valueChanged: [value: IUpdateInformation];
 }>();
+
 const props = defineProps<Props>();
 const ndvStore = useNDVStore();
 const i18n = useI18n();
@@ -134,7 +85,7 @@ const getProperties = computed(() => {
 	const returnProperties = [];
 	let tempProperties;
 	for (const name of propertyNames.value) {
-		tempProperties = getOptionProperties(name);
+		tempProperties = getOptionProperties(name) as INodeProperties[];
 		if (tempProperties !== undefined) {
 			returnProperties.push(...tempProperties);
 		}
@@ -208,6 +159,56 @@ function valueChanged(parameterData: IUpdateInformation) {
 	emit('valueChanged', parameterData);
 }
 </script>
+
+<template>
+	<div class="collection-parameter" @keydown.stop>
+		<div class="collection-parameter-wrapper">
+			<div v-if="getProperties.length === 0" class="no-items-exist">
+				<n8n-text size="small">{{ $locale.baseText('collectionParameter.noProperties') }}</n8n-text>
+			</div>
+
+			<Suspense>
+				<ParameterInputList
+					:parameters="getProperties"
+					:node-values="nodeValues"
+					:path="path"
+					:hide-delete="hideDelete"
+					:indent="true"
+					:is-read-only="isReadOnly"
+					@value-changed="valueChanged"
+				/>
+			</Suspense>
+
+			<div v-if="parameterOptions.length > 0 && !isReadOnly" class="param-options">
+				<n8n-button
+					v-if="(parameter.options ?? []).length === 1"
+					type="tertiary"
+					block
+					:label="getPlaceholderText"
+					@click="optionSelected((parameter.options ?? [])[0].name)"
+				/>
+				<div v-else class="add-option">
+					<n8n-select
+						v-model="selectedOption"
+						:placeholder="getPlaceholderText"
+						size="small"
+						filterable
+						@update:model-value="optionSelected"
+					>
+						<n8n-option
+							v-for="item in parameterOptions"
+							:key="item.name"
+							:label="getParameterOptionLabel(item)"
+							:value="item.name"
+							data-test-id="collection-parameter-option"
+						>
+						</n8n-option>
+					</n8n-select>
+				</div>
+			</div>
+		</div>
+	</div>
+</template>
 
 <style lang="scss">
 .collection-parameter {

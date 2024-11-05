@@ -31,7 +31,7 @@ export class OpenAiAssistant implements INodeType {
 			alias: ['LangChain'],
 			categories: ['AI'],
 			subcategories: {
-				AI: ['Agents'],
+				AI: ['Agents', 'Root Nodes'],
 			},
 			resources: {
 				primaryDocumentation: [
@@ -313,7 +313,7 @@ export class OpenAiAssistant implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const nodeVersion = this.getNode().typeVersion;
-		const tools = await getConnectedTools(this, nodeVersion > 1);
+		const tools = await getConnectedTools(this, nodeVersion > 1, false);
 		const credentials = await this.getCredentials('openAiApi');
 
 		const items = this.getInputData();
@@ -392,6 +392,6 @@ export class OpenAiAssistant implements INodeType {
 			}
 		}
 
-		return await this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

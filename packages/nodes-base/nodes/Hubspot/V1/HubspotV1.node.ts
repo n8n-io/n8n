@@ -13,7 +13,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import { snakeCase } from 'change-case';
 import {
@@ -58,8 +58,8 @@ export class HubspotV1 implements INodeType {
 			defaults: {
 				name: 'HubSpot',
 			},
-			inputs: ['main'],
-			outputs: ['main'],
+			inputs: [NodeConnectionType.Main],
+			outputs: [NodeConnectionType.Main],
 			credentials: [
 				{
 					name: 'hubspotApi',
@@ -862,11 +862,11 @@ export class HubspotV1 implements INodeType {
 			// select them easily
 			async getOwners(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const endpoint = '/owners/v2/owners';
-				const owners = await hubspotApiRequest.call(this, 'GET', endpoint);
-				for (const owner of owners) {
+				const endpoint = '/crm/v3/owners';
+				const { results } = await hubspotApiRequest.call(this, 'GET', endpoint);
+				for (const owner of results) {
 					const ownerName = owner.email;
-					const ownerId = owner.ownerId;
+					const ownerId = isNaN(parseInt(owner.id)) ? owner.id : parseInt(owner.id);
 					returnData.push({
 						name: ownerName,
 						value: ownerId,

@@ -1,8 +1,50 @@
+<script setup lang="ts">
+import TemplateDetailsBlock from '@/components/TemplateDetailsBlock.vue';
+import NodeIcon from '@/components/NodeIcon.vue';
+import { filterTemplateNodes } from '@/utils/nodeTypesUtils';
+import { abbreviateNumber } from '@/utils/typesUtils';
+import type {
+	ITemplatesCollection,
+	ITemplatesCollectionFull,
+	ITemplatesNode,
+	ITemplatesWorkflow,
+} from '@/Interface';
+import { useTemplatesStore } from '@/stores/templates.store';
+import TimeAgo from '@/components/TimeAgo.vue';
+import { isFullTemplatesCollection, isTemplatesWorkflow } from '@/utils/templates/typeGuards';
+import { useRouter } from 'vue-router';
+import { useI18n } from '@/composables/useI18n';
+
+defineProps<{
+	template: ITemplatesWorkflow | ITemplatesCollection | ITemplatesCollectionFull | null;
+	blockTitle: string;
+	loading: boolean;
+}>();
+
+const router = useRouter();
+const i18n = useI18n();
+
+const templatesStore = useTemplatesStore();
+
+const redirectToCategory = (id: string) => {
+	templatesStore.resetSessionId();
+	void router.push(`/templates?categories=${id}`);
+};
+
+const redirectToSearchPage = (node: ITemplatesNode) => {
+	templatesStore.resetSessionId();
+	void router.push(`/templates?search=${node.displayName}`);
+};
+</script>
+
 <template>
 	<div>
 		<n8n-loading :loading="loading" :rows="5" variant="p" />
 
-		<TemplateDetailsBlock v-if="!loading && template.nodes.length > 0" :title="blockTitle">
+		<TemplateDetailsBlock
+			v-if="!loading && template && template.nodes.length > 0"
+			:title="blockTitle"
+		>
 			<div :class="$style.icons">
 				<div
 					v-for="node in filterTemplateNodes(template.nodes)"
@@ -20,79 +62,39 @@
 		</TemplateDetailsBlock>
 
 		<TemplateDetailsBlock
-			v-if="!loading && template?.categories.length > 0"
+			v-if="!loading && isFullTemplatesCollection(template) && template.categories.length > 0"
 			:title="$locale.baseText('template.details.categories')"
 		>
 			<n8n-tags :tags="template.categories" @click:tag="redirectToCategory" />
 		</TemplateDetailsBlock>
 
-		<TemplateDetailsBlock v-if="!loading" :title="$locale.baseText('template.details.details')">
+		<TemplateDetailsBlock
+			v-if="!loading && template"
+			:title="i18n.baseText('template.details.details')"
+		>
 			<div :class="$style.text">
-				<n8n-text size="small" color="text-base">
-					{{ $locale.baseText('template.details.created') }}
+				<n8n-text v-if="isTemplatesWorkflow(template)" size="small" color="text-base">
+					{{ i18n.baseText('template.details.created') }}
 					<TimeAgo :date="template.createdAt" />
-					{{ $locale.baseText('template.details.by') }}
+					{{ i18n.baseText('template.details.by') }}
 					{{ template.user ? template.user.username : 'n8n team' }}
 				</n8n-text>
 			</div>
 			<div :class="$style.text">
-				<n8n-text v-if="template.totalViews !== 0" size="small" color="text-base">
-					{{ $locale.baseText('template.details.viewed') }}
+				<n8n-text
+					v-if="isTemplatesWorkflow(template) && template.totalViews !== 0"
+					size="small"
+					color="text-base"
+				>
+					{{ i18n.baseText('template.details.viewed') }}
 					{{ abbreviateNumber(template.totalViews) }}
-					{{ $locale.baseText('template.details.times') }}
+					{{ i18n.baseText('template.details.times') }}
 				</n8n-text>
 			</div>
 		</TemplateDetailsBlock>
 	</div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
-import type { PropType } from 'vue';
-import TemplateDetailsBlock from '@/components/TemplateDetailsBlock.vue';
-import NodeIcon from '@/components/NodeIcon.vue';
-import { filterTemplateNodes } from '@/utils/nodeTypesUtils';
-import { abbreviateNumber } from '@/utils/typesUtils';
-import type { ITemplatesNode, ITemplatesWorkflow, ITemplatesWorkflowFull } from '@/Interface';
-import { mapStores } from 'pinia';
-import { useTemplatesStore } from '@/stores/templates.store';
-import TimeAgo from '@/components/TimeAgo.vue';
-
-export default defineComponent({
-	name: 'TemplateDetails',
-	components: {
-		NodeIcon,
-		TemplateDetailsBlock,
-		TimeAgo,
-	},
-	props: {
-		blockTitle: {
-			type: String,
-		},
-		loading: {
-			type: Boolean,
-		},
-		template: {
-			type: Object as PropType<ITemplatesWorkflow | ITemplatesWorkflowFull>,
-		},
-	},
-	computed: {
-		...mapStores(useTemplatesStore),
-	},
-	methods: {
-		abbreviateNumber,
-		filterTemplateNodes,
-		redirectToCategory(id: string) {
-			this.templatesStore.resetSessionId();
-			void this.$router.push(`/templates?categories=${id}`);
-		},
-		redirectToSearchPage(node: ITemplatesNode) {
-			this.templatesStore.resetSessionId();
-			void this.$router.push(`/templates?search=${node.displayName}`);
-		},
-	},
-});
-</script>
 <style lang="scss" module>
 .icons {
 	display: flex;

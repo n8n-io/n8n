@@ -1,14 +1,15 @@
 <script lang="ts" setup>
-import type { ComponentPublicInstance, PropType } from 'vue';
+import type { ComponentPublicInstance } from 'vue';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
-import type { EnvironmentVariable, Rule, RuleGroup } from '@/Interface';
+import type { Rule, RuleGroup } from '@/Interface';
 import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
 import { useClipboard } from '@/composables/useClipboard';
 import { EnterpriseEditionFeature } from '@/constants';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
-import { getVariablesPermissions } from '@/permissions';
+import { getResourcePermissions } from '@/permissions';
+import type { IResource } from './layouts/ResourcesListLayout.vue';
 
 const i18n = useI18n();
 const clipboard = useClipboard();
@@ -16,41 +17,43 @@ const { showMessage } = useToast();
 const settingsStore = useSettingsStore();
 const usersStore = useUsersStore();
 
-const emit = defineEmits(['save', 'cancel', 'edit', 'delete']);
+const emit = defineEmits<{
+	save: [data: IResource];
+	cancel: [data: IResource];
+	edit: [data: IResource];
+	delete: [data: IResource];
+}>();
 
-const props = defineProps({
-	data: {
-		type: Object as PropType<EnvironmentVariable>,
-		default: () => ({}),
+const props = withDefaults(
+	defineProps<{
+		data: IResource;
+		editing: boolean;
+	}>(),
+	{
+		editing: false,
 	},
-	editing: {
-		type: Boolean,
-		default: false,
-	},
-});
+);
 
-const permissions = getVariablesPermissions(usersStore.currentUser);
-const modelValue = ref<EnvironmentVariable>({ ...props.data });
+const permissions = computed(
+	() => getResourcePermissions(usersStore.currentUser?.globalScopes).variable,
+);
+const modelValue = ref<IResource>({ ...props.data });
 
 const formValidationStatus = ref<Record<string, boolean>>({
 	key: false,
 	value: false,
 });
 const formValid = computed(() => {
-	return formValidationStatus.value.key && formValidationStatus.value.value;
+	return formValidationStatus.value.name && formValidationStatus.value.value;
 });
 
 const keyInputRef = ref<ComponentPublicInstance & { inputRef?: HTMLElement }>();
 const valueInputRef = ref<HTMLElement>();
 
-const usage = ref(`$vars.${props.data.key}`);
+const usage = ref(`$vars.${props.data.name}`);
 
-const isFeatureEnabled = computed(() =>
-	settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Variables),
-);
-
-const showActions = computed(
-	() => isFeatureEnabled.value && (permissions.edit || permissions.delete),
+const isFeatureEnabled = computed(
+	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables],
 );
 
 onMounted(() => {
@@ -81,17 +84,17 @@ const valueValidationRules: Array<Rule | RuleGroup> = [
 ];
 
 watch(
-	() => modelValue.value.key,
+	() => modelValue.value.name,
 	async () => {
 		await nextTick();
-		if (formValidationStatus.value.key) {
+		if (formValidationStatus.value.name) {
 			updateUsageSyntax();
 		}
 	},
 );
 
 function updateUsageSyntax() {
-	usage.value = `$vars.${modelValue.value.key || props.data.key}`;
+	usage.value = `$vars.${modelValue.value.name || props.data.name}`;
 }
 
 async function onCancel() {
@@ -115,8 +118,8 @@ async function onDelete() {
 	emit('delete', modelValue.value);
 }
 
-function onValidate(key: string, value: boolean) {
-	formValidationStatus.value[key] = value;
+function onValidate(name: string, value: boolean) {
+	formValidationStatus.value[name] = value;
 }
 
 function onUsageClick() {
@@ -136,19 +139,19 @@ function focusFirstInput() {
 	<tr :class="$style.variablesRow" data-test-id="variables-row">
 		<td class="variables-key-column">
 			<div>
-				<span v-if="!editing">{{ data.key }}</span>
+				<span v-if="!editing">{{ data.name }}</span>
 				<n8n-form-input
 					v-else
 					ref="keyInputRef"
-					v-model="modelValue.key"
+					v-model="modelValue.name"
 					label
-					name="key"
+					name="name"
 					data-test-id="variable-row-key-input"
 					:placeholder="i18n.baseText('variables.editing.key.placeholder')"
 					required
 					validate-on-blur
 					:validation-rules="keyValidationRules"
-					@validate="(value) => onValidate('key', value)"
+					@validate="(value: boolean) => onValidate('name', value)"
 				/>
 			</div>
 		</td>
@@ -165,14 +168,14 @@ function focusFirstInput() {
 					:placeholder="i18n.baseText('variables.editing.value.placeholder')"
 					validate-on-blur
 					:validation-rules="valueValidationRules"
-					@validate="(value) => onValidate('value', value)"
+					@validate="(value: boolean) => onValidate('value', value)"
 				/>
 			</div>
 		</td>
 		<td class="variables-usage-column">
 			<div>
 				<n8n-tooltip placement="top">
-					<span v-if="modelValue.key && usage" :class="$style.usageSyntax" @click="onUsageClick">{{
+					<span v-if="modelValue.name && usage" :class="$style.usageSyntax" @click="onUsageClick">{{
 						usage
 					}}</span>
 					<template #content>
@@ -201,20 +204,20 @@ function focusFirstInput() {
 				</n8n-button>
 			</div>
 			<div v-else :class="[$style.buttons, $style.hoverButtons]">
-				<n8n-tooltip :disabled="permissions.edit" placement="top">
+				<n8n-tooltip :disabled="permissions.update" placement="top">
 					<div>
 						<n8n-button
 							data-test-id="variable-row-edit-button"
 							type="tertiary"
 							class="mr-xs"
-							:disabled="!permissions.edit"
+							:disabled="!permissions.update"
 							@click="onEdit"
 						>
 							{{ i18n.baseText('variables.row.button.edit') }}
 						</n8n-button>
 					</div>
 					<template #content>
-						{{ i18n.baseText('variables.row.button.edit.onlyOwnerCanSave') }}
+						{{ i18n.baseText('variables.row.button.edit.onlyRoleCanEdit') }}
 					</template>
 				</n8n-tooltip>
 				<n8n-tooltip :disabled="permissions.delete" placement="top">
@@ -229,7 +232,7 @@ function focusFirstInput() {
 						</n8n-button>
 					</div>
 					<template #content>
-						{{ i18n.baseText('variables.row.button.delete.onlyOwnerCanDelete') }}
+						{{ i18n.baseText('variables.row.button.delete.onlyRoleCanDelete') }}
 					</template>
 				</n8n-tooltip>
 			</div>

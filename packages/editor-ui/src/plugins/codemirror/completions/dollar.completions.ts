@@ -13,7 +13,13 @@ import {
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 import { escapeMappingString } from '@/utils/mappingUtils';
-import { PREVIOUS_NODES_SECTION, RECOMMENDED_SECTION, ROOT_DOLLAR_COMPLETIONS } from './constants';
+import {
+	METADATA_SECTION,
+	PREVIOUS_NODES_SECTION,
+	RECOMMENDED_SECTION,
+	ROOT_DOLLAR_COMPLETIONS,
+} from './constants';
+import { createInfoBoxRenderer } from './infoBoxRenderer';
 
 /**
  * Completions offered at the dollar position: `$|`
@@ -53,9 +59,36 @@ export function dollarOptions(): Completion[] {
 
 	if (isInHttpNodePagination()) {
 		recommendedCompletions = [
-			{ label: '$pageCount', section: RECOMMENDED_SECTION, info: i18n.rootVars.$pageCount },
-			{ label: '$response', section: RECOMMENDED_SECTION, info: i18n.rootVars.$response },
-			{ label: '$request', section: RECOMMENDED_SECTION, info: i18n.rootVars.$request },
+			{
+				label: '$pageCount',
+				section: RECOMMENDED_SECTION,
+				info: createInfoBoxRenderer({
+					name: '$pageCount',
+					returnType: 'number',
+					docURL: 'https://docs.n8n.io/code/builtin/http-node-variables/',
+					description: i18n.baseText('codeNodeEditor.completer.$pageCount'),
+				}),
+			},
+			{
+				label: '$response',
+				section: RECOMMENDED_SECTION,
+				info: createInfoBoxRenderer({
+					name: '$response',
+					returnType: 'HTTPResponse',
+					docURL: 'https://docs.n8n.io/code/builtin/http-node-variables/',
+					description: i18n.baseText('codeNodeEditor.completer.$response'),
+				}),
+			},
+			{
+				label: '$request',
+				section: RECOMMENDED_SECTION,
+				info: createInfoBoxRenderer({
+					name: '$request',
+					returnType: 'Object',
+					docURL: 'https://docs.n8n.io/code/builtin/http-node-variables/',
+					description: i18n.baseText('codeNodeEditor.completer.$request'),
+				}),
+			},
 		];
 	}
 
@@ -63,12 +96,22 @@ export function dollarOptions(): Completion[] {
 		return useExternalSecretsStore().isEnterpriseExternalSecretsEnabled
 			? [
 					{
-						label: '$secrets',
-						type: 'keyword',
+						label: '$vars',
+						section: METADATA_SECTION,
+						info: createInfoBoxRenderer({
+							name: '$vars',
+							returnType: 'Object',
+							description: i18n.baseText('codeNodeEditor.completer.$vars'),
+						}),
 					},
 					{
-						label: '$vars',
-						type: 'keyword',
+						label: '$secrets',
+						section: METADATA_SECTION,
+						info: createInfoBoxRenderer({
+							name: '$secrets',
+							returnType: 'Object',
+							description: i18n.baseText('codeNodeEditor.completer.$secrets'),
+						}),
 					},
 				]
 			: [];
@@ -80,12 +123,18 @@ export function dollarOptions(): Completion[] {
 
 	if (receivesNoBinaryData()) SKIP.add('$binary');
 
-	const previousNodesCompletions = autocompletableNodeNames().map((nodeName) => ({
-		label: `$('${escapeMappingString(nodeName)}')`,
-		type: 'keyword',
-		info: i18n.baseText('codeNodeEditor.completer.$()', { interpolate: { nodeName } }),
-		section: PREVIOUS_NODES_SECTION,
-	}));
+	const previousNodesCompletions = autocompletableNodeNames().map((nodeName) => {
+		const label = `$('${escapeMappingString(nodeName)}')`;
+		return {
+			label,
+			info: createInfoBoxRenderer({
+				name: label,
+				returnType: 'Object',
+				description: i18n.baseText('codeNodeEditor.completer.$()', { interpolate: { nodeName } }),
+			}),
+			section: PREVIOUS_NODES_SECTION,
+		};
+	});
 
 	return recommendedCompletions
 		.concat(ROOT_DOLLAR_COMPLETIONS)

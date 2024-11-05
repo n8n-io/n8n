@@ -1,34 +1,20 @@
-import { Config } from '@oclif/core';
+import { nanoid } from 'nanoid';
 
-import { InternalHooks } from '@/InternalHooks';
 import { ImportWorkflowsCommand } from '@/commands/import/workflow';
-import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { setupTestCommand } from '@test-integration/utils/test-command';
 
 import { mockInstance } from '../../shared/mocking';
-import * as testDb from '../shared/testDb';
-import { getAllSharedWorkflows, getAllWorkflows } from '../shared/db/workflows';
+import { getPersonalProject } from '../shared/db/projects';
 import { createMember, createOwner } from '../shared/db/users';
+import { getAllSharedWorkflows, getAllWorkflows } from '../shared/db/workflows';
+import * as testDb from '../shared/test-db';
 
-const oclifConfig = new Config({ root: __dirname });
-
-async function importWorkflow(argv: string[]) {
-	const importer = new ImportWorkflowsCommand(argv, oclifConfig);
-	await importer.init();
-	await importer.run();
-}
-
-beforeAll(async () => {
-	mockInstance(InternalHooks);
-	mockInstance(LoadNodesAndCredentials);
-	await testDb.init();
-});
+mockInstance(LoadNodesAndCredentials);
+const command = setupTestCommand(ImportWorkflowsCommand);
 
 beforeEach(async () => {
 	await testDb.truncate(['Workflow', 'SharedWorkflow', 'User']);
-});
-
-afterAll(async () => {
-	await testDb.terminate();
 });
 
 test('import:workflow should import active workflow and deactivate it', async () => {
@@ -36,13 +22,14 @@ test('import:workflow should import active workflow and deactivate it', async ()
 	// ARRANGE
 	//
 	const owner = await createOwner();
+	const ownerProject = await getPersonalProject(owner);
 
 	//
 	// ACT
 	//
-	await importWorkflow([
+	await command.run([
 		'--separate',
-		'--input=./test/integration/commands/importWorkflows/separate',
+		'--input=./test/integration/commands/import-workflows/separate',
 	]);
 
 	//
@@ -58,8 +45,16 @@ test('import:workflow should import active workflow and deactivate it', async ()
 			expect.objectContaining({ name: 'inactive-workflow', active: false }),
 		],
 		sharings: [
-			expect.objectContaining({ workflowId: '998', userId: owner.id, role: 'workflow:owner' }),
-			expect.objectContaining({ workflowId: '999', userId: owner.id, role: 'workflow:owner' }),
+			expect.objectContaining({
+				workflowId: '998',
+				projectId: ownerProject.id,
+				role: 'workflow:owner',
+			}),
+			expect.objectContaining({
+				workflowId: '999',
+				projectId: ownerProject.id,
+				role: 'workflow:owner',
+			}),
 		],
 	});
 });
@@ -69,12 +64,13 @@ test('import:workflow should import active workflow from combined file and deact
 	// ARRANGE
 	//
 	const owner = await createOwner();
+	const ownerProject = await getPersonalProject(owner);
 
 	//
 	// ACT
 	//
-	await importWorkflow([
-		'--input=./test/integration/commands/importWorkflows/combined/combined.json',
+	await command.run([
+		'--input=./test/integration/commands/import-workflows/combined/combined.json',
 	]);
 
 	//
@@ -90,8 +86,16 @@ test('import:workflow should import active workflow from combined file and deact
 			expect.objectContaining({ name: 'inactive-workflow', active: false }),
 		],
 		sharings: [
-			expect.objectContaining({ workflowId: '998', userId: owner.id, role: 'workflow:owner' }),
-			expect.objectContaining({ workflowId: '999', userId: owner.id, role: 'workflow:owner' }),
+			expect.objectContaining({
+				workflowId: '998',
+				projectId: ownerProject.id,
+				role: 'workflow:owner',
+			}),
+			expect.objectContaining({
+				workflowId: '999',
+				projectId: ownerProject.id,
+				role: 'workflow:owner',
+			}),
 		],
 	});
 });
@@ -101,11 +105,12 @@ test('`import:workflow --userId ...` should fail if the workflow exists already 
 	// ARRANGE
 	//
 	const owner = await createOwner();
+	const ownerProject = await getPersonalProject(owner);
 	const member = await createMember();
 
 	// Import workflow the first time, assigning it to a member.
-	await importWorkflow([
-		'--input=./test/integration/commands/importWorkflows/combined-with-update/original.json',
+	await command.run([
+		'--input=./test/integration/commands/import-workflows/combined-with-update/original.json',
 		`--userId=${owner.id}`,
 	]);
 
@@ -119,7 +124,7 @@ test('`import:workflow --userId ...` should fail if the workflow exists already 
 		sharings: [
 			expect.objectContaining({
 				workflowId: '998',
-				userId: owner.id,
+				projectId: ownerProject.id,
 				role: 'workflow:owner',
 			}),
 		],
@@ -131,12 +136,12 @@ test('`import:workflow --userId ...` should fail if the workflow exists already 
 	// Import the same workflow again, with another name but the same ID, and try
 	// to assign it to the member.
 	await expect(
-		importWorkflow([
-			'--input=./test/integration/commands/importWorkflows/combined-with-update/updated.json',
+		command.run([
+			'--input=./test/integration/commands/import-workflows/combined-with-update/updated.json',
 			`--userId=${member.id}`,
 		]),
 	).rejects.toThrowError(
-		`The credential with id "998" is already owned by the user with the id "${owner.id}". It can't be re-owned by the user with the id "${member.id}"`,
+		`The credential with ID "998" is already owned by the user with the ID "${owner.id}". It can't be re-owned by the user with the ID "${member.id}"`,
 	);
 
 	//
@@ -152,7 +157,7 @@ test('`import:workflow --userId ...` should fail if the workflow exists already 
 		sharings: [
 			expect.objectContaining({
 				workflowId: '998',
-				userId: owner.id,
+				projectId: ownerProject.id,
 				role: 'workflow:owner',
 			}),
 		],
@@ -165,10 +170,11 @@ test("only update the workflow, don't create or update the owner if `--userId` i
 	//
 	await createOwner();
 	const member = await createMember();
+	const memberProject = await getPersonalProject(member);
 
 	// Import workflow the first time, assigning it to a member.
-	await importWorkflow([
-		'--input=./test/integration/commands/importWorkflows/combined-with-update/original.json',
+	await command.run([
+		'--input=./test/integration/commands/import-workflows/combined-with-update/original.json',
 		`--userId=${member.id}`,
 	]);
 
@@ -182,7 +188,7 @@ test("only update the workflow, don't create or update the owner if `--userId` i
 		sharings: [
 			expect.objectContaining({
 				workflowId: '998',
-				userId: member.id,
+				projectId: memberProject.id,
 				role: 'workflow:owner',
 			}),
 		],
@@ -192,8 +198,8 @@ test("only update the workflow, don't create or update the owner if `--userId` i
 	// ACT
 	//
 	// Import the same workflow again, with another name but the same ID.
-	await importWorkflow([
-		'--input=./test/integration/commands/importWorkflows/combined-with-update/updated.json',
+	await command.run([
+		'--input=./test/integration/commands/import-workflows/combined-with-update/updated.json',
 	]);
 
 	//
@@ -209,9 +215,86 @@ test("only update the workflow, don't create or update the owner if `--userId` i
 		sharings: [
 			expect.objectContaining({
 				workflowId: '998',
-				userId: member.id,
+				projectId: memberProject.id,
 				role: 'workflow:owner',
 			}),
 		],
 	});
+});
+
+test('`import:workflow --projectId ...` should fail if the credential already exists and is owned by another project', async () => {
+	//
+	// ARRANGE
+	//
+	const owner = await createOwner();
+	const ownerProject = await getPersonalProject(owner);
+	const member = await createMember();
+	const memberProject = await getPersonalProject(member);
+
+	// Import workflow the first time, assigning it to a member.
+	await command.run([
+		'--input=./test/integration/commands/import-workflows/combined-with-update/original.json',
+		`--userId=${owner.id}`,
+	]);
+
+	const before = {
+		workflows: await getAllWorkflows(),
+		sharings: await getAllSharedWorkflows(),
+	};
+	// Make sure the workflow and sharing have been created.
+	expect(before).toMatchObject({
+		workflows: [expect.objectContaining({ id: '998', name: 'active-workflow' })],
+		sharings: [
+			expect.objectContaining({
+				workflowId: '998',
+				projectId: ownerProject.id,
+				role: 'workflow:owner',
+			}),
+		],
+	});
+
+	//
+	// ACT
+	//
+	// Import the same workflow again, with another name but the same ID, and try
+	// to assign it to the member.
+	await expect(
+		command.run([
+			'--input=./test/integration/commands/import-workflows/combined-with-update/updated.json',
+			`--projectId=${memberProject.id}`,
+		]),
+	).rejects.toThrowError(
+		`The credential with ID "998" is already owned by the user with the ID "${owner.id}". It can't be re-owned by the project with the ID "${memberProject.id}"`,
+	);
+
+	//
+	// ASSERT
+	//
+	const after = {
+		workflows: await getAllWorkflows(),
+		sharings: await getAllSharedWorkflows(),
+	};
+	// Make sure there is no new sharing and that the name DID NOT change.
+	expect(after).toMatchObject({
+		workflows: [expect.objectContaining({ id: '998', name: 'active-workflow' })],
+		sharings: [
+			expect.objectContaining({
+				workflowId: '998',
+				projectId: ownerProject.id,
+				role: 'workflow:owner',
+			}),
+		],
+	});
+});
+
+test('`import:workflow --projectId ... --userId ...` fails explaining that only one of the options can be used at a time', async () => {
+	await expect(
+		command.run([
+			'--input=./test/integration/commands/import-workflows/combined-with-update/updated.json',
+			`--userId=${nanoid()}`,
+			`--projectId=${nanoid()}`,
+		]),
+	).rejects.toThrowError(
+		'You cannot use `--userId` and `--projectId` together. Use one or the other.',
+	);
 });

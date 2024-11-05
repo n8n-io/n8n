@@ -9,7 +9,7 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import { hubspotApiRequest, propertyEvents } from './V1/GenericFunctions';
 
@@ -25,7 +25,7 @@ export class HubspotTrigger implements INodeType {
 			name: 'HubSpot Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'hubspotDeveloperApi',
@@ -175,7 +175,7 @@ export class HubspotTrigger implements INodeType {
 								name: 'property',
 								type: 'options',
 								description:
-									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 								typeOptions: {
 									loadOptionsDependsOn: ['contact.propertyChange'],
 									loadOptionsMethod: 'getContactProperties',
@@ -193,7 +193,7 @@ export class HubspotTrigger implements INodeType {
 								name: 'property',
 								type: 'options',
 								description:
-									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 								typeOptions: {
 									loadOptionsDependsOn: ['company.propertyChange'],
 									loadOptionsMethod: 'getCompanyProperties',
@@ -211,7 +211,7 @@ export class HubspotTrigger implements INodeType {
 								name: 'property',
 								type: 'options',
 								description:
-									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 								typeOptions: {
 									loadOptionsDependsOn: ['deal.propertyChange'],
 									loadOptionsMethod: 'getDealProperties',
@@ -446,6 +446,9 @@ export class HubspotTrigger implements INodeType {
 			}
 			if (subscriptionType.includes('deal')) {
 				bodyData[i].dealId = bodyData[i].objectId;
+			}
+			if (subscriptionType.includes('ticket')) {
+				bodyData[i].ticketId = bodyData[i].objectId;
 			}
 			delete bodyData[i].objectId;
 		}

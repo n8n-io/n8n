@@ -2,7 +2,7 @@
  * Getters
  */
 
-import { getVisibleSelect } from "../utils";
+import { getVisibleSelect } from '../utils';
 
 export function getCredentialSelect(eq = 0) {
 	return cy.getByTestId('node-credentials-select').eq(eq);
@@ -40,6 +40,14 @@ export function getOutputPanelDataContainer() {
 	return getOutputPanel().getByTestId('ndv-data-container');
 }
 
+export function getOutputTableRows() {
+	return getOutputPanelDataContainer().find('table tr');
+}
+
+export function getOutputTableRow(row: number) {
+	return getOutputTableRows().eq(row);
+}
+
 export function getOutputPanelTable() {
 	return getOutputPanelDataContainer().get('table');
 }
@@ -59,7 +67,7 @@ export function setCredentialByName(name: string) {
 
 export function clickCreateNewCredential() {
 	openCredentialSelect();
-	getCreateNewCredentialOption().click();
+	getCreateNewCredentialOption().click({ force: true });
 }
 
 export function clickGetBackToCanvas() {
@@ -75,7 +83,7 @@ export function setParameterInputByName(name: string, value: string) {
 }
 
 export function toggleParameterCheckboxInputByName(name: string) {
-	getParameterInputByName(name).find('input[type="checkbox"]').realClick()
+	getParameterInputByName(name).find('input[type="checkbox"]').realClick();
 }
 
 export function setParameterSelectByContent(name: string, content: string) {

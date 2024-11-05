@@ -14,7 +14,7 @@ type Props = {
 	paneType: 'input' | 'output';
 	mappingEnabled: boolean;
 	draggingPath: string;
-	distanceFromActive: number;
+	distanceFromActive?: number;
 	node: INodeUi | null;
 	search: string;
 };
@@ -22,19 +22,18 @@ type Props = {
 const props = defineProps<Props>();
 
 const isSchemaValueArray = computed(() => Array.isArray(props.schema.value));
-const isSchemaParentTypeArray = computed(() => props.parent?.type === 'array');
-const isFlat = computed(
-	() =>
-		props.level === 0 &&
-		Array.isArray(props.schema.value) &&
-		props.schema.value.every((v) => !Array.isArray(v.value)),
+const schemaArray = computed(
+	() => (isSchemaValueArray.value ? props.schema.value : []) as Schema[],
 );
+const isSchemaParentTypeArray = computed(() => props.parent?.type === 'array');
+
 const key = computed((): string | undefined => {
 	return isSchemaParentTypeArray.value ? `[${props.schema.key}]` : props.schema.key;
 });
 const schemaName = computed(() =>
 	isSchemaParentTypeArray.value ? `${props.schema.type}[${props.schema.key}]` : props.schema.key,
 );
+
 const text = computed(() =>
 	Array.isArray(props.schema.value) ? '' : shorten(props.schema.value, 600, 0),
 );
@@ -44,11 +43,9 @@ const dragged = computed(() => props.draggingPath === props.schema.path);
 const getJsonParameterPath = (path: string): string =>
 	getMappedExpression({
 		nodeName: props.node!.name,
-		distanceFromActive: props.distanceFromActive,
+		distanceFromActive: props.distanceFromActive ?? 1,
 		path,
 	});
-
-const transitionDelay = (i: number) => `${i * 0.033}s`;
 
 const getIconBySchemaType = (type: Schema['type']): string => {
 	switch (type) {
@@ -71,66 +68,78 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 			return 'sun';
 		case 'undefined':
 			return 'ban';
+		default:
+			checkExhaustive(type);
+			return '';
 	}
-
-	checkExhaustive(type);
 };
 </script>
 
 <template>
 	<div :class="$style.item" data-test-id="run-data-schema-item">
-		<div
-			v-if="level > 0 || (level === 0 && !isSchemaValueArray)"
-			:title="schema.type"
-			:class="{
-				[$style.pill]: true,
-				[$style.mappable]: mappingEnabled,
-				[$style.highlight]: dragged,
-			}"
-		>
-			<span
-				:class="$style.label"
-				:data-value="getJsonParameterPath(schema.path)"
-				:data-name="schemaName"
-				:data-path="schema.path"
-				:data-depth="level"
-				data-target="mappable"
+		<div :class="$style.itemContent">
+			<div
+				v-if="level > 0 || (level === 0 && !isSchemaValueArray)"
+				:title="schema.type"
+				:class="{
+					[$style.pill]: true,
+					[$style.mappable]: mappingEnabled,
+					[$style.highlight]: dragged,
+				}"
 			>
-				<font-awesome-icon :icon="getIconBySchemaType(schema.type)" size="sm" />
-				<TextWithHighlights
-					v-if="isSchemaParentTypeArray"
-					:content="props.parent?.key"
-					:search="props.search"
-				/>
-				<TextWithHighlights
-					v-if="key"
-					:class="{ [$style.arrayIndex]: isSchemaParentTypeArray }"
-					:content="key"
-					:search="props.search"
-				/>
+				<span
+					:class="$style.label"
+					:data-value="getJsonParameterPath(schema.path)"
+					:data-name="schemaName"
+					:data-path="schema.path"
+					:data-depth="level"
+					data-target="mappable"
+				>
+					<font-awesome-icon :icon="getIconBySchemaType(schema.type)" size="sm" />
+					<TextWithHighlights
+						v-if="isSchemaParentTypeArray"
+						:content="props.parent?.key"
+						:search="props.search"
+					/>
+					<TextWithHighlights
+						v-if="key"
+						:class="{ [$style.arrayIndex]: isSchemaParentTypeArray }"
+						:content="key"
+						:search="props.search"
+					/>
+				</span>
+			</div>
+
+			<span v-if="text" :class="$style.text" data-test-id="run-data-schema-item-value">
+				<template v-for="(line, index) in text.split('\n')" :key="`line-${index}`">
+					<span v-if="index > 0" :class="$style.newLine">\n</span>
+					<TextWithHighlights :content="line" :search="props.search" />
+				</template>
 			</span>
 		</div>
-		<span v-if="text" :class="$style.text">{{ text }}</span>
-		<input v-if="level > 0 && isSchemaValueArray" :id="subKey" type="checkbox" checked />
+
+		<input v-if="level > 0 && isSchemaValueArray" :id="subKey" type="checkbox" inert checked />
 		<label v-if="level > 0 && isSchemaValueArray" :class="$style.toggle" :for="subKey">
-			<font-awesome-icon icon="angle-up" />
+			<font-awesome-icon icon="angle-right" />
 		</label>
-		<div v-if="isSchemaValueArray" :class="{ [$style.sub]: true, [$style.flat]: isFlat }">
-			<run-data-schema-item
-				v-for="(s, i) in schema.value"
-				:key="`${s.type}-${level}-${i}`"
-				:schema="s"
-				:level="level + 1"
-				:parent="schema"
-				:pane-type="paneType"
-				:sub-key="`${paneType}_${s.type}-${level}-${i}`"
-				:mapping-enabled="mappingEnabled"
-				:dragging-path="draggingPath"
-				:distance-from-active="distanceFromActive"
-				:node="node"
-				:style="{ transitionDelay: transitionDelay(i) }"
-				:search="search"
-			/>
+
+		<div v-if="isSchemaValueArray" :class="$style.sub">
+			<div :class="$style.innerSub">
+				<run-data-schema-item
+					v-for="s in schemaArray"
+					:key="s.key ?? s.type"
+					:schema="s"
+					:level="level + 1"
+					:parent="schema"
+					:pane-type="paneType"
+					:sub-key="`${subKey}-${s.key ?? s.type}`"
+					:mapping-enabled="mappingEnabled"
+					:dragging-path="draggingPath"
+					:distance-from-active="distanceFromActive"
+					:node="node"
+					:search="search"
+				/>
+			</div>
 		</div>
 	</div>
 </template>
@@ -139,69 +148,76 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 @import '@/styles/variables';
 
 .item {
-	display: block;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	line-height: var(--font-line-height-loose);
 	position: relative;
-	transition: all 0.3s $ease-out-expo;
+	column-gap: var(--spacing-2xs);
+
+	+ .item {
+		margin-top: var(--spacing-2xs);
+	}
 
 	.item {
-		padding-top: var(--spacing-2xs);
 		padding-left: var(--spacing-l);
 	}
 
 	input {
-		position: absolute;
-		left: -100%;
+		display: none;
 
 		~ .sub {
-			height: 0;
+			transition:
+				grid-template-rows 0.2s $ease-out-expo,
+				opacity 0.2s $ease-out-expo,
+				transform 0.2s $ease-out-expo;
+			transform: translateX(-8px);
+			opacity: 0;
+			margin-bottom: 0;
 
-			> .item {
-				transform: translateX(-100%);
+			.innerSub {
+				min-height: 0;
 			}
 		}
 
 		&:checked {
 			~ .toggle svg {
-				transform: rotate(180deg);
+				transform: rotate(90deg);
 			}
 
 			~ .sub {
-				height: auto;
-
-				> .item {
-					transform: translateX(0);
-				}
+				transform: translateX(0);
+				opacity: 1;
+				grid-template-rows: 1fr;
 			}
 		}
-	}
-
-	&::after {
-		content: '';
-		display: block;
-		clear: both;
 	}
 }
 
+.itemContent {
+	display: flex;
+	gap: var(--spacing-2xs);
+	align-items: baseline;
+	flex-grow: 1;
+	min-width: 0;
+}
+
 .sub {
-	display: block;
+	display: grid;
+	grid-template-rows: 0fr;
 	overflow: hidden;
-	transition: all 0.2s $ease-out-expo;
-	clear: both;
+	flex-basis: 100%;
+	scroll-margin: 64px;
+}
 
-	&.flat {
-		> .item {
-			padding-left: 0;
-		}
-	}
+.innerSub {
+	display: inline-flex;
+	flex-direction: column;
+	order: -1;
+	min-width: 0;
 
-	&:nth-of-type(1) {
-		> .item:nth-of-type(1) {
-			padding-top: 0;
-
-			.toggle {
-				top: -2px;
-			}
-		}
+	.innerSub > div:first-child {
+		margin-top: var(--spacing-2xs);
 	}
 }
 
@@ -225,26 +241,18 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 }
 
 .pill {
-	float: left;
 	display: inline-flex;
 	height: 24px;
 	padding: 0 var(--spacing-3xs);
 	border: 1px solid var(--color-foreground-light);
-	border-radius: 4px;
+	border-radius: var(--border-radius-base);
 	background-color: var(--color-background-xlight);
 	font-size: var(--font-size-2xs);
 	color: var(--color-text-dark);
+	max-width: 50%;
 
-	span {
-		display: flex;
-		height: 100%;
-		align-items: center;
-
-		svg {
-			path {
-				fill: var(--color-text-light);
-			}
-		}
+	path {
+		fill: var(--color-text-light);
 	}
 
 	&.mappable {
@@ -261,10 +269,25 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 }
 
 .label {
+	display: flex;
+	min-width: 0;
+	align-items: center;
+
 	> span {
+		display: flex;
+		align-items: center;
+
 		margin-left: var(--spacing-3xs);
 		padding-left: var(--spacing-3xs);
 		border-left: 1px solid var(--color-foreground-light);
+
+		overflow: hidden;
+
+		span {
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+		}
 
 		&.arrayIndex {
 			border: 0;
@@ -276,20 +299,24 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 
 .text {
 	display: block;
-	padding-top: var(--spacing-4xs);
-	padding-left: var(--spacing-2xs);
 	font-weight: var(--font-weight-normal);
 	font-size: var(--font-size-2xs);
 	overflow: hidden;
 	word-break: break-word;
+
+	.newLine {
+		font-family: var(--font-family-monospace);
+		color: var(--color-line-break);
+		padding-right: 2px;
+	}
 }
 
 .toggle {
 	display: flex;
 	position: absolute;
-	padding: var(--spacing-2xs);
+	padding: var(--spacing-4xs) var(--spacing-2xs);
 	left: 0;
-	top: 5px;
+	top: 0;
 	justify-content: center;
 	align-items: center;
 	cursor: pointer;
@@ -299,7 +326,7 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 	overflow: hidden;
 
 	svg {
-		transition: all 0.3s $ease-out-expo;
+		transition: transform 0.2s $ease-out-expo;
 	}
 }
 </style>

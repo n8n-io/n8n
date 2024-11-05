@@ -16,7 +16,11 @@ const changelogStream = conventionalChangelog({
 	releaseCount: 1,
 	tagPrefix: 'n8n@',
 	transform: (commit, callback) => {
-		callback(null, commit.header.includes('(no-changelog)') ? undefined : commit);
+		const hasNoChangelogInHeader = commit.header.includes('(no-changelog)');
+		const isBenchmarkScope = commit.scope === 'benchmark';
+
+		// Ignore commits that have 'benchmark' scope or '(no-changelog)' in the header
+		callback(null, hasNoChangelogInHeader || isBenchmarkScope ? undefined : commit);
 	},
 }).on('error', (err) => {
 	console.error(err.stack);

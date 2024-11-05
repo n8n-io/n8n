@@ -10,7 +10,7 @@ export const getCloseBecomeTemplateCreatorCtaButton = () =>
 //#region Actions
 
 export const interceptCtaRequestWithResponse = (becomeCreator: boolean) => {
-	return cy.intercept('GET', `/rest/cta/become-creator`, {
+	return cy.intercept('GET', '/rest/cta/become-creator', {
 		body: becomeCreator,
 	});
 };

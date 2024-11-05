@@ -1,15 +1,29 @@
+<script setup lang="ts">
+import type { BaseTextKey } from '@/plugins/i18n';
+
+type Props = {
+	titleLocaleKey: BaseTextKey;
+	descriptionLocaleKey: BaseTextKey;
+};
+
+withDefaults(defineProps<Props>(), {
+	titleLocaleKey: 'noTagsView.readyToOrganizeYourWorkflows',
+	descriptionLocaleKey: 'noTagsView.withWorkflowTagsYouReFree',
+});
+</script>
+
 <template>
-	<div class="container">
+	<div :class="$style.container">
 		<el-col class="notags" :span="16">
 			<div class="icon">🗄️</div>
 			<div>
 				<div class="mb-s">
 					<n8n-heading size="large">
-						{{ $locale.baseText('noTagsView.readyToOrganizeYourWorkflows') }}
+						{{ $locale.baseText(titleLocaleKey) }}
 					</n8n-heading>
 				</div>
 				<div class="description">
-					{{ $locale.baseText('noTagsView.withWorkflowTagsYouReFree') }}
+					{{ $locale.baseText(descriptionLocaleKey) }}
 				</div>
 			</div>
 			<n8n-button label="Create a tag" size="large" @click="$emit('enableCreate')" />
@@ -17,15 +31,7 @@
 	</div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
-
-export default defineComponent({
-	name: 'NoTagsView',
-});
-</script>
-
-<style lang="scss" scoped>
+<style lang="scss" module>
 $--footer-spacing: 45px;
 
 .container {
@@ -34,7 +40,9 @@ $--footer-spacing: 45px;
 	align-items: center;
 	margin-top: $--footer-spacing;
 }
+</style>
 
+<style lang="scss" scoped>
 .notags {
 	word-break: normal;
 	text-align: center;

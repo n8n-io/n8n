@@ -1,32 +1,21 @@
-import { NodeOperationError, NodeConnectionType } from 'n8n-workflow';
-import type { ConnectionTypes, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
-
-import { Tool } from '@langchain/core/tools';
-import type { BaseMessage } from '@langchain/core/messages';
-import type { InputValues, MemoryVariables, OutputValues } from '@langchain/core/memory';
-import type { ChatResult } from '@langchain/core/outputs';
-import { BaseChatMessageHistory } from '@langchain/core/chat_history';
-import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import type {
-	CallbackManagerForLLMRun,
-	BaseCallbackConfig,
-	Callbacks,
-} from '@langchain/core/callbacks/manager';
-
-import { Embeddings } from '@langchain/core/embeddings';
-import { VectorStore } from '@langchain/core/vectorstores';
+import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
+import type { BaseCallbackConfig, Callbacks } from '@langchain/core/callbacks/manager';
+import type { BaseChatMessageHistory } from '@langchain/core/chat_history';
 import type { Document } from '@langchain/core/documents';
-import { TextSplitter } from 'langchain/text_splitter';
-import { BaseLLM } from '@langchain/core/language_models/llms';
-import { BaseChatMemory } from '@langchain/community/memory/chat_memory';
+import { Embeddings } from '@langchain/core/embeddings';
+import type { InputValues, MemoryVariables, OutputValues } from '@langchain/core/memory';
+import type { BaseMessage } from '@langchain/core/messages';
 import { BaseRetriever } from '@langchain/core/retrievers';
-import type { FormatInstructionsOptions } from '@langchain/core/output_parsers';
-import { BaseOutputParser, OutputParserException } from '@langchain/core/output_parsers';
-import { isObject } from 'lodash';
+import type { Tool } from '@langchain/core/tools';
+import { VectorStore } from '@langchain/core/vectorstores';
+import { TextSplitter } from '@langchain/textsplitters';
 import type { BaseDocumentLoader } from 'langchain/dist/document_loaders/base';
-import { N8nJsonLoader } from './N8nJsonLoader';
+import type { IExecuteFunctions, INodeExecutionData, ISupplyDataFunctions } from 'n8n-workflow';
+import { NodeOperationError, NodeConnectionType } from 'n8n-workflow';
+
+import { logAiEvent, isToolsInstance, isBaseChatMemory, isBaseChatMessageHistory } from './helpers';
 import { N8nBinaryLoader } from './N8nBinaryLoader';
-import { isChatInstance, logAiEvent } from './helpers';
+import { N8nJsonLoader } from './N8nJsonLoader';
 
 const errorsMap: { [key: string]: { message: string; description: string } } = {
 	'You exceeded your current quota, please check your plan and billing details.': {
@@ -38,8 +27,8 @@ const errorsMap: { [key: string]: { message: string; description: string } } = {
 export async function callMethodAsync<T>(
 	this: T,
 	parameters: {
-		executeFunctions: IExecuteFunctions;
-		connectionType: ConnectionTypes;
+		executeFunctions: IExecuteFunctions | ISupplyDataFunctions;
+		connectionType: NodeConnectionType;
 		currentNodeRunIndex: number;
 		method: (...args: any[]) => Promise<unknown>;
 		arguments: unknown[];
@@ -48,10 +37,6 @@ export async function callMethodAsync<T>(
 	try {
 		return await parameters.method.call(this, ...parameters.arguments);
 	} catch (e) {
-		// Langchain checks for OutputParserException to run retry chain
-		// for auto-fixing the output so skip wrapping in this case
-		if (e instanceof OutputParserException) throw e;
-
 		// Propagate errors from sub-nodes
 		if (e.functionality === 'configuration-node') throw e;
 		const connectedNode = parameters.executeFunctions.getNode();
@@ -71,7 +56,9 @@ export async function callMethodAsync<T>(
 			error,
 		);
 		if (error.message) {
-			error.description = error.message;
+			if (!error.description) {
+				error.description = error.message;
+			}
 			throw error;
 		}
 		throw new NodeOperationError(
@@ -86,7 +73,7 @@ export function callMethodSync<T>(
 	this: T,
 	parameters: {
 		executeFunctions: IExecuteFunctions;
-		connectionType: ConnectionTypes;
+		connectionType: NodeConnectionType;
 		currentNodeRunIndex: number;
 		method: (...args: any[]) => T;
 		arguments: unknown[];
@@ -115,11 +102,8 @@ export function callMethodSync<T>(
 export function logWrapper(
 	originalInstance:
 		| Tool
-		| BaseChatModel
 		| BaseChatMemory
-		| BaseLLM
 		| BaseChatMessageHistory
-		| BaseOutputParser
 		| BaseRetriever
 		| Embeddings
 		| Document[]
@@ -129,13 +113,13 @@ export function logWrapper(
 		| VectorStore
 		| N8nBinaryLoader
 		| N8nJsonLoader,
-	executeFunctions: IExecuteFunctions,
+	executeFunctions: IExecuteFunctions | ISupplyDataFunctions,
 ) {
 	return new Proxy(originalInstance, {
 		get: (target, prop) => {
-			let connectionType: ConnectionTypes | undefined;
+			let connectionType: NodeConnectionType | undefined;
 			// ========== BaseChatMemory ==========
-			if (originalInstance instanceof BaseChatMemory) {
+			if (isBaseChatMemory(originalInstance)) {
 				if (prop === 'loadMemoryVariables' && 'loadMemoryVariables' in target) {
 					return async (values: InputValues): Promise<MemoryVariables> => {
 						connectionType = NodeConnectionType.AiMemory;
@@ -187,7 +171,7 @@ export function logWrapper(
 			}
 
 			// ========== BaseChatMessageHistory ==========
-			if (originalInstance instanceof BaseChatMessageHistory) {
+			if (isBaseChatMessageHistory(originalInstance)) {
 				if (prop === 'getMessages' && 'getMessages' in target) {
 					return async (): Promise<BaseMessage[]> => {
 						connectionType = NodeConnectionType.AiMemory;
@@ -206,7 +190,7 @@ export function logWrapper(
 						const payload = { action: 'getMessages', response };
 						executeFunctions.addOutputData(connectionType, index, [[{ json: payload }]]);
 
-						void logAiEvent(executeFunctions, 'n8n.ai.memory.get.messages', { response });
+						logAiEvent(executeFunctions, 'ai-messages-retrieved-from-memory', { response });
 						return response;
 					};
 				} else if (prop === 'addMessage' && 'addMessage' in target) {
@@ -223,109 +207,8 @@ export function logWrapper(
 							arguments: [message],
 						});
 
-						void logAiEvent(executeFunctions, 'n8n.ai.memory.added.message', { message });
+						logAiEvent(executeFunctions, 'ai-message-added-to-memory', { message });
 						executeFunctions.addOutputData(connectionType, index, [[{ json: payload }]]);
-					};
-				}
-			}
-
-			// ========== BaseChatModel ==========
-			if (originalInstance instanceof BaseLLM || isChatInstance(originalInstance)) {
-				if (prop === '_generate' && '_generate' in target) {
-					return async (
-						messages: BaseMessage[] & string[],
-						options: any,
-						runManager?: CallbackManagerForLLMRun,
-					): Promise<ChatResult> => {
-						connectionType = NodeConnectionType.AiLanguageModel;
-						const { index } = executeFunctions.addInputData(connectionType, [
-							[{ json: { messages, options } }],
-						]);
-						try {
-							const response = (await callMethodAsync.call(target, {
-								executeFunctions,
-								connectionType,
-								currentNodeRunIndex: index,
-								method: target[prop],
-								arguments: [
-									messages,
-									{ ...options, signal: executeFunctions.getExecutionCancelSignal() },
-									runManager,
-								],
-							})) as ChatResult;
-							const parsedMessages =
-								typeof messages === 'string'
-									? messages
-									: messages.map((message) => {
-											if (typeof message === 'string') return message;
-											if (typeof message?.toJSON === 'function') return message.toJSON();
-
-											return message;
-									  });
-
-							void logAiEvent(executeFunctions, 'n8n.ai.llm.generated', {
-								messages: parsedMessages,
-								options,
-								response,
-							});
-							executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]]);
-							return response;
-						} catch (error) {
-							// Mute AbortError as they are expected
-							if (error?.name === 'AbortError') return { generations: [] };
-							throw error;
-						}
-					};
-				}
-			}
-
-			// ========== BaseOutputParser ==========
-			if (originalInstance instanceof BaseOutputParser) {
-				if (prop === 'getFormatInstructions' && 'getFormatInstructions' in target) {
-					return (options?: FormatInstructionsOptions): string => {
-						connectionType = NodeConnectionType.AiOutputParser;
-						const { index } = executeFunctions.addInputData(connectionType, [
-							[{ json: { action: 'getFormatInstructions' } }],
-						]);
-
-						// @ts-ignore
-						const response = callMethodSync.call(target, {
-							executeFunctions,
-							connectionType,
-							currentNodeRunIndex: index,
-							method: target[prop],
-							arguments: [options],
-						}) as string;
-
-						executeFunctions.addOutputData(connectionType, index, [
-							[{ json: { action: 'getFormatInstructions', response } }],
-						]);
-						void logAiEvent(executeFunctions, 'n8n.ai.output.parser.get.instructions', {
-							response,
-						});
-						return response;
-					};
-				} else if (prop === 'parse' && 'parse' in target) {
-					return async (text: string | Record<string, unknown>): Promise<unknown> => {
-						connectionType = NodeConnectionType.AiOutputParser;
-						const stringifiedText = isObject(text) ? JSON.stringify(text) : text;
-						const { index } = executeFunctions.addInputData(connectionType, [
-							[{ json: { action: 'parse', text: stringifiedText } }],
-						]);
-
-						const response = (await callMethodAsync.call(target, {
-							executeFunctions,
-							connectionType,
-							currentNodeRunIndex: index,
-							method: target[prop],
-							arguments: [stringifiedText],
-						})) as object;
-
-						void logAiEvent(executeFunctions, 'n8n.ai.output.parser.parsed', { text, response });
-						executeFunctions.addOutputData(connectionType, index, [
-							[{ json: { action: 'parse', response } }],
-						]);
-						return response;
 					};
 				}
 			}
@@ -350,7 +233,7 @@ export function logWrapper(
 							arguments: [query, config],
 						})) as Array<Document<Record<string, any>>>;
 
-						void logAiEvent(executeFunctions, 'n8n.ai.retriever.get.relevant.documents', { query });
+						logAiEvent(executeFunctions, 'ai-documents-retrieved', { query });
 						executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]]);
 						return response;
 					};
@@ -375,7 +258,7 @@ export function logWrapper(
 							arguments: [documents],
 						})) as number[][];
 
-						void logAiEvent(executeFunctions, 'n8n.ai.embeddings.embedded.document');
+						logAiEvent(executeFunctions, 'ai-document-embedded');
 						executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]]);
 						return response;
 					};
@@ -395,7 +278,7 @@ export function logWrapper(
 							method: target[prop],
 							arguments: [query],
 						})) as number[];
-						void logAiEvent(executeFunctions, 'n8n.ai.embeddings.embedded.query');
+						logAiEvent(executeFunctions, 'ai-query-embedded');
 						executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]]);
 						return response;
 					};
@@ -440,7 +323,7 @@ export function logWrapper(
 							arguments: [item, itemIndex],
 						})) as number[];
 
-						void logAiEvent(executeFunctions, 'n8n.ai.document.processed');
+						logAiEvent(executeFunctions, 'ai-document-processed');
 						executeFunctions.addOutputData(connectionType, index, [
 							[{ json: { response }, pairedItem: { item: itemIndex } }],
 						]);
@@ -466,7 +349,7 @@ export function logWrapper(
 							arguments: [text],
 						})) as string[];
 
-						void logAiEvent(executeFunctions, 'n8n.ai.text.splitter.split');
+						logAiEvent(executeFunctions, 'ai-text-split');
 						executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]]);
 						return response;
 					};
@@ -474,7 +357,7 @@ export function logWrapper(
 			}
 
 			// ========== Tool ==========
-			if (originalInstance instanceof Tool) {
+			if (isToolsInstance(originalInstance)) {
 				if (prop === '_call' && '_call' in target) {
 					return async (query: string): Promise<string> => {
 						connectionType = NodeConnectionType.AiTool;
@@ -490,7 +373,7 @@ export function logWrapper(
 							arguments: [query],
 						})) as string;
 
-						void logAiEvent(executeFunctions, 'n8n.ai.tool.called', { query, response });
+						logAiEvent(executeFunctions, 'ai-tool-called', { query, response });
 						executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]]);
 						return response;
 					};
@@ -520,7 +403,7 @@ export function logWrapper(
 							arguments: [query, k, filter, _callbacks],
 						})) as Array<Document<Record<string, any>>>;
 
-						void logAiEvent(executeFunctions, 'n8n.ai.vector.store.searched', { query });
+						logAiEvent(executeFunctions, 'ai-vector-store-searched', { query });
 						executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]]);
 
 						return response;

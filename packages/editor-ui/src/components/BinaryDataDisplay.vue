@@ -1,3 +1,74 @@
+<script setup lang="ts">
+import { computed } from 'vue';
+import type { IBinaryData, IRunData } from 'n8n-workflow';
+import BinaryDataDisplayEmbed from '@/components/BinaryDataDisplayEmbed.vue';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
+
+const props = defineProps<{
+	displayData: IBinaryData;
+	windowVisible: boolean;
+}>();
+
+const emit = defineEmits<{
+	close: [];
+}>();
+
+const nodeHelpers = useNodeHelpers();
+const workflowsStore = useWorkflowsStore();
+
+const workflowRunData = computed<IRunData | null>(() => {
+	const workflowExecution = workflowsStore.getWorkflowExecution;
+	if (workflowExecution === null) {
+		return null;
+	}
+	const executionData = workflowExecution.data;
+	return executionData ? executionData.resultData.runData : null;
+});
+
+const binaryData = computed<IBinaryData | null>(() => {
+	if (
+		typeof props.displayData.node !== 'string' ||
+		typeof props.displayData.key !== 'string' ||
+		typeof props.displayData.runIndex !== 'number' ||
+		typeof props.displayData.index !== 'number' ||
+		typeof props.displayData.outputIndex !== 'number'
+	) {
+		return null;
+	}
+
+	const binaryDataLocal = nodeHelpers.getBinaryData(
+		workflowRunData.value,
+		props.displayData.node,
+		props.displayData.runIndex,
+		props.displayData.outputIndex,
+	);
+
+	if (binaryDataLocal.length === 0) {
+		return null;
+	}
+
+	if (
+		props.displayData.index >= binaryDataLocal.length ||
+		binaryDataLocal[props.displayData.index][props.displayData.key] === undefined
+	) {
+		return null;
+	}
+
+	const binaryDataItem: IBinaryData =
+		binaryDataLocal[props.displayData.index][props.displayData.key];
+
+	return binaryDataItem;
+});
+
+function closeWindow() {
+	// Handle the close externally as the visible parameter is an external prop
+	// and is so not allowed to be changed here.
+	emit('close');
+	return false;
+}
+</script>
+
 <template>
 	<div v-if="windowVisible" :class="['binary-data-window', binaryData?.fileType]">
 		<n8n-button
@@ -17,79 +88,6 @@
 		</div>
 	</div>
 </template>
-
-<script lang="ts">
-import { defineComponent } from 'vue';
-import { mapStores } from 'pinia';
-import type { IBinaryData, IRunData } from 'n8n-workflow';
-
-import BinaryDataDisplayEmbed from '@/components/BinaryDataDisplayEmbed.vue';
-
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useNodeHelpers } from '@/composables/useNodeHelpers';
-
-export default defineComponent({
-	name: 'BinaryDataDisplay',
-
-	components: {
-		BinaryDataDisplayEmbed,
-	},
-	props: [
-		'displayData', // IBinaryData
-		'windowVisible', // boolean
-	],
-	setup() {
-		const nodeHelpers = useNodeHelpers();
-
-		return {
-			nodeHelpers,
-		};
-	},
-	computed: {
-		...mapStores(useWorkflowsStore),
-		binaryData(): IBinaryData | null {
-			const binaryData = this.nodeHelpers.getBinaryData(
-				this.workflowRunData,
-				this.displayData.node,
-				this.displayData.runIndex,
-				this.displayData.outputIndex,
-			);
-
-			if (binaryData.length === 0) {
-				return null;
-			}
-
-			if (
-				this.displayData.index >= binaryData.length ||
-				binaryData[this.displayData.index][this.displayData.key] === undefined
-			) {
-				return null;
-			}
-
-			const binaryDataItem: IBinaryData = binaryData[this.displayData.index][this.displayData.key];
-
-			return binaryDataItem;
-		},
-
-		workflowRunData(): IRunData | null {
-			const workflowExecution = this.workflowsStore.getWorkflowExecution;
-			if (workflowExecution === null) {
-				return null;
-			}
-			const executionData = workflowExecution.data;
-			return executionData ? executionData.resultData.runData : null;
-		},
-	},
-	methods: {
-		closeWindow() {
-			// Handle the close externally as the visible parameter is an external prop
-			// and is so not allowed to be changed here.
-			this.$emit('close');
-			return false;
-		},
-	},
-});
-</script>
 
 <style lang="scss">
 .binary-data-window {

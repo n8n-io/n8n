@@ -1,7 +1,8 @@
 <html>
 	<script>
 		(function messageParent() {
-			window.opener.postMessage('success', '*');
+			const broadcastChannel = new BroadcastChannel('oauth-callback');
+			broadcastChannel.postMessage('success');
 		})();
 	</script>
 

@@ -15,7 +15,7 @@ const BASE_STYLING = {
 	fontFamily: "Menlo, Consolas, 'DejaVu Sans Mono', monospace !important",
 	maxHeight: '400px',
 	tooltip: {
-		maxWidth: '300px',
+		maxWidth: '250px',
 		lineHeight: '1.3em',
 	},
 	diagnosticButton: {
@@ -53,7 +53,7 @@ export const codeNodeEditorTheme = ({
 		},
 		'.cm-content': {
 			fontFamily: BASE_STYLING.fontFamily,
-			caretColor: 'var(--color-code-caret)',
+			caretColor: isReadOnly ? 'transparent' : 'var(--color-code-caret)',
 		},
 		'.cm-cursor, .cm-dropCursor': {
 			borderLeftColor: 'var(--color-code-caret)',
@@ -95,7 +95,7 @@ export const codeNodeEditorTheme = ({
 				: { minHeight: rows && rows !== -1 ? `${Number(rows + 1) * 1.3}em` : 'auto' }),
 		},
 		'.cm-gutter,.cm-content': {
-			minHeight: rows && rows !== -1 ? 'auto' : minHeight ?? 'calc(35vh - var(--spacing-2xl))',
+			minHeight: rows && rows !== -1 ? 'auto' : (minHeight ?? 'calc(35vh - var(--spacing-2xl))'),
 		},
 		'.cm-diagnosticAction': {
 			backgroundColor: BASE_STYLING.diagnosticButton.backgroundColor,

@@ -1,17 +1,3 @@
-<template>
-	<div :class="$style.sqlEditor">
-		<div ref="sqlEditor" :class="$style.codemirror" data-test-id="sql-editor-container"></div>
-		<slot name="suffix" />
-		<InlineExpressionEditorOutput
-			v-if="!fullscreen"
-			:segments="segments"
-			:is-read-only="isReadOnly"
-			:visible="hasFocus"
-			:hovering-item-number="hoveringItemNumber"
-		/>
-	</div>
-</template>
-
 <script setup lang="ts">
 import InlineExpressionEditorOutput from '@/components/InlineExpressionEditor/InlineExpressionEditorOutput.vue';
 import { codeNodeEditorEventBus } from '@/event-bus';
@@ -25,7 +11,6 @@ import {
 	tabKeyMap,
 } from '@/plugins/codemirror/keymap';
 import { n8nAutocompletion } from '@/plugins/codemirror/n8nLang';
-import { useNDVStore } from '@/stores/ndv.store';
 import { ifNotIn } from '@codemirror/autocomplete';
 import { history, toggleComment } from '@codemirror/commands';
 import { LanguageSupport, bracketMatching, foldGutter, indentOnInput } from '@codemirror/language';
@@ -49,8 +34,9 @@ import {
 	StandardSQL,
 	keywordCompletionSource,
 } from '@n8n/codemirror-lang-sql';
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, toRaw, watch } from 'vue';
 import { codeNodeEditorTheme } from '../CodeNodeEditor/theme';
+import { dropInExpressionEditor, mappingDropCursor } from '@/plugins/codemirror/dragAndDrop';
 
 const SQL_DIALECTS = {
 	StandardSQL,
@@ -79,7 +65,7 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const emit = defineEmits<{
-	(event: 'update:model-value', value: string): void;
+	'update:model-value': [value: string];
 }>();
 
 const sqlEditor = ref<HTMLElement>();
@@ -126,6 +112,7 @@ const extensions = computed(() => {
 			foldGutter(),
 			dropCursor(),
 			bracketMatching(),
+			mappingDropCursor(),
 		]);
 	}
 	return baseExtensions;
@@ -143,11 +130,6 @@ const {
 	skipSegments: ['Statement', 'CompositeIdentifier', 'Parens', 'Brackets'],
 	isReadOnly: props.isReadOnly,
 });
-const ndvStore = useNDVStore();
-
-const hoveringItemNumber = computed(() => {
-	return ndvStore.hoveringItemNumber;
-});
 
 watch(
 	() => props.modelValue,
@@ -161,7 +143,7 @@ watch(segments, () => {
 });
 
 onMounted(() => {
-	codeNodeEditorEventBus.on('error-line-number', highlightLine);
+	codeNodeEditorEventBus.on('highlightLine', highlightLine);
 
 	if (props.fullscreen) {
 		focus();
@@ -169,8 +151,7 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
-	codeNodeEditorEventBus.off('error-line-number', highlightLine);
-	emit('update:model-value', readEditorValue());
+	codeNodeEditorEventBus.off('highlightLine', highlightLine);
 });
 
 function line(lineNumber: number): Line | null {
@@ -199,7 +180,37 @@ function highlightLine(lineNumber: number | 'final') {
 		selection: { anchor: lineToHighlight.from },
 	});
 }
+
+async function onDrop(value: string, event: MouseEvent) {
+	if (!editor.value) return;
+
+	await dropInExpressionEditor(toRaw(editor.value), event, value);
+}
 </script>
+
+<template>
+	<div :class="$style.sqlEditor">
+		<DraggableTarget type="mapping" :disabled="isReadOnly" @drop="onDrop">
+			<template #default="{ activeDrop, droppable }">
+				<div
+					ref="sqlEditor"
+					:class="[
+						$style.codemirror,
+						{ [$style.activeDrop]: activeDrop, [$style.droppable]: droppable },
+					]"
+					data-test-id="sql-editor-container"
+				></div>
+			</template>
+		</DraggableTarget>
+		<slot name="suffix" />
+		<InlineExpressionEditorOutput
+			v-if="!fullscreen"
+			:segments="segments"
+			:is-read-only="isReadOnly"
+			:visible="hasFocus"
+		/>
+	</div>
+</template>
 
 <style module lang="scss">
 .sqlEditor {
@@ -209,5 +220,22 @@ function highlightLine(lineNumber: number | 'final') {
 
 .codemirror {
 	height: 100%;
+}
+
+.codemirror.droppable {
+	:global(.cm-editor) {
+		border-color: var(--color-ndv-droppable-parameter);
+		border-style: dashed;
+		border-width: 1.5px;
+	}
+}
+
+.codemirror.activeDrop {
+	:global(.cm-editor) {
+		border-color: var(--color-success);
+		border-style: solid;
+		cursor: grabbing;
+		border-width: 1px;
+	}
 }
 </style>

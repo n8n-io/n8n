@@ -1,28 +1,8 @@
-<template>
-	<ElCheckbox
-		v-bind="$props"
-		ref="checkbox"
-		:class="['n8n-checkbox', $style.n8nCheckbox]"
-		:disabled="disabled"
-		:indeterminate="indeterminate"
-		:model-value="modelValue"
-		@update:model-value="onUpdateModelValue"
-	>
-		<slot></slot>
-		<N8nInputLabel
-			v-if="label"
-			:label="label"
-			:tooltip-text="tooltipText"
-			:bold="false"
-			:size="labelSize"
-			@click.prevent="onLabelClick"
-		/>
-	</ElCheckbox>
-</template>
-
 <script lang="ts" setup>
-import { ref } from 'vue';
 import { ElCheckbox } from 'element-plus';
+import type { CheckboxValueType } from 'element-plus';
+import { ref } from 'vue';
+
 import N8nInputLabel from '../N8nInputLabel';
 
 const LABEL_SIZE = ['small', 'medium'] as const;
@@ -44,8 +24,11 @@ withDefaults(defineProps<CheckboxProps>(), {
 	labelSize: 'medium',
 });
 
-const $emit = defineEmits(['update:modelValue']);
-const onUpdateModelValue = (value: boolean) => $emit('update:modelValue', value);
+const emit = defineEmits<{
+	'update:modelValue': [value: CheckboxValueType];
+}>();
+
+const onUpdateModelValue = (value: CheckboxValueType) => emit('update:modelValue', value);
 
 const checkbox = ref<InstanceType<typeof ElCheckbox>>();
 const onLabelClick = () => {
@@ -53,6 +36,28 @@ const onLabelClick = () => {
 	(checkbox.value.$el as HTMLElement).click();
 };
 </script>
+
+<template>
+	<ElCheckbox
+		v-bind="$props"
+		ref="checkbox"
+		:class="['n8n-checkbox', $style.n8nCheckbox]"
+		:disabled="disabled"
+		:indeterminate="indeterminate"
+		:model-value="modelValue"
+		@update:model-value="onUpdateModelValue"
+	>
+		<slot></slot>
+		<N8nInputLabel
+			v-if="label"
+			:label="label"
+			:tooltip-text="tooltipText"
+			:bold="false"
+			:size="labelSize"
+			@click.prevent="onLabelClick"
+		/>
+	</ElCheckbox>
+</template>
 
 <style lang="scss" module>
 .n8nCheckbox {

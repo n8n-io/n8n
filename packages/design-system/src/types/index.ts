@@ -8,3 +8,4 @@ export * from './menu';
 export * from './select';
 export * from './user';
 export * from './keyboardshortcut';
+export * from './node-creator-node';

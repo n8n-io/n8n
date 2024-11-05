@@ -1,94 +1,14 @@
-<template>
-	<div :class="['n8n-menu-item', $style.item]">
-		<ElSubMenu
-			v-if="item.children?.length"
-			:id="item.id"
-			:class="{
-				[$style.submenu]: true,
-				[$style.compact]: compact,
-				[$style.active]: mode === 'router' && isItemActive(item),
-			}"
-			:index="item.id"
-			teleported
-			:popper-class="submenuPopperClass"
-		>
-			<template #title>
-				<N8nIcon
-					v-if="item.icon"
-					:class="$style.icon"
-					:icon="item.icon"
-					:size="item.customIconSize || 'large'"
-				/>
-				<span :class="$style.label">{{ item.label }}</span>
-			</template>
-			<n8n-menu-item
-				v-for="child in availableChildren"
-				:key="child.id"
-				:item="child"
-				:compact="false"
-				:tooltip-delay="tooltipDelay"
-				:popper-class="popperClass"
-				:mode="mode"
-				:active-tab="activeTab"
-				:handle-select="handleSelect"
-			/>
-		</ElSubMenu>
-		<N8nTooltip
-			v-else
-			placement="right"
-			:content="item.label"
-			:disabled="!compact"
-			:show-after="tooltipDelay"
-		>
-			<ConditionalRouterLink v-bind="item.route ?? item.link">
-				<ElMenuItem
-					:id="item.id"
-					:class="{
-						[$style.menuItem]: true,
-						[$style.item]: true,
-						[$style.disableActiveStyle]: !isItemActive(item),
-						[$style.active]: isItemActive(item),
-						[$style.compact]: compact,
-					}"
-					data-test-id="menu-item"
-					:index="item.id"
-					@click="handleSelect?.(item)"
-				>
-					<N8nIcon
-						v-if="item.icon"
-						:class="$style.icon"
-						:icon="item.icon"
-						:size="item.customIconSize || 'large'"
-					/>
-					<span :class="$style.label">{{ item.label }}</span>
-					<N8nTooltip
-						v-if="item.secondaryIcon"
-						:placement="item.secondaryIcon?.tooltip?.placement || 'right'"
-						:content="item.secondaryIcon?.tooltip?.content"
-						:disabled="compact || !item.secondaryIcon?.tooltip?.content"
-						:show-after="tooltipDelay"
-					>
-						<N8nIcon
-							:class="$style.secondaryIcon"
-							:icon="item.secondaryIcon.name"
-							:size="item.secondaryIcon.size || 'small'"
-						/>
-					</N8nTooltip>
-				</ElMenuItem>
-			</ConditionalRouterLink>
-		</N8nTooltip>
-	</div>
-</template>
-
 <script lang="ts" setup>
+import { ElSubMenu, ElMenuItem } from 'element-plus';
 import { computed, useCssModule } from 'vue';
 import { useRoute } from 'vue-router';
-import { ElSubMenu, ElMenuItem } from 'element-plus';
-import N8nTooltip from '../N8nTooltip';
-import N8nIcon from '../N8nIcon';
-import ConditionalRouterLink from '../ConditionalRouterLink';
-import type { IMenuItem } from '../../types';
+
 import { doesMenuItemMatchCurrentRoute } from './routerUtil';
+import type { IMenuItem } from '../../types';
+import { getInitials } from '../../utils/labelUtil';
+import ConditionalRouterLink from '../ConditionalRouterLink';
+import N8nIcon from '../N8nIcon';
+import N8nTooltip from '../N8nTooltip';
 
 interface MenuItemProps {
 	item: IMenuItem;
@@ -142,6 +62,96 @@ const isItemActive = (item: IMenuItem): boolean => {
 	return isActive(item) || hasActiveChild;
 };
 </script>
+
+<template>
+	<div :class="['n8n-menu-item', $style.item]">
+		<ElSubMenu
+			v-if="item.children?.length"
+			:id="item.id"
+			:class="{
+				[$style.submenu]: true,
+				[$style.compact]: compact,
+				[$style.active]: mode === 'router' && isItemActive(item),
+			}"
+			:index="item.id"
+			teleported
+			:popper-class="submenuPopperClass"
+		>
+			<template #title>
+				<N8nIcon
+					v-if="item.icon"
+					:class="$style.icon"
+					:icon="item.icon"
+					:size="item.customIconSize || 'large'"
+				/>
+				<span v-if="!compact" :class="$style.label">{{ item.label }}</span>
+				<span v-if="!item.icon && compact" :class="[$style.label, $style.compactLabel]">{{
+					getInitials(item.label)
+				}}</span>
+			</template>
+			<N8nMenuItem
+				v-for="child in availableChildren"
+				:key="child.id"
+				:item="child"
+				:compact="false"
+				:tooltip-delay="tooltipDelay"
+				:popper-class="popperClass"
+				:mode="mode"
+				:active-tab="activeTab"
+				:handle-select="handleSelect"
+			/>
+		</ElSubMenu>
+		<N8nTooltip
+			v-else
+			placement="right"
+			:content="compact ? item.label : ''"
+			:disabled="!compact"
+			:show-after="tooltipDelay"
+		>
+			<ConditionalRouterLink v-bind="item.route ?? item.link">
+				<ElMenuItem
+					:id="item.id"
+					:class="{
+						[$style.menuItem]: true,
+						[$style.item]: true,
+						[$style.disableActiveStyle]: !isItemActive(item),
+						[$style.active]: isItemActive(item),
+						[$style.compact]: compact,
+					}"
+					data-test-id="menu-item"
+					:index="item.id"
+					:disabled="item.disabled"
+					@click="handleSelect?.(item)"
+				>
+					<N8nIcon
+						v-if="item.icon"
+						:class="$style.icon"
+						:icon="item.icon"
+						:size="item.customIconSize || 'large'"
+					/>
+					<span v-if="!compact" :class="$style.label">{{ item.label }}</span>
+					<span v-if="!item.icon && compact" :class="[$style.label, $style.compactLabel]">{{
+						getInitials(item.label)
+					}}</span>
+					<N8nTooltip
+						v-if="item.secondaryIcon"
+						:placement="item.secondaryIcon?.tooltip?.placement || 'right'"
+						:content="item.secondaryIcon?.tooltip?.content"
+						:disabled="compact || !item.secondaryIcon?.tooltip?.content"
+						:show-after="tooltipDelay"
+					>
+						<N8nIcon
+							:class="$style.secondaryIcon"
+							:icon="item.secondaryIcon.name"
+							:size="item.secondaryIcon.size || 'small'"
+						/>
+					</N8nTooltip>
+					<N8nSpinner v-if="item.isLoading" :class="$style.loading" size="small" />
+				</ElMenuItem>
+			</ConditionalRouterLink>
+		</N8nTooltip>
+	</div>
+</template>
 
 <style module lang="scss">
 // Element menu-item overrides
@@ -237,12 +247,21 @@ const isItemActive = (item: IMenuItem): boolean => {
 	margin: 0 !important;
 	border-radius: var(--border-radius-base) !important;
 	overflow: hidden;
+
+	&.compact {
+		padding: var(--spacing-2xs) 0 !important;
+		justify-content: center;
+	}
 }
 
 .icon {
 	min-width: var(--spacing-s);
 	margin-right: var(--spacing-xs);
 	text-align: center;
+}
+
+.loading {
+	margin-left: var(--spacing-xs);
 }
 
 .secondaryIcon {
@@ -259,6 +278,10 @@ const isItemActive = (item: IMenuItem): boolean => {
 	user-select: none;
 }
 
+.compactLabel {
+	text-overflow: unset;
+}
+
 .item + .item {
 	margin-top: 8px !important;
 }
@@ -270,9 +293,6 @@ const isItemActive = (item: IMenuItem): boolean => {
 		visibility: visible !important;
 		width: initial !important;
 		height: initial !important;
-	}
-	.label {
-		display: none;
 	}
 	.secondaryIcon {
 		display: none;

@@ -4,7 +4,7 @@ import { computed, ref } from 'vue';
 import { STORES } from '@/constants';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useStorage } from '@/composables/useStorage';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { getBecomeCreatorCta } from '@/api/ctas';
 
 const LOCAL_STORAGE_KEY = 'N8N_BECOME_TEMPLATE_CREATOR_CTA_DISMISSED_AT';
@@ -42,7 +42,7 @@ export const useBecomeTemplateCreatorStore = defineStore(STORES.BECOME_TEMPLATE_
 	};
 
 	const fetchBecomeCreatorCta = async () => {
-		const becomeCreatorCta = await getBecomeCreatorCta(rootStore.getRestApiContext);
+		const becomeCreatorCta = await getBecomeCreatorCta(rootStore.restApiContext);
 
 		ctaMeetsCriteria.value = becomeCreatorCta;
 	};

@@ -1,7 +1,7 @@
 import { Container } from 'typedi';
 
-import { InternalHooks } from '@/InternalHooks';
-import { LdapService } from '@/Ldap/ldap.service';
+import type { User } from '@/databases/entities/user';
+import { EventService } from '@/events/event.service';
 import {
 	createLdapUserOnLocalDb,
 	getUserByEmail,
@@ -10,8 +10,8 @@ import {
 	mapLdapAttributesToUser,
 	createLdapAuthIdentity,
 	updateLdapUserOnLocalDb,
-} from '@/Ldap/helpers';
-import type { User } from '@db/entities/User';
+} from '@/ldap/helpers.ee';
+import { LdapService } from '@/ldap/ldap.service.ee';
 
 export const handleLdapLogin = async (
 	loginId: string,
@@ -50,9 +50,10 @@ export const handleLdapLogin = async (
 			await updateLdapUserOnLocalDb(identity, ldapAttributesValues);
 		} else {
 			const user = await createLdapUserOnLocalDb(ldapAttributesValues, ldapId);
-			void Container.get(InternalHooks).onUserSignup(user, {
-				user_type: 'ldap',
-				was_disabled_ldap_user: false,
+			Container.get(EventService).emit('user-signed-up', {
+				user,
+				userType: 'ldap',
+				wasDisabledLdapUser: false,
 			});
 			return user;
 		}

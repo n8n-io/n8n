@@ -59,6 +59,7 @@
 	--color-background-dark: var(--prim-gray-820);
 	--color-background-medium: var(--prim-gray-120);
 	--color-background-base: var(--prim-gray-40);
+	--color-background-light-base: var(--prim-gray-25);
 	--color-background-light: var(--prim-gray-10);
 	--color-background-xlight: var(--prim-gray-0);
 
@@ -67,7 +68,6 @@
 	// LangChain
 	--color-lm-chat-messages-background: var(--color-background-base);
 	--color-lm-chat-bot-background: var(--prim-gray-0);
-	--color-lm-chat-bot-color: var(--color-text-dark);
 	--color-lm-chat-user-background: var(--prim-color-alt-a);
 	--color-lm-chat-user-color: var(--color-text-xlight);
 
@@ -78,9 +78,21 @@
 	--color-canvas-background-l: 99%;
 	--color-canvas-dot: var(--prim-gray-120);
 	--color-canvas-read-only-line: var(--prim-gray-30);
-	--color-canvas-node-background: var(--prim-gray-0);
-	--color-canvas-node-pinned-border: var(--color-secondary);
 	--color-canvas-selected: var(--prim-gray-70);
+	--color-canvas-selected-transparent: hsla(var(--prim-gray-h), 47%, 30%, 0.1);
+	--color-canvas-label-background: hsla(
+		var(--color-canvas-background-h),
+		var(--color-canvas-background-s),
+		var(--color-canvas-background-l),
+		0.85
+	);
+
+	// Nodes
+	--color-node-background: var(--color-background-xlight);
+	--color-node-executing-background: var(--color-primary-tint-3);
+	--color-node-executing-other-background: var(--color-primary-tint-3);
+	--color-node-pinned-border: var(--color-secondary);
+	--color-node-running-border: var(--color-primary);
 	--node-type-main-color: var(--prim-gray-490);
 
 	// Sticky
@@ -105,7 +117,57 @@
 	--color-sticky-background-7: var(--prim-gray-10);
 	--color-sticky-border-7: var(--prim-gray-120);
 
-	// Expressions and autocomplete
+	// AI Assistant
+	--color-askAssistant-button-background: var(--color-background-xlight);
+	--color-askAssistant-button-background-hover: var(--color-background-xlight);
+	--color-askAssistant-button-background-active: var(--color-background-xlight);
+
+	--color-assistant-highlight-1: #5b60e8;
+	--color-assistant-highlight-2: #aa7bec;
+	--color-assistant-highlight-3: #ec7b8e;
+	--color-assistant-highlight-gradient: linear-gradient(
+		105deg,
+		var(--color-assistant-highlight-1) 0%,
+		var(--color-assistant-highlight-2) 50%,
+		var(--color-assistant-highlight-3) 100%
+	);
+	--color-assistant-highlight-reverse: linear-gradient(
+		105deg,
+		var(--color-assistant-highlight-3) 0%,
+		var(--color-assistant-highlight-2) 50%,
+		var(--color-assistant-highlight-1) 100%
+	);
+	--color-assistant-inner-highlight-hover: linear-gradient(
+		108.82deg,
+		rgba(236, 123, 142, 0.12) 0%,
+		rgba(170, 123, 236, 0.12) 50.5%,
+		rgba(91, 96, 232, 0.12) 100%
+	);
+	--color-assistant-inner-highlight-active: linear-gradient(
+		108.82deg,
+		rgba(236, 123, 142, 0.25) 0%,
+		rgba(170, 123, 236, 0.25) 50.5%,
+		rgba(91, 96, 232, 0.25) 100%
+	);
+
+	// NodeIcon
+	--color-node-icon-gray: var(--prim-gray-420);
+	--color-node-icon-black: var(--prim-gray-780);
+	--color-node-icon-blue: #3a42e9;
+	--color-node-icon-light-blue: #5fabf7;
+	--color-node-icon-dark-blue: #353f6e;
+	--color-node-icon-orange: #ff965a;
+	--color-node-icon-orange-red: #ff6d5a;
+	--color-node-icon-pink-red: #ea4b71;
+	--color-node-icon-red: var(--prim-color-alt-c);
+	--color-node-icon-light-green: #31c4ab;
+	--color-node-icon-green: #108e49;
+	--color-node-icon-dark-green: #157562;
+	--color-node-icon-azure: #54b8c9;
+	--color-node-icon-purple: #553399;
+	--color-node-icon-crimson: #772244;
+
+	// Expressions, autocomplete, infobox
 	--color-valid-resolvable-foreground: var(--prim-color-alt-a);
 	--color-valid-resolvable-background: var(--prim-color-alt-a-tint-500);
 	--color-invalid-resolvable-foreground: var(--prim-color-alt-c);
@@ -113,9 +175,12 @@
 	--color-pending-resolvable-foreground: var(--color-text-base);
 	--color-pending-resolvable-background: var(--prim-gray-40);
 	--color-expression-editor-background: var(--prim-gray-0);
+	--color-expression-editor-modal-background: var(--color-background-base);
 	--color-expression-syntax-example: var(--prim-gray-40);
 	--color-autocomplete-item-selected: var(--color-secondary);
 	--color-autocomplete-section-header-border: var(--color-foreground-light);
+	--color-infobox-background: var(--color-background-light-base);
+	--color-infobox-examples-border-color: var(--color-foreground-light);
 
 	// Code
 	--color-code-tags-string: var(--prim-color-alt-f);
@@ -143,6 +208,8 @@
 	--color-code-gutterBackground: var(--prim-gray-0);
 	--color-code-gutterForeground: var(--prim-gray-320);
 	--color-code-tags-comment: var(--prim-gray-420);
+	--color-line-break: var(--prim-gray-320);
+	--color-code-line-break: var(--prim-color-secondary-tint-200);
 
 	// Variables
 	--color-variables-usage-font: var(--color-success);
@@ -153,8 +220,8 @@
 	--color-button-primary-border: var(--prim-color-primary);
 	--color-button-primary-background: var(--prim-color-primary);
 	--color-button-primary-hover-active-border: var(--prim-color-primary-shade-100);
-	--color-button-primary-hover-active-background: var(--prim-color-primary-shade-100);
-	--color-button-primary-focus-outline: var(--prim-color-primary-tint-200);
+	--color-button-primary-hover-active-focus-background: var(--prim-color-primary-shade-100);
+	--color-button-primary-focus-outline: var(--prim-color-primary-alpha-035);
 	--color-button-primary-disabled-font: var(--prim-gray-0-alpha-075);
 	--color-button-primary-disabled-border: var(--prim-color-primary-tint-200);
 	--color-button-primary-disabled-background: var(--prim-color-primary-tint-200);
@@ -163,10 +230,10 @@
 	--color-button-secondary-font: var(--prim-gray-670);
 	--color-button-secondary-border: var(--prim-gray-320);
 	--color-button-secondary-background: var(--prim-gray-0);
-	--color-button-secondary-hover-active-focus-font: var(--prim-color-primary);
-	--color-button-secondary-hover-active-border: var(--prim-color-primary);
+	--color-button-secondary-hover-active-focus-font: var(--prim-color-primary-shade-100);
+	--color-button-secondary-hover-active-focus-border: var(--prim-color-primary);
 	--color-button-secondary-hover-background: var(--prim-color-primary-tint-300);
-	--color-button-secondary-active-background: var(--prim-color-primary-tint-250);
+	--color-button-secondary-active-focus-background: var(--prim-color-primary-tint-270);
 	--color-button-secondary-focus-outline: var(--prim-gray-120);
 	--color-button-secondary-disabled-font: var(--prim-gray-200);
 	--color-button-secondary-disabled-border: var(--prim-gray-200);
@@ -184,7 +251,8 @@
 
 	// Node Creator Button
 	--color-button-node-creator-border-font: var(--prim-gray-540);
-	--color-button-node-creator-hover-border-font: var(--prim-color-primary);
+	--color-button-node-creator-hover-font: var(--prim-color-primary);
+	--color-button-node-creator-hover-border: var(--prim-color-primary);
 	--color-button-node-creator-background: var(--prim-gray-0);
 
 	// Table
@@ -197,13 +265,18 @@
 	// Notification
 	--color-notification-background: var(--color-background-xlight);
 
-	// Execution card
+	// Execution
+	--execution-card-border-new: var(--prim-gray-200);
 	--execution-card-border-success: var(--prim-color-alt-a-tint-300);
 	--execution-card-border-error: var(--prim-color-alt-c-tint-250);
 	--execution-card-border-waiting: var(--prim-color-secondary-tint-300);
 	--execution-card-border-running: var(--prim-color-alt-b-tint-250);
 	--execution-card-border-unknown: var(--prim-gray-120);
 	--execution-card-background-hover: var(--color-foreground-light);
+	--execution-card-text-waiting: var(--color-secondary);
+	--execution-selector-background: var(--color-background-dark);
+	--execution-selector-text: var(--color-text-xlight);
+	--execution-select-all-text: var(--color-danger);
 
 	// NDV
 	--color-run-data-background: var(--color-background-base);
@@ -211,7 +284,6 @@
 	--color-ndv-droppable-parameter-background: var(--prim-color-secondary-alpha-010);
 	--color-ndv-droppable-parameter-active-background: var(--prim-color-alt-a-alpha-015);
 	--color-ndv-back-font: var(--prim-gray-0);
-	--color-ndv-output-error-message: var(--prim-color-alt-c);
 
 	// Notice
 	--color-notice-warning-border: var(--color-warning-tint-1);
@@ -221,8 +293,8 @@
 	// Callout
 	--color-callout-info-border: var(--color-foreground-base);
 	--color-callout-info-background: var(--color-foreground-xlight);
-	--color-callout-info-font: var(--color-info);
-	--color-callout-info-icon: var(--color-info);
+	--color-callout-info-font: var(--color-text-base);
+	--color-callout-info-icon: var(--color-text-light);
 	--color-callout-success-border: var(--color-success-light-2);
 	--color-callout-success-background: var(--color-success-tint-2);
 	--color-callout-success-font: var(--color-success);
@@ -249,9 +321,9 @@
 	// Avatar
 	--color-avatar-font: var(--color-text-xlight);
 
-	// Value Survey
-	--color-value-survey-background: var(--prim-gray-740);
-	--color-value-survey-font: var(--prim-gray-0);
+	// NPS Survey
+	--color-nps-survey-background: var(--prim-gray-740);
+	--color-nps-survey-font: var(--prim-gray-0);
 
 	// Action Dropdown
 	--color-action-dropdown-item-active-background: var(--color-background-base);
@@ -275,6 +347,178 @@
 	--color-mfa-recovery-code-background: var(--color-background-base);
 	--color-mfa-recovery-code-color: var(--prim-gray-490);
 	--color-mfa-lose-access-text-color: var(--color-danger);
+
+	// Text highlight
+	--color-text-highlight-background: var(--prim-color-alt-d-shade-150);
+
+	// AI
+	--node-type-background-l: 95%;
+	--node-type-supplemental-label-color-h: 235;
+	--node-type-supplemental-label-color-s: 28%;
+	--node-type-supplemental-label-color-l: 40%;
+	--node-type-supplemental-color-h: 235;
+	--node-type-supplemental-color-s: 28%;
+	--node-type-supplemental-color-l: 60%;
+	--node-type-supplemental-label-color: hsl(
+		var(--node-type-supplemental-label-color-h),
+		var(--node-type-supplemental-label-color-s),
+		var(--node-type-supplemental-label-color-l)
+	);
+	--node-type-supplemental-icon: var(--color-foreground-dark);
+	--node-type-supplemental-color: hsl(
+		var(--node-type-supplemental-color-h),
+		var(--node-type-supplemental-color-s),
+		var(--node-type-supplemental-color-l)
+	);
+	--node-type-supplemental-background: hsl(
+		var(--node-type-supplemental-color-h),
+		var(--node-type-supplemental-color-s),
+		var(--node-type-background-l)
+	);
+	--node-type-supplemental-connector-color: var(--color-foreground-dark);
+	--node-type-ai_chain-color-h: var(--node-type-supplemental-color-h);
+	--node-type-ai_chain-color-s: var(--node-type-supplemental-color-s);
+	--node-type-ai_chain-color-l: var(--node-type-supplemental-color-l);
+	--node-type-ai_chain-color: hsl(
+		var(--node-type-ai_chain-color-h),
+		var(--node-type-ai_chain-color-s),
+		var(--node-type-ai_chain-color-l)
+	);
+	--node-type-chain-background: hsl(
+		var(--node-type-ai_chain-color-h),
+		var(--node-type-ai_chain-color-s),
+		var(--node-type-background-l)
+	);
+	--node-type-ai_document-color-h: var(--node-type-supplemental-color-h);
+	--node-type-ai_document-color-s: var(--node-type-supplemental-color-s);
+	--node-type-ai_document-color-l: var(--node-type-supplemental-color-l);
+	--node-type-ai_document-color: hsl(
+		var(--node-type-ai_document-color-h),
+		var(--node-type-ai_document-color-s),
+		var(--node-type-ai_document-color-l)
+	);
+	--node-type-ai_document-background: hsl(
+		var(--node-type-ai_document-color-h),
+		var(--node-type-ai_document-color-s),
+		var(--node-type-background-l)
+	);
+	--node-type-ai_embedding-color-h: var(--node-type-supplemental-color-h);
+	--node-type-ai_embedding-color-s: var(--node-type-supplemental-color-s);
+	--node-type-ai_embedding-color-l: var(--node-type-supplemental-color-l);
+	--node-type-ai_embedding-color: hsl(
+		var(--node-type-ai_embedding-color-h),
+		var(--node-type-ai_embedding-color-s),
+		var(--node-type-ai_embedding-color-l)
+	);
+	--node-type-ai_embedding-background: hsl(
+		var(--node-type-ai_embedding-color-h),
+		var(--node-type-ai_embedding-color-s),
+		var(--node-type-background-l)
+	);
+	--node-type-ai_languageModel-color-h: var(--node-type-supplemental-color-h);
+	--node-type-ai_languageModel-color-s: var(--node-type-supplemental-color-s);
+	--node-type-ai_languageModel-color-l: var(--node-type-supplemental-color-l);
+	--node-type-ai_languageModel-color: hsl(
+		var(--node-type-ai_languageModel-color-h),
+		var(--node-type-ai_languageModel-color-s),
+		var(--node-type-ai_languageModel-color-l)
+	);
+	--node-type-ai_languageModel-background: hsl(
+		var(--node-type-ai_languageModel-color-h),
+		var(--node-type-ai_languageModel-color-s),
+		var(--node-type-background-l)
+	);
+	--node-type-ai_memory-color-h: var(--node-type-supplemental-color-h);
+	--node-type-ai_memory-color-s: var(--node-type-supplemental-color-s);
+	--node-type-ai_memory-color-l: var(--node-type-supplemental-color-l);
+	--node-type-ai_memory-color: hsl(
+		var(--node-type-ai_memory-color-h),
+		var(--node-type-ai_memory-color-s),
+		var(--node-type-ai_memory-color-l)
+	);
+	--node-type-ai_memory-background: hsl(
+		var(--node-type-ai_memory-color-h),
+		var(--node-type-ai_memory-color-s),
+		var(--node-type-background-l)
+	);
+	--node-type-ai_outputParser-color-h: var(--node-type-supplemental-color-h);
+	--node-type-ai_outputParser-color-s: var(--node-type-supplemental-color-s);
+	--node-type-ai_outputParser-color-l: var(--node-type-supplemental-color-l);
+	--node-type-ai_outputParser-color: hsl(
+		var(--node-type-ai_outputParser-color-h),
+		var(--node-type-ai_outputParser-color-s),
+		var(--node-type-ai_outputParser-color-l)
+	);
+	--node-type-ai_outputParser-background: hsl(
+		var(--node-type-ai_outputParser-color-h),
+		var(--node-type-ai_outputParser-color-s),
+		var(--node-type-background-l)
+	);
+	--node-type-ai_tool-color-h: var(--node-type-supplemental-color-h);
+	--node-type-ai_tool-color-s: var(--node-type-supplemental-color-s);
+	--node-type-ai_tool-color-l: var(--node-type-supplemental-color-l);
+	--node-type-ai_tool-color: hsl(
+		var(--node-type-ai_tool-color-h),
+		var(--node-type-ai_tool-color-s),
+		var(--node-type-ai_tool-color-l)
+	);
+	--node-type-ai_tool-background: hsl(
+		var(--node-type-ai_tool-color-h),
+		var(--node-type-ai_tool-color-s),
+		var(--node-type-background-l)
+	);
+	--node-type-ai_retriever-color-h: var(--node-type-supplemental-color-h);
+	--node-type-ai_retriever-color-s: var(--node-type-supplemental-color-s);
+	--node-type-ai_retriever-color-l: var(--node-type-supplemental-color-l);
+	--node-type-ai_retriever-color: hsl(
+		var(--node-type-ai_retriever-color-h),
+		var(--node-type-ai_retriever-color-s),
+		var(--node-type-ai_retriever-color-l)
+	);
+	--node-type-ai_retriever-background: hsl(
+		var(--node-type-ai_retriever-color-h),
+		var(--node-type-ai_retriever-color-s),
+		var(--node-type-background-l)
+	);
+	--node-type-ai_textSplitter-color-h: var(--node-type-supplemental-color-h);
+	--node-type-ai_textSplitter-color-s: var(--node-type-supplemental-color-s);
+	--node-type-ai_textSplitter-color-l: var(--node-type-supplemental-color-l);
+	--node-type-ai_textSplitter-color: hsl(
+		var(--node-type-ai_textSplitter-color-h),
+		var(--node-type-ai_textSplitter-color-s),
+		var(--node-type-ai_textSplitter-color-l)
+	);
+	--node-type-ai_textSplitter-background: hsl(
+		var(--node-type-ai_textSplitter-color-h),
+		var(--node-type-ai_textSplitter-color-s),
+		var(--node-type-background-l)
+	);
+	--node-type-ai_vectorRetriever-color-h: var(--node-type-supplemental-color-h);
+	--node-type-ai_vectorRetriever-color-s: var(--node-type-supplemental-color-s);
+	--node-type-ai_vectorRetriever-color-l: var(--node-type-supplemental-color-l);
+	--node-type-ai_vectorRetriever-color: hsl(
+		var(--node-type-ai_vectorRetriever-color-h),
+		var(--node-type-ai_vectorRetriever-color-s),
+		var(--node-type-ai_vectorRetriever-color-l)
+	);
+	--node-type-ai_vectorRetriever-background: hsl(
+		var(--node-type-ai_vectorRetriever-color-h),
+		var(--node-type-ai_vectorRetriever-color-s),
+		var(--node-type-background-l)
+	);
+	--node-type-ai_vectorStore-color-h: var(--node-type-supplemental-color-h);
+	--node-type-ai_vectorStore-color-s: var(--node-type-supplemental-color-s);
+	--node-type-ai_vectorStore-color-l: var(--node-type-supplemental-color-l);
+	--node-type-ai_vectorStore-color: hsl(
+		var(--node-type-ai_vectorStore-color-h),
+		var(--node-type-ai_vectorStore-color-s),
+		var(--node-type-ai_vectorStore-color-l)
+	);
+	--node-type-ai_vectorStore-background: hsl(
+		var(--node-type-ai_vectorStore-color-h),
+		var(--node-type-ai_vectorStore-color-s),
+		var(--node-type-background-l)
+	);
 
 	// Various
 	--color-avatar-accent-1: var(--prim-gray-120);

@@ -5,7 +5,7 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import type { DateTimeUnit, DurationUnit } from 'luxon';
 import { DateTime } from 'luxon';
@@ -29,8 +29,8 @@ export class DateTimeV2 implements INodeType {
 				name: 'Date & Time',
 				color: '#408000',
 			},
-			inputs: ['main'],
-			outputs: ['main'],
+			inputs: [NodeConnectionType.Main],
+			outputs: [NodeConnectionType.Main],
 			description: 'Manipulate date and time values',
 			properties: [
 				{

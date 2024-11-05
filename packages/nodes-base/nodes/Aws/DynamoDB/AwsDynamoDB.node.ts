@@ -1,12 +1,13 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import type {
-	IExecuteFunctions,
-	IDataObject,
-	ILoadOptionsFunctions,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-	NodeParameterValue,
+import {
+	type IExecuteFunctions,
+	type IDataObject,
+	type ILoadOptionsFunctions,
+	type INodeExecutionData,
+	type INodeType,
+	type INodeTypeDescription,
+	type NodeParameterValue,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
 import { awsApiRequest, awsApiRequestAllItems } from './GenericFunctions';
@@ -42,8 +43,8 @@ export class AwsDynamoDB implements INodeType {
 		defaults: {
 			name: 'AWS DynamoDB',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'aws',

@@ -1,166 +1,3 @@
-<template>
-	<div :class="[$style.dataDisplay, { [$style.highlight]: highlight }]">
-		<table v-if="tableData.columns && tableData.columns.length === 0" :class="$style.table">
-			<tr>
-				<th :class="$style.emptyCell"></th>
-				<th :class="$style.tableRightMargin"></th>
-			</tr>
-			<tr
-				v-for="(row, index1) in tableData.data"
-				:key="index1"
-				:class="{ [$style.hoveringRow]: isHoveringRow(index1) }"
-			>
-				<td
-					:data-row="index1"
-					:data-col="0"
-					@mouseenter="onMouseEnterCell"
-					@mouseleave="onMouseLeaveCell"
-				>
-					<n8n-info-tip>{{ $locale.baseText('runData.emptyItemHint') }}</n8n-info-tip>
-				</td>
-				<td :class="$style.tableRightMargin"></td>
-			</tr>
-		</table>
-		<table v-else :class="$style.table">
-			<thead>
-				<tr>
-					<th v-for="(column, i) in tableData.columns || []" :key="column">
-						<n8n-tooltip placement="bottom-start" :disabled="!mappingEnabled" :show-after="1000">
-							<template #content>
-								<div>
-									<img src="/static/data-mapping-gif.gif" />
-									{{ $locale.baseText('dataMapping.dragColumnToFieldHint') }}
-								</div>
-							</template>
-							<Draggable
-								type="mapping"
-								:data="getExpression(column)"
-								:disabled="!mappingEnabled"
-								@dragstart="onDragStart"
-								@dragend="(column) => onDragEnd(column, 'column')"
-							>
-								<template #preview="{ canDrop }">
-									<MappingPill :html="shorten(column, 16, 2)" :can-drop="canDrop" />
-								</template>
-								<template #default="{ isDragging }">
-									<div
-										:class="{
-											[$style.header]: true,
-											[$style.draggableHeader]: mappingEnabled,
-											[$style.activeHeader]:
-												(i === activeColumn || forceShowGrip) && mappingEnabled,
-											[$style.draggingHeader]: isDragging,
-										}"
-									>
-										<TextWithHighlights
-											:content="getValueToRender(column || '')"
-											:search="search"
-										/>
-										<div :class="$style.dragButton">
-											<font-awesome-icon icon="grip-vertical" />
-										</div>
-									</div>
-								</template>
-							</Draggable>
-						</n8n-tooltip>
-					</th>
-					<th v-if="columnLimitExceeded" :class="$style.header">
-						<n8n-tooltip placement="bottom-end">
-							<template #content>
-								<div>
-									<i18n-t tag="span" keypath="dataMapping.tableView.tableColumnsExceeded.tooltip">
-										<template #columnLimit>{{ columnLimit }}</template>
-										<template #link>
-											<a @click="switchToJsonView">{{
-												$locale.baseText('dataMapping.tableView.tableColumnsExceeded.tooltip.link')
-											}}</a>
-										</template>
-									</i18n-t>
-								</div>
-							</template>
-							<span>
-								<font-awesome-icon
-									:class="$style['warningTooltip']"
-									icon="exclamation-triangle"
-								></font-awesome-icon>
-								{{ $locale.baseText('dataMapping.tableView.tableColumnsExceeded') }}
-							</span>
-						</n8n-tooltip>
-					</th>
-					<th :class="$style.tableRightMargin"></th>
-				</tr>
-			</thead>
-			<Draggable
-				ref="draggable"
-				tag="tbody"
-				type="mapping"
-				target-data-key="mappable"
-				:disabled="!mappingEnabled"
-				@dragstart="onCellDragStart"
-				@dragend="onCellDragEnd"
-			>
-				<template #preview="{ canDrop, el }">
-					<MappingPill
-						:html="shorten(getPathNameFromTarget(el) || '', 16, 2)"
-						:can-drop="canDrop"
-					/>
-				</template>
-				<tr
-					v-for="(row, index1) in tableData.data"
-					:key="index1"
-					:class="{ [$style.hoveringRow]: isHoveringRow(index1) }"
-					:data-test-id="isHoveringRow(index1) ? 'hovering-item' : undefined"
-				>
-					<td
-						v-for="(data, index2) in row"
-						:key="index2"
-						:data-row="index1"
-						:data-col="index2"
-						:class="hasJsonInColumn(index2) ? $style.minColWidth : $style.limitColWidth"
-						@mouseenter="onMouseEnterCell"
-						@mouseleave="onMouseLeaveCell"
-					>
-						<TextWithHighlights
-							v-if="isSimple(data)"
-							:content="getValueToRender(data)"
-							:search="search"
-							:class="{ [$style.value]: true, [$style.empty]: isEmpty(data) }"
-						/>
-						<n8n-tree v-else :node-class="$style.nodeClass" :value="data">
-							<template #label="{ label, path }">
-								<span
-									:class="{
-										[$style.hoveringKey]: mappingEnabled && isHovering(path, index2),
-										[$style.draggingKey]: isDraggingKey(path, index2),
-										[$style.dataKey]: true,
-										[$style.mappable]: mappingEnabled,
-									}"
-									data-target="mappable"
-									:data-name="getCellPathName(path, index2)"
-									:data-value="getCellExpression(path, index2)"
-									:data-depth="path.length"
-									@mouseenter="() => onMouseEnterKey(path, index2)"
-									@mouseleave="onMouseLeaveKey"
-									>{{ label || $locale.baseText('runData.unnamedField') }}</span
-								>
-							</template>
-							<template #value="{ value }">
-								<TextWithHighlights
-									:content="getValueToRender(value)"
-									:search="search"
-									:class="{ [$style.nestedValue]: true, [$style.empty]: isEmpty(value) }"
-								/>
-							</template>
-						</n8n-tree>
-					</td>
-					<td v-if="columnLimitExceeded"></td>
-					<td :class="$style.tableRightMargin"></td>
-				</tr>
-			</Draggable>
-		</table>
-	</div>
-</template>
-
 <script lang="ts">
 import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
@@ -187,15 +24,18 @@ export default defineComponent({
 	props: {
 		node: {
 			type: Object as PropType<INodeUi>,
+			required: true,
 		},
 		inputData: {
 			type: Array as PropType<INodeExecutionData[]>,
+			required: true,
 		},
 		mappingEnabled: {
 			type: Boolean,
 		},
 		distanceFromActive: {
 			type: Number,
+			required: true,
 		},
 		runIndex: {
 			type: Number,
@@ -208,6 +48,7 @@ export default defineComponent({
 		},
 		pageOffset: {
 			type: Number,
+			required: true,
 		},
 		hasDefaultHoverState: {
 			type: Boolean,
@@ -237,7 +78,7 @@ export default defineComponent({
 	},
 	mounted() {
 		if (this.tableData && this.tableData.columns && this.$refs.draggable) {
-			const tbody = (this.$refs.draggable as DraggableRef).$refs.wrapper;
+			const tbody = (this.$refs.draggable as DraggableRef).$refs.wrapper as HTMLElement;
 			if (tbody) {
 				this.$emit('mounted', {
 					avgRowHeight: tbody.offsetHeight / this.tableData.data.length,
@@ -280,7 +121,7 @@ export default defineComponent({
 				return true;
 			}
 			const itemNodeId = getPairedItemId(
-				this.node.name,
+				this.node?.name ?? '',
 				this.runIndex || 0,
 				this.outputIndex || 0,
 				itemIndex,
@@ -341,7 +182,7 @@ export default defineComponent({
 				path: [column],
 			});
 		},
-		getPathNameFromTarget(el: HTMLElement) {
+		getPathNameFromTarget(el?: HTMLElement) {
 			if (!el) {
 				return '';
 			}
@@ -384,7 +225,7 @@ export default defineComponent({
 				return this.$locale.baseText('runData.emptyString');
 			}
 			if (typeof value === 'string') {
-				return value.replaceAll('\n', '\\n');
+				return value;
 			}
 			if (Array.isArray(value) && value.length === 0) {
 				return this.$locale.baseText('runData.emptyArray');
@@ -398,7 +239,7 @@ export default defineComponent({
 			if (value === true || value === false || typeof value === 'number') {
 				return value.toString();
 			}
-			return value;
+			return JSON.stringify(value);
 		},
 		onDragStart() {
 			this.draggedColumn = true;
@@ -546,6 +387,173 @@ export default defineComponent({
 });
 </script>
 
+<template>
+	<div :class="[$style.dataDisplay, { [$style.highlight]: highlight }]">
+		<table v-if="tableData.columns && tableData.columns.length === 0" :class="$style.table">
+			<thead>
+				<tr>
+					<th :class="$style.emptyCell"></th>
+					<th :class="$style.tableRightMargin"></th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr
+					v-for="(_, index1) in tableData.data"
+					:key="index1"
+					:class="{ [$style.hoveringRow]: isHoveringRow(index1) }"
+				>
+					<td
+						:data-row="index1"
+						:data-col="0"
+						@mouseenter="onMouseEnterCell"
+						@mouseleave="onMouseLeaveCell"
+					>
+						<n8n-info-tip>{{ $locale.baseText('runData.emptyItemHint') }}</n8n-info-tip>
+					</td>
+					<td :class="$style.tableRightMargin"></td>
+				</tr>
+			</tbody>
+		</table>
+		<table v-else :class="$style.table">
+			<thead>
+				<tr>
+					<th v-for="(column, i) in tableData.columns || []" :key="column">
+						<n8n-tooltip placement="bottom-start" :disabled="!mappingEnabled" :show-after="1000">
+							<template #content>
+								<div>
+									<img src="/static/data-mapping-gif.gif" />
+									{{ $locale.baseText('dataMapping.dragColumnToFieldHint') }}
+								</div>
+							</template>
+							<Draggable
+								type="mapping"
+								:data="getExpression(column)"
+								:disabled="!mappingEnabled"
+								@dragstart="onDragStart"
+								@dragend="(column) => onDragEnd(column?.textContent ?? '', 'column')"
+							>
+								<template #preview="{ canDrop }">
+									<MappingPill :html="shorten(column, 16, 2)" :can-drop="canDrop" />
+								</template>
+								<template #default="{ isDragging }">
+									<div
+										:class="{
+											[$style.header]: true,
+											[$style.draggableHeader]: mappingEnabled,
+											[$style.activeHeader]:
+												(i === activeColumn || forceShowGrip) && mappingEnabled,
+											[$style.draggingHeader]: isDragging,
+										}"
+									>
+										<TextWithHighlights
+											:content="getValueToRender(column || '')"
+											:search="search"
+										/>
+										<div :class="$style.dragButton">
+											<font-awesome-icon icon="grip-vertical" />
+										</div>
+									</div>
+								</template>
+							</Draggable>
+						</n8n-tooltip>
+					</th>
+					<th v-if="columnLimitExceeded" :class="$style.header">
+						<n8n-tooltip placement="bottom-end">
+							<template #content>
+								<div>
+									<i18n-t tag="span" keypath="dataMapping.tableView.tableColumnsExceeded.tooltip">
+										<template #columnLimit>{{ columnLimit }}</template>
+										<template #link>
+											<a @click="switchToJsonView">{{
+												$locale.baseText('dataMapping.tableView.tableColumnsExceeded.tooltip.link')
+											}}</a>
+										</template>
+									</i18n-t>
+								</div>
+							</template>
+							<span>
+								<font-awesome-icon
+									:class="$style['warningTooltip']"
+									icon="exclamation-triangle"
+								></font-awesome-icon>
+								{{ $locale.baseText('dataMapping.tableView.tableColumnsExceeded') }}
+							</span>
+						</n8n-tooltip>
+					</th>
+					<th :class="$style.tableRightMargin"></th>
+				</tr>
+			</thead>
+			<Draggable
+				ref="draggable"
+				tag="tbody"
+				type="mapping"
+				target-data-key="mappable"
+				:disabled="!mappingEnabled"
+				@dragstart="onCellDragStart"
+				@dragend="onCellDragEnd"
+			>
+				<template #preview="{ canDrop, el }">
+					<MappingPill
+						:html="shorten(getPathNameFromTarget(el) || '', 16, 2)"
+						:can-drop="canDrop"
+					/>
+				</template>
+				<tr
+					v-for="(row, index1) in tableData.data"
+					:key="index1"
+					:class="{ [$style.hoveringRow]: isHoveringRow(index1) }"
+					:data-test-id="isHoveringRow(index1) ? 'hovering-item' : undefined"
+				>
+					<td
+						v-for="(data, index2) in row"
+						:key="index2"
+						:data-row="index1"
+						:data-col="index2"
+						:class="hasJsonInColumn(index2) ? $style.minColWidth : $style.limitColWidth"
+						@mouseenter="onMouseEnterCell"
+						@mouseleave="onMouseLeaveCell"
+					>
+						<TextWithHighlights
+							v-if="isSimple(data)"
+							:content="getValueToRender(data)"
+							:search="search"
+							:class="{ [$style.value]: true, [$style.empty]: isEmpty(data) }"
+						/>
+						<n8n-tree v-else :node-class="$style.nodeClass" :value="data">
+							<template #label="{ label, path }">
+								<span
+									:class="{
+										[$style.hoveringKey]: mappingEnabled && isHovering(path, index2),
+										[$style.draggingKey]: isDraggingKey(path, index2),
+										[$style.dataKey]: true,
+										[$style.mappable]: mappingEnabled,
+									}"
+									data-target="mappable"
+									:data-name="getCellPathName(path, index2)"
+									:data-value="getCellExpression(path, index2)"
+									:data-depth="path.length"
+									@mouseenter="() => onMouseEnterKey(path, index2)"
+									@mouseleave="onMouseLeaveKey"
+									>{{ label || $locale.baseText('runData.unnamedField') }}</span
+								>
+							</template>
+							<template #value="{ value }">
+								<TextWithHighlights
+									:content="getValueToRender(value)"
+									:search="search"
+									:class="{ [$style.nestedValue]: true, [$style.empty]: isEmpty(value) }"
+								/>
+							</template>
+						</n8n-tree>
+					</td>
+					<td v-if="columnLimitExceeded"></td>
+					<td :class="$style.tableRightMargin"></td>
+				</tr>
+			</Draggable>
+		</table>
+	</div>
+</template>
+
 <style lang="scss" module>
 .dataDisplay {
 	position: absolute;
@@ -584,6 +592,7 @@ export default defineComponent({
 		border-left: var(--border-base);
 		overflow-wrap: break-word;
 		white-space: pre-wrap;
+		vertical-align: top;
 	}
 
 	td:first-child,

@@ -1,15 +1,14 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
-
 import merge from 'lodash/merge';
 
-import type {
-	IExecuteFunctions,
-	IDataObject,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeBaseDescription,
-	INodeTypeDescription,
-	IPairedItemData,
+import {
+	type IExecuteFunctions,
+	type IDataObject,
+	type INodeExecutionData,
+	type INodeType,
+	type INodeTypeBaseDescription,
+	type INodeTypeDescription,
+	type IPairedItemData,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
 import type {
@@ -17,7 +16,8 @@ import type {
 	MatchFieldsJoinMode,
 	MatchFieldsOptions,
 	MatchFieldsOutput,
-} from './GenericFunctions';
+} from './interfaces';
+
 import {
 	addSourceField,
 	addSuffixToEntriesKeys,
@@ -26,9 +26,9 @@ import {
 	findMatches,
 	mergeMatched,
 	selectMergeMethod,
-} from './GenericFunctions';
+} from './utils';
 
-import { optionsDescription } from './OptionsDescription';
+import { optionsDescription } from './descriptions';
 import { preparePairedItemDataArray } from '@utils/utilities';
 
 export class MergeV2 implements INodeType {
@@ -41,9 +41,9 @@ export class MergeV2 implements INodeType {
 			defaults: {
 				name: 'Merge',
 			},
-			// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
-			inputs: ['main', 'main'],
-			outputs: ['main'],
+
+			inputs: [NodeConnectionType.Main, NodeConnectionType.Main],
+			outputs: [NodeConnectionType.Main],
 			inputNames: ['Input 1', 'Input 2'],
 			// If mode is chooseBranch data from both branches is required
 			// to continue, else data from any input suffices
@@ -368,7 +368,7 @@ export class MergeV2 implements INodeType {
 				let input1 = this.getInputData(0);
 				let input2 = this.getInputData(1);
 
-				if (input1.length === 0 || input2.length === 0) {
+				if (input1?.length === 0 || input2?.length === 0) {
 					// If data of any input is missing, return the data of
 					// the input that contains data
 					return [[...input1, ...input2]];
@@ -474,19 +474,19 @@ export class MergeV2 implements INodeType {
 					if (!input1) return [returnData];
 				}
 
-				if (input1.length === 0 || input2.length === 0) {
-					if (!input1.length && joinMode === 'keepNonMatches' && outputDataFrom === 'input1')
+				if (input1?.length === 0 || input2?.length === 0) {
+					if (!input1?.length && joinMode === 'keepNonMatches' && outputDataFrom === 'input1')
 						return [returnData];
-					if (!input2.length && joinMode === 'keepNonMatches' && outputDataFrom === 'input2')
+					if (!input2?.length && joinMode === 'keepNonMatches' && outputDataFrom === 'input2')
 						return [returnData];
 
 					if (joinMode === 'keepMatches') {
 						// Stop the execution
 						return [[]];
-					} else if (joinMode === 'enrichInput1' && input1.length === 0) {
+					} else if (joinMode === 'enrichInput1' && input1?.length === 0) {
 						// No data to enrich so stop
 						return [[]];
-					} else if (joinMode === 'enrichInput2' && input2.length === 0) {
+					} else if (joinMode === 'enrichInput2' && input2?.length === 0) {
 						// No data to enrich so stop
 						return [[]];
 					} else {

@@ -1,102 +1,102 @@
-<template>
-	<div>
-		<img v-if="filePath" :class="$style.credIcon" :src="filePath" />
-		<NodeIcon v-else-if="relevantNode" :node-type="relevantNode" :size="28" />
-		<span v-else :class="$style.fallback"></span>
-	</div>
-</template>
-
-<script lang="ts">
-import { defineComponent } from 'vue';
-import { mapStores } from 'pinia';
-
+<script setup lang="ts">
 import { useCredentialsStore } from '@/stores/credentials.store';
-import { useRootStore } from '@/stores/n8nRoot.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import type { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
-import NodeIcon from '@/components/NodeIcon.vue';
+import { useRootStore } from '@/stores/root.store';
+import { useUIStore } from '@/stores/ui.store';
+import { getThemedValue } from '@/utils/nodeTypesUtils';
+import { N8nNodeIcon } from 'n8n-design-system';
+import type { ICredentialType } from 'n8n-workflow';
+import { computed } from 'vue';
 
-export default defineComponent({
-	components: {
-		NodeIcon,
-	},
-	props: {
-		credentialTypeName: {
-			type: String,
-		},
-	},
-	computed: {
-		...mapStores(useCredentialsStore, useNodeTypesStore, useRootStore),
-		credentialWithIcon(): ICredentialType | null {
-			return this.credentialTypeName ? this.getCredentialWithIcon(this.credentialTypeName) : null;
-		},
+const props = defineProps<{
+	credentialTypeName: string | null;
+}>();
 
-		filePath(): string | null {
-			const iconUrl = this.credentialWithIcon?.iconUrl;
-			if (!iconUrl) {
-				return null;
-			}
-			return this.rootStore.getBaseUrl + iconUrl;
-		},
+const credentialsStore = useCredentialsStore();
+const rootStore = useRootStore();
+const uiStore = useUIStore();
+const nodeTypesStore = useNodeTypesStore();
 
-		relevantNode(): INodeTypeDescription | null {
-			if (this.credentialWithIcon?.icon?.startsWith('node:')) {
-				const nodeType = this.credentialWithIcon.icon.replace('node:', '');
-				return this.nodeTypesStore.getNodeType(nodeType);
-			}
-			if (!this.credentialTypeName) {
-				return null;
-			}
+const credentialWithIcon = computed(() => getCredentialWithIcon(props.credentialTypeName));
 
-			const nodesWithAccess = this.credentialsStore.getNodesWithAccess(this.credentialTypeName);
-			if (nodesWithAccess.length) {
-				return nodesWithAccess[0];
-			}
-
-			return null;
-		},
-	},
-	methods: {
-		getCredentialWithIcon(name: string | null): ICredentialType | null {
-			if (!name) {
-				return null;
-			}
-
-			const type = this.credentialsStore.getCredentialTypeByName(name);
-
-			if (!type) {
-				return null;
-			}
-
-			if (type.icon || type.iconUrl) {
-				return type;
-			}
-
-			if (type.extends) {
-				let parentCred = null;
-				type.extends.forEach((name) => {
-					parentCred = this.getCredentialWithIcon(name);
-					if (parentCred !== null) return;
-				});
-				return parentCred;
-			}
-
-			return null;
-		},
-	},
+const nodeBasedIconUrl = computed(() => {
+	const icon = getThemedValue(credentialWithIcon.value?.icon);
+	if (!icon?.startsWith('node:')) return null;
+	return nodeTypesStore.getNodeType(icon.replace('node:', ''))?.iconUrl;
 });
+
+const iconSource = computed(() => {
+	const themeIconUrl = getThemedValue(
+		nodeBasedIconUrl.value ?? credentialWithIcon.value?.iconUrl,
+		uiStore.appliedTheme,
+	);
+
+	if (!themeIconUrl) {
+		return undefined;
+	}
+
+	return rootStore.baseUrl + themeIconUrl;
+});
+
+const iconType = computed(() => {
+	if (iconSource.value) return 'file';
+	else if (iconName.value) return 'icon';
+	return 'unknown';
+});
+
+const iconName = computed(() => {
+	const icon = getThemedValue(credentialWithIcon.value?.icon, uiStore.appliedTheme);
+	if (!icon || !icon?.startsWith('fa:')) return undefined;
+	return icon.replace('fa:', '');
+});
+
+const iconColor = computed(() => {
+	const { iconColor: color } = credentialWithIcon.value ?? {};
+	if (!color) return undefined;
+	return `var(--color-node-icon-${color})`;
+});
+
+function getCredentialWithIcon(name: string | null): ICredentialType | null {
+	if (!name) {
+		return null;
+	}
+
+	const type = credentialsStore.getCredentialTypeByName(name);
+
+	if (!type) {
+		return null;
+	}
+
+	if (type.icon ?? type.iconUrl) {
+		return type;
+	}
+
+	if (type.extends) {
+		let parentCred = null;
+		type.extends.forEach((credType) => {
+			parentCred = getCredentialWithIcon(credType);
+			if (parentCred !== null) return;
+		});
+		return parentCred;
+	}
+
+	return null;
+}
 </script>
 
-<style lang="scss" module>
-.credIcon {
-	height: 26px;
-}
+<template>
+	<N8nNodeIcon
+		:class="$style.icon"
+		:type="iconType"
+		:size="26"
+		:src="iconSource"
+		:name="iconName"
+		:color="iconColor"
+	/>
+</template>
 
-.fallback {
-	height: 28px;
-	width: 28px;
-	display: flex;
-	border-radius: 50%;
-	background-color: var(--color-foreground-base);
+<style lang="scss" module>
+.icon {
+	--node-icon-color: var(--color-foreground-dark);
 }
 </style>

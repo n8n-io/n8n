@@ -1,27 +1,24 @@
 import { BasePage } from '../base';
 import { WorkflowsPage } from '../workflows';
 
-const workflowsPage = new WorkflowsPage();
-
 export class MainSidebar extends BasePage {
 	getters = {
-		menuItem: (menuLabel: string) =>
-			cy.getByTestId('menu-item').filter(`:contains("${menuLabel}")`),
-		settings: () => this.getters.menuItem('Settings'),
-		templates: () => this.getters.menuItem('Templates'),
-		workflows: () => this.getters.menuItem('Workflows'),
-		credentials: () => this.getters.menuItem('Credentials'),
-		executions: () => this.getters.menuItem('Executions'),
-		adminPanel: () => this.getters.menuItem('Admin Panel'),
-		userMenu: () => cy.get('div[class="action-dropdown-container"]'),
+		menuItem: (id: string) => cy.getByTestId('menu-item').get('#' + id),
+		settings: () => this.getters.menuItem('settings'),
+		settingsBack: () => cy.getByTestId('settings-back'),
+		templates: () => this.getters.menuItem('templates'),
+		workflows: () => this.getters.menuItem('workflows'),
+		credentials: () => this.getters.menuItem('credentials'),
+		executions: () => this.getters.menuItem('executions'),
+		adminPanel: () => this.getters.menuItem('cloud-admin'),
+		userMenu: () => cy.getByTestId('user-menu'),
 		logo: () => cy.getByTestId('n8n-logo'),
 	};
+
 	actions = {
 		goToSettings: () => {
-			this.getters.settings().should('be.visible');
-			// We must wait before ElementUI menu is done with its animations
-			cy.get('[data-old-overflow]').should('not.exist');
-			this.getters.settings().click();
+			this.getters.userMenu().click();
+			cy.getByTestId('user-menu-item-settings').should('be.visible').click();
 		},
 		goToCredentials: () => {
 			this.getters.credentials().should('be.visible');
@@ -31,8 +28,8 @@ export class MainSidebar extends BasePage {
 		openUserMenu: () => {
 			this.getters.userMenu().click();
 		},
-		openUserMenu: () => {
-			this.getters.userMenu().click();
+		closeSettings: () => {
+			this.getters.settingsBack().click();
 		},
 		signout: () => {
 			const workflowsPage = new WorkflowsPage();

@@ -2,8 +2,8 @@
  * @jest-environment jsdom
  */
 
-import { arrayExtensions } from '../../src/Extensions/ArrayExtensions';
 import { evaluate } from './Helpers';
+import { arrayExtensions } from '../../src/Extensions/ArrayExtensions';
 
 describe('Data Transformation Functions', () => {
 	describe('Array Data Transformation Functions', () => {
@@ -90,6 +90,17 @@ describe('Data Transformation Functions', () => {
 			expect(
 				evaluate('={{ [1, 2, 3, "as", {}, {}, 1, 2, [1,2], "[sad]", "[sad]", null].unique() }}'),
 			).toEqual([1, 2, 3, 'as', {}, [1, 2], '[sad]', null]);
+		});
+
+		test('.unique() should work on an arrays of objects', () => {
+			expect(
+				evaluate(
+					"={{ [{'name':'Nathan', age:42}, {'name':'Jan', age:16}, {'name':'Nathan', age:21}].unique('name') }}",
+				),
+			).toEqual([
+				{ name: 'Nathan', age: 42 },
+				{ name: 'Jan', age: 16 },
+			]);
 		});
 
 		test('.isEmpty() should work correctly on an array', () => {
@@ -240,6 +251,10 @@ describe('Data Transformation Functions', () => {
 			expect(evaluate('={{ [true, 1, "one", {foo: "bar"}].toJsonString() }}')).toEqual(
 				'[true,1,"one",{"foo":"bar"}]',
 			);
+		});
+
+		test('.append() should work on an array', () => {
+			expect(evaluate('={{ [1,2,3].append(4,5,"done") }}')).toEqual([1, 2, 3, 4, 5, 'done']);
 		});
 
 		describe('Conversion methods', () => {

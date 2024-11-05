@@ -1,11 +1,17 @@
 import set from 'lodash/set';
-import type {
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeBaseDescription,
-	INodeTypeDescription,
+import {
+	ApplicationError,
+	NodeOperationError,
+	type IExecuteFunctions,
+	type INodeExecutionData,
+	type INodeType,
+	type INodeTypeBaseDescription,
+	type INodeTypeDescription,
+	NodeConnectionType,
 } from 'n8n-workflow';
+import { ENABLE_LESS_STRICT_TYPE_VALIDATION } from '../../../utils/constants';
+import { looseTypeValidationProperty } from '../../../utils/descriptions';
+import { getTypeValidationParameter, getTypeValidationStrictness } from './utils';
 
 export class IfV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -13,13 +19,13 @@ export class IfV2 implements INodeType {
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {
 			...baseDescription,
-			version: 2,
+			version: [2, 2.1, 2.2],
 			defaults: {
 				name: 'If',
 				color: '#408000',
 			},
-			inputs: ['main'],
-			outputs: ['main', 'main'],
+			inputs: [NodeConnectionType.Main],
+			outputs: [NodeConnectionType.Main, NodeConnectionType.Main],
 			outputNames: ['true', 'false'],
 			parameterPane: 'wide',
 			properties: [
@@ -32,7 +38,17 @@ export class IfV2 implements INodeType {
 					typeOptions: {
 						filter: {
 							caseSensitive: '={{!$parameter.options.ignoreCase}}',
-							typeValidation: '={{$parameter.options.looseTypeValidation ? "loose" : "strict"}}',
+							typeValidation: getTypeValidationStrictness(2.1),
+							version: '={{ $nodeVersion >= 2.2 ? 2 : 1 }}',
+						},
+					},
+				},
+				{
+					...looseTypeValidationProperty,
+					default: false,
+					displayOptions: {
+						show: {
+							'@version': [{ _cnd: { gte: 2.1 } }],
 						},
 					},
 				},
@@ -51,11 +67,12 @@ export class IfV2 implements INodeType {
 							default: true,
 						},
 						{
-							displayName: 'Less Strict Type Validation',
-							description: 'Whether to try casting value types based on the selected operator',
-							name: 'looseTypeValidation',
-							type: 'boolean',
-							default: true,
+							...looseTypeValidationProperty,
+							displayOptions: {
+								show: {
+									'@version': [{ _cnd: { lt: 2.1 } }],
+								},
+							},
 						},
 					],
 				},
@@ -79,12 +96,11 @@ export class IfV2 implements INodeType {
 						extractValue: true,
 					}) as boolean;
 				} catch (error) {
-					if (!options.looseTypeValidation) {
-						set(
-							error,
-							'description',
-							"Try changing the type of comparison. Alternatively you can enable 'Less Strict Type Validation' in the options.",
-						);
+					if (
+						!getTypeValidationParameter(2.1)(this, itemIndex, options.looseTypeValidation) &&
+						!error.description
+					) {
+						set(error, 'description', ENABLE_LESS_STRICT_TYPE_VALIDATION);
 					}
 					set(error, 'context.itemIndex', itemIndex);
 					set(error, 'node', this.getNode());
@@ -104,7 +120,18 @@ export class IfV2 implements INodeType {
 				if (this.continueOnFail()) {
 					falseItems.push(item);
 				} else {
-					throw error;
+					if (error instanceof NodeOperationError) {
+						throw error;
+					}
+
+					if (error instanceof ApplicationError) {
+						set(error, 'context.itemIndex', itemIndex);
+						throw error;
+					}
+
+					throw new NodeOperationError(this.getNode(), error, {
+						itemIndex,
+					});
 				}
 			}
 		});

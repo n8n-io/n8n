@@ -3,7 +3,7 @@ import type { IZoomConfig } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { ConnectionDetachedParams } from '@jsplumb/core';
 import type { IConnection } from 'n8n-workflow';
-import type { Route } from 'vue-router';
+import type { RouteLocation } from 'vue-router';
 
 /*
 	Constants and utility functions mainly used by canvas store
@@ -52,7 +52,7 @@ export const scaleReset = (config: IZoomConfig): IZoomConfig => {
 	return applyScale(1 / config.scale)(config);
 };
 
-export const getNodeViewTab = (route: Route): string | null => {
+export const getNodeViewTab = (route: RouteLocation): string | null => {
 	if (route.meta?.nodeView) {
 		return MAIN_HEADER_TABS.WORKFLOW;
 	} else if (

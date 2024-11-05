@@ -9,6 +9,7 @@ Great that you are here and you want to contribute to n8n
 	- [Code of conduct](#code-of-conduct)
 	- [Directory structure](#directory-structure)
 	- [Development setup](#development-setup)
+		- [Dev Container](#dev-container)
 		- [Requirements](#requirements)
 			- [Node.js](#nodejs)
 			- [pnpm](#pnpm)
@@ -41,7 +42,6 @@ n8n is split up in different modules which are all in a single mono repository.
 The most important directories:
 
 - [/docker/image](/docker/images) - Dockerfiles to create n8n containers
-- [/docker/compose](/docker/compose) - Examples Docker Setups
 - [/packages](/packages) - The different n8n modules
 - [/packages/cli](/packages/cli) - CLI code to run front- & backend
 - [/packages/core](/packages/core) - Core code which handles workflow
@@ -60,15 +60,19 @@ The most important directories:
 If you want to change or extend n8n you have to make sure that all the needed
 dependencies are installed and the packages get linked correctly. Here's a short guide on how that can be done:
 
+### Dev Container
+
+If you already have VS Code and Docker installed, you can click [here](https://vscode.dev/redirect?url=vscode://ms-vscode-remote.remote-containers/cloneInVolume?url=https://github.com/n8n-io/n8n) to get started. Clicking these links will cause VS Code to automatically install the Dev Containers extension if needed, clone the source code into a container volume, and spin up a dev container for use.
+
 ### Requirements
 
 #### Node.js
 
-[Node.js](https://nodejs.org/en/) version 16.9 or newer is required for development purposes.
+[Node.js](https://nodejs.org/en/) version 20.15 or newer is required for development purposes.
 
 #### pnpm
 
-[pnpm](https://pnpm.io/) version 8.9 or newer is required for development purposes. We recommend installing it with [corepack](#corepack).
+[pnpm](https://pnpm.io/) version 9.1 or newer is required for development purposes. We recommend installing it with [corepack](#corepack).
 
 ##### pnpm workspaces
 

@@ -1,54 +1,7 @@
-<template>
-	<div :class="['n8n-tabs', $style.container]">
-		<div v-if="scrollPosition > 0" :class="$style.back" @click="scrollLeft">
-			<N8nIcon icon="chevron-left" size="small" />
-		</div>
-		<div v-if="canScrollRight" :class="$style.next" @click="scrollRight">
-			<N8nIcon icon="chevron-right" size="small" />
-		</div>
-		<div ref="tabs" :class="$style.tabs">
-			<div
-				v-for="option in options"
-				:id="option.value"
-				:key="option.value"
-				:class="{ [$style.alignRight]: option.align === 'right' }"
-			>
-				<n8n-tooltip :disabled="!option.tooltip" placement="bottom">
-					<template #content>
-						<div @click="handleTooltipClick(option.value, $event)" v-html="option.tooltip" />
-					</template>
-					<a
-						v-if="option.href"
-						target="_blank"
-						:href="option.href"
-						:class="[$style.link, $style.tab]"
-						@click="() => handleTabClick(option.value)"
-					>
-						<div>
-							{{ option.label }}
-							<span :class="$style.external"
-								><N8nIcon icon="external-link-alt" size="small"
-							/></span>
-						</div>
-					</a>
-
-					<div
-						v-else
-						:class="{ [$style.tab]: true, [$style.activeTab]: modelValue === option.value }"
-						:data-test-id="`tab-${option.value}`"
-						@click="() => handleTabClick(option.value)"
-					>
-						<N8nIcon v-if="option.icon" :icon="option.icon" size="medium" />
-						<span v-if="option.label">{{ option.label }}</span>
-					</div>
-				</n8n-tooltip>
-			</div>
-		</div>
-	</div>
-</template>
-
 <script lang="ts" setup>
 import { onMounted, onUnmounted, ref } from 'vue';
+import type { RouteLocationRaw } from 'vue-router';
+
 import N8nIcon from '../N8nIcon';
 
 interface TabOptions {
@@ -58,6 +11,7 @@ interface TabOptions {
 	href?: string;
 	tooltip?: string;
 	align?: 'left' | 'right';
+	to?: RouteLocationRaw;
 }
 
 interface TabsProps {
@@ -101,13 +55,13 @@ onUnmounted(() => {
 	resizeObserver?.disconnect();
 });
 
-const $emit = defineEmits<{
-	(event: 'tooltipClick', tab: string, e: MouseEvent): void;
-	(event: 'update:modelValue', tab: string);
+const emit = defineEmits<{
+	tooltipClick: [tab: string, e: MouseEvent];
+	'update:modelValue': [tab: string];
 }>();
 
-const handleTooltipClick = (tab: string, event: MouseEvent) => $emit('tooltipClick', tab, event);
-const handleTabClick = (tab: string) => $emit('update:modelValue', tab);
+const handleTooltipClick = (tab: string, event: MouseEvent) => emit('tooltipClick', tab, event);
+const handleTabClick = (tab: string) => emit('update:modelValue', tab);
 
 const scroll = (left: number) => {
 	const container = tabs.value;
@@ -118,6 +72,62 @@ const scroll = (left: number) => {
 const scrollLeft = () => scroll(-50);
 const scrollRight = () => scroll(50);
 </script>
+
+<template>
+	<div :class="['n8n-tabs', $style.container]">
+		<div v-if="scrollPosition > 0" :class="$style.back" @click="scrollLeft">
+			<N8nIcon icon="chevron-left" size="small" />
+		</div>
+		<div v-if="canScrollRight" :class="$style.next" @click="scrollRight">
+			<N8nIcon icon="chevron-right" size="small" />
+		</div>
+		<div ref="tabs" :class="$style.tabs">
+			<div
+				v-for="option in options"
+				:id="option.value"
+				:key="option.value"
+				:class="{ [$style.alignRight]: option.align === 'right' }"
+			>
+				<N8nTooltip :disabled="!option.tooltip" placement="bottom">
+					<template #content>
+						<div @click="handleTooltipClick(option.value, $event)" v-n8n-html="option.tooltip" />
+					</template>
+					<a
+						v-if="option.href"
+						target="_blank"
+						:href="option.href"
+						:class="[$style.link, $style.tab]"
+						@click="() => handleTabClick(option.value)"
+					>
+						<div>
+							{{ option.label }}
+							<span :class="$style.external">
+								<N8nIcon icon="external-link-alt" size="xsmall" />
+							</span>
+						</div>
+					</a>
+					<router-link
+						v-else-if="option.to"
+						:to="option.to"
+						:class="[$style.tab, { [$style.activeTab]: modelValue === option.value }]"
+					>
+						<N8nIcon v-if="option.icon" :icon="option.icon" size="medium" />
+						<span v-if="option.label">{{ option.label }}</span>
+					</router-link>
+					<div
+						v-else
+						:class="{ [$style.tab]: true, [$style.activeTab]: modelValue === option.value }"
+						:data-test-id="`tab-${option.value}`"
+						@click="() => handleTabClick(option.value)"
+					>
+						<N8nIcon v-if="option.icon" :icon="option.icon" size="small" />
+						<span v-if="option.label">{{ option.label }}</span>
+					</div>
+				</N8nTooltip>
+			</div>
+		</div>
+	</div>
+</template>
 
 <style lang="scss" module>
 .container {
@@ -131,6 +141,7 @@ const scrollRight = () => scroll(50);
 	color: var(--color-text-base);
 	font-weight: var(--font-weight-bold);
 	display: flex;
+	align-items: center;
 	width: 100%;
 	position: absolute;
 	overflow-x: scroll;
@@ -146,23 +157,30 @@ const scrollRight = () => scroll(50);
 }
 
 .tab {
+	--active-tab-border-width: 2px;
 	display: block;
-	padding: 0 var(--spacing-s) var(--spacing-2xs) var(--spacing-s);
-	padding-bottom: var(--spacing-2xs);
+	padding: 0 var(--spacing-s);
+	padding-bottom: calc(var(--spacing-2xs) + var(--active-tab-border-width));
 	font-size: var(--font-size-s);
 	cursor: pointer;
 	white-space: nowrap;
+	color: var(--color-text-base);
 	&:hover {
 		color: var(--color-primary);
+	}
+
+	span + span {
+		margin-left: var(--spacing-4xs);
 	}
 }
 
 .activeTab {
 	color: var(--color-primary);
-	border-bottom: var(--color-primary) 2px solid;
+	padding-bottom: var(--spacing-2xs);
+	border-bottom: var(--color-primary) var(--active-tab-border-width) solid;
 }
 
-.alignRight {
+.alignRight:not(.alignRight + .alignRight) {
 	margin-left: auto;
 }
 
@@ -172,20 +190,17 @@ const scrollRight = () => scroll(50);
 
 	&:hover {
 		color: var(--color-primary);
-
-		.external {
-			display: inline-block;
-		}
 	}
 }
 
 .external {
-	display: none;
+	display: inline-block;
+	margin-left: var(--spacing-5xs);
 }
 
 .button {
 	position: absolute;
-	background-color: var(--color-background-base);
+	background-color: var(--color-tabs-arrow-buttons, var(--color-background-base));
 	z-index: 1;
 	height: 24px;
 	width: 10px;

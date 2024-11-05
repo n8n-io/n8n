@@ -1,4 +1,5 @@
 import * as qs from 'querystring';
+
 import type { ClientOAuth2, ClientOAuth2Options } from './ClientOAuth2';
 import type { ClientOAuth2Token, ClientOAuth2TokenData } from './ClientOAuth2Token';
 import { DEFAULT_HEADERS, DEFAULT_URL_BASE } from './constants';

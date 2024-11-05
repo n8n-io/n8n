@@ -14,3 +14,13 @@ export async function setWorkflowSharedWith(
 		data as unknown as IDataObject,
 	);
 }
+
+export async function moveWorkflowToProject(
+	context: IRestApiContext,
+	id: string,
+	destinationProjectId: string,
+): Promise<void> {
+	return await makeRestApiRequest(context, 'PUT', `/workflows/${id}/transfer`, {
+		destinationProjectId,
+	});
+}

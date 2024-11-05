@@ -81,7 +81,7 @@ export const pageFields: INodeProperties[] = [
 				},
 				default: '',
 				description:
-					'The ID for the author of the object. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'The ID for the author of the object. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Parent ID',
@@ -313,7 +313,7 @@ export const pageFields: INodeProperties[] = [
 				},
 				default: '',
 				description:
-					'The ID for the author of the object. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'The ID for the author of the object. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Parent ID',
@@ -534,7 +534,7 @@ export const pageFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -612,7 +612,7 @@ export const pageFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -637,7 +637,7 @@ export const pageFields: INodeProperties[] = [
 					loadOptionsMethod: 'getAuthors',
 				},
 				description:
-					'Limit result set to pages assigned to specific authors. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'Limit result set to pages assigned to specific authors. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Before',
@@ -813,7 +813,7 @@ export const pageFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {

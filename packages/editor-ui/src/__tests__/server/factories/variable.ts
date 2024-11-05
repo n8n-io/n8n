@@ -4,7 +4,7 @@ import type { EnvironmentVariable } from '@/Interface';
 
 export const variableFactory = Factory.extend<EnvironmentVariable>({
 	id(i: number) {
-		return i;
+		return `${i}`;
 	},
 	key() {
 		return `${faker.lorem.word()}`.toUpperCase();

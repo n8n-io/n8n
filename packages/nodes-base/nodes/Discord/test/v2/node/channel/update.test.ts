@@ -7,7 +7,7 @@ import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
 
 const discordApiRequestSpy = jest.spyOn(transport, 'discordApiRequest');
 
-discordApiRequestSpy.mockImplementation(async (method: string, endpoint) => {
+discordApiRequestSpy.mockImplementation(async (method: string, _) => {
 	if (method === 'PATCH') {
 		return {
 			id: '1168516240332034067',

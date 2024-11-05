@@ -7,6 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
 import { getAttachments, webexApiRequest, webexApiRequestAllItems } from './GenericFunctions';
@@ -39,8 +40,8 @@ export class CiscoWebex implements INodeType {
 				required: true,
 			},
 		],
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		properties: [
 			{
 				displayName: 'Resource',

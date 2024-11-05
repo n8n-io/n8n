@@ -46,7 +46,6 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 					responseData = await chatMessage[microsoftTeamsTypeData.operation].execute.call(
 						this,
 						i,
-						nodeVersion,
 						instanceId,
 					);
 					break;

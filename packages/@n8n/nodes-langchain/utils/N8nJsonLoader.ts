@@ -1,23 +1,22 @@
-import { type IExecuteFunctions, type INodeExecutionData, NodeOperationError } from 'n8n-workflow';
+import {
+	type IExecuteFunctions,
+	type INodeExecutionData,
+	type ISupplyDataFunctions,
+	NodeOperationError,
+} from 'n8n-workflow';
 
-import type { TextSplitter } from 'langchain/text_splitter';
+import type { TextSplitter } from '@langchain/textsplitters';
 import type { Document } from '@langchain/core/documents';
 import { JSONLoader } from 'langchain/document_loaders/fs/json';
 import { TextLoader } from 'langchain/document_loaders/fs/text';
 import { getMetadataFiltersValues } from './helpers';
 
 export class N8nJsonLoader {
-	private context: IExecuteFunctions;
-
-	private optionsPrefix: string;
-
-	private textSplitter?: TextSplitter;
-
-	constructor(context: IExecuteFunctions, optionsPrefix = '', textSplitter?: TextSplitter) {
-		this.context = context;
-		this.textSplitter = textSplitter;
-		this.optionsPrefix = optionsPrefix;
-	}
+	constructor(
+		private context: IExecuteFunctions | ISupplyDataFunctions,
+		private optionsPrefix = '',
+		private textSplitter?: TextSplitter,
+	) {}
 
 	async processAll(items?: INodeExecutionData[]): Promise<Document[]> {
 		const docs: Document[] = [];
@@ -75,7 +74,7 @@ export class N8nJsonLoader {
 		}
 
 		const docs = this.textSplitter
-			? await documentLoader.loadAndSplit(this.textSplitter)
+			? await this.textSplitter.splitDocuments(await documentLoader.load())
 			: await documentLoader.load();
 
 		if (metadata) {

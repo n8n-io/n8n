@@ -76,7 +76,6 @@ module.exports = {
 				'n8n-nodes-base/node-execute-block-wrong-error-thrown': 'error',
 				'n8n-nodes-base/node-filename-against-convention': 'error',
 				'n8n-nodes-base/node-param-array-type-assertion': 'error',
-				'n8n-nodes-base/node-param-collection-type-unsorted-items': 'error',
 				'n8n-nodes-base/node-param-color-type-unused': 'error',
 				'n8n-nodes-base/node-param-default-missing': 'error',
 				'n8n-nodes-base/node-param-default-wrong-for-boolean': 'error',
@@ -147,6 +146,12 @@ module.exports = {
 				'n8n-nodes-base/node-param-resource-without-no-data-expression': 'error',
 				'n8n-nodes-base/node-param-type-options-missing-from-limit': 'error',
 				'n8n-nodes-base/node-param-type-options-password-missing': 'error',
+			},
+		},
+		{
+			files: ['**/*.test.ts', '**/test/**/*.ts'],
+			rules: {
+				'import/no-extraneous-dependencies': 'off',
 			},
 		},
 	],

@@ -48,6 +48,7 @@ describe('Test MySql V2, runQueries', () => {
 			const pool = createFakePool(fakeConnection);
 			const mockExecuteFns = createMockExecuteFunction({}, mySqlMockNode);
 
+			// @ts-expect-error
 			pool.query = jest.fn(async () => [
 				[[{ finishedAt: '2023-12-30' }], [{ finishedAt: '2023-12-31' }]],
 			]);

@@ -114,7 +114,7 @@ export async function microsoftApiRequestAllItemsDelta(
 	do {
 		responseData = (await microsoftApiRequest.call(this, 'GET', '', {}, {}, uri)) as IDataObject;
 		uri = responseData['@odata.nextLink'] as string;
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+
 		for (const value of responseData.value as IDataObject[]) {
 			if (value.fileSystemInfo as IDataObject) {
 				const updatedTimeStamp = (value.fileSystemInfo as IDataObject)

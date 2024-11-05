@@ -1,17 +1,17 @@
-import { Container, Service } from 'typedi';
 import type { IUserSettings } from 'n8n-workflow';
 import { ApplicationError, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
+import { Service } from 'typedi';
 
-import { type AssignableRole, User } from '@db/entities/User';
-import { UserRepository } from '@db/repositories/user.repository';
-import type { PublicUser } from '@/Interfaces';
-import type { PostHogClient } from '@/posthog';
-import { Logger } from '@/Logger';
-import { UserManagementMailer } from '@/UserManagement/email';
-import { InternalHooks } from '@/InternalHooks';
-import { UrlService } from '@/services/url.service';
-import type { UserRequest } from '@/requests';
+import type { User, AssignableRole } from '@/databases/entities/user';
+import { UserRepository } from '@/databases/repositories/user.repository';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { EventService } from '@/events/event.service';
+import type { Invitation, PublicUser } from '@/interfaces';
+import { Logger } from '@/logging/logger.service';
+import type { PostHogClient } from '@/posthog';
+import type { UserRequest } from '@/requests';
+import { UrlService } from '@/services/url.service';
+import { UserManagementMailer } from '@/user-management/email';
 
 @Service()
 export class UserService {
@@ -20,10 +20,17 @@ export class UserService {
 		private readonly userRepository: UserRepository,
 		private readonly mailer: UserManagementMailer,
 		private readonly urlService: UrlService,
+		private readonly eventService: EventService,
 	) {}
 
 	async update(userId: string, data: Partial<User>) {
-		return await this.userRepository.update(userId, data);
+		const user = await this.userRepository.findOneBy({ id: userId });
+
+		if (user) {
+			await this.userRepository.save({ ...user, ...data }, { transaction: true });
+		}
+
+		return;
 	}
 
 	getManager() {
@@ -31,9 +38,15 @@ export class UserService {
 	}
 
 	async updateSettings(userId: string, newSettings: Partial<IUserSettings>) {
-		const { settings } = await this.userRepository.findOneOrFail({ where: { id: userId } });
+		const user = await this.userRepository.findOneOrFail({ where: { id: userId } });
 
-		return await this.userRepository.update(userId, { settings: { ...settings, ...newSettings } });
+		if (user.settings) {
+			Object.assign(user.settings, newSettings);
+		} else {
+			user.settings = newSettings;
+		}
+
+		await this.userRepository.save(user);
 	}
 
 	async toPublic(
@@ -45,15 +58,13 @@ export class UserService {
 			withScopes?: boolean;
 		},
 	) {
-		const { password, updatedAt, apiKey, authIdentities, mfaRecoveryCodes, mfaSecret, ...rest } =
-			user;
+		const { password, updatedAt, authIdentities, ...rest } = user;
 
 		const ldapIdentity = authIdentities?.find((i) => i.providerType === 'ldap');
 
 		let publicUser: PublicUser = {
 			...rest,
 			signInType: ldapIdentity ? 'ldap' : 'email',
-			hasRecoveryCodesLeft: !!user.mfaRecoveryCodes?.length,
 		};
 
 		if (options?.withInviteUrl && !options?.inviterId) {
@@ -119,6 +130,7 @@ export class UserService {
 						email,
 						inviteAcceptUrl,
 						emailSent: false,
+						role,
 					},
 					error: '',
 				};
@@ -127,36 +139,35 @@ export class UserService {
 					const result = await this.mailer.invite({
 						email,
 						inviteAcceptUrl,
-						domain,
 					});
 					if (result.emailSent) {
 						invitedUser.user.emailSent = true;
 						delete invitedUser.user?.inviteAcceptUrl;
-						void Container.get(InternalHooks).onUserTransactionalEmail({
-							user_id: id,
-							message_type: 'New user invite',
-							public_api: false,
+
+						this.eventService.emit('user-transactional-email-sent', {
+							userId: id,
+							messageType: 'New user invite',
+							publicApi: false,
 						});
 					}
 
-					void Container.get(InternalHooks).onUserInvite({
+					this.eventService.emit('user-invited', {
 						user: owner,
-						target_user_id: Object.values(toInviteUsers),
-						public_api: false,
-						email_sent: result.emailSent,
-						invitee_role: role, // same role for all invited users
+						targetUserId: Object.values(toInviteUsers),
+						publicApi: false,
+						emailSent: result.emailSent,
+						inviteeRole: role, // same role for all invited users
 					});
 				} catch (e) {
 					if (e instanceof Error) {
-						void Container.get(InternalHooks).onEmailFailed({
+						this.eventService.emit('email-failed', {
 							user: owner,
-							message_type: 'New user invite',
-							public_api: false,
+							messageType: 'New user invite',
+							publicApi: false,
 						});
 						this.logger.error('Failed to send email', {
 							userId: owner.id,
 							inviteAcceptUrl,
-							domain,
 							email,
 						});
 						invitedUser.error = e.message;
@@ -168,14 +179,14 @@ export class UserService {
 		);
 	}
 
-	async inviteUsers(owner: User, attributes: Array<{ email: string; role: AssignableRole }>) {
-		const emails = attributes.map(({ email }) => email);
+	async inviteUsers(owner: User, invitations: Invitation[]) {
+		const emails = invitations.map(({ email }) => email);
 
 		const existingUsers = await this.userRepository.findManyByEmail(emails);
 
 		const existUsersEmails = existingUsers.map((user) => user.email);
 
-		const toCreateUsers = attributes.filter(({ email }) => !existUsersEmails.includes(email));
+		const toCreateUsers = invitations.filter(({ email }) => !existUsersEmails.includes(email));
 
 		const pendingUsersToInvite = existingUsers.filter((email) => email.isPending);
 
@@ -192,8 +203,10 @@ export class UserService {
 				async (transactionManager) =>
 					await Promise.all(
 						toCreateUsers.map(async ({ email, role }) => {
-							const newUser = transactionManager.create(User, { email, role });
-							const savedUser = await transactionManager.save<User>(newUser);
+							const { user: savedUser } = await this.userRepository.createUserWithProject(
+								{ email, role },
+								transactionManager,
+							);
 							createdUsers.set(email, savedUser.id);
 							return savedUser;
 						}),
@@ -210,7 +223,7 @@ export class UserService {
 		const usersInvited = await this.sendEmails(
 			owner,
 			Object.fromEntries(createdUsers),
-			attributes[0].role, // same role for all invited users
+			invitations[0].role, // same role for all invited users
 		);
 
 		return { usersInvited, usersCreated: toCreateUsers.map(({ email }) => email) };

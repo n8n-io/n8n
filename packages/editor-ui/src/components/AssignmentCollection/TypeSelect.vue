@@ -12,7 +12,7 @@ interface Props {
 const props = defineProps<Props>();
 
 const emit = defineEmits<{
-	(event: 'update:model-value', type: string): void;
+	'update:model-value': [type: string];
 }>();
 
 const i18n = useI18n();

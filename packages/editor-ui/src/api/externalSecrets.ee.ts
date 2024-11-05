@@ -1,8 +1,4 @@
-import type {
-	IRestApiContext,
-	ExternalSecretsProvider,
-	ExternalSecretsProviderWithProperties,
-} from '@/Interface';
+import type { IRestApiContext, ExternalSecretsProvider } from '@/Interface';
 import { makeRestApiRequest } from '@/utils/apiUtils';
 
 export const getExternalSecrets = async (
@@ -20,7 +16,7 @@ export const getExternalSecretsProviders = async (
 export const getExternalSecretsProvider = async (
 	context: IRestApiContext,
 	id: string,
-): Promise<ExternalSecretsProviderWithProperties> => {
+): Promise<ExternalSecretsProvider> => {
 	return await makeRestApiRequest(context, 'GET', `/external-secrets/providers/${id}`);
 };
 

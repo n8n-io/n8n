@@ -1,11 +1,18 @@
+import { ref, nextTick } from 'vue';
+import { useRoute } from 'vue-router';
+import { v4 as uuid } from 'uuid';
+import type { Connection, ConnectionDetachedParams } from '@jsplumb/core';
 import { useHistoryStore } from '@/stores/history.store';
 import {
 	CUSTOM_API_CALL_KEY,
+	FORM_TRIGGER_NODE_TYPE,
 	NODE_OUTPUT_DEFAULT_KEY,
 	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+	SPLIT_IN_BATCHES_NODE_TYPE,
+	WEBHOOK_NODE_TYPE,
 } from '@/constants';
 
-import { NodeHelpers, NodeConnectionType, ExpressionEvaluatorProxy } from 'n8n-workflow';
+import { NodeHelpers, ExpressionEvaluatorProxy, NodeConnectionType } from 'n8n-workflow';
 import type {
 	INodeProperties,
 	INodeCredentialDescription,
@@ -13,7 +20,6 @@ import type {
 	INodeIssues,
 	ICredentialType,
 	INodeIssueObjectProperty,
-	ConnectionTypes,
 	INodeInputConfiguration,
 	Workflow,
 	INodeExecutionData,
@@ -26,6 +32,10 @@ import type {
 	INodeCredentialsDetails,
 	INodeParameters,
 	ITaskData,
+	IConnections,
+	INodeTypeNameVersion,
+	IConnection,
+	IPinData,
 } from 'n8n-workflow';
 
 import type {
@@ -38,19 +48,21 @@ import type {
 import { isString } from '@/utils/typeGuards';
 import { isObject } from '@/utils/objectUtils';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { get } from 'lodash-es';
 import { useI18n } from './useI18n';
-import { EnableNodeToggleCommand } from '@/models/history';
+import { AddNodeCommand, EnableNodeToggleCommand, RemoveConnectionCommand } from '@/models/history';
 import { useTelemetry } from './useTelemetry';
-import { getCredentialPermissions } from '@/permissions';
-import { hasPermission } from '@/rbac/permissions';
+import { hasPermission } from '@/utils/rbac/permissions';
 import type { N8nPlusEndpoint } from '@/plugins/jsplumb/N8nPlusEndpointType';
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import { useCanvasStore } from '@/stores/canvas.store';
+import { getEndpointScope } from '@/utils/nodeViewUtils';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { getConnectionInfo } from '@/utils/canvasUtils';
+import type { UnpinNodeDataEvent } from '@/event-bus/data-pinning';
 
 declare namespace HttpRequestNode {
 	namespace V2 {
@@ -69,6 +81,13 @@ export function useNodeHelpers() {
 	const workflowsStore = useWorkflowsStore();
 	const i18n = useI18n();
 	const canvasStore = useCanvasStore();
+	const sourceControlStore = useSourceControlStore();
+	const route = useRoute();
+
+	const isInsertingNodes = ref(false);
+	const credentialsUpdated = ref(false);
+	const isProductionExecutionPreview = ref(false);
+	const pullConnActiveNodeName = ref<string | null>(null);
 
 	function hasProxyAuth(node: INodeUi): boolean {
 		return Object.keys(node.parameters).includes('nodeCredentialType');
@@ -79,10 +98,16 @@ export function useNodeHelpers() {
 
 		if (!isObject(parameters)) return false;
 
-		const { resource, operation } = parameters;
-		if (!isString(resource) || !isString(operation)) return false;
+		if ('resource' in parameters || 'operation' in parameters) {
+			const { resource, operation } = parameters;
 
-		return resource.includes(CUSTOM_API_CALL_KEY) || operation.includes(CUSTOM_API_CALL_KEY);
+			return (
+				(isString(resource) && resource.includes(CUSTOM_API_CALL_KEY)) ||
+				(isString(operation) && operation.includes(CUSTOM_API_CALL_KEY))
+			);
+		}
+
+		return false;
 	}
 
 	function getParameterValue(nodeValues: INodeParameters, parameterName: string, path: string) {
@@ -207,22 +232,27 @@ export function useNodeHelpers() {
 		};
 	}
 
+	function updateNodeInputIssues(node: INodeUi): void {
+		const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+		if (!nodeType) {
+			return;
+		}
+
+		const workflow = workflowsStore.getCurrentWorkflow();
+		const nodeInputIssues = getNodeInputIssues(workflow, node, nodeType);
+
+		workflowsStore.setNodeIssue({
+			node: node.name,
+			type: 'input',
+			value: nodeInputIssues?.input ? nodeInputIssues.input : null,
+		});
+	}
+
 	function updateNodesInputIssues() {
 		const nodes = workflowsStore.allNodes;
-		const workflow = workflowsStore.getCurrentWorkflow();
 
 		for (const node of nodes) {
-			const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
-			if (!nodeType) {
-				return;
-			}
-			const nodeInputIssues = getNodeInputIssues(workflow, node, nodeType);
-
-			workflowsStore.setNodeIssue({
-				node: node.name,
-				type: 'input',
-				value: nodeInputIssues?.input ? nodeInputIssues.input : null,
-			});
+			updateNodeInputIssues(node);
 		}
 	}
 
@@ -235,6 +265,14 @@ export function useNodeHelpers() {
 				type: 'execution',
 				value: hasNodeExecutionIssues(node) ? true : null,
 			});
+		}
+	}
+
+	function updateNodesParameterIssues() {
+		const nodes = workflowsStore.allNodes;
+
+		for (const node of nodes) {
+			updateNodeParameterIssues(node);
 		}
 	}
 
@@ -269,7 +307,7 @@ export function useNodeHelpers() {
 		}
 	}
 
-	function updateNodeParameterIssues(node: INodeUi, nodeType?: INodeTypeDescription): void {
+	function updateNodeParameterIssues(node: INodeUi, nodeType?: INodeTypeDescription | null): void {
 		const localNodeType = nodeType ?? nodeTypesStore.getNodeType(node.type, node.typeVersion);
 
 		if (localNodeType === null) {
@@ -303,7 +341,7 @@ export function useNodeHelpers() {
 		const foundIssues: INodeIssueObjectProperty = {};
 
 		const workflowNode = workflow.getNode(node.name);
-		let inputs: Array<ConnectionTypes | INodeInputConfiguration> = [];
+		let inputs: Array<NodeConnectionType | INodeInputConfiguration> = [];
 		if (nodeType && workflowNode) {
 			inputs = NodeHelpers.getNodeInputs(workflow, workflowNode, nodeType);
 		}
@@ -430,14 +468,7 @@ export function useNodeHelpers() {
 					};
 				}
 
-				const usersStore = useUsersStore();
-				const currentUser = usersStore.currentUser;
-				userCredentials = credentialsStore
-					.getCredentialsByType(credentialTypeDescription.name)
-					.filter((credential: ICredentialsResponse) => {
-						const permissions = getCredentialPermissions(currentUser, credential);
-						return permissions.use;
-					});
+				userCredentials = credentialsStore.getCredentialsByType(credentialTypeDescription.name);
 
 				if (userCredentials === null) {
 					userCredentials = [];
@@ -529,7 +560,7 @@ export function useNodeHelpers() {
 			workflowsStore.setNodeIssue({
 				node: node.name,
 				type: 'credentials',
-				value: issues === null ? null : issues.credentials,
+				value: issues?.credentials ?? null,
 			});
 		}
 	}
@@ -539,8 +570,18 @@ export function useNodeHelpers() {
 		runIndex = 0,
 		outputIndex = 0,
 		paneType: NodePanelType = 'output',
-		connectionType: ConnectionTypes = NodeConnectionType.Main,
+		connectionType: NodeConnectionType = NodeConnectionType.Main,
 	): INodeExecutionData[] {
+		//TODO: check if this needs to be fixed in different place
+		if (
+			node?.type === SPLIT_IN_BATCHES_NODE_TYPE &&
+			paneType === 'input' &&
+			runIndex !== 0 &&
+			outputIndex !== 0
+		) {
+			runIndex = runIndex - 1;
+		}
+
 		if (node === null) {
 			return [];
 		}
@@ -575,7 +616,7 @@ export function useNodeHelpers() {
 	function getInputData(
 		connectionsData: ITaskDataConnections,
 		outputIndex: number,
-		connectionType: ConnectionTypes = NodeConnectionType.Main,
+		connectionType: NodeConnectionType = NodeConnectionType.Main,
 	): INodeExecutionData[] {
 		return connectionsData?.[connectionType]?.[outputIndex] ?? [];
 	}
@@ -585,7 +626,7 @@ export function useNodeHelpers() {
 		node: string | null,
 		runIndex: number,
 		outputIndex: number,
-		connectionType: ConnectionTypes = NodeConnectionType.Main,
+		connectionType: NodeConnectionType = NodeConnectionType.Main,
 	): IBinaryKeyData[] {
 		if (node === null) {
 			return [];
@@ -611,10 +652,10 @@ export function useNodeHelpers() {
 		return returnData;
 	}
 
-	function disableNodes(nodes: INodeUi[], trackHistory = false) {
+	function disableNodes(nodes: INodeUi[], { trackHistory = false, trackBulk = true } = {}) {
 		const telemetry = useTelemetry();
 
-		if (trackHistory) {
+		if (trackHistory && trackBulk) {
 			historyStore.startRecordingUndo();
 		}
 
@@ -649,7 +690,8 @@ export function useNodeHelpers() {
 				);
 			}
 		}
-		if (trackHistory) {
+
+		if (trackHistory && trackBulk) {
 			historyStore.stopRecordingUndo();
 		}
 	}
@@ -721,12 +763,12 @@ export function useNodeHelpers() {
 
 		const allNodeConnections = workflowsStore.outgoingConnectionsByNodeName(sourceNode.name);
 
-		const connectionType = Object.keys(allNodeConnections)[0];
+		const connectionType = Object.keys(allNodeConnections)[0] as NodeConnectionType;
 		const nodeConnections = allNodeConnections[connectionType];
 		const outputMap = NodeViewUtils.getOutputSummary(
 			data,
 			nodeConnections || [],
-			(connectionType as ConnectionTypes) ?? NodeConnectionType.Main,
+			connectionType ?? NodeConnectionType.Main,
 		);
 		const sourceNodeType = nodeTypesStore.getNodeType(sourceNode.type, sourceNode.typeVersion);
 
@@ -741,7 +783,7 @@ export function useNodeHelpers() {
 								parseInt(sourceOutputIndex, 10),
 								targetNode,
 								parseInt(targetInputIndex, 10),
-								connectionType as ConnectionTypes,
+								connectionType,
 								sourceNodeType,
 								canvasStore.jsPlumbInstance,
 							);
@@ -781,15 +823,440 @@ export function useNodeHelpers() {
 		});
 	}
 
+	function matchCredentials(node: INodeUi) {
+		if (!node.credentials) {
+			return;
+		}
+		Object.entries(node.credentials).forEach(
+			([nodeCredentialType, nodeCredentials]: [string, INodeCredentialsDetails]) => {
+				const credentialOptions = credentialsStore.getCredentialsByType(nodeCredentialType);
+
+				// Check if workflows applies old credentials style
+				if (typeof nodeCredentials === 'string') {
+					nodeCredentials = {
+						id: null,
+						name: nodeCredentials,
+					};
+					credentialsUpdated.value = true;
+				}
+
+				if (nodeCredentials.id) {
+					// Check whether the id is matching with a credential
+					const credentialsId = nodeCredentials.id.toString(); // due to a fixed bug in the migration UpdateWorkflowCredentials (just sqlite) we have to cast to string and check later if it has been a number
+					const credentialsForId = credentialOptions.find(
+						(optionData: ICredentialsResponse) => optionData.id === credentialsId,
+					);
+					if (credentialsForId) {
+						if (
+							credentialsForId.name !== nodeCredentials.name ||
+							typeof nodeCredentials.id === 'number'
+						) {
+							node.credentials![nodeCredentialType] = {
+								id: credentialsForId.id,
+								name: credentialsForId.name,
+							};
+							credentialsUpdated.value = true;
+						}
+						return;
+					}
+				}
+
+				// No match for id found or old credentials type used
+				node.credentials![nodeCredentialType] = nodeCredentials;
+
+				// check if only one option with the name would exist
+				const credentialsForName = credentialOptions.filter(
+					(optionData: ICredentialsResponse) => optionData.name === nodeCredentials.name,
+				);
+
+				// only one option exists for the name, take it
+				if (credentialsForName.length === 1) {
+					node.credentials![nodeCredentialType].id = credentialsForName[0].id;
+					credentialsUpdated.value = true;
+				}
+			},
+		);
+	}
+
+	function deleteJSPlumbConnection(connection: Connection, trackHistory = false) {
+		// Make sure to remove the overlay else after the second move
+		// it visibly stays behind free floating without a connection.
+		connection.removeOverlays();
+
+		pullConnActiveNodeName.value = null; // prevent new connections when connectionDetached is triggered
+		canvasStore.jsPlumbInstance?.deleteConnection(connection); // on delete, triggers connectionDetached event which applies mutation to store
+		if (trackHistory && connection.__meta) {
+			const connectionData: [IConnection, IConnection] = [
+				{
+					index: connection.__meta?.sourceOutputIndex,
+					node: connection.__meta.sourceNodeName,
+					type: NodeConnectionType.Main,
+				},
+				{
+					index: connection.__meta?.targetOutputIndex,
+					node: connection.__meta.targetNodeName,
+					type: NodeConnectionType.Main,
+				},
+			];
+			const removeCommand = new RemoveConnectionCommand(connectionData);
+			historyStore.pushCommandToUndo(removeCommand);
+		}
+	}
+
+	async function loadNodesProperties(nodeInfos: INodeTypeNameVersion[]): Promise<void> {
+		const allNodes: INodeTypeDescription[] = nodeTypesStore.allNodeTypes;
+
+		const nodesToBeFetched: INodeTypeNameVersion[] = [];
+		allNodes.forEach((node) => {
+			const nodeVersions = Array.isArray(node.version) ? node.version : [node.version];
+			if (
+				!!nodeInfos.find((n) => n.name === node.name && nodeVersions.includes(n.version)) &&
+				!node.hasOwnProperty('properties')
+			) {
+				nodesToBeFetched.push({
+					name: node.name,
+					version: Array.isArray(node.version) ? node.version.slice(-1)[0] : node.version,
+				});
+			}
+		});
+
+		if (nodesToBeFetched.length > 0) {
+			// Only call API if node information is actually missing
+			canvasStore.startLoading();
+			await nodeTypesStore.getNodesInformation(nodesToBeFetched);
+			canvasStore.stopLoading();
+		}
+	}
+
+	function addConnectionsTestData() {
+		canvasStore.jsPlumbInstance?.connections.forEach((connection) => {
+			NodeViewUtils.addConnectionTestData(
+				connection.source,
+				connection.target,
+				connection?.connector?.hasOwnProperty('canvas') ? connection?.connector.canvas : undefined,
+			);
+		});
+	}
+
+	async function processConnectionBatch(batchedConnectionData: Array<[IConnection, IConnection]>) {
+		const batchSize = 100;
+
+		for (let i = 0; i < batchedConnectionData.length; i += batchSize) {
+			const batch = batchedConnectionData.slice(i, i + batchSize);
+
+			batch.forEach((connectionData) => {
+				addConnection(connectionData);
+			});
+		}
+	}
+
+	function addPinDataConnections(pinData?: IPinData) {
+		if (!pinData) {
+			return;
+		}
+
+		Object.keys(pinData).forEach((nodeName) => {
+			const node = workflowsStore.getNodeByName(nodeName);
+			if (!node) {
+				return;
+			}
+
+			const nodeElement = document.getElementById(node.id);
+			if (!nodeElement) {
+				return;
+			}
+
+			const hasRun = workflowsStore.getWorkflowResultDataByNodeName(nodeName) !== null;
+			// In case we are showing a production execution preview we want
+			// to show pinned data connections as they wouldn't have been pinned
+			const classNames = isProductionExecutionPreview.value ? [] : ['pinned'];
+
+			if (hasRun) {
+				classNames.push('has-run');
+			}
+
+			const connections = canvasStore.jsPlumbInstance?.getConnections({
+				source: nodeElement,
+			});
+
+			const connectionsArray = Array.isArray(connections)
+				? connections
+				: Object.values(connections);
+
+			connectionsArray.forEach((connection) => {
+				NodeViewUtils.addConnectionOutputSuccess(connection, {
+					total: pinData[nodeName].length,
+					iterations: 0,
+					classNames,
+				});
+			});
+		});
+	}
+
+	function removePinDataConnections(event: UnpinNodeDataEvent) {
+		for (const nodeName of event.nodeNames) {
+			const node = workflowsStore.getNodeByName(nodeName);
+			if (!node) {
+				return;
+			}
+
+			const nodeElement = document.getElementById(node.id);
+			if (!nodeElement) {
+				return;
+			}
+
+			const connections = canvasStore.jsPlumbInstance?.getConnections({
+				source: nodeElement,
+			});
+
+			const connectionsArray = Array.isArray(connections)
+				? connections
+				: Object.values(connections);
+
+			canvasStore.jsPlumbInstance.setSuspendDrawing(true);
+			connectionsArray.forEach(NodeViewUtils.resetConnection);
+			canvasStore.jsPlumbInstance.setSuspendDrawing(false, true);
+		}
+	}
+
+	function getOutputEndpointUUID(
+		nodeName: string,
+		connectionType: NodeConnectionType,
+		index: number,
+	): string | null {
+		const node = workflowsStore.getNodeByName(nodeName);
+		if (!node) {
+			return null;
+		}
+
+		return NodeViewUtils.getOutputEndpointUUID(node.id, connectionType, index);
+	}
+	function getInputEndpointUUID(
+		nodeName: string,
+		connectionType: NodeConnectionType,
+		index: number,
+	) {
+		const node = workflowsStore.getNodeByName(nodeName);
+		if (!node) {
+			return null;
+		}
+
+		return NodeViewUtils.getInputEndpointUUID(node.id, connectionType, index);
+	}
+
+	function addConnection(connection: [IConnection, IConnection]) {
+		const outputUuid = getOutputEndpointUUID(
+			connection[0].node,
+			connection[0].type,
+			connection[0].index,
+		);
+		const inputUuid = getInputEndpointUUID(
+			connection[1].node,
+			connection[1].type,
+			connection[1].index,
+		);
+		if (!outputUuid || !inputUuid) {
+			return;
+		}
+
+		const uuids: [string, string] = [outputUuid, inputUuid];
+		// Create connections in DOM
+		canvasStore.jsPlumbInstance?.connect({
+			uuids,
+			detachable: !route?.meta?.readOnlyCanvas && !sourceControlStore.preferences.branchReadOnly,
+		});
+
+		setTimeout(() => {
+			addPinDataConnections(workflowsStore.pinnedWorkflowData);
+		});
+	}
+
+	function removeConnection(
+		connection: [IConnection, IConnection],
+		removeVisualConnection = false,
+	) {
+		if (removeVisualConnection) {
+			const sourceNode = workflowsStore.getNodeByName(connection[0].node);
+			const targetNode = workflowsStore.getNodeByName(connection[1].node);
+
+			if (!sourceNode || !targetNode) {
+				return;
+			}
+
+			const sourceElement = document.getElementById(sourceNode.id);
+			const targetElement = document.getElementById(targetNode.id);
+
+			if (sourceElement && targetElement) {
+				const connections = canvasStore.jsPlumbInstance?.getConnections({
+					source: sourceElement,
+					target: targetElement,
+				});
+
+				if (Array.isArray(connections)) {
+					connections.forEach((connectionInstance: Connection) => {
+						if (connectionInstance.__meta) {
+							// Only delete connections from specific indexes (if it can be determined by meta)
+							if (
+								connectionInstance.__meta.sourceOutputIndex === connection[0].index &&
+								connectionInstance.__meta.targetOutputIndex === connection[1].index
+							) {
+								deleteJSPlumbConnection(connectionInstance);
+							}
+						} else {
+							deleteJSPlumbConnection(connectionInstance);
+						}
+					});
+				}
+			}
+		}
+
+		workflowsStore.removeConnection({ connection });
+	}
+
+	function removeConnectionByConnectionInfo(
+		info: ConnectionDetachedParams,
+		removeVisualConnection = false,
+		trackHistory = false,
+	) {
+		const connectionInfo: [IConnection, IConnection] | null = getConnectionInfo(info);
+
+		if (connectionInfo) {
+			if (removeVisualConnection) {
+				deleteJSPlumbConnection(info.connection, trackHistory);
+			} else if (trackHistory) {
+				historyStore.pushCommandToUndo(new RemoveConnectionCommand(connectionInfo));
+			}
+			workflowsStore.removeConnection({ connection: connectionInfo });
+		}
+	}
+
+	async function addConnections(connections: IConnections) {
+		const batchedConnectionData: Array<[IConnection, IConnection]> = [];
+
+		for (const sourceNode in connections) {
+			for (const type in connections[sourceNode]) {
+				connections[sourceNode][type].forEach((outwardConnections, sourceIndex) => {
+					if (outwardConnections) {
+						outwardConnections.forEach((targetData) => {
+							batchedConnectionData.push([
+								{
+									node: sourceNode,
+									type: getEndpointScope(type) ?? NodeConnectionType.Main,
+									index: sourceIndex,
+								},
+								{ node: targetData.node, type: targetData.type, index: targetData.index },
+							]);
+						});
+					}
+				});
+			}
+		}
+
+		// Process the connections in batches
+		await processConnectionBatch(batchedConnectionData);
+		setTimeout(addConnectionsTestData, 0);
+	}
+
+	async function addNodes(nodes: INodeUi[], connections?: IConnections, trackHistory = false) {
+		if (!nodes?.length) {
+			return;
+		}
+		isInsertingNodes.value = true;
+		// Before proceeding we must check if all nodes contain the `properties` attribute.
+		// Nodes are loaded without this information so we must make sure that all nodes
+		// being added have this information.
+		await loadNodesProperties(
+			nodes.map((node) => ({ name: node.type, version: node.typeVersion })),
+		);
+
+		// Add the node to the node-list
+		let nodeType: INodeTypeDescription | null;
+		nodes.forEach((node) => {
+			const newNode: INodeUi = {
+				...node,
+			};
+
+			if (!newNode.id) {
+				newNode.id = uuid();
+			}
+
+			nodeType = nodeTypesStore.getNodeType(newNode.type, newNode.typeVersion);
+
+			// Make sure that some properties always exist
+			if (!newNode.hasOwnProperty('disabled')) {
+				newNode.disabled = false;
+			}
+
+			if (!newNode.hasOwnProperty('parameters')) {
+				newNode.parameters = {};
+			}
+
+			// Load the default parameter values because only values which differ
+			// from the defaults get saved
+			if (nodeType !== null) {
+				let nodeParameters = null;
+				try {
+					nodeParameters = NodeHelpers.getNodeParameters(
+						nodeType.properties,
+						newNode.parameters,
+						true,
+						false,
+						node,
+					);
+				} catch (e) {
+					console.error(
+						i18n.baseText('nodeView.thereWasAProblemLoadingTheNodeParametersOfNode') +
+							`: "${newNode.name}"`,
+					);
+					console.error(e);
+				}
+				newNode.parameters = nodeParameters ?? {};
+
+				// if it's a webhook and the path is empty set the UUID as the default path
+				if (
+					[WEBHOOK_NODE_TYPE, FORM_TRIGGER_NODE_TYPE].includes(newNode.type) &&
+					newNode.parameters.path === ''
+				) {
+					newNode.parameters.path = newNode.webhookId as string;
+				}
+			}
+
+			// check and match credentials, apply new format if old is used
+			matchCredentials(newNode);
+			workflowsStore.addNode(newNode);
+			if (trackHistory) {
+				historyStore.pushCommandToUndo(new AddNodeCommand(newNode));
+			}
+		});
+
+		// Wait for the nodes to be rendered
+		await nextTick();
+
+		canvasStore.jsPlumbInstance?.setSuspendDrawing(true);
+
+		if (connections) {
+			await addConnections(connections);
+		}
+		// Add the node issues at the end as the node-connections are required
+		refreshNodeIssues();
+		updateNodesInputIssues();
+		/////////////////////////////this.resetEndpointsErrors();
+		isInsertingNodes.value = false;
+
+		// Now it can draw again
+		canvasStore.jsPlumbInstance?.setSuspendDrawing(false, true);
+	}
+
 	return {
 		hasProxyAuth,
 		isCustomApiCallSelected,
 		getParameterValue,
 		displayParameter,
 		getNodeIssues,
-		refreshNodeIssues,
 		updateNodesInputIssues,
 		updateNodesExecutionIssues,
+		updateNodesParameterIssues,
+		updateNodeInputIssues,
 		updateNodeCredentialIssuesByName,
 		updateNodeCredentialIssues,
 		updateNodeParameterIssuesByName,
@@ -800,5 +1267,19 @@ export function useNodeHelpers() {
 		updateNodesCredentialsIssues,
 		getNodeInputData,
 		setSuccessOutput,
+		matchCredentials,
+		isInsertingNodes,
+		credentialsUpdated,
+		isProductionExecutionPreview,
+		pullConnActiveNodeName,
+		deleteJSPlumbConnection,
+		loadNodesProperties,
+		addNodes,
+		addConnections,
+		addConnection,
+		removeConnection,
+		removeConnectionByConnectionInfo,
+		addPinDataConnections,
+		removePinDataConnections,
 	};
 }

@@ -1,8 +1,15 @@
 import { createApp } from 'vue';
 
+import '@vue-flow/core/dist/style.css';
+import '@vue-flow/core/dist/theme-default.css';
+import '@vue-flow/controls/dist/style.css';
+import '@vue-flow/minimap/dist/style.css';
+import '@vue-flow/node-resizer/dist/style.css';
+
 import 'vue-json-pretty/lib/styles.css';
 import '@jsplumb/browser-ui/css/jsplumbtoolkit.css';
 import 'n8n-design-system/css/index.scss';
+// import 'n8n-design-system/css/tailwind/index.css';
 
 import './n8n-theme.scss';
 
@@ -22,11 +29,13 @@ import { FontAwesomePlugin } from './plugins/icons';
 import { createPinia, PiniaVuePlugin } from 'pinia';
 import { JsPlumbPlugin } from '@/plugins/jsplumb';
 import { ChartJSPlugin } from '@/plugins/chartjs';
+import { SentryPlugin } from '@/plugins/sentry';
 
 const pinia = createPinia();
 
 const app = createApp(App);
 
+app.use(SentryPlugin);
 app.use(TelemetryPlugin);
 app.use(PiniaVuePlugin);
 app.use(I18nPlugin);
@@ -44,7 +53,8 @@ app.mount('#app');
 if (!import.meta.env.PROD) {
 	// Make sure that we get all error messages properly displayed
 	// as long as we are not in production mode
-	window.onerror = (message, source, lineno, colno, error) => {
+	window.onerror = (message, _source, _lineno, _colno, error) => {
+		// eslint-disable-next-line @typescript-eslint/no-base-to-string
 		if (message.toString().includes('ResizeObserver')) {
 			// That error can apparently be ignored and can probably
 			// not do anything about it anyway

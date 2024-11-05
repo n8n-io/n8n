@@ -1,7 +1,6 @@
-/* eslint-disable @typescript-eslint/naming-convention */
 import type { ClientOAuth2, ClientOAuth2Options, ClientOAuth2RequestObject } from './ClientOAuth2';
-import { auth, expects, getRequestOptions } from './utils';
 import { DEFAULT_HEADERS } from './constants';
+import { auth, expects, getRequestOptions } from './utils';
 
 export interface ClientOAuth2TokenData extends Record<string, string | undefined> {
 	token_type?: string | undefined;
@@ -10,6 +9,7 @@ export interface ClientOAuth2TokenData extends Record<string, string | undefined
 	expires_in?: string;
 	scope?: string | undefined;
 }
+
 /**
  * General purpose client token generator.
  */
@@ -74,18 +74,27 @@ export class ClientOAuth2Token {
 
 		if (!this.refreshToken) throw new Error('No refresh token');
 
+		const clientId = options.clientId;
+		const clientSecret = options.clientSecret;
+		const headers = { ...DEFAULT_HEADERS };
+		const body: Record<string, string> = {
+			refresh_token: this.refreshToken,
+			grant_type: 'refresh_token',
+		};
+
+		if (options.authentication === 'body') {
+			body.client_id = clientId;
+			body.client_secret = clientSecret;
+		} else {
+			headers.Authorization = auth(clientId, clientSecret);
+		}
+
 		const requestOptions = getRequestOptions(
 			{
 				url: options.accessTokenUri,
 				method: 'POST',
-				headers: {
-					...DEFAULT_HEADERS,
-					Authorization: auth(options.clientId, options.clientSecret),
-				},
-				body: {
-					refresh_token: this.refreshToken,
-					grant_type: 'refresh_token',
-				},
+				headers,
+				body,
 			},
 			options,
 		);

@@ -1,5 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import type { INodeTypeDescription } from 'n8n-workflow';
+import { NodeConnectionType, type INodeTypeDescription } from 'n8n-workflow';
 
 import * as table from './table/Table.resource';
 import * as workbook from './workbook/Workbook.resource';
@@ -16,8 +16,8 @@ export const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'Microsoft Excel 365',
 	},
-	inputs: ['main'],
-	outputs: ['main'],
+	inputs: [NodeConnectionType.Main],
+	outputs: [NodeConnectionType.Main],
 	credentials: [
 		{
 			name: 'microsoftExcelOAuth2Api',

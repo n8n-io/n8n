@@ -1,7 +1,10 @@
 import { Container } from 'typedi';
+
 import { SETTINGS_LICENSE_CERT_KEY } from '@/constants';
-import { BaseCommand } from '../BaseCommand';
-import { SettingsRepository } from '@db/repositories/settings.repository';
+import { SettingsRepository } from '@/databases/repositories/settings.repository';
+import { License } from '@/license';
+
+import { BaseCommand } from '../base-command';
 
 export class ClearLicenseCommand extends BaseCommand {
 	static description = 'Clear license';
@@ -10,6 +13,16 @@ export class ClearLicenseCommand extends BaseCommand {
 
 	async run() {
 		this.logger.info('Clearing license from database.');
+
+		// Attempt to invoke shutdown() to force any floating entitlements to be released
+		const license = Container.get(License);
+		await license.init();
+		try {
+			await license.shutdown();
+		} catch {
+			this.logger.info('License shutdown failed. Continuing with clearing license from database.');
+		}
+
 		await Container.get(SettingsRepository).delete({
 			key: SETTINGS_LICENSE_CERT_KEY,
 		});

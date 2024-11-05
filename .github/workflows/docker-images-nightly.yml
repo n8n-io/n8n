@@ -6,10 +6,6 @@ on:
     - cron: '0 1 * * *'
   workflow_dispatch:
     inputs:
-      repository:
-        description: 'GitHub repository to create image off.'
-        required: true
-        default: 'n8n-io/n8n'
       branch:
         description: 'GitHub branch to create image off.'
         required: true
@@ -36,6 +32,9 @@ on:
         required: false
         default: ''
 
+env:
+  N8N_TAG: ${{ inputs.tag || 'nightly' }}
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -49,7 +48,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4.1.1
         with:
-          repository: ${{ github.event.inputs.repository || 'n8n-io/n8n' }}
           ref: ${{ github.event.inputs.branch || 'master' }}
 
       - name: Set up QEMU
@@ -69,7 +67,7 @@ jobs:
           [[ "${{github.event.inputs.merge-master}}" == "true" ]] && git remote add upstream https://github.com/n8n-io/n8n.git -f; git merge upstream/master --allow-unrelated-histories || echo ""
         shell: bash
 
-      - name: Build and push
+      - name: Build and push to DockerHub
         uses: docker/build-push-action@v5.1.0
         with:
           context: .
@@ -81,7 +79,22 @@ jobs:
           push: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          tags: ${{ secrets.DOCKER_USERNAME }}/n8n:${{ github.event.inputs.tag || 'nightly' }}
+          tags: ${{ secrets.DOCKER_USERNAME }}/n8n:${{ env.N8N_TAG }}
+
+      - name: Login to GitHub Container Registry
+        if: env.N8N_TAG == 'nightly'
+        uses: docker/login-action@v3.0.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push image to GHCR
+        if: env.N8N_TAG == 'nightly'
+        run: |
+          docker buildx imagetools create \
+            --tag ghcr.io/${{ github.repository_owner }}/n8n:nightly \
+            ${{ secrets.DOCKER_USERNAME }}/n8n:nightly
 
       - name: Call Success URL - optionally
         run: |

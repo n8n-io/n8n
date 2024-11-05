@@ -1,0 +1,9 @@
+<template>
+	<N8nButton
+		label="Chat"
+		size="large"
+		icon="comment"
+		type="primary"
+		data-test-id="workflow-chat-button"
+	/>
+</template>

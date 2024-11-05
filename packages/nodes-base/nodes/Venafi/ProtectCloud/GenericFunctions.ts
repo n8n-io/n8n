@@ -19,7 +19,6 @@ export async function venafiApiRequest(
 	resource: string,
 	body = {},
 	qs: IDataObject = {},
-	uri?: string,
 	option: IDataObject = {},
 ): Promise<any> {
 	const operation = this.getNodeParameter('operation', 0);

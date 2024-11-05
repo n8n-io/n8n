@@ -3,12 +3,12 @@ import { ref } from 'vue';
 import { defineStore } from 'pinia';
 import { useStorage } from '@/composables/useStorage';
 import { useUsersStore } from '@/stores/users.store';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import type { FeatureFlags, IDataObject } from 'n8n-workflow';
 import { EXPERIMENTS_TO_TRACK, LOCAL_STORAGE_EXPERIMENT_OVERRIDES } from '@/constants';
-import { useTelemetryStore } from './telemetry.store';
 import { useDebounce } from '@/composables/useDebounce';
+import { useTelemetry } from '@/composables/useTelemetry';
 
 const EVENTS = {
 	IS_PART_OF_EXPERIMENT: 'User is part of experiment',
@@ -19,7 +19,7 @@ export type PosthogStore = ReturnType<typeof usePostHog>;
 export const usePostHog = defineStore('posthog', () => {
 	const usersStore = useUsersStore();
 	const settingsStore = useSettingsStore();
-	const telemetryStore = useTelemetryStore();
+	const telemetry = useTelemetry();
 	const rootStore = useRootStore();
 	const { debounce } = useDebounce();
 
@@ -98,7 +98,7 @@ export const usePostHog = defineStore('posthog', () => {
 			return;
 		}
 
-		telemetryStore.track(EVENTS.IS_PART_OF_EXPERIMENT, {
+		telemetry.track(EVENTS.IS_PART_OF_EXPERIMENT, {
 			name,
 			variant,
 		});
@@ -155,7 +155,7 @@ export const usePostHog = defineStore('posthog', () => {
 			trackExperimentsDebounced(featureFlags.value);
 		} else {
 			// depend on client side evaluation if serverside evaluation fails
-			window.posthog?.onFeatureFlags?.((keys: string[], map: FeatureFlags) => {
+			window.posthog?.onFeatureFlags?.((_, map: FeatureFlags) => {
 				featureFlags.value = map;
 
 				// must be debounced because it is called multiple times by posthog
@@ -190,5 +190,6 @@ export const usePostHog = defineStore('posthog', () => {
 		identify,
 		capture,
 		setMetadata,
+		overrides,
 	};
 });

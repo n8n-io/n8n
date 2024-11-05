@@ -1,29 +1,30 @@
+<script setup lang="ts">
+import { computed } from 'vue';
+
+type Props = {
+	modelValue: string;
+	placeholder?: string;
+	staticSize?: boolean;
+};
+
+const props = withDefaults(defineProps<Props>(), { staticSize: false, placeholder: '' });
+
+const hiddenValue = computed(() => {
+	let value = props.modelValue.replace(/\s/g, '.'); // force input to expand on space chars
+	if (!value) {
+		value = props.placeholder;
+	}
+
+	return `${value}`; // adjust for padding
+});
+</script>
+
 <template>
 	<!-- mock el-input element to apply styles -->
 	<div :class="{ 'el-input': true, 'static-size': staticSize }" :data-value="hiddenValue">
 		<slot></slot>
 	</div>
 </template>
-
-<script lang="ts">
-import { defineComponent } from 'vue';
-
-export default defineComponent({
-	name: 'ExpandableInputBase',
-	props: ['modelValue', 'placeholder', 'staticSize'],
-	computed: {
-		hiddenValue() {
-			let value = (this.modelValue as string).replace(/\s/g, '.'); // force input to expand on space chars
-			if (!value) {
-				// @ts-ignore
-				value = this.placeholder;
-			}
-
-			return `${value}`; // adjust for padding
-		},
-	},
-});
-</script>
 
 <style lang="scss" scoped>
 $--horiz-padding: 15px;

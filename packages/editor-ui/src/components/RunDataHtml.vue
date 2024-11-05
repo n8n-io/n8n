@@ -1,9 +1,4 @@
-<template>
-	<iframe class="__html-display" :srcdoc="sanitizedHtml" />
-</template>
-
 <script lang="ts">
-import type { PropType } from 'vue';
 import sanitizeHtml, { defaults, type IOptions as SanitizeOptions } from 'sanitize-html';
 
 const sanitizeOptions: SanitizeOptions = {
@@ -24,7 +19,8 @@ export default {
 	name: 'RunDataHtml',
 	props: {
 		inputHtml: {
-			type: String as PropType<string>,
+			type: String,
+			required: true,
 		},
 	},
 	computed: {
@@ -34,6 +30,10 @@ export default {
 	},
 };
 </script>
+
+<template>
+	<iframe class="__html-display" :srcdoc="sanitizedHtml" />
+</template>
 
 <style lang="scss">
 .__html-display {

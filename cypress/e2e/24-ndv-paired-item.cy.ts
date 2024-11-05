@@ -1,5 +1,4 @@
 import { WorkflowPage, NDV } from '../pages';
-import { v4 as uuid } from 'uuid';
 
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
@@ -7,7 +6,7 @@ const ndv = new NDV();
 describe('NDV', () => {
 	beforeEach(() => {
 		workflowPage.actions.visit();
-		workflowPage.actions.renameWorkflow(uuid());
+		workflowPage.actions.renameWithUniqueName();
 		workflowPage.actions.saveWorkflowOnButtonClick();
 	});
 
@@ -113,6 +112,9 @@ describe('NDV', () => {
 		workflowPage.actions.executeWorkflow();
 		workflowPage.actions.openNode('Set3');
 
+		ndv.actions.switchInputMode('Table');
+		ndv.actions.switchOutputMode('Table');
+
 		ndv.getters
 			.inputRunSelector()
 			.should('exist')
@@ -123,9 +125,6 @@ describe('NDV', () => {
 			.should('exist')
 			.find('input')
 			.should('include.value', '2 of 2 (6 items)');
-
-		ndv.actions.switchInputMode('Table');
-		ndv.actions.switchOutputMode('Table');
 
 		ndv.actions.changeOutputRunSelector('1 of 2 (6 items)');
 		ndv.getters.inputRunSelector().find('input').should('include.value', '1 of 2 (6 items)');
@@ -161,64 +160,6 @@ describe('NDV', () => {
 		ndv.getters.inputTableRow(3).should('have.text', '2000');
 
 		ndv.getters.inputTableRow(3).invoke('attr', 'data-test-id').should('equal', 'hovering-item');
-	});
-
-	it('resolves expression with default item when input node is not parent, while still pairing items', () => {
-		cy.fixture('Test_workflow_5.json').then((data) => {
-			cy.get('body').paste(JSON.stringify(data));
-		});
-		workflowPage.actions.zoomToFit();
-		workflowPage.actions.executeWorkflow();
-		workflowPage.actions.openNode('Set2');
-
-		ndv.getters.inputPanel().contains('6 items').should('exist');
-		ndv.getters
-			.outputRunSelector()
-			.find('input')
-			.should('exist')
-			.should('have.value', '2 of 2 (6 items)');
-
-		ndv.actions.switchInputMode('Table');
-		ndv.actions.switchOutputMode('Table');
-
-		ndv.getters.backToCanvas().realHover(); // reset to default hover
-		ndv.getters.inputTableRow(1).should('have.text', '1111');
-
-		ndv.getters.inputTableRow(1).invoke('attr', 'data-test-id').should('equal', 'hovering-item');
-		ndv.getters.inputTableRow(1).realHover();
-		cy.wait(100);
-		ndv.getters.outputHoveringItem().should('not.exist');
-		ndv.getters.parameterExpressionPreview('value').should('include.text', '1111');
-
-		ndv.actions.selectInputNode('Code1');
-		ndv.getters.inputTableRow(1).realHover();
-		ndv.getters.inputTableRow(1).should('have.text', '1000');
-
-		ndv.getters.inputTableRow(1).invoke('attr', 'data-test-id').should('equal', 'hovering-item');
-		ndv.getters.outputTableRow(1).should('have.text', '1000');
-		ndv.getters.parameterExpressionPreview('value').should('include.text', '1000');
-
-		ndv.actions.selectInputNode('Code');
-
-		ndv.getters.inputTableRow(1).realHover();
-		cy.wait(100);
-		ndv.getters.inputTableRow(1).should('have.text', '6666');
-
-		ndv.getters.inputTableRow(1).invoke('attr', 'data-test-id').should('equal', 'hovering-item');
-
-		ndv.getters.outputHoveringItem().should('not.exist');
-		ndv.getters.parameterExpressionPreview('value').should('include.text', '1000');
-
-		ndv.actions.selectInputNode('When clicking');
-
-		ndv.getters.inputTableRow(1).realHover();
-		ndv.getters
-			.inputTableRow(1)
-			.should('have.text', "This is an item, but it's empty.")
-			.realHover();
-
-		ndv.getters.outputHoveringItem().should('have.length', 6);
-		ndv.getters.parameterExpressionPreview('value').should('include.text', '1000');
 	});
 
 	it('can pair items between input and output across branches and runs', () => {
@@ -286,7 +227,7 @@ describe('NDV', () => {
 
 		workflowPage.actions.zoomToFit();
 
-		/* prettier-ignore */
+		// biome-ignore format:
 		const PINNED_DATA = [
 			{
 				"id": "abc",
@@ -322,7 +263,6 @@ describe('NDV', () => {
 				]
 			}
 		];
-		/* prettier-ignore */
 		workflowPage.actions.openNode('Get thread details1');
 		ndv.actions.pastePinnedData(PINNED_DATA);
 		ndv.actions.close();

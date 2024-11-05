@@ -11,7 +11,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import { bucketFields, bucketOperations } from '../Aws/S3/V1/BucketDescription';
 
@@ -34,8 +34,8 @@ export class S3 implements INodeType {
 		defaults: {
 			name: 'S3',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 's3',
@@ -43,6 +43,13 @@ export class S3 implements INodeType {
 			},
 		],
 		properties: [
+			{
+				displayName:
+					"This node is for services that use the S3 standard, e.g. Minio or Digital Ocean Spaces. For AWS S3 use the 'AWS S3' node.",
+				name: 's3StandardNotice',
+				type: 'notice',
+				default: '',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',

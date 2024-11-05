@@ -1,7 +1,7 @@
 import { readFileSync } from 'fs';
-import { resolve, join, dirname } from 'path';
 import type { n8n } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
+import { resolve, join, dirname } from 'path';
 
 const { NODE_ENV, E2E_TESTS } = process.env;
 export const inProduction = NODE_ENV === 'production';
@@ -48,7 +48,8 @@ export const RESPONSE_ERROR_MESSAGES = {
 	USERS_QUOTA_REACHED: 'Maximum number of users reached',
 	OAUTH2_CREDENTIAL_TEST_SUCCEEDED: 'Connection Successful!',
 	OAUTH2_CREDENTIAL_TEST_FAILED: 'This OAuth2 credential was not connected to an account.',
-};
+	MISSING_SCOPE: 'User is missing a scope required to perform this action',
+} as const;
 
 export const AUTH_COOKIE_NAME = 'n8n-auth';
 
@@ -86,6 +87,12 @@ export const LICENSE_FEATURES = {
 	MULTIPLE_MAIN_INSTANCES: 'feat:multipleMainInstances',
 	WORKER_VIEW: 'feat:workerView',
 	ADVANCED_PERMISSIONS: 'feat:advancedPermissions',
+	PROJECT_ROLE_ADMIN: 'feat:projectRole:admin',
+	PROJECT_ROLE_EDITOR: 'feat:projectRole:editor',
+	PROJECT_ROLE_VIEWER: 'feat:projectRole:viewer',
+	AI_ASSISTANT: 'feat:aiAssistant',
+	ASK_AI: 'feat:askAi',
+	COMMUNITY_NODES_CUSTOM_REGISTRY: 'feat:communityNodes:customRegistry',
 } as const;
 
 export const LICENSE_QUOTAS = {
@@ -93,6 +100,7 @@ export const LICENSE_QUOTAS = {
 	VARIABLES_LIMIT: 'quota:maxVariables',
 	USERS_LIMIT: 'quota:users',
 	WORKFLOW_HISTORY_PRUNE_LIMIT: 'quota:workflowHistoryPrune',
+	TEAM_PROJECT_LIMIT: 'quota:maxTeamProjects',
 } as const;
 export const UNLIMITED_LICENSE_QUOTA = -1;
 
@@ -143,4 +151,26 @@ export const TEST_WEBHOOK_TIMEOUT = 2 * TIME.MINUTE;
 
 export const TEST_WEBHOOK_TIMEOUT_BUFFER = 30 * TIME.SECOND;
 
-export const N8N_DOCS_URL = 'https://docs.n8n.io';
+export const GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE = [
+	'oAuth2Api',
+	'googleOAuth2Api',
+	'microsoftOAuth2Api',
+	'highLevelOAuth2Api',
+];
+
+export const ARTIFICIAL_TASK_DATA = {
+	main: [
+		[
+			{
+				json: { isArtificialRecoveredEventItem: true },
+				pairedItem: undefined,
+			},
+		],
+	],
+};
+
+/** Lowest priority, meaning shut down happens after other groups */
+export const LOWEST_SHUTDOWN_PRIORITY = 0;
+export const DEFAULT_SHUTDOWN_PRIORITY = 100;
+/** Highest priority, meaning shut down happens before all other groups */
+export const HIGHEST_SHUTDOWN_PRIORITY = 200;

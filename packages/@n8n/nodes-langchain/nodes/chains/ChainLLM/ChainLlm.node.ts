@@ -1,4 +1,17 @@
-import { ApplicationError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import type { BaseLanguageModel } from '@langchain/core/language_models/base';
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import { HumanMessage } from '@langchain/core/messages';
+import {
+	AIMessagePromptTemplate,
+	PromptTemplate,
+	SystemMessagePromptTemplate,
+	HumanMessagePromptTemplate,
+	ChatPromptTemplate,
+} from '@langchain/core/prompts';
+import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
+import { ChatOllama } from '@langchain/ollama';
+import { LLMChain } from 'langchain/chains';
+import { CombiningOutputParser } from 'langchain/output_parsers';
 import type {
 	IBinaryData,
 	IDataObject,
@@ -7,29 +20,22 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import {
+	ApplicationError,
+	NodeApiError,
+	NodeConnectionType,
+	NodeOperationError,
+} from 'n8n-workflow';
 
-import type { BaseLanguageModel } from '@langchain/core/language_models/base';
-import {
-	AIMessagePromptTemplate,
-	PromptTemplate,
-	SystemMessagePromptTemplate,
-	HumanMessagePromptTemplate,
-	ChatPromptTemplate,
-} from '@langchain/core/prompts';
-import type { BaseOutputParser } from '@langchain/core/output_parsers';
-import { CombiningOutputParser } from 'langchain/output_parsers';
-import { LLMChain } from 'langchain/chains';
-import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { HumanMessage } from '@langchain/core/messages';
-import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
-import { ChatOllama } from '@langchain/community/chat_models/ollama';
+import { getPromptInputByType, isChatInstance } from '../../../utils/helpers';
+import type { N8nOutputParser } from '../../../utils/output_parsers/N8nOutputParser';
+import { getOptionalOutputParsers } from '../../../utils/output_parsers/N8nOutputParser';
 import { getTemplateNoticeField } from '../../../utils/sharedFields';
-import {
-	getOptionalOutputParsers,
-	getPromptInputByType,
-	isChatInstance,
-} from '../../../utils/helpers';
 import { getTracingConfig } from '../../../utils/tracing';
+import {
+	getCustomErrorMessage as getCustomOpenAiErrorMessage,
+	isOpenAiError,
+} from '../../vendors/OpenAi/helpers/error-handling';
 
 interface MessagesTemplate {
 	type: string;
@@ -180,7 +186,7 @@ async function getChain(
 	itemIndex: number,
 	query: string,
 	llm: BaseLanguageModel,
-	outputParsers: BaseOutputParser[],
+	outputParsers: N8nOutputParser[],
 	messages?: MessagesTemplate[],
 ): Promise<unknown[]> {
 	const chatTemplate: ChatPromptTemplate | PromptTemplate = await getChainPromptTemplate(
@@ -257,7 +263,7 @@ export class ChainLlm implements INodeType {
 			alias: ['LangChain'],
 			categories: ['AI'],
 			subcategories: {
-				AI: ['Chains'],
+				AI: ['Chains', 'Root Nodes'],
 			},
 			resources: {
 				primaryDocumentation: [
@@ -517,7 +523,7 @@ export class ChainLlm implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		this.logger.verbose('Executing LLM Chain');
+		this.logger.debug('Executing LLM Chain');
 		const items = this.getInputData();
 
 		const returnData: INodeExecutionData[] = [];
@@ -580,6 +586,18 @@ export class ChainLlm implements INodeType {
 					});
 				});
 			} catch (error) {
+				// If the error is an OpenAI's rate limit error, we want to handle it differently
+				// because OpenAI has multiple different rate limit errors
+				if (error instanceof NodeApiError && isOpenAiError(error.cause)) {
+					const openAiErrorCode: string | undefined = (error.cause as any).error?.code;
+					if (openAiErrorCode) {
+						const customMessage = getCustomOpenAiErrorMessage(openAiErrorCode);
+						if (customMessage) {
+							error.message = customMessage;
+						}
+					}
+				}
+
 				if (this.continueOnFail()) {
 					returnData.push({ json: { error: error.message }, pairedItem: { item: itemIndex } });
 					continue;

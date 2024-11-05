@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { IUpdateInformation, ResourceMapperReqParams } from '@/Interface';
+import type { IUpdateInformation, DynamicNodeParameters } from '@/Interface';
 import { resolveRequiredParameters } from '@/composables/useWorkflowHelpers';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import type {
@@ -16,7 +16,7 @@ import MappingModeSelect from './MappingModeSelect.vue';
 import MatchingColumnsSelect from './MatchingColumnsSelect.vue';
 import MappingFields from './MappingFields.vue';
 import { fieldCannotBeDeleted, parseResourceMapperFieldName } from '@/utils/nodeTypesUtils';
-import { isResourceMapperValue } from '@/utils/typeGuards';
+import { isFullExecutionResponse, isResourceMapperValue } from '@/utils/typeGuards';
 import { i18n as locale } from '@/plugins/i18n';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -25,10 +25,11 @@ type Props = {
 	parameter: INodeProperties;
 	node: INode | null;
 	path: string;
-	inputSize: string;
-	labelSize: string;
+	inputSize: 'small' | 'medium';
+	labelSize: 'small' | 'medium';
+	teleported?: boolean;
 	dependentParametersValues?: string | null;
-	teleported: boolean;
+	isReadOnly?: boolean;
 };
 
 const nodeTypesStore = useNodeTypesStore();
@@ -37,10 +38,12 @@ const workflowsStore = useWorkflowsStore();
 
 const props = withDefaults(defineProps<Props>(), {
 	teleported: true,
+	dependentParametersValues: null,
+	isReadOnly: false,
 });
 
 const emit = defineEmits<{
-	(event: 'valueChanged', value: IUpdateInformation): void;
+	valueChanged: [value: IUpdateInformation];
 }>();
 
 const state = reactive({
@@ -77,7 +80,12 @@ watch(
 watch(
 	() => workflowsStore.getWorkflowExecution,
 	async (data) => {
-		if (data?.status === 'success' && state.paramValue.mappingMode === 'autoMapInputData') {
+		if (
+			data &&
+			isFullExecutionResponse(data) &&
+			data.status === 'success' &&
+			state.paramValue.mappingMode === 'autoMapInputData'
+		) {
 			await initFetching(true);
 		}
 	},
@@ -235,7 +243,13 @@ async function loadFieldsToMap(): Promise<void> {
 	if (!props.node) {
 		return;
 	}
-	const requestParams: ResourceMapperReqParams = {
+
+	const methodName = props.parameter.typeOptions?.resourceMapper?.resourceMapperMethod;
+	if (typeof methodName !== 'string') {
+		return;
+	}
+
+	const requestParams: DynamicNodeParameters.ResourceMapperFieldsRequest = {
 		nodeTypeAndVersion: {
 			name: props.node?.type,
 			version: props.node.typeVersion,
@@ -245,7 +259,7 @@ async function loadFieldsToMap(): Promise<void> {
 			props.node.parameters,
 		) as INodeParameters,
 		path: props.path,
-		methodName: props.parameter.typeOptions?.resourceMapper?.resourceMapperMethod,
+		methodName,
 		credentials: props.node.credentials,
 	};
 	const fetchedFields = await nodeTypesStore.getResourceMapperFields(requestParams);
@@ -310,7 +324,7 @@ function setDefaultFieldValues(forceMatchingFieldsUpdate = false): void {
 function updateNodeIssues(): void {
 	if (props.node) {
 		const parameterIssues = NodeHelpers.getNodeParametersIssues(
-			nodeType.value?.properties || [],
+			nodeType.value?.properties ?? [],
 			props.node,
 		);
 		if (parameterIssues) {
@@ -319,10 +333,10 @@ function updateNodeIssues(): void {
 	}
 }
 
-function onMatchingColumnsChanged(matchingColumns: string[]): void {
+function onMatchingColumnsChanged(columns: string[]): void {
 	state.paramValue = {
 		...state.paramValue,
-		matchingColumns,
+		matchingColumns: columns,
 	};
 	// Set all matching fields to be visible
 	state.paramValue.schema.forEach((field) => {
@@ -473,6 +487,7 @@ defineExpose({
 			:loading-error="state.loadingError"
 			:fields-to-map="state.paramValue.schema"
 			:teleported="teleported"
+			:is-read-only="isReadOnly"
 			@mode-changed="onModeChanged"
 			@retry-fetch="initFetching"
 		/>
@@ -488,11 +503,12 @@ defineExpose({
 			:service-name="nodeType?.displayName || locale.baseText('generic.service')"
 			:teleported="teleported"
 			:refresh-in-progress="state.refreshInProgress"
+			:is-read-only="isReadOnly"
 			@matching-columns-changed="onMatchingColumnsChanged"
 			@refresh-field-list="initFetching(true)"
 		/>
-		<n8n-text v-if="!showMappingModeSelect && state.loading" size="small">
-			<n8n-icon icon="sync-alt" size="xsmall" :spin="true" />
+		<N8nText v-if="!showMappingModeSelect && state.loading" size="small">
+			<N8nIcon icon="sync-alt" size="xsmall" :spin="true" />
 			{{
 				locale.baseText('resourceMapper.fetchingFields.message', {
 					interpolate: {
@@ -500,7 +516,7 @@ defineExpose({
 					},
 				})
 			}}
-		</n8n-text>
+		</N8nText>
 		<MappingFields
 			v-if="showMappingFields"
 			:parameter="props.parameter"
@@ -514,12 +530,13 @@ defineExpose({
 			:loading="state.loading"
 			:teleported="teleported"
 			:refresh-in-progress="state.refreshInProgress"
+			:is-read-only="isReadOnly"
 			@field-value-changed="fieldValueChanged"
 			@remove-field="removeField"
 			@add-field="addField"
 			@refresh-field-list="initFetching(true)"
 		/>
-		<n8n-notice
+		<N8nNotice
 			v-if="state.paramValue.mappingMode === 'autoMapInputData' && hasAvailableMatchingColumns"
 		>
 			{{
@@ -530,6 +547,6 @@ defineExpose({
 					},
 				})
 			}}
-		</n8n-notice>
+		</N8nNotice>
 	</div>
 </template>

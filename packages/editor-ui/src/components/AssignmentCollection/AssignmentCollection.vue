@@ -13,7 +13,8 @@ import { computed, reactive, watch } from 'vue';
 import DropArea from '../DropArea/DropArea.vue';
 import ParameterOptions from '../ParameterOptions.vue';
 import Assignment from './Assignment.vue';
-import { inputDataToAssignments, nameFromExpression, typeFromExpression } from './utils';
+import { inputDataToAssignments, typeFromExpression } from './utils';
+import { propertyNameFromExpression } from '@/utils/mappingUtils';
 
 interface Props {
 	parameter: INodeProperties;
@@ -26,10 +27,7 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), { isReadOnly: false });
 
 const emit = defineEmits<{
-	(
-		event: 'valueChanged',
-		value: { name: string; node: string; value: AssignmentCollectionValue },
-	): void;
+	valueChanged: [value: { name: string; node: string; value: AssignmentCollectionValue }];
 }>();
 
 const i18n = useI18n();
@@ -49,7 +47,7 @@ const issues = computed(() => {
 });
 
 const empty = computed(() => state.paramValue.assignments.length === 0);
-const activeDragField = computed(() => nameFromExpression(ndvStore.draggableData));
+const activeDragField = computed(() => propertyNameFromExpression(ndvStore.draggableData));
 const inputData = computed(() => ndvStore.ndvInputData?.[0]?.json);
 const actions = computed(() => {
 	return [
@@ -82,7 +80,7 @@ function addAssignment(): void {
 function dropAssignment(expression: string): void {
 	state.paramValue.assignments.push({
 		id: uuid(),
-		name: nameFromExpression(expression),
+		name: propertyNameFromExpression(expression),
 		value: `=${expression}`,
 		type: typeFromExpression(expression),
 	});
@@ -100,10 +98,10 @@ function getIssues(index: number): string[] {
 	return issues.value[`${props.parameter.name}.${index}`] ?? [];
 }
 
-function optionSelected(action: 'clearAll' | 'addAll') {
+function optionSelected(action: string) {
 	if (action === 'clearAll') {
 		state.paramValue.assignments = [];
-	} else {
+	} else if (action === 'addAll' && inputData.value) {
 		const newAssignments = inputDataToAssignments(inputData.value);
 		state.paramValue.assignments = state.paramValue.assignments.concat(newAssignments);
 	}

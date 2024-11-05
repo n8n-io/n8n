@@ -1,4 +1,4 @@
-import type { IAuthenticateGeneric, ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { IAuthenticateGeneric, ICredentialType, INodeProperties, Icon } from 'n8n-workflow';
 
 export class HybridAnalysisApi implements ICredentialType {
 	name = 'hybridAnalysisApi';
@@ -7,7 +7,7 @@ export class HybridAnalysisApi implements ICredentialType {
 
 	documentationUrl = 'hybridanalysis';
 
-	icon = 'file:icons/Hybrid.png';
+	icon: Icon = 'file:icons/Hybrid.png';
 
 	httpRequestNode = {
 		name: 'Hybrid Analysis',

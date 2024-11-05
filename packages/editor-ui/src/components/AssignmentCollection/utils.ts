@@ -3,13 +3,6 @@ import type { AssignmentValue, IDataObject } from 'n8n-workflow';
 import { resolveParameter } from '@/composables/useWorkflowHelpers';
 import { v4 as uuid } from 'uuid';
 
-export function nameFromExpression(expression: string): string {
-	return expression
-		.replace(/^{{\s*|\s*}}$/g, '')
-		.replace('$json.', '')
-		.replace(/^\$\(.*\)(\.item\.json)?\.(.*)/, '$2');
-}
-
 export function inferAssignmentType(value: unknown): string {
 	if (typeof value === 'boolean') return 'boolean';
 	if (typeof value === 'number') return 'number';

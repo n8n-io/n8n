@@ -6,7 +6,7 @@ import type {
 	INodeTypeDescription,
 	IHttpRequestMethods,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import { msg91ApiRequest } from './GenericFunctions';
 
@@ -14,8 +14,8 @@ export class Msg91 implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'MSG91',
 		name: 'msg91',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
-		icon: 'file:msg91.png',
+
+		icon: { light: 'file:msg91.svg', dark: 'file:msg91.dark.svg' },
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -23,8 +23,8 @@ export class Msg91 implements INodeType {
 		defaults: {
 			name: 'MSG91',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'msg91Api',

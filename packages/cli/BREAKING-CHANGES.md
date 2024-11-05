@@ -2,6 +2,70 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+# 1.65.0
+
+### What changed?
+
+Queue polling via the env var `QUEUE_RECOVERY_INTERVAL` has been removed.
+
+### When is action necessary?
+
+If you have set the env var `QUEUE_RECOVERY_INTERVAL`, so you can remove it as it no longer has any effect.
+
+# 1.63.0
+
+### What changed?
+
+1. The worker server used to bind to IPv6 by default. It now binds to IPv4 by default.
+2. The worker server's `/healthz` used to report healthy status based on database and Redis checks. It now reports healthy status regardless of database and Redis status, and the database and Redis checks are part of `/healthz/readiness`.
+
+### When is action necessary?
+
+1. If you experience a port conflict error when starting a worker server using its default port, set a different port for the worker server with `QUEUE_HEALTH_CHECK_PORT`.
+2. If you are relying on database and Redis checks for worker health status, switch to checking `/healthz/readiness` instead of `/healthz`.
+
+## 1.57.0
+
+### What changed?
+
+The `verbose` log level was merged into the `debug` log level.
+
+### When is action necessary?
+
+If you are setting the env var `N8N_LOG_LEVEL=verbose`, please update your log level to `N8N_LOG_LEVEL=debug`.
+
+## 1.55.0
+
+### What changed?
+
+The `N8N_BLOCK_FILE_ACCESS_TO_N8N_FILES` environment variable now also blocks access to n8n's static cache directory at `~/.cache/n8n/public`.
+
+### When is action necessary?
+
+If you are writing to or reading from a file at n8n's static cache directory via a node, e.g. `Read/Write Files from Disk`, please update your node to use a different path.
+
+## 1.52.0
+
+### What changed?
+
+Prometheus metrics enabled via `N8N_METRICS_INCLUDE_DEFAULT_METRICS` and `N8N_METRICS_INCLUDE_API_ENDPOINTS` were fixed to include the default `n8n_` prefix.
+
+### When is action necessary?
+
+If you are using Prometheus metrics from these categories and are using a non-empty prefix, please update those metrics to match their new prefixed names.
+
+## 1.47.0
+
+### What changed?
+
+Calling `$(...).last()` (or `$(...).first()` or `$(...).all()` respectively) without arguments is returning the the last item (or first or all items) of the output that connects the two nodes. Before it was returning the item/items of the first output of that node.
+
+### When is action necessary?
+
+If you are using `$(...).last()` (or `$(...).first()` or `$(...)all()` respectively) without arguments for nodes that have multiple outputs (e.g. `If`, `Switch`, `Compare Datasets`, etc.) and you want it to default to the first output. In that case change it to `$(...).last(0)` (or `first` or `all` respectively).
+
+This does not affect the Array functions `[].last()`, `[].first()`.
+
 ## 1.40.0
 
 ### What changed?

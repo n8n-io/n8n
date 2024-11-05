@@ -1,4 +1,4 @@
-ARG NODE_VERSION=18
+ARG NODE_VERSION=20
 
 # 1. Use a builder step to download various dependencies
 FROM node:${NODE_VERSION}-alpine as builder

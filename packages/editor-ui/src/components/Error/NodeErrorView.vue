@@ -1,14 +1,11 @@
 <script lang="ts" setup>
-import Feedback from '@/components/Feedback.vue';
 import { useI18n } from '@/composables/useI18n';
-import type { PropType } from 'vue';
-import { computed, ref } from 'vue';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { computed } from 'vue';
 import { useClipboard } from '@/composables/useClipboard';
 import { useToast } from '@/composables/useToast';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useNDVStore } from '@/stores/ndv.store';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import type {
 	IDataObject,
 	INodeProperties,
@@ -19,42 +16,46 @@ import type {
 	NodeOperationError,
 } from 'n8n-workflow';
 import { sanitizeHtml } from '@/utils/htmlUtils';
-import { useAIStore } from '@/stores/ai.store';
-import { MAX_DISPLAY_DATA_SIZE } from '@/constants';
-import VueMarkdown from 'vue-markdown-render';
+import { MAX_DISPLAY_DATA_SIZE, NEW_ASSISTANT_SESSION_MODAL } from '@/constants';
 import type { BaseTextKey } from '@/plugins/i18n';
+import { useAssistantStore } from '@/stores/assistant.store';
+import type { ChatRequest } from '@/types/assistant.types';
+import InlineAskAssistantButton from 'n8n-design-system/components/InlineAskAssistantButton/InlineAskAssistantButton.vue';
+import { useUIStore } from '@/stores/ui.store';
+import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
+import { useAIAssistantHelpers } from '@/composables/useAIAssistantHelpers';
 
-const props = defineProps({
-	error: {
-		type: Object as PropType<NodeError | NodeApiError | NodeOperationError>,
-		required: true,
-	},
-});
+type Props = {
+	// TODO: .node can be undefined
+	error: NodeError | NodeApiError | NodeOperationError;
+	compact?: boolean;
+};
 
+const props = defineProps<Props>();
 const clipboard = useClipboard();
 const toast = useToast();
 const i18n = useI18n();
-const telemetry = useTelemetry();
+const assistantHelpers = useAIAssistantHelpers();
 
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
 const rootStore = useRootStore();
-const aiStore = useAIStore();
-
-const isLoadingErrorDebugging = ref(false);
-const errorDebuggingMessage = ref('');
-const errorDebuggingFeedback = ref<'positive' | 'negative' | undefined>();
+const assistantStore = useAssistantStore();
+const uiStore = useUIStore();
 
 const displayCause = computed(() => {
-	return JSON.stringify(props.error.cause).length < MAX_DISPLAY_DATA_SIZE;
+	return JSON.stringify(props.error.cause ?? '').length < MAX_DISPLAY_DATA_SIZE;
+});
+
+const node = computed(() => {
+	return props.error.node || ndvStore.activeNode;
 });
 
 const parameters = computed<INodeProperties[]>(() => {
-	const node = ndvStore.activeNode;
-	if (!node) {
+	if (!node.value) {
 		return [];
 	}
-	const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+	const nodeType = nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion);
 
 	if (nodeType === null) {
 		return [];
@@ -79,13 +80,12 @@ const hasManyInputItems = computed(() => {
 });
 
 const nodeDefaultName = computed(() => {
-	const node = props.error?.node;
-	if (!node) {
+	if (!node.value) {
 		return 'Node';
 	}
 
-	const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
-	return nodeType?.defaults?.name || node.name;
+	const nodeType = nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion);
+	return nodeType?.defaults?.name || node.value.name;
 });
 
 const prepareRawMessages = computed(() => {
@@ -116,44 +116,21 @@ const prepareRawMessages = computed(() => {
 	return returnData;
 });
 
-async function onDebugError() {
-	try {
-		isLoadingErrorDebugging.value = true;
-		telemetry.track(
-			'User clicked AI error helper button',
-			{
-				node_type: props.error.node?.type,
-				error_title: props.error.message,
-			},
-			{ withPostHog: true },
-		);
-
-		const { message } = await aiStore.debugError({ error: props.error });
-		errorDebuggingMessage.value = message;
-	} catch (error) {
-		toast.showError(error, i18n.baseText('generic.error'));
-	} finally {
-		isLoadingErrorDebugging.value = false;
+const isAskAssistantAvailable = computed(() => {
+	if (!node.value) {
+		return false;
 	}
-}
+	const isCustomNode = node.value.type === undefined || isCommunityPackageName(node.value.type);
 
-async function onDebugErrorRegenerate() {
-	errorDebuggingMessage.value = '';
-	errorDebuggingFeedback.value = undefined;
-	await onDebugError();
-	telemetry.track('User regenerated error debugging AI hint', {
-		node_type: props.error.node?.type,
-		error_title: props.error.message,
-	});
-}
+	return assistantStore.canShowAssistantButtonsOnCanvas && !isCustomNode && !nodeIsHidden();
+});
 
-async function onErrorDebuggingFeedback(feedback: 'positive' | 'negative') {
-	telemetry.track('User responded error debugging AI hint', {
-		helpful: feedback === 'positive',
-		node_type: props.error.node?.type,
-		error_title: props.error.message,
+const assistantAlreadyAsked = computed(() => {
+	return assistantStore.isNodeErrorActive({
+		error: assistantHelpers.simplifyErrorForAssistant(props.error),
+		node: props.error.node || ndvStore.activeNode,
 	});
-}
+});
 
 function nodeVersionTag(nodeType: NodeError['node']): string {
 	if (!nodeType || ('hidden' in nodeType && nodeType.hidden)) {
@@ -171,12 +148,8 @@ function nodeVersionTag(nodeType: NodeError['node']): string {
 	});
 }
 
-function replacePlaceholders(parameter: string, message: string): string {
-	const parameterName = parameterDisplayName(parameter, false);
-	const parameterFullName = parameterDisplayName(parameter, true);
-	return message
-		.replace(/%%PARAMETER%%/g, parameterName)
-		.replace(/%%PARAMETER_FULL%%/g, parameterFullName);
+function prepareDescription(description: string): string {
+	return sanitizeHtml(description.replace(/`(.*?)`/g, '<code>$1</code>'));
 }
 
 function getErrorDescription(): string {
@@ -185,7 +158,7 @@ function getErrorDescription(): string {
 		(props.error as NodeOperationError).functionality === 'configuration-node';
 
 	if (isSubNodeError) {
-		return sanitizeHtml(
+		return prepareDescription(
 			props.error.description +
 				i18n.baseText('pushConnection.executionError.openNode', {
 					interpolate: { node: props.error.node.name },
@@ -199,7 +172,7 @@ function getErrorDescription(): string {
 			runIndex: (props.error.context.runIndex as string) ?? '0',
 			itemIndex: (props.error.context.itemIndex as string) ?? '0',
 		};
-		return sanitizeHtml(
+		return prepareDescription(
 			i18n.baseText(
 				`nodeErrorView.description.${props.error.context.descriptionKey as string}` as BaseTextKey,
 				{ interpolate },
@@ -208,11 +181,11 @@ function getErrorDescription(): string {
 	}
 
 	if (!props.error.context?.descriptionTemplate) {
-		return sanitizeHtml(props.error.description ?? '');
+		return prepareDescription(props.error.description ?? '');
 	}
 
 	const parameterName = parameterDisplayName(props.error.context.parameter as string);
-	return sanitizeHtml(
+	return prepareDescription(
 		(props.error.context.descriptionTemplate as string).replace(/%%PARAMETER%%/g, parameterName),
 	);
 }
@@ -220,42 +193,41 @@ function getErrorDescription(): string {
 function addItemIndexSuffix(message: string): string {
 	let itemIndexSuffix = '';
 
-	const ITEM_INDEX_SUFFIX_TEXT = '[item ';
-
-	if (
-		hasManyInputItems.value &&
-		!message.includes(ITEM_INDEX_SUFFIX_TEXT) &&
-		props.error?.context?.itemIndex !== undefined
-	) {
-		itemIndexSuffix = ` [item ${props.error.context.itemIndex}]`;
+	if (hasManyInputItems.value && props.error?.context?.itemIndex !== undefined) {
+		itemIndexSuffix = `item ${props.error.context.itemIndex}`;
 	}
 
-	return message + itemIndexSuffix;
+	if (message.includes(itemIndexSuffix)) return message;
+
+	return `${message} [${itemIndexSuffix}]`;
 }
 
 function getErrorMessage(): string {
-	const baseErrorMessage = '';
 	let message = '';
 
 	const isSubNodeError =
 		props.error.name === 'NodeOperationError' &&
 		(props.error as NodeOperationError).functionality === 'configuration-node';
+	const isNonEmptyString = (value?: unknown): value is string =>
+		!!value && typeof value === 'string';
 
 	if (isSubNodeError) {
 		message = i18n.baseText('nodeErrorView.errorSubNode', {
 			interpolate: { node: props.error.node.name },
 		});
 	} else if (
-		props.error.message === props.error.description ||
-		!props.error.context?.messageTemplate
+		isNonEmptyString(props.error.message) &&
+		(props.error.message === props.error.description || !props.error.context?.messageTemplate)
 	) {
-		message = baseErrorMessage + props.error.message;
-	} else {
-		const parameterName = parameterDisplayName(props.error.context.parameter as string);
-
-		message =
-			baseErrorMessage +
-			(props.error.context.messageTemplate as string).replace(/%%PARAMETER%%/g, parameterName);
+		message = props.error.message;
+	} else if (
+		isNonEmptyString(props.error.context?.messageTemplate) &&
+		isNonEmptyString(props.error.context?.parameter)
+	) {
+		const parameterName = parameterDisplayName(props.error.context.parameter);
+		message = props.error.context.messageTemplate.replace(/%%PARAMETER%%/g, parameterName);
+	} else if (Array.isArray(props.error.messages) && props.error.messages.length > 0) {
+		message = props.error.messages[0];
 	}
 
 	return addItemIndexSuffix(message);
@@ -263,7 +235,7 @@ function getErrorMessage(): string {
 
 function parameterDisplayName(path: string, fullPath = true) {
 	try {
-		const params = parameterName(parameters.value, path.split('.'));
+		const params = getParameterName(parameters.value, path.split('.'));
 		if (!params.length) {
 			throw new Error();
 		}
@@ -277,7 +249,7 @@ function parameterDisplayName(path: string, fullPath = true) {
 	}
 }
 
-function parameterName(
+function getParameterName(
 	params: Array<INodePropertyOptions | INodeProperties | INodePropertyCollection>,
 	pathParts: string[],
 ): Array<INodeProperties | INodePropertyCollection> {
@@ -306,14 +278,14 @@ function parameterName(
 	if (currentParameter.hasOwnProperty('options')) {
 		return [
 			currentParameter,
-			...parameterName((currentParameter as INodeProperties).options!, pathParts),
+			...getParameterName((currentParameter as INodeProperties).options!, pathParts),
 		];
 	}
 
 	if (currentParameter.hasOwnProperty('values')) {
 		return [
 			currentParameter,
-			...parameterName((currentParameter as INodePropertyCollection).values, pathParts),
+			...getParameterName((currentParameter as INodePropertyCollection).values, pathParts),
 		];
 	}
 
@@ -412,44 +384,65 @@ function copySuccess() {
 		type: 'info',
 	});
 }
+
+function nodeIsHidden() {
+	const nodeType = nodeTypesStore.getNodeType(node?.value.type);
+	return nodeType?.hidden ?? false;
+}
+
+async function onAskAssistantClick() {
+	const { message, lineNumber, description } = props.error;
+	const sessionInProgress = !assistantStore.isSessionEnded;
+	const errorHelp: ChatRequest.ErrorContext = {
+		error: {
+			name: props.error.name,
+			message,
+			lineNumber,
+			description: description ?? getErrorDescription(),
+			type: 'type' in props.error ? props.error.type : undefined,
+		},
+		node: node.value,
+	};
+	if (sessionInProgress) {
+		uiStore.openModalWithData({
+			name: NEW_ASSISTANT_SESSION_MODAL,
+			data: { context: { errorHelp } },
+		});
+		return;
+	}
+	await assistantStore.initErrorHelper(errorHelp);
+	assistantStore.trackUserOpenedAssistant({
+		source: 'error',
+		task: 'error',
+		has_existing_session: false,
+	});
+}
 </script>
 
 <template>
 	<div class="node-error-view">
 		<div class="node-error-view__header">
-			<div class="node-error-view__header-message">
+			<div class="node-error-view__header-message" data-test-id="node-error-message">
 				<div>
 					{{ getErrorMessage() }}
 				</div>
 			</div>
 			<div
 				v-if="error.description || error.context?.descriptionKey"
+				data-test-id="node-error-description"
 				class="node-error-view__header-description"
-				v-html="getErrorDescription()"
+				v-n8n-html="getErrorDescription()"
 			></div>
+			<div
+				v-if="isAskAssistantAvailable"
+				class="node-error-view__assistant-button"
+				data-test-id="node-error-view-ask-assistant-button"
+			>
+				<InlineAskAssistantButton :asked="assistantAlreadyAsked" @click="onAskAssistantClick" />
+			</div>
 		</div>
 
-		<N8nCard
-			v-if="isLoadingErrorDebugging || errorDebuggingMessage"
-			class="node-error-view__debugging mb-s"
-		>
-			<span v-if="isLoadingErrorDebugging">
-				<N8nSpinner class="mr-3xs" />
-				{{ i18n.baseText('nodeErrorView.debugError.loading') }}
-			</span>
-			<VueMarkdown v-else :source="errorDebuggingMessage" />
-
-			<div v-if="errorDebuggingMessage" class="node-error-view__feedback-toolbar">
-				<Feedback v-model="errorDebuggingFeedback" @update:model-value="onErrorDebuggingFeedback" />
-				<N8nTooltip :content="i18n.baseText('nodeErrorView.debugError.feedback.reload')">
-					<span class="node-error-view__feedback-button" @click="onDebugErrorRegenerate">
-						<FontAwesomeIcon icon="sync-alt" />
-					</span>
-				</N8nTooltip>
-			</div>
-		</N8nCard>
-
-		<div class="node-error-view__info">
+		<div v-if="!compact" class="node-error-view__info">
 			<div class="node-error-view__info-header">
 				<p class="node-error-view__info-title">
 					{{ i18n.baseText('nodeErrorView.details.title') }}
@@ -679,12 +672,13 @@ function copySuccess() {
 		align-items: center;
 		gap: var(--spacing-xs);
 		padding: var(--spacing-xs) var(--spacing-s) var(--spacing-3xs) var(--spacing-s);
-		color: var(--color-ndv-output-error-message);
+		color: var(--color-danger);
 		font-weight: var(--font-weight-bold);
 		font-size: var(--font-size-s);
 	}
 
 	&__header-description {
+		overflow: hidden;
 		padding: 0 var(--spacing-s) var(--spacing-3xs) var(--spacing-s);
 		font-size: var(--font-size-xs);
 
@@ -700,6 +694,11 @@ function copySuccess() {
 			padding: var(--spacing-5xs);
 			border-radius: var(--border-radius-base);
 		}
+	}
+
+	&__assistant-button {
+		margin-left: var(--spacing-s);
+		margin-bottom: var(--spacing-xs);
 	}
 
 	&__debugging {
@@ -830,5 +829,9 @@ function copySuccess() {
 			word-wrap: break-word;
 		}
 	}
+}
+
+.node-error-view__assistant-button {
+	margin-top: var(--spacing-xs);
 }
 </style>

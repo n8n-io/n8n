@@ -2,24 +2,24 @@
 import type { EditorState, SelectionRange } from '@codemirror/state';
 
 import { useI18n } from '@/composables/useI18n';
+import { useNDVStore } from '@/stores/ndv.store';
 import type { Segment } from '@/types/expressions';
+import { onBeforeUnmount } from 'vue';
 import ExpressionOutput from './ExpressionOutput.vue';
+import OutputItemSelect from './OutputItemSelect.vue';
 import InlineExpressionTip from './InlineExpressionTip.vue';
 import { outputTheme } from './theme';
 
 interface InlineExpressionEditorOutputProps {
 	segments: Segment[];
-	hoveringItemNumber: number;
 	unresolvedExpression?: string;
 	editorState?: EditorState;
 	selection?: SelectionRange;
 	visible?: boolean;
-	noInputData?: boolean;
 }
 
 withDefaults(defineProps<InlineExpressionEditorOutputProps>(), {
 	visible: false,
-	noInputData: false,
 	editorState: undefined,
 	selection: undefined,
 	unresolvedExpression: undefined,
@@ -27,19 +27,29 @@ withDefaults(defineProps<InlineExpressionEditorOutputProps>(), {
 
 const i18n = useI18n();
 const theme = outputTheme();
+const ndvStore = useNDVStore();
+
+onBeforeUnmount(() => {
+	ndvStore.expressionOutputItemIndex = 0;
+});
 </script>
 
 <template>
-	<div :class="visible ? $style.dropdown : $style.hidden">
-		<n8n-text v-if="!noInputData" size="small" compact :class="$style.header">
-			{{ i18n.baseText('parameterInput.resultForItem') }} {{ hoveringItemNumber }}
-		</n8n-text>
+	<div v-if="visible" :class="$style.dropdown" title="">
+		<div :class="$style.header">
+			<n8n-text bold size="small" compact>
+				{{ i18n.baseText('parameterInput.result') }}
+			</n8n-text>
+
+			<OutputItemSelect />
+		</div>
 		<n8n-text :class="$style.body">
 			<ExpressionOutput
 				data-test-id="inline-expression-editor-output"
 				:segments="segments"
 				:extensions="theme"
-			></ExpressionOutput>
+			>
+			</ExpressionOutput>
 		</n8n-text>
 		<div :class="$style.footer">
 			<InlineExpressionTip
@@ -52,10 +62,6 @@ const theme = outputTheme();
 </template>
 
 <style lang="scss" module>
-.hidden {
-	display: none;
-}
-
 .dropdown {
 	display: flex;
 	flex-direction: column;
@@ -73,7 +79,6 @@ const theme = outputTheme();
 		background-color: var(--color-code-background);
 	}
 
-	.header,
 	.body {
 		padding: var(--spacing-3xs);
 	}
@@ -83,9 +88,13 @@ const theme = outputTheme();
 	}
 
 	.header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		gap: var(--spacing-2xs);
 		color: var(--color-text-dark);
 		font-weight: var(--font-weight-bold);
-		padding-left: var(--spacing-2xs);
+		padding: 0 var(--spacing-2xs);
 		padding-top: var(--spacing-2xs);
 	}
 

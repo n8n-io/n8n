@@ -1,4 +1,5 @@
 import nock from 'nock';
+import type { IHttpRequestMethods } from 'n8n-workflow';
 
 import * as move from '../../../../v2/actions/file/move.operation';
 

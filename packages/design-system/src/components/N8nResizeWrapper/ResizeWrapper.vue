@@ -1,16 +1,3 @@
-<template>
-	<div :class="$style.resize">
-		<div
-			v-for="direction in enabledDirections"
-			:key="direction"
-			:data-dir="direction"
-			:class="{ [$style.resizer]: true, [$style[direction]]: true }"
-			@mousedown="resizerMove"
-		/>
-		<slot></slot>
-	</div>
-</template>
-
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
 
@@ -79,10 +66,10 @@ export interface ResizeData {
 	direction: Direction;
 }
 
-const $emit = defineEmits<{
-	(event: 'resizestart');
-	(event: 'resize', value: ResizeData): void;
-	(event: 'resizeend');
+const emit = defineEmits<{
+	resizestart: [];
+	resize: [value: ResizeData];
+	resizeend: [];
 }>();
 
 const enabledDirections = computed((): Direction[] => {
@@ -141,7 +128,7 @@ const mouseMove = (event: MouseEvent) => {
 	const y = event.y;
 	const direction = state.dir.value as Direction;
 
-	$emit('resize', { height, width, dX, dY, x, y, direction });
+	emit('resize', { height, width, dX, dY, x, y, direction });
 	state.dHeight.value = dHeight;
 	state.dWidth.value = dWidth;
 };
@@ -149,7 +136,7 @@ const mouseMove = (event: MouseEvent) => {
 const mouseUp = (event: MouseEvent) => {
 	event.preventDefault();
 	event.stopPropagation();
-	$emit('resizeend');
+	emit('resizeend');
 	window.removeEventListener('mousemove', mouseMove);
 	window.removeEventListener('mouseup', mouseUp);
 	document.body.style.cursor = 'unset';
@@ -165,7 +152,7 @@ const resizerMove = (event: MouseEvent) => {
 		state.dir.value = targetResizer.dataset.dir.toLocaleLowerCase() as Direction;
 	}
 
-	document.body.style.cursor = directionsCursorMaps[state.dir.value];
+	document.body.style.cursor = directionsCursorMaps[state.dir.value as Direction];
 
 	state.x.value = event.pageX;
 	state.y.value = event.pageY;
@@ -176,9 +163,22 @@ const resizerMove = (event: MouseEvent) => {
 
 	window.addEventListener('mousemove', mouseMove);
 	window.addEventListener('mouseup', mouseUp);
-	$emit('resizestart');
+	emit('resizestart');
 };
 </script>
+
+<template>
+	<div :class="$style.resize">
+		<div
+			v-for="direction in enabledDirections"
+			:key="direction"
+			:data-dir="direction"
+			:class="{ [$style.resizer]: true, [$style[direction]]: true }"
+			@mousedown="resizerMove"
+		/>
+		<slot></slot>
+	</div>
+</template>
 
 <style lang="scss" module>
 .resize {

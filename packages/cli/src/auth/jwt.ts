@@ -1,7 +1,8 @@
-import { Container } from 'typedi';
 import type { Response } from 'express';
+import { Container } from 'typedi';
 
-import type { User } from '@db/entities/User';
+import type { User } from '@/databases/entities/user';
+
 import { AuthService } from './auth.service';
 
 // This method is still used by cloud hooks.

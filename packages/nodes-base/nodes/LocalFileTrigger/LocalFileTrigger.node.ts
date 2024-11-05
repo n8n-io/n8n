@@ -1,9 +1,10 @@
-import type {
-	ITriggerFunctions,
-	IDataObject,
-	INodeType,
-	INodeTypeDescription,
-	ITriggerResponse,
+import {
+	type ITriggerFunctions,
+	type IDataObject,
+	type INodeType,
+	type INodeTypeDescription,
+	type ITriggerResponse,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
 import { watch } from 'chokidar';
@@ -13,6 +14,7 @@ export class LocalFileTrigger implements INodeType {
 		displayName: 'Local File Trigger',
 		name: 'localFileTrigger',
 		icon: 'fa:folder-open',
+		iconColor: 'black',
 		group: ['trigger'],
 		version: 1,
 		subtitle: '=Path: {{$parameter["path"]}}',
@@ -34,7 +36,7 @@ export class LocalFileTrigger implements INodeType {
 				"Once you’ve finished building your workflow, <a data-key='activate'>activate</a> it to have it also listen continuously (you just won’t see those executions here).",
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		properties: [
 			{
 				displayName: 'Trigger On',
@@ -122,7 +124,7 @@ export class LocalFileTrigger implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				options: [
 					{
@@ -219,7 +221,7 @@ export class LocalFileTrigger implements INodeType {
 		}
 
 		const watcher = watch(path, {
-			ignored: options.ignored === '' ? undefined : options.ignored,
+			ignored: options.ignored === '' ? undefined : (options.ignored as string),
 			persistent: true,
 			ignoreInitial:
 				options.ignoreInitial === undefined ? true : (options.ignoreInitial as boolean),

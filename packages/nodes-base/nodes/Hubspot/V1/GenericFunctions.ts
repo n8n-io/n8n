@@ -78,7 +78,7 @@ export async function hubspotApiRequest(
  */
 export async function hubspotApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	propertyName: string,
+	_propertyName: string,
 	method: IHttpRequestMethods,
 	endpoint: string,
 	// tslint:disable-next-line:no-any

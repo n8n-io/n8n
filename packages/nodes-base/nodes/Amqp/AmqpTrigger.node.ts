@@ -10,14 +10,13 @@ import type {
 	IDeferredPromise,
 	IRun,
 } from 'n8n-workflow';
-import { deepCopy, jsonParse, NodeOperationError } from 'n8n-workflow';
+import { deepCopy, jsonParse, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 export class AmqpTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'AMQP Trigger',
 		name: 'amqpTrigger',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
-		icon: 'file:amqp.png',
+		icon: 'file:amqp.svg',
 		group: ['trigger'],
 		version: 1,
 		description: 'Listens to AMQP 1.0 Messages',
@@ -25,7 +24,7 @@ export class AmqpTrigger implements INodeType {
 			name: 'AMQP Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'amqp',
@@ -65,7 +64,7 @@ export class AmqpTrigger implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				options: [
 					{
@@ -209,11 +208,11 @@ export class AmqpTrigger implements INodeType {
 
 			let responsePromise: IDeferredPromise<IRun> | undefined = undefined;
 			if (!parallelProcessing) {
-				responsePromise = await this.helpers.createDeferredPromise();
+				responsePromise = this.helpers.createDeferredPromise();
 			}
 			if (responsePromise) {
 				this.emit([this.helpers.returnJsonArray([data as any])], undefined, responsePromise);
-				await responsePromise.promise();
+				await responsePromise.promise;
 			} else {
 				this.emit([this.helpers.returnJsonArray([data as any])]);
 			}
@@ -277,11 +276,16 @@ export class AmqpTrigger implements INodeType {
 					connection.close();
 
 					reject(
-						new Error(
-							'Aborted, no message received within 30secs. This 30sec timeout is only set for "manually triggered execution". Active Workflows will listen indefinitely.',
+						new NodeOperationError(
+							this.getNode(),
+							'Aborted because no message received within 15 seconds',
+							{
+								description:
+									'This 15sec timeout is only set for "manually triggered execution". Active Workflows will listen indefinitely.',
+							},
 						),
 					);
-				}, 30000);
+				}, 15000);
 				container.on('message', (context: EventContext) => {
 					// Check if the only property present in the message is body
 					// in which case we only emit the content of the body property

@@ -4,10 +4,10 @@ import { configurePostgres } from '../transport';
 import type { PostgresNodeCredentials } from '../helpers/interfaces';
 
 export async function schemaSearch(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
-	const credentials = (await this.getCredentials('postgres')) as PostgresNodeCredentials;
+	const credentials = await this.getCredentials<PostgresNodeCredentials>('postgres');
 	const options = { nodeVersion: this.getNode().typeVersion };
 
-	const { db, sshClient } = await configurePostgres(credentials, options);
+	const { db } = await configurePostgres.call(this, credentials, options);
 
 	try {
 		const response = await db.any('SELECT schema_name FROM information_schema.schemata');
@@ -18,20 +18,15 @@ export async function schemaSearch(this: ILoadOptionsFunctions): Promise<INodeLi
 				value: schema.schema_name as string,
 			})),
 		};
-	} catch (error) {
-		throw error;
 	} finally {
-		if (sshClient) {
-			sshClient.end();
-		}
 		if (!db.$pool.ending) await db.$pool.end();
 	}
 }
 export async function tableSearch(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
-	const credentials = (await this.getCredentials('postgres')) as PostgresNodeCredentials;
+	const credentials = await this.getCredentials<PostgresNodeCredentials>('postgres');
 	const options = { nodeVersion: this.getNode().typeVersion };
 
-	const { db, sshClient } = await configurePostgres(credentials, options);
+	const { db } = await configurePostgres.call(this, credentials, options);
 
 	const schema = this.getNodeParameter('schema', 0, {
 		extractValue: true,
@@ -49,12 +44,7 @@ export async function tableSearch(this: ILoadOptionsFunctions): Promise<INodeLis
 				value: table.table_name as string,
 			})),
 		};
-	} catch (error) {
-		throw error;
 	} finally {
-		if (sshClient) {
-			sshClient.end();
-		}
 		if (!db.$pool.ending) await db.$pool.end();
 	}
 }

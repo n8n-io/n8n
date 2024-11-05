@@ -7,7 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import { capitalCase } from 'change-case';
 import isEmpty from 'lodash/isEmpty';
@@ -61,8 +61,8 @@ export class QuickBooks implements INodeType {
 		defaults: {
 			name: 'QuickBooks Online',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'quickBooksOAuth2Api',
@@ -263,7 +263,7 @@ export class QuickBooks implements INodeType {
 							},
 						} as IDataObject;
 
-						body.Line = processLines.call(this, body, lines, resource);
+						body.Line = processLines.call(this, lines, resource);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
@@ -528,7 +528,7 @@ export class QuickBooks implements INodeType {
 							},
 						} as IDataObject;
 
-						body.Line = processLines.call(this, body, lines, resource);
+						body.Line = processLines.call(this, lines, resource);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						body = populateFields.call(this, body, additionalFields, resource);
@@ -688,7 +688,7 @@ export class QuickBooks implements INodeType {
 							},
 						} as IDataObject;
 
-						body.Line = processLines.call(this, body, lines, resource);
+						body.Line = processLines.call(this, lines, resource);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 

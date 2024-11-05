@@ -1,23 +1,27 @@
-import type {
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
+import {
+	NodeConnectionType,
+	type IExecuteFunctions,
+	type INodeExecutionData,
+	type INodeType,
+	type INodeTypeDescription,
 } from 'n8n-workflow';
 
 export class N8nTrainingCustomerMessenger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Customer Messenger (n8n training)',
 		name: 'n8nTrainingCustomerMessenger',
-		icon: 'file:n8nTrainingCustomerMessenger.svg',
+		icon: {
+			light: 'file:n8nTrainingCustomerMessenger.svg',
+			dark: 'file:n8nTrainingCustomerMessenger.dark.svg',
+		},
 		group: ['transform'],
 		version: 1,
 		description: 'Dummy node used for n8n training',
 		defaults: {
 			name: 'Customer Messenger (n8n training)',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		properties: [
 			{
 				displayName: 'Customer ID',

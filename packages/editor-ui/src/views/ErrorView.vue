@@ -1,3 +1,21 @@
+<script setup lang="ts">
+import type { BaseTextKey } from '@/plugins/i18n';
+import { useRouter } from 'vue-router';
+import { VIEWS } from '@/constants';
+const router = useRouter();
+
+const props = defineProps<{
+	messageKey: BaseTextKey;
+	errorCode: number;
+	redirectTextKey: BaseTextKey;
+	redirectPage?: keyof typeof VIEWS;
+}>();
+
+function onButtonClick() {
+	void router.push({ name: props.redirectPage ?? VIEWS.HOMEPAGE });
+}
+</script>
+
 <template>
 	<div :class="$style.container">
 		<font-awesome-icon icon="exclamation-triangle" :class="$style.icon" />
@@ -16,34 +34,6 @@
 		<n8n-button :label="$locale.baseText(redirectTextKey)" @click="onButtonClick" />
 	</div>
 </template>
-
-<script lang="ts">
-import { defineComponent } from 'vue';
-
-export default defineComponent({
-	name: 'ErrorView',
-	props: {
-		messageKey: {
-			type: String,
-			required: true,
-		},
-		errorCode: {
-			type: Number,
-		},
-		redirectTextKey: {
-			type: String,
-		},
-		redirectPage: {
-			type: String,
-		},
-	},
-	methods: {
-		onButtonClick() {
-			void this.$router.push({ name: this.redirectPage });
-		},
-	},
-});
-</script>
 
 <style lang="scss" module>
 .container {

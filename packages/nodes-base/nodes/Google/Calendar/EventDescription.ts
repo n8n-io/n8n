@@ -193,7 +193,7 @@ export const eventFields: INodeProperties[] = [
 				},
 				default: '',
 				description:
-					'The color of the event. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'The color of the event. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Conference Data',
@@ -214,9 +214,9 @@ export const eventFields: INodeProperties[] = [
 								name: 'conferenceSolution',
 								type: 'options',
 								description:
-									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 								typeOptions: {
-									loadOptionsMethod: 'getConferenceSolutations',
+									loadOptionsMethod: 'getConferenceSolutions',
 									loadOptionsDependsOn: ['calendar'],
 								},
 								default: '',
@@ -480,7 +480,7 @@ export const eventFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Options',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -536,7 +536,7 @@ export const eventFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Options',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -633,7 +633,7 @@ export const eventFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -655,6 +655,15 @@ export const eventFields: INodeProperties[] = [
 				type: 'dateTime',
 				default: '',
 				description: 'At least some part of the event must be before this time',
+			},
+			{
+				displayName: 'Fields',
+				name: 'fields',
+				type: 'string',
+				placeholder: 'e.g. items(ID,status,summary)',
+				default: '',
+				description:
+					"Specify fields to return, by default a predefined by Google set of commonly used fields would be returned. To return all fields, use '*', <a href='https://developers.google.com/calendar/api/guides/performance#partial' target='_blank'>more info</a>.",
 			},
 			{
 				displayName: 'iCalUID',
@@ -832,6 +841,58 @@ export const eventFields: INodeProperties[] = [
 			},
 			{
 				displayName: 'Attendees',
+				name: 'attendeesUi',
+				type: 'fixedCollection',
+				placeholder: 'Add Attendees',
+				default: {
+					values: {
+						mode: 'add',
+						attendees: [],
+					},
+				},
+				options: [
+					{
+						displayName: 'Values',
+						name: 'values',
+						values: [
+							{
+								displayName: 'Mode',
+								name: 'mode',
+								type: 'options',
+								default: 'add',
+								options: [
+									{
+										name: 'Add Attendees Below [Default]',
+										value: 'add',
+									},
+									{
+										name: 'Replace Attendees with Those Below',
+										value: 'replace',
+									},
+								],
+							},
+							{
+								displayName: 'Attendees',
+								name: 'attendees',
+								type: 'string',
+								typeOptions: {
+									multipleValues: true,
+									multipleValueButtonText: 'Add Attendee',
+								},
+								default: '',
+								description: 'The attendees of the event. Multiple ones can be separated by comma.',
+							},
+						],
+					},
+				],
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.2 } }],
+					},
+				},
+			},
+			{
+				displayName: 'Attendees',
 				name: 'attendees',
 				type: 'string',
 				typeOptions: {
@@ -840,6 +901,11 @@ export const eventFields: INodeProperties[] = [
 				},
 				default: '',
 				description: 'The attendees of the event. Multiple ones can be separated by comma.',
+				displayOptions: {
+					show: {
+						'@version': [1, 1.1],
+					},
+				},
 			},
 			{
 				displayName: 'Color Name or ID',
@@ -850,7 +916,7 @@ export const eventFields: INodeProperties[] = [
 				},
 				default: '',
 				description:
-					'The color of the event. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'The color of the event. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Description',

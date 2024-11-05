@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref, onBeforeMount, onBeforeUnmount } from 'vue';
+import { computed, ref, onBeforeMount, onBeforeUnmount, onMounted } from 'vue';
 import { useEnvironmentsStore } from '@/stores/environments.ee.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
@@ -9,18 +9,18 @@ import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { useMessage } from '@/composables/useMessage';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
 
+import type { IResource } from '@/components/layouts/ResourcesListLayout.vue';
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
 import VariablesRow from '@/components/VariablesRow.vue';
 
 import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/constants';
-import type {
-	DatatableColumn,
-	EnvironmentVariable,
-	TemporaryEnvironmentVariable,
-} from '@/Interface';
+import type { DatatableColumn, EnvironmentVariable } from '@/Interface';
 import { uid } from 'n8n-design-system/utils';
-import { getVariablesPermissions } from '@/permissions';
+import { getResourcePermissions } from '@/permissions';
+import type { BaseTextKey } from '@/plugins/i18n';
+import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 const settingsStore = useSettingsStore();
 const environmentsStore = useEnvironmentsStore();
@@ -30,6 +30,8 @@ const telemetry = useTelemetry();
 const i18n = useI18n();
 const message = useMessage();
 const sourceControlStore = useSourceControlStore();
+const documentTitle = useDocumentTitle();
+const pageRedirectionHelper = usePageRedirectionHelper();
 let sourceControlStoreUnsubscribe = () => {};
 
 const layoutRef = ref<InstanceType<typeof ResourcesListLayout> | null>(null);
@@ -38,15 +40,23 @@ const { showError } = useToast();
 
 const TEMPORARY_VARIABLE_UID_BASE = '@tmpvar';
 
-const allVariables = ref<Array<EnvironmentVariable | TemporaryEnvironmentVariable>>([]);
+const allVariables = ref<EnvironmentVariable[]>([]);
 const editMode = ref<Record<string, boolean>>({});
+const loading = ref(false);
 
-const permissions = getVariablesPermissions(usersStore.currentUser);
-
-const isFeatureEnabled = computed(() =>
-	settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Variables),
+const permissions = computed(
+	() => getResourcePermissions(usersStore.currentUser?.globalScopes).variable,
 );
-const canCreateVariables = computed(() => isFeatureEnabled.value && permissions.create);
+
+const isFeatureEnabled = computed(
+	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables],
+);
+
+const variablesToResources = computed((): IResource[] =>
+	allVariables.value.map((v) => ({ id: v.id, name: v.key, value: v.value })),
+);
+
+const canCreateVariables = computed(() => isFeatureEnabled.value && permissions.value.create);
 
 const datatableColumns = computed<DatatableColumn[]>(() => [
 	{
@@ -80,9 +90,9 @@ const datatableColumns = computed<DatatableColumn[]>(() => [
 
 const contextBasedTranslationKeys = computed(() => uiStore.contextBasedTranslationKeys);
 
-const newlyAddedVariableIds = ref<number[]>([]);
+const newlyAddedVariableIds = ref<string[]>([]);
 
-const nameSortFn = (a: EnvironmentVariable, b: EnvironmentVariable, direction: 'asc' | 'desc') => {
+const nameSortFn = (a: IResource, b: IResource, direction: 'asc' | 'desc') => {
 	if (`${a.id}`.startsWith(TEMPORARY_VARIABLE_UID_BASE)) {
 		return -1;
 	} else if (`${b.id}`.startsWith(TEMPORARY_VARIABLE_UID_BASE)) {
@@ -103,10 +113,10 @@ const nameSortFn = (a: EnvironmentVariable, b: EnvironmentVariable, direction: '
 		: displayName(b).trim().localeCompare(displayName(a).trim());
 };
 const sortFns = {
-	nameAsc: (a: EnvironmentVariable, b: EnvironmentVariable) => {
+	nameAsc: (a: IResource, b: IResource) => {
 		return nameSortFn(a, b, 'asc');
 	},
-	nameDesc: (a: EnvironmentVariable, b: EnvironmentVariable) => {
+	nameDesc: (a: IResource, b: IResource) => {
 		return nameSortFn(a, b, 'desc');
 	},
 };
@@ -115,15 +125,29 @@ function resetNewVariablesList() {
 	newlyAddedVariableIds.value = [];
 }
 
+const resourceToEnvironmentVariable = (data: IResource): EnvironmentVariable => ({
+	id: data.id,
+	key: data.name,
+	value: 'value' in data ? (data.value ?? '') : '',
+});
+
+const environmentVariableToResource = (data: EnvironmentVariable): IResource => ({
+	id: data.id,
+	name: data.key,
+	value: 'value' in data ? data.value : '',
+});
+
 async function initialize() {
 	if (!isFeatureEnabled.value) return;
+	loading.value = true;
 	await environmentsStore.fetchAllVariables();
 
 	allVariables.value = [...environmentsStore.variables];
+	loading.value = false;
 }
 
 function addTemporaryVariable() {
-	const temporaryVariable: TemporaryEnvironmentVariable = {
+	const temporaryVariable: EnvironmentVariable = {
 		id: uid(TEMPORARY_VARIABLE_UID_BASE),
 		key: '',
 		value: '',
@@ -132,7 +156,7 @@ function addTemporaryVariable() {
 	if (layoutRef.value) {
 		// Reset scroll position
 		if (layoutRef.value.$refs.listWrapperRef) {
-			layoutRef.value.$refs.listWrapperRef.scrollTop = 0;
+			(layoutRef.value.$refs.listWrapperRef as HTMLDivElement).scrollTop = 0;
 		}
 
 		// Reset pagination
@@ -147,46 +171,48 @@ function addTemporaryVariable() {
 	telemetry.track('User clicked add variable button');
 }
 
-async function saveVariable(data: EnvironmentVariable | TemporaryEnvironmentVariable) {
-	let updatedVariable: EnvironmentVariable;
-
+async function saveVariable(data: IResource) {
+	const variable = resourceToEnvironmentVariable(data);
 	try {
-		if (typeof data.id === 'string' && data.id.startsWith(TEMPORARY_VARIABLE_UID_BASE)) {
-			const { id, ...rest } = data;
-			updatedVariable = await environmentsStore.createVariable(rest);
+		if (typeof variable.id === 'string' && variable.id.startsWith(TEMPORARY_VARIABLE_UID_BASE)) {
+			const { id, ...rest } = variable;
+			const updatedVariable = await environmentsStore.createVariable(rest);
 			allVariables.value.unshift(updatedVariable);
 			allVariables.value = allVariables.value.filter((variable) => variable.id !== data.id);
 			newlyAddedVariableIds.value.unshift(updatedVariable.id);
 		} else {
-			updatedVariable = await environmentsStore.updateVariable(data as EnvironmentVariable);
+			const updatedVariable = await environmentsStore.updateVariable(variable);
 			allVariables.value = allVariables.value.filter((variable) => variable.id !== data.id);
 			allVariables.value.push(updatedVariable);
-			toggleEditing(updatedVariable);
+			toggleEditing(environmentVariableToResource(updatedVariable));
 		}
 	} catch (error) {
 		showError(error, i18n.baseText('variables.errors.save'));
 	}
 }
 
-function toggleEditing(data: EnvironmentVariable) {
+function toggleEditing(data: IResource) {
 	editMode.value = {
 		...editMode.value,
 		[data.id]: !editMode.value[data.id],
 	};
 }
 
-function cancelEditing(data: EnvironmentVariable | TemporaryEnvironmentVariable) {
+function cancelEditing(data: IResource) {
 	if (typeof data.id === 'string' && data.id.startsWith(TEMPORARY_VARIABLE_UID_BASE)) {
 		allVariables.value = allVariables.value.filter((variable) => variable.id !== data.id);
 	} else {
-		toggleEditing(data as EnvironmentVariable);
+		toggleEditing(data);
 	}
 }
 
-async function deleteVariable(data: EnvironmentVariable) {
+async function deleteVariable(data: IResource) {
+	const variable = resourceToEnvironmentVariable(data);
 	try {
 		const confirmed = await message.confirm(
-			i18n.baseText('variables.modals.deleteConfirm.message', { interpolate: { name: data.key } }),
+			i18n.baseText('variables.modals.deleteConfirm.message', {
+				interpolate: { name: variable.key },
+			}),
 			i18n.baseText('variables.modals.deleteConfirm.title'),
 			{
 				confirmButtonText: i18n.baseText('variables.modals.deleteConfirm.confirmButton'),
@@ -198,7 +224,7 @@ async function deleteVariable(data: EnvironmentVariable) {
 			return;
 		}
 
-		await environmentsStore.deleteVariable(data);
+		await environmentsStore.deleteVariable(variable);
 		allVariables.value = allVariables.value.filter((variable) => variable.id !== data.id);
 	} catch (error) {
 		showError(error, i18n.baseText('variables.errors.delete'));
@@ -206,11 +232,11 @@ async function deleteVariable(data: EnvironmentVariable) {
 }
 
 function goToUpgrade() {
-	void uiStore.goToUpgrade('variables', 'upgrade-variables');
+	void pageRedirectionHelper.goToUpgrade('variables', 'upgrade-variables');
 }
 
-function displayName(resource: EnvironmentVariable) {
-	return resource.key;
+function displayName(resource: IResource) {
+	return resource.name;
 }
 
 onBeforeMount(() => {
@@ -226,6 +252,10 @@ onBeforeMount(() => {
 onBeforeUnmount(() => {
 	sourceControlStoreUnsubscribe();
 });
+
+onMounted(() => {
+	documentTitle.set(i18n.baseText('variables.heading'));
+});
 </script>
 
 <template>
@@ -234,7 +264,7 @@ onBeforeUnmount(() => {
 		class="variables-view"
 		resource-key="variables"
 		:disabled="!isFeatureEnabled"
-		:resources="allVariables"
+		:resources="variablesToResources"
 		:initialize="initialize"
 		:shareable="false"
 		:display-name="displayName"
@@ -243,9 +273,15 @@ onBeforeUnmount(() => {
 		:show-filters-dropdown="false"
 		type="datatable"
 		:type-props="{ columns: datatableColumns }"
+		:loading="loading"
 		@sort="resetNewVariablesList"
 		@click:add="addTemporaryVariable"
 	>
+		<template #header>
+			<n8n-heading size="2xlarge" class="mb-m">
+				{{ i18n.baseText('variables.heading') }}
+			</n8n-heading>
+		</template>
 		<template #add-button>
 			<n8n-tooltip placement="top" :disabled="canCreateVariables">
 				<div>
@@ -272,11 +308,17 @@ onBeforeUnmount(() => {
 				class="mb-m"
 				data-test-id="unavailable-resources-list"
 				emoji="👋"
-				:heading="$locale.baseText(contextBasedTranslationKeys.variables.unavailable.title)"
-				:description="
-					$locale.baseText(contextBasedTranslationKeys.variables.unavailable.description)
+				:heading="
+					$locale.baseText(contextBasedTranslationKeys.variables.unavailable.title as BaseTextKey)
 				"
-				:button-text="$locale.baseText(contextBasedTranslationKeys.variables.unavailable.button)"
+				:description="
+					$locale.baseText(
+						contextBasedTranslationKeys.variables.unavailable.description as BaseTextKey,
+					)
+				"
+				:button-text="
+					$locale.baseText(contextBasedTranslationKeys.variables.unavailable.button as BaseTextKey)
+				"
 				button-type="secondary"
 				@click:button="goToUpgrade"
 			/>
@@ -286,11 +328,17 @@ onBeforeUnmount(() => {
 				v-if="!isFeatureEnabled"
 				data-test-id="unavailable-resources-list"
 				emoji="👋"
-				:heading="$locale.baseText(contextBasedTranslationKeys.variables.unavailable.title)"
-				:description="
-					$locale.baseText(contextBasedTranslationKeys.variables.unavailable.description)
+				:heading="
+					$locale.baseText(contextBasedTranslationKeys.variables.unavailable.title as BaseTextKey)
 				"
-				:button-text="$locale.baseText(contextBasedTranslationKeys.variables.unavailable.button)"
+				:description="
+					$locale.baseText(
+						contextBasedTranslationKeys.variables.unavailable.description as BaseTextKey,
+					)
+				"
+				:button-text="
+					$locale.baseText(contextBasedTranslationKeys.variables.unavailable.button as BaseTextKey)
+				"
 				button-type="secondary"
 				@click:button="goToUpgrade"
 			/>
@@ -300,7 +348,7 @@ onBeforeUnmount(() => {
 				emoji="👋"
 				:heading="
 					$locale.baseText('variables.empty.notAllowedToCreate.heading', {
-						interpolate: { name: usersStore.currentUser.firstName },
+						interpolate: { name: usersStore.currentUser?.firstName ?? '' },
 					})
 				"
 				:description="$locale.baseText('variables.empty.notAllowedToCreate.description')"
