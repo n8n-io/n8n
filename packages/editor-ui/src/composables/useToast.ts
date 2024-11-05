@@ -10,6 +10,7 @@ import { useExternalHooks } from './useExternalHooks';
 import { VIEWS } from '@/constants';
 import type { ApplicationError } from 'n8n-workflow';
 import { useStyles } from './useStyles';
+import { useSettingsStore } from '@/stores/settings.store';
 
 export interface NotificationErrorWithNodeAndDescription extends ApplicationError {
 	node: {
@@ -26,13 +27,14 @@ export function useToast() {
 	const uiStore = useUIStore();
 	const externalHooks = useExternalHooks();
 	const i18n = useI18n();
+	const settingsStore = useSettingsStore();
 	const { APP_Z_INDEXES } = useStyles();
 
 	const messageDefaults: Partial<Omit<NotificationOptions, 'message'>> = {
 		dangerouslyUseHTMLString: false,
 		position: 'bottom-right',
 		zIndex: APP_Z_INDEXES.TOASTS, // above NDV and modal overlays
-		offset: 64,
+		offset: settingsStore.isAiAssistantEnabled ? 64 : 0,
 		appendTo: '#app-grid',
 		customClass: 'content-toast',
 	};

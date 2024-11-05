@@ -29,7 +29,7 @@ export class NodeOperationError extends NodeError {
 		}
 
 		if (options.message) this.message = options.message;
-		if (options.level) this.level = options.level;
+		this.level = options.level ?? 'warning';
 		if (options.functionality) this.functionality = options.functionality;
 		if (options.type) this.type = options.type;
 		this.description = options.description;
