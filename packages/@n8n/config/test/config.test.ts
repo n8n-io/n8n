@@ -233,6 +233,7 @@ describe('GlobalConfig', () => {
 			launcherRunner: 'javascript',
 			maxOldSpaceSize: '',
 			maxConcurrency: 5,
+			assertDeduplicationOutput: false,
 		},
 		sentry: {
 			backendDsn: '',
