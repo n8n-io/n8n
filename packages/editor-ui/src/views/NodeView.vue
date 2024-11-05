@@ -232,7 +232,7 @@ export default defineComponent({
 		const { callDebounced } = useDebounce();
 		const canvasPanning = useCanvasPanning(nodeViewRootRef, { onMouseMoveEnd });
 		const workflowHelpers = useWorkflowHelpers({ router });
-		const { runWorkflow, stopCurrentExecution, runWorkflowResolvePending } = useRunWorkflow({
+		const { runWorkflow, stopCurrentExecution } = useRunWorkflow({
 			router,
 		});
 		const { addBeforeUnloadEventBindings, removeBeforeUnloadEventBindings } = useBeforeUnload({
@@ -254,7 +254,6 @@ export default defineComponent({
 			onMouseMoveEnd,
 			workflowHelpers,
 			runWorkflow,
-			runWorkflowResolvePending,
 			stopCurrentExecution,
 			callDebounced,
 			...useCanvasMouseSelect(),
@@ -852,11 +851,7 @@ export default defineComponent({
 			this.$telemetry.track('User clicked execute node button', telemetryPayload);
 			void this.externalHooks.run('nodeView.onRunNode', telemetryPayload);
 
-			if (!this.isExecutionPreview && this.workflowsStore.isWaitingExecution) {
-				void this.runWorkflowResolvePending({ destinationNode: nodeName, source });
-			} else {
-				void this.runWorkflow({ destinationNode: nodeName, source });
-			}
+			void this.runWorkflow({ destinationNode: nodeName, source });
 		},
 		async onOpenChat() {
 			const telemetryPayload = {
@@ -883,11 +878,7 @@ export default defineComponent({
 				void this.externalHooks.run('nodeView.onRunWorkflow', telemetryPayload);
 			});
 
-			if (!this.isExecutionPreview && this.workflowsStore.isWaitingExecution) {
-				void this.runWorkflowResolvePending({});
-			} else {
-				void this.runWorkflow({});
-			}
+			void this.runWorkflow({});
 
 			this.refreshEndpointsErrorsState();
 		},
