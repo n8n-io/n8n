@@ -5,6 +5,8 @@ import {
 	type INodeExecutionData,
 	type INodeType,
 	type INodeTypeDescription,
+	AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT,
+	AI_TRANSFORM_JS_CODE,
 } from 'n8n-workflow';
 
 import set from 'lodash/set';
@@ -46,35 +48,28 @@ export class AiTransform implements INodeType {
 						inputFieldMaxLength: 500,
 						action: {
 							type: 'askAiCodeGeneration',
-							target: 'jsCode',
+							target: AI_TRANSFORM_JS_CODE,
 						},
 					},
 				},
 			},
 			{
-				displayName: 'Transformation Code',
-				name: 'jsCode',
+				displayName: 'Code Generated For Prompt',
+				name: AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT,
+				type: 'hidden',
+				default: '',
+			},
+			{
+				displayName: 'Generated JavaScript',
+				name: AI_TRANSFORM_JS_CODE,
 				type: 'string',
 				typeOptions: {
 					editor: 'jsEditor',
 					editorIsReadOnly: true,
 				},
 				default: '',
-				description:
-					'Read-only. To edit this code, adjust the prompt or copy and paste it into a Code node.',
+				hint: 'Read-only. To edit this code, adjust the instructions or copy and paste it into a Code node.',
 				noDataExpression: true,
-			},
-			{
-				displayName:
-					"Click on 'Test step' to run the transformation code. Further executions will use the generated code (and not invoke AI again).",
-				name: 'hint',
-				type: 'notice',
-				default: '',
-				displayOptions: {
-					show: {
-						jsCode: [{ _cnd: { exists: true } }],
-					},
-				},
 			},
 		],
 	};
