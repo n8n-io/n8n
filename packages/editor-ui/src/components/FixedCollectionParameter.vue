@@ -1,12 +1,7 @@
 <script lang="ts" setup>
 import type { IUpdateInformation } from '@/Interface';
 
-import type {
-	INodeParameters,
-	INodeProperties,
-	INodePropertyCollection,
-	NodeParameterValueType,
-} from 'n8n-workflow';
+import type { INodeParameters, INodeProperties, NodeParameterValueType } from 'n8n-workflow';
 import { deepCopy, isINodePropertyCollectionList } from 'n8n-workflow';
 
 import { get } from 'lodash-es';
@@ -30,12 +25,12 @@ const props = withDefaults(
 	},
 );
 type ValueChangedEvent = {
-	path: string;
+	name: string;
 	value: NodeParameterValueType;
 	type?: 'optionsOrderChanged';
 };
 const emit = defineEmits<{
-	valueChanged: [value?: ValueChangedEvent];
+	valueChanged: [value: ValueChangedEvent];
 }>();
 
 const getPlaceholderText = computed(() => {
@@ -123,7 +118,7 @@ const moveOptionDown = (optionName: string, index: number) => {
 		);
 	}
 
-	const parameterData = {
+	const parameterData: ValueChangedEvent = {
 		name: getPropertyPath(optionName),
 		value: mutableValues.value[optionName],
 		type: 'optionsOrderChanged',
@@ -140,7 +135,7 @@ const moveOptionUp = (optionName: string, index: number) => {
 		);
 	}
 
-	const parameterData = {
+	const parameterData: ValueChangedEvent = {
 		name: getPropertyPath(optionName),
 		value: mutableValues.value[optionName],
 		type: 'optionsOrderChanged',
@@ -215,7 +210,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 	>
 		<div v-if="getProperties.length === 0" class="no-items-exist">
 			<n8n-text size="small">{{
-				$locale.baseText('fixedCollectionParameter.currentlyNoItemsExist')
+				locale.baseText('fixedCollectionParameter.currentlyNoItemsExist')
 			}}</n8n-text>
 		</div>
 
@@ -226,7 +221,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 		>
 			<n8n-input-label
 				v-if="property.displayName !== '' && parameter.options && parameter.options.length !== 1"
-				:label="$locale.nodeText().inputLabelDisplayName(property, path)"
+				:label="locale.nodeText().inputLabelDisplayName(property, path)"
 				:underline="true"
 				size="small"
 				color="text-dark"
@@ -246,7 +241,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 								text
 								size="mini"
 								icon="trash"
-								:title="$locale.baseText('fixedCollectionParameter.deleteItem')"
+								:title="locale.baseText('fixedCollectionParameter.deleteItem')"
 								@click="deleteOption(property.name, index)"
 							></n8n-icon-button>
 							<n8n-icon-button
@@ -255,7 +250,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 								text
 								size="mini"
 								icon="angle-up"
-								:title="$locale.baseText('fixedCollectionParameter.moveUp')"
+								:title="locale.baseText('fixedCollectionParameter.moveUp')"
 								@click="moveOptionUp(property.name, index)"
 							></n8n-icon-button>
 							<n8n-icon-button
@@ -264,7 +259,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 								text
 								size="mini"
 								icon="angle-down"
-								:title="$locale.baseText('fixedCollectionParameter.moveDown')"
+								:title="locale.baseText('fixedCollectionParameter.moveDown')"
 								@click="moveOptionDown(property.name, index)"
 							></n8n-icon-button>
 						</div>
@@ -326,7 +321,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 					<n8n-option
 						v-for="item in parameterOptions"
 						:key="item.name"
-						:label="$locale.nodeText().collectionOptionDisplayName(parameter, item, path)"
+						:label="locale.nodeText().collectionOptionDisplayName(parameter, item, path)"
 						:value="item.name"
 					></n8n-option>
 				</n8n-select>
