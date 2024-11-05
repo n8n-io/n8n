@@ -317,7 +317,7 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 			<textarea
 				ref="chatInput"
 				v-model="textInputValue"
-				class="global-keylistener-exception"
+				class="overrule-global-key-listener"
 				:disabled="sessionEnded"
 				:placeholder="t('assistantChat.inputPlaceholder')"
 				rows="1"
