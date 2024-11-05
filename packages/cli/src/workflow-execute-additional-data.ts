@@ -412,7 +412,7 @@ function hookFunctionsSave(): IWorkflowExecuteHooks {
 
 					const saveSettings = toSaveSettings(this.workflowData.settings);
 
-					if (isManualMode && !saveSettings.manual && !fullRunData.waitTill) {
+					if (isManualMode && !saveSettings.manual && fullRunData.finished) {
 						/**
 						 * When manual executions are not being saved, we only soft-delete
 						 * the execution so that the user can access its binary data
@@ -432,22 +432,21 @@ function hookFunctionsSave(): IWorkflowExecuteHooks {
 						(executionStatus === 'success' && !saveSettings.success) ||
 						(executionStatus !== 'success' && !saveSettings.error);
 
-					if (shouldNotSave && !fullRunData.waitTill) {
-						if (!fullRunData.waitTill && !isManualMode) {
-							executeErrorWorkflow(
-								this.workflowData,
-								fullRunData,
-								this.mode,
-								this.executionId,
-								this.retryOf,
-							);
-							await Container.get(ExecutionRepository).hardDelete({
-								workflowId: this.workflowData.id,
-								executionId: this.executionId,
-							});
+					if (shouldNotSave && fullRunData.finished && !isManualMode) {
+						executeErrorWorkflow(
+							this.workflowData,
+							fullRunData,
+							this.mode,
+							this.executionId,
+							this.retryOf,
+						);
 
-							return;
-						}
+						await Container.get(ExecutionRepository).hardDelete({
+							workflowId: this.workflowData.id,
+							executionId: this.executionId,
+						});
+
+						return;
 					}
 
 					// Although it is treated as IWorkflowBase here, it's being instantiated elsewhere with properties that may be sensitive
@@ -1081,6 +1080,9 @@ export function getWorkflowHooksWorkerMain(
 	hookFunctions.nodeExecuteAfter = [];
 	hookFunctions.workflowExecuteAfter = [
 		async function (this: WorkflowHooks, fullRunData: IRun): Promise<void> {
+			// Don't delete executions before they are finished
+			if (!fullRunData.finished) return;
+
 			const executionStatus = determineFinalExecutionStatus(fullRunData);
 			const saveSettings = toSaveSettings(this.workflowData.settings);
 
