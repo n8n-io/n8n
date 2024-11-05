@@ -216,7 +216,7 @@ export namespace RunnerMessage {
 			requestId: string;
 
 			/**
-			 * Which node types should be included in the runner's data request.
+			 * Which node types should be included in the runner's node types request.
 			 *
 			 * Node types are needed only when the script relies on paired item functionality.
 			 * If so, we need only the node types not already cached in the runner.
