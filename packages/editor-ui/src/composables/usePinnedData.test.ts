@@ -163,8 +163,8 @@ describe('usePinnedData', () => {
 			expect(canPinNode()).toBe(true);
 			expect(canPinNode(false, 0)).toBe(true);
 			// validate out of range index
-			expect(canPinNode(false, 1)).toBe(false);
-			expect(canPinNode(false, -1)).toBe(false);
+			expect(() => canPinNode(false, 1)).toThrow();
+			expect(() => canPinNode(false, -1)).toThrow();
 		});
 
 		it('allows pin on one main and one error output', async () => {
@@ -183,8 +183,8 @@ describe('usePinnedData', () => {
 			expect(canPinNode(false, 0)).toBe(true);
 			expect(canPinNode(false, 1)).toBe(false);
 			// validate out of range index
-			expect(canPinNode(false, 2)).toBe(false);
-			expect(canPinNode(false, -1)).toBe(false);
+			expect(() => canPinNode(false, 2)).toThrow();
+			expect(() => canPinNode(false, -1)).toThrow();
 		});
 
 		it('does not allow pin on two main outputs', async () => {
@@ -205,8 +205,8 @@ describe('usePinnedData', () => {
 			expect(canPinNode(false, 0)).toBe(false);
 			expect(canPinNode(false, 1)).toBe(false);
 			// validate out of range index
-			expect(canPinNode(false, 2)).toBe(false);
-			expect(canPinNode(false, -1)).toBe(false);
+			expect(() => canPinNode(false, 2)).toThrow();
+			expect(() => canPinNode(false, -1)).toThrow();
 		});
 	});
 });
