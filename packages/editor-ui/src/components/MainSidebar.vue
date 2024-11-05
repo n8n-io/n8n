@@ -23,6 +23,9 @@ import { ABOUT_MODAL_KEY, VERSIONS_MODAL_KEY, VIEWS } from '@/constants';
 import { useBugReporting } from '@/composables/useBugReporting';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
+import { useGlobalEntityCreation } from '@/composables/useGlobalEntityCreation';
+import { N8nIconButton, N8nNavigationDropdown } from 'n8n-design-system';
+
 const becomeTemplateCreatorStore = useBecomeTemplateCreatorStore();
 const cloudPlanStore = useCloudPlanStore();
 const rootStore = useRootStore();
@@ -293,6 +296,8 @@ const checkWidthAndAdjustSidebar = async (width: number) => {
 		fullyExpanded.value = !isCollapsed.value;
 	}
 };
+
+const { menu, handleSelect: handleMenuSelect } = useGlobalEntityCreation();
 </script>
 
 <template>
@@ -316,6 +321,9 @@ const checkWidthAndAdjustSidebar = async (width: number) => {
 			<template #header>
 				<div :class="$style.logo">
 					<img :src="logoPath" data-test-id="n8n-logo" :class="$style.icon" alt="n8n" />
+					<N8nNavigationDropdown :menu @select="handleMenuSelect">
+						<N8nIconButton icon="plus" type="secondary" outline />
+					</N8nNavigationDropdown>
 				</div>
 				<ProjectNavigation
 					:collapsed="isCollapsed"
@@ -402,10 +410,10 @@ const checkWidthAndAdjustSidebar = async (width: number) => {
 	transition: width 150ms ease-in-out;
 	width: $sidebar-expanded-width;
 	.logo {
-		height: $header-height;
 		display: flex;
 		align-items: center;
 		padding: var(--spacing-xs);
+		justify-content: space-between;
 
 		img {
 			position: relative;
@@ -416,6 +424,11 @@ const checkWidthAndAdjustSidebar = async (width: number) => {
 
 	&.sideMenuCollapsed {
 		width: $sidebar-width;
+
+		.logo {
+			flex-direction: column;
+			gap: 16px;
+		}
 
 		.logo img {
 			left: 0;
