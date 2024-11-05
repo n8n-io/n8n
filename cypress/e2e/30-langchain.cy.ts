@@ -318,7 +318,6 @@ describe('Langchain Integration', () => {
 			}),
 		];
 
-		console.log("🚀 ~ it ~ runData:", runData)
 		runMockWorkflowExecution({
 			trigger: () => {
 				sendManualChatMessage(inputMessage);

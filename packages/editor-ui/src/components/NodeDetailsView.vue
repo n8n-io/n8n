@@ -154,10 +154,16 @@ const parentNode = computed(() => {
 });
 
 const inputNodeName = computed<string | undefined>(() => {
-	const nodeOutputs = activeNodeType.value?.outputs;
-	const nonMainOutputs = Array.isArray(nodeOutputs)
-		? nodeOutputs.filter((output) => output !== NodeConnectionType.Main)
-		: [];
+	const nodeOutputs =
+		activeNode.value && activeNodeType.value
+			? NodeHelpers.getNodeOutputs(props.workflowObject, activeNode.value, activeNodeType.value)
+			: [];
+
+	const nonMainOutputs = nodeOutputs.filter((output) => {
+		if (typeof output === 'string') return output !== NodeConnectionType.Main;
+
+		return output.type !== NodeConnectionType.Main;
+	});
 
 	const isSubNode = nonMainOutputs.length > 0;
 
