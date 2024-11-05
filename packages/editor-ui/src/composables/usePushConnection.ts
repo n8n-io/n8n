@@ -323,8 +323,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 
 				if (
 					runDataExecuted.data.resultData.error?.name === 'ExpressionError' &&
-					(runDataExecuted.data.resultData.error as ExpressionError).context.functionality ===
-						'pairedItem'
+					(runDataExecuted.data.resultData.error as ExpressionError).functionality === 'pairedItem'
 				) {
 					const error = runDataExecuted.data.resultData.error as ExpressionError;
 
