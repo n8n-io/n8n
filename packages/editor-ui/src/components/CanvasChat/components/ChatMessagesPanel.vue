@@ -168,7 +168,7 @@ function copySessionId() {
 		</main>
 
 		<div :class="$style.messagesInput">
-			<div :class="$style.messagesHistory" v-if="pastChatMessages.length > 0">
+			<div v-if="pastChatMessages.length > 0" :class="$style.messagesHistory">
 				<n8n-button
 					title="Navigate to previous message"
 					icon="chevron-up"
