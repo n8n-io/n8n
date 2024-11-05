@@ -51,6 +51,7 @@ export default defineComponent({
 		},
 		pushRef: {
 			type: String,
+			required: true,
 		},
 		readOnly: {
 			type: Boolean,
@@ -178,7 +179,7 @@ export default defineComponent({
 
 		rootNode(): string {
 			const workflow = this.workflow;
-			const rootNodes = workflow.getChildNodes(this.activeNode?.name ?? '', 'ALL_NON_MAIN');
+			const rootNodes = workflow.getChildNodes(this.activeNode?.name ?? '', 'ALL');
 
 			return rootNodes[0];
 		},
@@ -341,7 +342,7 @@ export default defineComponent({
 		:node="currentNode"
 		:nodes="isMappingMode ? rootNodesParents : parentNodes"
 		:workflow="workflow"
-		:run-index="runIndex"
+		:run-index="isMappingMode ? 0 : runIndex"
 		:linked-runs="linkedRuns"
 		:can-link-runs="!mappedNode && canLinkRuns"
 		:too-much-data-title="$locale.baseText('ndv.input.tooMuchData.title')"

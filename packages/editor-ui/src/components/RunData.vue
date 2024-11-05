@@ -135,6 +135,7 @@ export default defineComponent({
 		},
 		pushRef: {
 			type: String,
+			required: true,
 		},
 		paneType: {
 			type: String as PropType<NodePanelType>,

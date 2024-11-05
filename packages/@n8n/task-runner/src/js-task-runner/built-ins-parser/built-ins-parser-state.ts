@@ -1,4 +1,4 @@
-import type { N8nMessage } from '../../runner-types';
+import type { BrokerMessage } from '@/message-types';
 
 /**
  * Class to keep track of which built-in variables are accessed in the code
@@ -53,7 +53,7 @@ export class BuiltInsParserState {
 		this.needs$prevNode = true;
 	}
 
-	toDataRequestParams(): N8nMessage.ToRequester.TaskDataRequest['requestParams'] {
+	toDataRequestParams(): BrokerMessage.ToRequester.TaskDataRequest['requestParams'] {
 		return {
 			dataOfNodes: this.needsAllNodes ? 'all' : Array.from(this.neededNodeNames),
 			env: this.needs$env,
