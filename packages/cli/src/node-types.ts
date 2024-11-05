@@ -159,6 +159,10 @@ export class NodeTypes implements INodeTypes {
 
 			const { description } = NodeHelpers.getVersionedNodeType(nodeType.type, nodeTypeVersion);
 
+			description.name = description.name.startsWith('n8n-nodes')
+				? description.name
+				: `n8n-nodes-base.${description.name}`; // nodes-base nodes are unprefixed
+
 			return description;
 		});
 	}
