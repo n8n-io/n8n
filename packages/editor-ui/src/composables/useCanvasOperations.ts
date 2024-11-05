@@ -1080,7 +1080,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 	}
 
 	function resolveNodeWebhook(node: INodeUi, nodeTypeDescription: INodeTypeDescription) {
-		if (nodeTypeDescription.webhooks?.length) {
+		if (nodeTypeDescription.webhooks?.length && !node.webhookId) {
 			node.webhookId = uuid();
 		}
 
@@ -1932,5 +1932,6 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		fetchWorkflowDataFromUrl,
 		resetWorkspace,
 		initializeWorkspace,
+		resolveNodeWebhook,
 	};
 }
