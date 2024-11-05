@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { within } from '@testing-library/vue';
 import { waitFor } from '@testing-library/vue';
 import ParameterOptions from './ParameterOptions.vue';
+import { setActivePinia, createPinia } from 'pinia';
 
 const DEFAULT_PARAMETER = {
 	displayName: 'Fields to Set',
@@ -12,6 +13,17 @@ const DEFAULT_PARAMETER = {
 };
 
 describe('ParameterOptions', () => {
+	let pinia: ReturnType<typeof createPinia>;
+
+	beforeEach(async () => {
+		pinia = createPinia();
+		setActivePinia(pinia);
+	});
+
+	afterEach(() => {
+		vi.clearAllMocks();
+	});
+
 	it('renders default options properly', () => {
 		const { getByTestId } = renderComponent(ParameterOptions, {
 			props: {
