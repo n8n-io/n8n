@@ -494,15 +494,18 @@ describe('TaskBroker', () => {
 			const taskId = 'task1';
 			const requesterId = 'requester1';
 			const requestId = 'request1';
-			const requestType = 'input';
-			const param = 'test_param';
+			const requestParams: RunnerMessage.ToN8n.TaskDataRequest['requestParams'] = {
+				dataOfNodes: 'all',
+				env: true,
+				input: true,
+				prevNode: true,
+			};
 
 			const message: RunnerMessage.ToN8n.TaskDataRequest = {
 				type: 'runner:taskdatarequest',
 				taskId,
 				requestId,
-				requestType,
-				param,
+				requestParams,
 			};
 
 			const requesterMessageCallback = jest.fn();
@@ -519,8 +522,7 @@ describe('TaskBroker', () => {
 				type: 'broker:taskdatarequest',
 				taskId,
 				requestId,
-				requestType,
-				param,
+				requestParams,
 			});
 		});
 

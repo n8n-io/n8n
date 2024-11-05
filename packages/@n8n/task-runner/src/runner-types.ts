@@ -1,6 +1,11 @@
 import type { INodeExecutionData, INodeTypeBaseDescription } from 'n8n-workflow';
 
-export type DataRequestType = 'input' | 'node' | 'all';
+export interface TaskDataRequestParams {
+	dataOfNodes: string[] | 'all';
+	prevNode: boolean;
+	input: boolean;
+	env: boolean;
+}
 
 export interface TaskResultData {
 	result: INodeExecutionData[];
@@ -89,8 +94,7 @@ export namespace N8nMessage {
 			type: 'broker:taskdatarequest';
 			taskId: string;
 			requestId: string;
-			requestType: DataRequestType;
-			param?: string;
+			requestParams: TaskDataRequestParams;
 		}
 
 		export interface RPC {
@@ -186,8 +190,7 @@ export namespace RunnerMessage {
 			type: 'runner:taskdatarequest';
 			taskId: string;
 			requestId: string;
-			requestType: DataRequestType;
-			param?: string;
+			requestParams: TaskDataRequestParams;
 		}
 
 		export interface RPC {
