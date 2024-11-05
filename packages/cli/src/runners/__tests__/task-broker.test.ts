@@ -1,5 +1,6 @@
 import type { RunnerMessage, TaskResultData } from '@n8n/task-runner';
 import { mock } from 'jest-mock-extended';
+import type { INodeTypeBaseDescription } from 'n8n-workflow';
 
 import { TaskRejectError } from '../errors';
 import { TaskBroker } from '../task-broker.service';
@@ -551,6 +552,69 @@ describe('TaskBroker', () => {
 				callId,
 				name: rpcName,
 				params: rpcParams,
+			});
+		});
+
+		it('should handle `runner:nodetypesrequest` message', async () => {
+			const runnerId = 'runner1';
+			const taskId = 'task1';
+			const requesterId = 'requester1';
+			const requestId = 'request1';
+			const requestParams = [
+				{
+					name: 'n8n-nodes-base.someNode',
+					version: 1,
+				},
+			];
+
+			const message: RunnerMessage.ToBroker.NodeTypesRequest = {
+				type: 'runner:nodetypesrequest',
+				taskId,
+				requestId,
+				requestParams,
+			};
+
+			const requesterMessageCallback = jest.fn();
+
+			taskBroker.registerRunner(mock<TaskRunner>({ id: runnerId }), jest.fn());
+			taskBroker.setTasks({
+				[taskId]: { id: taskId, runnerId, requesterId, taskType: 'test' },
+			});
+			taskBroker.registerRequester(requesterId, requesterMessageCallback);
+
+			await taskBroker.onRunnerMessage(runnerId, message);
+
+			expect(requesterMessageCallback).toHaveBeenCalledWith({
+				type: 'broker:nodetypesrequest',
+				taskId,
+				requestId,
+				requestParams,
+			});
+		});
+	});
+
+	describe('onRequesterMessage', () => {
+		it('should handle `requester:nodetypesresponse` message', async () => {
+			const runnerId = 'runner1';
+			const taskId = 'task1';
+			const requesterId = 'requester1';
+			const requestId = 'request1';
+			const nodeTypes = [mock<INodeTypeBaseDescription>(), mock<INodeTypeBaseDescription>()];
+
+			const runnerMessageCallback = jest.fn();
+
+			taskBroker.registerRunner(mock<TaskRunner>({ id: runnerId }), runnerMessageCallback);
+			taskBroker.setTasks({
+				[taskId]: { id: taskId, runnerId, requesterId, taskType: 'test' },
+			});
+
+			await taskBroker.handleRequesterNodeTypesResponse(taskId, requestId, nodeTypes);
+
+			expect(runnerMessageCallback).toHaveBeenCalledWith({
+				type: 'broker:nodetypes',
+				taskId,
+				requestId,
+				nodeTypes,
 			});
 		});
 	});
