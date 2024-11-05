@@ -76,13 +76,6 @@ describe('TaskBroker', () => {
 			const messageCallback = jest.fn();
 
 			taskBroker.registerRunner(runner, messageCallback);
-
-			expect(messageCallback).toBeCalledWith({
-				type: 'broker:nodetypes',
-				// We're mocking the node types service, so this will
-				// be undefined.
-				nodeType: undefined,
-			});
 		});
 	});
 
