@@ -335,6 +335,7 @@ async function onAutoRefreshToggle(value: boolean) {
 					<ExecutionsFilter
 						v-show="isMounted"
 						:workflows="workflows"
+						class="execFilter"
 						@filter-changed="onFilterChanged"
 					/>
 				</div>
@@ -584,5 +585,16 @@ async function onAutoRefreshToggle(value: boolean) {
 	width: 100%;
 	height: 48px;
 	margin-bottom: var(--spacing-2xs);
+}
+</style>
+
+<style lang="scss" scoped>
+.execFilter:deep(button) {
+	height: 40px;
+}
+
+:deep(.el-checkbox) {
+	display: flex;
+	align-items: center;
 }
 </style>
