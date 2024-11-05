@@ -1,7 +1,7 @@
+import type { RunnerMessage, TaskResultData } from '@n8n/task-runner';
 import { mock } from 'jest-mock-extended';
 
 import { TaskRejectError } from '../errors';
-import type { RunnerMessage, TaskResultData } from '../runner-types';
 import { TaskBroker } from '../task-broker.service';
 import type { TaskOffer, TaskRequest, TaskRunner } from '../task-broker.service';
 
@@ -381,7 +381,7 @@ describe('TaskBroker', () => {
 			const runnerId = 'runner1';
 			const taskId = 'task1';
 
-			const message: RunnerMessage.ToN8n.TaskAccepted = {
+			const message: RunnerMessage.ToBroker.TaskAccepted = {
 				type: 'runner:taskaccepted',
 				taskId,
 			};
@@ -406,7 +406,7 @@ describe('TaskBroker', () => {
 			const taskId = 'task1';
 			const rejectionReason = 'Task execution failed';
 
-			const message: RunnerMessage.ToN8n.TaskRejected = {
+			const message: RunnerMessage.ToBroker.TaskRejected = {
 				type: 'runner:taskrejected',
 				taskId,
 				reason: rejectionReason,
@@ -433,7 +433,7 @@ describe('TaskBroker', () => {
 			const requesterId = 'requester1';
 			const data = mock<TaskResultData>();
 
-			const message: RunnerMessage.ToN8n.TaskDone = {
+			const message: RunnerMessage.ToBroker.TaskDone = {
 				type: 'runner:taskdone',
 				taskId,
 				data,
@@ -464,7 +464,7 @@ describe('TaskBroker', () => {
 			const requesterId = 'requester1';
 			const errorMessage = 'Task execution failed';
 
-			const message: RunnerMessage.ToN8n.TaskError = {
+			const message: RunnerMessage.ToBroker.TaskError = {
 				type: 'runner:taskerror',
 				taskId,
 				error: errorMessage,
@@ -494,15 +494,18 @@ describe('TaskBroker', () => {
 			const taskId = 'task1';
 			const requesterId = 'requester1';
 			const requestId = 'request1';
-			const requestType = 'input';
-			const param = 'test_param';
+			const requestParams: RunnerMessage.ToBroker.TaskDataRequest['requestParams'] = {
+				dataOfNodes: 'all',
+				env: true,
+				input: true,
+				prevNode: true,
+			};
 
-			const message: RunnerMessage.ToN8n.TaskDataRequest = {
+			const message: RunnerMessage.ToBroker.TaskDataRequest = {
 				type: 'runner:taskdatarequest',
 				taskId,
 				requestId,
-				requestType,
-				param,
+				requestParams,
 			};
 
 			const requesterMessageCallback = jest.fn();
@@ -519,8 +522,7 @@ describe('TaskBroker', () => {
 				type: 'broker:taskdatarequest',
 				taskId,
 				requestId,
-				requestType,
-				param,
+				requestParams,
 			});
 		});
 
@@ -532,7 +534,7 @@ describe('TaskBroker', () => {
 			const rpcName = 'helpers.httpRequestWithAuthentication';
 			const rpcParams = ['param1', 'param2'];
 
-			const message: RunnerMessage.ToN8n.RPC = {
+			const message: RunnerMessage.ToBroker.RPC = {
 				type: 'runner:rpc',
 				taskId,
 				callId,

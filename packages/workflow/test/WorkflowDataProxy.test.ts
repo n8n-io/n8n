@@ -26,6 +26,7 @@ const getProxyFromFixture = (
 	run: IRun | null,
 	activeNode: string,
 	mode?: WorkflowExecuteMode,
+	opts?: { throwOnMissingExecutionData: boolean },
 ) => {
 	const taskData = run?.data.resultData.runData[activeNode]?.[0];
 	const lastNodeConnectionInputData = taskData?.data?.main[0];
@@ -73,7 +74,7 @@ const getProxyFromFixture = (
 		executeData,
 	);
 
-	return dataProxy.getDataProxy();
+	return dataProxy.getDataProxy(opts);
 };
 
 describe('WorkflowDataProxy', () => {
@@ -402,6 +403,44 @@ describe('WorkflowDataProxy', () => {
 
 		test('$node[PinnedSet].json.firstName', () => {
 			expect(proxy.$node.PinnedSet.json.firstName).toBe('Joe');
+		});
+	});
+
+	describe('Partial data', () => {
+		const fixture = loadFixture('partial_data');
+
+		describe('Default behaviour (throw on missing execution data)', () => {
+			const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'End');
+
+			test('$binary', () => {
+				expect(() => proxy.$binary).toThrowError(ExpressionError);
+			});
+
+			test('$json', () => {
+				expect(() => proxy.$json).toThrowError(ExpressionError);
+			});
+
+			test('$data', () => {
+				expect(() => proxy.$data).toThrowError(ExpressionError);
+			});
+		});
+
+		describe("Don't throw on missing execution data)", () => {
+			const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'End', undefined, {
+				throwOnMissingExecutionData: false,
+			});
+
+			test('$binary', () => {
+				expect(proxy.$binary).toBeUndefined();
+			});
+
+			test('$json', () => {
+				expect(proxy.$json).toBeUndefined();
+			});
+
+			test('$data', () => {
+				expect(proxy.$data).toBeUndefined();
+			});
 		});
 	});
 });

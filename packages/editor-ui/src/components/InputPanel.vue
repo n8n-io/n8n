@@ -51,6 +51,7 @@ export default defineComponent({
 		},
 		pushRef: {
 			type: String,
+			required: true,
 		},
 		readOnly: {
 			type: Boolean,
