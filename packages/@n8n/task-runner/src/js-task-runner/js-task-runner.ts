@@ -124,19 +124,21 @@ export class JsTaskRunner extends TaskRunner {
 			neededBuiltIns.toDataRequestParams(),
 		);
 
-		const nodeTypesInWorkflow = data.workflow.nodes.map((node) => ({
-			name: node.type,
-			version: node.typeVersion,
-		}));
+		if (neededBuiltIns.needsAllNodes) {
+			const nodeTypesInWorkflow = data.workflow.nodes.map((node) => ({
+				name: node.type,
+				version: node.typeVersion,
+			}));
 
-		const unknownNodeTypes = this.nodeTypes.onlyUnknown(nodeTypesInWorkflow);
+			const unknownNodeTypes = this.nodeTypes.onlyUnknown(nodeTypesInWorkflow);
 
-		const nodeTypes = await this.requestNodeTypes<INodeTypeDescription[]>(
-			task.taskId,
-			unknownNodeTypes,
-		);
+			const nodeTypes = await this.requestNodeTypes<INodeTypeDescription[]>(
+				task.taskId,
+				unknownNodeTypes,
+			);
 
-		this.nodeTypes.addNodeTypeDescriptions(nodeTypes);
+			this.nodeTypes.addNodeTypeDescriptions(nodeTypes);
+		}
 
 		const workflowParams = data.workflow;
 		const workflow = new Workflow({
