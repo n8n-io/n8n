@@ -17,10 +17,22 @@
   },
   "main": "dist/start.js",
   "module": "src/start.ts",
-  "types": "dist/start.d.ts",
+  "types": "dist/index.d.ts",
   "files": [
     "dist/**/*"
   ],
+  "exports": {
+    "./start": {
+      "require": "./dist/start.js",
+      "import": "./src/start.ts",
+      "types": "./dist/start.d.ts"
+    },
+    ".": {
+      "require": "./dist/index.js",
+      "import": "./src/index.ts",
+      "types": "./dist/index.d.ts"
+    }
+  },
   "dependencies": {
     "@n8n/config": "workspace:*",
     "acorn": "8.14.0",
