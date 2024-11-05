@@ -1,4 +1,4 @@
-import type { FindManyOptions, FindOptionsSelect, FindOptionsWhere } from '@n8n/typeorm';
+import type { FindManyOptions, FindOptionsWhere } from '@n8n/typeorm';
 import { DataSource, In, Repository } from '@n8n/typeorm';
 import { Service } from 'typedi';
 
@@ -21,31 +21,11 @@ export class TestRepository extends Repository<TestEntity> {
 			},
 		};
 
-		type Select = FindOptionsSelect<TestEntity>;
-
-		const select: Select = {
-			id: true,
-			name: true,
-			createdAt: true,
-			updatedAt: true,
-		};
-
-		const relations: string[] = ['workflow', 'evaluationWorkflow', 'annotationTag'];
-
-		const isDefaultSelect = options?.select === undefined;
-
 		const findManyOptions: FindManyOptions<TestEntity> = {
-			select: { ...select, id: true },
 			where,
+			relations: ['annotationTag'],
+			order: { createdAt: 'DESC' },
 		};
-
-		if (isDefaultSelect || options?.select?.updatedAt === true) {
-			findManyOptions.order = { updatedAt: 'ASC' };
-		}
-
-		if (relations.length > 0) {
-			findManyOptions.relations = relations;
-		}
 
 		if (options?.take) {
 			findManyOptions.skip = options.skip;
@@ -55,5 +35,26 @@ export class TestRepository extends Repository<TestEntity> {
 		const [tests, count] = await this.findAndCount(findManyOptions);
 
 		return { tests, count };
+	}
+
+	async getOne(id: number, sharedWorkflowIds: string[]) {
+		return await this.findOne({
+			where: {
+				id,
+				workflow: {
+					id: In(sharedWorkflowIds),
+				},
+			},
+			relations: ['annotationTag'],
+		});
+	}
+
+	async deleteById(id: number, sharedWorkflowIds: string[]) {
+		return await this.delete({
+			id,
+			workflow: {
+				id: In(sharedWorkflowIds),
+			},
+		});
 	}
 }

@@ -1,5 +1,9 @@
-import { Get, /*Patch, Post,*/ RestController } from '@/decorators';
+import { Get, Post, Patch, RestController, Delete } from '@/decorators';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { listQueryMiddleware } from '@/middlewares';
+import { getSharedWorkflowIds } from '@/public-api/v1/handlers/workflows/workflows.service';
+import { isPositiveInteger } from '@/utils';
 
 import { TestsService } from './tests.service';
 import { TestsRequest } from './tests.types';
@@ -8,62 +12,61 @@ import { TestsRequest } from './tests.types';
 export class TestsController {
 	constructor(private readonly testsService: TestsService) {}
 
-	// private async getAccessibleWorkflowIds(user: User, scope: Scope) {
-	// 	if (this.license.isSharingEnabled()) {
-	// 		return await this.workflowSharingService.getSharedWorkflowIds(user, { scopes: [scope] });
-	// 	} else {
-	// 		return await this.workflowSharingService.getSharedWorkflowIds(user, {
-	// 			workflowRoles: ['workflow:owner'],
-	// 			projectRoles: ['project:personalOwner'],
-	// 		});
-	// 	}
-	// }
-
 	@Get('/', { middlewares: listQueryMiddleware })
 	async getMany(req: TestsRequest.GetMany) {
-		return await this.testsService.getMany(req.user, req.listQueryOptions);
+		const workflowIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
+
+		return await this.testsService.getMany(req.user, req.listQueryOptions, workflowIds);
 	}
 
-	// @Get('/:id')
-	// async getOne(req: ExecutionRequest.GetOne) {
-	// 	if (!isPositiveInteger(req.params.id)) {
-	// 		throw new BadRequestError('Execution ID is not a number');
-	// 	}
-	//
-	// 	const workflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:read');
-	//
-	// 	if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
-	//
-	// 	return this.license.isSharingEnabled()
-	// 		? await this.enterpriseExecutionService.findOne(req, workflowIds)
-	// 		: await this.executionService.findOne(req, workflowIds);
-	// }
-	//
-	// @Post('/delete')
-	// async delete(req: ExecutionRequest.Delete) {
-	// 	const workflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:execute');
-	//
-	// 	if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
-	//
-	// 	return await this.executionService.delete(req, workflowIds);
-	// }
-	//
-	// @Patch('/:id')
-	// async update(req: ExecutionRequest.Update) {
-	// 	if (!isPositiveInteger(req.params.id)) {
-	// 		throw new BadRequestError('Execution ID is not a number');
-	// 	}
-	//
-	// 	const workflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:read');
-	//
-	// 	// Fail fast if no workflows are accessible
-	// 	if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
-	//
-	// 	const { body: payload } = req;
-	// 	const validatedPayload = validateExecutionUpdatePayload(payload);
-	//
-	// 	await this.executionService.annotate(req.params.id, validatedPayload, workflowIds);
-	//
-	// 	return await this.executionService.findOne(req, workflowIds);
-	// }
+	@Get('/:id')
+	async getOne(req: TestsRequest.GetOne) {
+		if (!isPositiveInteger(req.params.id)) {
+			throw new BadRequestError('Test ID is not a number');
+		}
+
+		const workflowIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
+
+		return await this.testsService.findOne(Number(req.params.id), workflowIds);
+	}
+
+	@Post('/')
+	async create(req: TestsRequest.Create) {
+		const workflowIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
+
+		if (!workflowIds.includes(req.body.workflowId)) {
+			throw new BadRequestError('User does not have access to the workflow');
+		}
+
+		return await this.testsService.save(this.testsService.toEntity(req.body));
+	}
+
+	@Delete('/:id')
+	async delete(req: TestsRequest.Delete) {
+		if (!isPositiveInteger(req.params.id)) {
+			throw new BadRequestError('Test ID is not a number');
+		}
+
+		const workflowIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
+
+		if (workflowIds.length === 0) throw new NotFoundError('Test not found');
+
+		return await this.testsService.delete(Number(req.params.id), workflowIds);
+	}
+
+	@Patch('/:id')
+	async update(req: TestsRequest.Update) {
+		if (!isPositiveInteger(req.params.id)) {
+			throw new BadRequestError('Test ID is not a number');
+		}
+
+		const workflowIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
+
+		// Fail fast if no workflows are accessible
+		if (workflowIds.length === 0) throw new NotFoundError('Workflow not found');
+
+		return await this.testsService.save(
+			this.testsService.toEntity({ ...req.body, id: Number(req.params.id) }),
+		);
+	}
 }

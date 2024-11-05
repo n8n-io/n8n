@@ -1,4 +1,3 @@
-import type { TestEntity } from '@/databases/entities/test-entity';
 import type { AuthenticatedRequest, ListQuery } from '@/requests';
 
 // ----------------------------------
@@ -8,7 +7,7 @@ import type { AuthenticatedRequest, ListQuery } from '@/requests';
 export declare namespace TestsRequest {
 	namespace RouteParams {
 		type TestId = {
-			id: TestEntity['id'];
+			id: string;
 		};
 	}
 
