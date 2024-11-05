@@ -74,12 +74,6 @@ const credentialTypesById = computed<ICredentialTypeMap>(
 	() => credentialsStore.credentialTypesById,
 );
 
-const addCredentialButtonText = computed(() =>
-	projectsStore.currentProject
-		? i18n.baseText('credentials.project.add')
-		: i18n.baseText('credentials.add'),
-);
-
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
 
 const projectPermissions = computed(() =>
