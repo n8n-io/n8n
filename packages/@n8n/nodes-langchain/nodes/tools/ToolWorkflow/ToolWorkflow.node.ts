@@ -369,18 +369,18 @@ export class ToolWorkflow implements INodeType {
 			runManager?: CallbackManagerForToolRun,
 		): Promise<string> => {
 			const source = this.getNodeParameter('source', itemIndex) as string;
-			const responsePropertyName = this.getNodeParameter(
-				'responsePropertyName',
-				itemIndex,
-			) as string;
+			// const responsePropertyName = this.getNodeParameter(
+			// 	'responsePropertyName',
+			// 	itemIndex,
+			// ) as string;
 
-			if (!responsePropertyName) {
-				throw new NodeOperationError(this.getNode(), "Field to return can't be empty", {
-					itemIndex,
-					description:
-						'Enter the name of a field in the last node of the workflow that contains the response to return',
-				});
-			}
+			// if (!responsePropertyName) {
+			// 	throw new NodeOperationError(this.getNode(), "Field to return can't be empty", {
+			// 		itemIndex,
+			// 		description:
+			// 			'Enter the name of a field in the last node of the workflow that contains the response to return',
+			// 	});
+			// }
 
 			const workflowInfo: IExecuteWorkflowInfo = {};
 			if (source === 'database') {
@@ -453,16 +453,11 @@ export class ToolWorkflow implements INodeType {
 				throw new NodeOperationError(this.getNode(), error as Error);
 			}
 
-			const response: string | undefined = get(receivedData, [
-				0,
-				0,
-				'json',
-				responsePropertyName,
-			]) as string | undefined;
+			const response: string | undefined = get(receivedData, '[0][0].json') as string | undefined;
 			if (response === undefined) {
 				throw new NodeOperationError(
 					this.getNode(),
-					`There was an error: "The workflow did not return an item with the property '${responsePropertyName}'"`,
+					'There was an error: "The workflow did not return a response"',
 				);
 			}
 
@@ -506,7 +501,12 @@ export class ToolWorkflow implements INodeType {
 			if (executionError) {
 				void this.addOutputData(NodeConnectionType.AiTool, index, executionError);
 			} else {
-				void this.addOutputData(NodeConnectionType.AiTool, index, [[{ json: { response } }]]);
+				const parsedResponse = jsonParse<IDataObject>(response);
+				// Output always needs to be an object
+				// so we try to parse the response as JSON and if it fails we just return the string wrapped in an object
+				void this.addOutputData(NodeConnectionType.AiTool, index, [
+					[{ json: typeof parsedResponse === 'object' ? parsedResponse : { response } }],
+				]);
 			}
 			return response;
 		};
