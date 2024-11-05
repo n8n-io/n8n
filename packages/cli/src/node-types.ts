@@ -149,4 +149,18 @@ export class NodeTypes implements INodeTypes {
 			dirent.name.toLowerCase().startsWith('v')
 		);
 	}
+
+	getNodeTypeDescriptions(
+		nodeTypes: Array<{ name: string; version: number }>,
+	): INodeTypeDescription[] {
+		return nodeTypes.map(({ name: nodeTypeName, version: nodeTypeVersion }) => {
+			const nodeType = this.getNode(nodeTypeName);
+
+			if (!nodeType) throw new ApplicationError(`Unknown node type: ${nodeTypeName}`);
+
+			const { description } = NodeHelpers.getVersionedNodeType(nodeType.type, nodeTypeVersion);
+
+			return description;
+		});
+	}
 }

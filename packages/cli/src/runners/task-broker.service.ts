@@ -8,7 +8,6 @@ import { ApplicationError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { Service } from 'typedi';
 
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Logger } from '@/logging/logger.service';
 
 import { TaskRejectError } from './errors';
@@ -79,19 +78,7 @@ export class TaskBroker {
 
 	private pendingTaskRequests: TaskRequest[] = [];
 
-	constructor(
-		private readonly logger: Logger,
-		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
-	) {
-		this.loadNodesAndCredentials.addPostProcessor(this.updateNodeTypes);
-	}
-
-	updateNodeTypes = async () => {
-		await this.messageAllRunners({
-			type: 'broker:nodetypes',
-			nodeTypes: this.loadNodesAndCredentials.types.nodes,
-		});
-	};
+	constructor(private readonly logger: Logger) {}
 
 	expireTasks() {
 		const now = process.hrtime.bigint();
@@ -105,10 +92,6 @@ export class TaskBroker {
 	registerRunner(runner: TaskRunner, messageCallback: MessageCallback) {
 		this.knownRunners.set(runner.id, { runner, messageCallback });
 		void this.knownRunners.get(runner.id)!.messageCallback({ type: 'broker:runnerregistered' });
-		void this.knownRunners.get(runner.id)!.messageCallback({
-			type: 'broker:nodetypes',
-			nodeTypes: this.loadNodesAndCredentials.types.nodes,
-		});
 	}
 
 	deregisterRunner(runnerId: string, error: Error) {
@@ -187,7 +170,9 @@ export class TaskBroker {
 			case 'runner:taskdatarequest':
 				await this.handleDataRequest(message.taskId, message.requestId, message.requestParams);
 				break;
-
+			case 'runner:nodetypesrequest':
+				await this.handleNodeTypesRequest(message.taskId, message.requestId, message.requestParams);
+				break;
 			case 'runner:rpc':
 				await this.handleRpcRequest(message.taskId, message.callId, message.name, message.params);
 				break;
@@ -249,6 +234,23 @@ export class TaskBroker {
 		});
 	}
 
+	async handleNodeTypesRequest(
+		taskId: Task['id'],
+		requestId: RunnerMessage.ToBroker.NodeTypesRequest['requestId'],
+		requestParams: RunnerMessage.ToBroker.NodeTypesRequest['requestParams'],
+	) {
+		const task = this.tasks.get(taskId);
+		if (!task) {
+			return;
+		}
+		await this.messageRequester(task.requesterId, {
+			type: 'broker:nodetypesrequest',
+			taskId,
+			requestId,
+			requestParams,
+		});
+	}
+
 	async handleResponse(
 		taskId: Task['id'],
 		requestId: RunnerMessage.ToBroker.TaskDataRequest['requestId'],
@@ -283,6 +285,13 @@ export class TaskBroker {
 				break;
 			case 'requester:taskdataresponse':
 				await this.handleRequesterDataResponse(message.taskId, message.requestId, message.data);
+				break;
+			case 'requester:nodetypesresponse':
+				await this.handleRequesterNodeTypesResponse(
+					message.taskId,
+					message.requestId,
+					message.nodeTypes,
+				);
 				break;
 			case 'requester:rpcresponse':
 				await this.handleRequesterRpcResponse(
@@ -319,6 +328,21 @@ export class TaskBroker {
 			taskId,
 			requestId,
 			data,
+		});
+	}
+
+	async handleRequesterNodeTypesResponse(
+		taskId: Task['id'],
+		requestId: RequesterMessage.ToBroker.NodeTypesResponse['requestId'],
+		nodeTypes: RequesterMessage.ToBroker.NodeTypesResponse['nodeTypes'],
+	) {
+		const runner = await this.getRunnerOrFailTask(taskId);
+
+		await this.messageRunner(runner.id, {
+			type: 'broker:nodetypes',
+			taskId,
+			requestId,
+			nodeTypes,
 		});
 	}
 

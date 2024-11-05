@@ -1,4 +1,5 @@
-import { ApplicationError, type INodeTypeDescription } from 'n8n-workflow';
+import type { INodeTypeDescription } from 'n8n-workflow';
+import { ApplicationError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { type MessageEvent, WebSocket } from 'ws';
 
@@ -20,6 +21,12 @@ export interface TaskOffer {
 }
 
 interface DataRequest {
+	requestId: string;
+	resolve: (data: unknown) => void;
+	reject: (error: unknown) => void;
+}
+
+interface NodeTypesRequest {
 	requestId: string;
 	resolve: (data: unknown) => void;
 	reject: (error: unknown) => void;
@@ -57,6 +64,8 @@ export abstract class TaskRunner {
 	openOffers: Map<TaskOffer['offerId'], TaskOffer> = new Map();
 
 	dataRequests: Map<DataRequest['requestId'], DataRequest> = new Map();
+
+	nodeTypesRequests: Map<NodeTypesRequest['requestId'], NodeTypesRequest> = new Map();
 
 	rpcCalls: Map<RPCCall['callId'], RPCCall> = new Map();
 
@@ -173,8 +182,8 @@ export abstract class TaskRunner {
 		}
 	}
 
-	setNodeTypes(nodeTypes: INodeTypeDescription[]) {
-		this.nodeTypes = new TaskRunnerNodeTypes(nodeTypes);
+	setNodeTypes(nodeTypeDescriptions: INodeTypeDescription[]) {
+		this.nodeTypes.addNodeTypeDescriptions(nodeTypeDescriptions);
 	}
 
 	processDataResponse(requestId: string, data: unknown) {
@@ -280,6 +289,34 @@ export abstract class TaskRunner {
 	// eslint-disable-next-line @typescript-eslint/naming-convention
 	async executeTask(_task: Task): Promise<TaskResultData> {
 		throw new ApplicationError('Unimplemented');
+	}
+
+	async requestNodeTypes<T = unknown>(
+		taskId: Task['taskId'],
+		requestParams: RunnerMessage.ToBroker.NodeTypesRequest['requestParams'],
+	) {
+		const requestId = nanoid();
+
+		const p = new Promise<T>((resolve, reject) => {
+			this.nodeTypesRequests.set(requestId, {
+				requestId,
+				resolve: resolve as (data: unknown) => void,
+				reject,
+			});
+		});
+
+		this.send({
+			type: 'runner:nodetypesrequest',
+			taskId,
+			requestId,
+			requestParams,
+		});
+
+		try {
+			return await p;
+		} finally {
+			this.nodeTypesRequests.delete(requestId);
+		}
 	}
 
 	async requestData<T = unknown>(
