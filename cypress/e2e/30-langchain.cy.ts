@@ -44,8 +44,8 @@ import {
 	openNode,
 	getConnectionBySourceAndTarget,
 } from '../composables/workflow';
-import { createMockNodeExecutionData, runMockWorkflowExecution } from '../utils';
 import { NDV, WorkflowPage } from '../pages';
+import { createMockNodeExecutionData, runMockWorkflowExecution } from '../utils';
 
 describe('Langchain Integration', () => {
 	beforeEach(() => {
