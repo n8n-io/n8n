@@ -6,7 +6,7 @@ import type { INodeUi } from '@/Interface';
 import { HTTP_REQUEST_NODE_TYPE, IF_NODE_TYPE, MAX_PINNED_DATA_SIZE } from '@/constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { NodeConnectionType, type INodeTypeDescription } from 'n8n-workflow';
+import { NodeConnectionType, STICKY_NODE_TYPE, type INodeTypeDescription } from 'n8n-workflow';
 
 vi.mock('@/composables/useToast', () => ({ useToast: vi.fn(() => ({ showError: vi.fn() })) }));
 vi.mock('@/composables/useI18n', () => ({
@@ -207,6 +207,32 @@ describe('usePinnedData', () => {
 			// validate out of range index
 			expect(() => canPinNode(false, 2)).toThrow();
 			expect(() => canPinNode(false, -1)).toThrow();
+		});
+
+		it('does not allow pin on denylisted node', async () => {
+			const node = ref({
+				name: 'single output node',
+				typeVersion: 1,
+				type: STICKY_NODE_TYPE,
+			} as INodeUi);
+			const { canPinNode } = usePinnedData(node);
+
+			expect(canPinNode()).toBe(false);
+			expect(canPinNode(false, 0)).toBe(false);
+		});
+
+		it('does not allow pin with checkDataEmpty and no pin', async () => {
+			const node = ref({
+				name: 'single output node',
+				typeVersion: 1,
+				type: HTTP_REQUEST_NODE_TYPE,
+			} as INodeUi);
+			getNodeType.mockReturnValue(makeNodeType([NodeConnectionType.Main], HTTP_REQUEST_NODE_TYPE));
+
+			const { canPinNode } = usePinnedData(node);
+
+			expect(canPinNode(true)).toBe(false);
+			expect(canPinNode(true, 0)).toBe(false);
 		});
 	});
 });
