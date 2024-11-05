@@ -51,4 +51,4 @@ jobs:
         with:
           environment: production
           version: ${{ env.RELEASE }}
-          sourcemaps: packages/editor-ui/dist/**/*.js.map
+          sourcemaps: packages/editor-ui/dist/
