@@ -3,16 +3,19 @@ import { computed } from 'vue';
 import type { EnterpriseEditionFeatureValue } from '@/Interface';
 import { useSettingsStore } from '@/stores/settings.store';
 
-defineOptions({ name: 'EnterpriseEdition' });
-
-const { features = [] } = defineProps<{
-	features: EnterpriseEditionFeatureValue[];
-}>();
+const props = withDefaults(
+	defineProps<{
+		features: EnterpriseEditionFeatureValue[];
+	}>(),
+	{
+		features: () => [],
+	},
+);
 
 const settingsStore = useSettingsStore();
 
 const canAccess = computed(() =>
-	features.reduce(
+	props.features.reduce(
 		(acc: boolean, feature) => acc && !!settingsStore.isEnterpriseFeatureEnabled[feature],
 		true,
 	),

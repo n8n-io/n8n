@@ -4,21 +4,25 @@ import { EnterpriseEditionFeature } from '@/constants';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { ProjectSharingData } from '@/types/projects.types';
 import ProjectSharing from '@/components/Projects/ProjectSharing.vue';
-import { IFilters } from '../layouts/ResourcesListLayout.vue';
+import type { IFilters } from '../layouts/ResourcesListLayout.vue';
+import { useI18n } from '@/composables/useI18n';
 
 type IResourceFiltersType = Record<string, boolean | string | string[]>;
 
-const {
-	modelValue = {},
-	keys = [],
-	shareable = true,
-	reset = () => {},
-} = defineProps<{
-	modelValue?: IResourceFiltersType;
-	keys?: string[];
-	shareable?: boolean;
-	reset?: () => void;
-}>();
+const props = withDefaults(
+	defineProps<{
+		modelValue?: IResourceFiltersType;
+		keys?: string[];
+		shareable?: boolean;
+		reset?: () => void;
+	}>(),
+	{
+		modelValue: () => ({}),
+		keys: () => [],
+		shareable: true,
+		reset: () => {},
+	},
+);
 
 const emit = defineEmits<{
 	'update:modelValue': [value: IFilters];
@@ -26,17 +30,20 @@ const emit = defineEmits<{
 }>();
 
 const selectedProject = ref<ProjectSharingData | null>(null);
+
 const projectsStore = useProjectsStore();
+
+const i18n = useI18n();
 
 const filtersLength = computed(() => {
 	let length = 0;
 
-	keys.forEach((key) => {
+	props.keys.forEach((key) => {
 		if (key === 'search') {
 			return;
 		}
 
-		const value = modelValue[key];
+		const value = props.modelValue[key];
 		length += (Array.isArray(value) ? value.length > 0 : value !== '') ? 1 : 0;
 	});
 
@@ -45,20 +52,9 @@ const filtersLength = computed(() => {
 
 const hasFilters = computed(() => filtersLength.value > 0);
 
-watch(filtersLength, (value) => {
-	emit('update:filtersLength', value);
-});
-
-onBeforeMount(async () => {
-	await projectsStore.getAvailableProjects();
-	selectedProject.value =
-		projectsStore.availableProjects.find((project) => project.id === modelValue.homeProject) ??
-		null;
-});
-
 const setKeyValue = (key: string, value: unknown) => {
 	const filters = {
-		...modelValue,
+		...props.modelValue,
 		[key]: value,
 	} as IFilters;
 
@@ -66,19 +62,31 @@ const setKeyValue = (key: string, value: unknown) => {
 };
 
 const resetFilters = () => {
-	if (reset) {
-		reset();
+	if (props.reset) {
+		props.reset();
 	} else {
-		const filters = { ...modelValue } as IFilters;
+		const filters = { ...props.modelValue } as IFilters;
 
-		keys.forEach((key) => {
-			filters[key] = Array.isArray(modelValue[key]) ? [] : '';
+		props.keys.forEach((key) => {
+			filters[key] = Array.isArray(props.modelValue[key]) ? [] : '';
 		});
 
 		emit('update:modelValue', filters);
 	}
 	selectedProject.value = null;
 };
+
+watch(filtersLength, (value) => {
+	emit('update:filtersLength', value);
+});
+
+onBeforeMount(async () => {
+	await projectsStore.getAvailableProjects();
+	selectedProject.value =
+		projectsStore.availableProjects.find(
+			(project) => project.id === props.modelValue.homeProject,
+		) ?? null;
+});
 </script>
 
 <template>
@@ -94,7 +102,7 @@ const resetFilters = () => {
 				<n8n-badge v-show="filtersLength > 0" theme="primary" class="mr-4xs">
 					{{ filtersLength }}
 				</n8n-badge>
-				{{ $locale.baseText('forms.resourceFiltersDropdown.filters') }}
+				{{ i18n.baseText('forms.resourceFiltersDropdown.filters') }}
 			</n8n-button>
 		</template>
 		<div :class="$style['filters-dropdown']" data-test-id="resources-list-filters-dropdown">
@@ -104,7 +112,7 @@ const resetFilters = () => {
 				:features="[EnterpriseEditionFeature.Sharing]"
 			>
 				<n8n-input-label
-					:label="$locale.baseText('forms.resourceFiltersDropdown.owner')"
+					:label="i18n.baseText('forms.resourceFiltersDropdown.owner')"
 					:bold="false"
 					size="small"
 					color="text-base"
@@ -113,14 +121,14 @@ const resetFilters = () => {
 				<ProjectSharing
 					v-model="selectedProject"
 					:projects="projectsStore.availableProjects"
-					:placeholder="$locale.baseText('forms.resourceFiltersDropdown.owner.placeholder')"
-					:empty-options-text="$locale.baseText('projects.sharing.noMatchingProjects')"
+					:placeholder="i18n.baseText('forms.resourceFiltersDropdown.owner.placeholder')"
+					:empty-options-text="i18n.baseText('projects.sharing.noMatchingProjects')"
 					@update:model-value="setKeyValue('homeProject', ($event as ProjectSharingData).id)"
 				/>
 			</enterprise-edition>
 			<div v-if="hasFilters" :class="[$style['filters-dropdown-footer'], 'mt-s']">
 				<n8n-link @click="resetFilters">
-					{{ $locale.baseText('forms.resourceFiltersDropdown.reset') }}
+					{{ i18n.baseText('forms.resourceFiltersDropdown.reset') }}
 				</n8n-link>
 			</div>
 		</div>
