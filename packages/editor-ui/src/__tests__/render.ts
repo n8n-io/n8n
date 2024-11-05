@@ -1,5 +1,6 @@
 import type { Plugin } from 'vue';
 import { render } from '@testing-library/vue';
+import { mount } from '@vue/test-utils';
 import { i18nInstance, I18nPlugin } from '@/plugins/i18n';
 import { GlobalComponentsPlugin } from '@/plugins/components';
 import { GlobalDirectivesPlugin } from '@/plugins/directives';
@@ -47,6 +48,25 @@ export function renderComponent(component: RenderComponent, options: RenderOptio
 	const { pinia, ...renderOptions } = options;
 
 	return render(component, {
+		...defaultOptions,
+		...renderOptions,
+		global: {
+			...defaultOptions.global,
+			...renderOptions.global,
+			stubs: { ...defaultOptions.global.stubs, ...(renderOptions.global?.stubs ?? {}) },
+			plugins: [
+				...defaultOptions.global.plugins,
+				...(renderOptions.global?.plugins ?? []),
+				...(pinia ? [pinia] : []),
+			],
+		},
+	});
+}
+
+export function mountComponent(component: RenderComponent, options: RenderOptions = {}) {
+	const { pinia, ...renderOptions } = options;
+
+	return mount(component, {
 		...defaultOptions,
 		...renderOptions,
 		global: {
