@@ -758,7 +758,7 @@ export class Ftp implements INodeType {
 							try {
 								await ftp!.rename(oldPath, newPath);
 							} catch (error) {
-								if (error.code === 451 && options.createDirectories) {
+								if ([451, 550].includes(error.code) && options.createDirectories) {
 									const dirPath = newPath.replace(basename(newPath), '');
 									await ftp!.mkdir(dirPath, true);
 									await ftp!.rename(oldPath, newPath);
