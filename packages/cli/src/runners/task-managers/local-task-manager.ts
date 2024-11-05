@@ -24,7 +24,7 @@ export class LocalTaskManager extends TaskManager {
 		);
 	}
 
-	sendMessage(message: RequesterMessage.ToN8n.All) {
+	sendMessage(message: RequesterMessage.ToBroker.All) {
 		void this.taskBroker.onRequesterMessage(this.id, message);
 	}
 }

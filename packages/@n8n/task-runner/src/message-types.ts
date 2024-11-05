@@ -2,7 +2,7 @@ import type { INodeTypeBaseDescription } from 'n8n-workflow';
 
 import type { RPC_ALLOW_LIST, TaskDataRequestParams, TaskResultData } from './runner-types';
 
-export namespace N8nMessage {
+export namespace BrokerMessage {
 	export namespace ToRunner {
 		export interface InfoRequest {
 			type: 'broker:inforequest';
@@ -100,7 +100,7 @@ export namespace N8nMessage {
 }
 
 export namespace RequesterMessage {
-	export namespace ToN8n {
+	export namespace ToBroker {
 		export interface TaskSettings {
 			type: 'requester:tasksettings';
 			taskId: string;
@@ -139,7 +139,7 @@ export namespace RequesterMessage {
 }
 
 export namespace RunnerMessage {
-	export namespace ToN8n {
+	export namespace ToBroker {
 		export interface Info {
 			type: 'runner:info';
 			name: string;

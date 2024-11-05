@@ -1,6 +1,6 @@
 import type {
 	DataRequestResponse,
-	N8nMessage,
+	BrokerMessage,
 	PartialAdditionalData,
 	TaskData,
 } from '@n8n/task-runner';
@@ -26,7 +26,7 @@ export class DataRequestResponseBuilder {
 
 	constructor(
 		private readonly taskData: TaskData,
-		private readonly requestParams: N8nMessage.ToRequester.TaskDataRequest['requestParams'],
+		private readonly requestParams: BrokerMessage.ToRequester.TaskDataRequest['requestParams'],
 	) {
 		this.requestedNodeNames = new Set(requestParams.dataOfNodes);
 

@@ -1,4 +1,4 @@
-import type { TaskResultData, RequesterMessage, N8nMessage, TaskData } from '@n8n/task-runner';
+import type { TaskResultData, RequesterMessage, BrokerMessage, TaskData } from '@n8n/task-runner';
 import { RPC_ALLOW_LIST } from '@n8n/task-runner';
 import type {
 	EnvProviderState,
@@ -157,9 +157,9 @@ export class TaskManager {
 		}
 	}
 
-	sendMessage(_message: RequesterMessage.ToN8n.All) {}
+	sendMessage(_message: RequesterMessage.ToBroker.All) {}
 
-	onMessage(message: N8nMessage.ToRequester.All) {
+	onMessage(message: BrokerMessage.ToRequester.All) {
 		switch (message.type) {
 			case 'broker:taskready':
 				this.taskReady(message.requestId, message.taskId);
@@ -220,7 +220,7 @@ export class TaskManager {
 	sendTaskData(
 		taskId: string,
 		requestId: string,
-		requestParams: N8nMessage.ToRequester.TaskDataRequest['requestParams'],
+		requestParams: BrokerMessage.ToRequester.TaskDataRequest['requestParams'],
 	) {
 		const job = this.tasks.get(taskId);
 		if (!job) {
@@ -242,7 +242,7 @@ export class TaskManager {
 	async handleRpc(
 		taskId: string,
 		callId: string,
-		name: N8nMessage.ToRequester.RPC['name'],
+		name: BrokerMessage.ToRequester.RPC['name'],
 		params: unknown[],
 	) {
 		const job = this.tasks.get(taskId);
