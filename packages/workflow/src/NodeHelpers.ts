@@ -432,12 +432,15 @@ export function convertNodeToAiTool<
 		}
 	}
 
+	const resources = item.description.codex?.resources ?? {};
+
 	item.description.codex = {
 		categories: ['AI'],
 		subcategories: {
 			AI: ['Tools'],
 			Tools: ['Other Tools'],
 		},
+		resources,
 	};
 	return item;
 }

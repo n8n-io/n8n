@@ -288,8 +288,7 @@ export abstract class TaskRunner {
 
 	async requestData<T = unknown>(
 		taskId: Task['taskId'],
-		type: RunnerMessage.ToN8n.TaskDataRequest['requestType'],
-		param?: string,
+		requestParams: RunnerMessage.ToN8n.TaskDataRequest['requestParams'],
 	): Promise<T> {
 		const requestId = nanoid();
 
@@ -305,8 +304,7 @@ export abstract class TaskRunner {
 			type: 'runner:taskdatarequest',
 			taskId,
 			requestId,
-			requestType: type,
-			param,
+			requestParams,
 		});
 
 		try {

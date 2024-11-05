@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "1.65.0",
+  "version": "1.66.0",
   "private": true,
   "engines": {
     "node": ">=20.15",
@@ -88,8 +88,7 @@
       "pyodide@0.23.4": "patches/pyodide@0.23.4.patch",
       "@types/express-serve-static-core@4.17.43": "patches/@types__express-serve-static-core@4.17.43.patch",
       "@types/ws@8.5.4": "patches/@types__ws@8.5.4.patch",
-      "@types/uuencode@0.0.3": "patches/@types__uuencode@0.0.3.patch",
-      "@langchain/core@0.3.3": "patches/@langchain__core@0.3.3.patch"
+      "@types/uuencode@0.0.3": "patches/@types__uuencode@0.0.3.patch"
     }
   }
 }

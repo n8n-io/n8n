@@ -22,7 +22,6 @@ import { NodeHelpers } from 'n8n-workflow';
 import CredentialConfig from '@/components/CredentialEdit/CredentialConfig.vue';
 import CredentialInfo from '@/components/CredentialEdit/CredentialInfo.vue';
 import CredentialSharing from '@/components/CredentialEdit/CredentialSharing.ee.vue';
-import FeatureComingSoon from '@/components/FeatureComingSoon.vue';
 import InlineNameEdit from '@/components/InlineNameEdit.vue';
 import Modal from '@/components/Modal.vue';
 import SaveButton from '@/components/SaveButton.vue';
@@ -518,14 +517,13 @@ async function loadCurrentCredential() {
 
 function onTabSelect(tab: string) {
 	activeTab.value = tab;
-	const tabName: string = tab.replaceAll('coming-soon/', '');
 	const credType: string = credentialType.value ? credentialType.value.name : '';
 	const activeNode: INode | null = ndvStore.activeNode;
 
 	telemetry.track('User viewed credential tab', {
 		credential_type: credType,
 		node_type: activeNode ? activeNode.type : null,
-		tab: tabName,
+		tab,
 		workflow_id: workflowsStore.workflowId,
 		credential_id: credentialId.value,
 		sharing_enabled: EnterpriseEditionFeature.Sharing,
@@ -1129,9 +1127,6 @@ function resetCredentialData(): void {
 				</div>
 				<div v-else-if="activeTab === 'details' && credentialType" :class="$style.mainContent">
 					<CredentialInfo :current-credential="currentCredential" />
-				</div>
-				<div v-else-if="activeTab.startsWith('coming-soon')" :class="$style.mainContent">
-					<FeatureComingSoon :feature-id="activeTab.split('/')[1]"></FeatureComingSoon>
 				</div>
 			</div>
 		</template>
