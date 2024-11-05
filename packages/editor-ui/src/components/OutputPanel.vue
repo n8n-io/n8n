@@ -18,7 +18,7 @@ import { waitingNodeTooltip } from '@/utils/executionUtils';
 
 // Types
 
-type RunDataRef = InstanceType<typeof RunData> | null;
+type RunDataRef = InstanceType<typeof RunData>;
 
 const OUTPUT_TYPE = {
 	REGULAR: 'regular',
@@ -55,7 +55,7 @@ const emit = defineEmits<{
 	runChange: [number];
 	activatePane: [];
 	tableMounted: [{ avgRowHeight: number }];
-	itemHover: [{ itemIndex: number; outputIndex: number }];
+	itemHover: [item: { itemIndex: number; outputIndex: number } | null];
 	search: [string];
 	openSettings: [];
 }>();
@@ -87,7 +87,7 @@ const outputTypes = ref([
 	{ label: i18n.baseText('ndv.output.outType.regular'), value: OUTPUT_TYPE.REGULAR },
 	{ label: i18n.baseText('ndv.output.outType.logs'), value: OUTPUT_TYPE.LOGS },
 ]);
-const runDataRef = ref<RunDataRef>(null);
+const runDataRef = ref<RunDataRef>();
 
 // Computed
 
@@ -127,9 +127,7 @@ const isNodeRunning = computed(() => {
 	return workflowRunning.value && !!node.value && workflowsStore.isNodeExecuting(node.value.name);
 });
 
-const workflowRunning = computed(() => {
-	return uiStore.isActionActive['workflowRunning'];
-});
+const workflowRunning = computed(() => uiStore.isActionActive.workflowRunning);
 
 const workflowExecution = computed(() => {
 	return workflowsStore.getWorkflowExecution;
@@ -253,8 +251,8 @@ const onRunIndexChange = (run: number) => {
 	emit('runChange', run);
 };
 
-const onUpdateOutputMode = (outputMode: OutputType) => {
-	if (outputMode === OUTPUT_TYPE.LOGS) {
+const onUpdateOutputMode = (newOutputMode: OutputType) => {
+	if (newOutputMode === OUTPUT_TYPE.LOGS) {
 		ndvEventBus.emit('setPositionByName', 'minLeft');
 	} else {
 		ndvEventBus.emit('setPositionByName', 'initial');
@@ -311,8 +309,8 @@ const activatePane = () => {
 			<div :class="$style.titleSection">
 				<template v-if="hasAiMetadata">
 					<n8n-radio-buttons
-						data-test-id="ai-output-mode-select"
 						v-model="outputMode"
+						data-test-id="ai-output-mode-select"
 						:options="outputTypes"
 						@update:model-value="onUpdateOutputMode"
 					/>

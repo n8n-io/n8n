@@ -1160,6 +1160,8 @@ function onSearchClear() {
 	search.value = '';
 	document.dispatchEvent(new KeyboardEvent('keyup', { key: '/' }));
 }
+
+defineExpose({ enterEditMode });
 </script>
 
 <template>
