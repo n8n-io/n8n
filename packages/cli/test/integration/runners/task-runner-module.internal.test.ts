@@ -8,6 +8,7 @@ import { TaskRunnerWsServer } from '../../../src/runners/runner-ws-server';
 
 describe('TaskRunnerModule in internal_childprocess mode', () => {
 	const runnerConfig = Container.get(TaskRunnersConfig);
+	runnerConfig.port = 0; // Random port
 	runnerConfig.mode = 'internal_childprocess';
 	const module = Container.get(TaskRunnerModule);
 
