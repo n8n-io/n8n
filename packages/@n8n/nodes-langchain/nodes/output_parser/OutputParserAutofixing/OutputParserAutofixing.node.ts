@@ -1,5 +1,6 @@
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
-import { NodeConnectionType } from 'n8n-workflow';
+import { PromptTemplate } from '@langchain/core/prompts';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type {
 	ISupplyDataFunctions,
 	INodeType,
@@ -7,6 +8,7 @@ import type {
 	SupplyData,
 } from 'n8n-workflow';
 
+import { NAIVE_FIX_PROMPT } from './prompt';
 import {
 	N8nOutputFixingParser,
 	type N8nStructuredOutputParser,
@@ -65,6 +67,24 @@ export class OutputParserAutofixing implements INodeType {
 				default: '',
 			},
 			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				options: [
+					{
+						displayName: 'Fix Prompt',
+						name: 'prompt',
+						type: 'string',
+						default: NAIVE_FIX_PROMPT,
+						typeOptions: {
+							rows: 10,
+						},
+					},
+				],
+			},
 		],
 	};
 
@@ -77,8 +97,20 @@ export class OutputParserAutofixing implements INodeType {
 			NodeConnectionType.AiOutputParser,
 			itemIndex,
 		)) as N8nStructuredOutputParser;
+		const prompt = this.getNodeParameter('options.prompt', itemIndex, NAIVE_FIX_PROMPT) as string;
 
-		const parser = new N8nOutputFixingParser(this, model, outputParser);
+		if (prompt.length === 0 || !prompt.includes('{error}')) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'Auto-fixing parser prompt has to contain {error} placeholder',
+			);
+		}
+		const parser = new N8nOutputFixingParser(
+			this,
+			model,
+			outputParser,
+			PromptTemplate.fromTemplate(prompt),
+		);
 
 		return {
 			response: parser,

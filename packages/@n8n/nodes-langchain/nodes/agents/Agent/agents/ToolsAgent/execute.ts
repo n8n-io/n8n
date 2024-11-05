@@ -210,7 +210,11 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 
 			if (finalResponse instanceof Object) {
 				if ('output' in finalResponse) {
-					parserInput = JSON.stringify({ output: jsonParse(finalResponse.output) });
+					try {
+						parserInput = JSON.stringify({ output: jsonParse(finalResponse.output) });
+					} catch (error) {
+						parserInput = finalResponse.output;
+					}
 				} else {
 					parserInput = JSON.stringify(finalResponse);
 				}

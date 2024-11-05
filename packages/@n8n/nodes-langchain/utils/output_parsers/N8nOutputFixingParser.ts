@@ -2,11 +2,11 @@ import type { Callbacks } from '@langchain/core/callbacks/manager';
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import type { AIMessage } from '@langchain/core/messages';
 import { BaseOutputParser, OutputParserException } from '@langchain/core/output_parsers';
+import type { PromptTemplate } from '@langchain/core/prompts';
 import type { ISupplyDataFunctions } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 
 import type { N8nStructuredOutputParser } from './N8nStructuredOutputParser';
-import { NAIVE_FIX_PROMPT } from './prompt';
 import { logAiEvent } from '../helpers';
 
 export class N8nOutputFixingParser extends BaseOutputParser {
@@ -16,12 +16,13 @@ export class N8nOutputFixingParser extends BaseOutputParser {
 		private context: ISupplyDataFunctions,
 		private model: BaseLanguageModel,
 		private outputParser: N8nStructuredOutputParser,
+		private fixPromptTemplate: PromptTemplate,
 	) {
 		super();
 	}
 
 	getRetryChain() {
-		return NAIVE_FIX_PROMPT.pipe(this.model);
+		return this.fixPromptTemplate.pipe(this.model);
 	}
 
 	/**
@@ -47,15 +48,14 @@ export class N8nOutputFixingParser extends BaseOutputParser {
 
 			return response;
 		} catch (error) {
-			if (error instanceof OutputParserException) {
-				console.log('Is output parser exception!');
+			if (!(error instanceof OutputParserException)) {
+				throw error;
 			}
-			console.log('Got error while parsing', error);
 			try {
 				// Second attempt: use retry chain to fix the output
 				const result = (await this.getRetryChain().invoke({
 					completion,
-					error,
+					error: error.message,
 					instructions: this.getFormatInstructions(),
 				})) as AIMessage;
 
@@ -69,7 +69,6 @@ export class N8nOutputFixingParser extends BaseOutputParser {
 
 				return parsed;
 			} catch (autoParseError) {
-				console.log('Got final error while parsing', autoParseError);
 				// If both attempts fail, add the error to the output and throw
 				this.context.addOutputData(NodeConnectionType.AiOutputParser, index, autoParseError);
 				throw autoParseError;
