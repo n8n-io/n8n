@@ -83,7 +83,6 @@
     },
     "patchedDependencies": {
       "typedi@0.10.0": "patches/typedi@0.10.0.patch",
-      "@sentry/cli@2.36.2": "patches/@sentry__cli@2.36.2.patch",
       "pkce-challenge@3.0.0": "patches/pkce-challenge@3.0.0.patch",
       "pyodide@0.23.4": "patches/pyodide@0.23.4.patch",
       "@types/express-serve-static-core@4.17.43": "patches/@types__express-serve-static-core@4.17.43.patch",
