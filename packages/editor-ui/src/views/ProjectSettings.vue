@@ -8,7 +8,7 @@ import type { IUser } from '@/Interface';
 import { useI18n } from '@/composables/useI18n';
 import { useProjectsStore } from '@/stores/projects.store';
 import ProjectTabs from '@/components/Projects/ProjectTabs.vue';
-import { type Project, type ProjectRelation, ProjectTypes } from '@/types/projects.types';
+import { type Project, type ProjectRelation } from '@/types/projects.types';
 import { useToast } from '@/composables/useToast';
 import { VIEWS } from '@/constants';
 import ProjectDeleteDialog from '@/components/Projects/ProjectDeleteDialog.vue';
@@ -247,26 +247,6 @@ watch(
 	},
 	{ immediate: true },
 );
-
-const headerIcon = computed(() => {
-	if (projectsStore.currentProject?.type === ProjectTypes.Personal) {
-		return 'user';
-	} else if (projectsStore.currentProject?.name) {
-		return 'layer-group';
-	} else {
-		return 'home';
-	}
-});
-
-const projectName = computed(() => {
-	if (!projectsStore.currentProject) {
-		return locale.baseText('projects.menu.home');
-	} else if (projectsStore.currentProject.type === ProjectTypes.Personal) {
-		return locale.baseText('projects.menu.personal');
-	} else {
-		return projectsStore.currentProject.name;
-	}
-});
 
 onBeforeMount(async () => {
 	await usersStore.fetchUsers();
