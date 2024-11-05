@@ -1836,6 +1836,7 @@ export default defineComponent({
 	overflow-x: auto;
 	overflow-y: hidden;
 	min-height: calc(30px + var(--spacing-s));
+	scrollbar-width: thin;
 
 	> *:first-child {
 		flex-grow: 1;
