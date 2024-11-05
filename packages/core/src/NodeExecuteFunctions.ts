@@ -23,12 +23,11 @@ import type {
 } from 'axios';
 import axios from 'axios';
 import crypto, { createHmac } from 'crypto';
-import type { Request, Response } from 'express';
 import FileType from 'file-type';
 import FormData from 'form-data';
 import { createReadStream } from 'fs';
 import { access as fsAccess, writeFile as fsWriteFile } from 'fs/promises';
-import { IncomingMessage, type IncomingHttpHeaders } from 'http';
+import { IncomingMessage } from 'http';
 import { Agent, type AgentOptions } from 'https';
 import get from 'lodash/get';
 import isEmpty from 'lodash/isEmpty';
@@ -60,7 +59,6 @@ import type {
 	IGetNodeParameterOptions,
 	IHookFunctions,
 	IHttpRequestOptions,
-	ILoadOptionsFunctions,
 	IN8nHttpFullResponse,
 	IN8nHttpResponse,
 	INode,
@@ -101,7 +99,6 @@ import type {
 	INodeParameters,
 	EnsureTypeOptions,
 	SSHTunnelFunctions,
-	SchedulingFunctions,
 	DeduplicationHelperFunctions,
 	IDeduplicationOutput,
 	IDeduplicationOutputItems,
@@ -111,6 +108,7 @@ import type {
 	ICheckProcessedContextData,
 	AiEvent,
 	ISupplyDataFunctions,
+	WebhookType,
 } from 'n8n-workflow';
 import {
 	NodeConnectionType,
@@ -168,8 +166,7 @@ import { extractValue } from './ExtractValue';
 import { InstanceSettings } from './InstanceSettings';
 import type { ExtendedValidationResult, IResponseError } from './Interfaces';
 // eslint-disable-next-line import/no-cycle
-import { PollContext } from './node-execution-context';
-import { ScheduledTaskManager } from './ScheduledTaskManager';
+import { HookContext, PollContext, TriggerContext, WebhookContext } from './node-execution-context';
 import { getSecretsProxy } from './Secrets';
 import { SSHClientsManager } from './SSHClientsManager';
 
@@ -2632,7 +2629,7 @@ export function continueOnFail(node: INode): boolean {
  *
  */
 export function getNodeWebhookUrl(
-	name: string,
+	name: WebhookType,
 	workflow: Workflow,
 	node: INode,
 	additionalData: IWorkflowExecuteAdditionalData,
@@ -2677,7 +2674,7 @@ export function getNodeWebhookUrl(
  *
  */
 export function getWebhookDescription(
-	name: string,
+	name: WebhookType,
 	workflow: Workflow,
 	node: INode,
 ): IWebhookDescription | undefined {
@@ -2802,7 +2799,7 @@ const addExecutionDataFunctions = async (
 	}
 };
 
-async function getInputConnectionData(
+export async function getInputConnectionData(
 	this: IAllExecuteFunctions,
 	workflow: Workflow,
 	runExecutionData: IRunExecutionData,
@@ -3346,14 +3343,6 @@ const getSSHTunnelFunctions = (): SSHTunnelFunctions => ({
 		await Container.get(SSHClientsManager).getClient(credentials),
 });
 
-const getSchedulingFunctions = (workflow: Workflow): SchedulingFunctions => {
-	const scheduledTaskManager = Container.get(ScheduledTaskManager);
-	return {
-		registerCron: (cronExpression, onTick) =>
-			scheduledTaskManager.registerCron(workflow, cronExpression, onTick),
-	};
-};
-
 const getAllowedPaths = () => {
 	const restrictFileAccessTo = process.env[RESTRICT_FILE_ACCESS_TO];
 	if (!restrictFileAccessTo) {
@@ -3571,58 +3560,7 @@ export function getExecuteTriggerFunctions(
 	mode: WorkflowExecuteMode,
 	activation: WorkflowActivateMode,
 ): ITriggerFunctions {
-	return ((workflow: Workflow, node: INode) => {
-		return {
-			...getCommonWorkflowFunctions(workflow, node, additionalData),
-			emit: (): void => {
-				throw new ApplicationError(
-					'Overwrite NodeExecuteFunctions.getExecuteTriggerFunctions.emit function',
-				);
-			},
-			emitError: (): void => {
-				throw new ApplicationError(
-					'Overwrite NodeExecuteFunctions.getExecuteTriggerFunctions.emit function',
-				);
-			},
-			getMode: () => mode,
-			getActivationMode: () => activation,
-			getCredentials: async (type) =>
-				await getCredentials(workflow, node, type, additionalData, mode),
-			getNodeParameter: (
-				parameterName: string,
-				fallbackValue?: any,
-				options?: IGetNodeParameterOptions,
-			): NodeParameterValueType | object => {
-				const runExecutionData: IRunExecutionData | null = null;
-				const itemIndex = 0;
-				const runIndex = 0;
-				const connectionInputData: INodeExecutionData[] = [];
-
-				return getNodeParameter(
-					workflow,
-					runExecutionData,
-					runIndex,
-					connectionInputData,
-					node,
-					parameterName,
-					itemIndex,
-					mode,
-					getAdditionalKeys(additionalData, mode, runExecutionData),
-					undefined,
-					fallbackValue,
-					options,
-				);
-			},
-			helpers: {
-				createDeferredPromise,
-				...getSSHTunnelFunctions(),
-				...getRequestHelperFunctions(workflow, node, additionalData),
-				...getBinaryHelperFunctions(additionalData, workflow.id),
-				...getSchedulingFunctions(workflow),
-				returnJsonArray,
-			},
-		};
-	})(workflow, node);
+	return new TriggerContext(workflow, node, additionalData, mode, activation);
 }
 
 /**
@@ -4395,85 +4333,6 @@ export function getCredentialTestFunctions(): ICredentialTestFunctions {
 }
 
 /**
- * Returns the execute functions regular nodes have access to in load-options-function.
- */
-export function getLoadOptionsFunctions(
-	workflow: Workflow,
-	node: INode,
-	path: string,
-	additionalData: IWorkflowExecuteAdditionalData,
-): ILoadOptionsFunctions {
-	return ((workflow: Workflow, node: INode, path: string) => {
-		return {
-			...getCommonWorkflowFunctions(workflow, node, additionalData),
-			getCredentials: async (type) =>
-				await getCredentials(workflow, node, type, additionalData, 'internal'),
-			getCurrentNodeParameter: (
-				parameterPath: string,
-				options?: IGetNodeParameterOptions,
-			): NodeParameterValueType | object | undefined => {
-				const nodeParameters = additionalData.currentNodeParameters;
-
-				if (parameterPath.charAt(0) === '&') {
-					parameterPath = `${path.split('.').slice(1, -1).join('.')}.${parameterPath.slice(1)}`;
-				}
-
-				let returnData = get(nodeParameters, parameterPath);
-
-				// This is outside the try/catch because it throws errors with proper messages
-				if (options?.extractValue) {
-					const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-					if (nodeType === undefined) {
-						throw new ApplicationError('Node type is not known so cannot return parameter value', {
-							tags: { nodeType: node.type },
-						});
-					}
-					returnData = extractValue(
-						returnData,
-						parameterPath,
-						node,
-						nodeType,
-					) as NodeParameterValueType;
-				}
-
-				return returnData;
-			},
-			getCurrentNodeParameters: () => additionalData.currentNodeParameters,
-			getNodeParameter: (
-				parameterName: string,
-				fallbackValue?: any,
-				options?: IGetNodeParameterOptions,
-			): NodeParameterValueType | object => {
-				const runExecutionData: IRunExecutionData | null = null;
-				const itemIndex = 0;
-				const runIndex = 0;
-				const mode = 'internal' as WorkflowExecuteMode;
-				const connectionInputData: INodeExecutionData[] = [];
-
-				return getNodeParameter(
-					workflow,
-					runExecutionData,
-					runIndex,
-					connectionInputData,
-					node,
-					parameterName,
-					itemIndex,
-					mode,
-					getAdditionalKeys(additionalData, mode, runExecutionData),
-					undefined,
-					fallbackValue,
-					options,
-				);
-			},
-			helpers: {
-				...getSSHTunnelFunctions(),
-				...getRequestHelperFunctions(workflow, node, additionalData),
-			},
-		};
-	})(workflow, node, path);
-}
-
-/**
  * Returns the execute functions regular nodes have access to in hook-function.
  */
 export function getExecuteHookFunctions(
@@ -4484,59 +4343,7 @@ export function getExecuteHookFunctions(
 	activation: WorkflowActivateMode,
 	webhookData?: IWebhookData,
 ): IHookFunctions {
-	return ((workflow: Workflow, node: INode) => {
-		return {
-			...getCommonWorkflowFunctions(workflow, node, additionalData),
-			getCredentials: async (type) =>
-				await getCredentials(workflow, node, type, additionalData, mode),
-			getMode: () => mode,
-			getActivationMode: () => activation,
-			getNodeParameter: (
-				parameterName: string,
-				fallbackValue?: any,
-				options?: IGetNodeParameterOptions,
-			): NodeParameterValueType | object => {
-				const runExecutionData: IRunExecutionData | null = null;
-				const itemIndex = 0;
-				const runIndex = 0;
-				const connectionInputData: INodeExecutionData[] = [];
-
-				return getNodeParameter(
-					workflow,
-					runExecutionData,
-					runIndex,
-					connectionInputData,
-					node,
-					parameterName,
-					itemIndex,
-					mode,
-					getAdditionalKeys(additionalData, mode, runExecutionData),
-					undefined,
-					fallbackValue,
-					options,
-				);
-			},
-			getNodeWebhookUrl: (name: string): string | undefined => {
-				return getNodeWebhookUrl(
-					name,
-					workflow,
-					node,
-					additionalData,
-					mode,
-					getAdditionalKeys(additionalData, mode, null),
-					webhookData?.isTest,
-				);
-			},
-			getWebhookName(): string {
-				if (webhookData === undefined) {
-					throw new ApplicationError('Only supported in webhook functions');
-				}
-				return webhookData.webhookDescription.name;
-			},
-			getWebhookDescription: (name) => getWebhookDescription(name, workflow, node),
-			helpers: getRequestHelperFunctions(workflow, node, additionalData),
-		};
-	})(workflow, node);
+	return new HookContext(workflow, node, additionalData, mode, activation, webhookData);
 }
 
 /**
@@ -4552,170 +4359,13 @@ export function getExecuteWebhookFunctions(
 	closeFunctions: CloseFunction[],
 	runExecutionData: IRunExecutionData | null,
 ): IWebhookFunctions {
-	return ((workflow: Workflow, node: INode, runExecutionData: IRunExecutionData | null) => {
-		return {
-			...getCommonWorkflowFunctions(workflow, node, additionalData),
-			getBodyData(): IDataObject {
-				if (additionalData.httpRequest === undefined) {
-					throw new ApplicationError('Request is missing');
-				}
-				return additionalData.httpRequest.body;
-			},
-			getCredentials: async (type) =>
-				await getCredentials(workflow, node, type, additionalData, mode),
-			getHeaderData(): IncomingHttpHeaders {
-				if (additionalData.httpRequest === undefined) {
-					throw new ApplicationError('Request is missing');
-				}
-				return additionalData.httpRequest.headers;
-			},
-			async getInputConnectionData(
-				inputName: NodeConnectionType,
-				itemIndex: number,
-			): Promise<unknown> {
-				// To be able to use expressions like "$json.sessionId" set the
-				// body data the webhook received to what is normally used for
-				// incoming node data.
-				const connectionInputData: INodeExecutionData[] = [
-					{ json: additionalData.httpRequest?.body || {} },
-				];
-				const runExecutionData: IRunExecutionData = {
-					resultData: {
-						runData: {},
-					},
-				};
-				const executeData: IExecuteData = {
-					data: {
-						main: [connectionInputData],
-					},
-					node,
-					source: null,
-				};
-				const runIndex = 0;
-
-				return await getInputConnectionData.call(
-					this,
-					workflow,
-					runExecutionData,
-					runIndex,
-					connectionInputData,
-					{} as ITaskDataConnections,
-					additionalData,
-					executeData,
-					mode,
-					closeFunctions,
-					inputName,
-					itemIndex,
-				);
-			},
-			getMode: () => mode,
-			evaluateExpression: (expression: string, evaluateItemIndex?: number) => {
-				const itemIndex = evaluateItemIndex === undefined ? 0 : evaluateItemIndex;
-				const runIndex = 0;
-
-				let connectionInputData: INodeExecutionData[] = [];
-				let executionData: IExecuteData | undefined;
-
-				if (runExecutionData?.executionData !== undefined) {
-					executionData = runExecutionData.executionData.nodeExecutionStack[0];
-
-					if (executionData !== undefined) {
-						connectionInputData = executionData.data.main[0]!;
-					}
-				}
-
-				const additionalKeys = getAdditionalKeys(additionalData, mode, runExecutionData);
-
-				return workflow.expression.resolveSimpleParameterValue(
-					`=${expression}`,
-					{},
-					runExecutionData,
-					runIndex,
-					itemIndex,
-					node.name,
-					connectionInputData,
-					mode,
-					additionalKeys,
-					executionData,
-				);
-			},
-			getNodeParameter: (
-				parameterName: string,
-				fallbackValue?: any,
-				options?: IGetNodeParameterOptions,
-			): NodeParameterValueType | object => {
-				const itemIndex = 0;
-				const runIndex = 0;
-
-				let connectionInputData: INodeExecutionData[] = [];
-				let executionData: IExecuteData | undefined;
-
-				if (runExecutionData?.executionData !== undefined) {
-					executionData = runExecutionData.executionData.nodeExecutionStack[0];
-
-					if (executionData !== undefined) {
-						connectionInputData = executionData.data.main[0]!;
-					}
-				}
-
-				const additionalKeys = getAdditionalKeys(additionalData, mode, runExecutionData);
-
-				return getNodeParameter(
-					workflow,
-					runExecutionData,
-					runIndex,
-					connectionInputData,
-					node,
-					parameterName,
-					itemIndex,
-					mode,
-					additionalKeys,
-					executionData,
-					fallbackValue,
-					options,
-				);
-			},
-			getParamsData(): object {
-				if (additionalData.httpRequest === undefined) {
-					throw new ApplicationError('Request is missing');
-				}
-				return additionalData.httpRequest.params;
-			},
-			getQueryData(): object {
-				if (additionalData.httpRequest === undefined) {
-					throw new ApplicationError('Request is missing');
-				}
-				return additionalData.httpRequest.query;
-			},
-			getRequestObject(): Request {
-				if (additionalData.httpRequest === undefined) {
-					throw new ApplicationError('Request is missing');
-				}
-				return additionalData.httpRequest;
-			},
-			getResponseObject(): Response {
-				if (additionalData.httpResponse === undefined) {
-					throw new ApplicationError('Response is missing');
-				}
-				return additionalData.httpResponse;
-			},
-			getNodeWebhookUrl: (name: string): string | undefined =>
-				getNodeWebhookUrl(
-					name,
-					workflow,
-					node,
-					additionalData,
-					mode,
-					getAdditionalKeys(additionalData, mode, null),
-				),
-			getWebhookName: () => webhookData.webhookDescription.name,
-			helpers: {
-				createDeferredPromise,
-				...getRequestHelperFunctions(workflow, node, additionalData),
-				...getBinaryHelperFunctions(additionalData, workflow.id),
-				returnJsonArray,
-			},
-			nodeHelpers: getNodeHelperFunctions(additionalData, workflow.id),
-		};
-	})(workflow, node, runExecutionData);
+	return new WebhookContext(
+		workflow,
+		node,
+		additionalData,
+		mode,
+		webhookData,
+		closeFunctions,
+		runExecutionData,
+	);
 }

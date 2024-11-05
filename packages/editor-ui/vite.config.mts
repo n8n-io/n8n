@@ -1,7 +1,6 @@
 import vue from '@vitejs/plugin-vue';
 import { resolve } from 'path';
 import { defineConfig, mergeConfig } from 'vite';
-import { sentryVitePlugin } from '@sentry/vite-plugin';
 
 import { vitestConfig } from '../design-system/vite.config.mts';
 import icons from 'unplugin-icons/vite';
@@ -57,22 +56,7 @@ const plugins = [
 	vue(),
 ];
 
-const { SENTRY_AUTH_TOKEN: authToken, RELEASE: release } = process.env;
-if (release && authToken) {
-	plugins.push(
-		sentryVitePlugin({
-			org: 'n8nio',
-			project: 'instance-frontend',
-			// Auth tokens can be obtained from https://sentry.io/settings/account/api/auth-tokens/
-			// and needs the `project:releases` and `org:read` scopes
-			authToken,
-			telemetry: false,
-			release: {
-				name: release,
-			},
-		}),
-	);
-}
+const { RELEASE: release } = process.env;
 
 export default mergeConfig(
 	defineConfig({

@@ -1,4 +1,5 @@
 import {
+	deepCopy,
 	ErrorReporterProxy,
 	type IRunExecutionData,
 	type ITaskData,
@@ -57,7 +58,7 @@ test('should ignore on leftover async call', async () => {
 	expect(executionRepository.updateExistingExecution).not.toHaveBeenCalled();
 });
 
-test('should update execution', async () => {
+test('should update execution when saving progress is enabled', async () => {
 	jest.spyOn(fnModule, 'toSaveSettings').mockReturnValue({
 		...commonSettings,
 		progress: true,
@@ -68,6 +69,37 @@ test('should update execution', async () => {
 	executionRepository.findSingleExecution.mockResolvedValue({} as IExecutionResponse);
 
 	await saveExecutionProgress(...commonArgs);
+
+	expect(executionRepository.updateExistingExecution).toHaveBeenCalledWith('some-execution-id', {
+		data: {
+			executionData: undefined,
+			resultData: {
+				lastNodeExecuted: 'My Node',
+				runData: {
+					'My Node': [{}],
+				},
+			},
+			startData: {},
+		},
+		status: 'running',
+	});
+
+	expect(reporterSpy).not.toHaveBeenCalled();
+});
+
+test('should update execution when saving progress is disabled, but waitTill is defined', async () => {
+	jest.spyOn(fnModule, 'toSaveSettings').mockReturnValue({
+		...commonSettings,
+		progress: false,
+	});
+
+	const reporterSpy = jest.spyOn(ErrorReporterProxy, 'error');
+
+	executionRepository.findSingleExecution.mockResolvedValue({} as IExecutionResponse);
+
+	const args = deepCopy(commonArgs);
+	args[4].waitTill = new Date();
+	await saveExecutionProgress(...args);
 
 	expect(executionRepository.updateExistingExecution).toHaveBeenCalledWith('some-execution-id', {
 		data: {
