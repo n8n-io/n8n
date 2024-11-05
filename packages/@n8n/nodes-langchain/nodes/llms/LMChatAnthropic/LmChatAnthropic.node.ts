@@ -1,4 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+
+import { ChatAnthropic } from '@langchain/anthropic';
+import type { LLMResult } from '@langchain/core/outputs';
 import {
 	NodeConnectionType,
 	type INodePropertyOptions,
@@ -9,8 +12,6 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { ChatAnthropic } from '@langchain/anthropic';
-import type { LLMResult } from '@langchain/core/outputs';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 import { N8nLlmTracing } from '../N8nLlmTracing';
 
