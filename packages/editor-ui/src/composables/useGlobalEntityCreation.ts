@@ -128,7 +128,7 @@ export const useGlobalEntityCreation = (
 					},
 					...displayProjects.value.map((project) => ({
 						id: `workflow-${project.id}`,
-						title: project.name ?? '',
+						title: project.name as string,
 						icon: 'layer-group',
 						disabled: disabledWorkflow(project.scopes),
 						route: {
@@ -159,7 +159,7 @@ export const useGlobalEntityCreation = (
 					},
 					...displayProjects.value.map((project) => ({
 						id: `credential-${project.id}`,
-						title: project.name ?? '',
+						title: project.name as string,
 						icon: 'layer-group',
 						disabled: disabledCredential(project.scopes),
 						route: {
@@ -184,7 +184,7 @@ export const useGlobalEntityCreation = (
 			await router.push({ name: VIEWS.PROJECT_SETTINGS, params: { projectId: newProject.id } });
 			toast.showMessage({
 				title: i18n.baseText('projects.settings.save.successful.title', {
-					interpolate: { projectName: newProject.name ?? '' },
+					interpolate: { projectName: newProject.name as string },
 				}),
 				type: 'success',
 			});

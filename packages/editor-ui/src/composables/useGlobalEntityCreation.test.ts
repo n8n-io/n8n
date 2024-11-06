@@ -171,6 +171,14 @@ describe('useGlobalEntityCreation', () => {
 	});
 
 	describe('handleSelect()', () => {
+		it('should only handle create-project', () => {
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.canCreateProjects = true;
+			const { handleSelect } = useGlobalEntityCreation(true);
+			handleSelect('dummy');
+			expect(projectsStore.createProject).not.toHaveBeenCalled();
+		});
+
 		it('creates a new project', async () => {
 			const toast = useToast();
 			const projectsStore = mockedStore(useProjectsStore);
