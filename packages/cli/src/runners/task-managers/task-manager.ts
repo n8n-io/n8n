@@ -56,7 +56,7 @@ export class TaskManager {
 
 	tasks: Map<string, Task> = new Map();
 
-	runnerConfig = Container.get(TaskRunnersConfig);
+	private readonly runnerConfig = Container.get(TaskRunnersConfig);
 
 	private readonly dataResponseBuilder = new DataRequestResponseBuilder();
 
