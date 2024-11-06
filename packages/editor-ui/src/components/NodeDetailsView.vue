@@ -421,6 +421,8 @@ const onLinkRunToOutput = () => {
 };
 
 const onUnlinkRun = (pane: string) => {
+	console.log('BBB');
+
 	runInputIndex.value = runOutputIndex.value;
 	isLinkingEnabled.value = false;
 	trackLinking(pane);
@@ -449,6 +451,7 @@ const trackLinking = (pane: string) => {
 };
 
 const onLinkRunToInput = () => {
+	console.log('AAA');
 	runOutputIndex.value = runInputIndex.value;
 	isLinkingEnabled.value = true;
 	trackLinking('input');

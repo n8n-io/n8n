@@ -411,6 +411,9 @@ export default defineComponent({
 			if (runData[this.node.name][this.runIndex]) {
 				const taskData = runData[this.node.name][this.runIndex].data;
 				if (taskData?.main) {
+					if (this.outputIndex > taskData.main.length - 1) {
+						this.outputIndex = taskData.main.length - 1;
+					}
 					return taskData.main.length - 1;
 				}
 			}
@@ -470,6 +473,8 @@ export default defineComponent({
 			return String(this.inputData[0]?.json?.html ?? '');
 		},
 		currentOutputIndex(): number {
+			console.log('currentOutputIndex', this.outputIndex);
+			console.log(this.outputIndex);
 			if (this.overrideOutputs?.length && !this.overrideOutputs.includes(this.outputIndex)) {
 				return this.overrideOutputs[0];
 			}
@@ -571,7 +576,12 @@ export default defineComponent({
 	},
 	watch: {
 		node(newNode: INodeUi, prevNode: INodeUi) {
-			if (newNode?.id === prevNode?.id) return;
+			if (newNode?.id === prevNode?.id) {
+				if (this.outputIndex > this.maxOutputIndex) {
+					this.outputIndex = 0;
+				}
+				return;
+			}
 			this.init();
 		},
 		hasNodeRun() {
@@ -1540,6 +1550,7 @@ export default defineComponent({
 				</n8n-text>
 			</div>
 
+			<!-- maybe this? -->
 			<div v-else-if="hasNodeRun && !inputData.length && !search" :class="$style.center">
 				<slot name="no-output-data">xxx</slot>
 			</div>
