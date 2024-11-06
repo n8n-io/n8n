@@ -64,10 +64,10 @@ export const useKeyboardNavigation = defineStore('nodeCreatorKeyboardNavigation'
 	async function onKeyDown(e: KeyboardEvent) {
 		// We generally want a global listener across the app
 		// But specific components may overrule this by adopting
-		// the 'overrule-global-key-listener' class
+		// the 'ignore-key-press-node-creator' class
 		if (
 			e.target instanceof Element &&
-			e.target.classList.contains('overrule-global-key-listener')
+			e.target.classList.contains('ignore-key-press-node-creator')
 		) {
 			return;
 		}
