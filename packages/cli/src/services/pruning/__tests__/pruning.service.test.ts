@@ -14,7 +14,7 @@ jest.mock('@/db', () => ({
 
 describe('PruningService', () => {
 	describe('init', () => {
-		it('should start pruning if leader main', () => {
+		it('should start pruning on main instance that is the leader', () => {
 			const pruningService = new PruningService(
 				mockLogger(),
 				mock<InstanceSettings>({ isLeader: true }),
