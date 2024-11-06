@@ -44,7 +44,7 @@ describe('ButtonParameter', () => {
 	beforeEach(() => {
 		vi.mocked(useNDVStore).mockReturnValue({
 			ndvInputData: [{}],
-			activeNode: { name: 'TestNode' },
+			activeNode: { name: 'TestNode', parameters: {} },
 		} as any);
 
 		vi.mocked(useWorkflowsStore).mockReturnValue({

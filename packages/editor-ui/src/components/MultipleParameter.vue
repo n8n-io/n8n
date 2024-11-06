@@ -44,7 +44,7 @@ watch(
 );
 
 const addButtonText = computed(() => {
-	if (!props.parameter.typeOptions || !props.parameter.typeOptions.multipleValueButtonText) {
+	if (!props.parameter.typeOptions?.multipleValueButtonText) {
 		return i18n.baseText('multipleParameter.addItem');
 	}
 

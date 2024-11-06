@@ -17,6 +17,7 @@ import type {
 	IRunExecutionData,
 	WorkflowExecuteMode,
 	EnvProviderState,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 import * as a from 'node:assert';
 import { runInNewContext, type Context } from 'node:vm';
@@ -118,6 +119,29 @@ export class JsTaskRunner extends TaskRunner {
 			task.taskId,
 			neededBuiltIns.toDataRequestParams(),
 		);
+
+		/**
+		 * We request node types only when we know a task needs all nodes, because
+		 * needing all nodes means that the task relies on paired item functionality,
+		 * which is the same requirement for needing node types.
+		 */
+		if (neededBuiltIns.needsAllNodes) {
+			const uniqueNodeTypes = new Map(
+				data.workflow.nodes.map((node) => [
+					`${node.type}|${node.typeVersion}`,
+					{ name: node.type, version: node.typeVersion },
+				]),
+			);
+
+			const unknownNodeTypes = this.nodeTypes.onlyUnknown([...uniqueNodeTypes.values()]);
+
+			const nodeTypes = await this.requestNodeTypes<INodeTypeDescription[]>(
+				task.taskId,
+				unknownNodeTypes,
+			);
+
+			this.nodeTypes.addNodeTypeDescriptions(nodeTypes);
+		}
 
 		const workflowParams = data.workflow;
 		const workflow = new Workflow({

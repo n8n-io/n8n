@@ -1,92 +1,33 @@
-import {
-	type EnvProviderState,
-	type IExecuteFunctions,
-	type Workflow,
-	type IRunExecutionData,
-	type INodeExecutionData,
-	type ITaskDataConnections,
-	type INode,
-	type WorkflowParameters,
-	type INodeParameters,
-	type WorkflowExecuteMode,
-	type IExecuteData,
-	type IDataObject,
-	type IWorkflowExecuteAdditionalData,
-	type Result,
-	createResultOk,
-	createResultError,
+import type { TaskResultData, RequesterMessage, BrokerMessage, TaskData } from '@n8n/task-runner';
+import { RPC_ALLOW_LIST } from '@n8n/task-runner';
+import type {
+	EnvProviderState,
+	IExecuteFunctions,
+	Workflow,
+	IRunExecutionData,
+	INodeExecutionData,
+	ITaskDataConnections,
+	INode,
+	INodeParameters,
+	WorkflowExecuteMode,
+	IExecuteData,
+	IDataObject,
+	IWorkflowExecuteAdditionalData,
+	Result,
 } from 'n8n-workflow';
+import { createResultOk, createResultError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
+import { Service } from 'typedi';
+
+import { NodeTypes } from '@/node-types';
 
 import { DataRequestResponseBuilder } from './data-request-response-builder';
-import {
-	RPC_ALLOW_LIST,
-	type TaskResultData,
-	type N8nMessage,
-	type RequesterMessage,
-} from '../runner-types';
 
 export type RequestAccept = (jobId: string) => void;
 export type RequestReject = (reason: string) => void;
 
 export type TaskAccept = (data: TaskResultData) => void;
 export type TaskReject = (error: unknown) => void;
-
-export interface TaskData {
-	executeFunctions: IExecuteFunctions;
-	inputData: ITaskDataConnections;
-	node: INode;
-
-	workflow: Workflow;
-	runExecutionData: IRunExecutionData;
-	runIndex: number;
-	itemIndex: number;
-	activeNodeName: string;
-	connectionInputData: INodeExecutionData[];
-	siblingParameters: INodeParameters;
-	mode: WorkflowExecuteMode;
-	envProviderState: EnvProviderState;
-	executeData?: IExecuteData;
-	defaultReturnRunIndex: number;
-	selfData: IDataObject;
-	contextNodeName: string;
-	additionalData: IWorkflowExecuteAdditionalData;
-}
-
-export interface PartialAdditionalData {
-	executionId?: string;
-	restartExecutionId?: string;
-	restApiUrl: string;
-	instanceBaseUrl: string;
-	formWaitingBaseUrl: string;
-	webhookBaseUrl: string;
-	webhookWaitingBaseUrl: string;
-	webhookTestBaseUrl: string;
-	currentNodeParameters?: INodeParameters;
-	executionTimeoutTimestamp?: number;
-	userId?: string;
-	variables: IDataObject;
-}
-
-export interface DataRequestResponse {
-	workflow: Omit<WorkflowParameters, 'nodeTypes'>;
-	inputData: ITaskDataConnections;
-	node: INode;
-
-	runExecutionData: IRunExecutionData;
-	runIndex: number;
-	itemIndex: number;
-	activeNodeName: string;
-	connectionInputData: INodeExecutionData[];
-	siblingParameters: INodeParameters;
-	mode: WorkflowExecuteMode;
-	envProviderState: EnvProviderState;
-	executeData?: IExecuteData;
-	defaultReturnRunIndex: number;
-	selfData: IDataObject;
-	contextNodeName: string;
-	additionalData: PartialAdditionalData;
-}
 
 export interface TaskRequest {
 	requestId: string;
@@ -105,7 +46,8 @@ interface ExecuteFunctionObject {
 	[name: string]: ((...args: unknown[]) => unknown) | ExecuteFunctionObject;
 }
 
-export class TaskManager {
+@Service()
+export abstract class TaskManager {
 	requestAcceptRejects: Map<string, { accept: RequestAccept; reject: RequestReject }> = new Map();
 
 	taskAcceptRejects: Map<string, { accept: TaskAccept; reject: TaskReject }> = new Map();
@@ -113,6 +55,8 @@ export class TaskManager {
 	pendingRequests: Map<string, TaskRequest> = new Map();
 
 	tasks: Map<string, Task> = new Map();
+
+	constructor(private readonly nodeTypes: NodeTypes) {}
 
 	async startTask<TData, TError>(
 		additionalData: IWorkflowExecuteAdditionalData,
@@ -219,9 +163,9 @@ export class TaskManager {
 		}
 	}
 
-	sendMessage(_message: RequesterMessage.ToN8n.All) {}
+	sendMessage(_message: RequesterMessage.ToBroker.All) {}
 
-	onMessage(message: N8nMessage.ToRequester.All) {
+	onMessage(message: BrokerMessage.ToRequester.All) {
 		switch (message.type) {
 			case 'broker:taskready':
 				this.taskReady(message.requestId, message.taskId);
@@ -234,6 +178,9 @@ export class TaskManager {
 				break;
 			case 'broker:taskdatarequest':
 				this.sendTaskData(message.taskId, message.requestId, message.requestParams);
+				break;
+			case 'broker:nodetypesrequest':
+				this.sendNodeTypes(message.taskId, message.requestId, message.requestParams);
 				break;
 			case 'broker:rpc':
 				void this.handleRpc(message.taskId, message.callId, message.name, message.params);
@@ -282,7 +229,7 @@ export class TaskManager {
 	sendTaskData(
 		taskId: string,
 		requestId: string,
-		requestParams: N8nMessage.ToRequester.TaskDataRequest['requestParams'],
+		requestParams: BrokerMessage.ToRequester.TaskDataRequest['requestParams'],
 	) {
 		const job = this.tasks.get(taskId);
 		if (!job) {
@@ -301,10 +248,25 @@ export class TaskManager {
 		});
 	}
 
+	sendNodeTypes(
+		taskId: string,
+		requestId: string,
+		neededNodeTypes: BrokerMessage.ToRequester.NodeTypesRequest['requestParams'],
+	) {
+		const nodeTypes = this.nodeTypes.getNodeTypeDescriptions(neededNodeTypes);
+
+		this.sendMessage({
+			type: 'requester:nodetypesresponse',
+			taskId,
+			requestId,
+			nodeTypes,
+		});
+	}
+
 	async handleRpc(
 		taskId: string,
 		callId: string,
-		name: N8nMessage.ToRequester.RPC['name'],
+		name: BrokerMessage.ToRequester.RPC['name'],
 		params: unknown[],
 	) {
 		const job = this.tasks.get(taskId);
