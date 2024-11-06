@@ -25,12 +25,14 @@ export class TestDefinitionsService {
 		annotationTagId?: string;
 		id?: number;
 	}) {
-		const entity: TestDefinitionLike = {
-			name: attrs.name?.trim(),
-		};
+		const entity: TestDefinitionLike = {};
 
 		if (attrs.id) {
 			entity.id = attrs.id;
+		}
+
+		if (attrs.name) {
+			entity.name = attrs.name?.trim();
 		}
 
 		if (attrs.workflowId) {
