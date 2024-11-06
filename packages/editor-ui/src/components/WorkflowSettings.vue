@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-
+import { useRoute } from 'vue-router';
 import { useToast } from '@/composables/useToast';
 import type {
 	ITimeoutHMS,
@@ -14,7 +14,6 @@ import {
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 } from '@/constants';
-
 import type { WorkflowSettings } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -29,6 +28,7 @@ import { getResourcePermissions } from '@/permissions';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 
+const route = useRoute();
 const i18n = useI18n();
 const externalHooks = useExternalHooks();
 const toast = useToast();
@@ -45,8 +45,8 @@ const isLoading = ref(true);
 const workflowCallerPolicyOptions = ref<Array<{ key: string; value: string }>>([]);
 const saveDataErrorExecutionOptions = ref<Array<{ key: string; value: string }>>([]);
 const saveDataSuccessExecutionOptions = ref<Array<{ key: string; value: string }>>([]);
-const saveExecutionProgressOptions = ref<Array<{ key: string; value: string }>>([]);
-const saveManualOptions = ref<Array<{ key: string; value: string }>>([]);
+const saveExecutionProgressOptions = ref<Array<{ key: string | boolean; value: string }>>([]);
+const saveManualOptions = ref<Array<{ key: string | boolean; value: string }>>([]);
 const executionOrderOptions = ref<Array<{ key: string; value: string }>>([
 	{ key: 'v0', value: 'v0 (legacy)' },
 	{ key: 'v1', value: 'v1 (recommended)' },
@@ -302,16 +302,16 @@ const convertToHMS = (num: number): ITimeoutHMS => {
 
 const saveSettings = async () => {
 	// Set that the active state should be changed
-	const data: IWorkflowDataUpdate = {
+	const data: IWorkflowDataUpdate & { settings: IWorkflowSettings } = {
 		settings: workflowSettings.value,
 	};
 
 	// Convert hours, minutes, seconds into seconds for the workflow timeout
 	const { hours, minutes, seconds } = timeoutHMS.value;
-	data.settings!.executionTimeout =
-		data.settings!.executionTimeout !== -1 ? hours * 3600 + minutes * 60 + seconds : -1;
+	data.settings.executionTimeout =
+		data.settings.executionTimeout !== -1 ? hours * 3600 + minutes * 60 + seconds : -1;
 
-	if (data.settings!.executionTimeout === 0) {
+	if (data.settings.executionTimeout === 0) {
 		toast.showError(
 			new Error(i18n.baseText('workflowSettings.showError.saveSettings1.errorMessage')),
 			i18n.baseText('workflowSettings.showError.saveSettings1.title'),
@@ -320,17 +320,18 @@ const saveSettings = async () => {
 		return;
 	}
 
-	if (data.settings!.executionTimeout > workflowSettings.value?.maxExecutionTimeout) {
-		const { hours, minutes, seconds } = convertToHMS(
-			workflowSettings.value.maxExecutionTimeout as number,
-		);
+	if (
+		workflowSettings.value?.maxExecutionTimeout &&
+		data.settings.executionTimeout > workflowSettings.value?.maxExecutionTimeout
+	) {
+		const convertedMaxExecutionTimeout = convertToHMS(workflowSettings.value.maxExecutionTimeout);
 		toast.showError(
 			new Error(
 				i18n.baseText('workflowSettings.showError.saveSettings2.errorMessage', {
 					interpolate: {
-						hours: hours.toString(),
-						minutes: minutes.toString(),
-						seconds: seconds.toString(),
+						hours: convertedMaxExecutionTimeout.hours.toString(),
+						minutes: convertedMaxExecutionTimeout.minutes.toString(),
+						seconds: convertedMaxExecutionTimeout.seconds.toString(),
 					},
 				}),
 			),
@@ -339,13 +340,13 @@ const saveSettings = async () => {
 		);
 		return;
 	}
-	delete data.settings?.maxExecutionTimeout;
+	delete data.settings.maxExecutionTimeout;
 
 	isLoading.value = true;
 	data.versionId = workflowsStore.workflowVersionId;
 
 	try {
-		const workflowData = await workflowsStore.updateWorkflow(String($route.params.name), data);
+		const workflowData = await workflowsStore.updateWorkflow(String(route.params.name), data);
 		workflowsStore.setWorkflowVersionId(workflowData.versionId);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('workflowSettings.showError.saveSettings3.title'));

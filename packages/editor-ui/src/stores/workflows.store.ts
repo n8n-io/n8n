@@ -146,7 +146,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	const workflowVersionId = computed(() => workflow.value.versionId);
 
-	const workflowSettings = computed(() => workflow.value.settings ?? { ...defaults.settings });
+	const workflowSettings = computed<IWorkflowSettings>(
+		() => workflow.value.settings ?? { ...defaults.settings },
+	);
 
 	const workflowTags = computed(() => workflow.value.tags as string[]);
 
