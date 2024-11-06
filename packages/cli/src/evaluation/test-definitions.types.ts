@@ -1,10 +1,10 @@
 import type { AuthenticatedRequest, ListQuery } from '@/requests';
 
 // ----------------------------------
-//             /tests
+//             /test-definitions
 // ----------------------------------
 
-export declare namespace TestsRequest {
+export declare namespace TestDefinitionsRequest {
 	namespace RouteParams {
 		type TestId = {
 			id: string;

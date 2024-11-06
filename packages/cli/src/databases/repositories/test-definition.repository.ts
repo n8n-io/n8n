@@ -6,7 +6,7 @@ import { TestDefinition } from '@/databases/entities/test-definition';
 import type { ListQuery } from '@/requests';
 
 @Service()
-export class TestRepository extends Repository<TestDefinition> {
+export class TestDefinitionRepository extends Repository<TestDefinition> {
 	constructor(dataSource: DataSource) {
 		super(TestDefinition, dataSource.manager);
 	}
@@ -32,9 +32,9 @@ export class TestRepository extends Repository<TestDefinition> {
 			findManyOptions.take = options.take;
 		}
 
-		const [tests, count] = await this.findAndCount(findManyOptions);
+		const [testDefinitions, count] = await this.findAndCount(findManyOptions);
 
-		return { tests, count };
+		return { testDefinitions, count };
 	}
 
 	async getOne(id: number, sharedWorkflowIds: string[]) {
