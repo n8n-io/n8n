@@ -33,7 +33,7 @@ describe('PruningService', () => {
 			expect(startPruningSpy).toHaveBeenCalled();
 		});
 
-		it('should not start pruning if follower main', () => {
+		it('should not start pruning on main instance that is a follower', () => {
 			const pruningService = new PruningService(
 				mockLogger(),
 				mock<InstanceSettings>({ isLeader: false }),
