@@ -47,7 +47,7 @@ export class TestsService {
 		return await this.testRepository.getOne(id, accessibleWorkflowIds);
 	}
 
-	async save(test: TestEntity) {
+	async save(test: TestDefinition) {
 		await validateEntity(test);
 
 		return await this.testRepository.save(test);

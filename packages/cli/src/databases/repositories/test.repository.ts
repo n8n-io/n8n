@@ -2,26 +2,26 @@ import type { FindManyOptions, FindOptionsWhere } from '@n8n/typeorm';
 import { DataSource, In, Repository } from '@n8n/typeorm';
 import { Service } from 'typedi';
 
-import { TestEntity } from '@/databases/entities/test-entity';
+import { TestDefinition } from '@/databases/entities/test-definition';
 import type { ListQuery } from '@/requests';
 
 @Service()
-export class TestRepository extends Repository<TestEntity> {
+export class TestRepository extends Repository<TestDefinition> {
 	constructor(dataSource: DataSource) {
-		super(TestEntity, dataSource.manager);
+		super(TestDefinition, dataSource.manager);
 	}
 
 	async getMany(sharedWorkflowIds: string[], options?: ListQuery.Options) {
 		if (sharedWorkflowIds.length === 0) return { tests: [], count: 0 };
 
-		const where: FindOptionsWhere<TestEntity> = {
+		const where: FindOptionsWhere<TestDefinition> = {
 			...options?.filter,
 			workflow: {
 				id: In(sharedWorkflowIds),
 			},
 		};
 
-		const findManyOptions: FindManyOptions<TestEntity> = {
+		const findManyOptions: FindManyOptions<TestDefinition> = {
 			where,
 			relations: ['annotationTag'],
 			order: { createdAt: 'DESC' },
