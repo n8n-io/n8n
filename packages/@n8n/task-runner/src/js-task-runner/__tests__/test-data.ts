@@ -47,7 +47,7 @@ export const newTaskData = (opts: Partial<ITaskData> & Pick<ITaskData, 'source'>
 });
 
 /**
- * Creates a new all code task data with the given options
+ * Creates a new data request response with the given options
  */
 export const newDataRequestResponse = (
 	inputData: INodeExecutionData[],

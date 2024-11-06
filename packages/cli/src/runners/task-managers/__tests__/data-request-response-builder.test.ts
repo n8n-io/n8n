@@ -1,10 +1,10 @@
-import type { TaskData } from '@n8n/task-runner';
+import type { PartialAdditionalData, TaskData } from '@n8n/task-runner';
 import { mock } from 'jest-mock-extended';
-import type { IWorkflowExecuteAdditionalData, Workflow } from 'n8n-workflow';
+import type { Workflow } from 'n8n-workflow';
 
 import { DataRequestResponseBuilder } from '../data-request-response-builder';
 
-const additionalData = mock<IWorkflowExecuteAdditionalData>({
+const additionalData = mock<PartialAdditionalData>({
 	formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
 	instanceBaseUrl: 'http://localhost:5678/',
 	restApiUrl: 'http://localhost:5678/rest',
@@ -31,8 +31,7 @@ const workflow: TaskData['workflow'] = mock<Workflow>({
 });
 
 const taskData = mock<TaskData>({
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	additionalData: additionalData as any,
+	additionalData,
 	workflow,
 });
 

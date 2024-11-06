@@ -19,7 +19,7 @@ export class DataRequestResponseReconstruct {
 	/**
 	 * Reconstruct `executeData` from a DataRequestResponse
 	 */
-	reconstructExecuteData(response: DataRequestResponse): IExecuteData | undefined {
+	reconstructExecuteData(response: DataRequestResponse): IExecuteData {
 		return {
 			data: response.inputData,
 			node: response.node,
