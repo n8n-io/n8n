@@ -61,7 +61,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { isCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
-import { N8nInput, N8nSelect } from 'n8n-design-system';
+import { N8nIcon, N8nInput, N8nInputNumber, N8nOption, N8nSelect } from 'n8n-design-system';
 import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
 import { useRouter } from 'vue-router';
@@ -1172,7 +1172,7 @@ onUpdated(async () => {
 					@update:model-value="valueChangedDebounced"
 				>
 					<template #suffix>
-						<n8n-icon
+						<N8nIcon
 							v-if="!editorIsReadOnly"
 							data-test-id="code-editor-fullscreen-button"
 							icon="external-link-alt"
@@ -1195,7 +1195,7 @@ onUpdated(async () => {
 					@update:model-value="valueChangedDebounced"
 				>
 					<template #suffix>
-						<n8n-icon
+						<N8nIcon
 							data-test-id="code-editor-fullscreen-button"
 							icon="external-link-alt"
 							size="xsmall"
@@ -1216,7 +1216,7 @@ onUpdated(async () => {
 					@update:model-value="valueChangedDebounced"
 				>
 					<template #suffix>
-						<n8n-icon
+						<N8nIcon
 							data-test-id="code-editor-fullscreen-button"
 							icon="external-link-alt"
 							size="xsmall"
@@ -1237,7 +1237,7 @@ onUpdated(async () => {
 					@update:model-value="valueChangedDebounced"
 				>
 					<template #suffix>
-						<n8n-icon
+						<N8nIcon
 							v-if="!editorIsReadOnly"
 							data-test-id="code-editor-fullscreen-button"
 							icon="external-link-alt"
@@ -1258,7 +1258,7 @@ onUpdated(async () => {
 					@update:model-value="valueChangedDebounced"
 				>
 					<template #suffix>
-						<n8n-icon
+						<N8nIcon
 							data-test-id="code-editor-fullscreen-button"
 							icon="external-link-alt"
 							size="xsmall"
@@ -1302,7 +1302,7 @@ onUpdated(async () => {
 					@blur="onBlur"
 				>
 					<template #suffix>
-						<n8n-icon
+						<N8nIcon
 							v-if="!isReadOnly && !isSecretParameter"
 							icon="external-link-alt"
 							size="xsmall"
@@ -1422,9 +1422,9 @@ onUpdated(async () => {
 				@focus="setFocus"
 				@blur="onBlur"
 			>
-				<n8n-option
+				<N8nOption
 					v-for="option in parameterOptions"
-					:key="option.value"
+					:key="option.value.toString()"
 					:value="option.value"
 					:label="getOptionsOptionDisplayName(option)"
 				>
@@ -1441,7 +1441,7 @@ onUpdated(async () => {
 							v-n8n-html="getOptionsOptionDescription(option)"
 						></div>
 					</div>
-				</n8n-option>
+				</N8nOption>
 			</N8nSelect>
 
 			<N8nSelect
@@ -1460,9 +1460,9 @@ onUpdated(async () => {
 				@focus="setFocus"
 				@blur="onBlur"
 			>
-				<n8n-option
+				<N8nOption
 					v-for="option in parameterOptions"
-					:key="option.value"
+					:key="option.value.toString()"
 					:value="option.value"
 					:label="getOptionsOptionDisplayName(option)"
 				>
@@ -1474,7 +1474,7 @@ onUpdated(async () => {
 							v-n8n-html="getOptionsOptionDescription(option)"
 						></div>
 					</div>
-				</n8n-option>
+				</N8nOption>
 			</N8nSelect>
 
 			<!-- temporary state of booleans while data is mapped -->
