@@ -80,10 +80,6 @@ export interface DataRequestResponse {
 	additionalData: PartialAdditionalData;
 }
 
-export interface NodeTypesResponse {
-	nodeTypes: INodeTypeDescription[];
-}
-
 type CustomConsole = {
 	log: (...args: unknown[]) => void;
 };
