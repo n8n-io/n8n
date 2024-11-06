@@ -946,7 +946,7 @@ export class WorkflowDataProxy {
 			defaultValue?: unknown,
 		) => {
 			if (!name || name === '') {
-				throw new ExpressionError('Please provide a key', {
+				throw new ExpressionError("Add a key, e.g. $fromAI('placeholder_name')", {
 					runIndex: that.runIndex,
 					itemIndex: that.itemIndex,
 				});
