@@ -8,27 +8,37 @@ import { get } from 'lodash-es';
 
 import { computed, ref, watch, onBeforeMount } from 'vue';
 import { useI18n } from '@/composables/useI18n';
+import {
+	N8nIconButton,
+	N8nSelect,
+	N8nOption,
+	N8nInputLabel,
+	N8nText,
+	N8nButton,
+} from 'n8n-design-system';
+import ParameterInputList from './ParameterInputList.vue';
 
 const locale = useI18n();
 
-const props = withDefaults(
-	defineProps<{
-		nodeValues: INodeParameters;
-		parameter: INodeProperties;
-		path: string;
-		values?: Record<string, INodeParameters[]>;
-		isReadOnly?: boolean;
-	}>(),
-	{
-		values: () => ({}),
-		isReadOnly: false,
-	},
-);
+export type Props = {
+	nodeValues: INodeParameters;
+	parameter: INodeProperties;
+	path: string;
+	values?: Record<string, INodeParameters[]>;
+	isReadOnly?: boolean;
+};
+
 type ValueChangedEvent = {
 	name: string;
 	value: NodeParameterValueType;
 	type?: 'optionsOrderChanged';
 };
+
+const props = withDefaults(defineProps<Props>(), {
+	values: () => ({}),
+	isReadOnly: false,
+});
+
 const emit = defineEmits<{
 	valueChanged: [value: ValueChangedEvent];
 }>();
@@ -79,9 +89,11 @@ watch(
 	},
 	{ deep: true },
 );
+
 onBeforeMount(() => {
 	mutableValues.value = deepCopy(props.values);
 });
+
 const deleteOption = (optionName: string, index?: number) => {
 	const currentOptionsOfSameType = mutableValues.value[optionName];
 	if (!currentOptionsOfSameType || currentOptionsOfSameType.length > 1) {
@@ -98,9 +110,11 @@ const deleteOption = (optionName: string, index?: number) => {
 		});
 	}
 };
+
 const getPropertyPath = (name: string, index?: number) => {
 	return `${props.path}.${name}` + (index !== undefined ? `[${index}]` : '');
 };
+
 const getOptionProperties = (optionName: string) => {
 	if (isINodePropertyCollectionList(props.parameter.options)) {
 		for (const option of props.parameter.options) {
@@ -111,6 +125,7 @@ const getOptionProperties = (optionName: string) => {
 	}
 	return undefined;
 };
+
 const moveOptionDown = (optionName: string, index: number) => {
 	if (Array.isArray(mutableValues.value[optionName])) {
 		mutableValues.value[optionName].splice(
@@ -128,6 +143,7 @@ const moveOptionDown = (optionName: string, index: number) => {
 
 	emit('valueChanged', parameterData);
 };
+
 const moveOptionUp = (optionName: string, index: number) => {
 	if (Array.isArray(mutableValues.value[optionName])) {
 		mutableValues.value?.[optionName].splice(
@@ -145,6 +161,7 @@ const moveOptionUp = (optionName: string, index: number) => {
 
 	emit('valueChanged', parameterData);
 };
+
 const optionSelected = (optionName: string) => {
 	const option = getOptionProperties(optionName);
 	if (option === undefined) {
@@ -211,9 +228,9 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 		@keydown.stop
 	>
 		<div v-if="getProperties.length === 0" class="no-items-exist">
-			<n8n-text size="small">{{
+			<N8nText size="small">{{
 				locale.baseText('fixedCollectionParameter.currentlyNoItemsExist')
-			}}</n8n-text>
+			}}</N8nText>
 		</div>
 
 		<div
@@ -221,7 +238,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 			:key="property.name"
 			class="fixed-collection-parameter-property"
 		>
-			<n8n-input-label
+			<N8nInputLabel
 				v-if="property.displayName !== '' && parameter.options && parameter.options.length !== 1"
 				:label="locale.nodeText().inputLabelDisplayName(property, path)"
 				:underline="true"
@@ -238,15 +255,16 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 						:class="index ? 'border-top-dashed parameter-item-wrapper ' : 'parameter-item-wrapper'"
 					>
 						<div v-if="!isReadOnly" class="delete-option">
-							<n8n-icon-button
+							<N8nIconButton
 								type="tertiary"
 								text
 								size="mini"
 								icon="trash"
+								data-test-id="fixed-collection-delete"
 								:title="locale.baseText('fixedCollectionParameter.deleteItem')"
 								@click="deleteOption(property.name, index)"
-							></n8n-icon-button>
-							<n8n-icon-button
+							></N8nIconButton>
+							<N8nIconButton
 								v-if="sortable && index !== 0"
 								type="tertiary"
 								text
@@ -254,8 +272,8 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 								icon="angle-up"
 								:title="locale.baseText('fixedCollectionParameter.moveUp')"
 								@click="moveOptionUp(property.name, index)"
-							></n8n-icon-button>
-							<n8n-icon-button
+							></N8nIconButton>
+							<N8nIconButton
 								v-if="sortable && index !== mutableValues[property.name].length - 1"
 								type="tertiary"
 								text
@@ -263,7 +281,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 								icon="angle-down"
 								:title="locale.baseText('fixedCollectionParameter.moveDown')"
 								@click="moveOptionDown(property.name, index)"
-							></n8n-icon-button>
+							></N8nIconButton>
 						</div>
 						<Suspense>
 							<ParameterInputList
@@ -281,14 +299,15 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 			<div v-else class="parameter-item">
 				<div class="parameter-item-wrapper">
 					<div v-if="!isReadOnly" class="delete-option">
-						<n8n-icon-button
+						<N8nIconButton
 							type="tertiary"
 							text
 							size="mini"
 							icon="trash"
+							data-test-id="fixed-collection-delete"
 							:title="locale.baseText('fixedCollectionParameter.deleteItem')"
 							@click="deleteOption(property.name)"
-						></n8n-icon-button>
+						></N8nIconButton>
 					</div>
 					<ParameterInputList
 						:parameters="property.values"
@@ -304,7 +323,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 		</div>
 
 		<div v-if="parameterOptions.length > 0 && !isReadOnly" class="controls">
-			<n8n-button
+			<N8nButton
 				v-if="parameter.options && parameter.options.length === 1"
 				type="tertiary"
 				block
@@ -313,20 +332,20 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 				@click="optionSelected(parameter.options[0].name)"
 			/>
 			<div v-else class="add-option">
-				<n8n-select
+				<N8nSelect
 					v-model="selectedOption"
 					:placeholder="getPlaceholderText"
 					size="small"
 					filterable
 					@update:model-value="optionSelected"
 				>
-					<n8n-option
+					<N8nOption
 						v-for="item in parameterOptions"
 						:key="item.name"
 						:label="locale.nodeText().collectionOptionDisplayName(parameter, item, path)"
 						:value="item.name"
-					></n8n-option>
-				</n8n-select>
+					></N8nOption>
+				</N8nSelect>
 			</div>
 		</div>
 	</div>
