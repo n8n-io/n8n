@@ -293,9 +293,9 @@ export class GmailTrigger implements INodeType {
 
 			let includeDrafts;
 			if (node.typeVersion > 1.1) {
-				includeDrafts = (qs.includeDrafts as boolean) || false;
+				includeDrafts = (qs.includeDrafts as boolean) ?? false;
 			} else {
-				includeDrafts = (qs.includeDrafts as boolean) || true;
+				includeDrafts = (qs.includeDrafts as boolean) ?? true;
 			}
 			delete qs.includeDrafts;
 			const withoutDrafts = [];
