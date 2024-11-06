@@ -148,8 +148,13 @@ const workflowRunning = computed(() => uiStore.isActionActive.workflowRunning);
 
 const showActions = computed(
 	() =>
-		!(props.hideActions || props.isReadOnly || workflowRunning.value || isResizing.value) ||
-		forceActions.value,
+		!(
+			props.hideActions ||
+			isEditing.value ||
+			props.isReadOnly ||
+			workflowRunning.value ||
+			isResizing.value
+		) || forceActions.value,
 );
 
 onMounted(() => {
@@ -167,8 +172,6 @@ onMounted(() => {
 const onShowPopover = () => setForceActions(true);
 const onHidePopover = () => setForceActions(false);
 const deleteNode = async () => {
-	if (isEditing.value) return;
-
 	assert(data.value);
 	// Wait a tick else vue causes problems because the data is gone
 	await nextTick();
@@ -190,7 +193,7 @@ const changeColor = (index: number) => {
 };
 
 const onEdit = (edit: boolean) => {
-	isEditing.value = true;
+	isEditing.value = edit;
 	if (edit && !props.isActive && node.value) {
 		ndvStore.activeNodeName = node.value.name;
 	} else if (props.isActive && !edit) {
