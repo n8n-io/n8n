@@ -126,7 +126,7 @@ jobs:
           body: ${{github.event.pull_request.body}}
 
   create-sentry-release:
-    name: Create release on Sentry
+    name: Create a Sentry Release
     needs: [publish-to-npm, publish-to-docker-hub]
     runs-on: ubuntu-latest
     if: github.event.pull_request.merged == true
@@ -136,6 +136,7 @@ jobs:
       SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
 
     steps:
+      - uses: actions/checkout@v4.1.1
       - name: Restore cached build artifacts
         uses: actions/cache/restore@v4.0.0
         with:
