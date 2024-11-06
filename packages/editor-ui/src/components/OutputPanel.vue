@@ -35,7 +35,7 @@ type Props = {
 	isReadOnly?: boolean;
 	linkedRuns?: boolean;
 	canLinkRuns?: boolean;
-	pushRef?: string;
+	pushRef: string;
 	blockUI?: boolean;
 	isProductionExecutionPreview?: boolean;
 	isPaneActive?: boolean;

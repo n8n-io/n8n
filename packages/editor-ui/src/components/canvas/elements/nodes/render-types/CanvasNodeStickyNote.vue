@@ -4,7 +4,7 @@ import { useCanvasNode } from '@/composables/useCanvasNode';
 import type { CanvasNodeStickyNoteRender } from '@/types';
 import { ref, computed, useCssModule, onMounted, onBeforeUnmount } from 'vue';
 import { NodeResizer } from '@vue-flow/node-resizer';
-import type { OnResize } from '@vue-flow/node-resizer/dist/types';
+import type { OnResize } from '@vue-flow/node-resizer';
 import type { XYPosition } from '@vue-flow/core';
 
 defineOptions({
