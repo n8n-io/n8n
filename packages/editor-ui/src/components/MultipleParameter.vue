@@ -1,47 +1,50 @@
 <script setup lang="ts">
-import CollectionParameter from '@/components/CollectionParameter.vue';
-import ParameterInputFull from '@/components/ParameterInputFull.vue';
-import type { IUpdateInformation } from '@/Interface';
-import type { INodeParameters, INodeProperties, NodeParameterValueType } from 'n8n-workflow';
+import { ref, watch, computed } from 'vue';
+import { get } from 'lodash-es';
+import type { INodeParameters, INodeProperties } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
-import { computed, ref, watch } from 'vue';
 
 import { useI18n } from '@/composables/useI18n';
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
-import { get } from 'lodash-es';
+import type { IUpdateInformation } from '@/Interface';
+import CollectionParameter from '@/components/CollectionParameter.vue';
+import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import { N8nButton, N8nInputLabel, N8nText } from 'n8n-design-system';
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 
-export type Props = {
-	nodeValues: INodeParameters;
-	parameter: INodeProperties;
-	path: string;
-	values?: INodeParameters[];
-	isReadOnly?: boolean;
-};
+defineOptions({ name: 'MultipleParameter' });
 
-type ValueChangedEvent = {
-	name: string;
-	value: NodeParameterValueType;
-	type?: 'optionsOrderChanged';
-};
-
-const props = withDefaults(defineProps<Props>(), {
-	values: () => [],
-	isReadOnly: false,
-});
+const props = withDefaults(
+	defineProps<{
+		nodeValues: INodeParameters;
+		parameter: INodeProperties;
+		path: string;
+		values?: INodeParameters[];
+		isReadOnly?: boolean;
+	}>(),
+	{
+		values: () => [] as INodeParameters[],
+		isReadOnly: false,
+	},
+);
 
 const emit = defineEmits<{
-	valueChanged: [value: ValueChangedEvent];
+	valueChanged: [parameterData: IUpdateInformation];
 }>();
 
 const i18n = useI18n();
 
-const mutableValues = ref<INodeParameters[]>([]);
+const mutableValues = ref<INodeParameters[]>(deepCopy(props.values));
+
+watch(
+	() => props.values,
+	(newValues) => {
+		mutableValues.value = deepCopy(newValues);
+	},
+	{ deep: true },
+);
+
 const addButtonText = computed(() => {
-	if (
-		!props.parameter.typeOptions ||
-		(props.parameter.typeOptions && !props.parameter.typeOptions.multipleValueButtonText)
-	) {
+	if (!props.parameter.typeOptions || !props.parameter.typeOptions.multipleValueButtonText) {
 		return i18n.baseText('multipleParameter.addItem');
 	}
 
@@ -52,15 +55,7 @@ const hideDelete = computed(() => props.parameter.options?.length === 1);
 
 const sortable = computed(() => !!props.parameter.typeOptions?.sortable);
 
-watch(
-	() => props.values,
-	(newValues) => {
-		mutableValues.value = deepCopy(newValues);
-	},
-	{ deep: true },
-);
-
-function addItem() {
+const addItem = () => {
 	const name = getPath();
 	const currentValue = get(props.nodeValues, name, []) as INodeParameters[];
 
@@ -72,46 +67,42 @@ function addItem() {
 	};
 
 	emit('valueChanged', parameterData);
-}
+};
 
-function deleteItem(index: number) {
+const deleteItem = (index: number) => {
 	const parameterData = {
 		name: getPath(index),
 		value: undefined,
 	};
 
 	emit('valueChanged', parameterData);
-}
+};
 
-function getPath(index?: number): string {
+const getPath = (index?: number) => {
 	return props.path + (index !== undefined ? `[${index}]` : '');
-}
+};
 
-function moveOptionDown(index: number) {
+const moveOptionDown = (index: number) => {
 	mutableValues.value.splice(index + 1, 0, mutableValues.value.splice(index, 1)[0]);
 
-	const parameterData = {
+	emit('valueChanged', {
 		name: props.path,
 		value: mutableValues.value,
-	};
+	});
+};
 
-	emit('valueChanged', parameterData);
-}
-
-function moveOptionUp(index: number) {
+const moveOptionUp = (index: number) => {
 	mutableValues.value.splice(index - 1, 0, mutableValues.value.splice(index, 1)[0]);
 
-	const parameterData = {
+	emit('valueChanged', {
 		name: props.path,
 		value: mutableValues.value,
-	};
+	});
+};
 
+const valueChanged = (parameterData: IUpdateInformation) => {
 	emit('valueChanged', parameterData);
-}
-
-function valueChanged(parameterData: IUpdateInformation) {
-	emit('valueChanged', parameterData);
-}
+};
 </script>
 
 <template>
