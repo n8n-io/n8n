@@ -105,12 +105,21 @@ type AddNodeDataWithTypeVersion = AddNodeData & {
 	typeVersion: INodeUi['typeVersion'];
 };
 
-type AddNodeOptions = {
+type AddNodesBaseOptions = {
 	dragAndDrop?: boolean;
-	openNDV?: boolean;
 	trackHistory?: boolean;
-	isAutoAdd?: boolean;
+	keepPristine?: boolean;
 	telemetry?: boolean;
+};
+
+type AddNodesOptions = AddNodesBaseOptions & {
+	position?: XYPosition;
+	trackBulk?: boolean;
+};
+
+type AddNodeOptions = AddNodesBaseOptions & {
+	openNDV?: boolean;
+	isAutoAdd?: boolean;
 };
 
 export function useCanvasOperations({ router }: { router: ReturnType<typeof useRouter> }) {
@@ -479,17 +488,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		);
 	}
 
-	async function addNodes(
-		nodes: AddedNodesAndConnections['nodes'],
-		options: {
-			dragAndDrop?: boolean;
-			position?: XYPosition;
-			trackHistory?: boolean;
-			trackBulk?: boolean;
-			keepPristine?: boolean;
-			telemetry?: boolean;
-		} = {},
-	) {
+	async function addNodes(nodes: AddedNodesAndConnections['nodes'], options: AddNodesOptions = {}) {
 		let insertPosition = options.position;
 		let lastAddedNode: INodeUi | undefined;
 		const addedNodes: INodeUi[] = [];
@@ -614,6 +613,10 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 		void nextTick(() => {
 			workflowsStore.setNodePristine(nodeData.name, true);
+
+			if (!options.keepPristine) {
+				uiStore.stateIsDirty = true;
+			}
 
 			nodeHelpers.matchCredentials(nodeData);
 			nodeHelpers.updateNodeParameterIssues(nodeData);
@@ -1073,7 +1076,10 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 	 * Connection operations
 	 */
 
-	function createConnection(connection: Connection, { trackHistory = false } = {}) {
+	function createConnection(
+		connection: Connection,
+		{ trackHistory = false, keepPristine = false } = {},
+	) {
 		const sourceNode = workflowsStore.getNodeById(connection.source);
 		const targetNode = workflowsStore.getNodeById(connection.target);
 		if (!sourceNode || !targetNode) {
@@ -1107,7 +1113,9 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			nodeHelpers.updateNodeInputIssues(targetNode);
 		});
 
-		uiStore.stateIsDirty = true;
+		if (!keepPristine) {
+			uiStore.stateIsDirty = true;
+		}
 	}
 
 	function revertCreateConnection(connection: [IConnection, IConnection]) {
@@ -1316,7 +1324,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 	async function addConnections(
 		connections: CanvasConnectionCreateData[] | CanvasConnection[],
-		{ trackBulk = true, trackHistory = false } = {},
+		{ trackBulk = true, trackHistory = false, keepPristine = false } = {},
 	) {
 		await nextTick(); // Connection creation relies on the nodes being already added to the store
 
@@ -1325,11 +1333,15 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		}
 
 		for (const connection of connections) {
-			createConnection(connection, { trackHistory });
+			createConnection(connection, { trackHistory, keepPristine });
 		}
 
 		if (trackBulk && trackHistory) {
 			historyStore.stopRecordingUndo();
+		}
+
+		if (!keepPristine) {
+			uiStore.stateIsDirty = true;
 		}
 	}
 
@@ -1372,7 +1384,9 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 		// Add nodes and connections
 		await addNodes(data.nodes, { keepPristine: true });
-		await addConnections(mapLegacyConnectionsToCanvasConnections(data.connections, data.nodes));
+		await addConnections(mapLegacyConnectionsToCanvasConnections(data.connections, data.nodes), {
+			keepPristine: true,
+		});
 	}
 
 	/**
