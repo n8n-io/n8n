@@ -33,7 +33,6 @@ export const useGlobalEntityCreation = (
 	const router = useRouter();
 	const i18n = useI18n();
 	const toast = useToast();
-	const pageRedirectionHelper = usePageRedirectionHelper();
 	const displayProjects = computed(() =>
 		sortByProperty(
 			'name',
@@ -202,7 +201,7 @@ export const useGlobalEntityCreation = (
 			return;
 		}
 
-		void pageRedirectionHelper.goToUpgrade('rbac', 'upgrade-rbac');
+		void usePageRedirectionHelper().goToUpgrade('rbac', 'upgrade-rbac');
 	};
 
 	return { menu, handleSelect };
