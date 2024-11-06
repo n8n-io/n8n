@@ -7,11 +7,14 @@ import type { NodeError } from 'n8n-workflow';
 import { useAssistantStore } from '@/stores/assistant.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { mockedStore } from '@/__tests__/utils';
+import userEvent from '@testing-library/user-event';
+import { useNDVStore } from '@/stores/ndv.store';
 
 const renderComponent = createComponentRenderer(NodeErrorView);
 
-let aiAssistantStore: ReturnType<typeof mockedStore<typeof useAssistantStore>>;
-let nodeTypeStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
+let mockAiAssistantStore: ReturnType<typeof mockedStore<typeof useAssistantStore>>;
+let mockNodeTypeStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
+let mockNdvStore: ReturnType<typeof mockedStore<typeof useNDVStore>>;
 
 describe('NodeErrorView.vue', () => {
 	let error: NodeError;
@@ -19,8 +22,9 @@ describe('NodeErrorView.vue', () => {
 	beforeEach(() => {
 		createTestingPinia();
 
-		aiAssistantStore = mockedStore(useAssistantStore);
-		nodeTypeStore = mockedStore(useNodeTypesStore);
+		mockAiAssistantStore = mockedStore(useAssistantStore);
+		mockNodeTypeStore = mockedStore(useNodeTypesStore);
+		mockNdvStore = mockedStore(useNDVStore);
 		//@ts-expect-error
 		error = {
 			name: 'NodeOperationError',
@@ -43,21 +47,12 @@ describe('NodeErrorView.vue', () => {
 					notice: '',
 				},
 				id: 'd1ce5dc9-f9ae-4ac6-84e5-0696ba175dd9',
-				name: 'Code',
+				name: 'ErrorCode',
 				type: 'n8n-nodes-base.code',
 				typeVersion: 2,
 				position: [940, 240],
 			},
-			messages: ['Test message 1', 'Test message 2'],
-			timestamp: Date.now(),
 			stack: 'Test stack trace',
-			findProperty: () => 'Test error data',
-			addToMessages: () => {},
-			setDescriptiveErrorMessage: () => [
-				'Test error data',
-				['Test raw message 1', 'Test raw message 2'],
-			],
-			lineNumber: 1,
 		};
 	});
 	afterEach(() => {
@@ -96,13 +91,13 @@ describe('NodeErrorView.vue', () => {
 
 	it('should not render AI assistant button when error happens in deprecated function node', async () => {
 		//@ts-expect-error
-		nodeTypeStore.getNodeType = vi.fn(() => ({
+		mockNodeTypeStore.getNodeType = vi.fn(() => ({
 			type: 'n8n-nodes-base.function',
 			typeVersion: 1,
 			hidden: true,
 		}));
 
-		aiAssistantStore.canShowAssistantButtonsOnCanvas = true;
+		mockAiAssistantStore.canShowAssistantButtonsOnCanvas = true;
 
 		const { queryByTestId } = renderComponent({
 			props: {
@@ -142,5 +137,51 @@ describe('NodeErrorView.vue', () => {
 			props: { error },
 		});
 		expect(getByText('Test stack trace')).toBeTruthy();
+	});
+
+	it('renders open node button when the error is in sub node', () => {
+		const { getByTestId, queryByTestId } = renderComponent({
+			props: {
+				error: {
+					...error,
+					name: 'NodeOperationError',
+					functionality: 'configuration-node',
+				},
+			},
+		});
+
+		expect(getByTestId('node-error-view-open-node-button')).toHaveTextContent('Open errored node');
+
+		expect(queryByTestId('ask-assistant-button')).not.toBeInTheDocument();
+	});
+
+	it('does not renders open node button when the error is in sub node', () => {
+		mockAiAssistantStore.canShowAssistantButtonsOnCanvas = true;
+		const { getByTestId, queryByTestId } = renderComponent({
+			props: {
+				error,
+			},
+		});
+
+		expect(queryByTestId('node-error-view-open-node-button')).not.toBeInTheDocument();
+
+		expect(getByTestId('ask-assistant-button')).toBeInTheDocument();
+	});
+
+	it('open error node details when open error node is clicked', async () => {
+		const { getByTestId, emitted } = renderComponent({
+			props: {
+				error: {
+					...error,
+					name: 'NodeOperationError',
+					functionality: 'configuration-node',
+				},
+			},
+		});
+
+		await userEvent.click(getByTestId('node-error-view-open-node-button'));
+
+		expect(emitted().click).toHaveLength(1);
+		expect(mockNdvStore.activeNodeName).toBe(error.node.name);
 	});
 });

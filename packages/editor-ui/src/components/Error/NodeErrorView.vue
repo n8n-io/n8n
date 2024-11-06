@@ -435,6 +435,7 @@ async function onAskAssistantClick() {
 					type="secondary"
 					:label="i18n.baseText('pushConnection.executionError.openNode')"
 					class="node-error-view__button"
+					data-test-id="node-error-view-open-node-button"
 					@click="onOpenErrorNodeDetailClick"
 				/>
 			</div>
