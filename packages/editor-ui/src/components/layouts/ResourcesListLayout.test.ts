@@ -8,6 +8,12 @@ import { mockedStore } from '@/__tests__/utils';
 import { useProjectsStore } from '@/stores/projects.store';
 import { type Project, ProjectTypes } from '@/types/projects.types';
 
+vi.mock('@/composables/useGlobalEntityCreation', () => ({
+	useGlobalEntityCreation: () => ({
+		menu: [],
+	}),
+}));
+
 vi.mock('vue-router', async (importOriginal) => {
 	const { RouterLink } = await importOriginal<typeof router>();
 	return {
