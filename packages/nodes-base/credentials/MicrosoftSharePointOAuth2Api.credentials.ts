@@ -32,7 +32,7 @@ export class MicrosoftSharePointOAuth2Api implements ICredentialType {
 			name: 'subdomain',
 			type: 'string',
 			default: '',
-			hint: 'https://{subdomain}.sharepoint.com',
+			hint: 'You can extract the subdomain from the URL. For example, in the URL "https://tenant123.sharepoint.com", the subdomain is "tenant123".',
 		},
 	];
 }
