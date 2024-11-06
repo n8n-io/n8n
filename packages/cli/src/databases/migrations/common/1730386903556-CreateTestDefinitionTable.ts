@@ -1,8 +1,8 @@
 import type { MigrationContext, ReversibleMigration } from '@/databases/types';
 
-const testEntityTableName = 'test_entity';
+const testEntityTableName = 'test_definition';
 
-export class CreateTestEntityTable1730386903556 implements ReversibleMigration {
+export class CreateTestDefinitionTable1730386903556 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
 		await createTable(testEntityTableName)
 			.withColumns(
@@ -22,10 +22,12 @@ export class CreateTestEntityTable1730386903556 implements ReversibleMigration {
 			.withForeignKey('evaluationWorkflowId', {
 				tableName: 'workflow_entity',
 				columnName: 'id',
+				onDelete: 'SET NULL',
 			})
 			.withForeignKey('annotationTagId', {
 				tableName: 'annotation_tag_entity',
 				columnName: 'id',
+				onDelete: 'SET NULL',
 			}).withTimestamps;
 	}
 

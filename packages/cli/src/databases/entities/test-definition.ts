@@ -25,7 +25,7 @@ import { WithTimestamps } from './abstract-entity';
 @Entity()
 @Index(['workflow'])
 @Index(['evaluationWorkflow'])
-export class TestEntity extends WithTimestamps {
+export class TestDefinition extends WithTimestamps {
 	@Generated()
 	@PrimaryColumn()
 	id: number;
@@ -34,7 +34,7 @@ export class TestEntity extends WithTimestamps {
 	@Length(1, 255, { message: 'Test name must be $constraint1 to $constraint2 characters long.' })
 	name: string;
 
-	@RelationId((test: TestEntity) => test.workflow)
+	@RelationId((test: TestDefinition) => test.workflow)
 	workflowId: string;
 
 	/**
@@ -43,7 +43,7 @@ export class TestEntity extends WithTimestamps {
 	@ManyToOne('WorkflowEntity', 'tests')
 	workflow: WorkflowEntity;
 
-	@RelationId((test: TestEntity) => test.evaluationWorkflow)
+	@RelationId((test: TestDefinition) => test.evaluationWorkflow)
 	evaluationWorkflowId: string;
 
 	/**
