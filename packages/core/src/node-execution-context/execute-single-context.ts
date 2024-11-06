@@ -37,6 +37,7 @@ import { BinaryHelpers } from './helpers/binary-helpers';
 import { RequestHelpers } from './helpers/request-helpers';
 import { NodeExecutionContext } from './node-execution-context';
 
+// todo simplify
 function setMetadata(executeData: IExecuteData, key: string, value: string) {
 	if (!executeData.metadata) {
 		executeData.metadata = {};

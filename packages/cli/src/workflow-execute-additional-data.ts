@@ -813,12 +813,14 @@ export async function executeWorkflow(
 	);
 
 	if (options.doNotWaitToFinish) {
+		// todo check if not breaking change
 		return { executionId, data: [null] };
 	}
 
 	return await executionPromise;
 }
 
+// todo simplify
 async function startExecution(
 	additionalData: IWorkflowExecuteAdditionalData,
 	options: ExecuteWorkflowOptions,
