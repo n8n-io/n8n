@@ -40,7 +40,7 @@ const getPlaceholderText = computed(() => {
 const mutableValues = ref({} as Record<string, INodeParameters[]>);
 const selectedOption = ref<string | null | undefined>(null);
 const propertyNames = computed(() => {
-	return Object.keys(mutableValues.value || {});
+	return new Set(Object.keys(mutableValues.value || {}));
 });
 const getProperties = computed(() => {
 	const returnProperties = [];
@@ -57,12 +57,14 @@ const multipleValues = computed(() => {
 	return !!props.parameter.typeOptions?.multipleValues;
 });
 const parameterOptions = computed(() => {
-	if (multipleValues.value && isINodePropertyCollectionList(props.parameter.options)) {
+	if (!isINodePropertyCollectionList(props.parameter.options)) return [];
+
+	if (multipleValues.value) {
 		return props.parameter.options;
 	}
 
 	return (props.parameter.options ?? []).filter((option) => {
-		return !propertyNames.value.includes(option.name);
+		return !propertyNames.value.has(option.name);
 	});
 });
 
@@ -203,7 +205,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 </script>
 
 <template>
-	<LazyFixedCollectionParameter
+	<div
 		class="fixed-collection-parameter"
 		:data-test-id="`fixed-collection-${props.parameter?.name}`"
 		@keydown.stop
@@ -327,7 +329,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 				</n8n-select>
 			</div>
 		</div>
-	</LazyFixedCollectionParameter>
+	</div>
 </template>
 
 <style scoped lang="scss">
