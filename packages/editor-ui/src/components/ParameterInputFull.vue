@@ -13,6 +13,7 @@ import { hasExpressionMapping, hasOnlyListMode, isValueExpression } from '@/util
 import { isResourceLocatorValue } from '@/utils/typeGuards';
 import { createEventBus } from 'n8n-design-system/utils';
 import type { INodeProperties, IParameterLabel, NodeParameterValueType } from 'n8n-workflow';
+import { N8nInputLabel } from 'n8n-design-system';
 
 type Props = {
 	parameter: INodeProperties;
@@ -191,7 +192,7 @@ function onDrop(newParamValue: string) {
 </script>
 
 <template>
-	<n8n-input-label
+	<N8nInputLabel
 		:class="[$style.wrapper]"
 		:label="hideLabel ? '' : i18n.nodeText().inputLabelDisplayName(parameter, path)"
 		:tooltip-text="hideLabel ? '' : i18n.nodeText().inputLabelDescription(parameter, path)"
@@ -262,7 +263,7 @@ function onDrop(newParamValue: string) {
 				@menu-expanded="onMenuExpanded"
 			/>
 		</div>
-	</n8n-input-label>
+	</N8nInputLabel>
 </template>
 
 <style lang="scss" module>
