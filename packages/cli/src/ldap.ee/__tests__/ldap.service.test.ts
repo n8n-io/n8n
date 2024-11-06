@@ -1,22 +1,14 @@
 import { mock } from 'jest-mock-extended';
-import { LdapService } from '@/ldap/ldap.service.ee';
-import { SettingsRepository } from '@/databases/repositories/settings.repository';
-import { Settings } from '@/databases/entities/settings';
-import { Logger } from '@/logging/logger.service';
-import type { LdapConfig } from '@/ldap/types';
-import { mockInstance } from '@test/mocking';
-import config from '@/config';
-import { LDAP_LOGIN_ENABLED, LDAP_LOGIN_LABEL } from '@/ldap/constants';
-import { sync } from 'fast-glob';
 
-// Need fake timers to avoid setInterval
-// problems with the scheduled sync
-jest.useFakeTimers();
+import config from '@/config';
+import { SettingsRepository } from '@/databases/repositories/settings.repository';
+import { LDAP_LOGIN_ENABLED, LDAP_LOGIN_LABEL } from '@/ldap/constants';
+import { LdapService } from '@/ldap/ldap.service.ee';
+import type { LdapConfig } from '@/ldap/types';
+import { mockInstance, mockLogger } from '@test/mocking';
 
 describe('LdapService', () => {
-	const OLD_ENV = process.env;
-
-	const fakeConfig: LdapConfig = {
+	const ldapConfig: LdapConfig = {
 		loginEnabled: true,
 		loginLabel: 'fakeLoginLabel',
 		connectionUrl: 'https://connection.url',
@@ -38,25 +30,24 @@ describe('LdapService', () => {
 		searchTimeout: 6,
 	};
 
-	beforeEach(() => {
-		process.env = { ...OLD_ENV };
+	beforeAll(() => {
+		// Need fake timers to avoid setInterval
+		// problems with the scheduled sync
+		jest.useFakeTimers();
 	});
 
-	afterEach(() => {
+	beforeEach(() => {
 		jest.restoreAllMocks();
-
-		process.env = OLD_ENV;
 	});
 
 	describe('init()', () => {
-		it('should load the ldap configuration', async () => {
-			const settingsRepo = mockInstance(SettingsRepository);
+		it('should load the LDAP configuration', async () => {
+			const settingsRepository = mock<SettingsRepository>({
+				findOneByOrFail: jest.fn().mockResolvedValue({ value: JSON.stringify(ldapConfig) }),
+			});
 
-			const ldapService = new LdapService(mock(), settingsRepo, mock(), mock());
+			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
 
-			settingsRepo.findOneByOrFail.mockResolvedValue({
-				value: JSON.stringify(fakeConfig),
-			} as Settings);
 			const loadConfigSpy = jest.spyOn(ldapService, 'loadConfig');
 
 			await ldapService.init();
@@ -64,42 +55,36 @@ describe('LdapService', () => {
 			expect(loadConfigSpy).toHaveBeenCalledTimes(1);
 		});
 
-		it('should set expected configuration variables from LDAP config if ldap is enabled', async () => {
-			const settingsRepo = mockInstance(SettingsRepository);
-			const mockLogger = mock<Logger>();
+		it('should set expected configuration variables from LDAP config if LDAP is enabled', async () => {
+			const settingsRepository = mockInstance(SettingsRepository, {
+				findOneByOrFail: jest.fn().mockResolvedValue({ value: JSON.stringify(ldapConfig) }),
+			}); // set in container so `setCurrentAuthenticationMethod` does not fail - legacy LDAP code not using DI
 
-			const ldapService = new LdapService(mockLogger, settingsRepo, mock(), mock());
+			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
 
 			const configSetSpy = jest.spyOn(config, 'set');
 
-			settingsRepo.findOneByOrFail.mockResolvedValue({
-				value: JSON.stringify(fakeConfig),
-			} as Settings);
-
 			await ldapService.init();
 
-			expect(configSetSpy).toHaveBeenNthCalledWith(1, LDAP_LOGIN_ENABLED, fakeConfig.loginEnabled);
+			expect(configSetSpy).toHaveBeenNthCalledWith(1, LDAP_LOGIN_ENABLED, ldapConfig.loginEnabled);
 			expect(configSetSpy).toHaveBeenNthCalledWith(
 				2,
 				'userManagement.authenticationMethod',
 				'ldap',
 			);
-			expect(configSetSpy).toHaveBeenNthCalledWith(3, LDAP_LOGIN_LABEL, fakeConfig.loginLabel);
+			expect(configSetSpy).toHaveBeenNthCalledWith(3, LDAP_LOGIN_LABEL, ldapConfig.loginLabel);
 		});
 
-		it('should set expected configuration variables from LDAP config if ldap is not enabled', async () => {
-			const givenConfig = { ...fakeConfig, loginEnabled: false };
+		it('should set expected configuration variables from LDAP config if LDAP is disabled', async () => {
+			const givenConfig = { ...ldapConfig, loginEnabled: false };
 
-			const settingsRepo = mockInstance(SettingsRepository);
-			const mockLogger = mock<Logger>();
+			const settingsRepository = mockInstance(SettingsRepository, {
+				findOneByOrFail: jest.fn().mockResolvedValue({ value: JSON.stringify(givenConfig) }),
+			}); // set in container so `setCurrentAuthenticationMethod` does not fail - legacy LDAP code not using DI
 
-			const ldapService = new LdapService(mockLogger, settingsRepo, mock(), mock());
+			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
 
 			const configSetSpy = jest.spyOn(config, 'set');
-
-			settingsRepo.findOneByOrFail.mockResolvedValue({
-				value: JSON.stringify(givenConfig),
-			} as Settings);
 
 			await ldapService.init();
 
@@ -113,20 +98,20 @@ describe('LdapService', () => {
 		});
 
 		it('should show logger warning if authentication method is not ldap or email', async () => {
-			const settingsRepo = mockInstance(SettingsRepository);
-			const mockLogger = mock<Logger>();
+			const settingsRepository = mock<SettingsRepository>({
+				findOneByOrFail: jest.fn().mockResolvedValue({ value: JSON.stringify(ldapConfig) }),
+			});
 
-			const ldapService = new LdapService(mockLogger, settingsRepo, mock(), mock());
+			const logger = mockLogger();
 
-			settingsRepo.findOneByOrFail.mockResolvedValue({
-				value: JSON.stringify(fakeConfig),
-			} as Settings);
+			const ldapService = new LdapService(logger, settingsRepository, mock(), mock());
+
 			config.set('userManagement.authenticationMethod', 'invalid');
 
 			await ldapService.init();
 
-			expect(mockLogger.warn).toHaveBeenCalledTimes(1);
-			expect(mockLogger.warn).toHaveBeenCalledWith(
+			expect(logger.warn).toHaveBeenCalledTimes(1);
+			expect(logger.warn).toHaveBeenCalledWith(
 				'Cannot set LDAP login enabled state when an authentication method other than email or ldap is active (current: invalid)',
 				expect.any(Error),
 			);
@@ -134,18 +119,17 @@ describe('LdapService', () => {
 
 		it('should schedule syncing if config has enabled synchronization', async () => {
 			const givenConfig = {
-				...fakeConfig,
+				...ldapConfig,
 				synchronizationEnabled: true,
 				synchronizationInterval: 10,
 			};
-			const settingsRepo = mockInstance(SettingsRepository);
-			const mockLogger = mock<Logger>();
 
-			const ldapService = new LdapService(mockLogger, settingsRepo, mock(), mock());
+			const settingsRepository = mock<SettingsRepository>({
+				findOneByOrFail: jest.fn().mockResolvedValue({ value: JSON.stringify(givenConfig) }),
+			});
 
-			settingsRepo.findOneByOrFail.mockResolvedValue({
-				value: JSON.stringify(givenConfig),
-			} as Settings);
+			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
+
 			const setIntervalSpy = jest.spyOn(global, 'setInterval');
 
 			await ldapService.init();
@@ -153,24 +137,23 @@ describe('LdapService', () => {
 			expect(setIntervalSpy).toHaveBeenCalledTimes(1);
 			expect(setIntervalSpy).toHaveBeenCalledWith(
 				expect.any(Function),
-				givenConfig.synchronizationInterval * 60000,
+				givenConfig.synchronizationInterval * 60_000,
 			);
 		});
 
 		it('should throw an error if config has enabled synchronization but no synchronizationInterval is set', async () => {
-			const givenConfig = {
-				...fakeConfig,
-				synchronizationEnabled: true,
-				synchronizationInterval: 0,
-			};
-			const settingsRepo = mockInstance(SettingsRepository);
-			const mockLogger = mock<Logger>();
+			const settingsRepository = mock<SettingsRepository>({
+				findOneByOrFail: jest.fn().mockResolvedValue({
+					value: JSON.stringify({
+						...ldapConfig,
+						synchronizationEnabled: true,
+						synchronizationInterval: 0,
+					}),
+				}),
+			});
 
-			const ldapService = new LdapService(mockLogger, settingsRepo, mock(), mock());
+			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
 
-			settingsRepo.findOneByOrFail.mockResolvedValue({
-				value: JSON.stringify(givenConfig),
-			} as Settings);
 			const setIntervalSpy = jest.spyOn(global, 'setInterval');
 
 			await expect(ldapService.init()).rejects.toThrowError('Interval variable has to be defined');
