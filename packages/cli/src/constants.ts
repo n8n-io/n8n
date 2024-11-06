@@ -127,6 +127,9 @@ export const TIME = {
  * Eventually this will superseed `TIME` above
  */
 export const Time = {
+	milliseconds: {
+		toMinutes: 1 / (60 * 1000),
+	},
 	seconds: {
 		toMilliseconds: 1000,
 	},
