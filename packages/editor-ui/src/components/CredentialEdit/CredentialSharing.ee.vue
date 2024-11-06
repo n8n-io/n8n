@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import ProjectSharing from '@/components/Projects/ProjectSharing.vue';
 import { useI18n } from '@/composables/useI18n';
+import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { EnterpriseEditionFeature } from '@/constants';
 import type { ICredentialsDecryptedResponse, ICredentialsResponse } from '@/Interface';
 import type { PermissionsRecord } from '@/permissions';
@@ -38,6 +39,8 @@ const uiStore = useUIStore();
 const settingsStore = useSettingsStore();
 const projectsStore = useProjectsStore();
 const rolesStore = useRolesStore();
+
+const pageRedirectionHelper = usePageRedirectionHelper();
 
 const sharedWithProjects = ref([...(props.credential?.sharedWithProjects ?? [])]);
 
@@ -107,7 +110,7 @@ onMounted(async () => {
 });
 
 function goToUpgrade() {
-	void uiStore.goToUpgrade('credential_sharing', 'upgrade-credentials-sharing');
+	void pageRedirectionHelper.goToUpgrade('credential_sharing', 'upgrade-credentials-sharing');
 }
 </script>
 

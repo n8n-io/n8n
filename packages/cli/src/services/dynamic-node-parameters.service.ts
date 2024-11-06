@@ -1,4 +1,4 @@
-import { NodeExecuteFunctions } from 'n8n-core';
+import { LoadOptionsContext, NodeExecuteFunctions } from 'n8n-core';
 import type {
 	ILoadOptions,
 	ILoadOptionsFunctions,
@@ -253,6 +253,6 @@ export class DynamicNodeParametersService {
 		workflow: Workflow,
 	) {
 		const node = workflow.nodes['Temp-Node'];
-		return NodeExecuteFunctions.getLoadOptionsFunctions(workflow, node, path, additionalData);
+		return new LoadOptionsContext(workflow, node, additionalData, path);
 	}
 }

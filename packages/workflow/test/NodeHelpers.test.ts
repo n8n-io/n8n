@@ -3693,6 +3693,7 @@ describe('NodeHelpers', () => {
 					AI: ['Tools'],
 					Tools: ['Other Tools'],
 				},
+				resources: {},
 			});
 		});
 
@@ -3775,6 +3776,9 @@ describe('NodeHelpers', () => {
 				subcategories: {
 					Existing: ['Category'],
 				},
+				resources: {
+					primaryDocumentation: [{ url: 'https://example.com' }],
+				},
 			};
 			const result = convertNodeToAiTool(fullNodeWrapper);
 			expect(result.description.codex).toEqual({
@@ -3782,6 +3786,9 @@ describe('NodeHelpers', () => {
 				subcategories: {
 					AI: ['Tools'],
 					Tools: ['Other Tools'],
+				},
+				resources: {
+					primaryDocumentation: [{ url: 'https://example.com' }],
 				},
 			});
 		});

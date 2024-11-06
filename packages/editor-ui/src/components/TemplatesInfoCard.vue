@@ -1,33 +1,23 @@
-<script lang="ts">
-import { type PropType, defineComponent } from 'vue';
+<script lang="ts" setup>
 import Card from '@/components/CollectionWorkflowCard.vue';
 import NodeList from '@/components/NodeList.vue';
+import { useI18n } from '@/composables/useI18n';
 import type { ITemplatesCollection } from '@/Interface';
 
-export default defineComponent({
-	name: 'TemplatesInfoCard',
-	components: {
-		Card,
-		NodeList,
+withDefaults(
+	defineProps<{
+		collection: ITemplatesCollection;
+		loading?: boolean;
+		showItemCount?: boolean;
+		width: string;
+	}>(),
+	{
+		loading: false,
+		showItemCount: true,
 	},
-	props: {
-		collection: {
-			type: Object as PropType<ITemplatesCollection>,
-			required: true,
-		},
-		loading: {
-			type: Boolean,
-		},
-		showItemCount: {
-			type: Boolean,
-			default: true,
-		},
-		width: {
-			type: String,
-			required: true,
-		},
-	},
-});
+);
+
+const i18n = useI18n();
 </script>
 
 <template>
@@ -36,7 +26,7 @@ export default defineComponent({
 			<span>
 				<n8n-text v-show="showItemCount" size="small" color="text-light">
 					{{ collection.workflows.length }}
-					{{ $locale.baseText('templates.workflows') }}
+					{{ i18n.baseText('templates.workflows') }}
 				</n8n-text>
 			</span>
 			<NodeList :nodes="collection.nodes" :show-more="false" />
