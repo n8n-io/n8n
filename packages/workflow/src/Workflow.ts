@@ -177,9 +177,13 @@ export class Workflow {
 					continue;
 				}
 				for (const inputIndex in connections[sourceNode][type]) {
-					if (!connections[sourceNode][type].hasOwnProperty(inputIndex)) {
+					if (
+						!connections[sourceNode][type].hasOwnProperty(inputIndex) ||
+						!connections[sourceNode][type][inputIndex]
+					) {
 						continue;
 					}
+
 					for (connectionInfo of connections[sourceNode][type][inputIndex]) {
 						if (!returnConnection.hasOwnProperty(connectionInfo.node)) {
 							returnConnection[connectionInfo.node] = {};
