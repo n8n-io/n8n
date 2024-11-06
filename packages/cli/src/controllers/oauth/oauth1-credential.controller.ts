@@ -5,6 +5,7 @@ import { Response } from 'express';
 import type { RequestOptions } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
 
+import { Time } from '@/constants';
 import { Get, RestController } from '@/decorators';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -152,6 +153,10 @@ export class OAuth1CredentialController extends AbstractOAuthController {
 				const errorMessage = 'The OAuth1 callback state is invalid!';
 				this.logger.debug(errorMessage, { credentialId });
 				return this.renderCallbackError(res, errorMessage);
+			}
+
+			if (Date.now() - state.createdAt > 5 * Time.minutes.toMilliseconds) {
+				return this.renderCallbackError(res, 'The OAuth1 state expired. Please try again.');
 			}
 
 			const options: AxiosRequestConfig = {

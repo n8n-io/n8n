@@ -5,6 +5,7 @@ import { Cipher } from 'n8n-core';
 import nock from 'nock';
 import Container from 'typedi';
 
+import { Time } from '@/constants';
 import { OAuth1CredentialController } from '@/controllers/oauth/oauth1-credential.controller';
 import { CredentialsHelper } from '@/credentials-helper';
 import { CredentialsEntity } from '@/databases/entities/credentials-entity';
@@ -47,7 +48,11 @@ describe('OAuth1CredentialController', () => {
 
 	const controller = Container.get(OAuth1CredentialController);
 
+	const timestamp = 1706750625678;
+	jest.useFakeTimers({ advanceTimers: true });
+
 	beforeEach(() => {
+		jest.setSystemTime(new Date(timestamp));
 		jest.resetAllMocks();
 	});
 
@@ -81,8 +86,9 @@ describe('OAuth1CredentialController', () => {
 			nock('https://example.domain')
 				.post('/oauth/request_token', {
 					oauth_callback:
-						'http://localhost:5678/rest/oauth1-credential/callback?state=eyJ0b2tlbiI6InRva2VuIiwiY2lkIjoiMSJ9',
+						'http://localhost:5678/rest/oauth1-credential/callback?state=eyJ0b2tlbiI6InRva2VuIiwiY2lkIjoiMSIsImNyZWF0ZWRBdCI6MTcwNjc1MDYyNTY3OCwidXNlcklkIjoiMTIzIn0=',
 				})
+				.once()
 				.reply(200, { oauth_token: 'random-token' });
 			cipher.encrypt.mockReturnValue('encrypted');
 
@@ -107,6 +113,7 @@ describe('OAuth1CredentialController', () => {
 			JSON.stringify({
 				token: 'token',
 				cid: '1',
+				createdAt: timestamp,
 			}),
 		).toString('base64');
 
@@ -181,6 +188,30 @@ describe('OAuth1CredentialController', () => {
 			expect(res.render).toHaveBeenCalledWith('oauth-error-callback', {
 				error: {
 					message: 'The OAuth1 callback state is invalid!',
+				},
+			});
+		});
+
+		it('should render the error page when state is older than 5 minutes', async () => {
+			credentialsRepository.findOneBy.mockResolvedValue(new CredentialsEntity());
+			credentialsHelper.getDecrypted.mockResolvedValue({ csrfSecret });
+			jest.spyOn(Csrf.prototype, 'verify').mockReturnValueOnce(true);
+
+			const req = mock<OAuthRequest.OAuth1Credential.Callback>();
+			const res = mock<Response>();
+			req.query = {
+				oauth_verifier: 'verifier',
+				oauth_token: 'token',
+				state: validState,
+			} as OAuthRequest.OAuth1Credential.Callback['query'];
+
+			jest.advanceTimersByTime(10 * Time.minutes.toMilliseconds);
+
+			await controller.handleCallback(req, res);
+
+			expect(res.render).toHaveBeenCalledWith('oauth-error-callback', {
+				error: {
+					message: 'The OAuth1 state expired. Please try again.',
 				},
 			});
 		});

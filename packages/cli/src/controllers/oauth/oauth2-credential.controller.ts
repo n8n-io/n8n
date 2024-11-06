@@ -8,6 +8,10 @@ import { jsonStringify } from 'n8n-workflow';
 import pkceChallenge from 'pkce-challenge';
 import * as qs from 'querystring';
 
+import {
+	Time,
+	GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE as GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE,
+} from '@/constants';
 import { Get, RestController } from '@/decorators';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { OAuthRequest } from '@/requests';
@@ -17,7 +21,6 @@ import {
 	skipAuthOnOAuthCallback,
 	type CsrfStateParam,
 } from './abstract-oauth.controller';
-import { GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE as GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE } from '../../constants';
 
 @RestController('/oauth2-credential')
 export class OAuth2CredentialController extends AbstractOAuthController {
@@ -132,6 +135,10 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 				const errorMessage = 'The OAuth2 callback state is invalid!';
 				this.logger.debug(errorMessage, { credentialId });
 				return this.renderCallbackError(res, errorMessage);
+			}
+
+			if (!state.createdAt || Date.now() - state.createdAt > 5 * Time.minutes.toMilliseconds) {
+				return this.renderCallbackError(res, 'The OAuth2 state expired. Please try again.');
 			}
 
 			let options: Partial<ClientOAuth2Options> = {};

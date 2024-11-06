@@ -5,6 +5,7 @@ import { Cipher } from 'n8n-core';
 import nock from 'nock';
 import Container from 'typedi';
 
+import { Time } from '@/constants';
 import { OAuth2CredentialController } from '@/controllers/oauth/oauth2-credential.controller';
 import { CredentialsHelper } from '@/credentials-helper';
 import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
@@ -47,7 +48,11 @@ describe('OAuth2CredentialController', () => {
 
 	const controller = Container.get(OAuth2CredentialController);
 
+	const timestamp = 1706750625678;
+	jest.useFakeTimers({ advanceTimers: true });
+
 	beforeEach(() => {
+		jest.setSystemTime(new Date(timestamp));
 		jest.resetAllMocks();
 	});
 
@@ -82,12 +87,13 @@ describe('OAuth2CredentialController', () => {
 			const req = mock<OAuthRequest.OAuth2Credential.Auth>({ user, query: { id: '1' } });
 			const authUri = await controller.getAuthUri(req);
 			expect(authUri).toEqual(
-				'https://example.domain/o/oauth2/v2/auth?client_id=test-client-id&redirect_uri=http%3A%2F%2Flocalhost%3A5678%2Frest%2Foauth2-credential%2Fcallback&response_type=code&state=eyJ0b2tlbiI6InRva2VuIiwiY2lkIjoiMSIsInVzZXJJZCI6IjEyMyJ9&scope=openid',
+				'https://example.domain/o/oauth2/v2/auth?client_id=test-client-id&redirect_uri=http%3A%2F%2Flocalhost%3A5678%2Frest%2Foauth2-credential%2Fcallback&response_type=code&state=eyJ0b2tlbiI6InRva2VuIiwiY2lkIjoiMSIsImNyZWF0ZWRBdCI6MTcwNjc1MDYyNTY3OCwidXNlcklkIjoiMTIzIn0%3D&scope=openid',
 			);
 			const state = new URL(authUri).searchParams.get('state');
 			expect(JSON.parse(Buffer.from(state!, 'base64').toString())).toEqual({
 				token: 'token',
 				cid: '1',
+				createdAt: timestamp,
 				userId: '123',
 			});
 			expect(credentialsRepository.update).toHaveBeenCalledWith(
@@ -107,6 +113,7 @@ describe('OAuth2CredentialController', () => {
 			JSON.stringify({
 				token: 'token',
 				cid: '1',
+				createdAt: timestamp,
 			}),
 		).toString('base64');
 
@@ -177,6 +184,28 @@ describe('OAuth2CredentialController', () => {
 			expect(externalHooks.run).not.toHaveBeenCalled();
 		});
 
+		it('should render the error page when state is older than 5 minutes', async () => {
+			credentialsRepository.findOneBy.mockResolvedValueOnce(credential);
+			credentialsHelper.getDecrypted.mockResolvedValueOnce({ csrfSecret });
+			jest.spyOn(Csrf.prototype, 'verify').mockReturnValueOnce(true);
+
+			const req = mock<OAuthRequest.OAuth2Credential.Callback>({
+				query: { code: 'code', state: validState },
+			});
+			const res = mock<Response>();
+
+			jest.advanceTimersByTime(10 * Time.minutes.toMilliseconds);
+
+			await controller.handleCallback(req, res);
+
+			expect(res.render).toHaveBeenCalledWith('oauth-error-callback', {
+				error: {
+					message: 'The OAuth2 state expired. Please try again.',
+				},
+			});
+			expect(externalHooks.run).not.toHaveBeenCalled();
+		});
+
 		it('should exchange the code for a valid token, and save it to DB', async () => {
 			credentialsRepository.findOneBy.mockResolvedValueOnce(credential);
 			credentialsHelper.getDecrypted.mockResolvedValueOnce({ csrfSecret });
@@ -199,6 +228,7 @@ describe('OAuth2CredentialController', () => {
 				originalUrl: '?code=code',
 			});
 			const res = mock<Response>();
+
 			await controller.handleCallback(req, res);
 
 			expect(externalHooks.run).toHaveBeenCalledWith('oauth2.callback', [

@@ -23,6 +23,7 @@ import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-da
 export interface CsrfStateParam {
 	cid: string;
 	token: string;
+	createdAt: number;
 	userId?: string;
 }
 
@@ -127,6 +128,7 @@ export abstract class AbstractOAuthController {
 		const state: CsrfStateParam = {
 			token: token.create(csrfSecret),
 			cid: credentialsId,
+			createdAt: Date.now(),
 			userId,
 		};
 		return [csrfSecret, Buffer.from(JSON.stringify(state)).toString('base64')];
