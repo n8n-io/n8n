@@ -147,7 +147,7 @@ jobs:
         continue-on-error: true
         with:
           projects: ${{ secrets.SENTRY_FRONTEND_PROJECT }}
-          version: {{ needs.publish-to-npm.outputs.release }}
+          version: ${{ needs.publish-to-npm.outputs.release }}
           sourcemaps: packages/editor-ui/dist
 
       - name: Create a backend release
@@ -155,7 +155,7 @@ jobs:
         continue-on-error: true
         with:
           projects: ${{ secrets.SENTRY_BACKEND_PROJECT }}
-          version: {{ needs.publish-to-npm.outputs.release }}
+          version: ${{ needs.publish-to-npm.outputs.release }}
           sourcemaps: packages/cli/dist packages/core/dist packages/nodes-base/dist packages/@n8n/n8n-nodes-langchain/dist
 
   trigger-release-note:
