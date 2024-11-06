@@ -75,13 +75,16 @@ export class OutputParserAutofixing implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Fix Prompt',
+						displayName: 'Retry Prompt',
 						name: 'prompt',
 						type: 'string',
 						default: NAIVE_FIX_PROMPT,
 						typeOptions: {
 							rows: 10,
 						},
+						hint: 'Should include "{error}", "{instructions}", and "{completion}" placeholders',
+						description:
+							'Prompt template used for fixing the output. Uses placeholders: "{instructions}" for parsing rules, "{completion}" for the failed attempt, and "{error}" for the validation error message.',
 					},
 				],
 			},
