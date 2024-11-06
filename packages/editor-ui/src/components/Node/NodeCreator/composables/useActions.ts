@@ -211,15 +211,6 @@ export const useActions = () => {
 			OPEN_AI_NODE_MESSAGE_ASSISTANT_TYPE,
 		];
 
-		const node1 = addedNodes[0];
-		if (node1 !== undefined && node1.type === AGENT_NODE_TYPE) {
-			console.log(node1);
-			setAddedNodeActionParameters({
-				name: 'x',
-				key: 'x',
-				value: 'x',
-			});
-		}
 		const isCompatibleNode = addedNodes.some((node) => COMPATIBLE_CHAT_NODES.includes(node.type));
 
 		if (!isCompatibleNode) return false;
@@ -266,8 +257,9 @@ export const useActions = () => {
 			nodeToAutoOpen.openDetail = true;
 		}
 
-		if (shouldPrependLLMChain(addedNodes) || shouldPrependChatTrigger(addedNodes)) {
-			if (shouldPrependLLMChain(addedNodes)) {
+		const prependLLMChain = shouldPrependLLMChain(addedNodes);
+		if (prependLLMChain || shouldPrependChatTrigger(addedNodes)) {
+			if (prependLLMChain) {
 				addedNodes.unshift({ type: CHAIN_LLM_LANGCHAIN_NODE_TYPE, isAutoAdd: true });
 				connections.push({
 					from: { nodeIndex: 2, type: NodeConnectionType.AiLanguageModel },
@@ -279,17 +271,33 @@ export const useActions = () => {
 				from: { nodeIndex: 0 },
 				to: { nodeIndex: 1 },
 			});
-		} else if (shouldPrependManualTrigger(addedNodes)) {
-			addedNodes.unshift({ type: MANUAL_TRIGGER_NODE_TYPE, isAutoAdd: true });
-			connections.push({
-				from: { nodeIndex: 0 },
-				to: { nodeIndex: 1 },
-			});
-		} else if (shouldConnectWithExistingTrigger(addedNodes)) {
-			connections.push({
-				from: { nodeIndex: 0 },
-				to: { nodeIndex: 1 },
-			});
+		} else {
+			const COMPATIBLE_CHAT_NODES = [
+				QA_CHAIN_NODE_TYPE,
+				AGENT_NODE_TYPE,
+				BASIC_CHAIN_NODE_TYPE,
+				OPEN_AI_ASSISTANT_NODE_TYPE,
+				OPEN_AI_NODE_MESSAGE_ASSISTANT_TYPE,
+			];
+
+			const isCompatibleNode = addedNodes.some((node) => COMPATIBLE_CHAT_NODES.includes(node.type));
+
+			if (isCompatibleNode && addedNodes.length === 1) {
+				addedNodes[0].parameterOverrides = { promptType: 'define' };
+			}
+
+			if (shouldPrependManualTrigger(addedNodes)) {
+				addedNodes.unshift({ type: MANUAL_TRIGGER_NODE_TYPE, isAutoAdd: true });
+				connections.push({
+					from: { nodeIndex: 0 },
+					to: { nodeIndex: 1 },
+				});
+			} else if (shouldConnectWithExistingTrigger(addedNodes)) {
+				connections.push({
+					from: { nodeIndex: 0 },
+					to: { nodeIndex: 1 },
+				});
+			}
 		}
 
 		addedNodes.forEach((node, index) => {

@@ -1570,6 +1570,7 @@ export type AddedNode = {
 	type: string;
 	openDetail?: boolean;
 	isAutoAdd?: boolean;
+	parameterOverrides?: INodeParameters;
 } & Partial<INodeUi>;
 
 export type AddedNodeConnection = {

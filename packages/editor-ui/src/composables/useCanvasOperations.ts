@@ -81,6 +81,7 @@ import type {
 	INodeCredentials,
 	INodeInputConfiguration,
 	INodeOutputConfiguration,
+	INodeProperties,
 	INodeTypeDescription,
 	INodeTypeNameVersion,
 	IPinData,
@@ -519,6 +520,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 					{
 						...node,
 						position,
+						parameters: Object.assign({}, node.parameters, nodeAddData.parameterOverrides),
 					},
 					nodeTypeDescription,
 					{
