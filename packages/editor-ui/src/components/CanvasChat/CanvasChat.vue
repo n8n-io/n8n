@@ -27,7 +27,7 @@ const workflowsStore = useWorkflowsStore();
 const canvasStore = useCanvasStore();
 
 const messages = ref<ChatMessage[]>([]);
-const currentSessionId = ref<string>(uuid());
+const currentSessionId = ref<string>(uuid().replace(/-/g, ''));
 const isDisabled = ref(false);
 const container = ref<HTMLElement>();
 
@@ -41,13 +41,20 @@ const { sendMessage, getChatMessages } = useChatMessaging({
 	sessionId: currentSessionId,
 });
 
-const { height, chatWidth, rootStyles, onResizeDebounced, onResizeChatDebounced, onWindowResize } =
-	useResize(container);
+const {
+	height,
+	chatWidth,
+	rootStyles,
+	logsWidth,
+	onResizeDebounced,
+	onResizeChatDebounced,
+	onWindowResize,
+} = useResize(container);
 
 const isLoading = computed(() => uiStore.isActionActive.workflowRunning);
 const allConnections = computed(() => workflowsStore.allConnections);
-const isChatOpen = computed(() => canvasStore.isChatPanelOpen);
-const isLogsOpen = computed(() => canvasStore.isLogsPanelOpen);
+const isChatOpen = computed(() => workflowsStore.isChatPanelOpen);
+const isLogsOpen = computed(() => workflowsStore.isLogsPanelOpen);
 const previousChatMessages = computed(() => workflowsStore.getPastChatMessages);
 
 const chatConfig: Chat = {
@@ -90,19 +97,11 @@ function refreshSession() {
 	workflowsStore.setWorkflowExecutionData(null);
 	nodeHelpers.updateNodesExecutionIssues();
 	messages.value = [];
-	currentSessionId.value = uuid();
-}
-
-function toggleChat() {
-	canvasStore.setPanelOpen('chat', !isChatOpen.value);
-}
-
-function toggleLogs() {
-	canvasStore.setPanelOpen('logs', !isLogsOpen.value);
+	currentSessionId.value = uuid().replace(/-/g, '');
 }
 
 function closeLogs() {
-	canvasStore.setPanelOpen('logs', false);
+	workflowsStore.setPanelOpen('logs', false);
 }
 
 provide(ChatSymbol, chatConfig);
@@ -175,7 +174,12 @@ watchEffect(() => {
 					</div>
 				</n8n-resize-wrapper>
 				<div v-if="isLogsOpen && connectedNode" :class="$style.logs">
-					<ChatLogsPanel :key="messages.length" :node="connectedNode" @close="closeLogs" />
+					<ChatLogsPanel
+						:key="messages.length"
+						:node="connectedNode"
+						:slim="logsWidth < 700"
+						@close="closeLogs"
+					/>
 				</div>
 			</div>
 		</div>
@@ -196,22 +200,6 @@ watchEffect(() => {
 		min-height: 0;
 		flex-basis: 0;
 	}
-
-	* {
-		& ::-webkit-scrollbar {
-			width: 4px;
-		}
-
-		& ::-webkit-scrollbar-thumb {
-			border-radius: var(--border-radius-base);
-			background: var(--color-foreground-dark);
-			border: 1px solid white;
-		}
-
-		& ::-webkit-scrollbar-thumb:hover {
-			background: var(--color-foreground-xdark);
-		}
-	}
 }
 .container {
 	width: 100%;
@@ -225,7 +213,6 @@ watchEffect(() => {
 	width: 100%;
 	height: 100%;
 	max-width: 100%;
-	overflow: hidden;
 }
 .footer {
 	border-top: 1px solid var(--color-foreground-base);

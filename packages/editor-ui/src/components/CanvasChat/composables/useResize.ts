@@ -27,6 +27,7 @@ export function useResize(container: Ref<HTMLElement | undefined>) {
 		minHeight: ref(0),
 		maxHeight: ref(0),
 		chat: ref(0), // Chat panel width
+		logs: ref(0),
 		height: ref(0),
 	};
 
@@ -35,6 +36,16 @@ export function useResize(container: Ref<HTMLElement | undefined>) {
 		'--panel-height': `${dimensions.height.value}px`,
 		'--chat-width': `${dimensions.chat.value}px`,
 	}));
+
+	const panelToContainerRatio = computed(() => {
+		const chatRatio = dimensions.chat.value / dimensions.container.value;
+		const containerRatio = dimensions.container.value / window.screen.width;
+		return {
+			chat: chatRatio.toFixed(2),
+			logs: (1 - chatRatio).toFixed(2),
+			container: containerRatio.toFixed(2),
+		};
+	});
 
 	/**
 	 * Constrains height to min/max bounds and updates panel height
@@ -57,6 +68,7 @@ export function useResize(container: Ref<HTMLElement | undefined>) {
 		const minWidth = containerWidth * MIN_WIDTH_PERCENTAGE;
 
 		dimensions.chat.value = Math.min(Math.max(width, minWidth), maxWidth);
+		dimensions.logs.value = dimensions.container.value - dimensions.chat.value;
 	}
 
 	function onResizeChatDebounced(data: ResizeData) {
@@ -115,10 +127,12 @@ export function useResize(container: Ref<HTMLElement | undefined>) {
 	return {
 		height: dimensions.height,
 		chatWidth: dimensions.chat,
+		logsWidth: dimensions.logs,
 		rootStyles,
 		onWindowResize,
 		onResizeDebounced,
 		onResizeChatDebounced,
 		// onResizeChat,
+		panelToContainerRatio,
 	};
 }

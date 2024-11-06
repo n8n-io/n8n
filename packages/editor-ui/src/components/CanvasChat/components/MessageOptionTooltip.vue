@@ -2,7 +2,6 @@
 import type { PropType } from 'vue';
 
 defineProps({
-	/** Placement of the tooltip */
 	placement: {
 		type: String as PropType<'left' | 'right' | 'top' | 'bottom'>,
 		default: 'top',

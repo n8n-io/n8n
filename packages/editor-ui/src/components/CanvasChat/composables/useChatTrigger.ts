@@ -29,7 +29,7 @@ export function useChatTrigger({ router }: { router: ReturnType<typeof useRouter
 	const workflowHelpers = useWorkflowHelpers({ router });
 
 	const chatTriggerNode = computed(() =>
-		chatTriggerName.value ? workflowsStore.getNodeByName(chatTriggerName.value) : undefined,
+		chatTriggerName.value ? workflowsStore.getNodeByName(chatTriggerName.value) : null,
 	);
 
 	const allowFileUploads = computed(() => {
@@ -66,8 +66,6 @@ export function useChatTrigger({ router }: { router: ReturnType<typeof useRouter
 		const triggerNode = chatTriggerNode.value;
 
 		if (!triggerNode) {
-			console.error('Chat Trigger Node could not be found!');
-			// showError(new Error('Chat Trigger Node could not be found!'), 'Trigger Node not found');
 			return;
 		}
 

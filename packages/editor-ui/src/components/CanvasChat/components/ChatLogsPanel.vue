@@ -3,16 +3,19 @@ import type { INode } from 'n8n-workflow';
 import { computed } from 'vue';
 import RunDataAi from '@/components/RunDataAi/RunDataAi.vue';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useI18n } from '@/composables/useI18n';
 
 const emit = defineEmits<{
 	close: [];
 }>();
 
+const locale = useI18n();
 const workflowsStore = useWorkflowsStore();
 
 const workflow = computed(() => workflowsStore.getCurrentWorkflow());
 defineProps<{
 	node: INode | null;
+	slim?: boolean;
 }>();
 </script>
 
@@ -20,7 +23,12 @@ defineProps<{
 	<div :class="$style.logsWrapper" data-test-id="lm-chat-logs">
 		<header :class="$style.logsHeader">
 			<div class="meta">
-				Latest Logs <span v-if="node">from {{ node?.name }} node</span>
+				{{ locale.baseText('chat.window.logs') }}
+				<span v-if="node">
+					{{
+						locale.baseText('chat.window.logsFromNode', { interpolate: { nodeName: node.name } })
+					}}
+				</span>
 			</div>
 			<n8n-icon-button
 				:class="$style.close"
@@ -36,9 +44,8 @@ defineProps<{
 				v-if="node"
 				:class="$style.runData"
 				:node="node"
-				hide-title
 				:workflow="workflow"
-				slim
+				:slim="slim"
 			/>
 		</div>
 	</div>

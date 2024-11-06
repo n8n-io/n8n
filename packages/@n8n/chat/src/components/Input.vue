@@ -1,18 +1,28 @@
 <script setup lang="ts">
 import { useFileDialog } from '@vueuse/core';
-import IconFilePlus from 'virtual:icons/mdi/filePlus';
+import IconPaperclip from 'virtual:icons/mdi/paperclip';
 import IconSend from 'virtual:icons/mdi/send';
-import { computed, onMounted, onUnmounted, ref, unref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref, unref } from 'vue';
 
 import { useI18n, useChat, useOptions } from '@n8n/chat/composables';
 import { chatEventBus } from '@n8n/chat/event-buses';
 
 import ChatFile from './ChatFile.vue';
 
+export interface ChatInputProps {
+	placeholder?: string;
+}
+
+const props = withDefaults(defineProps<ChatInputProps>(), {
+	placeholder: 'inputPlaceholder',
+});
+
 export interface ArrowKeyDownPayload {
 	key: 'ArrowUp' | 'ArrowDown';
 	currentInputValue: string;
 }
+
+const { t } = useI18n();
 const emit = defineEmits<{
 	arrowKeyDown: [value: ArrowKeyDownPayload];
 }>();
@@ -20,7 +30,6 @@ const emit = defineEmits<{
 const { options } = useOptions();
 const chatStore = useChat();
 const { waitingForResponse } = chatStore;
-const { t } = useI18n();
 
 const files = ref<FileList | null>(null);
 const chatTextArea = ref<HTMLTextAreaElement | null>(null);
@@ -189,7 +198,7 @@ function adjustHeight(event: Event) {
 				ref="chatTextArea"
 				v-model="input"
 				:disabled="isInputDisabled"
-				:placeholder="t('inputPlaceholder')"
+				:placeholder="t(props.placeholder)"
 				@keydown.enter="onSubmitKeydown"
 				@input="adjustHeight"
 				@mousedown="adjustHeight"
@@ -200,10 +209,10 @@ function adjustHeight(event: Event) {
 				<button
 					v-if="isFileUploadAllowed"
 					:disabled="isFileUploadDisabled"
-					class="chat-input-send-button"
+					class="chat-input-file-button"
 					@click="onOpenFileDialog"
 				>
-					<IconFilePlus height="24" width="24" />
+					<IconPaperclip height="24" width="24" />
 				</button>
 				<button :disabled="isSubmitDisabled" class="chat-input-send-button" @click="onSubmit">
 					<IconSend height="24" width="24" />
@@ -216,6 +225,7 @@ function adjustHeight(event: Event) {
 				:key="file.name"
 				:file="file"
 				:is-removable="true"
+				:is-previewable="true"
 				@remove="onFileRemove"
 			/>
 		</div>
@@ -270,7 +280,8 @@ function adjustHeight(event: Event) {
 	right: 0.5rem;
 	bottom: 0;
 }
-.chat-input-send-button {
+.chat-input-send-button,
+.chat-input-file-button {
 	height: var(--chat--textarea--height);
 	width: var(--chat--textarea--height);
 	background: var(--chat--input--send--button--background, white);
@@ -287,18 +298,32 @@ function adjustHeight(event: Event) {
 		min-width: fit-content;
 	}
 
-	&:hover,
-	&:focus {
-		background: var(
-			--chat--input--send--button--background-hover,
-			var(--chat--input--send--button--background)
-		);
-		color: var(--chat--input--send--button--color-hover, var(--chat--color-secondary-shade-50));
-	}
-
 	&[disabled] {
 		cursor: no-drop;
 		color: var(--chat--color-disabled);
+	}
+
+	.chat-input-send-button {
+		&:hover,
+		&:focus {
+			background: var(
+				--chat--input--send--button--background-hover,
+				var(--chat--input--send--button--background)
+			);
+			color: var(--chat--input--send--button--color-hover, var(--chat--color-secondary-shade-50));
+		}
+	}
+}
+.chat-input-file-button {
+	background: var(--chat--input--file--button--background, white);
+	color: var(--chat--input--file--button--color, var(--chat--color-secondary));
+
+	&:hover {
+		background: var(
+			--chat--input--file--button--background-hover,
+			var(--chat--input--file--button--background)
+		);
+		color: var(--chat--input--file--button--color-hover, var(--chat--color-secondary-shade-50));
 	}
 }
 

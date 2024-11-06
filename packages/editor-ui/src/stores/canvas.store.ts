@@ -55,8 +55,6 @@ export const useCanvasStore = defineStore('canvas', () => {
 	const isDragging = ref<boolean>(false);
 	const lastSelectedConnection = ref<Connection>();
 	const newNodeInsertPosition = ref<XYPosition | null>(null);
-	const isChatPanelOpen = ref(false);
-	const isLogsPanelOpen = ref(false);
 	const panelHeight = ref(0);
 
 	const nodes = computed<INodeUi[]>(() => workflowStore.allNodes);
@@ -326,17 +324,6 @@ export const useCanvasStore = defineStore('canvas', () => {
 
 	watch(readOnlyEnv, setReadOnly);
 
-	function setPanelOpen(panel: 'chat' | 'logs', isOpen: boolean) {
-		if (panel === 'chat') {
-			isChatPanelOpen.value = isOpen;
-			isLogsPanelOpen.value = isOpen;
-		}
-
-		if (panel === 'logs') {
-			isLogsPanelOpen.value = isOpen;
-		}
-	}
-
 	function setPanelHeight(height: number) {
 		panelHeight.value = height;
 	}
@@ -350,11 +337,8 @@ export const useCanvasStore = defineStore('canvas', () => {
 		isLoading: loadingService.isLoading,
 		aiNodes,
 		lastSelectedConnection: lastSelectedConnectionComputed,
-		isChatPanelOpen: computed(() => isChatPanelOpen.value),
-		isLogsPanelOpen: computed(() => isLogsPanelOpen.value),
 		panelHeight: computed(() => panelHeight.value),
 		setPanelHeight,
-		setPanelOpen,
 		setReadOnly,
 		setLastSelectedConnection,
 		startLoading: loadingService.startLoading,

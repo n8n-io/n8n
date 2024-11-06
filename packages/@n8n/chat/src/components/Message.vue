@@ -139,7 +139,7 @@ onMounted(async () => {
 	scroll-margin: 100px;
 	.chat-message-actions {
 		position: absolute;
-		bottom: 100%;
+		bottom: calc(100% - 0.5rem);
 		left: 0;
 		opacity: 0;
 		transform: translateY(-0.25rem);
@@ -150,6 +150,9 @@ onMounted(async () => {
 	&.chat-message-from-user .chat-message-actions {
 		left: auto;
 		right: 0;
+	}
+	&.chat-message-from-bot .chat-message-actions {
+		bottom: calc(100% - 1rem);
 	}
 
 	&:hover {

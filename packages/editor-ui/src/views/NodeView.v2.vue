@@ -248,7 +248,7 @@ const keyBindingsEnabled = computed(() => {
 	return !ndvStore.activeNode && uiStore.activeModals.length === 0;
 });
 
-const isChatOpen = computed(() => canvasStore.isChatPanelOpen);
+const isChatOpen = computed(() => workflowsStore.isChatPanelOpen);
 
 /**
  * Initialization
@@ -1205,7 +1205,7 @@ const chatTriggerNodePinnedData = computed(() => {
 });
 
 async function onOpenChat() {
-	canvasStore.setPanelOpen('chat', !canvasStore.isChatPanelOpen);
+	workflowsStore.setPanelOpen('chat', !workflowsStore.isChatPanelOpen);
 
 	const payload = {
 		workflow_id: workflowId.value,

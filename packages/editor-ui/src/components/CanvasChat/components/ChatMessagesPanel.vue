@@ -9,7 +9,7 @@ import type { ArrowKeyDownPayload } from '@n8n/chat/components/Input.vue';
 import ChatInput from '@n8n/chat/components/Input.vue';
 import { useMessage } from '@/composables/useMessage';
 import { MODAL_CONFIRM } from '@/constants';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useClipboard } from '@/composables/useClipboard';
 import { useToast } from '@/composables/useToast';
 
@@ -20,6 +20,7 @@ interface Props {
 }
 
 const props = defineProps<Props>();
+
 const emit = defineEmits<{
 	displayExecution: [id: string];
 	sendMessage: [message: string];
@@ -33,6 +34,12 @@ const toast = useToast();
 
 const previousMessageIndex = ref(0);
 
+const inputPlaceholder = computed(() => {
+	if (props.messages.length > 0) {
+		return locale.baseText('chat.window.chat.placeholder');
+	}
+	return locale.baseText('chat.window.chat.placeholderPristine');
+});
 /** Checks if message is a text message */
 function isTextMessage(message: ChatMessage): message is ChatMessageText {
 	return message.type === 'text' || !message.type;
@@ -61,11 +68,11 @@ async function onRefreshSession() {
 	}
 
 	const confirmResult = await messageComposable.confirm(
-		'Are you sure you want to refresh the session? This will clear all messages and current execution data.',
+		locale.baseText('chat.window.session.reset.warning'),
 		{
-			title: 'Confirm to refresh the session',
+			title: locale.baseText('chat.window.session.reset.title'),
 			type: 'warning',
-			confirmButtonText: 'Refresh Session',
+			confirmButtonText: locale.baseText('chat.window.session.reset.confirm'),
 			showClose: true,
 		},
 	);
@@ -115,9 +122,9 @@ function copySessionId() {
 <template>
 	<div :class="$style.chat" data-test-id="workflow-lm-chat-dialog">
 		<header :class="$style.chatHeader">
-			<span>Chat</span>
+			<span>{{ locale.baseText('chat.window.title') }}</span>
 			<div :class="$style.session">
-				<span>Session</span>
+				<span>{{ locale.baseText('chat.window.session.title') }}</span>
 				<n8n-tooltip placement="left">
 					<template #content>
 						{{ sessionId }}
@@ -130,7 +137,7 @@ function copySessionId() {
 					text
 					size="mini"
 					icon="redo"
-					title="Refresh session"
+					:title="locale.baseText('chat.window.session.reset.confirm')"
 					@click="onRefreshSession"
 				/>
 			</div>
@@ -186,7 +193,11 @@ function copySessionId() {
 					@click="onArrowKeyDown({ currentInputValue: '', key: 'ArrowDown' })"
 				/>
 			</div>
-			<ChatInput data-test-id="lm-chat-inputs" @arrow-key-down="onArrowKeyDown" />
+			<ChatInput
+				data-test-id="lm-chat-inputs"
+				:placeholder="inputPlaceholder"
+				@arrow-key-down="onArrowKeyDown"
+			/>
 		</div>
 	</div>
 </template>
@@ -202,7 +213,7 @@ function copySessionId() {
 	--chat--message--user--color: var(--color-text-dark);
 	--chat--message--bot--border: none;
 	--chat--message--user--border: none;
-	--chat--color-typing: var(--color-text-dark);
+	--chat--color-typing: var(--color-text-light);
 	--chat--textarea--max-height: calc(var(--panel-height) * 0.5);
 
 	height: 100%;
@@ -228,10 +239,10 @@ function copySessionId() {
 	align-items: center;
 	gap: var(--spacing-2xs);
 	color: var(--color-text-base);
+	max-width: 70%;
 }
 .sessionId {
 	display: inline-block;
-	max-width: 5rem;
 	white-space: nowrap;
 	text-overflow: ellipsis;
 	overflow: hidden;
@@ -260,17 +271,19 @@ function copySessionId() {
 }
 
 .messagesInput {
-	--input-border-color: transparent;
+	--input-border-color: var(--border-color-base);
 	--chat--input--border: none;
 
-	--chat--input--border-radius: 2rem;
+	--chat--input--border-radius: 0.5rem;
 	--chat--input--send--button--background: transparent;
-	--chat--input--send--button--color: var(--color-button-secondary-font);
-	// --chat--input--send--button--color-hover: var(--color-primary);
 	--chat--input--send--button--color: var(--color-primary);
+	--chat--input--file--button--background: transparent;
+	--chat--input--file--button--color: var(--color-primary);
 	--chat--input--border-active: var(--input-focus-border-color, var(--color-secondary));
 	--chat--files-spacing: var(--spacing-2xs) 0;
 	--chat--input--background: transparent;
+	--chat--input--file--button--color: var(--color-button-secondary-font);
+	--chat--input--file--button--color-hover: var(--color-primary);
 
 	[data-theme='dark'] & {
 		--chat--input--text-color: var(--input-font-color, var(--color-text-dark));
@@ -280,7 +293,7 @@ function copySessionId() {
 	}
 
 	padding: 0 0 0 var(--spacing-xs);
-	margin: var(--chat--spacing);
+	margin: 0 var(--chat--spacing) var(--chat--spacing);
 	flex-grow: 1;
 	display: flex;
 	background: var(--color-lm-chat-bot-background);

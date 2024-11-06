@@ -25,7 +25,6 @@ interface TreeNode {
 export interface Props {
 	node: INodeUi;
 	runIndex?: number;
-	hideTitle?: boolean;
 	slim?: boolean;
 	workflow: Workflow;
 }
@@ -309,7 +308,7 @@ watch(() => props.runIndex, selectFirst, { immediate: true });
 }
 .tree {
 	flex-shrink: 0;
-	min-width: 12.8rem;
+	min-width: 8rem;
 	height: 100%;
 
 	padding-right: var(--spacing-xs);
@@ -364,7 +363,6 @@ watch(() => props.runIndex, selectFirst, { immediate: true });
 	display: inline-flex;
 	border-radius: var(--border-radius-base);
 	align-items: center;
-	// gap: var(--spacing-3xs);
 	padding-right: var(--spacing-3xs);
 	margin: var(--spacing-4xs) 0;
 	font-size: var(--font-size-2xs);

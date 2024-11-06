@@ -459,9 +459,6 @@ export default defineComponent({
 
 			return this.containsChatNodes && this.triggerNodes.length === 1 && !this.pinnedChatNodeData;
 		},
-		canvasChatNode() {
-			return this.nodes.find((node) => node.type === CHAT_TRIGGER_NODE_TYPE);
-		},
 		pinnedChatNodeData() {
 			if (!this.canvasChatNode) return null;
 
@@ -513,7 +510,7 @@ export default defineComponent({
 			return getResourcePermissions(project?.scopes);
 		},
 		isChatOpen() {
-			return this.canvasStore.isChatPanelOpen;
+			return this.workflowsStore.isChatPanelOpen;
 		},
 	},
 	watch: {
@@ -865,7 +862,7 @@ export default defineComponent({
 			};
 			this.$telemetry.track('User clicked chat open button', telemetryPayload);
 			void this.externalHooks.run('nodeView.onOpenChat', telemetryPayload);
-			this.canvasStore.setPanelOpen('chat', !this.canvasStore.isChatPanelOpen);
+			this.workflowsStore.setPanelOpen('chat', !this.workflowsStore.isChatPanelOpen);
 		},
 
 		async onRunWorkflow() {

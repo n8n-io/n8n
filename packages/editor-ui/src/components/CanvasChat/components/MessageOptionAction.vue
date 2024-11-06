@@ -2,17 +2,14 @@
 import type { PropType } from 'vue';
 
 defineProps({
-	/** Tooltip label */
 	label: {
 		type: String,
 		required: true,
 	},
-	/** Icon name */
 	icon: {
 		type: String,
 		required: true,
 	},
-	/** Placement of the tooltip */
 	placement: {
 		type: String as PropType<'left' | 'right' | 'top' | 'bottom'>,
 		default: 'top',

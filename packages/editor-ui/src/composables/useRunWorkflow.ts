@@ -171,7 +171,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 					// If the chat node has no input data or pin data, open the chat modal
 					// and halt the execution
 					if (!chatHasInputData && !chatHasPinData) {
-						canvasStore.setPanelOpen('chat', true);
+						workflowsStore.setPanelOpen('chat', true);
 						return;
 					}
 				}
