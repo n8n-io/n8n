@@ -3,12 +3,12 @@ import { BinaryDataService, InstanceSettings } from 'n8n-core';
 import { jsonStringify } from 'n8n-workflow';
 import { Service } from 'typedi';
 
-import { inTest, TIME } from '@/constants';
+import { TIME } from '@/constants';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { OnShutdown } from '@/decorators/on-shutdown';
 import { Logger } from '@/logging/logger.service';
 
-import { OrchestrationService } from './orchestration.service';
+import { OrchestrationService } from '../orchestration.service';
 
 @Service()
 export class PruningService {
@@ -32,7 +32,9 @@ export class PruningService {
 		private readonly binaryDataService: BinaryDataService,
 		private readonly orchestrationService: OrchestrationService,
 		private readonly globalConfig: GlobalConfig,
-	) {}
+	) {
+		this.logger = this.logger.scoped('pruning');
+	}
 
 	/**
 	 * @important Requires `OrchestrationService` to be initialized.
@@ -49,9 +51,9 @@ export class PruningService {
 		}
 	}
 
-	private isPruningEnabled() {
+	private isEnabled() {
 		const { instanceType, isFollower } = this.instanceSettings;
-		if (!this.globalConfig.pruning.isEnabled || inTest || instanceType !== 'main') {
+		if (!this.globalConfig.pruning.isEnabled || instanceType !== 'main') {
 			return false;
 		}
 
@@ -66,23 +68,23 @@ export class PruningService {
 	 * @important Call this method only after DB migrations have completed.
 	 */
 	startPruning() {
-		if (!this.isPruningEnabled()) return;
+		if (!this.isEnabled()) return;
 
 		if (this.isShuttingDown) {
-			this.logger.warn('[Pruning] Cannot start pruning while shutting down');
+			this.logger.warn('Cannot start pruning while shutting down');
 			return;
 		}
 
-		this.logger.debug('[Pruning] Starting soft-deletion and hard-deletion timers');
+		this.logger.debug('Starting soft-deletion and hard-deletion timers');
 
 		this.setSoftDeletionInterval();
 		this.scheduleHardDeletion();
 	}
 
 	stopPruning() {
-		if (!this.isPruningEnabled()) return;
+		if (!this.isEnabled()) return;
 
-		this.logger.debug('[Pruning] Removing soft-deletion and hard-deletion timers');
+		this.logger.debug('Removing soft-deletion and hard-deletion timers');
 
 		clearInterval(this.softDeletionInterval);
 		clearTimeout(this.hardDeletionTimeout);
@@ -96,7 +98,7 @@ export class PruningService {
 			this.rates.softDeletion,
 		);
 
-		this.logger.debug(`[Pruning] Soft-deletion scheduled every ${when}`);
+		this.logger.debug(`Soft-deletion scheduled every ${when}`);
 	}
 
 	private scheduleHardDeletion(rateMs = this.rates.hardDeletion) {
@@ -113,27 +115,27 @@ export class PruningService {
 							? error.message
 							: jsonStringify(error, { replaceCircularRefs: true });
 
-					this.logger.error('[Pruning] Failed to hard-delete executions', { errorMessage });
+					this.logger.error('Failed to hard-delete executions', { errorMessage });
 				});
 		}, rateMs);
 
-		this.logger.debug(`[Pruning] Hard-deletion scheduled for next ${when}`);
+		this.logger.debug(`Hard-deletion scheduled for next ${when}`);
 	}
 
 	/**
 	 * Mark executions as deleted based on age and count, in a pruning cycle.
 	 */
 	async softDeleteOnPruningCycle() {
-		this.logger.debug('[Pruning] Starting soft-deletion of executions');
+		this.logger.debug('Starting soft-deletion of executions');
 
 		const result = await this.executionRepository.softDeletePrunableExecutions();
 
 		if (result.affected === 0) {
-			this.logger.debug('[Pruning] Found no executions to soft-delete');
+			this.logger.debug('Found no executions to soft-delete');
 			return;
 		}
 
-		this.logger.debug('[Pruning] Soft-deleted executions', { count: result.affected });
+		this.logger.debug('Soft-deleted executions', { count: result.affected });
 	}
 
 	@OnShutdown()
@@ -147,26 +149,26 @@ export class PruningService {
 	 * @return Delay in ms after which the next cycle should be started
 	 */
 	private async hardDeleteOnPruningCycle() {
-		const ids = await this.executionRepository.hardDeleteSoftDeletedExecutions();
+		const ids = await this.executionRepository.findSoftDeletedExecutions();
 
 		const executionIds = ids.map((o) => o.executionId);
 
 		if (executionIds.length === 0) {
-			this.logger.debug('[Pruning] Found no executions to hard-delete');
+			this.logger.debug('Found no executions to hard-delete');
 
 			return this.rates.hardDeletion;
 		}
 
 		try {
-			this.logger.debug('[Pruning] Starting hard-deletion of executions', { executionIds });
+			this.logger.debug('Starting hard-deletion of executions', { executionIds });
 
 			await this.binaryDataService.deleteMany(ids);
 
 			await this.executionRepository.deleteByIds(executionIds);
 
-			this.logger.debug('[Pruning] Hard-deleted executions', { executionIds });
+			this.logger.debug('Hard-deleted executions', { executionIds });
 		} catch (error) {
-			this.logger.error('[Pruning] Failed to hard-delete executions', {
+			this.logger.error('Failed to hard-delete executions', {
 				executionIds,
 				error: error instanceof Error ? error.message : `${error}`,
 			});

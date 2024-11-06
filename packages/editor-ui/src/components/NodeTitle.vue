@@ -63,6 +63,7 @@ function onRename() {
 						size="small"
 						:label="$locale.baseText('ndv.title.cancel')"
 						@click="editName = false"
+						@keydown.enter.stop
 					/>
 					<n8n-button
 						type="primary"
