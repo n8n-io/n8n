@@ -92,6 +92,7 @@
     "@types/lodash-es": "^4.17.6",
     "@types/luxon": "^3.2.0",
     "@types/uuid": "catalog:",
+    "@vitejs/plugin-legacy": "^5.4.3",
     "@vitest/coverage-v8": "catalog:frontend",
     "cross-env": "^7.0.3",
     "miragejs": "^0.1.48",

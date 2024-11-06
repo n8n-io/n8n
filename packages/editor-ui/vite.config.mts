@@ -6,6 +6,7 @@ import { vitestConfig } from '../design-system/vite.config.mts';
 import icons from 'unplugin-icons/vite';
 import iconsResolver from 'unplugin-icons/resolver';
 import components from 'unplugin-vue-components/vite';
+import legacy from '@vitejs/plugin-legacy';
 
 const publicPath = process.env.VUE_APP_PUBLIC_PATH || '/';
 
@@ -54,6 +55,7 @@ const plugins = [
 		],
 	}),
 	vue(),
+	legacy(),
 ];
 
 const { RELEASE: release } = process.env;
