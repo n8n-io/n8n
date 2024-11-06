@@ -62,6 +62,7 @@ const isTouchActive = ref<boolean>(false);
 const forceActions = ref(false);
 const isColorPopoverVisible = ref(false);
 const stickOptions = ref<HTMLElement>();
+const isEditing = ref(false);
 
 const setForceActions = (value: boolean) => {
 	forceActions.value = value;
@@ -166,6 +167,8 @@ onMounted(() => {
 const onShowPopover = () => setForceActions(true);
 const onHidePopover = () => setForceActions(false);
 const deleteNode = async () => {
+	if (isEditing.value) return;
+
 	assert(data.value);
 	// Wait a tick else vue causes problems because the data is gone
 	await nextTick();
@@ -187,6 +190,7 @@ const changeColor = (index: number) => {
 };
 
 const onEdit = (edit: boolean) => {
+	isEditing.value = true;
 	if (edit && !props.isActive && node.value) {
 		ndvStore.activeNodeName = node.value.name;
 	} else if (props.isActive && !edit) {
