@@ -385,7 +385,7 @@ const currentOutputIndex = computed(() => {
 const branches = computed(() => {
 	const capitalize = (name: string) => name.charAt(0).toLocaleUpperCase() + name.slice(1);
 
-	const result: ITab<number>[] = [];
+	const result: Array<ITab<number>> = [];
 
 	for (let i = 0; i <= maxOutputIndex.value; i++) {
 		if (props.overrideOutputs && !props.overrideOutputs.includes(i)) {
