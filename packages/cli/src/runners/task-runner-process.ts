@@ -69,8 +69,8 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 		super();
 
 		a.ok(
-			this.runnerConfig.mode === 'internal_childprocess' ||
-				this.runnerConfig.mode === 'internal_launcher',
+			this.runnerConfig.mode !== 'external',
+			'Task Runner Process cannot be used in external mode',
 		);
 
 		this.logger = logger.scoped('task-runner');
