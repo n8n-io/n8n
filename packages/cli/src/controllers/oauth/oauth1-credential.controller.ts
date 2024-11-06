@@ -6,6 +6,7 @@ import type { RequestOptions } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
 
 import { Get, RestController } from '@/decorators';
+import { AuthError } from '@/errors/response-errors/auth.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { OAuthRequest } from '@/requests';
 import { sendErrorResponse } from '@/response-helper';
@@ -46,7 +47,10 @@ export class OAuth1CredentialController extends AbstractOAuthController {
 			decryptedDataOriginal,
 			additionalData,
 		);
-		const [csrfSecret, state] = this.createCsrfState(credential.id);
+		const [csrfSecret, state] = this.createCsrfState(
+			credential.id,
+			skipAuthOnOAuthCallback ? undefined : req.user.id,
+		);
 
 		const signatureMethod = oauthCredentials.signatureMethod;
 
@@ -121,6 +125,9 @@ export class OAuth1CredentialController extends AbstractOAuthController {
 			let state: CsrfStateParam;
 			try {
 				state = this.decodeCsrfState(encodedState);
+				if (state.userId !== req.user.id) {
+					throw new AuthError('Unauthorized');
+				}
 			} catch (error) {
 				return this.renderCallbackError(res, (error as Error).message);
 			}

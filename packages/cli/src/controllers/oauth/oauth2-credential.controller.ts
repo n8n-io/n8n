@@ -9,6 +9,7 @@ import pkceChallenge from 'pkce-challenge';
 import * as qs from 'querystring';
 
 import { Get, RestController } from '@/decorators';
+import { AuthError } from '@/errors/response-errors/auth.error';
 import { OAuthRequest } from '@/requests';
 
 import {
@@ -48,7 +49,10 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 		);
 
 		// Generate a CSRF prevention token and send it as an OAuth2 state string
-		const [csrfSecret, state] = this.createCsrfState(credential.id);
+		const [csrfSecret, state] = this.createCsrfState(
+			credential.id,
+			skipAuthOnOAuthCallback ? undefined : req.user.id,
+		);
 
 		const oAuthOptions = {
 			...this.convertCredentialToOptions(oauthCredentials),
@@ -101,6 +105,9 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 			let state: CsrfStateParam;
 			try {
 				state = this.decodeCsrfState(encodedState);
+				if (state.userId !== req.user.id) {
+					throw new AuthError('Unauthorized');
+				}
 			} catch (error) {
 				return this.renderCallbackError(res, (error as Error).message);
 			}

@@ -23,6 +23,7 @@ import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-da
 export interface CsrfStateParam {
 	cid: string;
 	token: string;
+	userId?: string;
 }
 
 export const skipAuthOnOAuthCallback = process.env.N8N_SKIP_AUTH_ON_OAUTH_CALLBACK === 'true';
@@ -120,12 +121,13 @@ export abstract class AbstractOAuthController {
 		return await this.credentialsRepository.findOneBy({ id: credentialId });
 	}
 
-	createCsrfState(credentialsId: string): [string, string] {
+	createCsrfState(credentialsId: string, userId?: string): [string, string] {
 		const token = new Csrf();
 		const csrfSecret = token.secretSync();
 		const state: CsrfStateParam = {
 			token: token.create(csrfSecret),
 			cid: credentialsId,
+			userId,
 		};
 		return [csrfSecret, Buffer.from(JSON.stringify(state)).toString('base64')];
 	}

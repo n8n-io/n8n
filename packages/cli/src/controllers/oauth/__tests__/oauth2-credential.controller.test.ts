@@ -82,8 +82,14 @@ describe('OAuth2CredentialController', () => {
 			const req = mock<OAuthRequest.OAuth2Credential.Auth>({ user, query: { id: '1' } });
 			const authUri = await controller.getAuthUri(req);
 			expect(authUri).toEqual(
-				'https://example.domain/o/oauth2/v2/auth?client_id=test-client-id&redirect_uri=http%3A%2F%2Flocalhost%3A5678%2Frest%2Foauth2-credential%2Fcallback&response_type=code&state=eyJ0b2tlbiI6InRva2VuIiwiY2lkIjoiMSJ9&scope=openid',
+				'https://example.domain/o/oauth2/v2/auth?client_id=test-client-id&redirect_uri=http%3A%2F%2Flocalhost%3A5678%2Frest%2Foauth2-credential%2Fcallback&response_type=code&state=eyJ0b2tlbiI6InRva2VuIiwiY2lkIjoiMSIsInVzZXJJZCI6IjEyMyJ9&scope=openid',
 			);
+			const state = new URL(authUri).searchParams.get('state');
+			expect(JSON.parse(Buffer.from(state!, 'base64').toString())).toEqual({
+				token: 'token',
+				cid: '1',
+				userId: '123',
+			});
 			expect(credentialsRepository.update).toHaveBeenCalledWith(
 				'1',
 				expect.objectContaining({
