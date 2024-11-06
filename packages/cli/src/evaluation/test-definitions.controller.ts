@@ -5,22 +5,22 @@ import { listQueryMiddleware } from '@/middlewares';
 import { getSharedWorkflowIds } from '@/public-api/v1/handlers/workflows/workflows.service';
 import { isPositiveInteger } from '@/utils';
 
-import { TestsService } from './tests.service';
-import { TestsRequest } from './tests.types';
+import { TestDefinitionsService } from './test-definitions.service';
+import { TestDefinitionsRequest } from './test-definitions.types';
 
-@RestController('/evaluation/tests')
-export class TestsController {
-	constructor(private readonly testsService: TestsService) {}
+@RestController('/evaluation/test-definitions')
+export class TestDefinitionsController {
+	constructor(private readonly testsService: TestDefinitionsService) {}
 
 	@Get('/', { middlewares: listQueryMiddleware })
-	async getMany(req: TestsRequest.GetMany) {
+	async getMany(req: TestDefinitionsRequest.GetMany) {
 		const workflowIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
 
 		return await this.testsService.getMany(req.listQueryOptions, workflowIds);
 	}
 
 	@Get('/:id')
-	async getOne(req: TestsRequest.GetOne) {
+	async getOne(req: TestDefinitionsRequest.GetOne) {
 		if (!isPositiveInteger(req.params.id)) {
 			throw new BadRequestError('Test ID is not a number');
 		}
@@ -31,7 +31,7 @@ export class TestsController {
 	}
 
 	@Post('/')
-	async create(req: TestsRequest.Create) {
+	async create(req: TestDefinitionsRequest.Create) {
 		const workflowIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
 
 		if (!workflowIds.includes(req.body.workflowId)) {
@@ -42,7 +42,7 @@ export class TestsController {
 	}
 
 	@Delete('/:id')
-	async delete(req: TestsRequest.Delete) {
+	async delete(req: TestDefinitionsRequest.Delete) {
 		if (!isPositiveInteger(req.params.id)) {
 			throw new BadRequestError('Test ID is not a number');
 		}
@@ -55,7 +55,7 @@ export class TestsController {
 	}
 
 	@Patch('/:id')
-	async update(req: TestsRequest.Update) {
+	async update(req: TestDefinitionsRequest.Update) {
 		if (!isPositiveInteger(req.params.id)) {
 			throw new BadRequestError('Test ID is not a number');
 		}

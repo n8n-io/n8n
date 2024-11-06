@@ -1,8 +1,7 @@
 import { Service } from 'typedi';
 
 import type { TestDefinition } from '@/databases/entities/test-definition';
-import type { User } from '@/databases/entities/user';
-import { TestRepository } from '@/databases/repositories/test.repository';
+import { TestDefinitionRepository } from '@/databases/repositories/test-definition.repository';
 import { validateEntity } from '@/generic-helpers';
 import type { ListQuery } from '@/requests';
 
@@ -16,8 +15,8 @@ type TestDefinitionLike = Omit<
 };
 
 @Service()
-export class TestsService {
-	constructor(private testRepository: TestRepository) {}
+export class TestDefinitionsService {
+	constructor(private testRepository: TestDefinitionRepository) {}
 
 	toEntity(attrs: {
 		name?: string;
