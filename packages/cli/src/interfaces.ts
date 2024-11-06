@@ -1,6 +1,5 @@
 import type { Scope } from '@n8n/permissions';
 import type { Application } from 'express';
-import type { WorkflowExecute } from 'n8n-core';
 import type {
 	ExecutionError,
 	ICredentialDataDecryptedObject,
@@ -14,7 +13,6 @@ import type {
 	ITelemetryTrackProperties,
 	IWorkflowBase,
 	CredentialLoadingDetails,
-	Workflow,
 	WorkflowExecuteMode,
 	ExecutionStatus,
 	ExecutionSummary,
@@ -294,12 +292,6 @@ export interface IWorkflowErrorData {
 		id?: string;
 		name: string;
 	};
-}
-
-export interface IWorkflowExecuteProcess {
-	startedAt: Date;
-	workflow: Workflow;
-	workflowExecute: WorkflowExecute;
 }
 
 export interface IWorkflowStatisticsDataLoaded {

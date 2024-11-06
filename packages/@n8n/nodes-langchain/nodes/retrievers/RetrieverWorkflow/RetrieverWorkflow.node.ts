@@ -17,6 +17,7 @@ import { Document } from '@langchain/core/documents';
 
 import type { SetField, SetNodeOptions } from 'n8n-nodes-base/dist/nodes/Set/v2/helpers/interfaces';
 import * as manual from 'n8n-nodes-base/dist/nodes/Set/v2/manual.mode';
+import get from 'lodash/get';
 import type { CallbackManagerForRetrieverRun } from '@langchain/core/callbacks/manager';
 import { logWrapper } from '../../../utils/logWrapper';
 
@@ -293,6 +294,8 @@ export class RetrieverWorkflow implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
+		const workflowProxy = this.getWorkflowDataProxy(0);
+
 		class WorkflowRetriever extends BaseRetriever {
 			lc_namespace = ['n8n-nodes-langchain', 'retrievers', 'workflow'];
 
@@ -384,21 +387,30 @@ export class RetrieverWorkflow implements INodeType {
 
 				const items = [newItem] as INodeExecutionData[];
 
-				let receivedItems: INodeExecutionData[][];
+				let receivedData;
 				try {
-					receivedItems = (await this.executeFunctions.executeWorkflow(
+					receivedData = await this.executeFunctions.executeWorkflow(
 						workflowInfo,
 						items,
 						config?.getChild(),
-					)) as INodeExecutionData[][];
+						{
+							startMetadata: {
+								executionId: workflowProxy.$execution.id,
+								workflowId: workflowProxy.$workflow.id,
+							},
+						},
+					);
 				} catch (error) {
 					// Make sure a valid error gets returned that can by json-serialized else it will
 					// not show up in the frontend
 					throw new NodeOperationError(this.executeFunctions.getNode(), error as Error);
 				}
 
+				// eslint-disable-next-line lodash/path-style
+				const receivedItems = get(receivedData, ['data', 0]) ?? [];
+
 				const returnData: Document[] = [];
-				for (const [index, itemData] of receivedItems[0].entries()) {
+				for (const [index, itemData] of receivedItems.entries()) {
 					const pageContent = objectToString(itemData.json);
 					returnData.push(
 						new Document({

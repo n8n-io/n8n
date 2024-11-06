@@ -1,3 +1,4 @@
+import set from 'lodash/set';
 import type {
 	ICredentialDataDecryptedObject,
 	IGetNodeParameterOptions,
@@ -35,6 +36,13 @@ import {
 import { BinaryHelpers } from './helpers/binary-helpers';
 import { RequestHelpers } from './helpers/request-helpers';
 import { NodeExecutionContext } from './node-execution-context';
+
+function setMetadata(executeData: IExecuteData, key: string, value: string) {
+	if (!executeData.metadata) {
+		executeData.metadata = {};
+	}
+	set(executeData.metadata, key, value);
+}
 
 export class ExecuteSingleContext extends NodeExecutionContext implements IExecuteSingleFunctions {
 	readonly helpers: IExecuteSingleFunctions['helpers'];
@@ -77,6 +85,10 @@ export class ExecuteSingleContext extends NodeExecutionContext implements IExecu
 			handler();
 		};
 		this.abortSignal?.addEventListener('abort', fn);
+	}
+
+	setMetadata(key: string, value: string): void {
+		return setMetadata(this.executeData, key, value);
 	}
 
 	continueOnFail() {

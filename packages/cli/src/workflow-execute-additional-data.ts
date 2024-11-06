@@ -36,6 +36,8 @@ import type {
 	ExecuteWorkflowOptions,
 	IWorkflowExecutionDataProcess,
 	EnvProviderState,
+	ITaskMetadata,
+	ExecuteWorkflowData,
 } from 'n8n-workflow';
 import { Container } from 'typedi';
 
@@ -45,11 +47,7 @@ import { CredentialsHelper } from '@/credentials-helper';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import type { AiEventMap, AiEventPayload } from '@/events/maps/ai.event-map';
 import { ExternalHooks } from '@/external-hooks';
-import type {
-	IWorkflowExecuteProcess,
-	IWorkflowErrorData,
-	UpdateExecutionPayload,
-} from '@/interfaces';
+import type { IWorkflowErrorData, UpdateExecutionPayload } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
@@ -681,6 +679,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 export async function getRunData(
 	workflowData: IWorkflowBase,
 	inputData?: INodeExecutionData[],
+	metadata?: ITaskMetadata,
 ): Promise<IWorkflowExecutionDataProcess> {
 	const mode = 'integrated';
 
@@ -700,6 +699,7 @@ export async function getRunData(
 		data: {
 			main: [inputData],
 		},
+		metadata,
 		source: null,
 	});
 
@@ -771,14 +771,12 @@ export async function executeWorkflow(
 	workflowInfo: IExecuteWorkflowInfo,
 	additionalData: IWorkflowExecuteAdditionalData,
 	options: ExecuteWorkflowOptions,
-): Promise<Array<INodeExecutionData[] | null> | IWorkflowExecuteProcess> {
+): Promise<ExecuteWorkflowData> {
 	const externalHooks = Container.get(ExternalHooks);
 	await externalHooks.init();
 
 	const nodeTypes = Container.get(NodeTypes);
 	const activeExecutions = Container.get(ActiveExecutions);
-	const eventService = Container.get(EventService);
-	const executionRepository = Container.get(ExecutionRepository);
 
 	const workflowData =
 		options.loadedWorkflowData ??
@@ -796,9 +794,43 @@ export async function executeWorkflow(
 		settings: workflowData.settings,
 	});
 
-	const runData = options.loadedRunData ?? (await getRunData(workflowData, options.inputData));
+	const runData =
+		options.loadedRunData ??
+		(await getRunData(workflowData, options.inputData, options.startMetadata));
 
 	const executionId = await activeExecutions.add(runData);
+
+	// We wrap it in another promise that we can depending on the setting return
+	// the execution ID before the execution is finished
+	const executionPromise = startExecution(
+		additionalData,
+		options,
+		workflow,
+		executionId,
+		runData,
+		workflowData,
+		externalHooks,
+	);
+
+	if (options.doNotWaitToFinish) {
+		return { executionId, data: [null] };
+	}
+
+	return await executionPromise;
+}
+
+async function startExecution(
+	additionalData: IWorkflowExecuteAdditionalData,
+	options: ExecuteWorkflowOptions,
+	workflow: Workflow,
+	executionId: string,
+	runData: IWorkflowExecutionDataProcess,
+	workflowData: IWorkflowBase,
+	externalHooks: ExternalHooks,
+): Promise<ExecuteWorkflowData> {
+	const eventService = Container.get(EventService);
+	const activeExecutions = Container.get(ActiveExecutions);
+	const executionRepository = Container.get(ExecutionRepository);
 
 	/**
 	 * A subworkflow execution in queue mode is not enqueued, but rather runs in the
@@ -921,7 +953,10 @@ export async function executeWorkflow(
 
 		activeExecutions.finalizeExecution(executionId, data);
 		const returnData = WorkflowHelpers.getDataLastExecutedNodeData(data);
-		return returnData!.data!.main;
+		return {
+			executionId,
+			data: returnData!.data!.main,
+		};
 	}
 	activeExecutions.finalizeExecution(executionId, data);
 
