@@ -165,8 +165,6 @@ export class Workflow {
 	__getConnectionsByDestination(connections: IConnections): IConnections {
 		const returnConnection: IConnections = {};
 
-		console.log({ connections });
-
 		let connectionInfo;
 		let maxIndex: number;
 		for (const sourceNode in connections) {
