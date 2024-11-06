@@ -1,4 +1,4 @@
-import type { DataRequestResponse } from '@n8n/task-runner';
+import type { DataRequestResponse, TaskDataRequestParams } from '@n8n/task-runner';
 import { mock } from 'jest-mock-extended';
 import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { type INode, type INodeExecutionData } from 'n8n-workflow';
@@ -150,14 +150,14 @@ const taskData: DataRequestResponse = {
 } as const;
 
 describe('DataRequestResponseStripper', () => {
-	const allDataParam: DataRequestResponseStripper['requestParams'] = {
+	const allDataParam: TaskDataRequestParams = {
 		dataOfNodes: 'all',
 		env: true,
 		input: true,
 		prevNode: true,
 	};
 
-	const newRequestParam = (opts: Partial<DataRequestResponseStripper['requestParams']>) => ({
+	const newRequestParam = (opts: Partial<TaskDataRequestParams>) => ({
 		...allDataParam,
 		...opts,
 	});
