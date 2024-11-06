@@ -37,6 +37,7 @@ import {
 	N8nText,
 	N8nTooltip,
 } from 'n8n-design-system';
+import { isEmpty } from '@/utils/typesUtils';
 
 interface CredentialDropdownOption extends ICredentialsResponse {
 	typeDisplayName: string;
@@ -87,9 +88,9 @@ const credentialTypesNode = computed(() =>
 );
 
 const credentialTypesNodeDescriptionDisplayed = computed(() =>
-	credentialTypesNodeDescription.value.filter((credentialTypeDescription) =>
-		displayCredentials(credentialTypeDescription),
-	),
+	credentialTypesNodeDescription.value
+		.filter((credentialTypeDescription) => displayCredentials(credentialTypeDescription))
+		.map((type) => ({ type, options: getCredentialOptions(getAllRelatedCredentialTypes(type)) })),
 );
 const credentialTypesNodeDescription = computed(() => {
 	if (typeof props.overrideCredType !== 'string') return [];
@@ -147,6 +148,27 @@ watch(
 		}
 	},
 	{ immediate: true, deep: true },
+);
+
+// Select most recent credential by default
+watch(
+	credentialTypesNodeDescriptionDisplayed,
+	(types) => {
+		if (types.length === 0 || !isEmpty(selected.value)) return;
+
+		const allOptions = types.map((type) => type.options).flat();
+
+		if (allOptions.length === 0) return;
+
+		const mostRecentCredential = allOptions.reduce(
+			(mostRecent, current) =>
+				mostRecent && mostRecent.updatedAt > current.updatedAt ? mostRecent : current,
+			allOptions[0],
+		);
+
+		onCredentialSelected(mostRecentCredential.type, mostRecentCredential.id);
+	},
+	{ immediate: true },
 );
 
 onMounted(() => {
@@ -481,12 +503,9 @@ function getCredentialsFieldLabel(credentialType: INodeCredentialDescription): s
 		v-if="credentialTypesNodeDescriptionDisplayed.length"
 		:class="['node-credentials', $style.container]"
 	>
-		<div
-			v-for="credentialTypeDescription in credentialTypesNodeDescriptionDisplayed"
-			:key="credentialTypeDescription.name"
-		>
+		<div v-for="{ type, options } in credentialTypesNodeDescriptionDisplayed" :key="type.name">
 			<N8nInputLabel
-				:label="getCredentialsFieldLabel(credentialTypeDescription)"
+				:label="getCredentialsFieldLabel(type)"
 				:bold="false"
 				size="small"
 				color="text-dark"
@@ -494,7 +513,7 @@ function getCredentialsFieldLabel(credentialType: INodeCredentialDescription): s
 			>
 				<div v-if="readonly">
 					<N8nInput
-						:model-value="getSelectedName(credentialTypeDescription.name)"
+						:model-value="getSelectedName(type.name)"
 						disabled
 						size="small"
 						data-test-id="node-credentials-select"
@@ -502,36 +521,20 @@ function getCredentialsFieldLabel(credentialType: INodeCredentialDescription): s
 				</div>
 				<div
 					v-else
-					:class="
-						getIssues(credentialTypeDescription.name).length && !hideIssues
-							? $style.hasIssues
-							: $style.input
-					"
+					:class="getIssues(type.name).length && !hideIssues ? $style.hasIssues : $style.input"
 					data-test-id="node-credentials-select"
 				>
 					<N8nSelect
-						:model-value="getSelectedId(credentialTypeDescription.name)"
-						:placeholder="
-							getSelectPlaceholder(
-								credentialTypeDescription.name,
-								getIssues(credentialTypeDescription.name),
-							)
-						"
+						:model-value="getSelectedId(type.name)"
+						:placeholder="getSelectPlaceholder(type.name, getIssues(type.name))"
 						size="small"
 						@update:model-value="
-							(value: string) =>
-								onCredentialSelected(
-									credentialTypeDescription.name,
-									value,
-									showMixedCredentials(credentialTypeDescription),
-								)
+							(value: string) => onCredentialSelected(type.name, value, showMixedCredentials(type))
 						"
 						@blur="emit('blur', 'credentials')"
 					>
 						<N8nOption
-							v-for="item in getCredentialOptions(
-								getAllRelatedCredentialTypes(credentialTypeDescription),
-							)"
+							v-for="item in options"
 							:key="item.id"
 							:data-test-id="`node-credentials-select-item-${item.id}`"
 							:label="item.name"
@@ -551,15 +554,12 @@ function getCredentialsFieldLabel(credentialType: INodeCredentialDescription): s
 						</N8nOption>
 					</N8nSelect>
 
-					<div
-						v-if="getIssues(credentialTypeDescription.name).length && !hideIssues"
-						:class="$style.warning"
-					>
+					<div v-if="getIssues(type.name).length && !hideIssues" :class="$style.warning">
 						<N8nTooltip placement="top">
 							<template #content>
 								<TitledList
 									:title="`${$locale.baseText('nodeCredentials.issues')}:`"
-									:items="getIssues(credentialTypeDescription.name)"
+									:items="getIssues(type.name)"
 								/>
 							</template>
 							<font-awesome-icon icon="exclamation-triangle" />
@@ -567,10 +567,7 @@ function getCredentialsFieldLabel(credentialType: INodeCredentialDescription): s
 					</div>
 
 					<div
-						v-if="
-							selected[credentialTypeDescription.name] &&
-							isCredentialExisting(credentialTypeDescription.name)
-						"
+						v-if="selected[type.name] && isCredentialExisting(type.name)"
 						:class="$style.edit"
 						data-test-id="credential-edit-button"
 					>
@@ -578,7 +575,7 @@ function getCredentialsFieldLabel(credentialType: INodeCredentialDescription): s
 							icon="pen"
 							class="clickable"
 							:title="$locale.baseText('nodeCredentials.updateCredential')"
-							@click="editCredential(credentialTypeDescription.name)"
+							@click="editCredential(type.name)"
 						/>
 					</div>
 				</div>
