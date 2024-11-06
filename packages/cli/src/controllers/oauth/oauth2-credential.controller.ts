@@ -11,7 +11,11 @@ import * as qs from 'querystring';
 import { Get, RestController } from '@/decorators';
 import { OAuthRequest } from '@/requests';
 
-import { AbstractOAuthController, type CsrfStateParam } from './abstract-oauth.controller';
+import {
+	AbstractOAuthController,
+	skipAuthOnOAuthCallback,
+	type CsrfStateParam,
+} from './abstract-oauth.controller';
 import { GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE as GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE } from '../../constants';
 
 @RestController('/oauth2-credential')
@@ -82,7 +86,7 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 	}
 
 	/** Verify and store app code. Generate access tokens and store for respective credential */
-	@Get('/callback', { usesTemplates: true, skipAuth: true })
+	@Get('/callback', { usesTemplates: true, skipAuth: skipAuthOnOAuthCallback })
 	async handleCallback(req: OAuthRequest.OAuth2Credential.Callback, res: Response) {
 		try {
 			const { code, state: encodedState } = req.query;

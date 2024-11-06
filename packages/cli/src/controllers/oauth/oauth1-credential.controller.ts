@@ -10,7 +10,11 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { OAuthRequest } from '@/requests';
 import { sendErrorResponse } from '@/response-helper';
 
-import { AbstractOAuthController, type CsrfStateParam } from './abstract-oauth.controller';
+import {
+	AbstractOAuthController,
+	skipAuthOnOAuthCallback,
+	type CsrfStateParam,
+} from './abstract-oauth.controller';
 
 interface OAuth1CredentialData {
 	signatureMethod: 'HMAC-SHA256' | 'HMAC-SHA512' | 'HMAC-SHA1';
@@ -101,7 +105,7 @@ export class OAuth1CredentialController extends AbstractOAuthController {
 	}
 
 	/** Verify and store app code. Generate access tokens and store for respective credential */
-	@Get('/callback', { usesTemplates: true, skipAuth: true })
+	@Get('/callback', { usesTemplates: true, skipAuth: skipAuthOnOAuthCallback })
 	async handleCallback(req: OAuthRequest.OAuth1Credential.Callback, res: Response) {
 		try {
 			const { oauth_verifier, oauth_token, state: encodedState } = req.query;
