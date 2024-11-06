@@ -381,7 +381,7 @@ function nodeIsHidden() {
 	return nodeType?.hidden ?? false;
 }
 
-const openErrorNodeDetail = () => {
+const onOpenErrorNodeDetailClick = () => {
 	ndvStore.activeNodeName = props.error.node.name;
 };
 
@@ -434,13 +434,13 @@ async function onAskAssistantClick() {
 					icon="arrow-right"
 					type="secondary"
 					:label="i18n.baseText('pushConnection.executionError.openNode')"
-					class="node-error-view__assistant-button"
-					@click="openErrorNodeDetail"
+					class="node-error-view__button"
+					@click="onOpenErrorNodeDetailClick"
 				/>
 			</div>
 			<div
 				v-if="isAskAssistantAvailable"
-				class="node-error-view__assistant-button"
+				class="node-error-view__button"
 				data-test-id="node-error-view-ask-assistant-button"
 			>
 				<InlineAskAssistantButton :asked="assistantAlreadyAsked" @click="onAskAssistantClick" />
@@ -701,9 +701,14 @@ async function onAskAssistantClick() {
 		}
 	}
 
-	&__assistant-button {
+	&__button {
 		margin-left: var(--spacing-s);
 		margin-bottom: var(--spacing-xs);
+		flex-direction: row-reverse;
+		span {
+			margin-right: var(--spacing-5xs);
+			margin-left: var(--spacing-5xs);
+		}
 	}
 
 	&__debugging {
@@ -836,7 +841,7 @@ async function onAskAssistantClick() {
 	}
 }
 
-.node-error-view__assistant-button {
+.node-error-view__button {
 	margin-top: var(--spacing-xs);
 }
 </style>
