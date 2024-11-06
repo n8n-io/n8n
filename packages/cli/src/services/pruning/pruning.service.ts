@@ -149,7 +149,7 @@ export class PruningService {
 		}
 
 		// if high volume, speed up next hard-deletion
-		if (executionIds.length >= this.batchSize) return 1_000;
+		if (executionIds.length >= this.batchSize) return 1 * Time.seconds.toMilliseconds;
 
 		return this.rates.hardDeletion;
 	}
