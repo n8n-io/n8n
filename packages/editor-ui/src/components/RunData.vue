@@ -61,6 +61,17 @@ import { searchInObject } from '@/utils/objectUtils';
 import { clearJsonKey, isEmpty } from '@/utils/typesUtils';
 import { isEqual, isObject } from 'lodash-es';
 import { useRoute } from 'vue-router';
+import {
+	N8nRadioButtons,
+	N8nCallout,
+	N8nIconButton,
+	N8nTooltip,
+	N8nTabs,
+	N8nSpinner,
+	N8nInfoTip,
+	N8nLink,
+	N8nBlockUi,
+} from 'n8n-design-system';
 
 const LazyRunDataTable = defineAsyncComponent(
 	async () => await import('@/components/RunDataTable.vue'),
@@ -207,7 +218,7 @@ const canPinData = computed(
 		!(binaryData.value && binaryData.value.length > 0),
 );
 const displayModes = computed(() => {
-	const defaults = [
+	const defaults: Array<{ label: string; value: IRunDataDisplayMode }> = [
 		{ label: i18n.baseText('runData.table'), value: 'table' },
 		{ label: i18n.baseText('runData.json'), value: 'json' },
 	];
@@ -216,7 +227,7 @@ const displayModes = computed(() => {
 		defaults.push({ label: i18n.baseText('runData.binary'), value: 'binary' });
 	}
 
-	const schemaView = { label: i18n.baseText('runData.schema'), value: 'schema' };
+	const schemaView = { label: i18n.baseText('runData.schema'), value: 'schema' } as const;
 	if (isPaneTypeInput.value) {
 		defaults.unshift(schemaView);
 	} else {
@@ -374,7 +385,7 @@ const currentOutputIndex = computed(() => {
 const branches = computed(() => {
 	const capitalize = (name: string) => name.charAt(0).toLocaleUpperCase() + name.slice(1);
 
-	const result: ITab[] = [];
+	const result: ITab<number>[] = [];
 
 	for (let i = 0; i <= maxOutputIndex.value; i++) {
 		if (props.overrideOutputs && !props.overrideOutputs.includes(i)) {
@@ -1166,7 +1177,7 @@ defineExpose({ enterEditMode });
 
 <template>
 	<div :class="['run-data', $style.container]" @mouseover="activatePane">
-		<n8n-callout
+		<N8nCallout
 			v-if="
 				canPinData && pinnedData.hasData.value && !editMode.enabled && !isProductionExecutionPreview
 			"
@@ -1176,7 +1187,7 @@ defineExpose({ enterEditMode });
 		>
 			{{ $locale.baseText('runData.pindata.thisDataIsPinned') }}
 			<span v-if="!isReadOnlyRoute && !readOnlyEnv" class="ml-4xs">
-				<n8n-link
+				<N8nLink
 					theme="secondary"
 					size="small"
 					underline
@@ -1185,10 +1196,10 @@ defineExpose({ enterEditMode });
 					@click.stop="onTogglePinData({ source: 'banner-link' })"
 				>
 					{{ $locale.baseText('runData.pindata.unpin') }}
-				</n8n-link>
+				</N8nLink>
 			</span>
 			<template #trailingContent>
-				<n8n-link
+				<N8nLink
 					:to="DATA_PINNING_DOCS_URL"
 					size="small"
 					theme="secondary"
@@ -1197,9 +1208,9 @@ defineExpose({ enterEditMode });
 					@click="onClickDataPinningDocsLink"
 				>
 					{{ $locale.baseText('runData.pindata.learnMore') }}
-				</n8n-link>
+				</N8nLink>
 			</template>
-		</n8n-callout>
+		</N8nCallout>
 
 		<BinaryDataDisplay
 			v-if="binaryDataDisplayData"
@@ -1229,7 +1240,7 @@ defineExpose({ enterEditMode });
 					/>
 				</Suspense>
 
-				<n8n-radio-buttons
+				<N8nRadioButtons
 					v-show="
 						hasNodeRun && (inputData.length || binaryData.length || search) && !editMode.enabled
 					"
@@ -1239,7 +1250,7 @@ defineExpose({ enterEditMode });
 					@update:model-value="onDisplayModeChange"
 				/>
 
-				<n8n-icon-button
+				<N8nIconButton
 					v-if="canPinData && !isReadOnlyRoute && !readOnlyEnv"
 					v-show="!editMode.enabled"
 					:title="$locale.baseText('runData.editOutput')"
@@ -1309,11 +1320,11 @@ defineExpose({ enterEditMode });
 				></N8nOption>
 			</N8nSelect>
 
-			<n8n-tooltip v-if="canLinkRuns" placement="right">
+			<N8nTooltip v-if="canLinkRuns" placement="right">
 				<template #content>
 					{{ $locale.baseText(linkedRuns ? 'runData.unlinking.hint' : 'runData.linking.hint') }}
 				</template>
-				<n8n-icon-button
+				<N8nIconButton
 					:icon="linkedRuns ? 'unlink' : 'link'"
 					class="linkRun"
 					text
@@ -1322,21 +1333,21 @@ defineExpose({ enterEditMode });
 					data-test-id="link-run"
 					@click="toggleLinkRuns"
 				/>
-			</n8n-tooltip>
+			</N8nTooltip>
 
 			<slot name="run-info"></slot>
 		</div>
 
 		<slot v-if="!displaysMultipleNodes" name="before-data" />
 
-		<n8n-callout
+		<N8nCallout
 			v-for="hint in getNodeHints()"
 			:key="hint.message"
 			:class="$style.hintCallout"
 			:theme="hint.type || 'info'"
 		>
 			<N8nText v-n8n-html="hint.message" size="small"></N8nText>
-		</n8n-callout>
+		</N8nCallout>
 
 		<div
 			v-if="maxOutputIndex > 0 && branches.length > 1 && !displaysMultipleNodes"
@@ -1346,7 +1357,7 @@ defineExpose({ enterEditMode });
 			<slot v-if="inputSelectLocation === 'outputs'" name="input-select"></slot>
 
 			<div :class="$style.tabs">
-				<n8n-tabs
+				<N8nTabs
 					:model-value="currentOutputIndex"
 					:options="branches"
 					@update:model-value="onBranchChange"
@@ -1388,7 +1399,7 @@ defineExpose({ enterEditMode });
 
 		<div ref="dataContainerRef" :class="$style.dataContainer" data-test-id="ndv-data-container">
 			<div v-if="isExecuting" :class="$style.center" data-test-id="ndv-executing">
-				<div :class="$style.spinner"><n8n-spinner type="ring" /></div>
+				<div :class="$style.spinner"><N8nSpinner type="ring" /></div>
 				<N8nText>{{ executingMessage }}</N8nText>
 			</div>
 
@@ -1401,12 +1412,12 @@ defineExpose({ enterEditMode });
 					/>
 				</div>
 				<div :class="$style.editModeFooter">
-					<n8n-info-tip :bold="false" :class="$style.editModeFooterInfotip">
+					<N8nInfoTip :bold="false" :class="$style.editModeFooterInfotip">
 						{{ $locale.baseText('runData.editor.copyDataInfo') }}
-						<n8n-link :to="DATA_EDITING_DOCS_URL" size="small">
+						<N8nLink :to="DATA_EDITING_DOCS_URL" size="small">
 							{{ $locale.baseText('generic.learnMore') }}
-						</n8n-link>
-					</n8n-info-tip>
+						</N8nLink>
+					</N8nInfoTip>
 				</div>
 			</div>
 
@@ -1436,9 +1447,9 @@ defineExpose({ enterEditMode });
 			>
 				<N8nText>
 					{{ $locale.baseText('ndv.input.disabled', { interpolate: { nodeName: node.name } }) }}
-					<n8n-link @click="enableNode">
+					<N8nLink @click="enableNode">
 						{{ $locale.baseText('ndv.input.disabled.cta') }}
-					</n8n-link>
+					</N8nLink>
 				</N8nText>
 			</div>
 
@@ -1738,7 +1749,7 @@ defineExpose({ enterEditMode });
 				</N8nSelect>
 			</div>
 		</div>
-		<n8n-block-ui :show="blockUI" :class="$style.uiBlocker" />
+		<N8nBlockUi :show="blockUI" :class="$style.uiBlocker" />
 	</div>
 </template>
 

@@ -13,6 +13,7 @@ import MappingPill from './MappingPill.vue';
 import TextWithHighlights from './TextWithHighlights.vue';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { N8nInfoTip, N8nTooltip } from 'n8n-design-system';
 
 const MAX_COLUMNS_LIMIT = 40;
 
@@ -398,7 +399,7 @@ watch(focusedMappableInput, (curr) => {
 						@mouseenter="onMouseEnterCell"
 						@mouseleave="onMouseLeaveCell"
 					>
-						<n8n-info-tip>{{ $locale.baseText('runData.emptyItemHint') }}</n8n-info-tip>
+						<N8nInfoTip>{{ $locale.baseText('runData.emptyItemHint') }}</N8nInfoTip>
 					</td>
 					<td :class="$style.tableRightMargin"></td>
 				</tr>
@@ -408,7 +409,7 @@ watch(focusedMappableInput, (curr) => {
 			<thead>
 				<tr>
 					<th v-for="(column, i) in tableData.columns || []" :key="column">
-						<n8n-tooltip placement="bottom-start" :disabled="!mappingEnabled" :show-after="1000">
+						<N8nTooltip placement="bottom-start" :disabled="!mappingEnabled" :show-after="1000">
 							<template #content>
 								<div>
 									<img src="/static/data-mapping-gif.gif" />
@@ -445,10 +446,10 @@ watch(focusedMappableInput, (curr) => {
 									</div>
 								</template>
 							</Draggable>
-						</n8n-tooltip>
+						</N8nTooltip>
 					</th>
 					<th v-if="columnLimitExceeded" :class="$style.header">
-						<n8n-tooltip placement="bottom-end">
+						<N8nTooltip placement="bottom-end">
 							<template #content>
 								<div>
 									<i18n-t tag="span" keypath="dataMapping.tableView.tableColumnsExceeded.tooltip">
@@ -468,7 +469,7 @@ watch(focusedMappableInput, (curr) => {
 								></font-awesome-icon>
 								{{ $locale.baseText('dataMapping.tableView.tableColumnsExceeded') }}
 							</span>
-						</n8n-tooltip>
+						</N8nTooltip>
 					</th>
 					<th :class="$style.tableRightMargin"></th>
 				</tr>
@@ -509,7 +510,7 @@ watch(focusedMappableInput, (curr) => {
 							:search="search"
 							:class="{ [$style.value]: true, [$style.empty]: isEmpty(data) }"
 						/>
-						<n8n-tree v-else :node-class="$style.nodeClass" :value="data">
+						<N8nTree v-else :node-class="$style.nodeClass" :value="data">
 							<template #label="{ label, path }">
 								<span
 									:class="{
@@ -534,7 +535,7 @@ watch(focusedMappableInput, (curr) => {
 									:class="{ [$style.nestedValue]: true, [$style.empty]: isEmpty(value) }"
 								/>
 							</template>
-						</n8n-tree>
+						</N8nTree>
 					</td>
 					<td v-if="columnLimitExceeded"></td>
 					<td :class="$style.tableRightMargin"></td>
