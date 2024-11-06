@@ -16,7 +16,7 @@ import { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { WithTimestamps } from './abstract-entity';
 
 /**
- * Entity representing a Test
+ * Entity representing a Test Definition
  * It combines:
  * - the workflow under test
  * - the workflow used to evaluate the results of test execution
