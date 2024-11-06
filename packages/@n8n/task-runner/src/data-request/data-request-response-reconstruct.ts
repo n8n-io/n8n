@@ -13,11 +13,7 @@ export class DataRequestResponseReconstruct {
 	reconstructConnectionInputData(
 		inputData: DataRequestResponse['inputData'],
 	): INodeExecutionData[] {
-		if (!inputData?.main) {
-			return [];
-		}
-
-		return inputData.main[0] ?? [];
+		return inputData?.main?.[0] ?? [];
 	}
 
 	/**
