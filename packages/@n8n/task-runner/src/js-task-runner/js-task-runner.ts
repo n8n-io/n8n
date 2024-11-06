@@ -124,6 +124,11 @@ export class JsTaskRunner extends TaskRunner {
 			neededBuiltIns.toDataRequestParams(),
 		);
 
+		/**
+		 * We request node types only when we know a task needs all nodes, because
+		 * needing all nodes means that the task relies on paired item functionality,
+		 * which is the same requirement for needing node types.
+		 */
 		if (neededBuiltIns.needsAllNodes) {
 			const nodeTypesInWorkflow = data.workflow.nodes.map((node) => ({
 				name: node.type,
