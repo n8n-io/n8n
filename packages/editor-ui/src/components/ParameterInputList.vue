@@ -35,6 +35,7 @@ import {
 import { get, set } from 'lodash-es';
 import { useRouter } from 'vue-router';
 import { captureException } from '@sentry/vue';
+import { N8nNotice, N8nIconButton, N8nInputLabel, N8nText, N8nIcon } from 'n8n-design-system';
 
 const LazyFixedCollectionParameter = defineAsyncComponent(
 	async () => await import('./FixedCollectionParameter.vue'),
@@ -498,7 +499,7 @@ function getParameterValue<T extends NodeParameterValueType = NodeParameterValue
 				@value-changed="valueChanged"
 			/>
 
-			<n8n-notice
+			<N8nNotice
 				v-else-if="parameter.type === 'notice'"
 				:class="['parameter-item', parameter.typeOptions?.containerClass ?? '']"
 				:content="$locale.nodeText().inputLabelDisplayName(parameter, path)"
@@ -519,7 +520,7 @@ function getParameterValue<T extends NodeParameterValueType = NodeParameterValue
 				v-else-if="['collection', 'fixedCollection'].includes(parameter.type)"
 				class="multi-parameter"
 			>
-				<n8n-icon-button
+				<N8nIconButton
 					v-if="hideDelete !== true && !isReadOnly && !parameter.isNodeSetting"
 					type="tertiary"
 					text
@@ -528,8 +529,8 @@ function getParameterValue<T extends NodeParameterValueType = NodeParameterValue
 					class="delete-option"
 					:title="$locale.baseText('parameterInputList.delete')"
 					@click="deleteOption(parameter.name)"
-				></n8n-icon-button>
-				<n8n-input-label
+				></N8nIconButton>
+				<N8nInputLabel
 					:label="$locale.nodeText().inputLabelDisplayName(parameter, path)"
 					:tooltip-text="$locale.nodeText().inputLabelDescription(parameter, path)"
 					size="small"
@@ -558,16 +559,16 @@ function getParameterValue<T extends NodeParameterValueType = NodeParameterValue
 						/>
 					</template>
 					<template #fallback>
-						<n8n-text size="small" class="async-notice">
-							<n8n-icon icon="sync-alt" size="xsmall" :spin="true" />
+						<N8nText size="small" class="async-notice">
+							<N8nIcon icon="sync-alt" size="xsmall" :spin="true" />
 							{{ $locale.baseText('parameterInputList.loadingFields') }}
-						</n8n-text>
+						</N8nText>
 					</template>
 				</Suspense>
-				<n8n-text v-else size="small" color="danger" class="async-notice">
-					<n8n-icon icon="exclamation-triangle" size="xsmall" />
+				<N8nText v-else size="small" color="danger" class="async-notice">
+					<N8nIcon icon="exclamation-triangle" size="xsmall" />
 					{{ $locale.baseText('parameterInputList.loadingError') }}
-				</n8n-text>
+				</N8nText>
 			</div>
 			<ResourceMapper
 				v-else-if="parameter.type === 'resourceMapper'"
@@ -602,7 +603,7 @@ function getParameterValue<T extends NodeParameterValueType = NodeParameterValue
 				v-else-if="displayNodeParameter(parameter) && credentialsParameterIndex !== index"
 				class="parameter-item"
 			>
-				<n8n-icon-button
+				<N8nIconButton
 					v-if="hideDelete !== true && !isReadOnly && !parameter.isNodeSetting"
 					type="tertiary"
 					text
@@ -611,7 +612,7 @@ function getParameterValue<T extends NodeParameterValueType = NodeParameterValue
 					class="delete-option"
 					:title="$locale.baseText('parameterInputList.delete')"
 					@click="deleteOption(parameter.name)"
-				></n8n-icon-button>
+				></N8nIconButton>
 
 				<ParameterInputFull
 					:parameter="parameter"
