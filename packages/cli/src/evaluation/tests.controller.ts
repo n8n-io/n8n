@@ -16,7 +16,7 @@ export class TestsController {
 	async getMany(req: TestsRequest.GetMany) {
 		const workflowIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
 
-		return await this.testsService.getMany(req.user, req.listQueryOptions, workflowIds);
+		return await this.testsService.getMany(req.listQueryOptions, workflowIds);
 	}
 
 	@Get('/:id')
