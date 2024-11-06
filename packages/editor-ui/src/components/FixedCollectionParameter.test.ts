@@ -14,7 +14,7 @@ describe('FixedCollectionParameter.vue', () => {
 		},
 	});
 	setActivePinia(pinia);
-	let props: any;
+	let props = {};
 
 	beforeEach(() => {
 		props = {
