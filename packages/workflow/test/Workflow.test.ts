@@ -1,6 +1,7 @@
 import { mock } from 'jest-mock-extended';
 
-import { IConnection, NodeConnectionType } from '@/Interfaces';
+import { NodeConnectionType } from '@/Interfaces';
+import type { IConnection } from '@/Interfaces';
 import type {
 	IBinaryKeyData,
 	IConnections,

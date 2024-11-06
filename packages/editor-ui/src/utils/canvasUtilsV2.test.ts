@@ -7,12 +7,8 @@ import {
 	parseCanvasConnectionHandleString,
 	checkOverlap,
 } from '@/utils/canvasUtilsV2';
-import {
-	IConnection,
-	type IConnections,
-	type INodeTypeDescription,
-	NodeConnectionType,
-} from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
+import type { IConnections, INodeTypeDescription, IConnection } from 'n8n-workflow';
 import type { CanvasConnection } from '@/types';
 import { CanvasConnectionMode } from '@/types';
 import type { INodeUi } from '@/Interface';
