@@ -28,7 +28,6 @@ import { useRolesStore } from '@/stores/roles.store';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { useI18n } from '@/composables/useI18n';
 import { telemetry } from '@/plugins/telemetry';
-import { WorkflowSharingRole } from '@/types/roles.types';
 
 const props = defineProps<{
 	data: {
