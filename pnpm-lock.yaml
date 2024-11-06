@@ -141,6 +141,9 @@ importers:
       '@types/supertest':
         specifier: ^6.0.2
         version: 6.0.2
+      cross-env:
+        specifier: ^7.0.3
+        version: 7.0.3
       jest:
         specifier: ^29.6.2
         version: 29.6.2(@types/node@18.16.16)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.6.2))
@@ -1526,9 +1529,6 @@ importers:
       '@vitest/coverage-v8':
         specifier: catalog:frontend
         version: 2.1.2(vitest@2.1.2(@types/node@18.16.16)(jsdom@23.0.1)(sass@1.64.1)(terser@5.16.1))
-      cross-env:
-        specifier: ^7.0.3
-        version: 7.0.3
       miragejs:
         specifier: ^0.1.48
         version: 0.1.48

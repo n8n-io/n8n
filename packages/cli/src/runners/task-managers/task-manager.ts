@@ -17,6 +17,9 @@ import type {
 } from 'n8n-workflow';
 import { createResultOk, createResultError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
+import { Service } from 'typedi';
+
+import { NodeTypes } from '@/node-types';
 
 import { DataRequestResponseBuilder } from './data-request-response-builder';
 
@@ -43,7 +46,8 @@ interface ExecuteFunctionObject {
 	[name: string]: ((...args: unknown[]) => unknown) | ExecuteFunctionObject;
 }
 
-export class TaskManager {
+@Service()
+export abstract class TaskManager {
 	requestAcceptRejects: Map<string, { accept: RequestAccept; reject: RequestReject }> = new Map();
 
 	taskAcceptRejects: Map<string, { accept: TaskAccept; reject: TaskReject }> = new Map();
@@ -51,6 +55,8 @@ export class TaskManager {
 	pendingRequests: Map<string, TaskRequest> = new Map();
 
 	tasks: Map<string, Task> = new Map();
+
+	constructor(private readonly nodeTypes: NodeTypes) {}
 
 	async startTask<TData, TError>(
 		additionalData: IWorkflowExecuteAdditionalData,
@@ -173,6 +179,9 @@ export class TaskManager {
 			case 'broker:taskdatarequest':
 				this.sendTaskData(message.taskId, message.requestId, message.requestParams);
 				break;
+			case 'broker:nodetypesrequest':
+				this.sendNodeTypes(message.taskId, message.requestId, message.requestParams);
+				break;
 			case 'broker:rpc':
 				void this.handleRpc(message.taskId, message.callId, message.name, message.params);
 				break;
@@ -236,6 +245,21 @@ export class TaskManager {
 			taskId,
 			requestId,
 			data: requestedData,
+		});
+	}
+
+	sendNodeTypes(
+		taskId: string,
+		requestId: string,
+		neededNodeTypes: BrokerMessage.ToRequester.NodeTypesRequest['requestParams'],
+	) {
+		const nodeTypes = this.nodeTypes.getNodeTypeDescriptions(neededNodeTypes);
+
+		this.sendMessage({
+			type: 'requester:nodetypesresponse',
+			taskId,
+			requestId,
+			nodeTypes,
 		});
 	}
 

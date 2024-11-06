@@ -8,9 +8,9 @@ import type {
 export class Rapid7InsightVmApi implements ICredentialType {
 	name = 'rapid7InsightVmApi';
 
-	displayName = 'Rapid7 InsightVm API';
+	displayName = 'Rapid7 InsightVM API';
 
-	documentationUrl = 'Rapid7 InsightVm';
+	documentationUrl = 'rapid7insightvm';
 
 	icon = {
 		light: 'file:icons/Rapid7InsightVm.svg',
@@ -18,7 +18,7 @@ export class Rapid7InsightVmApi implements ICredentialType {
 	} as const;
 
 	httpRequestNode = {
-		name: 'Rapid7 Insight Vm',
+		name: 'Rapid7 InsightVM',
 		docsUrl: 'https://docs.rapid7.com/',
 		apiBaseUrlPlaceholder: 'https://insight.rapid7.com/',
 	};

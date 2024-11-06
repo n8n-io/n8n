@@ -112,3 +112,6 @@ export const RPC_ALLOW_LIST = [
 	'helpers.httpRequest',
 	'logNodeOutput',
 ] as const;
+
+/** Node types needed for the runner to execute a task. */
+export type NeededNodeType = { name: string; version: number };
