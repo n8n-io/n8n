@@ -7,7 +7,12 @@ import {
 	parseCanvasConnectionHandleString,
 	checkOverlap,
 } from '@/utils/canvasUtilsV2';
-import { type IConnections, type INodeTypeDescription, NodeConnectionType } from 'n8n-workflow';
+import {
+	IConnection,
+	type IConnections,
+	type INodeTypeDescription,
+	NodeConnectionType,
+} from 'n8n-workflow';
 import type { CanvasConnection } from '@/types';
 import { CanvasConnectionMode } from '@/types';
 import type { INodeUi } from '@/Interface';
@@ -22,7 +27,7 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 	it('should map legacy connections to canvas connections', () => {
 		const legacyConnections: IConnections = {
 			'Node A': {
-				main: [[{ node: 'Node B', type: NodeConnectionType.Main, index: 0 }]],
+				[NodeConnectionType.Main]: [[{ node: 'Node B', type: NodeConnectionType.Main, index: 0 }]],
 			},
 		};
 		const nodes: INodeUi[] = [
@@ -93,7 +98,7 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 	it('should return empty array when no matching nodes found', () => {
 		const legacyConnections: IConnections = {
 			'Node A': {
-				main: [[{ node: 'Node B', type: NodeConnectionType.Main, index: 0 }]],
+				[NodeConnectionType.Main]: [[{ node: 'Node B', type: NodeConnectionType.Main, index: 0 }]],
 			},
 		};
 		const nodes: INodeUi[] = [];
@@ -138,7 +143,7 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 	it('should map multiple connections between the same nodes', () => {
 		const legacyConnections: IConnections = {
 			'Node A': {
-				main: [
+				[NodeConnectionType.Main]: [
 					[{ node: 'Node B', type: NodeConnectionType.Main, index: 0 }],
 					[{ node: 'Node B', type: NodeConnectionType.Main, index: 1 }],
 				],
@@ -249,7 +254,7 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 	it('should map multiple connections from one node to different nodes', () => {
 		const legacyConnections: IConnections = {
 			'Node A': {
-				main: [
+				[NodeConnectionType.Main]: [
 					[{ node: 'Node B', type: NodeConnectionType.Main, index: 0 }],
 					[{ node: 'Node C', type: NodeConnectionType.Main, index: 0 }],
 				],
@@ -368,13 +373,13 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 	it('should map complex node setup with mixed inputs and outputs', () => {
 		const legacyConnections: IConnections = {
 			'Node A': {
-				main: [[{ node: 'Node B', type: NodeConnectionType.Main, index: 0 }]],
+				[NodeConnectionType.Main]: [[{ node: 'Node B', type: NodeConnectionType.Main, index: 0 }]],
 				[NodeConnectionType.AiMemory]: [
 					[{ node: 'Node C', type: NodeConnectionType.AiMemory, index: 1 }],
 				],
 			},
 			'Node B': {
-				main: [[{ node: 'Node C', type: NodeConnectionType.Main, index: 0 }]],
+				[NodeConnectionType.Main]: [[{ node: 'Node C', type: NodeConnectionType.Main, index: 0 }]],
 			},
 		};
 		const nodes: INodeUi[] = [
@@ -527,7 +532,7 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 	it('should handle edge cases with invalid data gracefully', () => {
 		const legacyConnections: IConnections = {
 			'Node A': {
-				main: [
+				[NodeConnectionType.Main]: [
 					[{ node: 'Nonexistent Node', type: NodeConnectionType.Main, index: 0 }],
 					[{ node: 'Node B', type: NodeConnectionType.Main, index: 0 }],
 				],
@@ -571,6 +576,81 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 			index: 0,
 		});
 
+		const id = createCanvasConnectionId({
+			source,
+			target,
+			sourceHandle,
+			targetHandle,
+		});
+
+		expect(result).toEqual([
+			{
+				id,
+				source,
+				target,
+				sourceHandle,
+				targetHandle,
+				data: {
+					fromNodeName: nodes[0].name,
+					source: {
+						index: 1,
+						type: NodeConnectionType.Main,
+					},
+					target: {
+						index: 0,
+						type: NodeConnectionType.Main,
+					},
+				},
+			},
+		]);
+	});
+
+	// @issue https://linear.app/n8n/issue/N8N-7880/cannot-load-some-templates
+	it('should handle null connections gracefully', () => {
+		const legacyConnections: IConnections = {
+			'Node A': {
+				[NodeConnectionType.Main]: [
+					null as unknown as IConnection[],
+					[{ node: 'Node B', type: NodeConnectionType.Main, index: 0 }],
+				],
+			},
+		};
+		const nodes: INodeUi[] = [
+			{
+				id: '1',
+				name: 'Node A',
+				type: 'n8n-nodes-base.node',
+				typeVersion: 1,
+				position: [100, 100],
+				parameters: {},
+			},
+			{
+				id: '2',
+				name: 'Node B',
+				type: 'n8n-nodes-base.node',
+				typeVersion: 1,
+				position: [200, 200],
+				parameters: {},
+			},
+		];
+
+		const result: CanvasConnection[] = mapLegacyConnectionsToCanvasConnections(
+			legacyConnections,
+			nodes,
+		);
+
+		const source = nodes[0].id;
+		const sourceHandle = createCanvasConnectionHandleString({
+			mode: CanvasConnectionMode.Output,
+			type: NodeConnectionType.Main,
+			index: 1,
+		});
+		const target = nodes[1].id;
+		const targetHandle = createCanvasConnectionHandleString({
+			mode: CanvasConnectionMode.Input,
+			type: NodeConnectionType.Main,
+			index: 0,
+		});
 		const id = createCanvasConnectionId({
 			source,
 			target,

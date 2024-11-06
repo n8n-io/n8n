@@ -165,6 +165,8 @@ export class Workflow {
 	__getConnectionsByDestination(connections: IConnections): IConnections {
 		const returnConnection: IConnections = {};
 
+		console.log({ connections });
+
 		let connectionInfo;
 		let maxIndex: number;
 		for (const sourceNode in connections) {
@@ -177,14 +179,11 @@ export class Workflow {
 					continue;
 				}
 				for (const inputIndex in connections[sourceNode][type]) {
-					if (
-						!connections[sourceNode][type].hasOwnProperty(inputIndex) ||
-						!connections[sourceNode][type][inputIndex]
-					) {
+					if (!connections[sourceNode][type].hasOwnProperty(inputIndex)) {
 						continue;
 					}
 
-					for (connectionInfo of connections[sourceNode][type][inputIndex]) {
+					for (connectionInfo of connections[sourceNode][type][inputIndex] ?? []) {
 						if (!returnConnection.hasOwnProperty(connectionInfo.node)) {
 							returnConnection[connectionInfo.node] = {};
 						}
