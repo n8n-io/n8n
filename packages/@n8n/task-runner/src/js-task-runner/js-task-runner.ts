@@ -130,12 +130,14 @@ export class JsTaskRunner extends TaskRunner {
 		 * which is the same requirement for needing node types.
 		 */
 		if (neededBuiltIns.needsAllNodes) {
-			const nodeTypesInWorkflow = data.workflow.nodes.map((node) => ({
-				name: node.type,
-				version: node.typeVersion,
-			}));
+			const uniqueNodeTypes = new Map(
+				data.workflow.nodes.map((node) => [
+					`${node.type}|${node.typeVersion}`,
+					{ name: node.type, version: node.typeVersion },
+				]),
+			);
 
-			const unknownNodeTypes = this.nodeTypes.onlyUnknown(nodeTypesInWorkflow);
+			const unknownNodeTypes = this.nodeTypes.onlyUnknown([...uniqueNodeTypes.values()]);
 
 			const nodeTypes = await this.requestNodeTypes<INodeTypeDescription[]>(
 				task.taskId,
