@@ -66,6 +66,7 @@ const { modalName, destination, isNew, eventBus } = props;
 
 const i18n = useI18n();
 const { confirm } = useMessage();
+const telemetry = useTelemetry();
 const logStreamingStore = useLogStreamingStore();
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
@@ -336,7 +337,7 @@ async function saveDestination() {
 			return false;
 		};
 
-		useTelemetry().track('User updated log streaming destination', {
+		telemetry.track('User updated log streaming destination', {
 			instance_id: useRootStore().instanceId,
 			destination_type: destinationType,
 			is_complete: isComplete(),
@@ -377,7 +378,7 @@ function callEventBus(event: string, data: unknown) {
 					<div :class="$style.destinationInfo">
 						<InlineNameEdit
 							:model-value="headerLabel"
-							:subtitle="!isTypeAbstract ? $locale.baseText(typeLabelName) : 'Select type'"
+							:subtitle="!isTypeAbstract ? i18n.baseText(typeLabelName) : 'Select type'"
 							:readonly="isTypeAbstract"
 							type="Credential"
 							data-test-id="subtitle-showing-type"
@@ -402,7 +403,7 @@ function callEventBus(event: string, data: unknown) {
 						<template v-if="canManageLogStreaming">
 							<n8n-icon-button
 								v-if="nodeParameters && hasOnceBeenSaved"
-								:title="$locale.baseText('settings.log-streaming.delete')"
+								:title="i18n.baseText('settings.log-streaming.delete')"
 								icon="trash"
 								type="tertiary"
 								:disabled="isSaving"
@@ -413,7 +414,7 @@ function callEventBus(event: string, data: unknown) {
 							<SaveButton
 								:saved="unchanged && hasOnceBeenSaved"
 								:disabled="isTypeAbstract || unchanged"
-								:saving-label="$locale.baseText('settings.log-streaming.saving')"
+								:saving-label="i18n.baseText('settings.log-streaming.saving')"
 								data-test-id="destination-save-button"
 								@click="saveDestination"
 							/>
@@ -428,8 +429,8 @@ function callEventBus(event: string, data: unknown) {
 				<template v-if="isTypeAbstract">
 					<n8n-input-label
 						:class="$style.typeSelector"
-						:label="$locale.baseText('settings.log-streaming.selecttype')"
-						:tooltip-text="$locale.baseText('settings.log-streaming.selecttypehint')"
+						:label="i18n.baseText('settings.log-streaming.selecttype')"
+						:tooltip-text="i18n.baseText('settings.log-streaming.selecttypehint')"
 						:bold="false"
 						size="medium"
 						:underline="false"
@@ -446,7 +447,7 @@ function callEventBus(event: string, data: unknown) {
 								v-for="option in typeSelectOptions || []"
 								:key="option.value"
 								:value="option.value"
-								:label="$locale.baseText(option.label)"
+								:label="i18n.baseText(option.label)"
 							/>
 						</n8n-select>
 						<div class="mt-m text-right">
@@ -456,7 +457,7 @@ function callEventBus(event: string, data: unknown) {
 								:disabled="!typeSelectValue"
 								@click="onContinueAddClicked"
 							>
-								{{ $locale.baseText(`settings.log-streaming.continue`) }}
+								{{ i18n.baseText(`settings.log-streaming.continue`) }}
 							</n8n-button>
 						</div>
 					</n8n-input-label>
@@ -501,7 +502,7 @@ function callEventBus(event: string, data: unknown) {
 						<div class="">
 							<n8n-input-label
 								class="mb-m mt-m"
-								:label="$locale.baseText('settings.log-streaming.tab.events.title')"
+								:label="i18n.baseText('settings.log-streaming.tab.events.title')"
 								:bold="true"
 								size="medium"
 								:underline="false"
