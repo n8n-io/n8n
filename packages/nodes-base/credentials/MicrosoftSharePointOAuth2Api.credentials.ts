@@ -5,11 +5,20 @@ export class MicrosoftSharePointOAuth2Api implements ICredentialType {
 
 	extends = ['microsoftOAuth2Api'];
 
-	icon: Icon = 'file:icons/SharePoint.svg';
+	icon: Icon = {
+		light: 'file:icons/SharePoint.svg',
+		dark: 'file:icons/SharePoint.svg',
+	};
 
 	displayName = 'Microsoft SharePoint OAuth2 API';
 
 	documentationUrl = 'microsoft';
+
+	httpRequestNode = {
+		name: 'Microsoft SharePoint',
+		docsUrl: 'https://learn.microsoft.com/en-us/sharepoint/dev/apis/sharepoint-rest-graph',
+		apiBaseUrlPlaceholder: 'https://{subdomain}.sharepoint.com/_api/v2.0/',
+	};
 
 	properties: INodeProperties[] = [
 		{
