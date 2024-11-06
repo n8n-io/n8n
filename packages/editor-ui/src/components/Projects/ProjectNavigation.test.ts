@@ -1,12 +1,10 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
-import { createRouter, createMemoryHistory, useRouter } from 'vue-router';
+import { createRouter, createMemoryHistory } from 'vue-router';
 import { createProjectListItem } from '@/__tests__/data/projects';
 import ProjectsNavigation from '@/components/Projects//ProjectNavigation.vue';
 import { useProjectsStore } from '@/stores/projects.store';
 import { mockedStore } from '@/__tests__/utils';
-import { useToast } from '@/composables/useToast';
-import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 vi.mock('vue-router', async () => {
 	const actual = await vi.importActual('vue-router');
@@ -59,10 +57,7 @@ const renderComponent = createComponentRenderer(ProjectsNavigation, {
 	},
 });
 
-let router: ReturnType<typeof useRouter>;
-let toast: ReturnType<typeof useToast>;
 let projectsStore: ReturnType<typeof mockedStore<typeof useProjectsStore>>;
-let pageRedirectionHelper: ReturnType<typeof usePageRedirectionHelper>;
 
 const personalProjects = Array.from({ length: 3 }, createProjectListItem);
 const teamProjects = Array.from({ length: 3 }, () => createProjectListItem('team'));
@@ -70,10 +65,6 @@ const teamProjects = Array.from({ length: 3 }, () => createProjectListItem('team
 describe('ProjectsNavigation', () => {
 	beforeEach(() => {
 		createTestingPinia();
-
-		router = useRouter();
-		toast = useToast();
-		pageRedirectionHelper = usePageRedirectionHelper();
 
 		projectsStore = mockedStore(useProjectsStore);
 	});
