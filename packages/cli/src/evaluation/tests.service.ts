@@ -1,26 +1,32 @@
 import { Service } from 'typedi';
 
-import type { TestEntity } from '@/databases/entities/test-entity';
+import type { TestDefinition } from '@/databases/entities/test-definition';
 import type { User } from '@/databases/entities/user';
 import { TestRepository } from '@/databases/repositories/test.repository';
 import { validateEntity } from '@/generic-helpers';
 import type { ListQuery } from '@/requests';
-import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
+
+type TestDefinitionLike = Omit<
+	Partial<TestDefinition>,
+	'workflow' | 'evaluationWorkflow' | 'annotationTag'
+> & {
+	workflow?: { id: string };
+	evaluationWorkflow?: { id: string };
+	annotationTag?: { id: string };
+};
 
 @Service()
 export class TestsService {
-	constructor(
-		private testRepository: TestRepository,
-		private readonly workflowSharingService: WorkflowSharingService,
-	) {}
+	constructor(private testRepository: TestRepository) {}
 
 	toEntity(attrs: {
 		name?: string;
 		workflowId?: string;
 		evaluationWorkflowId?: string;
+		annotationTagId?: string;
 		id?: number;
 	}) {
-		const entity = {
+		const entity: TestDefinitionLike = {
 			name: attrs.name?.trim(),
 		};
 
@@ -37,6 +43,12 @@ export class TestsService {
 		if (attrs.evaluationWorkflowId) {
 			entity.evaluationWorkflow = {
 				id: attrs.evaluationWorkflowId,
+			};
+		}
+
+		if (attrs.annotationTagId) {
+			entity.annotationTag = {
+				id: attrs.annotationTagId,
 			};
 		}
 
@@ -57,7 +69,7 @@ export class TestsService {
 		return await this.testRepository.deleteById(id, accessibleWorkflowIds);
 	}
 
-	async getMany(user: User, options: ListQuery.Options, accessibleWorkflowIds: string[] = []) {
+	async getMany(options: ListQuery.Options, accessibleWorkflowIds: string[] = []) {
 		return await this.testRepository.getMany(accessibleWorkflowIds, options);
 	}
 }
