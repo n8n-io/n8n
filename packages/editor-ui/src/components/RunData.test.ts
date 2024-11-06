@@ -1,16 +1,24 @@
-import { waitFor } from '@testing-library/vue';
-import userEvent from '@testing-library/user-event';
-import { createTestingPinia } from '@pinia/testing';
-import { merge } from 'lodash-es';
-import RunData from '@/components/RunData.vue';
-import { SET_NODE_TYPE, STORES, VIEWS } from '@/constants';
-import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
+import { createTestWorkflowObject, defaultNodeDescriptions } from '@/__tests__/mocks';
 import { createComponentRenderer } from '@/__tests__/render';
+import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
+import RunData from '@/components/RunData.vue';
+import { SET_NODE_TYPE, STORES } from '@/constants';
 import type { INodeUi, IRunDataDisplayMode, NodePanelType } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { setActivePinia } from 'pinia';
-import { defaultNodeTypes } from '@/__tests__/mocks';
+import { createTestingPinia } from '@pinia/testing';
+import userEvent from '@testing-library/user-event';
+import { waitFor } from '@testing-library/vue';
 import type { INodeExecutionData } from 'n8n-workflow';
+import { setActivePinia } from 'pinia';
+import { useNodeTypesStore } from '../stores/nodeTypes.store';
+
+vi.mock('vue-router', () => {
+	return {
+		useRouter: () => ({}),
+		useRoute: () => ({ meta: {} }),
+		RouterLink: vi.fn(),
+	};
+});
 
 const nodes = [
 	{
@@ -112,9 +120,12 @@ describe('RunData', () => {
 			],
 			'binary',
 		);
-		expect(getByTestId('ndv-view-binary-data')).toBeInTheDocument();
-		expect(getByTestId('ndv-download-binary-data')).toBeInTheDocument();
-		expect(getByTestId('ndv-binary-data_0')).toBeInTheDocument();
+
+		await waitFor(() => {
+			expect(getByTestId('ndv-view-binary-data')).toBeInTheDocument();
+			expect(getByTestId('ndv-download-binary-data')).toBeInTheDocument();
+			expect(getByTestId('ndv-binary-data_0')).toBeInTheDocument();
+		});
 	});
 
 	it('should not render a view button for unknown content-type', async () => {
@@ -132,9 +143,12 @@ describe('RunData', () => {
 			],
 			'binary',
 		);
-		expect(queryByTestId('ndv-view-binary-data')).not.toBeInTheDocument();
-		expect(getByTestId('ndv-download-binary-data')).toBeInTheDocument();
-		expect(getByTestId('ndv-binary-data_0')).toBeInTheDocument();
+
+		await waitFor(() => {
+			expect(queryByTestId('ndv-view-binary-data')).not.toBeInTheDocument();
+			expect(getByTestId('ndv-download-binary-data')).toBeInTheDocument();
+			expect(getByTestId('ndv-binary-data_0')).toBeInTheDocument();
+		});
 	});
 
 	it('should not render pin data button when there is no output data', async () => {
@@ -201,10 +215,9 @@ describe('RunData', () => {
 		paneType: NodePanelType = 'output',
 	) => {
 		const pinia = createTestingPinia({
+			stubActions: false,
 			initialState: {
-				[STORES.SETTINGS]: {
-					settings: merge({}, SETTINGS_STORE_DEFAULT_STATE.settings),
-				},
+				[STORES.SETTINGS]: SETTINGS_STORE_DEFAULT_STATE,
 				[STORES.NDV]: {
 					output: {
 						displayMode,
@@ -248,16 +261,17 @@ describe('RunData', () => {
 						},
 					},
 				},
-				[STORES.NODE_TYPES]: {
-					nodeTypes: defaultNodeTypes,
-				},
 			},
 		});
 
 		setActivePinia(pinia);
 
 		const workflowsStore = useWorkflowsStore();
+		const nodeTypesStore = useNodeTypesStore();
+
+		nodeTypesStore.setNodeTypes(defaultNodeDescriptions);
 		vi.mocked(workflowsStore).getNodeByName.mockReturnValue(nodes[0]);
+
 		if (pinnedData) {
 			vi.mocked(workflowsStore).pinDataByNodeName.mockReturnValue(pinnedData);
 		}
@@ -267,24 +281,13 @@ describe('RunData', () => {
 				node: {
 					name: 'Test Node',
 				},
-				workflow: {
+				workflow: createTestWorkflowObject({
 					nodes,
-				},
-			},
-			data() {
-				return {
-					canPinData: true,
-					showData: true,
-				};
+				}),
 			},
 			global: {
 				stubs: {
 					RunDataPinButton: { template: '<button data-test-id="ndv-pin-data"></button>' },
-				},
-				mocks: {
-					$route: {
-						name: VIEWS.WORKFLOW,
-					},
 				},
 			},
 		})({
@@ -292,6 +295,7 @@ describe('RunData', () => {
 				node: {
 					id: '1',
 					name: 'Test Node',
+					type: SET_NODE_TYPE,
 					position: [0, 0],
 				},
 				nodes: [{ name: 'Test Node', indicies: [], depth: 1 }],
