@@ -17,6 +17,7 @@ import {
 	N8nButton,
 } from 'n8n-design-system';
 import ParameterInputList from './ParameterInputList.vue';
+import Draggable from 'vuedraggable';
 
 const locale = useI18n();
 
@@ -126,42 +127,6 @@ const getOptionProperties = (optionName: string) => {
 	return undefined;
 };
 
-const moveOptionDown = (optionName: string, index: number) => {
-	if (Array.isArray(mutableValues.value[optionName])) {
-		mutableValues.value[optionName].splice(
-			index + 1,
-			0,
-			mutableValues.value[optionName].splice(index, 1)[0],
-		);
-	}
-
-	const parameterData: ValueChangedEvent = {
-		name: getPropertyPath(optionName),
-		value: mutableValues.value[optionName],
-		type: 'optionsOrderChanged',
-	};
-
-	emit('valueChanged', parameterData);
-};
-
-const moveOptionUp = (optionName: string, index: number) => {
-	if (Array.isArray(mutableValues.value[optionName])) {
-		mutableValues.value?.[optionName].splice(
-			index - 1,
-			0,
-			mutableValues.value[optionName].splice(index, 1)[0],
-		);
-	}
-
-	const parameterData: ValueChangedEvent = {
-		name: getPropertyPath(optionName),
-		value: mutableValues.value[optionName],
-		type: 'optionsOrderChanged',
-	};
-
-	emit('valueChanged', parameterData);
-};
-
 const optionSelected = (optionName: string) => {
 	const option = getOptionProperties(optionName);
 	if (option === undefined) {
@@ -219,6 +184,15 @@ const optionSelected = (optionName: string) => {
 const valueChanged = (parameterData: IUpdateInformation) => {
 	emit('valueChanged', parameterData);
 };
+const onDragChange = (optionName: string) => {
+	const parameterData: ValueChangedEvent = {
+		name: getPropertyPath(optionName),
+		value: mutableValues.value[optionName],
+		type: 'optionsOrderChanged',
+	};
+
+	emit('valueChanged', parameterData);
+};
 </script>
 
 <template>
@@ -246,55 +220,54 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 				color="text-dark"
 			/>
 			<div v-if="multipleValues">
-				<div
-					v-for="(_, index) in mutableValues[property.name]"
-					:key="property.name + index"
-					class="parameter-item"
+				<Draggable
+					v-model="mutableValues[property.name]"
+					:options="{ handle: '.drag-handle' }"
+					@change="onDragChange(property.name)"
 				>
-					<div
-						:class="index ? 'border-top-dashed parameter-item-wrapper ' : 'parameter-item-wrapper'"
-					>
-						<div v-if="!isReadOnly" class="delete-option">
-							<N8nIconButton
-								type="tertiary"
-								text
-								size="mini"
-								icon="trash"
-								data-test-id="fixed-collection-delete"
-								:title="locale.baseText('fixedCollectionParameter.deleteItem')"
-								@click="deleteOption(property.name, index)"
-							></N8nIconButton>
-							<N8nIconButton
-								v-if="sortable && index !== 0"
-								type="tertiary"
-								text
-								size="mini"
-								icon="angle-up"
-								:title="locale.baseText('fixedCollectionParameter.moveUp')"
-								@click="moveOptionUp(property.name, index)"
-							></N8nIconButton>
-							<N8nIconButton
-								v-if="sortable && index !== mutableValues[property.name].length - 1"
-								type="tertiary"
-								text
-								size="mini"
-								icon="angle-down"
-								:title="locale.baseText('fixedCollectionParameter.moveDown')"
-								@click="moveOptionDown(property.name, index)"
-							></N8nIconButton>
+					<template #item="{ index }">
+						<div :key="property.name + '-' + index" class="parameter-item">
+							<div
+								:class="
+									index ? 'border-top-dashed parameter-item-wrapper ' : 'parameter-item-wrapper'
+								"
+							>
+								<div v-if="!isReadOnly" class="drag-option">
+									<N8nIconButton
+										v-if="sortable"
+										type="tertiary"
+										text
+										size="mini"
+										icon="grip-vertical"
+										:title="locale.baseText('fixedCollectionParameter.moveUp')"
+										class="drag-handle"
+									></N8nIconButton>
+								</div>
+								<Suspense>
+									<ParameterInputList
+										:parameters="property.values"
+										:node-values="nodeValues"
+										:path="getPropertyPath(property.name, index)"
+										:hide-delete="true"
+										:is-read-only="isReadOnly"
+										@value-changed="valueChanged"
+									/>
+								</Suspense>
+								<div v-if="!isReadOnly" class="delete-option">
+									<N8nIconButton
+										type="tertiary"
+										text
+										size="mini"
+										icon="trash"
+										data-test-id="fixed-collection-delete"
+										:title="locale.baseText('fixedCollectionParameter.deleteItem')"
+										@click="deleteOption(property.name, index)"
+									></N8nIconButton>
+								</div>
+							</div>
 						</div>
-						<Suspense>
-							<ParameterInputList
-								:parameters="property.values"
-								:node-values="nodeValues"
-								:path="getPropertyPath(property.name, index)"
-								:hide-delete="true"
-								:is-read-only="isReadOnly"
-								@value-changed="valueChanged"
-							/>
-						</Suspense>
-					</div>
-				</div>
+					</template>
+				</Draggable>
 			</div>
 			<div v-else class="parameter-item">
 				<div class="parameter-item-wrapper">
@@ -355,7 +328,8 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 .fixed-collection-parameter {
 	padding-left: var(--spacing-s);
 
-	.delete-option {
+	.delete-option,
+	.drag-option {
 		display: flex;
 		flex-direction: column;
 	}
@@ -392,6 +366,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 	margin: var(--spacing-xs) 0;
 }
 
+.parameter-item:hover > .parameter-item-wrapper > .drag-option,
 .parameter-item:hover > .parameter-item-wrapper > .delete-option {
 	opacity: 1;
 }
