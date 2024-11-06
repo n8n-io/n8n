@@ -20,7 +20,7 @@ export class OrchestrationService {
 
 	private subscriber: Subscriber;
 
-	protected isInitialized = false;
+	isInitialized = false;
 
 	private isMultiMainSetupLicensed = false;
 

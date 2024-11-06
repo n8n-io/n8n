@@ -19,7 +19,9 @@ import type {
 import { createResultOk, createResultError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import * as a from 'node:assert/strict';
-import Container from 'typedi';
+import Container, { Service } from 'typedi';
+
+import { NodeTypes } from '@/node-types';
 
 import { DataRequestResponseBuilder } from './data-request-response-builder';
 import { DataRequestResponseStripper } from './data-request-response-stripper';
@@ -47,7 +49,8 @@ interface ExecuteFunctionObject {
 	[name: string]: ((...args: unknown[]) => unknown) | ExecuteFunctionObject;
 }
 
-export class TaskManager {
+@Service()
+export abstract class TaskManager {
 	requestAcceptRejects: Map<string, { accept: RequestAccept; reject: RequestReject }> = new Map();
 
 	taskAcceptRejects: Map<string, { accept: TaskAccept; reject: TaskReject }> = new Map();
@@ -59,6 +62,8 @@ export class TaskManager {
 	private readonly runnerConfig = Container.get(TaskRunnersConfig);
 
 	private readonly dataResponseBuilder = new DataRequestResponseBuilder();
+
+	constructor(private readonly nodeTypes: NodeTypes) {}
 
 	async startTask<TData, TError>(
 		additionalData: IWorkflowExecuteAdditionalData,
@@ -181,6 +186,9 @@ export class TaskManager {
 			case 'broker:taskdatarequest':
 				this.sendTaskData(message.taskId, message.requestId, message.requestParams);
 				break;
+			case 'broker:nodetypesrequest':
+				this.sendNodeTypes(message.taskId, message.requestId, message.requestParams);
+				break;
 			case 'broker:rpc':
 				void this.handleRpc(message.taskId, message.callId, message.name, message.params);
 				break;
@@ -260,6 +268,21 @@ export class TaskManager {
 			taskId,
 			requestId,
 			data: strippedData,
+		});
+	}
+
+	sendNodeTypes(
+		taskId: string,
+		requestId: string,
+		neededNodeTypes: BrokerMessage.ToRequester.NodeTypesRequest['requestParams'],
+	) {
+		const nodeTypes = this.nodeTypes.getNodeTypeDescriptions(neededNodeTypes);
+
+		this.sendMessage({
+			type: 'requester:nodetypesresponse',
+			taskId,
+			requestId,
+			nodeTypes,
 		});
 	}
 
