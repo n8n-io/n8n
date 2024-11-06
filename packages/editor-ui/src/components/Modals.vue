@@ -67,6 +67,7 @@ import ProjectMoveResourceModal from '@/components/Projects/ProjectMoveResourceM
 import NewAssistantSessionModal from '@/components/AskAssistant/NewAssistantSessionModal.vue';
 import PromptMfaCodeModal from './PromptMfaCodeModal/PromptMfaCodeModal.vue';
 import CommunityPlusEnrollmentModal from '@/components/CommunityPlusEnrollmentModal.vue';
+import type { EventBus } from 'n8n-design-system';
 </script>
 
 <template>
@@ -177,7 +178,15 @@ import CommunityPlusEnrollmentModal from '@/components/CommunityPlusEnrollmentMo
 		</ModalRoot>
 
 		<ModalRoot :name="LOG_STREAM_MODAL_KEY">
-			<template #default="{ modalName, data }">
+			<template
+				#default="{
+					modalName,
+					data,
+				}: {
+					modalName: string;
+					data: { destination: Object; isNew: boolean; eventBus: EventBus };
+				}"
+			>
 				<EventDestinationSettingsModal
 					:modal-name="modalName"
 					:destination="data.destination"

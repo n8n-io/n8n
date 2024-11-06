@@ -113,8 +113,8 @@ export async function request(config: {
 			});
 		}
 
-		const errorResponseData = error.response.data;
-		if (errorResponseData !== undefined && errorResponseData.message !== undefined) {
+		const errorResponseData = error.response?.data;
+		if (errorResponseData?.message !== undefined) {
 			if (errorResponseData.name === 'NodeApiError') {
 				errorResponseData.httpStatusCode = error.response.status;
 				throw errorResponseData;

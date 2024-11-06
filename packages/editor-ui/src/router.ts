@@ -39,7 +39,6 @@ const SettingsCommunityNodesView = async () =>
 	await import('./views/SettingsCommunityNodesView.vue');
 const SettingsApiView = async () => await import('./views/SettingsApiView.vue');
 const SettingsLogStreamingView = async () => await import('./views/SettingsLogStreamingView.vue');
-const SettingsFakeDoorView = async () => await import('./views/SettingsFakeDoorView.vue');
 const SetupView = async () => await import('./views/SetupView.vue');
 const SigninView = async () => await import('./views/SigninView.vue');
 const SignupView = async () => await import('./views/SignupView.vue');
@@ -642,24 +641,6 @@ export const routes: RouteRecordRaw[] = [
 					},
 					telemetry: {
 						pageCategory: 'settings',
-					},
-				},
-			},
-			{
-				path: 'coming-soon/:featureId',
-				name: VIEWS.FAKE_DOOR,
-				components: {
-					settingsView: SettingsFakeDoorView,
-				},
-				meta: {
-					middleware: ['authenticated'],
-					telemetry: {
-						pageCategory: 'settings',
-						getProperties(route: RouteLocation) {
-							return {
-								feature: route.params.featureId,
-							};
-						},
 					},
 				},
 			},

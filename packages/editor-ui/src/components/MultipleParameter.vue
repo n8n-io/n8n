@@ -1,133 +1,113 @@
-<script lang="ts">
-import { defineComponent } from 'vue';
-import type { PropType } from 'vue';
-import type { IUpdateInformation } from '@/Interface';
+<script setup lang="ts">
+import { ref, watch, computed } from 'vue';
+import { get } from 'lodash-es';
 import type { INodeParameters, INodeProperties } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
+
+import { useI18n } from '@/composables/useI18n';
+import type { IUpdateInformation } from '@/Interface';
 import CollectionParameter from '@/components/CollectionParameter.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 
-import { get } from 'lodash-es';
+defineOptions({ name: 'MultipleParameter' });
 
-export default defineComponent({
-	name: 'MultipleParameter',
-	components: {
-		CollectionParameter,
-		ParameterInputFull,
+const props = withDefaults(
+	defineProps<{
+		nodeValues: INodeParameters;
+		parameter: INodeProperties;
+		path: string;
+		values?: INodeParameters[];
+		isReadOnly?: boolean;
+	}>(),
+	{
+		values: () => [] as INodeParameters[],
+		isReadOnly: false,
 	},
-	props: {
-		nodeValues: {
-			type: Object as PropType<INodeParameters>,
-			required: true,
-		},
-		parameter: {
-			type: Object as PropType<INodeProperties>,
-			required: true,
-		},
-		path: {
-			type: String,
-			required: true,
-		},
-		values: {
-			type: Array as PropType<INodeParameters[]>,
-			default: () => [],
-		},
-		isReadOnly: {
-			type: Boolean,
-			default: false,
-		},
+);
+
+const emit = defineEmits<{
+	valueChanged: [parameterData: IUpdateInformation];
+}>();
+
+const i18n = useI18n();
+
+const mutableValues = ref<INodeParameters[]>(deepCopy(props.values));
+
+watch(
+	() => props.values,
+	(newValues) => {
+		mutableValues.value = deepCopy(newValues);
 	},
-	data() {
-		return {
-			mutableValues: [] as INodeParameters[],
-		};
-	},
-	computed: {
-		addButtonText(): string {
-			if (
-				!this.parameter.typeOptions ||
-				(this.parameter.typeOptions && !this.parameter.typeOptions.multipleValueButtonText)
-			) {
-				return this.$locale.baseText('multipleParameter.addItem');
-			}
+	{ deep: true },
+);
 
-			return this.$locale.nodeText().multipleValueButtonText(this.parameter);
-		},
-		hideDelete(): boolean {
-			return this.parameter.options?.length === 1;
-		},
-		sortable(): boolean {
-			return !!this.parameter.typeOptions?.sortable;
-		},
-	},
-	watch: {
-		values: {
-			handler(newValues: INodeParameters[]) {
-				this.mutableValues = deepCopy(newValues);
-			},
-			deep: true,
-		},
-	},
-	created() {
-		this.mutableValues = deepCopy(this.values);
-	},
-	methods: {
-		addItem() {
-			const name = this.getPath();
-			const currentValue = get(this.nodeValues, name, []) as INodeParameters[];
+const addButtonText = computed(() => {
+	if (!props.parameter.typeOptions || !props.parameter.typeOptions.multipleValueButtonText) {
+		return i18n.baseText('multipleParameter.addItem');
+	}
 
-			currentValue.push(deepCopy(this.parameter.default as INodeParameters));
-
-			const parameterData = {
-				name,
-				value: currentValue,
-			};
-
-			this.$emit('valueChanged', parameterData);
-		},
-		deleteItem(index: number) {
-			const parameterData = {
-				name: this.getPath(index),
-				value: undefined,
-			};
-
-			this.$emit('valueChanged', parameterData);
-		},
-		getPath(index?: number): string {
-			return this.path + (index !== undefined ? `[${index}]` : '');
-		},
-		moveOptionDown(index: number) {
-			this.mutableValues.splice(index + 1, 0, this.mutableValues.splice(index, 1)[0]);
-
-			const parameterData = {
-				name: this.path,
-				value: this.mutableValues,
-			};
-
-			this.$emit('valueChanged', parameterData);
-		},
-		moveOptionUp(index: number) {
-			this.mutableValues.splice(index - 1, 0, this.mutableValues.splice(index, 1)[0]);
-
-			const parameterData = {
-				name: this.path,
-				value: this.mutableValues,
-			};
-
-			this.$emit('valueChanged', parameterData);
-		},
-		valueChanged(parameterData: IUpdateInformation) {
-			this.$emit('valueChanged', parameterData);
-		},
-	},
+	return i18n.nodeText().multipleValueButtonText(props.parameter);
 });
+
+const hideDelete = computed(() => props.parameter.options?.length === 1);
+
+const sortable = computed(() => !!props.parameter.typeOptions?.sortable);
+
+const addItem = () => {
+	const name = getPath();
+	const currentValue = get(props.nodeValues, name, []) as INodeParameters[];
+
+	currentValue.push(deepCopy(props.parameter.default as INodeParameters));
+
+	const parameterData = {
+		name,
+		value: currentValue,
+	};
+
+	emit('valueChanged', parameterData);
+};
+
+const deleteItem = (index: number) => {
+	const parameterData = {
+		name: getPath(index),
+		value: undefined,
+	};
+
+	emit('valueChanged', parameterData);
+};
+
+const getPath = (index?: number) => {
+	return props.path + (index !== undefined ? `[${index}]` : '');
+};
+
+const moveOptionDown = (index: number) => {
+	mutableValues.value.splice(index + 1, 0, mutableValues.value.splice(index, 1)[0]);
+
+	emit('valueChanged', {
+		name: props.path,
+		value: mutableValues.value,
+	});
+};
+
+const moveOptionUp = (index: number) => {
+	mutableValues.value.splice(index - 1, 0, mutableValues.value.splice(index, 1)[0]);
+
+	emit('valueChanged', {
+		name: props.path,
+		value: mutableValues.value,
+	});
+};
+
+const valueChanged = (parameterData: IUpdateInformation) => {
+	emit('valueChanged', parameterData);
+};
 </script>
 
 <template>
 	<div class="duplicate-parameter" @keydown.stop>
 		<n8n-input-label
-			:label="$locale.nodeText().inputLabelDisplayName(parameter, path)"
-			:tooltip-text="$locale.nodeText().inputLabelDescription(parameter, path)"
+			:label="i18n.nodeText().inputLabelDisplayName(parameter, path)"
+			:tooltip-text="i18n.nodeText().inputLabelDescription(parameter, path)"
 			:underline="true"
 			size="small"
 			color="text-dark"
@@ -142,7 +122,7 @@ export default defineComponent({
 			<div v-if="!isReadOnly" class="delete-item clickable">
 				<font-awesome-icon
 					icon="trash"
-					:title="$locale.baseText('multipleParameter.deleteItem')"
+					:title="i18n.baseText('multipleParameter.deleteItem')"
 					@click="deleteItem(index)"
 				/>
 				<div v-if="sortable">
@@ -150,14 +130,14 @@ export default defineComponent({
 						v-if="index !== 0"
 						icon="angle-up"
 						class="clickable"
-						:title="$locale.baseText('multipleParameter.moveUp')"
+						:title="i18n.baseText('multipleParameter.moveUp')"
 						@click="moveOptionUp(index)"
 					/>
 					<font-awesome-icon
 						v-if="index !== mutableValues.length - 1"
 						icon="angle-down"
 						class="clickable"
-						:title="$locale.baseText('multipleParameter.moveDown')"
+						:title="i18n.baseText('multipleParameter.moveDown')"
 						@click="moveOptionDown(index)"
 					/>
 				</div>
@@ -194,7 +174,7 @@ export default defineComponent({
 				class="no-items-exist"
 			>
 				<n8n-text size="small">{{
-					$locale.baseText('multipleParameter.currentlyNoItemsExist')
+					i18n.baseText('multipleParameter.currentlyNoItemsExist')
 				}}</n8n-text>
 			</div>
 			<n8n-button

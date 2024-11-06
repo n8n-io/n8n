@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "1.65.0",
+  "version": "1.66.0",
   "description": "Base nodes of n8n",
   "main": "index.js",
   "scripts": {
@@ -286,6 +286,7 @@
       "dist/credentials/QuickBooksOAuth2Api.credentials.js",
       "dist/credentials/RabbitMQ.credentials.js",
       "dist/credentials/RaindropOAuth2Api.credentials.js",
+      "dist/credentials/Rapid7InsightVmApi.credentials.js",
       "dist/credentials/RecordedFutureApi.credentials.js",
       "dist/credentials/RedditOAuth2Api.credentials.js",
       "dist/credentials/Redis.credentials.js",

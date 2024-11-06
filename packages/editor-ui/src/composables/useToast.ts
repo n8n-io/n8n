@@ -11,6 +11,7 @@ import { VIEWS } from '@/constants';
 import type { ApplicationError } from 'n8n-workflow';
 import { useStyles } from './useStyles';
 import { useCanvasStore } from '@/stores/canvas.store';
+import { useSettingsStore } from '@/stores/settings.store';
 
 export interface NotificationErrorWithNodeAndDescription extends ApplicationError {
 	node: {
@@ -27,6 +28,7 @@ export function useToast() {
 	const uiStore = useUIStore();
 	const externalHooks = useExternalHooks();
 	const i18n = useI18n();
+	const settingsStore = useSettingsStore();
 	const { APP_Z_INDEXES } = useStyles();
 	const canvasStore = useCanvasStore();
 
@@ -34,7 +36,7 @@ export function useToast() {
 		dangerouslyUseHTMLString: false,
 		position: 'bottom-right',
 		zIndex: APP_Z_INDEXES.TOASTS, // above NDV and modal overlays
-		offset: 64,
+		offset: settingsStore.isAiAssistantEnabled || canvasStore.isChatPanelOpen ? 64 : 0,
 		appendTo: '#app-grid',
 		customClass: 'content-toast',
 	};
