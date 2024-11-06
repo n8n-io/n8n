@@ -302,7 +302,7 @@ export abstract class TaskRunner {
 	) {
 		const requestId = nanoid();
 
-		const p = new Promise<T>((resolve, reject) => {
+		const nodeTypesPromise = new Promise<T>((resolve, reject) => {
 			this.nodeTypesRequests.set(requestId, {
 				requestId,
 				resolve: resolve as (data: unknown) => void,
@@ -318,7 +318,7 @@ export abstract class TaskRunner {
 		});
 
 		try {
-			return await p;
+			return await nodeTypesPromise;
 		} finally {
 			this.nodeTypesRequests.delete(requestId);
 		}
