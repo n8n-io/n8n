@@ -122,7 +122,7 @@ const badge = computed(() => {
 		:disabled="disabled"
 		:size="size"
 		:circle="circle"
-		:node-type-name="nodeName ?? nodeType?.displayName ?? ''"
+		:node-type-name="nodeName ? nodeName : nodeType?.displayName"
 		:show-tooltip="showTooltip"
 		:tooltip-position="tooltipPosition"
 		:badge="badge"

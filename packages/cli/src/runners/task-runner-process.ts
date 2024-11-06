@@ -92,7 +92,7 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 	}
 
 	startNode(grantToken: string, n8nUri: string) {
-		const startScript = require.resolve('@n8n/task-runner');
+		const startScript = require.resolve('@n8n/task-runner/start');
 
 		return spawn('node', [startScript], {
 			env: this.getProcessEnvVars(grantToken, n8nUri),
