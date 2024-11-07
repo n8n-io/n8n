@@ -1432,15 +1432,17 @@ export default defineComponent({
 			<n8n-text size="small" v-n8n-html="hint.message"></n8n-text>
 		</n8n-callout>
 
-		<div :class="$style.execution">
-			<n8n-button
-				v-if="subWorkflowData && !(paneType === 'input' && hasInputOverwrite)"
-				:label="`Open ${
-					nodeType?.group?.includes('trigger') ? 'parent' : 'sub'
-				} execution ${subWorkflowData.executionId}`"
-				type="secondary"
+		<div :class="$style.parentExecutionInfo">
+			<a
+				v-if="
+					subWorkflowData &&
+					!(paneType === 'input' && hasInputOverwrite) &&
+					nodeType?.group?.includes('trigger')
+				"
 				@click.stop="openExecutionInNewTab(subWorkflowData.executionId, subWorkflowData.workflowId)"
-			/>
+			>
+				{{ $locale.baseText('runData.openParentExecution') }}
+			</a>
 			<div v-if="itemSubWorkflowData.length">
 				<n8n-select
 					size="small"
@@ -2167,6 +2169,11 @@ export default defineComponent({
 
 .schema {
 	padding: 0 var(--spacing-s);
+}
+
+.parentExecutionInfo {
+	font-size: var(--font-size-xs);
+	padding: 0 0 var(--spacing-s) var(--spacing-s);
 }
 </style>
 
