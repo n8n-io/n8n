@@ -964,7 +964,6 @@ onBeforeUnmount(() => {
 					@update:model-value="nameChanged"
 				></NodeTitle>
 				<div v-if="isExecutable">
-					<!-- here -->
 					<NodeExecuteButton
 						v-if="!blockUI && node && nodeValid"
 						data-test-id="node-execute-button"
