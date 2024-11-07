@@ -2,7 +2,7 @@ import { TaskRunnersConfig } from '@n8n/config';
 import { strict } from 'node:assert';
 import { Service } from 'typedi';
 
-// import { Time } from '@/constants';
+import { Time } from '@/constants';
 import { OnShutdown } from '@/decorators/on-shutdown';
 import { Logger } from '@/logging/logger.service';
 import { TaskRunnerProcess } from '@/runners/task-runner-process';
@@ -80,11 +80,8 @@ export class RunnerLifecycleManager {
 	}
 
 	private startIdleChecks() {
-		// const idleTimeout = this.runnerConfig.idleTimeout * Time.minutes.toMilliseconds;
-		// const idleChecksFrequency = this.runnerConfig.idleChecksFrequency * Time.minutes.toMilliseconds;
-
-		const idleTimeout = 10_000;
-		const idleChecksFrequency = 10_000;
+		const idleTimeout = this.runnerConfig.idleTimeout * Time.minutes.toMilliseconds;
+		const idleChecksFrequency = this.runnerConfig.idleChecksFrequency * Time.minutes.toMilliseconds;
 
 		this.idleChecksInterval = setInterval(() => {
 			if (this.state === 'running' && Date.now() - this.lastActivityTime > idleTimeout) {
