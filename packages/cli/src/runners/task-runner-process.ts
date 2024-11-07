@@ -77,7 +77,7 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 	}
 
 	async start() {
-		a.ok(!this.process, 'Task Runner Process already running');
+		if (this.isRunning) return;
 
 		const grantToken = await this.authService.createGrantToken();
 

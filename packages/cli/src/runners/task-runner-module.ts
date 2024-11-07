@@ -4,6 +4,7 @@ import Container, { Service } from 'typedi';
 
 import type { TaskRunnerProcess } from '@/runners/task-runner-process';
 
+import { RunnerLifecycleEvents } from './runner-lifecycle-manager';
 import { TaskRunnerWsServer } from './runner-ws-server';
 import type { LocalTaskManager } from './task-managers/local-task-manager';
 import type { TaskRunnerServer } from './task-runner-server';
@@ -23,20 +24,29 @@ export class TaskRunnerModule {
 
 	private taskRunnerProcess: TaskRunnerProcess | undefined;
 
-	constructor(private readonly runnerConfig: TaskRunnersConfig) {}
+	constructor(
+		private readonly runnerConfig: TaskRunnersConfig,
+		private readonly lifecycleEvents: RunnerLifecycleEvents,
+	) {
+		this.lifecycleEvents.on('runner:started', async () => {
+			const { InternalTaskRunnerDisconnectAnalyzer } = await import(
+				'@/runners/internal-task-runner-disconnect-analyzer'
+			);
+			this.taskRunnerWsServer?.setDisconnectAnalyzer(
+				Container.get(InternalTaskRunnerDisconnectAnalyzer),
+			);
+		});
+
+		this.lifecycleEvents.on('runner:stopped', () => {
+			this.taskRunnerWsServer?.setDisconnectAnalyzer(undefined);
+		});
+	}
 
 	async start() {
 		a.ok(!this.runnerConfig.disabled, 'Task runner is disabled');
 
 		await this.loadTaskManager();
 		await this.loadTaskRunnerServer();
-
-		if (
-			this.runnerConfig.mode === 'internal_childprocess' ||
-			this.runnerConfig.mode === 'internal_launcher'
-		) {
-			await this.startInternalTaskRunner();
-		}
 	}
 
 	async stop() {
@@ -66,20 +76,5 @@ export class TaskRunnerModule {
 		this.taskRunnerWsServer = Container.get(TaskRunnerWsServer);
 
 		await this.taskRunnerHttpServer.start();
-	}
-
-	private async startInternalTaskRunner() {
-		a.ok(this.taskRunnerWsServer, 'Task Runner WS Server not loaded');
-
-		const { TaskRunnerProcess } = await import('@/runners/task-runner-process');
-		this.taskRunnerProcess = Container.get(TaskRunnerProcess);
-		await this.taskRunnerProcess.start();
-
-		const { InternalTaskRunnerDisconnectAnalyzer } = await import(
-			'@/runners/internal-task-runner-disconnect-analyzer'
-		);
-		this.taskRunnerWsServer.setDisconnectAnalyzer(
-			Container.get(InternalTaskRunnerDisconnectAnalyzer),
-		);
 	}
 }

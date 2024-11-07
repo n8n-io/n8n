@@ -4,7 +4,7 @@ import type WebSocket from 'ws';
 
 import { Logger } from '@/logging/logger.service';
 
-import { DefaultTaskRunnerDisconnectAnalyzer } from './default-task-runner-disconnect-analyzer';
+import type { DefaultTaskRunnerDisconnectAnalyzer } from './default-task-runner-disconnect-analyzer';
 import type {
 	DisconnectAnalyzer,
 	TaskRunnerServerInitRequest,
@@ -23,10 +23,10 @@ export class TaskRunnerWsServer {
 	constructor(
 		private readonly logger: Logger,
 		private readonly taskBroker: TaskBroker,
-		private disconnectAnalyzer: DefaultTaskRunnerDisconnectAnalyzer,
+		private disconnectAnalyzer: DefaultTaskRunnerDisconnectAnalyzer | undefined,
 	) {}
 
-	setDisconnectAnalyzer(disconnectAnalyzer: DisconnectAnalyzer) {
+	setDisconnectAnalyzer(disconnectAnalyzer: DisconnectAnalyzer | undefined) {
 		this.disconnectAnalyzer = disconnectAnalyzer;
 	}
 
@@ -99,7 +99,7 @@ export class TaskRunnerWsServer {
 
 	async removeConnection(id: TaskRunner['id']) {
 		const connection = this.runnerConnections.get(id);
-		if (connection) {
+		if (connection && this.disconnectAnalyzer) {
 			const disconnectReason = await this.disconnectAnalyzer.determineDisconnectReason(id);
 			this.taskBroker.deregisterRunner(id, disconnectReason);
 			connection.close();

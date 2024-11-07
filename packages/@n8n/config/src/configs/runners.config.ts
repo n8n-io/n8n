@@ -50,4 +50,12 @@ export class TaskRunnersConfig {
 	/** How many concurrent tasks can a runner execute at a time */
 	@Env('N8N_RUNNERS_MAX_CONCURRENCY')
 	maxConcurrency: number = 5;
+
+	/** How long (in minutes) until shutting down an idle runner. */
+	@Env('N8N_RUNNERS_IDLE_TIMEOUT')
+	idleTimeout: number = 5;
+
+	/** How often (in minutes) to check if a runner is idle. */
+	@Env('N8N_RUNNERS_IDLE_CHECKS_FREQUENCY')
+	idleChecksFrequency: number = 1;
 }

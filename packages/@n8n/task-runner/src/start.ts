@@ -20,6 +20,7 @@ function createSignalHandler(signal: string) {
 			if (runner) {
 				await runner.stop();
 				runner = undefined;
+				console.log('Task runner stopped');
 			}
 		} catch (e) {
 			const error = ensureError(e);

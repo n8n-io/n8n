@@ -4,13 +4,14 @@ import type {
 	RunnerMessage,
 	TaskResultData,
 } from '@n8n/task-runner';
-import { ApplicationError } from 'n8n-workflow';
+import { ApplicationError, ensureError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { Service } from 'typedi';
 
 import { Logger } from '@/logging/logger.service';
 
 import { TaskRejectError } from './errors';
+import { RunnerLifecycleManager } from './runner-lifecycle-manager';
 
 export interface TaskRunner {
 	id: string;
@@ -78,7 +79,10 @@ export class TaskBroker {
 
 	private pendingTaskRequests: TaskRequest[] = [];
 
-	constructor(private readonly logger: Logger) {}
+	constructor(
+		private readonly logger: Logger,
+		private readonly lifecycleManager: RunnerLifecycleManager,
+	) {}
 
 	expireTasks() {
 		const now = process.hrtime.bigint();
@@ -269,7 +273,7 @@ export class TaskBroker {
 				await this.cancelTask(message.taskId, message.reason);
 				break;
 			case 'requester:taskrequest':
-				this.taskRequested({
+				await this.taskRequested({
 					taskType: message.taskType,
 					requestId: message.requestId,
 					requesterId,
@@ -553,7 +557,18 @@ export class TaskBroker {
 		}
 	}
 
-	taskRequested(request: TaskRequest) {
+	async taskRequested(request: TaskRequest) {
+		try {
+			await this.lifecycleManager.ensureRunnerAvailable();
+		} catch (e) {
+			const error = ensureError(e);
+			this.logger.error('Failed to start task runner', { error });
+			this.handleRunnerReject(request.requestId, `Task runner unavailable: ${error.message}`);
+			return;
+		}
+
+		this.lifecycleManager.updateLastActivityTime();
+
 		this.pendingTaskRequests.push(request);
 		this.settleTasks();
 	}
