@@ -1,55 +1,46 @@
 import type {
 	IExecuteFunctions,
-	ILoadOptionsFunctions,
 	IDataObject,
 	JsonObject,
 	IHttpRequestMethods,
-	IRequestOptions,
+	IHttpRequestOptions,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 export async function gotifyApiRequest(
-	this: IExecuteFunctions | ILoadOptionsFunctions,
+	context: IExecuteFunctions,
 	method: IHttpRequestMethods,
 	path: string,
-
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string | undefined,
 	_option = {},
 ): Promise<any> {
-	const credentials = await this.getCredentials('gotifyApi');
+	const credentials = await context.getCredentials('gotifyApi');
 
-	const options: IRequestOptions = {
+	const options: IHttpRequestOptions = {
 		method,
-		headers: {
-			'X-Gotify-Key': method === 'POST' ? credentials.appApiToken : credentials.clientApiToken,
-			accept: 'application/json',
-		},
 		body,
 		qs,
-		uri: uri || `${credentials.url}${path}`,
+		url: uri ?? `${credentials.url}${path}`,
 		json: true,
-		rejectUnauthorized: !credentials.ignoreSSLIssues as boolean,
+		skipSslCertificateValidation: credentials.ignoreSSLIssues as boolean,
 	};
 	try {
 		if (Object.keys(body as IDataObject).length === 0) {
 			delete options.body;
 		}
-
-		//@ts-ignore
-		return await this.helpers.request.call(this, options);
+		return await context.helpers.httpRequestWithAuthentication.call(context, 'gotifyApi', options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error as JsonObject);
+		throw new NodeApiError(context.getNode(), error as JsonObject);
 	}
 }
 
 export async function gotifyApiRequestAllItems(
-	this: IExecuteFunctions | ILoadOptionsFunctions,
+	context: IExecuteFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
 	endpoint: string,
-
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
@@ -59,7 +50,7 @@ export async function gotifyApiRequestAllItems(
 	let uri: string | undefined;
 	query.limit = 100;
 	do {
-		responseData = await gotifyApiRequest.call(this, method, endpoint, body, query, uri);
+		responseData = await gotifyApiRequest(context, method, endpoint, body, query, uri);
 		if (responseData.paging.next) {
 			uri = responseData.paging.next;
 		}
