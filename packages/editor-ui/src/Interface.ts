@@ -626,7 +626,6 @@ export type WorkflowCallerPolicyDefaultOption = 'any' | 'none' | 'workflowsFromA
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
 	errorWorkflow?: string;
-	saveManualExecutions?: boolean;
 	timezone?: string;
 	executionTimeout?: number;
 	maxExecutionTimeout?: number;
