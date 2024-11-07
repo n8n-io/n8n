@@ -1377,7 +1377,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		nodeHelpers.credentialsUpdated.value = false;
 	}
 
-	async function initializeWorkspace(data: IWorkflowDb) {
+	function initializeWorkspace(data: IWorkflowDb) {
 		workflowHelpers.initState(data);
 
 		data.nodes.forEach((node) => {
