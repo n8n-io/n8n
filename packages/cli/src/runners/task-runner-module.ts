@@ -47,6 +47,8 @@ export class TaskRunnerModule {
 
 		await this.loadTaskManager();
 		await this.loadTaskRunnerServer();
+
+		// we defer starting the runner until the broker receives a task request
 	}
 
 	async stop() {
