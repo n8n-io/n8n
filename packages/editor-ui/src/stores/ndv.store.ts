@@ -1,9 +1,13 @@
 import type {
+	Draggable,
+	InputPanel,
 	IRunDataDisplayMode,
+	MainPanelDimensions,
+	MainPanelType,
 	NDVState,
 	NodePanelType,
+	OutputPanel,
 	TargetItem,
-	XYPosition,
 } from '@/Interface';
 import { useStorage } from '@/composables/useStorage';
 import {
@@ -19,43 +23,19 @@ import { v4 as uuid } from 'uuid';
 import { useWorkflowsStore } from './workflows.store';
 import { computed, ref } from 'vue';
 
-type InputPanel = {
-	displayMode: IRunDataDisplayMode;
-	nodeName?: string;
-	run?: number;
-	branch?: number;
-	data: {
-		isEmpty: boolean;
-	};
-};
-
-type OutputPanel = {
-	branch?: number;
-	displayMode: IRunDataDisplayMode;
-	data: {
-		isEmpty: boolean;
-	};
-	editMode: {
-		enabled: boolean;
-		value: string;
-	};
-};
-
-type Draggable = {
-	isDragging: boolean;
-	type: string;
-	data: string;
-	dimensions: DOMRect | null;
-	activeTarget: { id: string; stickyPosition: null | XYPosition } | null;
-};
-
 export const useNDVStore = defineStore(STORES.NDV, () => {
 	const localStorageMappingIsOnboarded = useStorage(LOCAL_STORAGE_MAPPING_IS_ONBOARDED);
 	const localStorageTableHoverIsOnboarded = useStorage(LOCAL_STORAGE_TABLE_HOVER_IS_ONBOARDED);
 	const localStorageAutoCompleteIsOnboarded = useStorage(LOCAL_STORAGE_AUTOCOMPLETE_IS_ONBOARDED);
 
 	const activeNodeName = ref<string | null>(null);
-	const mainPanelDimensions = ref<Record<string, Record<string, number>>>({});
+	const mainPanelDimensions = ref<MainPanelDimensions>({
+		unknown: { relativeLeft: 1, relativeRight: 1, relativeWidth: 1 },
+		regular: { relativeLeft: 1, relativeRight: 1, relativeWidth: 1 },
+		dragless: { relativeLeft: 1, relativeRight: 1, relativeWidth: 1 },
+		inputless: { relativeLeft: 1, relativeRight: 1, relativeWidth: 1 },
+		wide: { relativeLeft: 1, relativeRight: 1, relativeWidth: 1 },
+	});
 	const pushRef = ref('');
 	const input = ref<InputPanel>({
 		displayMode: 'schema',
@@ -153,13 +133,6 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 
 	const outputPanelEditMode = computed(() => output.value.editMode);
 
-	const getMainPanelDimensions = computed(() => {
-		return (panelType: string) => {
-			const defaults = { relativeRight: 1, relativeLeft: 1, relativeWidth: 1 };
-			return { ...defaults, ...mainPanelDimensions.value[panelType] };
-		};
-	});
-
 	const draggableStickyPos = computed(() => draggable.value.activeTarget?.stickyPosition ?? null);
 
 	const ndvNodeInputNumber = computed(() => {
@@ -241,15 +214,13 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 	};
 
 	const setMainPanelDimensions = (params: {
-		panelType: string;
+		panelType: MainPanelType;
 		dimensions: { relativeLeft?: number; relativeRight?: number; relativeWidth?: number };
 	}): void => {
-		mainPanelDimensions.value = {
-			...mainPanelDimensions.value,
-			[params.panelType]: {
-				...mainPanelDimensions.value[params.panelType],
-				...params.dimensions,
-			},
+		const defaultDimensions = { relativeLeft: 1, relativeRight: 1, relativeWidth: 1 };
+		mainPanelDimensions.value[params.panelType] = {
+			...defaultDimensions,
+			...params.dimensions,
 		};
 	};
 
@@ -421,7 +392,6 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 		isAutocompleteOnboarded,
 		expressionOutputItemIndex,
 		isTableHoverOnboarded,
-		getMainPanelDimensions,
 		mainPanelDimensions,
 		setActiveNodeName,
 		setInputNodeName,
