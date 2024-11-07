@@ -16,6 +16,10 @@ export type RunnerLifecycleEventMap = {
 @Service()
 export class RunnerLifecycleEvents extends TypedEmitter<RunnerLifecycleEventMap> {}
 
+/**
+ * Responsible for launching a task runner if none available
+ * and shutting it down if idle for too long.
+ */
 @Service()
 export class RunnerLifecycleManager {
 	private state: 'stopped' | 'starting' | 'running' | 'stopping' = 'stopped';

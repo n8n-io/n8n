@@ -1,3 +1,4 @@
+import { TaskRunnersConfig } from '@n8n/config';
 import type {
 	BrokerMessage,
 	RequesterMessage,
@@ -6,12 +7,11 @@ import type {
 } from '@n8n/task-runner';
 import { ApplicationError, ensureError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
-import { Service } from 'typedi';
+import Container, { Service } from 'typedi';
 
 import { Logger } from '@/logging/logger.service';
 
 import { TaskRejectError } from './errors';
-import { RunnerLifecycleManager } from './runner-lifecycle-manager';
 
 export interface TaskRunner {
 	id: string;
@@ -81,7 +81,7 @@ export class TaskBroker {
 
 	constructor(
 		private readonly logger: Logger,
-		private readonly lifecycleManager: RunnerLifecycleManager,
+		private readonly runnerConfig: TaskRunnersConfig,
 	) {}
 
 	expireTasks() {
@@ -557,17 +557,29 @@ export class TaskBroker {
 		}
 	}
 
-	async taskRequested(request: TaskRequest) {
-		try {
-			await this.lifecycleManager.ensureRunnerAvailable();
-		} catch (e) {
-			const error = ensureError(e);
-			this.logger.error('Failed to start task runner', { error });
-			this.handleRunnerReject(request.requestId, `Task runner unavailable: ${error.message}`);
-			return;
-		}
+	private get shouldManageLifecycle() {
+		return (
+			this.runnerConfig.mode === 'internal_childprocess' ||
+			this.runnerConfig.mode === 'internal_launcher'
+		);
+	}
 
-		this.lifecycleManager.updateLastActivityTime();
+	async taskRequested(request: TaskRequest) {
+		if (this.shouldManageLifecycle) {
+			const { RunnerLifecycleManager } = await import('@/runners/runner-lifecycle-manager');
+			const lifecycleManager = Container.get(RunnerLifecycleManager);
+
+			try {
+				await lifecycleManager.ensureRunnerAvailable();
+			} catch (e) {
+				const error = ensureError(e);
+				this.logger.error('Failed to start task runner', { error });
+				this.handleRunnerReject(request.requestId, `Task runner unavailable: ${error.message}`);
+				return;
+			}
+
+			lifecycleManager.updateLastActivityTime();
+		}
 
 		this.pendingTaskRequests.push(request);
 		this.settleTasks();
