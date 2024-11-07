@@ -11,13 +11,13 @@ export class TestDefinitionRepository extends Repository<TestDefinition> {
 		super(TestDefinition, dataSource.manager);
 	}
 
-	async getMany(sharedWorkflowIds: string[], options?: ListQuery.Options) {
-		if (sharedWorkflowIds.length === 0) return { tests: [], count: 0 };
+	async getMany(accessibleWorkflowIds: string[], options?: ListQuery.Options) {
+		if (accessibleWorkflowIds.length === 0) return { tests: [], count: 0 };
 
 		const where: FindOptionsWhere<TestDefinition> = {
 			...options?.filter,
 			workflow: {
-				id: In(sharedWorkflowIds),
+				id: In(accessibleWorkflowIds),
 			},
 		};
 
@@ -37,23 +37,23 @@ export class TestDefinitionRepository extends Repository<TestDefinition> {
 		return { testDefinitions, count };
 	}
 
-	async getOne(id: number, sharedWorkflowIds: string[]) {
+	async getOne(id: number, accessibleWorkflowIds: string[]) {
 		return await this.findOne({
 			where: {
 				id,
 				workflow: {
-					id: In(sharedWorkflowIds),
+					id: In(accessibleWorkflowIds),
 				},
 			},
 			relations: ['annotationTag'],
 		});
 	}
 
-	async deleteById(id: number, sharedWorkflowIds: string[]) {
+	async deleteById(id: number, accessibleWorkflowIds: string[]) {
 		return await this.delete({
 			id,
 			workflow: {
-				id: In(sharedWorkflowIds),
+				id: In(accessibleWorkflowIds),
 			},
 		});
 	}
