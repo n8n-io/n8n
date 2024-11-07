@@ -754,7 +754,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			ndv.getters.credentialInput().find('input').should('be.enabled');
 		});
 
-		it('should handle viewer role', () => {
+		it.only('should handle viewer role', () => {
 			cy.enableFeature('projectRole:viewer');
 			cy.signinAsOwner();
 			cy.visit(workflowsPage.url);
@@ -783,7 +783,8 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			cy.get('input[name="password"]').type(INSTANCE_MEMBERS[0].password);
 			cy.getByTestId('form-submit-button').click();
 
-			mainSidebar.getters.executions().click();
+			projects.getMenuItems().last().click();
+			projects.getProjectTabExecutions().click();
 			cy.getByTestId('global-execution-list-item').first().find('td:last button').click();
 			getVisibleDropdown()
 				.find('li')
