@@ -16,15 +16,15 @@ import { ApplicationError, createDeferredPromise } from 'n8n-workflow';
 // eslint-disable-next-line import/no-cycle
 import {
 	getAdditionalKeys,
+	getBinaryHelperFunctions,
 	getCredentials,
 	getNodeParameter,
+	getRequestHelperFunctions,
+	getSchedulingFunctions,
+	getSSHTunnelFunctions,
 	returnJsonArray,
 } from '@/NodeExecuteFunctions';
 
-import { BinaryHelpers } from './helpers/binary-helpers';
-import { RequestHelpers } from './helpers/request-helpers';
-import { SchedulingHelpers } from './helpers/scheduling-helpers';
-import { SSHTunnelHelpers } from './helpers/ssh-tunnel-helpers';
 import { NodeExecutionContext } from './node-execution-context';
 
 const throwOnEmit = () => {
@@ -52,10 +52,10 @@ export class TriggerContext extends NodeExecutionContext implements ITriggerFunc
 		this.helpers = {
 			createDeferredPromise,
 			returnJsonArray,
-			...new BinaryHelpers(workflow, additionalData).exported,
-			...new RequestHelpers(this, workflow, node, additionalData).exported,
-			...new SchedulingHelpers(workflow).exported,
-			...new SSHTunnelHelpers().exported,
+			...getSSHTunnelFunctions(),
+			...getRequestHelperFunctions(workflow, node, additionalData),
+			...getBinaryHelperFunctions(additionalData, workflow.id),
+			...getSchedulingFunctions(workflow),
 		};
 	}
 
