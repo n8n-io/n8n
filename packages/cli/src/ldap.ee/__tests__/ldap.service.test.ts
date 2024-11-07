@@ -1,5 +1,6 @@
 import { mock } from 'jest-mock-extended';
 
+import { Client } from 'ldapts';
 import config from '@/config';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import { LDAP_LOGIN_ENABLED, LDAP_LOGIN_LABEL } from '@/ldap/constants';
@@ -7,11 +8,22 @@ import { LdapService } from '@/ldap/ldap.service.ee';
 import type { LdapConfig } from '@/ldap/types';
 import { mockInstance, mockLogger } from '@test/mocking';
 
+// Mock ldapts client
+jest.mock('ldapts', () => {
+	const ClientMock = jest.fn();
+
+	ClientMock.prototype.bind = jest.fn();
+	ClientMock.prototype.unbind = jest.fn();
+	ClientMock.prototype.startTLS = jest.fn();
+
+	return { Client: ClientMock };
+});
+
 describe('LdapService', () => {
 	const ldapConfig: LdapConfig = {
 		loginEnabled: true,
 		loginLabel: 'fakeLoginLabel',
-		connectionUrl: 'https://connection.url',
+		connectionUrl: 'connection.url',
 		allowUnauthorizedCerts: true,
 		connectionSecurity: 'none',
 		connectionPort: 1234,
@@ -158,6 +170,160 @@ describe('LdapService', () => {
 
 			await expect(ldapService.init()).rejects.toThrowError('Interval variable has to be defined');
 			expect(setIntervalSpy).toHaveBeenCalledTimes(0);
+		});
+	});
+
+	describe.skip('loadConfig()', () => {});
+	describe.skip('updateConfig()', () => {});
+	describe.skip('setConfig()', () => {});
+	describe.skip('searchWithAdminBinding()', () => {});
+	describe.skip('validUser()', () => {});
+	describe.skip('findAndAuthenticateLdapUser()', () => {});
+	describe('testConnection()', () => {
+		it('should throw expected error if init() is not called first', async () => {
+			const settingsRepository = mock<SettingsRepository>({
+				findOneByOrFail: jest.fn().mockResolvedValue({
+					value: JSON.stringify(ldapConfig),
+				}),
+			});
+
+			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
+
+			await expect(ldapService.testConnection()).rejects.toThrowError(
+				'Service cannot be used without setting the property config',
+			);
+		});
+
+		it('should create a new client without TLS if connectionSecurity is set to "none"', async () => {
+			const settingsRepository = mock<SettingsRepository>({
+				findOneByOrFail: jest.fn().mockResolvedValue({
+					value: JSON.stringify({ ...ldapConfig, connectionSecurity: 'none' }),
+				}),
+			});
+
+			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
+
+			await ldapService.init();
+			await ldapService.testConnection();
+
+			expect(Client).toHaveBeenCalledTimes(1);
+			expect(Client).toHaveBeenCalledWith({
+				url: `ldap://${ldapConfig.connectionUrl}:${ldapConfig.connectionPort}`,
+			});
+		});
+
+		it('should create a new client with TLS enabled if connectionSecurity is set to "tls" and allowing unauthorized certificates', async () => {
+			const settingsRepository = mock<SettingsRepository>({
+				findOneByOrFail: jest.fn().mockResolvedValue({
+					value: JSON.stringify({
+						...ldapConfig,
+						connectionSecurity: 'tls',
+						allowUnauthorizedCerts: true,
+					}),
+				}),
+			});
+
+			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
+
+			await ldapService.init();
+			await ldapService.testConnection();
+
+			expect(Client).toHaveBeenCalledTimes(1);
+			expect(Client).toHaveBeenCalledWith({
+				url: `ldaps://${ldapConfig.connectionUrl}:${ldapConfig.connectionPort}`,
+				tlsOptions: {
+					rejectUnauthorized: false,
+				},
+			});
+		});
+
+		it('should create a new client with TLS enabled if connectionSecurity is set to "tls" and not allowing unauthorized certificates', async () => {
+			const settingsRepository = mock<SettingsRepository>({
+				findOneByOrFail: jest.fn().mockResolvedValue({
+					value: JSON.stringify({
+						...ldapConfig,
+						connectionSecurity: 'tls',
+						allowUnauthorizedCerts: false,
+					}),
+				}),
+			});
+
+			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
+
+			await ldapService.init();
+			await ldapService.testConnection();
+
+			expect(Client).toHaveBeenCalledTimes(1);
+			expect(Client).toHaveBeenCalledWith({
+				url: `ldaps://${ldapConfig.connectionUrl}:${ldapConfig.connectionPort}`,
+				tlsOptions: {
+					rejectUnauthorized: true,
+				},
+			});
+		});
+
+		it('should create a new client and start TLS if connectionSecurity is set to "startTls"', async () => {
+			const settingsRepository = mock<SettingsRepository>({
+				findOneByOrFail: jest.fn().mockResolvedValue({
+					value: JSON.stringify({
+						...ldapConfig,
+						connectionSecurity: 'startTls',
+						allowUnauthorizedCerts: true,
+					}),
+				}),
+			});
+
+			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
+
+			await ldapService.init();
+			await ldapService.testConnection();
+
+			expect(Client).toHaveBeenCalledTimes(1);
+			expect(Client.prototype.startTLS).toHaveBeenCalledTimes(1);
+			expect(Client.prototype.startTLS).toHaveBeenCalledWith({
+				rejectUnauthorized: false,
+			});
+		});
+		it('should not create a new client if one has already been created', async () => {
+			const settingsRepository = mock<SettingsRepository>({
+				findOneByOrFail: jest.fn().mockResolvedValue({
+					value: JSON.stringify(ldapConfig),
+				}),
+			});
+
+			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
+
+			await ldapService.init();
+			await ldapService.testConnection();
+
+			expect(Client).toHaveBeenCalledTimes(1);
+
+			await ldapService.testConnection();
+			expect(Client).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe.skip('runSync()', () => {});
+	describe('stopSync()', () => {
+		it('should clear the scheduled timer', async () => {
+			const givenConfig = {
+				...ldapConfig,
+				synchronizationEnabled: true,
+				synchronizationInterval: 10,
+			};
+
+			const settingsRepository = mock<SettingsRepository>({
+				findOneByOrFail: jest.fn().mockResolvedValue({ value: JSON.stringify(givenConfig) }),
+			});
+
+			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
+
+			const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
+
+			await ldapService.init();
+			await ldapService.stopSync();
+
+			expect(clearIntervalSpy).toHaveBeenCalledTimes(1);
 		});
 	});
 });
