@@ -235,7 +235,7 @@ export const bucketOperations: INodeProperties[] = [
 						preSend: [parseJSONBody],
 					},
 				},
-				action: 'Update the metadata of a bucket',
+				action: 'Update the metadata of a Bucket',
 			},
 		],
 		default: 'getAll',
