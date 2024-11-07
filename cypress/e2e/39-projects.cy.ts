@@ -754,7 +754,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			ndv.getters.credentialInput().find('input').should('be.enabled');
 		});
 
-		it.only('should handle viewer role', () => {
+		it('should handle viewer role', () => {
 			cy.enableFeature('projectRole:viewer');
 			cy.signinAsOwner();
 			cy.visit(workflowsPage.url);
