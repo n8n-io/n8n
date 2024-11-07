@@ -51,7 +51,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 		});
 
 		projects.getHomeButton().click();
-		projects.getProjectTabs().should('have.length', 2);
+		projects.getProjectTabs().should('have.length', 3);
 
 		projects.getProjectTabCredentials().click();
 		credentialsPage.getters.credentialCards().should('not.have.length');
@@ -101,7 +101,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 
 		projects.getMenuItems().first().click();
 		workflowsPage.getters.workflowCards().should('not.have.length');
-		projects.getProjectTabs().should('have.length', 3);
+		projects.getProjectTabs().should('have.length', 4);
 
 		workflowsPage.getters.newWorkflowButtonCard().click();
 
