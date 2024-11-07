@@ -20,7 +20,8 @@ import NodeExecuteButton from './NodeExecuteButton.vue';
 import RunData from './RunData.vue';
 import WireMeUp from './WireMeUp.vue';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { N8nRadioButtons, N8nTooltip } from 'n8n-design-system';
+import { N8nRadioButtons, N8nTooltip, N8nText } from 'n8n-design-system';
+import { storeToRefs } from 'pinia';
 
 type MappingMode = 'debugging' | 'mapping';
 
@@ -38,7 +39,6 @@ type Props = {
 
 const props = withDefaults(defineProps<Props>(), {
 	currentNodeName: '',
-	pushRef: '',
 	canLinkRuns: false,
 	readOnly: false,
 	isProductionExecutionPreview: false,
@@ -82,9 +82,12 @@ const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
 const uiStore = useUIStore();
-const focusedMappableInput = computed(() => ndvStore.focusedMappableInput);
-const isUserOnboarded = computed(() => ndvStore.isMappingOnboarded);
 
+const {
+	activeNode,
+	focusedMappableInput,
+	isMappingOnboarded: isUserOnboarded,
+} = storeToRefs(ndvStore);
 const isMappingMode = computed(() => isActiveNodeConfig.value && inputMode.value === 'mapping');
 const showDraggableHint = computed(() => {
 	const toIgnore = [START_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE, CRON_NODE_TYPE, INTERVAL_NODE_TYPE];
@@ -155,8 +158,6 @@ const isExecutingPrevious = computed(() => {
 	return false;
 });
 const workflowRunning = computed(() => uiStore.isActionActive.workflowRunning);
-
-const activeNode = computed(() => ndvStore.activeNode);
 
 const rootNode = computed(() => {
 	if (!activeNode.value) return null;
@@ -292,6 +293,23 @@ function onUnlinkRun() {
 	emit('unlinkRun');
 }
 
+function onSearch(search: string) {
+	emit('search', search);
+}
+
+function onItemHover(
+	item: {
+		outputIndex: number;
+		itemIndex: number;
+	} | null,
+) {
+	emit('itemHover', item);
+}
+
+function onTableMounted(event: { avgRowHeight: number }) {
+	emit('tableMounted', event);
+}
+
 function onInputNodeChange(value: string) {
 	const index = parentNodes.value.findIndex((node) => node.name === value) + 1;
 	emit('changeInputNode', value, index);
@@ -335,12 +353,12 @@ function activatePane() {
 		pane-type="input"
 		data-test-id="ndv-input-panel"
 		@activate-pane="activatePane"
-		@item-hover="emit('itemHover', $event)"
+		@item-hover="onItemHover"
 		@link-run="onLinkRun"
 		@unlink-run="onUnlinkRun"
 		@run-change="onRunIndexChange"
-		@table-mounted="emit('tableMounted', $event)"
-		@search="emit('search', $event)"
+		@table-mounted="onTableMounted"
+		@search="onSearch"
 	>
 		<template #header>
 			<div :class="$style.titleSection">

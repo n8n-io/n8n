@@ -13,7 +13,8 @@ import MappingPill from './MappingPill.vue';
 import TextWithHighlights from './TextWithHighlights.vue';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { N8nInfoTip, N8nTooltip } from 'n8n-design-system';
+import { N8nInfoTip, N8nTooltip, N8nTree } from 'n8n-design-system';
+import { storeToRefs } from 'pinia';
 
 const MAX_COLUMNS_LIMIT = 40;
 
@@ -63,11 +64,13 @@ const workflowsStore = useWorkflowsStore();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 
-const hoveringItem = computed(() => ndvStore.hoveringItem);
+const {
+	hoveringItem,
+	focusedMappableInput,
+	highlightDraggables: highlight,
+} = storeToRefs(ndvStore);
 const pairedItemMappings = computed(() => workflowsStore.workflowExecutionPairedItemMappings);
 const tableData = computed(() => convertToTable(props.inputData));
-const focusedMappableInput = computed(() => ndvStore.focusedMappableInput);
-const highlight = computed(() => ndvStore.highlightDraggables);
 
 onMounted(() => {
 	if (tableData.value?.columns && draggableRef.value) {
@@ -137,7 +140,7 @@ function onMouseLeaveCell() {
 	emit('activeRowChanged', null);
 }
 
-function onMouseEnterKey(path: string[], colIndex: number) {
+function onMouseEnterKey(path: Array<string | number>, colIndex: number) {
 	hoveringPath.value = getCellExpression(path, colIndex);
 }
 
@@ -145,7 +148,7 @@ function onMouseLeaveKey() {
 	hoveringPath.value = null;
 }
 
-function isHovering(path: string[], colIndex: number) {
+function isHovering(path: Array<string | number>, colIndex: number) {
 	const expr = getCellExpression(path, colIndex);
 
 	return hoveringPath.value === expr;
@@ -278,13 +281,17 @@ function onDragEnd(column: string, src: string, depth = '0') {
 	}, 1000); // ensure dest data gets set if drop
 }
 
-function isSimple(data: unknown): boolean {
+function isSimple(data: GenericValue): data is string | number | boolean | null | undefined {
 	return (
 		typeof data !== 'object' ||
 		data === null ||
 		(Array.isArray(data) && data.length === 0) ||
 		(typeof data === 'object' && Object.keys(data).length === 0)
 	);
+}
+
+function isObject(data: GenericValue): data is Record<string, unknown> {
+	return !isSimple(data);
 }
 
 function hasJsonInColumn(colIndex: number): boolean {
@@ -399,7 +406,7 @@ watch(focusedMappableInput, (curr) => {
 						@mouseenter="onMouseEnterCell"
 						@mouseleave="onMouseLeaveCell"
 					>
-						<N8nInfoTip>{{ $locale.baseText('runData.emptyItemHint') }}</N8nInfoTip>
+						<N8nInfoTip>{{ i18n.baseText('runData.emptyItemHint') }}</N8nInfoTip>
 					</td>
 					<td :class="$style.tableRightMargin"></td>
 				</tr>
@@ -413,7 +420,7 @@ watch(focusedMappableInput, (curr) => {
 							<template #content>
 								<div>
 									<img src="/static/data-mapping-gif.gif" />
-									{{ $locale.baseText('dataMapping.dragColumnToFieldHint') }}
+									{{ i18n.baseText('dataMapping.dragColumnToFieldHint') }}
 								</div>
 							</template>
 							<Draggable
@@ -456,7 +463,7 @@ watch(focusedMappableInput, (curr) => {
 										<template #columnLimit>{{ columnLimit }}</template>
 										<template #link>
 											<a @click="switchToJsonView">{{
-												$locale.baseText('dataMapping.tableView.tableColumnsExceeded.tooltip.link')
+												i18n.baseText('dataMapping.tableView.tableColumnsExceeded.tooltip.link')
 											}}</a>
 										</template>
 									</i18n-t>
@@ -467,7 +474,7 @@ watch(focusedMappableInput, (curr) => {
 									:class="$style['warningTooltip']"
 									icon="exclamation-triangle"
 								></font-awesome-icon>
-								{{ $locale.baseText('dataMapping.tableView.tableColumnsExceeded') }}
+								{{ i18n.baseText('dataMapping.tableView.tableColumnsExceeded') }}
 							</span>
 						</N8nTooltip>
 					</th>
@@ -510,7 +517,7 @@ watch(focusedMappableInput, (curr) => {
 							:search="search"
 							:class="{ [$style.value]: true, [$style.empty]: isEmpty(data) }"
 						/>
-						<N8nTree v-else :node-class="$style.nodeClass" :value="data">
+						<N8nTree v-else-if="isObject(data)" :node-class="$style.nodeClass" :value="data">
 							<template #label="{ label, path }">
 								<span
 									:class="{
@@ -525,9 +532,10 @@ watch(focusedMappableInput, (curr) => {
 									:data-depth="path.length"
 									@mouseenter="() => onMouseEnterKey(path, index2)"
 									@mouseleave="onMouseLeaveKey"
-									>{{ label || $locale.baseText('runData.unnamedField') }}</span
+									>{{ label || i18n.baseText('runData.unnamedField') }}</span
 								>
 							</template>
+
 							<template #value="{ value }">
 								<TextWithHighlights
 									:content="getValueToRender(value)"

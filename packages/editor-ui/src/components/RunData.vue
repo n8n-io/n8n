@@ -60,18 +60,23 @@ import { getGenericHints } from '@/utils/nodeViewUtils';
 import { searchInObject } from '@/utils/objectUtils';
 import { clearJsonKey, isEmpty } from '@/utils/typesUtils';
 import { isEqual, isObject } from 'lodash-es';
-import { useRoute } from 'vue-router';
 import {
-	N8nRadioButtons,
+	N8nBlockUi,
+	N8nButton,
 	N8nCallout,
 	N8nIconButton,
-	N8nTooltip,
-	N8nTabs,
-	N8nSpinner,
 	N8nInfoTip,
 	N8nLink,
-	N8nBlockUi,
+	N8nOption,
+	N8nRadioButtons,
+	N8nSelect,
+	N8nSpinner,
+	N8nTabs,
+	N8nText,
+	N8nTooltip,
 } from 'n8n-design-system';
+import { storeToRefs } from 'pinia';
+import { useRoute } from 'vue-router';
 
 const LazyRunDataTable = defineAsyncComponent(
 	async () => await import('@/components/RunDataTable.vue'),
@@ -194,7 +199,7 @@ const isWaitNodeWaiting = computed(
 		workflowExecution.value?.data?.resultData?.lastNodeExecuted === node.value?.name,
 );
 
-const activeNode = computed(() => ndvStore.activeNode);
+const { activeNode } = storeToRefs(ndvStore);
 const displayMode = computed(() => ndvStore.getPanelDisplayMode(props.paneType));
 const nodeType = computed(() => {
 	if (!node.value) return null;
