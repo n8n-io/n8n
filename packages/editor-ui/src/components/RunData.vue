@@ -289,7 +289,7 @@ export default defineComponent({
 				return false;
 			}
 
-			const canPinNode = usePinnedData(this.node).canPinNode(false);
+			const canPinNode = usePinnedData(this.node).canPinNode(false, this.currentOutputIndex);
 
 			return (
 				canPinNode &&
@@ -1222,9 +1222,7 @@ export default defineComponent({
 <template>
 	<div :class="['run-data', $style.container]" @mouseover="activatePane">
 		<n8n-callout
-			v-if="
-				canPinData && pinnedData.hasData.value && !editMode.enabled && !isProductionExecutionPreview
-			"
+			v-if="pinnedData.hasData.value && !editMode.enabled && !isProductionExecutionPreview"
 			theme="secondary"
 			icon="thumbtack"
 			:class="$style.pinnedDataCallout"
