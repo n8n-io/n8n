@@ -54,7 +54,7 @@ export class TaskRunnerModule {
 	private async loadTaskManager() {
 		const { TaskManager } = await import('@/runners/task-managers/task-manager');
 		const { LocalTaskManager } = await import('@/runners/task-managers/local-task-manager');
-		this.taskManager = new LocalTaskManager();
+		this.taskManager = Container.get(LocalTaskManager);
 		Container.set(TaskManager, this.taskManager);
 	}
 

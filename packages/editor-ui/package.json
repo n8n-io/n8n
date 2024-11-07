@@ -1,6 +1,6 @@
 {
   "name": "n8n-editor-ui",
-  "version": "1.66.0",
+  "version": "1.67.0",
   "description": "Workflow Editor UI for n8n",
   "main": "index.js",
   "scripts": {
@@ -85,7 +85,6 @@
     "@faker-js/faker": "^8.0.2",
     "@iconify/json": "^2.2.228",
     "@pinia/testing": "^0.1.6",
-    "@sentry/vite-plugin": "^2.22.5",
     "@types/dateformat": "^3.0.0",
     "@types/file-saver": "^2.0.1",
     "@types/humanize-duration": "^3.27.1",
@@ -94,7 +93,6 @@
     "@types/luxon": "^3.2.0",
     "@types/uuid": "catalog:",
     "@vitest/coverage-v8": "catalog:frontend",
-    "cross-env": "^7.0.3",
     "miragejs": "^0.1.48",
     "unplugin-icons": "^0.19.0",
     "unplugin-vue-components": "^0.27.2",

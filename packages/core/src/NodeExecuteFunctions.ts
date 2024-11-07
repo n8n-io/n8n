@@ -76,7 +76,6 @@ import type {
 	IPollFunctions,
 	IRequestOptions,
 	IRunExecutionData,
-	ISourceData,
 	ITaskData,
 	ITaskDataConnections,
 	ITriggerFunctions,
@@ -166,7 +165,13 @@ import { extractValue } from './ExtractValue';
 import { InstanceSettings } from './InstanceSettings';
 import type { ExtendedValidationResult, IResponseError } from './Interfaces';
 // eslint-disable-next-line import/no-cycle
-import { HookContext, PollContext, TriggerContext, WebhookContext } from './node-execution-context';
+import {
+	ExecuteSingleContext,
+	HookContext,
+	PollContext,
+	TriggerContext,
+	WebhookContext,
+} from './node-execution-context';
 import { getSecretsProxy } from './Secrets';
 import { SSHClientsManager } from './SSHClientsManager';
 
@@ -4180,145 +4185,19 @@ export function getExecuteSingleFunctions(
 	mode: WorkflowExecuteMode,
 	abortSignal?: AbortSignal,
 ): IExecuteSingleFunctions {
-	return ((workflow, runExecutionData, connectionInputData, inputData, node, itemIndex) => {
-		return {
-			...getCommonWorkflowFunctions(workflow, node, additionalData),
-			...executionCancellationFunctions(abortSignal),
-			continueOnFail: () => continueOnFail(node),
-			evaluateExpression: (expression: string, evaluateItemIndex: number | undefined) => {
-				evaluateItemIndex = evaluateItemIndex === undefined ? itemIndex : evaluateItemIndex;
-				return workflow.expression.resolveSimpleParameterValue(
-					`=${expression}`,
-					{},
-					runExecutionData,
-					runIndex,
-					evaluateItemIndex,
-					node.name,
-					connectionInputData,
-					mode,
-					getAdditionalKeys(additionalData, mode, runExecutionData),
-					executeData,
-				);
-			},
-			getContext(type: ContextType): IContextObject {
-				return NodeHelpers.getContext(runExecutionData, type, node);
-			},
-			getCredentials: async (type) =>
-				await getCredentials(
-					workflow,
-					node,
-					type,
-					additionalData,
-					mode,
-					executeData,
-					runExecutionData,
-					runIndex,
-					connectionInputData,
-					itemIndex,
-				),
-			getInputData: (inputIndex = 0, inputName = 'main') => {
-				if (!inputData.hasOwnProperty(inputName)) {
-					// Return empty array because else it would throw error when nothing is connected to input
-					return { json: {} };
-				}
-
-				// TODO: Check if nodeType has input with that index defined
-				if (inputData[inputName].length < inputIndex) {
-					throw new ApplicationError('Could not get input index', {
-						extra: { inputIndex, inputName },
-					});
-				}
-
-				const allItems = inputData[inputName][inputIndex];
-
-				if (allItems === null) {
-					throw new ApplicationError('Input index was not set', {
-						extra: { inputIndex, inputName },
-					});
-				}
-
-				if (allItems[itemIndex] === null) {
-					throw new ApplicationError('Value of input with given index was not set', {
-						extra: { inputIndex, inputName, itemIndex },
-					});
-				}
-
-				return allItems[itemIndex];
-			},
-			getInputSourceData: (inputIndex = 0, inputName = 'main') => {
-				if (executeData?.source === null) {
-					// Should never happen as n8n sets it automatically
-					throw new ApplicationError('Source data is missing');
-				}
-				return executeData.source[inputName][inputIndex] as ISourceData;
-			},
-			getItemIndex: () => itemIndex,
-			getMode: () => mode,
-			getExecuteData: () => executeData,
-			getNodeParameter: (
-				parameterName: string,
-				fallbackValue?: any,
-				options?: IGetNodeParameterOptions,
-			): NodeParameterValueType | object => {
-				return getNodeParameter(
-					workflow,
-					runExecutionData,
-					runIndex,
-					connectionInputData,
-					node,
-					parameterName,
-					itemIndex,
-					mode,
-					getAdditionalKeys(additionalData, mode, runExecutionData),
-					executeData,
-					fallbackValue,
-					options,
-				);
-			},
-			getWorkflowDataProxy: (): IWorkflowDataProxyData => {
-				const dataProxy = new WorkflowDataProxy(
-					workflow,
-					runExecutionData,
-					runIndex,
-					itemIndex,
-					node.name,
-					connectionInputData,
-					{},
-					mode,
-					getAdditionalKeys(additionalData, mode, runExecutionData),
-					executeData,
-				);
-				return dataProxy.getDataProxy();
-			},
-			helpers: {
-				createDeferredPromise,
-				returnJsonArray,
-				...getRequestHelperFunctions(
-					workflow,
-					node,
-					additionalData,
-					runExecutionData,
-					connectionInputData,
-				),
-				...getBinaryHelperFunctions(additionalData, workflow.id),
-
-				assertBinaryData: (propertyName, inputIndex = 0) =>
-					assertBinaryData(inputData, node, itemIndex, propertyName, inputIndex),
-				getBinaryDataBuffer: async (propertyName, inputIndex = 0) =>
-					await getBinaryDataBuffer(inputData, itemIndex, propertyName, inputIndex),
-			},
-			logAiEvent: (eventName: AiEvent, msg: string) => {
-				return additionalData.logAiEvent(eventName, {
-					executionId: additionalData.executionId ?? 'unsaved-execution',
-					nodeName: node.name,
-					workflowName: workflow.name ?? 'Unnamed workflow',
-					nodeType: node.type,
-					workflowId: workflow.id ?? 'unsaved-workflow',
-					msg,
-				});
-			},
-		};
-	})(workflow, runExecutionData, connectionInputData, inputData, node, itemIndex);
+	return new ExecuteSingleContext(
+		workflow,
+		node,
+		additionalData,
+		mode,
+		runExecutionData,
+		runIndex,
+		connectionInputData,
+		inputData,
+		itemIndex,
+		executeData,
+		abortSignal,
+	);
 }
 
 export function getCredentialTestFunctions(): ICredentialTestFunctions {
