@@ -27,13 +27,13 @@ import {
 	continueOnFail,
 	getAdditionalKeys,
 	getBinaryDataBuffer,
+	getBinaryHelperFunctions,
 	getCredentials,
 	getNodeParameter,
+	getRequestHelperFunctions,
 	returnJsonArray,
 } from '@/NodeExecuteFunctions';
 
-import { BinaryHelpers } from './helpers/binary-helpers';
-import { RequestHelpers } from './helpers/request-helpers';
 import { NodeExecutionContext } from './node-execution-context';
 
 export class ExecuteSingleContext extends NodeExecutionContext implements IExecuteSingleFunctions {
@@ -57,8 +57,14 @@ export class ExecuteSingleContext extends NodeExecutionContext implements IExecu
 		this.helpers = {
 			createDeferredPromise,
 			returnJsonArray,
-			...new BinaryHelpers(workflow, additionalData).exported,
-			...new RequestHelpers(this, workflow, node, additionalData).exported,
+			...getRequestHelperFunctions(
+				workflow,
+				node,
+				additionalData,
+				runExecutionData,
+				connectionInputData,
+			),
+			...getBinaryHelperFunctions(additionalData, workflow.id),
 
 			assertBinaryData: (propertyName, inputIndex = 0) =>
 				assertBinaryData(inputData, node, itemIndex, propertyName, inputIndex),
