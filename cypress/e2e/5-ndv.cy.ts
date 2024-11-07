@@ -795,4 +795,29 @@ describe('NDV', () => {
 			.find('[data-test-id=run-data-schema-item]')
 			.should('contain.text', 'onlyOnItem3');
 	});
+
+	it('should not show items count when seaching in schema wiev', () => {
+		cy.createFixtureWorkflow('Test_ndv_search.json');
+		workflowPage.actions.zoomToFit();
+		workflowPage.actions.openNode('Edit Fields');
+		ndv.getters.outputPanel().should('be.visible');
+		ndv.actions.execute();
+		ndv.actions.switchOutputMode('Schema');
+		ndv.getters.outputPanel().find('[data-test-id=ndv-search]').click().type('US');
+		ndv.getters.outputPanel().find('[data-test-id=ndv-items-count]').should('not.exist');
+	});
+
+	it('should not show items count when seaching in schema wiev', () => {
+		cy.createFixtureWorkflow('Test_ndv_search.json');
+		workflowPage.actions.zoomToFit();
+		workflowPage.actions.openNode('Edit Fields');
+		ndv.getters.outputPanel().should('be.visible');
+		ndv.actions.execute();
+		ndv.actions.switchOutputMode('Schema');
+		ndv.getters.outputPanel().find('[data-test-id=ndv-search]').click().type('foo');
+		ndv.getters
+			.outputPanel()
+			.contains('To search field contents rather than just names, use table or JSON view')
+			.should('exist');
+	});
 });
