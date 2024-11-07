@@ -50,4 +50,8 @@ export class TaskRunnersConfig {
 	/** How many concurrent tasks can a runner execute at a time */
 	@Env('N8N_RUNNERS_MAX_CONCURRENCY')
 	maxConcurrency: number = 5;
+
+	/** Should the output of deduplication be asserted for correctness */
+	@Env('N8N_RUNNERS_ASSERT_DEDUPLICATION_OUTPUT')
+	assertDeduplicationOutput: boolean = false;
 }

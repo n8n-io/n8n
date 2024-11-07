@@ -1498,7 +1498,7 @@
 	"pushConnection.executionFailed": "Execution failed",
 	"pushConnection.executionFailed.message": "There might not be enough memory to finish the execution. Tips for avoiding this <a target=\"_blank\" href=\"https://docs.n8n.io/flow-logic/error-handling/memory-errors/\">here</a>",
 	"pushConnection.executionError": "There was a problem executing the workflow{error}",
-	"pushConnection.executionError.openNode": " <a data-action='openNodeDetail' data-action-parameter-node='{node}'>Open node</a>",
+	"pushConnection.executionError.openNode": "Open errored node",
 	"pushConnection.executionError.details": "<br /><strong>{details}</strong>",
 	"prompts.productTeamMessage": "Our product team will get in touch personally",
 	"prompts.npsSurvey.recommendationQuestion": "How likely are you to recommend n8n to a friend or colleague?",
