@@ -166,7 +166,7 @@ function copySessionId() {
 			</div>
 		</header>
 		<main :class="$style.chatBody">
-			<MessagesList :messages="messages" :class="[$style.messages, 'ignore-key-press']">
+			<MessagesList :messages="messages" :class="[$style.messages, 'ignore-key-press-canvas']">
 				<template #beforeMessage="{ message }">
 					<MessageOptionTooltip
 						v-if="message.sender === 'bot' && !message.id.includes('preload')"
