@@ -94,7 +94,7 @@ export class SamlService {
 			// delete the corrupted configuration and enable email logins again.
 			if (error instanceof InvalidSamlMetadataError || error instanceof SyntaxError) {
 				this.logger.warn(
-					`SAML initialization failed: ${(error as Error).message}. Will reset SAML configuration and disable SAML.`,
+					`SAML initialization failed because of invalid metadata in database: ${error.message}. IMPORTANT: Disabling SAML and switching to email-based login for all users. Please review your configuration and re-enable SAML.`,
 				);
 				await this.reset();
 			} else {
