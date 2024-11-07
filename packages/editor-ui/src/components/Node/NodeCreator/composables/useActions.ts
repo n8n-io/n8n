@@ -211,15 +211,6 @@ export const useActions = () => {
 			OPEN_AI_NODE_MESSAGE_ASSISTANT_TYPE,
 		];
 
-		const node1 = addedNodes[0];
-		if (node1 !== undefined && node1.type === AGENT_NODE_TYPE) {
-			console.log(node1);
-			setAddedNodeActionParameters({
-				name: 'x',
-				key: 'x',
-				value: 'x',
-			});
-		}
 		const isCompatibleNode = addedNodes.some((node) => COMPATIBLE_CHAT_NODES.includes(node.type));
 
 		if (!isCompatibleNode) return false;
