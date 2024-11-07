@@ -1409,7 +1409,7 @@ defineExpose({ enterEditMode });
 			</div>
 
 			<div v-else-if="editMode.enabled" :class="$style.editMode">
-				<div :class="[$style.editModeBody, 'ignore-key-press']">
+				<div :class="[$style.editModeBody, 'ignore-key-press-canvas']">
 					<JsonEditor
 						:model-value="editMode.value"
 						:fill-parent="true"

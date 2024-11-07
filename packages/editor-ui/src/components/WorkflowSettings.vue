@@ -486,7 +486,7 @@ onMounted(async () => {
 					<el-col :span="10" class="setting-name">
 						{{ $locale.baseText('workflowSettings.executionOrder') + ':' }}
 					</el-col>
-					<el-col :span="14" class="ignore-key-press">
+					<el-col :span="14" class="ignore-key-press-canvas">
 						<n8n-select
 							v-model="workflowSettings.executionOrder"
 							placeholder="Select Execution Order"
@@ -517,7 +517,7 @@ onMounted(async () => {
 							<font-awesome-icon icon="question-circle" />
 						</n8n-tooltip>
 					</el-col>
-					<el-col :span="14" class="ignore-key-press">
+					<el-col :span="14" class="ignore-key-press-canvas">
 						<n8n-select
 							v-model="workflowSettings.errorWorkflow"
 							placeholder="Select Workflow"
@@ -548,7 +548,7 @@ onMounted(async () => {
 							</n8n-tooltip>
 						</el-col>
 
-						<el-col :span="14" class="ignore-key-press">
+						<el-col :span="14" class="ignore-key-press-canvas">
 							<n8n-select
 								v-model="workflowSettings.callerPolicy"
 								:disabled="readOnlyEnv || !workflowPermissions.update"
@@ -598,7 +598,7 @@ onMounted(async () => {
 							<font-awesome-icon icon="question-circle" />
 						</n8n-tooltip>
 					</el-col>
-					<el-col :span="14" class="ignore-key-press">
+					<el-col :span="14" class="ignore-key-press-canvas">
 						<n8n-select
 							v-model="workflowSettings.timezone"
 							placeholder="Select Timezone"
@@ -627,7 +627,7 @@ onMounted(async () => {
 							<font-awesome-icon icon="question-circle" />
 						</n8n-tooltip>
 					</el-col>
-					<el-col :span="14" class="ignore-key-press">
+					<el-col :span="14" class="ignore-key-press-canvas">
 						<n8n-select
 							v-model="workflowSettings.saveDataErrorExecution"
 							:placeholder="$locale.baseText('workflowSettings.selectOption')"
@@ -656,7 +656,7 @@ onMounted(async () => {
 							<font-awesome-icon icon="question-circle" />
 						</n8n-tooltip>
 					</el-col>
-					<el-col :span="14" class="ignore-key-press">
+					<el-col :span="14" class="ignore-key-press-canvas">
 						<n8n-select
 							v-model="workflowSettings.saveDataSuccessExecution"
 							:placeholder="$locale.baseText('workflowSettings.selectOption')"
@@ -685,7 +685,7 @@ onMounted(async () => {
 							<font-awesome-icon icon="question-circle" />
 						</n8n-tooltip>
 					</el-col>
-					<el-col :span="14" class="ignore-key-press">
+					<el-col :span="14" class="ignore-key-press-canvas">
 						<n8n-select
 							v-model="workflowSettings.saveManualExecutions"
 							:placeholder="$locale.baseText('workflowSettings.selectOption')"
@@ -714,7 +714,7 @@ onMounted(async () => {
 							<font-awesome-icon icon="question-circle" />
 						</n8n-tooltip>
 					</el-col>
-					<el-col :span="14" class="ignore-key-press">
+					<el-col :span="14" class="ignore-key-press-canvas">
 						<n8n-select
 							v-model="workflowSettings.saveExecutionProgress"
 							:placeholder="$locale.baseText('workflowSettings.selectOption')"
