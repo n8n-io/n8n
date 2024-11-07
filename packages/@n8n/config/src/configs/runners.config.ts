@@ -1,10 +1,17 @@
 import { Config, Env } from '../decorators';
 
 /**
- * Whether to enable task runners and how to run them
- * - internal_childprocess: Task runners are run as a child process and launched by n8n
- * - internal_launcher: Task runners are run as a child process and launched by n8n using a separate launch program
- * - external: Task runners are run as a separate program not launched by n8n
+ * Modes for running a task runner:
+ *
+ * - In `internal_childprocess` mode, n8n launches a task runner as a child
+ *   process and manages its lifecycle.
+ * - In `internal_launcher` mode, n8n runs an executable that launches a task
+ *   runner as a child process and manages its lifecycle.
+ * - In `external` mode, n8n does not launch the runner or manage its lifecycle.
+ *   Rather, a third party launches the runner separately from n8n.
+ *
+ * Lifecycle management means that n8n launches the task runner only when needed
+ * and shuts it down when the task runner has been idle for too long.
  */
 export type TaskRunnerMode = 'internal_childprocess' | 'internal_launcher' | 'external';
 

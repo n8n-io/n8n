@@ -17,8 +17,8 @@ export type RunnerLifecycleEventMap = {
 export class RunnerLifecycleEvents extends TypedEmitter<RunnerLifecycleEventMap> {}
 
 /**
- * Responsible for launching a task runner if none available
- * and shutting it down if idle for too long.
+ * Responsible for launching a task runner if none available and shutting it down
+ * if idle for too long. Only for `internal_childprocess` and `internal_launcher` modes.
  */
 @Service()
 export class RunnerLifecycleManager {
