@@ -18,7 +18,7 @@ describe('TaskRunnerProcess', () => {
 
 	const runnerProcess = Container.get(TaskRunnerProcess);
 	const taskBroker = Container.get(TaskBroker);
-	const taskRunnerService = Container.get(TaskRunnerWsServer);
+	const taskRunnerWsServer = Container.get(TaskRunnerWsServer);
 
 	const startLauncherSpy = jest.spyOn(runnerProcess, 'startLauncher');
 	const startNodeSpy = jest.spyOn(runnerProcess, 'startNode');
@@ -44,7 +44,7 @@ describe('TaskRunnerProcess', () => {
 		killNodeSpy.mockClear();
 	});
 
-	const getNumConnectedRunners = () => taskRunnerService.runnerConnections.size;
+	const getNumConnectedRunners = () => taskRunnerWsServer.runnerConnections.size;
 	const getNumRegisteredRunners = () => taskBroker.getKnownRunners().size;
 
 	it('should start and connect the task runner', async () => {
@@ -59,7 +59,7 @@ describe('TaskRunnerProcess', () => {
 		expect(getNumRegisteredRunners()).toBe(1);
 	});
 
-	it('should stop an disconnect the task runner', async () => {
+	it('should stop and disconnect the task runner', async () => {
 		// Arrange
 		await runnerProcess.start();
 
