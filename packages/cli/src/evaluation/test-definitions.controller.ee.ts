@@ -59,7 +59,9 @@ export class TestDefinitionsController {
 
 		if (workflowIds.length === 0) throw new NotFoundError('Test not found');
 
-		return await this.testsService.delete(Number(req.params.id), workflowIds);
+		await this.testsService.delete(Number(req.params.id), workflowIds);
+
+		return { success: true };
 	}
 
 	@Patch('/:id')

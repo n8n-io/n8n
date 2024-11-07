@@ -279,3 +279,18 @@ describe('PATCH /evaluation/test-definitions/:id', () => {
 		expect(resp.body.message).toBe('Annotation tag not found');
 	});
 });
+
+describe('DELETE /evaluation/test-definitions/:id', () => {
+	test('should delete test definition', async () => {
+		const newTest = Container.get(TestDefinitionRepository).create({
+			name: 'test',
+			workflow: { id: workflowUnderTest.id },
+		});
+		await Container.get(TestDefinitionRepository).save(newTest);
+
+		const resp = await authOwnerAgent.delete(`/evaluation/test-definitions/${newTest.id}`);
+
+		expect(resp.statusCode).toBe(200);
+		expect(resp.body.data.success).toBe(true);
+	});
+});
