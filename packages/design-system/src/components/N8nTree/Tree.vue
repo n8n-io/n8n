@@ -9,8 +9,8 @@ interface TreeProps {
 }
 
 defineSlots<{
-	label: (props: { label: string; path: Array<string | number> }) => never;
-	value: (props: { value: Value }) => never;
+	label(props: { label: string; path: Array<string | number> }): never;
+	value(props: { value: Value }): never;
 }>();
 
 defineOptions({ name: 'N8nTree' });
