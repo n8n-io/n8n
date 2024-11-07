@@ -1,3 +1,12 @@
+## [1.67.1](https://github.com/n8n-io/n8n/compare/n8n@1.67.0...n8n@1.67.1) (2024-11-07)
+
+
+### Bug Fixes
+
+* **core:** Revert all the context helpers changes ([#11616](https://github.com/n8n-io/n8n/issues/11616)) ([8a804b3](https://github.com/n8n-io/n8n/commit/8a804b3b49412e1cf82a7462d8a6dd5e29fb78d4))
+
+
+
 # [1.67.0](https://github.com/n8n-io/n8n/compare/n8n@1.66.0...n8n@1.67.0) (2024-11-06)
 
 
