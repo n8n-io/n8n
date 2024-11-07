@@ -42,7 +42,7 @@ jobs:
         uses: actions/cache/save@v4.0.0
         with:
           path: ./packages/**/dist
-          key: ${{ github.sha }}-base:build
+          key: ${{ github.sha }}-release:build
 
       - name: Dry-run publishing
         run: pnpm publish -r --no-git-checks --dry-run
@@ -141,7 +141,7 @@ jobs:
         uses: actions/cache/restore@v4.0.0
         with:
           path: ./packages/**/dist
-          key: ${{ github.sha }}:db-tests
+          key: ${{ github.sha }}-release:build
 
       - name: Create a frontend release
         uses: getsentry/action-release@v1.7.0
