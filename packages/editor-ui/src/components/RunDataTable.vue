@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import { useExternalHooks } from '@/composables/useExternalHooks';
-import type { INodeUi, IRunDataDisplayMode, ITableData } from '@/Interface';
+import type {
+	INodeUi,
+	IRunDataDisplayMode,
+	ITableData,
+	SubworkflowExecutionInfo,
+} from '@/Interface';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { getMappedExpression } from '@/utils/mappingUtils';
@@ -13,8 +18,9 @@ import MappingPill from './MappingPill.vue';
 import TextWithHighlights from './TextWithHighlights.vue';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { N8nInfoTip, N8nTooltip, N8nTree } from 'n8n-design-system';
+import { N8nIconButton, N8nInfoTip, N8nTooltip, N8nTree } from 'n8n-design-system';
 import { storeToRefs } from 'pinia';
+import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
 
 const MAX_COLUMNS_LIMIT = 40;
 
@@ -63,6 +69,7 @@ const workflowsStore = useWorkflowsStore();
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
+const { openExecutionInNewTab } = useExecutionHelpers();
 
 const {
 	hoveringItem,
@@ -304,6 +311,11 @@ function convertToTable(inputData: INodeExecutionData[]): ITableData {
 	let leftEntryColumns: string[], entryRows: GenericValue[];
 	// Go over all entries
 	let entry: IDataObject;
+
+	const metadata: ITableData['metadata'] = {
+		hasExecutionIds: false,
+		data: [],
+	};
 	const hasJson: { [key: string]: boolean } = {};
 	inputData.forEach((data) => {
 		if (!data.hasOwnProperty('json')) {
@@ -320,6 +332,16 @@ function convertToTable(inputData: INodeExecutionData[]): ITableData {
 			leftEntryColumns = entryColumns.slice(0, MAX_COLUMNS_LIMIT);
 		} else {
 			leftEntryColumns = entryColumns;
+		}
+
+		if (data.metadata?.executionId) {
+			metadata.data.push({
+				executionId: data.metadata.executionId,
+				workflowId: data.metadata?.workflowId,
+			});
+			metadata.hasExecutionIds = true;
+		} else {
+			metadata.data.push(undefined);
 		}
 
 		// Go over all the already existing column-keys
@@ -368,11 +390,16 @@ function convertToTable(inputData: INodeExecutionData[]): ITableData {
 		hasJson,
 		columns: tableColumns,
 		data: resultTableData,
+		metadata,
 	};
 }
 
 function switchToJsonView() {
 	emit('displayModeChange', 'json');
+}
+
+function openExecution({ executionId, workflowId }: SubworkflowExecutionInfo) {
+	openExecutionInNewTab(executionId, workflowId);
 }
 
 watch(focusedMappableInput, (curr) => {
@@ -415,6 +442,9 @@ watch(focusedMappableInput, (curr) => {
 		<table v-else :class="$style.table">
 			<thead>
 				<tr>
+					<th>
+						<!-- column for item index and execution link -->
+					</th>
 					<th v-for="(column, i) in tableData.columns || []" :key="column">
 						<N8nTooltip placement="bottom-start" :disabled="!mappingEnabled" :show-after="1000">
 							<template #content>
@@ -502,6 +532,16 @@ watch(focusedMappableInput, (curr) => {
 					:class="{ [$style.hoveringRow]: isHoveringRow(index1) }"
 					:data-test-id="isHoveringRow(index1) ? 'hovering-item' : undefined"
 				>
+					<td v-if="tableData.metadata.hasExecutionIds">
+						<N8nIconButton
+							v-if="tableData.metadata.data[index1]"
+							type="secondary"
+							icon="external-link-alt"
+							data-test-id="debug-sub-execution"
+							size="small"
+							@click="openExecution(tableData.metadata.data[index1])"
+						/>
+					</td>
 					<td
 						v-for="(data, index2) in row"
 						:key="index2"

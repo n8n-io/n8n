@@ -515,25 +515,6 @@ const subWorkflowData = computed((): { executionId: string; workflowId?: string 
 	return null;
 });
 
-const itemSubWorkflowData = computed(
-	(): Array<{
-		metadata?: { executionId?: string; workflowId?: string };
-		itemIndex: number;
-	}> => {
-		const items = getData(props.runIndex, currentOutputIndex.value);
-		return items
-			.map((item, itemIndex) => {
-				return {
-					metadata: item.metadata,
-					itemIndex,
-				};
-			})
-			.filter((item) => {
-				return !!item.metadata;
-			});
-	},
-);
-
 const hasInputOverwrite = computed((): boolean => {
 	if (!node.value) {
 		return false;
@@ -1222,16 +1203,6 @@ function onSearchClear() {
 	document.dispatchEvent(new KeyboardEvent('keyup', { key: '/' }));
 }
 
-function getData(
-	runIndex: number,
-	outputIndex: number,
-	connectionType: NodeConnectionType = NodeConnectionType.Main,
-) {
-	const rawInputData = getRawInputData(runIndex, outputIndex, connectionType);
-	const pinOrLiveData = getPinDataOrLiveData(rawInputData);
-	return getFilteredData(pinOrLiveData);
-}
-
 defineExpose({ enterEditMode });
 </script>
 
@@ -1418,21 +1389,6 @@ defineExpose({ enterEditMode });
 			>
 				{{ $locale.baseText('runData.openParentExecution') }}
 			</a>
-			<div v-if="itemSubWorkflowData.length">
-				<N8nSelect
-					size="small"
-					:class="$style.longSelect"
-					model-value="Select exectuion"
-					@change="openExecutionInNewTab($event.metadata.executionId, $event.metadata.workflowId)"
-				>
-					<N8nOption
-						v-for="subWorkflow in itemSubWorkflowData"
-						:key="subWorkflow.metadata?.executionId"
-						:value="subWorkflow"
-						:label="`item#${subWorkflow.itemIndex} exec#${subWorkflow.metadata?.executionId}`"
-					/>
-				</N8nSelect>
-			</div>
 		</div>
 
 		<div
