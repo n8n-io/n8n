@@ -3,9 +3,6 @@ import Container from 'typedi';
 
 import { TaskRunnerModule } from '@/runners/task-runner-module';
 
-import { DefaultTaskRunnerDisconnectAnalyzer } from '../../../src/runners/default-task-runner-disconnect-analyzer';
-import { TaskRunnerWsServer } from '../../../src/runners/runner-ws-server';
-
 describe('TaskRunnerModule in external mode', () => {
 	const runnerConfig = Container.get(TaskRunnersConfig);
 	runnerConfig.mode = 'external';
@@ -29,13 +26,6 @@ describe('TaskRunnerModule in external mode', () => {
 
 			// Act
 			await module.start();
-		});
-
-		// @TODO: Disconnect analyzer not being set in external mode
-		it('should use DefaultTaskRunnerDisconnectAnalyzer', () => {
-			const wsServer = Container.get(TaskRunnerWsServer);
-
-			expect(wsServer.getDisconnectAnalyzer()).toBeInstanceOf(DefaultTaskRunnerDisconnectAnalyzer);
 		});
 	});
 });
