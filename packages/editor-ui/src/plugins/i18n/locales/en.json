@@ -1553,6 +1553,7 @@
 	"resourceMapper.addAllFields": "Add All {fieldWord}",
 	"resourceMapper.removeAllFields": "Remove All {fieldWord}",
 	"resourceMapper.refreshFieldList": "Refresh {fieldWord} List",
+	"runData.openSubExecution": "Open Sub Execution",
 	"runData.openParentExecution": "Open Parent Execution",
 	"runData.emptyItemHint": "This is an item, but it's empty.",
 	"runData.emptyArray": "[empty array]",

@@ -1379,17 +1379,18 @@ defineExpose({ enterEditMode });
 		</N8nCallout>
 
 		<div
-			v-if="
-				subWorkflowData &&
-				!(paneType === 'input' && hasInputOverwrite) &&
-				nodeType?.group?.includes('trigger')
-			"
+			v-if="subWorkflowData && !(paneType === 'input' && hasInputOverwrite)"
 			:class="$style.parentExecutionInfo"
 		>
 			<a
 				@click.stop="openExecutionInNewTab(subWorkflowData.executionId, subWorkflowData.workflowId)"
 			>
-				{{ $locale.baseText('runData.openParentExecution') }}
+				<N8nIcon icon="external-link-alt" size="xsmall" />
+				{{
+					nodeType?.group.includes('trigger')
+						? $locale.baseText('runData.openParentExecution')
+						: $locale.baseText('runData.openSubExecution')
+				}}
 			</a>
 		</div>
 
@@ -2108,6 +2109,10 @@ defineExpose({ enterEditMode });
 .parentExecutionInfo {
 	font-size: var(--font-size-xs);
 	padding: 0 0 var(--spacing-s) var(--spacing-s);
+
+	svg {
+		padding-bottom: 2px;
+	}
 }
 </style>
 
