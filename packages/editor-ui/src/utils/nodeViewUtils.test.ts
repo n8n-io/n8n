@@ -1,10 +1,12 @@
-import { generateOffsets, getGenericHints } from './nodeViewUtils';
+import { generateOffsets, getGenericHints, getNewNodePosition } from './nodeViewUtils';
 import type { INode, INodeTypeDescription, INodeExecutionData, Workflow } from 'n8n-workflow';
-import type { INodeUi } from '@/Interface';
+import type { INodeUi, XYPosition } from '@/Interface';
 import { NodeHelpers } from 'n8n-workflow';
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { mock, type MockProxy } from 'vitest-mock-extended';
+import { SET_NODE_TYPE, STICKY_NODE_TYPE } from '@/constants';
+import { createTestNode } from '@/__tests__/mocks';
 
 describe('getGenericHints', () => {
 	let mockWorkflowNode: MockProxy<INode>;
@@ -167,5 +169,59 @@ describe('generateOffsets', () => {
 	it('should return correct offsets for large node count', () => {
 		const result = generateOffsets(10, 100, 20);
 		expect(result).toEqual([-580, -460, -340, -220, -100, 100, 220, 340, 460, 580]);
+	});
+});
+
+describe('getNewNodePosition', () => {
+	it('should return the new position when there are no conflicts', () => {
+		const nodes: INodeUi[] = [];
+		const newPosition: XYPosition = [100, 100];
+		const result = getNewNodePosition(nodes, newPosition);
+		expect(result).toEqual([100, 100]);
+	});
+
+	it('should adjust the position to the closest grid size', () => {
+		const nodes: INodeUi[] = [];
+		const newPosition: XYPosition = [105, 115];
+		const result = getNewNodePosition(nodes, newPosition);
+		expect(result).toEqual([120, 120]);
+	});
+
+	it('should move the position to avoid conflicts', () => {
+		const nodes: INodeUi[] = [
+			createTestNode({ id: '1', position: [100, 100], type: SET_NODE_TYPE }),
+		];
+		const newPosition: XYPosition = [100, 100];
+		const result = getNewNodePosition(nodes, newPosition);
+		expect(result).toEqual([180, 180]);
+	});
+
+	it('should skip nodes in the conflict allowlist', () => {
+		const nodes: INodeUi[] = [
+			createTestNode({ id: '1', position: [100, 100], type: STICKY_NODE_TYPE }),
+		];
+		const newPosition: XYPosition = [100, 100];
+		const result = getNewNodePosition(nodes, newPosition);
+		expect(result).toEqual([100, 100]);
+	});
+
+	it('should use the provided move position to resolve conflicts', () => {
+		const nodes: INodeUi[] = [
+			createTestNode({ id: '1', position: [100, 100], type: SET_NODE_TYPE }),
+		];
+		const newPosition: XYPosition = [100, 100];
+		const movePosition: XYPosition = [50, 50];
+		const result = getNewNodePosition(nodes, newPosition, movePosition);
+		expect(result).toEqual([200, 200]);
+	});
+
+	it('should handle multiple conflicts correctly', () => {
+		const nodes: INodeUi[] = [
+			createTestNode({ id: '1', position: [100, 100], type: SET_NODE_TYPE }),
+			createTestNode({ id: '2', position: [140, 140], type: SET_NODE_TYPE }),
+		];
+		const newPosition: XYPosition = [100, 100];
+		const result = getNewNodePosition(nodes, newPosition);
+		expect(result).toEqual([220, 220]);
 	});
 });
