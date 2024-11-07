@@ -1268,7 +1268,7 @@ export default defineComponent({
 					element instanceof HTMLElement &&
 					element.className &&
 					typeof element.className === 'string' &&
-					element.className.includes('ignore-key-press')
+					element.className.includes('ignore-key-press-canvas')
 				) {
 					return;
 				}
