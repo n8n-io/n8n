@@ -411,9 +411,6 @@ export default defineComponent({
 			if (runData[this.node.name][this.runIndex]) {
 				const taskData = runData[this.node.name][this.runIndex].data;
 				if (taskData?.main) {
-					if (this.outputIndex > taskData.main.length - 1) {
-						this.outputIndex = taskData.main.length - 1;
-					}
 					return taskData.main.length - 1;
 				}
 			}
@@ -473,13 +470,14 @@ export default defineComponent({
 			return String(this.inputData[0]?.json?.html ?? '');
 		},
 		currentOutputIndex(): number {
-			console.log('currentOutputIndex', this.outputIndex);
-			console.log(this.outputIndex);
 			if (this.overrideOutputs?.length && !this.overrideOutputs.includes(this.outputIndex)) {
 				return this.overrideOutputs[0];
 			}
 
-			return this.outputIndex;
+			// In some cases nodes may switch their outputCount while the user still
+			// has a higher outputIndex selected. We could adjust outputIndex directly,
+			// but that loses data as we can keep the user's selection in case the branch reappears.
+			return Math.min(this.outputIndex, this.maxOutputIndex);
 		},
 		branches(): ITab[] {
 			const capitalize = (name: string) => name.charAt(0).toLocaleUpperCase() + name.slice(1);
