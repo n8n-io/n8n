@@ -575,9 +575,6 @@ export default defineComponent({
 	watch: {
 		node(newNode: INodeUi, prevNode: INodeUi) {
 			if (newNode?.id === prevNode?.id) {
-				if (this.outputIndex > this.maxOutputIndex) {
-					this.outputIndex = 0;
-				}
 				return;
 			}
 			this.init();
@@ -1546,7 +1543,6 @@ export default defineComponent({
 				</n8n-text>
 			</div>
 
-			<!-- maybe this? -->
 			<div v-else-if="hasNodeRun && !inputData.length && !search" :class="$style.center">
 				<slot name="no-output-data">xxx</slot>
 			</div>
