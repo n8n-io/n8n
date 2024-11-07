@@ -807,7 +807,7 @@ describe('NDV', () => {
 		ndv.getters.outputPanel().find('[data-test-id=ndv-items-count]').should('not.exist');
 	});
 
-	it('should not show items count when seaching in schema wiev', () => {
+	it('should show additional tooltip when seaching in schema wiev if no matches', () => {
 		cy.createFixtureWorkflow('Test_ndv_search.json');
 		workflowPage.actions.zoomToFit();
 		workflowPage.actions.openNode('Edit Fields');
