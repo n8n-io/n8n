@@ -106,7 +106,7 @@ watch(defaultLocale, (newLocale) => {
 					</keep-alive>
 					<component :is="Component" v-else />
 				</router-view>
-				<div :class="$style.contentFooter" v-if="hasContentFooter">
+				<div v-if="hasContentFooter" :class="$style.contentFooter">
 					<router-view name="footer" />
 				</div>
 			</div>
@@ -168,7 +168,6 @@ watch(defaultLocale, (newLocale) => {
 		height: auto;
 		z-index: 10;
 		width: 100%;
-		background: white;
 	}
 }
 

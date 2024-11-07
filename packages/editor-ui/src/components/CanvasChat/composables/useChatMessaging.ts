@@ -154,13 +154,7 @@ export function useChatMessaging({
 			source: 'RunData.ManualChatMessage',
 			message,
 		});
-		// const response = await runWorkflow({
-		// 	triggerNode: triggerNode.name,
-		// 	nodeData,
-		// 	source: 'RunData.ManualChatMessage',
-		// });
 
-		// workflowsStore.appendChatMessage(message);
 		if (!response?.executionId) {
 			showError(
 				new Error('It was not possible to start workflow!'),

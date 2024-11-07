@@ -14,7 +14,6 @@ import {
 } from './../constants';
 import {
 	closeManualChatModal,
-	getManualChatDialog,
 	getManualChatMessages,
 	getManualChatModal,
 	getManualChatModalLogs,

@@ -261,13 +261,8 @@ onMounted(() => {
 	padding-top: var(--spacing-s);
 	padding-left: var(--spacing-m);
 	font-size: var(--font-size-m);
-	// max-height: 100%;
 }
 .block {
-	// border: 1px solid var(--color-foreground-base);
-	// background: var(--color-background-xlight);
-	// padding: var(--spacing-xs);
-	// border-radius: 4px;
 	margin-top: var(--spacing-xl);
 }
 :root .blockContent {
