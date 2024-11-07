@@ -409,6 +409,7 @@ watch(
 					</template>
 				</i18n-t>
 			</n8n-text>
+			<n8n-text>{{ $locale.baseText('ndv.search.noMatchSchema.description') }}</n8n-text>
 		</div>
 
 		<div v-else :class="$style.schema" data-test-id="run-data-schema-node-schema">

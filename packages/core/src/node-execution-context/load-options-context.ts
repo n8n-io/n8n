@@ -13,10 +13,14 @@ import type {
 
 import { extractValue } from '@/ExtractValue';
 // eslint-disable-next-line import/no-cycle
-import { getAdditionalKeys, getCredentials, getNodeParameter } from '@/NodeExecuteFunctions';
+import {
+	getAdditionalKeys,
+	getCredentials,
+	getNodeParameter,
+	getRequestHelperFunctions,
+	getSSHTunnelFunctions,
+} from '@/NodeExecuteFunctions';
 
-import { RequestHelpers } from './helpers/request-helpers';
-import { SSHTunnelHelpers } from './helpers/ssh-tunnel-helpers';
 import { NodeExecutionContext } from './node-execution-context';
 
 export class LoadOptionsContext extends NodeExecutionContext implements ILoadOptionsFunctions {
@@ -31,8 +35,8 @@ export class LoadOptionsContext extends NodeExecutionContext implements ILoadOpt
 		super(workflow, node, additionalData, 'internal');
 
 		this.helpers = {
-			...new RequestHelpers(this, workflow, node, additionalData).exported,
-			...new SSHTunnelHelpers().exported,
+			...getSSHTunnelFunctions(),
+			...getRequestHelperFunctions(workflow, node, additionalData),
 		};
 	}
 

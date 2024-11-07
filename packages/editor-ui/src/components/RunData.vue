@@ -208,6 +208,7 @@ const nodeType = computed(() => {
 });
 
 const isSchemaView = computed(() => displayMode.value === 'schema');
+const isSearchInSchemaView = computed(() => isSchemaView.value && !!search.value);
 const displaysMultipleNodes = computed(
 	() => isSchemaView.value && props.paneType === 'input' && props.nodes.length > 0,
 );
@@ -1372,6 +1373,7 @@ defineExpose({ enterEditMode });
 			v-else-if="
 				!hasRunError &&
 				hasNodeRun &&
+				!isSearchInSchemaView &&
 				((dataCount > 0 && maxRunIndex === 0) || search) &&
 				!isArtificialRecoveredEventItem &&
 				!displaysMultipleNodes

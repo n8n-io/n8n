@@ -24,15 +24,15 @@ import { ApplicationError, createDeferredPromise } from 'n8n-workflow';
 import {
 	copyBinaryFile,
 	getAdditionalKeys,
+	getBinaryHelperFunctions,
 	getCredentials,
 	getInputConnectionData,
 	getNodeParameter,
 	getNodeWebhookUrl,
+	getRequestHelperFunctions,
 	returnJsonArray,
 } from '@/NodeExecuteFunctions';
 
-import { BinaryHelpers } from './helpers/binary-helpers';
-import { RequestHelpers } from './helpers/request-helpers';
 import { NodeExecutionContext } from './node-execution-context';
 
 export class WebhookContext extends NodeExecutionContext implements IWebhookFunctions {
@@ -54,8 +54,8 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 		this.helpers = {
 			createDeferredPromise,
 			returnJsonArray,
-			...new BinaryHelpers(workflow, additionalData).exported,
-			...new RequestHelpers(this, workflow, node, additionalData).exported,
+			...getRequestHelperFunctions(workflow, node, additionalData),
+			...getBinaryHelperFunctions(additionalData, workflow.id),
 		};
 
 		this.nodeHelpers = {
