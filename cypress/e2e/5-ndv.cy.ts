@@ -802,9 +802,15 @@ describe('NDV', () => {
 		workflowPage.actions.executeWorkflow();
 		workflowPage.actions.openNode('Edit Fields');
 		ndv.getters.outputPanel().should('be.visible');
-		ndv.getters.outputPanel().find('[data-test-id=ndv-search]').click().type('US');
+		ndv.getters.outputPanel().findChildByTestId('ndv-search').click().type('US');
+		ndv.getters.outputTableRow(1).find('mark').should('have.text', 'US');
+
 		ndv.actions.execute();
-		ndv.getters.outputPanel().find('[data-test-id=ndv-search]').contains('US').should('exist');
+		ndv.getters
+			.outputPanel()
+			.findChildByTestId('ndv-search')
+			.should('be.visible')
+			.should('have.value', 'US');
 	});
 
 	it('should not show items count when seaching in schema view', () => {
