@@ -130,6 +130,7 @@ export class BuiltInsParser {
 		} else if (node.name === '$execution') {
 			state.markExecutionAsNeeded();
 		} else if (node.name === '$prevNode') {
+			// @Reviewer: Does us using workflow.getNodeByName() affect this?
 			state.markPrevNodeAsNeeded();
 		}
 	};

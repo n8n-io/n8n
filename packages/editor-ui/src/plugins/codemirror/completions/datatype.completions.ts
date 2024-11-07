@@ -1040,6 +1040,11 @@ export const prevNodeOptions = () => {
 			returnType: 'number',
 			description: i18n.baseText('codeNodeEditor.completer.$prevNode.runIndex'),
 		},
+		{
+			name: 'nodeType',
+			returnType: 'string',
+			description: i18n.baseText('codeNodeEditor.completer.$prevNode.nodeType'),
+		},
 	].map((doc) => createCompletionOption({ name: doc.name, doc }));
 };
 

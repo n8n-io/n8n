@@ -11,6 +11,7 @@ import type {
  * Strips data from data request response based on the specified parameters
  */
 export class DataRequestResponseStripper {
+	// @Reviewer: Same question here, do we need this for node types? Maybe not since they're more "default" than node names?
 	private requestedNodeNames = new Set<string>();
 
 	constructor(

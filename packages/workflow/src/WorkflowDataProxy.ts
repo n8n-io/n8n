@@ -500,7 +500,7 @@ export class WorkflowDataProxy {
 	}
 
 	private prevNodeGetter() {
-		const allowedValues = ['name', 'outputIndex', 'runIndex'];
+		const allowedValues = ['name', 'outputIndex', 'runIndex', 'nodeType'];
 		const that = this;
 
 		return new Proxy(
@@ -528,12 +528,12 @@ export class WorkflowDataProxy {
 
 					if (name === 'name') {
 						return sourceData.previousNode;
-					}
-					if (name === 'outputIndex') {
+					} else if (name === 'outputIndex') {
 						return sourceData.previousNodeOutput || 0;
-					}
-					if (name === 'runIndex') {
+					} else if (name === 'runIndex') {
 						return sourceData.previousNodeRun || 0;
+					} else if (name === 'nodeType') {
+						return that.workflow.getNode(sourceData.previousNode)?.type || '';
 					}
 
 					return Reflect.get(target, name, receiver);

@@ -10,7 +10,7 @@ export function usePrevNodeCompletions(matcher = DEFAULT_MATCHER) {
 	const i18n = useI18n();
 
 	/**
-	 * Complete `$prevNode.` to `.name .outputIndex .runIndex`.
+	 * Complete `$prevNode.` to `.name .outputIndex .runIndex .nodeType`.
 	 */
 	const prevNodeCompletions = (context: CompletionContext): CompletionResult | null => {
 		const pattern = new RegExp(`${escape(matcher)}\..*`);
@@ -31,6 +31,10 @@ export function usePrevNodeCompletions(matcher = DEFAULT_MATCHER) {
 			{
 				label: `${matcher}.runIndex`,
 				info: i18n.baseText('codeNodeEditor.completer.$prevNode.runIndex'),
+			},
+			{
+				label: `${matcher}.nodeType`,
+				info: i18n.baseText('codeNodeEditor.completer.$prevNode.nodeType'),
 			},
 		];
 

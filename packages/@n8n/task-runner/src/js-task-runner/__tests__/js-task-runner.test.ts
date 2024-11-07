@@ -1,5 +1,5 @@
 import { DateTime } from 'luxon';
-import type { CodeExecutionMode, IDataObject } from 'n8n-workflow';
+import { MANUAL_TRIGGER_NODE_TYPE, type CodeExecutionMode, type IDataObject } from 'n8n-workflow';
 import fs from 'node:fs';
 import { builtinModules } from 'node:module';
 
@@ -197,6 +197,7 @@ describe('JsTaskRunner', () => {
 				['$nodeVersion', 2],
 				['$prevNode.name', 'Trigger'],
 				['$prevNode.outputIndex', 0],
+				['$prevNode.nodeType', MANUAL_TRIGGER_NODE_TYPE],
 				['$runIndex', 0],
 				['{ wf: $workflow }', { wf: { active: true, id: '1', name: 'Test Workflow' } }],
 				['$vars', { var: 'value' }],

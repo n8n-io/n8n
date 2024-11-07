@@ -196,7 +196,12 @@ describe('WorkflowDataProxy', () => {
 		});
 
 		test('$prevNode', () => {
-			expect(proxy.$prevNode).toEqual({ name: 'Rename', outputIndex: 0, runIndex: 0 });
+			expect(proxy.$prevNode).toEqual({
+				name: 'Rename',
+				outputIndex: 0,
+				runIndex: 0,
+				nodeType: 'test.set',
+			});
 		});
 
 		test('$runIndex', () => {

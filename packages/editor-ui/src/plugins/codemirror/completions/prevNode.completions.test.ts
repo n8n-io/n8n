@@ -22,6 +22,7 @@ describe('prevNodeCompletions', () => {
 				expect.objectContaining({ label: '$prevNode.name' }),
 				expect.objectContaining({ label: '$prevNode.outputIndex' }),
 				expect.objectContaining({ label: '$prevNode.runIndex' }),
+				expect.objectContaining({ label: '$prevNode.nodeType' }),
 			]),
 		);
 	});
@@ -44,6 +45,7 @@ describe('prevNodeCompletions', () => {
 				expect.objectContaining({ label: '$prevNode.name' }),
 				expect.objectContaining({ label: '$prevNode.outputIndex' }),
 				expect.objectContaining({ label: '$prevNode.runIndex' }),
+				expect.objectContaining({ label: '$nodeType.runIndex' }),
 			]),
 		);
 	});
