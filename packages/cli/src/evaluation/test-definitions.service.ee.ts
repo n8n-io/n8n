@@ -2,6 +2,7 @@ import { Service } from 'typedi';
 
 import type { TestDefinition } from '@/databases/entities/test-definition.ee';
 import { TestDefinitionRepository } from '@/databases/repositories/test-definition.repository.ee';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { validateEntity } from '@/generic-helpers';
 import type { ListQuery } from '@/requests';
 
@@ -18,7 +19,7 @@ type TestDefinitionLike = Omit<
 export class TestDefinitionsService {
 	constructor(private testRepository: TestDefinitionRepository) {}
 
-	toEntity(attrs: {
+	private toEntityLike(attrs: {
 		name?: string;
 		workflowId?: string;
 		evaluationWorkflowId?: string;
@@ -53,6 +54,17 @@ export class TestDefinitionsService {
 			};
 		}
 
+		return entity;
+	}
+
+	toEntity(attrs: {
+		name?: string;
+		workflowId?: string;
+		evaluationWorkflowId?: string;
+		annotationTagId?: string;
+		id?: number;
+	}) {
+		const entity = this.toEntityLike(attrs);
 		return this.testRepository.create(entity);
 	}
 
@@ -64,6 +76,26 @@ export class TestDefinitionsService {
 		await validateEntity(test);
 
 		return await this.testRepository.save(test);
+	}
+
+	async update(id: number, attrs: TestDefinitionLike, accessibleWorkflowIds: string[]) {
+		if (attrs.name) {
+			const updatedTest = this.toEntity(attrs);
+			await validateEntity(updatedTest);
+		}
+
+		// Do not allow updating the workflow ID after test definition creation
+		if (attrs.workflowId) {
+			delete attrs.workflowId;
+		}
+
+		const queryResult = await this.testRepository.update(id, this.toEntityLike(attrs));
+
+		if (queryResult.affected === 0) {
+			throw new NotFoundError('Test definition not found');
+		}
+
+		return await this.testRepository.getOne(id, accessibleWorkflowIds);
 	}
 
 	async delete(id: number, accessibleWorkflowIds: string[]) {
