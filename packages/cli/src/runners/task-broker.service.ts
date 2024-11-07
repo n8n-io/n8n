@@ -569,7 +569,7 @@ export class TaskBroker {
 	}
 
 	/**
-	 * Whether the runner is ready to accept a task, waiting one to launch if needed.
+	 * Whether the runner is ready to accept a task, launching one if needed.
 	 * Only for modes where we manage the runner's lifecycle.
 	 */
 	private async isRunnerReady(request: TaskRequest) {
