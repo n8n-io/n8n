@@ -73,6 +73,7 @@ export function useExecutionHelpers() {
 	}
 
 	function openExecutionInNewTab(executionId: string, workflowId?: string) {
+		// todo this does not work when workflowId is not set
 		const route = router.resolve({
 			name: VIEWS.EXECUTION_PREVIEW,
 			params: { name: workflowId, executionId },
