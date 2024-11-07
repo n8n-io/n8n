@@ -1,8 +1,13 @@
 import { getAdditionalKeys } from 'n8n-core';
-import type { IDataObject, INodeType, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteData,
+	INodeType,
+	IWorkflowExecuteAdditionalData,
+} from 'n8n-workflow';
 import { Workflow, WorkflowDataProxy } from 'n8n-workflow';
 
-import { newCodeTaskData } from '../../__tests__/test-data';
+import { newDataRequestResponse } from '../../__tests__/test-data';
 import { BuiltInsParser } from '../built-ins-parser';
 import { BuiltInsParserState } from '../built-ins-parser-state';
 
@@ -159,7 +164,12 @@ describe('BuiltInsParser', () => {
 
 	describe('WorkflowDataProxy built-ins', () => {
 		it('should have a known list of built-ins', () => {
-			const data = newCodeTaskData([]);
+			const data = newDataRequestResponse([]);
+			const executeData: IExecuteData = {
+				data: {},
+				node: data.node,
+				source: data.connectionInputSource,
+			};
 			const dataProxy = new WorkflowDataProxy(
 				new Workflow({
 					...data.workflow,
@@ -179,7 +189,7 @@ describe('BuiltInsParser', () => {
 				data.runIndex,
 				0,
 				data.activeNodeName,
-				data.connectionInputData,
+				[],
 				data.siblingParameters,
 				data.mode,
 				getAdditionalKeys(
@@ -187,7 +197,7 @@ describe('BuiltInsParser', () => {
 					data.mode,
 					data.runExecutionData,
 				),
-				data.executeData,
+				executeData,
 				data.defaultReturnRunIndex,
 				data.selfData,
 				data.contextNodeName,
