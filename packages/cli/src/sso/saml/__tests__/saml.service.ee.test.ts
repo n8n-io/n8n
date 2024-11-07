@@ -85,6 +85,29 @@ describe('SamlService', () => {
 			// ASSERT
 			expect(samlService.reset).toHaveBeenCalledTimes(1);
 		});
+
+		test('does not call reset and rethrows if another error is thrown', async () => {
+			// ARRANGE
+			jest
+				.spyOn(samlService, 'loadFromDbAndApplySamlPreferences')
+				.mockRejectedValue(new TypeError());
+			jest.spyOn(samlService, 'reset');
+
+			// ACT & ASSERT
+			await expect(samlService.init()).rejects.toThrowError(TypeError);
+			expect(samlService.reset).toHaveBeenCalledTimes(0);
+		});
+
+		test('does not call reset if no error is trown', async () => {
+			// ARRANGE
+			jest.spyOn(samlService, 'reset');
+
+			// ACT
+			await samlService.init();
+
+			// ASSERT
+			expect(samlService.reset).toHaveBeenCalledTimes(0);
+		});
 	});
 
 	describe('reset', () => {
