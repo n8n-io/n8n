@@ -11,6 +11,7 @@ import type {
 import { computed } from 'vue';
 import NodeIcon from '@/components/NodeIcon.vue';
 import AiRunContentBlock from './AiRunContentBlock.vue';
+import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
 
 interface RunMeta {
 	startTimeMs: number;
@@ -18,6 +19,7 @@ interface RunMeta {
 	node: INodeTypeDescription | null;
 	type: 'input' | 'output';
 	connectionType: NodeConnectionType;
+	executionId?: string;
 }
 const props = defineProps<{
 	inputData: IAiData;
@@ -26,6 +28,8 @@ const props = defineProps<{
 
 const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
+
+const { openExecutionInNewTab } = useExecutionHelpers();
 
 type TokenUsageData = {
 	completionTokens: number;
@@ -75,6 +79,7 @@ function extractRunMeta(run: IAiDataContent) {
 		node: nodeType,
 		type: run.inOut,
 		connectionType: run.type,
+		executionId: run.metadata.executionId,
 	};
 
 	return runMeta;
@@ -130,6 +135,11 @@ const outputError = computed(() => {
 								})
 							}}
 						</n8n-tooltip>
+					</li>
+					<li v-if="runMeta?.executionId">
+						<a @click="openExecutionInNewTab(runMeta?.executionId)"
+							>EXECUTION ID {{ runMeta?.executionId }}</a
+						>
 					</li>
 					<li v-if="(consumedTokensSum?.totalTokens ?? 0) > 0" :class="$style.tokensUsage">
 						{{

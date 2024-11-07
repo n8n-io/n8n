@@ -12,7 +12,6 @@ import {
 	CHAT_TRIGGER_NODE_TYPE,
 	MANUAL_CHAT_TRIGGER_NODE_TYPE,
 	MODAL_CONFIRM,
-	VIEWS,
 	WORKFLOW_LM_CHAT_MODAL_KEY,
 } from '@/constants';
 
@@ -58,6 +57,7 @@ import { usePinnedData } from '@/composables/usePinnedData';
 import { get, last } from 'lodash-es';
 import { isEmpty } from '@/utils/typesUtils';
 import { chatEventBus } from '@n8n/chat/event-buses';
+import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
 
 const LazyRunDataAi = defineAsyncComponent(
 	async () => await import('@/components/RunDataAi/RunDataAi.vue'),
@@ -81,6 +81,8 @@ const { runWorkflow } = useRunWorkflow({ router });
 const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
+
+const executionHelpers = useExecutionHelpers();
 
 const { showError } = useToast();
 const messages: Ref<ChatMessage[]> = ref([]);
@@ -428,11 +430,7 @@ async function sendMessage(message: string, files?: File[]) {
 }
 
 function displayExecution(executionId: string) {
-	const route = router.resolve({
-		name: VIEWS.EXECUTION_PREVIEW,
-		params: { name: workflow.value.id, executionId },
-	});
-	window.open(route.href, '_blank');
+	executionHelpers.openExecutionInNewTab(executionId, workflow.value.id);
 }
 function isTextMessage(message: ChatMessage): message is ChatMessageText {
 	return message.type === 'text' || !message.type;

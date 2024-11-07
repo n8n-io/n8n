@@ -58,12 +58,13 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useNodeType } from '@/composables/useNodeType';
 import { useToast } from '@/composables/useToast';
-import { isEqual, isObject } from 'lodash-es';
+import { get, isEqual, isObject } from 'lodash-es';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useRootStore } from '@/stores/root.store';
 import RunDataPinButton from '@/components/RunDataPinButton.vue';
 import { getGenericHints } from '@/utils/nodeViewUtils';
+import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
 
 const LazyRunDataTable = defineAsyncComponent(
 	async () => await import('@/components/RunDataTable.vue'),
@@ -180,6 +181,7 @@ export default defineComponent({
 		const { isSubNodeType } = useNodeType({
 			node,
 		});
+		const { openExecutionInNewTab } = useExecutionHelpers();
 
 		return {
 			...useToast(),
@@ -187,6 +189,7 @@ export default defineComponent({
 			nodeHelpers,
 			pinnedData,
 			isSubNodeType,
+			openExecutionInNewTab,
 		};
 	},
 	data() {
@@ -220,6 +223,43 @@ export default defineComponent({
 			useSourceControlStore,
 			useRootStore,
 		),
+		subWorkflowData(): { executionId: string; workflowId?: string } | null {
+			if (!this.node) {
+				return null;
+			}
+			const metadata = get(this.workflowRunData, [this.node.name, this.runIndex, 'metadata'], null);
+			if (metadata?.executionId) {
+				return {
+					executionId: metadata?.executionId,
+					workflowId: metadata?.workflowId,
+				};
+			}
+			return null;
+		},
+		itemSubWorkflowData(): Array<{
+			metadata?: { executionId?: string; workflowId?: string };
+			itemIndex: number;
+		}> {
+			const items = this.getData(this.runIndex, this.currentOutputIndex);
+			return items
+				.map((item, itemIndex) => {
+					return {
+						metadata: item.metadata,
+						itemIndex,
+					};
+				})
+				.filter((item) => {
+					return !!item.metadata;
+				});
+		},
+		hasInputOverwrite(): boolean {
+			if (!this.node) {
+				return false;
+			}
+			const taskData = this.nodeHelpers.getNodeTaskData(this.node, this.runIndex);
+			if (taskData === null) return false;
+			return !!taskData.inputOverride;
+		},
 		isReadOnlyRoute() {
 			return this.$route?.meta?.readOnlyCanvas === true;
 		},
@@ -654,6 +694,15 @@ export default defineComponent({
 		this.hidePinDataDiscoveryTooltip();
 	},
 	methods: {
+		getData(
+			runIndex: number,
+			outputIndex: number,
+			connectionType: NodeConnectionType = NodeConnectionType.Main,
+		) {
+			const rawInputData = this.getRawInputData(runIndex, outputIndex, connectionType);
+			const pinOrLiveData = this.getPinDataOrLiveData(rawInputData);
+			return this.getFilteredData(pinOrLiveData);
+		},
 		getResolvedNodeOutputs() {
 			if (this.node && this.nodeType) {
 				const workflowNode = this.workflow.getNode(this.node.name);
@@ -1382,6 +1431,32 @@ export default defineComponent({
 		>
 			<n8n-text size="small" v-n8n-html="hint.message"></n8n-text>
 		</n8n-callout>
+
+		<div :class="$style.execution">
+			<n8n-button
+				v-if="subWorkflowData && !(paneType === 'input' && hasInputOverwrite)"
+				:label="`Open ${
+					nodeType?.group?.includes('trigger') ? 'parent' : 'sub'
+				} execution ${subWorkflowData.executionId}`"
+				type="secondary"
+				@click.stop="openExecutionInNewTab(subWorkflowData.executionId, subWorkflowData.workflowId)"
+			/>
+			<div v-if="itemSubWorkflowData.length">
+				<n8n-select
+					size="small"
+					:class="$style.longSelect"
+					model-value="Select exectuion"
+					@change="openExecutionInNewTab($event.metadata.executionId, $event.metadata.workflowId)"
+				>
+					<n8n-option
+						v-for="subWorkflow in itemSubWorkflowData"
+						:key="subWorkflow.metadata?.executionId"
+						:value="subWorkflow"
+						:label="`item#${subWorkflow.itemIndex} exec#${subWorkflow.metadata?.executionId}`"
+					/>
+				</n8n-select>
+			</div>
+		</div>
 
 		<div
 			v-if="maxOutputIndex > 0 && branches.length > 1 && !displaysMultipleNodes"
