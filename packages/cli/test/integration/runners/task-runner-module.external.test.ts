@@ -31,6 +31,7 @@ describe('TaskRunnerModule in external mode', () => {
 			await module.start();
 		});
 
+		// @TODO: Disconnect analyzer not being set in external mode
 		it('should use DefaultTaskRunnerDisconnectAnalyzer', () => {
 			const wsServer = Container.get(TaskRunnerWsServer);
 
