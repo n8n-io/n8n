@@ -23,6 +23,12 @@ import { v4 as uuid } from 'uuid';
 import { useWorkflowsStore } from './workflows.store';
 import { computed, ref } from 'vue';
 
+const DEFAULT_MAIN_PANEL_DIMENSIONS = {
+	relativeLeft: 1,
+	relativeRight: 1,
+	relativeWidth: 1,
+};
+
 export const useNDVStore = defineStore(STORES.NDV, () => {
 	const localStorageMappingIsOnboarded = useStorage(LOCAL_STORAGE_MAPPING_IS_ONBOARDED);
 	const localStorageTableHoverIsOnboarded = useStorage(LOCAL_STORAGE_TABLE_HOVER_IS_ONBOARDED);
@@ -30,11 +36,11 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 
 	const activeNodeName = ref<string | null>(null);
 	const mainPanelDimensions = ref<MainPanelDimensions>({
-		unknown: { relativeLeft: 1, relativeRight: 1, relativeWidth: 1 },
-		regular: { relativeLeft: 1, relativeRight: 1, relativeWidth: 1 },
-		dragless: { relativeLeft: 1, relativeRight: 1, relativeWidth: 1 },
-		inputless: { relativeLeft: 1, relativeRight: 1, relativeWidth: 1 },
-		wide: { relativeLeft: 1, relativeRight: 1, relativeWidth: 1 },
+		unknown: DEFAULT_MAIN_PANEL_DIMENSIONS,
+		regular: DEFAULT_MAIN_PANEL_DIMENSIONS,
+		dragless: DEFAULT_MAIN_PANEL_DIMENSIONS,
+		inputless: DEFAULT_MAIN_PANEL_DIMENSIONS,
+		wide: DEFAULT_MAIN_PANEL_DIMENSIONS,
 	});
 	const pushRef = ref('');
 	const input = ref<InputPanel>({
@@ -217,9 +223,8 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 		panelType: MainPanelType;
 		dimensions: { relativeLeft?: number; relativeRight?: number; relativeWidth?: number };
 	}): void => {
-		const defaultDimensions = { relativeLeft: 1, relativeRight: 1, relativeWidth: 1 };
 		mainPanelDimensions.value[params.panelType] = {
-			...defaultDimensions,
+			...mainPanelDimensions.value[params.panelType],
 			...params.dimensions,
 		};
 	};
