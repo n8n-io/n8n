@@ -234,6 +234,8 @@ describe('GlobalConfig', () => {
 			maxOldSpaceSize: '',
 			maxConcurrency: 5,
 			assertDeduplicationOutput: false,
+			idleTimeout: 5,
+			idleChecksFrequency: 1,
 		},
 		sentry: {
 			backendDsn: '',
