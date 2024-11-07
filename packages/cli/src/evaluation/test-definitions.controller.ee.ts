@@ -5,8 +5,8 @@ import { listQueryMiddleware } from '@/middlewares';
 import { getSharedWorkflowIds } from '@/public-api/v1/handlers/workflows/workflows.service';
 import { isPositiveInteger } from '@/utils';
 
-import { TestDefinitionsService } from './test-definitions.service';
-import { TestDefinitionsRequest } from './test-definitions.types';
+import { TestDefinitionsService } from './test-definitions.service.ee';
+import { TestDefinitionsRequest } from './test-definitions.types.ee';
 
 @RestController('/evaluation/test-definitions')
 export class TestDefinitionsController {

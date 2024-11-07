@@ -2,7 +2,7 @@ import type { FindManyOptions, FindOptionsWhere } from '@n8n/typeorm';
 import { DataSource, In, Repository } from '@n8n/typeorm';
 import { Service } from 'typedi';
 
-import { TestDefinition } from '@/databases/entities/test-definition';
+import { TestDefinition } from '@/databases/entities/test-definition.ee';
 import type { ListQuery } from '@/requests';
 
 @Service()

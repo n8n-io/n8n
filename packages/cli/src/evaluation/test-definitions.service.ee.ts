@@ -1,7 +1,7 @@
 import { Service } from 'typedi';
 
-import type { TestDefinition } from '@/databases/entities/test-definition';
-import { TestDefinitionRepository } from '@/databases/repositories/test-definition.repository';
+import type { TestDefinition } from '@/databases/entities/test-definition.ee';
+import { TestDefinitionRepository } from '@/databases/repositories/test-definition.repository.ee';
 import { validateEntity } from '@/generic-helpers';
 import type { ListQuery } from '@/requests';
 
