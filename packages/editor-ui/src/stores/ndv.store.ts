@@ -50,6 +50,10 @@ type Draggable = {
 };
 
 export const useNDVStore = defineStore(STORES.NDV, () => {
+	const localStorageMappingIsOnboarded = useStorage(LOCAL_STORAGE_MAPPING_IS_ONBOARDED);
+	const localStorageTableHoverIsOnboarded = useStorage(LOCAL_STORAGE_TABLE_HOVER_IS_ONBOARDED);
+	const localStorageAutoCompleteIsOnboarded = useStorage(LOCAL_STORAGE_AUTOCOMPLETE_IS_ONBOARDED);
+
 	const activeNodeName = ref<string | null>(null);
 	const mainPanelDimensions = ref<Record<string, Record<string, number>>>({});
 	const pushRef = ref('');
@@ -85,14 +89,10 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 		dimensions: null,
 		activeTarget: null,
 	});
-	const isMappingOnboarded = ref(useStorage(LOCAL_STORAGE_MAPPING_IS_ONBOARDED).value === 'true');
-	const isTableHoverOnboarded = ref(
-		useStorage(LOCAL_STORAGE_TABLE_HOVER_IS_ONBOARDED).value === 'true',
-	);
+	const isMappingOnboarded = ref(localStorageMappingIsOnboarded.value === 'true');
+	const isTableHoverOnboarded = ref(localStorageTableHoverIsOnboarded.value === 'true');
 
-	const isAutocompleteOnboarded = ref(
-		useStorage(LOCAL_STORAGE_AUTOCOMPLETE_IS_ONBOARDED).value === 'true',
-	);
+	const isAutocompleteOnboarded = ref(localStorageAutoCompleteIsOnboarded.value === 'true');
 
 	const highlightDraggables = ref(false);
 
@@ -346,17 +346,17 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 
 	const setMappingOnboarded = () => {
 		isMappingOnboarded.value = true;
-		useStorage(LOCAL_STORAGE_MAPPING_IS_ONBOARDED).value = 'true';
+		localStorageMappingIsOnboarded.value = 'true';
 	};
 
 	const setTableHoverOnboarded = () => {
 		isTableHoverOnboarded.value = true;
-		useStorage(LOCAL_STORAGE_TABLE_HOVER_IS_ONBOARDED).value = 'true';
+		localStorageTableHoverIsOnboarded.value = 'true';
 	};
 
 	const setAutocompleteOnboarded = () => {
 		isAutocompleteOnboarded.value = true;
-		useStorage(LOCAL_STORAGE_AUTOCOMPLETE_IS_ONBOARDED).value = 'true';
+		localStorageAutoCompleteIsOnboarded.value = 'true';
 	};
 
 	const setHighlightDraggables = (highlight: boolean) => {
