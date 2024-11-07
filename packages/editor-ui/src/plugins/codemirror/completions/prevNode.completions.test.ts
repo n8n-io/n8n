@@ -16,7 +16,7 @@ describe('prevNodeCompletions', () => {
 		const result = prevNodeCompletions(context);
 
 		expect(result).not.toBeNull();
-		expect(result?.options).toHaveLength(3);
+		expect(result?.options).toHaveLength(4);
 		expect(result?.options).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({ label: '$prevNode.name' }),
@@ -39,13 +39,13 @@ describe('prevNodeCompletions', () => {
 		const result = prevNodeCompletions(context);
 
 		expect(result).not.toBeNull();
-		expect(result?.options).toHaveLength(3);
+		expect(result?.options).toHaveLength(4);
 		expect(result?.options).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({ label: '$prevNode.name' }),
 				expect.objectContaining({ label: '$prevNode.outputIndex' }),
 				expect.objectContaining({ label: '$prevNode.runIndex' }),
-				expect.objectContaining({ label: '$nodeType.runIndex' }),
+				expect.objectContaining({ label: '$prevNode.nodeType' }),
 			]),
 		);
 	});
