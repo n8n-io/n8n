@@ -1,16 +1,16 @@
 import { Container } from 'typedi';
 
+import type { AnnotationTagEntity } from '@/databases/entities/annotation-tag-entity.ee';
 import type { User } from '@/databases/entities/user';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { TestDefinitionRepository } from '@/databases/repositories/test-definition.repository.ee';
+import { createAnnotationTags } from '@test-integration/db/executions';
 
 import { createUserShell } from './../shared/db/users';
 import { createWorkflow } from './../shared/db/workflows';
 import * as testDb from './../shared/test-db';
 import type { SuperAgentTest } from './../shared/types';
 import * as utils from './../shared/utils/';
-import { AnnotationTagEntity } from '@/databases/entities/annotation-tag-entity.ee';
-import { createAnnotationTags } from '@test-integration/db/executions';
 
 let authOwnerAgent: SuperAgentTest;
 let workflowUnderTest: WorkflowEntity;
