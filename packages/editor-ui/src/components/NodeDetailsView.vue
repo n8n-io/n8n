@@ -387,7 +387,7 @@ const onWorkflowActivate = () => {
 	}, 1000);
 };
 
-const onOutputItemHover = (e: { itemIndex: number; outputIndex: number }) => {
+const onOutputItemHover = (e: { itemIndex: number; outputIndex: number } | null) => {
 	if (e === null || !activeNode.value || !isPairedItemHoveringEnabled.value) {
 		ndvStore.setHoveringItem(null);
 		return;

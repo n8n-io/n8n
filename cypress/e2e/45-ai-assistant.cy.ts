@@ -4,6 +4,7 @@ import { clickCreateNewCredential, openCredentialSelect } from '../composables/n
 import { GMAIL_NODE_NAME, SCHEDULE_TRIGGER_NODE_NAME } from '../constants';
 import { CredentialsModal, CredentialsPage, NDV, WorkflowPage } from '../pages';
 import { AIAssistant } from '../pages/features/ai-assistant';
+import { NodeCreator } from '../pages/features/node-creator';
 import { getVisibleSelect } from '../utils';
 
 const wf = new WorkflowPage();
@@ -11,6 +12,7 @@ const ndv = new NDV();
 const aiAssistant = new AIAssistant();
 const credentialsPage = new CredentialsPage();
 const credentialsModal = new CredentialsModal();
+const nodeCreatorFeature = new NodeCreator();
 
 describe('AI Assistant::disabled', () => {
 	beforeEach(() => {
@@ -278,6 +280,20 @@ describe('AI Assistant::enabled', () => {
 		wf.actions.openNode(SCHEDULE_TRIGGER_NODE_NAME);
 		ndv.getters.nodeExecuteButton().click();
 		wf.getters.isWorkflowSaved();
+		aiAssistant.getters.placeholderMessage().should('not.exist');
+	});
+
+	it('should send message via enter even with global NodeCreator panel opened', () => {
+		cy.intercept('POST', '/rest/ai/chat', {
+			statusCode: 200,
+			fixture: 'aiAssistant/responses/simple_message_response.json',
+		}).as('chatRequest');
+
+		wf.actions.addInitialNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
+		aiAssistant.actions.openChat();
+		nodeCreatorFeature.actions.openNodeCreator();
+		aiAssistant.getters.chatInput().type('Hello{Enter}');
+
 		aiAssistant.getters.placeholderMessage().should('not.exist');
 	});
 });

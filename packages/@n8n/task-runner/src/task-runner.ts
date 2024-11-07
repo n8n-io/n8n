@@ -1,4 +1,4 @@
-import { ApplicationError, type INodeTypeDescription } from 'n8n-workflow';
+import { ApplicationError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { type MessageEvent, WebSocket } from 'ws';
 
@@ -20,6 +20,12 @@ export interface TaskOffer {
 }
 
 interface DataRequest {
+	requestId: string;
+	resolve: (data: unknown) => void;
+	reject: (error: unknown) => void;
+}
+
+interface NodeTypesRequest {
 	requestId: string;
 	resolve: (data: unknown) => void;
 	reject: (error: unknown) => void;
@@ -57,6 +63,8 @@ export abstract class TaskRunner {
 	openOffers: Map<TaskOffer['offerId'], TaskOffer> = new Map();
 
 	dataRequests: Map<DataRequest['requestId'], DataRequest> = new Map();
+
+	nodeTypesRequests: Map<NodeTypesRequest['requestId'], NodeTypesRequest> = new Map();
 
 	rpcCalls: Map<RPCCall['callId'], RPCCall> = new Map();
 
@@ -168,13 +176,9 @@ export abstract class TaskRunner {
 				this.handleRpcResponse(message.callId, message.status, message.data);
 				break;
 			case 'broker:nodetypes':
-				this.setNodeTypes(message.nodeTypes as unknown as INodeTypeDescription[]);
+				this.processNodeTypesResponse(message.requestId, message.nodeTypes);
 				break;
 		}
-	}
-
-	setNodeTypes(nodeTypes: INodeTypeDescription[]) {
-		this.nodeTypes = new TaskRunnerNodeTypes(nodeTypes);
 	}
 
 	processDataResponse(requestId: string, data: unknown) {
@@ -185,6 +189,16 @@ export abstract class TaskRunner {
 		// Deleting of the request is handled in `requestData`, using a
 		// `finally` wrapped around the return
 		request.resolve(data);
+	}
+
+	processNodeTypesResponse(requestId: string, nodeTypes: unknown) {
+		const request = this.nodeTypesRequests.get(requestId);
+
+		if (!request) return;
+
+		// Deleting of the request is handled in `requestNodeTypes`, using a
+		// `finally` wrapped around the return
+		request.resolve(nodeTypes);
 	}
 
 	hasOpenTasks() {
@@ -280,6 +294,34 @@ export abstract class TaskRunner {
 	// eslint-disable-next-line @typescript-eslint/naming-convention
 	async executeTask(_task: Task): Promise<TaskResultData> {
 		throw new ApplicationError('Unimplemented');
+	}
+
+	async requestNodeTypes<T = unknown>(
+		taskId: Task['taskId'],
+		requestParams: RunnerMessage.ToBroker.NodeTypesRequest['requestParams'],
+	) {
+		const requestId = nanoid();
+
+		const nodeTypesPromise = new Promise<T>((resolve, reject) => {
+			this.nodeTypesRequests.set(requestId, {
+				requestId,
+				resolve: resolve as (data: unknown) => void,
+				reject,
+			});
+		});
+
+		this.send({
+			type: 'runner:nodetypesrequest',
+			taskId,
+			requestId,
+			requestParams,
+		});
+
+		try {
+			return await nodeTypesPromise;
+		} finally {
+			this.nodeTypesRequests.delete(requestId);
+		}
 	}
 
 	async requestData<T = unknown>(

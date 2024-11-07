@@ -1,4 +1,4 @@
-import type { GlobalConfig } from '@n8n/config';
+import type { PruningConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
@@ -8,9 +8,13 @@ import { mockLogger } from '@test/mocking';
 
 import { PruningService } from '../pruning.service';
 
+jest.mock('@/db', () => ({
+	connectionState: { migrated: true },
+}));
+
 describe('PruningService', () => {
 	describe('init', () => {
-		it('should start pruning if leader', () => {
+		it('should start pruning on main instance that is the leader', () => {
 			const pruningService = new PruningService(
 				mockLogger(),
 				mock<InstanceSettings>({ isLeader: true }),
@@ -29,7 +33,7 @@ describe('PruningService', () => {
 			expect(startPruningSpy).toHaveBeenCalled();
 		});
 
-		it('should not start pruning if follower', () => {
+		it('should not start pruning on main instance that is a follower', () => {
 			const pruningService = new PruningService(
 				mockLogger(),
 				mock<InstanceSettings>({ isLeader: false }),
@@ -48,7 +52,7 @@ describe('PruningService', () => {
 			expect(startPruningSpy).not.toHaveBeenCalled();
 		});
 
-		it('should register leadership events if multi-main setup is enabled', () => {
+		it('should register leadership events if main on multi-main setup', () => {
 			const pruningService = new PruningService(
 				mockLogger(),
 				mock<InstanceSettings>({ isLeader: true }),
@@ -88,13 +92,10 @@ describe('PruningService', () => {
 					isMultiMainSetupEnabled: true,
 					multiMainSetup: mock<MultiMainSetup>(),
 				}),
-				mock<GlobalConfig>({ pruning: { isEnabled: true } }),
+				mock<PruningConfig>({ isEnabled: true }),
 			);
 
-			// @ts-expect-error Private method
-			const isEnabled = pruningService.isEnabled();
-
-			expect(isEnabled).toBe(true);
+			expect(pruningService.isEnabled).toBe(true);
 		});
 
 		it('should return `false` based on config if leader main', () => {
@@ -107,16 +108,13 @@ describe('PruningService', () => {
 					isMultiMainSetupEnabled: true,
 					multiMainSetup: mock<MultiMainSetup>(),
 				}),
-				mock<GlobalConfig>({ pruning: { isEnabled: false } }),
+				mock<PruningConfig>({ isEnabled: false }),
 			);
 
-			// @ts-expect-error Private method
-			const isEnabled = pruningService.isEnabled();
-
-			expect(isEnabled).toBe(false);
+			expect(pruningService.isEnabled).toBe(false);
 		});
 
-		it('should return `false` if non-main even if enabled', () => {
+		it('should return `false` if non-main even if config is enabled', () => {
 			const pruningService = new PruningService(
 				mockLogger(),
 				mock<InstanceSettings>({ isLeader: false, instanceType: 'worker' }),
@@ -126,16 +124,13 @@ describe('PruningService', () => {
 					isMultiMainSetupEnabled: true,
 					multiMainSetup: mock<MultiMainSetup>(),
 				}),
-				mock<GlobalConfig>({ pruning: { isEnabled: true } }),
+				mock<PruningConfig>({ isEnabled: true }),
 			);
 
-			// @ts-expect-error Private method
-			const isEnabled = pruningService.isEnabled();
-
-			expect(isEnabled).toBe(false);
+			expect(pruningService.isEnabled).toBe(false);
 		});
 
-		it('should return `false` if follower main even if enabled', () => {
+		it('should return `false` if follower main even if config is enabled', () => {
 			const pruningService = new PruningService(
 				mockLogger(),
 				mock<InstanceSettings>({ isLeader: false, isFollower: true, instanceType: 'main' }),
@@ -145,13 +140,10 @@ describe('PruningService', () => {
 					isMultiMainSetupEnabled: true,
 					multiMainSetup: mock<MultiMainSetup>(),
 				}),
-				mock<GlobalConfig>({ pruning: { isEnabled: true }, multiMainSetup: { enabled: true } }),
+				mock<PruningConfig>({ isEnabled: true }),
 			);
 
-			// @ts-expect-error Private method
-			const isEnabled = pruningService.isEnabled();
-
-			expect(isEnabled).toBe(false);
+			expect(pruningService.isEnabled).toBe(false);
 		});
 	});
 
@@ -166,22 +158,25 @@ describe('PruningService', () => {
 					isMultiMainSetupEnabled: true,
 					multiMainSetup: mock<MultiMainSetup>(),
 				}),
-				mock<GlobalConfig>({ pruning: { isEnabled: false } }),
+				mock<PruningConfig>({ isEnabled: false }),
+			);
+
+			const scheduleRollingSoftDeletionsSpy = jest.spyOn(
+				pruningService,
+				// @ts-expect-error Private method
+				'scheduleRollingSoftDeletions',
 			);
 
 			// @ts-expect-error Private method
-			const setSoftDeletionInterval = jest.spyOn(pruningService, 'setSoftDeletionInterval');
-
-			// @ts-expect-error Private method
-			const scheduleHardDeletion = jest.spyOn(pruningService, 'scheduleHardDeletion');
+			const scheduleNextHardDeletionSpy = jest.spyOn(pruningService, 'scheduleNextHardDeletion');
 
 			pruningService.startPruning();
 
-			expect(setSoftDeletionInterval).not.toHaveBeenCalled();
-			expect(scheduleHardDeletion).not.toHaveBeenCalled();
+			expect(scheduleRollingSoftDeletionsSpy).not.toHaveBeenCalled();
+			expect(scheduleNextHardDeletionSpy).not.toHaveBeenCalled();
 		});
 
-		it('should start pruning if service is enabled', () => {
+		it('should start pruning if service is enabled and DB is migrated', () => {
 			const pruningService = new PruningService(
 				mockLogger(),
 				mock<InstanceSettings>({ isLeader: true, instanceType: 'main' }),
@@ -191,23 +186,23 @@ describe('PruningService', () => {
 					isMultiMainSetupEnabled: true,
 					multiMainSetup: mock<MultiMainSetup>(),
 				}),
-				mock<GlobalConfig>({ pruning: { isEnabled: true } }),
+				mock<PruningConfig>({ isEnabled: true }),
 			);
 
-			const setSoftDeletionInterval = jest
+			const scheduleRollingSoftDeletionsSpy = jest
 				// @ts-expect-error Private method
-				.spyOn(pruningService, 'setSoftDeletionInterval')
+				.spyOn(pruningService, 'scheduleRollingSoftDeletions')
 				.mockImplementation();
 
-			const scheduleHardDeletion = jest
+			const scheduleNextHardDeletionSpy = jest
 				// @ts-expect-error Private method
-				.spyOn(pruningService, 'scheduleHardDeletion')
+				.spyOn(pruningService, 'scheduleNextHardDeletion')
 				.mockImplementation();
 
 			pruningService.startPruning();
 
-			expect(setSoftDeletionInterval).toHaveBeenCalled();
-			expect(scheduleHardDeletion).toHaveBeenCalled();
+			expect(scheduleRollingSoftDeletionsSpy).toHaveBeenCalled();
+			expect(scheduleNextHardDeletionSpy).toHaveBeenCalled();
 		});
 	});
 });

@@ -7,7 +7,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
-import type { CanvasNode } from '@/types';
+import type { CanvasConnection, CanvasNode } from '@/types';
 import { CanvasConnectionMode } from '@/types';
 import type { ICredentialsResponse, INodeUi, IWorkflowDb } from '@/Interface';
 import { RemoveNodeCommand } from '@/models/history';
@@ -189,36 +189,6 @@ describe('useCanvasOperations', () => {
 			);
 
 			expect(result.position).toEqual([20, 20]);
-		});
-
-		it('should create node with default credentials when only one credential is available', () => {
-			const credentialsStore = useCredentialsStore();
-			const credential = mock<ICredentialsResponse>({ id: '1', name: 'cred', type: 'cred' });
-			const nodeTypeName = 'type';
-			const nodeTypeDescription = mockNodeTypeDescription({
-				name: nodeTypeName,
-				credentials: [{ name: credential.name }],
-			});
-
-			credentialsStore.state.credentials = {
-				[credential.id]: credential,
-			};
-
-			// @ts-expect-error Known pinia issue when spying on store getters
-			vi.spyOn(credentialsStore, 'getUsableCredentialByType', 'get').mockReturnValue(() => [
-				credential,
-			]);
-
-			const { addNode } = useCanvasOperations({ router });
-			const result = addNode(
-				{
-					type: nodeTypeName,
-					typeVersion: 1,
-				},
-				nodeTypeDescription,
-			);
-
-			expect(result.credentials).toEqual({ [credential.name]: { id: '1', name: credential.name } });
 		});
 
 		it('should not assign credentials when multiple credentials are available', () => {
@@ -648,6 +618,48 @@ describe('useCanvasOperations', () => {
 			const added = await addNodes(nodes, {});
 			expect(added.length).toBe(2);
 		});
+
+		it('should mark UI state as dirty', async () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const uiStore = mockedStore(useUIStore);
+			const nodeTypesStore = useNodeTypesStore();
+			const nodeTypeName = 'type';
+			const nodes = [mockNode({ name: 'Node 1', type: nodeTypeName, position: [30, 40] })];
+
+			workflowsStore.getCurrentWorkflow.mockReturnValue(
+				createTestWorkflowObject(workflowsStore.workflow),
+			);
+
+			nodeTypesStore.nodeTypes = {
+				[nodeTypeName]: { 1: mockNodeTypeDescription({ name: nodeTypeName }) },
+			};
+
+			const { addNodes } = useCanvasOperations({ router });
+			await addNodes(nodes, { keepPristine: false });
+
+			expect(uiStore.stateIsDirty).toEqual(true);
+		});
+
+		it('should not mark UI state as dirty if keepPristine is true', async () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const uiStore = mockedStore(useUIStore);
+			const nodeTypesStore = useNodeTypesStore();
+			const nodeTypeName = 'type';
+			const nodes = [mockNode({ name: 'Node 1', type: nodeTypeName, position: [30, 40] })];
+
+			workflowsStore.getCurrentWorkflow.mockReturnValue(
+				createTestWorkflowObject(workflowsStore.workflow),
+			);
+
+			nodeTypesStore.nodeTypes = {
+				[nodeTypeName]: { 1: mockNodeTypeDescription({ name: nodeTypeName }) },
+			};
+
+			const { addNodes } = useCanvasOperations({ router });
+			await addNodes(nodes, { keepPristine: true });
+
+			expect(uiStore.stateIsDirty).toEqual(false);
+		});
 	});
 
 	describe('revertAddNode', () => {
@@ -1043,6 +1055,26 @@ describe('useCanvasOperations', () => {
 				],
 			});
 		});
+
+		it('should set UI state as dirty', async () => {
+			const uiStore = mockedStore(useUIStore);
+			const connections: CanvasConnection[] = [];
+
+			const { addConnections } = useCanvasOperations({ router });
+			await addConnections(connections, { keepPristine: false });
+
+			expect(uiStore.stateIsDirty).toBe(true);
+		});
+
+		it('should not set UI state as dirty if keepPristine is true', async () => {
+			const uiStore = mockedStore(useUIStore);
+			const connections: CanvasConnection[] = [];
+
+			const { addConnections } = useCanvasOperations({ router });
+			await addConnections(connections, { keepPristine: true });
+
+			expect(uiStore.stateIsDirty).toBe(false);
+		});
 	});
 
 	describe('createConnection', () => {
@@ -1131,6 +1163,57 @@ describe('useCanvasOperations', () => {
 				],
 			});
 			expect(uiStore.stateIsDirty).toBe(true);
+		});
+
+		it('should not set UI state as dirty if keepPristine is true', () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const uiStore = mockedStore(useUIStore);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+
+			const nodeTypeDescription = mockNodeTypeDescription({
+				name: SET_NODE_TYPE,
+				inputs: [NodeConnectionType.Main],
+				outputs: [NodeConnectionType.Main],
+			});
+
+			const nodeA = createTestNode({
+				id: 'a',
+				type: nodeTypeDescription.name,
+				name: 'Node A',
+			});
+
+			const nodeB = createTestNode({
+				id: 'b',
+				type: nodeTypeDescription.name,
+				name: 'Node B',
+			});
+
+			const connection: Connection = {
+				source: nodeA.id,
+				sourceHandle: `outputs/${NodeConnectionType.Main}/0`,
+				target: nodeB.id,
+				targetHandle: `inputs/${NodeConnectionType.Main}/0`,
+			};
+
+			nodeTypesStore.nodeTypes = {
+				node: { 1: nodeTypeDescription },
+			};
+
+			workflowsStore.workflow.nodes = [nodeA, nodeB];
+			workflowsStore.getNodeById.mockReturnValueOnce(nodeA).mockReturnValueOnce(nodeB);
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeDescription);
+
+			const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
+			workflowsStore.getCurrentWorkflow.mockReturnValue(workflowObject);
+
+			const { createConnection, editableWorkflowObject } = useCanvasOperations({ router });
+
+			editableWorkflowObject.value.nodes[nodeA.name] = nodeA;
+			editableWorkflowObject.value.nodes[nodeB.name] = nodeB;
+
+			createConnection(connection, { keepPristine: true });
+
+			expect(uiStore.stateIsDirty).toBe(false);
 		});
 	});
 

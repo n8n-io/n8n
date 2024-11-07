@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "1.66.0",
+  "version": "1.67.0",
   "private": true,
   "engines": {
     "node": ">=20.15",
@@ -46,6 +46,7 @@
     "@types/jest": "^29.5.3",
     "@types/node": "*",
     "@types/supertest": "^6.0.2",
+    "cross-env": "^7.0.3",
     "jest": "^29.6.2",
     "jest-environment-jsdom": "^29.6.2",
     "jest-expect-message": "^1.1.3",

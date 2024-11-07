@@ -70,7 +70,7 @@ export class TaskRunnerWsServer {
 						this.sendMessage.bind(this, id) as MessageCallback,
 					);
 
-					this.logger.info(`Runner "${message.name}"(${id}) has been registered`);
+					this.logger.info(`Runner "${message.name}" (${id}) has been registered`);
 					return;
 				}
 
