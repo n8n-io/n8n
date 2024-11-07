@@ -18,14 +18,14 @@ describe('TaskRunnerModule in external mode', () => {
 
 	describe('start', () => {
 		it('should throw if the task runner is disabled', async () => {
-			runnerConfig.disabled = true;
+			runnerConfig.enabled = false;
 
 			// Act
 			await expect(module.start()).rejects.toThrow('Task runner is disabled');
 		});
 
 		it('should start the task runner', async () => {
-			runnerConfig.disabled = false;
+			runnerConfig.enabled = true;
 
 			// Act
 			await module.start();

@@ -222,7 +222,7 @@ describe('GlobalConfig', () => {
 			},
 		},
 		taskRunners: {
-			disabled: true,
+			enabled: false,
 			mode: 'internal_childprocess',
 			path: '/runners',
 			authToken: '',
@@ -233,6 +233,7 @@ describe('GlobalConfig', () => {
 			launcherRunner: 'javascript',
 			maxOldSpaceSize: '',
 			maxConcurrency: 5,
+			assertDeduplicationOutput: false,
 		},
 		sentry: {
 			backendDsn: '',

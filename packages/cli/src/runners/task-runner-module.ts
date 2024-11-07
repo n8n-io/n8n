@@ -43,7 +43,7 @@ export class TaskRunnerModule {
 	}
 
 	async start() {
-		a.ok(!this.runnerConfig.disabled, 'Task runner is disabled');
+		a.ok(this.runnerConfig.enabled, 'Task runner is disabled');
 
 		await this.loadTaskManager();
 		await this.loadTaskRunnerServer();
