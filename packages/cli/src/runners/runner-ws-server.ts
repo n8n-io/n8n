@@ -1,3 +1,4 @@
+import type { BrokerMessage, RunnerMessage } from '@n8n/task-runner';
 import { Service } from 'typedi';
 import type WebSocket from 'ws';
 
@@ -5,11 +6,9 @@ import { Logger } from '@/logging/logger.service';
 
 import { DefaultTaskRunnerDisconnectAnalyzer } from './default-task-runner-disconnect-analyzer';
 import type {
-	RunnerMessage,
-	N8nMessage,
+	DisconnectAnalyzer,
 	TaskRunnerServerInitRequest,
 	TaskRunnerServerInitResponse,
-	DisconnectAnalyzer,
 } from './runner-types';
 import { TaskBroker, type MessageCallback, type TaskRunner } from './task-broker.service';
 
@@ -35,7 +34,7 @@ export class TaskRunnerWsServer {
 		return this.disconnectAnalyzer;
 	}
 
-	sendMessage(id: TaskRunner['id'], message: N8nMessage.ToRunner.All) {
+	sendMessage(id: TaskRunner['id'], message: BrokerMessage.ToRunner.All) {
 		this.runnerConnections.get(id)?.send(JSON.stringify(message));
 	}
 
@@ -49,9 +48,9 @@ export class TaskRunnerWsServer {
 			try {
 				const buffer = Array.isArray(data) ? Buffer.concat(data) : Buffer.from(data);
 
-				const message: RunnerMessage.ToN8n.All = JSON.parse(
+				const message: RunnerMessage.ToBroker.All = JSON.parse(
 					buffer.toString('utf8'),
-				) as RunnerMessage.ToN8n.All;
+				) as RunnerMessage.ToBroker.All;
 
 				if (!isConnected && message.type !== 'runner:info') {
 					return;
@@ -71,7 +70,7 @@ export class TaskRunnerWsServer {
 						this.sendMessage.bind(this, id) as MessageCallback,
 					);
 
-					this.logger.info(`Runner "${message.name}"(${id}) has been registered`);
+					this.logger.info(`Runner "${message.name}" (${id}) has been registered`);
 					return;
 				}
 
@@ -94,7 +93,7 @@ export class TaskRunnerWsServer {
 
 		connection.on('message', onMessage);
 		connection.send(
-			JSON.stringify({ type: 'broker:inforequest' } as N8nMessage.ToRunner.InfoRequest),
+			JSON.stringify({ type: 'broker:inforequest' } as BrokerMessage.ToRunner.InfoRequest),
 		);
 	}
 

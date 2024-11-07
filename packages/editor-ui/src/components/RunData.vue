@@ -251,6 +251,9 @@ export default defineComponent({
 		isSchemaView(): boolean {
 			return this.displayMode === 'schema';
 		},
+		isSearchInSchemaView(): boolean {
+			return this.displayMode === 'schema' && this.search.length > 0;
+		},
 		displaysMultipleNodes(): boolean {
 			return this.isSchemaView && this.paneType === 'input' && this.nodes.length > 0;
 		},
@@ -289,7 +292,7 @@ export default defineComponent({
 				return false;
 			}
 
-			const canPinNode = usePinnedData(this.node).canPinNode(false);
+			const canPinNode = usePinnedData(this.node).canPinNode(false, this.currentOutputIndex);
 
 			return (
 				canPinNode &&
@@ -1214,9 +1217,7 @@ export default defineComponent({
 <template>
 	<div :class="['run-data', $style.container]" @mouseover="activatePane">
 		<n8n-callout
-			v-if="
-				canPinData && pinnedData.hasData.value && !editMode.enabled && !isProductionExecutionPreview
-			"
+			v-if="pinnedData.hasData.value && !editMode.enabled && !isProductionExecutionPreview"
 			theme="secondary"
 			icon="thumbtack"
 			:class="$style.pinnedDataCallout"
@@ -1405,6 +1406,7 @@ export default defineComponent({
 			v-else-if="
 				!hasRunError &&
 				hasNodeRun &&
+				!isSearchInSchemaView &&
 				((dataCount > 0 && maxRunIndex === 0) || search) &&
 				!isArtificialRecoveredEventItem &&
 				!displaysMultipleNodes

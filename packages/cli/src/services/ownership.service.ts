@@ -45,13 +45,9 @@ export class OwnershipService {
 	 * Personal project ownership is **immutable**.
 	 */
 	async getPersonalProjectOwnerCached(projectId: string): Promise<User | null> {
-		const cachedValue = await this.cacheService.getHashValue<User | null>(
-			'project-owner',
-			projectId,
-		);
+		const cachedValue = await this.cacheService.getHashValue<User>('project-owner', projectId);
 
-		if (cachedValue) this.userRepository.create(cachedValue);
-		if (cachedValue === null) return null;
+		if (cachedValue) return this.userRepository.create(cachedValue);
 
 		const ownerRel = await this.projectRelationRepository.getPersonalProjectOwners([projectId]);
 		const owner = ownerRel[0]?.user ?? null;

@@ -1,17 +1,20 @@
-import Container from 'typedi';
+import type { RequesterMessage } from '@n8n/task-runner';
+import Container, { Service } from 'typedi';
+
+import { NodeTypes } from '@/node-types';
 
 import { TaskManager } from './task-manager';
-import type { RequesterMessage } from '../runner-types';
 import type { RequesterMessageCallback } from '../task-broker.service';
 import { TaskBroker } from '../task-broker.service';
 
+@Service()
 export class LocalTaskManager extends TaskManager {
 	taskBroker: TaskBroker;
 
 	id: string = 'single-main';
 
-	constructor() {
-		super();
+	constructor(nodeTypes: NodeTypes) {
+		super(nodeTypes);
 		this.registerRequester();
 	}
 
@@ -24,7 +27,7 @@ export class LocalTaskManager extends TaskManager {
 		);
 	}
 
-	sendMessage(message: RequesterMessage.ToN8n.All) {
+	sendMessage(message: RequesterMessage.ToBroker.All) {
 		void this.taskBroker.onRequesterMessage(this.id, message);
 	}
 }
