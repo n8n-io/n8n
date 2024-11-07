@@ -169,13 +169,116 @@ describe('LdapService', () => {
 			const setIntervalSpy = jest.spyOn(global, 'setInterval');
 
 			await expect(ldapService.init()).rejects.toThrowError('Interval variable has to be defined');
-			expect(setIntervalSpy).toHaveBeenCalledTimes(0);
+			expect(setIntervalSpy).not.toHaveBeenCalled();
 		});
 	});
 
 	describe.skip('loadConfig()', () => {});
 	describe.skip('updateConfig()', () => {});
-	describe.skip('setConfig()', () => {});
+	describe('setConfig()', () => {
+		it('should stop synchronization if the timer is running and the config is disabled', async () => {
+			const settingsRepository = mock<SettingsRepository>({
+				findOneByOrFail: jest.fn().mockResolvedValue({
+					value: JSON.stringify(ldapConfig),
+				}),
+			});
+
+			const updatedLdapConfig = { ...ldapConfig, synchronizationEnabled: false };
+
+			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
+			const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
+
+			await ldapService.init();
+			ldapService.setConfig(updatedLdapConfig);
+
+			expect(clearIntervalSpy).toHaveBeenCalledTimes(1);
+		});
+
+		it('should schedule synchronization if the timer is not running and the config is enabled', () => {
+			const settingsRepository = mock<SettingsRepository>({
+				findOneByOrFail: jest.fn().mockResolvedValue({
+					value: JSON.stringify(ldapConfig),
+				}),
+			});
+
+			const updatedLdapConfig = {
+				...ldapConfig,
+				synchronizationEnabled: true,
+				synchronizationInterval: 999,
+			};
+
+			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
+			const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
+			const setIntervalSpy = jest.spyOn(global, 'setInterval');
+
+			ldapService.setConfig(updatedLdapConfig);
+
+			expect(clearIntervalSpy).not.toHaveBeenCalled();
+			expect(setIntervalSpy).toHaveBeenCalledTimes(1);
+			expect(setIntervalSpy).toHaveBeenCalledWith(
+				expect.any(Function),
+				updatedLdapConfig.synchronizationInterval * 60_000,
+			);
+		});
+
+		it('should throw an error if the timer is not running and the config is enabled but the synchronizationInterval is not set', async () => {
+			const settingsRepository = mock<SettingsRepository>({
+				findOneByOrFail: jest.fn().mockResolvedValue({
+					value: JSON.stringify(ldapConfig),
+				}),
+			});
+
+			const updatedLdapConfig = {
+				...ldapConfig,
+				synchronizationEnabled: true,
+				synchronizationInterval: 0,
+			};
+
+			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
+			const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
+			const setIntervalSpy = jest.spyOn(global, 'setInterval');
+
+			const thrownSetConfig = () => ldapService.setConfig(updatedLdapConfig);
+
+			expect(thrownSetConfig).toThrowError('Interval variable has to be defined');
+			expect(setIntervalSpy).not.toHaveBeenCalled();
+			expect(clearIntervalSpy).not.toHaveBeenCalled();
+		});
+
+		it('should restart synchronization if the timer is running and the config is enabled', async () => {
+			const settingsRepository = mock<SettingsRepository>({
+				findOneByOrFail: jest.fn().mockResolvedValue({
+					value: JSON.stringify(ldapConfig),
+				}),
+			});
+
+			const updatedLdapConfig = {
+				...ldapConfig,
+				synchronizationEnabled: true,
+				synchronizationInterval: 1234,
+			};
+
+			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
+			const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
+			const setIntervalSpy = jest.spyOn(global, 'setInterval');
+
+			await ldapService.init();
+			ldapService.setConfig(updatedLdapConfig);
+
+			expect(clearIntervalSpy).toHaveBeenCalledTimes(1);
+			expect(setIntervalSpy).toHaveBeenCalledTimes(2);
+			expect(setIntervalSpy).toHaveBeenNthCalledWith(
+				1,
+				expect.any(Function),
+				ldapConfig.synchronizationInterval * 60_000,
+			);
+			expect(setIntervalSpy).toHaveBeenNthCalledWith(
+				2,
+				expect.any(Function),
+				updatedLdapConfig.synchronizationInterval * 60_000,
+			);
+		});
+	});
 	describe.skip('searchWithAdminBinding()', () => {});
 	describe.skip('validUser()', () => {});
 	describe.skip('findAndAuthenticateLdapUser()', () => {});
@@ -284,6 +387,7 @@ describe('LdapService', () => {
 				rejectUnauthorized: false,
 			});
 		});
+
 		it('should not create a new client if one has already been created', async () => {
 			const settingsRepository = mock<SettingsRepository>({
 				findOneByOrFail: jest.fn().mockResolvedValue({
