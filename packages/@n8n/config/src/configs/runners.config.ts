@@ -4,11 +4,12 @@ import { Config, Env } from '../decorators';
  * Modes for running a task runner:
  *
  * - In `internal_childprocess` mode, n8n launches a task runner as a child
- *   process and manages its lifecycle.
- * - In `internal_launcher` mode, n8n runs an executable that launches a task
- *   runner as a child process and manages its lifecycle.
+ *   process. n8n manages the runner's lifecycle.
+ * - In `internal_launcher` mode, n8n runs an
+ *   [executable](https://github.com/n8n-io/task-runner-launcher) that launches
+ *   a task runner as a child process. n8n manages the runner's lifecycle.
  * - In `external` mode, n8n does not launch the runner or manage its lifecycle.
- *   Rather, a third party launches the runner separately from n8n.
+ *   Rather, a third party launches and manages the runner separately from n8n.
  *
  * Lifecycle management means that n8n launches the task runner only when needed
  * and shuts it down when the task runner has been idle for too long.
