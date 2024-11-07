@@ -57,7 +57,6 @@ export class ExecuteCommand implements INodeType {
 		},
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
-		usableAsTool: true,
 		properties: [
 			{
 				displayName: 'Execute Once',
