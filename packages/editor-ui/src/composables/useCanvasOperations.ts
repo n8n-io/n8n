@@ -1378,20 +1378,14 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 	}
 
 	async function initializeWorkspace(data: IWorkflowDb) {
-		// Set workflow data
 		workflowHelpers.initState(data);
-		workflowsStore.workflow.nodes = data.nodes;
-		workflowsStore.workflow.connections = data.connections;
 
-		void nextTick(() => {
-			workflowsStore.workflow.nodes.forEach((node) => {
-				workflowsStore.setNodeMetadata(node.name, { pristine: true });
-				nodeHelpers.matchCredentials(node);
-				nodeHelpers.updateNodeParameterIssues(node);
-				nodeHelpers.updateNodeCredentialIssues(node);
-				nodeHelpers.updateNodeInputIssues(node);
-			});
+		data.nodes.forEach((node) => {
+			nodeHelpers.matchCredentials(node);
 		});
+
+		workflowsStore.setNodes(data.nodes);
+		workflowsStore.setConnections(data.connections);
 	}
 
 	/**
