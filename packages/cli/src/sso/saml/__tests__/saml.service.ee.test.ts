@@ -76,7 +76,7 @@ describe('SamlService', () => {
 			// ARRANGE
 			jest
 				.spyOn(samlService, 'loadFromDbAndApplySamlPreferences')
-				.mockRejectedValue(new InvalidSamlMetadataError());
+				.mockRejectedValue(new SyntaxError());
 			jest.spyOn(samlService, 'reset');
 
 			// ACT
