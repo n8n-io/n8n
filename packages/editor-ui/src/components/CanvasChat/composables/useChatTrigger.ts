@@ -5,13 +5,7 @@ import {
 	NodeConnectionType,
 	NodeHelpers,
 } from 'n8n-workflow';
-import type {
-	INodeTypeDescription,
-	Workflow,
-	INode,
-	INodeParameters,
-	INodeType,
-} from 'n8n-workflow';
+import type { INodeTypeDescription, Workflow, INode, INodeParameters } from 'n8n-workflow';
 import {
 	AI_CATEGORY_AGENTS,
 	AI_CATEGORY_CHAINS,

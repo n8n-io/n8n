@@ -454,6 +454,9 @@ export default defineComponent({
 				)
 			);
 		},
+		canvasChatNode() {
+			return this.nodes.find((node) => node.type === CHAT_TRIGGER_NODE_TYPE);
+		},
 		isManualChatOnly(): boolean {
 			if (!this.canvasChatNode) return false;
 

@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { IAiDataContent } from '@/Interface';
 import { capitalize } from 'lodash-es';
-import { ref, onMounted, Ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import type { ParsedAiContent } from './useAiContentParsers';
 import { useAiContentParsers } from './useAiContentParsers';
 import VueMarkdown from 'vue-markdown-render';
