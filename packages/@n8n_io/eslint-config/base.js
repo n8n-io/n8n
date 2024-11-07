@@ -444,6 +444,9 @@ const config = (module.exports = {
 		/** https://github.com/sindresorhus/eslint-plugin-unicorn/blob/main/docs/rules/no-useless-promise-resolve-reject.md */
 		'unicorn/no-useless-promise-resolve-reject': 'error',
 
+		/** https://eslint.org/docs/latest/rules/require-await */
+		'require-await': 'error',
+
 		'lodash/path-style': ['error', 'as-needed'],
 	},
 
