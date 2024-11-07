@@ -38,7 +38,7 @@ export function getSchemas() {
 
 			return {
 				nodeName: node?.name || '',
-				schema: getSchemaForExecutionData(executionDataToJson(inputData), true),
+				schema: getSchemaForExecutionData(executionDataToJson(inputData), false),
 			};
 		})
 		.filter((node) => node.schema?.value.length > 0);
