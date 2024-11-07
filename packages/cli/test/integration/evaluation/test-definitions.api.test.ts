@@ -11,8 +11,6 @@ import { createWorkflow } from './../shared/db/workflows';
 import * as testDb from './../shared/test-db';
 import type { SuperAgentTest } from './../shared/types';
 import * as utils from './../shared/utils/';
-import { AnnotationTagEntity } from '@/databases/entities/annotation-tag-entity.ee';
-import { createAnnotationTags } from '@test-integration/db/executions';
 
 let authOwnerAgent: SuperAgentTest;
 let workflowUnderTest: WorkflowEntity;
