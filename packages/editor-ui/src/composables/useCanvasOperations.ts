@@ -81,7 +81,6 @@ import type {
 	INodeCredentials,
 	INodeInputConfiguration,
 	INodeOutputConfiguration,
-	INodeProperties,
 	INodeTypeDescription,
 	INodeTypeNameVersion,
 	IPinData,
