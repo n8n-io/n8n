@@ -10,9 +10,8 @@ export type TaskRunnerMode = 'internal_childprocess' | 'internal_launcher' | 'ex
 
 @Config
 export class TaskRunnersConfig {
-	// Defaults to true for now
-	@Env('N8N_RUNNERS_DISABLED')
-	disabled: boolean = true;
+	@Env('N8N_RUNNERS_ENABLED')
+	enabled: boolean = false;
 
 	// Defaults to true for now
 	@Env('N8N_RUNNERS_MODE')

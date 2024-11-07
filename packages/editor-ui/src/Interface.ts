@@ -1130,8 +1130,8 @@ export interface IInviteResponse {
 	error?: string;
 }
 
-export interface ITab {
-	value: string | number;
+export interface ITab<Value extends string | number = string | number> {
+	value: Value;
 	label?: string;
 	href?: string;
 	icon?: string;

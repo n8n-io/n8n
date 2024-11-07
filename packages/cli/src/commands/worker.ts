@@ -113,7 +113,7 @@ export class Worker extends BaseCommand {
 		);
 
 		const { taskRunners: taskRunnerConfig } = this.globalConfig;
-		if (!taskRunnerConfig.disabled) {
+		if (taskRunnerConfig.enabled) {
 			const { TaskRunnerModule } = await import('@/runners/task-runner-module');
 			const taskRunnerModule = Container.get(TaskRunnerModule);
 			await taskRunnerModule.start();
