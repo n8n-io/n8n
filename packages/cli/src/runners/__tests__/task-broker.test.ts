@@ -1,6 +1,8 @@
+import type { TaskRunnersConfig } from '@n8n/config';
 import type { RunnerMessage, TaskResultData } from '@n8n/task-runner';
 import { mock } from 'jest-mock-extended';
 import type { INodeTypeBaseDescription } from 'n8n-workflow';
+import Container from 'typedi';
 
 import { TaskRejectError } from '../errors';
 import { TaskBroker } from '../task-broker.service';
@@ -205,6 +207,54 @@ describe('TaskBroker', () => {
 
 			expect(taskBroker.acceptOffer).toHaveBeenCalled();
 			expect(taskBroker.getPendingTaskOffers()).toHaveLength(0);
+		});
+
+		['internal_childprocess', 'internal_launcher'].forEach((mode: TaskRunnersConfig['mode']) => {
+			it(`should manage lifecycle in \`${mode}\` mode`, async () => {
+				const RunnerLifecycleManager = {
+					ensureRunnerAvailable: jest.fn().mockResolvedValue(undefined),
+					updateLastActivityTime: jest.fn(),
+				};
+
+				jest.mock('@/runners/runner-lifecycle-manager', () => ({ RunnerLifecycleManager }));
+				jest.spyOn(Container, 'get').mockReturnValue(RunnerLifecycleManager);
+
+				const taskBroker = new TaskBroker(mock(), mock<TaskRunnersConfig>({ mode }));
+
+				const request: TaskRequest = {
+					requestId: 'request1',
+					requesterId: 'requester1',
+					taskType: 'test',
+				};
+
+				await taskBroker.taskRequested(request);
+
+				expect(RunnerLifecycleManager.ensureRunnerAvailable).toHaveBeenCalled();
+				expect(RunnerLifecycleManager.updateLastActivityTime).toHaveBeenCalled();
+			});
+		});
+
+		it('should not manage lifecycle in `external` mode', async () => {
+			const RunnerLifecycleManager = {
+				ensureRunnerAvailable: jest.fn().mockResolvedValue(undefined),
+				updateLastActivityTime: jest.fn(),
+			};
+
+			jest.mock('@/runners/runner-lifecycle-manager', () => ({ RunnerLifecycleManager }));
+			jest.spyOn(Container, 'get').mockReturnValue(RunnerLifecycleManager);
+
+			const taskBroker = new TaskBroker(mock(), mock<TaskRunnersConfig>({ mode: 'external' }));
+
+			const request: TaskRequest = {
+				requestId: 'request1',
+				requesterId: 'requester1',
+				taskType: 'test',
+			};
+
+			await taskBroker.taskRequested(request);
+
+			expect(RunnerLifecycleManager.ensureRunnerAvailable).not.toHaveBeenCalled();
+			expect(RunnerLifecycleManager.updateLastActivityTime).not.toHaveBeenCalled();
 		});
 	});
 
