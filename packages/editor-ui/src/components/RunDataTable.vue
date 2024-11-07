@@ -123,6 +123,18 @@ function isHoveringRow(row: number): boolean {
 	return pairedItemMappings.value[itemNodeId].has(hoveringItemId);
 }
 
+function showExecutionLink(index: number) {
+	if (index === activeRow.value) {
+		return true;
+	}
+
+	if (activeRow.value === null) {
+		return index === 0;
+	}
+
+	return false;
+}
+
 function onMouseEnterCell(e: MouseEvent) {
 	const target = e.target;
 	if (target && props.mappingEnabled) {
@@ -442,8 +454,8 @@ watch(focusedMappableInput, (curr) => {
 		<table v-else :class="$style.table">
 			<thead>
 				<tr>
-					<th>
-						<!-- column for item index and execution link -->
+					<th v-if="tableData.metadata.hasExecutionIds" :class="$style.executionLinkRowHeader">
+						<!-- column for execution link -->
 					</th>
 					<th v-for="(column, i) in tableData.columns || []" :key="column">
 						<N8nTooltip placement="bottom-start" :disabled="!mappingEnabled" :show-after="1000">
@@ -532,13 +544,20 @@ watch(focusedMappableInput, (curr) => {
 					:class="{ [$style.hoveringRow]: isHoveringRow(index1) }"
 					:data-test-id="isHoveringRow(index1) ? 'hovering-item' : undefined"
 				>
-					<td v-if="tableData.metadata.hasExecutionIds">
+					<td
+						v-if="tableData.metadata.hasExecutionIds"
+						:data-row="index1"
+						:class="$style.executionLinkCell"
+						@mouseenter="onMouseEnterCell"
+						@mouseleave="onMouseLeaveCell"
+					>
 						<N8nIconButton
 							v-if="tableData.metadata.data[index1]"
+							v-show="showExecutionLink(index1)"
 							type="secondary"
 							icon="external-link-alt"
 							data-test-id="debug-sub-execution"
-							size="small"
+							size="mini"
 							@click="openExecution(tableData.metadata.data[index1])"
 						/>
 					</td>
@@ -775,5 +794,13 @@ watch(focusedMappableInput, (curr) => {
 
 .warningTooltip {
 	color: var(--color-warning);
+}
+
+.executionLinkCell {
+	padding: var(--spacing-3xs) !important;
+}
+
+.executionLinkRowHeader {
+	width: var(--spacing-m);
 }
 </style>
