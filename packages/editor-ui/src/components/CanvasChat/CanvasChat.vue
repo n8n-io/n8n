@@ -1,11 +1,12 @@
 <script setup lang="ts">
+import type { Ref } from 'vue';
 import { provide, watch, computed, ref, watchEffect } from 'vue';
-import { useRouter } from 'vue-router';
-import { v4 as uuid } from 'uuid';
-
-// Constants & Symbols
 import { ChatOptionsSymbol, ChatSymbol } from '@n8n/chat/constants';
+import type { Router } from 'vue-router';
+import { useRouter } from 'vue-router';
+import { chatEventBus } from '@n8n/chat/event-buses';
 import { VIEWS } from '@/constants';
+import { v4 as uuid } from 'uuid';
 
 // Components
 import ChatMessagesPanel from './components/ChatMessagesPanel.vue';
@@ -19,91 +20,67 @@ import { useI18n } from '@/composables/useI18n';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 
-// Event Bus
-import { chatEventBus } from '@n8n/chat/event-buses';
-
-// Stores
-import { useCanvasStore } from '@/stores/canvas.store';
-import { useUIStore } from '@/stores/ui.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-
 // Types
 import type { Chat, ChatMessage, ChatOptions } from '@n8n/chat/types';
 import type { RunWorkflowChatPayload } from './composables/useChatMessaging';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useCanvasStore } from '@/stores/canvas.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
-// Initialize stores and composables
-const setupStores = () => {
-	const router = useRouter();
-	const uiStore = useUIStore();
-	const locale = useI18n();
-	const nodeHelpers = useNodeHelpers();
-	const workflowsStore = useWorkflowsStore();
-	const canvasStore = useCanvasStore();
-	const nodeTypesStore = useNodeTypesStore();
+export interface ChatProps {
+	// Injected stores for testing
+	workflowsStore?: ReturnType<typeof useWorkflowsStore>;
+	uiStore?: ReturnType<typeof useUIStore>;
+	canvasStore?: ReturnType<typeof useCanvasStore>;
+	nodeTypesStore?: ReturnType<typeof useNodeTypesStore>;
+	nodeHelpers?: ReturnType<typeof useNodeHelpers>;
+	initialSessionId?: string;
+	router?: Router;
+}
 
-	return {
-		router,
-		uiStore,
-		locale,
-		nodeHelpers,
-		workflowsStore,
-		canvasStore,
-		nodeTypesStore,
-	};
-};
+// Props for dependency injection (makes testing easier)
+const props = withDefaults(defineProps<ChatProps>(), {
+	workflowsStore: () => useWorkflowsStore(),
+	uiStore: () => useUIStore(),
+	canvasStore: () => useCanvasStore(),
+	nodeTypesStore: () => useNodeTypesStore(),
+	nodeHelpers: () => useNodeHelpers(),
+	router: () => useRouter(),
+	initialSessionId: () => uuid().replace(/-/g, ''),
+});
 
 // Component state
-const setupState = () => {
-	const messages = ref<ChatMessage[]>([]);
-	const currentSessionId = ref<string>(uuid().replace(/-/g, ''));
-	const isDisabled = ref(false);
-	const container = ref<HTMLElement>();
-
-	return {
-		messages,
-		currentSessionId,
-		isDisabled,
-		container,
-	};
-};
-
-// Initialize component
-const { router, uiStore, locale, nodeHelpers, workflowsStore, canvasStore, nodeTypesStore } =
-	setupStores();
-
-const { messages, currentSessionId, isDisabled, container } = setupState();
+const messages = ref<ChatMessage[]>([]);
+const currentSessionId = ref<string>(props.initialSessionId);
+const isDisabled = ref(false);
+const container = ref<HTMLElement>();
 
 // Computed properties
-const setupComputed = () => {
-	const workflow = computed(() => workflowsStore.getCurrentWorkflow());
-	const isLoading = computed(() => uiStore.isActionActive.workflowRunning);
-	const allConnections = computed(() => workflowsStore.allConnections);
-	const isChatOpen = computed(() => workflowsStore.isChatPanelOpen);
-	const isLogsOpen = computed(() => workflowsStore.isLogsPanelOpen);
-	const previousChatMessages = computed(() => workflowsStore.getPastChatMessages);
+const workflow = computed(() => props.workflowsStore.getCurrentWorkflow());
+const isLoading = computed(() => props.uiStore.isActionActive.workflowRunning);
+const allConnections = computed(() => props.workflowsStore.allConnections);
+const isChatOpen = computed(() => props.workflowsStore.isChatPanelOpen);
+const isLogsOpen = computed(() => props.workflowsStore.isLogsPanelOpen);
+const previousChatMessages = computed(() => props.workflowsStore.getPastChatMessages);
 
-	return {
-		workflow,
-		isLoading,
-		allConnections,
-		isChatOpen,
-		isLogsOpen,
-		previousChatMessages,
-	};
-};
+// Expose internal state for testing
+defineExpose({
+	messages,
+	currentSessionId,
+	isDisabled,
+	workflow,
+	isLoading,
+});
 
-const { workflow, isLoading, allConnections, isChatOpen, isLogsOpen, previousChatMessages } =
-	setupComputed();
+const { runWorkflow } = useRunWorkflow({ router: props.router });
 
-// Initialize features
-const { runWorkflow } = useRunWorkflow({ router });
-
+// Initialize features with injected dependencies
 const { chatTriggerNode, connectedNode, allowFileUploads, setChatTriggerNode, setConnectedNode } =
 	useChatTrigger({
 		workflow,
-		getNodeByName: workflowsStore.getNodeByName,
-		getNodeType: nodeTypesStore.getNodeType,
+		getNodeByName: props.workflowsStore.getNodeByName,
+		getNodeType: props.nodeTypesStore.getNodeType,
 	});
 
 const { sendMessage, getChatMessages } = useChatMessaging({
@@ -113,8 +90,8 @@ const { sendMessage, getChatMessages } = useChatMessaging({
 	sessionId: currentSessionId,
 	workflow,
 	isLoading,
-	executionResultData: computed(() => workflowsStore.getWorkflowExecution?.data?.resultData),
-	getWorkflowResultDataByNodeName: workflowsStore.getWorkflowResultDataByNodeName,
+	executionResultData: computed(() => props.workflowsStore.getWorkflowExecution?.data?.resultData),
+	getWorkflowResultDataByNodeName: props.workflowsStore.getWorkflowResultDataByNodeName,
 	onRunChatWorkflow,
 });
 
@@ -128,14 +105,22 @@ const {
 	onWindowResize,
 } = useResize(container);
 
-// Chat configuration
-const setupChatConfig = (): { chatConfig: Chat; chatOptions: ChatOptions } => {
+// Extracted pure functions for better testability
+function createChatConfig(params: {
+	messages: Chat['messages'];
+	sendMessage: Chat['sendMessage'];
+	currentSessionId: Chat['currentSessionId'];
+	isLoading: Ref<boolean>;
+	isDisabled: Ref<boolean>;
+	allowFileUploads: Ref<boolean>;
+	locale: ReturnType<typeof useI18n>;
+}): { chatConfig: Chat; chatOptions: ChatOptions } {
 	const chatConfig: Chat = {
-		messages,
-		sendMessage,
+		messages: params.messages,
+		sendMessage: params.sendMessage,
 		initialMessages: ref([]),
-		currentSessionId,
-		waitingForResponse: isLoading,
+		currentSessionId: params.currentSessionId,
+		waitingForResponse: params.isLoading,
 	};
 
 	const chatOptions: ChatOptions = {
@@ -144,7 +129,7 @@ const setupChatConfig = (): { chatConfig: Chat; chatOptions: ChatOptions } => {
 				title: '',
 				footer: '',
 				subtitle: '',
-				inputPlaceholder: locale.baseText('chat.window.chat.placeholder'),
+				inputPlaceholder: params.locale.baseText('chat.window.chat.placeholder'),
 				getStarted: '',
 				closeButtonTooltip: '',
 			},
@@ -152,34 +137,47 @@ const setupChatConfig = (): { chatConfig: Chat; chatOptions: ChatOptions } => {
 		webhookUrl: '',
 		mode: 'window',
 		showWindowCloseButton: true,
-		disabled: isDisabled,
-		allowFileUploads,
+		disabled: params.isDisabled,
+		allowFileUploads: params.allowFileUploads,
 		allowedFilesMimeTypes: '',
 	};
 
 	return { chatConfig, chatOptions };
-};
+}
 
-const { chatConfig, chatOptions } = setupChatConfig();
-
-// Methods
-const displayExecution = (executionId: string) => {
-	const route = router.resolve({
+function displayExecution(params: { router: Router; workflowId: string; executionId: string }) {
+	const route = params.router.resolve({
 		name: VIEWS.EXECUTION_PREVIEW,
-		params: { name: workflow.value.id, executionId },
+		params: { name: params.workflowId, executionId: params.executionId },
 	});
 	window.open(route.href, '_blank');
+}
+
+function refreshSession(params: { messages: Ref<ChatMessage[]>; currentSessionId: Ref<string> }) {
+	props.workflowsStore.setWorkflowExecutionData(null);
+	props.nodeHelpers.updateNodesExecutionIssues();
+	params.messages.value = [];
+	params.currentSessionId.value = uuid().replace(/-/g, '');
+}
+
+// Event handlers
+const handleDisplayExecution = (executionId: string) => {
+	displayExecution({
+		router: props.router,
+		workflowId: workflow.value.id,
+		executionId,
+	});
 };
 
-const refreshSession = () => {
-	workflowsStore.setWorkflowExecutionData(null);
-	nodeHelpers.updateNodesExecutionIssues();
-	messages.value = [];
-	currentSessionId.value = uuid().replace(/-/g, '');
+const handleRefreshSession = () => {
+	refreshSession({
+		messages,
+		currentSessionId,
+	});
 };
 
 const closeLogs = () => {
-	workflowsStore.setPanelOpen('logs', false);
+	props.workflowsStore.setPanelOpen('logs', false);
 };
 
 async function onRunChatWorkflow(payload: RunWorkflowChatPayload) {
@@ -189,9 +187,20 @@ async function onRunChatWorkflow(payload: RunWorkflowChatPayload) {
 		source: payload.source,
 	});
 
-	workflowsStore.appendChatMessage(payload.message);
+	props.workflowsStore.appendChatMessage(payload.message);
 	return response;
 }
+
+// Initialize chat config
+const { chatConfig, chatOptions } = createChatConfig({
+	messages,
+	sendMessage,
+	currentSessionId,
+	isLoading,
+	isDisabled,
+	allowFileUploads,
+	locale: useI18n(),
+});
 
 // Provide chat context
 provide(ChatSymbol, chatConfig);
@@ -220,7 +229,7 @@ watch(
 watch(
 	() => allConnections.value,
 	() => {
-		if (canvasStore.isLoading) return;
+		if (props.canvasStore.isLoading) return;
 		setTimeout(() => {
 			if (!chatTriggerNode.value) {
 				setChatTriggerNode();
@@ -232,7 +241,7 @@ watch(
 );
 
 watchEffect(() => {
-	canvasStore.setPanelHeight(isChatOpen.value || isLogsOpen.value ? height.value : 0);
+	props.canvasStore.setPanelHeight(isChatOpen.value || isLogsOpen.value ? height.value : 0);
 });
 </script>
 
@@ -261,8 +270,8 @@ watchEffect(() => {
 							:messages="messages"
 							:session-id="currentSessionId"
 							:past-chat-messages="previousChatMessages"
-							@refresh-session="refreshSession"
-							@display-execution="displayExecution"
+							@refresh-session="handleRefreshSession"
+							@display-execution="handleDisplayExecution"
 							@send-message="sendMessage"
 						/>
 					</div>
