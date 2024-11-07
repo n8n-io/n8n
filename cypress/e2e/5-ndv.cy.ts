@@ -796,7 +796,18 @@ describe('NDV', () => {
 			.should('contain.text', 'onlyOnItem3');
 	});
 
-	it('should not show items count when seaching in schema wiev', () => {
+	it('should keep search expanded after Test step node run', () => {
+		cy.createFixtureWorkflow('Test_ndv_search.json');
+		workflowPage.actions.zoomToFit();
+		workflowPage.actions.executeWorkflow();
+		workflowPage.actions.openNode('Edit Fields');
+		ndv.getters.outputPanel().should('be.visible');
+		ndv.getters.outputPanel().find('[data-test-id=ndv-search]').click().type('US');
+		ndv.actions.execute();
+		ndv.getters.outputPanel().find('[data-test-id=ndv-search]').contains('US').should('exist');
+	});
+
+	it('should not show items count when seaching in schema view', () => {
 		cy.createFixtureWorkflow('Test_ndv_search.json');
 		workflowPage.actions.zoomToFit();
 		workflowPage.actions.openNode('Edit Fields');
@@ -807,7 +818,7 @@ describe('NDV', () => {
 		ndv.getters.outputPanel().find('[data-test-id=ndv-items-count]').should('not.exist');
 	});
 
-	it('should show additional tooltip when seaching in schema wiev if no matches', () => {
+	it('should show additional tooltip when seaching in schema view if no matches', () => {
 		cy.createFixtureWorkflow('Test_ndv_search.json');
 		workflowPage.actions.zoomToFit();
 		workflowPage.actions.openNode('Edit Fields');
