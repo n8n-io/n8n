@@ -183,17 +183,18 @@ const i18n = useI18n();
 
 const node = toRef(props, 'node');
 
-const displayMode = ref(
-	props.paneType === 'input' ? ndvStore.inputPanelDisplayMode : ndvStore.outputPanelDisplayMode,
-);
-
 const pinnedData = usePinnedData(node, {
 	runIndex: props.runIndex,
-	displayMode,
+	displayMode:
+		props.paneType === 'input' ? ndvStore.inputPanelDisplayMode : ndvStore.outputPanelDisplayMode,
 });
 const { isSubNodeType } = useNodeType({
 	node,
 });
+
+const displayMode = computed(() =>
+	props.paneType === 'input' ? ndvStore.inputPanelDisplayMode : ndvStore.outputPanelDisplayMode,
+);
 
 const isReadOnlyRoute = computed(() => route.meta.readOnlyCanvas === true);
 const isWaitNodeWaiting = computed(
