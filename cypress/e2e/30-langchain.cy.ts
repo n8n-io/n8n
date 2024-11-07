@@ -168,7 +168,7 @@ describe('Langchain Integration', () => {
 			lastNodeExecuted: BASIC_LLM_CHAIN_NODE_NAME,
 		});
 
-		getManualChatDialog().should('contain', outputMessage);
+		getManualChatMessages().should('contain', outputMessage);
 	});
 
 	it('should be able to open and execute Agent node', () => {
@@ -208,7 +208,7 @@ describe('Langchain Integration', () => {
 			lastNodeExecuted: AGENT_NODE_NAME,
 		});
 
-		getManualChatDialog().should('contain', outputMessage);
+		getManualChatMessages().should('contain', outputMessage);
 	});
 
 	it('should add and use Manual Chat Trigger node together with Agent node', () => {
@@ -228,8 +228,6 @@ describe('Langchain Integration', () => {
 		clickGetBackToCanvas();
 
 		clickManualChatButton();
-
-		getManualChatModalLogs().should('not.exist');
 
 		const inputMessage = 'Hello!';
 		const outputMessage = 'Hi there! How can I assist you today?';
@@ -335,6 +333,8 @@ describe('Langchain Integration', () => {
 		getManualChatModalLogsEntries().should('have.length', 1);
 
 		closeManualChatModal();
+		getManualChatModalLogs().should('not.exist');
+		getManualChatModal().should('not.exist');
 	});
 
 	it('should auto-add chat trigger and basic LLM chain when adding LLM node', () => {
