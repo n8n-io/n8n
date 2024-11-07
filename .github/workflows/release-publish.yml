@@ -42,7 +42,7 @@ jobs:
         uses: actions/cache/save@v4.0.0
         with:
           path: ./packages/**/dist
-          key: ${{ github.sha }}-base:build
+          key: ${{ github.sha }}-release:build
 
       - name: Dry-run publishing
         run: pnpm publish -r --no-git-checks --dry-run
@@ -126,7 +126,7 @@ jobs:
           body: ${{github.event.pull_request.body}}
 
   create-sentry-release:
-    name: Create release on Sentry
+    name: Create a Sentry Release
     needs: [publish-to-npm, publish-to-docker-hub]
     runs-on: ubuntu-latest
     if: github.event.pull_request.merged == true
@@ -136,18 +136,19 @@ jobs:
       SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
 
     steps:
+      - uses: actions/checkout@v4.1.1
       - name: Restore cached build artifacts
         uses: actions/cache/restore@v4.0.0
         with:
           path: ./packages/**/dist
-          key: ${{ github.sha }}:db-tests
+          key: ${{ github.sha }}-release:build
 
       - name: Create a frontend release
         uses: getsentry/action-release@v1.7.0
         continue-on-error: true
         with:
           projects: ${{ secrets.SENTRY_FRONTEND_PROJECT }}
-          version: {{ needs.publish-to-npm.outputs.release }}
+          version: ${{ needs.publish-to-npm.outputs.release }}
           sourcemaps: packages/editor-ui/dist
 
       - name: Create a backend release
@@ -155,7 +156,7 @@ jobs:
         continue-on-error: true
         with:
           projects: ${{ secrets.SENTRY_BACKEND_PROJECT }}
-          version: {{ needs.publish-to-npm.outputs.release }}
+          version: ${{ needs.publish-to-npm.outputs.release }}
           sourcemaps: packages/cli/dist packages/core/dist packages/nodes-base/dist packages/@n8n/n8n-nodes-langchain/dist
 
   trigger-release-note:

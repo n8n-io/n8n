@@ -8,6 +8,8 @@ import { useI18n } from '@/composables/useI18n';
 import type { IUpdateInformation } from '@/Interface';
 import CollectionParameter from '@/components/CollectionParameter.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
+import { N8nButton, N8nInputLabel, N8nText } from 'n8n-design-system';
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 
 defineOptions({ name: 'MultipleParameter' });
 
@@ -42,7 +44,7 @@ watch(
 );
 
 const addButtonText = computed(() => {
-	if (!props.parameter.typeOptions || !props.parameter.typeOptions.multipleValueButtonText) {
+	if (!props.parameter.typeOptions?.multipleValueButtonText) {
 		return i18n.baseText('multipleParameter.addItem');
 	}
 
@@ -105,7 +107,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 
 <template>
 	<div class="duplicate-parameter" @keydown.stop>
-		<n8n-input-label
+		<N8nInputLabel
 			:label="i18n.nodeText().inputLabelDisplayName(parameter, path)"
 			:tooltip-text="i18n.nodeText().inputLabelDescription(parameter, path)"
 			:underline="true"
@@ -120,20 +122,20 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 			:class="parameter.type"
 		>
 			<div v-if="!isReadOnly" class="delete-item clickable">
-				<font-awesome-icon
+				<FontAwesomeIcon
 					icon="trash"
 					:title="i18n.baseText('multipleParameter.deleteItem')"
 					@click="deleteItem(index)"
 				/>
 				<div v-if="sortable">
-					<font-awesome-icon
+					<FontAwesomeIcon
 						v-if="index !== 0"
 						icon="angle-up"
 						class="clickable"
 						:title="i18n.baseText('multipleParameter.moveUp')"
 						@click="moveOptionUp(index)"
 					/>
-					<font-awesome-icon
+					<FontAwesomeIcon
 						v-if="index !== mutableValues.length - 1"
 						icon="angle-down"
 						class="clickable"
@@ -173,11 +175,11 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 				v-if="(mutableValues && mutableValues.length === 0) || isReadOnly"
 				class="no-items-exist"
 			>
-				<n8n-text size="small">{{
+				<N8nText size="small">{{
 					i18n.baseText('multipleParameter.currentlyNoItemsExist')
-				}}</n8n-text>
+				}}</N8nText>
 			</div>
-			<n8n-button
+			<N8nButton
 				v-if="!isReadOnly"
 				type="tertiary"
 				block
