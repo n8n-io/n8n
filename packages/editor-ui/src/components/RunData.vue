@@ -505,7 +505,7 @@ const subWorkflowData = computed((): { executionId: string; workflowId?: string 
 	if (!node.value) {
 		return null;
 	}
-	const metadata = get(workflowRunData, [node.value.name, props.runIndex, 'metadata'], null);
+	const metadata = get(workflowRunData.value, [node.value.name, props.runIndex, 'metadata'], null);
 	if (metadata?.executionId) {
 		return {
 			executionId: metadata?.executionId,
@@ -1378,13 +1378,15 @@ defineExpose({ enterEditMode });
 			<N8nText v-n8n-html="hint.message" size="small"></N8nText>
 		</N8nCallout>
 
-		<div :class="$style.parentExecutionInfo">
+		<div
+			v-if="
+				subWorkflowData &&
+				!(paneType === 'input' && hasInputOverwrite) &&
+				nodeType?.group?.includes('trigger')
+			"
+			:class="$style.parentExecutionInfo"
+		>
 			<a
-				v-if="
-					subWorkflowData &&
-					!(paneType === 'input' && hasInputOverwrite) &&
-					nodeType?.group?.includes('trigger')
-				"
 				@click.stop="openExecutionInNewTab(subWorkflowData.executionId, subWorkflowData.workflowId)"
 			>
 				{{ $locale.baseText('runData.openParentExecution') }}
