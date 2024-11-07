@@ -1,6 +1,7 @@
 import { TaskRunnersConfig } from '@n8n/config';
 import Container from 'typedi';
 
+import { InternalTaskRunnerDisconnectAnalyzer } from '@/runners/internal-task-runner-disconnect-analyzer';
 import { TaskRunnerWsServer } from '@/runners/runner-ws-server';
 import { TaskBroker } from '@/runners/task-broker.service';
 import { TaskRunnerProcess } from '@/runners/task-runner-process';
@@ -29,6 +30,8 @@ describe('TaskRunnerProcess', () => {
 		await taskRunnerServer.start();
 		// Set the port to the actually used port
 		runnerConfig.port = taskRunnerServer.port;
+		const analyzer = Container.get(InternalTaskRunnerDisconnectAnalyzer);
+		taskRunnerWsServer.setDisconnectAnalyzer(analyzer);
 	});
 
 	afterAll(async () => {
