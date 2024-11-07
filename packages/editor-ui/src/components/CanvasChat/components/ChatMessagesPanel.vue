@@ -159,7 +159,7 @@ function copySessionId() {
 						icon="redo"
 						:label="locale.baseText('chat.window.chat.chatMessageOptions.repostMessage')"
 						placement="left"
-						@click="repostMessage(message)"
+						@click.once="repostMessage(message)"
 					/>
 
 					<MessageOptionAction

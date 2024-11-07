@@ -1,5 +1,5 @@
-import type { Ref } from 'vue';
-import { computed, ref } from 'vue';
+import type { ComputedRef, Ref } from 'vue';
+import { ref } from 'vue';
 import { v4 as uuid } from 'uuid';
 import type { ChatMessage, ChatMessageText } from '@n8n/chat/types';
 import { NodeConnectionType, CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
@@ -10,41 +10,53 @@ import type {
 	IDataObject,
 	IBinaryData,
 	BinaryFileType,
+	Workflow,
+	IRunExecutionData,
 } from 'n8n-workflow';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { useToast } from '@/composables/useToast';
 import { useMessage } from '@/composables/useMessage';
 import { usePinnedData } from '@/composables/usePinnedData';
 import { get, isEmpty, last } from 'lodash-es';
 import { MANUAL_CHAT_TRIGGER_NODE_TYPE, MODAL_CONFIRM } from '@/constants';
 import { useI18n } from '@/composables/useI18n';
-import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import type { useRouter } from 'vue-router';
 import type { MemoryOutput } from '../types/chat';
-import { useUIStore } from '@/stores/ui.store';
-import type { INodeUi } from '@/Interface';
+import type { IExecutionPushResponse, INodeUi } from '@/Interface';
 
-export function useChatMessaging({
-	router,
-	chatTrigger,
-	messages,
-	sessionId,
-}: {
-	router: ReturnType<typeof useRouter>;
+export type RunWorkflowChatPayload = {
+	triggerNode: string;
+	nodeData: ITaskData;
+	source: string;
+	message: string;
+};
+export interface ChatMessagingDependencies {
 	chatTrigger: Ref<INodeUi | null>;
+	connectedNode: Ref<INodeUi | null>;
 	messages: Ref<ChatMessage[]>;
 	sessionId: Ref<string>;
-}) {
-	const previousMessageIndex = ref(0);
-	const workflowsStore = useWorkflowsStore();
-	const { runWorkflow } = useRunWorkflow({ router });
-	const workflowHelpers = useWorkflowHelpers({ router });
-	const { showError } = useToast();
-	const uiStore = useUIStore();
-	const locale = useI18n();
+	workflow: ComputedRef<Workflow>;
+	isLoading: ComputedRef<boolean>;
+	executionResultData: ComputedRef<IRunExecutionData['resultData'] | undefined>;
+	getWorkflowResultDataByNodeName: (nodeName: string) => ITaskData[] | null;
+	onRunChatWorkflow: (
+		payload: RunWorkflowChatPayload,
+	) => Promise<IExecutionPushResponse | undefined>;
+}
 
-	const isLoading = computed(() => uiStore.isActionActive.workflowRunning);
+export function useChatMessaging({
+	chatTrigger,
+	connectedNode,
+	messages,
+	sessionId,
+	workflow,
+	isLoading,
+	executionResultData,
+	getWorkflowResultDataByNodeName,
+	onRunChatWorkflow,
+}: ChatMessagingDependencies) {
+	const locale = useI18n();
+	const { showError } = useToast();
+	const previousMessageIndex = ref(0);
+
 	/** Converts a file to binary data */
 	async function convertFileToBinaryData(file: File): Promise<IBinaryData> {
 		const reader = new FileReader();
@@ -136,13 +148,19 @@ export function useChatMessaging({
 			source: [null],
 		};
 
-		const response = await runWorkflow({
+		const response = await onRunChatWorkflow({
 			triggerNode: triggerNode.name,
 			nodeData,
 			source: 'RunData.ManualChatMessage',
+			message,
 		});
+		// const response = await runWorkflow({
+		// 	triggerNode: triggerNode.name,
+		// 	nodeData,
+		// 	source: 'RunData.ManualChatMessage',
+		// });
 
-		workflowsStore.appendChatMessage(message);
+		// workflowsStore.appendChatMessage(message);
 		if (!response?.executionId) {
 			showError(
 				new Error('It was not possible to start workflow!'),
@@ -160,14 +178,12 @@ export function useChatMessaging({
 			if (!isLoading.value) {
 				clearInterval(waitInterval);
 
-				const lastNodeExecuted =
-					workflowsStore.getWorkflowExecution?.data?.resultData.lastNodeExecuted;
+				const lastNodeExecuted = executionResultData.value?.lastNodeExecuted;
 
 				if (!lastNodeExecuted) return;
 
 				const nodeResponseDataArray =
-					get(workflowsStore.getWorkflowExecution?.data?.resultData.runData, lastNodeExecuted) ??
-					[];
+					get(executionResultData.value.runData, lastNodeExecuted) ?? [];
 
 				const nodeResponseData = nodeResponseDataArray[nodeResponseDataArray.length - 1];
 
@@ -251,18 +267,20 @@ export function useChatMessaging({
 	}
 
 	function getChatMessages(): ChatMessageText[] {
-		if (!chatTrigger.value) return [];
+		console.log('Getting chat messages', connectedNode.value);
+		if (!connectedNode.value) return [];
 
-		const workflow = workflowHelpers.getCurrentWorkflow();
 		const connectedMemoryInputs =
-			workflow.connectionsByDestinationNode[chatTrigger.value.name]?.[NodeConnectionType.AiMemory];
+			workflow.value.connectionsByDestinationNode[connectedNode.value.name]?.[
+				NodeConnectionType.AiMemory
+			];
 		if (!connectedMemoryInputs) return [];
 
 		const memoryConnection = (connectedMemoryInputs ?? []).find((i) => i.length > 0)?.[0];
 
 		if (!memoryConnection) return [];
 
-		const nodeResultData = workflowsStore.getWorkflowResultDataByNodeName(memoryConnection.node);
+		const nodeResultData = getWorkflowResultDataByNodeName(memoryConnection.node);
 
 		const memoryOutputData = (nodeResultData ?? [])
 			.map((data) => get(data, ['data', NodeConnectionType.AiMemory, 0, 0, 'json']) as MemoryOutput)

@@ -37,7 +37,6 @@ import { get } from 'lodash-es';
 import { useExecutionsStore } from '@/stores/executions.store';
 import type { PushPayload } from '@n8n/api-types';
 import { useLocalStorage } from '@vueuse/core';
-import { useCanvasStore } from '@/stores/canvas.store';
 
 const FORM_RELOAD = 'n8n_redirect_to_next_form_test_page';
 
@@ -51,7 +50,6 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 	const uiStore = useUIStore();
 	const workflowsStore = useWorkflowsStore();
 	const executionsStore = useExecutionsStore();
-	const canvasStore = useCanvasStore();
 	// Starts to execute a workflow on server
 	async function runWorkflowApi(runData: IStartRunData): Promise<IExecutionPushResponse> {
 		if (!rootStore.pushConnectionActive) {

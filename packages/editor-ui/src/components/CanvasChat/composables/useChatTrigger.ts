@@ -1,13 +1,17 @@
+import type { ComputedRef } from 'vue';
 import { ref, computed } from 'vue';
 import {
 	CHAIN_SUMMARIZATION_LANGCHAIN_NODE_TYPE,
 	NodeConnectionType,
 	NodeHelpers,
-	type INode,
-	type INodeParameters,
-	type INodeType,
 } from 'n8n-workflow';
-import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import type {
+	INodeTypeDescription,
+	Workflow,
+	INode,
+	INodeParameters,
+	INodeType,
+} from 'n8n-workflow';
 import {
 	AI_CATEGORY_AGENTS,
 	AI_CATEGORY_CHAINS,
@@ -17,19 +21,19 @@ import {
 	MANUAL_CHAT_TRIGGER_NODE_TYPE,
 } from '@/constants';
 import type { INodeUi } from '@/Interface';
-import type { useRouter } from 'vue-router';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
-export function useChatTrigger({ router }: { router: ReturnType<typeof useRouter> }) {
+export interface ChatTriggerDependencies {
+	getNodeByName: (name: string) => INodeUi | null;
+	getNodeType: (type: string, version: number) => INodeTypeDescription | null;
+	workflow: ComputedRef<Workflow>;
+}
+
+export function useChatTrigger({ getNodeByName, getNodeType, workflow }: ChatTriggerDependencies) {
 	const chatTriggerName = ref<string | null>(null);
 	const connectedNode = ref<INode | null>(null);
-	const workflowsStore = useWorkflowsStore();
-	const nodeTypesStore = useNodeTypesStore();
-	const workflowHelpers = useWorkflowHelpers({ router });
 
 	const chatTriggerNode = computed(() =>
-		chatTriggerName.value ? workflowsStore.getNodeByName(chatTriggerName.value) : null,
+		chatTriggerName.value ? getNodeByName(chatTriggerName.value) : null,
 	);
 
 	const allowFileUploads = computed(() => {
@@ -48,11 +52,9 @@ export function useChatTrigger({ router }: { router: ReturnType<typeof useRouter
 
 	/** Gets the chat trigger node from the workflow */
 	function setChatTriggerNode() {
-		const triggerNode = workflowHelpers
-			.getCurrentWorkflow()
-			.queryNodes((nodeType: INodeType) =>
-				[CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE].includes(nodeType.description.name),
-			);
+		const triggerNode = workflow.value.queryNodes((nodeType: INodeType) =>
+			[CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE].includes(nodeType.description.name),
+		);
 
 		if (!triggerNode.length) {
 			return;
@@ -62,25 +64,24 @@ export function useChatTrigger({ router }: { router: ReturnType<typeof useRouter
 
 	/** Sets the connected node after finding the trigger */
 	function setConnectedNode() {
-		const workflow = workflowHelpers.getCurrentWorkflow();
 		const triggerNode = chatTriggerNode.value;
 
 		if (!triggerNode) {
 			return;
 		}
 
-		const chatChildren = workflow.getChildNodes(triggerNode.name);
+		const chatChildren = workflow.value.getChildNodes(triggerNode.name);
 
 		const chatRootNode = chatChildren
 			.reverse()
-			.map((nodeName: string) => workflowsStore.getNodeByName(nodeName))
+			.map((nodeName: string) => getNodeByName(nodeName))
 			.filter((n): n is INodeUi => n !== null)
 			// Reverse the nodes to match the last node logs first
 			.reverse()
 			.find((storeNode: INodeUi): boolean => {
 				// Skip summarization nodes
 				if (storeNode.type === CHAIN_SUMMARIZATION_LANGCHAIN_NODE_TYPE) return false;
-				const nodeType = nodeTypesStore.getNodeType(storeNode.type, storeNode.typeVersion);
+				const nodeType = getNodeType(storeNode.type, storeNode.typeVersion);
 
 				if (!nodeType) return false;
 
@@ -94,10 +95,10 @@ export function useChatTrigger({ router }: { router: ReturnType<typeof useRouter
 				let isCustomChainOrAgent = false;
 				if (nodeType.name === AI_CODE_NODE_TYPE) {
 					// Get node connection types for inputs and outputs
-					const inputs = NodeHelpers.getNodeInputs(workflow, storeNode, nodeType);
+					const inputs = NodeHelpers.getNodeInputs(workflow.value, storeNode, nodeType);
 					const inputTypes = NodeHelpers.getConnectionTypes(inputs);
 
-					const outputs = NodeHelpers.getNodeOutputs(workflow, storeNode, nodeType);
+					const outputs = NodeHelpers.getNodeOutputs(workflow.value, storeNode, nodeType);
 					const outputTypes = NodeHelpers.getConnectionTypes(outputs);
 
 					// Validate if node has required AI connection types
@@ -114,14 +115,14 @@ export function useChatTrigger({ router }: { router: ReturnType<typeof useRouter
 				if (!isAgent && !isChain && !isCustomChainOrAgent) return false;
 
 				// Check if this node is connected to the trigger node
-				const parentNodes = workflow.getParentNodes(storeNode.name);
+				const parentNodes = workflow.value.getParentNodes(storeNode.name);
 				const isChatChild = parentNodes.some(
 					(parentNodeName) => parentNodeName === triggerNode.name,
 				);
 
 				// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-				const resut = Boolean(isChatChild && (isAgent || isChain || isCustomChainOrAgent));
-				return resut;
+				const result = Boolean(isChatChild && (isAgent || isChain || isCustomChainOrAgent));
+				return result;
 			});
 
 		connectedNode.value = chatRootNode ?? null;

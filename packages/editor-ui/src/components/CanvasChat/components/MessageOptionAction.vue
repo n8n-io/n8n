@@ -23,7 +23,7 @@ defineProps({
 			<template #content>
 				{{ label }}
 			</template>
-			<n8n-icon :class="$style.icon" :icon="icon" size="xsmall" @click="$emit('click')" />
+			<n8n-icon :class="$style.icon" :icon="icon" size="xsmall" @click="$attrs.onClick" />
 		</n8n-tooltip>
 	</div>
 </template>

@@ -1,22 +1,19 @@
 <script setup lang="ts">
-import type { INode } from 'n8n-workflow';
-import { computed } from 'vue';
+import type { INode, Workflow } from 'n8n-workflow';
 import RunDataAi from '@/components/RunDataAi/RunDataAi.vue';
-import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useI18n } from '@/composables/useI18n';
 
 const emit = defineEmits<{
 	close: [];
 }>();
 
-const locale = useI18n();
-const workflowsStore = useWorkflowsStore();
-
-const workflow = computed(() => workflowsStore.getCurrentWorkflow());
 defineProps<{
 	node: INode | null;
 	slim?: boolean;
+	workflow: Workflow;
 }>();
+
+const locale = useI18n();
 </script>
 
 <template>

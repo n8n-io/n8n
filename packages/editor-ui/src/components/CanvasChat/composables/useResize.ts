@@ -132,7 +132,6 @@ export function useResize(container: Ref<HTMLElement | undefined>) {
 		onWindowResize,
 		onResizeDebounced,
 		onResizeChatDebounced,
-		// onResizeChat,
 		panelToContainerRatio,
 	};
 }
