@@ -68,7 +68,7 @@ const closeDialog = () => {
 				.inputLabelDisplayName(parameter, path)}`"
 			:before-close="closeDialog"
 		>
-			<div class="ignore-key-press">
+			<div class="ignore-key-press-canvas">
 				<n8n-input-label :label="$locale.nodeText().inputLabelDisplayName(parameter, path)">
 					<div @keydown.stop @keydown.esc="onKeyDownEsc">
 						<n8n-input
