@@ -5,18 +5,6 @@ import type WebSocket from 'ws';
 import type { TaskRunner } from './task-broker.service';
 import type { AuthlessRequest } from '../requests';
 
-/**
- * Specifies what data should be included for a task data request.
- */
-export interface TaskDataRequestParams {
-	dataOfNodes: string[] | 'all';
-	prevNode: boolean;
-	/** Whether input data for the node should be included */
-	input: boolean;
-	/** Whether env provider's state should be included */
-	env: boolean;
-}
-
 export interface DisconnectAnalyzer {
 	determineDisconnectReason(runnerId: TaskRunner['id']): Promise<Error>;
 }
