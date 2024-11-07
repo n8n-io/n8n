@@ -59,4 +59,7 @@ export class TestDefinition extends WithTimestamps {
 	 */
 	@ManyToOne('AnnotationTagEntity', 'test')
 	annotationTag: AnnotationTagEntity;
+
+	@RelationId((test: TestDefinition) => test.annotationTag)
+	annotationTagId: string;
 }

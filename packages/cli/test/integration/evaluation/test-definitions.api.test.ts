@@ -9,12 +9,15 @@ import { createWorkflow } from './../shared/db/workflows';
 import * as testDb from './../shared/test-db';
 import type { SuperAgentTest } from './../shared/types';
 import * as utils from './../shared/utils/';
+import { AnnotationTagEntity } from '@/databases/entities/annotation-tag-entity.ee';
+import { createAnnotationTags } from '@test-integration/db/executions';
 
 let authOwnerAgent: SuperAgentTest;
 let workflowUnderTest: WorkflowEntity;
 let evaluationWorkflow: WorkflowEntity;
 let otherWorkflow: WorkflowEntity;
 let ownerShell: User;
+let annotationTag: AnnotationTagEntity;
 const testServer = utils.setupTestServer({ endpointGroups: ['evaluation'] });
 
 beforeAll(async () => {
@@ -23,11 +26,12 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['TestDefinition', 'Workflow']);
+	await testDb.truncate(['TestDefinition', 'Workflow', 'AnnotationTag']);
 
 	workflowUnderTest = await createWorkflow({ name: 'workflow-under-test' }, ownerShell);
 	evaluationWorkflow = await createWorkflow({ name: 'evaluation-workflow' }, ownerShell);
 	otherWorkflow = await createWorkflow({ name: 'other-workflow' });
+	annotationTag = (await createAnnotationTags(['test-tag']))[0];
 });
 
 describe('GET /evaluation/test-definitions', () => {
@@ -243,5 +247,35 @@ describe('PATCH /evaluation/test-definitions/:id', () => {
 		expect(resp.statusCode).toBe(200);
 		expect(resp.body.data.name).toBe('updated-test');
 		expect(resp.body.data.workflowId).toBe(workflowUnderTest.id);
+	});
+
+	test('should update annotationTagId', async () => {
+		const newTest = Container.get(TestDefinitionRepository).create({
+			name: 'test',
+			workflow: { id: workflowUnderTest.id },
+		});
+		await Container.get(TestDefinitionRepository).save(newTest);
+
+		const resp = await authOwnerAgent.patch(`/evaluation/test-definitions/${newTest.id}`).send({
+			annotationTagId: annotationTag.id,
+		});
+
+		expect(resp.statusCode).toBe(200);
+		expect(resp.body.data.annotationTag.id).toBe(annotationTag.id);
+	});
+
+	test('should return error if annotationTagId is invalid', async () => {
+		const newTest = Container.get(TestDefinitionRepository).create({
+			name: 'test',
+			workflow: { id: workflowUnderTest.id },
+		});
+		await Container.get(TestDefinitionRepository).save(newTest);
+
+		const resp = await authOwnerAgent.patch(`/evaluation/test-definitions/${newTest.id}`).send({
+			annotationTagId: 123,
+		});
+
+		expect(resp.statusCode).toBe(400);
+		expect(resp.body.message).toBe('Annotation tag not found');
 	});
 });

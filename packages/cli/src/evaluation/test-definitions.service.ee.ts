@@ -1,10 +1,12 @@
 import { Service } from 'typedi';
 
 import type { TestDefinition } from '@/databases/entities/test-definition.ee';
+import { AnnotationTagRepository } from '@/databases/repositories/annotation-tag.repository.ee';
 import { TestDefinitionRepository } from '@/databases/repositories/test-definition.repository.ee';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { validateEntity } from '@/generic-helpers';
 import type { ListQuery } from '@/requests';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 type TestDefinitionLike = Omit<
 	Partial<TestDefinition>,
@@ -17,7 +19,10 @@ type TestDefinitionLike = Omit<
 
 @Service()
 export class TestDefinitionsService {
-	constructor(private testRepository: TestDefinitionRepository) {}
+	constructor(
+		private testRepository: TestDefinitionRepository,
+		private annotationTagRepository: AnnotationTagRepository,
+	) {}
 
 	private toEntityLike(attrs: {
 		name?: string;
@@ -89,6 +94,20 @@ export class TestDefinitionsService {
 			delete attrs.workflowId;
 		}
 
+		// Check if the annotation tag exists
+		if (attrs.annotationTagId) {
+			const annotationTagExists = await this.annotationTagRepository.exists({
+				where: {
+					id: attrs.annotationTagId,
+				},
+			});
+
+			if (!annotationTagExists) {
+				throw new BadRequestError('Annotation tag not found');
+			}
+		}
+
+		// Update the test definition
 		const queryResult = await this.testRepository.update(id, this.toEntityLike(attrs));
 
 		if (queryResult.affected === 0) {
