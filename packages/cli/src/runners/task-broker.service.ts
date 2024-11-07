@@ -557,6 +557,10 @@ export class TaskBroker {
 		}
 	}
 
+	/**
+	 * Whether n8n should manage the runner's lifecycle, i.e. launch it on demand,
+	 * keep it alive for a period of time, and shut it down when idle for too long.
+	 */
 	private get shouldManageLifecycle() {
 		return (
 			this.runnerConfig.mode === 'internal_childprocess' ||
@@ -564,22 +568,31 @@ export class TaskBroker {
 		);
 	}
 
-	async taskRequested(request: TaskRequest) {
-		if (this.shouldManageLifecycle) {
-			const { RunnerLifecycleManager } = await import('@/runners/runner-lifecycle-manager');
-			const lifecycleManager = Container.get(RunnerLifecycleManager);
+	/**
+	 * Whether the runner is ready to accept a task, waiting one to launch if needed.
+	 * Only for modes where we manage the runner's lifecycle.
+	 */
+	private async isRunnerReady(request: TaskRequest) {
+		const { RunnerLifecycleManager } = await import('@/runners/runner-lifecycle-manager');
+		const lifecycleManager = Container.get(RunnerLifecycleManager);
 
-			try {
-				await lifecycleManager.ensureRunnerAvailable();
-			} catch (e) {
-				const error = ensureError(e);
-				this.logger.error('Failed to start task runner', { error });
-				this.handleRunnerReject(request.requestId, `Task runner unavailable: ${error.message}`);
-				return;
-			}
+		try {
+			await lifecycleManager.ensureRunnerAvailable();
+		} catch (e) {
+			const error = ensureError(e);
+			this.logger.error('Failed to start task runner', { error });
+			this.handleRunnerReject(request.requestId, `Task runner unavailable: ${error.message}`);
 
-			lifecycleManager.updateLastActivityTime();
+			return false;
 		}
+
+		lifecycleManager.updateLastActivityTime();
+
+		return true;
+	}
+
+	async taskRequested(request: TaskRequest) {
+		if (this.shouldManageLifecycle && !(await this.isRunnerReady(request))) return;
 
 		this.pendingTaskRequests.push(request);
 		this.settleTasks();
