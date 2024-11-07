@@ -2,7 +2,8 @@ import type { IDataObject, INode, INodeExecutionData, ITaskData } from 'n8n-work
 import { NodeConnectionType } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
-import type { DataRequestResponse, JSExecSettings } from '@/js-task-runner/js-task-runner';
+import type { JSExecSettings } from '@/js-task-runner/js-task-runner';
+import type { DataRequestResponse } from '@/runner-types';
 import type { Task } from '@/task-runner';
 
 /**
@@ -46,10 +47,10 @@ export const newTaskData = (opts: Partial<ITaskData> & Pick<ITaskData, 'source'>
 });
 
 /**
- * Creates a new all code task data with the given options
+ * Creates a new data request response with the given options
  */
-export const newCodeTaskData = (
-	codeNodeInputData: INodeExecutionData[],
+export const newDataRequestResponse = (
+	inputData: INodeExecutionData[],
 	opts: Partial<DataRequestResponse> = {},
 ): DataRequestResponse => {
 	const codeNode = newNode({
@@ -83,9 +84,8 @@ export const newCodeTaskData = (
 			nodes: [manualTriggerNode, codeNode],
 		},
 		inputData: {
-			main: [codeNodeInputData],
+			main: [inputData],
 		},
-		connectionInputData: codeNodeInputData,
 		node: codeNode,
 		runExecutionData: {
 			startData: {},
@@ -95,7 +95,7 @@ export const newCodeTaskData = (
 						newTaskData({
 							source: [],
 							data: {
-								main: [codeNodeInputData],
+								main: [inputData],
 							},
 						}),
 					],
@@ -137,14 +137,13 @@ export const newCodeTaskData = (
 				var: 'value',
 			},
 		},
-		executeData: {
-			node: codeNode,
-			data: {
-				main: [codeNodeInputData],
-			},
-			source: {
-				main: [{ previousNode: manualTriggerNode.name }],
-			},
+		connectionInputSource: {
+			main: [
+				{
+					previousNode: 'Trigger',
+					previousNodeOutput: 0,
+				},
+			],
 		},
 		...opts,
 	};

@@ -217,7 +217,7 @@ const isTriggerNode = computed(() => !!node.value && nodeTypesStore.isTriggerNod
 const canPinData = computed(
 	() =>
 		!!node.value &&
-		pinnedData.canPinNode(false) &&
+		pinnedData.canPinNode(false, currentOutputIndex.value) &&
 		!isPaneTypeInput.value &&
 		pinnedData.isValidNodeType.value &&
 		!(binaryData.value && binaryData.value.length > 0),
@@ -1183,9 +1183,7 @@ defineExpose({ enterEditMode });
 <template>
 	<div :class="['run-data', $style.container]" @mouseover="activatePane">
 		<N8nCallout
-			v-if="
-				canPinData && pinnedData.hasData.value && !editMode.enabled && !isProductionExecutionPreview
-			"
+			v-if="pinnedData.hasData.value && !editMode.enabled && !isProductionExecutionPreview"
 			theme="secondary"
 			icon="thumbtack"
 			:class="$style.pinnedDataCallout"
