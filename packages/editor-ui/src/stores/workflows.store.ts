@@ -1109,9 +1109,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 
 		workflow.value.nodes.push(nodeData);
+
 		// Init node metadata
 		if (!nodeMetadata.value[nodeData.name]) {
-			nodeMetadata.value[nodeData.name] = {} as INodeMetadata;
+			setNodeMetadata(nodeData.name, {} as INodeMetadata);
 		}
 	}
 
@@ -1557,6 +1558,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return url.toString();
 	}
 
+	function setNodeMetadata(nodeName: string, metadata: INodeMetadata): void {
+		nodeMetadata.value[nodeName] = metadata;
+	}
+
 	function setNodePristine(nodeName: string, isPristine: boolean): void {
 		nodeMetadata.value[nodeName].pristine = isPristine;
 	}
@@ -1749,6 +1754,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		deleteExecution,
 		addToCurrentExecutions,
 		getBinaryUrl,
+		setNodeMetadata,
 		setNodePristine,
 		resetChatMessages,
 		appendChatMessage,

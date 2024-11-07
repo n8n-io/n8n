@@ -612,12 +612,11 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		}
 
 		void nextTick(() => {
-			workflowsStore.setNodePristine(nodeData.name, true);
-
 			if (!options.keepPristine) {
 				uiStore.stateIsDirty = true;
 			}
 
+			workflowsStore.setNodePristine(nodeData.name, true);
 			nodeHelpers.matchCredentials(nodeData);
 			nodeHelpers.updateNodeParameterIssues(nodeData);
 			nodeHelpers.updateNodeCredentialIssues(nodeData);
@@ -1381,11 +1380,17 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 	async function initializeWorkspace(data: IWorkflowDb) {
 		// Set workflow data
 		workflowHelpers.initState(data);
+		workflowsStore.workflow.nodes = data.nodes;
+		workflowsStore.workflow.connections = data.connections;
 
-		// Add nodes and connections
-		await addNodes(data.nodes, { keepPristine: true });
-		await addConnections(mapLegacyConnectionsToCanvasConnections(data.connections, data.nodes), {
-			keepPristine: true,
+		void nextTick(() => {
+			workflowsStore.workflow.nodes.forEach((node) => {
+				workflowsStore.setNodeMetadata(node.name, { pristine: true });
+				nodeHelpers.matchCredentials(node);
+				nodeHelpers.updateNodeParameterIssues(node);
+				nodeHelpers.updateNodeCredentialIssues(node);
+				nodeHelpers.updateNodeInputIssues(node);
+			});
 		});
 	}
 
