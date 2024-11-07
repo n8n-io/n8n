@@ -90,15 +90,15 @@ export abstract class TaskRunner {
 		});
 
 		this.ws.addEventListener('error', (error) => {
-			if (error.message?.includes('ECONNREFUSED') || error.message?.includes('ETIMEDOUT')) {
+			if (error.message?.includes('ECONNREFUSED') || error.message?.includes('ENOTFOUND')) {
 				console.error(
 					`Error: Failed to connect to n8n. Please ensure n8n is reachable at: ${opts.n8nUri}`,
 				);
+				process.exit(1);
 			} else {
 				console.error(`Error: Failed to connect to n8n at ${opts.n8nUri}`);
 				console.error('Details:', error.message || 'Unknown error');
 			}
-			process.exit(1);
 		});
 		this.ws.addEventListener('message', this.receiveMessage);
 		this.ws.addEventListener('close', this.stopTaskOffers);
