@@ -28,41 +28,32 @@ import { useCanvasStore } from '@/stores/canvas.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 
-export interface ChatProps {
-	// Injected stores for testing
-	workflowsStore?: ReturnType<typeof useWorkflowsStore>;
-	uiStore?: ReturnType<typeof useUIStore>;
-	canvasStore?: ReturnType<typeof useCanvasStore>;
-	nodeTypesStore?: ReturnType<typeof useNodeTypesStore>;
-	nodeHelpers?: ReturnType<typeof useNodeHelpers>;
-	initialSessionId?: string;
-	router?: Router;
-}
-
-// Props for dependency injection (makes testing easier)
-const props = withDefaults(defineProps<ChatProps>(), {
-	workflowsStore: () => useWorkflowsStore(),
-	uiStore: () => useUIStore(),
-	canvasStore: () => useCanvasStore(),
-	nodeTypesStore: () => useNodeTypesStore(),
-	nodeHelpers: () => useNodeHelpers(),
-	router: () => useRouter(),
-	initialSessionId: () => uuid().replace(/-/g, ''),
-});
+const workflowsStore = useWorkflowsStore();
+const uiStore = useUIStore();
+const canvasStore = useCanvasStore();
+const nodeTypesStore = useNodeTypesStore();
+const nodeHelpers = useNodeHelpers();
+const router = useRouter();
 
 // Component state
 const messages = ref<ChatMessage[]>([]);
-const currentSessionId = ref<string>(props.initialSessionId);
+const currentSessionId = ref<string>(uuid().replace(/-/g, ''));
 const isDisabled = ref(false);
 const container = ref<HTMLElement>();
 
 // Computed properties
-const workflow = computed(() => props.workflowsStore.getCurrentWorkflow());
-const isLoading = computed(() => props.uiStore.isActionActive.workflowRunning);
-const allConnections = computed(() => props.workflowsStore.allConnections);
-const isChatOpen = computed(() => props.workflowsStore.isChatPanelOpen);
-const isLogsOpen = computed(() => props.workflowsStore.isLogsPanelOpen);
-const previousChatMessages = computed(() => props.workflowsStore.getPastChatMessages);
+const workflow = computed(() => workflowsStore.getCurrentWorkflow());
+const isLoading = computed(() => {
+	const result = uiStore.isActionActive.workflowRunning;
+	return result;
+});
+const allConnections = computed(() => workflowsStore.allConnections);
+const isChatOpen = computed(() => {
+	const result = workflowsStore.isChatPanelOpen;
+	return result;
+});
+const isLogsOpen = computed(() => workflowsStore.isLogsPanelOpen);
+const previousChatMessages = computed(() => workflowsStore.getPastChatMessages);
 
 // Expose internal state for testing
 defineExpose({
@@ -73,14 +64,15 @@ defineExpose({
 	isLoading,
 });
 
-const { runWorkflow } = useRunWorkflow({ router: props.router });
+const { runWorkflow } = useRunWorkflow({ router });
 
 // Initialize features with injected dependencies
 const { chatTriggerNode, connectedNode, allowFileUploads, setChatTriggerNode, setConnectedNode } =
 	useChatTrigger({
 		workflow,
-		getNodeByName: props.workflowsStore.getNodeByName,
-		getNodeType: props.nodeTypesStore.getNodeType,
+		canvasNodes: workflowsStore.allNodes,
+		getNodeByName: workflowsStore.getNodeByName,
+		getNodeType: nodeTypesStore.getNodeType,
 	});
 
 const { sendMessage, getChatMessages } = useChatMessaging({
@@ -90,8 +82,8 @@ const { sendMessage, getChatMessages } = useChatMessaging({
 	sessionId: currentSessionId,
 	workflow,
 	isLoading,
-	executionResultData: computed(() => props.workflowsStore.getWorkflowExecution?.data?.resultData),
-	getWorkflowResultDataByNodeName: props.workflowsStore.getWorkflowResultDataByNodeName,
+	executionResultData: computed(() => workflowsStore.getWorkflowExecution?.data?.resultData),
+	getWorkflowResultDataByNodeName: workflowsStore.getWorkflowResultDataByNodeName,
 	onRunChatWorkflow,
 });
 
@@ -154,8 +146,8 @@ function displayExecution(params: { router: Router; workflowId: string; executio
 }
 
 function refreshSession(params: { messages: Ref<ChatMessage[]>; currentSessionId: Ref<string> }) {
-	props.workflowsStore.setWorkflowExecutionData(null);
-	props.nodeHelpers.updateNodesExecutionIssues();
+	workflowsStore.setWorkflowExecutionData(null);
+	nodeHelpers.updateNodesExecutionIssues();
 	params.messages.value = [];
 	params.currentSessionId.value = uuid().replace(/-/g, '');
 }
@@ -163,7 +155,7 @@ function refreshSession(params: { messages: Ref<ChatMessage[]>; currentSessionId
 // Event handlers
 const handleDisplayExecution = (executionId: string) => {
 	displayExecution({
-		router: props.router,
+		router,
 		workflowId: workflow.value.id,
 		executionId,
 	});
@@ -177,7 +169,7 @@ const handleRefreshSession = () => {
 };
 
 const closeLogs = () => {
-	props.workflowsStore.setPanelOpen('logs', false);
+	workflowsStore.setPanelOpen('logs', false);
 };
 
 async function onRunChatWorkflow(payload: RunWorkflowChatPayload) {
@@ -187,7 +179,7 @@ async function onRunChatWorkflow(payload: RunWorkflowChatPayload) {
 		source: payload.source,
 	});
 
-	props.workflowsStore.appendChatMessage(payload.message);
+	workflowsStore.appendChatMessage(payload.message);
 	return response;
 }
 
@@ -224,12 +216,13 @@ watch(
 			}, 0);
 		}
 	},
+	{ immediate: true },
 );
 
 watch(
 	() => allConnections.value,
 	() => {
-		if (props.canvasStore.isLoading) return;
+		if (canvasStore.isLoading) return;
 		setTimeout(() => {
 			if (!chatTriggerNode.value) {
 				setChatTriggerNode();
@@ -241,7 +234,7 @@ watch(
 );
 
 watchEffect(() => {
-	props.canvasStore.setPanelHeight(isChatOpen.value || isLogsOpen.value ? height.value : 0);
+	canvasStore.setPanelHeight(isChatOpen.value || isLogsOpen.value ? height.value : 0);
 });
 </script>
 

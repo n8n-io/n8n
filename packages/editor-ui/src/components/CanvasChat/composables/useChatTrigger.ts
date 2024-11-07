@@ -25,10 +25,16 @@ import type { INodeUi } from '@/Interface';
 export interface ChatTriggerDependencies {
 	getNodeByName: (name: string) => INodeUi | null;
 	getNodeType: (type: string, version: number) => INodeTypeDescription | null;
+	canvasNodes: INodeUi[];
 	workflow: ComputedRef<Workflow>;
 }
 
-export function useChatTrigger({ getNodeByName, getNodeType, workflow }: ChatTriggerDependencies) {
+export function useChatTrigger({
+	getNodeByName,
+	getNodeType,
+	canvasNodes,
+	workflow,
+}: ChatTriggerDependencies) {
 	const chatTriggerName = ref<string | null>(null);
 	const connectedNode = ref<INode | null>(null);
 
@@ -52,14 +58,14 @@ export function useChatTrigger({ getNodeByName, getNodeType, workflow }: ChatTri
 
 	/** Gets the chat trigger node from the workflow */
 	function setChatTriggerNode() {
-		const triggerNode = workflow.value.queryNodes((nodeType: INodeType) =>
-			[CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE].includes(nodeType.description.name),
+		const triggerNode = canvasNodes.find((node) =>
+			[CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE].includes(node.type),
 		);
 
-		if (!triggerNode.length) {
+		if (!triggerNode) {
 			return;
 		}
-		chatTriggerName.value = triggerNode[0].name;
+		chatTriggerName.value = triggerNode.name;
 	}
 
 	/** Sets the connected node after finding the trigger */
@@ -124,7 +130,6 @@ export function useChatTrigger({ getNodeByName, getNodeType, workflow }: ChatTri
 				const result = Boolean(isChatChild && (isAgent || isChain || isCustomChainOrAgent));
 				return result;
 			});
-
 		connectedNode.value = chatRootNode ?? null;
 	}
 

@@ -87,28 +87,48 @@ function onArrowKeyDown({ currentInputValue, key }: ArrowKeyDownPayload) {
 		currentInputValue.length === 0 || pastMessages.includes(currentInputValue);
 
 	if (isCurrentInputEmptyOrMatch && (key === 'ArrowUp' || key === 'ArrowDown')) {
-		// Blur the input when the user presses the up or down arrow key
+		// Exit if no messages
+		if (pastMessages.length === 0) return;
+
+		// Temporarily blur to avoid cursor position issues
 		chatEventBus.emit('blurInput');
 
 		if (pastMessages.length === 1) {
 			previousMessageIndex.value = 0;
-		} else if (key === 'ArrowUp') {
-			previousMessageIndex.value = (previousMessageIndex.value + 1) % pastMessages.length;
-		} else if (key === 'ArrowDown') {
-			previousMessageIndex.value =
-				(previousMessageIndex.value - 1 + pastMessages.length) % pastMessages.length;
+		} else {
+			if (key === 'ArrowUp') {
+				if (currentInputValue.length === 0 && previousMessageIndex.value === 0) {
+					// Start with most recent message
+					previousMessageIndex.value = pastMessages.length - 1;
+				} else {
+					// Move backwards through history
+					previousMessageIndex.value =
+						previousMessageIndex.value === 0
+							? pastMessages.length - 1
+							: previousMessageIndex.value - 1;
+				}
+			} else if (key === 'ArrowDown') {
+				// Move forwards through history
+				previousMessageIndex.value =
+					previousMessageIndex.value === pastMessages.length - 1
+						? 0
+						: previousMessageIndex.value + 1;
+			}
 		}
 
-		chatEventBus.emit(
-			'setInputValue',
-			pastMessages[pastMessages.length - 1 - previousMessageIndex.value] ?? '',
-		);
+		// Get message at current index
+		const selectedMessage = pastMessages[previousMessageIndex.value];
+		chatEventBus.emit('setInputValue', selectedMessage);
 
-		// Refocus to move the cursor to the end of the input
+		// Refocus and move cursor to end
 		chatEventBus.emit('focusInput');
 	}
-}
 
+	// Reset history navigation when typing new content that doesn't match history
+	if (!isCurrentInputEmptyOrMatch) {
+		previousMessageIndex.value = 0;
+	}
+}
 function copySessionId() {
 	void clipboard.copy(props.sessionId);
 	toast.showMessage({
@@ -129,10 +149,13 @@ function copySessionId() {
 					<template #content>
 						{{ sessionId }}
 					</template>
-					<span :class="$style.sessionId" @click="copySessionId">{{ sessionId }}</span>
+					<span :class="$style.sessionId" @click="copySessionId" data-test-id="chat-session-id">{{
+						sessionId
+					}}</span>
 				</n8n-tooltip>
 				<n8n-icon-button
 					:class="$style.refreshSession"
+					data-test-id="refresh-session-button"
 					type="tertiary"
 					text
 					size="mini"
@@ -148,6 +171,7 @@ function copySessionId() {
 					<MessageOptionTooltip
 						v-if="message.sender === 'bot' && !message.id.includes('preload')"
 						placement="right"
+						data-test-id="execution-id-tooltip"
 					>
 						{{ locale.baseText('chat.window.chat.chatMessageOptions.executionId') }}:
 						<a href="#" @click="emit('displayExecution', message.id)">{{ message.id }}</a>

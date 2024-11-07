@@ -196,6 +196,7 @@ function adjustHeight(event: Event) {
 		<div class="chat-inputs">
 			<textarea
 				ref="chatTextArea"
+				data-test-id="chat-input"
 				v-model="input"
 				:disabled="isInputDisabled"
 				:placeholder="t(props.placeholder)"
@@ -210,6 +211,7 @@ function adjustHeight(event: Event) {
 					v-if="isFileUploadAllowed"
 					:disabled="isFileUploadDisabled"
 					class="chat-input-file-button"
+					data-test-id="chat-attach-file-button"
 					@click="onOpenFileDialog"
 				>
 					<IconPaperclip height="24" width="24" />

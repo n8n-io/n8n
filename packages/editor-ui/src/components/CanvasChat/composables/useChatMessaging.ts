@@ -267,11 +267,10 @@ export function useChatMessaging({
 	}
 
 	function getChatMessages(): ChatMessageText[] {
-		console.log('Getting chat messages', connectedNode.value);
 		if (!connectedNode.value) return [];
 
 		const connectedMemoryInputs =
-			workflow.value.connectionsByDestinationNode[connectedNode.value.name]?.[
+			workflow.value.connectionsByDestinationNode?.[connectedNode.value.name]?.[
 				NodeConnectionType.AiMemory
 			];
 		if (!connectedMemoryInputs) return [];
