@@ -16,6 +16,7 @@ import { Logger } from '@/logging/logger.service';
 import { UrlService } from '@/services/url.service';
 
 import { SAML_PREFERENCES_DB_KEY } from './constants';
+import { InvalidSamlMetadataError } from './errors/invalid-saml-metadata.error';
 import {
 	createUserFromSamlAttributes,
 	getMappedSamlAttributesFromFlowResult,
@@ -81,11 +82,24 @@ export class SamlService {
 	) {}
 
 	async init(): Promise<void> {
-		// load preferences first but do not apply so as to not load samlify unnecessarily
-		await this.loadFromDbAndApplySamlPreferences(false);
-		if (isSamlLicensedAndEnabled()) {
-			await this.loadSamlify();
-			await this.loadFromDbAndApplySamlPreferences(true);
+		try {
+			// load preferences first but do not apply so as to not load samlify unnecessarily
+			await this.loadFromDbAndApplySamlPreferences(false);
+			if (isSamlLicensedAndEnabled()) {
+				await this.loadSamlify();
+				await this.loadFromDbAndApplySamlPreferences(true);
+			}
+		} catch (error) {
+			// If the SAML configuration has been corrupted in the database we'll
+			// delete the corrupted configuration and enable email logins again.
+			if (error instanceof InvalidSamlMetadataError || error instanceof SyntaxError) {
+				this.logger.warn(
+					`SAML initialization failed because of invalid metadata in database: ${error.message}. IMPORTANT: Disabling SAML and switching to email-based login for all users. Please review your configuration and re-enable SAML.`,
+				);
+				await this.reset();
+			} else {
+				throw error;
+			}
 		}
 	}
 
@@ -98,7 +112,7 @@ export class SamlService {
 			validate: async (response: string) => {
 				const valid = await validateResponse(response);
 				if (!valid) {
-					throw new ApplicationError('Invalid SAML response');
+					throw new InvalidSamlMetadataError();
 				}
 			},
 		});
@@ -230,7 +244,7 @@ export class SamlService {
 		} else if (prefs.metadata) {
 			const validationResult = await validateMetadata(prefs.metadata);
 			if (!validationResult) {
-				throw new ApplicationError('Invalid SAML metadata');
+				throw new InvalidSamlMetadataError();
 			}
 		}
 		this.getIdentityProviderInstance(true);
@@ -370,5 +384,14 @@ export class SamlService {
 			);
 		}
 		return attributes;
+	}
+
+	/**
+	 * Disables SAML, switches to email based logins and deletes the SAML
+	 * configuration from the database.
+	 */
+	async reset() {
+		await setSamlLoginEnabled(false);
+		await Container.get(SettingsRepository).delete({ key: SAML_PREFERENCES_DB_KEY });
 	}
 }
