@@ -180,7 +180,8 @@ export class Workflow {
 					if (!connections[sourceNode][type].hasOwnProperty(inputIndex)) {
 						continue;
 					}
-					for (connectionInfo of connections[sourceNode][type][inputIndex]) {
+
+					for (connectionInfo of connections[sourceNode][type][inputIndex] ?? []) {
 						if (!returnConnection.hasOwnProperty(connectionInfo.node)) {
 							returnConnection[connectionInfo.node] = {};
 						}
