@@ -87,9 +87,8 @@ export function getWorkflowWebhooks(
 
 			continue;
 		}
-		returnData.push.apply(
-			returnData,
-			NodeHelpers.getNodeWebhooks(workflow, node, additionalData, ignoreRestartWebhooks),
+		returnData.push(
+			...NodeHelpers.getNodeWebhooks(workflow, node, additionalData, ignoreRestartWebhooks),
 		);
 	}
 

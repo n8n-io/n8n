@@ -110,7 +110,26 @@ export class WorkflowExecutionService {
 					startNodes?.map((nodeData) => nodeData.name),
 					pinData,
 				);
-		console.log('pinnedTrigger', pinnedTrigger);
+
+		// If pinnedTrigger is a webhook
+		const additionalData = await WorkflowExecuteAdditionalData.getBase(user.id);
+		if (
+			pinnedTrigger &&
+			(await this.testWebhooks.isNodeWebhook(pinnedTrigger, workflowData, additionalData))
+		) {
+			const needsWebhook = await this.testWebhooks.needsWebhook(
+				user.id,
+				workflowData,
+				additionalData,
+				runData,
+				pushRef,
+				destinationNode,
+				pinnedTrigger.name,
+			);
+
+			if (needsWebhook) return { waitingForWebhook: true };
+		}
+
 		// If webhooks nodes exist and are active we have to wait for till we receive a call
 		if (
 			pinnedTrigger === null &&
@@ -119,8 +138,6 @@ export class WorkflowExecutionService {
 				startNodes.length === 0 ||
 				destinationNode === undefined)
 		) {
-			const additionalData = await WorkflowExecuteAdditionalData.getBase(user.id);
-
 			const needsWebhook = await this.testWebhooks.needsWebhook(
 				user.id,
 				workflowData,

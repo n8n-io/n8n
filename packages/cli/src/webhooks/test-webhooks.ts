@@ -6,6 +6,7 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	IHttpRequestMethods,
 	IRunData,
+	INode,
 } from 'n8n-workflow';
 import { Service } from 'typedi';
 
@@ -225,17 +226,22 @@ export class TestWebhooks implements IWebhookManager {
 		runData?: IRunData,
 		pushRef?: string,
 		destinationNode?: string,
+		webhookNodeName?: string,
 	) {
 		if (!workflowEntity.id) throw new WorkflowMissingIdError(workflowEntity);
 
 		const workflow = this.toWorkflow(workflowEntity);
 
-		const webhooks = WebhookHelpers.getWorkflowWebhooks(
+		let webhooks = WebhookHelpers.getWorkflowWebhooks(
 			workflow,
 			additionalData,
 			destinationNode,
 			true,
 		);
+
+		if (webhookNodeName) {
+			webhooks = webhooks.filter((w) => w.node === webhookNodeName);
+		}
 
 		if (!webhooks.some((w) => w.webhookDescription.restartWebhook !== true)) {
 			return false; // no webhooks found to start a workflow
@@ -307,6 +313,23 @@ export class TestWebhooks implements IWebhookManager {
 		}
 
 		return true;
+	}
+
+	/**
+	 *
+	 */
+	async isNodeWebhook(
+		node: INode,
+		workflowEntity: IWorkflowDb,
+		additionalData: IWorkflowExecuteAdditionalData,
+	) {
+		if (!workflowEntity.id) throw new WorkflowMissingIdError(workflowEntity);
+
+		const workflow = this.toWorkflow(workflowEntity);
+
+		const webhooks = WebhookHelpers.getWorkflowWebhooks(workflow, additionalData, undefined, true);
+
+		return webhooks.some((w) => w.node === node.name);
 	}
 
 	async cancelWebhook(workflowId: string) {

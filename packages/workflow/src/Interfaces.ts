@@ -1968,6 +1968,7 @@ export interface INodeHookDescription {
 
 export interface IWebhookData {
 	httpMethod: IHttpRequestMethods;
+	// TODO: rename to nodeName
 	node: string;
 	path: string;
 	webhookDescription: IWebhookDescription;

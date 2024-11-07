@@ -22,6 +22,11 @@ export declare namespace WorkflowRequest {
 		runData: IRunData;
 		startNodes?: StartNodeData[];
 		destinationNode?: string;
+		/**
+		 * Sending a preferredTrigger will override `startNodes`. The execution
+		 * will start from that trigger and it will always be a full manual
+		 * execution.
+		 */
 		preferredTrigger?: string;
 	};
 
