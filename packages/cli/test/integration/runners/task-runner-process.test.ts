@@ -10,7 +10,7 @@ import { retryUntil } from '@test-integration/retry-until';
 describe('TaskRunnerProcess', () => {
 	const authToken = 'token';
 	const runnerConfig = Container.get(TaskRunnersConfig);
-	runnerConfig.disabled = false;
+	runnerConfig.enabled = true;
 	runnerConfig.mode = 'internal_childprocess';
 	runnerConfig.authToken = authToken;
 	runnerConfig.port = 0; // Use any port
