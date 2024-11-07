@@ -12,7 +12,7 @@ describe('TaskBroker', () => {
 	let taskBroker: TaskBroker;
 
 	beforeEach(() => {
-		taskBroker = new TaskBroker(mock());
+		taskBroker = new TaskBroker(mock(), mock());
 		jest.restoreAllMocks();
 	});
 
@@ -201,7 +201,7 @@ describe('TaskBroker', () => {
 
 			jest.spyOn(taskBroker, 'acceptOffer').mockResolvedValue(); // allow Jest to exit cleanly
 
-			taskBroker.taskRequested(request);
+			await taskBroker.taskRequested(request);
 
 			expect(taskBroker.acceptOffer).toHaveBeenCalled();
 			expect(taskBroker.getPendingTaskOffers()).toHaveLength(0);
