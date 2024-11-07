@@ -251,6 +251,9 @@ export default defineComponent({
 		isSchemaView(): boolean {
 			return this.displayMode === 'schema';
 		},
+		isSearchInSchemaView(): boolean {
+			return this.displayMode === 'schema' && this.search.length > 0;
+		},
 		displaysMultipleNodes(): boolean {
 			return this.isSchemaView && this.paneType === 'input' && this.nodes.length > 0;
 		},
@@ -1403,6 +1406,7 @@ export default defineComponent({
 			v-else-if="
 				!hasRunError &&
 				hasNodeRun &&
+				!isSearchInSchemaView &&
 				((dataCount > 0 && maxRunIndex === 0) || search) &&
 				!isArtificialRecoveredEventItem &&
 				!displaysMultipleNodes
