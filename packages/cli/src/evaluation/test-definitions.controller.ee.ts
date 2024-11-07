@@ -27,7 +27,11 @@ export class TestDefinitionsController {
 
 		const workflowIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
 
-		return await this.testsService.findOne(Number(req.params.id), workflowIds);
+		const testDefinition = await this.testsService.findOne(Number(req.params.id), workflowIds);
+
+		if (!testDefinition) throw new NotFoundError('Test not found');
+
+		return testDefinition;
 	}
 
 	@Post('/')
@@ -36,6 +40,10 @@ export class TestDefinitionsController {
 
 		if (!workflowIds.includes(req.body.workflowId)) {
 			throw new BadRequestError('User does not have access to the workflow');
+		}
+
+		if (req.body.evaluationWorkflowId && !workflowIds.includes(req.body.evaluationWorkflowId)) {
+			throw new BadRequestError('User does not have access to the evaluation workflow');
 		}
 
 		return await this.testsService.save(this.testsService.toEntity(req.body));
@@ -65,8 +73,13 @@ export class TestDefinitionsController {
 		// Fail fast if no workflows are accessible
 		if (workflowIds.length === 0) throw new NotFoundError('Workflow not found');
 
-		return await this.testsService.save(
-			this.testsService.toEntity({ ...req.body, id: Number(req.params.id) }),
-		);
+		const existingTest = await this.testsService.findOne(Number(req.params.id), workflowIds);
+		if (!existingTest) throw new NotFoundError('Test definition not found');
+
+		if (req.body.evaluationWorkflowId && !workflowIds.includes(req.body.evaluationWorkflowId)) {
+			throw new BadRequestError('User does not have access to the evaluation workflow');
+		}
+
+		return await this.testsService.update(Number(req.params.id), req.body, workflowIds);
 	}
 }

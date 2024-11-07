@@ -277,6 +277,10 @@ export const setupTestServer = ({
 					case 'apiKeys':
 						await import('@/controllers/api-keys.controller');
 						break;
+
+					case 'evaluation':
+						await import('@/evaluation/test-definitions.controller.ee');
+						break;
 				}
 			}
 

@@ -17,7 +17,11 @@ export declare namespace TestDefinitionsRequest {
 		listQueryOptions: ListQuery.Options;
 	};
 
-	type Create = AuthenticatedRequest<{}, {}, { name: string; workflowId: string }>;
+	type Create = AuthenticatedRequest<
+		{},
+		{},
+		{ name: string; workflowId: string; evaluationWorkflowId?: string }
+	>;
 
 	type Update = AuthenticatedRequest<
 		RouteParams.TestId,

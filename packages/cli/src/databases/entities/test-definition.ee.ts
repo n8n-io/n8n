@@ -30,7 +30,9 @@ export class TestDefinition extends WithTimestamps {
 	id: number;
 
 	@Column({ length: 255 })
-	@Length(1, 255, { message: 'Test name must be $constraint1 to $constraint2 characters long.' })
+	@Length(1, 255, {
+		message: 'Test definition name must be $constraint1 to $constraint2 characters long.',
+	})
 	name: string;
 
 	/**
