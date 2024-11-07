@@ -63,94 +63,126 @@ export class Oura implements INodeType {
 		const length = items.length;
 
 		let responseData;
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
-			if (resource === 'profile') {
-				// *********************************************************************
-				//                             profile
-				// *********************************************************************
+			try {
+				if (resource === 'profile') {
+					// *********************************************************************
+					//                             profile
+					// *********************************************************************
 
-				// https://cloud.ouraring.com/docs/personal-info
+					// https://cloud.ouraring.com/docs/personal-info
 
-				if (operation === 'get') {
-					// ----------------------------------
-					//         profile: get
-					// ----------------------------------
+					if (operation === 'get') {
+						// ----------------------------------
+						//         profile: get
+						// ----------------------------------
 
-					responseData = await ouraApiRequest.call(this, 'GET', '/userinfo');
-				}
-			} else if (resource === 'summary') {
-				// *********************************************************************
-				//                             summary
-				// *********************************************************************
-
-				// https://cloud.ouraring.com/docs/daily-summaries
-
-				const qs: IDataObject = {};
-
-				const { start, end } = this.getNodeParameter('filters', i) as {
-					start: string;
-					end: string;
-				};
-
-				const returnAll = this.getNodeParameter('returnAll', 0);
-
-				if (start) {
-					qs.start = moment(start).format('YYYY-MM-DD');
-				}
-
-				if (end) {
-					qs.end = moment(end).format('YYYY-MM-DD');
-				}
-
-				if (operation === 'getActivity') {
-					// ----------------------------------
-					//       profile: getActivity
-					// ----------------------------------
-
-					responseData = await ouraApiRequest.call(this, 'GET', '/activity', {}, qs);
-					responseData = responseData.activity;
-
-					if (!returnAll) {
-						const limit = this.getNodeParameter('limit', 0);
-						responseData = responseData.splice(0, limit);
+						responseData = await ouraApiRequest.call(this, 'GET', '/usercollection/personal_info');
 					}
-				} else if (operation === 'getReadiness') {
-					// ----------------------------------
-					//       profile: getReadiness
-					// ----------------------------------
+				} else if (resource === 'summary') {
+					// *********************************************************************
+					//                             summary
+					// *********************************************************************
 
-					responseData = await ouraApiRequest.call(this, 'GET', '/readiness', {}, qs);
-					responseData = responseData.readiness;
+					// https://cloud.ouraring.com/docs/daily-summaries
 
-					if (!returnAll) {
-						const limit = this.getNodeParameter('limit', 0);
-						responseData = responseData.splice(0, limit);
+					const qs: IDataObject = {};
+
+					const { start, end } = this.getNodeParameter('filters', i) as {
+						start: string;
+						end: string;
+					};
+
+					const returnAll = this.getNodeParameter('returnAll', 0);
+
+					if (start) {
+						qs.start_date = moment(start).format('YYYY-MM-DD');
 					}
-				} else if (operation === 'getSleep') {
-					// ----------------------------------
-					//         profile: getSleep
-					// ----------------------------------
 
-					responseData = await ouraApiRequest.call(this, 'GET', '/sleep', {}, qs);
-					responseData = responseData.sleep;
+					if (end) {
+						qs.end_date = moment(end).format('YYYY-MM-DD');
+					}
 
-					if (!returnAll) {
-						const limit = this.getNodeParameter('limit', 0);
-						responseData = responseData.splice(0, limit);
+					if (operation === 'getActivity') {
+						// ----------------------------------
+						//       profile: getActivity
+						// ----------------------------------
+
+						responseData = await ouraApiRequest.call(
+							this,
+							'GET',
+							'/usercollection/daily_activity',
+							{},
+							qs,
+						);
+						responseData = responseData.data;
+
+						if (!returnAll) {
+							const limit = this.getNodeParameter('limit', 0);
+							responseData = responseData.splice(0, limit);
+						}
+					} else if (operation === 'getReadiness') {
+						// ----------------------------------
+						//       profile: getReadiness
+						// ----------------------------------
+
+						responseData = await ouraApiRequest.call(
+							this,
+							'GET',
+							'/usercollection/daily_readiness',
+							{},
+							qs,
+						);
+						responseData = responseData.data;
+
+						if (!returnAll) {
+							const limit = this.getNodeParameter('limit', 0);
+							responseData = responseData.splice(0, limit);
+						}
+					} else if (operation === 'getSleep') {
+						// ----------------------------------
+						//         profile: getSleep
+						// ----------------------------------
+
+						responseData = await ouraApiRequest.call(
+							this,
+							'GET',
+							'/usercollection/daily_sleep',
+							{},
+							qs,
+						);
+						responseData = responseData.data;
+
+						if (!returnAll) {
+							const limit = this.getNodeParameter('limit', 0);
+							responseData = responseData.splice(0, limit);
+						}
 					}
 				}
+
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
+					{ itemData: { item: i } },
+				);
+
+				returnData.push(...executionData);
+			} catch (error) {
+				if (this.continueOnFail()) {
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionErrorData);
+					continue;
+				}
+				throw error;
 			}
-
-			Array.isArray(responseData)
-				? returnData.push(...(responseData as IDataObject[]))
-				: returnData.push(responseData as IDataObject);
 		}
-
-		return [this.helpers.returnJsonArray(returnData)];
+		return [returnData];
 	}
 }
