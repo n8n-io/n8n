@@ -4161,6 +4161,7 @@ export function getSupplyDataFunctions(
 			connectionType: NodeConnectionType,
 			currentNodeRunIndex: number,
 			data: INodeExecutionData[][],
+			metadata?: ITaskMetadata,
 		): void {
 			addExecutionDataFunctions(
 				'output',
@@ -4172,6 +4173,7 @@ export function getSupplyDataFunctions(
 				node.name,
 				runIndex,
 				currentNodeRunIndex,
+				metadata,
 			).catch((error) => {
 				Logger.warn(
 					`There was a problem logging output data of node "${this.getNode().name}": ${
