@@ -35,14 +35,14 @@ const collectionId = computed(() => {
 	return Array.isArray(id) ? id[0] : id;
 });
 
-const collection = computed(() => templatesStore.getCollectionById(collectionId.value));
+const collection = computed(() => templatesStore.getCollectionById[collectionId.value]);
 
 const collectionWorkflows = computed(() => {
 	if (!collection.value || loading.value) {
 		return [];
 	}
 	return collection.value.workflows
-		.map(({ id }) => templatesStore.getTemplateById(id.toString()))
+		.map(({ id }) => templatesStore.getTemplatesById(id.toString()))
 		.filter((workflow): workflow is ITemplatesWorkflow => !!workflow);
 });
 
