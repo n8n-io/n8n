@@ -1,5 +1,6 @@
+import type { ZodObjectAny } from '@langchain/core/dist/types/zod';
 import type { BaseOutputParser } from '@langchain/core/output_parsers';
-import type { Tool } from 'langchain/tools';
+import type { DynamicStructuredTool, Tool } from 'langchain/tools';
 import { NodeOperationError, type IExecuteFunctions, type INode } from 'n8n-workflow';
 
 export async function extractParsedOutput(
@@ -20,7 +21,7 @@ export async function extractParsedOutput(
 }
 
 export async function checkForStructuredTools(
-	tools: Tool[],
+	tools: Array<Tool | DynamicStructuredTool<ZodObjectAny>>,
 	node: INode,
 	currentAgentType: string,
 ) {
@@ -28,7 +29,7 @@ export async function checkForStructuredTools(
 		(tool) => tool.constructor.name === 'DynamicStructuredTool',
 	);
 	if (dynamicStructuredTools.length > 0) {
-		const getToolName = (tool: Tool) => `"${tool.name}"`;
+		const getToolName = (tool: Tool | DynamicStructuredTool) => `"${tool.name}"`;
 		throw new NodeOperationError(
 			node,
 			`The selected tools are not supported by "${currentAgentType}", please use "Tools Agent" instead`,
