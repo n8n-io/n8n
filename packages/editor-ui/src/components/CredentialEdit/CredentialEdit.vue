@@ -89,6 +89,7 @@ const isDeleting = ref(false);
 const isSaving = ref(false);
 const isTesting = ref(false);
 const hasUnsavedChanges = ref(false);
+const isSaved = ref(false);
 const loading = ref(false);
 const showValidationWarning = ref(false);
 const testedSuccessfully = ref(false);
@@ -318,8 +319,8 @@ const defaultCredentialTypeName = computed(() => {
 
 const showSaveButton = computed(() => {
 	return (
-		(hasUnsavedChanges.value || !credentialId.value) &&
-		(credentialPermissions.value.create || credentialPermissions.value.update)
+		(props.mode === 'new' || hasUnsavedChanges.value || isSaved.value) &&
+		(credentialPermissions.value.create ?? credentialPermissions.value.update)
 	);
 });
 
@@ -828,6 +829,7 @@ async function updateCredential(
 			isSharedWithChanged.value = false;
 		}
 		hasUnsavedChanges.value = false;
+		isSaved.value = true;
 
 		if (credential) {
 			await externalHooks.run('credential.saved', {
@@ -879,6 +881,7 @@ async function deleteCredential() {
 		isDeleting.value = true;
 		await credentialsStore.deleteCredential({ id: credentialId.value });
 		hasUnsavedChanges.value = false;
+		isSaved.value = true;
 	} catch (error) {
 		toast.showError(
 			error,
