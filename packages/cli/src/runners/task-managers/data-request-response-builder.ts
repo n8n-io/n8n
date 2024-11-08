@@ -1,5 +1,10 @@
 import type { DataRequestResponse, PartialAdditionalData, TaskData } from '@n8n/task-runner';
-import type { IWorkflowExecuteAdditionalData, Workflow, WorkflowParameters } from 'n8n-workflow';
+import type {
+	IRunExecutionData,
+	IWorkflowExecuteAdditionalData,
+	Workflow,
+	WorkflowParameters,
+} from 'n8n-workflow';
 
 /**
  * Transforms TaskData to DataRequestResponse. The main purpose of the
@@ -20,7 +25,7 @@ export class DataRequestResponseBuilder {
 			mode: taskData.mode,
 			envProviderState: taskData.envProviderState,
 			node: taskData.node,
-			runExecutionData: taskData.runExecutionData,
+			runExecutionData: this.buildRunExecutionData(taskData.runExecutionData),
 			runIndex: taskData.runIndex,
 			selfData: taskData.selfData,
 			siblingParameters: taskData.siblingParameters,
@@ -57,6 +62,25 @@ export class DataRequestResponseBuilder {
 			pinData: workflow.pinData,
 			settings: workflow.settings,
 			staticData: workflow.staticData,
+		};
+	}
+
+	private buildRunExecutionData(runExecutionData: IRunExecutionData) {
+		return {
+			startData: runExecutionData.startData,
+			resultData: runExecutionData.resultData,
+			executionData: runExecutionData.executionData
+				? {
+						contextData: runExecutionData.executionData.contextData,
+						metadata: runExecutionData.executionData.metadata,
+
+						// These are related to workflow execution and are not something
+						// that are accessible by nodes, so we always omit them
+						nodeExecutionStack: [],
+						waitingExecution: {},
+						waitingExecutionSource: null,
+					}
+				: undefined,
 		};
 	}
 }
