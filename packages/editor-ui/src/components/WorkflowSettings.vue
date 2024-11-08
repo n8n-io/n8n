@@ -398,6 +398,7 @@ onMounted(async () => {
 	defaultValues.value.saveDataErrorExecution = settingsStore.saveDataErrorExecution;
 	defaultValues.value.saveDataSuccessExecution = settingsStore.saveDataSuccessExecution;
 	defaultValues.value.saveManualExecutions = settingsStore.saveManualExecutions;
+	defaultValues.value.saveExecutionProgress = settingsStore.saveDataProgressExecution;
 	defaultValues.value.timezone = rootStore.timezone;
 	defaultValues.value.workflowCallerPolicy = settingsStore.workflowCallerPolicyDefaultOption;
 
