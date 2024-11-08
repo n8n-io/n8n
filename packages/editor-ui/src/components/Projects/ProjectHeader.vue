@@ -38,7 +38,7 @@ const projectPermissions = computed(
 const showSettings = computed(
 	() =>
 		!!route?.params?.projectId &&
-		projectPermissions.value.update &&
+		!!projectPermissions.value.update &&
 		projectsStore.currentProject?.type === ProjectTypes.Team,
 );
 </script>
