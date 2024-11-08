@@ -926,7 +926,7 @@ export function getPageId(this: IExecuteFunctions, i: number) {
 			pageId = page.value;
 		} else if (page.value.includes('p=')) {
 			// e.g https://www.notion.so/xxxxx?v=xxxxx&p=xxxxx&pm=s
-			pageId = page.value.split('p=')[1].split('&')[0];
+			pageId = new URLSearchParams(page.value).get('p')
 		} else {
 			// e.g https://www.notion.so/page_name-xxxxx
 			pageId = page.value.match(databasePageUrlValidationRegexp)?.[1] || '';
