@@ -386,7 +386,10 @@ const currentOutputIndex = computed(() => {
 		return props.overrideOutputs[0];
 	}
 
-	return outputIndex.value;
+	// In some cases nodes may switch their outputCount while the user still
+	// has a higher outputIndex selected. We could adjust outputIndex directly,
+	// but that loses data as we can keep the user selection if the branch reappears.
+	return Math.min(outputIndex.value, maxOutputIndex.value);
 });
 const branches = computed(() => {
 	const capitalize = (name: string) => name.charAt(0).toLocaleUpperCase() + name.slice(1);
