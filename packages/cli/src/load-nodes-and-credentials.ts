@@ -390,7 +390,15 @@ export class LoadNodesAndCredentials {
 			const toWatch = loader.isLazyLoaded
 				? ['**/nodes.json', '**/credentials.json']
 				: ['**/*.js', '**/*.json'];
-			watch(toWatch, { cwd: realModulePath }).on('change', reloader);
+			const files = await glob(toWatch, {
+				cwd: realModulePath,
+				ignore: ['node_modules/**'],
+			});
+			const watcher = watch(files, {
+				cwd: realModulePath,
+				ignoreInitial: true,
+			});
+			watcher.on('add', reloader).on('change', reloader).on('unlink', reloader);
 		});
 	}
 }
