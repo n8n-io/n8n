@@ -14,8 +14,7 @@ import { useExecutionsStore } from '@/stores/executions.store';
 import type { PermissionsRecord } from '@/permissions';
 import { getResourcePermissions } from '@/permissions';
 import { useSettingsStore } from '@/stores/settings.store';
-import ProjectTabs from '@/components/Projects/ProjectTabs.vue';
-import ProjectResourceListHeader from '@/components/Projects/ProjectResourceListHeader.vue';
+import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -317,8 +316,7 @@ async function onAutoRefreshToggle(value: boolean) {
 
 <template>
 	<div :class="$style.execListWrapper">
-		<ProjectResourceListHeader />
-		<ProjectTabs />
+		<ProjectHeader />
 		<div :class="$style.execList">
 			<div :class="$style.execListHeader">
 				<div :class="$style.execListHeaderControls">

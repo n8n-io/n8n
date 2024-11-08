@@ -1,16 +1,30 @@
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
-import ProjectResourceListHeader from '@/components/Projects/ProjectResourceListHeader.vue';
+import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { Project } from '@/types/projects.types';
 import { ProjectTypes } from '@/types/projects.types';
 
-const renderComponent = createComponentRenderer(ProjectResourceListHeader);
+vi.mock('vue-router', async () => {
+	const actual = await vi.importActual('vue-router');
+	return {
+		...actual,
+		useRoute: () => ({
+			location: {},
+		}),
+	};
+});
+
+const renderComponent = createComponentRenderer(ProjectHeader, {
+	global: {
+		stubs: ['ProjectTabs'],
+	},
+});
 
 let projectsStore: ReturnType<typeof mockedStore<typeof useProjectsStore>>;
 
-describe('ProjectResourceListHeader', () => {
+describe('ProjectHeader', () => {
 	beforeEach(() => {
 		createTestingPinia();
 		projectsStore = mockedStore(useProjectsStore);

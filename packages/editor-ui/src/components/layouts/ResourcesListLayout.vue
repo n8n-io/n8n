@@ -5,8 +5,7 @@ import { type ProjectSharingData } from '@/types/projects.types';
 import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
 import PageViewLayoutList from '@/components/layouts/PageViewLayoutList.vue';
 import ResourceFiltersDropdown from '@/components/forms/ResourceFiltersDropdown.vue';
-import ProjectResourceListHeader from '@/components/Projects/ProjectResourceListHeader.vue';
-import ProjectTabs from '@/components/Projects/ProjectTabs.vue';
+import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 import { useUsersStore } from '@/stores/users.store';
 import type { DatatableColumn } from 'n8n-design-system';
 import { useI18n } from '@/composables/useI18n';
@@ -334,8 +333,7 @@ onMounted(async () => {
 <template>
 	<PageViewLayout>
 		<template #header>
-			<ProjectResourceListHeader />
-			<ProjectTabs />
+			<ProjectHeader />
 			<slot name="header" />
 		</template>
 		<div v-if="loading" class="resource-list-loading">

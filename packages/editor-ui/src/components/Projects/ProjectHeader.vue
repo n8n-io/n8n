@@ -1,9 +1,13 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import { useRoute } from 'vue-router';
 import { useI18n } from '@/composables/useI18n';
 import { ProjectTypes } from '@/types/projects.types';
 import { useProjectsStore } from '@/stores/projects.store';
+import ProjectTabs from '@/components/Projects/ProjectTabs.vue';
+import { getResourcePermissions } from '@/permissions';
 
+const route = useRoute();
 const i18n = useI18n();
 const projectsStore = useProjectsStore();
 
@@ -26,22 +30,36 @@ const projectName = computed(() => {
 		return projectsStore.currentProject.name;
 	}
 });
+
+const projectPermissions = computed(
+	() => getResourcePermissions(projectsStore.currentProject?.scopes).project,
+);
+
+const showSettings = computed(
+	() =>
+		!!route?.params?.projectId &&
+		projectPermissions.value.update &&
+		projectsStore.currentProject?.type === ProjectTypes.Team,
+);
 </script>
 
 <template>
-	<div :class="[$style.projectHeader]">
-		<div :class="[$style.icon]">
-			<N8nIcon :icon="headerIcon" color="text-light"></N8nIcon>
+	<div>
+		<div :class="[$style.projectHeader]">
+			<div :class="[$style.icon]">
+				<N8nIcon :icon="headerIcon" color="text-light"></N8nIcon>
+			</div>
+			<div>
+				<N8nHeading bold tag="h2" size="xlarge">{{ projectName }}</N8nHeading>
+				<N8nText v-if="$slots.subtitle" size="small" color="text-light">
+					<slot name="subtitle" />
+				</N8nText>
+			</div>
+			<div v-if="$slots.actions" :class="[$style.actions]">
+				<slot name="actions"></slot>
+			</div>
 		</div>
-		<div>
-			<N8nHeading bold tag="h2" size="xlarge">{{ projectName }}</N8nHeading>
-			<N8nText v-if="$slots.subtitle" size="small" color="text-light">
-				<slot name="subtitle" />
-			</N8nText>
-		</div>
-		<div v-if="$slots.actions" :class="[$style.actions]">
-			<slot name="actions"></slot>
-		</div>
+		<ProjectTabs :show-settings="showSettings" />
 	</div>
 </template>
 

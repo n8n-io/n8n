@@ -4,19 +4,15 @@ import type { RouteRecordName } from 'vue-router';
 import { useRoute } from 'vue-router';
 import { VIEWS } from '@/constants';
 import { useI18n } from '@/composables/useI18n';
-import { useProjectsStore } from '@/stores/projects.store';
-import { getResourcePermissions } from '@/permissions';
-import { ProjectTypes } from '@/types/projects.types';
+
+const props = defineProps<{
+	showSettings?: boolean;
+}>();
 
 const locale = useI18n();
 const route = useRoute();
 
-const projectsStore = useProjectsStore();
-
 const selectedTab = ref<RouteRecordName | null | undefined>('');
-const projectPermissions = computed(
-	() => getResourcePermissions(projectsStore.currentProject?.scopes).project,
-);
 const options = computed(() => {
 	const projectId = route?.params?.projectId;
 	const to = projectId
@@ -63,11 +59,7 @@ const options = computed(() => {
 		},
 	];
 
-	if (
-		projectId &&
-		projectPermissions.value.update &&
-		projectsStore.currentProject?.type === ProjectTypes.Team
-	) {
+	if (props.showSettings) {
 		tabs.push({
 			label: locale.baseText('projects.settings'),
 			value: VIEWS.PROJECT_SETTINGS,
