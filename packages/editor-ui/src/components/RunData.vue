@@ -1594,9 +1594,6 @@ defineExpose({ enterEditMode });
 					@active-row-changed="onItemHover"
 					@display-mode-change="onDisplayModeChange"
 				>
-					<!-- <template #table-user-info>
-						<slot name="table-user-info"></slot>
-					</template> -->
 				</LazyRunDataTable>
 			</Suspense>
 

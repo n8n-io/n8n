@@ -389,11 +389,6 @@ const shouldShowWarning = computed(() => {
 
 		<template v-if="shouldShowWarning" #table-user-info>
 			<div :class="$style.noToolsUsedAlert">
-				<!-- <N8nAlert
-					:title="i18n.baseText('ndv.output.noToolUsedInfo.title')"
-					:description="i18n.baseText('ndv.output.noToolUsedInfo.description')"
-					type="info"
-				/> -->
 				<N8nCallout theme="secondary">
 					{{
 						i18n.baseText('ndv.output.noToolUsedInfo.title') +
