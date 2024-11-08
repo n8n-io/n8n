@@ -978,6 +978,8 @@
 	"ndv.output.tooMuchData.showDataAnyway": "Show data",
 	"ndv.output.tooMuchData.title": "Display data?",
 	"ndv.output.waitingToRun": "Waiting to execute...",
+	"ndv.output.noToolUsedInfo.title": "None of your tools were used in this run",
+	"ndv.output.noToolUsedInfo.description": "Try giving your tools clearer names and descriptions to help the AI",
 	"ndv.title.cancel": "Cancel",
 	"ndv.title.rename": "Rename",
 	"ndv.title.renameNode": "Rename node",

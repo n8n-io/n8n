@@ -1,6 +1,13 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
-import type { IRunData, IRunExecutionData, NodeError, Workflow } from 'n8n-workflow';
+import {
+	NodeConnectionType,
+	NodeHelpers,
+	type IRunData,
+	type IRunExecutionData,
+	type NodeError,
+	type Workflow,
+} from 'n8n-workflow';
 import RunData from './RunData.vue';
 import RunInfo from './RunInfo.vue';
 import { storeToRefs } from 'pinia';
@@ -15,7 +22,9 @@ import { usePinnedData } from '@/composables/usePinnedData';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@/composables/useI18n';
 import { waitingNodeTooltip } from '@/utils/executionUtils';
-import { N8nRadioButtons, N8nText } from 'n8n-design-system';
+import { N8nCallout, N8nRadioButtons, N8nText } from 'n8n-design-system';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import { getExecutionData } from '@/api/workflows';
 
 // Types
 
@@ -277,6 +286,14 @@ watch(defaultOutputMode, (newValue: OutputType, oldValue: OutputType) => {
 const activatePane = () => {
 	emit('activatePane');
 };
+
+const shouldShowWarning = computed(() => {
+	if (!node.value) return false;
+
+	const parents = props.workflow.getParentNodes(node.value.name, NodeConnectionType.AiTool, 1);
+	const active = parents.filter((x) => !!workflowRunData.value?.[x]?.[props.runIndex]);
+	return parents.length > 0 && active.length === 0;
+});
 </script>
 
 <template>
@@ -370,6 +387,23 @@ const activatePane = () => {
 			<RunDataAi :node="node" :run-index="runIndex" :workflow="workflow" />
 		</template>
 
+		<template v-if="shouldShowWarning" #table-user-info>
+			<div :class="$style.noToolsUsedAlert">
+				<!-- <N8nAlert
+					:title="i18n.baseText('ndv.output.noToolUsedInfo.title')"
+					:description="i18n.baseText('ndv.output.noToolUsedInfo.description')"
+					type="info"
+				/> -->
+				<N8nCallout theme="secondary">
+					{{
+						i18n.baseText('ndv.output.noToolUsedInfo.title') +
+						'. ' +
+						i18n.baseText('ndv.output.noToolUsedInfo.description')
+					}}
+				</N8nCallout>
+			</div>
+		</template>
+
 		<template #recovered-artificial-output-data>
 			<div :class="$style.recoveredOutputData">
 				<N8nText tag="div" :bold="true" color="text-dark" size="large">{{
@@ -435,5 +469,11 @@ const activatePane = () => {
 	> *:first-child {
 		margin-bottom: var(--spacing-m);
 	}
+}
+
+.noToolsUsedAlert {
+	padding-left: var(--spacing-s);
+	padding-right: var(--spacing-s);
+	padding-bottom: var(--spacing-xs);
 }
 </style>

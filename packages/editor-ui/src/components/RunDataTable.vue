@@ -6,7 +6,12 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { getMappedExpression } from '@/utils/mappingUtils';
 import { getPairedItemId } from '@/utils/pairedItemUtils';
 import { shorten } from '@/utils/typesUtils';
-import type { GenericValue, IDataObject, INodeExecutionData } from 'n8n-workflow';
+import {
+	NodeHelpers,
+	type GenericValue,
+	type IDataObject,
+	type INodeExecutionData,
+} from 'n8n-workflow';
 import { computed, onMounted, ref, watch } from 'vue';
 import Draggable from './Draggable.vue';
 import MappingPill from './MappingPill.vue';
@@ -387,11 +392,11 @@ watch(focusedMappableInput, (curr) => {
 
 <template>
 	<div :class="[$style.dataDisplay, { [$style.highlight]: highlight }]">
+		<slot name="table-user-info"></slot>
 		<table v-if="tableData.columns && tableData.columns.length === 0" :class="$style.table">
 			<thead>
 				<tr>
 					<th :class="$style.emptyCell"></th>
-					<th :class="$style.tableRightMargin"></th>
 				</tr>
 			</thead>
 			<tbody>
@@ -408,7 +413,6 @@ watch(focusedMappableInput, (curr) => {
 					>
 						<N8nInfoTip>{{ i18n.baseText('runData.emptyItemHint') }}</N8nInfoTip>
 					</td>
-					<td :class="$style.tableRightMargin"></td>
 				</tr>
 			</tbody>
 		</table>
@@ -478,7 +482,6 @@ watch(focusedMappableInput, (curr) => {
 							</span>
 						</N8nTooltip>
 					</th>
-					<th :class="$style.tableRightMargin"></th>
 				</tr>
 			</thead>
 			<Draggable
@@ -546,7 +549,6 @@ watch(focusedMappableInput, (curr) => {
 						</N8nTree>
 					</td>
 					<td v-if="columnLimitExceeded"></td>
-					<td :class="$style.tableRightMargin"></td>
 				</tr>
 			</Draggable>
 		</table>
@@ -565,6 +567,7 @@ watch(focusedMappableInput, (curr) => {
 	word-break: normal;
 	height: 100%;
 	padding-bottom: var(--spacing-3xl);
+	padding-inline: var(--spacing-l);
 }
 
 .table {

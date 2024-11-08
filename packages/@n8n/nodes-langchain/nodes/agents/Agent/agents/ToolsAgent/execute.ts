@@ -115,6 +115,7 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 		| undefined;
 
 	const tools = (await getConnectedTools(this, true, false)) as Array<DynamicStructuredTool | Tool>;
+	console.log('tools', tools);
 	const outputParser = (await getOptionalOutputParsers(this))?.[0];
 	let structuredOutputParserTool: DynamicStructuredTool | undefined;
 	/**

@@ -1355,7 +1355,9 @@ defineExpose({ enterEditMode });
 		>
 			<N8nText v-n8n-html="hint.message" size="small"></N8nText>
 		</N8nCallout>
-
+		<div v-if="hasNodeRun">
+			<slot name="table-user-info"></slot>
+		</div>
 		<div
 			v-if="maxOutputIndex > 0 && branches.length > 1 && !displaysMultipleNodes"
 			:class="$style.outputs"
@@ -1591,7 +1593,11 @@ defineExpose({ enterEditMode });
 					@mounted="emit('tableMounted', $event)"
 					@active-row-changed="onItemHover"
 					@display-mode-change="onDisplayModeChange"
-				/>
+				>
+					<!-- <template #table-user-info>
+						<slot name="table-user-info"></slot>
+					</template> -->
+				</LazyRunDataTable>
 			</Suspense>
 
 			<Suspense v-else-if="hasNodeRun && displayMode === 'json' && node">
