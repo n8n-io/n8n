@@ -94,6 +94,8 @@ export class Webhook extends BaseCommand {
 		await this.server.start();
 		this.logger.info('Webhook listener waiting for requests.');
 
+		void this.setupHotReload();
+
 		// Make sure that the process does not close
 		await new Promise(() => {});
 	}

@@ -192,6 +192,8 @@ export class Worker extends BaseCommand {
 			});
 		}
 
+		void this.setupHotReload();
+
 		// Make sure that the process does not close
 		if (!inTest) await new Promise(() => {});
 	}

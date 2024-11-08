@@ -101,10 +101,6 @@ export class Server extends AbstractServer {
 		await super.start();
 		this.logger.debug(`Server ID: ${this.instanceSettings.hostId}`);
 
-		if (inDevelopment && process.env.N8N_DEV_RELOAD === 'true') {
-			void this.loadNodesAndCredentials.setupHotReload();
-		}
-
 		this.eventService.emit('server-started');
 	}
 
