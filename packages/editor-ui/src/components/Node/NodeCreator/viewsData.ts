@@ -141,6 +141,10 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 	const chainNodes = getAiNodesBySubcategory(nodeTypesStore.allLatestNodeTypes, AI_CATEGORY_CHAINS);
 	const agentNodes = getAiNodesBySubcategory(nodeTypesStore.allLatestNodeTypes, AI_CATEGORY_AGENTS);
 
+	const websiteCategoryURL = templatesStore.websiteTemplateRepositoryParameters;
+
+	websiteCategoryURL.append('utm_user_role', 'AdvancedAI');
+
 	return {
 		value: AI_NODE_CREATOR_VIEW,
 		title: i18n.baseText('nodeCreator.aiPanel.aiNodes'),
@@ -154,7 +158,7 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 					icon: 'box-open',
 					description: i18n.baseText('nodeCreator.aiPanel.linkItem.description'),
 					name: 'ai_templates_root',
-					url: templatesStore.getWebsiteCategoryURL(undefined, 'AdvancedAI'),
+					url: websiteCategoryURL.toString(),
 					tag: {
 						type: 'info',
 						text: i18n.baseText('nodeCreator.triggerHelperPanel.manualTriggerTag'),

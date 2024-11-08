@@ -145,8 +145,8 @@ const updateSearchTracking = (search: string, categories: number[]) => {
 		search_string: search,
 		workflow_results_count: workflows.value.length,
 		collection_results_count: collections.value.length,
-		categories_applied: categories.map((categoryId) =>
-			templatesStore.getCategoryById(categoryId.toString()),
+		categories_applied: categories.map(
+			(categoryId) => templatesStore.getCategoryById[categoryId.toString()],
 		) as ITemplatesCategory[],
 		wf_template_repo_session_id: templatesStore.currentSessionId,
 	};
