@@ -62,6 +62,15 @@ describe('BuiltInsParser', () => {
 
 			expect(state).toEqual(new BuiltInsParserState({ needs$input: true }));
 		});
+
+		test.each([['items'], ['item']])(
+			'should mark input as needed when %s is used',
+			(identifier) => {
+				const state = parseAndExpectOk(`return ${identifier};`);
+
+				expect(state).toEqual(new BuiltInsParserState({ needs$input: true }));
+			},
+		);
 	});
 
 	describe('$(...)', () => {

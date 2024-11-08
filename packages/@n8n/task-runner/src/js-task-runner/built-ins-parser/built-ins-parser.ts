@@ -131,6 +131,9 @@ export class BuiltInsParser {
 			state.markExecutionAsNeeded();
 		} else if (node.name === '$prevNode') {
 			state.markPrevNodeAsNeeded();
+		} else if (node.name === 'items' || node.name === 'item') {
+			// item is deprecated but we still need to support it
+			state.markInputAsNeeded();
 		}
 	};
 
