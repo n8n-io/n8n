@@ -1,6 +1,12 @@
 import type { PartialAdditionalData, TaskData } from '@n8n/task-runner';
 import { mock } from 'jest-mock-extended';
-import type { Workflow } from 'n8n-workflow';
+import type {
+	IExecuteContextData,
+	INode,
+	INodeExecutionData,
+	IRunExecutionData,
+	Workflow,
+} from 'n8n-workflow';
 
 import { DataRequestResponseBuilder } from '../data-request-response-builder';
 
@@ -19,6 +25,22 @@ const additionalData = mock<PartialAdditionalData>({
 	restartExecutionId: undefined,
 });
 
+const node = mock<INode>();
+const outputItems: INodeExecutionData[] = [
+	{
+		json: {
+			uid: 'abb74fd4-bef2-4fae-9d53-ea24e9eb3032',
+			email: 'Dan.Schmidt31@yahoo.com',
+			firstname: 'Toni',
+			lastname: 'Schuster',
+			password: 'Q!D6C2',
+		},
+		pairedItem: {
+			item: 0,
+		},
+	},
+];
+
 const workflow: TaskData['workflow'] = mock<Workflow>({
 	id: '1',
 	name: 'Test Workflow',
@@ -30,9 +52,39 @@ const workflow: TaskData['workflow'] = mock<Workflow>({
 	staticData: {},
 });
 
+const contextData = mock<IExecuteContextData>();
+const metadata = {
+	'0': [],
+};
+
+const runExecutionData = mock<IRunExecutionData>({
+	executionData: {
+		contextData,
+		metadata,
+		nodeExecutionStack: [
+			{
+				node,
+				data: {
+					main: [outputItems],
+				},
+				source: {},
+			},
+		],
+		waitingExecution: {
+			node: {
+				'0': {
+					main: [],
+				},
+			},
+		},
+		waitingExecutionSource: {},
+	},
+});
+
 const taskData = mock<TaskData>({
 	additionalData,
 	workflow,
+	runExecutionData,
 });
 
 describe('DataRequestResponseBuilder', () => {
@@ -69,6 +121,22 @@ describe('DataRequestResponseBuilder', () => {
 			pinData: workflow.pinData,
 			settings: workflow.settings,
 			staticData: workflow.staticData,
+		});
+	});
+
+	it('clears nodeExecutionStack, waitingExecution and waitingExecutionSource from runExecutionData', () => {
+		const result = builder.buildFromTaskData(taskData);
+
+		expect(result.runExecutionData).toStrictEqual({
+			startData: runExecutionData.startData,
+			resultData: runExecutionData.resultData,
+			executionData: {
+				contextData,
+				metadata,
+				nodeExecutionStack: [],
+				waitingExecution: {},
+				waitingExecutionSource: null,
+			},
 		});
 	});
 });
