@@ -277,7 +277,7 @@ export function useChatMessaging({
 
 		const memoryOutputData = (nodeResultData ?? [])
 			.map((data) => get(data, ['data', NodeConnectionType.AiMemory, 0, 0, 'json']) as MemoryOutput)
-			.find((data) => data.action === 'saveContext');
+			.find((data) => data && data.action === 'saveContext');
 
 		return (memoryOutputData?.chatHistory ?? []).map((message, index) => {
 			return {
