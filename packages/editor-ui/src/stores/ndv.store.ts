@@ -36,11 +36,11 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 
 	const activeNodeName = ref<string | null>(null);
 	const mainPanelDimensions = ref<MainPanelDimensions>({
-		unknown: DEFAULT_MAIN_PANEL_DIMENSIONS,
-		regular: DEFAULT_MAIN_PANEL_DIMENSIONS,
-		dragless: DEFAULT_MAIN_PANEL_DIMENSIONS,
-		inputless: DEFAULT_MAIN_PANEL_DIMENSIONS,
-		wide: DEFAULT_MAIN_PANEL_DIMENSIONS,
+		unknown: { ...DEFAULT_MAIN_PANEL_DIMENSIONS },
+		regular: { ...DEFAULT_MAIN_PANEL_DIMENSIONS },
+		dragless: { ...DEFAULT_MAIN_PANEL_DIMENSIONS },
+		inputless: { ...DEFAULT_MAIN_PANEL_DIMENSIONS },
+		wide: { ...DEFAULT_MAIN_PANEL_DIMENSIONS },
 	});
 	const pushRef = ref('');
 	const input = ref<InputPanel>({
