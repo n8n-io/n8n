@@ -52,17 +52,9 @@ export class DataRequestResponseStripper {
 				runData: this.stripRunData(runExecutionData.resultData.runData),
 				pinData: this.stripPinData(runExecutionData.resultData.pinData),
 			},
-			executionData: runExecutionData.executionData
-				? {
-						// TODO: Figure out what these two are and can they be stripped
-						contextData: runExecutionData.executionData?.contextData,
-						nodeExecutionStack: runExecutionData.executionData.nodeExecutionStack,
-
-						metadata: runExecutionData.executionData.metadata,
-						waitingExecution: runExecutionData.executionData.waitingExecution,
-						waitingExecutionSource: runExecutionData.executionData.waitingExecutionSource,
-					}
-				: undefined,
+			// TODO: We could send `runExecutionData.contextData` only if requested,
+			// since it's only needed if $input.context or $("node").context is used.
+			executionData: runExecutionData.executionData,
 		};
 	}
 
