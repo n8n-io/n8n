@@ -786,9 +786,15 @@ export async function binaryToString(body: Buffer | Readable, encoding?: BufferE
 	const buffer = await binaryToBuffer(body);
 	if (!encoding && body instanceof IncomingMessage) {
 		parseIncomingMessage(body);
-		encoding = body.encoding;
+		encoding = body.encoding?.replace(/^"|"$/g, '') as BufferEncoding;
 	}
-	return buffer.toString(encoding);
+
+	// Try to decode with given charset, otherwise default to utf-8
+	try {
+		return buffer.toString(encoding);
+	} catch {
+		return buffer.toString('utf-8');
+	}
 }
 
 export async function proxyRequestToAxios(
