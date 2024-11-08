@@ -25,7 +25,7 @@ import { storeToRefs } from 'pinia';
 
 type MappingMode = 'debugging' | 'mapping';
 
-type Props = {
+export type Props = {
 	runIndex: number;
 	workflow: Workflow;
 	pushRef: string;
