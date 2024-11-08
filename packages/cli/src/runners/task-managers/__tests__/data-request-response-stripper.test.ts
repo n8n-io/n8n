@@ -115,24 +115,8 @@ const taskData: DataRequestResponse = {
 			contextData: {},
 			nodeExecutionStack: [],
 			metadata: {},
-			waitingExecution: {
-				[codeNode.name]: {
-					'0': {
-						main: [codeNodeInputItems],
-					},
-				},
-			},
-			waitingExecutionSource: {
-				[codeNode.name]: {
-					'0': {
-						main: [
-							{
-								previousNode: debugHelperNode.name,
-							},
-						],
-					},
-				},
-			},
+			waitingExecution: {},
+			waitingExecutionSource: {},
 		},
 	},
 	runIndex: 0,
