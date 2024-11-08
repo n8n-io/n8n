@@ -10,11 +10,7 @@ import {
 	DataDeduplicationService,
 	ErrorReporter,
 } from 'n8n-core';
-import {
-	ApplicationError,
-	ensureError,
-	sleep,
-} from 'n8n-workflow';
+import { ApplicationError, ensureError, sleep } from 'n8n-workflow';
 import path from 'path';
 import picocolors from 'picocolors';
 import { Container } from 'typedi';
@@ -339,6 +335,7 @@ export abstract class BaseCommand extends Command {
 		const { Push } = await import('@/push');
 		const push = Container.get(Push);
 
+		// #region Hot-reload for nodes
 		Object.values(this.loadNodesAndCredentials.loaders).forEach(async (loader) => {
 			try {
 				await fsAccess(loader.directory);
@@ -381,5 +378,34 @@ export abstract class BaseCommand extends Command {
 			});
 			watcher.on('add', reloader).on('change', reloader).on('unlink', reloader);
 		});
+		// #endregion
+
+		// #region Hot-reload for Backend DI services
+		// eslint-disable-next-line import/no-extraneous-dependencies
+		const { locate } = await import('func-loc');
+
+		// @ts-expect-error globalInstance is marked as private
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+		const { services } = Container.of() as {
+			services: Array<{ type: (...args: any[]) => any; value: object }>;
+		};
+		services.forEach(async (service) => {
+			const file = await locate(service.type);
+			if (!file?.path) return;
+			watch(file.path).on(
+				'change',
+				debounce(() => {
+					console.info(picocolors.green('⭮ Reloading service'), picocolors.bold(service.type.name));
+					delete require.cache[file.path];
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-member-access
+					const updatedClass = require(file.path)[service.type.name];
+					// @ts-expect-error
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+					service.value.__proto__ = updatedClass.prototype;
+				}, 1000),
+			);
+		});
+
+		// #endregion
 	}
 }

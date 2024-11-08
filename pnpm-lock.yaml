@@ -1100,6 +1100,9 @@ importers:
       concurrently:
         specifier: ^8.2.0
         version: 8.2.0
+      func-loc:
+        specifier: ^0.1.16
+        version: 0.1.16
       ioredis-mock:
         specifier: ^8.8.1
         version: 8.8.1(@types/ioredis-mock@8.2.2)(ioredis@5.3.2)
@@ -7314,6 +7317,10 @@ packages:
     resolution: {integrity: sha512-jRFi8UDGo6j+odZiEpjazZaWqEal3w/basFjQHQEwVtZJGDpxbH1MeYluwCS8Xq5wmLJooDlMgvVarmWfGM44g==}
     engines: {node: '>=0.10'}
 
+  data-urls@2.0.0:
+    resolution: {integrity: sha512-X5eWTSXO/BJmpdIKCRuKUgSCgAN0OwliVK3yPKbwIWU1Tdw5BRajxlzMidvh+gwko9AfQ9zIj52pzF91Q3YAvQ==}
+    engines: {node: '>=10'}
+
   data-urls@3.0.2:
     resolution: {integrity: sha512-Jy/tj3ldjZJo63sVAvg6LHt2mHvl4V6AgRAmNDtLdm7faqtsx+aJG42rsyCo9JCoRVKwPFzKlIPx3DIibwSIaQ==}
     engines: {node: '>=12'}
@@ -8345,6 +8352,10 @@ packages:
     resolution: {integrity: sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==}
     engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
     os: [darwin]
+
+  func-loc@0.1.16:
+    resolution: {integrity: sha512-xxKNe8YQ1++4WhCVLZo9ASrP0gjlO0WmhGz/brwyXyTm4Xk8QzuNi50ZeBsVxxTVXl5r51eW6Niu53aaJCAaIA==}
+    engines: {node: '>= 8.0.0'}
 
   function-bind@1.1.2:
     resolution: {integrity: sha512-7XHNxH7qX9xG5mIwxkhumTox/MIRNcOgDrxWsMt2pAr23WHp6MrRlN7FBSFpCpr+oVO0F744iUgR82nJMfG2SA==}
@@ -11816,6 +11827,10 @@ packages:
     resolution: {integrity: sha512-UjgapumWlbMhkBgzT7Ykc5YXUT46F0iKu8SGXq0bcwP5dz/h0Plj6enJqjz1Zbq2l5WaqYnrVbwWOWMyF3F47g==}
     engines: {node: '>=0.10.0'}
 
+  source-map@0.7.4:
+    resolution: {integrity: sha512-l3BikUxvPOcn5E74dZiq5BGsTb5yEwhaTSzccU6t4sDOH8NWJCstKO5QT2CvtFoK6F0saL7p9xHAqHOlCPJygA==}
+    engines: {node: '>= 8'}
+
   sparse-bitfield@3.0.3:
     resolution: {integrity: sha512-kvzhi7vqKTfkh0PZU+2D2PIllw2ymqJKujUcyPMd9Y75Nv4nPbGJZXNhxsgdQab2BmlDct1YnfQCguEvHr7VsQ==}
 
@@ -12280,6 +12295,10 @@ packages:
 
   tr46@0.0.3:
     resolution: {integrity: sha512-N3WMsuqV66lT30CrXNbEjx4GEwlow3v6rr4mCcv6prnfwhS01rkgyFdjPNBYd9br7LpXV1+Emh01fHnq2Gdgrw==}
+
+  tr46@2.1.0:
+    resolution: {integrity: sha512-15Ih7phfcdP5YxqiB+iDtLoaTz4Nd35+IiAv0kQ5FNKHzXgdWqPoTIqEDDJmXceQt4JZk6lVPT8lnDlPpGDppw==}
+    engines: {node: '>=8'}
 
   tr46@3.0.0:
     resolution: {integrity: sha512-l7FvfAHlcmulp8kr+flpQZmVwtu7nfRV7NZujtN0OqES8EL4O4e0qqzL0DC5gAvx/ZC/9lk6rhcUwYvkBnBnYA==}
@@ -13047,6 +13066,10 @@ packages:
   webidl-conversions@3.0.1:
     resolution: {integrity: sha512-2JAn3z8AR6rjK8Sm8orRC0h/bcl/DqL7tRPdGZ4I1CjdF+EaMLmYxBHyXuKL849eucPFhvBoxMsflfOb8kxaeQ==}
 
+  webidl-conversions@6.1.0:
+    resolution: {integrity: sha512-qBIvFLGiBpLjfwmYAaHPXsn+ho5xZnGvyGvsarywGNc8VyQJUMHJ8OBKGGrPER0okBeMDaan4mNBlgBROxuI8w==}
+    engines: {node: '>=10.4'}
+
   webidl-conversions@7.0.0:
     resolution: {integrity: sha512-VwddBukDzu71offAQR975unBIGqfKZpM+8ZX6ySk8nYhVoo5CYaZyzt3YBvYtRtO+aoGlqxPg/B87NGVZ/fu6g==}
     engines: {node: '>=12'}
@@ -13068,6 +13091,9 @@ packages:
 
   whatwg-fetch@3.6.20:
     resolution: {integrity: sha512-EqhiFU6daOA8kpjOWTL0olhVOF3i7OrFzSYiGsEMB8GcXS+RrzauAERX65xMeNWVqxA6HXH2m69Z9LaKKdisfg==}
+
+  whatwg-mimetype@2.3.0:
+    resolution: {integrity: sha512-M4yMwr6mAnQz76TbJm914+gPpB/nCwvZbJU28cUD6dR004SAxDLOOSUaB1JDRqLtaOV/vi0IC5lEAGFgrjGv/g==}
 
   whatwg-mimetype@3.0.0:
     resolution: {integrity: sha512-nt+N2dzIutVRxARx1nghPKGv1xHikU7HKdfafKkLNLindmPU/ch3U31NOCGGA/dmPcmb1VlofO0vnKAcsm0o/Q==}
@@ -13091,6 +13117,10 @@ packages:
 
   whatwg-url@5.0.0:
     resolution: {integrity: sha512-saE57nupxk6v3HY35+jzBwYa0rKSy0XR8JSxZPwgLr7ys0IBzhGviA1/TUGJLmSVqs8pb9AnvICXEuOHLprYTw==}
+
+  whatwg-url@8.7.0:
+    resolution: {integrity: sha512-gAojqb/m9Q8a5IV96E3fHJM70AzCkgt4uXYX2O7EmuyOnLrViCQlsEBmF9UQIu3/aeAIp2U17rtbpZWNntQqdg==}
+    engines: {node: '>=10'}
 
   which-boxed-primitive@1.0.2:
     resolution: {integrity: sha512-bwZdv0AKLpplFY2KZRX6TvyuN7ojjr7lwkg6ml0roIy9YeuSr7JS372qlNW18UQYzgYK9ziGcerWqZOmEn9VNg==}
@@ -20408,6 +20438,12 @@ snapshots:
     dependencies:
       assert-plus: 1.0.0
 
+  data-urls@2.0.0:
+    dependencies:
+      abab: 2.0.6
+      whatwg-mimetype: 2.3.0
+      whatwg-url: 8.7.0
+
   data-urls@3.0.2:
     dependencies:
       abab: 2.0.6
@@ -21746,6 +21782,12 @@ snapshots:
 
   fsevents@2.3.3:
     optional: true
+
+  func-loc@0.1.16:
+    dependencies:
+      data-urls: 2.0.0
+      source-map: 0.7.4
+      uuid: 8.3.2
 
   function-bind@1.1.2: {}
 
@@ -26137,6 +26179,8 @@ snapshots:
 
   source-map@0.6.1: {}
 
+  source-map@0.7.4: {}
+
   sparse-bitfield@3.0.3:
     dependencies:
       memory-pager: 1.5.0
@@ -26698,6 +26742,10 @@ snapshots:
       url-parse: 1.5.10
 
   tr46@0.0.3: {}
+
+  tr46@2.1.0:
+    dependencies:
+      punycode: 2.3.1
 
   tr46@3.0.0:
     dependencies:
@@ -27434,6 +27482,8 @@ snapshots:
 
   webidl-conversions@3.0.1: {}
 
+  webidl-conversions@6.1.0: {}
+
   webidl-conversions@7.0.0: {}
 
   webpack-sources@3.2.3: {}
@@ -27449,6 +27499,8 @@ snapshots:
       iconv-lite: 0.6.3
 
   whatwg-fetch@3.6.20: {}
+
+  whatwg-mimetype@2.3.0: {}
 
   whatwg-mimetype@3.0.0: {}
 
@@ -27473,6 +27525,12 @@ snapshots:
     dependencies:
       tr46: 0.0.3
       webidl-conversions: 3.0.1
+
+  whatwg-url@8.7.0:
+    dependencies:
+      lodash: 4.17.21
+      tr46: 2.1.0
+      webidl-conversions: 6.1.0
 
   which-boxed-primitive@1.0.2:
     dependencies:
