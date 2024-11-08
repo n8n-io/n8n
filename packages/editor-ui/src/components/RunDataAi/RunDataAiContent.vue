@@ -137,9 +137,10 @@ const outputError = computed(() => {
 						</n8n-tooltip>
 					</li>
 					<li v-if="runMeta?.executionId">
-						<a @click="openExecutionInNewTab(runMeta?.executionId)"
-							>EXECUTION ID {{ runMeta?.executionId }}</a
-						>
+						<a @click.stop="openExecutionInNewTab(runMeta?.executionId)">
+							<N8nIcon icon="external-link-alt" size="xsmall" />
+							{{ $locale.baseText('runData.openSubExecution') }}
+						</a>
 					</li>
 					<li v-if="(consumedTokensSum?.totalTokens ?? 0) > 0" :class="$style.tokensUsage">
 						{{
