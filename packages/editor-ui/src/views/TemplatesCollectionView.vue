@@ -42,7 +42,7 @@ const collectionWorkflows = computed(() => {
 		return [];
 	}
 	return collection.value.workflows
-		.map(({ id }) => templatesStore.getTemplatesById(id))
+		.map(({ id }) => templatesStore.getTemplatesById(id.toString()))
 		.filter((workflow): workflow is ITemplatesWorkflow => !!workflow);
 });
 
