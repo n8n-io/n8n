@@ -9,7 +9,7 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { ndvEventBus } from '@/event-bus';
 import NDVFloatingNodes from '@/components/NDVFloatingNodes.vue';
 import { useDebounce } from '@/composables/useDebounce';
-import type { XYPosition } from '@/Interface';
+import type { MainPanelType, XYPosition } from '@/Interface';
 import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue';
 import { useUIStore } from '@/stores/ui.store';
 
@@ -20,7 +20,7 @@ const PANEL_WIDTH = 350;
 const PANEL_WIDTH_LARGE = 420;
 const MIN_WINDOW_WIDTH = 2 * (SIDE_MARGIN + SIDE_PANELS_MARGIN) + MIN_PANEL_WIDTH;
 
-const initialMainPanelWidth: { [key: string]: number } = {
+const initialMainPanelWidth: Record<MainPanelType, number> = {
 	regular: MAIN_NODE_PANEL_WIDTH,
 	dragless: MAIN_NODE_PANEL_WIDTH,
 	unknown: MAIN_NODE_PANEL_WIDTH,
@@ -106,22 +106,16 @@ watch(containerWidth, (width) => {
 	setPositions(mainPanelDimensions.value.relativeLeft);
 });
 
-const currentNodePaneType = computed((): string => {
+const currentNodePaneType = computed((): MainPanelType => {
 	if (!hasInputSlot.value) return 'inputless';
 	if (!props.isDraggable) return 'dragless';
 	if (props.nodeType === null) return 'unknown';
 	return props.nodeType.parameterPane ?? 'regular';
 });
 
-const mainPanelDimensions = computed(
-	(): {
-		relativeWidth: number;
-		relativeLeft: number;
-		relativeRight: number;
-	} => {
-		return ndvStore.getMainPanelDimensions(currentNodePaneType.value);
-	},
-);
+const mainPanelDimensions = computed(() => {
+	return ndvStore.mainPanelDimensions[currentNodePaneType.value];
+});
 
 const calculatedPositions = computed(
 	(): { inputPanelRelativeRight: number; outputPanelRelativeLeft: number } => {
