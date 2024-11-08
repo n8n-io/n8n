@@ -168,8 +168,8 @@ const handleRefreshSession = () => {
 	});
 };
 
-const closeLogs = () => {
-	workflowsStore.setPanelOpen('logs', false);
+const closePanel = () => {
+	workflowsStore.setPanelOpen('chat', false);
 };
 
 async function onRunChatWorkflow(payload: RunWorkflowChatPayload) {
@@ -276,7 +276,7 @@ watchEffect(() => {
 						data-test-id="canvas-chat-logs"
 						:node="connectedNode"
 						:slim="logsWidth < 700"
-						@close="closeLogs"
+						@close="closePanel"
 					/>
 				</div>
 			</div>

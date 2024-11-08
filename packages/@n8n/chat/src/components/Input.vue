@@ -269,6 +269,7 @@ function adjustHeight(event: Event) {
 		background: var(--chat--input--background, white);
 		color: var(--chat--input--text-color, initial);
 		outline: none;
+		line-height: var(--chat--input--line-height, 1.5);
 
 		&:focus,
 		&:hover {

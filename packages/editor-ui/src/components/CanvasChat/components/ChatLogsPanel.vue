@@ -50,8 +50,8 @@ const locale = useI18n();
 
 <style lang="scss" module>
 .logsHeader {
-	font-size: var(--font-size-m);
-	font-weight: 400;
+	font-size: var(--font-size-s);
+	font-weight: var(--font-weight-bold);
 	height: 2.6875rem;
 	line-height: 18px;
 	text-align: left;
@@ -66,9 +66,8 @@ const locale = useI18n();
 		border: none;
 	}
 
-	> span {
-		font-size: var(--font-size-s);
-		color: var(--color-text-base);
+	span {
+		font-weight: 100;
 	}
 }
 .logsWrapper {

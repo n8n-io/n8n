@@ -100,12 +100,14 @@ watch(defaultLocale, (newLocale) => {
 				<router-view name="sidebar"></router-view>
 			</div>
 			<div id="content" :class="$style.content">
-				<router-view v-slot="{ Component }">
-					<keep-alive v-if="$route.meta.keepWorkflowAlive" include="NodeViewSwitcher" :max="1">
-						<component :is="Component" />
-					</keep-alive>
-					<component :is="Component" v-else />
-				</router-view>
+				<div :class="$style.contentWrapper">
+					<router-view v-slot="{ Component }">
+						<keep-alive v-if="$route.meta.keepWorkflowAlive" include="NodeViewSwitcher" :max="1">
+							<component :is="Component" />
+						</keep-alive>
+						<component :is="Component" v-else />
+					</router-view>
+				</div>
 				<div v-if="hasContentFooter" :class="$style.contentFooter">
 					<router-view name="footer" />
 				</div>
@@ -147,8 +149,25 @@ watch(defaultLocale, (newLocale) => {
 	grid-area: banners;
 	z-index: var(--z-index-top-banners);
 }
-
 .content {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	overflow: auto;
+}
+
+.contentFooter {
+	height: auto;
+	z-index: 10;
+	width: 100%;
+	display: none;
+
+	// Only show footer if there's content
+	&:has(*) {
+		display: block;
+	}
+}
+.contentWrapper {
 	display: flex;
 	grid-area: content;
 	position: relative;
@@ -156,18 +175,10 @@ watch(defaultLocale, (newLocale) => {
 	height: 100%;
 	width: 100%;
 	justify-content: center;
-	flex-direction: column;
-	align-items: center;
 
 	main {
 		width: 100%;
 		height: 100%;
-	}
-
-	.contentFooter {
-		height: auto;
-		z-index: 10;
-		width: 100%;
 	}
 }
 

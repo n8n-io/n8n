@@ -150,7 +150,7 @@ onMounted(() => {
 	<div :class="$style.block">
 		<header :class="$style.blockHeader" @click="onBlockHeaderClick">
 			<button :class="$style.blockToggle">
-				<font-awesome-icon :icon="isExpanded ? 'angle-down' : 'angle-up'" size="lg" />
+				<font-awesome-icon :icon="isExpanded ? 'angle-down' : 'angle-right'" size="lg" />
 			</button>
 			<p :class="$style.blockTitle">{{ capitalize(runData.inOut) }}</p>
 			<n8n-radio-buttons
@@ -279,6 +279,7 @@ onMounted(() => {
 }
 .rawSwitch {
 	height: fit-content;
+	margin-left: auto;
 }
 .blockHeader {
 	display: flex;

@@ -149,7 +149,7 @@ function copySessionId() {
 					<template #content>
 						{{ sessionId }}
 					</template>
-					<span :class="$style.sessionId" @click="copySessionId" data-test-id="chat-session-id">{{
+					<span :class="$style.sessionId" data-test-id="chat-session-id" @click="copySessionId">{{
 						sessionId
 					}}</span>
 				</n8n-tooltip>
@@ -159,7 +159,7 @@ function copySessionId() {
 					type="tertiary"
 					text
 					size="mini"
-					icon="redo"
+					icon="undo"
 					:title="locale.baseText('chat.window.session.reset.confirm')"
 					@click="onRefreshSession"
 				/>
@@ -230,7 +230,8 @@ function copySessionId() {
 .chat {
 	--chat--spacing: var(--spacing-xs);
 	--chat--message--padding: var(--spacing-xs);
-	--chat--message--font-size: var(--font-size-2xs);
+	--chat--message--font-size: var(--font-size-s);
+	--chat--input--font-size: var(--font-size-s);
 	--chat--message--bot--background: transparent;
 	--chat--message--user--background: var(--color-text-lighter);
 	--chat--message--bot--color: var(--color-text-dark);
@@ -239,6 +240,7 @@ function copySessionId() {
 	--chat--message--user--border: none;
 	--chat--color-typing: var(--color-text-light);
 	--chat--textarea--max-height: calc(var(--panel-height) * 0.5);
+	--chat--message--pre--background: var(--color-foreground-light);
 
 	height: 100%;
 	display: flex;
@@ -247,7 +249,7 @@ function copySessionId() {
 	background-color: var(--color-background-light);
 }
 .chatHeader {
-	font-size: var(--font-size-m);
+	font-size: var(--font-size-s);
 	font-weight: 400;
 	line-height: 18px;
 	text-align: left;

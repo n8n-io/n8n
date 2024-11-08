@@ -236,7 +236,7 @@ watch(() => props.runIndex, selectFirst, { immediate: true });
 								:class="$style.treeToggle"
 								@click="toggleTreeItem(node)"
 							>
-								<font-awesome-icon :icon="node.expanded ? 'angle-down' : 'angle-up'" />
+								<font-awesome-icon :icon="node.expanded ? 'angle-down' : 'angle-right'" />
 							</button>
 							<n8n-tooltip :disabled="!slim" placement="right">
 								<template #content>
@@ -276,7 +276,7 @@ watch(() => props.runIndex, selectFirst, { immediate: true });
 				</div>
 			</div>
 		</template>
-		<div v-else :class="$style.noData">Waiting for input…</div>
+		<div v-else :class="$style.noData">{{ $locale.baseText('ndv.output.ai.waiting') }}</div>
 	</div>
 </template>
 
