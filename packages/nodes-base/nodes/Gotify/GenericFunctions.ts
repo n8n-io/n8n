@@ -4,19 +4,21 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 	IHttpRequestOptions,
+	ILoadOptionsFunctions,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 export async function gotifyApiRequest(
-	context: IExecuteFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
 	path: string,
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string | undefined,
 	_option = {},
 ): Promise<any> {
-	const credentials = await context.getCredentials('gotifyApi');
+	const credentials = await this.getCredentials('gotifyApi');
 
 	const options: IHttpRequestOptions = {
 		method,
@@ -30,17 +32,18 @@ export async function gotifyApiRequest(
 		if (Object.keys(body as IDataObject).length === 0) {
 			delete options.body;
 		}
-		return await context.helpers.httpRequestWithAuthentication.call(context, 'gotifyApi', options);
+		return await this.helpers.httpRequestWithAuthentication.call(this, 'gotifyApi', options);
 	} catch (error) {
-		throw new NodeApiError(context.getNode(), error as JsonObject);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
 export async function gotifyApiRequestAllItems(
-	context: IExecuteFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
 	endpoint: string,
+
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
@@ -50,7 +53,7 @@ export async function gotifyApiRequestAllItems(
 	let uri: string | undefined;
 	query.limit = 100;
 	do {
-		responseData = await gotifyApiRequest(context, method, endpoint, body, query, uri);
+		responseData = await gotifyApiRequest.call(this, method, endpoint, body, query, uri);
 		if (responseData.paging.next) {
 			uri = responseData.paging.next;
 		}

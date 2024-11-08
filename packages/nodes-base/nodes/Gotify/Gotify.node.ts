@@ -2,13 +2,14 @@ import type {
 	IExecuteFunctions,
 	IDataObject,
 	INodeExecutionData,
+	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { Node, NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import { gotifyApiRequest, gotifyApiRequestAllItems } from './GenericFunctions';
 
-export class Gotify extends Node {
+export class Gotify implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Gotify',
 		name: 'gotify',
@@ -193,22 +194,22 @@ export class Gotify extends Node {
 		],
 	};
 
-	async execute(context: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const items = context.getInputData();
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = context.getNodeParameter('resource', 0);
-		const operation = context.getNodeParameter('operation', 0);
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'message') {
 					if (operation === 'create') {
-						const message = context.getNodeParameter('message', i) as string;
+						const message = this.getNodeParameter('message', i) as string;
 
-						const additionalFields = context.getNodeParameter('additionalFields', i);
-						const options = context.getNodeParameter('options', i);
+						const additionalFields = this.getNodeParameter('additionalFields', i);
+						const options = this.getNodeParameter('options', i);
 
 						const body: IDataObject = {
 							message,
@@ -224,23 +225,21 @@ export class Gotify extends Node {
 
 						Object.assign(body, additionalFields);
 
-						responseData = await gotifyApiRequest(context, 'POST', '/message', body);
-
-						responseData = await gotifyApiRequest(context, 'POST', '/message', body);
+						responseData = await gotifyApiRequest.call(this, 'POST', '/message', body);
 					}
 					if (operation === 'delete') {
-						const messageId = context.getNodeParameter('messageId', i) as string;
+						const messageId = this.getNodeParameter('messageId', i) as string;
 
-						responseData = await gotifyApiRequest(context, 'DELETE', `/message/${messageId}`);
+						responseData = await gotifyApiRequest.call(this, 'DELETE', `/message/${messageId}`);
 						responseData = { success: true };
 					}
 
 					if (operation === 'getAll') {
-						const returnAll = context.getNodeParameter('returnAll', i);
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						if (returnAll) {
-							responseData = await gotifyApiRequestAllItems(
-								context,
+							responseData = await gotifyApiRequestAllItems.call(
+								this,
 								'messages',
 								'GET',
 								'/message',
@@ -248,20 +247,20 @@ export class Gotify extends Node {
 								qs,
 							);
 						} else {
-							qs.limit = context.getNodeParameter('limit', i);
-							responseData = await gotifyApiRequest(context, 'GET', '/message', {}, qs);
+							qs.limit = this.getNodeParameter('limit', i);
+							responseData = await gotifyApiRequest.call(this, 'GET', '/message', {}, qs);
 							responseData = responseData.messages;
 						}
 					}
 				}
 
-				const executionData = context.helpers.constructExecutionMetaData(
-					context.helpers.returnJsonArray(responseData as IDataObject[]),
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
 				returnData.push(...executionData);
 			} catch (error) {
-				if (context.continueOnFail()) {
+				if (this.continueOnFail()) {
 					returnData.push({ json: { error: error.message } });
 					continue;
 				}
