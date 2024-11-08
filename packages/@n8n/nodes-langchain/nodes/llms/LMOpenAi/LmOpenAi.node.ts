@@ -10,6 +10,7 @@ import type {
 
 import { OpenAI, type ClientOptions } from '@langchain/openai';
 import { N8nLlmTracing } from '../N8nLlmTracing';
+import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 
 type LmOpenAiOptions = {
 	baseURL?: string;
@@ -260,6 +261,7 @@ export class LmOpenAi implements INodeType {
 			timeout: options.timeout ?? 60000,
 			maxRetries: options.maxRetries ?? 2,
 			callbacks: [new N8nLlmTracing(this)],
+			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 		});
 
 		return {
