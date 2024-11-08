@@ -80,7 +80,7 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, () => {
 	const getCollectionById = computed(() => collections.value);
 
 	const getCategoryById = computed(() => {
-		return (id: string): null | ITemplatesCategory => this.categories[id as unknown as number];
+		return (id: string): null | ITemplatesCategory => categories.value[id as unknown as number];
 	});
 
 	const getSearchedCollections = computed(() => {
