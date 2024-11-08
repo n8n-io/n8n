@@ -220,8 +220,14 @@ export function logWrapper(
 							arguments: [query, config],
 						})) as Array<Document<Record<string, any>>>;
 
+						const executionId: string | undefined = response[0]?.metadata?.executionId as string;
+						const workflowId: string | undefined = response[0]?.metadata?.workflowId as string;
+
 						logAiEvent(executeFunctions, 'ai-documents-retrieved', { query });
-						executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]]);
+						executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]], {
+							executionId,
+							workflowId,
+						});
 						return response;
 					};
 				}

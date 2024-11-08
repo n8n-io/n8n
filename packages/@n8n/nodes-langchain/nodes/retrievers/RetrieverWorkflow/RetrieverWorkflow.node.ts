@@ -418,6 +418,7 @@ export class RetrieverWorkflow implements INodeType {
 							metadata: {
 								...baseMetadata,
 								itemIndex: index,
+								executionId: receivedData.executionId,
 							},
 						}),
 					);
