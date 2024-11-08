@@ -8,6 +8,7 @@ import type {
 	ILoadOptionsFunctions,
 	INode,
 	INodeExecutionData,
+	INodeParameterResourceLocator,
 	INodeProperties,
 	IPairedItemData,
 	IPollFunctions,
@@ -23,7 +24,7 @@ import moment from 'moment-timezone';
 import { validate as uuidValidate } from 'uuid';
 import set from 'lodash/set';
 import { filters } from './descriptions/Filters';
-import { blockUrlExtractionRegexp } from './constants';
+import { blockUrlExtractionRegexp, databasePageUrlValidationRegexp } from './constants';
 
 function uuidValidateWithoutDashes(this: IExecuteFunctions, value: string) {
 	if (uuidValidate(value)) return true;
@@ -914,6 +915,32 @@ export function extractPageId(page = '') {
 		return page.split('-')[page.split('-').length - 1];
 	}
 	return page;
+}
+
+export function getPageId(this: IExecuteFunctions, i: number) {
+	const page = this.getNodeParameter('pageId', i, {}) as INodeParameterResourceLocator;
+	let pageId = '';
+
+	if (page.value && typeof page.value === 'string') {
+		if (page.mode === 'id') {
+			pageId = page.value;
+		} else if (page.value.includes('p=')) {
+			// e.g https://www.notion.so/xxxxx?v=xxxxx&p=xxxxx&pm=s
+			pageId = page.value.split('p=')[1].split('&')[0];
+		} else {
+			// e.g https://www.notion.so/page_name-xxxxx
+			pageId = page.value.match(databasePageUrlValidationRegexp)?.[1] || '';
+		}
+	}
+
+	if (!pageId) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'Could not extract page ID from URL: ' + page.value,
+		);
+	}
+
+	return pageId;
 }
 
 export function extractDatabaseId(database: string) {
