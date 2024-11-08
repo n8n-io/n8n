@@ -154,6 +154,7 @@ watch(defaultLocale, (newLocale) => {
 	flex-direction: column;
 	align-items: center;
 	overflow: auto;
+	grid-area: content;
 }
 
 .contentFooter {
