@@ -2275,7 +2275,8 @@ export type AiEvent =
 	| 'ai-llm-generated-output'
 	| 'ai-llm-errored'
 	| 'ai-vector-store-populated'
-	| 'ai-vector-store-updated';
+	| 'ai-vector-store-updated'
+	| 'ai-vector-store-deleted';
 
 type AiEventPayload = {
 	msg: string;
