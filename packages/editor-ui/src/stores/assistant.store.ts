@@ -78,7 +78,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	const currentSessionActiveExecutionId = ref<string | undefined>();
 	const currentSessionWorkflowId = ref<string | undefined>();
 	const lastUnread = ref<ChatUI.AssistantMessage | undefined>();
-	const nodeExecutionStatus = ref<'not_executed' | 'success' | 'error'>('not_executed');
+	const nodeExecutionStatus = ref<'not_executed' | 'error' | 'success'>('not_executed');
 	// This is used to show a message when the assistant is performing intermediate steps
 	// We use streaming for assistants that support it, and this for agents
 	const assistantThinkingMessage = ref<string | undefined>();
@@ -542,7 +542,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			return;
 		}
 
-		if (pushEvent.data.executionStatus === 'success' && nodeExecutionStatus.value === 'success') {
+		if (nodeExecutionStatus.value === 'success') {
 			return;
 		}
 
