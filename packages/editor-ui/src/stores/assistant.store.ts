@@ -536,10 +536,16 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			(e) => handleServiceError(e, id, async () => await sendEvent(eventName, error)),
 		);
 	}
+
 	async function onNodeExecution(pushEvent: PushPayload<'nodeExecuteAfter'>) {
 		if (!chatSessionError.value || pushEvent.nodeName !== chatSessionError.value.node.name) {
 			return;
 		}
+
+		if (pushEvent.data.executionStatus === 'success' && nodeExecutionStatus.value === 'success') {
+			return;
+		}
+
 		if (pushEvent.data.error && nodeExecutionStatus.value !== 'error') {
 			await sendEvent('node-execution-errored', pushEvent.data.error);
 			nodeExecutionStatus.value = 'error';
