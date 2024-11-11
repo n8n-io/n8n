@@ -2071,6 +2071,7 @@
 	"ndv.search.noMatch.title": "No matching items",
 	"ndv.search.noNodeMatch.title": "No matching nodes",
 	"ndv.search.noMatch.description": "Try changing or {link} the filter to see more",
+	"ndv.search.noMatchSchema.description": "To search field contents rather than just names, use Table or JSON view",
 	"ndv.search.noMatch.description.link": "clearing",
 	"ndv.search.items": "{matched} of {total} item | {matched} of {total} items",
 	"updatesPanel.andIs": "and is",

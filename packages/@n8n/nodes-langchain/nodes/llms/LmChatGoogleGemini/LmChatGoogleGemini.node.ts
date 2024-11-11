@@ -11,6 +11,7 @@ import type { SafetySetting } from '@google/generative-ai';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 import { N8nLlmTracing } from '../N8nLlmTracing';
 import { additionalOptions } from '../gemini-common/additional-options';
+import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 
 export class LmChatGoogleGemini implements INodeType {
 	description: INodeTypeDescription = {
@@ -144,6 +145,7 @@ export class LmChatGoogleGemini implements INodeType {
 			maxOutputTokens: options.maxOutputTokens,
 			safetySettings,
 			callbacks: [new N8nLlmTracing(this)],
+			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 		});
 
 		return {

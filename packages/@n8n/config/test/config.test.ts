@@ -222,7 +222,7 @@ describe('GlobalConfig', () => {
 			},
 		},
 		taskRunners: {
-			disabled: true,
+			enabled: false,
 			mode: 'internal_childprocess',
 			path: '/runners',
 			authToken: '',
