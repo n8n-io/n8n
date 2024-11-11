@@ -384,7 +384,7 @@ const shouldShowWarning = computed(() => {
 			<RunDataAi :node="node" :run-index="runIndex" :workflow="workflow" />
 		</template>
 
-		<template v-if="shouldShowWarning" #table-user-info>
+		<template v-if="shouldShowWarning" #panel-callout-info>
 			<div :class="$style.noToolsUsedAlert" data-test-id="no-tools-used-callout">
 				<N8nCallout theme="secondary">
 					{{ i18n.baseText('ndv.output.noToolUsedInfo') }}

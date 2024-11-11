@@ -1357,7 +1357,7 @@ defineExpose({ enterEditMode });
 		</N8nCallout>
 
 		<div v-if="hasNodeRun">
-			<slot name="table-user-info"></slot>
+			<slot name="panel-callout-info"></slot>
 		</div>
 		<div
 			v-if="maxOutputIndex > 0 && branches.length > 1 && !displaysMultipleNodes"
