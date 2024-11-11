@@ -158,7 +158,14 @@ describe('POST /evaluation/test-definitions', () => {
 		});
 
 		expect(resp.statusCode).toBe(400);
-		expect(resp.body.message).toBe('Test definition name must be 1 to 255 characters long.');
+		expect(resp.body.errors).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					code: 'too_small',
+					path: ['name'],
+				}),
+			]),
+		);
 	});
 
 	test('should return error if user has no access to the workflow', async () => {
@@ -167,7 +174,7 @@ describe('POST /evaluation/test-definitions', () => {
 			workflowId: otherWorkflow.id,
 		});
 
-		expect(resp.statusCode).toBe(400);
+		expect(resp.statusCode).toBe(403);
 		expect(resp.body.message).toBe('User does not have access to the workflow');
 	});
 
@@ -178,7 +185,7 @@ describe('POST /evaluation/test-definitions', () => {
 			evaluationWorkflowId: otherWorkflow.id,
 		});
 
-		expect(resp.statusCode).toBe(400);
+		expect(resp.statusCode).toBe(403);
 		expect(resp.body.message).toBe('User does not have access to the evaluation workflow');
 	});
 });
@@ -228,7 +235,7 @@ describe('PATCH /evaluation/test-definitions/:id', () => {
 			evaluationWorkflowId: otherWorkflow.id,
 		});
 
-		expect(resp.statusCode).toBe(400);
+		expect(resp.statusCode).toBe(403);
 		expect(resp.body.message).toBe('User does not have access to the evaluation workflow');
 	});
 
@@ -272,7 +279,7 @@ describe('PATCH /evaluation/test-definitions/:id', () => {
 		await Container.get(TestDefinitionRepository).save(newTest);
 
 		const resp = await authOwnerAgent.patch(`/evaluation/test-definitions/${newTest.id}`).send({
-			annotationTagId: 123,
+			annotationTagId: '123',
 		});
 
 		expect(resp.statusCode).toBe(400);
