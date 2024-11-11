@@ -323,4 +323,24 @@ describe('DELETE /evaluation/test-definitions/:id', () => {
 		expect(resp.statusCode).toBe(200);
 		expect(resp.body.data.success).toBe(true);
 	});
+
+	test('should return 404 if test definition does not exist', async () => {
+		const resp = await authOwnerAgent.delete('/evaluation/test-definitions/123');
+
+		expect(resp.statusCode).toBe(404);
+		expect(resp.body.message).toBe('Test definition not found');
+	});
+
+	test('should return 404 if user has no access to the workflow', async () => {
+		const newTest = Container.get(TestDefinitionRepository).create({
+			name: 'test',
+			workflow: { id: otherWorkflow.id },
+		});
+		await Container.get(TestDefinitionRepository).save(newTest);
+
+		const resp = await authOwnerAgent.delete(`/evaluation/test-definitions/${newTest.id}`);
+
+		expect(resp.statusCode).toBe(404);
+		expect(resp.body.message).toBe('Test definition not found');
+	});
 });

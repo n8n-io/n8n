@@ -111,7 +111,11 @@ export class TestDefinitionService {
 	}
 
 	async delete(id: number, accessibleWorkflowIds: string[]) {
-		return await this.testDefinitionRepository.deleteById(id, accessibleWorkflowIds);
+		const deleteResult = await this.testDefinitionRepository.deleteById(id, accessibleWorkflowIds);
+
+		if (deleteResult.affected === 0) {
+			throw new NotFoundError('Test definition not found');
+		}
 	}
 
 	async getMany(options: ListQuery.Options, accessibleWorkflowIds: string[] = []) {
