@@ -635,7 +635,6 @@ export type WorkflowCallerPolicyDefaultOption = 'any' | 'none' | 'workflowsFromA
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
 	errorWorkflow?: string;
-	saveManualExecutions?: boolean;
 	timezone?: string;
 	executionTimeout?: number;
 	maxExecutionTimeout?: number;
@@ -1594,3 +1593,44 @@ export type ApiKey = {
 	createdAt: string;
 	updatedAt: string;
 };
+
+export type InputPanel = {
+	displayMode: IRunDataDisplayMode;
+	nodeName?: string;
+	run?: number;
+	branch?: number;
+	data: {
+		isEmpty: boolean;
+	};
+};
+
+export type OutputPanel = {
+	branch?: number;
+	displayMode: IRunDataDisplayMode;
+	data: {
+		isEmpty: boolean;
+	};
+	editMode: {
+		enabled: boolean;
+		value: string;
+	};
+};
+
+export type Draggable = {
+	isDragging: boolean;
+	type: string;
+	data: string;
+	dimensions: DOMRect | null;
+	activeTarget: { id: string; stickyPosition: null | XYPosition } | null;
+};
+
+export type MainPanelType = 'regular' | 'dragless' | 'inputless' | 'unknown' | 'wide';
+
+export type MainPanelDimensions = Record<
+	MainPanelType,
+	{
+		relativeLeft: number;
+		relativeRight: number;
+		relativeWidth: number;
+	}
+>;
