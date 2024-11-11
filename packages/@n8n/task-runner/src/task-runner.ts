@@ -1,4 +1,4 @@
-import { ApplicationError } from 'n8n-workflow';
+import { ApplicationError, ensureError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { type MessageEvent, WebSocket } from 'ws';
 
@@ -87,6 +87,24 @@ export abstract class TaskRunner {
 				authorization: `Bearer ${opts.grantToken}`,
 			},
 			maxPayload: opts.maxPayloadSize,
+		});
+
+		this.ws.addEventListener('error', (event) => {
+			const error = ensureError(event.error);
+
+			if (
+				'code' in error &&
+				typeof error.code === 'string' &&
+				['ECONNREFUSED', 'ENOTFOUND'].some((code) => code === error.code)
+			) {
+				console.error(
+					`Error: Failed to connect to n8n. Please ensure n8n is reachable at: ${opts.n8nUri}`,
+				);
+				process.exit(1);
+			} else {
+				console.error(`Error: Failed to connect to n8n at ${opts.n8nUri}`);
+				console.error('Details:', event.message || 'Unknown error');
+			}
 		});
 		this.ws.addEventListener('message', this.receiveMessage);
 		this.ws.addEventListener('close', this.stopTaskOffers);
