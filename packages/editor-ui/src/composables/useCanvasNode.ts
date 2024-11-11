@@ -7,7 +7,7 @@ import { CanvasNodeKey } from '@/constants';
 import { computed, inject } from 'vue';
 import type { CanvasNodeData } from '@/types';
 import { CanvasNodeRenderType, CanvasConnectionMode } from '@/types';
-import { refDebounced, refThrottled } from '@vueuse/core';
+import { refThrottled } from '@vueuse/core';
 
 export function useCanvasNode() {
 	const node = inject(CanvasNodeKey);
