@@ -51,7 +51,7 @@ export class TestDefinitionsController {
 	async create(req: TestDefinitionsRequest.Create, res: express.Response) {
 		const bodyParseResult = testDefinitionCreateRequestBodySchema.safeParse(req.body);
 		if (!bodyParseResult.success) {
-			res.status(400).json(bodyParseResult.error.errors[0]);
+			res.status(400).json({ errors: bodyParseResult.error.errors });
 			return;
 		}
 
@@ -90,7 +90,7 @@ export class TestDefinitionsController {
 
 		const bodyParseResult = testDefinitionPatchRequestBodySchema.safeParse(req.body);
 		if (!bodyParseResult.success) {
-			res.status(400).json(bodyParseResult.error.errors[0]);
+			res.status(400).json({ errors: bodyParseResult.error });
 			return;
 		}
 
