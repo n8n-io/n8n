@@ -49,8 +49,6 @@ const render = (props: Partial<Props> = {}, pinData?: INodeExecutionData[]) => {
 	});
 	setActivePinia(pinia);
 
-	// const workflowsStore = mockedStore(useWorkflowsStore);
-	// const ndvStore = mockedStore(useNDVStore);
 
 	const workflow = createTestWorkflow({ nodes, connections });
 	useWorkflowsStore().setWorkflow(workflow);
