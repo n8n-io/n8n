@@ -144,6 +144,13 @@ describe('BuiltInsParser', () => {
 		);
 	});
 
+	describe('$node', () => {
+		it('should require all nodes when $node is used', () => {
+			const state = parseAndExpectOk('return $node["name"];');
+			expect(state).toEqual(new BuiltInsParserState({ needsAllNodes: true, needs$input: true }));
+		});
+	});
+
 	describe('ECMAScript syntax', () => {
 		describe('ES2020', () => {
 			it('should parse optional chaining', () => {

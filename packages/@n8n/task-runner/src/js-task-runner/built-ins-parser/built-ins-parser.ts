@@ -125,15 +125,23 @@ export class BuiltInsParser {
 	private visitIdentifier = (node: Identifier, state: BuiltInsParserState) => {
 		if (node.name === '$env') {
 			state.markEnvAsNeeded();
-		} else if (node.name === '$input' || node.name === '$json') {
+		} else if (
+			node.name === '$input' ||
+			node.name === '$json' ||
+			node.name === 'items' ||
+			// item is deprecated but we still need to support it
+			node.name === 'item'
+		) {
 			state.markInputAsNeeded();
+		} else if (node.name === '$node') {
+			// $node is legacy way of accessing any node's output. We need to
+			// support it for backward compatibility, but we're not gonna
+			// implement any optimizations
+			state.markNeedsAllNodes();
 		} else if (node.name === '$execution') {
 			state.markExecutionAsNeeded();
 		} else if (node.name === '$prevNode') {
 			state.markPrevNodeAsNeeded();
-		} else if (node.name === 'items' || node.name === 'item') {
-			// item is deprecated but we still need to support it
-			state.markInputAsNeeded();
 		}
 	};
 
