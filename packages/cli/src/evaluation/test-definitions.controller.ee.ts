@@ -5,18 +5,18 @@ import { listQueryMiddleware } from '@/middlewares';
 import { getSharedWorkflowIds } from '@/public-api/v1/handlers/workflows/workflows.service';
 import { isPositiveInteger } from '@/utils';
 
-import { TestDefinitionsService } from './test-definitions.service.ee';
+import { TestDefinitionService } from './test-definition.service.ee';
 import { TestDefinitionsRequest } from './test-definitions.types.ee';
 
 @RestController('/evaluation/test-definitions')
 export class TestDefinitionsController {
-	constructor(private readonly testDefinitionsService: TestDefinitionsService) {}
+	constructor(private readonly testDefinitionService: TestDefinitionService) {}
 
 	@Get('/', { middlewares: listQueryMiddleware })
 	async getMany(req: TestDefinitionsRequest.GetMany) {
 		const workflowIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
 
-		return await this.testsService.getMany(req.listQueryOptions, workflowIds);
+		return await this.testDefinitionService.getMany(req.listQueryOptions, workflowIds);
 	}
 
 	@Get('/:id')
@@ -27,7 +27,10 @@ export class TestDefinitionsController {
 
 		const workflowIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
 
-		const testDefinition = await this.testsService.findOne(Number(req.params.id), workflowIds);
+		const testDefinition = await this.testDefinitionService.findOne(
+			Number(req.params.id),
+			workflowIds,
+		);
 
 		if (!testDefinition) throw new NotFoundError('Test definition not found');
 
@@ -46,7 +49,7 @@ export class TestDefinitionsController {
 			throw new BadRequestError('User does not have access to the evaluation workflow');
 		}
 
-		return await this.testsService.save(this.testsService.toEntity(req.body));
+		return await this.testDefinitionService.save(this.testDefinitionService.toEntity(req.body));
 	}
 
 	@Delete('/:id')
@@ -59,7 +62,7 @@ export class TestDefinitionsController {
 
 		if (workflowIds.length === 0) throw new NotFoundError('Test definition not found');
 
-		await this.testsService.delete(Number(req.params.id), workflowIds);
+		await this.testDefinitionService.delete(Number(req.params.id), workflowIds);
 
 		return { success: true };
 	}
@@ -75,13 +78,16 @@ export class TestDefinitionsController {
 		// Fail fast if no workflows are accessible
 		if (workflowIds.length === 0) throw new NotFoundError('Workflow not found');
 
-		const existingTest = await this.testsService.findOne(Number(req.params.id), workflowIds);
+		const existingTest = await this.testDefinitionService.findOne(
+			Number(req.params.id),
+			workflowIds,
+		);
 		if (!existingTest) throw new NotFoundError('Test definition not found');
 
 		if (req.body.evaluationWorkflowId && !workflowIds.includes(req.body.evaluationWorkflowId)) {
 			throw new BadRequestError('User does not have access to the evaluation workflow');
 		}
 
-		return await this.testsService.update(Number(req.params.id), req.body, workflowIds);
+		return await this.testDefinitionService.update(Number(req.params.id), req.body, workflowIds);
 	}
 }

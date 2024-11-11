@@ -18,7 +18,7 @@ type TestDefinitionLike = Omit<
 };
 
 @Service()
-export class TestDefinitionsService {
+export class TestDefinitionService {
 	constructor(
 		private testDefinitionRepository: TestDefinitionRepository,
 		private annotationTagRepository: AnnotationTagRepository,
@@ -70,17 +70,17 @@ export class TestDefinitionsService {
 		id?: number;
 	}) {
 		const entity = this.toEntityLike(attrs);
-		return this.testRepository.create(entity);
+		return this.testDefinitionRepository.create(entity);
 	}
 
 	async findOne(id: number, accessibleWorkflowIds: string[]) {
-		return await this.testRepository.getOne(id, accessibleWorkflowIds);
+		return await this.testDefinitionRepository.getOne(id, accessibleWorkflowIds);
 	}
 
 	async save(test: TestDefinition) {
 		await validateEntity(test);
 
-		return await this.testRepository.save(test);
+		return await this.testDefinitionRepository.save(test);
 	}
 
 	async update(id: number, attrs: TestDefinitionLike, accessibleWorkflowIds: string[]) {
@@ -108,20 +108,20 @@ export class TestDefinitionsService {
 		}
 
 		// Update the test definition
-		const queryResult = await this.testRepository.update(id, this.toEntityLike(attrs));
+		const queryResult = await this.testDefinitionRepository.update(id, this.toEntityLike(attrs));
 
 		if (queryResult.affected === 0) {
 			throw new NotFoundError('Test definition not found');
 		}
 
-		return await this.testRepository.getOne(id, accessibleWorkflowIds);
+		return await this.testDefinitionRepository.getOne(id, accessibleWorkflowIds);
 	}
 
 	async delete(id: number, accessibleWorkflowIds: string[]) {
-		return await this.testRepository.deleteById(id, accessibleWorkflowIds);
+		return await this.testDefinitionRepository.deleteById(id, accessibleWorkflowIds);
 	}
 
 	async getMany(options: ListQuery.Options, accessibleWorkflowIds: string[] = []) {
-		return await this.testRepository.getMany(accessibleWorkflowIds, options);
+		return await this.testDefinitionRepository.getMany(accessibleWorkflowIds, options);
 	}
 }

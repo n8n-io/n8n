@@ -23,7 +23,7 @@ export declare namespace TestDefinitionsRequest {
 		{ name: string; workflowId: string; evaluationWorkflowId?: string }
 	>;
 
-	type Update = AuthenticatedRequest<
+	type Patch = AuthenticatedRequest<
 		RouteParams.TestId,
 		{},
 		{ name?: string; evaluationWorkflowId?: string; annotationTagId?: string }
