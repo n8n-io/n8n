@@ -2114,6 +2114,7 @@ export interface IRunExecutionData {
 		waitingExecutionSource: IWaitingForExecutionSource | null;
 	};
 	waitTill?: Date;
+	pushRef?: string;
 }
 
 export interface IRunData {
