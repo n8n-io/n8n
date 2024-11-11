@@ -1210,6 +1210,23 @@ function onSearchClear() {
 	document.dispatchEvent(new KeyboardEvent('keyup', { key: '/' }));
 }
 
+function onOpenRelatedExecution(executionId: string, workflowId?: string) {
+	if (!nodeType.value) {
+		return;
+	}
+
+	openExecutionInNewTab(executionId, workflowId);
+
+	// todo better distinguish these two
+	const isTrigger = nodeType.value.group.includes('trigger');
+	telemetry.track(
+		isTrigger ? 'User clicked parent execution button' : 'User clicked inspect sub-workflow',
+		{
+			view: displayMode.value,
+		},
+	);
+}
+
 defineExpose({ enterEditMode });
 </script>
 
@@ -1390,7 +1407,9 @@ defineExpose({ enterEditMode });
 			:class="$style.parentExecutionInfo"
 		>
 			<a
-				@click.stop="openExecutionInNewTab(subWorkflowData.executionId, subWorkflowData.workflowId)"
+				@click.stop="
+					onOpenRelatedExecution(subWorkflowData.executionId, subWorkflowData.workflowId)
+				"
 			>
 				<N8nIcon icon="external-link-alt" size="xsmall" />
 				{{

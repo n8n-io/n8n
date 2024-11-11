@@ -412,6 +412,10 @@ function switchToJsonView() {
 
 function openExecution({ executionId, workflowId }: SubworkflowExecutionInfo) {
 	openExecutionInNewTab(executionId, workflowId);
+
+	telemetry.track('User clicked inspect sub-workflow', {
+		view: 'table',
+	});
 }
 
 watch(focusedMappableInput, (curr) => {
