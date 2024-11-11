@@ -120,7 +120,7 @@ export class DatabaseExportService {
 			if (totalRows === 0) continue;
 
 			this.rowCounts[tableName] = totalRows;
-			this.logger.info(`[ExportService] Exported ${totalRows} rows from ${tableName}`);
+			this.logger.debug(`[ExportService] Exported ${totalRows} rows from ${tableName}`);
 
 			writeStream.end();
 			pack.entry({ name: `${tableName}.jsonl` }, await fs.promises.readFile(tableFilePath));
