@@ -2,7 +2,6 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import {
 	NodeConnectionType,
-	NodeHelpers,
 	type IRunData,
 	type IRunExecutionData,
 	type NodeError,
@@ -23,8 +22,6 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@/composables/useI18n';
 import { waitingNodeTooltip } from '@/utils/executionUtils';
 import { N8nCallout, N8nRadioButtons, N8nText } from 'n8n-design-system';
-import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import { getExecutionData } from '@/api/workflows';
 
 // Types
 

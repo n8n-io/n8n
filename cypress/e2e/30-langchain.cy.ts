@@ -414,7 +414,7 @@ describe('Langchain Integration', () => {
 		assertInputOutputText('Kyiv', 'not.exist');
 	});
 
-	it.only('should show tool info notice if no existing tools were used during execution', () => {
+	it('should show tool info notice if no existing tools were used during execution', () => {
 		addNodeToCanvas(MANUAL_CHAT_TRIGGER_NODE_NAME, true);
 		addNodeToCanvas(AGENT_NODE_NAME, true);
 
