@@ -20,7 +20,10 @@ interface RunMeta {
 	node: INodeTypeDescription | null;
 	type: 'input' | 'output';
 	connectionType: NodeConnectionType;
-	executionId?: string;
+	subExecution?: {
+		workflowId: string;
+		executionId: string;
+	};
 }
 const props = defineProps<{
 	inputData: IAiData;
@@ -82,7 +85,7 @@ function extractRunMeta(run: IAiDataContent) {
 		node: nodeType,
 		type: run.inOut,
 		connectionType: run.type,
-		executionId: run.metadata.executionId,
+		subExecution: run.metadata?.subExecution,
 	};
 
 	return runMeta;
@@ -110,13 +113,8 @@ const outputError = computed(() => {
 });
 
 // todo unify function across components
-function openExecution({ executionId }: RunMeta) {
-	if (!executionId) {
-		return;
-	}
-
-	// todo add workflow id
-	openExecutionInNewTab(executionId);
+function openExecution({ executionId, workflowId }: { workflowId: string; executionId: string }) {
+	openExecutionInNewTab(executionId, workflowId);
 
 	telemetry.track('User clicked inspect sub-workflow', {
 		view: 'ai',
@@ -153,8 +151,8 @@ function openExecution({ executionId }: RunMeta) {
 							}}
 						</n8n-tooltip>
 					</li>
-					<li v-if="runMeta?.executionId">
-						<a @click.stop="openExecution(runMeta)">
+					<li v-if="runMeta?.subExecution">
+						<a @click.stop="openExecution(runMeta.subExecution)">
 							<N8nIcon icon="external-link-alt" size="xsmall" />
 							{{ $locale.baseText('runData.openSubExecution') }}
 						</a>

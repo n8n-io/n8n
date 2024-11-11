@@ -936,7 +936,7 @@ export type ContextType = 'flow' | 'node';
 
 type BaseExecutionFunctions = FunctionsBaseWithRequiredKeys<'getMode'> & {
 	continueOnFail(): boolean;
-	setMetadata(key: string, value: string): void;
+	setMetadata(metadata: ITaskMetadata): void;
 	evaluateExpression(expression: string, itemIndex: number): NodeParameterValueType;
 	getContext(type: ContextType): IContextObject;
 	getExecuteData(): IExecuteData;
@@ -2143,8 +2143,14 @@ export interface ITaskSubRunMetadata {
 }
 
 export interface ITaskMetadata {
-	executionId?: string;
-	workflowId?: string;
+	parentExecution?: {
+		executionId: string;
+		workflowId: string;
+	};
+	subExecution?: {
+		executionId: string;
+		workflowId: string;
+	};
 	subRun?: ITaskSubRunMetadata[];
 }
 

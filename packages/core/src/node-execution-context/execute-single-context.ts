@@ -1,4 +1,3 @@
-import set from 'lodash/set';
 import type {
 	ICredentialDataDecryptedObject,
 	IGetNodeParameterOptions,
@@ -14,6 +13,7 @@ import type {
 	ContextType,
 	AiEvent,
 	ISourceData,
+	ITaskMetadata,
 } from 'n8n-workflow';
 import {
 	ApplicationError,
@@ -36,14 +36,6 @@ import {
 } from '@/NodeExecuteFunctions';
 
 import { NodeExecutionContext } from './node-execution-context';
-
-// todo simplify
-function setMetadata(executeData: IExecuteData, key: string, value: string) {
-	if (!executeData.metadata) {
-		executeData.metadata = {};
-	}
-	set(executeData.metadata, key, value);
-}
 
 export class ExecuteSingleContext extends NodeExecutionContext implements IExecuteSingleFunctions {
 	readonly helpers: IExecuteSingleFunctions['helpers'];
@@ -94,8 +86,11 @@ export class ExecuteSingleContext extends NodeExecutionContext implements IExecu
 		this.abortSignal?.addEventListener('abort', fn);
 	}
 
-	setMetadata(key: string, value: string): void {
-		return setMetadata(this.executeData, key, value);
+	setMetadata(metadata: ITaskMetadata): void {
+		this.executeData.metadata = {
+			...(this.executeData.metadata ?? {}),
+			...metadata,
+		};
 	}
 
 	continueOnFail() {

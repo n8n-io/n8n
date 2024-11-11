@@ -360,9 +360,13 @@ export class ToolWorkflow implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
+		const workflowProxy = this.getWorkflowDataProxy(0);
+
 		const name = this.getNodeParameter('name', itemIndex) as string;
 		const description = this.getNodeParameter('description', itemIndex) as string;
-		let executionId: string | undefined = undefined;
+
+		let subExecutionId: string | undefined;
+		let subWorkflowId: string | undefined;
 
 		const useSchema = this.getNodeParameter('specifyInputSchema', itemIndex) as boolean;
 		let tool: DynamicTool | DynamicStructuredTool | undefined = undefined;
@@ -399,11 +403,16 @@ export class ToolWorkflow implements INodeType {
 					) as INodeParameterResourceLocator;
 					workflowInfo.id = value as string;
 				}
+
+				subWorkflowId = workflowInfo.id;
 			} else if (source === 'parameter') {
 				// Read workflow from parameter
 				const workflowJson = this.getNodeParameter('workflowJson', itemIndex) as string;
 				try {
 					workflowInfo.code = JSON.parse(workflowJson) as IWorkflowBase;
+
+					// subworkflow is same as parent workflow
+					subWorkflowId = workflowProxy.$workflow.id;
 				} catch (error) {
 					throw new NodeOperationError(
 						this.getNode(),
@@ -443,17 +452,17 @@ export class ToolWorkflow implements INodeType {
 
 			const items = [newItem] as INodeExecutionData[];
 
-			const workflowProxy = this.getWorkflowDataProxy(0);
-
 			let receivedData: ExecuteWorkflowData;
 			try {
 				receivedData = await this.executeWorkflow(workflowInfo, items, runManager?.getChild(), {
 					startMetadata: {
-						executionId: workflowProxy.$execution.id,
-						workflowId: workflowProxy.$workflow.id,
+						parentExecution: {
+							executionId: workflowProxy.$execution.id,
+							workflowId: workflowProxy.$workflow.id,
+						},
 					},
 				});
-				executionId = receivedData.executionId;
+				subExecutionId = receivedData.executionId;
 			} catch (error) {
 				// Make sure a valid error gets returned that can by json-serialized else it will
 				// not show up in the frontend
@@ -512,9 +521,12 @@ export class ToolWorkflow implements INodeType {
 			}
 
 			let metadata: ITaskMetadata | undefined;
-			if (executionId) {
+			if (subExecutionId && subWorkflowId) {
 				metadata = {
-					executionId,
+					subExecution: {
+						executionId: subExecutionId,
+						workflowId: subWorkflowId,
+					},
 				};
 			}
 

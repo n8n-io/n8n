@@ -9,6 +9,7 @@ import type {
 	INodeOutputConfiguration,
 	IRunData,
 	IRunExecutionData,
+	ITaskMetadata,
 	NodeError,
 	NodeHint,
 	Workflow,
@@ -508,18 +509,17 @@ const pinButtonDisabled = computed(
 		readOnlyEnv.value,
 );
 
-const subWorkflowData = computed((): { executionId: string; workflowId?: string } | null => {
+const subWorkflowData = computed((): ITaskMetadata | null => {
 	if (!node.value) {
 		return null;
 	}
 	const metadata = get(workflowRunData.value, [node.value.name, props.runIndex, 'metadata'], null);
-	if (metadata?.executionId) {
-		return {
-			executionId: metadata?.executionId,
-			workflowId: metadata?.workflowId,
-		};
+	console.log('yo', metadata);
+	if (!metadata?.parentExecution && !metadata?.subExecution) {
+		return null;
 	}
-	return null;
+
+	return metadata;
 });
 
 const hasInputOverwrite = computed((): boolean => {
@@ -1210,17 +1210,16 @@ function onSearchClear() {
 	document.dispatchEvent(new KeyboardEvent('keyup', { key: '/' }));
 }
 
-function onOpenRelatedExecution(executionId: string, workflowId?: string) {
-	if (!nodeType.value) {
+function onOpenRelatedExecution({ parentExecution, subExecution }: ITaskMetadata) {
+	const info = parentExecution || subExecution;
+	if (!info) {
 		return;
 	}
 
-	openExecutionInNewTab(executionId, workflowId);
+	openExecutionInNewTab(info.executionId, info.workflowId);
 
-	// todo better distinguish these two
-	const isTrigger = nodeType.value.group.includes('trigger');
 	telemetry.track(
-		isTrigger ? 'User clicked parent execution button' : 'User clicked inspect sub-workflow',
+		parentExecution ? 'User clicked parent execution button' : 'User clicked inspect sub-workflow',
 		{
 			view: displayMode.value,
 		},
@@ -1455,14 +1454,10 @@ defineExpose({ enterEditMode });
 			v-if="subWorkflowData && !(paneType === 'input' && hasInputOverwrite)"
 			:class="$style.parentExecutionInfo"
 		>
-			<a
-				@click.stop="
-					onOpenRelatedExecution(subWorkflowData.executionId, subWorkflowData.workflowId)
-				"
-			>
+			<a @click.stop="onOpenRelatedExecution(subWorkflowData)">
 				<N8nIcon icon="external-link-alt" size="xsmall" />
 				{{
-					nodeType?.group.includes('trigger')
+					subWorkflowData.parentExecution
 						? $locale.baseText('runData.openParentExecution')
 						: $locale.baseText('runData.openSubExecution')
 				}}

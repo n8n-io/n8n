@@ -33,7 +33,6 @@ import get from 'lodash/get';
 import isEmpty from 'lodash/isEmpty';
 import merge from 'lodash/merge';
 import pick from 'lodash/pick';
-import set from 'lodash/set';
 import { DateTime } from 'luxon';
 import { extension, lookup } from 'mime-types';
 import type {
@@ -3583,13 +3582,6 @@ export function getExecuteTriggerFunctions(
 	return new TriggerContext(workflow, node, additionalData, mode, activation);
 }
 
-function setMetadata(executeData: IExecuteData, key: string, value: string) {
-	if (!executeData.metadata) {
-		executeData.metadata = {};
-	}
-	set(executeData.metadata, key, value);
-}
-
 /**
  * Returns the execute functions regular nodes have access to.
  */
@@ -3625,8 +3617,11 @@ export function getExecuteFunctions(
 					itemIndex,
 				),
 			getExecuteData: () => executeData,
-			setMetadata: (key: string, value: string): void => {
-				return setMetadata(executeData, key, value);
+			setMetadata: (metadata: ITaskMetadata): void => {
+				executeData.metadata = {
+					...(executeData.metadata ?? {}),
+					...metadata,
+				};
 			},
 			continueOnFail: () => {
 				return continueOnFail(node);

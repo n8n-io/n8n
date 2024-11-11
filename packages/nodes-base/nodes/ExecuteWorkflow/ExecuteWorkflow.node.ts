@@ -231,8 +231,10 @@ export class ExecuteWorkflow implements INodeType {
 							undefined,
 							{
 								startMetadata: {
-									executionId: workflowProxy.$execution.id,
-									workflowId: workflowProxy.$workflow.id,
+									parentExecution: {
+										executionId: workflowProxy.$execution.id,
+										workflowId: workflowProxy.$workflow.id,
+									},
 								},
 							},
 						);
@@ -261,8 +263,10 @@ export class ExecuteWorkflow implements INodeType {
 							{
 								doNotWaitToFinish: true,
 								startMetadata: {
-									executionId: workflowProxy.$execution.id,
-									workflowId: workflowProxy.$workflow.id,
+									parentExecution: {
+										executionId: workflowProxy.$execution.id,
+										workflowId: workflowProxy.$workflow.id,
+									},
 								},
 							},
 						);
@@ -311,16 +315,20 @@ export class ExecuteWorkflow implements INodeType {
 					{
 						doNotWaitToFinish: !waitForSubWorkflow,
 						startMetadata: {
-							executionId: workflowProxy.$execution.id,
-							workflowId: workflowProxy.$workflow.id,
+							parentExecution: {
+								executionId: workflowProxy.$execution.id,
+								workflowId: workflowProxy.$workflow.id,
+							},
 						},
 					},
 				);
 
-				this.setMetadata('executionId', executionResult.executionId);
-				if (workflowInfo.id !== undefined) {
-					this.setMetadata('workflowId', workflowInfo.id);
-				}
+				this.setMetadata({
+					subExecution: {
+						executionId: executionResult.executionId,
+						workflowId: workflowInfo.id ?? (workflowProxy.$workflow.id as string),
+					},
+				});
 
 				if (!waitForSubWorkflow) {
 					return [items];

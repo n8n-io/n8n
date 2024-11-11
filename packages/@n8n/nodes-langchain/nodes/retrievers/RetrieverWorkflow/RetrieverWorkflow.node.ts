@@ -352,6 +352,9 @@ export class RetrieverWorkflow implements INodeType {
 							},
 						);
 					}
+
+					// same as current workflow
+					baseMetadata.workflowId = workflowProxy.$workflow.id;
 				}
 
 				const rawData: IDataObject = { query };
@@ -395,8 +398,10 @@ export class RetrieverWorkflow implements INodeType {
 						config?.getChild(),
 						{
 							startMetadata: {
-								executionId: workflowProxy.$execution.id,
-								workflowId: workflowProxy.$workflow.id,
+								parentExecution: {
+									executionId: workflowProxy.$execution.id,
+									workflowId: workflowProxy.$workflow.id,
+								},
 							},
 						},
 					);
