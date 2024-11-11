@@ -223,6 +223,21 @@ describe('PATCH /evaluation/test-definitions/:id', () => {
 		expect(resp.body.data.name).toBe('updated-test');
 	});
 
+	test('should return 404 if user has no access to the workflow', async () => {
+		const newTest = Container.get(TestDefinitionRepository).create({
+			name: 'test',
+			workflow: { id: otherWorkflow.id },
+		});
+		await Container.get(TestDefinitionRepository).save(newTest);
+
+		const resp = await authOwnerAgent.patch(`/evaluation/test-definitions/${newTest.id}`).send({
+			name: 'updated-test',
+		});
+
+		expect(resp.statusCode).toBe(404);
+		expect(resp.body.message).toBe('Test definition not found');
+	});
+
 	test('should update test definition with evaluation workflow', async () => {
 		const newTest = Container.get(TestDefinitionRepository).create({
 			name: 'test',

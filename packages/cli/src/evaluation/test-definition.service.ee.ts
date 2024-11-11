@@ -83,7 +83,7 @@ export class TestDefinitionService {
 		return await this.testDefinitionRepository.save(test);
 	}
 
-	async update(id: number, attrs: TestDefinitionLike, accessibleWorkflowIds: string[]) {
+	async update(id: number, attrs: TestDefinitionLike) {
 		if (attrs.name) {
 			const updatedTest = this.toEntity(attrs);
 			await validateEntity(updatedTest);
