@@ -27,7 +27,9 @@ export interface CsrfStateParam {
 	userId?: string;
 }
 
-export const skipAuthOnOAuthCallback = process.env.N8N_SKIP_AUTH_ON_OAUTH_CALLBACK === 'true';
+// TODO: Flip this flag in v2
+// https://linear.app/n8n/issue/CAT-329
+export const skipAuthOnOAuthCallback = process.env.N8N_SKIP_AUTH_ON_OAUTH_CALLBACK !== 'true';
 
 @Service()
 export abstract class AbstractOAuthController {
