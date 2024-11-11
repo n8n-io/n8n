@@ -20,7 +20,7 @@ type TestDefinitionLike = Omit<
 @Service()
 export class TestDefinitionsService {
 	constructor(
-		private testRepository: TestDefinitionRepository,
+		private testDefinitionRepository: TestDefinitionRepository,
 		private annotationTagRepository: AnnotationTagRepository,
 	) {}
 

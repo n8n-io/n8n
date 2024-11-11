@@ -10,7 +10,7 @@ import { TestDefinitionsRequest } from './test-definitions.types.ee';
 
 @RestController('/evaluation/test-definitions')
 export class TestDefinitionsController {
-	constructor(private readonly testsService: TestDefinitionsService) {}
+	constructor(private readonly testDefinitionsService: TestDefinitionsService) {}
 
 	@Get('/', { middlewares: listQueryMiddleware })
 	async getMany(req: TestDefinitionsRequest.GetMany) {
@@ -29,7 +29,7 @@ export class TestDefinitionsController {
 
 		const testDefinition = await this.testsService.findOne(Number(req.params.id), workflowIds);
 
-		if (!testDefinition) throw new NotFoundError('Test not found');
+		if (!testDefinition) throw new NotFoundError('Test definition not found');
 
 		return testDefinition;
 	}
@@ -57,7 +57,7 @@ export class TestDefinitionsController {
 
 		const workflowIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
 
-		if (workflowIds.length === 0) throw new NotFoundError('Test not found');
+		if (workflowIds.length === 0) throw new NotFoundError('Test definition not found');
 
 		await this.testsService.delete(Number(req.params.id), workflowIds);
 
