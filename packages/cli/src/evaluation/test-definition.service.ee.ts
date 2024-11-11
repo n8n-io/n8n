@@ -108,8 +108,6 @@ export class TestDefinitionService {
 		if (queryResult.affected === 0) {
 			throw new NotFoundError('Test definition not found');
 		}
-
-		return await this.testDefinitionRepository.getOne(id, accessibleWorkflowIds);
 	}
 
 	async delete(id: number, accessibleWorkflowIds: string[]) {

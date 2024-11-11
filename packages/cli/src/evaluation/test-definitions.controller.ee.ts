@@ -1,4 +1,5 @@
 import express from 'express';
+import assert from 'node:assert';
 
 import { Get, Post, Patch, RestController, Delete } from '@/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -122,10 +123,16 @@ export class TestDefinitionsController {
 			throw new ForbiddenError('User does not have access to the evaluation workflow');
 		}
 
-		return await this.testDefinitionService.update(
+		await this.testDefinitionService.update(testDefinitionId, req.body, userAccessibleWorkflowIds);
+
+		// Respond with the updated test definition
+		const testDefinition = await this.testDefinitionService.findOne(
 			testDefinitionId,
-			req.body,
 			userAccessibleWorkflowIds,
 		);
+
+		assert(testDefinition, 'Test definition not found');
+
+		return testDefinition;
 	}
 }

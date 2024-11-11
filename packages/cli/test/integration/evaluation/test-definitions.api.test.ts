@@ -239,7 +239,7 @@ describe('PATCH /evaluation/test-definitions/:id', () => {
 		expect(resp.body.message).toBe('User does not have access to the evaluation workflow');
 	});
 
-	test('should ignore the provided workflowId', async () => {
+	test('should disallow workflowId', async () => {
 		const newTest = Container.get(TestDefinitionRepository).create({
 			name: 'test',
 			workflow: { id: workflowUnderTest.id },
@@ -251,9 +251,15 @@ describe('PATCH /evaluation/test-definitions/:id', () => {
 			workflowId: otherWorkflow.id,
 		});
 
-		expect(resp.statusCode).toBe(200);
-		expect(resp.body.data.name).toBe('updated-test');
-		expect(resp.body.data.workflowId).toBe(workflowUnderTest.id);
+		expect(resp.statusCode).toBe(400);
+		expect(resp.body.errors).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					code: 'unrecognized_keys',
+					keys: ['workflowId'],
+				}),
+			]),
+		);
 	});
 
 	test('should update annotationTagId', async () => {
