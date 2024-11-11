@@ -25,6 +25,7 @@ const route = useRoute();
 const router = useRouter();
 const toast = useToast();
 const { callDebounced } = useDebounce();
+
 const workflowHelpers = useWorkflowHelpers({ router });
 const nodeHelpers = useNodeHelpers();
 
@@ -104,8 +105,10 @@ async function fetchExecution() {
 	if (!currentExecution.value) {
 		toast.showMessage({
 			type: 'error',
-			message: i18n.baseText('executionsView.missingExeuctionId'),
+			message: i18n.baseText('openExecution.missingExeuctionId'),
 		});
+
+		return;
 	}
 }
 

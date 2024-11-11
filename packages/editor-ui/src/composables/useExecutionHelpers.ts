@@ -3,6 +3,8 @@ import { convertToDisplayDate } from '@/utils/formatters/dateFormatter';
 import { useI18n } from '@/composables/useI18n';
 import { useRouter } from 'vue-router';
 import { VIEWS } from '@/constants';
+import { useExecutionsStore } from '@/stores/executions.store';
+import { useToast } from './useToast';
 
 export interface IExecutionUIData {
 	name: string;
@@ -17,6 +19,8 @@ export interface IExecutionUIData {
 export function useExecutionHelpers() {
 	const i18n = useI18n();
 	const router = useRouter();
+	const executionsStore = useExecutionsStore();
+	const toast = useToast();
 
 	function getUIDetails(execution: ExecutionSummary): IExecutionUIData {
 		const status = {
@@ -72,13 +76,35 @@ export function useExecutionHelpers() {
 		return ['crashed', 'error'].includes(execution.status) && !execution.retrySuccessId;
 	}
 
-	function openExecutionInNewTab(executionId: string, workflowId?: string) {
-		// todo this does not work when workflowId is not set
+	function openInNewTab(executionId: string, workflowId: string) {
 		const route = router.resolve({
 			name: VIEWS.EXECUTION_PREVIEW,
 			params: { name: workflowId, executionId },
 		});
 		window.open(route.href, '_blank');
+	}
+
+	async function openExecutionById(executionId: string): Promise<void> {
+		try {
+			const execution = (await executionsStore.fetchExecution(executionId)) as ExecutionSummary;
+
+			openInNewTab(executionId, execution.workflowId);
+		} catch (e) {
+			toast.showMessage({
+				type: 'error',
+				message: i18n.baseText('nodeView.showError.openExecution.title'),
+			});
+		}
+	}
+
+	function openExecutionInNewTab(executionId: string, workflowId?: string): void {
+		// todo this does not work when workflowId is not set
+		if (!workflowId) {
+			void openExecutionById(executionId);
+			return;
+		}
+
+		openInNewTab(executionId, workflowId);
 	}
 
 	return {

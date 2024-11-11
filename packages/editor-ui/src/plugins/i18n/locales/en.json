@@ -2614,7 +2614,7 @@
 	"executionUsage.button.upgrade": "Upgrade plan",
 	"executionUsage.expired.text": "Your trial is over. Upgrade now to keep your data.",
 	"executionUsage.ranOutOfExecutions.text": "You’re out of executions. Upgrade your plan to keep automating.",
-	"executionsView.missingExeuctionId": "Could not find execution. Make sure workflow saving is turned on.",
+	"openExecution.missingExeuctionId": "Could not find execution. Make sure workflow saving is turned on.",
 	"type.string": "String",
 	"type.number": "Number",
 	"type.dateTime": "Date & Time",
