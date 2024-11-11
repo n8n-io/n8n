@@ -90,7 +90,7 @@ export class TestDefinitionsController {
 
 		const bodyParseResult = testDefinitionPatchRequestBodySchema.safeParse(req.body);
 		if (!bodyParseResult.success) {
-			res.status(400).json({ errors: bodyParseResult.error });
+			res.status(400).json({ errors: bodyParseResult.error.errors });
 			return;
 		}
 
