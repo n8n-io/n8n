@@ -52,11 +52,16 @@ describe('GET /evaluation/test-definitions', () => {
 		const resp = await authOwnerAgent.get('/evaluation/test-definitions');
 
 		expect(resp.statusCode).toBe(200);
-		expect(resp.body.data.count).toBe(1);
-		expect(resp.body.data.testDefinitions).toHaveLength(1);
-		expect(resp.body.data.testDefinitions[0].name).toBe('test');
-		expect(resp.body.data.testDefinitions[0].workflowId).toBe(workflowUnderTest.id);
-		expect(resp.body.data.testDefinitions[0].evaluationWorkflowId).toBe(null);
+		expect(resp.body.data).toEqual({
+			count: 1,
+			testDefinitions: [
+				expect.objectContaining({
+					name: 'test',
+					workflowId: workflowUnderTest.id,
+					evaluationWorkflowId: null,
+				}),
+			],
+		});
 	});
 
 	test('should retrieve test definitions list with pagination', async () => {
@@ -123,6 +128,18 @@ describe('GET /evaluation/test-definitions/:id', () => {
 		expect(resp.body.data.name).toBe('test');
 		expect(resp.body.data.workflowId).toBe(workflowUnderTest.id);
 		expect(resp.body.data.evaluationWorkflowId).toBe(evaluationWorkflow.id);
+	});
+
+	test('should not retrieve test definition if user does not have access to workflow under test', async () => {
+		const newTest = Container.get(TestDefinitionRepository).create({
+			name: 'test',
+			workflow: { id: otherWorkflow.id },
+		});
+		await Container.get(TestDefinitionRepository).save(newTest);
+
+		const resp = await authOwnerAgent.get(`/evaluation/test-definitions/${newTest.id}`);
+
+		expect(resp.statusCode).toBe(404);
 	});
 });
 
