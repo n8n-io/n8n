@@ -1,6 +1,13 @@
+import express from 'express';
+
 import { Get, Post, Patch, RestController, Delete } from '@/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import {
+	testDefinitionCreateRequestBodySchema,
+	testDefinitionPatchRequestBodySchema,
+} from '@/evaluation/test-definition.schema';
 import { listQueryMiddleware } from '@/middlewares';
 import { getSharedWorkflowIds } from '@/public-api/v1/handlers/workflows/workflows.service';
 import { isPositiveInteger } from '@/utils';
@@ -10,6 +17,14 @@ import { TestDefinitionsRequest } from './test-definitions.types.ee';
 
 @RestController('/evaluation/test-definitions')
 export class TestDefinitionsController {
+	private validateId(id: string) {
+		if (!isPositiveInteger(id)) {
+			throw new BadRequestError('Test ID is not a number');
+		}
+
+		return Number(id);
+	}
+
 	constructor(private readonly testDefinitionService: TestDefinitionService) {}
 
 	@Get('/', { middlewares: listQueryMiddleware })
@@ -21,16 +36,11 @@ export class TestDefinitionsController {
 
 	@Get('/:id')
 	async getOne(req: TestDefinitionsRequest.GetOne) {
-		if (!isPositiveInteger(req.params.id)) {
-			throw new BadRequestError('Test ID is not a number');
-		}
+		const testDefinitionId = this.validateId(req.params.id);
 
 		const workflowIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
 
-		const testDefinition = await this.testDefinitionService.findOne(
-			Number(req.params.id),
-			workflowIds,
-		);
+		const testDefinition = await this.testDefinitionService.findOne(testDefinitionId, workflowIds);
 
 		if (!testDefinition) throw new NotFoundError('Test definition not found');
 
@@ -38,56 +48,65 @@ export class TestDefinitionsController {
 	}
 
 	@Post('/')
-	async create(req: TestDefinitionsRequest.Create) {
+	async create(req: TestDefinitionsRequest.Create, res: express.Response) {
+		const bodyParseResult = testDefinitionCreateRequestBodySchema.safeParse(req.body);
+		if (!bodyParseResult.success) {
+			res.status(400).json(bodyParseResult.error.errors[0]);
+			return;
+		}
+
 		const workflowIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
 
 		if (!workflowIds.includes(req.body.workflowId)) {
-			throw new BadRequestError('User does not have access to the workflow');
+			throw new ForbiddenError('User does not have access to the workflow');
 		}
 
 		if (req.body.evaluationWorkflowId && !workflowIds.includes(req.body.evaluationWorkflowId)) {
-			throw new BadRequestError('User does not have access to the evaluation workflow');
+			throw new ForbiddenError('User does not have access to the evaluation workflow');
 		}
 
-		return await this.testDefinitionService.save(this.testDefinitionService.toEntity(req.body));
+		return await this.testDefinitionService.save(
+			this.testDefinitionService.toEntity(bodyParseResult.data),
+		);
 	}
 
 	@Delete('/:id')
 	async delete(req: TestDefinitionsRequest.Delete) {
-		if (!isPositiveInteger(req.params.id)) {
-			throw new BadRequestError('Test ID is not a number');
-		}
+		const testDefinitionId = this.validateId(req.params.id);
 
 		const workflowIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
 
-		if (workflowIds.length === 0) throw new NotFoundError('Test definition not found');
+		if (workflowIds.length === 0)
+			throw new ForbiddenError('User does not have access to any workflows');
 
-		await this.testDefinitionService.delete(Number(req.params.id), workflowIds);
+		await this.testDefinitionService.delete(testDefinitionId, workflowIds);
 
 		return { success: true };
 	}
 
 	@Patch('/:id')
-	async patch(req: TestDefinitionsRequest.Patch) {
-		if (!isPositiveInteger(req.params.id)) {
-			throw new BadRequestError('Test ID is not a number');
+	async patch(req: TestDefinitionsRequest.Patch, res: express.Response) {
+		const testDefinitionId = this.validateId(req.params.id);
+
+		const bodyParseResult = testDefinitionPatchRequestBodySchema.safeParse(req.body);
+		if (!bodyParseResult.success) {
+			res.status(400).json(bodyParseResult.error.errors[0]);
+			return;
 		}
 
 		const workflowIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
 
 		// Fail fast if no workflows are accessible
-		if (workflowIds.length === 0) throw new NotFoundError('Workflow not found');
+		if (workflowIds.length === 0)
+			throw new ForbiddenError('User does not have access to any workflows');
 
-		const existingTest = await this.testDefinitionService.findOne(
-			Number(req.params.id),
-			workflowIds,
-		);
+		const existingTest = await this.testDefinitionService.findOne(testDefinitionId, workflowIds);
 		if (!existingTest) throw new NotFoundError('Test definition not found');
 
 		if (req.body.evaluationWorkflowId && !workflowIds.includes(req.body.evaluationWorkflowId)) {
-			throw new BadRequestError('User does not have access to the evaluation workflow');
+			throw new ForbiddenError('User does not have access to the evaluation workflow');
 		}
 
-		return await this.testDefinitionService.update(Number(req.params.id), req.body, workflowIds);
+		return await this.testDefinitionService.update(testDefinitionId, req.body, workflowIds);
 	}
 }
