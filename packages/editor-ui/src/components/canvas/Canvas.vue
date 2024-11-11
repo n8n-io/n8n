@@ -6,13 +6,7 @@ import type {
 	CanvasEventBusEvents,
 	ConnectStartEvent,
 } from '@/types';
-import type {
-	Connection,
-	XYPosition,
-	ViewportTransform,
-	NodeChange,
-	NodePositionChange,
-} from '@vue-flow/core';
+import type { Connection, XYPosition, ViewportTransform, NodeDragEvent } from '@vue-flow/core';
 import { useVueFlow, VueFlow, PanelPosition, MarkerType } from '@vue-flow/core';
 import { Background } from '@vue-flow/background';
 import { MiniMap } from '@vue-flow/minimap';
@@ -29,7 +23,7 @@ import type { PinDataSource } from '@/composables/usePinnedData';
 import { isPresent } from '@/utils/typesUtils';
 import { GRID_SIZE } from '@/utils/nodeViewUtils';
 import { CanvasKey } from '@/constants';
-import { onKeyDown, onKeyUp, useDebounceFn } from '@vueuse/core';
+import { onKeyDown, onKeyUp } from '@vueuse/core';
 import CanvasArrowHeadMarker from './elements/edges/CanvasArrowHeadMarker.vue';
 import CanvasBackgroundStripedPattern from './elements/CanvasBackgroundStripedPattern.vue';
 
@@ -107,6 +101,8 @@ const {
 	zoomOut,
 	zoomTo,
 	setInteractive,
+	getIncomers,
+	getOutgoers,
 	elementsSelectable,
 	project,
 	nodes: graphNodes,
@@ -131,7 +127,6 @@ const disableKeyBindings = computed(() => !props.keyBindings);
 /**
  * @see https://developer.mozilla.org/en-US/docs/Web/API/UI_Events/Keyboard_event_key_values#whitespace_keys
  */
-
 const panningKeyCode = ref<string[]>([' ', controlKeyCode]);
 const panningMouseButton = ref<number[]>([1]);
 const selectionKeyCode = ref<true | null>(true);
@@ -144,6 +139,63 @@ onKeyUp(panningKeyCode.value, () => {
 	selectionKeyCode.value = true;
 });
 
+function sortNodesByVerticalPosition(nodes: CanvasNode[]) {
+	return nodes.sort((a, b) => a.position.y - b.position.y);
+}
+
+function getIncomingNodes(id: string) {
+	return sortNodesByVerticalPosition(getIncomers(id));
+}
+
+function getOutgoingNodes(id: string) {
+	return sortNodesByVerticalPosition(getOutgoers(id));
+}
+
+function getSiblingNodes(id: string) {
+	return sortNodesByVerticalPosition(
+		getIncomers(id)
+			.flatMap((incomingNode) => getOutgoers(incomingNode.id))
+			.filter((node, index, nodes) => nodes.findIndex((n) => n.id === node.id) === index),
+	);
+}
+
+function selectLeftNode(id: string) {
+	const incomingNodes = getIncomingNodes(id);
+	const previousNode = incomingNodes[0];
+	if (previousNode) {
+		onSelectNodes({ ids: [previousNode.id] });
+	}
+}
+
+function selectRightNode(id: string) {
+	const outgoingNodes = getOutgoingNodes(id);
+	const nextNode = outgoingNodes[0];
+	if (nextNode) {
+		onSelectNodes({ ids: [nextNode.id] });
+	}
+}
+
+function selectLowerSiblingNode(id: string) {
+	const siblingNodes = getSiblingNodes(id);
+	const index = siblingNodes.findIndex((n) => n.id === id);
+	const nextNode = siblingNodes[index + 1];
+
+	console.log(siblingNodes, nextNode);
+
+	if (nextNode) {
+		onSelectNodes({ ids: [nextNode.id] });
+	}
+}
+
+function selectUpperSiblingNode(id: string) {
+	const siblingNodes = getSiblingNodes(id);
+	const index = siblingNodes.findIndex((n) => n.id === id);
+	const previousNode = siblingNodes[index - 1];
+	if (previousNode) {
+		onSelectNodes({ ids: [previousNode.id] });
+	}
+}
+
 const keyMap = computed(() => ({
 	ctrl_c: emitWithSelectedNodes((ids) => emit('copy:nodes', ids)),
 	enter: emitWithLastSelectedNode((id) => onSetNodeActive(id)),
@@ -152,6 +204,10 @@ const keyMap = computed(() => ({
 	'-|_': async () => await onZoomOut(),
 	0: async () => await onResetZoom(),
 	1: async () => await onFitView(),
+	ArrowUp: emitWithLastSelectedNode(selectUpperSiblingNode),
+	ArrowDown: emitWithLastSelectedNode(selectLowerSiblingNode),
+	ArrowLeft: emitWithLastSelectedNode(selectLeftNode),
+	ArrowRight: emitWithLastSelectedNode(selectRightNode),
 	// @TODO implement arrow key shortcuts to modify selection
 
 	...(props.readOnly
@@ -185,23 +241,16 @@ function onClickNodeAdd(id: string, handle: string) {
 	emit('click:node:add', id, handle);
 }
 
-// Debounced to prevent emitting too many events, necessary for undo/redo
-const onUpdateNodesPosition = useDebounceFn((events: NodePositionChange[]) => {
+function onUpdateNodesPosition(events: CanvasNodeMoveEvent[]) {
 	emit('update:nodes:position', events);
-}, 200);
+}
 
 function onUpdateNodePosition(id: string, position: XYPosition) {
 	emit('update:node:position', id, position);
 }
 
-const isPositionChangeEvent = (event: NodeChange): event is NodePositionChange =>
-	event.type === 'position' && 'position' in event;
-
-function onNodesChange(events: NodeChange[]) {
-	const positionChangeEndEvents = events.filter(isPositionChangeEvent);
-	if (positionChangeEndEvents.length > 0) {
-		void onUpdateNodesPosition(positionChangeEndEvents);
-	}
+function onNodeDragStop(event: NodeDragEvent) {
+	onUpdateNodesPosition(event.nodes.map(({ id, position }) => ({ id, position })));
 }
 
 function onSetNodeActive(id: string) {
@@ -524,9 +573,9 @@ provide(CanvasKey, {
 		@pane-click="onClickPane"
 		@contextmenu="onOpenContextMenu"
 		@viewport-change="onViewportChange"
-		@nodes-change="onNodesChange"
 		@move-start="onPaneMoveStart"
 		@move-end="onPaneMoveEnd"
+		@node-drag-stop="onNodeDragStop"
 	>
 		<template #node-canvas-node="canvasNodeProps">
 			<Node
