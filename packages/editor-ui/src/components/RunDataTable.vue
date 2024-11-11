@@ -1,11 +1,6 @@
 <script setup lang="ts">
 import { useExternalHooks } from '@/composables/useExternalHooks';
-import type {
-	INodeUi,
-	IRunDataDisplayMode,
-	ITableData,
-	SubworkflowExecutionInfo,
-} from '@/Interface';
+import type { INodeUi, IRunDataDisplayMode, ITableData } from '@/Interface';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { getMappedExpression } from '@/utils/mappingUtils';
@@ -69,7 +64,7 @@ const workflowsStore = useWorkflowsStore();
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
-const { openExecutionInNewTab } = useExecutionHelpers();
+const { openRelatedExecution } = useExecutionHelpers();
 
 const {
 	hoveringItem,
@@ -346,11 +341,8 @@ function convertToTable(inputData: INodeExecutionData[]): ITableData {
 			leftEntryColumns = entryColumns;
 		}
 
-		if (data.metadata?.executionId) {
-			metadata.data.push({
-				executionId: data.metadata.executionId,
-				workflowId: data.metadata?.workflowId,
-			});
+		if (data.metadata?.subExecution) {
+			metadata.data.push(data.metadata);
 			metadata.hasExecutionIds = true;
 		} else {
 			metadata.data.push(undefined);
@@ -408,14 +400,6 @@ function convertToTable(inputData: INodeExecutionData[]): ITableData {
 
 function switchToJsonView() {
 	emit('displayModeChange', 'json');
-}
-
-function openExecution({ executionId, workflowId }: SubworkflowExecutionInfo) {
-	openExecutionInNewTab(executionId, workflowId);
-
-	telemetry.track('User clicked inspect sub-workflow', {
-		view: 'table',
-	});
 }
 
 watch(focusedMappableInput, (curr) => {
@@ -562,7 +546,7 @@ watch(focusedMappableInput, (curr) => {
 							icon="external-link-alt"
 							data-test-id="debug-sub-execution"
 							size="mini"
-							@click="openExecution(tableData.metadata.data[index1])"
+							@click="openRelatedExecution(tableData.metadata.data[index1], 'table')"
 						/>
 					</td>
 					<td

@@ -12,7 +12,6 @@ import { computed } from 'vue';
 import NodeIcon from '@/components/NodeIcon.vue';
 import AiRunContentBlock from './AiRunContentBlock.vue';
 import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
-import { useTelemetry } from '@/composables/useTelemetry';
 
 interface RunMeta {
 	startTimeMs: number;
@@ -33,9 +32,7 @@ const props = defineProps<{
 const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
 
-const telemetry = useTelemetry();
-
-const { openExecutionInNewTab } = useExecutionHelpers();
+const { openRelatedExecution } = useExecutionHelpers();
 
 type TokenUsageData = {
 	completionTokens: number;
@@ -111,15 +108,6 @@ const outputError = computed(() => {
 		| NodeError
 		| undefined;
 });
-
-// todo unify function across components
-function openExecution({ executionId, workflowId }: { workflowId: string; executionId: string }) {
-	openExecutionInNewTab(executionId, workflowId);
-
-	telemetry.track('User clicked inspect sub-workflow', {
-		view: 'ai',
-	});
-}
 </script>
 
 <template>
@@ -152,7 +140,7 @@ function openExecution({ executionId, workflowId }: { workflowId: string; execut
 						</n8n-tooltip>
 					</li>
 					<li v-if="runMeta?.subExecution">
-						<a @click.stop="openExecution(runMeta.subExecution)">
+						<a @click.stop="openRelatedExecution(runMeta, 'ai')">
 							<N8nIcon icon="external-link-alt" size="xsmall" />
 							{{ $locale.baseText('runData.openSubExecution') }}
 						</a>

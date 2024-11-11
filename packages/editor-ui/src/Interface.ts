@@ -202,17 +202,13 @@ export interface IStartRunData {
 	runData?: IRunData;
 }
 
-export interface SubworkflowExecutionInfo {
-	executionId: string;
-	workflowId?: string;
-}
 export interface ITableData {
 	columns: string[];
 	data: GenericValue[][];
 	hasJson: { [key: string]: boolean };
 	metadata: {
 		hasExecutionIds: boolean;
-		data: Array<SubworkflowExecutionInfo | undefined>;
+		data: Array<INodeExecutionData['metadata'] | undefined>;
 	};
 }
 

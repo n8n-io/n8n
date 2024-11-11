@@ -182,7 +182,7 @@ const nodeHelpers = useNodeHelpers();
 const externalHooks = useExternalHooks();
 const telemetry = useTelemetry();
 const i18n = useI18n();
-const { openExecutionInNewTab } = useExecutionHelpers();
+const { openRelatedExecution } = useExecutionHelpers();
 
 const node = toRef(props, 'node');
 
@@ -514,7 +514,6 @@ const subWorkflowData = computed((): ITaskMetadata | null => {
 		return null;
 	}
 	const metadata = get(workflowRunData.value, [node.value.name, props.runIndex, 'metadata'], null);
-	console.log('yo', metadata);
 	if (!metadata?.parentExecution && !metadata?.subExecution) {
 		return null;
 	}
@@ -1210,22 +1209,6 @@ function onSearchClear() {
 	document.dispatchEvent(new KeyboardEvent('keyup', { key: '/' }));
 }
 
-function onOpenRelatedExecution({ parentExecution, subExecution }: ITaskMetadata) {
-	const info = parentExecution || subExecution;
-	if (!info) {
-		return;
-	}
-
-	openExecutionInNewTab(info.executionId, info.workflowId);
-
-	telemetry.track(
-		parentExecution ? 'User clicked parent execution button' : 'User clicked inspect sub-workflow',
-		{
-			view: displayMode.value,
-		},
-	);
-}
-
 defineExpose({ enterEditMode });
 </script>
 
@@ -1454,7 +1437,7 @@ defineExpose({ enterEditMode });
 			v-if="subWorkflowData && !(paneType === 'input' && hasInputOverwrite)"
 			:class="$style.parentExecutionInfo"
 		>
-			<a @click.stop="onOpenRelatedExecution(subWorkflowData)">
+			<a @click.stop="openRelatedExecution(subWorkflowData, displayMode)">
 				<N8nIcon icon="external-link-alt" size="xsmall" />
 				{{
 					subWorkflowData.parentExecution

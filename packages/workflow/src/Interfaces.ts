@@ -1215,8 +1215,7 @@ export interface INodeExecutionData {
 	error?: NodeApiError | NodeOperationError;
 	pairedItem?: IPairedItemData | IPairedItemData[] | number;
 	metadata?: {
-		executionId?: string;
-		workflowId?: string;
+		subExecution: RelatedExecution;
 	};
 	index?: number;
 }
@@ -2142,16 +2141,15 @@ export interface ITaskSubRunMetadata {
 	runIndex: number;
 }
 
+export interface RelatedExecution {
+	executionId: string;
+	workflowId: string;
+}
+
 export interface ITaskMetadata {
-	parentExecution?: {
-		executionId: string;
-		workflowId: string;
-	};
-	subExecution?: {
-		executionId: string;
-		workflowId: string;
-	};
 	subRun?: ITaskSubRunMetadata[];
+	parentExecution?: RelatedExecution;
+	subExecution?: RelatedExecution;
 }
 
 // The data that gets returned when a node runs

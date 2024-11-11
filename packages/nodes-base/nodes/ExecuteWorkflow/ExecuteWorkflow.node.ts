@@ -211,6 +211,7 @@ export class ExecuteWorkflow implements INodeType {
 		const items = this.getInputData();
 
 		const workflowProxy = this.getWorkflowDataProxy(0);
+		const currentWorkflowId = workflowProxy.$workflow.id as string;
 
 		if (mode === 'each') {
 			const returnData: INodeExecutionData[][] = [];
@@ -244,8 +245,10 @@ export class ExecuteWorkflow implements INodeType {
 							for (const item of outputData) {
 								item.pairedItem = { item: i };
 								item.metadata = {
-									executionId: executionResult.executionId,
-									workflowId: workflowInfo.id,
+									subExecution: {
+										executionId: executionResult.executionId,
+										workflowId: workflowInfo.id ?? currentWorkflowId,
+									},
 								};
 							}
 
@@ -278,7 +281,10 @@ export class ExecuteWorkflow implements INodeType {
 						returnData[0].push({
 							...items[i],
 							metadata: {
-								executionId: executionResult.executionId,
+								subExecution: {
+									workflowId: workflowInfo.id ?? currentWorkflowId,
+									executionId: executionResult.executionId,
+								},
 							},
 						});
 					}
