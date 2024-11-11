@@ -45,6 +45,9 @@ catalogs:
     nanoid:
       specifier: 3.3.6
       version: 3.3.6
+    tmp-promise:
+      specifier: 3.0.3
+      version: 3.0.3
     typedi:
       specifier: 0.10.0
       version: 0.10.0
@@ -556,7 +559,7 @@ importers:
         specifier: 0.9.4
         version: 0.9.4
       tmp-promise:
-        specifier: 3.0.3
+        specifier: 'catalog:'
         version: 3.0.3
       zod:
         specifier: 'catalog:'
@@ -979,6 +982,9 @@ importers:
       tar-stream:
         specifier: ^3.1.7
         version: 3.1.7
+      tmp-promise:
+        specifier: 'catalog:'
+        version: 3.0.3
       typedi:
         specifier: 'catalog:'
         version: 0.10.0(patch_hash=sk6omkefrosihg7lmqbzh7vfxe)
@@ -1593,7 +1599,7 @@ importers:
         specifier: ^6.0.0
         version: 6.3.5
       tmp-promise:
-        specifier: ^3.0.3
+        specifier: 'catalog:'
         version: 3.0.3
       typedi:
         specifier: 'catalog:'
@@ -1783,7 +1789,7 @@ importers:
         specifier: 7.2.3
         version: 7.2.3
       tmp-promise:
-        specifier: 3.0.3
+        specifier: 'catalog:'
         version: 3.0.3
       ts-ics:
         specifier: 1.2.2
@@ -11499,10 +11505,6 @@ packages:
   tmp@0.0.33:
     resolution: {integrity: sha512-jRCJlojKnZ3addtTOjdIqoRuPEKBvNXcGYqzO6zWZX8KfKEpnGY5jfggJQ3EjKuu8D4bJRr0y+cYJFmYbImXGw==}
     engines: {node: '>=0.6.0'}
-
-  tmp@0.2.1:
-    resolution: {integrity: sha512-76SUhtfqR2Ijn+xllcI5P1oyannHNHByD80W1q447gU3mp9G9PSpGdWmjUOHRDPiHYacIk66W7ubDTuPF3BEtQ==}
-    engines: {node: '>=8.17.0'}
 
   tmp@0.2.3:
     resolution: {integrity: sha512-nZD7m9iCPC5g0pYmcaxogYKggSfLsdxl8of3Q/oIbqCqLLIO9IAF0GWjX1z9NZRHPiXv8Wex4yDCaZsgEw0Y8w==}
@@ -24960,15 +24962,11 @@ snapshots:
 
   tmp-promise@3.0.3:
     dependencies:
-      tmp: 0.2.1
+      tmp: 0.2.3
 
   tmp@0.0.33:
     dependencies:
       os-tmpdir: 1.0.2
-
-  tmp@0.2.1:
-    dependencies:
-      rimraf: 3.0.2
 
   tmp@0.2.3: {}
 

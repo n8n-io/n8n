@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from 'crypto';
 import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'fs';
-import { ApplicationError, jsonParse, ALPHABET, toResult } from 'n8n-workflow';
+import { ApplicationError, jsonParse, ALPHABET, toResult, LoggerProxy } from 'n8n-workflow';
 import { customAlphabet } from 'nanoid';
 import path from 'path';
 import { Service } from 'typedi';
@@ -136,7 +136,7 @@ export class InstanceSettings {
 				errorMessage: `Error parsing n8n-config file "${this.settingsFile}". It does not seem to be valid JSON.`,
 			});
 
-			if (!inTest) console.info(`User settings loaded from: ${this.settingsFile}`);
+			if (!inTest) LoggerProxy.debug(`User settings loaded from: ${this.settingsFile}`);
 
 			const { encryptionKey, tunnelSubdomain } = settings;
 

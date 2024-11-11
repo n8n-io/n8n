@@ -5,11 +5,15 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createGzip } from 'node:zlib';
 import tar from 'tar-stream';
+import type { DirectoryResult } from 'tmp-promise';
+import { dir } from 'tmp-promise';
 import { Service } from 'typedi';
 
+import { UnsupportedSourceError } from '@/errors/unsupported-source.error';
+import { FilesystemService } from '@/filesystem/filesystem.service';
 import { Logger } from '@/logging/logger.service';
 
-import { BATCH_SIZE, EXCLUDE_LIST, MANIFEST_FILENAME, ZIP_BASE_FILE_NAME } from './constants';
+import { BATCH_SIZE, EXCLUDE_LIST, MANIFEST_FILENAME } from './constants';
 import type { DatabaseExportConfig, Manifest, Row } from './types';
 import { DatabaseSchemaService } from '../database-schema.service';
 import type { DatabaseType } from '../types';
@@ -18,52 +22,46 @@ import type { DatabaseType } from '../types';
 
 @Service()
 export class DatabaseExportService {
-	private config: DatabaseExportConfig = {
-		outDir: '/tmp/backup', // @TODO: Update to cwd
-		mode: 'full',
-	};
+	private config = {} as DatabaseExportConfig;
 
 	private readonly rowCounts: Manifest['rowCounts'] = {};
 
 	private readonly dbType: DatabaseType;
 
+	private tmpDir: DirectoryResult;
+
 	constructor(
-		private readonly globalConfig: GlobalConfig,
+		globalConfig: GlobalConfig,
+		private readonly fsService: FilesystemService,
 		private readonly schemaService: DatabaseSchemaService,
 		private readonly logger: Logger,
 	) {
 		this.dbType = globalConfig.database.type;
+
+		if (this.dbType !== 'postgresdb') throw new UnsupportedSourceError(this.dbType);
 	}
 
 	setConfig(config: Partial<DatabaseExportConfig>) {
 		this.config = { ...this.config, ...config };
 	}
 
-	get tarballPath() {
-		const now = new Date();
-		const year = now.getFullYear();
-		const month = String(now.getMonth() + 1).padStart(2, '0');
-		const day = String(now.getDate()).padStart(2, '0');
-
-		const tarballFileName = `${ZIP_BASE_FILE_NAME}-${year}-${month}-${day}.tar.gz`;
-
-		return path.join(this.config.outDir, tarballFileName);
-	}
-
 	// #region Export
 
 	async export() {
-		this.logger.info('[ExportService] Starting export', { outDir: this.config.outDir });
+		this.logger.info('[ExportService] Starting export');
+		const { output } = this.config;
+		const outputDir = path.dirname(output);
+		await this.fsService.ensureDir(outputDir);
 
+		this.tmpDir = await dir();
+		this.logger.debug(`Writing temporary files in ${this.tmpDir.path}`);
 		try {
-			await fs.promises.access(this.config.outDir);
-		} catch {
-			await fs.promises.mkdir(this.config.outDir, { recursive: true });
+			await this.writeTarball();
+		} finally {
+			await fs.promises.rm(this.tmpDir.path, { recursive: true, force: true });
 		}
 
-		await this.writeTarball();
-
-		this.logger.info('[ExportService] Completed export', { zipPath: this.tarballPath });
+		this.logger.info(`[ExportService] Exported backup to ${output}`);
 	}
 
 	// #endregion
@@ -73,7 +71,7 @@ export class DatabaseExportService {
 	private async writeTarball() {
 		const pack = tar.pack();
 
-		pack.pipe(createGzip()).pipe(fs.createWriteStream(this.tarballPath));
+		pack.pipe(createGzip()).pipe(fs.createWriteStream(this.config.output));
 
 		// DB row -> entryStream -> tarStream -> gzipStream -> writeStream
 
@@ -90,7 +88,7 @@ export class DatabaseExportService {
 
 			if (totalRowsCount === 0) continue;
 
-			const tableFilePath = path.join(this.config.outDir, `${tableName}.jsonl`);
+			const tableFilePath = path.join(this.tmpDir.path, `${tableName}.jsonl`);
 			const writeStream = fs.createWriteStream(tableFilePath);
 
 			let offset = 0;
@@ -124,7 +122,6 @@ export class DatabaseExportService {
 
 			writeStream.end();
 			pack.entry({ name: `${tableName}.jsonl` }, await fs.promises.readFile(tableFilePath));
-			await fs.promises.rm(tableFilePath);
 		}
 
 		const manifest: Manifest = {
@@ -171,9 +168,7 @@ export class DatabaseExportService {
 	// #region Utils
 
 	private isJson(column: ColumnMetadata) {
-		return this.globalConfig.database.type === 'sqlite'
-			? column.type === 'simple-json'
-			: column.type === 'json';
+		return this.dbType === 'sqlite' ? column.type === 'simple-json' : column.type === 'json';
 	}
 
 	/** Check whether the column is not JSON-type but may contain JSON. */

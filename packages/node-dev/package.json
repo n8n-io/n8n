@@ -46,7 +46,7 @@
     "n8n-core": "workspace:*",
     "n8n-workflow": "workspace:*",
     "replace-in-file": "^6.0.0",
-    "tmp-promise": "^3.0.3",
+    "tmp-promise": "catalog:",
     "typedi": "catalog:"
   }
 }

@@ -11,23 +11,20 @@ export type Sequence = { [tableName: string]: number };
 export type Manifest = z.infer<typeof manifestSchema>;
 
 export type DatabaseExportConfig = {
-	/** Dir to place the export in. By default, the current working directory. */
-	outDir: string;
+	/** Path of the backup file.
+	 * @default generated from the current UTC date. written in the current working directory. */
+	output: string;
 
-	/** Whether to export all data or only a smaller subset of data. */
+	/** Whether to export all data or only a smaller subset of data.
+	 * @default 'full' */
 	mode: 'full' | 'lightweight';
 };
 
 export type DatabaseImportConfig = {
-	/** Absolute path to the file to import. */
-	importFilePath: string;
+	/** Absolute path to the backup file to import from. */
+	input: string;
 
-	// REMOVE
-	extractDirPath: string;
-
-	/**
-	 * Whether to truncate all tables in the destination DB.
-	 * @default true // @TODO: Only for dev, change to `false` later
-	 */
-	truncateDestination: boolean;
+	/** Whether to delete data in all tables in the destination DB.
+	 * @default false  */
+	deleteExistingData: boolean;
 };

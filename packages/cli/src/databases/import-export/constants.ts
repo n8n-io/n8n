@@ -1,6 +1,3 @@
-/** Base filename for the tarball, to be suffixed with `-{timestamp}.zip`. */
-export const ZIP_BASE_FILE_NAME = 'n8n-db-export';
-
 /** Name of the file describing the export. */
 export const MANIFEST_FILENAME = 'manifest.json';
 

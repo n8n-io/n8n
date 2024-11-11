@@ -181,7 +181,7 @@
     "redis": "4.6.12",
     "sqlite3": "5.1.7",
     "temp": "0.9.4",
-    "tmp-promise": "3.0.3",
+    "tmp-promise": "catalog:",
     "zod": "catalog:",
     "zod-to-json-schema": "3.23.3"
   }

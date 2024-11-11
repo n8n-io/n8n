@@ -15,8 +15,6 @@ import { ActiveExecutions } from '@/active-executions';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import config from '@/config';
 import { EDITOR_UI_DIST_DIR, LICENSE_FEATURES } from '@/constants';
-// import { DatabaseExportService } from '@/databases/import-export/database-export.service';
-// import { DatabaseImportService } from '@/databases/import-export/database-import.service';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
@@ -270,13 +268,6 @@ export class Start extends BaseCommand {
 
 	async run() {
 		const { flags } = await this.parse(Start);
-
-		// @TEMP
-		// await Container.get(DatabaseExportService).export();
-		// Container.get(DatabaseImportService).setConfig({
-		// 	importFilePath: '/tmp/backup/n8n-db-export-2024-09-24.tar.gz',
-		// });
-		// await Container.get(DatabaseImportService).import();
 
 		// Load settings from database and set them to config.
 		const databaseSettings = await Container.get(SettingsRepository).findBy({

@@ -904,7 +904,7 @@
     "simple-git": "3.17.0",
     "snowflake-sdk": "1.12.0",
     "ssh2-sftp-client": "7.2.3",
-    "tmp-promise": "3.0.3",
+    "tmp-promise": "catalog:",
     "ts-ics": "1.2.2",
     "typedi": "catalog:",
     "uuid": "catalog:",

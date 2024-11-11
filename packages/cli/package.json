@@ -171,6 +171,7 @@
     "swagger-ui-express": "5.0.1",
     "syslog-client": "1.1.1",
     "tar-stream": "^3.1.7",
+    "tmp-promise": "catalog:",
     "typedi": "catalog:",
     "unzip-stream": "0.3.4",
     "uuid": "catalog:",

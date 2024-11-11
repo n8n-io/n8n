@@ -59,26 +59,18 @@ export class FilesystemService {
 	 * Extract a tarball to a given directory.
 	 * @param tarballPath Path to the tarball file to extract.
 	 * @param dstDir Path to the directory to extract the tarball into.
-	 * @returns Paths to the extracted files.
 	 */
 	async extractTarball(tarballPath: string, dstDir: string) {
-		await this.checkAccessible(tarballPath); // @TODO: Clearer error if tarball missing
-
-		const extractedFilePaths: string[] = [];
-
 		const extract = tar.extract();
 
 		extract.on('entry', async (header, stream, next) => {
 			const filePath = path.join(dstDir, header.name);
 			await pipeline(stream, fs.createWriteStream(filePath));
-			extractedFilePaths.push(filePath);
 			next();
 		});
 
 		await pipeline(fs.createReadStream(tarballPath), createGunzip(), extract);
 
-		this.logger.info('[FilesystemService] Extracted tarball', { tarballPath });
-
-		return extractedFilePaths;
+		this.logger.debug('[FilesystemService] Extracted tarball', { tarballPath });
 	}
 }

@@ -3,44 +3,48 @@ import { ensureError, jsonParse } from 'n8n-workflow';
 import fs from 'node:fs';
 import path from 'node:path';
 import readline from 'node:readline';
+import type { DirectoryResult } from 'tmp-promise';
+import { dir } from 'tmp-promise';
 import { Service } from 'typedi';
 
+import { MalformedManifestError } from '@/errors/malformed-manifest.error';
+import { MigrationsMismatchError } from '@/errors/migrations-mismatch.error';
 import { NotObjectLiteralError } from '@/errors/not-object-literal.error';
 import { RowCountMismatchError } from '@/errors/row-count-mismatch.error';
+import { UnsupportedDestinationError } from '@/errors/unsupported-destination.error';
+import { FilesystemService } from '@/filesystem/filesystem.service';
 import { Logger } from '@/logging/logger.service';
 import { isObjectLiteral } from '@/utils';
 
 import { MANIFEST_FILENAME } from './constants';
 import { manifestSchema } from './manifest.schema';
 import type { DatabaseImportConfig, Manifest } from './types';
-import { MalformedManifestError } from '../../errors/malformed-manifest.error';
-import { MigrationsMismatchError } from '../../errors/migrations-mismatch.error';
-import { UnsupportedDestinationError } from '../../errors/unsupported-destination.error';
-import { FilesystemService } from '../../filesystem/filesystem.service';
 import { DatabaseSchemaService } from '../database-schema.service';
+import type { DatabaseType } from '../types';
 
 // @TODO: Check minimum version for Postgres?
 // @TODO: Make all info logs debug
 
 @Service()
 export class DatabaseImportService {
-	private config: DatabaseImportConfig = {
-		importFilePath: '/tmp/backup/n8n-db-export-2024-10-11.tar.gz', // @TODO: Pass from command
-		extractDirPath: '/tmp/backup',
-		truncateDestination: true, // @TODO: Only for dev, default it to `false` later
-	};
-
-	/** Paths to files extracted from the tarball. */
-	private extractFilePaths: string[] = [];
+	private config: DatabaseImportConfig = {} as DatabaseImportConfig;
 
 	private manifest: Manifest;
 
+	private readonly dbType: DatabaseType;
+
+	private tmpDir: DirectoryResult;
+
 	constructor(
-		private readonly globalConfig: GlobalConfig,
+		globalConfig: GlobalConfig,
 		private readonly fsService: FilesystemService,
 		private readonly schemaService: DatabaseSchemaService,
 		private readonly logger: Logger,
-	) {}
+	) {
+		this.dbType = globalConfig.database.type;
+
+		if (this.dbType !== 'postgresdb') throw new UnsupportedDestinationError(this.dbType);
+	}
 
 	setConfig(config: Partial<DatabaseImportConfig>) {
 		this.config = { ...this.config, ...config };
@@ -51,21 +55,40 @@ export class DatabaseImportService {
 	/** Import DB tables from a tarball of `.jsonl` files in the storage dir. */
 	async import() {
 		this.logger.info('[ImportService] Starting import');
+		const { input } = this.config;
+		await this.fsService.checkAccessible(input);
 
-		await this.preImportChecks();
+		this.tmpDir = await dir();
+		this.logger.debug(`Extracting temporary files in ${this.tmpDir.path}`);
 
 		try {
+			await this.fsService.extractTarball(this.config.input, this.tmpDir.path);
+
+			this.manifest = await this.getManifest();
+
+			const destinationLastMigration = await this.schemaService.getLastMigration();
+
+			if (this.manifest.lastExecutedMigration !== destinationLastMigration) {
+				throw new MigrationsMismatchError(
+					this.manifest.lastExecutedMigration,
+					destinationLastMigration,
+				);
+			}
+
+			if (this.config.deleteExistingData) {
+				for (const { entityTarget } of this.schemaService.getTables()) {
+					await this.schemaService.getDataSource().getRepository(entityTarget).delete({});
+				}
+			} else {
+				await this.schemaService.checkAllTablesEmpty();
+			}
 			await this.schemaService.disableForeignKeysPostgres();
 			await this.adjustSequences();
 			await this.importFiles();
 			await this.checkImportsAgainstManifest();
-		} catch (error) {
-			this.logger.error('[ImportService] Import failed - changes rolled back', {
-				error: ensureError(error),
-			});
 		} finally {
 			await this.schemaService.enableForeignKeysPostgres();
-			await this.postImportCleanup();
+			await fs.promises.rm(this.tmpDir.path, { recursive: true, force: true });
 		}
 
 		this.logger.info('[ImportService] Completed import');
@@ -75,42 +98,8 @@ export class DatabaseImportService {
 
 	// #region Import steps
 
-	private async preImportChecks() {
-		await this.fsService.checkAccessible(this.config.extractDirPath);
-
-		const dbType = this.globalConfig.database.type;
-
-		if (dbType !== 'postgresdb') throw new UnsupportedDestinationError(dbType);
-
-		this.extractFilePaths = await this.fsService.extractTarball(
-			this.config.importFilePath,
-			this.config.extractDirPath,
-		);
-
-		this.manifest = await this.getManifest();
-
-		const destinationLastMigration = await this.schemaService.getLastMigration();
-
-		if (this.manifest.lastExecutedMigration !== destinationLastMigration) {
-			throw new MigrationsMismatchError(
-				this.manifest.lastExecutedMigration,
-				destinationLastMigration,
-			);
-		}
-
-		if (this.config.truncateDestination) {
-			for (const { entityTarget } of this.schemaService.getTables()) {
-				await this.schemaService.getDataSource().getRepository(entityTarget).delete({});
-			}
-		} else {
-			await this.schemaService.checkAllTablesEmpty();
-		}
-
-		this.logger.info('[ImportService] Pre-import checks passed');
-	}
-
 	private async getManifest() {
-		const manifestFilePath = path.join(this.config.extractDirPath, MANIFEST_FILENAME);
+		const manifestFilePath = path.join(this.tmpDir.path, MANIFEST_FILENAME);
 
 		const manifestJson = await fs.promises.readFile(manifestFilePath, 'utf8');
 
@@ -125,7 +114,7 @@ export class DatabaseImportService {
 	private async importFiles() {
 		await this.schemaService.getDataSource().transaction(async (tx) => {
 			for (const { tableName, entityTarget } of this.schemaService.getTables()) {
-				const jsonlFilePath = path.join(this.config.extractDirPath, tableName) + '.jsonl';
+				const jsonlFilePath = path.join(this.tmpDir.path, tableName) + '.jsonl';
 
 				try {
 					await fs.promises.access(jsonlFilePath);
@@ -190,12 +179,6 @@ export class DatabaseImportService {
 		}
 
 		this.logger.info('[ImportService] Imports match manifest');
-	}
-
-	private async postImportCleanup() {
-		await this.fsService.removeFiles(this.extractFilePaths);
-
-		this.extractFilePaths.length = 0;
 	}
 
 	// #endregion
