@@ -18,6 +18,8 @@ import type { RouterMiddleware } from '@/types/router';
 import { initializeAuthenticatedFeatures, initializeCore } from '@/init';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { projectsRoutes } from '@/routes/projects.routes';
+import WorkflowEvaluationView from './views/WorkflowEvaluationView.vue';
+import NewWorkflowEvaluationView from './views/NewWorkflowEvaluationView.vue';
 
 const ChangePasswordView = async () => await import('./views/ChangePasswordView.vue');
 const ErrorView = async () => await import('./views/ErrorView.vue');
@@ -248,6 +250,80 @@ export const routes: RouteRecordRaw[] = [
 				},
 			},
 		],
+	},
+	{
+		path: '/workflow/:name/evaluation',
+		name: VIEWS.WORKFLOW_EVALUATION,
+		components: {
+			default: WorkflowEvaluationView,
+			header: MainHeader,
+			sidebar: MainSidebar,
+		},
+		meta: {
+			keepWorkflowAlive: true,
+			middleware: ['authenticated'],
+		},
+		// children: [
+		// 	{
+		// 		path: '',
+		// 		name: VIEWS.EXECUTION_HOME,
+		// 		components: {
+		// 			executionPreview: WorkflowExecutionsLandingPage,
+		// 		},
+		// 		meta: {
+		// 			keepWorkflowAlive: true,
+		// 			middleware: ['authenticated'],
+		// 		},
+		// 	},
+		// 	{
+		// 		path: ':executionId',
+		// 		name: VIEWS.EXECUTION_PREVIEW,
+		// 		components: {
+		// 			executionPreview: WorkflowExecutionsPreview,
+		// 		},
+		// 		meta: {
+		// 			keepWorkflowAlive: true,
+		// 			middleware: ['authenticated'],
+		// 		},
+		// 	},
+		// ],
+	},
+	{
+		path: '/workflow/:name/evaluation/new',
+		name: VIEWS.NEW_WORKFLOW_EVALUATION,
+		components: {
+			default: NewWorkflowEvaluationView,
+			header: MainHeader,
+			sidebar: MainSidebar,
+		},
+		meta: {
+			keepWorkflowAlive: true,
+			middleware: ['authenticated'],
+		},
+		// children: [
+		// 	{
+		// 		path: '',
+		// 		name: VIEWS.EXECUTION_HOME,
+		// 		components: {
+		// 			executionPreview: WorkflowExecutionsLandingPage,
+		// 		},
+		// 		meta: {
+		// 			keepWorkflowAlive: true,
+		// 			middleware: ['authenticated'],
+		// 		},
+		// 	},
+		// 	{
+		// 		path: ':executionId',
+		// 		name: VIEWS.EXECUTION_PREVIEW,
+		// 		components: {
+		// 			executionPreview: WorkflowExecutionsPreview,
+		// 		},
+		// 		meta: {
+		// 			keepWorkflowAlive: true,
+		// 			middleware: ['authenticated'],
+		// 		},
+		// 	},
+		// ],
 	},
 	{
 		path: '/workflow/:workflowId/history/:versionId?',

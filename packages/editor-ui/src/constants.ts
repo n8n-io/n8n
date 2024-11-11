@@ -485,6 +485,8 @@ export const enum VIEWS {
 	COMMUNITY_NODES = 'CommunityNodes',
 	WORKFLOWS = 'WorkflowsView',
 	WORKFLOW_EXECUTIONS = 'WorkflowExecutions',
+	WORKFLOW_EVALUATION = 'WorkflowEvaluation',
+	NEW_WORKFLOW_EVALUATION = 'NewWorkflowEvaluation',
 	USAGE = 'Usage',
 	LOG_STREAMING_SETTINGS = 'LogStreamingSettingsView',
 	SSO_SETTINGS = 'SSoSettings',
@@ -581,6 +583,7 @@ export const enum MAIN_HEADER_TABS {
 	WORKFLOW = 'workflow',
 	EXECUTIONS = 'executions',
 	SETTINGS = 'settings',
+	EVALUATION = 'evaluation',
 }
 export const CURL_IMPORT_NOT_SUPPORTED_PROTOCOLS = [
 	'ftp',

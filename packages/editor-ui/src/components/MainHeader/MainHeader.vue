@@ -40,6 +40,7 @@ const dirtyState = ref(false);
 const tabBarItems = computed(() => [
 	{ value: MAIN_HEADER_TABS.WORKFLOW, label: locale.baseText('generic.editor') },
 	{ value: MAIN_HEADER_TABS.EXECUTIONS, label: locale.baseText('generic.executions') },
+	{ value: MAIN_HEADER_TABS.EVALUATION, label: locale.baseText('generic.tests') },
 ]);
 
 const activeNode = computed(() => ndvStore.activeNode);
@@ -72,6 +73,10 @@ onMounted(async () => {
 });
 
 function syncTabsWithRoute(to: RouteLocation, from?: RouteLocation): void {
+	console.log('🚀 ~ syncTabsWithRoute ~ to.name:', to.name);
+	if (to.name === VIEWS.WORKFLOW_EVALUATION) {
+		activeHeaderTab.value = MAIN_HEADER_TABS.EVALUATION;
+	}
 	if (
 		to.name === VIEWS.EXECUTION_HOME ||
 		to.name === VIEWS.WORKFLOW_EXECUTIONS ||
@@ -109,6 +114,11 @@ function onTabSelected(tab: MAIN_HEADER_TABS, event: MouseEvent) {
 
 		case MAIN_HEADER_TABS.EXECUTIONS:
 			void navigateToExecutionsView(openInNewTab);
+			break;
+
+		case MAIN_HEADER_TABS.EVALUATION:
+			activeHeaderTab.value = MAIN_HEADER_TABS.EVALUATION;
+			void router.push({ name: VIEWS.WORKFLOW_EVALUATION });
 			break;
 
 		default:
