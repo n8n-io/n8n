@@ -1,5 +1,6 @@
 import axios from 'axios';
 import type express from 'express';
+import type { IRunData } from 'n8n-workflow';
 import { FORM_NODE_TYPE, sleep, Workflow } from 'n8n-workflow';
 import { Service } from 'typedi';
 
@@ -57,8 +58,7 @@ export class WaitingForms extends WaitingWebhooks {
 		} catch (error) {}
 	}
 
-	private findCompletionPage(execution: IExecutionResponse, lastNodeExecuted: string) {
-		const workflow = this.getWorkflow(execution);
+	findCompletionPage(workflow: Workflow, runData: IRunData, lastNodeExecuted: string) {
 		const parentNodes = workflow.getParentNodes(lastNodeExecuted);
 		const lastNode = workflow.nodes[lastNodeExecuted];
 
@@ -75,7 +75,7 @@ export class WaitingForms extends WaitingWebhooks {
 					!node.disabled &&
 					node.type === FORM_NODE_TYPE &&
 					node.parameters.operation === 'completion' &&
-					execution.data.resultData.runData[nodeName]
+					runData[nodeName]
 				);
 			});
 		}
@@ -118,7 +118,13 @@ export class WaitingForms extends WaitingWebhooks {
 		if (execution.finished) {
 			// find the completion page to render
 			// if there is no completion page, render the default page
-			const completionPage = this.findCompletionPage(execution, lastNodeExecuted);
+			const workflow = this.getWorkflow(execution);
+
+			const completionPage = this.findCompletionPage(
+				workflow,
+				execution.data.resultData.runData,
+				lastNodeExecuted,
+			);
 
 			if (!completionPage) {
 				res.render('form-trigger-completion', {
