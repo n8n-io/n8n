@@ -100,6 +100,13 @@ async function fetchExecution() {
 	} catch (error) {
 		toast.showError(error, i18n.baseText('nodeView.showError.openExecution.title'));
 	}
+
+	if (!currentExecution.value) {
+		toast.showMessage({
+			type: 'error',
+			message: i18n.baseText('executionsView.missingExeuctionId'),
+		});
+	}
 }
 
 function onDocumentVisibilityChange() {
