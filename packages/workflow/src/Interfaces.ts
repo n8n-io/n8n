@@ -2080,6 +2080,9 @@ export type INodeTypeData = LoadedData<INodeType | IVersionedNodeType>;
 
 export interface IRun {
 	data: IRunExecutionData;
+	/**
+	 * @deprecated Use status instead
+	 */
 	finished?: boolean;
 	mode: WorkflowExecuteMode;
 	waitTill?: Date | null;
@@ -2552,6 +2555,9 @@ export type AnnotationVote = 'up' | 'down';
 
 export interface ExecutionSummary {
 	id: string;
+	/**
+	 * @deprecated Use status instead
+	 */
 	finished?: boolean;
 	mode: WorkflowExecuteMode;
 	retryOf?: string | null;
@@ -2701,6 +2707,9 @@ export interface ExecutionOptions {
 }
 
 export interface ExecutionFilters {
+	/**
+	 * @deprecated Use status instead
+	 */
 	finished?: boolean;
 	mode?: WorkflowExecuteMode[];
 	retryOf?: string;
