@@ -89,11 +89,6 @@ export class TestDefinitionService {
 			await validateEntity(updatedTest);
 		}
 
-		// Do not allow updating the workflow ID after test definition creation
-		if (attrs.workflowId) {
-			delete attrs.workflowId;
-		}
-
 		// Check if the annotation tag exists
 		if (attrs.annotationTagId) {
 			const annotationTagExists = await this.annotationTagRepository.exists({
