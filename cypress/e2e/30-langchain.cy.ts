@@ -27,6 +27,8 @@ import {
 	clickCreateNewCredential,
 	clickExecuteNode,
 	clickGetBackToCanvas,
+	getNoToolsUsedCallout,
+	getOutputPanelTable,
 	toggleParameterCheckboxInputByName,
 } from '../composables/ndv';
 import {
@@ -410,5 +412,102 @@ describe('Langchain Integration', () => {
 		assertInputOutputText('Prague', 'exist');
 		assertInputOutputText('Berlin', 'not.exist');
 		assertInputOutputText('Kyiv', 'not.exist');
+	});
+
+	it.only('should show tool info notice if no existing tools were used during execution', () => {
+		addNodeToCanvas(MANUAL_CHAT_TRIGGER_NODE_NAME, true);
+		addNodeToCanvas(AGENT_NODE_NAME, true);
+
+		addLanguageModelNodeToParent(
+			AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME,
+			AGENT_NODE_NAME,
+			true,
+		);
+
+		clickCreateNewCredential();
+		setCredentialValues({
+			apiKey: 'sk_test_123',
+		});
+		clickGetBackToCanvas();
+
+		addToolNodeToParent(AI_TOOL_CALCULATOR_NODE_NAME, AGENT_NODE_NAME);
+		clickGetBackToCanvas();
+		openNode(AGENT_NODE_NAME);
+
+		const inputMessage = 'Hello!';
+		const outputMessage = 'Hi there! How can I assist you today?';
+
+		clickExecuteNode();
+
+		runMockWorkflowExecution({
+			trigger: () => sendManualChatMessage(inputMessage),
+			runData: [
+				createMockNodeExecutionData(AGENT_NODE_NAME, {
+					jsonData: {
+						main: { output: outputMessage },
+					},
+					metadata: {
+						subRun: [{ node: AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME, runIndex: 0 }],
+					},
+				}),
+			],
+			lastNodeExecuted: AGENT_NODE_NAME,
+		});
+		closeManualChatModal();
+		openNode(AGENT_NODE_NAME);
+
+		getNoToolsUsedCallout().should('exist');
+	});
+
+	it('should not show tool info notice if tools were used during execution', () => {
+		addNodeToCanvas(MANUAL_CHAT_TRIGGER_NODE_NAME, true);
+		addNodeToCanvas(AGENT_NODE_NAME, true);
+
+		addLanguageModelNodeToParent(
+			AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME,
+			AGENT_NODE_NAME,
+			true,
+		);
+
+		clickCreateNewCredential();
+		setCredentialValues({
+			apiKey: 'sk_test_123',
+		});
+		clickGetBackToCanvas();
+
+		addToolNodeToParent(AI_TOOL_CALCULATOR_NODE_NAME, AGENT_NODE_NAME);
+		clickGetBackToCanvas();
+		openNode(AGENT_NODE_NAME);
+
+		const inputMessage = 'Hello!';
+		const outputMessage = 'Hi there! How can I assist you today?';
+
+		clickExecuteNode();
+
+		runMockWorkflowExecution({
+			trigger: () => sendManualChatMessage(inputMessage),
+			runData: [
+				createMockNodeExecutionData(AGENT_NODE_NAME, {
+					jsonData: {
+						main: { output: outputMessage },
+					},
+					metadata: {
+						subRun: [
+							{ node: AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME, runIndex: 0 },
+							{ node: AI_TOOL_CALCULATOR_NODE_NAME, runIndex: 0 },
+						],
+					},
+				}),
+				createMockNodeExecutionData(AI_TOOL_CALCULATOR_NODE_NAME, {}),
+			],
+			lastNodeExecuted: AGENT_NODE_NAME,
+		});
+
+		closeManualChatModal();
+		openNode(AGENT_NODE_NAME);
+		// This waits to ensure the output panel is rendered
+		getOutputPanelTable();
+
+		getNoToolsUsedCallout().should('not.exist');
 	});
 });
