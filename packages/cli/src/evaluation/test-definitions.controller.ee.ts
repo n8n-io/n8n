@@ -65,7 +65,7 @@ export class TestDefinitionsController {
 	}
 
 	@Patch('/:id')
-	async update(req: TestDefinitionsRequest.Update) {
+	async patch(req: TestDefinitionsRequest.Patch) {
 		if (!isPositiveInteger(req.params.id)) {
 			throw new BadRequestError('Test ID is not a number');
 		}
