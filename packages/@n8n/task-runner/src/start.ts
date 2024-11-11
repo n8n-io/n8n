@@ -1,4 +1,4 @@
-import { ensureError } from 'n8n-workflow';
+// import { ensureError } from 'n8n-workflow';
 import Container from 'typedi';
 
 import { MainConfig } from './config/main-config';
@@ -6,6 +6,13 @@ import { JsTaskRunner } from './js-task-runner/js-task-runner';
 
 let runner: JsTaskRunner | undefined;
 let isShuttingDown = false;
+
+const ensureError = (e: unknown) => {
+	if (e instanceof Error) {
+		return e;
+	}
+	return new Error(String(e));
+};
 
 function createSignalHandler(signal: string) {
 	return async function onSignal() {

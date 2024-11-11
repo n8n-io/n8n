@@ -6,7 +6,7 @@
     "start": "node dist/start.js",
     "dev": "pnpm build && pnpm start",
     "typecheck": "tsc --noEmit",
-    "build": "tsc -p ./tsconfig.build.json && tsc-alias -p tsconfig.build.json",
+    "build": "tsc -p ./tsconfig.build.json --noEmitOnError && tsc-alias -p tsconfig.build.json",
     "format": "biome format --write src",
     "format:check": "biome ci src",
     "test": "jest",

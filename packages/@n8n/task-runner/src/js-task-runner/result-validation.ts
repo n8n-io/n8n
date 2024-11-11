@@ -1,4 +1,4 @@
-import { normalizeItems } from 'n8n-core';
+// import { normalizeItems } from 'n8n-core';
 import type { INodeExecutionData } from 'n8n-workflow';
 
 import { ValidationError } from './errors/validation-error';
@@ -71,9 +71,9 @@ export function validateRunForAllItemsOutput(
 		}
 	}
 
-	const returnData = normalizeItems(executionResult);
-	returnData.forEach(validateItem);
-	return returnData;
+	// const returnData = normalizeItems(executionResult);
+	// returnData.forEach(validateItem);
+	return executionResult;
 }
 
 /**
@@ -103,14 +103,14 @@ export function validateRunForEachItemOutput(
 		});
 	}
 
-	const [returnData] = normalizeItems([executionResult]);
+	// const [returnData] = normalizeItems([executionResult]);
 
-	validateItem(returnData, itemIndex);
+	// validateItem(returnData, itemIndex);
 
 	// If at least one top-level key is a supported item key (`json`, `binary`, etc.),
 	// and another top-level key is unrecognized, then the user mis-added a property
 	// directly on the item, when they intended to add it on the `json` property
-	validateTopLevelKeys(returnData, itemIndex);
+	// validateTopLevelKeys(returnData, itemIndex);
 
-	return returnData;
+	return [executionResult];
 }

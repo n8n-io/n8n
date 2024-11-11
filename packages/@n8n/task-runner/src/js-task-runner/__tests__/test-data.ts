@@ -1,6 +1,22 @@
 import type { IDataObject, INode, INodeExecutionData, ITaskData } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+// import { NodeConnectionType } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
+
+// eslint-disable-next-line no-restricted-syntax
+enum NodeConnectionType {
+	AiAgent = 'ai_agent',
+	AiChain = 'ai_chain',
+	AiDocument = 'ai_document',
+	AiEmbedding = 'ai_embedding',
+	AiLanguageModel = 'ai_languageModel',
+	AiMemory = 'ai_memory',
+	AiOutputParser = 'ai_outputParser',
+	AiRetriever = 'ai_retriever',
+	AiTextSplitter = 'ai_textSplitter',
+	AiTool = 'ai_tool',
+	AiVectorStore = 'ai_vectorStore',
+	Main = 'main',
+}
 
 import type { JSExecSettings } from '@/js-task-runner/js-task-runner';
 import type { DataRequestResponse } from '@/runner-types';
@@ -76,6 +92,7 @@ export const newDataRequestResponse = (
 			id: '1',
 			name: 'Test Workflow',
 			active: true,
+			// @ts-expect-error test
 			connections: {
 				[manualTriggerNode.name]: {
 					main: [[{ node: codeNode.name, type: NodeConnectionType.Main, index: 0 }]],

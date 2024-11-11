@@ -11,6 +11,16 @@
       "import": "./src/index.ts",
       "types": "./dist/index.d.ts"
     },
+    "./Workflow": {
+      "import": "./src/Workflow.ts",
+      "require": "./dist/Workflow.js",
+      "types": "./dist/Workflow.d.ts"
+    },
+    "./WorkflowDataProxy": {
+      "import": "./src/WorkflowDataProxy.ts",
+      "require": "./dist/WorkflowDataProxy.js",
+      "types": "./dist/WorkflowDataProxy.d.ts"
+    },
     "./*": "./*"
   },
   "scripts": {

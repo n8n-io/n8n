@@ -4,7 +4,12 @@
 		"composite": true,
 		"rootDir": "src",
 		"outDir": "dist",
-		"tsBuildInfoFile": "dist/build.tsbuildinfo"
+		"tsBuildInfoFile": "dist/build.tsbuildinfo",
+		"paths": {
+			"@/*": ["./*"],
+			"n8n-workflow/Workflow": ["./packages/n8n-workflow/src/Workflow"],
+			"n8n-workflow/WorkflowDataProxy": ["./packages/n8n-workflow/src/WorkflowDataProxy"]
+		}
 	},
 	"include": ["src/**/*.ts"],
 	"exclude": ["test/**", "src/**/__tests__/**"]

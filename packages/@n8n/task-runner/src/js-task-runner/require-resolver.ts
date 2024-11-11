@@ -1,4 +1,4 @@
-import { ApplicationError } from 'n8n-workflow';
+// import { ApplicationError } from 'n8n-workflow';
 import { isBuiltin } from 'node:module';
 
 import { ExecutionError } from './errors/execution-error';
@@ -18,6 +18,8 @@ export type RequireResolverOpts = {
 };
 
 export type RequireResolver = (request: string) => unknown;
+
+const ApplicationError = Error;
 
 export function createRequireResolver({
 	allowedBuiltInModules,

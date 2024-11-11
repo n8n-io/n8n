@@ -1,4 +1,3 @@
-import { ApplicationError, ensureError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { type MessageEvent, WebSocket } from 'ws';
 
@@ -6,6 +5,15 @@ import type { BaseRunnerConfig } from '@/config/base-runner-config';
 import type { BrokerMessage, RunnerMessage } from '@/message-types';
 import { TaskRunnerNodeTypes } from '@/node-types';
 import { RPC_ALLOW_LIST, type TaskResultData } from '@/runner-types';
+
+const ensureError = (e: unknown) => {
+	if (e instanceof Error) {
+		return e;
+	}
+	return new Error(String(e));
+};
+
+class ApplicationError extends Error {}
 
 export interface Task<T = unknown> {
 	taskId: string;

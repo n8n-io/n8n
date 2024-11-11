@@ -4,7 +4,9 @@
 		"rootDir": ".",
 		"baseUrl": "src",
 		"paths": {
-			"@/*": ["./*"]
+			"@/*": ["./*"],
+			"n8n-workflow/Workflow": ["./packages/n8n-workflow/src/Workflow"],
+			"n8n-workflow/WorkflowDataProxy": ["./packages/n8n-workflow/src/WorkflowDataProxy"]
 		},
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo"
 	},

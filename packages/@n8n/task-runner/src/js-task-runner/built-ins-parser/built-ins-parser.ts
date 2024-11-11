@@ -1,8 +1,37 @@
 import type { CallExpression, Identifier, Node, Program } from 'acorn';
 import { parse } from 'acorn';
 import { ancestor } from 'acorn-walk';
-import type { Result } from 'n8n-workflow';
-import { toResult } from 'n8n-workflow';
+// import type { Result } from 'n8n-workflow';
+
+const ensureError = (e: unknown) => {
+	if (e instanceof Error) {
+		return e;
+	}
+	return new Error(String(e));
+};
+
+export type ResultOk<T> = { ok: true; result: T };
+export type ResultError<E> = { ok: false; error: E };
+export type Result<T, E> = ResultOk<T> | ResultError<E>;
+
+export const createResultOk = <T>(data: T): ResultOk<T> => ({
+	ok: true,
+	result: data,
+});
+
+export const createResultError = <E = unknown>(error: E): ResultError<E> => ({
+	ok: false,
+	error,
+});
+
+export const toResult = <T, E extends Error = Error>(fn: () => T): Result<T, E> => {
+	try {
+		return createResultOk<T>(fn());
+	} catch (e) {
+		const error = ensureError(e);
+		return createResultError<E>(error as E);
+	}
+};
 
 import {
 	isAssignmentExpression,
