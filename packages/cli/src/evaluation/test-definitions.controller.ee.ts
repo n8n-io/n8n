@@ -29,18 +29,24 @@ export class TestDefinitionsController {
 
 	@Get('/', { middlewares: listQueryMiddleware })
 	async getMany(req: TestDefinitionsRequest.GetMany) {
-		const workflowIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
+		const userAccessibleWorkflowIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
 
-		return await this.testDefinitionService.getMany(req.listQueryOptions, workflowIds);
+		return await this.testDefinitionService.getMany(
+			req.listQueryOptions,
+			userAccessibleWorkflowIds,
+		);
 	}
 
 	@Get('/:id')
 	async getOne(req: TestDefinitionsRequest.GetOne) {
 		const testDefinitionId = this.validateId(req.params.id);
 
-		const workflowIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
+		const userAccessibleWorkflowIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
 
-		const testDefinition = await this.testDefinitionService.findOne(testDefinitionId, workflowIds);
+		const testDefinition = await this.testDefinitionService.findOne(
+			testDefinitionId,
+			userAccessibleWorkflowIds,
+		);
 
 		if (!testDefinition) throw new NotFoundError('Test definition not found');
 
@@ -55,13 +61,16 @@ export class TestDefinitionsController {
 			return;
 		}
 
-		const workflowIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
+		const userAccessibleWorkflowIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
 
-		if (!workflowIds.includes(req.body.workflowId)) {
+		if (!userAccessibleWorkflowIds.includes(req.body.workflowId)) {
 			throw new ForbiddenError('User does not have access to the workflow');
 		}
 
-		if (req.body.evaluationWorkflowId && !workflowIds.includes(req.body.evaluationWorkflowId)) {
+		if (
+			req.body.evaluationWorkflowId &&
+			!userAccessibleWorkflowIds.includes(req.body.evaluationWorkflowId)
+		) {
 			throw new ForbiddenError('User does not have access to the evaluation workflow');
 		}
 
@@ -74,12 +83,12 @@ export class TestDefinitionsController {
 	async delete(req: TestDefinitionsRequest.Delete) {
 		const testDefinitionId = this.validateId(req.params.id);
 
-		const workflowIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
+		const userAccessibleWorkflowIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
 
-		if (workflowIds.length === 0)
+		if (userAccessibleWorkflowIds.length === 0)
 			throw new ForbiddenError('User does not have access to any workflows');
 
-		await this.testDefinitionService.delete(testDefinitionId, workflowIds);
+		await this.testDefinitionService.delete(testDefinitionId, userAccessibleWorkflowIds);
 
 		return { success: true };
 	}
@@ -94,19 +103,29 @@ export class TestDefinitionsController {
 			return;
 		}
 
-		const workflowIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
+		const userAccessibleWorkflowIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
 
 		// Fail fast if no workflows are accessible
-		if (workflowIds.length === 0)
+		if (userAccessibleWorkflowIds.length === 0)
 			throw new ForbiddenError('User does not have access to any workflows');
 
-		const existingTest = await this.testDefinitionService.findOne(testDefinitionId, workflowIds);
+		const existingTest = await this.testDefinitionService.findOne(
+			testDefinitionId,
+			userAccessibleWorkflowIds,
+		);
 		if (!existingTest) throw new NotFoundError('Test definition not found');
 
-		if (req.body.evaluationWorkflowId && !workflowIds.includes(req.body.evaluationWorkflowId)) {
+		if (
+			req.body.evaluationWorkflowId &&
+			!userAccessibleWorkflowIds.includes(req.body.evaluationWorkflowId)
+		) {
 			throw new ForbiddenError('User does not have access to the evaluation workflow');
 		}
 
-		return await this.testDefinitionService.update(testDefinitionId, req.body, workflowIds);
+		return await this.testDefinitionService.update(
+			testDefinitionId,
+			req.body,
+			userAccessibleWorkflowIds,
+		);
 	}
 }
