@@ -123,7 +123,7 @@ export class TestDefinitionsController {
 			throw new ForbiddenError('User does not have access to the evaluation workflow');
 		}
 
-		await this.testDefinitionService.update(testDefinitionId, req.body, userAccessibleWorkflowIds);
+		await this.testDefinitionService.update(testDefinitionId, req.body);
 
 		// Respond with the updated test definition
 		const testDefinition = await this.testDefinitionService.findOne(
