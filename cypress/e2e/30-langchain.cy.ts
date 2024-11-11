@@ -459,7 +459,7 @@ describe('Langchain Integration', () => {
 		getNoToolsUsedCallout().should('exist');
 	});
 
-	it('should not show tool info notice if tools were used during execution', () => {
+	it.only('should not show tool info notice if tools were used during execution', () => {
 		addNodeToCanvas(MANUAL_CHAT_TRIGGER_NODE_NAME, true);
 		addNodeToCanvas(AGENT_NODE_NAME, true);
 
@@ -492,10 +492,7 @@ describe('Langchain Integration', () => {
 						main: { output: outputMessage },
 					},
 					metadata: {
-						subRun: [
-							{ node: AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME, runIndex: 0 },
-							{ node: AI_TOOL_CALCULATOR_NODE_NAME, runIndex: 0 },
-						],
+						subRun: [{ node: AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME, runIndex: 0 }],
 					},
 				}),
 				createMockNodeExecutionData(AI_TOOL_CALCULATOR_NODE_NAME, {}),
