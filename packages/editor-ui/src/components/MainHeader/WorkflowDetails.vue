@@ -55,7 +55,8 @@ import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import type { BaseTextKey } from '@/plugins/i18n';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
-import { useLocalStorage } from '@vueuse/core';
+import { useNodeViewVersionSwitcher } from '@/composables/useNodeViewVersionSwitcher';
+import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 const props = defineProps<{
 	readOnly?: boolean;
@@ -89,6 +90,7 @@ const message = useMessage();
 const toast = useToast();
 const documentTitle = useDocumentTitle();
 const workflowHelpers = useWorkflowHelpers({ router });
+const pageRedirectionHelper = usePageRedirectionHelper();
 
 const isTagsEditEnabled = ref(false);
 const isNameEditEnabled = ref(false);
@@ -99,16 +101,14 @@ const importFileRef = ref<HTMLInputElement | undefined>();
 const tagsEventBus = createEventBus();
 const sourceControlModalEventBus = createEventBus();
 
-const nodeViewSwitcher = useLocalStorage('NodeView.switcher', '');
-const nodeViewVersion = useLocalStorage('NodeView.version', '1');
-
-const isNodeViewSwitcherEnabled = computed(() => {
-	return (
-		import.meta.env.DEV ||
-		nodeViewSwitcher.value === 'true' ||
-		settingsStore.deploymentType === 'n8n-internal'
-	);
-});
+const {
+	nodeViewVersion,
+	nodeViewSwitcherDiscovered,
+	isNodeViewDiscoveryTooltipVisible,
+	switchNodeViewVersion,
+	setNodeViewSwitcherDropdownOpened,
+	setNodeViewSwitcherDiscovered,
+} = useNodeViewVersionSwitcher();
 
 const hasChanged = (prev: string[], curr: string[]) => {
 	if (prev.length !== curr.length) {
@@ -189,16 +189,26 @@ const workflowMenuItems = computed<ActionDropdownItem[]>(() => {
 		disabled: !onWorkflowPage.value || isNewWorkflow.value,
 	});
 
-	if (isNodeViewSwitcherEnabled.value) {
-		actions.push({
-			id: WORKFLOW_MENU_ACTIONS.SWITCH_NODE_VIEW_VERSION,
-			label:
-				nodeViewVersion.value === '2'
-					? locale.baseText('menuActions.switchToOldNodeViewVersion')
-					: locale.baseText('menuActions.switchToNewNodeViewVersion'),
-			disabled: !onWorkflowPage.value,
-		});
-	}
+	actions.push({
+		id: WORKFLOW_MENU_ACTIONS.SWITCH_NODE_VIEW_VERSION,
+		...(nodeViewVersion.value === '2'
+			? {}
+			: nodeViewSwitcherDiscovered.value
+				? {
+						badge: locale.baseText('menuActions.badge.alpha'),
+						badgeProps: {
+							theme: 'tertiary',
+						},
+					}
+				: {
+						badge: locale.baseText('menuActions.badge.new'),
+					}),
+		label:
+			nodeViewVersion.value === '2'
+				? locale.baseText('menuActions.switchToOldNodeViewVersion')
+				: locale.baseText('menuActions.switchToNewNodeViewVersion'),
+		disabled: !onWorkflowPage.value,
+	});
 
 	if ((workflowPermissions.value.delete && !props.readOnly) || isNewWorkflow.value) {
 		actions.push({
@@ -399,6 +409,10 @@ async function handleFileImport(): Promise<void> {
 	}
 }
 
+function onWorkflowMenuOpen(visible: boolean) {
+	setNodeViewSwitcherDropdownOpened(visible);
+}
+
 async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void> {
 	switch (action) {
 		case WORKFLOW_MENU_ACTIONS.DUPLICATE: {
@@ -499,6 +513,8 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.SWITCH_NODE_VIEW_VERSION: {
+			setNodeViewSwitcherDiscovered();
+
 			if (uiStore.stateIsDirty) {
 				const confirmModal = await message.confirm(
 					locale.baseText('generic.unsavedWork.confirmMessage.message'),
@@ -522,11 +538,7 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 				}
 			}
 
-			if (nodeViewVersion.value === '1') {
-				nodeViewVersion.value = '2';
-			} else {
-				nodeViewVersion.value = '1';
-			}
+			switchNodeViewVersion();
 
 			break;
 		}
@@ -574,11 +586,11 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 }
 
 function goToUpgrade() {
-	void uiStore.goToUpgrade('workflow_sharing', 'upgrade-workflow-sharing');
+	void pageRedirectionHelper.goToUpgrade('workflow_sharing', 'upgrade-workflow-sharing');
 }
 
 function goToWorkflowHistoryUpgrade() {
-	void uiStore.goToUpgrade('workflow-history', 'upgrade-workflow-history');
+	void pageRedirectionHelper.goToUpgrade('workflow-history', 'upgrade-workflow-history');
 }
 
 function showCreateWorkflowSuccessToast(id?: string) {
@@ -734,11 +746,25 @@ function showCreateWorkflowSuccessToast(id?: string) {
 					data-test-id="workflow-import-input"
 					@change="handleFileImport()"
 				/>
-				<N8nActionDropdown
-					:items="workflowMenuItems"
-					data-test-id="workflow-menu"
-					@select="onWorkflowMenuSelect"
-				/>
+				<N8nTooltip :visible="isNodeViewDiscoveryTooltipVisible">
+					<N8nActionDropdown
+						:items="workflowMenuItems"
+						data-test-id="workflow-menu"
+						@select="onWorkflowMenuSelect"
+						@visible-change="onWorkflowMenuOpen"
+					/>
+					<template #content>
+						<div class="mb-4xs">
+							<N8nBadge>{{ $locale.baseText('menuActions.badge.alpha') }}</N8nBadge>
+						</div>
+						{{ $locale.baseText('menuActions.nodeViewDiscovery.tooltip') }}
+						<N8nIcon
+							:class="$style.closeNodeViewDiscovery"
+							icon="times-circle"
+							@click="setNodeViewSwitcherDiscovered"
+						/>
+					</template>
+				</N8nTooltip>
 			</div>
 		</PushConnectionTracker>
 	</div>
@@ -826,5 +852,12 @@ $--header-spacing: 20px;
 
 .disabledShareButton {
 	cursor: not-allowed;
+}
+
+.closeNodeViewDiscovery {
+	position: absolute;
+	right: var(--spacing-xs);
+	top: var(--spacing-xs);
+	cursor: pointer;
 }
 </style>

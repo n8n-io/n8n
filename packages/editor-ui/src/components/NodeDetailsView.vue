@@ -36,6 +36,7 @@ import { usePinnedData } from '@/composables/usePinnedData';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@/composables/useI18n';
 import { storeToRefs } from 'pinia';
+import { useStyles } from '@/composables/useStyles';
 
 const emit = defineEmits<{
 	saveKeyboardShortcut: [event: KeyboardEvent];
@@ -73,6 +74,7 @@ const deviceSupport = useDeviceSupport();
 const telemetry = useTelemetry();
 const i18n = useI18n();
 const message = useMessage();
+const { APP_Z_INDEXES } = useStyles();
 
 const settingsEventBus = createEventBus();
 const redrawRequired = ref(false);
@@ -152,6 +154,29 @@ const parentNode = computed(() => {
 });
 
 const inputNodeName = computed<string | undefined>(() => {
+	const nodeOutputs =
+		activeNode.value && activeNodeType.value
+			? NodeHelpers.getNodeOutputs(props.workflowObject, activeNode.value, activeNodeType.value)
+			: [];
+
+	const nonMainOutputs = nodeOutputs.filter((output) => {
+		if (typeof output === 'string') return output !== NodeConnectionType.Main;
+
+		return output.type !== NodeConnectionType.Main;
+	});
+
+	const isSubNode = nonMainOutputs.length > 0;
+
+	if (isSubNode && activeNode.value) {
+		// For sub-nodes, we need to get their connected output node to determine the input
+		// because sub-nodes use specialized outputs (e.g. NodeConnectionType.AiTool)
+		// instead of the standard Main output type
+		const connectedOutputNode = props.workflowObject.getChildNodes(
+			activeNode.value.name,
+			'ALL_NON_MAIN',
+		)?.[0];
+		return connectedOutputNode;
+	}
 	return selectedInput.value || parentNode.value;
 });
 
@@ -362,7 +387,7 @@ const onWorkflowActivate = () => {
 	}, 1000);
 };
 
-const onOutputItemHover = (e: { itemIndex: number; outputIndex: number }) => {
+const onOutputItemHover = (e: { itemIndex: number; outputIndex: number } | null) => {
 	if (e === null || !activeNode.value || !isPairedItemHoveringEnabled.value) {
 		ndvStore.setHoveringItem(null);
 		return;
@@ -668,7 +693,7 @@ onBeforeUnmount(() => {
 		width="auto"
 		:append-to="`#${APP_MODALS_ELEMENT_ID}`"
 		data-test-id="ndv"
-		z-index="1800"
+		:z-index="APP_Z_INDEXES.NDV"
 		:data-has-output-connection="hasOutputConnection"
 	>
 		<n8n-tooltip

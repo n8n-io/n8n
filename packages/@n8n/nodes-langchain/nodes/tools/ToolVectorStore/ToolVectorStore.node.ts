@@ -1,4 +1,9 @@
-import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
+import type {
+	INodeType,
+	INodeTypeDescription,
+	ISupplyDataFunctions,
+	SupplyData,
+} from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 
 import { VectorStoreQATool } from 'langchain/tools';
@@ -58,7 +63,7 @@ export class ToolVectorStore implements INodeType {
 				name: 'name',
 				type: 'string',
 				default: '',
-				placeholder: 'e.g. state_of_union_address',
+				placeholder: 'e.g. company_knowledge_base',
 				validateType: 'string-alphanumeric',
 				description: 'Name of the vector store',
 			},
@@ -67,7 +72,7 @@ export class ToolVectorStore implements INodeType {
 				name: 'description',
 				type: 'string',
 				default: '',
-				placeholder: 'The most recent state of the Union address',
+				placeholder: 'Retrieves data about [insert information about your data here]...',
 				typeOptions: {
 					rows: 3,
 				},
@@ -82,7 +87,7 @@ export class ToolVectorStore implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const name = this.getNodeParameter('name', itemIndex) as string;
 		const toolDescription = this.getNodeParameter('description', itemIndex) as string;
 		const topK = this.getNodeParameter('topK', itemIndex, 4) as number;

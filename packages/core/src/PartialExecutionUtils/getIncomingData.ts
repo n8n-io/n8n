@@ -20,3 +20,26 @@ export function getIncomingData(
 
 	return runData[nodeName][runIndex].data[connectionType][outputIndex];
 }
+
+function getRunIndexLength(runData: IRunData, nodeName: string) {
+	return runData[nodeName]?.length ?? 0;
+}
+
+export function getIncomingDataFromAnyRun(
+	runData: IRunData,
+	nodeName: string,
+	connectionType: NodeConnectionType,
+	outputIndex: number,
+): { data: INodeExecutionData[]; runIndex: number } | undefined {
+	const maxRunIndexes = getRunIndexLength(runData, nodeName);
+
+	for (let runIndex = 0; runIndex < maxRunIndexes; runIndex++) {
+		const data = getIncomingData(runData, nodeName, runIndex, connectionType, outputIndex);
+
+		if (data && data.length > 0) {
+			return { data, runIndex };
+		}
+	}
+
+	return undefined;
+}

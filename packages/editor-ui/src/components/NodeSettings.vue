@@ -124,7 +124,7 @@ const currentWorkflow = computed(() =>
 );
 const hasForeignCredential = computed(() => props.foreignCredentials.length > 0);
 const isHomeProjectTeam = computed(
-	() => currentWorkflow.value.homeProject?.type === ProjectTypes.Team,
+	() => currentWorkflow.value?.homeProject?.type === ProjectTypes.Team,
 );
 const isReadOnly = computed(
 	() => props.readOnly || (hasForeignCredential.value && !isHomeProjectTeam.value),
@@ -713,7 +713,8 @@ const populateSettings = () => {
 						},
 					],
 					default: 'stopWorkflow',
-					noDataExpression: i18n.baseText('nodeSettings.onError.description'),
+					description: i18n.baseText('nodeSettings.onError.description'),
+					noDataExpression: true,
 				},
 			] as INodeProperties[]),
 		);
@@ -973,6 +974,7 @@ onBeforeUnmount(() => {
 						telemetry-source="parameters"
 						@execute="onNodeExecute"
 						@stop-execution="onStopExecution"
+						@value-changed="valueChanged"
 					/>
 				</div>
 			</div>

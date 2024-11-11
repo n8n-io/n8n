@@ -38,6 +38,7 @@ import { ExecutionSoftDelete1693491613982 } from './1693491613982-ExecutionSoftD
 import { DropRoleMapping1705429061930 } from './1705429061930-DropRoleMapping';
 import { AddActivatedAtUserSetting1717498465931 } from './1717498465931-AddActivatedAtUserSetting';
 import { AddApiKeysTable1724951148974 } from './1724951148974-AddApiKeysTable';
+import { AddMissingPrimaryKeyOnAnnotationTagMapping1728659839644 } from './1728659839644-AddMissingPrimaryKeyOnAnnotationTagMapping';
 import { UniqueWorkflowNames1620821879465 } from '../common/1620821879465-UniqueWorkflowNames';
 import { UpdateWorkflowCredentials1630330987096 } from '../common/1630330987096-UpdateWorkflowCredentials';
 import { AddNodeIds1658930531669 } from '../common/1658930531669-AddNodeIds';
@@ -63,6 +64,8 @@ import { RefactorExecutionIndices1723796243146 } from '../common/1723796243146-R
 import { CreateAnnotationTables1724753530828 } from '../common/1724753530828-CreateExecutionAnnotationTables';
 import { CreateProcessedDataTable1726606152711 } from '../common/1726606152711-CreateProcessedDataTable';
 import { SeparateExecutionCreationFromStart1727427440136 } from '../common/1727427440136-SeparateExecutionCreationFromStart';
+import { UpdateProcessedDataValueColumnToText1729607673464 } from '../common/1729607673464-UpdateProcessedDataValueColumnToText';
+import { CreateTestDefinitionTable1730386903556 } from '../common/1730386903556-CreateTestDefinitionTable';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -128,6 +131,9 @@ const sqliteMigrations: Migration[] = [
 	AddApiKeysTable1724951148974,
 	SeparateExecutionCreationFromStart1727427440136,
 	CreateProcessedDataTable1726606152711,
+	AddMissingPrimaryKeyOnAnnotationTagMapping1728659839644,
+	UpdateProcessedDataValueColumnToText1729607673464,
+	CreateTestDefinitionTable1730386903556,
 ];
 
 export { sqliteMigrations };

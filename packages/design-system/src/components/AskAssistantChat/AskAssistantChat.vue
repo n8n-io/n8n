@@ -226,6 +226,16 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 						data-test-id="chat-message-system"
 					>
 						<span>⚠️ {{ message.content }}</span>
+						<n8n-button
+							v-if="message.retry"
+							type="secondary"
+							size="mini"
+							:class="$style.retryButton"
+							data-test-id="error-retry-button"
+							@click="() => message.retry?.()"
+						>
+							{{ t('generic.retry') }}
+						</n8n-button>
 					</div>
 					<div v-else-if="message.type === 'code-diff'">
 						<CodeDiff
@@ -307,6 +317,7 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 			<textarea
 				ref="chatInput"
 				v-model="textInputValue"
+				class="ignore-key-press-node-creator ignore-key-press-canvas"
 				:disabled="sessionEnded"
 				:placeholder="t('assistantChat.inputPlaceholder')"
 				rows="1"
@@ -553,6 +564,13 @@ code[class^='language-'] {
 
 .error {
 	color: var(--color-danger);
+	display: flex;
+	flex-direction: column;
+	align-items: start;
+}
+
+.retryButton {
+	margin-top: var(--spacing-3xs);
 }
 
 .assistantText {

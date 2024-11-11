@@ -63,8 +63,8 @@ export const defaultSettings: FrontendSettings = {
 	},
 	publicApi: { enabled: false, latestVersion: 0, path: '', swaggerUi: { enabled: false } },
 	pushBackend: 'websocket',
-	saveDataErrorExecution: 'DEFAULT',
-	saveDataSuccessExecution: 'DEFAULT',
+	saveDataErrorExecution: 'all',
+	saveDataSuccessExecution: 'all',
 	saveManualExecutions: false,
 	saveExecutionProgress: false,
 	sso: {
@@ -124,4 +124,5 @@ export const defaultSettings: FrontendSettings = {
 	aiAssistant: {
 		enabled: false,
 	},
+	betaFeatures: [],
 };

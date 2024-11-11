@@ -1,7 +1,5 @@
-<script lang="ts">
-import type { PropType } from 'vue';
-import { defineComponent } from 'vue';
-import { mapStores } from 'pinia';
+<script setup lang="ts">
+import { computed, ref } from 'vue';
 import type { IN8nPromptResponse, ModalKey } from '@/Interface';
 import { VALID_EMAIL_REGEX } from '@/constants';
 import Modal from '@/components/Modal.vue';
@@ -10,78 +8,69 @@ import { useRootStore } from '@/stores/root.store';
 import { createEventBus } from 'n8n-design-system/utils';
 import { useToast } from '@/composables/useToast';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
+import { useTelemetry } from '@/composables/useTelemetry';
 
-export default defineComponent({
-	name: 'ContactPromptModal',
-	components: { Modal },
-	props: {
-		modalName: {
-			type: String as PropType<ModalKey>,
-			required: true,
-		},
-	},
-	setup() {
-		return {
-			...useToast(),
-		};
-	},
-	data() {
-		return {
-			email: '',
-			modalBus: createEventBus(),
-		};
-	},
-	computed: {
-		...mapStores(useRootStore, useSettingsStore, useNpsSurveyStore),
-		title(): string {
-			if (this.npsSurveyStore.promptsData?.title) {
-				return this.npsSurveyStore.promptsData.title;
-			}
+defineProps<{
+	modalName: ModalKey;
+}>();
 
-			return 'You’re a power user 💪';
-		},
-		description(): string {
-			if (this.npsSurveyStore.promptsData?.message) {
-				return this.npsSurveyStore.promptsData.message;
-			}
+const email = ref('');
+const modalBus = createEventBus();
 
-			return 'Your experience with n8n can help us improve — for you and our entire community.';
-		},
-		isEmailValid(): boolean {
-			return VALID_EMAIL_REGEX.test(String(this.email).toLowerCase());
-		},
-	},
-	methods: {
-		closeDialog(): void {
-			if (!this.isEmailValid) {
-				this.$telemetry.track('User closed email modal', {
-					instance_id: this.rootStore.instanceId,
-					email: null,
-				});
-			}
-		},
-		async send() {
-			if (this.isEmailValid) {
-				const response = (await this.settingsStore.submitContactInfo(
-					this.email,
-				)) as IN8nPromptResponse;
+const npsSurveyStore = useNpsSurveyStore();
+const rootStore = useRootStore();
+const settingsStore = useSettingsStore();
 
-				if (response.updated) {
-					this.$telemetry.track('User closed email modal', {
-						instance_id: this.rootStore.instanceId,
-						email: this.email,
-					});
-					this.showMessage({
-						title: 'Thanks!',
-						message: "It's people like you that help make n8n better",
-						type: 'success',
-					});
-				}
-				this.modalBus.emit('close');
-			}
-		},
-	},
+const toast = useToast();
+const telemetry = useTelemetry();
+
+const title = computed(() => {
+	if (npsSurveyStore.promptsData?.title) {
+		return npsSurveyStore.promptsData.title;
+	}
+
+	return 'You’re a power user 💪';
 });
+
+const description = computed(() => {
+	if (npsSurveyStore.promptsData?.message) {
+		return npsSurveyStore.promptsData.message;
+	}
+
+	return 'Your experience with n8n can help us improve — for you and our entire community.';
+});
+
+const isEmailValid = computed(() => {
+	return VALID_EMAIL_REGEX.test(String(email.value).toLowerCase());
+});
+
+const closeDialog = () => {
+	if (!isEmailValid.value) {
+		telemetry.track('User closed email modal', {
+			instance_id: rootStore.instanceId,
+			email: null,
+		});
+	}
+};
+
+const send = async () => {
+	if (isEmailValid.value) {
+		const response = (await settingsStore.submitContactInfo(email.value)) as IN8nPromptResponse;
+
+		if (response.updated) {
+			telemetry.track('User closed email modal', {
+				instance_id: rootStore.instanceId,
+				email: email.value,
+			});
+			toast.showMessage({
+				title: 'Thanks!',
+				message: "It's people like you that help make n8n better",
+				type: 'success',
+			});
+		}
+		modalBus.emit('close');
+	}
+};
 </script>
 
 <template>

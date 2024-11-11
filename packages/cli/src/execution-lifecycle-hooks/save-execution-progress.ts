@@ -16,7 +16,7 @@ export async function saveExecutionProgress(
 ) {
 	const saveSettings = toSaveSettings(workflowData.settings);
 
-	if (!saveSettings.progress) return;
+	if (!saveSettings.progress && !executionData.waitTill) return;
 
 	const logger = Container.get(Logger);
 

@@ -195,6 +195,7 @@ export const CHAIN_SUMMARIZATION_LANGCHAIN_NODE_TYPE =
 export const SIMULATE_NODE_TYPE = 'n8n-nodes-base.simulate';
 export const SIMULATE_TRIGGER_NODE_TYPE = 'n8n-nodes-base.simulateTrigger';
 export const AI_TRANSFORM_NODE_TYPE = 'n8n-nodes-base.aiTransform';
+export const FORM_NODE_TYPE = 'n8n-nodes-base.form';
 
 export const CREDENTIAL_ONLY_NODE_PREFIX = 'n8n-creds-base';
 export const CREDENTIAL_ONLY_HTTP_NODE_VERSION = 4.1;
@@ -219,6 +220,8 @@ export const NODES_USING_CODE_NODE_EDITOR = [
 	AI_CODE_NODE_TYPE,
 	AI_TRANSFORM_NODE_TYPE,
 ];
+
+export const NODE_POSITION_CONFLICT_ALLOWLIST = [STICKY_NODE_TYPE];
 
 export const PIN_DATA_NODE_TYPES_DENYLIST = [SPLIT_IN_BATCHES_NODE_TYPE, STICKY_NODE_TYPE];
 
@@ -478,7 +481,6 @@ export const enum VIEWS {
 	PERSONAL_SETTINGS = 'PersonalSettings',
 	API_SETTINGS = 'APISettings',
 	NOT_FOUND = 'NotFoundView',
-	FAKE_DOOR = 'ComingSoon',
 	COMMUNITY_NODES = 'CommunityNodes',
 	WORKFLOWS = 'WorkflowsView',
 	WORKFLOW_EXECUTIONS = 'WorkflowExecutions',
@@ -498,12 +500,6 @@ export const enum VIEWS {
 }
 
 export const EDITABLE_CANVAS_VIEWS = [VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.EXECUTION_DEBUG];
-
-export const enum FAKE_DOOR_FEATURES {
-	ENVIRONMENTS = 'environments',
-	LOGGING = 'logging',
-	SSO = 'sso',
-}
 
 export const TEST_PIN_DATA = [
 	{

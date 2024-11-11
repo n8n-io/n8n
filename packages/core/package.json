@@ -1,6 +1,6 @@
 {
   "name": "n8n-core",
-  "version": "1.63.0",
+  "version": "1.67.0",
   "description": "Core functionality of n8n",
   "main": "dist/index",
   "types": "dist/index.d.ts",
@@ -13,13 +13,13 @@
   "scripts": {
     "clean": "rimraf dist .turbo",
     "typecheck": "tsc --noEmit",
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
     "dev": "pnpm watch",
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "lint": "eslint . --quiet",
     "lintfix": "eslint . --fix",
-    "watch": "tsc -p tsconfig.build.json --watch",
+    "watch": "tsc-watch -p tsconfig.build.json --onCompilationComplete \"tsc-alias -p tsconfig.build.json\"",
     "test": "jest"
   },
   "files": [
@@ -36,7 +36,9 @@
     "@types/xml2js": "catalog:"
   },
   "dependencies": {
+    "@langchain/core": "catalog:",
     "@n8n/client-oauth2": "workspace:*",
+    "@n8n/config": "workspace:*",
     "aws4": "1.11.0",
     "axios": "catalog:",
     "concat-stream": "2.0.0",
@@ -45,10 +47,10 @@
     "file-type": "16.5.4",
     "form-data": "catalog:",
     "lodash": "catalog:",
-    "@langchain/core": "catalog:",
     "luxon": "catalog:",
     "mime-types": "2.1.35",
     "n8n-workflow": "workspace:*",
+    "nanoid": "catalog:",
     "oauth-1.0a": "2.2.6",
     "p-cancelable": "2.1.1",
     "pretty-bytes": "5.6.0",

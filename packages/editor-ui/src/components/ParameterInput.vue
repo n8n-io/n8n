@@ -40,6 +40,7 @@ import { hasExpressionMapping, isValueExpression } from '@/utils/nodeTypesUtils'
 import { isResourceLocatorValue } from '@/utils/typeGuards';
 
 import {
+	AI_TRANSFORM_NODE_TYPE,
 	APP_MODALS_ELEMENT_ID,
 	CORE_NODES_CATEGORY,
 	CUSTOM_API_CALL_KEY,
@@ -60,7 +61,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { isCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
-import { N8nInput, N8nSelect } from 'n8n-design-system';
+import { N8nIcon, N8nInput, N8nInputNumber, N8nOption, N8nSelect } from 'n8n-design-system';
 import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
 import { useRouter } from 'vue-router';
@@ -522,7 +523,7 @@ const isHtmlNode = computed(() => !!node.value && node.value.type === HTML_NODE_
 const isInputTypeString = computed(() => props.parameter.type === 'string');
 const isInputTypeNumber = computed(() => props.parameter.type === 'number');
 
-const isInputDataEmpty = computed(() => ndvStore.isNDVDataEmpty('input'));
+const isInputDataEmpty = computed(() => ndvStore.isInputPanelEmpty);
 const isDropDisabled = computed(
 	() =>
 		props.parameter.noDataExpression ||
@@ -538,8 +539,16 @@ const showDragnDropTip = computed(
 		!isDropDisabled.value &&
 		(!ndvStore.hasInputData || !isInputDataEmpty.value) &&
 		!ndvStore.isMappingOnboarded &&
-		ndvStore.isInputParentOfActiveNode,
+		ndvStore.isInputParentOfActiveNode &&
+		!props.isForCredential,
 );
+
+const shouldCaptureForPosthog = computed(() => {
+	if (node.value?.type) {
+		return [AI_TRANSFORM_NODE_TYPE].includes(node.value?.type);
+	}
+	return false;
+});
 
 function isRemoteParameterOption(option: INodePropertyOptions) {
 	return remoteParameterOptionsKeys.value.includes(option.name);
@@ -1014,7 +1023,7 @@ onUpdated(async () => {
 			@update:model-value="expressionUpdated"
 		></ExpressionEditModal>
 
-		<div class="parameter-input ignore-key-press" :style="parameterInputWrapperStyle">
+		<div class="parameter-input ignore-key-press-canvas" :style="parameterInputWrapperStyle">
 			<ResourceLocator
 				v-if="parameter.type === 'resourceLocator'"
 				ref="resourceLocator"
@@ -1089,7 +1098,10 @@ onUpdated(async () => {
 					:before-close="closeCodeEditDialog"
 					data-test-id="code-editor-fullscreen"
 				>
-					<div :key="codeEditDialogVisible.toString()" class="ignore-key-press code-edit-dialog">
+					<div
+						:key="codeEditDialogVisible.toString()"
+						class="ignore-key-press-canvas code-edit-dialog"
+					>
 						<CodeNodeEditor
 							v-if="editorType === 'codeNodeEditor'"
 							:mode="codeEditorMode"
@@ -1124,6 +1136,7 @@ onUpdated(async () => {
 							:model-value="modelValueString"
 							:is-read-only="isReadOnly"
 							:rows="editorRows"
+							:posthog-capture="shouldCaptureForPosthog"
 							fill-parent
 							@update:model-value="valueChangedDebounced"
 						/>
@@ -1133,7 +1146,7 @@ onUpdated(async () => {
 							:model-value="modelValueString"
 							:is-read-only="isReadOnly"
 							:rows="editorRows"
-							fill-parent
+							fullscreen
 							@update:model-value="valueChangedDebounced"
 						/>
 					</div>
@@ -1162,7 +1175,7 @@ onUpdated(async () => {
 					@update:model-value="valueChangedDebounced"
 				>
 					<template #suffix>
-						<n8n-icon
+						<N8nIcon
 							v-if="!editorIsReadOnly"
 							data-test-id="code-editor-fullscreen-button"
 							icon="external-link-alt"
@@ -1185,7 +1198,7 @@ onUpdated(async () => {
 					@update:model-value="valueChangedDebounced"
 				>
 					<template #suffix>
-						<n8n-icon
+						<N8nIcon
 							data-test-id="code-editor-fullscreen-button"
 							icon="external-link-alt"
 							size="xsmall"
@@ -1206,7 +1219,7 @@ onUpdated(async () => {
 					@update:model-value="valueChangedDebounced"
 				>
 					<template #suffix>
-						<n8n-icon
+						<N8nIcon
 							data-test-id="code-editor-fullscreen-button"
 							icon="external-link-alt"
 							size="xsmall"
@@ -1223,10 +1236,11 @@ onUpdated(async () => {
 					:model-value="modelValueString"
 					:is-read-only="isReadOnly || editorIsReadOnly"
 					:rows="editorRows"
+					:posthog-capture="shouldCaptureForPosthog"
 					@update:model-value="valueChangedDebounced"
 				>
 					<template #suffix>
-						<n8n-icon
+						<N8nIcon
 							v-if="!editorIsReadOnly"
 							data-test-id="code-editor-fullscreen-button"
 							icon="external-link-alt"
@@ -1247,7 +1261,7 @@ onUpdated(async () => {
 					@update:model-value="valueChangedDebounced"
 				>
 					<template #suffix>
-						<n8n-icon
+						<N8nIcon
 							data-test-id="code-editor-fullscreen-button"
 							icon="external-link-alt"
 							size="xsmall"
@@ -1291,7 +1305,7 @@ onUpdated(async () => {
 					@blur="onBlur"
 				>
 					<template #suffix>
-						<n8n-icon
+						<N8nIcon
 							v-if="!isReadOnly && !isSecretParameter"
 							icon="external-link-alt"
 							size="xsmall"
@@ -1411,9 +1425,9 @@ onUpdated(async () => {
 				@focus="setFocus"
 				@blur="onBlur"
 			>
-				<n8n-option
+				<N8nOption
 					v-for="option in parameterOptions"
-					:key="option.value"
+					:key="option.value.toString()"
 					:value="option.value"
 					:label="getOptionsOptionDisplayName(option)"
 				>
@@ -1430,7 +1444,7 @@ onUpdated(async () => {
 							v-n8n-html="getOptionsOptionDescription(option)"
 						></div>
 					</div>
-				</n8n-option>
+				</N8nOption>
 			</N8nSelect>
 
 			<N8nSelect
@@ -1449,9 +1463,9 @@ onUpdated(async () => {
 				@focus="setFocus"
 				@blur="onBlur"
 			>
-				<n8n-option
+				<N8nOption
 					v-for="option in parameterOptions"
-					:key="option.value"
+					:key="option.value.toString()"
 					:value="option.value"
 					:label="getOptionsOptionDisplayName(option)"
 				>
@@ -1463,7 +1477,7 @@ onUpdated(async () => {
 							v-n8n-html="getOptionsOptionDescription(option)"
 						></div>
 					</div>
-				</n8n-option>
+				</N8nOption>
 			</N8nSelect>
 
 			<!-- temporary state of booleans while data is mapped -->

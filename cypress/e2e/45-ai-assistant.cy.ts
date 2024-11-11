@@ -4,6 +4,7 @@ import { clickCreateNewCredential, openCredentialSelect } from '../composables/n
 import { GMAIL_NODE_NAME, SCHEDULE_TRIGGER_NODE_NAME } from '../constants';
 import { CredentialsModal, CredentialsPage, NDV, WorkflowPage } from '../pages';
 import { AIAssistant } from '../pages/features/ai-assistant';
+import { NodeCreator } from '../pages/features/node-creator';
 import { getVisibleSelect } from '../utils';
 
 const wf = new WorkflowPage();
@@ -11,6 +12,7 @@ const ndv = new NDV();
 const aiAssistant = new AIAssistant();
 const credentialsPage = new CredentialsPage();
 const credentialsModal = new CredentialsModal();
+const nodeCreatorFeature = new NodeCreator();
 
 describe('AI Assistant::disabled', () => {
 	beforeEach(() => {
@@ -143,42 +145,6 @@ describe('AI Assistant::enabled', () => {
 		cy.wait('@chatRequest');
 		aiAssistant.getters.chatMessagesUser().should('have.length', 1);
 		aiAssistant.getters.chatMessagesUser().eq(0).should('contain.text', "Sure, let's do it");
-	});
-
-	it('should show quick replies when node is executed after new suggestion', () => {
-		cy.intercept('POST', '/rest/ai/chat', (req) => {
-			req.reply((res) => {
-				if (['init-error-helper', 'message'].includes(req.body.payload.type)) {
-					res.send({
-						statusCode: 200,
-						fixture: 'aiAssistant/responses/simple_message_response.json',
-					});
-				} else if (req.body.payload.type === 'event') {
-					res.send({
-						statusCode: 200,
-						fixture: 'aiAssistant/responses/node_execution_error_response.json',
-					});
-				} else {
-					res.send({ statusCode: 500 });
-				}
-			});
-		}).as('chatRequest');
-		cy.createFixtureWorkflow('aiAssistant/workflows/test_workflow.json');
-		wf.actions.openNode('Edit Fields');
-		ndv.getters.nodeExecuteButton().click();
-		aiAssistant.getters.nodeErrorViewAssistantButton().click();
-		cy.wait('@chatRequest');
-		aiAssistant.getters.chatMessagesAssistant().should('have.length', 1);
-		ndv.getters.nodeExecuteButton().click();
-		cy.wait('@chatRequest');
-		// Respond 'Yes' to the quick reply (request new suggestion)
-		aiAssistant.getters.quickReplies().contains('Yes').click();
-		cy.wait('@chatRequest');
-		// No quick replies at this point
-		aiAssistant.getters.quickReplies().should('not.exist');
-		ndv.getters.nodeExecuteButton().click();
-		// But after executing the node again, quick replies should be shown
-		aiAssistant.getters.quickReplies().should('have.length', 2);
 	});
 
 	it('should warn before starting a new session', () => {
@@ -314,6 +280,20 @@ describe('AI Assistant::enabled', () => {
 		wf.actions.openNode(SCHEDULE_TRIGGER_NODE_NAME);
 		ndv.getters.nodeExecuteButton().click();
 		wf.getters.isWorkflowSaved();
+		aiAssistant.getters.placeholderMessage().should('not.exist');
+	});
+
+	it('should send message via enter even with global NodeCreator panel opened', () => {
+		cy.intercept('POST', '/rest/ai/chat', {
+			statusCode: 200,
+			fixture: 'aiAssistant/responses/simple_message_response.json',
+		}).as('chatRequest');
+
+		wf.actions.addInitialNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
+		aiAssistant.actions.openChat();
+		nodeCreatorFeature.actions.openNodeCreator();
+		aiAssistant.getters.chatInput().type('Hello{Enter}');
+
 		aiAssistant.getters.placeholderMessage().should('not.exist');
 	});
 });

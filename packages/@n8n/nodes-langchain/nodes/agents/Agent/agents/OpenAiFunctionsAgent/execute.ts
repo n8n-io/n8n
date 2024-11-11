@@ -1,3 +1,10 @@
+import type { BaseOutputParser } from '@langchain/core/output_parsers';
+import { PromptTemplate } from '@langchain/core/prompts';
+import { ChatOpenAI } from '@langchain/openai';
+import type { AgentExecutorInput } from 'langchain/agents';
+import { AgentExecutor, OpenAIAgent } from 'langchain/agents';
+import { BufferMemory, type BaseChatMemory } from 'langchain/memory';
+import { CombiningOutputParser } from 'langchain/output_parsers';
 import {
 	type IExecuteFunctions,
 	type INodeExecutionData,
@@ -5,19 +12,10 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import type { AgentExecutorInput } from 'langchain/agents';
-import { AgentExecutor, OpenAIAgent } from 'langchain/agents';
-import type { BaseOutputParser } from '@langchain/core/output_parsers';
-import { PromptTemplate } from '@langchain/core/prompts';
-import { CombiningOutputParser } from 'langchain/output_parsers';
-import { BufferMemory, type BaseChatMemory } from 'langchain/memory';
-import { ChatOpenAI } from '@langchain/openai';
-import {
-	getConnectedTools,
-	getOptionalOutputParsers,
-	getPromptInputByType,
-} from '../../../../../utils/helpers';
+import { getConnectedTools, getPromptInputByType } from '../../../../../utils/helpers';
+import { getOptionalOutputParsers } from '../../../../../utils/output_parsers/N8nOutputParser';
 import { getTracingConfig } from '../../../../../utils/tracing';
+import { extractParsedOutput } from '../utils';
 
 export async function openAiFunctionsAgentExecute(
 	this: IExecuteFunctions,
@@ -106,12 +104,12 @@ export async function openAiFunctionsAgentExecute(
 				input = (await prompt.invoke({ input })).value;
 			}
 
-			let response = await agentExecutor
+			const response = await agentExecutor
 				.withConfig(getTracingConfig(this))
 				.invoke({ input, outputParsers });
 
 			if (outputParser) {
-				response = { output: await outputParser.parse(response.output as string) };
+				response.output = await extractParsedOutput(this, outputParser, response.output as string);
 			}
 
 			returnData.push({ json: response });

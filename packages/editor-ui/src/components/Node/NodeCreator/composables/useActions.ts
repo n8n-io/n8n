@@ -332,7 +332,11 @@ export const useActions = () => {
 		return storeWatcher;
 	}
 
-	function trackActionSelected(action: IUpdateInformation, telemetry: Telemetry, rootView: string) {
+	function trackActionSelected(
+		action: IUpdateInformation,
+		_telemetry: Telemetry,
+		rootView: string,
+	) {
 		const payload = {
 			node_type: action.key,
 			action: action.name,
@@ -340,7 +344,7 @@ export const useActions = () => {
 			resource: (action.value as INodeParameters).resource || '',
 		};
 		void useExternalHooks().run('nodeCreateList.addAction', payload);
-		telemetry?.trackNodesPanel('nodeCreateList.addAction', payload);
+		useNodeCreatorStore().onAddActions(payload);
 	}
 
 	return {

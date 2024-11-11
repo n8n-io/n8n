@@ -1,6 +1,8 @@
 process.argv[2] = 'worker';
 
+import { TaskRunnersConfig } from '@n8n/config';
 import { BinaryDataService } from 'n8n-core';
+import Container from 'typedi';
 
 import { Worker } from '@/commands/worker';
 import config from '@/config';
@@ -11,10 +13,12 @@ import { ExternalSecretsManager } from '@/external-secrets/external-secrets-mana
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Push } from '@/push';
+import { TaskRunnerProcess } from '@/runners/task-runner-process';
+import { TaskRunnerServer } from '@/runners/task-runner-server';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { ScalingService } from '@/scaling/scaling.service';
-import { OrchestrationWorkerService } from '@/services/orchestration/worker/orchestration.worker.service';
+import { OrchestrationService } from '@/services/orchestration.service';
 import { Telemetry } from '@/telemetry';
 import { setupTestCommand } from '@test-integration/utils/test-command';
 
@@ -22,6 +26,7 @@ import { mockInstance } from '../../shared/mocking';
 
 config.set('executions.mode', 'queue');
 config.set('binaryDataManager.availableModes', 'filesystem');
+Container.get(TaskRunnersConfig).enabled = true;
 mockInstance(LoadNodesAndCredentials);
 const binaryDataService = mockInstance(BinaryDataService);
 const externalHooks = mockInstance(ExternalHooks);
@@ -30,7 +35,9 @@ const license = mockInstance(License, { loadCertStr: async () => '' });
 const messageEventBus = mockInstance(MessageEventBus);
 const logStreamingEventRelay = mockInstance(LogStreamingEventRelay);
 const scalingService = mockInstance(ScalingService);
-const orchestrationWorkerService = mockInstance(OrchestrationWorkerService);
+const orchestrationService = mockInstance(OrchestrationService);
+const taskRunnerServer = mockInstance(TaskRunnerServer);
+const taskRunnerProcess = mockInstance(TaskRunnerProcess);
 mockInstance(Publisher);
 mockInstance(Subscriber);
 mockInstance(Telemetry);
@@ -39,10 +46,10 @@ mockInstance(Push);
 const command = setupTestCommand(Worker);
 
 test('worker initializes all its components', async () => {
-	const worker = await command.run();
-	expect(worker.queueModeId).toBeDefined();
-	expect(worker.queueModeId).toContain('worker');
-	expect(worker.queueModeId.length).toBeGreaterThan(15);
+	config.set('executions.mode', 'regular'); // should be overridden
+
+	await command.run();
+
 	expect(license.init).toHaveBeenCalledTimes(1);
 	expect(binaryDataService.init).toHaveBeenCalledTimes(1);
 	expect(externalHooks.init).toHaveBeenCalledTimes(1);
@@ -51,6 +58,10 @@ test('worker initializes all its components', async () => {
 	expect(scalingService.setupQueue).toHaveBeenCalledTimes(1);
 	expect(scalingService.setupWorker).toHaveBeenCalledTimes(1);
 	expect(logStreamingEventRelay.init).toHaveBeenCalledTimes(1);
-	expect(orchestrationWorkerService.init).toHaveBeenCalledTimes(1);
+	expect(orchestrationService.init).toHaveBeenCalledTimes(1);
 	expect(messageEventBus.send).toHaveBeenCalledTimes(1);
+	expect(taskRunnerServer.start).toHaveBeenCalledTimes(1);
+	expect(taskRunnerProcess.start).toHaveBeenCalledTimes(1);
+
+	expect(config.getEnv('executions.mode')).toBe('queue');
 });

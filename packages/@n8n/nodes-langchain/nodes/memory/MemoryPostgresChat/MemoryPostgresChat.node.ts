@@ -1,5 +1,10 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
+import type {
+	ISupplyDataFunctions,
+	INodeType,
+	INodeTypeDescription,
+	SupplyData,
+} from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 import { BufferMemory, BufferWindowMemory } from 'langchain/memory';
 import { PostgresChatMessageHistory } from '@langchain/community/stores/message/postgres';
@@ -73,7 +78,7 @@ export class MemoryPostgresChat implements INodeType {
 		},
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials<PostgresNodeCredentials>('postgres');
 		const tableName = this.getNodeParameter('tableName', itemIndex, 'n8n_chat_histories') as string;
 		const sessionId = getSessionId(this, itemIndex);

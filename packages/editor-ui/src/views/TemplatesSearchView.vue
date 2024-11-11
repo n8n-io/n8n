@@ -1,27 +1,22 @@
-<script lang="ts">
-import { defineComponent } from 'vue';
-import { mapStores } from 'pinia';
+<script setup lang="ts">
+import { computed, onMounted, ref, watch } from 'vue';
 import TemplatesInfoCarousel from '@/components/TemplatesInfoCarousel.vue';
 import TemplateFilters from '@/components/TemplateFilters.vue';
 import TemplateList from '@/components/TemplateList.vue';
 import TemplatesView from '@/views/TemplatesView.vue';
 
-import type {
-	ITemplatesCollection,
-	ITemplatesWorkflow,
-	ITemplatesQuery,
-	ITemplatesCategory,
-} from '@/Interface';
+import type { ITemplatesCategory } from '@/Interface';
 import type { IDataObject } from 'n8n-workflow';
 import { CREATOR_HUB_URL, VIEWS } from '@/constants';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useTemplatesStore } from '@/stores/templates.store';
-import { useUIStore } from '@/stores/ui.store';
 import { useToast } from '@/composables/useToast';
-import { usePostHog } from '@/stores/posthog.store';
 import { useDebounce } from '@/composables/useDebounce';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
+import { useI18n } from '@/composables/useI18n';
+import { useRoute, onBeforeRouteLeave, useRouter } from 'vue-router';
+import { useTelemetry } from '@/composables/useTelemetry';
 
 interface ISearchEvent {
 	search_string: string;
@@ -31,309 +26,305 @@ interface ISearchEvent {
 	wf_template_repo_session_id: string;
 }
 
-export default defineComponent({
-	name: 'TemplatesSearchView',
-	components: {
-		TemplatesInfoCarousel,
-		TemplateFilters,
-		TemplateList,
-		TemplatesView,
-	},
-	beforeRouteLeave(_to, _from, next) {
+const areCategoriesPrepopulated = ref(false);
+const categories = ref<ITemplatesCategory[]>([]);
+const loadingCategories = ref(true);
+const loadingCollections = ref(true);
+const loadingWorkflows = ref(true);
+const search = ref('');
+const searchEventToTrack = ref<ISearchEvent | null>(null);
+const errorLoadingWorkflows = ref(false);
+
+const { callDebounced } = useDebounce();
+const toast = useToast();
+const documentTitle = useDocumentTitle();
+
+const settingsStore = useSettingsStore();
+const templatesStore = useTemplatesStore();
+const usersStore = useUsersStore();
+const i18n = useI18n();
+const route = useRoute();
+const router = useRouter();
+const telemetry = useTelemetry();
+
+const createQueryObject = (categoryId: 'name' | 'id') => {
+	// We are using category names for template search and ids for collection search
+	return {
+		categories: categories.value.map((category) =>
+			categoryId === 'name' ? category.name : String(category.id),
+		),
+		search: search.value,
+	};
+};
+
+const totalWorkflows = computed(() =>
+	templatesStore.getSearchedWorkflowsTotal(createQueryObject('name')),
+);
+
+const workflows = computed(
+	() => templatesStore.getSearchedWorkflows(createQueryObject('name')) ?? [],
+);
+
+const collections = computed(
+	() => templatesStore.getSearchedCollections(createQueryObject('id')) ?? [],
+);
+
+const endOfSearchMessage = computed(() => {
+	if (loadingWorkflows.value) {
+		return null;
+	}
+	if (!loadingCollections.value && workflows.value.length === 0 && collections.value.length === 0) {
+		if (!settingsStore.isTemplatesEndpointReachable && errorLoadingWorkflows.value) {
+			return i18n.baseText('templates.connectionWarning');
+		}
+		return i18n.baseText('templates.noSearchResults');
+	}
+
+	return null;
+});
+
+const updateQueryParam = (search: string, category: string) => {
+	const query = Object.assign({}, route.query);
+
+	if (category.length) {
+		query.categories = category;
+	} else {
+		delete query.categories;
+	}
+
+	if (search.length) {
+		query.search = search;
+	} else {
+		delete query.search;
+	}
+
+	void router.replace({ query });
+};
+
+const updateSearch = () => {
+	updateQueryParam(search.value, categories.value.map((category) => category.id).join(','));
+	void loadWorkflowsAndCollections(false);
+};
+
+const loadWorkflows = async () => {
+	try {
+		loadingWorkflows.value = true;
+		await templatesStore.getWorkflows({
+			search: search.value,
+			categories: categories.value.map((category) => category.name),
+		});
+		errorLoadingWorkflows.value = false;
+	} catch (e) {
+		errorLoadingWorkflows.value = true;
+	}
+
+	loadingWorkflows.value = false;
+};
+
+const loadCollections = async () => {
+	try {
+		loadingCollections.value = true;
+		await templatesStore.getCollections({
+			categories: categories.value.map((category) => String(category.id)),
+			search: search.value,
+		});
+	} catch (e) {}
+
+	loadingCollections.value = false;
+};
+
+const updateSearchTracking = (search: string, categories: number[]) => {
+	if (!search) {
+		return;
+	}
+	if (searchEventToTrack.value && searchEventToTrack.value.search_string.length > search.length) {
+		return;
+	}
+
+	searchEventToTrack.value = {
+		search_string: search,
+		workflow_results_count: workflows.value.length,
+		collection_results_count: collections.value.length,
+		categories_applied: categories.map((categoryId) =>
+			templatesStore.getCategoryById(categoryId.toString()),
+		) as ITemplatesCategory[],
+		wf_template_repo_session_id: templatesStore.currentSessionId,
+	};
+};
+
+const trackCategories = () => {
+	if (categories.value.length) {
+		telemetry.track('User changed template filters', {
+			search_string: search.value,
+			categories_applied: categories.value,
+			wf_template_repo_session_id: templatesStore.currentSessionId,
+		});
+	}
+};
+
+const loadWorkflowsAndCollections = async (initialLoad: boolean) => {
+	const _categories = [...categories.value];
+	const _search = search.value;
+	await Promise.all([loadWorkflows(), loadCollections()]);
+	if (!initialLoad) {
+		updateSearchTracking(
+			_search,
+			_categories.map((category) => category.id),
+		);
+	}
+};
+
+const navigateTo = (e: MouseEvent, page: string, id: number) => {
+	if (e.metaKey || e.ctrlKey) {
+		const route = router.resolve({ name: page, params: { id } });
+		window.open(route.href, '_blank');
+		return;
+	} else {
+		void router.push({ name: page, params: { id } });
+	}
+};
+
+const onOpenCollection = ({ event, id }: { event: MouseEvent; id: number }) => {
+	navigateTo(event, VIEWS.COLLECTION, id);
+};
+
+const onOpenTemplate = ({ event, id }: { event: MouseEvent; id: number }) => {
+	navigateTo(event, VIEWS.TEMPLATE, id);
+};
+
+const trackSearch = () => {
+	if (searchEventToTrack.value) {
+		telemetry.track(
+			'User searched workflow templates',
+			searchEventToTrack.value as unknown as IDataObject,
+		);
+		searchEventToTrack.value = null;
+	}
+};
+
+const onSearchInput = (searchText: string) => {
+	loadingWorkflows.value = true;
+	loadingCollections.value = true;
+	search.value = searchText;
+	void callDebounced(updateSearch, {
+		debounceTime: 500,
+		trailing: true,
+	});
+
+	if (searchText.length === 0) {
+		trackSearch();
+	}
+};
+
+const onCategorySelected = (selected: ITemplatesCategory) => {
+	categories.value = categories.value.concat(selected);
+	updateSearch();
+	trackCategories();
+};
+
+const onCategoryUnselected = (selected: ITemplatesCategory) => {
+	categories.value = categories.value.filter((category) => category.id !== selected.id);
+	updateSearch();
+	trackCategories();
+};
+
+const onCategoriesCleared = () => {
+	categories.value = [];
+	updateSearch();
+};
+
+const onLoadMore = async () => {
+	if (workflows.value.length >= totalWorkflows.value) {
+		return;
+	}
+	try {
+		loadingWorkflows.value = true;
+		await templatesStore.getMoreWorkflows({
+			categories: categories.value.map((category) => category.name),
+			search: search.value,
+		});
+	} catch (e) {
+		toast.showMessage({
+			title: 'Error',
+			message: 'Could not load more workflows',
+			type: 'error',
+		});
+	} finally {
+		loadingWorkflows.value = false;
+	}
+};
+
+const loadCategories = async () => {
+	try {
+		await templatesStore.getCategories();
+	} catch (e) {}
+	loadingCategories.value = false;
+};
+
+const scrollTo = (position: number, behavior: ScrollBehavior = 'smooth') => {
+	setTimeout(() => {
 		const contentArea = document.getElementById('content');
 		if (contentArea) {
-			// When leaving this page, store current scroll position in route data
-			this.$route.meta?.setScrollPosition?.(contentArea.scrollTop);
-		}
-
-		this.trackSearch();
-		next();
-	},
-	setup() {
-		const { callDebounced } = useDebounce();
-
-		return {
-			callDebounced,
-			...useToast(),
-			documentTitle: useDocumentTitle(),
-		};
-	},
-	data() {
-		return {
-			areCategoriesPrepopulated: false,
-			categories: [] as ITemplatesCategory[],
-			loading: true,
-			loadingCategories: true,
-			loadingCollections: true,
-			loadingWorkflows: true,
-			search: '',
-			searchEventToTrack: null as null | ISearchEvent,
-			errorLoadingWorkflows: false,
-			creatorHubUrl: CREATOR_HUB_URL as string,
-		};
-	},
-	computed: {
-		...mapStores(useSettingsStore, useTemplatesStore, useUIStore, useUsersStore, usePostHog),
-		totalWorkflows(): number {
-			return this.templatesStore.getSearchedWorkflowsTotal(this.createQueryObject('name'));
-		},
-		workflows(): ITemplatesWorkflow[] {
-			return this.templatesStore.getSearchedWorkflows(this.createQueryObject('name')) ?? [];
-		},
-		collections(): ITemplatesCollection[] {
-			return this.templatesStore.getSearchedCollections(this.createQueryObject('id')) ?? [];
-		},
-		endOfSearchMessage(): string | null {
-			if (this.loadingWorkflows) {
-				return null;
-			}
-			if (
-				!this.loadingCollections &&
-				this.workflows.length === 0 &&
-				this.collections.length === 0
-			) {
-				if (!this.settingsStore.isTemplatesEndpointReachable && this.errorLoadingWorkflows) {
-					return this.$locale.baseText('templates.connectionWarning');
-				}
-				return this.$locale.baseText('templates.noSearchResults');
-			}
-
-			return null;
-		},
-		nothingFound(): boolean {
-			return (
-				!this.loadingWorkflows &&
-				!this.loadingCollections &&
-				this.workflows.length === 0 &&
-				this.collections.length === 0
-			);
-		},
-	},
-	watch: {
-		workflows(newWorkflows) {
-			if (newWorkflows.length === 0) {
-				this.scrollTo(0);
-			}
-		},
-	},
-	async mounted() {
-		this.documentTitle.set('Templates');
-		await this.loadCategories();
-		void this.loadWorkflowsAndCollections(true);
-		void this.usersStore.showPersonalizationSurvey();
-
-		this.restoreSearchFromRoute();
-
-		setTimeout(() => {
-			// Check if there is scroll position saved in route and scroll to it
-			const scrollOffset = this.$route.meta?.scrollOffset;
-			if (typeof scrollOffset === 'number' && scrollOffset > 0) {
-				this.scrollTo(scrollOffset, 'auto');
-			}
-		}, 100);
-	},
-	methods: {
-		createQueryObject(categoryId: 'name' | 'id'): ITemplatesQuery {
-			// We are using category names for template search and ids for collection search
-			return {
-				categories: this.categories.map((category) =>
-					categoryId === 'name' ? category.name : String(category.id),
-				),
-				search: this.search,
-			};
-		},
-		restoreSearchFromRoute() {
-			let updateSearch = false;
-			if (this.$route.query.search && typeof this.$route.query.search === 'string') {
-				this.search = this.$route.query.search;
-				updateSearch = true;
-			}
-			if (typeof this.$route.query.categories === 'string' && this.$route.query.categories.length) {
-				const categoriesFromURL = this.$route.query.categories.split(',');
-				this.categories = this.templatesStore.allCategories.filter((category) =>
-					categoriesFromURL.includes(category.id.toString()),
-				);
-				updateSearch = true;
-			}
-			if (updateSearch) {
-				this.updateSearch();
-				this.trackCategories();
-				this.areCategoriesPrepopulated = true;
-			}
-		},
-		onOpenCollection({ event, id }: { event: MouseEvent; id: number }) {
-			this.navigateTo(event, VIEWS.COLLECTION, id);
-		},
-		onOpenTemplate({ event, id }: { event: MouseEvent; id: number }) {
-			this.navigateTo(event, VIEWS.TEMPLATE, id);
-		},
-		navigateTo(e: MouseEvent, page: string, id: number) {
-			if (e.metaKey || e.ctrlKey) {
-				const route = this.$router.resolve({ name: page, params: { id } });
-				window.open(route.href, '_blank');
-				return;
-			} else {
-				void this.$router.push({ name: page, params: { id } });
-			}
-		},
-		updateSearch() {
-			this.updateQueryParam(this.search, this.categories.map((category) => category.id).join(','));
-			void this.loadWorkflowsAndCollections(false);
-		},
-		updateSearchTracking(search: string, categories: number[]) {
-			if (!search) {
-				return;
-			}
-			if (this.searchEventToTrack && this.searchEventToTrack.search_string.length > search.length) {
-				return;
-			}
-
-			this.searchEventToTrack = {
-				search_string: search,
-				workflow_results_count: this.workflows.length,
-				collection_results_count: this.collections.length,
-				categories_applied: categories.map((categoryId) =>
-					this.templatesStore.getCategoryById(categoryId.toString()),
-				) as ITemplatesCategory[],
-				wf_template_repo_session_id: this.templatesStore.currentSessionId,
-			};
-		},
-		trackSearch() {
-			if (this.searchEventToTrack) {
-				this.$telemetry.track(
-					'User searched workflow templates',
-					this.searchEventToTrack as unknown as IDataObject,
-				);
-				this.searchEventToTrack = null;
-			}
-		},
-		onSearchInput(search: string) {
-			this.loadingWorkflows = true;
-			this.loadingCollections = true;
-			this.search = search;
-			void this.callDebounced(this.updateSearch, {
-				debounceTime: 500,
-				trailing: true,
+			contentArea.scrollTo({
+				top: position,
+				behavior,
 			});
+		}
+	}, 0);
+};
 
-			if (search.length === 0) {
-				this.trackSearch();
-			}
-		},
-		onCategorySelected(selected: ITemplatesCategory) {
-			this.categories = this.categories.concat(selected);
-			this.updateSearch();
-			this.trackCategories();
-		},
-		onCategoryUnselected(selected: ITemplatesCategory) {
-			this.categories = this.categories.filter((category) => category.id !== selected.id);
-			this.updateSearch();
-			this.trackCategories();
-		},
-		onCategoriesCleared() {
-			this.categories = [];
-			this.updateSearch();
-		},
-		trackCategories() {
-			if (this.categories.length) {
-				this.$telemetry.track('User changed template filters', {
-					search_string: this.search,
-					categories_applied: this.categories,
-					wf_template_repo_session_id: this.templatesStore.currentSessionId,
-				});
-			}
-		},
-		updateQueryParam(search: string, category: string) {
-			const query = Object.assign({}, this.$route.query);
+const restoreSearchFromRoute = () => {
+	let shouldUpdateSearch = false;
+	if (route.query.search && typeof route.query.search === 'string') {
+		search.value = route.query.search;
+		shouldUpdateSearch = true;
+	}
+	if (typeof route.query.categories === 'string' && route.query.categories.length) {
+		const categoriesFromURL = route.query.categories.split(',');
+		categories.value = templatesStore.allCategories.filter((category) =>
+			categoriesFromURL.includes(category.id.toString()),
+		);
+		shouldUpdateSearch = true;
+	}
+	if (shouldUpdateSearch) {
+		updateSearch();
+		trackCategories();
+		areCategoriesPrepopulated.value = true;
+	}
+};
 
-			if (category.length) {
-				query.categories = category;
-			} else {
-				delete query.categories;
-			}
+onMounted(async () => {
+	documentTitle.set('Templates');
+	await loadCategories();
+	void loadWorkflowsAndCollections(true);
+	void usersStore.showPersonalizationSurvey();
 
-			if (search.length) {
-				query.search = search;
-			} else {
-				delete query.search;
-			}
+	restoreSearchFromRoute();
 
-			void this.$router.replace({ query });
-		},
-		async onLoadMore() {
-			if (this.workflows.length >= this.totalWorkflows) {
-				return;
-			}
-			try {
-				this.loadingWorkflows = true;
-				await this.templatesStore.getMoreWorkflows({
-					categories: this.categories.map((category) => category.name),
-					search: this.search,
-				});
-			} catch (e) {
-				this.showMessage({
-					title: 'Error',
-					message: 'Could not load more workflows',
-					type: 'error',
-				});
-			} finally {
-				this.loadingWorkflows = false;
-			}
-		},
-		async loadCategories() {
-			try {
-				await this.templatesStore.getCategories();
-			} catch (e) {}
-			this.loadingCategories = false;
-		},
-		async loadCollections() {
-			try {
-				this.loadingCollections = true;
-				await this.templatesStore.getCollections({
-					categories: this.categories.map((category) => String(category.id)),
-					search: this.search,
-				});
-			} catch (e) {}
+	setTimeout(() => {
+		// Check if there is scroll position saved in route and scroll to it
+		const scrollOffset = route.meta?.scrollOffset;
+		if (typeof scrollOffset === 'number' && scrollOffset > 0) {
+			scrollTo(scrollOffset, 'auto');
+		}
+	}, 100);
+});
 
-			this.loadingCollections = false;
-		},
-		async loadWorkflows() {
-			try {
-				this.loadingWorkflows = true;
-				await this.templatesStore.getWorkflows({
-					search: this.search,
-					categories: this.categories.map((category) => category.name),
-				});
-				this.errorLoadingWorkflows = false;
-			} catch (e) {
-				this.errorLoadingWorkflows = true;
-			}
+onBeforeRouteLeave((_to, _from, next) => {
+	const contentArea = document.getElementById('content');
+	if (contentArea) {
+		// When leaving this page, store current scroll position in route data
+		route.meta?.setScrollPosition?.(contentArea.scrollTop);
+	}
 
-			this.loadingWorkflows = false;
-		},
-		async loadWorkflowsAndCollections(initialLoad: boolean) {
-			const search = this.search;
-			const categories = [...this.categories];
-			await Promise.all([this.loadWorkflows(), this.loadCollections()]);
-			if (!initialLoad) {
-				this.updateSearchTracking(
-					search,
-					categories.map((category) => category.id),
-				);
-			}
-		},
-		scrollTo(position: number, behavior: ScrollBehavior = 'smooth') {
-			setTimeout(() => {
-				const contentArea = document.getElementById('content');
-				if (contentArea) {
-					contentArea.scrollTo({
-						top: position,
-						behavior,
-					});
-				}
-			}, 0);
-		},
-	},
+	trackSearch();
+	next();
+});
+
+watch(workflows, (newWorkflows) => {
+	if (newWorkflows.length === 0) {
+		window.scrollTo(0, 0);
+	}
 });
 </script>
 
@@ -343,7 +334,7 @@ export default defineComponent({
 			<div :class="$style.wrapper">
 				<div :class="$style.title">
 					<n8n-heading tag="h1" size="2xlarge">
-						{{ $locale.baseText('templates.heading') }}
+						{{ i18n.baseText('templates.heading') }}
 					</n8n-heading>
 				</div>
 				<div :class="$style.button">
@@ -351,8 +342,8 @@ export default defineComponent({
 						size="large"
 						type="secondary"
 						element="a"
-						:href="creatorHubUrl"
-						:label="$locale.baseText('templates.shareWorkflow')"
+						:href="CREATOR_HUB_URL"
+						:label="i18n.baseText('templates.shareWorkflow')"
 						target="_blank"
 					/>
 				</div>
@@ -374,7 +365,7 @@ export default defineComponent({
 				<div :class="$style.search">
 					<n8n-input
 						:model-value="search"
-						:placeholder="$locale.baseText('templates.searchPlaceholder')"
+						:placeholder="i18n.baseText('templates.searchPlaceholder')"
 						clearable
 						data-test-id="template-search-input"
 						@update:model-value="onSearchInput"
@@ -387,7 +378,7 @@ export default defineComponent({
 					<div v-show="collections.length || loadingCollections" :class="$style.carouselContainer">
 						<div :class="$style.header">
 							<n8n-heading :bold="true" size="medium" color="text-light">
-								{{ $locale.baseText('templates.collections') }}
+								{{ i18n.baseText('templates.collections') }}
 								<span
 									v-if="!loadingCollections"
 									data-test-id="collection-count-label"

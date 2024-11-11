@@ -1,15 +1,16 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import {
 	NodeConnectionType,
-	type IExecuteFunctions,
 	type INodeType,
 	type INodeTypeDescription,
+	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
 
 import { ChatGroq } from '@langchain/groq';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 import { N8nLlmTracing } from '../N8nLlmTracing';
+import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 
 export class LmChatGroq implements INodeType {
 	description: INodeTypeDescription = {
@@ -129,7 +130,7 @@ export class LmChatGroq implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials('groqApi');
 
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
@@ -144,6 +145,7 @@ export class LmChatGroq implements INodeType {
 			maxTokens: options.maxTokensToSample,
 			temperature: options.temperature,
 			callbacks: [new N8nLlmTracing(this)],
+			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 		});
 
 		return {

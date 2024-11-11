@@ -1,15 +1,16 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import { NodeConnectionType } from 'n8n-workflow';
 import type {
-	IExecuteFunctions,
 	INodeType,
 	INodeTypeDescription,
+	ISupplyDataFunctions,
 	SupplyData,
 	ILoadOptionsFunctions,
 } from 'n8n-workflow';
 
 import { OpenAI, type ClientOptions } from '@langchain/openai';
 import { N8nLlmTracing } from '../N8nLlmTracing';
+import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 
 type LmOpenAiOptions = {
 	baseURL?: string;
@@ -229,7 +230,7 @@ export class LmOpenAi implements INodeType {
 		},
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials('openAiApi');
 
 		const modelName = this.getNodeParameter('model', itemIndex, '', {
@@ -260,6 +261,7 @@ export class LmOpenAi implements INodeType {
 			timeout: options.timeout ?? 60000,
 			maxRetries: options.maxRetries ?? 2,
 			callbacks: [new N8nLlmTracing(this)],
+			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 		});
 
 		return {

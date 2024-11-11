@@ -20,6 +20,8 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useUserHelpers } from '@/composables/useUserHelpers';
 
 import { ABOUT_MODAL_KEY, VERSIONS_MODAL_KEY, VIEWS } from '@/constants';
+import { useBugReporting } from '@/composables/useBugReporting';
+import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 const becomeTemplateCreatorStore = useBecomeTemplateCreatorStore();
 const cloudPlanStore = useCloudPlanStore();
@@ -37,6 +39,8 @@ const locale = useI18n();
 const route = useRoute();
 const router = useRouter();
 const telemetry = useTelemetry();
+const pageRedirectionHelper = usePageRedirectionHelper();
+const { getReportingURL } = useBugReporting();
 
 useUserHelpers(router, route);
 
@@ -57,7 +61,7 @@ const userMenuItems = ref([
 	},
 ]);
 
-const mainMenuItems = ref([
+const mainMenuItems = computed(() => [
 	{
 		id: 'cloud-admin',
 		position: 'bottom',
@@ -140,6 +144,15 @@ const mainMenuItems = ref([
 				label: locale.baseText('mainSidebar.helpMenuItems.course'),
 				link: {
 					href: 'https://docs.n8n.io/courses/',
+					target: '_blank',
+				},
+			},
+			{
+				id: 'report-bug',
+				icon: 'bug',
+				label: locale.baseText('mainSidebar.helpMenuItems.reportBug'),
+				link: {
+					href: getReportingURL(),
 					target: '_blank',
 				},
 			},
@@ -249,7 +262,7 @@ const handleSelect = (key: string) => {
 			break;
 		}
 		case 'cloud-admin': {
-			void cloudPlanStore.redirectToDashboard();
+			void pageRedirectionHelper.goToDashboard();
 			break;
 		}
 		case 'quickstart':

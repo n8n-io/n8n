@@ -22,6 +22,7 @@ import DraggableTarget from './DraggableTarget.vue';
 import { dropInExpressionEditor } from '@/plugins/codemirror/dragAndDrop';
 
 import { APP_MODALS_ELEMENT_ID } from '@/constants';
+import { N8nInput, N8nText } from 'n8n-design-system';
 
 type Props = {
 	parameter: INodeProperties;
@@ -78,14 +79,14 @@ watch(
 		void externalHooks.run('expressionEdit.dialogVisibleChanged', {
 			dialogVisible: newValue,
 			parameter: props.parameter,
-			value: props.modelValue,
+			value: props.modelValue.toString(),
 			resolvedExpressionValue,
 		});
 
 		if (!newValue) {
 			const telemetryPayload = createExpressionTelemetryPayload(
 				segments.value,
-				props.modelValue,
+				props.modelValue.toString(),
 				workflowsStore.workflowId,
 				ndvStore.pushRef,
 				ndvStore.activeNode?.type ?? '',

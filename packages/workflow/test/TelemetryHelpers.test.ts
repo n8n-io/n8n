@@ -3,6 +3,7 @@ import { v5 as uuidv5, v3 as uuidv3, v4 as uuidv4, v1 as uuidv1 } from 'uuid';
 
 import { STICKY_NODE_TYPE } from '@/Constants';
 import { ApplicationError } from '@/errors';
+import type { IRunData } from '@/Interfaces';
 import { NodeConnectionType, type IWorkflowBase } from '@/Interfaces';
 import * as nodeHelpers from '@/NodeHelpers';
 import {
@@ -780,6 +781,108 @@ describe('generateNodesGraph', () => {
 
 		expect(() => generateNodesGraph(workflow, nodeTypes)).not.toThrow();
 	});
+
+	test('should add run and items count', () => {
+		const { workflow, runData } = generateTestWorkflowAndRunData();
+
+		expect(generateNodesGraph(workflow, nodeTypes, { runData })).toEqual({
+			nameIndices: {
+				DebugHelper: '4',
+				'Edit Fields': '1',
+				'Edit Fields1': '2',
+				'Edit Fields2': '3',
+				'Execute Workflow Trigger': '0',
+				Switch: '5',
+			},
+			nodeGraph: {
+				is_pinned: false,
+				node_connections: [
+					{
+						end: '1',
+						start: '0',
+					},
+					{
+						end: '4',
+						start: '0',
+					},
+					{
+						end: '5',
+						start: '1',
+					},
+					{
+						end: '1',
+						start: '4',
+					},
+					{
+						end: '2',
+						start: '5',
+					},
+					{
+						end: '3',
+						start: '5',
+					},
+				],
+				node_types: [
+					'n8n-nodes-base.executeWorkflowTrigger',
+					'n8n-nodes-base.set',
+					'n8n-nodes-base.set',
+					'n8n-nodes-base.set',
+					'n8n-nodes-base.debugHelper',
+					'n8n-nodes-base.switch',
+				],
+				nodes: {
+					'0': {
+						id: 'a2372c14-87de-42de-9f9e-1c499aa2c279',
+						items_total: 1,
+						position: [1000, 240],
+						runs: 1,
+						type: 'n8n-nodes-base.executeWorkflowTrigger',
+						version: 1,
+					},
+					'1': {
+						id: '0f7aa00e-248c-452c-8cd0-62cb55941633',
+						items_total: 4,
+						position: [1460, 640],
+						runs: 2,
+						type: 'n8n-nodes-base.set',
+						version: 3.1,
+					},
+					'2': {
+						id: '9165c185-9f1c-4ec1-87bf-76ca66dfae38',
+						items_total: 4,
+						position: [1860, 260],
+						runs: 2,
+						type: 'n8n-nodes-base.set',
+						version: 3.4,
+					},
+					'3': {
+						id: '7a915fd5-5987-4ff1-9509-06b24a0a4613',
+						position: [1940, 680],
+						type: 'n8n-nodes-base.set',
+						version: 3.4,
+					},
+					'4': {
+						id: '63050e7c-8ad5-4f44-8fdd-da555e40471b',
+						items_total: 3,
+						position: [1220, 240],
+						runs: 1,
+						type: 'n8n-nodes-base.debugHelper',
+						version: 1,
+					},
+					'5': {
+						id: 'fbf7525d-2d1d-4dcf-97a0-43b53d087ef3',
+						items_total: 4,
+						position: [1680, 640],
+						runs: 2,
+						type: 'n8n-nodes-base.switch',
+						version: 3.2,
+					},
+				},
+				notes: {},
+			},
+			webhookNodeNames: [],
+		});
+	});
 });
 
 function validUrls(idMaker: typeof alphanumericId | typeof email, char = CHAR) {
@@ -886,3 +989,293 @@ function alphanumericId() {
 }
 
 const chooseRandomly = <T>(array: T[]) => array[randomInt(array.length)];
+
+function generateTestWorkflowAndRunData(): { workflow: IWorkflowBase; runData: IRunData } {
+	const workflow: IWorkflowBase = {
+		meta: {
+			instanceId: 'a786b722078489c1fa382391a9f3476c2784761624deb2dfb4634827256d51a0',
+		},
+		nodes: [
+			{
+				parameters: {},
+				id: 'a2372c14-87de-42de-9f9e-1c499aa2c279',
+				name: 'Execute Workflow Trigger',
+				type: 'n8n-nodes-base.executeWorkflowTrigger',
+				typeVersion: 1,
+				position: [1000, 240],
+			},
+			{
+				parameters: {
+					options: {},
+				},
+				id: '0f7aa00e-248c-452c-8cd0-62cb55941633',
+				name: 'Edit Fields',
+				type: 'n8n-nodes-base.set',
+				typeVersion: 3.1,
+				position: [1460, 640],
+			},
+			{
+				parameters: {
+					options: {},
+				},
+				id: '9165c185-9f1c-4ec1-87bf-76ca66dfae38',
+				name: 'Edit Fields1',
+				type: 'n8n-nodes-base.set',
+				typeVersion: 3.4,
+				position: [1860, 260],
+			},
+			{
+				parameters: {
+					options: {},
+				},
+				id: '7a915fd5-5987-4ff1-9509-06b24a0a4613',
+				name: 'Edit Fields2',
+				type: 'n8n-nodes-base.set',
+				typeVersion: 3.4,
+				position: [1940, 680],
+			},
+			{
+				parameters: {
+					category: 'randomData',
+					randomDataSeed: '0',
+					randomDataCount: 3,
+				},
+				id: '63050e7c-8ad5-4f44-8fdd-da555e40471b',
+				name: 'DebugHelper',
+				type: 'n8n-nodes-base.debugHelper',
+				typeVersion: 1,
+				position: [1220, 240],
+			},
+			{
+				id: 'fbf7525d-2d1d-4dcf-97a0-43b53d087ef3',
+				name: 'Switch',
+				type: 'n8n-nodes-base.switch',
+				typeVersion: 3.2,
+				position: [1680, 640],
+				parameters: {},
+			},
+		],
+		connections: {
+			'Execute Workflow Trigger': {
+				main: [
+					[
+						{
+							node: 'Edit Fields',
+							type: 'main' as NodeConnectionType,
+							index: 0,
+						},
+						{
+							node: 'DebugHelper',
+							type: 'main' as NodeConnectionType,
+							index: 0,
+						},
+					],
+				],
+			},
+			'Edit Fields': {
+				main: [
+					[
+						{
+							node: 'Switch',
+							type: 'main' as NodeConnectionType,
+							index: 0,
+						},
+					],
+				],
+			},
+			DebugHelper: {
+				main: [
+					[
+						{
+							node: 'Edit Fields',
+							type: 'main' as NodeConnectionType,
+							index: 0,
+						},
+					],
+				],
+			},
+			Switch: {
+				main: [
+					// @ts-ignore
+					null,
+					// @ts-ignore
+					null,
+					[
+						{
+							node: 'Edit Fields1',
+							type: 'main' as NodeConnectionType,
+							index: 0,
+						},
+					],
+					[
+						{
+							node: 'Edit Fields2',
+							type: 'main' as NodeConnectionType,
+							index: 0,
+						},
+					],
+				],
+			},
+		},
+		pinData: {},
+	};
+
+	const runData: IRunData = {
+		'Execute Workflow Trigger': [
+			{
+				hints: [],
+				startTime: 1727793340927,
+				executionTime: 0,
+				source: [],
+				executionStatus: 'success',
+				data: { main: [[{ json: {}, pairedItem: { item: 0 } }]] },
+			},
+		],
+		DebugHelper: [
+			{
+				hints: [],
+				startTime: 1727793340928,
+				executionTime: 0,
+				source: [{ previousNode: 'Execute Workflow Trigger' }],
+				executionStatus: 'success',
+				data: {
+					main: [
+						[
+							{
+								json: {
+									test: 'abc',
+								},
+								pairedItem: { item: 0 },
+							},
+							{
+								json: {
+									test: 'abc',
+								},
+								pairedItem: { item: 0 },
+							},
+							{
+								json: {
+									test: 'abc',
+								},
+								pairedItem: { item: 0 },
+							},
+						],
+					],
+				},
+			},
+		],
+		'Edit Fields': [
+			{
+				hints: [],
+				startTime: 1727793340928,
+				executionTime: 1,
+				source: [{ previousNode: 'DebugHelper' }],
+				executionStatus: 'success',
+				data: {
+					main: [
+						[
+							{
+								json: {
+									test: 'abc',
+								},
+								pairedItem: { item: 0 },
+							},
+							{
+								json: {
+									test: 'abc',
+								},
+								pairedItem: { item: 1 },
+							},
+							{
+								json: {
+									test: 'abc',
+								},
+								pairedItem: { item: 2 },
+							},
+						],
+					],
+				},
+			},
+			{
+				hints: [],
+				startTime: 1727793340931,
+				executionTime: 0,
+				source: [{ previousNode: 'Execute Workflow Trigger' }],
+				executionStatus: 'success',
+				data: { main: [[{ json: {}, pairedItem: { item: 0 } }]] },
+			},
+		],
+		Switch: [
+			{
+				hints: [],
+				startTime: 1727793340929,
+				executionTime: 1,
+				source: [{ previousNode: 'Edit Fields' }],
+				executionStatus: 'success',
+				data: {
+					main: [
+						[],
+						[],
+						[
+							{
+								json: {
+									test: 'abc',
+								},
+								pairedItem: { item: 0 },
+							},
+							{
+								json: {
+									test: 'abc',
+								},
+								pairedItem: { item: 1 },
+							},
+							{
+								json: {
+									test: 'abc',
+								},
+								pairedItem: { item: 2 },
+							},
+						],
+						[],
+					],
+				},
+			},
+			{
+				hints: [],
+				startTime: 1727793340931,
+				executionTime: 0,
+				source: [{ previousNode: 'Edit Fields', previousNodeRun: 1 }],
+				executionStatus: 'success',
+				data: { main: [[], [], [{ json: {}, pairedItem: { item: 0 } }], []] },
+			},
+		],
+		'Edit Fields1': [
+			{
+				hints: [],
+				startTime: 1727793340930,
+				executionTime: 0,
+				source: [{ previousNode: 'Switch', previousNodeOutput: 2 }],
+				executionStatus: 'success',
+				data: {
+					main: [
+						[
+							{ json: {}, pairedItem: { item: 0 } },
+							{ json: {}, pairedItem: { item: 1 } },
+							{ json: {}, pairedItem: { item: 2 } },
+						],
+					],
+				},
+			},
+			{
+				hints: [],
+				startTime: 1727793340932,
+				executionTime: 1,
+				source: [{ previousNode: 'Switch', previousNodeOutput: 2, previousNodeRun: 1 }],
+				executionStatus: 'success',
+				data: { main: [[{ json: {}, pairedItem: { item: 0 } }]] },
+			},
+		],
+	};
+
+	return { workflow, runData };
+}
