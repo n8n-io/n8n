@@ -459,7 +459,7 @@ describe('Langchain Integration', () => {
 		getNoToolsUsedCallout().should('exist');
 	});
 
-	it.only('should not show tool info notice if tools were used during execution', () => {
+	it('should not show tool info notice if tools were used during execution', () => {
 		addNodeToCanvas(MANUAL_CHAT_TRIGGER_NODE_NAME, true);
 		addNodeToCanvas(AGENT_NODE_NAME, true);
 
