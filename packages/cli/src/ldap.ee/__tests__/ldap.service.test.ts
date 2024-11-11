@@ -1,6 +1,7 @@
 import { mock } from 'jest-mock-extended';
-
 import { Client } from 'ldapts';
+import type { Cipher } from 'n8n-core';
+
 import config from '@/config';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import { LDAP_LOGIN_ENABLED, LDAP_LOGIN_LABEL } from '@/ldap/constants';
@@ -173,8 +174,71 @@ describe('LdapService', () => {
 		});
 	});
 
-	describe.skip('loadConfig()', () => {});
+	describe('loadConfig()', () => {
+		it('should retrieve the LDAP configuration from the settings repository', async () => {
+			const settingsRepository = mock<SettingsRepository>({
+				findOneByOrFail: jest.fn().mockResolvedValue({
+					value: JSON.stringify(ldapConfig),
+				}),
+			});
+
+			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
+
+			await ldapService.loadConfig();
+
+			expect(settingsRepository.findOneByOrFail).toHaveBeenCalledTimes(1);
+		});
+
+		it('should throw an expected error if the LDAP configuration is not found', async () => {
+			const settingsRepository = mock<SettingsRepository>({
+				findOneByOrFail: jest.fn().mockRejectedValue(new Error('LDAP configuration not found')),
+			});
+
+			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
+
+			await expect(ldapService.loadConfig()).rejects.toThrowError('LDAP configuration not found');
+		});
+
+		it('should decipher the LDAP configuration admin password', async () => {
+			const settingsRepository = mock<SettingsRepository>({
+				findOneByOrFail: jest.fn().mockResolvedValue({
+					value: JSON.stringify(ldapConfig),
+				}),
+			});
+
+			const cipherMock = mock<Cipher>({
+				decrypt: jest.fn(),
+			});
+
+			const ldapService = new LdapService(mockLogger(), settingsRepository, cipherMock, mock());
+
+			await ldapService.loadConfig();
+
+			expect(cipherMock.decrypt).toHaveBeenCalledTimes(1);
+			expect(cipherMock.decrypt).toHaveBeenCalledWith(ldapConfig.bindingAdminPassword);
+		});
+
+		it('should return the expected LDAP configuration', async () => {
+			const settingsRepository = mock<SettingsRepository>({
+				findOneByOrFail: jest.fn().mockResolvedValue({
+					value: JSON.stringify(ldapConfig),
+				}),
+			});
+
+			const cipherMock = mock<Cipher>({
+				decrypt: jest.fn().mockReturnValue('decryptedPassword'),
+			});
+
+			const ldapService = new LdapService(mockLogger(), settingsRepository, cipherMock, mock());
+
+			const config = await ldapService.loadConfig();
+
+			expect(config).toEqual({ ...ldapConfig, bindingAdminPassword: 'decryptedPassword' });
+		});
+	});
+
 	describe.skip('updateConfig()', () => {});
+
 	describe('setConfig()', () => {
 		it('should stop synchronization if the timer is running and the config is disabled', async () => {
 			const settingsRepository = mock<SettingsRepository>({
