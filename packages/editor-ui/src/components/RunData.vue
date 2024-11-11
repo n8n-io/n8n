@@ -1403,24 +1403,6 @@ defineExpose({ enterEditMode });
 		</N8nCallout>
 
 		<div
-			v-if="subWorkflowData && !(paneType === 'input' && hasInputOverwrite)"
-			:class="$style.parentExecutionInfo"
-		>
-			<a
-				@click.stop="
-					onOpenRelatedExecution(subWorkflowData.executionId, subWorkflowData.workflowId)
-				"
-			>
-				<N8nIcon icon="external-link-alt" size="xsmall" />
-				{{
-					nodeType?.group.includes('trigger')
-						? $locale.baseText('runData.openParentExecution')
-						: $locale.baseText('runData.openSubExecution')
-				}}
-			</a>
-		</div>
-
-		<div
 			v-if="maxOutputIndex > 0 && branches.length > 1 && !displaysMultipleNodes"
 			:class="$style.outputs"
 			data-test-id="branches"
@@ -1467,6 +1449,24 @@ defineExpose({ enterEditMode });
 					})
 				}}
 			</N8nText>
+		</div>
+
+		<div
+			v-if="subWorkflowData && !(paneType === 'input' && hasInputOverwrite)"
+			:class="$style.parentExecutionInfo"
+		>
+			<a
+				@click.stop="
+					onOpenRelatedExecution(subWorkflowData.executionId, subWorkflowData.workflowId)
+				"
+			>
+				<N8nIcon icon="external-link-alt" size="xsmall" />
+				{{
+					nodeType?.group.includes('trigger')
+						? $locale.baseText('runData.openParentExecution')
+						: $locale.baseText('runData.openSubExecution')
+				}}
+			</a>
 		</div>
 
 		<div ref="dataContainerRef" :class="$style.dataContainer" data-test-id="ndv-data-container">
