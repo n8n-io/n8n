@@ -3,8 +3,9 @@ import { Client } from 'ldapts';
 import type { Cipher } from 'n8n-core';
 
 import config from '@/config';
+import { AuthIdentityRepository } from '@/databases/repositories/auth-identity.repository';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
-import { LDAP_LOGIN_ENABLED, LDAP_LOGIN_LABEL } from '@/ldap/constants';
+import { LDAP_LOGIN_ENABLED, LDAP_LOGIN_LABEL, LDAP_FEATURE_NAME } from '@/ldap/constants';
 import { LdapService } from '@/ldap/ldap.service.ee';
 import type { LdapConfig } from '@/ldap/types';
 import { mockInstance, mockLogger } from '@test/mocking';
@@ -237,7 +238,162 @@ describe('LdapService', () => {
 		});
 	});
 
-	describe.skip('updateConfig()', () => {});
+	describe('updateConfig()', () => {
+		it('should throw expected error if the LDAP configuration is invalid', async () => {
+			const settingsRepository = mockInstance(SettingsRepository, {
+				findOneByOrFail: jest.fn().mockResolvedValue({ value: JSON.stringify(ldapConfig) }),
+			}); // set in container so `setCurrentAuthenticationMethod` does not fail - legacy LDAP code not using DI
+
+			const invalidLdapConfig = { ...ldapConfig, loginEnabled: 'notABoolean' };
+
+			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
+
+			await expect(
+				ldapService.updateConfig(invalidLdapConfig as unknown as LdapConfig),
+			).rejects.toThrowError('request.body.loginEnabled is not of a type(s) boolean');
+		});
+
+		it('should throw expected error if login is enabled and the current authentication method is "saml"', async () => {
+			const settingsRepository = mockInstance(SettingsRepository, {
+				findOneByOrFail: jest.fn().mockResolvedValue({ value: JSON.stringify(ldapConfig) }),
+			}); // set in container so `setCurrentAuthenticationMethod` does not fail - legacy LDAP code not using DI
+
+			config.set('userManagement.authenticationMethod', 'saml');
+			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
+
+			await expect(ldapService.updateConfig(ldapConfig)).rejects.toThrowError(
+				'LDAP cannot be enabled if SSO in enabled',
+			);
+		});
+
+		it('should encrypt the binding admin password', async () => {
+			const settingsRepository = mockInstance(SettingsRepository, {
+				findOneByOrFail: jest.fn().mockResolvedValue({ value: JSON.stringify(ldapConfig) }),
+			}); // set in container so `setCurrentAuthenticationMethod` does not fail - legacy LDAP code not using DI
+
+			const cipherMock = mock<Cipher>({
+				encrypt: jest.fn().mockReturnValue('encryptedPassword'),
+			});
+
+			config.set('userManagement.authenticationMethod', 'email');
+			const ldapService = new LdapService(mockLogger(), settingsRepository, cipherMock, mock());
+
+			const newConfig = { ...ldapConfig };
+			await ldapService.updateConfig(newConfig);
+
+			expect(cipherMock.encrypt).toHaveBeenCalledTimes(1);
+			expect(cipherMock.encrypt).toHaveBeenCalledWith(ldapConfig.bindingAdminPassword);
+			expect(newConfig.bindingAdminPassword).toEqual('encryptedPassword');
+		});
+
+		it('should delete all ldap identities if login is disabled and ldap users exist', async () => {
+			const settingsRepository = mockInstance(SettingsRepository, {
+				findOneByOrFail: jest.fn().mockResolvedValue({ value: JSON.stringify(ldapConfig) }),
+			}); // set in container so `setCurrentAuthenticationMethod` does not fail - legacy LDAP code not using DI
+
+			const authIdentityRepository = mockInstance(AuthIdentityRepository, {
+				find: jest.fn().mockResolvedValue([{ user: { id: 'userId' } }]),
+				delete: jest.fn(),
+			});
+
+			const cipherMock = mock<Cipher>({
+				encrypt: jest.fn().mockReturnValue('encryptedPassword'),
+			});
+
+			config.set('userManagement.authenticationMethod', 'email');
+			const ldapService = new LdapService(mockLogger(), settingsRepository, cipherMock, mock());
+
+			const newConfig = { ...ldapConfig, loginEnabled: false, synchronizationEnabled: true };
+			await ldapService.updateConfig(newConfig);
+
+			expect(newConfig.synchronizationEnabled).toBeFalsy();
+			expect(authIdentityRepository.delete).toHaveBeenCalledTimes(1);
+			expect(authIdentityRepository.delete).toHaveBeenCalledWith({ providerType: 'ldap' });
+		});
+
+		it('should not delete ldap identities if login is disabled and there are no ldap identities', async () => {
+			const settingsRepository = mockInstance(SettingsRepository, {
+				findOneByOrFail: jest.fn().mockResolvedValue({ value: JSON.stringify(ldapConfig) }),
+			}); // set in container so `setCurrentAuthenticationMethod` does not fail - legacy LDAP code not using DI
+
+			const authIdentityRepository = mockInstance(AuthIdentityRepository, {
+				find: jest.fn().mockResolvedValue([]),
+				delete: jest.fn(),
+			});
+
+			const cipherMock = mock<Cipher>({
+				encrypt: jest.fn().mockReturnValue('encryptedPassword'),
+			});
+
+			config.set('userManagement.authenticationMethod', 'email');
+			const ldapService = new LdapService(mockLogger(), settingsRepository, cipherMock, mock());
+
+			const newConfig = { ...ldapConfig, loginEnabled: false, synchronizationEnabled: true };
+			await ldapService.updateConfig(newConfig);
+
+			expect(newConfig.synchronizationEnabled).toBeFalsy();
+			expect(authIdentityRepository.delete).not.toHaveBeenCalled();
+			expect(authIdentityRepository.delete).not.toHaveBeenCalled();
+		});
+
+		it('should update the LDAP configuration in the settings repository', async () => {
+			const settingsRepository = mockInstance(SettingsRepository, {
+				findOneByOrFail: jest.fn().mockResolvedValue({ value: JSON.stringify(ldapConfig) }),
+				update: jest.fn(),
+			}); // set in container so `setCurrentAuthenticationMethod` does not fail - legacy LDAP code not using DI
+
+			mockInstance(AuthIdentityRepository, {
+				find: jest.fn().mockResolvedValue([{ user: { id: 'userId' } }]),
+				delete: jest.fn(),
+			});
+
+			const cipherMock = mock<Cipher>({
+				encrypt: jest.fn().mockReturnValue('encryptedPassword'),
+			});
+
+			config.set('userManagement.authenticationMethod', 'email');
+			const ldapService = new LdapService(mockLogger(), settingsRepository, cipherMock, mock());
+
+			const newConfig = { ...ldapConfig, loginEnabled: false, synchronizationEnabled: true };
+			await ldapService.updateConfig(newConfig);
+
+			expect(settingsRepository.update).toHaveBeenCalledTimes(1);
+			expect(settingsRepository.update).toHaveBeenCalledWith(
+				{ key: LDAP_FEATURE_NAME },
+				{ value: JSON.stringify(newConfig), loadOnStartup: true },
+			);
+		});
+
+		it('should update the LDAP login label in the config', async () => {
+			const settingsRepository = mockInstance(SettingsRepository, {
+				findOneByOrFail: jest.fn().mockResolvedValue({ value: JSON.stringify(ldapConfig) }),
+				update: jest.fn(),
+			}); // set in container so `setCurrentAuthenticationMethod` does not fail - legacy LDAP code not using DI
+
+			mockInstance(AuthIdentityRepository, {
+				find: jest.fn().mockResolvedValue([{ user: { id: 'userId' } }]),
+				delete: jest.fn(),
+			});
+
+			const cipherMock = mock<Cipher>({
+				encrypt: jest.fn().mockReturnValue('encryptedPassword'),
+			});
+			const configSetSpy = jest.spyOn(config, 'set');
+
+			config.set('userManagement.authenticationMethod', 'email');
+			const ldapService = new LdapService(mockLogger(), settingsRepository, cipherMock, mock());
+
+			const newConfig = {
+				...ldapConfig,
+				loginEnabled: false,
+				synchronizationEnabled: true,
+				loginLabel: 'newLoginLabel',
+			};
+			await ldapService.updateConfig(newConfig);
+
+			expect(configSetSpy).toHaveBeenNthCalledWith(4, LDAP_LOGIN_LABEL, newConfig.loginLabel);
+		});
+	});
 
 	describe('setConfig()', () => {
 		it('should stop synchronization if the timer is running and the config is disabled', async () => {
