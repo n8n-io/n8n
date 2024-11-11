@@ -62,6 +62,7 @@ const isTouchActive = ref<boolean>(false);
 const forceActions = ref(false);
 const isColorPopoverVisible = ref(false);
 const stickOptions = ref<HTMLElement>();
+const isEditing = ref(false);
 
 const setForceActions = (value: boolean) => {
 	forceActions.value = value;
@@ -147,8 +148,13 @@ const workflowRunning = computed(() => uiStore.isActionActive.workflowRunning);
 
 const showActions = computed(
 	() =>
-		!(props.hideActions || props.isReadOnly || workflowRunning.value || isResizing.value) ||
-		forceActions.value,
+		!(
+			props.hideActions ||
+			isEditing.value ||
+			props.isReadOnly ||
+			workflowRunning.value ||
+			isResizing.value
+		) || forceActions.value,
 );
 
 onMounted(() => {
@@ -187,6 +193,7 @@ const changeColor = (index: number) => {
 };
 
 const onEdit = (edit: boolean) => {
+	isEditing.value = edit;
 	if (edit && !props.isActive && node.value) {
 		ndvStore.activeNodeName = node.value.name;
 	} else if (props.isActive && !edit) {
