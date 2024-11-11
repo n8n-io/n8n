@@ -17,7 +17,6 @@ import { Document } from '@langchain/core/documents';
 
 import type { SetField, SetNodeOptions } from 'n8n-nodes-base/dist/nodes/Set/v2/helpers/interfaces';
 import * as manual from 'n8n-nodes-base/dist/nodes/Set/v2/manual.mode';
-import get from 'lodash/get';
 import type { CallbackManagerForRetrieverRun } from '@langchain/core/callbacks/manager';
 import { logWrapper } from '../../../utils/logWrapper';
 
@@ -411,8 +410,7 @@ export class RetrieverWorkflow implements INodeType {
 					throw new NodeOperationError(this.executeFunctions.getNode(), error as Error);
 				}
 
-				// eslint-disable-next-line lodash/path-style
-				const receivedItems = get(receivedData, ['data', 0]) ?? [];
+				const receivedItems = receivedData.data?.[0] ?? [];
 
 				const returnData: Document[] = [];
 				for (const [index, itemData] of receivedItems.entries()) {
