@@ -428,7 +428,7 @@ exports[`RunDataSchema.vue > renders schema in output pane 1`] = `
           <div
             class="pill"
             data-depth="0"
-            data-name="0"
+            data-name="hobbies[0]"
             data-nest-level="1"
             data-node-type=""
             data-path=".hobbies[0]"
@@ -466,7 +466,7 @@ exports[`RunDataSchema.vue > renders schema in output pane 1`] = `
               
               <span>
                 <!--v-if-->
-                0
+                hobbies[0]
               </span>
               
             </span>
@@ -502,7 +502,7 @@ exports[`RunDataSchema.vue > renders schema in output pane 1`] = `
           <div
             class="pill"
             data-depth="0"
-            data-name="1"
+            data-name="hobbies[1]"
             data-nest-level="1"
             data-node-type=""
             data-path=".hobbies[1]"
@@ -540,7 +540,7 @@ exports[`RunDataSchema.vue > renders schema in output pane 1`] = `
               
               <span>
                 <!--v-if-->
-                1
+                hobbies[1]
               </span>
               
             </span>
@@ -894,7 +894,7 @@ exports[`RunDataSchema.vue > renders schema with spaces and dots 1`] = `
           <div
             class="pill"
             data-depth="1"
-            data-name="test"
+            data-name="0[test]"
             data-nest-level="3"
             data-node-type="n8n-nodes-base.set"
             data-path="['hello world'][0].test"
@@ -932,7 +932,7 @@ exports[`RunDataSchema.vue > renders schema with spaces and dots 1`] = `
               
               <span>
                 <!--v-if-->
-                test
+                0[test]
               </span>
               
             </span>
@@ -963,7 +963,7 @@ exports[`RunDataSchema.vue > renders schema with spaces and dots 1`] = `
           <div
             class="pill"
             data-depth="1"
-            data-name="more to think about"
+            data-name="test[more to think about]"
             data-nest-level="4"
             data-node-type="n8n-nodes-base.set"
             data-path="['hello world'][0].test['more to think about']"
@@ -1001,7 +1001,7 @@ exports[`RunDataSchema.vue > renders schema with spaces and dots 1`] = `
               
               <span>
                 <!--v-if-->
-                more to think about
+                test[more to think about]
               </span>
               
             </span>
@@ -1037,7 +1037,7 @@ exports[`RunDataSchema.vue > renders schema with spaces and dots 1`] = `
           <div
             class="pill"
             data-depth="1"
-            data-name="test.how"
+            data-name="0[test.how]"
             data-nest-level="3"
             data-node-type="n8n-nodes-base.set"
             data-path="['hello world'][0]['test.how']"
@@ -1075,7 +1075,7 @@ exports[`RunDataSchema.vue > renders schema with spaces and dots 1`] = `
               
               <span>
                 <!--v-if-->
-                test.how
+                0[test.how]
               </span>
               
             </span>

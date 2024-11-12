@@ -173,8 +173,8 @@ describe('RunDataSchema.vue', () => {
 		expect(items[0]).toHaveTextContent('nameJohn');
 		expect(items[1]).toHaveTextContent('age22');
 		expect(items[2]).toHaveTextContent('hobbies');
-		expect(items[3]).toHaveTextContent('0surfing');
-		expect(items[4]).toHaveTextContent('1traveling');
+		expect(items[3]).toHaveTextContent('hobbies[0]surfing');
+		expect(items[4]).toHaveTextContent('hobbies[1]traveling');
 	});
 
 	it('renders schema in output pane', async () => {
