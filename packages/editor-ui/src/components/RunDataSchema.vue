@@ -9,7 +9,7 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { telemetry } from '@/plugins/telemetry';
 import { NodeConnectionType, type IConnectedNode, type IDataObject } from 'n8n-workflow';
 import { useExternalHooks } from '@/composables/useExternalHooks';
-import { i18n } from '@/plugins/i18n';
+import { useI18n } from '@/composables/useI18n';
 import MappingPill from './MappingPill.vue';
 import { useDataSchema, useFlattenSchema, type SchemaNode } from '@/composables/useDataSchema';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -17,6 +17,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { executionDataToJson } from '@/utils/nodeTypesUtils';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
+
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 
 type Props = {
@@ -47,6 +48,7 @@ const props = withDefaults(defineProps<Props>(), {
 	context: 'ndv',
 });
 
+const i18n = useI18n();
 const ndvStore = useNDVStore();
 const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
@@ -202,7 +204,6 @@ const onDragEnd = (el: HTMLElement) => {
 			<template #preview="{ canDrop, el }">
 				<MappingPill v-if="el" :html="el.outerHTML" :can-drop="canDrop" />
 			</template>
-
 			<DynamicScroller :items="items" :min-item-size="38" class="full-height scroller">
 				<template #default="{ item, index, active }">
 					<RunDataSchemaHeader

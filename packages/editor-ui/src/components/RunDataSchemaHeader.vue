@@ -19,7 +19,7 @@ const isTrigger = computed(() => props.nodeType.group.includes('trigger'));
 </script>
 
 <template>
-	<div class="schema-header">
+	<div class="schema-header" data-test-id="run-data-schema-header">
 		<div class="toggle">
 			<FontAwesomeIcon icon="angle-down" :class="{ 'collapse-icon': true, collapsed }" />
 		</div>
