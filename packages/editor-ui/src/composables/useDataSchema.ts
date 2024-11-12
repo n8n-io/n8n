@@ -12,7 +12,7 @@ import { generatePath, getMappedExpression } from '@/utils/mappingUtils';
 import { isObj } from '@/utils/typeGuards';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { isPresent, shorten } from '@/utils/typesUtils';
-import { i18n } from '@/plugins/i18n';
+import { useI18n } from '@/composables/useI18n';
 import { checkExhaustive } from '@/utils/typeGuards';
 
 export function useDataSchema() {
@@ -175,7 +175,7 @@ export type SchemaNode = {
 	depth: number;
 	connectedOutputIndexes: number[];
 	itemsCount: number;
-	schema: Schema | null;
+	schema: Schema;
 };
 
 export type RenderItem = {
@@ -321,16 +321,6 @@ export const useFlattenSchema = () => {
 		}
 	};
 
-	const flattSchemaNode = (schemaNode: SchemaNode) => {
-		const { schema, node, depth } = schemaNode;
-
-		if (!schema) {
-			return [];
-		}
-
-		return flattSchema({ schema, node, depth });
-	};
-
 	const flattMultipleSchema = (nodes: SchemaNode[], additionalInfo: (node: INodeUi) => string) =>
 		nodes.reduce<Renders[]>((acc, item, index) => {
 			acc.push({
@@ -350,13 +340,13 @@ export const useFlattenSchema = () => {
 			if (isDataEmpty(item.schema)) {
 				acc.push({
 					id: `empty-${index}`,
-					value: i18n.baseText('dataMapping.schemaView.emptyData'),
+					value: useI18n().baseText('dataMapping.schemaView.emptyData'),
 					type: 'item',
 				});
 				return acc;
 			}
 
-			acc.push(...flattSchemaNode(item));
+			acc.push(...flattSchema(item));
 			return acc;
 		}, []);
 
