@@ -30,12 +30,12 @@ const PROMPT_PROVIDER_NODE_NAMES = [CHAT_TRIGGER_NODE_TYPE];
 type NodeWithType = Pick<INode, 'type'>;
 
 export function adjustNewlyConnectedNodes(parent: NodeWithType, child: NodeWithType) {
-	if (!PROMPT_PROVIDER_NODE_NAMES.includes(child.type) && AI_NODES.includes(parent.type)) {
+	if (!PROMPT_PROVIDER_NODE_NAMES.includes(parent.type) && AI_NODES.includes(child.type)) {
 		Object.assign<NodeWithType, Partial<INode>>(child, {
 			parameters: { promptType: 'define' },
 		});
 	}
-	if (PROMPT_PROVIDER_NODE_NAMES.includes(parent.type) && MEMORY_NODE_NAMES.includes(child.type)) {
+	if (!PROMPT_PROVIDER_NODE_NAMES.includes(parent.type) && MEMORY_NODE_NAMES.includes(child.type)) {
 		Object.assign<NodeWithType, Partial<INode>>(child, {
 			parameters: { sessionIdType: 'customKey' },
 		});

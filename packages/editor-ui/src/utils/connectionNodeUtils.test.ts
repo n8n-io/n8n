@@ -8,7 +8,6 @@ describe('adjustNewlyConnectedNodes', () => {
 		adjustNewlyConnectedNodes(parent, child);
 		expect(child).toEqual({
 			type: AGENT_NODE_TYPE,
-			parameters: { promptType: 'define' },
 		});
 	});
 	it('does not modify promptType with ManualTrigger->Agent', () => {
@@ -17,24 +16,25 @@ describe('adjustNewlyConnectedNodes', () => {
 		adjustNewlyConnectedNodes(parent, child);
 		expect(child).toEqual({
 			type: AGENT_NODE_TYPE,
+			parameters: { promptType: 'define' },
 		});
 	});
 
 	it('modifies sessionId with ChatTrigger->Memory', () => {
 		const parent = { type: CHAT_TRIGGER_NODE_TYPE };
-		const child = { type: 'memoryBufferWindow' };
+		const child = { type: '@n8n/n8n-nodes-langchain.memoryBufferWindow' };
 		adjustNewlyConnectedNodes(parent, child);
 		expect(child).toEqual({
-			type: 'memoryBufferWindow',
+			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
 		});
 	});
 
 	it('does not modify sessionId with ManualTrigger->Memory', () => {
 		const parent = { type: MANUAL_TRIGGER_NODE_TYPE };
-		const child = { type: 'memoryBufferWindow' };
+		const child = { type: '@n8n/n8n-nodes-langchain.memoryBufferWindow' };
 		adjustNewlyConnectedNodes(parent, child);
 		expect(child).toEqual({
-			type: 'memoryBufferWindow',
+			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
 			parameters: { sessionIdType: 'customKey' },
 		});
 	});
