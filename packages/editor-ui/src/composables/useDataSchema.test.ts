@@ -555,7 +555,7 @@ describe('useFlattenSchema', () => {
 			],
 		};
 		expect(
-			useFlattenSchema().flattSchema({
+			useFlattenSchema().flattenSchema({
 				schema,
 			}).length,
 		).toBe(3);
