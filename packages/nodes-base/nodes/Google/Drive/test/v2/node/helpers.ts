@@ -2,6 +2,7 @@ import type { IDataObject, IExecuteFunctions, IGetNodeParameterOptions, INode } 
 
 import { get } from 'lodash';
 import { constructExecutionMetaData, returnJsonArray } from 'n8n-core';
+import { Readable } from 'stream';
 
 export const driveNode: INode = {
 	id: '11',
@@ -33,10 +34,32 @@ export const createMockExecuteFunction = (
 		helpers: {
 			constructExecutionMetaData,
 			returnJsonArray,
-			prepareBinaryData: () => {},
-			httpRequest: () => {},
+			prepareBinaryData: jest.fn(),
+			httpRequest: jest.fn(),
 		},
 		continueOnFail: () => continueOnFail,
 	} as unknown as IExecuteFunctions;
 	return fakeExecuteFunction;
 };
+
+export function createTestStream(byteSize: number) {
+	let bytesSent = 0;
+	const CHUNK_SIZE = 64 * 1024; // 64kB chunks (default highWaterMark)
+
+	return new Readable({
+		read() {
+			const remainingBytes = byteSize - bytesSent;
+
+			if (remainingBytes <= 0) {
+				this.push(null);
+				return;
+			}
+
+			const chunkSize = Math.min(CHUNK_SIZE, remainingBytes);
+			const chunk = Buffer.alloc(chunkSize, 'A'); // Test data just a string of "A"
+
+			bytesSent += chunkSize;
+			this.push(chunk);
+		},
+	});
+}
