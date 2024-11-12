@@ -58,7 +58,7 @@ export class TaskRunnersConfig {
 	@Env('N8N_RUNNERS_TASK_TIMEOUT')
 	taskTimeout: number = 60;
 
-	/** Interval (in seconds) at which the runner should send a heartbeat to the broker. */
+	/** How often (in seconds) the runner is expected to send a heartbeat to the broker. */
 	@Env('N8N_RUNNERS_HEARTBEAT_INTERVAL')
 	heartbeatInterval: number = 30;
 }
