@@ -5,7 +5,12 @@ import type { Cipher } from 'n8n-core';
 import config from '@/config';
 import { AuthIdentityRepository } from '@/databases/repositories/auth-identity.repository';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
-import { LDAP_LOGIN_ENABLED, LDAP_LOGIN_LABEL, LDAP_FEATURE_NAME } from '@/ldap/constants';
+import {
+	BINARY_AD_ATTRIBUTES,
+	LDAP_LOGIN_ENABLED,
+	LDAP_LOGIN_LABEL,
+	LDAP_FEATURE_NAME,
+} from '@/ldap/constants';
 import { LdapService } from '@/ldap/ldap.service.ee';
 import type { LdapConfig } from '@/ldap/types';
 import { mockInstance, mockLogger } from '@test/mocking';
@@ -17,6 +22,7 @@ jest.mock('ldapts', () => {
 	ClientMock.prototype.bind = jest.fn();
 	ClientMock.prototype.unbind = jest.fn();
 	ClientMock.prototype.startTLS = jest.fn();
+	ClientMock.prototype.search = jest.fn();
 
 	return { Client: ClientMock };
 });
@@ -500,7 +506,170 @@ describe('LdapService', () => {
 		});
 	});
 
-	describe.skip('searchWithAdminBinding()', () => {});
+	describe('searchWithAdminBinding()', () => {
+		it('should bind admin client', async () => {
+			const settingsRepository = mock<SettingsRepository>({
+				findOneByOrFail: jest.fn().mockResolvedValue({
+					value: JSON.stringify(ldapConfig),
+				}),
+			});
+
+			const cipherMock = mock<Cipher>({
+				decrypt: jest.fn().mockReturnValue('decryptedPassword'),
+			});
+
+			Client.prototype.search = jest.fn().mockResolvedValue({ searchEntries: [] });
+
+			const filter = '';
+
+			const ldapService = new LdapService(mockLogger(), settingsRepository, cipherMock, mock());
+
+			await ldapService.init();
+			await ldapService.searchWithAdminBinding(filter);
+
+			expect(Client.prototype.bind).toHaveBeenCalledTimes(1);
+			expect(Client.prototype.bind).toHaveBeenCalledWith(
+				ldapConfig.bindingAdminDn,
+				'decryptedPassword',
+			);
+		});
+
+		it('should call client search with expected parameters', async () => {
+			const settingsRepository = mock<SettingsRepository>({
+				findOneByOrFail: jest.fn().mockResolvedValue({
+					value: JSON.stringify(ldapConfig),
+				}),
+			});
+
+			const cipherMock = mock<Cipher>({
+				decrypt: jest.fn().mockReturnValue('decryptedPassword'),
+			});
+
+			const filter = '';
+
+			Client.prototype.search = jest.fn().mockResolvedValue({ searchEntries: [] });
+
+			const ldapService = new LdapService(mockLogger(), settingsRepository, cipherMock, mock());
+
+			await ldapService.init();
+			await ldapService.searchWithAdminBinding(filter);
+
+			expect(Client.prototype.search).toHaveBeenCalledTimes(1);
+			expect(Client.prototype.search).toHaveBeenLastCalledWith(ldapConfig.baseDn, {
+				attributes: [
+					ldapConfig.emailAttribute,
+					ldapConfig.ldapIdAttribute,
+					ldapConfig.firstNameAttribute,
+					ldapConfig.lastNameAttribute,
+					ldapConfig.emailAttribute,
+				],
+				explicitBufferAttributes: BINARY_AD_ATTRIBUTES,
+				filter,
+				timeLimit: ldapConfig.searchTimeout,
+				paged: { pageSize: ldapConfig.searchPageSize },
+			});
+		});
+
+		it('should call client search with expected parameters when searchPageSize is 0', async () => {
+			const settingsRepository = mock<SettingsRepository>({
+				findOneByOrFail: jest.fn().mockResolvedValue({
+					value: JSON.stringify({ ...ldapConfig, searchPageSize: 0 }),
+				}),
+			});
+
+			const cipherMock = mock<Cipher>({
+				decrypt: jest.fn().mockReturnValue('decryptedPassword'),
+			});
+
+			const filter = '';
+
+			Client.prototype.search = jest.fn().mockResolvedValue({ searchEntries: [] });
+
+			const ldapService = new LdapService(mockLogger(), settingsRepository, cipherMock, mock());
+
+			await ldapService.init();
+			await ldapService.searchWithAdminBinding(filter);
+
+			expect(Client.prototype.search).toHaveBeenCalledTimes(1);
+			expect(Client.prototype.search).toHaveBeenLastCalledWith(ldapConfig.baseDn, {
+				attributes: [
+					ldapConfig.emailAttribute,
+					ldapConfig.ldapIdAttribute,
+					ldapConfig.firstNameAttribute,
+					ldapConfig.lastNameAttribute,
+					ldapConfig.emailAttribute,
+				],
+				explicitBufferAttributes: BINARY_AD_ATTRIBUTES,
+				filter,
+				timeLimit: ldapConfig.searchTimeout,
+				paged: true,
+			});
+		});
+
+		it('should unbind client after search', async () => {
+			const settingsRepository = mock<SettingsRepository>({
+				findOneByOrFail: jest.fn().mockResolvedValue({
+					value: JSON.stringify(ldapConfig),
+				}),
+			});
+
+			const cipherMock = mock<Cipher>({
+				decrypt: jest.fn().mockReturnValue('decryptedPassword'),
+			});
+
+			Client.prototype.search = jest.fn().mockResolvedValue({ searchEntries: [] });
+
+			const filter = '';
+
+			const ldapService = new LdapService(mockLogger(), settingsRepository, cipherMock, mock());
+
+			await ldapService.init();
+			await ldapService.searchWithAdminBinding(filter);
+
+			expect(Client.prototype.unbind).toHaveBeenCalledTimes(1);
+		});
+
+		it('should return expected search entries', async () => {
+			const settingsRepository = mock<SettingsRepository>({
+				findOneByOrFail: jest.fn().mockResolvedValue({
+					value: JSON.stringify(ldapConfig),
+				}),
+			});
+
+			const cipherMock = mock<Cipher>({
+				decrypt: jest.fn().mockReturnValue('decryptedPassword'),
+			});
+
+			const userList = [
+				{
+					dn: 'uid=jdoe,ou=users,dc=example,dc=com',
+					cn: 'Jo Doe',
+					sn: 'Doe',
+					mail: 'jdoe@example.com',
+					memberOf: 'cn=admins,ou=groups,dc=example,dc=com',
+				},
+				{
+					dn: 'uid=ghopper,ou=users,dc=example,dc=com',
+					cn: 'Grace Hopper',
+					sn: 'Hopper',
+					mail: 'ghopper@nasa.com',
+					memberOf: 'cn=admins,ou=groups,dc=example,dc=com',
+				},
+			];
+			Client.prototype.search = jest.fn().mockResolvedValue({
+				searchEntries: userList,
+			});
+
+			const filter = '';
+
+			const ldapService = new LdapService(mockLogger(), settingsRepository, cipherMock, mock());
+
+			await ldapService.init();
+			const results = await ldapService.searchWithAdminBinding(filter);
+
+			expect(results).toEqual(userList);
+		});
+	});
 
 	describe('validUser()', () => {
 		it('should throw expected error if no configuration has been set', async () => {
